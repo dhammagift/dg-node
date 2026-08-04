@@ -133,6 +133,14 @@ nodejs/
 │   ├── megareader.js        — логика мегаридера
 │   └── lang_ru.json         — локализация (русский)
 │
+├── public/                  — статические файлы (CSS, JS, assets)
+│   └── spa/                 — SPA фреймворк (Phase 1+)
+│       ├── router.js        — умная маршрутизация URL (dn22, keyword распознавание)
+│       ├── state.js         — глобальное состояние (search + reader + UI)
+│       ├── app.js           — инициализация SPA и обработка навигации
+│       ├── views.js         — рендеринг представлений (landing, search, reader)
+│       └── modal.js         — единое модальное окно с вкладками (Settings, Compass, Help)
+│
 ├── unused/                  — неиспользуемые файлы (не удалять без проверки)
 │   ├── dg-heavy.js          — старый сервер с 117МБ JSON (заменён dg-light.js)
 │   ├── cat_server_heavy_db.js, cat_server_work_no_percent.js — старые CAT-версии
@@ -143,6 +151,67 @@ nodejs/
 ```
 
 **Примечание**: `dg_db.json` и `dg_dbNEW.json` — 117 МБ каждый, можно удалить когда убедимся что `dg_db_light.json` покрывает все нужды.
+
+---
+
+## SPA Фреймворк (Single-Page Application)
+
+### Архитектура
+
+```
+URL in → Router parses → State updates → Views re-render
+                ↓
+         (dn22/keyword recognition)
+                ↓
+         /keyword → search view
+         /dn22:2.2 → reader view
+         /dn22:2.2/kacchapa → reader + highlight
+```
+
+### Файлы SPA (public/spa/)
+
+**router.js** — Умная маршрутизация
+- Распознает sutta IDs: `dn22`, `mn1`, `sn56:11`, `sn56.11` по шаблону
+- Обрабатывает оба формата: `/sutta/keyword` и `/keyword/sutta`
+- Редиректит legacy `/?q=...` на чистые URLs
+- Управляет History API (browser back/forward)
+
+**state.js** — Глобальное состояние (изолировано)
+- `search`: query, scope, langs, lb, la, results
+- `reader`: suttaId, currentSegment, highlightKeyword, editions, translations
+- `ui`: currentView, modalOpen, modalTab, language
+- Паттерн listener для реагирования на изменения
+
+**app.js** — Инициализация и управление
+- Инициализирует router + state
+- Обнаруживает и редиректит legacy URLs
+- Слушает изменения маршрута (popstate)
+- Публичный API: goToSearch(), goToReader(), goToLanding()
+
+**views.js** — Рендеринг представлений
+- landing: показывает search input + help/about разделы
+- search: выполняет API запрос, показывает результаты в DataTable
+- reader: загружает текст сутты, применяет highlight
+- Интегрируется с существующим search API и megareader.js
+
+**modal.js** — Единое модальное окно
+- 3 вкладки: Settings (🔧), Compass (☸), Help (❓)
+- Settings: скрипт система, размер шрифта, тема, режим отображения
+- Compass: навигация по Four Noble Truths
+- Help: сочетания клавиш, форматы URL
+
+### Управление состоянием
+
+**Изоляция**: Состояние поиска и ридера полностью отделены.
+- При переходе на search: reader.suttaId = null
+- При открытии reader: search.query может остаться (для highlight)
+- UI изменения (modal, язык) не влияют на search/reader состояние
+
+**Жизненный цикл представления**:
+1. URL меняется → Router парсит
+2. State обновляется → Listeners уведомляются
+3. Views перестраивают DOM
+4. Пользователь видит новое представление
 
 ---
 

@@ -67,28 +67,40 @@ Backward compat:
 
 ## Implementation Strategy
 
-**Phase 1: Smart Router**
-- Create URL parser that recognizes:
+**Phase 1: Smart Router** ✅ DONE
+- ✅ URL parser that recognizes:
   - Sutta IDs: `dn22`, `mn1`, `sn56:11`, `sn56.11` patterns
   - Keywords: anything else
-- Parse both `/dn22:2.2/kacchapa` and `/kacchapa/dn22:2.2` identically
-- Redirect legacy `/?q=...` to clean routes
+- ✅ Parse both `/dn22:2.2/kacchapa` and `/kacchapa/dn22:2.2` identically
+- ✅ Redirect legacy `/?q=...` to clean routes
+- ✅ State management system (search + reader state isolated)
+- ✅ Unified modal with 3 tabs (Settings, Compass, Help)
+- ✅ View management (landing, search, reader views)
 
-**Phase 2: View Management**
-- Create view system (landing, search results, reader)
-- Route determines which view renders
-- Each view reuses existing code (res/index.html search form, reader HTML)
-- History API manages browser back/forward
+Implementation:
+- `public/spa/router.js` — Smart URL parser with History API support
+- `public/spa/state.js` — Global state (search, reader, UI) with listener pattern
+- `public/spa/app.js` — Bootstrap and route change handling
+- `public/spa/views.js` — View rendering system
+- `public/spa/modal.js` — Unified modal with tabs
 
-**Phase 3: Unified Modal**
-- One modal with 3 tabs (History | Settings | Compass)
-- Opens from anywhere with correct tab
-- Merge existing Help modal + Settings modal + Quick Modal
+**Phase 2: Integration with Existing Code**
+- Integrate router.js into res/index.html and reader/reader-template.html
+- Add SPA middleware to dg-light.js (Express server)
+- Wire search form to use router navigation
+- Connect existing search API and megareader.js to SPA state
+- Test backward compatibility with /?q=... URLs
 
-**Phase 4: State Isolation**
-- Search state: query, filters (lb, la, scope, langs)
-- Reader state: suttaId, current segment, highlight keyword
-- No interference between states
+**Phase 3: UI Polish**
+- Test all URL formats and transitions
+- Mobile responsiveness
+- Keyboard shortcuts (/, Esc, arrow keys)
+- Smooth view transitions
+- Modal tab switching
+
+**Phase 4: Android Preparation**
+- Prepare API response for consistency (web vs SQLite)
+- Document API contract for Capacitor/SQLite layer
 
 ## Files to Modify/Create
 
