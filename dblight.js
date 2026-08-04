@@ -2,15 +2,25 @@ const fs = require('fs').promises;
 const path = require('path');
 const fsSync = require('fs');
 
-const isTermux = fsSync.existsSync('/data/data/com.termux/files/usr');
+const isTermux  = fsSync.existsSync('/data/data/com.termux/files/usr');
+const isWindows = process.platform === 'win32';
 
-const BASE = isTermux
-    ? '/data/data/com.termux/files/usr/share/apache2/default-site/htdocs'
-    : '/var/www/html';
-
-const rootPath = `${BASE}/suttacentral.net/sc-data/sc_bilara_data/root/`;
-const htmlPath = `${BASE}/suttacentral.net/sc-data/sc_bilara_data/html/`;
-const textInfoPath = `${BASE}/assets/js/textinfo.json`;
+let rootPath, htmlPath, textInfoPath;
+if (isTermux) {
+    const BASE = '/data/data/com.termux/files/usr/share/apache2/default-site/htdocs';
+    rootPath     = `${BASE}/suttacentral.net/sc-data/sc_bilara_data/root/`;
+    htmlPath     = `${BASE}/suttacentral.net/sc-data/sc_bilara_data/html/`;
+    textInfoPath = `${BASE}/assets/js/textinfo.json`;
+} else if (isWindows) {
+    rootPath     = 'C:/soft/sc-data/sc_bilara_data/root/';
+    htmlPath     = 'C:/soft/sc-data/sc_bilara_data/html/';
+    textInfoPath = 'C:/soft/dg/assets/js/textinfo.json';
+} else {
+    const BASE = '/var/www/html';
+    rootPath     = `${BASE}/suttacentral.net/sc-data/sc_bilara_data/root/`;
+    htmlPath     = `${BASE}/suttacentral.net/sc-data/sc_bilara_data/html/`;
+    textInfoPath = `${BASE}/assets/js/textinfo.json`;
+}
 
 const outputFile = path.join(__dirname, 'dg_db_light.json');
 
@@ -99,10 +109,12 @@ async function compileLightSkeleton() {
             }
         }
 
-        if (fullPath.includes('/vinaya/')) db[suttaId].category = 'vinaya';
-        else if (fullPath.includes('/sutta/kn/')) db[suttaId].category = 'khudakka';
-        else if (fullPath.includes('/sutta/')) db[suttaId].category = 'dhamma';
-        else if (fullPath.includes('/abhidhamma/')) db[suttaId].category = 'abhi';
+        // path.join даёт обратные слэши на Windows — нормализуем перед проверкой сегментов пути
+        const normalizedPath = fullPath.replace(/\\/g, '/');
+        if (normalizedPath.includes('/vinaya/')) db[suttaId].category = 'vinaya';
+        else if (normalizedPath.includes('/sutta/kn/')) db[suttaId].category = 'khudakka';
+        else if (normalizedPath.includes('/sutta/')) db[suttaId].category = 'dhamma';
+        else if (normalizedPath.includes('/abhidhamma/')) db[suttaId].category = 'abhi';
 
         const data = await readJson(fullPath);
         

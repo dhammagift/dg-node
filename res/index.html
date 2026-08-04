@@ -9,7 +9,7 @@ to do now
 * не работает сортировка дхамма кн виная абхидхамма
 * сортировка языков переводов поумолчанию англ. или главный язык  -главный будем определять по localstorage и урл /ru.
  
-    window.isRu = window.location.pathname.match(/\/(ru|r|ml|mt)\//) || localStorage.getItem('siteLanguage') === 'ru';
+    window.isRu = window.location.pathname.match(/\/(ru|r|ml|mt)\//) || localStorage.getItem('dhammaLanguage') === 'ru';
 есть такая глобальная функцию и подобная window.notEn
 идеале вынести глобальную функцию. к приеру в настройки
 
@@ -639,12 +639,14 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
 
 <script type='text/javascript'>
 // Автоматически ставим язык по умолчанию для тестов, если он еще не выбран
-if (!localStorage.getItem('siteLanguage')) {
-    localStorage.setItem('siteLanguage', 'ru');
+// Ключ общий с ридером (dhammaLanguage, см. reader/reader-template.html) —
+// выбор языка не должен теряться при переходе между поиском и чтением.
+if (!localStorage.getItem('dhammaLanguage')) {
+    localStorage.setItem('dhammaLanguage', 'ru');
 }
 
 // Глобальная переменная текущего языка сайта (динамическая, без хардкода)
-window.siteLanguage = localStorage.getItem('siteLanguage') || 'en';
+window.siteLanguage = localStorage.getItem('dhammaLanguage') || 'en';
 
 $(document).ready(function() {
     DataTable.util.diacritics(d => d);

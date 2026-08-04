@@ -1,4 +1,8 @@
 {
+  "scripts": {
+    "start": "node dg-light.js",
+    "build-db": "node dblight.js"
+  },
   "dependencies": {
     "cors": "^2.8.6",
     "express": "^5.2.1"

@@ -308,17 +308,14 @@ window.renderNavigation = function(slug) {
     let sQuery = params.has("s") ? `&s=${params.get("s").replace(/ṃ/g, "ṁ")}` : "";
 
     const formatLink = (targetSlug) => {
-        let titles = window.MOBILE_DB[targetSlug].titles || {};
-        let name = (titles.pi || titles.ru || titles.en || titles.root || "").replace(/[0-9.-]/g, '').trim();
+        let name = (window.MOBILE_DB[targetSlug].title || "").replace(/[0-9.-]/g, '').trim();
         let outSlug = targetSlug.replace(/pli-tv-|b[ui]-vb-/g, "");
         return name === "" ? outSlug : `${outSlug} <span class="sutta-name"> ${name}</span>`;
     };
 
-    const currentTitles = window.MOBILE_DB[slug].titles || {};
     let cleanSlug = slug.replace(/pli-tv-|b[ui]-vb-/g, "");
-    let cleanPaliName = (currentTitles.pi || currentTitles.root || "").replace(/[0-9.-]/g, '').trim();
-    let translatedName = (currentTitles.ru || currentTitles.en || "").replace(/[0-9.-]/g, '').trim();
-    let newTitle = cleanPaliName ? `${cleanPaliName} ${translatedName} ${cleanSlug}`.trim() : cleanSlug;
+    let cleanPaliName = (window.MOBILE_DB[slug].title || "").replace(/[0-9.-]/g, '').trim();
+    let newTitle = cleanPaliName ? `${cleanPaliName} ${cleanSlug}`.trim() : cleanSlug;
     
     document.title = newTitle;
     let metaDesc = document.querySelector('meta[name="description"]');
@@ -369,9 +366,19 @@ window.buildSutta = async function(rawSlug) {
     }
 
     const slug = window.normalizeSlugToDbKey(rawSlug);
-    const suttaData = window.MOBILE_DB[slug];
 
-    if (!suttaData) {
+    if (!window.MOBILE_DB[slug]) {
+        if (typeof window.handleFetchError === 'function') window.handleFetchError(rawSlug, true);
+        return;
+    }
+
+    let suttaData;
+    try {
+        const response = await fetch(`/api/text/${encodeURIComponent(slug)}?langs=ru,en`);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        suttaData = await response.json();
+    } catch (error) {
+        console.error('Ошибка загрузки текста:', error);
         if (typeof window.handleFetchError === 'function') window.handleFetchError(rawSlug, true);
         return;
     }
@@ -476,17 +483,17 @@ window.buildSutta = async function(rawSlug) {
                 <span class="${pliClass}" lang="pi">${linkToCopyStart}${paliData[segment].trim()}${linkToCopy}
                 <font class="variant"><br>${linkToCopyStart}${varData[segment].trim()}${linkToCopy}</font>     
                 </span>
-                <span class="rus-lang" lang="${activeLang}">${linkToCopyStart}${transData[segment].trim()}${linkToCopy}</span>
+                <span class="${activeLang}-lang" lang="${activeLang}">${linkToCopyStart}${transData[segment].trim()}${linkToCopy}</span>
                 </span>${closeHtml}\n\n`;
         } else if (paliData[segment] !== undefined && transData[segment] !== undefined) {
             html += `${openHtml}<span id="${anchor}">
                 <span class="${pliClass}" lang="pi">${linkToCopyStart}${paliData[segment].trim()}${linkToCopy}</span>
-                <span class="rus-lang" lang="${activeLang}">${linkToCopyStart}${transData[segment].trim()}${linkToCopy}</span>
+                <span class="${activeLang}-lang" lang="${activeLang}">${linkToCopyStart}${transData[segment].trim()}${linkToCopy}</span>
                 </span>${closeHtml}\n\n`;
         } else if (paliData[segment] !== undefined) {
             html += openHtml + '<span id="' + anchor + '"><span class="' + pliClass + '" lang="pi">' + linkToCopyStart + paliData[segment].trim() + linkToCopy + '</span></span>' + closeHtml + '\n\n';
         } else if (transData[segment] !== undefined) {
-            html += openHtml + '<span id="' + anchor + '"><span class="rus-lang" lang="${activeLang}">' + linkToCopyStart + transData[segment].trim() + linkToCopy + '</span></span>' + closeHtml + '\n\n';
+            html += `${openHtml}<span id="${anchor}"><span class="${activeLang}-lang" lang="${activeLang}">${linkToCopyStart}${transData[segment].trim()}${linkToCopy}</span></span>${closeHtml}\n\n`;
         }
     }
 
@@ -498,7 +505,7 @@ window.buildSutta = async function(rawSlug) {
     }
 
     const translatorByline = `<div id="trn" class="byline">
-    <p><span class="pli-lang" lang="pi">Pāḷi <a class="text-decoration-none text-reset" href="/assets/texts/abbr.html?s=ms" title="Mahāsaṅgīti Pāḷi">MS</a></span> <span class="rus-lang" lang="ru"> Пер. ${translatorforuser}</span></p>
+    <p><span class="pli-lang" lang="pi">Pāḷi <a class="text-decoration-none text-reset" href="/assets/texts/abbr.html?s=ms" title="Mahāsaṅgīti Pāḷi">MS</a></span> <span class="${activeLang}-lang" lang="${activeLang}"> Пер. ${translatorforuser}</span></p>
     </div>`;
 
     const ruUrl  = window.location.href;
@@ -592,7 +599,7 @@ window.addEventListener('popstate', (e) => {
 async function initReader() {
     // 1. Загрузка базы данных
     try {
-        const response = await fetch('/nodejs/dg_db.json');
+        const response = await fetch('/nodejs/dg_db_light.json');
         window.MOBILE_DB = await response.json();
     } catch (error) {
         console.error('Ошибка загрузки базы:', error);
@@ -606,7 +613,16 @@ async function initReader() {
     const searchParam = urlParams.get("q");
 
     // Если есть параметр ?q=, используем его, иначе пытаемся распарсить путь
-    const query = searchParam || window.location.pathname.split('/').filter(Boolean).pop();
+    let query = searchParam || window.location.pathname.split('/').filter(Boolean).pop();
+
+    // Старый формат: /?q=dn22#12.1 (segmentId — из хэша).
+    // Новый чистый URL: /dn22:12.1 (segmentId — после ":" в самом слаге пути).
+    let segmentId = window.location.hash ? decodeURIComponent(window.location.hash.slice(1)) : null;
+    if (query && !searchParam && query.includes(':')) {
+        const parts = query.split(':');
+        query = parts[0];
+        segmentId = parts.slice(1).join(':');
+    }
 
     if (query) {
         // Заполняем инпут для удобства
@@ -618,7 +634,11 @@ async function initReader() {
 
         if (window.MOBILE_DB[normalizedSlug]) {
             console.log("Открываем сутту:", normalizedSlug);
-            window.buildSutta(normalizedSlug);
+            await window.buildSutta(normalizedSlug);
+            if (segmentId) {
+                const target = document.getElementById(segmentId);
+                if (target) target.scrollIntoView({ block: 'center' });
+            }
         } else {
             console.log("Запускаем поиск по слову:", query);
             if (typeof window.executeGlobalSearch === 'function') {

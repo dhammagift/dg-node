@@ -8,24 +8,43 @@ const execFile = util.promisify(require('child_process').execFile);
 const app = express();
 const PORT = 3000;
 
-const isTermux = fsSync.existsSync('/data/data/com.termux/files/usr');
-const BASE = isTermux
-    ? '/data/data/com.termux/files/usr/share/apache2/default-site/htdocs'
-    : '/var/www/html';
-const HOME = isTermux
-    ? '/data/data/com.termux/files/home'
-    : '/home/user';
+const isTermux  = fsSync.existsSync('/data/data/com.termux/files/usr');
+const isWindows = process.platform === 'win32';
 
 // SuttaCentral Bilara — основной источник пали и переводов
-const SC_BILARA   = `${BASE}/suttacentral.net/sc-data/sc_bilara_data`;
+// DhammaGift offline — лучшие переводы проекта (один на язык)
+// Структура: {DG_OFFLINE}/{lang}/sutta|vinaya/{nikaya}/{id}_translation-{lang}-{author}.json
+let SC_BILARA, DG_OFFLINE;
+if (isTermux) {
+    SC_BILARA  = '/data/data/com.termux/files/usr/share/apache2/default-site/htdocs/suttacentral.net/sc-data/sc_bilara_data';
+    DG_OFFLINE = '/data/data/com.termux/files/home/offline-data/dhammagift';
+} else if (isWindows) {
+    SC_BILARA  = 'C:/soft/sc-data/sc_bilara_data';
+    DG_OFFLINE = 'C:/soft/offline-data/dhammagift';
+} else {
+    SC_BILARA  = '/var/www/html/suttacentral.net/sc-data/sc_bilara_data';
+    DG_OFFLINE = '/home/user/offline-data/dhammagift';
+}
+
 const SC_ROOT     = `${SC_BILARA}/root/pli/ms`;
 const SC_VARIANT  = `${SC_BILARA}/variant/pli/ms`;
 const SC_TRANS    = `${SC_BILARA}/translation`;
-
-// DhammaGift offline — лучшие переводы проекта (один на язык)
-// Структура: {DG_OFFLINE}/{lang}/sutta|vinaya/{nikaya}/{id}_translation-{lang}-{author}.json
-const DG_OFFLINE  = `${HOME}/offline-data/dhammagift`;
 const DG_LANGS    = ['ru', 'ru_other', 'en', 'en_other', 'ai'];
+
+// Офлайн-зеркала сторонних сайтов (4nt, theravada.ru, словари и т.п.) — родитель DG_OFFLINE
+const OFFLINE_MIRRORS_ROOT = path.dirname(DG_OFFLINE);
+let offlineMirrors = new Set();
+try {
+    offlineMirrors = new Set(
+        fsSync.readdirSync(OFFLINE_MIRRORS_ROOT, { withFileTypes: true })
+            .filter(d => d.isDirectory())
+            .map(d => d.name)
+    );
+} catch (e) {
+    console.warn('Offline mirrors root not found:', OFFLINE_MIRRORS_ROOT);
+}
+
+const readerTemplatePath = path.join(__dirname, 'reader', 'reader-template.html');
 
 const skeletonPath = path.join(__dirname, 'dg_db_light.json');
 let skeletonDB = {};
@@ -48,6 +67,22 @@ app.use((req, res, next) => {
     next();
 });
 
+// Статика — dg-node самодостаточен, ничего не зависит от соседнего легаси-репозитория
+app.use('/assets', express.static(path.join(__dirname, 'public', 'assets')));
+app.use('/nodejs/res', express.static(path.join(__dirname, 'res')));
+app.use('/nodejs', express.static(__dirname));
+app.use('/reader', express.static(path.join(__dirname, 'reader')));
+
+// Офлайн-зеркала сторонних сайтов — /{имя-папки}/... отдаётся как статика напрямую из offline-data
+for (const name of offlineMirrors) {
+    app.use(`/${name}`, express.static(path.join(OFFLINE_MIRRORS_ROOT, name)));
+}
+
+// Страница поиска — главная точка входа
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'res', 'index.html'));
+});
+
 // Детерминированный путь к root-файлу через dir_path из скелета
 // dir_path пример: "pli/ms/sutta/dn"  →  .../root/pli/ms/sutta/dn/dn22_root-pli-ms.json
 function getRootPath(suttaId) {
@@ -62,7 +97,29 @@ function getVariantPath(suttaId) {
     return path.join(SC_BILARA, 'variant', meta.dir_path, `${suttaId}_variant-pli-ms.json`);
 }
 
-// Поиск файлов переводов по suttaId через find (без предварительного индекса)
+// Рекурсивный обход directory в поиске файлов "{suttaId}_*.json" — без внешнего find
+// (на Windows системный find.exe — это MS-DOS find, не POSIX find, полагаться на PATH нельзя)
+async function findFilesByPrefix(dir, prefix) {
+    const matches = [];
+    async function walk(current) {
+        let entries;
+        try {
+            entries = await fs.readdir(current, { withFileTypes: true });
+        } catch (e) { return; }
+        for (const entry of entries) {
+            const full = path.join(current, entry.name);
+            if (entry.isDirectory()) {
+                await walk(full);
+            } else if (entry.isFile() && entry.name.startsWith(`${prefix}_`) && entry.name.endsWith('.json')) {
+                matches.push(full);
+            }
+        }
+    }
+    await walk(dir);
+    return matches;
+}
+
+// Поиск файлов переводов по suttaId (без предварительного индекса)
 // Возвращает { "ru_o": "/path/to/file.json", "en_sujato": "...", ... }
 async function findTranslationFiles(suttaId, targetLangs) {
     const searchDirs = [];
@@ -88,18 +145,16 @@ async function findTranslationFiles(suttaId, targetLangs) {
     const results = {};
     await Promise.all(searchDirs.map(async dir => {
         if (!fsSync.existsSync(dir)) return;
-        try {
-            const { stdout } = await execFile('find', [dir, '-name', `${suttaId}_*.json`, '-type', 'f']);
-            for (const filePath of stdout.trim().split('\n').filter(Boolean)) {
-                const baseName = path.basename(filePath, '.json');
-                // baseName: "dn22_translation-ru-o" → parts: ["dn22_translation","ru","o"]
-                const parts = baseName.split('-');
-                if (parts.length >= 3) {
-                    const transKey = `${parts[1]}_${parts.slice(2).join('-')}`;
-                    results[transKey] = filePath;
-                }
+        const files = await findFilesByPrefix(dir, suttaId);
+        for (const filePath of files) {
+            const baseName = path.basename(filePath, '.json');
+            // baseName: "dn22_translation-ru-o" → parts: ["dn22_translation","ru","o"]
+            const parts = baseName.split('-');
+            if (parts.length >= 3) {
+                const transKey = `${parts[1]}_${parts.slice(2).join('-')}`;
+                results[transKey] = filePath;
             }
-        } catch (e) {}
+        }
     }));
 
     return results;
@@ -174,7 +229,8 @@ async function searchWithGrep(keyword, searchScope, exactMatch, targetLangs, lb 
 
     for (const line of stdout.split('\n')) {
         if (!line.trim()) continue;
-        const match = line.match(/^([^:]+\.json):(.*)$/);
+        // Жадный .+ вместо [^:]+ — путь к файлу на Windows содержит двоеточие буквы диска (C:/...)
+        const match = line.match(/^(.+\.json):(.*)$/);
         if (!match) continue;
 
         const fileName = path.basename(match[1]);
@@ -349,6 +405,66 @@ async function searchWithGrep(keyword, searchScope, exactMatch, targetLangs, lb 
     };
 }
 
+// Полный текст одной сутты (все сегменты, не только совпадения) — для ридера.
+// Переиспользует те же хелперы, что и поиск, просто без grep-фильтра.
+async function getFullTextData(suttaId, targetLangs) {
+    const suttaMeta = skeletonDB[suttaId];
+    if (!suttaMeta) return null;
+
+    const rootPath = getRootPath(suttaId);
+    const rootData = rootPath
+        ? JSON.parse(await fs.readFile(rootPath, 'utf8').catch(() => '{}'))
+        : {};
+
+    const variantPath = getVariantPath(suttaId);
+    const variantData = variantPath
+        ? JSON.parse(await fs.readFile(variantPath, 'utf8').catch(() => '{}'))
+        : {};
+
+    const translationFiles = await findTranslationFiles(suttaId, targetLangs);
+    const translationsData = {};
+    for (const [transKey, tPath] of Object.entries(translationFiles)) {
+        translationsData[transKey] = JSON.parse(await fs.readFile(tPath, 'utf8').catch(() => '{}'));
+    }
+
+    const segments = Object.keys(rootData).map(id => {
+        const tr = {};
+        for (const tKey in translationsData) {
+            if (translationsData[tKey][id]) tr[tKey] = translationsData[tKey][id];
+        }
+        return {
+            segment: id,
+            root_text: rootData[id] || '',
+            variant: variantData[id] || '',
+            html: suttaMeta.html?.[id] || '',
+            translations: tr
+        };
+    });
+
+    return {
+        sutta_id: suttaId,
+        category: suttaMeta.category,
+        dir_path: suttaMeta.dir_path,
+        title: suttaMeta.title,
+        mr: suttaMeta.mr,
+        segments
+    };
+}
+
+app.get('/api/text/:suttaId', async (req, res) => {
+    const suttaId = req.params.suttaId.toLowerCase();
+    const targetLangs = (req.query.langs || 'ru,en').split(',').map(l => l.trim());
+
+    try {
+        const data = await getFullTextData(suttaId, targetLangs);
+        if (!data) return res.status(404).json({ error: `Unknown sutta id: ${suttaId}` });
+        res.json(data);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Internal Server Error.' });
+    }
+});
+
 app.get('/search', async (req, res) => {
     const keyword = req.query.q;
     if (!keyword) return res.status(400).json({ error: 'Parameter "q" is mandatory.' });
@@ -367,6 +483,19 @@ app.get('/search', async (req, res) => {
     }
 });
 
+// Чистые URL: /dn22 → ридер, /dn22:12.1 → ридер с прокруткой к сегменту (разбор ":" — на клиенте).
+// Старый формат /?q=dn22#12.1 продолжает работать без изменений (см. res/index.html, megareader.js).
+app.get('/:slug', (req, res) => {
+    const rawSlug = req.params.slug;
+    const suttaId = rawSlug.split(':')[0].toLowerCase();
+    if (skeletonDB[suttaId]) {
+        return res.sendFile(readerTemplatePath);
+    }
+    return res.redirect(`/nodejs/res/?q=${encodeURIComponent(rawSlug)}`);
+});
+
 app.listen(PORT, () => {
     console.log(`Server: http://localhost:${PORT}/search?q=kacchapa&scope=dhamma&langs=ru,en`);
+    console.log(`UI: http://localhost:${PORT}/nodejs/res/?q=kacchapa&lb=1&la=2&scope=dhamma`);
+    console.log(`Reader: http://localhost:${PORT}/dn22`);
 });

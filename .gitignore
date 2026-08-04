@@ -12,3 +12,4 @@ config/tts-config.json
 config/*.json
 /4nt
 **/node_modules
+*.log

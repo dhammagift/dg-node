@@ -1,0 +1,510 @@
+/* Стили для обычного текста */
+.pli-lang {
+  cursor: text; 
+  color: inherit; 
+}
+
+/* Стили для popup */
+.popup {
+  background: #E1EBED; /* Светлый фон */
+  border: 2px solid #666;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+  z-index: 100000;
+  display: none;
+  color: #05031B; /* Текст на светлом фоне */
+}
+
+/* Темный режим для popup */
+.popup.dark,
+[data-theme="dark"] .popup {
+  background: #07021D; /* Тёмный фон */
+  color: #E1EAED; /* Текст на тёмном фоне */
+  border-color: #666;
+}
+
+/* Для iframe */
+.popup iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  z-index: 10000;
+  background: #E1EBED; /* Светлый фон */
+  color: #05031B; /* Текст на светлом фоне */
+}
+
+[data-theme="dark"] .popup iframe,
+.popup.dark iframe {
+  background: #07021D; /* Тёмный фон */
+  color: #E1EAED; /* Текст на тёмном фоне */
+}
+
+/* Для содержимого popup */
+.popup * {
+  color: inherit;
+}
+
+.popup-header {
+  background: #E1EBED; /* Светлый фон */
+  color: #05031B; /* Текст на светлом фоне */
+}
+
+.popup-header.dark,
+[data-theme="dark"] .popup-header {
+  background: #07021D; /* Тёмный фон */
+  color: #E1EAED; /* Текст на тёмном фоне */
+}
+
+.popupSandalone {
+  background: #E1EBED; /* Светлый фон */
+  color: #05031B; /* Текст на светлом фоне */
+}
+
+[data-theme="dark"] .popupSandalone,
+.popupSandalone.dark {
+  background: #07021D; /* Тёмный фон */
+  color: #E1EAED; /* Текст на тёмном фоне */
+}
+
+.popup .close-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: rgba(206, 5, 32, 0.6);
+  color: white; /* Упростил цвет текста (для currentColor в SVG) */
+  border: none;
+  height: 30px;
+  width: 30px;
+  cursor: pointer;
+  border-radius: 100%;
+  /* Центрирование содержимого */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0; /* Убирает внутренние отступы */
+  line-height: 0; /* Фикс для Safari */
+}
+
+.close-btn svg {
+  width: 17px;
+  height: 17px;
+  fill: currentColor; /* Наследует цвет от .close-btn */
+  transform: translateZ(0); /* Фикс рендеринга в Safari */
+  vertical-align: middle; /* Дополнительное выравнивание */
+}
+
+.overlay {
+  position: fixed;
+  
+  top: -50vh;
+    left: -50vw;
+    width: 200vw;
+    height: 200vh;
+  
+ /* background: rgba(0, 0, 0, 0.5);*/
+  z-index: 99;
+  display: none;
+}
+
+/* Остальные стили остаются без изменений */
+.common-size-icon4 {
+  height: 25px; 
+  width: 22px;
+}
+
+.dictIcon {
+  height:15px; 
+  width:15px;
+}
+
+.dictIcon-sitePages {
+  height: 35px; 
+  width: 35px;
+}
+
+.toggle-dict-btn img {
+  width: 24px;
+  height: 24px;
+}
+
+.container-fluid .toggle-dict-btn img {
+  width: 20px;
+  height: 20px;
+}
+
+img[data-size="small"] {
+  width: 16px;
+  height: 16px;
+}
+
+img[data-size="large"] {
+  width: 48px;
+  height: 48px;
+}
+
+/* Скроллбары для WebKit (Chrome, Safari, Edge) */
+        ::-webkit-scrollbar {
+          width: 6px;
+          height: 6px;
+          background: transparent;
+        }
+
+        ::-webkit-scrollbar-track {
+          background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+          background: rgba(136, 136, 136, 0.5);
+          border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+          background: rgba(136, 136, 136, 0.8);
+        }
+
+        /* Темная тема */
+        [data-theme="dark"] ::-webkit-scrollbar-thumb,
+        .dark ::-webkit-scrollbar-thumb {
+          background: rgba(150, 150, 150, 0.4);
+        }
+
+        [data-theme="dark"] ::-webkit-scrollbar-thumb:hover,
+        .dark ::-webkit-scrollbar-thumb:hover {
+          background: rgba(150, 150, 150, 0.7);
+        }
+
+        /* Тонкий скроллбар для Firefox */
+        html {
+          scrollbar-width: thin;
+        }   
+        
+                .resize-handle {
+            position: absolute;
+            right: 0;
+            bottom: 0;
+            width: 20px;
+            height: 20px;
+            cursor: nwse-resize;
+            z-index: 10;
+        }
+        
+        .resize-handle::after {
+            content: "";
+            position: absolute;
+            right: 3px;
+            bottom: 3px;
+            width: 0;
+            height: 0;
+            border-style: solid;
+            border-width: 0 0 12px 12px;
+            border-color: transparent transparent #666 transparent;
+        }
+        
+@media (max-width: 768px) {
+
+   .overlay {
+ background: rgba(0, 0, 0, 0.5);
+  z-index: 99;
+  display: none;
+}
+   
+}
+
+
+
+/* Стили для dropdown словарей (финальная версия) */
+.dict-dropdown-container {
+  position: relative;
+  display: inline-block;
+}
+
+.dict-dropdown-toggle {
+  cursor: pointer;
+  color: var(--primary);
+  text-decoration: none;
+  font-family: 'Inter', sans-serif;
+  font-size: 1em;
+  background: none;
+  border: none;
+  padding: 0;
+  transition: color 0.2s;
+}
+
+.dict-dropdown-toggle:hover {
+  color: var(--primary-alt);
+  text-decoration: underline;
+}
+
+.dict-dropdown-menu {
+  display: none;
+  position: absolute;
+  top: 100%; /* Изменено с bottom: 100% */
+  left: 0;
+  background-color: var(--light);
+  border-radius: 7px;
+  min-width: 240px;
+  max-height: 70vh;
+  overflow-y: auto;
+  z-index: 1001;
+  padding: 8px 0;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  border: 1px solid var(--gray-transparent);
+  margin-top: 8px; /* Изменено с margin-bottom */
+}
+
+/* Скроллбар как в основном стиле */
+.dict-dropdown-menu::-webkit-scrollbar {
+  width: 10px;
+}
+
+.dict-dropdown-menu::-webkit-scrollbar-track {
+  background-color: var(--light);
+}
+
+.dark-mode .dict-dropdown-menu::-webkit-scrollbar-track {
+  background-color: var(--dark);
+}
+
+.dict-dropdown-menu::-webkit-scrollbar-thumb {
+  border-radius: 5px;
+  background-color: var(--gray);
+}
+
+.dropdown-section {
+  padding: 0 8px;
+}
+
+.dropdown-header {
+  color: var(--primary);
+  font-size: 0.8em;
+  font-weight: bold;
+  padding: 6px 12px;
+  margin: 4px 0;
+  border-bottom: 1px solid var(--gray-transparent);
+}
+
+.dropdown-item {
+    text-align: left;
+  display: block;
+  padding: 8px 16px;
+  color: var(--dark);
+  text-decoration: none;
+  font-size: 0.9em;
+  transition: background-color 0.2s;
+}
+
+.dropdown-item:hover {
+  background-color: rgba(26, 188, 156, 0.1); /* Легкий голубой оттенок */
+}
+
+/* Темная тема */
+.dark-mode .dict-dropdown-menu {
+  background-color: var(--dark);
+  border-color: var(--gray-transparent);
+}
+
+.dark-mode .dropdown-item {
+  color: var(--light);
+}
+
+.dark-mode .dropdown-item:hover {
+  background-color: rgba(26, 188, 156, 0.2);
+}
+
+/* Анимация появления - изменено на fadeInDown */
+.dict-dropdown-menu.show {
+  display: block;
+  animation: fadeInDown 0.2s ease-out;
+}
+
+@keyframes fadeInDown {
+  from { 
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to { 
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* =========================================
+   PALI LOOKUP DICTIONARY POPUP
+   ========================================= */
+
+/* Круглая кнопка быстрого поиска (появляется по клику) */
+.quick-search-float-btn {
+    position: fixed;
+    border: none;
+    background: #2D3E50;
+    color: white;
+    cursor: pointer;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    z-index: 10000;
+    
+    /* Начальное невидимое состояние и скорость ИСЧЕЗНОВЕНИЯ (0.3s) */
+    opacity: 0; 
+    transition: opacity 0.3s ease-out;
+}
+
+/* Класс для активного (видимого) состояния */
+.quick-search-float-btn.show {
+    opacity: 1;
+    /* Скорость ПОЯВЛЕНИЯ (0.1s) */
+    transition: opacity 0.1s ease-out;
+}
+
+
+/* Шапка попапа (зона захвата для перемещения) */
+.popup-header {
+    cursor: move;
+    height: 10px;
+    display: flex;
+    align-items: center;
+    padding: 0 10px;
+}
+
+/* Кнопки действий внутри попапа (Открыть, Словарь) */
+.popup-action-btn {
+    position: absolute;
+    top: 10px;
+    background: rgba(45, 62, 80, 0.6);
+    color: rgba(255, 255, 255, 0.8);
+    cursor: pointer;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+}
+.popup-action-btn:hover {
+    background: rgba(45, 62, 80, 0.9);
+}
+.popup-open-btn { right: 80px; }
+.popup-dict-btn { right: 45px; }
+
+/* Фрейм со словарем */
+.popup-iframe {
+    width: 100%;
+    height: calc(100% - 16px);
+    overflow: hidden;
+    border: none;
+}
+
+/* Ползунки изменения размера (Resize handles) */
+.resize-handle-corner {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    width: 20px;
+    height: 20px;
+    cursor: nwse-resize;
+    z-index: 10;
+}
+.resize-handle-corner::after {
+    content: "";
+    position: absolute;
+    right: 3px;
+    bottom: 3px;
+    width: 0;
+    height: 0;
+    border-style: solid;
+    border-width: 0 0 12px 12px;
+    border-color: transparent transparent #666 transparent;
+}
+.resize-handle-right {
+    position: absolute;
+    right: 0;
+    top: 0;
+    width: 5px;
+    height: 100%;
+    cursor: ew-resize;
+    z-index: 9;
+}
+.resize-handle-bottom {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    height: 5px;
+    cursor: ns-resize;
+    z-index: 9;
+}
+
+/* Технический класс для скрытого измерения высоты контента */
+.popup-measure-div {
+    position: absolute;
+    visibility: hidden;
+    width: calc(100% - 20px);
+}
+
+/* =========================================
+   ИЗОЛИРОВАННЫЕ СТИЛИ ДЛЯ IFRAME СЛОВАРЯ
+   ========================================= */
+html.dict-iframe-html {
+  scrollbar-width: thin;
+}
+
+body.dict-iframe-body {
+  font-family: Arial, sans-serif;
+  padding: 10px;
+  margin: 0;
+  overflow-y: auto;
+}
+
+/* Наследование темы для тела iframe */
+body.dict-iframe-body.dark {
+  background: #07021D !important;
+  color: #E1EAED !important;
+}
+
+.dict-iframe-body strong {
+  font-size: 1.2em;
+}
+
+.dict-iframe-body ul {
+  list-style-type: none;
+  padding-left: 15px;
+  line-height: 1.2em;
+  margin-top: 5px;
+}
+
+.dict-iframe-body li {
+  margin-bottom: 10px;
+}
+
+/* WebKit Скроллбары (Chrome, Safari, Edge) для iframe */
+html.dict-iframe-html::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+  background: transparent;
+}
+
+html.dict-iframe-html::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+html.dict-iframe-html::-webkit-scrollbar-thumb {
+  background: rgba(136, 136, 136, 0.5);
+  border-radius: 10px;
+}
+
+html.dict-iframe-html::-webkit-scrollbar-thumb:hover {
+  background: rgba(136, 136, 136, 0.8);
+}
+
+html.dict-iframe-html.dark::-webkit-scrollbar-thumb {
+  background: rgba(150, 150, 150, 0.4);
+}
+
+html.dict-iframe-html.dark::-webkit-scrollbar-thumb:hover {
+  background: rgba(150, 150, 150, 0.7);
+}
+

@@ -2,6 +2,9 @@
 <html class="i18n-loading" data-default-lang="ru" data-i18n-lang="{{locale.htmlLang}}">
 <head>
 <script>
+  // Ридер отдаётся по разным URL (/dn22, /reader/reader-template.html, ...) —
+  // относительный "lang_{lang}.json" резолвился бы против текущего пути и ломался.
+  window.DHAMMA_LANG_CONFIG_PATTERN = "/reader/lang_{lang}.json";
 
   window.DHAMMA_I18N = (() => {
     const TOKEN_PATTERN = /\{\{([A-Za-z0-9_.-]+)\}\}/g;
@@ -288,13 +291,11 @@ content="https://dhamma.gift/assets/img/favico_black.png" />
 
 <link href="/assets/css/styles.css" rel="stylesheet" />
 <link href="/assets/css/extrastyles.css" rel="stylesheet" />
-<link rel="stylesheet" href="./css/uiextra.css">
+<link rel="stylesheet" href="/reader/css/uiextra.css">
 
 <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://www.googleapis.com" crossorigin>
 
-<script src="/read/js/common.js"></script>
-<script src="/read/js/loadAssets.js"></script>
 <script defer src="/assets/js/themeswitch.js"></script>
 
 <script>
@@ -836,11 +837,10 @@ viewBox="0 0 487.3 487.3" xml:space="preserve">
 <a data-i18n-data-href="{{routes.translationEditor}}" class="q-link" data-i18n-title="{{footer.translationEditorTitle}}" rel="noreferrer">
     <img width="20px" data-i18n-alt="{{footer.translationEditorAlt}}" src="/assets/svg/table-columns.svg">
 </a>
-<script src="/read/js/urlForLbl.js" defer></script>
 <a id="shareOnline" onclick="copyToClipboard()" data-i18n-title="{{footer.copyTitle}}" rel="noreferrer" target=""><img height="20px" alt="" src="/assets/svg/copy.svg"></a>
  <a href="https://DharmaMitra.org/" data-i18n-title="{{footer.dharmaMitraTitle}}" rel="noreferrer" target="_blank"><img width="20px" src="/assets/svg/dharmachakra.svg" data-i18n-alt="{{footer.dharmaMitraAlt}}"></a>               
-<a href="https://index.readingfaithfully.org" data-i18n-title="{{footer.suttaNameSearchTitle}}" rel="noreferrer" target="_blank"><img width="20px" src="./images/favicon-name-black.png" data-i18n-alt="{{footer.suttaNameSearchAlt}}"></a>
-<a href="https://ped.readingfaithfully.org" data-i18n-title="{{footer.pedTitle}}" rel="noreferrer" target="_blank"><img width="20px" src="./images/favicon-ped-black.png" data-i18n-alt="{{footer.pedAlt}}"></a>
+<a href="https://index.readingfaithfully.org" data-i18n-title="{{footer.suttaNameSearchTitle}}" rel="noreferrer" target="_blank"><img width="20px" src="/reader/images/favicon-name-black.png" data-i18n-alt="{{footer.suttaNameSearchAlt}}"></a>
+<a href="https://ped.readingfaithfully.org" data-i18n-title="{{footer.pedTitle}}" rel="noreferrer" target="_blank"><img width="20px" src="/reader/images/favicon-ped-black.png" data-i18n-alt="{{footer.pedAlt}}"></a>
 </div>
 
 <div class="text-muted text-center" id="copyrightnote">
@@ -926,6 +926,7 @@ document.getElementById("date").textContent = formattedDate;
 <script src="/assets/js/bootstrap.bundle.5.3.1.min.js"></script>
 <script src="/assets/js/copyToClipboard.js" defer></script>
 
+<script src="/reader/megareader.js"></script>
 <script>
 form.addEventListener("submit", e => {
   e.preventDefault();
@@ -939,7 +940,6 @@ form.addEventListener("submit", e => {
 <script src="/assets/js/linksbjt.js" defer></script>
 <script src="/assets/js/openDicts.js" defer></script>
 <script src="/assets/js/smoothScroll.js" defer></script>
-<script src="/read/js/ranges.js" defer></script>
 
 </body>
 </html>
