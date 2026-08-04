@@ -1,5 +1,22 @@
-# Dhamma.gift — Node.js Project
+# Dhamma.gift — Node.js SPA Project
 
+## Два проекта
+
+**Оригинальный проект (PHP):**
+- https://github.com/dhammagift/dg
+- PHP приложение (index.php)
+- Поиск + Ридер + История + Help + About на одной странице
+- Традиционная архитектура (страницы, редиректы)
+
+**Новый проект (Node.js SPA):**
+- https://github.com/dhammagift/dg-node
+- Single-Page Application (Express.js + JavaScript)
+- Поиск и ридер в одном окне (SPA)
+- Умная URL маршрутизация (`/keyword`, `/dn22:2.2`, `/dn22:2.2/kacchapa`)
+- Единое модальное окно с вкладками (Settings + Compass + Help)
+- Конечная цель: нативное Android приложение через Capacitor + SQLite
+
+---
 
 Если ты пишешь код, то комментарии обязательно делай на англйском.
 
