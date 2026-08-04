@@ -1,0 +1,14 @@
+**/nohup.out
+assets/audio
+nohup.out
+result
+scripts/api/__pycache__
+**/__pycache__
+**/dg_db*.json
+helpdocs
+.well-known
+config/sync-config.json
+config/tts-config.json
+config/*.json
+/4nt
+**/node_modules

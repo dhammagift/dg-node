@@ -1,0 +1,945 @@
+<!DOCTYPE html>
+<html class="i18n-loading" data-default-lang="ru" data-i18n-lang="{{locale.htmlLang}}">
+<head>
+<script>
+
+  window.DHAMMA_I18N = (() => {
+    const TOKEN_PATTERN = /\{\{([A-Za-z0-9_.-]+)\}\}/g;
+    const textTemplates = new WeakMap();
+    let activeConfig = null;
+    let activeLanguage = null;
+
+    function getValue(config, path) {
+      return path.split(".").reduce((value, part) => {
+        if (value === null || value === undefined) return undefined;
+        return value[part];
+      }, config);
+    }
+
+    function render(template, config) {
+      return template.replace(TOKEN_PATTERN, (token, path) => {
+        const value = getValue(config, path);
+        if (value === undefined) {
+          throw new Error(`Missing localization key: ${path}`);
+        }
+        return String(value);
+      });
+    }
+
+    function applyTextNode(node, config) {
+      const savedTemplate = textTemplates.get(node);
+      const template = savedTemplate ?? node.nodeValue;
+
+      if (!template || !template.includes("{{")) return;
+      if (!savedTemplate) textTemplates.set(node, template);
+
+      const parent = node.parentElement;
+      if (parent && (parent.tagName === "SCRIPT" || parent.tagName === "STYLE")) return;
+      if (
+        parent?.tagName === "TITLE" &&
+        new URLSearchParams(window.location.search).has("q")
+      ) {
+        return;
+      }
+
+      node.nodeValue = render(template, config);
+    }
+
+    function replaceLanguageScript(script, source) {
+      if (script.getAttribute("data-i18n-loaded-src") === source) return;
+
+      const replacement = script.cloneNode(false);
+      replacement.removeAttribute("src");
+      replacement.setAttribute("data-i18n-loaded-src", source);
+      replacement.async = false;
+      replacement.src = source;
+      script.replaceWith(replacement);
+    }
+
+    function applyElement(element, config) {
+      for (const attribute of Array.from(element.attributes)) {
+        if (!attribute.name.startsWith("data-i18n-")) continue;
+
+        const targetAttribute = attribute.name.slice("data-i18n-".length);
+        const value = render(attribute.value, config);
+
+        if (element.tagName === "SCRIPT" && targetAttribute === "src") {
+          replaceLanguageScript(element, value);
+          return;
+        }
+
+        element.setAttribute(targetAttribute, value);
+      }
+    }
+
+    function applySubtree(root, config) {
+      if (!root) return;
+
+      if (root.nodeType === Node.TEXT_NODE) {
+        applyTextNode(root, config);
+        return;
+      }
+
+      if (root.nodeType !== Node.ELEMENT_NODE && root.nodeType !== Node.DOCUMENT_NODE) {
+        return;
+      }
+
+      if (root.nodeType === Node.ELEMENT_NODE) {
+        applyElement(root, config);
+      }
+
+      const walker = document.createTreeWalker(
+        root,
+        NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT
+      );
+
+      let node = walker.nextNode();
+      while (node) {
+        if (node.nodeType === Node.ELEMENT_NODE) {
+          applyElement(node, config);
+        } else {
+          applyTextNode(node, config);
+        }
+        node = walker.nextNode();
+      }
+    }
+
+    function restoreDynamicTitle() {
+      const q = new URLSearchParams(window.location.search).get("q");
+      if (q) {
+        document.title = q.replace(/pli-tv-|vb-/g, "");
+      }
+    }
+
+    function revealPage() {
+      document.documentElement.classList.remove("i18n-loading");
+      document.getElementById("anti-fouc")?.remove();
+    }
+
+    function configUrl(language, explicitUrl) {
+      if (explicitUrl) return explicitUrl;
+
+      const configuredUrl = window.DHAMMA_LANG_CONFIG_URLS?.[language];
+      if (configuredUrl) return configuredUrl;
+
+      if (window.DHAMMA_LANG_CONFIG_URL) {
+        return window.DHAMMA_LANG_CONFIG_URL;
+      }
+
+      const pattern = window.DHAMMA_LANG_CONFIG_PATTERN || "lang_{lang}.json";
+      return new URL(
+        pattern.replace("{lang}", encodeURIComponent(language)),
+        window.location.href
+      ).toString();
+    }
+
+    async function setSiteLanguage(language, explicitUrl) {
+      const response = await fetch(configUrl(language, explicitUrl), {
+        credentials: "same-origin"
+      });
+
+      if (!response.ok) {
+        throw new Error(
+          `Unable to load localization config (${response.status} ${response.statusText})`
+        );
+      }
+
+      const config = await response.json();
+      activeConfig = config;
+      activeLanguage = config.locale?.code || language;
+
+      applySubtree(document, config);
+      restoreDynamicTitle();
+
+      if (config.locale?.htmlLang) {
+        document.documentElement.lang = config.locale.htmlLang;
+      }
+
+      try {
+        localStorage.setItem("dhammaLanguage", activeLanguage);
+      } catch (_) {
+        // Storage may be unavailable in privacy modes.
+      }
+
+      revealPage();
+      document.dispatchEvent(
+        new CustomEvent("dhamma:languagechange", {
+          detail: { language: activeLanguage, config }
+        })
+      );
+
+      return config;
+    }
+
+    const observer = new MutationObserver(records => {
+      if (!activeConfig) return;
+      for (const record of records) {
+        for (const node of record.addedNodes) {
+          applySubtree(node, activeConfig);
+        }
+      }
+    });
+
+    observer.observe(document.documentElement, {
+      childList: true,
+      subtree: true
+    });
+
+    const queryLanguage = new URLSearchParams(window.location.search).get("lang");
+    let storedLanguage = null;
+    try {
+      storedLanguage = localStorage.getItem("dhammaLanguage");
+    } catch (_) {
+      // Storage may be unavailable in privacy modes.
+    }
+
+    const initialLanguage =
+      window.DHAMMA_LANG ||
+      queryLanguage ||
+      storedLanguage ||
+      document.documentElement.dataset.defaultLang ||
+      "ru";
+
+    window.setSiteLanguage = setSiteLanguage;
+    window.DHAMMA_I18N_READY = setSiteLanguage(initialLanguage).catch(error => {
+      console.error(error);
+      revealPage();
+      return null;
+    });
+
+    return {
+      get language() {
+        return activeLanguage;
+      },
+      get config() {
+        return activeConfig;
+      },
+      ready: window.DHAMMA_I18N_READY,
+      setLanguage: setSiteLanguage
+    };
+  })();
+
+  (function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const q = urlParams.get('q');
+    // Build the canonical URL without query parameters except q.
+    let canonicalUrl = 'https://dhamma.gift' + window.location.pathname;
+    
+    if (q) {
+      canonicalUrl += '?q=' + encodeURIComponent(q);
+    }
+
+    let link = document.querySelector("link[rel='canonical']");
+    if (!link) {
+      link = document.createElement('link');
+      link.setAttribute('rel', 'canonical');
+      document.head.appendChild(link);
+    }
+    link.setAttribute('href', canonicalUrl);
+  })();
+</script>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta http-equiv="Cache-control" content="public">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#000000">
+
+<title>{{head.title}}</title>
+<script>
+  (function() {
+    const q = new URLSearchParams(window.location.search).get('q');
+    if (q) {
+      const cleanSlug = q.replace(/pli-tv-|vb-/g, '');
+      document.title = cleanSlug;
+    }
+  })();
+</script>
+<link rel="manifest" data-i18n-href="{{routes.manifest}}">
+  <meta name="keywords" data-i18n-content="{{head.keywords}}">
+  <meta name="description" data-i18n-content="{{head.description}}" />
+<meta name="author" data-i18n-content="{{head.author}}" />
+<link rel="canonical" data-i18n-href="{{routes.canonical}}">
+<link rel="alternate" data-i18n-hreflang="{{locale.targetLanguageCode}}" data-i18n-href="{{routes.alternateEnglish}}" />
+<link rel="alternate" data-i18n-hreflang="{{locale.code}}" data-i18n-href="{{routes.alternateRussian}}" />
+<link rel="alternate" data-i18n-hreflang="{{locale.defaultHreflang}}" data-i18n-href="{{routes.alternateDefault}}" />
+
+<meta property="og:locale" data-i18n-content="{{locale.ogLocale}}" />
+<meta property="og:type" content="article" />
+<meta property="og:description" data-i18n-content="{{head.ogDescription}}">
+<meta property="og:title" data-i18n-content="{{head.ogTitle}}" />
+
+<meta property="og:site_name" data-i18n-content="{{head.ogSiteName}}" />
+<meta property="og:image" itemprop="image"
+content="https://dhamma.gift/assets/img/favico_black.png" />
+
+<meta property="og:url" data-i18n-content="{{routes.ogUrl}}" />
+<link rel="icon" type="image/png" sizes="32x32" href="/assets/img/favico_black.png">
+
+<style id="anti-fouc">
+  html.i18n-loading body,
+  body {
+    opacity: 0;
+    visibility: hidden;
+    background-color: black;
+    transition: opacity 0.2s ease-in;
+  }
+</style>
+
+
+<link href="/assets/css/styles.css" rel="stylesheet" />
+<link href="/assets/css/extrastyles.css" rel="stylesheet" />
+<link rel="stylesheet" href="./css/uiextra.css">
+
+<link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://www.googleapis.com" crossorigin>
+
+<script src="/read/js/common.js"></script>
+<script src="/read/js/loadAssets.js"></script>
+<script defer src="/assets/js/themeswitch.js"></script>
+
+<script>
+  function getPunctuationSetting() {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('rp')) {
+        localStorage.setItem("removePunct", "true");
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.delete('rp');
+        window.history.replaceState({}, document.title, newUrl.toString());
+        return true;
+    }
+    return localStorage.getItem("removePunct") === "true";
+}
+getPunctuationSetting();
+
+function cleanPaliText(text) {
+    if (!text) return text;
+    return text
+        .replace(/[-—–]/g, ' ')
+        .replace(/[:;“”‘’,"']/g, '')
+        .replace(/[.?!]/g, ' | ');
+}
+</script>
+</head>
+
+<body class="dark">
+<form id="form" class="ui-widget mb-2">
+<label class="sr-only dropup rounded-pill mb-2" for="paliauto"></label>
+<input class="mb-2" id="paliauto" type="search" data-i18n-placeholder="{{search.placeholder}}">
+<input class="go-button mb-2" id="searchbtn" type="submit" data-i18n-value="{{search.submit}}">
+
+<div id="form-div">
+<div id="home-button" class="icon-button ">
+<a data-i18n-href="{{routes.readHome}}" data-i18n-title="{{toolbar.readHomeTitle}}" rel="noreferrer">
+<img class="common-size-icon" data-i18n-alt="{{toolbar.readHomeAlt}}" src="/assets/svg/home-icon.svg"></img>
+</a>
+</div>
+
+<div id="fdg-button" class="icon-button ">
+<a data-i18n-href="{{routes.searchHome}}" data-i18n-title="{{toolbar.searchHomeTitle}}" rel="noreferrer"
+><img width="26px" data-i18n-alt="{{toolbar.searchHomeAlt}}" src="/assets/img/gray-white.png"></a>
+</div>
+
+<div id="chapter-button" class="icon-button">
+    <a data-i18n-href="{{routes.chapterReader}}" data-i18n-title="{{toolbar.chapterTitle}}" rel="noreferrer">
+        <img width="28px" data-i18n-alt="{{toolbar.chapterAlt}}" src="/assets/svg/book.svg">
+    </a>
+</div>
+
+<div id="theme-button" class="icon-button ">
+<img src="/assets/svg/circle-half-stroke.svg" data-i18n-title="{{toolbar.themeTitle}}" data-i18n-alt="{{toolbar.themeAlt}}" onclick="switchIcon(this)" class="common-size-icon changesvg gray-icon"></img>
+</div>
+
+<div id="mode-switcher">
+<a data-i18n-aria-label="{{toolbar.columnsLabel}}" data-i18n-title="{{toolbar.columnsTitle}}" id="toggle-mode" href="javascript:void(0);" class="toggle-icon">
+<img src="/assets/svg/align-right.svg" data-i18n-alt="{{toolbar.columnsLabel}}" class="common-size-icon4">
+</a>
+</div>
+
+<div id="variants-switcher">
+<a data-i18n-title="{{toolbar.variantsTitle}}" id="toggle-variants" href="javascript:void(0);" class="toggle-icon text-decoration-none text-black">
+<img data-i18n-alt="{{toolbar.variantsAlt}}" src="/assets/svg/eye.svg" class="common-size-icon4"></img> </a>
+</div>
+
+<a data-i18n-title="{{toolbar.dictionaryTitle}}" class="common-size-icon4 toggle-dict-btn text-decoration-none text-black">  <img src="/assets/svg/comment.svg" data-i18n-alt="{{toolbar.dictionaryAlt}}" class="dictIcon"></img></a>
+
+<a data-i18n-alt="{{toolbar.multiselectModeAlt}}" data-i18n-title="{{toolbar.multiselectTitle}}" id="toggle-multiselect" href="javascript:void(0);" class="toggle-icon text-decoration-none text-black">
+  <img src="/assets/svg/select-slash.svg" class="common-size-icon4">
+</a>
+
+<div id="favorite-button" class="d-none">
+    <a data-i18n-title="{{toolbar.favoriteTitle}}" id="toggle-favorite" href="javascript:void(0);" class="toggle-icon text-decoration-none text-black">
+        <img data-i18n-alt="{{common.favorite}}" src="/assets/svg/star.svg" class="common-size-icon4 fav-icon-img">
+    </a>
+</div>
+
+<div class="icon-button">
+    <a id="toggle-compass" data-i18n-title="{{toolbar.compassTitle}}" href="javascript:void(0);" onclick="toggleQuickModal()">
+        <img class="common-size-icon3" src="/assets/svg/compass.svg" data-i18n-alt="{{common.favorite}}">
+    </a>
+</div>
+
+<a data-i18n-title="{{toolbar.settingsTitle}}" id="settingsButton" data-bs-toggle="modal" data-bs-target="#settings" href="javascript:void(0);" class="toggle-icon text-decoration-none text-muted">
+<img id="gearRead" data-i18n-alt="{{common.settings}}" src="/assets/svg/gear.svg" class="common-size-icon4"></img>
+</a>
+
+<div>
+<a data-i18n-title="{{toolbar.helpTitle}}" data-bs-toggle="modal" data-bs-target="#paliLookupInfo" id="helpMessage" href="javascript:void(0);" class="toggle-icon text-decoration-none text-muted">
+<img id="helpsc" data-i18n-alt="{{common.help}}" src="/assets/svg/question.svg" class="common-size-icon4"></img>
+</a>
+</div>
+</div>
+</form>
+<br>
+<div id="navigation" class="navigation">
+<div id="previous"></div>
+<div id="next"></div>
+</div>
+
+<div class="modal fade" id="paliLookupInfo" tabindex="-1" aria-labelledby="paliLookupInfoLabel" aria-hidden="true" data-bs-focus="false">
+<div class="modal-dialog modal-dialog-centered">
+<div class="modal-content">
+<div class="modal-header">
+<h2 class="modal-title" id="paliLookupInfoLabel">{{help.title}}</h2>
+  <a type="button" onclick="toggleQuickModal()" data-i18n-aria-label="{{accessibility.openFourNobleTruths}}" class="compass-icon">
+<img src="/assets/svg/compass.svg">
+</a>
+<button type="button" class="btn-close" data-bs-dismiss="modal" data-i18n-aria-label="{{accessibility.close}}"></button>
+</div>
+<div class="modal-body">
+<div class="mb-3">
+<a data-i18n-href="{{routes.readHome}}"><img class="common-size-icon mb-1" data-i18n-alt="{{toolbar.readHomeAlt}}" src="/assets/svg/home-icon.svg"></a>
+{{help.reading}} <a data-i18n-href="{{routes.searchHome}}"><img width="26px" data-i18n-alt="{{toolbar.searchHomeAlt}}" src="/assets/img/gray-white.png"></a> {{help.searching}}
+</div>
+<h3 class="text-start">{{help.hotkeysTitle}}</h3>
+<div class="container">
+<div class="row align-items-center mb-2">
+<div class="col-auto">
+<button id="language-button-dummy" class="hide-button rounded mb-1 mt-1">{{help.languageButton}}</button>
+</div>
+<div class="col-auto">
+<strong>{{shortcuts.language}}</strong>
+</div>
+<div class="col">
+{{help.switchLanguage}}
+</div>
+</div>
+
+<div class="row align-items-center mb-2">
+<div class="col-auto">
+<img src="/assets/svg/circle-half-stroke.svg" data-i18n-alt="{{accessibility.switchThemes}}" onclick="switchIcon(this)" class="common-size-icon changesvg gray-icon">
+</div>
+<div class="col-auto">
+<strong>{{shortcuts.theme}}</strong>
+</div>
+<div class="col">
+{{help.themeDescription}}
+</div>
+</div>
+<div class="row align-items-center mb-2">
+<div class="col-auto">
+<img src="/assets/svg/align-left.svg" data-i18n-alt="{{accessibility.toggleColumns}}" class="common-size-icon4">
+</div>
+<div class="col-auto">
+<strong>{{shortcuts.columns}}</strong>
+</div>
+<div class="col">
+{{help.columnsDescription}}
+</div>
+</div>
+<div class="row align-items-center mb-2">
+<div class="col-auto">
+<img src="/assets/svg/eye.svg" class="common-size-icon4">
+</div>
+<div class="col-auto">
+<strong>{{shortcuts.variants}}</strong>
+</div>
+<div class="col">
+{{help.variantsDescription}} <a href="/assets/texts/abbr.html">{{help.canonEditions}}</a>
+</div>
+</div>
+<div class="row align-items-center mb-2">
+<div class="col-auto">
+<img src="/assets/svg/comment.svg" class="common-size-icon4">
+</div>
+<div class="col-auto">
+<strong>{{shortcuts.dictionaryCompact}}</strong>
+</div>
+<div class="col">
+{{help.dictionaryDescription}} <a data-i18n-href="{{routes.dictionaryHelp}}">{{help.dpd}}</a>
+</div>
+</div>
+
+<div class="row align-items-center mb-2">
+  <div class="col-auto">
+    <img src="/assets/svg/select.svg" class="common-size-icon4">
+  </div>
+  <div class="col-auto">
+    <strong>{{shortcuts.multiselect}}</strong>
+  </div>
+  <div class="col">
+    {{help.multiselectDescription}}
+  </div>
+</div>
+
+<div class="row align-items-center mb-2">
+  <div class="col-auto">
+    <img src="/assets/svg/compass.svg" class="common-size-icon4">
+  </div>
+  <div class="col-auto">
+    <strong>{{shortcuts.compass}}</strong>
+  </div>
+  <div class="col">
+    {{help.compassDescription}}
+  </div>
+</div>
+
+
+<div class="row align-items-center mb-2">
+<div class="col-auto">
+<img id="" src="/assets/svg/gear.svg" class="common-size-icon4"></img>
+</div>
+<div class="col-auto">
+<strong>{{shortcuts.settings}}</strong>
+</div>
+<div class="col">
+{{help.settingsDescription}}
+</div>
+</div>
+
+<div class="row align-items-center mb-4">
+<div class="col-auto">
+<img src="/assets/svg/question.svg" class="common-size-icon4">
+</div>
+<div class="col-auto">
+<strong>{{shortcuts.help}}</strong>
+</div>
+<div class="col">
+{{help.helpDescription}}
+</div>
+</div>
+
+<div class="row align-items-center mb-2">
+<div class="col-auto">
+<strong>{{shortcuts.readerModes}}</strong>
+</div>
+<div class="col">
+{{help.readerModesDescription}}
+</div>
+</div>
+<div class="row align-items-center mb-2">
+<div class="col-auto">
+<strong>{{shortcuts.previousNext}} </strong>
+</div>
+<div class="col">
+{{help.previousNextDescription}}
+</div>
+</div>
+<div class="row align-items-center mb-2">
+<div class="col-auto">
+<strong>{{shortcuts.script}} </strong>
+</div>
+<div class="col">
+{{help.scriptDescription}}
+</div>
+</div>
+
+<div class="row align-items-center mb-2">
+<div class="col-auto">
+<strong>{{shortcuts.punctuationHelp}} </strong>
+</div>
+<div class="col">
+{{help.punctuationDescription}}
+</div>
+</div>
+
+<div class="row align-items-center mb-2">
+<div class="col-auto">
+<strong>{{shortcuts.dictionaryMode}} </strong>
+</div>
+<div class="col">
+{{help.dictionaryModeDescription}} 
+</div>
+</div>
+<div class="row align-items-center mb-2">
+<div class="col-auto">
+<strong>{{shortcuts.dictionaryNewWindow}} </strong>
+</div>
+<div class="col">
+{{help.dictionaryNewWindowDescription}}
+</div>
+</div>
+
+
+<div class="row align-items-center mb-2">
+<div class="col-auto">
+<strong>{{shortcuts.search}}</strong>
+</div>
+<div class="col">
+{{help.searchDescription}}
+</div>
+</div>
+
+<div class="row align-items-center mb-2">
+<div class="col-auto">
+<strong>{{shortcuts.copyLink}}</strong>
+</div>
+<div class="col">
+{{help.copyLinkDescription}}
+</div>
+</div>
+
+</div>
+<div id="collapseInterfaces" class="collapse">
+<h3 class="text-start mt-2">{{help.linksMenuTitle}}</h3>
+<div class="mb-2">
+
+<div class="row align-items-center mb-2">
+<div class="col-3"><a href="#">{{help.rrLabel}}</a></div>
+<div class="col-9">{{help.rrDescription}}</div>
+</div>
+
+<div class="row align-items-center mb-2">
+<div class="col-3"><a href="#">{{help.reLabel}}</a></div>
+<div class="col-9">{{help.reDescription}}</div>
+</div>
+
+<div class="row align-items-center mb-2">
+<div class="col-3"><a href="#">{{help.ruEnLabel}}</a></div>
+<div class="col-9">{{help.ruEnDescription}}</div>
+</div>
+
+<div class="row align-items-center mb-2">
+<div class="col-3"><a href="#">{{help.dprLabel}}</a></div>
+<div class="col-9">{{help.dprDescription}}</div>
+</div>
+
+<div class="row align-items-center mb-2">
+<div class="col-3"><a href="#">{{help.bjtLabel}}</a></div>
+<div class="col-9">{{help.bjtDescription}}</div>
+</div>
+
+<div class="row align-items-center mb-2">
+<div class="col-3"><a href="#">{{help.voiceLabel}}</a></div>
+<div class="col-9">{{help.voiceDescription}}</div>
+</div>
+
+<div class="row align-items-center mb-2">
+<div class="col-3"><a href="#">{{help.scLabel}}</a></div>
+<div class="col-9">{{help.scDescription}}</div>
+</div>
+
+<div class="row align-items-center mb-2">
+<div class="col-3"><a href="#">{{help.tbwLabel}}</a></div>
+<div class="col-9">{{help.tbwDescription}}</div>
+</div>
+
+<div class="row align-items-center mb-2">
+<div class="col-3"><a href="#">{{help.theravadaLabel}}</a></div>
+<div class="col-9">{{help.theravadaDescription}}</div>
+</div>
+</div>
+{{help.editionAbbreviationsPrefix}} <strong>{{help.editionCodes}}</strong> {{help.editionAbbreviationsMiddle}} <a href="/assets/texts/abbr.html">{{help.editionAbbreviationsLink}}</a> {{help.editionAbbreviationsOr}} <a data-i18n-href="{{routes.abbreviationsSuttaCentral}}">{{help.editionAbbreviationsHere}}</a>.
+</div>
+</div>
+<div class="modal-footer">
+<div class="text-end">
+ <button type="button" class="btn mb-2 btn-secondary btn-sm rounded-pill"><a class="text-decoration-none text-reset" data-i18n-href="{{routes.contacts}}">{{help.reportError}}</a></button>
+<button class="btn mb-2 btn-sm btn-light border-secondary rounded-pill" type="button" data-bs-toggle="collapse" data-bs-target="#collapseInterfaces" aria-expanded="false" aria-controls="collapseInterfaces">{{help.linksDescriptionButton}}</button>
+<button type="button" class="btn mb-2 btn-secondary btn-sm rounded-pill" data-bs-dismiss="modal">{{common.close}}</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<div class="modal fade" id="settings" tabindex="-1" aria-labelledby="settingsLabel" aria-hidden="true" data-bs-focus="false">
+<div class="modal-dialog modal-dialog-centered">
+<div class="modal-content">
+<div class="modal-header">
+<h2 class="modal-title" id="settingsLabel">{{settings.title}}</h2>
+  <a type="button" onclick="toggleQuickModal()" data-i18n-aria-label="{{accessibility.openFourNobleTruths}}" class="compass-icon">
+<img src="/assets/svg/compass.svg">
+</a>
+        <div  class="ms-auto d-inline-flex align-items-center">
+   <a class="btn btn-sm btn-secondary btn-language rounded-pill text-decoration-none ms-1" href="#" data-i18n-data-lang="{{locale.targetLanguageCode}}">{{locale.targetLanguageLabel}}</a>
+   <span class="ms-1" >{{locale.currentLanguageLabel}}</span>
+<span class="mx-1 text-muted">{{shortcuts.languageSettings}}</span>
+     </div>        
+<button type="button" class="btn-close" data-bs-dismiss="modal" data-i18n-aria-label="{{accessibility.close}}"></button>
+</div>
+<div class="modal-body">
+<div class="mb-2">
+<label for="script-select"><h5 class="text-start">{{settings.scriptSystem}}</h5></label>
+<select class="dropdown droponmain rounded-pill text-black border-2 border-secondary text-center input-group-append" id="script-select">
+<option value="ISOPali">{{settings.scriptIsoPali}}</option>
+<option value="Devanagari">{{settings.scriptDevanagari}}</option>
+<option value="Thai">{{settings.scriptThai}}</option>
+</select>
+&nbsp;
+<label class="plain-label" for="script-select"><strong>{{shortcuts.scriptCompact}}</strong></label>
+</div>
+<div class="mb-2">
+<label for="dict-select"><h5 class="text-start">{{settings.dictionaryTitle}}</h5></label>
+<select class="dropdown droponmain rounded-pill text-black border-2 border-secondary text-center input-group-append" id="dict-select">
+<option value="standaloneru">{{settings.dictionaryStandaloneRu}}</option>
+<option value="dpdFullRu">{{settings.dictionaryFullRu}}</option>
+<option value="newwindowru">{{settings.dictionaryNewWindowRu}}</option>
+<option value="dpdCompactRu">{{settings.dictionaryCompactRu}}</option>
+<option value="machinetranslation">{{settings.dictionaryDharmaMitra}}</option>
+<option value="searchonly">{{settings.dictionarySearchOnly}}</option>
+<option value="dictTango">{{settings.dictionaryDictTango}}</option>
+<option value="mdict">{{settings.dictionaryMdict}}</option>
+<option value="goldenpc">{{settings.dictionaryGoldenDict}}</option>
+<option value="standalone">{{settings.dictionaryStandaloneEn}}</option>
+<option value="dpdFull">{{settings.dictionaryFullEn}}</option>
+<option value="newwindow">{{settings.dictionaryNewWindowEn}} </option>
+<option value="dpdCompact" >{{settings.dictionaryCompactEn}} </option>
+</select> <a data-i18n-href="{{routes.dictionaryHelp}}">{{common.questionMark}}</a>
+<label class="plain-label" for="dict-select"><strong>{{shortcuts.dictionaryCompact}}</strong></label>
+</div>
+
+<div class="mb-2 d-flex align-items-center">
+    <label class="h5 mb-0 text-start"><h5>{{settings.fontSize}}</h5></label>
+    <div class="d-flex align-items-center">
+        <button type="button" class="btn-sm btn-secondary rounded-circle d-flex align-items-center justify-content-center p-0 ms-2" id="fontDec">{{common.minus}}</button>
+        <span class="mx-2 fw-bold text-center" id="fontVal">{{common.defaultFontSize}}</span>
+        <button type="button" class="btn-sm btn-secondary rounded-circle d-flex align-items-center justify-content-center p-0" id="fontInc">{{common.plus}}</button>
+    </div>
+   <label class="plain-label ms-2" for="fontVal"><strong>{{shortcuts.fontSize}}</strong></label> 
+</div>
+
+<div class="mb-2">
+<div class="d-flex">
+<label class="form-check-label me-2" for="removePunctCheckbox">
+<h5 class="mb-0">{{settings.removePunctuation}}</h5>
+</label>
+<input class="form-check-input setting-checkbox" type="checkbox" id="removePunctCheckbox" data-key="removePunct">
+&nbsp;  
+<label class="plain-label" for="removePunctCheckbox"><strong>{{shortcuts.punctuationSettings}}</strong></label>
+</div>
+</div>
+
+<h5 class="text-start">{{settings.readerModeTitle}}</h5>
+<div class="container">
+<div class="row align-items-center mb-2">
+<div class="col-auto">
+<input class="form-check-input mt-2 border-secondary" name="reader" type="radio" id="stRadio" value="st"> &nbsp;
+<a id="stDemo" href="/r/?q=sn56.11"><strong>{{settings.standard}}</strong></a>
+</div>
+<div class="col text-end">{{settings.standardDescription}}</div>
+</div>
+
+<div class="row align-items-center mb-2">
+<div class="col-auto">
+<input class="form-check-input mt-2 border-secondary" name="reader" type="radio" id="mtRadio" value="mt"> &nbsp;
+<a id="mtDemo" href="/mt/?q=sn56.11"> <strong>{{settings.multiTranslation}}</strong></a>
+</div>
+<div class="col text-end">{{settings.multiTranslationDescription}}</div>
+</div>
+
+<div class="row align-items-center mb-2">
+<div class="col-auto">
+<input class="form-check-input mt-2 border-secondary" name="reader" type="radio" id="memRadio" value="mem">
+&nbsp;
+<a id="memDemo" href="/memorize/?q=an10.46"><strong>{{settings.memorization}}</strong></a>
+</div>
+<div class="col text-end">{{settings.memorizationDescription}}</div>
+</div>
+
+<div id="collapseInterfaces" class="collapse">
+<div class="row align-items-center mb-2">
+<div class="col-auto">
+<input class="form-check-input mt-2 border-secondary" name="reader" type="radio" id="dRadio" value="d">
+&nbsp;
+<a id="dDemo" href="/d/?q=sn12.2"><strong>{{settings.devanagari}}</strong></a>
+</div>
+<div class="col text-end">{{settings.devanagariDescription}}</div>
+</div>
+
+<div class="row align-items-center mb-2">
+<div class="col-auto">
+<input class="form-check-input mt-2 border-secondary" name="reader" type="radio" id="mlRadio" value="ml"> &nbsp;
+<a id="mlDemo" href="/ml/?q=dn22"> <strong>{{settings.multiLanguage}}</strong></a>
+</div>
+<div class="col text-end">{{settings.multiLanguageDescription}}</div>
+</div>
+
+
+<div class="row align-items-center mb-2">
+<div class="col-auto">
+<input class="form-check-input mt-2 border-secondary" name="reader" type="radio" id="thRadio" value="th"> &nbsp;
+<a id="thDemo" href="/th/read/?q=sn5.56"><strong>{{settings.scriptThai}}</strong></a>
+</div>
+<div class="col text-end">{{settings.thaiDescription}}</div>
+</div>
+
+<div class="row align-items-center mb-2">
+<div class="col-auto">
+<input class="form-check-input mt-2 border-secondary" name="reader" type="radio" id="rvRadio" value="rv">
+&nbsp;
+<a id="rvDemo" href="/rev/?q=sn35.236"><strong>{{settings.reverse}}</strong></a>
+</div>
+<div class="col text-end">{{settings.reverseDescription}}</div>
+</div>
+
+<div class="row align-items-center mb-2">
+<div class="col-auto">
+<input class="form-check-input mt-2 border-secondary" name="reader" type="radio" id="frRadio" value="fr">
+&nbsp;
+<a id="frDemo" href="/frev/?q=sn22.59"><strong>{{settings.fullReverse}}</strong></a>
+</div>
+<div class="col text-end">{{settings.fullReverseDescription}}</div>
+</div>
+<p class="mb-2">
+{{settings.clickPrefix}} <strong>{{settings.clickTitle}}</strong> {{settings.clickMiddle}} <strong>{{settings.clickRadio}}</strong> {{settings.clickSuffix}}
+</p>
+</div>
+<div class="text-end mb-2">
+<button class="btn btn-sm btn-secondary rounded-pill" type="button" data-bs-toggle="collapse" data-bs-target="#collapseInterfaces" aria-expanded="false" aria-controls="collapseInterfaces">{{common.other}}</button>
+</div>
+</div>
+</div>
+<div class="modal-footer">
+<div class="text-end">
+<button type="button" class="btn btn-sm  rounded-pill btn-secondary " id="reset-button">{{common.reset}}</button>
+<button type="button" class="btn btn-sm btn-light border-secondary rounded-pill" id="apply-button">{{common.apply}}</button>
+<button type="button" class="btn-sm  btn-secondary rounded-pill" data-bs-dismiss="modal">{{common.close}}</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<div id="sutta"></div>
+<hr>
+
+<div id="navigation" class="navigation">
+<div id="previous2"></div>
+<div id="next2"></div>
+</div>
+
+<div class="links-area text-center">
+<a data-i18n-href="{{routes.searchHome}}" data-i18n-title="{{footer.searchTitle}}" rel="noreferrer"
+><img width="22px" data-i18n-alt="{{footer.searchAlt}}" src="/assets/img/gray.png"></a>
+
+<a href="/assets/makelist.html" data-i18n-title="{{footer.createListsTitle}}" rel="noreferrer">
+<svg fill="#383838" height="20px" width="20px" version="1.1" id="Capa_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+viewBox="0 0 487.3 487.3" xml:space="preserve">
+<g><g><path d="M487.2,69.7c0,12.9-10.5,23.4-23.4,23.4h-322c-12.9,0-23.4-10.5-23.4-23.4s10.5-23.4,23.4-23.4h322.1 C476.8,46.4,487.2,56.8,487.2,69.7z M463.9,162.3H141.8c-12.9,0-23.4,10.5-23.4,23.4s10.5,23.4,23.4,23.4h322.1 c12.9,0,23.4-10.5,23.4-23.4C487.2,172.8,476.8,162.3,463.9,162.3z M463.9,278.3H141.8c-12.9,0-23.4,10.5-23.4,23.4 s10.5,23.4,23.4,23.4h322.1c12.9,0,23.4-10.5,23.4-23.4C487.2,288.8,476.8,278.3,463.9,278.3z M463.9,394.3H141.8 c-12.9,0-23.4,10.5-23.4,23.4s10.5,23.4,23.4,23.4h322.1c12.9,0,23.4-10.5,23.4-23.4C487.2,404.8,476.8,394.3,463.9,394.3z M38.9,30.8C17.4,30.8,0,48.2,0,69.7s17.4,39,38.9,39s38.9-17.5,38.9-39S60.4,30.8,38.9,30.8z M38.9,146.8 C17.4,146.8,0,164.2,0,185.7s17.4,38.9,38.9,38.9s38.9-17.4,38.9-38.9S60.4,146.8,38.9,146.8z M38.9,262.8 C17.4,262.8,0,280.2,0,301.7s17.4,38.9,38.9,38.9s38.9-17.4,38.9-38.9S60.4,262.8,38.9,262.8z M38.9,378.7 C17.4,378.7,0,396.1,0,417.6s17.4,38.9,38.9,38.9s38.9-17.4,38.9-38.9C77.8,396.2,60.4,378.7,38.9,378.7z" /></g></g>
+</svg>
+</a>
+<a href="/assets/diff" data-i18n-title="{{footer.compareTitle}}" rel="noreferrer"><img width="20px" data-i18n-alt="{{footer.compareAlt}}" src="/r/images/favicon-black.png"></a>
+<a data-i18n-href="{{routes.history}}" data-i18n-title="{{footer.historyTitle}}" rel="noreferrer"><img width="20px" data-i18n-alt="{{footer.historyAlt}}" src="/assets/svg/clock-rotate-left.svg"></a>
+<a href="/memo/" class="memo-button" data-i18n-title="{{footer.memoTitle}}" rel="noreferrer" target="_blank">
+  <img width="25px" src="/assets/svg/memo.svg" data-i18n-alt="{{footer.memoAlt}}">
+</a>
+<a data-i18n-data-href="{{routes.translationEditor}}" class="q-link" data-i18n-title="{{footer.translationEditorTitle}}" rel="noreferrer">
+    <img width="20px" data-i18n-alt="{{footer.translationEditorAlt}}" src="/assets/svg/table-columns.svg">
+</a>
+<script src="/read/js/urlForLbl.js" defer></script>
+<a id="shareOnline" onclick="copyToClipboard()" data-i18n-title="{{footer.copyTitle}}" rel="noreferrer" target=""><img height="20px" alt="" src="/assets/svg/copy.svg"></a>
+ <a href="https://DharmaMitra.org/" data-i18n-title="{{footer.dharmaMitraTitle}}" rel="noreferrer" target="_blank"><img width="20px" src="/assets/svg/dharmachakra.svg" data-i18n-alt="{{footer.dharmaMitraAlt}}"></a>               
+<a href="https://index.readingfaithfully.org" data-i18n-title="{{footer.suttaNameSearchTitle}}" rel="noreferrer" target="_blank"><img width="20px" src="./images/favicon-name-black.png" data-i18n-alt="{{footer.suttaNameSearchAlt}}"></a>
+<a href="https://ped.readingfaithfully.org" data-i18n-title="{{footer.pedTitle}}" rel="noreferrer" target="_blank"><img width="20px" src="./images/favicon-ped-black.png" data-i18n-alt="{{footer.pedAlt}}"></a>
+</div>
+
+<div class="text-muted text-center" id="copyrightnote">
+<div class="container">
+<small><a target="_blank" rel="license" data-i18n-href="{{routes.copyright}}">{{footer.copyrightLabel}}</a> {{footer.copyrightText}}</a>-<span id="date"></span></small> <button class="btn btn-secondary text-center installButton d-none" id=""><?php echo $installpwa;?></button>
+</div>
+</div>
+<div id="smart-gear-container">
+    <button id="smart-gear-btn" data-i18n-title="{{smartPanel.quickSettingsTitle}}">
+        <img src="/assets/svg/gear.svg" data-i18n-alt="{{smartPanel.settingsAlt}}">
+    </button>
+	
+	
+	<div id="smart-toc-container">
+    <button id="smart-toc-btn" data-i18n-title="{{smartPanel.tocTitle}}">
+        <img src="/assets/svg/list-ul-solid-full.svg" data-i18n-alt="{{smartPanel.tocAlt}}">
+        <span id="smart-toc-current"></span>
+    </button>
+    <div id="smart-toc-panel">
+        </div>
+</div>
+
+<div id="smart-panel">
+    <button class="smart-btn" data-target="#theme-button img" data-i18n-title="{{smartPanel.themeTitle}}">
+        <span class="smart-label">{{common.theme}}</span>
+        <img src="/assets/svg/circle-half-stroke.svg" data-i18n-alt="{{smartPanel.themeAlt}}">
+    </button>
+    <button class="smart-btn" data-target="#toggle-mode img" data-i18n-title="{{smartPanel.columnsTitle}}">
+        <span class="smart-label">{{common.columns}}</span>
+        <img src="/assets/svg/align-left.svg" data-i18n-alt="{{smartPanel.columnsAlt}}">
+    </button>
+    <button class="smart-btn" data-target="#toggle-variants" data-i18n-title="{{smartPanel.variantsTitle}}">
+        <span class="smart-label">{{common.variants}}</span>
+        <img src="/assets/svg/eye.svg" data-i18n-alt="{{smartPanel.variantsAlt}}">
+    </button>
+    <button class="smart-btn" data-target=".toggle-dict-btn img" data-i18n-title="{{smartPanel.dictionaryTitle}}">
+        <span class="smart-label">{{common.dictionary}}</span>
+        <img src="/assets/svg/comment.svg" data-i18n-alt="{{smartPanel.dictionaryAlt}}">
+    </button>
+    <button class="smart-btn" data-target="#toggle-multiselect" data-i18n-title="{{smartPanel.multiselectTitle}}">
+        <span class="smart-label">{{smartPanel.multiselectLabel}}</span>
+        <img src="/assets/svg/select-slash.svg" data-i18n-alt="{{smartPanel.multiselectAlt}}">
+    </button>
+    <button class="smart-btn" data-target="#toggle-favorite" data-i18n-title="{{smartPanel.favoriteTitle}}">
+        <span class="smart-label">{{smartPanel.favoriteLabel}}</span>
+        <img src="/assets/svg/star.svg" data-i18n-alt="{{smartPanel.favoriteAlt}}">
+    </button>
+    <button class="smart-btn" data-target="#toggle-compass" data-i18n-title="{{smartPanel.historyTitle}}">
+        <span class="smart-label">{{common.history}}</span>
+        <img src="/assets/svg/compass.svg" data-i18n-alt="{{smartPanel.historyAlt}}">
+    </button>
+    <button class="smart-btn" data-target=".memo-button" data-i18n-title="{{smartPanel.memoTitle}}">
+        <span class="smart-label">{{common.memo}}</span>
+        <img src="/assets/svg/memo.svg" data-i18n-alt="{{smartPanel.memoAlt}}">
+    </button>
+    <button class="smart-btn" data-target="#settingsButton" data-i18n-title="{{toolbar.settingsTitle}}">
+        <span class="smart-label">{{settings.title}}</span>
+        <img src="/assets/svg/gear.svg" data-i18n-alt="{{smartPanel.settingsAlt}}">
+    </button>
+    <hr>
+    <button class="smart-btn" data-target="#home-button a" data-i18n-title="{{smartPanel.homeTitle}}">
+        <span class="smart-label">{{common.home}}</span>
+        <img src="/assets/svg/home-icon.svg" data-i18n-alt="{{smartPanel.homeAlt}}">
+    </button>
+</div>
+
+    
+</div>
+
+<script>
+const now = new Date();
+const formattedDate = now.getFullYear();
+document.getElementById("date").textContent = formattedDate;
+</script>
+
+<script src="/assets/js/linksdpr.js" defer></script>
+<script src="/assets/js/switchView.js" defer></script>
+<script data-i18n-src="{{runtime.languageScripts.0}}" defer></script>
+<script data-i18n-src="{{runtime.languageScripts.1}}" defer></script>
+<script src="/assets/js/linksbw.js" defer></script>
+<script src="/assets/js/openBw.js" defer></script>
+<script src="/assets/js/autopali.js" defer></script>
+<script src="/assets/js/bootstrap.bundle.5.3.1.min.js"></script>
+<script src="/assets/js/copyToClipboard.js" defer></script>
+
+<script>
+form.addEventListener("submit", e => {
+  e.preventDefault();
+  if (citation.value) {
+    buildSutta(citation.value.replace(/\s+/g, " "));
+   history.pushState({ page: citation.value.replace(/\s+/g, " ") }, "", `?q=${citation.value.replace(/\s+/g, " ")}`);
+  }
+});
+</script>
+<script src="/assets/js/settings.js" defer></script>
+<script src="/assets/js/linksbjt.js" defer></script>
+<script src="/assets/js/openDicts.js" defer></script>
+<script src="/assets/js/smoothScroll.js" defer></script>
+<script src="/read/js/ranges.js" defer></script>
+
+</body>
+</html>

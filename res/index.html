@@ -1,0 +1,1285 @@
+
+<!--
+корректно показывать с иконкой что есть варианты. 
+добавить варианты в ответ. 
+Неравноменрые отсупы между переводавми в цитатах. добавил br но удлинился разрыв между другими переводами. 
+
+to do now
+* не отображаются доп строки при параметрах la lb хотя они есть в ответе от сервера
+* не работает сортировка дхамма кн виная абхидхамма
+* сортировка языков переводов поумолчанию англ. или главный язык  -главный будем определять по localstorage и урл /ru.
+ 
+    window.isRu = window.location.pathname.match(/\/(ru|r|ml|mt)\//) || localStorage.getItem('siteLanguage') === 'ru';
+есть такая глобальная функцию и подобная window.notEn
+идеале вынести глобальную функцию. к приеру в настройки
+
+
+* не работает отключение языка в названиях. обернуть в eng-lang  и тп
+* поправить размеры колонок на более адекватные сузить название, ссылки pi ru en не переносить ... ru gоказывать только на русской.
+
+
+* не работает ссылки вначал и вконце для этого: 
+цитаты пали и переводы нужно оборачивать в  
+urlwithanchor - это    "segment": "an1.12:1.1", ->    data-slug="an1.12#1.1"
+
+ unhiddenlink="<a target=_blank class=\"fdgLink quoteLink-start text-reset text-decoration-none\" href=\"\" data-slug=\"" urlwithanchor "\"></a>"
+ hiddenlink="<a target=_blank class=\"fdgLink quoteLink text-white text-decoration-none\" href=\"\" data-slug=\"" urlwithanchor "\"></a>" 
+ 
+ * добавлять s={keyword} из поискового запроса к ссылкам 
+ 
+много логики зашито на скрытые поля keyword 
+пример существующего кода. 
+    // 2. Подготовка поисковых параметров (без изменений)
+    const urlParams = new URLSearchParams(window.location.search);
+    const sParam = urlParams.get('s');
+    let keyword;
+    let keywordElement = document.querySelector('.keyword');
+    if (keywordElement) {
+        keyword = keywordElement.textContent.trim();
+    } else {
+        keyword = "";
+    }
+    
+    давай делать чтобы было соместимо с этим полем. просто добавлять. 
+    
+   
+
+
+
+backlog DONT DO
+* починить баг с гигантским артефактом плеера-  гигантска кнопка плей.
+* lобавить алерт варианты. - если есть варианты - то показывать алерт.   Kacchapa has variants если есть делать видимым
+<div id='variants' class="variants" style='display: none;'> has <a href=$wordLinkToReplace#variants>variants</a></div>
+* добавить сортировку по  words
+
+
+api: 
+http://localhost:3000/search?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
+https://dhamma.gift/search?q=kacchapa&lb=1&la=2&scope=dhamma
+demo: 
+http://localhost:8080/nodejs/res/?q=kacchapa&lb=1&la=2&scope=dhamma,abhi
+https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
+
+-->
+
+<!DOCTYPE html>
+<html data-bs-theme="light">
+<head>
+<title>Search Results - Dhamma.gift</title>
+<meta name="description" content="Search Results - Dhamma.gift">
+<link rel="manifest" href="/manifest.php">
+<meta name="theme-color" content="#000000">
+
+
+<meta property="og:type" content="article" />
+<meta property="og:title" content="Search Results - Dhamma.gift" />
+<meta property="og:url" content="https://dhamma.gift">
+<meta property="og:image" content="/assets/img/social_sharing_results.jpg" />
+<meta property="og:description" content="Search Results - Dhamma.gift" />
+<meta name="twitter:title" content="Dhamma.gift">
+<meta name="twitter:description" content="Search Results - Dhamma.gift">
+
+<meta name="twitter:card" content="/assets/img/social_sharing_results.jpg">
+<meta property="twitter:domain" content="dhamma.gift">
+<meta property="twitter:url" content="">
+<meta name="twitter:title" content="Search Results - Dhamma.gift">
+<meta name="twitter:description" content="Search Results - Dhamma.gift">
+<meta name="twitter:image" content="/assets/img/social_sharing_results.jpg">
+
+
+<link rel="icon" type="image/png" href="/assets/img/favico-noglass.png" />
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta charset="UTF-8">
+
+<link rel="stylesheet" type="text/css" href="/assets/js/datatables/datatables.min.css"/>
+<!--
+<style>
+    body {
+        opacity: 0;
+        visibility: hidden;
+        background: black;
+        transition: opacity 0.3s ease-in-out; /* Плавное появление */
+    }
+</style>
+
+<link rel="stylesheet" type="text/css" href="/assets/css/bootstrap.5.3.1.min.css"/>
+-->
+
+<link rel="stylesheet" href="/assets/css/langswitch.css">
+<link rel="stylesheet" href="/assets/css/paliLookup.css">
+<link rel="stylesheet" href="/assets/css/extrastyles.css">
+<script src="/assets/js/loadCssJsResult.js"></script>
+
+<!--
+-->
+<script src="/assets/js/jquery-3.7.0.min.js"></script>
+<script type="text/javascript" src="/assets/js/bootstrap.bundle.5.3.1.min.js"></script>
+<script type="text/javascript" src="/assets/js/datatables/datatables.js"></script>
+<script type="text/javascript" src="/assets/js/natural.js"></script>
+<script type="text/javascript" src="/assets/js/strip-html.js"></script>
+<!-- <script type="text/javascript" src="/assets/js/diacritics.js"></script> -->
+
+
+<link href="/assets/css/table.css" rel="stylesheet" />
+<!--<script src="https://cdn.jsdelivr.net/gh/virtualvinodh/aksharamukha/aksharamukha-web-plugin/aksharamukha-v3.js?class=verse"></script>-->
+
+</head>
+<body>
+
+
+<div class="container-fluid mt-2">    
+
+    <h3 class="pl-2 resultheader ml-2" id="dynamicHeader"></h3>
+    <script>
+        (function() {
+            let params = new URLSearchParams(window.location.search);
+            let q = params.get('q') || params.get('s');
+            let pathSegments = window.location.pathname.split('/').filter(s => s);
+            let lastSegment = pathSegments.pop();
+            
+            if (!q && lastSegment && !['search', 'index.html', 'result', 'nodejs'].includes(lastSegment.toLowerCase())) {
+                q = lastSegment;
+            }
+            if (q) {
+                let displayWord = decodeURIComponent(q).replace(/ṃ/g, "ṁ");
+                document.getElementById('dynamicHeader').textContent = displayWord.charAt(0).toUpperCase() + displayWord.slice(1) + "...";
+            }
+        })();
+    </script>
+
+           <a href='/' class="text-decoration-none">
+            <button class="btn btn-light mb-1" type="button">
+    <img class="table-home-icon" src="/assets/svg/home-icon.svg"></img>   
+      </button>  
+</a>
+    <button id="theme-button" class="btn btn-light mb-1 " type="button">
+      
+<img src="/assets/svg/circle-half-stroke.svg" onclick="switchIcon(this)" class="changesvg table-theme-icon gray-icon"></img>
+</button>		  
+<button id="btn-show-all-children" class="btn btn-light mb-1" type="button">Saṁvaṭṭo / Vivaṭṭo</button>
+
+<button class="btn btn-light forshellscript mb-1" type="button"><a class="text-decoration-none " href="$wordLinkToReplace">Слова</a></button>    
+
+<button id="language-button" class="btn btn-light mb-1 " type="button">Pāḷi / Рус</button>
+
+<button class="btn btn-light mb-1  toggle-dict-btn" type="button" ><img class="" src="/assets/svg/comment.svg"></img></button>
+
+<button class="btn btn-light mb-1  " type="button" onclick="toggleQuickModal()" aria-label="Open Cattāri Ariyasaccāni" title="Open Cattāri Ariyasaccāni (Alt+P)">
+  <img alt="" src="/assets/svg/compass.svg" class="common-size-icon4"></img>
+</button>
+
+
+
+ <a title="settings"  id="settingsButton" data-bs-toggle="modal" data-bs-target="#settings" href="javascript:void(0);" class="btn btn-light mb-1 toggle-icon text-decoration-none">
+  <img id="gearSettings" alt="settings" src="/assets/svg/gear.svg" class="common-size-icon4"></img>
+  </a>  
+
+
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    document.querySelectorAll(".btn-language").forEach((btn) => {
+        btn.addEventListener("click", function (event) {
+            event.preventDefault();
+            let newLang = this.getAttribute("data-lang"); // Например, "en", "ru", "th"
+            let url = new URL(window.location.href);
+            let path = url.pathname;
+
+            // Определяем текущий язык
+            let currentLang = path.match(/^\/([a-z]{2})\//);
+            currentLang = currentLang ? currentLang[1] : "en"; // Если нет префикса, считаем "en"
+
+            // Если язык не меняется, ничего не делаем
+            if (currentLang === newLang) return;
+
+            let search = url.search;
+            let hash = url.hash;
+            
+            // Удаляем код языка, если он есть
+            let newPath = path.replace(/^\/[a-z]{2}\//, "/");
+
+            // Добавляем новый язык, если он не "en"
+            if (newLang !== "en") {
+                newPath = `/${newLang}` + newPath;
+            }
+
+            // Перенаправление с сохранением search и hash
+            window.location.href = newPath + search + hash;
+        });
+    });
+});
+</script>
+
+<!-- Модальное окно "Настройки" Рус -->
+<div class="modal fade" id="settings" tabindex="-1" aria-labelledby="settingsLabel" aria-hidden="true" data-bs-focus="false">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="settingsLabel">Настройки</h2>
+                <a type="button" onclick="toggleQuickModal()" aria-label="Open Cattāri Ariyasaccāni" title="Open Cattāri Ariyasaccāni (Alt+P)" class="quickCAS common-size-icon4">
+  <svg class="svg-inline--fa fa-compass" aria-hidden="true" focusable="false" data-prefix="fas" data-icon="compass" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" data-fa-i2svg=""><path fill="currentColor" d="M288 256C288 273.7 273.7 288 256 288C238.3 288 224 273.7 224 256C224 238.3 238.3 224 256 224C273.7 224 288 238.3 288 256zM0 256C0 114.6 114.6 0 256 0C397.4 0 512 114.6 512 256C512 397.4 397.4 512 256 512C114.6 512 0 397.4 0 256zM325.1 306.7L380.6 162.4C388.1 142.1 369 123.9 349.6 131.4L205.3 186.9C196.8 190.1 190.1 196.8 186.9 205.3L131.4 349.6C123.9 369 142.1 388.1 162.4 380.6L306.7 325.1C315.2 321.9 321.9 315.2 325.1 306.7V306.7z"></path></svg>
+</a>
+                
+                           <div class="ms-auto d-inline-flex align-items-center">
+   <a class="btn btn-sm btn-secondary btn-language rounded-pill text-decoration-none ms-1" href="#" data-lang="en">en</a>
+               <span>ru</span> 
+<span class="mx-1 text-muted">Ctrl+Shift+1</span>
+            
+     </div>        
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-2 d-none">
+                    <!-- Дропдаун для выбора системы письма -->
+                    <label for="script-select"><h5 style="text-align: left;">Система письма:</h5></label>
+                    <select class="dropdown droponmain rounded-pill text-black border-2 border-secondary text-center input-group-append" id="script-select">
+                        <option value="ISOPali">ISOPali</option>
+                        <option value="Devanagari">Devanagari</option>
+                        <option value="Thai">Thai</option>
+                    </select>
+&nbsp;<strong>Alt+L</strong>
+
+                </div>
+
+                <div class="mb-2">
+  <div class="d-flex align-items-center">
+    <label class="form-check-label me-2" for="quotePopupCheckbox">
+      <h5 class="mb-0">Открывать цитаты в новом окне</h5>
+    </label>
+    <input class="form-check-input setting-checkbox" type="checkbox" id="quotePopupCheckbox">
+  </div>
+</div>
+
+                 <div class="mb-2">
+                    <!-- Дропдаун для выбора системы письма -->
+                    <label for="dict-select"><h5 style="text-align: left;">Словарь по клику:</h5></label>
+                    <select class="dropdown droponmain rounded-pill text-black border-2 border-secondary text-center input-group-append" id="dict-select">
+<option value="standaloneru">DPD Встроенный</option>
+<option value="dpdFullRu">DPD Онлайн </option>
+<option value="newwindowru">DPD Онлайн Новое Окно</option>
+<option value="dpdCompactRu">DPD Онлайн мини</option>
+<option value="machinetranslation">DharmaMitra.org</option>
+<option value="searchonly">Только Поиск</option>
+<option value="dictTango">DictTango Android</option>
+<option value="mdict">Mdict IOS</option>
+<option value="goldenpc">GoldenDict-NG Desktop</option>
+<option value="standalone">Англ DPD Встроенный</option>
+<option value="dpdFull">Англ DPD Онлайн</option>
+<option value="newwindow">Англ DPD Онлайн новое окно </option>
+<option value="dpdCompact" >Англ DPD Онлайн мини </option>
+                    </select> <a href="/assets/common/dictHelpRu.html">?</a>   
+                </div>               
+                
+                
+                <div class="mb-2 d-none">
+<div class="d-flex">
+  <label class="form-check-label me-2" for="removePunctCheckbox">
+    <h5 class="mb-0">Убрать Пунктуацию из Пали</h5>
+  </label>
+  <input class="form-check-input setting-checkbox" type="checkbox" id="removePunctCheckbox" data-key="removePunct">
+                  &nbsp;  <strong>Alt+.</strong>
+
+</div>
+
+                </div>
+        <!--        <div class="mb-2">
+                    <label for="reader-select"><h5 style="text-align: left;">Интерфейс:</h5></label>
+                    <select class="dropdown droponmain rounded-pill text-black border-2 border-secondary text-center input-group-append" id="reader-select">
+                        <option value="st">Стандартный</option>
+                        <option value="ml">Мульти</option>
+                        <option value="d">"Деванагари"</option>
+                        <option value="mem">Для запоминания</option>
+                        <option value="rv">Реверс</option>
+                        <option value="fr">Полный Реверс</option>
+                    </select>
+                </div> -->
+
+                <h5 style="text-align: left;">Выберите Режим Чтения:</h5>
+<div class="container">
+
+
+    <!-- Стандартный -->
+    <div class="row align-items-center mb-2">
+        <div class="col-auto">
+          <input class="form-check-input mt-2 border-secondary" name="reader" type="radio" id="stRadio" value="st"> &nbsp;
+   <a id="stDemo" href="/r/?q=sn56.11"><strong>Стандартный</strong></a>
+       
+        </div>
+        <div class="col text-end">
+            Два языка: пали, русс
+        </div>
+    </div>
+
+    <!-- Мульти -->
+    <div class="row align-items-center mb-2">
+        <div class="col-auto">
+          <input class="form-check-input mt-2 border-secondary" name="reader" type="radio" id="mlRadio" value="ml"> &nbsp;
+         <a id="mlDemo" href="/ml/?q=dn22"> <strong>Мульти</strong></a>
+
+        </div>
+        <div class="col text-end">
+            Три языка: пали, русс, англ
+        </div>
+    </div>
+
+    <!-- Деванагари -->
+    <div class="row align-items-center mb-2">
+        <div class="col-auto">
+          <input class="form-check-input mt-2 border-secondary" name="reader" type="radio" id="dRadio" value="d"> 
+          &nbsp;
+    <a id="dDemo" href="/d/?q=sn12.2"><strong>"Деванагари"</strong></a>
+      
+        </div>
+        <div class="col text-end">
+            Деванагари или тайский скрипт + пали латиницей
+        </div>
+
+    </div>
+
+    <!-- Скрытая часть -->
+    <div id="collapseInterfaces" class="collapse">
+        <div class="row align-items-center mb-2">
+            <div class="col-auto">
+              <input class="form-check-input mt-2 border-secondary" name="reader" type="radio" id="memRadio" value="mem">
+              &nbsp;
+              <a id="memDemo" href="/memorize/?q=an10.46">              <strong>Для запоминания</strong>
+</a>
+            </div>
+            <div class="col text-end">
+                Текст сокращен до первых букв каждого слова
+            </div>
+        </div>
+
+        <div class="row align-items-center mb-2">
+            <div class="col-auto">
+              <input class="form-check-input mt-2 border-secondary" name="reader" type="radio" id="rvRadio" value="rv">
+            &nbsp;
+<a id="rvDemo" href="/rev/?q=sn35.236"><strong>Реверс</strong></a>
+
+            </div>
+            <div class="col text-end">
+                Текст снизу вверх
+            </div>
+        </div>
+
+        <div class="row align-items-center mb-2">
+            <div class="col-auto">
+              <input class="form-check-input mt-2 border-secondary" name="reader" type="radio" id="frRadio" value="fr">
+              &nbsp;
+              <a id="frDemo" href="/frev/?q=sn22.59"><strong>Полный Реверс</strong>
+</a>   
+            </div>
+            <div class="col text-end">
+                Как предыдущий + слова слева направо
+            </div>
+        </div>
+        
+           <!--    <div class="row align-items-center mb-2">
+                            <div class="col-auto">
+                                <input class="form-check-input mt-2 border-secondary" name="reader" type="radio" id="thRadio" value="fr"> &nbsp;
+                                <a id="frDemo" href="/read/th?q=mn44"><strong>Thai</strong></a>
+                            </div>
+                            <div class="col text-end">
+                                Two languages: Pali, Thai
+                            </div>
+                        </div>
+                          <div class="row align-items-center mb-2">
+                        <div class="col-auto">
+                            <input class="form-check-input mt-2 border-secondary" name="reader" type="radio" id="mlRadio" value="mlth"> &nbsp;
+                            <a id="mlDemo" href="/read/mlth.html?q=sn44.1"><strong>Thai Multi</strong></a>
+                        </div>
+                        <div class="col text-end">
+                            Three languages: Pali, Thai, English
+                        </div>
+                    </div>  
+                    -->           
+        
+    </div>
+
+    <!-- Кнопка "Показать ещё" -->
+    <div class="text-end mb-2">
+        <button class="btn btn-sm btn-secondary rounded-pill" type="button" data-bs-toggle="collapse" data-bs-target="#collapseInterfaces" aria-expanded="false" aria-controls="collapseInterfaces">
+            Другие
+        </button>
+    </div>
+    <p class="mb-2">
+Клик <strong>по названию</strong> - перейти один раз. <br>
+Клик <strong>по радио кнопке</strong> - сделать по умолчанию при переходе с главной и из результатов поиска      
+    </p>
+    Увидели ошибку? <a href="/ru/#contacts">Написать</a>
+</div>
+
+            </div>
+       <div class="modal-footer">
+         
+                         <!-- Кнопки "Применить" и "Сбросить" -->
+                <div class="text-end">
+<button type="button" class="btn btn-sm  rounded-pill btn-secondary " id="reset-button" >Сбросить</button>
+   <button type="button" class="btn btn-sm btn-light border-secondary rounded-pill" id="apply-button">Применить</button>
+                   <button type="button" class="btn-sm  btn-secondary rounded-pill" data-bs-dismiss="modal">Закрыть</button>
+                </div>
+
+            </div> 
+        </div>
+    </div>
+</div>
+    <a class="btn btn-light mb-1 form-check-inline mb-1 toggle-icon" alt="Help" data-bs-toggle="modal" data-bs-target="#SearchResultHelp" id="helpMessage" href="javascript:void(0);">  
+        <img id="helpResult" class="table-home-icon" src="/assets/svg/question.svg"></img>
+        </a>     
+
+<!-- Модальное окно "Помощь Рус" -->
+<div class="modal fade" id="SearchResultHelp" tabindex="-1" aria-labelledby="SearchResultHelpLabel" aria-hidden="true"  data-bs-focus="false">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="SearchResultHelpLabel">Помощь</h2>
+                   <a type="button" onclick="toggleQuickModal()" aria-label="Открыть Cattāri Ariyasaccāni" title="Открыть Cattāri Ariyasaccāni (Alt+P)" class="quickCAS common-size-icon4">
+  <svg class="svg-inline--fa fa-compass" aria-hidden="true" focusable="false" data-prefix="fas" data-icon="compass" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" data-fa-i2svg=""><path fill="currentColor" d="M288 256C288 273.7 273.7 288 256 288C238.3 288 224 273.7 224 256C224 238.3 238.3 224 256 224C273.7 224 288 238.3 288 256zM0 256C0 114.6 114.6 0 256 0C397.4 0 512 114.6 512 256C512 397.4 397.4 512 256 512C114.6 512 0 397.4 0 256zM325.1 306.7L380.6 162.4C388.1 142.1 369 123.9 349.6 131.4L205.3 186.9C196.8 190.1 190.1 196.8 186.9 205.3L131.4 349.6C123.9 369 142.1 388.1 162.4 380.6L306.7 325.1C315.2 321.9 321.9 315.2 325.1 306.7V306.7z"></path></svg>
+</a>
+
+             
+                
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+            </div>
+            <div class="modal-body">
+                
+<div class="container">
+          <div class="row align-items-center mb-2">
+        <div class="col-auto">
+  <a href=/ru/><img class="common-size-icon mb-1" alt="page for reading" src="/assets/svg/home-icon.svg"></a>
+                </div>
+        <div class="col">Главная "Поиск" 
+         </div>
+    </div>
+        <div class="row align-items-center mb-2">
+        <div class="col-auto">
+            <img src="/assets/svg/circle-half-stroke.svg" alt="switch themes" onclick="switchIcon(this)" class="common-size-icon changesvg gray-icon">
+        </div>
+        <div class="col-auto"><strong>Alt+T</strong></div>
+        <div class="col">Тёмная/Светлая/Авто Темы</div>
+    </div>
+    <div class="row align-items-center mb-2">
+        <div class="col-auto">
+<button id="btn-show-all-children-dummy" class="btn btn-light mb-1" >Saṁvaṭṭo...</button>
+        </div>
+
+        <div class="col-auto"><strong>Shift+Пробел</strong></div>
+        <div class="col">Свернуть-развернуть результаты поиска </div>
+    </div>    
+    <div class="row align-items-center mb-2">
+        <div class="col-auto">
+<button id="btn-show-all-children-dummy" class="btn btn-light mb-1" >Слова</button>
+        </div>
+        <div class="col">Показать результаты агрегированные по словам </div>
+    </div>    
+    <div class="row align-items-center mb-2">
+        <div class="col-auto">
+<button id="language-button-dummy" class="btn btn-light mb-1 mt-1">Pāḷi / Рус</button>
+        </div>
+        <div class="col-auto"><strong>Alt+Space <br>или Alt+Z</strong></div>
+        <div class="col">Показать-скрыть Пали или другие языки в результатах поиска </div>
+    </div>
+
+    <div class="row align-items-center mb-2">
+        <div class="col-auto">
+            <img src="/assets/svg/comment.svg" class="common-size-icon4">
+        </div>
+        <div class="col-auto"><strong>Alt+A</strong></div>
+        <div class="col">Вкл-выкл словарь. Клик по слову для активации <a href="/assets/common/dictHelpRu.html">DPD</a></div>
+    </div>
+        <div class="row align-items-center mb-2">
+        <div class="col-auto">
+            <img id="" src="/assets/svg/gear.svg" class="common-size-icon4"></img>
+        </div>
+        <div class="col-auto"><strong>Alt+S</strong></div>
+        <div class="col">Показать-скрыть "Настройки"</div>
+    </div>  
+    <div class="row align-items-center mb-4">
+        <div class="col-auto">
+            <img src="/assets/svg/question.svg" class="common-size-icon4">
+        </div>
+        <div class="col-auto"><strong>Alt+H</strong></div>
+        <div class="col">Показать-скрыть это окно "Помощь"</div>
+    </div>
+
+        <div class="row align-items-center mb-2">
+        <div class="col-auto"><strong>Shift+Space </strong></div>
+        <div class="col">Свернуть-развернуть результаты поиска </div>
+    </div>  
+            <div class="row align-items-center mb-2">
+        <div class="col-auto"><strong>/</strong></div>
+        <div class="col">Активировать поле ввода Search Builder</div>
+    </div>  
+            <div class="row align-items-center mb-2">
+        <div class="col-auto"><strong>✦</strong></div>
+        <div class="col">невидимая ссылка в начале и в конце фрагмента, чтобы открыть текст с нужного места.
+        </div>
+    </div>  
+
+</div>       
+<div>
+
+<div class="mb-2">
+  Чтобы <strong>Перейти</strong> в текст на конкретную строку, кликните в конце нужной строки с Пали, где курсор меняется со стрелки на палец.
+</div>
+<div class="mb-2">
+ <p> Используйте поле <strong>Search</strong> для простой фильтрации. И <strong>Custom Search Builder</strong> внизу страницы для сложной фильтрации.</p>
+  <p> Используйте опцию <strong>Экспорт</strong> для выгрузки данных в формате, подходящем для ИИ или анализа.</p> 
+</div>
+</div>
+<br>
+
+
+                <!-- Скрытая часть -->
+                <div id="collapseInterfaces" class="collapse">
+    <h3 style="text-align: left;" class="mt-2">Описание Колонок и Ссылок</h3>
+<h4>Колонки</h4>
+<ul class="list-unstyled">  
+    <li><strong>Sutta</strong> – Индекс текста (например, <em>sn56.11, dn22, an10.46</em>)</li>  
+    <li><strong>Title</strong> – Название текста</li>  
+    <li><strong>Words</strong> – Совпадения слов в тексте</li>  
+    <li><strong>Count</strong> – Количество совпадений в тексте, включая варианты</li>  
+    <li><strong>Metaphor Count</strong> – Количество сравнений/метафор в тексте (не связано с искомым словом). Полезно для выявления метафорических текстов</li>  
+    <li><strong>Links</strong> – Ссылки на внешние ресурсы</li>  
+    <li><strong>Type</strong> –  
+        <em>dhamma</em> – Четыре основных Никаи  
+        <em>khudakka</em> – Все книги Khuddaka Nikaya  
+        <em>vinaya</em> – Все тексты, относящиеся к Виная  
+    </li>  
+    <li><strong>Quote</strong> – Цитата с найденным словом</li>  
+</ul>
+
+
+<div class="mb-2">
+<h4>Ссылки</h4>
+    <div class="row align-items-center mb-2">
+        <div class="col-3">
+            <a href="#">sn1.1 (и пдобные)</a>
+        </div>
+        <div class="col-9">
+        Читать на Dhamma.Gift Read
+        </div>
+    <div class="row align-items-center mb-2">
+        <div class="col-3">
+            <a href="#">Pi</a>
+        </div>
+        <div class="col-9">
+            Читать на сайте DigitalPaliReader.online
+        </div>
+    </div>
+    <div class="row align-items-center mb-2">
+        <div class="col-3">
+            <a href="#">En</a>
+        </div>
+        <div class="col-9">
+            Читать на сайте TheBuddhasWords.net  
+        </div>
+    </div>
+
+
+    <div class="row align-items-center mb-2">
+        <div class="col-3">
+            <a href="#">Ru</a>
+        </div>
+        <div class="col-9">
+       Читать на сайте Theravada.ru или Theravada.su (когда доступно)
+        </div>
+    </div>
+
+</div>
+
+
+
+</div>
+                    Аббревиатуры вариантов: <strong>ms, pts1ed, sya-all, mr</strong> и т.д. в <a href="/assets/texts/abbr.html">"Edition Abbreviations"</a> или <a href="https://suttacentral.net/abbreviations?lang=ru">здесь</a>.
+                </div>
+             
+  Нужна помощь? <a href="/ru/#contacts">Написать</a>
+<br>
+            </div>
+   <div class="modal-footer">
+                     <!-- Кнопка "Показать ещё" -->
+                <div class="text-end">
+                    <button class="btn btn-sm btn-light border-secondary rounded-pill" type="button" data-bs-toggle="collapse" data-bs-target="#collapseInterfaces" aria-expanded="false" aria-controls="collapseInterfaces">
+                        Описание Колонок и Ссылок
+                    </button>
+                     <button type="button" class="btn btn-secondary btn-sm rounded-pill" data-bs-dismiss="modal">Закрыть</button>
+                </div>
+               
+            </div> 
+        </div>
+    </div>
+</div>
+
+
+<hr>
+<div id='variants' class="variants" style='display: none;'> has <a href=$wordLinkToReplace#variants>variants</a></div>
+
+    <div class="container-fluid table-wrapper mt-4">
+<!--        <h2 id="searchHeading" class="mb-4">Results for: <span id="keywordDisplay" class="text-primary">...</span></h2> -->
+
+<table id="pali" class="display table table-striped table-hover responsive " cellspacing="0" width="100%">
+   <thead class="thead-light">
+        <tr>
+            <th>Sutta</th>
+
+            <th>Title</th>
+            <th>Words</th>
+            <th>Ct</th>
+            <th>Mr</th>
+            <th>Links</th>
+                        <th>Type</th>
+            <th class="none">Quote</th>
+        <!-- <th class="none">Audio</th> -->
+        </tr>
+    </thead>
+    <tbody id="sutta">
+                </tbody>
+        </table>
+    </div>
+
+<script type='text/javascript'>
+// Автоматически ставим язык по умолчанию для тестов, если он еще не выбран
+if (!localStorage.getItem('siteLanguage')) {
+    localStorage.setItem('siteLanguage', 'ru');
+}
+
+// Глобальная переменная текущего языка сайта (динамическая, без хардкода)
+window.siteLanguage = localStorage.getItem('siteLanguage') || 'en';
+
+$(document).ready(function() {
+    DataTable.util.diacritics(d => d);
+    
+    // Регистрируем собственный тип сортировки для чекбоксов
+    $.fn.dataTable.ext.order['dom-checkbox'] = function(settings, col) {
+        return this.api().column(col, { order: 'index' }).nodes().map(function(td, i) {
+            return $('input', td).prop('checked') ? '1' : '0';
+        });
+    };
+
+    // Регистрируем кастомную сортировку для категорий
+    $.fn.dataTable.ext.type.order['category-pre'] = function (d) {
+        if (!d) return 5;
+        let cat = String(d).toLowerCase().trim();
+        if (cat === 'dhamma') return 1;
+        if (cat === 'khudakka' || cat === 'khuddaka') return 2;
+        if (cat === 'vinaya') return 3;
+        if (cat === 'abhi' || cat === 'abhidhamma') return 4;
+        return 5;
+    };
+   
+    var dataSrc = [];
+    var filterValue = new URLSearchParams(window.location.search).get('f');
+
+    // Главная функция запуска поиска
+
+
+    async function initSearchApp() {
+        let urlParams = new URLSearchParams(window.location.search);
+        
+        let keyword = urlParams.get('q');
+        let sParam = urlParams.get('s');
+        
+        let pathSegments = window.location.pathname.split('/').filter(s => s);
+        let lastSegment = pathSegments.pop();
+        if (!keyword && lastSegment && !['search', 'index.html', 'result', 'nodejs'].includes(lastSegment.toLowerCase())) {
+            keyword = lastSegment;
+        }
+
+        let keywordElement = document.querySelector('.keyword');
+        let divKeyword = keywordElement ? keywordElement.textContent.trim().replace(/ṃ/g, "ṁ") : "";
+        if (!keyword && divKeyword) {
+            keyword = divKeyword;
+        }
+
+        let scope = urlParams.get('scope') || 'default';
+        let lb = urlParams.get('lb') || 0;
+        let la = urlParams.get('la') || 0;
+
+        let searchValue = sParam && sParam.trim() !== "" ? sParam.replace(/\\b/g, '') : divKeyword.replace(/\\b/g, '');
+        let highlightWord = searchValue || keyword;
+
+        if (!keyword) return;
+
+        try {
+            const isLocal = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+
+            const fetchUrl = isLocal
+              ? `http://localhost:3000/search?q=${encodeURIComponent(keyword)}&scope=${scope}&lb=${lb}&la=${la}`
+              : `/search?q=${encodeURIComponent(keyword)}&scope=${scope}&lb=${lb}&la=${la}`;
+  
+            const response = await fetch(fetchUrl);
+           
+            if (!response.ok) throw new Error("Ошибка сети при получении данных");
+            
+            const json = await response.json();
+            const dataArray = Object.values(json.data);
+            
+            let scopeText = json.metadata.scope === 'default' || !json.metadata.scope ? '4 Nikaya Pali' : json.metadata.scope;
+            
+            let qStr = json.metadata.query || "";
+            let capitalizedQuery = qStr ? qStr.charAt(0).toUpperCase() + qStr.slice(1) : "";
+            
+            let newTitle = `${capitalizedQuery} ${json.metadata.totalFiles} texts and ${json.metadata.totalMatches} matches in ${scopeText}`;
+            
+            document.title = newTitle + " - Dhamma.gift";
+            $('.resultheader').text(newTitle);
+            $('.forshellscript a').attr('href', `/w.php?s=${json.metadata.query}&d=${json.metadata.scope}`);
+
+            // Логика управления видимостью вариантов
+            let variantDiv = document.getElementById('variants');
+            if (variantDiv) {
+                if (json.metadata.hasVariantMatch) {
+                    variantDiv.style.display = 'block';
+                    let variantLink = variantDiv.querySelector('a');
+                    if (variantLink) {
+                        let currentHref = variantLink.getAttribute('href');
+                        // Если атрибут содержит плейсхолдер, заменяем его на слово
+                        if (currentHref.includes('$wordLinkToReplace')) {
+                            variantLink.setAttribute('href', currentHref.replace('$wordLinkToReplace', encodeURIComponent(highlightWord)));
+                        }
+                    }
+                } else {
+                    variantDiv.style.display = 'none';
+                }
+            }
+
+            buildDataTable(dataArray, highlightWord);
+        } catch (error) {
+            console.error('Ошибка при поиске:', error);
+        }
+    }
+
+    function buildDataTable(dataArray, highlightWord) {
+        var desktopDom = '<"row"<"col-sm-12 col-md-4"l><"col-sm-12 col-md-5"p><"col-sm-12 col-md-3"f>>rt<"row"<"col-sm-12 col-md-4"i><"col-sm-12 col-md-8"p>><""Q><"footerlike"B>';
+        var mobileDom = '<"row"<"col-sm-6"l><"col-sm-6"f>><"row"<"col-sm-12"p>>rt<"row"<"col-sm-12"i><"col-sm-12"p>><""Q><"footerlike"B>';
+        var tableDom = $(window).width() > 768 ? desktopDom : mobileDom;
+
+        const regexHighlight = new RegExp(highlightWord, 'gi');
+        
+        let baseUrl = window.location.origin + "/nr/";
+
+        var table = $('#pali').DataTable({
+            data: dataArray,
+            columns: [
+                // 0: Sutta
+                {
+                    data: 'sutta_id',
+                    render: function (data) {
+                        let textUrl = typeof findFdgTextUrl === 'function' 
+                            ? findFdgTextUrl(data, encodeURIComponent(highlightWord), baseUrl) 
+                            : `${baseUrl}?s=${encodeURIComponent(highlightWord)}&q=${data}`;
+                            
+                        return `<a class="fdgLink mainLink" target="_blank" href="${textUrl}" data-slug="${data}">${data}</a>`;
+                    }
+                },
+                // 1: Title
+                {
+                    data: 'titles',
+                    render: function (data, type, row) {
+                        if (!data) return '';
+                        
+                        var titlePali = data.root || row.sutta_id;
+                        var titleText = '';
+                        var langClass = 'eng-lang';
+                        
+                        var transKeys = Object.keys(data).filter(k => k !== 'root');
+                        
+                        var secondLangKey = transKeys.find(k => k.startsWith(window.siteLanguage + '_'));
+                        var enKey = transKeys.find(k => k.startsWith('en_'));
+                        
+                        if (window.siteLanguage !== 'en' && secondLangKey) {
+                            titleText = data[secondLangKey];
+                            langClass = window.siteLanguage + '-lang'; 
+                        } else if (enKey) {
+                            titleText = data[enKey];
+                            langClass = 'eng-lang';
+                        } else if (transKeys.length > 0) {
+                            var fallbackKey = transKeys[0];
+                            titleText = data[fallbackKey];
+                            langClass = fallbackKey.split('_')[0] + '-lang';
+                        }
+                        
+                        return `<strong class="pli-lang inputscript-ISOPali">${titlePali}</strong> <span class="${langClass} text-muted">${titleText}</span>`;
+                    }
+                },
+                // 2: Words
+                {
+                    data: 'unique_words',
+                    render: function (data) {
+                        if (!data || !data.length) return '';
+                        let wordsStr = data.join(' ');
+                        if (highlightWord) {
+                            wordsStr = wordsStr.replace(regexHighlight, match => `<b class="match finder">${match}</b>`);
+                        }
+                        return `<span class="pli-lang inputscript-ISOPali">${wordsStr}</span>`;
+                    }
+                },
+                // 3: Ct
+                { data: 'count' },
+                // 4: Mr
+                { data: 'mr' },
+                // 5: Links
+                {
+                    data: 'sutta_id',
+                    orderable: false,
+                    render: function (data) {
+                        let secondLangLinkHtml = '';
+                        if (window.siteLanguage !== 'en') {
+                            let langLabel = window.siteLanguage.charAt(0).toUpperCase() + window.siteLanguage.slice(1);
+                            secondLangLinkHtml = `<a class='${window.siteLanguage}Link' href='javascript:void(0)' data-slug='${data}' onclick="if(typeof openRu === 'function') openRu('${data}'); return false;">${langLabel}</a>`;
+                        }
+                        
+                        return `<a href='javascript:void(0)' onclick="if(typeof openDpr === 'function') openDpr('${data}'); return false;">Pi</a> 
+                                <a class='bwLink' href='javascript:void(0)' data-slug='${data}' onclick="if(typeof openBw === 'function') openBw('${data}'); return false;">En</a> 
+                                ${secondLangLinkHtml}`;
+                    }
+                },
+                // 6: Type
+                { data: 'category' },
+                // 7: Quote
+                {
+                    data: 'segments',
+                    className: 'none',
+                    render: function (data, type, row) {
+                        if (!data || data.length === 0) return '';
+                        let quoteHtml = '';
+
+                        let baseUrl = window.location.origin + "/nr/";
+
+                        const renderSegment = (seg, isContext = false) => {
+                            let html = '';
+                            let paliText = seg.root_text || '';
+                            let variantText = seg.variant || '';
+
+                            if (highlightWord && paliText && !isContext) {
+                                paliText = paliText.replace(regexHighlight, match => `<b class="match finder">${match}</b>`);
+                            }
+                            if (highlightWord && variantText && !isContext) {
+                                variantText = variantText.replace(regexHighlight, match => `<b class="match finder">${match}</b>`);
+                            }
+
+                            let segmentHash = seg.segment.includes(':') ? seg.segment.split(':')[1] : seg.segment;
+                            let urlwithanchor = row.sutta_id + "#" + segmentHash;
+                            
+                            let textUrl = typeof findFdgTextUrl === 'function' 
+                                ? findFdgTextUrl(urlwithanchor, encodeURIComponent(highlightWord), baseUrl) 
+                                : `${baseUrl}?s=${encodeURIComponent(highlightWord)}&q=${urlwithanchor}`;
+                            
+                            let unhiddenlink = `<a target="_blank" class="fdgLink quoteLink-start text-reset text-decoration-none" href="${textUrl}" data-slug="${urlwithanchor}"></a>`;
+                            let hiddenlink = `<a target="_blank" class="fdgLink quoteLink text-white text-decoration-none" href="${textUrl}" data-slug="${urlwithanchor}"></a>`;
+
+                            if (paliText) {
+                                // Убран класс text-muted для пали контекста, оставлена только прозрачность
+                                let contextClass = isContext ? "opacity-90" : "";
+                                html += `<span class="pli-lang quote ${contextClass}" lang="pi">${unhiddenlink} ${paliText} ${hiddenlink}</span><br class="styled pli-lang quote" lang="pi">`;
+                            }
+                            
+                            if (variantText) {
+                                // Убран класс text-muted для пали контекста, оставлена только прозрачность
+                                let contextClass = isContext ? "opacity-90" : "";
+                                html += `<span class="pli-lang variant quote ${contextClass}" lang="pi">${unhiddenlink} ${variantText} ${hiddenlink}</span><br class="styled pli-lang variant quote" lang="pi">`;
+                            }
+
+                            if (seg.translations) {
+                                let transKeys = Object.keys(seg.translations);
+                                let preferredLanguages = [window.siteLanguage, 'en']; 
+                                let sortedTransKeys = [];
+                                
+                                preferredLanguages.forEach(lang => {
+                                    let keysForLang = transKeys.filter(k => k.startsWith(lang + '_'));
+                                    sortedTransKeys.push(...keysForLang);
+                                });
+                                
+                                let remainingKeys = transKeys.filter(k => !sortedTransKeys.includes(k));
+                                sortedTransKeys.push(...remainingKeys);
+
+                                sortedTransKeys.forEach(key => {
+                                    let transText = seg.translations[key];
+                                    if (!transText) return;
+                                    if (highlightWord && !isContext) {
+                                        transText = transText.replace(regexHighlight, match => `<b class="match finder">${match}</b>`);
+                                    }
+                                    let langCode = key.split('_')[0];
+                                    // Переводы остаются приглушенными (text-muted)
+                                    let htmlclass = (langCode === 'en') ? "eng-lang text-muted font-weight-light" : langCode + "-lang text-muted font-weight-light";
+                                    if (isContext) htmlclass += " opacity-75"; 
+                                    
+                                    html += `<span class="${htmlclass} quote" lang="${langCode}">${unhiddenlink} ${transText} ${hiddenlink}</span><br class="styled ${htmlclass} quote" lang="${langCode}">`;
+                                });
+                            }
+                            return html + (isContext ? '' : '<br>'); 
+                        };
+
+                        data.forEach(seg => {
+                            if (seg.lb_context && seg.lb_context.length > 0) {
+                                seg.lb_context.forEach(ctxSeg => {
+                                    quoteHtml += renderSegment(ctxSeg, true);
+                                });
+                            }
+                            
+                            quoteHtml += renderSegment(seg, false);
+                            
+                            if (seg.la_context && seg.la_context.length > 0) {
+                                seg.la_context.forEach(ctxSeg => {
+                                    quoteHtml += renderSegment(ctxSeg, true);
+                                });
+                            }
+                        });
+
+                        return quoteHtml;
+                    }
+                }
+            ],
+            'stateSave': true,
+            stateSaveParams: function(settings, data) {
+                data.search.search = ''; 
+            },
+            dom: tableDom,
+            searchBuilder: {
+                preDefined: {
+                    criteria:[
+                        { condition: '!contains', data: 'Quote', value: ['ExcludeMe']}
+                    ],
+                    logic: 'AND'
+                }
+            },   
+            buttons: [
+                {
+                    text: 'Main',
+                    className: 'btn btn-link',
+                    action: function () {
+                        window.location.href = "/";
+                    }
+                },
+                {
+                    text: 'History',
+                    className: 'btn btn-link',
+                    action: function () {
+                        window.location.href = '/history.php';
+                    }
+                },
+                {
+                    extend: 'collection',
+                    text: 'Export',
+                    className: 'btn btn-link',
+                    buttons: [
+                        {
+                            extend: 'copyHtml5',
+                            exportOptions: {
+                                columns: function (idx, data, node) {
+                                    return $('#pali').DataTable().column(idx).visible();
+                                },
+                                modifier: { search: 'applied' }
+                            }
+                        },
+                        {
+                            extend: 'excelHtml5',
+                            exportOptions: {
+                                columns: function (idx, data, node) {
+                                    return $('#pali').DataTable().column(idx).visible();
+                                },
+                                modifier: { search: 'applied' }
+                            }
+                        },
+                        {
+                            extend: 'csvHtml5',
+                            exportOptions: {
+                                columns: function (idx, data, node) {
+                                    return $('#pali').DataTable().column(idx).visible();
+                                },
+                                modifier: { search: 'applied' }
+                            }
+                        },
+                        {
+                            text: 'TXT',
+                            action: function (e, dt, node, config) {
+                                var data = dt.buttons.exportData({
+                                    columns: function (idx) {
+                                        return dt.column(idx).visible();
+                                    },
+                                    modifier: { search: 'applied' }
+                                });
+                                
+                                var textContent = [];
+                                textContent.push(data.header.join('\t'));
+                                
+                                data.body.forEach(function(row) {
+                                    var cleanRow = row.map(function(cell) {
+                                        return typeof cell === 'string' ? cell.replace(/\r?\n|\r/g, ' ') : cell;
+                                    });
+                                    textContent.push(cleanRow.join('\t'));
+                                });
+                                
+                                var filename = document.title !== '' ? document.title : 'Export';
+                                filename = filename.replace(/[^a-zA-Z0-9_\u00A1-\uFFFF\.,\-_ !\(\)]/g, "");
+                                
+                                var blob = new Blob([textContent.join('\n')], { type: 'text/plain;charset=utf-8' });
+                                var url = URL.createObjectURL(blob);
+                                
+                                var a = document.createElement('a');
+                                a.href = url;
+                                a.download = filename + '.txt';
+                                document.body.appendChild(a);
+                                a.click();
+                                document.body.removeChild(a);
+                                URL.revokeObjectURL(url);
+                            }
+                        },
+                        {
+                            text: 'PDF',
+                            title: '*', 
+                            filename: '*', 
+                            exportOptions: {
+                                columns: function (idx, data, node) {
+                                    return $('#pali').DataTable().column(idx).visible();
+                                },
+                                modifier: { search: 'applied' },
+                                format: {
+                                    body: function (data, row, column, node) {
+                                        if (data === null || data === undefined) return '';
+                                        
+                                        var text = String(data);
+                                        var temp = document.createElement('div');
+                                        temp.innerHTML = text;
+                                        
+                                        var links = temp.querySelectorAll('a');
+                                        links.forEach(function(a) {
+                                            var url = a.href;
+                                            var linkText = a.textContent || a.innerText;
+                                            var placeholder = document.createTextNode('LINK_START|' + url + '|' + linkText + '|LINK_END');
+                                            a.parentNode.replaceChild(placeholder, a);
+                                        });
+
+                                        var strongs = temp.querySelectorAll('strong');
+                                        strongs.forEach(function(s) {
+                                            var placeholder = document.createTextNode('BOLD_START|' + (s.textContent || s.innerText) + '|BOLD_END');
+                                            s.parentNode.replaceChild(placeholder, s);
+                                        });
+                                        
+                                        var brs = temp.querySelectorAll('br');
+                                        brs.forEach(function(br) {
+                                            br.parentNode.replaceChild(document.createTextNode('\n'), br);
+                                        });
+                                        var ps = temp.querySelectorAll('p');
+                                        ps.forEach(function(p) {
+                                            p.insertAdjacentText('beforeend', '\n');
+                                        });
+                                        
+                                        return (temp.textContent || temp.innerText || '').trim();
+                                    }
+                                }
+                            },
+                            customize: function (doc) {
+                                doc.defaultStyle.font = 'NotoSans';
+                                doc.pageOrientation = 'landscape';
+                                
+                                var body = doc.content[1].table.body;
+                                body.forEach(function(row) {
+                                    row.forEach(function(cell) {
+                                        if (typeof cell.text === 'string') {
+                                            var hasBold = cell.text.includes('BOLD_START|');
+                                            var lines = cell.text.split('\n');
+                                            var formattedCell = [];
+                                            
+                                            lines.forEach(function(line, lineIdx) {
+                                                if (line === '') {
+                                                    if (lineIdx < lines.length - 1) formattedCell.push({ text: '\n' });
+                                                    return;
+                                                }
+                                                
+                                                var parts = line.split(/(BOLD_START\|.*?\|BOLD_END|LINK_START\|.*?\|.*?\|LINK_END)/g);
+                                                
+                                                parts.forEach(function(part) {
+                                                    if (!part) return;
+                                                    
+                                                    if (part.startsWith('LINK_START|')) {
+                                                        var match = part.split('|');
+                                                        formattedCell.push({ 
+                                                            text: match[2], 
+                                                            link: match[1], 
+                                                            color: '#0d6efd', 
+                                                            decoration: 'underline' 
+                                                        });
+                                                    } else if (part.startsWith('BOLD_START|')) {
+                                                        var match = part.split('|');
+                                                        formattedCell.push({ 
+                                                            text: match[1], 
+                                                            bold: true,
+                                                            color: '#000000' 
+                                                        });
+                                                    } else {
+                                                        var isDim = hasBold ? true : (lineIdx > 0);
+                                                        formattedCell.push({ 
+                                                            text: part,
+                                                            color: isDim ? '#666666' : '#000000'
+                                                        });
+                                                    }
+                                                });
+                                                
+                                                if (lineIdx < lines.length - 1) {
+                                                    formattedCell.push({ text: '\n' });
+                                                }
+                                            });
+                                            
+                                            cell.text = formattedCell;
+                                        }
+                                    });
+                                });
+                            },
+                            action: function (e, dt, node, config) {
+                                var buttonContext = this;
+                                
+                                var triggerPdfExport = function() {
+                                    pdfMake.fonts = {
+                                        NotoSans: {
+                                            normal: 'NotoSans-Regular.ttf',
+                                            bold: 'NotoSans-Bold.ttf',
+                                            italics: 'NotoSans-Italic.ttf',
+                                            bolditalics: 'NotoSans-BoldItalic.ttf'
+                                        }
+                                    };
+
+                                    var pdfConfig = $.extend(true, {}, $.fn.dataTable.ext.buttons.pdfHtml5, config);
+                                    $.fn.dataTable.ext.buttons.pdfHtml5.action.call(buttonContext, e, dt, node, pdfConfig);
+                                };
+                                
+                                if (typeof pdfMake === 'undefined') {
+                                    var originalText = node.text();
+                                    node.text('Loading...'); 
+                                    
+                                    var loadScript = function(url, callback) {
+                                        var script = document.createElement('script');
+                                        script.type = 'text/javascript';
+                                        script.src = url;
+                                        script.onload = callback;
+                                        document.head.appendChild(script);
+                                    };
+
+                                    loadScript('/assets/js/pdfmake.min.js', function() {
+                                        loadScript('/assets/js/vfs_fonts.js', function() {
+                                            node.text(originalText); 
+                                            triggerPdfExport();
+                                        });
+                                    });
+                                } else {
+                                    triggerPdfExport();
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    text: 'Read',
+                    className: 'btn btn-link',
+                    action: function () {
+                        window.location.href = "/read.php";
+                    }
+                },
+                {
+                    text: 'Make List',
+                    className: 'btn btn-link',
+                    action: function () {
+                        window.location.href = '/assets/makelist.html';
+                    }
+                },
+                {
+                    text: 'List Diff',
+                    className: 'btn btn-link',
+                    action: function () {
+                        window.location.href = '/assets/listdiff.html';
+                    }
+                },
+                {
+                    text: 'Sutta Diff',
+                    className: 'btn btn-link',
+                    action: function () {
+                        window.location.href = '/assets/diff';
+                    }
+                },
+                {
+                    extend: 'colvis',
+                    className: 'btn btn-link',
+                    text: 'Visibility'
+                }
+            ],
+            "search": {
+                "caseInsensitive": true,
+                "diacritics": false,
+                "smart": true
+            },
+            'paging': true,
+            'colReorder': true,
+            'orderMulti': true,
+            'pageLength': 10,
+            'lengthMenu': [10, 30, 50, 100, 1000],
+            'columnDefs': [
+                { type: 'natural', targets: 0, className: 'text-nowrap' }, 
+                { targets: 1, width: '40%' }, 
+                { targets: 2, width: '30%' }, 
+                { targets: [3, 4, 5, 6], className: 'text-nowrap' }, 
+                { type: 'category', targets: 6, visible: false }, 
+                { type: "html", targets: [0, 1, 2, 7] },
+                {
+                    targets: [3],
+                    orderData: [3, 4],
+                    orderSequence: ['desc', 'asc'] 
+                },
+                {
+                    targets: [4],
+                    orderData: [4, 3],
+                    orderSequence: ['desc', 'asc'] 
+                }
+            ],
+            "order": [[6, 'asc'], [0, 'asc']],
+            'initComplete': function(){
+                var api = this.api();
+                
+                $('#btn-show-all-children').on('click', function(){
+                    table.rows(':not(.parent)').nodes().to$().find('td:first-child').trigger('click');
+                });
+                
+                $('#btn-hide-all-children').on('click', function(){
+                    table.rows('.parent').nodes().to$().find('td:first-child').trigger('click');
+                });
+
+                api.cells('tr', [0, 2, 3, 4, 5]).every(function(){
+                    var data = $('<div>').html(this.data()).text();
+                    if(dataSrc.indexOf(data) === -1){ dataSrc.push(data); }
+                });
+            }
+        }); 
+
+        if (filterValue) {
+            table.search(filterValue).draw();
+            var currentUrl = new URL(window.location.href);
+            currentUrl.searchParams.delete('f');
+            history.replaceState({}, '', currentUrl);
+        }
+    }
+
+
+    initSearchApp();
+});
+</script>
+        <script src="/assets/js/openFdg.js"></script>
+	  <script src="/assets/js/smoothScroll.js" defer></script>
+    <script defer type="module" src="/assets/js/langswitch.js"></script>     
+    <script src="/assets/js/linksdpr.js"></script>
+        <script src="/assets/js/openDpr.js"></script>
+                <script src="/assets/js/linksru.js"></script>
+        <script src="/assets/js/openRu.js"></script>
+        <script src="/assets/js/linksbw.js"></script>
+                <script src="/assets/js/openBw.js"></script>
+                <script src="/assets/js/settings.js"></script>
+<script src="/assets/js/themeswitch.js" defer></script>
+
+<script>
+           //to enable bootstrap tooltip    
+$(function () {
+        $('[data-bs-toggle="tooltip"]').tooltip();
+    });
+</script>   
+<script src="/assets/js/autopali.js" defer></script>
+
+</body>
+</html>

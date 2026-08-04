@@ -1,0 +1,130 @@
+// ==========================================
+// ФУНКЦИЯ ЗАПРОСА К API И ЗАПУСКА ТАБЛИЦЫ
+// ==========================================
+async function executeGlobalSearch(keyword, scope = 'default') {
+    try {
+        // Делаем запрос к Node.js серверу (или локальному движку)
+        const response = await fetch(`http://localhost:3000/search?q=${keyword}&scope=${scope}`);
+        
+        if (!response.ok) throw new Error("Ошибка сети");
+        
+        const json = await response.json();
+        
+        // DataTables ожидает массив объектов, а у нас объект объектов (ключи - сутты). 
+        // Преобразуем его:
+        const dataArray = Object.values(json.data);
+        
+        // Запускаем отрисовку
+        renderDataTable(dataArray, keyword);
+        
+    } catch (error) {
+        console.error('Ошибка при поиске:', error);
+        alert('Не удалось выполнить поиск. Проверьте соединение с сервером.');
+    }
+}
+
+// ==========================================
+// ИНИЦИАЛИЗАЦИЯ И РЕНДЕРИНГ DATATABLES ИЗ JSON
+// ==========================================
+function renderDataTable(dataArray, keyword) {
+    // Если таблица уже существует, уничтожаем её перед новой загрузкой
+    if ($.fn.DataTable.isDataTable('#pali')) {
+        $('#pali').DataTable().clear().destroy();
+    }
+
+    // Регулярное выражение для подсветки искомого слова в цитатах
+    const highlightRegex = new RegExp(keyword, 'gi');
+
+    $('#pali').DataTable({
+        data: dataArray,
+        responsive: true,
+        pageLength: 25,
+        order: [[4, 'desc']], // Сортируем по колонке Count (индекс 4) по убыванию
+        columns: [
+            // 0. Sutta
+            {
+                data: 'sutta_id',
+                render: function (data, type, row) {
+                    return `<a class="fdgLink mainLink" target="_blank" href="/?q=${data}">${data}</a>`;
+                }
+            },
+            // 1. Title (Берем приоритетный перевод или корень)
+            {
+                data: 'titles',
+                render: function (data, type, row) {
+                    if (!data) return '';
+                    let title = data.ru_o || data.ru_sv || data.en_sujato || data.root || row.sutta_id;
+                    return `<strong class="pli-lang inputscript-ISOPali">${title}</strong>`;
+                }
+            },
+            // 2. Words (Уникальные слова)
+            {
+                data: 'unique_words',
+                render: function (data, type, row) {
+                    if (!data || !data.length) return '';
+                    return `<span class="pli-lang inputscript-ISOPali">${data.join(', ')}</span>`;
+                }
+            },
+            // 3. Count (Ct)
+            {
+                data: 'count'
+            },
+            // 4. Metaphor Count (Mr)
+            {
+                data: 'mr'
+            },
+            // 5. Links
+            {
+                data: 'sutta_id',
+                orderable: false, // Отключаем сортировку по блоку ссылок
+                render: function (data, type, row) {
+                    // Генерация базовых ссылок. Можно расширить по необходимости.
+                    return `<a class="dprLink" target="_blank" href="https://suttacentral.net/${data}/pli/ms">Pi</a>&nbsp;
+                            <a class="bwLink" target="_blank" href="https://suttacentral.net/${data}/en/sujato">En</a>&nbsp;
+                            <a class="ruLink" target="_blank" href="https://suttacentral.net/${data}/ru/o">Ru</a>`;
+                }
+            },
+            // 6. Type (Category)
+            {
+                data: 'category'
+            },
+            // 7. Quote (Скрытая колонка с текстом совпадений)
+            {
+                data: 'segments',
+                className: 'none', // Класс 'none' заставляет DataTables скрыть её под плюсик
+                render: function (data, type, row) {
+                    if (!data || data.length === 0) return '';
+                    let quoteHtml = '';
+
+                    data.forEach(seg => {
+                        let paliText = seg.root_text || '';
+                        let transText = '';
+
+                        // Ищем первый доступный русский или английский перевод для отображения в цитате
+                        if (seg.translations) {
+                            const transKeys = Object.keys(seg.translations);
+                            const ruKey = transKeys.find(k => k.startsWith('ru_'));
+                            const enKey = transKeys.find(k => k.startsWith('en_'));
+                            transText = seg.translations[ruKey] || seg.translations[enKey] || '';
+                        }
+
+                        // Подсветка совпадений
+                        if (paliText) paliText = paliText.replace(highlightRegex, match => `<b class="match finder">${match}</b>`);
+                        if (transText) transText = transText.replace(highlightRegex, match => `<b class="match finder">${match}</b>`);
+
+                        quoteHtml += `
+                            <p>
+                                <a target="_blank" class="fdgLink quoteLink text-decoration-none" href="/?q=${seg.segment}">
+                                    <span class="pli-lang">${paliText}</span>
+                                </a><br>
+                                <span class="eng-lang text-muted font-weight-light">${transText}</span>
+                            </p>
+                        `;
+                    });
+
+                    return quoteHtml;
+                }
+            }
+        ]
+    });
+}

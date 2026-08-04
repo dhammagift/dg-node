@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dhamma.gift Offline Reader</title>
+    <style>
+        body { font-family: sans-serif; line-height: 1.6; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .segment { margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+        .root-text { font-weight: bold; color: #555; }
+        .translation-text { color: #111; }
+        .variant-text { font-size: 0.9em; color: #888; }
+        .nav-buttons { display: flex; justify-content: space-between; margin: 20px 0; }
+        button { padding: 10px 20px; cursor: pointer; }
+        #translators-info { background: #f9f9f9; padding: 10px; margin-bottom: 20px; font-size: 0.9em; }
+    </style>
+    
+    <script src="/nodejs/dg_db.js"></script>
+    <script src="/assets/js/translators.js"></script>
+</head>
+<body>
+
+    <header>
+        <form id="search-form">
+            <input type="text" id="citation" placeholder="Например: mn1" required>
+            <button type="submit">Открыть</button>
+        </form>
+    </header>
+
+    <div class="nav-buttons">
+        <button id="btn-prev" style="display:none;">&larr; Назад</button>
+        <button id="btn-next" style="display:none;">Вперед &rarr;</button>
+    </div>
+
+    <h1 id="sutta-title"></h1>
+    <div id="translators-info"></div>
+    <div id="sutta-content"></div>
+
+    <div class="nav-buttons">
+        <button id="btn-prev-bottom" style="display:none;">&larr; Назад</button>
+        <button id="btn-next-bottom" style="display:none;">Вперед &rarr;</button>
+    </div>
+
+    <script>
+        /**
+         * Функция подготовки данных из локальной базы
+         */
+        function getReaderData(db, slug) {
+            if (!db || !db[slug]) return null;
+
+            const suttaData = db[slug];
+            const dbKeys = Object.keys(db); 
+            const currentIndex = dbKeys.indexOf(slug);
+
+            let prev = { slug: null, names: null };
+            let next = { slug: null, names: null };
+
+            if (currentIndex > 0) {
+                const prevSlug = dbKeys[currentIndex - 1];
+                prev = { slug: prevSlug, names: db[prevSlug].titles };
+            }
+
+            if (currentIndex < dbKeys.length - 1) {
+                const nextSlug = dbKeys[currentIndex + 1];
+                next = { slug: nextSlug, names: db[nextSlug].titles };
+            }
+
+            const availableTranslators = {};
+            if (suttaData.segments.length > 0) {
+                const sampleTranslations = suttaData.segments[0].translations || {};
+                
+                for (const transKey of Object.keys(sampleTranslations)) {
+                    const parts = transKey.split('_');
+                    const lang = parts[0];
+                    const author = parts.slice(1).join('_');
+
+                    if (!availableTranslators[lang]) {
+                        availableTranslators[lang] = {};
+                    }
+                    
+                    availableTranslators[lang][author] = window.TRANSLATORS_CONFIG[transKey] || author;
+                }
+            }
+
+            return {
+                slug: slug,
+                texttype: suttaData.category,
+                titles: suttaData.titles,
+                navigation: { prev, next },
+                translator_info: availableTranslators,
+                segments: suttaData.segments 
+            };
+        }
+
+        /**
+         * Главная функция рендера сутты
+         */
+        function buildSutta(slug) {
+            slug = slug.toLowerCase().trim();
+            const suttaData = getReaderData(window.MOBILE_DB, slug);
+
+            const contentDiv = document.getElementById('sutta-content');
+            const titleH1 = document.getElementById('sutta-title');
+            const transInfoDiv = document.getElementById('translators-info');
+            
+            if (!suttaData) {
+                titleH1.textContent = "Текст не найден";
+                contentDiv.innerHTML = "";
+                transInfoDiv.innerHTML = "";
+                hideNavButtons();
+                return;
+            }
+
+            // Установка заголовков
+            const displayTitle = suttaData.titles.ru || suttaData.titles.en || suttaData.titles.root || slug;
+            titleH1.textContent = `${slug.toUpperCase()}: ${displayTitle}`;
+            document.title = slug.toUpperCase();
+
+            // Вывод информации о переводчиках
+            let translatorsHtml = '<strong>Переводы:</strong><ul>';
+            for (const [lang, authors] of Object.entries(suttaData.translator_info)) {
+                for (const [author, prettyName] of Object.entries(authors)) {
+                    translatorsHtml += `<li>[${lang.toUpperCase()}] ${prettyName}</li>`;
+                }
+            }
+            translatorsHtml += '</ul>';
+            transInfoDiv.innerHTML = Object.keys(suttaData.translator_info).length > 0 ? translatorsHtml : '';
+
+            // Рендер сегментов
+            let html = '';
+            for (const seg of suttaData.segments) {
+                html += `<div class="segment" id="${seg.segment}">`;
+                
+                // Рендер базового текста (Пали/Санскрит)
+                if (seg.root_text) {
+                    html += `<div class="root-text">${seg.root_text}</div>`;
+                }
+
+                // Рендер переводов
+                if (seg.translations) {
+                    for (const [transKey, transText] of Object.entries(seg.translations)) {
+                        html += `<div class="translation-text" data-trans="${transKey}">${transText}</div>`;
+                    }
+                }
+
+                // Рендер вариантов
+                if (seg.variant) {
+                    html += `<div class="variant-text">Вар: ${seg.variant}</div>`;
+                }
+
+                html += `</div>`;
+            }
+            
+            contentDiv.innerHTML = html;
+
+            // Настройка навигации
+            setupNavButtons(suttaData.navigation);
+            
+            // Обновление URL без перезагрузки
+            history.pushState({ page: slug }, "", `?q=${slug}`);
+        }
+
+        /**
+         * Управление кнопками навигации
+         */
+        function setupNavButtons(navData) {
+            const btnPrev = document.getElementById('btn-prev');
+            const btnPrevBot = document.getElementById('btn-prev-bottom');
+            const btnNext = document.getElementById('btn-next');
+            const btnNextBot = document.getElementById('btn-next-bottom');
+
+            if (navData.prev.slug) {
+                const prevAction = () => buildSutta(navData.prev.slug);
+                btnPrev.style.display = 'block';
+                btnPrev.textContent = `← ${navData.prev.slug.toUpperCase()}`;
+                btnPrev.onclick = prevAction;
+                btnPrevBot.style.display = 'block';
+                btnPrevBot.textContent = `← ${navData.prev.slug.toUpperCase()}`;
+                btnPrevBot.onclick = prevAction;
+            } else {
+                btnPrev.style.display = 'none';
+                btnPrevBot.style.display = 'none';
+            }
+
+            if (navData.next.slug) {
+                const nextAction = () => buildSutta(navData.next.slug);
+                btnNext.style.display = 'block';
+                btnNext.textContent = `${navData.next.slug.toUpperCase()} →`;
+                btnNext.onclick = nextAction;
+                btnNextBot.style.display = 'block';
+                btnNextBot.textContent = `${navData.next.slug.toUpperCase()} →`;
+                btnNextBot.onclick = nextAction;
+            } else {
+                btnNext.style.display = 'none';
+                btnNextBot.style.display = 'none';
+            }
+        }
+
+        function hideNavButtons() {
+            document.getElementById('btn-prev').style.display = 'none';
+            document.getElementById('btn-next').style.display = 'none';
+            document.getElementById('btn-prev-bottom').style.display = 'none';
+            document.getElementById('btn-next-bottom').style.display = 'none';
+        }
+
+        // Обработка формы
+        document.getElementById('search-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const citation = document.getElementById('citation').value;
+            if (citation) buildSutta(citation);
+        });
+
+        // Загрузка при открытии страницы
+        window.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const q = urlParams.get('q');
+            if (q) {
+                document.getElementById('citation').value = q;
+                buildSutta(q);
+            }
+        });
+
+        // Обработка кнопок браузера Назад/Вперед
+        window.addEventListener('popstate', (e) => {
+            if (e.state && e.state.page) {
+                buildSutta(e.state.page);
+            }
+        });
+    </script>
+</body>
+</html>
+
