@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dhamma.gift — Search &amp; Reader</title>
+
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- DataTables CSS -->
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+
+    <!-- Custom SPA CSS (to be created) -->
+    <link rel="stylesheet" href="/spa/style.css">
+
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        #spa-container {
+            flex: 1;
+        }
+        .navbar {
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .search-bar {
+            margin: 20px 0;
+        }
+        .search-input {
+            font-size: 18px;
+            padding: 12px;
+        }
+        #search-results-container {
+            margin-top: 20px;
+        }
+        #reader-section {
+            padding: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <div class="container-fluid">
+            <a class="navbar-brand fw-bold" href="/">🙏 Dhamma.gift</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <button class="btn btn-sm btn-outline-secondary" id="btn-settings" title="Settings">
+                            🔧
+                        </button>
+                    </li>
+                    <li class="nav-item ms-2">
+                        <button class="btn btn-sm btn-outline-secondary" id="btn-compass" title="Compass">
+                            ☸
+                        </button>
+                    </li>
+                    <li class="nav-item ms-2">
+                        <button class="btn btn-sm btn-outline-secondary" id="btn-help" title="Help">
+                            ❓
+                        </button>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main SPA Container -->
+    <div id="spa-container" class="container-lg">
+        <!-- Search Bar (visible on all views) -->
+        <div class="search-bar">
+            <div class="row">
+                <div class="col-12">
+                    <input type="text" id="search-input" class="form-control search-input"
+                           placeholder="Search for keyword or enter citation (e.g., dn22:2.2)..."
+                           autocomplete="off">
+                </div>
+            </div>
+            <!-- Search options (collapsible) -->
+            <div class="row mt-2">
+                <div class="col-12">
+                    <button class="btn btn-sm btn-outline-secondary" type="button"
+                            data-bs-toggle="collapse" data-bs-target="#searchOptions">
+                        Search Options ⚙️
+                    </button>
+                </div>
+            </div>
+            <div class="collapse" id="searchOptions">
+                <div class="row mt-3 p-3 bg-light rounded">
+                    <div class="col-md-3">
+                        <label class="form-label">Scope</label>
+                        <select class="form-select form-select-sm" id="search-scope">
+                            <option value="default">Default</option>
+                            <option value="all">All</option>
+                            <option value="dhamma">Dhamma</option>
+                            <option value="vinaya">Vinaya</option>
+                            <option value="abhi">Abhidhamma</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Languages</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="lang-ru" value="ru" checked>
+                            <label class="form-check-label" for="lang-ru">Russian</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="lang-en" value="en" checked>
+                            <label class="form-check-label" for="lang-en">English</label>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Context (lines)</label>
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text">Before:</span>
+                            <input type="number" class="form-control" id="search-lb" value="0" min="0" max="10">
+                        </div>
+                        <div class="input-group input-group-sm mt-2">
+                            <span class="input-group-text">After:</span>
+                            <input type="number" class="form-control" id="search-la" value="0" min="0" max="10">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">&nbsp;</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="search-exact">
+                            <label class="form-check-label" for="search-exact">Exact word match</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Landing Page Content -->
+        <div id="landing-content">
+            <div class="text-center py-5">
+                <h1>🙏 Welcome to Dhamma.gift</h1>
+                <p class="lead text-muted">Search and read texts of the Pali Canon</p>
+            </div>
+
+            <!-- Help Section -->
+            <div id="help-section" class="row mt-5">
+                <div class="col-md-8 offset-md-2">
+                    <h3>How to Search</h3>
+                    <ul>
+                        <li>Type a keyword to search: <code>kacchapa</code></li>
+                        <li>Enter a sutta citation to open: <code>dn22:2.2</code></li>
+                        <li>Combine both: <code>dn22:2.2/kacchapa</code> (search in sutta)</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- About Section -->
+            <div id="about-section" class="row mt-5">
+                <div class="col-md-8 offset-md-2">
+                    <h3>About Dhamma.gift</h3>
+                    <p>
+                        Dhamma.gift is a comprehensive search and reading platform for the Pali Canon,
+                        featuring texts from SuttaCentral's Bilara platform and translations from the
+                        Dhamma.gift project.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Search Results Section (hidden by default) -->
+        <div id="search-results-section" style="display: none;">
+            <div class="alert alert-info" role="alert">
+                <span id="search-results-status">Searching...</span>
+            </div>
+            <div id="search-results-container">
+                <table id="results-table" class="table table-striped table-hover"></table>
+            </div>
+        </div>
+
+        <!-- Reader Section (hidden by default) -->
+        <div id="reader-section" style="display: none;">
+            <div id="reader-content">
+                <!-- Reader content will be loaded here by megareader.js -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-light text-center py-4 mt-5 border-top">
+        <div class="container-fluid">
+            <p class="text-muted">© 2024 Dhamma.gift | Based on SuttaCentral</p>
+        </div>
+    </footer>
+
+    <!-- jQuery (required by DataTables) -->
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+
+    <!-- Bootstrap 5 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- DataTables JS -->
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+
+    <!-- SPA Framework (core) -->
+    <script src="/spa/router.js"></script>
+    <script src="/spa/state.js"></script>
+    <script src="/spa/views.js"></script>
+    <script src="/spa/modal.js"></script>
+    <script src="/spa/app.js"></script>
+
+    <!-- Initialize SPA -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize the SPA application
+            spaApp.init();
+
+            // Initialize modal system
+            const modal = new SpaModal(spaState);
+            modal.init();
+            modal.setupKeyboardShortcuts();
+
+            // Connect buttons to modal
+            document.getElementById('btn-settings').addEventListener('click', () => {
+                modal.open('settings');
+            });
+            document.getElementById('btn-compass').addEventListener('click', () => {
+                modal.open('compass');
+            });
+            document.getElementById('btn-help').addEventListener('click', () => {
+                modal.open('help');
+            });
+
+            // Connect search input to navigation
+            const searchInput = document.getElementById('search-input');
+            if (searchInput) {
+                searchInput.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        const query = searchInput.value.trim();
+                        if (query) {
+                            spaApp.goToSearch(query);
+                        }
+                    }
+                });
+            }
+
+            // Set up view listeners
+            spaState.onChange((path, state) => {
+                if (path === 'ui.view') {
+                    console.log('View changed to:', state.ui.currentView);
+                    // Additional view change handlers can go here
+                }
+            });
+        });
+    </script>
+</body>
+</html>
