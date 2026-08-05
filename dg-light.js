@@ -68,6 +68,11 @@ app.use((req, res, next) => {
 });
 
 // Статика — dg-node самодостаточен, ничего не зависит от соседнего легаси-репозитория
+// Файлы, которые мы реально правим (не совпадают с легаси) — отдаём их первыми,
+// прежде чем упасть на весь /assets (симлинк целиком на легаси-репозиторий, см. ниже).
+app.use('/assets', express.static(path.join(__dirname, 'public', 'overrides')));
+// public/assets — единый симлинк на легаси /var/www/html/assets (в проде; на этой
+// Windows-машине — обычная папка с локальными копиями для разработки, см. README).
 app.use('/assets', express.static(path.join(__dirname, 'public', 'assets')));
 app.use('/spa', express.static(path.join(__dirname, 'public', 'spa')));
 app.use('/nodejs/res', express.static(path.join(__dirname, 'res')));

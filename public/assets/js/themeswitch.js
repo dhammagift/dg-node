@@ -1,1 +1,0 @@
-../../../../assets/js/themeswitch.js

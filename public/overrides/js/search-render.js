@@ -600,10 +600,16 @@ window.DgSearchRender = (function () {
         var options = $.extend({}, commonOptions(), {
             data: wordReport || [],
             columns: [
-                // 0: Word
+                // 0: Word — подсвечиваем искомое слово внутри (как в колонке Words по-суттного
+                // отчёта), а не просто выводим голый текст.
                 {
                     data: 'word',
-                    className: 'pli-lang inputscript-ISOPali'
+                    className: 'pli-lang inputscript-ISOPali',
+                    render: function (data) {
+                        if (!highlightWord) return data;
+                        var regexHighlight = new RegExp(highlightWord, 'gi');
+                        return data.replace(regexHighlight, function (match) { return '<b class="match finder">' + match + '</b>'; });
+                    }
                 },
                 // 1: Texts — кликабельно: перезапускает поиск именно по этому слову
                 // (как counttexts в легаси new/words.sh)
@@ -635,7 +641,7 @@ window.DgSearchRender = (function () {
             columnDefs: [
                 { type: 'natural', targets: 0 },
                 { targets: [1, 2], className: 'text-nowrap' },
-                { type: 'html', targets: [1, 3] }
+                { type: 'html', targets: [0, 1, 3] }
             ],
             order: [[1, 'desc'], [0, 'asc']]
         });

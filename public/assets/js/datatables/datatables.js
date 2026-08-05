@@ -1,1 +1,0 @@
-../../../../../assets/js/datatables/datatables.js
