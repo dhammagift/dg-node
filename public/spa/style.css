@@ -1,0 +1,335 @@
+/* SPA Styles */
+
+:root {
+    --primary-color: #3b5998;
+    --secondary-color: #6c757d;
+    --success-color: #28a745;
+    --danger-color: #dc3545;
+    --warning-color: #ffc107;
+    --info-color: #17a2b8;
+    --light-color: #f8f9fa;
+    --dark-color: #343a40;
+}
+
+/* Dark theme support */
+@media (prefers-color-scheme: dark) {
+    body {
+        background-color: #1a1a1a;
+        color: #e0e0e0;
+    }
+    .navbar, .bg-light {
+        background-color: #2a2a2a !important;
+        border-color: #444;
+    }
+    .card {
+        background-color: #2a2a2a;
+        border-color: #444;
+    }
+    .form-control, .form-select {
+        background-color: #2a2a2a;
+        color: #e0e0e0;
+        border-color: #444;
+    }
+    .table {
+        color: #e0e0e0;
+        border-color: #444;
+    }
+}
+
+/* Typography */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    line-height: 1.6;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+code {
+    background-color: rgba(0, 0, 0, 0.05);
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 0.9em;
+}
+
+/* Search Input */
+.search-bar {
+    position: sticky;
+    top: 56px; /* Below navbar */
+    background: white;
+    padding: 15px 0;
+    z-index: 99;
+    border-bottom: 1px solid #ddd;
+}
+
+@media (prefers-color-scheme: dark) {
+    .search-bar {
+        background: #2a2a2a;
+        border-bottom-color: #444;
+    }
+}
+
+.search-input {
+    border-radius: 6px;
+    border: 2px solid #ddd;
+    transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+.search-input:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem rgba(59, 89, 152, 0.25);
+}
+
+@media (prefers-color-scheme: dark) {
+    .search-input {
+        border-color: #444;
+        background-color: #1a1a1a;
+        color: #e0e0e0;
+    }
+    .search-input:focus {
+        border-color: #6c9aff;
+    }
+}
+
+/* Search Options */
+#searchOptions {
+    margin-top: 10px;
+}
+
+#searchOptions .form-label {
+    font-size: 0.9em;
+    font-weight: 600;
+    margin-bottom: 0.3rem;
+}
+
+/* Results Table */
+#results-table {
+    font-size: 0.95em;
+}
+
+#results-table thead {
+    background-color: #f8f9fa;
+    font-weight: 600;
+}
+
+@media (prefers-color-scheme: dark) {
+    #results-table thead {
+        background-color: #3a3a3a;
+    }
+}
+
+#results-table tbody tr {
+    border-bottom: 1px solid #dee2e6;
+    transition: background-color 0.2s;
+}
+
+#results-table tbody tr:hover {
+    background-color: #f5f5f5;
+}
+
+@media (prefers-color-scheme: dark) {
+    #results-table tbody tr:hover {
+        background-color: #3a3a3a;
+    }
+}
+
+#results-table a {
+    color: var(--primary-color);
+    text-decoration: none;
+}
+
+#results-table a:hover {
+    text-decoration: underline;
+}
+
+/* Reader Content */
+#reader-section {
+    line-height: 1.8;
+}
+
+.pali-text {
+    font-family: 'Noto Sans Pali', 'Noto Sans', serif;
+    font-size: 1.1em;
+    color: #2c3e50;
+}
+
+@media (prefers-color-scheme: dark) {
+    .pali-text {
+        color: #b8c5d6;
+    }
+}
+
+.translation {
+    font-size: 0.95em;
+    line-height: 1.8;
+    margin-top: 0.5rem;
+}
+
+.translation-lang {
+    font-weight: 600;
+    color: #666;
+    font-size: 0.85em;
+    margin-bottom: 0.3rem;
+}
+
+@media (prefers-color-scheme: dark) {
+    .translation-lang {
+        color: #999;
+    }
+}
+
+/* Segment highlighting */
+.segment-id {
+    font-weight: 600;
+    color: var(--primary-color);
+    cursor: pointer;
+    margin-right: 0.5rem;
+}
+
+.segment-id:hover {
+    text-decoration: underline;
+}
+
+.highlight {
+    background-color: #fff3cd;
+    padding: 2px 4px;
+    border-radius: 3px;
+}
+
+@media (prefers-color-scheme: dark) {
+    .highlight {
+        background-color: #6c5c1a;
+    }
+}
+
+/* Modal */
+.modal-header {
+    border-bottom: 2px solid #dee2e6;
+}
+
+@media (prefers-color-scheme: dark) {
+    .modal-header {
+        border-bottom-color: #444;
+    }
+}
+
+.nav-tabs {
+    border-bottom: none;
+    gap: 0.5rem;
+}
+
+.nav-tabs .nav-link {
+    border: none;
+    border-radius: 6px 6px 0 0;
+    color: #666;
+    font-weight: 500;
+}
+
+.nav-tabs .nav-link.active {
+    background-color: #e9ecef;
+    color: var(--primary-color);
+    border: none;
+}
+
+@media (prefers-color-scheme: dark) {
+    .nav-tabs .nav-link {
+        color: #999;
+    }
+    .nav-tabs .nav-link.active {
+        background-color: #3a3a3a;
+        color: #6c9aff;
+    }
+}
+
+/* Buttons */
+.btn {
+    border-radius: 6px;
+    font-weight: 500;
+    transition: all 0.3s;
+}
+
+.btn-outline-secondary {
+    border-width: 2px;
+}
+
+.btn-outline-secondary:hover {
+    border-width: 2px;
+}
+
+/* Footer */
+footer {
+    margin-top: auto;
+}
+
+/* Landing page */
+.text-muted {
+    color: #6c757d;
+}
+
+@media (prefers-color-scheme: dark) {
+    .text-muted {
+        color: #999;
+    }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .search-bar {
+        top: 56px;
+    }
+
+    .search-input {
+        font-size: 16px; /* Prevents zoom on mobile iOS */
+    }
+
+    #searchOptions {
+        column-count: 1;
+    }
+
+    #results-table {
+        font-size: 0.85em;
+    }
+}
+
+/* Utilities */
+.loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.error {
+    color: var(--danger-color);
+    padding: 1rem;
+    background-color: #f8d7da;
+    border: 1px solid #f5c6cb;
+    border-radius: 6px;
+    margin: 1rem 0;
+}
+
+@media (prefers-color-scheme: dark) {
+    .error {
+        background-color: #5a2c2c;
+        border-color: #6c3333;
+        color: #ff9999;
+    }
+}
+
+.success {
+    color: var(--success-color);
+    padding: 1rem;
+    background-color: #d4edda;
+    border: 1px solid #c3e6cb;
+    border-radius: 6px;
+    margin: 1rem 0;
+}
+
+@media (prefers-color-scheme: dark) {
+    .success {
+        background-color: #2c5c2c;
+        border-color: #336633;
+        color: #99ff99;
+    }
+}

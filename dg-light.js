@@ -69,6 +69,7 @@ app.use((req, res, next) => {
 
 // Статика — dg-node самодостаточен, ничего не зависит от соседнего легаси-репозитория
 app.use('/assets', express.static(path.join(__dirname, 'public', 'assets')));
+app.use('/spa', express.static(path.join(__dirname, 'public', 'spa')));
 app.use('/nodejs/res', express.static(path.join(__dirname, 'res')));
 app.use('/nodejs', express.static(__dirname));
 app.use('/reader', express.static(path.join(__dirname, 'reader')));
@@ -78,7 +79,21 @@ for (const name of offlineMirrors) {
     app.use(`/${name}`, express.static(path.join(OFFLINE_MIRRORS_ROOT, name)));
 }
 
-// Страница поиска — главная точка входа
+// SPA главная точка входа — служит spa/index.html для всех маршрутов
+// клиентский router.js обрабатывает URL распознавание
+app.get('/spa/app', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'spa', 'index.html'));
+});
+
+// Поддержка SPA маршрутизации: любой неизвестный маршрут → spa/index.html
+// Это позволяет использовать чистые URL (/, /kacchapa, /dn22:2.2, и т.д.)
+// без сервер-сайд редиректов — браузер загружает SPA и router.js парсит URL
+app.get('/spa*', (req, res) => {
+    // Все запросы в /spa/* служат SPA index.html (за исключением статики)
+    res.sendFile(path.join(__dirname, 'public', 'spa', 'index.html'));
+});
+
+// Страница поиска — главная точка входа (легаси, для обратной совместимости)
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'res', 'index.html'));
 });
@@ -495,7 +510,9 @@ app.get('/:slug', (req, res) => {
 });
 
 app.listen(PORT, () => {
-    console.log(`Server: http://localhost:${PORT}/search?q=kacchapa&scope=dhamma&langs=ru,en`);
-    console.log(`UI: http://localhost:${PORT}/nodejs/res/?q=kacchapa&lb=1&la=2&scope=dhamma`);
-    console.log(`Reader: http://localhost:${PORT}/dn22`);
-});
+    console.log(`\n=== Dhamma.gift Server (dg-light.js) ===\n`);
+    console.log(`SPA (new): http://localhost:${PORT}/spa/`);
+    console.log(`API: http://localhost:${PORT}/search?q=kacchapa&scope=dhamma&langs=ru,en`);
+    console.log(`Legacy UI: http://localhost:${PORT}/nodejs/res/?q=kacchapa&lb=1&la=2&scope=dhamma`);
+    console.log(`Legacy Reader: http://localhost:${PORT}/dn22`);
+    console.log(`\n`);
