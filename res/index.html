@@ -92,18 +92,18 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
 <meta charset="UTF-8">
 
 <link rel="stylesheet" type="text/css" href="/assets/js/datatables/datatables.min.css"/>
-<!--
+<!-- bootstrap.5.3.1.min.css грузится динамически через loadCssJsResult.js (см. ниже),
+     а не этим блокирующим <link> — но пока он не подгрузится, скрытые Bootstrap-модалки
+     (с их SVG-иконками) не имеют .modal{display:none}, поэтому на миг рендерятся как
+     обычный, нестилизованный контент ("гигантский компас" при загрузке). Скрываем body
+     до готовности — loadCssJsResult.js сам её покажет. -->
 <style>
     body {
         opacity: 0;
         visibility: hidden;
-        background: black;
-        transition: opacity 0.3s ease-in-out; /* Плавное появление */
+        transition: opacity 0.2s ease-in-out;
     }
 </style>
-
-<link rel="stylesheet" type="text/css" href="/assets/css/bootstrap.5.3.1.min.css"/>
--->
 
 <link rel="stylesheet" href="/assets/css/langswitch.css">
 <link rel="stylesheet" href="/assets/css/paliLookup.css">
@@ -639,11 +639,16 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     </div>
 
 <script type='text/javascript'>
-// Автоматически ставим язык по умолчанию для тестов, если он еще не выбран
-// Ключ общий с ридером (dhammaLanguage, см. reader/reader-template.html) —
-// выбор языка не должен теряться при переходе между поиском и чтением.
+// Автоматически ставим язык по умолчанию для тестов, если он еще не выбран.
+// Два ключа в localStorage одновременно: 'dhammaLanguage' — новый (общий с ридером,
+// см. reader/reader-template.html), 'siteLanguage' — старый, от него всё ещё зависят
+// legacy-скрипты (settings.js, openFdg.js — язык для /r/ vs /read/ и т.п.). Пишем оба,
+// чтобы ни одна система не осталась рассинхронизированной.
 if (!localStorage.getItem('dhammaLanguage')) {
     localStorage.setItem('dhammaLanguage', 'ru');
+}
+if (!localStorage.getItem('siteLanguage')) {
+    localStorage.setItem('siteLanguage', localStorage.getItem('dhammaLanguage'));
 }
 
 // Глобальная переменная текущего языка сайта (динамическая, без хардкода)
@@ -672,7 +677,8 @@ $(document).ready(function() {
    
     var dataSrc = [];
     var filterValue = new URLSearchParams(window.location.search).get('f');
-    var reportMode = 'suttas'; // 'suttas' | 'words'
+    // ?report=words — прямой заход в отчёт по словам, без промежуточного клика по "Слова"
+    var reportMode = new URLSearchParams(window.location.search).get('report') === 'words' ? 'words' : 'suttas';
     var lastSearchJson = null;
     var lastHighlightWord = '';
 
@@ -692,7 +698,7 @@ $(document).ready(function() {
         var table;
         if (reportMode === 'words') {
             table = window.DgSearchRender.buildWordDataTable('#pali', lastSearchJson.wordReport, lastHighlightWord, lastSearchJson.metadata.scope);
-            $('.forshellscript a').text('Сутты');
+            $('.forshellscript a').text('Тексты');
         } else {
             table = window.DgSearchRender.buildDataTable('#pali', Object.values(lastSearchJson.data), lastHighlightWord);
             $('.forshellscript a').text('Слова');

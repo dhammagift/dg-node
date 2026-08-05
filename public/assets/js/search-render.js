@@ -9,10 +9,16 @@ window.DgSearchRender = (function () {
     // который переживает .destroy() и путает следующую инициализацию с другим числом колонок
     // ("Cannot read properties of ... 'mData'/'parentNode'"). Поэтому вместо точечной чистки
     // пересоздаём сам <table>-узел с нуля при каждом переключении — надёжно и просто.
+    // Классы, которые DataTables/Responsive/Buttons сами добавляют на <table> при инициализации
+    // (dataTable, dtr-inline, collapsed, no-footer, ...). Если перенести их на "новую" таблицу
+    // до повторного вызова .DataTable(), плагин думает, что уже инициализирован на этом узле,
+    // и не навешивает свои обработчики клика заново — раскрывающиеся строки перестают работать.
+    var DT_INTERNAL_CLASSES = /\b(dataTable|dtr-inline|dtr-column|collapsed|no-footer|dt-\S+)\b/g;
+
     function resetContainer(container, headers) {
         var $old = $(container);
         var id = $old.attr('id');
-        var className = $old.attr('class');
+        var className = ($old.attr('class') || '').replace(DT_INTERNAL_CLASSES, '').replace(/\s+/g, ' ').trim();
 
         // tbody (например id="sutta") — на этот КОНКРЕТНЫЙ узел завязан переключатель языка
         // (langswitch.js захватывает document.getElementById("sutta") один раз при загрузке
@@ -334,18 +340,43 @@ window.DgSearchRender = (function () {
         };
     }
 
-    // Чистая ссылка на сутту/сегмент: /{suttaId} или /{suttaId}:{segmentHash}?s={highlightWord}
-    // (заменяет старый мёртвый путь /nr/?... — см. TODO.md п.4)
+    // Тот же выбор ридера (/r/, /read/, /ml/, /rv/, ...), что делает openFdg.js в своём
+    // DOMContentLoaded — язык/режим ридера пока идут через легаси-прод-ридер (наш /dn22
+    // ещё не покрывает все режимы), поэтому ссылки должны вести именно туда, не на чистый
+    // clean-URL /{suttaId} этого репозитория.
+    function computeLegacyBaseUrl() {
+        var lang = localStorage.siteLanguage;
+        var baseUrl;
+        if (window.location.href.includes('/ru') || lang === 'ru') {
+            baseUrl = window.location.origin + "/r/";
+        } else if (window.location.href.includes('/th') || lang === 'th') {
+            baseUrl = window.location.origin + "/th/read/";
+        } else {
+            baseUrl = window.location.origin + "/read/";
+        }
+        if (localStorage.defaultReader === 'ml') baseUrl = window.location.origin + "/ml/";
+        else if (localStorage.defaultReader === 'rv') baseUrl = window.location.origin + "/rv/";
+        else if (localStorage.defaultReader === 'd') baseUrl = window.location.origin + "/d/";
+        else if (localStorage.defaultReader === 'mem') baseUrl = window.location.origin + "/memorize/";
+        else if (localStorage.defaultReader === 'fr') baseUrl = window.location.origin + "/frev/";
+        return baseUrl;
+    }
+
+    // Ссылка на сутту/сегмент. Предпочитаем window.findFdgTextUrl (уже определена в
+    // openFdg.js, загружаемом на этой странице) — та же функция, что использует остальной
+    // сайт, с тем же baseUrl (/r/ для ru, /read/ для en и т.д., см. computeLegacyBaseUrl).
+    // Если по какой-то причине openFdg.js не загружен (например, страница переиспользуется
+    // без него) — фолбэк на наш собственный чистый URL /{suttaId}.
     function buildSuttaUrl(suttaId, segmentId, highlightWord) {
-        var slug = suttaId;
-        if (segmentId) {
-            var segmentHash = segmentId.includes(':') ? segmentId.split(':')[1] : segmentId;
-            slug += ':' + segmentHash;
+        var segmentHash = segmentId ? (segmentId.includes(':') ? segmentId.split(':')[1] : segmentId) : null;
+
+        if (typeof window.findFdgTextUrl === 'function') {
+            var slugForLegacy = segmentHash ? (suttaId + '#' + segmentHash) : suttaId;
+            return window.findFdgTextUrl(slugForLegacy, highlightWord || '', computeLegacyBaseUrl());
         }
-        var url = '/' + slug;
-        if (highlightWord) {
-            url += '?s=' + encodeURIComponent(highlightWord);
-        }
+
+        var url = '/' + suttaId + (segmentHash ? ':' + segmentHash : '');
+        if (highlightWord) url += '?s=' + encodeURIComponent(highlightWord);
         return url;
     }
 
@@ -559,6 +590,12 @@ window.DgSearchRender = (function () {
     // Данные приходят из того же ответа /search (json.wordReport) — без повторного запроса.
     function buildWordDataTable(container, wordReport, highlightWord, scope) {
         var $table = resetContainer(container, ['Word', 'Texts', 'Matches', 'Links']);
+
+        // Переключатель Pāḷi/Рус (hide-pali/hide-english на #sutta) относится к по-суттному
+        // отчёту (пали-текст против перевода) и не имеет смысла здесь — Word и так всегда
+        // пали. Если оставить класс с прошлого переключения, колонка Word (тоже .pli-lang)
+        // пропадает вместе со "скрытым пали", ломая отчёт и словарь (кликать не по чему).
+        $table.find('tbody').removeClass('hide-pali hide-english hide-russian');
 
         var options = $.extend({}, commonOptions(), {
             data: wordReport || [],
