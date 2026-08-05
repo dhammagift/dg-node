@@ -103,6 +103,15 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
         visibility: hidden;
         transition: opacity 0.2s ease-in-out;
     }
+    .dg-hero-form {
+        max-width: 600px;
+        margin: 2rem auto 1rem;
+        transition: margin 0.35s ease, max-width 0.35s ease;
+    }
+    .dg-hero-form.docked {
+        max-width: 100%;
+        margin: 0.25rem 0 1rem;
+    }
 </style>
 
 <link rel="stylesheet" href="/assets/css/langswitch.css">
@@ -128,7 +137,17 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
 <body>
 
 
-<div class="container-fluid mt-2">    
+<div class="container-fluid mt-2">
+
+<form id="form" class="dg-hero-form mb-2" autocomplete="off">
+  <label class="sr-only" for="paliauto">search</label>
+  <div class="input-group">
+    <input class="form-control rounded-pill searchinput" id="paliauto" type="search" placeholder="e.g. Kāyagat or sn56.11" autocomplete="off">
+    <button type="submit" id="searchbtn" class="btn btn-primary rounded-pill ms-2">
+      <i class="fas fa-search fa-flip-horizontal" aria-hidden="true"></i>
+    </button>
+  </div>
+</form>
 
     <h3 class="pl-2 resultheader ml-2" id="dynamicHeader"></h3>
     <script>
@@ -615,7 +634,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
 <hr>
 <div id='variants' class="variants" style='display: none;'> has <a href=$wordLinkToReplace#variants>variants</a></div>
 
-    <div class="container-fluid table-wrapper mt-4">
+    <div id="search-pane" class="container-fluid table-wrapper mt-4">
 <!--        <h2 id="searchHeading" class="mb-4">Results for: <span id="keywordDisplay" class="text-primary">...</span></h2> -->
 
 <table id="pali" class="display table table-striped table-hover responsive " cellspacing="0" width="100%">
@@ -636,6 +655,14 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     <tbody id="sutta">
                 </tbody>
         </table>
+    </div>
+
+    <div id="reader-pane" class="container-fluid mt-4 d-none">
+        <div id="navigation" class="navigation">
+            <div id="previous"></div>
+            <div id="next"></div>
+        </div>
+        <div id="reader-sutta" class="sutta"></div>
     </div>
 
 <script type='text/javascript'>

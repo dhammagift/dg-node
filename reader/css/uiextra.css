@@ -34,19 +34,19 @@
       margin-left: 5px;
   }
 
-  #sutta p, 
-  #sutta ol, 
-  #sutta ul, 
-  #sutta li { 
+  .sutta p, 
+  .sutta ol, 
+  .sutta ul, 
+  .sutta li { 
     margin-bottom: 1.5rem; 
     font-size: 1.1rem; 
   }
 
-  #sutta h1 {
+  .sutta h1 {
     text-align: center;
   }
 
-  #sutta hr { 
+  .sutta hr { 
   display: none;
   }
 
@@ -386,12 +386,12 @@
   }
 
   /* Ширина контейнера */
-  #sutta.column-view {
+  .sutta.column-view {
     max-width: 105rem;
   }
 
   /* Перенос слов для читаемости    white-space: pre-wrap; */
-  #sutta * {
+  .sutta * {
     word-break: break-word;
     overflow-wrap: break-word;
   }
@@ -641,34 +641,34 @@
   */
 /* Класс для подсветки текущего предложения при чтении */
 
-/* Реальное скрытие языка в тексте — раньше такого правила для #sutta не было вообще
+/* Реальное скрытие языка в тексте — раньше такого правила для .sutta не было вообще
    (было только для #smart-toc-panel ниже), поэтому переключатель Pāḷi/Рус ничего не прятал.
    [class*="-lang"] работает для любого кода языка (ru-lang, en-lang, ...), не только rus-lang/eng-lang.
    Скрываем только .quote (сегменты текста, см. megareader.js) — не заголовок/byline
    переводчика, у них того же .pli-lang, но это не цитата текста. */
-#sutta.hide-pali .pli-lang.quote {
+.sutta.hide-pali .pli-lang.quote {
     display: none !important;
 }
-#sutta.hide-english [class*="-lang"].quote:not(.pli-lang),
-#sutta.hide-russian [class*="-lang"].quote:not(.pli-lang) {
+.sutta.hide-english [class*="-lang"].quote:not(.pli-lang),
+.sutta.hide-russian [class*="-lang"].quote:not(.pli-lang) {
     display: none !important;
 }
 
 /* 1. Общее правило для обычного текста (оставляем как есть) */
-#sutta.hide-pali .rus-lang,
-#sutta.hide-pali .eng-lang {
+.sutta.hide-pali .rus-lang,
+.sutta.hide-pali .eng-lang {
     display: block;
     margin-bottom: 8px; /* Отступ для абзацев */
 }
 
 /* 2. СПЕЦИАЛЬНОЕ правило для стихов: убираем отступ */
-#sutta.hide-pali .verse-line .rus-lang,
-#sutta.hide-pali .verse-line .eng-lang {
+.sutta.hide-pali .verse-line .rus-lang,
+.sutta.hide-pali .verse-line .eng-lang {
     margin-bottom: 0; /* Строки стиха будут прижаты друг к другу */
 }
 
 /* 3. Дополнительно: добавить небольшой отступ всему блоку стиха, если нужно */
-#sutta.hide-pali .verse-line {
+.sutta.hide-pali .verse-line {
     margin-bottom: 2px; /* Небольшой зазор между строками самого HTML контейнера */
 }
 
@@ -1443,7 +1443,7 @@ smart TOC
 }
 
 @media (max-width: 768px) {
-  #sutta {
+  .sutta {
     padding-left: 5px;
   }
 }
@@ -1453,7 +1453,7 @@ smart TOC
     display: none !important; 
 }
 
-#sutta.hide-pali .trn-title-icon { 
+.sutta.hide-pali .trn-title-icon { 
     display: inline-block !important; 
 }
 
@@ -1486,7 +1486,7 @@ smart TOC
     display: none !important;
 }
 
-#sutta.hide-pali [id="0.1"] .copy-Link-special.trn-title-icon {
+.sutta.hide-pali [id="0.1"] .copy-Link-special.trn-title-icon {
     display: inline-block !important;
 }
 

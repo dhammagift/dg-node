@@ -1,7 +1,7 @@
 //ридер не должен качать всю базу с сервера чтобы открыть один текст. качать всю базу только для оффлайн использвания. и нужно проверять если есть оффлан - то использотвать если нет, то брать из сети, но только сутту... а не всю БД
 
 const Sccopy = "/suttacentral.net";
-const suttaArea = document.getElementById("sutta");
+const suttaArea = document.getElementById(window.MEGAREADER_SUTTA_ID || "sutta");
 const homeButton = document.getElementById("home-button");
 const fdgButton = document.getElementById("fdg-button");
 const citation = document.getElementById("paliauto");
@@ -652,10 +652,13 @@ async function initReader() {
             }
         }
     } else {
-        if (typeof window.getInstructionHTML === 'function') {
-            document.getElementById("sutta").innerHTML = window.getInstructionHTML(pathLang);
+        if (typeof window.getInstructionHTML === 'function' && suttaArea) {
+            suttaArea.innerHTML = window.getInstructionHTML(pathLang);
         }
     }
 }
+window.initReader = initReader;
 
-initReader();
+if (!window.MEGAREADER_MANUAL_INIT) {
+    initReader();
+}
