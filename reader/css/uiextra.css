@@ -643,12 +643,14 @@
 
 /* Реальное скрытие языка в тексте — раньше такого правила для #sutta не было вообще
    (было только для #smart-toc-panel ниже), поэтому переключатель Pāḷi/Рус ничего не прятал.
-   [class*="-lang"] работает для любого кода языка (ru-lang, en-lang, ...), не только rus-lang/eng-lang. */
-#sutta.hide-pali .pli-lang {
+   [class*="-lang"] работает для любого кода языка (ru-lang, en-lang, ...), не только rus-lang/eng-lang.
+   Скрываем только .quote (сегменты текста, см. megareader.js) — не заголовок/byline
+   переводчика, у них того же .pli-lang, но это не цитата текста. */
+#sutta.hide-pali .pli-lang.quote {
     display: none !important;
 }
-#sutta.hide-english [class*="-lang"]:not(.pli-lang),
-#sutta.hide-russian [class*="-lang"]:not(.pli-lang) {
+#sutta.hide-english [class*="-lang"].quote:not(.pli-lang),
+#sutta.hide-russian [class*="-lang"].quote:not(.pli-lang) {
     display: none !important;
 }
 

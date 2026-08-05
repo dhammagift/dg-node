@@ -447,7 +447,10 @@ window.buildSutta = async function(rawSlug) {
     }
 
     const segments = window.mergeGathas(htmlData, paliData, transData, varData);
-    const pliClass = "pli-lang inputscript-ISOPali";
+    // .quote отличает реальный текст сегмента (который можно скрыть переключателем
+    // Pāḷi/Рус) от byline/заголовков с тем же .pli-lang, которые всегда должны быть видны
+    // (см. #sutta.hide-pali .pli-lang.quote в uiextra.css).
+    const pliClass = "pli-lang inputscript-ISOPali quote";
 
     for (let i = 0; i < segments.length; i++) {
         let segment = segments[i];
@@ -483,17 +486,17 @@ window.buildSutta = async function(rawSlug) {
                 <span class="${pliClass}" lang="pi">${linkToCopyStart}${paliData[segment].trim()}${linkToCopy}
                 <font class="variant"><br>${linkToCopyStart}${varData[segment].trim()}${linkToCopy}</font>     
                 </span>
-                <span class="${activeLang}-lang" lang="${activeLang}">${linkToCopyStart}${transData[segment].trim()}${linkToCopy}</span>
+                <span class="${activeLang}-lang quote" lang="${activeLang}">${linkToCopyStart}${transData[segment].trim()}${linkToCopy}</span>
                 </span>${closeHtml}\n\n`;
         } else if (paliData[segment] !== undefined && transData[segment] !== undefined) {
             html += `${openHtml}<span id="${anchor}">
                 <span class="${pliClass}" lang="pi">${linkToCopyStart}${paliData[segment].trim()}${linkToCopy}</span>
-                <span class="${activeLang}-lang" lang="${activeLang}">${linkToCopyStart}${transData[segment].trim()}${linkToCopy}</span>
+                <span class="${activeLang}-lang quote" lang="${activeLang}">${linkToCopyStart}${transData[segment].trim()}${linkToCopy}</span>
                 </span>${closeHtml}\n\n`;
         } else if (paliData[segment] !== undefined) {
             html += openHtml + '<span id="' + anchor + '"><span class="' + pliClass + '" lang="pi">' + linkToCopyStart + paliData[segment].trim() + linkToCopy + '</span></span>' + closeHtml + '\n\n';
         } else if (transData[segment] !== undefined) {
-            html += `${openHtml}<span id="${anchor}"><span class="${activeLang}-lang" lang="${activeLang}">${linkToCopyStart}${transData[segment].trim()}${linkToCopy}</span></span>${closeHtml}\n\n`;
+            html += `${openHtml}<span id="${anchor}"><span class="${activeLang}-lang quote" lang="${activeLang}">${linkToCopyStart}${transData[segment].trim()}${linkToCopy}</span></span>${closeHtml}\n\n`;
         }
     }
 

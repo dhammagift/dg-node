@@ -268,12 +268,16 @@ dt {
    поиска сегменты лежат в голых <span> внутри <td>) и работают для любого кода
    языка перевода (ru-lang, rus-lang, en-lang, ...), а не только eng-lang.
    [class*="-lang"] ловит многоклассовые элементы вида "ru-lang text-muted...",
-   где [class$="-lang"] (только suffix) не сработал бы. */
-#sutta.hide-pali .pli-lang {
+   где [class$="-lang"] (только suffix) не сработал бы.
+   Важно: скрываем только внутри .quote (реальные цитаты текста) — как и было в
+   легаси-коде. Колонка "Words" и отчёт по словам используют тот же класс .pli-lang
+   для стилизации шрифта, но это не цитаты — прятать их нельзя, иначе ломается
+   таблица. */
+#sutta.hide-pali .pli-lang.quote {
   display: none !important;
 }
 
-#sutta.hide-english [class*="-lang"]:not(.pli-lang) {
+#sutta.hide-english [class*="-lang"].quote:not(.pli-lang) {
   display: none !important;
 }
 
