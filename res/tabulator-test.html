@@ -1,0 +1,188 @@
+<!--
+Спайк: та же выдача /search (по-суттный отчёт), но рендер через Tabulator
+вместо DataTables — для сравнения "на глаз" с прод-кандидатом search-render.js.
+Не подключено к основному приложению, не трогает res/index.html.
+Открывать с теми же параметрами, что и обычный поиск, например:
+/nodejs/res/tabulator-test.html?q=kacchapa&scope=dhamma&lb=1&la=2
+-->
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Tabulator spike — Dhamma.gift search</title>
+<link href="https://unpkg.com/tabulator-tables@6.3.1/dist/css/tabulator.min.css" rel="stylesheet">
+<script src="https://unpkg.com/tabulator-tables@6.3.1/dist/js/tabulator.min.js"></script>
+<style>
+    body { font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 1.5rem; }
+    h3 { margin-bottom: 0.25rem; }
+    .note { color: #666; font-size: 0.9rem; margin-bottom: 1rem; }
+    .match.finder { background: #ffe08a; padding: 0 2px; border-radius: 2px; }
+    .pli-lang { font-style: italic; }
+    .quote-block { font-size: 0.92rem; line-height: 1.5; }
+    .quote-block .eng-lang, .quote-block .ru-lang { color: #555; display: block; margin-top: 2px; }
+    a.mainLink, a.fdgLink { text-decoration: none; }
+    #pali-tabulator { margin-top: 1rem; }
+</style>
+</head>
+<body>
+
+<h3 id="header">Tabulator spike</h3>
+<div class="note">
+    Тестовая страница для сравнения Tabulator с DataTables (см. <code>public/overrides/js/search-render.js</code>).
+    Не часть основного приложения — обычный поиск её не использует.
+</div>
+
+<div id="pali-tabulator"></div>
+
+<script>
+// ------- та же логика роутинга ссылок, что в search-render.js (buildSuttaUrl/computeLegacyBaseUrl) -------
+// Продублировано намеренно — это одноразовый спайк для сравнения, не общий модуль.
+function computeLegacyBaseUrl() {
+    var lang = localStorage.siteLanguage;
+    var baseUrl;
+    if (window.location.href.includes('/ru') || lang === 'ru') {
+        baseUrl = window.location.origin + "/r/";
+    } else if (window.location.href.includes('/th') || lang === 'th') {
+        baseUrl = window.location.origin + "/th/read/";
+    } else {
+        baseUrl = window.location.origin + "/read/";
+    }
+    if (localStorage.defaultReader === 'ml') baseUrl = window.location.origin + "/ml/";
+    else if (localStorage.defaultReader === 'rv') baseUrl = window.location.origin + "/rv/";
+    else if (localStorage.defaultReader === 'd') baseUrl = window.location.origin + "/d/";
+    else if (localStorage.defaultReader === 'mem') baseUrl = window.location.origin + "/memorize/";
+    else if (localStorage.defaultReader === 'fr') baseUrl = window.location.origin + "/frev/";
+    return baseUrl;
+}
+
+function buildSuttaUrl(suttaId, segmentId, highlightWord) {
+    var segmentHash = segmentId ? (segmentId.includes(':') ? segmentId.split(':')[1] : segmentId) : null;
+    if (typeof window.findFdgTextUrl === 'function') {
+        var slugForLegacy = segmentHash ? (suttaId + '#' + segmentHash) : suttaId;
+        return window.findFdgTextUrl(slugForLegacy, highlightWord || '', computeLegacyBaseUrl());
+    }
+    var url = '/' + suttaId + (segmentHash ? ':' + segmentHash : '');
+    if (highlightWord) url += '?s=' + encodeURIComponent(highlightWord);
+    return url;
+}
+
+function highlight(text, word) {
+    if (!word || !text) return text || '';
+    var re = new RegExp(word, 'gi');
+    return text.replace(re, function (m) { return '<b class="match finder">' + m + '</b>'; });
+}
+
+function renderTitle(row, siteLanguage) {
+    var data = row.titles;
+    if (!data) return '';
+    var titlePali = data.root || row.sutta_id;
+    var titleText = '';
+    var langClass = 'eng-lang';
+    var transKeys = Object.keys(data).filter(function (k) { return k !== 'root'; });
+    var secondLangKey = transKeys.find(function (k) { return k.startsWith(siteLanguage + '_'); });
+    var enKey = transKeys.find(function (k) { return k.startsWith('en_'); });
+    if (siteLanguage !== 'en' && secondLangKey) {
+        titleText = data[secondLangKey];
+        langClass = siteLanguage + '-lang';
+    } else if (enKey) {
+        titleText = data[enKey];
+    } else if (transKeys.length > 0) {
+        titleText = data[transKeys[0]];
+        langClass = transKeys[0].split('_')[0] + '-lang';
+    }
+    return '<strong class="pli-lang">' + titlePali + '</strong> <span class="' + langClass + '" style="color:#777">' + (titleText || '') + '</span>';
+}
+
+function renderQuote(row, highlightWord) {
+    if (!row.segments || !row.segments.length) return '';
+    var html = '';
+    row.segments.forEach(function (seg) {
+        var pali = highlight(seg.root_text || '', highlightWord);
+        if (pali) html += '<div class="pli-lang">' + pali + '</div>';
+        if (seg.translations) {
+            Object.keys(seg.translations).forEach(function (key) {
+                var t = seg.translations[key];
+                if (!t) return;
+                var langCode = key.split('_')[0];
+                html += '<div class="' + langCode + '-lang">' + highlight(t, highlightWord) + '</div>';
+            });
+        }
+    });
+    return '<div class="quote-block">' + html + '</div>';
+}
+
+// ------- парсинг URL, тот же контракт, что и res/index.html -------
+var urlParams = new URLSearchParams(window.location.search);
+var keyword = urlParams.get('q') || urlParams.get('s') || '';
+var scope = urlParams.get('scope') || 'default';
+var lb = urlParams.get('lb') || 0;
+var la = urlParams.get('la') || 0;
+var siteLanguage = localStorage.getItem('dhammaLanguage') || localStorage.getItem('siteLanguage') || 'ru';
+
+if (!keyword) {
+    document.getElementById('header').textContent = 'Добавь ?q=<слово>&scope=... в URL, например ?q=kacchapa&scope=dhamma';
+} else {
+    var fetchUrl = 'http://localhost:3000/search?q=' + encodeURIComponent(keyword) + '&scope=' + scope + '&lb=' + lb + '&la=' + la;
+
+    fetch(fetchUrl).then(function (r) { return r.json(); }).then(function (json) {
+        var rows = Object.values(json.data || {});
+        document.getElementById('header').textContent =
+            (json.metadata.query || keyword) + ': ' + json.metadata.totalFiles + ' texts, ' + json.metadata.totalMatches + ' matches (Tabulator spike)';
+
+        new Tabulator('#pali-tabulator', {
+            data: rows,
+            layout: 'fitDataStretch',
+            responsiveLayout: 'collapse',
+            pagination: true,
+            paginationSize: 10,
+            paginationSizeSelector: [10, 30, 50, 100],
+            initialSort: [{ column: 'category', dir: 'asc' }, { column: 'sutta_id', dir: 'asc' }],
+            columns: [
+                {
+                    formatter: 'responsiveCollapse',
+                    width: 30,
+                    minWidth: 30,
+                    hozAlign: 'center',
+                    resizable: false,
+                    headerSort: false
+                },
+                {
+                    title: 'Sutta', field: 'sutta_id', width: 110, headerFilter: 'input',
+                    formatter: function (cell) {
+                        var id = cell.getValue();
+                        var url = buildSuttaUrl(id, null, keyword);
+                        return '<a class="mainLink" target="_blank" href="' + url + '">' + id + '</a>';
+                    }
+                },
+                {
+                    title: 'Title', field: 'titles', widthGrow: 3, headerFilter: 'input',
+                    formatter: function (cell) { return renderTitle(cell.getRow().getData(), siteLanguage); }
+                },
+                {
+                    title: 'Words', field: 'unique_words', widthGrow: 2,
+                    formatter: function (cell) {
+                        var data = cell.getValue();
+                        if (!data || !data.length) return '';
+                        return '<span class="pli-lang">' + highlight(data.join(' '), keyword) + '</span>';
+                    }
+                },
+                { title: 'Ct', field: 'count', width: 60, hozAlign: 'center', sorter: 'number' },
+                { title: 'Mr', field: 'mr', width: 60, hozAlign: 'center', sorter: 'number' },
+                {
+                    title: 'Type', field: 'category', width: 100, headerFilter: 'list',
+                    headerFilterParams: { valuesLookup: true, clearable: true }
+                },
+                {
+                    title: 'Quote', field: 'segments', widthGrow: 4, headerSort: false,
+                    formatter: function (cell) { return renderQuote(cell.getRow().getData(), keyword); }
+                }
+            ]
+        });
+    }).catch(function (err) {
+        document.getElementById('header').textContent = 'Ошибка запроса: ' + err.message;
+    });
+}
+</script>
+
+</body>
+</html>
