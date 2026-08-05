@@ -3,6 +3,10 @@
     "code": "en",
     "htmlLang": "en"
   },
+  "search": {
+    "label": "Search",
+    "placeholder": "e.g. Kāyagat or sn56.11"
+  },
   "toolbar": {
     "expandCollapseLabel": "Saṁvaṭṭo / Vivaṭṭo",
     "wordsToggleShow": "Words",

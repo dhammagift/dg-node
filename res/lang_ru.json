@@ -3,6 +3,10 @@
     "code": "ru",
     "htmlLang": "ru"
   },
+  "search": {
+    "label": "Поиск",
+    "placeholder": "например, Kāyagat или sn56.11"
+  },
   "toolbar": {
     "expandCollapseLabel": "Saṁvaṭṭo / Vivaṭṭo",
     "wordsToggleShow": "Слова",

@@ -148,10 +148,10 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
 
 <div class="container-fluid mt-2">
 
-<form id="form" class="dg-hero-form mb-2 d-none" autocomplete="off">
-  <label class="sr-only" for="paliauto">search</label>
+<form id="form" class="dg-hero-form mb-2" autocomplete="off">
+  <label class="sr-only" for="paliauto">{{search.label}}</label>
   <div class="input-group">
-    <input class="form-control rounded-pill searchinput" id="paliauto" type="search" placeholder="e.g. Kāyagat or sn56.11" autocomplete="off">
+    <input class="form-control rounded-pill searchinput" id="paliauto" type="search" placeholder="e.g. Kāyagat or sn56.11" data-i18n-placeholder="{{search.placeholder}}" autocomplete="off">
     <button type="submit" id="searchbtn" class="btn btn-primary rounded-pill ms-2">
       <i class="fas fa-search fa-flip-horizontal" aria-hidden="true"></i>
     </button>
@@ -785,6 +785,19 @@ $(document).ready(function() {
         });
     }
 
+    // Строка поиска в шапке (заготовка под SPA, была скрыта) — уже сейчас, до самого SPA,
+    // просто запускает новый поиск на этой же странице (та же схема, что и клик по числу
+    // текстов в отчёте по словам: /nodejs/res/?q=...&scope=...), без похода на главную.
+    $('#form').on('submit', function (e) {
+        e.preventDefault();
+        var value = $('#paliauto').val().trim();
+        if (!value) return;
+        var currentScope = new URLSearchParams(window.location.search).get('scope') || 'default';
+        var url = '/nodejs/res/?q=' + encodeURIComponent(value) +
+            (currentScope !== 'default' ? '&scope=' + encodeURIComponent(currentScope) : '');
+        window.location.href = url;
+    });
+
     // Главная функция запуска поиска
 
 
@@ -814,6 +827,10 @@ $(document).ready(function() {
         let highlightWord = searchValue || keyword;
 
         if (!keyword) return;
+
+        // Показываем в строке поиска, что сейчас ищем — можно сразу поправить и отправить снова.
+        // (keyword уже декодирован — URLSearchParams.get делает это сам.)
+        $('#paliauto').val(keyword);
 
         try {
             const isLocal = ['localhost', '127.0.0.1'].includes(window.location.hostname);
