@@ -643,7 +643,22 @@ window.DgSearchRender = (function () {
                 { targets: [1, 2], className: 'text-nowrap' },
                 { type: 'html', targets: [0, 1, 3] }
             ],
-            order: [[1, 'desc'], [0, 'asc']]
+            order: [[1, 'desc'], [0, 'asc']],
+            initComplete: function () {
+                // Та же кнопка "Saṁvaṭṭo / Vivaṭṭo", что и в по-суттном отчёте — но там она
+                // навешивается на СВОЙ $table через замыкание в initComplete, и после
+                // переключения на этот отчёт (новый <table> узел) старая привязка мертва.
+                // Нужно перепривязать на актуальный $table каждый раз при (пере)инициализации.
+                var rootTable = $table;
+
+                $('#btn-show-all-children').off('click').on('click', function () {
+                    rootTable.find('tbody tr:not(.parent)').find('td:first-child').trigger('click');
+                });
+
+                $('#btn-hide-all-children').off('click').on('click', function () {
+                    rootTable.find('tbody tr.parent').find('td:first-child').trigger('click');
+                });
+            }
         });
 
         return $table.DataTable(options);
