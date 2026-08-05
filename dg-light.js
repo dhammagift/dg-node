@@ -88,7 +88,7 @@ app.get('/spa/app', (req, res) => {
 // Поддержка SPA маршрутизации: любой неизвестный маршрут → spa/index.html
 // Это позволяет использовать чистые URL (/, /kacchapa, /dn22:2.2, и т.д.)
 // без сервер-сайд редиректов — браузер загружает SPA и router.js парсит URL
-app.get('/spa*', (req, res) => {
+app.get('/spa/*splat', (req, res) => {
     // Все запросы в /spa/* служат SPA index.html (за исключением статики)
     res.sendFile(path.join(__dirname, 'public', 'spa', 'index.html'));
 });
@@ -134,8 +134,40 @@ async function findFilesByPrefix(dir, prefix) {
     return matches;
 }
 
+// Приоритет переводчиков на язык — при нескольких вариантах перевода одного текста
+// показываем только один, лучший, а не все подряд (TODO.md п.3: "куча русских переводов").
+// Языки вне списка — берём первый попавшийся файл.
+const TRANSLATOR_PRIORITY = {
+    ru: ['ru_o', 'ru_sv', 'ru_sv+edited+o'],
+};
+
+function filterPreferredTranslators(results) {
+    const byLang = {};
+    for (const key of Object.keys(results)) {
+        const lang = key.split('_')[0];
+        if (!byLang[lang]) byLang[lang] = [];
+        byLang[lang].push(key);
+    }
+
+    const filtered = {};
+    for (const [lang, keys] of Object.entries(byLang)) {
+        const priorities = TRANSLATOR_PRIORITY[lang];
+        let chosen = priorities && priorities.find(p => keys.includes(p));
+
+        if (!chosen && lang === 'en') {
+            // Sujato и так широко доступен на SuttaCentral — если есть другой переводчик
+            // (Thanissaro и т.п.), предпочитаем его; sujato берём только если больше никого нет.
+            chosen = keys.find(k => k !== 'en_sujato');
+        }
+
+        if (!chosen) chosen = keys[0];
+        filtered[chosen] = results[chosen];
+    }
+    return filtered;
+}
+
 // Поиск файлов переводов по suttaId (без предварительного индекса)
-// Возвращает { "ru_o": "/path/to/file.json", "en_sujato": "...", ... }
+// Возвращает { "ru_o": "/path/to/file.json", "en_sujato": "...", ... } — один файл на язык (см. выше)
 async function findTranslationFiles(suttaId, targetLangs) {
     const searchDirs = [];
 
@@ -172,7 +204,7 @@ async function findTranslationFiles(suttaId, targetLangs) {
         }
     }));
 
-    return results;
+    return filterPreferredTranslators(results);
 }
 
 // Директории для grep в зависимости от запрошенных языков
@@ -203,6 +235,54 @@ function buildGrepDirs(targetLangs) {
     });
 
     return dirs;
+}
+
+function escapeRegExp(str) {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// Отчёт с группировкой по словам — та же идея, что в легаси new/words.sh (grep по словам,
+// группировка по уникальному слову вместо суттs), но без повторного grep: агрегируем
+// уже собранные по каждой сутте сегменты (root_text/variant/unique_words) из searchWithGrep.
+// Одна ссылка на сутту в links (не на каждый сегмент), как в легаси-отчёте.
+function buildWordReport(searchResults) {
+    const words = {}; // word -> { textIds: Set<suttaId>, matchCount, links: Map<suttaId, segmentId> }
+
+    for (const suttaId in searchResults) {
+        const suttaRes = searchResults[suttaId];
+        for (const seg of suttaRes.segments) {
+            const combinedText = `${seg.root_text || ''} ${seg.variant || ''}`;
+            if (!combinedText.trim()) continue;
+
+            for (const word of suttaRes.unique_words) {
+                const matches = combinedText.match(new RegExp(escapeRegExp(word), 'gi'));
+                if (!matches) continue;
+
+                if (!words[word]) {
+                    words[word] = { textIds: new Set(), matchCount: 0, links: new Map() };
+                }
+                words[word].textIds.add(suttaId);
+                words[word].matchCount += matches.length;
+                if (!words[word].links.has(suttaId)) {
+                    words[word].links.set(suttaId, seg.segment);
+                }
+            }
+        }
+    }
+
+    const report = Object.entries(words).map(([word, info]) => ({
+        word,
+        textCount: info.textIds.size,
+        matchCount: info.matchCount,
+        links: Array.from(info.links.entries()).map(([sutta_id, segment]) => ({ sutta_id, segment }))
+    }));
+
+    report.sort((a, b) => {
+        if (b.textCount !== a.textCount) return b.textCount - a.textCount;
+        return a.word.localeCompare(b.word, undefined, { sensitivity: 'base' });
+    });
+
+    return report;
 }
 
 async function searchWithGrep(keyword, searchScope, exactMatch, targetLangs, lb = 0, la = 0) {
@@ -390,6 +470,8 @@ async function searchWithGrep(keyword, searchScope, exactMatch, targetLangs, lb 
         suttaRes.unique_words = Array.from(uniqueWordsSet);
     }
 
+    const wordReport = buildWordReport(searchResults);
+
     const categoryOrder = { dhamma: 1, khudakka: 2, vinaya: 3, abhi: 4, other: 5 };
     const sortedKeys = Object.keys(searchResults).sort((a, b) => {
         const oa = categoryOrder[searchResults[a].category] || 99;
@@ -416,7 +498,8 @@ async function searchWithGrep(keyword, searchScope, exactMatch, targetLangs, lb 
             totalMatches: globalTotalMatches,
             hasVariantMatch: globalHasVariants
         },
-        data: sortedData
+        data: sortedData,
+        wordReport
     };
 }
 
@@ -516,3 +599,4 @@ app.listen(PORT, () => {
     console.log(`Legacy UI: http://localhost:${PORT}/nodejs/res/?q=kacchapa&lb=1&la=2&scope=dhamma`);
     console.log(`Legacy Reader: http://localhost:${PORT}/dn22`);
     console.log(`\n`);
+});

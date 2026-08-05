@@ -115,6 +115,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
 <script src="/assets/js/jquery-3.7.0.min.js"></script>
 <script type="text/javascript" src="/assets/js/bootstrap.bundle.5.3.1.min.js"></script>
 <script type="text/javascript" src="/assets/js/datatables/datatables.js"></script>
+<script type="text/javascript" src="/assets/js/search-render.js"></script>
 <script type="text/javascript" src="/assets/js/natural.js"></script>
 <script type="text/javascript" src="/assets/js/strip-html.js"></script>
 <!-- <script type="text/javascript" src="/assets/js/diacritics.js"></script> -->
@@ -158,7 +159,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
 </button>		  
 <button id="btn-show-all-children" class="btn btn-light mb-1" type="button">Saṁvaṭṭo / Vivaṭṭo</button>
 
-<button class="btn btn-light forshellscript mb-1" type="button"><a class="text-decoration-none " href="$wordLinkToReplace">Слова</a></button>    
+<button class="btn btn-light forshellscript mb-1" type="button"><a class="text-decoration-none " href="javascript:void(0)">Слова</a></button>
 
 <button id="language-button" class="btn btn-light mb-1 " type="button">Pāḷi / Рус</button>
 
@@ -671,6 +672,39 @@ $(document).ready(function() {
    
     var dataSrc = [];
     var filterValue = new URLSearchParams(window.location.search).get('f');
+    var reportMode = 'suttas'; // 'suttas' | 'words'
+    var lastSearchJson = null;
+    var lastHighlightWord = '';
+
+    function applyFilterValue(table) {
+        if (filterValue) {
+            table.search(filterValue).draw();
+            var currentUrl = new URL(window.location.href);
+            currentUrl.searchParams.delete('f');
+            history.replaceState({}, '', currentUrl);
+        }
+    }
+
+    // Переключение между отчётом по суттам и по словам — тот же ответ /search,
+    // без повторного запроса (json.wordReport уже пришёл вместе с json.data).
+    function renderCurrentReport() {
+        if (!lastSearchJson) return;
+        var table;
+        if (reportMode === 'words') {
+            table = window.DgSearchRender.buildWordDataTable('#pali', lastSearchJson.wordReport, lastHighlightWord);
+            $('.forshellscript a').text('Сутты');
+        } else {
+            table = window.DgSearchRender.buildDataTable('#pali', Object.values(lastSearchJson.data), lastHighlightWord);
+            $('.forshellscript a').text('Слова');
+        }
+        applyFilterValue(table);
+    }
+
+    $('.forshellscript a').on('click', function (e) {
+        e.preventDefault();
+        reportMode = reportMode === 'words' ? 'suttas' : 'words';
+        renderCurrentReport();
+    });
 
     // Главная функция запуска поиска
 
@@ -714,8 +748,7 @@ $(document).ready(function() {
             if (!response.ok) throw new Error("Ошибка сети при получении данных");
             
             const json = await response.json();
-            const dataArray = Object.values(json.data);
-            
+
             let scopeText = json.metadata.scope === 'default' || !json.metadata.scope ? '4 Nikaya Pali' : json.metadata.scope;
             
             let qStr = json.metadata.query || "";
@@ -725,7 +758,6 @@ $(document).ready(function() {
             
             document.title = newTitle + " - Dhamma.gift";
             $('.resultheader').text(newTitle);
-            $('.forshellscript a').attr('href', `/w.php?s=${json.metadata.query}&d=${json.metadata.scope}`);
 
             // Логика управления видимостью вариантов
             let variantDiv = document.getElementById('variants');
@@ -745,517 +777,11 @@ $(document).ready(function() {
                 }
             }
 
-            buildDataTable(dataArray, highlightWord);
+            lastSearchJson = json;
+            lastHighlightWord = highlightWord;
+            renderCurrentReport();
         } catch (error) {
             console.error('Ошибка при поиске:', error);
-        }
-    }
-
-    function buildDataTable(dataArray, highlightWord) {
-        var desktopDom = '<"row"<"col-sm-12 col-md-4"l><"col-sm-12 col-md-5"p><"col-sm-12 col-md-3"f>>rt<"row"<"col-sm-12 col-md-4"i><"col-sm-12 col-md-8"p>><""Q><"footerlike"B>';
-        var mobileDom = '<"row"<"col-sm-6"l><"col-sm-6"f>><"row"<"col-sm-12"p>>rt<"row"<"col-sm-12"i><"col-sm-12"p>><""Q><"footerlike"B>';
-        var tableDom = $(window).width() > 768 ? desktopDom : mobileDom;
-
-        const regexHighlight = new RegExp(highlightWord, 'gi');
-        
-        let baseUrl = window.location.origin + "/nr/";
-
-        var table = $('#pali').DataTable({
-            data: dataArray,
-            columns: [
-                // 0: Sutta
-                {
-                    data: 'sutta_id',
-                    render: function (data) {
-                        let textUrl = typeof findFdgTextUrl === 'function' 
-                            ? findFdgTextUrl(data, encodeURIComponent(highlightWord), baseUrl) 
-                            : `${baseUrl}?s=${encodeURIComponent(highlightWord)}&q=${data}`;
-                            
-                        return `<a class="fdgLink mainLink" target="_blank" href="${textUrl}" data-slug="${data}">${data}</a>`;
-                    }
-                },
-                // 1: Title
-                {
-                    data: 'titles',
-                    render: function (data, type, row) {
-                        if (!data) return '';
-                        
-                        var titlePali = data.root || row.sutta_id;
-                        var titleText = '';
-                        var langClass = 'eng-lang';
-                        
-                        var transKeys = Object.keys(data).filter(k => k !== 'root');
-                        
-                        var secondLangKey = transKeys.find(k => k.startsWith(window.siteLanguage + '_'));
-                        var enKey = transKeys.find(k => k.startsWith('en_'));
-                        
-                        if (window.siteLanguage !== 'en' && secondLangKey) {
-                            titleText = data[secondLangKey];
-                            langClass = window.siteLanguage + '-lang'; 
-                        } else if (enKey) {
-                            titleText = data[enKey];
-                            langClass = 'eng-lang';
-                        } else if (transKeys.length > 0) {
-                            var fallbackKey = transKeys[0];
-                            titleText = data[fallbackKey];
-                            langClass = fallbackKey.split('_')[0] + '-lang';
-                        }
-                        
-                        return `<strong class="pli-lang inputscript-ISOPali">${titlePali}</strong> <span class="${langClass} text-muted">${titleText}</span>`;
-                    }
-                },
-                // 2: Words
-                {
-                    data: 'unique_words',
-                    render: function (data) {
-                        if (!data || !data.length) return '';
-                        let wordsStr = data.join(' ');
-                        if (highlightWord) {
-                            wordsStr = wordsStr.replace(regexHighlight, match => `<b class="match finder">${match}</b>`);
-                        }
-                        return `<span class="pli-lang inputscript-ISOPali">${wordsStr}</span>`;
-                    }
-                },
-                // 3: Ct
-                { data: 'count' },
-                // 4: Mr
-                { data: 'mr' },
-                // 5: Links
-                {
-                    data: 'sutta_id',
-                    orderable: false,
-                    render: function (data) {
-                        let secondLangLinkHtml = '';
-                        if (window.siteLanguage !== 'en') {
-                            let langLabel = window.siteLanguage.charAt(0).toUpperCase() + window.siteLanguage.slice(1);
-                            secondLangLinkHtml = `<a class='${window.siteLanguage}Link' href='javascript:void(0)' data-slug='${data}' onclick="if(typeof openRu === 'function') openRu('${data}'); return false;">${langLabel}</a>`;
-                        }
-                        
-                        return `<a href='javascript:void(0)' onclick="if(typeof openDpr === 'function') openDpr('${data}'); return false;">Pi</a> 
-                                <a class='bwLink' href='javascript:void(0)' data-slug='${data}' onclick="if(typeof openBw === 'function') openBw('${data}'); return false;">En</a> 
-                                ${secondLangLinkHtml}`;
-                    }
-                },
-                // 6: Type
-                { data: 'category' },
-                // 7: Quote
-                {
-                    data: 'segments',
-                    className: 'none',
-                    render: function (data, type, row) {
-                        if (!data || data.length === 0) return '';
-                        let quoteHtml = '';
-
-                        let baseUrl = window.location.origin + "/nr/";
-
-                        const renderSegment = (seg, isContext = false) => {
-                            let html = '';
-                            let paliText = seg.root_text || '';
-                            let variantText = seg.variant || '';
-
-                            if (highlightWord && paliText && !isContext) {
-                                paliText = paliText.replace(regexHighlight, match => `<b class="match finder">${match}</b>`);
-                            }
-                            if (highlightWord && variantText && !isContext) {
-                                variantText = variantText.replace(regexHighlight, match => `<b class="match finder">${match}</b>`);
-                            }
-
-                            let segmentHash = seg.segment.includes(':') ? seg.segment.split(':')[1] : seg.segment;
-                            let urlwithanchor = row.sutta_id + "#" + segmentHash;
-                            
-                            let textUrl = typeof findFdgTextUrl === 'function' 
-                                ? findFdgTextUrl(urlwithanchor, encodeURIComponent(highlightWord), baseUrl) 
-                                : `${baseUrl}?s=${encodeURIComponent(highlightWord)}&q=${urlwithanchor}`;
-                            
-                            let unhiddenlink = `<a target="_blank" class="fdgLink quoteLink-start text-reset text-decoration-none" href="${textUrl}" data-slug="${urlwithanchor}"></a>`;
-                            let hiddenlink = `<a target="_blank" class="fdgLink quoteLink text-white text-decoration-none" href="${textUrl}" data-slug="${urlwithanchor}"></a>`;
-
-                            if (paliText) {
-                                // Убран класс text-muted для пали контекста, оставлена только прозрачность
-                                let contextClass = isContext ? "opacity-90" : "";
-                                html += `<span class="pli-lang quote ${contextClass}" lang="pi">${unhiddenlink} ${paliText} ${hiddenlink}</span><br class="styled pli-lang quote" lang="pi">`;
-                            }
-                            
-                            if (variantText) {
-                                // Убран класс text-muted для пали контекста, оставлена только прозрачность
-                                let contextClass = isContext ? "opacity-90" : "";
-                                html += `<span class="pli-lang variant quote ${contextClass}" lang="pi">${unhiddenlink} ${variantText} ${hiddenlink}</span><br class="styled pli-lang variant quote" lang="pi">`;
-                            }
-
-                            if (seg.translations) {
-                                let transKeys = Object.keys(seg.translations);
-                                let preferredLanguages = [window.siteLanguage, 'en']; 
-                                let sortedTransKeys = [];
-                                
-                                preferredLanguages.forEach(lang => {
-                                    let keysForLang = transKeys.filter(k => k.startsWith(lang + '_'));
-                                    sortedTransKeys.push(...keysForLang);
-                                });
-                                
-                                let remainingKeys = transKeys.filter(k => !sortedTransKeys.includes(k));
-                                sortedTransKeys.push(...remainingKeys);
-
-                                sortedTransKeys.forEach(key => {
-                                    let transText = seg.translations[key];
-                                    if (!transText) return;
-                                    if (highlightWord && !isContext) {
-                                        transText = transText.replace(regexHighlight, match => `<b class="match finder">${match}</b>`);
-                                    }
-                                    let langCode = key.split('_')[0];
-                                    // Переводы остаются приглушенными (text-muted)
-                                    let htmlclass = (langCode === 'en') ? "eng-lang text-muted font-weight-light" : langCode + "-lang text-muted font-weight-light";
-                                    if (isContext) htmlclass += " opacity-75"; 
-                                    
-                                    html += `<span class="${htmlclass} quote" lang="${langCode}">${unhiddenlink} ${transText} ${hiddenlink}</span><br class="styled ${htmlclass} quote" lang="${langCode}">`;
-                                });
-                            }
-                            return html + (isContext ? '' : '<br>'); 
-                        };
-
-                        data.forEach(seg => {
-                            if (seg.lb_context && seg.lb_context.length > 0) {
-                                seg.lb_context.forEach(ctxSeg => {
-                                    quoteHtml += renderSegment(ctxSeg, true);
-                                });
-                            }
-                            
-                            quoteHtml += renderSegment(seg, false);
-                            
-                            if (seg.la_context && seg.la_context.length > 0) {
-                                seg.la_context.forEach(ctxSeg => {
-                                    quoteHtml += renderSegment(ctxSeg, true);
-                                });
-                            }
-                        });
-
-                        return quoteHtml;
-                    }
-                }
-            ],
-            'stateSave': true,
-            stateSaveParams: function(settings, data) {
-                data.search.search = ''; 
-            },
-            dom: tableDom,
-            searchBuilder: {
-                preDefined: {
-                    criteria:[
-                        { condition: '!contains', data: 'Quote', value: ['ExcludeMe']}
-                    ],
-                    logic: 'AND'
-                }
-            },   
-            buttons: [
-                {
-                    text: 'Main',
-                    className: 'btn btn-link',
-                    action: function () {
-                        window.location.href = "/";
-                    }
-                },
-                {
-                    text: 'History',
-                    className: 'btn btn-link',
-                    action: function () {
-                        window.location.href = '/history.php';
-                    }
-                },
-                {
-                    extend: 'collection',
-                    text: 'Export',
-                    className: 'btn btn-link',
-                    buttons: [
-                        {
-                            extend: 'copyHtml5',
-                            exportOptions: {
-                                columns: function (idx, data, node) {
-                                    return $('#pali').DataTable().column(idx).visible();
-                                },
-                                modifier: { search: 'applied' }
-                            }
-                        },
-                        {
-                            extend: 'excelHtml5',
-                            exportOptions: {
-                                columns: function (idx, data, node) {
-                                    return $('#pali').DataTable().column(idx).visible();
-                                },
-                                modifier: { search: 'applied' }
-                            }
-                        },
-                        {
-                            extend: 'csvHtml5',
-                            exportOptions: {
-                                columns: function (idx, data, node) {
-                                    return $('#pali').DataTable().column(idx).visible();
-                                },
-                                modifier: { search: 'applied' }
-                            }
-                        },
-                        {
-                            text: 'TXT',
-                            action: function (e, dt, node, config) {
-                                var data = dt.buttons.exportData({
-                                    columns: function (idx) {
-                                        return dt.column(idx).visible();
-                                    },
-                                    modifier: { search: 'applied' }
-                                });
-                                
-                                var textContent = [];
-                                textContent.push(data.header.join('\t'));
-                                
-                                data.body.forEach(function(row) {
-                                    var cleanRow = row.map(function(cell) {
-                                        return typeof cell === 'string' ? cell.replace(/\r?\n|\r/g, ' ') : cell;
-                                    });
-                                    textContent.push(cleanRow.join('\t'));
-                                });
-                                
-                                var filename = document.title !== '' ? document.title : 'Export';
-                                filename = filename.replace(/[^a-zA-Z0-9_\u00A1-\uFFFF\.,\-_ !\(\)]/g, "");
-                                
-                                var blob = new Blob([textContent.join('\n')], { type: 'text/plain;charset=utf-8' });
-                                var url = URL.createObjectURL(blob);
-                                
-                                var a = document.createElement('a');
-                                a.href = url;
-                                a.download = filename + '.txt';
-                                document.body.appendChild(a);
-                                a.click();
-                                document.body.removeChild(a);
-                                URL.revokeObjectURL(url);
-                            }
-                        },
-                        {
-                            text: 'PDF',
-                            title: '*', 
-                            filename: '*', 
-                            exportOptions: {
-                                columns: function (idx, data, node) {
-                                    return $('#pali').DataTable().column(idx).visible();
-                                },
-                                modifier: { search: 'applied' },
-                                format: {
-                                    body: function (data, row, column, node) {
-                                        if (data === null || data === undefined) return '';
-                                        
-                                        var text = String(data);
-                                        var temp = document.createElement('div');
-                                        temp.innerHTML = text;
-                                        
-                                        var links = temp.querySelectorAll('a');
-                                        links.forEach(function(a) {
-                                            var url = a.href;
-                                            var linkText = a.textContent || a.innerText;
-                                            var placeholder = document.createTextNode('LINK_START|' + url + '|' + linkText + '|LINK_END');
-                                            a.parentNode.replaceChild(placeholder, a);
-                                        });
-
-                                        var strongs = temp.querySelectorAll('strong');
-                                        strongs.forEach(function(s) {
-                                            var placeholder = document.createTextNode('BOLD_START|' + (s.textContent || s.innerText) + '|BOLD_END');
-                                            s.parentNode.replaceChild(placeholder, s);
-                                        });
-                                        
-                                        var brs = temp.querySelectorAll('br');
-                                        brs.forEach(function(br) {
-                                            br.parentNode.replaceChild(document.createTextNode('\n'), br);
-                                        });
-                                        var ps = temp.querySelectorAll('p');
-                                        ps.forEach(function(p) {
-                                            p.insertAdjacentText('beforeend', '\n');
-                                        });
-                                        
-                                        return (temp.textContent || temp.innerText || '').trim();
-                                    }
-                                }
-                            },
-                            customize: function (doc) {
-                                doc.defaultStyle.font = 'NotoSans';
-                                doc.pageOrientation = 'landscape';
-                                
-                                var body = doc.content[1].table.body;
-                                body.forEach(function(row) {
-                                    row.forEach(function(cell) {
-                                        if (typeof cell.text === 'string') {
-                                            var hasBold = cell.text.includes('BOLD_START|');
-                                            var lines = cell.text.split('\n');
-                                            var formattedCell = [];
-                                            
-                                            lines.forEach(function(line, lineIdx) {
-                                                if (line === '') {
-                                                    if (lineIdx < lines.length - 1) formattedCell.push({ text: '\n' });
-                                                    return;
-                                                }
-                                                
-                                                var parts = line.split(/(BOLD_START\|.*?\|BOLD_END|LINK_START\|.*?\|.*?\|LINK_END)/g);
-                                                
-                                                parts.forEach(function(part) {
-                                                    if (!part) return;
-                                                    
-                                                    if (part.startsWith('LINK_START|')) {
-                                                        var match = part.split('|');
-                                                        formattedCell.push({ 
-                                                            text: match[2], 
-                                                            link: match[1], 
-                                                            color: '#0d6efd', 
-                                                            decoration: 'underline' 
-                                                        });
-                                                    } else if (part.startsWith('BOLD_START|')) {
-                                                        var match = part.split('|');
-                                                        formattedCell.push({ 
-                                                            text: match[1], 
-                                                            bold: true,
-                                                            color: '#000000' 
-                                                        });
-                                                    } else {
-                                                        var isDim = hasBold ? true : (lineIdx > 0);
-                                                        formattedCell.push({ 
-                                                            text: part,
-                                                            color: isDim ? '#666666' : '#000000'
-                                                        });
-                                                    }
-                                                });
-                                                
-                                                if (lineIdx < lines.length - 1) {
-                                                    formattedCell.push({ text: '\n' });
-                                                }
-                                            });
-                                            
-                                            cell.text = formattedCell;
-                                        }
-                                    });
-                                });
-                            },
-                            action: function (e, dt, node, config) {
-                                var buttonContext = this;
-                                
-                                var triggerPdfExport = function() {
-                                    pdfMake.fonts = {
-                                        NotoSans: {
-                                            normal: 'NotoSans-Regular.ttf',
-                                            bold: 'NotoSans-Bold.ttf',
-                                            italics: 'NotoSans-Italic.ttf',
-                                            bolditalics: 'NotoSans-BoldItalic.ttf'
-                                        }
-                                    };
-
-                                    var pdfConfig = $.extend(true, {}, $.fn.dataTable.ext.buttons.pdfHtml5, config);
-                                    $.fn.dataTable.ext.buttons.pdfHtml5.action.call(buttonContext, e, dt, node, pdfConfig);
-                                };
-                                
-                                if (typeof pdfMake === 'undefined') {
-                                    var originalText = node.text();
-                                    node.text('Loading...'); 
-                                    
-                                    var loadScript = function(url, callback) {
-                                        var script = document.createElement('script');
-                                        script.type = 'text/javascript';
-                                        script.src = url;
-                                        script.onload = callback;
-                                        document.head.appendChild(script);
-                                    };
-
-                                    loadScript('/assets/js/pdfmake.min.js', function() {
-                                        loadScript('/assets/js/vfs_fonts.js', function() {
-                                            node.text(originalText); 
-                                            triggerPdfExport();
-                                        });
-                                    });
-                                } else {
-                                    triggerPdfExport();
-                                }
-                            }
-                        }
-                    ]
-                },
-                {
-                    text: 'Read',
-                    className: 'btn btn-link',
-                    action: function () {
-                        window.location.href = "/read.php";
-                    }
-                },
-                {
-                    text: 'Make List',
-                    className: 'btn btn-link',
-                    action: function () {
-                        window.location.href = '/assets/makelist.html';
-                    }
-                },
-                {
-                    text: 'List Diff',
-                    className: 'btn btn-link',
-                    action: function () {
-                        window.location.href = '/assets/listdiff.html';
-                    }
-                },
-                {
-                    text: 'Sutta Diff',
-                    className: 'btn btn-link',
-                    action: function () {
-                        window.location.href = '/assets/diff';
-                    }
-                },
-                {
-                    extend: 'colvis',
-                    className: 'btn btn-link',
-                    text: 'Visibility'
-                }
-            ],
-            "search": {
-                "caseInsensitive": true,
-                "diacritics": false,
-                "smart": true
-            },
-            'paging': true,
-            'colReorder': true,
-            'orderMulti': true,
-            'pageLength': 10,
-            'lengthMenu': [10, 30, 50, 100, 1000],
-            'columnDefs': [
-                { type: 'natural', targets: 0, className: 'text-nowrap' }, 
-                { targets: 1, width: '40%' }, 
-                { targets: 2, width: '30%' }, 
-                { targets: [3, 4, 5, 6], className: 'text-nowrap' }, 
-                { type: 'category', targets: 6, visible: false }, 
-                { type: "html", targets: [0, 1, 2, 7] },
-                {
-                    targets: [3],
-                    orderData: [3, 4],
-                    orderSequence: ['desc', 'asc'] 
-                },
-                {
-                    targets: [4],
-                    orderData: [4, 3],
-                    orderSequence: ['desc', 'asc'] 
-                }
-            ],
-            "order": [[6, 'asc'], [0, 'asc']],
-            'initComplete': function(){
-                var api = this.api();
-                
-                $('#btn-show-all-children').on('click', function(){
-                    table.rows(':not(.parent)').nodes().to$().find('td:first-child').trigger('click');
-                });
-                
-                $('#btn-hide-all-children').on('click', function(){
-                    table.rows('.parent').nodes().to$().find('td:first-child').trigger('click');
-                });
-
-                api.cells('tr', [0, 2, 3, 4, 5]).every(function(){
-                    var data = $('<div>').html(this.data()).text();
-                    if(dataSrc.indexOf(data) === -1){ dataSrc.push(data); }
-                });
-            }
-        }); 
-
-        if (filterValue) {
-            table.search(filterValue).draw();
-            var currentUrl = new URL(window.location.href);
-            currentUrl.searchParams.delete('f');
-            history.replaceState({}, '', currentUrl);
         }
     }
 
