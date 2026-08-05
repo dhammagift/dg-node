@@ -348,11 +348,13 @@ window.DgSearchRender = (function () {
                 infoEmpty: t('datatables.infoEmpty', 'Showing 0 to 0 of 0 entries'),
                 infoFiltered: t('datatables.infoFiltered', '(filtered from _MAX_ total entries)'),
                 zeroRecords: t('datatables.zeroRecords', 'No matching records found'),
+                // Компактные символы вместо слов — не переводятся (одинаковые для всех языков),
+                // экономят место в тулбаре пагинации.
                 paginate: {
-                    first: t('datatables.first', 'First'),
-                    last: t('datatables.last', 'Last'),
-                    next: t('datatables.next', 'Next'),
-                    previous: t('datatables.previous', 'Previous')
+                    first: '«',
+                    previous: '‹',
+                    next: '›',
+                    last: '»'
                 }
             },
             search: {

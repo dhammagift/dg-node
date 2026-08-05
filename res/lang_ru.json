@@ -42,11 +42,7 @@
     "info": "Показано _START_-_END_ из _TOTAL_ записей",
     "infoEmpty": "Показано 0-0 из 0 записей",
     "infoFiltered": "(отфильтровано из _MAX_ записей)",
-    "zeroRecords": "Совпадений не найдено",
-    "first": "Первая",
-    "last": "Последняя",
-    "next": "Следующая",
-    "previous": "Предыдущая"
+    "zeroRecords": "Совпадений не найдено"
   },
   "results": {
     "textsAndWord": "текстов и",
