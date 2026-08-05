@@ -691,7 +691,7 @@ $(document).ready(function() {
         if (!lastSearchJson) return;
         var table;
         if (reportMode === 'words') {
-            table = window.DgSearchRender.buildWordDataTable('#pali', lastSearchJson.wordReport, lastHighlightWord);
+            table = window.DgSearchRender.buildWordDataTable('#pali', lastSearchJson.wordReport, lastHighlightWord, lastSearchJson.metadata.scope);
             $('.forshellscript a').text('Сутты');
         } else {
             table = window.DgSearchRender.buildDataTable('#pali', Object.values(lastSearchJson.data), lastHighlightWord);

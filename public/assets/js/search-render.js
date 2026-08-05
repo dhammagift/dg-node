@@ -557,7 +557,7 @@ window.DgSearchRender = (function () {
 
     // Отчёт с группировкой по словам: Word | Texts | Matches | Links
     // Данные приходят из того же ответа /search (json.wordReport) — без повторного запроса.
-    function buildWordDataTable(container, wordReport, highlightWord) {
+    function buildWordDataTable(container, wordReport, highlightWord, scope) {
         var $table = resetContainer(container, ['Word', 'Texts', 'Matches', 'Links']);
 
         var options = $.extend({}, commonOptions(), {
@@ -568,14 +568,24 @@ window.DgSearchRender = (function () {
                     data: 'word',
                     className: 'pli-lang inputscript-ISOPali'
                 },
-                // 1: Texts
-                { data: 'textCount' },
+                // 1: Texts — кликабельно: перезапускает поиск именно по этому слову
+                // (как counttexts в легаси new/words.sh)
+                {
+                    data: 'textCount',
+                    render: function (data, type, row) {
+                        if (type !== 'display') return data;
+                        var url = '/nodejs/res/?q=' + encodeURIComponent(row.word) + (scope ? '&scope=' + encodeURIComponent(scope) : '');
+                        return '<a href="' + url + '">' + data + '</a>';
+                    }
+                },
                 // 2: Matches
                 { data: 'matchCount' },
-                // 3: Links
+                // 3: Links — под responsive-обёрткой (className:'none'), как Quote в по-суттном
+                // отчёте: у частых слов список ссылок длинный, не должен растягивать таблицу.
                 {
                     data: 'links',
                     orderable: false,
+                    className: 'none',
                     render: function (links) {
                         if (!links || !links.length) return '';
                         return links.map(function (l) {
@@ -587,7 +597,8 @@ window.DgSearchRender = (function () {
             ],
             columnDefs: [
                 { type: 'natural', targets: 0 },
-                { targets: [1, 2], className: 'text-nowrap' }
+                { targets: [1, 2], className: 'text-nowrap' },
+                { type: 'html', targets: [1, 3] }
             ],
             order: [[1, 'desc'], [0, 'asc']]
         });
