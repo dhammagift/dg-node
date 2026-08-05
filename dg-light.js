@@ -142,9 +142,11 @@ async function findFilesByPrefix(dir, prefix) {
 // Приоритет переводчиков на язык — при нескольких вариантах перевода одного текста
 // показываем только один, лучший, а не все подряд (TODO.md п.3: "куча русских переводов").
 // Языки вне списка — берём первый попавшийся файл.
-const TRANSLATOR_PRIORITY = {
-    ru: ['ru_o', 'ru_sv', 'ru_sv+edited+o'],
-};
+// Приоритет переводчиков по языку — { "ru": ["ru_o", "ru_sv", ...] }. Языки без записи
+// здесь не ломаются: filterPreferredTranslators() просто берёт первый найденный перевод
+// (см. ниже), так что новый язык из SC-репо читается сразу, без правки кода — приоритет
+// добавляется в этот файл только когда для языка есть за что выбирать.
+const TRANSLATOR_PRIORITY = require('./reader/translator-priority.json');
 
 function filterPreferredTranslators(results) {
     const byLang = {};
