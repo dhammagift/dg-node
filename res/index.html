@@ -63,8 +63,17 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
 -->
 
 <!DOCTYPE html>
-<html data-bs-theme="light">
+<html data-bs-theme="light" data-default-lang="ru">
 <head>
+<script>
+  // Абсолютные пути: эта страница отдаётся с двух путей (/ и /nodejs/res/, см. dg-light.js),
+  // относительный "lang_{lang}.json" резолвился бы по-разному в зависимости от того, откуда
+  // открыли страницу. DHAMMA_GLOBAL_LANG_CONFIG_PATTERN — общие для всех страниц строки
+  // (см. public/overrides/i18n/lang_global_{lang}.json), не дублируются в этом файле.
+  window.DHAMMA_LANG_CONFIG_PATTERN = "/nodejs/res/lang_{lang}.json";
+  window.DHAMMA_GLOBAL_LANG_CONFIG_PATTERN = "/assets/i18n/lang_global_{lang}.json";
+</script>
+<script src="/assets/js/dhamma-i18n.js"></script>
 <title>Search Results - Dhamma.gift</title>
 <meta name="description" content="Search Results - Dhamma.gift">
 <link rel="manifest" href="/manifest.php">
@@ -139,7 +148,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
 
 <div class="container-fluid mt-2">
 
-<form id="form" class="dg-hero-form mb-2" autocomplete="off">
+<form id="form" class="dg-hero-form mb-2 d-none" autocomplete="off">
   <label class="sr-only" for="paliauto">search</label>
   <div class="input-group">
     <input class="form-control rounded-pill searchinput" id="paliauto" type="search" placeholder="e.g. Kāyagat or sn56.11" autocomplete="off">
@@ -176,23 +185,23 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
       
 <img src="/assets/svg/circle-half-stroke.svg" onclick="switchIcon(this)" class="changesvg table-theme-icon gray-icon"></img>
 </button>		  
-<button id="btn-show-all-children" class="btn btn-light mb-1" type="button">Saṁvaṭṭo / Vivaṭṭo</button>
+<button id="btn-show-all-children" class="btn btn-light mb-1" type="button">{{toolbar.expandCollapseLabel}}</button>
 
-<button class="btn btn-light forshellscript mb-1" type="button"><a class="text-decoration-none " href="javascript:void(0)">Слова</a></button>
+<button class="btn btn-light forshellscript mb-1" type="button"><a class="text-decoration-none " href="javascript:void(0)">{{toolbar.wordsToggleShow}}</a></button>
 
 <button id="language-button" class="btn btn-light mb-1 " type="button">Pāḷi / Рус</button>
 
 <button class="btn btn-light mb-1  toggle-dict-btn" type="button" ><img class="" src="/assets/svg/comment.svg"></img></button>
 
-<button class="btn btn-light mb-1  " type="button" onclick="toggleQuickModal()" aria-label="Open Cattāri Ariyasaccāni" title="Open Cattāri Ariyasaccāni (Alt+P)">
+<button class="btn btn-light mb-1  " type="button" onclick="toggleQuickModal()" aria-label="Open Cattāri Ariyasaccāni" title="Open Cattāri Ariyasaccāni (Alt+P)" data-i18n-aria-label="{{toolbar.compassAriaLabel}}" data-i18n-title="{{toolbar.compassTitle}}">
   <img alt="" src="/assets/svg/compass.svg" class="common-size-icon4"></img>
 </button>
 
 
 
- <a title="settings"  id="settingsButton" data-bs-toggle="modal" data-bs-target="#settings" href="javascript:void(0);" class="btn btn-light mb-1 toggle-icon text-decoration-none">
-  <img id="gearSettings" alt="settings" src="/assets/svg/gear.svg" class="common-size-icon4"></img>
-  </a>  
+ <a title="settings" data-i18n-title="{{global.common.settings}}" id="settingsButton" data-bs-toggle="modal" data-bs-target="#settings" href="javascript:void(0);" class="btn btn-light mb-1 toggle-icon text-decoration-none">
+  <img id="gearSettings" alt="settings" data-i18n-alt="{{global.common.settings}}" src="/assets/svg/gear.svg" class="common-size-icon4"></img>
+  </a>
 
 
 <script>
@@ -442,7 +451,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
         </div>
     </div>
 </div>
-    <a class="btn btn-light mb-1 form-check-inline mb-1 toggle-icon" alt="Help" data-bs-toggle="modal" data-bs-target="#SearchResultHelp" id="helpMessage" href="javascript:void(0);">  
+    <a class="btn btn-light mb-1 form-check-inline mb-1 toggle-icon" alt="Help" data-i18n-alt="{{global.common.help}}" data-bs-toggle="modal" data-bs-target="#SearchResultHelp" id="helpMessage" href="javascript:void(0);">
         <img id="helpResult" class="table-home-icon" src="/assets/svg/question.svg"></img>
         </a>     
 
@@ -640,15 +649,15 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
 <table id="pali" class="display table table-striped table-hover responsive " cellspacing="0" width="100%">
    <thead class="thead-light">
         <tr>
-            <th>Sutta</th>
+            <th>{{table.suttaCol}}</th>
 
-            <th>Title</th>
-            <th>Words</th>
-            <th>Ct</th>
-            <th>Mr</th>
-            <th>Links</th>
-                        <th>Type</th>
-            <th class="none">Quote</th>
+            <th>{{table.titleCol}}</th>
+            <th>{{table.wordsCol}}</th>
+            <th>{{table.countCol}}</th>
+            <th>{{table.mrCol}}</th>
+            <th>{{table.linksCol}}</th>
+                        <th>{{table.typeCol}}</th>
+            <th class="none">{{table.quoteCol}}</th>
         <!-- <th class="none">Audio</th> -->
         </tr>
     </thead>
@@ -666,20 +675,29 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     </div>
 
 <script type='text/javascript'>
-// Автоматически ставим язык по умолчанию для тестов, если он еще не выбран.
-// Два ключа в localStorage одновременно: 'dhammaLanguage' — новый (общий с ридером,
-// см. reader/reader-template.html), 'siteLanguage' — старый, от него всё ещё зависят
-// legacy-скрипты (settings.js, openFdg.js — язык для /r/ vs /read/ и т.п.). Пишем оба,
-// чтобы ни одна система не осталась рассинхронизированной.
-if (!localStorage.getItem('dhammaLanguage')) {
-    localStorage.setItem('dhammaLanguage', 'ru');
-}
+// Резолюшн UI-языка (какой lang_{lang}.json подгрузить) теперь берёт на себя
+// window.DHAMMA_I18N (dhamma-i18n.js, см. <head>) — свой порядок: ?lang= → localStorage.dhammaLanguage
+// → data-default-lang → "ru", и сам пишет localStorage.dhammaLanguage после первой успешной загрузки.
+// Тут остаётся только синхронный fallback-сид для 'siteLanguage' — старого ключа, от которого
+// всё ещё напрямую зависят legacy-скрипты (settings.js, openFdg.js, search-render.js — язык для
+// /r/ vs /read/, выбор колонки перевода и т.п.) и которые могут прочитать его раньше, чем
+// DHAMMA_I18N успеет догрузиться по сети. Слушатель dhamma:languagechange ниже досинхронизирует
+// точное значение, как только основной движок локализации отработает (и при любой последующей
+// живой смене языка тоже).
 if (!localStorage.getItem('siteLanguage')) {
-    localStorage.setItem('siteLanguage', localStorage.getItem('dhammaLanguage'));
+    localStorage.setItem('siteLanguage', localStorage.getItem('dhammaLanguage') || 'ru');
 }
+window.siteLanguage = localStorage.getItem('siteLanguage') || 'ru';
 
-// Глобальная переменная текущего языка сайта (динамическая, без хардкода)
-window.siteLanguage = localStorage.getItem('dhammaLanguage') || 'en';
+// Тот же паттерн чтения i18n-конфига, что и в search-render.js — этот инлайн-скрипт
+// собирает динамическую фразу результата (не токенизируется как {{...}}, т.к. в неё
+// подставляются серверные числа посреди строки).
+function t(path, fallback) {
+    var cfg = window.DHAMMA_I18N && window.DHAMMA_I18N.config;
+    if (!cfg) return fallback;
+    var value = path.split('.').reduce(function (v, k) { return (v == null) ? undefined : v[k]; }, cfg);
+    return value === undefined ? fallback : value;
+}
 
 $(document).ready(function() {
     DataTable.util.diacritics(d => d);
@@ -725,10 +743,10 @@ $(document).ready(function() {
         var table;
         if (reportMode === 'words') {
             table = window.DgSearchRender.buildWordDataTable('#pali', lastSearchJson.wordReport, lastHighlightWord, lastSearchJson.metadata.scope);
-            $('.forshellscript a').text('Тексты');
+            $('.forshellscript a').text(t('toolbar.wordsToggleHide', 'Тексты'));
         } else {
             table = window.DgSearchRender.buildDataTable('#pali', Object.values(lastSearchJson.data), lastHighlightWord);
-            $('.forshellscript a').text('Слова');
+            $('.forshellscript a').text(t('toolbar.wordsToggleShow', 'Слова'));
         }
         applyFilterValue(table);
     }
@@ -738,6 +756,34 @@ $(document).ready(function() {
         reportMode = reportMode === 'words' ? 'suttas' : 'words';
         renderCurrentReport();
     });
+
+    // Смена UI-языка (dhamma-i18n.js, см. <head>) — DataTables не перечитывает
+    // language:/заголовки колонок реактивно, поэтому пересобираем таблицу целиком тем же
+    // путём, что и при переключении между отчётами. Заодно досинхронизируем legacy-мостик
+    // siteLanguage (см. комментарий выше) — иначе смена поменяет подписи тулбара, но колонка
+    // перевода (ru/en) в таблице останется на старом языке.
+    function syncSiteLanguage(lang) {
+        if (!lang) return;
+        window.siteLanguage = lang;
+        try { localStorage.setItem('siteLanguage', lang); } catch (_) {}
+        renderCurrentReport();
+    }
+
+    // Событие ловит ТОЛЬКО живые смены языка после первой загрузки (см. ниже про гонку).
+    document.addEventListener('dhamma:languagechange', function (e) {
+        syncSiteLanguage(e.detail.language);
+    });
+
+    // window.DHAMMA_I18N.ready — промис, safe присоединяться поздно (в отличие от события
+    // выше): фетч lang_{lang}.json из <head> мог отработать ДО того, как этот скрипт (в конце
+    // <body>) вообще выполнился, и тогда самое первое dhamma:languagechange уже прошло мимо
+    // слушателя — этот .then() не завязан на тайминг, сработает независимо от того, когда
+    // именно резолвится ready.
+    if (window.DHAMMA_I18N && window.DHAMMA_I18N.ready) {
+        window.DHAMMA_I18N.ready.then(function () {
+            syncSiteLanguage(window.DHAMMA_I18N.language);
+        });
+    }
 
     // Главная функция запуска поиска
 
@@ -782,12 +828,12 @@ $(document).ready(function() {
             
             const json = await response.json();
 
-            let scopeText = json.metadata.scope === 'default' || !json.metadata.scope ? '4 Nikaya Pali' : json.metadata.scope;
-            
+            let scopeText = json.metadata.scope === 'default' || !json.metadata.scope ? t('results.defaultScopeLabel', '4 Nikaya Pali') : json.metadata.scope;
+
             let qStr = json.metadata.query || "";
             let capitalizedQuery = qStr ? qStr.charAt(0).toUpperCase() + qStr.slice(1) : "";
-            
-            let newTitle = `${capitalizedQuery} ${json.metadata.totalFiles} texts and ${json.metadata.totalMatches} matches in ${scopeText}`;
+
+            let newTitle = `${capitalizedQuery} ${json.metadata.totalFiles} ${t('results.textsAndWord', 'texts and')} ${json.metadata.totalMatches} ${t('results.matchesInWord', 'matches in')} ${scopeText}`;
             
             document.title = newTitle + " - Dhamma.gift";
             $('.resultheader').text(newTitle);

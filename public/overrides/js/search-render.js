@@ -15,6 +15,18 @@ window.DgSearchRender = (function () {
     // и не навешивает свои обработчики клика заново — раскрывающиеся строки перестают работать.
     var DT_INTERNAL_CLASSES = /\b(dataTable|dtr-inline|dtr-column|collapsed|no-footer|dt-\S+)\b/g;
 
+    // Строки интерфейса тянем из window.DHAMMA_I18N.config (см. public/overrides/js/dhamma-i18n.js
+    // + res/lang_{ru,en}.json) — этот файл не завязан на конкретную HTML-страницу, поэтому читает
+    // конфиг через глобал (как уже сделано для window.siteLanguage/window.findFdgTextUrl), а не
+    // получает строки параметром. Если конфиг ещё не загрузился (или страница вообще не подключила
+    // dhamma-i18n.js) — используется fallback, тот же текст, что был жёстко закодирован раньше.
+    function t(path, fallback) {
+        var cfg = window.DHAMMA_I18N && window.DHAMMA_I18N.config;
+        if (!cfg) return fallback;
+        var value = path.split('.').reduce(function (v, k) { return (v == null) ? undefined : v[k]; }, cfg);
+        return value === undefined ? fallback : value;
+    }
+
     function resetContainer(container, headers) {
         var $old = $(container);
         var id = $old.attr('id');
@@ -59,14 +71,14 @@ window.DgSearchRender = (function () {
     function buildButtons() {
         return [
             {
-                text: 'Main',
+                text: t('buttons.main', 'Main'),
                 className: 'btn btn-link',
                 action: function () {
                     window.location.href = "/";
                 }
             },
             {
-                text: 'History',
+                text: t('buttons.history', 'History'),
                 className: 'btn btn-link',
                 action: function () {
                     window.location.href = '/history.php';
@@ -74,7 +86,7 @@ window.DgSearchRender = (function () {
             },
             {
                 extend: 'collection',
-                text: 'Export',
+                text: t('buttons.export', 'Export'),
                 className: 'btn btn-link',
                 buttons: [
                     {
@@ -105,7 +117,7 @@ window.DgSearchRender = (function () {
                         }
                     },
                     {
-                        text: 'TXT',
+                        text: t('buttons.exportTxt', 'TXT'),
                         action: function (e, dt, node, config) {
                             var data = dt.buttons.exportData({
                                 columns: function (idx) {
@@ -140,7 +152,7 @@ window.DgSearchRender = (function () {
                         }
                     },
                     {
-                        text: 'PDF',
+                        text: t('buttons.exportPdf', 'PDF'),
                         title: '*',
                         filename: '*',
                         exportOptions: {
@@ -259,7 +271,7 @@ window.DgSearchRender = (function () {
 
                             if (typeof pdfMake === 'undefined') {
                                 var originalText = node.text();
-                                node.text('Loading...');
+                                node.text(t('buttons.loading', 'Loading...'));
 
                                 var loadScript = function (url, callback) {
                                     var script = document.createElement('script');
@@ -283,28 +295,28 @@ window.DgSearchRender = (function () {
                 ]
             },
             {
-                text: 'Read',
+                text: t('buttons.read', 'Read'),
                 className: 'btn btn-link',
                 action: function () {
                     window.location.href = "/read.php";
                 }
             },
             {
-                text: 'Make List',
+                text: t('buttons.makeList', 'Make List'),
                 className: 'btn btn-link',
                 action: function () {
                     window.location.href = '/assets/makelist.html';
                 }
             },
             {
-                text: 'List Diff',
+                text: t('buttons.listDiff', 'List Diff'),
                 className: 'btn btn-link',
                 action: function () {
                     window.location.href = '/assets/listdiff.html';
                 }
             },
             {
-                text: 'Sutta Diff',
+                text: t('buttons.suttaDiff', 'Sutta Diff'),
                 className: 'btn btn-link',
                 action: function () {
                     window.location.href = '/assets/diff';
@@ -313,7 +325,7 @@ window.DgSearchRender = (function () {
             {
                 extend: 'colvis',
                 className: 'btn btn-link',
-                text: 'Visibility'
+                text: t('buttons.visibility', 'Visibility')
             }
         ];
     }
@@ -327,6 +339,22 @@ window.DgSearchRender = (function () {
             destroy: true,
             dom: tableDom,
             buttons: buildButtons(),
+            // "Search:" -> "Фильтр:" — на этой странице DataTables-фильтр не должен путаться
+            // с будущим SPA-поиском (hero-форма в res/index.html, пока скрыта).
+            language: {
+                search: t('datatables.search', 'Search:'),
+                lengthMenu: t('datatables.lengthMenu', '_MENU_ entries per page'),
+                info: t('datatables.info', 'Showing _START_ to _END_ of _TOTAL_ entries'),
+                infoEmpty: t('datatables.infoEmpty', 'Showing 0 to 0 of 0 entries'),
+                infoFiltered: t('datatables.infoFiltered', '(filtered from _MAX_ total entries)'),
+                zeroRecords: t('datatables.zeroRecords', 'No matching records found'),
+                paginate: {
+                    first: t('datatables.first', 'First'),
+                    last: t('datatables.last', 'Last'),
+                    next: t('datatables.next', 'Next'),
+                    previous: t('datatables.previous', 'Previous')
+                }
+            },
             search: {
                 caseInsensitive: true,
                 diacritics: false,
@@ -382,7 +410,11 @@ window.DgSearchRender = (function () {
 
     // Отчёт с группировкой по суттам (текущий, основной вид)
     function buildDataTable(container, dataArray, highlightWord) {
-        var $table = resetContainer(container, ['Sutta', 'Title', 'Words', 'Ct', 'Mr', 'Links', 'Type', 'Quote']);
+        var $table = resetContainer(container, [
+            t('table.suttaCol', 'Sutta'), t('table.titleCol', 'Title'), t('table.wordsCol', 'Words'),
+            t('table.countCol', 'Ct'), t('table.mrCol', 'Mr'), t('table.linksCol', 'Links'),
+            t('table.typeCol', 'Type'), t('table.quoteCol', 'Quote')
+        ]);
 
         var regexHighlight = new RegExp(highlightWord, 'gi');
 
@@ -589,7 +621,10 @@ window.DgSearchRender = (function () {
     // Отчёт с группировкой по словам: Word | Texts | Matches | Links
     // Данные приходят из того же ответа /search (json.wordReport) — без повторного запроса.
     function buildWordDataTable(container, wordReport, highlightWord, scope) {
-        var $table = resetContainer(container, ['Word', 'Texts', 'Matches', 'Links']);
+        var $table = resetContainer(container, [
+            t('table.wordCol', 'Word'), t('table.textsCol', 'Texts'),
+            t('table.matchesCol', 'Matches'), t('table.linksCol', 'Links')
+        ]);
 
         // Переключатель Pāḷi/Рус (hide-pali/hide-english на #sutta) относится к по-суттному
         // отчёту (пали-текст против перевода) и не имеет смысла здесь — Word и так всегда

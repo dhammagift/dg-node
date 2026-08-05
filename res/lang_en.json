@@ -1,0 +1,56 @@
+{
+  "locale": {
+    "code": "en",
+    "htmlLang": "en"
+  },
+  "toolbar": {
+    "expandCollapseLabel": "Saṁvaṭṭo / Vivaṭṭo",
+    "wordsToggleShow": "Words",
+    "wordsToggleHide": "Texts",
+    "compassAriaLabel": "Open Cattāri Ariyasaccāni",
+    "compassTitle": "Open Cattāri Ariyasaccāni (Alt+P)"
+  },
+  "table": {
+    "suttaCol": "Sutta",
+    "titleCol": "Title",
+    "wordsCol": "Words",
+    "countCol": "Ct",
+    "mrCol": "Mr",
+    "linksCol": "Links",
+    "typeCol": "Type",
+    "quoteCol": "Quote",
+    "wordCol": "Word",
+    "textsCol": "Texts",
+    "matchesCol": "Matches"
+  },
+  "buttons": {
+    "main": "Main",
+    "history": "History",
+    "export": "Export",
+    "exportTxt": "TXT",
+    "exportPdf": "PDF",
+    "loading": "Loading...",
+    "read": "Read",
+    "makeList": "Make List",
+    "listDiff": "List Diff",
+    "suttaDiff": "Sutta Diff",
+    "visibility": "Visibility"
+  },
+  "datatables": {
+    "search": "Filter:",
+    "lengthMenu": "_MENU_ entries per page",
+    "info": "Showing _START_ to _END_ of _TOTAL_ entries",
+    "infoEmpty": "Showing 0 to 0 of 0 entries",
+    "infoFiltered": "(filtered from _MAX_ total entries)",
+    "zeroRecords": "No matching records found",
+    "first": "First",
+    "last": "Last",
+    "next": "Next",
+    "previous": "Previous"
+  },
+  "results": {
+    "textsAndWord": "texts and",
+    "matchesInWord": "matches in",
+    "defaultScopeLabel": "4 Nikaya Pali"
+  }
+}

@@ -1,0 +1,56 @@
+{
+  "locale": {
+    "code": "ru",
+    "htmlLang": "ru"
+  },
+  "toolbar": {
+    "expandCollapseLabel": "Saṁvaṭṭo / Vivaṭṭo",
+    "wordsToggleShow": "Слова",
+    "wordsToggleHide": "Тексты",
+    "compassAriaLabel": "Открыть Cattāri Ariyasaccāni",
+    "compassTitle": "Открыть Cattāri Ariyasaccāni (Alt+P)"
+  },
+  "table": {
+    "suttaCol": "Sutta",
+    "titleCol": "Название",
+    "wordsCol": "Слова",
+    "countCol": "Кол-во",
+    "mrCol": "Mr",
+    "linksCol": "Ссылки",
+    "typeCol": "Тип",
+    "quoteCol": "Цитата",
+    "wordCol": "Слово",
+    "textsCol": "Тексты",
+    "matchesCol": "Совпадения"
+  },
+  "buttons": {
+    "main": "Main",
+    "history": "History",
+    "export": "Export",
+    "exportTxt": "TXT",
+    "exportPdf": "PDF",
+    "loading": "Загрузка...",
+    "read": "Read",
+    "makeList": "Make List",
+    "listDiff": "List Diff",
+    "suttaDiff": "Sutta Diff",
+    "visibility": "Visibility"
+  },
+  "datatables": {
+    "search": "Фильтр:",
+    "lengthMenu": "_MENU_ записей на странице",
+    "info": "Показано _START_-_END_ из _TOTAL_ записей",
+    "infoEmpty": "Показано 0-0 из 0 записей",
+    "infoFiltered": "(отфильтровано из _MAX_ записей)",
+    "zeroRecords": "Совпадений не найдено",
+    "first": "Первая",
+    "last": "Последняя",
+    "next": "Следующая",
+    "previous": "Предыдущая"
+  },
+  "results": {
+    "textsAndWord": "текстов и",
+    "matchesInWord": "совпадений в",
+    "defaultScopeLabel": "4 Никаи Пали"
+  }
+}

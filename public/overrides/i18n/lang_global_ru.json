@@ -1,0 +1,14 @@
+{
+  "common": {
+    "close": "Закрыть",
+    "settings": "Настройки",
+    "help": "Помощь",
+    "home": "Домой",
+    "dictionary": "Словарь",
+    "history": "История",
+    "apply": "Применить",
+    "reset": "Сбросить",
+    "other": "Другие",
+    "questionMark": "?"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "common": {
+    "close": "Close",
+    "settings": "Settings",
+    "help": "Help",
+    "home": "Home",
+    "dictionary": "Dictionary",
+    "history": "History",
+    "apply": "Apply",
+    "reset": "Reset",
+    "other": "Other",
+    "questionMark": "?"
+  }
+}
