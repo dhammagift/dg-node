@@ -646,6 +646,10 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     <div id="search-pane" class="container-fluid table-wrapper mt-4">
 <!--        <h2 id="searchHeading" class="mb-4">Results for: <span id="keywordDisplay" class="text-primary">...</span></h2> -->
 
+<!-- Две отдельные, стабильные таблицы (по-суттная и по-словная) вместо одной пересоздаваемой —
+     каждая инициализируется один раз в search-render.js и живёт до конца сессии страницы;
+     переключение между отчётами — просто show/hide (см. renderCurrentReport ниже), без
+     destroy/rebuild. См. комментарий в начале public/overrides/js/search-render.js. -->
 <table id="pali" class="display table table-striped table-hover responsive " cellspacing="0" width="100%">
    <thead class="thead-light">
         <tr>
@@ -662,6 +666,19 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
         </tr>
     </thead>
     <tbody id="sutta">
+                </tbody>
+        </table>
+
+<table id="pali-words" class="display table table-striped table-hover responsive d-none" cellspacing="0" width="100%">
+   <thead class="thead-light">
+        <tr>
+            <th>{{table.wordCol}}</th>
+            <th>{{table.textsCol}}</th>
+            <th>{{table.matchesCol}}</th>
+            <th class="none">{{table.linksCol}}</th>
+        </tr>
+    </thead>
+    <tbody id="word-results">
                 </tbody>
         </table>
     </div>
@@ -728,11 +745,12 @@ $(document).ready(function() {
     var lastHighlightWord = '';
 
     // TODO.md поиск п.5 — состояние фазированной загрузки. currentTable: живой инстанс
-    // DataTables API (пересоздаётся при каждом renderCurrentReport, см. resetContainer в
-    // search-render.js). enrichedIds/pendingIds: какие сутты уже получили полные цитаты/
-    // контекст через /search/enrich (в отличие от заглушек фазы 1). backgroundLoadPromise:
-    // фоновый полный /search, который в итоге догружает всё остальное + wordReport (тот,
-    // впрочем, уже приходит с фазы 1 — см. buildFastResponse в dg-light.js).
+    // DataTables API текущего видимого отчёта — обе таблицы (#pali, #pali-words) теперь
+    // стабильны и не пересоздаются, см. файловый комментарий в search-render.js.
+    // enrichedIds/pendingIds: какие сутты уже получили полные цитаты/контекст через
+    // /search/enrich (в отличие от заглушек фазы 1). backgroundLoadPromise: фоновый полный
+    // /search, который в итоге догружает всё остальное + wordReport (тот, впрочем, уже
+    // приходит с фазы 1 — см. buildFastResponse в dg-light.js).
     var currentTable = null;
     var enrichedIds = new Set();
     var pendingIds = new Set();
@@ -756,46 +774,41 @@ $(document).ready(function() {
         }
     }
 
-    // Переключение между отчётом по суттам и по словам — тот же ответ /search,
-    // без повторного запроса (json.wordReport уже пришёл вместе с json.data начиная с фазы 1).
+    // Переключение между отчётом по суттам и по словам — тот же ответ /search, без повторного
+    // запроса (json.wordReport уже пришёл вместе с json.data начиная с фазы 1). Обе таблицы
+    // (#pali, #pali-words) теперь стабильны и живут постоянно — переключение это show/hide
+    // плюс обновление данных ТЕКУЩЕЙ через draw(false) внутри build*, без destroy/rebuild
+    // (см. файловый комментарий в search-render.js) — попутно чинит и порчу sort order,
+    // которая раньше возникала при частых пересборках одного и того же table-id.
     function renderCurrentReport() {
         if (!lastSearchJson) return;
         var table;
         if (reportMode === 'words') {
-            table = window.DgSearchRender.buildWordDataTable('#pali', lastSearchJson.wordReport, lastHighlightWord, lastSearchJson.metadata.scope);
+            $('#pali').addClass('d-none');
+            $('#pali-words').removeClass('d-none');
+            table = window.DgSearchRender.buildWordDataTable('#pali-words', lastSearchJson.wordReport, lastHighlightWord, lastSearchJson.metadata.scope);
             $('.forshellscript a').text(t('toolbar.wordsToggleHide', 'Тексты'));
         } else {
+            $('#pali-words').addClass('d-none');
+            $('#pali').removeClass('d-none');
             var rows = Object.values(lastSearchJson.data).map(function (r) {
                 r.__enriched = enrichedIds.has(r.sutta_id);
                 return r;
             });
             table = window.DgSearchRender.buildDataTable('#pali', rows, lastHighlightWord);
             $('.forshellscript a').text(t('toolbar.wordsToggleShow', 'Слова'));
-            // Слушатель вешаем только когда обогащение уже запущено (ensureEnrichmentStarted) —
-            // до этого момента переход по страницам не должен ничего догружать. На таблицу,
-            // которая была отрисована ДО старта обогащения, слушатель добавляет сам
-            // ensureEnrichmentStarted() отдельно (см. ниже) — иначе первая страница результатов
-            // осталась бы без реакции на смену страницы/сортировки до следующего перерендера.
+            // Именованное событие (.enrich) — таблица больше не пересоздаётся, так что "draw"
+            // может сработать много раз за сессию; .off+.on тем же неймспейсом не даёт слушателям
+            // накапливаться при повторных renderCurrentReport(). До старта обогащения
+            // (ensureEnrichmentStarted) не вешаем вообще — переход по страницам не должен ничего
+            // догружать раньше времени; на таблицу, отрисованную до старта, вешает сам
+            // ensureEnrichmentStarted() отдельно (см. ниже).
             if (enrichmentStarted) {
-                table.on('draw', function () { enrichIds(visiblePageIds()); });
+                table.off('draw.enrich').on('draw.enrich', function () { enrichIds(visiblePageIds()); });
             }
         }
         currentTable = table;
         applyFilterValue(table);
-    }
-
-    // resetContainer() (search-render.js) пересоздаёт <table> при каждом рендере — DataTables
-    // теряет состояние страницы/сортировки. Используется для перерисовки, вызванной приходом
-    // новых данных (обогащение), а не действием пользователя — обычный renderCurrentReport()
-    // при переключении вкладок/языка сбрасывает состояние осознанно.
-    function renderCurrentReportPreservingState() {
-        var savedPage = currentTable ? currentTable.page() : null;
-        var savedOrder = currentTable ? currentTable.order() : null;
-        renderCurrentReport();
-        if (savedPage !== null && currentTable) {
-            if (savedOrder) currentTable.order(savedOrder);
-            currentTable.page(savedPage).draw(false);
-        }
     }
 
     function visiblePageIds() {
@@ -818,7 +831,7 @@ $(document).ready(function() {
                     Object.assign(lastSearchJson.data[id], json.data[id]);
                     enrichedIds.add(id);
                 });
-                if (reportMode === 'suttas') renderCurrentReportPreservingState();
+                if (reportMode === 'suttas') renderCurrentReport();
             })
             .catch(function (error) {
                 toFetch.forEach(function (id) { pendingIds.delete(id); });
@@ -845,7 +858,7 @@ $(document).ready(function() {
                     lastSearchJson.wordReport = json.wordReport;
                     lastSearchJson.metadata = json.metadata;
                     renderResultHeader(json);
-                    if (reportMode === 'suttas') renderCurrentReportPreservingState();
+                    if (reportMode === 'suttas') renderCurrentReport();
                 })
                 .catch(function (error) { console.error('Ошибка фоновой догрузки:', error); });
         });
@@ -853,7 +866,7 @@ $(document).ready(function() {
         // Таблица, отрисованная до этого момента, ещё не получила слушатель draw (см. коммент
         // в renderCurrentReport) — довешиваем его именно на неё.
         if (currentTable) {
-            currentTable.on('draw', function () { enrichIds(visiblePageIds()); });
+            currentTable.off('draw.enrich').on('draw.enrich', function () { enrichIds(visiblePageIds()); });
         }
     }
 

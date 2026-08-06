@@ -214,6 +214,100 @@ async function findTranslationFiles(suttaId, targetLangs) {
     return filterPreferredTranslators(results);
 }
 
+// Батчевая версия findTranslationFiles для целой страницы разом — узкое место, которое батчинг
+// grep'а (см. ниже) не трогал: enrichSuttaBatch раньше звал findTranslationFiles ОТДЕЛЬНО на
+// каждую сутту, а findFilesByPrefix каждый раз заново рекурсивно обходит ВЕСЬ каталог языка в
+// поисках файлов одной сутты — для 785 сутт это 785 обходов одного и того же дерева (67 из 90
+// секунд в профилировании). Тут — обходим каждый нужный каталог РОВНО ОДИН РАЗ, собирая индекс
+// suttaId -> {transKey: filePath} для ВСЕХ файлов сразу, потом просто читаем нужные суттs из
+// него. O(размер каталога) вместо O(число сутт × размер каталога); каталог не растёт с числом
+// совпавших сутт, так что это ровно тот же принцип батчинга, что и у grep-функций выше — просто
+// на fs.readdir, не на grep.
+async function walkTranslationDir(dir, wantedIds, bySutta) {
+    let entries;
+    try {
+        entries = await fs.readdir(dir, { withFileTypes: true });
+    } catch (e) { return; }
+    await Promise.all(entries.map(async entry => {
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+            await walkTranslationDir(full, wantedIds, bySutta);
+            return;
+        }
+        if (!entry.isFile() || !entry.name.endsWith('.json')) return;
+        const suttaId = entry.name.split('_')[0];
+        if (!wantedIds.has(suttaId)) return;
+        const baseName = entry.name.slice(0, -'.json'.length);
+        const parts = baseName.split('-');
+        if (parts.length < 3) return;
+        const transKey = `${parts[1]}_${parts.slice(2).join('-')}`;
+        if (!bySutta.has(suttaId)) bySutta.set(suttaId, {});
+        bySutta.get(suttaId)[transKey] = toPosixPath(full);
+    }));
+}
+
+async function buildTranslationIndex(suttaIds, targetLangs) {
+    const searchDirs = [];
+    for (const lang of targetLangs) {
+        if (lang === 'all') {
+            try {
+                const langs = await fs.readdir(SC_TRANS);
+                langs.forEach(l => searchDirs.push(path.join(SC_TRANS, l)));
+            } catch (e) {}
+            DG_LANGS.forEach(l => searchDirs.push(path.join(DG_OFFLINE, l)));
+        } else {
+            searchDirs.push(path.join(SC_TRANS, lang));
+            DG_LANGS
+                .filter(l => l === lang || l.startsWith(lang + '_'))
+                .forEach(l => searchDirs.push(path.join(DG_OFFLINE, l)));
+        }
+    }
+
+    const wantedIds = new Set(suttaIds);
+    const bySutta = new Map(); // suttaId -> { transKey: filePath }
+
+    await Promise.all([...new Set(searchDirs)].map(async dir => {
+        if (!fsSync.existsSync(dir)) return;
+        await walkTranslationDir(dir, wantedIds, bySutta);
+    }));
+
+    const result = new Map();
+    for (const suttaId of suttaIds) {
+        result.set(suttaId, filterPreferredTranslators(bySutta.get(suttaId) || {}));
+    }
+    return result;
+}
+
+// Гибрид: buildTranslationIndex платит фиксированную цену (обход ВСЕГО языкового каталога)
+// один раз, независимо от числа сутт — окупается только когда сутт много (для 785 сутт это
+// быстрее в разы). Для обычной страницы (десятки сутт) эта фиксированная цена — единственное,
+// что видит запрос: 46 секунд на 3-сутточный батч при полном обходе, потому что деревья
+// SC_TRANS/ru и SC_TRANS/en покрывают ВЕСЬ корпус целиком. Точечный findTranslationFiles на
+// каждую сутту (обход дерева, где findFilesByPrefix ищет конкретный префикс)
+// быстрее для маленьких батчей, потому что каждый вызов недорогой сам по себе. Порог подобран
+// эмпирически (30 в профилировании — типичный размер страницы — быстро точечно; 785 — быстрее
+// батчево); при желании можно уточнить дальше.
+const TRANSLATION_INDEX_THRESHOLD = 80;
+
+// Тот же гибрид для root/variant grep (enrichSuttaBatch) — явный список файлов дешевле весь
+// SC_ROOT/SC_VARIANT рекурсивно для маленького батча, дороже (и рискует ENAMETOOLONG) для
+// большого. Один порог на обе оптимизации, т.к. природа компромисса одинаковая.
+const GREP_FILELIST_THRESHOLD = TRANSLATION_INDEX_THRESHOLD;
+
+async function findTranslationFilesForBatch(suttaIds, targetLangs) {
+    if (suttaIds.length <= TRANSLATION_INDEX_THRESHOLD) {
+        const result = new Map();
+        await Promise.all(suttaIds.map(async suttaId => {
+            const files = await findTranslationFiles(suttaId, targetLangs);
+            const normalized = {};
+            for (const [key, filePath] of Object.entries(files)) normalized[key] = toPosixPath(filePath);
+            result.set(suttaId, normalized);
+        }));
+        return result;
+    }
+    return buildTranslationIndex(suttaIds, targetLangs);
+}
+
 // Директории для grep в зависимости от запрошенных языков
 function buildGrepDirs(targetLangs) {
     const dirs = [];
@@ -246,6 +340,17 @@ function buildGrepDirs(targetLangs) {
 
 function escapeRegExp(str) {
     return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// path.join() на Windows отдаёт путь с обратными слэшами — но grep -r (GNU grep через Git/MSYS)
+// САМ строит пути при рекурсии и всегда использует прямые слэши, независимо от того, как был
+// задан каталог на входе. Если хранить/искать по путям из path.join() как есть, а grep-результаты
+// класть в ту же Map — ключи никогда не совпадут (только "C:\...\dn1..." vs "C:/.../dn1..."),
+// и все per-sutta lookups после grepSegmentsWithContextRecursive() молча возвращают пусто.
+// Нормализуем к прямым слэшам везде, где путь служит ключом Map — это единственное место,
+// где это важно (fs.existsSync/fs.readFile на Windows одинаково едят оба варианта).
+function toPosixPath(p) {
+    return p ? p.replace(/\\/g, '/') : p;
 }
 
 // Отчёт с группировкой по словам — та же идея, что в легаси new/words.sh (grep по словам,
@@ -592,102 +697,227 @@ async function buildFastResponse(keyword, searchScope, exactMatch, targetLangs) 
     };
 }
 
-// Point-lookup grep: for one file, fetch the given known segment ids plus lb/la lines of
-// context around each — in ONE grep process regardless of how many ids are requested (GNU grep
-// merges overlapping -B/-A windows across multiple -e anchors in a single pass). Always -F
-// (fixed-string), since segment ids are never regex. Returns Map<lineNumber, {segmentId, text}>
-// so callers reconstruct "N lines before/after" from line numbers, independent of how grep
-// grouped its output.
-async function grepSegmentsWithContext(filePath, segmentIds, lb = 0, la = 0) {
-    const result = new Map();
-    if (!filePath || segmentIds.length === 0 || !fsSync.existsSync(filePath)) return result;
+// Легаси (C:\soft\dg\new\functions.sh) не передаёт grep'у списки файлов вообще — оно грепает
+// маленький фиксированный набор ДИРЕКТОРИЙ рекурсивно (-r), и alternation по id сам отфильтровывает
+// нужное. Наша первая версия батчинга передавала явные пути файлов (по одному на сутту) — при
+// частом слове (785 сутт) это либо превышает лимит длины командной строки Windows (ENAMETOOLONG),
+// либо (после чанкинга по файлам) даёт кучу мелких chunk'ов и всё равно медленно (~3 минуты на
+// q=dukkha). Директории вместо файлов — тот же трюк, что у легаси: список аргументов больше не
+// растёт с числом сутт, растёт только id-alternation (которую тоже чанкуем на случай очень
+// большого корпуса, но это на порядки более редкий случай).
+const GREP_ID_BUDGET = 12000; // символов на -e id-паттерны в одном вызове
 
-    const args = ['-n', '-F'];
-    if (lb > 0) args.push(`-B${lb}`);
-    if (la > 0) args.push(`-A${la}`);
-    for (const segId of segmentIds) args.push('-e', `"${segId}":`);
-    args.push(filePath);
+function chunkByBudget(items, toArgString, budget) {
+    const chunks = [];
+    let current = [];
+    let currentLen = 0;
+    for (const item of items) {
+        const len = toArgString(item).length + 1; // +1 разделитель
+        if (current.length && currentLen + len > budget) {
+            chunks.push(current);
+            current = [];
+            currentLen = 0;
+        }
+        current.push(item);
+        currentLen += len;
+    }
+    if (current.length) chunks.push(current);
+    return chunks;
+}
+
+// Рекурсивный point-lookup grep: фиксированный небольшой набор ДИРЕКТОРИЙ (не файлов сутт —
+// список директорий не растёт с числом совпавших сутт), плюс lb/la контекст. GNU grep с -r и
+// несколькими каталогами/файлами префиксует каждую строку именем файла ("path:42:content" для
+// совпадения, "path-42-content" для контекстной строки -B/-A — проверено эмпирически). Всегда -F
+// (fixed-string), id сегмента никогда не регекс. Возвращает
+// Map<filePath, Map<lineNumber, {segmentId, text}>>.
+async function grepSegmentsWithContextRecursive(dirs, segmentIds, lb = 0, la = 0) {
+    const result = new Map();
+    const existingDirs = [...new Set(dirs.filter(d => d && fsSync.existsSync(d)))];
+    if (existingDirs.length === 0 || segmentIds.length === 0) return result;
+
+    const baseArgs = ['-r', '-n', '-F'];
+    if (lb > 0) baseArgs.push(`-B${lb}`);
+    if (la > 0) baseArgs.push(`-A${la}`);
+
+    const idChunks = chunkByBudget(segmentIds, id => `-e "${id}":`, GREP_ID_BUDGET);
+
+    await Promise.all(idChunks.map(async idChunk => {
+        const args = [...baseArgs];
+        for (const segId of idChunk) args.push('-e', `"${segId}":`);
+        args.push(...existingDirs);
+
+        let stdout = '';
+        try {
+            const res = await execFile('grep', args, { maxBuffer: 1024 * 1024 * 20 });
+            stdout = res.stdout;
+        } catch (error) {
+            if (error.code === 1) return; // no matches for this id chunk
+            throw error;
+        }
+
+        for (const line of stdout.split('\n')) {
+            if (!line.trim() || line === '--') continue;
+            // Жадный .+ вместо [^:]+ — путь к файлу на Windows содержит двоеточие буквы диска
+            // (C:/...); [:-] дважды — grep использует ":" для строк-совпадений и "-" для
+            // контекстных строк (-B/-A), но никогда не смешивает разделители внутри одной строки.
+            const m = line.match(/^(.+\.json)[:-](\d+)[:-](.*)$/);
+            if (!m) continue;
+            const parsed = parseJsonLineFragment(m[3]);
+            if (!parsed) continue;
+            if (!result.has(m[1])) result.set(m[1], new Map());
+            result.get(m[1]).set(parseInt(m[2], 10), parsed);
+        }
+    }));
+
+    return result;
+}
+
+// Рекурсивный title lookup — тот же паттерн (":0"-style front-matter, последний перед первым
+// реальным сегментом) одинаков для ЛЮБОЙ сутты, грепаем ВЕСЬ каталог(и) сразу одним процессом
+// (обычно только SC_ROOT). Возвращает Map<filePath, segmentId|null> — для файлов вне запрошенных
+// суттs результат просто не запрашивается вызывающим кодом (лишние строки не мешают).
+async function findTitleSegmentIdRecursive(dirs) {
+    const result = new Map();
+    const existingDirs = [...new Set(dirs.filter(d => d && fsSync.existsSync(d)))];
+    if (existingDirs.length === 0) return result;
 
     let stdout = '';
     try {
-        const res = await execFile('grep', args, { maxBuffer: 1024 * 1024 * 5 });
+        const res = await execFile('grep', ['-r', '-n', '-E', ':0(\\.[0-9]+)?":', ...existingDirs], { maxBuffer: 1024 * 1024 * 20 });
         stdout = res.stdout;
     } catch (error) {
-        if (error.code === 1) return result; // no matches in this file
+        if (error.code === 1) return result;
         throw error;
     }
 
+    // grep выдаёт совпадения каждого файла по возрастанию номера строки — просто перезаписываем
+    // на каждой новой строке того же файла, последняя и останется (без -B/-A: разделитель ":").
     for (const line of stdout.split('\n')) {
-        if (!line.trim() || line === '--') continue;
-        // grep -n: "42:content" for an anchor match, "42-content" for a -B/-A context line.
-        const m = line.match(/^(\d+)[:-](.*)$/);
+        if (!line.trim()) continue;
+        const m = line.match(/^(.+\.json):(\d+):(.*)$/);
         if (!m) continue;
-        const parsed = parseJsonLineFragment(m[2]);
-        if (parsed) result.set(parseInt(m[1], 10), parsed);
+        const parsed = parseJsonLineFragment(m[3]);
+        result.set(m[1], parsed ? parsed.segmentId : null);
     }
 
     return result;
 }
 
-// Last ":0"-style front-matter segment before the sutta's real content (same heuristic as
-// before: title is the last piece of front matter right before the first ":1..." segment) — via
-// one small targeted grep instead of reading+scanning the whole root file.
-async function findTitleSegmentId(rootPath) {
-    if (!rootPath || !fsSync.existsSync(rootPath)) return null;
-    let stdout = '';
-    try {
-        const res = await execFile('grep', ['-n', '-E', ':0(\\.[0-9]+)?":', rootPath], { maxBuffer: 1024 * 1024 * 2 });
-        stdout = res.stdout;
-    } catch (error) {
-        if (error.code === 1) return null;
-        throw error;
-    }
-    const lines = stdout.split('\n').filter(l => l.trim());
-    if (lines.length === 0) return null;
-    const m = lines[lines.length - 1].match(/^(\d+):(.*)$/);
-    if (!m) return null;
-    const parsed = parseJsonLineFragment(m[2]);
-    return parsed ? parsed.segmentId : null;
-}
-
 // Phase 2: enrich a known set of matched suttas with full segment/quote data — root, variant,
-// translations, and lb/la context — entirely via targeted grep (see the strategy comment
-// above), never a full-file JSON.parse. Two grep rounds per sutta, run in parallel across
-// suttas: (1) grep root WITH context to learn every segment id in the lb/la window around each
-// match, (2) grep variant/translation files for exactly that id set (no further context needed
-// — round 1's id set already covers it).
+// translations, and lb/la context — entirely via targeted grep, never a full-file JSON.parse.
+// Батчинг по образцу C:\soft\dg\new\functions.sh (getPliFromLangFirst/getLangFromVarFirst):
+// собрать все нужные id/файлы для ВСЕЙ страницы разом, один grep-процесс НА ТИП ФАЙЛА
+// (root+context, недостающие title, variant, переводы), а не один на сутту — для страницы
+// из ~25 сутт это ~4 процесса вместо ~100.
 async function enrichSuttaBatch(searchResults, suttaIds, targetLangs, keyword, lb = 0, la = 0) {
     const regex = new RegExp(keyword, 'gi');
     const wordRegex = new RegExp(`[^\\s,.:;!?"'""''()\\[\\]{}]*${keyword}[^\\s,.:;!?"'""''()\\[\\]{}]*`, 'gi');
     let globalTotalMatches = 0;
     let globalHasVariants = false;
 
-    await Promise.all(suttaIds.map(async suttaId => {
+    // --- Сбор путей/id по каждой сутте. Root/variant — чисто детерминированные пути
+    // (getRootPath/getVariantPath, из skeletonDB, без обращения к диску). Переводы —
+    // buildTranslationIndex обходит каждый языковой каталог РОВНО ОДИН РАЗ для всей страницы
+    // разом (не findTranslationFiles на каждую сутту по отдельности — это и был настоящий
+    // бутылочное горлышко: 67 из 90 секунд в профилировании на 785 суттах, а не grep).
+    const rootPathBySutta = new Map();
+    const variantPathBySutta = new Map();
+    const matchedSegIdsBySutta = new Map();
+
+    for (const suttaId of suttaIds) {
         const suttaRes = searchResults[suttaId];
-        if (!suttaRes) return;
+        if (!suttaRes) continue;
+        rootPathBySutta.set(suttaId, toPosixPath(getRootPath(suttaId)));
+        variantPathBySutta.set(suttaId, toPosixPath(getVariantPath(suttaId)));
+        matchedSegIdsBySutta.set(suttaId, suttaRes.segments.map(s => s.segment));
+    }
+    const translationFilesBySutta = await findTranslationFilesForBatch(suttaIds, targetLangs);
 
-        const matchedSegIds = suttaRes.segments.map(s => s.segment);
-        const rootPath = getRootPath(suttaId);
-        const variantPath = getVariantPath(suttaId);
-        const translationFiles = await findTranslationFiles(suttaId, targetLangs);
+    const allMatchedSegIds = [...new Set(suttaIds.flatMap(id => matchedSegIdsBySutta.get(id) || []))];
+
+    // 1. Root + контекст. Тот же гибрид, что и с переводами (findTranslationFilesForBatch) —
+    // grepSegmentsWithContextRecursive() одинаково принимает и файлы, и директории (-r у grep —
+    // no-op на обычном файле), так что для маленькой страницы дешевле дать явный список из
+    // ~десятков root-файлов (быстро — не сканирует остальные ~7500), а для большого батча —
+    // [SC_ROOT] целиком (список аргументов не растёт с числом сутт, не упрётся в лимит длины
+    // командной строки). Профилирование: явный список для 3 сутт был <1с; весь SC_ROOT — 4-12с
+    // независимо от того, 3 сутты нужны или 785 (цена одинакова — это же дерево целиком).
+    const rootTargets = suttaIds.length <= GREP_FILELIST_THRESHOLD
+        ? [...new Set(Array.from(rootPathBySutta.values()))]
+        : [SC_ROOT];
+    const [rootLinesByFile, titleSegIdByFile] = await Promise.all([
+        grepSegmentsWithContextRecursive(rootTargets, allMatchedSegIds, lb, la),
+        findTitleSegmentIdRecursive(rootTargets)
+    ]);
+
+    // Пер-суттный window (все id, попавшие в root-контекст + title) — то, что нужно спросить
+    // у variant/переводов на шагах 2-3.
+    const windowSegIdsBySutta = new Map();
+    const rootHasTitleBySutta = new Map();
+    for (const suttaId of suttaIds) {
+        const rootPath = rootPathBySutta.get(suttaId);
+        const rootLines = rootLinesByFile.get(rootPath) || new Map();
+        const titleSegId = titleSegIdByFile.get(rootPath) || null;
+        const rootHasTitle = !!(titleSegId && [...rootLines.values()].some(v => v.segmentId === titleSegId));
+        rootHasTitleBySutta.set(suttaId, rootHasTitle);
+        windowSegIdsBySutta.set(suttaId, [...new Set(
+            [...rootLines.values()].map(v => v.segmentId).concat(titleSegId ? [titleSegId] : [])
+        )]);
+    }
+
+    // 2. Title-сегменты, не попавшие в lb/la-окно контекста — тот же рекурсивный SC_ROOT,
+    // только с id title-сегментов вместо matchedSegIds (обычно их немного/ноль).
+    const suttasNeedingTitleRoot = suttaIds.filter(id => {
+        const titleSegId = titleSegIdByFile.get(rootPathBySutta.get(id));
+        return titleSegId && !rootHasTitleBySutta.get(id);
+    });
+    const titleRootIds = [...new Set(suttasNeedingTitleRoot.map(id => titleSegIdByFile.get(rootPathBySutta.get(id))))];
+    const titleRootLinesByFile = titleRootIds.length
+        ? await grepSegmentsWithContextRecursive(rootTargets, titleRootIds, 0, 0)
+        : new Map();
+
+    // 3. Variant — тот же гибрид: явные файлы для маленькой страницы, весь SC_VARIANT для
+    // большого батча.
+    const allWindowSegIds = [...new Set(suttaIds.flatMap(id => windowSegIdsBySutta.get(id) || []))];
+    const variantTargets = suttaIds.length <= GREP_FILELIST_THRESHOLD
+        ? [...new Set(Array.from(variantPathBySutta.values()))]
+        : [SC_VARIANT];
+    const variantLinesByFile = await grepSegmentsWithContextRecursive(variantTargets, allWindowSegIds, 0, 0);
+
+    // 4. Переводы — грепаем не список файлов сутт, а небольшой фиксированный набор РОДИТЕЛЬСКИХ
+    // директорий уже выбранных (filterPreferredTranslators) файлов перевода (обычно 2-6 штук —
+    // translation/ru, translation/en, dhammagift/ru и т.п. — не растёт с числом сутт). Сутта и
+    // transKey уже известны из translationFilesBySutta (сами построили список файлов), не нужно
+    // восстанавливать их из пути результата — просто игнорируем совпадения из файлов, которые
+    // мы не выбирали (другой переводчик той же сутты в той же папке).
+    const translationDirs = new Set();
+    for (const suttaId of suttaIds) {
+        for (const filePath of Object.values(translationFilesBySutta.get(suttaId) || {})) {
+            translationDirs.add(path.dirname(filePath));
+        }
+    }
+    const translationLinesByFile = await grepSegmentsWithContextRecursive([...translationDirs], allWindowSegIds, 0, 0);
+
+    // --- Сборка результата по каждой сутте — та же логика, что раньше, просто читает из уже
+    // готовых батчевых Map (по имени файла) вместо повторного grep на каждую сутту.
+    for (const suttaId of suttaIds) {
+        const suttaRes = searchResults[suttaId];
+        if (!suttaRes) continue;
+
+        const rootPath = rootPathBySutta.get(suttaId);
+        const variantPath = variantPathBySutta.get(suttaId);
+        const rootLines = rootLinesByFile.get(rootPath) || new Map();
+        const titleRootLine = titleRootLinesByFile.get(rootPath) || new Map();
+        const variantLines = variantLinesByFile.get(variantPath) || new Map();
+        const titleSegId = titleSegIdByFile.get(rootPath) || null;
+
+        const translationFiles = translationFilesBySutta.get(suttaId) || {};
         const translationKeys = Object.keys(translationFiles);
-
-        const [rootLines, titleSegId] = await Promise.all([
-            grepSegmentsWithContext(rootPath, matchedSegIds, lb, la),
-            findTitleSegmentId(rootPath)
-        ]);
-
-        const rootHasTitle = titleSegId && [...rootLines.values()].some(v => v.segmentId === titleSegId);
-        const windowSegIds = [...new Set([...rootLines.values()].map(v => v.segmentId).concat(titleSegId ? [titleSegId] : []))];
-
-        const [titleRootLine, variantLines, ...translationLinesArr] = await Promise.all([
-            !rootHasTitle && titleSegId ? grepSegmentsWithContext(rootPath, [titleSegId], 0, 0) : Promise.resolve(new Map()),
-            grepSegmentsWithContext(variantPath, windowSegIds, 0, 0),
-            ...translationKeys.map(key => grepSegmentsWithContext(translationFiles[key], windowSegIds, 0, 0))
-        ]);
-
         const translationLinesByKey = {};
-        translationKeys.forEach((key, i) => { translationLinesByKey[key] = translationLinesArr[i]; });
+        for (const key of translationKeys) {
+            translationLinesByKey[key] = translationLinesByFile.get(translationFiles[key]) || new Map();
+        }
 
         const findBySegId = (lineMap, segId) => [...lineMap.values()].find(v => v.segmentId === segId);
 
@@ -759,7 +989,7 @@ async function enrichSuttaBatch(searchResults, suttaIds, targetLangs, keyword, l
         suttaRes.count = matchCount;
         globalTotalMatches += matchCount;
         suttaRes.unique_words = Array.from(uniqueWordsSet);
-    }));
+    }
 
     return { globalTotalMatches, globalHasVariants };
 }
