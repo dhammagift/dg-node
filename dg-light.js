@@ -174,8 +174,10 @@ function filterPreferredTranslators(results) {
 }
 
 // Поиск файлов переводов по suttaId (без предварительного индекса)
-// Возвращает { "ru_o": "/path/to/file.json", "en_sujato": "...", ... } — один файл на язык (см. выше)
-async function findTranslationFiles(suttaId, targetLangs) {
+// Возвращает { "ru_o": "/path/to/file.json", "en_sujato": "...", ... } — один файл на язык (см. выше),
+// ИЛИ, если передан explicitTranslators (для режима mt/multi — два перевода ОДНОГО языка
+// одновременно), ровно те ключи, что там перечислены, без схлопывания через filterPreferredTranslators.
+async function findTranslationFiles(suttaId, targetLangs, explicitTranslators) {
     const searchDirs = [];
 
     for (const lang of targetLangs) {
@@ -210,6 +212,12 @@ async function findTranslationFiles(suttaId, targetLangs) {
             }
         }
     }));
+
+    if (explicitTranslators && explicitTranslators.length) {
+        const filtered = {};
+        explicitTranslators.forEach(key => { if (results[key]) filtered[key] = results[key]; });
+        return filtered;
+    }
 
     return filterPreferredTranslators(results);
 }
@@ -512,7 +520,7 @@ async function searchWithGrep(keyword, searchScope, exactMatch, targetLangs, lb 
 
 // Полный текст одной сутты (все сегменты, не только совпадения) — для ридера.
 // Переиспользует те же хелперы, что и поиск, просто без grep-фильтра.
-async function getFullTextData(suttaId, targetLangs) {
+async function getFullTextData(suttaId, targetLangs, explicitTranslators) {
     const suttaMeta = skeletonDB[suttaId];
     if (!suttaMeta) return null;
 
@@ -526,7 +534,7 @@ async function getFullTextData(suttaId, targetLangs) {
         ? JSON.parse(await fs.readFile(variantPath, 'utf8').catch(() => '{}'))
         : {};
 
-    const translationFiles = await findTranslationFiles(suttaId, targetLangs);
+    const translationFiles = await findTranslationFiles(suttaId, targetLangs, explicitTranslators);
     const translationsData = {};
     for (const [transKey, tPath] of Object.entries(translationFiles)) {
         translationsData[transKey] = JSON.parse(await fs.readFile(tPath, 'utf8').catch(() => '{}'));
@@ -559,15 +567,35 @@ async function getFullTextData(suttaId, targetLangs) {
 app.get('/api/text/:suttaId', async (req, res) => {
     const suttaId = req.params.suttaId.toLowerCase();
     const targetLangs = (req.query.langs || 'ru,en').split(',').map(l => l.trim());
+    // ?translators=ru_o,ru_sv — для mt/multi (два перевода ОДНОГО языка одновременно),
+    // в обход обычного "один переводчик на язык" (см. findTranslationFiles).
+    const explicitTranslators = req.query.translators
+        ? req.query.translators.split(',').map(t => t.trim())
+        : null;
 
     try {
-        const data = await getFullTextData(suttaId, targetLangs);
+        const data = await getFullTextData(suttaId, targetLangs, explicitTranslators);
         if (!data) return res.status(404).json({ error: `Unknown sutta id: ${suttaId}` });
         res.json(data);
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Internal Server Error.' });
     }
+});
+
+// Prev/next для навигации ридера — из уже загруженного в память skeletonDB, без похода на
+// диск и без скачивания клиентом всей 18-мегабайтной dg_db_light.json ради одной пары ссылок.
+app.get('/api/nav/:suttaId', (req, res) => {
+    const suttaId = req.params.suttaId.toLowerCase();
+    const dbKeys = Object.keys(skeletonDB);
+    const currentIndex = dbKeys.indexOf(suttaId);
+    if (currentIndex === -1) return res.status(404).json({ error: `Unknown sutta id: ${suttaId}` });
+
+    const toNavEntry = (slug) => slug ? { slug, title: skeletonDB[slug].title || '' } : null;
+    res.json({
+        prev: currentIndex > 0 ? toNavEntry(dbKeys[currentIndex - 1]) : null,
+        next: currentIndex < dbKeys.length - 1 ? toNavEntry(dbKeys[currentIndex + 1]) : null
+    });
 });
 
 app.get('/search', async (req, res) => {
@@ -605,5 +633,9 @@ app.listen(PORT, () => {
     console.log(`API: http://localhost:${PORT}/search?q=kacchapa&scope=dhamma&langs=ru,en`);
     console.log(`Legacy UI: http://localhost:${PORT}/nodejs/res/?q=kacchapa&lb=1&la=2&scope=dhamma`);
     console.log(`Legacy Reader: http://localhost:${PORT}/dn22`);
+    console.log(`Reader (read/r, 1 язык):    http://localhost:${PORT}/dn22`);
+    console.log(`Reader (ml, Пали+2 языка):  http://localhost:${PORT}/dn22?mode=ml`);
+    console.log(`Reader (mt, 2 переводчика): http://localhost:${PORT}/dn22?mode=mt`);
+    console.log(`  (?mode= — временный резолвер до маршрутизации по префиксу пути, см. reader-template.html)`);
     console.log(`\n`);
 });

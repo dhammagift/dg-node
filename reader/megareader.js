@@ -6,7 +6,14 @@ const homeButton = document.getElementById("home-button");
 const fdgButton = document.getElementById("fdg-button");
 const citation = document.getElementById("paliauto");
 const form = document.getElementById("form");
-const pathLang = "ru";
+
+// Конфиг режима — какие языки (кроме Пали) показывать колонками, и в каком направлении.
+// Если задан явно (window.READER_MODE, см. reader-template.html: ?mode=), используется как есть.
+// Иначе язык колонки определяется так же, как на странице поиска: ?lang= → localStorage.dhammaLanguage
+// → data-default-lang → "ru" (см. initReader — там мы дожидаемся window.DHAMMA_I18N_READY и
+// подставляем реальный язык, здесь только синхронная заглушка на случай отсутствия dhamma-i18n.js).
+const READER_MODE_EXPLICIT = !!window.READER_MODE;
+const READER_MODE = window.READER_MODE || { columns: ["ru"], direction: "normal" };
 
 let language = "pli-2nd";
 
@@ -146,17 +153,18 @@ window.setupVariantVisibility = function() {
     }
 };
 
-window.mergeGathas = function(htmlData, paliData, transData, varData, engTransData = null) {
+// dataObjects: произвольный список параллельных {segmentId: text} объектов, которые нужно
+// слить в лок-степе с htmlData (paliData, varData, плюс по одному на каждую языковую колонку) —
+// N-арная замена старой версии, где было ровно paliData/transData/varData/engTransData.
+window.mergeGathas = function(htmlData, dataObjects) {
     const originalSegments = Object.keys(htmlData);
-    if (localStorage.getItem("mergeGathas") === "false") return originalSegments; 
-    
+    if (localStorage.getItem("mergeGathas") === "false") return originalSegments;
+
     const processedSegments = [];
     for (let i = 0; i < originalSegments.length; i++) {
         let segment = originalSegments[i];
 
-        if (transData && transData[segment] === undefined) transData[segment] = "";
-        if (engTransData && engTransData[segment] === undefined) engTransData[segment] = "";
-        if (paliData && paliData[segment] === undefined) paliData[segment] = "";
+        dataObjects.forEach(obj => { if (obj[segment] === undefined) obj[segment] = ""; });
 
         let nextSegment = originalSegments[i + 1];
 
@@ -171,16 +179,15 @@ window.mergeGathas = function(htmlData, paliData, transData, varData, engTransDa
                     return str.charAt(0).toLowerCase() + str.slice(1);
                 };
 
-                if (paliData && paliData[nextSegment]) paliData[segment] = (paliData[segment] || "").trim() + " " + toLower(paliData[nextSegment].trim());
-                if (transData && transData[nextSegment]) transData[segment] = (transData[segment] || "").trim() + " " + toLower(transData[nextSegment].trim());
-                if (engTransData && engTransData[nextSegment]) engTransData[segment] = (engTransData[segment] || "").trim() + " " + toLower(engTransData[nextSegment].trim());
-                if (varData && varData[nextSegment]) varData[segment] = (varData[segment] || "").trim() + " " + toLower(varData[nextSegment].trim());
+                dataObjects.forEach(obj => {
+                    if (obj[nextSegment]) obj[segment] = (obj[segment] || "").trim() + " " + toLower(obj[nextSegment].trim());
+                });
 
                 let [currOpen, currClose] = htmlData[segment].split(/{}/);
                 htmlData[segment] = (currOpen || '') + "{}" + (nextClose || '');
 
                 processedSegments.push(segment);
-                i++; 
+                i++;
                 continue;
             }
         }
@@ -266,8 +273,7 @@ window.normalizeSlugToDbKey = function(slug) {
         if (!slug.includes('pli-tv-')) slug = "pli-tv-" + slug;
     }
 
-    if (window.MOBILE_DB && window.MOBILE_DB[slug]) return slug;
-    return slug; 
+    return slug;
 };
 
 
@@ -276,12 +282,17 @@ window.normalizeSlugToDbKey = function(slug) {
 // ==========================================
 window.navigateSutta = function(event, slug) {
     if (event) event.preventDefault(); // Отменяем полную перезагрузку страницы
-    
+
     let params = new URLSearchParams(document.location.search);
     let sQuery = params.has("s") ? `&s=${params.get("s")}` : "";
-    
+    // Сохраняем lang/mode при переходе на след./пред. сутту — иначе выбранный язык/режим
+    // (R+E, ?lang=en и т.п.) откатится к дефолту в адресной строке (сам READER_MODE в памяти
+    // не меняется, но при перезагрузке/шаринге ссылки состояние потерялось бы).
+    let modeQuery = params.has("mode") ? `&mode=${params.get("mode")}` : "";
+    let langQuery = params.has("lang") ? `&lang=${params.get("lang")}` : "";
+
     // Меняем URL без перезагрузки
-    history.pushState({ page: slug }, "", `?q=${slug}${sQuery}`);
+    history.pushState({ page: slug }, "", `?q=${slug}${sQuery}${modeQuery}${langQuery}`);
     
     // Обновляем инпут поиска, если он есть
     const citation = document.getElementById("paliauto");
@@ -294,29 +305,51 @@ window.navigateSutta = function(event, slug) {
     window.scrollTo(0, 0);
 };
 
+// Ctrl+←/→ (пред./след. сутта) через SPA, а не полную перезагрузку. Слушатель на capture-фазе —
+// перехватывает событие ДО того, как оно дойдёт до settings.js (обычный, bubble-фазный
+// document.addEventListener('keydown', ...) с тем же сочетанием, который сейчас делает
+// location.href = ...). Сделано в обход settings.js, чтобы не трогать его самого; когда там
+// почистят дублирующий обработчик — этот можно будет оставить единственным.
+document.addEventListener('keydown', (event) => {
+    if (!event.ctrlKey || (event.code !== 'ArrowRight' && event.code !== 'ArrowLeft')) return;
+    const containerId = event.code === 'ArrowRight' ? 'next' : 'previous';
+    const container = document.getElementById(containerId);
+    const link = container ? container.querySelector('a') : null;
+    if (!link) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const url = new URL(link.href);
+    const slug = url.searchParams.get('q') || url.pathname.split('/').filter(Boolean).pop();
+    if (slug) window.navigateSutta(null, slug);
+}, true);
+
+// Переключение режима колонок (R+R/R+E/En и т.п.) через SPA — без перезагрузки страницы.
+// modeKey — ключ из window.MODE_CONFIGS (см. reader-template.html).
+window.switchReaderMode = function(modeKey, event) {
+    if (event) event.preventDefault();
+    const config = (window.MODE_CONFIGS && window.MODE_CONFIGS[modeKey]) || { columns: [modeKey], direction: "normal" };
+    READER_MODE.columns = config.columns;
+    READER_MODE.direction = config.direction || "normal";
+    READER_MODE.multiTranslators = config.multiTranslators || null;
+
+    let params = new URLSearchParams(document.location.search);
+    params.set('mode', modeKey);
+    history.pushState({ page: window._currentSlug, mode: modeKey }, "", `?${params.toString()}`);
+
+    if (window._currentSlug) window.buildSutta(window._currentSlug);
+};
+
 // ==========================================
 // ЛОГИКА НАВИГАЦИИ (Без PHP и сети, из ОЗУ)
 // ==========================================
-window.renderNavigation = function(slug) {
-    if (!window.MOBILE_DB) return;
-
-    const dbKeys = Object.keys(window.MOBILE_DB);
-    const currentIndex = dbKeys.indexOf(slug);
-    if (currentIndex === -1) return;
-
+window.renderNavigation = async function(slug, suttaTitle) {
     let params = new URLSearchParams(document.location.search);
     let sQuery = params.has("s") ? `&s=${params.get("s").replace(/ṃ/g, "ṁ")}` : "";
 
-    const formatLink = (targetSlug) => {
-        let name = (window.MOBILE_DB[targetSlug].title || "").replace(/[0-9.-]/g, '').trim();
-        let outSlug = targetSlug.replace(/pli-tv-|b[ui]-vb-/g, "");
-        return name === "" ? outSlug : `${outSlug} <span class="sutta-name"> ${name}</span>`;
-    };
-
     let cleanSlug = slug.replace(/pli-tv-|b[ui]-vb-/g, "");
-    let cleanPaliName = (window.MOBILE_DB[slug].title || "").replace(/[0-9.-]/g, '').trim();
+    let cleanPaliName = (suttaTitle || "").replace(/[0-9.-]/g, '').trim();
     let newTitle = cleanPaliName ? `${cleanPaliName} ${cleanSlug}`.trim() : cleanSlug;
-    
+
     document.title = newTitle;
     let metaDesc = document.querySelector('meta[name="description"]');
     if (metaDesc) metaDesc.content = newTitle;
@@ -325,10 +358,25 @@ window.renderNavigation = function(slug) {
 
     const next = document.getElementById("next");
     const next2 = document.getElementById("next2");
-    if (currentIndex < dbKeys.length - 1) {
-        let nextSlug = dbKeys[currentIndex + 1];
-        // Добавлен onclick с перехватом
-        let htmlNext = `<a href="?q=${nextSlug}${sQuery}" onclick="window.navigateSutta(event, '${nextSlug}')">${formatLink(nextSlug)}
+    const previous = document.getElementById("previous");
+    const previous2 = document.getElementById("previous2");
+
+    let nav;
+    try {
+        const response = await fetch(`/api/nav/${encodeURIComponent(slug)}`);
+        nav = response.ok ? await response.json() : { prev: null, next: null };
+    } catch (error) {
+        nav = { prev: null, next: null };
+    }
+
+    const formatLink = (entry) => {
+        let name = (entry.title || "").replace(/[0-9.-]/g, '').trim();
+        let outSlug = entry.slug.replace(/pli-tv-|b[ui]-vb-/g, "");
+        return name === "" ? outSlug : `${outSlug} <span class="sutta-name"> ${name}</span>`;
+    };
+
+    if (nav.next) {
+        let htmlNext = `<a href="?q=${nav.next.slug}${sQuery}" onclick="window.navigateSutta(event, '${nav.next.slug}')">${formatLink(nav.next)}
             <svg xmlns="http://www.w3.org/2000/svg" width="15" height="11">
                 <g transform="matrix(0.021484375 0 0 0.021484375 2 -0)"><path d="M202.1 450C 196.03278 449.9987 190.56381 446.34256 188.24348 440.73654C 185.92316 435.13055 187.20845 428.67883 191.5 424.39L191.5 424.39L365.79 250.1L191.5 75.81C 185.81535 69.92433 185.89662 60.568687 191.68266 54.782654C 197.46869 48.996624 206.82434 48.91536 212.71 54.6L212.71 54.6L397.61 239.5C 403.4657 245.3575 403.4657 254.8525 397.61 260.71L397.61 260.71L212.70999 445.61C 209.89557 448.4226 206.07895 450.0018 202.1 450z" fill="#8f8f8f"/></g>
             </svg></a>`;
@@ -339,15 +387,11 @@ window.renderNavigation = function(slug) {
         if (next2) next2.innerHTML = "";
     }
 
-    const previous = document.getElementById("previous");
-    const previous2 = document.getElementById("previous2");
-    if (currentIndex > 0) {
-        let prevSlug = dbKeys[currentIndex - 1];
-        // Добавлен onclick с перехватом
-        let htmlPrev = `<a href="?q=${prevSlug}${sQuery}" onclick="window.navigateSutta(event, '${prevSlug}')">
+    if (nav.prev) {
+        let htmlPrev = `<a href="?q=${nav.prev.slug}${sQuery}" onclick="window.navigateSutta(event, '${nav.prev.slug}')">
             <svg xmlns="http://www.w3.org/2000/svg" width="15" height="11">
                 <g transform="matrix(0.021484375 0 0 0.021484375 2 -0)"><path d="M353 450C 349.02106 450.0018 345.20444 448.4226 342.39 445.61L342.39 445.61L157.5 260.71C 151.64429 254.8525 151.64429 245.3575 157.5 239.5L157.5 239.5L342.39 54.6C 346.1788 50.809414 351.70206 49.328068 356.8792 50.713974C 362.05634 52.099876 366.10086 56.14248 367.4892 61.318974C 368.87753 66.49547 367.3988 72.01941 363.61002 75.81L363.61002 75.81L189.32 250.1L363.61 424.39C 367.90283 428.6801 369.18747 435.13425 366.8646 440.74118C 364.5417 446.34808 359.06903 450.00275 353 450z" fill="#8f8f8f"/></g>
-            </svg>${formatLink(prevSlug)}</a>`;
+            </svg>${formatLink(nav.prev)}</a>`;
         if (previous) previous.innerHTML = htmlPrev;
         if (previous2) previous2.innerHTML = htmlPrev.replace(/class="sutta-name"/g, '');
     } else {
@@ -360,82 +404,81 @@ window.renderNavigation = function(slug) {
 // ОСНОВНАЯ ФУНКЦИЯ СБОРКИ СУТТЫ (Без PHP)
 // ==========================================
 window.buildSutta = async function(rawSlug) {
-    if (!window.MOBILE_DB) {
-        console.error("База данных не загружена!");
-        return;
-    }
-
     const slug = window.normalizeSlugToDbKey(rawSlug);
-
-    if (!window.MOBILE_DB[slug]) {
-        if (typeof window.handleFetchError === 'function') window.handleFetchError(rawSlug, true);
-        return;
-    }
+    window._currentSlug = slug;
+    const columns = READER_MODE.columns;
+    // multiTranslators: { ru: ["ru_o", "ru_khantibalo"] } — режим mt/multi, два (и более)
+    // перевода ОДНОГО языка одновременно, в обход обычного "сервер сам выбрал одного".
+    const multiTranslators = READER_MODE.multiTranslators || {};
+    const explicitTranslators = columns.flatMap(lang => multiTranslators[lang] || []);
 
     let suttaData;
     try {
-        const response = await fetch(`/api/text/${encodeURIComponent(slug)}?langs=ru,en`);
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        let apiUrl = `/api/text/${encodeURIComponent(slug)}?langs=${columns.join(',')}`;
+        if (explicitTranslators.length) apiUrl += `&translators=${explicitTranslators.join(',')}`;
+        const response = await fetch(apiUrl);
+        if (!response.ok) {
+            if (response.status === 404 && typeof window.executeGlobalSearch === 'function') {
+                window.executeGlobalSearch(rawSlug);
+                return false;
+            }
+            throw new Error(`HTTP ${response.status}`);
+        }
         suttaData = await response.json();
     } catch (error) {
         console.error('Ошибка загрузки текста:', error);
         if (typeof window.handleFetchError === 'function') window.handleFetchError(rawSlug, true);
-        return;
+        return false;
     }
 
     const texttype = suttaData.category || "sutta";
     let params = new URLSearchParams(document.location.search);
-    
-    let htmlData = {}, paliData = {}, transData = {}, varData = {};
-    let activeLang = "ru";
-    let activeTranslatorId = "Неизвестно";
-    let globalTargetKey = null;
 
-    // 1. Устанавливаем строгий порядок приоритетов
-    const translatorPriorities = ['ru_o', 'ru_sv', 'ru_sv+edited+o'];
+    let htmlData = {}, paliData = {}, varData = {};
+    // transEntriesByLang.ru = [{translatorId, data:{segmentId: text, ...}}, ...] — обычно один
+    // элемент на язык (сервер сам выбрал переводчика), несколько — для multiTranslators (mt/multi).
+    const transEntriesByLang = {};
 
-    // 2. Ищем лучший перевод для ВСЕГО текста (смотрим по первым доступным переводам)
-    let debugAvailableKeys = [];
-    for (const seg of suttaData.segments) {
-        if (seg.translations && Object.keys(seg.translations).length > 0) {
-            const availableKeys = Object.keys(seg.translations);
-            debugAvailableKeys = availableKeys; // сохраняем для алерта
-            const ruKeys = availableKeys.filter(k => k.startsWith('ru_'));
-            
-            if (ruKeys.length > 0) {
-                ruKeys.sort((a, b) => {
-                    let idxA = translatorPriorities.indexOf(a);
-                    let idxB = translatorPriorities.indexOf(b);
-                    if (idxA === -1) idxA = 999;
-                    if (idxB === -1) idxB = 999;
-                    return idxA - idxB;
-                });
-                globalTargetKey = ruKeys[0];
-                activeLang = "ru";
-                activeTranslatorId = globalTargetKey.split('_').slice(1).join('_');
-                break; // Нашли лучший ключ, выходим из цикла поиска автора
+    if (explicitTranslators.length) {
+        columns.forEach(lang => {
+            transEntriesByLang[lang] = (multiTranslators[lang] || []).map(key => ({
+                translatorId: key.slice(lang.length + 1), key, data: {}
+            }));
+        });
+    } else {
+        // Сервер уже выбрал ровно одного переводчика на язык (filterPreferredTranslators в
+        // dg-light.js) — тут просто находим ЕГО id по первому сегменту, где он встретился,
+        // для байлайна ("Пер. X").
+        const activeKeyByLang = {};
+        for (const seg of suttaData.segments) {
+            if (!seg.translations) continue;
+            for (const lang of columns) {
+                if (activeKeyByLang[lang]) continue;
+                const key = Object.keys(seg.translations).find(k => k.startsWith(`${lang}_`));
+                if (key) activeKeyByLang[lang] = key;
             }
+            if (columns.every(lang => activeKeyByLang[lang])) break;
         }
+        columns.forEach(lang => {
+            const key = activeKeyByLang[lang];
+            transEntriesByLang[lang] = key ? [{ translatorId: key.slice(lang.length + 1), key, data: {} }] : [];
+        });
     }
 
-    // ТЕСТОВЫЙ АЛЕРТ: Выводим результаты логики приоритетов
- //   alert(`Слаг: ${slug}\nСегментов: ${suttaData.segments.length}\nНайдено ключей: ${debugAvailableKeys.join(', ')}\nВыбранный приоритет: ${globalTargetKey || 'нет русских переводов'}`);
-
-    // 3. Собираем сегменты, используя только выбранный глобальный ключ
     for (const seg of suttaData.segments) {
         htmlData[seg.segment] = seg.html || "{}";
         paliData[seg.segment] = seg.root_text || undefined;
         varData[seg.segment] = seg.variant || undefined;
 
-        if (globalTargetKey && seg.translations && seg.translations[globalTargetKey]) {
-            transData[seg.segment] = seg.translations[globalTargetKey];
-        } else {
-            transData[seg.segment] = undefined;
-        }
+        columns.forEach(lang => {
+            transEntriesByLang[lang].forEach(entry => {
+                entry.data[seg.segment] = (seg.translations && seg.translations[entry.key]) || undefined;
+            });
+        });
     }
 
     let html = `<div class="button-area"><button title="Переключить язык (Atl+Z или Alt+Space)" id="language-button" class="hide-button">Pāḷi Рус</button></div>`;
-    
+
     let finalRulingAnchor = "";
     if (slug.includes("bu-") || slug.includes("bi-")) {
         for (let seg in htmlData) {
@@ -446,7 +489,8 @@ window.buildSutta = async function(rawSlug) {
         }
     }
 
-    const segments = window.mergeGathas(htmlData, paliData, transData, varData);
+    const allTransData = columns.flatMap(lang => transEntriesByLang[lang].map(e => e.data));
+    const segments = window.mergeGathas(htmlData, [paliData, varData, ...allTransData]);
     // .quote отличает реальный текст сегмента (который можно скрыть переключателем
     // Pāḷi/Рус) от byline/заголовков с тем же .pli-lang, которые всегда должны быть видны
     // (см. #sutta.hide-pali .pli-lang.quote в uiextra.css).
@@ -456,7 +500,7 @@ window.buildSutta = async function(rawSlug) {
         let segment = segments[i];
 
         let [openHtml, closeHtml] = htmlData[segment].split(/{}/);
-        openHtml = openHtml || ''; closeHtml = closeHtml || ''; 
+        openHtml = openHtml || ''; closeHtml = closeHtml || '';
 
         let startIndex = segment.indexOf(':') + 1;
         let anchor = segment.substring(startIndex);
@@ -471,60 +515,68 @@ window.buildSutta = async function(rawSlug) {
         let finder = (params.get("s") || "").replace(/ṃ/g, "ṁ");
         if (finder && finder.trim() !== "") {
             let regex = new RegExp(finder, 'gi');
+            const highlight = match => `<b class='match finder'>${match}</b>`;
             try {
-                if (paliData[segment]) paliData[segment] = paliData[segment].replace(regex, match => `<b class='match finder'>${match}</b>`);
-                if (transData[segment]) transData[segment] = transData[segment].replace(regex, match => `<b class="match finder">${match}</b>`);
-                if (varData[segment]) varData[segment] = varData[segment].replace(regex, match => `<b class="match finder">${match}</b>`);
+                if (paliData[segment]) paliData[segment] = paliData[segment].replace(regex, highlight);
+                if (varData[segment]) varData[segment] = varData[segment].replace(regex, highlight);
+                allTransData.forEach(data => {
+                    if (data[segment]) data[segment] = data[segment].replace(regex, highlight);
+                });
             } catch (error) {}
         }
 
         const linkToCopyStart = `<a class="text-decoration-none copyLink copyLink-start" onclick="copyToClipboard('${fullUrlWithAnchor}')"></a>`;
         let linkToCopy = `<a class="text-decoration-none copyLink" onclick="copyToClipboard('${fullUrlWithAnchor}')"></a>`;
 
-        if (paliData[segment] !== undefined && transData[segment] !== undefined && varData[segment] !== undefined && Object.keys(varData).length > 0) {
-            html += `${openHtml}<span id="${anchor}">
-                <span class="${pliClass}" lang="pi">${linkToCopyStart}${paliData[segment].trim()}${linkToCopy}
-                <font class="variant"><br>${linkToCopyStart}${varData[segment].trim()}${linkToCopy}</font>     
-                </span>
-                <span class="${activeLang}-lang quote" lang="${activeLang}">${linkToCopyStart}${transData[segment].trim()}${linkToCopy}</span>
-                </span>${closeHtml}\n\n`;
-        } else if (paliData[segment] !== undefined && transData[segment] !== undefined) {
-            html += `${openHtml}<span id="${anchor}">
-                <span class="${pliClass}" lang="pi">${linkToCopyStart}${paliData[segment].trim()}${linkToCopy}</span>
-                <span class="${activeLang}-lang quote" lang="${activeLang}">${linkToCopyStart}${transData[segment].trim()}${linkToCopy}</span>
-                </span>${closeHtml}\n\n`;
-        } else if (paliData[segment] !== undefined) {
-            html += openHtml + '<span id="' + anchor + '"><span class="' + pliClass + '" lang="pi">' + linkToCopyStart + paliData[segment].trim() + linkToCopy + '</span></span>' + closeHtml + '\n\n';
-        } else if (transData[segment] !== undefined) {
-            html += `${openHtml}<span id="${anchor}"><span class="${activeLang}-lang quote" lang="${activeLang}">${linkToCopyStart}${transData[segment].trim()}${linkToCopy}</span></span>${closeHtml}\n\n`;
-        }
-    }
+        let hasAnyContent = paliData[segment] !== undefined || allTransData.some(data => data[segment] !== undefined);
+        if (!hasAnyContent) continue;
 
-    let translatorforuser = activeTranslatorId;
-    if (window.TRANSLATORS_CONFIG && window.TRANSLATORS_CONFIG[activeLang] && window.TRANSLATORS_CONFIG[activeLang][activeTranslatorId]) {
-        translatorforuser = window.TRANSLATORS_CONFIG[activeLang][activeTranslatorId];
-    } else {
-        translatorforuser = translatorforuser.charAt(0).toUpperCase() + translatorforuser.slice(1);
+        let inner = '';
+        if (paliData[segment] !== undefined) {
+            inner += `<span class="${pliClass}" lang="pi">${linkToCopyStart}${paliData[segment].trim()}${linkToCopy}`;
+            if (varData[segment] !== undefined && varData[segment] !== '') {
+                inner += `<font class="variant"><br>${linkToCopyStart}${varData[segment].trim()}${linkToCopy}</font>`;
+            }
+            inner += `</span>`;
+        }
+        columns.forEach(lang => {
+            transEntriesByLang[lang].forEach(entry => {
+                const val = entry.data[segment];
+                if (val !== undefined) {
+                    inner += `<span class="${lang}-lang quote" lang="${lang}" data-translator="${entry.translatorId}">${linkToCopyStart}${val.trim()}${linkToCopy}</span>`;
+                }
+            });
+        });
+
+        html += `${openHtml}<span id="${anchor}">${inner}</span>${closeHtml}\n\n`;
     }
 
     const translatorByline = `<div id="trn" class="byline">
-    <p><span class="pli-lang" lang="pi">Pāḷi <a class="text-decoration-none text-reset" href="/assets/texts/abbr.html?s=ms" title="Mahāsaṅgīti Pāḷi">MS</a></span> <span class="${activeLang}-lang" lang="${activeLang}"> Пер. ${translatorforuser}</span></p>
-    </div>`;
+    <p><span class="pli-lang" lang="pi">Pāḷi <a class="text-decoration-none text-reset" href="/assets/texts/abbr.html?s=ms" title="Mahāsaṅgīti Pāḷi">MS</a></span>` +
+    columns.flatMap(lang => transEntriesByLang[lang].map(entry => {
+        let displayName = (window.TRANSLATORS_CONFIG && window.TRANSLATORS_CONFIG[lang] && window.TRANSLATORS_CONFIG[lang][entry.translatorId])
+            || (entry.translatorId.charAt(0).toUpperCase() + entry.translatorId.slice(1));
+        return ` <span class="${lang}-lang" lang="${lang}"> ${displayName}</span>`;
+    })).join('') +
+    `</p></div>`;
 
-    const ruUrl  = window.location.href;
-    const mlUrl = ruUrl.replace("/r/", "/ml/");
-    const mtUrl = ruUrl.replace("/r/", "/mt/");
-    const enUrl = ruUrl.replace("/r/", "/read/");
-    
-    let cleanSlugReady = slug; 
-    
+    // Ссылка на тот же текст в другом режиме — для копирования/шаринга (обычный href), но клик
+    // перехватывается window.switchReaderMode() и остаётся в SPA, без перезагрузки.
+    const modeLink = (modeKey) => {
+        const linkParams = new URLSearchParams(document.location.search);
+        linkParams.set('mode', modeKey);
+        return `${window.location.pathname}?${linkParams.toString()}`;
+    };
+
+    let cleanSlugReady = slug;
+
     let scLink = `<p class="sc-link">
-    <a target="" title='Pali + Русский + Русский' href="${mtUrl}">R+R</a>
-    <a target="" title='Pali + Русский + Английский (Alt+2)' href="${mlUrl}">R+E</a>
-    <a title='Английский (Alt+1)' href="${enUrl}">En</a>&nbsp;`;
+    <a href="${modeLink('mt')}" onclick="window.switchReaderMode('mt', event)" title='Pali + Русский + Русский'>R+R</a>
+    <a href="${modeLink('ml')}" onclick="window.switchReaderMode('ml', event)" title='Pali + Русский + Английский (Alt+2)'>R+E</a>
+    <a href="${modeLink('read')}" onclick="window.switchReaderMode('read', event)" title='Английский (Alt+1)'>En</a>&nbsp;`;
 
     if (typeof window.generateThirdPartyLinks === 'function') {
-        scLink += window.generateThirdPartyLinks(slug, cleanSlugReady, texttype, activeTranslatorId);
+        scLink += window.generateThirdPartyLinks(slug, cleanSlugReady, texttype, transEntriesByLang[columns[0]][0]?.translatorId);
     }
     
     if (finalRulingAnchor) {
@@ -566,12 +618,12 @@ window.buildSutta = async function(rawSlug) {
     if (topContainer) topContainer.innerHTML = scLink;
     if (bottomContainer) bottomContainer.innerHTML = scLink;
 
-    window.renderNavigation(slug);
+    window.renderNavigation(slug, suttaData.title);
 
     window.dispatchEvent(new Event('suttaLoaded'));
-    
+
     window.setupVariantVisibility();
-    
+
     if (canShowClose && !isWarningClosed) {
         document.querySelectorAll('.close-warning').forEach(btn => {
         btn.addEventListener('click', function() {
@@ -583,6 +635,7 @@ window.buildSutta = async function(rawSlug) {
 
     window.toggleThePali();
     if (typeof window.addToSearchHistory === 'function') window.addToSearchHistory();
+    return true;
 };
 
 window.addEventListener('popstate', (e) => {
@@ -600,18 +653,19 @@ window.addEventListener('popstate', (e) => {
 // ИНИЦИАЛИЗАЦИЯ И МАРШРУТИЗАЦИЯ (SPA Routing)
 // ==========================================
 async function initReader() {
-    // 1. Загрузка базы данных
-    try {
-        const response = await fetch('/nodejs/dg_db_light.json');
-        window.MOBILE_DB = await response.json();
-    } catch (error) {
-        console.error('Ошибка загрузки базы:', error);
-        return;
+    // Язык колонки перевода — как на странице поиска: ?lang= → localStorage.dhammaLanguage →
+    // data-default-lang → "ru" (это уже считает dhamma-i18n.js, просто ждём его и переиспользуем
+    // результат). Если режим передан явно (window.READER_MODE, см. ?mode= в reader-template.html),
+    // ничего не трогаем — явное имеет приоритет.
+    if (!READER_MODE_EXPLICIT && window.DHAMMA_I18N_READY) {
+        try { await window.DHAMMA_I18N_READY; } catch (error) {}
+        const resolvedLang = (window.DHAMMA_I18N && window.DHAMMA_I18N.language)
+            || localStorage.getItem('dhammaLanguage') || 'ru';
+        READER_MODE.columns = [resolvedLang];
     }
 
-    // 2. Читаем URL
-    // Игнорируем путь, если используется параметр ?q=, 
-    // либо берем корректную часть пути, если у вас ЧПУ
+    // Читаем URL. Игнорируем путь, если используется параметр ?q=,
+    // либо берём корректную часть пути, если у вас ЧПУ.
     const urlParams = new URLSearchParams(window.location.search);
     const searchParam = urlParams.get("q");
 
@@ -632,28 +686,17 @@ async function initReader() {
         const citation = document.getElementById("paliauto");
         if (citation) citation.value = query;
 
-        // 3. ЛОГИКА ВЫБОРА: Текст или Поиск
+        // Существование слага решает сам /api/text/:slug (200 → рендерим, 404 → поиск,
+        // см. window.buildSutta) — без предзагрузки индекса всех сутт на клиенте.
         const normalizedSlug = window.normalizeSlugToDbKey ? window.normalizeSlugToDbKey(query) : query;
-
-        if (window.MOBILE_DB[normalizedSlug]) {
-            console.log("Открываем сутту:", normalizedSlug);
-            await window.buildSutta(normalizedSlug);
-            if (segmentId) {
-                const target = document.getElementById(segmentId);
-                if (target) target.scrollIntoView({ block: 'center' });
-            }
-        } else {
-            console.log("Запускаем поиск по слову:", query);
-            if (typeof window.executeGlobalSearch === 'function') {
-                window.executeGlobalSearch(query);
-            } else {
-                console.lot(`Поиск по слову "${query}" (Функция в разработке)`);
-            //    alert(`Поиск по слову "${query}" (Функция в разработке)`);
-            }
+        const rendered = await window.buildSutta(normalizedSlug);
+        if (rendered && segmentId) {
+            const target = document.getElementById(segmentId);
+            if (target) target.scrollIntoView({ block: 'center' });
         }
     } else {
         if (typeof window.getInstructionHTML === 'function' && suttaArea) {
-            suttaArea.innerHTML = window.getInstructionHTML(pathLang);
+            suttaArea.innerHTML = window.getInstructionHTML(READER_MODE.columns[0] || "ru");
         }
     }
 }

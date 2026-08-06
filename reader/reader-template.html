@@ -78,6 +78,7 @@ content="https://dhamma.gift/assets/img/favico_black.png" />
 <link href="/assets/css/styles.css" rel="stylesheet" />
 <link href="/assets/css/extrastyles.css" rel="stylesheet" />
 <link href="/assets/css/paliLookup.css" rel="stylesheet" />
+<link rel="stylesheet" href="/reader/css/index.css">
 <link rel="stylesheet" href="/reader/css/uiextra.css">
 
 <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
@@ -720,15 +721,21 @@ document.getElementById("date").textContent = formattedDate;
 // #settings name="reader" (st/mt/mem/d/ml/th/rv/fr) — режимы без записи здесь
 // пока не реализованы, используют дефолт megareader.js (columns:["ru"]).
 (function() {
+    // mt.multiTranslators — временная тестовая пара (пока не починен DG_OFFLINE-путь в
+    // dg-light.js, см. память dhammagift_reader_architecture.md); не для каждой сутты найдётся
+    // ru_khantibalo — колонка будет пустой, если второго перевода нет.
     const MODE_CONFIGS = {
         st: { columns: ["ru"], direction: "normal" },
+        read: { columns: ["en"], direction: "normal" },
         ml: { columns: ["ru", "en"], direction: "normal" },
         mt: { columns: ["ru"], direction: "normal", multiTranslators: { ru: ["ru_o", "ru_khantibalo"] } }
     };
+    window.MODE_CONFIGS = MODE_CONFIGS;
     const mode = new URLSearchParams(window.location.search).get("mode");
     if (mode && MODE_CONFIGS[mode]) window.READER_MODE = MODE_CONFIGS[mode];
 })();
 </script>
+<script src="/nodejs/translators_config.js"></script>
 <script src="/reader/megareader.js"></script>
 <script>
 form.addEventListener("submit", e => {

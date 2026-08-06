@@ -1,0 +1,95 @@
+const Sccopy = "/suttacentral.net";
+const suttaArea = document.getElementById("sutta");
+//const themeButton = document.getElementById("theme-button");
+const bodyTag = document.querySelector("body");
+let language = "pli-eng";
+
+
+  document.addEventListener("keydown", (event) => {
+    if ((event.altKey && event.code === "KeyX") || (event.shiftKey && event.code === "Space")) {
+    const ShowHideSearchResults = document.getElementById('btn-show-all-children');
+//  console.log("Элемент с ID 'btn-show-all-children' найден.");
+      if (ShowHideSearchResults) {
+     event.preventDefault();
+      ShowHideSearchResults.click();
+    }
+    }
+  });
+
+
+  const languageButton = document.getElementById("language-button");
+
+if (languageButton) {
+function setLanguage(language) {
+  if (language === "pli-eng") {
+    showPaliEnglish();
+  } else if (language === "eng") {
+    showEnglish();
+  } else if (language === "pli") {
+    showPali();
+  }
+}
+function showPaliEnglish() {
+//  console.log("showing Pali eng");
+  suttaArea.classList.remove("hide-pali");
+  suttaArea.classList.remove("hide-english");
+}
+function showEnglish() {
+//  console.log("showing eng");
+  suttaArea.classList.add("hide-pali");
+  suttaArea.classList.remove("hide-english");
+}
+function showPali() {
+//  console.log("showing pali");
+  suttaArea.classList.remove("hide-pali");
+  suttaArea.classList.add("hide-english");
+}
+
+
+
+function toggleThePali() {
+
+  if (localStorage.paliToggleSearch) {
+    if (localStorage.paliToggleSearch === "pli-eng") {
+      showPaliEnglish();
+    } else if (localStorage.paliToggleSearch === "pli") {
+      showPali();
+    } else if (localStorage.paliToggleSearch === "eng") {
+      showEnglish();
+    }
+  } else {
+    localStorage.paliToggleSearch = "pli-eng";
+  }
+
+  languageButton.addEventListener("click", () => {
+    if (language === "pli-eng") {
+	  showPali();     
+	  language = "pli";
+     localStorage.paliToggleSearch = "pli";   
+     localStorage.paliToggleRuSearch = "pli";
+    } else if (language === "pli") {
+     showEnglish();
+      language = "eng";
+      localStorage.paliToggleSearch = "eng";
+      localStorage.paliToggleRuSearch = "rus";
+    } else if (language === "eng") {
+     showPaliEnglish(); 
+      language = "pli-eng";
+localStorage.paliToggleSearch = "pli-eng";
+localStorage.paliToggleRuSearch = "pli-rus";
+    }
+  });
+
+}
+      toggleThePali();
+
+      // Добавляем обработчик сочетания клавиш Alt + S (физическая клавиша)
+  document.addEventListener("keydown", (event) => {
+    if ((event.altKey && event.code === "Space") || (event.altKey && event.code === "KeyZ")) {
+      // Имитируем клик по кнопке
+      event.preventDefault();
+      languageButton.click();
+    }
+  });
+
+}
