@@ -512,6 +512,12 @@ window.DgSearchRender = (function () {
                     data: 'segments',
                     className: 'none',
                     render: function (data, type, row) {
+                        // TODO.md поиск п.5: phase-1 (?fast=1) rows have placeholder segments —
+                        // quotes/context arrive via a follow-up /search/enrich call, at which
+                        // point res/index.html re-renders with row.__enriched set to true.
+                        if (row.__enriched === false) {
+                            return '<span class="text-muted small">' + t('buttons.loading', 'Loading...') + '</span>';
+                        }
                         if (!data || data.length === 0) return '';
                         var quoteHtml = '';
 
@@ -602,7 +608,11 @@ window.DgSearchRender = (function () {
                 { targets: [3], orderData: [3, 4], orderSequence: ['desc', 'asc'] },
                 { targets: [4], orderData: [4, 3], orderSequence: ['desc', 'asc'] }
             ],
-            order: [[6, 'asc'], [0, 'asc']],
+            // TODO.md поиск п.5: category first (dhamma = the 4 nikayas), then mr (legacy
+            // version/relevance rank) descending as a tiebreak — server already sorts this way
+            // (sortSuttaResults in dg-light.js), but DataTables re-sorts on init per its own
+            // `order` regardless of JSON key order, so it has to be repeated here.
+            order: [[6, 'asc'], [4, 'desc'], [0, 'asc']],
             initComplete: function () {
                 var api = this.api();
                 var rootTable = $table;

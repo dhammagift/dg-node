@@ -727,6 +727,26 @@ $(document).ready(function() {
     var lastSearchJson = null;
     var lastHighlightWord = '';
 
+    // TODO.md поиск п.5 — состояние фазированной загрузки. currentTable: живой инстанс
+    // DataTables API (пересоздаётся при каждом renderCurrentReport, см. resetContainer в
+    // search-render.js). enrichedIds/pendingIds: какие сутты уже получили полные цитаты/
+    // контекст через /search/enrich (в отличие от заглушек фазы 1). backgroundLoadPromise:
+    // фоновый полный /search, который в итоге догружает всё остальное + wordReport (тот,
+    // впрочем, уже приходит с фазы 1 — см. buildFastResponse в dg-light.js).
+    var currentTable = null;
+    var enrichedIds = new Set();
+    var pendingIds = new Set();
+    var backgroundLoadPromise = null;
+    var enrichmentStarted = false;
+    var keyword = '', scope = 'default', lb = 0, la = 0;
+
+    function buildUrl(path, extra) {
+        var isLocal = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+        var base = isLocal ? 'http://localhost:3000' + path : path;
+        var qs = 'q=' + encodeURIComponent(keyword) + '&scope=' + scope + '&lb=' + lb + '&la=' + la + (extra || '');
+        return base + '?' + qs;
+    }
+
     function applyFilterValue(table) {
         if (filterValue) {
             table.search(filterValue).draw();
@@ -737,7 +757,7 @@ $(document).ready(function() {
     }
 
     // Переключение между отчётом по суттам и по словам — тот же ответ /search,
-    // без повторного запроса (json.wordReport уже пришёл вместе с json.data).
+    // без повторного запроса (json.wordReport уже пришёл вместе с json.data начиная с фазы 1).
     function renderCurrentReport() {
         if (!lastSearchJson) return;
         var table;
@@ -745,16 +765,103 @@ $(document).ready(function() {
             table = window.DgSearchRender.buildWordDataTable('#pali', lastSearchJson.wordReport, lastHighlightWord, lastSearchJson.metadata.scope);
             $('.forshellscript a').text(t('toolbar.wordsToggleHide', 'Тексты'));
         } else {
-            table = window.DgSearchRender.buildDataTable('#pali', Object.values(lastSearchJson.data), lastHighlightWord);
+            var rows = Object.values(lastSearchJson.data).map(function (r) {
+                r.__enriched = enrichedIds.has(r.sutta_id);
+                return r;
+            });
+            table = window.DgSearchRender.buildDataTable('#pali', rows, lastHighlightWord);
             $('.forshellscript a').text(t('toolbar.wordsToggleShow', 'Слова'));
+            // Слушатель вешаем только когда обогащение уже запущено (ensureEnrichmentStarted) —
+            // до этого момента переход по страницам не должен ничего догружать. На таблицу,
+            // которая была отрисована ДО старта обогащения, слушатель добавляет сам
+            // ensureEnrichmentStarted() отдельно (см. ниже) — иначе первая страница результатов
+            // осталась бы без реакции на смену страницы/сортировки до следующего перерендера.
+            if (enrichmentStarted) {
+                table.on('draw', function () { enrichIds(visiblePageIds()); });
+            }
         }
+        currentTable = table;
         applyFilterValue(table);
+    }
+
+    // resetContainer() (search-render.js) пересоздаёт <table> при каждом рендере — DataTables
+    // теряет состояние страницы/сортировки. Используется для перерисовки, вызванной приходом
+    // новых данных (обогащение), а не действием пользователя — обычный renderCurrentReport()
+    // при переключении вкладок/языка сбрасывает состояние осознанно.
+    function renderCurrentReportPreservingState() {
+        var savedPage = currentTable ? currentTable.page() : null;
+        var savedOrder = currentTable ? currentTable.order() : null;
+        renderCurrentReport();
+        if (savedPage !== null && currentTable) {
+            if (savedOrder) currentTable.order(savedOrder);
+            currentTable.page(savedPage).draw(false);
+        }
+    }
+
+    function visiblePageIds() {
+        if (!currentTable) return [];
+        return currentTable.rows({ page: 'current' }).data().toArray().map(function (r) { return r.sutta_id; });
+    }
+
+    // Догружает цитаты/контекст для конкретных id через /search/enrich — уже обогащённые
+    // и уже летящие id отфильтровываются, так что вызывать можно свободно и часто (события
+    // draw, повторные попытки и т.п.) без риска задвоить запрос.
+    function enrichIds(ids) {
+        var toFetch = ids.filter(function (id) { return !enrichedIds.has(id) && !pendingIds.has(id); });
+        if (!toFetch.length) return Promise.resolve();
+        toFetch.forEach(function (id) { pendingIds.add(id); });
+        return fetch(buildUrl('/search/enrich', '&ids=' + toFetch.map(encodeURIComponent).join(',')))
+            .then(function (r) { return r.json(); })
+            .then(function (json) {
+                toFetch.forEach(function (id) { pendingIds.delete(id); });
+                Object.keys(json.data).forEach(function (id) {
+                    Object.assign(lastSearchJson.data[id], json.data[id]);
+                    enrichedIds.add(id);
+                });
+                if (reportMode === 'suttas') renderCurrentReportPreservingState();
+            })
+            .catch(function (error) {
+                toFetch.forEach(function (id) { pendingIds.delete(id); });
+                console.error('Ошибка при догрузке цитат:', error);
+            });
+    }
+
+    // TODO.md поиск п.5: запускается ровно один раз — либо сразу после фазы 1, если открыт
+    // отчёт по суттам, либо при первом переключении с "Слова" на "Тексты", если пользователь
+    // зашёл через ?report=words (в режиме "Слова" цитаты вообще не нужны, поэтому обогащение
+    // до переключения не запускается).
+    function ensureEnrichmentStarted() {
+        if (enrichmentStarted) return;
+        enrichmentStarted = true;
+
+        enrichIds(visiblePageIds()).then(function () {
+            backgroundLoadPromise = fetch(buildUrl('/search', ''))
+                .then(function (r) { return r.json(); })
+                .then(function (json) {
+                    Object.keys(json.data).forEach(function (id) {
+                        lastSearchJson.data[id] = Object.assign(lastSearchJson.data[id] || {}, json.data[id]);
+                        enrichedIds.add(id);
+                    });
+                    lastSearchJson.wordReport = json.wordReport;
+                    lastSearchJson.metadata = json.metadata;
+                    renderResultHeader(json);
+                    if (reportMode === 'suttas') renderCurrentReportPreservingState();
+                })
+                .catch(function (error) { console.error('Ошибка фоновой догрузки:', error); });
+        });
+
+        // Таблица, отрисованная до этого момента, ещё не получила слушатель draw (см. коммент
+        // в renderCurrentReport) — довешиваем его именно на неё.
+        if (currentTable) {
+            currentTable.on('draw', function () { enrichIds(visiblePageIds()); });
+        }
     }
 
     $('.forshellscript a').on('click', function (e) {
         e.preventDefault();
         reportMode = reportMode === 'words' ? 'suttas' : 'words';
         renderCurrentReport();
+        if (reportMode === 'suttas') ensureEnrichmentStarted();
     });
 
     // Смена UI-языка (dhamma-i18n.js, см. <head>) — DataTables не перечитывает
@@ -798,15 +905,48 @@ $(document).ready(function() {
         window.location.href = url;
     });
 
-    // Главная функция запуска поиска
+    // Заголовок результатов + видимость ссылки на варианты — вызывается дважды: сразу с
+    // приблизительными числами фазы 1 (?fast=1) и повторно, когда фоновый полный /search
+    // подвезёт точные totalMatches/hasVariantMatch (TODO.md поиск п.5).
+    function renderResultHeader(json) {
+        let scopeText = json.metadata.scope === 'default' || !json.metadata.scope ? t('results.defaultScopeLabel', '4 Nikaya Pali') : json.metadata.scope;
 
+        let qStr = json.metadata.query || "";
+        let capitalizedQuery = qStr ? qStr.charAt(0).toUpperCase() + qStr.slice(1) : "";
 
+        let newTitle = `${capitalizedQuery} ${json.metadata.totalFiles} ${t('results.textsAndWord', 'texts and')} ${json.metadata.totalMatches} ${t('results.matchesInWord', 'matches in')} ${scopeText}`;
+
+        document.title = newTitle + " - Dhamma.gift";
+        $('.resultheader').text(newTitle);
+
+        // Логика управления видимостью вариантов
+        let variantDiv = document.getElementById('variants');
+        if (variantDiv) {
+            if (json.metadata.hasVariantMatch) {
+                variantDiv.style.display = 'block';
+                let variantLink = variantDiv.querySelector('a');
+                if (variantLink) {
+                    let currentHref = variantLink.getAttribute('href');
+                    // Если атрибут содержит плейсхолдер, заменяем его на слово
+                    if (currentHref.includes('$wordLinkToReplace')) {
+                        variantLink.setAttribute('href', currentHref.replace('$wordLinkToReplace', encodeURIComponent(lastHighlightWord)));
+                    }
+                }
+            } else {
+                variantDiv.style.display = 'none';
+            }
+        }
+    }
+
+    // Главная функция запуска поиска — TODO.md поиск п.5: сначала быстрый фазовый ответ
+    // (fast=1, без чтения файлов сутт), рендер сразу, затем догрузка цитат для видимой
+    // страницы и фоновая полная догрузка остального (см. ensureEnrichmentStarted).
     async function initSearchApp() {
         let urlParams = new URLSearchParams(window.location.search);
-        
-        let keyword = urlParams.get('q');
+
+        keyword = urlParams.get('q');
         let sParam = urlParams.get('s');
-        
+
         let pathSegments = window.location.pathname.split('/').filter(s => s);
         let lastSegment = pathSegments.pop();
         if (!keyword && lastSegment && !['search', 'index.html', 'result', 'nodejs'].includes(lastSegment.toLowerCase())) {
@@ -819,9 +959,9 @@ $(document).ready(function() {
             keyword = divKeyword;
         }
 
-        let scope = urlParams.get('scope') || 'default';
-        let lb = urlParams.get('lb') || 0;
-        let la = urlParams.get('la') || 0;
+        scope = urlParams.get('scope') || 'default';
+        lb = urlParams.get('lb') || 0;
+        la = urlParams.get('la') || 0;
 
         let searchValue = sParam && sParam.trim() !== "" ? sParam.replace(/\\b/g, '') : divKeyword.replace(/\\b/g, '');
         let highlightWord = searchValue || keyword;
@@ -833,49 +973,16 @@ $(document).ready(function() {
         $('#paliauto').val(keyword);
 
         try {
-            const isLocal = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+            const fastResponse = await fetch(buildUrl('/search', '&fast=1'));
+            if (!fastResponse.ok) throw new Error("Ошибка сети при получении данных");
+            const fastJson = await fastResponse.json();
 
-            const fetchUrl = isLocal
-              ? `http://localhost:3000/search?q=${encodeURIComponent(keyword)}&scope=${scope}&lb=${lb}&la=${la}`
-              : `/search?q=${encodeURIComponent(keyword)}&scope=${scope}&lb=${lb}&la=${la}`;
-  
-            const response = await fetch(fetchUrl);
-           
-            if (!response.ok) throw new Error("Ошибка сети при получении данных");
-            
-            const json = await response.json();
-
-            let scopeText = json.metadata.scope === 'default' || !json.metadata.scope ? t('results.defaultScopeLabel', '4 Nikaya Pali') : json.metadata.scope;
-
-            let qStr = json.metadata.query || "";
-            let capitalizedQuery = qStr ? qStr.charAt(0).toUpperCase() + qStr.slice(1) : "";
-
-            let newTitle = `${capitalizedQuery} ${json.metadata.totalFiles} ${t('results.textsAndWord', 'texts and')} ${json.metadata.totalMatches} ${t('results.matchesInWord', 'matches in')} ${scopeText}`;
-            
-            document.title = newTitle + " - Dhamma.gift";
-            $('.resultheader').text(newTitle);
-
-            // Логика управления видимостью вариантов
-            let variantDiv = document.getElementById('variants');
-            if (variantDiv) {
-                if (json.metadata.hasVariantMatch) {
-                    variantDiv.style.display = 'block';
-                    let variantLink = variantDiv.querySelector('a');
-                    if (variantLink) {
-                        let currentHref = variantLink.getAttribute('href');
-                        // Если атрибут содержит плейсхолдер, заменяем его на слово
-                        if (currentHref.includes('$wordLinkToReplace')) {
-                            variantLink.setAttribute('href', currentHref.replace('$wordLinkToReplace', encodeURIComponent(highlightWord)));
-                        }
-                    }
-                } else {
-                    variantDiv.style.display = 'none';
-                }
-            }
-
-            lastSearchJson = json;
             lastHighlightWord = highlightWord;
+            lastSearchJson = fastJson;
+            renderResultHeader(fastJson);
             renderCurrentReport();
+
+            if (reportMode === 'suttas') ensureEnrichmentStarted();
         } catch (error) {
             console.error('Ошибка при поиске:', error);
         }
