@@ -368,7 +368,23 @@ window.DgSearchRender = (function () {
             colReorder: true,
             orderMulti: true,
             pageLength: 10,
-            lengthMenu: [10, 30, 50, 100, 1000]
+            lengthMenu: [10, 30, 50, 100, 1000],
+            // Responsive's встроенный dtr-title (подпись колонки перед развёрнутым значением,
+            // напр. "Ссылки"/"Цитата" у className:'none' колонок) кеширует заголовок при
+            // инициализации и иногда отдаёт "undefined" вместо реального текста — сам DataTables
+            // column.title при этом уже верный (проверено через settings().aoColumns), это баг
+            // именно кеша Responsive, не наших данных. Содержимое колонки (ссылки/цитата) само по
+            // себе понятно без подписи — рендерим только данные, без dtr-title вообще.
+            responsive: {
+                details: {
+                    renderer: function (api, rowIdx, columns) {
+                        var data = columns.reduce(function (html, col) {
+                            return col.hidden ? html + '<li data-dtr-index="' + col.columnIndex + '">' + col.data + '</li>' : html;
+                        }, '');
+                        return data ? $('<ul data-dtr-index="' + rowIdx + '" class="dtr-details"/>').append(data) : false;
+                    }
+                }
+            }
         };
     }
 
@@ -690,7 +706,7 @@ window.DgSearchRender = (function () {
                     data: 'textCount',
                     render: function (data, type, row) {
                         if (type !== 'display') return data;
-                        var url = '/nodejs/res/?q=' + encodeURIComponent(row.word) + (activeState.scope ? '&scope=' + encodeURIComponent(activeState.scope) : '');
+                        var url = '/?q=' + encodeURIComponent(row.word) + (activeState.scope ? '&scope=' + encodeURIComponent(activeState.scope) : '');
                         return '<a href="' + url + '">' + data + '</a>';
                     }
                 },
@@ -725,8 +741,34 @@ window.DgSearchRender = (function () {
         return wordTableApi;
     }
 
+    // "Variants for {keyword}" — секция под отчётом по словам (легаси new/words.sh). Текст
+    // каждого сегмента (со стрелкой "→"/"(mr)"/"(?)") — редакторская нотация SuttaCentral,
+    // УЖЕ буквально хранящаяся в самом variant-файле (не наш diff, см. комментарий у
+    // findVariantSegments в dg-light.js) — просто подсвечиваем искомое слово и даём ссылку на
+    // сутту тем же способом (.fdgLink/data-slug), что и колонка Quote основной таблицы —
+    // openFdg.js сам донастраивает href на клиенте.
+    function buildVariantsReport(container, variantSegments, keyword) {
+        var $container = $(container);
+        if (!variantSegments || !variantSegments.length) {
+            $container.addClass('d-none');
+            return;
+        }
+        var capitalizedKeyword = keyword ? keyword.charAt(0).toUpperCase() + keyword.slice(1) : '';
+        var listHtml = variantSegments.map(function (seg) {
+            var url = buildSuttaUrl(seg.sutta_id, seg.segment, keyword);
+            var urlwithanchor = seg.sutta_id + (seg.segment.indexOf(':') !== -1 ? ':' + seg.segment.split(':')[1] : '');
+            var text = highlightText(seg.text, keyword);
+            return '<strong><a class="fdgLink quote" target="_blank" href="' + url + '" data-slug="' + urlwithanchor + '">' + seg.sutta_id + '</a></strong> ' + text + '<br>';
+        }).join('\n');
+
+        $container.removeClass('d-none');
+        $container.find('.variants-report-keyword').text(capitalizedKeyword);
+        $container.find('.variants-report-list').html(listHtml);
+    }
+
     return {
         buildDataTable: buildDataTable,
-        buildWordDataTable: buildWordDataTable
+        buildWordDataTable: buildWordDataTable,
+        buildVariantsReport: buildVariantsReport
     };
 })();

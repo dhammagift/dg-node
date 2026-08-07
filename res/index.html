@@ -641,7 +641,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
 
 
 <hr>
-<div id='variants' class="variants" style='display: none;'> has <a href=$wordLinkToReplace#variants>variants</a></div>
+<div id='variants-hint' class="variants" style='display: none;'><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 16 16" fill="currentColor" style="vertical-align:-0.15em;" aria-hidden="true"><path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm.93-9.412-1 4.705c-.07.34.029.533.304.533.194 0 .487-.07.686-.246l-.088.416c-.287.346-.92.598-1.465.598-.703 0-1.002-.422-.808-1.319l.738-3.468c.064-.293.006-.399-.287-.47l-.451-.081.082-.381 2.29-.287zM8 5.5a1 1 0 1 1 0-2 1 1 0 0 1 0 2z"/></svg> <span id="variants-keyword"></span> {{results.hasVariantsSuffix}} <a id="variants-link" href="#">{{results.variantsLinkText}}</a></div>
 
     <div id="search-pane" class="container-fluid table-wrapper mt-4">
 <!--        <h2 id="searchHeading" class="mb-4">Results for: <span id="keywordDisplay" class="text-primary">...</span></h2> -->
@@ -681,6 +681,14 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     <tbody id="word-results">
                 </tbody>
         </table>
+
+<!-- "Variants for {keyword}" — часть отчёта по словам (легаси new/words.sh), не отдельный
+     баннер. Список сегментов, где keyword встречается в вариантном чтении, по всему корпусу
+     независимо от scope основного поиска — см. findVariantSegments в dg-light.js. -->
+<div id="variants" class="mt-3 ms-4 d-none">
+    <h3 class="text-center my-3">{{results.variantsForLabel}} <span class="variants-report-keyword"></span></h3>
+    <div class="variants-report-list pli-lang"></div>
+</div>
     </div>
 
     <div id="reader-pane" class="container-fluid mt-4 d-none">
@@ -748,9 +756,9 @@ $(document).ready(function() {
     // DataTables API текущего видимого отчёта — обе таблицы (#pali, #pali-words) теперь
     // стабильны и не пересоздаются, см. файловый комментарий в search-render.js.
     // enrichedIds/pendingIds: какие сутты уже получили полные цитаты/контекст через
-    // /search/enrich (в отличие от заглушек фазы 1). backgroundLoadPromise: фоновый полный
-    // /search, который в итоге догружает всё остальное + wordReport (тот, впрочем, уже
-    // приходит с фазы 1 — см. buildFastResponse в dg-light.js).
+    // /search/enrich (в отличие от заглушек фазы 1). backgroundLoadPromise: единственный
+    // /search/enrich-заход за ВСЕ найденные id сразу (ensureEnrichmentStarted) — больше не
+    // "сначала страница, потом фон" в два сетевых захода, см. комментарий там же.
     var currentTable = null;
     var enrichedIds = new Set();
     var pendingIds = new Set();
@@ -783,14 +791,24 @@ $(document).ready(function() {
     function renderCurrentReport() {
         if (!lastSearchJson) return;
         var table;
+        // d-none на самой <table> прячет только строки/шапку — DataTables оборачивает таблицу в
+        // свой контейнер (#id_wrapper: строка поиска, футер с кнопками/.footerlike, пагинация),
+        // который в d-none НЕ попадает и остаётся видимым сам по себе. Без этого второй
+        // (неактивный) отчёт оставляет свой тулбар/пагинацию висеть на странице отдельным
+        // куском — именно это выглядит как "открывается снизу футера". Прячем обоих сразу:
+        // и саму таблицу (на случай, если DataTables ещё не инициализирован — до первого показа
+        // "Слова" #pali-words_wrapper просто не существует), и её wrapper, если он уже есть.
         if (reportMode === 'words') {
-            $('#pali').addClass('d-none');
-            $('#pali-words').removeClass('d-none');
+            $('#pali, #pali_wrapper').addClass('d-none');
+            $('#pali-words, #pali-words_wrapper').removeClass('d-none');
             table = window.DgSearchRender.buildWordDataTable('#pali-words', lastSearchJson.wordReport, lastHighlightWord, lastSearchJson.metadata.scope);
+            $('#pali-words_wrapper').removeClass('d-none');
+            window.DgSearchRender.buildVariantsReport('#variants', lastSearchJson.variantSegments, keyword);
             $('.forshellscript a').text(t('toolbar.wordsToggleHide', 'Тексты'));
         } else {
-            $('#pali-words').addClass('d-none');
-            $('#pali').removeClass('d-none');
+            $('#pali-words, #pali-words_wrapper').addClass('d-none');
+            $('#pali, #pali_wrapper').removeClass('d-none');
+            $('#variants').addClass('d-none'); // "Variants for X" — часть отчёта по словам, в суттном отчёте её не показываем
             var rows = Object.values(lastSearchJson.data).map(function (r) {
                 r.__enriched = enrichedIds.has(r.sutta_id);
                 return r;
@@ -818,7 +836,10 @@ $(document).ready(function() {
 
     // Догружает цитаты/контекст для конкретных id через /search/enrich — уже обогащённые
     // и уже летящие id отфильтровываются, так что вызывать можно свободно и часто (события
-    // draw, повторные попытки и т.п.) без риска задвоить запрос.
+    // draw, повторные попытки и т.п.) без риска задвоить запрос. /search/enrich теперь всегда
+    // отдаёт wordReport/metadata вместе с data (не только "частичный" ответ) — если они пришли,
+    // обновляем и заголовок результатов заодно (раньше это делал только фоновый полный /search,
+    // отдельным вторым сетевым заходом — TODO.md поиск п.5 больше не разбивает это на два шага).
     function enrichIds(ids) {
         var toFetch = ids.filter(function (id) { return !enrichedIds.has(id) && !pendingIds.has(id); });
         if (!toFetch.length) return Promise.resolve();
@@ -831,6 +852,12 @@ $(document).ready(function() {
                     Object.assign(lastSearchJson.data[id], json.data[id]);
                     enrichedIds.add(id);
                 });
+                if (json.metadata) {
+                    lastSearchJson.wordReport = json.wordReport;
+                    lastSearchJson.metadata = json.metadata;
+                    lastSearchJson.variantSegments = json.variantSegments;
+                    renderResultHeader(json);
+                }
                 if (reportMode === 'suttas') renderCurrentReport();
             })
             .catch(function (error) {
@@ -842,26 +869,16 @@ $(document).ready(function() {
     // TODO.md поиск п.5: запускается ровно один раз — либо сразу после фазы 1, если открыт
     // отчёт по суттам, либо при первом переключении с "Слова" на "Тексты", если пользователь
     // зашёл через ?report=words (в режиме "Слова" цитаты вообще не нужны, поэтому обогащение
-    // до переключения не запускается).
+    // до переключения не запускается). Один вызов на ВСЕ найденные id сразу — не только видимую
+    // страницу с последующей отдельной фоновой догрузкой: с батчингом/scope-кешем на сервере
+    // полный батч больше не стоит кратно дороже мелкого, так что отдельная "сначала только
+    // страница" стадия и лишний третий сетевой заход были чистым накладным расходом.
     function ensureEnrichmentStarted() {
         if (enrichmentStarted) return;
         enrichmentStarted = true;
 
-        enrichIds(visiblePageIds()).then(function () {
-            backgroundLoadPromise = fetch(buildUrl('/search', ''))
-                .then(function (r) { return r.json(); })
-                .then(function (json) {
-                    Object.keys(json.data).forEach(function (id) {
-                        lastSearchJson.data[id] = Object.assign(lastSearchJson.data[id] || {}, json.data[id]);
-                        enrichedIds.add(id);
-                    });
-                    lastSearchJson.wordReport = json.wordReport;
-                    lastSearchJson.metadata = json.metadata;
-                    renderResultHeader(json);
-                    if (reportMode === 'suttas') renderCurrentReport();
-                })
-                .catch(function (error) { console.error('Ошибка фоновой догрузки:', error); });
-        });
+        backgroundLoadPromise = enrichIds(Object.keys(lastSearchJson.data))
+            .catch(function (error) { console.error('Ошибка догрузки:', error); });
 
         // Таблица, отрисованная до этого момента, ещё не получила слушатель draw (см. коммент
         // в renderCurrentReport) — довешиваем его именно на неё.
@@ -907,13 +924,13 @@ $(document).ready(function() {
 
     // Строка поиска в шапке (заготовка под SPA, была скрыта) — уже сейчас, до самого SPA,
     // просто запускает новый поиск на этой же странице (та же схема, что и клик по числу
-    // текстов в отчёте по словам: /nodejs/res/?q=...&scope=...), без похода на главную.
+    // текстов в отчёте по словам: /?q=...&scope=...), без похода на главную.
     $('#form').on('submit', function (e) {
         e.preventDefault();
         var value = $('#paliauto').val().trim();
         if (!value) return;
         var currentScope = new URLSearchParams(window.location.search).get('scope') || 'default';
-        var url = '/nodejs/res/?q=' + encodeURIComponent(value) +
+        var url = '/?q=' + encodeURIComponent(value) +
             (currentScope !== 'default' ? '&scope=' + encodeURIComponent(currentScope) : '');
         window.location.href = url;
     });
@@ -932,19 +949,17 @@ $(document).ready(function() {
         document.title = newTitle + " - Dhamma.gift";
         $('.resultheader').text(newTitle);
 
-        // Логика управления видимостью вариантов
-        let variantDiv = document.getElementById('variants');
+        // "Есть варианты чтения" — hasVariantMatch теперь всегда отвечает на вопрос "существуют
+        // ли варианты ГДЕ-ТО в корпусе" (сервер сам решает, нужен ли для этого отдельный
+        // widened-проход — см. checkVariantExistsAnywhere в dg-light.js), не только в текущей
+        // scope-выдаче. Ссылка ведёт на отчёт по словам с scope=all — вариант нужно увидеть по
+        // всем текстам разом, независимо от того, каким scope искал сам пользователь.
+        let variantDiv = document.getElementById('variants-hint');
         if (variantDiv) {
             if (json.metadata.hasVariantMatch) {
                 variantDiv.style.display = 'block';
-                let variantLink = variantDiv.querySelector('a');
-                if (variantLink) {
-                    let currentHref = variantLink.getAttribute('href');
-                    // Если атрибут содержит плейсхолдер, заменяем его на слово
-                    if (currentHref.includes('$wordLinkToReplace')) {
-                        variantLink.setAttribute('href', currentHref.replace('$wordLinkToReplace', encodeURIComponent(lastHighlightWord)));
-                    }
-                }
+                $('#variants-keyword').text(capitalizedQuery);
+                $('#variants-link').attr('href', '/?q=' + encodeURIComponent(json.metadata.query) + '&scope=all&report=words#variants');
             } else {
                 variantDiv.style.display = 'none';
             }

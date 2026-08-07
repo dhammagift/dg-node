@@ -51,6 +51,9 @@
   "results": {
     "textsAndWord": "texts and",
     "matchesInWord": "matches in",
-    "defaultScopeLabel": "4 Nikaya Pali"
+    "defaultScopeLabel": "4 Nikaya Pali",
+    "hasVariantsSuffix": "has",
+    "variantsLinkText": "variants",
+    "variantsForLabel": "Variants for"
   }
 }
