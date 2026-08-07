@@ -894,6 +894,20 @@ $(document).ready(function() {
         if (reportMode === 'suttas') ensureEnrichmentStarted();
     });
 
+    // "{Keyword} есть варианты" — variantSegments уже пришли в самом fast=1-ответе (widened
+    // scope=all проверка не зависит от scope текущего поиска, см. checkVariantExistsAnywhere/
+    // findVariantSegments в dg-light.js) — переключение на них не требует ни новой сети, ни
+    // смены scope, ни перезагрузки страницы, ровно как переключение на "Слова" выше. href
+    // остаётся как fallback (открыть в новой вкладке, right-click) — на обычный клик просто
+    // переключаем отчёт на месте и прокручиваем к секции.
+    $('#variants-link').on('click', function (e) {
+        e.preventDefault();
+        reportMode = 'words';
+        renderCurrentReport();
+        var target = document.getElementById('variants');
+        if (target) target.scrollIntoView({ behavior: 'smooth' });
+    });
+
     // Смена UI-языка (dhamma-i18n.js, см. <head>) — DataTables не перечитывает
     // language:/заголовки колонок реактивно, поэтому пересобираем таблицу целиком тем же
     // путём, что и при переключении между отчётами. Заодно досинхронизируем legacy-мостик
@@ -949,11 +963,12 @@ $(document).ready(function() {
         document.title = newTitle + " - Dhamma.gift";
         $('.resultheader').text(newTitle);
 
-        // "Есть варианты чтения" — hasVariantMatch теперь всегда отвечает на вопрос "существуют
-        // ли варианты ГДЕ-ТО в корпусе" (сервер сам решает, нужен ли для этого отдельный
-        // widened-проход — см. checkVariantExistsAnywhere в dg-light.js), не только в текущей
-        // scope-выдаче. Ссылка ведёт на отчёт по словам с scope=all — вариант нужно увидеть по
-        // всем текстам разом, независимо от того, каким scope искал сам пользователь.
+        // "Есть варианты чтения" — hasVariantMatch отвечает на вопрос "существуют ли варианты
+        // ГДЕ-ТО в корпусе" (сервер сам решает, нужен ли для этого отдельный widened-проход —
+        // см. checkVariantExistsAnywhere/findVariantSegments в dg-light.js), не только в текущей
+        // scope-выдаче — variantSegments уже пришли вместе с этим же ответом. href на всякий
+        // случай указывает на валидный прямой URL (открыть в новой вкладке и т.п.) — обычный
+        // клик перехватывается ниже и переключает отчёт на месте, без похода в сеть.
         let variantDiv = document.getElementById('variants-hint');
         if (variantDiv) {
             if (json.metadata.hasVariantMatch) {
