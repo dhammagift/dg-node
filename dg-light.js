@@ -8,6 +8,14 @@ const execFile = util.promisify(require('child_process').execFile);
 const app = express();
 const PORT = 3000;
 
+// Легаси (config/script_config.sh) везде держит minlength=2..3 не просто так — короткий keyword
+// (особенно 1 символ) matches почти КАЖДУЮ строку всего корпуса; grep -ri на таком запросе
+// реально роняет процесс (ERR_CHILD_PROCESS_STDIO_MAXBUFFER — стандартный execFile maxBuffer не
+// успевает даже сработать как "мягкая" ошибка, вылетает как необработанное исключение). Тот же
+// порог здесь — отсекаем до первого grep, а не полагаемся только на maxBuffer как единственную
+// защиту.
+const MIN_KEYWORD_LENGTH = 3;
+
 const isTermux  = fsSync.existsSync('/data/data/com.termux/files/usr');
 const isWindows = process.platform === 'win32';
 
@@ -222,6 +230,99 @@ async function findTranslationFiles(suttaId, targetLangs, explicitTranslators) {
     return filterPreferredTranslators(results);
 }
 
+// Батчевая версия findTranslationFiles для целой страницы разом — узкое место, которое батчинг
+// grep'а (см. ниже) не трогал: enrichSuttaBatch раньше звал findTranslationFiles ОТДЕЛЬНО на
+// каждую сутту, а findFilesByPrefix каждый раз заново рекурсивно обходит ВЕСЬ каталог языка в
+// поисках файлов одной сутты — для 785 сутт это 785 обходов одного и того же дерева (67 из 90
+// секунд в профилировании). Тут — обходим каждый нужный каталог РОВНО ОДИН РАЗ, собирая индекс
+// suttaId -> {transKey: filePath} для ВСЕХ файлов сразу, потом просто читаем нужные суттs из
+// него. O(размер каталога) вместо O(число сутт × размер каталога); каталог не растёт с числом
+// совпавших сутт, так что это ровно тот же принцип батчинга, что и у grep-функций выше — просто
+// на fs.readdir, не на grep.
+async function walkTranslationDir(dir, wantedIds, bySutta) {
+    let entries;
+    try {
+        entries = await fs.readdir(dir, { withFileTypes: true });
+    } catch (e) { return; }
+    await Promise.all(entries.map(async entry => {
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+            await walkTranslationDir(full, wantedIds, bySutta);
+            return;
+        }
+        if (!entry.isFile() || !entry.name.endsWith('.json')) return;
+        const suttaId = entry.name.split('_')[0];
+        if (!wantedIds.has(suttaId)) return;
+        const baseName = entry.name.slice(0, -'.json'.length);
+        const parts = baseName.split('-');
+        if (parts.length < 3) return;
+        const transKey = `${parts[1]}_${parts.slice(2).join('-')}`;
+        if (!bySutta.has(suttaId)) bySutta.set(suttaId, {});
+        bySutta.get(suttaId)[transKey] = toPosixPath(full);
+    }));
+}
+
+async function buildTranslationIndex(suttaIds, targetLangs) {
+    const searchDirs = [];
+    for (const lang of targetLangs) {
+        if (lang === 'all') {
+            try {
+                const langs = await fs.readdir(SC_TRANS);
+                langs.forEach(l => searchDirs.push(path.join(SC_TRANS, l)));
+            } catch (e) {}
+            DG_LANGS.forEach(l => searchDirs.push(path.join(DG_OFFLINE, l)));
+        } else {
+            searchDirs.push(path.join(SC_TRANS, lang));
+            DG_LANGS
+                .filter(l => l === lang || l.startsWith(lang + '_'))
+                .forEach(l => searchDirs.push(path.join(DG_OFFLINE, l)));
+        }
+    }
+
+    const wantedIds = new Set(suttaIds);
+    const bySutta = new Map(); // suttaId -> { transKey: filePath }
+
+    await Promise.all([...new Set(searchDirs)].map(async dir => {
+        if (!fsSync.existsSync(dir)) return;
+        await walkTranslationDir(dir, wantedIds, bySutta);
+    }));
+
+    const result = new Map();
+    for (const suttaId of suttaIds) {
+        result.set(suttaId, filterPreferredTranslators(bySutta.get(suttaId) || {}));
+    }
+    return result;
+}
+
+// Гибрид: buildTranslationIndex платит фиксированную цену (обход ВСЕГО языкового каталога)
+// один раз, независимо от числа сутт — окупается только когда сутт много (для 785 сутт это
+// быстрее в разы). Для обычной страницы (десятки сутт) эта фиксированная цена — единственное,
+// что видит запрос: 46 секунд на 3-сутточный батч при полном обходе, потому что деревья
+// SC_TRANS/ru и SC_TRANS/en покрывают ВЕСЬ корпус целиком. Точечный findTranslationFiles на
+// каждую сутту (обход дерева, где findFilesByPrefix ищет конкретный префикс)
+// быстрее для маленьких батчей, потому что каждый вызов недорогой сам по себе. Порог подобран
+// эмпирически (30 в профилировании — типичный размер страницы — быстро точечно; 785 — быстрее
+// батчево); при желании можно уточнить дальше.
+const TRANSLATION_INDEX_THRESHOLD = 80;
+
+// root/variant grep (enrichSuttaBatch) больше не нужен отдельный threshold-гибрид — resolveScopeDirs
+// (см. выше buildMatchSkeleton) даёт заранее узкий, кешированный список директорий по scope,
+// одинаково дешёвый для любого размера батча (не весь SC_ROOT/SC_VARIANT, но и не по файлу на сутту).
+
+async function findTranslationFilesForBatch(suttaIds, targetLangs) {
+    if (suttaIds.length <= TRANSLATION_INDEX_THRESHOLD) {
+        const result = new Map();
+        await Promise.all(suttaIds.map(async suttaId => {
+            const files = await findTranslationFiles(suttaId, targetLangs);
+            const normalized = {};
+            for (const [key, filePath] of Object.entries(files)) normalized[key] = toPosixPath(filePath);
+            result.set(suttaId, normalized);
+        }));
+        return result;
+    }
+    return buildTranslationIndex(suttaIds, targetLangs);
+}
+
 // Директории для grep в зависимости от запрошенных языков
 function buildGrepDirs(targetLangs) {
     const dirs = [];
@@ -254,6 +355,17 @@ function buildGrepDirs(targetLangs) {
 
 function escapeRegExp(str) {
     return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// path.join() на Windows отдаёт путь с обратными слэшами — но grep -r (GNU grep через Git/MSYS)
+// САМ строит пути при рекурсии и всегда использует прямые слэши, независимо от того, как был
+// задан каталог на входе. Если хранить/искать по путям из path.join() как есть, а grep-результаты
+// класть в ту же Map — ключи никогда не совпадут (только "C:\...\dn1..." vs "C:/.../dn1..."),
+// и все per-sutta lookups после grepSegmentsWithContextRecursive() молча возвращают пусто.
+// Нормализуем к прямым слэшам везде, где путь служит ключом Map — это единственное место,
+// где это важно (fs.existsSync/fs.readFile на Windows одинаково едят оба варианта).
+function toPosixPath(p) {
+    return p ? p.replace(/\\/g, '/') : p;
 }
 
 // Отчёт с группировкой по словам — та же идея, что в легаси new/words.sh (grep по словам,
@@ -300,198 +412,381 @@ function buildWordReport(searchResults) {
     return report;
 }
 
-async function searchWithGrep(keyword, searchScope, exactMatch, targetLangs, lb = 0, la = 0) {
-    const grepDirs = buildGrepDirs(targetLangs);
+// ---------------------------------------------------------------------------------------
+// Fast-search grep strategy (TODO.md, поиск п.5)
+//
+// The whole point of this module is: no pre-built search index, ever (CLAUDE.md — "Никакого
+// предварительного индекса файлов"). grep IS the index. That only stays fast if every grep
+// call is used deliberately:
+//
+//   1. One process for the whole corpus, not one per directory. buildGrepDirs() + a single
+//      execFile('grep', ['-ri', keyword, ...dirs]) lets GNU grep recurse the directory list
+//      itself in one process — never split this into per-language/per-type calls.
+//   2. Batch point-lookups instead of spawning one grep per file. A results page of ~25 suttas
+//      x 3-5 files (root+variant+translations) is ~100 files — one grep invocation accepts a
+//      list of files AND multiple -e patterns, so a whole sutta's root/variant/translation
+//      lookups happen in one process each (grepSegmentsWithContext), not one per segment.
+//   3. Never re-grep what a previous phase already found. Phase 1's grep already returns the
+//      matched line's own text for free (see buildMatchSkeleton) — phase 2 only greps for
+//      what's still missing: context lines (-B/-A) and sibling fields (variant/translations
+//      of a segment that matched only in root).
+//   4. Prefer -F (fixed-string) over regex whenever the pattern has no regex metacharacters —
+//      faster, and side-steps ReDoS entirely. Every segment-id lookup (grepSegmentsWithContext)
+//      is always -F, since a segment id is never a regex. The free-text keyword search opts
+//      into -F only when it's safe to (looksLikeFixedString).
+//   5. Run independent greps concurrently (Promise.all), never sequential awaits — root,
+//      variant, and each translation language for a sutta don't depend on each other.
+//   6. Only ever target deterministic, known files (getRootPath/getVariantPath/
+//      findTranslationFiles) — never walk a whole language tree per request.
+//   7. Keep maxBuffer proportional to what's actually being grepped: the full-corpus phase-1
+//      grep needs a generous buffer, but a handful of known files for one sutta does not.
+// ---------------------------------------------------------------------------------------
 
-    if (grepDirs.length === 0) {
-        return { metadata: { query: keyword, totalFiles: 0, totalMatches: 0, hasVariantMatch: false }, data: {} };
+const REGEX_METACHARS = /[.*+?^${}()|[\]\\]/;
+
+// True when keyword has no regex-special characters — safe (and faster) to grep with -F.
+function looksLikeFixedString(keyword) {
+    return !REGEX_METACHARS.test(keyword);
+}
+
+// Parses one JSON-line fragment ("segId": "text",) into {segmentId, text} — the same format
+// grep returns both for the full-corpus phase-1 scan and for phase-2 point lookups, since SC
+// Bilara / DhammaGift JSON always has one segment per line.
+function parseJsonLineFragment(fragment) {
+    try {
+        const cleanLine = fragment.trim().replace(/,$/, '');
+        const parsed = JSON.parse(`{${cleanLine}}`);
+        const segmentId = Object.keys(parsed)[0];
+        return { segmentId, text: parsed[segmentId] };
+    } catch (e) {
+        const fb = fragment.trim().match(/^"([^"]+)"\s*:\s*"(.*)"\s*,?$/);
+        if (fb) return { segmentId: fb[1], text: fb[2] };
+        return null;
     }
+}
 
-    const grepArgs = ['-ri'];
+// Classifies a matched file path by role — root/variant/translation(lang_author) — purely from
+// the filename, no file read. Mirrors the naming convention used by findTranslationFiles.
+function classifyMatchSource(filePath) {
+    const baseName = path.basename(filePath, '.json');
+    if (baseName.endsWith('_root-pli-ms')) return { type: 'root' };
+    if (baseName.endsWith('_variant-pli-ms')) return { type: 'variant' };
+    const parts = baseName.split('-');
+    if (parts.length >= 3 && parts[0].endsWith('_translation')) {
+        return { type: 'translation', transKey: `${parts[1]}_${parts.slice(2).join('-')}` };
+    }
+    return { type: 'unknown' };
+}
+
+// Deterministic file list for one sutta (root + variant + preferred translation per requested
+// language) — used to scope grep to a handful of known files (restrictToIds below) instead of
+// the whole corpus (buildGrepDirs).
+async function getGrepTargetFiles(suttaId, targetLangs) {
+    const files = [];
+    const rootPath = getRootPath(suttaId);
+    if (rootPath && fsSync.existsSync(rootPath)) files.push(rootPath);
+    const variantPath = getVariantPath(suttaId);
+    if (variantPath && fsSync.existsSync(variantPath)) files.push(variantPath);
+    const translationFiles = await findTranslationFiles(suttaId, targetLangs);
+    files.push(...Object.values(translationFiles));
+    return files;
+}
+
+// Легаси делает главный keyword-grep РОВНО ОДИН РАЗ на запрос. Наша фазированная загрузка
+// (TODO.md поиск п.5) без кеша гоняла его дважды за одну и ту же выдачу — один раз в
+// ?fast=1, и снова в фоновом полном /search несколько секунд спустя (см. res/index.html
+// ensureEnrichmentStarted), плюс ЕЩЁ раз (по restrictToIds, отдельным способом — см. ниже)
+// в /search/enrich за видимую страницу. Три прохода по корпусу на один и тот же keyword —
+// то самое "дальше не сделал хорошо". Короткоживущий кеш полного (нерестриктнутого)
+// скелета убирает два из трёх: /search/enrich и фоновый полный /search переиспользуют
+// результат ?fast=1, если тот успел прогреть кеш (обычно да — они всегда идут следом за
+// fast=1 в течение секунд, см. initSearchApp/ensureEnrichmentStarted).
+const skeletonCache = new Map();
+const SKELETON_CACHE_TTL_MS = 60000;
+
+function skeletonCacheKey(keyword, searchScope, exactMatch, targetLangs) {
+    return JSON.stringify([keyword, searchScope || 'default', exactMatch, targetLangs.slice().sort()]);
+}
+
+function getCachedSkeleton(keyword, searchScope, exactMatch, targetLangs) {
+    const entry = skeletonCache.get(skeletonCacheKey(keyword, searchScope, exactMatch, targetLangs));
+    if (!entry || Date.now() - entry.timestamp > SKELETON_CACHE_TTL_MS) return null;
+    return entry;
+}
+
+// 4 nikaya + 6 kn books — vinaya is an opt-in resource (via explicit scope), not part of default.
+const DEFAULT_SCOPE_PREFIXES = ['dn', 'mn', 'sn', 'an', 'ud', 'snp', 'dhp', 'thag', 'thig', 'iti'];
+
+// Разрешает scope-параметр в список "allowedPrefixes" — category-имена ('dhamma'/'khudakka'/…)
+// или id-префиксы ('dn'/'an'/…) для матчинга через matchesScope(). Чистая функция от searchScope,
+// без обращения к skeletonDB — переиспользуется и постфактум-фильтром, и resolveScopeDirs().
+function resolveAllowedPrefixes(searchScope) {
+    if (!searchScope || searchScope === 'default') return DEFAULT_SCOPE_PREFIXES;
+    if (searchScope === 'all') return ['all'];
+    const prefixes = [];
+    for (const p of searchScope.split(',').map(s => s.trim())) {
+        prefixes.push(...(p === 'default' ? DEFAULT_SCOPE_PREFIXES : [p]));
+    }
+    return prefixes;
+}
+
+// Тот же предикат, что раньше был инлайн в buildMatchSkeleton — сутта проходит под scope, если
+// её category ИЛИ id-префикс совпадают с одним из allowedPrefixes.
+function matchesScope(suttaMeta, suttaId, allowedPrefixes) {
+    if (allowedPrefixes.includes('all')) return true;
+    return allowedPrefixes.some(prefix => {
+        if (suttaMeta.category === prefix) return true;
+        if (suttaId === prefix) return true;
+        if (suttaId.startsWith(prefix)) return /[0-9.-]/.test(suttaId.charAt(prefix.length));
+        return false;
+    });
+}
+
+// Разрешает (scope, baseDir) в конкретный список директорий — ОДИН раз за время жизни процесса
+// на каждую уникальную пару (skeletonDB статична после старта, TTL не нужен). Работает только для
+// деревьев, чья структура повторяет root'а (root/variant — dir_path один и тот же для обоих, см.
+// getRootPath/getVariantPath), НЕ для translation/* (там между языком и nikoya есть ещё уровень
+// переводчика — translation/en/sujato/sutta/an/…, dir_path туда напрямую не ложится). Для
+// переводов используется отдельный, уже существующий и уже эффективный путь —
+// findTranslationFilesForBatch/buildTranslationIndex (per-sutta файлы, группировка по dirname).
+//
+// Только "pli/ms/..." dir_path — НЕ весь skeletonDB. getRootPath/getVariantPath/classifyMatchSource
+// (весь остальной код этого файла, не тронуто этой правкой) жёстко предполагают имя файла
+// "{suttaId}_root-pli-ms.json"/"_variant-pli-ms.json" — верно почти всегда, но НЕ для не-палийских
+// подкорпусов вроде Патна-Дхаммапады (dir_path "pra/pts/sutta/pdhp", файл "..._root-pra-pts.json").
+// Раньше это было не видно — старый SC_ROOT-константа физически не покрывала ничего за пределами
+// pli/ms, так что эти сутты просто НИКОГДА не участвовали в поиске. Теперь resolveScopeDirs строит
+// директории из dir_path напрямую и БЕЗ этого фильтра дотянулся бы и туда — но с неверным
+// (root_text/count) результатом, т.к. getRootPath там ищёт несуществующий "_root-pli-ms.json".
+// Правильный фикс — обобщить getRootPath/getVariantPath/classifyMatchSource на другие суффиксы;
+// это отдельная задача (потенциально несколько соглашений об именовании в корпусе), не в рамках
+// текущего перф-фикса. Фильтр здесь сохраняет ТЕКУЩЕЕ (как у SC_ROOT/SC_VARIANT) покрытие —
+// не хуже, чем было, без ложных "count: 0" на не-pli/ms текстах.
+const scopeDirsCache = new Map();
+
+function resolveScopeDirs(searchScope, baseDir) {
+    const cacheKey = (searchScope || 'default') + '|' + baseDir;
+    if (scopeDirsCache.has(cacheKey)) return scopeDirsCache.get(cacheKey);
+
+    const allowedPrefixes = resolveAllowedPrefixes(searchScope);
+    const dirs = new Set();
+    for (const suttaId in skeletonDB) {
+        const meta = skeletonDB[suttaId];
+        if (meta.dir_path && meta.dir_path.startsWith('pli/ms/') && matchesScope(meta, suttaId, allowedPrefixes)) {
+            dirs.add(path.join(baseDir, meta.dir_path));
+        }
+    }
+    const result = [...dirs].filter(d => fsSync.existsSync(d));
+    scopeDirsCache.set(cacheKey, result);
+    return result;
+}
+
+// Keyword может быть не только Пали — русский, английский и т.д. Грепать root/variant/переводы
+// всегда вместе тратит время на директории, где совпадение физически невозможно (кириллица не
+// бывает в Pali-файлах). Кириллица → это точно русский (или другой кириллический язык из
+// targetLangs) — грепаем только соответствующие переводы. Латиница/диакритика (может быть Пали,
+// может быть английский) — сначала только root+variant (Пали); если пусто — вторым заходом
+// переводы (некириллические языки из targetLangs).
+function isCyrillicScript(text) { return /[Ѐ-ӿ]/.test(text); }
+function isCyrillicLang(lang) { return lang === 'ru' || lang.startsWith('ru_'); }
+
+// Директории перевода для языка — целиком дерево языка (не nikaya-scoped, см. комментарий у
+// resolveScopeDirs — структура translation/* с уровнем переводчика не позволяет напрямую
+// переиспользовать dir_path). Всё ещё узко по языку — не "весь suttacentral".
+function translationLangDirs(lang) {
+    const dirs = [];
+    const scLang = path.join(SC_TRANS, lang);
+    if (fsSync.existsSync(scLang)) dirs.push(scLang);
+    const dgLang = path.join(DG_OFFLINE, lang);
+    if (fsSync.existsSync(dgLang)) dirs.push(dgLang);
+    return dirs;
+}
+
+// Низкоуровневый keyword-grep с контекстом (-B/-A) и номерами строк (-n, нужны для восстановления
+// lb/la-окна вокруг каждого совпадения). '' — пустой результат (в т.ч. код выхода 1 "нет совпадений").
+async function execKeywordGrep(grepTargets, keyword, exactMatch, lb, la) {
+    if (grepTargets.length === 0) return '';
+    const grepArgs = ['-ri', '-n'];
+    if (lb > 0) grepArgs.push(`-B${lb}`);
+    if (la > 0) grepArgs.push(`-A${la}`);
     if (exactMatch) grepArgs.push('-w');
-    grepArgs.push(keyword, ...grepDirs);
-
-    let stdout = '';
+    if (!exactMatch && looksLikeFixedString(keyword)) grepArgs.push('-F');
+    grepArgs.push(keyword, ...grepTargets);
     try {
         const result = await execFile('grep', grepArgs, { maxBuffer: 1024 * 1024 * 50 });
-        stdout = result.stdout;
+        return result.stdout;
     } catch (error) {
-        if (error.code === 1) {
-            return { metadata: { query: keyword, langs: targetLangs, totalFiles: 0, totalMatches: 0, hasVariantMatch: false }, data: {} };
-        }
+        if (error.code === 1) return '';
         throw error;
     }
+}
 
-    const defaultPrefixes = ['dn', 'mn', 'sn', 'an', 'ud', 'snp', 'dhp', 'thag', 'thig', 'iti', 'bu-', 'bi-', 'pli-tv-', 'kd', 'pvr'];
-    let allowedPrefixes = [];
-
-    if (!searchScope || searchScope === 'default') {
-        allowedPrefixes = defaultPrefixes;
-    } else if (searchScope === 'all') {
-        allowedPrefixes = ['all'];
-    } else {
-        for (const p of searchScope.split(',').map(s => s.trim())) {
-            allowedPrefixes.push(...(p === 'default' ? defaultPrefixes : [p]));
-        }
-    }
-
-    const searchResults = {};
-
+// Разбирает вывод execKeywordGrep (несколько разнородных directories/files в одном вызове — grep
+// сам префиксует каждую строку путём) в Map<filePath, Map<lineNumber, {segmentId,text,isMatch}>>.
+// isMatch различает реальное совпадение (разделитель ":") от контекстной строки -B/-A
+// (разделитель "-") — grep никогда не смешивает их в одной строке. "--" (разделитель между
+// несмежными группами контекста) не матчит .json-путь и просто пропускается.
+function parseGrepContextOutput(stdout) {
+    const result = new Map();
     for (const line of stdout.split('\n')) {
-        if (!line.trim()) continue;
-        // Жадный .+ вместо [^:]+ — путь к файлу на Windows содержит двоеточие буквы диска (C:/...)
-        const match = line.match(/^(.+\.json):(.*)$/);
-        if (!match) continue;
+        if (!line.trim() || line === '--') continue;
+        let m = line.match(/^(.+\.json):(\d+):(.*)$/);
+        let isMatch = true;
+        if (!m) { m = line.match(/^(.+\.json)-(\d+)-(.*)$/); isMatch = false; }
+        if (!m) continue;
+        const parsed = parseJsonLineFragment(m[3]);
+        if (!parsed) continue;
+        const filePath = m[1];
+        const lineNum = parseInt(m[2], 10);
+        if (!result.has(filePath)) result.set(filePath, new Map());
+        const lineMap = result.get(filePath);
+        const existing = lineMap.get(lineNum);
+        if (!existing || isMatch) lineMap.set(lineNum, { segmentId: parsed.segmentId, text: parsed.text, isMatch });
+    }
+    return result;
+}
 
-        const fileName = path.basename(match[1]);
+// Собирает распарсенный Map (parseGrepContextOutput) в searchResults — по одному сегменту на
+// каждую РЕАЛЬНУЮ строку-совпадение (isMatch); контекстные строки в свои сегменты не идут (иначе
+// завысили бы word-report/count), а используются только для lb_context/la_context ОКОН вокруг
+// root-совпадений того же файла (контекст для variant/переводов — забота enrichSuttaBatch, шаг 2,
+// т.к. для не-root совпадений (кириллица/fallback-переводы) root-файл в этом grep не участвовал).
+function assembleFromGrepMap(fileMap, allowedPrefixes, searchResults, lb, la) {
+    for (const [filePath, lineMap] of fileMap) {
+        const fileName = path.basename(filePath);
         const suttaId = fileName.split('_')[0];
         const suttaMeta = skeletonDB[suttaId];
         if (!suttaMeta) continue;
+        if (!matchesScope(suttaMeta, suttaId, allowedPrefixes)) continue;
 
-        if (!allowedPrefixes.includes('all')) {
-            const allowed = allowedPrefixes.some(prefix => {
-                if (suttaMeta.category === prefix) return true;
-                if (suttaId === prefix) return true;
-                if (suttaId.startsWith(prefix)) return /[0-9.-]/.test(suttaId.charAt(prefix.length));
-                return false;
-            });
-            if (!allowed) continue;
+        const source = classifyMatchSource(filePath);
+
+        for (const [lineNum, entry] of lineMap) {
+            if (!entry.isMatch) continue;
+
+            if (!searchResults[suttaId]) {
+                searchResults[suttaId] = {
+                    sutta_id: suttaId,
+                    category: suttaMeta.category,
+                    dir_path: suttaMeta.dir_path,
+                    titles: { root: suttaMeta.title || suttaId },
+                    mr: suttaMeta.mr,
+                    count: 0,
+                    unique_words: [],
+                    segments: []
+                };
+            }
+
+            let seg = searchResults[suttaId].segments.find(s => s.segment === entry.segmentId);
+            if (!seg) {
+                seg = { segment: entry.segmentId, root_text: '', variant: '', translations: {}, lb_context: [], la_context: [] };
+                searchResults[suttaId].segments.push(seg);
+            }
+
+            if (source.type === 'root') seg.root_text = entry.text;
+            else if (source.type === 'variant') seg.variant = entry.text;
+            else if (source.type === 'translation' && source.transKey) seg.translations[source.transKey] = entry.text;
+
+            // Контекст (root-текст соседних сегментов) — только для root-совпадений, только из
+            // ТОГО ЖЕ файла (variant/translation имеют свою собственную нумерацию строк, не
+            // совпадающую по смыслу с root'овым окном).
+            if (source.type === 'root' && (lb > 0 || la > 0) && seg.lb_context.length === 0 && seg.la_context.length === 0) {
+                for (let ln = lineNum - lb; ln < lineNum; ln++) {
+                    const c = lineMap.get(ln);
+                    if (c) seg.lb_context.push({ segment: c.segmentId, root_text: c.text, variant: '', translations: {} });
+                }
+                for (let ln = lineNum + 1; ln <= lineNum + la; ln++) {
+                    const c = lineMap.get(ln);
+                    if (c) seg.la_context.push({ segment: c.segmentId, root_text: c.text, variant: '', translations: {} });
+                }
+            }
         }
+    }
+}
 
-        let segmentId = 'unknown';
-        try {
-            const cleanLine = match[2].trim().replace(/,$/, '');
-            segmentId = Object.keys(JSON.parse(`{${cleanLine}}`))[0];
-        } catch (e) {
-            const fb = match[2].trim().match(/^"([^"]+)"\s*:\s*"(.*)"\s*,?$/);
-            if (fb) segmentId = fb[1];
+// Phase 1: grep the corpus (or, when restrictToIds is given, only the known files of those
+// suttas) and parse matches into a skeleton per sutta — without reading any file a second
+// time. Each grep line already carries the matched segment's own text (and, now, its lb/la
+// root-context — see execKeywordGrep/assembleFromGrepMap above), since that's exactly what the
+// phase-1 word report and quote preview need, for free.
+async function buildMatchSkeleton(keyword, searchScope, exactMatch, targetLangs, lb = 0, la = 0, restrictToIds = null) {
+    const isFullScan = !restrictToIds || restrictToIds.length === 0;
+    const cacheKey = skeletonCacheKey(keyword, searchScope, exactMatch, targetLangs);
+
+    // И /search/enrich, и фоновый полный /search почти всегда идут следом за ?fast=1 в течение
+    // секунд, для того же запроса (см. initSearchApp/ensureEnrichmentStarted в res/index.html) —
+    // переиспользуем скелет, который ?fast=1 уже посчитал, вместо повторного grep по всему
+    // корпусу. Промах (прямой вызов без предшествующего fast=1, либо кеш протух за 60с) — падаем
+    // обратно на честный grep ниже.
+    const cached = getCachedSkeleton(keyword, searchScope, exactMatch, targetLangs);
+    if (cached) {
+        if (isFullScan) {
+            return JSON.parse(JSON.stringify({ searchResults: cached.searchResults, empty: cached.empty }));
         }
-
-        if (!searchResults[suttaId]) {
-            searchResults[suttaId] = {
-                sutta_id: suttaId,
-                category: suttaMeta.category,
-                dir_path: suttaMeta.dir_path,
-                titles: { root: suttaMeta.title || suttaId },
-                mr: suttaMeta.mr,
-                count: 0,
-                unique_words: [],
-                segments: []
-            };
+        const filtered = {};
+        for (const id of restrictToIds) {
+            if (cached.searchResults[id]) filtered[id] = JSON.parse(JSON.stringify(cached.searchResults[id]));
         }
+        return { searchResults: filtered, empty: cached.empty };
+    }
 
-        if (!searchResults[suttaId].segments.some(s => s.segment === segmentId)) {
-            searchResults[suttaId].segments.push({ segment: segmentId });
+    const storeIfFullScan = (result) => {
+        if (isFullScan) skeletonCache.set(cacheKey, { ...result, timestamp: Date.now() });
+        return result;
+    };
+
+    const allowedPrefixes = isFullScan ? resolveAllowedPrefixes(searchScope) : ['all']; // restrictToIds — уже точно нужные суттs
+    const searchResults = {};
+    let anyMatch = false;
+
+    if (!isFullScan) {
+        // Известный небольшой список суттs (обычно холодный /search/enrich без прогретого
+        // fast=1-кеша) — explicit-file-list, как и раньше, просто теперь тоже с контекстом.
+        const fileLists = await Promise.all(restrictToIds.map(id => getGrepTargetFiles(id, targetLangs)));
+        const grepTargets = fileLists.flat();
+        if (grepTargets.length === 0) return storeIfFullScan({ searchResults: {}, empty: 'no-targets' });
+        const stdout = await execKeywordGrep(grepTargets, keyword, exactMatch, lb, la);
+        if (stdout) { assembleFromGrepMap(parseGrepContextOutput(stdout), allowedPrefixes, searchResults, lb, la); anyMatch = true; }
+    } else if (isCyrillicScript(keyword)) {
+        // Кириллица — точно не Пали. Грепаем только кириллические языки из targetLangs.
+        const dirs = targetLangs.filter(isCyrillicLang).flatMap(lang => translationLangDirs(lang));
+        if (dirs.length === 0) return storeIfFullScan({ searchResults: {}, empty: 'no-targets' });
+        const stdout = await execKeywordGrep(dirs, keyword, exactMatch, lb, la);
+        if (stdout) { assembleFromGrepMap(parseGrepContextOutput(stdout), allowedPrefixes, searchResults, lb, la); anyMatch = true; }
+    } else {
+        // Латиница/диакритика — может быть Пали, может быть английский и т.п. Пали — сначала,
+        // единственный вызов, если что-то нашлось (доминирующий сценарий для этого приложения).
+        const paliDirs = [...resolveScopeDirs(searchScope, path.join(SC_BILARA, 'root')), ...resolveScopeDirs(searchScope, path.join(SC_BILARA, 'variant'))];
+        const paliStdout = await execKeywordGrep(paliDirs, keyword, exactMatch, lb, la);
+        if (paliStdout) {
+            assembleFromGrepMap(parseGrepContextOutput(paliStdout), allowedPrefixes, searchResults, lb, la);
+            anyMatch = true;
+        } else {
+            // Пали пусто — вторым заходом некириллические языки (английский и т.п.).
+            const dirs = targetLangs.filter(l => !isCyrillicLang(l)).flatMap(lang => translationLangDirs(lang));
+            if (dirs.length > 0) {
+                const stdout = await execKeywordGrep(dirs, keyword, exactMatch, lb, la);
+                if (stdout) { assembleFromGrepMap(parseGrepContextOutput(stdout), allowedPrefixes, searchResults, lb, la); anyMatch = true; }
+            }
         }
     }
 
-    const regex = new RegExp(keyword, 'gi');
-    const wordRegex = new RegExp(`[^\\s,.:;!?"'""''()\\[\\]{}]*${keyword}[^\\s,.:;!?"'""''()\\[\\]{}]*`, 'gi');
+    if (!anyMatch) return storeIfFullScan({ searchResults: {}, empty: 'no-matches' });
+    return storeIfFullScan({ searchResults });
+}
 
-    let globalTotalMatches = 0;
-    let globalHasVariants = false;
-
-    for (const suttaId in searchResults) {
-        const suttaRes = searchResults[suttaId];
-        const uniqueWordsSet = new Set();
-        let matchCount = 0;
-
-        const rootPath = getRootPath(suttaId);
-        const rootData = rootPath
-            ? JSON.parse(await fs.readFile(rootPath, 'utf8').catch(() => '{}'))
-            : {};
-
-        const variantPath = getVariantPath(suttaId);
-        const variantData = variantPath
-            ? JSON.parse(await fs.readFile(variantPath, 'utf8').catch(() => '{}'))
-            : {};
-
-        const translationFiles = await findTranslationFiles(suttaId, targetLangs);
-        const translationsData = {};
-        for (const [transKey, tPath] of Object.entries(translationFiles)) {
-            translationsData[transKey] = JSON.parse(await fs.readFile(tPath, 'utf8').catch(() => '{}'));
-        }
-
-        // Заголовок из root-файла
-        let titleSegId = '';
-        let lastZero = '';
-        for (const k of Object.keys(rootData)) {
-            if (k.match(/:0(?:\.\d+)?$/)) { lastZero = k; }
-            else if (k.match(/:[1-9]/)) { titleSegId = lastZero; break; }
-        }
-        if (!titleSegId) titleSegId = lastZero;
-
-        if (titleSegId) {
-            if (rootData[titleSegId]) suttaRes.titles.root = rootData[titleSegId];
-            for (const tKey in translationsData) {
-                if (translationsData[tKey][titleSegId]) suttaRes.titles[tKey] = translationsData[tKey][titleSegId];
-            }
-        }
-
-        const rootKeys = Object.keys(rootData);
-
-        const buildSegData = (id) => {
-            const tr = {};
-            for (const tKey in translationsData) {
-                if (translationsData[tKey][id]) tr[tKey] = translationsData[tKey][id];
-            }
-            return {
-                segment: id,
-                root_text: rootData[id] || '',
-                variant: variantData[id] || '',
-                html: skeletonDB[suttaId]?.html?.[id] || '',
-                translations: tr
-            };
-        };
-
-        const processText = (text, isVariant = false) => {
-            if (!text) return;
-            const m = text.match(regex);
-            if (m) {
-                matchCount += m.length;
-                if (isVariant) globalHasVariants = true;
-            }
-            (text.match(wordRegex) || []).forEach(w => uniqueWordsSet.add(w.toLowerCase()));
-        };
-
-        const enrichedSegments = [];
-        for (const seg of suttaRes.segments) {
-            const sId = seg.segment;
-            const sIdx = rootKeys.indexOf(sId);
-            const mainSeg = buildSegData(sId);
-
-            processText(mainSeg.root_text, false);
-            processText(mainSeg.variant, true);
-            Object.values(mainSeg.translations).forEach(t => processText(t, false));
-
-            mainSeg.lb_context = [];
-            mainSeg.la_context = [];
-
-            if (sIdx !== -1) {
-                for (let i = Math.max(0, sIdx - lb); i < sIdx; i++) {
-                    mainSeg.lb_context.push(buildSegData(rootKeys[i]));
-                }
-                for (let i = sIdx + 1; i <= Math.min(rootKeys.length - 1, sIdx + la); i++) {
-                    mainSeg.la_context.push(buildSegData(rootKeys[i]));
-                }
-            }
-
-            enrichedSegments.push(mainSeg);
-        }
-
-        suttaRes.segments = enrichedSegments;
-        suttaRes.count = matchCount;
-        globalTotalMatches += matchCount;
-        suttaRes.unique_words = Array.from(uniqueWordsSet);
-    }
-
-    const wordReport = buildWordReport(searchResults);
-
+// Sort suttas: category first (dhamma == the 4 nikayas — dn/mn/sn/an, see dblight.js — then
+// khudakka, vinaya, abhi, other), then legacy relevance/version rank `mr` (mtph in
+// textinfo.json) descending as a tiebreak (TODO.md поиск п.5's "версионная сортировка"), then id.
+function sortSuttaResults(searchResults) {
     const categoryOrder = { dhamma: 1, khudakka: 2, vinaya: 3, abhi: 4, other: 5 };
     const sortedKeys = Object.keys(searchResults).sort((a, b) => {
         const oa = categoryOrder[searchResults[a].category] || 99;
         const ob = categoryOrder[searchResults[b].category] || 99;
         if (oa !== ob) return oa - ob;
+        const mrA = searchResults[a].mr || 0;
+        const mrB = searchResults[b].mr || 0;
+        if (mrA !== mrB) return mrB - mrA;
         return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
     });
 
@@ -502,6 +797,478 @@ async function searchWithGrep(keyword, searchScope, exactMatch, targetLangs, lb 
         );
         sortedData[key] = searchResults[key];
     }
+    return sortedData;
+}
+
+// Границы "слова" в отчёте по словам — что НЕ считается частью самого слова, и там регэксп
+// должен остановиться. Раньше сюда пытались добавить типографские кавычки прямо в виде символов
+// ("""''") — редактор/шрифт отрисовывает их похоже на изогнутые, но по кодпоинтам это ОКАЗАЛИСЬ
+// дублирующиеся обычные ASCII " и ' — настоящие типографские кавычки (“ ” ‘ ’), которые реально
+// встречаются в корпусе, никогда не были исключены. Результат: слово "прилипало" к соседней
+// кавычке ("“‘dukkhaṁ" вместо "dukkhaṁ") и попадало в отчёт отдельной "грязной" строкой вместо
+// того, чтобы схлопнуться со "чистым" вхождением того же слова. Явные \u-escape здесь намеренно —
+// чтобы больше не наступить на ту же ловушку визуально неотличимых символов.
+const WORD_BOUNDARY_CHARS = '\\s,.:;!?"\'\\u201C\\u201D\\u2018\\u2019\\u00AB\\u00BB()\\[\\]{}';
+
+// Word report built directly from phase-1's raw grep matches — no file reads at all. Mirrors
+// legacy new/words.sh's grepForWords (its own dedicated grep, fully independent of the
+// quotes/citations report), just reusing the text buildMatchSkeleton already parsed instead of
+// grepping a second time. Keeps one preferred-translator match per (sutta, lang) so repeat
+// translations of the same text don't inflate word counts — same intent as
+// filterPreferredTranslators, but decided by translation key only (no file reads needed).
+function buildWordReportFast(searchResults, keyword) {
+    const wordRegex = new RegExp(`[^${WORD_BOUNDARY_CHARS}]*${keyword}[^${WORD_BOUNDARY_CHARS}]*`, 'gi');
+    const words = {};
+
+    const addWordsFromText = (text, suttaId, segmentId) => {
+        if (!text) return;
+        const matches = text.match(wordRegex) || [];
+        for (const raw of matches) {
+            const word = raw.toLowerCase();
+            if (!words[word]) words[word] = { textIds: new Set(), matchCount: 0, links: new Map() };
+            words[word].textIds.add(suttaId);
+            words[word].matchCount += 1;
+            if (!words[word].links.has(suttaId)) words[word].links.set(suttaId, segmentId);
+        }
+    };
+
+    for (const suttaId in searchResults) {
+        const suttaRes = searchResults[suttaId];
+        for (const seg of suttaRes.segments) {
+            addWordsFromText(seg.root_text, suttaId, seg.segment);
+            addWordsFromText(seg.variant, suttaId, seg.segment);
+
+            const byLang = {};
+            for (const transKey of Object.keys(seg.translations)) {
+                const lang = transKey.split('_')[0];
+                (byLang[lang] = byLang[lang] || []).push(transKey);
+            }
+            for (const [lang, keys] of Object.entries(byLang)) {
+                const priorities = TRANSLATOR_PRIORITY[lang];
+                let chosen = priorities && priorities.find(p => keys.includes(p));
+                if (!chosen && lang === 'en') chosen = keys.find(k => k !== 'en_sujato');
+                if (!chosen) chosen = keys[0];
+                addWordsFromText(seg.translations[chosen], suttaId, seg.segment);
+            }
+        }
+    }
+
+    const report = Object.entries(words).map(([word, info]) => ({
+        word,
+        textCount: info.textIds.size,
+        matchCount: info.matchCount,
+        links: Array.from(info.links.entries()).map(([sutta_id, segment]) => ({ sutta_id, segment }))
+    }));
+
+    report.sort((a, b) => {
+        if (b.textCount !== a.textCount) return b.textCount - a.textCount;
+        return a.word.localeCompare(b.word, undefined, { sensitivity: 'base' });
+    });
+
+    return report;
+}
+
+// "Variants for {keyword}" (легаси new/words.sh, секция под отчётом по словам) — список
+// сегментов, где keyword встречается в ВАРИАНТНОМ (не root) чтении, по ВСЕМУ корпусу, независимо
+// от scope текущего поиска (по запросу пользователя — вариант можно искать везде). Важно: текст
+// сегмента (со стрелкой "→", "(mr)"/"(?)" и т.п.) — это НЕ наша разметка и не diff, который мы
+// вычисляем — это редакторская нотация SuttaCentral, УЖЕ буквально хранящаяся в самом
+// variant-файле как есть (проверено на живых данных: tha-ap407 → "Macchakacchapasañchannā →
+// macchakacchapasampannā (?)"). Мы просто находим нужные сегменты и отдаём их текст без изменений.
+//
+// Если текущий поиск и так уже был scope=all и его результаты уже под рукой (existingSearchResults)
+// — просто вынимаем то, что уже нашли (variant-совпадения из основного прохода), без повторного
+// grep. Иначе — отдельный, но дешёвый widened-проход по variant-дереву целиком.
+async function findVariantSegments(keyword, exactMatch, searchScope, existingSearchResults) {
+    if (searchScope === 'all' && existingSearchResults) {
+        const segments = [];
+        for (const suttaId in existingSearchResults) {
+            for (const seg of existingSearchResults[suttaId].segments) {
+                if (seg.variant) segments.push({ sutta_id: suttaId, segment: seg.segment, text: seg.variant });
+            }
+        }
+        segments.sort((a, b) => a.sutta_id.localeCompare(b.sutta_id, undefined, { numeric: true }) || a.segment.localeCompare(b.segment, undefined, { numeric: true }));
+        return segments;
+    }
+
+    const dirs = resolveScopeDirs('all', path.join(SC_BILARA, 'variant'));
+    const stdout = await execKeywordGrep(dirs, keyword, exactMatch, 0, 0);
+    if (!stdout) return [];
+
+    const fileMap = parseGrepContextOutput(stdout);
+    const segments = [];
+    for (const [filePath, lineMap] of fileMap) {
+        const suttaId = path.basename(filePath).split('_')[0];
+        for (const entry of lineMap.values()) {
+            if (entry.isMatch) segments.push({ sutta_id: suttaId, segment: entry.segmentId, text: entry.text });
+        }
+    }
+    segments.sort((a, b) => a.sutta_id.localeCompare(b.sutta_id, undefined, { numeric: true }) || a.segment.localeCompare(b.segment, undefined, { numeric: true }));
+    return segments;
+}
+
+// Fast (zero file-read) response: skeleton sutta list + full word report, straight off phase-1's
+// grep. metadata.partial=true tells the client segments/translations are stubs pending
+// /search/enrich — wordReport, however, is already complete and final.
+async function buildFastResponse(keyword, searchScope, exactMatch, targetLangs, lb = 0, la = 0) {
+    const { searchResults, empty } = await buildMatchSkeleton(keyword, searchScope, exactMatch, targetLangs, lb, la);
+    const suttaIds = Object.keys(searchResults);
+
+    if (empty || suttaIds.length === 0) {
+        return {
+            metadata: { query: keyword, scope: searchScope || 'default', langs: targetLangs, totalFiles: 0, totalMatches: 0, hasVariantMatch: false, partial: true },
+            data: {},
+            wordReport: [],
+            variantSegments: []
+        };
+    }
+
+    let totalMatches = 0;
+    for (const id of suttaIds) {
+        searchResults[id].count = searchResults[id].segments.length; // approximate — exact count arrives with enrichment
+        totalMatches += searchResults[id].count;
+    }
+    const variantSegments = await findVariantSegments(keyword, exactMatch, searchScope, searchResults);
+
+    const wordReport = buildWordReportFast(searchResults, keyword);
+    const sortedData = sortSuttaResults(searchResults);
+
+    return {
+        metadata: {
+            query: keyword, scope: searchScope || 'default', langs: targetLangs,
+            totalFiles: suttaIds.length, totalMatches, hasVariantMatch: variantSegments.length > 0, partial: true
+        },
+        data: sortedData,
+        wordReport,
+        variantSegments
+    };
+}
+
+// Легаси (C:\soft\dg\new\functions.sh) не передаёт grep'у списки файлов вообще — оно грепает
+// маленький фиксированный набор ДИРЕКТОРИЙ рекурсивно (-r), и alternation по id сам отфильтровывает
+// нужное. Наша первая версия батчинга передавала явные пути файлов (по одному на сутту) — при
+// частом слове (785 сутт) это либо превышает лимит длины командной строки Windows (ENAMETOOLONG),
+// либо (после чанкинга по файлам) даёт кучу мелких chunk'ов и всё равно медленно (~3 минуты на
+// q=dukkha). Директории вместо файлов — тот же трюк, что у легаси: список аргументов больше не
+// растёт с числом сутт, растёт только id-alternation (которую тоже чанкуем на случай очень
+// большого корпуса, но это на порядки более редкий случай).
+const GREP_ID_BUDGET = 12000; // символов на -e id-паттерны в одном вызове
+
+function chunkByBudget(items, toArgString, budget) {
+    const chunks = [];
+    let current = [];
+    let currentLen = 0;
+    for (const item of items) {
+        const len = toArgString(item).length + 1; // +1 разделитель
+        if (current.length && currentLen + len > budget) {
+            chunks.push(current);
+            current = [];
+            currentLen = 0;
+        }
+        current.push(item);
+        currentLen += len;
+    }
+    if (current.length) chunks.push(current);
+    return chunks;
+}
+
+// Рекурсивный point-lookup grep: фиксированный небольшой набор ДИРЕКТОРИЙ (не файлов сутт —
+// список директорий не растёт с числом совпавших сутт), плюс lb/la контекст. GNU grep с -r и
+// несколькими каталогами/файлами префиксует каждую строку именем файла ("path:42:content" для
+// совпадения, "path-42-content" для контекстной строки -B/-A — проверено эмпирически). Всегда -F
+// (fixed-string), id сегмента никогда не регекс. Возвращает
+// Map<filePath, Map<lineNumber, {segmentId, text}>>.
+async function grepSegmentsWithContextRecursive(dirs, segmentIds, lb = 0, la = 0) {
+    const result = new Map();
+    const existingDirs = [...new Set(dirs.filter(d => d && fsSync.existsSync(d)))];
+    if (existingDirs.length === 0 || segmentIds.length === 0) return result;
+
+    const baseArgs = ['-r', '-n', '-F'];
+    if (lb > 0) baseArgs.push(`-B${lb}`);
+    if (la > 0) baseArgs.push(`-A${la}`);
+
+    const idChunks = chunkByBudget(segmentIds, id => `-e "${id}":`, GREP_ID_BUDGET);
+
+    await Promise.all(idChunks.map(async idChunk => {
+        const args = [...baseArgs];
+        for (const segId of idChunk) args.push('-e', `"${segId}":`);
+        args.push(...existingDirs);
+
+        let stdout = '';
+        try {
+            const res = await execFile('grep', args, { maxBuffer: 1024 * 1024 * 20 });
+            stdout = res.stdout;
+        } catch (error) {
+            if (error.code === 1) return; // no matches for this id chunk
+            throw error;
+        }
+
+        for (const line of stdout.split('\n')) {
+            if (!line.trim() || line === '--') continue;
+            // Жадный .+ вместо [^:]+ — путь к файлу на Windows содержит двоеточие буквы диска
+            // (C:/...); [:-] дважды — grep использует ":" для строк-совпадений и "-" для
+            // контекстных строк (-B/-A), но никогда не смешивает разделители внутри одной строки.
+            const m = line.match(/^(.+\.json)[:-](\d+)[:-](.*)$/);
+            if (!m) continue;
+            const parsed = parseJsonLineFragment(m[3]);
+            if (!parsed) continue;
+            // grep сохраняет РАЗДЕЛИТЕЛЬ директории-аргумента как есть (path.join даёт "\" на
+            // Windows) и добавляет "/" только для найденной внутри части — путь получается
+            // смешанным. toPosixPath приводит ключ к тому же виду, что и toPosixPath(getRootPath())
+            // и т.п. на стороне вызывающего кода, иначе Map-lookup молча не находит совпадений.
+            const filePath = toPosixPath(m[1]);
+            if (!result.has(filePath)) result.set(filePath, new Map());
+            result.get(filePath).set(parseInt(m[2], 10), parsed);
+        }
+    }));
+
+    return result;
+}
+
+// Рекурсивный title lookup — тот же паттерн (":0"-style front-matter, последний перед первым
+// реальным сегментом) одинаков для ЛЮБОЙ сутты, грепаем ВЕСЬ каталог(и) сразу одним процессом
+// (обычно только SC_ROOT). Возвращает Map<filePath, segmentId|null> — для файлов вне запрошенных
+// суттs результат просто не запрашивается вызывающим кодом (лишние строки не мешают).
+async function findTitleSegmentIdRecursive(dirs) {
+    const result = new Map();
+    const existingDirs = [...new Set(dirs.filter(d => d && fsSync.existsSync(d)))];
+    if (existingDirs.length === 0) return result;
+
+    let stdout = '';
+    try {
+        const res = await execFile('grep', ['-r', '-n', '-E', ':0(\\.[0-9]+)?":', ...existingDirs], { maxBuffer: 1024 * 1024 * 20 });
+        stdout = res.stdout;
+    } catch (error) {
+        if (error.code === 1) return result;
+        throw error;
+    }
+
+    // grep выдаёт совпадения каждого файла по возрастанию номера строки — просто перезаписываем
+    // на каждой новой строке того же файла, последняя и останется (без -B/-A: разделитель ":").
+    for (const line of stdout.split('\n')) {
+        if (!line.trim()) continue;
+        const m = line.match(/^(.+\.json):(\d+):(.*)$/);
+        if (!m) continue;
+        const parsed = parseJsonLineFragment(m[3]);
+        result.set(toPosixPath(m[1]), parsed ? parsed.segmentId : null); // см. комментарий в grepSegmentsWithContextRecursive
+    }
+
+    return result;
+}
+
+// Возвращает {root_text, lb_context, la_context} для сегмента segId из Map<lineNumber,
+// {segmentId,text}> (например, из grepSegmentsWithContextRecursive) — окно строится по
+// номеру строки совпадения segId в этом же файле, как и раньше делал inline-код enrichSuttaBatch.
+function extractContextWindow(lineMap, segId, lb, la) {
+    let anchorLine = null;
+    for (const [ln, v] of lineMap) { if (v.segmentId === segId) { anchorLine = ln; break; } }
+    const result = { root_text: '', lb_context: [], la_context: [] };
+    if (anchorLine == null) return result;
+    result.root_text = lineMap.get(anchorLine).text;
+    for (let ln = anchorLine - lb; ln < anchorLine; ln++) {
+        const c = lineMap.get(ln);
+        if (c) result.lb_context.push({ segment: c.segmentId, root_text: c.text, variant: '', translations: {} });
+    }
+    for (let ln = anchorLine + 1; ln <= anchorLine + la; ln++) {
+        const c = lineMap.get(ln);
+        if (c) result.la_context.push({ segment: c.segmentId, root_text: c.text, variant: '', translations: {} });
+    }
+    return result;
+}
+
+// Phase 2: enrich a known set of matched suttas with full segment/quote data — variant,
+// translations, title, and (only where missing — see below) root+context — entirely via targeted
+// grep, never a full-file JSON.parse. Батчинг по образцу C:\soft\dg\new\functions.sh
+// (getPliFromLangFirst/getLangFromVarFirst): собрать все нужные id для ВСЕГО батча разом, один
+// grep-процесс на группу директорий, а не один на сутту.
+//
+// Root+context для БОЛЬШИНСТВА сегментов уже пришёл из buildMatchSkeleton (шаг 1 теперь грепает
+// с -B/-A сразу) — см. её ассемблинг (assembleFromGrepMap). "Пробелы" (seg.root_text === '')
+// бывают только когда сама сутта была найдена НЕ через Пали-ветку шага 1 (variant-only матч в
+// смешанном root+variant вызове, или кириллица/латиница-fallback ветка, искавшая только
+// переводы) — для них здесь довозится root+context отдельным точечным id-грепом, обычно
+// затрагивающим ноль или единицы сегментов, не всю страницу.
+async function enrichSuttaBatch(searchResults, suttaIds, targetLangs, keyword, searchScope, lb = 0, la = 0) {
+    const regex = new RegExp(keyword, 'gi');
+    const wordRegex = new RegExp(`[^${WORD_BOUNDARY_CHARS}]*${keyword}[^${WORD_BOUNDARY_CHARS}]*`, 'gi');
+    let globalTotalMatches = 0;
+    let globalHasVariants = false;
+
+    const rootPathBySutta = new Map();
+    const variantPathBySutta = new Map();
+    for (const suttaId of suttaIds) {
+        if (!searchResults[suttaId]) continue;
+        rootPathBySutta.set(suttaId, toPosixPath(getRootPath(suttaId)));
+        variantPathBySutta.set(suttaId, toPosixPath(getVariantPath(suttaId)));
+    }
+    const translationFilesBySutta = await findTranslationFilesForBatch(suttaIds, targetLangs);
+
+    // resolveScopeDirs — заранее известный, кешированный (навсегда, на время процесса) список
+    // директорий по scope. Не растёт с размером батча, не деградирует на маленьком (в отличие от
+    // старого [SC_ROOT]/[SC_VARIANT] whole-tree fallback).
+    const rootDirs = resolveScopeDirs(searchScope, path.join(SC_BILARA, 'root'));
+    const variantDirs = resolveScopeDirs(searchScope, path.join(SC_BILARA, 'variant'));
+
+    // 1. Title-сегменты — buildMatchSkeleton их не знает (title обычно не совпадает с keyword).
+    const titleSegIdByFile = await findTitleSegmentIdRecursive(rootDirs);
+
+    // 2. Gap-fill root+context — только для сегментов без root_text (см. комментарий функции).
+    const gapSegIdsBySutta = new Map();
+    for (const suttaId of suttaIds) {
+        const suttaRes = searchResults[suttaId];
+        if (!suttaRes) continue;
+        const gaps = suttaRes.segments.filter(s => !s.root_text).map(s => s.segment);
+        if (gaps.length) gapSegIdsBySutta.set(suttaId, gaps);
+    }
+    const allGapSegIds = [...new Set([...gapSegIdsBySutta.values()].flat())];
+    const gapRootLinesByFile = allGapSegIds.length
+        ? await grepSegmentsWithContextRecursive(rootDirs, allGapSegIds, lb, la)
+        : new Map();
+
+    for (const suttaId of suttaIds) {
+        const suttaRes = searchResults[suttaId];
+        if (!suttaRes || !gapSegIdsBySutta.has(suttaId)) continue;
+        const rootPath = rootPathBySutta.get(suttaId);
+        const gapLines = gapRootLinesByFile.get(rootPath) || new Map();
+        for (const seg of suttaRes.segments) {
+            if (seg.root_text) continue;
+            const win = extractContextWindow(gapLines, seg.segment, lb, la);
+            seg.root_text = win.root_text;
+            if (!seg.lb_context.length && !seg.la_context.length) {
+                seg.lb_context = win.lb_context;
+                seg.la_context = win.la_context;
+            }
+        }
+    }
+
+    // 3. title-текст, если он ещё не пришёл ни с шага 1, ни с gap-fill выше.
+    const titleTextNeededIds = new Set();
+    for (const suttaId of suttaIds) {
+        const titleSegId = titleSegIdByFile.get(rootPathBySutta.get(suttaId));
+        if (titleSegId) titleTextNeededIds.add(titleSegId);
+    }
+    const titleRootLinesByFile = titleTextNeededIds.size
+        ? await grepSegmentsWithContextRecursive(rootDirs, [...titleTextNeededIds], 0, 0)
+        : new Map();
+
+    // 4. Variant + переводы — ОДИН id-грep вместе (это просто разные директории в одном grep -r,
+    // не разные "типы файла" — все .json). Window = основные сегменты + их lb/la-контекст
+    // (теперь уже известный после шага 2 выше) + title.
+    const translationDirs = new Set();
+    for (const suttaId of suttaIds) {
+        for (const filePath of Object.values(translationFilesBySutta.get(suttaId) || {})) {
+            translationDirs.add(path.dirname(filePath));
+        }
+    }
+    const windowSegIdsBySutta = new Map();
+    for (const suttaId of suttaIds) {
+        const suttaRes = searchResults[suttaId];
+        if (!suttaRes) continue;
+        const ids = new Set();
+        for (const seg of suttaRes.segments) {
+            ids.add(seg.segment);
+            seg.lb_context.forEach(c => ids.add(c.segment));
+            seg.la_context.forEach(c => ids.add(c.segment));
+        }
+        const titleSegId = titleSegIdByFile.get(rootPathBySutta.get(suttaId));
+        if (titleSegId) ids.add(titleSegId);
+        windowSegIdsBySutta.set(suttaId, [...ids]);
+    }
+    const allWindowSegIds = [...new Set([...windowSegIdsBySutta.values()].flat())];
+    const combinedLinesByFile = await grepSegmentsWithContextRecursive(
+        [...variantDirs, ...translationDirs], allWindowSegIds, 0, 0
+    );
+
+    // --- Сборка результата по каждой сутте.
+    for (const suttaId of suttaIds) {
+        const suttaRes = searchResults[suttaId];
+        if (!suttaRes) continue;
+
+        const rootPath = rootPathBySutta.get(suttaId);
+        const variantPath = variantPathBySutta.get(suttaId);
+        const titleRootLine = titleRootLinesByFile.get(rootPath) || new Map();
+        const variantLines = combinedLinesByFile.get(variantPath) || new Map();
+        const titleSegId = titleSegIdByFile.get(rootPath) || null;
+
+        const translationFiles = translationFilesBySutta.get(suttaId) || {};
+        const translationKeys = Object.keys(translationFiles);
+        const translationLinesByKey = {};
+        for (const key of translationKeys) {
+            translationLinesByKey[key] = combinedLinesByFile.get(translationFiles[key]) || new Map();
+        }
+
+        const findBySegId = (lineMap, segId) => [...lineMap.values()].find(v => v.segmentId === segId);
+
+        if (titleSegId) {
+            const rootTitle = findBySegId(titleRootLine, titleSegId);
+            if (rootTitle) suttaRes.titles.root = rootTitle.text;
+            for (const key of translationKeys) {
+                const t = findBySegId(translationLinesByKey[key], titleSegId);
+                if (t) suttaRes.titles[key] = t.text;
+            }
+        }
+
+        // Дозаполняет variant/переводы/html на месте — root_text у segObj уже есть (с шага 1
+        // buildMatchSkeleton или с gap-fill выше).
+        const fillVariantTranslations = (segObj) => {
+            const variantLine = findBySegId(variantLines, segObj.segment);
+            if (variantLine) segObj.variant = variantLine.text;
+            segObj.translations = segObj.translations || {};
+            for (const key of translationKeys) {
+                const t = findBySegId(translationLinesByKey[key], segObj.segment);
+                if (t) segObj.translations[key] = t.text;
+            }
+            segObj.html = skeletonDB[suttaId]?.html?.[segObj.segment] || '';
+        };
+
+        const uniqueWordsSet = new Set();
+        let matchCount = 0;
+        const processText = (text, isVariant = false) => {
+            if (!text) return;
+            const m = text.match(regex);
+            if (m) {
+                matchCount += m.length;
+                if (isVariant) globalHasVariants = true;
+            }
+            (text.match(wordRegex) || []).forEach(w => uniqueWordsSet.add(w.toLowerCase()));
+        };
+
+        for (const seg of suttaRes.segments) {
+            fillVariantTranslations(seg);
+            processText(seg.root_text, false);
+            processText(seg.variant, true);
+            Object.values(seg.translations).forEach(t => processText(t, false));
+
+            for (const c of seg.lb_context) fillVariantTranslations(c);
+            for (const c of seg.la_context) fillVariantTranslations(c);
+        }
+
+        suttaRes.count = matchCount;
+        globalTotalMatches += matchCount;
+        suttaRes.unique_words = Array.from(uniqueWordsSet);
+    }
+
+    return { globalTotalMatches, globalHasVariants };
+}
+
+// searchWithGrep: composition of the phases above. Reproduces the pre-refactor monolithic
+// function's exact output for the default (no-flag) /search path — same name/signature so
+// nothing else in this file needs to change.
+async function searchWithGrep(keyword, searchScope, exactMatch, targetLangs, lb = 0, la = 0) {
+    const { searchResults, empty } = await buildMatchSkeleton(keyword, searchScope, exactMatch, targetLangs, lb, la);
+
+    if (empty === 'no-targets') {
+        return { metadata: { query: keyword, totalFiles: 0, totalMatches: 0, hasVariantMatch: false }, data: {}, variantSegments: [] };
+    }
+    const suttaIds = Object.keys(searchResults);
+    if (empty === 'no-matches' || suttaIds.length === 0) {
+        return { metadata: { query: keyword, langs: targetLangs, totalFiles: 0, totalMatches: 0, hasVariantMatch: false }, data: {}, variantSegments: [] };
+    }
+
+    const { globalTotalMatches } = await enrichSuttaBatch(searchResults, suttaIds, targetLangs, keyword, searchScope, lb, la);
+    const wordReport = buildWordReport(searchResults);
+    const sortedData = sortSuttaResults(searchResults);
+    const variantSegments = await findVariantSegments(keyword, exactMatch, searchScope, searchResults);
 
     return {
         metadata: {
@@ -511,10 +1278,11 @@ async function searchWithGrep(keyword, searchScope, exactMatch, targetLangs, lb 
             lb, la, exactMatch,
             totalFiles: Object.keys(sortedData).length,
             totalMatches: globalTotalMatches,
-            hasVariantMatch: globalHasVariants
+            hasVariantMatch: variantSegments.length > 0
         },
         data: sortedData,
-        wordReport
+        wordReport,
+        variantSegments
     };
 }
 
@@ -598,8 +1366,14 @@ app.get('/api/nav/:suttaId', (req, res) => {
     });
 });
 
-app.get('/search', async (req, res) => {
-    const keyword = req.query.q;
+app.get('/search', searchHandler);
+
+async function searchHandler(req, res) {
+    // req.params.keyword — заход через /search/:keyword (путь); req.query.q — через /search?q=.
+    // Express 5 отдаёт req.query геттером без сохранённого состояния (заново парсит на каждое
+    // обращение) — писать в req.query.q в отдельном middleware бесполезно, оно не переживёт
+    // следующий доступ. Читаем обе возможные формы напрямую, без мутации req.query.
+    const keyword = req.params.keyword || req.query.q;
     if (!keyword) return res.status(400).json({ error: 'Parameter "q" is mandatory.' });
 
     const scope      = req.query.scope || 'default';
@@ -608,13 +1382,77 @@ app.get('/search', async (req, res) => {
     const lb         = parseInt(req.query.lb) || 0;
     const la         = parseInt(req.query.la) || 0;
 
+    if (keyword.length < MIN_KEYWORD_LENGTH) {
+        return res.json({
+            metadata: { query: keyword, scope: scope || 'default', langs: targetLangs, totalFiles: 0, totalMatches: 0, hasVariantMatch: false, tooShort: true },
+            data: {}, wordReport: [], variantSegments: []
+        });
+    }
+
     try {
+        // TODO.md поиск п.5: ?fast=1 skips per-sutta file reads entirely — grep-only skeleton
+        // + full wordReport, quotes/context arrive later via /search/enrich.
+        if (req.query.fast === '1') {
+            return res.json(await buildFastResponse(keyword, scope, exact, targetLangs, lb, la));
+        }
         res.json(await searchWithGrep(keyword, scope, exact, targetLangs, lb, la));
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Internal Server Error.' });
     }
+}
+
+// Phase 2 (TODO.md поиск п.5): enrich a known set of sutta ids with full segment/quote data.
+// Client calls this with the ids of the currently visible page (from a prior ?fast=1 call),
+// then again for further pages/background load. Response shape matches /search's data[id].
+app.get('/search/enrich', async (req, res) => {
+    const keyword = req.query.q;
+    const idsParam = req.query.ids;
+    if (!keyword) return res.status(400).json({ error: 'Parameter "q" is mandatory.' });
+    if (!idsParam) return res.status(400).json({ error: 'Parameter "ids" is mandatory.' });
+
+    const scope      = req.query.scope || 'default';
+    const exact      = req.query.exact === 'true';
+    const targetLangs = (req.query.langs || 'ru,en').split(',').map(l => l.trim());
+    const lb         = parseInt(req.query.lb) || 0;
+    const la         = parseInt(req.query.la) || 0;
+    const requestedIds = idsParam.split(',').map(s => s.trim()).filter(Boolean);
+
+    if (keyword.length < MIN_KEYWORD_LENGTH) {
+        return res.json({ data: {}, variantSegments: [] });
+    }
+
+    try {
+        const { searchResults, empty } = await buildMatchSkeleton(keyword, scope, exact, targetLangs, lb, la, requestedIds);
+        const suttaIds = Object.keys(searchResults);
+        if (empty || suttaIds.length === 0) return res.json({ data: {}, variantSegments: [] });
+
+        await enrichSuttaBatch(searchResults, suttaIds, targetLangs, keyword, scope, lb, la);
+        const sortedData = sortSuttaResults(searchResults);
+        let totalMatches = 0;
+        for (const id of suttaIds) {
+            totalMatches += sortedData[id].count;
+        }
+        const variantSegments = await findVariantSegments(keyword, exact, scope, searchResults);
+        res.json({
+            data: sortedData,
+            wordReport: buildWordReport(searchResults), // не buildWordReportFast — та же семантика wordReport, что и полный /search (searchWithGrep), т.к. unique_words уже посчитаны enrichSuttaBatch
+            metadata: { query: keyword, scope: scope || 'default', langs: targetLangs, lb, la, exactMatch: exact, totalFiles: suttaIds.length, totalMatches, hasVariantMatch: variantSegments.length > 0 },
+            variantSegments
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Internal Server Error.' });
+    }
 });
+
+// /search/:keyword — то же самое, что /search?q=:keyword, просто keyword как часть пути
+// (короткие ссылки на время, пока нет полноценного SPA-роутинга): /search/kacchapa?scope=dhamma
+// работает наравне с /search?q=kacchapa&scope=dhamma — остальные параметры (scope/lb/la/fast/...)
+// всё так же читаются из query string, меняется только то, откуда берётся сам keyword.
+// ВАЖНО: регистрируется ПОСЛЕ /search/enrich — иначе как wildcard-параметр перехватил бы
+// "/search/enrich" тоже (Express матчит по порядку регистрации, а не по специфичности).
+app.get('/search/:keyword', searchHandler);
 
 // Чистые URL: /dn22 → ридер, /dn22:12.1 → ридер с прокруткой к сегменту (разбор ":" — на клиенте).
 // Старый формат /?q=dn22#12.1 продолжает работать без изменений (см. res/index.html, megareader.js).
@@ -624,14 +1462,14 @@ app.get('/:slug', (req, res) => {
     if (skeletonDB[suttaId]) {
         return res.sendFile(readerTemplatePath);
     }
-    return res.redirect(`/nodejs/res/?q=${encodeURIComponent(rawSlug)}`);
+    return res.redirect(`/?q=${encodeURIComponent(rawSlug)}`);
 });
 
 app.listen(PORT, () => {
     console.log(`\n=== Dhamma.gift Server (dg-light.js) ===\n`);
     console.log(`SPA (new): http://localhost:${PORT}/spa/`);
     console.log(`API: http://localhost:${PORT}/search?q=kacchapa&scope=dhamma&langs=ru,en`);
-    console.log(`Legacy UI: http://localhost:${PORT}/nodejs/res/?q=kacchapa&lb=1&la=2&scope=dhamma`);
+    console.log(`Search UI: http://localhost:${PORT}/?q=kacchapa&lb=1&la=2&scope=dhamma`);
     console.log(`Legacy Reader: http://localhost:${PORT}/dn22`);
     console.log(`Reader (read/r, 1 язык):    http://localhost:${PORT}/dn22`);
     console.log(`Reader (ml, Пали+2 языка):  http://localhost:${PORT}/dn22?mode=ml`);

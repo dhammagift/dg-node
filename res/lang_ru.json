@@ -51,6 +51,9 @@
   "results": {
     "textsAndWord": "текстов и",
     "matchesInWord": "совпадений в",
-    "defaultScopeLabel": "4 Никаи Пали"
+    "defaultScopeLabel": "4 Никаи Пали",
+    "hasVariantsSuffix": "есть",
+    "variantsLinkText": "варианты",
+    "variantsForLabel": "Варианты для"
   }
 }

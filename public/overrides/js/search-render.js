@@ -1,19 +1,22 @@
 // Переиспользуемый рендер результатов поиска (по суттам и по словам).
 // Не зависит от конкретной HTML-страницы — только от того, что jQuery/DataTables
-// уже загружены и передан контейнер (селектор или jQuery-объект существующей <table>).
-// Так задумано, чтобы будущий SPA-этап мог подключить этот же файл без переделки.
+// уже загружены и переданы контейнеры (id/селекторы двух СТАБИЛЬНЫХ <table>-элементов,
+// см. ниже). Так задумано, чтобы будущий SPA-этап мог подключить этот же файл без переделки.
+//
+// TODO.md поиск п.5 (фазированная загрузка) добавил третий источник перерисовки — догрузку
+// цитат — на каждый /search/enrich-ответ таблица раньше пересобиралась ЦЕЛИКОМ (destroy +
+// новый <table>-узел). Для страницы из десятков строк это заметно тормозило (клиентская часть
+// того самого "1-2 минуты слишком долго"), а частые переинициализации одного и того же
+// table-id путали внутренний реестр DataTables и портили sort order (симптом — order()
+// внезапно возвращал лишний столбец сортировки, не заданный ни в одном из вызовов).
+//
+// Фикс — ровно то, что предлагал пользователь: ДВЕ отдельные, стабильные таблицы (по-суттная
+// и по-словная), каждая инициализируется ОДИН РАЗ и живёт до конца сессии страницы. Переключение
+// между отчётами — просто show/hide, без destroy. Догрузка данных (фаза 1 → /search/enrich →
+// фоновый /search) — обновление данных УЖЕ инициализированной таблицы через
+// .clear().rows.add(data).draw(false) — сохраняет текущую страницу/сортировку/фильтр
+// автоматически, без единой строчки ручной консервации state.
 window.DgSearchRender = (function () {
-
-    // Переключение между отчётами меняет число колонок (8 у по-суттного, 4 у по-словного).
-    // DataTables + Buttons/Responsive/ColReorder оставляют в DOM обвес (colgroup, wrapper-div),
-    // который переживает .destroy() и путает следующую инициализацию с другим числом колонок
-    // ("Cannot read properties of ... 'mData'/'parentNode'"). Поэтому вместо точечной чистки
-    // пересоздаём сам <table>-узел с нуля при каждом переключении — надёжно и просто.
-    // Классы, которые DataTables/Responsive/Buttons сами добавляют на <table> при инициализации
-    // (dataTable, dtr-inline, collapsed, no-footer, ...). Если перенести их на "новую" таблицу
-    // до повторного вызова .DataTable(), плагин думает, что уже инициализирован на этом узле,
-    // и не навешивает свои обработчики клика заново — раскрывающиеся строки перестают работать.
-    var DT_INTERNAL_CLASSES = /\b(dataTable|dtr-inline|dtr-column|collapsed|no-footer|dt-\S+)\b/g;
 
     // Строки интерфейса тянем из window.DHAMMA_I18N.config (см. public/overrides/js/dhamma-i18n.js
     // + res/lang_{ru,en}.json) — этот файл не завязан на конкретную HTML-страницу, поэтому читает
@@ -27,43 +30,43 @@ window.DgSearchRender = (function () {
         return value === undefined ? fallback : value;
     }
 
-    function resetContainer(container, headers) {
-        var $old = $(container);
-        var id = $old.attr('id');
-        var className = ($old.attr('class') || '').replace(DT_INTERNAL_CLASSES, '').replace(/\s+/g, ' ').trim();
+    // Таблицы теперь стабильны (инициализируются один раз), но КЛЮЧЕВОЕ СЛОВО поиска между
+    // разными вызовами buildDataTable/buildWordDataTable МЕНЯЕТСЯ (переключение отчётов не
+    // меняет ключевое слово, а вот повторный поиск через hero-форму — меняет, без перезагрузки
+    // страницы). Раньше highlightWord захватывался в замыкание render()-колбэков при каждой
+    // пересборке таблицы — теперь таблица не пересобирается, так что render()-колбэки должны
+    // читать АКТУАЛЬНОЕ значение из общего изменяемого объекта на каждый вызов (DataTables и
+    // так зовёт render() заново на каждой перерисовке — достаточно просто не кэшировать его).
+    var activeState = { highlightWord: '', scope: '' };
 
-        // tbody (например id="sutta") — на этот КОНКРЕТНЫЙ узел завязан переключатель языка
-        // (langswitch.js захватывает document.getElementById("sutta") один раз при загрузке
-        // страницы). Если пересоздать tbody заново, эта ссылка станет мёртвой. Поэтому не
-        // создаём новый tbody, а переносим (detach+append, не clone) тот же самый узел —
-        // его identity в документе сохраняется, только меняется родительский <table>.
-        var $oldTbody = $old.find('tbody').first();
-        if ($oldTbody.length) $oldTbody.empty();
+    var suttaTableApi = null;
+    var wordTableApi = null;
 
-        var theadHtml = '<thead class="thead-light"><tr>' +
-            headers.map(function (h) { return '<th>' + h + '</th>'; }).join('') +
-            '</tr></thead>';
+    // Кнопка "Saṁvaṭṭo / Vivaṭṭo" (развернуть/свернуть все строки) общая для обоих отчётов,
+    // должна действовать на ТЕКУЩУЮ видимую таблицу — перепривязывается на каждый build*-вызов
+    // (дёшево, идемпотентно через .off().on()), так что всегда указывает на таблицу, которую
+    // только что построили/обновили (= ту, что сейчас видна пользователю).
+    function bindExpandCollapseButtons($table) {
+        $('#btn-show-all-children').off('click').on('click', function () {
+            $table.find('tbody tr:not(.parent)').find('td:first-child').trigger('click');
+        });
+        $('#btn-hide-all-children').off('click').on('click', function () {
+            $table.find('tbody tr.parent').find('td:first-child').trigger('click');
+        });
+    }
 
-        var $fresh = $('<table></table>').html(theadHtml);
-        if (id) $fresh.attr('id', id);
-        if (className) $fresh.attr('class', className);
-
-        if ($oldTbody.length) {
-            $fresh.append($oldTbody);
-        } else {
-            $fresh.append('<tbody></tbody>');
-        }
-
-        // Ищем по id ("{id}_wrapper") — надёжно во всех версиях DataTables;
-        // класс обёртки менялся между версиями (dataTables_wrapper → dt-container).
-        var $wrapper = id ? $('#' + id + '_wrapper') : $();
-        if (!$wrapper.length) $wrapper = $old.closest('.dataTables_wrapper, .dt-container');
-        if ($wrapper.length) {
-            $wrapper.replaceWith($fresh);
-        } else {
-            $old.replaceWith($fresh);
-        }
-        return $fresh;
+    // Заголовки колонок читаются через t() (не из статического <thead>, где лежат {{table.X}}
+    // токены движка dhamma-i18n.js) по двум причинам: (1) таблица теперь инициализируется ОДИН
+    // раз и DataTables запоминает заголовки только при этом первом вызове — если к тому моменту
+    // асинхронный фетч lang_{lang}.json ещё не отработал и не подставил токены в DOM, заголовки
+    // навсегда остались бы буквальным текстом "{{table.suttaCol}}"; (2) при живой смене языка
+    // таблица тоже не пересобирается — без явного обновления здесь заголовки просто не
+    // переведутся. applyHeaderTitles вызывается и при первой инициализации, и при каждом
+    // обновлении данных, так что всегда отражает текущий язык независимо от гонки с i18n.
+    function applyHeaderTitles(tableApi, titles) {
+        titles.forEach(function (title, idx) {
+            $(tableApi.column(idx).header()).text(title);
+        });
     }
 
     // Кнопки одинаковые для обоих отчётов (Export/PDF работают по видимым колонкам,
@@ -336,7 +339,6 @@ window.DgSearchRender = (function () {
         var tableDom = $(window).width() > 768 ? desktopDom : mobileDom;
 
         return {
-            destroy: true,
             dom: tableDom,
             buttons: buildButtons(),
             // "Search:" -> "Фильтр:" — на этой странице DataTables-фильтр не должен путаться
@@ -366,7 +368,23 @@ window.DgSearchRender = (function () {
             colReorder: true,
             orderMulti: true,
             pageLength: 10,
-            lengthMenu: [10, 30, 50, 100, 1000]
+            lengthMenu: [10, 30, 50, 100, 1000],
+            // Responsive's встроенный dtr-title (подпись колонки перед развёрнутым значением,
+            // напр. "Ссылки"/"Цитата" у className:'none' колонок) кеширует заголовок при
+            // инициализации и иногда отдаёт "undefined" вместо реального текста — сам DataTables
+            // column.title при этом уже верный (проверено через settings().aoColumns), это баг
+            // именно кеша Responsive, не наших данных. Содержимое колонки (ссылки/цитата) само по
+            // себе понятно без подписи — рендерим только данные, без dtr-title вообще.
+            responsive: {
+                details: {
+                    renderer: function (api, rowIdx, columns) {
+                        var data = columns.reduce(function (html, col) {
+                            return col.hidden ? html + '<li data-dtr-index="' + col.columnIndex + '">' + col.data + '</li>' : html;
+                        }, '');
+                        return data ? $('<ul data-dtr-index="' + rowIdx + '" class="dtr-details"/>').append(data) : false;
+                    }
+                }
+            }
         };
     }
 
@@ -410,22 +428,42 @@ window.DgSearchRender = (function () {
         return url;
     }
 
-    // Отчёт с группировкой по суттам (текущий, основной вид)
-    function buildDataTable(container, dataArray, highlightWord) {
-        var $table = resetContainer(container, [
+    function highlightText(text, highlightWord) {
+        if (!highlightWord || !text) return text;
+        var regexHighlight = new RegExp(highlightWord, 'gi');
+        return text.replace(regexHighlight, function (match) { return '<b class="match finder">' + match + '</b>'; });
+    }
+
+    // Отчёт с группировкой по суттам (текущий, основной вид). container — стабильный
+    // <table id="pali">, инициализируется ОДИН раз; повторные вызовы (переключение отчётов,
+    // догрузка цитат, новый поиск через hero-форму) просто обновляют данные на месте —
+    // .draw(false) сохраняет текущую страницу/сортировку/фильтр автоматически, без ручной
+    // консервации state.
+    function suttaTableHeaderTitles() {
+        return [
             t('table.suttaCol', 'Sutta'), t('table.titleCol', 'Title'), t('table.wordsCol', 'Words'),
             t('table.countCol', 'Ct'), t('table.mrCol', 'Mr'), t('table.linksCol', 'Links'),
             t('table.typeCol', 'Type'), t('table.quoteCol', 'Quote')
-        ]);
+        ];
+    }
 
-        var regexHighlight = new RegExp(highlightWord, 'gi');
+    function buildDataTable(container, dataArray, highlightWord) {
+        activeState.highlightWord = highlightWord;
+
+        if (suttaTableApi) {
+            suttaTableApi.clear();
+            suttaTableApi.rows.add(dataArray);
+            applyHeaderTitles(suttaTableApi, suttaTableHeaderTitles());
+            suttaTableApi.draw(false);
+            bindExpandCollapseButtons($(container));
+            return suttaTableApi;
+        }
+
+        var $table = $(container);
+        var headerTitles = suttaTableHeaderTitles();
 
         var options = $.extend({}, commonOptions(), {
             data: dataArray,
-            stateSave: true,
-            stateSaveParams: function (settings, data) {
-                data.search.search = '';
-            },
             searchBuilder: {
                 preDefined: {
                     criteria: [
@@ -438,13 +476,15 @@ window.DgSearchRender = (function () {
                 // 0: Sutta
                 {
                     data: 'sutta_id',
+                    title: headerTitles[0],
                     render: function (data) {
-                        var textUrl = buildSuttaUrl(data, null, highlightWord);
+                        var textUrl = buildSuttaUrl(data, null, activeState.highlightWord);
                         return '<a class="fdgLink mainLink" target="_blank" href="' + textUrl + '" data-slug="' + data + '">' + data + '</a>';
                     }
                 },
                 // 1: Title
                 {
+                    title: headerTitles[1],
                     data: 'titles',
                     render: function (data, type, row) {
                         if (!data) return '';
@@ -475,22 +515,21 @@ window.DgSearchRender = (function () {
                 },
                 // 2: Words
                 {
+                    title: headerTitles[2],
                     data: 'unique_words',
                     render: function (data) {
                         if (!data || !data.length) return '';
                         var wordsStr = data.join(' ');
-                        if (highlightWord) {
-                            wordsStr = wordsStr.replace(regexHighlight, function (match) { return '<b class="match finder">' + match + '</b>'; });
-                        }
-                        return '<span class="pli-lang inputscript-ISOPali">' + wordsStr + '</span>';
+                        return '<span class="pli-lang inputscript-ISOPali">' + highlightText(wordsStr, activeState.highlightWord) + '</span>';
                     }
                 },
                 // 3: Ct
-                { data: 'count' },
+                { title: headerTitles[3], data: 'count' },
                 // 4: Mr
-                { data: 'mr' },
+                { title: headerTitles[4], data: 'mr' },
                 // 5: Links
                 {
+                    title: headerTitles[5],
                     data: 'sutta_id',
                     orderable: false,
                     render: function (data) {
@@ -506,25 +545,31 @@ window.DgSearchRender = (function () {
                     }
                 },
                 // 6: Type
-                { data: 'category' },
+                { title: headerTitles[6], data: 'category' },
                 // 7: Quote
                 {
+                    title: headerTitles[7],
                     data: 'segments',
                     className: 'none',
                     render: function (data, type, row) {
+                        // TODO.md поиск п.5: phase-1 (?fast=1) rows have placeholder segments —
+                        // quotes/context arrive via a follow-up /search/enrich call, at which
+                        // point res/index.html re-renders with row.__enriched set to true.
+                        if (row.__enriched === false) {
+                            return '<span class="text-muted small">' + t('buttons.loading', 'Loading...') + '</span>';
+                        }
                         if (!data || data.length === 0) return '';
                         var quoteHtml = '';
+                        var highlightWord = activeState.highlightWord;
 
                         var renderSegment = function (seg, isContext) {
                             var html = '';
                             var paliText = seg.root_text || '';
                             var variantText = seg.variant || '';
 
-                            if (highlightWord && paliText && !isContext) {
-                                paliText = paliText.replace(regexHighlight, function (match) { return '<b class="match finder">' + match + '</b>'; });
-                            }
-                            if (highlightWord && variantText && !isContext) {
-                                variantText = variantText.replace(regexHighlight, function (match) { return '<b class="match finder">' + match + '</b>'; });
+                            if (!isContext) {
+                                paliText = highlightText(paliText, highlightWord);
+                                variantText = highlightText(variantText, highlightWord);
                             }
 
                             var urlwithanchor = row.sutta_id + (seg.segment.includes(':') ? ':' + seg.segment.split(':')[1] : '');
@@ -559,9 +604,7 @@ window.DgSearchRender = (function () {
                                 sortedTransKeys.forEach(function (key) {
                                     var transText = seg.translations[key];
                                     if (!transText) return;
-                                    if (highlightWord && !isContext) {
-                                        transText = transText.replace(regexHighlight, function (match) { return '<b class="match finder">' + match + '</b>'; });
-                                    }
+                                    if (!isContext) transText = highlightText(transText, highlightWord);
                                     var langCode = key.split('_')[0];
                                     var htmlclass = (langCode === 'en') ? "eng-lang text-muted font-weight-light" : langCode + "-lang text-muted font-weight-light";
                                     if (isContext) htmlclass += " opacity-75";
@@ -602,74 +645,84 @@ window.DgSearchRender = (function () {
                 { targets: [3], orderData: [3, 4], orderSequence: ['desc', 'asc'] },
                 { targets: [4], orderData: [4, 3], orderSequence: ['desc', 'asc'] }
             ],
-            order: [[6, 'asc'], [0, 'asc']],
-            initComplete: function () {
-                var api = this.api();
-                var rootTable = $table;
-
-                $('#btn-show-all-children').off('click').on('click', function () {
-                    rootTable.find('tbody tr:not(.parent)').find('td:first-child').trigger('click');
-                });
-
-                $('#btn-hide-all-children').off('click').on('click', function () {
-                    rootTable.find('tbody tr.parent').find('td:first-child').trigger('click');
-                });
-            }
+            // category first (dhamma = the 4 nikayas), then id — server already sorts this way
+            // (sortSuttaResults in dg-light.js), DataTables re-applies its own `order` on init
+            // regardless of JSON key order, so it's repeated here as the single source of truth
+            // for the default sort (see the file-level comment re: TODO.md поиск п.5's sort bug).
+            order: [[6, 'asc'], [0, 'asc']]
         });
 
-        return $table.DataTable(options);
+        suttaTableApi = $table.DataTable(options);
+        bindExpandCollapseButtons($table);
+        return suttaTableApi;
     }
 
     // Отчёт с группировкой по словам: Word | Texts | Matches | Links
     // Данные приходят из того же ответа /search (json.wordReport) — без повторного запроса.
-    function buildWordDataTable(container, wordReport, highlightWord, scope) {
-        var $table = resetContainer(container, [
+    // container — свой стабильный <table>, отдельный от по-суттного (см. файловый комментарий
+    // наверху — раньше обе таблицы делили один <table id="pali">, пересоздаваемый на каждое
+    // переключение, что и создавало основной риск порчи state).
+    function wordTableHeaderTitles() {
+        return [
             t('table.wordCol', 'Word'), t('table.textsCol', 'Texts'),
             t('table.matchesCol', 'Matches'), t('table.linksCol', 'Links')
-        ]);
+        ];
+    }
 
-        // Переключатель Pāḷi/Рус (hide-pali/hide-english на #sutta) относится к по-суттному
-        // отчёту (пали-текст против перевода) и не имеет смысла здесь — Word и так всегда
-        // пали. Если оставить класс с прошлого переключения, колонка Word (тоже .pli-lang)
-        // пропадает вместе со "скрытым пали", ломая отчёт и словарь (кликать не по чему).
-        $table.find('tbody').removeClass('hide-pali hide-english hide-russian');
+    function buildWordDataTable(container, wordReport, highlightWord, scope) {
+        activeState.highlightWord = highlightWord;
+        activeState.scope = scope;
+        var data = wordReport || [];
+
+        if (wordTableApi) {
+            wordTableApi.clear();
+            wordTableApi.rows.add(data);
+            applyHeaderTitles(wordTableApi, wordTableHeaderTitles());
+            wordTableApi.draw(false);
+            bindExpandCollapseButtons($(container));
+            return wordTableApi;
+        }
+
+        var $table = $(container);
+        var headerTitles = wordTableHeaderTitles();
 
         var options = $.extend({}, commonOptions(), {
-            data: wordReport || [],
+            data: data,
             columns: [
                 // 0: Word — подсвечиваем искомое слово внутри (как в колонке Words по-суттного
                 // отчёта), а не просто выводим голый текст.
                 {
+                    title: headerTitles[0],
                     data: 'word',
                     className: 'pli-lang inputscript-ISOPali',
                     render: function (data) {
-                        if (!highlightWord) return data;
-                        var regexHighlight = new RegExp(highlightWord, 'gi');
-                        return data.replace(regexHighlight, function (match) { return '<b class="match finder">' + match + '</b>'; });
+                        return highlightText(data, activeState.highlightWord);
                     }
                 },
                 // 1: Texts — кликабельно: перезапускает поиск именно по этому слову
                 // (как counttexts в легаси new/words.sh)
                 {
+                    title: headerTitles[1],
                     data: 'textCount',
                     render: function (data, type, row) {
                         if (type !== 'display') return data;
-                        var url = '/nodejs/res/?q=' + encodeURIComponent(row.word) + (scope ? '&scope=' + encodeURIComponent(scope) : '');
+                        var url = '/?q=' + encodeURIComponent(row.word) + (activeState.scope ? '&scope=' + encodeURIComponent(activeState.scope) : '');
                         return '<a href="' + url + '">' + data + '</a>';
                     }
                 },
                 // 2: Matches
-                { data: 'matchCount' },
+                { title: headerTitles[2], data: 'matchCount' },
                 // 3: Links — под responsive-обёрткой (className:'none'), как Quote в по-суттном
                 // отчёте: у частых слов список ссылок длинный, не должен растягивать таблицу.
                 {
+                    title: headerTitles[3],
                     data: 'links',
                     orderable: false,
                     className: 'none',
                     render: function (links) {
                         if (!links || !links.length) return '';
                         return links.map(function (l) {
-                            var url = buildSuttaUrl(l.sutta_id, l.segment, highlightWord);
+                            var url = buildSuttaUrl(l.sutta_id, l.segment, activeState.highlightWord);
                             return '<a class="fdgLink quote" target="_blank" href="' + url + '" data-slug="' + l.sutta_id + '">' + l.sutta_id + '</a>';
                         }).join(' ');
                     }
@@ -680,29 +733,42 @@ window.DgSearchRender = (function () {
                 { targets: [1, 2], className: 'text-nowrap' },
                 { type: 'html', targets: [0, 1, 3] }
             ],
-            order: [[1, 'desc'], [0, 'asc']],
-            initComplete: function () {
-                // Та же кнопка "Saṁvaṭṭo / Vivaṭṭo", что и в по-суттном отчёте — но там она
-                // навешивается на СВОЙ $table через замыкание в initComplete, и после
-                // переключения на этот отчёт (новый <table> узел) старая привязка мертва.
-                // Нужно перепривязать на актуальный $table каждый раз при (пере)инициализации.
-                var rootTable = $table;
-
-                $('#btn-show-all-children').off('click').on('click', function () {
-                    rootTable.find('tbody tr:not(.parent)').find('td:first-child').trigger('click');
-                });
-
-                $('#btn-hide-all-children').off('click').on('click', function () {
-                    rootTable.find('tbody tr.parent').find('td:first-child').trigger('click');
-                });
-            }
+            order: [[1, 'desc'], [0, 'asc']]
         });
 
-        return $table.DataTable(options);
+        wordTableApi = $table.DataTable(options);
+        bindExpandCollapseButtons($table);
+        return wordTableApi;
+    }
+
+    // "Variants for {keyword}" — секция под отчётом по словам (легаси new/words.sh). Текст
+    // каждого сегмента (со стрелкой "→"/"(mr)"/"(?)") — редакторская нотация SuttaCentral,
+    // УЖЕ буквально хранящаяся в самом variant-файле (не наш diff, см. комментарий у
+    // findVariantSegments в dg-light.js) — просто подсвечиваем искомое слово и даём ссылку на
+    // сутту тем же способом (.fdgLink/data-slug), что и колонка Quote основной таблицы —
+    // openFdg.js сам донастраивает href на клиенте.
+    function buildVariantsReport(container, variantSegments, keyword) {
+        var $container = $(container);
+        if (!variantSegments || !variantSegments.length) {
+            $container.addClass('d-none');
+            return;
+        }
+        var capitalizedKeyword = keyword ? keyword.charAt(0).toUpperCase() + keyword.slice(1) : '';
+        var listHtml = variantSegments.map(function (seg) {
+            var url = buildSuttaUrl(seg.sutta_id, seg.segment, keyword);
+            var urlwithanchor = seg.sutta_id + (seg.segment.indexOf(':') !== -1 ? ':' + seg.segment.split(':')[1] : '');
+            var text = highlightText(seg.text, keyword);
+            return '<strong><a class="fdgLink quote" target="_blank" href="' + url + '" data-slug="' + urlwithanchor + '">' + seg.sutta_id + '</a></strong> ' + text + '<br>';
+        }).join('\n');
+
+        $container.removeClass('d-none');
+        $container.find('.variants-report-keyword').text(capitalizedKeyword);
+        $container.find('.variants-report-list').html(listHtml);
     }
 
     return {
         buildDataTable: buildDataTable,
-        buildWordDataTable: buildWordDataTable
+        buildWordDataTable: buildWordDataTable,
+        buildVariantsReport: buildVariantsReport
     };
 })();
