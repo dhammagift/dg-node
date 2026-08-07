@@ -871,8 +871,22 @@ function buildWordReportFast(searchResults, keyword) {
 // Если текущий поиск и так уже был scope=all и его результаты уже под рукой (existingSearchResults)
 // — просто вынимаем то, что уже нашли (variant-совпадения из основного прохода), без повторного
 // grep. Иначе — отдельный, но дешёвый widened-проход по variant-дереву целиком.
+// Варианты — часть отчёта по словам, и он уже посчитан один раз в fast=1 (buildFastResponse) и
+// считается финальным (см. комментарий у buildFastResponse) — пересчитывать его же ещё раз в
+// /search/enrich (тот идёт следом за fast=1 в течение секунд для того же keyword+scope) не нужно,
+// это тот же самый widened-grep с тем же результатом. Кеш — тот же принцип, что и skeletonCache
+// выше: ключ по keyword+exactMatch (сам widened-проход всегда ищет "везде", scope вызывающего
+// кода на РЕЗУЛЬТАТ не влияет — влияет только на то, можно ли вообще пропустить grep, см. ветку
+// reuse ниже), TTL короткий, кеш в памяти на время жизни процесса.
+const variantSegmentsCache = new Map();
+
+function variantCacheKey(keyword, exactMatch) {
+    return JSON.stringify([keyword, exactMatch]);
+}
+
 async function findVariantSegments(keyword, exactMatch, searchScope, existingSearchResults) {
     if (searchScope === 'all' && existingSearchResults) {
+        // Уже искали везде — вынимаем то, что уже нашли, без grep и без кеша (и так бесплатно).
         const segments = [];
         for (const suttaId in existingSearchResults) {
             for (const seg of existingSearchResults[suttaId].segments) {
@@ -883,19 +897,26 @@ async function findVariantSegments(keyword, exactMatch, searchScope, existingSea
         return segments;
     }
 
+    const cacheKey = variantCacheKey(keyword, exactMatch);
+    const cached = variantSegmentsCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < SKELETON_CACHE_TTL_MS) {
+        return cached.segments;
+    }
+
     const dirs = resolveScopeDirs('all', path.join(SC_BILARA, 'variant'));
     const stdout = await execKeywordGrep(dirs, keyword, exactMatch, 0, 0);
-    if (!stdout) return [];
-
-    const fileMap = parseGrepContextOutput(stdout);
     const segments = [];
-    for (const [filePath, lineMap] of fileMap) {
-        const suttaId = path.basename(filePath).split('_')[0];
-        for (const entry of lineMap.values()) {
-            if (entry.isMatch) segments.push({ sutta_id: suttaId, segment: entry.segmentId, text: entry.text });
+    if (stdout) {
+        const fileMap = parseGrepContextOutput(stdout);
+        for (const [filePath, lineMap] of fileMap) {
+            const suttaId = path.basename(filePath).split('_')[0];
+            for (const entry of lineMap.values()) {
+                if (entry.isMatch) segments.push({ sutta_id: suttaId, segment: entry.segmentId, text: entry.text });
+            }
         }
+        segments.sort((a, b) => a.sutta_id.localeCompare(b.sutta_id, undefined, { numeric: true }) || a.segment.localeCompare(b.segment, undefined, { numeric: true }));
     }
-    segments.sort((a, b) => a.sutta_id.localeCompare(b.sutta_id, undefined, { numeric: true }) || a.segment.localeCompare(b.segment, undefined, { numeric: true }));
+    variantSegmentsCache.set(cacheKey, { segments, timestamp: Date.now() });
     return segments;
 }
 
