@@ -54,6 +54,8 @@
     "defaultScopeLabel": "4 Никаи Пали",
     "hasVariantsSuffix": "есть",
     "variantsLinkText": "варианты",
-    "variantsForLabel": "Варианты для"
+    "variantsForLabel": "Варианты для",
+    "tooShortMessage": "Слишком короткий запрос — введите не менее 3 символов.",
+    "noResultsMessage": "По запросу ничего не найдено."
   }
 }

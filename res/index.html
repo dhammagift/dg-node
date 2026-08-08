@@ -149,7 +149,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
 <div class="container-fluid mt-2">
 
 <form id="form" class="dg-hero-form mb-2" autocomplete="off">
-  <label class="sr-only" for="paliauto">{{search.label}}</label>
+  <label class="visually-hidden" for="paliauto">{{search.label}}</label>
   <div class="input-group">
     <input class="form-control rounded-pill searchinput" id="paliauto" type="search" placeholder="e.g. Kāyagat or sn56.11" data-i18n-placeholder="{{search.placeholder}}" autocomplete="off">
     <button type="submit" id="searchbtn" class="btn btn-primary rounded-pill ms-2">
@@ -209,30 +209,10 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     document.querySelectorAll(".btn-language").forEach((btn) => {
         btn.addEventListener("click", function (event) {
             event.preventDefault();
-            let newLang = this.getAttribute("data-lang"); // Например, "en", "ru", "th"
-            let url = new URL(window.location.href);
-            let path = url.pathname;
-
-            // Определяем текущий язык
-            let currentLang = path.match(/^\/([a-z]{2})\//);
-            currentLang = currentLang ? currentLang[1] : "en"; // Если нет префикса, считаем "en"
-
-            // Если язык не меняется, ничего не делаем
-            if (currentLang === newLang) return;
-
-            let search = url.search;
-            let hash = url.hash;
-            
-            // Удаляем код языка, если он есть
-            let newPath = path.replace(/^\/[a-z]{2}\//, "/");
-
-            // Добавляем новый язык, если он не "en"
-            if (newLang !== "en") {
-                newPath = `/${newLang}` + newPath;
+            let newLang = this.getAttribute("data-lang");
+            if (typeof window.setSiteLanguage === "function") {
+                window.setSiteLanguage(newLang);
             }
-
-            // Перенаправление с сохранением search и hash
-            window.location.href = newPath + search + hash;
         });
     });
 });
@@ -250,7 +230,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
                 
                            <div class="ms-auto d-inline-flex align-items-center">
    <a class="btn btn-sm btn-secondary btn-language rounded-pill text-decoration-none ms-1" href="#" data-lang="en">en</a>
-               <span>ru</span> 
+               <a class="btn btn-sm btn-secondary btn-language rounded-pill text-decoration-none ms-1" href="#" data-lang="ru">ru</a>
 <span class="mx-1 text-muted">Ctrl+Shift+1</span>
             
      </div>        
@@ -650,6 +630,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
      каждая инициализируется один раз в search-render.js и живёт до конца сессии страницы;
      переключение между отчётами — просто show/hide (см. renderCurrentReport ниже), без
      destroy/rebuild. См. комментарий в начале public/overrides/js/search-render.js. -->
+<div id="search-message" class="alert alert-warning d-none" role="alert"></div>
 <table id="pali" class="display table table-striped table-hover responsive " cellspacing="0" width="100%">
    <thead class="thead-light">
         <tr>
@@ -978,6 +959,18 @@ $(document).ready(function() {
             } else {
                 variantDiv.style.display = 'none';
             }
+        }
+
+        let msgDiv = document.getElementById('search-message');
+        if (msgDiv) {
+            let msg = '';
+            if (json.metadata.tooShort) {
+                msg = t('results.tooShortMessage', 'Query is too short — please enter at least 3 characters.');
+            } else if (json.metadata.totalFiles === 0) {
+                msg = t('results.noResultsMessage', 'No results found for this query.');
+            }
+            msgDiv.textContent = msg;
+            msgDiv.classList.toggle('d-none', !msg);
         }
     }
 

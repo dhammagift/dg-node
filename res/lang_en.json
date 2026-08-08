@@ -54,6 +54,8 @@
     "defaultScopeLabel": "4 Nikaya Pali",
     "hasVariantsSuffix": "has",
     "variantsLinkText": "variants",
-    "variantsForLabel": "Variants for"
+    "variantsForLabel": "Variants for",
+    "tooShortMessage": "Query is too short — please enter at least 3 characters.",
+    "noResultsMessage": "No results found for this query."
   }
 }
