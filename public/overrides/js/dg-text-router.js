@@ -63,6 +63,7 @@
     //                                     stub listing (or falls back to search if empty).
     //   { type: 'search', query }      — not a recognized reference, run a keyword search.
     function classify(raw) {
+        var original = String(raw == null ? '' : raw).trim();
         var q = normalize(raw);
         if (!q) return { type: 'search', query: '' };
 
@@ -104,7 +105,15 @@
         if (/^(mn|dn|sn|an|kn|snp|ud|iti|thag|thig|dhp)$/.test(q)) return { type: 'chapter', id: q };
         if (/^(sn|an)\d{1,2}$/.test(q)) return { type: 'chapter', id: q };
 
-        return { type: 'search', query: q };
+        // Nothing matched a text/chapter pattern — plain keyword search. Use the ORIGINAL
+        // input, not the layout-converted `q`: the Cyrillic->Latin fix in normalize() exists
+        // only to test whether this might be a mistyped Pali/chapter reference (RU_LAYOUT_TO_
+        // LATIN above) — for a genuine Russian word ("страдание") it silently mangled the
+        // query into garbage ("cnhflfybt", nothing in ru/ru_other/sc matches that), breaking
+        // Russian search entirely. dg-light.js already routes real Cyrillic queries to the
+        // correct ru/ru_other/sc translations on its own (isCyrillicScript in dg-light.js) —
+        // this function only needs to not get in the way of that by mangling the query first.
+        return { type: 'search', query: original };
     }
 
     global.DgTextRouter = { normalize: normalize, classify: classify };

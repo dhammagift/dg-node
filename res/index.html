@@ -121,6 +121,19 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
         max-width: 100%;
         margin: 0.25rem 0 1rem;
     }
+    /* Placeholder for a translated title still pending /search/enrich — see search-render.js's
+       Title column render. Static bar, not a spinner: just needs to read as "more coming",
+       not draw attention while a page full of them scrolls by. */
+    .dg-skeleton-bar {
+        display: inline-block;
+        width: 8em;
+        max-width: 40%;
+        height: 0.85em;
+        vertical-align: middle;
+        border-radius: 3px;
+        background: currentColor;
+        opacity: 0.15;
+    }
 </style>
 
 <link rel="stylesheet" href="/assets/css/langswitch.css">

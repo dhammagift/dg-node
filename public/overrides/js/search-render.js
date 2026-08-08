@@ -512,6 +512,11 @@ window.DgSearchRender = (function () {
                     render: function (data, type, row) {
                         if (!data) return '';
 
+                        // titles.root already arrives with fast=1 (skeletonDB has it up front —
+                        // see dblight.js) — only the TRANSLATED title is enrichment-only. While
+                        // it's missing, show a placeholder bar instead of a blank gap, so it's
+                        // visually obvious more is coming rather than looking like there's simply
+                        // no translation.
                         var titlePali = data.root || row.sutta_id;
                         var titleText = '';
                         var langClass = 'eng-lang';
@@ -533,17 +538,29 @@ window.DgSearchRender = (function () {
                             langClass = fallbackKey.split('_')[0] + '-lang';
                         }
 
-                        return '<strong class="pli-lang inputscript-ISOPali">' + titlePali + '</strong> <span class="' + langClass + ' text-muted">' + titleText + '</span>';
+                        var titleHtml = titleText
+                            ? '<span class="' + langClass + ' text-muted">' + titleText + '</span>'
+                            : (row.__enriched === false ? '<span class="dg-skeleton-bar" aria-hidden="true"></span>' : '');
+
+                        return '<strong class="pli-lang inputscript-ISOPali">' + titlePali + '</strong> ' + titleHtml;
                     }
                 },
                 // 2: Words
                 {
                     title: headerTitles[2],
                     data: 'unique_words',
-                    render: function (data) {
-                        if (!data || !data.length) return '';
-                        var wordsStr = data.join(' ');
-                        return '<span class="pli-lang inputscript-ISOPali">' + highlightText(wordsStr, activeState.highlightWord) + '</span>';
+                    render: function (data, type, row) {
+                        if (data && data.length) {
+                            var wordsStr = data.join(' ');
+                            return '<span class="pli-lang inputscript-ISOPali">' + highlightText(wordsStr, activeState.highlightWord) + '</span>';
+                        }
+                        // Not enriched yet — the real unique_words are, at most, the searched
+                        // word plus declension endings/prefixes (Pali is agglutinative), so the
+                        // search term itself is a reasonable stand-in instead of a blank cell.
+                        if (row.__enriched === false && activeState.highlightWord) {
+                            return '<span class="pli-lang inputscript-ISOPali text-muted">' + activeState.highlightWord + '</span>';
+                        }
+                        return '';
                     }
                 },
                 // 3: Ct
