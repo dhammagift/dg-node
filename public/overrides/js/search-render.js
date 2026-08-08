@@ -417,7 +417,16 @@ window.DgSearchRender = (function () {
     // ведут на /4nt/?q=...), (2) режим чтения, которого MODE_CONFIGS ридера ещё не покрывает
     // (rv/d/mem/fr, Thai) — ридер не трогаем, поэтому для них оставляем как было.
     function buildSuttaUrl(suttaId, segmentId, highlightWord) {
-        var segmentHash = segmentId ? (segmentId.includes(':') ? segmentId.split(':')[1] : segmentId) : null;
+        // For a merged range file (e.g. sutta_id "an1.21-30"), megareader.js keeps the FULL
+        // segment id ("an1.21:3.1") as the DOM anchor instead of stripping it to the local part
+        // ("3.1") — see the `anchor = segment` branch in its render loop, same condition here.
+        // Bare "3.1" would collide across the sub-suttas merged into that one file, so
+        // stripping it here (like the non-range case does) produced a URL whose segment never
+        // matches any element id, silently breaking scroll+active-word for every range file.
+        var isRangeSlug = suttaId.includes('-') && (suttaId.includes('an') || suttaId.includes('sn') || suttaId.includes('dhp'));
+        var segmentHash = segmentId
+            ? (isRangeSlug ? segmentId : (segmentId.includes(':') ? segmentId.split(':')[1] : segmentId))
+            : null;
         var slugForLegacy = segmentHash ? (suttaId + '#' + segmentHash) : suttaId;
 
         if (typeof window.findFdgTextUrl === 'function') {
