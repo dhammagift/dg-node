@@ -85,10 +85,6 @@ content="https://dhamma.gift/assets/img/favico_black.png" />
 <link rel="stylesheet" href="/reader/css/rus-multi.css">
 <link rel="stylesheet" href="/reader/css/uiextra.css">
 
-<!-- fa-search fa-flip-horizontal on #searchbtn below needs this — same local bundle legacy
-     read.php echoes via $fontawesomejs (config/config.php online-prod branch). -->
-<script src="/assets/js/fontawesome.6.1.all.js"></script>
-
 <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://www.googleapis.com" crossorigin>
 
@@ -119,16 +115,10 @@ function cleanPaliText(text) {
 </head>
 
 <body class="dark">
-<form id="form" class="ui-widget mb-2" autocomplete="off">
+<form id="form" class="ui-widget mb-2">
 <label class="sr-only dropup rounded-pill mb-2" for="paliauto"></label>
-<!-- Same input-group + btn-primary/fa-search markup as res/index.html's #form, so the two
-     search/navigation boxes look and behave identically (TODO.md поиск п.13/14, ридер п.8). -->
-<div class="input-group mb-2">
-<input class="form-control rounded-pill searchinput" id="paliauto" type="search" data-i18n-placeholder="{{search.placeholder}}" autocomplete="off">
-<button type="submit" id="searchbtn" class="btn btn-primary rounded-pill ms-2">
-  <i class="fas fa-search fa-flip-horizontal" aria-hidden="true"></i>
-</button>
-</div>
+<input class="mb-2" id="paliauto" type="search" data-i18n-placeholder="{{search.placeholder}}">
+<input class="go-button mb-2" id="searchbtn" type="submit" data-i18n-value="{{search.submit}}">
 
 <div id="form-div">
 <div id="home-button" class="icon-button ">

@@ -18,16 +18,34 @@
 
     var VINAYA_CATS = ['pj', 'ss', 'ay', 'np', 'pc', 'pd', 'sk', 'as'];
 
-    // Trim, lowercase, fix the keyboard layout (reuses settings.js's cyrillicToLatin — both
-    // pages already load settings.js), join "letter <space> digit", normalize dot spacing,
+    // Keyboard-layout fix (Cyrillic ЙЦУКЕН -> Latin QWERTY BY KEY POSITION, e.g. "ыт56" ->
+    // "sn56") — copied from autopali.js's `ruToEn` map (same file/table the autocomplete box
+    // already uses in normalizeTerm()). NOT settings.js's `cyrillicToLatin`, which is a
+    // phonetic transliteration table (е.g. "ы" -> "y") and gives the wrong answer here — it
+    // solves a different problem (Cyrillic word -> readable Latin spelling), not "user typed
+    // Latin text while the OS keyboard was set to Russian". Duplicated here (not read off
+    // `window`) because autopali.js itself loads lazily/dynamically (see settings.js), so it
+    // isn't guaranteed loaded yet when a plain page submit happens.
+    var RU_LAYOUT_TO_LATIN = {
+        'а': 'f', 'в': 'd', 'е': 't', 'к': 'r', 'м': 'v',
+        'н': 'y', 'о': 'j', 'п': 'g', 'р': 'h', 'с': 'c',
+        'т': 'n', 'у': 'e', 'х': '[', 'ъ': ']', 'ы': 's',
+        'ь': 'm', 'э': "'", 'ё': '`', 'я': 'z', 'ж': ';',
+        'з': 'p', 'и': 'b', 'й': 'q', 'л': 'k', 'д': 'l',
+        'г': 'u', 'ф': 'a', 'ц': 'w', 'ч': 'x', 'ш': 'i',
+        'щ': 'o', 'б': ',', 'ю': '.', ' ': ' '
+    };
+
+    // Trim, lowercase, fix the keyboard layout, join "letter <space> digit" (also covers the
+    // comma/space-separated forms autopali.js's normalizeTerm() joins), normalize dot spacing,
     // then fix the same loose-prefix/typo shorthands opentexts.php fixes ("s123"/"s.123" ->
     // "sn123", "m."/"d."/"a." -> "mn"/"dn"/"an", "sm123" -> "sn123" — "m" next to "n").
     function normalize(raw) {
         var q = String(raw == null ? '' : raw).trim().toLowerCase();
         if (!q) return '';
-        if (typeof global.cyrillicToLatin === 'function') {
-            q = global.cyrillicToLatin(q);
-        }
+        q = q.replace(/[а-яё]/g, function (ch) { return RU_LAYOUT_TO_LATIN[ch] || ch; });
+        q = q.replace(/,/g, '.');
+        q = q.replace(/\b(bu|bi)\s+(pj|ss|ay|np|pc|pd|sk|as|pm)\b/, '$1-$2');
         q = q.replace(/([a-z])\s+(\d)/g, '$1$2');
         q = q.replace(/\s*\.\s*/g, '.');
         q = q.replace(/\bs(?!n)\.?(\d[\d.-]*)/, 'sn$1');

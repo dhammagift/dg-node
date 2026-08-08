@@ -775,6 +775,15 @@ $(document).ready(function() {
     // которая раньше возникала при частых пересборках одного и того же table-id.
     function renderCurrentReport() {
         if (!lastSearchJson) return;
+        var meta = lastSearchJson.metadata;
+        // Нечего показывать (запрос слишком короткий, или 0 совпадений) — не рисуем пустую
+        // таблицу/тулбар "Слова" вообще, только текст ошибки из renderResultHeader ниже.
+        if (meta.tooShort || meta.totalFiles === 0) {
+            $('#pali, #pali_wrapper, #pali-words, #pali-words_wrapper, #variants, #variants-hint, .forshellscript').addClass('d-none');
+            currentTable = null;
+            return;
+        }
+        $('.forshellscript').removeClass('d-none');
         var table;
         // d-none на самой <table> прячет только строки/шапку — DataTables оборачивает таблицу в
         // свой контейнер (#id_wrapper: строка поиска, футер с кнопками/.footerlike, пагинация),
@@ -1061,11 +1070,16 @@ $(document).ready(function() {
 
         let msgDiv = document.getElementById('search-message');
         if (msgDiv) {
+            // Показываем и слово, и оба языка сразу (а не только текущий UI-язык) — это сообщение
+            // об ошибке/пустом результате, а не элемент интерфейса, который переключается вместе
+            // с остальным сайтом.
             let msg = '';
             if (json.metadata.tooShort) {
-                msg = t('results.tooShortMessage', 'Query is too short — please enter at least 3 characters.');
+                msg = `Запрос «${capitalizedQuery}» слишком короткий — минимум 3 символа. / ` +
+                      `Query "${capitalizedQuery}" is too short — at least 3 characters required.`;
             } else if (json.metadata.totalFiles === 0) {
-                msg = t('results.noResultsMessage', 'No results found for this query.');
+                msg = `По запросу «${capitalizedQuery}» ничего не найдено. / ` +
+                      `Nothing found for "${capitalizedQuery}".`;
             }
             msgDiv.textContent = msg;
             msgDiv.classList.toggle('d-none', !msg);
