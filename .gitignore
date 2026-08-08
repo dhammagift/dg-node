@@ -13,6 +13,7 @@ config/*.json
 /4nt
 **/node_modules
 *.log
+package-lock.json
 
 # public/assets и public/overrides/js/datatables — junction'ы на C:\soft\dg\assets (см. TODO.md,
 # заметка про восстановление настоящего git-symlink для public/assets). Локальный dev-механизм,
