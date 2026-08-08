@@ -5,6 +5,9 @@
   // Ридер отдаётся по разным URL (/dn22, /reader/reader-template.html, ...) —
   // относительный "lang_{lang}.json" резолвился бы против текущего пути и ломался.
   window.DHAMMA_LANG_CONFIG_PATTERN = "/reader/lang_{lang}.json";
+  // Общие для всех страниц строки (см. public/overrides/i18n/lang_global_{lang}.json) —
+  // без этого {{global.*}}-токены (например {{global.help.languageButton}}) не резолвятся.
+  window.DHAMMA_GLOBAL_LANG_CONFIG_PATTERN = "/assets/i18n/lang_global_{lang}.json";
 </script>
 <script src="/assets/js/dhamma-i18n.js"></script>
 <script>
@@ -202,7 +205,7 @@ function cleanPaliText(text) {
 <div class="container">
 <div class="row align-items-center mb-2">
 <div class="col-auto">
-<button id="language-button-dummy" class="hide-button rounded mb-1 mt-1">{{help.languageButton}}</button>
+<button id="language-button-dummy" class="hide-button rounded mb-1 mt-1">{{global.help.languageButton}}</button>
 </div>
 <div class="col-auto">
 <strong>{{shortcuts.language}}</strong>
