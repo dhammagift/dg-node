@@ -40,7 +40,12 @@ if (homeButton) {
 // ГЛОБАЛЬНЫЕ ФУНКЦИИ ЯЗЫКА И ИНТЕРФЕЙСА
 // ==========================================
 
-window.showPaliEnglish = function() {
+// НЕ window.showPaliEnglish — то же имя определяет и legacy switchView.js (без учёта
+// column-view), а он подключён с defer и выполняется ПОСЛЕ этого файла (megareader.js без
+// defer, выполняется синхронно раньше) — переопределил бы это присваивание и терялось бы
+// восстановление column-view при возврате в общий режим (Alt+Z/Space), настройка 1/2 колонки
+// "забывалась". switchView.js трогать нельзя — легаси, поэтому просто другое имя.
+window.showPaliAndTranslation = function() {
     if (suttaArea) {
         suttaArea.classList.remove("hide-pali", "hide-english", "hide-russian");
         const savedMode = localStorage.getItem('viewMode') || 'alternate';
@@ -64,7 +69,7 @@ window.showPali = function() {
 };
 
 window.setLanguage = function(lang) {
-    if (lang === "pli-2nd") window.showPaliEnglish();
+    if (lang === "pli-2nd") window.showPaliAndTranslation();
     else if (lang === "pli") window.showPali();
     else if (lang === "2nd") window.showEnglish();
 };
@@ -96,7 +101,7 @@ window.toggleThePali = function() {
 
             if (nextMode === "pli") window.showPali();
             else if (nextMode === "2nd") window.showEnglish();
-            else if (nextMode === "pli-2nd") window.showPaliEnglish();
+            else if (nextMode === "pli-2nd") window.showPaliAndTranslation();
 
             if (typeof window.syncSettingsToCloud === "function") {
                 window.syncSettingsToCloud().then(() => {

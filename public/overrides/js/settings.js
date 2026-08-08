@@ -392,8 +392,8 @@ window.activateSegmentForTTS = function(element) {
     if (!element) return;
     
     let targetElement = element;
-    if (!targetElement.matches(".pli-lang, .rus-lang, .eng-lang, .tha-lang")) {
-        const childLang = targetElement.querySelector(".pli-lang, .rus-lang, .eng-lang, .tha-lang");
+    if (!targetElement.matches('[class*="-lang"]')) {
+        const childLang = targetElement.querySelector('[class*="-lang"]');
         if (childLang) {
             targetElement = childLang;
         } else {
@@ -418,7 +418,7 @@ document.addEventListener("click", function (e) {
     if (isSearchResult) return;
     // ==========================================
 
-    const clickedSegment = e.target.closest(".pli-lang, .rus-lang, .eng-lang, .tha-lang");
+    const clickedSegment = e.target.closest('[class*="-lang"]');
 
     if (clickedSegment) {
         // Если кликнули по уже выделенному слову - снимаем выделение
