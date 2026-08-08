@@ -113,13 +113,16 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
         transition: opacity 0.2s ease-in-out;
     }
     .dg-hero-form {
-        max-width: 600px;
+        /* Was 600px (measured: rendered exactly at that cap on the results page — ".docked"
+           below is dead CSS, nothing in this file or search-render.js ever adds that class, so
+           it never actually applied). Legacy's index.php input sits in a plain Bootstrap
+           .container, not .container-fluid like this page — narrowed to sit a bit wider than
+           the reader's own #paliauto (measured 220px, unstyled/browser-default width, see
+           reader/css/uiextra.css — no width rule there at all) instead of stretching this much
+           wider than either reference point. */
+        max-width: 380px;
         margin: 2rem auto 1rem;
         transition: margin 0.35s ease, max-width 0.35s ease;
-    }
-    .dg-hero-form.docked {
-        max-width: 100%;
-        margin: 0.25rem 0 1rem;
     }
     /* Placeholder for a translated title still pending /search/enrich — see search-render.js's
        Title column render. Static bar, not a spinner: just needs to read as "more coming",

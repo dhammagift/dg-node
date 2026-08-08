@@ -557,8 +557,11 @@ window.DgSearchRender = (function () {
                         // Not enriched yet — the real unique_words are, at most, the searched
                         // word plus declension endings/prefixes (Pali is agglutinative), so the
                         // search term itself is a reasonable stand-in instead of a blank cell.
+                        // Styled with the same "match finder" class the real highlightText()
+                        // output uses (not text-muted) — coloring it only after the real data
+                        // lands was a visible re-color flicker on every row for no reason.
                         if (row.__enriched === false && activeState.highlightWord) {
-                            return '<span class="pli-lang inputscript-ISOPali text-muted">' + activeState.highlightWord + '</span>';
+                            return '<span class="pli-lang inputscript-ISOPali"><b class="match finder">' + activeState.highlightWord + '</b></span>';
                         }
                         return '';
                     }
