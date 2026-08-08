@@ -83,7 +83,10 @@ async function initServer() {
     try {
         const data = await fs.readFile(skeletonPath, 'utf8');
         skeletonDB = JSON.parse(data);
-        console.log(`Skeleton loaded: ${Object.keys(skeletonDB).length} suttas`);
+        // skeletonDB не хот-релоадится — печатаем mtime файла, чтобы "я пересобрал скелет, а
+        // сервер всё равно отдаёт старое" было видно в логе сразу, а не гадалось.
+        const stat = await fs.stat(skeletonPath);
+        console.log(`Skeleton loaded: ${Object.keys(skeletonDB).length} suttas (built ${stat.mtime.toISOString()})`);
     } catch (err) {
         console.error('Startup error:', err);
     }
