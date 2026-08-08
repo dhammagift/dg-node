@@ -304,6 +304,16 @@ window.normalizeSlugToDbKey = function(slug) {
 };
 
 
+// Чистый URL сутты (/{slug}?s=...&mode=...&lang=...), а не ?q={slug}&... поверх текущего пути —
+// ?q= остаётся рабочим только как старый формат входа (dg-light.js всё ещё его парсит), новая
+// навигация (next/prev, клавиши, клики) не должна его плодить поверх уже чистого /{slug} URL
+// (было: history.pushState(..., '?q=...') резолвился ОТНОСИТЕЛЬНО текущего пути и просто
+// приклеивал query-string к /dn1:1.22.2, а не заменял его на /dn10).
+function buildCleanSuttaUrl(slug, params) {
+    const qs = params.filter(Boolean).join('&');
+    return `/${slug}${qs ? '?' + qs : ''}`;
+}
+
 // ==========================================
 // SPA-НАВИГАЦИЯ (Перехват кликов для мгновенной загрузки)
 // ==========================================
@@ -311,15 +321,17 @@ window.navigateSutta = function(event, slug) {
     if (event) event.preventDefault(); // Отменяем полную перезагрузку страницы
 
     let params = new URLSearchParams(document.location.search);
-    let sQuery = params.has("s") ? `&s=${params.get("s")}` : "";
-    // Сохраняем lang/mode при переходе на след./пред. сутту — иначе выбранный язык/режим
+    // Сохраняем s/lang/mode при переходе на след./пред. сутту — иначе выбранный язык/режим
     // (R+E, ?lang=en и т.п.) откатится к дефолту в адресной строке (сам READER_MODE в памяти
     // не меняется, но при перезагрузке/шаринге ссылки состояние потерялось бы).
-    let modeQuery = params.has("mode") ? `&mode=${params.get("mode")}` : "";
-    let langQuery = params.has("lang") ? `&lang=${params.get("lang")}` : "";
+    let extraParams = [
+        params.has("s") ? `s=${params.get("s")}` : "",
+        params.has("mode") ? `mode=${params.get("mode")}` : "",
+        params.has("lang") ? `lang=${params.get("lang")}` : "",
+    ];
 
-    // Меняем URL без перезагрузки
-    history.pushState({ page: slug }, "", `?q=${slug}${sQuery}${modeQuery}${langQuery}`);
+    // Меняем URL без перезагрузки — на чистый /{slug}, не ?q={slug} поверх текущего пути.
+    history.pushState({ page: slug }, "", buildCleanSuttaUrl(slug, extraParams));
     
     // Обновляем инпут поиска, если он есть
     const citation = document.getElementById("paliauto");
@@ -380,7 +392,14 @@ window.switchReaderMode = function(modeKey, event) {
 // ==========================================
 window.renderNavigation = async function(slug, suttaTitle) {
     let params = new URLSearchParams(document.location.search);
-    let sQuery = params.has("s") ? `&s=${params.get("s").replace(/ṃ/g, "ṁ")}` : "";
+    // Тот же набор параметров, что navigateSutta сохраняет при пуше в history — раньше здесь
+    // была только s= (mode/lang терялись в статичном href, хотя JS-путь через onclick их уже
+    // сохранял), заодно выровнено.
+    let navExtraParams = [
+        params.has("s") ? `s=${params.get("s").replace(/ṃ/g, "ṁ")}` : "",
+        params.has("mode") ? `mode=${params.get("mode")}` : "",
+        params.has("lang") ? `lang=${params.get("lang")}` : "",
+    ];
 
     let cleanSlug = slug.replace(/pli-tv-|b[ui]-vb-/g, "");
     let cleanPaliName = (suttaTitle || "").replace(/[0-9.-]/g, '').trim();
@@ -412,7 +431,7 @@ window.renderNavigation = async function(slug, suttaTitle) {
     };
 
     if (nav.next) {
-        let htmlNext = `<a href="?q=${nav.next.slug}${sQuery}" onclick="window.navigateSutta(event, '${nav.next.slug}')">${formatLink(nav.next)}
+        let htmlNext = `<a href="${buildCleanSuttaUrl(nav.next.slug, navExtraParams)}" onclick="window.navigateSutta(event, '${nav.next.slug}')">${formatLink(nav.next)}
             <svg xmlns="http://www.w3.org/2000/svg" width="15" height="11">
                 <g transform="matrix(0.021484375 0 0 0.021484375 2 -0)"><path d="M202.1 450C 196.03278 449.9987 190.56381 446.34256 188.24348 440.73654C 185.92316 435.13055 187.20845 428.67883 191.5 424.39L191.5 424.39L365.79 250.1L191.5 75.81C 185.81535 69.92433 185.89662 60.568687 191.68266 54.782654C 197.46869 48.996624 206.82434 48.91536 212.71 54.6L212.71 54.6L397.61 239.5C 403.4657 245.3575 403.4657 254.8525 397.61 260.71L397.61 260.71L212.70999 445.61C 209.89557 448.4226 206.07895 450.0018 202.1 450z" fill="#8f8f8f"/></g>
             </svg></a>`;
@@ -424,7 +443,7 @@ window.renderNavigation = async function(slug, suttaTitle) {
     }
 
     if (nav.prev) {
-        let htmlPrev = `<a href="?q=${nav.prev.slug}${sQuery}" onclick="window.navigateSutta(event, '${nav.prev.slug}')">
+        let htmlPrev = `<a href="${buildCleanSuttaUrl(nav.prev.slug, navExtraParams)}" onclick="window.navigateSutta(event, '${nav.prev.slug}')">
             <svg xmlns="http://www.w3.org/2000/svg" width="15" height="11">
                 <g transform="matrix(0.021484375 0 0 0.021484375 2 -0)"><path d="M353 450C 349.02106 450.0018 345.20444 448.4226 342.39 445.61L342.39 445.61L157.5 260.71C 151.64429 254.8525 151.64429 245.3575 157.5 239.5L157.5 239.5L342.39 54.6C 346.1788 50.809414 351.70206 49.328068 356.8792 50.713974C 362.05634 52.099876 366.10086 56.14248 367.4892 61.318974C 368.87753 66.49547 367.3988 72.01941 363.61002 75.81L363.61002 75.81L189.32 250.1L363.61 424.39C 367.90283 428.6801 369.18747 435.13425 366.8646 440.74118C 364.5417 446.34808 359.06903 450.00275 353 450z" fill="#8f8f8f"/></g>
             </svg>${formatLink(nav.prev)}</a>`;

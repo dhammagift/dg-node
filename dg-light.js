@@ -128,6 +128,12 @@ app.use('/ru/login', express.static(path.join(__dirname, 'login')));
 // паттерн что и memo/login: symlink на легаси-репо (см. 4nt/), это дерево — единственный
 // источник, куда get4ntUrl() (settings.js) строит ссылки (basePath = "/4nt").
 app.use('/4nt', express.static(path.join(__dirname, '4nt')));
+// config/ — тот же паттерн, symlink на легаси-репо (см. config/). Нужен как минимум
+// read/js/voice.js (fetch('/config/tts-config.json') за пробным TTS-ключом) — раньше 404-ился
+// молча (try/catch в voice.js), TTS не получал ключ вообще. ВАЖНО: config/ отдаёт ВСЁ, что там
+// лежит (config.php, serverconfigs, translate.php, sync-config.json и т.п.), не только
+// tts-config.json — та же экспозиция, что уже есть в легаси-проде на этом каталоге.
+app.use('/config', express.static(path.join(__dirname, 'config')));
 
 // Офлайн-зеркала сторонних сайтов — /{имя-папки}/... отдаётся как статика напрямую из offline-data
 for (const name of offlineMirrors) {
