@@ -231,32 +231,40 @@ function filterPreferredTranslators(results, multiForLangs) {
     return filtered;
 }
 
-// Раскладывает языки запроса на три группы каталогов — SC-зеркало, DG-main,
-// DG-other — вместо одного плоского списка. Порядок групп важен для
-// детерминированного приоритета источников (см. classifiedDirsInto ниже):
-// DG-other должен побеждать SC-зеркало для одного и того же transKey
-// (ru_sv/ru_khantibalo/ru_narinyanievmenenko физически лежат В ОБОИХ местах).
-function classifySearchDirs(targetLangs) {
-    const scDirs = [], dgMainDirs = [], dgOtherDirs = [];
-    for (const lang of targetLangs) {
-        if (lang === 'all') {
-            // (SC-каталог заполняется отдельно вызывающей стороной — там нужен await fs.readdir)
-            DG_LANGS.forEach(l => (l.includes('_other') ? dgOtherDirs : dgMainDirs).push(path.join(DG_OFFLINE, l)));
-        } else {
-            scDirs.push(path.join(SC_TRANS, lang));
-            // DG offline: точное совпадение (main) + смежные типа ru_other (other)
-            DG_LANGS
-                .filter(l => l === lang || l.startsWith(lang + '_'))
-                .forEach(l => (l === lang ? dgMainDirs : dgOtherDirs).push(path.join(DG_OFFLINE, l)));
-        }
-    }
-    return { scDirs, dgMainDirs, dgOtherDirs };
+// Приоритет источников по языку — от САМОГО приоритетного к наименее (так задал
+// пользователь). Используется в обратном порядке как порядок ЗАПИСИ (см.
+// collectForLang) — кто пишет последним, тот и побеждает при совпадении
+// transKey (ru_sv/ru_khantibalo/ru_narinyanievmenenko физически лежат и в
+// SC-зеркале, и в DG-other одновременно). ru: DG — почти всегда доверенный
+// авторский текст, DG-other важнее сырого SC-зеркала. en: SC хостит десятки
+// признанных переводчиков, важнее единственного DG-other (thanissaro).
+const SOURCE_PRIORITY = {
+    ru: ['dgmain', 'dgother', 'sc'],
+    en: ['dgmain', 'sc', 'dgother'],
+};
+// Язык без явной записи (сайт сейчас только ru/en, задел на будущее) — DG-main
+// первым, если появится, дальше произвольно; SC перед DG-other как более
+// широкий источник по умолчанию.
+const DEFAULT_SOURCE_PRIORITY = ['dgmain', 'sc', 'dgother'];
+
+function sourceWriteOrder(lang) {
+    return [...(SOURCE_PRIORITY[lang] || DEFAULT_SOURCE_PRIORITY)].reverse();
+}
+
+function sourceDirsForLang(lang) {
+    return {
+        sc: [path.join(SC_TRANS, lang)],
+        dgmain: DG_LANGS.filter(l => l === lang).map(l => path.join(DG_OFFLINE, l)),
+        dgother: DG_LANGS.filter(l => l.startsWith(lang + '_')).map(l => path.join(DG_OFFLINE, l)),
+    };
 }
 
 // Обходит список каталогов ПАРАЛЛЕЛЬНО (быстро) и пишет transKey→filePath в
-// общий results — вызывается группа за группой ПОСЛЕДОВАТЕЛЬНО (await между
-// вызовами), чтобы порядок перезаписи для совпадающих ключей был
-// детерминированным, а не зависел от того, чей fs.readdir завершился раньше.
+// общий results — группы одного языка вызываются ПОСЛЕДОВАТЕЛЬНО, в порядке
+// sourceWriteOrder(lang) (см. выше), чтобы порядок перезаписи для совпадающих
+// ключей был детерминированным, а не зависел от того, чей fs.readdir
+// завершился раньше. Разные языки пишут РАЗНЫЕ transKey (префикс "${lang}_"),
+// поэтому между языками гонки нет — их можно собирать параллельно.
 async function collectTranslationFiles(dirs, suttaId, results) {
     await Promise.all(dirs.map(async dir => {
         if (!fsSync.existsSync(dir)) return;
@@ -283,21 +291,31 @@ async function collectTranslationFiles(dirs, suttaId, results) {
 // ИЛИ, если передан explicitTranslators (для режима mt/multi — два перевода ОДНОГО языка
 // одновременно), ровно те ключи, что там перечислены, без схлопывания через filterPreferredTranslators.
 async function findTranslationFiles(suttaId, targetLangs, explicitTranslators, multiForLangs) {
-    const { scDirs, dgMainDirs, dgOtherDirs } = classifySearchDirs(targetLangs);
+    const results = {};
+
     if (targetLangs.includes('all')) {
+        // 'all' — полнотекстовый обход без языкового контекста, приоритет источников
+        // тут не задан по языку персонально — общий порядок DG-main → SC → DG-other.
+        const scAllDirs = [];
         try {
             const langs = await fs.readdir(SC_TRANS);
-            langs.forEach(l => scDirs.push(path.join(SC_TRANS, l)));
+            langs.forEach(l => scAllDirs.push(path.join(SC_TRANS, l)));
         } catch (e) {}
+        const dgMainAllDirs = DG_LANGS.filter(l => !l.includes('_other')).map(l => path.join(DG_OFFLINE, l));
+        const dgOtherAllDirs = DG_LANGS.filter(l => l.includes('_other')).map(l => path.join(DG_OFFLINE, l));
+        await collectTranslationFiles(dgMainAllDirs, suttaId, results);
+        await collectTranslationFiles(scAllDirs, suttaId, results);
+        await collectTranslationFiles(dgOtherAllDirs, suttaId, results);
+    } else {
+        // Разные языки — параллельно; группы ВНУТРИ одного языка — последовательно,
+        // в порядке sourceWriteOrder(lang) (может отличаться для ru и en, см. выше).
+        await Promise.all(targetLangs.map(async lang => {
+            const dirsByGroup = sourceDirsForLang(lang);
+            for (const group of sourceWriteOrder(lang)) {
+                await collectTranslationFiles(dirsByGroup[group], suttaId, results);
+            }
+        }));
     }
-
-    const results = {};
-    // SC → DG-main → DG-other, последовательно: каждая группа детерминированно
-    // перезаписывает предыдущую для совпадающего transKey. DG-other — самый
-    // специфичный/кураторский источник, побеждает всегда.
-    await collectTranslationFiles(scDirs, suttaId, results);
-    await collectTranslationFiles(dgMainDirs, suttaId, results);
-    await collectTranslationFiles(dgOtherDirs, suttaId, results);
 
     if (explicitTranslators && explicitTranslators.length) {
         const filtered = {};
@@ -344,28 +362,37 @@ async function walkTranslationDir(dir, wantedIds, bySutta) {
 }
 
 async function buildTranslationIndex(suttaIds, targetLangs) {
-    const { scDirs, dgMainDirs, dgOtherDirs } = classifySearchDirs(targetLangs);
-    if (targetLangs.includes('all')) {
-        try {
-            const langs = await fs.readdir(SC_TRANS);
-            langs.forEach(l => scDirs.push(path.join(SC_TRANS, l)));
-        } catch (e) {}
-    }
-
     const wantedIds = new Set(suttaIds);
     const bySutta = new Map(); // suttaId -> { transKey: filePath }
 
-    // Та же гонка SC/DG-other, что и в findTranslationFiles (см. classifySearchDirs) —
-    // группы обходятся последовательно, DG-other пишет в bySutta последним.
     async function walkGroup(dirs) {
         await Promise.all([...new Set(dirs)].map(async dir => {
             if (!fsSync.existsSync(dir)) return;
             await walkTranslationDir(dir, wantedIds, bySutta);
         }));
     }
-    await walkGroup(scDirs);
-    await walkGroup(dgMainDirs);
-    await walkGroup(dgOtherDirs);
+
+    if (targetLangs.includes('all')) {
+        const scAllDirs = [];
+        try {
+            const langs = await fs.readdir(SC_TRANS);
+            langs.forEach(l => scAllDirs.push(path.join(SC_TRANS, l)));
+        } catch (e) {}
+        const dgMainAllDirs = DG_LANGS.filter(l => !l.includes('_other')).map(l => path.join(DG_OFFLINE, l));
+        const dgOtherAllDirs = DG_LANGS.filter(l => l.includes('_other')).map(l => path.join(DG_OFFLINE, l));
+        await walkGroup(dgMainAllDirs);
+        await walkGroup(scAllDirs);
+        await walkGroup(dgOtherAllDirs);
+    } else {
+        // Та же логика приоритета источников по языку, что и в findTranslationFiles
+        // (см. sourceWriteOrder) — группы одного языка последовательно, разные языки параллельно.
+        await Promise.all(targetLangs.map(async lang => {
+            const dirsByGroup = sourceDirsForLang(lang);
+            for (const group of sourceWriteOrder(lang)) {
+                await walkGroup(dirsByGroup[group]);
+            }
+        }));
+    }
 
     const result = new Map();
     for (const suttaId of suttaIds) {
