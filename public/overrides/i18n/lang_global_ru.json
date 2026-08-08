@@ -10,5 +10,8 @@
     "reset": "Сбросить",
     "other": "Другие",
     "questionMark": "?"
+  },
+  "help": {
+    "languageButton": "Pāḷi / Рус"
   }
 }

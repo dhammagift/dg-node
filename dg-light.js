@@ -4,9 +4,15 @@ const path = require('path');
 const fsSync = require('fs');
 const util = require('util');
 const execFile = util.promisify(require('child_process').execFile);
+const swaggerUi = require('swagger-ui-express');
+const openapiSpec = require('./openapi.json');
 
 const app = express();
 const PORT = 3000;
+
+// Документация API — /api-docs. openapi.json описывает /search, /search/enrich, /api/text,
+// /api/nav и т.п.: какие параметры есть, что обязательно, что возвращается.
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(openapiSpec));
 
 // Легаси (config/script_config.sh) везде держит minlength=2..3 не просто так — короткий keyword
 // (особенно 1 символ) matches почти КАЖДУЮ строку всего корпуса; grep -ri на таком запросе
@@ -1491,6 +1497,7 @@ app.listen(PORT, () => {
     console.log(`SPA (new): http://localhost:${PORT}/spa/`);
     console.log(`API: http://localhost:${PORT}/search?q=kacchapa&scope=dhamma&langs=ru,en`);
     console.log(`Search UI: http://localhost:${PORT}/?q=kacchapa&lb=1&la=2&scope=dhamma`);
+    console.log(`API docs: http://localhost:${PORT}/api-docs`);
     console.log(`Legacy Reader: http://localhost:${PORT}/dn22`);
     console.log(`Reader (read/r, 1 язык):    http://localhost:${PORT}/dn22`);
     console.log(`Reader (ml, Пали+2 языка):  http://localhost:${PORT}/dn22?mode=ml`);
