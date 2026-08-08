@@ -3321,3 +3321,144 @@ window.addEventListener('hashchange', applyHashHighlights);
         document.head.appendChild(script);
     }
 })();
+
+// Портировано из легаси settings.js (getSlug/get4ntUrl) — этот override был скопирован раньше,
+// чем они появились в легаси, поэтому кнопка "Сравнить" в контекстном меню ридера (common.js,
+// sm-compare) молча ничего не делала: get4ntUrl была undefined. Копия верна, ничего внутри не
+// менялось.
+function getSlug(slug = null) {
+    if (slug) return slug.trim().toLowerCase();
+
+    return (
+        document.querySelector('#paliauto')?.value.trim() ||
+        document.querySelector('input[name="q"]')?.value.trim() ||
+        new URLSearchParams(location.search).get('q')?.trim() ||
+        null
+    )?.toLowerCase();
+}
+
+function get4ntUrl(slug = null) {
+    slug = getSlug(slug);
+    if (!slug) return null;
+
+    const basePath = "/4nt";
+
+    // =========================================================
+    // 1. ЛОГИКА ДЛЯ ВИНАИ (Vinaya)
+    // =========================================================
+
+    // Словарь для преобразования коротких имен в полные имена папок 4nt
+    const vinayaFolderMap = {
+        // Параджика (Parajika)
+        "bu-pj": "pli-tv-bu-vb-pj",
+        "bi-pj": "pli-tv-bi-vb-pj",
+
+        // Сангхадисеса (Sanghadisesa)
+        "bu-ss": "pli-tv-bu-vb-ss",
+        "bi-ss": "pli-tv-bi-vb-ss",
+
+        // Анията (Aniyata)
+        "bu-ay": "pli-tv-bu-vb-ay",
+        "bi-ay": "pli-tv-bi-vb-ay",
+
+        // Ниссаггия Пачиттия (Nissaggiya Pacittiya)
+        "bu-np": "pli-tv-bu-vb-np",
+        "bi-np": "pli-tv-bi-vb-np",
+
+        // Пачиттия (Pacittiya)
+        "bu-pc": "pli-tv-bu-vb-pc",
+        "bi-pc": "pli-tv-bi-vb-pc",
+        "bu-vb-pc": "pli-tv-bu-vb-pc", // Оставляем на случай, если уже приходит такой формат
+        "bi-vb-pc": "pli-tv-bi-vb-pc",
+
+        // Патидесания (Patidesaniya)
+        "bu-pd": "pli-tv-bu-vb-pd",
+        "bi-pd": "pli-tv-bi-vb-pd",
+
+        // Секхия (Sekhiya)
+        "bu-sk": "pli-tv-bu-vb-sk",
+        "bi-sk": "pli-tv-bi-vb-sk",
+
+        // Адхикарана-саматха (Adhikarana-samatha)
+        "bu-as": "pli-tv-bu-vb-as",
+        "bi-as": "pli-tv-bi-vb-as",
+        "bu-vb-as": "pli-tv-bu-vb-as",
+        "bi-vb-as": "pli-tv-bi-vb-as",
+
+        // Патимоккха (Patimokkha)
+        "bu-pm": "pli-tv-bu-pm",
+        "bupm": "pli-tv-bu-pm",
+        "bi-pm": "pli-tv-bi-pm",
+        "bipm": "pli-tv-bi-pm",
+
+        // Кхандхака и Паривара
+        "pvr": "pli-tv-pvr",
+        "kd": "pli-tv-kd"
+    };
+
+    let vinayaBook = "";
+    let anchorBase = slug;
+
+    // Вариант А: Slug уже нормализован вашей функцией parseSlug и начинается с "pli-tv-"
+    if (slug.startsWith("pli-tv-")) {
+        // 1. Для Patimokkha, Pacittiya, Aniyata/Sekhiya (цифры правила идут после, в якоре)
+        const matchVb = slug.match(/^(pli-tv-(?:bu|bi)-(?:vb-)?(?:pc|as|pm))/);
+        if (matchVb) {
+            vinayaBook = matchVb[1]; // например, "pli-tv-bu-vb-pc"
+        } else {
+            // 2. Для Khandhaka и Parivara, где цифра может быть частью имени папки (как в примере pli-tv-pvr15)
+            const matchKdPvr = slug.match(/^(pli-tv-(?:pvr|kd)\d*)/);
+            if (matchKdPvr) {
+                vinayaBook = matchKdPvr[1]; // например, "pli-tv-pvr15"
+            } else {
+                // 3. Запасной вариант: берем все буквы и дефисы до первой цифры
+                const matchFallback = slug.match(/^(pli-tv-[a-z-]+)/);
+                if (matchFallback) {
+                    vinayaBook = matchFallback[1];
+                }
+            }
+        }
+    }
+    // Вариант Б: Slug короткий (например, "bu-pc34" или "bupm227")
+    else {
+        for (const [shortKey, fullFolder] of Object.entries(vinayaFolderMap)) {
+            if (slug.startsWith(shortKey)) {
+                vinayaBook = fullFolder;
+                // Заменяем короткое имя на полное для формирования корректного якоря
+                // Например: "bu-pc34" -> "pli-tv-bu-vb-pc34"
+                anchorBase = slug.replace(shortKey, fullFolder);
+                break;
+            }
+        }
+    }
+
+    // Если мы успешно распознали Винаю, формируем специальный URL и сразу возвращаем его
+    if (vinayaBook) {
+        return `${basePath}/vin/tv/${vinayaBook}/index.html#${anchorBase}`;
+    }
+
+    // =========================================================
+    // 2. СУЩЕСТВУЮЩАЯ ЛОГИКА ДЛЯ СУТТ (Nikayas)
+    // =========================================================
+    const slugParts = slug.match(/^([a-z]+)(\d*)/);
+    if (!slugParts) return null;
+
+    const book = slugParts[1];
+    const firstNum = slugParts[2];
+
+    if (book === "dn" || book === "mn") {
+//        return `${basePath}/${book}/#${slug}`;
+          return `${basePath}/${book}/${slug}`;
+
+    }
+
+    if (book === "sn" || book === "an") {
+        return `${basePath}/${book}/${book}${firstNum}/#${slug}`;
+    }
+
+    if (["ud", "iti", "snp", "dhp", "thig", "thag", "kp"].includes(book)) {
+        return `${basePath}/kn/${book}/#${slug}`;
+    }
+
+    return null;
+}

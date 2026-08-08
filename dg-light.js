@@ -95,6 +95,19 @@ app.use('/spa', express.static(path.join(__dirname, 'public', 'spa')));
 app.use('/nodejs/res', express.static(path.join(__dirname, 'res')));
 app.use('/nodejs', express.static(__dirname));
 app.use('/reader', express.static(path.join(__dirname, 'reader')));
+// /read/js/voice.js, voice-mem.js — settings.js (легаси, не трогаем) грузит их динамически
+// строго по клику/хоткею/автоплею с жёстко зашитым путём "/read/js/voice.js"; сами файлы не
+// изменены относительно легаси-репо, так что здесь просто symlink (см. read/js/*).
+app.use('/read', express.static(path.join(__dirname, 'read')));
+
+// memo/ и login/ — отдельные самодостаточные легаси-приложения (Memorization Helper, вход/
+// облачная синхронизация), symlink на легаси-репо целиком (см. memo/, login/). В легаси у них
+// были ещё и языковые алиасы ru/memo, ru/login (directory symlink на ../memo, ../login) —
+// здесь тот же контент просто примонтирован ещё и под /ru/, без второго симлинка.
+app.use('/memo', express.static(path.join(__dirname, 'memo')));
+app.use('/ru/memo', express.static(path.join(__dirname, 'memo')));
+app.use('/login', express.static(path.join(__dirname, 'login')));
+app.use('/ru/login', express.static(path.join(__dirname, 'login')));
 
 // Офлайн-зеркала сторонних сайтов — /{имя-папки}/... отдаётся как статика напрямую из offline-data
 for (const name of offlineMirrors) {
@@ -171,7 +184,8 @@ async function findFilesByPrefix(dir, prefix) {
 // добавляется в этот файл только когда для языка есть за что выбирать.
 const TRANSLATOR_PRIORITY = require('./reader/translator-priority.json');
 
-function filterPreferredTranslators(results) {
+function filterPreferredTranslators(results, multiForLangs) {
+    const multiSet = new Set(multiForLangs || []);
     const byLang = {};
     for (const key of Object.keys(results)) {
         const lang = key.split('_')[0];
@@ -192,6 +206,22 @@ function filterPreferredTranslators(results) {
 
         if (!chosen) chosen = keys[0];
         filtered[chosen] = results[chosen];
+
+        if (multiSet.has(lang)) {
+            // Режим mt/ee (два перевода одного языка) — второй переводчик берётся из
+            // {lang}_other ("второе мнение" проекта), КТО БЫ там реально ни лежал для этой
+            // конкретной сутты, а не хардкод конкретного имени (ru_o+ru_khantibalo были
+            // захардкожены раньше — неверно, если хантибало не переводил именно этот текст).
+            // Если в {lang}_other ничего нет — берём любого другого доступного переводчика,
+            // чтобы режим не схлопывался в одну колонку без необходимости.
+            const isFromOtherDir = k => {
+                const p = results[k];
+                return !!p && p.replace(/\\/g, '/').includes(`/${lang}_other/`);
+            };
+            const secondary = keys.find(k => k !== chosen && isFromOtherDir(k))
+                || keys.find(k => k !== chosen);
+            if (secondary) filtered[secondary] = results[secondary];
+        }
     }
     return filtered;
 }
@@ -200,7 +230,7 @@ function filterPreferredTranslators(results) {
 // Возвращает { "ru_o": "/path/to/file.json", "en_sujato": "...", ... } — один файл на язык (см. выше),
 // ИЛИ, если передан explicitTranslators (для режима mt/multi — два перевода ОДНОГО языка
 // одновременно), ровно те ключи, что там перечислены, без схлопывания через filterPreferredTranslators.
-async function findTranslationFiles(suttaId, targetLangs, explicitTranslators) {
+async function findTranslationFiles(suttaId, targetLangs, explicitTranslators, multiForLangs) {
     const searchDirs = [];
 
     for (const lang of targetLangs) {
@@ -227,9 +257,14 @@ async function findTranslationFiles(suttaId, targetLangs, explicitTranslators) {
         const files = await findFilesByPrefix(dir, suttaId);
         for (const filePath of files) {
             const baseName = path.basename(filePath, '.json');
-            // baseName: "dn22_translation-ru-o" → parts: ["dn22_translation","ru","o"]
-            const parts = baseName.split('-');
-            if (parts.length >= 3) {
+            // findFilesByPrefix гарантирует baseName === "${suttaId}_..." — отрезаем именно
+            // suttaId целиком, а не split('-') по всей строке. Range-сутты вроде "an1.1-10"
+            // сами содержат дефис: split('-') на полном "an1.1-10_translation-ru-sv" рвал ID
+            // пополам и портил transKey ("10_translation_ru-sv" вместо "ru_sv") — из-за этого
+            // ru_other-переводы для AN-диапазонов не находились вовсе.
+            const suffix = baseName.slice(suttaId.length + 1); // "translation-ru-o"
+            const parts = suffix.split('-');
+            if (parts.length >= 3 && parts[0] === 'translation') {
                 const transKey = `${parts[1]}_${parts.slice(2).join('-')}`;
                 results[transKey] = filePath;
             }
@@ -242,7 +277,7 @@ async function findTranslationFiles(suttaId, targetLangs, explicitTranslators) {
         return filtered;
     }
 
-    return filterPreferredTranslators(results);
+    return filterPreferredTranslators(results, multiForLangs);
 }
 
 // Батчевая версия findTranslationFiles для целой страницы разом — узкое место, которое батчинг
@@ -269,8 +304,11 @@ async function walkTranslationDir(dir, wantedIds, bySutta) {
         const suttaId = entry.name.split('_')[0];
         if (!wantedIds.has(suttaId)) return;
         const baseName = entry.name.slice(0, -'.json'.length);
-        const parts = baseName.split('-');
-        if (parts.length < 3) return;
+        // Тот же фикс, что и в findTranslationFiles: отрезаем suttaId по длине, а не split('-')
+        // по всей строке — иначе range-сутты ("an1.1-10") ломают разбор (см. комментарий там).
+        const suffix = baseName.slice(suttaId.length + 1);
+        const parts = suffix.split('-');
+        if (parts.length < 3 || parts[0] !== 'translation') return;
         const transKey = `${parts[1]}_${parts.slice(2).join('-')}`;
         if (!bySutta.has(suttaId)) bySutta.set(suttaId, {});
         bySutta.get(suttaId)[transKey] = toPosixPath(full);
@@ -1324,7 +1362,7 @@ async function searchWithGrep(keyword, searchScope, exactMatch, targetLangs, lb 
 
 // Полный текст одной сутты (все сегменты, не только совпадения) — для ридера.
 // Переиспользует те же хелперы, что и поиск, просто без grep-фильтра.
-async function getFullTextData(suttaId, targetLangs, explicitTranslators) {
+async function getFullTextData(suttaId, targetLangs, explicitTranslators, multiForLangs) {
     const suttaMeta = skeletonDB[suttaId];
     if (!suttaMeta) return null;
 
@@ -1343,7 +1381,7 @@ async function getFullTextData(suttaId, targetLangs, explicitTranslators) {
         ? JSON.parse(await fs.readFile(htmlPath, 'utf8').catch(() => '{}'))
         : {};
 
-    const translationFiles = await findTranslationFiles(suttaId, targetLangs, explicitTranslators);
+    const translationFiles = await findTranslationFiles(suttaId, targetLangs, explicitTranslators, multiForLangs);
     const translationsData = {};
     for (const [transKey, tPath] of Object.entries(translationFiles)) {
         translationsData[transKey] = JSON.parse(await fs.readFile(tPath, 'utf8').catch(() => '{}'));
@@ -1376,14 +1414,20 @@ async function getFullTextData(suttaId, targetLangs, explicitTranslators) {
 app.get('/api/text/:suttaId', async (req, res) => {
     const suttaId = req.params.suttaId.toLowerCase();
     const targetLangs = (req.query.langs || 'ru,en').split(',').map(l => l.trim());
-    // ?translators=ru_o,ru_sv — для mt/multi (два перевода ОДНОГО языка одновременно),
-    // в обход обычного "один переводчик на язык" (см. findTranslationFiles).
+    // ?translators=ru_o,ru_sv — ручной оверрайд, для mt/multi (два перевода ОДНОГО языка
+    // одновременно), в обход обычного "один переводчик на язык" (см. findTranslationFiles).
     const explicitTranslators = req.query.translators
         ? req.query.translators.split(',').map(t => t.trim())
         : null;
+    // ?multiFor=ru — автоподбор ВТОРОГО переводчика для языка (см. filterPreferredTranslators):
+    // первый — как обычно по TRANSLATOR_PRIORITY, второй — кто реально нашёлся в {lang}_other
+    // для этой сутты. В отличие от explicitTranslators, ничьё конкретное имя не хардкодится.
+    const multiForLangs = req.query.multiFor
+        ? req.query.multiFor.split(',').map(l => l.trim())
+        : null;
 
     try {
-        const data = await getFullTextData(suttaId, targetLangs, explicitTranslators);
+        const data = await getFullTextData(suttaId, targetLangs, explicitTranslators, multiForLangs);
         if (!data) return res.status(404).json({ error: `Unknown sutta id: ${suttaId}` });
         res.json(data);
     } catch (error) {

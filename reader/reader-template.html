@@ -630,7 +630,8 @@ viewBox="0 0 487.3 487.3" xml:space="preserve">
     <img width="20px" data-i18n-alt="{{footer.translationEditorAlt}}" src="/assets/svg/table-columns.svg">
 </a>
 <a id="shareOnline" onclick="copyToClipboard()" data-i18n-title="{{footer.copyTitle}}" rel="noreferrer" target=""><img height="20px" alt="" src="/assets/svg/copy.svg"></a>
- <a href="https://DharmaMitra.org/" data-i18n-title="{{footer.dharmaMitraTitle}}" rel="noreferrer" target="_blank"><img width="20px" src="/assets/svg/dharmachakra.svg" data-i18n-alt="{{footer.dharmaMitraAlt}}"></a>               
+ <a href="https://DharmaMitra.org/" data-i18n-title="{{footer.dharmaMitraTitle}}" rel="noreferrer" target="_blank"><img width="20px" src="/assets/svg/dharmachakra.svg" data-i18n-alt="{{footer.dharmaMitraAlt}}"></a>
+<a href="https://s.dhamma.gift/sn/sn45/?cols=pali%2Cpali_royal_iast%2Cpali_myanmar_iast%2Cpali_bjt_iast#tr-sn45.8:1.1" data-i18n-title="{{footer.fourNtTitle}}" rel="noreferrer" target="_blank"><img width="24px" src="/assets/img/logo4nt_plain.png" data-i18n-alt="{{footer.fourNtAlt}}"></a>
 <a href="https://index.readingfaithfully.org" data-i18n-title="{{footer.suttaNameSearchTitle}}" rel="noreferrer" target="_blank"><img width="20px" src="/reader/images/favicon-name-black.png" data-i18n-alt="{{footer.suttaNameSearchAlt}}"></a>
 <a href="https://ped.readingfaithfully.org" data-i18n-title="{{footer.pedTitle}}" rel="noreferrer" target="_blank"><img width="20px" src="/reader/images/favicon-ped-black.png" data-i18n-alt="{{footer.pedAlt}}"></a>
 </div>
@@ -733,10 +734,12 @@ document.getElementById("date").textContent = formattedDate;
         st: { columns: ["ru"], direction: "normal" },
         read: { columns: ["en"], direction: "normal" },
         ml: { columns: ["ru", "en"], direction: "normal" },
-        mt: { columns: ["ru"], direction: "normal", multiTranslators: { ru: ["ru_o", "ru_khantibalo"] } },
-        // ee.multiTranslators — тоже тестовая пара (не для каждой сутты найдутся оба сразу;
-        // an4.1 подтверждён вручную). thanissaro отсутствует в этом SC-зеркале.
-        ee: { columns: ["en"], direction: "normal", multiTranslators: { en: ["en_sujato", "en_kovilo"] } }
+        // multiFor — сервер сам подбирает пару переводчиков (первый по приоритету, второй из
+        // {lang}_other) для этой конкретной сутты, а не хардкод фиксированных имён (см.
+        // filterPreferredTranslators в dg-light.js) — если для сутты нет второго перевода,
+        // режим тихо схлопывается в один столбец вместо пустой колонки.
+        mt: { columns: ["ru"], direction: "normal", multiFor: ["ru"] },
+        ee: { columns: ["en"], direction: "normal", multiFor: ["en"] }
     };
     window.MODE_CONFIGS = MODE_CONFIGS;
     const mode = new URLSearchParams(window.location.search).get("mode");

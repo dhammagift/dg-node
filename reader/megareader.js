@@ -340,7 +340,7 @@ window.switchReaderMode = function(modeKey, event) {
     const previousLang = READER_MODE.columns[0];
     READER_MODE.columns = config.columns;
     READER_MODE.direction = config.direction || "normal";
-    READER_MODE.multiTranslators = config.multiTranslators || null;
+    READER_MODE.multiFor = config.multiFor || null;
 
     let params = new URLSearchParams(document.location.search);
     params.set('mode', modeKey);
@@ -424,15 +424,16 @@ window.buildSutta = async function(rawSlug) {
     const slug = window.normalizeSlugToDbKey(rawSlug);
     window._currentSlug = slug;
     const columns = READER_MODE.columns;
-    // multiTranslators: { ru: ["ru_o", "ru_khantibalo"] } — режим mt/multi, два (и более)
-    // перевода ОДНОГО языка одновременно, в обход обычного "сервер сам выбрал одного".
-    const multiTranslators = READER_MODE.multiTranslators || {};
-    const explicitTranslators = columns.flatMap(lang => multiTranslators[lang] || []);
+    // multiFor: ["ru"] — режим mt/multi, просим сервер сам подобрать НЕСКОЛЬКО переводов для
+    // этого языка (первый по приоритету, второй из {lang}_other) вместо одного — какие именно
+    // переводчики придут, решает сервер по факту наличия файлов для КОНКРЕТНОЙ сутты, здесь
+    // это не хардкодится (см. filterPreferredTranslators в dg-light.js).
+    const multiFor = READER_MODE.multiFor || [];
 
     let suttaData;
     try {
         let apiUrl = `/api/text/${encodeURIComponent(slug)}?langs=${columns.join(',')}`;
-        if (explicitTranslators.length) apiUrl += `&translators=${explicitTranslators.join(',')}`;
+        if (multiFor.length) apiUrl += `&multiFor=${multiFor.join(',')}`;
         const response = await fetch(apiUrl);
         if (!response.ok) {
             if (response.status === 404 && typeof window.executeGlobalSearch === 'function') {
@@ -453,35 +454,28 @@ window.buildSutta = async function(rawSlug) {
     let params = new URLSearchParams(document.location.search);
 
     let htmlData = {}, paliData = {}, varData = {};
-    // transEntriesByLang.ru = [{translatorId, data:{segmentId: text, ...}}, ...] — обычно один
-    // элемент на язык (сервер сам выбрал переводчика), несколько — для multiTranslators (mt/multi).
+    // transEntriesByLang.ru = [{translatorId, data:{segmentId: text, ...}}, ...] — сервер сам
+    // решает сколько переводчиков вернуть на язык (обычно один, несколько для multiFor —
+    // mt/multi), клиент просто перечисляет реально пришедшие ключи "${lang}_*" по всем
+    // сегментам, не полагаясь на фиксированный список имён.
     const transEntriesByLang = {};
-
-    if (explicitTranslators.length) {
-        columns.forEach(lang => {
-            transEntriesByLang[lang] = (multiTranslators[lang] || []).map(key => ({
-                translatorId: key.slice(lang.length + 1), key, data: {}
-            }));
-        });
-    } else {
-        // Сервер уже выбрал ровно одного переводчика на язык (filterPreferredTranslators в
-        // dg-light.js) — тут просто находим ЕГО id по первому сегменту, где он встретился,
-        // для байлайна ("Пер. X").
-        const activeKeyByLang = {};
-        for (const seg of suttaData.segments) {
-            if (!seg.translations) continue;
-            for (const lang of columns) {
-                if (activeKeyByLang[lang]) continue;
-                const key = Object.keys(seg.translations).find(k => k.startsWith(`${lang}_`));
-                if (key) activeKeyByLang[lang] = key;
+    const keysByLang = {};
+    for (const seg of suttaData.segments) {
+        if (!seg.translations) continue;
+        for (const lang of columns) {
+            if (!keysByLang[lang]) keysByLang[lang] = [];
+            for (const key of Object.keys(seg.translations)) {
+                if (key.startsWith(`${lang}_`) && !keysByLang[lang].includes(key)) {
+                    keysByLang[lang].push(key);
+                }
             }
-            if (columns.every(lang => activeKeyByLang[lang])) break;
         }
-        columns.forEach(lang => {
-            const key = activeKeyByLang[lang];
-            transEntriesByLang[lang] = key ? [{ translatorId: key.slice(lang.length + 1), key, data: {} }] : [];
-        });
     }
+    columns.forEach(lang => {
+        transEntriesByLang[lang] = (keysByLang[lang] || []).map(key => ({
+            translatorId: key.slice(lang.length + 1), key, data: {}
+        }));
+    });
 
     for (const seg of suttaData.segments) {
         htmlData[seg.segment] = seg.html || "{}";

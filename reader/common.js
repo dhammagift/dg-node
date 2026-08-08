@@ -19,7 +19,7 @@ function addIconsTo01() {
     if (segment01.classList.contains('icons-added')) return;
     segment01.classList.add('icons-added');
 
-    const langSpans = segment01.querySelectorAll('.pli-lang, .rus-lang, .eng-lang, .tha-lang');
+    const langSpans = segment01.querySelectorAll('[class*="-lang"]');
 
     langSpans.forEach((span, index) => {
         // Если это первый доступный язык (любой), он главный. Остальные скрыты по умолчанию.
@@ -66,6 +66,10 @@ function addIconsTo01() {
                     if (mainPlayBtn) mainPlayBtn.click();
                 } else if (!window.isVoiceScriptLoaded && typeof window.loadVoiceScripts === 'function') {
                     window.loadVoiceScripts(() => {
+                        // voice.js определяет window.isRu по пути (/r/, /ru/...) при первой
+                        // загрузке — у нас пути чистые (/dn22), поэтому переопределяем на
+                        // основе реального языка колонки сразу после загрузки скрипта.
+                        window.isRu = window.isRuPath;
                         const dynamicBtn = document.querySelector('.dynamic-tts-btn');
                         if (dynamicBtn) dynamicBtn.click();
                     });
@@ -229,7 +233,7 @@ document.addEventListener('DOMContentLoaded', () => {
         menu.classList.add('segment-menu-hidden');
         if (!currentContext) return;
 
-        const targetLangSegment = currentContext.element.closest('.pli-lang, .rus-lang, .eng-lang, .tha-lang');
+        const targetLangSegment = currentContext.element.closest('[class*="-lang"]');
 
         if (targetLangSegment && typeof window.activateSegmentForTTS === 'function') {
             window.activateSegmentForTTS(targetLangSegment);
@@ -242,6 +246,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (playBtn) playBtn.click();
             } else if (!window.isVoiceScriptLoaded && typeof window.loadVoiceScripts === 'function') {
                 window.loadVoiceScripts(() => {
+                    window.isRu = window.isRuPath;
                     const dynamicBtn = document.querySelector('.dynamic-tts-btn');
                     if (dynamicBtn) dynamicBtn.click();
                 });
@@ -259,11 +264,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!currentContext) return;
 
         if (typeof toggleFavoriteGlobal === 'function') {
-            const urlParams = new URLSearchParams(window.location.search);
-            const q = urlParams.get('q');
+            // URL чистый (/dn22), не ?q=dn22 — реальный слаг лежит в window._currentSlug
+            // (megareader.js buildSutta), а не в query-параметрах.
+            const q = window._currentSlug || '';
 
-            const targetLangSegment = currentContext.element.closest('.pli-lang, .rus-lang, .eng-lang, .tha-lang');
-            const fallbackSpan = currentContext.parentSpan.querySelector('.rus-lang, .eng-lang, .tha-lang') || currentContext.parentSpan.querySelector('.pli-lang');
+            const targetLangSegment = currentContext.element.closest('[class*="-lang"]');
+            const fallbackSpan = currentContext.parentSpan.querySelector('[class*="-lang"]:not(.pli-lang)') || currentContext.parentSpan.querySelector('.pli-lang');
             const textSpan = targetLangSegment || fallbackSpan;
 
             let textSnippet = textSpan ? textSpan.textContent.replace(/[✦]/g, '').trim().substring(0, 40) + '...' : currentContext.hash;
@@ -290,14 +296,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!currentContext) return;
 
         const suttaContainer = document.getElementById('sutta') || document;
-        const targetLangSegment = currentContext.element.closest('.pli-lang, .rus-lang, .eng-lang, .tha-lang');
+        const targetLangSegment = currentContext.element.closest('[class*="-lang"]');
 
+        // Реальный язык — из lang="", а не из позиционных rus-lang/eng-lang (их больше нет),
+        // так режим корректно обобщается на любой язык, не только ru/en/th.
         let targetSelector = '.pli-lang';
-        if (targetLangSegment) {
-            if (targetLangSegment.classList.contains('rus-lang')) targetSelector = '.rus-lang';
-            else if (targetLangSegment.classList.contains('eng-lang')) targetSelector = '.eng-lang';
-            else if (targetLangSegment.classList.contains('tha-lang')) targetSelector = '.tha-lang';
-        }
+        const targetLang = targetLangSegment && targetLangSegment.getAttribute('lang');
+        if (targetLang) targetSelector = `[lang="${targetLang}"]`;
 
         let allValidElements = Array.from(suttaContainer.querySelectorAll(targetSelector));
 
@@ -357,7 +362,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!currentContext) return;
 
         const urlParams = new URLSearchParams(window.location.search);
-        let slug = urlParams.get('q');
+        // URL чистый (/dn22), не ?q=dn22 — реальный слаг лежит в window._currentSlug.
+        let slug = window._currentSlug;
         const sParam = urlParams.get('s');
 
         if (!slug) return;
