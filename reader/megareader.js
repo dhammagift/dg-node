@@ -240,6 +240,15 @@ window.generateThirdPartyLinks = function(slug, slugReady, texttype, translator)
     if (bjtUrl) scLink += `<a target="_blank" title="Buddha Jayanthi" href="${bjtUrl}">BJT</a>&nbsp;`;
 
     scLink += `<a data-slug="${texttype}/${slugReady}" href="javascript:void(0)" title="Text-to-Speech (Alt+R)" class="voice-link">Voice</a>`;
+
+    // 4nt (s.4nt.org edition comparison) — get4ntUrl() already exists in settings.js, just
+    // never got called from here (legacy read/js/common.js has the equivalent line). Needs
+    // /4nt mounted on this server too (dg-light.js, symlink at repo root like login/memo).
+    if (typeof get4ntUrl === 'function') {
+        let url4nt = get4ntUrl(slug);
+        if (url4nt) scLink += `&nbsp;<a target="_blank" class="s4ntLink" title="s.4nt.org" href="${url4nt}">4nt</a>`;
+    }
+
     scLink += `&nbsp;<a target="_blank" title='SuttaCentral.net' href="https://suttacentral.net/${slug}">SC</a>`;
     
     const isLocal = window.location.host.includes('localhost') || window.location.host.includes('127.0.0.1');

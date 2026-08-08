@@ -647,7 +647,10 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
      каждая инициализируется один раз в search-render.js и живёт до конца сессии страницы;
      переключение между отчётами — просто show/hide (см. renderCurrentReport ниже), без
      destroy/rebuild. См. комментарий в начале public/overrides/js/search-render.js. -->
-<div id="search-message" class="alert alert-warning d-none" role="alert"></div>
+<div id="search-message" class="alert alert-warning d-none" role="alert">
+    <div id="search-message-ru"></div>
+    <div id="search-message-en"></div>
+</div>
 <table id="pali" class="display table table-striped table-hover responsive " cellspacing="0" width="100%">
    <thead class="thead-light">
         <tr>
@@ -718,6 +721,25 @@ window.siteLanguage = localStorage.getItem('siteLanguage') || 'ru';
 function t(path, fallback) {
     var cfg = window.DHAMMA_I18N && window.DHAMMA_I18N.config;
     if (!cfg) return fallback;
+    var value = path.split('.').reduce(function (v, k) { return (v == null) ? undefined : v[k]; }, cfg);
+    return value === undefined ? fallback : value;
+}
+
+// search-message (empty-results/too-short) shows BOTH languages at once regardless of the
+// active UI language — it's an error status, not switchable interface text — so it needs the
+// OTHER language's config too, not just window.DHAMMA_I18N.config (the active one). Same
+// DHAMMA_LANG_CONFIG_PATTERN the head-script config loader uses, fetched/cached directly.
+var langConfigCache = {};
+function fetchLangConfig(lang) {
+    if (!langConfigCache[lang]) {
+        var pattern = window.DHAMMA_LANG_CONFIG_PATTERN || '/nodejs/res/lang_{lang}.json';
+        langConfigCache[lang] = fetch(pattern.replace('{lang}', lang))
+            .then(function (r) { return r.ok ? r.json() : {}; })
+            .catch(function () { return {}; });
+    }
+    return langConfigCache[lang];
+}
+function tFrom(cfg, path, fallback) {
     var value = path.split('.').reduce(function (v, k) { return (v == null) ? undefined : v[k]; }, cfg);
     return value === undefined ? fallback : value;
 }
@@ -1083,19 +1105,23 @@ $(document).ready(function() {
 
         let msgDiv = document.getElementById('search-message');
         if (msgDiv) {
-            // Показываем и слово, и оба языка сразу (а не только текущий UI-язык) — это сообщение
-            // об ошибке/пустом результате, а не элемент интерфейса, который переключается вместе
-            // с остальным сайтом.
-            let msg = '';
-            if (json.metadata.tooShort) {
-                msg = `Запрос «${capitalizedQuery}» слишком короткий — минимум 3 символа. / ` +
-                      `Query "${capitalizedQuery}" is too short — at least 3 characters required.`;
-            } else if (json.metadata.totalFiles === 0) {
-                msg = `По запросу «${capitalizedQuery}» ничего не найдено. / ` +
-                      `Nothing found for "${capitalizedQuery}".`;
+            // Показываем оба языка сразу, каждый своей строкой (а не только текущий UI-язык и
+            // не смешивая языки в одну строку через "/") — это статус ошибки/пустого результата,
+            // а не элемент интерфейса, который переключается вместе с остальным сайтом. Тексты —
+            // из lang_ru.json/lang_en.json (results.tooShortMessage/noResultsMessage), с {query}.
+            let messageKey = json.metadata.tooShort ? 'results.tooShortMessage'
+                : (json.metadata.totalFiles === 0 ? 'results.noResultsMessage' : null);
+            if (messageKey) {
+                Promise.all([fetchLangConfig('ru'), fetchLangConfig('en')]).then(function (configs) {
+                    document.getElementById('search-message-ru').textContent =
+                        tFrom(configs[0], messageKey, '').replace('{query}', capitalizedQuery);
+                    document.getElementById('search-message-en').textContent =
+                        tFrom(configs[1], messageKey, '').replace('{query}', capitalizedQuery);
+                });
+                msgDiv.classList.remove('d-none');
+            } else {
+                msgDiv.classList.add('d-none');
             }
-            msgDiv.textContent = msg;
-            msgDiv.classList.toggle('d-none', !msg);
         }
     }
 

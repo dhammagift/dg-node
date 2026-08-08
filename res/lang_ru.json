@@ -57,8 +57,8 @@
     "hasVariantsSuffix": "есть",
     "variantsLinkText": "варианты",
     "variantsForLabel": "Варианты для",
-    "tooShortMessage": "Слишком короткий запрос — введите не менее 3 символов.",
-    "noResultsMessage": "По запросу ничего не найдено."
+    "tooShortMessage": "Запрос «{query}» слишком короткий — введите не менее 3 символов.",
+    "noResultsMessage": "По запросу «{query}» ничего не найдено."
   },
   "scopeNames": {
     "dn": "Дигха Никая",

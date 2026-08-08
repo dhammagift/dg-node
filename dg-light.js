@@ -121,6 +121,10 @@ app.use('/memo', express.static(path.join(__dirname, 'memo')));
 app.use('/ru/memo', express.static(path.join(__dirname, 'memo')));
 app.use('/login', express.static(path.join(__dirname, 'login')));
 app.use('/ru/login', express.static(path.join(__dirname, 'login')));
+// 4nt/ — другое самодостаточное легаси-приложение (сравнение изданий пали, s.4nt.org), тот же
+// паттерн что и memo/login: symlink на легаси-репо (см. 4nt/), это дерево — единственный
+// источник, куда get4ntUrl() (settings.js) строит ссылки (basePath = "/4nt").
+app.use('/4nt', express.static(path.join(__dirname, '4nt')));
 
 // Офлайн-зеркала сторонних сайтов — /{имя-папки}/... отдаётся как статика напрямую из offline-data
 for (const name of offlineMirrors) {
