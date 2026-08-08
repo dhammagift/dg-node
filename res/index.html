@@ -929,14 +929,22 @@ $(document).ready(function() {
     // отдаёт wordReport/metadata вместе с data (не только "частичный" ответ) — если они пришли,
     // обновляем и заголовок результатов заодно (раньше это делал только фоновый полный /search,
     // отдельным вторым сетевым заходом — TODO.md поиск п.5 больше не разбивает это на два шага).
-    function enrichIds(ids) {
-        var toFetch = ids.filter(function (id) { return !enrichedIds.has(id) && !pendingIds.has(id); });
-        if (!toFetch.length) return Promise.resolve();
-        toFetch.forEach(function (id) { pendingIds.add(id); });
-        return fetch(buildUrl('/search/enrich', '&ids=' + toFetch.map(encodeURIComponent).join(',')))
+    //
+    // ids режутся на чанки — при частом слове (сотни-тысячи найденных сутт, например "vagga")
+    // один запрос со ВСЕМИ id в query-строке легко превышал 16 КБ (лимит заголовков Node по
+    // умолчанию) и падал с 431 ДО роута — ни ошибки в логе сервера, ни видимого фидбека в UI,
+    // просто "Loading..." навсегда (TODO.md поиск п.15). 500 id на чанк — с большим запасом
+    // ниже лимита даже для самых длинных id (винная "pli-tv-bu-vb-pj1" и т.п.). Чанки летят
+    // параллельно, каждый обновляет таблицу по мере готовности — не хуже прежнего для
+    // маленьких результатов (один чанк = ровно то же, что было), для больших — сутты
+    // появляются волнами вместо одного зависания в конце.
+    var ENRICH_CHUNK_SIZE = 500;
+
+    function enrichChunk(chunkIds) {
+        return fetch(buildUrl('/search/enrich', '&ids=' + chunkIds.map(encodeURIComponent).join(',')))
             .then(function (r) { return r.json(); })
             .then(function (json) {
-                toFetch.forEach(function (id) { pendingIds.delete(id); });
+                chunkIds.forEach(function (id) { pendingIds.delete(id); });
                 Object.keys(json.data).forEach(function (id) {
                     Object.assign(lastSearchJson.data[id], json.data[id]);
                     enrichedIds.add(id);
@@ -950,9 +958,21 @@ $(document).ready(function() {
                 if (reportMode === 'suttas') renderCurrentReport();
             })
             .catch(function (error) {
-                toFetch.forEach(function (id) { pendingIds.delete(id); });
+                chunkIds.forEach(function (id) { pendingIds.delete(id); });
                 console.error('Ошибка при догрузке цитат:', error);
             });
+    }
+
+    function enrichIds(ids) {
+        var toFetch = ids.filter(function (id) { return !enrichedIds.has(id) && !pendingIds.has(id); });
+        if (!toFetch.length) return Promise.resolve();
+        toFetch.forEach(function (id) { pendingIds.add(id); });
+
+        var chunkPromises = [];
+        for (var i = 0; i < toFetch.length; i += ENRICH_CHUNK_SIZE) {
+            chunkPromises.push(enrichChunk(toFetch.slice(i, i + ENRICH_CHUNK_SIZE)));
+        }
+        return Promise.all(chunkPromises);
     }
 
     // TODO.md поиск п.5: запускается ровно один раз — либо сразу после фазы 1, если открыт
