@@ -10,5 +10,8 @@
     "reset": "Reset",
     "other": "Other",
     "questionMark": "?"
+  },
+  "help": {
+    "languageButton": "Pāḷi / Eng"
   }
 }
