@@ -184,6 +184,11 @@ async function findFilesByPrefix(dir, prefix) {
 // добавляется в этот файл только когда для языка есть за что выбирать.
 const TRANSLATOR_PRIORITY = require('./reader/translator-priority.json');
 
+// Единственный источник истины для "что значит режим mt/ml/ee и т.п." — раньше эту логику
+// (columns/multiFor на каждый режим) дублировал клиент (MODE_CONFIGS в reader-template.html),
+// теперь резолвится здесь, клиент просто шлёт ?mode= (см. /api/text/:suttaId).
+const MODE_TABLE = require('./reader/mode-table.json');
+
 function filterPreferredTranslators(results, multiForLangs) {
     const multiSet = new Set(multiForLangs || []);
     const byLang = {};
@@ -226,33 +231,34 @@ function filterPreferredTranslators(results, multiForLangs) {
     return filtered;
 }
 
-// Поиск файлов переводов по suttaId (без предварительного индекса)
-// Возвращает { "ru_o": "/path/to/file.json", "en_sujato": "...", ... } — один файл на язык (см. выше),
-// ИЛИ, если передан explicitTranslators (для режима mt/multi — два перевода ОДНОГО языка
-// одновременно), ровно те ключи, что там перечислены, без схлопывания через filterPreferredTranslators.
-async function findTranslationFiles(suttaId, targetLangs, explicitTranslators, multiForLangs) {
-    const searchDirs = [];
-
+// Раскладывает языки запроса на три группы каталогов — SC-зеркало, DG-main,
+// DG-other — вместо одного плоского списка. Порядок групп важен для
+// детерминированного приоритета источников (см. classifiedDirsInto ниже):
+// DG-other должен побеждать SC-зеркало для одного и того же transKey
+// (ru_sv/ru_khantibalo/ru_narinyanievmenenko физически лежат В ОБОИХ местах).
+function classifySearchDirs(targetLangs) {
+    const scDirs = [], dgMainDirs = [], dgOtherDirs = [];
     for (const lang of targetLangs) {
         if (lang === 'all') {
-            // SC: все доступные языки
-            try {
-                const langs = await fs.readdir(SC_TRANS);
-                langs.forEach(l => searchDirs.push(path.join(SC_TRANS, l)));
-            } catch (e) {}
-            // DG offline: все языки проекта
-            DG_LANGS.forEach(l => searchDirs.push(path.join(DG_OFFLINE, l)));
+            // (SC-каталог заполняется отдельно вызывающей стороной — там нужен await fs.readdir)
+            DG_LANGS.forEach(l => (l.includes('_other') ? dgOtherDirs : dgMainDirs).push(path.join(DG_OFFLINE, l)));
         } else {
-            searchDirs.push(path.join(SC_TRANS, lang));
-            // DG offline: точное совпадение + смежные (ru → ru, ru_other)
+            scDirs.push(path.join(SC_TRANS, lang));
+            // DG offline: точное совпадение (main) + смежные типа ru_other (other)
             DG_LANGS
                 .filter(l => l === lang || l.startsWith(lang + '_'))
-                .forEach(l => searchDirs.push(path.join(DG_OFFLINE, l)));
+                .forEach(l => (l === lang ? dgMainDirs : dgOtherDirs).push(path.join(DG_OFFLINE, l)));
         }
     }
+    return { scDirs, dgMainDirs, dgOtherDirs };
+}
 
-    const results = {};
-    await Promise.all(searchDirs.map(async dir => {
+// Обходит список каталогов ПАРАЛЛЕЛЬНО (быстро) и пишет transKey→filePath в
+// общий results — вызывается группа за группой ПОСЛЕДОВАТЕЛЬНО (await между
+// вызовами), чтобы порядок перезаписи для совпадающих ключей был
+// детерминированным, а не зависел от того, чей fs.readdir завершился раньше.
+async function collectTranslationFiles(dirs, suttaId, results) {
+    await Promise.all(dirs.map(async dir => {
         if (!fsSync.existsSync(dir)) return;
         const files = await findFilesByPrefix(dir, suttaId);
         for (const filePath of files) {
@@ -270,6 +276,28 @@ async function findTranslationFiles(suttaId, targetLangs, explicitTranslators, m
             }
         }
     }));
+}
+
+// Поиск файлов переводов по suttaId (без предварительного индекса)
+// Возвращает { "ru_o": "/path/to/file.json", "en_sujato": "...", ... } — один файл на язык (см. выше),
+// ИЛИ, если передан explicitTranslators (для режима mt/multi — два перевода ОДНОГО языка
+// одновременно), ровно те ключи, что там перечислены, без схлопывания через filterPreferredTranslators.
+async function findTranslationFiles(suttaId, targetLangs, explicitTranslators, multiForLangs) {
+    const { scDirs, dgMainDirs, dgOtherDirs } = classifySearchDirs(targetLangs);
+    if (targetLangs.includes('all')) {
+        try {
+            const langs = await fs.readdir(SC_TRANS);
+            langs.forEach(l => scDirs.push(path.join(SC_TRANS, l)));
+        } catch (e) {}
+    }
+
+    const results = {};
+    // SC → DG-main → DG-other, последовательно: каждая группа детерминированно
+    // перезаписывает предыдущую для совпадающего transKey. DG-other — самый
+    // специфичный/кураторский источник, побеждает всегда.
+    await collectTranslationFiles(scDirs, suttaId, results);
+    await collectTranslationFiles(dgMainDirs, suttaId, results);
+    await collectTranslationFiles(dgOtherDirs, suttaId, results);
 
     if (explicitTranslators && explicitTranslators.length) {
         const filtered = {};
@@ -316,29 +344,28 @@ async function walkTranslationDir(dir, wantedIds, bySutta) {
 }
 
 async function buildTranslationIndex(suttaIds, targetLangs) {
-    const searchDirs = [];
-    for (const lang of targetLangs) {
-        if (lang === 'all') {
-            try {
-                const langs = await fs.readdir(SC_TRANS);
-                langs.forEach(l => searchDirs.push(path.join(SC_TRANS, l)));
-            } catch (e) {}
-            DG_LANGS.forEach(l => searchDirs.push(path.join(DG_OFFLINE, l)));
-        } else {
-            searchDirs.push(path.join(SC_TRANS, lang));
-            DG_LANGS
-                .filter(l => l === lang || l.startsWith(lang + '_'))
-                .forEach(l => searchDirs.push(path.join(DG_OFFLINE, l)));
-        }
+    const { scDirs, dgMainDirs, dgOtherDirs } = classifySearchDirs(targetLangs);
+    if (targetLangs.includes('all')) {
+        try {
+            const langs = await fs.readdir(SC_TRANS);
+            langs.forEach(l => scDirs.push(path.join(SC_TRANS, l)));
+        } catch (e) {}
     }
 
     const wantedIds = new Set(suttaIds);
     const bySutta = new Map(); // suttaId -> { transKey: filePath }
 
-    await Promise.all([...new Set(searchDirs)].map(async dir => {
-        if (!fsSync.existsSync(dir)) return;
-        await walkTranslationDir(dir, wantedIds, bySutta);
-    }));
+    // Та же гонка SC/DG-other, что и в findTranslationFiles (см. classifySearchDirs) —
+    // группы обходятся последовательно, DG-other пишет в bySutta последним.
+    async function walkGroup(dirs) {
+        await Promise.all([...new Set(dirs)].map(async dir => {
+            if (!fsSync.existsSync(dir)) return;
+            await walkTranslationDir(dir, wantedIds, bySutta);
+        }));
+    }
+    await walkGroup(scDirs);
+    await walkGroup(dgMainDirs);
+    await walkGroup(dgOtherDirs);
 
     const result = new Map();
     for (const suttaId of suttaIds) {
@@ -1413,22 +1440,34 @@ async function getFullTextData(suttaId, targetLangs, explicitTranslators, multiF
 
 app.get('/api/text/:suttaId', async (req, res) => {
     const suttaId = req.params.suttaId.toLowerCase();
-    const targetLangs = (req.query.langs || 'ru,en').split(',').map(l => l.trim());
+
+    // ?mode=mt — основной путь для ридера: сервер сам резолвит columns/multiFor из
+    // MODE_TABLE (reader/mode-table.json), клиенту не нужно знать эту логику вовсе.
+    // ?langs=/?multiFor=/?translators= остаются рабочими напрямую — ручной доступ, /api-docs,
+    // отладка через curl — но ридер ими больше не пользуется.
+    const modeConfig = req.query.mode && MODE_TABLE[req.query.mode];
+
+    const targetLangs = modeConfig
+        ? modeConfig.columns
+        : (req.query.langs || 'ru,en').split(',').map(l => l.trim());
     // ?translators=ru_o,ru_sv — ручной оверрайд, для mt/multi (два перевода ОДНОГО языка
     // одновременно), в обход обычного "один переводчик на язык" (см. findTranslationFiles).
     const explicitTranslators = req.query.translators
         ? req.query.translators.split(',').map(t => t.trim())
         : null;
-    // ?multiFor=ru — автоподбор ВТОРОГО переводчика для языка (см. filterPreferredTranslators):
-    // первый — как обычно по TRANSLATOR_PRIORITY, второй — кто реально нашёлся в {lang}_other
-    // для этой сутты. В отличие от explicitTranslators, ничьё конкретное имя не хардкодится.
-    const multiForLangs = req.query.multiFor
-        ? req.query.multiFor.split(',').map(l => l.trim())
-        : null;
+    // Автоподбор ВТОРОГО переводчика для языка (см. filterPreferredTranslators): первый —
+    // как обычно по TRANSLATOR_PRIORITY, второй — кто реально нашёлся в {lang}_other для этой
+    // сутты. В отличие от explicitTranslators, ничьё конкретное имя не хардкодится.
+    const multiForLangs = modeConfig
+        ? (modeConfig.multiFor || null)
+        : (req.query.multiFor ? req.query.multiFor.split(',').map(l => l.trim()) : null);
 
     try {
         const data = await getFullTextData(suttaId, targetLangs, explicitTranslators, multiForLangs);
         if (!data) return res.status(404).json({ error: `Unknown sutta id: ${suttaId}` });
+        // Порядок языков-колонок — чтобы клиент не держал собственную копию MODE_TABLE
+        // только ради того, чтобы знать порядок рендера.
+        data.columns = targetLangs;
         res.json(data);
     } catch (error) {
         console.error(error);

@@ -1,3 +1,4 @@
 {
-  "ru": ["ru_o", "ru_sv", "ru_sv+edited+o"]
+  "ru": ["ru_o", "ru_sv+edited+o", "ru_sv"],
+  "en": ["en_o", "en_thanissaro"]
 }

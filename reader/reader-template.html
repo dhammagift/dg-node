@@ -721,29 +721,13 @@ document.getElementById("date").textContent = formattedDate;
 <script src="/reader/common.js" defer></script>
 
 <script>
-// Временный резолвер режима по ?mode= — для разработки/теста, пока не сделана
-// настоящая маршрутизация по префиксу пути (/ml/dn22 и т.п., см. шаг 6 плана
-// консолидации мегаридера). MODE_CONFIGS ключи совпадают со значениями радио
-// #settings name="reader" (st/mt/mem/d/ml/th/rv/fr) — режимы без записи здесь
-// пока не реализованы, используют дефолт megareader.js (columns:["ru"]).
+// Режим — только ключ из ?mode=, ничего больше. Что означает каждый ключ (columns/multiFor)
+// знает ТОЛЬКО сервер (reader/mode-table.json, резолвится в dg-light.js по ?mode=) — клиент
+// не дублирует эту логику, megareader.js сам подгружает ту же mode-table.json только для
+// презентационных нужд (подписи/семья режима в панели ссылок), не для решения что слать в API.
 (function() {
-    // mt.multiTranslators — временная тестовая пара (пока не починен DG_OFFLINE-путь в
-    // dg-light.js, см. память dhammagift_reader_architecture.md); не для каждой сутты найдётся
-    // ru_khantibalo — колонка будет пустой, если второго перевода нет.
-    const MODE_CONFIGS = {
-        st: { columns: ["ru"], direction: "normal" },
-        read: { columns: ["en"], direction: "normal" },
-        ml: { columns: ["ru", "en"], direction: "normal" },
-        // multiFor — сервер сам подбирает пару переводчиков (первый по приоритету, второй из
-        // {lang}_other) для этой конкретной сутты, а не хардкод фиксированных имён (см.
-        // filterPreferredTranslators в dg-light.js) — если для сутты нет второго перевода,
-        // режим тихо схлопывается в один столбец вместо пустой колонки.
-        mt: { columns: ["ru"], direction: "normal", multiFor: ["ru"] },
-        ee: { columns: ["en"], direction: "normal", multiFor: ["en"] }
-    };
-    window.MODE_CONFIGS = MODE_CONFIGS;
     const mode = new URLSearchParams(window.location.search).get("mode");
-    if (mode && MODE_CONFIGS[mode]) window.READER_MODE = MODE_CONFIGS[mode];
+    if (mode) window.READER_MODE = { modeKey: mode };
 })();
 </script>
 <script src="/reader/megareader.js"></script>

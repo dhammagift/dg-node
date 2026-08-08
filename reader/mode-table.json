@@ -1,0 +1,7 @@
+{
+  "st": { "columns": ["ru"], "family": "ru", "label": "Ru" },
+  "mt": { "columns": ["ru"], "multiFor": ["ru"], "family": "ru", "label": "R+R" },
+  "ml": { "columns": ["ru", "en"], "family": "ru", "label": "R+E" },
+  "read": { "columns": ["en"], "family": "en", "label": "En" },
+  "ee": { "columns": ["en"], "multiFor": ["en"], "family": "en", "label": "E+E" }
+}

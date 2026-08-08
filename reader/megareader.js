@@ -7,13 +7,17 @@ const fdgButton = document.getElementById("fdg-button");
 const citation = document.getElementById("paliauto");
 const form = document.getElementById("form");
 
-// Конфиг режима — какие языки (кроме Пали) показывать колонками, и в каком направлении.
-// Если задан явно (window.READER_MODE, см. reader-template.html: ?mode=), используется как есть.
-// Иначе язык колонки определяется так же, как на странице поиска: ?lang= → localStorage.dhammaLanguage
-// → data-default-lang → "ru" (см. initReader — там мы дожидаемся window.DHAMMA_I18N_READY и
-// подставляем реальный язык, здесь только синхронная заглушка на случай отсутствия dhamma-i18n.js).
-const READER_MODE_EXPLICIT = !!window.READER_MODE;
-const READER_MODE = window.READER_MODE || { columns: ["ru"], direction: "normal" };
+// Режим — только ключ (window.READER_MODE.modeKey, см. reader-template.html: ?mode=). Что
+// означает ключ (columns/multiFor/family/label) знает ТОЛЬКО сервер: reader/mode-table.json
+// резолвится в dg-light.js по ?mode=, а здесь та же таблица подгружается один раз ИСКЛЮЧИТЕЛЬНО
+// для презентационных нужд (панель ссылок, определение "это смена языка интерфейса?") — сама
+// buildSutta() отправляет на сервер только ?mode=, columns в рендере берутся из ОТВЕТА API, не
+// отсюда. Раньше columns/multiFor дублировались тут же (MODE_CONFIGS) — источник рассинхронизации.
+const READER_MODE_EXPLICIT = !!(window.READER_MODE && window.READER_MODE.modeKey);
+let READER_MODE = window.READER_MODE || { modeKey: null };
+window.modeTableReady = fetch('/reader/mode-table.json')
+    .then(r => r.json())
+    .then(data => { window.MODE_TABLE = data; return data; });
 
 // Человеко-читаемые имена переводчиков (с HTML-ссылками, напр. "o" -> <a href=...>o</a>) —
 // как в legacy common.js: window.siteTranslators, из /assets/js/translators.json. Это НЕ
@@ -333,14 +337,15 @@ document.addEventListener('keydown', (event) => {
 }, true);
 
 // Переключение режима колонок (R+R/R+E/En и т.п.) через SPA — без перезагрузки страницы.
-// modeKey — ключ из window.MODE_CONFIGS (см. reader-template.html).
+// modeKey — ключ из window.MODE_TABLE (reader/mode-table.json, тот же файл резолвит сервер).
+// Здесь берём только config.columns[0] — чисто презентационно, чтобы понять "это смена языка
+// интерфейса или нет" ДО ответа сервера; сами данные (что реально показать) сервер вернёт
+// заново после buildSutta(), READER_MODE.columns затем перезаписывается его ответом.
 window.switchReaderMode = function(modeKey, event) {
     if (event) event.preventDefault();
-    const config = (window.MODE_CONFIGS && window.MODE_CONFIGS[modeKey]) || { columns: [modeKey], direction: "normal" };
-    const previousLang = READER_MODE.columns[0];
-    READER_MODE.columns = config.columns;
-    READER_MODE.direction = config.direction || "normal";
-    READER_MODE.multiFor = config.multiFor || null;
+    const config = (window.MODE_TABLE && window.MODE_TABLE[modeKey]) || { columns: [modeKey] };
+    const previousLang = READER_MODE.columns ? READER_MODE.columns[0] : null;
+    READER_MODE.modeKey = modeKey;
 
     let params = new URLSearchParams(document.location.search);
     params.set('mode', modeKey);
@@ -423,17 +428,12 @@ window.renderNavigation = async function(slug, suttaTitle) {
 window.buildSutta = async function(rawSlug) {
     const slug = window.normalizeSlugToDbKey(rawSlug);
     window._currentSlug = slug;
-    const columns = READER_MODE.columns;
-    // multiFor: ["ru"] — режим mt/multi, просим сервер сам подобрать НЕСКОЛЬКО переводов для
-    // этого языка (первый по приоритету, второй из {lang}_other) вместо одного — какие именно
-    // переводчики придут, решает сервер по факту наличия файлов для КОНКРЕТНОЙ сутты, здесь
-    // это не хардкодится (см. filterPreferredTranslators в dg-light.js).
-    const multiFor = READER_MODE.multiFor || [];
 
     let suttaData;
     try {
-        let apiUrl = `/api/text/${encodeURIComponent(slug)}?langs=${columns.join(',')}`;
-        if (multiFor.length) apiUrl += `&multiFor=${multiFor.join(',')}`;
+        // Клиент шлёт только modeKey — что он означает (columns/multiFor/приоритет
+        // переводчика) решает сервер (reader/mode-table.json, dg-light.js), не мы.
+        const apiUrl = `/api/text/${encodeURIComponent(slug)}?mode=${encodeURIComponent(READER_MODE.modeKey)}`;
         const response = await fetch(apiUrl);
         if (!response.ok) {
             if (response.status === 404 && typeof window.executeGlobalSearch === 'function') {
@@ -449,6 +449,11 @@ window.buildSutta = async function(rawSlug) {
         if (typeof window.handleFetchError === 'function') window.handleFetchError(rawSlug, true);
         return false;
     }
+
+    // Порядок языков-колонок — из ОТВЕТА сервера, не из локального конфига: сервер уже
+    // резолвил modeKey → columns, дублировать эту логику на клиенте незачем.
+    const columns = suttaData.columns || [];
+    READER_MODE.columns = columns; // кэш последнего известного состояния — для switchReaderMode
 
     const texttype = suttaData.category || "sutta";
     let params = new URLSearchParams(document.location.search);
@@ -611,20 +616,30 @@ window.buildSutta = async function(rawSlug) {
 
     let cleanSlugReady = slug;
 
-    // Панель ссылок — только варианты ТЕКУЩЕГО языка + один переход на другой язык (как в
-    // reader-rus-translations.js для ru и indexBB.js для en, см. план консолидации мегаридера,
-    // шаг 3.5). Никогда не смешиваем R+R/R+E с E+E.
+    // Панель ссылок — варианты ТЕКУЩЕЙ языковой семьи (кроме самого текущего режима) + один
+    // переход на плейн-режим ДРУГОЙ семьи (как в reader-rus-translations.js для ru и indexBB.js
+    // для en). Семьи/порядок/подписи — из window.MODE_TABLE (reader/mode-table.json, тот же
+    // файл резолвит сервер), не хардкод: раньше здесь было две ветки на columns[0]==='en',
+    // из-за чего текущий режим (mt/ml/ee) сам себе оставался кликабельной самоссылкой.
     const modeLinkHtml = (modeKey, label, title) =>
         `<a href="${modeLink(modeKey)}" onclick="window.switchReaderMode('${modeKey}', event)" title='${title}'>${label}</a>&nbsp;`;
 
+    const MODE_TITLES = {
+        st: 'Русский', read: 'Английский (Alt+1)',
+        ml: 'Pali + Русский + Английский (Alt+2)', mt: 'Pali + Русский + Русский',
+        ee: 'English + English (второй переводчик)'
+    };
+
     let scLink = `<p class="sc-link">`;
-    if (columns[0] === 'en') {
-        scLink += modeLinkHtml('ee', 'E+E', 'English + English (второй переводчик)');
-        scLink += modeLinkHtml('st', 'Ru', 'Русский');
-    } else {
-        scLink += modeLinkHtml('mt', 'R+R', 'Pali + Русский + Русский');
-        scLink += modeLinkHtml('ml', 'R+E', 'Pali + Русский + Английский (Alt+2)');
-        scLink += modeLinkHtml('read', 'En', 'Английский (Alt+1)');
+    const modeTable = window.MODE_TABLE || {};
+    const modeKeys = Object.keys(modeTable);
+    const currentFamily = (modeTable[READER_MODE.modeKey] || {}).family;
+    if (currentFamily) {
+        const sameFamily = modeKeys.filter(k => modeTable[k].family === currentFamily && k !== READER_MODE.modeKey);
+        const otherFamilyPlain = modeKeys.find(k => modeTable[k].family !== currentFamily && !modeTable[k].multiFor);
+        [...sameFamily, otherFamilyPlain].filter(Boolean).forEach(key => {
+            scLink += modeLinkHtml(key, modeTable[key].label, MODE_TITLES[key] || modeTable[key].label);
+        });
     }
 
     if (typeof window.generateThirdPartyLinks === 'function') {
@@ -705,16 +720,19 @@ window.addEventListener('popstate', (e) => {
 // ИНИЦИАЛИЗАЦИЯ И МАРШРУТИЗАЦИЯ (SPA Routing)
 // ==========================================
 async function initReader() {
-    // Язык колонки перевода — как на странице поиска: ?lang= → localStorage.dhammaLanguage →
+    await window.modeTableReady;
+
+    // Ключ режима — как на странице поиска: ?lang= → localStorage.dhammaLanguage →
     // data-default-lang → "ru" (это уже считает dhamma-i18n.js, просто ждём его и переиспользуем
-    // результат). Если режим передан явно (window.READER_MODE, см. ?mode= в reader-template.html),
-    // ничего не трогаем — явное имеет приоритет.
+    // результат), переводим в modeKey одноязычного режима. Если режим передан явно
+    // (window.READER_MODE.modeKey, см. ?mode= в reader-template.html) — ничего не трогаем.
     if (!READER_MODE_EXPLICIT && window.DHAMMA_I18N_READY) {
         try { await window.DHAMMA_I18N_READY; } catch (error) {}
         const resolvedLang = (window.DHAMMA_I18N && window.DHAMMA_I18N.language)
             || localStorage.getItem('dhammaLanguage') || 'ru';
-        READER_MODE.columns = [resolvedLang];
+        READER_MODE.modeKey = resolvedLang === 'en' ? 'read' : 'st';
     }
+    if (!READER_MODE.modeKey) READER_MODE.modeKey = 'st';
 
     // Читаем URL. Игнорируем путь, если используется параметр ?q=,
     // либо берём корректную часть пути, если у вас ЧПУ.
@@ -748,7 +766,10 @@ async function initReader() {
         }
     } else {
         if (typeof window.getInstructionHTML === 'function' && suttaArea) {
-            suttaArea.innerHTML = window.getInstructionHTML(READER_MODE.columns[0] || "ru");
+            // Тут ещё не было ни одного ответа сервера (buildSutta не звался) — READER_MODE.columns
+            // ещё не заполнен, берём язык из mode-table.json по modeKey (уже дождались выше).
+            const modeConfig = window.MODE_TABLE && window.MODE_TABLE[READER_MODE.modeKey];
+            suttaArea.innerHTML = window.getInstructionHTML((modeConfig && modeConfig.columns[0]) || "ru");
         }
     }
 }
