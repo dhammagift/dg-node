@@ -6,13 +6,26 @@ const util = require('util');
 const execFile = util.promisify(require('child_process').execFile);
 const swaggerUi = require('swagger-ui-express');
 const openapiSpec = require('./openapi.json');
+const openapiSpecEn = require('./openapi.en.json');
 
 const app = express();
 const PORT = 3000;
 
-// Документация API — /api-docs. openapi.json описывает /search, /search/enrich, /api/text,
-// /api/nav и т.п.: какие параметры есть, что обязательно, что возвращается.
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(openapiSpec));
+// Документация API — /api-docs. openapi.json/openapi.en.json описывают /search, /search/enrich,
+// /api/text, /api/nav и т.п.: какие параметры есть, что обязательно, что возвращается.
+// Раздаём оба JSON-файла напрямую — нужно для выпадающего списка языков ниже (Swagger UI
+// переключает спеки по URL, не по встроенному объекту).
+app.get('/openapi.json', (req, res) => res.json(openapiSpec));
+app.get('/openapi.en.json', (req, res) => res.json(openapiSpecEn));
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(null, {
+    explorer: true,
+    swaggerOptions: {
+        urls: [
+            { url: '/openapi.en.json', name: 'English' },
+            { url: '/openapi.json', name: 'Русский' },
+        ],
+    },
+}));
 
 // Легаси (config/script_config.sh) везде держит minlength=2..3 не просто так — короткий keyword
 // (особенно 1 символ) matches почти КАЖДУЮ строку всего корпуса; grep -ri на таком запросе
@@ -1605,6 +1618,50 @@ app.get('/search/enrich', async (req, res) => {
 // "/search/enrich" тоже (Express матчит по порядку регистрации, а не по специфичности).
 app.get('/search/:keyword', searchHandler);
 
+// Заглушка TOC для "оглавленческих" id — целая никая/самьютта ("sn25", "mn") или Vinaya-
+// категория без номера ("pj", "pli-tv-bu-vb-"), у которых нет отдельного skeletonDB[id], но
+// есть дочерние тексты (sn25.1, sn25.2, ... / pli-tv-bu-vb-pj1, ...). Общая логика без
+// хардкода списка никай — см. public/overrides/js/dg-text-router.js (classify()) за тем, как
+// клиент строит такие id-префиксы из ввода пользователя ("sn25", "pm" и т.п.).
+// Три случая границы после префикса:
+//   - префикс оканчивается на "-" (Vinaya-категория целиком, "pli-tv-bu-vb-") → дальше буквы
+//     кода правила ("pj1", "ss3", ...);
+//   - префикс оканчивается цифрой ("sn25") → дальше обязательно "." или ":" (иначе "sn2"
+//     ложно подхватил бы "sn25.1");
+//   - префикс — голое имя никаи без цифр ("sn", "dhp") → дальше обязательно цифра (иначе
+//     "sn" ложно подхватил бы "snp1.1", т.к. "snp" тоже начинается на "sn").
+function findChapterChildren(prefix) {
+    return Object.keys(skeletonDB).filter(id => {
+        if (id === prefix || !id.startsWith(prefix)) return false;
+        const rest = id.slice(prefix.length);
+        if (prefix.endsWith('-')) return /^[a-z]/i.test(rest);
+        if (/\d$/.test(prefix)) return /^[.:]/.test(rest);
+        return /^\d/.test(rest);
+    }).sort();
+}
+
+// Минимальная HTML-заглушка вместо полноценного TOC (аналога легаси read.php пока нет —
+// см. TODO.md ридер, нюансы). Просто список ссылок на дочерние тексты с заголовками.
+function renderTocStub(prefix, children) {
+    const items = children.map(id => {
+        const title = skeletonDB[id] && skeletonDB[id].title ? ` — ${skeletonDB[id].title}` : '';
+        return `<li><a href="/${encodeURIComponent(id)}">${id}</a>${title}</li>`;
+    }).join('\n');
+    return `<!DOCTYPE html><html><head><meta charset="UTF-8">
+<title>${prefix} — Dhamma.gift</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>body{font-family:sans-serif;max-width:640px;margin:2rem auto;padding:0 1rem}
+a{color:#0d6efd;text-decoration:none}a:hover{text-decoration:underline}
+li{margin:.4rem 0}</style></head><body>
+<p><a href="/">&larr; Dhamma.gift</a></p>
+<h1>${prefix}</h1>
+<p>Table of contents (stub) — ${children.length} texts.</p>
+<ul>
+${items}
+</ul>
+</body></html>`;
+}
+
 // Чистые URL: /dn22 → ридер, /dn22:12.1 → ридер с прокруткой к сегменту (разбор ":" — на клиенте).
 // Старый формат /?q=dn22#12.1 продолжает работать без изменений (см. res/index.html, megareader.js).
 app.get('/:slug', (req, res) => {
@@ -1612,6 +1669,10 @@ app.get('/:slug', (req, res) => {
     const suttaId = rawSlug.split(':')[0].toLowerCase();
     if (skeletonDB[suttaId]) {
         return res.sendFile(readerTemplatePath);
+    }
+    const children = findChapterChildren(suttaId);
+    if (children.length) {
+        return res.send(renderTocStub(suttaId, children));
     }
     return res.redirect(`/?q=${encodeURIComponent(rawSlug)}`);
 });

@@ -85,6 +85,10 @@ content="https://dhamma.gift/assets/img/favico_black.png" />
 <link rel="stylesheet" href="/reader/css/rus-multi.css">
 <link rel="stylesheet" href="/reader/css/uiextra.css">
 
+<!-- fa-search fa-flip-horizontal on #searchbtn below needs this — same local bundle legacy
+     read.php echoes via $fontawesomejs (config/config.php online-prod branch). -->
+<script src="/assets/js/fontawesome.6.1.all.js"></script>
+
 <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://www.googleapis.com" crossorigin>
 
@@ -115,10 +119,16 @@ function cleanPaliText(text) {
 </head>
 
 <body class="dark">
-<form id="form" class="ui-widget mb-2">
+<form id="form" class="ui-widget mb-2" autocomplete="off">
 <label class="sr-only dropup rounded-pill mb-2" for="paliauto"></label>
-<input class="mb-2" id="paliauto" type="search" data-i18n-placeholder="{{search.placeholder}}">
-<input class="go-button mb-2" id="searchbtn" type="submit" data-i18n-value="{{search.submit}}">
+<!-- Same input-group + btn-primary/fa-search markup as res/index.html's #form, so the two
+     search/navigation boxes look and behave identically (TODO.md поиск п.13/14, ридер п.8). -->
+<div class="input-group mb-2">
+<input class="form-control rounded-pill searchinput" id="paliauto" type="search" data-i18n-placeholder="{{search.placeholder}}" autocomplete="off">
+<button type="submit" id="searchbtn" class="btn btn-primary rounded-pill ms-2">
+  <i class="fas fa-search fa-flip-horizontal" aria-hidden="true"></i>
+</button>
+</div>
 
 <div id="form-div">
 <div id="home-button" class="icon-button ">
@@ -732,14 +742,26 @@ document.getElementById("date").textContent = formattedDate;
 </script>
 <script src="/reader/megareader.js"></script>
 <script>
+// Same universal-input logic as res/index.html's #form (TODO.md ридер п.8, поиск п.14):
+// DgTextRouter.classify() decides text/chapter vs. plain search, dg-light.js's /:slug route
+// does the real existence check (200 → reader, TOC-stub for a whole chapter/category, or a
+// redirect back to /?q=<query> if nothing matches) — see dg-text-router.js for why this
+// replaced the old buildSutta()+pushState('?q=...') call, which always treated the input as
+// a sutta id and relied on a 404 fallback (window.executeGlobalSearch) that isn't loaded on
+// this page, so a plain keyword typed here used to silently fail.
 form.addEventListener("submit", e => {
   e.preventDefault();
-  if (citation.value) {
-    buildSutta(citation.value.replace(/\s+/g, " "));
-   history.pushState({ page: citation.value.replace(/\s+/g, " ") }, "", `?q=${citation.value.replace(/\s+/g, " ")}`);
+  const raw = citation.value.trim();
+  if (!raw) return;
+  const route = window.DgTextRouter ? window.DgTextRouter.classify(raw) : { type: 'search', query: raw };
+  if (route.type === 'search') {
+    window.location.href = '/?q=' + encodeURIComponent(route.query);
+  } else {
+    window.location.href = '/' + encodeURIComponent(route.id);
   }
 });
 </script>
+<script src="/assets/js/dg-text-router.js" defer></script>
 <script src="/assets/js/settings.js" defer></script>
 <script src="/assets/js/linksbjt.js" defer></script>
 <script src="/assets/js/openDicts.js" defer></script>

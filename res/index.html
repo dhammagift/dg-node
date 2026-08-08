@@ -130,6 +130,10 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
 
 <!--
 -->
+<!-- fa-search fa-flip-horizontal on #searchbtn below needs this — legacy echoes the same
+     local bundle via $fontawesomejs in prod config.php (config/config.php online-prod branch),
+     dg-node didn't have it wired up yet so the icon was invisible. -->
+<script src="/assets/js/fontawesome.6.1.all.js"></script>
 <script src="/assets/js/jquery-3.7.0.min.js"></script>
 <script type="text/javascript" src="/assets/js/bootstrap.bundle.5.3.1.min.js"></script>
 <script type="text/javascript" src="/assets/js/datatables/datatables.js"></script>
@@ -980,17 +984,25 @@ $(document).ready(function() {
         });
     }
 
-    // Строка поиска в шапке (заготовка под SPA, была скрыта) — уже сейчас, до самого SPA,
-    // просто запускает новый поиск на этой же странице (та же схема, что и клик по числу
-    // текстов в отчёте по словам: /?q=...&scope=...), без похода на главную.
+    // Строка поиска в шапке — универсальный инпут (TODO.md поиск п.14): распознаёт ссылку на
+    // текст/главу через DgTextRouter.classify() (public/overrides/js/dg-text-router.js) и либо
+    // открывает её (dg-light.js делает существование-чек и сам падает обратно в поиск, если
+    // id не найден — см. app.get('/:slug', ...)), либо запускает обычный поиск на этой же
+    // странице (та же схема, что и клик по числу текстов в отчёте по словам), без похода
+    // на главную.
     $('#form').on('submit', function (e) {
         e.preventDefault();
         var value = $('#paliauto').val().trim();
         if (!value) return;
-        var currentScope = new URLSearchParams(window.location.search).get('scope') || 'default';
-        var url = '/?q=' + encodeURIComponent(value) +
-            (currentScope !== 'default' ? '&scope=' + encodeURIComponent(currentScope) : '');
-        window.location.href = url;
+        var route = window.DgTextRouter ? window.DgTextRouter.classify(value) : { type: 'search', query: value };
+        if (route.type === 'search') {
+            var currentScope = new URLSearchParams(window.location.search).get('scope') || 'default';
+            var url = '/?q=' + encodeURIComponent(route.query) +
+                (currentScope !== 'default' ? '&scope=' + encodeURIComponent(currentScope) : '');
+            window.location.href = url;
+        } else {
+            window.location.href = '/' + encodeURIComponent(route.id);
+        }
     });
 
     // Человеко-читаемый scope-лейбл вместо сырых технических полей (scope='dhamma' и т.п. —
@@ -1121,6 +1133,7 @@ $(document).ready(function() {
          лениво, см. loadPiEnRuScripts() в wireResultLinks() выше: незачем парсить ~469 КБ
          ссылочных данных на каждой загрузке страницы, если в ней ещё нет результатов поиска. -->
                 <script src="/assets/js/settings.js"></script>
+<script src="/assets/js/dg-text-router.js"></script>
 <script src="/assets/js/themeswitch.js" defer></script>
 
 <script>
