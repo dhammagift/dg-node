@@ -116,14 +116,21 @@ async function compileLightSkeleton() {
         else if (normalizedPath.includes('/abhidhamma/')) db[suttaId].category = 'abhi';
 
         const data = await readJson(fullPath);
-        
-        // Поиск корневого заголовка
+
+        // Поиск корневого заголовка — тот же паттерн, что и findTitleSegmentIdRecursive в
+        // dg-light.js (grep для /search/enrich): bilara-файлы кладут НЕСКОЛЬКО ":0.N"
+        // front-matter сегментов подряд (название канона, книги, вагги, и только ПОСЛЕДНИМ —
+        // само название сутты) перед первым реальным сегментом текста (":1..."). Раньше здесь
+        // был break на ПЕРВОМ ":0.N" — брал "Aṅguttara Nikāya" вместо реального названия сутты
+        // (видно в /search?fast=1 до догрузки через /search/enrich, которая вызывала ту же
+        // grep-функцию и молча "исправляла" заголовок вторым сетевым заходом).
         for (const [segmentId, text] of Object.entries(data)) {
-            if (segmentId.match(/:0(?:\.\d+)?$/) || segmentId.match(/:[1-9]/)) {
+            if (segmentId.match(/:0(?:\.\d+)?$/)) {
                 if (typeof text === 'string' && text.trim()) {
                     db[suttaId].title = text;
-                    break; 
                 }
+            } else if (segmentId.match(/:[1-9]/)) {
+                break;
             }
         }
     });

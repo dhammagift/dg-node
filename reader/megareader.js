@@ -767,7 +767,17 @@ async function initReader() {
         const rendered = await window.buildSutta(normalizedSlug);
         if (rendered && segmentId) {
             const target = document.getElementById(segmentId);
-            if (target) target.scrollIntoView({ block: 'center' });
+            if (target) {
+                target.scrollIntoView({ block: 'center' });
+                // Same fallback pattern as smoothScroll.js's highlightById/highlightAllById —
+                // this initial-load scroll used to jump to the segment without ever marking it
+                // active-word, unlike every other scroll-to-segment path in the reader.
+                if (typeof window.activateSegmentForTTS === 'function') {
+                    window.activateSegmentForTTS(target);
+                } else {
+                    target.classList.add('active-word');
+                }
+            }
         }
     } else {
         if (typeof window.getInstructionHTML === 'function' && suttaArea) {

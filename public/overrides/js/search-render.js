@@ -486,8 +486,13 @@ window.DgSearchRender = (function () {
                 {
                     data: 'sutta_id',
                     title: headerTitles[0],
-                    render: function (data) {
-                        var textUrl = buildSuttaUrl(data, null, activeState.highlightWord);
+                    render: function (data, type, row) {
+                        // Link to the first MATCHED segment, not the start of the text — segments[0]
+                        // is already the earliest match (assembleFromGrepMap in dg-light.js pushes
+                        // them in ascending grep line order), present from the fast=1 response, no
+                        // need to wait for /search/enrich.
+                        var firstSegment = row && row.segments && row.segments.length ? row.segments[0].segment : null;
+                        var textUrl = buildSuttaUrl(data, firstSegment, activeState.highlightWord);
                         return '<a class="fdgLink mainLink" target="_blank" href="' + textUrl + '" data-slug="' + data + '">' + data + '</a>';
                     }
                 },
