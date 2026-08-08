@@ -26,18 +26,16 @@ const isTermux  = fsSync.existsSync('/data/data/com.termux/files/usr');
 const isWindows = process.platform === 'win32';
 
 // SuttaCentral Bilara — основной источник пали и переводов
-// DhammaGift offline — лучшие переводы проекта (один на язык)
-// Структура: {DG_OFFLINE}/{lang}/sutta|vinaya/{nikaya}/{id}_translation-{lang}-{author}.json
-let SC_BILARA, DG_OFFLINE;
+let SC_BILARA, OFFLINE_MIRRORS_ROOT;
 if (isTermux) {
     SC_BILARA  = '/data/data/com.termux/files/usr/share/apache2/default-site/htdocs/suttacentral.net/sc-data/sc_bilara_data';
-    DG_OFFLINE = '/data/data/com.termux/files/home/offline-data/dhammagift';
+    OFFLINE_MIRRORS_ROOT = '/data/data/com.termux/files/home/offline-data';
 } else if (isWindows) {
     SC_BILARA  = 'C:/soft/sc-data/sc_bilara_data';
-    DG_OFFLINE = 'C:/soft/offline-data/dhammagift';
+    OFFLINE_MIRRORS_ROOT = 'C:/soft/offline-data';
 } else {
     SC_BILARA  = '/var/www/html/suttacentral.net/sc-data/sc_bilara_data';
-    DG_OFFLINE = '/home/user/offline-data/dhammagift';
+    OFFLINE_MIRRORS_ROOT = '/home/user/offline-data';
 }
 
 const SC_ROOT     = `${SC_BILARA}/root/pli/ms`;
@@ -45,8 +43,13 @@ const SC_VARIANT  = `${SC_BILARA}/variant/pli/ms`;
 const SC_TRANS    = `${SC_BILARA}/translation`;
 const DG_LANGS    = ['ru', 'ru_other', 'en', 'en_other', 'ai'];
 
-// Офлайн-зеркала сторонних сайтов (4nt, theravada.ru, словари и т.п.) — родитель DG_OFFLINE
-const OFFLINE_MIRRORS_ROOT = path.dirname(DG_OFFLINE);
+// DhammaGift offline — лучшие переводы проекта (один на язык). Читаем через `public/assets/texts`,
+// а не напрямую из offline-data вне web-root — `public/assets` уже symlink на легаси-репо
+// (`../../assets`), чей `assets/texts/{lang}` в свою очередь symlink на реальные offline-данные
+// (см. `C:\soft\dg\assets\texts\en_other` → `../../../offline-data/dhammagift/en_other`). Один
+// путь для всех платформ — не нужно ходить вне обслуживаемого дерева отдельным абсолютным путём.
+// Структура: {DG_OFFLINE}/{lang}/sutta|vinaya/{nikaya}/{id}_translation-{lang}-{author}.json
+const DG_OFFLINE = path.join(__dirname, 'public', 'assets', 'texts');
 let offlineMirrors = new Set();
 try {
     offlineMirrors = new Set(

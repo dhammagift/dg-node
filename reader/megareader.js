@@ -328,12 +328,20 @@ document.addEventListener('keydown', (event) => {
 window.switchReaderMode = function(modeKey, event) {
     if (event) event.preventDefault();
     const config = (window.MODE_CONFIGS && window.MODE_CONFIGS[modeKey]) || { columns: [modeKey], direction: "normal" };
+    const previousLang = READER_MODE.columns[0];
     READER_MODE.columns = config.columns;
     READER_MODE.direction = config.direction || "normal";
     READER_MODE.multiTranslators = config.multiTranslators || null;
 
     let params = new URLSearchParams(document.location.search);
     params.set('mode', modeKey);
+    const newLang = config.columns[0];
+    if (newLang && newLang !== previousLang) {
+        // Кросс-языковой переход (En/Ru) — язык интерфейса должен смениться вместе с текстом,
+        // как при обычной смене языка (dhamma-i18n.js сам пишет localStorage.dhammaLanguage).
+        params.set('lang', newLang);
+        if (typeof window.setSiteLanguage === 'function') window.setSiteLanguage(newLang);
+    }
     history.pushState({ page: window._currentSlug, mode: modeKey }, "", `?${params.toString()}`);
 
     if (window._currentSlug) window.buildSutta(window._currentSlug);
@@ -570,10 +578,22 @@ window.buildSutta = async function(rawSlug) {
 
     let cleanSlugReady = slug;
 
-    let scLink = `<p class="sc-link">
-    <a href="${modeLink('mt')}" onclick="window.switchReaderMode('mt', event)" title='Pali + Русский + Русский'>R+R</a>
-    <a href="${modeLink('ml')}" onclick="window.switchReaderMode('ml', event)" title='Pali + Русский + Английский (Alt+2)'>R+E</a>
-    <a href="${modeLink('read')}" onclick="window.switchReaderMode('read', event)" title='Английский (Alt+1)'>En</a>&nbsp;`;
+    // Панель ссылок — только варианты ТЕКУЩЕГО языка + один переход на другой язык (как в
+    // reader-rus-translations.js для ru и indexBB.js для en, см. план консолидации мегаридера,
+    // шаг 3.5). Никогда не смешиваем R+R/R+E с E+E.
+    const modeLinkHtml = (modeKey, label, title) =>
+        `<a href="${modeLink(modeKey)}" onclick="window.switchReaderMode('${modeKey}', event)" title='${title}'>${label}</a>`;
+
+    let scLink = `<p class="sc-link">`;
+    if (columns[0] === 'en') {
+        scLink += modeLinkHtml('ee', 'E+E', 'English + English (второй переводчик)');
+        scLink += modeLinkHtml('st', 'Ru', 'Русский');
+    } else {
+        scLink += modeLinkHtml('mt', 'R+R', 'Pali + Русский + Русский');
+        scLink += modeLinkHtml('ml', 'R+E', 'Pali + Русский + Английский (Alt+2)');
+        scLink += modeLinkHtml('read', 'En', 'Английский (Alt+1)');
+    }
+    scLink += '&nbsp;';
 
     if (typeof window.generateThirdPartyLinks === 'function') {
         scLink += window.generateThirdPartyLinks(slug, cleanSlugReady, texttype, transEntriesByLang[columns[0]][0]?.translatorId);

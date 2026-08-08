@@ -731,7 +731,10 @@ document.getElementById("date").textContent = formattedDate;
         st: { columns: ["ru"], direction: "normal" },
         read: { columns: ["en"], direction: "normal" },
         ml: { columns: ["ru", "en"], direction: "normal" },
-        mt: { columns: ["ru"], direction: "normal", multiTranslators: { ru: ["ru_o", "ru_khantibalo"] } }
+        mt: { columns: ["ru"], direction: "normal", multiTranslators: { ru: ["ru_o", "ru_khantibalo"] } },
+        // ee.multiTranslators — тоже тестовая пара (не для каждой сутты найдутся оба сразу;
+        // an4.1 подтверждён вручную). thanissaro отсутствует в этом SC-зеркале.
+        ee: { columns: ["en"], direction: "normal", multiTranslators: { en: ["en_sujato", "en_kovilo"] } }
     };
     window.MODE_CONFIGS = MODE_CONFIGS;
     const mode = new URLSearchParams(window.location.search).get("mode");
