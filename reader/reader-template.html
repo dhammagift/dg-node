@@ -82,6 +82,7 @@ content="https://dhamma.gift/assets/img/favico_black.png" />
 <link href="/assets/css/extrastyles.css" rel="stylesheet" />
 <link href="/assets/css/paliLookup.css" rel="stylesheet" />
 <link rel="stylesheet" href="/reader/css/index.css">
+<link rel="stylesheet" href="/reader/css/rus-multi.css">
 <link rel="stylesheet" href="/reader/css/uiextra.css">
 
 <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
@@ -716,6 +717,7 @@ document.getElementById("date").textContent = formattedDate;
 <script src="/assets/js/autopali.js" defer></script>
 <script src="/assets/js/bootstrap.bundle.5.3.1.min.js"></script>
 <script src="/assets/js/copyToClipboard.js" defer></script>
+<script src="/reader/common.js" defer></script>
 
 <script>
 // Временный резолвер режима по ?mode= — для разработки/теста, пока не сделана
@@ -741,7 +743,6 @@ document.getElementById("date").textContent = formattedDate;
     if (mode && MODE_CONFIGS[mode]) window.READER_MODE = MODE_CONFIGS[mode];
 })();
 </script>
-<script src="/nodejs/translators_config.js"></script>
 <script src="/reader/megareader.js"></script>
 <script>
 form.addEventListener("submit", e => {

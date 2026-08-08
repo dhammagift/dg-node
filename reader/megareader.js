@@ -15,6 +15,15 @@ const form = document.getElementById("form");
 const READER_MODE_EXPLICIT = !!window.READER_MODE;
 const READER_MODE = window.READER_MODE || { columns: ["ru"], direction: "normal" };
 
+// Человеко-читаемые имена переводчиков (с HTML-ссылками, напр. "o" -> <a href=...>o</a>) —
+// как в legacy common.js: window.siteTranslators, из /assets/js/translators.json. Это НЕ
+// window.TRANSLATORS_CONFIG/translators_config.js — тот файл беднее и без ссылок, не используется
+// продовым reader-rus-translations.js/indexBB.js.
+window.siteTranslatorsReady = fetch('/assets/js/translators.json')
+    .then(r => r.ok ? r.json() : {})
+    .then(data => { window.siteTranslators = data; return data; })
+    .catch(() => { window.siteTranslators = {}; return {}; });
+
 let language = "pli-2nd";
 
 if (homeButton) {
@@ -433,6 +442,7 @@ window.buildSutta = async function(rawSlug) {
             throw new Error(`HTTP ${response.status}`);
         }
         suttaData = await response.json();
+        if (window.siteTranslatorsReady) await window.siteTranslatorsReady;
     } catch (error) {
         console.error('Ошибка загрузки текста:', error);
         if (typeof window.handleFetchError === 'function') window.handleFetchError(rawSlug, true);
@@ -547,26 +557,55 @@ window.buildSutta = async function(rawSlug) {
             }
             inner += `</span>`;
         }
+        // Все переводы сегмента — в общей .right-column (как на проде): CSS колоночного режима
+        // (.column-view .right-column [class*="-lang"]) укладывает их блоками друг под другом,
+        // без этой обёртки они текут в одну строку вперемешку. Класс — настоящий язык
+        // ("${lang}-lang", нужен для hide-pali/hide-english/hide-russian, см. uiextra.css) плюс
+        // .lang-2nd на второй и далее переводчик (позиционный маркер стиля, не языковой —
+        // uiextra.css/rus-multi.css красят .lang-2nd приглушённым цветом).
+        let rightColumnHtml = '';
+        let transIndex = 0;
         columns.forEach(lang => {
             transEntriesByLang[lang].forEach(entry => {
                 const val = entry.data[segment];
                 if (val !== undefined) {
-                    inner += `<span class="${lang}-lang quote" lang="${lang}" data-translator="${entry.translatorId}">${linkToCopyStart}${val.trim()}${linkToCopy}</span>`;
+                    const posClass = transIndex === 0 ? '' : ' lang-2nd';
+                    rightColumnHtml += `<span class="${lang}-lang${posClass} quote" lang="${lang}" data-translator="${entry.translatorId}">${linkToCopyStart}${val.trim()}${linkToCopy}</span>`;
+                    transIndex++;
                 }
             });
         });
+        if (rightColumnHtml) inner += `<span class="right-column">${rightColumnHtml}</span>`;
 
         html += `${openHtml}<span id="${anchor}">${inner}</span>${closeHtml}\n\n`;
     }
 
-    const translatorByline = `<div id="trn" class="byline">
-    <p><span class="pli-lang" lang="pi">Pāḷi <a class="text-decoration-none text-reset" href="/assets/texts/abbr.html?s=ms" title="Mahāsaṅgīti Pāḷi">MS</a></span>` +
-    columns.flatMap(lang => transEntriesByLang[lang].map(entry => {
-        let displayName = (window.TRANSLATORS_CONFIG && window.TRANSLATORS_CONFIG[lang] && window.TRANSLATORS_CONFIG[lang][entry.translatorId])
+    // Как на проде: "Pāḷi MS" отдельно от переводчиков, переводчики — в своей обёртке
+    // .right-column, разделены <br>. Первый — "Пер. "/"Trn: ", второй и далее — "Перевод N: "
+    // (тот же язык, как в mt) или короткая метка языка (другой язык, как в ml — "Eng: ").
+    // Класс — настоящий язык ("${lang}-lang", для hide-pali/hide-english/hide-russian, wildcard
+    // [class*="-lang"] в uiextra.css) плюс .lang-2nd на второй и далее переводчик — позиционный
+    // маркер стиля (приглушённый цвет), не языковой. См. тот же приём в тексте сегментов ниже.
+    const allEntries = columns.flatMap(lang => transEntriesByLang[lang].map(entry => ({ lang, entry })));
+    const firstLang = allEntries[0] ? allEntries[0].lang : columns[0];
+    const translatorSpans = allEntries.map(({ lang, entry }, i) => {
+        let displayName = (window.siteTranslators && window.siteTranslators[lang] && window.siteTranslators[lang][entry.translatorId])
             || (entry.translatorId.charAt(0).toUpperCase() + entry.translatorId.slice(1));
-        return ` <span class="${lang}-lang" lang="${lang}"> ${displayName}</span>`;
-    })).join('') +
-    `</p></div>`;
+        let label;
+        if (i === 0) {
+            label = lang === 'ru' ? 'Пер. ' : lang === 'en' ? 'Trn: ' : `${lang}: `;
+        } else if (lang === firstLang) {
+            label = lang === 'ru' ? `Перевод ${i + 1}: ` : lang === 'en' ? `Translation ${i + 1}: ` : `${lang} ${i + 1}: `;
+        } else {
+            label = lang === 'ru' ? 'Рус: ' : lang === 'en' ? 'Eng: ' : `${lang}: `;
+        }
+        const rowClass = i === 0 ? `${lang}-lang` : `${lang}-lang lang-2nd`;
+        return `<span class="${rowClass}" lang="${lang}"> ${label}${displayName}</span>`;
+    });
+
+    const translatorByline = `<div id="trn" class="byline">
+    <p><span class="pli-lang" lang="pi">Pāḷi <a class="text-decoration-none text-reset" href="/assets/texts/abbr.html?s=ms" title="Mahāsaṅgīti Pāḷi">MS</a></span>
+    <span class="right-column">${translatorSpans.join('<br>')}</span></p></div>`;
 
     // Ссылка на тот же текст в другом режиме — для копирования/шаринга (обычный href), но клик
     // перехватывается window.switchReaderMode() и остаётся в SPA, без перезагрузки.
@@ -582,7 +621,7 @@ window.buildSutta = async function(rawSlug) {
     // reader-rus-translations.js для ru и indexBB.js для en, см. план консолидации мегаридера,
     // шаг 3.5). Никогда не смешиваем R+R/R+E с E+E.
     const modeLinkHtml = (modeKey, label, title) =>
-        `<a href="${modeLink(modeKey)}" onclick="window.switchReaderMode('${modeKey}', event)" title='${title}'>${label}</a>`;
+        `<a href="${modeLink(modeKey)}" onclick="window.switchReaderMode('${modeKey}', event)" title='${title}'>${label}</a>&nbsp;`;
 
     let scLink = `<p class="sc-link">`;
     if (columns[0] === 'en') {
@@ -593,7 +632,6 @@ window.buildSutta = async function(rawSlug) {
         scLink += modeLinkHtml('ml', 'R+E', 'Pali + Русский + Английский (Alt+2)');
         scLink += modeLinkHtml('read', 'En', 'Английский (Alt+1)');
     }
-    scLink += '&nbsp;';
 
     if (typeof window.generateThirdPartyLinks === 'function') {
         scLink += window.generateThirdPartyLinks(slug, cleanSlugReady, texttype, transEntriesByLang[columns[0]][0]?.translatorId);

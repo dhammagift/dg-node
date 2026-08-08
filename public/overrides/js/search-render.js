@@ -410,22 +410,31 @@ window.DgSearchRender = (function () {
         return baseUrl;
     }
 
-    // Ссылка на сутту/сегмент. Предпочитаем window.findFdgTextUrl (уже определена в
-    // openFdg.js, загружаемом на этой странице) — та же функция, что использует остальной
-    // сайт, с тем же baseUrl (/r/ для ru, /read/ для en и т.д., см. computeLegacyBaseUrl).
-    // Если по какой-то причине openFdg.js не загружен (например, страница переиспользуется
-    // без него) — фолбэк на наш собственный чистый URL /{suttaId}.
+    // Ссылка на сутту/сегмент — ведёт на чистый /{suttaId} route этого репозитория (ридер уже
+    // умеет: подсветку по s=, переход к сегменту по :segment/#segment, язык по lang=). Два
+    // случая, где всё ещё нужен легаси-путь через window.findFdgTextUrl/computeLegacyBaseUrl:
+    // (1) slug вообще не про ридер (bv/ja/mil/vb* и т.п., exceptions внутри findFdgTextUrl —
+    // ведут на /4nt/?q=...), (2) режим чтения, которого MODE_CONFIGS ридера ещё не покрывает
+    // (rv/d/mem/fr, Thai) — ридер не трогаем, поэтому для них оставляем как было.
     function buildSuttaUrl(suttaId, segmentId, highlightWord) {
         var segmentHash = segmentId ? (segmentId.includes(':') ? segmentId.split(':')[1] : segmentId) : null;
+        var slugForLegacy = segmentHash ? (suttaId + '#' + segmentHash) : suttaId;
 
         if (typeof window.findFdgTextUrl === 'function') {
-            var slugForLegacy = segmentHash ? (suttaId + '#' + segmentHash) : suttaId;
-            return window.findFdgTextUrl(slugForLegacy, highlightWord || '', computeLegacyBaseUrl());
+            var legacyResult = window.findFdgTextUrl(slugForLegacy, highlightWord || '', computeLegacyBaseUrl());
+            if (legacyResult.indexOf('/4nt/?q=') === 0) return legacyResult;
+
+            var unsupportedMode = ['rv', 'd', 'mem', 'fr'].indexOf(localStorage.defaultReader) !== -1;
+            var isThai = window.location.href.includes('/th') || localStorage.siteLanguage === 'th';
+            if (unsupportedMode || isThai) return legacyResult;
         }
 
+        var lang = (localStorage.dhammaLanguage || localStorage.siteLanguage || 'ru') === 'ru' ? 'ru' : 'en';
         var url = '/' + suttaId + (segmentHash ? ':' + segmentHash : '');
-        if (highlightWord) url += '?s=' + encodeURIComponent(highlightWord);
-        return url;
+        var params = [];
+        if (highlightWord) params.push('s=' + encodeURIComponent(highlightWord));
+        params.push('lang=' + lang);
+        return url + '?' + params.join('&');
     }
 
     function highlightText(text, highlightWord) {
@@ -533,15 +542,15 @@ window.DgSearchRender = (function () {
                     data: 'sutta_id',
                     orderable: false,
                     render: function (data) {
-                        var secondLangLinkHtml = '';
-                        if (window.siteLanguage !== 'en') {
-                            var langLabel = window.siteLanguage.charAt(0).toUpperCase() + window.siteLanguage.slice(1);
-                            secondLangLinkHtml = '<a class=\'' + window.siteLanguage + 'Link\' href=\'javascript:void(0)\' data-slug=\'' + data + '\' onclick="if(typeof openRu === \'function\') openRu(\'' + data + '\'); return false;">' + langLabel + '</a>';
-                        }
-
-                        return '<a href=\'javascript:void(0)\' onclick="if(typeof openDpr === \'function\') openDpr(\'' + data + '\'); return false;">Pi</a> ' +
+                        // openRu/findRuTextUrl (openRu.js) всегда резолвят русские ссылки (theravada.ru
+                        // и т.п.) независимо от того, что подставлено в подпись — показываем "Ru" только
+                        // когда интерфейс реально русский, иначе ссылка не имеет смысла для читателя.
+                        var ruLinkHtml = window.siteLanguage === 'ru'
+                            ? '<a class=\'ruLink\' href=\'javascript:void(0)\' data-slug=\'' + data + '\' onclick="if(typeof openRu === \'function\') openRu(\'' + data + '\'); return false;">Ru</a>'
+                            : '';
+                        return '<a class=\'dprLink\' href=\'javascript:void(0)\' data-slug=\'' + data + '\' onclick="if(typeof openDpr === \'function\') openDpr(\'' + data + '\'); return false;">Pi</a> ' +
                             '<a class=\'bwLink\' href=\'javascript:void(0)\' data-slug=\'' + data + '\' onclick="if(typeof openBw === \'function\') openBw(\'' + data + '\'); return false;">En</a> ' +
-                            secondLangLinkHtml;
+                            ruLinkHtml;
                     }
                 },
                 // 6: Type
@@ -590,23 +599,31 @@ window.DgSearchRender = (function () {
 
                             if (seg.translations) {
                                 var transKeys = Object.keys(seg.translations);
-                                var preferredLanguages = [window.siteLanguage, 'en'];
+                                // Английский интерфейс — только английский перевод (раньше здесь ещё и
+                                // молча показывался русский, ru читателю в en-режиме не нужен). Русский
+                                // интерфейс — русский первым, английский вторым. Раньше preferredLanguages
+                                // = [siteLanguage, 'en'] превращался в ['en','en'] в en-режиме — один и тот
+                                // же ключ добавлялся дважды без дедупликации, отсюда задвоенный перевод.
+                                var orderedLangs = window.siteLanguage === 'en' ? ['en'] : [window.siteLanguage, 'en'];
                                 var sortedTransKeys = [];
 
-                                preferredLanguages.forEach(function (lang) {
-                                    var keysForLang = transKeys.filter(function (k) { return k.startsWith(lang + '_'); });
-                                    sortedTransKeys.push.apply(sortedTransKeys, keysForLang);
+                                orderedLangs.forEach(function (lang) {
+                                    transKeys.filter(function (k) { return k.startsWith(lang + '_'); }).forEach(function (k) {
+                                        if (sortedTransKeys.indexOf(k) === -1) sortedTransKeys.push(k);
+                                    });
                                 });
-
-                                var remainingKeys = transKeys.filter(function (k) { return sortedTransKeys.indexOf(k) === -1; });
-                                sortedTransKeys.push.apply(sortedTransKeys, remainingKeys);
 
                                 sortedTransKeys.forEach(function (key) {
                                     var transText = seg.translations[key];
                                     if (!transText) return;
                                     if (!isContext) transText = highlightText(transText, highlightWord);
                                     var langCode = key.split('_')[0];
-                                    var htmlclass = (langCode === 'en') ? "eng-lang text-muted font-weight-light" : langCode + "-lang text-muted font-weight-light";
+                                    // langswitch.css задаёт display:block только для span.pli-lang/span.eng-lang —
+                                    // трёхбуквенное сокращение (eng/rus), не ISO-код. Без этого же сокращения для
+                                    // ru класс ru-lang не попадает ни под одно правило, остаётся inline по
+                                    // умолчанию — из-за этого русская и английская цитаты визуально слипались.
+                                    var langClassName = (langCode === 'en') ? 'eng-lang' : (langCode === 'ru') ? 'rus-lang' : langCode + '-lang';
+                                    var htmlclass = langClassName + " text-muted font-weight-light";
                                     if (isContext) htmlclass += " opacity-75";
 
                                     html += '<span class="' + htmlclass + ' quote" lang="' + langCode + '">' + unhiddenlink + ' ' + transText + ' ' + hiddenlink + '</span><br class="styled ' + htmlclass + ' quote" lang="' + langCode + '">';

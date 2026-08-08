@@ -156,7 +156,8 @@ p.sc-link {
 }
 
 span.pli-lang,
-span.eng-lang {
+span.eng-lang,
+span.rus-lang {
   display: block;
 }
 

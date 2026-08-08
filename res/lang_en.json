@@ -51,11 +51,29 @@
   "results": {
     "textsAndWord": "texts and",
     "matchesInWord": "matches in",
-    "defaultScopeLabel": "4 Nikaya Pali",
+    "scope4Nikaya6Kn": "4 Nikayas + 6 KN books",
+    "scope4Nikaya": "4 Nikayas",
+    "scopeAll": "the whole corpus",
     "hasVariantsSuffix": "has",
     "variantsLinkText": "variants",
     "variantsForLabel": "Variants for",
     "tooShortMessage": "Query is too short — please enter at least 3 characters.",
     "noResultsMessage": "No results found for this query."
+  },
+  "scopeNames": {
+    "dn": "Dīgha Nikāya",
+    "mn": "Majjhima Nikāya",
+    "sn": "Saṁyutta Nikāya",
+    "an": "Aṅguttara Nikāya",
+    "ud": "Udāna",
+    "snp": "Sutta Nipāta",
+    "dhp": "Dhammapada",
+    "thag": "Theragāthā",
+    "thig": "Therīgāthā",
+    "iti": "Itivuttaka",
+    "dhamma": "4 Nikayas",
+    "khudakka": "Khuddaka Nikāya",
+    "vinaya": "Vinaya",
+    "abhi": "Abhidhamma"
   }
 }

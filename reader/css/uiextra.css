@@ -121,8 +121,7 @@
     z-index:100;
   }
 
-  .byline .pli-lang,
-  .byline .rus-lang, .byline .eng-lang {
+  .byline [class*="-lang"] {
     display: inline;    /* Отменяем inline-block для byline */
     width: auto;        /* Сбрасываем ширину */
   }
@@ -305,15 +304,13 @@
 
 /* === Базовые стили для всех режимов === */
 
-.pli-lang, .eng-lang, .rus-lang {
+[class*="-lang"] {
   display: block;       /* Forces the element to take full width */
   margin-bottom: 4px;   /* Adds a little breathing room between languages */
 }
 
 
-  .column-view .pli-lang,
-  .column-view .eng-lang,
-  .column-view .rus-lang {
+  .column-view [class*="-lang"] {
     display: inline-block;
     vertical-align: top;
     text-align: left;
@@ -321,10 +318,11 @@
     word-wrap: break-word;
   }
 
-  .column-view .pli-lang:not(:empty) + .rus-lang:not(:empty),
-  .column-view .pli-lang:not(:empty) + .eng-lang:not(:empty),
-  .column-view .eng-lang:not(:empty) + .rus-lang:not(:empty) {
-    width: 48%;  
+  /* Старая раскладка (перевод прямым соседом .pli-lang, без .right-column) — сейчас
+     megareader.js всегда оборачивает переводы в .right-column (см. ниже), это правило на
+     случай прямого соседства без обёртки. */
+  .column-view .pli-lang:not(:empty) + [class*="-lang"]:not(:empty) {
+    width: 48%;
   }
 
   header .column-view .pli-lang:not(:empty) {
@@ -364,9 +362,8 @@
     max-width: 48%;
   }
 
-  /* Переводы внутри right-column — блочные элементы */
-  .column-view .right-column .rus-lang,
-  .column-view .right-column .eng-lang {
+  /* Переводы внутри right-column — блочные элементы (любой язык, любое число переводчиков) */
+  .column-view .right-column [class*="-lang"] {
     display: block;
     width: 100%;
     margin: 0; /* Убираем все внешние отступы */
@@ -379,9 +376,7 @@
   }
 
   /* Скрытие пустых */
-  .column-view .pli-lang:empty,
-  .column-view .eng-lang:empty,
-  .column-view .rus-lang:empty {
+  .column-view [class*="-lang"]:empty {
     display: none;
   }
 
@@ -554,7 +549,7 @@
   }
 
   /* Делаем родительские элементы контекстом для позиционирования */
-  .pli-lang, .rus-lang, .eng-lang, .variant {
+  [class*="-lang"], .variant {
     position: relative;
   }
 
@@ -601,10 +596,7 @@
 }
 
 @media (min-width: 992px) {
-  .pli-lang:hover .copyLink-start,
-  .rus-lang:hover .copyLink-start,
-  .eng-lang:hover .copyLink-start,
-  .tha-lang:hover .copyLink-start,
+  [class*="-lang"]:hover .copyLink-start,
   .variant:hover .copyLink-start {
       /* Цвет с прозрачностью 30% (0.3) */
     opacity: 0.9;
@@ -655,15 +647,13 @@
 }
 
 /* 1. Общее правило для обычного текста (оставляем как есть) */
-.sutta.hide-pali .rus-lang,
-.sutta.hide-pali .eng-lang {
+.sutta.hide-pali [class*="-lang"]:not(.pli-lang) {
     display: block;
     margin-bottom: 8px; /* Отступ для абзацев */
 }
 
 /* 2. СПЕЦИАЛЬНОЕ правило для стихов: убираем отступ */
-.sutta.hide-pali .verse-line .rus-lang,
-.sutta.hide-pali .verse-line .eng-lang {
+.sutta.hide-pali .verse-line [class*="-lang"]:not(.pli-lang) {
     margin-bottom: 0; /* Строки стиха будут прижаты друг к другу */
 }
 
@@ -1054,7 +1044,7 @@
   box-shadow: 0 0 0 1px rgba(var(--bs-secondary-rgb), 0.15);
 }
 
-.pli-lang, .rus-lang, .eng-lang {
+[class*="-lang"] {
   transition: background-color 260ms ease-in-out;
 }
 
@@ -1376,7 +1366,7 @@ smart TOC
 }
 
 
-.second-translation-row {
+.lang-2nd {
   color: #666;
 }
 

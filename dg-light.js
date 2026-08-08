@@ -134,6 +134,12 @@ function getVariantPath(suttaId) {
     return path.join(SC_BILARA, 'variant', meta.dir_path, `${suttaId}_variant-pli-ms.json`);
 }
 
+function getHtmlPath(suttaId) {
+    const meta = skeletonDB[suttaId];
+    if (!meta) return null;
+    return path.join(SC_BILARA, 'html', meta.dir_path, `${suttaId}_html.json`);
+}
+
 // Рекурсивный обход directory в поиске файлов "{suttaId}_*.json" — без внешнего find
 // (на Windows системный find.exe — это MS-DOS find, не POSIX find, полагаться на PATH нельзя)
 async function findFilesByPrefix(dir, prefix) {
@@ -946,7 +952,7 @@ async function buildFastResponse(keyword, searchScope, exactMatch, targetLangs, 
 
     if (empty || suttaIds.length === 0) {
         return {
-            metadata: { query: keyword, scope: searchScope || 'default', langs: targetLangs, totalFiles: 0, totalMatches: 0, hasVariantMatch: false, partial: true },
+            metadata: { query: keyword, scope: searchScope || 'default', resolvedPrefixes: resolveAllowedPrefixes(searchScope), langs: targetLangs, totalFiles: 0, totalMatches: 0, hasVariantMatch: false, partial: true },
             data: {},
             wordReport: [],
             variantSegments: []
@@ -965,7 +971,7 @@ async function buildFastResponse(keyword, searchScope, exactMatch, targetLangs, 
 
     return {
         metadata: {
-            query: keyword, scope: searchScope || 'default', langs: targetLangs,
+            query: keyword, scope: searchScope || 'default', resolvedPrefixes: resolveAllowedPrefixes(searchScope), langs: targetLangs,
             totalFiles: suttaIds.length, totalMatches, hasVariantMatch: variantSegments.length > 0, partial: true
         },
         data: sortedData,
@@ -1248,7 +1254,6 @@ async function enrichSuttaBatch(searchResults, suttaIds, targetLangs, keyword, s
                 const t = findBySegId(translationLinesByKey[key], segObj.segment);
                 if (t) segObj.translations[key] = t.text;
             }
-            segObj.html = skeletonDB[suttaId]?.html?.[segObj.segment] || '';
         };
 
         const uniqueWordsSet = new Set();
@@ -1304,6 +1309,7 @@ async function searchWithGrep(keyword, searchScope, exactMatch, targetLangs, lb 
         metadata: {
             query: keyword,
             scope: searchScope || 'default',
+            resolvedPrefixes: resolveAllowedPrefixes(searchScope),
             langs: targetLangs,
             lb, la, exactMatch,
             totalFiles: Object.keys(sortedData).length,
@@ -1332,6 +1338,11 @@ async function getFullTextData(suttaId, targetLangs, explicitTranslators) {
         ? JSON.parse(await fs.readFile(variantPath, 'utf8').catch(() => '{}'))
         : {};
 
+    const htmlPath = getHtmlPath(suttaId);
+    const htmlData = htmlPath
+        ? JSON.parse(await fs.readFile(htmlPath, 'utf8').catch(() => '{}'))
+        : {};
+
     const translationFiles = await findTranslationFiles(suttaId, targetLangs, explicitTranslators);
     const translationsData = {};
     for (const [transKey, tPath] of Object.entries(translationFiles)) {
@@ -1347,7 +1358,7 @@ async function getFullTextData(suttaId, targetLangs, explicitTranslators) {
             segment: id,
             root_text: rootData[id] || '',
             variant: variantData[id] || '',
-            html: suttaMeta.html?.[id] || '',
+            html: htmlData[id] || '',
             translations: tr
         };
     });
@@ -1414,7 +1425,7 @@ async function searchHandler(req, res) {
 
     if (keyword.length < MIN_KEYWORD_LENGTH) {
         return res.json({
-            metadata: { query: keyword, scope: scope || 'default', langs: targetLangs, totalFiles: 0, totalMatches: 0, hasVariantMatch: false, tooShort: true },
+            metadata: { query: keyword, scope: scope || 'default', resolvedPrefixes: resolveAllowedPrefixes(scope), langs: targetLangs, totalFiles: 0, totalMatches: 0, hasVariantMatch: false, tooShort: true },
             data: {}, wordReport: [], variantSegments: []
         });
     }
@@ -1467,7 +1478,7 @@ app.get('/search/enrich', async (req, res) => {
         res.json({
             data: sortedData,
             wordReport: buildWordReport(searchResults), // не buildWordReportFast — та же семантика wordReport, что и полный /search (searchWithGrep), т.к. unique_words уже посчитаны enrichSuttaBatch
-            metadata: { query: keyword, scope: scope || 'default', langs: targetLangs, lb, la, exactMatch: exact, totalFiles: suttaIds.length, totalMatches, hasVariantMatch: variantSegments.length > 0 },
+            metadata: { query: keyword, scope: scope || 'default', resolvedPrefixes: resolveAllowedPrefixes(scope), langs: targetLangs, lb, la, exactMatch: exact, totalFiles: suttaIds.length, totalMatches, hasVariantMatch: variantSegments.length > 0 },
             variantSegments
         });
     } catch (error) {

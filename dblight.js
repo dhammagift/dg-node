@@ -96,12 +96,11 @@ async function compileLightSkeleton() {
             const relativeFilePath = path.relative(rootPath, fullPath).replace(/\\/g, '/');
             const dirPath = path.dirname(relativeFilePath); // Папка, например: pli/ms/sutta/dn
 
-            db[suttaId] = { 
-                category: 'other', 
-                dir_path: dirPath, 
-                title: '', 
-                mr: 0, 
-                html: {} 
+            db[suttaId] = {
+                category: 'other',
+                dir_path: dirPath,
+                title: '',
+                mr: 0
             };
             
             if (textInfoData[suttaId] && textInfoData[suttaId].mtph) {
@@ -129,15 +128,14 @@ async function compileLightSkeleton() {
         }
     });
 
-    console.log('2. Parsing HTML structure...');
+    console.log('2. Scanning HTML presence...');
+    // Html-контент больше не хранится в скелете (читается по запросу в dg-light.js,
+    // getHtmlPath()/getFullTextData() — см. TODO.md, ридер п.5). Здесь нужен только сам факт
+    // наличия html-файла у сутты — это исторически было условием включения в финальный
+    // скелет (см. шаг 3 ниже), парсить содержимое незачем.
+    const htmlSuttaIds = new Set();
     await walkDirectory(htmlPath, async (fullPath, fileName) => {
-        const suttaId = fileName.split('_')[0];
-        if (!db[suttaId]) return;
-        const data = await readJson(fullPath);
-        
-        for (const [segmentId, htmlTag] of Object.entries(data)) {
-            db[suttaId].html[segmentId] = htmlTag;
-        }
+        htmlSuttaIds.add(fileName.split('_')[0]);
     });
 
     console.log('3. Formatting and sorting Skeleton...');
@@ -147,7 +145,7 @@ async function compileLightSkeleton() {
     );
 
     for (const suttaId of sortedSuttas) {
-        if (Object.keys(db[suttaId].html).length > 0) {
+        if (htmlSuttaIds.has(suttaId)) {
             finalSkeleton[suttaId] = db[suttaId];
         }
     }

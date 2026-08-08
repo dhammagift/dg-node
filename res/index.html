@@ -549,11 +549,11 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     <li><strong>Count</strong> – Количество совпадений в тексте, включая варианты</li>  
     <li><strong>Metaphor Count</strong> – Количество сравнений/метафор в тексте (не связано с искомым словом). Полезно для выявления метафорических текстов</li>  
     <li><strong>Links</strong> – Ссылки на внешние ресурсы</li>  
-    <li><strong>Type</strong> –  
-        <em>dhamma</em> – Четыре основных Никаи  
-        <em>khudakka</em> – Все книги Khuddaka Nikaya  
-        <em>vinaya</em> – Все тексты, относящиеся к Виная  
-    </li>  
+    <li><strong>Type</strong> –
+        <em>4 Никаи</em> – Дигха, Мадджхима, Саньютта, Ангуттара Никая
+        <em>Кхуддака Никая</em> – Все книги Khuddaka Nikaya
+        <em>Виная</em> – Все тексты, относящиеся к Виная
+    </li>
     <li><strong>Quote</strong> – Цитата с найденным словом</li>  
 </ul>
 
@@ -805,9 +805,69 @@ $(document).ready(function() {
             if (enrichmentStarted) {
                 table.off('draw.enrich').on('draw.enrich', function () { enrichIds(visiblePageIds()); });
             }
+            // Pi/En/Ru — не зависят от enrichment (нужен только sutta_id), поэтому вешаем всегда,
+            // на каждую перерисовку (новая страница пагинации = новые строки в DOM).
+            table.off('draw.links').on('draw.links', wireResultLinks);
+            wireResultLinks();
         }
         currentTable = table;
         applyFilterValue(table);
+    }
+
+    // Pi/En/Ru колонка ссылок (.dprLink/.bwLink/.ruLink) — данные и логика (linksdpr.js/openDpr.js,
+    // linksru.js/openRu.js, linksbw.js/openBw.js, ~469 КБ суммарно) больше не грузятся статикой на
+    // каждой загрузке страницы — только лениво, один раз, при первом появлении таких ссылок в
+    // результатах (загружается что угодно раньше — DOM-скан ждёт). Порядок: сначала data-файлы
+    // (linksdpr.js и т.п. — определяют dprLinksData/thruLinksData/tbwLinksData), потом logic-файлы
+    // (openDpr.js и т.п. — читают эти массивы синхронно при загрузке для part of их init).
+    var piEnRuScriptsPromise = null;
+    function loadPiEnRuScripts() {
+        if (piEnRuScriptsPromise) return piEnRuScriptsPromise;
+        var srcs = [
+            '/assets/js/linksdpr.js', '/assets/js/openDpr.js',
+            '/assets/js/linksru.js', '/assets/js/openRu.js',
+            '/assets/js/linksbw.js', '/assets/js/openBw.js'
+        ];
+        piEnRuScriptsPromise = srcs.reduce(function (chain, src) {
+            return chain.then(function () {
+                return new Promise(function (resolve, reject) {
+                    var script = document.createElement('script');
+                    script.src = src;
+                    script.onload = resolve;
+                    script.onerror = reject;
+                    document.head.appendChild(script);
+                });
+            });
+        }, Promise.resolve());
+        return piEnRuScriptsPromise;
+    }
+
+    // Переиспользует те же глобальные find*Url-функции, что и раньше (ничего не дублируем) —
+    // просто перевызывается после каждой отрисовки таблицы, как enrichIds выше, только для этой
+    // колонки (строки таблицы появляются асинхронно, а не сразу в HTML как на легаси-странице).
+    function wireResultLinks() {
+        var hasAnyLink = document.querySelector('#pali .bwLink, #pali .ruLink, #pali .dprLink');
+        if (!hasAnyLink) return;
+        if (typeof getDprUrl !== 'function') {
+            loadPiEnRuScripts().then(wireResultLinks);
+            return;
+        }
+        var searchValue = (typeof getSearchValue === 'function') ? getSearchValue() : '';
+        document.querySelectorAll('#pali .bwLink').forEach(function (link) {
+            var slug = link.getAttribute('data-slug');
+            var textUrl = (typeof findBwTextUrl === 'function') ? findBwTextUrl(slug, searchValue) : null;
+            if (!textUrl) { link.style.display = 'none'; } else { link.href = textUrl; link.target = '_blank'; }
+        });
+        document.querySelectorAll('#pali .ruLink').forEach(function (link) {
+            var slug = link.getAttribute('data-slug');
+            var textUrl = (typeof findRuTextUrl === 'function') ? findRuTextUrl(slug) : null;
+            if (!textUrl) { link.style.display = 'none'; } else { link.href = textUrl; link.target = '_blank'; }
+        });
+        document.querySelectorAll('#pali .dprLink').forEach(function (link) {
+            var slug = link.getAttribute('data-slug');
+            var textUrl = (typeof getDprUrl === 'function') ? getDprUrl(slug) : null;
+            if (!textUrl) { link.style.display = 'none'; } else { link.href = textUrl; link.target = '_blank'; }
+        });
     }
 
     function visiblePageIds() {
@@ -868,7 +928,10 @@ $(document).ready(function() {
         }
     }
 
-    $('.forshellscript a').on('click', function (e) {
+    // Обработчик висел только на вложенном <a> (51×17px), а не на всей видимой кнопке
+    // (78×38px) — клик мимо текста, но по кнопке, ничего не делал, отсюда "приходится
+    // кликать дважды". Вешаем на саму кнопку .forshellscript — так кликабельна вся её площадь.
+    $('.forshellscript').on('click', function (e) {
         e.preventDefault();
         reportMode = reportMode === 'words' ? 'suttas' : 'words';
         renderCurrentReport();
@@ -930,11 +993,34 @@ $(document).ready(function() {
         window.location.href = url;
     });
 
+    // Человеко-читаемый scope-лейбл вместо сырых технических полей (scope='dhamma' и т.п. —
+    // внутренние имена, пользователю видны быть не должны) — резолвим по списку префиксов,
+    // который сервер теперь всегда присылает в metadata.resolvedPrefixes (dg-light.js,
+    // resolveAllowedPrefixes()). DEFAULT_SCOPE_PREFIXES здесь — копия той же константы из
+    // dg-light.js, держать в синхроне при изменении набора default-scope книг.
+    var DEFAULT_SCOPE_PREFIXES = ['dn', 'mn', 'sn', 'an', 'ud', 'snp', 'dhp', 'thag', 'thig', 'iti'];
+    var FOUR_NIKAYA_PREFIXES = ['dn', 'mn', 'sn', 'an'];
+
+    function sameSet(a, b) {
+        if (a.length !== b.length) return false;
+        var sortedA = a.slice().sort();
+        var sortedB = b.slice().sort();
+        return sortedA.every(function (v, i) { return v === sortedB[i]; });
+    }
+
+    function buildScopeLabel(resolvedPrefixes) {
+        var prefixes = resolvedPrefixes || DEFAULT_SCOPE_PREFIXES;
+        if (sameSet(prefixes, ['all'])) return t('results.scopeAll', 'the whole corpus');
+        if (sameSet(prefixes, DEFAULT_SCOPE_PREFIXES)) return t('results.scope4Nikaya6Kn', '4 Nikayas + 6 KN books');
+        if (sameSet(prefixes, FOUR_NIKAYA_PREFIXES)) return t('results.scope4Nikaya', '4 Nikayas');
+        return prefixes.map(function (p) { return t('scopeNames.' + p, p); }).join(', ');
+    }
+
     // Заголовок результатов + видимость ссылки на варианты — вызывается дважды: сразу с
     // приблизительными числами фазы 1 (?fast=1) и повторно, когда фоновый полный /search
     // подвезёт точные totalMatches/hasVariantMatch (TODO.md поиск п.5).
     function renderResultHeader(json) {
-        let scopeText = json.metadata.scope === 'default' || !json.metadata.scope ? t('results.defaultScopeLabel', '4 Nikaya Pali') : json.metadata.scope;
+        let scopeText = buildScopeLabel(json.metadata.resolvedPrefixes);
 
         let qStr = json.metadata.query || "";
         let capitalizedQuery = qStr ? qStr.charAt(0).toUpperCase() + qStr.slice(1) : "";
@@ -1030,13 +1116,10 @@ $(document).ready(function() {
 </script>
         <script src="/assets/js/openFdg.js"></script>
 	  <script src="/assets/js/smoothScroll.js" defer></script>
-    <script defer type="module" src="/assets/js/langswitch.js"></script>     
-    <script src="/assets/js/linksdpr.js"></script>
-        <script src="/assets/js/openDpr.js"></script>
-                <script src="/assets/js/linksru.js"></script>
-        <script src="/assets/js/openRu.js"></script>
-        <script src="/assets/js/linksbw.js"></script>
-                <script src="/assets/js/openBw.js"></script>
+    <script defer type="module" src="/assets/js/langswitch.js"></script>
+    <!-- linksdpr.js/openDpr.js, linksru.js/openRu.js, linksbw.js/openBw.js — теперь загружаются
+         лениво, см. loadPiEnRuScripts() в wireResultLinks() выше: незачем парсить ~469 КБ
+         ссылочных данных на каждой загрузке страницы, если в ней ещё нет результатов поиска. -->
                 <script src="/assets/js/settings.js"></script>
 <script src="/assets/js/themeswitch.js" defer></script>
 

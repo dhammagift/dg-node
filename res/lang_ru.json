@@ -51,11 +51,29 @@
   "results": {
     "textsAndWord": "текстов и",
     "matchesInWord": "совпадений в",
-    "defaultScopeLabel": "4 Никаи Пали",
+    "scope4Nikaya6Kn": "4 Никаи + 6 КН",
+    "scope4Nikaya": "4 Никаи",
+    "scopeAll": "весь корпус",
     "hasVariantsSuffix": "есть",
     "variantsLinkText": "варианты",
     "variantsForLabel": "Варианты для",
     "tooShortMessage": "Слишком короткий запрос — введите не менее 3 символов.",
     "noResultsMessage": "По запросу ничего не найдено."
+  },
+  "scopeNames": {
+    "dn": "Дигха Никая",
+    "mn": "Маджхима Никая",
+    "sn": "Саньютта Никая",
+    "an": "Ангуттара Никая",
+    "ud": "Удана",
+    "snp": "Сутта Нипата",
+    "dhp": "Дхаммапада",
+    "thag": "Тхерагатха",
+    "thig": "Тхеригатха",
+    "iti": "Итивуттака",
+    "dhamma": "4 Никаи",
+    "khudakka": "Кхуддака Никая",
+    "vinaya": "Виная",
+    "abhi": "Абхидхамма"
   }
 }
