@@ -5,16 +5,18 @@ const fsSync = require('fs');
 const util = require('util');
 const execFile = util.promisify(require('child_process').execFile);
 const swaggerUi = require('swagger-ui-express');
-const openapiSpec = require('./openapi.json');
-const openapiSpecEn = require('./openapi.en.json');
+const openapiSpec = require('./configs/openapi.json');
+const openapiSpecEn = require('./configs/openapi.en.json');
 
 const app = express();
 const PORT = 3000;
 
-// Документация API — /api-docs. openapi.json/openapi.en.json описывают /search, /search/enrich,
-// /api/text, /api/nav и т.п.: какие параметры есть, что обязательно, что возвращается.
-// Раздаём оба JSON-файла напрямую — нужно для выпадающего списка языков ниже (Swagger UI
-// переключает спеки по URL, не по встроенному объекту).
+// Документация API — /api-docs. configs/openapi.json/openapi.en.json описывают /search,
+// /search/enrich, /api/text, /api/nav и т.п.: какие параметры есть, что обязательно, что
+// возвращается. Раздаём оба JSON-файла напрямую — нужно для выпадающего списка языков ниже
+// (Swagger UI переключает спеки по URL, не по встроенному объекту). URL остаётся /openapi.json
+// (без /configs) — это отдельный app.get(), не статика, физический путь на диске клиенту не
+// виден и никого не касается.
 app.get('/openapi.json', (req, res) => res.json(openapiSpec));
 app.get('/openapi.en.json', (req, res) => res.json(openapiSpecEn));
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(null, {
@@ -67,7 +69,11 @@ let offlineMirrors = new Set();
 try {
     offlineMirrors = new Set(
         fsSync.readdirSync(OFFLINE_MIRRORS_ROOT, { withFileTypes: true })
-            .filter(d => d.isDirectory())
+            // isDirectory() смотрит на сырой тип записи и для symlink'а на директорию даёт
+            // false, даже если цель реально директория (проверено эмпирически) — офлайн-зеркала
+            // почти наверняка symlink'и на реальные данные, а не сами данные — без
+            // isSymbolicLink() они бы молча не подхватывались этим циклом.
+            .filter(d => d.isDirectory() || d.isSymbolicLink())
             .map(d => d.name)
     );
 } catch (e) {
@@ -75,7 +81,7 @@ try {
 }
 
 const readerTemplatePath = path.join(__dirname, 'reader', 'reader-template.html');
-const searchIndexPath = path.join(__dirname, 'res', 'index.html');
+const searchIndexPath = path.join(__dirname, 'search', 'index.html');
 
 const skeletonPath = path.join(__dirname, 'dg_db_light.json');
 let skeletonDB = {};
@@ -109,32 +115,59 @@ app.use('/assets', express.static(path.join(__dirname, 'public', 'overrides')));
 // Windows-машине — обычная папка с локальными копиями для разработки, см. README).
 app.use('/assets', express.static(path.join(__dirname, 'public', 'assets')));
 app.use('/spa', express.static(path.join(__dirname, 'public', 'spa')));
-app.use('/nodejs/res', express.static(path.join(__dirname, 'res')));
+// URL-префикс /nodejs/res сознательно НЕ переименован вслед за папкой (обратная совместимость
+// путей) — папка на диске называется search/ (см. CLAUDE.md "Структура проекта"), а
+// /nodejs/res/... как публичный URL как был, так и остался.
+app.use('/nodejs/res', express.static(path.join(__dirname, 'search')));
+// lang_ru.json/lang_en.json (поисковый UI) физически переехали в configs/search/ — все конфиги
+// проекта в одном месте (см. CLAUDE.md). URL не менялся (клиент шлёт fetch на /nodejs/res/lang_
+// {lang}.json, см. search/index.html DHAMMA_LANG_CONFIG_PATTERN) — второй static-маунт на тот же
+// префикс просто добавляет ещё одно место поиска файла, express пробует по очереди.
+app.use('/nodejs/res', express.static(path.join(__dirname, 'configs', 'search')));
 app.use('/nodejs', express.static(__dirname));
 app.use('/reader', express.static(path.join(__dirname, 'reader')));
+// mode-table.json/translator-priority.json/lang_ru.json/lang_en.json (ридер) физически
+// переехали в configs/reader/ — тот же приём, что и с /nodejs/res выше: URL /reader/*.json не
+// менялся (megareader.js/reader-template.html фетчат по старым путям), просто ещё один
+// static-маунт на тот же префикс.
+app.use('/reader', express.static(path.join(__dirname, 'configs', 'reader')));
 // /read/js/voice.js, voice-mem.js — settings.js (легаси, не трогаем) грузит их динамически
 // строго по клику/хоткею/автоплею с жёстко зашитым путём "/read/js/voice.js"; сами файлы не
 // изменены относительно легаси-репо, так что здесь просто symlink (см. read/js/*).
 app.use('/read', express.static(path.join(__dirname, 'read')));
 
-// memo/ и login/ — отдельные самодостаточные легаси-приложения (Memorization Helper, вход/
-// облачная синхронизация), symlink на легаси-репо целиком (см. memo/, login/). В легаси у них
-// были ещё и языковые алиасы ru/memo, ru/login (directory symlink на ../memo, ../login) —
-// здесь тот же контент просто примонтирован ещё и под /ru/, без второго симлинка.
-app.use('/memo', express.static(path.join(__dirname, 'memo')));
-app.use('/ru/memo', express.static(path.join(__dirname, 'memo')));
-app.use('/login', express.static(path.join(__dirname, 'login')));
-app.use('/ru/login', express.static(path.join(__dirname, 'login')));
-// 4nt/ — другое самодостаточное легаси-приложение (сравнение изданий пали, s.4nt.org), тот же
-// паттерн что и memo/login: symlink на легаси-репо (см. 4nt/), это дерево — единственный
-// источник, куда get4ntUrl() (settings.js) строит ссылки (basePath = "/4nt").
-app.use('/4nt', express.static(path.join(__dirname, '4nt')));
-// config/ — тот же паттерн, symlink на легаси-репо (см. config/). Нужен как минимум
-// read/js/voice.js (fetch('/config/tts-config.json') за пробным TTS-ключом) — раньше 404-ился
-// молча (try/catch в voice.js), TTS не получал ключ вообще. ВАЖНО: config/ отдаёт ВСЁ, что там
-// лежит (config.php, serverconfigs, translate.php, sync-config.json и т.п.), не только
-// tts-config.json — та же экспозиция, что уже есть в легаси-проде на этом каталоге.
-app.use('/config', express.static(path.join(__dirname, 'config')));
+// mirrors/ — публикация от корня сайта самодостаточных легаси-приложений и сторонних тулз
+// (Memorization Helper, вход/облачная синхронизация, 4nt — сравнение изданий пали, конфиги
+// TTS-ключей и т.п.). Каждый элемент — symlink на реальную папку рядом с проектом (на проде,
+// например, `mirrors/4nt` -> `../../4nt`, т.е. `/var/www/html/4nt`, сосед `nodejs/`) ИЛИ
+// обычная папка/файл прямо здесь. Никакого хардкода per-инструмент: что появилось в mirrors/ —
+// то и замаунтилось на /{имя} на следующем старте сервера (папка сканируется один раз при
+// старте, не на каждый запрос — новый symlink требует рестарта; правки ВНУТРИ уже
+// примонтированной папки видны сразу, без рестарта). Чтобы добавить новую тулзу/зеркало —
+// просто положить symlink (или реальные файлы) в mirrors/, рестартовать сервер, ничего в
+// коде трогать не нужно.
+const MIRRORS_ROOT = path.join(__dirname, 'mirrors');
+let siteMirrors = new Set();
+try {
+    siteMirrors = new Set(
+        fsSync.readdirSync(MIRRORS_ROOT, { withFileTypes: true })
+            // Dirent.isDirectory() отражает СЫРОЙ тип записи (d_type) и для symlink'а на
+            // директорию возвращает false, даже если цель — директория (проверено эмпирически,
+            // node -e с реальным symlink) — нужно явно включать isSymbolicLink() тоже, иначе
+            // все реальные записи в mirrors/ (это же и есть symlink'и) молча отфильтруются.
+            .filter(d => d.isDirectory() || d.isSymbolicLink())
+            .map(d => d.name)
+    );
+} catch (e) {
+    console.warn('Site mirrors root not found:', MIRRORS_ROOT);
+}
+for (const name of siteMirrors) {
+    app.use(`/${name}`, express.static(path.join(MIRRORS_ROOT, name)));
+}
+// ru/memo, ru/login — унаследованные от легаси языковые алиасы (тот же контент ещё и под /ru/).
+// Это не отдельная тулза в mirrors/, а второй URL для уже примонтированной — оставлены явно.
+app.use('/ru/memo', express.static(path.join(MIRRORS_ROOT, 'memo')));
+app.use('/ru/login', express.static(path.join(MIRRORS_ROOT, 'login')));
 
 // Офлайн-зеркала сторонних сайтов — /{имя-папки}/... отдаётся как статика напрямую из offline-data
 for (const name of offlineMirrors) {
@@ -209,12 +242,16 @@ async function findFilesByPrefix(dir, prefix) {
 // здесь не ломаются: filterPreferredTranslators() просто берёт первый найденный перевод
 // (см. ниже), так что новый язык из SC-репо читается сразу, без правки кода — приоритет
 // добавляется в этот файл только когда для языка есть за что выбирать.
-const TRANSLATOR_PRIORITY = require('./reader/translator-priority.json');
+// Физически лежит в configs/reader/ (все конфиги проекта собраны в одном месте, см. CLAUDE.md
+// "Структура проекта"), но URL остаётся /reader/translator-priority.json — см. второй
+// express.static на /reader ниже, серверный require() и клиентский fetch() указывают на один
+// и тот же файл двумя разными путями (диск vs URL), это нормально и намеренно.
+const TRANSLATOR_PRIORITY = require('./configs/reader/translator-priority.json');
 
 // Единственный источник истины для "что значит режим mt/ml/ee и т.п." — раньше эту логику
 // (columns/multiFor на каждый режим) дублировал клиент (MODE_CONFIGS в reader-template.html),
 // теперь резолвится здесь, клиент просто шлёт ?mode= (см. /api/text/:suttaId).
-const MODE_TABLE = require('./reader/mode-table.json');
+const MODE_TABLE = require('./configs/reader/mode-table.json');
 
 function filterPreferredTranslators(results, multiForLangs) {
     const multiSet = new Set(multiForLangs || []);
@@ -636,7 +673,7 @@ async function getGrepTargetFiles(suttaId, targetLangs) {
 
 // Легаси делает главный keyword-grep РОВНО ОДИН РАЗ на запрос. Наша фазированная загрузка
 // (TODO.md поиск п.5) без кеша гоняла его дважды за одну и ту же выдачу — один раз в
-// ?fast=1, и снова в фоновом полном /search несколько секунд спустя (см. res/index.html
+// ?fast=1, и снова в фоновом полном /search несколько секунд спустя (см. search/index.html
 // ensureEnrichmentStarted), плюс ЕЩЁ раз (по restrictToIds, отдельным способом — см. ниже)
 // в /search/enrich за видимую страницу. Три прохода по корпусу на один и тот же keyword —
 // то самое "дальше не сделал хорошо". Короткоживущий кеш полного (нерестриктнутого)
@@ -856,7 +893,7 @@ async function buildMatchSkeleton(keyword, searchScope, exactMatch, targetLangs,
     const cacheKey = skeletonCacheKey(keyword, searchScope, exactMatch, targetLangs);
 
     // И /search/enrich, и фоновый полный /search почти всегда идут следом за ?fast=1 в течение
-    // секунд, для того же запроса (см. initSearchApp/ensureEnrichmentStarted в res/index.html) —
+    // секунд, для того же запроса (см. initSearchApp/ensureEnrichmentStarted в search/index.html) —
     // переиспользуем скелет, который ?fast=1 уже посчитал, вместо повторного grep по всему
     // корпусу. Промах (прямой вызов без предшествующего fast=1, либо кеш протух за 60с) — падаем
     // обратно на честный grep ниже.
@@ -1685,10 +1722,10 @@ ${items}
 }
 
 // Чистые URL: /dn22 → ридер, /dn22:12.1 → ридер с прокруткой к сегменту (разбор ":" — на клиенте),
-// /kacchapa → страница поиска (res/index.html сам читает слово из пути — initSearchApp, если нет
+// /kacchapa → страница поиска (search/index.html сам читает слово из пути — initSearchApp, если нет
 // ?q=). Старый формат /?q=kacchapa#12.1 по-прежнему полностью рабочий как ВХОДНОЙ формат (старые
 // ссылки/закладки) — initSearchApp читает ?q= первым делом, до пути — но сами мы теперь никогда
-// не генерируем ?q=, только чистый путь (см. res/index.html, submit-обработчик #form). Раньше
+// не генерируем ?q=, только чистый путь (см. search/index.html, submit-обработчик #form). Раньше
 // здесь был redirect на /?q=..., то есть адрес в строке браузера всё равно "портился" обратно
 // в ?q= даже для собственной навигации сайта — теперь просто отдаём ту же страницу поиска прямо
 // по чистому пути, без редиректа.

@@ -19,7 +19,7 @@
 window.DgSearchRender = (function () {
 
     // Строки интерфейса тянем из window.DHAMMA_I18N.config (см. public/overrides/js/dhamma-i18n.js
-    // + res/lang_{ru,en}.json) — этот файл не завязан на конкретную HTML-страницу, поэтому читает
+    // + configs/search/lang_{ru,en}.json) — этот файл не завязан на конкретную HTML-страницу, поэтому читает
     // конфиг через глобал (как уже сделано для window.siteLanguage/window.findFdgTextUrl), а не
     // получает строки параметром. Если конфиг ещё не загрузился (или страница вообще не подключила
     // dhamma-i18n.js) — используется fallback, тот же текст, что был жёстко закодирован раньше.
@@ -361,7 +361,7 @@ window.DgSearchRender = (function () {
             dom: tableDom,
             buttons: buildButtons(),
             // "Search:" -> "Фильтр:" — на этой странице DataTables-фильтр не должен путаться
-            // с будущим SPA-поиском (hero-форма в res/index.html, пока скрыта).
+            // с будущим SPA-поиском (hero-форма в search/index.html, пока скрыта).
             language: {
                 search: t('datatables.search', 'Search:'),
                 lengthMenu: t('datatables.lengthMenu', '_MENU_ per page'),
@@ -630,7 +630,7 @@ window.DgSearchRender = (function () {
                     render: function (data, type, row) {
                         // TODO.md поиск п.5: phase-1 (?fast=1) rows have placeholder segments —
                         // quotes/context arrive via a follow-up /search/enrich call, at which
-                        // point res/index.html re-renders with row.__enriched set to true.
+                        // point search/index.html re-renders with row.__enriched set to true.
                         if (row.__enriched === false) {
                             return '<span class="text-muted small">' + t('buttons.loading', 'Loading...') + '</span>';
                         }

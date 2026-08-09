@@ -1,4 +1,4 @@
-// Universal search/reader input classifier — shared between res/index.html (search results
+// Universal search/reader input classifier — shared between search/index.html (search results
 // page) and reader/reader-template.html (reader page), so both boxes behave identically:
 // typing a text/chapter reference opens it, anything else runs a keyword search.
 //

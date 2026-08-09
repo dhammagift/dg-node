@@ -40,10 +40,12 @@ curl -I "http://localhost:3000/dn22:10.5"                             # сегм
 
 ```
 dg-light.js          — единый Express-сервер: /search, /api/text/:suttaId,
-                        статика (res/, reader/, public/assets/), офлайн-зеркала,
+                        статика (search/, reader/, public/assets/), офлайн-зеркала,
                         чистые URL (/dn22, /dn22:12.1)
 dblight.js            — билд-скрипт → dg_db_light.json (скелет БД)
-res/                  — страница поиска (DataTables)
+search/               — страница поиска (DataTables); URL остался /nodejs/res/... (см. CLAUDE.md)
 reader/               — ридер (reader-template.html + megareader.js)
+configs/              — json-конфиги проекта (openapi, reader/*, search/*), см. CLAUDE.md
+docs/                  — документация не для каждой сессии (SPA-планы, backward compat)
 public/assets/        — все статические ассеты (перенесены из легаси-репо)
 ```
