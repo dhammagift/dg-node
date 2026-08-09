@@ -231,12 +231,14 @@ window.DHAMMA_I18N = (() => {
     // Storage may be unavailable in privacy modes.
   }
 
+  // Fallback default is "en" (per user decision) — a visitor with no ?lang=, no stored
+  // preference, and no data-default-lang override sees the English interface first.
   const initialLanguage =
     window.DHAMMA_LANG ||
     queryLanguage ||
     storedLanguage ||
     document.documentElement.dataset.defaultLang ||
-    "ru";
+    "en";
 
   window.setSiteLanguage = setSiteLanguage;
   window.DHAMMA_I18N_READY = setSiteLanguage(initialLanguage).catch(error => {

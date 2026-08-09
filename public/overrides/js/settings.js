@@ -1909,7 +1909,7 @@ document.addEventListener("keydown", function (event) {
     event.preventDefault();
 
     if (typeof window.setSiteLanguage !== "function") return;
-    var current = (window.DHAMMA_I18N && window.DHAMMA_I18N.language) || document.documentElement.lang || "ru";
+    var current = (window.DHAMMA_I18N && window.DHAMMA_I18N.language) || document.documentElement.lang || "en";
     var next = current.toLowerCase().startsWith("ru") ? "en" : "ru";
     window.setSiteLanguage(next);
   }

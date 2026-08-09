@@ -63,7 +63,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
 -->
 
 <!DOCTYPE html>
-<html data-bs-theme="light" data-default-lang="ru">
+<html data-bs-theme="light" data-default-lang="en">
 <head>
 <script>
   // Абсолютные пути: эта страница отдаётся с двух путей (/ и /nodejs/res/, см. dg-light.js),
@@ -706,7 +706,8 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
 <script type='text/javascript'>
 // Резолюшн UI-языка (какой lang_{lang}.json подгрузить) теперь берёт на себя
 // window.DHAMMA_I18N (dhamma-i18n.js, см. <head>) — свой порядок: ?lang= → localStorage.dhammaLanguage
-// → data-default-lang → "ru", и сам пишет localStorage.dhammaLanguage после первой успешной загрузки.
+// → data-default-lang → "en" (дефолт по умолчанию — английский, см. TODO.md), и сам пишет
+// localStorage.dhammaLanguage после первой успешной загрузки.
 // Тут остаётся только синхронный fallback-сид для 'siteLanguage' — старого ключа, от которого
 // всё ещё напрямую зависят legacy-скрипты (settings.js, openFdg.js, search-render.js — язык для
 // /r/ vs /read/, выбор колонки перевода и т.п.) и которые могут прочитать его раньше, чем
@@ -714,9 +715,9 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
 // точное значение, как только основной движок локализации отработает (и при любой последующей
 // живой смене языка тоже).
 if (!localStorage.getItem('siteLanguage')) {
-    localStorage.setItem('siteLanguage', localStorage.getItem('dhammaLanguage') || 'ru');
+    localStorage.setItem('siteLanguage', localStorage.getItem('dhammaLanguage') || 'en');
 }
-window.siteLanguage = localStorage.getItem('siteLanguage') || 'ru';
+window.siteLanguage = localStorage.getItem('siteLanguage') || 'en';
 
 // Тот же паттерн чтения i18n-конфига, что и в search-render.js — этот инлайн-скрипт
 // собирает динамическую фразу результата (не токенизируется как {{...}}, т.к. в неё
@@ -1058,6 +1059,13 @@ $(document).ready(function() {
         if (window.DgSearchRender && window.DgSearchRender.resetTablesForLanguageChange) {
             window.DgSearchRender.resetTablesForLanguageChange();
         }
+        // Заголовок результатов ("N текстов и M совпадений в ...") строится через t() тоже
+        // (buildScopeLabel), но, в отличие от таблиц, ничего не подписано на смену языка сам
+        // по себе — без этого вызова текст оставался в языке первой отрисовки (см. TODO.md
+        // старый баг 2, "заголовок остался по-русски"). lastSearchJson — тот же самый объект,
+        // на котором renderResultHeader уже отработал один раз в initSearchApp(); повторный
+        // вызов с теми же данными просто перегенерирует те же числа новыми строками.
+        if (lastSearchJson) renderResultHeader(lastSearchJson);
         renderCurrentReport();
     }
 
@@ -1137,9 +1145,10 @@ $(document).ready(function() {
         return prefixes.map(function (p) { return t('scopeNames.' + p, p); }).join(', ');
     }
 
-    // Заголовок результатов + видимость ссылки на варианты — вызывается дважды: сразу с
-    // приблизительными числами фазы 1 (?fast=1) и повторно, когда фоновый полный /search
-    // подвезёт точные totalMatches/hasVariantMatch (TODO.md поиск п.5).
+    // Заголовок результатов + видимость ссылки на варианты — вызывается один раз из
+    // initSearchApp() после fast=1 (числа там уже полные и финальные — см. TODO.md, нюансы по
+    // "новому багу 1"), и затем повторно на каждую живую смену языка (syncSiteLanguage) с теми
+    // же данными, чтобы текст перегенерировался в новых строках t().
     function renderResultHeader(json) {
         let scopeText = buildScopeLabel(json.metadata.resolvedPrefixes);
 

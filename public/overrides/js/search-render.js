@@ -457,7 +457,7 @@ window.DgSearchRender = (function () {
             if (unsupportedMode || isThai) return legacyResult;
         }
 
-        var lang = (localStorage.dhammaLanguage || localStorage.siteLanguage || 'ru') === 'ru' ? 'ru' : 'en';
+        var lang = (localStorage.dhammaLanguage || localStorage.siteLanguage || 'en') === 'ru' ? 'ru' : 'en';
         var url = '/' + suttaId + (segmentHash ? ':' + segmentHash : '');
         var params = [];
         if (highlightWord) params.push('s=' + encodeURIComponent(highlightWord));
