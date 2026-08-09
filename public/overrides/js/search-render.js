@@ -557,7 +557,7 @@ window.DgSearchRender = (function () {
                         // no translation.
                         var titlePali = data.root || row.sutta_id;
                         var titleText = '';
-                        var langClass = 'eng-lang';
+                        var langClass = 'en-lang';
 
                         var transKeys = Object.keys(data).filter(function (k) { return k !== 'root'; });
 
@@ -569,7 +569,7 @@ window.DgSearchRender = (function () {
                             langClass = window.siteLanguage + '-lang';
                         } else if (enKey) {
                             titleText = data[enKey];
-                            langClass = 'eng-lang';
+                            langClass = 'en-lang';
                         } else if (transKeys.length > 0) {
                             var fallbackKey = transKeys[0];
                             titleText = data[fallbackKey];
@@ -713,11 +713,11 @@ window.DgSearchRender = (function () {
                                     if (!transText) return;
                                     if (!isContext) transText = highlightText(transText, highlightWord);
                                     var langCode = key.split('_')[0];
-                                    // langswitch.css задаёт display:block только для span.pli-lang/span.eng-lang —
-                                    // трёхбуквенное сокращение (eng/rus), не ISO-код. Без этого же сокращения для
-                                    // ru класс ru-lang не попадает ни под одно правило, остаётся inline по
-                                    // умолчанию — из-за этого русская и английская цитаты визуально слипались.
-                                    var langClassName = (langCode === 'en') ? 'eng-lang' : (langCode === 'ru') ? 'rus-lang' : langCode + '-lang';
+                                    // Единый короткий ISO-класс для любого языка (ru-lang, en-lang, de-lang, ...) —
+                                    // тот же паттерн, что уже используется в megareader.js/voice.js, без легаси
+                                    // 3-буквенных исключений (eng-lang/rus-lang). langswitch.css теперь тоже общий
+                                    // ([class*="-lang"], не allowlist конкретных языков) — см. нюансы в TODO.md.
+                                    var langClassName = langCode + '-lang';
                                     var htmlclass = langClassName + " text-muted font-weight-light";
                                     if (isContext) htmlclass += " opacity-75";
 

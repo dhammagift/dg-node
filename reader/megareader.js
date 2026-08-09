@@ -476,8 +476,16 @@ window.buildSutta = async function(rawSlug) {
     let suttaData;
     try {
         // Клиент шлёт только modeKey — что он означает (columns/multiFor/приоритет
-        // переводчика) решает сервер (reader/mode-table.json, dg-light.js), не мы.
-        const apiUrl = `/api/text/${encodeURIComponent(slug)}?mode=${encodeURIComponent(READER_MODE.modeKey)}`;
+        // переводчика) решает сервер (reader/mode-table.json, dg-light.js), не мы. Если в URL
+        // явно передан langs= — ручной оверрайд конкретных языков контента независимо от
+        // ?mode=/mode-table.json (сервер уже принимает и приоритизирует его над mode, см.
+        // /api/text/:suttaId в dg-light.js) — НЕ путать с ?lang= (без "s"): тот отдельно
+        // выбирает язык ИНТЕРФЕЙСА (dhamma-i18n.js/window.setSiteLanguage), другая ось.
+        const explicitLangs = new URLSearchParams(document.location.search).get('langs');
+        const langsQuery = explicitLangs
+            ? `langs=${encodeURIComponent(explicitLangs)}`
+            : `mode=${encodeURIComponent(READER_MODE.modeKey)}`;
+        const apiUrl = `/api/text/${encodeURIComponent(slug)}?${langsQuery}`;
         const response = await fetch(apiUrl);
         if (!response.ok) {
             if (response.status === 404 && typeof window.executeGlobalSearch === 'function') {

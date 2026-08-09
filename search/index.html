@@ -792,12 +792,12 @@ $(document).ready(function() {
     var pendingIds = new Set();
     var backgroundLoadPromise = null;
     var enrichmentStarted = false;
-    var keyword = '', scope = 'default', lb = 0, la = 0;
+    var keyword = '', scope = 'default', lb = 0, la = 0, langs = 'ru,en';
 
     function buildUrl(path, extra) {
         var isLocal = ['localhost', '127.0.0.1'].includes(window.location.hostname);
         var base = isLocal ? 'http://localhost:3000' + path : path;
-        var qs = 'q=' + encodeURIComponent(keyword) + '&scope=' + scope + '&lb=' + lb + '&la=' + la + (extra || '');
+        var qs = 'q=' + encodeURIComponent(keyword) + '&scope=' + scope + '&lb=' + lb + '&la=' + la + '&langs=' + encodeURIComponent(langs) + (extra || '');
         return base + '?' + qs;
     }
 
@@ -1226,6 +1226,10 @@ $(document).ready(function() {
         scope = urlParams.get('scope') || 'default';
         lb = urlParams.get('lb') || 0;
         la = urlParams.get('la') || 0;
+        // Язык контента (не UI-хром — тот отдельно, через siteLanguage/dhamma-i18n.js) — по
+        // умолчанию ru,en как раньше, но можно явно запросить любой другой (?langs=de и т.п.),
+        // API это уже поддерживает (grep не завязан на конкретные языки).
+        langs = urlParams.get('langs') || 'ru,en';
 
         let searchValue = sParam && sParam.trim() !== "" ? sParam.replace(/\\b/g, '') : divKeyword.replace(/\\b/g, '');
         let highlightWord = searchValue || keyword;

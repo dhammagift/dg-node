@@ -155,9 +155,11 @@ p.sc-link {
   margin-top: 0.3rem !important;
 }
 
+/* Общий паттерн вместо allowlist конкретных языков (eng-lang/rus-lang) — работает для
+   любого кода языка перевода (ru-lang, en-lang, de-lang, ...), тот же принцип, что и в
+   reader/css/uiextra.css (см. его же комментарий про [class*="-lang"]). */
 span.pli-lang,
-span.eng-lang,
-span.rus-lang {
+span[class*="-lang"] {
   display: block;
 }
 
