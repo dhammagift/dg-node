@@ -673,21 +673,22 @@ window.DgSearchRender = (function () {
                                 var transKeys = Object.keys(seg.translations);
                                 // Язык интерфейса и язык поиска НЕ связаны (TODO.md поиск: "русский
                                 // может искать по англ, без проблем, и наоборот") — но это НЕ значит
-                                // "показывать перевод на любом языке всегда, раз он есть". Язык UI
-                                // показывается как обычно (контекст, даже без совпадения — это было и
-                                // раньше). ДРУГОЙ язык показываем ТОЛЬКО если совпадение реально есть
-                                // именно в его тексте — иначе, например, русский перевод "просто так"
-                                // не должен светиться в английской версии. Раньше en-интерфейс был
-                                // жёстко ['en'] (терял реальное совпадение в ru), первая правка на это
-                                // ушла в другую крайность (показывала ru всегда, даже без совпадения) —
-                                // исправлено на "другой язык — только при реальном совпадении".
+                                // "показывать перевод на любом языке всегда, раз он есть". Безусловно
+                                // (контекст, даже без совпадения — так было исторически всегда, это НЕ
+                                // менялось и не обсуждалось) показываются: язык UI, и en как постоянный
+                                // второй язык для НЕ-en интерфейса (было `[uiLang, 'en']` до этого
+                                // раунда — регрессия: первая правка ошибочно применила фильтр
+                                // "по совпадению" и к en тоже, из-за чего en пропадал из ru-интерфейса
+                                // без прямого совпадения). ЛЮБОЙ ДРУГОЙ язык (третий — de и т.п., или
+                                // ru при en-интерфейсе) — только если совпадение реально есть в нём.
                                 var uiLang = window.siteLanguage || 'en';
+                                var alwaysShown = uiLang === 'en' ? ['en'] : [uiLang, 'en'];
                                 var otherLangs = [];
                                 transKeys.forEach(function (k) {
                                     var l = k.split('_')[0];
-                                    if (l !== uiLang && otherLangs.indexOf(l) === -1) otherLangs.push(l);
+                                    if (alwaysShown.indexOf(l) === -1 && otherLangs.indexOf(l) === -1) otherLangs.push(l);
                                 });
-                                var orderedLangs = [uiLang].concat(otherLangs);
+                                var orderedLangs = alwaysShown.concat(otherLangs);
                                 var sortedTransKeys = [];
 
                                 orderedLangs.forEach(function (lang) {
@@ -697,10 +698,9 @@ window.DgSearchRender = (function () {
                                     // rank instead of raw seg.translations insertion order.
                                     transKeys.filter(function (k) {
                                         if (!k.startsWith(lang + '_')) return false;
-                                        // Язык UI — всегда (контекст, как и раньше). Любой ДРУГОЙ язык —
-                                        // только если совпадение реально есть именно в этом переводе,
-                                        // а не "раз он есть вообще" (см. комментарий выше).
-                                        return lang === uiLang || textHasMatch(seg.translations[k], highlightWord);
+                                        // uiLang/en — всегда. Любой ДРУГОЙ язык — только если совпадение
+                                        // реально есть именно в этом переводе, не "раз он есть вообще".
+                                        return alwaysShown.indexOf(lang) !== -1 || textHasMatch(seg.translations[k], highlightWord);
                                     })
                                         .sort(function (a, b) { return translatorRank(lang, a) - translatorRank(lang, b); })
                                         .forEach(function (k) {

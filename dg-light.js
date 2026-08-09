@@ -1613,11 +1613,29 @@ app.get('/api/text/:suttaId', async (req, res) => {
         : (req.query.multiFor ? req.query.multiFor.split(',').map(l => l.trim()) : null);
 
     try {
-        const data = await getFullTextData(suttaId, targetLangs, explicitTranslators, multiForLangs);
+        let data = await getFullTextData(suttaId, targetLangs, explicitTranslators, multiForLangs);
         if (!data) return res.status(404).json({ error: `Unknown sutta id: ${suttaId}` });
+        let effectiveLangs = targetLangs;
+
+        // Явный ?langs= (не ?mode=) на редко покрытый язык (напр. de) часто не находит вообще
+        // НИ ОДНОГО перевода для конкретной сутты — раньше это молча оставляло голый пали без
+        // перевода. Фоллбэк на "en" (общесайтовый дефолтный язык, см. dhamma-i18n.js) — только
+        // для этого ручного пути, ?mode= (обычное ru/en-чтение через mode-table.json) не трогаем,
+        // чтобы не менять поведение для существующих читателей без явного langs=.
+        const hasAnyTranslation = data.segments.some(seg => Object.keys(seg.translations).length > 0);
+        if (!modeConfig && !hasAnyTranslation && !targetLangs.includes('en') && !explicitTranslators) {
+            const fallbackData = await getFullTextData(suttaId, ['en'], null, multiForLangs);
+            const fallbackHasTranslation = fallbackData &&
+                fallbackData.segments.some(seg => Object.keys(seg.translations).length > 0);
+            if (fallbackHasTranslation) {
+                data = fallbackData;
+                effectiveLangs = targetLangs.concat(['en']);
+            }
+        }
+
         // Порядок языков-колонок — чтобы клиент не держал собственную копию MODE_TABLE
         // только ради того, чтобы знать порядок рендера.
-        data.columns = targetLangs;
+        data.columns = effectiveLangs;
         res.json(data);
     } catch (error) {
         console.error(error);

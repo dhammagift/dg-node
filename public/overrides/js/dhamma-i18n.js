@@ -174,10 +174,23 @@ window.DHAMMA_I18N = (() => {
   }
 
   async function setSiteLanguage(language, explicitUrl) {
-    const [config, globalConfig] = await Promise.all([
-      fetchConfig(configUrl(language, explicitUrl)),
-      fetchGlobalConfig(language)
-    ]);
+    let config, globalConfig;
+    try {
+      [config, globalConfig] = await Promise.all([
+        fetchConfig(configUrl(language, explicitUrl)),
+        fetchGlobalConfig(language)
+      ]);
+    } catch (error) {
+      // Нет конфига для запрошенного языка (например ?lang=de, пока нет lang_de.json) — раньше
+      // это оставляло интерфейс с необработанными {{token}} вместо текста (fetchConfig бросает,
+      // весь applySubtree ниже просто не вызывался). Откатываемся на английский — тот же дефолт,
+      // что и для initialLanguage без ?lang= вообще, а не оставляем страницу сломанной.
+      if (language !== "en" && !explicitUrl) {
+        console.warn(`Нет конфига локализации для "${language}", откат на "en":`, error);
+        return setSiteLanguage("en");
+      }
+      throw error;
+    }
 
     if (globalConfig) {
       config.global = globalConfig;

@@ -332,13 +332,16 @@ window.navigateSutta = function(event, slug) {
     if (event) event.preventDefault(); // Отменяем полную перезагрузку страницы
 
     let params = new URLSearchParams(document.location.search);
-    // Сохраняем s/lang/mode при переходе на след./пред. сутту — иначе выбранный язык/режим
+    // Сохраняем s/lang/mode/langs при переходе на след./пред. сутту — иначе выбранный язык/режим
     // (R+E, ?lang=en и т.п.) откатится к дефолту в адресной строке (сам READER_MODE в памяти
-    // не меняется, но при перезагрузке/шаринге ссылки состояние потерялось бы).
+    // не меняется, но при перезагрузке/шаринге ссылки состояние потерялось бы). langs= (ручной
+    // оверрайд конкретных языков контента, см. window.buildSutta) раньше сюда не попадал — при
+    // переходе на след./пред. сутту он терялся, откатывая обратно на mode=/дефолт ru,en.
     let extraParams = [
         params.has("s") ? `s=${params.get("s")}` : "",
         params.has("mode") ? `mode=${params.get("mode")}` : "",
         params.has("lang") ? `lang=${params.get("lang")}` : "",
+        params.has("langs") ? `langs=${params.get("langs")}` : "",
     ];
 
     // Меняем URL без перезагрузки — на чистый /{slug}, не ?q={slug} поверх текущего пути.
@@ -410,6 +413,7 @@ window.renderNavigation = async function(slug, suttaTitle) {
         params.has("s") ? `s=${params.get("s").replace(/ṃ/g, "ṁ")}` : "",
         params.has("mode") ? `mode=${params.get("mode")}` : "",
         params.has("lang") ? `lang=${params.get("lang")}` : "",
+        params.has("langs") ? `langs=${params.get("langs")}` : "",
     ];
 
     let cleanSlug = slug.replace(/pli-tv-|b[ui]-vb-/g, "");
@@ -785,7 +789,14 @@ async function initReader() {
     // data-default-lang → "en" (это уже считает dhamma-i18n.js, просто ждём его и переиспользуем
     // результат), переводим в modeKey одноязычного режима. Если режим передан явно
     // (window.READER_MODE.modeKey, см. ?mode= в reader-template.html) — ничего не трогаем.
-    if (!READER_MODE_EXPLICIT && window.DHAMMA_I18N_READY) {
+    // Аналогично не трогаем, если явно передан ?langs= — buildSutta() всё равно шлёт его на
+    // сервер напрямую, игнорируя modeKey (см. explicitLangs там), а вывод modeKey здесь только
+    // навредил бы: язык интерфейса без своего конфига (dhamma-i18n.js) откатывается на "en"
+    // (см. её же фолбэк), из-за чего resolvedLang ниже стал бы "en" и подменил modeKey на
+    // 'read' — реального контента это не портит (langs= всё равно побеждает в buildSutta), но
+    // ломает презентационные вещи, завязанные на modeKey (панель переключения режимов и т.п.).
+    const explicitLangsParam = new URLSearchParams(window.location.search).get('langs');
+    if (!READER_MODE_EXPLICIT && !explicitLangsParam && window.DHAMMA_I18N_READY) {
         try { await window.DHAMMA_I18N_READY; } catch (error) {}
         const resolvedLang = (window.DHAMMA_I18N && window.DHAMMA_I18N.language)
             || localStorage.getItem('dhammaLanguage') || 'en';
