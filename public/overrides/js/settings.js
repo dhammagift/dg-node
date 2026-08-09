@@ -1556,10 +1556,17 @@ readerRadios.forEach(function(radio) {
     });
 });
 
-// Проверяем значение в localStorage при загрузке страницы и устанавливаем состояние радиокнопок
+// Проверяем значение в localStorage при загрузке страницы и устанавливаем состояние радиокнопок.
+// Этот файл — общий, его подключают и другие инструменты (4nt, dict — через свой extra.js,
+// у них нет поисковых/ридер-элементов вроде input[name="reader"] в DOM вообще). Без null-check
+// здесь бросалось необработанное исключение ПРЯМО НА ВЕРХНЕМ УРОВНЕ скрипта (не внутри функции/
+// обработчика) — весь остальной код settings.js ПОСЛЕ этой строки просто не выполнялся,
+// молча ломая обработчики кликов/сабмита на странице (это и выглядело как "ничего не работает,
+// перебрасывает на /" — не редирект, а упавший до навешивания обработчиков скрипт).
 var savedReader = localStorage.getItem("defaultReader");
 if (savedReader) {
-    document.querySelector('input[name="reader"][value="' + savedReader + '"]').checked = true;
+    var savedReaderRadio = document.querySelector('input[name="reader"][value="' + savedReader + '"]');
+    if (savedReaderRadio) savedReaderRadio.checked = true;
 }
 
 // Сохраняем текущие значения параметров

@@ -1796,13 +1796,20 @@ app.get('/:slug', (req, res) => {
 app.listen(PORT, () => {
     console.log(`\n=== Dhamma.gift Server (dg-light.js) ===\n`);
     console.log(`SPA (new): http://localhost:${PORT}/spa/`);
+    // /search — JSON API, ?q= здесь ОБЯЗАТЕЛЕН (не легаси) — это не HTML-страница с чистым
+    // URL, а сырой API-эндпоинт. Остальные примеры ниже — чистые URL (?q= там только как
+    // легаси-формат ВХОДА для старых ссылок, initSearchApp его всё ещё читает, но сама
+    // навигация сайта его больше не генерирует — см. TODO.md "Проверено реальным сервером...
+    // старый /?q=kacchapa по-прежнему работает").
     console.log(`API: http://localhost:${PORT}/search?q=kacchapa&scope=dhamma&langs=ru,en`);
-    console.log(`Search UI: http://localhost:${PORT}/?q=kacchapa&lb=1&la=2&scope=dhamma`);
+    console.log(`API (произвольный язык): http://localhost:${PORT}/search?q=leiden&scope=dhamma&langs=de`);
+    console.log(`Search UI: http://localhost:${PORT}/kacchapa?lb=1&la=2&scope=dhamma`);
     console.log(`API docs: http://localhost:${PORT}/api-docs`);
     console.log(`Legacy Reader: http://localhost:${PORT}/dn22`);
     console.log(`Reader (read/r, 1 язык):    http://localhost:${PORT}/dn22`);
     console.log(`Reader (ml, Пали+2 языка):  http://localhost:${PORT}/dn22?mode=ml`);
     console.log(`Reader (mt, 2 переводчика): http://localhost:${PORT}/dn22?mode=mt`);
+    console.log(`Reader (произвольный язык): http://localhost:${PORT}/dn22?langs=de`);
     console.log(`  (?mode= — временный резолвер до маршрутизации по префиксу пути, см. reader-template.html)`);
     console.log(`\n`);
 });
