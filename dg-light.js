@@ -58,13 +58,13 @@ const SC_VARIANT  = `${SC_BILARA}/variant/pli/ms`;
 const SC_TRANS    = `${SC_BILARA}/translation`;
 const DG_LANGS    = ['ru', 'ru_other', 'en', 'en_other', 'ai'];
 
-// DhammaGift offline — лучшие переводы проекта (один на язык). Читаем через `public/assets/texts`,
-// а не напрямую из offline-data вне web-root — `public/assets` уже symlink на легаси-репо
+// DhammaGift offline — лучшие переводы проекта (один на язык). Читаем через `siteroot/assets/texts`,
+// а не напрямую из offline-data вне web-root — `siteroot/assets` уже symlink на легаси-репо
 // (`../../assets`), чей `assets/texts/{lang}` в свою очередь symlink на реальные offline-данные
 // (см. `C:\soft\dg\assets\texts\en_other` → `../../../offline-data/dhammagift/en_other`). Один
 // путь для всех платформ — не нужно ходить вне обслуживаемого дерева отдельным абсолютным путём.
 // Структура: {DG_OFFLINE}/{lang}/sutta|vinaya/{nikaya}/{id}_translation-{lang}-{author}.json
-const DG_OFFLINE = path.join(__dirname, 'public', 'assets', 'texts');
+const DG_OFFLINE = path.join(__dirname, 'siteroot', 'assets', 'texts');
 let offlineMirrors = new Set();
 try {
     offlineMirrors = new Set(
@@ -109,11 +109,18 @@ app.use((req, res, next) => {
 
 // Статика — dg-node самодостаточен, ничего не зависит от соседнего легаси-репозитория
 // Файлы, которые мы реально правим (не совпадают с легаси) — отдаём их первыми,
-// прежде чем упасть на весь /assets (симлинк целиком на легаси-репозиторий, см. ниже).
+// прежде чем упасть на весь /assets — единый симлинк на легаси-репозиторий целиком
+// (siteroot/assets, тот же паттерн, что и 4nt/config/login/memo/read, см. ниже) — второй
+// маунт под тем же префиксом регистрирует уже ОБЩИЙ scan-цикл siteroot/ дальше по файлу, не
+// отдельная явная строка здесь: порядок регистрации (overrides раньше siteroot-цикла) сам по
+// себе гарантирует приоритет override-файлов, ничего дополнительно синхронизировать не нужно.
 app.use('/assets', express.static(path.join(__dirname, 'public', 'overrides')));
-// public/assets — единый симлинк на легаси /var/www/html/assets (в проде; на этой
-// Windows-машине — обычная папка с локальными копиями для разработки, см. README).
-app.use('/assets', express.static(path.join(__dirname, 'public', 'assets')));
+// /read/js/voice.js — тот же override-приоритет паттерн, что и /assets выше: наш патченный
+// voice.js (public/overrides/read/js/, чинит рассинхрон detectTranslationLang/prepareTextData
+// с классами, которые реально рендерит megareader.js — rus-lang/eng-lang vs ru-lang/en-lang,
+// second-translation-row vs lang-2nd — переводы молча не находились на страницах ридера,
+// см. TODO.md) отдаётся ПЕРЕД siteroot/read/ (легаси-оригинал, дальше по файлу, generic-цикл).
+app.use('/read', express.static(path.join(__dirname, 'public', 'overrides', 'read')));
 app.use('/spa', express.static(path.join(__dirname, 'public', 'spa')));
 // URL-префикс /nodejs/res сознательно НЕ переименован вслед за папкой (обратная совместимость
 // путей) — папка на диске называется search/ (см. CLAUDE.md "Структура проекта"), а
@@ -134,17 +141,22 @@ app.use('/reader', express.static(path.join(__dirname, 'configs', 'reader')));
 
 // siteroot/ — публикация от корня сайта: самодостаточные легаси-приложения (Memorization
 // Helper, вход/облачная синхронизация, 4nt — сравнение изданий пали, TTS voice-player), их
-// конфиги, зеркала сторонних тулз/учебников — не только "зеркала" в узком смысле, поэтому не
-// mirrors/. Каждый элемент — symlink на реальную папку рядом с проектом (на проде, например,
-// `siteroot/4nt` -> `../../4nt`, т.е. `/var/www/html/4nt`, сосед `nodejs/`) ИЛИ обычная
-// папка/файл прямо здесь. Никакого хардкода per-инструмент: что появилось в siteroot/ — то и
-// замаунтилось на /{имя} на следующем старте сервера (папка сканируется один раз при старте,
-// не на каждый запрос — новый symlink требует рестарта; правки ВНУТРИ уже примонтированной
-// папки видны сразу, без рестарта). Чтобы добавить новую тулзу/зеркало/учебник — просто
-// положить symlink (или реальные файлы) в siteroot/, рестартовать сервер, ничего в коде
-// трогать не нужно. /read/js/voice.js, voice-mem.js (settings.js, легаси, не трогаем, жёстко
-// зашитый путь "/read/js/voice.js") — тоже здесь (`siteroot/read/`), тот же паттерн, ничем не
-// отличается от 4nt/config/login/memo.
+// конфиги, зеркала сторонних тулз/учебников, легаси-ассеты целиком (assets/) — не только
+// "зеркала" в узком смысле, поэтому не mirrors/. Каждый элемент — symlink на реальную папку
+// рядом с проектом (на проде, например, `siteroot/4nt` -> `../../4nt`, т.е. `/var/www/html/4nt`,
+// сосед `nodejs/`) ИЛИ обычная папка/файл прямо здесь. Никакого хардкода per-инструмент: что
+// появилось в siteroot/ — то и замаунтилось на /{имя} на следующем старте сервера (папка
+// сканируется один раз при старте, не на каждый запрос — новый symlink требует рестарта; правки
+// ВНУТРИ уже примонтированной папки видны сразу, без рестарта). Чтобы добавить новую тулзу/
+// зеркало/учебник — просто положить symlink (или реальные файлы) в siteroot/, рестартовать
+// сервер, ничего в коде трогать не нужно. Три элемента здесь — не совсем "новая тулза с нуля":
+// `read/` (TTS voice-player) — жёстко зашитый в settings.js путь "/read/js/voice.js" (легаси,
+// не трогаем), и сама папка становится ВТОРЫМ, запасным маунтом под /read — патченный
+// voice.js в public/overrides/read/ (см. выше) регистрируется раньше и побеждает по тому же
+// принципу, что и /assets; `assets/` — сюда же попадает ВТОРЫМ маунтом под /assets, публичным
+// API поверх override-файлов (см. выше) чисто порядком регистрации в файле — никакой особой
+// обработки в самом цикле нет, всё ничем не отличается от 4nt/config/login/memo с точки
+// зрения этого кода.
 const SITEROOT = path.join(__dirname, 'siteroot');
 let siteRootEntries = new Set();
 try {
@@ -777,6 +789,17 @@ function translationLangDirs(lang) {
     if (fsSync.existsSync(scLang)) dirs.push(scLang);
     const dgLang = path.join(DG_OFFLINE, lang);
     if (fsSync.existsSync(dgLang)) dirs.push(dgLang);
+    // TODO.md поиск, баг 3 (продолжение): dgmain ("o") и SC-зеркало — не единственные места,
+    // где может физически лежать перевод. DG-other ("второе мнение" проекта — sv+edited+o,
+    // и т.п., см. CLAUDE.md) раньше грепался только в холодном restrictToIds-пути
+    // (getGrepTargetFiles -> findTranslationFiles), а тёплый/полносканирующий путь (эта
+    // функция — используется в fast=1 почти всегда) его не видел вовсе: если совпадение
+    // существует ТОЛЬКО в dgother (не мигрировало/не задублировано в SC-зеркало), сутта
+    // теряется из выдачи целиком, а не просто рендерится без видимого совпадения.
+    DG_LANGS.filter(l => l.startsWith(lang + '_')).forEach(l => {
+        const dgOtherLang = path.join(DG_OFFLINE, l);
+        if (fsSync.existsSync(dgOtherLang)) dirs.push(dgOtherLang);
+    });
     return dirs;
 }
 

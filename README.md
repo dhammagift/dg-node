@@ -1,6 +1,6 @@
 # dg-node
 
-Поиск и ридер текстов Пали-канона (SuttaCentral Bilara + переводы проекта DhammaGift). Node.js/Express, самодостаточный — все статические ассеты (jQuery, Bootstrap, DataTables, стили) лежат в `public/assets/`, ничего не берётся с соседних репозиториев в рантайме.
+Поиск и ридер текстов Пали-канона (SuttaCentral Bilara + переводы проекта DhammaGift). Node.js/Express, самодостаточный — все статические ассеты (jQuery, Bootstrap, DataTables, стили) лежат в `siteroot/assets/`, ничего не берётся с соседних репозиториев в рантайме.
 
 Архитектура и правила разработки — см. [CLAUDE.md](CLAUDE.md).
 
@@ -21,7 +21,7 @@ npm start          # запустить сервер (dg-light.js), порт 300
 
 ```bash
 curl "http://localhost:3000/search?q=kacchapa&scope=dhamma&langs=ru,en"
-curl -I "http://localhost:3000/assets/js/datatables/datatables.js"   # 200 из public/assets, не из соседнего репо
+curl -I "http://localhost:3000/assets/js/datatables/datatables.js"   # 200 из siteroot/assets, не из соседнего репо
 curl -I "http://localhost:3000/dn22"                                  # ридер по чистому URL
 curl -I "http://localhost:3000/dn22:10.5"                             # сегментная ссылка (скролл к 10.5)
 ```
@@ -40,12 +40,13 @@ curl -I "http://localhost:3000/dn22:10.5"                             # сегм
 
 ```
 dg-light.js          — единый Express-сервер: /search, /api/text/:suttaId,
-                        статика (search/, reader/, public/assets/), офлайн-зеркала,
+                        статика (search/, reader/, siteroot/assets/), офлайн-зеркала,
                         чистые URL (/dn22, /dn22:12.1)
 dblight.js            — билд-скрипт → dg_db_light.json (скелет БД)
 search/               — страница поиска (DataTables); URL остался /nodejs/res/... (см. CLAUDE.md)
 reader/               — ридер (reader-template.html + megareader.js)
 configs/              — json-конфиги проекта (openapi, reader/*, search/*), см. CLAUDE.md
 docs/                  — документация не для каждой сессии (SPA-планы, backward compat)
-public/assets/        — все статические ассеты (перенесены из легаси-репо)
+siteroot/             — публикация от корня сайта: assets/ (легаси-ассеты), 4nt/config/login/
+                        memo/read (легаси-тулзы), см. CLAUDE.md
 ```
