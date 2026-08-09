@@ -3462,3 +3462,153 @@ function get4ntUrl(slug = null) {
 
     return null;
 }
+
+// TODO.md ридер п.3: кнопка PDF-экспорта (#pdf-btn, футер) была в легаси (assets/js/settings.js),
+// но отсутствовала в dg-node — портирован обработчик почти дословно. Единственная реальная
+// адаптация: легаси искал перевод жёстко по .rus-lang (легаси трёхбуквенный класс, один язык
+// перевода на страницу) — megareader.js использует короткие ISO-классы (ru-lang/en-lang/...) и
+// поддерживает разные языки/режимы (r+r, r+e, e+e), поэтому здесь берём первый НЕ-палийский
+// [class*="-lang"] элемент внутри сегмента — какой бы язык ни был выбран в текущем режиме
+// ридера, а не хардкодим "русский" (тот же паттерн уже применялся для voice.js в этой сессии).
+document.addEventListener('click', function (e) {
+    var btn = e.target.closest('#pdf-btn');
+    if (!btn) return;
+
+    function doExport() {
+        var suttaArea = document.getElementById('sutta');
+        if (!suttaArea) return;
+
+        var title = document.title || 'Sutta';
+        var isColumns = suttaArea.classList.contains('column-view');
+
+        // Ссылки из верхней панели
+        var linkItems = [];
+        var topLinks = document.getElementById('top-links-container');
+        if (topLinks) {
+            topLinks.querySelectorAll('a').forEach(function (a) {
+                var txt = (a.textContent || '').trim();
+                if (!txt) return;
+                linkItems.push({ text: txt + '  ', link: a.href, color: '#0d6efd', decoration: 'underline' });
+            });
+        }
+
+        // Byline переводчика из первого #trn
+        var bylineParts = [];
+        var bylineEl = suttaArea.querySelector('#trn');
+        if (bylineEl) {
+            var bPali = bylineEl.querySelector('.pli-lang');
+            var bTrans = bylineEl.querySelector('[class*="-lang"]:not(.pli-lang)');
+            if (bPali && bPali.textContent.trim()) bylineParts.push({ text: bPali.textContent.trim() + '   ', color: '#000' });
+            if (bTrans && bTrans.textContent.trim()) bylineParts.push({ text: bTrans.textContent.trim(), color: '#666' });
+        }
+
+        var content = [];
+        content.push({ text: title, style: 'title' });
+        if (linkItems.length) content.push({ text: linkItems, margin: [0, 4, 0, 6] });
+        if (bylineParts.length) content.push({ text: bylineParts, style: 'byline' });
+
+        // Хелпер: клонировать элемент, убрать .copyLink, вернуть чистый текст
+        function cleanText(el) {
+            if (!el) return '';
+            var clone = el.cloneNode(true);
+            clone.querySelectorAll('.copyLink, a.copyLink-start').forEach(function (a) { a.remove(); });
+            return clone.textContent.replace(/\s+/g, ' ').trim();
+        }
+
+        // Обходим все span[id] в DOM-порядке — querySelectorAll гарантирует порядок документа
+        suttaArea.querySelectorAll('span[id]').forEach(function (node) {
+            // Пропускаем служебные контейнеры
+            if (node.closest('#trn, #top-links-container, #bottom-links-container')) return;
+            var transElAny = node.querySelector('[class*="-lang"]:not(.pli-lang)');
+            if (!node.querySelector('.pli-lang') && !transElAny) return;
+
+            // Контекст заголовка: span[id] может лежать внутри h1/h2/h3
+            var headingEl = node.closest('h1, h2, h3');
+
+            var paliEl = node.querySelector('.pli-lang');
+            var transEl = transElAny;
+
+            // Чистый пали + вариант (вытаскиваем .variant перед cleanText)
+            var pali = '', variant = '';
+            if (paliEl) {
+                var paliClone = paliEl.cloneNode(true);
+                paliClone.querySelectorAll('.copyLink, a.copyLink-start').forEach(function (a) { a.remove(); });
+                var varEl = paliClone.querySelector('.variant');
+                if (varEl) {
+                    variant = varEl.textContent.replace(/\s+/g, ' ').trim();
+                    varEl.remove();
+                }
+                pali = paliClone.textContent.replace(/\s+/g, ' ').trim();
+            }
+            var trans = cleanText(transEl);
+            if (!pali && !trans) return;
+
+            if (headingEl) {
+                // Сегмент внутри заголовка — выводим как заголовок
+                var hTag = headingEl.tagName; // H1, H2, H3
+                var hStyle = hTag === 'H1' ? 'h1' : (hTag === 'H2' ? 'h2' : 'h3');
+                var hParts = [];
+                if (pali) hParts.push({ text: pali + (trans ? '\n' : ''), color: '#000000' });
+                if (trans) hParts.push({ text: trans, color: '#555555' });
+                content.push({ text: hParts, style: hStyle });
+
+            } else if (isColumns) {
+                var paliStack = [{ text: pali, color: '#000000' }];
+                if (variant) paliStack.push({ text: '↕ ' + variant, fontSize: 8, color: '#999999', italics: true });
+                content.push({
+                    columns: [
+                        { stack: paliStack, width: '50%' },
+                        { text: trans, width: '50%', color: '#444444' }
+                    ],
+                    margin: [0, 1, 0, 1],
+                    fontSize: 10
+                });
+
+            } else {
+                var parts = [];
+                if (pali) parts.push({ text: pali + '\n', color: '#000000' });
+                if (variant) parts.push({ text: '↕ ' + variant + '\n', fontSize: 8, color: '#999999', italics: true });
+                if (trans) parts.push({ text: trans, color: '#555555' });
+                content.push({ text: parts, margin: [0, 2, 0, 4] });
+            }
+        });
+
+        pdfMake.fonts = {
+            NotoSans: {
+                normal: 'NotoSans-Regular.ttf',
+                bold: 'NotoSans-Bold.ttf',
+                italics: 'NotoSans-Italic.ttf',
+                bolditalics: 'NotoSans-BoldItalic.ttf'
+            }
+        };
+
+        pdfMake.createPdf({
+            content: content,
+            defaultStyle: { font: 'NotoSans', fontSize: 11, lineHeight: 1.4 },
+            styles: {
+                title:  { fontSize: 16, bold: true, margin: [0, 0, 0, 6] },
+                byline: { fontSize: 9, color: '#888888', margin: [0, 0, 0, 12] },
+                h1:     { fontSize: 14, bold: true, margin: [0, 12, 0, 4] },
+                h2:     { fontSize: 12, bold: true, margin: [0, 8, 0, 3] },
+                h3:     { fontSize: 11, bold: true, margin: [0, 6, 0, 2] }
+            },
+            pageOrientation: isColumns ? 'landscape' : 'portrait',
+            pageMargins: [50, 60, 50, 60]
+        }).download(title + '.pdf');
+    }
+
+    function loadScript(url, cb) {
+        var s = document.createElement('script');
+        s.src = url;
+        s.onload = cb;
+        document.head.appendChild(s);
+    }
+
+    if (typeof pdfMake === 'undefined') {
+        loadScript('/assets/js/pdfmake.min.js', function () {
+            loadScript('/assets/js/vfs_fonts.js', doExport);
+        });
+    } else {
+        doExport();
+    }
+});

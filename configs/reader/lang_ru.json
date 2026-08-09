@@ -220,6 +220,8 @@
     "compareAlt": "Diff icon",
     "historyTitle": "Search Histpry",
     "historyAlt": "History icon",
+    "pdfTitle": "Save PDF",
+    "pdfAlt": "Save PDF",
     "memoTitle": "Memorization and meditation Helper",
     "memoAlt": "Memorize and Meditate icon",
     "translationEditorTitle": "Create Pali-Rus translation files",

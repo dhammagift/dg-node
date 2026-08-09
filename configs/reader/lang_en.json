@@ -220,6 +220,8 @@
     "compareAlt": "Diff icon",
     "historyTitle": "Search History",
     "historyAlt": "History icon",
+    "pdfTitle": "Save PDF",
+    "pdfAlt": "Save PDF",
     "memoTitle": "Memorization and meditation Helper",
     "memoAlt": "Memorize and Meditate icon",
     "translationEditorTitle": "Edit translation files",
@@ -263,6 +265,6 @@
     "homeAlt": "Home"
   },
   "reader": {
-    "warningNote": "<strong>Note:</strong><a class='text-decoration-none cursor-pointer' target='' href='{dUrl}'>&nbsp;</a>Translations, dictionaries, and comments are not the words of the Blessed One.<a class='text-decoration-none cursor-pointer' target='' href='{thUrl}'>&nbsp;</a>Please check against the Pali in the four main Nikayas."
+    "warningNote": "<strong>Note:</strong><a class='text-decoration-none cursor-pointer' target='' href='{dUrl}'>&nbsp;</a>Translations, dictionaries and commentaries were not made by the Blessed One.<a class='text-decoration-none cursor-pointer' target='' href='{thUrl}'>&nbsp;</a>Cross-check with Pali in 4 main nikayas."
   }
 }

@@ -26,6 +26,25 @@ document.addEventListener('dhamma:languagechange', function (e) {
     try { localStorage.setItem('siteLanguage', lang); } catch (_) {}
 });
 
+// TODO.md ридер п.2: клик по кнопке языка (.btn-language) в шестерёнке настроек ничего не делал —
+// разметка (reader-template.html) скопирована с той же кнопки на странице поиска
+// (search/index.html), а обработчик клика — нет, его нигде не было. Тот же паттерн, что на
+// поиске: читаем data-lang (i18n подставляет его из {{locale.targetLanguageCode}} — единственная
+// кнопка-тумблер "переключить на другой язык", не пара как на поиске) и зовём setSiteLanguage().
+// Она сама вызывает applySubtree() и переприменяет {{locale.*}} — кнопка сама перерисуется с
+// новым target-языком, отдельно ничего обновлять не нужно.
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.btn-language').forEach(function (btn) {
+        btn.addEventListener('click', function (event) {
+            event.preventDefault();
+            var newLang = this.getAttribute('data-lang');
+            if (newLang && typeof window.setSiteLanguage === 'function') {
+                window.setSiteLanguage(newLang);
+            }
+        });
+    });
+});
+
 // ==========================================
 // ИКОНКИ АУДИО И ПОДЕЛИТЬСЯ ДЛЯ СТРОКИ 0.1 (заголовок сутты/раздела)
 // ==========================================

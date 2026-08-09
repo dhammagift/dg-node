@@ -471,6 +471,11 @@ window.DgSearchRender = (function () {
         return text.replace(regexHighlight, function (match) { return '<b class="match finder">' + match + '</b>'; });
     }
 
+    function textHasMatch(text, highlightWord) {
+        if (!highlightWord || !text) return false;
+        return new RegExp(highlightWord, 'i').test(text);
+    }
+
     // Отчёт с группировкой по суттам (текущий, основной вид). container — стабильный
     // <table id="pali">, инициализируется ОДИН раз; повторные вызовы (переключение отчётов,
     // догрузка цитат, новый поиск через hero-форму) просто обновляют данные на месте —
@@ -666,12 +671,23 @@ window.DgSearchRender = (function () {
 
                             if (seg.translations) {
                                 var transKeys = Object.keys(seg.translations);
-                                // Английский интерфейс — только английский перевод (раньше здесь ещё и
-                                // молча показывался русский, ru читателю в en-режиме не нужен). Русский
-                                // интерфейс — русский первым, английский вторым. Раньше preferredLanguages
-                                // = [siteLanguage, 'en'] превращался в ['en','en'] в en-режиме — один и тот
-                                // же ключ добавлялся дважды без дедупликации, отсюда задвоенный перевод.
-                                var orderedLangs = window.siteLanguage === 'en' ? ['en'] : [window.siteLanguage, 'en'];
+                                // Язык интерфейса и язык поиска НЕ связаны (TODO.md поиск: "русский
+                                // может искать по англ, без проблем, и наоборот") — но это НЕ значит
+                                // "показывать перевод на любом языке всегда, раз он есть". Язык UI
+                                // показывается как обычно (контекст, даже без совпадения — это было и
+                                // раньше). ДРУГОЙ язык показываем ТОЛЬКО если совпадение реально есть
+                                // именно в его тексте — иначе, например, русский перевод "просто так"
+                                // не должен светиться в английской версии. Раньше en-интерфейс был
+                                // жёстко ['en'] (терял реальное совпадение в ru), первая правка на это
+                                // ушла в другую крайность (показывала ru всегда, даже без совпадения) —
+                                // исправлено на "другой язык — только при реальном совпадении".
+                                var uiLang = window.siteLanguage || 'en';
+                                var otherLangs = [];
+                                transKeys.forEach(function (k) {
+                                    var l = k.split('_')[0];
+                                    if (l !== uiLang && otherLangs.indexOf(l) === -1) otherLangs.push(l);
+                                });
+                                var orderedLangs = [uiLang].concat(otherLangs);
                                 var sortedTransKeys = [];
 
                                 orderedLangs.forEach(function (lang) {
@@ -679,7 +695,13 @@ window.DgSearchRender = (function () {
                                     // closest to the Pali text even when a matched non-priority
                                     // translator is ALSO shown — sort by translator-priority.json
                                     // rank instead of raw seg.translations insertion order.
-                                    transKeys.filter(function (k) { return k.startsWith(lang + '_'); })
+                                    transKeys.filter(function (k) {
+                                        if (!k.startsWith(lang + '_')) return false;
+                                        // Язык UI — всегда (контекст, как и раньше). Любой ДРУГОЙ язык —
+                                        // только если совпадение реально есть именно в этом переводе,
+                                        // а не "раз он есть вообще" (см. комментарий выше).
+                                        return lang === uiLang || textHasMatch(seg.translations[k], highlightWord);
+                                    })
                                         .sort(function (a, b) { return translatorRank(lang, a) - translatorRank(lang, b); })
                                         .forEach(function (k) {
                                             if (sortedTransKeys.indexOf(k) === -1) sortedTransKeys.push(k);
