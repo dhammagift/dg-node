@@ -75,6 +75,7 @@ try {
 }
 
 const readerTemplatePath = path.join(__dirname, 'reader', 'reader-template.html');
+const searchIndexPath = path.join(__dirname, 'res', 'index.html');
 
 const skeletonPath = path.join(__dirname, 'dg_db_light.json');
 let skeletonDB = {};
@@ -156,7 +157,7 @@ app.get('/spa/*splat', (req, res) => {
 
 // Страница поиска — главная точка входа (легаси, для обратной совместимости)
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'res', 'index.html'));
+    res.sendFile(searchIndexPath);
 });
 
 // Детерминированный путь к root-файлу через dir_path из скелета
@@ -1675,8 +1676,14 @@ ${items}
 </body></html>`;
 }
 
-// Чистые URL: /dn22 → ридер, /dn22:12.1 → ридер с прокруткой к сегменту (разбор ":" — на клиенте).
-// Старый формат /?q=dn22#12.1 продолжает работать без изменений (см. res/index.html, megareader.js).
+// Чистые URL: /dn22 → ридер, /dn22:12.1 → ридер с прокруткой к сегменту (разбор ":" — на клиенте),
+// /kacchapa → страница поиска (res/index.html сам читает слово из пути — initSearchApp, если нет
+// ?q=). Старый формат /?q=kacchapa#12.1 по-прежнему полностью рабочий как ВХОДНОЙ формат (старые
+// ссылки/закладки) — initSearchApp читает ?q= первым делом, до пути — но сами мы теперь никогда
+// не генерируем ?q=, только чистый путь (см. res/index.html, submit-обработчик #form). Раньше
+// здесь был redirect на /?q=..., то есть адрес в строке браузера всё равно "портился" обратно
+// в ?q= даже для собственной навигации сайта — теперь просто отдаём ту же страницу поиска прямо
+// по чистому пути, без редиректа.
 app.get('/:slug', (req, res) => {
     const rawSlug = req.params.slug;
     const suttaId = rawSlug.split(':')[0].toLowerCase();
@@ -1687,7 +1694,7 @@ app.get('/:slug', (req, res) => {
     if (children.length) {
         return res.send(renderTocStub(suttaId, children));
     }
-    return res.redirect(`/?q=${encodeURIComponent(rawSlug)}`);
+    return res.sendFile(searchIndexPath);
 });
 
 app.listen(PORT, () => {

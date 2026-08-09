@@ -981,19 +981,32 @@ $(document).ready(function() {
     // TODO.md поиск п.5: запускается ровно один раз — либо сразу после фазы 1, если открыт
     // отчёт по суттам, либо при первом переключении с "Слова" на "Тексты", если пользователь
     // зашёл через ?report=words (в режиме "Слова" цитаты вообще не нужны, поэтому обогащение
-    // до переключения не запускается). Один вызов на ВСЕ найденные id сразу — не только видимую
-    // страницу с последующей отдельной фоновой догрузкой: с батчингом/scope-кешем на сервере
-    // полный батч больше не стоит кратно дороже мелкого, так что отдельная "сначала только
-    // страница" стадия и лишний третий сетевой заход были чистым накладным расходом.
+    // до переключения не запускается).
+    //
+    // Видимая страница — ПЕРВЫМ отдельным запросом, до всего остального (TODO.md поиск п.15,
+    // после фикса на чанки): порядок sortSuttaResults на сервере (category-приоритет, потом mr
+    // по убыванию) и дефолтный DataTables order (`order: [[6,'asc'],[0,'asc']]` — категория
+    // АЛФАВИТНО, потом id) — это ДВА РАЗНЫХ порядка, так что "первые N id в JSON-массиве" не
+    // совпадают с "первая страница, которую реально видно на экране после сортировки таблицей".
+    // visiblePageIds() читает по факту то, что DataTables сейчас показывает — не зависит от
+    // рассинхрона с сортировкой. Раньше "все сразу" (единственный вызов enrichIds) стартовал
+    // первым и забирал ВСЕ id в pendingIds ещё до первого draw.enrich — параллельный вызов
+    // enrichIds(visiblePageIds()) с этого события находил их уже "в полёте" и ничего не
+    // приоритизировал. Теперь видимая страница гарантированно уходит первым чанком, а не
+    // где придётся внутри фона.
     function ensureEnrichmentStarted() {
         if (enrichmentStarted) return;
         enrichmentStarted = true;
 
-        backgroundLoadPromise = enrichIds(Object.keys(lastSearchJson.data))
+        backgroundLoadPromise = enrichIds(visiblePageIds())
+            .then(function () { return enrichIds(Object.keys(lastSearchJson.data)); })
             .catch(function (error) { console.error('Ошибка догрузки:', error); });
 
         // Таблица, отрисованная до этого момента, ещё не получила слушатель draw (см. коммент
-        // в renderCurrentReport) — довешиваем его именно на неё.
+        // в renderCurrentReport) — довешиваем его именно на неё. Дублирующий вызов на страницу,
+        // которую только что явно запросили выше, — no-op (enrichIds сам фильтрует уже
+        // pending/enriched id), это просто подстраховка на смену страницы/сортировки до того,
+        // как фон до неё доберётся.
         if (currentTable) {
             currentTable.off('draw.enrich').on('draw.enrich', function () { enrichIds(visiblePageIds()); });
         }
@@ -1063,9 +1076,14 @@ $(document).ready(function() {
         if (!value) return;
         var route = window.DgTextRouter ? window.DgTextRouter.classify(value) : { type: 'search', query: value };
         if (route.type === 'search') {
+            // Clean /{word} URL, not ?q=word — ?q= stays fully supported as an INPUT format
+            // (initSearchApp still reads it first, old links keep working) but this is our own
+            // navigation, so it generates the clean form (dg-light.js's /:slug now serves the
+            // search page directly at that path when the slug isn't a text/chapter id, instead
+            // of redirecting to ?q=).
             var currentScope = new URLSearchParams(window.location.search).get('scope') || 'default';
-            var url = '/?q=' + encodeURIComponent(route.query) +
-                (currentScope !== 'default' ? '&scope=' + encodeURIComponent(currentScope) : '');
+            var url = '/' + encodeURIComponent(route.query) +
+                (currentScope !== 'default' ? '?scope=' + encodeURIComponent(currentScope) : '');
             window.location.href = url;
         } else {
             window.location.href = '/' + encodeURIComponent(route.id);
@@ -1160,7 +1178,10 @@ $(document).ready(function() {
         let pathSegments = window.location.pathname.split('/').filter(s => s);
         let lastSegment = pathSegments.pop();
         if (!keyword && lastSegment && !['search', 'index.html', 'result', 'nodejs'].includes(lastSegment.toLowerCase())) {
-            keyword = lastSegment;
+            // location.pathname stays percent-encoded for non-ASCII (e.g. Cyrillic keywords) —
+            // decode it, same as URLSearchParams.get('q') already does automatically for the
+            // legacy query-param path.
+            keyword = decodeURIComponent(lastSegment);
         }
 
         let keywordElement = document.querySelector('.keyword');
