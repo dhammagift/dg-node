@@ -748,6 +748,10 @@ function tFrom(cfg, path, fallback) {
 }
 
 $(document).ready(function() {
+    // Начальное состояние кнопок ru/en — до первого dhamma:languagechange/DHAMMA_I18N.ready
+    // (см. updateLanguageButtons ниже), чтобы не мигать обеими "активными" при загрузке.
+    updateLanguageButtons(window.siteLanguage);
+
     DataTable.util.diacritics(d => d);
     
     // Регистрируем собственный тип сортировки для чекбоксов
@@ -952,12 +956,14 @@ $(document).ready(function() {
                     Object.assign(lastSearchJson.data[id], json.data[id]);
                     enrichedIds.add(id);
                 });
-                if (json.metadata) {
-                    lastSearchJson.wordReport = json.wordReport;
-                    lastSearchJson.metadata = json.metadata;
-                    lastSearchJson.variantSegments = json.variantSegments;
-                    renderResultHeader(json);
-                }
+                // /search/enrich's own metadata/wordReport/variantSegments are scoped to just
+                // THIS chunk's ids (dg-light.js's buildMatchSkeleton with restrictToIds filters
+                // rather than rescans) — applying them here overwrote the correct full-set
+                // numbers from the initial fast=1 response with a smaller, chunk-local count,
+                // flickering/decreasing as chunks landed in whatever order they resolved. The
+                // fast=1 response already has the complete, final totalFiles/totalMatches/
+                // wordReport/variantSegments for the WHOLE result set (built straight from the
+                // grep pass, not per-file enrichment) — nothing here needs to touch them again.
                 if (reportMode === 'suttas') renderCurrentReport();
             })
             .catch(function (error) {
@@ -1045,7 +1051,25 @@ $(document).ready(function() {
         if (!lang) return;
         window.siteLanguage = lang;
         try { localStorage.setItem('siteLanguage', lang); } catch (_) {}
+        updateLanguageButtons(lang);
+        // DataTables' own strings (pagination, "Search:", lengthMenu, ...) are baked at table
+        // construction (commonOptions() -> t('datatables.*')) — a plain redraw doesn't re-read
+        // them, so a language switch needs a fresh table instance to pick up the new locale.
+        if (window.DgSearchRender && window.DgSearchRender.resetTablesForLanguageChange) {
+            window.DgSearchRender.resetTablesForLanguageChange();
+        }
         renderCurrentReport();
+    }
+
+    // TODO.md поиск/старый баг 2: обе кнопки ru/en выглядели одинаково активными — непонятно,
+    // на какую жать. Кнопка ТЕКУЩЕГО языка получает .disabled (Bootstrap сам гасит её
+    // opacity/pointer-events), вторая остаётся кликабельной.
+    function updateLanguageButtons(lang) {
+        document.querySelectorAll('.btn-language').forEach(function (btn) {
+            var isCurrent = btn.getAttribute('data-lang') === lang;
+            btn.classList.toggle('disabled', isCurrent);
+            btn.setAttribute('aria-disabled', isCurrent ? 'true' : 'false');
+        });
     }
 
     // Событие ловит ТОЛЬКО живые смены языка после первой загрузки (см. ниже про гонку).

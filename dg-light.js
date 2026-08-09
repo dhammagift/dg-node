@@ -317,7 +317,7 @@ async function collectTranslationFiles(dirs, suttaId, results) {
 // Возвращает { "ru_o": "/path/to/file.json", "en_sujato": "...", ... } — один файл на язык (см. выше),
 // ИЛИ, если передан explicitTranslators (для режима mt/multi — два перевода ОДНОГО языка
 // одновременно), ровно те ключи, что там перечислены, без схлопывания через filterPreferredTranslators.
-async function findTranslationFiles(suttaId, targetLangs, explicitTranslators, multiForLangs) {
+async function findTranslationFiles(suttaId, targetLangs, explicitTranslators, multiForLangs, skipPriorityFilter) {
     const results = {};
 
     if (targetLangs.includes('all')) {
@@ -349,6 +349,10 @@ async function findTranslationFiles(suttaId, targetLangs, explicitTranslators, m
         explicitTranslators.forEach(key => { if (results[key]) filtered[key] = results[key]; });
         return filtered;
     }
+
+    // TODO.md поиск, баг 3: getGrepTargetFiles needs EVERY translator's file to grep, not just
+    // the preferred one — a keyword can exist only in a non-priority translator's wording.
+    if (skipPriorityFilter) return results;
 
     return filterPreferredTranslators(results, multiForLangs);
 }
@@ -612,16 +616,20 @@ function classifyMatchSource(filePath) {
     return { type: 'unknown' };
 }
 
-// Deterministic file list for one sutta (root + variant + preferred translation per requested
-// language) — used to scope grep to a handful of known files (restrictToIds below) instead of
-// the whole corpus (buildGrepDirs).
+// Deterministic file list for one sutta (root + variant + EVERY translator's file per
+// requested language, not just the preferred one) — used to scope grep to a handful of known
+// files (restrictToIds below) instead of the whole corpus (buildGrepDirs). Must grep every
+// translator, not just the preferred one — the full-scan path (fast=1) already does (it greps
+// whole language directories directly), so this narrower per-sutta path needs to match it or a
+// keyword that only exists in a non-priority translator's wording silently disappears from this
+// code path (TODO.md поиск, баг 3).
 async function getGrepTargetFiles(suttaId, targetLangs) {
     const files = [];
     const rootPath = getRootPath(suttaId);
     if (rootPath && fsSync.existsSync(rootPath)) files.push(rootPath);
     const variantPath = getVariantPath(suttaId);
     if (variantPath && fsSync.existsSync(variantPath)) files.push(variantPath);
-    const translationFiles = await findTranslationFiles(suttaId, targetLangs);
+    const translationFiles = await findTranslationFiles(suttaId, targetLangs, null, null, true);
     files.push(...Object.values(translationFiles));
     return files;
 }

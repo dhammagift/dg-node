@@ -42,6 +42,25 @@ window.DgSearchRender = (function () {
     var suttaTableApi = null;
     var wordTableApi = null;
 
+    // Порядок переводчиков одного языка в цитате (TODO.md поиск, баг 3: приоритетный "o"
+    // должен идти ближе к Пали, даже если совпадение реально нашлось у другого переводчика —
+    // тот тоже показывается, просто дальше). Тот же источник истины, что и на сервере
+    // (reader/translator-priority.json, filterPreferredTranslators в dg-light.js) — не
+    // дублируем список руками, просто читаем тот же файл (маленький, статичный, успевает
+    // догрузиться параллельно с самим поиском задолго до первого рендера строки).
+    var translatorPriority = {};
+    fetch('/reader/translator-priority.json')
+        .then(function (r) { return r.ok ? r.json() : {}; })
+        .then(function (json) { translatorPriority = json || {}; })
+        .catch(function () {});
+
+    function translatorRank(lang, transKey) {
+        var order = translatorPriority[lang];
+        if (!order) return -1;
+        var idx = order.indexOf(transKey);
+        return idx === -1 ? order.length : idx;
+    }
+
     // Кнопка "Saṁvaṭṭo / Vivaṭṭo" (развернуть/свернуть все строки) общая для обоих отчётов,
     // должна действовать на ТЕКУЩУЮ видимую таблицу — перепривязывается на каждый build*-вызов
     // (дёшево, идемпотентно через .off().on()), так что всегда указывает на таблицу, которую
@@ -345,7 +364,7 @@ window.DgSearchRender = (function () {
             // с будущим SPA-поиском (hero-форма в res/index.html, пока скрыта).
             language: {
                 search: t('datatables.search', 'Search:'),
-                lengthMenu: t('datatables.lengthMenu', '_MENU_ entries per page'),
+                lengthMenu: t('datatables.lengthMenu', '_MENU_ per page'),
                 info: t('datatables.info', 'Showing _START_ to _END_ of _TOTAL_ entries'),
                 infoEmpty: t('datatables.infoEmpty', 'Showing 0 to 0 of 0 entries'),
                 infoFiltered: t('datatables.infoFiltered', '(filtered from _MAX_ total entries)'),
@@ -463,6 +482,20 @@ window.DgSearchRender = (function () {
             t('table.countCol', 'Ct'), t('table.mrCol', 'Mr'), t('table.linksCol', 'Links'),
             t('table.typeCol', 'Type'), t('table.quoteCol', 'Quote')
         ];
+    }
+
+    // TODO.md поиск/старый баг 2: DataTables bakes language.search / language.lengthMenu into
+    // static DOM at construction time (unlike info/paginate/zeroRecords, which it re-reads from
+    // oLanguage on every draw()) — the .clear().rows.add().draw(false) fast path above can't
+    // pick up a live UI-language change. destroy() + reinit is the one clean way to also refresh
+    // those. This is NOT the same hazard as the old per-enrich-chunk full-rebuild bug (see file
+    // header comment) — that corrupted DataTables' internal registry from doing this on EVERY
+    // chunk response, many times per search; a language switch is a rare, deliberate one-off
+    // action, and .destroy() (unlike silently re-calling .DataTable() on a live table) is the
+    // officially documented safe teardown DataTables itself expects before reinitialising.
+    function resetTablesForLanguageChange() {
+        if (suttaTableApi) { suttaTableApi.destroy(); suttaTableApi = null; }
+        if (wordTableApi) { wordTableApi.destroy(); wordTableApi = null; }
     }
 
     function buildDataTable(container, dataArray, highlightWord) {
@@ -642,9 +675,15 @@ window.DgSearchRender = (function () {
                                 var sortedTransKeys = [];
 
                                 orderedLangs.forEach(function (lang) {
-                                    transKeys.filter(function (k) { return k.startsWith(lang + '_'); }).forEach(function (k) {
-                                        if (sortedTransKeys.indexOf(k) === -1) sortedTransKeys.push(k);
-                                    });
+                                    // TODO.md поиск, баг 3: keep the priority translator (e.g. "o")
+                                    // closest to the Pali text even when a matched non-priority
+                                    // translator is ALSO shown — sort by translator-priority.json
+                                    // rank instead of raw seg.translations insertion order.
+                                    transKeys.filter(function (k) { return k.startsWith(lang + '_'); })
+                                        .sort(function (a, b) { return translatorRank(lang, a) - translatorRank(lang, b); })
+                                        .forEach(function (k) {
+                                            if (sortedTransKeys.indexOf(k) === -1) sortedTransKeys.push(k);
+                                        });
                                 });
 
                                 sortedTransKeys.forEach(function (key) {
@@ -820,6 +859,7 @@ window.DgSearchRender = (function () {
     return {
         buildDataTable: buildDataTable,
         buildWordDataTable: buildWordDataTable,
-        buildVariantsReport: buildVariantsReport
+        buildVariantsReport: buildVariantsReport,
+        resetTablesForLanguageChange: resetTablesForLanguageChange
     };
 })();
