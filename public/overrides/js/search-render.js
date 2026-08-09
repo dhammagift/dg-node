@@ -37,7 +37,7 @@ window.DgSearchRender = (function () {
     // пересборке таблицы — теперь таблица не пересобирается, так что render()-колбэки должны
     // читать АКТУАЛЬНОЕ значение из общего изменяемого объекта на каждый вызов (DataTables и
     // так зовёт render() заново на каждой перерисовке — достаточно просто не кэшировать его).
-    var activeState = { highlightWord: '', scope: '' };
+    var activeState = { highlightWord: '', scope: '', requestedLangs: [] };
 
     var suttaTableApi = null;
     var wordTableApi = null;
@@ -66,11 +66,14 @@ window.DgSearchRender = (function () {
     // (дёшево, идемпотентно через .off().on()), так что всегда указывает на таблицу, которую
     // только что построили/обновили (= ту, что сейчас видна пользователю).
     function bindExpandCollapseButtons($table) {
+        // dt-hasChild/dtr-expanded — реальные классы DataTables 2.x Responsive; .parent — от
+        // старой (1.x) версии, никогда не проставляется здесь, поэтому "Свернуть все" раньше
+        // молча не находил ни одной строки (tr.parent всегда пусто).
         $('#btn-show-all-children').off('click').on('click', function () {
-            $table.find('tbody tr:not(.parent)').find('td:first-child').trigger('click');
+            $table.find('tbody tr:not(.dtr-expanded)').find('td:first-child').trigger('click');
         });
         $('#btn-hide-all-children').off('click').on('click', function () {
-            $table.find('tbody tr.parent').find('td:first-child').trigger('click');
+            $table.find('tbody tr.dtr-expanded').find('td:first-child').trigger('click');
         });
     }
 
@@ -462,6 +465,13 @@ window.DgSearchRender = (function () {
         var params = [];
         if (highlightWord) params.push('s=' + encodeURIComponent(highlightWord));
         params.push('lang=' + lang);
+        // langs= (набор/порядок языков ПЕРЕВОДА — не путать с lang=, языком интерфейса выше) —
+        // пробрасываем в ридер только если пользователь сам явно его задал в поиске
+        // (activeState.requestedLangs); иначе ридер использует свой собственный дефолт, как и
+        // поиск использует свой, когда langs= не передан.
+        if (activeState.requestedLangs && activeState.requestedLangs.length) {
+            params.push('langs=' + encodeURIComponent(activeState.requestedLangs.join(',')));
+        }
         return url + '?' + params.join('&');
     }
 
@@ -503,15 +513,42 @@ window.DgSearchRender = (function () {
         if (wordTableApi) { wordTableApi.destroy(); wordTableApi = null; }
     }
 
-    function buildDataTable(container, dataArray, highlightWord) {
+    function buildDataTable(container, dataArray, highlightWord, requestedLangs) {
         activeState.highlightWord = highlightWord;
+        // ?langs= — явный список языков, которые пользователь ПОПРОСИЛ увидеть (не только
+        // ru/en-дефолт). Раз он попросил конкретный язык через langs=, показывать его
+        // безусловно, а не только "если совпадение реально есть в нём" (см. alwaysShown ниже) —
+        // иначе langs=de почти всегда выглядит как "немецкого нет", хотя перевод есть, просто
+        // ключевое слово (обычно пали-термин) не встречается буквально в немецком тексте.
+        activeState.requestedLangs = requestedLangs ? requestedLangs.split(',').map(function (s) { return s.trim(); }).filter(Boolean) : [];
 
         if (suttaTableApi) {
+            // Разворачивание ещё не догруженной (/search/enrich) строки, а потом её сворачивание
+            // само по себе, как только цитата подъедет — известная особенность DataTables
+            // Responsive: .clear()+.rows.add() каждый раз пересоздаёт DOM child-строк, а
+            // раскрытое/свёрнутое состояние живёт именно на этих узлах, не на данных. Запоминаем
+            // раскрытые sutta_id ДО пересборки (по данным, не по индексу строки — состав/порядок
+            // строк между отрисовками может меняться) и раскрываем те же самые после.
+            var expandedIds = {};
+            suttaTableApi.rows('tr.dtr-expanded').every(function () {
+                var d = this.data();
+                if (d && d.sutta_id) expandedIds[d.sutta_id] = true;
+            });
+
             suttaTableApi.clear();
             suttaTableApi.rows.add(dataArray);
             applyHeaderTitles(suttaTableApi, suttaTableHeaderTitles());
             suttaTableApi.draw(false);
             bindExpandCollapseButtons($(container));
+
+            if (Object.keys(expandedIds).length) {
+                suttaTableApi.rows().every(function () {
+                    var d = this.data();
+                    if (d && expandedIds[d.sutta_id]) {
+                        $(this.node()).find('td.dtr-control, td:first-child').trigger('click');
+                    }
+                });
+            }
             return suttaTableApi;
         }
 
@@ -681,8 +718,16 @@ window.DgSearchRender = (function () {
                                 // "по совпадению" и к en тоже, из-за чего en пропадал из ru-интерфейса
                                 // без прямого совпадения). ЛЮБОЙ ДРУГОЙ язык (третий — de и т.п., или
                                 // ru при en-интерфейсе) — только если совпадение реально есть в нём.
+                                //
+                                // ИСКЛЮЧЕНИЕ: если пользователь явно передал ?langs= — порядок и состав
+                                // безусловно показываемых языков задаётся РОВНО этим списком, в РОВНО
+                                // этом порядке (langs=de,ru,en → нем/рус/англ; langs=ru,en,de → рус/англ/нем),
+                                // без всякого match-гейтинга — раз он сам их перечислил, это не "third
+                                // language", а именно то, что он попросил увидеть.
                                 var uiLang = window.siteLanguage || 'en';
-                                var alwaysShown = uiLang === 'en' ? ['en'] : [uiLang, 'en'];
+                                var alwaysShown = (activeState.requestedLangs && activeState.requestedLangs.length)
+                                    ? activeState.requestedLangs.slice()
+                                    : (uiLang === 'en' ? ['en'] : [uiLang, 'en']);
                                 var otherLangs = [];
                                 transKeys.forEach(function (k) {
                                     var l = k.split('_')[0];

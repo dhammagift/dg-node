@@ -1494,7 +1494,18 @@ async function enrichSuttaBatch(searchResults, suttaIds, targetLangs, keyword, s
         }
 
         suttaRes.count = matchCount;
-        globalTotalMatches += matchCount;
+        // TODO.md поиск п.24: заголовок ("N текстов и M совпадений") скакал 20→21 между fast=1 и
+        // полным /search — fast=1 приближённо считает totalMatches как число СЕГМЕНТОВ
+        // (searchResults[id].segments.length, дёшево, без грепа текста), а здесь раньше суммировался
+        // matchCount — число РЕАЛЬНЫХ вхождений regex по всему тексту сегмента (root+variant+
+        // переводы), которое может быть БОЛЬШЕ числа сегментов, если слово встречается в одной
+        // цитате дважды (пример: sn35.240:1.6, "kacchapo ... kacchapaṁ" — 2 вхождения в 1 строке).
+        // matchCount по-прежнему идёт в suttaRes.count (колонка "Ct" — там это осмысленная,
+        // более гранулярная метрика), но totalMatches для заголовка считаем так же, как fast=1
+        // (по числу сегментов) — набор сегментов не меняется между fast и enrich, только их
+        // текст донабирается, так что это число стабильно с самого первого ответа и совпадает
+        // с тем, что пользователь реально может пересчитать по строкам таблицы.
+        globalTotalMatches += suttaRes.segments.length;
         suttaRes.unique_words = Array.from(uniqueWordsSet);
     }
 

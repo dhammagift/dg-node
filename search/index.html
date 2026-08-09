@@ -792,7 +792,7 @@ $(document).ready(function() {
     var pendingIds = new Set();
     var backgroundLoadPromise = null;
     var enrichmentStarted = false;
-    var keyword = '', scope = 'default', lb = 0, la = 0, langs = 'ru,en';
+    var keyword = '', scope = 'default', lb = 0, la = 0, langs = 'ru,en', langsExplicit = false;
 
     function buildUrl(path, extra) {
         var isLocal = ['localhost', '127.0.0.1'].includes(window.location.hostname);
@@ -850,7 +850,7 @@ $(document).ready(function() {
                 r.__enriched = enrichedIds.has(r.sutta_id);
                 return r;
             });
-            table = window.DgSearchRender.buildDataTable('#pali', rows, lastHighlightWord);
+            table = window.DgSearchRender.buildDataTable('#pali', rows, lastHighlightWord, langsExplicit ? langs : '');
             $('.forshellscript a').text(t('toolbar.wordsToggleShow', 'Слова'));
             // Именованное событие (.enrich) — таблица больше не пересоздаётся, так что "draw"
             // может сработать много раз за сессию; .off+.on тем же неймспейсом не даёт слушателям
@@ -1107,6 +1107,13 @@ $(document).ready(function() {
         var value = $('#paliauto').val().trim();
         if (!value) return;
         var route = window.DgTextRouter ? window.DgTextRouter.classify(value) : { type: 'search', query: value };
+        // Явно заданный ?langs= — переносим на новую навигацию тем же способом, что и scope
+        // ниже: раньше отсюда терялись ВСЕ параметры кроме scope (баг, замечен пользователем) —
+        // langsExplicit (не сам langs, у него всегда есть дефолт 'ru,en') отличает "юзер сам
+        // задал" от "это просто дефолт этой сессии", чтобы не тащить дефолт туда, где он и так
+        // дефолт.
+        var currentParams = new URLSearchParams();
+        if (langsExplicit) currentParams.set('langs', langs);
         if (route.type === 'search') {
             // Clean /{word} URL, not ?q=word — ?q= stays fully supported as an INPUT format
             // (initSearchApp still reads it first, old links keep working) but this is our own
@@ -1114,11 +1121,13 @@ $(document).ready(function() {
             // search page directly at that path when the slug isn't a text/chapter id, instead
             // of redirecting to ?q=).
             var currentScope = new URLSearchParams(window.location.search).get('scope') || 'default';
-            var url = '/' + encodeURIComponent(route.query) +
-                (currentScope !== 'default' ? '?scope=' + encodeURIComponent(currentScope) : '');
+            if (currentScope !== 'default') currentParams.set('scope', currentScope);
+            var qs = currentParams.toString();
+            var url = '/' + encodeURIComponent(route.query) + (qs ? '?' + qs : '');
             window.location.href = url;
         } else {
-            window.location.href = '/' + encodeURIComponent(route.id);
+            var qs2 = currentParams.toString();
+            window.location.href = '/' + encodeURIComponent(route.id) + (qs2 ? '?' + qs2 : '');
         }
     });
 
@@ -1226,9 +1235,13 @@ $(document).ready(function() {
         scope = urlParams.get('scope') || 'default';
         lb = urlParams.get('lb') || 0;
         la = urlParams.get('la') || 0;
-        // Язык контента (не UI-хром — тот отдельно, через siteLanguage/dhamma-i18n.js) — по
-        // умолчанию ru,en как раньше, но можно явно запросить любой другой (?langs=de и т.п.),
-        // API это уже поддерживает (grep не завязан на конкретные языки).
+        // Язык контента (не UI-хром — тот отдельно, через siteLanguage/dhamma-i18n.js, lang=) —
+        // по умолчанию ru,en как раньше, но можно явно запросить любой набор в любом порядке
+        // (?langs=de,ru,en и т.п.), API это уже поддерживает (grep не завязан на конкретные
+        // языки). langsExplicit отдельно — не то же самое, что "langs === 'ru,en'", т.к. явный
+        // ?langs=ru,en тоже должен фиксировать порядок/безусловный показ, а не просто совпасть
+        // с дефолтом молча.
+        langsExplicit = urlParams.has('langs');
         langs = urlParams.get('langs') || 'ru,en';
 
         let searchValue = sParam && sParam.trim() !== "" ? sParam.replace(/\\b/g, '') : divKeyword.replace(/\\b/g, '');
