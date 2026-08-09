@@ -7,9 +7,9 @@ scripts/api/__pycache__
 **/dg_db*.json
 helpdocs
 .well-known
-mirrors/config/sync-config.json
-mirrors/config/tts-config.json
-mirrors/config/*.json
+siteroot/config/sync-config.json
+siteroot/config/tts-config.json
+siteroot/config/*.json
 **/node_modules
 *.log
 package-lock.json

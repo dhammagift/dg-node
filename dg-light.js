@@ -131,43 +131,42 @@ app.use('/reader', express.static(path.join(__dirname, 'reader')));
 // менялся (megareader.js/reader-template.html фетчат по старым путям), просто ещё один
 // static-маунт на тот же префикс.
 app.use('/reader', express.static(path.join(__dirname, 'configs', 'reader')));
-// /read/js/voice.js, voice-mem.js — settings.js (легаси, не трогаем) грузит их динамически
-// строго по клику/хоткею/автоплею с жёстко зашитым путём "/read/js/voice.js"; сами файлы не
-// изменены относительно легаси-репо, так что здесь просто symlink (см. read/js/*).
-app.use('/read', express.static(path.join(__dirname, 'read')));
 
-// mirrors/ — публикация от корня сайта самодостаточных легаси-приложений и сторонних тулз
-// (Memorization Helper, вход/облачная синхронизация, 4nt — сравнение изданий пали, конфиги
-// TTS-ключей и т.п.). Каждый элемент — symlink на реальную папку рядом с проектом (на проде,
-// например, `mirrors/4nt` -> `../../4nt`, т.е. `/var/www/html/4nt`, сосед `nodejs/`) ИЛИ
-// обычная папка/файл прямо здесь. Никакого хардкода per-инструмент: что появилось в mirrors/ —
-// то и замаунтилось на /{имя} на следующем старте сервера (папка сканируется один раз при
-// старте, не на каждый запрос — новый symlink требует рестарта; правки ВНУТРИ уже
-// примонтированной папки видны сразу, без рестарта). Чтобы добавить новую тулзу/зеркало —
-// просто положить symlink (или реальные файлы) в mirrors/, рестартовать сервер, ничего в
-// коде трогать не нужно.
-const MIRRORS_ROOT = path.join(__dirname, 'mirrors');
-let siteMirrors = new Set();
+// siteroot/ — публикация от корня сайта: самодостаточные легаси-приложения (Memorization
+// Helper, вход/облачная синхронизация, 4nt — сравнение изданий пали, TTS voice-player), их
+// конфиги, зеркала сторонних тулз/учебников — не только "зеркала" в узком смысле, поэтому не
+// mirrors/. Каждый элемент — symlink на реальную папку рядом с проектом (на проде, например,
+// `siteroot/4nt` -> `../../4nt`, т.е. `/var/www/html/4nt`, сосед `nodejs/`) ИЛИ обычная
+// папка/файл прямо здесь. Никакого хардкода per-инструмент: что появилось в siteroot/ — то и
+// замаунтилось на /{имя} на следующем старте сервера (папка сканируется один раз при старте,
+// не на каждый запрос — новый symlink требует рестарта; правки ВНУТРИ уже примонтированной
+// папки видны сразу, без рестарта). Чтобы добавить новую тулзу/зеркало/учебник — просто
+// положить symlink (или реальные файлы) в siteroot/, рестартовать сервер, ничего в коде
+// трогать не нужно. /read/js/voice.js, voice-mem.js (settings.js, легаси, не трогаем, жёстко
+// зашитый путь "/read/js/voice.js") — тоже здесь (`siteroot/read/`), тот же паттерн, ничем не
+// отличается от 4nt/config/login/memo.
+const SITEROOT = path.join(__dirname, 'siteroot');
+let siteRootEntries = new Set();
 try {
-    siteMirrors = new Set(
-        fsSync.readdirSync(MIRRORS_ROOT, { withFileTypes: true })
+    siteRootEntries = new Set(
+        fsSync.readdirSync(SITEROOT, { withFileTypes: true })
             // Dirent.isDirectory() отражает СЫРОЙ тип записи (d_type) и для symlink'а на
             // директорию возвращает false, даже если цель — директория (проверено эмпирически,
             // node -e с реальным symlink) — нужно явно включать isSymbolicLink() тоже, иначе
-            // все реальные записи в mirrors/ (это же и есть symlink'и) молча отфильтруются.
+            // все реальные записи в siteroot/ (это же и есть symlink'и) молча отфильтруются.
             .filter(d => d.isDirectory() || d.isSymbolicLink())
             .map(d => d.name)
     );
 } catch (e) {
-    console.warn('Site mirrors root not found:', MIRRORS_ROOT);
+    console.warn('Siteroot not found:', SITEROOT);
 }
-for (const name of siteMirrors) {
-    app.use(`/${name}`, express.static(path.join(MIRRORS_ROOT, name)));
+for (const name of siteRootEntries) {
+    app.use(`/${name}`, express.static(path.join(SITEROOT, name)));
 }
 // ru/memo, ru/login — унаследованные от легаси языковые алиасы (тот же контент ещё и под /ru/).
-// Это не отдельная тулза в mirrors/, а второй URL для уже примонтированной — оставлены явно.
-app.use('/ru/memo', express.static(path.join(MIRRORS_ROOT, 'memo')));
-app.use('/ru/login', express.static(path.join(MIRRORS_ROOT, 'login')));
+// Это не отдельная тулза в siteroot/, а второй URL для уже примонтированной — оставлены явно.
+app.use('/ru/memo', express.static(path.join(SITEROOT, 'memo')));
+app.use('/ru/login', express.static(path.join(SITEROOT, 'login')));
 
 // Офлайн-зеркала сторонних сайтов — /{имя-папки}/... отдаётся как статика напрямую из offline-data
 for (const name of offlineMirrors) {
