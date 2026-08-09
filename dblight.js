@@ -5,21 +5,22 @@ const fsSync = require('fs');
 const isTermux  = fsSync.existsSync('/data/data/com.termux/files/usr');
 const isWindows = process.platform === 'win32';
 
-let rootPath, htmlPath, textInfoPath;
+// SC bilara root/html — единый кроссплатформенный путь через siteroot/data/ (git-tracked
+// symlink на реальные данные, тот же принцип, что и siteroot/assets — см. dg-light.js). Раньше
+// было 3 разных platform-conditional хардкода абсолютных путей, унифицировано в этом раунде.
+const SC_BILARA_ROOT = path.join(__dirname, 'siteroot', 'data', 'suttacentral.net', 'sc-data', 'sc_bilara_data');
+const rootPath = path.join(SC_BILARA_ROOT, 'root') + '/';
+const htmlPath = path.join(SC_BILARA_ROOT, 'html') + '/';
+
+// textInfoPath — отдельный легаси-путь (не sc_bilara_data/не dhammagift), вне скоупа этой
+// миграции, остаётся platform-conditional как было.
+let textInfoPath;
 if (isTermux) {
-    const BASE = '/data/data/com.termux/files/usr/share/apache2/default-site/htdocs';
-    rootPath     = `${BASE}/suttacentral.net/sc-data/sc_bilara_data/root/`;
-    htmlPath     = `${BASE}/suttacentral.net/sc-data/sc_bilara_data/html/`;
-    textInfoPath = `${BASE}/assets/js/textinfo.json`;
+    textInfoPath = '/data/data/com.termux/files/usr/share/apache2/default-site/htdocs/assets/js/textinfo.json';
 } else if (isWindows) {
-    rootPath     = 'C:/soft/sc-data/sc_bilara_data/root/';
-    htmlPath     = 'C:/soft/sc-data/sc_bilara_data/html/';
     textInfoPath = 'C:/soft/dg/assets/js/textinfo.json';
 } else {
-    const BASE = '/var/www/html';
-    rootPath     = `${BASE}/suttacentral.net/sc-data/sc_bilara_data/root/`;
-    htmlPath     = `${BASE}/suttacentral.net/sc-data/sc_bilara_data/html/`;
-    textInfoPath = `${BASE}/assets/js/textinfo.json`;
+    textInfoPath = '/var/www/html/assets/js/textinfo.json';
 }
 
 const outputFile = path.join(__dirname, 'dg_db_light.json');

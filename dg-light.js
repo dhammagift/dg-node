@@ -40,31 +40,36 @@ const MIN_KEYWORD_LENGTH = 3;
 const isTermux  = fsSync.existsSync('/data/data/com.termux/files/usr');
 const isWindows = process.platform === 'win32';
 
-// SuttaCentral Bilara — основной источник пали и переводов
-let SC_BILARA, OFFLINE_MIRRORS_ROOT;
+// Offline mirrors root (внешние тяжёлые зеркала сторонних сайтов) — отдельный, не связанный с
+// текстовыми данными механизм, платформо-зависимый путь вне web-root не переезжает на siteroot/.
+let OFFLINE_MIRRORS_ROOT;
 if (isTermux) {
-    SC_BILARA  = '/data/data/com.termux/files/usr/share/apache2/default-site/htdocs/suttacentral.net/sc-data/sc_bilara_data';
     OFFLINE_MIRRORS_ROOT = '/data/data/com.termux/files/home/offline-data';
 } else if (isWindows) {
-    SC_BILARA  = 'C:/soft/sc-data/sc_bilara_data';
     OFFLINE_MIRRORS_ROOT = 'C:/soft/offline-data';
 } else {
-    SC_BILARA  = '/var/www/html/suttacentral.net/sc-data/sc_bilara_data';
     OFFLINE_MIRRORS_ROOT = '/home/user/offline-data';
 }
+
+// SuttaCentral Bilara (пали root/variant/html + переводы) и DhammaGift offline (лучшие переводы
+// проекта) — оба дерева читаются через один общий корень `siteroot/data/` (git-tracked symlink'и
+// на реальные данные, как и `siteroot/assets`/`siteroot/4nt`/и т.п. — см. CLAUDE.md "Публикация
+// от корня сайта"). Один и тот же путь для всех платформ — кроссплатформенность обеспечивает сам
+// symlink на диске, не платформенный if/else здесь (раньше было 3 разных хардкода абсолютных
+// путей — Termux/Windows/прод-Linux — унифицировано в этом раунде).
+const DATA_ROOT = path.join(__dirname, 'siteroot', 'data');
+const SC_BILARA = path.join(DATA_ROOT, 'suttacentral.net', 'sc-data', 'sc_bilara_data');
 
 const SC_ROOT     = `${SC_BILARA}/root/pli/ms`;
 const SC_VARIANT  = `${SC_BILARA}/variant/pli/ms`;
 const SC_TRANS    = `${SC_BILARA}/translation`;
 const DG_LANGS    = ['ru', 'ru_other', 'en', 'en_other', 'ai'];
 
-// DhammaGift offline — лучшие переводы проекта (один на язык). Читаем через `siteroot/assets/texts`,
-// а не напрямую из offline-data вне web-root — `siteroot/assets` уже symlink на легаси-репо
-// (`../../assets`), чей `assets/texts/{lang}` в свою очередь symlink на реальные offline-данные
-// (см. `C:\soft\dg\assets\texts\en_other` → `../../../offline-data/dhammagift/en_other`). Один
-// путь для всех платформ — не нужно ходить вне обслуживаемого дерева отдельным абсолютным путём.
-// Структура: {DG_OFFLINE}/{lang}/sutta|vinaya/{nikaya}/{id}_translation-{lang}-{author}.json
-const DG_OFFLINE = path.join(__dirname, 'siteroot', 'assets', 'texts');
+// DhammaGift offline — лучшие переводы проекта (один на язык), плоская структура (без подпапки
+// на переводчика, в отличие от SC — DG исторически один главный + один "other" переводчик на
+// язык, различаются именем файла). Структура:
+// {DG_OFFLINE}/{lang}/sutta|vinaya/{nikaya}/{id}_translation-{lang}-{author}.json
+const DG_OFFLINE = path.join(DATA_ROOT, 'dhammagift', 'translation');
 let offlineMirrors = new Set();
 try {
     offlineMirrors = new Set(
@@ -282,6 +287,19 @@ function filterPreferredTranslators(results, multiForLangs) {
             // Sujato и так широко доступен на SuttaCentral — если есть другой переводчик
             // (Thanissaro и т.п.), предпочитаем его; sujato берём только если больше никого нет.
             chosen = keys.find(k => k !== 'en_sujato');
+        }
+
+        // Язык без записи в TRANSLATOR_PRIORITY (сейчас только будущие языки вроде тайского) —
+        // вместо произвольного keys[0] (порядок вставки для языка без приоритета: dgother → sc →
+        // dgmain, dgmain пишется ПОСЛЕДНИМ — значит keys[0] обычно НЕ dgmain) предпочитаем
+        // переводчика из основной DG-папки языка (DG_OFFLINE/{lang}/, не {lang}_other/ и не SC) —
+        // по ПАПКЕ, а не по имени файла (у нового языка переводчик DG не обязан называться "o").
+        if (!chosen) {
+            const dgMainDir = path.join(DG_OFFLINE, lang).replace(/\\/g, '/') + '/';
+            chosen = keys.find(k => {
+                const p = results[k];
+                return !!p && p.replace(/\\/g, '/').startsWith(dgMainDir);
+            });
         }
 
         if (!chosen) chosen = keys[0];
@@ -653,12 +671,23 @@ function parseJsonLineFragment(fragment) {
 
 // Classifies a matched file path by role — root/variant/translation(lang_author) — purely from
 // the filename, no file read. Mirrors the naming convention used by findTranslationFiles.
-function classifyMatchSource(filePath) {
+//
+// TODO.md поиск, баг 3: requires suttaId (already known at the call site) to correctly slice off
+// the "_translation-{lang}-{author}" suffix — a naive baseName.split('-') breaks for any id that
+// itself contains a hyphen (range suttas like "an1.21-30", Vinaya ids like "pli-tv-bu-vb-ss1"):
+// the id's own hyphen gets split too, parts[0] no longer ends with "_translation", and the match
+// silently falls through to { type: 'unknown' } — the matched translator text is then never
+// written into seg.translations anywhere (assembleFromGrepMap only handles 'root'/'variant'/
+// 'translation'). Same class of bug already fixed the same way (slice by suttaId.length, not
+// split('-') on the whole string) in collectTranslationFiles/walkTranslationDir above — this was
+// a third, independent copy of the same filename-parsing logic that never got the same fix.
+function classifyMatchSource(filePath, suttaId) {
     const baseName = path.basename(filePath, '.json');
     if (baseName.endsWith('_root-pli-ms')) return { type: 'root' };
     if (baseName.endsWith('_variant-pli-ms')) return { type: 'variant' };
-    const parts = baseName.split('-');
-    if (parts.length >= 3 && parts[0].endsWith('_translation')) {
+    const suffix = baseName.slice(suttaId.length + 1); // "translation-ru-sv"
+    const parts = suffix.split('-');
+    if (parts.length >= 3 && parts[0] === 'translation') {
         return { type: 'translation', transKey: `${parts[1]}_${parts.slice(2).join('-')}` };
     }
     return { type: 'unknown' };
@@ -860,7 +889,7 @@ function assembleFromGrepMap(fileMap, allowedPrefixes, searchResults, lb, la) {
         if (!suttaMeta) continue;
         if (!matchesScope(suttaMeta, suttaId, allowedPrefixes)) continue;
 
-        const source = classifyMatchSource(filePath);
+        const source = classifyMatchSource(filePath, suttaId);
 
         for (const [lineNum, entry] of lineMap) {
             if (!entry.isMatch) continue;
