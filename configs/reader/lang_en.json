@@ -261,5 +261,8 @@
     "memoAlt": "Memo",
     "homeTitle": "Home",
     "homeAlt": "Home"
+  },
+  "reader": {
+    "warningNote": "<strong>Note:</strong><a class='text-decoration-none cursor-pointer' target='' href='{dUrl}'>&nbsp;</a>Translations, dictionaries, and comments are not the words of the Blessed One.<a class='text-decoration-none cursor-pointer' target='' href='{thUrl}'>&nbsp;</a>Please check against the Pali in the four main Nikayas."
   }
 }

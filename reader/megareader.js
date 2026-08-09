@@ -1,6 +1,17 @@
 //ридер не должен качать всю базу с сервера чтобы открыть один текст. качать всю базу только для оффлайн использвания. и нужно проверять если есть оффлан - то использотвать если нет, то брать из сети, но только сутту... а не всю БД
 
 const Sccopy = "/suttacentral.net";
+
+// Тот же паттерн чтения i18n-конфига, что и в search-render.js/res/index.html — читает
+// window.DHAMMA_I18N.config через глобал, не завязан на то, когда конкретно этот файл
+// подключился относительно dhamma-i18n.js.
+function t(path, fallback) {
+    var cfg = window.DHAMMA_I18N && window.DHAMMA_I18N.config;
+    if (!cfg) return fallback;
+    var value = path.split('.').reduce(function (v, k) { return (v == null) ? undefined : v[k]; }, cfg);
+    return value === undefined ? fallback : value;
+}
+
 const suttaArea = document.getElementById(window.MEGAREADER_SUTTA_ID || "sutta");
 const homeButton = document.getElementById("home-button");
 const fdgButton = document.getElementById("fdg-button");
@@ -695,11 +706,18 @@ window.buildSutta = async function(rawSlug) {
     const canShowClose = viewCount >= SHOW_CLOSE_AFTER;
     const isWarningClosed = localStorage.getItem('warningClosed');
 
+    // Раньше эта строка была захардкожена по-русски безусловно — на английской версии
+    // (read/ee) тоже показывалась по-русски. Ключ и оба языка — в configs/reader/lang_{ru,en}.json
+    // (reader.warningNote), не хардкод здесь — {dUrl}/{thUrl} те же токены-плейсхолдеры, что
+    // {query} в search/index.html, подставляются вручную (dhamma-i18n.js textNode-substitution
+    // не годится — этот HTML со ссылками собирается в JS, а не лежит в статичной DOM-разметке).
+    const warningLabel = t('reader.warningNote', "<strong>Заметка:</strong><a class='text-decoration-none cursor-pointer' target='' href='{dUrl}'>&nbsp;</a>Переводы, словари и комментарии сделаны не Благословенным.<a class='text-decoration-none cursor-pointer' target='' href='{thUrl}'>&nbsp;</a>Сверяйтесь с Пали в 4 основных никаях.")
+        .replace('{dUrl}', dUrl).replace('{thUrl}', thUrl);
     const warning = `
         <div class="warning-container warning-box">
         <p class='warning'>
-            <strong>Заметка:</strong><a class='text-decoration-none cursor-pointer' target='' href='${dUrl}'>&nbsp;</a>Переводы, словари и комментарии сделаны не Благословенным.<a class='text-decoration-none cursor-pointer' target='' href='${thUrl}'>&nbsp;</a>Сверяйтесь с Пали в 4 основных никаях.
-                ${canShowClose && !isWarningClosed ? `<span class="close-warning">×</span>` : ''} 
+            ${warningLabel}
+                ${canShowClose && !isWarningClosed ? `<span class="close-warning">×</span>` : ''}
         </p>
         </div>
     `;
@@ -756,13 +774,13 @@ async function initReader() {
     await window.modeTableReady;
 
     // Ключ режима — как на странице поиска: ?lang= → localStorage.dhammaLanguage →
-    // data-default-lang → "ru" (это уже считает dhamma-i18n.js, просто ждём его и переиспользуем
+    // data-default-lang → "en" (это уже считает dhamma-i18n.js, просто ждём его и переиспользуем
     // результат), переводим в modeKey одноязычного режима. Если режим передан явно
     // (window.READER_MODE.modeKey, см. ?mode= в reader-template.html) — ничего не трогаем.
     if (!READER_MODE_EXPLICIT && window.DHAMMA_I18N_READY) {
         try { await window.DHAMMA_I18N_READY; } catch (error) {}
         const resolvedLang = (window.DHAMMA_I18N && window.DHAMMA_I18N.language)
-            || localStorage.getItem('dhammaLanguage') || 'ru';
+            || localStorage.getItem('dhammaLanguage') || 'en';
         READER_MODE.modeKey = resolvedLang === 'en' ? 'read' : 'st';
     }
     if (!READER_MODE.modeKey) READER_MODE.modeKey = 'st';
@@ -812,7 +830,7 @@ async function initReader() {
             // Тут ещё не было ни одного ответа сервера (buildSutta не звался) — READER_MODE.columns
             // ещё не заполнен, берём язык из mode-table.json по modeKey (уже дождались выше).
             const modeConfig = window.MODE_TABLE && window.MODE_TABLE[READER_MODE.modeKey];
-            suttaArea.innerHTML = window.getInstructionHTML((modeConfig && modeConfig.columns[0]) || "ru");
+            suttaArea.innerHTML = window.getInstructionHTML((modeConfig && modeConfig.columns[0]) || "en");
         }
     }
 }

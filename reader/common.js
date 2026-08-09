@@ -6,8 +6,25 @@
 //
 // Легаси определял isRuPath/isLocalHost по префиксу пути (/r/, /ru/...) — здесь языка колонки
 // определяется через localStorage.dhammaLanguage (см. megareader.js), не через путь.
-window.isRuPath = (localStorage.getItem('dhammaLanguage') || 'ru') === 'ru';
+window.isRuPath = (localStorage.getItem('dhammaLanguage') || 'en') === 'ru';
 window.isLocalHost = window.location.host.includes('localhost') || window.location.host.includes('127.0.0.1');
+
+// TODO.md общие п.2: siteLanguage — легаси-ключ, от которого напрямую зависит облачная
+// синхронизация (settings.js, портирован из assets/js/settings.js почти дословно — тот же
+// код читает siteLanguage при сохранении/восстановлении настроек). На странице поиска мост уже
+// есть (search/index.html), в ридере его не было вообще (grep — ноль совпадений) — язык,
+// выбранный в ридере, не долетал ни до легаси-страниц, ни обратно при восстановлении настроек
+// из облака. Тот же паттерн: сид один раз при загрузке + досинхронизация на живую смену языка.
+if (!localStorage.getItem('siteLanguage')) {
+    localStorage.setItem('siteLanguage', localStorage.getItem('dhammaLanguage') || 'en');
+}
+window.siteLanguage = localStorage.getItem('siteLanguage') || 'en';
+document.addEventListener('dhamma:languagechange', function (e) {
+    var lang = e.detail && e.detail.language;
+    if (!lang) return;
+    window.siteLanguage = lang;
+    try { localStorage.setItem('siteLanguage', lang); } catch (_) {}
+});
 
 // ==========================================
 // ИКОНКИ АУДИО И ПОДЕЛИТЬСЯ ДЛЯ СТРОКИ 0.1 (заголовок сутты/раздела)
