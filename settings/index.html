@@ -450,32 +450,53 @@ $('#delaySeg').onclick = e=>{
 };
 
 /* Область поиска. SCOPE_BOOKS — 4 никаи + основные книги КН (id-префиксы, включены по
-   умолчанию). EXTRA_BOOKS — Виная и Абхидхамма ЦЕЛИКОМ, одним неразбитым пунктом каждая
-   (category='vinaya'/'abhi' в dg_db_light.json — проверено), выключены по умолчанию:
-   Виная не приветствуется меньше Сутт, но доступна; Абхидхамма — не в фокусе проекта,
-   специально не детализируется на под-книги (ds/dt/kv/patthana/pp/vb/ya). "Поздняя КН"/
-   "внеканоническое" (category='khudakka' целиком, шире 6 книг ниже) пока не добавлены —
-   пересекается с уже включёнными dhp/iti/snp/ud/thag/thig, нужно аккуратно развести. */
+   умолчанию). EXTRA_BOOKS — выключенные по умолчанию, как в легаси-выпадашке (пункты
+   "Виная", "плюс вся КН", "плюс Kd, Pvr" на скриншоте владельца): каждый пункт может состоять из НЕСКОЛЬКИХ
+   кодов сразу (codes: [...]) — переключается вместе, пишется как отдельные значения в
+   dhammaSearchScope (matchesScope на сервере это уже понимает как ИЛИ по каждому).
+   - "Виная (Вибханга)" = pli-tv-bi + pli-tv-bu (Патимоккха+Вибханга, оба Пратимокши) —
+     ЭТО id-префиксы, не category, потому что нужно отделить от Kd/Pvr; category='vinaya'
+     их не различает. matchesScope требует, чтобы символ СРАЗУ ПОСЛЕ префикса был
+     цифрой/точкой/дефисом (иначе "pli-tv-b" совпало бы случайно с чем угодно на "b") —
+     поэтому префикс обязательно "pli-tv-bi"/"pli-tv-bu" целиком, не короче.
+   - "Кхандхака" = pli-tv-kd, "Паривара" = pli-tv-pvr — отдельные пункты (точечный поиск).
+   - "Абхидхамма" = category 'abhi' целиком, одним пунктом — по прямому указанию НЕ
+     детализировать на под-книги (ds/dt/kv/patthana/pp/vb/ya).
+   - "+ вся КН" = category 'khudakka' целиком (включает и уже включённые по умолчанию
+     dhp/iti/snp/ud/thag/thig, и всё остальное — ja/mil/nett/pv/vv/bv/cp/kp/ps/...);
+     совпадение с default-книгами не проблема — matchesScope просто ИЛИ, не XOR. */
 const SCOPE_BOOKS = [['dn','DN'],['mn','MN'],['sn','SN'],['an','AN'],['iti','Iti'],['ud','Ud'],['snp','Snp'],['dhp','Dhp'],['thag','Thag'],['thig','Thig']];
-const EXTRA_BOOKS = [['vinaya','Виная'],['abhi','Абхидхамма']];
+const EXTRA_BOOKS = [
+  ['+ вся КН', ['khudakka']],
+  ['Виная (Вибханга)', ['pli-tv-bi','pli-tv-bu']],
+  ['+ Кхандхака', ['pli-tv-kd']],
+  ['+ Паривара', ['pli-tv-pvr']],
+  ['Абхидхамма', ['abhi']]
+];
 const DEFAULT_SCOPE = SCOPE_BOOKS.map(b=>b[0]);
 let scopeList = readList('dhammaSearchScope', DEFAULT_SCOPE.slice());
+function saveScope(){
+  const isDefault = scopeList.length===DEFAULT_SCOPE.length && DEFAULT_SCOPE.every(c=>scopeList.includes(c));
+  if (isDefault) localStorage.removeItem('dhammaSearchScope');
+  else localStorage.setItem('dhammaSearchScope', scopeList.join(','));
+}
 function renderScope(){
   const host = $('#scopeBoxes'); host.innerHTML='';
-  const addBox = (code, label, muted) => {
+  const addBox = (label, codes, muted) => {
     const lbl=document.createElement('label');
     if (muted) lbl.style.cssText='background:var(--line);color:var(--ink-3)';
-    lbl.innerHTML=`<input type="checkbox" ${scopeList.includes(code)?'checked':''}> ${label}`;
+    const checked = codes.every(c=>scopeList.includes(c));
+    lbl.innerHTML=`<input type="checkbox" ${checked?'checked':''}> ${label}`;
     lbl.querySelector('input').onchange = e=>{
-      scopeList = e.target.checked ? scopeList.concat(code) : scopeList.filter(c=>c!==code);
-      const isDefault = scopeList.length===DEFAULT_SCOPE.length && DEFAULT_SCOPE.every(c=>scopeList.includes(c));
-      if (isDefault) localStorage.removeItem('dhammaSearchScope');
-      else localStorage.setItem('dhammaSearchScope', scopeList.join(','));
+      scopeList = e.target.checked
+        ? scopeList.concat(codes.filter(c=>!scopeList.includes(c)))
+        : scopeList.filter(c=>!codes.includes(c));
+      saveScope();
     };
     host.appendChild(lbl);
   };
-  SCOPE_BOOKS.forEach(([code,label])=>addBox(code,label,false));
-  EXTRA_BOOKS.forEach(([code,label])=>addBox(code,label,true));
+  SCOPE_BOOKS.forEach(([code,label])=>addBox(label,[code],false));
+  EXTRA_BOOKS.forEach(([label,codes])=>addBox(label,codes,true));
 }
 renderScope();
 
