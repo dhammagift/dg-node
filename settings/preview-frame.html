@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>preview</title>
+<link href="/assets/css/styles.css" rel="stylesheet" />
+<link href="/assets/css/extrastyles.css" rel="stylesheet" />
+<link href="/assets/css/paliLookup.css" rel="stylesheet" />
+<link rel="stylesheet" href="/reader/css/index.css">
+<link rel="stylesheet" href="/reader/css/rus-multi.css">
+<link rel="stylesheet" href="/reader/css/uiextra.css">
+<style>
+/* Только раскладка контейнера — сам текст красят настоящие таблицы стилей выше, подключённые
+   так же, как на search/index.html и reader-template.html. Так образец в /settings/ реально
+   показывает, как текст выглядит на проде, а не повторяет их вёрстку заново. */
+html, body { margin: 0; padding: 0; background: transparent; }
+body { padding: 4px 2px; }
+.demo-seg { margin-bottom: 14px; }
+.demo-seg:last-child { margin-bottom: 0; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+function stripPunct(t) {
+  return localStorage.getItem('removePunct') === 'true'
+    ? t.replace(/[-—–]/g, ' ').replace(/[:;""'']/g, '').replace(/[.?!]/g, ' | ')
+    : t;
+}
+function pickReaderLangs() {
+  const raw = localStorage.getItem('dhammaReaderLangs') || localStorage.getItem('dhammaSearchLangs') || 'ru,en';
+  return raw.split(',').map(s => s.trim()).filter(Boolean);
+}
+// Та же разметка, что генерирует reader/megareader.js в реальном ридере (id сегмента,
+// .pli-lang.quote, .right-column с {lang}-lang.quote и .lang-2nd на втором переводчике) —
+// только без всей логики путей/режимов/навигации, которая тут не нужна.
+function renderSegment(seg, wantedLangs) {
+  const anchor = seg.segment.includes(':') ? seg.segment.split(':').slice(1).join(':') : seg.segment;
+  let inner = `<span class="pli-lang inputscript-ISOPali quote" lang="pi">${stripPunct(seg.root_text || seg.variant || '')}</span>`;
+  const keys = Object.keys(seg.translations);
+  const byLang = {};
+  keys.forEach(k => {
+    const lang = k.split('_')[0];
+    (byLang[lang] = byLang[lang] || []).push(k);
+  });
+  let right = '';
+  wantedLangs.concat(keys.map(k => k.split('_')[0])).forEach((lang, _, arr) => {
+    if (!byLang[lang] || !byLang[lang].length) return;
+    byLang[lang].forEach((key, idx) => {
+      const translatorId = key.split('_').slice(1).join('_');
+      const posClass = idx === 0 ? '' : ' lang-2nd';
+      right += `<span class="${lang}-lang${posClass} quote" lang="${lang}" data-translator="${translatorId}">${stripPunct(seg.translations[key])}</span>`;
+    });
+    delete byLang[lang];
+  });
+  if (right) inner += `<span class="right-column">${right}</span>`;
+  return `<div class="demo-seg"><span id="${anchor}">${inner}</span></div>`;
+}
+function render(groups) {
+  if (!groups || !groups.length) return;
+  const group = groups[Math.floor(Math.random() * groups.length)];
+  const wantedLangs = pickReaderLangs();
+  document.getElementById('root').innerHTML = group.segments.map(s => renderSegment(s, wantedLangs)).join('');
+}
+const scale = parseInt(localStorage.getItem('uiScale')) || 100;
+document.documentElement.style.fontSize = scale + '%';
+fetch('/settings/demo-data.json').then(r => r.ok ? r.json() : []).then(groups => {
+  window.__demoGroups = groups || [];
+  render(window.__demoGroups);
+});
+window.addEventListener('storage', e => {
+  if (['removePunct', 'dhammaReaderLangs', 'dhammaSearchLangs', 'uiScale'].includes(e.key)) {
+    if (e.key === 'uiScale') document.documentElement.style.fontSize = (parseInt(localStorage.getItem('uiScale')) || 100) + '%';
+    render(window.__demoGroups || []);
+  }
+});
+window.addEventListener('message', e => {
+  if (e.data === 'dg-preview-shuffle') render(window.__demoGroups || []);
+  if (e.data === 'dg-preview-refresh') render(window.__demoGroups || []);
+});
+</script>
+</body>
+</html>

@@ -35,13 +35,6 @@ body{font-family:var(--ui);color:var(--ink);background:var(--canvas);font-size:1
 body.dark .preview{background:#1C2029;border-color:#333B47}
 .preview-label{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:#96876A;display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
 .preview-label button{background:transparent;border:0;font-size:16px;padding:2px 6px;color:var(--accent)}
-.pv-seg{border-left:2px solid #E7DDC9;padding-left:12px;margin-bottom:10px}
-body.dark .pv-seg{border-color:#333B47}
-.pv-pali{font-size:17px;line-height:1.55;margin:2px 0 0;color:#1E1A12}
-body.dark .pv-pali{color:#EDE6D8}
-.pv-tr{color:#4C4638;margin:6px 0 0;line-height:1.5;font-size:14px}
-body.dark .pv-tr{color:#BFB6A4}
-.pv-src{font-size:10.5px;letter-spacing:.04em;text-transform:uppercase;color:#96876A;display:block;margin-bottom:1px}
 .group{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);margin-bottom:20px;overflow:hidden;scroll-margin-top:16px}
 .group.flash{box-shadow:0 0 0 3px var(--accent);transition:box-shadow .4s ease}
 .group > h2{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);margin:0;padding:14px 18px 10px;font-weight:600}
@@ -119,13 +112,14 @@ kbd{font:inherit;font-size:12.5px;background:var(--line);border:1px solid var(--
   <div class="head"><h1 id="t-title">Настройки</h1><span class="saved" id="t-saved">Сохраняется сразу</span></div>
   <p class="head-sub" id="t-sub">Значения по умолчанию для поиска и чтения на всём сайте.</p>
 
-  <!-- ОБРАЗЕЦ -->
-  <section class="preview" id="preview" hidden>
+  <!-- ОБРАЗЕЦ — реальная разметка и настоящие стили сайта (preview-frame.html), в iframe,
+       чтобы стили ридера/поиска не задевали стили самой страницы настроек. -->
+  <section class="preview" id="preview">
     <div class="preview-label">
       <span id="t-previewLabel">Образец</span>
       <button type="button" class="btn-quiet" id="previewShuffle" title="Другой фрагмент" aria-label="Показать другой фрагмент">⟳</button>
     </div>
-    <div id="previewBody"></div>
+    <iframe id="previewFrame" src="/settings/preview-frame.html" title="Образец текста" style="width:100%;height:260px;border:0;display:block;background:transparent" scrolling="yes"></iframe>
   </section>
 
   <!-- ОБЩЕЕ -->
@@ -567,40 +561,18 @@ const STR = {
   document.documentElement.lang = isRu?'ru':'en';
 })();
 
-/* Образец — реальные фрагменты, заданные владельцем (не выдумываем случайные суттs),
-   закэшированы сервером при старте (dg-light.js, buildSettingsDemoCache) на всех языках
-   сразу, чтобы не дёргать /api/text на каждую загрузку страницы настроек. Сегменты одной
-   сутты (напр. dn22:18.18+18.19) рендерятся вместе, одной группой — так и закэшировано. */
-let demoGroups = [];
-function stripPunct(t){ return $('#punct').checked ? t : t.replace(/[,.:;—]/g,''); }
-function pickLangTranslation(seg){
-  const wanted = state.read.length ? state.read : ['en'];
-  for (const lang of wanted) {
-    const key = Object.keys(seg.translations).find(k => k.split('_')[0] === lang);
-    if (key) return {lang, src: key.split('_').slice(1).join('_'), text: seg.translations[key]};
-  }
-  const anyKey = Object.keys(seg.translations)[0];
-  return anyKey ? {lang: anyKey.split('_')[0], src: anyKey.split('_').slice(1).join('_'), text: seg.translations[anyKey]} : null;
-}
-function renderPreview(){
-  if (!demoGroups.length) return;
-  const group = demoGroups[Math.floor(Math.random()*demoGroups.length)];
-  const body = $('#previewBody'); body.innerHTML='';
-  group.segments.forEach(seg=>{
-    const tr = pickLangTranslation(seg);
-    const block = document.createElement('div'); block.className='pv-seg';
-    let html = `<p class="pv-pali">${stripPunct(seg.root_text||seg.variant||'')}</p>`;
-    if (tr) html += `<p class="pv-tr"><span class="pv-src">${tr.lang} · ${tr.src}</span>${stripPunct(tr.text)}</p>`;
-    block.innerHTML = html;
-    body.appendChild(block);
-  });
-  $('#preview').hidden = false;
-}
-fetch('/settings/demo-data.json').then(r=>r.ok?r.json():[]).then(data=>{ demoGroups=data||[]; renderPreview(); }).catch(()=>{});
-$('#previewShuffle').onclick = renderPreview;
-const _renderOrig = render;
-render = function(){ _renderOrig(); renderPreview(); };
-$('#punct').addEventListener('change', renderPreview);
+/* Образец — рендерится в отдельном документе, settings/preview-frame.html (iframe), той же
+   разметкой и теми же таблицами стилей, что реальный ридер (pli-lang/{lang}-lang/lang-2nd,
+   see reader/megareader.js) — изоляция iframe'ом нужна, чтобы стили сайта не поехали на
+   самой странице настроек. Данные — реальные фрагменты от владельца, закэшированные сервером
+   при старте (dg-light.js, buildSettingsDemoCache). Пунктуация/языки чтения меняются в этой
+   же вкладке через localStorage — iframe как отдельный window ловит их 'storage'-событием
+   сам, без ручной синхронизации отсюда; кнопка "другой фрагмент" не трогает localStorage,
+   поэтому ей нужен явный postMessage. */
+$('#previewShuffle').onclick = () => {
+  const f = $('#previewFrame').contentWindow;
+  if (f) f.postMessage('dg-preview-shuffle', location.origin);
+};
 
 setTheme(localStorage.getItem('theme') || 'auto');
 render();
