@@ -247,8 +247,15 @@ kbd{font:inherit;font-size:12.5px;background:var(--line);border:1px solid var(--
         </div>
         <div class="row">
           <div><p class="row-title" id="t-autoLookup">Искать выделенный текст автоматически</p>
-          <p class="row-desc" id="t-autoLookupDesc">Пока не реализовано — см. список доработок.</p></div>
-          <div class="row-control"><span class="switch"><input type="checkbox" id="autoLookup" disabled><span class="track"></span><span class="thumb"></span></span></div>
+          <p class="row-desc" id="t-autoLookupDesc">То же самое, что кнопка мультивыбора в ридере.</p></div>
+          <div class="row-control"><span class="switch"><input type="checkbox" id="autoLookup"><span class="track"></span><span class="thumb"></span></span></div>
+        </div>
+        <div class="row" id="delayRow">
+          <div><p class="row-title" id="t-delay">Задержка</p></div>
+          <div class="row-control"><div class="seg" role="group" aria-labelledby="t-delay" id="delaySeg">
+            <button type="button" data-ms="3000" aria-pressed="true">3 с</button>
+            <button type="button" data-ms="5000" aria-pressed="false">5 с</button>
+          </div></div>
         </div>
       </div>
     </div>
@@ -425,16 +432,39 @@ $('#punct').onchange = e=> localStorage.setItem('removePunct', e.target.checked 
 $('#dictOn').onchange = e=>{ $('#dictBlock').hidden = !e.target.checked; localStorage.setItem('dictionaryVisible', e.target.checked ? 'true' : 'false'); };
 $('#dictMode').onchange = e=> localStorage.setItem('selectedDict', e.target.value);
 
-/* Область поиска — только реально работающие книги (DEFAULT_SCOPE_PREFIXES в dg-light.js).
-   Виная/Абхидхамма/поздняя КН не включены — их id-префиксы в скелете БД не проверены,
-   см. список доработок. */
+/* Автопоиск выделения — та же кнопка/ключ, что и "мультивыбор" в ридере (paliLookup.js,
+   #toggle-multiselect), не отдельная новая настройка. Задержка — 3 или 5 секунд (2с сочли
+   слишком быстрым и убрали из выбора, см. localStorage.dictAutoLookupDelay). */
+$('#autoLookup').checked = localStorage.getItem('multiSelectMode') === 'true';
+$('#delayRow').hidden = !$('#autoLookup').checked;
+$('#autoLookup').onchange = e=>{
+  localStorage.setItem('multiSelectMode', e.target.checked ? 'true' : 'false');
+  $('#delayRow').hidden = !e.target.checked;
+};
+const savedDelay = localStorage.getItem('dictAutoLookupDelay') || '3000';
+document.querySelectorAll('#delaySeg button').forEach(b=> b.setAttribute('aria-pressed', String(b.dataset.ms===savedDelay)));
+$('#delaySeg').onclick = e=>{
+  const b = e.target.closest('button'); if(!b) return;
+  localStorage.setItem('dictAutoLookupDelay', b.dataset.ms);
+  document.querySelectorAll('#delaySeg button').forEach(x=>x.setAttribute('aria-pressed', String(x===b)));
+};
+
+/* Область поиска. SCOPE_BOOKS — 4 никаи + основные книги КН (id-префиксы, включены по
+   умолчанию). EXTRA_BOOKS — Виная и Абхидхамма ЦЕЛИКОМ, одним неразбитым пунктом каждая
+   (category='vinaya'/'abhi' в dg_db_light.json — проверено), выключены по умолчанию:
+   Виная не приветствуется меньше Сутт, но доступна; Абхидхамма — не в фокусе проекта,
+   специально не детализируется на под-книги (ds/dt/kv/patthana/pp/vb/ya). "Поздняя КН"/
+   "внеканоническое" (category='khudakka' целиком, шире 6 книг ниже) пока не добавлены —
+   пересекается с уже включёнными dhp/iti/snp/ud/thag/thig, нужно аккуратно развести. */
 const SCOPE_BOOKS = [['dn','DN'],['mn','MN'],['sn','SN'],['an','AN'],['iti','Iti'],['ud','Ud'],['snp','Snp'],['dhp','Dhp'],['thag','Thag'],['thig','Thig']];
+const EXTRA_BOOKS = [['vinaya','Виная'],['abhi','Абхидхамма']];
 const DEFAULT_SCOPE = SCOPE_BOOKS.map(b=>b[0]);
 let scopeList = readList('dhammaSearchScope', DEFAULT_SCOPE.slice());
 function renderScope(){
   const host = $('#scopeBoxes'); host.innerHTML='';
-  SCOPE_BOOKS.forEach(([code,label])=>{
+  const addBox = (code, label, muted) => {
     const lbl=document.createElement('label');
+    if (muted) lbl.style.cssText='background:var(--line);color:var(--ink-3)';
     lbl.innerHTML=`<input type="checkbox" ${scopeList.includes(code)?'checked':''}> ${label}`;
     lbl.querySelector('input').onchange = e=>{
       scopeList = e.target.checked ? scopeList.concat(code) : scopeList.filter(c=>c!==code);
@@ -443,7 +473,9 @@ function renderScope(){
       else localStorage.setItem('dhammaSearchScope', scopeList.join(','));
     };
     host.appendChild(lbl);
-  });
+  };
+  SCOPE_BOOKS.forEach(([code,label])=>addBox(code,label,false));
+  EXTRA_BOOKS.forEach(([code,label])=>addBox(code,label,true));
 }
 renderScope();
 
