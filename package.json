@@ -4,6 +4,7 @@
     "build-db": "node dblight.js"
   },
   "dependencies": {
+    "aksharamukha": "^2.3.0-32",
     "cors": "^2.8.6",
     "express": "^5.2.1",
     "swagger-ui-express": "^5.0.1"

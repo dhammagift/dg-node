@@ -798,6 +798,11 @@ $(document).ready(function() {
         var isLocal = ['localhost', '127.0.0.1'].includes(window.location.hostname);
         var base = isLocal ? 'http://localhost:3000' + path : path;
         var qs = 'q=' + encodeURIComponent(keyword) + '&scope=' + scope + '&lb=' + lb + '&la=' + la + '&langs=' + encodeURIComponent(langs) + (extra || '');
+        // Система письма пали (Aksharamukha, dg-light.js) — та же настройка, что и в ридере
+        // (localStorage.selectedScript из /settings/); "ISOPali" — исходная латиница, конвертация
+        // не нужна, параметр не шлём вовсе (нет смысла лишний раз просить сервер о работе).
+        var scriptSetting = (localStorage.getItem('selectedScript') || '').toLowerCase();
+        if (scriptSetting && scriptSetting !== 'isopali') qs += '&script=' + encodeURIComponent(scriptSetting);
         return base + '?' + qs;
     }
 

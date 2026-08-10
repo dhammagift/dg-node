@@ -489,7 +489,13 @@ window.buildSutta = async function(rawSlug) {
         const langsQuery = explicitLangs
             ? `langs=${encodeURIComponent(explicitLangs)}`
             : `mode=${encodeURIComponent(READER_MODE.modeKey)}`;
-        const apiUrl = `/api/text/${encodeURIComponent(slug)}?${langsQuery}`;
+        // Система письма пали (Aksharamukha, см. dg-light.js) — явный ?script= в адресе
+        // побеждает, иначе берём сохранённое в /settings/ значение по умолчанию
+        // (localStorage.selectedScript); "ISOPali" — исходная латиница, конвертировать не нужно.
+        const scriptParam = (new URLSearchParams(document.location.search).get('script')
+            || localStorage.getItem('selectedScript') || '').toLowerCase();
+        const scriptQuery = (scriptParam && scriptParam !== 'isopali') ? `&script=${encodeURIComponent(scriptParam)}` : '';
+        const apiUrl = `/api/text/${encodeURIComponent(slug)}?${langsQuery}${scriptQuery}`;
         const response = await fetch(apiUrl);
         if (!response.ok) {
             if (response.status === 404 && typeof window.executeGlobalSearch === 'function') {

@@ -7,9 +7,58 @@ const execFile = util.promisify(require('child_process').execFile);
 const swaggerUi = require('swagger-ui-express');
 const openapiSpec = require('./configs/openapi.json');
 const openapiSpecEn = require('./configs/openapi.en.json');
+const { default: Aksharamukha, Scripts: AKSH_SCRIPTS } = require('aksharamukha');
 
 const app = express();
 const PORT = 3000;
+
+// Конвертация системы письма пали (настройка "selectedScript" в /settings/, приходит как
+// ?script= в адресе — тот же параметр, что уже слала кнопка Alt+L, раньше ничего не делавший).
+// Инициализация (~6-8с, поднимает Pyodide/Python-движок в самом Node, без браузера) стартует
+// сразу при загрузке модуля, НЕ блокируя старт сервера — запрос, которому конвертация нужна
+// раньше, чем инициализация закончится, просто дождётся этого же промиса. Один экземпляр на
+// всё время жизни процесса, конвертация после инициализации — единицы-десятки миллисекунд.
+const akshReady = Aksharamukha.new().catch(err => {
+    console.error('Aksharamukha init failed (script conversion will be a no-op):', err.message);
+    return null;
+});
+// Наши короткие коды (используются в /settings/ и в URL ?script=) -> реальные имена систем
+// письма в Aksharamukha. "ISOPali"/отсутствие — исходная латиница, конвертировать не нужно.
+const SCRIPT_MAP = { deva: 'Devanagari', thai: 'Thai', sinh: 'Sinhala', mymr: 'Burmese' };
+async function convertPaliScript(text, scriptCode) {
+    if (!text || !scriptCode || !SCRIPT_MAP[scriptCode]) return text;
+    const aksh = await akshReady;
+    if (!aksh) return text;
+    try {
+        return await aksh.processAsync(AKSH_SCRIPTS.IAST, AKSH_SCRIPTS[SCRIPT_MAP[scriptCode]], text);
+    } catch (err) {
+        console.warn(`Aksharamukha: conversion to ${scriptCode} failed:`, err.message);
+        return text;
+    }
+}
+
+// Та же конвертация, но для формы ответа /search и /search/enrich: data — по суттам, у каждой
+// segments[] с root_text/variant И вложенными lb_context/la_context (соседние строки — тоже
+// пали, тоже нужно конвертировать); variantSegments — отдельный плоский список (поле text, не
+// root_text). Один Promise.all на все найденные строки сразу — конкурентно (~50 строк
+// пали конвертируются за ~130мс, замерено), а не одна за другой по сегментам/суттам.
+async function convertScriptInSearchResult(result, scriptCode) {
+    if (!scriptCode || !SCRIPT_MAP[scriptCode]) return;
+    const jobs = [];
+    const convertField = (obj, field) => {
+        if (obj && obj[field]) jobs.push((async () => { obj[field] = await convertPaliScript(obj[field], scriptCode); })());
+    };
+    for (const suttaId in (result.data || {})) {
+        for (const seg of (result.data[suttaId].segments || [])) {
+            convertField(seg, 'root_text');
+            convertField(seg, 'variant');
+            (seg.lb_context || []).forEach(c => convertField(c, 'root_text'));
+            (seg.la_context || []).forEach(c => convertField(c, 'root_text'));
+        }
+    }
+    (result.variantSegments || []).forEach(v => convertField(v, 'text'));
+    await Promise.all(jobs);
+}
 
 // Документация API — /api-docs. configs/openapi.json/openapi.en.json описывают /search,
 // /search/enrich, /api/text, /api/nav и т.п.: какие параметры есть, что обязательно, что
@@ -1690,6 +1739,18 @@ app.get('/api/text/:suttaId', async (req, res) => {
         // Порядок языков-колонок — чтобы клиент не держал собственную копию MODE_TABLE
         // только ради того, чтобы знать порядок рендера.
         data.columns = effectiveLangs;
+
+        // Конвертация системы письма пали (?script=deva/thai/sinh/mymr — см. akshReady выше).
+        // Только root_text/variant — сам пали, переводы не на пали и не трогаются. Параллельно
+        // по всем сегментам сразу (Promise.all) — конвертация после инициализации быстрая
+        // (десятки мс), но последовательно по сегментам целой сутты уже заметно набегало бы.
+        if (req.query.script && SCRIPT_MAP[req.query.script]) {
+            await Promise.all(data.segments.map(async seg => {
+                if (seg.root_text) seg.root_text = await convertPaliScript(seg.root_text, req.query.script);
+                if (seg.variant) seg.variant = await convertPaliScript(seg.variant, req.query.script);
+            }));
+        }
+
         res.json(data);
     } catch (error) {
         console.error(error);
@@ -1739,9 +1800,13 @@ async function searchHandler(req, res) {
         // TODO.md поиск п.5: ?fast=1 skips per-sutta file reads entirely — grep-only skeleton
         // + full wordReport, quotes/context arrive later via /search/enrich.
         if (req.query.fast === '1') {
+            // ?fast=1 не содержит текста сегментов вообще (только grep-счётчики) — конвертировать
+            // тут нечего, полный текст приходит позже через /search/enrich.
             return res.json(await buildFastResponse(keyword, scope, exact, targetLangs, lb, la));
         }
-        res.json(await searchWithGrep(keyword, scope, exact, targetLangs, lb, la));
+        const result = await searchWithGrep(keyword, scope, exact, targetLangs, lb, la);
+        await convertScriptInSearchResult(result, req.query.script);
+        res.json(result);
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Internal Server Error.' });
@@ -1780,12 +1845,14 @@ app.get('/search/enrich', async (req, res) => {
             totalMatches += sortedData[id].count;
         }
         const variantSegments = await findVariantSegments(keyword, exact, scope, searchResults);
-        res.json({
+        const enrichResult = {
             data: sortedData,
             wordReport: buildWordReport(searchResults), // не buildWordReportFast — та же семантика wordReport, что и полный /search (searchWithGrep), т.к. unique_words уже посчитаны enrichSuttaBatch
             metadata: { query: keyword, scope: scope || 'default', resolvedPrefixes: resolveAllowedPrefixes(scope), langs: targetLangs, lb, la, exactMatch: exact, totalFiles: suttaIds.length, totalMatches, hasVariantMatch: variantSegments.length > 0 },
             variantSegments
-        });
+        };
+        await convertScriptInSearchResult(enrichResult, req.query.script);
+        res.json(enrichResult);
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Internal Server Error.' });
