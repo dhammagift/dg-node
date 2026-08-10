@@ -179,6 +179,30 @@ async function buildSettingsDemoCache() {
     }
 }
 
+// Реальное количество файлов перевода на язык (sc_bilara_data/translation/{lang}/**.json) —
+// для списка "Добавить язык" в /settings/ (по просьбе владельца показывать реальные цифры,
+// не выдуманные). Считается один раз при старте, не на каждый показ диалога.
+async function buildLangCountsCache() {
+    const cachePath = path.join(__dirname, 'settings', 'lang-counts.json');
+    const counts = {};
+    try {
+        const langDirs = await fs.readdir(SC_TRANS, { withFileTypes: true });
+        for (const d of langDirs) {
+            if (!d.isDirectory()) continue;
+            const files = await fs.readdir(path.join(SC_TRANS, d.name), { recursive: true });
+            counts[d.name] = files.filter(f => f.endsWith('.json')).length;
+        }
+    } catch (e) {
+        console.warn('Lang counts cache: could not scan', SC_TRANS, e.message);
+    }
+    try {
+        await fs.writeFile(cachePath, JSON.stringify(counts, null, 2), 'utf8');
+        console.log(`Lang counts cache built: ${Object.keys(counts).length} language(s) -> settings/lang-counts.json`);
+    } catch (e) {
+        console.warn('Lang counts cache: could not write file:', e.message);
+    }
+}
+
 async function initServer() {
     try {
         const data = await fs.readFile(skeletonPath, 'utf8');
@@ -188,6 +212,7 @@ async function initServer() {
         const stat = await fs.stat(skeletonPath);
         console.log(`Skeleton loaded: ${Object.keys(skeletonDB).length} suttas (built ${stat.mtime.toISOString()})`);
         await buildSettingsDemoCache();
+        await buildLangCountsCache();
     } catch (err) {
         console.error('Startup error:', err);
     }

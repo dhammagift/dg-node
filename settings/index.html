@@ -74,9 +74,8 @@ button{font:inherit;cursor:pointer}
 .size-val{min-width:56px;text-align:center;font-variant-numeric:tabular-nums;font-size:15px;font-weight:500}
 .chips{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .chip{display:inline-flex;align-items:center;gap:2px;background:var(--accent-soft);border:1px solid color-mix(in srgb,var(--accent) 35%,transparent);border-radius:10px;padding-left:4px;min-height:44px}
-.chip[draggable="true"]{cursor:grab}
 .chip.dragging{opacity:.45}
-.chip .grip{width:26px;height:44px;display:grid;place-items:center;color:var(--accent)}
+.chip .grip{width:26px;height:44px;display:grid;place-items:center;color:var(--accent);cursor:grab;touch-action:none}
 .chip .ord{font-size:12px;color:var(--accent);font-variant-numeric:tabular-nums}
 .chip .name{padding:0 4px;font-size:15px;font-weight:500}
 .chip .x{width:36px;height:44px;border:0;background:transparent;border-radius:0 9px 9px 0;color:var(--accent);display:grid;place-items:center;font-size:15px}
@@ -275,8 +274,17 @@ kbd{font:inherit;font-size:12.5px;background:var(--line);border:1px solid var(--
   <section class="group" id="voice">
     <h2 id="t-g-voice">Озвучка</h2>
     <div class="rows">
+      <div class="row row-stack">
+        <div><p class="row-title" id="t-voiceKey">Ключ Google Cloud API</p>
+        <p class="row-desc" id="t-voiceKeyDesc">Нужен для более качественной озвучки. Хранится только в этом браузере.</p></div>
+        <div class="row-control" style="width:100%">
+          <input type="password" id="voiceKey" class="control" style="flex:1;min-width:0;max-width:none" placeholder="AIza...">
+          <button class="btn btn-quiet" type="button" id="voiceKeyToggle" aria-label="Показать ключ">👁</button>
+          <button class="btn btn-quiet" type="button" id="voiceKeyClear" aria-label="Удалить ключ">✕</button>
+        </div>
+      </div>
       <div class="row">
-        <div><p class="row-title" id="t-voiceOpen">Голос, скорость, ключ API</p><p class="row-desc" id="t-voiceOpenDesc">Отдельная панель — значок в ридере или <kbd>Alt</kbd>+<kbd>R</kbd>.</p></div>
+        <div><p class="row-title" id="t-voiceOpen">Голос и скорость чтения</p><p class="row-desc" id="t-voiceOpenDesc">Остальные настройки озвучки — отдельная панель, значок в ридере или <kbd>Alt</kbd>+<kbd>R</kbd>.</p></div>
         <div class="row-control"><button class="btn" type="button" id="voiceBtn">Открыть</button></div>
       </div>
     </div>
@@ -311,12 +319,20 @@ kbd{font:inherit;font-size:12.5px;background:var(--line);border:1px solid var(--
 const $ = s => document.querySelector(s);
 const isRu = (localStorage.getItem('dhammaLanguage') || localStorage.getItem('siteLanguage') || 'en') === 'ru';
 
-/* Список языков для чипов — коды и подписи известны; количество текстов на язык
-   на SC реально не подсчитано (TODO: посчитать по sc-data/sc_bilara_data/translation/*),
-   поэтому цифр здесь нет, чтобы не показывать выдуманные числа. Порядок в этом списке —
-   просто разумная догадка о частотности, а не измеренный рейтинг. */
-const NAMES = {ru:"Русский",en:"English",de:"Deutsch",pt:"Português",fr:"Français",vi:"Tiếng Việt",
-  id:"Indonesia",zh:"中文",hi:"हिन्दी",th:"ไทย",si:"සිංහල",pl:"Polski",es:"Español",it:"Italiano",nl:"Nederlands",cs:"Čeština"};
+/* Список языков — реальные коды из sc_bilara_data/translation/* (dg-light.js,
+   buildLangCountsCache пишет settings/lang-counts.json при старте сервера с реальным числом
+   файлов перевода на язык — используется ниже, в диалоге "Добавить язык"). Подписи — обычные
+   названия языков на самих языках. */
+const NAMES = {
+  ru:"Русский", en:"English", de:"Deutsch", pt:"Português", fr:"Français", vi:"Tiếng Việt",
+  id:"Indonesia", zh:"中文", hi:"हिन्दी", th:"ไทย", si:"සිංහල", pl:"Polski", es:"Español",
+  it:"Italiano", nl:"Nederlands", cs:"Čeština", sr:"Српски", lt:"Lietuvių", jpn:"日本語",
+  tr:"Türkçe", fi:"Suomi", et:"Eesti", no:"Norsk", sl:"Slovenščina", gu:"ગુજરાતી",
+  ka:"ქართული", kan:"ಕನ್ನಡ", ko:"한국어", lo:"ລາວ", mr:"मराठी", my:"မြန်မာ", ta:"தமிழ்",
+  gsw:"Schwiizerdütsch"
+};
+let langCounts = {};
+fetch('/settings/lang-counts.json').then(r => r.ok ? r.json() : {}).then(c => { langCounts = c || {}; }).catch(()=>{});
 
 function readList(key, fallback){
   const raw = localStorage.getItem(key);
@@ -335,14 +351,50 @@ function saveLangs(){
 }
 
 let dlgTarget = 'read';
+/* Перетаскивание чипов — на Pointer Events (не HTML5 draggable): нативный drag-and-drop не
+   работает на тачскринах (мобильный Safari/Chrome его не поддерживают для произвольных div),
+   а Pointer Events унифицируют мышь/тач/перо и надёжно работают везде — это и было причиной
+   жалобы "перетаскивание не работает" (клавиатурные стрелки при этом и раньше работали, отсюда
+   был рабочий, но не самый заметный способ). */
+let dragState = null;
+function pointerDownGrip(e, code, key, host){
+  if(e.button !== undefined && e.button !== 0) return;
+  e.preventDefault();
+  const chip = e.currentTarget.closest('.chip');
+  dragState = { code, key, host, pointerId: e.pointerId };
+  chip.classList.add('dragging');
+  try{ chip.setPointerCapture(e.pointerId); }catch(err){}
+}
+function pointerMoveGrip(e){
+  if(!dragState || e.pointerId !== dragState.pointerId) return;
+  const target = document.elementFromPoint(e.clientX, e.clientY);
+  const overChip = target && target.closest && target.closest('.chip');
+  if(!overChip || !dragState.host.contains(overChip)) return;
+  const overCode = overChip.dataset.code;
+  if(!overCode || overCode === dragState.code) return;
+  const arr = state[dragState.key];
+  const from = arr.indexOf(dragState.code), to = arr.indexOf(overCode);
+  if(from<0 || to<0) return;
+  arr.splice(from,1); arr.splice(to,0,dragState.code);
+  render();
+  const newChip = dragState.host.querySelector(`[data-code="${dragState.code}"]`);
+  if(newChip){ newChip.classList.add('dragging'); try{ newChip.setPointerCapture(dragState.pointerId); }catch(err){} }
+}
+function pointerUpGrip(){
+  if(!dragState) return;
+  document.querySelectorAll('.chip.dragging').forEach(c=>c.classList.remove('dragging'));
+  dragState = null;
+}
 function makeChips(host, key, disabled){
   if(!host) return; host.innerHTML='';
   state[key].forEach((code,i)=>{
     const chip=document.createElement('div');
-    chip.className='chip'; chip.tabIndex=disabled?-1:0; chip.draggable=!disabled;
-    chip.setAttribute('aria-label',`${NAMES[code]||code}, позиция ${i+1} из ${state[key].length}`);
+    chip.className='chip'; chip.tabIndex=disabled?-1:0; chip.dataset.code=code;
+    chip.setAttribute('aria-label', isRu
+      ? `${NAMES[code]||code}, позиция ${i+1} из ${state[key].length}`
+      : `${NAMES[code]||code}, position ${i+1} of ${state[key].length}`);
     chip.innerHTML=`<span class="grip" aria-hidden="true">⠿</span><span class="ord">${i+1}</span><span class="name">${NAMES[code]||code}</span>`+
-      (disabled?'':`<button class="x" type="button" aria-label="Убрать ${NAMES[code]||code}">✕</button>`);
+      (disabled?'':`<button class="x" type="button" aria-label="${isRu?'Убрать':'Remove'} ${NAMES[code]||code}">✕</button>`);
     if(!disabled){
       const xBtn = chip.querySelector('.x');
       if (xBtn) xBtn.onclick=()=>{ if(state[key].length>1){ state[key]=state[key].filter(c=>c!==code); render(); } };
@@ -351,12 +403,11 @@ function makeChips(host, key, disabled){
         if(e.key==='ArrowRight'||e.key==='ArrowDown') j=idx+1;
         if(j===null||j<0||j>=state[key].length) return; e.preventDefault();
         [state[key][j],state[key][idx]]=[state[key][idx],state[key][j]]; render(); host.children[j].focus(); };
-      chip.addEventListener('dragstart',e=>{chip.classList.add('dragging');e.dataTransfer.setData('text/plain',code)});
-      chip.addEventListener('dragend',()=>chip.classList.remove('dragging'));
-      chip.addEventListener('dragover',e=>e.preventDefault());
-      chip.addEventListener('drop',e=>{e.preventDefault();
-        const from=state[key].indexOf(e.dataTransfer.getData('text/plain')), to=state[key].indexOf(code);
-        if(from<0||to<0||from===to) return; const [m]=state[key].splice(from,1); state[key].splice(to,0,m); render();});
+      const grip = chip.querySelector('.grip');
+      grip.addEventListener('pointerdown', e=>pointerDownGrip(e,code,key,host));
+      grip.addEventListener('pointermove', pointerMoveGrip);
+      grip.addEventListener('pointerup', pointerUpGrip);
+      grip.addEventListener('pointercancel', pointerUpGrip);
     }
     host.appendChild(chip);
   });
@@ -377,8 +428,11 @@ function renderLangList(q){
   const list=$('#langList'); list.innerHTML='';
   Object.keys(NAMES).filter(c=>!state[dlgTarget].includes(c))
     .filter(c=> NAMES[c].toLowerCase().includes(q.toLowerCase())||c.includes(q.toLowerCase()))
+    .sort((a,b)=> (langCounts[b]||0) - (langCounts[a]||0))
     .forEach(c=>{ const li=document.createElement('li');
-      li.innerHTML=`<label><input type="checkbox" value="${c}"><span>${NAMES[c]}</span></label>`;
+      const count = langCounts[c];
+      const countStr = count ? ` <span class="badge">${count}</span>` : '';
+      li.innerHTML=`<label><input type="checkbox" value="${c}"><span>${NAMES[c]}${countStr}</span></label>`;
       list.appendChild(li);});
 }
 $('#langSearch').oninput=e=>renderLangList(e.target.value);
@@ -435,12 +489,19 @@ function setScale(v){
 $('#sizeMinus').onclick=()=>setScale(scale-10);
 $('#sizePlus').onclick=()=>setScale(scale+10);
 
-/* Скрипт, пунктуация, словарь — просто пишем значение, эффект виден на странице
-   поиска/ридера при следующей отрисовке; отдельного "Применить"/перезагрузки здесь
-   не нужно, т.к. сама страница настроек ничего из этого не отображает. */
+/* Скрипт, пунктуация, словарь — контролы должны сначала ПРОЧИТАТЬ уже сохранённое значение
+   (иначе при каждом заходе на страницу они показывают HTML-дефолт вместо реального состояния —
+   выглядело как "сбрасывается на латиницу"/"пунктуация не работает", хотя запись в
+   localStorage и её использование в ридере/поиске были рабочими всё это время). Дальше —
+   просто пишем значение, эффект виден на странице поиска/ридера при следующей отрисовке. */
+$('#script').value = localStorage.getItem('selectedScript') || 'ISOPali';
 $('#script').onchange = e=> localStorage.setItem('selectedScript', e.target.value);
+$('#punct').checked = localStorage.getItem('removePunct') === 'true';
 $('#punct').onchange = e=> localStorage.setItem('removePunct', e.target.checked ? 'true' : 'false');
+$('#dictOn').checked = localStorage.getItem('dictionaryVisible') !== 'false';
+$('#dictBlock').hidden = !$('#dictOn').checked;
 $('#dictOn').onchange = e=>{ $('#dictBlock').hidden = !e.target.checked; localStorage.setItem('dictionaryVisible', e.target.checked ? 'true' : 'false'); };
+$('#dictMode').value = localStorage.getItem('selectedDict') || 'standalone';
 $('#dictMode').onchange = e=> localStorage.setItem('selectedDict', e.target.value);
 
 /* Автопоиск выделения — та же кнопка/ключ, что и "мультивыбор" в ридере (paliLookup.js,
@@ -478,11 +539,11 @@ $('#delaySeg').onclick = e=>{
      совпадение с default-книгами не проблема — matchesScope просто ИЛИ, не XOR. */
 const SCOPE_BOOKS = [['dn','DN'],['mn','MN'],['sn','SN'],['an','AN'],['iti','Iti'],['ud','Ud'],['snp','Snp'],['dhp','Dhp'],['thag','Thag'],['thig','Thig']];
 const EXTRA_BOOKS = [
-  ['+ вся КН', ['khudakka']],
-  ['Виная (Вибханга)', ['pli-tv-bi','pli-tv-bu']],
-  ['+ Кхандхака', ['pli-tv-kd']],
-  ['+ Паривара', ['pli-tv-pvr']],
-  ['Абхидхамма', ['abhi']]
+  [{ru:'+ вся КН', en:'+ all KN'}, ['khudakka']],
+  [{ru:'Виная (Вибханга)', en:'Vinaya (Vibhaṅga)'}, ['pli-tv-bi','pli-tv-bu']],
+  [{ru:'+ Кхандхака', en:'+ Khandhaka'}, ['pli-tv-kd']],
+  [{ru:'+ Паривара', en:'+ Parivāra'}, ['pli-tv-pvr']],
+  [{ru:'Абхидхамма', en:'Abhidhamma'}, ['abhi']]
 ];
 const DEFAULT_SCOPE = SCOPE_BOOKS.map(b=>b[0]);
 let scopeList = readList('dhammaSearchScope', DEFAULT_SCOPE.slice());
@@ -507,7 +568,7 @@ function renderScope(){
     host.appendChild(lbl);
   };
   SCOPE_BOOKS.forEach(([code,label])=>addBox(label,[code],false));
-  EXTRA_BOOKS.forEach(([label,codes])=>addBox(label,codes,true));
+  EXTRA_BOOKS.forEach(([label,codes])=>addBox(isRu?label.ru:label.en,codes,true));
 }
 renderScope();
 
@@ -527,13 +588,27 @@ $('#uiLang').onchange = e=>{
 $('#cloudBtn').onclick = ()=> location.href = isRu ? '/ru/login' : '/login';
 $('#voiceBtn').onclick = ()=> location.href = isRu ? '/ru/read/' : '/read/';
 
+/* Ключ Google Cloud TTS — тот же localStorage-ключ, что читает read/js/voice.js
+   (GOOGLE_KEY_STORAGE = 'tts_google_key'), просто даём ввести его здесь напрямую, без захода
+   в отдельную панель озвучки. Квоту намеренно не показываем. */
+const VOICE_KEY = 'tts_google_key';
+$('#voiceKey').value = localStorage.getItem(VOICE_KEY) || '';
+$('#voiceKey').onchange = e=>{
+  const v = e.target.value.trim();
+  if (v) localStorage.setItem(VOICE_KEY, v); else localStorage.removeItem(VOICE_KEY);
+};
+$('#voiceKeyToggle').onclick = ()=>{
+  const inp = $('#voiceKey'); inp.type = inp.type==='password' ? 'text' : 'password';
+};
+$('#voiceKeyClear').onclick = ()=>{ $('#voiceKey').value=''; localStorage.removeItem(VOICE_KEY); };
+
 $('#clearHistBtn').onclick = ()=>{
-  if(!confirm(isRu?'Очистить историю и избранное?':'Clear history and favorites?')) return;
+  if(!confirm(STR[isRu?'ru':'en'].confirmClearHist)) return;
   localStorage.setItem('localSearchHistory','[]');
   localStorage.setItem('dg_favorites','[]');
 };
 $('#resetAllBtn').onclick = ()=>{
-  if(!confirm(isRu?'Сбросить ВСЕ настройки?':'Reset ALL settings?')) return;
+  if(!confirm(STR[isRu?'ru':'en'].confirmResetAll)) return;
   const keep = ['localSearchHistory','dg_favorites','syncPhraseId','syncPhraseRaw','dg_cloud_session','lastSyncTime','dg_suttaProgress','dg_cloudProgress'];
   Object.keys(localStorage).filter(k=>!keep.includes(k)).forEach(k=>localStorage.removeItem(k));
   location.reload();
@@ -550,16 +625,124 @@ if(location.hash) setTimeout(()=>goAnchor(location.hash.slice(1)),50);
 
 /* Строки интерфейса (EN/RU) — намеренно простой инлайн-словарь, как в остальном легаси-коде
    (quickModal.js/openFdg.js), а не JSON-модуль: страница маленькая, вынос в отдельный формат
-   без реальной надобности прямо сейчас. */
+   без реальной надобности прямо сейчас. Раньше applyLang() переводил только 3 строки из ~50 —
+   остальное было захардкожено по-русски даже при выбранном English (жалоба "интерфейс не
+   локализован полностью"); ниже — полный список. */
 const STR = {
-  ru:{title:'Настройки',saved:'Сохраняется сразу',sub:'Значения по умолчанию для поиска и чтения на всём сайте.'},
-  en:{title:'Settings',saved:'Saves instantly',sub:'Defaults for search and reading across the whole site.'}
+  ru:{
+    title:'Настройки', saved:'Сохраняется сразу', sub:'Значения по умолчанию для поиска и чтения на всём сайте.',
+    previewLabel:'Образец', previewShuffle:'Другой фрагмент', previewShuffleAria:'Показать другой фрагмент',
+    gGeneral:'Общее', uiLang:'Язык интерфейса', uiLangDesc:'Меню и подписи. На языки текстов не влияет.',
+    themeLbl:'Тема', thAuto:'Авто', thLight:'Светлая', thDark:'Тёмная',
+    cloud:'Облако', cloudDesc:'Синхронизация закладок, заметок и настроек между устройствами.', cloudBtn:'Войти',
+    gReading:'Чтение', readLangs:'Языки для чтения',
+    readLangsDesc:'Первый язык — основной; от числа языков зависит и режим отображения в ридере.',
+    readHint:'Перетащите чип за ⠿ или нажмите на нём ← →, чтобы изменить порядок.',
+    script:'Система письма пали',
+    scriptDesc:'Применяется к пали в поиске и в ридере. Заголовки текстов и отчёт по словам пока остаются латиницей.',
+    scriptIast:'Латиница (IAST)', scriptDeva:'Деванагари', scriptThai:'Тайская', scriptSinh:'Сингальская', scriptMymr:'Бирманская',
+    size:'Размер текста', punct:'Пунктуация в пали', punctDesc:'Выключите для вида, близкого к рукописям.',
+    gSearch:'Поиск', scope:'Где искать по умолчанию',
+    scopeDesc:'В самом поиске область можно менять для одного запроса — здесь только значение по умолчанию.',
+    searchLangs:'Языки для поиска', searchLangsDesc:'Порядок — это порядок отображения переводов в результатах.',
+    sameAsRead:'Так же, как для чтения',
+    ctx:'Строк контекста', ctxDesc:'Сколько строк показывать вокруг совпадения.', ctxBefore:'до', ctxAfter:'после',
+    anydist:'Несколько слов — в любом порядке', anydistDesc:'Пока не реализовано на сервере', soon:'см. список доработок',
+    gDict:'Словарь', dictOnDesc:'Сводный словарь, включает DPD и другие источники.', dictMode:'Режим',
+    dictModeStandalone:'Встроенный DPD', dictModeDpdfull:'Попап Dict.DG', dictModeNewwindow:'Dict.DG в новом окне',
+    autoLookup:'Искать выделенный текст автоматически', autoLookupDesc:'То же самое, что кнопка мультивыбора в ридере.',
+    delay:'Задержка',
+    gRoot:'Коренной текст пали', edLbl:'Издание',
+    edDesc:'Сейчас поиск всегда идёт по Mahāsaṅgīti — остальные готовятся только для ридера.', badgeSoon:'скоро',
+    gVoice:'Озвучка', voiceKey:'Ключ Google Cloud API',
+    voiceKeyDesc:'Нужен для более качественной озвучки. Хранится только в этом браузере.',
+    voiceOpen:'Голос и скорость чтения',
+    voiceOpenDesc:'Остальные настройки озвучки — отдельная панель, значок в ридере или Alt+R.', voiceBtn:'Открыть',
+    gData:'Данные', clearHist:'История поиска и избранное', clearHistDesc:'Хранится на устройстве.', clearHistBtn:'Очистить',
+    resetAll:'Все настройки', resetAllDesc:'Вернуть значения по умолчанию.', resetAllBtn:'Сбросить',
+    langTitle:'Добавить язык', langSearchPh:'Найти язык', langCancel:'Отмена', langAdd:'Добавить',
+    confirmClearHist:'Очистить историю и избранное?', confirmResetAll:'Сбросить ВСЕ настройки?'
+  },
+  en:{
+    title:'Settings', saved:'Saves instantly', sub:'Defaults for search and reading across the whole site.',
+    previewLabel:'Preview', previewShuffle:'Another passage', previewShuffleAria:'Show another passage',
+    gGeneral:'General', uiLang:'Interface language', uiLangDesc:"Menus and labels. Doesn't affect text languages.",
+    themeLbl:'Theme', thAuto:'Auto', thLight:'Light', thDark:'Dark',
+    cloud:'Cloud', cloudDesc:'Sync bookmarks, notes, and settings across devices.', cloudBtn:'Log in',
+    gReading:'Reading', readLangs:'Reading languages',
+    readLangsDesc:"The first language is primary; the number of languages sets the reader's display mode.",
+    readHint:'Drag a chip by ⠿, or focus it and press ← →, to reorder.',
+    script:'Pali script',
+    scriptDesc:"Applies to Pali in search and in the reader. Text titles and the word report still stay in Latin script.",
+    scriptIast:'Latin (IAST)', scriptDeva:'Devanagari', scriptThai:'Thai', scriptSinh:'Sinhala', scriptMymr:'Burmese',
+    size:'Text size', punct:'Pali punctuation', punctDesc:'Turn off for a look closer to the manuscripts.',
+    gSearch:'Search', scope:'Default search scope',
+    scopeDesc:'The scope can still be changed per search — this is only the default.',
+    searchLangs:'Search languages', searchLangsDesc:'Order controls how translations are displayed in results.',
+    sameAsRead:'Same as reading',
+    ctx:'Context lines', ctxDesc:'How many lines to show around a match.', ctxBefore:'before', ctxAfter:'after',
+    anydist:'Multiple words — any order', anydistDesc:'Not yet implemented server-side', soon:'see backlog',
+    gDict:'Dictionary', dictOnDesc:'Combined dictionary, includes DPD and other sources.', dictMode:'Mode',
+    dictModeStandalone:'Built-in DPD', dictModeDpdfull:'Dict.DG popup', dictModeNewwindow:'Dict.DG in new window',
+    autoLookup:'Auto-look-up selected text', autoLookupDesc:'Same as the multi-select button in the reader.',
+    delay:'Delay',
+    gRoot:'Pali root text', edLbl:'Edition',
+    edDesc:'Search currently always uses Mahāsaṅgīti — the others are being prepared for the reader only.', badgeSoon:'soon',
+    gVoice:'Voice / TTS', voiceKey:'Google Cloud API key',
+    voiceKeyDesc:'Needed for higher-quality voices. Stored only in this browser.',
+    voiceOpen:'Voice and reading speed',
+    voiceOpenDesc:'The rest of the voice settings are in a separate panel — reader icon or Alt+R.', voiceBtn:'Open',
+    gData:'Data', clearHist:'Search history and favorites', clearHistDesc:'Stored on this device.', clearHistBtn:'Clear',
+    resetAll:'All settings', resetAllDesc:'Restore default values.', resetAllBtn:'Reset',
+    langTitle:'Add language', langSearchPh:'Find language', langCancel:'Cancel', langAdd:'Add',
+    confirmClearHist:'Clear history and favorites?', confirmResetAll:'Reset ALL settings?'
+  }
 };
-(function applyLang(){
+function applyLang(){
   const t = STR[isRu?'ru':'en'];
-  $('#t-title').textContent=t.title; $('#t-saved').textContent=t.saved; $('#t-sub').textContent=t.sub;
+  const setText = (id,key)=>{ const el=document.getElementById(id); if(el) el.textContent=t[key]; };
+  [['t-title','title'],['t-saved','saved'],['t-sub','sub'],
+   ['t-previewLabel','previewLabel'],
+   ['t-g-general','gGeneral'],['t-uiLang','uiLang'],['t-uiLangDesc','uiLangDesc'],
+   ['themeLbl','themeLbl'],['t-th-auto','thAuto'],['t-th-light','thLight'],['t-th-dark','thDark'],
+   ['t-cloud','cloud'],['t-cloudDesc','cloudDesc'],['cloudBtn','cloudBtn'],
+   ['t-g-reading','gReading'],['t-readLangs','readLangs'],['t-readLangsDesc','readLangsDesc'],['t-readHint','readHint'],
+   ['t-script','script'],['t-scriptDesc','scriptDesc'],
+   ['t-size','size'],['t-punct','punct'],['t-punctDesc','punctDesc'],
+   ['t-g-search','gSearch'],['t-scope','scope'],['t-scopeDesc','scopeDesc'],
+   ['t-searchLangs','searchLangs'],['t-searchLangsDesc','searchLangsDesc'],['t-sameAsRead','sameAsRead'],
+   ['t-ctx','ctx'],['t-ctxDesc','ctxDesc'],['t-ctxBefore','ctxBefore'],['t-ctxAfter','ctxAfter'],
+   ['t-anydist','anydist'],['t-anydistDesc','anydistDesc'],['t-soon','soon'],
+   ['t-g-dict','gDict'],['t-dictOnDesc','dictOnDesc'],['t-dictMode','dictMode'],
+   ['t-autoLookup','autoLookup'],['t-autoLookupDesc','autoLookupDesc'],['t-delay','delay'],
+   ['t-g-root','gRoot'],['edLbl','edLbl'],['t-edDesc','edDesc'],
+   ['t-g-voice','gVoice'],['t-voiceKey','voiceKey'],['t-voiceKeyDesc','voiceKeyDesc'],
+   ['t-voiceOpen','voiceOpen'],['t-voiceOpenDesc','voiceOpenDesc'],['voiceBtn','voiceBtn'],
+   ['t-g-data','gData'],['t-clearHist','clearHist'],['t-clearHistDesc','clearHistDesc'],['clearHistBtn','clearHistBtn'],
+   ['t-resetAll','resetAll'],['t-resetAllDesc','resetAllDesc'],['resetAllBtn','resetAllBtn'],
+   ['langTitle','langTitle'],['langCancel','langCancel'],['langAdd','langAdd']
+  ].forEach(([id,key])=>setText(id,key));
+
+  $('#langSearch').placeholder = t.langSearchPh; $('#langSearch').setAttribute('aria-label', t.langSearchPh);
+  document.querySelectorAll('.badge').forEach(b=>b.textContent=t.badgeSoon);
+  const dm = $('#dictMode');
+  if (dm.options[0]) dm.options[0].textContent = t.dictModeStandalone;
+  if (dm.options[1]) dm.options[1].textContent = t.dictModeDpdfull;
+  if (dm.options[2]) dm.options[2].textContent = t.dictModeNewwindow;
+  const sc = $('#script');
+  const scriptLabels = {ISOPali:'scriptIast', deva:'scriptDeva', thai:'scriptThai', sinh:'scriptSinh', mymr:'scriptMymr'};
+  Array.from(sc.options).forEach(o=>{ if (scriptLabels[o.value]) o.textContent = t[scriptLabels[o.value]]; });
+  const d3 = document.querySelector('#delaySeg button[data-ms="3000"]');
+  const d5 = document.querySelector('#delaySeg button[data-ms="5000"]');
+  if (d3) d3.textContent = isRu ? '3 с' : '3 s';
+  if (d5) d5.textContent = isRu ? '5 с' : '5 s';
+  const shuffle = $('#previewShuffle');
+  shuffle.title = t.previewShuffle; shuffle.setAttribute('aria-label', t.previewShuffleAria);
+
   document.documentElement.lang = isRu?'ru':'en';
-})();
+  renderScope();
+  render();
+}
 
 /* Образец — рендерится в отдельном документе, settings/preview-frame.html (iframe), той же
    разметкой и теми же таблицами стилей, что реальный ридер (pli-lang/{lang}-lang/lang-2nd,
@@ -575,7 +758,7 @@ $('#previewShuffle').onclick = () => {
 };
 
 setTheme(localStorage.getItem('theme') || 'auto');
-render();
+applyLang();
 </script>
 </body>
 </html>

@@ -15,12 +15,16 @@
    показывает, как текст выглядит на проде, а не повторяет их вёрстку заново. */
 html, body { margin: 0; padding: 0; background: transparent; }
 body { padding: 4px 2px; }
+/* #sutta — id ридера (reader/reader-template.html: <div id="sutta" class="sutta">), от него
+   зависят реальные стили (reader/css/rus-multi.css #sutta{max-width,line-height} и все
+   hide-pali/hide-english/column-view правила) — без него текст был лишь ПОХОЖ на прод, но не
+   пользовался теми же CSS-правилами (это и была причина жалобы "не использует стили ридера"). */
 .demo-seg { margin-bottom: 14px; }
 .demo-seg:last-child { margin-bottom: 0; }
 </style>
 </head>
 <body>
-<div id="root"></div>
+<div id="sutta" class="sutta"></div>
 <script>
 function stripPunct(t) {
   return localStorage.getItem('removePunct') === 'true'
@@ -60,8 +64,19 @@ function render(groups) {
   if (!groups || !groups.length) return;
   const group = groups[Math.floor(Math.random() * groups.length)];
   const wantedLangs = pickReaderLangs();
-  document.getElementById('root').innerHTML = group.segments.map(s => renderSegment(s, wantedLangs)).join('');
+  document.getElementById('sutta').innerHTML = group.segments.map(s => renderSegment(s, wantedLangs)).join('');
 }
+// Тема — то же самое, что реально пишет /assets/js/themeswitch.js на проде: body.classList
+// 'dark' + <html data-bs-theme="..">, а не просто наш собственный body.dark (от этого зависят
+// Bootstrap-переменные --bs-body-bg/--bs-body-color в styles.css) — без этого образец всегда
+// выглядел светлым, даже когда сам сайт был в тёмной теме.
+function applyTheme() {
+  const t = localStorage.getItem('theme') || 'auto';
+  const dark = t === 'dark' || (t === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches);
+  document.body.classList.toggle('dark', dark);
+  document.documentElement.setAttribute('data-bs-theme', dark ? 'dark' : 'light');
+}
+applyTheme();
 const scale = parseInt(localStorage.getItem('uiScale')) || 100;
 document.documentElement.style.fontSize = scale + '%';
 fetch('/settings/demo-data.json').then(r => r.ok ? r.json() : []).then(groups => {
@@ -73,6 +88,7 @@ window.addEventListener('storage', e => {
     if (e.key === 'uiScale') document.documentElement.style.fontSize = (parseInt(localStorage.getItem('uiScale')) || 100) + '%';
     render(window.__demoGroups || []);
   }
+  if (e.key === 'theme') applyTheme();
 });
 window.addEventListener('message', e => {
   if (e.data === 'dg-preview-shuffle') render(window.__demoGroups || []);
