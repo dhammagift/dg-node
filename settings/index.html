@@ -88,9 +88,19 @@ button{font:inherit;cursor:pointer}
 .chip .name{padding:0 4px;font-size:15px;font-weight:500}
 .chip .x{width:36px;height:44px;border:0;background:transparent;border-radius:0 9px 9px 0;color:var(--accent);display:grid;place-items:center;font-size:15px}
 .hint{font-size:13px;color:var(--ink-3);margin:8px 0 0}
-.scope{display:flex;flex-wrap:wrap;gap:6px}
+.scope{display:flex;flex-wrap:wrap;gap:6px;align-items:flex-start}
 .scope label{display:inline-flex;align-items:center;gap:6px;font-size:13.5px;background:var(--accent-soft);color:var(--accent);border-radius:7px;padding:5px 9px;font-weight:500;cursor:pointer}
 .scope input{accent-color:var(--accent)}
+/* Виная/Кхуддака — родительская галка + раскрывающийся список под-пунктов, а не десятки
+   плоских чипов вперемешку с 4 никаями (просьба владельца "систематизировать"). */
+.scope-group{display:flex;flex-direction:column;background:var(--line);border-radius:7px;overflow:hidden}
+.scope-group-head{display:inline-flex;align-items:center;gap:6px;font-size:13.5px;color:var(--ink-3);font-weight:500;padding:5px 4px 5px 9px;cursor:pointer;margin:0}
+.scope-group-head input{accent-color:var(--ink-3)}
+.scope-group-expand{background:transparent;border:0;padding:2px 8px;color:inherit;font-size:11px;cursor:pointer;margin-left:2px}
+.scope-group-panel{display:flex;flex-direction:column;gap:1px;padding:2px 10px 6px 28px;background:var(--surface)}
+.scope-group-panel[hidden]{display:none}
+.scope-group-panel label{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:400;color:var(--ink);background:transparent;border-radius:0;padding:3px 0;cursor:pointer}
+.scope-group-panel input{accent-color:var(--accent)}
 .num{display:inline-flex;align-items:center;gap:6px}
 /* Ключ TTS — тот же ряд control'ов, что везде на странице, просто шире (сам инпут должен
    растягиваться): раньше делалось inline-стилями (width:100%, max-width:none) — вынесено в
@@ -178,12 +188,20 @@ kbd{font:inherit;font-size:12.5px;background:var(--line);border:1px solid var(--
       <div class="row">
         <div><p class="row-title" id="t-script">Система письма пали</p>
         <p class="row-desc" id="t-scriptDesc">Применяется к пали в поиске и в ридере. Заголовки текстов и отчёт по словам пока остаются латиницей.</p></div>
+        <!-- 6 основных систем письма пали — по прямому указанию владельца, первыми в списке.
+             Значения (кроме ISOPali — служебный признак "не конвертировать") — РЕАЛЬНЫЕ имена
+             ключей require('aksharamukha').Scripts, не придуманные короткие коды: их 163,
+             отдельная таблица коротких кодов на каждый не масштабируется (см. dg-light.js).
+             Остальные 150+ рабочих систем — динамически в optgroup ниже, из settings/scripts.json
+             (тоже реальный список, не выдуманный — проверено тестовой конвертацией каждой). -->
         <div class="row-control"><select id="script" class="control">
           <option value="ISOPali">Латиница (IAST)</option>
-          <option value="deva">Деванагари</option>
-          <option value="thai">Тайская</option>
-          <option value="sinh">Сингальская</option>
-          <option value="mymr">Бирманская</option>
+          <option value="Brahmi">Брахми</option>
+          <option value="Devanagari">Деванагари</option>
+          <option value="Sinhala">Сингальская</option>
+          <option value="Thai">Тайская</option>
+          <option value="BurmeseMyanmar">Бирманская (Мьянма)</option>
+          <optgroup label="Остальные" id="scriptOtherGroup"></optgroup>
         </select></div>
       </div>
       <div class="row">
@@ -377,6 +395,30 @@ const NAMES = {
 };
 let langCounts = {};
 fetch('/settings/lang-counts.json').then(r => r.ok ? r.json() : {}).then(c => { langCounts = c || {}; }).catch(()=>{});
+
+/* Остальные ~150 систем письма (кроме 6 основных, показанных в HTML сразу) — реальный список
+   ключей require('aksharamukha').Scripts (settings/scripts.json, dg-light.js), не выдуманный;
+   владелец явно попросил показывать ВСЕ рабочие, а не только 4-6 избранных. Подписи для этой
+   длинной части не переводим на RU/EN отдельно (это в основном имена собственные письменностей —
+   "JapaneseHiragana", "OldPersian" и т.п. — переводить их не имеет особого смысла), просто
+   разбиваем CamelCase на слова с пробелами. RomanIAST/RomanISO15919PI пропущены — это, по сути,
+   тот же самый "не конвертировать" вариант, что уже первым пунктом в списке (Латиница/IAST).*/
+const SCRIPT_MAIN_KEYS = new Set(['ISOPali','Brahmi','Devanagari','Sinhala','Thai','BurmeseMyanmar']);
+const SCRIPT_SKIP_KEYS = new Set(['RomanIAST','RomanISO15919PI']);
+fetch('/settings/scripts.json').then(r => r.ok ? r.json() : []).then(keys => {
+  const group = document.getElementById('scriptOtherGroup');
+  if (!group || !Array.isArray(keys)) return;
+  keys.filter(k => !SCRIPT_MAIN_KEYS.has(k) && !SCRIPT_SKIP_KEYS.has(k))
+    .sort((a,b) => a.localeCompare(b))
+    .forEach(k => {
+      const opt = document.createElement('option');
+      opt.value = k;
+      opt.textContent = k.replace(/([a-z])([A-Z])/g, '$1 $2');
+      group.appendChild(opt);
+    });
+  const saved = localStorage.getItem('selectedScript');
+  if (saved) $('#script').value = saved;
+}).catch(()=>{});
 
 function readList(key, fallback){
   const raw = localStorage.getItem(key);
@@ -597,32 +639,44 @@ $('#delaySeg').onclick = e=>{
      dhp/iti/snp/ud/thag/thig, и всё остальное — ja/mil/nett/pv/vv/bv/cp/kp/ps/...);
      совпадение с default-книгами не проблема — matchesScope просто ИЛИ, не XOR. */
 const SCOPE_BOOKS = [['dn','DN'],['mn','MN'],['sn','SN'],['an','AN'],['iti','Iti'],['ud','Ud'],['snp','Snp'],['dhp','Dhp'],['thag','Thag'],['thig','Thig']];
-/* Остальные книги КН (category='khudakka' минус уже включённые по умолчанию dhp/iti/snp/ud/
-   thag/thig) — раньше были одним тумблером "+ вся КН"; по просьбе владельца разбиты на
-   отдельные пункты для точечного поиска, как и Виная до этого. Префиксы и реальные счётчики —
-   из dg_db_light.json (category==='khudakka', префикс id до первой цифры): ja 547, tha-ap 563,
-   mil 248, thi-ap 40, vv 85, pv 51, cp 35, bv 29, ps 31, ne 37, cnd 23, mnd 16, kp 9, pe 9.
-   "+ вся КН" остаётся как быстрый способ включить всё сразу одним кликом. */
+/* Абхидхамма — по прямому указанию не детализируем на под-книги, единственный "плоский"
+   доп.-пункт. Виная и Кхуддака (SCOPE_GROUPS ниже) раньше были такими же плоскими пунктами
+   (Виная — 3 отдельные галки, Кхуддака — 14) — по просьбе владельца "систематизировать",
+   теперь это одна галка-группа с раскрывающимся списком под-пунктов, а не десятки плоских
+   чипов вперемешку с 4 никаями. */
 const EXTRA_BOOKS = [
-  [{ru:'+ вся КН', en:'+ all KN'}, ['khudakka']],
-  [{ru:'Виная (Вибханга)', en:'Vinaya (Vibhaṅga)'}, ['pli-tv-bi','pli-tv-bu']],
-  [{ru:'+ Кхандхака', en:'+ Khandhaka'}, ['pli-tv-kd']],
-  [{ru:'+ Паривара', en:'+ Parivāra'}, ['pli-tv-pvr']],
-  [{ru:'Абхидхамма', en:'Abhidhamma'}, ['abhi']],
-  [{ru:'Джатаки', en:'Jātaka'}, ['ja']],
-  [{ru:'Тхера-ападана', en:'Theraapadāna'}, ['tha-ap']],
-  [{ru:'Милиндапаньха', en:'Milindapañha'}, ['mil']],
-  [{ru:'Тхери-ападана', en:'Therīapadāna'}, ['thi-ap']],
-  [{ru:'Виманаваттху', en:'Vimānavatthu'}, ['vv']],
-  [{ru:'Петаваттху', en:'Petavatthu'}, ['pv']],
-  [{ru:'Чарьяпитака', en:'Cariyāpiṭaka'}, ['cp']],
-  [{ru:'Буддхавамса', en:'Buddhavaṁsa'}, ['bv']],
-  [{ru:'Патисамбхидамагга', en:'Paṭisambhidāmagga'}, ['ps']],
-  [{ru:'Неттипакарана', en:'Nettippakaraṇa'}, ['ne']],
-  [{ru:'Чуланиддеса', en:'Cullaniddesa'}, ['cnd']],
-  [{ru:'Маханиддеса', en:'Mahāniddesa'}, ['mnd']],
-  [{ru:'Кхуддакапатха', en:'Khuddakapāṭha'}, ['kp']],
-  [{ru:'Петакопадеса', en:'Peṭakopadesa'}, ['pe']]
+  [{ru:'Абхидхамма', en:'Abhidhamma'}, ['abhi']]
+];
+/* Группы "родитель + раскрывающийся список" — родительская галка включает/выключает ВСЕ коды
+   группы одним кликом (см. SCOPE_GROUPS.codes ниже, автосчитается из items), у самой галки
+   есть промежуточное состояние (indeterminate), если отмечена только часть под-пунктов.
+   Префиксы и реальные счётчики книг КН — из dg_db_light.json (category==='khudakka', префикс id
+   до первой цифры): ja 547, tha-ap 563, mil 248, thi-ap 40, vv 85, pv 51, cp 35, bv 29, ps 31,
+   ne 37, cnd 23, mnd 16, kp 9, pe 9 (плюс уже включённые по умолчанию dhp/iti/snp/ud/thag/thig —
+   в эту группу НЕ входят, они всегда в 4 никаи+6 КН). Виная — id-префиксы Патимоккхи+Вибханги
+   обеих Пратимокш (bi/bu) отдельно от Kd/Pvr, как и раньше. */
+const SCOPE_GROUPS = [
+  { label:{ru:'Виная', en:'Vinaya'}, items:[
+      [{ru:'Вибханга', en:'Vibhaṅga'}, ['pli-tv-bi','pli-tv-bu']],
+      [{ru:'Кхандхака', en:'Khandhaka'}, ['pli-tv-kd']],
+      [{ru:'Паривара', en:'Parivāra'}, ['pli-tv-pvr']]
+    ] },
+  { label:{ru:'Кхуддака Никая (доп.)', en:'Khuddaka Nikāya (extra)'}, items:[
+      [{ru:'Джатаки', en:'Jātaka'}, ['ja']],
+      [{ru:'Тхера-ападана', en:'Theraapadāna'}, ['tha-ap']],
+      [{ru:'Милиндапаньха', en:'Milindapañha'}, ['mil']],
+      [{ru:'Тхери-ападана', en:'Therīapadāna'}, ['thi-ap']],
+      [{ru:'Виманаваттху', en:'Vimānavatthu'}, ['vv']],
+      [{ru:'Петаваттху', en:'Petavatthu'}, ['pv']],
+      [{ru:'Чарьяпитака', en:'Cariyāpiṭaka'}, ['cp']],
+      [{ru:'Буддхавамса', en:'Buddhavaṁsa'}, ['bv']],
+      [{ru:'Патисамбхидамагга', en:'Paṭisambhidāmagga'}, ['ps']],
+      [{ru:'Неттипакарана', en:'Nettippakaraṇa'}, ['ne']],
+      [{ru:'Чуланиддеса', en:'Cullaniddesa'}, ['cnd']],
+      [{ru:'Маханиддеса', en:'Mahāniddesa'}, ['mnd']],
+      [{ru:'Кхуддакапатха', en:'Khuddakapāṭha'}, ['kp']],
+      [{ru:'Петакопадеса', en:'Peṭakopadesa'}, ['pe']]
+    ] }
 ];
 const DEFAULT_SCOPE = SCOPE_BOOKS.map(b=>b[0]);
 let scopeList = readList('dhammaSearchScope', DEFAULT_SCOPE.slice());
@@ -631,6 +685,7 @@ function saveScope(){
   if (isDefault) localStorage.removeItem('dhammaSearchScope');
   else localStorage.setItem('dhammaSearchScope', scopeList.join(','));
 }
+let openGroups = new Set();
 function renderScope(){
   const host = $('#scopeBoxes'); host.innerHTML='';
   const addBox = (label, codes, muted) => {
@@ -648,6 +703,50 @@ function renderScope(){
   };
   SCOPE_BOOKS.forEach(([code,label])=>addBox(label,[code],false));
   EXTRA_BOOKS.forEach(([label,codes])=>addBox(isRu?label.ru:label.en,codes,true));
+
+  SCOPE_GROUPS.forEach((group,gi)=>{
+    const allCodes = group.items.flatMap(([,codes])=>codes);
+    const allChecked = allCodes.every(c=>scopeList.includes(c));
+    const someChecked = !allChecked && allCodes.some(c=>scopeList.includes(c));
+    const wrap = document.createElement('div');
+    wrap.className='scope-group';
+    const head = document.createElement('label');
+    head.className='scope-group-head';
+    head.innerHTML=`<input type="checkbox" ${allChecked?'checked':''}> ${isRu?group.label.ru:group.label.en}`;
+    const parentInput = head.querySelector('input');
+    parentInput.indeterminate = someChecked;
+    parentInput.onchange = e=>{
+      scopeList = e.target.checked
+        ? scopeList.concat(allCodes.filter(c=>!scopeList.includes(c)))
+        : scopeList.filter(c=>!allCodes.includes(c));
+      saveScope(); renderScope();
+    };
+    const expandBtn=document.createElement('button');
+    expandBtn.type='button'; expandBtn.className='scope-group-expand';
+    const isOpen = openGroups.has(gi);
+    expandBtn.setAttribute('aria-expanded', String(isOpen));
+    expandBtn.textContent = isOpen ? '▴' : '▾';
+    expandBtn.onclick = ()=>{ if(openGroups.has(gi)) openGroups.delete(gi); else openGroups.add(gi); renderScope(); };
+    head.appendChild(expandBtn);
+    wrap.appendChild(head);
+    const panel=document.createElement('div');
+    panel.className='scope-group-panel';
+    panel.hidden = !isOpen;
+    group.items.forEach(([label,codes])=>{
+      const itemLbl=document.createElement('label');
+      const itemChecked = codes.every(c=>scopeList.includes(c));
+      itemLbl.innerHTML=`<input type="checkbox" ${itemChecked?'checked':''}> ${isRu?label.ru:label.en}`;
+      itemLbl.querySelector('input').onchange = e=>{
+        scopeList = e.target.checked
+          ? scopeList.concat(codes.filter(c=>!scopeList.includes(c)))
+          : scopeList.filter(c=>!codes.includes(c));
+        saveScope(); renderScope();
+      };
+      panel.appendChild(itemLbl);
+    });
+    wrap.appendChild(panel);
+    host.appendChild(wrap);
+  });
 }
 renderScope();
 
@@ -747,7 +846,7 @@ const STR = {
     readHint:'Перетащите чип за ⠿ или нажмите на нём ← →, чтобы изменить порядок.',
     script:'Система письма пали',
     scriptDesc:'Применяется к пали в поиске и в ридере. Заголовки текстов и отчёт по словам пока остаются латиницей.',
-    scriptIast:'Латиница (IAST)', scriptDeva:'Деванагари', scriptThai:'Тайская', scriptSinh:'Сингальская', scriptMymr:'Бирманская',
+    scriptIast:'Латиница (IAST)', scriptBrahmi:'Брахми', scriptDeva:'Деванагари', scriptSinh:'Сингальская', scriptThai:'Тайская', scriptMymr:'Бирманская (Мьянма)', scriptOther:'Остальные',
     size:'Размер текста', punct:'Показывать пунктуацию в пали', punctDesc:'Выключите, чтобы убрать запятые/кавычки и заменить точки, ? и ! вертикальной чертой — ближе к виду рукописей.',
     gSearch:'Поиск', scope:'Где искать по умолчанию',
     scopeDesc:'В самом поиске область можно менять для одного запроса — здесь только значение по умолчанию.',
@@ -782,7 +881,7 @@ const STR = {
     readHint:'Drag a chip by ⠿, or focus it and press ← →, to reorder.',
     script:'Pali script',
     scriptDesc:"Applies to Pali in search and in the reader. Text titles and the word report still stay in Latin script.",
-    scriptIast:'Latin (IAST)', scriptDeva:'Devanagari', scriptThai:'Thai', scriptSinh:'Sinhala', scriptMymr:'Burmese',
+    scriptIast:'Latin (IAST)', scriptBrahmi:'Brahmi', scriptDeva:'Devanagari', scriptSinh:'Sinhala', scriptThai:'Thai', scriptMymr:'Burmese (Myanmar)', scriptOther:'Other',
     size:'Text size', punct:'Show Pali punctuation', punctDesc:'Turn off to drop commas/quotes and replace periods, ? and ! with a vertical bar — closer to the look of manuscripts.',
     gSearch:'Search', scope:'Default search scope',
     scopeDesc:'The scope can still be changed per search — this is only the default.',
@@ -839,8 +938,10 @@ function applyLang(){
   Array.from(dm.options).forEach(o=>{ const lbl=DICT_MODE_LABELS[o.value]; if(lbl) o.textContent = isRu?lbl.ru:lbl.en; });
   Array.from(dm.querySelectorAll('optgroup')).forEach(g=>{ const lbl=DICT_GROUP_LABELS[g.id]; if(lbl) g.label = isRu?lbl.ru:lbl.en; });
   const sc = $('#script');
-  const scriptLabels = {ISOPali:'scriptIast', deva:'scriptDeva', thai:'scriptThai', sinh:'scriptSinh', mymr:'scriptMymr'};
+  const scriptLabels = {ISOPali:'scriptIast', Brahmi:'scriptBrahmi', Devanagari:'scriptDeva', Sinhala:'scriptSinh', Thai:'scriptThai', BurmeseMyanmar:'scriptMymr'};
   Array.from(sc.options).forEach(o=>{ if (scriptLabels[o.value]) o.textContent = t[scriptLabels[o.value]]; });
+  const scOtherGroup = document.getElementById('scriptOtherGroup');
+  if (scOtherGroup) scOtherGroup.label = t.scriptOther;
   const d3 = document.querySelector('#delaySeg button[data-ms="3000"]');
   const d5 = document.querySelector('#delaySeg button[data-ms="5000"]');
   if (d3) d3.textContent = isRu ? '3 с' : '3 s';

@@ -22,20 +22,27 @@ const akshReady = Aksharamukha.new().catch(err => {
     console.error('Aksharamukha init failed (script conversion will be a no-op):', err.message);
     return null;
 });
-// Наши короткие коды (используются в /settings/ и в URL ?script=) -> реальные имена систем
-// письма в Aksharamukha. "ISOPali"/отсутствие — исходная латиница, конвертировать не нужно.
-// mymr: 'BurmeseMyanmar' — НЕ 'Burmese' (такого ключа в Scripts нет, AKSH_SCRIPTS.Burmese был
-// undefined, aksh.processAsync(IAST, undefined, text) молча ронял конверсию в Python
-// ("NameError: name 'undefined' is not defined" — JS undefined буквально попадал в
-// сгенерированный Python-код через мост) — бирманский откатывался на латиницу везде: и в
-// ридере, и в поиске, и в демо настроек. Проверено напрямую: require('aksharamukha').Scripts.
-const SCRIPT_MAP = { deva: 'Devanagari', thai: 'Thai', sinh: 'Sinhala', mymr: 'BurmeseMyanmar' };
+// Раньше здесь была маленькая ручная таблица коротких кодов (deva/thai/sinh/mymr) на 4 системы
+// письма — владелец попросил показывать ВСЕ рабочие системы, которые реально умеет Aksharamukha
+// (проверено тестовым прогоном конвертации Pali IAST во все ключи Scripts — из ~163 не упал ни
+// один, даже совсем неожиданные для пали System типа иврита/кириллицы/японской кана дают
+// осмысленную фонетическую транслитерацию, а не мусор). Значит короткие коды — не нужны и не
+// масштабируются на 163 системы; ?script=/selectedScript теперь хранит РЕАЛЬНОЕ имя ключа
+// Aksharamukha.Scripts (например "BurmeseMyanmar", НЕ придуманное "mymr"). Клиент (megareader.js/
+// search/index.html) исторически шлёт значение в нижнем регистре (.toLowerCase(), трогать этот
+// код не стал — общий для читателя и поиска) — поэтому на сервере матчим регистронезависимо.
+const AKSH_SCRIPT_LOOKUP = {};
+for (const key of Object.keys(AKSH_SCRIPTS)) AKSH_SCRIPT_LOOKUP[key.toLowerCase()] = key;
+function resolveScriptKey(code) {
+    return code ? (AKSH_SCRIPT_LOOKUP[code.toLowerCase()] || null) : null;
+}
 async function convertPaliScript(text, scriptCode) {
-    if (!text || !scriptCode || !SCRIPT_MAP[scriptCode]) return text;
+    const realKey = resolveScriptKey(scriptCode);
+    if (!text || !realKey) return text;
     const aksh = await akshReady;
     if (!aksh) return text;
     try {
-        return await aksh.processAsync(AKSH_SCRIPTS.IAST, AKSH_SCRIPTS[SCRIPT_MAP[scriptCode]], text);
+        return await aksh.processAsync(AKSH_SCRIPTS.IAST, AKSH_SCRIPTS[realKey], text);
     } catch (err) {
         console.warn(`Aksharamukha: conversion to ${scriptCode} failed:`, err.message);
         return text;
@@ -48,7 +55,7 @@ async function convertPaliScript(text, scriptCode) {
 // root_text). Один Promise.all на все найденные строки сразу — конкурентно (~50 строк
 // пали конвертируются за ~130мс, замерено), а не одна за другой по сегментам/суттам.
 async function convertScriptInSearchResult(result, scriptCode) {
-    if (!scriptCode || !SCRIPT_MAP[scriptCode]) return;
+    if (!resolveScriptKey(scriptCode)) return;
     const jobs = [];
     const convertField = (obj, field) => {
         if (obj && obj[field]) jobs.push((async () => { obj[field] = await convertPaliScript(obj[field], scriptCode); })());
@@ -169,11 +176,12 @@ const SETTINGS_DEMO_DEF = [
 // этот await реально выполнится (после fs.readFile выше), весь остальной модуль уже
 // синхронно доисполнился, так что здесь ничего не в TDZ.
 //
-// Каждый вариант системы письма (ISOPali + SCRIPT_MAP) считается заранее, при старте, а не по
-// запросу от preview-frame.html — данных мало (4 текста, по сегменту-два), а Aksharamukha живёт
-// только в Node (не в браузере посетителя), так что демо в /settings/ иначе не смогло бы
-// применить акшарамукху к образцу вообще (раньше и не применяло — жалоба владельца). Формат
-// файла — { "ISOPali": [...группы...], "deva": [...], ... }, тот же ключ, что и localStorage
+// Каждый вариант системы письма (ISOPali + ВСЕ ключи AKSH_SCRIPTS, не только 4 избранных)
+// считается заранее, при старте, а не по запросу от preview-frame.html — данных мало (4 текста,
+// по сегменту-два), а Aksharamukha живёт только в Node (не в браузере посетителя), так что демо
+// в /settings/ иначе не смогло бы применить акшарамукху к образцу вообще (раньше и не
+// применяло — жалоба владельца). Формат файла — { "ISOPali": [...группы...], "Devanagari":
+// [...], ... }, тот же ключ (реальное имя Aksharamukha.Scripts), что и localStorage
 // selectedScript, preview-frame.html просто берёт groups[selectedScript] || groups.ISOPali.
 async function buildSettingsDemoCache() {
     const cachePath = path.join(__dirname, 'settings', 'demo-data.json');
@@ -190,7 +198,7 @@ async function buildSettingsDemoCache() {
     }
 
     const byScript = { ISOPali: baseGroups };
-    for (const scriptCode of Object.keys(SCRIPT_MAP)) {
+    for (const scriptCode of Object.keys(AKSH_SCRIPTS)) {
         byScript[scriptCode] = await Promise.all(baseGroups.map(async group => ({
             ...group,
             segments: await Promise.all(group.segments.map(async seg => ({
@@ -206,6 +214,18 @@ async function buildSettingsDemoCache() {
         console.log(`Settings demo cache built: ${baseGroups.length} text(s) x ${Object.keys(byScript).length} script(s) -> settings/demo-data.json`);
     } catch (e) {
         console.warn('Settings demo cache: could not write file:', e.message);
+    }
+}
+
+// Список реальных ключей Aksharamukha.Scripts для дропдауна "Система письма пали" в
+// /settings/ — отдельный маленький файл, а не повторный fetch демо-данных (там на каждый ключ
+// висит целый набор текстов, незачем тащить это ради одного списка названий).
+async function buildScriptListCache() {
+    const cachePath = path.join(__dirname, 'settings', 'scripts.json');
+    try {
+        await fs.writeFile(cachePath, JSON.stringify(Object.keys(AKSH_SCRIPTS)), 'utf8');
+    } catch (e) {
+        console.warn('Script list cache: could not write file:', e.message);
     }
 }
 
@@ -262,6 +282,7 @@ async function initServer() {
         const stat = await fs.stat(skeletonPath);
         console.log(`Skeleton loaded: ${Object.keys(skeletonDB).length} suttas (built ${stat.mtime.toISOString()})`);
         await buildSettingsDemoCache();
+        await buildScriptListCache();
         await buildLangCountsCache();
     } catch (err) {
         console.error('Startup error:', err);
@@ -1815,11 +1836,12 @@ app.get('/api/text/:suttaId', async (req, res) => {
         // только ради того, чтобы знать порядок рендера.
         data.columns = effectiveLangs;
 
-        // Конвертация системы письма пали (?script=deva/thai/sinh/mymr — см. akshReady выше).
-        // Только root_text/variant — сам пали, переводы не на пали и не трогаются. Параллельно
-        // по всем сегментам сразу (Promise.all) — конвертация после инициализации быстрая
-        // (десятки мс), но последовательно по сегментам целой сутты уже заметно набегало бы.
-        if (req.query.script && SCRIPT_MAP[req.query.script]) {
+        // Конвертация системы письма пали (?script=Devanagari/Thai/... — любой ключ
+        // Aksharamukha.Scripts, см. akshReady/resolveScriptKey выше). Только root_text/variant —
+        // сам пали, переводы не на пали и не трогаются. Параллельно по всем сегментам сразу
+        // (Promise.all) — конвертация после инициализации быстрая (десятки мс), но
+        // последовательно по сегментам целой сутты уже заметно набегало бы.
+        if (resolveScriptKey(req.query.script)) {
             await Promise.all(data.segments.map(async seg => {
                 if (seg.root_text) seg.root_text = await convertPaliScript(seg.root_text, req.query.script);
                 if (seg.variant) seg.variant = await convertPaliScript(seg.variant, req.query.script);

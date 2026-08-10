@@ -23,3 +23,4 @@ public/overrides/js/datatables/
 # buildLangCountsCache) — не источник, коммитить нечего, каждое окружение строит файлы само.
 settings/demo-data.json
 settings/lang-counts.json
+settings/scripts.json
