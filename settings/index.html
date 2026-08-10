@@ -400,13 +400,30 @@ $('#sameAsRead').onchange = e=>{
 $('#searchLangsBlock').hidden = state.sameAsRead;
 $('#sameAsRead').checked = state.sameAsRead;
 
-/* Тема — пишем в свой ключ (dhammaTheme) и, на всякий случай, в наиболее вероятный
-   легаси-ключ ('theme'), чтобы не разъезжаться с остальным сайтом там, где он его читает.
-   TODO: свести все ключи темы (theme/thememode/themeButtonAction/darkSwitch/lightMode) в один. */
+/* Тема — единственный реально подключённый переключатель на страницах поиска/ридера это
+   /assets/js/themeswitch.js (остальные 5 файлов в легаси-репо — themeswitch.js3modes,
+   themeswitchNew.js, themetoggle.js, dark-mode-switch/*, legacy-theme.js — нигде не
+   подключены, мёртвый код, не трогаем). Значит "свести к одному ключу" означает не
+   изобретать новый (dhammaTheme), а писать РОВНО то же, что и themeswitch.js's setTheme():
+   theme (light/dark/auto — основной), themeButtonAction (как был выставлен — на дисплей не
+   влияет, но раз пишет он, пишем и мы), darkSwitch/lightMode (комментарий в оригинале — "for
+   TBW" — читает какой-то другой легаси-инструмент, не наш, но раз читает — не ломаем). */
 function setTheme(t){
-  localStorage.setItem('dhammaTheme', t);
   localStorage.setItem('theme', t);
   const dark = t==='dark' || (t==='auto' && matchMedia('(prefers-color-scheme: dark)').matches);
+  if (t === 'light') {
+    localStorage.setItem('themeButtonAction', 'lightManual');
+    localStorage.setItem('lightMode', 'light');
+    localStorage.removeItem('darkSwitch');
+  } else if (t === 'dark') {
+    localStorage.setItem('themeButtonAction', 'darkManual');
+    localStorage.setItem('lightMode', 'dark');
+    localStorage.setItem('darkSwitch', 'dark');
+  } else {
+    localStorage.setItem('themeButtonAction', 'autoFollowOS');
+    localStorage.setItem('lightMode', dark ? 'dark' : 'light');
+    if (dark) localStorage.setItem('darkSwitch', 'dark'); else localStorage.removeItem('darkSwitch');
+  }
   document.body.classList.toggle('dark', dark);
   document.querySelectorAll('#themeSeg button').forEach(b=>b.setAttribute('aria-pressed', String(b.dataset.theme===t)));
 }
@@ -585,7 +602,7 @@ const _renderOrig = render;
 render = function(){ _renderOrig(); renderPreview(); };
 $('#punct').addEventListener('change', renderPreview);
 
-setTheme(localStorage.getItem('dhammaTheme') || 'auto');
+setTheme(localStorage.getItem('theme') || 'auto');
 render();
 </script>
 </body>

@@ -1393,23 +1393,41 @@ localStorage.setItem('selectedScript', 'ISOPali');
 
 if (applyButton) {
   applyButton.addEventListener('click', async function() {
+    const prevScript = localStorage.getItem('selectedScript');
+    const prevPunct = localStorage.getItem('removePunct');
     localStorage.setItem('selectedScript', scriptSelect.value);
     localStorage.setItem('selectedDict', dictSelect.value);
-    
+
     const removePunctCheckbox = document.querySelector('.setting-checkbox[data-key="removePunct"]');
     if (removePunctCheckbox) {
       localStorage.setItem('removePunct', removePunctCheckbox.checked);
     }
-    
+
     localStorage.setItem("firstVisitShowSettingsClosed", "true");
-    saveExactScrollPosition(); 
-    
-    // Ждем завершения синхронизации перед релоадом
+
     if (typeof syncSettingsToCloud === 'function') {
-        await syncSettingsToCloud();  
+        await syncSettingsToCloud();
     }
-    
-    location.reload();
+
+    // Живое применение без перезагрузки: единственное, что реально меняет уже отрисованный
+    // текст на странице — пунктуация в ридере (window.buildSutta/window.currentReaderSlug,
+    // см. megareader.js). Скрипт (кроме ISOPali) пока ничего не конвертирует, словарь читает
+    // localStorage заново при каждом клике — им живой ре-рендер не нужен. Если ни то ни
+    // другое не изменилось или мы не в ридере — просто закрываем модалку, перезагрузки нет.
+    const punctChanged = localStorage.getItem('removePunct') !== prevPunct;
+    const scriptChanged = localStorage.getItem('selectedScript') !== prevScript;
+    if (punctChanged && typeof window.buildSutta === 'function' && window.currentReaderSlug) {
+      await window.buildSutta(window.currentReaderSlug);
+    }
+    if (typeof showBubbleNotification === 'function' && (punctChanged || scriptChanged)) {
+      const isRuPage = localStorage.getItem('siteLanguage') === 'ru' || /^\/(ru|r|ml)\//.test(window.location.pathname);
+      showBubbleNotification(isRuPage ? 'Настройки применены' : 'Settings applied');
+    }
+    const settingsModalEl = document.getElementById('settings');
+    if (settingsModalEl && typeof bootstrap !== 'undefined') {
+      const modalInstance = bootstrap.Modal.getInstance(settingsModalEl);
+      if (modalInstance) modalInstance.hide();
+    }
   });
 }
 

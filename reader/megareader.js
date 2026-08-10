@@ -829,6 +829,10 @@ async function initReader() {
         // Существование слага решает сам /api/text/:slug (200 → рендерим, 404 → поиск,
         // см. window.buildSutta) — без предзагрузки индекса всех сутт на клиенте.
         const normalizedSlug = window.normalizeSlugToDbKey ? window.normalizeSlugToDbKey(query) : query;
+        // Запоминаем для живого повторного рендера при смене пунктуации/скрипта в настройках
+        // (settings.js, apply-button) — без этого пришлось бы парсить URL заново или перезагружать
+        // страницу целиком только ради одной текстовой настройки.
+        window.currentReaderSlug = normalizedSlug;
         const rendered = await window.buildSutta(normalizedSlug);
         if (rendered && segmentId) {
             const target = document.getElementById(segmentId);
