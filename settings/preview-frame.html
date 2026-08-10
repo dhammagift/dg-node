@@ -35,6 +35,16 @@ function pickReaderLangs() {
   const raw = localStorage.getItem('dhammaReaderLangs') || localStorage.getItem('dhammaSearchLangs') || 'ru,en';
   return raw.split(',').map(s => s.trim()).filter(Boolean);
 }
+// Акшарамукха живёт только в Node (не в браузере посетителя) — образец берёт уже готовый,
+// заранее сконвертированный набор из settings/demo-data.json (dg-light.js, buildSettingsDemoCache
+// считает ISOPali + все SCRIPT_MAP-варианты при старте сервера), не конвертирует сам.
+function pickScript() {
+  return localStorage.getItem('selectedScript') || 'ISOPali';
+}
+function currentGroups() {
+  const byScript = window.__demoByScript || {};
+  return byScript[pickScript()] || byScript.ISOPali || [];
+}
 // Та же разметка, что генерирует reader/megareader.js в реальном ридере (id сегмента,
 // .pli-lang.quote, .right-column с {lang}-lang.quote и .lang-2nd на втором переводчике) —
 // только без всей логики путей/режимов/навигации, которая тут не нужна.
@@ -60,8 +70,9 @@ function renderSegment(seg, wantedLangs) {
   if (right) inner += `<span class="right-column">${right}</span>`;
   return `<div class="demo-seg"><span id="${anchor}">${inner}</span></div>`;
 }
-function render(groups) {
-  if (!groups || !groups.length) return;
+function render() {
+  const groups = currentGroups();
+  if (!groups.length) return;
   const group = groups[Math.floor(Math.random() * groups.length)];
   const wantedLangs = pickReaderLangs();
   document.getElementById('sutta').innerHTML = group.segments.map(s => renderSegment(s, wantedLangs)).join('');
@@ -79,20 +90,20 @@ function applyTheme() {
 applyTheme();
 const scale = parseInt(localStorage.getItem('uiScale')) || 100;
 document.documentElement.style.fontSize = scale + '%';
-fetch('/settings/demo-data.json').then(r => r.ok ? r.json() : []).then(groups => {
-  window.__demoGroups = groups || [];
-  render(window.__demoGroups);
+fetch('/settings/demo-data.json').then(r => r.ok ? r.json() : {}).then(byScript => {
+  window.__demoByScript = byScript || {};
+  render();
 });
 window.addEventListener('storage', e => {
-  if (['removePunct', 'dhammaReaderLangs', 'dhammaSearchLangs', 'uiScale'].includes(e.key)) {
+  if (['removePunct', 'dhammaReaderLangs', 'dhammaSearchLangs', 'uiScale', 'selectedScript'].includes(e.key)) {
     if (e.key === 'uiScale') document.documentElement.style.fontSize = (parseInt(localStorage.getItem('uiScale')) || 100) + '%';
-    render(window.__demoGroups || []);
+    render();
   }
   if (e.key === 'theme') applyTheme();
 });
 window.addEventListener('message', e => {
-  if (e.data === 'dg-preview-shuffle') render(window.__demoGroups || []);
-  if (e.data === 'dg-preview-refresh') render(window.__demoGroups || []);
+  if (e.data === 'dg-preview-shuffle') render();
+  if (e.data === 'dg-preview-refresh') render();
 });
 </script>
 </body>

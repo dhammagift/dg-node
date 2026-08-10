@@ -24,7 +24,12 @@ const akshReady = Aksharamukha.new().catch(err => {
 });
 // Наши короткие коды (используются в /settings/ и в URL ?script=) -> реальные имена систем
 // письма в Aksharamukha. "ISOPali"/отсутствие — исходная латиница, конвертировать не нужно.
-const SCRIPT_MAP = { deva: 'Devanagari', thai: 'Thai', sinh: 'Sinhala', mymr: 'Burmese' };
+// mymr: 'BurmeseMyanmar' — НЕ 'Burmese' (такого ключа в Scripts нет, AKSH_SCRIPTS.Burmese был
+// undefined, aksh.processAsync(IAST, undefined, text) молча ронял конверсию в Python
+// ("NameError: name 'undefined' is not defined" — JS undefined буквально попадал в
+// сгенерированный Python-код через мост) — бирманский откатывался на латиницу везде: и в
+// ридере, и в поиске, и в демо настроек. Проверено напрямую: require('aksharamukha').Scripts.
+const SCRIPT_MAP = { deva: 'Devanagari', thai: 'Thai', sinh: 'Sinhala', mymr: 'BurmeseMyanmar' };
 async function convertPaliScript(text, scriptCode) {
     if (!text || !scriptCode || !SCRIPT_MAP[scriptCode]) return text;
     const aksh = await akshReady;
@@ -116,9 +121,14 @@ const DG_LANGS    = ['ru', 'ru_other', 'en', 'en_other', 'ai'];
 
 // DhammaGift offline — лучшие переводы проекта (один на язык), плоская структура (без подпапки
 // на переводчика, в отличие от SC — DG исторически один главный + один "other" переводчик на
-// язык, различаются именем файла). Структура:
+// язык, различаются именем файла). Структура (проверено напрямую на диске, включая реальный
+// путь, найденный владельцем через `find` в data/dhammagift — папки лежат прямо под
+// dhammagift/, БЕЗ промежуточной "translation/"; с ней путь был мёртвым — ru/en_other
+// физически существуют на диске по адресу без "translation", а `fsSync.existsSync` c ней
+// всегда давал false, так что все DG-переводы (главный "o" и "other") молча пропускались
+// везде — search, ридер, batch-индекс — и результат тихо падал на SC/en вместо DG/ru):
 // {DG_OFFLINE}/{lang}/sutta|vinaya/{nikaya}/{id}_translation-{lang}-{author}.json
-const DG_OFFLINE = path.join(DATA_ROOT, 'dhammagift', 'translation');
+const DG_OFFLINE = path.join(DATA_ROOT, 'dhammagift');
 let offlineMirrors = new Set();
 try {
     offlineMirrors = new Set(
@@ -158,22 +168,42 @@ const SETTINGS_DEMO_DEF = [
 // прочее объявлены ниже по файлу как function-декларации (hoisting) — на момент, когда
 // этот await реально выполнится (после fs.readFile выше), весь остальной модуль уже
 // синхронно доисполнился, так что здесь ничего не в TDZ.
+//
+// Каждый вариант системы письма (ISOPali + SCRIPT_MAP) считается заранее, при старте, а не по
+// запросу от preview-frame.html — данных мало (4 текста, по сегменту-два), а Aksharamukha живёт
+// только в Node (не в браузере посетителя), так что демо в /settings/ иначе не смогло бы
+// применить акшарамукху к образцу вообще (раньше и не применяло — жалоба владельца). Формат
+// файла — { "ISOPali": [...группы...], "deva": [...], ... }, тот же ключ, что и localStorage
+// selectedScript, preview-frame.html просто берёт groups[selectedScript] || groups.ISOPali.
 async function buildSettingsDemoCache() {
     const cachePath = path.join(__dirname, 'settings', 'demo-data.json');
-    const groups = [];
+    const baseGroups = [];
     for (const def of SETTINGS_DEMO_DEF) {
         try {
             const full = await getFullTextData(def.suttaId, ['all'], null, null);
             if (!full) continue;
             const segments = full.segments.filter(s => def.segments.includes(s.segment));
-            if (segments.length) groups.push({ sutta_id: full.sutta_id, title: full.title, segments });
+            if (segments.length) baseGroups.push({ sutta_id: full.sutta_id, title: full.title, segments });
         } catch (e) {
             console.warn('Settings demo cache: failed for', def.suttaId, e.message);
         }
     }
+
+    const byScript = { ISOPali: baseGroups };
+    for (const scriptCode of Object.keys(SCRIPT_MAP)) {
+        byScript[scriptCode] = await Promise.all(baseGroups.map(async group => ({
+            ...group,
+            segments: await Promise.all(group.segments.map(async seg => ({
+                ...seg,
+                root_text: await convertPaliScript(seg.root_text, scriptCode),
+                variant: await convertPaliScript(seg.variant, scriptCode)
+            })))
+        })));
+    }
+
     try {
-        await fs.writeFile(cachePath, JSON.stringify(groups, null, 2), 'utf8');
-        console.log(`Settings demo cache built: ${groups.length} text(s) -> settings/demo-data.json`);
+        await fs.writeFile(cachePath, JSON.stringify(byScript, null, 2), 'utf8');
+        console.log(`Settings demo cache built: ${baseGroups.length} text(s) x ${Object.keys(byScript).length} script(s) -> settings/demo-data.json`);
     } catch (e) {
         console.warn('Settings demo cache: could not write file:', e.message);
     }
