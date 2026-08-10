@@ -1232,17 +1232,20 @@ $(document).ready(function() {
             keyword = divKeyword;
         }
 
-        scope = urlParams.get('scope') || 'default';
-        lb = urlParams.get('lb') || 0;
-        la = urlParams.get('la') || 0;
+        // Область поиска и контекст — сначала явный параметр в адресе, затем сохранённое в
+        // мастер-настройках значение по умолчанию (см. settings/), иначе прежнее поведение.
+        scope = urlParams.get('scope') || localStorage.getItem('dhammaSearchScope') || 'default';
+        lb = urlParams.get('lb') || localStorage.getItem('dhammaSearchContextBefore') || 0;
+        la = urlParams.get('la') || localStorage.getItem('dhammaSearchContextAfter') || 0;
         // Язык контента (не UI-хром — тот отдельно, через siteLanguage/dhamma-i18n.js, lang=) —
         // по умолчанию ru,en как раньше, но можно явно запросить любой набор в любом порядке
         // (?langs=de,ru,en и т.п.), API это уже поддерживает (grep не завязан на конкретные
         // языки). langsExplicit отдельно — не то же самое, что "langs === 'ru,en'", т.к. явный
         // ?langs=ru,en тоже должен фиксировать порядок/безусловный показ, а не просто совпасть
-        // с дефолтом молча.
+        // с дефолтом молча. localStorage.dhammaSearchLangs — сохранённые в мастер-настройках
+        // языки поиска (settings/), приоритет ниже явного URL-параметра.
         langsExplicit = urlParams.has('langs');
-        langs = urlParams.get('langs') || 'ru,en';
+        langs = urlParams.get('langs') || localStorage.getItem('dhammaSearchLangs') || 'ru,en';
 
         let searchValue = sParam && sParam.trim() !== "" ? sParam.replace(/\\b/g, '') : divKeyword.replace(/\\b/g, '');
         let highlightWord = searchValue || keyword;

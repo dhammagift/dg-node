@@ -91,6 +91,45 @@ const searchIndexPath = path.join(__dirname, 'search', 'index.html');
 const skeletonPath = path.join(__dirname, 'dg_db_light.json');
 let skeletonDB = {};
 
+// Демо-сегменты для живого образца в /settings/ — заданы владельцем проекта явно, не
+// подбираются автоматически. Сегменты одной сутты (dn22:18.18 + dn22:18.19) идут ОДНОЙ
+// группой — на странице настроек показываются вместе, не по одному сегменту за раз.
+const SETTINGS_DEMO_DEF = [
+    { suttaId: 'an4.180', segments: ['an4.180:4.7'] },
+    { suttaId: 'mn139', segments: ['mn139:3.9'] },
+    { suttaId: 'dn22', segments: ['dn22:18.18', 'dn22:18.19'] },
+    { suttaId: 'an6.63', segments: ['an6.63:12.2'] }
+];
+
+// Строится один раз при старте сервера (не на каждый запрос страницы настроек) — считает
+// пали + варианты + ВСЕ найденные переводы на всех языках (targetLangs=['all'], тот же
+// путь, что и обычный полнотекстовый обход) только для этих 5 сегментов, режет до них и
+// кладёт результат в settings/demo-data.json — этот файл уже отдаётся статикой через
+// app.use('/settings', ...) ниже, отдельный роут не нужен. getFullTextData/skeletonDB и
+// прочее объявлены ниже по файлу как function-декларации (hoisting) — на момент, когда
+// этот await реально выполнится (после fs.readFile выше), весь остальной модуль уже
+// синхронно доисполнился, так что здесь ничего не в TDZ.
+async function buildSettingsDemoCache() {
+    const cachePath = path.join(__dirname, 'settings', 'demo-data.json');
+    const groups = [];
+    for (const def of SETTINGS_DEMO_DEF) {
+        try {
+            const full = await getFullTextData(def.suttaId, ['all'], null, null);
+            if (!full) continue;
+            const segments = full.segments.filter(s => def.segments.includes(s.segment));
+            if (segments.length) groups.push({ sutta_id: full.sutta_id, title: full.title, segments });
+        } catch (e) {
+            console.warn('Settings demo cache: failed for', def.suttaId, e.message);
+        }
+    }
+    try {
+        await fs.writeFile(cachePath, JSON.stringify(groups, null, 2), 'utf8');
+        console.log(`Settings demo cache built: ${groups.length} text(s) -> settings/demo-data.json`);
+    } catch (e) {
+        console.warn('Settings demo cache: could not write file:', e.message);
+    }
+}
+
 async function initServer() {
     try {
         const data = await fs.readFile(skeletonPath, 'utf8');
@@ -99,6 +138,7 @@ async function initServer() {
         // сервер всё равно отдаёт старое" было видно в логе сразу, а не гадалось.
         const stat = await fs.stat(skeletonPath);
         console.log(`Skeleton loaded: ${Object.keys(skeletonDB).length} suttas (built ${stat.mtime.toISOString()})`);
+        await buildSettingsDemoCache();
     } catch (err) {
         console.error('Startup error:', err);
     }
@@ -127,6 +167,9 @@ app.use('/assets', express.static(path.join(__dirname, 'public', 'overrides')));
 // см. TODO.md) отдаётся ПЕРЕД siteroot/read/ (легаси-оригинал, дальше по файлу, generic-цикл).
 app.use('/read', express.static(path.join(__dirname, 'public', 'overrides', 'read')));
 app.use('/spa', express.static(path.join(__dirname, 'public', 'spa')));
+// /settings — мастер-настройки (единая страница, вызывается по шестерёнке; отдельно от
+// быстрых настроек в quickModal и смарт-панели ридера, см. TODO.md).
+app.use('/settings', express.static(path.join(__dirname, 'settings')));
 // URL-префикс /nodejs/res сознательно НЕ переименован вслед за папкой (обратная совместимость
 // путей) — папка на диске называется search/ (см. CLAUDE.md "Структура проекта"), а
 // /nodejs/res/... как публичный URL как был, так и остался.

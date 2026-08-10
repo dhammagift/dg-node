@@ -18,3 +18,7 @@ package-lock.json
 # заметка про восстановление настоящего git-symlink для public/assets). Локальный dev-механизм,
 # не должен попадать в git как реальный контент.
 public/overrides/js/datatables/
+
+# Генерируется сервером при каждом старте (dg-light.js, buildSettingsDemoCache) — не источник,
+# коммитить нечего, каждое окружение строит свой файл само.
+settings/demo-data.json

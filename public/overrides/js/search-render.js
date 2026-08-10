@@ -465,12 +465,17 @@ window.DgSearchRender = (function () {
         var params = [];
         if (highlightWord) params.push('s=' + encodeURIComponent(highlightWord));
         params.push('lang=' + lang);
-        // langs= (набор/порядок языков ПЕРЕВОДА — не путать с lang=, языком интерфейса выше) —
-        // пробрасываем в ридер только если пользователь сам явно его задал в поиске
-        // (activeState.requestedLangs); иначе ридер использует свой собственный дефолт, как и
-        // поиск использует свой, когда langs= не передан.
-        if (activeState.requestedLangs && activeState.requestedLangs.length) {
-            params.push('langs=' + encodeURIComponent(activeState.requestedLangs.join(',')));
+        // langs= (набор/порядок языков ПЕРЕВОДА — не путать с lang=, языком интерфейса выше).
+        // Приоритет: явный ?langs=, который пользователь сам задал в поиске
+        // (activeState.requestedLangs) → сохранённые в мастер-настройках "языки для чтения"
+        // (dhammaReaderLangs, settings/) → "языки для поиска" (dhammaSearchLangs, тот же
+        // источник, если для чтения отдельного значения не задано — переключатель "так же,
+        // как для поиска") → иначе ридер использует свой собственный дефолт без параметра.
+        var readerLangs = (activeState.requestedLangs && activeState.requestedLangs.length)
+            ? activeState.requestedLangs.join(',')
+            : (localStorage.getItem('dhammaReaderLangs') || localStorage.getItem('dhammaSearchLangs') || '');
+        if (readerLangs) {
+            params.push('langs=' + encodeURIComponent(readerLangs));
         }
         return url + '?' + params.join('&');
     }

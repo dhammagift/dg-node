@@ -1,0 +1,539 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Настройки — dhamma.gift</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#141F2B; --ink-2:#55636F; --ink-3:#6E7B87;
+  --line:#E3E8ED; --line-strong:#CFD8E0;
+  --surface:#FFFFFF; --canvas:#F5F7F9;
+  --accent:#1F51B8; --accent-soft:#EAF0FC;
+  --danger:#B3261E;
+  --r-sm:8px; --r-lg:16px;
+  --ui:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+body.dark{
+  --ink:#E7ECF1; --ink-2:#A7B4C0; --ink-3:#8B99A6;
+  --line:#293441; --line-strong:#3A4753; --surface:#18212B; --canvas:#111820;
+  --accent:#7FA8F5; --accent-soft:#1E2E48;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+html{scroll-padding-top:16px}
+body{font-family:var(--ui);color:var(--ink);background:var(--canvas);font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
+.wrap{max-width:700px;margin:0 auto;padding:20px 16px 100px}
+.head{display:flex;align-items:baseline;justify-content:space-between;gap:16px}
+.head h1{font-size:24px;margin:0;letter-spacing:-.01em}
+.head .saved{font-size:13px;color:var(--ink-3)}
+.head-sub{margin:4px 0 18px;font-size:14px;color:var(--ink-2)}
+.preview{background:#FBF7EF;border:1px solid #E7DDC9;border-radius:var(--r-lg);padding:14px 16px;margin-bottom:22px}
+body.dark .preview{background:#1C2029;border-color:#333B47}
+.preview-label{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:#96876A;display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.preview-label button{background:transparent;border:0;font-size:16px;padding:2px 6px;color:var(--accent)}
+.pv-seg{border-left:2px solid #E7DDC9;padding-left:12px;margin-bottom:10px}
+body.dark .pv-seg{border-color:#333B47}
+.pv-pali{font-size:17px;line-height:1.55;margin:2px 0 0;color:#1E1A12}
+body.dark .pv-pali{color:#EDE6D8}
+.pv-tr{color:#4C4638;margin:6px 0 0;line-height:1.5;font-size:14px}
+body.dark .pv-tr{color:#BFB6A4}
+.pv-src{font-size:10.5px;letter-spacing:.04em;text-transform:uppercase;color:#96876A;display:block;margin-bottom:1px}
+.group{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);margin-bottom:20px;overflow:hidden;scroll-margin-top:16px}
+.group.flash{box-shadow:0 0 0 3px var(--accent);transition:box-shadow .4s ease}
+.group > h2{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);margin:0;padding:14px 18px 10px;font-weight:600}
+.rows{border-top:1px solid var(--line)}
+.row{display:flex;gap:16px;align-items:center;justify-content:space-between;padding:12px 18px;min-height:60px}
+.row + .row{border-top:1px solid var(--line)}
+.row-stack{flex-direction:column;align-items:stretch;gap:10px}
+.row-title{font-size:16px;font-weight:500;margin:0}
+.row-desc{font-size:13.5px;color:var(--ink-2);margin:3px 0 0}
+.row-control{flex:none;display:flex;align-items:center;gap:8px}
+.nested{background:color-mix(in srgb,var(--canvas) 60%,var(--surface));border-top:1px solid var(--line);padding:0 18px}
+.nested .row{padding-left:0;padding-right:0;min-height:56px}
+.nested[hidden]{display:none}
+select.control{font:inherit;font-size:15px;color:var(--ink);background:var(--surface);border:1px solid var(--line-strong);border-radius:var(--r-sm);min-height:44px;padding:0 36px 0 12px;appearance:none;cursor:pointer;max-width:220px;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none' stroke='%2355636F' stroke-width='1.6'><path d='M4 6l4 4 4-4'/></svg>");background-repeat:no-repeat;background-position:right 12px center}
+button{font:inherit;cursor:pointer}
+.btn{min-height:44px;padding:0 14px;border-radius:var(--r-sm);border:1px solid var(--line-strong);background:var(--surface);color:var(--ink);display:inline-flex;align-items:center;gap:8px}
+.btn:hover{background:color-mix(in srgb,var(--canvas) 70%,var(--surface))}
+.btn-quiet{border-color:transparent;color:var(--accent);padding:0 8px}
+.btn-primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn-danger{color:var(--danger)}
+.switch{position:relative;display:inline-flex;align-items:center;padding:9px 0;flex:none}
+.switch input{position:absolute;opacity:0;width:52px;height:32px;margin:0;cursor:pointer}
+.track{width:52px;height:32px;border-radius:999px;background:var(--line-strong);transition:background .18s;display:block}
+.thumb{position:absolute;left:3px;top:12px;width:26px;height:26px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3);transition:transform .18s}
+.switch input:checked ~ .track{background:var(--accent)}
+.switch input:checked ~ .thumb{transform:translateX(20px)}
+.switch input:focus-visible ~ .track{outline:3px solid var(--accent);outline-offset:3px}
+.seg{display:inline-flex;background:color-mix(in srgb,var(--canvas) 75%,var(--surface));border-radius:10px;padding:3px;gap:3px;flex-wrap:wrap}
+.seg button{min-height:38px;padding:0 13px;border:0;background:transparent;border-radius:8px;color:var(--ink-2);font-size:14.5px;font-weight:500}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.14)}
+.seg button[disabled]{opacity:.55;cursor:not-allowed}
+.badge{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-3);background:var(--line);border-radius:5px;padding:2px 6px;margin-left:6px}
+.stub{font-size:12.5px;color:var(--ink-3);font-style:italic}
+.size{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.size .btn{width:44px;justify-content:center;padding:0;font-size:19px}
+.size-val{min-width:56px;text-align:center;font-variant-numeric:tabular-nums;font-size:15px;font-weight:500}
+.chips{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.chip{display:inline-flex;align-items:center;gap:2px;background:var(--accent-soft);border:1px solid color-mix(in srgb,var(--accent) 35%,transparent);border-radius:10px;padding-left:4px;min-height:44px}
+.chip[draggable="true"]{cursor:grab}
+.chip.dragging{opacity:.45}
+.chip .grip{width:26px;height:44px;display:grid;place-items:center;color:var(--accent)}
+.chip .ord{font-size:12px;color:var(--accent);font-variant-numeric:tabular-nums}
+.chip .name{padding:0 4px;font-size:15px;font-weight:500}
+.chip .x{width:36px;height:44px;border:0;background:transparent;border-radius:0 9px 9px 0;color:var(--accent);display:grid;place-items:center;font-size:15px}
+.hint{font-size:13px;color:var(--ink-3);margin:8px 0 0}
+.scope{display:flex;flex-wrap:wrap;gap:6px}
+.scope label{display:inline-flex;align-items:center;gap:6px;font-size:13.5px;background:var(--accent-soft);color:var(--accent);border-radius:7px;padding:5px 9px;font-weight:500;cursor:pointer}
+.scope input{accent-color:var(--accent)}
+.num{display:inline-flex;align-items:center;gap:6px}
+.num input{width:56px;min-height:44px;border:1px solid var(--line-strong);border-radius:var(--r-sm);background:var(--surface);color:var(--ink);font:inherit;font-size:15px;text-align:center}
+dialog{border:0;border-radius:var(--r-lg);padding:0;background:var(--surface);color:var(--ink);width:min(420px,calc(100vw - 24px));box-shadow:0 24px 60px rgba(0,0,0,.3)}
+dialog::backdrop{background:rgba(10,16,24,.5)}
+.dlg-head{padding:16px 18px 12px}
+.dlg-head h3{margin:0 0 4px;font-size:18px}
+.dlg-body{border-top:1px solid var(--line);max-height:55vh;overflow:auto}
+.dlg-foot{display:flex;justify-content:flex-end;gap:8px;padding:12px 18px;border-top:1px solid var(--line)}
+.dlg-list{margin:0;padding:0;list-style:none}
+.dlg-list li + li{border-top:1px solid var(--line)}
+.dlg-list label{display:flex;align-items:center;gap:12px;padding:11px 18px;min-height:52px;cursor:pointer}
+.dlg-list input{width:20px;height:20px;accent-color:var(--accent);flex:none}
+.dlg-search{width:calc(100% - 36px);margin:10px 18px 0;min-height:44px;border:1px solid var(--line-strong);border-radius:var(--r-sm);padding:0 12px;font:inherit;font-size:15px;background:var(--surface);color:var(--ink)}
+kbd{font:inherit;font-size:12.5px;background:var(--line);border:1px solid var(--line-strong);border-radius:6px;padding:2px 6px}
+:where(a,button,select,input,[tabindex]):focus-visible{outline:3px solid var(--accent);outline-offset:2px;border-radius:6px}
+@media (max-width:560px){
+  .row{flex-direction:column;align-items:flex-start;gap:10px}
+  .row-control{width:100%}
+  select.control{max-width:none;width:100%}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="head"><h1 id="t-title">Настройки</h1><span class="saved" id="t-saved">Сохраняется сразу</span></div>
+  <p class="head-sub" id="t-sub">Значения по умолчанию для поиска и чтения на всём сайте.</p>
+
+  <!-- ОБРАЗЕЦ -->
+  <section class="preview" id="preview" hidden>
+    <div class="preview-label">
+      <span id="t-previewLabel">Образец</span>
+      <button type="button" class="btn-quiet" id="previewShuffle" title="Другой фрагмент" aria-label="Показать другой фрагмент">⟳</button>
+    </div>
+    <div id="previewBody"></div>
+  </section>
+
+  <!-- ОБЩЕЕ -->
+  <section class="group" id="general">
+    <h2 id="t-g-general">Общее</h2>
+    <div class="rows">
+      <div class="row">
+        <div><p class="row-title" id="t-uiLang">Язык интерфейса</p>
+        <p class="row-desc" id="t-uiLangDesc">Меню и подписи. На языки текстов не влияет.</p></div>
+        <div class="row-control"><select id="uiLang" class="control"><option value="en">English</option><option value="ru">Русский</option></select></div>
+      </div>
+      <div class="row">
+        <div><p class="row-title" id="themeLbl">Тема</p></div>
+        <div class="row-control"><div class="seg" role="group" aria-labelledby="themeLbl" id="themeSeg">
+          <button type="button" data-theme="auto" aria-pressed="true" id="t-th-auto">Авто</button>
+          <button type="button" data-theme="light" aria-pressed="false" id="t-th-light">Светлая</button>
+          <button type="button" data-theme="dark" aria-pressed="false" id="t-th-dark">Тёмная</button>
+        </div></div>
+      </div>
+      <div class="row">
+        <div><p class="row-title" id="t-cloud">Облако</p><p class="row-desc" id="t-cloudDesc">Синхронизация закладок, заметок и настроек между устройствами.</p></div>
+        <div class="row-control"><button class="btn btn-primary" type="button" id="cloudBtn">Войти</button></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ЧТЕНИЕ -->
+  <section class="group" id="reading">
+    <h2 id="t-g-reading">Чтение</h2>
+    <div class="rows">
+      <div class="row row-stack">
+        <div><p class="row-title" id="t-readLangs">Языки для чтения</p>
+        <p class="row-desc" id="t-readLangsDesc">Первый язык — основной; от числа языков зависит и режим отображения в ридере.</p></div>
+        <div><div class="chips" id="chipsRead"></div>
+        <p class="hint" id="t-readHint">Перетащите чип или нажмите на нём <kbd>←</kbd> <kbd>→</kbd>, чтобы изменить порядок.</p></div>
+      </div>
+      <div class="row">
+        <div><p class="row-title" id="t-script">Система письма пали</p>
+        <p class="row-desc" id="t-scriptDesc">Пока по-настоящему работает только латиница — остальные сохраняются, но не конвертируются (см. список доработок).</p></div>
+        <div class="row-control"><select id="script" class="control">
+          <option value="ISOPali">Латиница (IAST)</option>
+          <option value="deva">Деванагари</option>
+          <option value="thai">Тайская</option>
+          <option value="sinh">Сингальская</option>
+          <option value="mymr">Бирманская</option>
+        </select></div>
+      </div>
+      <div class="row">
+        <div><p class="row-title" id="t-size">Размер текста</p></div>
+        <div class="row-control size">
+          <button class="btn" type="button" id="sizeMinus" aria-label="Уменьшить">−</button>
+          <span class="size-val" id="sizeVal">100%</span>
+          <button class="btn" type="button" id="sizePlus" aria-label="Увеличить">+</button>
+        </div>
+      </div>
+      <div class="row">
+        <div><p class="row-title" id="t-punct">Пунктуация в пали</p><p class="row-desc" id="t-punctDesc">Выключите для вида, близкого к рукописям.</p></div>
+        <div class="row-control"><span class="switch"><input type="checkbox" id="punct" checked><span class="track"></span><span class="thumb"></span></span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ПОИСК -->
+  <section class="group" id="search">
+    <h2 id="t-g-search">Поиск</h2>
+    <div class="rows">
+      <div class="row row-stack">
+        <div><p class="row-title" id="t-scope">Где искать по умолчанию</p>
+        <p class="row-desc" id="t-scopeDesc">В самом поиске область можно менять для одного запроса — здесь только значение по умолчанию.</p></div>
+        <div class="scope" id="scopeBoxes"></div>
+      </div>
+
+      <div class="row row-stack">
+        <div><p class="row-title" id="t-searchLangs">Языки для поиска</p>
+        <p class="row-desc" id="t-searchLangsDesc">Порядок — это порядок отображения переводов в результатах.</p></div>
+        <div>
+          <div class="row" style="padding:0;min-height:52px">
+            <div><p class="row-title" style="font-size:15px" id="t-sameAsRead">Так же, как для чтения</p></div>
+            <div class="row-control"><span class="switch"><input type="checkbox" id="sameAsRead" checked><span class="track"></span><span class="thumb"></span></span></div>
+          </div>
+          <div id="searchLangsBlock" hidden><div class="chips" id="chipsSearch"></div></div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div><p class="row-title" id="t-ctx">Строк контекста</p><p class="row-desc" id="t-ctxDesc">Сколько строк показывать вокруг совпадения.</p></div>
+        <div class="row-control num">
+          <label for="ctxBefore" id="t-ctxBefore" style="font-size:13.5px;color:var(--ink-2)">до</label>
+          <input type="number" id="ctxBefore" value="0" min="0" max="10">
+          <label for="ctxAfter" id="t-ctxAfter" style="font-size:13.5px;color:var(--ink-2)">после</label>
+          <input type="number" id="ctxAfter" value="0" min="0" max="10">
+        </div>
+      </div>
+
+      <div class="row">
+        <div><p class="row-title" id="t-anydist">Несколько слов — в любом порядке</p>
+        <p class="row-desc"><span id="t-anydistDesc">Пока не реализовано на сервере</span> — <span class="stub" id="t-soon">см. список доработок</span></p></div>
+        <div class="row-control"><span class="switch"><input type="checkbox" id="anyDist" disabled><span class="track"></span><span class="thumb"></span></span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- СЛОВАРЬ -->
+  <section class="group" id="dict">
+    <h2 id="t-g-dict">Словарь</h2>
+    <div class="rows">
+      <div class="row">
+        <div><p class="row-title" id="t-dictOn">Dict.DG</p><p class="row-desc" id="t-dictOnDesc">Сводный словарь, включает DPD и другие источники.</p></div>
+        <div class="row-control"><span class="switch"><input type="checkbox" id="dictOn" checked><span class="track"></span><span class="thumb"></span></span></div>
+      </div>
+      <div class="nested" id="dictBlock">
+        <div class="row">
+          <div><p class="row-title" id="t-dictMode">Режим</p></div>
+          <div class="row-control"><select id="dictMode" class="control">
+            <option value="standalone">Встроенный DPD</option>
+            <option value="dpdfull">Попап Dict.DG</option>
+            <option value="newwindow">Dict.DG в новом окне</option>
+          </select></div>
+        </div>
+        <div class="row">
+          <div><p class="row-title" id="t-autoLookup">Искать выделенный текст автоматически</p>
+          <p class="row-desc" id="t-autoLookupDesc">Пока не реализовано — см. список доработок.</p></div>
+          <div class="row-control"><span class="switch"><input type="checkbox" id="autoLookup" disabled><span class="track"></span><span class="thumb"></span></span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- КОРЕННОЙ ТЕКСТ -->
+  <section class="group" id="root">
+    <h2 id="t-g-root">Коренной текст пали</h2>
+    <div class="rows">
+      <div class="row">
+        <div><p class="row-title" id="edLbl">Издание</p><p class="row-desc" id="t-edDesc">Сейчас поиск всегда идёт по Mahāsaṅgīti — остальные готовятся только для ридера.</p></div>
+        <div class="row-control"><div class="seg" role="group" aria-labelledby="edLbl">
+          <button type="button" aria-pressed="true">MS</button>
+          <button type="button" disabled title="Готовится">BJT<span class="badge">скоро</span></button>
+          <button type="button" disabled title="Готовится">VRI<span class="badge">скоро</span></button>
+          <button type="button" disabled title="Готовится">SIAM<span class="badge">скоро</span></button>
+        </div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ОЗВУЧКА -->
+  <section class="group" id="voice">
+    <h2 id="t-g-voice">Озвучка</h2>
+    <div class="rows">
+      <div class="row">
+        <div><p class="row-title" id="t-voiceOpen">Голос, скорость, ключ API</p><p class="row-desc" id="t-voiceOpenDesc">Отдельная панель — значок в ридере или <kbd>Alt</kbd>+<kbd>R</kbd>.</p></div>
+        <div class="row-control"><button class="btn" type="button" id="voiceBtn">Открыть</button></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ДАННЫЕ -->
+  <section class="group" id="data">
+    <h2 id="t-g-data">Данные</h2>
+    <div class="rows">
+      <div class="row">
+        <div><p class="row-title" id="t-clearHist">История поиска и избранное</p><p class="row-desc" id="t-clearHistDesc">Хранится на устройстве.</p></div>
+        <div class="row-control"><button class="btn btn-danger" type="button" id="clearHistBtn">Очистить</button></div>
+      </div>
+      <div class="row">
+        <div><p class="row-title" id="t-resetAll">Все настройки</p><p class="row-desc" id="t-resetAllDesc">Вернуть значения по умолчанию.</p></div>
+        <div class="row-control"><button class="btn btn-danger" type="button" id="resetAllBtn">Сбросить</button></div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- ЯЗЫКИ -->
+<dialog id="langDlg" aria-labelledby="langTitle">
+  <div class="dlg-head"><h3 id="langTitle">Добавить язык</h3>
+    <input type="search" class="dlg-search" id="langSearch" placeholder="Найти язык" aria-label="Найти язык"></div>
+  <div class="dlg-body"><ul class="dlg-list" id="langList"></ul></div>
+  <div class="dlg-foot"><button class="btn" type="button" id="langCancel">Отмена</button>
+    <button class="btn btn-primary" type="button" id="langAdd">Добавить</button></div>
+</dialog>
+
+<script>
+const $ = s => document.querySelector(s);
+const isRu = (localStorage.getItem('dhammaLanguage') || localStorage.getItem('siteLanguage') || 'en') === 'ru';
+
+/* Список языков для чипов — коды и подписи известны; количество текстов на язык
+   на SC реально не подсчитано (TODO: посчитать по sc-data/sc_bilara_data/translation/*),
+   поэтому цифр здесь нет, чтобы не показывать выдуманные числа. Порядок в этом списке —
+   просто разумная догадка о частотности, а не измеренный рейтинг. */
+const NAMES = {ru:"Русский",en:"English",de:"Deutsch",pt:"Português",fr:"Français",vi:"Tiếng Việt",
+  id:"Indonesia",zh:"中文",hi:"हिन्दी",th:"ไทย",si:"සිංහල",pl:"Polski",es:"Español",it:"Italiano",nl:"Nederlands",cs:"Čeština"};
+
+function readList(key, fallback){
+  const raw = localStorage.getItem(key);
+  return (raw ? raw.split(',') : fallback).map(s=>s.trim()).filter(Boolean);
+}
+const state = {
+  read: readList('dhammaReaderLangs', readList('dhammaSearchLangs', ['ru','en'])),
+  search: readList('dhammaSearchLangs', ['ru','en']),
+  sameAsRead: localStorage.getItem('dhammaReaderLangs') === null
+};
+
+function saveLangs(){
+  localStorage.setItem('dhammaSearchLangs', state.search.join(','));
+  if (state.sameAsRead) localStorage.removeItem('dhammaReaderLangs');
+  else localStorage.setItem('dhammaReaderLangs', state.read.join(','));
+}
+
+let dlgTarget = 'read';
+function makeChips(host, key, disabled){
+  if(!host) return; host.innerHTML='';
+  state[key].forEach((code,i)=>{
+    const chip=document.createElement('div');
+    chip.className='chip'; chip.tabIndex=disabled?-1:0; chip.draggable=!disabled;
+    chip.setAttribute('aria-label',`${NAMES[code]||code}, позиция ${i+1} из ${state[key].length}`);
+    chip.innerHTML=`<span class="grip" aria-hidden="true">⠿</span><span class="ord">${i+1}</span><span class="name">${NAMES[code]||code}</span>`+
+      (disabled?'':`<button class="x" type="button" aria-label="Убрать ${NAMES[code]||code}">✕</button>`);
+    if(!disabled){
+      const xBtn = chip.querySelector('.x');
+      if (xBtn) xBtn.onclick=()=>{ if(state[key].length>1){ state[key]=state[key].filter(c=>c!==code); render(); } };
+      chip.onkeydown=e=>{ const idx=state[key].indexOf(code); let j=null;
+        if(e.key==='ArrowLeft'||e.key==='ArrowUp') j=idx-1;
+        if(e.key==='ArrowRight'||e.key==='ArrowDown') j=idx+1;
+        if(j===null||j<0||j>=state[key].length) return; e.preventDefault();
+        [state[key][j],state[key][idx]]=[state[key][idx],state[key][j]]; render(); host.children[j].focus(); };
+      chip.addEventListener('dragstart',e=>{chip.classList.add('dragging');e.dataTransfer.setData('text/plain',code)});
+      chip.addEventListener('dragend',()=>chip.classList.remove('dragging'));
+      chip.addEventListener('dragover',e=>e.preventDefault());
+      chip.addEventListener('drop',e=>{e.preventDefault();
+        const from=state[key].indexOf(e.dataTransfer.getData('text/plain')), to=state[key].indexOf(code);
+        if(from<0||to<0||from===to) return; const [m]=state[key].splice(from,1); state[key].splice(to,0,m); render();});
+    }
+    host.appendChild(chip);
+  });
+  if(!disabled){
+    const add=document.createElement('button'); add.className='btn'; add.type='button'; add.textContent=isRu?'+ Добавить язык':'+ Add language';
+    add.onclick=()=>{dlgTarget=key; openLang();}; host.appendChild(add);
+  }
+}
+function render(){
+  makeChips($('#chipsRead'),'read',false);
+  makeChips($('#chipsSearch'),'search',false);
+  saveLangs();
+}
+
+const langDlg = $('#langDlg');
+function openLang(){ renderLangList(''); $('#langSearch').value=''; langDlg.showModal(); $('#langSearch').focus(); }
+function renderLangList(q){
+  const list=$('#langList'); list.innerHTML='';
+  Object.keys(NAMES).filter(c=>!state[dlgTarget].includes(c))
+    .filter(c=> NAMES[c].toLowerCase().includes(q.toLowerCase())||c.includes(q.toLowerCase()))
+    .forEach(c=>{ const li=document.createElement('li');
+      li.innerHTML=`<label><input type="checkbox" value="${c}"><span>${NAMES[c]}</span></label>`;
+      list.appendChild(li);});
+}
+$('#langSearch').oninput=e=>renderLangList(e.target.value);
+$('#langCancel').onclick=()=>langDlg.close();
+$('#langAdd').onclick=()=>{ document.querySelectorAll('#langList input:checked').forEach(i=>state[dlgTarget].push(i.value)); langDlg.close(); render(); };
+
+$('#sameAsRead').onchange = e=>{
+  state.sameAsRead = e.target.checked;
+  $('#searchLangsBlock').hidden = e.target.checked;
+  if (e.target.checked) state.search = state.read.slice();
+  render();
+};
+$('#searchLangsBlock').hidden = state.sameAsRead;
+$('#sameAsRead').checked = state.sameAsRead;
+
+/* Тема — пишем в свой ключ (dhammaTheme) и, на всякий случай, в наиболее вероятный
+   легаси-ключ ('theme'), чтобы не разъезжаться с остальным сайтом там, где он его читает.
+   TODO: свести все ключи темы (theme/thememode/themeButtonAction/darkSwitch/lightMode) в один. */
+function setTheme(t){
+  localStorage.setItem('dhammaTheme', t);
+  localStorage.setItem('theme', t);
+  const dark = t==='dark' || (t==='auto' && matchMedia('(prefers-color-scheme: dark)').matches);
+  document.body.classList.toggle('dark', dark);
+  document.querySelectorAll('#themeSeg button').forEach(b=>b.setAttribute('aria-pressed', String(b.dataset.theme===t)));
+}
+document.querySelectorAll('#themeSeg button').forEach(b=> b.onclick=()=> setTheme(b.dataset.theme));
+
+/* Размер текста — тот же живой механизм, что уже использует ридер (settings.js, uiScale):
+   document.documentElement.style.fontSize, диапазон 70–150%, без перезагрузки. */
+let scale = parseInt(localStorage.getItem('uiScale')) || 100;
+function setScale(v){
+  scale = Math.min(150, Math.max(70, v));
+  document.documentElement.style.fontSize = scale + '%';
+  localStorage.setItem('uiScale', scale);
+  $('#sizeVal').textContent = scale + '%';
+}
+$('#sizeMinus').onclick=()=>setScale(scale-10);
+$('#sizePlus').onclick=()=>setScale(scale+10);
+
+/* Скрипт, пунктуация, словарь — просто пишем значение, эффект виден на странице
+   поиска/ридера при следующей отрисовке; отдельного "Применить"/перезагрузки здесь
+   не нужно, т.к. сама страница настроек ничего из этого не отображает. */
+$('#script').onchange = e=> localStorage.setItem('selectedScript', e.target.value);
+$('#punct').onchange = e=> localStorage.setItem('removePunct', e.target.checked ? 'true' : 'false');
+$('#dictOn').onchange = e=>{ $('#dictBlock').hidden = !e.target.checked; localStorage.setItem('dictionaryVisible', e.target.checked ? 'true' : 'false'); };
+$('#dictMode').onchange = e=> localStorage.setItem('selectedDict', e.target.value);
+
+/* Область поиска — только реально работающие книги (DEFAULT_SCOPE_PREFIXES в dg-light.js).
+   Виная/Абхидхамма/поздняя КН не включены — их id-префиксы в скелете БД не проверены,
+   см. список доработок. */
+const SCOPE_BOOKS = [['dn','DN'],['mn','MN'],['sn','SN'],['an','AN'],['iti','Iti'],['ud','Ud'],['snp','Snp'],['dhp','Dhp'],['thag','Thag'],['thig','Thig']];
+const DEFAULT_SCOPE = SCOPE_BOOKS.map(b=>b[0]);
+let scopeList = readList('dhammaSearchScope', DEFAULT_SCOPE.slice());
+function renderScope(){
+  const host = $('#scopeBoxes'); host.innerHTML='';
+  SCOPE_BOOKS.forEach(([code,label])=>{
+    const lbl=document.createElement('label');
+    lbl.innerHTML=`<input type="checkbox" ${scopeList.includes(code)?'checked':''}> ${label}`;
+    lbl.querySelector('input').onchange = e=>{
+      scopeList = e.target.checked ? scopeList.concat(code) : scopeList.filter(c=>c!==code);
+      const isDefault = scopeList.length===DEFAULT_SCOPE.length && DEFAULT_SCOPE.every(c=>scopeList.includes(c));
+      if (isDefault) localStorage.removeItem('dhammaSearchScope');
+      else localStorage.setItem('dhammaSearchScope', scopeList.join(','));
+    };
+    host.appendChild(lbl);
+  });
+}
+renderScope();
+
+/* Контекст (lb/la) */
+$('#ctxBefore').value = localStorage.getItem('dhammaSearchContextBefore') || 0;
+$('#ctxAfter').value = localStorage.getItem('dhammaSearchContextAfter') || 0;
+$('#ctxBefore').onchange = e=> localStorage.setItem('dhammaSearchContextBefore', e.target.value);
+$('#ctxAfter').onchange = e=> localStorage.setItem('dhammaSearchContextAfter', e.target.value);
+
+/* Общее */
+$('#uiLang').value = isRu ? 'ru' : 'en';
+$('#uiLang').onchange = e=>{
+  if (typeof window.setSiteLanguage === 'function') window.setSiteLanguage(e.target.value);
+  else { localStorage.setItem('dhammaLanguage', e.target.value); localStorage.setItem('siteLanguage', e.target.value); }
+  location.reload();
+};
+$('#cloudBtn').onclick = ()=> location.href = isRu ? '/ru/login' : '/login';
+$('#voiceBtn').onclick = ()=> location.href = isRu ? '/ru/read/' : '/read/';
+
+$('#clearHistBtn').onclick = ()=>{
+  if(!confirm(isRu?'Очистить историю и избранное?':'Clear history and favorites?')) return;
+  localStorage.setItem('localSearchHistory','[]');
+  localStorage.setItem('dg_favorites','[]');
+};
+$('#resetAllBtn').onclick = ()=>{
+  if(!confirm(isRu?'Сбросить ВСЕ настройки?':'Reset ALL settings?')) return;
+  const keep = ['localSearchHistory','dg_favorites','syncPhraseId','syncPhraseRaw','dg_cloud_session','lastSyncTime','dg_suttaProgress','dg_cloudProgress'];
+  Object.keys(localStorage).filter(k=>!keep.includes(k)).forEach(k=>localStorage.removeItem(k));
+  location.reload();
+};
+
+/* Якоря — вход извне указывает нужную секцию, подсветка только при переходе по якорю. */
+function goAnchor(id){
+  const el=document.getElementById(id); if(!el) return;
+  const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  el.scrollIntoView({behavior:reduce?'auto':'smooth',block:'start'});
+  el.classList.add('flash'); setTimeout(()=>el.classList.remove('flash'),1600);
+}
+if(location.hash) setTimeout(()=>goAnchor(location.hash.slice(1)),50);
+
+/* Строки интерфейса (EN/RU) — намеренно простой инлайн-словарь, как в остальном легаси-коде
+   (quickModal.js/openFdg.js), а не JSON-модуль: страница маленькая, вынос в отдельный формат
+   без реальной надобности прямо сейчас. */
+const STR = {
+  ru:{title:'Настройки',saved:'Сохраняется сразу',sub:'Значения по умолчанию для поиска и чтения на всём сайте.'},
+  en:{title:'Settings',saved:'Saves instantly',sub:'Defaults for search and reading across the whole site.'}
+};
+(function applyLang(){
+  const t = STR[isRu?'ru':'en'];
+  $('#t-title').textContent=t.title; $('#t-saved').textContent=t.saved; $('#t-sub').textContent=t.sub;
+  document.documentElement.lang = isRu?'ru':'en';
+})();
+
+/* Образец — реальные фрагменты, заданные владельцем (не выдумываем случайные суттs),
+   закэшированы сервером при старте (dg-light.js, buildSettingsDemoCache) на всех языках
+   сразу, чтобы не дёргать /api/text на каждую загрузку страницы настроек. Сегменты одной
+   сутты (напр. dn22:18.18+18.19) рендерятся вместе, одной группой — так и закэшировано. */
+let demoGroups = [];
+function stripPunct(t){ return $('#punct').checked ? t : t.replace(/[,.:;—]/g,''); }
+function pickLangTranslation(seg){
+  const wanted = state.read.length ? state.read : ['en'];
+  for (const lang of wanted) {
+    const key = Object.keys(seg.translations).find(k => k.split('_')[0] === lang);
+    if (key) return {lang, src: key.split('_').slice(1).join('_'), text: seg.translations[key]};
+  }
+  const anyKey = Object.keys(seg.translations)[0];
+  return anyKey ? {lang: anyKey.split('_')[0], src: anyKey.split('_').slice(1).join('_'), text: seg.translations[anyKey]} : null;
+}
+function renderPreview(){
+  if (!demoGroups.length) return;
+  const group = demoGroups[Math.floor(Math.random()*demoGroups.length)];
+  const body = $('#previewBody'); body.innerHTML='';
+  group.segments.forEach(seg=>{
+    const tr = pickLangTranslation(seg);
+    const block = document.createElement('div'); block.className='pv-seg';
+    let html = `<p class="pv-pali">${stripPunct(seg.root_text||seg.variant||'')}</p>`;
+    if (tr) html += `<p class="pv-tr"><span class="pv-src">${tr.lang} · ${tr.src}</span>${stripPunct(tr.text)}</p>`;
+    block.innerHTML = html;
+    body.appendChild(block);
+  });
+  $('#preview').hidden = false;
+}
+fetch('/settings/demo-data.json').then(r=>r.ok?r.json():[]).then(data=>{ demoGroups=data||[]; renderPreview(); }).catch(()=>{});
+$('#previewShuffle').onclick = renderPreview;
+const _renderOrig = render;
+render = function(){ _renderOrig(); renderPreview(); };
+$('#punct').addEventListener('change', renderPreview);
+
+setTheme(localStorage.getItem('dhammaTheme') || 'auto');
+render();
+</script>
+</body>
+</html>
