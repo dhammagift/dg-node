@@ -26,9 +26,13 @@ body { padding: 4px 2px; }
 <body>
 <div id="sutta" class="sutta"></div>
 <script>
+// Та же самая замена, что reader/megareader.js's window.applyRemovePunct делает на проде —
+// скопировано буквально, символ в символ (запятая там БЫЛА в реальном regex, а в этом файле её
+// раньше забыли — "убрать пунктуацию" визуально не убирало запятые, хотя в самом ридере всё
+// это время работало правильно).
 function stripPunct(t) {
   return localStorage.getItem('removePunct') === 'true'
-    ? t.replace(/[-—–]/g, ' ').replace(/[:;""'']/g, '').replace(/[.?!]/g, ' | ')
+    ? t.replace(/[-—–]/g, ' ').replace(/[:;“”‘’,"']/g, '').replace(/[.?!]/g, ' | ')
     : t;
 }
 function pickReaderLangs() {
@@ -70,10 +74,18 @@ function renderSegment(seg, wantedLangs) {
   if (right) inner += `<span class="right-column">${right}</span>`;
   return `<div class="demo-seg"><span id="${anchor}">${inner}</span></div>`;
 }
-function render() {
+// Индекс текущего фрагмента запоминается — иначе каждое изменение настройки (пунктуация, язык,
+// тема...) вызывает render() заново, и БЕЗ фиксации это заодно перевыбирало случайный фрагмент —
+// подряд читать образец было невозможно, он менялся под ногами при каждом клике где угодно на
+// странице. Новый случайный выбирается только при первой загрузке и по кнопке "⟳" (shuffle=true).
+let currentGroupIndex = null;
+function render(shuffle) {
   const groups = currentGroups();
-  if (!groups.length) return;
-  const group = groups[Math.floor(Math.random() * groups.length)];
+  if (!groups.length) { currentGroupIndex = null; return; }
+  if (shuffle || currentGroupIndex === null || currentGroupIndex >= groups.length) {
+    currentGroupIndex = Math.floor(Math.random() * groups.length);
+  }
+  const group = groups[currentGroupIndex];
   const wantedLangs = pickReaderLangs();
   document.getElementById('sutta').innerHTML = group.segments.map(s => renderSegment(s, wantedLangs)).join('');
 }
@@ -102,7 +114,7 @@ window.addEventListener('storage', e => {
   if (e.key === 'theme') applyTheme();
 });
 window.addEventListener('message', e => {
-  if (e.data === 'dg-preview-shuffle') render();
+  if (e.data === 'dg-preview-shuffle') render(true);
   if (e.data === 'dg-preview-refresh') render();
 });
 </script>

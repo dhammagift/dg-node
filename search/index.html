@@ -119,10 +119,33 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
            .container, not .container-fluid like this page — narrowed to sit a bit wider than
            the reader's own #paliauto (measured 220px, unstyled/browser-default width, see
            reader/css/uiextra.css — no width rule there at all) instead of stretching this much
-           wider than either reference point. */
+           wider than either reference point. Centering used to be margin:auto on THIS element
+           directly (fine when it was the page's only sized block) — now it's a flex item inside
+           .hero-row (home/compass/burger sit at its immediate left/right, see below), so
+           centering is the row's job; this only keeps the input pill itself narrow. */
         max-width: 380px;
-        margin: 2rem auto 1rem;
+        margin: 2rem 0 1rem;
         transition: margin 0.35s ease, max-width 0.35s ease;
+    }
+    /* Обёртка над dg-hero-form — держит "домик"/компас/бургер прямо у краёв главного инпута
+       (просьба владельца), сама центрируется как единый ряд. Круглые кнопки — та же высота,
+       что и .searchinput/.rounded-pill, чтобы визуально не скакать по высоте относительно
+       строки поиска. */
+    .hero-row {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+    .hero-row > .btn, .hero-row > .dropdown > .btn {
+        width: 44px;
+        height: 44px;
+        padding: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex: none;
     }
     /* Placeholder for a translated title still pending /search/enrich — see search-render.js's
        Title column render. Static bar, not a spinner: just needs to read as "more coming",
@@ -168,15 +191,53 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
 
 <div class="container-fluid mt-2">
 
-<form id="form" class="dg-hero-form mb-2" autocomplete="off">
-  <label class="visually-hidden" for="paliauto">{{search.label}}</label>
-  <div class="input-group">
-    <input class="form-control rounded-pill searchinput" id="paliauto" type="search" placeholder="e.g. Kāyagat or sn56.11" data-i18n-placeholder="{{search.placeholder}}" autocomplete="off">
-    <button type="submit" id="searchbtn" class="btn btn-primary rounded-pill ms-2">
-      <i class="fas fa-search fa-flip-horizontal" aria-hidden="true"></i>
+<!-- .table-wrapper — тот же класс (max-width:1600px; margin:auto), что и #search-pane ниже
+     (extrastyles.css), не новый повторяющий его правило — раньше эта шапка жила прямо в
+     .container-fluid без ограничения ширины и на очень широких мониторах прижималась к левому
+     краю, пока таблица результатов центрировалась отдельно в своей узкой полосе (несогласованный
+     вид). Теперь у обоих одна и та же полоса. -->
+<div class="table-wrapper">
+
+<div class="hero-row mb-2">
+  <a href="/" class="btn btn-light rounded-circle text-decoration-none" title="Home" data-i18n-title="{{global.common.home}}">
+    <img class="table-home-icon" src="/assets/svg/home-icon.svg">
+  </a>
+  <form id="form" class="dg-hero-form m-0" autocomplete="off">
+    <label class="visually-hidden" for="paliauto">{{search.label}}</label>
+    <div class="input-group">
+      <input class="form-control rounded-pill searchinput" id="paliauto" type="search" placeholder="e.g. Kāyagat or sn56.11" data-i18n-placeholder="{{search.placeholder}}" autocomplete="off" autofocus>
+      <button type="submit" id="searchbtn" class="btn btn-primary rounded-pill ms-2">
+        <i class="fas fa-search fa-flip-horizontal" aria-hidden="true"></i>
+      </button>
+    </div>
+  </form>
+  <button class="btn btn-light rounded-circle" type="button" onclick="toggleQuickModal()" aria-label="Open Cattāri Ariyasaccāni" title="Open Cattāri Ariyasaccāni (Alt+P)" data-i18n-aria-label="{{toolbar.compassAriaLabel}}" data-i18n-title="{{toolbar.compassTitle}}">
+    <img alt="" src="/assets/svg/compass.svg" class="common-size-icon4">
+  </button>
+  <div class="dropdown">
+    <button class="btn btn-light rounded-circle" type="button" id="burgerMenuBtn" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Menu" title="Menu" data-i18n-aria-label="{{toolbar.menuAriaLabel}}" data-i18n-title="{{toolbar.menuTitle}}">
+      <i class="fas fa-bars" aria-hidden="true"></i>
     </button>
+    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="burgerMenuBtn">
+      <li><a class="dropdown-item" href="/">{{buttons.main}}</a></li>
+      <li><a class="dropdown-item" href="/history.php">{{buttons.history}}</a></li>
+      <li><a class="dropdown-item" href="javascript:void(0)" data-bs-toggle="modal" data-bs-target="#SearchResultHelp">{{global.common.help}}</a></li>
+      <li><a class="dropdown-item" href="/settings/">{{global.common.settings}}</a></li>
+      <li><a class="dropdown-item" href="/login">{{global.common.login}}</a></li>
+    </ul>
   </div>
-</form>
+</div>
+
+<script>
+  // Нативный autofocus не срабатывает здесь — loadCssJsResult.js (см. <head>) держит
+  // body { visibility:hidden } до полной загрузки ресурсов, а браузер решает про autofocus
+  // РАНО, во время парсинга, когда элемент ещё скрыт. Фокусируем явно, уже после того как всё
+  // догрузилось и body реально видим.
+  window.addEventListener('load', function () {
+    var el = document.getElementById('paliauto');
+    if (el) el.focus();
+  });
+</script>
 
     <h3 class="pl-2 resultheader ml-2" id="dynamicHeader"></h3>
     <script>
@@ -185,7 +246,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
             let q = params.get('q') || params.get('s');
             let pathSegments = window.location.pathname.split('/').filter(s => s);
             let lastSegment = pathSegments.pop();
-            
+
             if (!q && lastSegment && !['search', 'index.html', 'result', 'nodejs'].includes(lastSegment.toLowerCase())) {
                 q = lastSegment;
             }
@@ -196,15 +257,10 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
         })();
     </script>
 
-           <a href='/' class="text-decoration-none">
-            <button class="btn btn-light mb-1" type="button">
-    <img class="table-home-icon" src="/assets/svg/home-icon.svg"></img>   
-      </button>  
-</a>
     <button id="theme-button" class="btn btn-light mb-1 " type="button">
-      
+
 <img src="/assets/svg/circle-half-stroke.svg" onclick="switchIcon(this)" class="changesvg table-theme-icon gray-icon"></img>
-</button>		  
+</button>
 <button id="btn-show-all-children" class="btn btn-light mb-1" type="button">{{toolbar.expandCollapseLabel}}</button>
 
 <button class="btn btn-light forshellscript mb-1" type="button"><a class="text-decoration-none " href="javascript:void(0)">{{toolbar.wordsToggleShow}}</a></button>
@@ -213,16 +269,25 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
 
 <button class="btn btn-light mb-1  toggle-dict-btn" type="button" ><img class="" src="/assets/svg/comment.svg"></img></button>
 
-<button class="btn btn-light mb-1  " type="button" onclick="toggleQuickModal()" aria-label="Open Cattāri Ariyasaccāni" title="Open Cattāri Ariyasaccāni (Alt+P)" data-i18n-aria-label="{{toolbar.compassAriaLabel}}" data-i18n-title="{{toolbar.compassTitle}}">
-  <img alt="" src="/assets/svg/compass.svg" class="common-size-icon4"></img>
-</button>
 
 
-
- <a title="settings" data-i18n-title="{{global.common.settings}}" id="settingsButton" data-bs-toggle="modal" data-bs-target="#settings" href="javascript:void(0);" class="btn btn-light mb-1 toggle-icon text-decoration-none">
+<!-- Раньше открывала старую inline-модалку (#settings ниже) — теперь ведёт на общую страницу
+     /settings/ (⚙ Мастер-настройки). Alt+S НЕ трогаю (settings.js — отдельный код, per
+     владелец, ещё вызывает старую модалку до отдельного решения по горячим клавишам). -->
+ <a title="settings" data-i18n-title="{{global.common.settings}}" id="settingsButton" href="/settings/" class="btn btn-light mb-1 toggle-icon text-decoration-none">
   <img id="gearSettings" alt="settings" data-i18n-alt="{{global.common.settings}}" src="/assets/svg/gear.svg" class="common-size-icon4"></img>
   </a>
 
+<!-- #helpMessage жил ПОСЛЕ старой #settings-модалки в исходнике — раньше это ничего не меняло
+     (у modal display:none, поток не рвётся), но с новой .table-wrapper (см. выше) modal и всё,
+     что за ней, оказалось СНАРУЖИ обёртки — кнопка съезжала на свою строку под остальными.
+     Переносим её сюда же, физически внутрь той же строки инструментов. -->
+    <a class="btn btn-light mb-1 form-check-inline mb-1 toggle-icon" alt="Help" data-i18n-alt="{{global.common.help}}" data-bs-toggle="modal" data-bs-target="#SearchResultHelp" id="helpMessage" href="javascript:void(0);">
+        <img id="helpResult" class="table-home-icon" src="/assets/svg/question.svg"></img>
+        </a>
+
+</div>
+<!-- /.table-wrapper -->
 
 <script>
   document.addEventListener("DOMContentLoaded", function () {
@@ -447,13 +512,10 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
                    <button type="button" class="btn-sm  btn-secondary rounded-pill" data-bs-dismiss="modal">Закрыть</button>
                 </div>
 
-            </div> 
+            </div>
         </div>
     </div>
 </div>
-    <a class="btn btn-light mb-1 form-check-inline mb-1 toggle-icon" alt="Help" data-i18n-alt="{{global.common.help}}" data-bs-toggle="modal" data-bs-target="#SearchResultHelp" id="helpMessage" href="javascript:void(0);">
-        <img id="helpResult" class="table-home-icon" src="/assets/svg/question.svg"></img>
-        </a>     
 
 <!-- Модальное окно "Помощь Рус" -->
 <div class="modal fade" id="SearchResultHelp" tabindex="-1" aria-labelledby="SearchResultHelpLabel" aria-hidden="true"  data-bs-focus="false">

@@ -27,11 +27,19 @@ html,body{margin:0}
 html{scroll-padding-top:16px}
 body{font-family:var(--ui);color:var(--ink);background:var(--canvas);font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
 .wrap{max-width:700px;margin:0 auto;padding:20px 16px 100px}
-.head{display:flex;align-items:baseline;justify-content:space-between;gap:16px}
+.head{display:flex;align-items:baseline;gap:12px}
+.head-nav{flex:none;align-self:center;width:36px;height:36px;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;color:var(--ink-2);text-decoration:none}
+.head-nav:hover{background:var(--line)}
+.head-nav svg{width:20px;height:20px}
+.head h1{flex:1}
+.head .saved{flex:none;align-self:center}
 .head h1{font-size:24px;margin:0;letter-spacing:-.01em}
 .head .saved{font-size:13px;color:var(--ink-3)}
 .head-sub{margin:4px 0 18px;font-size:14px;color:var(--ink-2)}
-.preview{background:#FBF7EF;border:1px solid #E7DDC9;border-radius:var(--r-lg);padding:14px 16px;margin-bottom:22px}
+/* Sticky — образец остаётся на виду при скролле вниз по настройкам, не нужно каждый раз
+   скроллить обратно наверх, чтобы увидеть эффект переключателя (жалоба владельца). Фон
+   непрозрачный (см. ниже) — иначе контент под ним просвечивал бы при скролле. */
+.preview{position:sticky;top:8px;z-index:5;background:#FBF7EF;border:1px solid #E7DDC9;border-radius:var(--r-lg);padding:14px 16px;margin-bottom:22px;box-shadow:0 6px 16px -4px rgba(0,0,0,.18)}
 body.dark .preview{background:#1C2029;border-color:#333B47}
 .preview-label{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:#96876A;display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
 .preview-label button{background:transparent;border:0;font-size:16px;padding:2px 6px;color:var(--accent)}
@@ -84,6 +92,13 @@ button{font:inherit;cursor:pointer}
 .scope label{display:inline-flex;align-items:center;gap:6px;font-size:13.5px;background:var(--accent-soft);color:var(--accent);border-radius:7px;padding:5px 9px;font-weight:500;cursor:pointer}
 .scope input{accent-color:var(--accent)}
 .num{display:inline-flex;align-items:center;gap:6px}
+/* Ключ TTS — тот же ряд control'ов, что везде на странице, просто шире (сам инпут должен
+   растягиваться): раньше делалось inline-стилями (width:100%, max-width:none) — вынесено в
+   класс, плюс убрана эмодзи-иконка 👁 (жалоба "непоследовательный стиль, использует эмодзи") —
+   вместо неё обычная текстовая кнопка "Показать/Скрыть", как остальные текстовые кнопки на
+   этой странице (Применить/Сбросить/+ Добавить язык и т.п.). */
+.voice-key-control{width:100%}
+.voice-key-control .control{flex:1;min-width:0;max-width:none}
 .num input{width:56px;min-height:44px;border:1px solid var(--line-strong);border-radius:var(--r-sm);background:var(--surface);color:var(--ink);font:inherit;font-size:15px;text-align:center}
 dialog{border:0;border-radius:var(--r-lg);padding:0;background:var(--surface);color:var(--ink);width:min(420px,calc(100vw - 24px));box-shadow:0 24px 60px rgba(0,0,0,.3)}
 dialog::backdrop{background:rgba(10,16,24,.5)}
@@ -108,7 +123,12 @@ kbd{font:inherit;font-size:12.5px;background:var(--line);border:1px solid var(--
 </head>
 <body>
 <div class="wrap">
-  <div class="head"><h1 id="t-title">Настройки</h1><span class="saved" id="t-saved">Сохраняется сразу</span></div>
+  <div class="head">
+    <a href="/" class="head-nav" id="homeLink" title="Home" aria-label="Home">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>
+    </a>
+    <h1 id="t-title">Настройки</h1><span class="saved" id="t-saved">Сохраняется сразу</span>
+  </div>
   <p class="head-sub" id="t-sub">Значения по умолчанию для поиска и чтения на всём сайте.</p>
 
   <!-- ОБРАЗЕЦ — реальная разметка и настоящие стили сайта (preview-frame.html), в iframe,
@@ -175,7 +195,7 @@ kbd{font:inherit;font-size:12.5px;background:var(--line);border:1px solid var(--
         </div>
       </div>
       <div class="row">
-        <div><p class="row-title" id="t-punct">Пунктуация в пали</p><p class="row-desc" id="t-punctDesc">Выключите для вида, близкого к рукописям.</p></div>
+        <div><p class="row-title" id="t-punct">Показывать пунктуацию в пали</p><p class="row-desc" id="t-punctDesc">Выключите, чтобы убрать запятые/кавычки и заменить точки, ? и ! вертикальной чертой — ближе к виду рукописей.</p></div>
         <div class="row-control"><span class="switch"><input type="checkbox" id="punct" checked><span class="track"></span><span class="thumb"></span></span></div>
       </div>
     </div>
@@ -232,10 +252,33 @@ kbd{font:inherit;font-size:12.5px;background:var(--line);border:1px solid var(--
       <div class="nested" id="dictBlock">
         <div class="row">
           <div><p class="row-title" id="t-dictMode">Режим</p></div>
+          <!-- Полный список реально существующих режимов (см. paliLookup.js resolveDictConfig)
+               — раньше здесь были только 3 английских из 13, остальные жили только в старой
+               inline-модалке на странице поиска (жалоба владельца "не все режимы словаря
+               подключены сюда, хотя они есть в другом месте"). Значения — НЕ всегда буквально
+               те же строки, что в старой модалке: у "DictTango" там опечатка в регистре
+               ("dictTango" не матчит проверку кода `dict === "dicttango"`, режим молча не
+               работал) — тут используется рабочее значение, не скопированная опечатка. -->
           <div class="row-control"><select id="dictMode" class="control">
-            <option value="standalone">Встроенный DPD</option>
-            <option value="dpdfull">Попап Dict.DG</option>
-            <option value="newwindow">Dict.DG в новом окне</option>
+            <optgroup label="DPD" id="dictGroupRu">
+              <option value="standaloneru">Встроенный DPD</option>
+              <option value="dpdfullru">Попап Dict.DG</option>
+              <option value="newwindowru">Dict.DG в новом окне</option>
+              <option value="dpdcompactru">Dict.DG мини</option>
+            </optgroup>
+            <optgroup label="DPD (EN)" id="dictGroupEn">
+              <option value="standalone">Встроенный DPD (англ.)</option>
+              <option value="dpdfull">Попап Dict.DG (англ.)</option>
+              <option value="newwindow">Dict.DG в новом окне (англ.)</option>
+              <option value="dpdcompact">Dict.DG мини (англ.)</option>
+            </optgroup>
+            <optgroup label="Другое" id="dictGroupOther">
+              <option value="machinetranslation">DharmaMitra.org</option>
+              <option value="searchonly">Только поиск</option>
+              <option value="dicttango">DictTango (Android)</option>
+              <option value="mdict">Mdict (iOS)</option>
+              <option value="goldenpc">GoldenDict-NG (Desktop)</option>
+            </optgroup>
           </select></div>
         </div>
         <div class="row">
@@ -277,9 +320,9 @@ kbd{font:inherit;font-size:12.5px;background:var(--line);border:1px solid var(--
       <div class="row row-stack">
         <div><p class="row-title" id="t-voiceKey">Ключ Google Cloud API</p>
         <p class="row-desc" id="t-voiceKeyDesc">Нужен для более качественной озвучки. Хранится только в этом браузере.</p></div>
-        <div class="row-control" style="width:100%">
-          <input type="password" id="voiceKey" class="control" style="flex:1;min-width:0;max-width:none" placeholder="AIza...">
-          <button class="btn btn-quiet" type="button" id="voiceKeyToggle" aria-label="Показать ключ">👁</button>
+        <div class="row-control voice-key-control">
+          <input type="password" id="voiceKey" class="control" placeholder="AIza...">
+          <button class="btn" type="button" id="voiceKeyToggle">Показать</button>
           <button class="btn btn-quiet" type="button" id="voiceKeyClear" aria-label="Удалить ключ">✕</button>
         </div>
       </div>
@@ -311,6 +354,7 @@ kbd{font:inherit;font-size:12.5px;background:var(--line);border:1px solid var(--
   <div class="dlg-head"><h3 id="langTitle">Добавить язык</h3>
     <input type="search" class="dlg-search" id="langSearch" placeholder="Найти язык" aria-label="Найти язык"></div>
   <div class="dlg-body"><ul class="dlg-list" id="langList"></ul></div>
+  <p class="hint" id="t-langCountHint" style="padding:0 18px 12px">Число рядом с языком — количество текстов (уникальных сутт), а не переводов: несколько переводов одной сутты считаются как один текст.</p>
   <div class="dlg-foot"><button class="btn" type="button" id="langCancel">Отмена</button>
     <button class="btn btn-primary" type="button" id="langAdd">Добавить</button></div>
 </dialog>
@@ -338,9 +382,14 @@ function readList(key, fallback){
   const raw = localStorage.getItem(key);
   return (raw ? raw.split(',') : fallback).map(s=>s.trim()).filter(Boolean);
 }
+/* Дефолт "какие языки, если ничего не сохранено" — тот же, что уже давно вычисляет сама
+   search/index.html (en-интерфейс -> только en, ru-интерфейс -> ru+en), а не захардкоженный
+   ['ru','en'] всегда. Раньше английский интерфейс всё равно показывал русский первым языком
+   чтения — реальный баг, не просто вкус: путал пользователей, которые сами выбрали English. */
+const DEFAULT_LANGS = isRu ? ['ru','en'] : ['en'];
 const state = {
-  read: readList('dhammaReaderLangs', readList('dhammaSearchLangs', ['ru','en'])),
-  search: readList('dhammaSearchLangs', ['ru','en']),
+  read: readList('dhammaReaderLangs', readList('dhammaSearchLangs', DEFAULT_LANGS)),
+  search: readList('dhammaSearchLangs', DEFAULT_LANGS),
   sameAsRead: localStorage.getItem('dhammaReaderLangs') === null
 };
 
@@ -424,20 +473,26 @@ function render(){
 
 const langDlg = $('#langDlg');
 function openLang(){ renderLangList(''); $('#langSearch').value=''; langDlg.showModal(); $('#langSearch').focus(); }
+/* Уже выбранные (текущие чипы) языки теперь тоже показываются в списке, не скрываются — чтобы
+   было видно полную картину чисел (сколько текстов у уже добавленных языков, для сравнения с
+   остальными), просто чекбокс у них checked+disabled (добавлять то, что уже добавлено, не
+   нужно). */
 function renderLangList(q){
   const list=$('#langList'); list.innerHTML='';
-  Object.keys(NAMES).filter(c=>!state[dlgTarget].includes(c))
+  Object.keys(NAMES)
     .filter(c=> NAMES[c].toLowerCase().includes(q.toLowerCase())||c.includes(q.toLowerCase()))
     .sort((a,b)=> (langCounts[b]||0) - (langCounts[a]||0))
     .forEach(c=>{ const li=document.createElement('li');
       const count = langCounts[c];
       const countStr = count ? ` <span class="badge">${count}</span>` : '';
-      li.innerHTML=`<label><input type="checkbox" value="${c}"><span>${NAMES[c]}${countStr}</span></label>`;
+      const already = state[dlgTarget].includes(c);
+      const checkedDisabled = already ? 'checked disabled' : '';
+      li.innerHTML=`<label><input type="checkbox" value="${c}" ${checkedDisabled}><span>${NAMES[c]}${countStr}</span></label>`;
       list.appendChild(li);});
 }
 $('#langSearch').oninput=e=>renderLangList(e.target.value);
 $('#langCancel').onclick=()=>langDlg.close();
-$('#langAdd').onclick=()=>{ document.querySelectorAll('#langList input:checked').forEach(i=>state[dlgTarget].push(i.value)); langDlg.close(); render(); };
+$('#langAdd').onclick=()=>{ document.querySelectorAll('#langList input:checked:not(:disabled)').forEach(i=>state[dlgTarget].push(i.value)); langDlg.close(); render(); };
 
 $('#sameAsRead').onchange = e=>{
   state.sameAsRead = e.target.checked;
@@ -496,8 +551,12 @@ $('#sizePlus').onclick=()=>setScale(scale+10);
    просто пишем значение, эффект виден на странице поиска/ридера при следующей отрисовке. */
 $('#script').value = localStorage.getItem('selectedScript') || 'ISOPali';
 $('#script').onchange = e=> localStorage.setItem('selectedScript', e.target.value);
-$('#punct').checked = localStorage.getItem('removePunct') === 'true';
-$('#punct').onchange = e=> localStorage.setItem('removePunct', e.target.checked ? 'true' : 'false');
+/* Переключатель называется "Показывать пунктуацию" — включён (checked) значит пунктуация
+   ВИДНА, то есть removePunct='false'. Раньше было наоборот: checked означал removePunct='true'
+   (пунктуация убрана), при подписи "Пунктуация в пали" это читалось обратно тому, что
+   показывает переключатель — сама причина жалобы "обозначение переключателя обманчиво". */
+$('#punct').checked = localStorage.getItem('removePunct') !== 'true';
+$('#punct').onchange = e=> localStorage.setItem('removePunct', e.target.checked ? 'false' : 'true');
 $('#dictOn').checked = localStorage.getItem('dictionaryVisible') !== 'false';
 $('#dictBlock').hidden = !$('#dictOn').checked;
 $('#dictOn').onchange = e=>{ $('#dictBlock').hidden = !e.target.checked; localStorage.setItem('dictionaryVisible', e.target.checked ? 'true' : 'false'); };
@@ -538,12 +597,32 @@ $('#delaySeg').onclick = e=>{
      dhp/iti/snp/ud/thag/thig, и всё остальное — ja/mil/nett/pv/vv/bv/cp/kp/ps/...);
      совпадение с default-книгами не проблема — matchesScope просто ИЛИ, не XOR. */
 const SCOPE_BOOKS = [['dn','DN'],['mn','MN'],['sn','SN'],['an','AN'],['iti','Iti'],['ud','Ud'],['snp','Snp'],['dhp','Dhp'],['thag','Thag'],['thig','Thig']];
+/* Остальные книги КН (category='khudakka' минус уже включённые по умолчанию dhp/iti/snp/ud/
+   thag/thig) — раньше были одним тумблером "+ вся КН"; по просьбе владельца разбиты на
+   отдельные пункты для точечного поиска, как и Виная до этого. Префиксы и реальные счётчики —
+   из dg_db_light.json (category==='khudakka', префикс id до первой цифры): ja 547, tha-ap 563,
+   mil 248, thi-ap 40, vv 85, pv 51, cp 35, bv 29, ps 31, ne 37, cnd 23, mnd 16, kp 9, pe 9.
+   "+ вся КН" остаётся как быстрый способ включить всё сразу одним кликом. */
 const EXTRA_BOOKS = [
   [{ru:'+ вся КН', en:'+ all KN'}, ['khudakka']],
   [{ru:'Виная (Вибханга)', en:'Vinaya (Vibhaṅga)'}, ['pli-tv-bi','pli-tv-bu']],
   [{ru:'+ Кхандхака', en:'+ Khandhaka'}, ['pli-tv-kd']],
   [{ru:'+ Паривара', en:'+ Parivāra'}, ['pli-tv-pvr']],
-  [{ru:'Абхидхамма', en:'Abhidhamma'}, ['abhi']]
+  [{ru:'Абхидхамма', en:'Abhidhamma'}, ['abhi']],
+  [{ru:'Джатаки', en:'Jātaka'}, ['ja']],
+  [{ru:'Тхера-ападана', en:'Theraapadāna'}, ['tha-ap']],
+  [{ru:'Милиндапаньха', en:'Milindapañha'}, ['mil']],
+  [{ru:'Тхери-ападана', en:'Therīapadāna'}, ['thi-ap']],
+  [{ru:'Виманаваттху', en:'Vimānavatthu'}, ['vv']],
+  [{ru:'Петаваттху', en:'Petavatthu'}, ['pv']],
+  [{ru:'Чарьяпитака', en:'Cariyāpiṭaka'}, ['cp']],
+  [{ru:'Буддхавамса', en:'Buddhavaṁsa'}, ['bv']],
+  [{ru:'Патисамбхидамагга', en:'Paṭisambhidāmagga'}, ['ps']],
+  [{ru:'Неттипакарана', en:'Nettippakaraṇa'}, ['ne']],
+  [{ru:'Чуланиддеса', en:'Cullaniddesa'}, ['cnd']],
+  [{ru:'Маханиддеса', en:'Mahāniddesa'}, ['mnd']],
+  [{ru:'Кхуддакапатха', en:'Khuddakapāṭha'}, ['kp']],
+  [{ru:'Петакопадеса', en:'Peṭakopadesa'}, ['pe']]
 ];
 const DEFAULT_SCOPE = SCOPE_BOOKS.map(b=>b[0]);
 let scopeList = readList('dhammaSearchScope', DEFAULT_SCOPE.slice());
@@ -598,7 +677,11 @@ $('#voiceKey').onchange = e=>{
   if (v) localStorage.setItem(VOICE_KEY, v); else localStorage.removeItem(VOICE_KEY);
 };
 $('#voiceKeyToggle').onclick = ()=>{
-  const inp = $('#voiceKey'); inp.type = inp.type==='password' ? 'text' : 'password';
+  const inp = $('#voiceKey'); const btn = $('#voiceKeyToggle');
+  const showing = inp.type==='password';
+  inp.type = showing ? 'text' : 'password';
+  const t = STR[isRu?'ru':'en'];
+  btn.textContent = showing ? t.voiceKeyHide : t.voiceKeyShow;
 };
 $('#voiceKeyClear').onclick = ()=>{ $('#voiceKey').value=''; localStorage.removeItem(VOICE_KEY); };
 
@@ -623,6 +706,30 @@ function goAnchor(id){
 }
 if(location.hash) setTimeout(()=>goAnchor(location.hash.slice(1)),50);
 
+/* Полный список режимов словаря (см. paliLookup.js resolveDictConfig) и подписи оптгрупп —
+   отдельная, ключуемая по value() таблица, а не часть STR: 13 значений индексами options[N]
+   слишком хрупко (порядок легко сломать при следующей правке разметки). */
+const DICT_MODE_LABELS = {
+  standaloneru:{ru:'Встроенный DPD', en:'Built-in DPD'},
+  dpdfullru:{ru:'Попап Dict.DG', en:'Dict.DG popup'},
+  newwindowru:{ru:'Dict.DG в новом окне', en:'Dict.DG in new window'},
+  dpdcompactru:{ru:'Dict.DG мини', en:'Dict.DG mini'},
+  standalone:{ru:'Встроенный DPD (англ.)', en:'Built-in DPD (EN)'},
+  dpdfull:{ru:'Попап Dict.DG (англ.)', en:'Dict.DG popup (EN)'},
+  newwindow:{ru:'Dict.DG в новом окне (англ.)', en:'Dict.DG in new window (EN)'},
+  dpdcompact:{ru:'Dict.DG мини (англ.)', en:'Dict.DG mini (EN)'},
+  machinetranslation:{ru:'DharmaMitra.org', en:'DharmaMitra.org'},
+  searchonly:{ru:'Только поиск', en:'Search only'},
+  dicttango:{ru:'DictTango (Android)', en:'DictTango (Android)'},
+  mdict:{ru:'Mdict (iOS)', en:'Mdict (iOS)'},
+  goldenpc:{ru:'GoldenDict-NG (Desktop)', en:'GoldenDict-NG (Desktop)'}
+};
+const DICT_GROUP_LABELS = {
+  dictGroupRu:{ru:'DPD', en:'DPD'},
+  dictGroupEn:{ru:'DPD (EN)', en:'DPD (EN)'},
+  dictGroupOther:{ru:'Другое', en:'Other'}
+};
+
 /* Строки интерфейса (EN/RU) — намеренно простой инлайн-словарь, как в остальном легаси-коде
    (quickModal.js/openFdg.js), а не JSON-модуль: страница маленькая, вынос в отдельный формат
    без реальной надобности прямо сейчас. Раньше applyLang() переводил только 3 строки из ~50 —
@@ -641,7 +748,7 @@ const STR = {
     script:'Система письма пали',
     scriptDesc:'Применяется к пали в поиске и в ридере. Заголовки текстов и отчёт по словам пока остаются латиницей.',
     scriptIast:'Латиница (IAST)', scriptDeva:'Деванагари', scriptThai:'Тайская', scriptSinh:'Сингальская', scriptMymr:'Бирманская',
-    size:'Размер текста', punct:'Пунктуация в пали', punctDesc:'Выключите для вида, близкого к рукописям.',
+    size:'Размер текста', punct:'Показывать пунктуацию в пали', punctDesc:'Выключите, чтобы убрать запятые/кавычки и заменить точки, ? и ! вертикальной чертой — ближе к виду рукописей.',
     gSearch:'Поиск', scope:'Где искать по умолчанию',
     scopeDesc:'В самом поиске область можно менять для одного запроса — здесь только значение по умолчанию.',
     searchLangs:'Языки для поиска', searchLangsDesc:'Порядок — это порядок отображения переводов в результатах.',
@@ -649,18 +756,19 @@ const STR = {
     ctx:'Строк контекста', ctxDesc:'Сколько строк показывать вокруг совпадения.', ctxBefore:'до', ctxAfter:'после',
     anydist:'Несколько слов — в любом порядке', anydistDesc:'Пока не реализовано на сервере', soon:'см. список доработок',
     gDict:'Словарь', dictOnDesc:'Сводный словарь, включает DPD и другие источники.', dictMode:'Режим',
-    dictModeStandalone:'Встроенный DPD', dictModeDpdfull:'Попап Dict.DG', dictModeNewwindow:'Dict.DG в новом окне',
     autoLookup:'Искать выделенный текст автоматически', autoLookupDesc:'То же самое, что кнопка мультивыбора в ридере.',
     delay:'Задержка',
     gRoot:'Коренной текст пали', edLbl:'Издание',
     edDesc:'Сейчас поиск всегда идёт по Mahāsaṅgīti — остальные готовятся только для ридера.', badgeSoon:'скоро',
     gVoice:'Озвучка', voiceKey:'Ключ Google Cloud API',
     voiceKeyDesc:'Нужен для более качественной озвучки. Хранится только в этом браузере.',
+    voiceKeyShow:'Показать', voiceKeyHide:'Скрыть',
     voiceOpen:'Голос и скорость чтения',
     voiceOpenDesc:'Остальные настройки озвучки — отдельная панель, значок в ридере или Alt+R.', voiceBtn:'Открыть',
     gData:'Данные', clearHist:'История поиска и избранное', clearHistDesc:'Хранится на устройстве.', clearHistBtn:'Очистить',
     resetAll:'Все настройки', resetAllDesc:'Вернуть значения по умолчанию.', resetAllBtn:'Сбросить',
     langTitle:'Добавить язык', langSearchPh:'Найти язык', langCancel:'Отмена', langAdd:'Добавить',
+    langCountHint:'Число рядом с языком — количество текстов (уникальных сутт), а не переводов: несколько переводов одной сутты считаются как один текст.',
     confirmClearHist:'Очистить историю и избранное?', confirmResetAll:'Сбросить ВСЕ настройки?'
   },
   en:{
@@ -675,7 +783,7 @@ const STR = {
     script:'Pali script',
     scriptDesc:"Applies to Pali in search and in the reader. Text titles and the word report still stay in Latin script.",
     scriptIast:'Latin (IAST)', scriptDeva:'Devanagari', scriptThai:'Thai', scriptSinh:'Sinhala', scriptMymr:'Burmese',
-    size:'Text size', punct:'Pali punctuation', punctDesc:'Turn off for a look closer to the manuscripts.',
+    size:'Text size', punct:'Show Pali punctuation', punctDesc:'Turn off to drop commas/quotes and replace periods, ? and ! with a vertical bar — closer to the look of manuscripts.',
     gSearch:'Search', scope:'Default search scope',
     scopeDesc:'The scope can still be changed per search — this is only the default.',
     searchLangs:'Search languages', searchLangsDesc:'Order controls how translations are displayed in results.',
@@ -683,18 +791,19 @@ const STR = {
     ctx:'Context lines', ctxDesc:'How many lines to show around a match.', ctxBefore:'before', ctxAfter:'after',
     anydist:'Multiple words — any order', anydistDesc:'Not yet implemented server-side', soon:'see backlog',
     gDict:'Dictionary', dictOnDesc:'Combined dictionary, includes DPD and other sources.', dictMode:'Mode',
-    dictModeStandalone:'Built-in DPD', dictModeDpdfull:'Dict.DG popup', dictModeNewwindow:'Dict.DG in new window',
     autoLookup:'Auto-look-up selected text', autoLookupDesc:'Same as the multi-select button in the reader.',
     delay:'Delay',
     gRoot:'Pali root text', edLbl:'Edition',
     edDesc:'Search currently always uses Mahāsaṅgīti — the others are being prepared for the reader only.', badgeSoon:'soon',
     gVoice:'Voice / TTS', voiceKey:'Google Cloud API key',
     voiceKeyDesc:'Needed for higher-quality voices. Stored only in this browser.',
+    voiceKeyShow:'Show', voiceKeyHide:'Hide',
     voiceOpen:'Voice and reading speed',
     voiceOpenDesc:'The rest of the voice settings are in a separate panel — reader icon or Alt+R.', voiceBtn:'Open',
     gData:'Data', clearHist:'Search history and favorites', clearHistDesc:'Stored on this device.', clearHistBtn:'Clear',
     resetAll:'All settings', resetAllDesc:'Restore default values.', resetAllBtn:'Reset',
     langTitle:'Add language', langSearchPh:'Find language', langCancel:'Cancel', langAdd:'Add',
+    langCountHint:'The number next to a language is the count of texts (unique suttas), not translations — several translations of one sutta count as one text.',
     confirmClearHist:'Clear history and favorites?', confirmResetAll:'Reset ALL settings?'
   }
 };
@@ -718,17 +827,17 @@ function applyLang(){
    ['t-g-root','gRoot'],['edLbl','edLbl'],['t-edDesc','edDesc'],
    ['t-g-voice','gVoice'],['t-voiceKey','voiceKey'],['t-voiceKeyDesc','voiceKeyDesc'],
    ['t-voiceOpen','voiceOpen'],['t-voiceOpenDesc','voiceOpenDesc'],['voiceBtn','voiceBtn'],
+   ['voiceKeyToggle','voiceKeyShow'],
    ['t-g-data','gData'],['t-clearHist','clearHist'],['t-clearHistDesc','clearHistDesc'],['clearHistBtn','clearHistBtn'],
    ['t-resetAll','resetAll'],['t-resetAllDesc','resetAllDesc'],['resetAllBtn','resetAllBtn'],
-   ['langTitle','langTitle'],['langCancel','langCancel'],['langAdd','langAdd']
+   ['langTitle','langTitle'],['langCancel','langCancel'],['langAdd','langAdd'],['t-langCountHint','langCountHint']
   ].forEach(([id,key])=>setText(id,key));
 
   $('#langSearch').placeholder = t.langSearchPh; $('#langSearch').setAttribute('aria-label', t.langSearchPh);
   document.querySelectorAll('.badge').forEach(b=>b.textContent=t.badgeSoon);
   const dm = $('#dictMode');
-  if (dm.options[0]) dm.options[0].textContent = t.dictModeStandalone;
-  if (dm.options[1]) dm.options[1].textContent = t.dictModeDpdfull;
-  if (dm.options[2]) dm.options[2].textContent = t.dictModeNewwindow;
+  Array.from(dm.options).forEach(o=>{ const lbl=DICT_MODE_LABELS[o.value]; if(lbl) o.textContent = isRu?lbl.ru:lbl.en; });
+  Array.from(dm.querySelectorAll('optgroup')).forEach(g=>{ const lbl=DICT_GROUP_LABELS[g.id]; if(lbl) g.label = isRu?lbl.ru:lbl.en; });
   const sc = $('#script');
   const scriptLabels = {ISOPali:'scriptIast', deva:'scriptDeva', thai:'scriptThai', sinh:'scriptSinh', mymr:'scriptMymr'};
   Array.from(sc.options).forEach(o=>{ if (scriptLabels[o.value]) o.textContent = t[scriptLabels[o.value]]; });

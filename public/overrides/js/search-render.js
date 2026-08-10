@@ -69,11 +69,48 @@ window.DgSearchRender = (function () {
         // dt-hasChild/dtr-expanded — реальные классы DataTables 2.x Responsive; .parent — от
         // старой (1.x) версии, никогда не проставляется здесь, поэтому "Свернуть все" раньше
         // молча не находил ни одной строки (tr.parent всегда пусто).
+        //
+        // #btn-show-all-children — единственная физическая кнопка в разметке (никакого
+        // #btn-hide-all-children в HTML нет, второй обработчик ниже был мёртвым кодом). Раньше
+        // клик ВСЕГДА разворачивал (":not(.dtr-expanded)") — сработав один раз, все строки уже
+        // .dtr-expanded, и повторный клик/Shift+Space (langswitch.js — тот же .click() по этому
+        // же id) просто не находил, что разворачивать, и выглядел одноразовым.
+        //
+        // Замкнутый по closure $table (аргумент этой функции) оказался НЕНАДЁЖНЫМ источником:
+        // после первого клика он расходится с тем, что реально видно на экране (проверено
+        // напрямую — $table.find(...) возвращал не то же самое, что видно в живом DOM) — то ли
+        // DataTables Responsive где-то внутри пересобирает узлы без замены самой переменной, то
+        // ли одна из веток build*/enrich путей передаёт сюда более раннюю ссылку. Вместо
+        // выяснения, которая из веток виновата — не полагаемся на closure вообще, каждый клик
+        // заново берёт ЖИВУЮ, реально видимую таблицу (#pali или #pali-words, ровно одна видна
+        // за раз — см. renderCurrentReport в search/index.html, d-none переключается на обе сразу).
+        //
+        // ВТОРОЙ, отдельный баг в том же месте: "tr:not(.dtr-expanded)" матчит не только
+        // ЕЩЁ НЕ развёрнутые родительские строки, но и САМИ child-строки (<tr class="child">) —
+        // у них класса dtr-expanded в принципе не бывает, так что они ВСЕГДА проходили под
+        // ":not", и набор получался непустым, даже когда все родительские строки уже
+        // развёрнуты — это и было истинной причиной "работает только один раз": код решал, что
+        // есть что разворачивать, даже когда разворачивать было нечего, и просто кликал по
+        // бесполезным child-ячейкам.
+        //
+        // Скоуп нужен именно по "есть ли у строки control-ячейка" (td.dtr-control — она
+        // проставляется Responsive сразу при отрисовке для ЛЮБОЙ потенциально разворачиваемой
+        // строки), а НЕ по dt-hasChild — этот класс DataTables добавляет только ПОСЛЕ первого
+        // реального клика по строке (лениво), так что до самого первого взаимодействия за всю
+        // сессию ни одна строка его не имеет вообще — фильтр по dt-hasChild на нетронутой
+        // странице находил бы 0 разворачиваемых строк и молчал бы уже на первом клике.
+        function visibleTable() {
+            var $pali = $('#pali');
+            return ($pali.length && !$pali.hasClass('d-none')) ? $pali : $('#pali-words');
+        }
         $('#btn-show-all-children').off('click').on('click', function () {
-            $table.find('tbody tr:not(.dtr-expanded)').find('td:first-child').trigger('click');
-        });
-        $('#btn-hide-all-children').off('click').on('click', function () {
-            $table.find('tbody tr.dtr-expanded').find('td:first-child').trigger('click');
+            var $expandable = visibleTable().find('tbody tr').has('td.dtr-control');
+            var $collapsed = $expandable.not('.dtr-expanded');
+            if ($collapsed.length) {
+                $collapsed.find('td:first-child').trigger('click');
+            } else {
+                $expandable.filter('.dtr-expanded').find('td:first-child').trigger('click');
+            }
         });
     }
 

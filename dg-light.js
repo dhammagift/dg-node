@@ -209,22 +209,42 @@ async function buildSettingsDemoCache() {
     }
 }
 
-// Реальное количество файлов перевода на язык (sc_bilara_data/translation/{lang}/**.json) —
-// для списка "Добавить язык" в /settings/ (по просьбе владельца показывать реальные цифры,
-// не выдуманные). Считается один раз при старте, не на каждый показ диалога.
+// Реальное количество ТЕКСТОВ (уникальных sutta_id) на язык — для списка "Добавить язык" в
+// /settings/ (по просьбе владельца показывать реальные цифры). Считается один раз при старте,
+// не на каждый показ диалога.
+//
+// Считаем УНИКАЛЬНЫЕ suttaId, а не количество файлов — у одной сутты может быть несколько
+// переводчиков одного языка (sc_bilara_data/translation/{lang}/{translator}/...), каждый со
+// своим файлом; наивный подсчёт файлов посчитал бы такую сутту несколько раз (5 переводов
+// одной сутты — это всё равно один текст, не пять). Также сюда же сводим DG offline
+// (dhammagift/{ru,ru_other,en,en_other}) — иначе счётчик для ru/en в диалоге считал бы только
+// SC-зеркало и был бы меньше настоящего числа доступных текстов.
 async function buildLangCountsCache() {
     const cachePath = path.join(__dirname, 'settings', 'lang-counts.json');
-    const counts = {};
+    const suttaIdsByLang = {};
+    async function addFromDir(dir, lang) {
+        if (!fsSync.existsSync(dir)) return;
+        let files;
+        try { files = await fs.readdir(dir, { recursive: true }); } catch (e) { return; }
+        if (!suttaIdsByLang[lang]) suttaIdsByLang[lang] = new Set();
+        for (const f of files) {
+            if (!f.endsWith('.json')) continue;
+            suttaIdsByLang[lang].add(path.basename(f, '.json').split('_')[0]);
+        }
+    }
     try {
         const langDirs = await fs.readdir(SC_TRANS, { withFileTypes: true });
         for (const d of langDirs) {
-            if (!d.isDirectory()) continue;
-            const files = await fs.readdir(path.join(SC_TRANS, d.name), { recursive: true });
-            counts[d.name] = files.filter(f => f.endsWith('.json')).length;
+            if (d.isDirectory()) await addFromDir(path.join(SC_TRANS, d.name), d.name);
         }
     } catch (e) {
         console.warn('Lang counts cache: could not scan', SC_TRANS, e.message);
     }
+    for (const l of DG_LANGS) {
+        await addFromDir(path.join(DG_OFFLINE, l), l.split('_')[0]);
+    }
+    const counts = {};
+    for (const lang in suttaIdsByLang) counts[lang] = suttaIdsByLang[lang].size;
     try {
         await fs.writeFile(cachePath, JSON.stringify(counts, null, 2), 'utf8');
         console.log(`Lang counts cache built: ${Object.keys(counts).length} language(s) -> settings/lang-counts.json`);

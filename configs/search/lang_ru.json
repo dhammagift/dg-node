@@ -12,7 +12,9 @@
     "wordsToggleShow": "Слова",
     "wordsToggleHide": "Тексты",
     "compassAriaLabel": "Открыть Cattāri Ariyasaccāni",
-    "compassTitle": "Открыть Cattāri Ariyasaccāni (Alt+P)"
+    "compassTitle": "Открыть Cattāri Ariyasaccāni (Alt+P)",
+    "menuAriaLabel": "Открыть меню",
+    "menuTitle": "Меню"
   },
   "table": {
     "suttaCol": "Sutta",
