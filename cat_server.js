@@ -105,36 +105,63 @@ app.post('/api/find-match-stream', async (req, res) => {
     const MAX_RESULTS = 30; 
     const MIN_SCORE_THRESHOLD = 20; 
 
-    async function getPaliIdsWithScores(text) {
-        const foundScores = new Map();
-        if (!text) return foundScores;
+async function getPaliIdsWithScores(text) {
+    const foundScores = new Map();
+    if (!text) return foundScores;
 
-        const exactLines = await runGrepInFolder(text, PALI_DIR, false);
-        exactLines.forEach(line => {
-            const match = line.match(/"([^"]+)"\s*:\s*"(.*?)"/);
-            if (match) {
-                foundScores.set(match[1], 100);
-            }
-        });
+    // 1. Очистка и нормализация исходного текста Пали
+    const normalizedSource = text
+        .replace(/[…\.\,\;\:\-\—\?\"\'\(\)\[\]]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
 
-        if (foundScores.size < 5) {
-            const subPhrases = text.split(/[,;,—\.\?]/).map(s => s.trim()).filter(s => s.length >= 10);
-            for (const phrase of subPhrases) {
-                const phraseLines = await runGrepInFolder(phrase, PALI_DIR, false);
-                phraseLines.forEach(line => {
-                    const match = line.match(/"([^"]+)"\s*:\s*"(.*?)"/);
-                    if (match && !foundScores.has(match[1])) {
-                        const score = Math.round(calculateSimilarity(text, match[2]) * 100);
-                        if (score >= MIN_SCORE_THRESHOLD) {
-                            foundScores.set(match[1], score);
-                        }
-                    }
-                });
+    if (!normalizedSource) return foundScores;
+
+    // 2. Извлечение уникальных значимых слов (длиной от 4 символов)
+    const words = Array.from(new Set(
+        normalizedSource
+            .toLowerCase()
+            .replace(/[^\p{L}\s]/gu, '')
+            .split(' ')
+            .filter(w => w.length >= 4)
+    ));
+
+    if (words.length === 0) return foundScores;
+
+    // Выбираем до 10 самых длинных слов для быстрого фильтра grep
+    const searchWords = words.sort((a, b) => b.length - a.length).slice(0, 10);
+    const regexPattern = searchWords.join('|');
+
+    // 3. Поиск всех строк Пали, содержащих хотя бы одно из ключевых слов
+    const matchedLines = await runGrepInFolder(regexPattern, PALI_DIR, true);
+
+    // 4. Расчет коэффициента схожести для каждого найденного сегмента
+    const candidates = [];
+    for (const line of matchedLines) {
+        const match = line.match(/"([^"]+)"\s*:\s*"(.*?)"/);
+        if (match) {
+            const id = match[1];
+            const candidateText = match[2];
+
+            if (foundScores.has(id)) continue;
+
+            const score = Math.round(calculateSimilarity(normalizedSource, candidateText) * 100);
+            if (score >= MIN_SCORE_THRESHOLD) {
+                candidates.push({ id, score });
             }
         }
-
-        return foundScores;
     }
+
+    // 5. Сортировка результатов по убыванию схожести
+    candidates.sort((a, b) => b.score - a.score);
+
+    // Записываем топ-50 наиболее похожих совпадений
+    for (const item of candidates.slice(0, 50)) {
+        foundScores.set(item.id, item.score);
+    }
+
+    return foundScores;
+}
 
     async function streamStage(stage, idScoresMap, matchType) {
         const idsArray = Array.from(idScoresMap.keys());
