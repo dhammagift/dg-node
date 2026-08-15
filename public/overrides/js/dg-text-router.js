@@ -105,6 +105,20 @@
         if (/^(mn|dn|sn|an|kn|snp|ud|iti|thag|thig|dhp)$/.test(q)) return { type: 'chapter', id: q };
         if (/^(sn|an)\d{1,2}$/.test(q)) return { type: 'chapter', id: q };
 
+        // Остальные книги КН (Джатаки, Милиндапаньха и т.д.) и Абхидхамма — opentexts.php на
+        // эти префиксы редиректил во ВНЕШНИЙ инструмент (/4nt/?q=...), потому что у dhamma.gift
+        // тогда не было для них своего ридера. Теперь есть (см. settings/index.html —
+        // SCOPE_GROUPS, реальные префиксы из dg_db_light.json) — раньше ввод вроде "ja1" здесь
+        // ни на что не матчился и улетал в обычный поиск по буквальной строке "ja1" вместо
+        // прямого перехода к тексту. Тот же паттерн text/chapter, что и для остальных книг выше.
+        var KN_EXTRA = ['ja', 'mil', 'tha-ap', 'thi-ap', 'vv', 'pv', 'cp', 'bv', 'ps', 'ne', 'cnd', 'mnd', 'kp', 'pe'];
+        var ABHI = ['ds', 'dt', 'kv', 'patthana', 'pp', 'vb', 'ya'];
+        var otherBookRe = new RegExp('^(' + KN_EXTRA.concat(ABHI).join('|') + ')');
+        if (otherBookRe.test(q)) {
+            var otherMatch = q.match(new RegExp('^(' + KN_EXTRA.concat(ABHI).join('|') + ')(\\d+)?'));
+            return otherMatch[2] ? { type: 'text', id: q } : { type: 'chapter', id: otherMatch[1] };
+        }
+
         // Nothing matched a text/chapter pattern — plain keyword search. Use the ORIGINAL
         // input, not the layout-converted `q`: the Cyrillic->Latin fix in normalize() exists
         // only to test whether this might be a mistyped Pali/chapter reference (RU_LAYOUT_TO_

@@ -611,7 +611,21 @@ function formatSlug(str) {
 async function addToSearchHistory() {
     try {
         const url = new URL(window.location.href);
-        const qParam = url.searchParams.get("q");
+        // Раньше здесь смотрели ТОЛЬКО ?q= — легаси-формат ссылок. Собственная навигация сайта
+        // (search/index.html, reader) уже давно ушла на чистые пути /{keyword} без ?q= (см.
+        // TODO.md поиск п.21) — из-за этого история практически никогда не писалась для обычных
+        // успешных открытий, только для узкого fallback-пути, который всё ещё кладёт запрос в
+        // ?q= (например, при "не найдено" — отсюда и жалоба "сохраняются только опечатки").
+        // Тот же приём, что уже использует сама search/index.html для определения текущего
+        // запроса по чистому URL (см. её инлайн-скрипт с lastSegment).
+        let qParam = url.searchParams.get("q");
+        if (!qParam) {
+            const segments = url.pathname.split('/').filter(Boolean);
+            const last = segments.pop();
+            if (last && !['search', 'index.html', 'result', 'nodejs', 'settings', 'reader', 'login', 'history.php'].includes(last.toLowerCase())) {
+                try { qParam = decodeURIComponent(last); } catch (e) { qParam = last; }
+            }
+        }
         if (!qParam) return;
 
         let key = processSearchQuery(qParam);
@@ -890,8 +904,16 @@ document.addEventListener("DOMContentLoaded", function() {
 
 
 function shouldIgnoreKeyEvent() {
+  // Раньше проверялся только #paliauto — любое другое поле ввода/textarea (например Filter:
+  // в результатах поиска, или будущие инпуты) не было защищено, и горячие клавиши вроде
+  // Ctrl+←/→ или Alt+J перехватывали ввод прямо во время печати. Общая проверка по тегу/
+  // contentEditable, не по конкретному id.
   const activeElement = document.activeElement;
-  return activeElement && activeElement.id === "paliauto" && activeElement.tagName === "INPUT";
+  return !!activeElement && (
+    activeElement.tagName === "INPUT" ||
+    activeElement.tagName === "TEXTAREA" ||
+    activeElement.isContentEditable
+  );
 }
 
 

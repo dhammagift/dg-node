@@ -365,6 +365,12 @@ window.navigateSutta = function(event, slug) {
 // почистят дублирующий обработчик — этот можно будет оставить единственным.
 document.addEventListener('keydown', (event) => {
     if (!event.ctrlKey || (event.code !== 'ArrowRight' && event.code !== 'ArrowLeft')) return;
+    // Не перехватываем, если фокус в поле ввода/textarea — иначе стандартное "прыгнуть на
+    // слово" (Ctrl+←/→ при редактировании текста) вместо этого листало сутты, даже когда
+    // человек печатает в #paliauto или где угодно ещё. settings.js рядом уже делает такую же
+    // проверку (shouldIgnoreKeyEvent), но только для #paliauto — здесь общая, по тегу.
+    const active = document.activeElement;
+    if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable)) return;
     const containerId = event.code === 'ArrowRight' ? 'next' : 'previous';
     const container = document.getElementById(containerId);
     const link = container ? container.querySelector('a') : null;
