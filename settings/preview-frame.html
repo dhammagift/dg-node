@@ -61,8 +61,16 @@ function renderSegment(seg, wantedLangs) {
     const lang = k.split('_')[0];
     (byLang[lang] = byLang[lang] || []).push(k);
   });
+  // Раньше здесь было wantedLangs.concat(keys.map(...)) — показывало выбранные языки, а ЗАТЕМ
+  // ещё и ЛЮБЫЕ другие языки, какие нашлись в закэшированном демо-сегменте (жалоба "демо
+  // показывает en/ru/de, хотя выбрано только ru/en"). Строго только wantedLangs; на другие
+  // языки падаем ТОЛЬКО если среди выбранных вообще ничего не нашлось (иначе образец мог бы
+  // остаться пустым для языка, которого именно у этого сегмента нет).
   let right = '';
-  wantedLangs.concat(keys.map(k => k.split('_')[0])).forEach((lang, _, arr) => {
+  const langsToRender = wantedLangs.some(l => byLang[l] && byLang[l].length)
+    ? wantedLangs
+    : wantedLangs.concat(keys.map(k => k.split('_')[0]));
+  langsToRender.forEach((lang) => {
     if (!byLang[lang] || !byLang[lang].length) return;
     byLang[lang].forEach((key, idx) => {
       const translatorId = key.split('_').slice(1).join('_');
@@ -95,6 +103,9 @@ function render(shuffle) {
   const group = groups[currentGroupIndex];
   const wantedLangs = pickReaderLangs();
   document.getElementById('sutta').innerHTML = group.segments.map(s => renderSegment(s, wantedLangs)).join('');
+  // Родительская страница не знает, какой фрагмент сейчас показан (случайный выбор — здесь) —
+  // сообщаем sutta_id, чтобы там можно было собрать ссылку "Читать" на настоящий текст.
+  window.parent.postMessage({ type: 'dg-preview-current', suttaId: group.sutta_id }, location.origin);
 }
 // Тема — то же самое, что реально пишет /assets/js/themeswitch.js на проде: body.classList
 // 'dark' + <html data-bs-theme="..">, а не просто наш собственный body.dark (от этого зависят
