@@ -185,7 +185,7 @@ kbd{font:inherit;font-size:12.5px;background:var(--line);border:1px solid var(--
         <a href="#" class="btn-quiet" id="previewRead" title="Открыть в ридере" aria-label="Открыть в ридере">
           <span id="t-previewRead">Читать</span>
         </a>
-        <button type="button" class="btn-quiet" id="previewShuffle" title="Другой фрагмент" aria-label="Показать другой фрагмент">⟳</button>
+        <button type="button" class="btn-quiet" id="previewShuffle" title="Обновить оформление" aria-label="Обновить оформление образца">⟳</button>
       </span>
     </div>
     <iframe id="previewFrame" src="/settings/preview-frame.html" title="Образец текста" style="width:100%;height:260px;border:0;display:block;background:transparent" scrolling="yes"></iframe>
@@ -972,7 +972,7 @@ const DICT_GROUP_LABELS = {
 const STR = {
   ru:{
     title:'Настройки', saved:'Сохраняется сразу', sub:'Значения по умолчанию для поиска и чтения на всём сайте.',
-    previewLabel:'Образец', previewShuffle:'Другой фрагмент', previewShuffleAria:'Показать другой фрагмент', previewRead:'Читать',
+    previewLabel:'Образец', previewShuffle:'Обновить оформление', previewShuffleAria:'Обновить оформление образца', previewRead:'Читать',
     gGeneral:'Общее', uiLang:'Язык интерфейса', uiLangDesc:'Меню и подписи. На языки текстов не влияет.',
     themeLbl:'Тема', thAuto:'Авто', thLight:'Светлая', thDark:'Тёмная',
     cloud:'Облако', cloudDesc:'Синхронизация закладок, заметок и настроек между устройствами.', cloudBtn:'Войти',
@@ -1009,7 +1009,7 @@ const STR = {
   },
   en:{
     title:'Settings', saved:'Saves instantly', sub:'Defaults for search and reading across the whole site.',
-    previewLabel:'Preview', previewShuffle:'Another passage', previewShuffleAria:'Show another passage', previewRead:'Read',
+    previewLabel:'Preview', previewShuffle:'Refresh styling', previewShuffleAria:'Refresh preview styling', previewRead:'Read',
     gGeneral:'General', uiLang:'Interface language', uiLangDesc:"Menus and labels. Doesn't affect text languages.",
     themeLbl:'Theme', thAuto:'Auto', thLight:'Light', thDark:'Dark',
     cloud:'Cloud', cloudDesc:'Sync bookmarks, notes, and settings across devices.', cloudBtn:'Log in',
@@ -1109,11 +1109,13 @@ function applyLang(){
    самой странице настроек. Данные — реальные фрагменты от владельца, закэшированные сервером
    при старте (dg-light.js, buildSettingsDemoCache). Пунктуация/языки чтения меняются в этой
    же вкладке через localStorage — iframe как отдельный window ловит их 'storage'-событием
-   сам, без ручной синхронизации отсюда; кнопка "другой фрагмент" не трогает localStorage,
-   поэтому ей нужен явный postMessage. */
+   сам, без ручной синхронизации отсюда.
+   Кнопка "⟳" — именно ОБНОВИТЬ, а не "другой фрагмент": она принудительно перерисовывает
+   образец текущими настройками на случай, если какая-то из них не подхватилась автоматически.
+   Фрагмент при этом НЕ меняется — он один и тот же на всю сессию настроек. */
 $('#previewShuffle').onclick = () => {
   const f = $('#previewFrame').contentWindow;
-  if (f) f.postMessage('dg-preview-shuffle', location.origin);
+  if (f) f.postMessage('dg-preview-refresh', location.origin);
 };
 
 /* "Назад", не "домой" — переход в /settings/ обычно идёт с уже введённым в поиске словом или

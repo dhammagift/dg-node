@@ -89,18 +89,20 @@ function renderSegment(seg, wantedLangs) {
   // багами.
   return `<p class="demo-seg" id="${anchor}">${inner}</p>`;
 }
-// Индекс текущего фрагмента запоминается — иначе каждое изменение настройки (пунктуация, язык,
-// тема...) вызывает render() заново, и БЕЗ фиксации это заодно перевыбирало случайный фрагмент —
-// подряд читать образец было невозможно, он менялся под ногами при каждом клике где угодно на
-// странице. Новый случайный выбирается только при первой загрузке и по кнопке "⟳" (shuffle=true).
-let currentGroupIndex = null;
-function render(shuffle) {
+// Фрагмент выбирается СЛУЧАЙНО РОВНО ОДИН РАЗ — при первой загрузке кадра — и дальше не меняется
+// до конца сессии настроек. Любой render() (смена пунктуации, языка, темы, шрифта, письменности,
+// кнопка "обновить") перерисовывает ТОТ ЖЕ САМЫЙ фрагмент с новыми стилями. Запоминается sutta_id,
+// а не индекс: наборы groups у разных письменностей — разные массивы, и индекс мог указать на
+// другую сутту при переключении скрипта.
+let currentSuttaId = null;
+function render() {
   const groups = currentGroups();
-  if (!groups.length) { currentGroupIndex = null; return; }
-  if (shuffle || currentGroupIndex === null || currentGroupIndex >= groups.length) {
-    currentGroupIndex = Math.floor(Math.random() * groups.length);
+  if (!groups.length) return;
+  let group = currentSuttaId ? groups.find(g => g.sutta_id === currentSuttaId) : null;
+  if (!group) {
+    group = groups[Math.floor(Math.random() * groups.length)];
+    currentSuttaId = group.sutta_id;
   }
-  const group = groups[currentGroupIndex];
   const wantedLangs = pickReaderLangs();
   document.getElementById('sutta').innerHTML = group.segments.map(s => renderSegment(s, wantedLangs)).join('');
   // Родительская страница не знает, какой фрагмент сейчас показан (случайный выбор — здесь) —
@@ -132,7 +134,8 @@ window.addEventListener('storage', e => {
   if (e.key === 'theme') applyTheme();
 });
 window.addEventListener('message', e => {
-  if (e.data === 'dg-preview-shuffle') render(true);
+  // Только refresh: перерисовать текущий фрагмент с актуальными настройками. Пути, меняющего
+  // фрагмент, больше нет — он один на всю сессию настроек.
   if (e.data === 'dg-preview-refresh') render();
 });
 </script>
