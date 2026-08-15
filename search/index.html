@@ -347,6 +347,20 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     }
     .scope-info-star:hover,
     .scope-info-star:focus-visible { color: var(--bs-body-color, #212529); }
+    /* Кнопки шапки без рамки и заливки — домик и бургер. Круглые «пилюли» рядом с полем ввода
+       создавали лишний шум; сама иконка при этом остаётся такой же кликабельной по площади. */
+    .hero-row .dg-plain-btn {
+        border: 0;
+        background: transparent;
+        box-shadow: none;
+        color: var(--bs-secondary-color, #6c757d);
+        padding: 0;
+    }
+    .hero-row .dg-plain-btn:hover,
+    .hero-row .dg-plain-btn:focus-visible { color: var(--bs-body-color, #212529); }
+    /* Домик крупнее прочих — главная точка возврата. Размер задаётся самой картинке, чтобы
+       не зависеть от .table-home-icon из общих стилей. */
+    .hero-row .dg-home-btn img { width: 30px; height: 30px; }
 </style>
 
 <link rel="stylesheet" href="/assets/css/langswitch.css">
@@ -386,7 +400,10 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
 <div class="table-wrapper">
 
 <div class="hero-row mb-2">
-  <a href="/" class="btn btn-light rounded-circle text-decoration-none" title="Home" data-i18n-title="{{global.common.home}}">
+  <!-- Домик и бургер — без рамки и заливки (класс dg-plain-btn): в шапке рядом с полем поиска
+       круглые кнопки-«пилюли» только шумят, сама иконка читается лучше. Домик заодно крупнее
+       остальных — это главная точка возврата. -->
+  <a href="/" class="btn dg-plain-btn dg-home-btn text-decoration-none" title="Home" data-i18n-title="{{global.common.home}}">
     <img class="table-home-icon" src="/assets/svg/home-icon.svg">
   </a>
   <form id="form" class="dg-hero-form m-0" autocomplete="off">
@@ -396,18 +413,25 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
          отодвигает его так, что попасть становится трудно. Слева места нет ни у кого, поэтому
          столкновения не будет в принципе; это же и привычнее: лупа слева, очистка справа. -->
     <div class="input-group dg-search-field">
+      <!-- Лупа — инлайновый SVG, а не <i class="fas fa-search">: FontAwesome эту иконку тут не
+           разворачивал (замерено — элемент оставался <i> размером 0x0, ::before пустой), и на
+           месте кнопки было просто пустое место. SVG рисуется всегда и ни от чего не зависит.
+           Ручка направлена вправо-вниз, как у обычной лупы (раньше стоял fa-flip-horizontal,
+           который её зеркалил). -->
       <button type="submit" id="searchbtn" class="btn" aria-label="Search" data-i18n-aria-label="{{search.label}}">
-        <i class="fas fa-search fa-flip-horizontal" aria-hidden="true"></i>
+        <svg viewBox="0 0 512 512" width="17" height="17" fill="currentColor" aria-hidden="true">
+          <path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352a144 144 0 1 0 0-288 144 144 0 1 0 0 288z"/>
+        </svg>
       </button>
       <input class="form-control rounded-pill searchinput" id="paliauto" type="search" placeholder="e.g. Kāyagat or sn56.11" data-i18n-placeholder="{{search.placeholder}}" autocomplete="off" autofocus>
     </div>
   </form>
-  <button class="btn btn-light rounded-circle" type="button" onclick="toggleQuickModal()" aria-label="Open Cattāri Ariyasaccāni" title="Open Cattāri Ariyasaccāni (Alt+P)" data-i18n-aria-label="{{toolbar.compassAriaLabel}}" data-i18n-title="{{toolbar.compassTitle}}">
-    <img alt="" src="/assets/svg/compass.svg" class="common-size-icon4">
-  </button>
+  <!-- Компас переехал вниз, в общий ряд кнопок (между словарём и настройками) — см. ниже. -->
   <div class="dropdown">
-    <button class="btn btn-light rounded-circle" type="button" id="burgerMenuBtn" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Menu" title="Menu" data-i18n-aria-label="{{toolbar.menuAriaLabel}}" data-i18n-title="{{toolbar.menuTitle}}">
-      <i class="fas fa-bars" aria-hidden="true"></i>
+    <button class="btn dg-plain-btn" type="button" id="burgerMenuBtn" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Menu" title="Menu" data-i18n-aria-label="{{toolbar.menuAriaLabel}}" data-i18n-title="{{toolbar.menuTitle}}">
+      <svg viewBox="0 0 448 512" width="18" height="18" fill="currentColor" aria-hidden="true">
+        <path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/>
+      </svg>
     </button>
     <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="burgerMenuBtn">
       <li><a class="dropdown-item" href="/">{{buttons.main}}</a></li>
@@ -704,6 +728,12 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
 <button id="language-button" class="btn btn-light" type="button">{{global.help.languageButton}}</button>
 
 <button class="btn btn-light mb-1  toggle-dict-btn" type="button" ><img class="" src="/assets/svg/comment.svg"></img></button>
+
+<!-- Компас — здесь, в общем ряду кнопок: после словаря, перед настройками (просьба владельца).
+     Раньше стоял в шапке рядом с полем поиска и оттягивал на себя внимание наравне с вводом. -->
+<button class="btn btn-light mb-1" type="button" onclick="toggleQuickModal()" aria-label="Open Cattāri Ariyasaccāni" title="Open Cattāri Ariyasaccāni (Alt+P)" data-i18n-aria-label="{{toolbar.compassAriaLabel}}" data-i18n-title="{{toolbar.compassTitle}}">
+  <img alt="" src="/assets/svg/compass.svg" class="common-size-icon4">
+</button>
 
 
 
