@@ -136,7 +136,13 @@ function render() {
    пересчитается перенос строк — иначе первое измерение уходит по системному serif и оказывается
    заниженным. ResizeObserver ловит всё остальное: смену размера текста, письменности, языков. */
 function reportHeight() {
-  const h = Math.ceil(document.documentElement.scrollHeight);
+  // Меряем ТЕЛО, а не documentElement.scrollHeight. Разница принципиальная: paliLookup.js
+  // вставляет в кадр служебные элементы с position:fixed (плашка #bubbleNotification и т.п.),
+  // и хотя они не занимают места в потоке, в область прокрутки ДОКУМЕНТА они входят — после
+  // первого же обращения к словарю scrollHeight подскакивал (замерено: 210 -> 250) и под
+  // текстом снова появлялась пустая полоса, ровно та, ради которой всё это и делалось.
+  // body.scrollHeight считает только содержимое тела, fixed-элементы в него не попадают.
+  const h = Math.ceil(document.body.scrollHeight);
   window.parent.postMessage({ type: 'dg-preview-height', height: h }, location.origin);
 }
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(reportHeight);
