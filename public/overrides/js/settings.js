@@ -193,12 +193,16 @@ window.addEventListener('suttaRenderedCentral', () => {
     window.isVoiceScriptLoaded = false;
     let isVoiceInitializing = false;
 
-    window.loadVoiceScripts = function(callback) {
+    // force=true — явная просьба пользователя (пункт "Слушать" в контекстном меню цитаты на
+    // странице поиска). Исключение ниже отключало озвучку на страницах результатов ЦЕЛИКОМ, в том
+    // числе когда её просят руками; автоматические пути (автоплей, горячие клавиши, фоновая
+    // активация) по-прежнему туда не лезут — им force не передаётся.
+    window.loadVoiceScripts = function(callback, force) {
         // === ИСКЛЮЧЕНИЕ ДЛЯ СТРАНИЦ РЕЗУЛЬТАТОВ ПОИСКА ===
         const path = window.location.pathname;
         const isSearchResult = (path === '/' || path === '/ru/') && window.location.search.includes('q=');
-        
-        if (isSearchResult) {
+
+        if (isSearchResult && !force) {
             if (callback) callback();
             return;
         }

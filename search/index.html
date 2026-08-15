@@ -220,6 +220,37 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     #pali tr.child .dtr-details li {
         padding-left: 1.4em;
     }
+    /* Контекстное меню цитаты. Ридеровское #segment-context-menu живёт в reader/css/uiextra.css,
+       которую эта страница не подключает — здесь свой минимальный вид на переменных Bootstrap,
+       чтобы меню жило в текущей теме, а не было прибито к светлой. */
+    #dg-quote-menu {
+        position: fixed;
+        z-index: 10010;
+        min-width: 200px;
+        padding: 4px;
+        border: 1px solid var(--bs-border-color, #ccc);
+        border-radius: 8px;
+        background: var(--bs-body-bg, #fff);
+        box-shadow: 0 8px 24px -6px rgba(0, 0, 0, .35);
+    }
+    #dg-quote-menu[hidden] { display: none; }
+    #dg-quote-menu button {
+        display: block;
+        width: 100%;
+        padding: 9px 12px;
+        border: 0;
+        border-radius: 6px;
+        background: transparent;
+        color: var(--bs-body-color, #212529);
+        font: inherit;
+        font-size: 14px;
+        text-align: left;
+        cursor: pointer;
+    }
+    #dg-quote-menu button:hover,
+    #dg-quote-menu button:focus {
+        background: var(--bs-secondary-bg, #e9ecef);
+    }
 </style>
 
 <link rel="stylesheet" href="/assets/css/langswitch.css">
@@ -332,6 +363,131 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
       if (line && pane.contains(line)) line.classList.add('dg-show-links');
     });
   })();
+
+  /* Контекстное меню на ✦-ссылках цитат — тот же приём, что в ридере (reader/common.js,
+     #segment-context-menu на .copyLink): клик по ссылке не уходит сразу по назначению, а
+     открывает список действий. Отличие по составу пунктов — здесь первыми идут "открыть в
+     попапе" и "открыть в новой вкладке", потому что в поиске это два РАЗНЫХ сценария (см.
+     openFdg.js: попапу отдаётся ссылка с &scroll=instant — резкий прыжок, новому окну чистая —
+     плавная прокрутка), и до сих пор клик молча выбирал за пользователя один из них.
+
+     Слушатель именно на document в фазе ПЕРЕХВАТА и именно в этом месте файла: openFdg.js
+     подключается ниже (в конце страницы) и вешает свой capture-обработчик на тот же document.
+     При равных цели и фазе порядок решает регистрация — наш скрипт исполняется раньше, поэтому
+     мы успеваем перехватить клик до того, как openFdg сам откроет попап. */
+  (function quoteContextMenu() {
+    var isRu = (localStorage.getItem('dhammaLanguage') || localStorage.getItem('siteLanguage') || 'en') === 'ru'
+      || location.pathname.indexOf('/ru') === 0;
+    var L = isRu
+      ? { popup: 'Открыть в попапе', tab: 'Открыть в новой вкладке', quote: 'Копировать цитату',
+          link: 'Копировать ссылку', audio: 'Слушать',
+          copiedQuote: 'Цитата скопирована', copiedLink: 'Ссылка скопирована' }
+      : { popup: 'Open in popup', tab: 'Open in new tab', quote: 'Copy quote',
+          link: 'Copy link', audio: 'Listen',
+          copiedQuote: 'Quote copied', copiedLink: 'Link copied' };
+
+    var menu = document.createElement('div');
+    menu.id = 'dg-quote-menu';
+    menu.hidden = true;
+    menu.innerHTML =
+      '<button type="button" data-act="popup">' + L.popup + '</button>' +
+      '<button type="button" data-act="tab">' + L.tab + '</button>' +
+      '<button type="button" data-act="quote">' + L.quote + '</button>' +
+      '<button type="button" data-act="link">' + L.link + '</button>' +
+      '<button type="button" data-act="audio">' + L.audio + '</button>';
+    document.addEventListener('DOMContentLoaded', function () { document.body.appendChild(menu); });
+
+    var ctx = null;
+
+    function close() { menu.hidden = true; ctx = null; }
+
+    function openAt(x, y) {
+      menu.hidden = false;
+      var r = menu.getBoundingClientRect();
+      var left = Math.min(x, window.innerWidth - r.width - 8);
+      var top = y + r.height + 8 > window.innerHeight ? y - r.height - 8 : y + 8;
+      menu.style.left = Math.max(8, left) + 'px';
+      menu.style.top = Math.max(8, top) + 'px';
+    }
+
+    document.addEventListener('click', function (e) {
+      var link = e.target.closest && e.target.closest('a.fdgLink');
+      if (!link || !link.closest('.quote') || !link.closest('#search-pane')) return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      ctx = { link: link, line: link.closest('[class*="-lang"], .variant') };
+      openAt(e.clientX, e.clientY);
+    }, true);
+
+    menu.addEventListener('click', function (e) {
+      var btn = e.target.closest('button');
+      if (!btn || !ctx) return;
+      var act = btn.dataset.act;
+      var link = ctx.link;
+      var ctxLine = ctx.line;
+      // Текст строки без служебного ✦ обеих ссылок (они рисуются через ::before).
+      var text = ctxLine ? ctxLine.textContent.replace(/✦/g, '').trim() : '';
+      var url = link.href;
+      close(); // ctx обнуляется здесь, поэтому всё нужное снято в локальные переменные выше
+
+      if (act === 'popup') {
+        // Открываем попап openFdg.js напрямую, а не переигрывая клик по ссылке. Переигровка
+        // выглядит естественнее, но клик по ✦ проходит и через ленивый загрузчик словаря
+        // (settings.js слушает .pli-lang/[lang=pi], гасит клик, догружает paliLookup.js и сам
+        // переотправляет клик заново) — этот его повтор приходит уже без нашей метки и снова
+        // открывает меню поверх попапа. Прямой вызов от порядка обработчиков не зависит.
+        // Значения — те же, что строит openFdg.js: попапу ссылка с scroll=instant (резкий прыжок
+        // в маленьком окне), кнопке "в новом окне" — чистая (плавная прокрутка).
+        // setTimeout обязателен: у openFdg есть обработчик "клик мимо попапа — закрыть". Если
+        // показать попап прямо здесь, тот же самый клик по пункту меню дораспространяется до
+        // него, считается кликом мимо попапа и немедленно его закрывает (проверено: display
+        // возвращался в none, src в about:blank). Даём клику завершиться.
+        setTimeout(function () {
+          var popupEl = document.querySelector('.fdg-popup');
+          var frameEl = document.querySelector('.fdg-iframe');
+          if (popupEl && frameEl) {
+            var u = new URL(url, location.origin);
+            u.searchParams.set('scroll', 'instant');
+            frameEl.src = u.toString();
+            // .fdg-open-new-window-btn — <a target="_blank"> из createFdgPopup(), href на нём
+            // проставляется только в момент открытия попапа, поэтому селектор по a[href] его не
+            // находит: атрибута ещё нет.
+            var newWinBtn = popupEl.querySelector('.fdg-open-new-window-btn');
+            if (newWinBtn) newWinBtn.href = url;
+            popupEl.style.display = 'block';
+          } else {
+            window.open(url, '_blank', 'noopener'); // попапа на странице нет — не молчим
+          }
+        }, 0);
+      } else if (act === 'tab') {
+        window.open(url, '_blank', 'noopener');
+      } else if (act === 'audio') {
+        // Тот же путь, что у пункта "Слушать" в ридере (reader/common.js, sm-audio):
+        // activateSegmentForTTS помечает строку активной и создаёт .dynamic-tts-btn, дальше
+        // играет уже voice.js. На странице результатов озвучка по умолчанию не грузится (см.
+        // loadVoiceScripts в settings.js) — здесь просим её явно, вторым аргументом.
+        if (!ctxLine || typeof window.activateSegmentForTTS !== 'function') return;
+        var play = function () {
+          window.activateSegmentForTTS(ctxLine);
+          var btn = document.querySelector('.dynamic-tts-btn');
+          if (btn) btn.click();
+        };
+        if (window.isVoiceScriptLoaded) play();
+        else if (typeof window.loadVoiceScripts === 'function') window.loadVoiceScripts(play, true);
+      } else if (act === 'quote' || act === 'link') {
+        var payload = act === 'quote' ? text : url;
+        navigator.clipboard.writeText(payload).then(function () {
+          if (typeof window.showBubbleNotification === 'function') {
+            window.showBubbleNotification(act === 'quote' ? L.copiedQuote : L.copiedLink);
+          }
+        });
+      }
+    });
+
+    document.addEventListener('click', function (e) { if (!menu.hidden && !menu.contains(e.target)) close(); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
+    window.addEventListener('scroll', close, true);
+  })();
 </script>
 
     <h3 class="pl-2 resultheader ml-2" id="dynamicHeader"></h3>
@@ -357,6 +513,11 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
 <img src="/assets/svg/circle-half-stroke.svg" onclick="switchIcon(this)" class="changesvg table-theme-icon gray-icon"></img>
 </button>
 <button id="btn-show-all-children" class="btn btn-light mb-1" type="button">{{toolbar.expandCollapseLabel}}</button>
+
+<!-- Показать/скрыть колонку отметок "прочитано". Отметки хранятся отдельно для каждого поиска
+     (search-render.js, readMarksKey = запрос + область) — колонка про проход по конкретной
+     выдаче, а не про «прочитанность» сутты вообще. -->
+<button id="btn-read-marks" class="btn btn-light mb-1" type="button" aria-pressed="false">{{toolbar.readMarksLabel}}</button>
 
 <button class="btn btn-light forshellscript mb-1" type="button"><a class="text-decoration-none " href="javascript:void(0)">{{toolbar.wordsToggleShow}}</a></button>
 
@@ -815,7 +976,9 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
    <thead class="thead-light">
         <tr>
             <th>{{table.suttaCol}}</th>
-
+            <!-- Отметки "прочитано". Колонка скрыта по умолчанию (visible:false в
+                 search-render.js), показывается кнопкой #btn-read-marks. -->
+            <th>{{table.readCol}}</th>
             <th>{{table.titleCol}}</th>
             <th>{{table.wordsCol}}</th>
             <th>{{table.countCol}}</th>

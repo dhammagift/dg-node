@@ -552,11 +552,47 @@ window.DgSearchRender = (function () {
     // консервации state.
     function suttaTableHeaderTitles() {
         return [
-            t('table.suttaCol', 'Sutta'), t('table.titleCol', 'Title'), t('table.wordsCol', 'Words'),
-            t('table.countCol', 'Ct'), t('table.mrCol', 'Mr'), t('table.linksCol', 'Links'),
-            t('table.typeCol', 'Type'), t('table.quoteCol', 'Quote')
+            t('table.suttaCol', 'Sutta'), t('table.readCol', '✓'), t('table.titleCol', 'Title'),
+            t('table.wordsCol', 'Words'), t('table.countCol', 'Ct'), t('table.mrCol', 'Mr'),
+            t('table.linksCol', 'Links'), t('table.typeCol', 'Type'), t('table.quoteCol', 'Quote')
         ];
     }
+
+    /* Отметки "прочитано" — вторая колонка с чекбоксами. Состояние хранится ОТДЕЛЬНО ДЛЯ КАЖДОГО
+       ПОИСКА (ключ = запрос + область), а не одним общим списком: одна и та же сутта может быть
+       разобрана в одном поиске и не тронута в другом, а колонка нужна именно чтобы отслеживать
+       проход по конкретной выдаче. Колонка по умолчанию скрыта и включается кнопкой на панели;
+       если по этому поиску отметки уже есть, она показывается сама. */
+    var READ_MARKS_PREFIX = 'dgReadMarks:';
+
+    function readMarksKey() {
+        var params = new URLSearchParams(window.location.search);
+        var q = (activeState && activeState.query) || params.get('q') || '';
+        var scope = params.get('scope') || 'default';
+        return READ_MARKS_PREFIX + q.toLowerCase() + '|' + scope;
+    }
+
+    function loadReadMarks() {
+        try {
+            var raw = localStorage.getItem(readMarksKey());
+            var arr = raw ? JSON.parse(raw) : [];
+            return Array.isArray(arr) ? arr : [];
+        } catch (e) { return []; }
+    }
+
+    function isRead(suttaId) { return loadReadMarks().indexOf(suttaId) !== -1; }
+
+    function setRead(suttaId, on) {
+        var marks = loadReadMarks();
+        var i = marks.indexOf(suttaId);
+        if (on && i === -1) marks.push(suttaId);
+        else if (!on && i !== -1) marks.splice(i, 1);
+        var key = readMarksKey();
+        if (marks.length) localStorage.setItem(key, JSON.stringify(marks));
+        else localStorage.removeItem(key);
+    }
+
+    window.DgReadMarks = { has: function () { return loadReadMarks().length > 0; } };
 
     // TODO.md поиск/старый баг 2: DataTables bakes language.search / language.lengthMenu into
     // static DOM at construction time (unlike info/paginate/zeroRecords, which it re-reads from
@@ -639,9 +675,23 @@ window.DgSearchRender = (function () {
                         return '<a class="fdgLink mainLink" target="_blank" href="' + textUrl + '" data-slug="' + data + '">' + data + '</a>';
                     }
                 },
-                // 1: Title
+                // 1: отметка "прочитано" (см. readMarksKey/setRead выше). Колонка скрыта по
+                // умолчанию — включается кнопкой на панели инструментов.
                 {
                     title: headerTitles[1],
+                    data: 'sutta_id',
+                    orderable: false,
+                    searchable: false,
+                    className: 'dg-read-cell text-center',
+                    visible: false,
+                    render: function (data) {
+                        return '<input type="checkbox" class="dg-read-mark" data-sutta="' + data + '"' +
+                            (isRead(data) ? ' checked' : '') + ' aria-label="' + t('table.readColAria', 'Read') + '">';
+                    }
+                },
+                // 2: Title
+                {
+                    title: headerTitles[2],
                     data: 'titles',
                     render: function (data, type, row) {
                         if (!data) return '';
@@ -679,9 +729,9 @@ window.DgSearchRender = (function () {
                         return '<strong class="pli-lang inputscript-ISOPali">' + titlePali + '</strong> ' + titleHtml;
                     }
                 },
-                // 2: Words
+                // 3: Words
                 {
-                    title: headerTitles[2],
+                    title: headerTitles[3],
                     data: 'unique_words',
                     render: function (data, type, row) {
                         if (data && data.length) {
@@ -700,13 +750,13 @@ window.DgSearchRender = (function () {
                         return '';
                     }
                 },
-                // 3: Ct
-                { title: headerTitles[3], data: 'count' },
-                // 4: Mr
-                { title: headerTitles[4], data: 'mr' },
-                // 5: Links
+                // 4: Ct
+                { title: headerTitles[4], data: 'count' },
+                // 5: Mr
+                { title: headerTitles[5], data: 'mr' },
+                // 6: Links
                 {
-                    title: headerTitles[5],
+                    title: headerTitles[6],
                     data: 'sutta_id',
                     orderable: false,
                     render: function (data) {
@@ -721,11 +771,11 @@ window.DgSearchRender = (function () {
                             ruLinkHtml;
                     }
                 },
-                // 6: Type
-                { title: headerTitles[6], data: 'category' },
-                // 7: Quote
+                // 7: Type
+                { title: headerTitles[7], data: 'category' },
+                // 8: Quote
                 {
-                    title: headerTitles[7],
+                    title: headerTitles[8],
                     data: 'segments',
                     className: 'none',
                     render: function (data, type, row) {
@@ -852,25 +902,55 @@ window.DgSearchRender = (function () {
                 }
             ],
             columnDefs: [
+                // Индексы сдвинуты на +1 начиная со второго столбца — между Sutta и Title
+                // вставлена колонка отметок "прочитано" (см. columns выше).
                 { type: 'natural', targets: 0, className: 'text-nowrap' },
-                { targets: 1, width: '40%' },
-                { targets: 2, width: '30%' },
-                { targets: [3, 4, 5, 6], className: 'text-nowrap' },
-                { type: 'category', targets: 6, visible: false },
-                { type: "html", targets: [0, 1, 2, 7] },
-                { targets: [3], orderData: [3, 4], orderSequence: ['desc', 'asc'] },
-                { targets: [4], orderData: [4, 3], orderSequence: ['desc', 'asc'] }
+                { targets: 2, width: '40%' },
+                { targets: 3, width: '30%' },
+                { targets: [4, 5, 6, 7], className: 'text-nowrap' },
+                { type: 'category', targets: 7, visible: false },
+                { type: "html", targets: [0, 2, 3, 8] },
+                { targets: [4], orderData: [4, 5], orderSequence: ['desc', 'asc'] },
+                { targets: [5], orderData: [5, 4], orderSequence: ['desc', 'asc'] }
             ],
             // category first (dhamma = the 4 nikayas), then id — server already sorts this way
             // (sortSuttaResults in dg-light.js), DataTables re-applies its own `order` on init
             // regardless of JSON key order, so it's repeated here as the single source of truth
             // for the default sort (see the file-level comment re: TODO.md поиск п.5's sort bug).
-            order: [[6, 'asc'], [0, 'asc']]
+            order: [[7, 'asc'], [0, 'asc']]
         });
 
         suttaTableApi = $table.DataTable(options);
         bindExpandCollapseButtons($table);
+        bindReadMarks($table);
         return suttaTableApi;
+    }
+
+    /* Колонка отметок: кнопка на панели показывает/прячет её, чекбоксы пишут состояние по ключу
+       текущего поиска. Если по этому поиску отметки уже стоят — колонка открывается сама, иначе
+       пользователю пришлось бы каждый раз вспоминать, что он её включал. */
+    function bindReadMarks($table) {
+        var col = suttaTableApi.column(1);
+        var $btn = $('#btn-read-marks');
+
+        function sync(visible) {
+            col.visible(visible, false);
+            suttaTableApi.columns.adjust();
+            $btn.attr('aria-pressed', visible ? 'true' : 'false');
+            $btn.toggleClass('active', visible);
+        }
+
+        sync(loadReadMarks().length > 0);
+
+        $btn.off('click.dgread').on('click.dgread', function () {
+            sync(!col.visible());
+        });
+
+        // Делегирование: строки перерисовываются на каждой догрузке цитат, вешать обработчик на
+        // сами чекбоксы бессмысленно — их узлы живут только до следующей перерисовки.
+        $table.off('change.dgread').on('change.dgread', 'input.dg-read-mark', function () {
+            setRead(this.dataset.sutta, this.checked);
+        });
     }
 
     // Отчёт с группировкой по словам: Word | Texts | Matches | Links

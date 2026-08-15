@@ -9,6 +9,7 @@
   },
   "toolbar": {
     "expandCollapseLabel": "Saṁvaṭṭo / Vivaṭṭo",
+    "readMarksLabel": "Read marks",
     "wordsToggleShow": "Words",
     "wordsToggleHide": "Texts",
     "compassAriaLabel": "Open Cattāri Ariyasaccāni",
@@ -18,6 +19,8 @@
   },
   "table": {
     "suttaCol": "Sutta",
+    "readCol": "✓",
+    "readColAria": "Read",
     "titleCol": "Title",
     "wordsCol": "Words",
     "countCol": "Ct",

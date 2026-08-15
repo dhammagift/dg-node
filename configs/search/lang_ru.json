@@ -9,6 +9,7 @@
   },
   "toolbar": {
     "expandCollapseLabel": "Saṁvaṭṭo / Vivaṭṭo",
+    "readMarksLabel": "Отметки",
     "wordsToggleShow": "Слова",
     "wordsToggleHide": "Тексты",
     "compassAriaLabel": "Открыть Cattāri Ariyasaccāni",
@@ -18,6 +19,8 @@
   },
   "table": {
     "suttaCol": "Sutta",
+    "readCol": "✓",
+    "readColAria": "Прочитано",
     "titleCol": "Название",
     "wordsCol": "Слова",
     "countCol": "Кол-во",
