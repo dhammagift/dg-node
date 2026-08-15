@@ -37,7 +37,10 @@ window.DgSearchRender = (function () {
     // пересборке таблицы — теперь таблица не пересобирается, так что render()-колбэки должны
     // читать АКТУАЛЬНОЕ значение из общего изменяемого объекта на каждый вызов (DataTables и
     // так зовёт render() заново на каждой перерисовке — достаточно просто не кэшировать его).
-    var activeState = { highlightWord: '', scope: '', requestedLangs: [] };
+    // langsFromUrl — пришли ли языки из ?langs= в адресе (тогда они распространяются и на ссылки
+    // в ридер), или это сохранённая настройка "Языки для поиска" (тогда они только про показ
+    // результатов, см. buildSuttaUrl).
+    var activeState = { highlightWord: '', scope: '', requestedLangs: [], langsFromUrl: false };
 
     var suttaTableApi = null;
     var wordTableApi = null;
@@ -520,12 +523,14 @@ window.DgSearchRender = (function () {
         if (highlightWord) params.push('s=' + encodeURIComponent(highlightWord));
         params.push('lang=' + lang);
         // langs= (набор/порядок языков ПЕРЕВОДА — не путать с lang=, языком интерфейса выше).
-        // Приоритет: явный ?langs=, который пользователь сам задал в поиске
-        // (activeState.requestedLangs) → сохранённые в мастер-настройках "языки для чтения"
-        // (dhammaReaderLangs, settings/) → "языки для поиска" (dhammaSearchLangs, тот же
-        // источник, если для чтения отдельного значения не задано — переключатель "так же,
-        // как для поиска") → иначе ридер использует свой собственный дефолт без параметра.
-        var readerLangs = (activeState.requestedLangs && activeState.requestedLangs.length)
+        // Это ссылка В РИДЕР, поэтому языки берутся читательские, а не те, которыми показана
+        // выдача. Важно с тех пор, как requestedLangs заполняется и из настройки "Языки для
+        // поиска": она про то, как показать РЕЗУЛЬТАТЫ, и тащить её в ридер неправильно —
+        // человек может искать по немецкому, а читать по-русски. Явный ?langs= в адресе поиска
+        // остаётся сильнее всего: там пользователь задал языки вручную для всего сразу.
+        // Дальше: "языки для чтения" → "языки для поиска" (если отдельного значения для чтения
+        // нет — включён переключатель "так же, как для чтения") → без параметра, дефолт ридера.
+        var readerLangs = (activeState.langsFromUrl && activeState.requestedLangs.length)
             ? activeState.requestedLangs.join(',')
             : (localStorage.getItem('dhammaReaderLangs') || localStorage.getItem('dhammaSearchLangs') || '');
         if (readerLangs) {
@@ -608,8 +613,9 @@ window.DgSearchRender = (function () {
         if (wordTableApi) { wordTableApi.destroy(); wordTableApi = null; }
     }
 
-    function buildDataTable(container, dataArray, highlightWord, requestedLangs) {
+    function buildDataTable(container, dataArray, highlightWord, requestedLangs, langsFromUrl) {
         activeState.highlightWord = highlightWord;
+        activeState.langsFromUrl = !!langsFromUrl;
         // ?langs= — явный список языков, которые пользователь ПОПРОСИЛ увидеть (не только
         // ru/en-дефолт). Раз он попросил конкретный язык через langs=, показывать его
         // безусловно, а не только "если совпадение реально есть в нём" (см. alwaysShown ниже) —

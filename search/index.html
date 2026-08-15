@@ -1115,7 +1115,10 @@ $(document).ready(function() {
     var pendingIds = new Set();
     var backgroundLoadPromise = null;
     var enrichmentStarted = false;
-    var keyword = '', scope = 'default', lb = 0, la = 0, langs = 'ru,en', langsExplicit = false;
+    // langsExplicit — языки пришли из адреса (?langs=), это фиксируется в ссылках навигации.
+    // langsRequested — языки вообще заданы пользователем: из адреса ИЛИ из мастер-настроек
+    // ("Языки для поиска"). Для отрисовки важно именно второе.
+    var keyword = '', scope = 'default', lb = 0, la = 0, langs = 'ru,en', langsExplicit = false, langsRequested = false;
 
     function buildUrl(path, extra) {
         var isLocal = ['localhost', '127.0.0.1'].includes(window.location.hostname);
@@ -1178,7 +1181,14 @@ $(document).ready(function() {
                 r.__enriched = enrichedIds.has(r.sutta_id);
                 return r;
             });
-            table = window.DgSearchRender.buildDataTable('#pali', rows, lastHighlightWord, langsExplicit ? langs : '');
+            // langsRequested, а не langsExplicit: раньше состав и порядок языков в выдаче
+            // задавались ТОЛЬКО через ?langs= в адресе, а сохранённые "Языки для поиска" из
+            // мастер-настроек сюда не доезжали — рендер откатывался на эвристику "язык интерфейса
+            // + en". Из-за этого настройка выглядела мёртвой: добавленный для поиска язык не
+            // появлялся, порядок не менялся, и казалось, что побеждает настройка ридера (она
+            // обычно совпадает с этой эвристикой). Сам запрос к /search языки поиска использовал
+            // и раньше — расходились именно запрос и отрисовка.
+            table = window.DgSearchRender.buildDataTable('#pali', rows, lastHighlightWord, langsRequested ? langs : '', langsExplicit);
             $('.forshellscript a').text(t('toolbar.wordsToggleShow', 'Слова'));
             // Именованное событие (.enrich) — таблица больше не пересоздаётся, так что "draw"
             // может сработать много раз за сессию; .off+.on тем же неймспейсом не даёт слушателям
@@ -1591,7 +1601,9 @@ $(document).ready(function() {
         // с дефолтом молча. localStorage.dhammaSearchLangs — сохранённые в мастер-настройках
         // языки поиска (settings/), приоритет ниже явного URL-параметра.
         langsExplicit = urlParams.has('langs');
-        langs = urlParams.get('langs') || localStorage.getItem('dhammaSearchLangs') || 'ru,en';
+        const savedSearchLangs = localStorage.getItem('dhammaSearchLangs');
+        langsRequested = langsExplicit || savedSearchLangs !== null;
+        langs = urlParams.get('langs') || savedSearchLangs || 'ru,en';
 
         let searchValue = sParam && sParam.trim() !== "" ? sParam.replace(/\\b/g, '') : divKeyword.replace(/\\b/g, '');
         let highlightWord = searchValue || keyword;
