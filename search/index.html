@@ -415,9 +415,12 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     var path = location.pathname.replace(/\/+$/, '');
     var hasQuery = new URLSearchParams(location.search).has('q');
     if (!hasQuery && (path === '' || path === '/index.html')) b.classList.add('dg-state-home');
-    requestAnimationFrame(function () {
-        requestAnimationFrame(function () { b.classList.remove('dg-no-anim'); });
-    });
+    // Снимаем после первой отрисовки. Таймер — не подстраховка "на всякий случай", а рабочая
+    // ветка: в фоновой вкладке requestAnimationFrame не вызывается вообще, и без него класс
+    // залипал бы навсегда, отключив все переходы на странице (проверено).
+    var unlock = function () { b.classList.remove('dg-no-anim'); };
+    requestAnimationFrame(function () { requestAnimationFrame(unlock); });
+    setTimeout(unlock, 400);
 })();
 </script>
 
@@ -1291,7 +1294,10 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
 </div>
     </div>
 
-    <div id="reader-pane" class="container-fluid mt-4 d-none">
+    <!-- Панель ридера. Класс d-none снят: видимостью теперь управляет состояние страницы
+         (body.dg-state-reader, см. home.css) — d-none это display:none !important, его нельзя
+         было бы перебить состоянием. -->
+    <div id="reader-pane" class="container-fluid mt-4">
         <div id="navigation" class="navigation">
             <div id="previous"></div>
             <div id="next"></div>
@@ -1743,9 +1749,16 @@ $(document).ready(function() {
             // ридер (ветка ниже) — по-прежнему настоящая навигация: это другая страница.
             history.pushState({ dgSearch: true }, '', url);
             runSearchFromUrl();
-        } else {
+        } else if (route.type === 'text') {
+            // Раньше здесь была настоящая навигация — ридер был другой страницей. Теперь текст
+            // открывается на месте, тем же способом, что и клик по сутте в выдаче.
             var qs2 = currentParams.toString();
-            window.location.href = '/' + encodeURIComponent(route.id) + (qs2 ? '?' + qs2 : '');
+            history.pushState({ dgReader: true }, '', '/' + encodeURIComponent(route.id) + (qs2 ? '?' + qs2 : ''));
+            openReaderInPlace(route.id);
+        } else {
+            // chapter — оглавление раздела, его пока отдаёт сервер отдельной страницей.
+            var qs3 = currentParams.toString();
+            window.location.href = '/' + encodeURIComponent(route.id) + (qs3 ? '?' + qs3 : '');
         }
     });
 
@@ -1889,6 +1902,117 @@ $(document).ready(function() {
         if (name !== 'home' && window.DgHome) window.DgHome.closeSheet();
     }
 
+    /* ---------------- Ридер в ЭТОМ ЖЕ документе ----------------
+       Раньше переход в текст был настоящей навигацией (window.location.href) — ридер был другой
+       страницей. Теперь megareader.js подключается сюда лениво, при первом открытии текста, и
+       рисует в #reader-pane, который в разметке ниже лежал заготовкой ещё до этой правки.
+       Лениво — потому что на главной и в выдаче ридер не нужен, а это ещё ~52 КБ кода и три
+       таблицы стилей. */
+    var readerAssetsPromise = null;
+    function ensureReaderAssets() {
+        if (readerAssetsPromise) return readerAssetsPromise;
+
+        /* ОБЯЗАТЕЛЬНО до загрузки megareader.js: контейнер он берёт ОДИН раз, на верхнем уровне
+           файла (const suttaArea = getElementById(window.MEGAREADER_SUTTA_ID || "sutta")), и
+           позже это уже не переиграть. Дефолтный id "sutta" здесь занят <tbody> таблицы
+           результатов — без этой строки ридер отрисовался бы прямо поверх выдачи. */
+        window.MEGAREADER_SUTTA_ID = 'reader-sutta';
+
+        // Те же три таблицы стилей, что подключает reader/reader-template.html, и в том же
+        // порядке. Подключаются последними, уже после home.css — правила ридера должны
+        // выигрывать внутри #reader-pane.
+        ['/reader/css/index.css', '/reader/css/rus-multi.css', '/reader/css/uiextra.css'].forEach(function (href) {
+            var link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.href = href;
+            link.className = 'dg-reader-css';
+            document.head.appendChild(link);
+        });
+
+        readerAssetsPromise = new Promise(function (resolve, reject) {
+            var s = document.createElement('script');
+            s.src = '/reader/megareader.js';
+            s.onload = resolve;
+            s.onerror = reject;
+            document.head.appendChild(s);
+        });
+        return readerAssetsPromise;
+    }
+
+    /* Открыть текст, не уходя со страницы. Адрес уже должен быть выставлен вызывающим (клик по
+       ссылке в выдаче / сабмит / popstate) — дальше работает window.initReader() из
+       megareader.js: он сам читает адрес (слаг из пути, сегмент после ":", ?langs=/?script=/
+       ?scroll=), рисует текст, прокручивает к сегменту и подсвечивает его. Звать напрямую
+       buildSutta() было бы полдела — прокрутка к найденному месту и подсветка живут именно в
+       initReader(). При первом открытии его вызывает сам файл при загрузке, дальше зовём мы. */
+    function openReaderInPlace(slug) {
+        dgSetState('reader');
+        var firstTime = !readerAssetsPromise;
+        return ensureReaderAssets()
+            .then(function () {
+                if (!firstTime && typeof window.initReader === 'function') return window.initReader();
+            })
+            .catch(function (err) {
+                // Не смогли собрать ридер на месте — уходим на отдельную страницу ридера, как
+                // это работало до SPA. Лучше лишняя перезагрузка, чем пустой экран.
+                console.error('Ридер не поднялся на месте, ухожу на отдельную страницу:', err);
+                window.location.href = '/' + encodeURIComponent(slug);
+            });
+    }
+
+    /* Слаг текста из адреса: "/dn1:1.22.2?s=..." -> "dn1". DgTextRouter.classify() рассчитан на
+       ввод человека и про суффикс сегмента не знает ("dn1:1.22.2" он считает поисковой строкой),
+       поэтому отрезаем сегмент до проверки, а в ридер уходит адрес целиком. */
+    function textIdFromPath(pathname) {
+        var raw = decodeURIComponent(pathname.replace(/^\/+|\/+$/g, ''));
+        if (!raw || !window.DgTextRouter) return null;
+        var base = raw.split(':')[0];
+        var route = window.DgTextRouter.classify(base);
+        return route.type === 'text' ? route.id : null;
+    }
+
+    /* megareader.js зовёт эти два глобала, но нигде в живом коде их не было (только в unused/) —
+       готовые точки расширения ровно под такую склейку. Первый — когда /api/text/:id ответил 404
+       (человек ввёл id, которого нет): вместо пустого ридера показываем выдачу по той же строке,
+       и тоже без перезагрузки. */
+    window.executeGlobalSearch = function (keyword) {
+        history.replaceState({ dgSearch: true }, '', '/' + encodeURIComponent(keyword));
+        runSearchFromUrl();
+    };
+    window.handleFetchError = function (slug) { window.executeGlobalSearch(slug); };
+
+    /* Единственный решатель "что показать по текущему адресу". Раньше popstate безусловно звал
+       runSearchFromUrl() — теперь адрес может означать и текст. */
+    function routeFromUrl() {
+        // Явный ?q= — всегда поиск (легаси-формат входа, старые ссылки и закладки).
+        if (!new URLSearchParams(window.location.search).has('q')) {
+            // chapter (целая никая, оглавление) сюда не попадает: своего оглавления в SPA ещё
+            // нет, его по-прежнему отдаёт сервер отдельной страницей — это следующий шаг.
+            var id = textIdFromPath(window.location.pathname);
+            if (id) { openReaderInPlace(id); return; }
+        }
+        runSearchFromUrl();
+    }
+
+    /* Клик по ссылке на текст в выдаче — открываем на месте. Уводим в SPA ТОЛЬКО обычный левый
+       клик по собственному чистому адресу вида /dn22?...: клик с Ctrl/Cmd/Shift/Alt и средней
+       кнопкой должен по-прежнему открывать новую вкладку (у этих ссылок стоит target="_blank",
+       и осознанный "открыть в новой вкладке" мы не отбираем), а ссылки на легаси-ридер (/read/,
+       /r/, /ml/, ...) и на /4nt/ ведут на другие приложения — их не трогаем вовсе. */
+    document.addEventListener('click', function (e) {
+        if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.defaultPrevented) return;
+        var a = e.target.closest ? e.target.closest('#search-pane a.fdgLink') : null;
+        if (!a) return;
+        var href = a.getAttribute('href') || '';
+        if (href.charAt(0) !== '/') return;
+        var u = new URL(href, window.location.origin);
+        var id = textIdFromPath(u.pathname);
+        if (!id) return;
+        e.preventDefault();
+        history.pushState({ dgReader: true }, '', u.pathname + u.search + u.hash);
+        openReaderInPlace(id);
+    });
+
     async function initSearchApp() {
         let urlParams = new URLSearchParams(window.location.search);
 
@@ -1970,10 +2094,11 @@ $(document).ready(function() {
         initSearchApp();
     }
     // Кнопки "назад/вперёд" браузера при SPA-навигации: адрес меняется, а страница та же —
-    // перерисовываем содержимое под новый адрес сами.
-    window.addEventListener('popstate', function () { runSearchFromUrl(); });
+    // перерисовываем содержимое под новый адрес сами. Через routeFromUrl(), а не сразу
+    // runSearchFromUrl(): в истории теперь бывают и адреса текстов, не только запросов.
+    window.addEventListener('popstate', function () { routeFromUrl(); });
 
-    initSearchApp();
+    routeFromUrl();
 });
 </script>
         <script src="/assets/js/openFdg.js"></script>

@@ -115,6 +115,53 @@ body.dg-state-home #language-button,
 body.dg-state-home #scrollToTopBtn {
     display: none;
 }
+/* ============================================================================
+   Совместимость с таблицами стилей ридера
+   Они подключаются в рантайме (при первом открытии текста), то есть ПОСЛЕ всех остальных, и
+   выигрывают по порядку. Здесь — точечные ответы на конкретные конфликты.
+   ============================================================================ */
+
+/* reader/css/uiextra.css содержит `#form.ui-widget #paliauto, #paliauto { padding-left:10px
+   !important }` — ДВА id в первом селекторе, поэтому ни !important, ни более поздняя позиция
+   сами по себе не помогают (это уже ловили, см. docs/SPA_HANDOVER.md §4). После открытия текста
+   отступ поля схлопывался с 42px до 10px, и введённый текст залезал под лупу. Уравниваем число
+   id и добавляем элемент, чтобы выиграть по специфичности. */
+body #form #paliauto.searchinput {
+    padding-left: 42px !important;
+}
+
+/* И index.css, и rus-multi.css задают глобальное `body { margin:1rem 3rem; background-color;
+   font-family:"Robto Serif" }`. Пока ридер был отдельной страницей, это никого не задевало;
+   теперь, один раз открыв текст, выдача до конца сессии съезжала на 3rem и меняла шрифт.
+   Возвращаем ей своё оформление везде, КРОМЕ состояния ридера — там правила ридера как раз
+   нужны. Специфичность (0,1,1) против (0,0,1) у голого `body`, поэтому побеждаем и без
+   !important; домашний скин со своим фоном имеет (0,2,1) и остаётся сильнее. */
+body:not(.dg-state-reader) {
+    margin: 0;
+    font-family: var(--bs-body-font-family);
+    background-color: var(--bs-body-bg);
+}
+
+/* Панель ридера видна только в своём состоянии. В разметке у неё раньше стоял bootstrap-овский
+   d-none (display:none !important) — его перебить состоянием было нельзя, поэтому класс снят, а
+   видимость целиком здесь. */
+#reader-pane { display: none; }
+body.dg-state-reader #reader-pane { display: block; }
+
+/* В ридере выдача остаётся в DOM (возврат по "назад" мгновенный), но не показывается. Из общего
+   ряда кнопок прячем только то, что относится к выдаче: разворачивание строк, отметки
+   "прочитано", переключатель "Тексты/Слова" и заголовок результатов. Тема, язык, словарь,
+   компас, настройки и помощь нужны и при чтении. */
+body.dg-state-reader #search-pane,
+body.dg-state-reader #results-divider,
+body.dg-state-reader #dynamicHeader,
+body.dg-state-reader #btn-show-all-children,
+body.dg-state-reader #btn-read-marks,
+body.dg-state-reader .forshellscript {
+    display: none;
+}
+body.dg-state-reader #variants-hint { display: none !important; }
+
 /* #variants-hint — отдельно и с !important: скрипт выдачи показывает его ИНЛАЙНОВЫМ
    style="display:block" (см. renderResultHeader в index.html), а инлайн бьёт любой селектор
    таблицы стилей. Без этого подсказка "у слова есть варианты" оставалась висеть на главной
