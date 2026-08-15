@@ -318,7 +318,11 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
         left: 4px;
         top: 50%;
         transform: translateY(-50%);
-        z-index: 4;
+        /* Выше поля: у .searchinput z-index 9, и непрозрачный белый инпут закрывал иконку
+           собой — она честно существовала (17x17) и даже занимала место, но не была видна,
+           отсюда и "лупы нет, просто пустое место". Проверяется elementFromPoint по центру
+           иконки: сверху должен быть SVG, а не INPUT. */
+        z-index: 12;
         width: 34px;
         height: 34px;
         padding: 0;
@@ -335,6 +339,10 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
         color: var(--bs-body-color, #212529);
         background: var(--bs-secondary-bg, #e9ecef);
     }
+    /* Лупа развёрнута вправо: линза справа, ручка влево-вниз. У исходного контура (тот же, что
+       у fa-magnifying-glass) линза слева, а ручка уходит вправо-вниз — зеркалим по горизонтали.
+       Это то же, что делал класс fa-flip-horizontal в старой разметке. */
+    .dg-search-icon { transform: scaleX(-1); }
     /* Звёздочка состава области поиска в заголовке — приглушённая, размером с текст, не
        перетягивает внимание с самого заголовка. */
     .scope-info-star {
@@ -419,7 +427,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
            Ручка направлена вправо-вниз, как у обычной лупы (раньше стоял fa-flip-horizontal,
            который её зеркалил). -->
       <button type="submit" id="searchbtn" class="btn" aria-label="Search" data-i18n-aria-label="{{search.label}}">
-        <svg viewBox="0 0 512 512" width="17" height="17" fill="currentColor" aria-hidden="true">
+        <svg class="dg-search-icon" viewBox="0 0 512 512" width="17" height="17" fill="currentColor" aria-hidden="true">
           <path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352a144 144 0 1 0 0-288 144 144 0 1 0 0 288z"/>
         </svg>
       </button>
