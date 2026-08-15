@@ -7,6 +7,14 @@
     "label": "Search",
     "placeholder": "e.g. Kāyagat or sn56.11"
   },
+  "home": {
+    "motto": "Find the Truth",
+    "hintSearch": "search for “{q}”",
+    "hintText": "looks like a link to a text",
+    "recent": "Recent",
+    "allHistory": "Full history",
+    "noItems": "Nothing here yet"
+  },
   "toolbar": {
     "expandCollapseLabel": "Saṁvaṭṭo / Vivaṭṭo",
     "readMarksLabel": "Read marks",

@@ -7,6 +7,14 @@
     "label": "Поиск",
     "placeholder": "например, Kāyagat или sn56.11"
   },
+  "home": {
+    "motto": "Найдите Истину",
+    "hintSearch": "искать «{q}»",
+    "hintText": "похоже на ссылку на текст",
+    "recent": "Недавнее",
+    "allHistory": "Вся история",
+    "noItems": "Пока пусто"
+  },
   "toolbar": {
     "expandCollapseLabel": "Saṁvaṭṭo / Vivaṭṭo",
     "readMarksLabel": "Отметки",

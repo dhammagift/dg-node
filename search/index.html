@@ -394,8 +394,32 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
 <link href="/assets/css/table.css" rel="stylesheet" />
 <!--<script src="https://cdn.jsdelivr.net/gh/virtualvinodh/aksharamukha/aksharamukha-web-plugin/aksharamukha-v3.js?class=verse"></script>-->
 
+<!-- Домашний экран (минималистичный скин). Подключается ПОСЛЕ extrastyles.css/table.css
+     намеренно: у правил равной специфичности выигрывает последнее, а домашние блоки должны
+     побеждать общие. Всё внутри ограничено body.dg-skin-minimal / body.dg-state-home, поэтому на
+     выдачу и на ридер не влияет. -->
+<link rel="stylesheet" href="/nodejs/res/css/home.css">
+
 </head>
 <body>
+<script>
+// Состояние страницы ставим ДО того, как что-то отрисуется: домашние блоки схлопнуты по
+// умолчанию (max-height:0 в home.css), и если ждать jQuery.ready/initSearchApp, на главной
+// мелькнёт пустая страница с одним полем. Здесь только грубая догадка по адресу — окончательное
+// решение принимает initSearchApp() ниже, он же переключит состояние, если ошиблись.
+// dg-no-anim гасит переходы на первый кадр, иначе главная "въезжала" бы анимацией при каждой
+// загрузке (переходы должны играть только при смене состояния, а не на старте).
+(function () {
+    var b = document.body;
+    b.classList.add('dg-skin-minimal', 'dg-no-anim');
+    var path = location.pathname.replace(/\/+$/, '');
+    var hasQuery = new URLSearchParams(location.search).has('q');
+    if (!hasQuery && (path === '' || path === '/index.html')) b.classList.add('dg-state-home');
+    requestAnimationFrame(function () {
+        requestAnimationFrame(function () { b.classList.remove('dg-no-anim'); });
+    });
+})();
+</script>
 
 
 <div class="container-fluid mt-2">
@@ -406,6 +430,18 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
      краю, пока таблица результатов центрировалась отдельно в своей узкой полосе (несогласованный
      вид). Теперь у обоих одна и та же полоса. -->
 <div class="table-wrapper">
+
+<!-- ============ Домашний экран ============
+     Показывается только в состоянии body.dg-state-home (адрес без запроса). Инпут при этом НЕ
+     дублируется — это тот же #paliauto в .hero-row ниже: он физически один и переезжает между
+     состояниями, поэтому фокус, введённый текст и все обработчики переезд переживают. Уход в
+     выдачу — схлопывание этих блоков (max-height/opacity в home.css), из-за чего поле само
+     поднимается вверх. -->
+<div id="home-brand">
+  <img class="dg-logo" src="/assets/img/dgsanhkalogo.png" alt="Dhamma.Gift">
+  <span class="dg-wordmark">dhamma.gift</span>
+</div>
+<p id="home-motto">Найдите Истину</p>
 
 <div class="hero-row mb-2">
   <!-- Домик и бургер — без рамки и заливки (класс dg-plain-btn): в шапке рядом с полем поиска
@@ -449,6 +485,16 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
       <li><a class="dropdown-item" href="/login">{{global.common.login}}</a></li>
     </ul>
   </div>
+</div>
+
+<!-- Подсказка "искать «…» / похоже на ссылку на текст" — тот же DgTextRouter.classify(), что и
+     обработчик сабмита ниже, просто показанный заранее. -->
+<div id="home-hint" aria-live="polite"></div>
+
+<!-- Плитки. Наполнение — /nodejs/res/menu-links.json (перенос боевого горизонтального меню
+     assets/common/horizontalMenu{En,Ru}.php), рисует home.js. -->
+<div id="home-pane">
+  <div class="dg-tiles" id="home-tiles"></div>
 </div>
 
 <script>
@@ -700,6 +746,11 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
   })();
 </script>
 
+<!-- Обёртка над заголовком и рядом кнопок выдачи. Своей вёрстки не несёт (обычный div, кнопки
+     внутри как были инлайновыми, так и остались) — нужна ровно затем, чтобы одним селектором
+     убирать весь ряд на домашнем экране: там ни «Saṁvaṭṭo», ни отметок, ни словаря ещё не к чему
+     применить. -->
+<div id="results-toolbar">
     <h3 class="pl-2 resultheader ml-2" id="dynamicHeader"></h3>
     <script>
         (function() {
@@ -759,6 +810,8 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     <a class="btn btn-light mb-1 form-check-inline mb-1 toggle-icon" alt="Help" data-i18n-alt="{{global.common.help}}" data-bs-toggle="modal" data-bs-target="#SearchResultHelp" id="helpMessage" href="javascript:void(0);">
         <img id="helpResult" class="table-home-icon" src="/assets/svg/question.svg"></img>
         </a>
+</div>
+<!-- /#results-toolbar -->
 
 </div>
 <!-- /.table-wrapper -->
@@ -1176,7 +1229,9 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
 </div>
 
 
-<hr>
+<!-- Разделитель между шапкой/кнопками и выдачей. Получил id, чтобы его можно было убрать на
+     домашнем экране — там он висел одинокой чертой под плитками. -->
+<hr id="results-divider">
 <div id='variants-hint' class="variants" style='display: none;'><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 16 16" fill="currentColor" style="vertical-align:-0.15em;" aria-hidden="true"><path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm.93-9.412-1 4.705c-.07.34.029.533.304.533.194 0 .487-.07.686-.246l-.088.416c-.287.346-.92.598-1.465.598-.703 0-1.002-.422-.808-1.319l.738-3.468c.064-.293.006-.399-.287-.47l-.451-.081.082-.381 2.29-.287zM8 5.5a1 1 0 1 1 0-2 1 1 0 0 1 0 2z"/></svg> <span id="variants-keyword"></span> {{results.hasVariantsSuffix}} <a id="variants-link" href="#">{{results.variantsLinkText}}</a></div>
 
     <div id="search-pane" class="container-fluid table-wrapper mt-4">
@@ -1822,6 +1877,18 @@ $(document).ready(function() {
     // Главная функция запуска поиска — TODO.md поиск п.5: сначала быстрый фазовый ответ
     // (fast=1, без чтения файлов сутт), рендер сразу, затем догрузка цитат для видимой
     // страницы и фоновая полная догрузка остального (см. ensureEnrichmentStarted).
+    /* Состояние страницы: home (главная) / results (выдача) / reader (текст). Живёт классом на
+       <body>, вся вёрстка и анимации переключаются CSS-ом (search/css/home.css). Единственный
+       источник правды — адрес: initSearchApp() читает его и зовёт это, в том числе после
+       pushState на сабмите и после popstate. */
+    var DG_STATES = ['dg-state-home', 'dg-state-results', 'dg-state-reader'];
+    function dgSetState(name) {
+        var cls = 'dg-state-' + name;
+        if (document.body.classList.contains(cls)) return;
+        DG_STATES.forEach(function (s) { document.body.classList.toggle(s, s === cls); });
+        if (name !== 'home' && window.DgHome) window.DgHome.closeSheet();
+    }
+
     async function initSearchApp() {
         let urlParams = new URLSearchParams(window.location.search);
 
@@ -1863,7 +1930,10 @@ $(document).ready(function() {
         let searchValue = sParam && sParam.trim() !== "" ? sParam.replace(/\\b/g, '') : divKeyword.replace(/\\b/g, '');
         let highlightWord = searchValue || keyword;
 
-        if (!keyword) return;
+        // Нет запроса — это главная. Раньше здесь был просто return (пустая страница с одним
+        // полем), теперь то же условие включает домашний экран.
+        if (!keyword) { dgSetState('home'); return; }
+        dgSetState('results');
 
         // Показываем в строке поиска, что сейчас ищем — можно сразу поправить и отправить снова.
         // (keyword уже декодирован — URLSearchParams.get делает это сам.)
@@ -1915,6 +1985,11 @@ $(document).ready(function() {
                 <script src="/assets/js/settings.js"></script>
 <script src="/assets/js/dg-text-router.js"></script>
 <script src="/assets/js/themeswitch.js" defer></script>
+<!-- openWithQuery/openWithQueryMulti/openDictionaries — легаси-функции подстановки {{q}}/{{theme}}
+     из горизонтального меню. Раньше на этой странице их не было (меню жило только в PHP-шапке),
+     а плиткам домашнего экрана они нужны: часть ссылок в menu-links.json — шаблоны. -->
+<script src="/assets/js/openDicts.js"></script>
+<script src="/nodejs/res/js/home.js"></script>
 
 <script>
            //to enable bootstrap tooltip    
