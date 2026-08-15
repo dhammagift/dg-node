@@ -451,6 +451,12 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
   <a href="/" id="home-logo" class="text-decoration-none" title="Dhamma.Gift">
     <img src="/assets/img/dgsanhkalogo.png" alt="Dhamma.Gift">
   </a>
+  <!-- Ракушка (саṅкха) — возврат на главную, слева от поля, ровно на том месте, где на главной
+       стоит полное лого. Тот же элемент и на том же месте в шапке ридера. Без рамки и заливки
+       (dg-plain-btn): круглые кнопки-«пилюли» рядом с полем только шумят. -->
+  <a href="/" class="btn dg-plain-btn dg-home-btn text-decoration-none" title="Home" data-i18n-title="{{global.common.home}}">
+    <img class="table-home-icon" src="/assets/img/dgsankhaonly.png" alt="Dhamma.Gift">
+  </a>
   <form id="form" class="dg-hero-form m-0" autocomplete="off">
     <label class="visually-hidden" for="paliauto">{{search.label}}</label>
     <!-- Лупа ВНУТРИ поля, слева. Справа поле type="search" рисует свой родной крестик
@@ -471,12 +477,6 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
       <input class="form-control rounded-pill searchinput" id="paliauto" type="search" placeholder="e.g. Kāyagat or sn56.11" data-i18n-placeholder="{{search.placeholder}}" autocomplete="off" autofocus>
     </div>
   </form>
-  <!-- Ракушка (саṅкха) — возврат на главную, справа от поля; тот же элемент и на том же месте,
-       что в шапке ридера. Раньше здесь был домик слева от поля. Без рамки и заливки
-       (dg-plain-btn): круглые кнопки-«пилюли» рядом с полем только шумят. -->
-  <a href="/" class="btn dg-plain-btn dg-home-btn text-decoration-none" title="Home" data-i18n-title="{{global.common.home}}">
-    <img class="table-home-icon" src="/assets/img/dgsankhaonly.png" alt="Dhamma.Gift">
-  </a>
   <!-- Компас переехал вниз, в общий ряд кнопок (между словарём и настройками) — см. ниже. -->
   <div class="dropdown">
     <button class="btn dg-plain-btn" type="button" id="burgerMenuBtn" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Menu" title="Menu" data-i18n-aria-label="{{toolbar.menuAriaLabel}}" data-i18n-title="{{toolbar.menuTitle}}">

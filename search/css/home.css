@@ -93,10 +93,12 @@ body.dg-state-home #home-pane  { max-height: 1400px; margin: 1.1rem 0 0; }
 
 body.dg-skin-minimal.dg-state-home .dg-hero-form { max-width: 520px; }
 
-/* Ракушка ведёт на главную — на самой главной она лишняя, там слева от поля стоит полное лого. */
+/* Ракушка ведёт на главную — на самой главной она лишняя, её место слева от поля занимает
+   полное лого. */
 body.dg-state-home .dg-home-btn { display: none; }
 
-/* Полное лого — только на главной, слева от поля, в одном ряду с ним. */
+/* Полное лого — только на главной, слева от поля, ровно там, где в остальных состояниях
+   стоит ракушка. */
 #home-logo { display: none; flex: none; line-height: 0; }
 body.dg-state-home #home-logo { display: inline-flex; }
 #home-logo img { width: 42px; height: 42px; object-fit: contain; }
