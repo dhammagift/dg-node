@@ -172,39 +172,91 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     }
     /* #search-pane is .container-fluid nested inside another .container-fluid, so the 12px
        Bootstrap gutter was applied twice: 24px of dead space on each side of the results
-       table on a 375px phone. The outer container already provides the page gutter. */
+       table on a 375px phone. Обнуляем ОБА: на телефоне таблице нужны буквально несколько
+       пикселей по краям, всё остальное — потерянная ширина строки. */
     @media (max-width: 767.98px) {
+        #search-pane.container-fluid,
+        body > .container-fluid.mt-2 {
+            padding-left: 3px;
+            padding-right: 3px;
+        }
         #search-pane.container-fluid {
             padding-left: 0;
             padding-right: 0;
         }
+        #variants-hint { padding: 0 3px; }
     }
-    /* Language switch — same corner and geometry as in the reader (reader/css/uiextra.css
-       #language-button: fixed, bottom 30px, right 20px, z-index 100, pill radius, 0.8 opacity
-       going opaque on hover). The reader's own colours live in rus-multi.css, which this page
-       does not load, so the button keeps its .btn-light skin and only the placement is shared. */
-    #language-button {
+    /* Language switch — та же геометрия И тот же вид, что в ридере. Цвета ридера живут в
+       rus-multi.css (.hide-button + переменные :root), которую эта страница не подключает,
+       поэтому значения повторены буквально: --off-white rgb(221,221,221), --off-black
+       rgb(4,1,19), --dark-gray #5a5a5a, --dark-blue #42426a, --blue #3434be. Геометрия —
+       из uiextra.css (#language-button: fixed, bottom 30px, right 20px, z-index 100,
+       радиус 32px, padding 5px, прозрачность 0.8 -> 1 и scale(1.1) при наведении). */
+    body #language-button {
         position: fixed;
         bottom: 30px;
         right: 20px;
         z-index: 100;
         border-radius: 32px;
-        padding: 5px 14px;
+        padding: 5px;
+        min-width: 96px;
         opacity: 0.8;
-        /* .mb-1 from the toolbar markup would otherwise add 4px on top of bottom:30px */
+        /* .mb-1 из разметки панели иначе добавил бы 4px поверх bottom:30px */
         margin-bottom: 0;
+        background-color: rgb(221, 221, 221);
+        color: rgb(4, 1, 19);
+        border: solid 2px #5a5a5a;
         transition: transform 0.2s ease, opacity 0.2s ease;
     }
     #language-button:hover {
         opacity: 1;
         transform: scale(1.1);
+        background-color: #42426a;
+        color: rgb(221, 221, 221);
     }
+    body.dark #language-button { background-color: #42426a; color: rgb(221, 221, 221); }
+    body.dark #language-button:hover { background-color: #3434be; color: rgb(221, 221, 221); }
+    /* Стрелка "наверх" — левее кнопки языка, ровно как в ридере (uiextra.css #scrollToTopBtn:
+       bottom 30px, right 90px, 30x30, радиус 32px). До этого обе кнопки стояли в right:20px и
+       налезали друг на друга. */
+    /* Селектор с body — намеренно: extrastyles.css подключается НИЖЕ этого блока и содержит
+       свой #scrollToTopBtn{bottom:20px;right:20px} той же специфичности, то есть выигрывал по
+       порядку, и стрелка оставалась в том же углу, что кнопка языка (замерено: обе на right:20,
+       перекрывались). Лишний body поднимает специфичность и решает спор. */
+    body #scrollToTopBtn {
+        position: fixed;
+        bottom: 30px;
+        right: 90px;
+        z-index: 100;
+        width: 30px;
+        height: 30px;
+        padding: 0;
+        border-width: 2px;
+        border-radius: 32px;
+        opacity: 0.8;
+        transition: transform 0.2s ease, opacity 0.2s ease;
+    }
+    body #scrollToTopBtn:hover { opacity: 1; }
+    /* display НЕ трогаем: smoothScroll.js показывает и прячет кнопку инлайновым стилем по
+       скроллу (тот же файл работает и в ридере) — любое правило display здесь всё равно
+       проиграет инлайну и только запутает. */
+    #scrollToTopBtn:hover { transform: scale(1.15); }
     /* The ✦ link at the start of every quote line. search-render.js has always emitted it
        (.quoteLink-start), and extrastyles.css positions and hides it — but nothing ever brought
        it back, so it was permanently invisible here. The reader reveals its equivalent on hover
        of the segment (uiextra.css: [class*="-lang"]:hover .copyLink-start), and this mirrors that
        rule for the results table. Pointer-capable screens only: on a touch device :hover sticks
        after a tap, so those get the explicit .dg-show-links class from the tap handler below. */
+    /* Якорь для ✦-ссылки. extrastyles.css делает position:relative только для .pli-lang,
+       .rus-lang, .eng-lang и .variant — а search-render.js рисует строки переводов короткими
+       кодами (ru-lang/en-lang/de-lang), которые под это правило НЕ попадают. Замерено: у
+       пали-строки ссылка вставала на x=53 (там, где надо), у ru/en/de — на x=8, то есть
+       позиционировалась от далёкого предка и уезжала за край строки. Отсюда и было "ссылки
+       появляются только у пали". */
+    #search-pane [class*="-lang"],
+    #search-pane .variant {
+        position: relative;
+    }
     @media (hover: hover) and (pointer: fine) {
         #search-pane [class*="-lang"]:hover > .quoteLink-start,
         #search-pane .variant:hover > .quoteLink-start {
@@ -251,6 +303,50 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     #dg-quote-menu button:focus {
         background: var(--bs-secondary-bg, #e9ecef);
     }
+    /* Поле поиска: лупа-сабмит лежит ПОВЕРХ поля слева, поле освобождает под неё отступ.
+       Кнопка идёт в разметке ДО инпута — так по Tab фокус попадает сначала на неё, а не
+       перепрыгивает через поле; визуально она всё равно внутри. */
+    .dg-search-field {
+        position: relative;
+        display: block;
+    }
+    .dg-search-field .searchinput {
+        padding-left: 42px;
+    }
+    .dg-search-field #searchbtn {
+        position: absolute;
+        left: 4px;
+        top: 50%;
+        transform: translateY(-50%);
+        z-index: 4;
+        width: 34px;
+        height: 34px;
+        padding: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: 0;
+        border-radius: 50%;
+        background: transparent;
+        color: var(--bs-secondary-color, #6c757d);
+    }
+    .dg-search-field #searchbtn:hover,
+    .dg-search-field #searchbtn:focus-visible {
+        color: var(--bs-body-color, #212529);
+        background: var(--bs-secondary-bg, #e9ecef);
+    }
+    /* Звёздочка состава области поиска в заголовке — приглушённая, размером с текст, не
+       перетягивает внимание с самого заголовка. */
+    .scope-info-star {
+        border: 0;
+        background: transparent;
+        padding: 0 4px;
+        font: inherit;
+        color: var(--bs-secondary-color, #6c757d);
+        cursor: help;
+    }
+    .scope-info-star:hover,
+    .scope-info-star:focus-visible { color: var(--bs-body-color, #212529); }
 </style>
 
 <link rel="stylesheet" href="/assets/css/langswitch.css">
@@ -295,11 +391,15 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
   </a>
   <form id="form" class="dg-hero-form m-0" autocomplete="off">
     <label class="visually-hidden" for="paliauto">{{search.label}}</label>
-    <div class="input-group">
-      <input class="form-control rounded-pill searchinput" id="paliauto" type="search" placeholder="e.g. Kāyagat or sn56.11" data-i18n-placeholder="{{search.placeholder}}" autocomplete="off" autofocus>
-      <button type="submit" id="searchbtn" class="btn btn-primary rounded-pill ms-2">
+    <!-- Лупа ВНУТРИ поля, слева. Справа поле type="search" рисует свой родной крестик
+         "очистить", и любая наша кнопка справа с ним конфликтует — либо налезает, либо
+         отодвигает его так, что попасть становится трудно. Слева места нет ни у кого, поэтому
+         столкновения не будет в принципе; это же и привычнее: лупа слева, очистка справа. -->
+    <div class="input-group dg-search-field">
+      <button type="submit" id="searchbtn" class="btn" aria-label="Search" data-i18n-aria-label="{{search.label}}">
         <i class="fas fa-search fa-flip-horizontal" aria-hidden="true"></i>
       </button>
+      <input class="form-control rounded-pill searchinput" id="paliauto" type="search" placeholder="e.g. Kāyagat or sn56.11" data-i18n-placeholder="{{search.placeholder}}" autocomplete="off" autofocus>
     </div>
   </form>
   <button class="btn btn-light rounded-circle" type="button" onclick="toggleQuickModal()" aria-label="Open Cattāri Ariyasaccāni" title="Open Cattāri Ariyasaccāni (Alt+P)" data-i18n-aria-label="{{toolbar.compassAriaLabel}}" data-i18n-title="{{toolbar.compassTitle}}">
@@ -346,6 +446,47 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     // Делегируем на документ: виджет создаётся позже, когда jQuery UI догрузится.
     jQuery(document).on('autocompleteopen', '#paliauto', function () {
       if (!interacted) jQuery(this).autocomplete('close');
+    });
+  })();
+
+  /* Стрелка "наверх" встаёт левее кнопки языка по её РЕАЛЬНОЙ ширине. В ридере обе кнопки
+     разведены фиксированными right:20 и right:90 — там подпись языка узкая и этого хватает.
+     Здесь подпись шире (и меняется вместе с языком интерфейса), поэтому фиксированные 90px
+     не спасали: замерено, что стрелка налезала на кнопку на 26px. Считаем отступ от ширины. */
+  (function placeScrollTopButton() {
+    function place() {
+      var lang = document.getElementById('language-button');
+      var top = document.getElementById('scrollToTopBtn');
+      if (!lang || !top) return;
+      top.style.right = Math.round(lang.getBoundingClientRect().width + 32) + 'px';
+    }
+    window.addEventListener('load', place);
+    window.addEventListener('resize', place);
+    // Кнопку создаёт smoothScroll.js уже после нашего скрипта — дожидаемся её появления.
+    var tries = 0;
+    var timer = setInterval(function () {
+      if (document.getElementById('scrollToTopBtn')) { place(); clearInterval(timer); }
+      if (++tries > 40) clearInterval(timer);
+    }, 150);
+  })();
+
+  /* Тема, изменённая в /settings/ (или в другой вкладке), применяется здесь СРАЗУ. Раньше
+     страницу приходилось перезагружать: themeswitch.js читает localStorage только при своей
+     инициализации, а событие storage никто не слушал. Ставим ровно то же, что ставит его
+     setTheme(): класс dark на body, data-bs-theme на html и data-theme на body — от них зависят
+     и наши стили, и bootstrap-переменные. Сам themeswitch.js общий с продом, его не трогаем. */
+  (function applyThemeOnChange() {
+    function apply() {
+      var t = localStorage.getItem('theme') || 'auto';
+      var dark = t === 'dark' || (t === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches);
+      document.body.classList.toggle('dark', dark);
+      document.documentElement.setAttribute('data-bs-theme', dark ? 'dark' : 'light');
+      if (dark) document.body.setAttribute('data-theme', 'dark');
+      else document.body.removeAttribute('data-theme');
+    }
+    window.addEventListener('storage', function (e) { if (e.key === 'theme') apply(); });
+    matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function () {
+      if ((localStorage.getItem('theme') || 'auto') === 'auto') apply();
     });
   })();
 
@@ -401,6 +542,36 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
 
     function close() { menu.hidden = true; ctx = null; }
 
+    /* Открыть цитату во встроенном попапе openFdg.js. Общая точка для пункта меню и для правого
+       клика по строке.
+       Почему не переигрываем клик по самой ссылке: он проходит и через ленивый загрузчик словаря
+       (settings.js слушает .pli-lang/[lang=pi], гасит клик, догружает paliLookup.js и сам
+       переотправляет клик заново) — его повтор приходит уже без нашей метки и снова открывает
+       меню поверх попапа. Прямой вызов от порядка обработчиков не зависит.
+       Почему setTimeout: у openFdg есть свой обработчик "клик мимо попапа — закрыть", и если
+       показать попап синхронно, тот же самый клик дораспространяется до него, считается кликом
+       мимо попапа и немедленно закрывает (проверено: display возвращался в none, src в
+       about:blank). Значения — те же, что строит openFdg: попапу ссылка со scroll=instant
+       (резкий прыжок в маленьком окне), кнопке "в новом окне" — чистая, с плавной прокруткой. */
+    function openQuotePopup(url) {
+      setTimeout(function () {
+        var popupEl = document.querySelector('.fdg-popup');
+        var frameEl = document.querySelector('.fdg-iframe');
+        if (popupEl && frameEl) {
+          var u = new URL(url, location.origin);
+          u.searchParams.set('scroll', 'instant');
+          frameEl.src = u.toString();
+          // .fdg-open-new-window-btn — <a target="_blank"> из createFdgPopup(); href на нём
+          // появляется только в момент открытия попапа, поэтому по a[href] он не находится.
+          var newWinBtn = popupEl.querySelector('.fdg-open-new-window-btn');
+          if (newWinBtn) newWinBtn.href = url;
+          popupEl.style.display = 'block';
+        } else {
+          window.open(url, '_blank', 'noopener'); // попапа на странице нет — не молчим
+        }
+      }, 0);
+    }
+
     function openAt(x, y) {
       menu.hidden = false;
       var r = menu.getBoundingClientRect();
@@ -419,6 +590,22 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
       openAt(e.clientX, e.clientY);
     }, true);
 
+    // Правый клик (и долгое нажатие на тач-экране — браузер шлёт то же contextmenu) по СТРОКЕ
+    // цитаты сразу открывает попап по её скрытой ссылке, без промежуточного меню: самый частый
+    // сценарий не должен стоить двух действий. Достаточно попасть в саму строку, целиться в
+    // ✦-ссылку не нужно.
+    document.addEventListener('contextmenu', function (e) {
+      var pane = document.getElementById('search-pane');
+      if (!pane || !pane.contains(e.target)) return;
+      var line = e.target.closest('[class*="-lang"], .variant');
+      if (!line) return;
+      var link = line.querySelector('a.fdgLink');
+      if (!link) return;
+      e.preventDefault();
+      close();
+      openQuotePopup(link.href);
+    });
+
     menu.addEventListener('click', function (e) {
       var btn = e.target.closest('button');
       if (!btn || !ctx) return;
@@ -431,34 +618,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
       close(); // ctx обнуляется здесь, поэтому всё нужное снято в локальные переменные выше
 
       if (act === 'popup') {
-        // Открываем попап openFdg.js напрямую, а не переигрывая клик по ссылке. Переигровка
-        // выглядит естественнее, но клик по ✦ проходит и через ленивый загрузчик словаря
-        // (settings.js слушает .pli-lang/[lang=pi], гасит клик, догружает paliLookup.js и сам
-        // переотправляет клик заново) — этот его повтор приходит уже без нашей метки и снова
-        // открывает меню поверх попапа. Прямой вызов от порядка обработчиков не зависит.
-        // Значения — те же, что строит openFdg.js: попапу ссылка с scroll=instant (резкий прыжок
-        // в маленьком окне), кнопке "в новом окне" — чистая (плавная прокрутка).
-        // setTimeout обязателен: у openFdg есть обработчик "клик мимо попапа — закрыть". Если
-        // показать попап прямо здесь, тот же самый клик по пункту меню дораспространяется до
-        // него, считается кликом мимо попапа и немедленно его закрывает (проверено: display
-        // возвращался в none, src в about:blank). Даём клику завершиться.
-        setTimeout(function () {
-          var popupEl = document.querySelector('.fdg-popup');
-          var frameEl = document.querySelector('.fdg-iframe');
-          if (popupEl && frameEl) {
-            var u = new URL(url, location.origin);
-            u.searchParams.set('scroll', 'instant');
-            frameEl.src = u.toString();
-            // .fdg-open-new-window-btn — <a target="_blank"> из createFdgPopup(), href на нём
-            // проставляется только в момент открытия попапа, поэтому селектор по a[href] его не
-            // находит: атрибута ещё нет.
-            var newWinBtn = popupEl.querySelector('.fdg-open-new-window-btn');
-            if (newWinBtn) newWinBtn.href = url;
-            popupEl.style.display = 'block';
-          } else {
-            window.open(url, '_blank', 'noopener'); // попапа на странице нет — не молчим
-          }
-        }, 0);
+        openQuotePopup(url);
       } else if (act === 'tab') {
         window.open(url, '_blank', 'noopener');
       } else if (act === 'audio') {
@@ -467,7 +627,25 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
         // играет уже voice.js. На странице результатов озвучка по умолчанию не грузится (см.
         // loadVoiceScripts в settings.js) — здесь просим её явно, вторым аргументом.
         if (!ctxLine || typeof window.activateSegmentForTTS !== 'function') return;
+        // voice.js берёт слаг текста из ttsState.currentSlug, а если его нет — ищет на странице
+        // <a class="voice-link" data-slug="...">. В ридере такая ссылка есть в разметке, на
+        // странице поиска её нет, и обработчик молча выходил по `if (!slug) return` — кнопка
+        // "Слушать" не делала ничего. Кладём такую же скрытую ссылку со слагом той сутты, чью
+        // строку слушаем (слаг берём из data-slug самой ✦-ссылки, до двоеточия).
+        var slug = (link.getAttribute('data-slug') || '').split(':')[0];
         var play = function () {
+          if (slug) {
+            var vl = document.getElementById('dg-voice-slug');
+            if (!vl) {
+              vl = document.createElement('a');
+              vl.id = 'dg-voice-slug';
+              vl.className = 'voice-link';
+              vl.href = 'javascript:void(0)';
+              vl.hidden = true;
+              document.body.appendChild(vl);
+            }
+            vl.dataset.slug = slug;
+          }
           window.activateSegmentForTTS(ctxLine);
           var btn = document.querySelector('.dynamic-tts-btn');
           if (btn) btn.click();
@@ -521,7 +699,9 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
 
 <button class="btn btn-light forshellscript mb-1" type="button"><a class="text-decoration-none " href="javascript:void(0)">{{toolbar.wordsToggleShow}}</a></button>
 
-<button id="language-button" class="btn btn-light mb-1 " type="button">{{global.help.languageButton}}</button>
+<!-- без mb-1: кнопка позиционируется fixed по bottom, а bootstrap-овский margin-bottom
+     (0.25rem !important) добавлялся сверху и сдвигал её на 4px относительно стрелки "наверх" -->
+<button id="language-button" class="btn btn-light" type="button">{{global.help.languageButton}}</button>
 
 <button class="btn btn-light mb-1  toggle-dict-btn" type="button" ><img class="" src="/assets/svg/comment.svg"></img></button>
 
@@ -1462,7 +1642,14 @@ $(document).ready(function() {
             if (currentScope !== 'default') currentParams.set('scope', currentScope);
             var qs = currentParams.toString();
             var url = '/' + encodeURIComponent(route.query) + (qs ? '?' + qs : '');
-            window.location.href = url;
+            // Новый поиск — БЕЗ перезагрузки страницы: адрес меняем через history, дальше
+            // initSearchApp() читает его сам и обновляет данные уже инициализированных таблиц
+            // (.clear().rows.add().draw() — см. search-render.js). Полная перезагрузка здесь
+            // означала повторный разбор всех скриптов и повторную инициализацию DataTables ради
+            // смены одного слова, и это ровно то, от чего мы уходим по пути к SPA. Переход в
+            // ридер (ветка ниже) — по-прежнему настоящая навигация: это другая страница.
+            history.pushState({ dgSearch: true }, '', url);
+            runSearchFromUrl();
         } else {
             var qs2 = currentParams.toString();
             window.location.href = '/' + encodeURIComponent(route.id) + (qs2 ? '?' + qs2 : '');
@@ -1491,11 +1678,22 @@ $(document).ready(function() {
     // список остаётся доступен наведением/долгим тапом.
     var SCOPE_INLINE_LIMIT = 3;
 
+    function namesOf(prefixes) {
+        return prefixes.map(function (p) { return t('scopeNames.' + p, p); }).join(', ');
+    }
+
     function buildScopeLabel(resolvedPrefixes) {
         var prefixes = resolvedPrefixes || DEFAULT_SCOPE_PREFIXES;
+        // У обобщённых подписей ("4 Никаи + 6 КН") full — это РЕАЛЬНЫЙ список книг, а не та же
+        // строка: именно его показывает звёздочка в заголовке, иначе подсказка дословно повторяла
+        // бы видимый текст и не отвечала на вопрос "что именно сейчас выбрано".
         if (sameSet(prefixes, ['all'])) return same(t('results.scopeAll', 'the whole corpus'));
-        if (sameSet(prefixes, DEFAULT_SCOPE_PREFIXES)) return same(t('results.scope4Nikaya6Kn', '4 Nikayas + 6 KN books'));
-        if (sameSet(prefixes, FOUR_NIKAYA_PREFIXES)) return same(t('results.scope4Nikaya', '4 Nikayas'));
+        if (sameSet(prefixes, DEFAULT_SCOPE_PREFIXES)) {
+            return { short: t('results.scope4Nikaya6Kn', '4 Nikayas + 6 KN books'), full: namesOf(prefixes) };
+        }
+        if (sameSet(prefixes, FOUR_NIKAYA_PREFIXES)) {
+            return { short: t('results.scope4Nikaya', '4 Nikayas'), full: namesOf(prefixes) };
+        }
         var names = prefixes.map(function (p) { return t('scopeNames.' + p, p); });
         var full = names.join(', ');
         if (names.length <= SCOPE_INLINE_LIMIT) return same(full);
@@ -1519,11 +1717,30 @@ $(document).ready(function() {
         let newTitle = head + scope.short;
 
         document.title = newTitle + " - Dhamma.gift";
-        // title-атрибут ставим только когда список действительно свёрнут — иначе браузер показывал
-        // бы подсказку, дословно повторяющую видимый текст.
-        $('.resultheader').text(newTitle);
-        if (scope.full !== scope.short) $('.resultheader').attr('title', head + scope.full);
-        else $('.resultheader').removeAttr('title');
+        // Состав области поиска доступен ПРЯМО ЗДЕСЬ, звёздочкой: заголовок называет область
+        // коротко ("4 Никаи + 6 КН", "выбранных разделах (14)"), а что именно в неё входит —
+        // видно по наведению или тапу на "*", без похода в настройки. Звёздочку показываем
+        // всегда, когда полный список отличается от короткой подписи ИЛИ подпись обобщённая
+        // (в обоих случаях по самому заголовку книги не перечислены). Ставим через DOM, а не
+        // .text() с разметкой: заголовок собирается из пользовательского запроса.
+        var $head = $('.resultheader');
+        $head.text(newTitle);
+        $head.removeAttr('title');
+        if (scope.full !== scope.short) {
+            var star = document.createElement('button');
+            star.type = 'button';
+            star.className = 'scope-info-star';
+            star.textContent = '*';
+            star.title = scope.full;
+            star.setAttribute('aria-label', scope.full);
+            // На тач-экранах title не показывается — по тапу выводим тот же текст плашкой.
+            star.onclick = function () {
+                if (typeof window.showBubbleNotification === 'function') window.showBubbleNotification(scope.full, 6000, 'info');
+                else alert(scope.full);
+            };
+            $head[0].appendChild(document.createTextNode(' '));
+            $head[0].appendChild(star);
+        }
 
         // "Есть варианты чтения" — hasVariantMatch отвечает на вопрос "существуют ли варианты
         // ГДЕ-ТО в корпусе" (сервер сам решает, нужен ли для этого отдельный widened-проход —
@@ -1630,6 +1847,23 @@ $(document).ready(function() {
         }
     }
 
+
+    /* Повторный запуск поиска по текущему адресу, без перезагрузки. Состояние, накопленное
+       предыдущим запросом, обязательно сбрасываем: enrichedIds/pendingIds помнят, для каких сутт
+       уже догружены цитаты, и без сброса новый поиск считал бы чужие сутты уже обогащёнными и не
+       стал бы их догружать. Сами таблицы не пересоздаются — search-render.js обновляет данные на
+       месте (в этом и смысл двух стабильных таблиц). */
+    function runSearchFromUrl() {
+        enrichedIds.clear();
+        pendingIds.clear();
+        enrichmentStarted = false;
+        lastSearchJson = null;
+        reportMode = new URLSearchParams(window.location.search).get('report') === 'words' ? 'words' : 'suttas';
+        initSearchApp();
+    }
+    // Кнопки "назад/вперёд" браузера при SPA-навигации: адрес меняется, а страница та же —
+    // перерисовываем содержимое под новый адрес сами.
+    window.addEventListener('popstate', function () { runSearchFromUrl(); });
 
     initSearchApp();
 });

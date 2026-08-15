@@ -186,7 +186,12 @@ const ScrollManager = {
         if (!anchorId && !hasHash && finder && finder.trim() !== "" && currentSlug) {
             const textElement = await this.waitForText(finder);
             if (textElement) {
-                textElement.scrollIntoView({ behavior: "smooth", block: "start" });
+                // ?scroll=instant учитывается и здесь. Это ветка "подсветить найденное слово по
+                // ?s=", и она срабатывает раньше прыжка по сегменту — а ссылки из поиска несут
+                // и s=, и scroll=instant. Прокрутка была жёстко "smooth", поэтому во встроенном
+                // попапе (маленькое окно, там нужен резкий прыжок) всё равно ехала анимация.
+                const instantFinder = urlParams.get('scroll') === 'instant';
+                textElement.scrollIntoView({ behavior: instantFinder ? "auto" : "smooth", block: "start" });
                 // ВСЕ остальные scroll-to-segment пути в этом файле (scrollToHash ниже, через
                 // highlightById/highlightAllById) сразу зовут activateSegmentForTTS — эта ветка
                 // не звала (TODO.md ридер п.5: "не активирует динамик ттс кнопку"). Тот же

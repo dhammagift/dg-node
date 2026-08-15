@@ -1183,7 +1183,15 @@ $('#previewShuffle').onclick = () => {
    sticky, чтобы не скроллить наверх ради возврата). */
 function goBack(e){
   e.preventDefault();
-  if (history.length > 1) history.back();
+  // history.length одного не хватает: если настройки открыли прямо в новой вкладке, в истории
+  // уже может лежать служебная запись (новая вкладка/пустая страница), длина > 1 — и back()
+  // увозил именно туда, на пустой экран браузера. Возвращаемся назад только если пришли с
+  // НАШЕЙ же страницы, иначе ведём домой, как если бы это была кнопка "домой".
+  let cameFromSite = false;
+  try {
+    cameFromSite = !!document.referrer && new URL(document.referrer).origin === location.origin;
+  } catch (err) { cameFromSite = false; }
+  if (cameFromSite && history.length > 1) history.back();
   else location.href = '/';
 }
 $('#backLink').onclick = goBack;
