@@ -120,6 +120,11 @@ button{font:inherit;cursor:pointer}
    занимать всю ширину и переносить следующие элементы на новую "строку" внутри того же
    flex-wrap контейнера, без отдельной разметки нескольких <div class="scope">. */
 .scope-section-label{flex-basis:100%;font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-3);font-weight:600;margin:6px 0 -2px}
+/* Свёрнутая Абхидхамма — просто звёздочка, без рамки и фона: до клика на странице не должно быть
+   видно, что там есть отдельный пункт (см. renderScope). Размер кнопки при этом обычный,
+   пальцем попадается. */
+.scope-abhi-star{border:0;background:transparent;color:var(--ink-3);font-size:18px;line-height:1;padding:6px 10px;min-height:34px;cursor:pointer}
+.scope-abhi-star:hover,.scope-abhi-star:focus-visible{color:var(--ink)}
 .scope-section-label:first-child{margin-top:0}
 .scope label{display:inline-flex;align-items:center;gap:6px;font-size:13.5px;background:var(--accent-soft);color:var(--accent);border-radius:7px;padding:5px 9px;font-weight:500;cursor:pointer}
 .scope input{accent-color:var(--accent)}
@@ -816,6 +821,9 @@ function saveScope(){
   else localStorage.setItem('dhammaSearchScope', scopeList.join(','));
 }
 let openGroups = new Set();
+// Раскрыт ли пункт Абхидхаммы (см. конец renderScope). Живёт только в памяти страницы: это не
+// настройка, а состояние показа — при следующем открытии настроек снова одна звёздочка.
+let abhiRevealed = false;
 /* Иерархия по просьбе владельца: "Сутта" (4 никаи + доп. книги КН, сгруппированные ВНУТРИ, а не
    отдельным разделом наравне с Винаей — это тоже часть Сутта-питаки), "Виная", и приглушённая
    "* Абхидхамма" последней (не отдельный полноправный раздел — Абхидхамму, по словам владельца,
@@ -895,7 +903,27 @@ function renderScope(){
   addSectionLabel(isRu ? 'Виная' : 'Vinaya');
   SCOPE_GROUPS.forEach((group,gi)=>{ if (group.section === 'vinaya') addGroup(group, gi); });
 
-  EXTRA_BOOKS.forEach(([label,codes])=>addBox(ABHI_MARK, codes, true, isRu?label.ru:label.en));
+  /* Абхидхамма: по умолчанию видна ОДНА звёздочка, без чекбокса и без слова. Галка со
+     звёздочкой всё равно показывала, что "там что-то есть и это можно выбрать" — а по замыслу
+     владельца до клика ничего показывать не нужно. Клик по звёздочке раскрывает настоящий пункт
+     с подписью и чекбоксом. Если категория уже включена, пункт показан сразу — иначе включённую
+     настройку нельзя было бы увидеть и выключить. */
+  EXTRA_BOOKS.forEach(([label,codes])=>{
+    const name = isRu?label.ru:label.en;
+    if (abhiRevealed || codes.every(c=>scopeList.includes(c))) {
+      addBox(name, codes, true, name);
+      return;
+    }
+    const star = document.createElement('button');
+    star.type = 'button';
+    star.className = 'scope-abhi-star';
+    star.textContent = ABHI_MARK;
+    star.title = name;
+    star.setAttribute('aria-label', name);
+    star.setAttribute('aria-expanded', 'false');
+    star.onclick = ()=>{ abhiRevealed = true; renderScope(); };
+    host.appendChild(star);
+  });
 }
 renderScope();
 
@@ -974,15 +1002,19 @@ if(location.hash) setTimeout(()=>goAnchor(location.hash.slice(1)),50);
 /* Полный список режимов словаря (см. paliLookup.js resolveDictConfig) и подписи оптгрупп —
    отдельная, ключуемая по value() таблица, а не часть STR: 13 значений индексами options[N]
    слишком хрупко (порядок легко сломать при следующей правке разметки). */
+/* Язык словаря помечен у ОБОИХ наборов и всегда кодом — (ru) / (en). Раньше помечался только
+   английский, причём по-разному в разных местах ("(англ.)" в подписи режима, "(EN)" в названии
+   группы), а русский не помечался вовсе — из-за чего было не видно, что это вообще выбор языка
+   словаря. Код вместо слова: он одинаково читается при любом языке интерфейса. */
 const DICT_MODE_LABELS = {
-  standaloneru:{ru:'Встроенный DPD', en:'Built-in DPD'},
-  dpdfullru:{ru:'Попап Dict.DG', en:'Dict.DG popup'},
-  newwindowru:{ru:'Dict.DG в новом окне', en:'Dict.DG in new window'},
-  dpdcompactru:{ru:'Dict.DG мини', en:'Dict.DG mini'},
-  standalone:{ru:'Встроенный DPD (англ.)', en:'Built-in DPD (EN)'},
-  dpdfull:{ru:'Попап Dict.DG (англ.)', en:'Dict.DG popup (EN)'},
-  newwindow:{ru:'Dict.DG в новом окне (англ.)', en:'Dict.DG in new window (EN)'},
-  dpdcompact:{ru:'Dict.DG мини (англ.)', en:'Dict.DG mini (EN)'},
+  standaloneru:{ru:'Встроенный DPD (ru)', en:'Built-in DPD (ru)'},
+  dpdfullru:{ru:'Попап Dict.DG (ru)', en:'Dict.DG popup (ru)'},
+  newwindowru:{ru:'Dict.DG в новом окне (ru)', en:'Dict.DG in new window (ru)'},
+  dpdcompactru:{ru:'Dict.DG мини (ru)', en:'Dict.DG mini (ru)'},
+  standalone:{ru:'Встроенный DPD (en)', en:'Built-in DPD (en)'},
+  dpdfull:{ru:'Попап Dict.DG (en)', en:'Dict.DG popup (en)'},
+  newwindow:{ru:'Dict.DG в новом окне (en)', en:'Dict.DG in new window (en)'},
+  dpdcompact:{ru:'Dict.DG мини (en)', en:'Dict.DG mini (en)'},
   machinetranslation:{ru:'DharmaMitra.org', en:'DharmaMitra.org'},
   searchonly:{ru:'Только поиск', en:'Search only'},
   dicttango:{ru:'DictTango (Android)', en:'DictTango (Android)'},
@@ -990,8 +1022,8 @@ const DICT_MODE_LABELS = {
   goldenpc:{ru:'GoldenDict-NG (Desktop)', en:'GoldenDict-NG (Desktop)'}
 };
 const DICT_GROUP_LABELS = {
-  dictGroupRu:{ru:'DPD', en:'DPD'},
-  dictGroupEn:{ru:'DPD (EN)', en:'DPD (EN)'},
+  dictGroupRu:{ru:'DPD (ru)', en:'DPD (ru)'},
+  dictGroupEn:{ru:'DPD (en)', en:'DPD (en)'},
   dictGroupOther:{ru:'Другое', en:'Other'}
 };
 

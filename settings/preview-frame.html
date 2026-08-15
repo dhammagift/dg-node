@@ -167,6 +167,19 @@ window.addEventListener('storage', e => {
   }
   if (e.key === 'theme') applyTheme();
   if (e.key === 'dictionaryVisible') syncDict();
+  // Смена режима словаря должна применяться СРАЗУ, без перезагрузки страницы настроек.
+  // paliLookup.js читает selectedDict в свою переменную savedDict ОДИН РАЗ, при загрузке
+  // скрипта, и дальше на localStorage не смотрит — поэтому в образце всегда открывался тот
+  // режим, который был активен в момент первого клика по слову (обычно дефолтный встроенный
+  // английский DPD), сколько бы раз режим ни меняли. У самого paliLookup для этого есть
+  // applyDictConfig() — он и переставляет savedDict, и пересобирает URL, и сбрасывает кэш
+  // загруженной базы; зовём именно его, а не переизобретаем.
+  if (e.key === 'selectedDict') {
+    syncDictLang();
+    if (typeof window.applyDictConfig === 'function') {
+      window.applyDictConfig(localStorage.getItem('selectedDict') || 'standalone');
+    }
+  }
 });
 /* Словарь работает прямо в образце — тем же самым скриптом, что и в ридере (paliLookup.js),
    а не имитацией: он сам вешает свои обработчики на клик и на выделение внутри .pli-lang/[lang=pi],
@@ -187,6 +200,17 @@ function loadDict() {
   return dictLoading;
 }
 function dictEnabled() { return localStorage.getItem('dictionaryVisible') !== 'false'; }
+// Для режимов "dpdfull..." и "newwindow..." paliLookup.js собирает адрес словаря не по самому
+// режиму, а по глобалу window.isRu (его выставляют страницы ридера и поиска). В нашем кадре
+// этого глобала нет, поэтому "Попап Dict.DG (ru)" и "(en)" давали ОДИН И ТОТ ЖЕ английский
+// адрес — со стороны это и выглядело как "режимы не переключаются, всегда встроенный
+// английский". Берём язык из самого выбранного режима: суффикс "ru" в его коде и означает
+// русскую сторону словаря.
+function syncDictLang() {
+  const mode = localStorage.getItem('selectedDict') || 'standalone';
+  window.isRu = /ru$/.test(mode);
+}
+syncDictLang();
 function syncDict() { if (dictEnabled()) loadDict(); }
 // Клик по пали грузит словарь и повторяет клик уже с загруженным скриптом — ровно тот же приём,
 // что и в общесайтовом settings.js (иначе первый клик пропадал бы впустую).
