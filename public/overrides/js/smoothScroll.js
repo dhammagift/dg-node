@@ -148,7 +148,14 @@ const ScrollManager = {
         this.hideProgressNotification(); 
 
         const urlParams = new URLSearchParams(window.location.search);
-        const hasHash = !!window.location.hash;
+        // Явно запрошенный сегмент — это и старый формат "#3.9", и чистый путь dg-node
+        // "/dn1:1.22.2" (см. getRawSlugFromUrl ниже — он сам режет по ":"). Учитывался только
+        // хэш, поэтому при переходе из поиска на конкретную цитату дальше отрабатывал ПРИОРИТЕТ 3
+        // и восстановленный прогресс чтения перебивал прыжок на сегмент: страница уезжала туда,
+        // где человек читал в прошлый раз, а найденное место оставалось выше экрана (замерено:
+        // сегмент оказывался на -65px от верха вьюпорта, то есть невидим).
+        const pathSlug = window.location.pathname.split('/').filter(Boolean).pop() || '';
+        const hasHash = !!window.location.hash || pathSlug.includes(':');
         
         // Получаем идентификатор текущего текста (slug) один раз для всех проверок
         const currentSlug = this.normalizeSlug(this.getRawSlugFromUrl(urlParams));

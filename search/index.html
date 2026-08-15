@@ -199,6 +199,27 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
         opacity: 1;
         transform: scale(1.1);
     }
+    /* The ✦ link at the start of every quote line. search-render.js has always emitted it
+       (.quoteLink-start), and extrastyles.css positions and hides it — but nothing ever brought
+       it back, so it was permanently invisible here. The reader reveals its equivalent on hover
+       of the segment (uiextra.css: [class*="-lang"]:hover .copyLink-start), and this mirrors that
+       rule for the results table. Pointer-capable screens only: on a touch device :hover sticks
+       after a tap, so those get the explicit .dg-show-links class from the tap handler below. */
+    @media (hover: hover) and (pointer: fine) {
+        #search-pane [class*="-lang"]:hover > .quoteLink-start,
+        #search-pane .variant:hover > .quoteLink-start {
+            opacity: 0.9;
+        }
+    }
+    #search-pane .dg-show-links > .quoteLink-start {
+        opacity: 0.9;
+    }
+    /* .quoteLink-start is absolutely positioned at left:-1em, i.e. outside its own line box —
+       without room inside the cell it would be clipped by the table edge on the leftmost column. */
+    #pali td:last-child,
+    #pali tr.child .dtr-details li {
+        padding-left: 1.4em;
+    }
 </style>
 
 <link rel="stylesheet" href="/assets/css/langswitch.css">
@@ -294,6 +315,21 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     // Делегируем на документ: виджет создаётся позже, когда jQuery UI догрузится.
     jQuery(document).on('autocompleteopen', '#paliauto', function () {
       if (!interacted) jQuery(this).autocomplete('close');
+    });
+  })();
+
+  // Тап по строке цитаты на тач-экранах — показать ту же скрытую ✦-ссылку в начале строки, что
+  // на десктопе показывается по наведению (CSS выше). :hover для этого не годится: после тапа он
+  // "залипает" на элементе до следующего тапа в другом месте. Класс висит на одной строке за раз.
+  (function revealQuoteLinkOnTap() {
+    document.addEventListener('pointerup', function (e) {
+      if (e.pointerType === 'mouse') return;
+      var pane = document.getElementById('search-pane');
+      if (!pane) return;
+      var line = e.target.closest('[class*="-lang"], .variant');
+      var shown = pane.querySelector('.dg-show-links');
+      if (shown && shown !== line) shown.classList.remove('dg-show-links');
+      if (line && pane.contains(line)) line.classList.add('dg-show-links');
     });
   })();
 </script>

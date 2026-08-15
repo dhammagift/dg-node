@@ -849,7 +849,14 @@ async function initReader() {
         if (rendered && segmentId) {
             const target = document.getElementById(segmentId);
             if (target) {
-                target.scrollIntoView({ block: 'center' });
+                // ?scroll=instant — тот же флаг, что уже понимает smoothScroll.js, и тот же, что
+                // openFdg.js дописывает, открывая цитату из поиска во встроенном попапе-iframe:
+                // там нужен именно резкий прыжок сразу на место, анимация в маленьком окне только
+                // мешает. В новом окне/вкладке параметра нет — там прокрутка плавная, чтобы было
+                // видно, ГДЕ в сутте находится найденное место. Здесь это не учитывалось вовсе:
+                // scrollIntoView без behavior — всегда мгновенный, и оба случая выглядели одинаково.
+                const instant = new URLSearchParams(window.location.search).get('scroll') === 'instant';
+                target.scrollIntoView({ block: 'center', behavior: instant ? 'auto' : 'smooth' });
                 // Same fallback pattern as smoothScroll.js's highlightById/highlightAllById —
                 // this initial-load scroll used to jump to the segment without ever marking it
                 // active-word, unlike every other scroll-to-segment path in the reader.
