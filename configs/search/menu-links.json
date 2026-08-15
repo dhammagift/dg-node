@@ -12,7 +12,9 @@
     "  tpl      — шаблон, {{q}} подставляется из #paliauto, {{theme}} из темы; идёт в",
     "             openWithQuery() (/assets/js/openDicts.js) — он же копирует запрос в буфер;",
     "  tplMulti — массив префиксов, открывается пачкой через openWithQueryMulti();",
-    "  action   — вызов именованной функции легаси (openDictionaries, readPlus).",
+    "  action   — вызов именованной функции легаси (openDictionaries, readPlus);",
+    "  modal:\"quick\" на самой плитке — открыть quickModal (компас) вместо своей шторки: у",
+    "             истории отдельного списка нет, она и так живёт там.",
     "  blank    — открывать в новой вкладке (target=_blank в исходном меню).",
     "",
     "Плитка russian есть только в ru-меню (в en-меню такой группы нет) — показывать её только",
@@ -30,7 +32,7 @@
       "label": "History",
       "icon": "clock",
       "href": "/history.php",
-      "recent": true
+      "modal": "quick"
     },
 
     "external": {
@@ -343,7 +345,7 @@
       "label": "История",
       "icon": "clock",
       "href": "/ru/history.php",
-      "recent": true
+      "modal": "quick"
     },
 
     "external": {

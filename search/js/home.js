@@ -116,27 +116,6 @@
         setTimeout(function () { if (!currentSheetKey) sheet.hidden = true; }, 320);
     }
 
-    /* Недавние запросы — из localStorage.localSearchHistory. Формат записи задаёт
-       settings.js/saveToHistory(): [ключ, путь+query+hash, ISO-таймстамп]. */
-    function recentGroups(tile) {
-        var items = [];
-        try {
-            var hist = JSON.parse(localStorage.getItem('localSearchHistory')) || [];
-            items = hist.slice(0, 12).map(function (entry) {
-                return { label: entry[0], href: entry[1] };
-            });
-        } catch (e) { /* битый JSON в истории не должен ломать шторку */ }
-
-        var groups = [];
-        if (items.length) groups.push({ name: t('home.recent', 'Недавнее'), items: items });
-        groups.push({ name: t('home.allHistory', 'Вся история'), items: [{ label: tile.label, href: tile.href }] });
-        return groups;
-    }
-
-    function groupsOf(key, tile) {
-        return tile.recent ? recentGroups(tile) : (tile.groups || []);
-    }
-
     function renderItem(item) {
         var a = document.createElement('a');
         a.className = 'dg-sheet-row';
@@ -205,7 +184,7 @@
         tabsHost.innerHTML = '';
         (TILE_ORDER[menuLang()] || TILE_ORDER.en).forEach(function (k) {
             var td = data[k];
-            if (!td || (!td.groups && !td.recent)) return;
+            if (!td || !td.groups) return;
             var b = document.createElement('button');
             b.type = 'button';
             b.textContent = td.label;
@@ -216,7 +195,7 @@
 
         var body = document.getElementById('dg-sheet-body');
         body.innerHTML = '';
-        var groups = groupsOf(key, tile);
+        var groups = tile.groups || [];
         if (!groups.length) {
             body.innerHTML = '<p class="dg-sheet-empty">' + esc(t('home.noItems', 'Пока пусто')) + '</p>';
         }
@@ -251,7 +230,17 @@
             if (!tile) return;
 
             var el;
-            if (tile.groups || tile.recent) {
+            if (tile.modal === 'quick') {
+                /* История своей шторки не имеет: она и так есть в quickModal (компас,
+                   Cattāri Ariyasaccāni) — там же живут недавние запросы. Плитка просто
+                   открывает его, не заводя второго места для того же самого. */
+                el = document.createElement('button');
+                el.type = 'button';
+                el.addEventListener('click', function () {
+                    if (typeof window.toggleQuickModal === 'function') window.toggleQuickModal();
+                    else if (tile.href) window.location.href = tile.href;
+                });
+            } else if (tile.groups) {
                 el = document.createElement('button');
                 el.type = 'button';
                 el.addEventListener('click', function () { openSheet(key); });

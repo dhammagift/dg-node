@@ -415,6 +415,9 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     var path = location.pathname.replace(/\/+$/, '');
     var hasQuery = new URLSearchParams(location.search).has('q');
     if (!hasQuery && (path === '' || path === '/index.html')) b.classList.add('dg-state-home');
+    // Холодная загрузка со словом в адресе (/kacchapa, /?q=...): данных ещё нет, и без этого
+    // класса первым кадром показалась бы пустая таблица с шапкой колонок. Снимет dgSetBusy().
+    else b.classList.add('dg-busy');
     // Снимаем после первой отрисовки. Таймер — не подстраховка "на всякий случай", а рабочая
     // ветка: в фоновой вкладке requestAnimationFrame не вызывается вообще, и без него класс
     // залипал бы навсегда, отключив все переходы на странице (проверено).
@@ -440,18 +443,13 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
      состояниями, поэтому фокус, введённый текст и все обработчики переезд переживают. Уход в
      выдачу — схлопывание этих блоков (max-height/opacity в home.css), из-за чего поле само
      поднимается вверх. -->
-<div id="home-brand">
-  <img class="dg-logo" src="/assets/img/dgsanhkalogo.png" alt="Dhamma.Gift">
-  <span class="dg-wordmark">dhamma.gift</span>
-</div>
 <p id="home-motto">Найдите Истину</p>
 
 <div class="hero-row mb-2">
-  <!-- Домик и бургер — без рамки и заливки (класс dg-plain-btn): в шапке рядом с полем поиска
-       круглые кнопки-«пилюли» только шумят, сама иконка читается лучше. Домик заодно крупнее
-       остальных — это главная точка возврата. -->
-  <a href="/" class="btn dg-plain-btn dg-home-btn text-decoration-none" title="Home" data-i18n-title="{{global.common.home}}">
-    <img class="table-home-icon" src="/assets/svg/home-icon.svg">
+  <!-- Полное лого — только на главной, слева от поля. Название текстом не пишем: в браузере
+       адрес и так виден, а в приложении это будет иконка. -->
+  <a href="/" id="home-logo" class="text-decoration-none" title="Dhamma.Gift">
+    <img src="/assets/img/dgsanhkalogo.png" alt="Dhamma.Gift">
   </a>
   <form id="form" class="dg-hero-form m-0" autocomplete="off">
     <label class="visually-hidden" for="paliauto">{{search.label}}</label>
@@ -473,6 +471,12 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
       <input class="form-control rounded-pill searchinput" id="paliauto" type="search" placeholder="e.g. Kāyagat or sn56.11" data-i18n-placeholder="{{search.placeholder}}" autocomplete="off" autofocus>
     </div>
   </form>
+  <!-- Ракушка (саṅкха) — возврат на главную, справа от поля; тот же элемент и на том же месте,
+       что в шапке ридера. Раньше здесь был домик слева от поля. Без рамки и заливки
+       (dg-plain-btn): круглые кнопки-«пилюли» рядом с полем только шумят. -->
+  <a href="/" class="btn dg-plain-btn dg-home-btn text-decoration-none" title="Home" data-i18n-title="{{global.common.home}}">
+    <img class="table-home-icon" src="/assets/img/dgsankhaonly.png" alt="Dhamma.Gift">
+  </a>
   <!-- Компас переехал вниз, в общий ряд кнопок (между словарём и настройками) — см. ниже. -->
   <div class="dropdown">
     <button class="btn dg-plain-btn" type="button" id="burgerMenuBtn" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Menu" title="Menu" data-i18n-aria-label="{{toolbar.menuAriaLabel}}" data-i18n-title="{{toolbar.menuTitle}}">
@@ -493,6 +497,13 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
 <!-- Подсказка "искать «…» / похоже на ссылку на текст" — тот же DgTextRouter.classify(), что и
      обработчик сабмита ниже, просто показанный заранее. -->
 <div id="home-hint" aria-live="polite"></div>
+
+<!-- Ожидание ответа поиска. Пока он не пришёл, страница НЕ переключается в выдачу: раньше
+     состояние менялось сразу на сабмите, и человек видел сначала голую таблицу с шапкой
+     колонок, потом её же с быстрыми результатами, потом с окончательными — три перерисовки
+     подряд, дёрганее обычной перезагрузки. Теперь остаёмся там, где были, крутим спиннер и
+     показываем выдачу уже с данными. -->
+<div id="dg-loading" hidden><span class="spinner-border" role="status" aria-live="polite"></span></div>
 
 <!-- Плитки. Наполнение — /nodejs/res/menu-links.json (перенос боевого горизонтального меню
      assets/common/horizontalMenu{En,Ru}.php), рисует home.js. -->
@@ -1902,6 +1913,17 @@ $(document).ready(function() {
         if (name !== 'home' && window.DgHome) window.DgHome.closeSheet();
     }
 
+    /* Ожидание ответа. Состояние страницы при этом НЕ меняется: пока данных нет, человек
+       остаётся там, где был (на главной или на прошлой выдаче), и видит спиннер, а не пустую
+       таблицу с шапкой колонок. Класс dg-busy заодно прячет выдачу в тех случаях, когда её
+       ещё нечем наполнить — при холодной загрузке /слово он ставится сразу, инлайновым
+       скриптом в начале <body>. */
+    function dgSetBusy(on) {
+        document.body.classList.toggle('dg-busy', !!on);
+        var el = document.getElementById('dg-loading');
+        if (el) el.hidden = !on;
+    }
+
     /* ---------------- Ридер в ЭТОМ ЖЕ документе ----------------
        Раньше переход в текст был настоящей навигацией (window.location.href) — ридер был другой
        страницей. Теперь megareader.js подключается сюда лениво, при первом открытии текста, и
@@ -1946,6 +1968,7 @@ $(document).ready(function() {
        buildSutta() было бы полдела — прокрутка к найденному месту и подсветка живут именно в
        initReader(). При первом открытии его вызывает сам файл при загрузке, дальше зовём мы. */
     function openReaderInPlace(slug) {
+        dgSetBusy(false);
         dgSetState('reader');
         var firstTime = !readerAssetsPromise;
         return ensureReaderAssets()
@@ -2056,13 +2079,13 @@ $(document).ready(function() {
 
         // Нет запроса — это главная. Раньше здесь был просто return (пустая страница с одним
         // полем), теперь то же условие включает домашний экран.
-        if (!keyword) { dgSetState('home'); return; }
-        dgSetState('results');
+        if (!keyword) { dgSetBusy(false); dgSetState('home'); return; }
 
         // Показываем в строке поиска, что сейчас ищем — можно сразу поправить и отправить снова.
         // (keyword уже декодирован — URLSearchParams.get делает это сам.)
         $('#paliauto').val(keyword);
 
+        dgSetBusy(true);
         try {
             const fastResponse = await fetch(buildUrl('/search', '&fast=1'));
             if (!fastResponse.ok) throw new Error("Ошибка сети при получении данных");
@@ -2073,9 +2096,18 @@ $(document).ready(function() {
             renderResultHeader(fastJson);
             renderCurrentReport();
 
+            // Состояние переключаем ТОЛЬКО здесь, когда таблица уже наполнена быстрым ответом.
+            // Раньше это делалось до fetch, и выдача успевала показаться пустой.
+            dgSetState('results');
+
             if (reportMode === 'suttas') ensureEnrichmentStarted();
         } catch (error) {
             console.error('Ошибка при поиске:', error);
+            // Ошибку тоже показываем в выдаче (там для неё есть #search-message), иначе человек
+            // остался бы на главной со спиннером и без объяснений.
+            dgSetState('results');
+        } finally {
+            dgSetBusy(false);
         }
     }
 

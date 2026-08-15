@@ -118,20 +118,10 @@ function cleanPaliText(text) {
 <form id="form" class="ui-widget mb-2">
 <label class="sr-only dropup rounded-pill mb-2" for="paliauto"></label>
 
-<!-- Шапка ридера собрана так же, как на странице поиска: слева домик, дальше поле с лупой
-     ВНУТРИ него, справа бургер-меню. Домик переехал сюда из ряда иконок (#form-div ниже), а
-     кнопка отправки перестала быть отдельной подписанной кнопкой рядом с полем. -->
+<!-- Шапка ридера собрана так же, как на странице поиска: поле с лупой ВНУТРИ него, справа от
+     поля — ракушка (возврат на главную), затем бургер-меню. Кнопка отправки перестала быть
+     отдельной подписанной кнопкой рядом с полем. -->
 <div class="dg-reader-hero">
-  <!-- id и вложенная <a> сохранены намеренно: на "#home-button a" завязаны обработчик в
-       settings.js (клик по домику уносит текущий запрос на главную) и кнопка смарт-панели
-       ниже (data-target="#home-button a"), а на сам #home-button — слушатель в megareader.js.
-       Переехал только сам блок, разметка внутри прежняя. -->
-  <div id="home-button" class="dg-plain-btn dg-home-btn">
-    <a data-i18n-href="{{routes.readHome}}" data-i18n-title="{{toolbar.readHomeTitle}}" rel="noreferrer">
-      <img data-i18n-alt="{{toolbar.readHomeAlt}}" src="/assets/svg/home-icon.svg">
-    </a>
-  </div>
-
   <div class="dg-search-field">
     <!-- Лупа внутри поля, слева: справа поле type="search" рисует свой родной крестик
          "очистить", и кнопка справа с ним конфликтует. Иконка — инлайновый SVG, не иконочный
@@ -143,6 +133,17 @@ function cleanPaliText(text) {
       </svg>
     </button>
     <input id="paliauto" type="search" data-i18n-placeholder="{{search.placeholder}}">
+  </div>
+
+  <!-- Ракушка (саṅкха) — возврат на главную, справа от поля. Раньше здесь был домик слева от
+       поля; id и вложенная <a> сохранены намеренно: на "#home-button a" завязаны обработчик в
+       settings.js (клик уносит текущий запрос на главную) и кнопка смарт-панели ниже
+       (data-target="#home-button a"), а на сам #home-button — слушатель в megareader.js.
+       Поменялись только место в ряду и картинка. -->
+  <div id="home-button" class="dg-plain-btn dg-home-btn">
+    <a data-i18n-href="{{routes.readHome}}" data-i18n-title="{{toolbar.readHomeTitle}}" rel="noreferrer">
+      <img data-i18n-alt="{{toolbar.readHomeAlt}}" src="/assets/img/dgsankhaonly.png">
+    </a>
   </div>
 
   <div class="dropdown">

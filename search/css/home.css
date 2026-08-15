@@ -8,49 +8,47 @@
  * отдельно, по мере объединения поиска и ридера. Позже скин станет пунктом в /settings/, и тогда
  * его хватит расширить на остальные состояния, не переписывая эти правила.
  *
- * Никаких внешних шрифтов (в демке был Google Fonts — на проде внешний CDN не подключаем):
- * системный стек + Georgia для "голосовых" строк.
+ * Никаких внешних шрифтов (в демке был Google Fonts — на проде внешний CDN не подключаем) и
+ * никакой своей палитры: цвета те же, что уже у поиска и ридера, см. блок ниже.
  *
  * Тёмная тема здесь — body.dark, а НЕ html.dark как в демке: класс ставит themeswitch.js на
  * <body> (assets/js/themeswitch.js, bodyTag.classList.add("dark")).
  */
 
+/* Палитра — НЕ своя. Это те же значения, которыми уже живут поиск и ридер: цвета ридера
+   объявлены в reader/css/rus-multi.css (--off-white rgb(221,221,221), --light-off-white
+   rgb(253,253,253), --off-black rgb(4,1,19), --dark-gray #5a5a5a, --light-gray #8f8f8f,
+   --blue #3434be, в тёмной теме ссылки rgb(122,122,249)), а поверхности и границы — Bootstrap,
+   как у кнопок .btn-light в ряду инструментов выдачи. Значения повторены буквально, а не через
+   var(): rus-multi.css подключается лениво, только вместе с ридером, и до первого открытия
+   текста её переменных на странице просто нет. Тот же приём уже применён к #language-button
+   в <head> этой страницы.
+   Фон страницы здесь НЕ задаётся вовсе — главная должна быть ровно того же цвета, что выдача. */
 body.dg-skin-minimal {
-    --dg-surface-1: #FFFFFF;
-    --dg-surface-2: #F5F4F1;
-    --dg-surface-3: #EAE8E2;
-    --dg-page: #EDEBE4;
-    --dg-border: #E7E5DE;
-    --dg-border-strong: #D7D4C9;
-    --dg-text: #1B1D19;
-    --dg-text-2: #5C6058;
-    --dg-text-muted: #93968C;
-    --dg-accent: #0D7C68;
-    --dg-accent-bg: #E1EFE9;
+    --dg-surface: #f8f9fa;
+    --dg-surface-hover: #e9ecef;
+    --dg-border: #dee2e6;
+    --dg-border-strong: #ced4da;
+    --dg-text: rgb(4, 1, 19);
+    --dg-text-2: #5a5a5a;
+    --dg-text-muted: #8f8f8f;
+    --dg-accent: #3434be;
+    --dg-accent-bg: #ececf7;
     --dg-radius: 10px;
-    --dg-font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-    --dg-font-voice: Georgia, "Times New Roman", serif;
+    --dg-font: var(--bs-body-font-family);
     --dg-ease: cubic-bezier(0.22, 0.68, 0, 1);
 }
 
 body.dg-skin-minimal.dark {
-    --dg-surface-1: #15160F;
-    --dg-surface-2: #1D2018;
-    --dg-surface-3: #262A20;
-    --dg-page: #0A0B08;
-    --dg-border: #2A2D24;
-    --dg-border-strong: #3A3E31;
-    --dg-text: #EDEEE7;
-    --dg-text-2: #A4A89A;
-    --dg-text-muted: #6C7063;
-    --dg-accent: #4FCDAE;
-    --dg-accent-bg: #173029;
-}
-
-/* Тёплый фон — только на главной, с плавным уходом обратно к обычному фону выдачи. */
-body.dg-skin-minimal.dg-state-home {
-    background-color: var(--dg-page);
-    transition: background-color 0.34s ease;
+    --dg-surface: #1b1b2a;
+    --dg-surface-hover: #26263a;
+    --dg-border: #3a3a52;
+    --dg-border-strong: #4a4a66;
+    --dg-text: rgb(221, 221, 221);
+    --dg-text-2: #b3b3bd;
+    --dg-text-muted: #8f8f8f;
+    --dg-accent: rgb(122, 122, 249);
+    --dg-accent-bg: #23233a;
 }
 
 /* ============================================================================
@@ -60,7 +58,6 @@ body.dg-skin-minimal.dg-state-home {
    рывком. max-height заведомо больше реальной высоты; overflow:hidden прячет остаток во время
    перехода. Шторки живут отдельно, в конце <body>, и под это схлопывание не попадают.
    ============================================================================ */
-#home-brand,
 #home-motto,
 #home-hint,
 #home-pane {
@@ -77,7 +74,6 @@ body.dg-skin-minimal.dg-state-home {
     margin: 0;
 }
 
-body.dg-state-home #home-brand,
 body.dg-state-home #home-motto,
 body.dg-state-home #home-hint,
 body.dg-state-home #home-pane {
@@ -86,23 +82,50 @@ body.dg-state-home #home-pane {
     pointer-events: auto;
 }
 
-body.dg-state-home #home-brand { max-height: 120px; margin: 0 0 0.25rem; }
-body.dg-state-home #home-motto { max-height: 90px; margin: 0; }
+/* Главный инпут уходит вверх: весь вертикальный отступ главной держит верхнее поле девиза, оно
+   же и схлопывается при уходе в выдачу. Отступ намеренно НЕ на .hero-row: девиз стоит ВЫШЕ ряда
+   с полем, и отступ у ряда отрывал бы подпись от инпута — она прилипала к верхнему краю, а между
+   ней и полем зияла дыра. Сам инпут при этом один и тот же (#paliauto в .hero-row), поэтому
+   фокус и введённый текст переезд переживают. */
+body.dg-state-home #home-motto { max-height: 90px; margin: min(11vh, 96px) 0 0.75rem; }
 body.dg-state-home #home-hint  { max-height: 60px; margin: 0.4rem 0 0; }
 body.dg-state-home #home-pane  { max-height: 1400px; margin: 1.1rem 0 0; }
 
-/* Главный инпут уходит вверх: на главной у ряда с полем крупный отступ сверху, в выдаче — нулевой.
-   Сам элемент один и тот же (#paliauto в .hero-row), поэтому фокус и введённый текст переезд
-   переживают. У .dg-hero-form transition на margin/max-width уже объявлен в <head> страницы. */
-.hero-row {
-    padding-top: 0;
-    transition: padding-top 0.38s var(--dg-ease);
-}
-body.dg-state-home .hero-row { padding-top: min(11vh, 96px); }
 body.dg-skin-minimal.dg-state-home .dg-hero-form { max-width: 520px; }
 
-/* "Домик" ведёт на главную — на самой главной он лишний. */
+/* Ракушка ведёт на главную — на самой главной она лишняя, там слева от поля стоит полное лого. */
 body.dg-state-home .dg-home-btn { display: none; }
+
+/* Полное лого — только на главной, слева от поля, в одном ряду с ним. */
+#home-logo { display: none; flex: none; line-height: 0; }
+body.dg-state-home #home-logo { display: inline-flex; }
+#home-logo img { width: 42px; height: 42px; object-fit: contain; }
+
+/* Ожидание ответа поиска: пока крутится спиннер, выдачи (даже пустой) быть не должно — ради
+   этого весь класс и заведён. Домашние блоки при этом НЕ прячем: смысл в том, чтобы человек
+   остался на главной, а не смотрел в пустоту. */
+body.dg-busy #results-toolbar,
+body.dg-busy #results-divider,
+body.dg-busy #search-pane,
+body.dg-busy #reader-pane {
+    display: none;
+}
+body.dg-busy #variants-hint { display: none !important; }
+
+#dg-loading {
+    display: flex;
+    justify-content: center;
+    padding: 2.5rem 0;
+}
+#dg-loading[hidden] { display: none; }
+/* .spinner-border есть и в Bootstrap (подключён здесь), и в reader/css/rus-multi.css — размеры
+   и цвет задаём сами, чтобы вид не зависел от того, догружен ли уже ридер. */
+#dg-loading .spinner-border {
+    width: 1.75rem;
+    height: 1.75rem;
+    border-width: 0.2em;
+    color: var(--dg-text-muted);
+}
 
 /* Всё, что относится к выдаче, на главной не нужно: пустая таблица с шапкой колонок, ряд кнопок
    выдачи, подсказка о вариантах, плавающие кнопки языка и "наверх". Модалки (#settings,
@@ -135,7 +158,7 @@ body #form #paliauto.searchinput {
    теперь, один раз открыв текст, выдача до конца сессии съезжала на 3rem и меняла шрифт.
    Возвращаем ей своё оформление везде, КРОМЕ состояния ридера — там правила ридера как раз
    нужны. Специфичность (0,1,1) против (0,0,1) у голого `body`, поэтому побеждаем и без
-   !important; домашний скин со своим фоном имеет (0,2,1) и остаётся сильнее. */
+   !important. */
 body:not(.dg-state-reader) {
     margin: 0;
     font-family: var(--bs-body-font-family);
@@ -169,9 +192,8 @@ body.dg-state-reader #variants-hint { display: none !important; }
 body.dg-state-home #variants-hint { display: none !important; }
 
 @media (prefers-reduced-motion: reduce) {
-    #home-brand, #home-motto, #home-hint, #home-pane,
-    .hero-row, .dg-hero-form,
-    body.dg-skin-minimal.dg-state-home {
+    #home-motto, #home-hint, #home-pane,
+    .hero-row, .dg-hero-form {
         transition: none;
     }
 }
@@ -185,32 +207,13 @@ body.dg-no-anim * {
 }
 
 /* ============================================================================
-   Шапка и девиз
+   Девиз — на месте подписи из макета, прямо над полем
    ============================================================================ */
-#home-brand {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.6rem;
-}
-#home-brand .dg-logo {
-    width: 40px;
-    height: 40px;
-    object-fit: contain;
-    flex: none;
-}
-#home-brand .dg-wordmark {
-    font-family: var(--dg-font);
-    font-size: 1.05rem;
-    font-weight: 600;
-    letter-spacing: -0.01em;
-    color: var(--dg-text);
-}
-
 #home-motto {
     text-align: center;
-    font-family: var(--dg-font-voice);
-    font-size: 1.45rem;
+    font-family: var(--dg-font);
+    font-size: 1.4rem;
+    font-weight: 400;
     line-height: 1.3;
     color: var(--dg-text-2);
 }
@@ -249,7 +252,7 @@ body.dg-no-anim * {
     justify-content: center;
     gap: 8px;
     padding: 16px 6px;
-    background: var(--dg-surface-2);
+    background: var(--dg-surface);
     border: 1px solid var(--dg-border);
     border-radius: 12px;
     font-family: var(--dg-font);
@@ -263,7 +266,7 @@ body.dg-no-anim * {
 }
 .dg-tile:hover,
 .dg-tile:focus-visible {
-    background: var(--dg-surface-3);
+    background: var(--dg-surface-hover);
     border-color: var(--dg-border-strong);
     color: var(--dg-text);
 }
@@ -300,7 +303,7 @@ body.dg-no-anim * {
     display: flex;
     flex-direction: column;
     max-height: 82vh;
-    background: var(--dg-surface-1);
+    background: var(--bs-body-bg);
     color: var(--dg-text);
     font-family: var(--dg-font);
     border-top: 1px solid var(--dg-border-strong);
@@ -376,7 +379,7 @@ body.dg-no-anim * {
     border-radius: 7px;
     border: 1px solid var(--dg-border);
     color: var(--dg-text-2);
-    background: var(--dg-surface-2);
+    background: var(--dg-surface);
     cursor: pointer;
 }
 #dg-sheet .dg-sheet-tabs button.on {
