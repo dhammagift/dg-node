@@ -12,9 +12,18 @@
 <style>
 /* Только раскладка контейнера — сам текст красят настоящие таблицы стилей выше, подключённые
    так же, как на search/index.html и reader-template.html. Так образец в /settings/ реально
-   показывает, как текст выглядит на проде, а не повторяет их вёрстку заново. */
-html, body { margin: 0; padding: 0; background: transparent; }
+   показывает, как текст выглядит на проде, а не повторяет их вёрстку заново.
+   ФОН НЕ ПЕРЕОПРЕДЕЛЯЕМ. Раньше здесь стояло background:transparent — из-за этого образец
+   показывал фон страницы настроек, а не настоящий фон ридера (rus-multi.css: светлая
+   var(--light-off-white), тёмная var(--off-black)), то есть по фону это было не демо. Свои
+   у нас только отступы: у ридера body{margin:1rem 3rem}, в узком кадре это съедало ширину. */
+html, body { margin: 0; padding: 0; }
 body { padding: 4px 2px; }
+/* Скрытая копия кнопки словаря из панели ридера (reader-template.html: a.toggle-dict-btn > img).
+   paliLookup.js читает её безусловно (`document.querySelector('.toggle-dict-btn img').src = …`)
+   и без неё падает с TypeError на первой же строке — то есть словарь в образце не завёлся бы
+   вообще. Сама кнопка тут не нужна (вкл/выкл словаря переключается в настройках рядом). */
+.dict-shim { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 /* #sutta — id ридера (reader/reader-template.html: <div id="sutta" class="sutta">), от него
    зависят реальные стили (reader/css/rus-multi.css #sutta{max-width,line-height} и все
    hide-pali/hide-english/column-view правила) — без него текст был лишь ПОХОЖ на прод, но не
@@ -24,6 +33,8 @@ body { padding: 4px 2px; }
 </style>
 </head>
 <body>
+<a class="toggle-dict-btn dict-shim" aria-hidden="true" tabindex="-1"><img src="/assets/svg/comment.svg" alt=""></a>
+<a id="toggle-multiselect" class="dict-shim" aria-hidden="true" tabindex="-1"><img src="/assets/svg/select-slash.svg" alt=""></a>
 <div id="sutta" class="sutta"></div>
 <script>
 // Та же самая замена, что reader/megareader.js's window.applyRemovePunct делает на проде —
@@ -36,8 +47,14 @@ function stripPunct(t) {
     : t;
 }
 function pickReaderLangs() {
-  const raw = localStorage.getItem('dhammaReaderLangs') || localStorage.getItem('dhammaSearchLangs') || 'ru,en';
-  return raw.split(',').map(s => s.trim()).filter(Boolean);
+  // Дефолт, когда языки ещё не настраивали, — РОВНО тот же, что показывает сама страница настроек
+  // (settings/index.html: DEFAULT_LANGS = isRu ? ['ru','en'] : ['en']). Здесь было захардкожено
+  // 'ru,en' всегда: при английском интерфейсе в чипах стоял один English, а образец всё равно
+  // показывал русский перевод — то есть демо противоречило настройке прямо над ним.
+  const raw = localStorage.getItem('dhammaReaderLangs') || localStorage.getItem('dhammaSearchLangs');
+  if (raw) return raw.split(',').map(s => s.trim()).filter(Boolean);
+  const isRu = (localStorage.getItem('dhammaLanguage') || localStorage.getItem('siteLanguage') || 'en') === 'ru';
+  return isRu ? ['ru', 'en'] : ['en'];
 }
 // Акшарамукха живёт только в Node (не в браузере посетителя) — образец берёт уже готовый,
 // заранее сконвертированный набор из settings/demo-data.json (dg-light.js, buildSettingsDemoCache
@@ -106,8 +123,12 @@ function render() {
   const wantedLangs = pickReaderLangs();
   document.getElementById('sutta').innerHTML = group.segments.map(s => renderSegment(s, wantedLangs)).join('');
   // Родительская страница не знает, какой фрагмент сейчас показан (случайный выбор — здесь) —
-  // сообщаем sutta_id, чтобы там можно было собрать ссылку "Читать" на настоящий текст.
-  window.parent.postMessage({ type: 'dg-preview-current', suttaId: group.sutta_id }, location.origin);
+  // сообщаем sutta_id И id первого сегмента, чтобы "Читать" открывала ридер РОВНО на этом месте,
+  // а не в начале сутты (ридер понимает якорь: megareader.js читает location.hash и скроллит к
+  // элементу с таким id).
+  const firstSeg = group.segments[0] && group.segments[0].segment;
+  const anchorId = firstSeg ? (firstSeg.includes(':') ? firstSeg.split(':').slice(1).join(':') : firstSeg) : null;
+  window.parent.postMessage({ type: 'dg-preview-current', suttaId: group.sutta_id, segmentId: anchorId }, location.origin);
 }
 // Тема — то же самое, что реально пишет /assets/js/themeswitch.js на проде: body.classList
 // 'dark' + <html data-bs-theme="..">, а не просто наш собственный body.dark (от этого зависят
@@ -132,7 +153,49 @@ window.addEventListener('storage', e => {
     render();
   }
   if (e.key === 'theme') applyTheme();
+  if (e.key === 'dictionaryVisible') syncDict();
 });
+/* Словарь работает прямо в образце — тем же самым скриптом, что и в ридере (paliLookup.js),
+   а не имитацией: он сам вешает свои обработчики на клик и на выделение внутри .pli-lang/[lang=pi],
+   сам читает выбранный режим (selectedDict), автопоиск выделения (multiSelectMode) и задержку
+   (dictAutoLookupDelay). На проде его лениво подгружает /assets/js/settings.js при первом клике по
+   пали — здесь ту же ленивую загрузку делаем сами, чтобы не тащить в образец весь общесайтовый
+   settings.js с его тулбаром, горячими клавишами и модалками. */
+let dictLoading = null;
+function loadDict() {
+  if (dictLoading) return dictLoading;
+  dictLoading = new Promise(resolve => {
+    const s = document.createElement('script');
+    s.src = '/assets/js/paliLookup.js';
+    s.onload = () => resolve(true);
+    s.onerror = () => resolve(false);
+    document.head.appendChild(s);
+  });
+  return dictLoading;
+}
+function dictEnabled() { return localStorage.getItem('dictionaryVisible') !== 'false'; }
+function syncDict() { if (dictEnabled()) loadDict(); }
+// Клик по пали грузит словарь и повторяет клик уже с загруженным скриптом — ровно тот же приём,
+// что и в общесайтовом settings.js (иначе первый клик пропадал бы впустую).
+document.addEventListener('click', e => {
+  if (!dictEnabled() || window.__dictReady) return;
+  if (!e.target.closest('.pli-lang, [lang="pi"]')) return;
+  e.preventDefault(); e.stopPropagation();
+  const t = e.target, x = e.clientX, y = e.clientY;
+  loadDict().then(ok => {
+    if (!ok) return;
+    window.__dictReady = true;
+    t.dispatchEvent(new MouseEvent('click', { view: window, bubbles: true, cancelable: true, clientX: x, clientY: y }));
+  });
+}, true);
+// Автопоиск по выделению (multiSelectMode) вешается внутри paliLookup.js на selectionchange —
+// значит скрипт должен быть уже загружен к моменту выделения, клика может и не быть.
+document.addEventListener('selectionchange', () => {
+  if (!dictEnabled() || localStorage.getItem('multiSelectMode') !== 'true') return;
+  const sel = window.getSelection();
+  if (sel && sel.toString().trim()) loadDict().then(ok => { if (ok) window.__dictReady = true; });
+});
+if (dictEnabled() && localStorage.getItem('multiSelectMode') === 'true') loadDict();
 window.addEventListener('message', e => {
   // Только refresh: перерисовать текущий фрагмент с актуальными настройками. Пути, меняющего
   // фрагмент, больше нет — он один на всю сессию настроек.

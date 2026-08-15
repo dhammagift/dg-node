@@ -43,10 +43,15 @@ body{font-family:var(--ui);color:var(--ink);background:var(--canvas);font-size:1
    только пока на виду разделы Чтение/Словарь (там реально настраивается то, что видно в
    образце) — дальше (Коренной текст/Озвучка/Данные) она просто занимала бы место без пользы;
    .preview.not-sticky (JS ниже, по скроллу) снимает position:sticky. */
-.preview{position:sticky;top:8px;z-index:5;background:#FBF7EF;border:1px solid #E7DDC9;border-radius:var(--r-lg);padding:14px 16px;margin-bottom:22px;box-shadow:0 6px 16px -4px rgba(0,0,0,.18)}
+/* Фон панели — РОВНО фон ридера, не выдуманный: rus-multi.css задаёт body{background:
+   var(--light-off-white)} = rgb(253,253,253) и body.dark{background: var(--off-black)} =
+   rgb(4,1,19). Раньше тут стоял песочный #FBF7EF с рамкой #E7DDC9 — цвет, которого нет ни в
+   одной таблице стилей сайта; из-за него панель и сам образец внутри неё были разного цвета,
+   и образец переставал быть демо ридера. */
+.preview{position:sticky;top:8px;z-index:5;background:rgb(253,253,253);border:1px solid var(--line);border-radius:var(--r-lg);padding:14px 16px;margin-bottom:22px;box-shadow:0 6px 16px -4px rgba(0,0,0,.18)}
 .preview.not-sticky{position:static}
-body.dark .preview{background:#1C2029;border-color:#333B47}
-.preview-label{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:#96876A;display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+body.dark .preview{background:rgb(4,1,19);border-color:var(--line)}
+.preview-label{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3);display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
 .preview-label button{background:transparent;border:0;font-size:16px;padding:2px 6px;color:var(--accent)}
 .preview-label-left,.preview-label-right{display:flex;align-items:center;gap:6px}
 .preview-label-right{gap:2px}
@@ -128,7 +133,6 @@ button{font:inherit;cursor:pointer}
    этой странице (Применить/Сбросить/+ Добавить язык и т.п.). */
 .voice-key-control{width:100%}
 .voice-key-control .control{flex:1;min-width:0;max-width:none}
-.dict-test-frame{width:100%;height:320px;border:1px solid var(--line-strong);border-radius:var(--r-sm)}
 .icon-btn{width:44px;padding:0;justify-content:center;flex:none}
 .icon-btn svg{width:20px;height:20px}
 .num input{width:56px;min-height:44px;border:1px solid var(--line-strong);border-radius:var(--r-sm);background:var(--surface);color:var(--ink);font:inherit;font-size:15px;text-align:center}
@@ -355,21 +359,9 @@ kbd{font:inherit;font-size:12.5px;background:var(--line);border:1px solid var(--
             <button type="button" data-ms="5000" aria-pressed="false">5 с</button>
           </div></div>
         </div>
-        <!-- Проверить словарь прямо здесь, не уходя в поиск/ридер — реальный dict.dhamma.gift
-             (тот же бэкенд, что стоит за DPD-режимами), встроенный/во внешние приложения режимы
-             тут не проверить (dictTango/Mdict/GoldenDict — свои URI-схемы вне браузера,
-             standalone — своя JS-логика в paliLookup.js, слишком много переносить сюда ради
-             одной проверки), для них — короткая пометка вместо результата. -->
-        <div class="row row-stack">
-          <div><p class="row-title" id="t-dictTest">Проверить словарь</p>
-          <p class="row-desc" id="t-dictTestDesc">Найдите слово прямо здесь, в режиме, выбранном выше.</p></div>
-          <div class="row-control voice-key-control">
-            <input type="text" id="dictTestWord" class="control" placeholder="dukkha">
-            <button class="btn btn-primary" type="button" id="dictTestBtn">Найти</button>
-          </div>
-          <p class="hint" id="dictTestNote" hidden></p>
-          <iframe id="dictTestFrame" class="dict-test-frame" title="Словарь" hidden></iframe>
-        </div>
+        <!-- Отдельного поля "проверить словарь" здесь нет: словарь проверяется там же, где он
+             реально работает — в образце. Клик или выделение пали-слова в образце вызывает тот
+             же paliLookup.js, что и в ридере, в выбранном выше режиме. -->
       </div>
     </div>
   </section>
@@ -501,11 +493,25 @@ const state = {
   sameAsRead: localStorage.getItem('dhammaReaderLangs') === null
 };
 
+/* Пока пользователь сам не тронул языки — НИЧЕГО не пишем. Раньше saveLangs() вызывался в том
+   числе из render() на старте страницы, то есть простое открытие /settings/ уже записывало
+   dhammaSearchLangs — и проверка "языки ещё не настраивались вручную" при смене языка интерфейса
+   (см. #uiLang ниже) навсегда становилась ложной: русский после переключения на русский интерфейс
+   больше не подставлялся. */
+let langsTouched = false;
 function saveLangs(){
+  if (!langsTouched) return;
+  // "Языки поиска = языки чтения" синхронизировалось ТОЛЬКО в обработчике самого чекбокса, а
+  // saveLangs при этом писал state.search (старый!) и УДАЛЯЛ dhammaReaderLangs. Из-за этого при
+  // включённом чекбоксе (состояние по умолчанию) любое изменение языков чтения — добавление
+  // русского в том числе — не сохранялось вообще никуда: чипы менялись, localStorage оставался
+  // старым, образец и сайт продолжали показывать пали+англ.
+  if (state.sameAsRead) state.search = state.read.slice();
+  localStorage.setItem('dhammaReaderLangs', state.read.join(','));
   localStorage.setItem('dhammaSearchLangs', state.search.join(','));
-  if (state.sameAsRead) localStorage.removeItem('dhammaReaderLangs');
-  else localStorage.setItem('dhammaReaderLangs', state.read.join(','));
 }
+// Изменение языков пользователем: пометить как "тронуто" и перерисовать+сохранить.
+function commitLangs(){ langsTouched = true; render(); }
 
 let dlgTarget = 'read';
 /* Перетаскивание чипов — на Pointer Events (не HTML5 draggable): нативный drag-and-drop не
@@ -513,6 +519,12 @@ let dlgTarget = 'read';
    а Pointer Events унифицируют мышь/тач/перо и надёжно работают везде — это и было причиной
    жалобы "перетаскивание не работает" (клавиатурные стрелки при этом и раньше работали, отсюда
    был рабочий, но не самый заметный способ). */
+/* pointermove/pointerup слушает ДОКУМЕНТ, а не сама ручка. Раньше слушатели висели на .grip, а
+   setPointerCapture вызывался на .chip (родителе) — захват перенаправляет все последующие события
+   прямо на chip, а слушатель на его ребёнке .grip их уже не получает: pointermove не приходил
+   НИКОГДА, и перетаскивание не работало ни мышью, ни пальцем. Плюс render() пересоздаёт чипы на
+   каждой перестановке, то есть элемент с захватом посреди жеста исчезает — ещё одна причина не
+   привязывать жест к самому элементу. */
 let dragState = null;
 function pointerDownGrip(e, code, key, host){
   if(e.button !== undefined && e.button !== 0) return;
@@ -520,10 +532,13 @@ function pointerDownGrip(e, code, key, host){
   const chip = e.currentTarget.closest('.chip');
   dragState = { code, key, host, pointerId: e.pointerId };
   chip.classList.add('dragging');
-  try{ chip.setPointerCapture(e.pointerId); }catch(err){}
+  document.addEventListener('pointermove', pointerMoveGrip);
+  document.addEventListener('pointerup', pointerUpGrip);
+  document.addEventListener('pointercancel', pointerUpGrip);
 }
 function pointerMoveGrip(e){
   if(!dragState || e.pointerId !== dragState.pointerId) return;
+  e.preventDefault();
   const target = document.elementFromPoint(e.clientX, e.clientY);
   const overChip = target && target.closest && target.closest('.chip');
   if(!overChip || !dragState.host.contains(overChip)) return;
@@ -533,12 +548,15 @@ function pointerMoveGrip(e){
   const from = arr.indexOf(dragState.code), to = arr.indexOf(overCode);
   if(from<0 || to<0) return;
   arr.splice(from,1); arr.splice(to,0,dragState.code);
-  render();
+  commitLangs();
   const newChip = dragState.host.querySelector(`[data-code="${dragState.code}"]`);
-  if(newChip){ newChip.classList.add('dragging'); try{ newChip.setPointerCapture(dragState.pointerId); }catch(err){} }
+  if(newChip) newChip.classList.add('dragging');
 }
 function pointerUpGrip(){
   if(!dragState) return;
+  document.removeEventListener('pointermove', pointerMoveGrip);
+  document.removeEventListener('pointerup', pointerUpGrip);
+  document.removeEventListener('pointercancel', pointerUpGrip);
   document.querySelectorAll('.chip.dragging').forEach(c=>c.classList.remove('dragging'));
   dragState = null;
 }
@@ -554,12 +572,12 @@ function makeChips(host, key, disabled){
       (disabled?'':`<button class="x" type="button" aria-label="${isRu?'Убрать':'Remove'} ${NAMES[code]||code}">✕</button>`);
     if(!disabled){
       const xBtn = chip.querySelector('.x');
-      if (xBtn) xBtn.onclick=()=>{ if(state[key].length>1){ state[key]=state[key].filter(c=>c!==code); render(); } };
+      if (xBtn) xBtn.onclick=()=>{ if(state[key].length>1){ state[key]=state[key].filter(c=>c!==code); commitLangs(); } };
       chip.onkeydown=e=>{ const idx=state[key].indexOf(code); let j=null;
         if(e.key==='ArrowLeft'||e.key==='ArrowUp') j=idx-1;
         if(e.key==='ArrowRight'||e.key==='ArrowDown') j=idx+1;
         if(j===null||j<0||j>=state[key].length) return; e.preventDefault();
-        [state[key][j],state[key][idx]]=[state[key][idx],state[key][j]]; render(); host.children[j].focus(); };
+        [state[key][j],state[key][idx]]=[state[key][idx],state[key][j]]; commitLangs(); host.children[j].focus(); };
       const grip = chip.querySelector('.grip');
       grip.addEventListener('pointerdown', e=>pointerDownGrip(e,code,key,host));
       grip.addEventListener('pointermove', pointerMoveGrip);
@@ -600,13 +618,13 @@ function renderLangList(q){
 }
 $('#langSearch').oninput=e=>renderLangList(e.target.value);
 $('#langCancel').onclick=()=>langDlg.close();
-$('#langAdd').onclick=()=>{ document.querySelectorAll('#langList input:checked:not(:disabled)').forEach(i=>state[dlgTarget].push(i.value)); langDlg.close(); render(); };
+$('#langAdd').onclick=()=>{ document.querySelectorAll('#langList input:checked:not(:disabled)').forEach(i=>state[dlgTarget].push(i.value)); langDlg.close(); commitLangs(); };
 
 $('#sameAsRead').onchange = e=>{
   state.sameAsRead = e.target.checked;
   $('#searchLangsBlock').hidden = e.target.checked;
   if (e.target.checked) state.search = state.read.slice();
-  render();
+  commitLangs();
 };
 $('#searchLangsBlock').hidden = state.sameAsRead;
 $('#sameAsRead').checked = state.sameAsRead;
@@ -670,36 +688,6 @@ $('#dictBlock').hidden = !$('#dictOn').checked;
 $('#dictOn').onchange = e=>{ $('#dictBlock').hidden = !e.target.checked; localStorage.setItem('dictionaryVisible', e.target.checked ? 'true' : 'false'); };
 $('#dictMode').value = localStorage.getItem('selectedDict') || 'standalone';
 $('#dictMode').onchange = e=> localStorage.setItem('selectedDict', e.target.value);
-
-/* Проверка словаря прямо в /settings/ — тот же URL, что реально строит resolveDictConfig() в
-   paliLookup.js для DPD-режимов (dict.dhamma.gift, /ru для русских режимов, ?silent&q= для
-   полного попапа, /gd?search= для мини). Режимы вне браузера (внешние приложения) здесь не
-   проверить — честно показываем заметку вместо результата, а не притворяемся. */
-function resolveDictTestUrl(mode, word){
-  const q = encodeURIComponent(word);
-  if (mode.includes('dpd') || mode === 'standalone' || mode === 'standaloneru' || mode === 'newwindow' || mode === 'newwindowru') {
-    let url = 'https://dict.dhamma.gift';
-    if (mode.includes('ru')) url += '/ru';
-    if (mode.includes('compact')) return url + '/gd?search=' + q;
-    return url + '/?silent&q=' + q;
-  }
-  if (mode === 'machinetranslation') return 'https://dharmamitra.org/translate?input_sentence=' + q;
-  return null; // searchonly / dicttango / mdict / goldenpc — вне браузера, нечего вставить в iframe
-}
-$('#dictTestBtn').onclick = ()=>{
-  const word = $('#dictTestWord').value.trim();
-  if (!word) return;
-  const mode = $('#dictMode').value;
-  const url = resolveDictTestUrl(mode, word);
-  const frame = $('#dictTestFrame'), note = $('#dictTestNote');
-  const t = STR[isRu?'ru':'en'];
-  if (url) {
-    frame.src = url; frame.hidden = false; note.hidden = true;
-  } else {
-    frame.hidden = true; note.hidden = false; note.textContent = t.dictTestNoPreview;
-  }
-};
-$('#dictTestWord').onkeydown = e=>{ if (e.key === 'Enter') { e.preventDefault(); $('#dictTestBtn').click(); } };
 
 /* Автопоиск выделения — та же кнопка/ключ, что и "мультивыбор" в ридере (paliLookup.js,
    #toggle-multiselect), не отдельная новая настройка. Задержка — 3 или 5 секунд (2с сочли
@@ -992,8 +980,6 @@ const STR = {
     gDict:'Словарь', dictOnDesc:'Сводный словарь, включает DPD и другие источники.', dictMode:'Режим',
     autoLookup:'Искать выделенный текст автоматически', autoLookupDesc:'То же самое, что кнопка мультивыбора в ридере.',
     delay:'Задержка',
-    dictTest:'Проверить словарь', dictTestDesc:'Найдите слово прямо здесь, в режиме, выбранном выше.',
-    dictTestBtn:'Найти', dictTestNoPreview:'Этот режим открывается вне браузера (внешнее приложение) — здесь не проверить, попробуйте в поиске или ридере.',
     gRoot:'Коренной текст пали', edLbl:'Издание',
     edDesc:'Сейчас поиск всегда идёт по Mahāsaṅgīti — остальные готовятся только для ридера.', badgeSoon:'скоро',
     gVoice:'Озвучка', voiceKey:'Ключ Google Cloud API',
@@ -1029,8 +1015,6 @@ const STR = {
     gDict:'Dictionary', dictOnDesc:'Combined dictionary, includes DPD and other sources.', dictMode:'Mode',
     autoLookup:'Auto-look-up selected text', autoLookupDesc:'Same as the multi-select button in the reader.',
     delay:'Delay',
-    dictTest:'Test the dictionary', dictTestDesc:'Look up a word right here, in the mode selected above.',
-    dictTestBtn:'Look up', dictTestNoPreview:"This mode opens outside the browser (external app) — can't test it here, try it in search or the reader.",
     gRoot:'Pali root text', edLbl:'Edition',
     edDesc:'Search currently always uses Mahāsaṅgīti — the others are being prepared for the reader only.', badgeSoon:'soon',
     gVoice:'Voice / TTS', voiceKey:'Google Cloud API key',
@@ -1062,7 +1046,6 @@ function applyLang(){
    ['t-anydist','anydist'],['t-anydistDesc','anydistDesc'],['t-soon','soon'],
    ['t-g-dict','gDict'],['t-dictOnDesc','dictOnDesc'],['t-dictMode','dictMode'],
    ['t-autoLookup','autoLookup'],['t-autoLookupDesc','autoLookupDesc'],['t-delay','delay'],
-   ['t-dictTest','dictTest'],['t-dictTestDesc','dictTestDesc'],['dictTestBtn','dictTestBtn'],
    ['t-g-root','gRoot'],['edLbl','edLbl'],['t-edDesc','edDesc'],
    ['t-g-voice','gVoice'],['t-voiceKey','voiceKey'],['t-voiceKeyDesc','voiceKeyDesc'],
    ['t-voiceOpen','voiceOpen'],['t-voiceOpenDesc','voiceOpenDesc'],['voiceBtn','voiceBtn'],
@@ -1138,7 +1121,11 @@ $('#backLinkPreview').onclick = goBack;
 window.addEventListener('message', e => {
   if (e.origin !== location.origin) return;
   if (e.data && e.data.type === 'dg-preview-current' && e.data.suttaId) {
-    $('#previewRead').href = '/' + e.data.suttaId;
+    // С якорем сегмента, а не просто на сутту: раньше "Читать" открывала текст с самого начала,
+    // и найти в нём тот кусок, который показан в образце, приходилось глазами. Формат якоря —
+    // тот же, что понимает ридер (megareader.js: location.hash -> getElementById -> scrollIntoView).
+    const seg = e.data.segmentId;
+    $('#previewRead').href = '/' + e.data.suttaId + (seg ? '#' + seg : '');
   }
 });
 
