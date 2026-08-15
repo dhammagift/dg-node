@@ -847,7 +847,12 @@ async function initReader() {
         window.currentReaderSlug = normalizedSlug;
         const rendered = await window.buildSutta(normalizedSlug);
         if (rendered && segmentId) {
-            const target = document.getElementById(segmentId);
+            // Точное совпадение — обычный случай ("/dn1:1.22.2"). Префиксный запасной вариант —
+            // для текстов-диапазонов: сервер, не найдя отдельной сутты an1.9, уводит на
+            // "/an1.1-10:an1.9" (см. findRangeContaining в dg-light.js), а элементов с id
+            // ровно "an1.9" там нет — сегменты внутри диапазона называются "an1.9:1.1" и т.д.
+            const target = document.getElementById(segmentId)
+                || document.querySelector('[id^="' + segmentId.replace(/"/g, '\\"') + ':"]');
             if (target) {
                 // ?scroll=instant — тот же флаг, что уже понимает smoothScroll.js, и тот же, что
                 // openFdg.js дописывает, открывая цитату из поиска во встроенном попапе-iframe:

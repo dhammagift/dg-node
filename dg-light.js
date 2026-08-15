@@ -2060,11 +2060,47 @@ ${items}
 // здесь был redirect на /?q=..., то есть адрес в строке браузера всё равно "портился" обратно
 // в ?q= даже для собственной навигации сайта — теперь просто отдаём ту же страницу поиска прямо
 // по чистому пути, без редиректа.
+// Отдельного текста an1.9 в корпусе нет — он лежит внутри диапазона an1.1-10 (так свёрстаны
+// короткие сутты в AN/SN/DHP и т.п.). Раньше такой запрос не находил ни текста, ни детей главы
+// и молча уезжал на страницу поиска по строке "an1.9", хотя сам текст есть. Ищем диапазон,
+// который его накрывает: сначала с номером главы ("an1.9" -> "an1.1-10"), затем без неё
+// ("dhp5" -> "dhp1-20"). Легаси делал то же самое отдельным ranges.sh (см. комментарий в
+// dg-text-router.js).
+function findRangeContaining(id) {
+    const withChapter = id.match(/^([a-z-]+)(\d+)\.(\d+)$/);
+    const flat = id.match(/^([a-z-]+)(\d+)$/);
+    let book, chapter, num;
+    if (withChapter) {
+        book = withChapter[1]; chapter = withChapter[2]; num = parseInt(withChapter[3], 10);
+    } else if (flat) {
+        book = flat[1]; chapter = null; num = parseInt(flat[2], 10);
+    } else {
+        return null;
+    }
+    const rangeRe = chapter
+        ? new RegExp('^' + book + chapter + '\\.(\\d+)-(\\d+)$')
+        : new RegExp('^' + book + '(\\d+)-(\\d+)$');
+    for (const key of Object.keys(skeletonDB)) {
+        const m = key.match(rangeRe);
+        if (!m) continue;
+        if (num >= parseInt(m[1], 10) && num <= parseInt(m[2], 10)) return key;
+    }
+    return null;
+}
+
 app.get('/:slug', (req, res) => {
     const rawSlug = req.params.slug;
     const suttaId = rawSlug.split(':')[0].toLowerCase();
     if (skeletonDB[suttaId]) {
         return res.sendFile(readerTemplatePath);
+    }
+    // Якорем идёт сам запрошенный id: внутри диапазона сегменты пронумерованы по вложенной
+    // сутте ("an1.9:1.1"), и megareader.js для диапазонов кладёт в id элемента ПОЛНЫЙ segment id,
+    // так что "an1.9" — валидный префикс якоря (точное совпадение ищется первым, см. там же).
+    const range = findRangeContaining(suttaId);
+    if (range) {
+        const query = req.originalUrl.slice(req.path.length); // сохраняем ?s=, ?lang= и т.п.
+        return res.redirect(302, '/' + encodeURIComponent(range) + ':' + encodeURIComponent(suttaId) + query);
     }
     const children = findChapterChildren(suttaId);
     if (children.length) {
