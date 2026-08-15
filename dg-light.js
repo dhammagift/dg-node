@@ -1392,6 +1392,12 @@ async function buildFastResponse(keyword, searchScope, exactMatch, targetLangs, 
 // растёт с числом сутт, растёт только id-alternation (которую тоже чанкуем на случай очень
 // большого корпуса, но это на порядки более редкий случай).
 const GREP_ID_BUDGET = 12000; // символов на -e id-паттерны в одном вызове
+// Per-call stdout ceiling for the segment greps. Not a hard limit on what can be fetched: on
+// overflow grepSegmentsWithContextRecursive splits the chunk and retries (see there).
+const GREP_MAX_BUFFER = 1024 * 1024 * 20;
+// Whole-command-line budget, ids AND directories together. Windows hard-fails the spawn at 32767
+// characters; staying well under it leaves room for quoting overhead we do not model exactly.
+const GREP_CMDLINE_BUDGET = 24000;
 
 function chunkByBudget(items, toArgString, budget) {
     const chunks = [];
@@ -1426,21 +1432,59 @@ async function grepSegmentsWithContextRecursive(dirs, segmentIds, lb = 0, la = 0
     if (lb > 0) baseArgs.push(`-B${lb}`);
     if (la > 0) baseArgs.push(`-A${la}`);
 
-    const idChunks = chunkByBudget(segmentIds, id => `-e "${id}":`, GREP_ID_BUDGET);
+    // GREP_ID_BUDGET only ever counted the -e patterns, as if they were the whole command line.
+    // The directory list is part of it too, and it is not small: every reading language adds its
+    // own absolute path. Past ~32k characters Windows refuses to spawn at all (ENAMETOOLONG), and
+    // the error propagated out and failed the whole /search/enrich request with a 500 — in the
+    // browser that showed up as "Ошибка при догрузке цитат" and rows that never filled in their
+    // quotes. The dirs are now subtracted from the budget up front.
+    const dirsLen = existingDirs.reduce((n, d) => n + d.length + 3, 0)
+        + baseArgs.reduce((n, a) => n + a.length + 1, 0);
+    const idBudget = Math.max(1000, GREP_CMDLINE_BUDGET - dirsLen);
+    const idChunks = chunkByBudget(segmentIds, id => `-e "${id}":`, Math.min(GREP_ID_BUDGET, idBudget));
 
-    await Promise.all(idChunks.map(async idChunk => {
+    // Both remaining failure modes are recoverable rather than fatal. A command line that is
+    // still too long, or output past maxBuffer (the argument budget says nothing about how much
+    // grep will print — a page of long segments in every language can blow past it): halve the
+    // work and retry, ids first, then the directory list. Only a single id against a single
+    // directory that still fails is dropped, with a log line, instead of taking the batch down.
+    async function grepChunk(idChunk, dirSubset) {
         const args = [...baseArgs];
         for (const segId of idChunk) args.push('-e', `"${segId}":`);
-        args.push(...existingDirs);
+        args.push(...dirSubset);
 
-        let stdout = '';
         try {
-            const res = await execFile('grep', args, { maxBuffer: 1024 * 1024 * 20 });
-            stdout = res.stdout;
+            const res = await execFile('grep', args, { maxBuffer: GREP_MAX_BUFFER });
+            return res.stdout;
         } catch (error) {
-            if (error.code === 1) return; // no matches for this id chunk
-            throw error;
+            if (error.code === 1) return ''; // no matches for this id chunk
+            const recoverable = error.code === 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER' || error.code === 'ENAMETOOLONG';
+            if (!recoverable) throw error;
+
+            if (idChunk.length > 1) {
+                const mid = Math.ceil(idChunk.length / 2);
+                const halves = await Promise.all([
+                    grepChunk(idChunk.slice(0, mid), dirSubset),
+                    grepChunk(idChunk.slice(mid), dirSubset)
+                ]);
+                return halves.join('\n');
+            }
+            if (dirSubset.length > 1) {
+                const mid = Math.ceil(dirSubset.length / 2);
+                const halves = await Promise.all([
+                    grepChunk(idChunk, dirSubset.slice(0, mid)),
+                    grepChunk(idChunk, dirSubset.slice(mid))
+                ]);
+                return halves.join('\n');
+            }
+            console.error(`[enrich] grep failed (${error.code}) for ${idChunk[0]} in ${dirSubset[0]}, skipped`);
+            return '';
         }
+    }
+
+    await Promise.all(idChunks.map(async idChunk => {
+        const stdout = await grepChunk(idChunk, existingDirs);
+        if (!stdout) return;
 
         for (const line of stdout.split('\n')) {
             if (!line.trim() || line === '--') continue;

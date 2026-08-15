@@ -56,6 +56,7 @@
     "scope4Nikaya6Kn": "4 Nikayas + 6 KN books",
     "scope4Nikaya": "4 Nikayas",
     "scopeAll": "the whole corpus",
+    "scopeSelected": "selected sections ({n})",
     "hasVariantsSuffix": "has",
     "variantsLinkText": "variants",
     "variantsForLabel": "Variants for",

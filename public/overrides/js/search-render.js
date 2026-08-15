@@ -428,17 +428,34 @@ window.DgSearchRender = (function () {
             orderMulti: true,
             pageLength: 10,
             lengthMenu: [10, 30, 50, 100, 1000],
-            // Responsive's встроенный dtr-title (подпись колонки перед развёрнутым значением,
-            // напр. "Ссылки"/"Цитата" у className:'none' колонок) кеширует заголовок при
-            // инициализации и иногда отдаёт "undefined" вместо реального текста — сам DataTables
-            // column.title при этом уже верный (проверено через settings().aoColumns), это баг
-            // именно кеша Responsive, не наших данных. Содержимое колонки (ссылки/цитата) само по
-            // себе понятно без подписи — рендерим только данные, без dtr-title вообще.
+            // Responsive's own dtr-title caches the column heading at init time and sometimes
+            // hands back "undefined" instead of the real text — DataTables' own column.title is
+            // correct at that moment (verified via settings().aoColumns), so this is a Responsive
+            // cache bug, not bad data. The previous fix dropped every label, which threw out the
+            // useful ones with it: only the quote column is self-explanatory, "Ссылки"/"Mr" and
+            // the rest need their heading. Labels are therefore read from DataTables directly,
+            // and skipped only for columns marked data-dtr-notitle in the markup.
             responsive: {
                 details: {
                     renderer: function (api, rowIdx, columns) {
                         var data = columns.reduce(function (html, col) {
-                            return col.hidden ? html + '<li data-dtr-index="' + col.columnIndex + '">' + col.data + '</li>' : html;
+                            if (!col.hidden) return html;
+                            var th = api.column(col.columnIndex).header();
+                            var title = '';
+                            if (!th || !th.hasAttribute('data-dtr-notitle')) {
+                                // aoColumns[].sTitle, not api.column().title(): the public title()
+                                // getter returns undefined in this DataTables build (checked live),
+                                // and Responsive's own col.title is the stale cache this renderer
+                                // exists to bypass. The <th> text is the last-resort fallback.
+                                var settings = api.settings()[0];
+                                var column = settings && settings.aoColumns && settings.aoColumns[col.columnIndex];
+                                var text = (column && column.sTitle) || (th && th.textContent.trim()) || '';
+                                if (text && text !== 'undefined') {
+                                    title = '<span class="dtr-title">' + text + '</span> ';
+                                }
+                            }
+                            return html + '<li data-dtr-index="' + col.columnIndex + '">' +
+                                title + '<span class="dtr-data">' + col.data + '</span></li>';
                         }, '');
                         return data ? $('<ul data-dtr-index="' + rowIdx + '" class="dtr-details"/>').append(data) : false;
                     }

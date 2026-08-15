@@ -160,6 +160,45 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
         background: currentColor;
         opacity: 0.15;
     }
+    /* #variants-hint sits OUTSIDE #search-pane in the source, so it never inherited the
+       centred 1600px column the header and the results table use — on wide monitors it
+       stretched to the raw viewport and stuck to the far left edge while everything else
+       stayed centred. Same three values as .container-fluid.table-wrapper so it lines up
+       with the table's first column exactly. */
+    #variants-hint {
+        max-width: 1600px;
+        margin: 0 auto;
+        padding: 0 12px;
+    }
+    /* #search-pane is .container-fluid nested inside another .container-fluid, so the 12px
+       Bootstrap gutter was applied twice: 24px of dead space on each side of the results
+       table on a 375px phone. The outer container already provides the page gutter. */
+    @media (max-width: 767.98px) {
+        #search-pane.container-fluid {
+            padding-left: 0;
+            padding-right: 0;
+        }
+    }
+    /* Language switch — same corner and geometry as in the reader (reader/css/uiextra.css
+       #language-button: fixed, bottom 30px, right 20px, z-index 100, pill radius, 0.8 opacity
+       going opaque on hover). The reader's own colours live in rus-multi.css, which this page
+       does not load, so the button keeps its .btn-light skin and only the placement is shared. */
+    #language-button {
+        position: fixed;
+        bottom: 30px;
+        right: 20px;
+        z-index: 100;
+        border-radius: 32px;
+        padding: 5px 14px;
+        opacity: 0.8;
+        /* .mb-1 from the toolbar markup would otherwise add 4px on top of bottom:30px */
+        margin-bottom: 0;
+        transition: transform 0.2s ease, opacity 0.2s ease;
+    }
+    #language-button:hover {
+        opacity: 1;
+        transform: scale(1.1);
+    }
 </style>
 
 <link rel="stylesheet" href="/assets/css/langswitch.css">
@@ -237,6 +276,26 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     var el = document.getElementById('paliauto');
     if (el) el.focus();
   });
+
+  // ...но фокус — это ровно то, на что autopali.js вешает ленивую инициализацию, и в конце она
+  // сама вызывает autocomplete("search", value). То есть автофокус выше открывал выпадашку
+  // подсказок сразу после загрузки, без единого действия пользователя — выглядит как глюк.
+  // Автофокус оставляем (курсор в поле — это удобно), а меню держим закрытым, пока человек
+  // реально не начнёт вводить или не ткнёт в поле. autopali.js — общий с продом файл
+  // (siteroot/assets), его не трогаем: гасим здесь, на своей странице.
+  (function suppressAutocompleteUntilInteraction() {
+    var input = document.getElementById('paliauto');
+    if (!input) return;
+    var interacted = false;
+    function markInteracted() { interacted = true; }
+    ['keydown', 'pointerdown', 'touchstart', 'input'].forEach(function (ev) {
+      input.addEventListener(ev, markInteracted);
+    });
+    // Делегируем на документ: виджет создаётся позже, когда jQuery UI догрузится.
+    jQuery(document).on('autocompleteopen', '#paliauto', function () {
+      if (!interacted) jQuery(this).autocomplete('close');
+    });
+  })();
 </script>
 
     <h3 class="pl-2 resultheader ml-2" id="dynamicHeader"></h3>
@@ -727,7 +786,10 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
             <th>{{table.mrCol}}</th>
             <th>{{table.linksCol}}</th>
                         <th>{{table.typeCol}}</th>
-            <th class="none">{{table.quoteCol}}</th>
+            <!-- data-dtr-notitle: the only column whose label is suppressed in the expanded
+                 child row (see the responsive renderer in search-render.js). A quote reads as
+                 a quote; "Ссылки"/"Mr" and the rest do need their labels. -->
+            <th class="none" data-dtr-notitle>{{table.quoteCol}}</th>
         <!-- <th class="none">Audio</th> -->
         </tr>
     </thead>
@@ -1213,28 +1275,46 @@ $(document).ready(function() {
         return sortedA.every(function (v, i) { return v === sortedB[i]; });
     }
 
+    // Возвращает {short, full}: short идёт в заголовок и в <title> вкладки, full — в tooltip.
+    // Раньше при "нестандартном" наборе книг сюда попадал СПИСОК ВСЕХ названий целиком
+    // ("Дигха Никая, Маджхима Никая, Саньютта Никая, ... pli-tv-pvr") — заголовок разрастался на
+    // несколько строк и выдавливал таблицу вниз. Больше трёх книг сворачиваем в счётчик, полный
+    // список остаётся доступен наведением/долгим тапом.
+    var SCOPE_INLINE_LIMIT = 3;
+
     function buildScopeLabel(resolvedPrefixes) {
         var prefixes = resolvedPrefixes || DEFAULT_SCOPE_PREFIXES;
-        if (sameSet(prefixes, ['all'])) return t('results.scopeAll', 'the whole corpus');
-        if (sameSet(prefixes, DEFAULT_SCOPE_PREFIXES)) return t('results.scope4Nikaya6Kn', '4 Nikayas + 6 KN books');
-        if (sameSet(prefixes, FOUR_NIKAYA_PREFIXES)) return t('results.scope4Nikaya', '4 Nikayas');
-        return prefixes.map(function (p) { return t('scopeNames.' + p, p); }).join(', ');
+        if (sameSet(prefixes, ['all'])) return same(t('results.scopeAll', 'the whole corpus'));
+        if (sameSet(prefixes, DEFAULT_SCOPE_PREFIXES)) return same(t('results.scope4Nikaya6Kn', '4 Nikayas + 6 KN books'));
+        if (sameSet(prefixes, FOUR_NIKAYA_PREFIXES)) return same(t('results.scope4Nikaya', '4 Nikayas'));
+        var names = prefixes.map(function (p) { return t('scopeNames.' + p, p); });
+        var full = names.join(', ');
+        if (names.length <= SCOPE_INLINE_LIMIT) return same(full);
+        var short = t('results.scopeSelected', 'selected sections ({n})').replace('{n}', names.length);
+        return { short: short, full: full };
     }
+
+    function same(text) { return { short: text, full: text }; }
 
     // Заголовок результатов + видимость ссылки на варианты — вызывается один раз из
     // initSearchApp() после fast=1 (числа там уже полные и финальные — см. TODO.md, нюансы по
     // "новому багу 1"), и затем повторно на каждую живую смену языка (syncSiteLanguage) с теми
     // же данными, чтобы текст перегенерировался в новых строках t().
     function renderResultHeader(json) {
-        let scopeText = buildScopeLabel(json.metadata.resolvedPrefixes);
+        let scope = buildScopeLabel(json.metadata.resolvedPrefixes);
 
         let qStr = json.metadata.query || "";
         let capitalizedQuery = qStr ? qStr.charAt(0).toUpperCase() + qStr.slice(1) : "";
 
-        let newTitle = `${capitalizedQuery} ${json.metadata.totalFiles} ${t('results.textsAndWord', 'texts and')} ${json.metadata.totalMatches} ${t('results.matchesInWord', 'matches in')} ${scopeText}`;
+        let head = `${capitalizedQuery} ${json.metadata.totalFiles} ${t('results.textsAndWord', 'texts and')} ${json.metadata.totalMatches} ${t('results.matchesInWord', 'matches in')} `;
+        let newTitle = head + scope.short;
 
         document.title = newTitle + " - Dhamma.gift";
+        // title-атрибут ставим только когда список действительно свёрнут — иначе браузер показывал
+        // бы подсказку, дословно повторяющую видимый текст.
         $('.resultheader').text(newTitle);
+        if (scope.full !== scope.short) $('.resultheader').attr('title', head + scope.full);
+        else $('.resultheader').removeAttr('title');
 
         // "Есть варианты чтения" — hasVariantMatch отвечает на вопрос "существуют ли варианты
         // ГДЕ-ТО в корпусе" (сервер сам решает, нужен ли для этого отдельный widened-проход —

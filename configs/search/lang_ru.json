@@ -56,6 +56,7 @@
     "scope4Nikaya6Kn": "4 Никаи + 6 КН",
     "scope4Nikaya": "4 Никаи",
     "scopeAll": "весь корпус",
+    "scopeSelected": "выбранных разделах ({n})",
     "hasVariantsSuffix": "есть",
     "variantsLinkText": "варианты",
     "variantsForLabel": "Варианты для",
