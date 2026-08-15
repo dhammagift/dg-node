@@ -129,7 +129,20 @@ function render() {
   const firstSeg = group.segments[0] && group.segments[0].segment;
   const anchorId = firstSeg ? (firstSeg.includes(':') ? firstSeg.split(':').slice(1).join(':') : firstSeg) : null;
   window.parent.postMessage({ type: 'dg-preview-current', suttaId: group.sutta_id, segmentId: anchorId }, location.origin);
+  reportHeight();
 }
+/* Высота кадра равна высоте текста. Родитель не может померить её сам (кросс-документ), поэтому
+   меряем здесь и сообщаем наверх. Нужно и после render(), и после того как догрузятся шрифты и
+   пересчитается перенос строк — иначе первое измерение уходит по системному serif и оказывается
+   заниженным. ResizeObserver ловит всё остальное: смену размера текста, письменности, языков. */
+function reportHeight() {
+  const h = Math.ceil(document.documentElement.scrollHeight);
+  window.parent.postMessage({ type: 'dg-preview-height', height: h }, location.origin);
+}
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(reportHeight);
+if (window.ResizeObserver) new ResizeObserver(reportHeight).observe(document.documentElement);
+window.addEventListener('resize', reportHeight);
+
 // Тема — то же самое, что реально пишет /assets/js/themeswitch.js на проде: body.classList
 // 'dark' + <html data-bs-theme="..">, а не просто наш собственный body.dark (от этого зависят
 // Bootstrap-переменные --bs-body-bg/--bs-body-color в styles.css) — без этого образец всегда

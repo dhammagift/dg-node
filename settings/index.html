@@ -84,7 +84,15 @@ button{font:inherit;cursor:pointer}
 .btn-primary{background:var(--accent);border-color:var(--accent);color:#fff}
 .btn-danger{color:var(--danger)}
 .switch{position:relative;display:inline-flex;align-items:center;padding:9px 0;flex:none}
-.switch input{position:absolute;opacity:0;width:52px;height:32px;margin:0;cursor:pointer}
+/* Инпут перекрывает ВЕСЬ переключатель, а дорожка и кружок кликов не ловят вовсе.
+   Раньше инпут был отдельным блоком 52x32 в потоке, а .thumb рисовался поверх него
+   (position:absolute, идёт следом в разметке) — и попадал под палец именно там, где по
+   переключателю и целятся: замер показал, что в центре и справа клик уходил в .thumb, в
+   верхний отступ — в пустой .switch, и только узкая полоска слева реально попадала в инпут.
+   Отсюда и было "нужно тапать в разные места". Теперь срабатывает любая точка, включая
+   отступы — и белый кружок, и серая дорожка ведут себя одинаково. */
+.switch input{position:absolute;inset:0;width:100%;height:100%;opacity:0;margin:0;cursor:pointer}
+.track,.thumb{pointer-events:none}
 .track{width:52px;height:32px;border-radius:999px;background:var(--line-strong);transition:background .18s;display:block}
 .thumb{position:absolute;left:3px;top:12px;width:26px;height:26px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3);transition:transform .18s}
 .switch input:checked ~ .track{background:var(--accent)}
@@ -192,7 +200,10 @@ kbd{font:inherit;font-size:12.5px;background:var(--line);border:1px solid var(--
         <button type="button" class="btn-quiet" id="previewShuffle" title="Обновить оформление" aria-label="Обновить оформление образца">⟳</button>
       </span>
     </div>
-    <iframe id="previewFrame" src="/settings/preview-frame.html" title="Образец текста" style="width:100%;height:260px;border:0;display:block;background:transparent" scrolling="yes"></iframe>
+    <!-- height здесь только стартовая: кадр сам сообщает свою реальную высоту постМессаджем
+         (dg-preview-height), и она подгоняется под текст — см. обработчик ниже. Фиксированные
+         260px оставляли под коротким фрагментом пустое поле в пол-экрана. -->
+    <iframe id="previewFrame" src="/settings/preview-frame.html" title="Образец текста" style="width:100%;height:120px;border:0;display:block;background:transparent" scrolling="auto"></iframe>
   </section>
 
   <!-- ОБЩЕЕ -->
@@ -722,7 +733,27 @@ $('#delaySeg').onclick = e=>{
    - "+ вся КН" = category 'khudakka' целиком (включает и уже включённые по умолчанию
      dhp/iti/snp/ud/thag/thig, и всё остальное — ja/mil/nett/pv/vv/bv/cp/kp/ps/...);
      совпадение с default-книгами не проблема — matchesScope просто ИЛИ, не XOR. */
-const SCOPE_BOOKS = [['dn','DN'],['mn','MN'],['sn','SN'],['an','AN'],['iti','Iti'],['ud','Ud'],['snp','Snp'],['dhp','Dhp'],['thag','Thag'],['thig','Thig']];
+/* Плоскими пунктами остались ТОЛЬКО 4 никаи, и подписаны они полностью, а не кодами: "DN/MN/SN/AN"
+   понятны тому, кто уже знает канон, а страница настроек — не место для сокращений. Шесть книг
+   КН (iti/ud/snp/dhp/thag/thig) отсюда переехали ВНУТРЬ группы "Кхуддака Никая" (SCOPE_GROUPS
+   ниже): они и есть часть Кхуддаки, а стояли рядом с никаями как самостоятельные разделы.
+   Набор кодов по умолчанию (DEFAULT_SCOPE) при этом не изменился — см. ниже. */
+const SCOPE_BOOKS = [
+  ['dn', {ru:'Дигха Никая', en:'Dīgha Nikāya'}],
+  ['mn', {ru:'Маджхима Никая', en:'Majjhima Nikāya'}],
+  ['sn', {ru:'Саньютта Никая', en:'Saṁyutta Nikāya'}],
+  ['an', {ru:'Ангуттара Никая', en:'Aṅguttara Nikāya'}]
+];
+// Книги КН, включённые по умолчанию — живут внутри группы "Кхуддака Никая" первыми, до
+// остальных. Держим отдельным списком, потому что из них же собирается DEFAULT_SCOPE.
+const KN_DEFAULT_BOOKS = [
+  [{ru:'Итивуттака', en:'Itivuttaka'}, ['iti']],
+  [{ru:'Удана', en:'Udāna'}, ['ud']],
+  [{ru:'Сутта Нипата', en:'Sutta Nipāta'}, ['snp']],
+  [{ru:'Дхаммапада', en:'Dhammapada'}, ['dhp']],
+  [{ru:'Тхерагатха', en:'Theragāthā'}, ['thag']],
+  [{ru:'Тхеригатха', en:'Therīgāthā'}, ['thig']]
+];
 /* Абхидхамма — по прямому указанию не детализируем на под-книги, единственный "плоский"
    доп.-пункт. Виная и Кхуддака (SCOPE_GROUPS ниже) раньше были такими же плоскими пунктами
    (Виная — 3 отдельные галки, Кхуддака — 14) — по просьбе владельца "систематизировать",
@@ -731,9 +762,11 @@ const SCOPE_BOOKS = [['dn','DN'],['mn','MN'],['sn','SN'],['an','AN'],['iti','Iti
 const EXTRA_BOOKS = [
   [{ru:'Абхидхамма', en:'Abhidhamma'}, ['abhi']]
 ];
-// * перед названием — намеренно приглушённый маркер: не приветствуемая, но доступная категория
-// (см. нюансы владельца — Абхидхамму "не приветствуем", в отличие от Сутты/Винаи).
-const ABHI_MARK = '* ';
+// Абхидхамма подписана ОДНОЙ звёздочкой, без слова: на странице её название не пишем вовсе
+// (прямое указание владельца), но и не прячем — звёздочка кликабельна и включает категорию,
+// а что это, подсказывает tooltip. Приглушённый вид — тот же смысл, что и раньше: доступно,
+// но не в одном ряду с Суттой и Винаей.
+const ABHI_MARK = '*';
 /* Группы "родитель + раскрывающийся список" — родительская галка включает/выключает ВСЕ коды
    группы одним кликом (см. SCOPE_GROUPS.codes ниже, автосчитается из items), у самой галки
    есть промежуточное состояние (indeterminate), если отмечена только часть под-пунктов.
@@ -751,7 +784,10 @@ const SCOPE_GROUPS = [
       [{ru:'Кхандхака', en:'Khandhaka'}, ['pli-tv-kd']],
       [{ru:'Паривара', en:'Parivāra'}, ['pli-tv-pvr']]
     ] },
-  { section:'sutta', label:{ru:'Кхуддака Никая (доп.)', en:'Khuddaka Nikāya (extra)'}, items:[
+  // Кхуддака целиком, а не "доп.": сначала шесть книг, включённых по умолчанию, следом
+  // остальные. Родительская галка поэтому в промежуточном состоянии — видно, что часть книг
+  // уже включена, а остальное можно добрать по желанию.
+  { section:'sutta', label:{ru:'Кхуддака Никая', en:'Khuddaka Nikāya'}, items: KN_DEFAULT_BOOKS.concat([
       [{ru:'Джатаки', en:'Jātaka'}, ['ja']],
       [{ru:'Тхера-ападана', en:'Theraapadāna'}, ['tha-ap']],
       [{ru:'Милиндапаньха', en:'Milindapañha'}, ['mil']],
@@ -766,9 +802,13 @@ const SCOPE_GROUPS = [
       [{ru:'Маханиддеса', en:'Mahāniddesa'}, ['mnd']],
       [{ru:'Кхуддакапатха', en:'Khuddakapāṭha'}, ['kp']],
       [{ru:'Петакопадеса', en:'Peṭakopadesa'}, ['pe']]
-    ] }
+    ]) }
 ];
-const DEFAULT_SCOPE = SCOPE_BOOKS.map(b=>b[0]);
+// Набор по умолчанию НЕ изменился от перестановки пунктов местами: те же 4 никаи + те же 6 книг
+// КН, просто нарисованы теперь в двух уровнях вместо десяти плоских галок. Важно, чтобы список
+// совпадал с DEFAULT_SCOPE_PREFIXES в dg-light.js и search/index.html — иначе заголовок выдачи
+// перестанет узнавать "4 Никаи + 6 КН" и начнёт перечислять книги по одной.
+const DEFAULT_SCOPE = SCOPE_BOOKS.map(b=>b[0]).concat(KN_DEFAULT_BOOKS.flatMap(([,codes])=>codes));
 let scopeList = readList('dhammaSearchScope', DEFAULT_SCOPE.slice());
 function saveScope(){
   const isDefault = scopeList.length===DEFAULT_SCOPE.length && DEFAULT_SCOPE.every(c=>scopeList.includes(c));
@@ -788,9 +828,12 @@ function renderScope(){
     lbl.textContent = text;
     host.appendChild(lbl);
   };
-  const addBox = (label, codes, muted) => {
+  const addBox = (label, codes, muted, title) => {
     const lbl=document.createElement('label');
     if (muted) lbl.style.cssText='background:var(--line);color:var(--ink-3)';
+    // title — для пунктов без текстовой подписи (Абхидхамма — одна звёздочка): без него
+    // непонятно, что это, а по прямому указанию слово на странице не пишем.
+    if (title) { lbl.title = title; lbl.setAttribute('aria-label', title); }
     const checked = codes.every(c=>scopeList.includes(c));
     lbl.innerHTML=`<input type="checkbox" ${checked?'checked':''}> ${label}`;
     lbl.querySelector('input').onchange = e=>{
@@ -846,13 +889,13 @@ function renderScope(){
   };
 
   addSectionLabel(isRu ? 'Сутта' : 'Sutta');
-  SCOPE_BOOKS.forEach(([code,label])=>addBox(label,[code],false));
+  SCOPE_BOOKS.forEach(([code,label])=>addBox(isRu?label.ru:label.en,[code],false));
   SCOPE_GROUPS.forEach((group,gi)=>{ if (group.section === 'sutta') addGroup(group, gi); });
 
   addSectionLabel(isRu ? 'Виная' : 'Vinaya');
   SCOPE_GROUPS.forEach((group,gi)=>{ if (group.section === 'vinaya') addGroup(group, gi); });
 
-  EXTRA_BOOKS.forEach(([label,codes])=>addBox(ABHI_MARK + (isRu?label.ru:label.en), codes, true));
+  EXTRA_BOOKS.forEach(([label,codes])=>addBox(ABHI_MARK, codes, true, isRu?label.ru:label.en));
 }
 renderScope();
 
@@ -1126,6 +1169,13 @@ window.addEventListener('message', e => {
     // тот же, что понимает ридер (megareader.js: location.hash -> getElementById -> scrollIntoView).
     const seg = e.data.segmentId;
     $('#previewRead').href = '/' + e.data.suttaId + (seg ? '#' + seg : '');
+  }
+  // Высота кадра — по длине текста. Верхняя граница нужна, чтобы длинный фрагмент не занял
+  // весь экран (панель липкая, за ней должны оставаться видны сами настройки); нижняя — чтобы
+  // кадр не схлопнулся в ноль, пока данные ещё грузятся.
+  if (e.data && e.data.type === 'dg-preview-height' && e.data.height) {
+    const frame = $('#previewFrame');
+    if (frame) frame.style.height = Math.min(Math.max(e.data.height, 60), 420) + 'px';
   }
 });
 
