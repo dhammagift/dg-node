@@ -117,20 +117,54 @@ function cleanPaliText(text) {
 <body class="dark">
 <form id="form" class="ui-widget mb-2">
 <label class="sr-only dropup rounded-pill mb-2" for="paliauto"></label>
-<input class="mb-2" id="paliauto" type="search" data-i18n-placeholder="{{search.placeholder}}">
-<input class="go-button mb-2" id="searchbtn" type="submit" data-i18n-value="{{search.submit}}">
+
+<!-- Шапка ридера собрана так же, как на странице поиска: слева домик, дальше поле с лупой
+     ВНУТРИ него, справа бургер-меню. Домик переехал сюда из ряда иконок (#form-div ниже), а
+     кнопка отправки перестала быть отдельной подписанной кнопкой рядом с полем. -->
+<div class="dg-reader-hero">
+  <!-- id и вложенная <a> сохранены намеренно: на "#home-button a" завязаны обработчик в
+       settings.js (клик по домику уносит текущий запрос на главную) и кнопка смарт-панели
+       ниже (data-target="#home-button a"), а на сам #home-button — слушатель в megareader.js.
+       Переехал только сам блок, разметка внутри прежняя. -->
+  <div id="home-button" class="dg-plain-btn dg-home-btn">
+    <a data-i18n-href="{{routes.readHome}}" data-i18n-title="{{toolbar.readHomeTitle}}" rel="noreferrer">
+      <img data-i18n-alt="{{toolbar.readHomeAlt}}" src="/assets/svg/home-icon.svg">
+    </a>
+  </div>
+
+  <div class="dg-search-field">
+    <!-- Лупа внутри поля, слева: справа поле type="search" рисует свой родной крестик
+         "очистить", и кнопка справа с ним конфликтует. Иконка — инлайновый SVG, не иконочный
+         шрифт: на странице поиска FontAwesome такую же <i> не разворачивал и на её месте
+         оставалась пустота. Зеркалим по горизонтали — линза справа. -->
+    <button type="submit" id="searchbtn" class="dg-plain-btn" data-i18n-title="{{search.submit}}" aria-label="Search">
+      <svg class="dg-search-icon" viewBox="0 0 512 512" width="17" height="17" fill="currentColor" aria-hidden="true">
+        <path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352a144 144 0 1 0 0-288 144 144 0 1 0 0 288z"/>
+      </svg>
+    </button>
+    <input id="paliauto" type="search" data-i18n-placeholder="{{search.placeholder}}">
+  </div>
+
+  <div class="dropdown">
+    <button class="dg-plain-btn" type="button" id="burgerMenuBtn" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Menu" data-i18n-title="{{toolbar.menuTitle}}">
+      <svg viewBox="0 0 448 512" width="18" height="18" fill="currentColor" aria-hidden="true">
+        <path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/>
+      </svg>
+    </button>
+    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="burgerMenuBtn">
+      <li><a class="dropdown-item" href="/">{{buttons.main}}</a></li>
+      <li><a class="dropdown-item" href="/history.php">{{buttons.history}}</a></li>
+      <li><a class="dropdown-item" href="javascript:void(0)" data-bs-toggle="modal" data-bs-target="#paliLookupInfo">{{global.common.help}}</a></li>
+      <li><a class="dropdown-item" href="/settings/">{{global.common.settings}}</a></li>
+      <li><a class="dropdown-item" href="/login">{{global.common.login}}</a></li>
+    </ul>
+  </div>
+</div>
 
 <div id="form-div">
-<div id="home-button" class="icon-button ">
-<a data-i18n-href="{{routes.readHome}}" data-i18n-title="{{toolbar.readHomeTitle}}" rel="noreferrer">
-<img class="common-size-icon" data-i18n-alt="{{toolbar.readHomeAlt}}" src="/assets/svg/home-icon.svg"></img>
-</a>
-</div>
-
-<div id="fdg-button" class="icon-button ">
-<a data-i18n-href="{{routes.searchHome}}" data-i18n-title="{{toolbar.searchHomeTitle}}" rel="noreferrer"
-><img width="26px" data-i18n-alt="{{toolbar.searchHomeAlt}}" src="/assets/img/gray-white.png"></a>
-</div>
+<!-- Домик отсюда переехал в шапку (выше), а иконка "поиск по dhamma.gift" (#fdg-button,
+     gray-white.png) убрана совсем: домашняя страница в итоге будет одна, две точки входа рядом
+     только путали. Остальные иконки оставлены как есть — их разнесут отдельно. -->
 
 <div id="chapter-button" class="icon-button">
     <a data-i18n-href="{{routes.chapterReader}}" data-i18n-title="{{toolbar.chapterTitle}}" rel="noreferrer">

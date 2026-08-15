@@ -1504,3 +1504,71 @@ smart TOC
 .dark .copy-Link-special:hover .title-svg-icon {
     opacity: 1;
 }
+
+/* ==========================================================================
+   Шапка ридера: домик — поле с лупой внутри — бургер.
+   Собрана так же, как на странице поиска (search/index.html), чтобы обе страницы
+   выглядели одинаково. Домик приехал сюда из ряда иконок #form-div, кнопка отправки
+   перестала быть отдельной подписанной кнопкой справа от поля.
+   ========================================================================== */
+.dg-reader-hero {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+  margin-bottom: 8px;
+}
+
+/* Кнопки шапки без рамки и заливки — иконка читается лучше, чем «пилюля» вокруг неё. */
+.dg-reader-hero .dg-plain-btn {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+  color: var(--dark-gray);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.dg-reader-hero .dg-plain-btn:hover,
+.dg-reader-hero .dg-plain-btn:focus-visible { color: var(--off-black); }
+.dark .dg-reader-hero .dg-plain-btn { color: var(--off-white); }
+.dark .dg-reader-hero .dg-plain-btn:hover,
+.dark .dg-reader-hero .dg-plain-btn:focus-visible { color: #fff; }
+
+/* Домик крупнее остальных — главная точка возврата. */
+/* Домик — <div id="home-button"> со вложенной <a> (id и вложенность нужны обработчикам в
+   settings.js/megareader.js и смарт-панели), поэтому кликабельной делаем именно ссылку. */
+.dg-reader-hero .dg-home-btn a { display: inline-flex; align-items: center; }
+.dg-reader-hero .dg-home-btn img { width: 30px; height: 30px; }
+.dark .dg-reader-hero .dg-home-btn img { filter: invert(1); }
+
+/* Поле поиска: лупа лежит ПОВЕРХ поля слева, поле освобождает под неё отступ. */
+.dg-reader-hero .dg-search-field {
+  position: relative;
+  display: block;
+  flex: 0 1 380px;
+  min-width: 0;
+}
+.dg-reader-hero .dg-search-field #paliauto {
+  width: 100%;
+  margin: 0;
+  padding-left: 42px;
+}
+.dg-reader-hero .dg-search-field #searchbtn {
+  position: absolute;
+  left: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  /* Выше поля: непрозрачный инпут иначе закрывает иконку собой (ровно эта ошибка была на
+     странице поиска — иконка существовала, но её не было видно, и клик уходил в поле). */
+  z-index: 12;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+}
+.dg-reader-hero .dg-search-field #searchbtn:hover { background: rgba(128, 128, 128, 0.18); }
+/* Линза справа, ручка влево-вниз. */
+.dg-reader-hero .dg-search-icon { transform: scaleX(-1); }
