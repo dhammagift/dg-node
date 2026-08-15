@@ -1552,10 +1552,17 @@ smart TOC
   flex: 0 1 380px;
   min-width: 0;
 }
+/* Селектор с #form.ui-widget — не для красоты: выше в этом же файле есть
+   "#form.ui-widget #paliauto, #paliauto.ui-autocomplete-input, #paliauto { padding-left: 10px
+   !important }". Там ДВА id против одного, поэтому и !important, и более поздняя позиция в
+   файле не помогали — правило проигрывало по специфичности, отступ оставался 10px, и текст
+   начинался на 144px при лупе, кончающейся на 163px (наезд 19px, замерено). Уравниваем
+   количество id и добавляем свой класс, чтобы выиграть. */
+#form.ui-widget .dg-search-field #paliauto,
 .dg-reader-hero .dg-search-field #paliauto {
   width: 100%;
   margin: 0;
-  padding-left: 42px;
+  padding-left: 42px !important;
 }
 .dg-reader-hero .dg-search-field #searchbtn {
   position: absolute;
