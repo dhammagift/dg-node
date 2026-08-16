@@ -400,7 +400,9 @@ body #form #paliauto.searchinput::-webkit-search-cancel-button { display: none; 
     flex: none;
     padding: 0;
     border: 0;
-    border-radius: 8px;
+    /* Круглые, а не скруглённые квадраты. Заливки у них нет, пока на кнопку не навели, — но при
+       наведении подсветка вылезала прямоугольником посреди круглого поля с круглыми соседями. */
+    border-radius: 50%;
     background: transparent;
     color: var(--dg-text-muted);
     cursor: pointer;
@@ -409,10 +411,14 @@ body #form #paliauto.searchinput::-webkit-search-cancel-button { display: none; 
 .dg-input-shell .dg-shell-btn:hover,
 .dg-input-shell .dg-shell-btn:focus-visible { background: var(--dg-surface-hover); color: var(--dg-text); }
 
-/* Шестерёнка с молнией — быстрые настройки. Молния вынесена в правый нижний угол значка и
-   покрашена акцентом: это она отличает быстрые настройки от полных (шестерёнка без молнии,
-   /settings/). */
+/* Шестерёнка с молнией — быстрые настройки. Она отличает их от ПОЛНЫХ настроек (/settings/,
+   шестерёнка без молнии).
+   Кнопка круглая, а не скруглённый квадрат: в поле ввода круглое уже всё остальное — и само
+   поле, и «очистить», и лупа, — и один квадрат посреди них выбивался.
+   --dg-qs-bg держит фон кнопки отдельной переменной: этим же цветом красится молния, чтобы она
+   читалась прорезью в шестерёнке, а не значком поверх неё. Менять фон нужно в одном месте. */
 .dg-qs-btn {
+    --dg-qs-bg: var(--dg-surface-hover);
     position: relative;
     display: inline-flex;
     align-items: center;
@@ -422,18 +428,19 @@ body #form #paliauto.searchinput::-webkit-search-cancel-button { display: none; 
     flex: none;
     padding: 0;
     border: 0;
-    border-radius: 9px;
-    background: var(--dg-surface-hover);
+    border-radius: 50%;
+    background: var(--dg-qs-bg);
     color: var(--dg-text-2);
     cursor: pointer;
     transition: background-color 0.15s ease, color 0.15s ease;
 }
 .dg-qs-btn:hover,
-.dg-qs-btn:focus-visible { color: var(--dg-text); background: var(--dg-border); }
+.dg-qs-btn:focus-visible { --dg-qs-bg: var(--dg-border); color: var(--dg-text); }
 .dg-qs-btn .dg-qs-gear { width: 18px; height: 18px; display: block; }
-/* Молния — В ЦЕНТРЕ шестерёнки, а не приклеена к её углу: у fa-gear середина пустая, молния туда
-   садится ровно, и получается один значок, а не значок с наклейкой. Подложка ей не нужна —
-   вокруг и так пустота внутри зубчатого кольца. */
+/* Молния — ВМЕСТО круглого отверстия шестерёнки. Красится в цвет фона кнопки, поэтому читается
+   прорезью в металле, а не значком, положенным сверху: там, где у fa-gear дырка, теперь дырка в
+   форме молнии. Размер подобран так, чтобы она перекрыла отверстие целиком и чуть зашла на
+   кольцо — иначе по краю оставался бы ободок старого выреза. */
 .dg-qs-btn .dg-qs-bolt {
     position: absolute;
     top: 50%;
@@ -441,28 +448,27 @@ body #form #paliauto.searchinput::-webkit-search-cancel-button { display: none; 
     transform: translate(-50%, -50%);
     display: block;
     line-height: 0;
-    color: var(--dg-accent);
+    color: var(--dg-qs-bg);
     pointer-events: none;
 }
-.dg-qs-btn .dg-qs-bolt svg { width: 8px; height: 8px; display: block; }
-body.dg-state-home .dg-qs-btn .dg-qs-bolt { color: #6ee7c4; }
+.dg-qs-btn .dg-qs-bolt svg { width: 11px; height: 11px; display: block; }
 
-/* На главной кнопка быстрых настроек — тёмный квадрат с белой шестерёнкой и зелёной молнией в
-   углу: единственное тёмное пятно внутри светлой карточки поля, и потому сразу заметное.
+/* На главной кнопка быстрых настроек — тёмный кружок с белой шестерёнкой: единственное тёмное
+   пятно внутри светлой карточки поля, и потому сразу заметное. Молния при этом сама становится
+   тёмной — она наследует --dg-qs-bg, то есть цвет фона кнопки.
    transition:none по той же причине, что и у полосы: цвет здесь меняет СОСТОЯНИЕ страницы, а не
    наведение, и он не должен зависеть от того, рисует ли вкладка кадры. */
 body.dg-state-home .dg-qs-btn,
 body:not(.dg-state-home) .dg-qs-btn { transition: none; }
 body.dg-state-home .dg-qs-btn {
-    width: 32px;
-    height: 32px;
-    border-radius: 8px;
-    background: var(--dg-navy);
+    --dg-qs-bg: var(--dg-navy);
+    width: 34px;
+    height: 34px;
     color: #fff;
 }
 body.dg-state-home .dg-qs-btn:hover,
-body.dg-state-home .dg-qs-btn:focus-visible { background: var(--dg-navy-2); color: #fff; }
-body.dg-state-home .dg-qs-btn .dg-qs-gear { width: 17px; height: 17px; }
+body.dg-state-home .dg-qs-btn:focus-visible { --dg-qs-bg: var(--dg-navy-2); color: #fff; }
+body.dg-state-home .dg-qs-btn .dg-qs-gear { width: 19px; height: 19px; }
 
 /* Ожидание ответа поиска: пока крутится спиннер, выдачи (даже пустой) быть не должно — ради
    этого весь класс и заведён. Домашние блоки при этом НЕ прячем: смысл в том, чтобы человек
