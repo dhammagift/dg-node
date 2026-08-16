@@ -13,7 +13,7 @@ siteroot/config/*.json
 **/node_modules
 *.log
 package-lock.json
-
+.playwright-cli
 # public/assets и public/overrides/js/datatables — junction'ы на C:\soft\dg\assets (см. TODO.md,
 # заметка про восстановление настоящего git-symlink для public/assets). Локальный dev-механизм,
 # не должен попадать в git как реальный контент.
