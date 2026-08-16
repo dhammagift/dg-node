@@ -578,16 +578,17 @@
         renderHint();
     }
 
-    /* На широком экране быстрые настройки — выпадашка под самой шестерёнкой (они относятся к
-       этому полю, уводить взгляд на середину экрана незачем). На узком остаётся нижняя шторка:
-       выпадашке там негде развернуться. Координаты ставим инлайном, по фактическому положению
-       кнопки — она переезжает вместе с полем при смене состояния. */
-    var ANCHOR_MIN_WIDTH = 768;
-
+    /* Быстрые настройки — ВЫПАДАШКА под самой шестерёнкой, на любой ширине. Нижняя шторка на
+       узком экране выглядела как отдельный раздел и уводила взгляд от поля, к которому эти
+       настройки относятся; выпадашка остаётся рядом с кнопкой. Ширину и положение считаем по
+       фактическому месту кнопки — она переезжает вместе с полем при смене состояния. */
     function placeAnchored(sheet, btn) {
         var r = btn.getBoundingClientRect();
-        var width = 340;
-        var left = Math.min(Math.max(8, r.right - width), window.innerWidth - width - 8);
+        var margin = 8;
+        // На узком экране выпадашка занимает всю доступную ширину, на широком — фиксированные 340.
+        var width = Math.min(340, window.innerWidth - margin * 2);
+        var left = Math.min(Math.max(margin, r.right - width), window.innerWidth - width - margin);
+        sheet.style.width = width + 'px';
         sheet.style.left = left + 'px';
         sheet.style.top = (r.bottom + 8) + 'px';
         sheet.style.maxHeight = Math.max(220, window.innerHeight - r.bottom - 24) + 'px';
@@ -602,7 +603,7 @@
         document.getElementById('dg-quick-title').textContent = t('quick.title', 'Быстрые настройки');
         buildQuickBody(document.getElementById('dg-quick-body'));
 
-        var anchored = !!btn && window.innerWidth >= ANCHOR_MIN_WIDTH;
+        var anchored = !!btn;
         sheet.classList.toggle('dg-anchored', anchored);
         if (backdrop) backdrop.classList.toggle('dg-transparent', anchored);
         if (anchored) placeAnchored(sheet, btn);
@@ -677,7 +678,10 @@
             el.type = 'button';
             el.className = 'dg-tile';
             el.dataset.tile = key;
-            el.innerHTML = svg(tile.icon) + '<span>' + esc(tile.label) + '</span>';
+            /* Иконка — в кружке из акцентного фона: так плитка читается как значок с подписью,
+               а не как строка списка в рамке. */
+            el.innerHTML = '<span class="dg-tile-ic">' + svg(tile.icon) + '</span>' +
+                '<span class="dg-tile-label">' + esc(tile.label) + '</span>';
             el.addEventListener('click', function () {
                 // Клик, приходящий сразу за перетаскиванием, — не выбор плитки.
                 if (el.dataset.dragged === '1') { el.dataset.dragged = ''; return; }
@@ -923,18 +927,32 @@
         slidesShown = shuffled(list);
         slideIndex = 0;
         host.hidden = false;
+        /* Стрелки перенесены в шапку карточки, к надзаголовку: внизу они спорили за место с
+           «показать все», и обе подписи читались как одна панель кнопок. */
+        var arrow = function (cls, label, d) {
+            return '<button type="button" class="dg-slide-arrow ' + cls + '" aria-label="' + label + '">' +
+                '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" ' +
+                'stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+                '<path d="' + d + '"/></svg></button>';
+        };
         host.innerHTML =
             '<div class="dg-slides">' +
+            '<div class="dg-slides-head">' +
             '<p class="dg-slides-eyebrow"></p>' +
+            '<div class="dg-slides-nav">' +
+            arrow('dg-slide-prev', 'Previous', 'M15 6l-6 6 6 6') +
+            arrow('dg-slide-next', 'Next', 'M9 6l6 6-6 6') +
+            '</div></div>' +
             '<a class="dg-slide-title" href="#"></a>' +
             '<p class="dg-slide-desc"></p>' +
             '<div class="dg-slides-foot">' +
-            '<div class="dg-slides-nav">' +
-            '<button type="button" class="dg-slide-prev" aria-label="Previous">‹</button>' +
-            '<button type="button" class="dg-slide-next" aria-label="Next">›</button>' +
-            '</div>' +
+            '<span class="dg-slide-go"></span>' +
             '<button type="button" class="dg-slides-all"></button>' +
             '</div></div>';
+        var go = host.querySelector('.dg-slide-go');
+        go.textContent = t('slides.read', 'Читать') + ' →';
+        // «Читать» ведёт туда же, куда заголовок: отдельного адреса у слайда нет.
+        go.addEventListener('click', function () { host.querySelector('.dg-slide-title').click(); });
         host.querySelector('.dg-slides-eyebrow').textContent = t('slides.title', 'Интересные запросы');
         host.querySelector('.dg-slides-all').textContent = t('slides.showAll', 'Показать все');
         host.querySelector('.dg-slide-prev').addEventListener('click', function () { stepSlide(-1); });

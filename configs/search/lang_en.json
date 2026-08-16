@@ -27,7 +27,8 @@
   "slides": {
     "title": "Interesting queries",
     "showAll": "Show all",
-    "allTitle": "All interesting queries"
+    "allTitle": "All interesting queries",
+    "read": "Read"
   },
   "quick": {
     "title": "Quick settings",
