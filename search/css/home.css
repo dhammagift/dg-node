@@ -419,6 +419,10 @@ body #form #paliauto.searchinput::-webkit-search-cancel-button { display: none; 
    читалась прорезью в шестерёнке, а не значком поверх неё. Менять фон нужно в одном месте. */
 .dg-qs-btn {
     --dg-qs-bg: var(--dg-surface-hover);
+    /* Цвет самой шестерёнки. Отдельной переменной, потому что им же красится диск, закрывающий
+       её центральное отверстие (см. .dg-qs-bolt): currentColor там не годится — внутри диска
+       currentColor уже переопределён под молнию. */
+    --dg-qs-fg: var(--dg-text-2);
     position: relative;
     display: inline-flex;
     align-items: center;
@@ -430,28 +434,34 @@ body #form #paliauto.searchinput::-webkit-search-cancel-button { display: none; 
     border: 0;
     border-radius: 50%;
     background: var(--dg-qs-bg);
-    color: var(--dg-text-2);
+    color: var(--dg-qs-fg);
     cursor: pointer;
     transition: background-color 0.15s ease, color 0.15s ease;
 }
 .dg-qs-btn:hover,
-.dg-qs-btn:focus-visible { --dg-qs-bg: var(--dg-border); color: var(--dg-text); }
+.dg-qs-btn:focus-visible { --dg-qs-bg: var(--dg-border); --dg-qs-fg: var(--dg-text); }
 .dg-qs-btn .dg-qs-gear { width: 18px; height: 18px; display: block; }
-/* Молния — ВМЕСТО круглого отверстия шестерёнки. Красится в цвет фона кнопки, поэтому читается
-   прорезью в металле, а не значком, положенным сверху: там, где у fa-gear дырка, теперь дырка в
-   форме молнии. Размер подобран так, чтобы она перекрыла отверстие целиком и чуть зашла на
-   кольцо — иначе по краю оставался бы ободок старого выреза. */
+/* Молния — ВМЕСТО круглого отверстия шестерёнки, три слоя, как в конструкторе иконок FontAwesome:
+   шестерёнка, поверх неё сплошной диск её же цветом (он закрывает штатное круглое отверстие,
+   и шестерёнка становится сплошной), а уже в диске вырезана молния — она красится в цвет фона
+   кнопки. Без среднего диска молния сливалась бы с отверстием: там и так фон.
+   Диск чуть шире отверстия, чтобы по краю не оставался ободок старого выреза. */
 .dg-qs-btn .dg-qs-bolt {
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    display: block;
-    line-height: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 13px;
+    height: 13px;
+    border-radius: 50%;
+    background: var(--dg-qs-fg);
     color: var(--dg-qs-bg);
     pointer-events: none;
 }
-.dg-qs-btn .dg-qs-bolt svg { width: 11px; height: 11px; display: block; }
+.dg-qs-btn .dg-qs-bolt svg { width: 9px; height: 9px; display: block; }
 
 /* На главной кнопка быстрых настроек — тёмный кружок с белой шестерёнкой: единственное тёмное
    пятно внутри светлой карточки поля, и потому сразу заметное. Молния при этом сама становится
@@ -462,12 +472,12 @@ body.dg-state-home .dg-qs-btn,
 body:not(.dg-state-home) .dg-qs-btn { transition: none; }
 body.dg-state-home .dg-qs-btn {
     --dg-qs-bg: var(--dg-navy);
+    --dg-qs-fg: #fff;
     width: 34px;
     height: 34px;
-    color: #fff;
 }
 body.dg-state-home .dg-qs-btn:hover,
-body.dg-state-home .dg-qs-btn:focus-visible { --dg-qs-bg: var(--dg-navy-2); color: #fff; }
+body.dg-state-home .dg-qs-btn:focus-visible { --dg-qs-bg: var(--dg-navy-2); --dg-qs-fg: #fff; }
 body.dg-state-home .dg-qs-btn .dg-qs-gear { width: 19px; height: 19px; }
 
 /* Ожидание ответа поиска: пока крутится спиннер, выдачи (даже пустой) быть не должно — ради
@@ -827,8 +837,6 @@ body.dg-no-anim * {
     color: var(--dg-text-muted);
 }
 .dg-sheet .dg-sheet-row .dg-row-label { flex: 1; min-width: 0; }
-/* ✦ у пунктов, помеченных в легаси-меню "важное" ($iconimportant). */
-.dg-sheet .dg-sheet-row .dg-row-star { color: var(--dg-accent); flex: none; font-size: 0.75rem; }
 .dg-sheet .dg-sheet-empty {
     font-size: 0.82rem;
     color: var(--dg-text-muted);
@@ -985,26 +993,47 @@ body.dg-no-anim * {
     background: var(--dg-surface);
     overflow: hidden;
 }
+.dg-scope-group + .dg-scope-group { border-top: 1px solid var(--dg-border); }
+
+/* Строка группы: галка, название, счётчик «сколько из скольких», кнопка раскрытия. Счётчик тут
+   вместо перечисления — он и сообщает, выбрана группа целиком, частично или вовсе нет. */
 .dg-scope-head {
     display: flex;
     align-items: center;
-    justify-content: space-between;
     gap: 10px;
-    width: 100%;
     padding: 11px 12px;
-    border: 0;
-    background: transparent;
-    color: var(--dg-text);
     font-family: var(--dg-font);
     font-size: 0.92rem;
-    text-align: left;
+    color: var(--dg-text);
+}
+.dg-scope-label { flex: 1; min-width: 0; cursor: pointer; }
+.dg-scope-count {
+    flex: none;
+    font-size: 0.78rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--dg-text-muted);
+}
+.dg-scope-group.dg-some .dg-scope-count { color: var(--dg-accent-ink); }
+.dg-scope-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    flex: none;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--dg-text-muted);
     cursor: pointer;
 }
-.dg-scope-head:hover { background: var(--dg-surface-hover); }
-.dg-scope-summary { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.dg-scope-chev { flex: none; color: var(--dg-text-muted); transition: transform 0.18s var(--dg-ease); }
-.dg-scope.dg-open .dg-scope-chev { transform: rotate(180deg); }
-.dg-scope-list { padding: 2px 12px 8px; border-top: 1px solid var(--dg-border); }
+.dg-scope-toggle:hover { background: var(--dg-surface-hover); color: var(--dg-text); }
+.dg-scope-chev { transition: transform 0.18s var(--dg-ease); }
+.dg-scope-group.dg-open .dg-scope-chev { transform: rotate(180deg); }
+
+/* Под-пункты с отступом — видно, что они принадлежат группе, а не идут с ней вровень. */
+.dg-scope-list { padding: 0 12px 8px 34px; }
 .dg-scope-list[hidden] { display: none; }
 
 .dg-check-row {
@@ -1218,12 +1247,14 @@ body.dg-tiles-editing .dg-tile-remove { display: inline-flex; }
    ============================================================================ */
 /* Звезда у важных пунктов ($iconimportant в легаси-меню). Раньше рисовался знак ✦ — но ромбик
    на этом сайте уже занят: им помечены скрытые ссылки-якоря на цитаты (.quoteLink-start), и два
-   разных смысла одним значком путали. Здесь настоящая звезда (контур fa-star). */
+   разных смысла одним значком путали. Здесь настоящая звезда (контур fa-star).
+   Стоит СЛЕВА, на месте обычного значка строки, и ровно того же роста: раньше она была крупнее
+   соседних значков и уезжала в конец строки, за описание, где читалась как отдельная кнопка. */
 .dg-sheet .dg-sheet-row .dg-row-star {
-    width: 13px;
-    height: 13px;
+    width: 12px;
+    height: 12px;
     flex: none;
-    margin-top: 3px;
+    margin-top: 4px;
     color: var(--dg-accent);
 }
 
@@ -1254,7 +1285,7 @@ body.dg-tiles-editing .dg-tile-remove { display: inline-flex; }
     color: var(--dg-accent);
     background: var(--dg-accent-bg);
 }
-.dg-sheet .dg-chip .dg-row-star { margin-top: 0; }
+.dg-sheet .dg-chip .dg-row-star { margin-top: 0; width: 11px; height: 11px; }
 
 /* ============================================================================
    «Интересные запросы» — перенос слайд-шоу с боевой главной

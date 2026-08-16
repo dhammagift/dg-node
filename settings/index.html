@@ -13,7 +13,10 @@
   --ink:#141F2B; --ink-2:#55636F; --ink-3:#6E7B87;
   --line:#E3E8ED; --line-strong:#CFD8E0;
   --surface:#FFFFFF; --canvas:#F5F7F9;
-  --accent:#1F51B8; --accent-soft:#EAF0FC;
+  /* Акцент — фирменный зелёный, тот же, что на главной (search/css/home.css) и в шапке боевого
+     сайта. Синий #1F51B8, стоявший здесь, ни с чем на сайте не совпадал: страница настроек
+     выглядела деталью из чужого набора. */
+  --accent:#149C7C; --accent-soft:#DFF3EC;
   --danger:#B3261E;
   --r-sm:8px; --r-lg:16px;
   --ui:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
@@ -21,7 +24,9 @@
 body.dark{
   --ink:#E7ECF1; --ink-2:#A7B4C0; --ink-3:#8B99A6;
   --line:#293441; --line-strong:#3A4753; --surface:#18212B; --canvas:#111820;
-  --accent:#7FA8F5; --accent-soft:#1E2E48;
+  /* В тёмной теме — прод-зелёный ссылок #09967a ([data-theme="dark"] в assets/css/extrastyles.css),
+     как и на главной: #149C7C на тёмном фоне уже теряет контраст. */
+  --accent:#09967A; --accent-soft:#12241F;
 }
 *{box-sizing:border-box}
 html,body{margin:0}

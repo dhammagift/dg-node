@@ -43,16 +43,24 @@
     "diacritics": "Pāḷi diacritics",
     "note": "Defaults and the book-by-book breakdown live in the full settings.",
     "scope": {
-      "dn": "DN · Dīgha Nikāya",
-      "mn": "MN · Majjhima Nikāya",
-      "sn": "SN · Saṁyutta Nikāya",
-      "an": "AN · Aṅguttara Nikāya",
-      "knBasic": "KN · core books",
-      "knAll": "KN · the whole Khuddaka",
-      "vinaya": "Vinaya (Vibhaṅga)",
-      "kdPvr": "Khandhaka and Parivāra",
-      "abhi": "Abhidhamma"
-    }
+      "nikayas": "4 Nikāyas",
+      "kn": "Khuddaka Nikāya",
+      "vinaya": "Vinaya",
+      "dn": "Dīgha Nikāya",
+      "mn": "Majjhima Nikāya",
+      "sn": "Saṁyutta Nikāya",
+      "an": "Aṅguttara Nikāya",
+      "iti": "Itivuttaka",
+      "ud": "Udāna",
+      "snp": "Sutta Nipāta",
+      "dhp": "Dhammapada",
+      "thag": "Theragāthā",
+      "thig": "Therīgāthā",
+      "vibhanga": "Vibhaṅga",
+      "khandhaka": "Khandhaka",
+      "parivara": "Parivāra"
+    },
+    "scopeExpand": "Show contents"
   },
   "toolbar": {
     "expandCollapseLabel": "Saṁvaṭṭo / Vivaṭṭo",

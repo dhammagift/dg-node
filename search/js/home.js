@@ -254,13 +254,16 @@
         if (item.blank) { a.target = '_blank'; a.rel = 'noopener'; }
         /* desc — короткое «что это такое». Проставлено пока не всем пунктам, а первым в наборе:
            по ним и видно, чем набор занимается (просьба владельца — «чтобы было нагляднее»). */
+        /* Звезда — СЛЕВА от пункта, на месте обычного значка строки: она помечает сам пункт, а
+           уехав в конец строки, вставала за описанием и читалась как отдельная кнопка. Значок
+           «внешняя ссылка» у помеченных пунктов при этом не рисуется — двух значков в строке не
+           нужно, а важность важнее. */
         a.innerHTML = chip
-            ? esc(item.label) + (item.star ? starSvg() : '')
-            : svg('external', 'dg-row-icon') +
+            ? (item.star ? starSvg() : '') + esc(item.label)
+            : (item.star ? starSvg() : svg('external', 'dg-row-icon')) +
               '<span class="dg-row-label">' + esc(item.label) +
               (item.desc ? '<small class="dg-row-desc">' + esc(item.desc) + '</small>' : '') +
-              '</span>' +
-              (item.star ? starSvg() : '');
+              '</span>';
 
         if (item.tpl) {
             // openWithQuery подставляет {{q}}/{{theme}}, ПРОПИСЫВАЕТ href в currentTarget и
@@ -416,20 +419,53 @@
     /* Никаи — по одной: «где искать» чаще всего означает именно «в DN или в MN», а не «во всех
        четырёх сразу». Остальное — крупными наборами, подробный разбор по книгам живёт в полных
        настройках. */
+    /* Область поиска. Названия и разбиение — ТЕ ЖЕ, что в полных настройках (settings/index.html,
+       SCOPE_BOOKS / KN_DEFAULT_BOOKS / SCOPE_GROUPS): один и тот же набор, названный в двух местах
+       по-разному, читается как два разных набора. Поэтому здесь «Дигха Никая», а не «DN · Дигха»,
+       а Кхуддака и Виная — группы с раскрывающимся списком, а не плоские пункты.
+
+       Группа = родительская галка + под-пункты. Родительская включает и выключает все коды группы
+       разом; если отмечена только часть, она в промежуточном состоянии (indeterminate) — так же,
+       как в полных настройках.
+
+       Абхидхамма сюда НЕ входит намеренно: её включают один раз и надолго, место такой галочки —
+       в полных настройках. Уже включённую там мы не трогаем: writeScope() правит только свои коды.
+       «Вся Кхуддака» одной галкой (код 'khudakka') тоже убрана: рядом с шестью книгами той же
+       Кхуддаки она сбивала счёт — непонятно, что включено, книги или категория целиком. */
     var SCOPE_GROUPS = [
-        { codes: ['dn'], label: 'quick.scope.dn', fallback: 'DN · Дигха' },
-        { codes: ['mn'], label: 'quick.scope.mn', fallback: 'MN · Маджхима' },
-        { codes: ['sn'], label: 'quick.scope.sn', fallback: 'SN · Саньютта' },
-        { codes: ['an'], label: 'quick.scope.an', fallback: 'AN · Ангуттара' },
-        { codes: ['iti', 'ud', 'snp', 'dhp', 'thag', 'thig'], label: 'quick.scope.knBasic', fallback: 'KN · основные книги' },
-        { codes: ['khudakka'], label: 'quick.scope.knAll', fallback: 'KN · вся Кхуддака' },
-        { codes: ['pli-tv-bi', 'pli-tv-bu'], label: 'quick.scope.vinaya', fallback: 'Виная (Вибханга)' },
-        { codes: ['pli-tv-kd', 'pli-tv-pvr'], label: 'quick.scope.kdPvr', fallback: 'Кхандхака и Паривара' }
-        /* Абхидхамма сюда НЕ входит намеренно: в быстрых настройках нужен обиход, а её включают
-           один раз и надолго. Место такой галочки — в ПОЛНЫХ настройках (/settings/); здесь она
-           только удлиняла список, который и так открывается на каждый запрос. Уже включённую в
-           настройках Абхидхамму мы не трогаем: writeScope() правит лишь свои коды. */
+        {
+            label: 'quick.scope.nikayas', fallback: '4 Никаи',
+            items: [
+                { codes: ['dn'], label: 'quick.scope.dn', fallback: 'Дигха Никая' },
+                { codes: ['mn'], label: 'quick.scope.mn', fallback: 'Маджхима Никая' },
+                { codes: ['sn'], label: 'quick.scope.sn', fallback: 'Саньютта Никая' },
+                { codes: ['an'], label: 'quick.scope.an', fallback: 'Ангуттара Никая' }
+            ]
+        },
+        {
+            label: 'quick.scope.kn', fallback: 'Кхуддака Никая',
+            items: [
+                { codes: ['iti'], label: 'quick.scope.iti', fallback: 'Итивуттака' },
+                { codes: ['ud'], label: 'quick.scope.ud', fallback: 'Удана' },
+                { codes: ['snp'], label: 'quick.scope.snp', fallback: 'Сутта Нипата' },
+                { codes: ['dhp'], label: 'quick.scope.dhp', fallback: 'Дхаммапада' },
+                { codes: ['thag'], label: 'quick.scope.thag', fallback: 'Тхерагатха' },
+                { codes: ['thig'], label: 'quick.scope.thig', fallback: 'Тхеригатха' }
+            ]
+        },
+        {
+            label: 'quick.scope.vinaya', fallback: 'Виная',
+            items: [
+                { codes: ['pli-tv-bi', 'pli-tv-bu'], label: 'quick.scope.vibhanga', fallback: 'Вибханга' },
+                { codes: ['pli-tv-kd'], label: 'quick.scope.khandhaka', fallback: 'Кхандхака' },
+                { codes: ['pli-tv-pvr'], label: 'quick.scope.parivara', fallback: 'Паривара' }
+            ]
+        }
     ];
+    // Все коды группы — для родительской галки. Считается один раз, а не на каждую перерисовку.
+    SCOPE_GROUPS.forEach(function (g) {
+        g.codes = g.items.reduce(function (all, it) { return all.concat(it.codes); }, []);
+    });
     var DEFAULT_SCOPE = ['dn', 'mn', 'sn', 'an', 'iti', 'ud', 'snp', 'dhp', 'thag', 'thig'];
 
     function readScope() {
@@ -532,89 +568,120 @@
     /* Наполнение зависит от состояния страницы — в этом и смысл «быстрых» настроек: на главной
        спрашивают «где и как искать», в выдаче добавляется вид уже показанного, в чтении речь
        пойдёт о самом тексте. Поэтому тело перерисовывается при каждом открытии, а не один раз. */
-    /* Область поиска — ОДИН раскрывающийся список с галочками, а не восемь переключателей подряд.
-       Переключатель означает «включить режим», а здесь выбирают из набора, где обычно отмечено
-       почти всё сразу; восемь тумблеров занимали пол-экрана и открывались на каждый запрос.
-       Свёрнутая строка показывает, что выбрано, — чаще всего этого и достаточно. */
+    /* Область поиска — список галок, устроенный так же, как в полных настройках: три группы, у
+       каждой родительская галка и раскрывающийся список под-пунктов. Переключателей здесь нет:
+       переключатель означает «включить режим», а тут выбирают из набора, где обычно отмечено
+       почти всё. Свёрнутые группы показывают, что именно выбрано, — чаще всего этого достаточно
+       и разворачивать не приходится. */
     function scopePicker() {
         var wrap = document.createElement('div');
         wrap.className = 'dg-scope';
 
-        var head = document.createElement('button');
-        head.type = 'button';
-        head.className = 'dg-scope-head';
-        head.setAttribute('aria-expanded', 'false');
-
-        var summary = document.createElement('span');
-        summary.className = 'dg-scope-summary';
-
-        var list = document.createElement('div');
-        list.className = 'dg-scope-list';
-        list.hidden = true;
-
-        function selected() {
-            var scope = readScope();
-            return SCOPE_GROUPS.filter(function (g) {
-                return g.codes.every(function (c) { return scope.indexOf(c) !== -1; });
-            });
-        }
-
-        function paintSummary() {
-            var on = selected();
-            if (!on.length) summary.textContent = t('quick.scopeNone', 'ничего не выбрано');
-            else if (on.length === SCOPE_GROUPS.length) summary.textContent = t('quick.scopeAll', 'везде');
-            else summary.textContent = on.map(function (g) {
-                return t(g.label + 'Short', shortOf(g.fallback));
-            }).join(', ');
-        }
-
-        // «DN · Дигха» → «DN»: в свёрнутой строке нужен код, а не полное имя собрания.
-        function shortOf(fallback) { return String(fallback).split('·')[0].trim(); }
-
         SCOPE_GROUPS.forEach(function (g) {
-            var row = document.createElement('label');
-            row.className = 'dg-check-row';
+            var group = document.createElement('div');
+            group.className = 'dg-scope-group';
 
-            var box = document.createElement('input');
-            box.type = 'checkbox';
-            box.className = 'dg-check';
-            box.checked = g.codes.every(function (c) { return readScope().indexOf(c) !== -1; });
-            box.addEventListener('change', function () {
-                var next = readScope();
-                g.codes.forEach(function (c) {
-                    var i = next.indexOf(c);
-                    if (box.checked && i === -1) next.push(c);
-                    if (!box.checked && i !== -1) next.splice(i, 1);
+            var head = document.createElement('div');
+            head.className = 'dg-scope-head';
+
+            /* Родительская галка. Её состояние считается по под-пунктам: все отмечены — стоит,
+               часть — промежуточное (indeterminate), ни одного — снята. Клик по ней ставит или
+               снимает всю группу разом. */
+            var parent = document.createElement('input');
+            parent.type = 'checkbox';
+            parent.className = 'dg-check';
+
+            var label = document.createElement('label');
+            label.className = 'dg-scope-label';
+            label.textContent = t(g.label, g.fallback);
+            // Клик по подписи бьёт по родительской галке, а не разворачивает список.
+            label.addEventListener('click', function () { parent.click(); });
+
+            var count = document.createElement('span');
+            count.className = 'dg-scope-count';
+
+            var toggle = document.createElement('button');
+            toggle.type = 'button';
+            toggle.className = 'dg-scope-toggle';
+            toggle.setAttribute('aria-expanded', 'false');
+            toggle.setAttribute('aria-label', t('quick.scopeExpand', 'Показать состав'));
+            toggle.innerHTML = '<svg class="dg-scope-chev" viewBox="0 0 24 24" width="14" height="14" ' +
+                'fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" ' +
+                'stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>';
+
+            var list = document.createElement('div');
+            list.className = 'dg-scope-list';
+            list.hidden = true;
+
+            var boxes = [];
+
+            function syncParent() {
+                var on = boxes.filter(function (b) { return b.checked; }).length;
+                parent.checked = on === boxes.length;
+                parent.indeterminate = on > 0 && on < boxes.length;
+                count.textContent = on + '/' + boxes.length;
+                group.classList.toggle('dg-some', on > 0);
+            }
+
+            g.items.forEach(function (item) {
+                var row = document.createElement('label');
+                row.className = 'dg-check-row';
+
+                var box = document.createElement('input');
+                box.type = 'checkbox';
+                box.className = 'dg-check';
+                box.checked = item.codes.every(function (c) { return readScope().indexOf(c) !== -1; });
+                box.addEventListener('change', function () {
+                    applyCodes(item.codes, box.checked);
+                    syncParent();
                 });
-                writeScope(next);
-                paintSummary();
+
+                var text = document.createElement('span');
+                text.textContent = t(item.label, item.fallback);
+
+                row.appendChild(box);
+                row.appendChild(text);
+                list.appendChild(row);
+                boxes.push(box);
             });
 
-            var label = document.createElement('span');
-            label.textContent = t(g.label, g.fallback);
+            parent.addEventListener('change', function () {
+                var next = parent.checked;
+                boxes.forEach(function (b) { b.checked = next; });
+                applyCodes(g.codes, next);
+                syncParent();
+            });
 
-            row.appendChild(box);
-            row.appendChild(label);
-            list.appendChild(row);
+            toggle.addEventListener('click', function () {
+                var open = list.hidden;
+                list.hidden = !open;
+                toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+                group.classList.toggle('dg-open', open);
+            });
+
+            head.appendChild(parent);
+            head.appendChild(label);
+            head.appendChild(count);
+            head.appendChild(toggle);
+            group.appendChild(head);
+            group.appendChild(list);
+            wrap.appendChild(group);
+
+            syncParent();
         });
 
-        head.addEventListener('click', function () {
-            var open = list.hidden;
-            list.hidden = !open;
-            head.setAttribute('aria-expanded', open ? 'true' : 'false');
-            wrap.classList.toggle('dg-open', open);
-        });
-
-        head.appendChild(summary);
-        head.insertAdjacentHTML('beforeend',
-            '<svg class="dg-scope-chev" viewBox="0 0 24 24" width="14" height="14" fill="none" ' +
-            'stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" ' +
-            'aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>');
-        paintSummary();
-
-        wrap.appendChild(head);
-        wrap.appendChild(list);
         return wrap;
+    }
+
+    // Включить или выключить набор кодов в сохранённой области поиска.
+    function applyCodes(codes, on) {
+        var list = readScope();
+        codes.forEach(function (c) {
+            var i = list.indexOf(c);
+            if (on && i === -1) list.push(c);
+            if (!on && i !== -1) list.splice(i, 1);
+        });
+        writeScope(list);
     }
 
     function buildQuickBody(host) {
