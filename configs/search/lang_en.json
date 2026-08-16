@@ -22,7 +22,17 @@
     "themeDark": "Dark",
     "themeAuto": "Auto",
     "removeTile": "Remove from home",
-    "restoreTiles": "Reset buttons"
+    "restoreTiles": "Reset buttons",
+    "addTile": "Add your own button",
+    "addTileName": "Label",
+    "addTileNamePh": "e.g. My dictionary",
+    "addTileUrl": "Address",
+    "addTileIcon": "Icon",
+    "addTileSave": "Add",
+    "addTileHint": "You can put %s in the address — the search box query goes there.",
+    "addTileNoName": "Enter a label",
+    "addTileBadUrl": "Address must start with http://, https:// or /",
+    "deleteTile": "Delete button"
   },
   "slides": {
     "title": "Interesting queries",
@@ -58,7 +68,21 @@
       "thig": "Therīgāthā",
       "vibhanga": "Vibhaṅga",
       "khandhaka": "Khandhaka",
-      "parivara": "Parivāra"
+      "parivara": "Parivāra",
+      "ja": "Jātaka",
+      "thaAp": "Theraapadāna",
+      "mil": "Milindapañha",
+      "thiAp": "Therīapadāna",
+      "vv": "Vimānavatthu",
+      "pv": "Petavatthu",
+      "cp": "Cariyāpiṭaka",
+      "bv": "Buddhavaṁsa",
+      "ps": "Paṭisambhidāmagga",
+      "ne": "Nettippakaraṇa",
+      "cnd": "Cullaniddesa",
+      "mnd": "Mahāniddesa",
+      "kp": "Khuddakapāṭha",
+      "pe": "Peṭakopadesa"
     },
     "scopeExpand": "Show contents"
   },

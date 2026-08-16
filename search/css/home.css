@@ -1046,8 +1046,13 @@ body.dg-no-anim * {
     cursor: pointer;
 }
 /* Галочка — родная, только перекрашенная в акцент: свои квадратики пришлось бы отдельно учить
-   доступности (фокус, клавиатура, screen reader), а accent-color даёт всё это даром. */
-.dg-check {
+   доступности (фокус, клавиатура, screen reader), а accent-color даёт всё это даром.
+   Селектор с двумя классами и элементом — ответ на `label input[type="checkbox"] {display:none}`
+   из assets/css/extrastyles.css (общий файл, его не трогаем). Из-за него галки под-пунктов, а они
+   лежат ВНУТРИ <label>, не рисовались вовсе: была видна одна родительская, и список читался как
+   набор простых строк. */
+.dg-scope input.dg-check {
+    display: inline-block;
     width: 18px;
     height: 18px;
     flex: none;
@@ -1375,6 +1380,89 @@ body.dark #dg-carousel .carousel-control-next-icon { filter: none; }
     line-height: 1.45;
     color: var(--dg-text-2);
 }
+
+/* ============================================================================
+   Форма «своя кнопка» (в шторке, вызывается из бокового меню)
+   ============================================================================ */
+.dg-add-form { padding: 6px 0 4px; }
+.dg-field { display: block; margin-bottom: 14px; }
+.dg-field-label {
+    display: block;
+    margin-bottom: 5px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--dg-text-2);
+}
+.dg-field-input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--dg-border-strong);
+    border-radius: var(--dg-radius);
+    background: var(--dg-surface);
+    color: var(--dg-text);
+    font-family: var(--dg-font);
+    font-size: 0.95rem;
+}
+.dg-field-input:focus {
+    outline: none;
+    border-color: var(--dg-accent);
+    box-shadow: 0 0 0 3px var(--dg-accent-bg);
+}
+.dg-field-hint {
+    margin: -8px 0 14px;
+    font-size: 0.78rem;
+    line-height: 1.45;
+    color: var(--dg-text-muted);
+}
+.dg-field-error {
+    margin: 10px 0 0;
+    font-size: 0.82rem;
+    color: #b3261e;
+}
+body.dark .dg-field-error { color: #ff8a80; }
+
+/* Выбор значка — из готового набора. Свои картинки не грузим: пришлось бы думать про их
+   хранение, размер и то, как они переживут смену темы. */
+.dg-icon-pick {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 6px 0 4px;
+}
+.dg-icon-opt {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border: 1px solid var(--dg-border);
+    border-radius: 50%;
+    background: var(--dg-surface);
+    color: var(--dg-text-2);
+    cursor: pointer;
+}
+.dg-icon-opt svg { width: 18px; height: 18px; }
+.dg-icon-opt:hover { border-color: var(--dg-border-strong); }
+.dg-icon-opt.on {
+    border-color: var(--dg-accent);
+    background: var(--dg-accent-bg);
+    color: var(--dg-accent);
+}
+.dg-add-submit {
+    width: 100%;
+    margin-top: 16px;
+    padding: 12px;
+    border: 0;
+    border-radius: var(--dg-radius);
+    background: var(--dg-accent);
+    color: #fff;
+    font-family: var(--dg-font);
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+.dg-add-submit:hover { background: var(--dg-accent-dark); }
 
 /* ============================================================================
    Подсказки автодополнения (jQuery UI, autopali.js)

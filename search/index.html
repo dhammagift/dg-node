@@ -2352,7 +2352,9 @@ $(document).ready(function() {
     <a class="dg-drawer-row" href="/" data-dg-icon="home">{{buttons.main}}</a>
     <a class="dg-drawer-row" href="/history.php" data-dg-icon="clock">{{buttons.history}}</a>
     <a class="dg-drawer-row" href="javascript:void(0)" data-dg-icon="help" data-bs-toggle="modal" data-bs-target="#SearchResultHelp">{{global.common.help}}</a>
-    <!-- Появляется только если человек убрал хотя бы одну кнопку с главной (см. home.js). -->
+    <!-- Своя кнопка на главную: подпись, адрес, значок. Форму рисует home.js в обычной шторке. -->
+    <a class="dg-drawer-row" href="javascript:void(0)" id="dg-add-tile" data-dg-icon="plus">{{menu.addTile}}</a>
+    <!-- Появляется, только если есть что возвращать: убрана кнопка ИЛИ переставлен порядок. -->
     <a class="dg-drawer-row" href="javascript:void(0)" id="dg-restore-tiles" data-dg-icon="star" hidden>{{menu.restoreTiles}}</a>
     <p class="dg-group-title">{{menu.settings}}</p>
     <!-- Шестерёнка БЕЗ молнии — полные настройки; молния осталась быстрым, у поля. -->

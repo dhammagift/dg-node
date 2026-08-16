@@ -55,7 +55,8 @@
         moon: ['fas', 'moon'],
         circleHalf: ['fas', 'circle-half-stroke'],
         display: ['fas', 'display'],
-        language: ['fas', 'language']
+        language: ['fas', 'language'],
+        plus: ['fas', 'plus']
     };
 
     /* FontAwesome на этой странице подключён скриптом (assets/js/fontawesome.6.1.all.js), но его
@@ -144,11 +145,21 @@
         var known = (DEFAULT_TILE_ORDER[lang] || DEFAULT_TILE_ORDER.en).filter(function (k) {
             return !menuData || (menuData[lang] && menuData[lang][k]);
         });
+        // Свои кнопки — такие же участники порядка, просто их список хранится отдельно.
+        customTiles().forEach(function (c) { known.push(c.id); });
         var saved = readOrderStore()[lang];
         if (!Array.isArray(saved)) return known;
         var kept = saved.filter(function (k) { return known.indexOf(k) !== -1; });
         known.forEach(function (k) { if (kept.indexOf(k) === -1) kept.push(k); });
         return kept;
+    }
+
+    // Данные плитки по ключу: сначала встроенные из menu-links.json, потом свои.
+    function tileData(key) {
+        var lang = menuLang();
+        if (menuData && menuData[lang] && menuData[lang][key]) return menuData[lang][key];
+        var own = customTiles().filter(function (c) { return c.id === key; })[0];
+        return own ? { label: own.label, icon: own.icon, href: own.href, custom: true } : null;
     }
 
     function saveTileOrder(keys) {
@@ -186,6 +197,42 @@
     function setHiddenTiles(list) {
         try { localStorage.setItem(TILE_HIDDEN_KEY, JSON.stringify(list)); } catch (e) { /* приватный режим */ }
         syncRestoreLink();
+    }
+
+    // ======================================================================
+    // Свои кнопки
+    // ======================================================================
+    /* Кнопка на любой свой адрес. Хранится отдельно от порядка и от списка убранных: те работают
+       с ключами встроенных плиток, а здесь нужны сами данные — подпись, адрес, значок.
+       Ключ плитки — 'custom:<время создания>', он же id записи; так своя кнопка участвует в
+       перетаскивании и в «убрать» наравне со встроенными, ничего не переучивая. */
+    var CUSTOM_TILES_KEY = 'dgCustomTiles';
+
+    function customTiles() {
+        try {
+            var list = JSON.parse(localStorage.getItem(CUSTOM_TILES_KEY));
+            return Array.isArray(list) ? list : [];
+        } catch (e) { return []; }
+    }
+
+    function setCustomTiles(list) {
+        try {
+            if (list.length) localStorage.setItem(CUSTOM_TILES_KEY, JSON.stringify(list));
+            else localStorage.removeItem(CUSTOM_TILES_KEY);
+        } catch (e) { /* приватный режим */ }
+    }
+
+    /* Адрес своей кнопки. Пускаем только http(s) и внутренние пути с «/». javascript: не пускаем
+       никогда — это чужой код в нашей странице; data: и blob: тоже мимо. Адрес без схемы считаем
+       внешним и дописываем https://, иначе «example.com» браузер понял бы как относительный путь
+       и увёл на /example.com. */
+    function normalizeUrl(raw) {
+        var s = String(raw || '').trim();
+        if (!s) return null;
+        if (s.charAt(0) === '/') return s;
+        if (/^https?:\/\//i.test(s)) return s;
+        if (/^[a-z][a-z0-9+.-]*:/i.test(s)) return null; // любая другая схема — отказ
+        return 'https://' + s;
     }
 
     /* Порядок отличается от исходного? Сравниваем ПОСЛЕДОВАТЕЛЬНОСТЬ, а не состав: набор ключей
@@ -334,7 +381,7 @@
     /* Действие плитки: у одних свой список (шторка), у других — прямое действие. Одна функция на
        оба места, где плитка встречается: сама кнопка и вкладка в шапке шторки. */
     function runTile(key) {
-        var tile = (menuData[menuLang()] || {})[key];
+        var tile = tileData(key);
         if (!tile) return;
         if (tile.groups) { openSheet(key); return; }
         if (tile.modal === 'quick') {
@@ -350,7 +397,18 @@
                 return;
             }
         }
-        if (tile.href) window.location.href = tile.href;
+        if (tile.href) window.location.href = tile.custom ? fillTemplate(tile.href) : tile.href;
+    }
+
+    /* Подстановка в адрес своей кнопки — те же {{q}} и {{theme}}, что у ссылок меню: именно они
+       превращают чужой сайт в продолжение поиска, а не в простую закладку. Своя реализация, а не
+       openWithQuery из /assets/js/openDicts.js: та работает от события и правит href элемента, а
+       здесь ни события, ни ссылки нет — плитка это <button>. */
+    function fillTemplate(tpl) {
+        var q = (document.getElementById('paliauto') || {}).value || '';
+        return String(tpl)
+            .replace(/\{\{\s*q\s*\}\}/g, encodeURIComponent(q))
+            .replace(/\{\{\s*theme\s*\}\}/g, localStorage.getItem('theme') || 'light');
     }
 
     function openSheet(key) {
@@ -469,6 +527,11 @@
             ]
         },
         {
+            /* Кхуддака ЦЕЛИКОМ, все двадцать книг, как в полных настройках. Первыми — шесть,
+               включённых по умолчанию, следом остальные. Родительская галка поэтому стоит
+               полуотмеченной: сразу видно, что часть Кхуддаки уже в поиске, а остальное можно
+               добрать. Оставить в списке только эти шесть было ошибкой — тогда группа выглядела
+               включённой целиком, и добрать Джатаки или Милиндапаньху было негде. */
             label: 'quick.scope.kn', fallback: 'Кхуддака Никая',
             items: [
                 { codes: ['iti'], label: 'quick.scope.iti', fallback: 'Итивуттака' },
@@ -476,7 +539,21 @@
                 { codes: ['snp'], label: 'quick.scope.snp', fallback: 'Сутта Нипата' },
                 { codes: ['dhp'], label: 'quick.scope.dhp', fallback: 'Дхаммапада' },
                 { codes: ['thag'], label: 'quick.scope.thag', fallback: 'Тхерагатха' },
-                { codes: ['thig'], label: 'quick.scope.thig', fallback: 'Тхеригатха' }
+                { codes: ['thig'], label: 'quick.scope.thig', fallback: 'Тхеригатха' },
+                { codes: ['ja'], label: 'quick.scope.ja', fallback: 'Джатаки' },
+                { codes: ['tha-ap'], label: 'quick.scope.thaAp', fallback: 'Тхера-ападана' },
+                { codes: ['mil'], label: 'quick.scope.mil', fallback: 'Милиндапаньха' },
+                { codes: ['thi-ap'], label: 'quick.scope.thiAp', fallback: 'Тхери-ападана' },
+                { codes: ['vv'], label: 'quick.scope.vv', fallback: 'Виманаваттху' },
+                { codes: ['pv'], label: 'quick.scope.pv', fallback: 'Петаваттху' },
+                { codes: ['cp'], label: 'quick.scope.cp', fallback: 'Чарьяпитака' },
+                { codes: ['bv'], label: 'quick.scope.bv', fallback: 'Буддхавамса' },
+                { codes: ['ps'], label: 'quick.scope.ps', fallback: 'Патисамбхидамагга' },
+                { codes: ['ne'], label: 'quick.scope.ne', fallback: 'Неттипакарана' },
+                { codes: ['cnd'], label: 'quick.scope.cnd', fallback: 'Чуланиддеса' },
+                { codes: ['mnd'], label: 'quick.scope.mnd', fallback: 'Маханиддеса' },
+                { codes: ['kp'], label: 'quick.scope.kp', fallback: 'Кхуддакапатха' },
+                { codes: ['pe'], label: 'quick.scope.pe', fallback: 'Петакопадеса' }
             ]
         },
         {
@@ -870,7 +947,7 @@
 
         var hidden = hiddenTiles();
         tileOrder().forEach(function (key) {
-            var tile = data[key];
+            var tile = tileData(key);
             if (!tile || hidden.indexOf(key) !== -1) return;
 
             /* Все плитки — <button>, даже те, что просто ведут по ссылке: у <a> браузер
@@ -893,14 +970,23 @@
             var rm = document.createElement('span');
             rm.className = 'dg-tile-remove';
             rm.setAttribute('role', 'button');
-            rm.setAttribute('title', t('menu.removeTile', 'Убрать с главной'));
+            rm.setAttribute('title', tile.custom
+                ? t('menu.deleteTile', 'Удалить кнопку')
+                : t('menu.removeTile', 'Убрать с главной'));
             rm.textContent = '✕';
             rm.addEventListener('click', function (e) {
                 // Иначе клик дойдёт до самой плитки и заодно откроет её шторку.
                 e.stopPropagation();
-                var list = hiddenTiles();
-                if (list.indexOf(key) === -1) list.push(key);
-                setHiddenTiles(list);
+                if (tile.custom) {
+                    /* Свою кнопку УДАЛЯЕМ, а не прячем: прятать её незачем — «вернуть как было»
+                       восстанавливает встроенные, а своя после возврата появилась бы снова, хотя
+                       от неё явно отказались. */
+                    setCustomTiles(customTiles().filter(function (c) { return c.id !== key; }));
+                } else {
+                    var list = hiddenTiles();
+                    if (list.indexOf(key) === -1) list.push(key);
+                    setHiddenTiles(list);
+                }
                 renderTiles();
             });
             el.appendChild(rm);
@@ -1171,6 +1257,120 @@
 
     /* Подвал: копирайт с ТЕКУЩИМ годом. Год берём из часов, а не из разметки — вписанный руками
        он к каждому январю устаревает, и это замечают. */
+    /* Форма «своя кнопка». Рисуется в той же шторке, что и списки ссылок: заводить ради трёх
+       полей отдельное окно незачем. Значок выбирается из уже имеющегося набора (ICONS) — своих
+       картинок не грузим, иначе пришлось бы думать про их хранение и размер. */
+    function openAddTile() {
+        closeDrawer();
+        ensureSheet();
+        var sheet = document.getElementById('dg-sheet');
+        var backdrop = document.getElementById('dg-sheet-backdrop');
+        var body = document.getElementById('dg-sheet-body');
+        var tabs = document.getElementById('dg-sheet-tabs');
+
+        sheet.hidden = false;
+        document.getElementById('dg-sheet-title').textContent = t('menu.addTile', 'Добавить свою кнопку');
+        if (tabs) tabs.innerHTML = '';
+        body.innerHTML = '';
+
+        var form = document.createElement('form');
+        form.className = 'dg-add-form';
+
+        function field(labelText, el) {
+            var wrap = document.createElement('label');
+            wrap.className = 'dg-field';
+            var cap = document.createElement('span');
+            cap.className = 'dg-field-label';
+            cap.textContent = labelText;
+            wrap.appendChild(cap);
+            wrap.appendChild(el);
+            return wrap;
+        }
+
+        var nameInput = document.createElement('input');
+        nameInput.type = 'text';
+        nameInput.className = 'dg-field-input';
+        nameInput.required = true;
+        nameInput.maxLength = 24;
+        nameInput.placeholder = t('menu.addTileNamePh', 'например, Мой словарь');
+
+        var urlInput = document.createElement('input');
+        urlInput.type = 'text';
+        urlInput.className = 'dg-field-input';
+        urlInput.required = true;
+        urlInput.placeholder = 'https://…';
+
+        form.appendChild(field(t('menu.addTileName', 'Подпись'), nameInput));
+        form.appendChild(field(t('menu.addTileUrl', 'Адрес'), urlInput));
+
+        /* Подсказка про подстановку запроса. Сам образец {{q}} собираем из ДВУХ текстовых узлов
+           («{» и «{q}}»): dhamma-i18n.js обходит текстовые узлы страницы и всё, где встречается
+           «{{», считает своим ключом перевода — целиком записанный образец валил его исключением
+           «Missing localization key: q» (поймано в консоли). Разрезанный пополам, для движка он
+           невидим, а на экране читается как обычно. В строках переводов на его месте стоит %s. */
+        var hint = document.createElement('p');
+        hint.className = 'dg-field-hint';
+        var parts = String(t('menu.addTileHint',
+            'В адрес можно вставить %s — вместо него подставится запрос из поля поиска.')).split('%s');
+        hint.appendChild(document.createTextNode(parts[0]));
+        var code = document.createElement('code');
+        code.appendChild(document.createTextNode('{'));
+        code.appendChild(document.createTextNode('{q}}'));
+        hint.appendChild(code);
+        hint.appendChild(document.createTextNode(parts[1] || ''));
+        form.appendChild(hint);
+
+        // Выбор значка — из того же набора, что у встроенных кнопок.
+        var iconCap = document.createElement('span');
+        iconCap.className = 'dg-field-label';
+        iconCap.textContent = t('menu.addTileIcon', 'Значок');
+        form.appendChild(iconCap);
+
+        var icons = document.createElement('div');
+        icons.className = 'dg-icon-pick';
+        var chosen = 'external';
+        ['external', 'book', 'bookmark', 'dict', 'cap', 'wrench', 'clock', 'star', 'home'].forEach(function (name) {
+            var b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'dg-icon-opt' + (name === chosen ? ' on' : '');
+            b.innerHTML = svg(name);
+            b.addEventListener('click', function () {
+                chosen = name;
+                Array.prototype.forEach.call(icons.children, function (x) { x.classList.toggle('on', x === b); });
+            });
+            icons.appendChild(b);
+        });
+        form.appendChild(icons);
+
+        var error = document.createElement('p');
+        error.className = 'dg-field-error';
+        error.hidden = true;
+        form.appendChild(error);
+
+        var submit = document.createElement('button');
+        submit.type = 'submit';
+        submit.className = 'dg-add-submit';
+        submit.textContent = t('menu.addTileSave', 'Добавить');
+        form.appendChild(submit);
+
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            var label = nameInput.value.trim();
+            var href = normalizeUrl(urlInput.value);
+            if (!label) { error.textContent = t('menu.addTileNoName', 'Впишите подпись'); error.hidden = false; return; }
+            if (!href) { error.textContent = t('menu.addTileBadUrl', 'Адрес должен начинаться с http://, https:// или /'); error.hidden = false; return; }
+
+            var list = customTiles();
+            list.push({ id: 'custom:' + Date.now(), label: label, href: href, icon: chosen });
+            setCustomTiles(list);
+            renderTiles();
+            closeSheet();
+        });
+
+        body.appendChild(form);
+        showLater(sheet, backdrop);
+    }
+
     function renderFooter() {
         var host = document.getElementById('dg-copyright');
         if (!host) return;
@@ -1279,6 +1479,9 @@
                 renderHint();
             });
         }
+
+        var addTile = document.getElementById('dg-add-tile');
+        if (addTile) addTile.addEventListener('click', openAddTile);
 
         var restore = document.getElementById('dg-restore-tiles');
         if (restore) {
