@@ -53,6 +53,7 @@
         magnifier: ['fas', 'magnifying-glass'],
         bars: ['fas', 'bars'],
         moon: ['fas', 'moon'],
+        circleHalf: ['fas', 'circle-half-stroke'],
         display: ['fas', 'display'],
         language: ['fas', 'language']
     };
@@ -472,7 +473,9 @@
         options.forEach(function (opt) {
             var b = document.createElement('button');
             b.type = 'button';
-            b.textContent = opt.label;
+            // Значок перед подписью — если он у варианта задан (сейчас это темы).
+            b.innerHTML = (opt.icon ? faSvg(opt.icon, 'dg-seg-ic') : '') +
+                '<span>' + esc(opt.label) + '</span>';
             b.setAttribute('aria-pressed', String(opt.value === activeValue));
             b.addEventListener('click', function () {
                 Array.prototype.forEach.call(wrap.querySelectorAll('button'), function (x) {
@@ -1111,10 +1114,15 @@
         if (!host) return;
         var active = localStorage.getItem('theme') || 'auto';
         host.innerHTML = '';
+        /* Порядок и значки — как у кнопки темы в ряду выдачи (assets/js/themeswitch.js,
+           switchIcon): полумесяц у тёмной, солнце у светлой, наполовину закрашенный круг у
+           системной. Один и тот же значок обязан означать одно и то же в обоих местах. */
         host.appendChild(segmented([
-            { value: 'light', label: t('menu.themeLight', 'Светлая') },
-            { value: 'dark', label: t('menu.themeDark', 'Тёмная') },
-            { value: 'auto', label: t('menu.themeAuto', 'Системная') }
+            { value: 'dark', label: t('menu.themeDark', 'Тёмная'), icon: 'moon' },
+            { value: 'light', label: t('menu.themeLight', 'Светлая'), icon: 'sun' },
+            /* «Авто», а не «Системная»: длинное слово на телефоне не влезало в треть переключателя
+               и обрезалось многоточием (замерено на 375px). Владелец и сам зовёт режим «авто». */
+            { value: 'auto', label: t('menu.themeAuto', 'Авто'), icon: 'circleHalf' }
         ], active, applyTheme));
     }
 

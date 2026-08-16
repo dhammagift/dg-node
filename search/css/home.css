@@ -311,9 +311,11 @@ body.dg-skin-minimal #form.dg-hero-form { flex: 1 1 auto; min-width: 0; }
 /* На полосе поле — светлая карточка, лежащая ПОВЕРХ тёмного фона: не пилюля, а прямоугольник со
    скруглением 10px и заметной тенью (так в макете). Тень обязательна: без неё карточка сливается
    с нижним, уже позеленевшим краем градиента. */
+/* Скругление — то же, что у поля в выдаче и в чтении (28px у .dg-input-shell выше): прямоугольник
+   с радиусом 10 из макета рядом с остальным сайтом смотрелся чужим. На главной поле только крупнее
+   и с тенью — оно лежит поверх тёмной полосы и должно от неё отделяться. */
 body.dg-state-home .dg-input-shell {
-    padding: 8px 8px 8px 12px;
-    border-radius: var(--dg-radius);
+    padding: 11px 11px 11px 16px;
     border-color: transparent;
     box-shadow: 0 6px 18px rgba(15, 20, 15, 0.18);
 }
@@ -381,7 +383,7 @@ body #form #paliauto.form-control {
     font-size: 1rem;
     outline: none;
 }
-body.dg-state-home #form #paliauto.searchinput { font-size: 1.06rem; }
+body.dg-state-home #form #paliauto.searchinput { font-size: 1.12rem; }
 body #form #paliauto.searchinput::placeholder { color: var(--dg-text-muted); }
 /* Родной крестик type="search" (только webkit) — вместо него своя кнопка #dg-clear-btn: родной
    не поддаётся оформлению и вставал бы вплотную к нашим кнопкам. */
@@ -926,7 +928,12 @@ body.dg-no-anim * {
     overflow: hidden;
 }
 .dg-segmented button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
     flex: 1;
+    min-width: 0;
     padding: 10px 6px;
     border: 0;
     background: var(--dg-surface);
@@ -936,6 +943,21 @@ body.dg-no-anim * {
     font-weight: 600;
     cursor: pointer;
     transition: background-color 0.15s ease, color 0.15s ease;
+}
+/* Подпись рядом со значком на узком экране может не помещаться — сжимается она, а значок
+   остаётся целым: по нему вариант и узнают. */
+.dg-segmented button > span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.dg-seg-ic { width: 14px; height: 14px; flex: none; }
+.dg-segmented button[aria-pressed="true"] .dg-seg-ic { color: var(--dg-accent-ink); }
+/* На узком экране трети переключателя не хватало на «Light» рядом со значком — подпись
+   обрезалась многоточием (замерено на 375px). Ужимаем отступы и кегль, а не значок. */
+@media (max-width: 420px) {
+    .dg-segmented button { gap: 5px; padding: 10px 3px; font-size: 0.76rem; }
 }
 .dg-segmented button:hover { background: var(--dg-surface-hover); }
 .dg-segmented button[aria-pressed="true"] {
