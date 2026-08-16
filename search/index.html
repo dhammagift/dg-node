@@ -435,6 +435,12 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
 <!-- Шапка главной: полное лого с названием слева, бургер — в противовес ему справа. Показывается
      ТОЛЬКО на главной: в выдаче и в чтении вывеска не нужна, там от знака остаётся одна ракушка
      внутри поля (см. .dg-shell-logo ниже), а бургер стоит правее поля. -->
+<!-- Фирменная полоса главной: тёмный сине-зелёный с переходом в зелёный, как в шапке боевого
+     сайта. Внутри — вывеска, девиз, поле и подсказка: на главной это один цельный блок, и поле
+     сидит НА нём, а не под ним. В выдаче и в чтении полоса схлопывается в ничто (фон снимается,
+     см. home.css), поэтому обёртка общая для всех состояний и разметку не раздваивает. -->
+<div id="dg-hero-band">
+<div class="dg-hero-inner">
 <div id="dg-topbar">
   <a href="/" id="dg-brand" title="Dhamma.Gift">
     <!-- Без кружка-подложки: у картинки почти белые лепестки-страницы, и на светлом фоне они
@@ -503,6 +509,9 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
 <!-- Подсказка "искать «…» / похоже на ссылку на текст" — тот же DgTextRouter.classify(), что и
      обработчик сабмита ниже, просто показанный заранее. -->
 <div id="home-hint" aria-live="polite"></div>
+
+</div><!-- /.dg-hero-inner -->
+</div><!-- /#dg-hero-band -->
 
 <!-- Ожидание ответа поиска. Пока он не пришёл, страница НЕ переключается в выдачу: раньше
      состояние менялось сразу на сабмите, и человек видел сначала голую таблицу с шапкой
@@ -664,6 +673,40 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
         if (popupEl && frameEl) {
           var u = new URL(url, location.origin);
           u.searchParams.set('scroll', 'instant');
+
+          /* Кэш: если в попапе уже открыт ТОТ ЖЕ текст, не перезагружаем его целиком ради
+             перехода к другому сегменту. Полная перезагрузка — это заново весь ридер со всеми
+             скриптами и весь текст сутты (у dn1 это ~670 сегментов), из-за неё попап и
+             "открывался каждый раз заново". Слаг сравниваем без сегмента: путь вида
+             "/dn1:1.22.2" — это одна и та же сутта dn1. */
+          var wantedSlug = decodeURIComponent(u.pathname.slice(1)).split(':')[0];
+          var loadedSlug = null;
+          try {
+            var cur = frameEl.contentWindow && frameEl.contentWindow.location;
+            if (cur && cur.pathname && cur.pathname !== '/') {
+              loadedSlug = decodeURIComponent(cur.pathname.slice(1)).split(':')[0];
+            }
+          } catch (err) { loadedSlug = null; }
+
+          if (loadedSlug && loadedSlug === wantedSlug && frameEl.contentDocument) {
+            var seg = decodeURIComponent(u.pathname.slice(1)).split(':').slice(1).join(':');
+            var doc = frameEl.contentDocument;
+            var target = seg
+              ? (doc.getElementById(seg) || doc.querySelector('[id^="' + seg.replace(/"/g, '\\"') + ':"]'))
+              : null;
+            if (target) {
+              doc.querySelectorAll('.active-word').forEach(function (e) { e.classList.remove('active-word'); });
+              target.scrollIntoView({ block: 'center' });
+              var w = frameEl.contentWindow;
+              if (typeof w.activateSegmentForTTS === 'function') w.activateSegmentForTTS(target);
+              else target.classList.add('active-word');
+              popupEl.style.display = 'block';
+              var sameWinBtn = popupEl.querySelector('.fdg-open-new-window-btn');
+              if (sameWinBtn) sameWinBtn.href = url;
+              return;
+            }
+          }
+
           frameEl.src = u.toString();
           // .fdg-open-new-window-btn — <a target="_blank"> из createFdgPopup(); href на нём
           // появляется только в момент открытия попапа, поэтому по a[href] он не находится.
