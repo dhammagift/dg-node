@@ -484,11 +484,13 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
            поэтому кнопка живёт в поле на каждой странице. Содержимое кнопки собирает home.js
            (quickButtonHtml) — оно одинаково в поиске и в ридере. -->
       <button type="button" id="dg-quick-btn" class="dg-qs-btn" aria-label="Quick settings" title="Quick settings" aria-expanded="false" data-i18n-aria-label="{{quick.title}}" data-i18n-title="{{quick.title}}"></button>
-      <!-- Лупа — инлайновый SVG, а не <i class="fas fa-search">: FontAwesome эту иконку тут не
-           разворачивал (замерено — элемент оставался <i> размером 0x0, ::before пустой), и на
-           месте кнопки было просто пустое место. Ручка направлена вправо-вниз. -->
+      <!-- Лупа. Ручка направлена влево-вниз — как в боевом меню, где стоит
+           fa-magnifying-glass fa-flip-horizontal. Значок инлайновый, а не <i class="fa-solid …">:
+           FontAwesome на этой странице сама <i> не разворачивает (замерено — элемент остаётся
+           0×0). Разметка ниже — ровно та, что отдаёт FontAwesome.icon('magnifying-glass'),
+           с тем же зеркальным отражением. -->
       <button type="submit" id="searchbtn" class="dg-shell-btn dg-shell-go" aria-label="Search" data-i18n-aria-label="{{search.label}}">
-        <svg class="dg-search-icon" viewBox="0 0 512 512" width="17" height="17" fill="currentColor" aria-hidden="true">
+        <svg class="dg-search-icon" viewBox="0 0 512 512" width="17" height="17" fill="currentColor" aria-hidden="true" style="transform: scaleX(-1)">
           <path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352a144 144 0 1 0 0-288 144 144 0 1 0 0 288z"/>
         </svg>
         <!-- Ожидание — ВНУТРИ этой же кнопки, вместо лупы: спиннер отдельным элементом раздвигал
@@ -530,6 +532,13 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
 <div id="home-pane">
   <div class="dg-tiles" id="home-tiles"></div>
   <div id="home-slides" hidden></div>
+  <!-- Подвал. В установленном приложении (PWA) он не показывается: там это не сайт со страницей
+       «о нас», а приложение, и строка копирайта внизу экрана только занимает место. Признак —
+       display-mode: standalone, см. медиазапрос в home.css. Год проставляет home.js: жёстко
+       вписанный в разметку, он к январю всегда оказывается прошлогодним. -->
+  <footer id="dg-footer">
+    <span id="dg-copyright"></span>
+  </footer>
 </div>
 
 <script>
@@ -2258,21 +2267,23 @@ $(document).ready(function() {
     <!-- Язык и тема — прямо здесь, отдельными переключателями: раньше за ними приходилось идти
          в /settings/ (язык) или искать кнопку в ряду выдачи (тема), а на главной того ряда нет
          вовсе. Оба переключателя наполняет и обслуживает home.js. -->
-    <p class="dg-group-title">{{menu.language}}</p>
+    <p class="dg-group-title" data-dg-icon="language">{{menu.language}}</p>
     <div id="dg-lang-seg" class="dg-segmented"></div>
-    <p class="dg-group-title">{{menu.theme}}</p>
+    <p class="dg-group-title" data-dg-icon="sun">{{menu.theme}}</p>
     <div id="dg-theme-seg" class="dg-segmented"></div>
 
+    <!-- Значки у пунктов проставляет home.js (data-dg-icon → FontAwesome.icon), чтобы набор был
+         тот же, что у плиток и в боевом меню, и не разъезжался при правках. -->
     <p class="dg-group-title">{{menu.navigation}}</p>
-    <a class="dg-drawer-row" href="/">{{buttons.main}}</a>
-    <a class="dg-drawer-row" href="/history.php">{{buttons.history}}</a>
-    <a class="dg-drawer-row" href="javascript:void(0)" data-bs-toggle="modal" data-bs-target="#SearchResultHelp">{{global.common.help}}</a>
+    <a class="dg-drawer-row" href="/" data-dg-icon="home">{{buttons.main}}</a>
+    <a class="dg-drawer-row" href="/history.php" data-dg-icon="clock">{{buttons.history}}</a>
+    <a class="dg-drawer-row" href="javascript:void(0)" data-dg-icon="help" data-bs-toggle="modal" data-bs-target="#SearchResultHelp">{{global.common.help}}</a>
     <!-- Появляется только если человек убрал хотя бы одну кнопку с главной (см. home.js). -->
-    <a class="dg-drawer-row" href="javascript:void(0)" id="dg-restore-tiles" hidden>{{menu.restoreTiles}}</a>
+    <a class="dg-drawer-row" href="javascript:void(0)" id="dg-restore-tiles" data-dg-icon="star" hidden>{{menu.restoreTiles}}</a>
     <p class="dg-group-title">{{menu.settings}}</p>
     <!-- Шестерёнка БЕЗ молнии — полные настройки; молния осталась быстрым, у поля. -->
-    <a class="dg-drawer-row" href="/settings/">{{global.common.settings}}</a>
-    <a class="dg-drawer-row" href="/login">{{global.common.login}}</a>
+    <a class="dg-drawer-row" href="/settings/" data-dg-icon="gear">{{global.common.settings}}</a>
+    <a class="dg-drawer-row" href="/login" data-dg-icon="login">{{global.common.login}}</a>
   </nav>
 </aside>
 

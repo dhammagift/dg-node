@@ -28,33 +28,62 @@
     };
     var TILE_ORDER_KEY = 'dgTileOrder';
 
-    /* Иконки плиток и строк — инлайновые SVG, а не FontAwesome: на этой странице fa не
-       разворачивает часть иконок (уже наступали с лупой, см. комментарий в index.html). */
+    /* Иконки — НАСТОЯЩИЕ Font Awesome, те же самые, что в боевом горизонтальном меню
+       (assets/common/horizontalMenu{En,Ru}.php): fa-book-bookmark у «Читать Pāḷi», fa-book у
+       наборов ссылок, fa-book-atlas у словарей, fa-graduation-cap у обучения,
+       fa-screwdriver-wrench у инструментов, fa-clock-rotate-left у истории. Раньше здесь лежали
+       нарисованные вручную контуры — они не совпадали ни с меню, ни друг с другом по толщине.
+       Ключи оставлены прежними: на них ссылается menu-links.json. */
     var ICONS = {
-        book: '<path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/>',
-        bookmark: '<path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/><path d="M9 7h7M9 11h5"/>',
-        globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.5 3.8 6 3.8 9s-1.3 6.5-3.8 9c-2.5-2.5-3.8-6-3.8-9s1.3-6.5 3.8-9z"/>',
-        dict: '<rect x="5" y="7" width="14" height="11" rx="2"/><path d="M9 3v4M15 3v4M9 12h.01M15 12h.01M8 16h8"/>',
-        clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2" stroke-linecap="round"/>',
-        cap: '<path d="M12 4 2.5 9 12 14l9.5-5L12 4z" stroke-linejoin="round"/><path d="M6 11v4.5c0 1.4 2.7 2.5 6 2.5s6-1.1 6-2.5V11"/>',
-        wrench: '<path d="M14.7 6.3a3 3 0 11-4.2 4.2L4 17v3h3l6.5-6.5" stroke-linejoin="round"/>',
-        help: '<circle cx="12" cy="12" r="9"/><path d="M9.6 9.2a2.5 2.5 0 114 2.2c-.9.6-1.6 1.1-1.6 2.1M12 17h.01" stroke-linecap="round"/>',
-        external: '<path d="M14 4h6v6M20 4l-9 9M6 5H4v15h15v-2" stroke-linejoin="round"/>'
+        book: ['fas', 'book-bookmark'],
+        bookmark: ['fas', 'book'],
+        globe: ['fas', 'book'],
+        dict: ['fas', 'book-atlas'],
+        clock: ['fas', 'clock-rotate-left'],
+        cap: ['fas', 'graduation-cap'],
+        wrench: ['fas', 'screwdriver-wrench'],
+        help: ['fas', 'circle-question'],
+        external: ['fas', 'arrow-up-right-from-square'],
+        home: ['fas', 'house'],
+        gear: ['fas', 'gear'],
+        sun: ['fas', 'sun'],
+        star: ['fas', 'star'],
+        login: ['fas', 'right-to-bracket'],
+        bolt: ['fas', 'bolt'],
+        magnifier: ['fas', 'magnifying-glass'],
+        bars: ['fas', 'bars'],
+        moon: ['fas', 'moon'],
+        display: ['fas', 'display'],
+        language: ['fas', 'language']
     };
 
+    /* FontAwesome на этой странице подключён скриптом (assets/js/fontawesome.6.1.all.js), но его
+       наблюдатель за DOM здесь не срабатывает: <i class="fa-solid …">, созданный после загрузки,
+       так и остаётся пустым элементом 0×0 (замерено). Поэтому SVG просим у библиотеки САМИ —
+       FontAwesome.icon() отдаёт готовую разметку. Если библиотека почему-то не поднялась, отдаём
+       обычный <i>: тогда сработает штатная замена, а в худшем случае просто не будет значка —
+       но подпись рядом останется, и плитка не превратится в пустой прямоугольник. */
+    function faSvg(name, cls) {
+        var spec = ICONS[name] || ICONS.external;
+        var FA = window.FontAwesome;
+        if (FA && FA.icon) {
+            var made = FA.icon({ prefix: spec[0], iconName: spec[1] });
+            if (made && made.html && made.html[0]) {
+                return made.html[0].replace('<svg ', '<svg class="' + (cls || '') + '" ');
+            }
+        }
+        return '<i class="fa-solid fa-' + spec[1] + ' ' + (cls || '') + '" aria-hidden="true"></i>';
+    }
+
     function svg(name, cls) {
-        return '<svg class="' + (cls || '') + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
-            'stroke-width="1.6" aria-hidden="true">' + (ICONS[name] || ICONS.external) + '</svg>';
+        return faSvg(name, cls);
     }
 
     /* Звезда у важных пунктов. Раньше рисовался знак ✦ — но ромбик на этом сайте уже занят:
        им помечены скрытые ссылки-якоря на цитаты (.quoteLink-start в выдаче и ридере), и два
-       разных смысла у одного значка сбивали с толку. Это контур fa-star (FontAwesome Free),
-       инлайном — иконочный шрифт на этой странице часть значков не разворачивает. */
-    var STAR_PATH = 'M12 2.6l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5-5.8-3-5.8 3 1.1-6.5L2.6 9.4l6.5-.9z';
+       разных смысла у одного значка сбивали с толку. */
     function starSvg() {
-        return '<svg class="dg-row-star" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">' +
-            '<path d="' + STAR_PATH + '"/></svg>';
+        return faSvg('star', 'dg-row-star');
     }
 
     function esc(s) {
@@ -371,11 +400,12 @@
         'a7.4 7.4 0 002.4 1.4l.4 2.4h3.8l.4-2.4a7.4 7.4 0 002.4-1.4l2.3 1 1.9-3.3z';
     var BOLT_PATH = 'M13 2 4 14h6l-1 8 9-12h-6l1-8z';
 
+    /* Шестерёнка с молнией. Молния лежит В ЦЕНТРЕ шестерёнки, а не в углу значка: у fa-gear
+       середина пустая, молния туда садится ровно и читается как одна иконка, а не как значок с
+       налепленным сбоку вторым. Обе — из того же набора, что и всё меню (fa-gear, fa-bolt). */
     function quickButtonHtml() {
-        return '<svg class="dg-qs-gear" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
-            'stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><path d="' + GEAR_PATH + '"/></svg>' +
-            '<svg class="dg-qs-bolt" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">' +
-            '<path d="' + BOLT_PATH + '"/></svg>';
+        return faSvg('gear', 'dg-qs-gear') +
+            '<span class="dg-qs-bolt">' + faSvg('bolt', '') + '</span>';
     }
 
     /* Область поиска. Ключ и формат — те же, что у полных настроек (/settings/): список
@@ -393,8 +423,11 @@
         { codes: ['iti', 'ud', 'snp', 'dhp', 'thag', 'thig'], label: 'quick.scope.knBasic', fallback: 'KN · основные книги' },
         { codes: ['khudakka'], label: 'quick.scope.knAll', fallback: 'KN · вся Кхуддака' },
         { codes: ['pli-tv-bi', 'pli-tv-bu'], label: 'quick.scope.vinaya', fallback: 'Виная (Вибханга)' },
-        { codes: ['pli-tv-kd', 'pli-tv-pvr'], label: 'quick.scope.kdPvr', fallback: 'Кхандхака и Паривара' },
-        { codes: ['abhi'], label: 'quick.scope.abhi', fallback: 'Абхидхамма' }
+        { codes: ['pli-tv-kd', 'pli-tv-pvr'], label: 'quick.scope.kdPvr', fallback: 'Кхандхака и Паривара' }
+        /* Абхидхамма сюда НЕ входит намеренно: в быстрых настройках нужен обиход, а её включают
+           один раз и надолго. Место такой галочки — в ПОЛНЫХ настройках (/settings/); здесь она
+           только удлиняла список, который и так открывается на каждый запрос. Уже включённую в
+           настройках Абхидхамму мы не трогаем: writeScope() правит лишь свои коды. */
     ];
     var DEFAULT_SCOPE = ['dn', 'mn', 'sn', 'an', 'iti', 'ud', 'snp', 'dhp', 'thag', 'thig'];
 
@@ -496,25 +529,98 @@
     /* Наполнение зависит от состояния страницы — в этом и смысл «быстрых» настроек: на главной
        спрашивают «где и как искать», в выдаче добавляется вид уже показанного, в чтении речь
        пойдёт о самом тексте. Поэтому тело перерисовывается при каждом открытии, а не один раз. */
+    /* Область поиска — ОДИН раскрывающийся список с галочками, а не восемь переключателей подряд.
+       Переключатель означает «включить режим», а здесь выбирают из набора, где обычно отмечено
+       почти всё сразу; восемь тумблеров занимали пол-экрана и открывались на каждый запрос.
+       Свёрнутая строка показывает, что выбрано, — чаще всего этого и достаточно. */
+    function scopePicker() {
+        var wrap = document.createElement('div');
+        wrap.className = 'dg-scope';
+
+        var head = document.createElement('button');
+        head.type = 'button';
+        head.className = 'dg-scope-head';
+        head.setAttribute('aria-expanded', 'false');
+
+        var summary = document.createElement('span');
+        summary.className = 'dg-scope-summary';
+
+        var list = document.createElement('div');
+        list.className = 'dg-scope-list';
+        list.hidden = true;
+
+        function selected() {
+            var scope = readScope();
+            return SCOPE_GROUPS.filter(function (g) {
+                return g.codes.every(function (c) { return scope.indexOf(c) !== -1; });
+            });
+        }
+
+        function paintSummary() {
+            var on = selected();
+            if (!on.length) summary.textContent = t('quick.scopeNone', 'ничего не выбрано');
+            else if (on.length === SCOPE_GROUPS.length) summary.textContent = t('quick.scopeAll', 'везде');
+            else summary.textContent = on.map(function (g) {
+                return t(g.label + 'Short', shortOf(g.fallback));
+            }).join(', ');
+        }
+
+        // «DN · Дигха» → «DN»: в свёрнутой строке нужен код, а не полное имя собрания.
+        function shortOf(fallback) { return String(fallback).split('·')[0].trim(); }
+
+        SCOPE_GROUPS.forEach(function (g) {
+            var row = document.createElement('label');
+            row.className = 'dg-check-row';
+
+            var box = document.createElement('input');
+            box.type = 'checkbox';
+            box.className = 'dg-check';
+            box.checked = g.codes.every(function (c) { return readScope().indexOf(c) !== -1; });
+            box.addEventListener('change', function () {
+                var next = readScope();
+                g.codes.forEach(function (c) {
+                    var i = next.indexOf(c);
+                    if (box.checked && i === -1) next.push(c);
+                    if (!box.checked && i !== -1) next.splice(i, 1);
+                });
+                writeScope(next);
+                paintSummary();
+            });
+
+            var label = document.createElement('span');
+            label.textContent = t(g.label, g.fallback);
+
+            row.appendChild(box);
+            row.appendChild(label);
+            list.appendChild(row);
+        });
+
+        head.addEventListener('click', function () {
+            var open = list.hidden;
+            list.hidden = !open;
+            head.setAttribute('aria-expanded', open ? 'true' : 'false');
+            wrap.classList.toggle('dg-open', open);
+        });
+
+        head.appendChild(summary);
+        head.insertAdjacentHTML('beforeend',
+            '<svg class="dg-scope-chev" viewBox="0 0 24 24" width="14" height="14" fill="none" ' +
+            'stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" ' +
+            'aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>');
+        paintSummary();
+
+        wrap.appendChild(head);
+        wrap.appendChild(list);
+        return wrap;
+    }
+
     function buildQuickBody(host) {
         host.innerHTML = '';
         var state = currentState();
 
         if (state !== 'reader') {
             host.appendChild(groupTitle(t('quick.where', 'Где искать')));
-            var scope = readScope();
-            SCOPE_GROUPS.forEach(function (g) {
-                var on = g.codes.every(function (c) { return scope.indexOf(c) !== -1; });
-                host.appendChild(toggleRow(t(g.label, g.fallback), on, function (next) {
-                    var list = readScope();
-                    g.codes.forEach(function (c) {
-                        var i = list.indexOf(c);
-                        if (next && i === -1) list.push(c);
-                        if (!next && i !== -1) list.splice(i, 1);
-                    });
-                    writeScope(list);
-                }));
-            });
+            host.appendChild(scopePicker());
 
             host.appendChild(groupTitle(t('quick.context', 'Контекст в цитатах')));
             var ctx = String(localStorage.getItem('dhammaSearchContextBefore') || 0);
@@ -845,8 +951,6 @@
     var SLIDES_URL = '/nodejs/res/slides.json';
     var slidesData = null;
     var slidesShown = [];
-    var slideIndex = 0;
-    var slideTimer = null;
 
     function slidesLang() {
         var lang = (window.DHAMMA_I18N && window.DHAMMA_I18N.language) ||
@@ -861,38 +965,6 @@
             var tmp = a[i]; a[i] = a[j]; a[j] = tmp;
         }
         return a;
-    }
-
-    function paintSlide() {
-        var host = document.getElementById('home-slides');
-        if (!host || !slidesShown.length) return;
-        var s = slidesShown[slideIndex % slidesShown.length];
-        var title = host.querySelector('.dg-slide-title');
-        var desc = host.querySelector('.dg-slide-desc');
-        if (!title || !desc) return;
-        /* title/desc — HTML: в исходных данных есть разметка (например <span title="dn15">10</span>
-           с пояснением по наведению), и на боевой главной она echo-ится как есть. Файл наш
-           собственный, из репозитория, пользовательского ввода здесь нет. */
-        title.innerHTML = s.title;
-        title.href = s.link;
-        desc.innerHTML = s.desc;
-    }
-
-    function stepSlide(delta) {
-        if (!slidesShown.length) return;
-        slideIndex = (slideIndex + delta + slidesShown.length) % slidesShown.length;
-        paintSlide();
-        restartSlideTimer();
-    }
-
-    function restartSlideTimer() {
-        if (slideTimer) clearInterval(slideTimer);
-        // Как на боевой главной: слайды сменяются сами, но реже, чем bootstrap по умолчанию.
-        slideTimer = setInterval(function () {
-            if (document.hidden) return;
-            slideIndex = (slideIndex + 1) % slidesShown.length;
-            paintSlide();
-        }, 8000);
     }
 
     function openSlidesList() {
@@ -925,41 +997,47 @@
         if (!list.length) { host.hidden = true; return; }
 
         slidesShown = shuffled(list);
-        slideIndex = 0;
         host.hidden = false;
-        /* Стрелки перенесены в шапку карточки, к надзаголовку: внизу они спорили за место с
-           «показать все», и обе подписи читались как одна панель кнопок. */
-        var arrow = function (cls, label, d) {
-            return '<button type="button" class="dg-slide-arrow ' + cls + '" aria-label="' + label + '">' +
-                '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" ' +
-                'stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-                '<path d="' + d + '"/></svg></button>';
-        };
+        /* Карусель — ШТАТНАЯ бутстраповская, как на боевой главной (index.php, #carouselWithCaptions):
+           там слайды съезжают вбок, а не подменяются на месте, и это заметно приятнее. Bootstrap на
+           этой странице уже подключён, своя анимация и свой таймер больше не нужны — листание,
+           автопрокрутка, пауза при наведении и свайп на телефоне достаются готовыми. */
+        var read = esc(t('slides.read', 'Читать'));
+        var items = slidesShown.map(function (s, i) {
+            return '<div class="carousel-item' + (i === 0 ? ' active' : '') + '">' +
+                /* title/desc — HTML: в исходных данных есть разметка (пояснения по наведению),
+                   и на боевой главной она выводится как есть. Файл наш, из репозитория. */
+                '<a class="dg-slide-title" href="' + esc(s.link) + '">' + s.title + '</a>' +
+                '<p class="dg-slide-desc">' + s.desc + '</p>' +
+                '<a class="dg-slide-go" href="' + esc(s.link) + '">' + read + ' →</a>' +
+                '</div>';
+        }).join('');
+
         host.innerHTML =
             '<div class="dg-slides">' +
             '<div class="dg-slides-head">' +
             '<p class="dg-slides-eyebrow"></p>' +
             '<div class="dg-slides-nav">' +
-            arrow('dg-slide-prev', 'Previous', 'M15 6l-6 6 6 6') +
-            arrow('dg-slide-next', 'Next', 'M9 6l6 6-6 6') +
+            '<button class="dg-slide-arrow" type="button" data-bs-target="#dg-carousel" data-bs-slide="prev" aria-label="Previous">' +
+            '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></button>' +
+            '<button class="dg-slide-arrow" type="button" data-bs-target="#dg-carousel" data-bs-slide="next" aria-label="Next">' +
+            '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>' +
             '</div></div>' +
-            '<a class="dg-slide-title" href="#"></a>' +
-            '<p class="dg-slide-desc"></p>' +
-            '<div class="dg-slides-foot">' +
-            '<span class="dg-slide-go"></span>' +
-            '<button type="button" class="dg-slides-all"></button>' +
-            '</div></div>';
-        var go = host.querySelector('.dg-slide-go');
-        go.textContent = t('slides.read', 'Читать') + ' →';
-        // «Читать» ведёт туда же, куда заголовок: отдельного адреса у слайда нет.
-        go.addEventListener('click', function () { host.querySelector('.dg-slide-title').click(); });
+            '<div id="dg-carousel" class="carousel slide" data-bs-ride="carousel" data-bs-interval="7000">' +
+            '<div class="carousel-inner">' + items + '</div>' +
+            '</div>' +
+            '<div class="dg-slides-foot"><button type="button" class="dg-slides-all"></button></div>' +
+            '</div>';
+
         host.querySelector('.dg-slides-eyebrow').textContent = t('slides.title', 'Интересные запросы');
         host.querySelector('.dg-slides-all').textContent = t('slides.showAll', 'Показать все');
-        host.querySelector('.dg-slide-prev').addEventListener('click', function () { stepSlide(-1); });
-        host.querySelector('.dg-slide-next').addEventListener('click', function () { stepSlide(1); });
         host.querySelector('.dg-slides-all').addEventListener('click', openSlidesList);
-        paintSlide();
-        restartSlideTimer();
+
+        /* data-bs-ride поднимает карусель только при разборе страницы; наша появляется позже,
+           поэтому заводим её вручную. */
+        if (window.bootstrap && window.bootstrap.Carousel) {
+            window.bootstrap.Carousel.getOrCreateInstance(document.getElementById('dg-carousel'));
+        }
     }
 
     // ======================================================================
@@ -978,6 +1056,24 @@
     // ======================================================================
     // Язык и тема в боковом меню
     // ======================================================================
+    /* Значки у пунктов бокового меню и у заголовков в нём. Проставляются один раз, по атрибуту
+       data-dg-icon в разметке: держать их в HTML нельзя — FontAwesome на этой странице сама
+       <i> не разворачивает (см. faSvg). */
+    function paintDrawerIcons() {
+        Array.prototype.forEach.call(document.querySelectorAll('[data-dg-icon]'), function (el) {
+            if (el.querySelector('.dg-row-ic')) return;
+            el.insertAdjacentHTML('afterbegin', faSvg(el.dataset.dgIcon, 'dg-row-ic'));
+        });
+    }
+
+    /* Подвал: копирайт с ТЕКУЩИМ годом. Год берём из часов, а не из разметки — вписанный руками
+       он к каждому январю устаревает, и это замечают. */
+    function renderFooter() {
+        var host = document.getElementById('dg-copyright');
+        if (!host) return;
+        host.textContent = '© ' + new Date().getFullYear() + ' dhamma.gift';
+    }
+
     function renderLangSwitch() {
         var host = document.getElementById('dg-lang-seg');
         if (!host) return;
@@ -1048,6 +1144,8 @@
         if (motto) motto.textContent = t('home.motto', 'Найдите Истину');
         renderTiles();
         renderSlides();
+        paintDrawerIcons();
+        renderFooter();
         renderLangSwitch();
         renderThemeSwitch();
         // '__slides__' — не набор ссылок, перерисовывать его через openSheet() нечем.
@@ -1092,6 +1190,8 @@
 
         wireDrawer();
 
+        paintDrawerIcons();
+        renderFooter();
         renderLangSwitch();
         renderThemeSwitch();
         syncRestoreLink();

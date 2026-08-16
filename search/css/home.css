@@ -42,6 +42,9 @@ body.dg-skin-minimal {
     --dg-navy: #243448;
     --dg-navy-2: #1b2836;
     --dg-accent: #149c7c;
+    /* Акцент для ТЕКСТА. В светлой теме совпадает с основным, в тёмной берёт более светлый тон:
+       прод-зелёный для значков в подписи не читается. */
+    --dg-accent-ink: #0f7c63;
     --dg-accent-dark: #0f7c63;
     --dg-accent-bg: #dff3ec;
     --dg-radius: 10px;
@@ -74,9 +77,17 @@ body.dg-skin-minimal.dark {
     --dg-text-muted: #7c7c7c;
     --dg-navy: #1b2836;
     --dg-navy-2: #131c26;
-    --dg-accent: #3fe3bc;
-    --dg-accent-dark: #2fc7a4;
-    --dg-accent-bg: #13302a;
+    /* Зелёный в тёмной теме — БОЕВОЙ, приглушённый, а не яркий из светлой: #136857 у прода стоит
+       на .bg-primary и .menu-icon, #025242 на .btn-primary, #09967a на ссылках
+       ([data-theme="dark"] в assets/css/extrastyles.css). Яркий #3fe3bc из макета на тёмном фоне
+       бил в глаза и не совпадал ни с одной соседней страницей.
+       Для значков берём ровно прод-цвет, для текста — прод-цвет ссылок: #136857 в подписи на
+       тёмном фоне уже нечитаем (контраст ниже 3:1), а у прода для текста и заведён отдельный,
+       более светлый тон. */
+    --dg-accent: #136857;
+    --dg-accent-ink: #09967a;
+    --dg-accent-dark: #025242;
+    --dg-accent-bg: #12241f;
 }
 
 /* ============================================================================
@@ -115,9 +126,11 @@ body.dg-state-home #home-pane {
    с полем, и отступ у ряда отрывал бы подпись от инпута — она прилипала к верхнему краю, а между
    ней и полем зияла дыра. Сам инпут при этом один и тот же (#paliauto в .hero-row), поэтому
    фокус и введённый текст переезд переживают. */
-body.dg-state-home #home-motto { max-height: 90px; margin: 20px 0 8px; }
-body.dg-state-home #home-hint  { max-height: 60px; margin: 9px 0 0; }
-body.dg-state-home #home-pane  { max-height: 1400px; margin: 18px 0 0; }
+/* Поле отодвинуто от шапки: раньше девиз начинался сразу под вывеской, и строка поиска липла к
+   верхнему краю полосы. Теперь между ними воздух, и поле читается как середина полосы. */
+body.dg-state-home #home-motto { max-height: 90px; margin: 40px 0 10px; }
+body.dg-state-home #home-hint  { max-height: 60px; margin: 11px 0 0; }
+body.dg-state-home #home-pane  { max-height: 2000px; margin: 22px 0 0; }
 
 /* Ширина поля по состояниям: на главной оно — центр экрана, в выдаче и чтении уступает место
    содержимому. Переход между значениями анимируется (transition на .dg-hero-form в index.html).
@@ -144,8 +157,15 @@ body.dg-skin-minimal.dg-state-reader .dg-hero-form { max-width: 520px; }
    (фоновая вкладка, свёрнутое окно), застревает на начальном значении — замерено, полоса
    оставалась с домашним фоном и отступом уже в выдаче. Плавность ухода даёт схлопывание
    #home-motto/#home-hint/#home-pane по max-height, этого достаточно. */
+/* Полоса тянется во ВСЮ ширину окна, а не до края колонки. Отрицательного margin по полю
+   контейнера не хватало: у .table-wrapper есть свой max-width 1600px, и на мониторе шире полоса
+   обрывалась вертикальной границей — заливка кончалась, а страница шла дальше, и это читалось
+   как недоделанный кусок. 50% — середина колонки, 50vw — половина окна; разница и есть тот
+   вылет, который нужно добрать с каждой стороны. */
 #dg-hero-band {
-    margin: 0 calc(-1 * var(--dg-gutter, 12px));
+    width: 100vw;
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
     padding: 0;
     background: none;
 }
@@ -153,7 +173,7 @@ body.dg-state-home #dg-hero-band {
     /* Съедаем .mt-2 родителя: полоса должна начинаться от самого верха окна, иначе над ней
        остаётся белая щель в 8px и она перестаёт читаться как шапка. */
     margin-top: -0.5rem;
-    padding-bottom: 22px;
+    padding-bottom: 30px;
     background: linear-gradient(165deg,
         var(--dg-navy) 0%,
         var(--dg-navy) 38%,
@@ -302,16 +322,9 @@ body.dg-state-home .dg-input-shell:focus-within {
     box-shadow: 0 6px 18px rgba(15, 20, 15, 0.22), 0 0 0 3px rgba(255, 255, 255, 0.28);
 }
 
-/* Лупа на главной уходит ВЛЕВО и красится акцентом — как значок поиска в макете. Порядок меняем
-   через flex order, не переставляя разметку: в выдаче и в чтении она остаётся справа, а те два
-   состояния мы сейчас не трогаем. */
-body.dg-state-home .dg-input-shell .dg-shell-go { order: -1; color: var(--dg-accent); }
-body.dg-state-home .dg-input-shell .dg-shell-go:hover,
-body.dg-state-home .dg-input-shell .dg-shell-go:focus-visible {
-    background: var(--dg-accent-bg);
-    color: var(--dg-accent-dark);
-}
-/* Разделитель нужен, только когда справа стоит блок из двух кнопок; на главной справа одна. */
+/* Порядок справа: сперва быстрые настройки, потом лупа. Лупа — последняя кнопка строки, у самого
+   края: это действие «искать», и оно завершает ввод. Разделитель между «очистить» и парой кнопок
+   на главной не нужен — там и так просторно. */
 body.dg-state-home .dg-shell-sep { display: none; }
 
 /* Ракушка внутри поля — только в выдаче и в чтении: на главной знак и название уже стоят
@@ -416,17 +429,21 @@ body #form #paliauto.searchinput::-webkit-search-cancel-button { display: none; 
 .dg-qs-btn:hover,
 .dg-qs-btn:focus-visible { color: var(--dg-text); background: var(--dg-border); }
 .dg-qs-btn .dg-qs-gear { width: 18px; height: 18px; display: block; }
+/* Молния — В ЦЕНТРЕ шестерёнки, а не приклеена к её углу: у fa-gear середина пустая, молния туда
+   садится ровно, и получается один значок, а не значок с наклейкой. Подложка ей не нужна —
+   вокруг и так пустота внутри зубчатого кольца. */
 .dg-qs-btn .dg-qs-bolt {
     position: absolute;
-    right: -3px;
-    bottom: -3px;
-    width: 13px;
-    height: 13px;
-    padding: 1px;
-    border-radius: 50%;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: block;
+    line-height: 0;
     color: var(--dg-accent);
-    background: var(--dg-surface);
+    pointer-events: none;
 }
+.dg-qs-btn .dg-qs-bolt svg { width: 8px; height: 8px; display: block; }
+body.dg-state-home .dg-qs-btn .dg-qs-bolt { color: #6ee7c4; }
 
 /* На главной кнопка быстрых настроек — тёмный квадрат с белой шестерёнкой и зелёной молнией в
    углу: единственное тёмное пятно внутри светлой карточки поля, и потому сразу заметное.
@@ -552,7 +569,7 @@ body.dg-no-anim * {
 #home-motto {
     text-align: left;
     font-family: var(--dg-font);
-    font-size: 0.9rem;
+    font-size: 1rem;
     font-weight: 400;
     line-height: 1.35;
     color: rgba(255, 255, 255, 0.82);
@@ -598,8 +615,8 @@ body.dg-no-anim * {
     border: 1px solid var(--dg-border);
     border-radius: 12px;
     font-family: var(--dg-font);
-    font-size: 0.8rem;
-    line-height: 1.25;
+    font-size: 0.92rem;
+    line-height: 1.3;
     color: var(--dg-text-2);
     text-align: center;
     text-decoration: none;
@@ -620,15 +637,15 @@ body.dg-no-anim * {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 38px;
-    height: 38px;
+    width: 46px;
+    height: 46px;
     flex: none;
     border-radius: 50%;
     background: var(--dg-accent-bg);
 }
 .dg-tile svg {
-    width: 20px;
-    height: 20px;
+    width: 24px;
+    height: 24px;
     display: block;
     color: var(--dg-accent);
 }
@@ -771,31 +788,33 @@ body.dg-no-anim * {
     padding: 4px 18px 22px;
     flex: 1 1 auto;
 }
+/* Заголовок набора отбит пустой строкой сверху и снизу — до правки он прилипал к предыдущему
+   пункту и читался как его продолжение, а не как начало нового набора. */
 .dg-sheet .dg-group-title {
-    font-size: 0.66rem;
+    font-size: 0.72rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.06em;
     color: var(--dg-text-muted);
-    margin: 14px 0 2px;
+    margin: 2em 0 1em;
 }
-.dg-sheet .dg-group-title:first-child { margin-top: 4px; }
+.dg-sheet .dg-group-title:first-child { margin-top: 0.8em; }
 .dg-sheet .dg-sheet-row {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 10px 0;
-    font-size: 0.85rem;
+    padding: 11px 0;
+    font-size: 0.95rem;
     color: var(--dg-text);
     text-decoration: none;
     border-bottom: 1px solid var(--dg-border);
     cursor: pointer;
 }
 .dg-sheet .dg-sheet-row:last-child { border-bottom: none; }
-.dg-sheet .dg-sheet-row:hover { color: var(--dg-accent); }
+.dg-sheet .dg-sheet-row:hover { color: var(--dg-accent-ink); }
 .dg-sheet .dg-sheet-row .dg-row-icon {
-    width: 15px;
-    height: 15px;
+    width: 17px;
+    height: 17px;
     flex: none;
     color: var(--dg-text-muted);
 }
@@ -812,12 +831,14 @@ body.dg-no-anim * {
    первым в каждом наборе (поле desc в menu-links.json): по ним и видно, чем набор занимается. */
 .dg-sheet .dg-sheet-row { align-items: flex-start; }
 .dg-sheet .dg-sheet-row .dg-row-icon { margin-top: 2px; }
+/* Пояснение — второй по важности текст строки, а не сноска: мелким его просто не читали.
+   Цвет тоже подняли до --dg-text-2: muted на светлом фоне давал слишком блёклую строку. */
 .dg-sheet .dg-row-desc {
     display: block;
-    margin-top: 1px;
-    font-size: 0.72rem;
-    line-height: 1.35;
-    color: var(--dg-text-muted);
+    margin-top: 3px;
+    font-size: 0.84rem;
+    line-height: 1.45;
+    color: var(--dg-text-2);
 }
 
 /* Вкладка-ссылка в шапке шторки: те плитки, у которых нет своего списка (Читать Pāḷi, История).
@@ -922,6 +943,62 @@ body.dg-no-anim * {
     color: var(--dg-text);
 }
 
+/* ============================================================================
+   Область поиска — раскрывающийся список с галочками
+   Восемь переключателей подряд занимали пол-экрана и открывались на каждый запрос. Переключатель
+   вообще про «включить режим»; здесь же выбирают из набора, где обычно отмечено почти всё, —
+   а это галочки. Свёрнутая строка показывает выбранное («DN, MN, SN, AN, KN»), и чаще всего
+   разворачивать не приходится вовсе.
+   ============================================================================ */
+.dg-scope {
+    margin: 8px 0 2px;
+    border: 1px solid var(--dg-border);
+    border-radius: var(--dg-radius);
+    background: var(--dg-surface);
+    overflow: hidden;
+}
+.dg-scope-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    width: 100%;
+    padding: 11px 12px;
+    border: 0;
+    background: transparent;
+    color: var(--dg-text);
+    font-family: var(--dg-font);
+    font-size: 0.92rem;
+    text-align: left;
+    cursor: pointer;
+}
+.dg-scope-head:hover { background: var(--dg-surface-hover); }
+.dg-scope-summary { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dg-scope-chev { flex: none; color: var(--dg-text-muted); transition: transform 0.18s var(--dg-ease); }
+.dg-scope.dg-open .dg-scope-chev { transform: rotate(180deg); }
+.dg-scope-list { padding: 2px 12px 8px; border-top: 1px solid var(--dg-border); }
+.dg-scope-list[hidden] { display: none; }
+
+.dg-check-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 0;
+    font-size: 0.92rem;
+    color: var(--dg-text);
+    cursor: pointer;
+}
+/* Галочка — родная, только перекрашенная в акцент: свои квадратики пришлось бы отдельно учить
+   доступности (фокус, клавиатура, screen reader), а accent-color даёт всё это даром. */
+.dg-check {
+    width: 18px;
+    height: 18px;
+    flex: none;
+    margin: 0;
+    accent-color: var(--dg-accent);
+    cursor: pointer;
+}
+
 /* Диакритика: набрать ā/ṁ/ñ без своей раскладки. Символ уходит в позицию курсора, поле фокус
    не теряет — набор продолжается с того же места. */
 .dg-diac {
@@ -1001,16 +1078,34 @@ body.dg-no-anim * {
     margin: 18px 0 2px;
 }
 .dg-drawer-body .dg-group-title:first-child { margin-top: 2px; }
+/* Пункты меню — со значками: без них список ссылок читается сплошной серой простынёй, и глазом
+   не за что зацепиться. Значки те же, что у плиток (Font Awesome, см. paintDrawerIcons). */
 .dg-drawer-row {
-    display: block;
-    padding: 12px 0;
-    font-size: 0.86rem;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 13px 0;
+    font-size: 0.95rem;
     color: var(--dg-text);
     text-decoration: none;
     border-bottom: 1px solid var(--dg-border);
 }
 .dg-drawer-row:last-child { border-bottom: none; }
-.dg-drawer-row:hover { color: var(--dg-accent); }
+.dg-drawer-row:hover { color: var(--dg-accent-ink); }
+.dg-drawer-row .dg-row-ic {
+    width: 17px;
+    height: 17px;
+    flex: none;
+    color: var(--dg-text-muted);
+}
+.dg-drawer-row:hover .dg-row-ic { color: var(--dg-accent-ink); }
+/* Значок у заголовка раздела — того же роста, что и сама подпись раздела. */
+.dg-drawer-body .dg-group-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.dg-drawer-body .dg-group-title .dg-row-ic { width: 13px; height: 13px; flex: none; }
 
 /* ============================================================================
    Перетаскивание плиток
@@ -1080,13 +1175,13 @@ body.dg-tiles-editing .dg-tile-remove { display: inline-flex; }
         max-width: 940px;
     }
     .dg-tile {
-        gap: 6px;
-        padding: 11px 4px;
-        font-size: 0.72rem;
+        gap: 7px;
+        padding: 13px 5px;
+        font-size: 0.8rem;
         border-radius: 10px;
     }
-    .dg-tile-ic { width: 30px; height: 30px; }
-    .dg-tile svg { width: 16px; height: 16px; }
+    .dg-tile-ic { width: 36px; height: 36px; }
+    .dg-tile svg { width: 19px; height: 19px; }
 }
 
 /* ============================================================================
@@ -1174,7 +1269,7 @@ body.dg-tiles-editing .dg-tile-remove { display: inline-flex; }
     color: var(--dg-text);
     text-decoration: none;
 }
-.dg-slide-title:hover { color: var(--dg-accent); }
+.dg-slide-title:hover { color: var(--dg-accent-ink); }
 .dg-slide-desc {
     margin: 0;
     font-size: 0.78rem;
@@ -1190,9 +1285,9 @@ body.dg-tiles-editing .dg-tile-remove { display: inline-flex; }
 }
 /* «Читать →» — единственное акцентное пятно карточки: это её действие. */
 .dg-slide-go {
-    font-size: 0.76rem;
+    font-size: 0.84rem;
     font-weight: 700;
-    color: var(--dg-accent);
+    color: var(--dg-accent-ink);
     cursor: pointer;
 }
 .dg-slides-all {
@@ -1228,4 +1323,82 @@ body.dg-tiles-editing .dg-tile-remove { display: inline-flex; }
 .dg-slide-arrow:hover { background: var(--dg-accent-bg); }
 /* Пункты в списке «показать все» — те же строки, что и в шторках со ссылками. */
 .dg-sheet .dg-slide-row { display: block; padding: 11px 0; }
-.dg-sheet .dg-slide-row .dg-slide-title { margin: 0 0 2px; font-size: 0.88rem; }
+.dg-sheet .dg-slide-row .dg-slide-title { margin: 0 0 2px; font-size: 0.95rem; }
+
+/* Карусель — штатная бутстраповская, как на боевой главной: слайды съезжают вбок. Здесь только
+   размеры под нашу карточку; сама механика (.carousel-item, .active, переходы) — из Bootstrap,
+   свою анимацию не пишем. Высоту не фиксируем: слайды разной длины, и жёсткая высота либо
+   обрезала бы длинные, либо оставляла дыру под короткими. */
+#dg-carousel { margin-top: 8px; }
+#dg-carousel .carousel-item { padding-right: 2px; }
+#dg-carousel .dg-slide-title { margin: 0 0 4px; }
+#dg-carousel .dg-slide-desc { margin: 0 0 10px; }
+.dg-slide-go { display: inline-block; text-decoration: none; }
+.dg-slide-go:hover { color: var(--dg-accent-dark); }
+.dg-slides-foot { margin-top: 4px; justify-content: flex-end; }
+
+/* ============================================================================
+   Подсказки автодополнения (jQuery UI, autopali.js)
+   Виджет приходит со своим оформлением jQuery UI — светлые уголки, свой шрифт, синяя подсветка.
+   Рядом с новым полем это выглядело деталью с другого сайта. Приводим к виду самого поля: та же
+   рамка, то же скругление, те же цвета и та же тень.
+   ============================================================================ */
+body.dg-skin-minimal .ui-autocomplete {
+    padding: 6px;
+    border: 1px solid var(--dg-border-strong);
+    border-radius: var(--dg-radius);
+    background: var(--dg-surface);
+    box-shadow: 0 16px 40px -12px rgba(0, 0, 0, 0.35);
+    font-family: var(--dg-font);
+    font-size: 0.95rem;
+    z-index: 1084;
+}
+/* Строку подсказки autopali.js рисует своим шаблоном: <li><div class="autopali-dropdown-item">
+   (см. _renderItem в /assets/js/autopali.js), а jQuery UI вешает подсветку через .ui-state-active
+   на обёртку. Красим оба варианта — какой именно окажется в разметке, зависит от версии виджета. */
+body.dg-skin-minimal .ui-autocomplete .autopali-dropdown-item,
+body.dg-skin-minimal .ui-autocomplete .ui-menu-item-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 10px;
+    border: 0;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--dg-text);
+}
+body.dg-skin-minimal .ui-autocomplete .ui-state-active,
+body.dg-skin-minimal .ui-autocomplete .ui-state-active .autopali-dropdown-item,
+body.dg-skin-minimal .ui-autocomplete .autopali-dropdown-item:hover,
+body.dg-skin-minimal .ui-autocomplete .ui-menu-item-wrapper.ui-state-active {
+    margin: 0;
+    border: 0;
+    background: var(--dg-accent-bg);
+    color: var(--dg-accent-ink);
+}
+/* Часы у строк из истории — приглушаем: это пометка, а не содержание подсказки. */
+body.dg-skin-minimal .ui-autocomplete .autocomplete-history-icon {
+    width: 13px;
+    height: 13px;
+    flex: none;
+    opacity: 0.55;
+}
+
+/* ============================================================================
+   Подвал
+   В установленном приложении (PWA) не показывается: там это не сайт со страницей «о нас», а
+   приложение, и строка копирайта внизу только занимает место. display-mode: standalone —
+   штатный признак «запущено как приложение», его же ставят и Android, и iOS, и десктоп.
+   ============================================================================ */
+#dg-footer {
+    margin: 34px 0 6px;
+    padding-top: 16px;
+    border-top: 1px solid var(--dg-border);
+    font-family: var(--dg-font);
+    font-size: 0.78rem;
+    color: var(--dg-text-muted);
+    text-align: center;
+}
+@media (display-mode: standalone), (display-mode: fullscreen), (display-mode: minimal-ui) {
+    #dg-footer { display: none; }
+}
