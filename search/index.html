@@ -393,10 +393,21 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
      Раньше лого/ракушка стояли вплотную к полю ввода, а меню было bootstrap-выпадашкой: и то и
      другое — вид старого сайта. Теперь шапка отдельной строкой, как в приложении, а меню
      выезжает слева (см. #dg-drawer в конце body). -->
-<!-- Название сайта отдельной строкой, как в макете. Сам знак (раковина с лепестками) переехал
-     ВНУТРЬ поля ввода — так же, как логотип у поисковиков, — поэтому здесь только слово. -->
+<!-- Шапка главной: полное лого с названием слева, бургер — в противовес ему справа. Показывается
+     ТОЛЬКО на главной: в выдаче и в чтении вывеска не нужна, там от знака остаётся одна ракушка
+     внутри поля (см. .dg-shell-logo ниже), а бургер стоит правее поля. -->
 <div id="dg-topbar">
-  <a href="/" id="dg-brand" title="Dhamma.Gift"><span class="dg-brand-name">dhamma.gift</span></a>
+  <a href="/" id="dg-brand" title="Dhamma.Gift">
+    <!-- Без кружка-подложки: у картинки почти белые лепестки-страницы, и на светлом фоне они
+         пропадали. Вместо плашки — тонкий абрис по контуру самой картинки (filter в home.css). -->
+    <img class="dg-brand-logo" src="/assets/img/dgsanhkalogo.png" alt="Dhamma.Gift">
+    <span class="dg-brand-name">dhamma.gift</span>
+  </a>
+  <button type="button" class="dg-icon-btn dg-menu-btn" aria-label="Menu" title="Menu" data-i18n-aria-label="{{toolbar.menuAriaLabel}}" data-i18n-title="{{toolbar.menuTitle}}">
+    <svg viewBox="0 0 448 512" width="19" height="19" fill="currentColor" aria-hidden="true">
+      <path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/>
+    </svg>
+  </button>
 </div>
 
 <p id="home-motto">Найдите Истину</p>
@@ -409,15 +420,12 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
          бургер-меню намеренно ВНЕ поля, правее. Кнопки — обычные элементы flex-строки, а не
          наложенные поверх инпута, как было раньше. -->
     <div class="dg-input-shell">
-      <!-- Подложка под знаком обязательна: картинка почти белая (лепестки-страницы вверху —
-           светло-серые), на светлом фоне они просто пропадают. Тёмная плашка возвращает контур. -->
-      <a href="/" class="dg-shell-logo" title="Dhamma.Gift" data-i18n-title="{{global.common.home}}">
-        <span class="dg-brand-plate"><img src="/assets/img/dgsanhkalogo.png" alt="Dhamma.Gift"></span>
+      <!-- Ракушка — она же «домой». Только в выдаче и в чтении: на главной знак и название стоят
+           в шапке выше, и дублировать их внутри поля незачем. -->
+      <a href="/" class="dg-shell-logo" title="Home" data-i18n-title="{{global.common.home}}">
+        <img src="/assets/img/dgsankhaonly.png" alt="Dhamma.Gift">
       </a>
       <input class="form-control searchinput" id="paliauto" type="search" placeholder="e.g. Kāyagat or sn56.11" data-i18n-placeholder="{{search.placeholder}}" autocomplete="off" autofocus>
-      <!-- Спиннер ожидания — ЗДЕСЬ, внутри поля, на месте лупы. Раньше он был отдельным блоком
-           под полем и, появляясь, сдвигал всё, что ниже. -->
-      <span class="dg-shell-spinner" role="status" aria-live="polite" aria-hidden="true"></span>
       <!-- Своё «очистить» вместо родного крестика type="search": родной рисуется только в
            webkit, не поддаётся оформлению и вставал бы вплотную к нашим кнопкам. Показывает и
            прячет его home.js по наличию текста. -->
@@ -438,10 +446,15 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
         <svg class="dg-search-icon" viewBox="0 0 512 512" width="17" height="17" fill="currentColor" aria-hidden="true">
           <path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352a144 144 0 1 0 0-288 144 144 0 1 0 0 288z"/>
         </svg>
+        <!-- Ожидание — ВНУТРИ этой же кнопки, вместо лупы: спиннер отдельным элементом раздвигал
+             строку, и на каждый запрос кнопки успевали дёрнуться туда и обратно. Теперь меняется
+             только сама иконка, а геометрия строки не трогается вовсе. -->
+        <span class="dg-shell-spinner" role="status" aria-live="polite" aria-hidden="true"></span>
       </button>
     </div>
   </form>
-  <button type="button" id="dg-menu-btn" class="dg-icon-btn" aria-label="Menu" title="Menu" data-i18n-aria-label="{{toolbar.menuAriaLabel}}" data-i18n-title="{{toolbar.menuTitle}}">
+  <!-- Бургер выдачи и чтения — правее поля. На главной вместо него работает тот, что в шапке. -->
+  <button type="button" class="dg-icon-btn dg-menu-btn dg-menu-btn-hero" aria-label="Menu" title="Menu" data-i18n-aria-label="{{toolbar.menuAriaLabel}}" data-i18n-title="{{toolbar.menuTitle}}">
     <svg viewBox="0 0 448 512" width="19" height="19" fill="currentColor" aria-hidden="true">
       <path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/>
     </svg>
@@ -2096,13 +2109,13 @@ $(document).ready(function() {
 });
 </script>
 <!-- ============ Боковое меню ============
-     Выезжает СЛЕВА, как в приложениях, вместо прежней bootstrap-выпадашки у бургера. Здесь
+     Выезжает СПРАВА — с той стороны, где стоит бургер, — вместо прежней выпадашки. Здесь
      живёт вся «прочая» навигация сайта и вход в ПОЛНЫЕ настройки; быстрые настройки — отдельно,
      по шестерёнке-молнии в поле. Открытие/закрытие — home.js. -->
 <div id="dg-drawer-backdrop" hidden></div>
 <aside id="dg-drawer" hidden aria-label="Menu" data-i18n-aria-label="{{toolbar.menuAriaLabel}}">
   <div class="dg-drawer-head">
-    <span class="dg-brand-plate dg-brand-plate-sm"><img src="/assets/img/dgsanhkalogo.png" alt=""></span>
+    <img class="dg-brand-logo" src="/assets/img/dgsanhkalogo.png" alt="">
     <span class="dg-brand-name">dhamma.gift</span>
     <button type="button" class="dg-icon-btn dg-drawer-close" aria-label="Close" data-i18n-aria-label="{{global.common.close}}">
       <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>

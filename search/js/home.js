@@ -636,8 +636,10 @@
     }
 
     function wireDrawer() {
-        var btn = document.getElementById('dg-menu-btn');
-        if (btn) btn.addEventListener('click', openDrawer);
+        // Бургеров два — в шапке главной и рядом с полем в выдаче/чтении; меню у них одно.
+        Array.prototype.forEach.call(document.querySelectorAll('.dg-menu-btn'), function (btn) {
+            btn.addEventListener('click', openDrawer);
+        });
         var back = document.getElementById('dg-drawer-backdrop');
         if (back) back.addEventListener('click', closeDrawer);
         var close = document.querySelector('#dg-drawer .dg-drawer-close');

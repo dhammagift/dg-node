@@ -105,18 +105,29 @@ body.dg-skin-minimal.dg-state-results .dg-hero-form,
 body.dg-skin-minimal.dg-state-reader .dg-hero-form { max-width: 520px; }
 
 /* ============================================================================
-   Верхняя панель: только название сайта. Знак (раковина) живёт внутри поля ввода, бургер —
-   рядом с полем; здесь остаётся одна «вывеска».
+   Шапка главной: лого с названием слева, бургер в противовес справа.
+   Только на главной. В выдаче и в чтении вывеска убирается совсем — там от знака остаётся
+   ракушка внутри поля, а бургер стоит правее поля (.dg-menu-btn-hero).
    ============================================================================ */
 #dg-topbar {
-    display: flex;
+    display: none;
     align-items: center;
+    justify-content: space-between;
     gap: 0.75rem;
     max-width: 1600px;
     margin: 0 auto;
     padding: 0.35rem 0.25rem 0;
     font-family: var(--dg-font);
 }
+body.dg-state-home #dg-topbar { display: flex; }
+
+/* Бургеров в разметке два — в шапке и рядом с полем: перенести один элемент между строками
+   средствами CSS нельзя, а состояния требуют разных мест. Оба открывают одно и то же меню. */
+/* Селектор с body — намеренно: .dg-icon-btn ниже в этом же файле задаёт display:inline-flex той
+   же специфичностью и выигрывал бы по порядку (замерено: бургер оставался виден и на главной). */
+body .dg-menu-btn-hero { display: none; }
+body.dg-state-results .dg-menu-btn-hero,
+body.dg-state-reader .dg-menu-btn-hero { display: inline-flex; }
 
 #dg-brand {
     display: inline-flex;
@@ -127,33 +138,28 @@ body.dg-skin-minimal.dg-state-reader .dg-hero-form { max-width: 520px; }
 }
 #dg-brand:hover { color: var(--dg-text); }
 
-/* Подложка под лого. Картинка почти белая (см. /assets/img/dgsanhkalogo.png: раскрытая книга
-   серая, а лепестки-страницы и раковина — почти #fff), поэтому на светлом фоне верх логотипа
-   пропадал. Плашка — мягкое тёмное пятно с растушёванным краем, а не жёсткий круг: контур
-   лепесткам возвращает, но в шапке не выглядит наклейкой. В тёмной теме логотип и так виден,
-   там подложка только чуть-чуть приподнимает его от фона. */
-.dg-brand-plate {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 38px;
-    height: 38px;
+/* Лого в шапке. Картинка почти белая (см. /assets/img/dgsanhkalogo.png: раскрытая книга серая,
+   а лепестки-страницы и раковина — почти #fff), и на светлом фоне верх логотипа пропадал.
+   Кружок-подложка эту беду решал, но выглядел наклейкой; вместо него — тонкий абрис ПО КОНТУРУ
+   самой картинки: четыре drop-shadow по сторонам света дают ровную обводку в 1px (у filter нет
+   своего «обводящего» примитива, это обычный приём для png с прозрачностью).
+   В тёмной теме логотип и так виден на тёмном фоне — обводка там только пачкала бы края. */
+.dg-brand-logo {
+    width: 34px;
+    height: 34px;
     flex: none;
-    border-radius: 50%;
-    background: radial-gradient(circle at 50% 52%,
-        rgba(4, 1, 19, 0.9) 0%,
-        rgba(4, 1, 19, 0.82) 52%,
-        rgba(4, 1, 19, 0) 74%);
+    object-fit: contain;
+    display: block;
+    filter:
+        drop-shadow(1px 0 0 rgba(4, 1, 19, 0.45))
+        drop-shadow(-1px 0 0 rgba(4, 1, 19, 0.45))
+        drop-shadow(0 1px 0 rgba(4, 1, 19, 0.45))
+        drop-shadow(0 -1px 0 rgba(4, 1, 19, 0.45));
 }
-body.dark .dg-brand-plate {
-    background: radial-gradient(circle at 50% 52%,
-        rgba(255, 255, 255, 0.14) 0%,
-        rgba(255, 255, 255, 0.08) 55%,
-        rgba(255, 255, 255, 0) 75%);
-}
-.dg-brand-plate img { width: 28px; height: 28px; object-fit: contain; display: block; }
-.dg-brand-plate-sm { width: 30px; height: 30px; }
-.dg-brand-plate-sm img { width: 22px; height: 22px; }
+body.dark .dg-brand-logo { filter: none; }
+
+/* Маленькая копия лого в шапке бокового меню — там та же история со светлыми лепестками. */
+.dg-drawer-head .dg-brand-logo { width: 26px; height: 26px; }
 
 .dg-brand-name {
     font-size: 1rem;
@@ -215,7 +221,12 @@ body.dg-skin-minimal #form.dg-hero-form { flex: 1 1 auto; min-width: 0; }
 /* На главной поле выше и заметнее — это главный элемент экрана. */
 body.dg-state-home .dg-input-shell { padding: 9px 10px 9px 12px; }
 
-.dg-shell-logo { display: inline-flex; flex: none; line-height: 0; text-decoration: none; }
+/* Ракушка внутри поля — только в выдаче и в чтении: на главной знак и название уже стоят
+   в шапке. Она же кнопка «домой». */
+body .dg-shell-logo { display: none; flex: none; line-height: 0; text-decoration: none; }
+body.dg-state-results .dg-shell-logo,
+body.dg-state-reader .dg-shell-logo { display: inline-flex; }
+.dg-shell-logo img { width: 26px; height: 26px; object-fit: contain; display: block; }
 /* Разделитель перед блоком кнопок справа — как в строке поиска у поисковиков. */
 .dg-shell-sep {
     width: 1px;
@@ -225,21 +236,21 @@ body.dg-state-home .dg-input-shell { padding: 9px 10px 9px 12px; }
     background: var(--dg-border);
 }
 
-/* Спиннер ожидания — на месте лупы, внутри поля. Показывается только в dg-busy; лупа при этом
-   прячется, поэтому ширина строки не меняется и кнопки не прыгают. */
+/* Спиннер ожидания живёт ВНУТРИ кнопки-лупы и подменяет саму иконку. Отдельным элементом в
+   строке он раздвигал соседей, и на каждый запрос кнопки успевали дёрнуться туда и обратно
+   (шестерёнка-лупа → спиннер-шестерёнка → шестерёнка-лупа). Теперь меняется только картинка
+   внутри кнопки, геометрия строки неподвижна. */
 .dg-shell-spinner {
     display: none;
-    width: 18px;
-    height: 18px;
-    flex: none;
-    margin-right: 2px;
+    width: 17px;
+    height: 17px;
     border: 2px solid var(--dg-border-strong);
     border-top-color: var(--dg-accent);
     border-radius: 50%;
     animation: dg-spin 0.7s linear infinite;
 }
 body.dg-busy .dg-shell-spinner { display: block; }
-body.dg-busy .dg-shell-go { display: none; }
+body.dg-busy #searchbtn .dg-search-icon { display: none; }
 @keyframes dg-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) {
     .dg-shell-spinner { animation-duration: 2s; }
@@ -798,7 +809,8 @@ body.dg-no-anim * {
 .dg-diac button:hover { background: var(--dg-surface-hover); border-color: var(--dg-border-strong); }
 
 /* ============================================================================
-   Боковое меню — выезжает слева, как в приложениях
+   Боковое меню — выезжает СПРАВА, с той стороны, где стоит бургер: выезд слева от кнопки
+   справа читался как чужое движение.
    ============================================================================ */
 #dg-drawer-backdrop {
     position: fixed;
@@ -816,7 +828,7 @@ body.dg-no-anim * {
     position: fixed;
     top: 0;
     bottom: 0;
-    left: 0;
+    right: 0;
     z-index: 1083;
     display: flex;
     flex-direction: column;
@@ -825,9 +837,9 @@ body.dg-no-anim * {
     background: var(--bs-body-bg, #fff);
     color: var(--dg-text);
     font-family: var(--dg-font);
-    border-right: 1px solid var(--dg-border-strong);
-    box-shadow: 8px 0 30px rgba(0, 0, 0, 0.14);
-    transform: translateX(-100%);
+    border-left: 1px solid var(--dg-border-strong);
+    box-shadow: -8px 0 30px rgba(0, 0, 0, 0.14);
+    transform: translateX(100%);
     transition: transform 0.3s var(--dg-ease);
     overflow-y: auto;
 }
