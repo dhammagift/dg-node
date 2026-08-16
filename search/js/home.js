@@ -124,12 +124,37 @@
         var cls = 'dg-state-' + name;
         STATES.forEach(function (s) { document.body.classList.toggle(s, s === cls); });
         if (name !== 'home') closeSheet();
+        // Случайная подсказка и «зов» в заголовке — только на главной, см. applyRandomPlaceholder.
+        applyRandomPlaceholder();
     }
 
     function currentState() {
         if (document.body.classList.contains('dg-state-reader')) return 'reader';
         if (document.body.classList.contains('dg-state-results')) return 'results';
         return 'home';
+    }
+
+    /* Случайная подсказка в поле и «зов» в заголовке вкладки — поведение боевой главной
+       (assets/js/randPlaceholder.js, там же и списки фраз). Зовём ТОЛЬКО на главной: в выдаче
+       заголовок вкладки занят числом находок, а подсказка в поле не видна за введённым запросом.
+
+       randCallToAction() запоминает текущий document.title в момент вызова и возвращает его по
+       фокусу. В SPA заголовок меняется вместе с состоянием, поэтому перевызываем при каждом
+       заходе на главную, а уходя — снимаем обработчики: иначе после поиска заголовок «возвращался
+       бы» к домашнему.
+
+       Порядок важен: i18n проставляет placeholder из data-i18n-placeholder, и звать это надо
+       ПОСЛЕ него — иначе перевод затрёт случайную фразу. */
+    function applyRandomPlaceholder() {
+        if (currentState() !== 'home') {
+            window.onblur = null;
+            window.onfocus = null;
+            return;
+        }
+        try {
+            if (typeof window.randPlaceholderOnMain === 'function') window.randPlaceholderOnMain();
+            if (typeof window.randCallToAction === 'function') window.randCallToAction();
+        } catch (e) { /* нет файла или неизвестный язык — остаётся обычный placeholder */ }
     }
 
     // ======================================================================
@@ -1185,8 +1210,16 @@
             var a = document.createElement('a');
             a.className = 'dg-sheet-row dg-slide-row';
             a.href = s.link;
-            a.innerHTML = '<span class="dg-slide-title">' + s.title + '</span>' +
-                '<span class="dg-slide-desc">' + s.desc + '</span>';
+            /* Стрелка справа — знак того, что строку МОЖНО ОТКРЫТЬ. Без неё список читался как
+               справочник с описаниями: заголовок, под ним пояснение, и ничего, что намекало бы
+               на переход. */
+            a.innerHTML = '<span class="dg-slide-row-body">' +
+                '<span class="dg-slide-title">' + s.title + '</span>' +
+                '<span class="dg-slide-desc">' + s.desc + '</span>' +
+                '</span>' +
+                '<svg class="dg-slide-go-ic" viewBox="0 0 24 24" width="15" height="15" fill="none" ' +
+                'stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" ' +
+                'aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>';
             body.appendChild(a);
         });
         // currentSheetKey остаётся пустым (это не набор ссылок), поэтому закрытие ведём вручную.
@@ -1246,6 +1279,27 @@
         if (window.bootstrap && window.bootstrap.Carousel) {
             window.bootstrap.Carousel.getOrCreateInstance(document.getElementById('dg-carousel'));
         }
+        lockCarouselHeight();
+    }
+
+    /* Высота карусели по САМОМУ ВЫСОКОМУ слайду. Слайды разной длины, и страница на каждом
+       переключении то вырастала, то оседала — всё, что ниже, прыгало. Фиксируем минимальную
+       высоту контейнера один раз, по факту замера: жёстко заданное число подошло бы одному языку
+       и одной ширине экрана, а тут и перевод длиннее, и колонка уже.
+       Мерим, временно показывая каждый слайд: у неактивных display:none, и высота у них нулевая. */
+    function lockCarouselHeight() {
+        var inner = document.querySelector('#dg-carousel .carousel-inner');
+        if (!inner) return;
+        inner.style.minHeight = '';
+        var items = inner.querySelectorAll('.carousel-item');
+        var tallest = 0;
+        Array.prototype.forEach.call(items, function (item) {
+            var wasActive = item.classList.contains('active');
+            if (!wasActive) { item.style.display = 'block'; item.style.position = 'absolute'; item.style.visibility = 'hidden'; }
+            tallest = Math.max(tallest, item.getBoundingClientRect().height);
+            if (!wasActive) { item.style.display = ''; item.style.position = ''; item.style.visibility = ''; }
+        });
+        if (tallest) inner.style.minHeight = Math.ceil(tallest) + 'px';
     }
 
     // ======================================================================
@@ -1423,10 +1477,144 @@
         showLater(sheet, backdrop);
     }
 
+    /* Подвал: годы работы проекта и ссылка на условия. Полную оговорку про лицензию держим НЕ на
+       странице — она длинная и на главной ни к чему; открывается шторкой по ссылке (как на проде
+       она отдельным абзацем внизу, но там для неё есть целая страница). */
     function renderFooter() {
         var host = document.getElementById('dg-copyright');
         if (!host) return;
-        host.textContent = '© ' + new Date().getFullYear() + ' dhamma.gift';
+        host.innerHTML = '';
+        // 2022 — год начала проекта, второй год всегда текущий (на проде date("Y")).
+        host.appendChild(document.createTextNode('© 2022–' + new Date().getFullYear() + ' dhamma.gift · '));
+
+        var terms = document.createElement('a');
+        terms.href = 'javascript:void(0)';
+        terms.className = 'dg-footer-link';
+        terms.textContent = t('footer.terms', 'Условия использования');
+        terms.addEventListener('click', openTerms);
+        host.appendChild(terms);
+
+        host.appendChild(document.createTextNode(' · '));
+
+        var privacy = document.createElement('a');
+        privacy.className = 'dg-footer-link';
+        privacy.target = '_blank';
+        privacy.rel = 'noopener';
+        privacy.href = menuLang() === 'ru'
+            ? '/assets/common/privacy-ru.html'
+            : '/assets/common/privacy.html';
+        privacy.textContent = t('footer.privacy', 'Политика конфиденциальности');
+        host.appendChild(privacy);
+    }
+
+    /* Приложения/расширения и контакты — перенос двух нижних блоков боевой главной. Данные
+       перенесены как есть из config/translate.php ($ctaButtons) и index.php (#contacts);
+       картинки кнопок берём оттуда же — /assets/img/buttons/*.png лежат на месте. */
+    var CTA_BUTTONS = [
+        { img: 'pwa-cta.png', href: null, id: 'installPWA', title: 'Install Dhamma.gift as progressive web app' },
+        { img: 'telegram-cta.png', href: 'https://t.me/dgift_bot', title: 'Open DGift_bot' },
+        { img: 'google-play-cta.png', href: 'https://play.google.com/store/apps/details?id=gift.dhamma.twa', title: 'Download from Google Play' },
+        { img: 'apk-cta.png', href: 'https://github.com/dhammagift/dg-twa/releases', title: 'Download APK' },
+        { img: 'chrome-cta.png', href: 'https://chromewebstore.google.com/detail/dhammagift-search-and-wor/dnnogjdcmhbiobpnkhdbfnfjnjlikabd', title: 'Chrome Web Store' },
+        { img: 'firefox-cta.png', href: 'https://addons.mozilla.org/en-US/firefox/addon/dhamma-gift/', title: 'Firefox Add-ons' },
+        { img: 'edge-cta.png', href: 'https://microsoftedge.microsoft.com/addons/detail/dhammagift-search-and-wo/aokegkhdaijkikbdocanadeghllhfmhj', title: 'Microsoft Edge Add-ons' },
+        { img: 'opera-cta.png', href: 'https://addons.opera.com/en/extensions/details/dhammagift/', title: 'Opera Add-ons' }
+    ];
+
+    var CONTACTS = [
+        { icon: ['fab', 'github'], href: 'https://github.com/dhammagift/dg#readme', title: 'GitHub' },
+        { icon: ['fas', 'at'], href: 'mailto:agiftofdhamma@gmail.com', title: 'E-mail' },
+        { icon: ['fab', 'youtube'], href: 'https://m.youtube.com/channel/UCoyL5T0wMubqrj4OnKVOlMw', title: 'YouTube' },
+        { icon: ['fab', 'whatsapp'], href: 'https://chat.whatsapp.com/ExExFBcvyhr33PdKJbsUXs', title: 'WhatsApp' },
+        { icon: ['fab', 'telegram'], href: 'https://t.me/dhamma_gift', title: 'Telegram' }
+    ];
+
+    function faSpec(spec, cls) {
+        var FA = window.FontAwesome;
+        if (FA && FA.icon) {
+            var made = FA.icon({ prefix: spec[0], iconName: spec[1] });
+            if (made && made.html && made.html[0]) {
+                return made.html[0].replace('<svg ', '<svg class="' + (cls || '') + '" ');
+            }
+        }
+        return '';
+    }
+
+    function renderExtra() {
+        var host = document.getElementById('home-extra');
+        if (!host) return;
+        host.hidden = false;
+
+        document.getElementById('dg-links-title').textContent = t('footer.links', 'Приложения и расширения');
+        document.getElementById('dg-contacts-title').textContent = t('footer.contacts', 'Контакты');
+        document.getElementById('dg-contacts-motto').textContent = t('home.motto', 'Найдите Истину');
+
+        var cta = document.getElementById('dg-cta');
+        cta.innerHTML = '';
+        CTA_BUTTONS.forEach(function (b) {
+            /* Кнопка установки PWA — единственная без адреса: её показывает и обрабатывает
+               общесайтовый скрипт по id installPWA. Если он не поднялся, кнопки просто не будет:
+               нерабочая «Установить» хуже отсутствующей. */
+            if (b.id && !document.getElementById(b.id)) return;
+            var el = document.createElement('a');
+            el.className = 'dg-cta-btn';
+            el.href = b.href;
+            el.target = '_blank';
+            el.rel = 'noopener';
+            el.title = b.title;
+            el.innerHTML = '<img src="/assets/img/buttons/' + b.img + '" alt="' + esc(b.title) + '" loading="lazy">';
+            cta.appendChild(el);
+        });
+
+        var contacts = document.getElementById('dg-contacts');
+        contacts.innerHTML = '';
+        CONTACTS.forEach(function (c) {
+            var a = document.createElement('a');
+            a.className = 'dg-contact-btn';
+            a.href = c.href;
+            a.title = c.title;
+            a.setAttribute('aria-label', c.title);
+            if (c.href.indexOf('mailto:') !== 0) { a.target = '_blank'; a.rel = 'noopener'; }
+            a.innerHTML = faSpec(c.icon);
+            contacts.appendChild(a);
+        });
+    }
+
+    // Полный текст условий — в шторке. Ссылка на саму лицензию внутри остаётся кликабельной.
+    function openTerms() {
+        ensureSheet();
+        var sheet = document.getElementById('dg-sheet');
+        var backdrop = document.getElementById('dg-sheet-backdrop');
+        sheet.hidden = false;
+        document.getElementById('dg-sheet-title').textContent = t('footer.terms', 'Условия использования');
+        document.getElementById('dg-sheet-tabs').innerHTML = '';
+
+        var body = document.getElementById('dg-sheet-body');
+        body.innerHTML = '';
+
+        var ru = menuLang() === 'ru';
+        var ccLink = ru
+            ? 'https://creativecommons.org/licenses/by-nc-sa/4.0/deed.ru'
+            : 'https://creativecommons.org/licenses/by-nc-sa/4.0';
+
+        var p = document.createElement('p');
+        p.className = 'dg-terms-text';
+        // Текст перенесён из config/translate.php ($copyrightnote), название лицензии — ссылкой.
+        var parts = String(t('footer.copyright',
+            'Материалы сайта распространяются по модели %s, но Пали тексты и Английские переводы SuttaCentral.net и работы А. Я. Сыркина и TheBuddhasWords.net подчиняются другим условиям. Для их использования уточняйте условия у правообладателей.'
+        )).split('%s');
+        p.appendChild(document.createTextNode(parts[0]));
+        var cc = document.createElement('a');
+        cc.href = ccLink;
+        cc.target = '_blank';
+        cc.rel = 'noopener';
+        cc.textContent = 'CC BY-NC-SA 4.0';
+        p.appendChild(cc);
+        p.appendChild(document.createTextNode(parts[1] || ''));
+        body.appendChild(p);
+
+        currentSheetKey = '__terms__';
+        showLater(sheet, backdrop);
     }
 
     function renderLangSwitch() {
@@ -1506,8 +1694,12 @@
         renderSlides();
         paintDrawerIcons();
         renderFooter();
+        renderExtra();
         renderLangSwitch();
         renderThemeSwitch();
+        // Именно здесь, а не раньше: i18n только что проставил placeholder из перевода, и
+        // случайная фраза должна лечь поверх него.
+        applyRandomPlaceholder();
         // '__slides__' — не набор ссылок, перерисовывать его через openSheet() нечем.
         if (currentSheetKey && currentSheetKey !== '__slides__') openSheet(currentSheetKey);
         renderHint();
@@ -1558,6 +1750,7 @@
 
         paintDrawerIcons();
         renderFooter();
+        renderExtra();
         renderLangSwitch();
         renderThemeSwitch();
         syncRestoreLink();
@@ -1572,12 +1765,20 @@
             .then(function (data) { slidesData = data; renderSlides(); })
             .catch(function (e) { console.warn('slides.json не загрузился:', e); });
 
-        // Смена языка интерфейса на лету — перерисовываем набор ссылок и подписи
+        /* Смена языка интерфейса на лету — перерисовываем набор ссылок и подписи.
+           applyRandomPlaceholder() зовём ОТДЕЛЬНО и без условия на menuData: событие приходит уже
+           после того, как i18n проставил placeholder из перевода, и случайная фраза должна лечь
+           поверх него. Если ждать загрузки menu-links.json, перевод так и останется — замерено:
+           в поле стояло «например, Kāyagat или sn56.11» вместо «пр. …». */
         document.addEventListener('dhamma:languagechange', function () {
             if (menuData) applyMenuLangStrings();
+            applyRandomPlaceholder();
         });
         if (window.DHAMMA_I18N && window.DHAMMA_I18N.ready) {
-            window.DHAMMA_I18N.ready.then(function () { if (menuData) applyMenuLangStrings(); });
+            window.DHAMMA_I18N.ready.then(function () {
+                if (menuData) applyMenuLangStrings();
+                applyRandomPlaceholder();
+            });
         }
     }
 
@@ -1588,6 +1789,8 @@
         // Значение поля выставляют и снаружи (initSearchApp пишет туда запрос из адреса), а
         // jQuery .val() событие input не шлёт — крестик «очистить» иначе бы не появился.
         syncInput: syncInputChrome,
+        // Зовётся из dgSetState() в index.html: классы состояния переключаются там.
+        onStateChanged: applyRandomPlaceholder,
         closeAutocomplete: closeAutocomplete,
         openQuick: openQuick,
         closeQuick: closeQuick,
