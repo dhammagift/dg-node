@@ -227,10 +227,13 @@ kbd{font:inherit;font-size:12.5px;background:var(--line);border:1px solid var(--
       </div>
       <div class="row">
         <div><p class="row-title" id="themeLbl">Тема</p></div>
+        <!-- Порядок тем — тёмная, светлая, авто — один и тот же во всех местах сайта (боковое
+             меню главной, см. renderThemeSwitch в search/js/home.js). Переставлять его от
+             страницы к странице нельзя: выбор ищут по месту, а не перечитывают подписи. -->
         <div class="row-control"><div class="seg" role="group" aria-labelledby="themeLbl" id="themeSeg">
-          <button type="button" data-theme="auto" aria-pressed="true" id="t-th-auto">Авто</button>
-          <button type="button" data-theme="light" aria-pressed="false" id="t-th-light">Светлая</button>
           <button type="button" data-theme="dark" aria-pressed="false" id="t-th-dark">Тёмная</button>
+          <button type="button" data-theme="light" aria-pressed="false" id="t-th-light">Светлая</button>
+          <button type="button" data-theme="auto" aria-pressed="true" id="t-th-auto">Авто</button>
         </div></div>
       </div>
       <div class="row">
