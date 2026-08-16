@@ -728,11 +728,24 @@ window.DgSearchRender = (function () {
                             langClass = fallbackKey.split('_')[0] + '-lang';
                         }
 
-                        var titleHtml = titleText
-                            ? '<span class="' + langClass + ' text-muted">' + titleText + '</span>'
-                            : (row.__enriched === false ? '<span class="dg-skeleton-bar" aria-hidden="true"></span>' : '');
+                        // "dg-title-lang" wires the title into the existing Pāḷi/Eng toggle
+                        // (#language-button → langswitch.js → #sutta.hide-pali/.hide-english,
+                        // see public/overrides/css/langswitch.css). No visible text tag — the
+                        // toggle itself is the indicator. Only mark the Pali side hideable when a
+                        // translation actually exists: on a sutta with no translation at all,
+                        // toggling to "English only" must not blank out its only title text.
+                        var paliClass = 'pli-lang inputscript-ISOPali';
+                        var titleHtml;
+                        if (titleText) {
+                            paliClass += ' dg-title-lang';
+                            titleHtml = '<span class="' + langClass + ' dg-title-lang text-muted">' + titleText + '</span>';
+                        } else if (row.__enriched === false) {
+                            titleHtml = '<span class="dg-skeleton-bar" aria-hidden="true"></span>';
+                        } else {
+                            titleHtml = '';
+                        }
 
-                        return '<strong class="pli-lang inputscript-ISOPali">' + titlePali + '</strong> ' + titleHtml;
+                        return '<strong class="' + paliClass + '">' + titlePali + '</strong> ' + titleHtml;
                     }
                 },
                 // 3: Words
@@ -929,7 +942,26 @@ window.DgSearchRender = (function () {
         suttaTableApi = $table.DataTable(options);
         bindExpandCollapseButtons($table);
         bindReadMarks($table);
+        attachFilterPlusButton($table);
         return suttaTableApi;
+    }
+
+    /* Filter+ живёт рядом с обычным DataTables-фильтром ("Фильтр:"), а не отдельной строкой в
+       #results-toolbar — визуально это одно действие "искать/фильтровать", а не два разных.
+       Кнопка — реальная статичная разметка в search/index.html (перед <table id="pali">, скрыта
+       там классом d-none), .dt-search же создаётся ЗАНОВО при каждом полном (re)init таблицы
+       (destroy() при смене языка — см. resetTablesForLanguageChange), поэтому просто переносим
+       существующий узел, а не создаём новый — обработчик клика и aria-pressed на нём переживают
+       перенос как есть. Класс контейнера — ".dt-search" (DataTables 2.x), не легаси
+       ".dataTables_filter" из документации/старых версий — проверено в живой разметке. */
+    function attachFilterPlusButton($table) {
+        var btn = document.getElementById('btn-filter-builder');
+        var filterWrap = $table.closest('.dt-container').find('.dt-search').get(0);
+        if (!btn || !filterWrap) return;
+        if (btn.parentNode !== filterWrap) {
+            filterWrap.appendChild(btn);
+            btn.classList.remove('d-none');
+        }
     }
 
     /* Колонка отметок: кнопка на панели показывает/прячет её, чекбоксы пишут состояние по ключу

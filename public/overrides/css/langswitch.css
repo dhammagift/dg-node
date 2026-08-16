@@ -284,6 +284,20 @@ dt {
   display: none !important;
 }
 
+/* Название сутты (колонка Title) — тот же переключатель, что и у цитат выше, но своя метка
+   ".dg-title-lang" вместо ".quote": сервер (search-render.js) ставит её ТОЛЬКО когда у сутты
+   реально есть перевод названия — иначе строка Words тоже держится на .pli-lang (шрифт пали),
+   и попытка спрятать голый .pli-lang без разбора снова сломала бы её, как предупреждает
+   комментарий выше. На суттах без перевода название просто не участвует в переключении и
+   остаётся видимым в любом режиме — это и есть сигнал "перевода нет", без отдельной подписи. */
+#sutta.hide-pali .pli-lang.dg-title-lang {
+  display: none !important;
+}
+
+#sutta.hide-english [class*="-lang"].dg-title-lang:not(.pli-lang) {
+  display: none !important;
+}
+
 span.eng-lang {
   margin-bottom: 0.4rem;
 }

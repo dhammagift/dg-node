@@ -104,7 +104,8 @@
     "compassTitle": "Open Cattāri Ariyasaccāni (Alt+P)",
     "menuAriaLabel": "Open menu",
     "menuTitle": "Menu",
-    "filterLabel": "Filter+"
+    "filterLabel": "Filter+",
+    "filterAriaLabel": "Advanced filter"
   },
   "table": {
     "suttaCol": "Sutta",

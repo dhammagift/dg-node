@@ -373,8 +373,66 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
        (home.js: document.getElementById('theme-button').click()), её же читает themeswitch.js,
        а settings.js по Alt+S кликает #settingsButton. Поэтому прячем, оставляя в разметке. */
     #results-toolbar #theme-button,
-    #results-toolbar #settingsButton {
+    #results-toolbar #settingsButton,
+    /* Компас пробуем убрать из общего ряда кнопок (эксперимент, просьба владельца) — та же
+       техника "спрятан, но не удалён", что у темы/настроек выше: Alt+P и клик по кнопке в
+       другом месте продолжают работать, если она понадобится обратно. */
+    #results-toolbar .compass-btn {
         display: none;
+    }
+    /* Ряд кнопок выдачи (свернуть/развернуть, слова, словарь, отметки, помощь) — облегчаем:
+       мельче, приглушённее, со скруглением как у поля ввода (.dg-input-shell — 28px), а не
+       угловатые bootstrap-квадраты. Фон/рамка появляются только на hover/active, а не всегда —
+       так ряд не спорит взглядом с самой выдачей под ним. */
+    #results-toolbar .btn {
+        padding: 3px 10px;
+        font-size: 0.8rem;
+        line-height: 1.4;
+        border: 1px solid transparent;
+        border-radius: 999px;
+        background: transparent;
+        color: var(--dg-text-muted, var(--bs-secondary-color, #6c757d));
+        box-shadow: none;
+    }
+    #results-toolbar .btn:hover,
+    #results-toolbar .btn:focus-visible,
+    #results-toolbar .btn.active,
+    #results-toolbar .btn[aria-pressed="true"] {
+        background: var(--dg-surface-hover, var(--bs-secondary-bg, #e9ecef));
+        color: var(--dg-text, var(--bs-body-color, #212529));
+        border-color: var(--dg-border, var(--bs-border-color, #dee2e6));
+    }
+    #results-toolbar .btn img,
+    #results-toolbar .btn svg {
+        width: 15px;
+        height: 15px;
+    }
+    /* Filter+ переезжает внутрь .dt-search (см. attachFilterPlusButton в
+       search-render.js) — там уже своя рамка вокруг поля "Фильтр:", повторять её на кнопке не
+       нужно, только небольшой отступ и то же скругление-пилюля, что у остальных кнопок ряда. */
+    #search-pane .dt-search {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    #search-pane .dt-search .dg-filter-plus-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 26px;
+        height: 26px;
+        padding: 0;
+        border: 1px solid var(--dg-border, var(--bs-border-color, #dee2e6));
+        border-radius: 999px;
+        background: transparent;
+        color: var(--dg-text-muted, var(--bs-secondary-color, #6c757d));
+    }
+    #search-pane .dt-search .dg-filter-plus-btn:hover,
+    #search-pane .dt-search .dg-filter-plus-btn:focus-visible,
+    #search-pane .dt-search .dg-filter-plus-btn.active,
+    #search-pane .dt-search .dg-filter-plus-btn[aria-pressed="true"] {
+        background: var(--dg-surface-hover, var(--bs-secondary-bg, #e9ecef));
+        color: var(--dg-text, var(--bs-body-color, #212529));
     }
     /* Звёздочка состава области поиска в заголовке — приглушённая, размером с текст, не
        перетягивает внимание с самого заголовка. */
@@ -645,9 +703,12 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     });
   })();
 
-  /* Кнопка "Фильтр" разворачивает конструктор запросов DataTables. Он остаётся полноценным
+  /* Кнопка "Фильтр+" разворачивает конструктор запросов DataTables. Он остаётся полноценным
      инструментом, просто не занимает пол-экрана по умолчанию (см. стили #search-pane
-     .dtsb-searchBuilder). */
+     .dtsb-searchBuilder). При открытии — прокрутка к панели (иначе при большой выдаче непонятно,
+     что вообще произошло: кнопка стоит у самого верха, а панель разворачивается далеко внизу под
+     полем фильтра) и автофокус на предзаполненное поле значения первого критерия (ExcludeMe) —
+     это самое частое действие сразу после открытия. */
   (function wireFilterBuilderToggle() {
     document.addEventListener('click', function (e) {
       var btn = e.target.closest && e.target.closest('#btn-filter-builder');
@@ -657,8 +718,42 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
       var open = pane.classList.toggle('dg-filter-open');
       btn.setAttribute('aria-pressed', open ? 'true' : 'false');
       btn.classList.toggle('active', open);
+      if (!open) return;
+
+      var panel = pane.querySelector('.dtsb-searchBuilder');
+      if (!panel) return;
+      panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      // scrollIntoView is async (smooth) — focusing right after the scroll settles avoids the
+      // browser fighting its own scroll animation to bring the newly-focused input into view.
+      setTimeout(function () {
+        var valueInput = panel.querySelector('.dtsb-criteria .dtsb-value input, .dtsb-criteria .dtsb-value');
+        if (valueInput) valueInput.focus();
+      }, 400);
     });
   })();
+
+  /* A/B на форму значка "Отметки" (чекбокс) — какой читается лучше: квадрат с галкой или круг
+     с галкой. Пока не решили, чередуем на каждой загрузке страницы через localStorage-счётчик
+     (не random — так проще сравнивать: N перезагрузок подряд стабильно чередуют оба варианта).
+     Оба пути — regular-стиль FontAwesome (контурный, не залитый), только форма рамки разная.
+     На DOMContentLoaded: этот скрипт стоит в разметке ВЫШЕ самой кнопки #btn-read-marks (она
+     ближе к концу тела страницы), document.getElementById иначе молча возвращает null. */
+  document.addEventListener('DOMContentLoaded', function alternateReadMarksIcon() {
+    var btn = document.getElementById('btn-read-marks');
+    if (!btn) return;
+    var svg = btn.querySelector('svg');
+    var path = svg && svg.querySelector('path');
+    if (!path) return;
+
+    var KEY = 'dgReadMarksIconVariant';
+    var variant = (parseInt(localStorage.getItem(KEY), 10) || 0) % 2;
+    localStorage.setItem(KEY, String(1 - variant));
+
+    if (variant === 1) {
+      svg.setAttribute('viewBox', '0 0 512 512');
+      path.setAttribute('d', 'M243.8 339.8C232.9 350.7 215.1 350.7 204.2 339.8L140.2 275.8C129.3 264.9 129.3 247.1 140.2 236.2C151.1 225.3 168.9 225.3 179.8 236.2L224 280.4L332.2 172.2C343.1 161.3 360.9 161.3 371.8 172.2C382.7 183.1 382.7 200.9 371.8 211.8L243.8 339.8zM512 256C512 397.4 397.4 512 256 512C114.6 512 0 397.4 0 256C0 114.6 114.6 0 256 0C397.4 0 512 114.6 512 256zM256 48C141.1 48 48 141.1 48 256C48 370.9 141.1 464 256 464C370.9 464 464 370.9 464 256C464 141.1 370.9 48 256 48z');
+    }
+  });
 
   /* Стрелка "наверх" встаёт левее кнопки языка по её РЕАЛЬНОЙ ширине. В ридере обе кнопки
      разведены фиксированными right:20 и right:90 — там подпись языка узкая и этого хватает.
@@ -944,25 +1039,6 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
 </button>
 <button id="btn-show-all-children" class="btn btn-light mb-1" type="button">{{toolbar.expandCollapseLabel}}</button>
 
-<!-- Показать/скрыть колонку отметок "прочитано". Отметки хранятся отдельно для каждого поиска
-     (search-render.js, readMarksKey = запрос + область) — колонка про проход по конкретной
-     выдаче, а не про «прочитанность» сутты вообще. -->
-<!-- Иконкой, а не словами: галочка в рамке читается сразу и не занимает полстроки. Подпись
-     осталась в title/aria-label, для программ чтения с экрана и всплывающей подсказки. -->
-<button id="btn-read-marks" class="btn btn-light mb-1" type="button" aria-pressed="false"
-        title="{{toolbar.readMarksLabel}}" data-i18n-title="{{toolbar.readMarksLabel}}"
-        aria-label="{{toolbar.readMarksLabel}}" data-i18n-aria-label="{{toolbar.readMarksLabel}}">
-  <svg viewBox="0 0 448 512" width="16" height="16" fill="currentColor" aria-hidden="true">
-    <path d="M64 32C28.7 32 0 60.7 0 96V416c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V96c0-35.3-28.7-64-64-64H64zM337 209L209 337c-9.4 9.4-24.6 9.4-33.9 0l-64-64c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0l47 47L303 175c9.4-9.4 24.6-9.4 33.9 0s9.4 24.6 0 33.9z"/>
-  </svg>
-</button>
-
-<!-- Показать/скрыть конструктор фильтров. Сам блок свёрнут по умолчанию (см. стили выше).
-     Подпись именно "Filter+", а не "Фильтр": рядом, над таблицей, DataTables рисует своё поле
-     с подписью "Фильтр" — две одинаковые надписи в двух соседних местах путали. Плюс говорит,
-     что это расширенный конструктор, а не то же самое поле. -->
-<button id="btn-filter-builder" class="btn btn-light mb-1" type="button" aria-pressed="false">{{toolbar.filterLabel}}</button>
-
 <button class="btn btn-light forshellscript mb-1" type="button"><a class="text-decoration-none " href="javascript:void(0)">{{toolbar.wordsToggleShow}}</a></button>
 
 <!-- без mb-1: кнопка позиционируется fixed по bottom, а bootstrap-овский margin-bottom
@@ -971,9 +1047,22 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
 
 <button class="btn btn-light mb-1  toggle-dict-btn" type="button" ><img class="" src="/assets/svg/comment.svg"></img></button>
 
-<!-- Компас — здесь, в общем ряду кнопок: после словаря, перед настройками (просьба владельца).
-     Раньше стоял в шапке рядом с полем поиска и оттягивал на себя внимание наравне с вводом. -->
-<button class="btn btn-light mb-1" type="button" onclick="toggleQuickModal()" aria-label="Open Cattāri Ariyasaccāni" title="Open Cattāri Ariyasaccāni (Alt+P)" data-i18n-aria-label="{{toolbar.compassAriaLabel}}" data-i18n-title="{{toolbar.compassTitle}}">
+<!-- Показать/скрыть колонку отметок "прочитано". Отметки хранятся отдельно для каждого поиска
+     (search-render.js, readMarksKey = запрос + область) — колонка про проход по конкретной
+     выдаче, а не про «прочитанность» сутты вообще. Стоит сразу после словаря (просьба владельца).
+     Иконка чередуется между square-check/circle-check при каждой загрузке страницы — временный
+     A/B, ещё не решили, какая приживётся (см. inline-скрипт alternateReadMarksIcon ниже). -->
+<button id="btn-read-marks" class="btn btn-light mb-1" type="button" aria-pressed="false"
+        title="{{toolbar.readMarksLabel}}" data-i18n-title="{{toolbar.readMarksLabel}}"
+        aria-label="{{toolbar.readMarksLabel}}" data-i18n-aria-label="{{toolbar.readMarksLabel}}">
+  <svg viewBox="0 0 448 512" width="16" height="16" fill="currentColor" aria-hidden="true">
+    <path d="M211.8 339.8C200.9 350.7 183.1 350.7 172.2 339.8L108.2 275.8C97.27 264.9 97.27 247.1 108.2 236.2C119.1 225.3 136.9 225.3 147.8 236.2L192 280.4L300.2 172.2C311.1 161.3 328.9 161.3 339.8 172.2C350.7 183.1 350.7 200.9 339.8 211.8L211.8 339.8zM0 96C0 60.65 28.65 32 64 32H384C419.3 32 448 60.65 448 96V416C448 451.3 419.3 480 384 480H64C28.65 480 0 451.3 0 416V96zM48 96V416C48 424.8 55.16 432 64 432H384C392.8 432 400 424.8 400 416V96C400 87.16 392.8 80 384 80H64C55.16 80 48 87.16 48 96z"/>
+  </svg>
+</button>
+
+<!-- Компас пробуем убрать из общего ряда (просьба владельца, эксперимент) — скрыт стилями
+     ниже (#results-toolbar .compass-btn), сама кнопка и Alt+P остаются рабочими на будущее. -->
+<button class="btn btn-light mb-1 compass-btn" type="button" onclick="toggleQuickModal()" aria-label="Open Cattāri Ariyasaccāni" title="Open Cattāri Ariyasaccāni (Alt+P)" data-i18n-aria-label="{{toolbar.compassAriaLabel}}" data-i18n-title="{{toolbar.compassTitle}}">
   <img alt="" src="/assets/svg/compass.svg" class="common-size-icon4">
 </button>
 
@@ -1428,6 +1517,19 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     <div id="search-message-ru"></div>
     <div id="search-message-en"></div>
 </div>
+
+<!-- Расширенный фильтр (SearchBuilder). Живёт здесь как d-none заготовка — search-render.js
+     (attachFilterPlusButton) переносит этот же узел внутрь .dt-search при каждой
+     (пере)инициализации таблицы, чтобы значок встал прямо рядом с обычным полем "Фильтр:", а не
+     отдельной строкой в #results-toolbar. Подпись именно "Filter+", а не "Фильтр": рядом со
+     штатным полем DataTables та же надпись уже занята. -->
+<button id="btn-filter-builder" class="btn btn-light dg-filter-plus-btn d-none" type="button" aria-pressed="false"
+        title="{{toolbar.filterLabel}}" aria-label="{{toolbar.filterAriaLabel}}" data-i18n-aria-label="{{toolbar.filterAriaLabel}}">
+  <svg viewBox="0 0 512 512" width="14" height="14" fill="currentColor" aria-hidden="true">
+    <path d="M0 416C0 398.3 14.33 384 32 384H86.66C99 355.7 127.2 336 160 336C192.8 336 220.1 355.7 233.3 384H480C497.7 384 512 398.3 512 416C512 433.7 497.7 448 480 448H233.3C220.1 476.3 192.8 496 160 496C127.2 496 99 476.3 86.66 448H32C14.33 448 0 433.7 0 416V416zM192 416C192 398.3 177.7 384 160 384C142.3 384 128 398.3 128 416C128 433.7 142.3 448 160 448C177.7 448 192 433.7 192 416zM352 176C384.8 176 412.1 195.7 425.3 224H480C497.7 224 512 238.3 512 256C512 273.7 497.7 288 480 288H425.3C412.1 316.3 384.8 336 352 336C319.2 336 291 316.3 278.7 288H32C14.33 288 0 273.7 0 256C0 238.3 14.33 224 32 224H278.7C291 195.7 319.2 176 352 176zM384 256C384 238.3 369.7 224 352 224C334.3 224 320 238.3 320 256C320 273.7 334.3 288 352 288C369.7 288 384 273.7 384 256zM480 64C497.7 64 512 78.33 512 96C512 113.7 497.7 128 480 128H265.3C252.1 156.3 224.8 176 192 176C159.2 176 131 156.3 118.7 128H32C14.33 128 0 113.7 0 96C0 78.33 14.33 64 32 64H118.7C131 35.75 159.2 16 192 16C224.8 16 252.1 35.75 265.3 64H480zM160 96C160 113.7 174.3 128 192 128C209.7 128 224 113.7 224 96C224 78.33 209.7 64 192 64C174.3 64 160 78.33 160 96z"/>
+  </svg>
+</button>
+
 <table id="pali" class="display table table-striped table-hover responsive " cellspacing="0" width="100%">
    <thead class="thead-light">
         <tr>
