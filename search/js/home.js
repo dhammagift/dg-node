@@ -49,7 +49,10 @@
         sun: ['fas', 'sun'],
         star: ['fas', 'star'],
         login: ['fas', 'right-to-bracket'],
-        bolt: ['fas', 'bolt'],
+        /* Именно bolt-lightning, а не bolt: у первой верхний конец срезан ровно, и в круглом
+           отверстии шестерёнки она сидит как прорезь. У обычной fa-bolt оба конца острые, и
+           внутри диска она читается угловатой кляксой. */
+        bolt: ['fas', 'bolt-lightning'],
         magnifier: ['fas', 'magnifying-glass'],
         bars: ['fas', 'bars'],
         moon: ['fas', 'moon'],
@@ -606,6 +609,14 @@
         return p;
     }
 
+    // Пояснение под настройкой: что она делает, если из подписи это не очевидно.
+    function note(text) {
+        var p = document.createElement('p');
+        p.className = 'dg-qs-note';
+        p.textContent = text;
+        return p;
+    }
+
     function segmented(options, activeValue, onPick) {
         var wrap = document.createElement('div');
         wrap.className = 'dg-segmented';
@@ -805,6 +816,11 @@
                 localStorage.setItem('dhammaSearchContextBefore', v);
                 localStorage.setItem('dhammaSearchContextAfter', v);
             }));
+            /* Пояснение обязательно: «+1 строка» само по себе не говорит, куда эта строка —
+               сверху, снизу или в обе стороны. А берутся они с ОБЕИХ сторон: обработчик выше
+               пишет одно и то же значение и в ...ContextBefore, и в ...ContextAfter. */
+            host.appendChild(note(t('quick.contextNote',
+                'Сколько строк показывать до и после найденной — с каждой стороны.')));
         }
 
         if (state === 'results') {
@@ -836,10 +852,13 @@
         });
         host.appendChild(diac);
 
-        var note = document.createElement('p');
-        note.className = 'dg-qs-note';
-        note.textContent = t('quick.note', 'Значения по умолчанию и подробный разбор по книгам — в полных настройках.');
-        host.appendChild(note);
+        /* Имя переменной НЕ note: var поднимается на всю функцию и перекрывал бы одноимённый
+           помощник note() выше по файлу — вызов в блоке про контекст падал с «note is not a
+           function», и шторка обрывалась на середине (поймано в консоли). */
+        var footNote = document.createElement('p');
+        footNote.className = 'dg-qs-note';
+        footNote.textContent = t('quick.note', 'Значения по умолчанию и подробный разбор по книгам — в полных настройках.');
+        host.appendChild(footNote);
     }
 
     /* Подстановка символа в позицию курсора. Поле после этого не теряет фокус: продолжать набор
@@ -1242,6 +1261,39 @@
         clear.hidden = !input.value;
     }
 
+    /* Событие input браузер шлёт только на ввод С КЛАВИАТУРЫ. Когда поле заполняют из кода —
+       подсказкой автодополнения, историей в компасе, чем угодно через .value или jQuery .val() —
+       события нет, и крестик «очистить» не появлялся: набранное руками он замечал, подставленное
+       из истории нет.
+       Поэтому подменяем сам аксессор value у ЭТОГО одного элемента: под ним остаётся родной
+       сеттер из HTMLInputElement.prototype, мы лишь дописываем к нему вызов синхронизации. Так
+       ловится любой способ записи, и не нужно знать наперёд, кто именно её сделает. */
+    function watchInputValue() {
+        var input = document.getElementById('paliauto');
+        if (!input) return;
+        var native = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value');
+        if (!native || !native.set) return;
+        Object.defineProperty(input, 'value', {
+            configurable: true,
+            enumerable: native.enumerable,
+            get: function () { return native.get.call(this); },
+            set: function (v) {
+                native.set.call(this, v);
+                syncInputChrome();
+            }
+        });
+    }
+
+    /* Подсказки автодополнения после отправки запроса не нужны — выдача уже показана, а меню
+       продолжало висеть поверх неё. Виджет jQuery UI поднимается лениво (autopali.js вешает
+       инициализацию на фокус), поэтому проверяем, что он вообще есть. */
+    function closeAutocomplete() {
+        var $ = window.jQuery;
+        var input = document.getElementById('paliauto');
+        if (!$ || !input || !$.fn || !$.fn.autocomplete) return;
+        if ($(input).data('ui-autocomplete')) $(input).autocomplete('close');
+    }
+
     // ======================================================================
     // Язык и тема в боковом меню
     // ======================================================================
@@ -1466,6 +1518,7 @@
 
         var input = document.getElementById('paliauto');
         if (input) {
+            watchInputValue();
             input.addEventListener('input', function () { renderHint(); syncInputChrome(); });
             syncInputChrome();
         }
@@ -1535,6 +1588,7 @@
         // Значение поля выставляют и снаружи (initSearchApp пишет туда запрос из адреса), а
         // jQuery .val() событие input не шлёт — крестик «очистить» иначе бы не появился.
         syncInput: syncInputChrome,
+        closeAutocomplete: closeAutocomplete,
         openQuick: openQuick,
         closeQuick: closeQuick,
         quickButtonHtml: quickButtonHtml

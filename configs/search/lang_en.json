@@ -84,7 +84,8 @@
       "kp": "Khuddakapāṭha",
       "pe": "Peṭakopadesa"
     },
-    "scopeExpand": "Show contents"
+    "scopeExpand": "Show contents",
+    "contextNote": "How many lines to show before and after the match — on each side."
   },
   "toolbar": {
     "expandCollapseLabel": "Saṁvaṭṭo / Vivaṭṭo",

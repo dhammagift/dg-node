@@ -1868,6 +1868,9 @@ $(document).ready(function() {
         e.preventDefault();
         var value = $('#paliauto').val().trim();
         if (!value) return;
+        // Подсказки автодополнения после отправки не нужны: выдача уже показана, а меню
+        // продолжало висеть поверх неё.
+        if (window.DgHome && window.DgHome.closeAutocomplete) window.DgHome.closeAutocomplete();
         var route = window.DgTextRouter ? window.DgTextRouter.classify(value) : { type: 'search', query: value };
         // Явно заданный ?langs= — переносим на новую навигацию тем же способом, что и scope
         // ниже: раньше отсюда терялись ВСЕ параметры кроме scope (баг, замечен пользователем) —
@@ -1893,6 +1896,12 @@ $(document).ready(function() {
             // смены одного слова, и это ровно то, от чего мы уходим по пути к SPA. Переход в
             // ридер (ветка ниже) — по-прежнему настоящая навигация: это другая страница.
             history.pushState({ dgSearch: true }, '', url);
+            // История поиска пишется в addToSearchHistory() (public/overrides/js/settings.js), а
+            // та висит на DOMContentLoaded — то есть срабатывает только на полной загрузке
+            // страницы. С переходом поиска на pushState обычные запросы перестали попадать в
+            // историю вовсе: перезагрузки-то больше нет. Зовём её сами, уже после смены адреса —
+            // функция читает запрос именно из него. Ридер делает ровно так же (megareader.js).
+            if (typeof window.addToSearchHistory === 'function') window.addToSearchHistory();
             runSearchFromUrl();
         } else if (route.type === 'text') {
             // Раньше здесь была настоящая навигация — ридер был другой страницей. Теперь текст
