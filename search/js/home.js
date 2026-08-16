@@ -968,9 +968,9 @@
         host.innerHTML = '';
         /* Только RU и EN: конфигов интерфейса для этой страницы ровно два
            (configs/search/lang_{ru,en}.json), тайского среди них нет — предлагать язык, который
-           не подгрузится, нельзя. */
+           не подгрузится, нельзя. Порядок: EN → RU. */
         host.appendChild(segmented(
-            [{ value: 'ru', label: 'RU' }, { value: 'en', label: 'EN' }],
+            [{ value: 'en', label: 'EN' }, { value: 'ru', label: 'RU' }],
             active === 'ru' ? 'ru' : 'en',
             function (v) {
                 // Тот же путь, что у переключателя языка в остальном интерфейсе.

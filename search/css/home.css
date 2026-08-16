@@ -25,30 +25,38 @@
    в <head> этой страницы.
    Фон страницы здесь НЕ задаётся вовсе — главная должна быть ровно того же цвета, что выдача. */
 body.dg-skin-minimal {
-    --dg-surface: #f8f9fa;
-    --dg-surface-hover: #e9ecef;
-    --dg-border: #dee2e6;
-    --dg-border-strong: #ced4da;
-    --dg-text: rgb(4, 1, 19);
-    --dg-text-2: #5a5a5a;
-    --dg-text-muted: #8f8f8f;
-    --dg-accent: #3434be;
-    --dg-accent-bg: #ececf7;
+    --dg-surface: #ffffff;
+    --dg-surface-hover: #f5f4f1;
+    --dg-surface-active: #eae8e2;
+    --dg-border: #e7e5de;
+    --dg-border-strong: #d7d4c9;
+    --dg-text: #1b1d19;
+    --dg-text-2: #5c6058;
+    --dg-text-muted: #93968c;
+    --dg-navy: #243448;
+    --dg-navy-2: #1b2836;
+    --dg-accent: #149c7c;
+    --dg-accent-dark: #0f7c63;
+    --dg-accent-bg: #dff3ec;
     --dg-radius: 10px;
     --dg-font: var(--bs-body-font-family);
     --dg-ease: cubic-bezier(0.22, 0.68, 0, 1);
 }
 
 body.dg-skin-minimal.dark {
-    --dg-surface: #1b1b2a;
-    --dg-surface-hover: #26263a;
-    --dg-border: #3a3a52;
-    --dg-border-strong: #4a4a66;
-    --dg-text: rgb(221, 221, 221);
-    --dg-text-2: #b3b3bd;
-    --dg-text-muted: #8f8f8f;
-    --dg-accent: rgb(122, 122, 249);
-    --dg-accent-bg: #23233a;
+    --dg-surface: #15160f;
+    --dg-surface-hover: #1d2018;
+    --dg-surface-active: #262a20;
+    --dg-border: #2a2d24;
+    --dg-border-strong: #3a3e31;
+    --dg-text: #edeee7;
+    --dg-text-2: #a4a89a;
+    --dg-text-muted: #6c7063;
+    --dg-navy: #1b2836;
+    --dg-navy-2: #131c26;
+    --dg-accent: #3fe3bc;
+    --dg-accent-dark: #2fc7a4;
+    --dg-accent-bg: #153029;
 }
 
 /* ============================================================================
