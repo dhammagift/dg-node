@@ -1192,24 +1192,25 @@ body.dg-tiles-editing .dg-tile-remove { display: inline-flex; }
 .dg-tile-remove:hover { color: var(--dg-text); border-color: var(--dg-text-2); }
 
 /* ============================================================================
-   Плитки на широком экране — мельче
-   На десктопе плитки в 2–4 колонки растягивались на всю строку и выглядели несоразмерно
-   крупными. Здесь они становятся компактным рядом: восемь в строку, иконка и подпись мельче.
+   Плитки на широком экране — компактнее, но В ДВА РЯДА
+   Все восемь в одну строку вытягивались через весь экран «колбасой»: подписи расходились так
+   далеко друг от друга, что набор переставал читаться как набор. Четыре в ряд — привычная сетка
+   значков, и восьмая плитка просто уходит во второй ряд.
    ============================================================================ */
 @media (min-width: 992px) {
     .dg-tiles {
-        grid-template-columns: repeat(8, minmax(0, 1fr));
-        gap: 8px;
-        max-width: 940px;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
+        max-width: 640px;
     }
     .dg-tile {
         gap: 7px;
-        padding: 13px 5px;
-        font-size: 0.8rem;
+        padding: 14px 6px;
+        font-size: 0.82rem;
         border-radius: 10px;
     }
-    .dg-tile-ic { width: 36px; height: 36px; }
-    .dg-tile svg { width: 19px; height: 19px; }
+    .dg-tile-ic { width: 38px; height: 38px; }
+    .dg-tile svg { width: 20px; height: 20px; }
 }
 
 /* ============================================================================
