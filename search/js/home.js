@@ -1001,38 +1001,42 @@
 
         slidesShown = shuffled(list);
         host.hidden = false;
-        /* Карусель — ШТАТНАЯ бутстраповская, как на боевой главной (index.php, #carouselWithCaptions):
-           там слайды съезжают вбок, а не подменяются на месте, и это заметно приятнее. Bootstrap на
-           этой странице уже подключён, своя анимация и свой таймер больше не нужны — листание,
-           автопрокрутка, пауза при наведении и свайп на телефоне достаются готовыми. */
+
+        /* Разметка — ОДИН-В-ОДИН с боевой главной: index.php, блок #carouselWithCaptions внутри
+           <div class="max-w-450 container-lg my-5">. Там это чистая бутстраповская карусель, без
+           единого своего правила в CSS: заголовок <h5>, описание <span>, перенос, ссылка «Читать»,
+           и две штатные боковые кнопки .carousel-control-prev/next со значками
+           .carousel-control-*-icon. Своей рамки, своей подложки и своих стрелок в шапке у неё нет —
+           именно от них наш вариант и выглядел хуже. Снизу справа — «показать все».
+           Bootstrap на странице уже есть, так что листание, автопрокрутка, пауза при наведении и
+           свайп на телефоне достаются готовыми. */
         var read = esc(t('slides.read', 'Читать'));
         var items = slidesShown.map(function (s, i) {
             return '<div class="carousel-item' + (i === 0 ? ' active' : '') + '">' +
-                /* title/desc — HTML: в исходных данных есть разметка (пояснения по наведению),
-                   и на боевой главной она выводится как есть. Файл наш, из репозитория. */
-                '<a class="dg-slide-title" href="' + esc(s.link) + '">' + s.title + '</a>' +
-                '<p class="dg-slide-desc">' + s.desc + '</p>' +
-                '<a class="dg-slide-go" href="' + esc(s.link) + '">' + read + ' →</a>' +
+                /* title/desc — HTML: в исходных данных есть разметка (например <span title="dn15">
+                   с пояснением по наведению), и на боевой главной она выводится как есть. Файл
+                   наш, из репозитория, пользовательского ввода здесь нет. */
+                '<h5>' + s.title + '</h5>' +
+                '<span>' + s.desc + '</span>' +
+                '<br>' +
+                '<a href="' + esc(s.link) + '" class="text-start">' + read + '</a>' +
                 '</div>';
         }).join('');
 
         host.innerHTML =
             '<div class="dg-slides">' +
-            '<div class="dg-slides-head">' +
-            '<p class="dg-slides-eyebrow"></p>' +
-            '<div class="dg-slides-nav">' +
-            '<button class="dg-slide-arrow" type="button" data-bs-target="#dg-carousel" data-bs-slide="prev" aria-label="Previous">' +
-            '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></button>' +
-            '<button class="dg-slide-arrow" type="button" data-bs-target="#dg-carousel" data-bs-slide="next" aria-label="Next">' +
-            '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>' +
-            '</div></div>' +
             '<div id="dg-carousel" class="carousel slide" data-bs-ride="carousel" data-bs-interval="7000">' +
             '<div class="carousel-inner">' + items + '</div>' +
+            '<button class="carousel-control-prev" type="button" data-bs-target="#dg-carousel" data-bs-slide="prev">' +
+            '<span class="carousel-control-prev-icon" aria-hidden="true"></span>' +
+            '<span class="visually-hidden">Previous</span></button>' +
+            '<button class="carousel-control-next" type="button" data-bs-target="#dg-carousel" data-bs-slide="next">' +
+            '<span class="carousel-control-next-icon" aria-hidden="true"></span>' +
+            '<span class="visually-hidden">Next</span></button>' +
             '</div>' +
             '<div class="dg-slides-foot"><button type="button" class="dg-slides-all"></button></div>' +
             '</div>';
 
-        host.querySelector('.dg-slides-eyebrow').textContent = t('slides.title', 'Интересные запросы');
         host.querySelector('.dg-slides-all').textContent = t('slides.showAll', 'Показать все');
         host.querySelector('.dg-slides-all').addEventListener('click', openSlidesList);
 

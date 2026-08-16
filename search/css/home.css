@@ -1251,113 +1251,92 @@ body.dg-tiles-editing .dg-tile-remove { display: inline-flex; }
 
 /* ============================================================================
    «Интересные запросы» — перенос слайд-шоу с боевой главной
+
+   Разметка повторяет index.php один-в-один (#carouselWithCaptions в <div class="max-w-450
+   container-lg my-5">), и на проде у этой карусели НЕТ ни одного своего правила в CSS — всё
+   оформление бутстраповское. Поэтому здесь только то, чего у Bootstrap нет: ширина колонки,
+   поля под боковые стрелки и цвет значков этих стрелок. Ни рамки, ни подложки, ни своих кнопок
+   в шапке — от них наш вариант и выглядел хуже оригинала.
    ============================================================================ */
-#home-slides { margin-top: 14px; }
+#home-slides { margin-top: 26px; }
 #home-slides[hidden] { display: none; }
+
+/* max-width 450 и центрирование — те самые .max-w-450 и .container-lg с прода. Текст по центру:
+   на боевой главной карусель стоит внутри .container.text-center. */
 .dg-slides {
-    position: relative;
-    max-width: 560px;
+    max-width: 450px;
     margin: 0 auto;
-    padding: 14px;
-    border: 1px solid var(--dg-border);
-    border-radius: 12px;
-    background: var(--dg-surface-hover);
     font-family: var(--dg-font);
-    text-align: left;
+    text-align: center;
 }
-.dg-slides-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-}
-.dg-slides-eyebrow {
-    margin: 0;
-    font-size: 0.66rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--dg-text-muted);
-}
-/* Сама цитата — засечковым шрифтом: это голос текста, а не элемент интерфейса, и такой набор
-   отделяет её от подписей вокруг. Шрифт системный: внешний CDN на прод не подключаем. */
-.dg-slide-title {
-    display: block;
-    margin: 8px 0 2px;
-    font-family: Georgia, "Times New Roman", serif;
-    font-size: 0.92rem;
-    font-weight: 400;
-    line-height: 1.5;
+
+/* Боковые стрелки Bootstrap занимают полосу поверх содержимого. Даём слайду поля, чтобы длинный
+   заголовок не заезжал под них. */
+#dg-carousel .carousel-item { padding: 0 44px; }
+#dg-carousel h5 {
+    margin: 0 0 6px;
+    font-size: 1rem;
+    font-weight: 600;
+    line-height: 1.4;
     color: var(--dg-text);
+}
+#dg-carousel span { font-size: 0.88rem; line-height: 1.5; color: var(--dg-text-2); }
+#dg-carousel a {
+    display: inline-block;
+    margin-top: 8px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--dg-accent-ink);
     text-decoration: none;
 }
-.dg-slide-title:hover { color: var(--dg-accent-ink); }
-.dg-slide-desc {
-    margin: 0;
-    font-size: 0.78rem;
-    line-height: 1.45;
-    color: var(--dg-text-2);
+#dg-carousel a:hover { text-decoration: underline; }
+
+/* Значок стрелки у Bootstrap белый — он рассчитан на фотографию во всю карточку. На светлом фоне
+   его не видно, поэтому инвертируем, как это делает штатный вариант .carousel-dark. В тёмной
+   теме белый как раз к месту, там инверсия снимается. */
+#dg-carousel .carousel-control-prev,
+#dg-carousel .carousel-control-next { width: 40px; opacity: 0.45; }
+#dg-carousel .carousel-control-prev:hover,
+#dg-carousel .carousel-control-next:hover { opacity: 0.9; }
+#dg-carousel .carousel-control-prev-icon,
+#dg-carousel .carousel-control-next-icon {
+    width: 1.4rem;
+    height: 1.4rem;
+    filter: invert(1) grayscale(100);
 }
-.dg-slides-foot {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    margin-top: 10px;
-}
-/* «Читать →» — единственное акцентное пятно карточки: это её действие. */
-.dg-slide-go {
-    font-size: 0.84rem;
-    font-weight: 700;
-    color: var(--dg-accent-ink);
-    cursor: pointer;
-}
+body.dark #dg-carousel .carousel-control-prev-icon,
+body.dark #dg-carousel .carousel-control-next-icon { filter: none; }
+
+/* «Показать все» — внизу справа, приглушённой мелочью: как .text-end.mt-2 с .text-muted.small
+   на проде. */
+.dg-slides-foot { margin-top: 8px; text-align: right; }
 .dg-slides-all {
     padding: 0;
     border: 0;
     background: transparent;
     color: var(--dg-text-muted);
     font-family: var(--dg-font);
-    font-size: 0.7rem;
-    font-weight: 600;
+    font-size: 0.78rem;
     cursor: pointer;
 }
-.dg-slides-all:hover { color: var(--dg-text-2); }
+.dg-slides-all:hover { color: var(--dg-text-2); text-decoration: underline; }
 
-/* Стрелки — круглые, в рамке, со значком акцентного цвета: пара кнопок при надзаголовке, а не
-   подписи «‹ ›» текстом. */
-.dg-slides-nav { display: flex; gap: 6px; }
-.dg-slide-arrow {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 26px;
-    height: 26px;
-    flex: none;
-    padding: 0;
-    border: 1px solid var(--dg-border-strong);
-    border-radius: 50%;
-    background: var(--dg-surface);
-    color: var(--dg-accent);
-    cursor: pointer;
-    transition: background-color 0.15s ease;
-}
-.dg-slide-arrow:hover { background: var(--dg-accent-bg); }
-/* Пункты в списке «показать все» — те же строки, что и в шторках со ссылками. */
+/* Пункты в списке «показать все» (шторка). */
 .dg-sheet .dg-slide-row { display: block; padding: 11px 0; }
-.dg-sheet .dg-slide-row .dg-slide-title { margin: 0 0 2px; font-size: 0.95rem; }
-
-/* Карусель — штатная бутстраповская, как на боевой главной: слайды съезжают вбок. Здесь только
-   размеры под нашу карточку; сама механика (.carousel-item, .active, переходы) — из Bootstrap,
-   свою анимацию не пишем. Высоту не фиксируем: слайды разной длины, и жёсткая высота либо
-   обрезала бы длинные, либо оставляла дыру под короткими. */
-#dg-carousel { margin-top: 8px; }
-#dg-carousel .carousel-item { padding-right: 2px; }
-#dg-carousel .dg-slide-title { margin: 0 0 4px; }
-#dg-carousel .dg-slide-desc { margin: 0 0 10px; }
-.dg-slide-go { display: inline-block; text-decoration: none; }
-.dg-slide-go:hover { color: var(--dg-accent-dark); }
-.dg-slides-foot { margin-top: 4px; justify-content: flex-end; }
+.dg-sheet .dg-slide-row .dg-slide-title {
+    display: block;
+    margin: 0 0 2px;
+    font-size: 0.95rem;
+    color: var(--dg-text);
+    text-decoration: none;
+}
+.dg-sheet .dg-slide-row .dg-slide-title:hover { color: var(--dg-accent-ink); }
+.dg-sheet .dg-slide-row .dg-slide-desc {
+    margin: 0;
+    font-size: 0.84rem;
+    line-height: 1.45;
+    color: var(--dg-text-2);
+}
 
 /* ============================================================================
    Подсказки автодополнения (jQuery UI, autopali.js)
