@@ -22,7 +22,7 @@
     "themeDark": "Тёмная",
     "themeAuto": "Авто",
     "removeTile": "Убрать с главной",
-    "restoreTiles": "Вернуть убранные кнопки"
+    "restoreTiles": "Вернуть кнопки как было"
   },
   "slides": {
     "title": "Интересные запросы",
@@ -70,7 +70,8 @@
     "compassAriaLabel": "Открыть Cattāri Ariyasaccāni",
     "compassTitle": "Открыть Cattāri Ariyasaccāni (Alt+P)",
     "menuAriaLabel": "Открыть меню",
-    "menuTitle": "Меню"
+    "menuTitle": "Меню",
+    "filterLabel": "Фильтр"
   },
   "table": {
     "suttaCol": "Sutta",

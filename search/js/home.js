@@ -157,6 +157,19 @@
         try { localStorage.setItem(TILE_ORDER_KEY, JSON.stringify(store)); } catch (e) { /* приватный режим */ }
     }
 
+    /* Сброс порядка — УДАЛЕНИЕМ записи, а не записью списка по умолчанию: тогда плитки снова
+       следуют за DEFAULT_TILE_ORDER, и добавленная позже кнопка встанет на своё место, а не в
+       хвост зафиксированного когда-то списка. Порядок другого языка не трогаем — он настраивается
+       отдельно. */
+    function resetTileOrder() {
+        var store = readOrderStore();
+        delete store[menuLang()];
+        try {
+            if (Object.keys(store).length) localStorage.setItem(TILE_ORDER_KEY, JSON.stringify(store));
+            else localStorage.removeItem(TILE_ORDER_KEY);
+        } catch (e) { /* приватный режим */ }
+    }
+
     /* Убранные кнопки. Отдельный ключ, а не удаление из порядка: порядок и состав — разные вещи,
        и вернуть убранное («Показать все кнопки» в боковом меню) должно быть можно, не сбивая
        расстановку. Формат намеренно простой — см. docs/HOME_TILES_PLAN.md, там же описано, во что
@@ -175,9 +188,22 @@
         syncRestoreLink();
     }
 
+    /* Порядок отличается от исходного? Сравниваем ПОСЛЕДОВАТЕЛЬНОСТЬ, а не состав: набор ключей
+       после фильтрации в tileOrder() совпадает всегда, разойтись может только порядок. */
+    function orderChanged() {
+        var saved = readOrderStore()[menuLang()];
+        if (!Array.isArray(saved)) return false;
+        var def = DEFAULT_TILE_ORDER[menuLang()] || DEFAULT_TILE_ORDER.en;
+        var now = tileOrder();
+        return now.length !== def.length || now.some(function (k, i) { return k !== def[i]; });
+    }
+
+    /* Ссылка «вернуть как было» показывается, если сбивать есть что: убрана хоть одна кнопка ИЛИ
+       переставлен порядок. Раньше она следила только за убранными, и переставленный порядок
+       вернуть было нечем — приходилось перетаскивать всё обратно руками. */
     function syncRestoreLink() {
         var link = document.getElementById('dg-restore-tiles');
-        if (link) link.hidden = hiddenTiles().length === 0;
+        if (link) link.hidden = hiddenTiles().length === 0 && !orderChanged();
     }
 
     // ======================================================================
@@ -964,6 +990,9 @@
                 saveTileOrder(Array.prototype.map.call(host.querySelectorAll('.dg-tile'), function (x) {
                     return x.dataset.tile;
                 }));
+                // Порядок только что мог разойтись с исходным — «вернуть как было» должно
+                // появиться сразу, не дожидаясь следующей перерисовки плиток.
+                syncRestoreLink();
                 // Флаг снимает сам обработчик клика, который придёт следом; если клика не будет
                 // (палец), снимаем сами на следующем тике.
                 setTimeout(function () { el.dataset.dragged = ''; }, 300);
@@ -1254,7 +1283,9 @@
         var restore = document.getElementById('dg-restore-tiles');
         if (restore) {
             restore.addEventListener('click', function () {
+                // Возвращаем И состав, И порядок: «как было» значит целиком как было.
                 setHiddenTiles([]);
+                resetTileOrder();
                 renderTiles();
             });
         }

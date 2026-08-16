@@ -22,7 +22,7 @@
     "themeDark": "Dark",
     "themeAuto": "Auto",
     "removeTile": "Remove from home",
-    "restoreTiles": "Restore removed buttons"
+    "restoreTiles": "Reset buttons"
   },
   "slides": {
     "title": "Interesting queries",
@@ -70,7 +70,8 @@
     "compassAriaLabel": "Open Cattāri Ariyasaccāni",
     "compassTitle": "Open Cattāri Ariyasaccāni (Alt+P)",
     "menuAriaLabel": "Open menu",
-    "menuTitle": "Menu"
+    "menuTitle": "Menu",
+    "filterLabel": "Filter"
   },
   "table": {
     "suttaCol": "Sutta",
