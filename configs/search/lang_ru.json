@@ -110,7 +110,11 @@
     "variantsLinkText": "варианты",
     "variantsForLabel": "Варианты для",
     "tooShortMessage": "Запрос «{query}» слишком короткий — введите не менее 3 символов.",
-    "noResultsMessage": "По запросу «{query}» ничего не найдено."
+    "noResultsMessage": "По запросу «{query}» ничего не найдено.",
+    "scopeGroupNikayas": "4 Никаи",
+    "scopeGroupKn": "Кхуддака Никая",
+    "scopeGroupVinaya": "Виная",
+    "scopeGroupOther": "Прочее"
   },
   "scopeNames": {
     "dn": "Дигха Никая",

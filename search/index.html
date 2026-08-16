@@ -250,20 +250,51 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     #search-pane .variant {
         position: relative;
     }
-    @media (hover: hover) and (pointer: fine) {
-        #search-pane [class*="-lang"]:hover > .quoteLink-start,
-        #search-pane .variant:hover > .quoteLink-start {
-            opacity: 0.9;
-        }
-    }
+    /* Без @media (hover: hover) and (pointer: fine): на гибридных устройствах (ноутбук с
+       сенсорным экраном, планшет с мышью) pointer:fine может не выполниться — тогда hover-правило
+       не применялось вовсе, а тап-обработчик ниже срабатывает только для НЕ-мыши. В итоге на таких
+       машинах не работал ни один из двух путей. Простой :hover на тач-устройстве безвреден. */
+    #search-pane [class*="-lang"]:hover > .quoteLink-start,
+    #search-pane .variant:hover > .quoteLink-start,
     #search-pane .dg-show-links > .quoteLink-start {
         opacity: 0.9;
     }
-    /* .quoteLink-start is absolutely positioned at left:-1em, i.e. outside its own line box —
-       without room inside the cell it would be clipped by the table edge on the leftmost column. */
+    /* .quoteLink-start стоит на left:-1em, вне своей строки, поэтому ячейке нужен отступ — иначе
+       ссылку срежет край. На телефоне 1.4em съедало заметный кусок ширины цитаты, оставляем
+       ровно столько, сколько нужно самой ссылке. */
     #pali td:last-child,
     #pali tr.child .dtr-details li {
-        padding-left: 1.4em;
+        padding-left: 1.25em;
+    }
+    @media (max-width: 767.98px) {
+        #pali td:last-child,
+        #pali tr.child .dtr-details li { padding-left: 0.95em; }
+        #search-pane .quoteLink-start { left: -0.8em; }
+    }
+    /* Подсветка чтения — теми же цветами, что на проде. Там .active-word и групповая подсветка
+       TTS берут rgba(var(--bs-primary-rgb), …), а --bs-primary-rgb переопределён в extrastyles.css
+       на бирюзовый 26,188,156. Здесь bootstrap.5.3.1.min.css грузится ПОСЛЕ extrastyles (через
+       loadCssJsResult.js) и возвращает переменной синий 13,110,253 — отсюда и синие подсветки
+       вместо зелёных (замерено: итоговое значение переменной 13,110,253 при объявленном ранее
+       26,188,156). Не трогаем саму переменную, чтобы не перекрашивать кнопки и ссылки всей
+       страницы, а задаём цвет обеим подсветкам явно. */
+    #search-pane .active-word,
+    #reader-pane .active-word {
+        background-color: rgba(26, 188, 156, 0.35);
+        border-radius: 0.25rem;
+        box-shadow: 0 0 0 1px rgba(44, 62, 80, 0.15);
+    }
+    body.dark #search-pane .active-word,
+    body.dark #reader-pane .active-word {
+        background-color: rgba(26, 188, 156, 0.25);
+    }
+    /* В выдаче подсвечивается ТОЛЬКО читаемая строка, а не весь блок сутты: voice.js вешает
+       .tts-active на все связанные строки сегмента (пали + переводы), и в ридере это осознанная
+       групповая подсветка, а в списке результатов выглядит как заливка половины ячейки. */
+    #search-pane .tts-active {
+        background-color: rgba(26, 188, 156, 0.25);
+        border-radius: 6px;
+        transition: background-color .2s ease;
     }
     /* Контекстное меню цитаты. Ридеровское #segment-context-menu живёт в reader/css/uiextra.css,
        которую эта страница не подключает — здесь свой минимальный вид на переменных Bootstrap,
@@ -315,6 +346,14 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     }
     .scope-info-star:hover,
     .scope-info-star:focus-visible { color: var(--bs-body-color, #212529); }
+    /* Тултип со составом корпуса: шире стандартного и с выравниванием по левому краю —
+       внутри список по разделам, а не одна фраза. */
+    .dg-scope-tooltip .tooltip-inner {
+        max-width: 340px;
+        text-align: left;
+        padding: 8px 10px;
+    }
+    .dg-scope-tooltip .dg-scope-group + .dg-scope-group { margin-top: 5px; }
 </style>
 
 <link rel="stylesheet" href="/assets/css/langswitch.css">
@@ -646,19 +685,21 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
       menu.style.top = Math.max(8, top) + 'px';
     }
 
+    /* Обычный левый клик (и быстрый тап) по ✦-ссылке — сразу попап с текстом. Это основной
+       сценарий, он не должен стоить двух действий. Ctrl/Cmd/Shift/средняя кнопка не трогаем:
+       осознанное "открыть в новой вкладке" остаётся за пользователем. */
     document.addEventListener('click', function (e) {
+      if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
       var link = e.target.closest && e.target.closest('a.fdgLink');
       if (!link || !link.closest('.quote') || !link.closest('#search-pane')) return;
       e.preventDefault();
       e.stopImmediatePropagation();
-      ctx = { link: link, line: link.closest('[class*="-lang"], .variant') };
-      openAt(e.clientX, e.clientY);
+      close();
+      openQuotePopup(link.href);
     }, true);
 
-    // Правый клик (и долгое нажатие на тач-экране — браузер шлёт то же contextmenu) по СТРОКЕ
-    // цитаты сразу открывает попап по её скрытой ссылке, без промежуточного меню: самый частый
-    // сценарий не должен стоить двух действий. Достаточно попасть в саму строку, целиться в
-    // ✦-ссылку не нужно.
+    /* Правый клик и долгое нажатие на тач-экране (браузер шлёт то же contextmenu) — контекстное
+       меню. Достаточно попасть в саму СТРОКУ цитаты, целиться в ✦ не нужно. */
     document.addEventListener('contextmenu', function (e) {
       var pane = document.getElementById('search-pane');
       if (!pane || !pane.contains(e.target)) return;
@@ -667,8 +708,8 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
       var link = line.querySelector('a.fdgLink');
       if (!link) return;
       e.preventDefault();
-      close();
-      openQuotePopup(link.href);
+      ctx = { link: link, line: line };
+      openAt(e.clientX, e.clientY);
     });
 
     menu.addEventListener('click', function (e) {
@@ -1772,6 +1813,43 @@ $(document).ready(function() {
         return prefixes.map(function (p) { return t('scopeNames.' + p, p); }).join(', ');
     }
 
+    /* Состав области поиска для подсказки — не сплошной строкой, а по разделам, как он и
+       выбирается в настройках: сначала 4 никаи, затем книги Кхуддаки, затем Виная, затем
+       остальное. Показывается только то, что реально попало в выдачу. Возвращает готовый HTML
+       для bootstrap-тултипа. */
+    var KN_PREFIXES = ['iti', 'ud', 'snp', 'dhp', 'thag', 'thig', 'ja', 'tha-ap', 'mil', 'thi-ap',
+        'vv', 'pv', 'cp', 'bv', 'ps', 'ne', 'cnd', 'mnd', 'kp', 'pe'];
+    var VINAYA_PREFIXES = ['pli-tv-bi', 'pli-tv-bu', 'pli-tv-kd', 'pli-tv-pvr'];
+
+    function escapeHtml(s) {
+        return String(s).replace(/[&<>"]/g, function (c) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+        });
+    }
+
+    function scopeTooltipHtml(prefixes) {
+        var groups = [
+            { title: t('results.scopeGroupNikayas', '4 Nikāyas'), codes: FOUR_NIKAYA_PREFIXES },
+            { title: t('results.scopeGroupKn', 'Khuddaka Nikāya'), codes: KN_PREFIXES },
+            { title: t('results.scopeGroupVinaya', 'Vinaya'), codes: VINAYA_PREFIXES }
+        ];
+        var used = {};
+        var html = '';
+        groups.forEach(function (g) {
+            var mine = prefixes.filter(function (p) { return g.codes.indexOf(p) !== -1; });
+            if (!mine.length) return;
+            mine.forEach(function (p) { used[p] = true; });
+            html += '<div class="dg-scope-group"><b>' + escapeHtml(g.title) + ':</b> ' +
+                escapeHtml(mine.map(function (p) { return t('scopeNames.' + p, p); }).join(', ')) + '</div>';
+        });
+        var rest = prefixes.filter(function (p) { return !used[p]; });
+        if (rest.length) {
+            html += '<div class="dg-scope-group"><b>' + escapeHtml(t('results.scopeGroupOther', 'Other')) + ':</b> ' +
+                escapeHtml(rest.map(function (p) { return t('scopeNames.' + p, p); }).join(', ')) + '</div>';
+        }
+        return html;
+    }
+
     function buildScopeLabel(resolvedPrefixes) {
         var prefixes = resolvedPrefixes || DEFAULT_SCOPE_PREFIXES;
         // У обобщённых подписей ("4 Никаи + 6 КН") full — это РЕАЛЬНЫЙ список книг, а не та же
@@ -1821,15 +1899,27 @@ $(document).ready(function() {
             star.type = 'button';
             star.className = 'scope-info-star';
             star.textContent = '*';
-            star.title = scope.full;
             star.setAttribute('aria-label', scope.full);
-            // На тач-экранах title не показывается — по тапу выводим тот же текст плашкой.
-            star.onclick = function () {
-                if (typeof window.showBubbleNotification === 'function') window.showBubbleNotification(scope.full, 6000, 'info');
-                else alert(scope.full);
-            };
+            /* Обычный bootstrap-тултип у самой звёздочки, а не плашка внизу экрана: список
+               появляется там, куда человек смотрит. Содержимое — разметкой, по разделам
+               (4 никаи / Кхуддака / Виная / прочее), поэтому html: true; строки прогоняются
+               через escapeHtml, названия книг приходят из i18n-конфига. trigger с focus даёт
+               работающий тап на тач-экранах, где hover нет. */
+            var tipHtml = scopeTooltipHtml(json.metadata.resolvedPrefixes || DEFAULT_SCOPE_PREFIXES);
+            star.setAttribute('data-bs-toggle', 'tooltip');
+            star.setAttribute('data-bs-html', 'true');
+            star.setAttribute('data-bs-placement', 'bottom');
+            star.setAttribute('data-bs-custom-class', 'dg-scope-tooltip');
+            star.setAttribute('data-bs-title', tipHtml);
             $head[0].appendChild(document.createTextNode(' '));
             $head[0].appendChild(star);
+            if (window.bootstrap && bootstrap.Tooltip) {
+                star.setAttribute('data-bs-trigger', 'hover focus');
+                new bootstrap.Tooltip(star);
+            } else {
+                // Bootstrap не загрузился — не оставляем звёздочку немой.
+                star.title = scope.full;
+            }
         }
 
         // "Есть варианты чтения" — hasVariantMatch отвечает на вопрос "существуют ли варианты

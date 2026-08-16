@@ -110,7 +110,11 @@
     "variantsLinkText": "variants",
     "variantsForLabel": "Variants for",
     "tooShortMessage": "Query \"{query}\" is too short — please enter at least 3 characters.",
-    "noResultsMessage": "Nothing found for \"{query}\"."
+    "noResultsMessage": "Nothing found for \"{query}\".",
+    "scopeGroupNikayas": "4 Nikāyas",
+    "scopeGroupKn": "Khuddaka Nikāya",
+    "scopeGroupVinaya": "Vinaya",
+    "scopeGroupOther": "Other"
   },
   "scopeNames": {
     "dn": "Dīgha Nikāya",
