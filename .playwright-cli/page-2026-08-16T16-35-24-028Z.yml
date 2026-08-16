@@ -1,0 +1,181 @@
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e5]:
+        - paragraph: Find the Truth
+        - generic [ref=e6]:
+          - generic [ref=e7]:
+            - generic [ref=e8] [cursor=pointer]: Search
+            - generic [ref=e9]:
+              - link [ref=e10] [cursor=pointer]:
+                - /url: /
+                - img "Dhamma.Gift" [ref=e11]
+              - searchbox "Search" [ref=e12]: kacchapa
+              - button "Clear" [ref=e13] [cursor=pointer]
+              - button "Quick settings" [ref=e17] [cursor=pointer]
+              - button "Search" [ref=e20] [cursor=pointer]
+          - button "Open menu" [ref=e23] [cursor=pointer]
+        - generic: ↵ search for “kacchapa”
+      - generic:
+        - generic:
+          - button "Read Pāḷi"
+          - button "External"
+          - button "AI & Dicts"
+          - button "Materials"
+          - button "Tools"
+          - button "History"
+          - button "Help"
+        - generic:
+          - generic:
+            - generic:
+              - generic:
+                - generic:
+                  - heading "Noble Glossary" [level=5]
+                  - text: Specified Terms in the purification of the noble one (Ariyassa vinaye)
+                  - link "Read":
+                    - /url: /?q=Ariyassa vinaye
+              - button "Previous"
+              - button "Next"
+            - generic:
+              - button "Show all"
+        - contentinfo:
+          - generic:
+            - text: © 2022–2026 dhamma.gift ·
+            - link "Terms of use":
+              - /url: javascript:void(0)
+            - text: ·
+            - link "Privacy Policy":
+              - /url: /assets/common/privacy.html
+      - generic [ref=e26]:
+        - heading "Kacchapa 3 texts and 4 matches in 4 Nikayas" [level=3] [ref=e27]
+        - button "Saṁvaṭṭo / Vivaṭṭo" [ref=e28] [cursor=pointer]
+        - button [ref=e29] [cursor=pointer]:
+          - link "Words" [ref=e30]:
+            - /url: javascript:void(0)
+        - button "Pāḷi / Eng" [active] [ref=e31] [cursor=pointer]
+        - button [ref=e32] [cursor=pointer]
+        - button "Read marks" [ref=e34] [cursor=pointer]
+        - link [ref=e37] [cursor=pointer]:
+          - /url: javascript:void(0);
+    - separator [ref=e39]
+    - generic [ref=e40]:
+      - text: Kacchapa has
+      - link "variants" [ref=e43] [cursor=pointer]:
+        - /url: /?q=kacchapa&scope=all&report=words#variants
+    - generic [ref=e45]:
+      - generic [ref=e46]:
+        - generic [ref=e48]:
+          - combobox "per page" [ref=e49]:
+            - option "10" [selected]
+            - option "30"
+            - option "50"
+            - option "100"
+            - option "1,000"
+          - generic [ref=e50] [cursor=pointer]: per page
+        - navigation "pagination" [ref=e53]:
+          - list [ref=e171]:
+            - listitem [ref=e172]:
+              - link "First" [disabled]: «
+            - listitem [ref=e173]:
+              - link "Previous" [disabled]: ‹
+            - listitem [ref=e174]:
+              - link "1" [ref=e175] [cursor=pointer]
+            - listitem [ref=e176]:
+              - link "Next" [disabled]: ›
+            - listitem [ref=e177]:
+              - link "Last" [disabled]: »
+        - generic [ref=e62]:
+          - generic [ref=e63] [cursor=pointer]: "Filter:"
+          - searchbox "Filter:" [ref=e64]
+          - button "Advanced filter" [ref=e65] [cursor=pointer]
+      - table [ref=e68]:
+        - rowgroup [ref=e76]:
+          - row [ref=e178]:
+            - columnheader "Sutta" [ref=e179] [cursor=pointer]
+            - columnheader "Title" [ref=e180] [cursor=pointer]
+            - columnheader "Words" [ref=e181] [cursor=pointer]
+            - columnheader "Ct" [ref=e182] [cursor=pointer]
+            - columnheader "Mr" [ref=e183] [cursor=pointer]
+            - columnheader "Links" [ref=e98]
+        - rowgroup [ref=e101]:
+          - row [ref=e184]:
+            - cell [ref=e185] [cursor=pointer]:
+              - link "dn1" [ref=e186]:
+                - /url: /dn1:1.22.2?s=kacchapa&lang=en&langs=ru%2Cen
+            - cell "Brahmajālasutta The Brahmā Net" [ref=e187]:
+              - strong [ref=e188]: Brahmajālasutta
+              - generic [ref=e189]: en
+              - generic [ref=e190]: The Brahmā Net
+            - cell "kacchapalakkhaṇaṁ" [ref=e191]
+            - cell "1" [ref=e193]
+            - cell "2" [ref=e194]
+            - cell [ref=e195]:
+              - link "Pi" [ref=e196] [cursor=pointer]:
+                - /url: https://d.dhamma.gift/_dprhtml/index.html?loc=d.0.0.0.0.0.0.m
+              - link "En" [ref=e197] [cursor=pointer]:
+                - /url: /b/?q=dn1
+            - text: ✦ ✦ ✦ ✦ ✦ ✦
+          - row [ref=e198]:
+            - cell [ref=e199] [cursor=pointer]:
+              - link "dn2" [ref=e200]:
+                - /url: /dn2:57.2?s=kacchapa&lang=en&langs=ru%2Cen
+            - cell "Sāmaññaphalasutta The Fruits of the Contemplative Life" [ref=e201]:
+              - strong [ref=e202]: Sāmaññaphalasutta
+              - generic [ref=e203]: en
+              - generic [ref=e204]: The Fruits of the Contemplative Life
+            - cell "kacchapalakkhaṇaṁ" [ref=e205]
+            - cell "1" [ref=e207]
+            - cell "30" [ref=e208]
+            - cell [ref=e209]:
+              - link "Pi" [ref=e210] [cursor=pointer]:
+                - /url: https://d.dhamma.gift/_dprhtml/index.html?loc=d.0.0.0.1.0.0.m
+              - link "En" [ref=e211] [cursor=pointer]:
+                - /url: /b/?q=dn2
+            - text: ✦ ✦ ✦ ✦ ✦ ✦
+          - row [ref=e212]:
+            - cell [ref=e213] [cursor=pointer]:
+              - link "sn35.240" [ref=e214]:
+                - /url: /sn35.240:1.5?s=kacchapa&lang=en&langs=ru%2Cen
+            - cell "Kummopamasutta Sutta The Turtle" [ref=e215]:
+              - strong [ref=e216]: Kummopamasutta
+              - generic [ref=e217]: en
+              - generic [ref=e218]: Sutta The Turtle
+            - cell "kacchapaṁ" [ref=e219]
+            - cell "2" [ref=e221]
+            - cell "1" [ref=e222]
+            - cell [ref=e223]:
+              - link "Pi" [ref=e224] [cursor=pointer]:
+                - /url: https://d.dhamma.gift/_dprhtml/index.html?loc=s.3.0.0.0.18.2.m
+              - link "En" [ref=e225] [cursor=pointer]:
+                - /url: /b/?q=sn35.240
+            - text: ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦
+      - generic [ref=e141]:
+        - status [ref=e143]: Showing 1 to 3 of 3 entries
+        - navigation "pagination" [ref=e146]:
+          - list [ref=e226]:
+            - listitem [ref=e227]:
+              - link "First" [disabled]: «
+            - listitem [ref=e228]:
+              - link "Previous" [disabled]: ‹
+            - listitem [ref=e229]:
+              - link "1" [ref=e230] [cursor=pointer]
+            - listitem [ref=e231]:
+              - link "Next" [disabled]: ›
+            - listitem [ref=e232]:
+              - link "Last" [disabled]: »
+      - generic [ref=e155]:
+        - button "Main" [ref=e156] [cursor=pointer]
+        - button "History" [ref=e157] [cursor=pointer]
+        - button "Export" [ref=e159] [cursor=pointer]
+        - button "Read" [ref=e160] [cursor=pointer]
+        - button "Make List" [ref=e161] [cursor=pointer]
+        - button "List Diff" [ref=e162] [cursor=pointer]
+        - button "Sutta Diff" [ref=e163] [cursor=pointer]
+        - button "Visibility" [ref=e165] [cursor=pointer]
+  - generic [ref=e167] [cursor=pointer]:
+    - generic [ref=e168]:
+      - text: 💡
+      - strong [ref=e169]: "Hint:"
+      - text: To open the text from a specific location, click the invisible link ✦ at the beginning or end of the fragment.
+    - button "×" [ref=e170]
+  - status [ref=e233]

@@ -755,7 +755,7 @@ window.DgSearchRender = (function () {
                     render: function (data, type, row) {
                         if (data && data.length) {
                             var wordsStr = data.join(' ');
-                            return '<span class="pli-lang inputscript-ISOPali">' + highlightText(wordsStr, activeState.highlightWord) + '</span>';
+                            return '<span class="pli-lang inputscript-ISOPali text-muted">' + highlightText(wordsStr, activeState.highlightWord) + '</span>';
                         }
                         // Not enriched yet — the real unique_words are, at most, the searched
                         // word plus declension endings/prefixes (Pali is agglutinative), so the

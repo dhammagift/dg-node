@@ -1,0 +1,214 @@
+- generic [ref=f2e1]:
+  - generic [ref=f2e2]:
+    - generic [ref=f2e3]:
+      - generic [ref=f2e5]:
+        - paragraph: Find the Truth
+        - generic [ref=f2e6]:
+          - generic [ref=f2e7]:
+            - generic [ref=f2e8] [cursor=pointer]: Search
+            - generic [ref=f2e9]:
+              - link [ref=f2e26] [cursor=pointer]:
+                - /url: /
+                - img "Dhamma.Gift" [ref=f2e27]
+              - searchbox "Search" [ref=f2e10]: kacchapa
+              - button "Clear" [ref=f2e11] [cursor=pointer]
+              - button "Quick settings" [ref=f2e15] [cursor=pointer]
+              - button "Search" [ref=f2e18] [cursor=pointer]
+          - button "Open menu" [ref=f2e30] [cursor=pointer]
+        - generic: ↵ search for “kacchapa”
+      - generic:
+        - generic:
+          - button "Read Pāḷi"
+          - button "External"
+          - button "AI & Dicts"
+          - button "Materials"
+          - button "Tools"
+          - button "History"
+          - button "Help"
+        - generic:
+          - generic:
+            - generic:
+              - generic:
+                - generic:
+                  - heading "Decline and Non-decline in Tathagatas Teaching" [level=5]
+                  - text: E.g. stopping half-way is a case of decline
+                  - link "Read":
+                    - /url: /?q=Parihānametaṁ
+              - button "Previous"
+              - button "Next"
+            - generic:
+              - button "Show all"
+        - contentinfo:
+          - generic:
+            - text: © 2022–2026 dhamma.gift ·
+            - link "Terms of use":
+              - /url: javascript:void(0)
+            - text: ·
+            - link "Privacy Policy":
+              - /url: /assets/common/privacy.html
+      - generic [ref=f2e33]:
+        - heading "Kacchapa 3 texts and 4 matches in 4 Nikayas" [level=3] [ref=f2e34]
+        - button "Saṁvaṭṭo / Vivaṭṭo" [ref=f2e35] [cursor=pointer]
+        - button [ref=f2e36] [cursor=pointer]:
+          - link "Words" [ref=f2e37]:
+            - /url: javascript:void(0)
+        - button "Pāḷi / Eng" [ref=f2e38] [cursor=pointer]
+        - button [ref=f2e39] [cursor=pointer]
+        - button "Read marks" [ref=f2e41] [cursor=pointer]
+        - link [ref=f2e44] [cursor=pointer]:
+          - /url: javascript:void(0);
+    - separator [ref=f2e46]
+    - generic [ref=f2e47]:
+      - text: Kacchapa has
+      - link "variants" [ref=f2e50] [cursor=pointer]:
+        - /url: /?q=kacchapa&scope=all&report=words#variants
+    - generic [ref=f2e52]:
+      - generic [ref=f2e53]:
+        - generic [ref=f2e55]:
+          - combobox "per page" [ref=f2e56]:
+            - option "10" [selected]
+            - option "30"
+            - option "50"
+            - option "100"
+            - option "1,000"
+          - generic [ref=f2e57] [cursor=pointer]: per page
+        - navigation "pagination" [ref=f2e60]:
+          - list [ref=f2e61]:
+            - listitem [ref=f2e62]:
+              - link "First" [disabled]: «
+            - listitem [ref=f2e63]:
+              - link "Previous" [disabled]: ‹
+            - listitem [ref=f2e64]:
+              - link "1" [ref=f2e65] [cursor=pointer]
+            - listitem [ref=f2e66]:
+              - link "Next" [disabled]: ›
+            - listitem [ref=f2e67]:
+              - link "Last" [disabled]: »
+        - generic [ref=f2e69]:
+          - generic [ref=f2e70] [cursor=pointer]: "Filter:"
+          - searchbox "Filter:" [ref=f2e71]
+          - button "Advanced filter" [pressed] [ref=f2e72] [cursor=pointer]
+      - table [ref=f2e75]:
+        - rowgroup [ref=f2e83]:
+          - row [ref=f2e84]:
+            - columnheader "Sutta" [ref=f2e85] [cursor=pointer]
+            - columnheader "Title" [ref=f2e86] [cursor=pointer]
+            - columnheader "Words" [ref=f2e87] [cursor=pointer]
+            - columnheader "Ct" [ref=f2e88] [cursor=pointer]
+            - columnheader "Mr" [ref=f2e89] [cursor=pointer]
+            - columnheader "Links" [ref=f2e90]
+        - rowgroup [ref=f2e91]:
+          - row [ref=f2e92]:
+            - cell [ref=f2e93] [cursor=pointer]:
+              - link "dn1" [ref=f2e94]:
+                - /url: /dn1:1.22.2?s=kacchapa&lang=en&langs=ru%2Cen
+            - cell "Brahmajālasutta The Brahmā Net" [ref=f2e95]:
+              - strong [ref=f2e96]: Brahmajālasutta
+              - generic [ref=f2e97]: en
+              - generic [ref=f2e98]: The Brahmā Net
+            - cell "kacchapalakkhaṇaṁ" [ref=f2e99]
+            - cell "1" [ref=f2e101]
+            - cell "2" [ref=f2e102]
+            - cell [ref=f2e103]:
+              - link "Pi" [ref=f2e104] [cursor=pointer]:
+                - /url: https://d.dhamma.gift/_dprhtml/index.html?loc=d.0.0.0.0.0.0.m
+              - link "En" [ref=f2e105] [cursor=pointer]:
+                - /url: /b/?q=dn1
+            - text: ✦ ✦ ✦ ✦ ✦ ✦
+          - row [ref=f2e106]:
+            - cell [ref=f2e107] [cursor=pointer]:
+              - link "dn2" [ref=f2e108]:
+                - /url: /dn2:57.2?s=kacchapa&lang=en&langs=ru%2Cen
+            - cell "Sāmaññaphalasutta The Fruits of the Contemplative Life" [ref=f2e109]:
+              - strong [ref=f2e110]: Sāmaññaphalasutta
+              - generic [ref=f2e111]: en
+              - generic [ref=f2e112]: The Fruits of the Contemplative Life
+            - cell "kacchapalakkhaṇaṁ" [ref=f2e113]
+            - cell "1" [ref=f2e115]
+            - cell "30" [ref=f2e116]
+            - cell [ref=f2e117]:
+              - link "Pi" [ref=f2e118] [cursor=pointer]:
+                - /url: https://d.dhamma.gift/_dprhtml/index.html?loc=d.0.0.0.1.0.0.m
+              - link "En" [ref=f2e119] [cursor=pointer]:
+                - /url: /b/?q=dn2
+            - text: ✦ ✦ ✦ ✦ ✦ ✦
+          - row [ref=f2e120]:
+            - cell [ref=f2e121] [cursor=pointer]:
+              - link "sn35.240" [ref=f2e122]:
+                - /url: /sn35.240:1.5?s=kacchapa&lang=en&langs=ru%2Cen
+            - cell "Kummopamasutta Sutta The Turtle" [ref=f2e123]:
+              - strong [ref=f2e124]: Kummopamasutta
+              - generic [ref=f2e125]: en
+              - generic [ref=f2e126]: Sutta The Turtle
+            - cell "kacchapaṁ" [ref=f2e127]
+            - cell "2" [ref=f2e129]
+            - cell "1" [ref=f2e130]
+            - cell [ref=f2e131]:
+              - link "Pi" [ref=f2e132] [cursor=pointer]:
+                - /url: https://d.dhamma.gift/_dprhtml/index.html?loc=s.3.0.0.0.18.2.m
+              - link "En" [ref=f2e133] [cursor=pointer]:
+                - /url: /b/?q=sn35.240
+            - text: ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦
+      - generic [ref=f2e134]:
+        - status [ref=f2e136]: Showing 1 to 3 of 3 entries
+        - navigation "pagination" [ref=f2e139]:
+          - list [ref=f2e140]:
+            - listitem [ref=f2e141]:
+              - link "First" [disabled]: «
+            - listitem [ref=f2e142]:
+              - link "Previous" [disabled]: ‹
+            - listitem [ref=f2e143]:
+              - link "1" [ref=f2e144] [cursor=pointer]
+            - listitem [ref=f2e145]:
+              - link "Next" [disabled]: ›
+            - listitem [ref=f2e146]:
+              - link "Last" [disabled]: »
+      - generic [ref=f2e148]:
+        - generic [ref=f2e149]:
+          - generic [ref=f2e150]: Custom Search Builder (1)
+          - button "Clear All" [ref=f2e151] [cursor=pointer]
+        - generic [ref=f2e152]:
+          - generic:
+            - button "And" [ref=f2e153] [cursor=pointer]
+            - button "×" [ref=f2e155] [cursor=pointer]
+          - generic [ref=f2e156]:
+            - combobox [ref=f2e157]:
+              - option "Sutta"
+              - option "✓"
+              - option "Title"
+              - option "Words"
+              - option "Ct"
+              - option "Mr"
+              - option "Links"
+              - option "Type"
+              - option "Quote" [selected]
+            - combobox [ref=f2e158]:
+              - option "Equals"
+              - option "Not"
+              - option "Starts With"
+              - option "Does Not Start With"
+              - option "Contains"
+              - option "Does Not Contain" [selected]
+              - option "Ends With"
+              - option "Does Not End With"
+              - option "Empty"
+              - option "Not Empty"
+            - textbox [active] [ref=f2e160]: ExcludeMe
+            - button "×" [ref=f2e162] [cursor=pointer]
+          - button "Add Condition" [ref=f2e163] [cursor=pointer]
+      - generic [ref=f2e165]:
+        - button "Main" [ref=f2e166] [cursor=pointer]
+        - button "History" [ref=f2e167] [cursor=pointer]
+        - button "Export" [ref=f2e169] [cursor=pointer]
+        - button "Read" [ref=f2e170] [cursor=pointer]
+        - button "Make List" [ref=f2e171] [cursor=pointer]
+        - button "List Diff" [ref=f2e172] [cursor=pointer]
+        - button "Sutta Diff" [ref=f2e173] [cursor=pointer]
+        - button "Visibility" [ref=f2e175] [cursor=pointer]
+  - generic [ref=f2e22] [cursor=pointer]:
+    - generic [ref=f2e23]:
+      - text: 💡
+      - strong [ref=f2e24]: "Hint:"
+      - text: To open the text from a specific location, click the invisible link ✦ at the beginning or end of the fragment.
+    - button "×" [ref=f2e25]
+  - status [ref=f2e176]

@@ -1,0 +1,49 @@
+- generic [ref=f8e1]:
+  - generic [ref=f8e3]:
+    - generic [ref=f8e5]:
+      - paragraph: Find the Truth
+      - generic [ref=f8e7]:
+        - generic [ref=f8e8] [cursor=pointer]: Search
+        - generic [ref=f8e9]:
+          - searchbox "Search" [active] [ref=f8e10]: dhamma
+          - button "Clear" [ref=f8e11] [cursor=pointer]
+          - button "Quick settings" [ref=f8e15] [cursor=pointer]
+          - button "Search" [ref=f8e18] [cursor=pointer]:
+            - status [ref=f8e19]
+      - generic: ↵ search for “dhamma”
+    - generic:
+      - generic:
+        - button "Read Pāḷi"
+        - button "External"
+        - button "AI & Dicts"
+        - button "Materials"
+        - button "Tools"
+        - button "History"
+        - button "Help"
+      - generic:
+        - generic:
+          - generic:
+            - generic:
+              - generic:
+                - heading "Definition of dukkha in suttas" [level=5]
+                - text: Is it possible that terminology in not throughout in the Buddhas Teaching?
+                - link "Read":
+                  - /url: /assets/example/kata.,-dukkha.m-question_suttanta_pali_3-3.html
+            - button "Previous"
+            - button "Next"
+          - generic:
+            - button "Show all"
+      - contentinfo:
+        - generic:
+          - text: © 2022–2026 dhamma.gift ·
+          - link "Terms of use":
+            - /url: javascript:void(0)
+          - text: ·
+          - link "Privacy Policy":
+            - /url: /assets/common/privacy.html
+  - generic [ref=f8e22] [cursor=pointer]:
+    - generic [ref=f8e23]:
+      - text: 💡
+      - strong [ref=f8e24]: "Hint:"
+      - text: To open the text from a specific location, click the invisible link ✦ at the beginning or end of the fragment.
+    - button "×" [ref=f8e25]

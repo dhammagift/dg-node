@@ -1,0 +1,49 @@
+- generic [ref=e1]:
+  - generic [ref=e3]:
+    - generic [ref=e5]:
+      - paragraph: Find the Truth
+      - generic [ref=e7]:
+        - generic [ref=e8] [cursor=pointer]: Search
+        - generic [ref=e9]:
+          - searchbox "Search" [active] [ref=e10]: kacchapa
+          - button "Clear" [ref=e11] [cursor=pointer]
+          - button "Quick settings" [ref=e15] [cursor=pointer]
+          - button "Search" [ref=e18] [cursor=pointer]:
+            - status [ref=e19]
+      - generic: ↵ search for “kacchapa”
+    - generic:
+      - generic:
+        - button "Read Pāḷi"
+        - button "External"
+        - button "AI & Dicts"
+        - button "Materials"
+        - button "Tools"
+        - button "History"
+        - button "Help"
+      - generic:
+        - generic:
+          - generic:
+            - generic:
+              - generic:
+                - heading "The Dhamma Equivalent of a SWOT Analysis" [level=5]
+                - text: Attractiveness, Danger-Drawback, "Escape", and phenomena to be examined through this lens
+                - link "Read":
+                  - /url: /?q=%5Cbko%5Cb.%2Aass%C4%81d.%2A%C4%81d%C4%ABnav.%2Anissara%E1%B9%87&p=-kn
+            - button "Previous"
+            - button "Next"
+          - generic:
+            - button "Show all"
+      - contentinfo:
+        - generic:
+          - text: © 2022–2026 dhamma.gift ·
+          - link "Terms of use":
+            - /url: javascript:void(0)
+          - text: ·
+          - link "Privacy Policy":
+            - /url: /assets/common/privacy.html
+  - generic [ref=e22] [cursor=pointer]:
+    - generic [ref=e23]:
+      - text: 💡
+      - strong [ref=e24]: "Hint:"
+      - text: To open the text from a specific location, click the invisible link ✦ at the beginning or end of the fragment.
+    - button "×" [ref=e25]

@@ -1,0 +1,186 @@
+- generic [ref=f16e1]:
+  - generic [ref=f16e2]:
+    - generic [ref=f16e3]:
+      - generic [ref=f16e5]:
+        - paragraph: Find the Truth
+        - generic [ref=f16e6]:
+          - generic [ref=f16e7]:
+            - generic [ref=f16e8] [cursor=pointer]: Search
+            - generic [ref=f16e9]:
+              - link [ref=f16e10] [cursor=pointer]:
+                - /url: /
+                - img "Dhamma.Gift" [ref=f16e11]
+              - searchbox "Search" [active] [ref=f16e12]: kacchapa
+              - button "Clear" [ref=f16e13] [cursor=pointer]
+              - button "Quick settings" [ref=f16e17] [cursor=pointer]
+              - button "Search" [ref=f16e20] [cursor=pointer]
+          - button "Open menu" [ref=f16e23] [cursor=pointer]
+        - generic: ↵ search for “kacchapa”
+      - generic:
+        - generic:
+          - button "Read Pāḷi"
+          - button "External"
+          - button "AI & Dicts"
+          - button "Materials"
+          - button "Tools"
+          - button "History"
+          - button "Help"
+        - generic:
+          - generic:
+            - generic:
+              - generic:
+                - generic:
+                  - heading "The Dhamma Equivalent of a SWOT Analysis" [level=5]
+                  - text: Attractiveness, Danger-Drawback, "Escape", and phenomena to be examined through this lens
+                  - link "Read":
+                    - /url: /?q=%5Cbko%5Cb.%2Aass%C4%81d.%2A%C4%81d%C4%ABnav.%2Anissara%E1%B9%87&p=-kn
+              - button "Previous"
+              - button "Next"
+            - generic:
+              - button "Show all"
+        - contentinfo:
+          - generic:
+            - text: © 2022–2026 dhamma.gift ·
+            - link "Terms of use":
+              - /url: javascript:void(0)
+            - text: ·
+            - link "Privacy Policy":
+              - /url: /assets/common/privacy.html
+      - generic [ref=f16e26]:
+        - heading "Kacchapa 3 texts and 4 matches in 4 Nikayas" [level=3] [ref=f16e27]
+        - button "Saṁvaṭṭo / Vivaṭṭo" [ref=f16e28] [cursor=pointer]
+        - button [ref=f16e29] [cursor=pointer]:
+          - link "Words" [ref=f16e30]:
+            - /url: javascript:void(0)
+        - button "Pāḷi / Eng" [ref=f16e31] [cursor=pointer]
+        - button [ref=f16e32] [cursor=pointer]
+        - button "Read marks" [ref=f16e34] [cursor=pointer]
+        - link [ref=f16e37] [cursor=pointer]:
+          - /url: javascript:void(0);
+    - separator [ref=f16e39]
+    - generic [ref=f16e40]:
+      - text: Kacchapa has
+      - link "variants" [ref=f16e43] [cursor=pointer]:
+        - /url: /?q=kacchapa&scope=all&report=words#variants
+    - generic [ref=f16e45]:
+      - generic [ref=f16e46]:
+        - generic [ref=f16e48]:
+          - combobox "per page" [ref=f16e49]:
+            - option "10" [selected]
+            - option "30"
+            - option "50"
+            - option "100"
+            - option "1,000"
+          - generic [ref=f16e50] [cursor=pointer]: per page
+        - navigation "pagination" [ref=f16e53]:
+          - list [ref=f16e54]:
+            - listitem [ref=f16e55]:
+              - link "First" [disabled]: «
+            - listitem [ref=f16e56]:
+              - link "Previous" [disabled]: ‹
+            - listitem [ref=f16e57]:
+              - link "1" [ref=f16e58] [cursor=pointer]
+            - listitem [ref=f16e59]:
+              - link "Next" [disabled]: ›
+            - listitem [ref=f16e60]:
+              - link "Last" [disabled]: »
+        - generic [ref=f16e62]:
+          - generic [ref=f16e63] [cursor=pointer]: "Filter:"
+          - searchbox "Filter:" [ref=f16e64]
+          - button "Advanced filter" [ref=f16e65] [cursor=pointer]
+      - table [ref=f16e68]:
+        - rowgroup [ref=f16e76]:
+          - row [ref=f16e77]:
+            - 'columnheader "Sutta Sutta: Activate to invert sorting" [ref=f16e78] [cursor=pointer]':
+              - generic [ref=f16e79]:
+                - generic [ref=f16e80]: Sutta
+                - 'button "Sutta: Activate to invert sorting" [ref=f16e81]'
+            - 'columnheader "Title Title: Activate to sort" [ref=f16e82] [cursor=pointer]':
+              - generic [ref=f16e83]:
+                - generic [ref=f16e84]: Title
+                - 'button "Title: Activate to sort" [ref=f16e85]'
+            - 'columnheader "Words Words: Activate to sort" [ref=f16e86] [cursor=pointer]':
+              - generic [ref=f16e87]:
+                - generic [ref=f16e88]: Words
+                - 'button "Words: Activate to sort" [ref=f16e89]'
+            - 'columnheader "Ct Ct: Activate to sort" [ref=f16e90] [cursor=pointer]':
+              - generic [ref=f16e91]:
+                - generic [ref=f16e92]: Ct
+                - 'button "Ct: Activate to sort" [ref=f16e93]'
+            - 'columnheader "Mr Mr: Activate to sort" [ref=f16e94] [cursor=pointer]':
+              - generic [ref=f16e95]:
+                - generic [ref=f16e96]: Mr
+                - 'button "Mr: Activate to sort" [ref=f16e97]'
+            - columnheader "Links" [ref=f16e98]
+        - rowgroup [ref=f16e101]:
+          - row [ref=f16e102]:
+            - cell [ref=f16e103] [cursor=pointer]:
+              - link "dn1" [ref=f16e104]:
+                - /url: /dn1:1.22.2?s=kacchapa&lang=en&langs=ru%2Cen
+            - cell [ref=f16e105]:
+              - strong [ref=f16e106]: Brahmajālasutta
+            - cell "kacchapa" [ref=f16e108]
+            - cell "1" [ref=f16e110]
+            - cell "2" [ref=f16e111]
+            - cell [ref=f16e112]:
+              - link "Pi" [ref=f16e113] [cursor=pointer]:
+                - /url: javascript:void(0)
+              - link "En" [ref=f16e114] [cursor=pointer]:
+                - /url: javascript:void(0)
+          - row [ref=f16e115]:
+            - cell [ref=f16e116] [cursor=pointer]:
+              - link "dn2" [ref=f16e117]:
+                - /url: /dn2:57.2?s=kacchapa&lang=en&langs=ru%2Cen
+            - cell [ref=f16e118]:
+              - strong [ref=f16e119]: Sāmaññaphalasutta
+            - cell "kacchapa" [ref=f16e121]
+            - cell "1" [ref=f16e123]
+            - cell "30" [ref=f16e124]
+            - cell [ref=f16e125]:
+              - link "Pi" [ref=f16e126] [cursor=pointer]:
+                - /url: javascript:void(0)
+              - link "En" [ref=f16e127] [cursor=pointer]:
+                - /url: javascript:void(0)
+          - row [ref=f16e128]:
+            - cell [ref=f16e129] [cursor=pointer]:
+              - link "sn35.240" [ref=f16e130]:
+                - /url: /sn35.240:1.5?s=kacchapa&lang=en&langs=ru%2Cen
+            - cell [ref=f16e131]:
+              - strong [ref=f16e132]: Kummopamasutta
+            - cell "kacchapa" [ref=f16e134]
+            - cell "2" [ref=f16e136]
+            - cell "1" [ref=f16e137]
+            - cell [ref=f16e138]:
+              - link "Pi" [ref=f16e139] [cursor=pointer]:
+                - /url: javascript:void(0)
+              - link "En" [ref=f16e140] [cursor=pointer]:
+                - /url: javascript:void(0)
+      - generic [ref=f16e141]:
+        - status [ref=f16e143]: Showing 1 to 3 of 3 entries
+        - navigation "pagination" [ref=f16e146]:
+          - list [ref=f16e147]:
+            - listitem [ref=f16e148]:
+              - link "First" [disabled]: «
+            - listitem [ref=f16e149]:
+              - link "Previous" [disabled]: ‹
+            - listitem [ref=f16e150]:
+              - link "1" [ref=f16e151] [cursor=pointer]
+            - listitem [ref=f16e152]:
+              - link "Next" [disabled]: ›
+            - listitem [ref=f16e153]:
+              - link "Last" [disabled]: »
+      - generic [ref=f16e155]:
+        - button "Main" [ref=f16e156] [cursor=pointer]
+        - button "History" [ref=f16e157] [cursor=pointer]
+        - button "Export" [ref=f16e159] [cursor=pointer]
+        - button "Read" [ref=f16e160] [cursor=pointer]
+        - button "Make List" [ref=f16e161] [cursor=pointer]
+        - button "List Diff" [ref=f16e162] [cursor=pointer]
+        - button "Sutta Diff" [ref=f16e163] [cursor=pointer]
+        - button "Visibility" [ref=f16e165] [cursor=pointer]
+  - generic [ref=f16e167] [cursor=pointer]:
+    - generic [ref=f16e168]:
+      - text: 💡
+      - strong [ref=f16e169]: "Hint:"
+      - text: To open the text from a specific location, click the invisible link ✦ at the beginning or end of the fragment.
+    - button "×" [ref=f16e170]
