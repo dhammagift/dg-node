@@ -1,6 +1,7 @@
 {
   "common": {
     "close": "Close",
+    "clear": "Clear",
     "settings": "Settings",
     "help": "Help",
     "home": "Home",

@@ -14,8 +14,14 @@
     "  tplMulti — массив префиксов, открывается пачкой через openWithQueryMulti();",
     "  action   — вызов именованной функции легаси (openDictionaries, readPlus);",
     "  modal:\"quick\" на самой плитке — открыть quickModal (компас) вместо своей шторки: у",
-    "             истории отдельного списка нет, она и так живёт там.",
-    "  blank    — открывать в новой вкладке (target=_blank в исходном меню).",
+    "             истории отдельного списка нет, она и так живёт там;",
+    "  modal:\"help\" — открыть модалку помощи выдачи (#SearchResultHelp), второй копии не заводим;",
+    "  layout:\"chips\" у ГРУППЫ — рисовать её пункты вплотную, в строку, а не столбцом строк:",
+    "             так помечены наборы с короткими самоочевидными подписями (ИИ, переводчики,",
+    "             коды изданий);",
+    "  blank    — открывать в новой вкладке (target=_blank в исходном меню);",
+    "  desc     — короткое пояснение под названием: что это вообще такое. Проставлено пока не",
+    "             всем пунктам, а первым в наборе — по ним и видно, чем набор занимается.",
     "",
     "Плитка russian есть только в ru-меню (в en-меню такой группы нет) — показывать её только",
     "при siteLanguage === 'ru', как это делает само легаси-меню."
@@ -35,6 +41,12 @@
       "modal": "quick"
     },
 
+    "help": {
+      "label": "Help",
+      "icon": "help",
+      "modal": "help"
+    },
+
     "external": {
       "label": "External",
       "icon": "globe",
@@ -42,15 +54,15 @@
         {
           "name": "Tipitaka",
           "items": [
-            { "label": "BJT", "title": "Sri Lankan Edition Buddha Jayanti", "href": "https://open.tipitaka.lk/", "blank": true },
-            { "label": "Thai", "title": "Thai Tipitaka at 84000.org", "href": "https://84000.org/", "blank": true },
+            { "label": "BJT", "title": "Sri Lankan Edition Buddha Jayanti", "desc": "Sri Lankan Buddha Jayanti edition of the Pāḷi canon", "href": "https://open.tipitaka.lk/", "blank": true },
+            { "label": "Thai", "title": "Thai Tipitaka at 84000.org", "desc": "The Thai edition, at 84000.org", "href": "https://84000.org/", "blank": true },
             { "label": "VRI", "title": "VRI Tipitaka at Tipitaka.org", "href": "https://tipitaka.org/romn", "blank": true },
             { "label": "PTS", "title": "PTS Tipitaka at GRETIL", "href": "https://gretil.sub.uni-goettingen.de/gretil.html#Suttapit", "blank": true },
             { "label": "MS", "title": "Mahāsaṅgīti Edition at SuttaCentral.net", "href": "https://suttacentral.net/pitaka/sutta?lang=en", "blank": true }
           ]
         },
         {
-          "name": "Tipitaka CST",
+          "name": "Tipitaka CST", "layout": "chips",
           "items": [
             { "label": "PA", "title": "Paauksociety.org", "href": "https://apply.paauksociety.org/tipitaka/index.php", "blank": true },
             { "label": "Tp.app", "title": "Tipitaka.app", "href": "https://tipitaka.app", "blank": true },
@@ -119,13 +131,13 @@
         {
           "name": "Digital Pāḷi Dictionary",
           "items": [
-            { "label": "Digital Pāḷi Dict", "title": "open Dict.Dhamma.Gift in extra window (Alt + N)", "tpl": "https://dict.dhamma.gift/?theme={{theme}}&source=pwa&q={{q}}", "blank": true, "star": true },
-            { "label": "Offline", "title": "download DPD for offline usage", "href": "https://digitalpalidictionary.github.io/", "blank": true },
+            { "label": "Digital Pāḷi Dict", "title": "open Dict.Dhamma.Gift in extra window (Alt + N)", "desc": "The main modern Pāḷi dictionary — opens with the word from the search box", "tpl": "https://dict.dhamma.gift/?theme={{theme}}&source=pwa&q={{q}}", "blank": true, "star": true },
+            { "label": "Offline", "title": "download DPD for offline usage", "desc": "The same dictionary as a download — works without internet", "href": "https://digitalpalidictionary.github.io/", "blank": true },
             { "label": "Extensions", "title": "Browser Extensions", "href": "#links" }
           ]
         },
         {
-          "name": "AI",
+          "name": "AI", "layout": "chips",
           "items": [
             { "label": "ChatGPT", "href": "https://chatgpt.com", "blank": true },
             { "label": "Gemini", "href": "https://gemini.google/", "blank": true },
@@ -134,7 +146,7 @@
           ]
         },
         {
-          "name": "Translators",
+          "name": "Translators", "layout": "chips",
           "items": [
             { "label": "Mitra Translator", "tpl": "https://dharmamitra.org/translate?input_sentence={{q}}", "blank": true, "star": true },
             { "label": "Nexus", "href": "https://dharmamitra.org/nexus/db/pa", "blank": true }
@@ -218,8 +230,8 @@
         {
           "name": "Grammar",
           "items": [
-            { "label": "Cases", "href": "https://docs.google.com/spreadsheets/d/1wo8YEXX72DEV7L2jH5FUBdmeQPdiyAIN/edit?usp=drivesdk&ouid=110812668327988798342&rtpof=true&sd=true", "star": true },
-            { "label": "Conjugations", "href": "https://drive.google.com/file/d/1HzPCYsVBEkWErAk6TqSWRYKseM1hqMCb/view?usp=sharing", "star": true }
+            { "label": "Cases", "desc": "Declension tables: noun and adjective endings", "href": "https://docs.google.com/spreadsheets/d/1wo8YEXX72DEV7L2jH5FUBdmeQPdiyAIN/edit?usp=drivesdk&ouid=110812668327988798342&rtpof=true&sd=true", "star": true },
+            { "label": "Conjugations", "desc": "Verb endings by tense, person and number", "href": "https://drive.google.com/file/d/1HzPCYsVBEkWErAk6TqSWRYKseM1hqMCb/view?usp=sharing", "star": true }
           ]
         },
         {
@@ -275,8 +287,8 @@
         {
           "name": "On site",
           "items": [
-            { "label": "DG (th)", "href": "/th/?q=", "setsLang": "th" },
-            { "label": "old", "href": "/old.php" },
+            { "label": "DG (th)", "desc": "Dhamma.gift in Thai script", "href": "/th/?q=", "setsLang": "th" },
+            { "label": "old", "desc": "The previous version of the site", "href": "/old.php" },
             { "label": "TTS", "title": "TTS Text-to-speech", "tpl": "/tts.php?q={{q}}" },
             { "label": "Read+", "title": "Read by Books or Chapters", "action": "readPlus", "base": "/r.php" },
             { "label": "Sutta", "href": "/read.php#dhamma" },
@@ -348,6 +360,12 @@
       "modal": "quick"
     },
 
+    "help": {
+      "label": "Помощь",
+      "icon": "help",
+      "modal": "help"
+    },
+
     "external": {
       "label": "Иностран.",
       "icon": "globe",
@@ -355,15 +373,15 @@
         {
           "name": "Типитака",
           "items": [
-            { "label": "BJT", "title": "Редакция Шри Ланки Buddha Jhayanti", "href": "https://open.tipitaka.lk/", "blank": true },
-            { "label": "Thai", "title": "Тайская Типитака на 84000.org", "href": "https://84000.org/", "blank": true },
+            { "label": "BJT", "title": "Редакция Шри Ланки Buddha Jhayanti", "desc": "Шри-ланкийское издание канона, Buddha Jayanti", "href": "https://open.tipitaka.lk/", "blank": true },
+            { "label": "Thai", "title": "Тайская Типитака на 84000.org", "desc": "Тайское издание, на 84000.org", "href": "https://84000.org/", "blank": true },
             { "label": "VRI", "title": "Типитака VRI на Tipitaka.org", "href": "https://tipitaka.org/romn", "blank": true },
             { "label": "PTS", "title": "Типитака PTS на GRETIL", "href": "https://gretil.sub.uni-goettingen.de/gretil.html#Suttapit", "blank": true },
             { "label": "MS", "title": "Типитака Mahāsaṅgīti на SuttaCentral.net", "href": "https://suttacentral.net/pitaka/sutta?lang=en", "blank": true }
           ]
         },
         {
-          "name": "Типитака CST",
+          "name": "Типитака CST", "layout": "chips",
           "items": [
             { "label": "PA", "title": "Paauksociety.org", "href": "https://apply.paauksociety.org/tipitaka/index.php", "blank": true },
             { "label": "Tp.app", "title": "Tipitaka.app", "href": "https://tipitaka.app", "blank": true },
@@ -432,8 +450,8 @@
         {
           "name": "Dhamma.gift",
           "items": [
-            { "label": "Dhamma.gift Сутты", "href": "/ru/read.php#dhamma" },
-            { "label": "Dhamma.gift Патимоккха", "href": "/ru/read.php#vinaya" },
+            { "label": "Dhamma.gift Сутты", "desc": "Русские переводы сутт на этом сайте", "href": "/ru/read.php#dhamma" },
+            { "label": "Dhamma.gift Патимоккха", "desc": "Монашеские правила с переводом", "href": "/ru/read.php#vinaya" },
             { "label": "Принципы", "href": "/assets/common/o.html", "blank": true },
             { "label": "Проблематика", "href": "/assets/common/rationale.html" }
           ]
@@ -465,13 +483,13 @@
         {
           "name": "Digital Pāḷi Dictionary",
           "items": [
-            { "label": "Digital Pāḷi Dict", "title": "открыть Dict.Dhamma.Gift в новом окне (Alt + N)", "tpl": "https://dict.dhamma.gift/ru/?theme={{theme}}&source=pwa&q={{q}}", "blank": true, "star": true },
-            { "label": "Оффлайн", "title": "Скачать DPD для использования оффлайн", "href": "https://digitalpalidictionary.github.io/", "blank": true },
+            { "label": "Digital Pāḷi Dict", "title": "открыть Dict.Dhamma.Gift в новом окне (Alt + N)", "desc": "Главный современный словарь пали — открывается со словом из строки поиска", "tpl": "https://dict.dhamma.gift/ru/?theme={{theme}}&source=pwa&q={{q}}", "blank": true, "star": true },
+            { "label": "Оффлайн", "title": "Скачать DPD для использования оффлайн", "desc": "Тот же словарь для скачивания — работает без интернета", "href": "https://digitalpalidictionary.github.io/", "blank": true },
             { "label": "Расширения", "title": "Расширения для браузеров", "href": "#links" }
           ]
         },
         {
-          "name": "ИИ",
+          "name": "ИИ", "layout": "chips",
           "items": [
             { "label": "ChatGPT", "href": "https://chatgpt.com", "blank": true },
             { "label": "Gemini", "href": "https://gemini.google/", "blank": true },
@@ -480,7 +498,7 @@
           ]
         },
         {
-          "name": "Переводчики",
+          "name": "Переводчики", "layout": "chips",
           "items": [
             { "label": "Mitra Translator", "tpl": "https://dharmamitra.org/translate?input_sentence={{q}}", "blank": true, "star": true },
             { "label": "Nexus", "href": "https://dharmamitra.org/nexus/db/pa", "blank": true }
@@ -564,8 +582,8 @@
         {
           "name": "Грамматика",
           "items": [
-            { "label": "Падежи — таблица", "href": "https://drive.google.com/file/d/1HVRK6yTMT59uHCCvTdQukRy7fmHNntOr/view?usp=drivesdk", "star": true },
-            { "label": "Падежи — примеры", "href": "/assets/materials/pali_declensions_ru.pdf" },
+            { "label": "Падежи — таблица", "desc": "Окончания существительных и прилагательных одной таблицей", "href": "https://drive.google.com/file/d/1HVRK6yTMT59uHCCvTdQukRy7fmHNntOr/view?usp=drivesdk", "star": true },
+            { "label": "Падежи — примеры", "desc": "Склонения с примерами, PDF", "href": "/assets/materials/pali_declensions_ru.pdf" },
             { "label": "Спряжения (рус)", "href": "/assets/materials/pali_conjugations_ru.pdf", "star": true },
             { "label": "Спряжения (англ)", "href": "https://drive.google.com/file/d/1HzPCYsVBEkWErAk6TqSWRYKseM1hqMCb/view?usp=sharing" }
           ]
@@ -624,8 +642,8 @@
         {
           "name": "На сайте",
           "items": [
-            { "label": "DG (th)", "href": "/th/?q=", "setsLang": "th" },
-            { "label": "old", "href": "/old.php" },
+            { "label": "DG (th)", "desc": "Dhamma.gift тайским письмом", "href": "/th/?q=", "setsLang": "th" },
+            { "label": "old", "desc": "Предыдущая версия сайта", "href": "/old.php" },
             { "label": "TTS", "title": "TTS Текст-в-речь", "tpl": "/ru/tts.php?q={{q}}" },
             { "label": "Read+", "title": "Читать Книгами или Главами", "action": "readPlus", "base": "/ru/r.php" },
             { "label": "bupm", "href": "/ru/pm.php?expand=true" },

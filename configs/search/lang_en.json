@@ -13,6 +13,46 @@
     "hintText": "looks like a link to a text",
     "noItems": "Nothing here yet"
   },
+  "menu": {
+    "navigation": "Navigation",
+    "settings": "Settings",
+    "language": "Language",
+    "theme": "Theme",
+    "themeLight": "Light",
+    "themeDark": "Dark",
+    "themeAuto": "System",
+    "removeTile": "Remove from home",
+    "restoreTiles": "Restore removed buttons"
+  },
+  "slides": {
+    "title": "Interesting queries",
+    "showAll": "Show all",
+    "allTitle": "All interesting queries"
+  },
+  "quick": {
+    "title": "Quick settings",
+    "where": "Where to search",
+    "context": "Context lines",
+    "ctx0": "Line only",
+    "ctx1": "+1 line",
+    "ctx2": "+2 lines",
+    "view": "Results view",
+    "viewTexts": "Texts",
+    "viewWords": "Words",
+    "diacritics": "Pāḷi diacritics",
+    "note": "Defaults and the book-by-book breakdown live in the full settings.",
+    "scope": {
+      "dn": "DN · Dīgha Nikāya",
+      "mn": "MN · Majjhima Nikāya",
+      "sn": "SN · Saṁyutta Nikāya",
+      "an": "AN · Aṅguttara Nikāya",
+      "knBasic": "KN · core books",
+      "knAll": "KN · the whole Khuddaka",
+      "vinaya": "Vinaya (Vibhaṅga)",
+      "kdPvr": "Khandhaka and Parivāra",
+      "abhi": "Abhidhamma"
+    }
+  },
   "toolbar": {
     "expandCollapseLabel": "Saṁvaṭṭo / Vivaṭṭo",
     "readMarksLabel": "Read marks",

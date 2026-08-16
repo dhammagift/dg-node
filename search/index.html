@@ -123,29 +123,22 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
            directly (fine when it was the page's only sized block) — now it's a flex item inside
            .hero-row (home/compass/burger sit at its immediate left/right, see below), so
            centering is the row's job; this only keeps the input pill itself narrow. */
-        max-width: 380px;
-        margin: 2rem 0 1rem;
+        /* Поле стало шире (просьба владельца: «инпут расширь»): оно теперь главный и
+           единственный элемент своей строки — лого и меню уехали в верхнюю панель, и жать
+           поле до 380px больше незачем. Точное значение по состояниям — в home.css
+           (на главной шире, в выдаче/чтении уже). */
+        max-width: 640px;
+        margin: 1.25rem 0 1rem;
         transition: margin 0.35s ease, max-width 0.35s ease;
     }
-    /* Обёртка над dg-hero-form — держит "домик"/компас/бургер прямо у краёв главного инпута
-       (просьба владельца), сама центрируется как единый ряд. Круглые кнопки — та же высота,
-       что и .searchinput/.rounded-pill, чтобы визуально не скакать по высоте относительно
-       строки поиска. */
+    /* Строка поля. После переезда лого/бургера в #dg-topbar здесь остался только сам инпут,
+       но ряд сохранён: он центрирует поле и переживёт добавление соседей. */
     .hero-row {
         display: flex;
         align-items: center;
         justify-content: center;
         gap: 0.5rem;
         flex-wrap: wrap;
-    }
-    .hero-row > .btn, .hero-row > .dropdown > .btn {
-        width: 44px;
-        height: 44px;
-        padding: 0;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        flex: none;
     }
     /* Placeholder for a translated title still pending /search/enrich — see search-render.js's
        Title column render. Static bar, not a spinner: just needs to read as "more coming",
@@ -303,42 +296,9 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     #dg-quote-menu button:focus {
         background: var(--bs-secondary-bg, #e9ecef);
     }
-    /* Поле поиска: лупа-сабмит лежит ПОВЕРХ поля слева, поле освобождает под неё отступ.
-       Кнопка идёт в разметке ДО инпута — так по Tab фокус попадает сначала на неё, а не
-       перепрыгивает через поле; визуально она всё равно внутри. */
-    .dg-search-field {
-        position: relative;
-        display: block;
-    }
-    .dg-search-field .searchinput {
-        padding-left: 42px;
-    }
-    .dg-search-field #searchbtn {
-        position: absolute;
-        left: 4px;
-        top: 50%;
-        transform: translateY(-50%);
-        /* Выше поля: у .searchinput z-index 9, и непрозрачный белый инпут закрывал иконку
-           собой — она честно существовала (17x17) и даже занимала место, но не была видна,
-           отсюда и "лупы нет, просто пустое место". Проверяется elementFromPoint по центру
-           иконки: сверху должен быть SVG, а не INPUT. */
-        z-index: 12;
-        width: 34px;
-        height: 34px;
-        padding: 0;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        border: 0;
-        border-radius: 50%;
-        background: transparent;
-        color: var(--bs-secondary-color, #6c757d);
-    }
-    .dg-search-field #searchbtn:hover,
-    .dg-search-field #searchbtn:focus-visible {
-        color: var(--bs-body-color, #212529);
-        background: var(--bs-secondary-bg, #e9ecef);
-    }
+    /* Поле-оболочка (.dg-input-shell: лупа + инпут + быстрые настройки в одной рамке) живёт в
+       search/css/home.css — там же, где остальной минималистичный скин, и там же его тёмная
+       тема. Здесь оставлено только то, что к скину не относится. */
     /* Лупа развёрнута вправо: линза справа, ручка влево-вниз. У исходного контура (тот же, что
        у fa-magnifying-glass) линза слева, а ручка уходит вправо-вниз — зеркалим по горизонтали.
        Это то же, что делал класс fa-flip-horizontal в старой разметке. */
@@ -355,20 +315,6 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     }
     .scope-info-star:hover,
     .scope-info-star:focus-visible { color: var(--bs-body-color, #212529); }
-    /* Кнопки шапки без рамки и заливки — домик и бургер. Круглые «пилюли» рядом с полем ввода
-       создавали лишний шум; сама иконка при этом остаётся такой же кликабельной по площади. */
-    .hero-row .dg-plain-btn {
-        border: 0;
-        background: transparent;
-        box-shadow: none;
-        color: var(--bs-secondary-color, #6c757d);
-        padding: 0;
-    }
-    .hero-row .dg-plain-btn:hover,
-    .hero-row .dg-plain-btn:focus-visible { color: var(--bs-body-color, #212529); }
-    /* Домик крупнее прочих — главная точка возврата. Размер задаётся самой картинке, чтобы
-       не зависеть от .table-home-icon из общих стилей. */
-    .hero-row .dg-home-btn img { width: 30px; height: 30px; }
 </style>
 
 <link rel="stylesheet" href="/assets/css/langswitch.css">
@@ -443,55 +389,63 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
      состояниями, поэтому фокус, введённый текст и все обработчики переезд переживают. Уход в
      выдачу — схлопывание этих блоков (max-height/opacity в home.css), из-за чего поле само
      поднимается вверх. -->
+<!-- Верхняя панель — бренд слева, бургер справа, во ВСЕХ состояниях (главная, выдача, чтение).
+     Раньше лого/ракушка стояли вплотную к полю ввода, а меню было bootstrap-выпадашкой: и то и
+     другое — вид старого сайта. Теперь шапка отдельной строкой, как в приложении, а меню
+     выезжает слева (см. #dg-drawer в конце body). -->
+<!-- Название сайта отдельной строкой, как в макете. Сам знак (раковина с лепестками) переехал
+     ВНУТРЬ поля ввода — так же, как логотип у поисковиков, — поэтому здесь только слово. -->
+<div id="dg-topbar">
+  <a href="/" id="dg-brand" title="Dhamma.Gift"><span class="dg-brand-name">dhamma.gift</span></a>
+</div>
+
 <p id="home-motto">Найдите Истину</p>
 
 <div class="hero-row mb-2">
-  <!-- Полное лого — только на главной, слева от поля. Название текстом не пишем: в браузере
-       адрес и так виден, а в приложении это будет иконка. -->
-  <a href="/" id="home-logo" class="text-decoration-none" title="Dhamma.Gift">
-    <img src="/assets/img/dgsanhkalogo.png" alt="Dhamma.Gift">
-  </a>
-  <!-- Ракушка (саṅкха) — возврат на главную, слева от поля, ровно на том месте, где на главной
-       стоит полное лого. Тот же элемент и на том же месте в шапке ридера. Без рамки и заливки
-       (dg-plain-btn): круглые кнопки-«пилюли» рядом с полем только шумят. -->
-  <a href="/" class="btn dg-plain-btn dg-home-btn text-decoration-none" title="Home" data-i18n-title="{{global.common.home}}">
-    <img class="table-home-icon" src="/assets/img/dgsankhaonly.png" alt="Dhamma.Gift">
-  </a>
   <form id="form" class="dg-hero-form m-0" autocomplete="off">
     <label class="visually-hidden" for="paliauto">{{search.label}}</label>
-    <!-- Лупа ВНУТРИ поля, слева. Справа поле type="search" рисует свой родной крестик
-         "очистить", и любая наша кнопка справа с ним конфликтует — либо налезает, либо
-         отодвигает его так, что попасть становится трудно. Слева места нет ни у кого, поэтому
-         столкновения не будет в принципе; это же и привычнее: лупа слева, очистка справа. -->
-    <div class="input-group dg-search-field">
+    <!-- Поле собрано как строка поиска поисковика: слева знак сайта, дальше само поле, справа —
+         «очистить» (только когда есть текст), быстрые настройки и лупа. Всё внутри одной рамки;
+         бургер-меню намеренно ВНЕ поля, правее. Кнопки — обычные элементы flex-строки, а не
+         наложенные поверх инпута, как было раньше. -->
+    <div class="dg-input-shell">
+      <!-- Подложка под знаком обязательна: картинка почти белая (лепестки-страницы вверху —
+           светло-серые), на светлом фоне они просто пропадают. Тёмная плашка возвращает контур. -->
+      <a href="/" class="dg-shell-logo" title="Dhamma.Gift" data-i18n-title="{{global.common.home}}">
+        <span class="dg-brand-plate"><img src="/assets/img/dgsanhkalogo.png" alt="Dhamma.Gift"></span>
+      </a>
+      <input class="form-control searchinput" id="paliauto" type="search" placeholder="e.g. Kāyagat or sn56.11" data-i18n-placeholder="{{search.placeholder}}" autocomplete="off" autofocus>
+      <!-- Спиннер ожидания — ЗДЕСЬ, внутри поля, на месте лупы. Раньше он был отдельным блоком
+           под полем и, появляясь, сдвигал всё, что ниже. -->
+      <span class="dg-shell-spinner" role="status" aria-live="polite" aria-hidden="true"></span>
+      <!-- Своё «очистить» вместо родного крестика type="search": родной рисуется только в
+           webkit, не поддаётся оформлению и вставал бы вплотную к нашим кнопкам. Показывает и
+           прячет его home.js по наличию текста. -->
+      <button type="button" id="dg-clear-btn" class="dg-shell-btn" hidden aria-label="Clear" data-i18n-aria-label="{{global.common.clear}}">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+      <span class="dg-shell-sep" aria-hidden="true"></span>
+      <!-- Шестерёнка с молнией — «быстрые настройки» текущей страницы (на главной — где искать и
+           режимы, в выдаче — ещё и вид отчёта, в чтении будет своё). Молния отличает их от
+           ПОЛНЫХ настроек (/settings/, шестерёнка без молнии) и держит на виду idaṁ dukkhaṁ —
+           поэтому кнопка живёт в поле на каждой странице. Содержимое кнопки собирает home.js
+           (quickButtonHtml) — оно одинаково в поиске и в ридере. -->
+      <button type="button" id="dg-quick-btn" class="dg-qs-btn" aria-label="Quick settings" title="Quick settings" aria-expanded="false" data-i18n-aria-label="{{quick.title}}" data-i18n-title="{{quick.title}}"></button>
       <!-- Лупа — инлайновый SVG, а не <i class="fas fa-search">: FontAwesome эту иконку тут не
            разворачивал (замерено — элемент оставался <i> размером 0x0, ::before пустой), и на
-           месте кнопки было просто пустое место. SVG рисуется всегда и ни от чего не зависит.
-           Ручка направлена вправо-вниз, как у обычной лупы (раньше стоял fa-flip-horizontal,
-           который её зеркалил). -->
-      <button type="submit" id="searchbtn" class="btn" aria-label="Search" data-i18n-aria-label="{{search.label}}">
+           месте кнопки было просто пустое место. Ручка направлена вправо-вниз. -->
+      <button type="submit" id="searchbtn" class="dg-shell-btn dg-shell-go" aria-label="Search" data-i18n-aria-label="{{search.label}}">
         <svg class="dg-search-icon" viewBox="0 0 512 512" width="17" height="17" fill="currentColor" aria-hidden="true">
           <path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352a144 144 0 1 0 0-288 144 144 0 1 0 0 288z"/>
         </svg>
       </button>
-      <input class="form-control rounded-pill searchinput" id="paliauto" type="search" placeholder="e.g. Kāyagat or sn56.11" data-i18n-placeholder="{{search.placeholder}}" autocomplete="off" autofocus>
     </div>
   </form>
-  <!-- Компас переехал вниз, в общий ряд кнопок (между словарём и настройками) — см. ниже. -->
-  <div class="dropdown">
-    <button class="btn dg-plain-btn" type="button" id="burgerMenuBtn" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Menu" title="Menu" data-i18n-aria-label="{{toolbar.menuAriaLabel}}" data-i18n-title="{{toolbar.menuTitle}}">
-      <svg viewBox="0 0 448 512" width="18" height="18" fill="currentColor" aria-hidden="true">
-        <path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/>
-      </svg>
-    </button>
-    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="burgerMenuBtn">
-      <li><a class="dropdown-item" href="/">{{buttons.main}}</a></li>
-      <li><a class="dropdown-item" href="/history.php">{{buttons.history}}</a></li>
-      <li><a class="dropdown-item" href="javascript:void(0)" data-bs-toggle="modal" data-bs-target="#SearchResultHelp">{{global.common.help}}</a></li>
-      <li><a class="dropdown-item" href="/settings/">{{global.common.settings}}</a></li>
-      <li><a class="dropdown-item" href="/login">{{global.common.login}}</a></li>
-    </ul>
-  </div>
+  <button type="button" id="dg-menu-btn" class="dg-icon-btn" aria-label="Menu" title="Menu" data-i18n-aria-label="{{toolbar.menuAriaLabel}}" data-i18n-title="{{toolbar.menuTitle}}">
+    <svg viewBox="0 0 448 512" width="19" height="19" fill="currentColor" aria-hidden="true">
+      <path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/>
+    </svg>
+  </button>
 </div>
 
 <!-- Подсказка "искать «…» / похоже на ссылку на текст" — тот же DgTextRouter.classify(), что и
@@ -502,13 +456,19 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
      состояние менялось сразу на сабмите, и человек видел сначала голую таблицу с шапкой
      колонок, потом её же с быстрыми результатами, потом с окончательными — три перерисовки
      подряд, дёрганее обычной перезагрузки. Теперь остаёмся там, где были, крутим спиннер и
-     показываем выдачу уже с данными. -->
-<div id="dg-loading" hidden><span class="spinner-border" role="status" aria-live="polite"></span></div>
+     показываем выдачу уже с данными.
+     Сам спиннер с этого места переехал ВНУТРЬ поля (.dg-shell-spinner): отдельный блок под
+     полем, появляясь, раздвигал разметку и подпрыгивали кнопки. Пустой блок оставлен, чтобы не
+     переписывать dgSetBusy(), который им управляет; видимой высоты у него больше нет. -->
+<div id="dg-loading" hidden></div>
 
 <!-- Плитки. Наполнение — /nodejs/res/menu-links.json (перенос боевого горизонтального меню
-     assets/common/horizontalMenu{En,Ru}.php), рисует home.js. -->
+     assets/common/horizontalMenu{En,Ru}.php), рисует home.js.
+     Ниже — «Интересные запросы»: тот же набор, что крутится на боевой главной легаси-сайта
+     (config/translate.php, $slides), перенесён в /nodejs/res/slides.json. -->
 <div id="home-pane">
   <div class="dg-tiles" id="home-tiles"></div>
+  <div id="home-slides" hidden></div>
 </div>
 
 <script>
@@ -2084,6 +2044,8 @@ $(document).ready(function() {
         // Показываем в строке поиска, что сейчас ищем — можно сразу поправить и отправить снова.
         // (keyword уже декодирован — URLSearchParams.get делает это сам.)
         $('#paliauto').val(keyword);
+        // jQuery .val() не шлёт input — крестик «очистить» в поле надо обновить вручную.
+        if (window.DgHome && window.DgHome.syncInput) window.DgHome.syncInput();
 
         dgSetBusy(true);
         try {
@@ -2133,6 +2095,41 @@ $(document).ready(function() {
     routeFromUrl();
 });
 </script>
+<!-- ============ Боковое меню ============
+     Выезжает СЛЕВА, как в приложениях, вместо прежней bootstrap-выпадашки у бургера. Здесь
+     живёт вся «прочая» навигация сайта и вход в ПОЛНЫЕ настройки; быстрые настройки — отдельно,
+     по шестерёнке-молнии в поле. Открытие/закрытие — home.js. -->
+<div id="dg-drawer-backdrop" hidden></div>
+<aside id="dg-drawer" hidden aria-label="Menu" data-i18n-aria-label="{{toolbar.menuAriaLabel}}">
+  <div class="dg-drawer-head">
+    <span class="dg-brand-plate dg-brand-plate-sm"><img src="/assets/img/dgsanhkalogo.png" alt=""></span>
+    <span class="dg-brand-name">dhamma.gift</span>
+    <button type="button" class="dg-icon-btn dg-drawer-close" aria-label="Close" data-i18n-aria-label="{{global.common.close}}">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+  </div>
+  <nav class="dg-drawer-body">
+    <!-- Язык и тема — прямо здесь, отдельными переключателями: раньше за ними приходилось идти
+         в /settings/ (язык) или искать кнопку в ряду выдачи (тема), а на главной того ряда нет
+         вовсе. Оба переключателя наполняет и обслуживает home.js. -->
+    <p class="dg-group-title">{{menu.language}}</p>
+    <div id="dg-lang-seg" class="dg-segmented"></div>
+    <p class="dg-group-title">{{menu.theme}}</p>
+    <div id="dg-theme-seg" class="dg-segmented"></div>
+
+    <p class="dg-group-title">{{menu.navigation}}</p>
+    <a class="dg-drawer-row" href="/">{{buttons.main}}</a>
+    <a class="dg-drawer-row" href="/history.php">{{buttons.history}}</a>
+    <a class="dg-drawer-row" href="javascript:void(0)" data-bs-toggle="modal" data-bs-target="#SearchResultHelp">{{global.common.help}}</a>
+    <!-- Появляется только если человек убрал хотя бы одну кнопку с главной (см. home.js). -->
+    <a class="dg-drawer-row" href="javascript:void(0)" id="dg-restore-tiles" hidden>{{menu.restoreTiles}}</a>
+    <p class="dg-group-title">{{menu.settings}}</p>
+    <!-- Шестерёнка БЕЗ молнии — полные настройки; молния осталась быстрым, у поля. -->
+    <a class="dg-drawer-row" href="/settings/">{{global.common.settings}}</a>
+    <a class="dg-drawer-row" href="/login">{{global.common.login}}</a>
+  </nav>
+</aside>
+
         <script src="/assets/js/openFdg.js"></script>
 	  <script src="/assets/js/smoothScroll.js" defer></script>
     <script defer type="module" src="/assets/js/langswitch.js"></script>

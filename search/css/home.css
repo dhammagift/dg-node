@@ -91,17 +91,238 @@ body.dg-state-home #home-motto { max-height: 90px; margin: min(11vh, 96px) 0 0.7
 body.dg-state-home #home-hint  { max-height: 60px; margin: 0.4rem 0 0; }
 body.dg-state-home #home-pane  { max-height: 1400px; margin: 1.1rem 0 0; }
 
-body.dg-skin-minimal.dg-state-home .dg-hero-form { max-width: 520px; }
+/* Ширина поля по состояниям: на главной оно — центр экрана, в выдаче и чтении уступает место
+   содержимому. Переход между значениями анимируется (transition на .dg-hero-form в index.html).
+   width:100% обязателен: форма — flex-элемент в .hero-row, а flex-элемент по умолчанию сжимается
+   до содержимого, и одного max-width мало (замерено: поле выходило 270px вместо 640px). */
+/* display:block — ответ на `#form { display:flex; justify-content:center; align-items:baseline }`
+   из /assets/css/langswitch.css (общий файл, его не трогаем): из-за него поле-оболочка была
+   flex-элементом и сжималась до содержимого — 269px вместо 640px, и вдобавок выравнивалась по
+   базовой линии. Здесь форма — простой блок, а вся раскладка внутри у .dg-input-shell. */
+body.dg-skin-minimal #form.dg-hero-form { display: block; width: 100%; }
+body.dg-skin-minimal.dg-state-home .dg-hero-form { max-width: 640px; }
+body.dg-skin-minimal.dg-state-results .dg-hero-form,
+body.dg-skin-minimal.dg-state-reader .dg-hero-form { max-width: 520px; }
 
-/* Ракушка ведёт на главную — на самой главной она лишняя, её место слева от поля занимает
-   полное лого. */
-body.dg-state-home .dg-home-btn { display: none; }
+/* ============================================================================
+   Верхняя панель: только название сайта. Знак (раковина) живёт внутри поля ввода, бургер —
+   рядом с полем; здесь остаётся одна «вывеска».
+   ============================================================================ */
+#dg-topbar {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    max-width: 1600px;
+    margin: 0 auto;
+    padding: 0.35rem 0.25rem 0;
+    font-family: var(--dg-font);
+}
 
-/* Полное лого — только на главной, слева от поля, ровно там, где в остальных состояниях
-   стоит ракушка. */
-#home-logo { display: none; flex: none; line-height: 0; }
-body.dg-state-home #home-logo { display: inline-flex; }
-#home-logo img { width: 42px; height: 42px; object-fit: contain; }
+#dg-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    text-decoration: none;
+    color: var(--dg-text);
+}
+#dg-brand:hover { color: var(--dg-text); }
+
+/* Подложка под лого. Картинка почти белая (см. /assets/img/dgsanhkalogo.png: раскрытая книга
+   серая, а лепестки-страницы и раковина — почти #fff), поэтому на светлом фоне верх логотипа
+   пропадал. Плашка — мягкое тёмное пятно с растушёванным краем, а не жёсткий круг: контур
+   лепесткам возвращает, но в шапке не выглядит наклейкой. В тёмной теме логотип и так виден,
+   там подложка только чуть-чуть приподнимает его от фона. */
+.dg-brand-plate {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    flex: none;
+    border-radius: 50%;
+    background: radial-gradient(circle at 50% 52%,
+        rgba(4, 1, 19, 0.9) 0%,
+        rgba(4, 1, 19, 0.82) 52%,
+        rgba(4, 1, 19, 0) 74%);
+}
+body.dark .dg-brand-plate {
+    background: radial-gradient(circle at 50% 52%,
+        rgba(255, 255, 255, 0.14) 0%,
+        rgba(255, 255, 255, 0.08) 55%,
+        rgba(255, 255, 255, 0) 75%);
+}
+.dg-brand-plate img { width: 28px; height: 28px; object-fit: contain; display: block; }
+.dg-brand-plate-sm { width: 30px; height: 30px; }
+.dg-brand-plate-sm img { width: 22px; height: 22px; }
+
+.dg-brand-name {
+    font-size: 1rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--dg-text);
+}
+
+/* Кнопка-иконка шапки (бургер, крестик в меню) — без рамки и заливки. */
+.dg-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    flex: none;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--dg-text-2);
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+.dg-icon-btn:hover,
+.dg-icon-btn:focus-visible { background: var(--dg-surface-hover); color: var(--dg-text); }
+
+/* На главной бренд крупнее — это единственная «вывеска» страницы. */
+body.dg-state-home #dg-topbar { padding-top: 0.6rem; }
+
+/* Ряд с полем: само поле тянется, бургер стоит рядом и не сжимается. */
+body.dg-skin-minimal .hero-row {
+    max-width: 700px;
+    margin-left: auto;
+    margin-right: auto;
+    flex-wrap: nowrap;
+}
+body.dg-skin-minimal #form.dg-hero-form { flex: 1 1 auto; min-width: 0; }
+
+/* ============================================================================
+   Поле ввода: знак сайта + поле + очистить + быстрые настройки + лупа, всё в одной рамке
+   ============================================================================ */
+.dg-input-shell {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 8px 6px 10px;
+    background: var(--dg-surface);
+    border: 1px solid var(--dg-border);
+    border-radius: 28px;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+.dg-input-shell:hover { border-color: var(--dg-border-strong); }
+.dg-input-shell:focus-within {
+    background: var(--bs-body-bg, #fff);
+    border-color: var(--dg-border-strong);
+    box-shadow: 0 0 0 3px var(--dg-accent-bg);
+}
+/* На главной поле выше и заметнее — это главный элемент экрана. */
+body.dg-state-home .dg-input-shell { padding: 9px 10px 9px 12px; }
+
+.dg-shell-logo { display: inline-flex; flex: none; line-height: 0; text-decoration: none; }
+/* Разделитель перед блоком кнопок справа — как в строке поиска у поисковиков. */
+.dg-shell-sep {
+    width: 1px;
+    height: 22px;
+    flex: none;
+    margin: 0 2px;
+    background: var(--dg-border);
+}
+
+/* Спиннер ожидания — на месте лупы, внутри поля. Показывается только в dg-busy; лупа при этом
+   прячется, поэтому ширина строки не меняется и кнопки не прыгают. */
+.dg-shell-spinner {
+    display: none;
+    width: 18px;
+    height: 18px;
+    flex: none;
+    margin-right: 2px;
+    border: 2px solid var(--dg-border-strong);
+    border-top-color: var(--dg-accent);
+    border-radius: 50%;
+    animation: dg-spin 0.7s linear infinite;
+}
+body.dg-busy .dg-shell-spinner { display: block; }
+body.dg-busy .dg-shell-go { display: none; }
+@keyframes dg-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+    .dg-shell-spinner { animation-duration: 2s; }
+}
+
+/* Инпут внутри оболочки — без своей рамки, фона и «пилюли»: рамка теперь у оболочки.
+   Специфичность (0,2,1) намеренная: reader/css/uiextra.css задаёт `#form.ui-widget #paliauto,
+   #paliauto { padding-left:10px !important }` (ДВА id), и она подключается лениво, ПОСЛЕ этого
+   файла — обычным правилом её не перебить (см. docs/SPA_HANDOVER.md §4). */
+body #form #paliauto.searchinput,
+body #form #paliauto.form-control {
+    flex: 1 1 auto;
+    min-width: 0;
+    height: auto;
+    padding: 6px 4px !important;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    color: var(--dg-text);
+    font-family: var(--dg-font);
+    font-size: 1rem;
+    outline: none;
+}
+body.dg-state-home #form #paliauto.searchinput { font-size: 1.06rem; }
+body #form #paliauto.searchinput::placeholder { color: var(--dg-text-muted); }
+/* Родной крестик type="search" (только webkit) — вместо него своя кнопка #dg-clear-btn: родной
+   не поддаётся оформлению и вставал бы вплотную к нашим кнопкам. */
+body #form #paliauto.searchinput::-webkit-search-cancel-button { display: none; }
+
+/* Лупа-сабмит. Раньше лежала ПОВЕРХ поля (position:absolute + z-index:12 из-за
+   .searchinput{z-index:9}) — теперь это обычный элемент flex-строки, накладок больше нет. */
+.dg-input-shell .dg-shell-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    flex: none;
+    padding: 0;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--dg-text-muted);
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+.dg-input-shell .dg-shell-btn:hover,
+.dg-input-shell .dg-shell-btn:focus-visible { background: var(--dg-surface-hover); color: var(--dg-text); }
+
+/* Шестерёнка с молнией — быстрые настройки. Молния вынесена в правый нижний угол значка и
+   покрашена акцентом: это она отличает быстрые настройки от полных (шестерёнка без молнии,
+   /settings/). */
+.dg-qs-btn {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    flex: none;
+    padding: 0;
+    border: 0;
+    border-radius: 9px;
+    background: var(--dg-surface-hover);
+    color: var(--dg-text-2);
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+.dg-qs-btn:hover,
+.dg-qs-btn:focus-visible { color: var(--dg-text); background: var(--dg-border); }
+.dg-qs-btn .dg-qs-gear { width: 18px; height: 18px; display: block; }
+.dg-qs-btn .dg-qs-bolt {
+    position: absolute;
+    right: -3px;
+    bottom: -3px;
+    width: 13px;
+    height: 13px;
+    padding: 1px;
+    border-radius: 50%;
+    color: var(--dg-accent);
+    background: var(--bs-body-bg, #fff);
+}
 
 /* Ожидание ответа поиска: пока крутится спиннер, выдачи (даже пустой) быть не должно — ради
    этого весь класс и заведён. Домашние блоки при этом НЕ прячем: смысл в том, чтобы человек
@@ -146,14 +367,8 @@ body.dg-state-home #scrollToTopBtn {
    выигрывают по порядку. Здесь — точечные ответы на конкретные конфликты.
    ============================================================================ */
 
-/* reader/css/uiextra.css содержит `#form.ui-widget #paliauto, #paliauto { padding-left:10px
-   !important }` — ДВА id в первом селекторе, поэтому ни !important, ни более поздняя позиция
-   сами по себе не помогают (это уже ловили, см. docs/SPA_HANDOVER.md §4). После открытия текста
-   отступ поля схлопывался с 42px до 10px, и введённый текст залезал под лупу. Уравниваем число
-   id и добавляем элемент, чтобы выиграть по специфичности. */
-body #form #paliauto.searchinput {
-    padding-left: 42px !important;
-}
+/* Ответ на `#form.ui-widget #paliauto, #paliauto { padding-left:10px !important }` из
+   reader/css/uiextra.css — выше, вместе с остальными правилами инпута (.dg-input-shell). */
 
 /* И index.css, и rus-multi.css задают глобальное `body { margin:1rem 3rem; background-color;
    font-family:"Robto Serif" }`. Пока ридер был отдельной страницей, это никого не задевало;
@@ -295,8 +510,11 @@ body.dg-no-anim * {
     z-index: 1080;
 }
 #dg-sheet-backdrop.show { opacity: 1; pointer-events: auto; }
+/* Под выпадашкой быстрых настроек подложка невидима, но клики по странице всё так же ловит:
+   затемнять весь экран ради маленького меню — перебор, а закрывать по клику мимо нужно. */
+#dg-sheet-backdrop.dg-transparent { background: transparent; }
 
-#dg-sheet {
+.dg-sheet {
     position: fixed;
     left: 0;
     right: 0;
@@ -313,9 +531,9 @@ body.dg-no-anim * {
     transform: translateY(100%);
     transition: transform 0.3s var(--dg-ease);
 }
-#dg-sheet.show { transform: translateY(0); }
+.dg-sheet.show { transform: translateY(0); }
 @media (min-width: 768px) {
-    #dg-sheet {
+    .dg-sheet {
         left: 50%;
         right: auto;
         bottom: 20px;
@@ -325,13 +543,31 @@ body.dg-no-anim * {
         border-radius: 16px;
         transform: translate(-50%, calc(100% + 20px));
     }
-    #dg-sheet.show { transform: translate(-50%, 0); }
+    .dg-sheet.show { transform: translate(-50%, 0); }
+
+    /* Быстрые настройки на широком экране — выпадашка ПОД шестерёнкой, а не карточка посреди
+       экрана: они относятся к конкретному полю, и уводить взгляд от него незачем. Координаты
+       ставит home.js по фактическому положению кнопки (inline top/left). На узком экране класс
+       не ставится вовсе, и остаётся обычная нижняя шторка — там выпадашке негде развернуться. */
+    .dg-sheet.dg-anchored {
+        left: auto;
+        right: auto;
+        bottom: auto;
+        width: 340px;
+        max-height: 70vh;
+        border-radius: 14px;
+        box-shadow: 0 16px 40px -12px rgba(0, 0, 0, 0.35);
+        transform: translateY(-8px);
+        opacity: 0;
+        transition: transform 0.16s var(--dg-ease), opacity 0.16s ease;
+    }
+    .dg-sheet.dg-anchored.show { transform: translateY(0); opacity: 1; }
 }
 @media (prefers-reduced-motion: reduce) {
-    #dg-sheet, #dg-sheet-backdrop { transition: none; }
+    .dg-sheet, #dg-sheet-backdrop { transition: none; }
 }
 
-#dg-sheet .dg-sheet-handle {
+.dg-sheet .dg-sheet-handle {
     width: 34px;
     height: 3.5px;
     border-radius: 3px;
@@ -339,9 +575,9 @@ body.dg-no-anim * {
     margin: 9px auto 2px;
     flex: none;
 }
-@media (min-width: 768px) { #dg-sheet .dg-sheet-handle { display: none; } }
+@media (min-width: 768px) { .dg-sheet .dg-sheet-handle { display: none; } }
 
-#dg-sheet .dg-sheet-head {
+.dg-sheet .dg-sheet-head {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -349,13 +585,13 @@ body.dg-no-anim * {
     padding: 8px 18px 4px;
     flex: none;
 }
-#dg-sheet .dg-sheet-head h2 {
+.dg-sheet .dg-sheet-head h2 {
     font-size: 0.95rem;
     font-weight: 700;
     margin: 0;
     color: var(--dg-text);
 }
-#dg-sheet .dg-sheet-close {
+.dg-sheet .dg-sheet-close {
     border: none;
     background: transparent;
     color: var(--dg-text-2);
@@ -365,7 +601,7 @@ body.dg-no-anim * {
     cursor: pointer;
 }
 
-#dg-sheet .dg-sheet-tabs {
+.dg-sheet .dg-sheet-tabs {
     display: flex;
     gap: 6px;
     overflow-x: auto;
@@ -373,7 +609,7 @@ body.dg-no-anim * {
     border-bottom: 1px solid var(--dg-border);
     flex: none;
 }
-#dg-sheet .dg-sheet-tabs button {
+.dg-sheet .dg-sheet-tabs button {
     flex: none;
     font-size: 0.74rem;
     font-weight: 600;
@@ -384,18 +620,18 @@ body.dg-no-anim * {
     background: var(--dg-surface);
     cursor: pointer;
 }
-#dg-sheet .dg-sheet-tabs button.on {
+.dg-sheet .dg-sheet-tabs button.on {
     background: var(--dg-accent-bg);
     border-color: var(--dg-accent);
     color: var(--dg-accent);
 }
 
-#dg-sheet .dg-sheet-body {
+.dg-sheet .dg-sheet-body {
     overflow-y: auto;
     padding: 4px 18px 22px;
     flex: 1 1 auto;
 }
-#dg-sheet .dg-group-title {
+.dg-sheet .dg-group-title {
     font-size: 0.66rem;
     font-weight: 700;
     text-transform: uppercase;
@@ -403,8 +639,8 @@ body.dg-no-anim * {
     color: var(--dg-text-muted);
     margin: 14px 0 2px;
 }
-#dg-sheet .dg-group-title:first-child { margin-top: 4px; }
-#dg-sheet .dg-sheet-row {
+.dg-sheet .dg-group-title:first-child { margin-top: 4px; }
+.dg-sheet .dg-sheet-row {
     display: flex;
     align-items: center;
     gap: 10px;
@@ -415,19 +651,399 @@ body.dg-no-anim * {
     border-bottom: 1px solid var(--dg-border);
     cursor: pointer;
 }
-#dg-sheet .dg-sheet-row:last-child { border-bottom: none; }
-#dg-sheet .dg-sheet-row:hover { color: var(--dg-accent); }
-#dg-sheet .dg-sheet-row .dg-row-icon {
+.dg-sheet .dg-sheet-row:last-child { border-bottom: none; }
+.dg-sheet .dg-sheet-row:hover { color: var(--dg-accent); }
+.dg-sheet .dg-sheet-row .dg-row-icon {
     width: 15px;
     height: 15px;
     flex: none;
     color: var(--dg-text-muted);
 }
-#dg-sheet .dg-sheet-row .dg-row-label { flex: 1; min-width: 0; }
+.dg-sheet .dg-sheet-row .dg-row-label { flex: 1; min-width: 0; }
 /* ✦ у пунктов, помеченных в легаси-меню "важное" ($iconimportant). */
-#dg-sheet .dg-sheet-row .dg-row-star { color: var(--dg-accent); flex: none; font-size: 0.75rem; }
-#dg-sheet .dg-sheet-empty {
+.dg-sheet .dg-sheet-row .dg-row-star { color: var(--dg-accent); flex: none; font-size: 0.75rem; }
+.dg-sheet .dg-sheet-empty {
     font-size: 0.82rem;
     color: var(--dg-text-muted);
     padding: 14px 0;
 }
+
+/* Пояснение под названием ссылки — «что это вообще такое». Проставлено пока не всем пунктам, а
+   первым в каждом наборе (поле desc в menu-links.json): по ним и видно, чем набор занимается. */
+.dg-sheet .dg-sheet-row { align-items: flex-start; }
+.dg-sheet .dg-sheet-row .dg-row-icon { margin-top: 2px; }
+.dg-sheet .dg-row-desc {
+    display: block;
+    margin-top: 1px;
+    font-size: 0.72rem;
+    line-height: 1.35;
+    color: var(--dg-text-muted);
+}
+
+/* Вкладка-ссылка в шапке шторки: те плитки, у которых нет своего списка (Читать Pāḷi, История).
+   Это НЕ переключение набора, а прямое действие — помечаем стрелкой и не даём состояние "on". */
+.dg-sheet .dg-sheet-tabs button.dg-tab-link::after {
+    content: " ↗";
+    font-size: 0.68rem;
+    opacity: 0.7;
+}
+
+/* ============================================================================
+   Быстрые настройки (шестерёнка-молния). Отдельная шторка: наполнение зависит от состояния
+   страницы, поэтому она перерисовывается при каждом открытии.
+   ============================================================================ */
+.dg-sheet .dg-qs-note {
+    margin: 6px 0 0;
+    font-size: 0.72rem;
+    line-height: 1.4;
+    color: var(--dg-text-muted);
+}
+.dg-toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    width: 100%;
+    padding: 9px 0;
+    border: 0;
+    border-bottom: 1px solid var(--dg-border);
+    background: transparent;
+    color: var(--dg-text);
+    font-family: var(--dg-font);
+    font-size: 0.85rem;
+    text-align: left;
+    cursor: pointer;
+}
+.dg-toggle-row:last-child { border-bottom: none; }
+.dg-toggle-row .dg-toggle-label { flex: 1; min-width: 0; }
+.dg-toggle-row .dg-toggle-label small {
+    display: block;
+    font-size: 0.72rem;
+    color: var(--dg-text-muted);
+}
+/* Переключатель — свой, а не .form-switch Bootstrap: тот тянет за собой свою палитру и
+   размеры, которые в шторке смотрятся крупнее всего остального. */
+.dg-tgl {
+    position: relative;
+    width: 34px;
+    height: 20px;
+    flex: none;
+    border-radius: 10px;
+    background: var(--dg-surface-hover);
+    border: 1px solid var(--dg-border-strong);
+    transition: background-color 0.18s ease, border-color 0.18s ease;
+}
+.dg-tgl::after {
+    content: "";
+    position: absolute;
+    top: 1px;
+    left: 1px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--bs-body-bg, #fff);
+    border: 1px solid var(--dg-border-strong);
+    transition: transform 0.18s var(--dg-ease);
+}
+.dg-toggle-row[aria-pressed="true"] .dg-tgl {
+    background: var(--dg-accent);
+    border-color: var(--dg-accent);
+}
+.dg-toggle-row[aria-pressed="true"] .dg-tgl::after {
+    transform: translateX(14px);
+    border-color: transparent;
+}
+
+.dg-segmented {
+    display: flex;
+    margin: 8px 0 2px;
+    border: 1px solid var(--dg-border);
+    border-radius: var(--dg-radius);
+    overflow: hidden;
+}
+.dg-segmented button {
+    flex: 1;
+    padding: 8px 4px;
+    border: 0;
+    background: var(--bs-body-bg, #fff);
+    color: var(--dg-text-2);
+    font-family: var(--dg-font);
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+.dg-segmented button[aria-pressed="true"] {
+    background: var(--dg-accent-bg);
+    color: var(--dg-accent);
+}
+
+/* Диакритика: набрать ā/ṁ/ñ без своей раскладки. Символ уходит в позицию курсора, поле фокус
+   не теряет — набор продолжается с того же места. */
+.dg-diac {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 6px;
+    margin-top: 8px;
+}
+.dg-diac button {
+    padding: 8px 0;
+    border: 1px solid var(--dg-border);
+    border-radius: var(--dg-radius);
+    background: var(--dg-surface);
+    color: var(--dg-text);
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+.dg-diac button:hover { background: var(--dg-surface-hover); border-color: var(--dg-border-strong); }
+
+/* ============================================================================
+   Боковое меню — выезжает слева, как в приложениях
+   ============================================================================ */
+#dg-drawer-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1082;
+    background: rgba(20, 18, 10, 0.4);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.22s ease;
+}
+#dg-drawer-backdrop.show { opacity: 1; pointer-events: auto; }
+#dg-drawer-backdrop[hidden] { display: none; }
+
+#dg-drawer {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 1083;
+    display: flex;
+    flex-direction: column;
+    width: 82%;
+    max-width: 320px;
+    background: var(--bs-body-bg, #fff);
+    color: var(--dg-text);
+    font-family: var(--dg-font);
+    border-right: 1px solid var(--dg-border-strong);
+    box-shadow: 8px 0 30px rgba(0, 0, 0, 0.14);
+    transform: translateX(-100%);
+    transition: transform 0.3s var(--dg-ease);
+    overflow-y: auto;
+}
+#dg-drawer.show { transform: translateX(0); }
+#dg-drawer[hidden] { display: none; }
+@media (prefers-reduced-motion: reduce) {
+    #dg-drawer, #dg-drawer-backdrop { transition: none; }
+}
+
+.dg-drawer-head {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 14px 12px 10px 16px;
+    border-bottom: 1px solid var(--dg-border);
+}
+.dg-drawer-head .dg-brand-name { flex: 1; min-width: 0; }
+.dg-drawer-body { padding: 8px 16px 24px; }
+.dg-drawer-body .dg-group-title {
+    font-size: 0.66rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--dg-text-muted);
+    margin: 14px 0 2px;
+}
+.dg-drawer-row {
+    display: block;
+    padding: 11px 0;
+    font-size: 0.9rem;
+    color: var(--dg-text);
+    text-decoration: none;
+    border-bottom: 1px solid var(--dg-border);
+}
+.dg-drawer-row:last-child { border-bottom: none; }
+.dg-drawer-row:hover { color: var(--dg-accent); }
+
+/* ============================================================================
+   Перетаскивание плиток
+   Порядок хранится в localStorage.dgTileOrder и переживает перезагрузку. Реализация — на
+   pointer-событиях, а не на HTML5 drag-and-drop: тот на мобильных браузерах не работает вовсе,
+   а плитки нужны в первую очередь именно там.
+   ============================================================================ */
+.dg-tile { touch-action: manipulation; }
+/* Пока идёт перетаскивание — гасим переходы у соседей, иначе они «догоняют» палец, и целиться
+   в позицию становится невозможно. */
+body.dg-tiles-dragging .dg-tile { transition: none; }
+body.dg-tiles-dragging { user-select: none; -webkit-user-select: none; }
+.dg-tile.dg-dragging {
+    position: fixed;
+    z-index: 1090;
+    margin: 0;
+    pointer-events: none;
+    opacity: 0.95;
+    box-shadow: 0 10px 26px -8px rgba(0, 0, 0, 0.45);
+    transform: scale(1.03);
+}
+/* Место, куда плитка встанет. Тот же размер, что у неё самой — сетка не перестраивается. */
+.dg-tile-placeholder {
+    border: 1px dashed var(--dg-border-strong);
+    border-radius: 12px;
+    background: var(--dg-surface-hover);
+    opacity: 0.6;
+}
+
+/* Убрать кнопку с главной. Появляется при наведении (мышь) и в режиме перетаскивания (палец);
+   вернуть убранное можно пунктом в боковом меню. Сам список убранных — в localStorage. */
+.dg-tile { position: relative; }
+.dg-tile-remove {
+    position: absolute;
+    top: 3px;
+    right: 3px;
+    width: 20px;
+    height: 20px;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 1px solid var(--dg-border-strong);
+    border-radius: 50%;
+    background: var(--bs-body-bg, #fff);
+    color: var(--dg-text-2);
+    font-size: 0.7rem;
+    line-height: 1;
+    cursor: pointer;
+}
+@media (hover: hover) and (pointer: fine) {
+    .dg-tile:hover .dg-tile-remove,
+    .dg-tile:focus-within .dg-tile-remove { display: inline-flex; }
+}
+body.dg-tiles-editing .dg-tile-remove { display: inline-flex; }
+.dg-tile-remove:hover { color: var(--dg-text); border-color: var(--dg-text-2); }
+
+/* ============================================================================
+   Плитки на широком экране — мельче
+   На десктопе плитки в 2–4 колонки растягивались на всю строку и выглядели несоразмерно
+   крупными. Здесь они становятся компактным рядом: восемь в строку, иконка и подпись мельче.
+   ============================================================================ */
+@media (min-width: 992px) {
+    .dg-tiles {
+        grid-template-columns: repeat(8, minmax(0, 1fr));
+        gap: 8px;
+        max-width: 940px;
+    }
+    .dg-tile {
+        gap: 6px;
+        padding: 11px 4px;
+        font-size: 0.72rem;
+        border-radius: 10px;
+    }
+    .dg-tile svg { width: 18px; height: 18px; }
+}
+
+/* ============================================================================
+   Строки списка: звёздочка и «чипсы»
+   ============================================================================ */
+/* Звезда у важных пунктов ($iconimportant в легаси-меню). Раньше рисовался знак ✦ — но ромбик
+   на этом сайте уже занят: им помечены скрытые ссылки-якоря на цитаты (.quoteLink-start), и два
+   разных смысла одним значком путали. Здесь настоящая звезда (контур fa-star). */
+.dg-sheet .dg-sheet-row .dg-row-star {
+    width: 13px;
+    height: 13px;
+    flex: none;
+    margin-top: 3px;
+    color: var(--dg-accent);
+}
+
+/* Группы, где подписи короткие и говорят сами за себя (ИИ, переводчики, коды изданий), рисуются
+   не столбцом строк, а вплотную — «чипсами» в одну-две строки: четыре имени вроде Gemini или
+   DeepSeek не заслуживают четырёх полноразмерных строк (просьба владельца). Задаётся в
+   menu-links.json полем группы "layout": "chips". */
+.dg-sheet .dg-chip-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 6px 0 10px;
+}
+.dg-sheet .dg-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 11px;
+    border: 1px solid var(--dg-border);
+    border-radius: 999px;
+    background: var(--dg-surface);
+    color: var(--dg-text);
+    font-size: 0.8rem;
+    text-decoration: none;
+}
+.dg-sheet .dg-chip:hover {
+    border-color: var(--dg-accent);
+    color: var(--dg-accent);
+    background: var(--dg-accent-bg);
+}
+.dg-sheet .dg-chip .dg-row-star { margin-top: 0; }
+
+/* ============================================================================
+   «Интересные запросы» — перенос слайд-шоу с боевой главной
+   ============================================================================ */
+#home-slides { margin-top: 14px; }
+#home-slides[hidden] { display: none; }
+.dg-slides {
+    position: relative;
+    max-width: 560px;
+    margin: 0 auto;
+    padding: 12px 14px;
+    border: 1px solid var(--dg-border);
+    border-radius: 12px;
+    background: var(--dg-surface);
+    font-family: var(--dg-font);
+    text-align: left;
+}
+.dg-slides-eyebrow {
+    margin: 0;
+    font-size: 0.66rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--dg-text-muted);
+}
+.dg-slide-title {
+    display: block;
+    margin: 5px 0 2px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--dg-text);
+    text-decoration: none;
+}
+.dg-slide-title:hover { color: var(--dg-accent); }
+.dg-slide-desc {
+    margin: 0;
+    font-size: 0.8rem;
+    line-height: 1.45;
+    color: var(--dg-text-2);
+}
+.dg-slides-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 9px;
+}
+.dg-slides-nav { display: flex; gap: 4px; }
+.dg-slides-nav button,
+.dg-slides-all {
+    padding: 3px 9px;
+    border: 1px solid var(--dg-border);
+    border-radius: 7px;
+    background: transparent;
+    color: var(--dg-text-2);
+    font-family: var(--dg-font);
+    font-size: 0.74rem;
+    cursor: pointer;
+}
+.dg-slides-nav button:hover,
+.dg-slides-all:hover { color: var(--dg-text); border-color: var(--dg-border-strong); }
+/* Пункты в списке «показать все» — те же строки, что и в шторках со ссылками. */
+.dg-sheet .dg-slide-row { display: block; padding: 11px 0; }
+.dg-sheet .dg-slide-row .dg-slide-title { margin: 0 0 2px; font-size: 0.88rem; }
