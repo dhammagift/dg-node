@@ -129,10 +129,10 @@
       "icon": "dict",
       "groups": [
         {
-          "name": "Digital Pāḷi Dictionary",
+          "name": "Dict.Dhamma.Gift",
           "items": [
-            { "label": "Digital Pāḷi Dict", "title": "open Dict.Dhamma.Gift in extra window (Alt + N)", "desc": "The main modern Pāḷi dictionary — opens with the word from the search box", "tpl": "https://dict.dhamma.gift/?theme={{theme}}&source=pwa&q={{q}}", "blank": true, "star": true },
-            { "label": "Offline", "title": "download DPD for offline usage", "desc": "The same dictionary as a download — works without internet", "href": "https://digitalpalidictionary.github.io/", "blank": true },
+            { "label": "Dict.Dhamma.Gift", "title": "open Dict.Dhamma.Gift in extra window (Alt + N)", "desc": "Multi-dictionary powered by DPD — opens with the word from the search box", "tpl": "https://dict.dhamma.gift/?theme={{theme}}&source=pwa&q={{q}}", "blank": true, "star": true },
+            { "label": "DPD offline", "title": "download DPD for offline usage", "desc": "Digital Pāḷi Dictionary as a download — works without internet", "href": "https://digitalpalidictionary.github.io/", "blank": true },
             { "label": "Extensions", "title": "Browser Extensions", "href": "#links" }
           ]
         },
@@ -481,10 +481,10 @@
       "icon": "dict",
       "groups": [
         {
-          "name": "Digital Pāḷi Dictionary",
+          "name": "Dict.Dhamma.Gift",
           "items": [
-            { "label": "Digital Pāḷi Dict", "title": "открыть Dict.Dhamma.Gift в новом окне (Alt + N)", "desc": "Главный современный словарь пали — открывается со словом из строки поиска", "tpl": "https://dict.dhamma.gift/ru/?theme={{theme}}&source=pwa&q={{q}}", "blank": true, "star": true },
-            { "label": "Оффлайн", "title": "Скачать DPD для использования оффлайн", "desc": "Тот же словарь для скачивания — работает без интернета", "href": "https://digitalpalidictionary.github.io/", "blank": true },
+            { "label": "Dict.Dhamma.Gift", "title": "открыть Dict.Dhamma.Gift в новом окне (Alt + N)", "desc": "Мульти-словарь на основе DPD — открывается со словом из строки поиска", "tpl": "https://dict.dhamma.gift/ru/?theme={{theme}}&source=pwa&q={{q}}", "blank": true, "star": true },
+            { "label": "DPD оффлайн", "title": "Скачать DPD для использования оффлайн", "desc": "Digital Pāḷi Dictionary для скачивания — работает без интернета", "href": "https://digitalpalidictionary.github.io/", "blank": true },
             { "label": "Расширения", "title": "Расширения для браузеров", "href": "#links" }
           ]
         },

@@ -1493,6 +1493,60 @@ body.dark .dg-field-error { color: #ff8a80; }
     cursor: pointer;
 }
 .dg-add-submit:hover { background: var(--dg-accent-dark); }
+.dg-add-reset {
+    width: 100%;
+    margin-top: 10px;
+    padding: 11px;
+    border: 1px solid var(--dg-border-strong);
+    border-radius: var(--dg-radius);
+    background: transparent;
+    color: var(--dg-text-2);
+    font-family: var(--dg-font);
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+.dg-add-reset:hover { color: var(--dg-text); border-color: var(--dg-text-muted); }
+
+/* Свой значок — эмодзи. Красим ОДНИМ цветом с остальными значками: цветная картинка среди
+   одноцветных контуров выбивается из ряда, а плитки должны читаться как один набор.
+   Приём стандартный: обесцвечиваем эмодзи и закрашиваем текущим цветом через фон с обрезкой по
+   тексту. Если браузер не умеет background-clip:text, останется обычное цветное эмодзи —
+   значок при этом виден, просто не одноцветный. */
+.dg-emoji-ic {
+    display: inline-block;
+    font-size: 20px;
+    line-height: 1;
+    font-style: normal;
+    color: transparent;
+    background-color: currentColor;
+    background-image: none;
+    -webkit-background-clip: text;
+    background-clip: text;
+    filter: grayscale(1) contrast(0);
+}
+@supports not ((-webkit-background-clip: text) or (background-clip: text)) {
+    .dg-emoji-ic { color: inherit; background: none; filter: none; }
+}
+.dg-tile-ic .dg-emoji-ic { font-size: 22px; color: transparent; background-color: var(--dg-accent); }
+.dg-edit-ic .dg-emoji-ic { font-size: 15px; background-color: var(--dg-text-muted); }
+
+.dg-emoji-input { margin-top: 4px; }
+
+/* Строка списка «изменить кнопки» — это <button>, а не ссылка: обнуляем кнопочные умолчания. */
+.dg-sheet .dg-edit-row {
+    width: 100%;
+    border-left: 0;
+    border-right: 0;
+    border-top: 0;
+    background: transparent;
+    font-family: var(--dg-font);
+    text-align: left;
+}
+.dg-sheet .dg-edit-row .dg-edit-ic {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
 
 /* ============================================================================
    Подсказки автодополнения (jQuery UI, autopali.js)

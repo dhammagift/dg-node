@@ -91,6 +91,22 @@
         return faSvg('star', 'dg-row-star');
     }
 
+    /* Текст, в котором может встретиться «{{» — например, адрес со вставкой {{q}}. Кладём его
+       НЕ одним текстовым узлом: dhamma-i18n.js обходит текстовые узлы страницы и всё, где есть
+       «{{», считает своим ключом перевода и падает с «Missing localization key». Разрезаем строку
+       так, чтобы двойная скобка никогда не оказалась целиком в одном узле — на вид разницы нет. */
+    function safeText(str) {
+        var frag = document.createDocumentFragment();
+        String(str == null ? '' : str).split('{{').forEach(function (part, i) {
+            if (i) {
+                frag.appendChild(document.createTextNode('{'));
+                frag.appendChild(document.createTextNode('{'));
+            }
+            frag.appendChild(document.createTextNode(part));
+        });
+        return frag;
+    }
+
     function esc(s) {
         return String(s == null ? '' : s)
             .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -182,12 +198,25 @@
         return kept;
     }
 
-    // Данные плитки по ключу: сначала встроенные из menu-links.json, потом свои.
+    /* Данные плитки по ключу: сначала встроенные из menu-links.json, потом свои. Поверх и тех и
+       других ложатся правки пользователя (подпись, значок) — см. tileOverrides(). */
     function tileData(key) {
         var lang = menuLang();
-        if (menuData && menuData[lang] && menuData[lang][key]) return menuData[lang][key];
-        var own = customTiles().filter(function (c) { return c.id === key; })[0];
-        return own ? { label: own.label, icon: own.icon, href: own.href, custom: true } : null;
+        var base = null;
+        if (menuData && menuData[lang] && menuData[lang][key]) {
+            // Копия, а не сам объект: правка не должна портить загруженный конфиг.
+            base = Object.assign({}, menuData[lang][key]);
+        } else {
+            var own = customTiles().filter(function (c) { return c.id === key; })[0];
+            if (own) base = { label: own.label, icon: own.icon, href: own.href, custom: true };
+        }
+        if (!base) return null;
+        var patch = tileOverrides()[key];
+        if (patch) {
+            if (patch.label) base.label = patch.label;
+            if (patch.icon) base.icon = patch.icon;
+        }
+        return base;
     }
 
     function saveTileOrder(keys) {
@@ -250,6 +279,40 @@
         } catch (e) { /* приватный режим */ }
     }
 
+    /* Правки встроенных кнопок: подпись и значок. Сами данные плиток приходят из menu-links.json
+       и обновляются вместе с сайтом, поэтому меняем не их, а накладываем поверх — так правка
+       переживёт обновление конфига, а неотредактированные поля продолжат приходить из него. */
+    var TILE_OVERRIDES_KEY = 'dgTileOverrides';
+
+    function tileOverrides() {
+        try { return JSON.parse(localStorage.getItem(TILE_OVERRIDES_KEY)) || {}; }
+        catch (e) { return {}; }
+    }
+
+    function setTileOverride(key, patch) {
+        var all = tileOverrides();
+        if (patch) all[key] = patch; else delete all[key];
+        try {
+            if (Object.keys(all).length) localStorage.setItem(TILE_OVERRIDES_KEY, JSON.stringify(all));
+            else localStorage.removeItem(TILE_OVERRIDES_KEY);
+        } catch (e) { /* приватный режим */ }
+    }
+
+    /* Значок может быть ЭМОДЗИ, а не только из набора. Рисуем его одним цветом с остальными
+       значками: цветная картинка среди одноцветных контуров выбивается из ряда, а плитки должны
+       читаться как один набор. Приём — grayscale + текущий цвет фоном через background-clip.
+       Отличаем эмодзи от имени значка по отсутствию в ICONS. */
+    function isEmojiIcon(name) {
+        return !!name && !ICONS[name];
+    }
+
+    function iconHtml(name, cls) {
+        if (isEmojiIcon(name)) {
+            return '<span class="dg-emoji-ic ' + (cls || '') + '" aria-hidden="true">' + esc(name) + '</span>';
+        }
+        return faSvg(name, cls);
+    }
+
     /* Адрес своей кнопки. Пускаем только http(s) и внутренние пути с «/». javascript: не пускаем
        никогда — это чужой код в нашей странице; data: и blob: тоже мимо. Адрес без схемы считаем
        внешним и дописываем https://, иначе «example.com» браузер понял бы как относительный путь
@@ -278,7 +341,12 @@
        вернуть было нечем — приходилось перетаскивать всё обратно руками. */
     function syncRestoreLink() {
         var link = document.getElementById('dg-restore-tiles');
-        if (link) link.hidden = hiddenTiles().length === 0 && !orderChanged();
+        if (link) {
+            link.hidden = hiddenTiles().length === 0 && !orderChanged() && customTiles().length === 0;
+        }
+        // «Изменить кнопки» показываем всегда: переименовать можно и встроенную.
+        var edit = document.getElementById('dg-edit-tiles');
+        if (edit) edit.hidden = false;
     }
 
     // ======================================================================
@@ -1003,7 +1071,7 @@
             el.dataset.tile = key;
             /* Иконка — в кружке из акцентного фона: так плитка читается как значок с подписью,
                а не как строка списка в рамке. */
-            el.innerHTML = '<span class="dg-tile-ic">' + svg(tile.icon) + '</span>' +
+            el.innerHTML = '<span class="dg-tile-ic">' + iconHtml(tile.icon) + '</span>' +
                 '<span class="dg-tile-label">' + esc(tile.label) + '</span>';
             el.addEventListener('click', function () {
                 // Клик, приходящий сразу за перетаскиванием, — не выбор плитки.
@@ -1361,12 +1429,63 @@
         });
     }
 
-    /* Подвал: копирайт с ТЕКУЩИМ годом. Год берём из часов, а не из разметки — вписанный руками
-       он к каждому январю устаревает, и это замечают. */
-    /* Форма «своя кнопка». Рисуется в той же шторке, что и списки ссылок: заводить ради трёх
-       полей отдельное окно незачем. Значок выбирается из уже имеющегося набора (ICONS) — своих
-       картинок не грузим, иначе пришлось бы думать про их хранение и размер. */
-    function openAddTile() {
+    /* Список кнопок для правки. Открывается пунктом «Изменить кнопки» в меню: выбирать, что
+       менять, надо ДО формы — на самой плитке крестик уже занят удалением, а второй значок
+       превратил бы её в панель управления. */
+    function openEditList() {
+        closeDrawer();
+        ensureSheet();
+        var sheet = document.getElementById('dg-sheet');
+        var backdrop = document.getElementById('dg-sheet-backdrop');
+        sheet.hidden = false;
+        document.getElementById('dg-sheet-title').textContent = t('menu.editTiles', 'Изменить кнопки');
+        document.getElementById('dg-sheet-tabs').innerHTML = '';
+
+        var body = document.getElementById('dg-sheet-body');
+        body.innerHTML = '';
+
+        var hidden = hiddenTiles();
+        tileOrder().forEach(function (key) {
+            var tile = tileData(key);
+            if (!tile || hidden.indexOf(key) !== -1) return;
+
+            var row = document.createElement('button');
+            row.type = 'button';
+            row.className = 'dg-sheet-row dg-edit-row';
+            row.innerHTML = '<span class="dg-row-icon dg-edit-ic">' + iconHtml(tile.icon) + '</span>' +
+                '<span class="dg-row-label">' + esc(tile.label) + '</span>' +
+                '<svg class="dg-slide-go-ic" viewBox="0 0 24 24" width="15" height="15" fill="none" ' +
+                'stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" ' +
+                'aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>';
+            /* Адрес своей кнопки — через safeText: в нём может стоять {{q}}, а целиком записанная
+               двойная скобка валит i18n (см. safeText). */
+            if (tile.custom && tile.href) {
+                var addr = document.createElement('small');
+                addr.className = 'dg-row-desc';
+                addr.appendChild(safeText(tile.href));
+                row.querySelector('.dg-row-label').appendChild(addr);
+            }
+            row.addEventListener('click', function () { openTileForm(key); });
+            body.appendChild(row);
+        });
+
+        var add = document.createElement('button');
+        add.type = 'button';
+        add.className = 'dg-add-submit';
+        add.textContent = t('menu.addTile', 'Добавить свою кнопку');
+        add.addEventListener('click', function () { openTileForm(null); });
+        body.appendChild(add);
+
+        currentSheetKey = '__edit__';
+        showLater(sheet, backdrop);
+    }
+
+    /* Одна форма и на создание, и на правку: поля те же, разница лишь в том, что подставлено и
+       куда сохраняем. key === null — новая кнопка.
+       У ВСТРОЕННОЙ кнопки правим только подпись и значок: её адрес и списки приходят из
+       menu-links.json и обновляются вместе с сайтом — подменить их значило бы навсегда отрезать
+       кнопку от этих обновлений. */
+    function openTileForm(key) {
         closeDrawer();
         ensureSheet();
         var sheet = document.getElementById('dg-sheet');
@@ -1374,8 +1493,13 @@
         var body = document.getElementById('dg-sheet-body');
         var tabs = document.getElementById('dg-sheet-tabs');
 
+        var existing = key ? tileData(key) : null;
+        var isCustom = !key || !!(existing && existing.custom);
+
         sheet.hidden = false;
-        document.getElementById('dg-sheet-title').textContent = t('menu.addTile', 'Добавить свою кнопку');
+        document.getElementById('dg-sheet-title').textContent = key
+            ? t('menu.editTile', 'Изменить кнопку')
+            : t('menu.addTile', 'Добавить свою кнопку');
         if (tabs) tabs.innerHTML = '';
         body.innerHTML = '';
 
@@ -1398,55 +1522,86 @@
         nameInput.className = 'dg-field-input';
         nameInput.required = true;
         nameInput.maxLength = 24;
+        nameInput.value = existing ? existing.label : '';
         nameInput.placeholder = t('menu.addTileNamePh', 'например, Мой словарь');
-
-        var urlInput = document.createElement('input');
-        urlInput.type = 'text';
-        urlInput.className = 'dg-field-input';
-        urlInput.required = true;
-        urlInput.placeholder = 'https://…';
-
         form.appendChild(field(t('menu.addTileName', 'Подпись'), nameInput));
-        form.appendChild(field(t('menu.addTileUrl', 'Адрес'), urlInput));
 
-        /* Подсказка про подстановку запроса. Сам образец {{q}} собираем из ДВУХ текстовых узлов
-           («{» и «{q}}»): dhamma-i18n.js обходит текстовые узлы страницы и всё, где встречается
-           «{{», считает своим ключом перевода — целиком записанный образец валил его исключением
-           «Missing localization key: q» (поймано в консоли). Разрезанный пополам, для движка он
-           невидим, а на экране читается как обычно. В строках переводов на его месте стоит %s. */
-        var hint = document.createElement('p');
-        hint.className = 'dg-field-hint';
-        var parts = String(t('menu.addTileHint',
-            'В адрес можно вставить %s — вместо него подставится запрос из поля поиска.')).split('%s');
-        hint.appendChild(document.createTextNode(parts[0]));
-        var code = document.createElement('code');
-        code.appendChild(document.createTextNode('{'));
-        code.appendChild(document.createTextNode('{q}}'));
-        hint.appendChild(code);
-        hint.appendChild(document.createTextNode(parts[1] || ''));
-        form.appendChild(hint);
+        var urlInput = null;
+        if (isCustom) {
+            urlInput = document.createElement('input');
+            urlInput.type = 'text';
+            urlInput.className = 'dg-field-input';
+            urlInput.required = true;
+            urlInput.value = existing ? (existing.href || '') : '';
+            urlInput.placeholder = 'https://…';
+            form.appendChild(field(t('menu.addTileUrl', 'Адрес'), urlInput));
 
-        // Выбор значка — из того же набора, что у встроенных кнопок.
+            var hint = document.createElement('p');
+            hint.className = 'dg-field-hint';
+            var parts = String(t('menu.addTileHint',
+                'В адрес можно вставить %s — вместо него подставится запрос из поля поиска.')).split('%s');
+            hint.appendChild(document.createTextNode(parts[0]));
+            /* Образец {{q}} — ДВА текстовых узла: dhamma-i18n.js обходит текстовые узлы и всё,
+               где встречается «{{», считает своим ключом перевода. */
+            var code = document.createElement('code');
+            code.appendChild(document.createTextNode('{'));
+            code.appendChild(document.createTextNode('{q}}'));
+            hint.appendChild(code);
+            hint.appendChild(document.createTextNode(parts[1] || ''));
+            form.appendChild(hint);
+        } else {
+            var builtinNote = document.createElement('p');
+            builtinNote.className = 'dg-field-hint';
+            builtinNote.textContent = t('menu.editBuiltinNote',
+                'У встроенной кнопки меняются подпись и значок. Её ссылки приходят с сайта и обновляются вместе с ним.');
+            form.appendChild(builtinNote);
+        }
+
         var iconCap = document.createElement('span');
         iconCap.className = 'dg-field-label';
         iconCap.textContent = t('menu.addTileIcon', 'Значок');
         form.appendChild(iconCap);
 
+        var chosen = existing ? existing.icon : 'external';
         var icons = document.createElement('div');
         icons.className = 'dg-icon-pick';
-        var chosen = 'external';
+
+        var emojiInput = document.createElement('input');
+        emojiInput.type = 'text';
+        emojiInput.className = 'dg-field-input dg-emoji-input';
+        emojiInput.maxLength = 4;
+        emojiInput.placeholder = t('menu.addTileEmojiPh', 'свой знак, например 🪷');
+
+        function markChosen() {
+            Array.prototype.forEach.call(icons.children, function (x) {
+                x.classList.toggle('on', x.dataset.icon === chosen);
+            });
+            emojiInput.value = isEmojiIcon(chosen) ? chosen : '';
+        }
+
         ['external', 'book', 'bookmark', 'dict', 'cap', 'wrench', 'clock', 'star', 'home'].forEach(function (name) {
             var b = document.createElement('button');
             b.type = 'button';
-            b.className = 'dg-icon-opt' + (name === chosen ? ' on' : '');
-            b.innerHTML = svg(name);
-            b.addEventListener('click', function () {
-                chosen = name;
-                Array.prototype.forEach.call(icons.children, function (x) { x.classList.toggle('on', x === b); });
-            });
+            b.className = 'dg-icon-opt';
+            b.dataset.icon = name;
+            b.innerHTML = faSvg(name);
+            b.addEventListener('click', function () { chosen = name; markChosen(); });
             icons.appendChild(b);
         });
         form.appendChild(icons);
+
+        /* Свой значок — эмодзи. Рисуется одним цветом с остальными (см. .dg-emoji-ic в home.css):
+           цветная картинка среди одноцветных контуров выбивается из ряда, а плитки должны
+           читаться как один набор. */
+        emojiInput.addEventListener('input', function () {
+            var v = emojiInput.value.trim();
+            if (v) {
+                chosen = v;
+                Array.prototype.forEach.call(icons.children, function (x) { x.classList.remove('on'); });
+            }
+        });
+        form.appendChild(field(t('menu.addTileEmoji', 'Или свой значок'), emojiInput));
+        markChosen();
 
         var error = document.createElement('p');
         error.className = 'dg-field-error';
@@ -1456,19 +1611,47 @@
         var submit = document.createElement('button');
         submit.type = 'submit';
         submit.className = 'dg-add-submit';
-        submit.textContent = t('menu.addTileSave', 'Добавить');
+        submit.textContent = key ? t('menu.editTileSave', 'Сохранить') : t('menu.addTileSave', 'Добавить');
         form.appendChild(submit);
+
+        // У встроенной кнопки — «вернуть исходное»: снять правку, а не вспоминать прежнее название.
+        if (key && !isCustom && tileOverrides()[key]) {
+            var reset = document.createElement('button');
+            reset.type = 'button';
+            reset.className = 'dg-add-reset';
+            reset.textContent = t('menu.editTileReset', 'Вернуть исходное');
+            reset.addEventListener('click', function () {
+                setTileOverride(key, null);
+                renderTiles();
+                openEditList();
+            });
+            form.appendChild(reset);
+        }
 
         form.addEventListener('submit', function (e) {
             e.preventDefault();
             var label = nameInput.value.trim();
-            var href = normalizeUrl(urlInput.value);
             if (!label) { error.textContent = t('menu.addTileNoName', 'Впишите подпись'); error.hidden = false; return; }
-            if (!href) { error.textContent = t('menu.addTileBadUrl', 'Адрес должен начинаться с http://, https:// или /'); error.hidden = false; return; }
 
-            var list = customTiles();
-            list.push({ id: 'custom:' + Date.now(), label: label, href: href, icon: chosen });
-            setCustomTiles(list);
+            if (isCustom) {
+                var href = normalizeUrl(urlInput.value);
+                if (!href) {
+                    error.textContent = t('menu.addTileBadUrl', 'Адрес должен начинаться с http://, https:// или /');
+                    error.hidden = false;
+                    return;
+                }
+                var list = customTiles();
+                if (key) {
+                    list.forEach(function (c) {
+                        if (c.id === key) { c.label = label; c.href = href; c.icon = chosen; }
+                    });
+                } else {
+                    list.push({ id: 'custom:' + Date.now(), label: label, href: href, icon: chosen });
+                }
+                setCustomTiles(list);
+            } else {
+                setTileOverride(key, { label: label, icon: chosen });
+            }
             renderTiles();
             closeSheet();
         });
@@ -1476,6 +1659,9 @@
         body.appendChild(form);
         showLater(sheet, backdrop);
     }
+
+    // Пункт меню «Добавить свою кнопку» — та же форма, без выбранной плитки.
+    function openAddTile() { openTileForm(null); }
 
     /* Подвал: годы работы проекта и ссылка на условия. Полную оговорку про лицензию держим НЕ на
        странице — она длинная и на главной ни к чему; открывается шторкой по ссылке (как на проде
@@ -1728,10 +1914,23 @@
         var addTile = document.getElementById('dg-add-tile');
         if (addTile) addTile.addEventListener('click', openAddTile);
 
+        var editTiles = document.getElementById('dg-edit-tiles');
+        if (editTiles) editTiles.addEventListener('click', openEditList);
+
         var restore = document.getElementById('dg-restore-tiles');
         if (restore) {
             restore.addEventListener('click', function () {
-                // Возвращаем И состав, И порядок: «как было» значит целиком как было.
+                /* «Как было» — значит ровно как было с самого начала: и состав, и порядок, и свои
+                   кнопки. Свои спрашиваем отдельно: порядок и убранные восстанавливаются из
+                   исходных данных, а созданная вручную кнопка исчезает насовсем — её неоткуда
+                   взять обратно. */
+                var own = customTiles();
+                if (own.length) {
+                    var ask = t('menu.resetConfirm', 'Свои кнопки (%s) будут удалены. Продолжить?')
+                        .replace('%s', own.length);
+                    if (!window.confirm(ask)) return;
+                    setCustomTiles([]);
+                }
                 setHiddenTiles([]);
                 resetTileOrder();
                 renderTiles();

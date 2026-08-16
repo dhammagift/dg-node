@@ -32,7 +32,15 @@
     "addTileHint": "You can put %s in the address — the search box query goes there.",
     "addTileNoName": "Enter a label",
     "addTileBadUrl": "Address must start with http://, https:// or /",
-    "deleteTile": "Delete button"
+    "deleteTile": "Delete button",
+    "editTiles": "Edit buttons",
+    "editTile": "Edit button",
+    "editTileSave": "Save",
+    "editTileReset": "Restore original",
+    "editBuiltinNote": "For a built-in button you can change the label and the icon. Its links come from the site and update with it.",
+    "addTileEmoji": "Or your own icon",
+    "addTileEmojiPh": "any symbol, e.g. 🪷",
+    "resetConfirm": "Your own buttons (%s) will be deleted. Continue?"
   },
   "slides": {
     "title": "Interesting queries",
