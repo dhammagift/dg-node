@@ -404,8 +404,23 @@ function detectTranslationLang() {
 }
 */
 
+// dg-node: the SPA shell keeps an empty <div id="sutta" class="sutta"> in the DOM at all
+// times (populated only in reader view, empty in search-results view) — a bare
+// `document.querySelector('.sutta-container, .sutta') || document` always matches THIS empty
+// div on the search-results page instead of falling through to `document`, so the TTS engine
+// scanned zero Pali/translation elements there and silently fell back to
+// prepareGeneralArticleData(), which then picked up unrelated page furniture (hero motto,
+// generic segments) instead of the clicked quote line. Only trust the .sutta match if it
+// actually has language-tagged content; otherwise scan the whole document like before dg-node
+// added that persistent empty shell.
+function getSuttaContainer() {
+    const c = document.querySelector('.sutta-container, .sutta');
+    if (c && c.querySelector('[lang], .pli-lang')) return c;
+    return document;
+}
+
 function detectTranslationLang() {
-    const container = document.querySelector('.sutta-container, .sutta') || document;
+    const container = getSuttaContainer();
 
     // 1. Атрибут lang — общий контракт у ВСЕХ рендереров (легаси PHP r.php/tr.php,
     // dg-node search-render.js, dg-node megareader.js) всегда ставят lang="ru"/"en"/...
@@ -788,7 +803,7 @@ async function prepareTextData(slug) {
       return prepareLegacyData();
   }
 
-  const container = document.querySelector('.sutta-container, .sutta') || document;
+  const container = getSuttaContainer();
   
   // .rus-lang/.eng-lang/.tha-lang/.second-translation-row — легаси-классы (совпадают с
   // разметкой r.php/tr.php и search-render.js), но dg-node megareader.js рендерит перевод

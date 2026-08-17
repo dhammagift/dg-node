@@ -20,10 +20,25 @@
   max-width: 274px;
   align-items: center;
   }
+  /* Was hand-tuned negative margins (margin-left:-6px, margin-top:-15px) — assumed a button box
+     model that no longer matches (body #scrollToTopBtn in search/index.html sets a fixed 30x30,
+     padding:0, border:2px); measured live: icon center sat ~5px above true center. Tried
+     display:flex on #scrollToTopBtn first — didn't stick: smoothScroll.js toggles this button's
+     visibility with an INLINE style.display ('block'/'none') on every scroll event, and inline
+     style always beats a stylesheet rule, so any `display` set here gets silently overwritten the
+     next time the user scrolls. Absolute-positioning the icon sidesteps that entirely — doesn't
+     care what `display` the button itself ends up with, as long as the button stays the
+     positioned ancestor (it does — position:fixed already). Explicit width, not auto: at
+     height:13px without a width the box rendered 15px wide instead of the ~9.8px the SVG's own
+     113x150 intrinsic ratio implies — pinned instead of chasing why. */
   #arrowImg {
       height: 13px;
-      margin-left: -6px;
-      margin-top: -15px;
+      width: 9.8px;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      margin: 0;
   }
 
   #arrowImg.dark {
@@ -58,7 +73,11 @@
   /* background-color: #424269; border-color: #5A5A5A; */ /* Ваши старые комменты */
   height: 30px;
   width: 30px;
-  
+  /* НЕ ставить здесь display:flex — smoothScroll.js переключает видимость этой кнопки инлайновым
+     style.display ('block'/'none') на каждый скролл, инлайн всегда бьёт правило из таблицы
+     стилей, flex тут же слетал бы обратно в block. Центровка иконки — через position:absolute
+     на #arrowImg (см. выше), ей не важно, какой display у кнопки. */
+
   /* --- ИЗМЕНЕНИЯ ЗДЕСЬ --- */
   
   /* 1. Начальное состояние перед анимацией */
@@ -380,8 +399,14 @@
     display: none;
   }
 
-  /* Ширина контейнера */
-  .sutta.column-view {
+  /* Ширина контейнера — #sutta.column-view (ID+класс, специфичность 110), НЕ .sutta.column-view
+     (только классы, 20): index.css/rus-multi.css задают базовую ширину через #sutta{max-width:
+     45rem} (специфичность 100, тот же приём, что и на проде) — чисто классовый селектор здесь
+     проигрывал ему всегда, независимо от .column-view, поэтому 2-колоночный режим на десктопе
+     никогда реально не расширялся (владелец: "можно шире, см. прод"). На проде (read/css/
+     uiextra.css) этот же override — #sutta.column-view, тот же приём, здесь разошлось при
+     переносе. */
+  #sutta.column-view {
     max-width: 105rem;
   }
 
@@ -434,11 +459,13 @@
 
 #language-button {
   border-radius: 32px;
-  position: fixed; 
-  bottom: 30px; 
-  right: 20px; 
-  z-index: 100; 
-  padding: 5px; 
+  position: fixed;
+  bottom: 30px;
+  right: 20px;
+  /* Поднимали до 1090 (выше дровера) — откат: владелец проверил живьём, кнопка налезала на
+     пункты открытого дровера и мешала по ним кликать. Обратно ниже дровера. */
+  z-index: 100;
+  padding: 5px;
   /* Добавляем прозрачность и анимацию как у соседних кнопок */
   opacity: 0.8; 
   animation: btnPopIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
@@ -1072,10 +1099,12 @@
 
 .dynamic-tts-btn {
   position: fixed;
-  right: 90px; 
-  bottom: 30px; 
+  right: 90px;
+  bottom: 30px;
+  /* Откат до 99 — см. комментарий у #language-button выше: 1090 (выше дровера) перекрывало
+     пункты открытого меню. */
   z-index: 99;
-  width: 30px;  
+  width: 30px;
   height: 30px;
   
   display: flex !important;

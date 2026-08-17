@@ -66,12 +66,58 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
 <html data-bs-theme="light" data-default-lang="en">
 <head>
 <script>
+  // Тема — синхронно, ДО первой отрисовки: <html data-bs-theme> ниже был захардкожен на
+  // "light" всегда, а реальную тёмную тему выставлял только themeswitch.js (грузится
+  // с defer в конце body) — отсюда "белый экран, потом бах — становится чёрным" (владелец).
+  // Этот <script> — САМАЯ первая вещь в <head>, до <link rel=stylesheet> ниже: обычный (не
+  // defer/async) синхронный скрипт в head блокирует парсинг/отрисовку до своего завершения,
+  // поэтому браузер физически не успевает нарисовать светлый кадр раньше, чем атрибут уже
+  // выставлен. Own body.dark/[data-theme=dark] правила (не bootstrap) выставляются так же
+  // рано, но уже в самом начале <body> ниже — <body> там ещё не существует в момент этого
+  // скрипта. themeswitch.js как был, так и остаётся единственным местом, которое СЛУШАЕТ клик
+  // по кнопке переключения — не трогаем его, просто не даём странице стартовать в неверной
+  // теме, пока он не загрузился.
+  (function () {
+    try {
+      var t = localStorage.getItem('theme') || 'auto';
+      if (t === 'dark' || (t === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.setAttribute('data-bs-theme', 'dark');
+      }
+    } catch (e) {}
+  })();
+</script>
+<script>
   // Абсолютные пути: эта страница отдаётся с двух путей (/ и /nodejs/res/, см. dg-light.js),
   // относительный "lang_{lang}.json" резолвился бы по-разному в зависимости от того, откуда
   // открыли страницу. DHAMMA_GLOBAL_LANG_CONFIG_PATTERN — общие для всех страниц строки
   // (см. public/overrides/i18n/lang_global_{lang}.json), не дублируются в этом файле.
   window.DHAMMA_LANG_CONFIG_PATTERN = "/nodejs/res/lang_{lang}.json";
   window.DHAMMA_GLOBAL_LANG_CONFIG_PATTERN = "/assets/i18n/lang_global_{lang}.json";
+</script>
+<script>
+  // PWA install capture — registered as early as possible: beforeinstallprompt can fire before
+  // DOMContentLoaded. home.js (CTA_BUTTONS, renderExtra) gates the "Install" tile in #dg-cta on
+  // document.getElementById('installPWA') existing — that id was referenced in home.js already,
+  // but nothing ever created the element or wired a click handler, so the tile never appeared
+  // even in supporting browsers (bug reported by owner: "PWA link somehow wasn't carried over").
+  window.addEventListener('beforeinstallprompt', function (e) {
+    e.preventDefault();
+    window.__dgInstallPrompt = e;
+    if (!document.getElementById('installPWA')) {
+      var ph = document.createElement('button');
+      ph.type = 'button';
+      ph.id = 'installPWA';
+      ph.hidden = true;
+      document.body.appendChild(ph);
+    }
+    if (window.DgHome && typeof window.DgHome.renderExtra === 'function') window.DgHome.renderExtra();
+  });
+  window.addEventListener('appinstalled', function () {
+    window.__dgInstallPrompt = null;
+    var ph = document.getElementById('installPWA');
+    if (ph) ph.remove();
+    if (window.DgHome && typeof window.DgHome.renderExtra === 'function') window.DgHome.renderExtra();
+  });
 </script>
 <script src="/assets/js/dhamma-i18n.js"></script>
 <title>Search Results - Dhamma.gift</title>
@@ -100,7 +146,10 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta charset="UTF-8">
 
-<link rel="stylesheet" type="text/css" href="/assets/js/datatables/datatables.min.css"/>
+<!-- datatables.min.css больше НЕ грузится здесь блокирующе — см. ensureSearchAssets() ниже по
+     файлу: таблица результатов не нужна главной странице вообще (initSearchApp возвращается
+     раньше, чем до неё доходит дело), а весь ЭТОТ файл был ~2МБ мёртвого веса на каждой загрузке
+     home. Подключается лениво, только когда реально запускается поиск. -->
 <!-- bootstrap.5.3.1.min.css грузится динамически через loadCssJsResult.js (см. ниже),
      а не этим блокирующим <link> — но пока он не подгрузится, скрытые Bootstrap-модалки
      (с их SVG-иконками) не имеют .modal{display:none}, поэтому на миг рендерятся как
@@ -189,6 +238,10 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
         position: fixed;
         bottom: 30px;
         right: 20px;
+        /* Было поднято до 1090 (выше дровера, 1083) — владелец проверил живьём и попросил
+           вернуть обратно: при открытом дровере эти три кнопки оказывались НАД пунктами меню,
+           перекрывая их (хуже, чем прежняя проблема — та просто прятала кнопки, эта мешала
+           кликать по меню). Обратно ниже дровера — 100, как было. */
         z-index: 100;
         border-radius: 32px;
         padding: 5px;
@@ -220,6 +273,8 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
         position: fixed;
         bottom: 30px;
         right: 90px;
+        /* Было поднято до 1090 — откатили, см. комментарий у #language-button выше в этом
+           же <style>: перекрывало пункты открытого бургер-дровера. */
         z-index: 100;
         width: 30px;
         height: 30px;
@@ -233,7 +288,145 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     /* display НЕ трогаем: smoothScroll.js показывает и прячет кнопку инлайновым стилем по
        скроллу (тот же файл работает и в ридере) — любое правило display здесь всё равно
        проиграет инлайну и только запутает. */
+    /* Автоскрытие верхней панели на скролле вниз, возврат на малейший скролл вверх — владелец:
+       "при небольшом скролле назад появляется вся верхняя панель — инпут, бургер, прев/некст и
+       др." Весь стек — #dg-hero-band (инпут+бургер) + #results-toolbar (выдача) или
+       #reader-toolbar+#navigation (чтение, прев/некст) — прячется/появляется ОДНИМ движением.
+       Только в выдаче/чтении, НЕ на главной: там #dg-hero-band — градиентная лента (home.css),
+       её высота держится на живом контенте и трогать её флоу рискованно (уже отполированная
+       главная). В остальных состояниях та же лента — без фона (background:none, базовое правило
+       #dg-hero-band), просто обёртка вокруг инпута/бургера, снять её с потока безопасно; то же
+       для results-toolbar/reader-toolbar/navigation — у них тоже нет декоративного фона,
+       завязанного на поток.
+       top у каждого элемента стека считает JS (autoHideHeader() в конце файла) — сумма высот
+       того, что стоит НАД ним; здесь фиксируем только то, что не меняется (position/z-index/фон/
+       transition). Скрытие — translateY(-200px) на ВСЕХ элементах стека одинаково (не
+       translateY(-100%), та considers только собственную высоту элемента и группа не уезжала бы
+       единым куском) — 200px с запасом больше любой реальной высоты этих тонких строк. */
+    body.dg-state-results #dg-hero-band,
+    body.dg-state-reader #dg-hero-band,
+    body.dg-state-results #results-toolbar,
+    body.dg-state-reader #reader-toolbar,
+    body.dg-state-reader #navigation,
+    body.dg-state-reader #top-links-container {
+        position: fixed;
+        left: 0;
+        right: 0;
+        z-index: 850; /* ниже дровера (1083), выше обычного контента */
+        background: var(--dg-surface, #fff);
+        transition: transform 0.25s ease;
+    }
+    /* Сплошная подложка ниже по z-index, чем весь стек выше — высоту и transform ей задаёт тот
+       же JS (applyPadding()/scroll-обработчик ниже), см. комментарий у самого div. */
+    body.dg-state-results #dg-header-backdrop,
+    body.dg-state-reader #dg-header-backdrop {
+        display: block;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 849;
+        background: var(--dg-surface, #fff);
+        transition: transform 0.25s ease;
+    }
+    /* p.sc-link внутри #top-links-container — margin-top:0.3rem (rus-multi.css) на нём же,
+       плюс <br> перед контейнером в разметке megareader.js — небольшой, но лишний воздух, раз
+       контейнер теперь сам закреплён вплотную под #navigation. Убираем свою верхнюю часть
+       отступа, снизу оставляем (не влияет на "дикий пробел" — тот был ДО контейнера). */
+    body.dg-state-reader #top-links-container p.sc-link {
+        margin-top: 0;
+    }
+    body.dg-state-results #dg-hero-band,
+    body.dg-state-reader #dg-hero-band {
+        width: auto; /* нейтрализует 100vw из базового #dg-hero-band (home.css) */
+        margin-left: 0; /* и его же компенсирующие отрицательные margin */
+        margin-right: 0;
+    }
+    /* #navigation (прев/некст) на мобильном реально считался в column (проверено
+       getComputedStyle) — ВСЕ найденные правила #navigation/.navigation в трёх подключённых
+       таблицах стилей (index.css/rus-multi.css/uiextra.css) заявляют row, источник column найти
+       не удалось (не нашёлся ни в одной подключённой таблице стилей через перебор
+       document.styleSheets). #previous/#next из-за этого стояли друг под другом, а не рядом —
+       вместо этого прев/некст, компактно 17px текста каждый, растягивались в 84px высокий блок с
+       воздухом внутри, который и читался как "дикий пробел" перед следующей строкой. !important
+       здесь — не стиль, единственный надёжный способ перебить источник, который не смог найти. */
+    body.dg-state-reader #navigation {
+        display: flex !important;
+        flex-direction: row !important;
+        /* Gap above (from #top-links-container) and below (before sutta content) — owner:
+           "extra links and prev/next are crammed together, and no gap below prev/next at all,
+           text right at the edge". Padding, not margin — applyPadding() (JS below) measures
+           this element's height via getBoundingClientRect(), which includes padding but not
+           margin; a margin here wouldn't be counted and #sutta's computed padding-top would
+           come up short, causing content to overlap into the gap instead of clearing it. */
+        padding-top: 8px;
+        padding-bottom: 8px;
+    }
+    body.dg-header-hidden.dg-state-results #dg-hero-band,
+    body.dg-header-hidden.dg-state-reader #dg-hero-band,
+    body.dg-header-hidden.dg-state-results #results-toolbar,
+    body.dg-header-hidden.dg-state-reader #reader-toolbar,
+    body.dg-header-hidden.dg-state-reader #navigation,
+    body.dg-header-hidden.dg-state-reader #top-links-container,
+    body.dg-header-hidden.dg-state-results #dg-header-backdrop,
+    body.dg-header-hidden.dg-state-reader #dg-header-backdrop {
+        transform: translateY(-200px);
+    }
+    /* Не в выдаче/чтении (главная и т.п.) — просто не нужен, ничего не прячется/не скроллится
+       под фиксированным стеком там. */
+    #dg-header-backdrop { display: none; }
     #scrollToTopBtn:hover { transform: scale(1.15); }
+    /* Строка иконок ридера (#reader-toolbar) была вообще без своего layout-CSS — иконки просто
+       падали одна за другой без выравнивания (владелец: "как-то криво, должно быть по центру,
+       иконки должны быть одинаковыми"). common-size-icon4 (reader/css/uiextra.css) не подошёл:
+       тот класс тянет margin-top:-3px/margin-left:6px, подобранные под inline-flow #form-div
+       реального прода — в чистом flex-ряду не нужны и только сбивали выравнивание. Явные
+       width/height здесь же — единообразный размер вместо унаследованного разнобоя. */
+    .dg-reader-toolbar {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 22px;
+        padding: 10px 0;
+    }
+    .dg-reader-toolbar a {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-decoration: none;
+    }
+    .dg-reader-toolbar img {
+        width: 19px;
+        height: 19px;
+        margin: 0;
+        opacity: 0.75;
+    }
+    .dg-reader-toolbar a:hover img { opacity: 1; }
+    /* TOC-пилюля (#smart-toc-btn) внутри тулбара — базовые правила (reader/css/uiextra.css)
+       рассчитаны на самостоятельное плавающее позиционирование (#smart-toc-container, здесь не
+       используется), нейтрализуем то, что не годится обычному flex-элементу ряда: border(0) —
+       у неё уже есть свой border-2px в базовом правиле, не трогаем; главное — не absolute/fixed
+       и не 250px на телефоне ("не слишком широкий на мобильных", просьба владельца). */
+    .dg-reader-toolbar #smart-toc-btn { max-width: 160px; }
+    @media (max-width: 767.98px) {
+        .dg-reader-toolbar #smart-toc-btn { max-width: 120px; }
+    }
+    .dark .dg-reader-toolbar #smart-toc-btn { background-color: #42426a; border-color: #42426a; color: rgb(221, 221, 221); }
+    .dark .dg-reader-toolbar #smart-toc-current { color: rgb(221, 221, 221); }
+    /* Панель оглавления — раньше жила ВНУТРИ #smart-toc-container (тот сам position:fixed,
+       панель наследовала позиционирование от него как обычный flex-потомок). Кнопка теперь в
+       обычном потоке тулбара — панели нужно своё fixed явно, иначе просто раздвинет соседние
+       иконки в toolbar-ряду вместо того чтобы выпасть поверх контента. */
+    #smart-toc-panel {
+        position: fixed;
+        top: 60px;
+        right: 12px;
+        z-index: 900; /* выше остального стека (850), ниже дровера (1083) */
+    }
+    @media (max-width: 767.98px) {
+        #smart-toc-panel { right: 6px; left: 6px; width: auto; max-width: none; }
+    }
     /* The ✦ link at the start of every quote line. search-render.js has always emitted it
        (.quoteLink-start), and extrastyles.css positions and hides it — but nothing ever brought
        it back, so it was permanently invisible here. The reader reveals its equivalent on hover
@@ -267,14 +460,31 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
         padding-left: 0;
         padding-right: 0;
     }
-    /* Место под ✦ и ЗАЗОР между ней и текстом. Раньше ссылка (left:-1em) упиралась в первую
-       букву вплотную — замерено 0px между её правым краем и началом строки. Отступ списка чуть
-       больше сдвига ссылки, разница и есть зазор. */
+    /* Текст — 5px от края строки, значок — 4px от текста (владелец просил оба числа буквально;
+       зазор был 8px, потом попросили теснее). На ДЕСКТОПЕ это физически возможно: сама таблица
+       уже отстоит от края окна на 24px (замерено), в этот запас помещается и значок (13.4px), и
+       зазор, даже уходя в минус относительно padding самой ячейки. */
     #pali td:last-child,
     #pali tr.child .dtr-details li {
-        padding-left: 1.5em;
+        padding-left: 5px;
     }
-    #search-pane .quoteLink-start { left: -1.5em; }
+    #search-pane .quoteLink-start { left: -17px; } /* 4px зазор + ~13.4px сам значок */
+    /* На ТЕЛЕФОНЕ этого запаса нет — таблица начинается почти от самого края окна (3px), и
+       "5px от строки" + "8px от текста" одновременно уже требуют больше места, чем есть от
+       строки до края экрана: будь у ✦ ровно те же 5px/8px, что на десктопе, она бы вылезала за
+       левый край окна (проверено расчётом: 3 + 5 − 21 < 0). Раз оба числа сразу не влезают физически,
+       здесь в приоритете "не обрезать значок" — сам значок уменьшен, и оба отступа сокращены
+       ровно настолько, чтобы он весь помещался на экране. */
+    @media (max-width: 767.98px) {
+        #pali td:last-child,
+        #pali tr.child .dtr-details li {
+            padding-left: 13px;
+        }
+        #search-pane .quoteLink-start {
+            left: -13px;
+            font-size: 0.85em;
+        }
+    }
     /* Плавное появление подсветки — то же правило, что в ридере (uiextra.css:
        [class*="-lang"] { transition: background-color 260ms ease-in-out }). На странице выдачи
        uiextra.css не подключён (он грузится лениво, только при открытии текста), поэтому
@@ -307,6 +517,75 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
         background-color: rgba(26, 188, 156, 0.25);
         border-radius: 6px;
         transition: background-color .2s ease;
+    }
+    /* Групповая подсветка ЧИТАЕМОГО СЕЙЧАС сегмента (не то же самое, что .active-word-выделение
+       выше) — рисует reader/css/voice.css (`#sutta span[id]:has(.tts-active)`), а это правило
+       уже совпадает (id "sutta" теперь свободен, см. ensureReaderAssets()). Но voice.css там
+       берёт rgba(var(--bs-primary-rgb)…) — тот же синий-вместо-зелёного баг, что объяснён в
+       комментарии про .active-word чуть выше. voice.css — общий с прод-легаси файл
+       (siteroot/read/css, symlink), его не трогаем — просто перебиваем тем же правилом с явным
+       зелёным здесь, в своём файле. Селектор совпадает буква в букву с voice.css (одинаковая
+       специфичность) — но voice.js подгружает voice.css ЛЕНИВО, дописывая <link> в конец <head>
+       ПОЗЖЕ этого статического <style>, а значит при равной специфичности voice.css в каскаде
+       побеждает (later wins). Поэтому !important — не выбор стиля, единственный надёжный способ
+       перебить лениво подгружаемый CSS с той же специфичностью, не трогая сам legacy-файл.
+       scroll-margin-top — запас над прокруткой, чтобы предыдущая строка оставалась видна
+       (владелец: "на проде примерно 25-35%") — было 15vh в voice.css, здесь 30vh, середина
+       названного диапазона. */
+    #sutta span[id]:has(.tts-active) {
+        display: block;
+        scroll-margin-top: 30vh !important;
+        background-color: rgba(26, 188, 156, 0.25) !important;
+        border-radius: 6px;
+        transition: background-color 0.2s ease;
+        -webkit-box-decoration-break: clone;
+        box-decoration-break: clone;
+    }
+    body.dark #sutta span[id]:has(.tts-active) {
+        background-color: rgba(26, 188, 156, 0.30) !important;
+    }
+    #sutta span[id]:has(.tts-active) .tts-active,
+    #sutta span[id]:has(.tts-active) .active-word {
+        background-color: transparent !important;
+        box-shadow: none !important;
+        border: none !important;
+        border-radius: 0;
+    }
+    /* Режим колонок для цитат поиска — тот же переключатель (localStorage.viewMode) и та же
+       идея, что в ридере (reader/css/uiextra.css: .column-view/.right-column), но своя копия
+       CSS: та таблица стилей здесь не подключена (ридер-only, лениво грузится только при
+       открытии текста), а тянуть её целиком сюда ради пары правил — лишнее. Разметку под это
+       уже строит search-render.js (renderSegment: переводы обёрнуты в <span
+       class="right-column">, как в megareader.js). span[class*="-lang"] (не голое .quote) —
+       иначе селектор ловил бы и служебные <br class="... quote"> из той же разметки. */
+    #search-pane.column-view span[class*="-lang"].quote {
+        display: inline-block;
+        vertical-align: top;
+        box-sizing: border-box;
+    }
+    #search-pane.column-view span.pli-lang.quote {
+        width: 48%;
+        max-width: 48%;
+        padding-right: 10px;
+    }
+    #search-pane.column-view .right-column {
+        display: inline-block;
+        width: 48%;
+        vertical-align: top;
+        box-sizing: border-box;
+        padding-left: 10px;
+    }
+    #search-pane.column-view .right-column span[class*="-lang"].quote {
+        display: block;
+        width: 100%;
+        margin: 0;
+        padding: 0;
+    }
+    /* Разрывы строк между цитатами держат вертикальный поток в обычном режиме — в колоночном
+       они ломают ряд (пали и right-column должны стоять РЯДОМ, а <br> между inline-block
+       соседями всегда переносит следующий на новую строку). */
+    #search-pane.column-view br.quote {
+        display: none;
     }
     /* Контекстное меню цитаты. Ридеровское #segment-context-menu живёт в reader/css/uiextra.css,
        которую эта страница не подключает — здесь свой минимальный вид на переменных Bootstrap,
@@ -364,6 +643,16 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     #search-pane .dtsb-searchBuilder .dtsb-button:hover {
         background: var(--bs-secondary-bg, #e9ecef);
     }
+    /* select/input внутри условия — bootstrap красит их красной рамкой (валидационный вид,
+       DataTables так помечает "ещё не тронутое" значение, это не ошибка) и синим свечением на
+       фокусе. Рядом с приглушёнными кнопками выше это read как "тут что-то не так" (жалоба
+       владельца — "слишком цветастый"). Нейтральная серая рамка, как у остального интерфейса. */
+    #search-pane .dtsb-searchBuilder select,
+    #search-pane .dtsb-searchBuilder input {
+        border-color: var(--bs-border-color, #dee2e6) !important;
+        box-shadow: none !important;
+        font-size: 13px;
+    }
     #search-pane .dtsb-title {
         font-size: 13px;
         color: var(--bs-secondary-color, #6c757d);
@@ -382,17 +671,22 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     }
     /* Ряд кнопок выдачи (свернуть/развернуть, слова, словарь, отметки, помощь) — облегчаем:
        мельче, приглушённее, со скруглением как у поля ввода (.dg-input-shell — 28px), а не
-       угловатые bootstrap-квадраты. Фон/рамка появляются только на hover/active, а не всегда —
-       так ряд не спорит взглядом с самой выдачей под ним. */
+       угловатые bootstrap-квадраты. Рамка-пилюля видна ВСЕГДА (просьба владельца), фон —
+       только на hover/active, чтобы не спорить взглядом с самой выдачей под ним. */
     #results-toolbar .btn {
         padding: 3px 10px;
         font-size: 0.8rem;
         line-height: 1.4;
-        border: 1px solid transparent;
+        border: 1px solid var(--dg-border, var(--bs-border-color, #dee2e6));
         border-radius: 999px;
         background: transparent;
         color: var(--dg-text-muted, var(--bs-secondary-color, #6c757d));
         box-shadow: none;
+    }
+    /* .forshellscript ("Words"/"Слова") — ссылка внутри неё держит свой bootstrap-синий цвет
+       (обычная <a>), который перебивал приглушённый цвет кнопки. Наследуем явно. */
+    #results-toolbar .btn.forshellscript a {
+        color: inherit;
     }
     #results-toolbar .btn:hover,
     #results-toolbar .btn:focus-visible,
@@ -407,6 +701,25 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
         width: 15px;
         height: 15px;
     }
+    /* Ряд кнопок — по центру, той же ширины, что поле ввода (.dg-hero-inner, 700px), а не во всю
+       колонку слева (просьба владельца). Разделительная линия снизу отделяет его от заголовка,
+       который теперь идёт ПОСЛЕ (владелец: "заголовок ниже под горизонт строкой"). */
+    #dg-toolbar-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        align-items: center;
+        gap: 2px;
+        max-width: 700px;
+        margin: 0 auto;
+        padding-bottom: 10px;
+        border-bottom: 1px solid var(--dg-border, #dee2e6);
+    }
+    /* margin-bottom заменяет пространство, которое раньше держала вторая линия (<hr
+       id="results-divider">, теперь убрана) между заголовком и остальной выдачей. */
+    /* margin-top было 10px (~18px итогового зазора от нижнего края тулбара с учётом
+       собственных line-height отступов h3) — владелец попросил слегка сузить. */
+    .resultheader { margin-top: 4px; margin-bottom: 16px; }
     /* Filter+ переезжает внутрь .dt-search (см. attachFilterPlusButton в
        search-render.js) — там уже своя рамка вокруг поля "Фильтр:", повторять её на кнопке не
        нужно, только небольшой отступ и то же скругление-пилюля, что у остальных кнопок ряда. */
@@ -480,15 +793,37 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
 <!--
 -->
 <!-- fa-search fa-flip-horizontal on #searchbtn below needs this — legacy echoes the same
-     local bundle via $fontawesomejs in prod config.php (config/config.php online-prod branch),
-     dg-node didn't have it wired up yet so the icon was invisible. -->
-<script src="/assets/js/fontawesome.6.1.all.js"></script>
+     local bundle via $fontawesomejs in prod config.php (config/config.php online-prod branch).
+     Prod switches between the full local bundle (1.7MB, offline/loopback access — no internet to
+     reach FontAwesome's own CDN) and FontAwesome's hosted Kit script (auto-subsets to only the
+     icons actually used on the page, served compressed+cached from FA's own CDN — far smaller
+     than shipping the whole "all styles" bundle ourselves). dg-node always used the local bundle
+     unconditionally; owner pointed out prod's PHP config already solves this, ported the same
+     switch here client-side (dg-light.js serves this file statically, no per-request templating
+     available, so the branch happens in JS instead of PHP `echo $fontawesomejs`). -->
+<script>
+  // document.write() here used to force the browser to run this JS before it could even
+  // discover the FontAwesome <script> URL — a parser-blocking hop that browsers actively
+  // penalize on slow connections. appendChild doesn't block parsing (TODO.md #global п.2:
+  // measured contributor to slower-than-prod loads) — same offline/online branch preserved.
+  (function () {
+    var h = window.location.hostname;
+    var offline = h === 'localhost' || h === '127.0.0.1' || h === '::1' || /^192\.168\.|^10\.|^172\.(1[6-9]|2\d|3[01])\./.test(h);
+    var s = document.createElement('script');
+    s.src = offline ? '/assets/js/fontawesome.6.1.all.js' : 'https://kit.fontawesome.com/a2bd6cd99e.js';
+    if (!offline) s.crossOrigin = 'anonymous';
+    document.head.appendChild(s);
+  })();
+</script>
 <script src="/assets/js/jquery-3.7.0.min.js"></script>
 <script type="text/javascript" src="/assets/js/bootstrap.bundle.5.3.1.min.js"></script>
-<script type="text/javascript" src="/assets/js/datatables/datatables.js"></script>
-<script type="text/javascript" src="/assets/js/search-render.js"></script>
-<script type="text/javascript" src="/assets/js/natural.js"></script>
-<script type="text/javascript" src="/assets/js/strip-html.js"></script>
+<!-- datatables.js (1.9МБ) / search-render.js / natural.js / strip-html.js больше НЕ грузятся
+     здесь — см. ensureSearchAssets() ниже по файлу и её вызов из initSearchApp(). Ничего из этого
+     не нужно домашнему экрану (initSearchApp возвращается сразу после dgSetState('home'), до
+     первой строчки, которая тронула бы DataTables), а грузилось на каждый заход синхронно,
+     блокируя первую отрисовку главной ~2МБ никак не используемого там кода (жалоба владельца на
+     скорость загрузки). Загружаются лениво, ПАРАЛЛЕЛЬНО с fetch('/search') — на прямой загрузке
+     страницы результатов (не SPA-переход) задержки от этого не прибавляется, оба идут одновременно. -->
 <!-- <script type="text/javascript" src="/assets/js/diacritics.js"></script> -->
 
 
@@ -513,6 +848,13 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
 (function () {
     var b = document.body;
     b.classList.add('dg-skin-minimal', 'dg-no-anim');
+    // Тема — тот же ранний приём, что и <html data-bs-theme> в <head> выше (см. комментарий
+    // там): свои (не bootstrap) тёмные правила этого файла завязаны на body.dark/
+    // body[data-theme=dark], а <body> не существовал ещё в момент того скрипта.
+    var theme = localStorage.getItem('theme') || 'auto';
+    var dark = theme === 'dark' || (theme === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches);
+    b.classList.toggle('dark', dark);
+    if (dark) b.setAttribute('data-theme', 'dark');
     var path = location.pathname.replace(/\/+$/, '');
     var hasQuery = new URLSearchParams(location.search).has('q');
     if (!hasQuery && (path === '' || path === '/index.html')) b.classList.add('dg-state-home');
@@ -555,10 +897,20 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
      сайта. Внутри — вывеска, девиз, поле и подсказка: на главной это один цельный блок, и поле
      сидит НА нём, а не под ним. В выдаче и в чтении полоса схлопывается в ничто (фон снимается,
      см. home.css), поэтому обёртка общая для всех состояний и разметку не раздваивает. -->
+<!-- Сплошная подложка ПОД всем закреплённым стеком (band/toolbar/extra/tail) — сам стек
+     собран из нескольких НЕЗАВИСИМЫХ position:fixed кусков (каждый со своим top, который
+     считает JS ниже), и в стыках между ними мог проглядывать скроллящийся контент страницы
+     тонкой полоской текста (владелец: "не цельный хеддер, а какие-то полоски", "видно
+     полоску текста, бьющего при скролле"). Не переделываю сам стек в один DOM-узел (риск для
+     кучи существующей логики — top каждого куска, ResizeObserver, suttaLoaded/
+     suttaRenderedCentral) — вместо этого один общий фон НИЖЕ всех кусков по z-index, высотой
+     чуть БОЛЬШЕ их суммарной высоты (запас, как просили), с той же анимацией скрытия/показа.
+     Видим/скрыт по тому же классу body.dg-header-hidden, что и остальной стек. -->
+<div id="dg-header-backdrop"></div>
 <div id="dg-hero-band">
 <div class="dg-hero-inner">
 <div id="dg-topbar">
-  <a href="/" id="dg-brand" title="Dhamma.Gift">
+  <a href="/" id="dg-brand" class="dg-go-home" title="Dhamma.Gift">
     <!-- Без кружка-подложки: у картинки почти белые лепестки-страницы, и на светлом фоне они
          пропадали. Вместо плашки — тонкий абрис по контуру самой картинки (filter в home.css). -->
     <img class="dg-brand-logo" src="/assets/img/dgsanhkalogo.png" alt="Dhamma.Gift">
@@ -583,7 +935,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     <div class="dg-input-shell">
       <!-- Ракушка — она же «домой». Только в выдаче и в чтении: на главной знак и название стоят
            в шапке выше, и дублировать их внутри поля незачем. -->
-      <a href="/" class="dg-shell-logo" title="Home" data-i18n-title="{{global.common.home}}">
+      <a href="/" class="dg-shell-logo dg-go-home" title="Home" data-i18n-title="{{global.common.home}}">
         <img src="/assets/img/dgsankhaonly.png" alt="Dhamma.Gift">
       </a>
       <input class="form-control searchinput" id="paliauto" type="search" placeholder="e.g. Kāyagat or sn56.11" data-i18n-placeholder="{{search.placeholder}}" autocomplete="off" autofocus>
@@ -641,6 +993,14 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
      переписывать dgSetBusy(), который им управляет; видимой высоты у него больше нет. -->
 <div id="dg-loading" hidden></div>
 
+<!-- Мелкий спиннер вверху экрана — .dg-shell-spinner (внутри поля, заменяет лупу) виден, только
+     пока сам инпут виден; после скролла вниз шапка прячется (autoHideHeader) вместе с ним, и
+     идущий поиск становится совсем незаметен (владелец: "спиннер внутри инпута не виден, всё
+     равно нужно показывать, что идёт работа"). Показывается ТОЛЬКО когда оба условия разом:
+     идёт запрос (body.dg-busy) И шапка спрятана (body.dg-header-hidden) — см. CSS ниже; когда
+     шапка видна, свой спиннер в поле её уже полностью покрывает, дублировать незачем. -->
+<div id="dg-busy-indicator" role="status" aria-live="polite" aria-hidden="true"><div class="spinner-border"></div></div>
+
 <!-- Плитки. Наполнение — /nodejs/res/menu-links.json (перенос боевого горизонтального меню
      assets/common/horizontalMenu{En,Ru}.php), рисует home.js.
      Ниже — «Интересные запросы»: тот же набор, что крутится на боевой главной легаси-сайта
@@ -649,6 +1009,29 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
   <div class="dg-tiles" id="home-tiles"></div>
   <div id="home-slides" hidden></div>
 
+  <!-- «Как искать» + памятка «Переводы не от Будды» — перенос двух блоков боевой главной
+       (index.php: $howtosearchquote/$howtoheader и $transwarning из config/translate.php).
+       Тот же порог, что у #home-extra: ТОЛЬКО широкий экран (см. home.css), главная и так
+       длинная на телефоне. Ссылки dn16/an4.180 — в свой ридер с подсветкой цитаты (?s=). -->
+  <section id="home-howto" hidden>
+    <h2 class="dg-extra-title" id="dg-howto-title"></h2>
+    <div class="dg-howto-quote">
+      <p class="pli-lang" id="dg-howto-pali"></p>
+      <p id="dg-howto-body"></p>
+      <p class="dg-howto-refs">
+        <a href="/dn16?s=T%C4%81ni" target="_blank">dn16</a>
+        <a href="/an4.180?s=T%C4%81ni" target="_blank">an4.180</a>
+      </p>
+    </div>
+    <div class="dg-howto-warn">
+      <svg viewBox="0 0 512 512" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M256 32c14.2 0 27.3 7.5 34.5 19.8l216 368c7.3 12.4 7.3 27.7 .2 40.1S486.3 480 472 480H40c-14.3 0-27.6-7.7-34.7-20.1s-7-27.8 .2-40.1l216-368C228.7 39.5 241.8 32 256 32zm0 128c-13.3 0-24 10.7-24 24V296c0 13.3 10.7 24 24 24s24-10.7 24-24V184c0-13.3-10.7-24-24-24zm32 224a32 32 0 1 0 -64 0 32 32 0 1 0 64 0z"/></svg>
+      <div>
+        <strong id="dg-warn-title"></strong>
+        <p id="dg-warn-body"></p>
+      </div>
+    </div>
+  </section>
+
   <!-- Приложения, расширения и контакты — перенос двух нижних блоков боевой главной (index.php:
        $ctaButtons и #contacts). ТОЛЬКО для широких экранов: на телефоне главная и так длинная,
        а эти блоки там ничего не решают (см. медиазапрос в home.css).
@@ -656,10 +1039,10 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
        намеренно: всё, что в них перечислено, уже лежит в плитках и их шторках, а второй, отдельно
        обновляемый список неизбежно разойдётся с первым. -->
   <section id="home-extra" hidden>
-    <h2 class="dg-extra-title" id="dg-links-title"></h2>
+    <h2 class="dg-extra-title" id="links"></h2>
     <div class="dg-cta" id="dg-cta"></div>
 
-    <h2 class="dg-extra-title" id="dg-contacts-title"></h2>
+    <h2 class="dg-extra-title" id="contacts"></h2>
     <p class="dg-contacts-motto" id="dg-contacts-motto"></p>
     <div class="dg-contacts" id="dg-contacts"></div>
   </section>
@@ -776,6 +1159,146 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     }, 150);
   })();
 
+  /* Автоскрытие верхней панели на скролле — видимость переключается CSS-ом (см. <style>,
+     body.dg-header-hidden), здесь: (1) направление скролла, (2) top каждого элемента стека —
+     они лежат в РАЗНЫХ родителях по разметке (band вне пейнов, toolbar/navigation внутри
+     #reader-pane), обычный document flow их не построит друг под другом сам, раз все они
+     position:fixed — top считаем явно, суммируя высоты предыдущих, (3) padding-top контенту,
+     что идёт следом за стеком (та же причина: элементы стека сняты с потока, без паддинга
+     следующий контент заехал бы под них). dgApplyHeaderPadding() зовёт dgSetState() ниже по
+     файлу при каждом переключении состояния.
+     Стек ПОДРОБНО: выдача — #dg-hero-band, #results-toolbar; чтение — #dg-hero-band,
+     #reader-toolbar, #navigation (прев/некст), #top-links-container (строка R+R/R+E/DPR/BJT/
+     Voice/4nt/SC/BB/TBW — владелец явно попросил закрепить и её тоже). Эта последняя — особый
+     случай: она НЕ снаружи #sutta, как остальные, а мегарідер пересоздаёт её ВНУТРИ #sutta на
+     КАЖДЫЙ рендер/смену режима (buildSutta() в megareader.js кладёт её innerHTML'ом заново) —
+     поэтому у нее СВОЙ content-таргет для паддинга (#sutta, не #reader-pane) и свой пересчёт по
+     событию 'suttaLoaded'/'suttaRenderedCentral' (те же кастомные события, на которые уже
+     подписан reader/common.js), а не только ResizeObserver — по свежесозданному элементу его
+     ещё не на что вешать. Нижняя копия (#bottom-links-container, из тех же данных) НЕ
+     закрепляется — она не хочет "прилипать" в конце чтения, только верхняя. */
+  (function autoHideHeader() {
+    var band = document.getElementById('dg-hero-band');
+    if (!band) return;
+    var lastY = window.scrollY;
+    var DOWN_THRESHOLD = 8;  // px — не прятать от дребезга инерционного скролла/тачпада
+    var UP_THRESHOLD = 4;    // "небольшой скролл назад" — реагирует охотнее, чем прячется
+
+    function stackConfig() {
+      if (document.body.classList.contains('dg-state-results')) {
+        // content — #dynamicHeader (заголовок "слово — кол-во текстов"), не #search-pane: сам
+        // заголовок теперь физически ВНЕ #results-toolbar (владелец: скрываться на скролле
+        // должны только функциональные элементы, не заголовок с контентом страницы) и поэтому
+        // сам нуждается в отступе от закреплённого стека — раньше этот отступ доставался
+        // #search-pane, но тот шёл СРАЗУ после заголовка, а не после самого стека.
+        return { stack: [band, document.getElementById('results-toolbar')].filter(Boolean), content: document.getElementById('dynamicHeader') };
+      }
+      if (document.body.classList.contains('dg-state-reader')) {
+        return {
+          // #navigation (прев/некст) намеренно НЕ в основном стеке — владелец попросил
+          // поменять местами: прев/некст ниже, sc-link-строка (R+R/R+E/DPR/BJT/...) выше, сразу
+          // после иконок тулбара. См. tail ниже — считается ПОСЛЕ #top-links-container, а не
+          // вместе с band/toolbar.
+          stack: [band, document.getElementById('reader-toolbar')].filter(Boolean),
+          content: document.getElementById('reader-pane'),
+          extra: document.getElementById('top-links-container'),
+          tail: document.getElementById('navigation'),
+          extraContent: document.getElementById('sutta')
+        };
+      }
+      return null;
+    }
+
+    function applyPadding() {
+      var cfg = stackConfig();
+      if (!cfg) return;
+      // 10px сверху (было 5, владелец попросил ещё +5 — первая правка оказалась мало заметна).
+      // Начинаем стек с этого отступа, а не с нуля — сдвигает весь стек разом (band → следующий
+      // элемент → ...), паддинг контенту ниже пересчитается сам той же формулой, что и раньше.
+      var offset = 10;
+      cfg.stack.forEach(function (el) {
+        el.style.top = Math.round(offset) + 'px';
+        offset += el.getBoundingClientRect().height;
+      });
+      if (cfg.content) {
+        // mt-4 (Bootstrap) суммировался бы с паддингом (реальный баг, замерено: 24px margin +
+        // 57px padding = 81px пустоты вместо нужных 57) — И style.marginTop='0' его не бьёт,
+        // Bootstrap-утилиты объявлены с !important (bootstrap.5.3.1.min.css: ".mt-4{margin-top:
+        // 1.5rem!important}"), инлайн-стиль без !important проигрывает. Снимаем класс целиком —
+        // паддинг теперь единственный источник отступа.
+        cfg.content.classList.remove('mt-4');
+        cfg.content.style.paddingTop = Math.ceil(offset) + 'px';
+      }
+      // #top-links-container и #navigation (в этом порядке — владелец попросил поменять
+      // местами) встают ПОСЛЕ основного стека, оба внутри "хвоста" со своим накопителем —
+      // #navigation физически СНАРУЖИ #sutta (сосед в #reader-pane), но визуально должен идти
+      // МЕЖДУ #top-links-container и остальным контентом сутты, поэтому его высота тоже
+      // резервируется паддингом на #sutta, не на #reader-pane.
+      var tailOffset = 0;
+      if (cfg.extra) {
+        cfg.extra.style.top = Math.round(offset + tailOffset) + 'px';
+        tailOffset += cfg.extra.getBoundingClientRect().height;
+      }
+      if (cfg.tail) {
+        cfg.tail.style.top = Math.round(offset + tailOffset) + 'px';
+        tailOffset += cfg.tail.getBoundingClientRect().height;
+      }
+      if (cfg.extraContent) {
+        cfg.extraContent.style.paddingTop = Math.ceil(tailOffset) + 'px';
+      }
+      // Подложка (#dg-header-backdrop) высотой РОВНО в суммарную высоту стека — перекрывает
+      // любой возможный стык между независимо позиционированными кусками стека, чтобы сквозь
+      // них не проглядывал скроллящийся текст страницы (см. комментарий у самого div в
+      // разметке). БЕЗ лишнего запаса: тот же offset/tailOffset — единственный источник
+      // истины и для паддинга контента (cfg.content/cfg.extraContent выше), и для высоты
+      // подложки — раньше подложка была на 24px ВЫШЕ, чем реально резервирует паддинг, и на
+      // столько же заезжала НА текст (заголовок "N texts and M matches"/первая строка сутты) —
+      // не просто нечего было "перекрывать с запасом", подложка перекрывала сам контент,
+      // отсюда и "обрезанный", будто зависший текст (владелец, скриншот).
+      var backdrop = document.getElementById('dg-header-backdrop');
+      if (backdrop) backdrop.style.height = Math.ceil(offset + tailOffset) + 'px';
+    }
+    window.dgApplyHeaderPadding = applyPadding;
+
+    // dgSetState() зовёт applyPadding() СРАЗУ при переходе в состояние — но #results-toolbar
+    // на прямой заход/URL наполняется своим содержимым (фильтр, кнопки) уже ПОСЛЕ ответа
+    // /search, позже, чем этот вызов — замерено вживую: padding считался по высоте 58px
+    // (только лента), а не 159px (лента+тулбар), контент результатов заезжал под тулбар до
+    // следующего пересчёта. ResizeObserver — самый надёжный способ поймать момент, когда
+    // высота элементов стека реально устоялась, независимо от того, чем именно вызвана
+    // задержка (сеть, рендер таблицы, смена языка интерфейса и т.п.).
+    if (window.ResizeObserver) {
+      var ro = new ResizeObserver(function () { applyPadding(); });
+      [band, document.getElementById('results-toolbar'), document.getElementById('reader-toolbar'), document.getElementById('navigation')]
+        .filter(Boolean)
+        .forEach(function (el) { ro.observe(el); });
+    }
+    // #top-links-container — новый элемент на КАЖДЫЙ рендер сутты (megareader.js пересоздаёт
+    // его innerHTML'ом #sutta целиком), ResizeObserver на старый инстанс тут бесполезен —
+    // перевешивать некому. Те же кастомные события, на которые уже подписан reader/common.js.
+    window.addEventListener('suttaLoaded', applyPadding);
+    window.addEventListener('suttaRenderedCentral', applyPadding);
+
+    window.addEventListener('scroll', function () {
+      var cfg = stackConfig();
+      if (!cfg) return;
+      var y = window.scrollY;
+      var delta = y - lastY;
+      var bandHeight = band.getBoundingClientRect().height;
+      if (y < bandHeight) {
+        document.body.classList.remove('dg-header-hidden');
+      } else if (delta > DOWN_THRESHOLD) {
+        document.body.classList.add('dg-header-hidden');
+      } else if (delta < -UP_THRESHOLD) {
+        document.body.classList.remove('dg-header-hidden');
+      }
+      lastY = y;
+    }, { passive: true });
+
+    window.addEventListener('load', applyPadding);
+    window.addEventListener('resize', applyPadding);
+  })();
+
   /* Тема, изменённая в /settings/ (или в другой вкладке), применяется здесь СРАЗУ. Раньше
      страницу приходилось перезагружать: themeswitch.js читает localStorage только при своей
      инициализации, а событие storage никто не слушал. Ставим ровно то же, что ставит его
@@ -866,16 +1389,15 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
         if (popupEl && frameEl) {
           var u = new URL(url, location.origin);
           u.searchParams.set('scroll', 'instant');
+          var w = frameEl.contentWindow;
 
-          /* Кэш: если в попапе уже открыт ТОТ ЖЕ текст, не перезагружаем его целиком ради
-             перехода к другому сегменту. Полная перезагрузка — это заново весь ридер со всеми
-             скриптами и весь текст сутты (у dn1 это ~670 сегментов), из-за неё попап и
-             "открывался каждый раз заново". Слаг сравниваем без сегмента: путь вида
-             "/dn1:1.22.2" — это одна и та же сутта dn1. */
+          /* Кэш №1: та же сутта, другой сегмент — без фетча вообще, просто скролл+подсветка на
+             уже отрисованном DOM. Слаг сравниваем без сегмента: путь вида "/dn1:1.22.2" — это
+             одна и та же сутта dn1. */
           var wantedSlug = decodeURIComponent(u.pathname.slice(1)).split(':')[0];
           var loadedSlug = null;
           try {
-            var cur = frameEl.contentWindow && frameEl.contentWindow.location;
+            var cur = w && w.location;
             if (cur && cur.pathname && cur.pathname !== '/') {
               loadedSlug = decodeURIComponent(cur.pathname.slice(1)).split(':')[0];
             }
@@ -890,7 +1412,6 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
             if (target) {
               doc.querySelectorAll('.active-word').forEach(function (e) { e.classList.remove('active-word'); });
               target.scrollIntoView({ block: 'center' });
-              var w = frameEl.contentWindow;
               if (typeof w.activateSegmentForTTS === 'function') w.activateSegmentForTTS(target);
               else target.classList.add('active-word');
               popupEl.style.display = 'block';
@@ -898,6 +1419,26 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
               if (sameWinBtn) sameWinBtn.href = url;
               return;
             }
+          }
+
+          /* Кэш №2: ДРУГАЯ сутта, но SPA внутри попапа уже загружена (dgNavigateInternal живой)
+             — открыть на месте тем же роутером, что и в главном окне (routeFromUrl ->
+             openReaderInPlace -> initReader, там же и скролл+подсветка сегмента), вместо
+             frameEl.src = ... — полной перезагрузки SPA-страницы целиком (JS/CSS парсинг,
+             DataTables и т.д., замерено ~2с на каждый первый показ) на КАЖДЫЙ клик по другой
+             сутте — из-за этого попап и "открывался каждый раз заново". Совсем первый показ
+             попапа всё ещё грузит iframe целиком (SPA-фреймворка внутри ещё нет). */
+          var warm = false;
+          try { warm = !!(w && typeof w.dgNavigateInternal === 'function'); } catch (err) { warm = false; }
+          if (warm) {
+            try {
+              if (w.dgNavigateInternal(u.pathname + u.search + u.hash)) {
+                popupEl.style.display = 'block';
+                var warmBtn = popupEl.querySelector('.fdg-open-new-window-btn');
+                if (warmBtn) warmBtn.href = url;
+                return;
+              }
+            } catch (err) { /* не получилось — падаем на обычную перезагрузку ниже */ }
           }
 
           frameEl.src = u.toString();
@@ -1015,24 +1556,10 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
      убирать весь ряд на домашнем экране: там ни «Saṁvaṭṭo», ни отметок, ни словаря ещё не к чему
      применить. -->
 <div id="results-toolbar">
-    <h3 class="pl-2 resultheader ml-2" id="dynamicHeader"></h3>
-    <script>
-        (function() {
-            let params = new URLSearchParams(window.location.search);
-            let q = params.get('q') || params.get('s');
-            let pathSegments = window.location.pathname.split('/').filter(s => s);
-            let lastSegment = pathSegments.pop();
-
-            if (!q && lastSegment && !['search', 'index.html', 'result', 'nodejs'].includes(lastSegment.toLowerCase())) {
-                q = lastSegment;
-            }
-            if (q) {
-                let displayWord = decodeURIComponent(q).replace(/ṃ/g, "ṁ");
-                document.getElementById('dynamicHeader').textContent = displayWord.charAt(0).toUpperCase() + displayWord.slice(1) + "...";
-            }
-        })();
-    </script>
-
+    <!-- Ряд кнопок — по центру, под полем ввода (просьба владельца), заголовок теперь идёт ПОСЛЕ
+         этого ряда и после разделительной линии (#dg-toolbar-buttons границей снизу), а не над
+         ним слева. См. #dg-toolbar-buttons в <style> для центрирования/ширины. -->
+    <div id="dg-toolbar-buttons">
     <button id="theme-button" class="btn btn-light mb-1 " type="button">
 
 <img src="/assets/svg/circle-half-stroke.svg" onclick="switchIcon(this)" class="changesvg table-theme-icon gray-icon"></img>
@@ -1041,11 +1568,16 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
 
 <button class="btn btn-light forshellscript mb-1" type="button"><a class="text-decoration-none " href="javascript:void(0)">{{toolbar.wordsToggleShow}}</a></button>
 
-<!-- без mb-1: кнопка позиционируется fixed по bottom, а bootstrap-овский margin-bottom
-     (0.25rem !important) добавлялся сверху и сдвигал её на 4px относительно стрелки "наверх" -->
-<button id="language-button" class="btn btn-light" type="button">{{global.help.languageButton}}</button>
-
 <button class="btn btn-light mb-1  toggle-dict-btn" type="button" ><img class="" src="/assets/svg/comment.svg"></img></button>
+
+<!-- 1/2-column toggle для цитат выдачи — то же состояние (localStorage.viewMode), что и
+     #toggle-mode в #reader-toolbar; свой id (не тот же — на странице одновременно есть оба
+     элемента, просто один скрыт в текущем состоянии, см. body.dg-state-*, так что дублировать
+     id нельзя), общий класс .toggle-mode-btn — обработчик в settings.js делегирован через
+     document по этому классу, вешает клик сразу на обе кнопки. -->
+<button id="toggle-mode-results" class="btn btn-light mb-1 toggle-mode-btn" type="button" title="1/2 columns">
+  <img src="/assets/svg/align-right.svg" alt="1/2 columns">
+</button>
 
 <!-- Показать/скрыть колонку отметок "прочитано". Отметки хранятся отдельно для каждого поиска
      (search-render.js, readMarksKey = запрос + область) — колонка про проход по конкретной
@@ -1082,8 +1614,47 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     <a class="btn btn-light mb-1 form-check-inline mb-1 toggle-icon" alt="Help" data-i18n-alt="{{global.common.help}}" data-bs-toggle="modal" data-bs-target="#SearchResultHelp" id="helpMessage" href="javascript:void(0);">
         <img id="helpResult" class="table-home-icon" src="/assets/svg/question.svg"></img>
         </a>
+    </div>
+    <!-- /#dg-toolbar-buttons -->
 </div>
 <!-- /#results-toolbar -->
+
+<!-- #language-button deliberately OUTSIDE #results-toolbar, for the opposite reason from
+     #dynamicHeader below: this button is only ever functional in the READER (toggleThePali(),
+     megareader.js, wires up its click handler and the Pāli/translation classes it toggles only
+     exist on rendered sutta content — clicking it while on the results LISTING does nothing
+     visible, a dead "fake" button, owner screenshot). #results-toolbar itself is correctly
+     hidden entirely in reader state (TODO.md, "results-toolbar leftover gap" fix) — while this
+     button needs the OPPOSITE visibility (hidden on results, shown in reader), so it can't stay
+     nested inside a container whose own display:none would just take it down too (that's
+     exactly what broke it — moving it back out here, not undoing the results-toolbar fix,
+     which is still correct on its own). Same fixed bottom-right geometry either way (CSS below,
+     unchanged) — this only moves WHERE in the DOM it lives, not how it looks. -->
+<button id="language-button" class="btn btn-light" type="button">{{global.help.languageButton}}</button>
+
+<!-- #dynamicHeader deliberately OUTSIDE #results-toolbar (owner: "the header [word - count of
+     texts] shouldn't hide/show on scroll — only functional things should, not page content").
+     #results-toolbar is part of the fixed auto-hide stack (autoHideHeader() below) — a child of
+     a position:fixed element can't opt out of moving with it via CSS alone, so this has to be a
+     real DOM sibling instead. It keeps its own top offset via stackConfig()'s `content` (same
+     mechanism #search-pane used to use directly) so it still starts below the fixed stack. -->
+<h3 class="pl-2 resultheader ml-2" id="dynamicHeader"></h3>
+<script>
+    (function() {
+        let params = new URLSearchParams(window.location.search);
+        let q = params.get('q') || params.get('s');
+        let pathSegments = window.location.pathname.split('/').filter(s => s);
+        let lastSegment = pathSegments.pop();
+
+        if (!q && lastSegment && !['search', 'index.html', 'result', 'nodejs'].includes(lastSegment.toLowerCase())) {
+            q = lastSegment;
+        }
+        if (q) {
+            let displayWord = decodeURIComponent(q).replace(/ṃ/g, "ṁ");
+            document.getElementById('dynamicHeader').textContent = displayWord.charAt(0).toUpperCase() + displayWord.slice(1) + "...";
+        }
+    })();
+</script>
 
 </div>
 <!-- /.table-wrapper -->
@@ -1501,10 +2072,16 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
 </div>
 
 
-<!-- Разделитель между шапкой/кнопками и выдачей. Получил id, чтобы его можно было убрать на
-     домашнем экране — там он висел одинокой чертой под плитками. -->
-<hr id="results-divider">
-<div id='variants-hint' class="variants" style='display: none;'><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 16 16" fill="currentColor" style="vertical-align:-0.15em;" aria-hidden="true"><path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm.93-9.412-1 4.705c-.07.34.029.533.304.533.194 0 .487-.07.686-.246l-.088.416c-.287.346-.92.598-1.465.598-.703 0-1.002-.422-.808-1.319l.738-3.468c.064-.293.006-.399-.287-.47l-.451-.081.082-.381 2.29-.287zM8 5.5a1 1 0 1 1 0-2 1 1 0 0 1 0 2z"/></svg> <span id="variants-keyword"></span> {{results.hasVariantsSuffix}} <a id="variants-link" href="#">{{results.variantsLinkText}}</a></div>
+<!-- Была вторая горизонтальная черта здесь (<hr id="results-divider">), под заголовком — вместе
+     с новой чертой под рядом кнопок (#dg-toolbar-buttons, см. выше) получались ДВЕ линии, а
+     заголовок зажат между ними (жалоба владельца: "перенести заголовок под линию, а не
+     добавить ещё одну"). Одной достаточно — оставлена только та, что под кнопками; #results-divider
+     как id-точка для скрытия на главной/в ридере (home.css) больше не нужен, но эти правила
+     остались лежать мёртвым грузом — id ни на чём не висит, вреда нет. -->
+<!-- Раньше повторяло само слово запроса ("Kacchapa has variants") — избыточно, оно уже в
+     заголовке строкой выше (просьба владельца). Значок + ссылка "Варианты" достаточно говорят,
+     что это про текущий запрос. -->
+<div id='variants-hint' class="variants" style='display: none;'><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 16 16" fill="currentColor" style="vertical-align:-0.15em;" aria-hidden="true"><path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm.93-9.412-1 4.705c-.07.34.029.533.304.533.194 0 .487-.07.686-.246l-.088.416c-.287.346-.92.598-1.465.598-.703 0-1.002-.422-.808-1.319l.738-3.468c.064-.293.006-.399-.287-.47l-.451-.081.082-.381 2.29-.287zM8 5.5a1 1 0 1 1 0-2 1 1 0 0 1 0 2z"/></svg> <a id="variants-link" href="#">{{results.variantsLinkText}}</a></div>
 
     <div id="search-pane" class="container-fluid table-wrapper mt-4">
 <!--        <h2 id="searchHeading" class="mb-4">Results for: <span id="keywordDisplay" class="text-primary">...</span></h2> -->
@@ -1550,7 +2127,12 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
         <!-- <th class="none">Audio</th> -->
         </tr>
     </thead>
-    <tbody id="sutta">
+    <!-- id было "sutta" — оказалось ничем в этом проекте не используется (ни DataTables, ни
+         search-render.js на него не ссылаются, grep пустой), а megareader.js/settings.js/
+         smoothScroll.js/voice.css по всему легаси коду хотят этот id ИМЕННО для контейнера
+         сутты. Переименовал сюда, освободил "sutta" ридеру — см. #reader-pane ниже и
+         MEGAREADER_SUTTA_ID. -->
+    <tbody id="results-tbody">
                 </tbody>
         </table>
 
@@ -1579,12 +2161,100 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     <!-- Панель ридера. Класс d-none снят: видимостью теперь управляет состояние страницы
          (body.dg-state-reader, см. home.css) — d-none это display:none !important, его нельзя
          было бы перебить состоянием. -->
-    <div id="reader-pane" class="container-fluid mt-4">
+    <!-- Без container-fluid: reader-template.html (референс) держит #sutta БЕЗ бутстраповского
+         контейнера вокруг — только .sutta-класс задаёт отступы (5px слева на мобильном,
+         reader/css/uiextra.css). container-fluid добавлял ЕЩЁ 12px с каждой стороны поверх этого —
+         на мобильном получались вдвое более широкие поля, чем на референсе. -->
+    <div id="reader-pane" class="mt-4">
+        <!-- Портировано из reader-template.html (#form-div) — там же живут иконки прода
+             (/read/index.html). SPA раньше показывала над текстом ТОЛЬКО общую шапку поиска
+             (лого/поле/бургер) — своей строки инструментов у ридера не было вообще, отсюда жалоба
+             "иконки как в поиске" (на деле их просто не было). Взяты только иконки, у которых
+             обработчик уже загружен на этой странице глобально и не завязан на DOMContentLoaded
+             (см. TODO.md, нюансы): тема (themeswitch.js), варианты чтения (megareader.js,
+             getElementById('toggle-variants')), словарь/мультивыбор (settings.js, делегированный
+             клик — работает и для элементов, добавленных уже после загрузки страницы), компас
+             (toggleQuickModal, глобальная), настройки/справка — те же ссылки/модалка, что в
+             бургере. Сознательно пропущены: книжка-глава (нужно ещё резолвить {{routes.chapterReader}}
+             — свой i18n-namespace ридера, не подключён на этой странице) и переключатель
+             колонка/строка (#toggle-mode, switchView.js) — этот скрипт легаси и ОБЩИЙ с
+             прод-сайтом (siteroot/assets → assets/js/switchView.js), у него та же
+             DOMContentLoaded-ловушка, что была в reader/common.js, но чинить её в чужом
+             прод-файле — отдельная, более рискованная задача, не в этом заходе. -->
+        <!-- Тема и настройки убраны — они уже есть в бургере (владелец), дублировать не нужно.
+             Иконки — своя CSS (.dg-reader-toolbar в <style> этой страницы), не common-size-icon4:
+             тот класс тянет margin-top:-3px/margin-left:6px, подобранные под inline-flow
+             #form-div реального прода — в чистом flex-ряду они просто криво съезжали. -->
+        <div id="reader-toolbar" class="dg-reader-toolbar">
+            <a id="toggle-variants" href="javascript:void(0)" title="Show Variants">
+                <img src="/assets/svg/eye.svg" alt="Variants">
+            </a>
+            <!-- 1/2-column toggle — was deliberately left out of this row before (legacy
+                 switchView.js has the same DOMContentLoaded trap as reader/common.js's own
+                 pre-port code, see history above) — now wired fresh in settings.js
+                 (dgToggleColumnMode/dgApplyColumnMode), which doesn't have that problem and
+                 also drives the matching button in the search-results row (#dg-toolbar-buttons)
+                 off the SAME localStorage.viewMode. -->
+            <a id="toggle-mode" class="toggle-mode-btn" href="javascript:void(0)" title="1/2 columns">
+                <img src="/assets/svg/align-right.svg" alt="1/2 columns">
+            </a>
+            <a class="toggle-dict-btn" href="javascript:void(0)" title="Dictionary">
+                <img src="/assets/svg/comment.svg" alt="Dictionary">
+            </a>
+            <a id="toggle-multiselect" href="javascript:void(0)" title="Multi-select">
+                <img src="/assets/svg/select-slash.svg" alt="Multi-select">
+            </a>
+            <a href="javascript:void(0)" title="Compass" onclick="if (typeof window.toggleQuickModal === 'function') window.toggleQuickModal();">
+                <img src="/assets/svg/compass.svg" alt="Compass">
+            </a>
+            <a href="javascript:void(0)" title="Help" data-bs-toggle="modal" data-bs-target="#SearchResultHelp">
+                <img src="/assets/svg/question.svg" alt="Help">
+            </a>
+            <!-- TOC (оглавление) — портировано из siteroot/read/js/common.js (легаси, общий с
+                 прод-сайтом, JS туда не трогаем — своя копия в reader/common.js). Раньше жила
+                 отдельной плавающей пилюлей, которая сама показывалась/пряталась на скролле —
+                 владелец: раз теперь появляется/прячется весь #reader-toolbar (autoHideHeader()),
+                 можно просто положить сюда как ещё одну иконку, без своей независимой анимации.
+                 #smart-toc-btn/#smart-toc-current/#smart-toc-panel/.toc-item — те же id/классы,
+                 что и в легаси, у них уже есть готовый CSS (reader/css/uiextra.css) — не изобретаю
+                 заново, просто не оборачиваю в #smart-toc-container (тот был для независимого
+                 позиционирования, тут кнопка — рядовой элемент тулбара). -->
+            <button type="button" id="smart-toc-btn" class="visible" title="Table of Contents">
+                <img src="/assets/svg/list-ul-solid-full.svg" alt="TOC">
+                <span id="smart-toc-current"></span>
+            </button>
+        </div>
+        <div id="smart-toc-panel"></div>
         <div id="navigation" class="navigation">
             <div id="previous"></div>
             <div id="next"></div>
         </div>
-        <div id="reader-sutta" class="sutta"></div>
+        <div id="sutta" class="sutta"></div>
+        <!-- Нижний ряд (.links-area) — портирован из reader-template.html почти дословно: там
+             это по большей части голые внешние <a href>, которым скрипты не нужны вообще.
+             #pdf-btn и #shareOnline — единственные два, что зовут JS (settings.js/copyToClipboard.js,
+             оба уже грузятся ensureReaderAssets()/глобально) — и они, как и voice.css/smoothScroll.js
+             выше, были сломаны тем же id-конфликтом (#sutta), не самим отсутствием кода — теперь,
+             когда #sutta свободен (см. переименование results-таблицы выше), просто заработают.
+             routes.translationEditor из референса пропущен — вела на CAT-инструмент переводчиков
+             (cat_server.js), точный публичный URL не выяснял, не хотел давать неверную ссылку. -->
+        <div class="links-area text-center">
+            <a href="/" title="Search"><img width="22px" alt="Search" src="/assets/img/gray.png"></a>
+            <a href="/assets/makelist.html" title="Create Lists">
+                <svg fill="#383838" height="20px" width="20px" viewBox="0 0 487.3 487.3" aria-hidden="true">
+                    <path d="M487.2,69.7c0,12.9-10.5,23.4-23.4,23.4h-322c-12.9,0-23.4-10.5-23.4-23.4s10.5-23.4,23.4-23.4h322.1 C476.8,46.4,487.2,56.8,487.2,69.7z M463.9,162.3H141.8c-12.9,0-23.4,10.5-23.4,23.4s10.5,23.4,23.4,23.4h322.1 c12.9,0,23.4-10.5,23.4-23.4C487.2,172.8,476.8,162.3,463.9,162.3z M463.9,278.3H141.8c-12.9,0-23.4,10.5-23.4,23.4 s10.5,23.4,23.4,23.4h322.1c12.9,0,23.4-10.5,23.4-23.4C487.2,288.8,476.8,278.3,463.9,278.3z M463.9,394.3H141.8 c-12.9,0-23.4,10.5-23.4,23.4s10.5,23.4,23.4,23.4h322.1c12.9,0,23.4-10.5,23.4-23.4C487.2,404.8,476.8,394.3,463.9,394.3z M38.9,30.8C17.4,30.8,0,48.2,0,69.7s17.4,39,38.9,39s38.9-17.5,38.9-39S60.4,30.8,38.9,30.8z M38.9,146.8 C17.4,146.8,0,164.2,0,185.7s17.4,38.9,38.9,38.9s38.9-17.4,38.9-38.9S60.4,146.8,38.9,146.8z M38.9,262.8 C17.4,262.8,0,280.2,0,301.7s17.4,38.9,38.9,38.9s38.9-17.4,38.9-38.9S60.4,262.8,38.9,262.8z M38.9,378.7 C17.4,378.7,0,396.1,0,417.6s17.4,38.9,38.9,38.9s38.9-17.4,38.9-38.9C77.8,396.2,60.4,378.7,38.9,378.7z"/>
+                </svg>
+            </a>
+            <a href="/assets/diff" title="Compare"><img width="20px" alt="Compare" src="/assets/img/read/favicon-black.png"></a>
+            <a href="/history.php" title="History"><img width="20px" alt="History" src="/assets/svg/clock-rotate-left.svg"></a>
+            <a id="pdf-btn" href="javascript:void(0);" title="Export PDF"><img width="20px" alt="PDF" src="/assets/svg/pdf.svg"></a>
+            <a href="/memo/" class="memo-button" title="Memo" target="_blank"><img width="25px" alt="Memo" src="/assets/svg/memo.svg"></a>
+            <a id="shareOnline" href="javascript:void(0)" onclick="copyToClipboard()" title="Copy Link"><img height="20px" alt="Copy" src="/assets/svg/copy.svg"></a>
+            <a href="https://DharmaMitra.org/" title="DharmaMitra" target="_blank"><img width="20px" alt="DharmaMitra" src="/assets/svg/dharmachakra.svg"></a>
+            <a href="https://s.dhamma.gift/sn/sn45/?cols=pali%2Cpali_royal_iast%2Cpali_myanmar_iast%2Cpali_bjt_iast#tr-sn45.8:1.1" title="s.4nt.org" target="_blank"><img width="24px" alt="4nt" src="/assets/img/logo4nt_plain.png"></a>
+            <a href="https://index.readingfaithfully.org" title="Sutta Name Search" target="_blank"><img width="20px" alt="Sutta Name Search" src="/reader/images/favicon-name-black.png"></a>
+            <a href="https://ped.readingfaithfully.org" title="Pali English Dictionary" target="_blank"><img width="20px" alt="PED" src="/reader/images/favicon-ped-black.png"></a>
+        </div>
     </div>
 
 <script type='text/javascript'>
@@ -1637,26 +2307,12 @@ $(document).ready(function() {
     // (см. updateLanguageButtons ниже), чтобы не мигать обеими "активными" при загрузке.
     updateLanguageButtons(window.siteLanguage);
 
-    DataTable.util.diacritics(d => d);
-    
-    // Регистрируем собственный тип сортировки для чекбоксов
-    $.fn.dataTable.ext.order['dom-checkbox'] = function(settings, col) {
-        return this.api().column(col, { order: 'index' }).nodes().map(function(td, i) {
-            return $('input', td).prop('checked') ? '1' : '0';
-        });
-    };
+    // Регистрация плагинов DataTables (diacritics/dom-checkbox/category-pre) переехала в
+    // ensureSearchAssets() ниже — она требует загруженного DataTable, а этот $(document).ready
+    // срабатывает на КАЖДОЙ странице, включая главную, где DataTable больше не грузится вообще
+    // (см. комментарий у ensureSearchAssets). Раньше `DataTable.util.diacritics(...)` здесь падал
+    // с ReferenceError на главной сразу после отказа от синхронной загрузки datatables.js.
 
-    // Регистрируем кастомную сортировку для категорий
-    $.fn.dataTable.ext.type.order['category-pre'] = function (d) {
-        if (!d) return 5;
-        let cat = String(d).toLowerCase().trim();
-        if (cat === 'dhamma') return 1;
-        if (cat === 'khudakka' || cat === 'khuddaka') return 2;
-        if (cat === 'vinaya') return 3;
-        if (cat === 'abhi' || cat === 'abhidhamma') return 4;
-        return 5;
-    };
-   
     var dataSrc = [];
     var filterValue = new URLSearchParams(window.location.search).get('f');
     // ?report=words — прямой заход в отчёт по словам, без промежуточного клика по "Слова"
@@ -1671,6 +2327,10 @@ $(document).ready(function() {
     // /search/enrich (в отличие от заглушек фазы 1). backgroundLoadPromise: единственный
     // /search/enrich-заход за ВСЕ найденные id сразу (ensureEnrichmentStarted) — больше не
     // "сначала страница, потом фон" в два сетевых захода, см. комментарий там же.
+    // Кэш fast=1-ответов /search по полному URL запроса — назад/вперёд браузера на уже виденную
+    // выдачу не должны заново ждать сеть (жалоба владельца: "каждый раз ждать результаты не
+    // хорошо"). Ключ — сама строка запроса к /search, она уже учитывает scope/lb/la/langs/script.
+    var searchResultCache = new Map();
     var currentTable = null;
     var enrichedIds = new Set();
     var pendingIds = new Set();
@@ -1775,6 +2435,27 @@ $(document).ready(function() {
     // результатах (загружается что угодно раньше — DOM-скан ждёт). Порядок: сначала data-файлы
     // (linksdpr.js и т.п. — определяют dprLinksData/thruLinksData/tbwLinksData), потом logic-файлы
     // (openDpr.js и т.п. — читают эти массивы синхронно при загрузке для part of их init).
+    // Shared, deduped script loader: this loader and ensureReaderAssets() (further below) both
+    // load linksdpr.js/linksbw.js independently — same underlying data files, two unrelated
+    // features (this quick-links column vs. the reader's DPR/BJT/TBW links under a segment).
+    // Appending a second <script> tag for a src already loaded/loading throws ("Identifier
+    // 'tbwLinksData' has already been declared" — those files declare a top-level var) —
+    // surfaced once ensureReaderAssets() started idle-prefetching in the background (TODO.md
+    // #global п.2.1) and could now genuinely race with this loader instead of the two almost
+    // always running comfortably apart in practice. One registry keyed by src, shared by both.
+    window.__dgLoadScriptOnce = window.__dgLoadScriptOnce || {};
+    function dgLoadScriptOnce(src) {
+        if (window.__dgLoadScriptOnce[src]) return window.__dgLoadScriptOnce[src];
+        window.__dgLoadScriptOnce[src] = new Promise(function (resolve, reject) {
+            var script = document.createElement('script');
+            script.src = src;
+            script.onload = resolve;
+            script.onerror = reject;
+            document.head.appendChild(script);
+        });
+        return window.__dgLoadScriptOnce[src];
+    }
+
     var piEnRuScriptsPromise = null;
     function loadPiEnRuScripts() {
         if (piEnRuScriptsPromise) return piEnRuScriptsPromise;
@@ -1784,15 +2465,7 @@ $(document).ready(function() {
             '/assets/js/linksbw.js', '/assets/js/openBw.js'
         ];
         piEnRuScriptsPromise = srcs.reduce(function (chain, src) {
-            return chain.then(function () {
-                return new Promise(function (resolve, reject) {
-                    var script = document.createElement('script');
-                    script.src = src;
-                    script.onload = resolve;
-                    script.onerror = reject;
-                    document.head.appendChild(script);
-                });
-            });
+            return chain.then(function () { return dgLoadScriptOnce(src); });
         }, Promise.resolve());
         return piEnRuScriptsPromise;
     }
@@ -1918,6 +2591,19 @@ $(document).ready(function() {
         }
     }
 
+    // Переключение "Слова"/"Варианты" не трогало URL/историю вовсе — Назад в браузере не
+    // "отменял" переключение отчёта, а перескакивал сразу к предыдущей РЕАЛЬНОЙ навигации
+    // (главная или ридер), потому что ни одной записи истории для самого переключения не
+    // появлялось (владелец). ?report=words уже был рабочим deep-link'ом (см. константу
+    // reportMode выше и runSearchFromUrl(), который popstate уже умеет обрабатывать) — здесь
+    // просто пишем его в адрес при ручном клике, тем же путём.
+    function pushReportModeUrl() {
+        var u = new URL(window.location.href);
+        if (reportMode === 'words') u.searchParams.set('report', 'words');
+        else u.searchParams.delete('report');
+        history.pushState({ dgSearch: true }, '', u.pathname + u.search + u.hash);
+    }
+
     // Обработчик висел только на вложенном <a> (51×17px), а не на всей видимой кнопке
     // (78×38px) — клик мимо текста, но по кнопке, ничего не делал, отсюда "приходится
     // кликать дважды". Вешаем на саму кнопку .forshellscript — так кликабельна вся её площадь.
@@ -1925,6 +2611,7 @@ $(document).ready(function() {
         e.preventDefault();
         reportMode = reportMode === 'words' ? 'suttas' : 'words';
         renderCurrentReport();
+        pushReportModeUrl();
         if (reportMode === 'suttas') ensureEnrichmentStarted();
     });
 
@@ -1938,6 +2625,7 @@ $(document).ready(function() {
         e.preventDefault();
         reportMode = 'words';
         renderCurrentReport();
+        pushReportModeUrl();
         var target = document.getElementById('variants');
         if (target) target.scrollIntoView({ behavior: 'smooth' });
     });
@@ -2198,7 +2886,6 @@ $(document).ready(function() {
         if (variantDiv) {
             if (json.metadata.hasVariantMatch) {
                 variantDiv.style.display = 'block';
-                $('#variants-keyword').text(capitalizedQuery);
                 $('#variants-link').attr('href', '/?q=' + encodeURIComponent(json.metadata.query) + '&scope=all&report=words#variants');
             } else {
                 variantDiv.style.display = 'none';
@@ -2240,11 +2927,20 @@ $(document).ready(function() {
         if (document.body.classList.contains(cls)) return;
         DG_STATES.forEach(function (s) { document.body.classList.toggle(s, s === cls); });
         if (name !== 'home' && window.DgHome) window.DgHome.closeSheet();
+        // Автоскрытие шапки (см. autoHideHeader() выше) — новое состояние всегда стартует с
+        // видимой панелью, не с той, что случайно была спрятана в предыдущем состоянии/скролле.
+        document.body.classList.remove('dg-header-hidden');
+        if (window.dgApplyHeaderPadding) window.dgApplyHeaderPadding();
         /* home.js держит на состоянии своё: случайную подсказку в поле и «зов» в заголовке
            вкладки — и то и другое только для главной. Классы переключаются ЗДЕСЬ, а не в
            DgHome.setState (та осталась для внешних вызовов), поэтому о смене нужно сообщить явно:
            без этого «зов» продолжал подменять заголовок и в выдаче. */
         if (window.DgHome && window.DgHome.onStateChanged) window.DgHome.onStateChanged();
+        // Single hook for anything outside this closure that needs to know the SPA changed
+        // screens (e.g. settings.js's dictionary eager-preload, #общее п.2 — reader/results
+        // should preload before the first click, home can stay click-triggered) without
+        // coupling it directly to dgSetState().
+        window.dispatchEvent(new CustomEvent('dgStateChanged', { detail: { name: name } }));
     }
 
     /* Ожидание ответа. Состояние страницы при этом НЕ меняется: пока данных нет, человек
@@ -2256,6 +2952,12 @@ $(document).ready(function() {
         document.body.classList.toggle('dg-busy', !!on);
         var el = document.getElementById('dg-loading');
         if (el) el.hidden = !on;
+        // dg-busy прячет #results-toolbar (home.css) — если автоскрытие шапки (autoHideHeader())
+        // посчитало паддинг ПОКА тулбар был ещё скрыт (высота 0), он застревал маленьким даже
+        // после того, как результаты пришли и тулбар показался в полный рост (замерено вживую:
+        // 58px вместо нужных 159px, результаты заезжали под тулбар). ResizeObserver там же не
+        // всегда ловит этот конкретный переход display:none → контент, пересчитываем явно здесь.
+        if (!on && window.dgApplyHeaderPadding) window.dgApplyHeaderPadding();
     }
 
     /* ---------------- Ридер в ЭТОМ ЖЕ документе ----------------
@@ -2264,15 +2966,69 @@ $(document).ready(function() {
        рисует в #reader-pane, который в разметке ниже лежал заготовкой ещё до этой правки.
        Лениво — потому что на главной и в выдаче ридер не нужен, а это ещё ~52 КБ кода и три
        таблицы стилей. */
+    /* Библиотеки таблицы результатов (DataTables + search-render.js + плагины сортировки) —
+       лениво, тем же приёмом, что ensureReaderAssets() ниже для ридера. ~2МБ, нужны ТОЛЬКО когда
+       реально выполняется поиск (initSearchApp вызывает это до renderCurrentReport, после
+       раннего возврата на "!keyword" для главной). Порядок важен — natural.js/strip-html.js
+       регистрируют себя в $.fn.dataTable и должны идти после datatables.js; грузим строго
+       последовательно (each .then), а не все сразу, чтобы не полагаться на execution-order
+       динамически создаваемых <script> (по умолчанию не гарантирован, в отличие от defer). */
+    var searchAssetsPromise = null;
+    function ensureSearchAssets() {
+        if (searchAssetsPromise) return searchAssetsPromise;
+
+        var css = document.createElement('link');
+        css.rel = 'stylesheet';
+        css.href = '/assets/js/datatables/datatables.min.css';
+        document.head.appendChild(css);
+
+        function loadScript(src) {
+            return new Promise(function (resolve, reject) {
+                var s = document.createElement('script');
+                s.src = src;
+                s.onload = resolve;
+                s.onerror = reject;
+                document.head.appendChild(s);
+            });
+        }
+
+        searchAssetsPromise = loadScript('/assets/js/datatables/datatables.min.js')
+            .then(function () {
+                // Регистрация плагинов DataTables — раньше жила в $(document).ready наверху
+                // файла и требовала DataTable синхронно на КАЖДОЙ странице; теперь ровно здесь,
+                // сразу после того как сама библиотека реально загружена.
+                DataTable.util.diacritics(function (d) { return d; });
+                $.fn.dataTable.ext.order['dom-checkbox'] = function (settings, col) {
+                    return this.api().column(col, { order: 'index' }).nodes().map(function (td) {
+                        return $('input', td).prop('checked') ? '1' : '0';
+                    });
+                };
+                $.fn.dataTable.ext.type.order['category-pre'] = function (d) {
+                    if (!d) return 5;
+                    var cat = String(d).toLowerCase().trim();
+                    if (cat === 'dhamma') return 1;
+                    if (cat === 'khudakka' || cat === 'khuddaka') return 2;
+                    if (cat === 'vinaya') return 3;
+                    if (cat === 'abhi' || cat === 'abhidhamma') return 4;
+                    return 5;
+                };
+            })
+            .then(function () { return loadScript('/assets/js/search-render.js'); })
+            .then(function () { return loadScript('/assets/js/natural.js'); })
+            .then(function () { return loadScript('/assets/js/strip-html.js'); });
+        return searchAssetsPromise;
+    }
+
     var readerAssetsPromise = null;
     function ensureReaderAssets() {
         if (readerAssetsPromise) return readerAssetsPromise;
 
-        /* ОБЯЗАТЕЛЬНО до загрузки megareader.js: контейнер он берёт ОДИН раз, на верхнем уровне
-           файла (const suttaArea = getElementById(window.MEGAREADER_SUTTA_ID || "sutta")), и
-           позже это уже не переиграть. Дефолтный id "sutta" здесь занят <tbody> таблицы
-           результатов — без этой строки ридер отрисовался бы прямо поверх выдачи. */
-        window.MEGAREADER_SUTTA_ID = 'reader-sutta';
+        // MEGAREADER_SUTTA_ID больше НЕ переопределяем — раньше "sutta" был занят <tbody>
+        // таблицы результатов, теперь та переименована в results-tbody (см. выше), и дефолтный
+        // id ("sutta", тот же, что использует reader-template.html) свободен. Это не только
+        // убирает лишнюю строку — так ЕЩЁ и куча легаси-кода, завязанного на буквальный id
+        // "sutta" (voice.css TTS-подсветка, settings.js #pdf-btn export, smoothScroll.js),
+        // начинает находить контейнер и работать без отдельного порта каждого из них.
 
         // Те же три таблицы стилей, что подключает reader/reader-template.html, и в том же
         // порядке. Подключаются последними, уже после home.css — правила ридера должны
@@ -2285,15 +3041,52 @@ $(document).ready(function() {
             document.head.appendChild(link);
         });
 
-        readerAssetsPromise = new Promise(function (resolve, reject) {
-            var s = document.createElement('script');
-            s.src = '/reader/megareader.js';
-            s.onload = resolve;
-            s.onerror = reject;
-            document.head.appendChild(s);
-        });
+        // reader-template.html (отдельная старая страница, теперь референс) грузило вместе с
+        // megareader.js ещё пачку скриптов — здесь их не было вообще, поэтому в SPA-ридере молчком
+        // не работали: контекстное меню/аудио-иконки заголовка (reader/common.js — уже был
+        // портирован, просто не подключался), копирование цитаты/ссылки (copyToClipboard.js —
+        // megareader.js зовёт его инлайновым onclick, без скрипта падало бы "not defined"),
+        // и ссылки DPR/BJT/TBW под каждым сегментом (просто пустые данные без своих *LinksData.js).
+        // Порядок как у reader-template.html: common.js — до megareader.js (вешает слушателей
+        // 'suttaLoaded'/'suttaRenderedCentral', которые megareader диспатчит сам); megareader.js —
+        // последним, он же триггерит первый рендер.
+        // dgLoadScriptOnce (defined above, near loadPiEnRuScripts) — linksdpr.js/linksbw.js
+        // here overlap with that other loader, see its comment for why this can't just append
+        // a fresh <script> tag unconditionally.
+        var loadScript = dgLoadScriptOnce;
+        readerAssetsPromise = Promise.all([
+            loadScript('/assets/js/copyToClipboard.js'),
+            loadScript('/assets/js/linksdpr.js'),
+            loadScript('/assets/js/linksbjt.js'),
+            loadScript('/assets/js/linksbw.js')
+        ])
+            .then(function () { return loadScript('/reader/common.js'); })
+            .then(function () { return loadScript('/reader/megareader.js'); });
         return readerAssetsPromise;
     }
+
+    // TODO.md #global п.2.1: открыть ридер с главной/выдачи "занимает дикое количество
+    // времени" — потому что ensureReaderAssets() до сих пор грузилась ТОЛЬКО по первому
+    // клику в ридер (4 скрипта + reader/common.js + reader/megareader.js, синхронно один за
+    // другим). В свободное время после того, как страница уже отрисовалась, тот же набор
+    // можно догрузить в фоне — дальше клик в ридер найдёт всё уже в браузерном кэше, и
+    // openReaderInPlace() пойдёт по быстрому пути (firstTime===false → сразу initReader(),
+    // без ожидания загрузки скриптов).
+    // window.MEGAREADER_MANUAL_INIT — megareader.js САМ вызывает initReader() при загрузке
+    // (см. конец файла), если этот флаг не выставлен — рассчитан на то, что к моменту загрузки
+    // адрес уже указывает на нужный текст (обычный сценарий клика в ридер). В фоновой
+    // предзагрузке мы ещё на главной/в выдаче — initReader() распарсил бы ТЕКУЩИЙ (не
+    // ридерский) адрес. Выставляем флаг ДО ensureReaderAssets(), подавляя автозапуск;
+    // openReaderInPlace() уже умеет вызвать initReader() явно сам, когда реально понадобится
+    // (см. !firstTime-ветку выше по файлу) — с уже загруженными скриптами promise зарезолвится
+    // мгновенно, firstTime будет false, и явный вызов сработает как обычно.
+    function idlePrefetchReaderAssets() {
+        if (document.body.classList.contains('dg-state-reader')) return; // уже в ридере, незачем
+        window.MEGAREADER_MANUAL_INIT = true;
+        ensureReaderAssets();
+    }
+    if (window.requestIdleCallback) requestIdleCallback(idlePrefetchReaderAssets, { timeout: 3000 });
+    else setTimeout(idlePrefetchReaderAssets, 1500);
 
     /* Открыть текст, не уходя со страницы. Адрес уже должен быть выставлен вызывающим (клик по
        ссылке в выдаче / сабмит / popstate) — дальше работает window.initReader() из
@@ -2337,6 +3130,25 @@ $(document).ready(function() {
         runSearchFromUrl();
     };
     window.handleFetchError = function (slug) { window.executeGlobalSearch(slug); };
+
+    /* Точка входа для "перейти по этому внутреннему пути через SPA, без перезагрузки" — нужна
+       СНАРУЖИ этого <script> (autopali.js, отдельный файл, не имеет доступа к routeFromUrl()
+       напрямую). Баг был: клик по пункту ИСТОРИИ поиска, указывающему на конкретный текст
+       (ui.item.url в autopali.js, единственное место, что раньше делало window.location.href),
+       перезагружал страницу целиком, хотя путь свой же, внутренний, — владелец заметил именно
+       переход с главной в текст. routeFromUrl() уже умеет отличать текст от поисковой строки —
+       переиспользуем её, не дублируем классификацию здесь. */
+    window.dgNavigateInternal = function (href) {
+        try {
+            var u = new URL(href, window.location.origin);
+            if (u.origin !== window.location.origin) return false;
+            history.pushState({ dgNav: true }, '', u.pathname + u.search + u.hash);
+            routeFromUrl();
+            return true;
+        } catch (e) {
+            return false;
+        }
+    };
 
     /* Единственный решатель "что показать по текущему адресу". Раньше popstate безусловно звал
        runSearchFromUrl() — теперь адрес может означать и текст. */
@@ -2421,11 +3233,62 @@ $(document).ready(function() {
         // jQuery .val() не шлёт input — крестик «очистить» в поле надо обновить вручную.
         if (window.DgHome && window.DgHome.syncInput) window.DgHome.syncInput();
 
+        // Кэш быстрого ответа по адресу запроса: назад/вперёд браузера на уже виденный поиск не
+        // должны заново ждать сеть — та же выдача, тот же адрес, нечего перезапрашивать. Цитаты
+        // (/search/enrich) при восстановлении из кэша всё равно досчитываются заново — они не
+        // часть жалобы "жду результаты", это фон уже ПОСЛЕ того, как таблица видна.
+        const searchUrl = buildUrl('/search', '&fast=1');
+        const cachedFastJson = searchResultCache.get(searchUrl);
+
         dgSetBusy(true);
         try {
-            const fastResponse = await fetch(buildUrl('/search', '&fast=1'));
-            if (!fastResponse.ok) throw new Error("Ошибка сети при получении данных");
-            const fastJson = await fastResponse.json();
+            let fastJson = cachedFastJson || await (async () => {
+                // DataTables/search-render.js грузятся ПАРАЛЛЕЛЬНО с самим запросом, а не до или
+                // после: на прямой загрузке страницы результатов (не SPA-переход) это не добавляет
+                // задержки — оба идут одновременно, ждём более медленное из двух.
+                const [fastResponse] = await Promise.all([
+                    fetch(searchUrl),
+                    ensureSearchAssets()
+                ]);
+                if (!fastResponse.ok) throw new Error("Ошибка сети при получении данных");
+                return fastResponse.json();
+            })();
+            if (!cachedFastJson) searchResultCache.set(searchUrl, fastJson);
+
+            // 0 результатов + в запросе кириллица — возможно, ввели латинское слово, но
+            // раскладка ОС была русской ("kacchapa" -> "лфссрфзф", буквы с тех же клавиш —
+            // владелец поймал это живьём). Перепробовать ОДИН раз с раскладкой, исправленной на
+            // латиницу (тот же посимвольный QWERTY-разбор, что dg-text-router.js уже применяет к
+            // текстовым/номерным ссылкам, — здесь для обычного слова, отдельная функция
+            // layoutFix, не полный normalize с его склейкой цифр). Если и там пусто — тихо
+            // оставляем как было, не подменяем запрос человеку молча на всякую ерунду.
+            if (fastJson.metadata.totalFiles === 0 && window.DgTextRouter && /[а-яё]/i.test(keyword)) {
+                const layoutFixed = window.DgTextRouter.layoutFix(keyword);
+                if (layoutFixed && layoutFixed.toLowerCase() !== keyword.toLowerCase()) {
+                    const originalKeyword = keyword;
+                    keyword = layoutFixed;
+                    const retryUrl = buildUrl('/search', '&fast=1');
+                    try {
+                        const retryResponse = await fetch(retryUrl);
+                        const retryJson = retryResponse.ok ? await retryResponse.json() : null;
+                        if (retryJson && retryJson.metadata.totalFiles > 0) {
+                            fastJson = retryJson;
+                            searchResultCache.set(retryUrl, retryJson);
+                            highlightWord = layoutFixed;
+                            history.replaceState({ dgSearch: true }, '', '/' + encodeURIComponent(layoutFixed));
+                            // Поле уже показывало исходный (кириллический) ввод — строка 2998,
+                            // до того как стало известно про раскладку. Обновляем на реально
+                            // найденное слово, иначе поле и результаты расходились бы.
+                            $('#paliauto').val(layoutFixed);
+                            if (window.DgHome && window.DgHome.syncInput) window.DgHome.syncInput();
+                        } else {
+                            keyword = originalKeyword;
+                        }
+                    } catch (e) {
+                        keyword = originalKeyword;
+                    }
+                }
+            }
 
             lastHighlightWord = highlightWord;
             lastSearchJson = fastJson;
@@ -2466,6 +3329,31 @@ $(document).ready(function() {
     // runSearchFromUrl(): в истории теперь бывают и адреса текстов, не только запросов.
     window.addEventListener('popstate', function () { routeFromUrl(); });
 
+    /* Ракушка / лого / "Main" в бургере — все ведут на "/", но раньше были обычными <a href="/">
+       и делали полную перезагрузку страницы: SPA это не спасало, потому что переход домой никогда
+       не перехватывался (в отличие от переходов в ридер/выдачу, у которых есть свои обработчики).
+       Тот же приём, что у остальной SPA-навигации: pushState + routeFromUrl(), без похода на
+       сервер за уже загруженной страницей. Игнорируем модификаторы/среднюю кнопку — открыть в
+       новой вкладке остаётся рабочим, как и у остальных перехваченных ссылок в этом файле. */
+    document.addEventListener('click', function (e) {
+        if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.defaultPrevented) return;
+        var a = e.target.closest ? e.target.closest('.dg-go-home') : null;
+        if (!a) return;
+        e.preventDefault();
+        if (window.location.pathname === '/' && !window.location.search) return; // уже дома
+        history.pushState({}, '', '/');
+        // Заголовок вкладки не сбрасывается сам — initSearchApp() при пустом keyword выходит
+        // раньше строчки, которая его меняет (она вообще только для выдачи). Тот же текст,
+        // что в <title> при чистой загрузке "/", иначе после поиска в вкладке так и остаётся
+        // "Kacchapa ... - Dhamma.gift" даже дома.
+        document.title = 'Search Results - Dhamma.gift';
+        // Поле поиска — та же логика: свежая загрузка "/" даёт пустое поле, а SPA-переход иначе
+        // оставлял бы прошлый запрос висеть в поле над плитками главной.
+        var input = document.getElementById('paliauto');
+        if (input) { input.value = ''; if (window.DgHome && window.DgHome.syncInput) window.DgHome.syncInput(); }
+        routeFromUrl();
+    });
+
     routeFromUrl();
 });
 </script>
@@ -2483,58 +3371,71 @@ $(document).ready(function() {
     </button>
   </div>
   <nav class="dg-drawer-body">
-    <!-- Язык и тема — прямо здесь, отдельными переключателями: раньше за ними приходилось идти
-         в /settings/ (язык) или искать кнопку в ряду выдачи (тема), а на главной того ряда нет
-         вовсе. Оба переключателя наполняет и обслуживает home.js. -->
-    <!-- Контейнеры БЕЗ класса .dg-segmented: сам переключатель — это <div class="dg-segmented">,
-         который создаёт home.js (segmented()) и кладёт сюда. Пока класс висел и здесь, получалась
-         рамка внутри рамки, а внутренняя как flex-элемент не растягивалась — кнопки занимали
-         200px из 271, и подписи обрезались. -->
+    <!-- Значки у пунктов проставляет home.js (data-dg-icon → FontAwesome.icon), чтобы набор был
+         тот же, что у плиток и в боевом меню, и не разъезжался при правках. -->
+    <p class="dg-group-title">{{menu.navigation}}</p>
+    <a class="dg-drawer-row dg-go-home" href="/" data-dg-icon="home">{{buttons.main}}</a>
+    <!-- Компас — тот же toggleQuickModal(), что у кнопки-компаса в выдаче/ридере (window.toggleQuickModal
+         определяет /assets/js/settings.js, override-копия грузится на этой же странице). -->
+    <a class="dg-drawer-row" href="javascript:void(0)" data-dg-icon="compass" onclick="if (typeof window.toggleQuickModal === 'function') window.toggleQuickModal();">{{toolbar.compassLabel}}</a>
+    <a class="dg-drawer-row" href="/history.php" data-dg-icon="clock">{{buttons.history}}</a>
+    <a class="dg-drawer-row" href="javascript:void(0)" data-dg-icon="help" data-bs-toggle="modal" data-bs-target="#SearchResultHelp">{{global.common.help}}</a>
+    <!-- Якоря на нижние блоки главной (Приложения/Контакты). Сами блоки видны только на широком
+         экране (#home-extra, home.css) — на мобильном эти два пункта скрыты тем же порогом
+         (см. .dg-drawer-row[data-dg-anchor] в home.css), чтобы не вести в display:none. -->
+    <a class="dg-drawer-row" href="javascript:void(0)" data-dg-icon="external" data-dg-anchor="links">{{footer.links}}</a>
+    <a class="dg-drawer-row" href="javascript:void(0)" data-dg-icon="at" data-dg-anchor="contacts">{{footer.contacts}}</a>
+    <p class="dg-group-title">{{menu.settings}}</p>
+    <!-- Язык/тема — переехали сюда, в «Настройки» (просьба владельца: часть настроек была вверху
+         шторки, часть внизу — всё в одном месте). Переключатели наполняет и обслуживает home.js,
+         контейнеры БЕЗ класса .dg-segmented (сам переключатель — <div class="dg-segmented">,
+         который создаёт segmented() и кладёт сюда). -->
     <p class="dg-group-title" data-dg-icon="language">{{menu.language}}</p>
     <div id="dg-lang-seg"></div>
     <!-- Значка у этого заголовка нет намеренно: солнце рядом со словом «Тема» читалось бы как
          «сейчас светлая». Значки тем — внутри самого переключателя, у своих вариантов. -->
     <p class="dg-group-title">{{menu.theme}}</p>
     <div id="dg-theme-seg"></div>
-
-    <!-- Значки у пунктов проставляет home.js (data-dg-icon → FontAwesome.icon), чтобы набор был
-         тот же, что у плиток и в боевом меню, и не разъезжался при правках. -->
-    <p class="dg-group-title">{{menu.navigation}}</p>
-    <a class="dg-drawer-row" href="/" data-dg-icon="home">{{buttons.main}}</a>
-    <a class="dg-drawer-row" href="/history.php" data-dg-icon="clock">{{buttons.history}}</a>
-    <a class="dg-drawer-row" href="javascript:void(0)" data-dg-icon="help" data-bs-toggle="modal" data-bs-target="#SearchResultHelp">{{global.common.help}}</a>
-    <!-- Своя кнопка на главную: подпись, адрес, значок. Форму рисует home.js в обычной шторке. -->
+    <!-- Полные настройки (шестерёнка) — ниже язык/тему по просьбе владельца: сначала быстрые
+         переключатели, потом ссылка на полную страницу настроек. -->
+    <a class="dg-drawer-row" href="/settings/" data-dg-icon="gear">{{global.common.settings}}</a>
+    <!-- Своя кнопка на главную: подпись, адрес, значок. Форму рисует home.js в обычной шторке.
+         Перенесено сюда из «Навигации» по просьбе владельца — это управление кнопками, то есть
+         настройка, а не переход. -->
     <a class="dg-drawer-row" href="javascript:void(0)" id="dg-add-tile" data-dg-icon="plus">{{menu.addTile}}</a>
     <!-- Правка любой кнопки: сперва список, потом та же форма. Выбирать плитку на самой главной
          негде — крестик там уже занят удалением. -->
     <a class="dg-drawer-row" href="javascript:void(0)" id="dg-edit-tiles" data-dg-icon="wrench">{{menu.editTiles}}</a>
     <!-- Появляется, только если есть что возвращать: убрана кнопка ИЛИ переставлен порядок. -->
     <a class="dg-drawer-row" href="javascript:void(0)" id="dg-restore-tiles" data-dg-icon="star" hidden>{{menu.restoreTiles}}</a>
-    <p class="dg-group-title">{{menu.settings}}</p>
-    <!-- Шестерёнка БЕЗ молнии — полные настройки; молния осталась быстрым, у поля. -->
-    <a class="dg-drawer-row" href="/settings/" data-dg-icon="gear">{{global.common.settings}}</a>
     <a class="dg-drawer-row" href="/login" data-dg-icon="login">{{global.common.login}}</a>
   </nav>
 </aside>
 
-        <script src="/assets/js/openFdg.js"></script>
+        <!-- defer added to all script tags in this block (TODO.md #global п.2: measured
+             contributor to slower-than-prod loads) — deferred scripts execute in strict
+             document order regardless of individual download speed, so this preserves the
+             exact relative execution order these tags already had (three siblings here
+             already used defer; the trailing inline tooltip script below only needs jQuery,
+             loaded synchronously in <head>, unaffected either way). -->
+        <script src="/assets/js/openFdg.js" defer></script>
 	  <script src="/assets/js/smoothScroll.js" defer></script>
     <script defer type="module" src="/assets/js/langswitch.js"></script>
     <!-- linksdpr.js/openDpr.js, linksru.js/openRu.js, linksbw.js/openBw.js — теперь загружаются
          лениво, см. loadPiEnRuScripts() в wireResultLinks() выше: незачем парсить ~469 КБ
          ссылочных данных на каждой загрузке страницы, если в ней ещё нет результатов поиска. -->
-                <script src="/assets/js/settings.js"></script>
-<script src="/assets/js/dg-text-router.js"></script>
+                <script src="/assets/js/settings.js" defer></script>
+<script src="/assets/js/dg-text-router.js" defer></script>
 <script src="/assets/js/themeswitch.js" defer></script>
 <!-- openWithQuery/openWithQueryMulti/openDictionaries — легаси-функции подстановки {{q}}/{{theme}}
      из горизонтального меню. Раньше на этой странице их не было (меню жило только в PHP-шапке),
      а плиткам домашнего экрана они нужны: часть ссылок в menu-links.json — шаблоны. -->
-<script src="/assets/js/openDicts.js"></script>
+<script src="/assets/js/openDicts.js" defer></script>
 <!-- Случайные подсказки в поле и «зов» в заголовке вкладки — боевой файл легаси-главной, целиком
      как есть: списки фраз живут в нём, дублировать их здесь незачем. Вызовами управляет home.js
      (только в состоянии главной), см. applyRandomPlaceholder(). -->
-<script src="/assets/js/randPlaceholder.js"></script>
-<script src="/nodejs/res/js/home.js"></script>
+<script src="/assets/js/randPlaceholder.js" defer></script>
+<script src="/nodejs/res/js/home.js" defer></script>
 
 <script>
            //to enable bootstrap tooltip    

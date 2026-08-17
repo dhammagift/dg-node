@@ -1,4 +1,5 @@
 const express = require('express');
+const compression = require('compression');
 const fs = require('fs').promises;
 const path = require('path');
 const fsSync = require('fs');
@@ -11,6 +12,13 @@ const { default: Aksharamukha, Scripts: AKSH_SCRIPTS } = require('aksharamukha')
 
 const app = express();
 const PORT = 3000;
+
+// gzip/br для ВСЕГО, что отдаёт сервер — HTML, JSON, JS, CSS. Прод (легаси PHP) летает именно
+// потому, что перед ним Apache/nginx сжимают ответы по умолчанию; у этого сервера такого слоя
+// нет, и текстовые ответы уходили НЕСЖАТЫМИ (проверено curl'ом с Accept-Encoding: gzip — сервер
+// его игнорировал, fontawesome.6.1.all.js уходил все 1.7МБ как есть). Регистрируем максимально
+// рано — до всех static-маунтов и роутов ниже, — чтобы сжатие покрывало вообще все ответы.
+app.use(compression());
 
 // Конвертация системы письма пали (настройка "selectedScript" в /settings/, приходит как
 // ?script= в адресе — тот же параметр, что уже слала кнопка Alt+L, раньше ничего не делавший).
@@ -304,33 +312,37 @@ app.use((req, res, next) => {
 // маунт под тем же префиксом регистрирует уже ОБЩИЙ scan-цикл siteroot/ дальше по файлу, не
 // отдельная явная строка здесь: порядок регистрации (overrides раньше siteroot-цикла) сам по
 // себе гарантирует приоритет override-файлов, ничего дополнительно синхронизировать не нужно.
-app.use('/assets', express.static(path.join(__dirname, 'public', 'overrides')));
+// maxAge: short (60s), dev-safe cache — was max-age=0 (express.static's bare default) on
+// every mount, forcing a 304 round-trip on every asset on every navigation (TODO.md #global
+// п.2). 60s specifically: short enough that a file edited during active dev becomes visible
+// again within a minute, still long enough to cut the round-trip tax for normal browsing.
+app.use('/assets', express.static(path.join(__dirname, 'public', 'overrides'), { maxAge: 60000 }));
 // /read/js/voice.js — тот же override-приоритет паттерн, что и /assets выше: наш патченный
 // voice.js (public/overrides/read/js/, чинит рассинхрон detectTranslationLang/prepareTextData
 // с классами, которые реально рендерит megareader.js — rus-lang/eng-lang vs ru-lang/en-lang,
 // second-translation-row vs lang-2nd — переводы молча не находились на страницах ридера,
 // см. TODO.md) отдаётся ПЕРЕД siteroot/read/ (легаси-оригинал, дальше по файлу, generic-цикл).
-app.use('/read', express.static(path.join(__dirname, 'public', 'overrides', 'read')));
-app.use('/spa', express.static(path.join(__dirname, 'public', 'spa')));
+app.use('/read', express.static(path.join(__dirname, 'public', 'overrides', 'read'), { maxAge: 60000 }));
+app.use('/spa', express.static(path.join(__dirname, 'public', 'spa'), { maxAge: 60000 }));
 // /settings — мастер-настройки (единая страница, вызывается по шестерёнке; отдельно от
 // быстрых настроек в quickModal и смарт-панели ридера, см. TODO.md).
-app.use('/settings', express.static(path.join(__dirname, 'settings')));
+app.use('/settings', express.static(path.join(__dirname, 'settings'), { maxAge: 60000 }));
 // URL-префикс /nodejs/res сознательно НЕ переименован вслед за папкой (обратная совместимость
 // путей) — папка на диске называется search/ (см. CLAUDE.md "Структура проекта"), а
 // /nodejs/res/... как публичный URL как был, так и остался.
-app.use('/nodejs/res', express.static(path.join(__dirname, 'search')));
+app.use('/nodejs/res', express.static(path.join(__dirname, 'search'), { maxAge: 60000 }));
 // lang_ru.json/lang_en.json (поисковый UI) физически переехали в configs/search/ — все конфиги
 // проекта в одном месте (см. CLAUDE.md). URL не менялся (клиент шлёт fetch на /nodejs/res/lang_
 // {lang}.json, см. search/index.html DHAMMA_LANG_CONFIG_PATTERN) — второй static-маунт на тот же
 // префикс просто добавляет ещё одно место поиска файла, express пробует по очереди.
-app.use('/nodejs/res', express.static(path.join(__dirname, 'configs', 'search')));
-app.use('/nodejs', express.static(__dirname));
-app.use('/reader', express.static(path.join(__dirname, 'reader')));
+app.use('/nodejs/res', express.static(path.join(__dirname, 'configs', 'search'), { maxAge: 60000 }));
+app.use('/nodejs', express.static(__dirname, { maxAge: 60000 }));
+app.use('/reader', express.static(path.join(__dirname, 'reader'), { maxAge: 60000 }));
 // mode-table.json/translator-priority.json/lang_ru.json/lang_en.json (ридер) физически
 // переехали в configs/reader/ — тот же приём, что и с /nodejs/res выше: URL /reader/*.json не
 // менялся (megareader.js/reader-template.html фетчат по старым путям), просто ещё один
 // static-маунт на тот же префикс.
-app.use('/reader', express.static(path.join(__dirname, 'configs', 'reader')));
+app.use('/reader', express.static(path.join(__dirname, 'configs', 'reader'), { maxAge: 60000 }));
 
 // siteroot/ — публикация от корня сайта: самодостаточные легаси-приложения (Memorization
 // Helper, вход/облачная синхронизация, 4nt — сравнение изданий пали, TTS voice-player), их
@@ -366,16 +378,16 @@ try {
     console.warn('Siteroot not found:', SITEROOT);
 }
 for (const name of siteRootEntries) {
-    app.use(`/${name}`, express.static(path.join(SITEROOT, name)));
+    app.use(`/${name}`, express.static(path.join(SITEROOT, name), { maxAge: 60000 }));
 }
 // ru/memo, ru/login — унаследованные от легаси языковые алиасы (тот же контент ещё и под /ru/).
 // Это не отдельная тулза в siteroot/, а второй URL для уже примонтированной — оставлены явно.
-app.use('/ru/memo', express.static(path.join(SITEROOT, 'memo')));
-app.use('/ru/login', express.static(path.join(SITEROOT, 'login')));
+app.use('/ru/memo', express.static(path.join(SITEROOT, 'memo'), { maxAge: 60000 }));
+app.use('/ru/login', express.static(path.join(SITEROOT, 'login'), { maxAge: 60000 }));
 
 // Офлайн-зеркала сторонних сайтов — /{имя-папки}/... отдаётся как статика напрямую из offline-data
 for (const name of offlineMirrors) {
-    app.use(`/${name}`, express.static(path.join(OFFLINE_MIRRORS_ROOT, name)));
+    app.use(`/${name}`, express.static(path.join(OFFLINE_MIRRORS_ROOT, name), { maxAge: 60000 }));
 }
 
 // SPA главная точка входа — служит spa/index.html для всех маршрутов
@@ -2092,7 +2104,14 @@ app.get('/:slug', (req, res) => {
     const rawSlug = req.params.slug;
     const suttaId = rawSlug.split(':')[0].toLowerCase();
     if (skeletonDB[suttaId]) {
-        return res.sendFile(readerTemplatePath);
+        // Раньше отдавали отдельную reader-template.html — прямой заход/reload/шаринг ссылки на
+        // сутту НЕ был SPA (свой header, свой bootstrap, дублировал search/index.html). Теперь
+        // отдаём тот же SPA-шаблон, что и на "/" — его собственный routeFromUrl() (см. конец
+        // <script> в search/index.html) при загрузке сам распознаёт suttaId в пути и вызывает
+        // openReaderInPlace(), который лениво подгружает ТОТ ЖЕ megareader.js в #reader-pane.
+        // reader-template.html пока не в unused/ — держим как референс для допереноса
+        // недостающих ссылок/кнопок в SPA-ридер (см. TODO.md, reader-бэклог).
+        return res.sendFile(searchIndexPath);
     }
     // Якорем идёт сам запрошенный id: внутри диапазона сегменты пронумерованы по вложенной
     // сутте ("an1.9:1.1"), и megareader.js для диапазонов кладёт в id элемента ПОЛНЫЙ segment id,

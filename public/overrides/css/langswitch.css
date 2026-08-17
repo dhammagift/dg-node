@@ -275,12 +275,15 @@ dt {
    Важно: скрываем только внутри .quote (реальные цитаты текста) — как и было в
    легаси-коде. Колонка "Words" и отчёт по словам используют тот же класс .pli-lang
    для стилизации шрифта, но это не цитаты — прятать их нельзя, иначе ломается
-   таблица. */
-#sutta.hide-pali .pli-lang.quote {
+   таблица.
+   Scoped to #search-pane (the real ancestor of the results table, see
+   public/overrides/js/langswitch.js), NOT #sutta — #sutta is the READER's own content
+   container, a separate DOM subtree the results table never lives inside. */
+#search-pane.hide-pali .pli-lang.quote {
   display: none !important;
 }
 
-#sutta.hide-english [class*="-lang"].quote:not(.pli-lang) {
+#search-pane.hide-english [class*="-lang"].quote:not(.pli-lang) {
   display: none !important;
 }
 
@@ -290,11 +293,11 @@ dt {
    и попытка спрятать голый .pli-lang без разбора снова сломала бы её, как предупреждает
    комментарий выше. На суттах без перевода название просто не участвует в переключении и
    остаётся видимым в любом режиме — это и есть сигнал "перевода нет", без отдельной подписи. */
-#sutta.hide-pali .pli-lang.dg-title-lang {
+#search-pane.hide-pali .pli-lang.dg-title-lang {
   display: none !important;
 }
 
-#sutta.hide-english [class*="-lang"].dg-title-lang:not(.pli-lang) {
+#search-pane.hide-english [class*="-lang"].dg-title-lang:not(.pli-lang) {
   display: none !important;
 }
 

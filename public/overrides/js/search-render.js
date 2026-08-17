@@ -431,6 +431,15 @@ window.DgSearchRender = (function () {
             orderMulti: true,
             pageLength: 10,
             lengthMenu: [10, 30, 50, 100, 1000],
+            // Owner: only show pagination controls (first/prev/next/last) when there's actually
+            // more than one page — a single-page result set (the common case, e.g. 4 texts) has
+            // nothing for them to do, just visual noise. The "Showing X to Y of Z" info text
+            // stays either way, that's not what was asked to hide.
+            drawCallback: function () {
+                // DataTables 2.x class naming (.dt-paging, not the old 1.x .dataTables_paginate).
+                var pages = this.api().page.info().pages;
+                $(this.api().table().container()).find('.dt-paging').toggle(pages > 1);
+            },
             // Responsive's own dtr-title caches the column heading at init time and sometimes
             // hands back "undefined" instead of the real text — DataTables' own column.title is
             // correct at that moment (verified via settings().aoColumns), so this is a Responsive
@@ -713,10 +722,28 @@ window.DgSearchRender = (function () {
 
                         var transKeys = Object.keys(data).filter(function (k) { return k !== 'root'; });
 
-                        var secondLangKey = transKeys.find(function (k) { return k.startsWith(window.siteLanguage + '_'); });
+                        // Which language shows as the title's second line: follows the actual
+                        // configured search-language ORDER (activeState.requestedLangs — same
+                        // list/priority the quote columns already use, see buildDataTable),
+                        // not window.siteLanguage. Was tied to the UI language regardless of
+                        // what languages the search itself was set to (owner: set search langs
+                        // to de/ru/en, title still picked by interface language, unrelated to
+                        // that list or to the separate "reading languages" setting). Only
+                        // applies when the user has actually configured/requested a language
+                        // list — falls through to the old UI-language heuristic otherwise, to
+                        // keep default (untouched-settings) behavior unchanged.
+                        var priorityLangKey = activeState.requestedLangs.length
+                            ? activeState.requestedLangs.map(function (l) {
+                                return transKeys.find(function (k) { return k.startsWith(l + '_'); });
+                            }).find(Boolean)
+                            : null;
+                        var secondLangKey = priorityLangKey || transKeys.find(function (k) { return k.startsWith(window.siteLanguage + '_'); });
                         var enKey = transKeys.find(function (k) { return k.startsWith('en_'); });
 
-                        if (window.siteLanguage !== 'en' && secondLangKey) {
+                        if (priorityLangKey) {
+                            titleText = data[priorityLangKey];
+                            langClass = priorityLangKey.split('_')[0] + '-lang';
+                        } else if (window.siteLanguage !== 'en' && secondLangKey) {
                             titleText = data[secondLangKey];
                             langClass = window.siteLanguage + '-lang';
                         } else if (enKey) {
@@ -835,6 +862,12 @@ window.DgSearchRender = (function () {
                             }
 
                             if (seg.translations) {
+                                // Collected separately and wrapped in .right-column below (not
+                                // appended straight into `html`) — matches megareader.js's own
+                                // segment markup (<span class="right-column">...</span> around
+                                // all translations), which is what the shared column-mode CSS
+                                // (reader/css/uiextra.css: .column-view .right-column) keys off.
+                                var transHtml = '';
                                 var transKeys = Object.keys(seg.translations);
                                 // Язык интерфейса и язык поиска НЕ связаны (TODO.md поиск: "русский
                                 // может искать по англ, без проблем, и наоборот") — но это НЕ значит
@@ -894,10 +927,23 @@ window.DgSearchRender = (function () {
                                     var htmlclass = langClassName + " text-muted font-weight-light";
                                     if (isContext) htmlclass += " opacity-75";
 
-                                    html += '<span class="' + htmlclass + ' quote" lang="' + langCode + '">' + unhiddenlink + ' ' + transText + ' ' + hiddenlink + '</span><br class="styled ' + htmlclass + ' quote" lang="' + langCode + '">';
+                                    transHtml += '<span class="' + htmlclass + ' quote" lang="' + langCode + '">' + unhiddenlink + ' ' + transText + ' ' + hiddenlink + '</span><br class="styled ' + htmlclass + ' quote" lang="' + langCode + '">';
                                 });
+
+                                if (transHtml) html += '<span class="right-column">' + transHtml + '</span>';
                             }
-                            return html + (isContext ? '' : '<br>');
+                            // Wrap in an id'd span matching the reader's own segment markup
+                            // (megareader.js: <span id="segment">...</span>) — voice.js's TTS
+                            // engine groups Pali+translation lines into one playlist entry by
+                            // walking up to closest([id]); without this wrapper these sibling
+                            // <span class="pli-lang quote">/<span class="ru-lang quote"> lines
+                            // had no id anywhere, so the engine never paired them and picked
+                            // essentially arbitrary text/voice per line — reading mixed content
+                            // in one language's voice. urlwithanchor is already sutta_id+segment,
+                            // globally unique across all rows on the results page (unlike the
+                            // reader's own bare segment id, which only needs to be unique within
+                            // one sutta's page).
+                            return '<span id="' + urlwithanchor + '">' + html + '</span>' + (isContext ? '' : '<br>');
                         };
 
                         data.forEach(function (seg) {

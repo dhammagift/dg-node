@@ -145,6 +145,24 @@ window.isRu = window.notEn;
 })();
 
 // ==========================================
+// ЭКСТРЕННАЯ ПРЕДЗАГРУЗКА paliLookup.js — ридер и выдача, БЕЗ гейта "со 2-го визита"
+// ==========================================
+// Owner: dictionary should be ready "по слову" (word-by-word) before the first click on
+// reader/results — home page staying click-triggered is fine. This loads only the (small)
+// lookup SCRIPT itself unconditionally; the heavier standalone offline database below stays
+// gated behind dg_dict_cached — that's a real asset-size tradeoff, not something this request
+// touched. dgStateChanged (search/index.html dgSetState()) fires on EVERY screen transition,
+// covering results too — suttaRenderedCentral below only ever fired in the reader.
+window.addEventListener('dgStateChanged', function (e) {
+    var name = e.detail && e.detail.name;
+    if (name !== 'results' && name !== 'reader') return;
+    if (localStorage.getItem('dictionaryVisible') === 'false') return;
+    if (window.isDictScriptLoaded) return;
+    var idle = window.requestIdleCallback || function (cb) { setTimeout(cb, 200); };
+    idle(function () { window.dg_loadDictionaryScripts().catch(function () {}); });
+});
+
+// ==========================================
 // ФОНОВАЯ АКТИВАЦИЯ С РОДНОЙ ПЛАШКОЙ (СО 2-ГО ВИЗИТА)
 // ==========================================
 window.addEventListener('suttaRenderedCentral', () => {
@@ -154,15 +172,15 @@ window.addEventListener('suttaRenderedCentral', () => {
         if (typeof dictionaryVisible !== 'undefined' && !dictionaryVisible) return;
 
         window.dg_loadDictionaryScripts().then((scriptWasSlow) => {
-            if (typeof lazyLoadStandaloneScripts === 'function') {
-                
-                // paliLookup.js уже загрузился и сам вычислил свой глобальный savedDict.
-                // Полностью доверяем его логике определения языка базы:
-                const isDictRu = typeof savedDict !== 'undefined' && savedDict.includes('ru');
-                const lang = isDictRu ? 'ru' : 'en';
+            // OVERRIDE: раньше грузила standalone-базу ВСЕГДА, каким бы ни был выбранный режим
+            // словаря — попап/новое окно (онлайн, база не нужна вообще) висли, ожидая скачивания
+            // этой базы фоном (баг замечен владельцем при переключении на "Попап Dict.DG").
+            // Грузим её только когда реально выбран режим standalone/standaloneru.
+            const isStandaloneMode = typeof savedDict !== 'undefined' && savedDict.includes('standalone');
+            if (isStandaloneMode && typeof lazyLoadStandaloneScripts === 'function') {
+                const lang = savedDict.includes('ru') ? 'ru' : 'en';
 
-                // Для локализации самой плашки тоже берем готовую переменную из словаря, если она есть
-                                lazyLoadStandaloneScripts(lang).then((dbWasSlow) => {
+                lazyLoadStandaloneScripts(lang).then((dbWasSlow) => {
                     if (scriptWasSlow || dbWasSlow) {
                         window.dg_toggleNativeLoader(true, window.notEn ? 'Словарь загружен.' : 'Dictionary is loaded.');
                         
@@ -369,6 +387,45 @@ window.removeAllHighlights = function() {
     if (oldBtn) oldBtn.remove();
 };
 
+// .shifted (uiextra.css) used a HARDCODED right:132px, sized for scrollToTopBtn sitting at
+// its own hardcoded right:90px — and this button's own CSS default (right:90px, no arrow
+// visible) is a THIRD hardcoded guess. All three numbers assume #language-button is some
+// fixed width, but search/index.html's placeScrollTopButton() exists specifically BECAUSE
+// it isn't (its label varies with interface language) — so any of these static fallbacks
+// can still collide with it (owner caught it live: play button landed on top of "Pāli Eng").
+// Rather than add a FOURTH guessed constant, avoid ALL currently-visible right-corner
+// neighbors by their real rects — same technique placeScrollTopButton() already uses for
+// just the arrow, extended to also cover the language pill (always present) and skip
+// whichever of the two isn't actually rendered right now (checked via display, not
+// opacity — see the getBoundingClientRect()-returns-zeros bug this replaced).
+function repositionTtsButton() {
+    const btn = document.querySelector('.dynamic-tts-btn');
+    if (!btn) return;
+    const rightCornerNeighbors = [document.getElementById('scrollToTopBtn'), document.getElementById('language-button')]
+        .filter(function (el) { return el && window.getComputedStyle(el).display !== 'none'; })
+        .map(function (el) { return el.getBoundingClientRect(); })
+        .filter(function (r) { return r.width > 0; });
+    if (rightCornerNeighbors.length) {
+        const leftmost = Math.min.apply(null, rightCornerNeighbors.map(function (r) { return r.left; }));
+        btn.style.right = Math.round(window.innerWidth - leftmost + 8) + 'px';
+    } else {
+        btn.style.right = '';
+    }
+}
+// scrollToTopBtn only TOGGLES DISPLAY on scroll (smoothScroll.js, window.scrollY > 600) — it
+// doesn't move, but its appearance/disappearance mid-scroll changes which neighbors the TTS
+// button needs to avoid. addTtsButton() only recalculates on segment change, not on scroll, so
+// a smooth scroll (TTS auto-advance or manual) that crosses that 600px threshold left the TTS
+// button's position stale relative to a neighbor that just appeared — owner: "buttons pile up
+// in the corner during smooth scroll". rAF-throttled so this doesn't run more than once per
+// frame during a scroll/animation.
+let ttsRepositionQueued = false;
+window.addEventListener('scroll', function () {
+    if (ttsRepositionQueued) return;
+    ttsRepositionQueued = true;
+    requestAnimationFrame(function () { ttsRepositionQueued = false; repositionTtsButton(); });
+}, { passive: true });
+
 window.addTtsButton = function(containerElement, specificElement) {
     // Безопасная проверка видимости плеера (до загрузки voice.js ttsState не существует)
     const player = document.getElementById('voice-player-container');
@@ -381,15 +438,11 @@ window.addTtsButton = function(containerElement, specificElement) {
     if (oldBtn) oldBtn.remove();
 
     const btnContainer = document.createElement('div');
-    btnContainer.className = 'dynamic-tts-btn'; 
+    btnContainer.className = 'dynamic-tts-btn';
     btnContainer.innerHTML = `<img src="/assets/svg/play.svg" alt="Play">`;
 
-    const scrollBtn = document.getElementById('scrollToTopBtn');
-    if (scrollBtn && window.getComputedStyle(scrollBtn).opacity > 0) {
-        btnContainer.classList.add('shifted');
-    }
-
     document.body.appendChild(btnContainer);
+    repositionTtsButton();
 };
 
 window.activateSegmentForTTS = function(element) {
@@ -454,7 +507,43 @@ document.addEventListener("click", function (e) {
 
 // ========================================================================
 
-
+// 1/2-column mode toggle (#toggle-mode / #toggle-mode-results, .toggle-mode-btn) — legacy
+// switchView.js does the same thing but only on DOMContentLoaded, which never fires again once
+// the SPA has already loaded (same trap reader/common.js was ported to fix). Written fresh
+// here instead of patching the shared prod file. localStorage.viewMode is one setting for the
+// whole site (owner: "1/2 колонки — кнопка включения и сам режим", "везде одинаково") — applied
+// to BOTH #sutta (reader) and #search-pane (results) together rather than tracking which view
+// is currently active, since only the visible one's CSS has any visual effect and #sutta always
+// exists in the DOM (empty shell) even on the results page. megareader.js separately re-applies
+// .column-view to #sutta on every buildSutta() render from the same localStorage key — this
+// only needs to keep BOTH containers and BOTH button icons in sync on toggle/load, not on every
+// render.
+function dgApplyColumnMode() {
+    var isColumns = (localStorage.getItem('viewMode') || 'alternate') === 'columns';
+    ['sutta', 'search-pane'].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) el.classList.toggle('column-view', isColumns);
+    });
+    document.querySelectorAll('.toggle-mode-btn').forEach(function (btn) {
+        var img = btn.querySelector('img');
+        if (img) img.src = '/assets/svg/align-' + (isColumns ? 'left' : 'right') + '.svg';
+    });
+}
+function dgToggleColumnMode() {
+    var isColumns = (localStorage.getItem('viewMode') || 'alternate') !== 'columns';
+    localStorage.setItem('viewMode', isColumns ? 'columns' : 'alternate');
+    dgApplyColumnMode();
+}
+document.addEventListener('DOMContentLoaded', dgApplyColumnMode);
+if (document.readyState !== 'loading') dgApplyColumnMode();
+document.addEventListener('click', function (e) {
+    if (!e.target.closest('.toggle-mode-btn')) return;
+    e.preventDefault();
+    dgToggleColumnMode();
+});
+document.addEventListener('keydown', function (e) {
+    if (e.altKey && e.code === 'KeyC') dgToggleColumnMode();
+});
 
 function checkStorage(key) {
     if (localStorage.getItem(key) !== null) {
@@ -3319,11 +3408,16 @@ window.initSettingsObserver = function() {
 
 
 // === Умная и легкая подсветка элементов по хешу ===
+// OVERRIDE: легаси-версия подсвечивала только МНОЖЕСТВЕННЫЕ хеши (#id1,id2) — ранний выход по
+// "нет запятой" нарочно пропускал обычные одиночные якоря (#contacts и т.п.). Просьба владельца:
+// обычные якоря на dg-node тоже должны подсвечиваться так же, как многосоставные на проде —
+// убрана проверка на запятую, механизм (поллинг + dg-temp-blink) тот же самый, просто теперь
+// срабатывает и на hash без запятой.
 function applyHashHighlights() {
     const hash = window.location.hash;
-    
-    // РАННИЙ ВЫХОД: если хеша нет или в нем нет запятой — ничего не делаем (0 нагрузки)
-    if (!hash || !hash.includes(',')) return;
+
+    // РАННИЙ ВЫХОД: только если хеша нет вовсе.
+    if (!hash || hash.length < 2) return;
 
     const ids = hash.substring(1).split(',');
 

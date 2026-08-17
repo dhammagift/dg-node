@@ -30,6 +30,8 @@
     "addTileIcon": "Icon",
     "addTileSave": "Add",
     "addTileHint": "You can put %s in the address — the search box query goes there.",
+    "addTileDesc": "Description",
+    "addTileDescPh": "optional — shown as a tooltip",
     "addTileNoName": "Enter a label",
     "addTileBadUrl": "Address must start with http://, https:// or /",
     "deleteTile": "Delete button",
@@ -37,7 +39,7 @@
     "editTile": "Edit button",
     "editTileSave": "Save",
     "editTileReset": "Restore original",
-    "editBuiltinNote": "For a built-in button you can change the label and the icon. Its links come from the site and update with it.",
+    "editBuiltinNote": "Changing the address here stops the button from updating with the site — \"Restore original\" undoes this.",
     "addTileEmoji": "Or your own icon",
     "addTileEmojiPh": "any symbol, e.g. 🪷",
     "resetConfirm": "Your own buttons (%s) will be deleted. Continue?"
@@ -46,11 +48,14 @@
     "title": "Interesting queries",
     "showAll": "Show all",
     "allTitle": "All interesting queries",
-    "read": "Read"
+    "read": "Read",
+    "contactsNote": "Missing something? Want to add anything? %s.",
+    "contactsNoteLink": "Let us know"
   },
   "quick": {
     "title": "Quick settings",
     "where": "Where to search",
+    "dictMode": "Dictionary",
     "context": "Context lines",
     "ctx0": "Line only",
     "ctx1": "+1 line",
@@ -60,6 +65,9 @@
     "viewWords": "Words",
     "diacritics": "Pāḷi diacritics",
     "note": "Defaults and the book-by-book breakdown live in the full settings.",
+    "reading": "Reading",
+    "variants": "Show variants",
+    "columnMode": "Column mode",
     "scope": {
       "nikayas": "4 Nikāyas",
       "kn": "Khuddaka Nikāya",
@@ -92,12 +100,14 @@
       "kp": "Khuddakapāṭha",
       "pe": "Peṭakopadesa"
     },
+    "saved": "Saved",
     "scopeExpand": "Show contents",
     "contextNote": "How many lines to show before and after the match — on each side."
   },
   "toolbar": {
     "expandCollapseLabel": "Saṁvaṭṭo / Vivaṭṭo",
     "readMarksLabel": "Read marks",
+    "compassLabel": "Compass",
     "wordsToggleShow": "Words",
     "wordsToggleHide": "Texts",
     "compassAriaLabel": "Open Cattāri Ariyasaccāni",
@@ -150,7 +160,6 @@
     "scope4Nikaya": "4 Nikayas",
     "scopeAll": "the whole corpus",
     "scopeSelected": "selected sections ({n})",
-    "hasVariantsSuffix": "has",
     "variantsLinkText": "variants",
     "variantsForLabel": "Variants for",
     "tooShortMessage": "Query \"{query}\" is too short — please enter at least 3 characters.",
@@ -175,6 +184,13 @@
     "khudakka": "Khuddaka Nikāya",
     "vinaya": "Vinaya",
     "abhi": "Abhidhamma"
+  },
+  "howto": {
+    "title": "How to Search",
+    "pali": "Tāni ce sutte osāriyamānāni vinaye sandassiyamānāni na ceva sutte osaranti, na ca vinaye sandissanti, niṭṭhamettha gantabbaṃ: \"addhā, idaṃ na ceva tassa bhagavato vacanaṃ; imassa ca bhikkhuno duggahita\"nti. Iti hetaṁ, bhikkhave, chaḍḍeyyātha.",
+    "body": "If they (teachings, practices, methods, quotes, stories, anything associated with the Buddha) are not found in the Suttas and are not exhibited in the Vinaya, you should draw the conclusion: ‘Clearly this is not the word of the Blessed One. It has been wrongly understood by that monk.’ And so, monks, you should reject it.",
+    "warnTitle": "Please Remember!",
+    "warnBody": "Translations, dictionaries and commentaries do not originate directly from the Buddha himself! Approach them with scrutiny and critical thinking.\n\nTo acquire the fundamental teachings of the Buddha, it is highly recommended to engage in the direct study of Suttas in Pali. At the very least, concentrate on understanding the Middle Practice and the Four Noble Truths. For instance, consider delving into a dedicated section from sn56.11."
   },
   "footer": {
     "terms": "Terms of use",

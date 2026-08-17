@@ -17,6 +17,7 @@
     'use strict';
 
     var MENU_URL = '/nodejs/res/menu-links.json';
+    var DICT_MODES_URL = '/nodejs/res/dict-modes.json';
 
     /* Порядок плиток ПО УМОЛЧАНИЮ. Пользовательский порядок (перетаскивание) хранится в
        localStorage.dgTileOrder и этот список только дополняет: ключи, которых в сохранённом
@@ -59,8 +60,19 @@
         circleHalf: ['fas', 'circle-half-stroke'],
         display: ['fas', 'display'],
         language: ['fas', 'language'],
-        plus: ['fas', 'plus']
+        plus: ['fas', 'plus'],
+        compass: ['fas', 'compass'],
+        at: ['fas', 'at'],
+        sliders: ['fas', 'sliders']
     };
+
+    /* Режимы словаря — раньше были ДВЕ вручную поддерживаемые копии этого списка (тут и
+       settings/index.html), с risk'ом разъехаться при добавлении нового режима (см. историю в
+       git) — теперь один файл, configs/search/dict-modes.json, обе страницы читают его.
+       Фетчится там же и тогда же, что menu-links.json (см. ниже) — к моменту, когда пользователь
+       реально откроет быстрые настройки и дойдёт до dictModePicker(), уже почти наверняка
+       загружен; null-fallback на этот случай — просто пустой список, а не ошибка. */
+    var dictModeGroups = null;
 
     /* FontAwesome на этой странице подключён скриптом (assets/js/fontawesome.6.1.all.js), но его
        наблюдатель за DOM здесь не срабатывает: <i class="fa-solid …">, созданный после загрузки,
@@ -215,6 +227,8 @@
         if (patch) {
             if (patch.label) base.label = patch.label;
             if (patch.icon) base.icon = patch.icon;
+            if (patch.href) base.href = patch.href;
+            if (patch.desc) base.desc = patch.desc;
         }
         return base;
     }
@@ -415,6 +429,41 @@
         setTimeout(function () { if (!currentSheetKey) sheet.hidden = true; }, 320);
     }
 
+    /* Личные отметки пунктов мультитула (шторки Read Pāḷi/External/AI & Dicts/…) — поверх
+       редакционной звезды из menu-links.json (item.star), не вместо неё: true — пользователь
+       отметил сам пункт БЕЗ редакционной звезды, false — снял редакционную звезду, которая ему
+       не нравится, отсутствие ключа — редакционная звезда как есть. Только localStorage, в
+       облако не улетает (как и своя эмодзи-иконка кнопок — те же правила по просьбе владельца). */
+    var USER_STARS_KEY = 'dgUserStars';
+
+    function userStars() {
+        try { return JSON.parse(localStorage.getItem(USER_STARS_KEY)) || {}; }
+        catch (e) { return {}; }
+    }
+
+    // Идентичность пункта — сам JSON не даёт устойчивого id, поэтому берём первое, что у него
+    // реально есть и не меняется между рендерами: обычный href, либо адрес-шаблон, либо подпись.
+    function itemKey(item) {
+        return item.href || item.tpl || item.tplMulti || item.label;
+    }
+
+    function isStarred(item) {
+        var override = userStars()[itemKey(item)];
+        return override === undefined ? !!item.star : override;
+    }
+
+    function toggleUserStar(item) {
+        var key = itemKey(item);
+        var stars = userStars();
+        var next = !isStarred(item);
+        // Совпало с редакционным умолчанием — запись можно убрать, а не копить лишние true/false.
+        if (next === !!item.star) delete stars[key]; else stars[key] = next;
+        try {
+            if (Object.keys(stars).length) localStorage.setItem(USER_STARS_KEY, JSON.stringify(stars));
+            else localStorage.removeItem(USER_STARS_KEY);
+        } catch (e) { /* приватный режим */ }
+    }
+
     function renderItem(item, chip) {
         var a = document.createElement('a');
         a.className = chip ? 'dg-chip' : 'dg-sheet-row';
@@ -426,13 +475,26 @@
         /* Звезда — СЛЕВА от пункта, на месте обычного значка строки: она помечает сам пункт, а
            уехав в конец строки, вставала за описанием и читалась как отдельная кнопка. Значок
            «внешняя ссылка» у помеченных пунктов при этом не рисуется — двух значков в строке не
-           нужно, а важность важнее. */
+           нужно, а важность важнее. Звезда того же роста, что и обычный значок (.dg-row-star в
+           home.css), и золотая — как и остальные "избранное" в проекте. */
+        var starred = isStarred(item);
         a.innerHTML = chip
-            ? (item.star ? starSvg() : '') + esc(item.label)
-            : (item.star ? starSvg() : svg('external', 'dg-row-icon')) +
+            ? (starred ? starSvg() : '') + esc(item.label)
+            : (starred ? starSvg() : svg('external', 'dg-row-icon')) +
               '<span class="dg-row-label">' + esc(item.label) +
               (item.desc ? '<small class="dg-row-desc">' + esc(item.desc) + '</small>' : '') +
               '</span>';
+
+        /* Долгое нажатие на пункт (звезду или саму ссылку) — свой личный тоггл звезды, поверх
+           редакционной. contextmenu — тот же приём, что и у долгого нажатия в компасе (мобильный
+           браузер сам шлёт это событие после долгого тапа, на десктопе это правый клик — второго
+           таймера/pointerdown не требуется). Пункт при этом может вести НА ЛЮБОЕ действие
+           (обычная ссылка, tpl-шаблон, action) — long-press его не заменяет, а только добавляется. */
+        a.addEventListener('contextmenu', function (e) {
+            e.preventDefault();
+            toggleUserStar(item);
+            openSheet(currentSheetKey);
+        });
 
         if (item.tpl) {
             // openWithQuery подставляет {{q}}/{{theme}}, ПРОПИСЫВАЕТ href в currentTarget и
@@ -587,9 +649,25 @@
     /* Шестерёнка с молнией. Молния лежит В ЦЕНТРЕ шестерёнки, а не в углу значка: у fa-gear
        середина пустая, молния туда садится ровно и читается как одна иконка, а не как значок с
        налепленным сбоку вторым. Обе — из того же набора, что и всё меню (fa-gear, fa-bolt). */
+    /* Слайдеры, не шестерёнка — рядом с полем уже есть настоящая шестерёнка (/settings/, полные
+       настройки) и ещё одна в шапке компаса (словарь). Три шестерёнки подряд путали, какая для
+       чего (просьба владельца). Прежний вариант — шестерёнка с молнией-прорезью — тоже была
+       шестерёнкой, просто с накладкой; sliders однозначно читается как "быстрые настройки", без
+       накладного диска-молнии (.dg-qs-bolt), он был частью именно гексагонной композиции. */
+    // Hardcoded, not faSvg('sliders', ...): the FontAwesome KIT (kit.fontawesome.com, loaded on
+    // any real hostname — faSvg()'s offline branch only ever fires on localhost/LAN IPs, so this
+    // was never caught testing locally) is configured for the CSS/webfont method, not SVG+JS —
+    // window.FontAwesome.icon() doesn't exist there, so faSvg() silently fell back to a plain
+    // <i class="fa-solid fa-sliders"> text glyph. Rotating a FONT GLYPH 90deg via CSS transform
+    // doesn't center the way an SVG viewBox does — glyphs carry asymmetric left/right bearing
+    // baked into the font design, which is exactly the visible off-center icon the owner
+    // screenshotted on the live site. Embedding the real fa-sliders SVG path directly guarantees
+    // the same properly-centered <svg> everywhere, independent of which FontAwesome loading
+    // method happens to be configured. Path copied verbatim from FA 6's solid "sliders" glyph.
     function quickButtonHtml() {
-        return faSvg('gear', 'dg-qs-gear') +
-            '<span class="dg-qs-bolt">' + faSvg('bolt', '') + '</span>';
+        return '<svg class="dg-qs-gear" aria-hidden="true" focusable="false" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">' +
+            '<path fill="currentColor" d="M0 416C0 398.3 14.33 384 32 384H86.66C99 355.7 127.2 336 160 336C192.8 336 220.1 355.7 233.3 384H480C497.7 384 512 398.3 512 416C512 433.7 497.7 448 480 448H233.3C220.1 476.3 192.8 496 160 496C127.2 496 99 476.3 86.66 448H32C14.33 448 0 433.7 0 416V416zM192 416C192 398.3 177.7 384 160 384C142.3 384 128 398.3 128 416C128 433.7 142.3 448 160 448C177.7 448 192 433.7 192 416zM352 176C384.8 176 412.1 195.7 425.3 224H480C497.7 224 512 238.3 512 256C512 273.7 497.7 288 480 288H425.3C412.1 316.3 384.8 336 352 336C319.2 336 291 316.3 278.7 288H32C14.33 288 0 273.7 0 256C0 238.3 14.33 224 32 224H278.7C291 195.7 319.2 176 352 176zM384 256C384 238.3 369.7 224 352 224C334.3 224 320 238.3 320 256C320 273.7 334.3 288 352 288C369.7 288 384 273.7 384 256zM480 64C497.7 64 512 78.33 512 96C512 113.7 497.7 128 480 128H265.3C252.1 156.3 224.8 176 192 176C159.2 176 131 156.3 118.7 128H32C14.33 128 0 113.7 0 96C0 78.33 14.33 64 32 64H118.7C131 35.75 159.2 16 192 16C224.8 16 252.1 35.75 265.3 64H480zM160 96C160 113.7 174.3 128 192 128C209.7 128 224 113.7 224 96C224 78.33 209.7 64 192 64C174.3 64 160 78.33 160 96z"></path>' +
+            '</svg>';
     }
 
     /* Область поиска. Ключ и формат — те же, что у полных настроек (/settings/): список
@@ -729,6 +807,43 @@
             wrap.appendChild(b);
         });
         return wrap;
+    }
+
+    /* Тот же список режимов, что и на /settings/ (dict-modes.json) — переиспользуем select, не
+       делаем свою версию. Выбор пишется в тот же localStorage.selectedDict, что читает
+       settings/index.html и paliLookup.js — общий ключ, значит смена в любом месте видна везде. */
+    function dictModePicker() {
+        var select = document.createElement('select');
+        select.className = 'dg-field-input dg-dict-select';
+        var current = localStorage.getItem('selectedDict') || 'standalone';
+        var ru = menuLang() === 'ru';
+        (dictModeGroups || []).forEach(function (g) {
+            var group = document.createElement('optgroup');
+            group.label = ru ? g.labelRu : g.labelEn;
+            g.options.forEach(function (o) {
+                var opt = document.createElement('option');
+                opt.value = o.value;
+                opt.textContent = ru ? o.ru : o.en;
+                if (o.value === current) opt.selected = true;
+                group.appendChild(opt);
+            });
+            select.appendChild(group);
+        });
+        select.addEventListener('change', function () {
+            var value = select.value;
+            localStorage.setItem('selectedDict', value);
+            // paliLookup.js грузится лениво (по первому клику по слову) — если он уже загружен,
+            // применяем смену немедленно через тот же applyDictConfig, что и /settings/; если
+            // ещё нет, dg_loadDictionaryScripts() сам его подтянет и применит текущий localStorage
+            // при инициализации, отдельно звать applyDictConfig не нужно.
+            if (typeof window.applyDictConfig === 'function') {
+                window.applyDictConfig(value);
+            } else if (typeof window.dg_loadDictionaryScripts === 'function') {
+                window.dg_loadDictionaryScripts();
+            }
+            notifySaved();
+        });
+        return select;
     }
 
     function ensureQuick() {
@@ -889,16 +1004,37 @@
             if (!on && i !== -1) list.splice(i, 1);
         });
         writeScope(list);
+        notifySaved();
+    }
+
+    /* Подтверждение «Сохранено» — всё в быстрых настройках и так пишется в localStorage сразу по
+       клику, отдельной кнопки «Сохранить» нет и не нужна (это создало бы иллюзию, что без неё
+       правки потеряются). showBubbleNotification — уже готовый, везде загруженный тост
+       (public/overrides/js/settings.js), используем его, а не заводим свой второй. */
+    function notifySaved() {
+        if (typeof window.showBubbleNotification === 'function') {
+            window.showBubbleNotification(t('quick.saved', 'Сохранено'));
+        }
     }
 
     function buildQuickBody(host) {
         host.innerHTML = '';
         var state = currentState();
 
-        if (state !== 'reader') {
-            host.appendChild(groupTitle(t('quick.where', 'Где искать')));
-            host.appendChild(scopePicker());
+        // "Где искать" (выбор никай/раздела) — раньше пряталось в ридере (тогда предполагалось,
+        // что там нечего искать). Владелец: поле поиска общее для всех трёх состояний (та же
+        // .dg-hero-inner), и из ридера можно ввести новый запрос не уходя со страницы — область
+        // поиска должна быть настраиваема отовсюду, где есть это поле, а не только на
+        // главной/выдаче. Показываем всегда.
+        host.appendChild(groupTitle(t('quick.where', 'Где искать')));
+        host.appendChild(scopePicker());
 
+        // Словарь — глобальная настройка (главная/поиск/ридер), поэтому не внутри блока выше.
+        // Порядок по просьбе владельца: где искать -> словарь -> контекст.
+        host.appendChild(groupTitle(t('quick.dictMode', 'Словарь')));
+        host.appendChild(dictModePicker());
+
+        if (state !== 'reader') {
             host.appendChild(groupTitle(t('quick.context', 'Контекст в цитатах')));
             var ctx = String(localStorage.getItem('dhammaSearchContextBefore') || 0);
             host.appendChild(segmented([
@@ -908,6 +1044,7 @@
             ], ctx, function (v) {
                 localStorage.setItem('dhammaSearchContextBefore', v);
                 localStorage.setItem('dhammaSearchContextAfter', v);
+                notifySaved();
             }));
             /* Пояснение обязательно: «+1 строка» само по себе не говорит, куда эта строка —
                сверху, снизу или в обе стороны. А берутся они с ОБЕИХ сторон: обработчик выше
@@ -931,6 +1068,30 @@
                 if (link) link.click();
                 closeQuick();
             }));
+        }
+
+        if (state === 'reader') {
+            /* Варианты чтения и режим колонок уже переключаются настоящими кнопками тулбара
+               ридера (#toggle-variants/#toggle-mode, reader-template.html + megareader.js /
+               switchView.js) — здесь просто ЖМЁМ их, как «Вид выдачи» выше жмёт .forshellscript,
+               а не заводим вторую копию их логики (localStorage-ключи и подписи разошлись бы).
+               Кнопок может не быть в DOM, если разметка ридера ещё не смонтирована — тогда просто
+               не показываем соответствующий переключатель, а не мёртвый тумблер. */
+            var variantsBtn = document.getElementById('toggle-variants');
+            var columnsBtn = document.getElementById('toggle-mode');
+            if (variantsBtn || columnsBtn) host.appendChild(groupTitle(t('quick.reading', 'Чтение')));
+            if (variantsBtn) {
+                var variantsOn = localStorage.getItem('variantVisibility') !== 'hidden';
+                host.appendChild(toggleRow(t('quick.variants', 'Варианты чтения'), variantsOn, function () {
+                    variantsBtn.click();
+                }));
+            }
+            if (columnsBtn) {
+                var columnsOn = (localStorage.getItem('viewMode') || 'alternate') === 'columns';
+                host.appendChild(toggleRow(t('quick.columnMode', 'Режим колонок'), columnsOn, function () {
+                    columnsBtn.click();
+                }));
+            }
         }
 
         host.appendChild(groupTitle(t('quick.diacritics', 'Диакритика Pāḷi')));
@@ -1027,10 +1188,36 @@
         }, 320);
     }
 
+    /* #home-extra/#home-howto свёрнуты по умолчанию на узком экране (home.css,
+       .dg-anchor-revealed) — если хеш адреса указывает на что-то внутри одного из них, значит
+       сюда именно навигировали (бургер, список "Show all"), и блок надо раскрыть и докрутить.
+       Один обработчик и на переход по хешу без перезагрузки, и на прямой заход с хешем в адресе. */
+    function revealAnchorSection() {
+        var id = (window.location.hash || '').slice(1);
+        if (!id) return;
+        var el = document.getElementById(id);
+        if (!el) return;
+        var section = el.closest('#home-extra, #home-howto');
+        if (section) section.classList.add('dg-anchor-revealed');
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    window.addEventListener('hashchange', revealAnchorSection);
+
     function wireDrawer() {
         // Бургеров два — в шапке главной и рядом с полем в выдаче/чтении; меню у них одно.
         Array.prototype.forEach.call(document.querySelectorAll('.dg-menu-btn'), function (btn) {
             btn.addEventListener('click', openDrawer);
+        });
+        // Пункты «Приложения и расширения» / «Контакты» — якоря на блоки #home-extra (видны
+        // только на широком экране, см. .dg-drawer-row[data-dg-anchor] в home.css). Ставим
+        // location.hash вместо ручного scrollIntoView — браузер сам скроллит И подсвечивает
+        // (hashchange -> applyHashHighlights, settings.js), одним нативным действием вместо двух
+        // рукописных. closeDrawer раньше: пока шторка открыта, она перекрывает низ страницы.
+        Array.prototype.forEach.call(document.querySelectorAll('[data-dg-anchor]'), function (row) {
+            row.addEventListener('click', function () {
+                closeDrawer();
+                setTimeout(function () { window.location.hash = row.dataset.dgAnchor; }, 200);
+            });
         });
         var back = document.getElementById('dg-drawer-backdrop');
         if (back) back.addEventListener('click', closeDrawer);
@@ -1069,6 +1256,9 @@
             el.type = 'button';
             el.className = 'dg-tile';
             el.dataset.tile = key;
+            // Описание — необязательное поле формы правки, на плитке места под него нет, поэтому
+            // просто нативный tooltip, без изменений в сетке/CSS.
+            if (tile.desc) el.title = tile.desc;
             /* Иконка — в кружке из акцентного фона: так плитка читается как значок с подписью,
                а не как строка списка в рамке. */
             el.innerHTML = '<span class="dg-tile-ic">' + iconHtml(tile.icon) + '</span>' +
@@ -1290,6 +1480,25 @@
                 'aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>';
             body.appendChild(a);
         });
+        // Подсказка внизу списка — перенос "* Missing something?..." с multiTool.html (боевой
+        // справочник по мультитулу). Ссылка ведёт на #contacts (реальный якорь секции
+        // "Контакты" на главной) — обычная <a href>, не JS-скролл: если открыли список не с
+        // главной, браузер САМ перейдёт на / и проскроллит после загрузки; applyHashHighlights()
+        // (settings.js) подсветит секцию, когда до неё дойдёт (тот же приём, что и для якорей
+        // из бургера, см. пункт 11 в TODO).
+        var note = document.createElement('p');
+        note.className = 'dg-slides-contacts-note';
+        var parts = String(t('slides.contactsNote', 'Чего-то не хватает? Нужно что-то добавить? %s.')).split('%s');
+        note.appendChild(document.createTextNode(parts[0]));
+        var link = document.createElement('a');
+        link.href = '/#contacts';
+        link.textContent = t('slides.contactsNoteLink', 'Сообщите нам');
+        // Иначе шторка остаётся открытой ПОВЕРХ страницы, а скроллится фон под ней — человек видит
+        // тот же список, просто прокрученный, и не понимает, что вообще произошло.
+        link.addEventListener('click', closeSheet);
+        note.appendChild(link);
+        note.appendChild(document.createTextNode(parts[1] || ''));
+        body.appendChild(note);
         // currentSheetKey остаётся пустым (это не набор ссылок), поэтому закрытие ведём вручную.
         currentSheetKey = '__slides__';
         showLater(sheet, backdrop);
@@ -1457,12 +1666,13 @@
                 '<svg class="dg-slide-go-ic" viewBox="0 0 24 24" width="15" height="15" fill="none" ' +
                 'stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" ' +
                 'aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>';
-            /* Адрес своей кнопки — через safeText: в нём может стоять {{q}}, а целиком записанная
+            /* Описание — приоритетнее адреса, если задано (короче и понятнее строкой списка);
+               адрес своей кнопки — через safeText: в нём может стоять {{q}}, а целиком записанная
                двойная скобка валит i18n (см. safeText). */
-            if (tile.custom && tile.href) {
+            if (tile.desc || (tile.custom && tile.href)) {
                 var addr = document.createElement('small');
                 addr.className = 'dg-row-desc';
-                addr.appendChild(safeText(tile.href));
+                addr.appendChild(tile.desc ? document.createTextNode(tile.desc) : safeText(tile.href));
                 row.querySelector('.dg-row-label').appendChild(addr);
             }
             row.addEventListener('click', function () { openTileForm(key); });
@@ -1482,9 +1692,9 @@
 
     /* Одна форма и на создание, и на правку: поля те же, разница лишь в том, что подставлено и
        куда сохраняем. key === null — новая кнопка.
-       У ВСТРОЕННОЙ кнопки правим только подпись и значок: её адрес и списки приходят из
-       menu-links.json и обновляются вместе с сайтом — подменить их значило бы навсегда отрезать
-       кнопку от этих обновлений. */
+       Адрес редактируется у ЛЮБОЙ кнопки, включая встроенные: раньше их href жёстко приходил из
+       menu-links.json, теперь патч (tileOverrides) может его переопределить — правка переживает
+       обновление конфига, а «Вернуть исходное» снимает её и возвращает автослежение за сайтом. */
     function openTileForm(key) {
         closeDrawer();
         ensureSheet();
@@ -1526,16 +1736,18 @@
         nameInput.placeholder = t('menu.addTileNamePh', 'например, Мой словарь');
         form.appendChild(field(t('menu.addTileName', 'Подпись'), nameInput));
 
-        var urlInput = null;
-        if (isCustom) {
-            urlInput = document.createElement('input');
-            urlInput.type = 'text';
-            urlInput.className = 'dg-field-input';
-            urlInput.required = true;
-            urlInput.value = existing ? (existing.href || '') : '';
-            urlInput.placeholder = 'https://…';
-            form.appendChild(field(t('menu.addTileUrl', 'Адрес'), urlInput));
+        /* Адрес — теперь редактируется у ЛЮБОЙ кнопки, не только своей: раньше у встроенной ссылка
+           бралась только из menu-links.json и не переопределялась, теперь патч может нести и её
+           (см. tileData()/setTileOverride ниже). */
+        var urlInput = document.createElement('input');
+        urlInput.type = 'text';
+        urlInput.className = 'dg-field-input';
+        urlInput.required = true;
+        urlInput.value = existing ? (existing.href || '') : '';
+        urlInput.placeholder = 'https://…';
+        form.appendChild(field(t('menu.addTileUrl', 'Адрес'), urlInput));
 
+        if (isCustom) {
             var hint = document.createElement('p');
             hint.className = 'dg-field-hint';
             var parts = String(t('menu.addTileHint',
@@ -1553,9 +1765,17 @@
             var builtinNote = document.createElement('p');
             builtinNote.className = 'dg-field-hint';
             builtinNote.textContent = t('menu.editBuiltinNote',
-                'У встроенной кнопки меняются подпись и значок. Её ссылки приходят с сайта и обновляются вместе с ним.');
+                'Если поменять адрес здесь, кнопка перестанет обновляться вместе с сайтом — «Вернуть исходное» снимает эту правку.');
             form.appendChild(builtinNote);
         }
+
+        var descInput = document.createElement('textarea');
+        descInput.className = 'dg-field-input dg-field-textarea';
+        descInput.rows = 2;
+        descInput.maxLength = 140;
+        descInput.value = existing ? (existing.desc || '') : '';
+        descInput.placeholder = t('menu.addTileDescPh', 'необязательно — подсказка при наведении');
+        form.appendChild(field(t('menu.addTileDesc', 'Описание'), descInput));
 
         var iconCap = document.createElement('span');
         iconCap.className = 'dg-field-label';
@@ -1633,24 +1853,31 @@
             var label = nameInput.value.trim();
             if (!label) { error.textContent = t('menu.addTileNoName', 'Впишите подпись'); error.hidden = false; return; }
 
+            // Адрес теперь обязателен и проверяется одинаково для своих и встроенных кнопок.
+            var href = normalizeUrl(urlInput.value);
+            if (!href) {
+                error.textContent = t('menu.addTileBadUrl', 'Адрес должен начинаться с http://, https:// или /');
+                error.hidden = false;
+                return;
+            }
+            var desc = descInput.value.trim();
+
             if (isCustom) {
-                var href = normalizeUrl(urlInput.value);
-                if (!href) {
-                    error.textContent = t('menu.addTileBadUrl', 'Адрес должен начинаться с http://, https:// или /');
-                    error.hidden = false;
-                    return;
-                }
                 var list = customTiles();
                 if (key) {
                     list.forEach(function (c) {
-                        if (c.id === key) { c.label = label; c.href = href; c.icon = chosen; }
+                        if (c.id === key) { c.label = label; c.href = href; c.icon = chosen; c.desc = desc; }
                     });
                 } else {
-                    list.push({ id: 'custom:' + Date.now(), label: label, href: href, icon: chosen });
+                    list.push({ id: 'custom:' + Date.now(), label: label, href: href, icon: chosen, desc: desc });
                 }
                 setCustomTiles(list);
             } else {
-                setTileOverride(key, { label: label, icon: chosen });
+                // Ссылка теперь тоже часть патча (поле всегда редактируемое и всегда предзаполнено
+                // текущим значением) — храним её всегда, а не только когда реально поменяли:
+                // иначе повторное сохранение без правки адреса тихо потеряло бы прошлую правку
+                // ссылки (setTileOverride ЗАМЕНЯЕТ весь патч целиком, не сливает с прежним).
+                setTileOverride(key, { label: label, icon: chosen, href: href, desc: desc || undefined });
             }
             renderTiles();
             closeSheet();
@@ -1726,29 +1953,57 @@
         return '';
     }
 
+    /* «Как искать» + памятка — статический перенос двух блоков боевой главной
+       (config/translate.php: $howtosearchquote/$howtoheader, $transwarning). Текст не меняется
+       рантаймом ни от чего, кроме языка интерфейса, поэтому просто читаем строки из lang_*.json
+       (ключи howto.*) — как renderExtra() читает footer.*. */
+    function renderHowTo() {
+        var host = document.getElementById('home-howto');
+        if (!host) return;
+        host.hidden = false;
+        document.getElementById('dg-howto-title').textContent = t('howto.title', 'Как Искать?');
+        document.getElementById('dg-howto-pali').textContent = t('howto.pali', '');
+        document.getElementById('dg-howto-body').textContent = t('howto.body', '');
+        document.getElementById('dg-warn-title').textContent = t('howto.warnTitle', 'Пожалуйста, обратите внимание!');
+        document.getElementById('dg-warn-body').textContent = t('howto.warnBody', '');
+    }
+
     function renderExtra() {
         var host = document.getElementById('home-extra');
         if (!host) return;
         host.hidden = false;
 
-        document.getElementById('dg-links-title').textContent = t('footer.links', 'Приложения и расширения');
-        document.getElementById('dg-contacts-title').textContent = t('footer.contacts', 'Контакты');
+        document.getElementById('links').textContent = t('footer.links', 'Приложения и расширения');
+        document.getElementById('contacts').textContent = t('footer.contacts', 'Контакты');
         document.getElementById('dg-contacts-motto').textContent = t('home.motto', 'Найдите Истину');
 
         var cta = document.getElementById('dg-cta');
         cta.innerHTML = '';
         CTA_BUTTONS.forEach(function (b) {
-            /* Кнопка установки PWA — единственная без адреса: её показывает и обрабатывает
-               общесайтовый скрипт по id installPWA. Если он не поднялся, кнопки просто не будет:
-               нерабочая «Установить» хуже отсутствующей. */
+            /* Кнопка установки PWA — единственная без готовой ссылки: её показывает и включает
+               перехват window.beforeinstallprompt (см. <head> index.html), который создаёт
+               плейсхолдер #installPWA и сохраняет отложенное событие в window.__dgInstallPrompt.
+               Если событие не пришло (браузер не предлагает установку, уже установлено и т.п.) —
+               плейсхолдера нет, тайл просто не рисуется: нерабочая «Установить» хуже отсутствующей. */
             if (b.id && !document.getElementById(b.id)) return;
             var el = document.createElement('a');
             el.className = 'dg-cta-btn';
-            el.href = b.href;
-            el.target = '_blank';
-            el.rel = 'noopener';
             el.title = b.title;
             el.innerHTML = '<img src="/assets/img/buttons/' + b.img + '" alt="' + esc(b.title) + '" loading="lazy">';
+            if (b.id === 'installPWA') {
+                el.href = 'javascript:void(0)';
+                el.addEventListener('click', function (ev) {
+                    ev.preventDefault();
+                    var prompt = window.__dgInstallPrompt;
+                    if (!prompt) return;
+                    prompt.prompt();
+                    prompt.userChoice.finally(function () { window.__dgInstallPrompt = null; });
+                });
+            } else {
+                el.href = b.href;
+                el.target = '_blank';
+                el.rel = 'noopener';
+            }
             cta.appendChild(el);
         });
 
@@ -1881,6 +2136,7 @@
         paintDrawerIcons();
         renderFooter();
         renderExtra();
+        renderHowTo();
         renderLangSwitch();
         renderThemeSwitch();
         // Именно здесь, а не раньше: i18n только что проставил placeholder из перевода, и
@@ -1950,6 +2206,8 @@
         paintDrawerIcons();
         renderFooter();
         renderExtra();
+        renderHowTo();
+        revealAnchorSection(); // прямой заход с хешем в адресе (/#contacts и т.п.)
         renderLangSwitch();
         renderThemeSwitch();
         syncRestoreLink();
@@ -1963,6 +2221,11 @@
             .then(function (r) { return r.json(); })
             .then(function (data) { slidesData = data; renderSlides(); })
             .catch(function (e) { console.warn('slides.json не загрузился:', e); });
+
+        fetch(DICT_MODES_URL)
+            .then(function (r) { return r.json(); })
+            .then(function (data) { dictModeGroups = data.groups || []; })
+            .catch(function (e) { console.warn('dict-modes.json не загрузился:', e); });
 
         /* Смена языка интерфейса на лету — перерисовываем набор ссылок и подписи.
            applyRandomPlaceholder() зовём ОТДЕЛЬНО и без условия на menuData: событие приходит уже
@@ -1993,7 +2256,10 @@
         closeAutocomplete: closeAutocomplete,
         openQuick: openQuick,
         closeQuick: closeQuick,
-        quickButtonHtml: quickButtonHtml
+        quickButtonHtml: quickButtonHtml,
+        // Зовётся из перехватчика beforeinstallprompt/appinstalled в index.html — перерисовать
+        // тайл «Установить» в #dg-cta, когда событие пришло уже после первого рендера.
+        renderExtra: renderExtra
     };
 
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);

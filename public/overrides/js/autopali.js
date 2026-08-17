@@ -286,7 +286,15 @@ function bindAutocomplete(selector, allWords) {
         focus: function() { return false; },
         select: function(event, ui) {
             if (ui.item.url && /\d/.test(ui.item.value)) {
-                window.location.href = ui.item.url;
+                // Пункт ИСТОРИИ (ui.item.url только у них, см. historyObjList выше) — свой же
+                // внутренний путь (saveToHistory кладёт url.pathname текущей страницы), не
+                // внешняя ссылка. window.location.href был полной перезагрузкой — терял SPA
+                // (владелец заметил: "с главной переход в текст работает не в спа режиме").
+                // dgNavigateInternal — из search/index.html, тот же скрипт, что рисует шапку/
+                // ридер, только он умеет history.pushState + правильно выбрать текст/поиск.
+                if (typeof window.dgNavigateInternal !== 'function' || !window.dgNavigateInternal(ui.item.url)) {
+                    window.location.href = ui.item.url;
+                }
                 return false;
             }
 

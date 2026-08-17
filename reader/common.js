@@ -9,6 +9,18 @@
 window.isRuPath = (localStorage.getItem('dhammaLanguage') || 'en') === 'ru';
 window.isLocalHost = window.location.host.includes('localhost') || window.location.host.includes('127.0.0.1');
 
+// SPA (search/index.html) injects this script LAZILY, on first text open — well after the
+// page's own DOMContentLoaded already fired, so a plain 'DOMContentLoaded' listener below would
+// never run (event fires once, already past). reader-template.html loads this script eagerly at
+// parse time, where the plain listener was fine — SPA needs the "already ready" branch too.
+function onReady(fn) {
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', fn);
+    } else {
+        fn();
+    }
+}
+
 // TODO.md общие п.2: siteLanguage — легаси-ключ, от которого напрямую зависит облачная
 // синхронизация (settings.js, портирован из assets/js/settings.js почти дословно — тот же
 // код читает siteLanguage при сохранении/восстановлении настроек). На странице поиска мост уже
@@ -33,7 +45,7 @@ document.addEventListener('dhamma:languagechange', function (e) {
 // кнопка-тумблер "переключить на другой язык", не пара как на поиске) и зовём setSiteLanguage().
 // Она сама вызывает applySubtree() и переприменяет {{locale.*}} — кнопка сама перерисуется с
 // новым target-языком, отдельно ничего обновлять не нужно.
-document.addEventListener('DOMContentLoaded', function () {
+onReady(function () {
     document.querySelectorAll('.btn-language').forEach(function (btn) {
         btn.addEventListener('click', function (event) {
             event.preventDefault();
@@ -127,7 +139,7 @@ window.addEventListener('suttaRenderedCentral', addIconsTo01);
 // ==========================================
 // Контекстное меню на невидимых .copyLink ссылках (Цитата/Ссылка/Голос/Закладка/Запомнить/Сравнить)
 // ==========================================
-document.addEventListener('DOMContentLoaded', () => {
+onReady(() => {
     const labels = {
         quote: window.isRuPath ? 'Цитата' : 'Quote',
         link: window.isRuPath ? 'Ссылка' : 'Link',
@@ -449,3 +461,321 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 });
+
+// ==========================================
+// TOC (оглавление) — портировано из siteroot/read/js/common.js (легаси, общий с прод-сайтом,
+// его не трогаем; строки ~1407-1815 там: getTOCNodes/syncTOC/buildFullTOC/клик-тоггл).
+// Пропущено сознательно: initSwipeGestures (смахивание для закрытия панели — не критично) и
+// isMemoPath-ветка (режима "запомнить" в этом проекте нет). Кнопка теперь живёт ВНУТРИ
+// #reader-toolbar как рядовая иконка (search/index.html) — раньше была отдельной плавающей
+// пилюлей со своим fade-in/out по скроллу (#smart-toc-container, position:fixed), но раз весь
+// #reader-toolbar и так появляется/прячется через autoHideHeader() (search/index.html), вторая
+// независимая анимация не нужна — .icon-only/.visible-переключение по scroll-позиции из легаси
+// тоже не портировано, класс "visible" в разметке просто стоит статически.
+// activeSlug — не URL ?q= (легаси-формат), а window._currentSlug (см. sm-compare/sm-bookmark
+// выше в этом файле) — тот самый источник, что этот проект уже использует для чистых URL.
+(function () {
+    var activeSlug = '';
+    var cachedTOCNodes = null;
+
+    function capitalize(str) {
+        if (!str) return '';
+        return str.charAt(0).toUpperCase() + str.slice(1);
+    }
+
+    function throttle(fn, wait) {
+        var last = 0;
+        return function () {
+            var now = Date.now();
+            if (now - last >= wait) { last = now; fn.apply(this, arguments); }
+        };
+    }
+
+    function getTOCNodes() {
+        if (cachedTOCNodes) return { nodes: cachedTOCNodes };
+
+        var suttaContainer = document.getElementById('sutta');
+        if (!suttaContainer) return { nodes: [] };
+
+        var hasInternalHeaders = suttaContainer.querySelector('h3, h4, h5, h6') !== null;
+        var selector = 'h1, h2, .endsutta';
+        if (hasInternalHeaders) {
+            selector += ', h3, h4, h5, h6';
+        } else {
+            selector += ', .speaker, .rule, .subrule, .verse-line, .anapatti, .uddana-intro';
+        }
+
+        var standardNodes = Array.from(suttaContainer.querySelectorAll(selector)).filter(function (el) {
+            if (el.classList.contains('verse-line')) {
+                var parentBlock = el.closest('blockquote, section');
+                if (parentBlock && (parentBlock.querySelector('.uddana-intro') ||
+                    (parentBlock.previousElementSibling && parentBlock.previousElementSibling.classList.contains('uddana-intro')))) return false;
+                var firstContentBlock = suttaContainer.querySelector('p, blockquote, .rule');
+                if (firstContentBlock && (firstContentBlock === parentBlock || firstContentBlock.contains(el))) return false;
+                if (el !== (parentBlock && parentBlock.querySelector('.verse-line'))) return false;
+            }
+            return el.innerText.trim().length > 0;
+        });
+
+        var realHeaders = suttaContainer.querySelectorAll('h2, h3, h4, h5, h6');
+        var segments = Array.from(suttaContainer.querySelectorAll('span[id]'));
+        var fallbackNodes = [];
+
+        // Длинные плоские тексты без внутренних заголовков (например, длинная сутта одним
+        // потоком) — берём 4 условные "четверти" по номеру сегмента как ориентиры, иначе TOC
+        // был бы пустым/бесполезным для навигации по такому тексту.
+        if (realHeaders.length <= 3 && segments.length > 120 && !hasInternalHeaders) {
+            [0, 0.25, 0.5, 0.75].forEach(function (frac) {
+                var targetIndex = Math.floor(segments.length * frac);
+                var found = segments[targetIndex];
+                for (var i = targetIndex; i < Math.min(targetIndex + 20, segments.length); i++) {
+                    if (segments[i].id.match(/\.1$/)) { found = segments[i]; break; }
+                }
+                if (found && fallbackNodes.indexOf(found) === -1 && standardNodes.indexOf(found) === -1) {
+                    found.dataset.fallback = 'true';
+                    fallbackNodes.push(found);
+                }
+            });
+        }
+
+        var combinedNodes = standardNodes.concat(fallbackNodes);
+        combinedNodes.sort(function (a, b) {
+            if (a === b) return 0;
+            return (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) ? -1 : 1;
+        });
+
+        cachedTOCNodes = combinedNodes;
+        return { nodes: cachedTOCNodes };
+    }
+
+    function syncTOC() {
+        var suttaContainer = document.getElementById('sutta');
+        var pillLabel = document.getElementById('smart-toc-current');
+        var tocPanel = document.getElementById('smart-toc-panel');
+        var tocBtn = document.getElementById('smart-toc-btn');
+        if (!suttaContainer || !pillLabel) return;
+
+        var currentSlug = window._currentSlug || '';
+        if (activeSlug !== currentSlug) {
+            activeSlug = currentSlug;
+            cachedTOCNodes = null;
+            if (tocPanel) { tocPanel.innerHTML = ''; tocPanel.classList.remove('active'); }
+        }
+
+        var headings = getTOCNodes().nodes;
+        if (tocBtn) tocBtn.classList.toggle('hidden-toc', headings.length === 0);
+        if (headings.length === 0) return;
+
+        var activeIndex = 0;
+        var eyeLevel = window.innerHeight * 0.4;
+        for (var i = headings.length - 1; i >= 0; i--) {
+            if (headings[i].getBoundingClientRect().top <= eyeLevel) { activeIndex = i; break; }
+        }
+
+        var langClass = window.isRuPath ? '.rus-lang' : '.eng-lang';
+        var labelText = headings[activeIndex].innerText;
+
+        if (headings[activeIndex].tagName.startsWith('H')) {
+            labelText = labelText.replace(/\s+/g, ' ').trim();
+            if (headings[activeIndex].classList.contains('inserted-heading')) {
+                var tSpan = headings[activeIndex].querySelector(langClass) || headings[activeIndex].querySelector('.eng-lang');
+                if (tSpan) labelText = tSpan.textContent.trim();
+            }
+            pillLabel.textContent = capitalize(labelText);
+        } else if (headings[activeIndex].classList.contains('endsutta') || headings[activeIndex].classList.contains('uddana-intro')) {
+            var tSpan2 = headings[activeIndex].querySelector(langClass) || headings[activeIndex].querySelector('.eng-lang') || headings[activeIndex].querySelector('.pli-lang');
+            labelText = tSpan2 ? tSpan2.textContent.replace(/[()\[\]"“”«»'‘’]/g, '').trim() : labelText.replace(/[()\[\]"“”«»'‘’]/g, '').trim();
+            pillLabel.textContent = capitalize(labelText);
+        } else {
+            pillLabel.textContent = capitalize(labelText.split('\n')[0].trim());
+        }
+
+        if (tocPanel && tocPanel.classList.contains('active')) {
+            var tocItems = tocPanel.querySelectorAll('.toc-item');
+            var newActive = tocItems[activeIndex];
+            var currentActive = tocPanel.querySelector('.toc-item.active');
+            if (newActive && currentActive !== newActive) {
+                if (currentActive) currentActive.classList.remove('active');
+                newActive.classList.add('active');
+                var panelHeight = tocPanel.clientHeight;
+                var itemTop = newActive.offsetTop;
+                var itemHeight = newActive.clientHeight;
+                tocPanel.scrollTo({ top: itemTop - (panelHeight / 2) + (itemHeight / 2), behavior: 'smooth' });
+            }
+        }
+    }
+
+    function buildFullTOC() {
+        var suttaContainer = document.getElementById('sutta');
+        var tocPanel = document.getElementById('smart-toc-panel');
+        if (!suttaContainer || !tocPanel) return;
+
+        var headings = getTOCNodes().nodes;
+        tocPanel.innerHTML = '';
+
+        var lastSpeakerText = '';
+        var lastPoemBlock = null;
+        var currentLevel = 2;
+        var firstContentBlock = suttaContainer.querySelector('p, blockquote, .rule');
+
+        headings.forEach(function (el) {
+            var text = el.innerText.replace(/[()\[\]"“”«»'‘’]/g, '').replace(/\s+/g, ' ').trim();
+            if (!text) return;
+
+            if (el.tagName.startsWith('H')) currentLevel = parseInt(el.tagName.substring(1), 10);
+
+            var tocClassType = 'h' + currentLevel;
+            var extraClass = '';
+            var targetLang = window.isRuPath ? 'rus-lang' : 'eng-lang';
+
+            if (el.classList.contains('inserted-heading')) {
+                var span = el.querySelector('.' + targetLang) || el.querySelector('.eng-lang');
+                var displayText = span ? span.textContent.replace(/[()\[\]"“”«»'‘’]/g, '').replace(/\s+/g, ' ').trim() : text;
+                var item0 = document.createElement('div');
+                item0.className = 'toc-item toc-' + tocClassType;
+                item0.textContent = capitalize(displayText);
+                item0.onclick = function (e) {
+                    e.stopPropagation();
+                    tocPanel.classList.remove('active');
+                    var offset = 120;
+                    var targetY = window.pageYOffset + el.getBoundingClientRect().top - offset;
+                    window.scrollTo({ top: targetY, behavior: 'smooth' });
+                    if (typeof window.activateSegmentForTTS === 'function') window.activateSegmentForTTS(el);
+                };
+                tocPanel.appendChild(item0);
+                return;
+            }
+
+            var isCustomMultiLang = false;
+            var customLangData = {};
+
+            if (el.classList.contains('speaker')) {
+                if (text === lastSpeakerText) return;
+                lastSpeakerText = text;
+                extraClass = ' toc-speaker';
+            } else if (el.classList.contains('verse-line')) {
+                var parentBlock = el.closest('blockquote, section');
+                if (parentBlock && (parentBlock.querySelector('.uddana-intro') ||
+                    (parentBlock.previousElementSibling && parentBlock.previousElementSibling.classList.contains('uddana-intro')))) return;
+                if (parentBlock && parentBlock === lastPoemBlock) return;
+                lastPoemBlock = parentBlock;
+                if (firstContentBlock && (firstContentBlock === parentBlock || firstContentBlock.contains(el))) return;
+                extraClass = ' toc-v-line';
+                isCustomMultiLang = true;
+                var getFirstWord = function (langClass) {
+                    var span2 = el.querySelector('.' + langClass);
+                    if (span2) {
+                        var cleanText = span2.textContent.replace(/[()\[\]"“”«»'‘’:;]/g, '').replace(/\s+/g, ' ').trim();
+                        var words = cleanText.split(/[\s,.;:!?]/);
+                        var label = words[0] || '';
+                        if (label.length <= 3 && words.length > 1) label += ' ' + words[1];
+                        return label;
+                    }
+                    return '';
+                };
+                customLangData = {
+                    pli: 'Gāthā' + (getFirstWord('pli-lang') ? ' ' + getFirstWord('pli-lang') + '...' : ''),
+                    rus: 'Гатха' + (getFirstWord('rus-lang') ? ' ' + getFirstWord('rus-lang') + '...' : ''),
+                    eng: 'Gatha' + (getFirstWord('eng-lang') ? ' ' + getFirstWord('eng-lang') + '...' : '')
+                };
+            } else if (el.classList.contains('rule') || el.classList.contains('subrule')) {
+                extraClass = ' toc-rule';
+            } else if (el.classList.contains('anapatti')) {
+                extraClass = ' toc-anapatti';
+                isCustomMultiLang = true;
+                customLangData = { pli: 'Anāpatti', rus: 'Без вины', eng: 'Non-offense' };
+            } else if (el.classList.contains('uddana-intro')) {
+                tocClassType = 'h1';
+                extraClass = ' toc-uddana';
+                isCustomMultiLang = true;
+                customLangData = { pli: 'Tassuddānaṁ', rus: 'Содержание', eng: 'Summary' };
+            } else if (el.classList.contains('endsutta')) {
+                tocClassType = 'h1';
+                extraClass = ' toc-endsutta';
+            }
+
+            var item = document.createElement('div');
+            item.className = 'toc-item toc-' + tocClassType + extraClass;
+
+            var scrollAndHighlight = function (targetElement) {
+                tocPanel.classList.remove('active');
+                var offset = 120;
+                var scrollTarget = targetElement;
+                if (!scrollTarget.offsetParent || scrollTarget.getBoundingClientRect().height === 0) {
+                    scrollTarget = scrollTarget.closest('[id]') || scrollTarget.parentElement || scrollTarget;
+                }
+                var targetY = window.pageYOffset + scrollTarget.getBoundingClientRect().top - offset;
+                window.scrollTo({ top: targetY, behavior: 'smooth' });
+                if (typeof window.activateSegmentForTTS === 'function') window.activateSegmentForTTS(targetElement);
+            };
+
+            if (isCustomMultiLang) {
+                var targetLangText = window.isRuPath ? customLangData.rus : customLangData.eng;
+                [{ cls: 'pli-lang', txt: customLangData.pli }, { cls: targetLang, txt: targetLangText }].forEach(function (l) {
+                    var span3 = document.createElement('span');
+                    span3.className = l.cls;
+                    span3.textContent = capitalize(l.txt) + ' ';
+                    span3.onclick = function (e) { e.stopPropagation(); scrollAndHighlight(el); };
+                    item.appendChild(span3);
+                });
+            } else {
+                var langSpans = el.querySelectorAll('.pli-lang, .rus-lang, .eng-lang');
+                if (langSpans.length > 0) {
+                    langSpans.forEach(function (originalSpan) {
+                        var clone = originalSpan.cloneNode(true);
+                        clone.querySelectorAll('.copyLink, .copyLink-start, .variant').forEach(function (child) { child.remove(); });
+                        var cleanText = clone.textContent.replace(/[()\[\]"“”«»'‘’]/g, '').replace(/\s+/g, ' ').trim();
+                        if (cleanText) {
+                            if (el.dataset.fallback === 'true') {
+                                var words2 = cleanText.split(/\s+/);
+                                if (words2.length > 8) cleanText = words2.slice(0, 8).join(' ') + '...';
+                            }
+                            clone.textContent = capitalize(cleanText) + ' ';
+                            clone.onclick = function (e) { e.stopPropagation(); scrollAndHighlight(originalSpan); };
+                            item.appendChild(clone);
+                        }
+                    });
+                } else {
+                    if (el.dataset.fallback === 'true') {
+                        var words3 = text.split(/\s+/);
+                        if (words3.length > 8) text = words3.slice(0, 8).join(' ') + '...';
+                    }
+                    item.textContent = capitalize(text);
+                    item.onclick = function () { scrollAndHighlight(el); };
+                }
+            }
+            if (item.innerHTML.trim() !== '' || item.textContent.trim() !== '') tocPanel.appendChild(item);
+        });
+
+        syncTOC();
+    }
+
+    document.addEventListener('click', function (e) {
+        var btn = e.target.closest('#smart-toc-btn');
+        var panel = document.getElementById('smart-toc-panel');
+        if (btn) {
+            e.stopPropagation();
+            if (panel.innerHTML.trim() === '') buildFullTOC();
+            var isOpening = !panel.classList.contains('active');
+            panel.classList.toggle('active');
+            if (isOpening) {
+                syncTOC();
+                setTimeout(function () {
+                    var activeItem = panel.querySelector('.toc-item.active');
+                    if (activeItem) {
+                        var panelHeight = panel.clientHeight;
+                        var itemTop = activeItem.offsetTop;
+                        var itemHeight = activeItem.clientHeight;
+                        panel.scrollTop = itemTop - (panelHeight / 2) + (itemHeight / 2);
+                    }
+                }, 50);
+            }
+        } else if (panel && !panel.contains(e.target)) {
+            panel.classList.remove('active');
+        }
+    });
+
+    window.addEventListener('suttaLoaded', function () { activeSlug = ''; cachedTOCNodes = null; syncTOC(); });
+    window.addEventListener('suttaRenderedCentral', function () { activeSlug = ''; cachedTOCNodes = null; syncTOC(); });
+    window.addEventListener('scroll', throttle(syncTOC, 150), { passive: true });
+})();

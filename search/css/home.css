@@ -184,6 +184,20 @@ body.dg-state-home #dg-hero-band {
     margin: 0 auto;
     padding: 0 var(--dg-gutter, 12px);
 }
+/* --dg-gutter сжимается до 3px на телефоне ради ПЛОТНОЙ таблицы выдачи (#search-pane, см.
+   index.html) — там это осознанный выбор, каждый пиксель ширины строки на счету. Поле ввода на
+   главной — не таблица, и 3px от края экрана читались как «упирается в край» (жалоба владельца).
+   Отвязываем именно этот контейнер от переменной, не трогая саму переменную (другие потребители
+   3px могут появиться позже и по-прежнему хотят именно 3px). */
+@media (max-width: 767.98px) {
+    .dg-hero-inner { padding: 0 14px; }
+    /* Тот же 3px-сквоз (index.html, ради плотной таблицы выдачи) достаётся и главной — вход и
+       плитки лежат в ТОМ ЖЕ .container-fluid.mt-2, что и таблица. На главной строк с колонками
+       нет, экономить пиксели ширины не для чего — только на этом состоянии возвращаем воздух.
+       Селектор специфичнее, чем правило в index.html (доп. класс dg-state-home), поэтому
+       порядок подключения файлов не важен. */
+    body.dg-state-home > .container-fluid.mt-2 { padding-left: 14px; padding-right: 14px; }
+}
 
 /* На полосе весь текст светлый — независимо от темы: подложка тёмная в обеих. */
 body.dg-state-home #dg-hero-band .dg-brand-name { color: #fff; }
@@ -248,6 +262,12 @@ body.dg-state-reader .dg-menu-btn-hero { display: inline-flex; }
 }
 body.dark .dg-brand-logo { filter: none; }
 
+/* Главный логотип на главной странице — на 10% крупнее базового 34px (34*1.1≈37, владелец:
+   "мелко"). #dg-brand — единственный полный лого+название лок-ап, показывается только на
+   главной (в выдаче/чтении остаётся только ракушка внутри поля, другая картинка) — точечный
+   override, не трогает базовый размер, которым пользуются другие места (боковое меню ниже). */
+#dg-brand .dg-brand-logo { width: 37px; height: 37px; }
+
 /* Маленькая копия лого в шапке бокового меню — там та же история со светлыми лепестками. */
 .dg-drawer-head .dg-brand-logo { width: 26px; height: 26px; }
 
@@ -307,6 +327,47 @@ body.dg-skin-minimal #form.dg-hero-form { flex: 1 1 auto; min-width: 0; }
     border-color: var(--dg-border-strong);
     box-shadow: 0 0 0 3px var(--dg-accent-bg);
 }
+/* В выдаче/чтении --dg-surface (фон поля) и --dg-border (рамка) почти совпадают с фоном
+   страницы (--dg-page) — поле и кнопки в нём читались как "почти невидимые" что в светлой,
+   что в тёмной теме (владелец, со скриншотом). На главной то же поле — светлая карточка
+   поверх ТЁМНОЙ полосы (правило выше, .dg-state-home), там контраст и так есть, не трогаем.
+   Цвета — не новые: те же, что уже у #paliauto/#language-button/#scrollToTopBtn на проде и в
+   reader-template.html (reader/css/index.css: --off-white/--dark-gray/--dark-blue) — владелец
+   явно попросил взять оттуда. */
+/* Заодно — владелец: поле "стало слишком большим" (50px высотой, замерено) рядом с рядом
+   компактных 19px-иконок ниже (#results-toolbar/#reader-toolbar) — непропорционально. Паддинг
+   потоньше, сами кнопки (32-34px) не трогаем — они те же, что и в остальной шапке. */
+body.dg-state-results .dg-input-shell,
+body.dg-state-reader .dg-input-shell {
+    padding: 4px 6px 4px 8px;
+    background: rgb(221, 221, 221);
+    border-color: #5a5a5a;
+}
+body.dg-state-results .dg-input-shell .dg-shell-btn,
+body.dg-state-reader .dg-input-shell .dg-shell-btn {
+    color: #5a5a5a;
+}
+body.dg-state-results #form #paliauto.searchinput,
+body.dg-state-reader #form #paliauto.searchinput {
+    color: #2b2b2b;
+}
+body.dg-state-results #form #paliauto.searchinput::placeholder,
+body.dg-state-reader #form #paliauto.searchinput::placeholder {
+    color: #5a5a5a;
+}
+body.dark.dg-state-results .dg-input-shell,
+body.dark.dg-state-reader .dg-input-shell {
+    background: #42426a;
+    border-color: #42426a;
+}
+body.dark.dg-state-results .dg-input-shell .dg-shell-btn,
+body.dark.dg-state-reader .dg-input-shell .dg-shell-btn {
+    color: rgb(221, 221, 221);
+}
+body.dark.dg-state-results #form #paliauto.searchinput,
+body.dark.dg-state-reader #form #paliauto.searchinput {
+    color: rgb(221, 221, 221);
+}
 
 /* На полосе поле — светлая карточка, лежащая ПОВЕРХ тёмного фона: не пилюля, а прямоугольник со
    скруглением 10px и заметной тенью (так в макете). Тень обязательна: без неё карточка сливается
@@ -364,6 +425,35 @@ body.dg-busy #searchbtn .dg-search-icon { display: none; }
     .dg-shell-spinner { animation-duration: 2s; }
 }
 
+/* Тот же спиннер, но НЕ внутри поля — на случай, когда сама шапка (и вместе с ней
+   .dg-shell-spinner) уехала за экран автоскрытием (autoHideHeader). Показывается только когда
+   ОБА условия разом: идёт запрос И шапка спрятана — когда шапка видна, свой спиннер в поле уже
+   всё показывает, дублировать незачем. z-index выше стека шапки (850/849), чтобы не потеряться
+   под подложкой (#dg-header-backdrop), но ниже дровера. */
+#dg-busy-indicator {
+    display: none;
+    position: fixed;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 900;
+}
+body.dg-busy.dg-header-hidden #dg-busy-indicator { display: block; }
+#dg-busy-indicator .spinner-border {
+    width: 22px;
+    height: 22px;
+    border-width: 3px;
+    border-color: var(--dg-border-strong);
+    border-top-color: var(--dg-accent);
+    border-radius: 50%;
+    border-style: solid;
+    animation: dg-spin 0.7s linear infinite;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+}
+@media (prefers-reduced-motion: reduce) {
+    #dg-busy-indicator .spinner-border { animation-duration: 2s; }
+}
+
 /* Инпут внутри оболочки — без своей рамки, фона и «пилюли»: рамка теперь у оболочки.
    Специфичность (0,2,1) намеренная: reader/css/uiextra.css задаёт `#form.ui-widget #paliauto,
    #paliauto { padding-left:10px !important }` (ДВА id), и она подключается лениво, ПОСЛЕ этого
@@ -411,17 +501,16 @@ body #form #paliauto.searchinput::-webkit-search-cancel-button { display: none; 
 .dg-input-shell .dg-shell-btn:hover,
 .dg-input-shell .dg-shell-btn:focus-visible { background: var(--dg-surface-hover); color: var(--dg-text); }
 
-/* Шестерёнка с молнией — быстрые настройки. Она отличает их от ПОЛНЫХ настроек (/settings/,
-   шестерёнка без молнии).
+/* Слайдеры (fa-sliders) — быстрые настройки. Раньше была шестерёнка с молнией-прорезью, но с
+   гером (полные настройки) и словарной шестерёнкой в компасе получалось три шестерёнки подряд —
+   путали, какая для чего (просьба владельца). Иконку сменили в home.js (quickButtonHtml), сам
+   диск-молния (.dg-qs-bolt) был частью именно гексагонной композиции гера и с ней вместе убран.
    Кнопка круглая, а не скруглённый квадрат: в поле ввода круглое уже всё остальное — и само
-   поле, и «очистить», и лупа, — и один квадрат посреди них выбивался.
-   --dg-qs-bg держит фон кнопки отдельной переменной: этим же цветом красится молния, чтобы она
-   читалась прорезью в шестерёнке, а не значком поверх неё. Менять фон нужно в одном месте. */
+   поле, и «очистить», и лупа, — и один квадрат посреди них выбивался. */
 .dg-qs-btn {
-    --dg-qs-bg: var(--dg-surface-hover);
-    /* Цвет самой шестерёнки. Отдельной переменной, потому что им же красится диск, закрывающий
-       её центральное отверстие (см. .dg-qs-bolt): currentColor там не годится — внутри диска
-       currentColor уже переопределён под молнию. */
+    /* Прозрачно, пока не навели — как остальные кнопки поля (.dg-shell-btn), не отдельный кружок
+       на виду всегда: слайдеры второстепенное действие, не должны тянуть взгляд. */
+    --dg-qs-bg: transparent;
     --dg-qs-fg: var(--dg-text-2);
     position: relative;
     display: inline-flex;
@@ -440,45 +529,35 @@ body #form #paliauto.searchinput::-webkit-search-cancel-button { display: none; 
 }
 .dg-qs-btn:hover,
 .dg-qs-btn:focus-visible { --dg-qs-bg: var(--dg-border); --dg-qs-fg: var(--dg-text); }
-.dg-qs-btn .dg-qs-gear { width: 18px; height: 18px; display: block; }
-/* Молния — ВМЕСТО круглого отверстия шестерёнки, три слоя, как в конструкторе иконок FontAwesome:
-   шестерёнка, поверх неё сплошной диск её же цветом (он закрывает штатное круглое отверстие,
-   и шестерёнка становится сплошной), а уже в диске вырезана молния — она красится в цвет фона
-   кнопки. Без среднего диска молния сливалась бы с отверстием: там и так фон.
-   Диск чуть шире отверстия, чтобы по краю не оставался ободок старого выреза. */
-.dg-qs-btn .dg-qs-bolt {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 13px;
-    height: 13px;
-    border-radius: 50%;
-    background: var(--dg-qs-fg);
-    color: var(--dg-qs-bg);
-    pointer-events: none;
-}
-.dg-qs-btn .dg-qs-bolt svg { width: 9px; height: 9px; display: block; }
+/* Повёрнута на 90° и увеличена — владелец: горизонтальные слайдеры (fa-sliders) на маленьком
+   размере читались почти как бургер (тоже три горизонтальные линии), путали. Вертикальные
+   слайдеры — стандартная альтернативная ориентация той же иконки, однозначно другой силуэт.
+   Центровка — сама .dg-qs-btn уже flex/center (см. выше), rotate() крутит вокруг центра иконки
+   по умолчанию, так что положение не съезжает. */
+/* 26px оказался БОЛЬШЕ бургера — перебор. Владелец задал точный ориентир: не крупнее лупы
+   (#searchbtn .dg-search-icon, index.html — 17×17, тот же ряд той же формы поля). 17px, без
+   попытки сравнять зрительный вес на глаз ещё раз — на этот раз просто взял чужой размер
+   буквально. */
+.dg-qs-btn .dg-qs-gear { width: 17px; height: 17px; display: block; transform: rotate(90deg); }
 
-/* На главной кнопка быстрых настроек — тёмный кружок с белой шестерёнкой: единственное тёмное
-   пятно внутри светлой карточки поля, и потому сразу заметное. Молния при этом сама становится
-   тёмной — она наследует --dg-qs-bg, то есть цвет фона кнопки.
+/* Тёмный кружок — на лупе (главное, кликабельное действие поля), не на шестерёнке (второстепенная
+   настройка). Раньше было наоборот, и тёмное пятно тянуло взгляд/палец не туда — шестерёнку
+   хотелось нажать, а не лупу (жалоба владельца). Шестерёнка теперь просто шестерёнка — тот же
+   приглушённый стиль, что у остальных кнопок поля (.dg-shell-btn: прозрачно, подсветка только
+   по наведению).
    transition:none по той же причине, что и у полосы: цвет здесь меняет СОСТОЯНИЕ страницы, а не
-   наведение, и он не должен зависеть от того, рисует ли вкладка кадры. */
-body.dg-state-home .dg-qs-btn,
-body:not(.dg-state-home) .dg-qs-btn { transition: none; }
-body.dg-state-home .dg-qs-btn {
-    --dg-qs-bg: var(--dg-navy);
-    --dg-qs-fg: #fff;
+   наведение, и не должен зависеть от того, рисует ли вкладка кадры. */
+body.dg-state-home .dg-shell-go,
+body:not(.dg-state-home) .dg-shell-go { transition: none; }
+body.dg-state-home .dg-shell-go {
+    background: var(--dg-navy);
+    color: #fff;
     width: 34px;
     height: 34px;
 }
-body.dg-state-home .dg-qs-btn:hover,
-body.dg-state-home .dg-qs-btn:focus-visible { --dg-qs-bg: var(--dg-navy-2); --dg-qs-fg: #fff; }
-body.dg-state-home .dg-qs-btn .dg-qs-gear { width: 19px; height: 19px; }
+body.dg-state-home .dg-shell-go:hover,
+body.dg-state-home .dg-shell-go:focus-visible { background: var(--dg-navy-2); color: #fff; }
+body.dg-state-home .dg-shell-go .dg-search-icon { width: 19px; height: 19px; }
 
 /* Ожидание ответа поиска: пока крутится спиннер, выдачи (даже пустой) быть не должно — ради
    этого весь класс и заведён. Домашние блоки при этом НЕ прячем: смысл в том, чтобы человек
@@ -544,11 +623,23 @@ body:not(.dg-state-reader) {
 #reader-pane { display: none; }
 body.dg-state-reader #reader-pane { display: block; }
 
-/* В ридере выдача остаётся в DOM (возврат по "назад" мгновенный), но не показывается. Из общего
-   ряда кнопок прячем только то, что относится к выдаче: разворачивание строк, отметки
-   "прочитано", переключатель "Тексты/Слова" и заголовок результатов. Тема, язык, словарь,
-   компас, настройки и помощь нужны и при чтении. */
+/* В ридере выдача остаётся в DOM (возврат по "назад" мгновенный), но не показывается. Раньше
+   здесь прятались только ОТДЕЛЬНЫЕ кнопки внутри #results-toolbar (разворачивание строк,
+   отметки "прочитано", переключатель "Тексты/Слова", заголовок результатов), а сам
+   #results-toolbar оставался в потоке — по мысли того времени, часть его кнопок (тема, словарь,
+   компас, настройки, помощь) должна была использоваться и при чтении. С тех пор в ридере
+   появился свой ПОЛНЫЙ #reader-toolbar с тем же набором функций — оставшийся #results-toolbar не
+   удалялся из потока (display не задан ни в одном правиле), стоял пустой полосой ~41px высотой
+   ПЕРЕД самим reader-pane и просто отодвигал текст сутты вниз без всякой видимой причины
+   (владелец, скриншот: "огромный чёрный отступ"). Заодно теперь и #toggle-mode-results (кнопка
+   режима колонок ИМЕННО для выдачи, соседствует в этом же ряду) не дублируется в ридере поверх
+   его собственной #toggle-mode. #language-button сюда НЕ входит — он физически вынесен из
+   #results-toolbar в разметке (search/index.html) именно потому, что ему нужна ОБРАТНАЯ
+   видимость (скрыт в выдаче — там нечего переключать, показан в чтении — см. правило ниже), а
+   display:none на родителе полностью скрыл бы потомка независимо от любых его собственных
+   правил — быть внутри этого списком он не мог бы в принципе. */
 body.dg-state-reader #search-pane,
+body.dg-state-reader #results-toolbar,
 body.dg-state-reader #results-divider,
 body.dg-state-reader #dynamicHeader,
 body.dg-state-reader #btn-show-all-children,
@@ -556,6 +647,12 @@ body.dg-state-reader #btn-read-marks,
 body.dg-state-reader .forshellscript {
     display: none;
 }
+/* Pāḷi/translation toggle used to be hidden on the results LISTING (comment here used to claim
+   it was a "fake button that doesn't work" there) — that was true at the time, but is stale now:
+   search-render.js/langswitch.css later wired up .dg-title-lang + .quote so hide-pali/hide-english
+   on #sutta DOES affect titles and quotes in the results table too. Owner asked for the button
+   back on results, same as in the reader — #dg-state-home still hides it above (no results table
+   there at all, nothing to toggle). */
 body.dg-state-reader #variants-hint { display: none !important; }
 
 /* #variants-hint — отдельно и с !important: скрипт выдачи показывает его ИНЛАЙНОВЫМ
@@ -1271,17 +1368,20 @@ body.dg-tiles-editing .dg-tile-remove { display: inline-flex; }
 /* ============================================================================
    Строки списка: звёздочка и «чипсы»
    ============================================================================ */
-/* Звезда у важных пунктов ($iconimportant в легаси-меню). Раньше рисовался знак ✦ — но ромбик
-   на этом сайте уже занят: им помечены скрытые ссылки-якоря на цитаты (.quoteLink-start), и два
-   разных смысла одним значком путали. Здесь настоящая звезда (контур fa-star).
-   Стоит СЛЕВА, на месте обычного значка строки, и ровно того же роста: раньше она была крупнее
-   соседних значков и уезжала в конец строки, за описание, где читалась как отдельная кнопка. */
+/* Звезда у важных пунктов ($iconimportant в легаси-меню + личные отметки поверх, см. isStarred()
+   в home.js). Раньше рисовался знак ✦ — но ромбик на этом сайте уже занят: им помечены скрытые
+   ссылки-якоря на цитаты (.quoteLink-start), и два разных смысла одним значком путали. Здесь
+   настоящая звезда (контур fa-star).
+   Стоит СЛЕВА, на месте обычного значка строки — и ТОГО ЖЕ размера, что .dg-row-icon (17px):
+   раньше была мельче (12px) соседних значков строки, из-за чего звёздный пункт визуально терял
+   вес, а не подчёркивал важность (просьба владельца — «как иконка ссылки»). Золотая, а не
+   акцентным цветом темы — так же, как остальное «избранное» на сайте. */
 .dg-sheet .dg-sheet-row .dg-row-star {
-    width: 12px;
-    height: 12px;
+    width: 17px;
+    height: 17px;
     flex: none;
-    margin-top: 4px;
-    color: var(--dg-accent);
+    margin-top: 2px;
+    color: #f39c12;
 }
 
 /* Группы, где подписи короткие и говорят сами за себя (ИИ, переводчики, коды изданий), рисуются
@@ -1410,6 +1510,15 @@ body.dark #dg-carousel .carousel-control-next-icon { filter: none; }
     line-height: 1.45;
     color: var(--dg-text-2);
 }
+/* Подсказка "Чего-то не хватает?" внизу полного списка — перенос с multiTool.html. */
+.dg-slides-contacts-note {
+    margin: 14px 0 2px;
+    padding-top: 12px;
+    border-top: 1px solid var(--dg-border);
+    font-size: 0.82rem;
+    color: var(--dg-text-muted);
+}
+.dg-slides-contacts-note a { color: var(--dg-accent-ink); }
 
 /* ============================================================================
    Форма «своя кнопка» (в шторке, вызывается из бокового меню)
@@ -1438,6 +1547,7 @@ body.dark #dg-carousel .carousel-control-next-icon { filter: none; }
     border-color: var(--dg-accent);
     box-shadow: 0 0 0 3px var(--dg-accent-bg);
 }
+.dg-field-textarea { resize: vertical; min-height: 44px; font-family: var(--dg-font); }
 .dg-field-hint {
     margin: -8px 0 14px;
     font-size: 0.78rem;
@@ -1601,10 +1711,8 @@ body.dg-skin-minimal .ui-autocomplete .autocomplete-history-icon {
 body.dark .ui-autocomplete .autocomplete-history-icon { filter: invert(1); opacity: 0.7; }
 
 /* ============================================================================
-   Подвал
-   В установленном приложении (PWA) не показывается: там это не сайт со страницей «о нас», а
-   приложение, и строка копирайта внизу только занимает место. display-mode: standalone —
-   штатный признак «запущено как приложение», его же ставят и Android, и iOS, и десктоп.
+   Подвал — виден всегда (мобильный браузер, десктоп, установленное PWA-приложение): владелец
+   явно попросил копирайт видимым везде, скрывать в приложении раньше было ошибкой.
    ============================================================================ */
 #dg-footer {
     margin: 34px 0 6px;
@@ -1626,13 +1734,74 @@ body.dark .ui-autocomplete .autocomplete-history-icon { filter: invert(1); opaci
 .dg-terms-text a { color: var(--dg-accent-ink); }
 
 /* ============================================================================
-   Приложения, расширения и контакты — нижние блоки боевой главной.
-   Только на широком экране: на телефоне главная и так длинная, а эти блоки там ничего не решают.
+   «Как искать» + памятка о переводах — перенос блоков боевой главной.
+   На широком экране всегда видно. На узком — свёрнуто по умолчанию (владелец: главная и так
+   длинная на телефоне), но НЕ display:none навсегда — якорь из бургера/списка "Show all" должен
+   до него доводить. .dg-anchor-revealed добавляет revealAnchorSection() (home.js) при переходе
+   по хешу внутрь блока — тем же классом раскрывается и #home-extra ниже.
    ============================================================================ */
-#home-extra { display: none; }
-#home-extra[hidden] { display: none; }
-@media (min-width: 992px) {
-    body.dg-state-home #home-extra:not([hidden]) { display: block; }
+#home-howto { max-width: 640px; margin: 0 auto; }
+body.dg-state-home #home-howto:not([hidden]) { display: block; }
+@media (max-width: 991.98px) {
+    body.dg-state-home #home-howto:not(.dg-anchor-revealed) { display: none; }
+}
+.dg-howto-quote {
+    margin: 46px 0 0;
+    padding: 20px 24px;
+    border: 1px solid var(--dg-border);
+    border-radius: 12px;
+    text-align: center;
+}
+.dg-howto-quote .pli-lang {
+    font-style: italic;
+    font-size: 0.98rem;
+    line-height: 1.6;
+    color: var(--dg-text);
+    margin: 0 0 12px;
+}
+#dg-howto-body {
+    font-size: 0.92rem;
+    line-height: 1.6;
+    color: var(--dg-text-2);
+    margin: 0 0 10px;
+}
+.dg-howto-refs { margin: 0; font-size: 0.85rem; }
+.dg-howto-refs a {
+    color: var(--dg-accent-ink);
+    text-decoration: none;
+    margin: 0 6px;
+}
+.dg-howto-refs a:hover { text-decoration: underline; }
+
+.dg-howto-warn {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    margin: 18px 0 0;
+    padding: 16px 20px;
+    border-radius: 12px;
+    background: var(--dg-accent-bg);
+    color: var(--dg-text);
+}
+.dg-howto-warn svg { flex: none; margin-top: 2px; color: var(--dg-accent-ink); }
+.dg-howto-warn strong { display: block; font-size: 0.95rem; margin-bottom: 6px; }
+.dg-howto-warn p {
+    margin: 0;
+    font-size: 0.88rem;
+    line-height: 1.6;
+    color: var(--dg-text-2);
+    white-space: pre-line;
+}
+
+/* ============================================================================
+   Приложения, расширения и контакты — нижние блоки боевой главной.
+   Widescreen: всегда видно. Узкий экран: свёрнуто по умолчанию (владелец: главная и так длинная
+   на телефоне), раскрывается тем же .dg-anchor-revealed, что и #home-howto выше — переход по
+   якорю из бургера или из списка "Show all" доводит до цели вместо второй отдельной страницы.
+   ============================================================================ */
+body.dg-state-home #home-extra:not([hidden]) { display: block; }
+@media (max-width: 991.98px) {
+    body.dg-state-home #home-extra:not(.dg-anchor-revealed) { display: none; }
 }
 .dg-extra-title {
     margin: 46px 0 18px;
@@ -1685,7 +1854,4 @@ body.dark .ui-autocomplete .autocomplete-history-icon { filter: invert(1); opaci
     background: var(--dg-accent-bg);
     border-color: var(--dg-accent);
     color: var(--dg-accent-ink);
-}
-@media (display-mode: standalone), (display-mode: fullscreen), (display-mode: minimal-ui) {
-    #dg-footer { display: none; }
 }

@@ -56,9 +56,9 @@
           "items": [
             { "label": "BJT", "title": "Sri Lankan Edition Buddha Jayanti", "desc": "Sri Lankan Buddha Jayanti edition of the Pāḷi canon", "href": "https://open.tipitaka.lk/", "blank": true },
             { "label": "Thai", "title": "Thai Tipitaka at 84000.org", "desc": "The Thai edition, at 84000.org", "href": "https://84000.org/", "blank": true },
-            { "label": "VRI", "title": "VRI Tipitaka at Tipitaka.org", "href": "https://tipitaka.org/romn", "blank": true },
-            { "label": "PTS", "title": "PTS Tipitaka at GRETIL", "href": "https://gretil.sub.uni-goettingen.de/gretil.html#Suttapit", "blank": true },
-            { "label": "MS", "title": "Mahāsaṅgīti Edition at SuttaCentral.net", "href": "https://suttacentral.net/pitaka/sutta?lang=en", "blank": true }
+            { "label": "VRI", "title": "VRI Tipitaka at Tipitaka.org", "desc": "The VRI edition, at Tipitaka.org", "href": "https://tipitaka.org/romn", "blank": true },
+            { "label": "PTS", "title": "PTS Tipitaka at GRETIL", "desc": "The PTS edition, at GRETIL", "href": "https://gretil.sub.uni-goettingen.de/gretil.html#Suttapit", "blank": true },
+            { "label": "MS", "title": "Mahāsaṅgīti Edition at SuttaCentral.net", "desc": "The Mahāsaṅgīti edition, at SuttaCentral.net", "href": "https://suttacentral.net/pitaka/sutta?lang=en", "blank": true }
           ]
         },
         {
@@ -375,9 +375,9 @@
           "items": [
             { "label": "BJT", "title": "Редакция Шри Ланки Buddha Jhayanti", "desc": "Шри-ланкийское издание канона, Buddha Jayanti", "href": "https://open.tipitaka.lk/", "blank": true },
             { "label": "Thai", "title": "Тайская Типитака на 84000.org", "desc": "Тайское издание, на 84000.org", "href": "https://84000.org/", "blank": true },
-            { "label": "VRI", "title": "Типитака VRI на Tipitaka.org", "href": "https://tipitaka.org/romn", "blank": true },
-            { "label": "PTS", "title": "Типитака PTS на GRETIL", "href": "https://gretil.sub.uni-goettingen.de/gretil.html#Suttapit", "blank": true },
-            { "label": "MS", "title": "Типитака Mahāsaṅgīti на SuttaCentral.net", "href": "https://suttacentral.net/pitaka/sutta?lang=en", "blank": true }
+            { "label": "VRI", "title": "Типитака VRI на Tipitaka.org", "desc": "Издание VRI, на Tipitaka.org", "href": "https://tipitaka.org/romn", "blank": true },
+            { "label": "PTS", "title": "Типитака PTS на GRETIL", "desc": "Издание PTS, на GRETIL", "href": "https://gretil.sub.uni-goettingen.de/gretil.html#Suttapit", "blank": true },
+            { "label": "MS", "title": "Типитака Mahāsaṅgīti на SuttaCentral.net", "desc": "Издание Mahāsaṅgīti, на SuttaCentral.net", "href": "https://suttacentral.net/pitaka/sutta?lang=en", "blank": true }
           ]
         },
         {

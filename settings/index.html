@@ -1,6 +1,25 @@
 <!doctype html>
 <html lang="ru">
 <head>
+<script>
+  // Race: the preview <iframe> (further down the body) starts loading/running its own small
+  // script the moment the HTML parser reaches ITS tag — well before the parent page's own big
+  // inline <script> (near the end of body) finishes running and gets to
+  // `window.addEventListener('message', ...)`. preview-frame.html's very first render() call
+  // posts its message immediately on load; if nobody is listening yet, that message is just
+  // lost, and the real "Читать"-в-образце handler never fires on a plain page load — only
+  // after a later user-triggered re-render (owner caught it: link stayed on the generic
+  // fallback text until clicking refresh). This has to be the FIRST thing in <head>, ahead of
+  // even the <iframe> tag itself, or the race is still live (tried placing it right after the
+  // <iframe> in body first — still lost the message most of the time, this is the only
+  // position that reliably wins). Buffer every message from the earliest possible point; the
+  // real handler (near the end of body, once isRu/$ are defined) drains this queue.
+  window.__dgPreviewMsgQueue = [];
+  window.__dgPreviewEarlyHandler = function (e) {
+    if (e.origin === location.origin) window.__dgPreviewMsgQueue.push(e);
+  };
+  window.addEventListener('message', window.__dgPreviewEarlyHandler);
+</script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Настройки — dhamma.gift</title>
@@ -13,6 +32,11 @@
   --ink:#141F2B; --ink-2:#55636F; --ink-3:#6E7B87;
   --line:#E3E8ED; --line-strong:#CFD8E0;
   --surface:#FFFFFF; --canvas:#F5F7F9;
+  /* Фон СТРАНИЦЫ (body) — ровно тот же, что у результатов поиска (--dg-page в
+     search/css/home.css, body:not(.dg-state-reader)). Отдельная переменная от --canvas — тот
+     остаётся как есть, он используется в color-mix() по всей странице для тонких оттенков
+     карточек/hover (.nested, .btn:hover, .seg), трогать его сломало бы эти полутона. */
+  --page-bg:#FFFFFF;
   /* Акцент — фирменный зелёный, тот же, что на главной (search/css/home.css) и в шапке боевого
      сайта. Синий #1F51B8, стоявший здесь, ни с чем на сайте не совпадал: страница настроек
      выглядела деталью из чужого набора. */
@@ -24,6 +48,7 @@
 body.dark{
   --ink:#E7ECF1; --ink-2:#A7B4C0; --ink-3:#8B99A6;
   --line:#293441; --line-strong:#3A4753; --surface:#18212B; --canvas:#111820;
+  --page-bg:#111111;
   /* В тёмной теме — прод-зелёный ссылок #09967a ([data-theme="dark"] в assets/css/extrastyles.css),
      как и на главной: #149C7C на тёмном фоне уже теряет контраст. */
   --accent:#09967A; --accent-soft:#12241F;
@@ -31,7 +56,7 @@ body.dark{
 *{box-sizing:border-box}
 html,body{margin:0}
 html{scroll-padding-top:16px}
-body{font-family:var(--ui);color:var(--ink);background:var(--canvas);font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
+body{font-family:var(--ui);color:var(--ink);background:var(--page-bg);font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
 .wrap{max-width:700px;margin:0 auto;padding:20px 16px 100px}
 .head{display:flex;align-items:baseline;gap:12px}
 .head-nav{flex:none;align-self:center;width:36px;height:36px;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;color:var(--ink-2);text-decoration:none}
@@ -42,6 +67,10 @@ body{font-family:var(--ui);color:var(--ink);background:var(--canvas);font-size:1
 .head h1{font-size:24px;margin:0;letter-spacing:-.01em}
 .head .saved{font-size:13px;color:var(--ink-3)}
 .head-sub{margin:4px 0 18px;font-size:14px;color:var(--ink-2)}
+/* Reload notice — some changes (e.g. search language order) are baked into an already-open
+   search/reader tab's rendered table at load time, so they won't apply there without a reload. */
+.reload-notice{display:none;align-items:center;gap:8px;margin:-8px 0 18px;padding:8px 12px;background:var(--accent-soft);color:var(--accent);border-radius:var(--r-lg);font-size:13.5px}
+.reload-notice.show{display:flex}
 /* Sticky — образец остаётся на виду при скролле вниз по настройкам, не нужно каждый раз
    скроллить обратно наверх, чтобы увидеть эффект переключателя (жалоба владельца). Фон
    непрозрачный (см. ниже) — иначе контент под ним просвечивал бы при скролле. Липкость нужна
@@ -55,13 +84,32 @@ body{font-family:var(--ui);color:var(--ink);background:var(--canvas);font-size:1
    и образец переставал быть демо ридера. */
 .preview{position:sticky;top:8px;z-index:5;background:rgb(253,253,253);border:1px solid var(--line);border-radius:var(--r-lg);padding:14px 16px;margin-bottom:22px;box-shadow:0 6px 16px -4px rgba(0,0,0,.18)}
 .preview.not-sticky{position:static}
+.preview.collapsed .preview-label{margin-bottom:0}
+#previewCollapse{transition:transform .15s ease}
+.preview.collapsed #previewCollapse{transform:rotate(180deg)}
 body.dark .preview{background:rgb(4,1,19);border-color:var(--line)}
-.preview-label{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3);display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+/* Grid, not flex+space-between: owner wants the sutta id centered in the bar, not clustered
+   with the refresh/collapse icons on the right — a 3-column grid (left/center/right) puts it
+   in the middle regardless of how wide the left/right clusters are. */
+.preview-label{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3);display:grid;grid-template-columns:1fr auto 1fr;align-items:center;margin-bottom:10px}
 .preview-label button{background:transparent;border:0;font-size:16px;padding:2px 6px;color:var(--accent)}
-.preview-label-left,.preview-label-right{display:flex;align-items:center;gap:6px}
-.preview-label-right{gap:2px}
-.preview-label-right a#previewRead{font-size:11px;letter-spacing:.09em;text-transform:uppercase;text-decoration:none;padding:2px 8px;color:var(--ink-3)}
-.preview-label-right a#previewRead:hover{color:var(--accent)}
+.preview-label-left{display:flex;align-items:center;gap:6px;justify-self:start}
+.preview-label-right{display:flex;align-items:center;gap:2px;justify-self:end}
+/* text-transform:uppercase was fine for the old static "READ"/"ЧИТАТЬ" label — now that the
+   link shows the actual sutta reference (e.g. "an4.180"), forcing it upper-case ("AN4.180")
+   fights the lower-case convention used for these ids everywhere else on the site. Explicit
+   `none`, not just omitting the property — .preview-label (ancestor, line 85) also sets
+   uppercase, and text-transform inherits, so simply dropping this rule's own value still left
+   it uppercase via inheritance.
+   Selector no longer scoped under .preview-label-right — the link moved to be the grid's own
+   centered middle column, a direct child of .preview-label, not nested inside the right
+   cluster anymore (see markup below). */
+a#previewRead{font-size:11px;letter-spacing:.02em;text-decoration:none;padding:2px 8px;color:var(--ink-3);text-transform:none;justify-self:center}
+a#previewRead:hover{color:var(--accent)}
+/* Refresh icon — owner: "needs to be bigger, don't change its style" (no background, no color
+   change). Just glyph size: 16px → 24px (~50% larger, not 15% — error was my estimate, owner
+   showed the button in context and 24px matches the actual visual need). */
+#previewShuffle{font-size:24px}
 .group{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);margin-bottom:20px;overflow:hidden;scroll-margin-top:16px}
 .group.flash{box-shadow:0 0 0 3px var(--accent);transition:box-shadow .4s ease}
 .group > h2{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);margin:0;padding:14px 18px 10px;font-weight:600}
@@ -117,32 +165,68 @@ button{font:inherit;cursor:pointer}
 .chip.dragging{opacity:.45}
 .chip .grip{width:26px;height:44px;display:grid;place-items:center;color:var(--accent);cursor:grab;touch-action:none}
 .chip .ord{font-size:12px;color:var(--accent);font-variant-numeric:tabular-nums}
-.chip .name{padding:0 4px;font-size:15px;font-weight:500}
+.chip .name{padding:0 4px;font-size:15px;font-weight:500;color:var(--accent)}
 .chip .x{width:36px;height:44px;border:0;background:transparent;border-radius:0 9px 9px 0;color:var(--accent);display:grid;place-items:center;font-size:15px}
 .hint{font-size:13px;color:var(--ink-3);margin:8px 0 0}
-.scope{display:flex;flex-wrap:wrap;gap:6px;align-items:flex-start}
-/* Заголовки-разделители "Сутта"/"Виная" внутри .scope — flex-basis:100% заставляет их
-   занимать всю ширину и переносить следующие элементы на новую "строку" внутри того же
-   flex-wrap контейнера, без отдельной разметки нескольких <div class="scope">. */
-.scope-section-label{flex-basis:100%;font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-3);font-weight:600;margin:6px 0 -2px}
-/* Свёрнутая Абхидхамма — просто звёздочка, без рамки и фона: до клика на странице не должно быть
-   видно, что там есть отдельный пункт (см. renderScope). Размер кнопки при этом обычный,
-   пальцем попадается. */
-.scope-abhi-star{border:0;background:transparent;color:var(--ink-3);font-size:18px;line-height:1;padding:6px 10px;min-height:34px;cursor:pointer}
+/* Раньше flex-wrap "чипы" (4 Никаи вперемешку с групповыми блоками Кхуддака/Виная) — теперь
+   единый вертикальный список (владелец: "один список как в быстрых настройках"), 4 Никаи
+   рендерятся через тот же addGroup(), что и Кхуддака/Виная (см. NIKAYA_GROUP выше).
+   Полностью переоформлено на язык остальной страницы (владелец: "выглядит как пародия на
+   предыдущие настройки", "нужен общий стиль") — было отдельной визуальной системой (цветные
+   акцентные "чипы" с закруглением + тонированный серый бокс), а не переиспользованием
+   плоских rows-строк с тонкой границей-разделителем и обычным тёмным текстом, как везде на
+   этой странице (.row/.row+.row{border-top}). Теперь то же самое: простые строки, разделитель
+   сверху у каждой (кроме самой первой), обычный var(--ink), без цветных плашек. */
+.scope{display:flex;flex-direction:column}
+.scope-section-label{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-3);font-weight:600;margin:16px 0 0;padding:0 2px 6px}
+.scope-section-label:first-child{margin-top:4px}
+/* Свёрнутая Абхидхамма — просто звёздочка, без фона: до клика на странице не должно быть
+   видно, что там есть отдельный пункт (см. renderScope). min-height:44px — тот же tap-target,
+   что у остальных строк-переключателей на странице, не только у видимых чипов/свитчей. */
+.scope-abhi-star{display:flex;align-items:center;width:100%;border:0;border-top:1px solid var(--line);background:transparent;color:var(--ink-3);font-size:16px;line-height:1;padding:10px 2px;min-height:44px;cursor:pointer;text-align:left}
 .scope-abhi-star:hover,.scope-abhi-star:focus-visible{color:var(--ink)}
-.scope-section-label:first-child{margin-top:0}
-.scope label{display:inline-flex;align-items:center;gap:6px;font-size:13.5px;background:var(--accent-soft);color:var(--accent);border-radius:7px;padding:5px 9px;font-weight:500;cursor:pointer}
-.scope input{accent-color:var(--accent)}
+.scope label{display:flex;align-items:center;gap:10px;font-size:15px;color:var(--ink);font-weight:500;padding:10px 2px;min-height:44px;cursor:pointer;border-top:1px solid var(--line)}
+.scope input{accent-color:var(--accent);width:18px;height:18px;flex:none}
 /* Виная/Кхуддака — родительская галка + раскрывающийся список под-пунктов, а не десятки
    плоских чипов вперемешку с 4 никаями (просьба владельца "систематизировать"). */
-.scope-group{display:flex;flex-direction:column;background:var(--line);border-radius:7px;overflow:hidden}
-.scope-group-head{display:inline-flex;align-items:center;gap:6px;font-size:13.5px;color:var(--ink-3);font-weight:500;padding:5px 4px 5px 9px;cursor:pointer;margin:0}
-.scope-group-head input{accent-color:var(--ink-3)}
-.scope-group-expand{background:transparent;border:0;padding:2px 8px;color:inherit;font-size:11px;cursor:pointer;margin-left:2px}
-.scope-group-panel{display:flex;flex-direction:column;gap:1px;padding:2px 10px 6px 28px;background:var(--surface)}
+.scope-group{display:flex;flex-direction:column;border-top:1px solid var(--line)}
+/* head is a plain div now, NOT a <label> — owner: "only the checkbox+text should activate the
+   checkbox, everything else (empty space, triangle) is the expand/collapse zone". A <label>
+   wrapping the whole row would forward every click in it (including the dead space between the
+   text and the button) to the checkbox — wrong for the empty strip and the triangle both.
+   click-to-expand is handled by JS on this div (guarded to skip clicks inside
+   .scope-checkbox-label, see renderScope), not by native label/checkbox forwarding. */
+.scope-group-head{display:flex;align-items:center;gap:10px;font-size:15px;color:var(--ink);font-weight:500;padding:10px 2px;min-height:44px;cursor:pointer;margin:0}
+/* Real <label>, sized to its OWN content only (inline-flex, not the row's block flex) — its
+   clickable footprint is exactly the checkbox+text, not the whole row.
+   Desktop: fixed 200px column (not flex-grow, not margin:auto math) — simple, boring, same
+   idea as a 2-column table: "Khuddaka Nikāya" (the longest of the 3 group labels) measures
+   ~164px, 200px leaves comfortable room. Because every row uses the SAME fixed width, the
+   triangle that follows naturally lands at the same x position on all three rows — no
+   calc()/margin:auto tricks needed to keep them level, and it sits close to the text instead of
+   docked at the far edge of a ~630px-wide card (owner: "the triangle is still too far, don't
+   reinvent the wheel"). Mobile (@media below) drops the fixed width — not enough room for it
+   there, back to natural full-width flex with the button pinned right via margin-left:auto. */
+.scope-checkbox-label{display:inline-flex;align-items:center;gap:10px;cursor:pointer;flex:none;width:200px;min-width:0}
+.scope-checkbox-label input{accent-color:var(--accent);width:18px;height:18px;flex:none}
+/* Label text as its own shrinkable/wrappable flex item, not a bare text node (JS side,
+   renderScope() — .scope-label-text span) — without something able to shrink, the row grew
+   wider than its container on narrow screens, pushing the expand button off past the visible
+   edge (owner, screenshot: "these triangles are way off to the side"). */
+.scope-label-text{flex:1 1 auto;min-width:0}
+/* Была текстовая ▾/▴ на паре пикселей (владелец: "малипусечные треугольники, должны быть
+   такими же функциональными и доступными, как toggle-переключатели") — настоящая круглая
+   icon-button с tap-target 44px (тот же размер, что у .switch/.chip .x на этой же странице).
+   Глиф увеличен с 18px до 24px (~50% больше). На десктопе margin-left не нужен — кнопка просто
+   следует сразу после фиксированной 200px-колонки (.scope-checkbox-label выше), это и держит
+   все треугольники на одном уровне. На мобильном (@media ниже) margin-left:auto возвращается —
+   там колонка не фиксированная, кнопка снова пинается к правому краю. */
+.scope-group-expand{background:transparent;border:0;width:44px;height:44px;flex:none;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;color:var(--ink-3);font-size:24px;cursor:pointer}
+.scope-group-expand:hover,.scope-group-expand:focus-visible{background:var(--line);color:var(--ink)}
+.scope-group-panel{display:flex;flex-direction:column;padding:0 2px 4px 30px}
 .scope-group-panel[hidden]{display:none}
-.scope-group-panel label{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:400;color:var(--ink);background:transparent;border-radius:0;padding:3px 0;cursor:pointer}
-.scope-group-panel input{accent-color:var(--accent)}
+.scope-group-panel label{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:400;color:var(--ink);padding:8px 0;min-height:38px;cursor:pointer}
+.scope-group-panel input{accent-color:var(--accent);width:16px;height:16px;flex:none}
 .num{display:inline-flex;align-items:center;gap:6px}
 /* Ключ TTS — тот же ряд control'ов, что везде на странице, просто шире (сам инпут должен
    растягиваться): раньше делалось inline-стилями (width:100%, max-width:none) — вынесено в
@@ -171,6 +255,35 @@ kbd{font:inherit;font-size:12.5px;background:var(--line);border:1px solid var(--
   .row{flex-direction:column;align-items:flex-start;gap:10px}
   .row-control{width:100%}
   select.control{max-width:none;width:100%}
+
+  /* Switch AND plain-button rows stay inline even on narrow phones — owner request, extended
+     from switches to buttons after catching the same drop-to-next-line on "Log in" (Cloud row):
+     short button text has no real reason to push itself onto its own line under the label the
+     way a long <select> legitimately might. Scoped to rows whose control is a DIRECT child of
+     .row-control so it does NOT also match the outer .row.row-stack wrapping `sameAsRead`
+     (that outer row's .switch is a deeper descendant, not a direct grandchild — its own
+     .row-stack rule keeps stacking it correctly). select-control rows are untouched, they may
+     legitimately still stack. */
+  .row:has(> .row-control > .switch), .row:has(> .row-control > button){
+    flex-direction:row;
+    align-items:center;
+  }
+  .row:has(> .row-control > .switch) > .row-control,
+  .row:has(> .row-control > button) > .row-control{
+    width:auto;
+    flex:0 0 auto;
+  }
+  .row:has(> .row-control > .switch) > *:not(.row-control),
+  .row:has(> .row-control > button) > *:not(.row-control){
+    min-width:0;
+    flex:1 1 auto;
+  }
+
+  /* Drop the desktop fixed-width column for scope group rows (4 Nikāyas/Khuddaka/Vinaya) — no
+     room for a 200px+44px+gaps layout on a phone. Back to flexible full-width, triangle pinned
+     to the right edge via margin-left:auto. */
+  .scope-checkbox-label{width:auto;flex:1 1 auto}
+  .scope-group-expand{margin-left:auto}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
@@ -189,6 +302,7 @@ kbd{font:inherit;font-size:12.5px;background:var(--line);border:1px solid var(--
     <h1 id="t-title">Настройки</h1><span class="saved" id="t-saved">Сохраняется сразу</span>
   </div>
   <p class="head-sub" id="t-sub">Значения по умолчанию для поиска и чтения на всём сайте.</p>
+  <p class="reload-notice" id="reloadNotice">⟳ <span id="t-reloadNotice">Обновите страницу поиска/чтения, чтобы изменение вступило в силу.</span></p>
 
   <!-- ОБРАЗЕЦ — реальная разметка и настоящие стили сайта (preview-frame.html), в iframe,
        чтобы стили ридера/поиска не задевали стили самой страницы настроек. -->
@@ -203,11 +317,16 @@ kbd{font:inherit;font-size:12.5px;background:var(--line);border:1px solid var(--
         </a>
         <span id="t-previewLabel">Образец</span>
       </span>
+      <a href="#" class="btn-quiet" id="previewRead" title="Открыть в ридере" aria-label="Открыть в ридере">
+        <span id="t-previewRead">Читать</span>
+      </a>
       <span class="preview-label-right">
-        <a href="#" class="btn-quiet" id="previewRead" title="Открыть в ридере" aria-label="Открыть в ридере">
-          <span id="t-previewRead">Читать</span>
-        </a>
         <button type="button" class="btn-quiet" id="previewShuffle" title="Обновить оформление" aria-label="Обновить оформление образца">⟳</button>
+        <!-- Владелец: "добавить пункт свернуть демо — если человеку мало места". Состояние
+             НЕ сохраняется (сам попросил — "только на одну сессию достаточно"): просто класс на
+             #preview, живёт в памяти вкладки, при следующей загрузке страницы образец снова
+             развёрнут. -->
+        <button type="button" class="btn-quiet" id="previewCollapse" title="Свернуть образец" aria-label="Свернуть образец" aria-expanded="true">︿</button>
       </span>
     </div>
     <!-- height здесь только стартовая: кадр сам сообщает свою реальную высоту постМессаджем
@@ -348,28 +467,12 @@ kbd{font:inherit;font-size:12.5px;background:var(--line);border:1px solid var(--
                подключены сюда, хотя они есть в другом месте"). Значения — НЕ всегда буквально
                те же строки, что в старой модалке: у "DictTango" там опечатка в регистре
                ("dictTango" не матчит проверку кода `dict === "dicttango"`, режим молча не
-               работал) — тут используется рабочее значение, не скопированная опечатка. -->
-          <div class="row-control"><select id="dictMode" class="control">
-            <optgroup label="DPD" id="dictGroupRu">
-              <option value="standaloneru">Встроенный DPD</option>
-              <option value="dpdfullru">Попап Dict.DG</option>
-              <option value="newwindowru">Dict.DG в новом окне</option>
-              <option value="dpdcompactru">Dict.DG мини</option>
-            </optgroup>
-            <optgroup label="DPD (EN)" id="dictGroupEn">
-              <option value="standalone">Встроенный DPD (англ.)</option>
-              <option value="dpdfull">Попап Dict.DG (англ.)</option>
-              <option value="newwindow">Dict.DG в новом окне (англ.)</option>
-              <option value="dpdcompact">Dict.DG мини (англ.)</option>
-            </optgroup>
-            <optgroup label="Другое" id="dictGroupOther">
-              <option value="machinetranslation">DharmaMitra.org</option>
-              <option value="searchonly">Только поиск</option>
-              <option value="dicttango">DictTango (Android)</option>
-              <option value="mdict">Mdict (iOS)</option>
-              <option value="goldenpc">GoldenDict-NG (Desktop)</option>
-            </optgroup>
-          </select></div>
+               работал) — тут используется рабочее значение, не скопированная опечатка.
+               Пустой — заполняется JS'ом (renderDictMode()) из configs/search/dict-modes.json,
+               того же файла, что читают быстрые настройки (search/js/home.js) — раньше было два
+               вручную поддерживаемых списка (плюс третья, JS-only копия подписей ниже по этому
+               файлу), разъезжались при добавлении нового режима. -->
+          <div class="row-control"><select id="dictMode" class="control"></select></div>
         </div>
         <div class="row">
           <div><p class="row-title" id="t-autoLookup">Искать выделенный текст автоматически</p>
@@ -535,7 +638,12 @@ function saveLangs(){
   localStorage.setItem('dhammaSearchLangs', state.search.join(','));
 }
 // Изменение языков пользователем: пометить как "тронуто" и перерисовать+сохранить.
-function commitLangs(){ langsTouched = true; render(); }
+// Порядок/состав языков вшивается в колонки DataTable при первой отрисовке поиска
+// (search-render.js buildDataTable переиспользует suttaTableApi, а не пересоздаёт колонки
+// на каждый повторный поиск) — уже открытая вкладка поиска/чтения его не подхватит без
+// перезагрузки, отсюда уведомление.
+function commitLangs(){ langsTouched = true; render(); showReloadNotice(); }
+function showReloadNotice(){ $('#reloadNotice').classList.add('show'); }
 
 let dlgTarget = 'read';
 /* Перетаскивание чипов — на Pointer Events (не HTML5 draggable): нативный drag-and-drop не
@@ -710,7 +818,9 @@ $('#punct').onchange = e=> localStorage.setItem('removePunct', e.target.checked 
 $('#dictOn').checked = localStorage.getItem('dictionaryVisible') !== 'false';
 $('#dictBlock').hidden = !$('#dictOn').checked;
 $('#dictOn').onchange = e=>{ $('#dictBlock').hidden = !e.target.checked; localStorage.setItem('dictionaryVisible', e.target.checked ? 'true' : 'false'); };
-$('#dictMode').value = localStorage.getItem('selectedDict') || 'standalone';
+// .value здесь больше не выставляем — #dictMode пуст до fetch(dict-modes.json), renderDictMode()
+// сама помечает нужный option selected при построении. Слушатель — на самом select, переживает
+// renderDictMode()'ю innerHTML='' (та чистит только детей, не сам элемент).
 $('#dictMode').onchange = e=> localStorage.setItem('selectedDict', e.target.value);
 
 /* Автопоиск выделения — та же кнопка/ключ, что и "мультивыбор" в ридере (paliLookup.js,
@@ -757,6 +867,14 @@ const SCOPE_BOOKS = [
   ['sn', {ru:'Саньютта Никая', en:'Saṁyutta Nikāya'}],
   ['an', {ru:'Ангуттара Никая', en:'Aṅguttara Nikāya'}]
 ];
+// 4 Никаи as one more addGroup() entry — same "родитель + раскрывающийся список" pattern
+// already used for Khuddaka/Vinaya below (owner: one unified list, not flat chips mixed with
+// group boxes). items shape matches SCOPE_GROUPS/KN_DEFAULT_BOOKS/EXTRA_BOOKS: [label, codes].
+const NIKAYA_GROUP = {
+  section: 'sutta',
+  label: {ru:'4 Никаи', en:'4 Nikāyas'},
+  items: SCOPE_BOOKS.map(([code, label]) => [label, [code]])
+};
 // Книги КН, включённые по умолчанию — живут внутри группы "Кхуддака Никая" первыми, до
 // остальных. Держим отдельным списком, потому что из них же собирается DEFAULT_SCOPE.
 const KN_DEFAULT_BOOKS = [
@@ -792,6 +910,7 @@ const ABHI_MARK = '*';
 // "систематизировать": части КН — это часть Сутта-питаки, не отдельная категория наравне с
 // Винаей, поэтому Кхуддака-группа теперь рисуется ВНУТРИ раздела "Сутта", сразу после 4 никай).
 const SCOPE_GROUPS = [
+  NIKAYA_GROUP,
   { section:'vinaya', label:{ru:'Виная', en:'Vinaya'}, items:[
       [{ru:'Вибханга', en:'Vibhaṅga'}, ['pli-tv-bi','pli-tv-bu']],
       [{ru:'Кхандхака', en:'Khandhaka'}, ['pli-tv-kd']],
@@ -828,7 +947,9 @@ function saveScope(){
   if (isDefault) localStorage.removeItem('dhammaSearchScope');
   else localStorage.setItem('dhammaSearchScope', scopeList.join(','));
 }
-let openGroups = new Set();
+// 4 Nikayas (SCOPE_GROUPS[0], the most-touched group) starts expanded — Khuddaka/Vinaya
+// stay collapsed by default, unchanged.
+let openGroups = new Set([0]);
 // Раскрыт ли пункт Абхидхаммы (см. конец renderScope). Живёт только в памяти страницы: это не
 // настройка, а состояние показа — при следующем открытии настроек снова одна звёздочка.
 let abhiRevealed = false;
@@ -851,7 +972,10 @@ function renderScope(){
     // непонятно, что это, а по прямому указанию слово на странице не пишем.
     if (title) { lbl.title = title; lbl.setAttribute('aria-label', title); }
     const checked = codes.every(c=>scopeList.includes(c));
-    lbl.innerHTML=`<input type="checkbox" ${checked?'checked':''}> ${label}`;
+    // Label text as a bare text node (not its own element) couldn't shrink/wrap in the flex
+    // row — on narrow screens it forced the row wider than the viewport instead, pushing
+    // anything after it (nothing here, but see addGroup below) off-screen. Real <span>.
+    lbl.innerHTML=`<input type="checkbox" ${checked?'checked':''}><span class="scope-label-text">${label}</span>`;
     lbl.querySelector('input').onchange = e=>{
       scopeList = e.target.checked
         ? scopeList.concat(codes.filter(c=>!scopeList.includes(c)))
@@ -866,10 +990,19 @@ function renderScope(){
     const someChecked = !allChecked && allCodes.some(c=>scopeList.includes(c));
     const wrap = document.createElement('div');
     wrap.className='scope-group';
-    const head = document.createElement('label');
+    // Owner: "the label shouldn't cover the whole row — only the checkbox+text should toggle
+    // the checkbox, everything to the right (empty space + triangle) is the expand/collapse
+    // zone". head is now a plain div (not a <label>), so clicking it doesn't auto-activate the
+    // checkbox — only the nested .scope-checkbox-label (hugs its own content, see CSS) does
+    // that. The expand button is flex:1, filling all remaining row width, so the entire empty
+    // strip through to the triangle glyph is one big click target for expand/collapse.
+    const head = document.createElement('div');
     head.className='scope-group-head';
-    head.innerHTML=`<input type="checkbox" ${allChecked?'checked':''}> ${isRu?group.label.ru:group.label.en}`;
-    const parentInput = head.querySelector('input');
+    const checkLbl = document.createElement('label');
+    checkLbl.className = 'scope-checkbox-label';
+    checkLbl.innerHTML=`<input type="checkbox" ${allChecked?'checked':''}><span class="scope-label-text">${isRu?group.label.ru:group.label.en}</span>`;
+    head.appendChild(checkLbl);
+    const parentInput = checkLbl.querySelector('input');
     parentInput.indeterminate = someChecked;
     parentInput.onchange = e=>{
       scopeList = e.target.checked
@@ -882,7 +1015,16 @@ function renderScope(){
     const isOpen = openGroups.has(gi);
     expandBtn.setAttribute('aria-expanded', String(isOpen));
     expandBtn.textContent = isOpen ? '▴' : '▾';
-    expandBtn.onclick = ()=>{ if(openGroups.has(gi)) openGroups.delete(gi); else openGroups.add(gi); renderScope(); };
+    const toggleOpen = ()=>{ if(openGroups.has(gi)) openGroups.delete(gi); else openGroups.add(gi); renderScope(); };
+    expandBtn.onclick = toggleOpen;
+    // Clicking the empty strip between the checkbox-label and the triangle also expands/
+    // collapses (owner: "everything right of the checkbox+text is the triangle's zone") —
+    // guarded so it doesn't double-fire when the click actually landed on the checkbox-label
+    // (own handler) or on the button itself (already has its own onclick above).
+    head.onclick = (e)=>{
+      if (e.target.closest('.scope-checkbox-label') || e.target.closest('.scope-group-expand')) return;
+      toggleOpen();
+    };
     head.appendChild(expandBtn);
     wrap.appendChild(head);
     const panel=document.createElement('div');
@@ -891,7 +1033,7 @@ function renderScope(){
     group.items.forEach(([label,codes])=>{
       const itemLbl=document.createElement('label');
       const itemChecked = codes.every(c=>scopeList.includes(c));
-      itemLbl.innerHTML=`<input type="checkbox" ${itemChecked?'checked':''}> ${isRu?label.ru:label.en}`;
+      itemLbl.innerHTML=`<input type="checkbox" ${itemChecked?'checked':''}><span class="scope-label-text">${isRu?label.ru:label.en}</span>`;
       itemLbl.querySelector('input').onchange = e=>{
         scopeList = e.target.checked
           ? scopeList.concat(codes.filter(c=>!scopeList.includes(c)))
@@ -905,7 +1047,8 @@ function renderScope(){
   };
 
   addSectionLabel(isRu ? 'Сутта' : 'Sutta');
-  SCOPE_BOOKS.forEach(([code,label])=>addBox(isRu?label.ru:label.en,[code],false));
+  // 4 Nikayas render via the same addGroup() loop now (NIKAYA_GROUP is SCOPE_GROUPS[0],
+  // section:'sutta') — no separate flat addBox() pass for them anymore.
   SCOPE_GROUPS.forEach((group,gi)=>{ if (group.section === 'sutta') addGroup(group, gi); });
 
   addSectionLabel(isRu ? 'Виная' : 'Vinaya');
@@ -1007,33 +1150,44 @@ function goAnchor(id){
 }
 if(location.hash) setTimeout(()=>goAnchor(location.hash.slice(1)),50);
 
-/* Полный список режимов словаря (см. paliLookup.js resolveDictConfig) и подписи оптгрупп —
-   отдельная, ключуемая по value() таблица, а не часть STR: 13 значений индексами options[N]
-   слишком хрупко (порядок легко сломать при следующей правке разметки). */
-/* Язык словаря помечен у ОБОИХ наборов и всегда кодом — (ru) / (en). Раньше помечался только
-   английский, причём по-разному в разных местах ("(англ.)" в подписи режима, "(EN)" в названии
-   группы), а русский не помечался вовсе — из-за чего было не видно, что это вообще выбор языка
-   словаря. Код вместо слова: он одинаково читается при любом языке интерфейса. */
-const DICT_MODE_LABELS = {
-  standaloneru:{ru:'Встроенный DPD (ru)', en:'Built-in DPD (ru)'},
-  dpdfullru:{ru:'Попап Dict.DG (ru)', en:'Dict.DG popup (ru)'},
-  newwindowru:{ru:'Dict.DG в новом окне (ru)', en:'Dict.DG in new window (ru)'},
-  dpdcompactru:{ru:'Dict.DG мини (ru)', en:'Dict.DG mini (ru)'},
-  standalone:{ru:'Встроенный DPD (en)', en:'Built-in DPD (en)'},
-  dpdfull:{ru:'Попап Dict.DG (en)', en:'Dict.DG popup (en)'},
-  newwindow:{ru:'Dict.DG в новом окне (en)', en:'Dict.DG in new window (en)'},
-  dpdcompact:{ru:'Dict.DG мини (en)', en:'Dict.DG mini (en)'},
-  machinetranslation:{ru:'DharmaMitra.org', en:'DharmaMitra.org'},
-  searchonly:{ru:'Только поиск', en:'Search only'},
-  dicttango:{ru:'DictTango (Android)', en:'DictTango (Android)'},
-  mdict:{ru:'Mdict (iOS)', en:'Mdict (iOS)'},
-  goldenpc:{ru:'GoldenDict-NG (Desktop)', en:'GoldenDict-NG (Desktop)'}
-};
-const DICT_GROUP_LABELS = {
-  dictGroupRu:{ru:'DPD (ru)', en:'DPD (ru)'},
-  dictGroupEn:{ru:'DPD (en)', en:'DPD (en)'},
-  dictGroupOther:{ru:'Другое', en:'Other'}
-};
+/* Режимы словаря — раньше тут жили ДВЕ хардкоженые JS-таблицы (подписи опций + подписи групп),
+   ТРЕТЬЯ копия того же списка была в самой разметке (<option> выше), и ЧЕТВЁРТАЯ — в
+   search/js/home.js (быстрые настройки). Из четырёх копий реально видна была только эта JS-пара
+   (переписывала разметку через applyLang()) — она же добавляла суффикс "(ru)"/"(en)" КАЖДОЙ
+   опции поверх заголовка группы, который его и так уже называет (владелец: "не пиши en/ru пять
+   раз, только для заголовка"). Теперь один файл на обе страницы —
+   configs/search/dict-modes.json — и подписи внутри группы больше не повторяют её же язык. */
+let dictModeGroups = null;
+function renderDictMode(){
+  const dm = $('#dictMode');
+  if (!dm || !dictModeGroups) return;
+  const current = dm.value || localStorage.getItem('selectedDict') || 'standalone';
+  dm.innerHTML = '';
+  // Родной язык интерфейса первым (RU-интерфейс -> сперва русская группа DPD, EN -> сперва
+  // английская) — то же поведение, что было у ручного insertBefore() раньше, теперь просто
+  // порядок построения, а не перестановка готовых узлов.
+  const sorted = dictModeGroups.slice().sort((a,b)=>{
+    const rank = g => (isRu ? g.id==='dictGroupRu' : g.id==='dictGroupEn') ? 0 : (g.id==='dictGroupOther' ? 2 : 1);
+    return rank(a) - rank(b);
+  });
+  sorted.forEach(g=>{
+    const group = document.createElement('optgroup');
+    group.id = g.id;
+    group.label = isRu ? g.labelRu : g.labelEn;
+    g.options.forEach(o=>{
+      const opt = document.createElement('option');
+      opt.value = o.value;
+      opt.textContent = isRu ? o.ru : o.en;
+      if (o.value === current) opt.selected = true;
+      group.appendChild(opt);
+    });
+    dm.appendChild(group);
+  });
+}
+fetch('/nodejs/res/dict-modes.json')
+  .then(r=>r.json())
+  .then(data=>{ dictModeGroups = data.groups || []; renderDictMode(); })
+  .catch(e=>console.warn('dict-modes.json не загрузился:', e));
 
 /* Строки интерфейса (EN/RU) — намеренно простой инлайн-словарь, как в остальном легаси-коде
    (quickModal.js/openFdg.js), а не JSON-модуль: страница маленькая, вынос в отдельный формат
@@ -1043,7 +1197,9 @@ const DICT_GROUP_LABELS = {
 const STR = {
   ru:{
     title:'Настройки', saved:'Сохраняется сразу', sub:'Значения по умолчанию для поиска и чтения на всём сайте.',
+    reloadNotice:'Обновите страницу поиска/чтения, чтобы изменение вступило в силу.',
     previewLabel:'Образец', previewShuffle:'Обновить оформление', previewShuffleAria:'Обновить оформление образца', previewRead:'Читать',
+    previewCollapse:'Свернуть образец', previewExpand:'Развернуть образец',
     gGeneral:'Общее', uiLang:'Язык интерфейса', uiLangDesc:'Меню и подписи. На языки текстов не влияет.',
     themeLbl:'Тема', thAuto:'Авто', thLight:'Светлая', thDark:'Тёмная',
     cloud:'Облако', cloudDesc:'Синхронизация закладок, заметок и настроек между устройствами.', cloudBtn:'Войти',
@@ -1078,7 +1234,9 @@ const STR = {
   },
   en:{
     title:'Settings', saved:'Saves instantly', sub:'Defaults for search and reading across the whole site.',
+    reloadNotice:"Reload the search/reader page for this change to take effect.",
     previewLabel:'Preview', previewShuffle:'Refresh styling', previewShuffleAria:'Refresh preview styling', previewRead:'Read',
+    previewCollapse:'Collapse preview', previewExpand:'Expand preview',
     gGeneral:'General', uiLang:'Interface language', uiLangDesc:"Menus and labels. Doesn't affect text languages.",
     themeLbl:'Theme', thAuto:'Auto', thLight:'Light', thDark:'Dark',
     cloud:'Cloud', cloudDesc:'Sync bookmarks, notes, and settings across devices.', cloudBtn:'Log in',
@@ -1115,8 +1273,8 @@ const STR = {
 function applyLang(){
   const t = STR[isRu?'ru':'en'];
   const setText = (id,key)=>{ const el=document.getElementById(id); if(el) el.textContent=t[key]; };
-  [['t-title','title'],['t-saved','saved'],['t-sub','sub'],
-   ['t-previewLabel','previewLabel'],['t-previewRead','previewRead'],
+  [['t-title','title'],['t-saved','saved'],['t-sub','sub'],['t-reloadNotice','reloadNotice'],
+   ['t-previewLabel','previewLabel'],
    ['t-g-general','gGeneral'],['t-uiLang','uiLang'],['t-uiLangDesc','uiLangDesc'],
    ['themeLbl','themeLbl'],['t-th-auto','thAuto'],['t-th-light','thLight'],['t-th-dark','thDark'],
    ['t-cloud','cloud'],['t-cloudDesc','cloudDesc'],['cloudBtn','cloudBtn'],
@@ -1139,17 +1297,9 @@ function applyLang(){
 
   $('#langSearch').placeholder = t.langSearchPh; $('#langSearch').setAttribute('aria-label', t.langSearchPh);
   document.querySelectorAll('.badge').forEach(b=>b.textContent=t.badgeSoon);
-  const dm = $('#dictMode');
-  Array.from(dm.options).forEach(o=>{ const lbl=DICT_MODE_LABELS[o.value]; if(lbl) o.textContent = isRu?lbl.ru:lbl.en; });
-  Array.from(dm.querySelectorAll('optgroup')).forEach(g=>{ const lbl=DICT_GROUP_LABELS[g.id]; if(lbl) g.label = isRu?lbl.ru:lbl.en; });
-  // Порядок optgroup'ов — родной язык интерфейса первым (RU-интерфейс -> сперва русские режимы
-  // DPD, EN-интерфейс -> сперва английские), а не всегда RU первым как было в статичной разметке.
-  const dictGroupRu = document.getElementById('dictGroupRu');
-  const dictGroupEn = document.getElementById('dictGroupEn');
-  if (dictGroupRu && dictGroupEn) {
-    if (isRu) dm.insertBefore(dictGroupRu, dictGroupEn);
-    else dm.insertBefore(dictGroupEn, dictGroupRu);
-  }
+  // #dictMode целиком строит renderDictMode() (dict-modes.json) — она же решает порядок групп
+  // по isRu, applyLang() сюда лезть не должен: uiLang.onchange делает location.reload() (см.
+  // ниже), а не живую смену — эта функция и так вызывается только один раз за загрузку.
   const sc = $('#script');
   const scriptLabels = {ISOPali:'scriptIast', Brahmi:'scriptBrahmi', Devanagari:'scriptDeva', Sinhala:'scriptSinh', Thai:'scriptThai', BurmeseMyanmar:'scriptMymr'};
   Array.from(sc.options).forEach(o=>{ if (scriptLabels[o.value]) o.textContent = t[scriptLabels[o.value]]; });
@@ -1163,6 +1313,9 @@ function applyLang(){
   if (d5) d5.textContent = isRu ? '5 с' : '5 s';
   const shuffle = $('#previewShuffle');
   shuffle.title = t.previewShuffle; shuffle.setAttribute('aria-label', t.previewShuffleAria);
+  const collapseBtn = $('#previewCollapse');
+  const collapseLabel = $('#preview').classList.contains('collapsed') ? t.previewExpand : t.previewCollapse;
+  collapseBtn.title = collapseLabel; collapseBtn.setAttribute('aria-label', collapseLabel);
 
   document.documentElement.lang = isRu?'ru':'en';
   renderScope();
@@ -1182,6 +1335,21 @@ function applyLang(){
 $('#previewShuffle').onclick = () => {
   const f = $('#previewFrame').contentWindow;
   if (f) f.postMessage('dg-preview-refresh', location.origin);
+};
+
+// Свернуть образец — без сохранения (см. разметка выше): просто класс, сбрасывается каждой
+// новой загрузкой страницы. Кнопка сама не двигается вместе с "Читать"/"⟳" — она в том же ряду,
+// но collapsed трогает только #previewFrame и отступ заголовка, не сам ряд кнопок.
+$('#previewCollapse').onclick = () => {
+  const collapsed = $('#preview').classList.toggle('collapsed');
+  const btn = $('#previewCollapse');
+  // Inline style="display:block" on the iframe outranks the stylesheet rule
+  // by specificity, so the CSS class alone can't hide it — toggle it directly too.
+  $('#previewFrame').style.display = collapsed ? 'none' : 'block';
+  btn.setAttribute('aria-expanded', String(!collapsed));
+  const t = STR[isRu?'ru':'en'];
+  const label = collapsed ? t.previewExpand : t.previewCollapse;
+  btn.title = label; btn.setAttribute('aria-label', label);
 };
 
 /* "Назад", не "домой" — переход в /settings/ обычно идёт с уже введённым в поиске словом или
@@ -1208,15 +1376,27 @@ $('#backLinkPreview').onclick = goBack;
 /* "Читать" в образце — открыть тот же текст в настоящем ридере, если кому-то интересно
    почитать его целиком, а не только фрагмент. preview-frame.html сам не знает своего родителя
    ("параллельная" история языков/страниц), поэтому какой фрагмент сейчас показан — сообщает
-   постМессаджем при каждой отрисовке (см. render() там же). */
-window.addEventListener('message', e => {
+   постМессаджем при каждой отрисовке (см. render() там же). Настоящий обработчик готов только
+   ЗДЕСЬ (нужны isRu/$, определённые выше) — а первый postMessage от iframe мог прийти раньше
+   (см. буфер window.__dgPreviewMsgQueue сразу после <iframe> в разметке). Снимаем ранний
+   буферизующий слушатель и разом обрабатываем всё, что он успел накопить, прежде чем начать
+   слушать новые сообщения этим же обработчиком. */
+function handlePreviewMessage(e) {
   if (e.origin !== location.origin) return;
   if (e.data && e.data.type === 'dg-preview-current' && e.data.suttaId) {
     // С якорем сегмента, а не просто на сутту: раньше "Читать" открывала текст с самого начала,
     // и найти в нём тот кусок, который показан в образце, приходилось глазами. Формат якоря —
     // тот же, что понимает ридер (megareader.js: location.hash -> getElementById -> scrollIntoView).
     const seg = e.data.segmentId;
-    $('#previewRead').href = '/' + e.data.suttaId + (seg ? '#' + seg : '');
+    const link = $('#previewRead');
+    link.href = '/' + e.data.suttaId + (seg ? '#' + seg : '');
+    // Was a static "Читать"/"Read" label — owner: show the actual reference (e.g. "an4.180")
+    // instead, so it's obvious WHICH text the sample is from, not just a generic "go read
+    // something" link. Title/aria-label keep the action verb for screen readers/tooltips.
+    $('#t-previewRead').textContent = e.data.suttaId;
+    const openLabel = (isRu ? 'Открыть ' : 'Open ') + e.data.suttaId + (isRu ? ' в ридере' : ' in the reader');
+    link.title = openLabel;
+    link.setAttribute('aria-label', openLabel);
   }
   // Высота кадра — по длине текста. Верхняя граница нужна, чтобы длинный фрагмент не занял
   // весь экран (панель липкая, за ней должны оставаться видны сами настройки); нижняя — чтобы
@@ -1225,7 +1405,11 @@ window.addEventListener('message', e => {
     const frame = $('#previewFrame');
     if (frame) frame.style.height = Math.min(Math.max(e.data.height, 60), 420) + 'px';
   }
-});
+}
+window.removeEventListener('message', window.__dgPreviewEarlyHandler);
+(window.__dgPreviewMsgQueue || []).forEach(handlePreviewMessage);
+window.__dgPreviewMsgQueue = null;
+window.addEventListener('message', handlePreviewMessage);
 
 /* Липкость образца — только пока видны разделы Чтение/Словарь (между ними в разметке лежит
    Поиск — они идут подряд, так что это один непрерывный диапазон скролла, а не переключение

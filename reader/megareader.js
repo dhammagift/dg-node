@@ -479,9 +479,34 @@ window.renderNavigation = async function(slug, suttaTitle) {
 // ==========================================
 // ОСНОВНАЯ ФУНКЦИЯ СБОРКИ СУТТЫ (Без PHP)
 // ==========================================
+// Skeleton placeholder while the text is loading — same idea/class (.dg-skeleton-bar) as the
+// search results page already uses for a pending title, defined once in search/index.html and
+// available here for free since the reader lives in that same document (SPA, one page). Owner:
+// the reader used to just leave the PREVIOUS sutta's text sitting on screen for the whole
+// fetch+render window (measured up to ~900ms for a long sutta) — confusing, looks like nothing
+// happened yet swaps abruptly. Varying widths read as paragraph lines, not a single fixed block.
+function getSkeletonHTML() {
+    // Was 7 lines — much shorter than a typical sutta's real rendered height, so the sudden
+    // height jump when real content replaced it was visible as the fixed corner buttons
+    // (scroll-to-top/TTS/language) appearing to "fly" as the page abruptly grew taller beneath
+    // them (owner: "иконки футера видно как улетают"). ~6 lines per "paragraph" × 6 paragraphs
+    // reads closer to a real sutta's length — still an approximation, not meant to match exactly.
+    const paraWidths = [95, 88, 92, 60, 97, 75];
+    const paragraphs = 6;
+    let bars = '';
+    for (let p = 0; p < paragraphs; p++) {
+        paraWidths.forEach(function (w, i) {
+            const extraGap = i === paraWidths.length - 1 ? 1.6 : 0.9;
+            bars += '<div class="dg-skeleton-bar" style="display:block;width:' + w + '%;max-width:none;height:1em;margin-bottom:' + extraGap + 'em;"></div>';
+        });
+    }
+    return '<div class="dg-sutta-skeleton" aria-hidden="true">' + bars + '</div>';
+}
+
 window.buildSutta = async function(rawSlug) {
     const slug = window.normalizeSlugToDbKey(rawSlug);
     window._currentSlug = slug;
+    if (suttaArea) suttaArea.innerHTML = getSkeletonHTML();
 
     let suttaData;
     try {
@@ -562,7 +587,29 @@ window.buildSutta = async function(rawSlug) {
         });
     }
 
-    let html = `<div class="button-area"><button title="Переключить язык (Atl+Z или Alt+Space)" id="language-button" class="hide-button">Pāḷi Рус</button></div>`;
+    // Подпись была захардкожена "Pāḷi Рус" всегда, даже когда реально показан английский
+    // перевод (владелец: "почему Пали Рус кнопка? Пали Рус когда русская локаль, когда англ —
+    // Pali Eng"). columns[0] — реальный язык текущего режима (см. комментарий выше), берём
+    // отсюда, не гадаем. Карта на будущее короткая (ru/en — единственные языки с записью в
+    // mode-table.json сейчас, см. CLAUDE.md) — для нового языка без своей подписи фолбэк
+    // на code.toUpperCase(), не падает молча.
+    const langLabels = { ru: 'Рус', en: 'Eng' };
+    const secondLangLabel = langLabels[columns[0]] || (columns[0] ? columns[0].toUpperCase() : 'Рус');
+    // Was: a SECOND <button id="language-button"> baked directly into this HTML string and
+    // injected into #sutta on every render — duplicate id alongside the persistent page-level
+    // one (search/index.html), and #language-button's CSS is position:fixed (same corner) so
+    // both rendered stacked exactly on top of each other — a ghosted/doubled "Pāḷi/Eng" pill
+    // (owner, screenshot: reader only, correctly not present in search results since results
+    // never injects this HTML at all). toggleThePali() below (getElementById, first DOM match)
+    // could end up binding its click listener to whichever instance won, leaving the other a
+    // dead visual duplicate. Update the ONE real page-level button's label instead of creating
+    // a second element — same dynamic per-mode text (Pāḷi Eng / Pāḷi Рус), no duplicate id.
+    const languageButtonEl = document.getElementById('language-button');
+    if (languageButtonEl) {
+        languageButtonEl.textContent = `Pāḷi ${secondLangLabel}`;
+        languageButtonEl.title = 'Переключить язык (Atl+Z или Alt+Space)';
+    }
+    let html = '';
 
     let finalRulingAnchor = "";
     if (slug.includes("bu-") || slug.includes("bi-")) {
@@ -746,9 +793,9 @@ window.buildSutta = async function(rawSlug) {
         </div>
     `;
 
-    suttaArea.innerHTML = 
-        `<div id="top-links-container" class="min-h-24"></div><br>` + 
-        (!isWarningClosed ? warning : '') + 
+    suttaArea.innerHTML =
+        `<div id="top-links-container" class="min-h-24"></div>` +
+        (!isWarningClosed ? warning : '') +
         translatorByline + 
         html + 
         translatorByline + 
@@ -871,6 +918,14 @@ async function initReader() {
                     target.classList.add('active-word');
                 }
             }
+        } else if (rendered) {
+            // No segment requested — a fresh open of this text, not a return to a saved
+            // position. Without this the SPA just leaves the browser wherever the PREVIOUS
+            // text's scroll happened to be (buildSutta() only replaces #sutta's content, it
+            // doesn't touch scroll — a real page load would naturally start at the top, but
+            // this is client-side navigation, nothing resets it on its own). Owner: new text
+            // opened mid-page, at the old text's leftover scroll position.
+            window.scrollTo(0, 0);
         }
     } else {
         if (typeof window.getInstructionHTML === 'function' && suttaArea) {

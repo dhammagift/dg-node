@@ -36,6 +36,17 @@
         'щ': 'o', 'б': ',', 'ю': '.', ' ': ' '
     };
 
+    // Плоская замена символ-в-символ, без остальных шагов normalize() ниже (склейка буквы+цифры,
+    // никая-опечатки и т.п. — те бессмысленны для обычного слова). Отдельная экспортируемая
+    // функция — search/index.html зовёт её САМА, отдельно от classify(), для fallback "0
+    // результатов -> вдруг это раскладка" (владелец: набрал "kacchapa" в русской раскладке,
+    // получил "лфссрфзф", 0 совпадений — должно было само пересчитать и найти).
+    function layoutFix(raw) {
+        return String(raw == null ? '' : raw).replace(/[а-яё]/gi, function (ch) {
+            return RU_LAYOUT_TO_LATIN[ch.toLowerCase()] || ch;
+        });
+    }
+
     // Trim, lowercase, fix the keyboard layout, join "letter <space> digit" (also covers the
     // comma/space-separated forms autopali.js's normalizeTerm() joins), normalize dot spacing,
     // then fix the same loose-prefix/typo shorthands opentexts.php fixes ("s123"/"s.123" ->
@@ -54,11 +65,20 @@
         // подсказок — теперь обе стороны понимают запись через пробелы одинаково.
         q = q.replace(/(\d)\s+(?=\d)/g, '$1.');
         q = q.replace(/\s*\.\s*/g, '.');
-        q = q.replace(/\bs(?!n)\.?(\d[\d.-]*)/, 'sn$1');
-        q = q.replace(/\bsm(\d[\d.-]*)/, 'sn$1');
-        q = q.replace(/(^|[^-])\bm\.?(\d[\d.-]*)/, '$1mn$2');
-        q = q.replace(/(^|[^-])\bd\.?(\d[\d.-]*)/, '$1dn$2');
-        q = q.replace(/(^|[^-])\ba\.?(\d[\d.-]*)/, '$1an$2');
+        // Одна лишняя/неверная буква между префиксом и номером ("am3.70" -> "an3.70", "sm56.11"
+        // -> "sn56.11") не ловилась: opentexts.php делал это через "." как ЛЮБОЙ символ в PHP
+        // regex (`\ba.\s*([\d.-]+)` и т.п.) — при переносе в JS "." по ошибке стал буквальной
+        // точкой (`\.?`), а не диким символом, и вариант с НЕВЕРНОЙ второй буквой перестал
+        // ловиться (только "a.70"/"a70" ловились, "am70" — уже нет; баг найден владельцем на
+        // живом вводе "am3.70"). [a-z]? — тот же смысл, что и "." у PHP (любая ОДНА буква
+        // между префиксом и числом), но не пятится на саму цифру, если второй буквы вообще нет
+        // (PHP-оригинал так делал бы — "m3.70" через "." съело бы "3", а не букву — сюда этот
+        // баг сознательно не переносил). Какую именно неверную букву ввели — не важно, всегда
+        // перезаписываем на единственно верную для этого префикса (a/m/d/s -> an/mn/dn/sn).
+        q = q.replace(/\bs[a-z]?\.?(\d[\d.-]*)/, 'sn$1');
+        q = q.replace(/(^|[^-])\bm[a-z]?\.?(\d[\d.-]*)/, '$1mn$2');
+        q = q.replace(/(^|[^-])\bd[a-z]?\.?(\d[\d.-]*)/, '$1dn$2');
+        q = q.replace(/(^|[^-])\ba[a-z]?\.?(\d[\d.-]*)/, '$1an$2');
         return q;
     }
 
@@ -103,8 +123,9 @@
             return { type: 'text', id: 'pli-tv-' + side + '-vb-' + rest };
         }
 
-        // Khandhaka / Parivara.
-        if (/^(kd|pvr)\d+/.test(q)) return { type: 'text', id: 'pli-tv-' + q };
+        // Khandhaka / Parivara. "$" — та же причина, что у KN_EXTRA/ABHI ниже: без него это
+        // была бы проверка "начинается с kd+цифры", не "целиком kd+цифры".
+        if (/^(kd|pvr)\d+$/.test(q)) return { type: 'text', id: 'pli-tv-' + q };
 
         // Bare nikaya name (whole book, e.g. "sn", "mn", "dhp") or nikaya + chapter number
         // with no sub-number (e.g. "sn25", "an11") — a chapter, not a single text.
@@ -117,11 +138,18 @@
         // SCOPE_GROUPS, реальные префиксы из dg_db_light.json) — раньше ввод вроде "ja1" здесь
         // ни на что не матчился и улетал в обычный поиск по буквальной строке "ja1" вместо
         // прямого перехода к тексту. Тот же паттерн text/chapter, что и для остальных книг выше.
+        // Владелец поймал живьём: "ya" (и, видимо, "ja" — те же короткие 2-буквенные коды)
+        // перехватывало обычные слова, начинающиеся на эти буквы, вместо обычного поиска — без
+        // "$" на конце regex.test() был обычным ПОИСКОМ ПОДСТРОКИ (совпадает, если q НАЧИНАЕТСЯ
+        // с "ja"/"ya"/..., неважно, что дальше), а не полным совпадением. Слово вроде "yathā"
+        // (или что угодно на "ja"/"ya"...) утекало сюда и превращалось в переход на раздел "ya"
+        // вместо поиска. Добавлен "$" — совпадает только голый код (переход на раздел) ИЛИ код +
+        // цифры без хвоста (конкретный текст), как и написано в комментарии выше.
         var KN_EXTRA = ['ja', 'mil', 'tha-ap', 'thi-ap', 'vv', 'pv', 'cp', 'bv', 'ps', 'ne', 'cnd', 'mnd', 'kp', 'pe'];
         var ABHI = ['ds', 'dt', 'kv', 'patthana', 'pp', 'vb', 'ya'];
-        var otherBookRe = new RegExp('^(' + KN_EXTRA.concat(ABHI).join('|') + ')');
-        if (otherBookRe.test(q)) {
-            var otherMatch = q.match(new RegExp('^(' + KN_EXTRA.concat(ABHI).join('|') + ')(\\d+)?'));
+        var otherBookRe = new RegExp('^(' + KN_EXTRA.concat(ABHI).join('|') + ')(\\d+)?$');
+        var otherMatch = q.match(otherBookRe);
+        if (otherMatch) {
             return otherMatch[2] ? { type: 'text', id: q } : { type: 'chapter', id: otherMatch[1] };
         }
 
@@ -136,5 +164,5 @@
         return { type: 'search', query: original };
     }
 
-    global.DgTextRouter = { normalize: normalize, classify: classify };
+    global.DgTextRouter = { normalize: normalize, classify: classify, layoutFix: layoutFix };
 })(typeof window !== 'undefined' ? window : this);
