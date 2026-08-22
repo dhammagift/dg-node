@@ -509,7 +509,17 @@ function lazyLoadStandaloneScripts(lang = 'en') {
     dbLoadPromise = new Promise((resolve) => {
         const loadingId = 'dict-loading-' + Date.now();
         let slowLoadTriggered = false;
-        
+        let settled = false;
+
+        const removeLoader = () => {
+            if (!slowLoadTriggered) return;
+            const el = document.getElementById(loadingId);
+            if (el) {
+                el.classList.remove('show');
+                setTimeout(() => el.remove(), 300);
+            }
+        };
+
         // Запускаем таймер
         const slowLoadTimer = setTimeout(() => {
             slowLoadTriggered = true;
@@ -521,6 +531,21 @@ function lazyLoadStandaloneScripts(lang = 'en') {
             setTimeout(() => loadingEl.classList.add('show'), 10);
         }, 150);
 
+        // These files are several MB each — on a stalled/dropped connection a script tag can
+        // sit forever with neither onload nor onerror firing, which used to leave the "loading"
+        // indicator on screen indefinitely (owner report: "dictionary loading never goes away").
+        // A hard timeout guarantees the promise always settles either way.
+        const hardTimeout = setTimeout(() => {
+            if (settled) return;
+            settled = true;
+            clearTimeout(slowLoadTimer);
+            removeLoader();
+            dbLoadPromise = null; // allow retry on the next word click, don't cache a stuck state
+            showDictError(window.isRu ? 'Не удалось загрузить словарь. Попробуйте ещё раз.' : "Couldn't load the dictionary. Try again.");
+            resolve(slowLoadTriggered);
+        }, 25000);
+
+        let anyFailed = false;
         const loadPromises = scriptsToLoad.map(src => {
             return new Promise((scriptResolve) => {
                 const script = document.createElement('script');
@@ -529,21 +554,25 @@ function lazyLoadStandaloneScripts(lang = 'en') {
                     scriptCache.set(src, true);
                     scriptResolve();
                 };
-                script.onerror = () => scriptResolve(); 
+                script.onerror = () => { anyFailed = true; scriptResolve(); };
                 document.head.appendChild(script);
             });
         });
 
         Promise.all(loadPromises).then(() => {
-            clearTimeout(slowLoadTimer); 
-            
-            // Если плашка успела появиться - убираем её
-            if (slowLoadTriggered) {
-                const el = document.getElementById(loadingId);
-                if (el) {
-                    el.classList.remove('show');
-                    setTimeout(() => el.remove(), 300);
-                }
+            if (settled) return; // hard timeout already resolved this
+            settled = true;
+            clearTimeout(hardTimeout);
+            clearTimeout(slowLoadTimer);
+            removeLoader();
+
+            // A real script failure (404, blocked, network drop) used to be swallowed silently —
+            // the loader would disappear looking successful, but the dictionary just wouldn't
+            // work with no explanation. Don't cache that as a finished load, so the next word
+            // click retries instead of silently doing nothing forever.
+            if (anyFailed) {
+                dbLoadPromise = null;
+                showDictError(window.isRu ? 'Не удалось загрузить словарь. Попробуйте ещё раз.' : "Couldn't load the dictionary. Try again.");
             }
             // Передаем статус "медленности" наружу
             resolve(slowLoadTriggered);
@@ -551,6 +580,22 @@ function lazyLoadStandaloneScripts(lang = 'en') {
     });
 
     return dbLoadPromise;
+}
+
+function showDictError(text) {
+    // Reuses the shared .dict-loading-indicator box (assets/css/extrastyles.css, legacy-shared)
+    // rather than adding a new CSS rule there for one nodejs-only state — inline accent instead.
+    const el = document.createElement('div');
+    el.className = 'dict-loading-indicator';
+    el.style.borderColor = '#c0392b';
+    el.style.color = '#c0392b';
+    el.textContent = text;
+    document.body.appendChild(el);
+    setTimeout(() => el.classList.add('show'), 10);
+    setTimeout(() => {
+        el.classList.remove('show');
+        setTimeout(() => el.remove(), 300);
+    }, 4000);
 }
 
 
@@ -712,9 +757,9 @@ function createPopup() {
     dictBtn.className = 'dict-btn popup-action-btn popup-dict-btn';
     dictBtn.target = '_blank';
     dictBtn.title = 'Open in dict.dhamma.gift (Right-click or Long-tap for Grammar)';
-    dictBtn.innerHTML = `<img src="/assets/svg/dpd-logo-dark.svg" width="18" height="18">`;
+    dictBtn.innerHTML = `<img src="/assets/svg/dg-logo-dark.svg" width="18" height="18" alt="DG">`;
 
-    // Обработчик правого клика и нативного долгого тапа на мобильных
+    // Обработчик правого клика
     dictBtn.addEventListener('contextmenu', (e) => {
         e.preventDefault();
         const word = dictBtn.dataset.grammarWord || '';
@@ -723,6 +768,23 @@ function createPopup() {
             window.open(url, '_blank');
         }
     });
+
+    // Forced long-tap handler for mobile — mirrors legacy assets/js/paliLookup.js, was
+    // missing here so mobile users had no way to reach the grammar parse.
+    let longPressTimer;
+    dictBtn.addEventListener('touchstart', (e) => {
+        longPressTimer = setTimeout(() => {
+            e.preventDefault();
+            const word = dictBtn.dataset.grammarWord || '';
+            if (word) {
+                const url = `https://dharmamitra.org/translate?translate_mode=explain-grammar&input_sentence=${encodeURIComponent(word)}`;
+                window.open(url, '_blank');
+            }
+        }, 600);
+    });
+
+    dictBtn.addEventListener('touchend', () => clearTimeout(longPressTimer));
+    dictBtn.addEventListener('touchmove', () => clearTimeout(longPressTimer));
 
     // Обработчик клика колесиком мыши
     dictBtn.addEventListener('auxclick', (e) => {
@@ -925,32 +987,37 @@ function getPopup() {
 
 let dictionaryVisible = localStorage.getItem('dictionaryVisible') === null ? true : localStorage.getItem('dictionaryVisible') === 'true';
 
-const toggleBtn = document.querySelector('.toggle-dict-btn img');
-if (dictionaryVisible) {
-  toggleBtn.src = "/assets/svg/comment.svg";
-} else {
-  toggleBtn.src = "/assets/svg/comment-slash.svg";
-  clearParams();
+// Two .toggle-dict-btn buttons exist in the DOM at once (search-results toolbar AND reader
+// toolbar, search/index.html — only one is visible at a time depending on body.dg-state-*, same
+// setup as .toggle-mode-btn, see dgApplyColumnMode()/settings.js). document.querySelector only
+// ever grabbed the FIRST one and bound a direct listener to it — clicking the OTHER (typically
+// the reader's, since results loads first) did nothing, and its icon never updated, always
+// showing "on" (owner report). Delegated click + updating every match, mirroring the
+// .toggle-mode-btn pattern already established in settings.js for the exact same duplication.
+function applyDictToggleIcon() {
+  document.querySelectorAll('.toggle-dict-btn img').forEach((img) => {
+    img.src = dictionaryVisible ? "/assets/svg/comment.svg" : "/assets/svg/comment-slash.svg";
+  });
 }
+applyDictToggleIcon();
+if (!dictionaryVisible) clearParams();
 
-toggleBtn.addEventListener('click', () => {
+function toggleDictionaryVisible() {
   dictionaryVisible = !dictionaryVisible;
   localStorage.setItem('dictionaryVisible', dictionaryVisible);
-
-  if (dictionaryVisible) {
-  toggleBtn.src = "/assets/svg/comment.svg";
-        showBubbleNotification("Dictionary On");
-
-} else {
-  toggleBtn.src = "/assets/svg/comment-slash.svg";
-        showBubbleNotification("Dictionary Off");
-
+  applyDictToggleIcon();
+  showBubbleNotification(dictionaryVisible ? "Dictionary On" : "Dictionary Off");
 }
+
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.toggle-dict-btn')) return;
+  e.preventDefault();
+  toggleDictionaryVisible();
 });
 
   document.addEventListener("keydown", (event) => {
     if (event.altKey && event.code === "KeyA") {
-      toggleBtn.click();
+      toggleDictionaryVisible();
     }
   });
 

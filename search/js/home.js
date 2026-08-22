@@ -758,12 +758,16 @@
         else localStorage.setItem('dhammaSearchScope', list.join(','));
     }
 
-    function toggleRow(label, on, onChange) {
+    function toggleRow(label, on, onChange, hotkey) {
         var b = document.createElement('button');
         b.type = 'button';
         b.className = 'dg-toggle-row';
         b.setAttribute('aria-pressed', on ? 'true' : 'false');
-        b.innerHTML = '<span class="dg-toggle-label">' + esc(label) + '</span>' +
+        // Owner: "нужно чтобы это было видимо пользователю что есть горячие клавиши" — the
+        // actual Alt+key each of these three already responds to (megareader.js's Alt+V for
+        // variants, settings.js's Alt+C for columns and Alt+. for punctuation), just never shown.
+        b.innerHTML = '<span class="dg-toggle-label">' + esc(label) +
+            (hotkey ? ' <span class="dg-toggle-hotkey">' + esc(hotkey) + '</span>' : '') + '</span>' +
             '<span class="dg-tgl" aria-hidden="true"></span>';
         b.addEventListener('click', function () {
             var next = b.getAttribute('aria-pressed') !== 'true';
@@ -1084,14 +1088,24 @@
                 var variantsOn = localStorage.getItem('variantVisibility') !== 'hidden';
                 host.appendChild(toggleRow(t('quick.variants', 'Варианты чтения'), variantsOn, function () {
                     variantsBtn.click();
-                }));
+                }, 'Alt+V'));
             }
             if (columnsBtn) {
                 var columnsOn = (localStorage.getItem('viewMode') || 'alternate') === 'columns';
                 host.appendChild(toggleRow(t('quick.columnMode', 'Режим колонок'), columnsOn, function () {
                     columnsBtn.click();
-                }));
+                }, 'Alt+C'));
             }
+            // Same localStorage key/live-reapply as the Apply button in settings.js
+            // (window.buildSutta/window.currentReaderSlug) — a real toggle here instead of
+            // only being reachable through the full /settings/ page.
+            var punctOn = localStorage.getItem('removePunct') === 'true';
+            host.appendChild(toggleRow(t('quick.hidePunct', 'Скрыть пунктуацию Pāḷi'), punctOn, function (next) {
+                localStorage.setItem('removePunct', String(next));
+                if (typeof window.buildSutta === 'function' && window.currentReaderSlug) {
+                    window.buildSutta(window.currentReaderSlug);
+                }
+            }, 'Alt+.'));
         }
 
         host.appendChild(groupTitle(t('quick.diacritics', 'Диакритика Pāḷi')));
@@ -1168,10 +1182,121 @@
     // ======================================================================
     // Боковое меню (выезжает слева)
     // ======================================================================
+    // Owner: "не нужны ru en r+r ee и т.п." — modeTable[key].label (Ru/En/R+R/E+E/Mem) is a
+    // presentational short code meant for the tight in-text mode-switch panel (scLink,
+    // megareader.js), not a real name. Proper title + description per row here instead,
+    // matching prod's actual settings-gear wording (Standard/Multi Trn/For Memorization/Multi
+    // Lang) — same deal as MODE_DESCRIPTIONS below, only here not in configs/search/lang_*.json:
+    // helper text local to this one list, not a general interface string.
+    // Owner: "стандарт не понятно... стандарт должно быть один перевод" + "на названия теперь
+    // много места так и пиши нормально, мульти перевод, мульти язык" — now that this list lives
+    // in the burger drawer (not a cramped floating modal), full clear words beat vague/short
+    // ones: "Standard" didn't say WHAT was standard, and "Multi Trn"/"Multi Lang" were only
+    // abbreviated because the old modal had no room.
+    // Owner: режимы — язык-независимые типы (single/multiTran/multiLang/memorize/devanagari),
+    // язык — отдельная ось (?lang=/?langs=, см. megareader.js). Поэтому описания больше не могут
+    // называть конкретный язык ("+ русский"/"+ английский") — они универсальны для любого языка.
+    var MODE_TITLES = {
+        single: { ru: 'Один перевод', en: 'One Translation' },
+        multiTran: { ru: 'Мульти перевод', en: 'Multi Translation' },
+        multiLang: { ru: 'Мульти язык', en: 'Multi Language' },
+        memorize: { ru: 'Для запоминания', en: 'For Memorization' },
+        devanagari: { ru: 'Деванагари', en: 'Devanagari' }
+    };
+    var MODE_DESCRIPTIONS = {
+        single: { ru: 'Pāḷi + перевод', en: 'Pāḷi + translation' },
+        multiTran: { ru: 'Pāḷi + перевод (2 переводчика)', en: 'Pāḷi + translation (2 translators)' },
+        multiLang: { ru: 'Pāḷi на нескольких языках перевода', en: 'Pāḷi in multiple translation languages' },
+        memorize: { ru: 'Мнемоника по первой букве', en: 'First-letter mnemonic' },
+        devanagari: { ru: 'Pāḷi в другом письме + Pāḷi латиницей', en: 'Pāḷi in another script + Pāḷi in Roman' }
+    };
+
+    /* Список режимов чтения в бургере — owner: "выводи первым делом режимы ридера", чтобы
+       можно было переключать/тестировать их без ручного ?mode= в адресе. Источник данных —
+       window.MODE_TABLE (reader/mode-table.json, тот же файл, что уже питает scLink в самом
+       тексте, megareader.js) — перерисовывается при КАЖДОМ открытии шторки, а не один раз, тем
+       же принципом, что buildQuickBody(): активный режим меняется без перезагрузки страницы. */
+    function makeModeRow(title, hotkey, desc, isActive, onClick) {
+        var row = document.createElement('button');
+        row.type = 'button';
+        row.className = 'dg-mode-row' + (isActive ? ' active' : '');
+        var top = document.createElement('span');
+        top.className = 'dg-mode-row-top';
+        var titleEl = document.createElement('span');
+        titleEl.textContent = title;
+        top.appendChild(titleEl);
+        // Owner: "нужно чтобы это было видимо пользователю что есть горячие клавиши" — same
+        // digit window.MODE_HOTKEY_DIGITS (settings.js) actually listens for, not decoration.
+        if (hotkey) {
+            var hk = document.createElement('span');
+            hk.className = 'dg-mode-row-hotkey';
+            hk.textContent = 'Alt+' + hotkey;
+            top.appendChild(hk);
+        }
+        row.appendChild(top);
+        if (desc) {
+            var descEl = document.createElement('span');
+            descEl.className = 'dg-mode-row-desc';
+            descEl.textContent = desc;
+            row.appendChild(descEl);
+        }
+        row.addEventListener('click', function () {
+            onClick();
+            closeDrawer();
+        });
+        return row;
+    }
+
+    function paintReaderModes() {
+        var section = document.getElementById('dg-drawer-modes');
+        var list = document.getElementById('dg-drawer-modes-list');
+        if (!section || !list) return;
+
+        var isReader = document.body.classList.contains('dg-state-reader');
+        var modeTable = window.MODE_TABLE;
+        var readerMode = window.READER_MODE;
+        if (!isReader || !modeTable || !readerMode) { section.hidden = true; return; }
+
+        section.hidden = false;
+        list.innerHTML = '';
+        var lang = menuLang() === 'ru' ? 'ru' : 'en';
+
+        // Owner: mode-table.json keys are language-independent types now (single/multiTran/
+        // multiLang/memorize/devanagari) — no more per-language duplicate keys (was st/mt/ml vs
+        // read/ee), so the "задублировались, пункты по два раза" family-filter this list used to
+        // need doesn't apply anymore: exactly one row per type, always. Switching the reading
+        // language is a separate, existing control (the language toggle), not this list's job.
+        // Owner: "в меню бургере вне зависимости от русского и английского языка должны быть в
+        // одинаковом порядке режимы... они должны быть расположены в том же порядке в котором
+        // идут их горячие клавиши" — sort by hotkey digit (settings.js — one source of truth for
+        // both), same order in every language.
+        var hotkeyDigits = window.MODE_HOTKEY_DIGITS || {};
+        var types = Object.keys(modeTable).filter(function (k) { return k !== 'availableLangs'; })
+            .sort(function (a, b) { return (hotkeyDigits[a] || 0) - (hotkeyDigits[b] || 0); });
+        types.forEach(function (type) {
+            var isActive = readerMode.modeKey === type;
+            var titleInfo = MODE_TITLES[type];
+            var title = titleInfo ? titleInfo[lang] : (modeTable[type].label || type);
+            var desc = MODE_DESCRIPTIONS[type];
+            list.appendChild(makeModeRow(title, hotkeyDigits[type], desc && desc[lang], isActive, function () {
+                if (!isActive && typeof window.switchReaderMode === 'function') {
+                    window.switchReaderMode(type);
+                }
+            }));
+        });
+
+        // Owner: "navigation если есть доп кнопки должен быть свернут" — the modes list above
+        // takes priority whenever it's showing (reader context); collapse Navigation so it
+        // doesn't visually compete with it every time the drawer opens.
+        var navDetails = document.querySelector('.dg-drawer-group');
+        if (navDetails) navDetails.open = false;
+    }
+
     function openDrawer() {
         var d = document.getElementById('dg-drawer');
         var b = document.getElementById('dg-drawer-backdrop');
         if (!d) return;
+        paintReaderModes();
         d.hidden = false;
         if (b) b.hidden = false;
         showLater(d, b);
@@ -1611,6 +1736,12 @@
             set: function (v) {
                 native.set.call(this, v);
                 syncInputChrome();
+                // Same reasoning as syncInputChrome above (this setter override exists
+                // specifically because programmatic .value writes fire no 'input' event) —
+                // renderHint() was missing here, so the "↵ search for X" hint went stale
+                // whenever the field was cleared/filled by code instead of typing (owner: back
+                // navigation left the previous word's hint showing even with an empty field).
+                renderHint();
             }
         });
     }
@@ -1918,6 +2049,24 @@
             : '/assets/common/privacy.html';
         privacy.textContent = t('footer.privacy', 'Политика конфиденциальности');
         host.appendChild(privacy);
+
+        // Ported from legacy config/translate.php ($poweredby/$tooltippoweredby) — "Powered by
+        // DI"/"Powered by NI" signature with a tooltip explaining the pun (Dhamma/Natural
+        // Intelligence), same text per language as prod.
+        host.appendChild(document.createTextNode(' · '));
+        host.appendChild(document.createTextNode(t('footer.poweredby', 'Powered by DI')));
+        var poweredTip = document.createElement('a');
+        poweredTip.href = 'javascript:void(0)';
+        poweredTip.className = 'dg-footer-link';
+        poweredTip.textContent = ' *';
+        poweredTip.setAttribute('data-bs-toggle', 'tooltip');
+        poweredTip.setAttribute('data-bs-placement', 'top');
+        poweredTip.setAttribute('data-bs-title', t('footer.poweredbyTooltip',
+            'Дхамма Интеллект, Dhamma Intelligence, Естественный Интеллект, Natural Intelligence'));
+        host.appendChild(poweredTip);
+        if (window.bootstrap && bootstrap.Tooltip) {
+            new bootstrap.Tooltip(poweredTip);
+        }
     }
 
     /* Приложения/расширения и контакты — перенос двух нижних блоков боевой главной. Данные
@@ -2074,6 +2223,13 @@
                 // Тот же путь, что у переключателя языка в остальном интерфейсе.
                 if (window.DHAMMA_I18N && window.DHAMMA_I18N.setLanguage) window.DHAMMA_I18N.setLanguage(v);
                 else localStorage.setItem('dhammaLanguage', v);
+                // Owner: "язык в бургере... интерфейс + 1ый язык перевода, чтобы он менял и
+                // язык чтения" — этот переключатель теперь не только язык интерфейса, но и
+                // "какой перевод читать первым" (megareader.js решает умно — переставляет
+                // колонки для многоязычных режимов, переключает режим для одноязычных).
+                if (currentState() === 'reader' && typeof window.switchReadingLanguage === 'function') {
+                    window.switchReadingLanguage(v);
+                }
             }
         ));
     }
@@ -2139,6 +2295,10 @@
         renderHowTo();
         renderLangSwitch();
         renderThemeSwitch();
+        // Owner screenshot: mode titles ("Standard"/"Multi Trn") stayed in the OLD language
+        // after clicking EN/RU inside an already-open drawer — paintReaderModes() only ran from
+        // openDrawer(), never on a live language switch while the drawer was already showing.
+        paintReaderModes();
         // Именно здесь, а не раньше: i18n только что проставил placeholder из перевода, и
         // случайная фраза должна лечь поверх него.
         applyRandomPlaceholder();

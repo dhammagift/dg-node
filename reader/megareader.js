@@ -19,16 +19,73 @@ const citation = document.getElementById("paliauto");
 const form = document.getElementById("form");
 
 // Режим — только ключ (window.READER_MODE.modeKey, см. reader-template.html: ?mode=). Что
-// означает ключ (columns/multiFor/family/label) знает ТОЛЬКО сервер: reader/mode-table.json
+// означает ключ (multiFor/dualScript/mnemonic/label) знает ТОЛЬКО сервер: reader/mode-table.json
 // резолвится в dg-light.js по ?mode=, а здесь та же таблица подгружается один раз ИСКЛЮЧИТЕЛЬНО
 // для презентационных нужд (панель ссылок, определение "это смена языка интерфейса?") — сама
 // buildSutta() отправляет на сервер только ?mode=, columns в рендере берутся из ОТВЕТА API, не
 // отсюда. Раньше columns/multiFor дублировались тут же (MODE_CONFIGS) — источник рассинхронизации.
-const READER_MODE_EXPLICIT = !!(window.READER_MODE && window.READER_MODE.modeKey);
-let READER_MODE = window.READER_MODE || { modeKey: null };
+// window.READER_MODE.modeKey was only ever populated by reader-template.html's own inline
+// script (the pre-SPA standalone reader page, kept only as reference — see CLAUDE.md/TODO.md).
+// The actual SPA (search/index.html) never sets it, so READER_MODE_EXPLICIT was always false
+// and an explicit ?mode=single in the URL got silently overwritten by the UI-language fallback
+// below (initReader()) on every load — owner report: "single-language mode should follow the
+// first configured language, multi-language the rest" ended up ignoring ?mode= entirely.
+// Reading it straight from the URL here closes that gap for the SPA the same way the old
+// template's inline script did.
+const modeFromUrl = new URLSearchParams(window.location.search).get('mode');
+const langFromUrl = new URLSearchParams(window.location.search).get('lang');
+const READER_MODE_EXPLICIT = !!(window.READER_MODE && window.READER_MODE.modeKey) || !!modeFromUrl;
+let READER_MODE = window.READER_MODE || {};
+if (!READER_MODE.modeKey && modeFromUrl) READER_MODE.modeKey = modeFromUrl;
+// Same deal for lang — without this, a fresh load of e.g. ?mode=single&lang=en had no
+// READER_MODE.lang yet on the FIRST buildSutta() call (nothing sets it before then), so that
+// first request went out with no lang= at all and fell through to the server's bare fallback.
+if (!READER_MODE.lang && langFromUrl) READER_MODE.lang = langFromUrl;
+// `let` (unlike `var`) does NOT auto-publish to window — external code (home.js's reader-modes
+// list in the burger drawer) needs to read the CURRENT mode, so keep this the SAME object
+// (not a copy) window.READER_MODE points to; every later `READER_MODE.modeKey = ...` elsewhere
+// in this file mutates the object in place, so the reference below stays live automatically.
+window.READER_MODE = READER_MODE;
 window.modeTableReady = fetch('/reader/mode-table.json')
     .then(r => r.json())
     .then(data => { window.MODE_TABLE = data; return data; });
+
+// Owner: the burger's EN/RU switch should also change "reading language" (which translation
+// leads), not just interface strings — but for a mode that already shows several languages at
+// once (ml: Pāḷi+Ru+En), switching should REORDER them (chosen language first, rest untouched
+// in the order the user already has), not drop the mode down to a single language. This is the
+// order that survives that reordering — read by reorderColumnsByLangOrder() below, only ever
+// applied on top of whatever columns the server actually returned (never invents a language the
+// server didn't send).
+const LANG_ORDER_KEY = 'dgReadingLangOrder';
+function getLangOrder() {
+    try { const v = JSON.parse(localStorage.getItem(LANG_ORDER_KEY)); return Array.isArray(v) ? v : []; }
+    catch (e) { return []; }
+}
+function setLangOrderFirst(lang, fallbackColumns) {
+    const base = getLangOrder().length ? getLangOrder() : (fallbackColumns || []);
+    const next = [lang, ...base.filter(l => l !== lang)];
+    try { localStorage.setItem(LANG_ORDER_KEY, JSON.stringify(next)); } catch (e) { /* приватный режим */ }
+}
+// Языки, которых нет в сохранённом порядке (юзер ещё не переключал), остаются в порядке сервера
+// — так сохранённый порядок только переставляет "первый", а не переизобретает весь список.
+function reorderColumnsByLangOrder(cols) {
+    const order = getLangOrder();
+    if (!order.length) return cols;
+    const known = order.filter(l => cols.includes(l));
+    const rest = cols.filter(l => !known.includes(l));
+    return [...known, ...rest];
+}
+
+// Mode-table.json entries are pure behavior flags now (mnemonic/dualScript/multiFor) — no
+// per-language duplicate keys (mem/mem_en etc. are gone, see 'memorize'/'devanagari'). Language
+// is a fully separate axis (?lang=/?langs=), so these checks work identically in any language.
+function isMnemonicMode(modeKey) {
+    return !!(window.MODE_TABLE && window.MODE_TABLE[modeKey] && window.MODE_TABLE[modeKey].mnemonic);
+}
+function isDualScriptMode(modeKey) {
+    return !!(window.MODE_TABLE && window.MODE_TABLE[modeKey] && window.MODE_TABLE[modeKey].dualScript);
+}
 
 // Человеко-читаемые имена переводчиков (с HTML-ссылками, напр. "o" -> <a href=...>o</a>) —
 // как в legacy common.js: window.siteTranslators, из /assets/js/translators.json. Это НЕ
@@ -233,6 +290,146 @@ window.applyRemovePunct = function(dataObj, segment) {
     }
 };
 
+// === MEMORIZE MODE — first-letter mnemonic ===
+// Ported from prod's read/js/memorize.js (преобразоватьТекст) — reduces each Pali word down to
+// its first letter, wrapping it in a clickable/hoverable .mem-trigger that reveals the full
+// word in a popup bubble (showBubble below). Numbers and punctuation are kept mostly intact
+// (split out so they don't get swallowed as "words").
+function transformToMnemonic(rawText) {
+    const lines = rawText.split('\n');
+    const result = lines.map(line => {
+        const spaced = line
+            .replace(/"/g, ' " ').replace(/—/g, ' — ').replace(/“/g, ' “ ')
+            .replace(/‘/g, " ‘ ").replace(/\?/g, " ? ").replace(/,/g, " , ")
+            .replace(/\./g, " . ").replace(/:/g, " : ").replace(/;/g, " ; ");
+        const words = spaced.split(/\s+/).map(word => {
+            if (word.match(/\p{N}/u)) return word.replace(/[^\p{N}\-]/gu, '');
+            const firstLetter = word.match(/^\p{L}/u);
+            if (firstLetter) {
+                const cleanWord = word.replace(/['"“‘]/g, '');
+                return `<span class="mem-trigger" lang="pi" data-word="${cleanWord}" `
+                    + `onclick="showBubble(this, event)" onmouseenter="handleBubbleHover(this, event)" `
+                    + `onmouseleave="handleBubbleLeave(this, event)">${firstLetter[0]}</span>`;
+            }
+            const symbol = word.match(/^[\p{M}\p{N}\p{S}\p{P}]/u);
+            return symbol ? symbol[0] : '';
+        });
+        const joined = words.join(' ')
+            .replace(/ \?/g, '?').replace(/“ /g, '').replace(/ ,/g, ', ')
+            .replace(/ \. /g, '. ').replace(/ : /g, ': ').replace(/ ; /g, '; ')
+            .replace(/ ‘ /g, ' ');
+        return joined.replace(/(\d+)[.,;:]/g, '$1');
+    });
+    return result.join('\n');
+}
+
+// === MEMORIZE MODE — word-reveal bubble ===
+// Same interaction as prod: click/tap pins the bubble open (and forwards a mouseup+click into
+// it so the dictionary lookup fires on the revealed word, same as selecting text normally);
+// hover (mouse only, not touch — touchstart sets lastMemoTouchTime so a phantom hover from the
+// tap itself doesn't also open/close it) shows it temporarily and closes on mouseleave.
+let memHoverTimeout;
+let lastMemoTouchTime = 0;
+document.addEventListener('touchstart', () => { lastMemoTouchTime = Date.now(); }, { capture: true, passive: true });
+
+window.showBubble = function (element, event, isHover = false) {
+    if (event) event.stopPropagation();
+    const now = Date.now();
+    const isTouch = (now - lastMemoTouchTime < 500);
+
+    if (element.classList.contains('mem-active')) {
+        if (isHover) { clearTimeout(memHoverTimeout); return; }
+        const openedAt = parseInt(element.dataset.openedAt || '0', 10);
+        if (isTouch && (now - openedAt < 300)) return;
+        const existingBubble = document.querySelector('.mem-bubble');
+        if (existingBubble) {
+            existingBubble.dataset.pinned = 'true';
+            const range = document.createRange();
+            range.selectNodeContents(existingBubble);
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(range);
+            existingBubble.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true, view: window }));
+            existingBubble.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
+            return;
+        }
+    }
+
+    if (isHover && isTouch) return;
+    window.removeBubbles();
+
+    const word = element.getAttribute('data-word');
+    if (!word) return;
+
+    element.classList.add('mem-active');
+    element.dataset.openedAt = now.toString();
+
+    const bubble = document.createElement('div');
+    bubble.className = 'mem-bubble tts-ignore pli-lang';
+    bubble.dataset.pinned = isHover ? 'false' : 'true';
+    bubble.setAttribute('lang', 'pi');
+    const parentSegment = element.closest('[id]');
+    if (parentSegment) bubble.dataset.segmentId = parentSegment.id;
+    bubble.innerText = word;
+
+    bubble.addEventListener('mouseenter', () => { clearTimeout(memHoverTimeout); });
+    bubble.addEventListener('mouseleave', () => {
+        if (bubble.dataset.pinned === 'false') window.removeBubbles();
+    });
+
+    document.body.appendChild(bubble);
+
+    const rect = element.getBoundingClientRect();
+    const bubbleRect = bubble.getBoundingClientRect();
+    const scrollX = window.scrollX || window.pageXOffset;
+    const scrollY = window.scrollY || window.pageYOffset;
+    const triggerCenter = rect.left + (rect.width / 2);
+    let leftPos = triggerCenter - (bubbleRect.width / 2);
+    const padding = 10;
+    if (leftPos < padding) leftPos = padding;
+    if (leftPos + bubbleRect.width > window.innerWidth - padding) leftPos = window.innerWidth - bubbleRect.width - padding;
+
+    bubble.style.left = (leftPos + scrollX) + 'px';
+    bubble.style.top = (rect.top + scrollY) + 'px';
+    bubble.style.setProperty('--arrow-x', (triggerCenter - leftPos) + 'px');
+
+    requestAnimationFrame(() => bubble.classList.add('visible'));
+};
+
+window.handleBubbleHover = function (element, event) { window.showBubble(element, event, true); };
+
+window.handleBubbleLeave = function () {
+    const isTouch = (Date.now() - lastMemoTouchTime < 500);
+    if (isTouch) return;
+    memHoverTimeout = setTimeout(() => {
+        const bubble = document.querySelector('.mem-bubble');
+        if (bubble && bubble.dataset.pinned === 'true') return;
+        window.removeBubbles();
+    }, 200);
+};
+
+window.removeBubbles = function () {
+    const selection = window.getSelection();
+    let shouldClearSelection = false;
+    if (selection && selection.rangeCount > 0) {
+        let node = selection.anchorNode;
+        if (node && node.nodeType === 3) node = node.parentNode;
+        if (node && node.closest('.mem-bubble')) shouldClearSelection = true;
+    }
+    document.querySelectorAll('.mem-bubble').forEach(el => el.remove());
+    document.querySelectorAll('.mem-trigger.mem-active').forEach(el => {
+        el.classList.remove('mem-active');
+        el.removeAttribute('data-opened-at');
+    });
+    if (shouldClearSelection) selection.removeAllRanges();
+};
+
+document.addEventListener('click', (event) => {
+    if (event.target.closest('.mem-bubble')) return;
+    window.removeBubbles();
+});
+document.addEventListener('scroll', () => window.removeBubbles(), true);
+
 window.generateThirdPartyLinks = function(slug, slugReady, texttype, translator) {
     let scLink = "";
     
@@ -389,21 +586,48 @@ document.addEventListener('keydown', (event) => {
 // заново после buildSutta(), READER_MODE.columns затем перезаписывается его ответом.
 window.switchReaderMode = function(modeKey, event) {
     if (event) event.preventDefault();
-    const config = (window.MODE_TABLE && window.MODE_TABLE[modeKey]) || { columns: [modeKey] };
-    const previousLang = READER_MODE.columns ? READER_MODE.columns[0] : null;
     READER_MODE.modeKey = modeKey;
 
+    // Owner: memorize mode (first-letter mnemonic) should default to punctuation removed — raw
+    // punctuation just adds visual noise between the letter-triggers. A DEFAULT, not a lock:
+    // only sets it the first time (localStorage key never touched before) — once the user has
+    // an explicit preference either way, that wins. Same check runs on a cold ?mode=memorize
+    // load too, see buildSutta() below.
+    if (isMnemonicMode(modeKey) && localStorage.getItem('removePunct') === null) {
+        localStorage.setItem('removePunct', 'true');
+    }
+
+    // Owner: mode TYPE and language are fully orthogonal now — switching type (single, memorize,
+    // devanagari, ...) never touches ?lang=. Whatever language the URL already had stays as-is;
+    // switchReadingLanguage() below is the only thing that changes it.
     let params = new URLSearchParams(document.location.search);
     params.set('mode', modeKey);
-    const newLang = config.columns[0];
-    if (newLang && newLang !== previousLang) {
-        // Кросс-языковой переход (En/Ru) — язык интерфейса должен смениться вместе с текстом,
-        // как при обычной смене языка (dhamma-i18n.js сам пишет localStorage.dhammaLanguage).
-        params.set('lang', newLang);
-        if (typeof window.setSiteLanguage === 'function') window.setSiteLanguage(newLang);
-    }
     history.pushState({ page: window._currentSlug, mode: modeKey }, "", `?${params.toString()}`);
 
+    if (window._currentSlug) window.buildSutta(window._currentSlug);
+};
+
+// Owner: "язык в бургере... интерфейс + 1ый язык перевода. чтобы он менял и язык чтения, но
+// остальные оставлял в выбранном пользователем порядке" — the EN/RU toggle should also move the
+// reader to that language. Since mode TYPE no longer encodes a language at all (no more
+// st/read, mt/ee per-language duplicate keys — see switchReaderMode above), there's no longer a
+// "jump to the equivalent mode in the other family" step needed: the mode key stays exactly the
+// same, only ?lang= (or column order, for multi-language modes) changes.
+window.switchReadingLanguage = function (lang) {
+    const config = window.MODE_TABLE && window.MODE_TABLE[READER_MODE.modeKey];
+    if (!config) return;
+    const cols = READER_MODE.columns || [];
+    if (READER_MODE.lang === lang) return;
+
+    // Owner: "lang - это язык интерфейса и первый язык в списке" — ?lang= always tracks the
+    // FIRST/primary language, even in multi-language modes (reordering columns IS changing lang).
+    READER_MODE.lang = lang;
+    setLangOrderFirst(lang, cols);
+    let params = new URLSearchParams(document.location.search);
+    params.set('lang', lang);
+    if (cols.length > 1) params.delete('langs'); // let it re-derive from the fresh column order below, not a stale explicit langs=
+    history.pushState({ page: window._currentSlug, mode: READER_MODE.modeKey }, "", `?${params.toString()}`);
+    if (typeof window.setSiteLanguage === 'function') window.setSiteLanguage(lang);
     if (window._currentSlug) window.buildSutta(window._currentSlug);
 };
 
@@ -506,25 +730,58 @@ function getSkeletonHTML() {
 window.buildSutta = async function(rawSlug) {
     const slug = window.normalizeSlugToDbKey(rawSlug);
     window._currentSlug = slug;
-    if (suttaArea) suttaArea.innerHTML = getSkeletonHTML();
+    // Owner: the skeleton is only useful when the reader is opening cold (nothing on screen
+    // yet) — swapping an ALREADY-rendered sutta out for a skeleton while the next one loads
+    // (prev/next navigation, mode switch) reads as losing the text that was just there, not as
+    // a loading state. Only show it when suttaArea doesn't already hold a real rendered sutta
+    // (the skeleton's own wrapper doesn't count as "real" either, in case two loads overlap).
+    const hasRealContent = suttaArea && suttaArea.innerHTML.trim() !== ''
+        && !suttaArea.querySelector('.dg-sutta-skeleton');
+    if (suttaArea && !hasRealContent) suttaArea.innerHTML = getSkeletonHTML();
 
     let suttaData;
     try {
-        // Клиент шлёт только modeKey — что он означает (columns/multiFor/приоритет
-        // переводчика) решает сервер (reader/mode-table.json, dg-light.js), не мы. Если в URL
-        // явно передан langs= — ручной оверрайд конкретных языков контента независимо от
-        // ?mode=/mode-table.json (сервер уже принимает и приоритизирует его над mode, см.
-        // /api/text/:suttaId в dg-light.js) — НЕ путать с ?lang= (без "s"): тот отдельно
-        // выбирает язык ИНТЕРФЕЙСА (dhamma-i18n.js/window.setSiteLanguage), другая ось.
+        // Клиент шлёт modeKey (поведение: multiFor/dualScript/mnemonic — решает сервер, см.
+        // reader/mode-table.json/dg-light.js) + lang (какой язык). Явный ?langs= в URL —
+        // ручной оверрайд набора языков, работает независимо от ?mode=/?lang= (см.
+        // /api/text/:suttaId в dg-light.js).
         const explicitLangs = new URLSearchParams(document.location.search).get('langs');
-        const langsQuery = explicitLangs
-            ? `langs=${encodeURIComponent(explicitLangs)}`
-            : `mode=${encodeURIComponent(READER_MODE.modeKey)}`;
+        let langsQuery;
+        if (explicitLangs) {
+            langsQuery = `langs=${encodeURIComponent(explicitLangs)}`;
+        } else if (READER_MODE.modeKey === 'multiLang') {
+            // Набор языков для multiLang — из уже сохранённого порядка пользователя
+            // (getLangOrder(), тот же, что реордерит колонки). Owner: "не хардкодить языки" —
+            // при первом заходе (порядок ещё не сохранён) единственный честный дефолт —
+            // текущий язык + следующий РЕАЛЬНО доступный на сайте (availableLangs, см.
+            // dg-light.js — сканируется из configs/reader/lang_*.json, не список в коде).
+            // Отправляем ТОЛЬКО langs= (её первый элемент и есть текущий/первый язык) — не
+            // добавляем отдельный lang=, чтобы сервер не путался, какой из двух главнее.
+            let langs = getLangOrder();
+            if (!langs.length) {
+                langs = READER_MODE.lang ? [READER_MODE.lang] : [];
+                const available = window.MODE_TABLE && window.MODE_TABLE.availableLangs;
+                const next = Array.isArray(available) && available.find(l => l !== READER_MODE.lang);
+                if (next) langs.push(next);
+            }
+            langsQuery = `mode=${encodeURIComponent(READER_MODE.modeKey)}` +
+                (langs.length ? `&langs=${encodeURIComponent(langs.join(','))}` : '');
+        } else {
+            const langParam = READER_MODE.lang ? `&lang=${encodeURIComponent(READER_MODE.lang)}` : '';
+            langsQuery = `mode=${encodeURIComponent(READER_MODE.modeKey)}${langParam}`;
+        }
         // Система письма пали (Aksharamukha, см. dg-light.js) — явный ?script= в адресе
         // побеждает, иначе берём сохранённое в /settings/ значение по умолчанию
         // (localStorage.selectedScript); "ISOPali" — исходная латиница, конвертировать не нужно.
+        // Owner: dualScript mode (dev/dev_en — the real "Devanagari mode", two Pali lines in
+        // two scripts) needs SOME non-Latin script to show even if the user never touched the
+        // /settings/ script picker — defaults to Devanagari (its namesake) only in that case;
+        // every other mode's "no script chosen" default (stay Latin) is untouched.
+        const dualScriptModeActive = !!(window.MODE_TABLE && window.MODE_TABLE[READER_MODE.modeKey]
+            && window.MODE_TABLE[READER_MODE.modeKey].dualScript);
         const scriptParam = (new URLSearchParams(document.location.search).get('script')
-            || localStorage.getItem('selectedScript') || '').toLowerCase();
+            || localStorage.getItem('selectedScript')
+            || (dualScriptModeActive ? 'devanagari' : '')).toLowerCase();
         const scriptQuery = (scriptParam && scriptParam !== 'isopali') ? `&script=${encodeURIComponent(scriptParam)}` : '';
         const apiUrl = `/api/text/${encodeURIComponent(slug)}?${langsQuery}${scriptQuery}`;
         const response = await fetch(apiUrl);
@@ -543,15 +800,17 @@ window.buildSutta = async function(rawSlug) {
         return false;
     }
 
-    // Порядок языков-колонок — из ОТВЕТА сервера, не из локального конфига: сервер уже
-    // резолвил modeKey → columns, дублировать эту логику на клиенте незачем.
-    const columns = suttaData.columns || [];
+    // Порядок языков-колонок — из ОТВЕТА сервера (сервер уже резолвил modeKey → columns), но
+    // ПЕРЕСТАВЛЕН по сохранённому предпочтению пользователя (какой язык должен идти первым —
+    // см. LANG_ORDER_KEY выше): состав колонок остаётся серверным, меняется только их порядок.
+    const columns = reorderColumnsByLangOrder(suttaData.columns || []);
     READER_MODE.columns = columns; // кэш последнего известного состояния — для switchReaderMode
+    READER_MODE.lang = suttaData.lang || columns[0] || READER_MODE.lang; // сервер резолвил язык явно, см. dg-light.js
 
     const texttype = suttaData.category || "sutta";
     let params = new URLSearchParams(document.location.search);
 
-    let htmlData = {}, paliData = {}, varData = {};
+    let htmlData = {}, paliData = {}, varData = {}, paliIsoData = {};
     // transEntriesByLang.ru = [{translatorId, data:{segmentId: text, ...}}, ...] — сервер сам
     // решает сколько переводчиков вернуть на язык (обычно один, несколько для multiFor —
     // mt/multi), клиент просто перечисляет реально пришедшие ключи "${lang}_*" по всем
@@ -579,6 +838,9 @@ window.buildSutta = async function(rawSlug) {
         htmlData[seg.segment] = seg.html || "{}";
         paliData[seg.segment] = seg.root_text || undefined;
         varData[seg.segment] = seg.variant || undefined;
+        // dualScript mode only (dev/dev_en) — the original ISO/Latin Pali line, kept alongside
+        // the script-converted paliData above (see dg-light.js's root_text_iso stash).
+        paliIsoData[seg.segment] = seg.root_text_iso || undefined;
 
         columns.forEach(lang => {
             transEntriesByLang[lang].forEach(entry => {
@@ -627,6 +889,15 @@ window.buildSutta = async function(rawSlug) {
     // Pāḷi/Рус) от byline/заголовков с тем же .pli-lang, которые всегда должны быть видны
     // (см. #sutta.hide-pali .pli-lang.quote в uiextra.css).
     const pliClass = "pli-lang inputscript-ISOPali quote";
+    // Scopes the memorize-only CSS (bigger .pli-lang, .mem-trigger/.mem-bubble, etc. — see
+    // reader/css/uiextra.css) so it doesn't leak into every other mode's normal rendering.
+    const isMemModeRender = isMnemonicMode(READER_MODE.modeKey);
+    document.body.classList.toggle('dg-mode-mem', isMemModeRender);
+    // Same "default, not a lock" as switchReaderMode() — covers a cold load straight into
+    // ?mode=memorize (bookmark, shared link), which never goes through that function.
+    if (isMemModeRender && localStorage.getItem('removePunct') === null) {
+        localStorage.setItem('removePunct', 'true');
+    }
 
     for (let i = 0; i < segments.length; i++) {
         let segment = segments[i];
@@ -643,6 +914,16 @@ window.buildSutta = async function(rawSlug) {
         var fullUrlWithAnchor = window.location.href.split('#')[0] + '#' + anchor;
 
         window.applyRemovePunct(paliData, segment);
+        // Matches prod's devanagari.js (applyRemovePunct called on BOTH lines) — the ISO/Latin
+        // second line gets the same punctuation-removal treatment as the converted-script line.
+        window.applyRemovePunct(paliIsoData, segment);
+        // Captured BEFORE the search-highlight block below wraps matches in <b> tags — the
+        // mnemonic transform (transformToMnemonic) splits on punctuation/whitespace and would
+        // shred an HTML tag into garbage "words". Same ordering as prod's memorize.js (its copy
+        // is taken before highlighting runs there too).
+        const isMemMode = isMnemonicMode(READER_MODE.modeKey);
+        const memRawPali = isMemMode && paliData[segment] !== undefined ? paliData[segment] : null;
+        const isDevMode = isDualScriptMode(READER_MODE.modeKey);
 
         let finder = (params.get("s") || "").replace(/ṃ/g, "ṁ");
         if (finder && finder.trim() !== "") {
@@ -665,8 +946,17 @@ window.buildSutta = async function(rawSlug) {
 
         let inner = '';
         if (paliData[segment] !== undefined) {
-            inner += `<span class="${pliClass}" lang="pi">${linkToCopyStart}${paliData[segment].trim()}${linkToCopy}`;
-            if (varData[segment] !== undefined && varData[segment] !== '') {
+            // Memorize mode: main line is the first-letter mnemonic (dict-ignore — clicking a
+            // letter opens the word-reveal bubble via its own onclick, not the dictionary
+            // popup), variant line skipped (not part of the memorization drill).
+            const pliContent = isMemMode && memRawPali !== null
+                ? transformToMnemonic(memRawPali.trim())
+                : paliData[segment].trim();
+            const pliSpanClass = isMemMode ? pliClass + ' dict-ignore' : pliClass;
+            inner += `<span class="${pliSpanClass}" lang="pi">${linkToCopyStart}${pliContent}${linkToCopy}`;
+            // dualScript mode (dev/dev_en): variant stays attached to the ISO/Latin line below
+            // (matches prod's devanagari.js), not the script-converted main line here.
+            if (!isMemMode && !isDevMode && varData[segment] !== undefined && varData[segment] !== '') {
                 inner += `<font class="variant"><br>${linkToCopyStart}${varData[segment].trim()}${linkToCopy}</font>`;
             }
             inner += `</span>`;
@@ -678,17 +968,48 @@ window.buildSutta = async function(rawSlug) {
         // .lang-2nd на второй и далее переводчик (позиционный маркер стиля, не языковой —
         // uiextra.css/rus-multi.css красят .lang-2nd приглушённым цветом).
         let rightColumnHtml = '';
-        let transIndex = 0;
-        columns.forEach(lang => {
-            transEntriesByLang[lang].forEach(entry => {
-                const val = entry.data[segment];
-                if (val !== undefined) {
-                    const posClass = transIndex === 0 ? '' : ' lang-2nd';
-                    rightColumnHtml += `<span class="${lang}-lang${posClass} quote" lang="${lang}" data-translator="${entry.translatorId}">${linkToCopyStart}${val.trim()}${linkToCopy}</span>`;
-                    transIndex++;
+        if (isMemMode) {
+            // Matches prod: the "second line" isn't a translation, it's the full (untransformed)
+            // Pali — the actual memorization check ("did the letters remind me of the real
+            // words?"), not a translation. Reuses the mode's own family language class
+            // (columns[0], e.g. "ru-lang") purely so the existing Pāḷi/Рус hide toggle still
+            // shows/hides it — the content is still Pali, not a translation.
+            const refLang = (columns && columns[0]) || 'ru';
+            if (paliData[segment] !== undefined) {
+                rightColumnHtml = `<span class="${refLang}-lang quote" lang="pi">${linkToCopyStart}${paliData[segment].trim()}${linkToCopy}</span>`;
+            }
+        } else if (isDevMode) {
+            // The actual "Devanagari mode": main line above is Pali in the selected non-Latin
+            // script, this second line is the SAME Pali in ISO/Latin script (greyed out, exactly
+            // as prod's devanagari.js does it) — not a translation at all. Variant lives here,
+            // under the Latin line, same as prod.
+            const refLang = (columns && columns[0]) || 'ru';
+            if (paliIsoData[segment] !== undefined) {
+                rightColumnHtml = `<span class="${refLang}-lang greyedout quote" lang="pi">${linkToCopyStart}${paliIsoData[segment].trim()}${linkToCopy}`;
+                if (varData[segment] !== undefined && varData[segment] !== '') {
+                    rightColumnHtml += `<font class="variant"><br>${linkToCopyStart}${varData[segment].trim()}${linkToCopy}</font>`;
                 }
+                rightColumnHtml += `</span>`;
+            }
+        } else {
+            // Все переводы сегмента — в общей .right-column (как на проде): CSS колоночного режима
+            // (.column-view .right-column [class*="-lang"]) укладывает их блоками друг под другом,
+            // без этой обёртки они текут в одну строку вперемешку. Класс — настоящий язык
+            // ("${lang}-lang", нужен для hide-pali/hide-english/hide-russian, см. uiextra.css) плюс
+            // .lang-2nd на второй и далее переводчик (позиционный маркер стиля, не языковой —
+            // uiextra.css/rus-multi.css красят .lang-2nd приглушённым цветом).
+            let transIndex = 0;
+            columns.forEach(lang => {
+                transEntriesByLang[lang].forEach(entry => {
+                    const val = entry.data[segment];
+                    if (val !== undefined) {
+                        const posClass = transIndex === 0 ? '' : ' lang-2nd';
+                        rightColumnHtml += `<span class="${lang}-lang${posClass} quote" lang="${lang}" data-translator="${entry.translatorId}">${linkToCopyStart}${val.trim()}${linkToCopy}</span>`;
+                        transIndex++;
+                    }
+                });
             });
-        });
+        }
         if (rightColumnHtml) inner += `<span class="right-column">${rightColumnHtml}</span>`;
 
         html += `${openHtml}<span id="${anchor}">${inner}</span>${closeHtml}\n\n`;
@@ -721,41 +1042,11 @@ window.buildSutta = async function(rawSlug) {
     <p><span class="pli-lang" lang="pi">Pāḷi <a class="text-decoration-none text-reset" href="/assets/texts/abbr.html?s=ms" title="Mahāsaṅgīti Pāḷi">MS</a></span>
     <span class="right-column">${translatorSpans.join('<br>')}</span></p></div>`;
 
-    // Ссылка на тот же текст в другом режиме — для копирования/шаринга (обычный href), но клик
-    // перехватывается window.switchReaderMode() и остаётся в SPA, без перезагрузки.
-    const modeLink = (modeKey) => {
-        const linkParams = new URLSearchParams(document.location.search);
-        linkParams.set('mode', modeKey);
-        return `${window.location.pathname}?${linkParams.toString()}`;
-    };
-
     let cleanSlugReady = slug;
 
-    // Панель ссылок — варианты ТЕКУЩЕЙ языковой семьи (кроме самого текущего режима) + один
-    // переход на плейн-режим ДРУГОЙ семьи (как в reader-rus-translations.js для ru и indexBB.js
-    // для en). Семьи/порядок/подписи — из window.MODE_TABLE (reader/mode-table.json, тот же
-    // файл резолвит сервер), не хардкод: раньше здесь было две ветки на columns[0]==='en',
-    // из-за чего текущий режим (mt/ml/ee) сам себе оставался кликабельной самоссылкой.
-    const modeLinkHtml = (modeKey, label, title) =>
-        `<a href="${modeLink(modeKey)}" onclick="window.switchReaderMode('${modeKey}', event)" title='${title}'>${label}</a>&nbsp;`;
-
-    const MODE_TITLES = {
-        st: 'Русский', read: 'Английский (Alt+1)',
-        ml: 'Pali + Русский + Английский (Alt+2)', mt: 'Pali + Русский + Русский',
-        ee: 'English + English (второй переводчик)'
-    };
-
+    // Mode-switch links (Ru/En/R+R/E+E/Mem/Dev/R+E) moved to the burger drawer's reading-modes
+    // list (search/js/home.js paintReaderModes()) — no longer duplicated here.
     let scLink = `<p class="sc-link">`;
-    const modeTable = window.MODE_TABLE || {};
-    const modeKeys = Object.keys(modeTable);
-    const currentFamily = (modeTable[READER_MODE.modeKey] || {}).family;
-    if (currentFamily) {
-        const sameFamily = modeKeys.filter(k => modeTable[k].family === currentFamily && k !== READER_MODE.modeKey);
-        const otherFamilyPlain = modeKeys.find(k => modeTable[k].family !== currentFamily && !modeTable[k].multiFor);
-        [...sameFamily, otherFamilyPlain].filter(Boolean).forEach(key => {
-            scLink += modeLinkHtml(key, modeTable[key].label, MODE_TITLES[key] || modeTable[key].label);
-        });
-    }
 
     if (typeof window.generateThirdPartyLinks === 'function') {
         scLink += window.generateThirdPartyLinks(slug, cleanSlugReady, texttype, transEntriesByLang[columns[0]][0]?.translatorId);
@@ -810,6 +1101,15 @@ window.buildSutta = async function(rawSlug) {
     window.renderNavigation(slug, suttaData.title);
 
     window.dispatchEvent(new Event('suttaLoaded'));
+    // 'suttaRenderedCentral' — same moment, but only in the main reader window, never inside
+    // the search-results citation-preview iframe (this same megareader.js runs in both). Several
+    // listeners across the codebase (reader/common.js, settings.js's dictionary preload,
+    // search/index.html's applyPadding) already register for BOTH names side by side, expecting
+    // this one to exist too — it never actually fired (owner report traced back to this: the
+    // standalone-dictionary preload-after-text-load never ran). Scoped to the central window
+    // specifically so a quick citation popup doesn't eagerly pull down a multi-MB dictionary
+    // database just to preview one segment.
+    if (window.self === window.top) window.dispatchEvent(new Event('suttaRenderedCentral'));
 
     window.setupVariantVisibility();
 
@@ -844,24 +1144,23 @@ window.addEventListener('popstate', (e) => {
 async function initReader() {
     await window.modeTableReady;
 
-    // Ключ режима — как на странице поиска: ?lang= → localStorage.dhammaLanguage →
-    // data-default-lang → "en" (это уже считает dhamma-i18n.js, просто ждём его и переиспользуем
-    // результат), переводим в modeKey одноязычного режима. Если режим передан явно
+    // Дефолт при заходе без явного ?mode=: тип — всегда 'single' (язык режим больше не кодирует,
+    // так что незачем выбирать между 'st'/'read' и т.п.), язык — из того же резолвера, что и
+    // страница поиска: ?lang= → localStorage.dhammaLanguage → data-default-lang → "en"
+    // (dhamma-i18n.js уже это считает, просто ждём и переиспользуем). Если режим передан явно
     // (window.READER_MODE.modeKey, см. ?mode= в reader-template.html) — ничего не трогаем.
     // Аналогично не трогаем, если явно передан ?langs= — buildSutta() всё равно шлёт его на
-    // сервер напрямую, игнорируя modeKey (см. explicitLangs там), а вывод modeKey здесь только
-    // навредил бы: язык интерфейса без своего конфига (dhamma-i18n.js) откатывается на "en"
-    // (см. её же фолбэк), из-за чего resolvedLang ниже стал бы "en" и подменил modeKey на
-    // 'read' — реального контента это не портит (langs= всё равно побеждает в buildSutta), но
-    // ломает презентационные вещи, завязанные на modeKey (панель переключения режимов и т.п.).
+    // сервер напрямую (см. explicitLangs там), вывод modeKey/lang здесь только навредил бы
+    // презентационным вещам, завязанным на них (панель переключения режимов и т.п.).
     const explicitLangsParam = new URLSearchParams(window.location.search).get('langs');
     if (!READER_MODE_EXPLICIT && !explicitLangsParam && window.DHAMMA_I18N_READY) {
         try { await window.DHAMMA_I18N_READY; } catch (error) {}
         const resolvedLang = (window.DHAMMA_I18N && window.DHAMMA_I18N.language)
             || localStorage.getItem('dhammaLanguage') || 'en';
-        READER_MODE.modeKey = resolvedLang === 'en' ? 'read' : 'st';
+        READER_MODE.modeKey = 'single';
+        READER_MODE.lang = resolvedLang;
     }
-    if (!READER_MODE.modeKey) READER_MODE.modeKey = 'st';
+    if (!READER_MODE.modeKey) READER_MODE.modeKey = 'single';
 
     // Читаем URL. Игнорируем путь, если используется параметр ?q=,
     // либо берём корректную часть пути, если у вас ЧПУ.
@@ -929,10 +1228,9 @@ async function initReader() {
         }
     } else {
         if (typeof window.getInstructionHTML === 'function' && suttaArea) {
-            // Тут ещё не было ни одного ответа сервера (buildSutta не звался) — READER_MODE.columns
-            // ещё не заполнен, берём язык из mode-table.json по modeKey (уже дождались выше).
-            const modeConfig = window.MODE_TABLE && window.MODE_TABLE[READER_MODE.modeKey];
-            suttaArea.innerHTML = window.getInstructionHTML((modeConfig && modeConfig.columns[0]) || "en");
+            // Тут ещё не было ни одного ответа сервера (buildSutta не звался) — язык берём из
+            // READER_MODE.lang (уже резолвлен выше, до захода в этот блок).
+            suttaArea.innerHTML = window.getInstructionHTML(READER_MODE.lang || "en");
         }
     }
 }

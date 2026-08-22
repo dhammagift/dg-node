@@ -237,6 +237,12 @@ window.DHAMMA_I18N = (() => {
   });
 
   const queryLanguage = new URLSearchParams(window.location.search).get("lang");
+  // Legacy PHP checked REQUEST_URI.startsWith("/ru") site-wide for language (config/translate.php);
+  // dg-light.js's /ru middleware rewrites req.url server-side for ROUTING only (matching /:slug
+  // etc.) — that rewrite never reaches the client, window.location is unaffected, so a visit to
+  // a clean /ru/... URL (old bookmark, shared link) still needs its own client-side check here,
+  // same pattern already used by window.notEn in settings.js.
+  const pathLanguage = /^\/(ru|r|ml|mt)(\/|$)/.test(window.location.pathname) ? "ru" : null;
   let storedLanguage = null;
   try {
     storedLanguage = localStorage.getItem("dhammaLanguage");
@@ -244,11 +250,12 @@ window.DHAMMA_I18N = (() => {
     // Storage may be unavailable in privacy modes.
   }
 
-  // Fallback default is "en" (per user decision) — a visitor with no ?lang=, no stored
-  // preference, and no data-default-lang override sees the English interface first.
+  // Fallback default is "en" (per user decision) — a visitor with no ?lang=, no /ru path, no
+  // stored preference, and no data-default-lang override sees the English interface first.
   const initialLanguage =
     window.DHAMMA_LANG ||
     queryLanguage ||
+    pathLanguage ||
     storedLanguage ||
     document.documentElement.dataset.defaultLang ||
     "en";

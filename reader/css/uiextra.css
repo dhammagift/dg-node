@@ -32,8 +32,8 @@
      height:13px without a width the box rendered 15px wide instead of the ~9.8px the SVG's own
      113x150 intrinsic ratio implies — pinned instead of chasing why. */
   #arrowImg {
-      height: 13px;
-      width: 9.8px;
+      height: 17px;
+      width: 12.8px;
       position: absolute;
       top: 50%;
       left: 50%;
@@ -71,8 +71,9 @@
   bottom: 30px;
   right: 90px;
   /* background-color: #424269; border-color: #5A5A5A; */ /* Ваши старые комменты */
-  height: 30px;
-  width: 30px;
+  /* Matches #language-button's rendered height (38px) — see same note in search/index.html. */
+  height: 38px;
+  width: 38px;
   /* НЕ ставить здесь display:flex — smoothScroll.js переключает видимость этой кнопки инлайновым
      style.display ('block'/'none') на каждый скролл, инлайн всегда бьёт правило из таблицы
      стилей, flex тут же слетал бы обратно в block. Центровка иконки — через position:absolute
@@ -249,35 +250,34 @@
     text-align: right;
   }
 
+  /* Owner: long sutta titles wrapped to a second line and threw off the row's layout — was a
+     2-line -webkit-line-clamp on the container/link while .sutta-name (below) separately forced
+     single-line nowrap, two conflicting truncation rules fighting each other. One line only,
+     split down the middle (max-width:49% each side, unchanged), ellipsis for whatever doesn't
+     fit — matching what was asked ("не было бы переноса на след. строку"). */
   #previous,
   #next {
     max-width: 49%;
     overflow: hidden;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
+    white-space: nowrap;
     text-overflow: ellipsis;
-    line-height: 1.2em; /* или 1.4em, в зависимости от шрифта */
-    height: 2.4em;       /* 1.2em * 2 строки */
   }
 
   #previous a,
   #next a {
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
+    display: inline-block;
     overflow: hidden;
+    white-space: nowrap;
     text-overflow: ellipsis;
-    line-height: 1.2em;
-    height: 2.4em;
+    max-width: 100%;
+    vertical-align: middle;
   }
 
   /* Стиль для названия сутты (одна строка + обрезка) */
   .sutta-name {
-    white-space: nowrap; /* Запрещаем перенос */
     overflow: hidden;
-    text-overflow: ellipsis; /* Добавляем "..." */
-    max-width: 48%; /* Ограничиваем ширину (можно адаптивно) */
+    text-overflow: ellipsis;
+    min-width: 0;
   }
 
   .afternav {
@@ -494,6 +494,16 @@
       vertical-align: middle;
       bottom: 0.2em;
       -webkit-tap-highlight-color: transparent;
+      /* Owner: this invisible end-of-line marker (opacity:0, but still a real inline-block box)
+         was consuming real layout width — since browsers won't split an inline-block across a
+         line break, it could tip a line over its available width and force a wrap the matching
+         translation paragraph (with no such marker) wouldn't take, misaligning Pali/translation
+         line breaks. width:0 + overflow:visible removes it from the width calculation entirely
+         while letting its ::before glyph still paint past the zero-width box, same visual spot.
+         ::after's glow highlight below switches from left:0/right:0 (relative to this box, which
+         would now also compute to zero width) to an explicit width instead. */
+      width: 0;
+      overflow: visible;
     /*   touch-action: manipulation;
       user-select: none;
       -webkit-user-select: none;
@@ -504,8 +514,8 @@
   .copyLink::after {
       content: "";
       position: absolute;
-      left: 0;
-      right: 0;
+      left: -0.2em;
+      width: 1.4em;
       top: -2px;
       bottom: -2px;
       background-color: transparent;
@@ -528,8 +538,8 @@
           background-color: rgba(19, 104, 87, 0.8); /* Полупрозрачный вариант */
           top: -3px;
           bottom: -3px;
-          left: -3px;
-          right: -3px;
+          left: -0.4em;
+          width: 1.8em;
           box-shadow: 0 0 4px rgba(19, 104, 87, 0.5);
           opacity: 1;
       }
@@ -541,8 +551,8 @@
       box-shadow: 0 0 8px rgba(19, 104, 87, 0.8); /* Ярче свечение */
       top: -4px;
       bottom: -4px;
-      left: -4px;
-      right: -4px;
+      left: -0.5em;
+      width: 2em;
       opacity: 1;
       transition: 
           background-color 0.1s ease-out,
@@ -558,8 +568,8 @@
       background-color: rgba(19, 104, 87, 0.6);
       top: -3px;
       bottom: -3px;
-      left: -3px;
-      right: -3px;
+      left: -0.4em;
+      width: 1.8em;
       box-shadow: 0 0 4px rgba(19, 104, 87, 0.5);
       opacity: 1;
       outline: none;
@@ -1104,9 +1114,10 @@
   /* Откат до 99 — см. комментарий у #language-button выше: 1090 (выше дровера) перекрывало
      пункты открытого меню. */
   z-index: 99;
-  width: 30px;
-  height: 30px;
-  
+  /* Matches #language-button's rendered height (38px) — see same note in search/index.html. */
+  width: 38px;
+  height: 38px;
+
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
@@ -1127,17 +1138,18 @@
 }
 
 .dynamic-tts-btn.shifted {
-  right: 132px; 
+  /* 90 + 38 (button, border included) + 8 (gap) — was 132 for the old 30px/34px button. */
+  right: 136px;
 }
 
 .dynamic-tts-btn:hover {
   opacity: 1 !important;
-  transform: scale(1.1) !important; 
+  transform: scale(1.1) !important;
 }
 
 .dynamic-tts-btn img {
-  width: 14px;
-  height: 14px;
+  width: 18px;
+  height: 18px;
   display: block;
   margin: 0 auto; 
   transform: none !important; 
@@ -1608,3 +1620,105 @@ smart TOC
 .dg-reader-hero .dg-search-field #searchbtn:hover { background: rgba(128, 128, 128, 0.18); }
 /* Линза справа, ручка влево-вниз. */
 .dg-reader-hero .dg-search-icon { transform: scaleX(-1); }
+
+/* === MEMORIZE MODE (mode-table.json "mem") — ported from prod's read/js/memorize.js + its
+   inline style block and read/css/uiextra.css's .mem-trigger/.mem-bubble rules. Scoped under
+   body.dg-mode-mem (set by megareader.js only while this mode is active) so the bigger
+   .pli-lang/.copyLink sizing doesn't leak into every other reading mode. */
+body.dg-mode-mem .pli-lang {
+  font-size: 1.4em !important;
+}
+body.dg-mode-mem .byline .pli-lang {
+  font-size: 1em !important;
+}
+body.dg-mode-mem .copyLink {
+  font-size: 0.8em !important;
+}
+body.dg-mode-mem .copyLink:not(.copyLink-start) {
+  bottom: 0em !important;
+  right: -0.6em !important;
+}
+body.dg-mode-mem .mem-bubble::selection {
+  background: transparent;
+}
+
+.mem-trigger {
+  cursor: pointer;
+  position: relative;
+  transition: color 0.2s, text-shadow 0.2s, border-bottom-color 0.2s;
+  border-bottom: 1px solid transparent;
+}
+.mem-trigger:hover,
+.mem-trigger.mem-active {
+  color: var(--bs-primary, #0d6efd);
+  border-bottom-color: var(--bs-primary, #0d6efd);
+}
+
+.mem-bubble {
+  position: absolute;
+  background-color: #ffffff;
+  color: #333333;
+  border: 1px solid #ccc;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 18px;
+  font-family: sans-serif;
+  z-index: 10000;
+  white-space: normal;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  text-align: center;
+  line-height: 1.3;
+  width: max-content;
+  max-width: 300px;
+  pointer-events: auto;
+  cursor: pointer;
+  transform: translateY(-100%);
+  margin-top: -8px;
+  opacity: 0;
+  transition: opacity 0.2s ease-out;
+}
+@media (max-width: 400px) {
+  .mem-bubble { max-width: 85vw; }
+}
+.mem-bubble.visible { opacity: 1; }
+
+.mem-bubble::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: var(--arrow-x, 50%);
+  margin-left: -6px;
+  border-width: 6px;
+  border-style: solid;
+  border-color: #ffffff transparent transparent transparent;
+}
+.mem-bubble::before {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: var(--arrow-x, 50%);
+  margin-left: -7px;
+  border-width: 7px;
+  border-style: solid;
+  border-color: #ccc transparent transparent transparent;
+}
+
+body.dark .mem-trigger:hover,
+body.dark .mem-trigger.mem-active {
+  color: var(--bs-primary, #0d6efd);
+  text-shadow: 0 0 8px rgba(13, 110, 253, 0.6);
+}
+body.dark .mem-bubble {
+  background-color: #2b2b2b;
+  color: #e0e0e0;
+  border: 1px solid #555;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.6);
+}
+body.dark .mem-bubble::after {
+  border-color: #2b2b2b transparent transparent transparent;
+}
+body.dark .mem-bubble::before {
+  border-color: #555 transparent transparent transparent;
+}

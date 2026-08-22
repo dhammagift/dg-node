@@ -1,7 +1,8 @@
 {
   "scripts": {
     "start": "node dg-light.js",
-    "build-db": "node dblight.js"
+    "build-db": "node dblight.js",
+    "build-icons": "node build-icons.js"
   },
   "dependencies": {
     "aksharamukha": "^2.3.0-32",
@@ -9,5 +10,8 @@
     "cors": "^2.8.6",
     "express": "^5.2.1",
     "swagger-ui-express": "^5.0.1"
+  },
+  "devDependencies": {
+    "@fortawesome/fontawesome-free": "^7.3.1"
   }
 }

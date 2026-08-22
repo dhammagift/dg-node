@@ -26,6 +26,19 @@
 
    ОБНОВЛЕНО: светлая палитра переехала на землистые нейтрали и зелёный акцент (макет
    production-v4). Тёмная осталась на боевом --off-black, см. комментарий у body.dark ниже. */
+
+/* Owner: "ширина страницы... получается неудобно, что под пальцем страница ездит" — decorative
+   absolutely-positioned elements (e.g. reader/css/uiextra.css's .copyLink-start markers, which
+   sit at left:-1em relative to a segment that can itself start near the viewport's left edge)
+   push a few px past the viewport edge. They don't add real scrollable content, just enough
+   negative overflow for mobile Safari/Chrome to treat the page as horizontally pannable — this
+   guard clips exactly that kind of stray edge overflow without touching any element's OWN
+   overflow-x:auto (home.css's own #dg-hero-band horizontal scrollers etc. are unaffected, they
+   scroll inside their own box regardless of what the page root clips). Unscoped (not under
+   body.dg-skin-minimal) — this single shell page (search/index.html) serves home/results/reader
+   alike, and the bug isn't specific to the minimal skin. */
+html, body { overflow-x: hidden; }
+
 body.dg-skin-minimal {
     /* Фон страницы. Отдельным токеном, а не через --bs-body-bg: тот у Bootstrap белый ВСЕГДА —
        тёмную тему на этом сайте делает body.dark из langswitch.css, до бутстраповских переменных
@@ -121,16 +134,16 @@ body.dg-state-home #home-pane {
     pointer-events: auto;
 }
 
-/* Главный инпут уходит вверх: весь вертикальный отступ главной держит верхнее поле девиза, оно
-   же и схлопывается при уходе в выдачу. Отступ намеренно НЕ на .hero-row: девиз стоит ВЫШЕ ряда
-   с полем, и отступ у ряда отрывал бы подпись от инпута — она прилипала к верхнему краю, а между
-   ней и полем зияла дыра. Сам инпут при этом один и тот же (#paliauto в .hero-row), поэтому
-   фокус и введённый текст переезд переживают. */
-/* Поле отодвинуто от шапки: раньше девиз начинался сразу под вывеской, и строка поиска липла к
-   верхнему краю полосы. Теперь между ними воздух, и поле читается как середина полосы. */
-body.dg-state-home #home-motto { max-height: 90px; margin: 40px 0 10px; }
-body.dg-state-home #home-hint  { max-height: 60px; margin: 11px 0 0; }
+/* Отступ инпута от шапки — раньше держался целиком на #home-motto (девиз стоял отдельной
+   строкой прямо над .hero-row, его margin и был этим воздухом). Owner: девиз переехал в
+   #dg-topbar (round 3 правки выше), а инпут не должен был сдвигаться — теперь отступ здесь,
+   на самой .hero-row, независимо от того, где физически стоит текст девиза. */
+body.dg-state-home .hero-row { margin-top: 74px; }
 body.dg-state-home #home-pane  { max-height: 2000px; margin: 22px 0 0; }
+/* #home-hint — position:absolute (см. .hero-row/#home-hint в search/index.html), max-height/
+   opacity/transform ниже всё ещё нужны для схлопывания при уходе с главной, margin — только
+   небольшой зазор от нижнего края поля, не отступ в потоке (его больше нет в потоке). */
+body.dg-state-home #home-hint { max-height: 60px; margin-top: 8px; }
 
 /* Ширина поля по состояниям: на главной оно — центр экрана, в выдаче и чтении уступает место
    содержимому. Переход между значениями анимируется (transition на .dg-hero-form в index.html).
@@ -266,7 +279,8 @@ body.dark .dg-brand-logo { filter: none; }
    "мелко"). #dg-brand — единственный полный лого+название лок-ап, показывается только на
    главной (в выдаче/чтении остаётся только ракушка внутри поля, другая картинка) — точечный
    override, не трогает базовый размер, которым пользуются другие места (боковое меню ниже). */
-#dg-brand .dg-brand-logo { width: 37px; height: 37px; }
+/* Owner: "ещё крупнее на 30%" — 37px × 1.3 ≈ 48px. */
+#dg-brand .dg-brand-logo { width: 48px; height: 48px; }
 
 /* Маленькая копия лого в шапке бокового меню — там та же история со светлыми лепестками. */
 .dg-drawer-head .dg-brand-logo { width: 26px; height: 26px; }
@@ -413,8 +427,11 @@ body.dg-state-reader .dg-shell-logo { display: inline-flex; }
     display: none;
     width: 17px;
     height: 17px;
-    border: 2px solid var(--dg-border-strong);
-    border-top-color: var(--dg-accent);
+    /* Standard Bootstrap .spinner-border formula (solid ring, one transparent quarter) — was
+       mostly --dg-border-strong (a muted gray) with only one thin accent segment, nearly
+       invisible at this size. */
+    border: 2px solid var(--dg-accent);
+    border-right-color: transparent;
     border-radius: 50%;
     animation: dg-spin 0.7s linear infinite;
 }
@@ -443,8 +460,8 @@ body.dg-busy.dg-header-hidden #dg-busy-indicator { display: block; }
     width: 22px;
     height: 22px;
     border-width: 3px;
-    border-color: var(--dg-border-strong);
-    border-top-color: var(--dg-accent);
+    border-color: var(--dg-accent);
+    border-right-color: transparent;
     border-radius: 50%;
     border-style: solid;
     animation: dg-spin 0.7s linear infinite;
@@ -690,9 +707,30 @@ body.dg-no-anim * {
     color: rgba(255, 255, 255, 0.82);
 }
 
+/* Owner: "Find the Truth между лого и бургером" — now a flex child of #dg-topbar itself
+   (between #dg-brand and the menu button), not its own line below with the old
+   collapse-on-state-change spacing (margin/max-height from the shared #home-motto/#home-hint/
+   #home-pane block above). #dg-topbar #home-motto (2 IDs) outranks the old
+   `body.dg-state-home #home-motto` rule (1 ID) regardless of source order. */
+#dg-topbar #home-motto {
+    margin: 0;
+    max-height: none;
+    white-space: nowrap;
+    flex: none;
+}
+
 /* Подсказка под полем: "искать «…»" / "похоже на ссылку на текст". На полосе — светлая плашка
-   поверх тёмного фона; акцентная заливка там нечитаема. */
-#home-hint { text-align: left; }
+   поверх тёмного фона; акцентная заливка там нечитаема.
+   Owner (round 3): справа, под полем — не в потоке (иначе снова толкала бы плитки вниз), а
+   position:absolute от .hero-row (position:relative там же, search/index.html), правым краем
+   вровень с полем. Автодополнение (.ui-autocomplete, uiextra.css) висит у ЛЕВОГО края поля и
+   не шире 274px — справа под широким полем места достаточно, не пересекаются. */
+#home-hint {
+    text-align: right;
+    position: absolute;
+    top: 100%;
+    right: 0;
+}
 #home-hint .dg-hint {
     display: inline-flex;
     align-items: center;
@@ -995,6 +1033,13 @@ body.dg-no-anim * {
     font-size: 0.72rem;
     color: var(--dg-text-muted);
 }
+/* Owner: "нужно чтобы это было видимо пользователю что есть горячие клавиши" — inline next to
+   the label, not its own line (unlike .dg-toggle-label small above, that's a sub-description). */
+.dg-toggle-hotkey {
+    font-size: 0.7rem;
+    font-weight: 400;
+    color: var(--dg-text-muted);
+}
 /* Переключатель — свой, а не .form-switch Bootstrap: тот тянет за собой свою палитру и
    размеры, которые в шторке смотрятся крупнее всего остального. */
 .dg-tgl {
@@ -1266,6 +1311,59 @@ body.dg-no-anim * {
 }
 .dg-drawer-body .dg-group-title .dg-row-ic { width: 13px; height: 13px; flex: none; }
 
+/* Сворачиваемый раздел меню (<details>, см. "Навигация" в search/index.html) — summary
+   переиспользует .dg-group-title один в один, только добавляет кликабельность и свой
+   индикатор вместо браузерного треугольника (тот не темизируется единообразно между
+   движками). */
+.dg-drawer-group summary.dg-group-title {
+    cursor: pointer;
+    list-style: none;
+}
+.dg-drawer-group summary.dg-group-title::-webkit-details-marker { display: none; }
+.dg-drawer-group summary.dg-group-title::after {
+    content: '';
+    width: 8px;
+    height: 8px;
+    margin-left: auto;
+    border-right: 1.5px solid currentColor;
+    border-bottom: 1.5px solid currentColor;
+    transform: rotate(45deg);
+    transition: transform 0.15s ease;
+}
+.dg-drawer-group:not([open]) summary.dg-group-title::after { transform: rotate(-45deg); }
+
+/* Список режимов чтения в бургере — тот же паттерн, что у .dg-drawer-row, плюс вторая строка
+   описания под подписью. Owner: "не нужны радио кнопки" — was a radio-style filled/empty
+   circle per row; dropped, active row is just bold + accent color, same convention as an
+   active nav item elsewhere in this file. */
+.dg-mode-row {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--dg-border);
+    cursor: pointer;
+    background: none;
+    border-left: none; border-right: none; border-top: none;
+    width: 100%;
+    text-align: left;
+    color: var(--dg-text);
+}
+.dg-mode-row:last-child { border-bottom: none; }
+.dg-mode-row:hover { color: var(--dg-accent-ink); }
+.dg-mode-row-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; font-size: 0.95rem; }
+.dg-mode-row-desc { font-size: 0.78rem; color: var(--dg-text-muted); }
+/* Owner: "нужно чтобы это было видимо пользователю что есть горячие клавиши" — Alt+N next to
+   the row it actually triggers (window.MODE_HOTKEY_DIGITS, settings.js). */
+.dg-mode-row-hotkey {
+    flex: none;
+    font-size: 0.7rem;
+    font-weight: 400;
+    color: var(--dg-text-muted);
+    font-variant-numeric: tabular-nums;
+}
+.dg-mode-row.active .dg-mode-row-top { color: var(--dg-accent-ink); font-weight: 600; }
+
 /* ============================================================================
    Перетаскивание плиток
    Порядок хранится в localStorage.dgTileOrder и переживает перезагрузку. Реализация — на
@@ -1337,8 +1435,10 @@ body.dg-tiles-editing .dg-tile-remove { display: inline-flex; }
 @media (min-width: 992px) {
     body.dg-state-home #dg-hero-band { padding-bottom: 54px; }
     body.dg-state-home #dg-topbar { padding-top: 26px; }
-    body.dg-state-home #home-motto { max-height: 120px; margin: 64px 0 16px; font-size: 1.15rem; }
-    body.dg-state-home #home-hint { margin-top: 14px; }
+    /* Restores the desktop-specific gap the old standalone #home-motto (64px margin + its own
+       text height) used to hold before it moved into #dg-topbar — same reasoning as the base
+       .hero-row margin-top above, just the wider desktop value. */
+    body.dg-state-home .hero-row { margin-top: 107px; }
     body.dg-state-home #home-pane { margin-top: 40px; }
     /* Поле на десктопе крупнее: оно — центр экрана, а не строка в ряду. */
     body.dg-state-home .dg-input-shell { padding: 14px 14px 14px 20px; }

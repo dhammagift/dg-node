@@ -69,8 +69,10 @@ body{font-family:var(--ui);color:var(--ink);background:var(--page-bg);font-size:
 .head-sub{margin:4px 0 18px;font-size:14px;color:var(--ink-2)}
 /* Reload notice — some changes (e.g. search language order) are baked into an already-open
    search/reader tab's rendered table at load time, so they won't apply there without a reload. */
-.reload-notice{display:none;align-items:center;gap:8px;margin:-8px 0 18px;padding:8px 12px;background:var(--accent-soft);color:var(--accent);border-radius:var(--r-lg);font-size:13.5px}
+.reload-notice{display:none;align-items:center;gap:8px;position:fixed;left:50%;transform:translateX(-50%);width:calc(100% - 32px);max-width:668px;padding:8px 40px 8px 12px;background:var(--accent-soft);color:var(--accent);border-radius:var(--r-lg);font-size:13.5px;box-shadow:0 6px 16px -4px rgba(0,0,0,.18);z-index:6}
 .reload-notice.show{display:flex}
+.reload-notice .x{position:absolute;right:4px;top:50%;transform:translateY(-50%);width:32px;height:32px;border:0;background:transparent;border-radius:50%;color:var(--accent);font-size:14px;cursor:pointer}
+.reload-notice .x:hover{background:rgba(0,0,0,.08)}
 /* Sticky — образец остаётся на виду при скролле вниз по настройкам, не нужно каждый раз
    скроллить обратно наверх, чтобы увидеть эффект переключателя (жалоба владельца). Фон
    непрозрачный (см. ниже) — иначе контент под ним просвечивал бы при скролле. Липкость нужна
@@ -302,7 +304,6 @@ kbd{font:inherit;font-size:12.5px;background:var(--line);border:1px solid var(--
     <h1 id="t-title">Настройки</h1><span class="saved" id="t-saved">Сохраняется сразу</span>
   </div>
   <p class="head-sub" id="t-sub">Значения по умолчанию для поиска и чтения на всём сайте.</p>
-  <p class="reload-notice" id="reloadNotice">⟳ <span id="t-reloadNotice">Обновите страницу поиска/чтения, чтобы изменение вступило в силу.</span></p>
 
   <!-- ОБРАЗЕЦ — реальная разметка и настоящие стили сайта (preview-frame.html), в iframe,
        чтобы стили ридера/поиска не задевали стили самой страницы настроек. -->
@@ -334,6 +335,11 @@ kbd{font:inherit;font-size:12.5px;background:var(--line);border:1px solid var(--
          260px оставляли под коротким фрагментом пустое поле в пол-экрана. -->
     <iframe id="previewFrame" src="/settings/preview-frame.html" title="Образец текста" style="width:100%;height:120px;border:0;display:block;background:transparent" scrolling="auto"></iframe>
   </section>
+
+  <!-- Fixed under the sticky preview above (not in normal page flow) — owner: a change made
+       deep in the page fired the old notice off-screen at the very top, so it went unseen.
+       Position is computed in showReloadNotice() from #preview's live bottom edge. -->
+  <p class="reload-notice" id="reloadNotice">⟳ <span id="t-reloadNotice">Обновите страницу поиска/чтения, чтобы изменение вступило в силу.</span><button type="button" class="x" id="reloadNoticeClose" aria-label="Close">✕</button></p>
 
   <!-- ОБЩЕЕ -->
   <section class="group" id="general">
@@ -643,7 +649,13 @@ function saveLangs(){
 // на каждый повторный поиск) — уже открытая вкладка поиска/чтения его не подхватит без
 // перезагрузки, отсюда уведомление.
 function commitLangs(){ langsTouched = true; render(); showReloadNotice(); }
-function showReloadNotice(){ $('#reloadNotice').classList.add('show'); }
+function showReloadNotice(){
+  const el = $('#reloadNotice');
+  const preview = $('#preview');
+  el.style.top = (preview.getBoundingClientRect().bottom + 8) + 'px';
+  el.classList.add('show');
+}
+$('#reloadNoticeClose').addEventListener('click', () => $('#reloadNotice').classList.remove('show'));
 
 let dlgTarget = 'read';
 /* Перетаскивание чипов — на Pointer Events (не HTML5 draggable): нативный drag-and-drop не

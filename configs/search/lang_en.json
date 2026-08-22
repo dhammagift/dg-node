@@ -14,6 +14,7 @@
     "noItems": "Nothing here yet"
   },
   "menu": {
+    "readingModes": "Reading modes",
     "navigation": "Navigation",
     "settings": "Settings",
     "language": "Language",
@@ -68,6 +69,9 @@
     "reading": "Reading",
     "variants": "Show variants",
     "columnMode": "Column mode",
+    "hidePunct": "Hide Pāḷi punctuation",
+    "devanagari": "Devanagari",
+    "devanagariDesc": "Devanagari script instead of Roman for Pāḷi",
     "scope": {
       "nikayas": "4 Nikāyas",
       "kn": "Khuddaka Nikāya",
@@ -197,6 +201,8 @@
     "privacy": "Privacy Policy",
     "copyright": "The materials on this website are distributed under the %s license, but Pali texts and English Translations from SuttaCentral.net, the works of A. Y. Syrkin and TheBuddhasWords.net are subject to different terms. Please check with the copyright holders for their usage conditions.",
     "links": "Apps and extensions",
-    "contacts": "Contacts"
+    "contacts": "Contacts",
+    "poweredby": "Powered by NI",
+    "poweredbyTooltip": "Dhamma Intelligence, Natural Intelligence"
   }
 }

@@ -434,11 +434,15 @@ window.DgSearchRender = (function () {
             // Owner: only show pagination controls (first/prev/next/last) when there's actually
             // more than one page — a single-page result set (the common case, e.g. 4 texts) has
             // nothing for them to do, just visual noise. The "Showing X to Y of Z" info text
-            // stays either way, that's not what was asked to hide.
+            // stays either way, that's not what was asked to hide. The "N per page" length
+            // selector (.dt-length) is the same story — a page-size picker makes no sense when
+            // there's no pagination to affect, so it hides alongside .dt-paging.
             drawCallback: function () {
                 // DataTables 2.x class naming (.dt-paging, not the old 1.x .dataTables_paginate).
                 var pages = this.api().page.info().pages;
-                $(this.api().table().container()).find('.dt-paging').toggle(pages > 1);
+                var container = $(this.api().table().container());
+                container.find('.dt-paging').toggle(pages > 1);
+                container.find('.dt-length').toggle(pages > 1);
             },
             // Responsive's own dtr-title caches the column heading at init time and sometimes
             // hands back "undefined" instead of the real text — DataTables' own column.title is

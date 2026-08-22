@@ -14,6 +14,7 @@
     "noItems": "Пока пусто"
   },
   "menu": {
+    "readingModes": "Режимы чтения",
     "navigation": "Навигация",
     "settings": "Настройки",
     "language": "Язык",
@@ -68,6 +69,9 @@
     "reading": "Чтение",
     "variants": "Варианты чтения",
     "columnMode": "Режим колонок",
+    "hidePunct": "Скрыть пунктуацию Pāḷi",
+    "devanagari": "Деванагари",
+    "devanagariDesc": "Деванагари вместо латиницы для Pāḷi",
     "scope": {
       "nikayas": "4 Никаи",
       "kn": "Кхуддака Никая",
@@ -197,6 +201,8 @@
     "privacy": "Политика конфиденциальности",
     "copyright": "Материалы сайта распространяются по модели %s, но Пали тексты и Английские переводы SuttaCentral.net и работы А. Я. Сыркина и TheBuddhasWords.net подчиняются другим условиям. Для их использования уточняйте условия у правообладателей.",
     "links": "Приложения и расширения",
-    "contacts": "Контакты"
+    "contacts": "Контакты",
+    "poweredby": "Powered by DI",
+    "poweredbyTooltip": "Дхамма Интеллект, Dhamma Intelligence, Естественный Интеллект, Natural Intelligence"
   }
 }

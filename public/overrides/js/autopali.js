@@ -176,10 +176,16 @@ function bindAutocomplete(selector, allWords) {
     };
 
     var autocompleteInstance = $(selector).autocomplete({
+        // Owner: suggestions should always open downward, never up — "left bottom"/"at: left
+        // top" was jQuery UI's "prefer above, flip below only when out of room" config, which
+        // flipped inconsistently depending on scroll position (sometimes up, sometimes down).
+        // "left top"/"at: left bottom" is the plain "always below" config; collision:"none"
+        // means no flip-to-above fallback at all — with #home-hint moved above the input (see
+        // search/index.html), there's nothing above worth flipping toward anyway.
         position: {
-            my: "left bottom",
-            at: "left top",
-            collision: "flip"
+            my: "left top",
+            at: "left bottom",
+            collision: "none"
         },
         minLength: 0,
         multiple: /[\s\*]/,

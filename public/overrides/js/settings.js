@@ -163,11 +163,16 @@ window.addEventListener('dgStateChanged', function (e) {
 });
 
 // ==========================================
-// ФОНОВАЯ АКТИВАЦИЯ С РОДНОЙ ПЛАШКОЙ (СО 2-ГО ВИЗИТА)
+// ФОНОВАЯ АКТИВАЦИЯ С РОДНОЙ ПЛАШКОЙ
 // ==========================================
+// Was gated behind dg_dict_cached (only preloaded from the 2nd visit onward, to avoid spending
+// bandwidth on a brand-new visitor who might not stick around) — owner: if standalone/built-in
+// DPD is the selected mode, load it right after the text renders, don't wait for the first
+// word click, on every visit. Safe to always attempt now that lazyLoadStandaloneScripts()
+// itself has a hard timeout and surfaces real failures instead of hanging silently (see
+// paliLookup.js) — this preload used to be the only thing standing between a stalled multi-MB
+// fetch and a permanently stuck "loading" indicator.
 window.addEventListener('suttaRenderedCentral', () => {
-    if (localStorage.getItem('dg_dict_cached') !== 'true') return;
-
     const preloadDictionary = () => {
         if (typeof dictionaryVisible !== 'undefined' && !dictionaryVisible) return;
 
@@ -1524,14 +1529,15 @@ if (applyButton) {
         await syncSettingsToCloud();
     }
 
-    // Живое применение без перезагрузки: единственное, что реально меняет уже отрисованный
-    // текст на странице — пунктуация в ридере (window.buildSutta/window.currentReaderSlug,
-    // см. megareader.js). Скрипт (кроме ISOPali) пока ничего не конвертирует, словарь читает
-    // localStorage заново при каждом клике — им живой ре-рендер не нужен. Если ни то ни
-    // другое не изменилось или мы не в ридере — просто закрываем модалку, перезагрузки нет.
+    // Живое применение без перезагрузки: пунктуация и система письма (Aksharamukha,
+    // dg-light.js) в ридере (window.buildSutta/window.currentReaderSlug, см. megareader.js) —
+    // словарь читает localStorage заново при каждом клике, ему живой ре-рендер не нужен. Было:
+    // скрипт менялся только на СЛЕДУЮЩЕЙ загрузке ридера (owner: "деванагари должна работать
+    // через Акшарамукху" — выбрал в Apply, а на экране ничего не поменялось до перезахода).
+    // Если ничего не изменилось или мы не в ридере — просто закрываем модалку, перезагрузки нет.
     const punctChanged = localStorage.getItem('removePunct') !== prevPunct;
     const scriptChanged = localStorage.getItem('selectedScript') !== prevScript;
-    if (punctChanged && typeof window.buildSutta === 'function' && window.currentReaderSlug) {
+    if ((punctChanged || scriptChanged) && typeof window.buildSutta === 'function' && window.currentReaderSlug) {
       await window.buildSutta(window.currentReaderSlug);
     }
     if (typeof showBubbleNotification === 'function' && (punctChanged || scriptChanged)) {
@@ -1799,117 +1805,54 @@ function getQueryParams() {
 });
 
 
-//Горячие кнопки от 1 до Х
+// Owner: "стандарт... alt+1... из англ режимов alt 1 вел в англ, из ру в ру, и только потом
+// работал как тогл" — a legacy pre-SPA Alt+1 handler used to live here: hardcoded /r//read/
+// pathname swap + a full location.reload() (even a stray hardcoded "?q=sn56.11" fallback).
+// It fired on every Alt+1 BEFORE the mode-table-driven handler below got a chance, forcing a
+// hard page reload that stomped the SPA's own switchReaderMode()/switchReadingLanguage() work —
+// found while wiring up the new intelligent Alt+1 (see MODE_HOTKEY_DIGITS below). Removed:
+// dg-node has no /r//read/ standalone-reader routes to toggle between, only ?mode=/?lang=.
+
+
+// Alt+digit reading-mode hotkeys — this used to click <a id="...Demo"> links (stDemo/mtDemo/
+// memDemo/...) that only ever existed on the old prod PHP settings page; dg-node's SPA never
+// had them, so every press just logged "not found" and did nothing (owner asked to surface
+// hotkeys in the UI, tracing them down is what found this dead code). Rebuilt to call
+// window.switchReaderMode() directly instead of a link proxy, and only for modes that actually
+// exist in dg-node (mode-table.json) — prod's Thai/Reverse/Full Reverse (Alt+6/7/8) aren't
+// implemented here, not wired.
+// Digit → mode TYPE. Mode-table.json keys are language-independent now (single/multiTran/
+// multiLang/memorize/devanagari — no more per-language duplicate keys like st/read), so one
+// digit per type, same in every language. window.MODE_HOTKEY_DIGITS is also read by home.js to
+// print the digit next to each mode row in the burger drawer, one source of truth for both.
+window.MODE_HOTKEY_DIGITS = { single: 1, multiTran: 2, memorize: 3, devanagari: 4, multiLang: 5 };
 
 document.addEventListener("keydown", (event) => {
-  if (event.altKey && event.code === "Digit1") { // Проверяем, что нажаты Alt и 7
+    if (!event.altKey || !event.code.startsWith("Digit")) return;
+    const digit = parseInt(event.code.replace("Digit", ""), 10);
+
+    const modeTable = window.MODE_TABLE;
+    const readerMode = window.READER_MODE;
+    if (!modeTable || !readerMode) return;
+    const type = Object.keys(window.MODE_HOTKEY_DIGITS).find((k) => window.MODE_HOTKEY_DIGITS[k] === digit && modeTable[k]);
+    if (!type) return;
     event.preventDefault();
-
-    let currentUrl = window.location.href; // Получаем текущий URL
-    let urlWithoutParams = currentUrl.split('?')[0]; // Удаляем всё после ?
-
-    let newUrl;
-    let defaultLanguage = localStorage.getItem('siteLanguage') || "en"; // Получаем язык из localStorage или используем "en" по умолчанию
-
-    let defaultLanguageLinkPart;
-        if (defaultLanguage === "ru") {
-          defaultLanguageLinkPart = "/r/";
-        } else if (defaultLanguage === "th") {
-          defaultLanguageLinkPart = "/th/read/";
-        } else {
-          defaultLanguageLinkPart = "/read/";
+    if (type === readerMode.modeKey) {
+        // Owner: "стандарт... из англ режимов alt+1 вел в англ, из ру в ру, и только потом
+        // работал как тогл" — Alt+1 first takes you to the mode IN YOUR CURRENT LANGUAGE
+        // (mode type never touches language, see switchReaderMode), and only once you're
+        // ALREADY there does a second press cycle the language, like the burger's EN/RU switch.
+        // Cycles through languages ALREADY loaded for this text (readerMode.columns, from the
+        // last real server response) — never a guessed/hardcoded pair. For single-column modes
+        // there's nothing to cycle to, so it's a no-op.
+        const cols = readerMode.columns || [];
+        if (cols.length > 1 && typeof window.switchReadingLanguage === 'function') {
+            const idx = cols.indexOf(readerMode.lang);
+            window.switchReadingLanguage(cols[(idx + 1) % cols.length]);
         }
-
-
-    // Проверяем, содержит ли URL /r/
-    if (urlWithoutParams.endsWith("/r/")) {
-      newUrl = urlWithoutParams.replace("/r/", "/read/"); // Меняем на /read/
-    } else if (urlWithoutParams.endsWith("/th/read/")) {
-      newUrl = urlWithoutParams.replace("/th/read/", defaultLanguageLinkPart); // Меняем на /read/
-    } else if (urlWithoutParams.endsWith("/read/")) {
-      newUrl = urlWithoutParams.replace("/read/", "/r/"); // Меняем на /r/
-    } 
-    else {
-      // Если URL не содержит ни /r/, ни /read/, выбираем начальный вариант
-      if (localStorage.siteLanguage && localStorage.siteLanguage === 'ru') {
-        newUrl = window.location.origin + "/r/";
-      } else {
-        newUrl = window.location.origin + "/read/";
-      }
-    }
-
-
-    // Добавляем параметры обратно, если они были
-let params = currentUrl.split('?')[1] || '';
-newUrl = params ? `${newUrl}?${params}` : `${newUrl}?q=sn56.11`;
-
-    if (newUrl !== currentUrl) { // Проверяем, изменился ли URL
-      history.pushState(null, "", newUrl); // Добавляем запись в историю
-      location.href = newUrl; // Принудительно переходим по новому URL
-      location.reload();
-    }
-  }
-  
-});
-
-
-// Объект, связывающий цифры от 1 до 6 с id ссылок
-const demoLinks = {
- // 1: "stDemo", // Alt + 1
-  2: "mtDemo", // Alt + 2
-  3: "memDemo",  // Alt + 3
-  4: "dDemo", // Alt + 4
-  5: "mlDemo", // Alt + 5
-  6: "thDemo", // Alt + 6
-  7: "rvDemo",  // Alt + 7
-  8: "frDemo",  // Alt + 8
-  9: "mlthDemo"  // Alt + 9
-};
-
-// Обработчик события нажатия клавиш
-document.addEventListener("keydown", (event) => {
-  // Проверяем, что нажата клавиша Alt и одна из цифр от 1 до 6
-  if (event.altKey && event.code.startsWith("Digit")) {
-              event.preventDefault();
-
-// Извлекаем цифру из event.code (например, "Digit1" -> 1)
-const digit = parseInt(event.code.replace("Digit", ""), 10);
-
-// Проверяем, существует ли такая цифра в нашем объекте demoLinks
-if (demoLinks.hasOwnProperty(digit)) {
-    event.preventDefault(); // Предотвращаем системное действие только если ключ совпал
-    
-	updateDemoLinks(); // <--- Вызываем обновленную функцию перед кликом
-	
-    const linkId = demoLinks[digit];
-    const linkElement = document.getElementById(linkId);
-
-    if (linkElement) {
-        linkElement.click();
     } else {
-        console.error(`Ссылка с id "${linkId}" не найдена!`);
+        window.switchReaderMode(type);
     }
-}
-			  
-/*			  
-    // Проверяем, что цифра находится в диапазоне от 1 до 7
-    if (digit >= 2 && digit <= 7) {
-      // Получаем id ссылки из объекта demoLinks
-      const linkId = demoLinks[digit];
-
-      // Находим ссылку по id
-      const linkElement = document.getElementById(linkId);
-
-      // Если ссылка найдена, имитируем клик
-      if (linkElement) {
-        linkElement.click(); // Программный клик по ссылке
-      } else {
-        console.error(`Ссылка с id "${linkId}" не найдена!`);
-      }
-    }
-	
-	*/
-  }
 });
 
 
@@ -3204,14 +3147,23 @@ window.syncDeleteData = async function() {
     if (typeof updateGlobalSyncButtons === 'function') updateGlobalSyncButtons(null, null);
 };
 
+// Renders via window.FontAwesome.icon() (same convention as faSvg()/faSpec() in home.js) instead
+// of a raw fa-solid <i> tag — the local FontAwesome bundle (build-icons.js) is a JS icon-lookup
+// shim, not the full CSS+webfont/DOM-auto-replace library, so a bare class wouldn't render
+// anything against it. Falls back to the plain tag if FontAwesome isn't loaded.
+function faIcon(name) {
+    var made = window.FontAwesome && window.FontAwesome.icon({ prefix: 'fas', iconName: name });
+    return (made && made.html && made.html[0]) || ('<i class="fa-solid fa-' + name + '"></i>');
+}
+
 window.updateGlobalSyncButtons = function(user, phraseId) {
-    
+
     const promoBtn = document.getElementById('global-btn-login-promo');
     const syncBtn = document.getElementById('global-btn-sync-now');
-    
+
     if (promoBtn && syncBtn) {
-        promoBtn.innerHTML = window.notEn ? '<i class="fa-solid fa-cloud"></i> Включить облако' : '<i class="fa-solid fa-cloud"></i> Enable Sync';
-        syncBtn.innerHTML = window.notEn ? '<i class="fa-solid fa-rotate"></i> Синхронизировать' : '<i class="fa-solid fa-rotate"></i> Sync Data';
+        promoBtn.innerHTML = faIcon('cloud') + (window.notEn ? ' Включить облако' : ' Enable Sync');
+        syncBtn.innerHTML = faIcon('rotate') + (window.notEn ? ' Синхронизировать' : ' Sync Data');
         promoBtn.style.display = (user || phraseId) ? 'none' : 'inline-block';
         syncBtn.style.display = (user || phraseId) ? 'inline-block' : 'none';
     }

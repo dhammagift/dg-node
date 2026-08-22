@@ -188,6 +188,9 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
         justify-content: center;
         gap: 0.5rem;
         flex-wrap: wrap;
+        /* Positioning context for #home-hint (position:absolute, see home.css) — the hint sits
+           just under the input's right edge, not stacked in normal flow. */
+        position: relative;
     }
     /* Placeholder for a translated title still pending /search/enrich — see search-render.js's
        Title column render. Static bar, not a spinner: just needs to read as "more coming",
@@ -276,8 +279,10 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
         /* Было поднято до 1090 — откатили, см. комментарий у #language-button выше в этом
            же <style>: перекрывало пункты открытого бургер-дровера. */
         z-index: 100;
-        width: 30px;
-        height: 30px;
+        /* Matches #language-button's rendered height (38px: min-width box + 5px padding + 2px
+           border, measured live) — was 30px, visibly smaller than the language button next to it. */
+        width: 38px;
+        height: 38px;
         padding: 0;
         border-width: 2px;
         border-radius: 32px;
@@ -719,7 +724,12 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
        id="results-divider">, теперь убрана) между заголовком и остальной выдачей. */
     /* margin-top было 10px (~18px итогового зазора от нижнего края тулбара с учётом
        собственных line-height отступов h3) — владелец попросил слегка сузить. */
-    .resultheader { margin-top: 4px; margin-bottom: 16px; }
+    /* Owner: too big at Bootstrap's default h3 size (28px) for a results-count subtitle. */
+    .resultheader { margin-top: 4px; margin-bottom: 16px; font-size: 1.25rem; font-weight: 500; }
+    /* Owner: multiple translations in a citation ran together into one clump. The shared
+       br.styled (assets/css/table.css, 0.8em) is used elsewhere (reader) too — scoped here to
+       just the search-results citation column instead of widening it globally. */
+    .right-column br.styled { height: 1.3em; }
     /* Filter+ переезжает внутрь .dt-search (см. attachFilterPlusButton в
        search-render.js) — там уже своя рамка вокруг поля "Фильтр:", повторять её на кнопке не
        нужно, только небольшой отступ и то же скругление-пилюля, что у остальных кнопок ряда. */
@@ -727,6 +737,17 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
         display: flex;
         align-items: center;
         gap: 6px;
+        /* Owner: the filter field/row shouldn't be able to widen the page. min-width:0 lets a
+           flex/grid item actually shrink below its content size instead of forcing overflow
+           (the default "auto" min-width doesn't); flex-wrap lets the length-selector row wrap
+           under the filter row on narrow screens instead of squeezing both onto one line. */
+        min-width: 0;
+        flex-wrap: wrap;
+    }
+    #search-pane .dt-search input {
+        min-width: 0;
+        max-width: 100%;
+        flex: 1 1 160px;
     }
     #search-pane .dt-search .dg-filter-plus-btn {
         display: inline-flex;
@@ -792,26 +813,20 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
 
 <!--
 -->
-<!-- fa-search fa-flip-horizontal on #searchbtn below needs this — legacy echoes the same
-     local bundle via $fontawesomejs in prod config.php (config/config.php online-prod branch).
-     Prod switches between the full local bundle (1.7MB, offline/loopback access — no internet to
-     reach FontAwesome's own CDN) and FontAwesome's hosted Kit script (auto-subsets to only the
-     icons actually used on the page, served compressed+cached from FA's own CDN — far smaller
-     than shipping the whole "all styles" bundle ourselves). dg-node always used the local bundle
-     unconditionally; owner pointed out prod's PHP config already solves this, ported the same
-     switch here client-side (dg-light.js serves this file statically, no per-request templating
-     available, so the branch happens in JS instead of PHP `echo $fontawesomejs`). -->
+<!-- Local FontAwesome subset, built by build-icons.js (npm run build-icons) from only the ~30
+     icons dg-node actually uses (search/js/home.js ICONS/CONTACTS + settings.js faIcon) — 18KB,
+     vs the shared assets/js/fontawesome.js (1.6MB "all icons", still used as-is by the legacy PHP
+     site via the siteroot/assets symlink, untouched here). Exposes the same window.FontAwesome.
+     icon() call shape faSvg()/faSpec()/faIcon() already rely on, nothing else about those
+     callers changed. -->
 <script>
   // document.write() here used to force the browser to run this JS before it could even
   // discover the FontAwesome <script> URL — a parser-blocking hop that browsers actively
   // penalize on slow connections. appendChild doesn't block parsing (TODO.md #global п.2:
-  // measured contributor to slower-than-prod loads) — same offline/online branch preserved.
+  // measured contributor to slower-than-prod loads) — same appendChild approach kept.
   (function () {
-    var h = window.location.hostname;
-    var offline = h === 'localhost' || h === '127.0.0.1' || h === '::1' || /^192\.168\.|^10\.|^172\.(1[6-9]|2\d|3[01])\./.test(h);
     var s = document.createElement('script');
-    s.src = offline ? '/assets/js/fontawesome.6.1.all.js' : 'https://kit.fontawesome.com/a2bd6cd99e.js';
-    if (!offline) s.crossOrigin = 'anonymous';
+    s.src = '/assets/js/fontawesome-local.js';
     document.head.appendChild(s);
   })();
 </script>
@@ -916,14 +931,16 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     <img class="dg-brand-logo" src="/assets/img/dgsanhkalogo.png" alt="Dhamma.Gift">
     <span class="dg-brand-name">dhamma.gift</span>
   </a>
+  <!-- Owner: "Find the Truth между лого и бургером" — moved from its own line below into the
+       topbar row itself, centered in the space between the brand lock-up and the menu button
+       (#dg-topbar's own justify-content:space-between spaces exactly 3 children this way). -->
+  <p id="home-motto">Найдите Истину</p>
   <button type="button" class="dg-icon-btn dg-menu-btn" aria-label="Menu" title="Menu" data-i18n-aria-label="{{toolbar.menuAriaLabel}}" data-i18n-title="{{toolbar.menuTitle}}">
     <svg viewBox="0 0 448 512" width="19" height="19" fill="currentColor" aria-hidden="true">
       <path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/>
     </svg>
   </button>
 </div>
-
-<p id="home-motto">Найдите Истину</p>
 
 <div class="hero-row mb-2">
   <form id="form" class="dg-hero-form m-0" autocomplete="off">
@@ -968,6 +985,14 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
       </button>
     </div>
   </form>
+  <!-- Подсказка "искать «…» / похоже на ссылку на текст" — тот же DgTextRouter.classify(), что
+       и обработчик сабмита ниже, просто показанный заранее. Owner (round 3): to the RIGHT,
+       right under the input — not stacked below the autocomplete dropdown (which hugs the
+       input's LEFT edge, max-width 274px, see .ui-autocomplete in uiextra.css). position:
+       absolute (top:100% of .hero-row, which needs position:relative below — right:0) instead
+       of a big margin-top: clears the dropdown by being off to the side of it, not by pushing
+       far enough down to outrun it, and doesn't take up flow space that shoved the input down. -->
+  <div id="home-hint" aria-live="polite"></div>
   <!-- Бургер выдачи и чтения — правее поля. На главной вместо него работает тот, что в шапке. -->
   <button type="button" class="dg-icon-btn dg-menu-btn dg-menu-btn-hero" aria-label="Menu" title="Menu" data-i18n-aria-label="{{toolbar.menuAriaLabel}}" data-i18n-title="{{toolbar.menuTitle}}">
     <svg viewBox="0 0 448 512" width="19" height="19" fill="currentColor" aria-hidden="true">
@@ -975,10 +1000,6 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     </svg>
   </button>
 </div>
-
-<!-- Подсказка "искать «…» / похоже на ссылку на текст" — тот же DgTextRouter.classify(), что и
-     обработчик сабмита ниже, просто показанный заранее. -->
-<div id="home-hint" aria-live="polite"></div>
 
 </div><!-- /.dg-hero-inner -->
 </div><!-- /#dg-hero-band -->
@@ -1151,6 +1172,13 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     }
     window.addEventListener('load', place);
     window.addEventListener('resize', place);
+    // megareader.js updates #language-button's OWN label text on every render (buildSutta) —
+    // "Pāḷi Eng" vs "Pāḷi Рус" have different widths, so a render that changes the label
+    // (opening a sutta, switching mode, prev/next) leaves this stale until the next resize,
+    // and the arrow can end up sitting under the wider label (owner, screenshot: overlapping
+    // right after opening/scrolling). 'suttaLoaded' already fires right after that label
+    // update (see megareader.js), reusing it here instead of a new bespoke signal.
+    window.addEventListener('suttaLoaded', place);
     // Кнопку создаёт smoothScroll.js уже после нашего скрипта — дожидаемся её появления.
     var tries = 0;
     var timer = setInterval(function () {
@@ -1178,6 +1206,16 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
      ещё не на что вешать. Нижняя копия (#bottom-links-container, из тех же данных) НЕ
      закрепляется — она не хочет "прилипать" в конце чтения, только верхняя. */
   (function autoHideHeader() {
+    // Owner: the sticky header/toolbar stack popping in and out on small scroll-back reads as
+    // jarring noise inside the cramped citation-preview iframe (search/index.html's own
+    // openQuotePopup) — there's no navigation chrome worth reserving space for in a small
+    // preview frame. Hide it once, permanently, and skip the whole scroll-driven mechanism
+    // (including applyPadding's top-padding reservation — with the stack off-screen for good,
+    // content should start at the top, not leave a blank gap where the header would have been).
+    if (window.self !== window.top) {
+      document.body.classList.add('dg-header-hidden');
+      return;
+    }
     var band = document.getElementById('dg-hero-band');
     if (!band) return;
     var lastY = window.scrollY;
@@ -1389,58 +1427,15 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
         if (popupEl && frameEl) {
           var u = new URL(url, location.origin);
           u.searchParams.set('scroll', 'instant');
-          var w = frameEl.contentWindow;
 
-          /* Кэш №1: та же сутта, другой сегмент — без фетча вообще, просто скролл+подсветка на
-             уже отрисованном DOM. Слаг сравниваем без сегмента: путь вида "/dn1:1.22.2" — это
-             одна и та же сутта dn1. */
-          var wantedSlug = decodeURIComponent(u.pathname.slice(1)).split(':')[0];
-          var loadedSlug = null;
-          try {
-            var cur = w && w.location;
-            if (cur && cur.pathname && cur.pathname !== '/') {
-              loadedSlug = decodeURIComponent(cur.pathname.slice(1)).split(':')[0];
-            }
-          } catch (err) { loadedSlug = null; }
-
-          if (loadedSlug && loadedSlug === wantedSlug && frameEl.contentDocument) {
-            var seg = decodeURIComponent(u.pathname.slice(1)).split(':').slice(1).join(':');
-            var doc = frameEl.contentDocument;
-            var target = seg
-              ? (doc.getElementById(seg) || doc.querySelector('[id^="' + seg.replace(/"/g, '\\"') + ':"]'))
-              : null;
-            if (target) {
-              doc.querySelectorAll('.active-word').forEach(function (e) { e.classList.remove('active-word'); });
-              target.scrollIntoView({ block: 'center' });
-              if (typeof w.activateSegmentForTTS === 'function') w.activateSegmentForTTS(target);
-              else target.classList.add('active-word');
-              popupEl.style.display = 'block';
-              var sameWinBtn = popupEl.querySelector('.fdg-open-new-window-btn');
-              if (sameWinBtn) sameWinBtn.href = url;
-              return;
-            }
-          }
-
-          /* Кэш №2: ДРУГАЯ сутта, но SPA внутри попапа уже загружена (dgNavigateInternal живой)
-             — открыть на месте тем же роутером, что и в главном окне (routeFromUrl ->
-             openReaderInPlace -> initReader, там же и скролл+подсветка сегмента), вместо
-             frameEl.src = ... — полной перезагрузки SPA-страницы целиком (JS/CSS парсинг,
-             DataTables и т.д., замерено ~2с на каждый первый показ) на КАЖДЫЙ клик по другой
-             сутте — из-за этого попап и "открывался каждый раз заново". Совсем первый показ
-             попапа всё ещё грузит iframe целиком (SPA-фреймворка внутри ещё нет). */
-          var warm = false;
-          try { warm = !!(w && typeof w.dgNavigateInternal === 'function'); } catch (err) { warm = false; }
-          if (warm) {
-            try {
-              if (w.dgNavigateInternal(u.pathname + u.search + u.hash)) {
-                popupEl.style.display = 'block';
-                var warmBtn = popupEl.querySelector('.fdg-open-new-window-btn');
-                if (warmBtn) warmBtn.href = url;
-                return;
-              }
-            } catch (err) { /* не получилось — падаем на обычную перезагрузку ниже */ }
-          }
-
+          // Was: two "warm" shortcuts avoiding a full iframe reload (same-slug DOM reuse,
+          // dgNavigateInternal SPA-routing) added for speed (~2s full reload measured on first
+          // show) — owner: "iframe jump doesn't work at all, but it works on prod dg". Prod's
+          // openFdg.js (assets/js/openFdg.js, still loaded here too, see comment above) never
+          // had either shortcut — it always does exactly the plain `iframe.src = ...` reload
+          // below. Matching that proven behavior over keeping an unreproducible-in-testing but
+          // real-on-device bug in the shortcuts; the ~2s cost returns, but a working popup that
+          // reloads beats a fast one that doesn't reliably land on the right segment.
           frameEl.src = u.toString();
           // .fdg-open-new-window-btn — <a target="_blank"> из createFdgPopup(); href на нём
           // появляется только в момент открытия попапа, поэтому по a[href] он не находится.
@@ -2271,7 +2266,13 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
 if (!localStorage.getItem('siteLanguage')) {
     localStorage.setItem('siteLanguage', localStorage.getItem('dhammaLanguage') || 'en');
 }
-window.siteLanguage = localStorage.getItem('siteLanguage') || 'en';
+// /ru/... clean URLs (old bookmarks, shared links) force Russian for THIS page view — same path
+// check as window.notEn (settings.js) and dhamma-i18n.js's pathLanguage — without permanently
+// overwriting a stored preference just because of one /ru/ visit (localStorage above is left
+// alone; dhamma-i18n.js's own languagechange sync, if the engine later actually switches the
+// stored preference too, is a separate, already-existing decision this doesn't change).
+var pathImpliesRu = /^\/(ru|r|ml|mt)(\/|$)/.test(window.location.pathname);
+window.siteLanguage = pathImpliesRu ? 'ru' : (localStorage.getItem('siteLanguage') || 'en');
 
 // Тот же паттерн чтения i18n-конфига, что и в search-render.js — этот инлайн-скрипт
 // собирает динамическую фразу результата (не токенизируется как {{...}}, т.к. в неё
@@ -2929,8 +2930,14 @@ $(document).ready(function() {
         if (name !== 'home' && window.DgHome) window.DgHome.closeSheet();
         // Автоскрытие шапки (см. autoHideHeader() выше) — новое состояние всегда стартует с
         // видимой панелью, не с той, что случайно была спрятана в предыдущем состоянии/скролле.
-        document.body.classList.remove('dg-header-hidden');
-        if (window.dgApplyHeaderPadding) window.dgApplyHeaderPadding();
+        // Except inside the citation-preview iframe (window.self !== window.top) — there
+        // autoHideHeader() hides the stack permanently and never re-adds this class; without
+        // this guard, opening a DIFFERENT sutta in an already-warm popup (dgNavigateInternal,
+        // no full reload) would call dgSetState() again and pop the header back in.
+        if (window.self === window.top) {
+            document.body.classList.remove('dg-header-hidden');
+            if (window.dgApplyHeaderPadding) window.dgApplyHeaderPadding();
+        }
         /* home.js держит на состоянии своё: случайную подсказку в поле и «зов» в заголовке
            вкладки — и то и другое только для главной. Классы переключаются ЗДЕСЬ, а не в
            DgHome.setState (та осталась для внешних вызовов), поэтому о смене нужно сообщить явно:
@@ -3373,18 +3380,31 @@ $(document).ready(function() {
   <nav class="dg-drawer-body">
     <!-- Значки у пунктов проставляет home.js (data-dg-icon → FontAwesome.icon), чтобы набор был
          тот же, что у плиток и в боевом меню, и не разъезжался при правках. -->
-    <p class="dg-group-title">{{menu.navigation}}</p>
-    <a class="dg-drawer-row dg-go-home" href="/" data-dg-icon="home">{{buttons.main}}</a>
-    <!-- Компас — тот же toggleQuickModal(), что у кнопки-компаса в выдаче/ридере (window.toggleQuickModal
-         определяет /assets/js/settings.js, override-копия грузится на этой же странице). -->
-    <a class="dg-drawer-row" href="javascript:void(0)" data-dg-icon="compass" onclick="if (typeof window.toggleQuickModal === 'function') window.toggleQuickModal();">{{toolbar.compassLabel}}</a>
-    <a class="dg-drawer-row" href="/history.php" data-dg-icon="clock">{{buttons.history}}</a>
-    <a class="dg-drawer-row" href="javascript:void(0)" data-dg-icon="help" data-bs-toggle="modal" data-bs-target="#SearchResultHelp">{{global.common.help}}</a>
-    <!-- Якоря на нижние блоки главной (Приложения/Контакты). Сами блоки видны только на широком
-         экране (#home-extra, home.css) — на мобильном эти два пункта скрыты тем же порогом
-         (см. .dg-drawer-row[data-dg-anchor] в home.css), чтобы не вести в display:none. -->
-    <a class="dg-drawer-row" href="javascript:void(0)" data-dg-icon="external" data-dg-anchor="links">{{footer.links}}</a>
-    <a class="dg-drawer-row" href="javascript:void(0)" data-dg-icon="at" data-dg-anchor="contacts">{{footer.contacts}}</a>
+    <!-- Режимы чтения — только в состоянии ридера (owner: "выводи первым делом режимы ридера" —
+         протестировать/переключить их иначе можно было только руками через ?mode= в адресе).
+         Список строит home.js (paintReaderModes) из reader/mode-table.json — тот же источник
+         правды, что уже питает панель переключения режимов внутри самого текста (scLink,
+         megareader.js), никакой второй копии режимов здесь не заводится. -->
+    <div id="dg-drawer-modes" hidden>
+      <p class="dg-group-title">{{menu.readingModes}}</p>
+      <div id="dg-drawer-modes-list"></div>
+    </div>
+    <!-- Сворачиваемая (owner: "делай раздел навигация сворачивающимся") — нативный <details>,
+         не своя JS-раскрывашка: меньше кода, работает без единой строчки скрипта. -->
+    <details class="dg-drawer-group" open>
+      <summary class="dg-group-title">{{menu.navigation}}</summary>
+      <a class="dg-drawer-row dg-go-home" href="/" data-dg-icon="home">{{buttons.main}}</a>
+      <!-- Компас — тот же toggleQuickModal(), что у кнопки-компаса в выдаче/ридере (window.toggleQuickModal
+           определяет /assets/js/settings.js, override-копия грузится на этой же странице). -->
+      <a class="dg-drawer-row" href="javascript:void(0)" data-dg-icon="compass" onclick="if (typeof window.toggleQuickModal === 'function') window.toggleQuickModal();">{{toolbar.compassLabel}}</a>
+      <a class="dg-drawer-row" href="/history.php" data-dg-icon="clock">{{buttons.history}}</a>
+      <a class="dg-drawer-row" href="javascript:void(0)" data-dg-icon="help" data-bs-toggle="modal" data-bs-target="#SearchResultHelp">{{global.common.help}}</a>
+      <!-- Якоря на нижние блоки главной (Приложения/Контакты). Сами блоки видны только на широком
+           экране (#home-extra, home.css) — на мобильном эти два пункта скрыты тем же порогом
+           (см. .dg-drawer-row[data-dg-anchor] в home.css), чтобы не вести в display:none. -->
+      <a class="dg-drawer-row" href="javascript:void(0)" data-dg-icon="external" data-dg-anchor="links">{{footer.links}}</a>
+      <a class="dg-drawer-row" href="javascript:void(0)" data-dg-icon="at" data-dg-anchor="contacts">{{footer.contacts}}</a>
+    </details>
     <p class="dg-group-title">{{menu.settings}}</p>
     <!-- Язык/тема — переехали сюда, в «Настройки» (просьба владельца: часть настроек была вверху
          шторки, часть внизу — всё в одном месте). Переключатели наполняет и обслуживает home.js,
@@ -3438,10 +3458,24 @@ $(document).ready(function() {
 <script src="/nodejs/res/js/home.js" defer></script>
 
 <script>
-           //to enable bootstrap tooltip    
+           //to enable bootstrap tooltip
 $(function () {
         $('[data-bs-toggle="tooltip"]').tooltip();
     });
+</script>
+
+<script>
+  // dg-node's own service worker (public/service-worker.js, served at /sw.js by dg-light.js).
+  // Registered from the top-level page only (window.self === window.top) — no need to also
+  // register it from inside the citation-preview iframe, same origin/scope either way.
+  // window.addEventListener('load', ...) so this doesn't compete with the page's own assets.
+  if ('serviceWorker' in navigator && window.self === window.top) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('/sw.js').catch(function (err) {
+        console.warn('Service worker registration failed:', err);
+      });
+    });
+  }
 </script>
 
 </body>
