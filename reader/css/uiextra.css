@@ -389,6 +389,13 @@
     padding: 0;
   }
 
+  /* Owner: with 2+ translators/languages stacked in right-column, margin:0 above left them
+     touching with zero gap — "merge into one pile". Gap only BETWEEN blocks, not before the
+     first (right after the Pali line). */
+  .column-view .right-column [class*="-lang"] + [class*="-lang"] {
+    margin-top: 0.5em;
+  }
+
   /* Убедимся, что <br> не добавляет лишний отступ */
   .column-view .right-column br {
     display: none; /* Либо удалите <br> из HTML, если он не нужен */

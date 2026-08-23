@@ -150,17 +150,23 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
      файлу: таблица результатов не нужна главной странице вообще (initSearchApp возвращается
      раньше, чем до неё доходит дело), а весь ЭТОТ файл был ~2МБ мёртвого веса на каждой загрузке
      home. Подключается лениво, только когда реально запускается поиск. -->
-<!-- bootstrap.5.3.1.min.css грузится динамически через loadCssJsResult.js (см. ниже),
-     а не этим блокирующим <link> — но пока он не подгрузится, скрытые Bootstrap-модалки
-     (с их SVG-иконками) не имеют .modal{display:none}, поэтому на миг рендерятся как
-     обычный, нестилизованный контент ("гигантский компас" при загрузке). Скрываем body
-     до готовности — loadCssJsResult.js сам её покажет. -->
+<!-- Owner: dg-node felt much slower than the legacy PHP prod to first paint. Root cause found
+     (not just the HTTP/1.1 6-connections-per-host queueing measured earlier): bootstrap.css used
+     to load dynamically via loadCssJsResult.js instead of a normal blocking <link> here — to dodge
+     the "unstyled Bootstrap modal flashes as raw content" problem, the ENTIRE <body> was hidden
+     (opacity:0/visibility:hidden below) until BOTH bootstrap.css AND a redundant SECOND copy of
+     themeswitch.js (dynamically injected — it's ALSO loaded normally via <script defer> near the
+     end of body, so it ran and registered its click/keydown/media-query listeners TWICE) finished
+     loading, i.e. first paint was gated behind a JS orchestration layer slower than what the
+     browser already does natively for a plain blocking <link>. Theme (dark/light) FOUC was never
+     actually this mechanism's job anyway — that's the synchronous inline <head> script above
+     (data-bs-theme, before ANY paint) — so hiding the whole page here bought nothing for theme
+     correctness, just delay. Fix: a normal blocking <link>, same as any other page — the browser
+     already prioritizes and blocks rendering on this correctly, no hand-rolled JS gate needed.
+     Kept ABOVE extrastyles.css's own <link> (below) on purpose: extrastyles.css's --bs-primary-rgb
+     override must still cascade AFTER Bootstrap's own definition to win, same order as before. -->
+<link rel="stylesheet" href="/assets/css/bootstrap.5.3.1.min.css">
 <style>
-    body {
-        opacity: 0;
-        visibility: hidden;
-        transition: opacity 0.2s ease-in-out;
-    }
     .dg-hero-form {
         /* Was 600px (measured: rendered exactly at that cap on the results page — ".docked"
            below is dead CSS, nothing in this file or search-render.js ever adds that class, so
@@ -500,11 +506,12 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     }
     /* Подсветка чтения — теми же цветами, что на проде. Там .active-word и групповая подсветка
        TTS берут rgba(var(--bs-primary-rgb), …), а --bs-primary-rgb переопределён в extrastyles.css
-       на бирюзовый 26,188,156. Здесь bootstrap.5.3.1.min.css грузится ПОСЛЕ extrastyles (через
-       loadCssJsResult.js) и возвращает переменной синий 13,110,253 — отсюда и синие подсветки
-       вместо зелёных (замерено: итоговое значение переменной 13,110,253 при объявленном ранее
-       26,188,156). Не трогаем саму переменную, чтобы не перекрашивать кнопки и ссылки всей
-       страницы, а задаём цвет обеим подсветкам явно. */
+       на бирюзовый 26,188,156. Раньше bootstrap.5.3.1.min.css грузился ПОСЛЕ extrastyles (через
+       loadCssJsResult.js, с тех пор убран — см. комментарий про first paint выше) и перебивал
+       переменную обратно на синий 13,110,253 — отсюда были синие подсветки вместо зелёных.
+       Bootstrap теперь снова блокирующим <link> ДО extrastyles.css (как и было задумано), так что
+       переменная сама по себе уже верная — но явные цвета здесь не трогаем: они и так совпадают
+       со значением переменной, а перекраивать не связанный с этой правкой код незачем. */
     #search-pane .active-word,
     #reader-pane .active-word {
         background-color: rgba(26, 188, 156, 0.35);
@@ -585,6 +592,15 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
         width: 100%;
         margin: 0;
         padding: 0;
+    }
+    /* Owner: with 2+ translators/languages stacked in right-column, zero margin left them
+       touching — "merge into one pile" in the quote. Gap only BETWEEN blocks, not before the
+       first (right after the Pali line). ~ (general sibling), not + (adjacent): each .quote span
+       is followed by its own hidden <br class="... quote"> (see the br.quote rule above), which
+       sits between two translation spans and breaks a plain + adjacent-sibling match. Same fix
+       as reader/css/uiextra.css. */
+    #search-pane.column-view .right-column span[class*="-lang"].quote ~ span[class*="-lang"].quote {
+        margin-top: 0.5em;
     }
     /* Разрывы строк между цитатами держат вертикальный поток в обычном режиме — в колоночном
        они ломают ряд (пали и right-column должны стоять РЯДОМ, а <br> между inline-block
@@ -809,7 +825,6 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
 <link rel="stylesheet" href="/assets/css/langswitch.css">
 <link rel="stylesheet" href="/assets/css/paliLookup.css">
 <link rel="stylesheet" href="/assets/css/extrastyles.css">
-<script src="/assets/js/loadCssJsResult.js"></script>
 
 <!--
 -->
@@ -830,8 +845,6 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     document.head.appendChild(s);
   })();
 </script>
-<script src="/assets/js/jquery-3.7.0.min.js"></script>
-<script type="text/javascript" src="/assets/js/bootstrap.bundle.5.3.1.min.js"></script>
 <!-- datatables.js (1.9МБ) / search-render.js / natural.js / strip-html.js больше НЕ грузятся
      здесь — см. ensureSearchAssets() ниже по файлу и её вызов из initSearchApp(). Ничего из этого
      не нужно домашнему экрану (initSearchApp возвращается сразу после dgSetState('home'), до
@@ -955,8 +968,8 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
       <a href="/" class="dg-shell-logo dg-go-home" title="Home" data-i18n-title="{{global.common.home}}">
         <img src="/assets/img/dgsankhaonly.png" alt="Dhamma.Gift">
       </a>
-      <input class="form-control searchinput" id="paliauto" type="search" placeholder="e.g. Kāyagat or sn56.11" data-i18n-placeholder="{{search.placeholder}}" autocomplete="off" autofocus>
-      <!-- Своё «очистить» вместо родного крестика type="search": родной рисуется только в
+      <input class="form-control searchinput" id="paliauto" type="search" data-i18n-placeholder="{{search.placeholder}}" autocomplete="off" autofocus>
+      <!--  placeholder="Kāyagat or sn56.11" Своё «очистить» вместо родного крестика type="search": родной рисуется только в
            webkit, не поддаётся оформлению и вставал бы вплотную к нашим кнопкам. Показывает и
            прячет его home.js по наличию текста. -->
       <button type="button" id="dg-clear-btn" class="dg-shell-btn" hidden aria-label="Clear" data-i18n-aria-label="{{global.common.clear}}">
@@ -1066,6 +1079,9 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     <h2 class="dg-extra-title" id="contacts"></h2>
     <p class="dg-contacts-motto" id="dg-contacts-motto"></p>
     <div class="dg-contacts" id="dg-contacts"></div>
+    <!-- Prod (index.php): <p class="lead mt-4">$poweredby ... *</p> right under the contact
+         icons — own line, not folded into the copyright footer. Filled by home.js renderExtra(). -->
+    <p class="dg-powered-by" id="dg-powered-by"></p>
   </section>
 
   <!-- Подвал. В установленном приложении (PWA) он не показывается: там это не сайт со страницей
@@ -1077,11 +1093,21 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
   </footer>
 </div>
 
+<!-- jQuery/bootstrap.bundle — moved here from <head> (were plain blocking <script> tags there,
+     each pausing HTML parsing of the ENTIRE rest of the page — hero band, tiles, howto, footer,
+     literally everything below them — until fully downloaded and run). Neither is needed until
+     the very first script below that actually calls jQuery, so parsing/painting all the visible
+     home-page markup above no longer waits on them at all; they only block right here, at their
+     actual first use. defer wasn't an option: this and the scripts after it are plain inline
+     <script>s (defer has no effect on inline scripts) that call jQuery synchronously the moment
+     the parser reaches them, so jQuery has to already be a real blocking load positioned directly
+     before its first caller — just no longer at the very top of the page. -->
+<script src="/assets/js/jquery-3.7.0.min.js"></script>
+<script type="text/javascript" src="/assets/js/bootstrap.bundle.5.3.1.min.js"></script>
+
 <script>
-  // Нативный autofocus не срабатывает здесь — loadCssJsResult.js (см. <head>) держит
-  // body { visibility:hidden } до полной загрузки ресурсов, а браузер решает про autofocus
-  // РАНО, во время парсинга, когда элемент ещё скрыт. Фокусируем явно, уже после того как всё
-  // догрузилось и body реально видим.
+  // Нативный autofocus не срабатывает здесь (замерено раньше — element ещё не в DOM/не виден
+  // в момент, когда браузер его обычно фокусирует). Фокусируем явно на window load.
   window.addEventListener('load', function () {
     var el = document.getElementById('paliauto');
     if (el) el.focus();
@@ -2096,7 +2122,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
      отдельной строкой в #results-toolbar. Подпись именно "Filter+", а не "Фильтр": рядом со
      штатным полем DataTables та же надпись уже занята. -->
 <button id="btn-filter-builder" class="btn btn-light dg-filter-plus-btn d-none" type="button" aria-pressed="false"
-        title="{{toolbar.filterLabel}}" aria-label="{{toolbar.filterAriaLabel}}" data-i18n-aria-label="{{toolbar.filterAriaLabel}}">
+        title="Filter+" aria-label="Advanced filter" data-i18n-title="{{toolbar.filterLabel}}" data-i18n-aria-label="{{toolbar.filterAriaLabel}}">
   <svg viewBox="0 0 512 512" width="14" height="14" fill="currentColor" aria-hidden="true">
     <path d="M0 416C0 398.3 14.33 384 32 384H86.66C99 355.7 127.2 336 160 336C192.8 336 220.1 355.7 233.3 384H480C497.7 384 512 398.3 512 416C512 433.7 497.7 448 480 448H233.3C220.1 476.3 192.8 496 160 496C127.2 496 99 476.3 86.66 448H32C14.33 448 0 433.7 0 416V416zM192 416C192 398.3 177.7 384 160 384C142.3 384 128 398.3 128 416C128 433.7 142.3 448 160 448C177.7 448 192 433.7 192 416zM352 176C384.8 176 412.1 195.7 425.3 224H480C497.7 224 512 238.3 512 256C512 273.7 497.7 288 480 288H425.3C412.1 316.3 384.8 336 352 336C319.2 336 291 316.3 278.7 288H32C14.33 288 0 273.7 0 256C0 238.3 14.33 224 32 224H278.7C291 195.7 319.2 176 352 176zM384 256C384 238.3 369.7 224 352 224C334.3 224 320 238.3 320 256C320 273.7 334.3 288 352 288C369.7 288 384 273.7 384 256zM480 64C497.7 64 512 78.33 512 96C512 113.7 497.7 128 480 128H265.3C252.1 156.3 224.8 176 192 176C159.2 176 131 156.3 118.7 128H32C14.33 128 0 113.7 0 96C0 78.33 14.33 64 32 64H118.7C131 35.75 159.2 16 192 16C224.8 16 252.1 35.75 265.3 64H480zM160 96C160 113.7 174.3 128 192 128C209.7 128 224 113.7 224 96C224 78.33 209.7 64 192 64C174.3 64 160 78.33 160 96z"/>
   </svg>
@@ -2160,6 +2186,9 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
          контейнера вокруг — только .sutta-класс задаёт отступы (5px слева на мобильном,
          reader/css/uiextra.css). container-fluid добавлял ЕЩЁ 12px с каждой стороны поверх этого —
          на мобильном получались вдвое более широкие поля, чем на референсе. -->
+    <!-- TOC/navigator — lazy-loaded /spa/toc.js, same pattern as #reader-pane below. -->
+    <div id="toc-pane" class="mt-4"></div>
+
     <div id="reader-pane" class="mt-4">
         <!-- Портировано из reader-template.html (#form-div) — там же живут иконки прода
              (/read/index.html). SPA раньше показывала над текстом ТОЛЬКО общую шапку поиска
@@ -2922,7 +2951,7 @@ $(document).ready(function() {
        <body>, вся вёрстка и анимации переключаются CSS-ом (search/css/home.css). Единственный
        источник правды — адрес: initSearchApp() читает его и зовёт это, в том числе после
        pushState на сабмите и после popstate. */
-    var DG_STATES = ['dg-state-home', 'dg-state-results', 'dg-state-reader'];
+    var DG_STATES = ['dg-state-home', 'dg-state-results', 'dg-state-reader', 'dg-state-toc'];
     function dgSetState(name) {
         var cls = 'dg-state-' + name;
         if (document.body.classList.contains(cls)) return;
@@ -3117,6 +3146,31 @@ $(document).ready(function() {
             });
     }
 
+    /* TOC/навигатор в этом же документе — тот же приём, что ensureReaderAssets()/openReaderInPlace()
+       выше: один JS-файл (/spa/toc.js), лениво, рисует в #toc-pane. Легче ридера — своих CSS-таблиц
+       не тянет, стили лежат прямо в home.css рядом с .toc-* правилами. */
+    var tocAssetsPromise = null;
+    function ensureTocAssets() {
+        if (tocAssetsPromise) return tocAssetsPromise;
+        tocAssetsPromise = new Promise(function (resolve, reject) {
+            var s = document.createElement('script');
+            s.src = '/spa/toc.js';
+            s.onload = resolve;
+            s.onerror = reject;
+            document.head.appendChild(s);
+        });
+        return tocAssetsPromise;
+    }
+
+    function openTocInPlace() {
+        dgSetBusy(false);
+        dgSetState('toc');
+        var firstTime = !tocAssetsPromise;
+        return ensureTocAssets().then(function () {
+            if (!firstTime && typeof window.initToc === 'function') window.initToc();
+        });
+    }
+
     /* Слаг текста из адреса: "/dn1:1.22.2?s=..." -> "dn1". DgTextRouter.classify() рассчитан на
        ввод человека и про суффикс сегмента не знает ("dn1:1.22.2" он считает поисковой строкой),
        поэтому отрезаем сегмент до проверки, а в ридер уходит адрес целиком. */
@@ -3157,13 +3211,36 @@ $(document).ready(function() {
         }
     };
 
+    /* /ru — легаси языковой префикс (dg-light.js делает то же самое server-side: REQUEST_URI.
+       startsWith('/ru') -> добавить lang=ru — но это только внутренний req.url рерайт для
+       выбора обработчика, адресная строка браузера им не меняется). textIdFromPath() ниже читает
+       РЕАЛЬНЫЙ window.location.pathname, так что "/ru/sn12.71" никогда не распознавался как id
+       текста ("ru/sn12.71" не проходит ни под один паттерн classify()) — падал в поиск вместо
+       ридера (владелец, живая ссылка). Разворачиваем ОДИН раз здесь, в единственной точке
+       принятия решения "что показать" (и для начальной загрузки, и для popstate) — дальше весь
+       код читает уже нормальный "/sn12.71?lang=ru", ничего не дублируем в textIdFromPath/click-
+       перехватчиках. replaceState, не pushState: /ru/... не должен становиться отдельной записью
+       истории, "назад" должен уводить туда, откуда пришли, а не обратно на /ru/-адрес. */
+    function normalizeRuPrefix() {
+        var path = window.location.pathname;
+        if (path !== '/ru' && path.indexOf('/ru/') !== 0) return;
+        var rest = path.slice(3) || '/';
+        var params = new URLSearchParams(window.location.search);
+        if (!params.has('lang')) params.set('lang', 'ru');
+        history.replaceState(history.state, '', rest + '?' + params.toString() + window.location.hash);
+    }
+
     /* Единственный решатель "что показать по текущему адресу". Раньше popstate безусловно звал
        runSearchFromUrl() — теперь адрес может означать и текст. */
     function routeFromUrl() {
+        normalizeRuPrefix();
         // Явный ?q= — всегда поиск (легаси-формат входа, старые ссылки и закладки).
         if (!new URLSearchParams(window.location.search).has('q')) {
-            // chapter (целая никая, оглавление) сюда не попадает: своего оглавления в SPA ещё
-            // нет, его по-прежнему отдаёт сервер отдельной страницей — это следующий шаг.
+            // /toc — оглавление/навигатор по канону (заменяет read.php, см. TODO.md). Ловим
+            // ДО textIdFromPath: "toc" не похож на sutta id, так что коллизии нет, но порядок
+            // важен на будущее, если появится реальная сутта с таким префиксом.
+            var path = window.location.pathname.replace(/^\/+|\/+$/g, '');
+            if (path === 'toc') { openTocInPlace(); return; }
             var id = textIdFromPath(window.location.pathname);
             if (id) { openReaderInPlace(id); return; }
         }

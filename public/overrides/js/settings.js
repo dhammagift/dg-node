@@ -478,6 +478,13 @@ document.addEventListener("click", function (e) {
     const path = window.location.pathname;
     const isSearchResult = (path === '/' || path === '/ru/') && window.location.search.includes('q=');
     if (isSearchResult) return;
+    // === ИСКЛЮЧЕНИЕ ДЛЯ /toc — оглавление показывает вложенный легаси-фрагмент Патимоккхи
+    // (assets/texts/bupm.php/bipm.php), у которого текст в тех же .pli-lang классах, что и в
+    // ридере — без этого исключения клик по нему создаёт плавающую .dynamic-tts-btn/active-word
+    // на странице, которая никакого чтения там не запускает (owner: "active word проверка не
+    // должна и динамик ТТС кнопка не должна появляться для блока переводчики вообще" — кнопка
+    // всплывала поверх всей страницы, включая панель переводчиков, после клика где угодно). ===
+    if (document.body.classList.contains('dg-state-toc')) return;
     // ==========================================
 
     const clickedSegment = e.target.closest('[class*="-lang"]');
@@ -538,6 +545,9 @@ function dgToggleColumnMode() {
     var isColumns = (localStorage.getItem('viewMode') || 'alternate') !== 'columns';
     localStorage.setItem('viewMode', isColumns ? 'columns' : 'alternate');
     dgApplyColumnMode();
+    // Keep the quick-settings toggle in sync no matter which of the two paths (toolbar click or
+    // Alt+C) fired — single source of truth, quick.reading's own click already re-renders itself.
+    if (typeof window.refreshQuickSettings === 'function') window.refreshQuickSettings();
 }
 document.addEventListener('DOMContentLoaded', dgApplyColumnMode);
 if (document.readyState !== 'loading') dgApplyColumnMode();
@@ -1439,8 +1449,8 @@ if (event.altKey && event.code === "KeyJ") {
 //  console.log('Pressed:', event.code);
  if (
     event.altKey && // любой Alt
-    (event.code === 'Period' || 
-     event.code === 'Comma' || 
+    (event.code === 'Period' ||
+     event.code === 'Comma' ||
      event.code === 'KeyM')
   ) {
     event.preventDefault();
@@ -1448,7 +1458,14 @@ if (event.altKey && event.code === "KeyJ") {
     const currentValue = localStorage.getItem("removePunct") === "true";
     localStorage.setItem("removePunct", currentValue ? "false" : "true");
 
-    location.reload();
+    // Live re-apply instead of reload — same path the quick-settings toggle and the Apply
+    // button already use (owner: "должен моментально работать", the reload was the bug).
+    if (typeof window.buildSutta === 'function' && window.currentReaderSlug) {
+      window.buildSutta(window.currentReaderSlug);
+    } else if (window.DgSearchRender && typeof window.DgSearchRender.redraw === 'function') {
+      window.DgSearchRender.redraw();
+    }
+    if (typeof window.refreshQuickSettings === 'function') window.refreshQuickSettings();
   }
 
 
@@ -1507,8 +1524,14 @@ if (dictSelect) {
 if (savedScript) {
   scriptSelect.value = savedScript;
 } else {
-  scriptSelect.value = 'ISOPali'; // Значение по умолчанию, если ничего не сохранено
-localStorage.setItem('selectedScript', 'ISOPali');
+  scriptSelect.value = 'ISOPali'; // Значение по умолчанию для селекта, если ничего не сохранено
+  // Owner: Devanagari mode never showed Devanagari — this ran on EVERY page load (not just when
+  // the settings modal was opened), permanently writing 'ISOPali' into localStorage on a user's
+  // very first visit. From then on megareader.js's "no saved script yet -> default to Devanagari
+  // in dualScript mode" fallback (localStorage.getItem('selectedScript') check) never saw an
+  // absent key again, so it silently lost that default forever. Not persisting here — only the
+  // select control's displayed value defaults to ISOPali, localStorage stays untouched until the
+  // user actually picks something via Apply (below).
 }
 
 if (applyButton) {
@@ -1843,12 +1866,17 @@ document.addEventListener("keydown", (event) => {
         // (mode type never touches language, see switchReaderMode), and only once you're
         // ALREADY there does a second press cycle the language, like the burger's EN/RU switch.
         // Cycles through languages ALREADY loaded for this text (readerMode.columns, from the
-        // last real server response) — never a guessed/hardcoded pair. For single-column modes
-        // there's nothing to cycle to, so it's a no-op.
+        // last real server response). Single-column modes (single/multiTran/memorize/devanagari)
+        // never load more than one, so there's nothing to cycle through there — fall back to the
+        // same EN/RU toggle as the burger's language switch (home.js renderLangSwitch), the only
+        // two interface languages this app actually has (configs/search/lang_{ru,en}.json).
         const cols = readerMode.columns || [];
-        if (cols.length > 1 && typeof window.switchReadingLanguage === 'function') {
+        if (typeof window.switchReadingLanguage !== 'function') return;
+        if (cols.length > 1) {
             const idx = cols.indexOf(readerMode.lang);
             window.switchReadingLanguage(cols[(idx + 1) % cols.length]);
+        } else {
+            window.switchReadingLanguage(readerMode.lang === 'ru' ? 'en' : 'ru');
         }
     } else {
         window.switchReaderMode(type);

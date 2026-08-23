@@ -156,7 +156,8 @@ body.dg-state-home #home-hint { max-height: 60px; margin-top: 8px; }
 body.dg-skin-minimal #form.dg-hero-form { display: block; width: 100%; }
 body.dg-skin-minimal.dg-state-home .dg-hero-form { max-width: 640px; }
 body.dg-skin-minimal.dg-state-results .dg-hero-form,
-body.dg-skin-minimal.dg-state-reader .dg-hero-form { max-width: 520px; }
+body.dg-skin-minimal.dg-state-reader .dg-hero-form,
+body.dg-skin-minimal.dg-state-toc .dg-hero-form { max-width: 520px; }
 
 /* ============================================================================
    Фирменная hero-полоса главной.
@@ -244,7 +245,8 @@ body.dg-state-home #dg-topbar { display: flex; }
    же специфичностью и выигрывал бы по порядку (замерено: бургер оставался виден и на главной). */
 body .dg-menu-btn-hero { display: none; }
 body.dg-state-results .dg-menu-btn-hero,
-body.dg-state-reader .dg-menu-btn-hero { display: inline-flex; }
+body.dg-state-reader .dg-menu-btn-hero,
+body.dg-state-toc .dg-menu-btn-hero { display: inline-flex; }
 
 #dg-brand {
     display: inline-flex;
@@ -352,34 +354,41 @@ body.dg-skin-minimal #form.dg-hero-form { flex: 1 1 auto; min-width: 0; }
    компактных 19px-иконок ниже (#results-toolbar/#reader-toolbar) — непропорционально. Паддинг
    потоньше, сами кнопки (32-34px) не трогаем — они те же, что и в остальной шапке. */
 body.dg-state-results .dg-input-shell,
-body.dg-state-reader .dg-input-shell {
+body.dg-state-reader .dg-input-shell,
+body.dg-state-toc .dg-input-shell {
     padding: 4px 6px 4px 8px;
     background: rgb(221, 221, 221);
     border-color: #5a5a5a;
 }
 body.dg-state-results .dg-input-shell .dg-shell-btn,
-body.dg-state-reader .dg-input-shell .dg-shell-btn {
+body.dg-state-reader .dg-input-shell .dg-shell-btn,
+body.dg-state-toc .dg-input-shell .dg-shell-btn {
     color: #5a5a5a;
 }
 body.dg-state-results #form #paliauto.searchinput,
-body.dg-state-reader #form #paliauto.searchinput {
+body.dg-state-reader #form #paliauto.searchinput,
+body.dg-state-toc #form #paliauto.searchinput {
     color: #2b2b2b;
 }
 body.dg-state-results #form #paliauto.searchinput::placeholder,
-body.dg-state-reader #form #paliauto.searchinput::placeholder {
+body.dg-state-reader #form #paliauto.searchinput::placeholder,
+body.dg-state-toc #form #paliauto.searchinput::placeholder {
     color: #5a5a5a;
 }
 body.dark.dg-state-results .dg-input-shell,
-body.dark.dg-state-reader .dg-input-shell {
+body.dark.dg-state-reader .dg-input-shell,
+body.dark.dg-state-toc .dg-input-shell {
     background: #42426a;
     border-color: #42426a;
 }
 body.dark.dg-state-results .dg-input-shell .dg-shell-btn,
-body.dark.dg-state-reader .dg-input-shell .dg-shell-btn {
+body.dark.dg-state-reader .dg-input-shell .dg-shell-btn,
+body.dark.dg-state-toc .dg-input-shell .dg-shell-btn {
     color: rgb(221, 221, 221);
 }
 body.dark.dg-state-results #form #paliauto.searchinput,
-body.dark.dg-state-reader #form #paliauto.searchinput {
+body.dark.dg-state-reader #form #paliauto.searchinput,
+body.dark.dg-state-toc #form #paliauto.searchinput {
     color: rgb(221, 221, 221);
 }
 
@@ -408,7 +417,8 @@ body.dg-state-home .dg-shell-sep { display: none; }
    в шапке. Она же кнопка «домой». */
 body .dg-shell-logo { display: none; flex: none; line-height: 0; text-decoration: none; }
 body.dg-state-results .dg-shell-logo,
-body.dg-state-reader .dg-shell-logo { display: inline-flex; }
+body.dg-state-reader .dg-shell-logo,
+body.dg-state-toc .dg-shell-logo { display: inline-flex; }
 .dg-shell-logo img { width: 26px; height: 26px; object-fit: contain; display: block; }
 /* Разделитель перед блоком кнопок справа — как в строке поиска у поисковиков. */
 .dg-shell-sep {
@@ -427,10 +437,14 @@ body.dg-state-reader .dg-shell-logo { display: inline-flex; }
     display: none;
     width: 17px;
     height: 17px;
-    /* Standard Bootstrap .spinner-border formula (solid ring, one transparent quarter) — was
-       mostly --dg-border-strong (a muted gray) with only one thin accent segment, nearly
-       invisible at this size. */
-    border: 2px solid var(--dg-accent);
+    /* Owner: still invisible on the home page — border was a hardcoded teal (--dg-accent)
+       sitting on the search button's own dark navy fill (body.dg-state-home .dg-shell-go,
+       color:#fff), near-zero contrast between two dark/teal tones. Real Bootstrap
+       .spinner-border uses `currentColor`, not a fixed color, precisely so it always matches
+       whatever text/icon color its button already has — white on the home button, muted
+       grey on results/reader, near-white in dark theme (all already set via .dg-shell-btn's
+       own `color`, see above) — no per-state override needed here at all. */
+    border: 2px solid currentColor;
     border-right-color: transparent;
     border-radius: 50%;
     animation: dg-spin 0.7s linear infinite;
@@ -628,7 +642,7 @@ body.dg-state-home #scrollToTopBtn {
    Возвращаем ей своё оформление везде, КРОМЕ состояния ридера — там правила ридера как раз
    нужны. Специфичность (0,1,1) против (0,0,1) у голого `body`, поэтому побеждаем и без
    !important. */
-body:not(.dg-state-reader) {
+body:not(.dg-state-reader):not(.dg-state-toc) {
     margin: 0;
     font-family: var(--bs-body-font-family);
     background-color: var(--dg-page);
@@ -639,6 +653,220 @@ body:not(.dg-state-reader) {
    видимость целиком здесь. */
 #reader-pane { display: none; }
 body.dg-state-reader #reader-pane { display: block; }
+
+/* Панель TOC/навигатора — тот же приём, что #reader-pane выше. Первая, минимальная версия
+   разметки: подробная стилизация (тема шапки/тулбара и т.п.) при желании донастраивается позже,
+   как и весь остальной визуал ридера когда-то дорабатывался постепенно. */
+#toc-pane { display: none; }
+body.dg-state-toc #toc-pane { display: block; }
+body.dg-state-toc #search-pane,
+body.dg-state-toc #results-toolbar,
+body.dg-state-toc #results-divider,
+body.dg-state-toc #dynamicHeader,
+body.dg-state-toc #language-button {
+    display: none;
+}
+
+/* Layout: tree on the left (this is a Dhamma site, not a translation-comparison site — owner),
+   translator filter as a right-hand aside when there's room; on narrow screens the aside moves
+   ABOVE the tree instead (order:-1) and stays compact via the per-language <details> "ещё". */
+/* Palette: not new — reuses the site's own production-v4 tokens (--dg-surface/--dg-border/
+   --dg-text/--dg-accent etc.), already defined on body.dg-skin-minimal above and already
+   theme-aware (body.dark redefines them) since they drive the home screen and reader toolbar.
+   The old version of this block used bare Bootstrap vars (--bs-border-color etc.), which this
+   site's dark theme never touches — that's why it looked like an unstyled draft in dark mode. */
+#toc-pane { max-width: 1100px; margin: 0 auto; color: var(--dg-text); }
+/* Safety net: every link in this pane is the same accent green, full stop (owner: "цвета ссылок
+   должны быть тогда уже все зелёные, а не только зелёные какие-то фиолетовые" — repeated after
+   the :visited-only fix, because the REAL cause wasn't :visited at all). Once the reader has been
+   opened anywhere in this SPA session, reader/css/index.css + rus-multi.css stay loaded and carry
+   a bare ".dark a{color:rgb(122,122,249)}" — class+type beats this file's plain ".toc-mark"/
+   ".toc-leaf-link" classes (both are single-class selectors), so links quietly turned lilac the
+   moment reader CSS entered the page, :visited or not. #toc-pane is an ID selector — it outranks
+   any class-based rule regardless of load order, so this one line pins every link in the pane. */
+#toc-pane a,
+#toc-pane a:visited { color: var(--dg-accent-ink, var(--dg-accent)); }
+.toc-layout { display: flex; gap: 2rem; align-items: flex-start; }
+.toc-main { flex: 1 1 auto; min-width: 0; }
+.toc-aside {
+    flex: 0 0 260px;
+    position: sticky; top: 1rem;
+    border: 1px solid var(--dg-border); border-radius: var(--dg-radius, 10px);
+    padding: .75rem .9rem;
+    background: var(--dg-surface);
+}
+.toc-aside-title { font-size: .95rem; margin: 0 0 .5rem; color: var(--dg-text-2); }
+/* Same button-reset + "+/-" affordance as the category expand-all toggle — collapsible on
+   phones so arriving at /toc lands on the Pali contents, not this panel (owner: "на мобильном
+   когда пришёл в оглавление, он пришёл в оглавление пали, а не в список переводчиков"). */
+.toc-aside-toggle {
+    display: flex; align-items: center; gap: .4rem;
+    width: 100%; background: none; border: none; padding: 0; cursor: pointer;
+    text-align: left; font: inherit;
+}
+.toc-aside-toggle .toc-toggle { flex: none; }
+.toc-filter-reset { font-size: .8rem; margin-bottom: .6rem; }
+.toc-filter-reset a,
+.toc-filter-reset a:visited { color: var(--dg-accent-ink, var(--dg-accent)); }
+/* Stack to one column only on phones — tablets have plenty of room for the two-column layout
+   too (owner: "на планшетах же много места... в одну колонку только на мобильных"). 640px keeps
+   portrait tablets (iPad-class, ≥768px) two-column; only narrower phone widths collapse. */
+@media (max-width: 640px) {
+    .toc-layout { flex-direction: column; }
+    .toc-aside { order: -1; flex-basis: auto; width: 100%; position: static; }
+}
+
+.toc-category { margin-bottom: 1.75rem; }
+.toc-category-header { display: flex; align-items: center; gap: .75rem; margin-bottom: .35rem; }
+.toc-category-header h3 { margin: 0; font-size: 1.15rem; color: var(--dg-text); }
+/* Chunky square toggle — prod's own look for its one top-level collapse-all control
+   (read.php #collapseAll: filled accent square, bold "+"). */
+.toc-expand-all-btn {
+    width: 1.9rem; height: 1.9rem; flex: none;
+    border: none; border-radius: 6px; background: var(--dg-accent); color: #fff;
+    font-size: 1.2rem; font-weight: 700; line-height: 1; cursor: pointer;
+}
+.toc-expand-all-btn:hover { background: var(--dg-accent-dark, var(--dg-accent-ink, var(--dg-accent))); }
+.toc-books { display: flex; flex-direction: column; }
+.toc-book { border-top: 1px solid var(--dg-border); padding: .5rem 0; }
+.toc-book:first-child { border-top: none; }
+.toc-book-header,
+.toc-book-header:visited {
+    display: block; width: 100%; text-align: left;
+    background: none; border: none; padding: .3rem .1rem; cursor: pointer;
+    color: var(--dg-accent-ink, var(--dg-accent)); font-size: 1.3rem; font-weight: 700;
+    text-decoration: underline; text-decoration-color: color-mix(in srgb, currentColor 45%, transparent);
+}
+.toc-book-header:hover { text-decoration-color: currentColor; }
+/* The "(N)" count (and, for Khuddaka, the "*" partial-collection mark) is its own muted span, not
+   part of the bold name — it's metadata about the row, not the title itself (owner: "отдели
+   счётчик от названия чтобы он был серым... это к имени не относится"). */
+.toc-count {
+    color: var(--dg-text-muted); font-weight: 400; font-size: 1rem;
+    text-decoration: none;
+}
+.toc-count-star { cursor: help; }
+.toc-book-body { padding: .25rem 0 .5rem .7rem; }
+.toc-empty { padding: .35rem 0; color: var(--dg-text-muted); font-size: .9rem; }
+
+/* Explicit hierarchy: "Переводчики" (aside title, h4) → language name (level 2 — bigger, bold,
+   its own underline) → each translator (level 3 — small checkbox row). Owner: "у тебя всё
+   одинакового размера... это же для того, чтобы было удобно понимать, это первый уровень, это
+   там опция, это второй уровень" — same size everywhere read as one flat blob. */
+.toc-filter-search {
+    width: 100%; box-sizing: border-box; margin-bottom: .85rem;
+    padding: .4rem .55rem; font-size: .85rem;
+    background: var(--dg-page); color: var(--dg-text);
+    border: 1px solid var(--dg-border-strong); border-radius: 6px;
+}
+.toc-filter-group { margin-bottom: 1.1rem; padding-top: .6rem; border-top: 1px solid var(--dg-border); }
+.toc-filter-group:first-child { padding-top: 0; border-top: none; }
+/* Named ...-hdr/-title, deliberately NOT ...-lang-row/...-lang: reader/css/uiextra.css has its own
+   "[class*='-lang']{display:block}" (targets .pli-lang/.eng-lang/etc.) — any class of ours that
+   happens to contain that substring gets silently forced to display:block too (same specificity,
+   uiextra.css loads later so it wins), which is exactly what broke the checkbox+language-name row
+   here (owner: screenshot showed the checkbox stacked above "English" — that CSS rule, not the
+   active-word JS bug from before, which was a separate collision on the same "-lang" substring). */
+.toc-filter-hdr { display: flex; align-items: center; gap: .5rem; margin-bottom: .4rem; }
+.toc-filter-title { font-weight: 700; font-size: 1rem; color: var(--dg-text); }
+.toc-filter-item { display: flex; align-items: baseline; gap: .5rem; font-size: .85rem; padding: .2rem 0; color: var(--dg-text-2); }
+/* Real, visible checkboxes — not text-sized-to-invisibility (owner: "это же не просто какие-то
+   ссылки, это должны быть чекбоксы... непонятно как это работает"). They were rendering
+   display:none: extrastyles.css has a global "label input[type=checkbox]{display:none}" (its own
+   custom-checkbox hack elsewhere on the site) that swallows every checkbox nested in a <label> —
+   same issue already solved once for .dg-scope/.dg-check below; same fix here, a selector with
+   enough classes to outrank it. accent-color tints the checked state green in both themes. */
+.toc-filter-item input.toc-filter-checkbox {
+    display: inline-block;
+    width: 16px; height: 16px; flex: none; margin: 0; cursor: pointer;
+    accent-color: var(--dg-accent);
+    border: 1px solid var(--dg-border-strong); border-radius: 3px;
+}
+/* The language master checkbox lives in a plain div, not a <label> — extrastyles.css's
+   display:none hack only targets checkboxes inside a <label>, so this one just needs sizing. */
+.toc-filter-master {
+    width: 16px; height: 16px; flex: none; margin: 0; cursor: pointer;
+    accent-color: var(--dg-accent);
+    border: 1px solid var(--dg-border-strong); border-radius: 3px;
+}
+.toc-filter-more { margin-top: .3rem; }
+.toc-filter-more summary { font-size: .8rem; cursor: pointer; color: var(--dg-accent-ink, var(--dg-accent)); list-style: none; }
+.toc-filter-more summary::-webkit-details-marker { display: none; }
+
+/* Small per-level step, not 1.4rem — SN nests up to 5 deep (group>samyutta>paññāsaka>vagga>leaf
+   list), and since this stacks cumulatively at every level, 1.4rem there pushed the leaf/
+   translator list ~7rem off the left edge, squeezing it into the middle of the page (owner:
+   "слишком большие отступы... список сутт оказывается в центре экрана"). */
+.toc-tree, .toc-children { list-style: none; margin: 0; padding-left: .35rem; }
+/* Second nesting level and deeper step in at HALF the first level's indent, not another full
+   step each time — cumulative width still adds up on a narrow phone once you're 4-5 levels deep
+   (owner: repeated "отступы всё ещё гигантские" even after the first halving — halved again). */
+.toc-children .toc-children,
+.toc-children .toc-children .toc-children,
+.toc-children .toc-children .toc-children .toc-children { padding-left: .18rem; }
+/* Only the OUTERMOST list (straight under .toc-book-body, never anyone's "children" container)
+   starts flush — every nested level below it (buildTreeChildren always stamps .toc-tree on the
+   node it returns, then renderBranch ALSO adds .toc-children onto that SAME element for anything
+   nested) needs to keep its indent. A bare ".toc-tree{padding-left:0}" matched every level alike
+   and cancelled the indent everywhere, not just at the root (owner: "они должны отличаться
+   отступами тоже" — depth should read in the indent, not only font size/weight). */
+.toc-book-body > .toc-tree { padding-left: 0; }
+/* Vagga/chapter heading — prod shows this as a plain bold static subheading, not another
+   collapsible row; kept collapsible here (large books like SN/AN genuinely need it lazy), but
+   styled like a heading, not a list item, to match. */
+.toc-branch-header { display: flex; align-items: baseline; gap: .4rem; cursor: pointer; padding: .5rem 0 .3rem; }
+.toc-branch-title { color: var(--dg-text); font-weight: 700; font-size: 1.05rem; }
+/* Depth reads by nesting itself — .toc-children inside .toc-children marks each deeper level
+   (samyutta > paññāsaka > vagga, or nipāta > vagga, etc, however many levels a book has) — one
+   step smaller/lighter per level, so the hierarchy is visible at a glance instead of every branch
+   looking the same (owner: "уровни у тебя не отличаются... видно по уровню отличается", matching
+   prod where a nikāya/samyutta heading reads clearly bigger than the vagga below it). */
+.toc-children .toc-branch-title { font-weight: 600; font-size: .95rem; }
+.toc-children .toc-children .toc-branch-title { font-weight: 500; font-size: .88rem; color: var(--dg-text-2); }
+.toc-children .toc-children .toc-children .toc-branch-title { font-weight: 400; font-size: .84rem; color: var(--dg-text-muted); }
+.toc-toggle {
+    background: none; border: none; cursor: pointer; padding: 0;
+    width: 1.3em; height: 1.3em; line-height: 1.3em; text-align: center;
+    font-weight: 700; color: var(--dg-text-muted); flex: none;
+}
+/* padding-left was a flat 1.75rem (28px) on EVERY leaf row regardless of depth — on top of the
+   UL nesting indent above, that alone was nearly half the total indent a leaf sat at, and it
+   didn't scale down the way the rest of the tree just got tuned to (owner: "отступы всё ещё
+   гигантские"). The UL nesting already carries the depth signal; the leaf only needs a small
+   step of its own. */
+.toc-leaf { display: flex; align-items: baseline; gap: .5rem; flex-wrap: wrap; padding: .6rem 0 .6rem .5rem; border-bottom: 1px solid var(--dg-border); }
+.toc-leaf:last-child { border-bottom: none; }
+.toc-leaf-link,
+.toc-leaf-link:visited { text-decoration: underline; color: var(--dg-accent-ink, var(--dg-accent)); font-weight: 600; }
+/* One language's tag + its own translator marks wrap together as a single unit — without this,
+   wrapping split the tag from its marks, landing "EN" wherever the wrap fell, disconnected from
+   its own translator list (owner: "переводы... переносится на разные строчки"). */
+.toc-src-group { display: inline-flex; align-items: baseline; flex-wrap: wrap; gap: .45rem; }
+.toc-src-tag { font-size: .68rem; text-transform: uppercase; color: var(--dg-text-muted); }
+/* Phones: a wrapping flex row of id + title + N language groups reads as a jumble at this width —
+   stack it instead, one clear line per thing (owner: "посмотри как ужасно выглядят переводы...
+   на мобильном"). Tablet/desktop keep the denser inline row, there's room for it. */
+@media (max-width: 640px) {
+    .toc-leaf { flex-direction: column; align-items: flex-start; gap: .3rem; }
+}
+/* Translator marks — plain small text, like prod's muted "TB"/"BS" initials, not chip/badge
+   boxes: a box reads as tooling chrome, plain text reads as part of the same page. All the same
+   accent green as every other link here (owner: "почему одни зеленые одни сиреневые, делай все
+   зелёными") — the lilac was the browser's default :visited color leaking through; explicit
+   :visited rules on every link class in this pane pin the color regardless of visited state. */
+.toc-mark,
+.toc-mark:visited {
+    font-size: .78rem; color: var(--dg-accent-ink, var(--dg-accent)); text-decoration: none;
+}
+.toc-mark:hover { text-decoration: underline; }
+.toc-mark-primary,
+.toc-mark-primary:visited { color: var(--dg-accent-ink, var(--dg-accent)); font-weight: 600; }
+.toc-more { display: inline-block; }
+.toc-more summary { font-size: .78rem; cursor: pointer; color: var(--dg-text-muted); list-style: none; }
+.toc-more summary::-webkit-details-marker { display: none; }
+.toc-more .toc-mark { margin-right: .5rem; }
+.toc-loading, .toc-error { padding: .5rem 0; color: var(--dg-text-muted); }
+.toc-book-link { text-decoration: underline; }
 
 /* В ридере выдача остаётся в DOM (возврат по "назад" мгновенный), но не показывается. Раньше
    здесь прятались только ОТДЕЛЬНЫЕ кнопки внутри #results-toolbar (разворачивание строк,
@@ -670,7 +898,8 @@ body.dg-state-reader .forshellscript {
    on #sutta DOES affect titles and quotes in the results table too. Owner asked for the button
    back on results, same as in the reader — #dg-state-home still hides it above (no results table
    there at all, nothing to toggle). */
-body.dg-state-reader #variants-hint { display: none !important; }
+body.dg-state-reader #variants-hint,
+body.dg-state-toc #variants-hint { display: none !important; }
 
 /* #variants-hint — отдельно и с !important: скрипт выдачи показывает его ИНЛАЙНОВЫМ
    style="display:block" (см. renderResultHeader в index.html), а инлайн бьёт любой селектор
@@ -1954,4 +2183,13 @@ body.dg-state-home #home-extra:not([hidden]) { display: block; }
     background: var(--dg-accent-bg);
     border-color: var(--dg-accent);
     color: var(--dg-accent-ink);
+}
+
+/* Prod: <p class="lead mt-4">$poweredby ... *</p> right under the contact icons. */
+.dg-powered-by {
+    margin: 18px 0 0;
+    font-family: var(--dg-font);
+    font-size: 1.1rem;
+    color: var(--dg-text-2);
+    text-align: center;
 }

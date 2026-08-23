@@ -256,14 +256,35 @@ function loadDictCSS() {
     });
 }
 
+// Latin + Pali diacritics (IAST/ISO both live in these Unicode blocks) — anything outside it
+// means the reader is showing a non-Latin script (Devanagari/Thai/etc, /settings/ ?script=) and
+// the clicked word needs a round-trip through Aksharamukha (server, dg-light.js) to become Pali
+// IAST before any dictionary lookup can find it. Plain Latin input skips this entirely — owner:
+// "для iast лишнюю лейтенси не добавляй".
+const PALI_LATIN_RE = /^[\x00-\x7FĀ-ɏḀ-ỿ‐-―‘-‟…]*$/;
+
+async function ensureIastWord(word) {
+    if (!word || PALI_LATIN_RE.test(word)) return word;
+    try {
+        const res = await fetch(`${currentHost}/api/transliterate?text=${encodeURIComponent(word)}`);
+        if (!res.ok) return word;
+        const data = await res.json();
+        return data.text || word;
+    } catch (e) {
+        return word;
+    }
+}
+
 async function handleWordLookup(word, event) {
     if (!dictionaryVisible) return;
 
     if (!word || /^[\d\-.,:; ]+$/.test(word.trim())) return;
 
     let cleanedWord = cleanWord(word);
-    
+
     if (!cleanedWord) return;
+
+    cleanedWord = await ensureIastWord(cleanedWord);
 
     await loadDictCSS();
     const currentTheme = getEffectiveTheme();

@@ -1,0 +1,11 @@
+{
+  "_comment": [
+    "Classifies transKeys (lang_translatorKey) as literal/interlinear translations vs adapted",
+    "literary ones. The TOC always shows an interlinear translation as a separate, first link",
+    "before the regular translator badges — everything NOT listed here is treated as literary.",
+    "Pure data, no logic: add a key here if a translator produces an interlinear translation;",
+    "if 'o' (the project's own translator) ever also produces a literary/adapted version under",
+    "a different key, that new key simply stays out of this list and renders as a normal badge."
+  ],
+  "interlinear": ["ru_o", "en_o", "bb_o", "th_o"]
+}

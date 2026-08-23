@@ -144,6 +144,29 @@ async function convertScriptInSearchResult(result, scriptCode) {
     await Promise.all(jobs);
 }
 
+// Word-click dictionary lookup (paliLookup.js, standalone DPD + external dict links) assumes
+// the clicked word is Pali IAST — true only when the reader is showing the default ISOPali
+// script. When the owner picks another script (Devanagari/Thai/any of the ~163 Aksharamukha
+// systems, ?script= in /settings/), the clicked word is in THAT script and none of it (standalone
+// dict, dict.dhamma.gift, CPD, PTS...) would find anything. AutoDetect (Aksharamukha's own script
+// detector, same package as convertPaliScript above) picks the source script so the client
+// doesn't need to know/send it. Owner: "для iast лишнюю лейтенси не добавляй" — the client
+// (paliLookup.js) only calls this when the word contains non-Latin characters at all; plain
+// IAST/ISO input never round-trips here.
+app.get('/api/transliterate', async (req, res) => {
+    const text = (req.query.text || '').toString();
+    if (!text) return res.json({ text: '', converted: false });
+    const aksh = await akshReady;
+    if (!aksh) return res.json({ text, converted: false });
+    try {
+        const converted = await aksh.processAsync(AKSH_SCRIPTS.AutoDetect, AKSH_SCRIPTS.IASTPI, text);
+        res.json({ text: converted, converted: true });
+    } catch (err) {
+        console.warn('Transliterate to IAST failed:', err.message);
+        res.json({ text, converted: false });
+    }
+});
+
 // Документация API — /api-docs. configs/openapi.json/openapi.en.json описывают /search,
 // /search/enrich, /api/text, /api/nav и т.п.: какие параметры есть, что обязательно, что
 // возвращается. Раздаём оба JSON-файла напрямую — нужно для выпадающего списка языков ниже
@@ -345,6 +368,61 @@ async function buildLangCountsCache() {
     }
 }
 
+// Catalog of every translator key (transKey) that physically exists on disk per language, with
+// a sutta count each — same walk as buildLangCountsCache (SC_TRANS + DG_OFFLINE), just grouped
+// one level deeper (by transKey, not only by language). Built once at startup, same as
+// lang-counts.json, so the TOC's translator-filter UI has something to populate its checkboxes
+// from without walking the whole corpus on every page load.
+async function buildTranslatorCatalogCache() {
+    const cachePath = path.join(__dirname, 'settings', 'translator-catalog.json');
+    const countsByLang = {}; // { lang: { translatorKey: count } } — bare translator key (no lang
+    // prefix): the outer object key already is the language, client does lang + '_' + key itself.
+    // SC_TRANS carries convenience symlinks straight into DG_OFFLINE for some translators (e.g.
+    // sc_bilara_data/translation/en/o -> .../dhammagift/translation/en/o, en/thanissaro ->
+    // .../en_other/) — walking both roots then counts the very same file twice. Dedupe by real
+    // path (not by name) so any such alias, present or future, only ever counts once (owner: "в
+    // англ o стоит 9 но реально только 3 перевода").
+    const seenRealPaths = new Set();
+    async function addFromDir(dir, lang) {
+        if (!fsSync.existsSync(dir)) return;
+        let files;
+        try { files = await fs.readdir(dir, { recursive: true }); } catch (e) { return; }
+        if (!countsByLang[lang]) countsByLang[lang] = {};
+        for (const f of files) {
+            if (!f.endsWith('.json')) continue;
+            const baseName = path.basename(f, '.json');
+            const parts = baseName.split('_');
+            if (parts.length < 2 || !parts[1].startsWith('translation-')) continue;
+            const suffix = parts[1].slice('translation-'.length); // "ru-o" / "en-sujato"
+            const dashIdx = suffix.indexOf('-');
+            if (dashIdx === -1) continue;
+            const translatorKey = suffix.slice(dashIdx + 1); // "o" / "sujato" / "sv+edited+o"
+            let real;
+            try { real = fsSync.realpathSync(path.join(dir, f)); } catch (e) { real = path.join(dir, f); }
+            if (seenRealPaths.has(real)) continue;
+            seenRealPaths.add(real);
+            countsByLang[lang][translatorKey] = (countsByLang[lang][translatorKey] || 0) + 1;
+        }
+    }
+    try {
+        const langDirs = await fs.readdir(SC_TRANS, { withFileTypes: true });
+        for (const d of langDirs) {
+            if (d.isDirectory()) await addFromDir(path.join(SC_TRANS, d.name), d.name);
+        }
+    } catch (e) {
+        console.warn('Translator catalog cache: could not scan', SC_TRANS, e.message);
+    }
+    for (const l of DG_LANGS) {
+        await addFromDir(path.join(DG_OFFLINE, l), l.split('_')[0]);
+    }
+    try {
+        await fs.writeFile(cachePath, JSON.stringify(countsByLang, null, 2), 'utf8');
+        console.log(`Translator catalog cache built: ${Object.keys(countsByLang).length} language(s) -> settings/translator-catalog.json`);
+    } catch (e) {
+        console.warn('Translator catalog cache: could not write file:', e.message);
+    }
+}
+
 async function initServer() {
     try {
         const data = await fs.readFile(skeletonPath, 'utf8');
@@ -356,6 +434,7 @@ async function initServer() {
         await buildSettingsDemoCache();
         await buildScriptListCache();
         await buildLangCountsCache();
+        await buildTranslatorCatalogCache();
     } catch (err) {
         console.error('Startup error:', err);
     }
@@ -558,6 +637,12 @@ const TRANSLATOR_PRIORITY = require('./configs/reader/translator-priority.json')
 // mnemonic), язык режим больше не хранит вообще — язык это отдельная ось (?lang=/?langs=), не
 // хардкод в этом файле.
 const MODE_TABLE = require('./configs/reader/mode-table.json');
+
+// TOC/navigator: top-level book list (bilingual labels, one small file, see comment inside)
+// and the interlinear-vs-literary translator classification (see /api/toc/book/:code below).
+const TOC_BOOKS = require('./configs/reader/toc-books.json');
+const TRANSLATOR_TYPES = require('./configs/reader/translator-types.json');
+const INTERLINEAR_TRANSLATOR_KEYS = new Set(TRANSLATOR_TYPES.interlinear || []);
 
 // Интерфейсные языки, которые реально поддерживает сайт — сканируется из configs/reader/
 // lang_*.json при старте (тот же приём auto-discovery, что и siteroot/, см. CLAUDE.md), а не
@@ -825,6 +910,30 @@ async function findTranslationFilesForBatch(suttaIds, targetLangs) {
         return result;
     }
     return buildTranslationIndex(suttaIds, targetLangs);
+}
+
+// Full (unfiltered) translator listing per sutta, for the TOC "what translations exist" badges —
+// buildTranslationIndex/findTranslationFilesForBatch always collapse to the ONE preferred
+// translator per language (filterPreferredTranslators), which is right for the reader but wrong
+// here: the TOC needs to show EVERY available translator, not just the preferred one. Reuses the
+// same directory walker (walkTranslationDir) as buildTranslationIndex, just skips the final
+// collapsing step.
+async function buildFullTranslationIndex(suttaIds, targetLangs) {
+    const wantedIds = new Set(suttaIds);
+    const bySutta = new Map(); // suttaId -> { transKey: filePath }
+    async function walkGroup(dirs) {
+        await Promise.all([...new Set(dirs)].map(async dir => {
+            if (!fsSync.existsSync(dir)) return;
+            await walkTranslationDir(dir, wantedIds, bySutta);
+        }));
+    }
+    await Promise.all(targetLangs.map(async lang => {
+        const dirsByGroup = sourceDirsForLang(lang);
+        for (const group of sourceWriteOrder(lang)) {
+            await walkGroup(dirsByGroup[group]);
+        }
+    }));
+    return bySutta;
 }
 
 // Директории для grep в зависимости от запрошенных языков
@@ -2140,6 +2249,405 @@ app.get('/search/enrich', async (req, res) => {
 // ВАЖНО: регистрируется ПОСЛЕ /search/enrich — иначе как wildcard-параметр перехватил бы
 // "/search/enrich" тоже (Express матчит по порядку регистрации, а не по специфичности).
 app.get('/search/:keyword', searchHandler);
+
+// TOC/navigator — lazy tree browsing (see TODO.md, replaces the old read.php static-tree
+// approach). Two endpoints: /api/toc (light top-level book list with leaf counts) and
+// /api/toc/book/:code (one book's whole tree — small file, see comment on TOC_TREE_ROOT).
+
+// suttacentral.net/sc-data/structure/tree/{sutta,vinaya,abhidhamma}/{code}-tree.json already
+// holds the FULL canon tree, ready-made — 694 bytes for dn, up to ~74 KB for sn/an. No need to
+// build or hardcode a tree: just read the small file for whichever book was requested.
+const TOC_TREE_ROOT = path.join(DATA_ROOT, 'suttacentral.net', 'sc-data', 'structure', 'tree');
+const TOC_TREE_KINDS = ['sutta', 'vinaya', 'abhidhamma'];
+const tocTreeCache = new Map(); // code -> parsed tree JSON | null (small files, static for process lifetime)
+
+// Real samyutta/group names for SN — legacy's own TOC data (assets/texts/sn_toc.csv, columns:
+// groupNum,groupName,samyuttaCode,samyuttaName,vaggaNum,vaggaName,suttaId,suttaTitle), not
+// something to reconstruct from corpus headers — SN's corpus files simply don't carry a samyutta-
+// or group-level name anywhere (owner: real sn1..sn56 names, found in DG's own product/toc list).
+// byCode: samyutta code -> its name ("sn1" -> "Devatāsaṁyuttaṁ"). byLeaf: any sutta id -> the
+// group name it belongs to, used since a group's own firstLeafId is exactly one such sutta id.
+function loadSnTocOverrides() {
+    const result = { byCode: {}, byLeaf: {} };
+    const file = path.join(__dirname, 'siteroot', 'assets', 'texts', 'sn_toc.csv');
+    if (!fsSync.existsSync(file)) return result;
+    for (const line of fsSync.readFileSync(file, 'utf8').split('\n')) {
+        if (!line.trim()) continue;
+        const parts = line.split(',');
+        if (parts.length < 8) continue;
+        const groupName = parts[1].trim().replace(/p[āa]ḷi$/i, '').trim();
+        const samyuttaCode = parts[2].trim();
+        const samyuttaName = parts[3].trim();
+        const suttaId = parts[6].trim();
+        if (!result.byCode[samyuttaCode]) result.byCode[samyuttaCode] = samyuttaName;
+        if (!result.byLeaf[suttaId]) result.byLeaf[suttaId] = groupName;
+    }
+    return result;
+}
+const SN_TOC = loadSnTocOverrides();
+
+function loadBookTree(code) {
+    if (tocTreeCache.has(code)) return tocTreeCache.get(code);
+    let tree = null;
+    for (const kind of TOC_TREE_KINDS) {
+        const file = path.join(TOC_TREE_ROOT, kind, `${code}-tree.json`);
+        if (fsSync.existsSync(file)) {
+            try { tree = JSON.parse(fsSync.readFileSync(file, 'utf8')); } catch (e) { tree = null; }
+            break;
+        }
+    }
+    tocTreeCache.set(code, tree);
+    return tree;
+}
+
+// A tree node is either a leaf (sutta id string) or a branch ({slug: [...children]}, exactly one
+// key). Both collectLeafIds and findFirstLeafId walk this same generic shape.
+function collectLeafIds(node, out) {
+    if (typeof node === 'string') { out.push(node); return; }
+    if (Array.isArray(node)) { node.forEach(n => collectLeafIds(n, out)); return; }
+    if (node && typeof node === 'object') {
+        for (const key in node) collectLeafIds(node[key], out);
+    }
+}
+
+function findFirstLeafId(node) {
+    if (typeof node === 'string') return node;
+    if (Array.isArray(node)) {
+        for (const n of node) { const id = findFirstLeafId(n); if (id) return id; }
+        return null;
+    }
+    if (node && typeof node === 'object') {
+        for (const key in node) { const id = findFirstLeafId(node[key]); if (id) return id; }
+    }
+    return null;
+}
+
+// Best-effort title for a branch node (vagga/chapter/rule-category): reads a header segment
+// (":0.2", ":0.3", ...) of its first leaf's root-pli-ms text. Which index is the right one
+// varies by tree shape: SN's deep tree has its group title at ":0.2"; Vinaya-vibhanga's rule
+// categories (Pārājika, Saṅghādisesa, ...) sit at ":0.3" instead, because ":0.2" there is a
+// constant, book-wide "part" heading (e.g. "Mahāvibhaṅga") shared by every sibling branch — using
+// it verbatim would title every branch identically. pickBranchTitleIndex() picks whichever index
+// actually DISTINGUISHES a group of siblings, once, per sibling group (not per branch), instead of
+// hardcoding a fixed index per book. Corpus files also key header segments by their OWN base id,
+// which can differ from a range-folded leaf id ("pli-tv-bu-vb-as1-7" the leaf vs
+// "pli-tv-bu-vb-as1" the file's own segment keys) — segmentAt() matches by suffix, not exact id,
+// to survive that. Final fallback: the leaf's own skeletonDB title (right when a branch wraps a
+// single combined-range leaf whose title already IS the group name); last resort: humanized slug.
+const branchTitleCache = new Map();
+
+// Canonical Pali "nipāta" (numbered-chapter) ordinal names — a small, fixed vocabulary shared by
+// every book organized this way (Aṅguttara, Itivuttaka, Theragāthā, Therīgāthā...), not per-book
+// data. One-time-scraped from legacy read.php's own hardcoded headings (grep "nipāta" there)
+// instead of retyping it, so a bare-numbered top slug ("an3", "iti1"...) gets its real name
+// instead of just the digit.
+const NIPATA_ORDINALS = ['', 'Ekaka', 'Duka', 'Tika', 'Catukka', 'Pañcaka', 'Chakka', 'Sattaka', 'Aṭṭhaka', 'Navaka', 'Dasaka', 'Ekādasaka'];
+
+// Fallback for a bare-numbered slug beyond NIPATA_ORDINALS' range (e.g. SN's samyuttas, sn1..sn56
+// — no short canonical name exists for those, unlike nipātas): reuses the same "{Book} N" locator
+// text every leaf already carries at header segment ":0.1" (see getBookTitle), just for this one
+// number instead of the whole book — not hardcoded per book, reads whatever the corpus says.
+function numberedGroupFallback(firstLeafId, n) {
+    const raw = segmentAt(firstLeafId, 1);
+    if (!raw) return String(n);
+    // Trailing locator can be a combined-leaf range ("49.1–12", en-dash) as well as a plain
+    // "N.N" — [\d.] alone misses the dash and leaves it stuck onto the result.
+    const base = raw.replace(/\s+[\d.–-]+\s*$/, '').trim();
+    return base ? `${base} ${n}` : String(n);
+}
+
+function humanizeSlug(slug, bookCode, firstLeafId, isTopLevel) {
+    let rest = slug.startsWith(bookCode) ? slug.slice(bookCode.length) : slug;
+    // A leading "N-" is a position locator (peyyāla/paññāsaka groups tagged with their chapter
+    // number in the slug), not part of the name — strip it before humanizing.
+    rest = rest.replace(/^\d+-/, '');
+    rest = rest.replace(/^-+/, '');
+    if (!rest) rest = slug;
+    if (/^\d+$/.test(rest)) {
+        const n = parseInt(rest, 10);
+        // "nipāta" naming only applies to a bare-numbered BOOK-ROOT child (AN/Iti/Thag's own
+        // top-level chapters) — a bare number nested deeper (SN's sn1..sn56 samyuttas, two levels
+        // under the book root) is a different kind of unit entirely and must not get an AN-style
+        // "Ekaka/Duka/..." label just because it happens to also be a bare digit.
+        if (isTopLevel && NIPATA_ORDINALS[n]) return NIPATA_ORDINALS[n] + 'nipāta';
+        if (firstLeafId) return numberedGroupFallback(firstLeafId, n);
+    }
+    return rest.charAt(0).toUpperCase() + rest.slice(1);
+}
+function segmentAt(id, idx) {
+    try {
+        const rootPath = getRootPath(id);
+        if (!rootPath || !fsSync.existsSync(rootPath)) return null;
+        const data = JSON.parse(fsSync.readFileSync(rootPath, 'utf8'));
+        const key = Object.keys(data).find(k => k.endsWith(`:0.${idx}`));
+        return key ? String(data[key]).trim() : null;
+    } catch (e) { return null; }
+}
+// A vagga's own root text almost always closes with a colophon line naming it — e.g. mn10:
+// "Mūlapariyāyavaggo niṭṭhito paṭhamo.", dn13: "Sīlakkhandhavaggo niṭṭhito.", an1.10: "Rūpādivaggo
+// paṭhamo." — the real, fully-diacritic Pali name, straight from the text, not a guess (owner:
+// "просканируй тексты возьми главы из текстов... по слову vaggo"). Not every vagga/book uses this
+// convention (checked below, at the LAST leaf of the vagga where the colophon lives); when absent
+// this just returns null and callers fall back to the existing segmentAt/slug guess.
+// The very last leaf of a book (or of one of SN's 5 outer groups) carries colophons for EVERY
+// level closing at once — vagga, samyutta, AND the outer group all use the identical "{Name}vaggo"
+// phrasing, stacked in the same file (e.g. sn11.25, last vagga of the last samyutta in Sagāthā-
+// vaggasaṁyutta: "Tatiyo vaggo." / "Sakkasaṁyuttaṁ samattaṁ." / "Sagāthāvaggo paṭhamo." / "Sagāthā-
+// vaggasaṁyuttapāḷi niṭṭhitā."). Reject a match that's actually one of SN's own group names (already
+// known from SN_TOC) so the OUTER colophon doesn't leak down as if it named this inner vagga.
+const SN_GROUP_NAMES = Array.from(new Set(Object.values(SN_TOC.byLeaf))).map(n => n.toLowerCase());
+const colophonCache = new Map();
+function findColophonVaggaName(lastLeafId) {
+    if (colophonCache.has(lastLeafId)) return colophonCache.get(lastLeafId);
+    let name = null;
+    try {
+        const rootPath = getRootPath(lastLeafId);
+        if (rootPath && fsSync.existsSync(rootPath)) {
+            const data = JSON.parse(fsSync.readFileSync(rootPath, 'utf8'));
+            for (const key of Object.keys(data)) {
+                // Letters+marks only (not \S) — some colophons are wrapped in "(...)" or split
+                // across segments ("vaggo sattamo." with the name in an earlier segment); this
+                // both skips punctuation getting glued onto the name and requires an actual name
+                // before "vaggo" (rejects a bare "vaggo" with nothing attached).
+                const m = String(data[key]).match(/([\p{L}\p{M}]+)vaggo\b/iu);
+                if (!m) continue;
+                const candidate = m[1] + 'vagga';
+                // Group names carry a "saṁyutta" suffix after the plain "vagga" word ("Sagāthā-
+                // vaggasaṁyutta"), so match by prefix, not exact equality.
+                const candidateLower = candidate.toLowerCase();
+                if (SN_GROUP_NAMES.some(gn => gn.startsWith(candidateLower))) continue;
+                // Mid-sentence Pali doesn't capitalize compounds the way a heading should.
+                name = candidate.charAt(0).toUpperCase() + candidate.slice(1);
+                break;
+            }
+        }
+    } catch (e) { /* no colophon here, that's fine */ }
+    colophonCache.set(lastLeafId, name);
+    return name;
+}
+function pickBranchTitleIndex(siblingFirstLeafIds) {
+    for (let idx = 2; idx <= 4; idx++) {
+        const values = siblingFirstLeafIds.map(id => segmentAt(id, idx));
+        if (!values.every(Boolean)) continue;
+        // If MOST siblings' value at this index just echoes their own leaf title, this index has
+        // gone PAST the group-title header level into the leaf-title level (happens on trees with
+        // no separate header segment for this depth at all, e.g. SN's outer division/samyutta
+        // levels) — stop escalating and keep the best-effort value found at a shallower index
+        // instead of showing individual leaf titles as if they were the group's name. A single
+        // coincidental match (a branch that legitimately wraps one combined-range leaf whose own
+        // title already IS the group's name, e.g. Vinaya's Adhikaraṇasamatha) is not enough to
+        // reject an otherwise-good, distinguishing index — only a majority is.
+        const leafTitleHits = siblingFirstLeafIds.filter((id, i) => {
+            const own = ((skeletonDB[id] && skeletonDB[id].title) || '').trim();
+            return own && values[i] === own;
+        }).length;
+        if (leafTitleHits > siblingFirstLeafIds.length / 2) break;
+        const distinct = new Set(values);
+        if (distinct.size === values.length) return idx;
+    }
+    return 2;
+}
+// singleLeaf: true when this branch wraps exactly one leaf overall (e.g. Vinaya's
+// Adhikaraṇasamatha, a single combined-range leaf) — there the leaf's own title legitimately IS
+// the group's name, so it's an accepted fallback. For a multi-leaf branch, a candidate that just
+// echoes its FIRST leaf's own title (DN: a vagga's first sutta title, read at an index with no
+// real vagga-title segment) is not real group-title information — humanizeSlug is the better
+// fallback there (crude but at least describes the group, not one arbitrary member of it).
+function getBranchTitle(firstLeafId, slug, bookCode, idx, singleLeaf, trustSegment, isTopLevel, lastLeafId) {
+    // Keyed by slug too, not just firstLeafId+idx: a branch and its own first child commonly
+    // share the same firstLeafId (both start at the same leaf) and can land on the same idx —
+    // without slug in the key they'd collide and the child's cached title would leak up to the
+    // parent (e.g. MN's paññāsa-level node showing its first vagga's title instead of its own).
+    const cacheKey = `${slug}:${firstLeafId}:${idx}`;
+    if (branchTitleCache.has(cacheKey)) return branchTitleCache.get(cacheKey);
+    const ownTitle = ((skeletonDB[firstLeafId] && skeletonDB[firstLeafId].title) || '').trim();
+    let title = humanizeSlug(slug, bookCode, firstLeafId, isTopLevel);
+    // Curated real name (SN_TOC) beats the generic slug-derived guess, at any level above the
+    // vagga (samyutta code "sn1" matches by slug; a group's own firstLeafId is exactly one of the
+    // sutta ids the CSV indexes) — see loadSnTocOverrides above.
+    if (!trustSegment) {
+        if (SN_TOC.byCode[slug]) title = SN_TOC.byCode[slug];
+        // byLeaf maps ANY leaf to its outer GROUP name — only valid for the group level itself
+        // (isTopLevel, SN's book-root children ARE the 5 groups). A samyutta with its own extra
+        // paññāsaka layer (sn22, sn35) is also !trustSegment but NOT top-level — without this
+        // guard it wrongly inherited the whole group's name (owner: found live, sn22's three
+        // paññāsaka all showing "Khandhavaggasaṁyutta").
+        else if (isTopLevel && SN_TOC.byLeaf[firstLeafId]) title = SN_TOC.byLeaf[firstLeafId];
+    }
+    // A leaf's own corpus file only ever carries ONE group-title header segment above its own
+    // title (the vagga it directly sits in) — there is no separate segment for a deeper ancestor
+    // (paññāsaka/samyutta/nipāta). trustSegment is only true when THIS branch's own children are
+    // leaves (i.e. it IS that directly-containing vagga); otherwise segmentAt's value would just
+    // be the vagga name leaking up from a grandchild, so skip it and keep the slug-derived title
+    // (owner: MN/SN/AN's outer levels were all showing their innermost vagga's name, repeated).
+    if (trustSegment) {
+        // The colophon (see findColophonVaggaName) is the vagga's REAL name, straight from the
+        // text — takes priority over the header-segment guess/humanized slug when it's there.
+        const colophonName = lastLeafId ? findColophonVaggaName(lastLeafId) : null;
+        if (colophonName) {
+            title = colophonName;
+        } else {
+            const candidate = segmentAt(firstLeafId, idx);
+            if (candidate && candidate !== ownTitle) {
+                title = candidate;
+            } else if (singleLeaf && ownTitle) {
+                title = ownTitle;
+            }
+        }
+    }
+    branchTitleCache.set(cacheKey, title);
+    return title;
+}
+
+// Book-level (top) title for books with no curated label in toc-books.json (Abhidhamma's
+// sub-books) — read straight from the corpus instead of guessing a translation: segment ":0.1"
+// of the book's first leaf is the book's own Pali name, sometimes with a trailing chapter/
+// position number ("Saṁyutta Nikāya 1.1") which we strip.
+const bookTitleCache = new Map();
+function getBookTitle(code, firstLeafId) {
+    if (bookTitleCache.has(code)) return bookTitleCache.get(code);
+    let title = code;
+    try {
+        const rootPath = getRootPath(firstLeafId);
+        if (rootPath && fsSync.existsSync(rootPath)) {
+            const data = JSON.parse(fsSync.readFileSync(rootPath, 'utf8'));
+            const raw = data[`${firstLeafId}:0.1`];
+            // Strips a leading OR trailing chapter/position locator ("1 Mūlayamaka" -> "Mūlayamaka",
+            // "Saṁyutta Nikāya 1.1" -> "Saṁyutta Nikāya") — which side it's on depends on the book.
+            if (raw) title = raw.replace(/^[\d.]+\s+/, '').replace(/\s+[\d.–-]+\s*$/, '').trim();
+        }
+    } catch (e) { /* keep code as last-resort fallback */ }
+    bookTitleCache.set(code, title);
+    return title;
+}
+
+// Recursively annotates a raw tree node into a shape the client can render generically: leaves
+// carry their skeletonDB title, branches carry a resolved title (getBranchTitle) plus children.
+// titleIdx is the header-segment index to use for THIS node's own title, decided by the caller
+// from this node's sibling group (see pickBranchTitleIndex); each level picks its OWN index for
+// its children's sibling group, since different tree depths map to different header segments.
+function annotateTree(node, bookCode, titleIdx, isTopLevel) {
+    if (typeof node === 'string') {
+        return { type: 'leaf', id: node, title: (skeletonDB[node] && skeletonDB[node].title) || node };
+    }
+    const slug = Object.keys(node)[0];
+    const rawChildren = node[slug];
+    const childArr = Array.isArray(rawChildren) ? rawChildren : [rawChildren];
+    // Only a branch whose OWN children are leaves directly contains suttas (a true vagga) — only
+    // there does the leaf's corpus header segment actually describe THIS level (see getBranchTitle
+    // trustSegment comment). A branch one or more levels above that (paññāsaka/samyutta/nipāta)
+    // gets its title from the slug instead.
+    const childrenAreLeaves = childArr.every(c => typeof c === 'string');
+    const siblingFirstLeaves = childArr
+        .filter(c => typeof c !== 'string')
+        .map(c => findFirstLeafId(c[Object.keys(c)[0]]))
+        .filter(Boolean);
+    const childIdx = siblingFirstLeaves.length ? pickBranchTitleIndex(siblingFirstLeaves) : 2;
+    const children = childArr.map(c => annotateTree(c, bookCode, childIdx, false));
+    const firstLeaf = findFirstLeafId(rawChildren);
+    const allLeaves = [];
+    collectLeafIds(rawChildren, allLeaves);
+    const lastLeaf = allLeaves[allLeaves.length - 1];
+    const title = firstLeaf ? getBranchTitle(firstLeaf, slug, bookCode, titleIdx || 2, allLeaves.length === 1, childrenAreLeaves, isTopLevel, lastLeaf) : slug;
+    return { type: 'branch', slug, title, children };
+}
+
+// Top level: categories -> books, with bilingual labels (curated for sutta/vinaya/khudakka,
+// read live from the corpus for Abhidhamma sub-books, see getBookTitle) and a leaf count each
+// (countLeaves — cheap, the tree is already in memory once loadBookTree has cached it once).
+// A handful of Abhidhamma tree files under sc-data are empty, or list ids that turn out to be
+// non-Pali editions (Chinese Āgama/Abhidharma texts also tagged category:'abhi' in skeletonDB,
+// e.g. "sab"/"sg" -> dir_path "lzh/..."). Not part of this project's Pali-only scope (see
+// CLAUDE.md) — filter to leaves skeletonDB actually knows AND that live under root/pli/ms/...,
+// same convention resolveScopeDirs() already uses.
+function isPaliLeaf(id) {
+    const meta = skeletonDB[id];
+    return !!(meta && meta.dir_path && meta.dir_path.startsWith('pli/'));
+}
+
+// tier:'default' books always show; tier:'extra' books (rest of Khuddaka, all of Abhidhamma) only
+// unlock client-side once the user has enabled the matching group in the EXISTING search-scope
+// setting (dhammaSearchScope) — see extraScopeCodes comment in toc-books.json. Server doesn't know
+// that per-browser setting, so it just tags tier and ships extraScopeCodes; the client decides.
+function describeBook({ code, label, singlePage }, tier) {
+    const tree = loadBookTree(code);
+    const allLeafIds = [];
+    if (tree) collectLeafIds(tree, allLeafIds);
+    const leafIds = allLeafIds.filter(isPaliLeaf);
+    let resolvedLabel = label;
+    if (!resolvedLabel) {
+        const title = leafIds.length ? getBookTitle(code, leafIds[0]) : code;
+        resolvedLabel = { ru: title, en: title };
+    }
+    const entry = { code, label: resolvedLabel, count: leafIds.length, tier };
+    if (singlePage) entry.singlePage = singlePage;
+    return entry;
+}
+
+// A "group" is a Nikāya-level entry that itself contains books (Khuddaka, inside 'dhamma') — a
+// peer of DN/MN/SN/AN, not a flattened list of its member books (owner: "кн это отдельное собрание
+// как дн мн сн ан"). Same books/extraBooks/extraScopeCodes shape as a category, one level down.
+function describeGroup(group) {
+    const books = (group.books || []).map(b => describeBook(b, 'default'))
+        .concat((group.extraBooks || []).map(b => describeBook(b, 'extra')))
+        .filter(book => book.count > 0 || book.singlePage);
+    // Total across whichever of its books currently show — mirrors a plain book's count, so the
+    // Nikāya-level row (Khuddaka) reads the same way as DN/MN/SN/AN's "(34)" etc. hasExtra tells
+    // the client whether to mark it partial (prod's asterisk convention, settings/index.html
+    // ABHI_MARK) when the extra tier isn't unlocked — server doesn't know that per-browser setting.
+    const count = books.reduce((sum, b) => sum + b.count, 0);
+    const entry = { code: group.code, label: group.label, books, count };
+    if (group.extraScopeCodes) entry.extraScopeCodes = group.extraScopeCodes;
+    if ((group.extraBooks || []).length) entry.hasExtra = true;
+    return entry;
+}
+
+app.get('/api/toc', (req, res) => {
+    const categories = Object.entries(TOC_BOOKS).filter(([key]) => key !== '_comment').map(([category, catData]) => {
+        const books = (catData.books || []).map(b => describeBook(b, 'default'))
+            .concat((catData.extraBooks || []).map(b => describeBook(b, 'extra')))
+            .filter(book => book.count > 0 || book.singlePage);
+        const groups = (catData.groups || []).map(describeGroup).filter(g => g.books.length > 0);
+        const entry = { category, label: catData.label, books, groups };
+        if (catData.extraScopeCodes) entry.extraScopeCodes = catData.extraScopeCodes;
+        return entry;
+    }).filter(cat => cat.books.length > 0 || cat.groups.length > 0);
+    res.json({ categories });
+});
+
+// One book's whole tree (small file — see TOC_TREE_ROOT comment above) plus, when ?langs= is
+// given, which translators exist for each of its leaves (raw/unfiltered — buildFullTranslationIndex,
+// not the reader's "one preferred translator" collapsing) so the client can render badges without
+// a request per sutta.
+app.get('/api/toc/book/:code', async (req, res) => {
+    const code = req.params.code;
+    const tree = loadBookTree(code);
+    if (!tree) return res.status(404).json({ error: `Unknown book code: ${code}` });
+
+    const rootSlug = Object.keys(tree)[0];
+    const rawChildren = tree[rootSlug];
+    const childArr = Array.isArray(rawChildren) ? rawChildren : [rawChildren];
+    const topFirstLeaves = childArr
+        .filter(c => typeof c !== 'string')
+        .map(c => findFirstLeafId(c[Object.keys(c)[0]]))
+        .filter(Boolean);
+    const topIdx = topFirstLeaves.length ? pickBranchTitleIndex(topFirstLeaves) : 2;
+    const annotated = childArr.map(c => annotateTree(c, code, topIdx, true));
+    const leafIds = [];
+    collectLeafIds(tree, leafIds);
+
+    const targetLangs = (req.query.langs || '').split(',').map(s => s.trim()).filter(Boolean);
+    let translations = {};
+    if (targetLangs.length) {
+        const index = await buildFullTranslationIndex(leafIds, targetLangs);
+        for (const id of leafIds) {
+            const entry = index.get(id);
+            if (entry) translations[id] = Object.keys(entry);
+        }
+    }
+
+    res.json({ code, tree: annotated, translations, interlinearKeys: [...INTERLINEAR_TRANSLATOR_KEYS] });
+});
 
 // Заглушка TOC для "оглавленческих" id — целая никая/самьютта ("sn25", "mn") или Vinaya-
 // категория без номера ("pj", "pli-tv-bu-vb-"), у которых нет отдельного skeletonDB[id], но

@@ -555,7 +555,16 @@
                 return;
             }
         }
-        if (tile.href) window.location.href = tile.custom ? fillTemplate(tile.href) : tile.href;
+        if (tile.href) {
+            var finalHref = tile.custom ? fillTemplate(tile.href) : tile.href;
+            // Internal routes (e.g. "Read Pāḷi" → /toc) go through the SPA router in place —
+            // dgNavigateInternal (search/index.html) already checks same-origin and no-ops
+            // (returns false) for anything it can't handle, so external/legacy tiles still fall
+            // through to a normal full navigation exactly as before (owner: "почему это работает
+            // не в спа режиме, а с перезагрузкой" — a full reload for an in-app route).
+            if (typeof window.dgNavigateInternal === 'function' && window.dgNavigateInternal(finalHref)) return;
+            window.location.href = finalHref;
+        }
     }
 
     /* Подстановка в адрес своей кнопки — те же {{q}} и {{theme}}, что у ссылок меню: именно они
@@ -1074,15 +1083,18 @@
             }));
         }
 
-        if (state === 'reader') {
+        if (state === 'reader' || state === 'results') {
             /* Варианты чтения и режим колонок уже переключаются настоящими кнопками тулбара
-               ридера (#toggle-variants/#toggle-mode, reader-template.html + megareader.js /
-               switchView.js) — здесь просто ЖМЁМ их, как «Вид выдачи» выше жмёт .forshellscript,
-               а не заводим вторую копию их логики (localStorage-ключи и подписи разошлись бы).
-               Кнопок может не быть в DOM, если разметка ридера ещё не смонтирована — тогда просто
-               не показываем соответствующий переключатель, а не мёртвый тумблер. */
-            var variantsBtn = document.getElementById('toggle-variants');
-            var columnsBtn = document.getElementById('toggle-mode');
+               (#toggle-variants/#toggle-mode в ридере, #toggle-mode-results в выдаче,
+               reader-template.html + megareader.js/switchView.js) — здесь просто ЖМЁМ их, как
+               «Вид выдачи» выше жмёт .forshellscript, а не заводим вторую копию их логики
+               (localStorage-ключи и подписи разошлись бы). Кнопок может не быть в DOM, если
+               разметка ещё не смонтирована — тогда просто не показываем переключатель, а не
+               мёртвый тумблер. Режим колонок и раньше был общесайтовым (dgApplyColumnMode в
+               settings.js применяет .column-view и к #sutta, и к #search-pane) — здесь просто
+               появилась видимая ручка для выдачи, поведение не менялось. */
+            var variantsBtn = state === 'reader' ? document.getElementById('toggle-variants') : null;
+            var columnsBtn = document.getElementById(state === 'reader' ? 'toggle-mode' : 'toggle-mode-results');
             if (variantsBtn || columnsBtn) host.appendChild(groupTitle(t('quick.reading', 'Чтение')));
             if (variantsBtn) {
                 var variantsOn = localStorage.getItem('variantVisibility') !== 'hidden';
@@ -1096,14 +1108,18 @@
                     columnsBtn.click();
                 }, 'Alt+C'));
             }
-            // Same localStorage key/live-reapply as the Apply button in settings.js
-            // (window.buildSutta/window.currentReaderSlug) — a real toggle here instead of
-            // only being reachable through the full /settings/ page.
+            // Same localStorage key everywhere; live-reapply differs by state — reader re-fetches
+            // via buildSutta, results just re-runs the DataTables render() on already-loaded rows
+            // (window.DgSearchRender.redraw, search-render.js) since removePunct only affects display.
             var punctOn = localStorage.getItem('removePunct') === 'true';
             host.appendChild(toggleRow(t('quick.hidePunct', 'Скрыть пунктуацию Pāḷi'), punctOn, function (next) {
                 localStorage.setItem('removePunct', String(next));
-                if (typeof window.buildSutta === 'function' && window.currentReaderSlug) {
-                    window.buildSutta(window.currentReaderSlug);
+                if (state === 'reader') {
+                    if (typeof window.buildSutta === 'function' && window.currentReaderSlug) {
+                        window.buildSutta(window.currentReaderSlug);
+                    }
+                } else if (window.DgSearchRender && typeof window.DgSearchRender.redraw === 'function') {
+                    window.DgSearchRender.redraw();
                 }
             }, 'Alt+.'));
         }
@@ -1159,6 +1175,14 @@
         sheet.style.top = (r.bottom + 8) + 'px';
         sheet.style.maxHeight = Math.max(220, window.innerHeight - r.bottom - 24) + 'px';
     }
+
+    /* External hotkeys (Alt+V/Alt+C/Alt+. in megareader.js/settings.js) change the underlying
+       localStorage/button state directly, outside this panel — if the panel happens to be open
+       when that fires, its toggle rows would otherwise show stale state until next open/close.
+       Called from those hotkey handlers after they apply the change. */
+    window.refreshQuickSettings = function () {
+        if (isQuickOpen()) buildQuickBody(document.getElementById('dg-quick-body'));
+    };
 
     function openQuick() {
         ensureQuick();
@@ -2049,24 +2073,6 @@
             : '/assets/common/privacy.html';
         privacy.textContent = t('footer.privacy', 'Политика конфиденциальности');
         host.appendChild(privacy);
-
-        // Ported from legacy config/translate.php ($poweredby/$tooltippoweredby) — "Powered by
-        // DI"/"Powered by NI" signature with a tooltip explaining the pun (Dhamma/Natural
-        // Intelligence), same text per language as prod.
-        host.appendChild(document.createTextNode(' · '));
-        host.appendChild(document.createTextNode(t('footer.poweredby', 'Powered by DI')));
-        var poweredTip = document.createElement('a');
-        poweredTip.href = 'javascript:void(0)';
-        poweredTip.className = 'dg-footer-link';
-        poweredTip.textContent = ' *';
-        poweredTip.setAttribute('data-bs-toggle', 'tooltip');
-        poweredTip.setAttribute('data-bs-placement', 'top');
-        poweredTip.setAttribute('data-bs-title', t('footer.poweredbyTooltip',
-            'Дхамма Интеллект, Dhamma Intelligence, Естественный Интеллект, Natural Intelligence'));
-        host.appendChild(poweredTip);
-        if (window.bootstrap && bootstrap.Tooltip) {
-            new bootstrap.Tooltip(poweredTip);
-        }
     }
 
     /* Приложения/расширения и контакты — перенос двух нижних блоков боевой главной. Данные
@@ -2168,6 +2174,29 @@
             a.innerHTML = faSpec(c.icon);
             contacts.appendChild(a);
         });
+
+        // Ported from legacy config/translate.php ($poweredby/$tooltippoweredby) — "Powered by
+        // DI"/"Powered by NI" signature with a tooltip explaining the pun (Dhamma/Natural
+        // Intelligence), same text per language as prod. Owner: was previously buried inline in
+        // the tiny copyright footer line at the very bottom of the page (easy to miss) — prod
+        // shows it as its OWN line right under the contact icons, matching that here.
+        var poweredBy = document.getElementById('dg-powered-by');
+        if (poweredBy) {
+            poweredBy.innerHTML = '';
+            poweredBy.appendChild(document.createTextNode(t('footer.poweredby', 'Powered by DI')));
+            var poweredTip = document.createElement('a');
+            poweredTip.href = 'javascript:void(0)';
+            poweredTip.className = 'dg-footer-link';
+            poweredTip.textContent = ' *';
+            poweredTip.setAttribute('data-bs-toggle', 'tooltip');
+            poweredTip.setAttribute('data-bs-placement', 'top');
+            poweredTip.setAttribute('data-bs-title', t('footer.poweredbyTooltip',
+                'Дхамма Интеллект, Dhamma Intelligence, Естественный Интеллект, Natural Intelligence'));
+            poweredBy.appendChild(poweredTip);
+            if (window.bootstrap && bootstrap.Tooltip) {
+                new bootstrap.Tooltip(poweredTip);
+            }
+        }
     }
 
     // Полный текст условий — в шторке. Ссылка на саму лицензию внутри остаётся кликабельной.

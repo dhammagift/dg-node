@@ -7,6 +7,10 @@
     "Отдаётся как /nodejs/res/menu-links.json существующим маунтом configs/search — правок",
     "сервера не требуется.",
     "",
+    "Исключение из \"ничего не придумано\": плитка \"read\" (en/ru) теперь ведёт на /toc — новый",
+    "SPA-навигатор/оглавление (public/spa/toc.js, dg-light.js /api/toc*), а не на легаси",
+    "read.php — см. TODO.md.",
+    "",
     "Формы элемента:",
     "  href     — обычная ссылка;",
     "  tpl      — шаблон, {{q}} подставляется из #paliauto, {{theme}} из темы; идёт в",
@@ -31,7 +35,7 @@
     "read": {
       "label": "Read Pāḷi",
       "icon": "book",
-      "href": "/read.php"
+      "href": "/toc"
     },
 
     "history": {
@@ -73,8 +77,8 @@
         {
           "name": "Readers",
           "items": [
-            { "label": "Digital Pali Reader", "href": "https://www.digitalpalireader.online/_dprhtml/index.html", "blank": true },
-            { "label": "Simsapa Pali Reader (PC · Mac · Linux)", "href": "https://simsapa.github.io/", "blank": true }
+            { "label": "Digital Pali Reader", "desc": "Browser-based Pali reader with word-by-word dictionary lookup", "href": "https://www.digitalpalireader.online/_dprhtml/index.html", "blank": true },
+            { "label": "Simsapa Pali Reader (PC · Mac · Linux)", "desc": "Offline desktop app for reading and studying the Pali canon", "href": "https://simsapa.github.io/", "blank": true }
           ]
         },
         {
@@ -82,7 +86,7 @@
           "items": [
             { "label": "SuttaCentral", "title": "Mahāsaṅgīti Edition at SuttaCentral.net", "href": "https://suttacentral.net/pitaka/sutta?lang=en", "blank": true },
             { "label": "Vinaya", "href": "https://suttacentral.net/pitaka/vinaya?lang=en", "blank": true },
-            { "label": "Voice", "href": "https://www.sc-voice.net/", "blank": true },
+            { "label": "Voice", "desc": "AI reading companion for exploring SuttaCentral texts", "href": "https://www.sc-voice.net/", "blank": true },
             { "label": "Legacy", "href": "/legacy.suttacentral.net/", "blank": true }
           ]
         },
@@ -90,7 +94,7 @@
           "name": "Collections",
           "items": [
             { "label": "S.4nt.org", "tpl": "/4nt/?q={{q}}", "blank": true },
-            { "label": "The Buddha's Words", "href": "https://thebuddhaswords.net", "blank": true }
+            { "label": "The Buddha's Words", "desc": "Curated anthology of the Buddha's core teachings, by Bhikkhu Bodhi", "href": "https://thebuddhaswords.net", "blank": true }
           ]
         },
         {
@@ -159,6 +163,7 @@
             {
               "label": "Pali PTS, Cone, DPD, DPR, CPD",
               "title": "PTS Pali Dictionary + Gandhari Dictionary + Digital Pali Dictionary + DPR Analysis + Critical Pali Dictionary",
+              "desc": "Opens the word in five dictionaries at once, each in its own tab",
               "tplMulti": [
                 "https://dsal.uchicago.edu/cgi-bin/app/pali_query.py?matchtype=default&qs=",
                 "https://gandhari.org/dictionary?section=dop&search=",
@@ -245,7 +250,7 @@
         {
           "name": "Materials",
           "items": [
-            { "label": "Gdrive", "href": "https://drive.google.com/drive/folders/1nrNtb_4s27nJGq61tpigf_b2sO_KOnVG" },
+            { "label": "Gdrive", "desc": "Shared folder with scanned books and study materials", "href": "https://drive.google.com/drive/folders/1nrNtb_4s27nJGq61tpigf_b2sO_KOnVG" },
             { "label": "ABT.net", "href": "https://www.ancient-buddhist-texts.net/Textual-Studies/index.htm", "blank": true },
             { "label": "SBS", "href": "https://sasanarakkha.github.io/study-tools/", "blank": true }
           ]
@@ -262,7 +267,7 @@
         {
           "name": "Memorization",
           "items": [
-            { "label": "Memorizer", "href": "/memo/", "star": true },
+            { "label": "Memorizer", "desc": "Tool for memorizing suttas line by line", "href": "/memo/", "star": true },
             { "label": "sn56.11", "href": "/memorize/?q=sn56.11" },
             { "label": "dn22", "href": "/memorize/?q=dn22" },
             { "label": "sn12.2", "href": "/memorize/?q=sn12.2" },
@@ -289,7 +294,7 @@
           "items": [
             { "label": "DG (th)", "desc": "Dhamma.gift in Thai script", "href": "/th/?q=", "setsLang": "th" },
             { "label": "old", "desc": "The previous version of the site", "href": "/old.php" },
-            { "label": "TTS", "title": "TTS Text-to-speech", "tpl": "/tts.php?q={{q}}" },
+            { "label": "TTS", "title": "TTS Text-to-speech", "desc": "Text-to-speech playback of Pali/translation text", "tpl": "/tts.php?q={{q}}" },
             { "label": "Read+", "title": "Read by Books or Chapters", "action": "readPlus", "base": "/r.php" },
             { "label": "Sutta", "href": "/read.php#dhamma" },
             { "label": "bupm", "href": "/pm.php?expand=true" },
@@ -305,8 +310,8 @@
         {
           "name": "Converters",
           "items": [
-            { "label": "Aksharamukha script converter", "tpl": "https://www.aksharamukha.com/converter?source=IASTPali&target=Devanagari&text={{q}}", "blank": true, "star": true },
-            { "label": "PTS Converter #1", "href": "https://palistudies.blogspot.com/2020/02/sutta-number-to-pts-reference-converter.html", "blank": true },
+            { "label": "Aksharamukha script converter", "desc": "Convert Pali text between ~160 writing systems (Devanagari, Thai, etc.)", "tpl": "https://www.aksharamukha.com/converter?source=IASTPali&target=Devanagari&text={{q}}", "blank": true, "star": true },
+            { "label": "PTS Converter #1", "desc": "Convert a sutta reference to its PTS page number", "href": "https://palistudies.blogspot.com/2020/02/sutta-number-to-pts-reference-converter.html", "blank": true },
             { "label": "PTS Converter #2", "href": "https://benmneb.github.io/pts-converter/", "blank": true }
           ]
         },
@@ -350,7 +355,7 @@
     "read": {
       "label": "Читать Pāḷi",
       "icon": "book",
-      "href": "/ru/read.php"
+      "href": "/toc"
     },
 
     "history": {
@@ -392,8 +397,8 @@
         {
           "name": "Читалки",
           "items": [
-            { "label": "Digital Pali Reader", "href": "https://d.dhamma.gift/_dprhtml/index.html", "blank": true },
-            { "label": "Simsapa Pali Reader (PC · Mac · Linux)", "href": "https://simsapa.github.io/", "blank": true }
+            { "label": "Digital Pali Reader", "desc": "Пали-ридер в браузере с пословным словарём", "href": "https://d.dhamma.gift/_dprhtml/index.html", "blank": true },
+            { "label": "Simsapa Pali Reader (PC · Mac · Linux)", "desc": "Оффлайн-приложение для чтения и изучения канона", "href": "https://simsapa.github.io/", "blank": true }
           ]
         },
         {
@@ -401,7 +406,7 @@
           "items": [
             { "label": "SuttaCentral", "href": "https://suttacentral.net/pitaka/sutta?lang=en", "blank": true },
             { "label": "Виная", "href": "https://suttacentral.net/pitaka/vinaya?lang=ru", "blank": true },
-            { "label": "Voice", "href": "https://www.sc-voice.net/", "blank": true },
+            { "label": "Voice", "desc": "ИИ-компаньон для чтения текстов SuttaCentral", "href": "https://www.sc-voice.net/", "blank": true },
             { "label": "Legacy", "href": "/legacy.suttacentral.net/", "blank": true }
           ]
         },
@@ -409,7 +414,7 @@
           "name": "Собрания",
           "items": [
             { "label": "S.4nt.org", "tpl": "/4nt/?q={{q}}", "blank": true },
-            { "label": "The Buddha's Words", "href": "https://thebuddhaswords.net", "blank": true }
+            { "label": "The Buddha's Words", "desc": "Подборка ключевых учений Будды от Бхиккху Бодхи", "href": "https://thebuddhaswords.net", "blank": true }
           ]
         },
         {
@@ -511,6 +516,7 @@
             {
               "label": "Pali PTS, Cone, DPD, DPR, CPD",
               "title": "PTS Pali Dictionary + Gandhari Dictionary + Digital Pali Dictionary + Critical Pali Dictionary",
+              "desc": "Открывает слово сразу в пяти словарях, каждый в своей вкладке",
               "tplMulti": [
                 "https://dsal.uchicago.edu/cgi-bin/app/pali_query.py?matchtype=default&qs=",
                 "https://gandhari.org/dictionary?section=dop&search=",
@@ -600,7 +606,7 @@
         {
           "name": "Материалы",
           "items": [
-            { "label": "Gdrive", "href": "https://drive.google.com/drive/folders/1UU-y5idRNpfcVTripRUtyTVcOgdwjMGN" },
+            { "label": "Gdrive", "desc": "Общая папка со сканами книг и учебными материалами", "href": "https://drive.google.com/drive/folders/1UU-y5idRNpfcVTripRUtyTVcOgdwjMGN" },
             { "label": "ABT.net", "href": "https://www.ancient-buddhist-texts.net/Textual-Studies/index.htm" },
             { "label": "SBS", "href": "https://sasanarakkha.github.io/study-tools/", "blank": true }
           ]
@@ -617,7 +623,7 @@
         {
           "name": "Запоминание",
           "items": [
-            { "label": "Мнемотехника", "href": "/ru/memo/", "star": true },
+            { "label": "Мнемотехника", "desc": "Инструмент для заучивания сутт строка за строкой", "href": "/ru/memo/", "star": true },
             { "label": "sn56.11", "href": "/memorize/?q=sn56.11" },
             { "label": "dn22", "href": "/memorize/?q=dn22" },
             { "label": "sn12.2", "href": "/memorize/?q=sn12.2" },
@@ -644,7 +650,7 @@
           "items": [
             { "label": "DG (th)", "desc": "Dhamma.gift тайским письмом", "href": "/th/?q=", "setsLang": "th" },
             { "label": "old", "desc": "Предыдущая версия сайта", "href": "/old.php" },
-            { "label": "TTS", "title": "TTS Текст-в-речь", "tpl": "/ru/tts.php?q={{q}}" },
+            { "label": "TTS", "title": "TTS Текст-в-речь", "desc": "Озвучка текста пали/перевода синтезом речи", "tpl": "/ru/tts.php?q={{q}}" },
             { "label": "Read+", "title": "Читать Книгами или Главами", "action": "readPlus", "base": "/ru/r.php" },
             { "label": "bupm", "href": "/ru/pm.php?expand=true" },
             { "label": "bipm", "href": "/ru/bipm.php?expand=true" }
@@ -659,8 +665,8 @@
         {
           "name": "Конвертеры",
           "items": [
-            { "label": "Aksharamukha текстовый конвертер", "tpl": "https://www.aksharamukha.com/converter?source=IASTPali&target=Devanagari&text={{q}}", "blank": true, "star": true },
-            { "label": "PTS Конвертер #1", "href": "https://palistudies.blogspot.com/2020/02/sutta-number-to-pts-reference-converter.html", "blank": true },
+            { "label": "Aksharamukha текстовый конвертер", "desc": "Конвертация текста пали между ~160 системами письма (деванагари, тайская и др.)", "tpl": "https://www.aksharamukha.com/converter?source=IASTPali&target=Devanagari&text={{q}}", "blank": true, "star": true },
+            { "label": "PTS Конвертер #1", "desc": "Перевод ссылки на сутту в номер страницы издания PTS", "href": "https://palistudies.blogspot.com/2020/02/sutta-number-to-pts-reference-converter.html", "blank": true },
             { "label": "PTS Конвертер #2", "href": "https://benmneb.github.io/pts-converter/" }
           ]
         },

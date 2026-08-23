@@ -191,7 +191,9 @@ const ScrollManager = {
                 // и s=, и scroll=instant. Прокрутка была жёстко "smooth", поэтому во встроенном
                 // попапе (маленькое окно, там нужен резкий прыжок) всё равно ехала анимация.
                 const instantFinder = urlParams.get('scroll') === 'instant';
-                textElement.scrollIntoView({ behavior: instantFinder ? "auto" : "smooth", block: "start" });
+                // 'auto' would defer to :root's CSS `scroll-behavior: smooth` and animate anyway —
+                // literal 'instant' bypasses that CSS (same fix as megareader.js's segment jump).
+                textElement.scrollIntoView({ behavior: instantFinder ? "instant" : "smooth", block: "start" });
                 // ВСЕ остальные scroll-to-segment пути в этом файле (scrollToHash ниже, через
                 // highlightById/highlightAllById) сразу зовут activateSegmentForTTS — эта ветка
                 // не звала (TODO.md ридер п.5: "не активирует динамик ттс кнопку"). Тот же

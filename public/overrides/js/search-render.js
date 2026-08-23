@@ -844,6 +844,17 @@ window.DgSearchRender = (function () {
                             var paliText = seg.root_text || '';
                             var variantText = seg.variant || '';
 
+                            // Same regex as megareader.js's window.applyRemovePunct — search
+                            // results didn't apply it at all before (owner: quick.hidePunct
+                            // should also work here, not just in the reader).
+                            if (localStorage.getItem('removePunct') === 'true') {
+                                var stripPunct = function (s) {
+                                    return s ? s.replace(/[-—–]/g, ' ').replace(/[:;“”‘’,"']/g, '').replace(/[.?!]/g, ' | ') : s;
+                                };
+                                paliText = stripPunct(paliText);
+                                variantText = stripPunct(variantText);
+                            }
+
                             if (!isContext) {
                                 paliText = highlightText(paliText, highlightWord);
                                 variantText = highlightText(variantText, highlightWord);
@@ -1008,8 +1019,11 @@ window.DgSearchRender = (function () {
         var btn = document.getElementById('btn-filter-builder');
         var filterWrap = $table.closest('.dt-container').find('.dt-search').get(0);
         if (!btn || !filterWrap) return;
-        if (btn.parentNode !== filterWrap) {
-            filterWrap.appendChild(btn);
+        // Owner: icon was easy to miss tucked away after the input, on the far right — moved to
+        // the front of the row (before the "Filter:" label) so it reads as part of the same
+        // control, not a stray button at the edge of the toolbar.
+        if (filterWrap.firstChild !== btn) {
+            filterWrap.insertBefore(btn, filterWrap.firstChild);
             btn.classList.remove('d-none');
         }
     }
@@ -1150,10 +1164,18 @@ window.DgSearchRender = (function () {
         $container.find('.variants-report-list').html(listHtml);
     }
 
+    // Re-run render() on already-loaded rows without a re-fetch — for settings that only affect
+    // display (removePunct) toggled live from quick settings (search/js/home.js).
+    function redraw() {
+        if (suttaTableApi) suttaTableApi.draw(false);
+        if (wordTableApi) wordTableApi.draw(false);
+    }
+
     return {
         buildDataTable: buildDataTable,
         buildWordDataTable: buildWordDataTable,
         buildVariantsReport: buildVariantsReport,
-        resetTablesForLanguageChange: resetTablesForLanguageChange
+        resetTablesForLanguageChange: resetTablesForLanguageChange,
+        redraw: redraw
     };
 })();

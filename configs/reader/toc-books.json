@@ -1,0 +1,82 @@
+{
+  "_comment": [
+    "Books shown in the TOC/navigator, grouped by top-level category (matches skeletonDB.category).",
+    "Codes correspond 1:1 to suttacentral.net/sc-data/structure/tree/{sutta,vinaya,abhidhamma}/{code}-tree.json.",
+    "Labels are a deliberate duplication of settings/index.html's SCOPE_BOOKS/SCOPE_GROUPS (search-scope",
+    "picker) — that file is client-only inline JS, not fetchable JSON, so the TOC keeps its own copy",
+    "rather than refactoring a working, unrelated settings UI. Keep the two in sync by hand if a label",
+    "changes. Abhidhamma sub-books are NOT listed here on purpose — their titles are read live from the",
+    "corpus (see getBookTitle() in dg-light.js) instead of guessed/translated by hand.",
+    "",
+    "'books' is always shown. 'extraBooks' is only shown once the user has enabled the matching group",
+    "in the EXISTING search-scope setting (settings/index.html, localStorage.dhammaSearchScope) — TOC",
+    "reuses that setting rather than inventing a second 'show more books' toggle (owner: 'только если",
+    "в настройках включена вся кн'/'абхидхамму также'). 'extraScopeCodes' names the scope tokens that",
+    "unlock the group — checked client-side in public/spa/toc.js against the same localStorage key.",
+    "Khuddaka is its own NIKAYA-level entry ('groups' inside 'dhamma') — a peer of DN/MN/SN/AN, not",
+    "flattened into a same-level list of individual books (owner: 'кн это отдельное собрание как дн",
+    "мн сн ан' — matches prod's read.php, where Khuddaka is its own collapsible heading too). A group",
+    "has its OWN 'books'/'extraScopeCodes'/'extraBooks', same shape one level down."
+  ],
+  "dhamma": {
+    "label": { "ru": "Дхамма", "en": "Dhamma" },
+    "books": [
+      { "code": "dn", "label": { "ru": "Дигха Никая", "en": "Dīgha Nikāya" } },
+      { "code": "mn", "label": { "ru": "Маджхима Никая", "en": "Majjhima Nikāya" } },
+      { "code": "sn", "label": { "ru": "Саньютта Никая", "en": "Saṁyutta Nikāya" } },
+      { "code": "an", "label": { "ru": "Ангуттара Никая", "en": "Aṅguttara Nikāya" } }
+    ],
+    "groups": [
+      {
+        "code": "kn",
+        "label": { "ru": "Кхуддака Никая", "en": "Khuddaka Nikāya" },
+        "books": [
+          { "code": "iti", "label": { "ru": "Итивуттака", "en": "Itivuttaka" } },
+          { "code": "ud", "label": { "ru": "Удана", "en": "Udāna" } },
+          { "code": "snp", "label": { "ru": "Сутта Нипата", "en": "Sutta Nipāta" } },
+          { "code": "dhp", "label": { "ru": "Дхаммапада", "en": "Dhammapada" } },
+          { "code": "thag", "label": { "ru": "Тхерагатха", "en": "Theragāthā" } },
+          { "code": "thig", "label": { "ru": "Тхеригатха", "en": "Therīgāthā" } }
+        ],
+        "extraScopeCodes": ["ja", "tha-ap", "mil", "thi-ap", "vv", "pv", "cp", "bv", "ps", "ne", "cnd", "mnd", "kp", "pe"],
+        "extraBooks": [
+          { "code": "ja", "label": { "ru": "Джатаки", "en": "Jātaka" } },
+          { "code": "tha-ap", "label": { "ru": "Тхера-ападана", "en": "Theraapadāna" } },
+          { "code": "mil", "label": { "ru": "Милиндапаньха", "en": "Milindapañha" } },
+          { "code": "thi-ap", "label": { "ru": "Тхери-ападана", "en": "Therīapadāna" } },
+          { "code": "vv", "label": { "ru": "Виманаваттху", "en": "Vimānavatthu" } },
+          { "code": "pv", "label": { "ru": "Петаваттху", "en": "Petavatthu" } },
+          { "code": "cp", "label": { "ru": "Чарьяпитака", "en": "Cariyāpiṭaka" } },
+          { "code": "bv", "label": { "ru": "Буддхавамса", "en": "Buddhavaṁsa" } },
+          { "code": "ps", "label": { "ru": "Патисамбхидамагга", "en": "Paṭisambhidāmagga" } },
+          { "code": "ne", "label": { "ru": "Неттипакарана", "en": "Nettippakaraṇa" } },
+          { "code": "cnd", "label": { "ru": "Чуланиддеса", "en": "Cullaniddesa" } },
+          { "code": "mnd", "label": { "ru": "Маханиддеса", "en": "Mahāniddesa" } },
+          { "code": "kp", "label": { "ru": "Кхуддакапатха", "en": "Khuddakapāṭha" } },
+          { "code": "pe", "label": { "ru": "Петакопадеса", "en": "Peṭakopadesa" } }
+        ]
+      }
+    ]
+  },
+  "vinaya": {
+    "label": { "ru": "Виная", "en": "Vinaya" },
+    "books": [
+      { "code": "pli-tv-bu-pm", "label": { "ru": "Патимоккха бхиккху", "en": "Bhikkhu Pātimokkha" }, "singlePage": "pli-tv-bu-pm" },
+      { "code": "pli-tv-bi-pm", "label": { "ru": "Патимоккха бхиккхуни", "en": "Bhikkhuni Pātimokkha" }, "singlePage": "pli-tv-bi-pm" },
+      { "code": "pli-tv-bu-vb", "label": { "ru": "Вибханга бхиккху", "en": "Bhikkhu Vibhaṅga" } },
+      { "code": "pli-tv-bi-vb", "label": { "ru": "Вибханга бхиккхуни", "en": "Bhikkhuni Vibhaṅga" } },
+      { "code": "pli-tv-kd", "label": { "ru": "Кхандхака", "en": "Khandhaka" } },
+      { "code": "pli-tv-pvr", "label": { "ru": "Паривара", "en": "Parivāra" } }
+    ]
+  },
+  "abhi": {
+    "label": { "ru": "Абхидхамма", "en": "Abhidhamma" },
+    "extraScopeCodes": ["abhi"],
+    "extraBooks": [
+      { "code": "ds" }, { "code": "vb" }, { "code": "dk" }, { "code": "pp" },
+      { "code": "kv" }, { "code": "ya" }, { "code": "patthana" },
+      { "code": "dt" }, { "code": "dy" }, { "code": "jp" }, { "code": "mvs" },
+      { "code": "pk" }, { "code": "pr" }, { "code": "sab" }, { "code": "sg" }, { "code": "vk" }
+    ]
+  }
+}

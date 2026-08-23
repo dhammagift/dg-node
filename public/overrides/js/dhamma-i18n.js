@@ -114,13 +114,6 @@ window.DHAMMA_I18N = (() => {
     }
   }
 
-  function restoreDynamicTitle() {
-    const q = new URLSearchParams(window.location.search).get("q");
-    if (q) {
-      document.title = q.replace(/pli-tv-|vb-/g, "");
-    }
-  }
-
   function revealPage() {
     document.documentElement.classList.remove("i18n-loading");
     document.getElementById("anti-fouc")?.remove();
@@ -200,7 +193,6 @@ window.DHAMMA_I18N = (() => {
     activeLanguage = config.locale?.code || language;
 
     applySubtree(document, config);
-    restoreDynamicTitle();
 
     if (config.locale?.htmlLang) {
       document.documentElement.lang = config.locale.htmlLang;
