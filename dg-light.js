@@ -397,6 +397,11 @@ async function buildTranslatorCatalogCache() {
             const dashIdx = suffix.indexOf('-');
             if (dashIdx === -1) continue;
             const translatorKey = suffix.slice(dashIdx + 1); // "o" / "sujato" / "sv+edited+o"
+            // "site" is SC's own UI-string translation (about/footer/home/...), not a sutta
+            // translator — its ids never match a real suttaId so it's harmless everywhere except
+            // this catalog, which just counts filenames regardless of id (owner: "ru_site и любой
+            // другой site не должны попадать в списки переводчиков").
+            if (translatorKey === 'site') continue;
             let real;
             try { real = fsSync.realpathSync(path.join(dir, f)); } catch (e) { real = path.join(dir, f); }
             if (seenRealPaths.has(real)) continue;

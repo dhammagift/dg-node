@@ -106,10 +106,22 @@ body.dark {
   outline: none;
 }
 
+/* apple-design audit: outline:none above had no visible replacement, so keyboard
+   focus on this button was invisible (confirmed via screenshot). */
+#paliauto:focus-visible {
+  outline: 2px solid var(--blue, #3434be);
+  outline-offset: 2px;
+}
+
 .dark #paliauto:focus {
   background-color: var(--off-white);
   color: var(--off-black);
   border-color: var(--off-white);
+}
+
+.dark #paliauto:focus-visible {
+  outline: 2px solid var(--off-white);
+  outline-offset: 2px;
 }
 
 .icon-button {
@@ -193,6 +205,13 @@ p.sc-link {
   text-align: center;
   margin-bottom: 0rem !important;
   margin-top: 0.3rem !important;
+}
+
+/* apple-design audit: DPR/BJT/Voice/4nt/SC/BB/TBW links sat edge-to-edge with only
+   whitespace between them — under the 44px HIG touch target on mobile. */
+p.sc-link a {
+  display: inline-block;
+  padding: 6px 8px;
 }
 
 span.pli-lang,

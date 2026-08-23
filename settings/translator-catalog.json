@@ -1,11 +1,9 @@
 {
   "cs": {
-    "site": 8,
     "ashinsarana": 2
   },
   "de": {
     "sonjabuege": 73,
-    "site": 160,
     "sabbamitta": 4168
   },
   "en": {
@@ -21,7 +19,6 @@
     "anandajoti": 22
   },
   "es": {
-    "site": 8,
     "maggatr": 9,
     "font": 31
   },
@@ -30,11 +27,9 @@
     "mgvali": 1
   },
   "fi": {
-    "site": 8,
     "mudito": 1
   },
   "fr": {
-    "site": 29,
     "sekha": 277,
     "marion": 3,
     "christelle": 38
@@ -43,66 +38,47 @@
     "flavio": 2
   },
   "gu": {
-    "trush": 9,
-    "site": 8
+    "trush": 9
   },
   "hi": {
-    "trush": 7,
-    "site": 8
+    "trush": 7
   },
   "id": {
-    "site": 19,
     "seniya": 11
   },
   "it": {
-    "site": 12,
     "giovannizappa": 263
   },
   "jpn": {
-    "site": 8,
     "kaz": 58
   },
   "ka": {
     "luka": 18
   },
-  "kan": {
-    "site": 2
-  },
-  "ko": {
-    "site": 8
-  },
+  "kan": {},
+  "ko": {},
   "lo": {
     "jayasaro": 2
   },
   "lt": {
     "piyadassi": 313
   },
-  "mr": {
-    "site": 8
-  },
+  "mr": {},
   "my": {
-    "site": 9,
     "myteam": 2
   },
-  "nl": {
-    "site": 12
-  },
-  "no": {
-    "site": 9
-  },
+  "nl": {},
+  "no": {},
   "pl": {
-    "site": 12,
     "marcinow": 10,
     "lucjan": 2,
     "hardao": 60
   },
   "pt": {
-    "site": 33,
     "laera-quaresma": 193
   },
   "ru": {
     "sv": 3537,
-    "site": 29,
     "adelina": 1,
     "gemini": 1,
     "translatorMs+edited+o": 10,
@@ -128,19 +104,13 @@
     "khantibalo": 12,
     "syrkin": 33
   },
-  "si": {
-    "site": 8
-  },
-  "sl": {
-    "site": 9
-  },
+  "si": {},
+  "sl": {},
   "sr": {
-    "site": 2,
     "brankokovacevic": 861
   },
   "ta": {},
   "th": {
-    "site": 2,
     "jayasaro": 2,
     "dhiranandi": 2
   },
@@ -149,12 +119,9 @@
     "dogensisapa": 72
   },
   "vi": {
-    "site": 12,
     "phantuananh": 26
   },
-  "zh": {
-    "site": 31
-  },
+  "zh": {},
   "ai": {
     "ai": 4050
   }

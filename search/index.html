@@ -398,7 +398,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
         justify-content: center;
         align-items: center;
         flex-wrap: wrap;
-        gap: 22px;
+        gap: 14px;
         padding: 10px 0;
     }
     .dg-reader-toolbar a {
@@ -406,6 +406,10 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
         align-items: center;
         justify-content: center;
         text-decoration: none;
+        /* apple-design audit: icon was the whole hit area (19px, under the 44px HIG
+           touch target) — grow the tappable area without changing the icon's visual size. */
+        min-width: 44px;
+        min-height: 44px;
     }
     .dg-reader-toolbar img {
         width: 19px;
@@ -948,6 +952,19 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
        topbar row itself, centered in the space between the brand lock-up and the menu button
        (#dg-topbar's own justify-content:space-between spaces exactly 3 children this way). -->
   <p id="home-motto">Найдите Истину</p>
+  <script>
+    // Same FOUC technique as the theme script in <head> (data-bs-theme, before first paint):
+    // the <p> above is hardcoded to the Russian fallback text; applyMenuLangStrings() (home.js,
+    // deferred, waits on menu-links.json) corrects it later for non-ru visitors, but only after
+    // the wrong text has already painted (owner, live: "Найдите истину" flashes before "Find the
+    // Truth"). Set it right here, synchronously, before the browser gets a chance to paint it.
+    (function () {
+      try {
+        var lang = localStorage.getItem('dhammaLanguage') || localStorage.getItem('siteLanguage') || 'en';
+        if (lang !== 'ru') document.getElementById('home-motto').textContent = 'Find the Truth';
+      } catch (e) {}
+    })();
+  </script>
   <button type="button" class="dg-icon-btn dg-menu-btn" aria-label="Menu" title="Menu" data-i18n-aria-label="{{toolbar.menuAriaLabel}}" data-i18n-title="{{toolbar.menuTitle}}">
     <svg viewBox="0 0 448 512" width="19" height="19" fill="currentColor" aria-hidden="true">
       <path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/>
@@ -1659,23 +1676,15 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
      a position:fixed element can't opt out of moving with it via CSS alone, so this has to be a
      real DOM sibling instead. It keeps its own top offset via stackConfig()'s `content` (same
      mechanism #search-pane used to use directly) so it still starts below the fixed stack. -->
+<!-- Owner: "искомое слово и номер текста показывался в виде заголовка до загрузки типа
+     kacchap... dn1... выглядит плохо и мелькает" — this used to synchronously stuff a raw
+     "Word..." placeholder here on every cold load (search AND reader routes alike, since both
+     share this template — a reader URL like /dn1 produced "Dn1..."), always visibly replaced
+     a moment later by renderResultHeader()'s real text (or left empty/hidden for the reader).
+     Removed rather than fixed in place: the placeholder never earned its keep, #dynamicHeader
+     staying empty until the real header lands (or hidden entirely in reader state) reads as a
+     normal loading gap, not as wrong content flashing before the right one. -->
 <h3 class="pl-2 resultheader ml-2" id="dynamicHeader"></h3>
-<script>
-    (function() {
-        let params = new URLSearchParams(window.location.search);
-        let q = params.get('q') || params.get('s');
-        let pathSegments = window.location.pathname.split('/').filter(s => s);
-        let lastSegment = pathSegments.pop();
-
-        if (!q && lastSegment && !['search', 'index.html', 'result', 'nodejs'].includes(lastSegment.toLowerCase())) {
-            q = lastSegment;
-        }
-        if (q) {
-            let displayWord = decodeURIComponent(q).replace(/ṃ/g, "ṁ");
-            document.getElementById('dynamicHeader').textContent = displayWord.charAt(0).toUpperCase() + displayWord.slice(1) + "...";
-        }
-    })();
-</script>
 
 </div>
 <!-- /.table-wrapper -->

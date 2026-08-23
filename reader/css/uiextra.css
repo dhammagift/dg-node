@@ -653,7 +653,13 @@
   header ul li > span {
     position: relative;
   /*  display: inline-block; */
-    vertical-align: top; 
+    vertical-align: top;
+  }
+
+  /* apple-design audit: large display text reads too loose at this size with default (0)
+     tracking; tighten it slightly, same discipline Apple applies to display type. */
+  h1.sutta-title {
+    letter-spacing: -0.01em;
   }
 
 .plain-label {
@@ -1165,6 +1171,15 @@
 .dark .dynamic-tts-btn {
   border-color: #5a5a5a;
   background-color: #42426a;
+}
+
+/* apple-design audit: on narrow screens, this fixed bottom-right cluster (play/language
+   toggle, 38px, bottom:30px) permanently covered the last lines of the sutta with no way
+   to scroll them clear. Reserve a safe zone so content always clears the buttons. */
+@media (max-width: 600px) {
+  #sutta {
+    padding-bottom: 96px;
+  }
 }
 
 .dark .dynamic-tts-btn img {

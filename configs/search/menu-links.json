@@ -54,10 +54,12 @@
     "external": {
       "label": "External",
       "icon": "globe",
+      "mega": true,
       "groups": [
         {
-          "name": "Tipitaka",
+          "name": "Tipitaka", "column": 1,
           "items": [
+            { "label": "S.4nt.org", "desc": "BJT, VRI, and Thai editions together", "tpl": "/4nt/?q={{q}}", "blank": true, "star": true },
             { "label": "BJT", "title": "Sri Lankan Edition Buddha Jayanti", "desc": "Sri Lankan Buddha Jayanti edition of the Pāḷi canon", "href": "https://open.tipitaka.lk/", "blank": true },
             { "label": "Thai", "title": "Thai Tipitaka at 84000.org", "desc": "The Thai edition, at 84000.org", "href": "https://84000.org/", "blank": true },
             { "label": "VRI", "title": "VRI Tipitaka at Tipitaka.org", "desc": "The VRI edition, at Tipitaka.org", "href": "https://tipitaka.org/romn", "blank": true },
@@ -66,63 +68,55 @@
           ]
         },
         {
-          "name": "Tipitaka CST", "layout": "chips",
+          "name": "Tipitaka CST", "column": 2,
           "items": [
-            { "label": "PA", "title": "Paauksociety.org", "href": "https://apply.paauksociety.org/tipitaka/index.php", "blank": true },
-            { "label": "Tp.app", "title": "Tipitaka.app", "href": "https://tipitaka.app", "blank": true },
-            { "label": "TPO", "title": "Tipitaka Pali Online", "href": "https://tipitakapali.org/", "blank": true },
-            { "label": "TPR", "title": "Tipitaka Pali Reader App", "href": "https://americanmonk.org/tipitaka-pali-reader/", "blank": true }
+            { "label": "PA", "title": "Paauksociety.org", "desc": "Paauksociety.org", "href": "https://apply.paauksociety.org/tipitaka/index.php", "blank": true },
+            { "label": "Tp.app", "title": "Tipitaka.app", "desc": "Tipitaka.app", "href": "https://tipitaka.app", "blank": true },
+            { "label": "TPO", "title": "Tipitaka Pali Online", "desc": "Tipitaka Pali Online", "href": "https://tipitakapali.org/", "blank": true },
+            { "label": "TPR", "title": "Tipitaka Pali Reader App", "desc": "Tipitaka Pali Reader app — info at AmericanMonk.org", "href": "https://americanmonk.org/tipitaka-pali-reader/", "blank": true }
           ]
         },
         {
-          "name": "Readers",
+          "name": "Patimokkha", "column": 3,
           "items": [
-            { "label": "Digital Pali Reader", "desc": "Browser-based Pali reader with word-by-word dictionary lookup", "href": "https://www.digitalpalireader.online/_dprhtml/index.html", "blank": true },
-            { "label": "Simsapa Pali Reader (PC · Mac · Linux)", "desc": "Offline desktop app for reading and studying the Pali canon", "href": "https://simsapa.github.io/", "blank": true }
+            { "label": "ATI", "desc": "Translation by Thanissaro Bhikkhu", "href": "https://www.accesstoinsight.org/tipitaka/vin/sv/index.html", "blank": true },
+            { "label": "BMC", "desc": "Commentary by Thanissaro Bhikkhu", "href": "/dhammatalks.org/vinaya/bmc/Section0000.html", "blank": true },
+            { "label": "Nanatusita", "desc": "Translation by Bhikkhu Ñāṇatusita", "href": "/assets/materials/bupm_trn_by_nanatusita.pdf" },
+            { "label": "Patimokkha Bi trans. by Ch Kabilsingh", "desc": "Bhikkhunī Pāṭimokkha (PDF)", "href": "/assets/materials/bipm_trn_by_chatsumarn_kabilsingh.pdf" }
           ]
         },
         {
-          "name": "SuttaCentral",
+          "name": "Prātimokṣa (Sanskrit)", "column": 4,
           "items": [
-            { "label": "SuttaCentral", "title": "Mahāsaṅgīti Edition at SuttaCentral.net", "href": "https://suttacentral.net/pitaka/sutta?lang=en", "blank": true },
-            { "label": "Vinaya", "href": "https://suttacentral.net/pitaka/vinaya?lang=en", "blank": true },
-            { "label": "Voice", "desc": "AI reading companion for exploring SuttaCentral texts", "href": "https://www.sc-voice.net/", "blank": true },
-            { "label": "Legacy", "href": "/legacy.suttacentral.net/", "blank": true }
+            { "label": "Prātimokṣa", "desc": "Sanskrit", "href": "/san/d/mg.php" },
+            { "label": "Sarvāstivāda", "href": "/san/sarv.php" },
+            { "label": "Mahāsāṃghika", "href": "/san/mg.php" },
+            { "label": "Lokottaravāda", "href": "/san/lo.php" },
+            { "label": "Mūlasarvāstivāda (Gilgit 2)", "href": "/san/mu2.php" },
+            { "label": "Mūlasarvāstivāda (Gilgit 3)", "href": "/san/mu3.php" }
           ]
         },
         {
-          "name": "Collections",
-          "items": [
-            { "label": "S.4nt.org", "tpl": "/4nt/?q={{q}}", "blank": true },
-            { "label": "The Buddha's Words", "desc": "Curated anthology of the Buddha's core teachings, by Bhikkhu Bodhi", "href": "https://thebuddhaswords.net", "blank": true }
-          ]
-        },
-        {
-          "name": "Patimokkha",
-          "items": [
-            { "label": "ATI", "href": "https://www.accesstoinsight.org/tipitaka/vin/sv/index.html", "blank": true },
-            { "label": "BMC", "href": "/dhammatalks.org/vinaya/bmc/Section0000.html", "blank": true },
-            { "label": "Nanatusita", "href": "/assets/materials/bupm_trn_by_nanatusita.pdf" },
-            { "label": "Patimokkha Bi trans. by Ch Kabilsingh", "href": "/assets/materials/bipm_trn_by_chatsumarn_kabilsingh.pdf" }
-          ]
-        },
-        {
-          "name": "Prātimokṣa (Sanskrit)",
-          "items": [
-            { "label": "Prātimokṣa", "href": "/san/d/mg.php" },
-            { "label": "sarv", "href": "/san/sarv.php" },
-            { "label": "mg", "href": "/san/mg.php" },
-            { "label": "lo", "href": "/san/lo.php" },
-            { "label": "mu2", "href": "/san/mu2.php" },
-            { "label": "mu3", "href": "/san/mu3.php" }
-          ]
-        },
-        {
-          "name": "Other",
-          "items": [
-            { "label": "Ancient Buddhist Texts", "href": "https://ancient-buddhist-texts.net/index.htm", "blank": true },
-            { "label": "Translations by M. Olds", "href": "https://buddhadust.net/dhamma-vinaya/bd/dhamma-vinaya.htm", "blank": true },
-            { "label": "Articles at Dhammadana.org", "href": "https://en.dhammadana.org/sangha/dhutanga.htm", "blank": true }
+          "name": "Collections", "column": 5,
+          "blocks": [
+            { "rows": [
+              { "label": "Digital Pali Reader", "desc": "Includes VRI and Thai editions", "href": "https://www.digitalpalireader.online/_dprhtml/index.html", "blank": true },
+              { "label": "Simsapa Pali Reader (PC · Mac · Linux)", "desc": "Offline desktop app for reading and studying the Pali canon", "href": "https://simsapa.github.io/", "blank": true }
+            ] },
+            { "divider": true, "inline": [
+              { "label": "SuttaCentral", "title": "Mahāsaṅgīti Edition at SuttaCentral.net", "href": "https://suttacentral.net/pitaka/sutta?lang=en", "blank": true },
+              { "label": "Vinaya", "href": "https://suttacentral.net/pitaka/vinaya?lang=en", "blank": true },
+              { "label": "Voice", "href": "https://www.sc-voice.net/", "blank": true },
+              { "label": "Legacy", "href": "/legacy.suttacentral.net/", "blank": true }
+            ] },
+            { "divider": true, "rows": [
+              { "label": "The Buddha's Words", "desc": "Curated anthology of the Buddha's core teachings, by Bhikkhu Bodhi", "href": "https://thebuddhaswords.net", "blank": true }
+            ] },
+            { "divider": true, "rows": [
+              { "label": "Ancient Buddhist Texts", "desc": "By Bhikkhu Ānandajoti", "href": "https://ancient-buddhist-texts.net/index.htm", "blank": true },
+              { "label": "Translations by M. Olds", "href": "https://buddhadust.net/dhamma-vinaya/bd/dhamma-vinaya.htm", "blank": true },
+              { "label": "Articles at Dhammadana.org", "href": "https://en.dhammadana.org/sangha/dhutanga.htm", "blank": true }
+            ] }
           ]
         }
       ]
@@ -374,10 +368,12 @@
     "external": {
       "label": "Иностран.",
       "icon": "globe",
+      "mega": true,
       "groups": [
         {
-          "name": "Типитака",
+          "name": "Типитака", "column": 1,
           "items": [
+            { "label": "S.4nt.org", "desc": "BJT, VRI и Thai издания в одном месте", "tpl": "/4nt/?q={{q}}", "blank": true, "star": true },
             { "label": "BJT", "title": "Редакция Шри Ланки Buddha Jhayanti", "desc": "Шри-ланкийское издание канона, Buddha Jayanti", "href": "https://open.tipitaka.lk/", "blank": true },
             { "label": "Thai", "title": "Тайская Типитака на 84000.org", "desc": "Тайское издание, на 84000.org", "href": "https://84000.org/", "blank": true },
             { "label": "VRI", "title": "Типитака VRI на Tipitaka.org", "desc": "Издание VRI, на Tipitaka.org", "href": "https://tipitaka.org/romn", "blank": true },
@@ -386,63 +382,55 @@
           ]
         },
         {
-          "name": "Типитака CST", "layout": "chips",
+          "name": "Типитака CST", "column": 2,
           "items": [
-            { "label": "PA", "title": "Paauksociety.org", "href": "https://apply.paauksociety.org/tipitaka/index.php", "blank": true },
-            { "label": "Tp.app", "title": "Tipitaka.app", "href": "https://tipitaka.app", "blank": true },
-            { "label": "TPO", "title": "Tipitaka Pali Online", "href": "https://tipitakapali.org/", "blank": true },
-            { "label": "TPR", "title": "Tipitaka Pali Reader App", "href": "https://americanmonk.org/tipitaka-pali-reader/", "blank": true }
+            { "label": "PA", "title": "Paauksociety.org", "desc": "Paauksociety.org", "href": "https://apply.paauksociety.org/tipitaka/index.php", "blank": true },
+            { "label": "Tp.app", "title": "Tipitaka.app", "desc": "Tipitaka.app", "href": "https://tipitaka.app", "blank": true },
+            { "label": "TPO", "title": "Tipitaka Pali Online", "desc": "Tipitaka Pali Online", "href": "https://tipitakapali.org/", "blank": true },
+            { "label": "TPR", "title": "Tipitaka Pali Reader App", "desc": "Приложение Tipitaka Pali Reader — сайт на AmericanMonk.org", "href": "https://americanmonk.org/tipitaka-pali-reader/", "blank": true }
           ]
         },
         {
-          "name": "Читалки",
+          "name": "Патимоккха", "column": 3,
           "items": [
-            { "label": "Digital Pali Reader", "desc": "Пали-ридер в браузере с пословным словарём", "href": "https://d.dhamma.gift/_dprhtml/index.html", "blank": true },
-            { "label": "Simsapa Pali Reader (PC · Mac · Linux)", "desc": "Оффлайн-приложение для чтения и изучения канона", "href": "https://simsapa.github.io/", "blank": true }
+            { "label": "ATI", "desc": "Перевод Тханиссаро Бхиккху", "href": "https://www.accesstoinsight.org/tipitaka/vin/sv/index.html", "blank": true },
+            { "label": "BMC", "desc": "Комментарий Тханиссаро Бхиккху", "href": "/dhammatalks.org/vinaya/bmc/Section0000.html", "blank": true },
+            { "label": "Nanatusita", "desc": "Перевод бхиккху Ньянатусита", "href": "/assets/materials/bupm_trn_by_nanatusita.pdf" },
+            { "label": "Patimokkha Bi пер. Ch Kabilsingh", "desc": "Бхиккхуни-патимоккха (PDF)", "href": "/assets/materials/bipm_trn_by_chatsumarn_kabilsingh.pdf", "blank": true }
           ]
         },
         {
-          "name": "SuttaCentral",
+          "name": "Prātimokṣa (санскрит)", "column": 4,
           "items": [
-            { "label": "SuttaCentral", "href": "https://suttacentral.net/pitaka/sutta?lang=en", "blank": true },
-            { "label": "Виная", "href": "https://suttacentral.net/pitaka/vinaya?lang=ru", "blank": true },
-            { "label": "Voice", "desc": "ИИ-компаньон для чтения текстов SuttaCentral", "href": "https://www.sc-voice.net/", "blank": true },
-            { "label": "Legacy", "href": "/legacy.suttacentral.net/", "blank": true }
+            { "label": "Prātimokṣa", "desc": "Санскрит", "href": "/san/d/mg.php" },
+            { "label": "Sarvāstivāda", "href": "/san/sarv.php" },
+            { "label": "Mahāsāṃghika", "href": "/san/mg.php" },
+            { "label": "Lokottaravāda", "href": "/san/lo.php" },
+            { "label": "Mūlasarvāstivāda (Гилгит 2)", "href": "/san/mu2.php" },
+            { "label": "Mūlasarvāstivāda (Гилгит 3)", "href": "/san/mu3.php" }
           ]
         },
         {
-          "name": "Собрания",
-          "items": [
-            { "label": "S.4nt.org", "tpl": "/4nt/?q={{q}}", "blank": true },
-            { "label": "The Buddha's Words", "desc": "Подборка ключевых учений Будды от Бхиккху Бодхи", "href": "https://thebuddhaswords.net", "blank": true }
-          ]
-        },
-        {
-          "name": "Патимоккха",
-          "items": [
-            { "label": "ATI", "href": "https://www.accesstoinsight.org/tipitaka/vin/sv/index.html", "blank": true },
-            { "label": "BMC", "href": "/dhammatalks.org/vinaya/bmc/Section0000.html", "blank": true },
-            { "label": "Nanatusita", "href": "/assets/materials/bupm_trn_by_nanatusita.pdf" },
-            { "label": "Patimokkha Bi пер. Ch Kabilsingh", "href": "/assets/materials/bipm_trn_by_chatsumarn_kabilsingh.pdf", "blank": true }
-          ]
-        },
-        {
-          "name": "Prātimokṣa (санскрит)",
-          "items": [
-            { "label": "Prātimokṣa", "href": "/san/d/mg.php" },
-            { "label": "sarv", "href": "/san/sarv.php" },
-            { "label": "mg", "href": "/san/mg.php" },
-            { "label": "lo", "href": "/san/lo.php" },
-            { "label": "mu2", "href": "/san/mu2.php" },
-            { "label": "mu3", "href": "/san/mu3.php" }
-          ]
-        },
-        {
-          "name": "Прочее",
-          "items": [
-            { "label": "Ancient Buddhist Texts", "href": "https://ancient-buddhist-texts.net/index.htm", "blank": true },
-            { "label": "Переводы Майкла Олдса", "href": "https://buddhadust.net/dhamma-vinaya/bd/dhamma-vinaya.htm", "blank": true },
-            { "label": "Статьи на Dhammadana.org", "href": "https://en.dhammadana.org/sangha/dhutanga.htm", "blank": true }
+          "name": "Собрания", "column": 5,
+          "blocks": [
+            { "rows": [
+              { "label": "Digital Pali Reader", "desc": "Пали-ридер в браузере с пословным словарём; включает издания VRI и Thai", "href": "https://d.dhamma.gift/_dprhtml/index.html", "blank": true },
+              { "label": "Simsapa Pali Reader (PC · Mac · Linux)", "desc": "Оффлайн-приложение для чтения и изучения канона", "href": "https://simsapa.github.io/", "blank": true }
+            ] },
+            { "divider": true, "inline": [
+              { "label": "SuttaCentral", "href": "https://suttacentral.net/pitaka/sutta?lang=en", "blank": true },
+              { "label": "Виная", "href": "https://suttacentral.net/pitaka/vinaya?lang=ru", "blank": true },
+              { "label": "Voice", "href": "https://www.sc-voice.net/", "blank": true },
+              { "label": "Legacy", "href": "/legacy.suttacentral.net/", "blank": true }
+            ] },
+            { "divider": true, "rows": [
+              { "label": "The Buddha's Words", "desc": "Подборка ключевых учений Будды от Бхиккху Бодхи", "href": "https://thebuddhaswords.net", "blank": true }
+            ] },
+            { "divider": true, "rows": [
+              { "label": "Ancient Buddhist Texts", "desc": "Автор — бхиккху Анандаджоти", "href": "https://ancient-buddhist-texts.net/index.htm", "blank": true },
+              { "label": "Переводы Майкла Олдса", "href": "https://buddhadust.net/dhamma-vinaya/bd/dhamma-vinaya.htm", "blank": true },
+              { "label": "Статьи на Dhammadana.org", "href": "https://en.dhammadana.org/sangha/dhutanga.htm", "blank": true }
+            ] }
           ]
         }
       ]

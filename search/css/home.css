@@ -51,7 +51,9 @@ body.dg-skin-minimal {
     --dg-border-strong: #d7d4c9;
     --dg-text: #1b1d19;
     --dg-text-2: #5c6058;
-    --dg-text-muted: #93968c;
+    /* apple-design audit: was #93968c on white ≈ 3:1, fails WCAG AA (4.5:1) for text.
+       Darkened to ~5:1 while keeping the same olive-gray hue. */
+    --dg-text-muted: #6e716a;
     --dg-navy: #243448;
     --dg-navy-2: #1b2836;
     --dg-accent: #149c7c;
@@ -281,8 +283,18 @@ body.dark .dg-brand-logo { filter: none; }
    "мелко"). #dg-brand — единственный полный лого+название лок-ап, показывается только на
    главной (в выдаче/чтении остаётся только ракушка внутри поля, другая картинка) — точечный
    override, не трогает базовый размер, которым пользуются другие места (боковое меню ниже). */
-/* Owner: "ещё крупнее на 30%" — 37px × 1.3 ≈ 48px. */
-#dg-brand .dg-brand-logo { width: 48px; height: 48px; }
+/* Owner: "ещё крупнее на 30%" — 37px × 1.3 ≈ 48px. Owner: "покрупнее на 50%" — 48px × 1.5 = 72px. */
+#dg-brand .dg-brand-logo { width: 72px; height: 72px; }
+/* Owner: "на мобильной вёрстке только лого ещё крупнее, размером как на проде" — matches the
+   legacy PHP site's actual header logo (measured live, dhamma.gift/read.php: rendered
+   width:100px, height auto ≈58px — same source image, its own natural ratio 688:399, not
+   letterboxed into a square like the 72×72 box above). */
+@media (max-width: 767px) {
+    #dg-brand .dg-brand-logo { width: 100px; height: 58px; }
+    /* Owner: "на мобильном вообще не должно быть надписи Dhamma gift только крупное лого" —
+       drop the wordmark text entirely on mobile, logo alone carries the brand there. */
+    #dg-brand .dg-brand-name { display: none; }
+}
 
 /* Маленькая копия лого в шапке бокового меню — там та же история со светлыми лепестками. */
 .dg-drawer-head .dg-brand-logo { width: 26px; height: 26px; }
@@ -292,6 +304,13 @@ body.dark .dg-brand-logo { filter: none; }
     font-weight: 600;
     letter-spacing: -0.01em;
     color: var(--dg-text);
+}
+/* Owner: "Dhamma.Gift с больших букв на десктоп" — desktop only (mobile keeps the plain
+   lowercase wordmark, owner: "на мобильной... только лого"). text-transform over rewriting the
+   text: "." breaks the word for capitalize the same way a space would ("dhamma.gift" ->
+   "Dhamma.Gift"), so this stays a one-line style rule instead of a second hardcoded string. */
+@media (min-width: 768px) {
+    .dg-brand-name { text-transform: capitalize; }
 }
 
 /* Кнопка-иконка шапки (бургер, крестик в меню) — без рамки и заливки. */
@@ -390,6 +409,15 @@ body.dark.dg-state-results #form #paliauto.searchinput,
 body.dark.dg-state-reader #form #paliauto.searchinput,
 body.dark.dg-state-toc #form #paliauto.searchinput {
     color: rgb(221, 221, 221);
+}
+/* apple-design audit: .dg-input-shell:focus-within's ring uses --dg-accent-bg (#12241f in
+   dark) — nearly invisible against both the dark page and this pill's own #42426a fill
+   (confirmed live: box-shadow computed but not perceptible). Brighter ring for these
+   dark-theme states specifically. */
+body.dark.dg-state-results .dg-input-shell:focus-within,
+body.dark.dg-state-reader .dg-input-shell:focus-within,
+body.dark.dg-state-toc .dg-input-shell:focus-within {
+    box-shadow: 0 0 0 3px rgba(122, 122, 249, 0.6);
 }
 
 /* На полосе поле — светлая карточка, лежащая ПОВЕРХ тёмного фона: не пилюля, а прямоугольник со
@@ -1102,6 +1130,48 @@ body.dg-no-anim * {
 .dg-sheet.dg-anchored.show { transform: translateY(0); opacity: 1; }
 /* У выпадашки ручки-«потяни вниз» быть не должно: тянуть её некуда. */
 .dg-sheet.dg-anchored .dg-sheet-handle { display: none; }
+
+/* Мега-меню (пилот на плитке External) — тот же анкоренный попап, что у быстрых настроек, но
+   .dg-sheet-body раскладывается в колонки вместо вкладок+списка. Ширину/позицию считает
+   placeMegaAnchored() (home.js) инлайном; здесь только сетка и то, что вкладок тут нет. */
+.dg-mega .dg-sheet-body {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 0 28px;
+    align-items: start;
+}
+/* A later un-headed cluster inside a "blocks" group (owner: "не выделяй suttacentral в
+   отдельный" — SC/Vinaya/Voice/Legacy etc. share the Collections header, split from the block
+   above them by a quiet rule only, never a made-up sub-title). */
+.dg-mega-block-divider { margin-top: 9px; padding-top: 9px; border-top: 1px solid var(--dg-border); }
+.dg-mega-col { min-width: 0; }
+/* Owner: "скролл не нужен был по максимуму" — Patimokkha+Prātimokṣa (10 пунктов с описаниями,
+   владелец явно просил их держать в одной колонке) остаются самой высокой колонкой независимо
+   от числа колонок в сетке; единственный оставшийся рычаг — плотность самой строки. Сужаем
+   только внутри мега-меню (.dg-sheet-row/.dg-group-title — общие классы с нижней шторкой, её
+   не трогаем). :first-child здесь переопределяет общее .dg-group-title:first-child (метит
+   первый заголовок ВСЕЙ шторки) — в колонках первый заголовок должен быть без верхнего отступа
+   у КАЖДОЙ колонки, а не только у первой. */
+/* #dg-mega (id), not .dg-mega (class): the generic .dg-sheet-row/.dg-row-desc/.dg-group-title
+   rules a bit further down this file have the SAME class-only specificity and come AFTER these
+   in source order, so a same-specificity .dg-mega override here was silently losing the
+   cascade (measured live: padding stayed 11px, not 7px) — the id bumps specificity past that,
+   no reordering needed. */
+#dg-mega .dg-sheet-row { padding: 7px 0; }
+/* Owner: "описание идёт отдельной строчкой снизу... всё удлиняется чуть ли не в два раза" —
+   desc back to inline (its default as a <small>, before the generic .dg-sheet rule below forces
+   it to its own line) with a quiet separator, same row, no line break — label stays bright
+   (inherits the row's normal text color), desc stays dim (--dg-text-2 further down). Cuts most
+   rows back to one line, which also does more for "скролл не нужен был по максимуму" than the
+   padding trim above ever could. */
+#dg-mega .dg-row-desc {
+    display: inline;
+    margin-top: 0;
+}
+#dg-mega .dg-row-desc::before { content: " \00b7 "; color: var(--dg-text-muted); }
+#dg-mega .dg-group-title { margin: 1.4em 0 0.6em; }
+.dg-mega-col .dg-group-title:first-child { margin-top: 0; }
+
 @media (prefers-reduced-motion: reduce) {
     .dg-sheet, #dg-sheet-backdrop { transition: none; }
 }
@@ -1461,6 +1531,12 @@ body.dg-no-anim * {
     inset: 0;
     z-index: 1082;
     background: rgba(20, 18, 10, 0.4);
+    /* Bleeds the dimming color far past the actual viewport edges via box-shadow (paints extra
+       area without touching layout/scroll at all) — a defensive backstop for mobile rubber-band
+       overscroll, on top of the real fix below (body scroll lock + overscroll-behavior on the
+       drawer itself): owner, live device, dragging the open drawer: "граница белая всё ещё
+       торчит" (a white edge still pokes through). */
+    box-shadow: 0 0 0 100vmax rgba(20, 18, 10, 0.4);
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.22s ease;
@@ -1486,6 +1562,28 @@ body.dg-no-anim * {
     transform: translateX(100%);
     transition: transform 0.3s var(--dg-ease);
     overflow-y: auto;
+    /* Real fix for the mobile "white edge" bug (see #dg-drawer-backdrop above): scrolling the
+       drawer's own list to its end used to chain into scrolling the page BODY behind it (body
+       scroll wasn't locked either — see body.dg-drawer-open below), and that body-level
+       rubber-band bounce is what briefly shifted the fixed backdrop/drawer and revealed page
+       background at an edge. contain stops the drawer's scroll from ever handing off to body. */
+    overscroll-behavior: contain;
+}
+/* Locked while the drawer is open (openDrawer()/closeDrawer(), home.js) — the other half of the
+   white-edge fix: with body itself unable to scroll/bounce, there's nothing left for the fixed
+   backdrop/drawer to visually lag behind during a drag. */
+body.dg-drawer-open {
+    overflow: hidden;
+}
+/* apple-design audit: menu drawer was a flat opaque fill — no depth/material feel over the
+   dimmed content behind it. Falls back to the solid fill above where backdrop-filter is
+   unsupported. */
+@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+    #dg-drawer {
+        background: color-mix(in srgb, var(--dg-surface) 88%, transparent);
+        -webkit-backdrop-filter: blur(20px) saturate(180%);
+        backdrop-filter: blur(20px) saturate(180%);
+    }
 }
 #dg-drawer.show { transform: translateX(0); }
 #dg-drawer[hidden] { display: none; }
@@ -2192,4 +2290,28 @@ body.dg-state-home #home-extra:not([hidden]) { display: block; }
     font-size: 1.1rem;
     color: var(--dg-text-2);
     text-align: center;
+}
+
+/* apple-design audit — #pali/#pali-words carry DataTables' "responsive" class but the
+   Responsive extension itself is never loaded, so it does nothing: columns keep their
+   auto-calculated desktop widths and long words in the Title column get torn mid-word
+   on narrow screens. Give Title room and let it wrap on spaces instead. Also reserve a
+   bottom safe zone so the fixed Pāli/Eng toggle (bottom:30px, ~38-48px tall) never
+   permanently covers the last table row. */
+@media (max-width: 480px) {
+    #pali td:nth-child(2),
+    #pali-words td:nth-child(2) {
+        word-break: normal;
+        overflow-wrap: anywhere;
+        min-width: 45vw;
+    }
+    /* #search-pane specifically, not the bare .table-wrapper class — that class is ALSO reused
+       (search/index.html:913, deliberately, for matching max-width/centering) by the page-wide
+       header wrapper present in every state (home/results/reader/toc), so the un-scoped
+       selector was adding this same 90px trailing gap after the search heading, after the
+       reader's prev/next row, and after the TOC input — everywhere, not just after the results
+       table it was meant for (owner: "бессмысленный отступ" in all three places). */
+    #search-pane.table-wrapper {
+        padding-bottom: 90px;
+    }
 }

@@ -142,6 +142,11 @@
 
     var menuData = null;
     var currentSheetKey = null;
+    // Mega-menu (External tile pilot) — anchored dropdown, not the bottom sheet. Own tracking
+    // vars (not currentSheetKey) since it can be open at the same time nothing else is, and a
+    // star toggle inside it needs to know which tile/button to redraw against.
+    var currentMegaKey = null;
+    var currentMegaBtn = null;
 
     // ======================================================================
     // Состояния страницы: home / results / reader
@@ -387,8 +392,8 @@
         if (backdrop) return backdrop;
         backdrop = document.createElement('div');
         backdrop.id = 'dg-sheet-backdrop';
-        // Подложка общая для обеих шторок — закрываем ту, что открыта.
-        backdrop.addEventListener('click', function () { closeSheet(); closeQuick(); });
+        // Подложка общая для всех трёх шторок — закрываем ту, что открыта.
+        backdrop.addEventListener('click', function () { closeSheet(); closeQuick(); closeMega(); });
         document.body.appendChild(backdrop);
         return backdrop;
     }
@@ -493,7 +498,8 @@
         a.addEventListener('contextmenu', function (e) {
             e.preventDefault();
             toggleUserStar(item);
-            openSheet(currentSheetKey);
+            if (currentSheetKey) openSheet(currentSheetKey);
+            else if (currentMegaKey) openMega(currentMegaKey, currentMegaBtn);
         });
 
         if (item.tpl) {
@@ -538,10 +544,22 @@
 
     /* Действие плитки: у одних свой список (шторка), у других — прямое действие. Одна функция на
        оба места, где плитка встречается: сама кнопка и вкладка в шапке шторки. */
-    function runTile(key) {
+    function runTile(key, anchorEl) {
         var tile = tileData(key);
         if (!tile) return;
-        if (tile.groups) { openSheet(key); return; }
+        if (tile.groups) {
+            // "mega": true (menu-links.json) opts a tile into the anchored multi-column
+            // dropdown (External pilot) instead of the full-screen bottom sheet — desktop only
+            // (owner: "на мобильной версии... мега меню выглядит очень плохо" — the multi-column
+            // layout has nowhere to go on a narrow screen; mobile keeps the plain sheet exactly
+            // as it worked before the mega menu existed). 768px matches .dg-sheet's own
+            // desktop breakpoint (home.css). Also needs an anchor button — clicked from the tab
+            // strip inside another tile's open sheet, there's no anchor point, so it falls back
+            // to the plain sheet there too.
+            if (tile.mega && anchorEl && window.innerWidth >= 768) openMega(key, anchorEl);
+            else openSheet(key);
+            return;
+        }
         if (tile.modal === 'quick') {
             /* История своей шторки не имеет: она и так есть в quickModal (компас,
                Cattāri Ariyasaccāni) — там же живут недавние запросы. */
@@ -579,6 +597,7 @@
     }
 
     function openSheet(key) {
+        closeMega();
         ensureSheet();
         var data = menuData[menuLang()];
         var tile = data[key];
@@ -621,6 +640,27 @@
             h.className = 'dg-group-title';
             h.textContent = g.name;
             body.appendChild(h);
+
+            /* "blocks" — same shape openMega() reads (menu-links.json's External "Collections":
+               several real prod clusters under one header, e.g. SC/Vinaya/Voice/Legacy with no
+               header of their own — just a quiet rule above them via block.divider). Groups
+               without "blocks" fall through to the plain items/chips rendering below, unchanged. */
+            if (g.blocks) {
+                g.blocks.forEach(function (block) {
+                    var blockWrap = document.createElement('div');
+                    blockWrap.className = block.divider ? 'dg-mega-block dg-mega-block-divider' : 'dg-mega-block';
+                    if (block.inline) {
+                        var line = document.createElement('div');
+                        line.className = 'dg-chip-group';
+                        block.inline.forEach(function (item) { line.appendChild(renderItem(item, true)); });
+                        blockWrap.appendChild(line);
+                    } else {
+                        (block.rows || []).forEach(function (item) { blockWrap.appendChild(renderItem(item)); });
+                    }
+                    body.appendChild(blockWrap);
+                });
+                return;
+            }
 
             /* "layout": "chips" — группа рисуется вплотную, в одну-две строки, а не столбцом
                полноразмерных строк. Так помечены наборы с короткими самоочевидными подписями
@@ -1185,6 +1225,7 @@
     };
 
     function openQuick() {
+        closeMega();
         ensureQuick();
         var sheet = document.getElementById('dg-quick');
         var backdrop = document.getElementById('dg-sheet-backdrop');
@@ -1200,6 +1241,149 @@
         else sheet.removeAttribute('style');
 
         if (btn) btn.setAttribute('aria-expanded', 'true');
+        showLater(sheet, backdrop);
+    }
+
+    // ======================================================================
+    // Мега-меню (пилот на плитке External) — тот же анкоренный попап, что у быстрых настроек
+    // (#dg-quick), но шире и в несколько колонок вместо списка + вкладок. Опция плитки
+    // "mega": true (menu-links.json); группы внутри неё несут "column" (1/2/3) — сами данные и
+    // renderItem()/isStarred()/toggleUserStar() те же, что у обычной шторки, меняется только
+    // раскладка и то, что вкладок-переключателей на других плитках здесь нет (владелец: "на
+    // мобильных делай дропдаун на всю ширину экрана").
+    // ======================================================================
+    function ensureMega() {
+        if (document.getElementById('dg-mega')) return;
+        ensureBackdrop();
+        var sheet = document.createElement('div');
+        sheet.id = 'dg-mega';
+        sheet.className = 'dg-sheet dg-anchored dg-mega';
+        sheet.setAttribute('role', 'dialog');
+        sheet.setAttribute('aria-modal', 'true');
+        sheet.hidden = true;
+        sheet.innerHTML =
+            '<div class="dg-sheet-head"><h2 id="dg-mega-title"></h2>' +
+            '<button type="button" class="dg-sheet-close" aria-label="' + esc(t('global.common.close', 'Close')) + '">&times;</button></div>' +
+            '<div class="dg-sheet-body" id="dg-mega-body"></div>';
+        sheet.querySelector('.dg-sheet-close').addEventListener('click', closeMega);
+        document.body.appendChild(sheet);
+
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && isMegaOpen()) closeMega();
+        });
+    }
+
+    function isMegaOpen() {
+        var m = document.getElementById('dg-mega');
+        return !!(m && m.classList.contains('show'));
+    }
+
+    function closeMega() {
+        var sheet = document.getElementById('dg-mega');
+        var backdrop = document.getElementById('dg-sheet-backdrop');
+        if (!sheet) return;
+        sheet.classList.remove('show');
+        if (backdrop && !currentSheetKey && !isQuickOpen()) {
+            backdrop.classList.remove('show');
+            backdrop.classList.remove('dg-transparent');
+        }
+        currentMegaKey = null;
+        setTimeout(function () { if (!isMegaOpen()) sheet.hidden = true; }, 320);
+    }
+
+    /* Позиционирование мега-меню: mega-панель теперь desktop-only (runTile(), window.innerWidth
+       >= 768), так что ей больше не нужно сжиматься до ширины поля поиска (владелец, прошлый
+       раунд) — та ширина (~600-720px) как раз и не давала места под колонки без скролла.
+       Владелец: "чтобы ширина десктопа использовалась... 5 колонок" — берём щедрую ширину под
+       5 колонок (auto-fit/minmax(190px) в CSS), а не привязываемся к узкому полю. Центровка —
+       по горизонтальному центру поля (визуально остаётся под поиском), не по его краям.
+       Вертикально — под РЯДОМ плиток (btn), не под полем: иначе перекрывало бы сами плитки.
+       Отдельно от placeAnchored() у быстрых настроек — той нужна ширина 340 и прижатие к
+       ПРАВОМУ краю кнопки. */
+    function placeMegaAnchored(sheet, btn) {
+        var margin = 8;
+        var input = document.getElementById('paliauto');
+        var fr = input ? input.getBoundingClientRect() : btn.getBoundingClientRect();
+        var centerX = fr.left + fr.width / 2;
+        // 5 columns × 190px minmax + 4×28px gaps + 36px body padding ≈ 1098px minimum
+        // (owner: "5 колонок"), rounded up a bit for breathing room.
+        var width = Math.min(1120, window.innerWidth - margin * 2);
+        var left = Math.min(Math.max(margin, centerX - width / 2), window.innerWidth - width - margin);
+        sheet.style.left = left + 'px';
+        sheet.style.width = width + 'px';
+
+        var r = btn.getBoundingClientRect();
+        sheet.style.top = (r.bottom + 10) + 'px';
+        sheet.style.maxHeight = Math.max(220, window.innerHeight - r.bottom - 24) + 'px';
+    }
+
+    function openMega(key, btn) {
+        closeSheet();
+        closeQuick();
+        ensureMega();
+        var data = menuData[menuLang()];
+        var tile = data[key];
+        if (!tile) return;
+
+        currentMegaKey = key;
+        currentMegaBtn = btn;
+        var sheet = document.getElementById('dg-mega');
+        var backdrop = document.getElementById('dg-sheet-backdrop');
+        sheet.hidden = false;
+        document.getElementById('dg-mega-title').textContent = tile.label;
+
+        // Группы раскладываются по колонкам ("column" в menu-links.json), порядок внутри
+        // колонки — как в файле. Группа без "column" считается первой колонкой.
+        var body = document.getElementById('dg-mega-body');
+        body.innerHTML = '';
+        var cols = {};
+        var colNums = [];
+        (tile.groups || []).forEach(function (g) {
+            var c = g.column || 1;
+            if (!cols[c]) {
+                cols[c] = document.createElement('div');
+                cols[c].className = 'dg-mega-col';
+                colNums.push(c);
+            }
+            var h = document.createElement('p');
+            h.className = 'dg-group-title';
+            h.textContent = g.name;
+            cols[c].appendChild(h);
+
+            if (g.blocks) {
+                // "blocks" — a group that bundles several real prod clusters under ONE header
+                // (owner: "не выделяй suttacentral в отдельный" — SC/Vinaya/Voice/Legacy get no
+                // header of their own, just a quiet rule above them, same "Collections" umbrella
+                // as everything else in this column). block.divider adds that rule; block.inline
+                // renders as a dense one-line chip row (no per-item description), block.rows as
+                // normal full rows — same renderItem() either way, just grouped differently from
+                // the plain g.items case below.
+                g.blocks.forEach(function (block) {
+                    var wrap = document.createElement('div');
+                    wrap.className = block.divider ? 'dg-mega-block dg-mega-block-divider' : 'dg-mega-block';
+                    if (block.inline) {
+                        var line = document.createElement('div');
+                        line.className = 'dg-chip-group';
+                        block.inline.forEach(function (item) { line.appendChild(renderItem(item, true)); });
+                        wrap.appendChild(line);
+                    } else {
+                        (block.rows || []).forEach(function (item) { wrap.appendChild(renderItem(item)); });
+                    }
+                    cols[c].appendChild(wrap);
+                });
+            } else if (g.layout === 'chips') {
+                var chipWrap = document.createElement('div');
+                chipWrap.className = 'dg-chip-group';
+                g.items.forEach(function (item) { chipWrap.appendChild(renderItem(item, true)); });
+                cols[c].appendChild(chipWrap);
+            } else {
+                g.items.forEach(function (item) { cols[c].appendChild(renderItem(item)); });
+            }
+        });
+        colNums.sort(function (a, b) { return a - b; }).forEach(function (c) { body.appendChild(cols[c]); });
+
+        if (backdrop) backdrop.classList.add('dg-transparent');
+        placeMegaAnchored(sheet, btn);
         showLater(sheet, backdrop);
     }
 
@@ -1323,6 +1507,10 @@
         paintReaderModes();
         d.hidden = false;
         if (b) b.hidden = false;
+        // Locks body scroll (home.css: body.dg-drawer-open { overflow: hidden }) — mobile
+        // "white edge" fix: with body unable to rubber-band while the drawer is open, the
+        // page behind it can't visually shift and reveal itself at an edge during a drag.
+        document.body.classList.add('dg-drawer-open');
         showLater(d, b);
     }
 
@@ -1332,6 +1520,7 @@
         if (!d || d.hidden) return;
         d.classList.remove('show');
         if (b) b.classList.remove('show');
+        document.body.classList.remove('dg-drawer-open');
         setTimeout(function () {
             if (!d.classList.contains('show')) { d.hidden = true; if (b) b.hidden = true; }
         }, 320);
@@ -1415,7 +1604,7 @@
             el.addEventListener('click', function () {
                 // Клик, приходящий сразу за перетаскиванием, — не выбор плитки.
                 if (el.dataset.dragged === '1') { el.dataset.dragged = ''; return; }
-                runTile(key);
+                runTile(key, el);
             });
 
             var rm = document.createElement('span');

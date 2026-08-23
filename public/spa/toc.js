@@ -120,7 +120,12 @@
             var idx = list.indexOf(transKey);
             if (idx !== -1) return idx;
         }
-        return transKey.indexOf('+edited+o') !== -1 ? 1000 : 2000;
+        // Owner: "o, edited o должен иметь приоритет" — applies for ANY language, not just the
+        // ones with an explicit list above: plain "o" (interlinear) first, "+edited+o" next.
+        var key = transKey.slice(transKey.indexOf('_') + 1);
+        if (key === 'o') return 500;
+        if (key.indexOf('+edited+o') !== -1) return 1000;
+        return 2000;
     }
 
     // Full language name via the browser's own Intl.DisplayNames — not a ru/en lookup table:
