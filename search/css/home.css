@@ -698,7 +698,20 @@ body:not(.dg-state-reader):not(.dg-state-toc) {
    d-none (display:none !important) — его перебить состоянием было нельзя, поэтому класс снят, а
    видимость целиком здесь. */
 #reader-pane { display: none; }
-body.dg-state-reader #reader-pane { display: block; }
+/* Owner: "toc и фильтр переводчиков разлетались в свои стороны... в центре была бы сутта уже
+   ридер режим" — сутта "вырастает" из центра, пока TOC/фильтр разлетаются по бокам (см.
+   .dg-toc-leaving ниже). Анимация переигрывается только при ПЕРЕХОДЕ в ридер (display:none →
+   block снимает и заново вешает CSS-анимацию), а не при переключении между суттами внутри уже
+   открытого ридера — dgSetState() рано выходит, если dg-state-reader уже стоял (search/index.html),
+   так что #reader-pane всё это время остаётся block и анимация не перезапускается. */
+@keyframes dg-reader-enter {
+    from { opacity: 0; transform: scale(.96); }
+    to { opacity: 1; transform: scale(1); }
+}
+body.dg-state-reader #reader-pane { display: block; animation: dg-reader-enter .28s var(--dg-ease); }
+@media (prefers-reduced-motion: reduce) {
+    body.dg-state-reader #reader-pane { animation: none; }
+}
 
 /* Панель TOC/навигатора — тот же приём, что #reader-pane выше. Первая, минимальная версия
    разметки: подробная стилизация (тема шапки/тулбара и т.п.) при желании донастраивается позже,
@@ -741,6 +754,17 @@ body.dg-state-toc #language-button {
     padding: .75rem .9rem;
     background: var(--dg-surface);
 }
+/* Owner: "toc и фильтр переводчиков разлетались в свои стороны" — played by toc.js right before
+   navigating to a sutta (window.dgNavigateInternal), timed to finish before dg-state-toc→reader
+   switches #toc-pane to display:none (which would otherwise cut the animation off mid-flight —
+   see .dg-toc-leaving's duration mirrored in toc.js's setTimeout). Skipped when reduced motion is
+   requested — toc.js checks prefers-reduced-motion itself and navigates immediately instead of
+   adding this class. */
+.toc-main, .toc-aside {
+    transition: transform .28s var(--dg-ease), opacity .28s ease;
+}
+.toc-layout.dg-toc-leaving .toc-main { transform: translateX(-40px); opacity: 0; }
+.toc-layout.dg-toc-leaving .toc-aside { transform: translateX(40px); opacity: 0; }
 .toc-aside-title { font-size: .95rem; margin: 0 0 .5rem; color: var(--dg-text-2); }
 /* Same button-reset + "+/-" affordance as the category expand-all toggle — collapsible on
    phones so arriving at /toc lands on the Pali contents, not this panel (owner: "на мобильном
@@ -1056,9 +1080,25 @@ body.dg-no-anim * {
     gap: 10px;
     max-width: 560px;
     margin: 0 auto;
+    /* Reserve space for the tiles home.js fills in after its menu-links.json fetch resolves —
+       without this the empty grid collapses to 0 height and everything below (footer etc.)
+       jumps down once tiles pop in. Sized for the default 8 tiles at 2 cols (4 rows); narrower
+       at >=576px below since it switches to 4 cols (2 rows). Approximate on purpose — tile count
+       is user-customizable (hidden/custom tiles), an exact height isn't possible anyway. */
+    min-height: 460px;
+}
+.dg-tiles:empty {
+    background: linear-gradient(90deg, var(--dg-surface) 25%, var(--dg-surface-hover) 50%, var(--dg-surface) 75%);
+    background-size: 200% 100%;
+    border-radius: 12px;
+    animation: dg-tiles-skeleton 1.4s ease-in-out infinite;
+}
+@keyframes dg-tiles-skeleton {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
 }
 @media (min-width: 576px) {
-    .dg-tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); max-width: 720px; }
+    .dg-tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); max-width: 720px; min-height: 226px; }
 }
 
 .dg-tile {
@@ -1178,14 +1218,41 @@ body.dg-no-anim * {
 /* У выпадашки ручки-«потяни вниз» быть не должно: тянуть её некуда. */
 .dg-sheet.dg-anchored .dg-sheet-handle { display: none; }
 
-/* Мега-меню (пилот на плитке External) — тот же анкоренный попап, что у быстрых настроек, но
-   .dg-sheet-body раскладывается в колонки вместо вкладок+списка. Ширину/позицию считает
-   placeMegaAnchored() (home.js) инлайном; здесь только сетка и то, что вкладок тут нет. */
+/* Мега-меню (External/AI & Dicts/Materials/Tools/Русские) — тот же анкоренный попап, что у
+   быстрых настроек, но .dg-sheet-body раскладывается в колонки вместо вкладок+списка.
+   Ширину/позицию считает placeMegaAnchored() (home.js) инлайном.
+   position: absolute (не fixed, как у .dg-sheet/.dg-anchored) — координаты, которые считает
+   placeMegaAnchored(), уже document-relative (учитывают scrollX/scrollY), так что попап скроллится
+   ВМЕСТЕ со страницей, а не остаётся приклеенным к вьюпорту. max-height/overflow — none/visible:
+   owner явно просил убрать СВОЙ скролл попапа ("не должно быть скролла... за счёт общего сдвига
+   экрана его нужно прокручивать, а не за счёт какого-то своего отдельного скроллбара") — если
+   колонки не помещаются в высоту вьюпорта, страница просто скроллится ниже, как у обычного
+   мега-меню; scrollForMega() (home.js) заранее подтягивает страницу так, чтобы поле поиска
+   оказалось у верха экрана (плюс сжимает зазоры над плитками, body.dg-mega-compact ниже), чтобы
+   места обычно хватало без скролла вовсе.
+   Открытие — не translateY, как у .dg-anchored выше, а scale от transform-origin, который
+   выставляет placeMegaAnchored() инлайном (X — под серединой открывшей кнопки): owner: "анимацию
+   как будто мегаменю расширяется/растягивается из соответствующей кнопки". */
+.dg-sheet.dg-anchored.dg-mega {
+    position: absolute;
+    max-height: none;
+    transform: scale(0.35);
+    transition: transform 0.22s var(--dg-ease), opacity 0.16s ease;
+}
+.dg-sheet.dg-anchored.dg-mega.show { transform: scale(1); }
 .dg-mega .dg-sheet-body {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
     gap: 0 28px;
     align-items: start;
+}
+/* #dg-mega (id), not .dg-mega (class): .dg-sheet .dg-sheet-body (overflow-y:auto, further down
+   this file) has the SAME class-only specificity and comes AFTER this rule in source order, so a
+   same-specificity .dg-mega override here would silently lose (same trap as the comment on
+   #dg-mega .dg-sheet-row above) — bumped to an id selector to win for real. */
+#dg-mega .dg-sheet-body {
+    overflow-y: visible;
+    max-height: none;
 }
 /* A later un-headed cluster inside a "blocks" group (owner: "не выделяй suttacentral в
    отдельный" — SC/Vinaya/Voice/Legacy etc. share the Collections header, split from the block
@@ -1766,33 +1833,36 @@ body.dg-tiles-dragging { user-select: none; -webkit-user-select: none; }
     opacity: 0.6;
 }
 
-/* Убрать кнопку с главной. Появляется при наведении (мышь) и в режиме перетаскивания (палец);
-   вернуть убранное можно пунктом в боковом меню. Сам список убранных — в localStorage. */
-.dg-tile { position: relative; }
-.dg-tile-remove {
-    position: absolute;
-    top: 3px;
-    right: 3px;
-    width: 20px;
-    height: 20px;
-    display: none;
-    align-items: center;
-    justify-content: center;
-    padding: 0;
-    border: 1px solid var(--dg-border-strong);
-    border-radius: 50%;
-    background: var(--dg-surface);
-    color: var(--dg-text-2);
-    font-size: 0.7rem;
-    line-height: 1;
-    cursor: pointer;
-}
-@media (hover: hover) and (pointer: fine) {
-    .dg-tile:hover .dg-tile-remove,
-    .dg-tile:focus-within .dg-tile-remove { display: inline-flex; }
-}
-body.dg-tiles-editing .dg-tile-remove { display: inline-flex; }
-.dg-tile-remove:hover { color: var(--dg-text); border-color: var(--dg-text-2); }
+/* z-index выше #dg-sheet-backdrop (1080, home.css) намеренно — owner: "кликая по иконкам
+   мультитула, они бы переключались сразу... сейчас нужно два тапа, если открыто мегаменю: один
+   уходит на закрытие активного, второй — на открытие другого". Причина — общая подложка шторок/
+   мега-меню на z-index:1080 закрывает весь экран (pointer-events:auto, пока показана), в том
+   числе плитки, которые сами по себе ниже неё; первый клик всегда попадал в подложку, а не в
+   плитку под ней. Приподнимаем ТОЛЬКО саму кнопку (не весь #home-tiles) — клик по зазору между
+   плитками по-прежнему бьёт в подложку и корректно закрывает открытое, а клик по самой плитке
+   идёт напрямую в её обработчик (renderTiles() → runTile()), который сам переключает/закрывает
+   через openMega()/openSheet() — тем же кликом, без второго тапа. */
+.dg-tile { position: relative; z-index: 1081; }
+/* Полный стек z-index этой страницы (снизу вверх): 900 #dg-busy-indicator, 1080 #dg-sheet-
+   backdrop, 1081 .dg-sheet/.dg-tile, 1082 #dg-drawer-backdrop, 1083 #dg-drawer, 1084 autocomplete,
+   1090 плитка во время drag. Bootstrap-модалка (#SearchResultHelp — "Помощь", вызывается через
+   runTile()) была НИЖЕ всего этого — bootstrap 5 по умолчанию кладёт .modal-backdrop/.modal в
+   районе 1050-1060, скроен под страницы БЕЗ своего конкурирующего оверлей-стека. Раньше не
+   всплывало: до фикса .dg-tile выше двумя пунктами модалка открывалась только вторым кликом,
+   когда мега/шторка/дровер уже гарантированно закрыты первым. Теперь модалку можно открыть, пока
+   что-то из стека ещё видимо (та же причина, что и починенный runTile() ниже) — owner
+   (скриншот): "плитки поверх Помощи, z-index". Модалка — единственная НАСТОЯЩАЯ модальная
+   штора (блокирует весь остальной интерфейс), поэтому кладём её однозначно выше ЛЮБОГО пункта
+   этого стека, а не подбираем число под текущий максимум (1090) — если стек когда-то вырастет
+   ещё, модалка не должна снова оказываться потерянной под новым слоем. */
+.modal-backdrop { z-index: 1095 !important; }
+.modal { z-index: 1096 !important; }
+/* Owner: "странное поведение — при хувере появляется крестик закрыть, случайно можно удалить
+   мегаменю... давай уберём" — .dg-tile-remove (inline ✕, appeared on hover AND on drag-start,
+   both easy to trigger by accident) removed entirely, both the CSS here and its creation in
+   renderTiles() (search/js/home.js). Show/hide now lives ONLY in "Изменить кнопки"
+   (openEditList(), same file) as an explicit checkbox per row — a deliberate action in a
+   dedicated list, not a stray button that shows up mid-interaction. */
 
 /* ============================================================================
    Плитки на широком экране — компактнее, но В ДВА РЯДА
@@ -2125,17 +2195,36 @@ body.dark .dg-field-error { color: #ff8a80; }
 
 .dg-emoji-input { margin-top: 4px; }
 
-/* Строка списка «изменить кнопки» — это <button>, а не ссылка: обнуляем кнопочные умолчания. */
-.dg-sheet .dg-edit-row {
-    width: 100%;
-    border-left: 0;
-    border-right: 0;
-    border-top: 0;
-    background: transparent;
-    font-family: var(--dg-font);
-    text-align: left;
+/* Строка списка «изменить кнопки» — .dg-edit-row теперь просто <div> (общий .dg-sheet-row даёт
+   flex/gap/padding/border-bottom), внутри — чекбокс показа (owner: "добавь чекбоксы, по
+   умолчанию включенные, чтобы можно было скрыть" — заменяет крестик, всплывавший на самой
+   плитке) и .dg-edit-row-main — настоящая кнопка, открывающая форму правки по клику где угодно
+   в строке, кроме самого чекбокса (там его click — свой stopPropagation, home.js). */
+.dg-sheet .dg-edit-visible-cb {
+    flex: none;
+    width: 17px;
+    height: 17px;
+    margin: 0;
+    accent-color: var(--dg-accent);
+    cursor: pointer;
 }
-.dg-sheet .dg-edit-row .dg-edit-ic {
+.dg-sheet .dg-edit-row-main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    border: 0;
+    background: transparent;
+    padding: 0;
+    font: inherit;
+    font-family: var(--dg-font);
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+.dg-sheet .dg-edit-row-main .dg-edit-ic {
     display: inline-flex;
     align-items: center;
     justify-content: center;

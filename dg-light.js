@@ -428,6 +428,40 @@ async function buildTranslatorCatalogCache() {
     }
 }
 
+// Concatenates a few always-loaded landing-page scripts into one file each, cutting HTTP
+// request count under HTTP/1.1's ~6-connections-per-host limit (TODO.md batch 7 #2, part 2).
+// Rebuilt on every server start (same pattern as buildSettingsDemoCache et al. above) rather
+// than a manual `npm run` step, so editing a source file during dev never leaves a stale bundle.
+// Only dg-node-owned files (public/overrides/js/, search/js/) are bundled, adjacent PAIRS that
+// are already next to each other in search/index.html's script order — this changes request
+// count only, not execution order, so it can't introduce a script-ordering bug. Legacy files
+// (siteroot/assets, symlinked from the old PHP repo) are left alone on purpose: bundling them
+// would mean baking a snapshot of someone else's repo into ours (see CLAUDE.md symlink policy).
+async function buildScriptBundle() {
+    const pairs = [
+        { out: 'settings-bundle.js', sources: [
+            path.join(__dirname, 'public', 'overrides', 'js', 'settings.js'),
+            path.join(__dirname, 'public', 'overrides', 'js', 'dg-text-router.js'),
+        ] },
+        { out: 'home-bundle.js', sources: [
+            path.join(__dirname, 'public', 'overrides', 'js', 'randPlaceholder.js'),
+            path.join(__dirname, 'search', 'js', 'home.js'),
+        ] },
+    ];
+    for (const { out, sources } of pairs) {
+        try {
+            const parts = await Promise.all(sources.map(async src => {
+                const content = await fs.readFile(src, 'utf8');
+                return `// ---- ${path.relative(__dirname, src)} ----\n${content}`;
+            }));
+            const outPath = path.join(__dirname, 'public', 'overrides', 'js', out);
+            await fs.writeFile(outPath, parts.join('\n;\n'), 'utf8');
+        } catch (e) {
+            console.warn(`Script bundle ${out}: could not build:`, e.message);
+        }
+    }
+}
+
 async function initServer() {
     try {
         const data = await fs.readFile(skeletonPath, 'utf8');
@@ -440,6 +474,7 @@ async function initServer() {
         await buildScriptListCache();
         await buildLangCountsCache();
         await buildTranslatorCatalogCache();
+        await buildScriptBundle();
     } catch (err) {
         console.error('Startup error:', err);
     }
@@ -2164,16 +2199,38 @@ app.get('/api/text/:suttaId', async (req, res) => {
 
 // Prev/next для навигации ридера — из уже загруженного в память skeletonDB, без похода на
 // диск и без скачивания клиентом всей 18-мегабайтной dg_db_light.json ради одной пары ссылок.
+//
+// Owner (живой баг): "попал в ридере в Милиндапаньху, которая вообще не должна быть доступна
+// без спец настройки — ротация прев/некст должна быть в рамках текстов, выбранных пользователем,
+// или по умолчанию 4 никаи + 6 книг Кхуддаки". Раньше здесь был голый позиционный проход по
+// ВСЕМУ dbKeys без какой-либо фильтрации по scope — mil8 оказывается соседом mn1 чисто по
+// алфавиту ("mil" < "mn"), никакого отношения к учебному порядку. Тот же resolveAllowedPrefixes()/
+// matchesScope(), что уже фильтрует /search (см. чуть выше по файлу), просто никогда не
+// подключался к этому эндпоинту. resolveAllowedPrefixes(undefined) уже возвращает
+// DEFAULT_SCOPE_PREFIXES (4 никаи + 6 КН) сама по себе — так что просто не требовать scope= от
+// клиента и есть правильный дефолт; explicit ?scope= (из localStorage.dhammaSearchScope,
+// reader/megareader.js) расширяет его ровно как /search уже умеет.
+// Если ТЕКУЩИЙ текст сам не входит в scope (открыт прямой ссылкой/поиском, а не через prev/next)
+// — соседей всё равно ищем от его позиции в ПОЛНОМ dbKeys, просто пропуская несовпадающие: так
+// пользователь не застревает в исключённом тексте, а разумно попадает на ближайший подходящий.
 app.get('/api/nav/:suttaId', (req, res) => {
     const suttaId = req.params.suttaId.toLowerCase();
     const dbKeys = Object.keys(skeletonDB);
     const currentIndex = dbKeys.indexOf(suttaId);
     if (currentIndex === -1) return res.status(404).json({ error: `Unknown sutta id: ${suttaId}` });
 
+    const allowedPrefixes = resolveAllowedPrefixes(req.query.scope);
+    const inScope = (i) => matchesScope(skeletonDB[dbKeys[i]], dbKeys[i], allowedPrefixes);
+
+    let prevIndex = -1;
+    for (let i = currentIndex - 1; i >= 0; i--) { if (inScope(i)) { prevIndex = i; break; } }
+    let nextIndex = -1;
+    for (let i = currentIndex + 1; i < dbKeys.length; i++) { if (inScope(i)) { nextIndex = i; break; } }
+
     const toNavEntry = (slug) => slug ? { slug, title: skeletonDB[slug].title || '' } : null;
     res.json({
-        prev: currentIndex > 0 ? toNavEntry(dbKeys[currentIndex - 1]) : null,
-        next: currentIndex < dbKeys.length - 1 ? toNavEntry(dbKeys[currentIndex + 1]) : null
+        prev: prevIndex !== -1 ? toNavEntry(dbKeys[prevIndex]) : null,
+        next: nextIndex !== -1 ? toNavEntry(dbKeys[nextIndex]) : null
     });
 });
 

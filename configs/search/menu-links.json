@@ -164,18 +164,9 @@
         {
           "name": "Sanskrit", "column": 4,
           "items": [
-            { "label": "MW", "title": "Monier-Williams Sanskrit-English Dictionary, 1899", "desc": "The standard Sanskrit-English dictionary", "tpl": "https://www.sanskrit-lexicon.uni-koeln.de/scans/MWScan/2020/web/webtc/indexcaller.php?transLit=roman&key={{q}}", "blank": true },
-            {
-              "label": "MW + Shabda-Sagara + Apte + Macdonell",
-              "title": "Monier-Williams + Shabda-Sagara + Apte Practical + Macdonell",
-              "tplMulti": [
-                "https://www.sanskrit-lexicon.uni-koeln.de/scans/MWScan/2020/web/webtc/indexcaller.php?transLit=roman&key=",
-                "https://www.sanskrit-lexicon.uni-koeln.de/scans/SHSScan/2020/web/webtc/indexcaller.php?transLit=roman&key=",
-                "https://www.sanskrit-lexicon.uni-koeln.de/scans/APScan/2020/web/webtc/indexcaller.php?transLit=roman&key=",
-                "https://www.sanskrit-lexicon.uni-koeln.de/scans/MDScan/2020/web/webtc/indexcaller.php?transLit=roman&key="
-              ]
-            },
-            { "label": "Many dicts", "title": "All available Skr dicts at Cologne University Site", "href": "https://www.sanskrit-lexicon.uni-koeln.de/", "blank": true },
+            { "label": "Monier-Williams", "title": "Sanskrit-English Dictionary, 1899", "desc": "The standard Sanskrit-English dictionary", "tpl": "https://www.sanskrit-lexicon.uni-koeln.de/scans/MWScan/2020/web/webtc/indexcaller.php?transLit=roman&key={{q}}", "blank": true },
+            { "label": "Shabda-Sagara", "title": "Sanskrit-English Dictionary", "desc": "Sanskrit-English dictionary", "tpl": "https://www.sanskrit-lexicon.uni-koeln.de/scans/SHSScan/2020/web/webtc/indexcaller.php?transLit=roman&key={{q}}", "blank": true },
+            { "label": "Lexicon.uni-koeln.de", "title": "All available dictionaries at Cologne University Site", "href": "https://www.sanskrit-lexicon.uni-koeln.de/", "blank": true },
             { "label": "Skrdict", "tpl": "https://sanskritdictionary.com/?iencoding=iast&q={{q}}&lang=sans&action=Search", "blank": true },
             { "label": "Learnskr", "tpl": "https://www.learnsanskrit.cc/translate?dir=au&search={{q}}", "blank": true }
           ]
@@ -273,12 +264,9 @@
           "name": "On site", "column": 1,
           "items": [
             { "label": "DG (th)", "desc": "Dhamma.gift in Thai script", "href": "/th/?q=", "setsLang": "th" },
-            { "label": "old", "desc": "The previous version of the site", "href": "/old.php" },
+            { "label": "old", "desc": "The previous version of the site", "href": "old.dhamma.gift/" },
             { "label": "TTS", "title": "TTS Text-to-speech", "desc": "Text-to-speech playback of Pali/translation text", "tpl": "/tts.php?q={{q}}" },
-            { "label": "Read+", "title": "Read by Books or Chapters", "action": "readPlus", "base": "/r.php" },
-            { "label": "Sutta", "href": "/read.php#dhamma" },
-            { "label": "bupm", "href": "/pm.php?expand=true" },
-            { "label": "bipm", "href": "/bipm.php?expand=true" }
+            { "label": "Read+", "title": "Read by Books or Chapters", "action": "readPlus", "base": "/r.php" }
           ]
         },
         {
@@ -370,10 +358,10 @@
         {
           "name": "Типитака CST", "column": 2,
           "items": [
-            { "label": "PA", "title": "Paauksociety.org", "desc": "Paauksociety.org", "href": "https://apply.paauksociety.org/tipitaka/index.php", "blank": true },
-            { "label": "Tp.app", "title": "Tipitaka.app", "desc": "Tipitaka.app", "href": "https://tipitaka.app", "blank": true },
-            { "label": "TPO", "title": "Tipitaka Pali Online", "desc": "Tipitaka Pali Online", "href": "https://tipitakapali.org/", "blank": true },
-            { "label": "TPR", "title": "Tipitaka Pali Reader App", "desc": "Приложение Tipitaka Pali Reader — сайт на AmericanMonk.org", "href": "https://americanmonk.org/tipitaka-pali-reader/", "blank": true }
+            { "label": "Paauksociety.orgA", "title": "Paauksociety.org", "desc": "Ai translaitons all Pali", "href": "https://apply.paauksociety.org/tipitaka/index.php", "blank": true },
+            { "label": "Tipitaka.app", "title": "Tipitaka.app", "desc": "Multi-platform", "href": "https://tipitaka.app", "blank": true },
+            { "label": "Tipitaka Pali Online", "title": "Tipitaka Pali Online", "desc": "Multi-platform", "href": "https://tipitakapali.org/", "blank": true },
+            { "label": "Tipitaka Pali Reader", "title": "Tipitaka Pali Reader App", "desc": "Приложение — сайт на AmericanMonk.org", "href": "https://americanmonk.org/tipitaka-pali-reader/", "blank": true }
           ]
         },
         {
@@ -425,9 +413,10 @@
     "russian": {
       "label": "Русские",
       "icon": "bookmark",
+      "mega": true,
       "groups": [
         {
-          "name": "Dhamma.gift",
+          "name": "Dhamma.gift", "column": 1,
           "items": [
             { "label": "Dhamma.gift Сутты", "desc": "Русские переводы сутт на этом сайте", "href": "/ru/read.php#dhamma" },
             { "label": "Dhamma.gift Патимоккха", "desc": "Монашеские правила с переводом", "href": "/ru/read.php#vinaya" },
@@ -436,13 +425,13 @@
           ]
         },
         {
-          "name": "Переводы",
+          "name": "Переводы", "column": 2,
           "items": [
             { "label": "ДН пер. А. Я. Сыркина «2025»", "href": "/assets/audio/documents/dn_Syrkin_2020_ed_2025.pdf" }
           ]
         },
         {
-          "name": "Другие сайты",
+          "name": "Другие сайты", "column": 3,
           "items": [
             { "label": "Тхеравада.рф Сутты", "href": "https://xn--80aaaglc1fo1a.xn--p1ai/palicanon/%D1%81%D1%83%D1%82%D1%82%D0%B0%D0%BD%D1%82%D0%B0", "blank": true },
             { "label": "Тхеравада.рф Патимоккха", "href": "http://xn--80aaaglc1fo1a.xn--p1ai/palicanon/%d0%b2%d0%b8%d0%bd%d0%b0%d1%8f", "blank": true },
@@ -474,7 +463,8 @@
             { "label": "ChatGPT", "href": "https://chatgpt.com", "blank": true },
             { "label": "Gemini", "href": "https://gemini.google/", "blank": true },
             { "label": "DeepSeek", "href": "https://chat.deepseek.com", "blank": true },
-            { "label": "Norbu AI", "href": "https://norbu-ai.org/", "blank": true }
+            { "label": "Norbu AI", "href": "https://norbu-ai.org/", "blank": true },
+            { "label": "Tripitaka-mcp.com", "href": "https://tripitaka-mcp.com/", "blank": true }                                
           ]
         },
         {
@@ -482,24 +472,6 @@
           "items": [
             { "label": "Mitra Translator", "tpl": "https://dharmamitra.org/translate?input_sentence={{q}}", "blank": true, "star": true },
             { "label": "Nexus", "href": "https://dharmamitra.org/nexus/db/pa", "blank": true }
-          ]
-        },
-        {
-          "name": "Смотреть во многих сразу", "column": 2,
-          "items": [
-            { "label": "Открыть PTS/Cone/DPD/CPD/Skr+/Wisdoml", "title": "Открыть слово в словарях PTS/Cone/DPD/DPR/CPD/Skr+/Wisdomlib (Alt + Q)", "action": "openDictionaries", "star": true },
-            {
-              "label": "Pali PTS, Cone, DPD, DPR, CPD",
-              "title": "PTS Pali Dictionary + Gandhari Dictionary + Digital Pali Dictionary + Critical Pali Dictionary",
-              "desc": "Открывает слово сразу в пяти словарях, каждый в своей вкладке",
-              "tplMulti": [
-                "https://dsal.uchicago.edu/cgi-bin/app/pali_query.py?matchtype=default&qs=",
-                "https://gandhari.org/dictionary?section=dop&search=",
-                "https://dict.dhamma.gift/?silent&source=pwa&q=",
-                "https://d.dhamma.gift/_dprhtml/index.html?frombox=1&analysis=",
-                "https://cpd.uni-koeln.de/search?query="
-              ]
-            }
           ]
         },
         {
@@ -514,18 +486,10 @@
         {
           "name": "Санскрит", "column": 4,
           "items": [
-            { "label": "MW", "title": "Monier-Williams Sanskrit-English Dictionary, 1899", "desc": "Стандартный санскритско-английский словарь", "tpl": "https://www.sanskrit-lexicon.uni-koeln.de/scans/MWScan/2020/web/webtc/indexcaller.php?transLit=roman&key={{q}}", "blank": true },
-            {
-              "label": "MW + Shabda-Sagara + Apte + Macdonell",
-              "title": "Monier-Williams + Shabda-Sagara + Apte Practical + Macdonell",
-              "tplMulti": [
-                "https://www.sanskrit-lexicon.uni-koeln.de/scans/MWScan/2020/web/webtc/indexcaller.php?transLit=roman&key=",
-                "https://www.sanskrit-lexicon.uni-koeln.de/scans/SHSScan/2020/web/webtc/indexcaller.php?transLit=roman&key=",
-                "https://www.sanskrit-lexicon.uni-koeln.de/scans/APScan/2020/web/webtc/indexcaller.php?transLit=roman&key=",
-                "https://www.sanskrit-lexicon.uni-koeln.de/scans/MDScan/2020/web/webtc/indexcaller.php?transLit=roman&key="
-              ]
-            },
-            { "label": "Много Словарей", "title": "Все доступные Скр словари на сайте Cologne University", "href": "https://www.sanskrit-lexicon.uni-koeln.de/", "blank": true },
+            { "label": "Monier-Williams", "title": "Sanskrit-English Dictionary, 1899", "desc": "Стандартный санскритско-английский словарь", "tpl": "https://www.sanskrit-lexicon.uni-koeln.de/scans/MWScan/2020/web/webtc/indexcaller.php?transLit=roman&key={{q}}", "blank": true },
+            { "label": "Shabda-Sagara", "title": "Sanskrit-English Dictionary", "desc": "Cанскритско-английский словарь", "tpl": 
+	    "https://www.sanskrit-lexicon.uni-koeln.de/scans/SHSScan/2020/web/webtc/indexcaller.php?transLit=roman&key={{q}}", "blank": true },
+	    { "label": "Lexicon.uni-koeln.de", "title": "Все доступные словари на сайте Cologne University", "href": "https://www.sanskrit-lexicon.uni-koeln.de/", "blank": true },
             { "label": "SkrDict", "tpl": "https://sanskritdictionary.com/?iencoding=iast&q={{q}}&lang=sans&action=Search", "blank": true },
             { "label": "Learnskr", "tpl": "https://www.learnsanskrit.cc/translate?dir=au&search={{q}}", "blank": true }
           ]

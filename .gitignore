@@ -28,3 +28,9 @@ settings/scripts.json
 # Генерируется build-icons.js (npm run build-icons) из @fortawesome/fontawesome-free —
 # та же логика, что и dg_db*.json выше: не источник, каждое окружение строит сам.
 public/overrides/js/fontawesome-local.js
+
+# Генерируется dg-light.js (buildScriptBundle) при каждом старте сервера — та же логика, что и
+# settings/scripts.json выше: не источник, склейка settings.js+dg-text-router.js и
+# randPlaceholder.js+home.js для меньшего числа HTTP-запросов на главной.
+public/overrides/js/settings-bundle.js
+public/overrides/js/home-bundle.js

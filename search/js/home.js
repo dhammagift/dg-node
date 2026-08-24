@@ -553,6 +553,29 @@
     function runTile(key, anchorEl) {
         var tile = tileData(key);
         if (!tile) return;
+
+        // Toggle: clicking the tile whose own mega/sheet is ALREADY open closes it (with the
+        // normal closing animation) instead of re-opening the same content — owner: "при
+        // повторном нажатии на иконку мегаменю должно закрываться с обратной анимацией, а то
+        // сейчас нужно кликать в пустоту". closeMega()/closeSheet() are the existing close paths
+        // (CSS transition, then hidden after it finishes) — reused as-is, not reimplemented.
+        if (tile.groups) {
+            if (isMegaOpen() && currentMegaKey === key) { closeMega(); return; }
+            if (currentSheetKey === key) { closeSheet(); return; }
+        }
+
+        // Owner (live bug, screenshot): clicking "Помощь" while a mega-menu (e.g. "Обучение")
+        // was still open showed the bootstrap Help modal ON TOP of it without closing it first —
+        // this was ALWAYS true (tile.modal==='help' below never closed anything), just masked
+        // before by the shared backdrop needing a first click to close whatever was open before
+        // a second click could even reach a different tile (see .dg-tile's z-index comment,
+        // home.css). Now that a tile click reaches its handler directly, this latent gap
+        // surfaced immediately. Close mega/sheet before any branch below opens something new.
+        // Quick settings excluded on purpose — toggleQuickModal() below is its own toggle;
+        // closing it here first would make it always open, never close, from this tile.
+        closeMega();
+        closeSheet();
+
         if (tile.groups) {
             // "mega": true (menu-links.json) opts a tile into the anchored multi-column
             // dropdown (External pilot) instead of the full-screen bottom sheet — desktop only
@@ -1379,6 +1402,7 @@
             backdrop.classList.remove('dg-transparent');
         }
         currentMegaKey = null;
+        document.body.classList.remove('dg-mega-compact');
         setTimeout(function () { if (!isMegaOpen()) sheet.hidden = true; }, 320);
     }
 
@@ -1400,12 +1424,42 @@
         // (owner: "5 колонок"), rounded up a bit for breathing room.
         var width = Math.min(1120, window.innerWidth - margin * 2);
         var left = Math.min(Math.max(margin, centerX - width / 2), window.innerWidth - width - margin);
-        sheet.style.left = left + 'px';
+        // .dg-mega is position:absolute (document-relative), not fixed — see home.css. getBoundingClientRect()
+        // returns VIEWPORT-relative coordinates, so scrollX/scrollY are added to land in document coordinates.
+        // Owner: "не должно быть скролла... за счёт общего сдвига экрана его нужно прокручивать, а не за счёт
+        // какого-то своего отдельного скроллбара" — no maxHeight/overflow here on purpose: if the panel is
+        // taller than the viewport, the PAGE scrolls to reveal the rest (scrollForMega() below gives it room
+        // first), instead of a nested scrollbar.
+        sheet.style.left = (left + window.scrollX) + 'px';
         sheet.style.width = width + 'px';
 
         var r = btn.getBoundingClientRect();
-        sheet.style.top = (r.bottom + 10) + 'px';
-        sheet.style.maxHeight = Math.max(220, window.innerHeight - r.bottom - 24) + 'px';
+        sheet.style.top = (r.bottom + window.scrollY + 10) + 'px';
+
+        // "мегаменю расширяется/растягивается из соответствующей кнопки" — scale-in anchored at the
+        // button's X (home.css .dg-mega.show scales from transform-origin instead of just fading).
+        // transform-origin is relative to the SHEET's own box, so btn's viewport X minus the sheet's
+        // own (pre-scroll-offset) left edge, clamped inside the sheet's width.
+        var originX = Math.min(Math.max(0, (r.left + r.width / 2) - left), width);
+        sheet.style.transformOrigin = originX + 'px -6px';
+    }
+
+    /* Подтягивает страницу так, чтобы ПОЛЕ ПОИСКА (не плитка) оказалось у верха экрана с небольшим
+       отступом — освобождает максимум места под мега-меню без внутреннего скролла. Сжатие зазоров
+       над рядом плиток (body.dg-mega-compact, home.css) делает вызывающий openMega() ДО этой
+       функции (порядок важен: позиция поля должна читаться уже после сжатия). Owner: "инпут — самый
+       важный элемент сайта, крутить нужно до него"; "можешь сжимать расстояние между инпутом и
+       кнопками мультитула — это даст ещё места". home.css уже нёс готовые правила под
+       dg-mega-compact (комментарий "toggled by scrollForMega()") — самой функции не было, только
+       сейчас дописана. */
+    function scrollForMega() {
+        var margin = 16;
+        var input = document.getElementById('paliauto');
+        if (!input) return;
+        var r = input.getBoundingClientRect();
+        if (Math.abs(r.top - margin) < 4) return; // already close enough, skip a no-op scroll
+        var targetY = window.scrollY + r.top - margin;
+        window.scrollTo({ top: Math.max(0, targetY), behavior: 'smooth' });
     }
 
     function openMega(key, btn) {
@@ -1474,8 +1528,12 @@
         colNums.sort(function (a, b) { return a - b; }).forEach(function (c) { body.appendChild(cols[c]); });
 
         if (backdrop) backdrop.classList.add('dg-transparent');
+        // Compact the gaps above the tile row FIRST — placeMegaAnchored() below reads the row's
+        // post-compact position, otherwise it'd anchor to where the row sat before the shrink.
+        document.body.classList.add('dg-mega-compact');
         placeMegaAnchored(sheet, btn);
         showLater(sheet, backdrop);
+        scrollForMega();
     }
 
     // ======================================================================
@@ -1698,30 +1756,6 @@
                 runTile(key, el);
             });
 
-            var rm = document.createElement('span');
-            rm.className = 'dg-tile-remove';
-            rm.setAttribute('role', 'button');
-            rm.setAttribute('title', tile.custom
-                ? t('menu.deleteTile', 'Удалить кнопку')
-                : t('menu.removeTile', 'Убрать с главной'));
-            rm.textContent = '✕';
-            rm.addEventListener('click', function (e) {
-                // Иначе клик дойдёт до самой плитки и заодно откроет её шторку.
-                e.stopPropagation();
-                if (tile.custom) {
-                    /* Свою кнопку УДАЛЯЕМ, а не прячем: прятать её незачем — «вернуть как было»
-                       восстанавливает встроенные, а своя после возврата появилась бы снова, хотя
-                       от неё явно отказались. */
-                    setCustomTiles(customTiles().filter(function (c) { return c.id !== key; }));
-                } else {
-                    var list = hiddenTiles();
-                    if (list.indexOf(key) === -1) list.push(key);
-                    setHiddenTiles(list);
-                }
-                renderTiles();
-            });
-            el.appendChild(rm);
-
             host.appendChild(el);
         });
 
@@ -1770,10 +1804,6 @@
             el.dataset.dragged = '1';
 
             document.body.classList.add('dg-tiles-dragging');
-            /* Раз человек взялся перекладывать кнопки — показываем и крестики «убрать»: на
-               сенсорном экране навести курсор нельзя, и иначе до них не добраться. Режим
-               снимается по клику мимо плиток (обработчик ниже). */
-            document.body.classList.add('dg-tiles-editing');
             el.classList.add('dg-dragging');
             el.style.width = r.width + 'px';
             el.style.height = r.height + 'px';
@@ -1819,8 +1849,6 @@
 
         host.addEventListener('pointerdown', function (e) {
             if (e.button !== 0) return;
-            // Крестик «убрать» — не ручка для перетаскивания.
-            if (e.target.closest && e.target.closest('.dg-tile-remove')) return;
             var el = e.target.closest ? e.target.closest('.dg-tile') : null;
             if (!el) return;
             drag = { el: el, startX: e.clientX, startY: e.clientY, active: false, timer: null, pointerId: e.pointerId };
@@ -1847,13 +1875,6 @@
 
         host.addEventListener('pointerup', finish);
         host.addEventListener('pointercancel', finish);
-
-        // Клик мимо плиток выключает режим правки (крестики «убрать»).
-        document.addEventListener('pointerdown', function (e) {
-            if (!document.body.classList.contains('dg-tiles-editing')) return;
-            if (e.target.closest && e.target.closest('#home-tiles')) return;
-            document.body.classList.remove('dg-tiles-editing');
-        });
     }
 
     // ======================================================================
@@ -2088,15 +2109,43 @@
         var body = document.getElementById('dg-sheet-body');
         body.innerHTML = '';
 
+        // Owner: "уберём случайное удаление по хуверу... добавь чекбоксы, по умолчанию
+        // включенные, чтобы можно было скрыть" — show/hide теперь только отсюда, явным
+        // чекбоксом, а не крестиком, всплывающим на плитке. Список больше не пропускает скрытые
+        // (раньше пропускал: `if (hidden.indexOf(key) !== -1) return`) — иначе скрытую кнопку
+        // было бы неоткуда вернуть обратно, кроме полного "Вернуть исходное" для всех разом.
         var hidden = hiddenTiles();
         tileOrder().forEach(function (key) {
             var tile = tileData(key);
-            if (!tile || hidden.indexOf(key) !== -1) return;
+            if (!tile) return;
+            var isHidden = hidden.indexOf(key) !== -1;
 
-            var row = document.createElement('button');
-            row.type = 'button';
+            var row = document.createElement('div');
             row.className = 'dg-sheet-row dg-edit-row';
-            row.innerHTML = '<span class="dg-row-icon dg-edit-ic">' + iconHtml(tile.icon) + '</span>' +
+
+            var cb = document.createElement('input');
+            cb.type = 'checkbox';
+            cb.className = 'dg-edit-visible-cb';
+            cb.checked = !isHidden;
+            cb.setAttribute('aria-label', tile.custom
+                ? t('menu.deleteTile', 'Удалить кнопку')
+                : t('menu.removeTile', 'Убрать с главной'));
+            cb.addEventListener('click', function (e) {
+                // Иначе клик дойдёт и до .dg-edit-row-main — заодно откроет форму правки.
+                e.stopPropagation();
+                var list = hiddenTiles();
+                var idx = list.indexOf(key);
+                if (cb.checked) { if (idx !== -1) list.splice(idx, 1); }
+                else if (idx === -1) { list.push(key); }
+                setHiddenTiles(list);
+                renderTiles();
+            });
+            row.appendChild(cb);
+
+            var main = document.createElement('button');
+            main.type = 'button';
+            main.className = 'dg-edit-row-main';
+            main.innerHTML = '<span class="dg-row-icon dg-edit-ic">' + iconHtml(tile.icon) + '</span>' +
                 '<span class="dg-row-label">' + esc(tile.label) + '</span>' +
                 '<svg class="dg-slide-go-ic" viewBox="0 0 24 24" width="15" height="15" fill="none" ' +
                 'stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" ' +
@@ -2108,9 +2157,11 @@
                 var addr = document.createElement('small');
                 addr.className = 'dg-row-desc';
                 addr.appendChild(tile.desc ? document.createTextNode(tile.desc) : safeText(tile.href));
-                row.querySelector('.dg-row-label').appendChild(addr);
+                main.querySelector('.dg-row-label').appendChild(addr);
             }
-            row.addEventListener('click', function () { openTileForm(key); });
+            main.addEventListener('click', function () { openTileForm(key); });
+            row.appendChild(main);
+
             body.appendChild(row);
         });
 

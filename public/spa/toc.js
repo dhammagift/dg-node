@@ -838,13 +838,30 @@
     // rendered lazily later — reuses the SPA's own dgNavigateInternal (search/index.html) instead
     // of a full page reload (owner: "нужно чтобы ссылки открывались без перезагрузки"). Reset-
     // filter link ("#") and the tooltip's own trigger aren't real navigation, skip those.
+    // Same-origin check duplicated from dgNavigateInternal (not just calling it and checking the
+    // return value) — we need to know BEFORE deciding whether to animate/delay, not after.
     function onContainerClick(e) {
         var a = e.target.closest('a');
         if (!a) return;
         var href = a.getAttribute('href');
         if (!href || href.charAt(0) === '#') return;
-        if (typeof window.dgNavigateInternal === 'function' && window.dgNavigateInternal(href)) {
-            e.preventDefault();
+        if (typeof window.dgNavigateInternal !== 'function') return;
+        var u;
+        try { u = new URL(href, window.location.origin); } catch (err) { return; }
+        if (u.origin !== window.location.origin) return;
+        e.preventDefault();
+
+        // Owner: "toc и фильтр переводчиков разлетались в свои стороны, в центре — сутта в
+        // ридер-режиме". #reader-pane's own "grow from center" entrance lives in home.css
+        // (dg-reader-enter) — triggered automatically once dgSetState('reader') below actually
+        // flips the state. Play the exit first: dgSetState('reader') sets #toc-pane to
+        // display:none immediately, which would otherwise cut this transition off mid-flight.
+        var layout = container.querySelector('.toc-layout');
+        if (layout && !(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) {
+            layout.classList.add('dg-toc-leaving');
+            setTimeout(function () { window.dgNavigateInternal(href); }, 280);
+        } else {
+            window.dgNavigateInternal(href);
         }
     }
 

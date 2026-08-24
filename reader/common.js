@@ -9,6 +9,16 @@
 window.isRuPath = (localStorage.getItem('dhammaLanguage') || 'en') === 'ru';
 window.isLocalHost = window.location.host.includes('localhost') || window.location.host.includes('127.0.0.1');
 
+// Set once above, at script-load time — stale after an in-SPA language switch (owner: "ссылки
+// чтобы увидеть русские нужно перезагрузить страницу, но должны обновляться в СПА-режиме").
+// megareader.js's switchReadingLanguage() already updates window.isRuPath synchronously for its
+// own call path (the interface EN/RU toggle) — this listener is a defensive backstop for any
+// OTHER path that changes the language while a reader happens to be open (dhamma-i18n.js
+// dispatches this event from every setSiteLanguage() call, not just the reader's own toggle).
+document.addEventListener('dhamma:languagechange', function (e) {
+    if (e.detail && e.detail.language) window.isRuPath = e.detail.language === 'ru';
+});
+
 // SPA (search/index.html) injects this script LAZILY, on first text open — well after the
 // page's own DOMContentLoaded already fired, so a plain 'DOMContentLoaded' listener below would
 // never run (event fires once, already past). reader-template.html loads this script eagerly at

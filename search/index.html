@@ -119,10 +119,15 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     if (window.DgHome && typeof window.DgHome.renderExtra === 'function') window.DgHome.renderExtra();
   });
 </script>
-<script src="/assets/js/dhamma-i18n.js"></script>
+<script src="/assets/js/dhamma-i18n.js" defer></script>
 <title>Search Results - Dhamma.gift</title>
 <meta name="description" content="Search Results - Dhamma.gift">
 <link rel="manifest" href="/manifest.php">
+<!-- Home tiles (#home-tiles, "multitool") fetch this JSON last — after all deferred scripts run
+     (see home.js init()). Preloading here starts the network request immediately, in parallel
+     with everything else, so it's already in the browser's cache by the time home.js's own
+     fetch() call happens — the tiles no longer visibly pop in after a round trip. -->
+<link rel="preload" href="/nodejs/res/menu-links.json" as="fetch">
 <meta name="theme-color" content="#000000">
 
 
@@ -470,6 +475,68 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
         .dg-reader-toolbar a { min-width: 36px; min-height: 36px; }
         .dg-reader-toolbar #smart-toc-btn { max-width: 100px; }
         #top-links-container p.sc-link a { padding-left: 4px; padding-right: 4px; }
+    }
+    /* Owner: "жутко много места занимает текущая вёрстка... десктоп нужно менять как на моём
+       мокапе, но более близкие расстояния между ссылками. на мобильных так не получится, пусть
+       будет как есть" — edition-links (DPR/BJT/Voice/4nt/SC/BB/TBW) join the icon toolbar row on
+       wide screens only; megareader.js (buildSutta) moves each <a> there individually (desktop-
+       only, checks window.innerWidth at render time — see its comment for why individual links,
+       not a wrapper). Mobile markup/CSS above is untouched — #top-links-container there still
+       renders normally inside #sutta, own row, exactly as before; on desktop it's simply
+       display:none (its content has moved out, an empty fixed-position bar would otherwise be
+       left behind) — settings.js's PDF export and smoothScroll.js's exclusion filter both key
+       off the .sc-ext-link class now (added in generateThirdPartyLinks(), megareader.js)
+       instead of the parent id, since the id alone no longer reliably contains these links. */
+    @media (min-width: 768px) {
+        /* Row width: capped to match #navigation (prev/next, uiextra.css: max-width:45rem;
+           margin:0 auto) and centered the same way. .dg-reader-toolbar is position:fixed;
+           left:0; right:0 (spans the full viewport otherwise) — max-width+margin:auto is the
+           standard fixed/absolute-element centering trick (over-constrained width resolution,
+           same math as any auto-margin block, just also valid here per spec).
+
+           Owner: "собирай внеш ссылки и иконки вместе и рассматривай их как единое целое и
+           задавай одинаковые отступы между ними... можешь растягивать когда мало ссылок, когда
+           много — сужать... не занимало много строк". Two earlier attempts at this didn't hold
+           up: fixed 34/33/33% columns broke once RU's 9 edition links (7 EN + Th.ru/Th.su)
+           didn't fit their 34% share (wrapped to a second line, or needed the font shrunk to an
+           illegibly tiny 13px to force-fit); the follow-up used CSS display:contents to flatten
+           #top-links-container/.dg-toolbar-icons so every link/icon/pill shared one flex row —
+           measured correctly in Chromium (playwright) but owner tested a fresh/incognito
+           non-Chromium browser and the gaps were wildly uneven with the links/icons boundary
+           touching (display:contents + flex gap is a known cross-browser inconsistency,
+           Firefox/Safari in particular).
+           megareader.js now moves the REAL <a> elements (not a wrapper) into #reader-toolbar on
+           desktop — every edition link, icon, and the TOC pill are genuine direct children of
+           .dg-reader-toolbar, no CSS flattening trick involved, so this plain justify-content:
+           space-between behaves identically in every browser. That's "one whole, equal gaps,
+           stretches when there's few items (fewer links → fewer, wider gaps) and narrows when
+           there's many (RU's 9 links → each gap shrinks on its own, no manual tuning)" — since
+           space-between only redistributes LEFTOVER space as gaps, it never shrinks any item
+           below its natural size (font-size/padding stay untouched, same size always) and stays
+           on one line as long as natural content actually fits in 45rem (verified at 9 links). */
+        .dg-reader-toolbar {
+            flex-wrap: nowrap;
+            justify-content: space-between;
+            max-width: 45rem;
+            margin: 0 auto;
+        }
+        /* max-width caps the pill so #smart-toc-current's overflow:hidden + text-overflow:
+           ellipsis (uiextra.css) can actually engage — its white-space:nowrap means the text
+           itself never shrinks, so without a cap the pill grows to the FULL title's width,
+           overflowing everything after it off the right edge (measured live). min-width is a
+           legibility floor: editions/icons default to min-width:auto (won't shrink below their
+           own content), so on a packed 9-link row the pill — being the only flexible item —
+           would otherwise absorb the entire shrink deficit and collapse to one truncated
+           letter. Actual width in between is whatever's genuinely left over: same "stretch when
+           few links, narrow when many" logic as the rest of the row. */
+        .dg-reader-toolbar #smart-toc-btn { min-width: 90px; max-width: 280px; }
+        .dg-reader-toolbar #smart-toc-current { min-width: 0; }
+        /* Owner: "расстояния между иконками слишком большое... для клика мышью неудобно —
+           между не 44 а 30px". Desktop-only (mobile keeps its own 36px/1px-gap pair, @media
+           max-width:767.98px above, untouched) — the 44px HIG touch target was sized for a
+           THUMB, not a mouse pointer. Size only, not spacing — spacing between icons now comes
+           from the shared space-between above, same as everything else in the row. */
+        .dg-reader-toolbar a { min-width: 30px; min-height: 30px; }
     }
     .dark .dg-reader-toolbar #smart-toc-btn { background-color: #42426a; border-color: #42426a; color: rgb(221, 221, 221); }
     .dark .dg-reader-toolbar #smart-toc-current { color: rgb(221, 221, 221); }
@@ -1319,14 +1386,28 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
         return { stack: [band, document.getElementById('results-toolbar')].filter(Boolean), content: document.getElementById('dynamicHeader') };
       }
       if (document.body.classList.contains('dg-state-reader')) {
+        // Owner: "десктоп нужно менять как на моём мокапе" — на широких экранах megareader.js
+        // (buildSutta) переносит КАЖДУЮ ссылку из #top-links-container ПО ОТДЕЛЬНОСТИ внутрь
+        // #reader-toolbar (одна строка вместо двух, см. комментарий там же), а сам контейнер
+        // прячет (display:none) — он больше не содержит эти ссылки, поэтому containment-проверка
+        // тут не годится (контейнер физически остаётся внутри #sutta всегда). Смотрим на
+        // display:none, который выставляет megareader.js — тот же сигнал, что реально решил
+        // рендер, а не второй независимый расчёт по window.innerWidth здесь (тот мог бы разойтись
+        // при resize без нового рендера сутты). Смёрженный — высота ссылок уже часть
+        // toolbarEl.getBoundingClientRect() из cfg.stack ниже, второй раз в tailOffset её
+        // считать не нужно (см. extra: null).
+        var toolbarEl = document.getElementById('reader-toolbar');
+        var topLinksEl = document.getElementById('top-links-container');
+        var topLinksMerged = !!(topLinksEl && topLinksEl.style.display === 'none');
         return {
           // #navigation (прев/некст) намеренно НЕ в основном стеке — владелец попросил
           // поменять местами: прев/некст ниже, sc-link-строка (R+R/R+E/DPR/BJT/...) выше, сразу
           // после иконок тулбара. См. tail ниже — считается ПОСЛЕ #top-links-container, а не
-          // вместе с band/toolbar.
-          stack: [band, document.getElementById('reader-toolbar')].filter(Boolean),
+          // вместе с band/toolbar. (На десктопе, смёрженном в toolbar, extra ниже — null: его
+          // высота уже вошла в toolbarEl выше, второй раз считать нечего.)
+          stack: [band, toolbarEl].filter(Boolean),
           content: document.getElementById('reader-pane'),
-          extra: document.getElementById('top-links-container'),
+          extra: topLinksMerged ? null : topLinksEl,
           tail: document.getElementById('navigation'),
           extraContent: document.getElementById('sutta')
         };
@@ -3154,12 +3235,20 @@ $(document).ready(function() {
         // dgLoadScriptOnce (defined above, near loadPiEnRuScripts) — linksdpr.js/linksbw.js
         // here overlap with that other loader, see its comment for why this can't just append
         // a fresh <script> tag unconditionally.
+        // linksru.js (thruLinksData/thsuLinksData/thsuLinksDataoffl — Th.ru/Th.su links, RU
+        // texts only) was missing from this list — DPR/BJT/TBW got their *LinksData.js fixed
+        // already (comment above), Th.ru/Th.su never did (owner, live compare against prod:
+        // "в русской версии dn22 на проде... Voice 4nt DPR BJT SC TBW Th.ru Th.su, а в node
+        // версии... ссылки на русские источники отсутствуют" — generateThirdPartyLinks(),
+        // megareader.js, already has the Th.ru/Th.su logic, it just always found those globals
+        // undefined and silently skipped them).
         var loadScript = dgLoadScriptOnce;
         readerAssetsPromise = Promise.all([
             loadScript('/assets/js/copyToClipboard.js'),
             loadScript('/assets/js/linksdpr.js'),
             loadScript('/assets/js/linksbjt.js'),
-            loadScript('/assets/js/linksbw.js')
+            loadScript('/assets/js/linksbw.js'),
+            loadScript('/assets/js/linksru.js')
         ])
             .then(function () { return loadScript('/reader/common.js'); })
             .then(function () { return loadScript('/reader/megareader.js'); });
@@ -3556,6 +3645,9 @@ $(document).ready(function() {
            (см. .dg-drawer-row[data-dg-anchor] в home.css), чтобы не вести в display:none. -->
       <a class="dg-drawer-row" href="javascript:void(0)" data-dg-icon="external" data-dg-anchor="links">{{footer.links}}</a>
       <a class="dg-drawer-row" href="javascript:void(0)" data-dg-icon="at" data-dg-anchor="contacts">{{footer.contacts}}</a>
+      <!-- Owner: "войти не в конце настроек, а после контактов, до настроек в целом" — перенесено
+           из хвоста «Настроек» сюда, последним пунктом «Навигации» (это переход, а не настройка). -->
+      <a class="dg-drawer-row" href="/login" data-dg-icon="login">{{global.common.login}}</a>
     </details>
     <p class="dg-group-title">{{menu.settings}}</p>
     <!-- Язык/тема — переехали сюда, в «Настройки» (просьба владельца: часть настроек была вверху
@@ -3580,7 +3672,6 @@ $(document).ready(function() {
     <a class="dg-drawer-row" href="javascript:void(0)" id="dg-edit-tiles" data-dg-icon="wrench">{{menu.editTiles}}</a>
     <!-- Появляется, только если есть что возвращать: убрана кнопка ИЛИ переставлен порядок. -->
     <a class="dg-drawer-row" href="javascript:void(0)" id="dg-restore-tiles" data-dg-icon="star" hidden>{{menu.restoreTiles}}</a>
-    <a class="dg-drawer-row" href="/login" data-dg-icon="login">{{global.common.login}}</a>
   </nav>
 </aside>
 
@@ -3596,8 +3687,11 @@ $(document).ready(function() {
     <!-- linksdpr.js/openDpr.js, linksru.js/openRu.js, linksbw.js/openBw.js — теперь загружаются
          лениво, см. loadPiEnRuScripts() в wireResultLinks() выше: незачем парсить ~469 КБ
          ссылочных данных на каждой загрузке страницы, если в ней ещё нет результатов поиска. -->
-                <script src="/assets/js/settings.js" defer></script>
-<script src="/assets/js/dg-text-router.js" defer></script>
+                <!-- settings.js + dg-text-router.js concatenated at server startup (dg-light.js
+                     buildScriptBundle(), same pattern as build-icons.js) into one request — both
+                     are dg-node-owned files (public/overrides/js/), order preserved exactly, so
+                     behavior is identical to the two separate deferred tags this replaces. -->
+                <script src="/assets/js/settings-bundle.js" defer></script>
 <script src="/assets/js/themeswitch.js" defer></script>
 <!-- openWithQuery/openWithQueryMulti/openDictionaries — легаси-функции подстановки {{q}}/{{theme}}
      из горизонтального меню. Раньше на этой странице их не было (меню жило только в PHP-шапке),
@@ -3606,8 +3700,9 @@ $(document).ready(function() {
 <!-- Случайные подсказки в поле и «зов» в заголовке вкладки — боевой файл легаси-главной, целиком
      как есть: списки фраз живут в нём, дублировать их здесь незачем. Вызовами управляет home.js
      (только в состоянии главной), см. applyRandomPlaceholder(). -->
-<script src="/assets/js/randPlaceholder.js" defer></script>
-<script src="/nodejs/res/js/home.js" defer></script>
+<!-- randPlaceholder.js + home.js concatenated at server startup (see settings-bundle.js comment
+     above) — same reasoning, both dg-node-owned, order preserved. -->
+<script src="/assets/js/home-bundle.js" defer></script>
 
 <script>
            //to enable bootstrap tooltip

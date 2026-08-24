@@ -3632,16 +3632,19 @@ document.addEventListener('click', function (e) {
         var title = document.title || 'Sutta';
         var isColumns = suttaArea.classList.contains('column-view');
 
-        // Ссылки из верхней панели
+        // Ссылки из верхней панели — на десктопе megareader.js физически переносит каждую
+        // ссылку из #top-links-container в #reader-toolbar (одна строка с иконками вместо
+        // отдельной, см. комментарий в megareader.js buildSutta()), сам контейнер остаётся
+        // пустым/display:none. '#top-links-container a' ловит мобильный случай (ссылки на
+        // месте), '#reader-toolbar .sc-ext-link' — десктопный (перенесённые). Не просто
+        // '.sc-ext-link' по всему документу: тот же класс есть и у копии внизу текста
+        // (#bottom-links-container, та же generateThirdPartyLinks()) — задвоило бы список.
         var linkItems = [];
-        var topLinks = document.getElementById('top-links-container');
-        if (topLinks) {
-            topLinks.querySelectorAll('a').forEach(function (a) {
-                var txt = (a.textContent || '').trim();
-                if (!txt) return;
-                linkItems.push({ text: txt + '  ', link: a.href, color: '#0d6efd', decoration: 'underline' });
-            });
-        }
+        document.querySelectorAll('#top-links-container a, #reader-toolbar .sc-ext-link').forEach(function (a) {
+            var txt = (a.textContent || '').trim();
+            if (!txt) return;
+            linkItems.push({ text: txt + '  ', link: a.href, color: '#0d6efd', decoration: 'underline' });
+        });
 
         // Byline переводчика из первого #trn
         var bylineParts = [];

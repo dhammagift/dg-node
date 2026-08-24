@@ -2,11 +2,36 @@
 
 const Sccopy = "/suttacentral.net";
 
-// Тот же паттерн чтения i18n-конфига, что и в search-render.js/res/index.html — читает
-// window.DHAMMA_I18N.config через глобал, не завязан на то, когда конкретно этот файл
-// подключился относительно dhamma-i18n.js.
+// Bug found live (owner: "warning остаётся на русском всегда"): t() used to read
+// window.DHAMMA_I18N.config, the SAME global instance search/index.html's own dhamma-i18n.js
+// uses for the SEARCH UI (window.DHAMMA_LANG_CONFIG_PATTERN there is "/nodejs/res/lang_{lang}.json",
+// see search/index.html) — that config has no "reader" key at all (configs/search/lang_en.json:
+// locale/search/home/menu/.../footer, never "reader"), so t('reader.warningNote', fallback)
+// silently fell through to the hardcoded fallback string below — which happens to be Russian —
+// on EVERY load, in EVERY language, always. (Works correctly in reader/reader-template.html, the
+// standalone reference page, where DHAMMA_LANG_CONFIG_PATTERN IS "/reader/lang_{lang}.json" —
+// this bug is specific to the SPA-embedded reader inside search/index.html.)
+// Fix: megareader.js keeps its OWN small cache of configs/reader/lang_{lang}.json (same file the
+// standalone page uses, just fetched directly instead of via the shared DHAMMA_I18N instance).
+// ensureReaderLangConfig() is awaited in buildSutta() right after the language is resolved
+// (READER_MODE.lang, see below) and before anything calls t().
+var READER_LANG_CACHE = {};
+async function ensureReaderLangConfig(lang) {
+    var key = lang || 'en';
+    if (READER_LANG_CACHE[key] !== undefined) return READER_LANG_CACHE[key];
+    try {
+        var res = await fetch('/reader/lang_' + encodeURIComponent(key) + '.json');
+        if (!res.ok) throw new Error('http ' + res.status);
+        READER_LANG_CACHE[key] = await res.json();
+    } catch (e) {
+        console.warn('Reader i18n config not loaded for', key, e.message);
+        READER_LANG_CACHE[key] = null;
+    }
+    return READER_LANG_CACHE[key];
+}
 function t(path, fallback) {
-    var cfg = window.DHAMMA_I18N && window.DHAMMA_I18N.config;
+    var lang = (window.READER_MODE && window.READER_MODE.lang) || localStorage.getItem('dhammaLanguage') || 'en';
+    var cfg = READER_LANG_CACHE[lang];
     if (!cfg) return fallback;
     var value = path.split('.').reduce(function (v, k) { return (v == null) ? undefined : v[k]; }, cfg);
     return value === undefined ? fallback : value;
@@ -433,57 +458,80 @@ document.addEventListener('scroll', () => window.removeBubbles(), true);
 
 window.generateThirdPartyLinks = function(slug, slugReady, texttype, translator) {
     let scLink = "";
-    
-    let dprUrl = null;
-    if (typeof dprLinksData !== 'undefined') {
-        let dprItem = dprLinksData.find(item => item[0] === slug.split('&')[0].toLowerCase());
-        if (dprItem && dprItem[1]) dprUrl = "https://d.dhamma.gift/_dprhtml/index.html?loc=" + dprItem[1];
-    }
-    if (dprUrl) scLink += `<a target="_blank" title="Myanmar and Thai Editions at DPR" href="${dprUrl}">DPR</a>&nbsp;`;
 
-    let bjtUrl = null;
-    if (typeof bjtLinksData !== 'undefined') {
-        let bjtItem = bjtLinksData.find(item => item[0] === slug.split('&')[0].toLowerCase());
-        if (bjtItem && bjtItem[1]) bjtUrl = "https://open.tipitaka.lk/latn/" + bjtItem[1];
-    }
-    if (bjtUrl) scLink += `<a target="_blank" title="Buddha Jayanthi" href="${bjtUrl}">BJT</a>&nbsp;`;
-
-    scLink += `<a data-slug="${texttype}/${slugReady}" href="javascript:void(0)" title="Text-to-Speech (Alt+R)" class="voice-link">Voice</a>`;
+    // Order matches legacy (read/js/common.js buildThirdPartyLinksHTML): Voice, 4nt, DPR, BJT,
+    // SC, BB, TBW, Th.ru, Th.su — was DPR/BJT first here (owner, live compare against prod:
+    // "в русской версии dn22 на проде... Voice 4nt DPR BJT SC TBW... а в node версии... порядок
+    // неверный"). Voice always renders first (no leading separator needed); every conditional
+    // item after it gets a LEADING plain space instead of each one adding its own TRAILING
+    // separator — simpler to keep in this order without an off-by-one on whichever item ends up
+    // last. Plain space, not &nbsp;: on the desktop reader toolbar (search/index.html) these
+    // links are flex items sharing a justify-content:space-between row with the icon toolbar —
+    // &nbsp; doesn't collapse, so it rendered as its own visible anonymous flex item alongside
+    // the real spacing, throwing off the "equal gaps" owner asked for. A plain space between
+    // flex items IS collapsible per spec, so the browser ignores it and space-between alone
+    // controls the gap. Same string also feeds the non-flex mobile/bottom-of-page copies of
+    // this row (reader/css/rus-multi.css p.sc-link a — plain inline-block flow there) — visually
+    // unaffected by the swap, ordinary text spacing either way.
+    // sc-ext-link on every tag below: a stable marker so callers that need "every one of these
+    // links" (settings.js's PDF export) can find them by class instead of by parent container —
+    // on desktop these get physically MOVED into #reader-toolbar (see buildSutta() below), so
+    // #top-links-container alone no longer reliably contains them.
+    scLink += `<a data-slug="${texttype}/${slugReady}" href="javascript:void(0)" title="Text-to-Speech (Alt+R)" class="voice-link sc-ext-link">Voice</a>`;
 
     // 4nt (s.4nt.org edition comparison) — get4ntUrl() already exists in settings.js, just
     // never got called from here (legacy read/js/common.js has the equivalent line). Needs
     // /4nt mounted on this server too (dg-light.js, symlink at repo root like login/memo).
     if (typeof get4ntUrl === 'function') {
         let url4nt = get4ntUrl(slug);
-        if (url4nt) scLink += `&nbsp;<a target="_blank" class="s4ntLink" title="s.4nt.org" href="${url4nt}">4nt</a>`;
+        if (url4nt) scLink += ` <a target="_blank" class="s4ntLink sc-ext-link" title="s.4nt.org" href="${url4nt}">4nt</a>`;
     }
 
-    scLink += `&nbsp;<a target="_blank" title='SuttaCentral.net' href="https://suttacentral.net/${slug}">SC</a>`;
-    
+    let dprUrl = null;
+    if (typeof dprLinksData !== 'undefined') {
+        let dprItem = dprLinksData.find(item => item[0] === slug.split('&')[0].toLowerCase());
+        if (dprItem && dprItem[1]) dprUrl = "https://d.dhamma.gift/_dprhtml/index.html?loc=" + dprItem[1];
+    }
+    if (dprUrl) scLink += ` <a target="_blank" class="sc-ext-link" title="Myanmar and Thai Editions at DPR" href="${dprUrl}">DPR</a>`;
+
+    let bjtUrl = null;
+    if (typeof bjtLinksData !== 'undefined') {
+        let bjtItem = bjtLinksData.find(item => item[0] === slug.split('&')[0].toLowerCase());
+        if (bjtItem && bjtItem[1]) bjtUrl = "https://open.tipitaka.lk/latn/" + bjtItem[1];
+    }
+    if (bjtUrl) scLink += ` <a target="_blank" class="sc-ext-link" title="Buddha Jayanthi" href="${bjtUrl}">BJT</a>`;
+
+    scLink += ` <a target="_blank" class="sc-ext-link" title='SuttaCentral.net' href="https://suttacentral.net/${slug}">SC</a>`;
+
     const isLocal = window.location.host.includes('localhost') || window.location.host.includes('127.0.0.1');
     
     if (typeof tbwLinksData !== 'undefined') {
         const hasTbw = tbwLinksData.find(item => Array.isArray(item) ? item[0] === slug : item === slug);
         if (hasTbw) {
             if (!window.location.pathname.startsWith('/b/') && isLocal) {
-                scLink += `&nbsp;<a target="" title="BB and Other translations" href="/b/?q=${slug}">BB</a>`;
+                scLink += ` <a target="" class="sc-ext-link" title="BB and Other translations" href="/b/?q=${slug}">BB</a>`;
             }
             const book = (slug.match(/^[a-z]+/) || [""])[0];
-            scLink += `&nbsp;<a target="_blank" title="TheBuddhasWords.net" href="${isLocal ? `/bw/${book}/${slug}.html` : `https://theBuddhasWords.net/${book}/${slug}.html`}">TBW</a>`;
+            scLink += ` <a target="_blank" class="sc-ext-link" title="TheBuddhasWords.net" href="${isLocal ? `/bw/${book}/${slug}.html` : `https://theBuddhasWords.net/${book}/${slug}.html`}">TBW</a>`;
         }
     }
 
-    if (typeof thruLinksData !== 'undefined') {
-        const ruItem = thruLinksData.find(item => item[0] === slug);
-        if (ruItem) scLink += `&nbsp;<a title="Theravada.ru" target="_blank" href="/theravada.ru/Teaching/Canon/Suttanta/Texts/${ruItem[1]}">Th.ru</a>`;
-    }
+    // Th.ru/Th.su — Russian-only external sources, gated on window.isRuPath (reader/common.js)
+    // matching legacy read/js/common.js's own `if (window.isRuPath)` wrapper. Was missing here —
+    // these links rendered on the English reader too before this fix.
+    if (window.isRuPath) {
+        if (typeof thruLinksData !== 'undefined') {
+            const ruItem = thruLinksData.find(item => item[0] === slug);
+            if (ruItem) scLink += ` <a title="Theravada.ru" target="_blank" class="sc-ext-link" href="/theravada.ru/Teaching/Canon/Suttanta/Texts/${ruItem[1]}">Th.ru</a>`;
+        }
 
-    if (isLocal && typeof thsuLinksDataoffl !== 'undefined') {
-        const suItem = thsuLinksDataoffl.find(item => item[0] === slug);
-        if (suItem) scLink += `&nbsp;<a title="Theravada.su" target="_blank" href="/tipitaka.theravada.su/dn/${suItem[1]}">Th.su</a>`;
-    } else if (!isLocal && typeof thsuLinksData !== 'undefined') {
-        const suItem = thsuLinksData.find(item => item[0] === slug);
-        if (suItem) scLink += `&nbsp;<a title="Theravada.su" target="_blank" href="https://tipitaka.theravada.su/${suItem[1]}">Th.su</a>`;
+        if (isLocal && typeof thsuLinksDataoffl !== 'undefined') {
+            const suItem = thsuLinksDataoffl.find(item => item[0] === slug);
+            if (suItem) scLink += ` <a title="Theravada.su" target="_blank" class="sc-ext-link" href="/tipitaka.theravada.su/dn/${suItem[1]}">Th.su</a>`;
+        } else if (!isLocal && typeof thsuLinksData !== 'undefined') {
+            const suItem = thsuLinksData.find(item => item[0] === slug);
+            if (suItem) scLink += ` <a title="Theravada.su" target="_blank" class="sc-ext-link" href="https://tipitaka.theravada.su/${suItem[1]}">Th.su</a>`;
+        }
     }
     return scLink;
 };
@@ -614,7 +662,7 @@ window.switchReaderMode = function(modeKey, event) {
 // st/read, mt/ee per-language duplicate keys — see switchReaderMode above), there's no longer a
 // "jump to the equivalent mode in the other family" step needed: the mode key stays exactly the
 // same, only ?lang= (or column order, for multi-language modes) changes.
-window.switchReadingLanguage = function (lang) {
+window.switchReadingLanguage = async function (lang) {
     const config = window.MODE_TABLE && window.MODE_TABLE[READER_MODE.modeKey];
     if (!config) return;
     const cols = READER_MODE.columns || [];
@@ -628,7 +676,20 @@ window.switchReadingLanguage = function (lang) {
     params.set('lang', lang);
     if (cols.length > 1) params.delete('langs'); // let it re-derive from the fresh column order below, not a stale explicit langs=
     history.pushState({ page: window._currentSlug, mode: READER_MODE.modeKey }, "", `?${params.toString()}`);
-    if (typeof window.setSiteLanguage === 'function') window.setSiteLanguage(lang);
+    // Owner: "ссылки чтобы увидеть русские нужно перезагрузить страницу, но они должны
+    // обновляться в СПА-режиме" + "warning остаётся на русском всегда". Root cause of both:
+    // setSiteLanguage() (dhamma-i18n.js) is async — it awaits a config fetch before updating
+    // window.DHAMMA_I18N.config (which t(), used for the warning text below in buildSutta, reads
+    // live) and dispatching 'dhamma:languagechange' (which reader/common.js listens for to
+    // refresh window.isRuPath, generateThirdPartyLinks()'s Th.ru/Th.su gate) — but this function
+    // used to call it WITHOUT awaiting, then call buildSutta() on the very next line, which read
+    // both while still on the OLD language's values (a permanent one-render-behind lag, not just
+    // a one-time race, since nothing re-triggers a render once setSiteLanguage later resolves).
+    // Awaiting it here means buildSutta() always sees the NEW language. window.isRuPath is also
+    // set synchronously from `lang` directly below — redundant with the listener once this
+    // awaits correctly, but cheap and removes any doubt about listener/event ordering.
+    window.isRuPath = (lang === 'ru');
+    if (typeof window.setSiteLanguage === 'function') await window.setSiteLanguage(lang);
     if (window._currentSlug) window.buildSutta(window._currentSlug);
 };
 
@@ -662,9 +723,14 @@ window.renderNavigation = async function(slug, suttaTitle) {
     const previous = document.getElementById("previous");
     const previous2 = document.getElementById("previous2");
 
+    // Owner: "ротация текстов по прев/некст должна быть в рамках тех текстов, которые выбраны
+    // пользователем, или по умолчанию 4 никаи + 6 книг Кхуддаки" — same localStorage key and
+    // fallback chain /search already uses (search/index.html), so a user's saved search scope
+    // (settings/index.html) governs BOTH search and reader navigation from one setting, not two.
+    const navScope = localStorage.getItem('dhammaSearchScope') || 'default';
     let nav;
     try {
-        const response = await fetch(`/api/nav/${encodeURIComponent(slug)}`);
+        const response = await fetch(`/api/nav/${encodeURIComponent(slug)}?scope=${encodeURIComponent(navScope)}`);
         nav = response.ok ? await response.json() : { prev: null, next: null };
     } catch (error) {
         nav = { prev: null, next: null };
@@ -817,6 +883,8 @@ window.buildSutta = async function(rawSlug) {
     const columns = reorderColumnsByLangOrder(suttaData.columns || []);
     READER_MODE.columns = columns; // кэш последнего известного состояния — для switchReaderMode
     READER_MODE.lang = suttaData.lang || columns[0] || READER_MODE.lang; // сервер резолвил язык явно, см. dg-light.js
+    // t() (warning text below) reads this — must be ready before that, see the cache's comment.
+    await ensureReaderLangConfig(READER_MODE.lang);
 
     const texttype = suttaData.category || "sutta";
     let params = new URLSearchParams(document.location.search);
@@ -1112,6 +1180,47 @@ window.buildSutta = async function(rawSlug) {
     const bottomContainer = document.getElementById('bottom-links-container');
     if (topContainer) topContainer.innerHTML = scLink;
     if (bottomContainer) bottomContainer.innerHTML = scLink;
+
+    // Owner: "десктоп нужно менять как на моём мокапе... на мобильных так не получится, пусть
+    // будет как есть", then: "равные расстояния между ВСЕМИ элементами строки... между ссылками
+    // и иконками такой же интервал, как между каждым другим элементом... не должно быть слипшихся
+    // ссылок и иконок". First attempt moved the whole #top-links-container wrapper in and used
+    // CSS display:contents to flatten it (and the icon wrapper) so every link/icon/pill shared
+    // one justify-content:space-between row — worked in Chromium (playwright), but owner tested
+    // a fresh/incognito non-Chromium browser and the gaps were wildly uneven with the links/icons
+    // boundary touching (display:contents + flex gap is a known cross-browser inconsistency,
+    // Firefox/Safari in particular). Moving the REAL <a> elements instead sidesteps that whole
+    // category of bug — every item sharing the row is a genuine direct child of #reader-toolbar,
+    // no CSS trick involved, so gap/space-between behave identically everywhere.
+    // Individual links (.sc-ext-link, marked in generateThirdPartyLinks() above) get inserted
+    // one at a time right before the first icon (#toggle-variants, always present in the static
+    // markup) — repeated insertBefore(x, sameRef) naturally preserves iteration order (each new
+    // node lands immediately before the reference, pushing previously-inserted ones to stay put
+    // ahead of it). #top-links-container itself stays put (still owns the SAME <a> elements by
+    // reference, so settings.js's PDF export / smoothScroll.js's exclusion — updated to key off
+    // .sc-ext-link instead of the parent id, since the id no longer reliably contains them — see
+    // those files) — just hidden, its own box would otherwise be an empty fixed-position bar.
+    // Decided fresh on every render, not on resize — a mid-read window resize across 768px won't
+    // re-flow until the next sutta/mode render (stackConfig(), search/index.html, has the same
+    // trade-off, keeps them consistent with each other).
+    const readerToolbar = document.getElementById('reader-toolbar');
+    const firstToolbarIcon = document.getElementById('toggle-variants');
+    if (topContainer && readerToolbar && firstToolbarIcon && window.innerWidth >= 768) {
+        // Bug (owner, live): "каждый раз когда я меняю язык — строчка со ссылками удваивается".
+        // Every render moves the CURRENT topContainer.innerHTML's links into readerToolbar, but
+        // topContainer.innerHTML = scLink above only replaces topContainer's OWN children — the
+        // links moved out on the PREVIOUS render are still sitting in readerToolbar, orphaned,
+        // and this loop just added a second set next to them. Remove any leftover .sc-ext-link
+        // from readerToolbar first, every render (not just when re-rendering after a language
+        // switch — any repeat call, e.g. switching reading mode, hits the same bug).
+        Array.from(readerToolbar.querySelectorAll('.sc-ext-link')).forEach(function (stale) { stale.remove(); });
+        Array.from(topContainer.querySelectorAll('a')).forEach(function (link) {
+            readerToolbar.insertBefore(link, firstToolbarIcon);
+        });
+        topContainer.style.display = 'none';
+    } else if (topContainer) {
+        topContainer.style.display = '';
+    }
 
     window.renderNavigation(slug, suttaData.title);
 
