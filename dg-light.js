@@ -500,6 +500,22 @@ app.use('/reader', express.static(path.join(__dirname, 'reader'), { maxAge: 6000
 // static-маунт на тот же префикс.
 app.use('/reader', express.static(path.join(__dirname, 'configs', 'reader'), { maxAge: 60000 }));
 
+// /pm.php, /bipm.php — Bhikkhu/Bhikkhuni Patimokkha, rendered inline (not the reader), with
+// rule links pointing at real dg-node routes. Static HTML generated once by
+// convert-patimokkha.js from the legacy assets/texts/{bupm,bipm}.php (PHP, dead under Node —
+// siteroot/pm.php and siteroot/bipm.php below would otherwise serve raw unexecuted PHP source,
+// which is why the old menu links were broken). Registered before the siteroot scan loop so
+// these routes win over those dead symlinks (same override-precedence pattern as /assets, /read).
+app.get('/pm.php', (req, res) => res.sendFile(path.join(__dirname, 'reader', 'bu-pm.html')));
+app.get('/bipm.php', (req, res) => res.sendFile(path.join(__dirname, 'reader', 'bi-pm.html')));
+
+// Bare fragment (no page shell) of the same content, for /toc's inline expand
+// (public/spa/toc.js renderBookRow) — fetched once on first click, not preloaded.
+app.get('/api/patimokkha-fragment/:side', (req, res) => {
+    if (req.params.side !== 'bu' && req.params.side !== 'bi') return res.status(404).end();
+    res.sendFile(path.join(__dirname, 'reader', `${req.params.side}-pm-fragment.html`));
+});
+
 // siteroot/ — публикация от корня сайта: самодостаточные легаси-приложения (Memorization
 // Helper, вход/облачная синхронизация, 4nt — сравнение изданий пали, TTS voice-player), их
 // конфиги, зеркала сторонних тулз/учебников, легаси-ассеты целиком (assets/) — не только

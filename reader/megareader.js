@@ -589,12 +589,12 @@ window.switchReaderMode = function(modeKey, event) {
     if (event) event.preventDefault();
     READER_MODE.modeKey = modeKey;
 
-    // Owner: memorize mode (first-letter mnemonic) should default to punctuation removed — raw
-    // punctuation just adds visual noise between the letter-triggers. A DEFAULT, not a lock:
-    // only sets it the first time (localStorage key never touched before) — once the user has
-    // an explicit preference either way, that wins. Same check runs on a cold ?mode=memorize
-    // load too, see buildSutta() below.
-    if (isMnemonicMode(modeKey) && localStorage.getItem('removePunct') === null) {
+    // Owner: memorize mode (first-letter mnemonic) and devanagari mode (dualScript — punctuation
+    // is Latin-only, doesn't exist in the converted script) should default to punctuation
+    // removed. A DEFAULT, not a lock: only sets it the first time (localStorage key never
+    // touched before) — once the user has an explicit preference either way, that wins. Same
+    // check runs on a cold ?mode=memorize/devanagari load too, see buildSutta() below.
+    if ((isMnemonicMode(modeKey) || isDualScriptMode(modeKey)) && localStorage.getItem('removePunct') === null) {
         localStorage.setItem('removePunct', 'true');
     }
 
@@ -749,7 +749,12 @@ window.buildSutta = async function(rawSlug) {
         const explicitLangs = new URLSearchParams(document.location.search).get('langs');
         let langsQuery;
         if (explicitLangs) {
-            langsQuery = `langs=${encodeURIComponent(explicitLangs)}`;
+            // mode= still needed even with an explicit langs= override — the server resolves
+            // BEHAVIOR (dualScript/mnemonic/multiFor) from mode alone (dg-light.js modeConfig),
+            // langs= only overrides which languages/columns to fetch. Dropping mode= here broke
+            // devanagari (and memorize/multiTran) whenever the URL also carried an explicit
+            // langs= — e.g. after switching modes while langs= was still set from a prior mode.
+            langsQuery = `mode=${encodeURIComponent(READER_MODE.modeKey)}&langs=${encodeURIComponent(explicitLangs)}`;
         } else if (READER_MODE.modeKey === 'multiLang') {
             // Набор языков для multiLang — из уже сохранённого порядка пользователя
             // (getLangOrder(), тот же, что реордерит колонки). Owner: "не хардкодить языки" —
@@ -780,7 +785,12 @@ window.buildSutta = async function(rawSlug) {
         // every other mode's "no script chosen" default (stay Latin) is untouched.
         const dualScriptModeActive = !!(window.MODE_TABLE && window.MODE_TABLE[READER_MODE.modeKey]
             && window.MODE_TABLE[READER_MODE.modeKey].dualScript);
+        // Local, mode-only override — set only while devanagari (dualScript) mode is active, via
+        // the "Только в режиме Деванагари" toggle (quick settings / settings/index.html). Kept
+        // separate from selectedScript (site-wide) on purpose: picking a script here shouldn't
+        // silently change what every other mode/page renders.
         const scriptParam = (new URLSearchParams(document.location.search).get('script')
+            || (dualScriptModeActive && localStorage.getItem('devanagariModeScript'))
             || localStorage.getItem('selectedScript')
             || (dualScriptModeActive ? 'devanagari' : '')).toLowerCase();
         const scriptQuery = (scriptParam && scriptParam !== 'isopali') ? `&script=${encodeURIComponent(scriptParam)}` : '';
@@ -894,9 +904,13 @@ window.buildSutta = async function(rawSlug) {
     // reader/css/uiextra.css) so it doesn't leak into every other mode's normal rendering.
     const isMemModeRender = isMnemonicMode(READER_MODE.modeKey);
     document.body.classList.toggle('dg-mode-mem', isMemModeRender);
+    // Scopes the devanagari-only CSS (main .pli-lang line bumped up ~1.2x — the converted
+    // script reads smaller than Latin at the same font-size, see reader/css/uiextra.css).
+    const isDevModeRender = isDualScriptMode(READER_MODE.modeKey);
+    document.body.classList.toggle('dg-mode-dev', isDevModeRender);
     // Same "default, not a lock" as switchReaderMode() — covers a cold load straight into
-    // ?mode=memorize (bookmark, shared link), which never goes through that function.
-    if (isMemModeRender && localStorage.getItem('removePunct') === null) {
+    // ?mode=memorize/devanagari (bookmark, shared link), which never goes through that function.
+    if ((isMemModeRender || isDevModeRender) && localStorage.getItem('removePunct') === null) {
         localStorage.setItem('removePunct', 'true');
     }
 

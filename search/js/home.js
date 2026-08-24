@@ -18,6 +18,9 @@
 
     var MENU_URL = '/nodejs/res/menu-links.json';
     var DICT_MODES_URL = '/nodejs/res/dict-modes.json';
+    // Same endpoint settings/index.html's "Система письма пали" picker already reads — one
+    // list of ~165 Aksharamukha scripts, not a second hardcoded array.
+    var SCRIPTS_URL = '/settings/scripts.json';
 
     /* Порядок плиток ПО УМОЛЧАНИЮ. Пользовательский порядок (перетаскивание) хранится в
        localStorage.dgTileOrder и этот список только дополняет: ключи, которых в сохранённом
@@ -73,6 +76,9 @@
        реально откроет быстрые настройки и дойдёт до dictModePicker(), уже почти наверняка
        загружен; null-fallback на этот случай — просто пустой список, а не ошибка. */
     var dictModeGroups = null;
+    // Same fetch-once/null-fallback pattern as dictModeGroups above, for the devanagari-mode
+    // script picker (buildQuickBody).
+    var scriptKeysList = null;
 
     /* FontAwesome на этой странице подключён скриптом (assets/js/fontawesome.6.1.all.js), но его
        наблюдатель за DOM здесь не срабатывает: <i class="fa-solid …">, созданный после загрузки,
@@ -1162,6 +1168,91 @@
                     window.DgSearchRender.redraw();
                 }
             }, 'Alt+.'));
+        }
+
+        // Devanagari mode's script — body.dg-mode-dev is set by megareader.js only while that
+        // mode (mode-table.json "devanagari", dualScript) is actually active, so this row only
+        // shows up there. One <select> (same /settings/scripts.json list "Система письма пали"
+        // already uses, not a second hardcoded list) + one toggle deciding whether the pick is
+        // saved globally (selectedScript, same key /settings/ uses) or only for this mode
+        // (devanagariModeScript, read by megareader.js only while dualScript is active) — not
+        // two separate script dropdowns.
+        if (state === 'reader' && document.body.classList.contains('dg-mode-dev')) {
+            host.appendChild(groupTitle(t('quick.devScript', 'Скрипт для Деванагари')));
+
+            var SCRIPT_MAIN = ['ISOPali', 'Brahmi', 'Devanagari', 'Sinhala', 'Thai', 'BurmeseMyanmar'];
+            var SCRIPT_MAIN_LABELS = {
+                ISOPali: t('quick.scriptLatin', 'Латиница (IAST)'),
+                Brahmi: t('quick.scriptBrahmi', 'Брахми'),
+                Devanagari: t('quick.scriptDevanagari', 'Деванагари'),
+                Sinhala: t('quick.scriptSinhala', 'Сингальская'),
+                Thai: t('quick.scriptThai', 'Тайская'),
+                BurmeseMyanmar: t('quick.scriptBurmese', 'Бирманская (Мьянма)')
+            };
+            var scriptSelect = document.createElement('select');
+            scriptSelect.className = 'dg-field-input dg-devscript-select';
+            SCRIPT_MAIN.forEach(function (key) {
+                var opt = document.createElement('option');
+                opt.value = key;
+                opt.textContent = SCRIPT_MAIN_LABELS[key];
+                scriptSelect.appendChild(opt);
+            });
+            var otherGroup = document.createElement('optgroup');
+            otherGroup.label = t('quick.scriptOther', 'Остальные');
+            (scriptKeysList || [])
+                .filter(function (k) { return SCRIPT_MAIN.indexOf(k) === -1 && k !== 'RomanIAST' && k !== 'RomanISO15919PI'; })
+                .sort(function (a, b) { return a.localeCompare(b); })
+                .forEach(function (k) {
+                    var opt = document.createElement('option');
+                    opt.value = k;
+                    opt.textContent = k.replace(/([a-z])([A-Z])/g, '$1 $2');
+                    otherGroup.appendChild(opt);
+                });
+            scriptSelect.appendChild(otherGroup);
+
+            var effectiveDevScript = function () {
+                var urlScript = new URLSearchParams(window.location.search).get('script');
+                return urlScript || localStorage.getItem('devanagariModeScript') ||
+                    localStorage.getItem('selectedScript') || 'Devanagari';
+            };
+            var syncScriptSelect = function () {
+                var eff = effectiveDevScript().toLowerCase();
+                var match = null;
+                for (var i = 0; i < scriptSelect.options.length; i++) {
+                    if (scriptSelect.options[i].value.toLowerCase() === eff) { match = scriptSelect.options[i]; break; }
+                }
+                scriptSelect.value = match ? match.value : 'Devanagari';
+            };
+            syncScriptSelect();
+            host.appendChild(scriptSelect);
+
+            // localOnlyOn tracks scope for BOTH controls below. Three real states live in the
+            // one devanagariModeScript key: absent = never touched (default varies by surface —
+            // ON here, since this panel only ever shows up already inside devanagari mode; OFF
+            // on /settings/, see settings/index.html), '' = explicitly turned off (falsy, so
+            // megareader.js's fallback chain already skips it — NOT removeItem, which would be
+            // indistinguishable from "never touched" and silently revert to the ON default the
+            // next time this panel opens), a real script key = override active.
+            var storedDevScript = localStorage.getItem('devanagariModeScript');
+            var localOnlyOn = storedDevScript === null ? true : storedDevScript !== '';
+            var reapplyDevScript = function () {
+                if (typeof window.buildSutta === 'function' && window.currentReaderSlug) {
+                    window.buildSutta(window.currentReaderSlug);
+                }
+            };
+            scriptSelect.addEventListener('change', function () {
+                if (localOnlyOn) localStorage.setItem('devanagariModeScript', scriptSelect.value);
+                else localStorage.setItem('selectedScript', scriptSelect.value);
+                reapplyDevScript();
+            });
+
+            host.appendChild(toggleRow(t('quick.devScriptLocalOnly', 'Только в этом режиме'), localOnlyOn, function (next) {
+                localOnlyOn = next;
+                if (next) localStorage.setItem('devanagariModeScript', scriptSelect.value);
+                else localStorage.setItem('devanagariModeScript', '');
+                syncScriptSelect();
+                reapplyDevScript();
+            }));
         }
 
         host.appendChild(groupTitle(t('quick.diacritics', 'Диакритика Pāḷi')));
@@ -2604,6 +2695,11 @@
             .then(function (r) { return r.json(); })
             .then(function (data) { dictModeGroups = data.groups || []; })
             .catch(function (e) { console.warn('dict-modes.json не загрузился:', e); });
+
+        fetch(SCRIPTS_URL)
+            .then(function (r) { return r.json(); })
+            .then(function (data) { scriptKeysList = Array.isArray(data) ? data : []; })
+            .catch(function (e) { console.warn('scripts.json не загрузился:', e); });
 
         /* Смена языка интерфейса на лету — перерисовываем набор ссылок и подписи.
            applyRandomPlaceholder() зовём ОТДЕЛЬНО и без условия на menuData: событие приходит уже

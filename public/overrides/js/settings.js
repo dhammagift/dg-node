@@ -81,31 +81,51 @@ window.isRu = window.notEn;
 
         dictScriptPromise = new Promise((resolve, reject) => {
             let slowLoadTriggered = false;
-            
+            let settled = false;
+
             // Заводим таймер. Если грузится долго — показываем лоадер и запоминаем это
             const slowLoadTimer = setTimeout(() => {
                 slowLoadTriggered = true;
                 window.dg_toggleNativeLoader(true);
             }, 150);
 
+            // Тот же класс бага, что уже чинили в lazyLoadStandaloneScripts() (paliLookup.js):
+            // на оборванном/зависшем соединении у <script> может не сработать ни onload, ни
+            // onerror вообще — лоадер тогда висел бы вечно (owner: "вечная загрузка словаря, и
+            // не гаснет"). Жёсткий таймаут гарантирует, что promise settle-нется в любом случае.
+            const hardTimeout = setTimeout(() => {
+                if (settled) return;
+                settled = true;
+                clearTimeout(slowLoadTimer);
+                dictScriptPromise = null;
+                window.dg_toggleNativeLoader(false);
+                reject(new Error('dictionary script load timed out'));
+            }, 25000);
+
             const script = document.createElement('script');
             script.src = "/assets/js/paliLookup.js";
-            
+
             script.onload = () => {
-                clearTimeout(slowLoadTimer); 
+                if (settled) return;
+                settled = true;
+                clearTimeout(hardTimeout);
+                clearTimeout(slowLoadTimer);
                 window.isDictScriptLoaded = true;
-                localStorage.setItem('dg_dict_cached', 'true'); 
+                localStorage.setItem('dg_dict_cached', 'true');
                 // Возвращаем статус: была ли медленная загрузка
                 resolve(slowLoadTriggered);
             };
-            
+
             script.onerror = (e) => {
+                if (settled) return;
+                settled = true;
+                clearTimeout(hardTimeout);
                 clearTimeout(slowLoadTimer);
                 dictScriptPromise = null;
                 window.dg_toggleNativeLoader(false);
                 reject(e);
             };
-            
+
             document.head.appendChild(script);
         });
 
@@ -2402,9 +2422,15 @@ function toggleFavoriteGlobal(itemData) {
 }
 
 // АВТО-СОХРАНЕНИЕ В ИСТОРИЮ ПРИ ОТКРЫТИИ ССЫЛКИ
-document.addEventListener("DOMContentLoaded", () => {
-    if (typeof addToSearchHistory === 'function') addToSearchHistory();
-});
+// Owner: "ошибочные пустые поисковые запросы и нереальные индексы текстов не должны сохраняться
+// в историю... пишем в историю только если завершилось успехом". This fired unconditionally on
+// EVERY cold page load — a typo'd search with zero matches, or a sutta id that doesn't exist,
+// got saved just as readily as a real hit. Removed rather than gated: both real "it worked" paths
+// already call addToSearchHistory() themselves, right where they know the outcome — the search
+// results branch in search/index.html's initSearchApp() (gated on totalFiles > 0) and the reader's
+// window.buildSutta() in reader/megareader.js (only reached after the text actually loads; a 404
+// falls back to search instead, without ever reaching that call). This blanket listener was a
+// third, earlier, unconditional path duplicating both of them minus the success check.
 
 // === ЛЕНИВАЯ ЗАГРУЗКА QUICK MODAL (СТРОГО ПО КЛИКУ / ХОТКЕЮ) ===
 (function() {

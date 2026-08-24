@@ -1664,6 +1664,17 @@ body.dg-mode-mem .mem-bubble::selection {
   background: transparent;
 }
 
+/* === DEVANAGARI MODE (mode-table.json "devanagari", dualScript) — the converted script
+   (.pli-lang, main line) reads visually smaller than Latin at the same font-size, so bump it
+   up to match; the ISO/Latin second line (".greyedout", not .pli-lang) stays at 1em. Scoped
+   under body.dg-mode-dev (set by megareader.js only while this mode is active). */
+body.dg-mode-dev .pli-lang {
+  font-size: 1.2em !important;
+}
+body.dg-mode-dev .byline .pli-lang {
+  font-size: 1em !important;
+}
+
 .mem-trigger {
   cursor: pointer;
   position: relative;

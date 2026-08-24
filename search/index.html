@@ -381,7 +381,17 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     body.dg-header-hidden.dg-state-reader #top-links-container,
     body.dg-header-hidden.dg-state-results #dg-header-backdrop,
     body.dg-header-hidden.dg-state-reader #dg-header-backdrop {
-        transform: translateY(-200px);
+        /* Owner: "торчит кусок стики панели, когда она свёрнута" — fixed -200px assumed larger
+           than any real stack height (see comment above), but the reader stack is band +
+           reader-toolbar + top-links-container + navigation, and that total (plus the 10px
+           starting offset applyPadding() begins from) already reaches ~210px on an ordinary
+           phone — the LAST element (navigation) ends up only translated -200px, poking its
+           remaining ~10px into the viewport instead of fully off-screen. --dg-hide-offset is set
+           by applyPadding() (JS below) to the SAME offset+tailOffset total the padding/backdrop
+           height already use, plus margin — one source of truth instead of a second guessed
+           number that can silently fall behind whenever the stack's real height changes. 200px
+           stays only as the fallback for the instant before JS first runs. */
+        transform: translateY(calc(-1 * var(--dg-hide-offset, 200px)));
     }
     /* Не в выдаче/чтении (главная и т.п.) — просто не нужен, ничего не прячется/не скроллится
        под фиксированным стеком там. */
@@ -424,8 +434,42 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
        у неё уже есть свой border-2px в базовом правиле, не трогаем; главное — не absolute/fixed
        и не 250px на телефоне ("не слишком широкий на мобильных", просьба владельца). */
     .dg-reader-toolbar #smart-toc-btn { max-width: 160px; }
+    /* Owner: "TOC сутты должен быть в 1 ряд с остальными кнопками, а он внизу" — at 120px it was
+       still wide enough (6 icons × 44px + this pill, in a wrapping flex row) to overflow a phone
+       width and drop to its own second line. First attempt shrank the pill to icon-only (dropped
+       its title text) — owner: "зачем ты его ужал... раньше был отличным широким... пусть будет
+       больше места для TOC", wanted the title back, not a bare icon. Keeping the 6 icon buttons at
+       their 44px HIG touch target (that size was itself a deliberate earlier "apple-design audit"
+       fix — not shrinking that back down) and trimming the ROW GAP instead is what buys the pill
+       its room. Owner, next round: "между кнопочкой... расстояние [такое, что] могла поместиться
+       ещё одна кнопочка... сделай маленькое расстояние" — went too far the OTHER way with 6px:
+       each icon's own 44px hit-box already has ~12.5px of invisible padding around its 19px glyph
+       on every side (that's the accessible-touch-target padding, not something to shrink), so a
+       6px gap ON TOP of that reads as ~31px of visible dead air between two icon glyphs — close to
+       fitting another icon in the gap, which is exactly what was reported. 2px gap still keeps the
+       touch targets themselves fully separate (no overlap: gap only has to clear 0, hit-boxes are
+       already fully sized) while cutting that visible gap down to ~27px — reads as tight, not
+       "room for one more". Freed-up width goes back into the pill: 6×44 + 6×2 (gap) + pill = 276 +
+       pill, room for ~100px and still ~14px of margin under a 390px phone. */
+    /* Owner, third round: "сократи расстояние между кнопками... в 2 раза. и то же самое для
+       ссылок ниже" — halved again (2px → 1px), and the SAME halving applied to the link row
+       below the icons (#top-links-container p.sc-link a — DPR/BJT/Voice/4nt/SC/BB/TBW, plus the
+       RU-only extra translator links): its visual spacing isn't a flex gap, it's the a's own
+       horizontal padding (8px each side, reader/css/rus-multi.css and index.css, shared with
+       desktop — overridden here instead of at the source so desktop stays untouched), so halving
+       THAT is this row's equivalent move. */
+    /* Owner: "ну сделай 18 пустоты" — measured live: at 44px hit-area / 19px icon, the visible
+       gap between two icon glyphs was (44-19) + 1px gap = 26px, not the 1px the gap value alone
+       suggests (most of it was the 44px HIG touch-target's own padding around each icon, not the
+       flex gap). 36px hit-area gets (36-19) + 1px = 18px exactly — shrinks the invisible padding,
+       not the gap. Mobile-only: this is the same 44px "apple-design audit" touch target that was
+       deliberately grown before, left untouched at its original size on desktop/tablet where
+       there's no crowding complaint. */
     @media (max-width: 767.98px) {
-        .dg-reader-toolbar #smart-toc-btn { max-width: 120px; }
+        .dg-reader-toolbar { gap: 1px; }
+        .dg-reader-toolbar a { min-width: 36px; min-height: 36px; }
+        .dg-reader-toolbar #smart-toc-btn { max-width: 100px; }
+        #top-links-container p.sc-link a { padding-left: 4px; padding-right: 4px; }
     }
     .dark .dg-reader-toolbar #smart-toc-btn { background-color: #42426a; border-color: #42426a; color: rgb(221, 221, 221); }
     .dark .dg-reader-toolbar #smart-toc-current { color: rgb(221, 221, 221); }
@@ -1338,6 +1382,14 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
       // отсюда и "обрезанный", будто зависший текст (владелец, скриншот).
       var backdrop = document.getElementById('dg-header-backdrop');
       if (backdrop) backdrop.style.height = Math.ceil(offset + tailOffset) + 'px';
+
+      // Прячущий transform (body.dg-header-hidden, CSS выше) — тот же offset+tailOffset, что и
+      // подложка/паддинг сразу над этим блоком, а не отдельно угаданное число: тогда он не
+      // может отстать от реальной высоты стека, чем бы она ни стала (owner: "торчит кусок
+      // стики панели, когда свёрнута" — старые фиксированные -200px однажды перестали хватать).
+      // +40px запаса поверх точной высоты — не 0, чтобы округления/на-миг-другая-высота во время
+      // самого transition не давали такой же щели на пиксель-другой.
+      document.documentElement.style.setProperty('--dg-hide-offset', Math.ceil(offset + tailOffset + 40) + 'px');
     }
     window.dgApplyHeaderPadding = applyPadding;
 
@@ -2765,7 +2817,11 @@ $(document).ready(function() {
             // страницы. С переходом поиска на pushState обычные запросы перестали попадать в
             // историю вовсе: перезагрузки-то больше нет. Зовём её сами, уже после смены адреса —
             // функция читает запрос именно из него. Ридер делает ровно так же (megareader.js).
-            if (typeof window.addToSearchHistory === 'function') window.addToSearchHistory();
+            // Больше НЕ звонит сюда безусловно (owner: "ошибочные пустые поисковые запросы...
+            // не должны сохраняться... пишем в историю только если завершилось успехом") — сам
+            // вызов переехал туда, где уже известно totalFiles (см. runSearchFromUrl → результат
+            // fetch, ниже по файлу), runSearchFromUrl() запускается следующей строкой и сама
+            // приведёт к тому вызову, когда/если результат окажется непустым.
             runSearchFromUrl();
         } else if (route.type === 'text') {
             // Раньше здесь была настоящая навигация — ридер был другой страницей. Теперь текст
@@ -3385,6 +3441,16 @@ $(document).ready(function() {
 
             lastHighlightWord = highlightWord;
             lastSearchJson = fastJson;
+            // Owner: "ошибочные пустые поисковые запросы... не должны сохраняться... пишем в
+            // историю только если завершилось успехом — есть совпадения по поиску". Same
+            // tooShort/totalFiles===0 check renderCurrentReport() below uses to decide whether
+            // there's anything to render — reusing it here instead of re-deriving "success"
+            // differently in two places. One shared choke point covers every path that reaches
+            // here: SPA submit (search box), cold page load, and the Cyrillic-layout retry above
+            // (fastJson may have been swapped for retryJson by then, so this reads the outcome
+            // AFTER that swap, not the original attempt's).
+            if (!fastJson.metadata.tooShort && fastJson.metadata.totalFiles > 0
+                && typeof window.addToSearchHistory === 'function') window.addToSearchHistory();
             renderResultHeader(fastJson);
             renderCurrentReport();
 

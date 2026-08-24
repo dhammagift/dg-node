@@ -39,6 +39,24 @@
    alike, and the bug isn't specific to the minimal skin. */
 html, body { overflow-x: hidden; }
 
+/* Owner: "текст на мобильном слишком мелкий... во всех частях... в 1.2 раза крупнее" (было 1.5 —
+   owner: "слишком крупно"). Unscoped (not under body.dg-skin-minimal) on purpose, same reasoning
+   as the overflow-x rule above: this one shell page serves home/results/reader/toc alike, and the
+   complaint wasn't specific to the minimal skin. One rem-scale line covers ALL of it because the
+   whole codebase (this file, Bootstrap utilities, --dg-* components) sizes type in rem, not px —
+   rem always resolves against THIS root value, so nothing per-component needs touching.
+
+   The chrome-specific opt-outs from this bump (icon buttons, toolbar/tab links — owner: "текст...
+   не должно влиять на расстояние между иконками и текстовыми ссылками") live at the very END of
+   this file, not here: they target selectors (.dg-tile, #reader-toolbar, …) that this file ALSO
+   sets font-size on later at their normal spot, same specificity — same-specificity CSS is decided
+   by source order, so the override has to come after, not before (this exact trap bit an earlier
+   round of this file too, see the #dg-mega comment further down). */
+@media (max-width: 767.98px) {
+    :root { --dg-mobile-scale: 1.2; }
+    html { font-size: calc(100% * var(--dg-mobile-scale)); }
+}
+
 body.dg-skin-minimal {
     /* Фон страницы. Отдельным токеном, а не через --bs-body-bg: тот у Bootstrap белый ВСЕГДА —
        тёмную тему на этом сайте делает body.dark из langswitch.css, до бутстраповских переменных
@@ -895,6 +913,35 @@ body.dg-state-toc #language-button {
 .toc-more .toc-mark { margin-right: .5rem; }
 .toc-loading, .toc-error { padding: .5rem 0; color: var(--dg-text-muted); }
 .toc-book-link { text-decoration: underline; }
+
+/* Bhikkhu/Bhikkhuni Pātimokkha fragment (reader/{bu,bi}-pm-fragment.html, injected by toc.js's
+   renderBookRow) carries legacy styles.css-scale headings/text — that stylesheet isn't loaded
+   here (this page uses its own toc-* typography), so left unscoped the fragment renders with
+   browser-default h3 sizing (much bigger than everything else in the panel) and, depending on
+   ancestor flex context, can end up centered instead of left-aligned like the rest of the toc.
+   Scale it down to the same rhythm as a tree branch (.toc-branch-title) and force left/block. */
+.toc-patimokkha-body .level1,
+.toc-patimokkha-body .level2,
+.toc-patimokkha-body .level3,
+.toc-patimokkha-body .level4,
+.toc-patimokkha-body .level5 { text-align: left; }
+/* h3 = section (Pārājikuddeso...), h4 = nested vagga sub-group inside Nissaggiya/Pācittiya/
+   Sekhiya (Pādukavaggo...) — one step deeper than a section, so one step smaller, same as
+   .toc-children .toc-branch-title vs .toc-branch-title for a normal tree branch. */
+.toc-patimokkha-body h3,
+.toc-patimokkha-body h4 {
+    margin: 0; font-weight: 700; color: var(--dg-text); text-align: left;
+}
+.toc-patimokkha-body h3 { font-size: 1.05rem; }
+.toc-patimokkha-body h4 { font-size: .95rem; }
+/* Each section/vagga toggle row (.level2/.level3.d-flex) has no vertical margin of its own in
+   extrastyles.css — one after another they sit flush, the "+" squares touching like a caterpillar
+   (owner: "они как гусеница слиплись"). Gap between the button and its own heading stays as-is
+   (align-items-center row), only space BETWEEN rows is added. */
+.toc-patimokkha-body .level2.d-flex,
+.toc-patimokkha-body .level3.d-flex { margin-bottom: .5rem; }
+.toc-patimokkha-body .pli-lang { font-size: .92rem; line-height: 1.5; }
+.toc-patimokkha-body a.setReader { font-size: .85rem; font-weight: 600; }
 
 /* В ридере выдача остаётся в DOM (возврат по "назад" мгновенный), но не показывается. Раньше
    здесь прятались только ОТДЕЛЬНЫЕ кнопки внутри #results-toolbar (разворачивание строк,
@@ -1792,6 +1839,15 @@ body.dg-tiles-editing .dg-tile-remove { display: inline-flex; }
     .dg-tile svg { width: 20px; height: 20px; }
 }
 
+/* Owner: "инпут оказывался у верха страницы, расстояние... сужалось... мега меню открывалось
+   максимально без скролла" — toggled by scrollForMega() (home.js) right before a mega tile opens
+   (desktop-only, mega tiles only). Shrinks the two gaps ABOVE the tile row (hero-band's own
+   bottom padding, then #home-pane's margin before the tiles) so the row sits higher, leaving
+   more viewport height below it for the mega panel (placeMegaAnchored sizes it off that gap).
+   Two classes outrank the plain "body.dg-state-home ..." rules above without !important. */
+body.dg-mega-compact.dg-state-home #dg-hero-band { padding-bottom: 20px; }
+body.dg-mega-compact.dg-state-home #home-pane { margin-top: 14px; }
+
 /* ============================================================================
    Строки списка: звёздочка и «чипсы»
    ============================================================================ */
@@ -2314,4 +2370,27 @@ body.dg-state-home #home-extra:not([hidden]) { display: block; }
     #search-pane.table-wrapper {
         padding-bottom: 90px;
     }
+}
+
+/* Owner: "верхние ссылки и кнопки слишком широко... увеличение шрифта не должно влиять на
+   расстояние между иконками и текстовыми ссылками в ридере и в других частях сайта" — the mobile
+   html{font-size} bump above (--dg-mobile-scale) is meant for PROSE (headings, paragraphs, table
+   cells, TOC entries); growing icon-button/toolbar-link CHROME too was collateral damage — bigger
+   link/tab labels wrapped onto extra lines (.dg-reader-toolbar's DPR/BJT/Voice/… row, "TBW" bumped
+   to its own line) and read as "spaced too far apart", even though the row's own gap/min-width
+   were already fixed px and never moved. Each selector below divides its OWN normal rem size back
+   by --dg-mobile-scale — not a flat 1rem/scale for all of them, that would make .dg-icon-btn (0.8rem)
+   and .dg-tile (0.92rem) suddenly render at the SAME size as everything else instead of their
+   usual distinct ones. Must be the LAST block in the file: same specificity as each selector's own
+   rule earlier up top, and same-specificity CSS is decided by source order. */
+@media (max-width: 767.98px) {
+    .dg-icon-btn,
+    #smart-toc-btn { font-size: calc(0.8rem / var(--dg-mobile-scale)); }
+    .dg-tile,
+    .dg-tile-label { font-size: calc(0.92rem / var(--dg-mobile-scale)); }
+    p.sc-link a { font-size: calc(1.1rem / var(--dg-mobile-scale)); }
+    .dg-reader-toolbar,
+    .dg-reader-toolbar a,
+    #results-toolbar,
+    #reader-toolbar { font-size: calc(1rem / var(--dg-mobile-scale)); }
 }

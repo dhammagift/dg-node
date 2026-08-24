@@ -87,6 +87,19 @@
         return bookCache[cacheKey];
     }
 
+    // Bhikkhu/Bhikkhuni Pātimokkha (pli-tv-bu-pm/pli-tv-bi-pm) — same content prod's read.php
+    // shows inline (not a reader page): full rule text right under the toc entry, with links
+    // per rule to its Vibhaṅga/self-anchor already pointing at real dg-node routes (see
+    // convert-patimokkha.js/dg-light.js). Fetched once per side, only when the entry is first
+    // expanded, not preloaded with the rest of the toc.
+    var patimokkhaFragmentCache = {};
+    function fetchPatimokkhaFragment(side) {
+        if (patimokkhaFragmentCache[side]) return patimokkhaFragmentCache[side];
+        patimokkhaFragmentCache[side] = fetch('/api/patimokkha-fragment/' + side)
+            .then(function (r) { if (!r.ok) throw new Error('http ' + r.status); return r.text(); });
+        return patimokkhaFragmentCache[side];
+    }
+
     function ensureTranslatorNames() {
         if (translatorNames) return Promise.resolve(translatorNames);
         return fetch('/assets/js/translators.json')
@@ -506,7 +519,7 @@
             asideToggle.type = 'button';
             var asideToggleIcon = el('span', 'toc-toggle', asideOpen ? '−' : '+');
             asideToggle.appendChild(asideToggleIcon);
-            asideToggle.appendChild(document.createTextNode(' ' + (uiIsRu() ? 'Переводчики' : 'Translators')));
+            asideToggle.appendChild(document.createTextNode(' ' + (uiIsRu() ? 'Фильтр переводчиков' : 'Translator filter')));
             aside.appendChild(asideToggle);
             var asideBody = el('div', 'toc-aside-body');
             asideBody.classList.toggle('d-none', !asideOpen);
@@ -616,13 +629,15 @@
             // it regardless of nesting depth.
             function renderBookRow(book, parentEl) {
                 var bookEl = el('div', 'toc-book');
-                // Patimokkha (pli-tv-bu-pm/pli-tv-bi-pm) has no per-rule root text in the corpus —
-                // it's one combined recitation document, already fully readable at its own id (the
-                // reader renders it like any other text). No tree, no expand/collapse: singlePage
-                // here just means "link straight to the reader" (owner: legacy's bupm.php/bipm.php
-                // fragment had dead <?php ...?> links baked in and "нет и не будет" on Node — the
-                // real fix is not injecting that fragment at all, just linking the real document).
-                if (book.singlePage) {
+                // Patimokkha (pli-tv-bu-pm/pli-tv-bi-pm) — no per-rule tree to fetch (it's one
+                // combined recitation document), but unlike a plain singlePage link it expands
+                // INLINE right here (matches prod's read.php, which shows the rule text on the
+                // page itself, not the reader) instead of navigating away. Rule links inside the
+                // fetched fragment (Vibhaṅga / self pm-anchor) still legitimately open the reader —
+                // only this top-level entry point stays in place. See fetchPatimokkhaFragment above.
+                var patimokkhaMatch = book.singlePage && book.singlePage.match(/^pli-tv-(bu|bi)-pm$/);
+                var patimokkhaSide = patimokkhaMatch ? patimokkhaMatch[1] : null;
+                if (book.singlePage && !patimokkhaSide) {
                     var directLink = el('a', 'toc-book-header toc-book-link');
                     directLink.href = '/' + encodeURIComponent(book.singlePage);
                     directLink.appendChild(document.createTextNode(book.label[uiIsRu() ? 'ru' : 'en']));
@@ -634,15 +649,27 @@
                 var bookHeader = el('button', 'toc-book-header');
                 bookHeader.type = 'button';
                 bookHeader.appendChild(document.createTextNode(book.label[uiIsRu() ? 'ru' : 'en']));
-                bookHeader.appendChild(document.createTextNode(' '));
-                var countEl = el('span', 'toc-count', '(' + book.count + ')');
-                bookHeader.appendChild(countEl);
-                var bodyEl = el('div', 'toc-book-body d-none');
+                var countEl = null;
+                if (!patimokkhaSide) {
+                    bookHeader.appendChild(document.createTextNode(' '));
+                    countEl = el('span', 'toc-count', '(' + book.count + ')');
+                    bookHeader.appendChild(countEl);
+                }
+                var bodyEl = el('div', patimokkhaSide ? 'toc-book-body toc-patimokkha-body d-none' : 'toc-book-body d-none');
                 bodyEl.setAttribute('data-toc-book-body', book.code);
                 bookHeader.addEventListener('click', function () {
                     var willShow = bodyEl.classList.contains('d-none');
                     bodyEl.classList.toggle('d-none', !willShow);
-                    if (willShow && !bodyEl.dataset.loaded) {
+                    if (!willShow || bodyEl.dataset.loaded) return;
+                    if (patimokkhaSide) {
+                        bodyEl.dataset.loaded = 'fragment';
+                        fetchPatimokkhaFragment(patimokkhaSide).then(function (html) {
+                            bodyEl.innerHTML = html;
+                        }).catch(function () {
+                            delete bodyEl.dataset.loaded;
+                            bodyEl.textContent = uiIsRu() ? 'Не удалось загрузить текст.' : 'Failed to load text.';
+                        });
+                    } else {
                         bodyEl.dataset.loaded = 'tree';
                         renderBookTree(bodyEl, book.code, langs, filter);
                     }
@@ -650,28 +677,39 @@
                 bookEl.appendChild(bookHeader);
                 bookEl.appendChild(bodyEl);
                 parentEl.appendChild(bookEl);
-                bookEntries.push({ bookEl: bookEl, bodyEl: bodyEl, headerEl: bookHeader, countEl: countEl, book: book, code: book.code, singlePage: null });
+                // singlePage stays set (not nulled) for patimokkha rows too, even though they now
+                // render inline here: the filter-count pass below (bookEntries.map -> if
+                // (b.singlePage) skip) still can't fetch a per-rule tree for these, same as before.
+                bookEntries.push({ bookEl: bookEl, bodyEl: bodyEl, headerEl: bookHeader, countEl: countEl, book: book, code: book.code, singlePage: book.singlePage || null });
             }
 
             // One expand-per-book step, shared by every "Expand all" trigger (category-level and,
             // in principle, reusable for a future per-group one) — fetch if not loaded yet, then
             // force every branch open.
             function expandBookRow(book) {
-                if (book.singlePage) return;
+                var patimokkhaSide = book.singlePage && book.singlePage.match(/^pli-tv-(bu|bi)-pm$/);
+                if (book.singlePage && !patimokkhaSide) return;
                 var bodyEl = container.querySelector('[data-toc-book-body="' + book.code + '"]');
                 if (!bodyEl) return;
                 bodyEl.classList.remove('d-none');
-                if (!bodyEl.dataset.loaded) {
-                    bodyEl.dataset.loaded = 'tree';
-                    fetchBook(book.code, langs).then(function (bookData) {
-                        bodyEl.innerHTML = '';
-                        var ul = buildTreeChildren(bookData.tree, bookData, filter, langs);
-                        if (ul) bodyEl.appendChild(ul);
-                        expandAll(bodyEl);
-                    });
-                } else {
-                    expandAll(bodyEl);
+                if (bodyEl.dataset.loaded) {
+                    if (!patimokkhaSide) expandAll(bodyEl);
+                    return;
                 }
+                if (patimokkhaSide) {
+                    bodyEl.dataset.loaded = 'fragment';
+                    fetchPatimokkhaFragment(patimokkhaSide[1]).then(function (html) {
+                        bodyEl.innerHTML = html;
+                    }).catch(function () { delete bodyEl.dataset.loaded; });
+                    return;
+                }
+                bodyEl.dataset.loaded = 'tree';
+                fetchBook(book.code, langs).then(function (bookData) {
+                    bodyEl.innerHTML = '';
+                    var ul = buildTreeChildren(bookData.tree, bookData, filter, langs);
+                    if (ul) bodyEl.appendChild(ul);
+                    expandAll(bodyEl);
+                });
             }
 
             // Khuddaka Nikāya (and any future Nikāya-level group) — a peer of DN/MN/SN/AN, not a
@@ -775,7 +813,10 @@
                         ? (uiIsRu() ? 'Свернуть всё' : 'Collapse all')
                         : (uiIsRu() ? 'Развернуть всё' : 'Expand all');
                     if (categoryExpanded) {
-                        container.querySelectorAll('.toc-group .toc-book-body').forEach(function (b) { b.classList.remove('d-none'); });
+                        // Scoped to THIS category's booksEl, not the whole container — otherwise
+                        // expanding e.g. Vinaya also un-hides Khuddaka's group body (it lives
+                        // under Dhamma) since the old selector matched any .toc-group on the page.
+                        booksEl.querySelectorAll('.toc-group .toc-book-body').forEach(function (b) { b.classList.remove('d-none'); });
                         expandable.forEach(expandBookRow);
                     } else {
                         booksEl.querySelectorAll('.toc-book-body').forEach(function (b) { b.classList.add('d-none'); });

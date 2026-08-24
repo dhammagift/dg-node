@@ -398,6 +398,11 @@ kbd{font:inherit;font-size:12.5px;background:var(--line);border:1px solid var(--
         </select></div>
       </div>
       <div class="row">
+        <div><p class="row-title" id="t-scriptDevOnly">Только в режиме «Devanagari»</p>
+        <p class="row-desc" id="t-scriptDevOnlyDesc">Выбранная система письма выше — только для режима чтения «Деванагари» в ридере, не для всего сайта.</p></div>
+        <div class="row-control"><span class="switch"><input type="checkbox" id="scriptDevOnly"><span class="track"></span><span class="thumb"></span></span></div>
+      </div>
+      <div class="row">
         <div><p class="row-title" id="t-size">Размер текста</p></div>
         <div class="row-control size">
           <button class="btn" type="button" id="sizeMinus" aria-label="Уменьшить">−</button>
@@ -596,6 +601,24 @@ fetch('/settings/lang-counts.json').then(r => r.ok ? r.json() : {}).then(c => { 
    тот же самый "не конвертировать" вариант, что уже первым пунктом в списке (Латиница/IAST).*/
 const SCRIPT_MAIN_KEYS = new Set(['ISOPali','Brahmi','Devanagari','Sinhala','Thai','BurmeseMyanmar']);
 const SCRIPT_SKIP_KEYS = new Set(['RomanIAST','RomanISO15919PI']);
+/* "Только в режиме «Devanagari»" (#scriptDevOnly, row added below the script row) — reuses this
+   SAME #script select for two different scopes instead of a second ~165-option dropdown.
+   devanagariModeScript is read by megareader.js only while dualScript mode is active. Three
+   real states live in that one key: absent = never touched (default OFF here — someone on this
+   page is more likely picking the site-wide default; quick settings in the reader defaults it
+   ON instead, see search/js/home.js), '' = explicitly turned off (falsy, so megareader.js's
+   fallback chain already skips it — NOT removeItem, which would be indistinguishable from
+   "never touched" and silently revert to the default the next time this row renders), a real
+   script key = override active. currentScriptKey() shows what's ACTUALLY in effect right now
+   regardless of the checkbox — the checkbox only decides where the NEXT pick gets written. */
+function currentScriptKey(){
+  const override = localStorage.getItem('devanagariModeScript');
+  return override || localStorage.getItem('selectedScript') || 'ISOPali';
+}
+function scriptDevOnlyDefault(){
+  const raw = localStorage.getItem('devanagariModeScript');
+  return raw === null ? false : raw !== '';
+}
 fetch('/settings/scripts.json').then(r => r.ok ? r.json() : []).then(keys => {
   const group = document.getElementById('scriptOtherGroup');
   if (!group || !Array.isArray(keys)) return;
@@ -607,8 +630,7 @@ fetch('/settings/scripts.json').then(r => r.ok ? r.json() : []).then(keys => {
       opt.textContent = k.replace(/([a-z])([A-Z])/g, '$1 $2');
       group.appendChild(opt);
     });
-  const saved = localStorage.getItem('selectedScript');
-  if (saved) $('#script').value = saved;
+  $('#script').value = currentScriptKey();
 }).catch(()=>{});
 
 function readList(key, fallback){
@@ -819,8 +841,17 @@ $('#sizePlus').onclick=()=>setScale(scale+10);
    выглядело как "сбрасывается на латиницу"/"пунктуация не работает", хотя запись в
    localStorage и её использование в ридере/поиске были рабочими всё это время). Дальше —
    просто пишем значение, эффект виден на странице поиска/ридера при следующей отрисовке. */
-$('#script').value = localStorage.getItem('selectedScript') || 'ISOPali';
-$('#script').onchange = e=> localStorage.setItem('selectedScript', e.target.value);
+$('#scriptDevOnly').checked = scriptDevOnlyDefault();
+$('#script').value = currentScriptKey();
+$('#script').onchange = e=> {
+  if ($('#scriptDevOnly').checked) localStorage.setItem('devanagariModeScript', e.target.value);
+  else localStorage.setItem('selectedScript', e.target.value);
+};
+$('#scriptDevOnly').onchange = e=> {
+  if (e.target.checked) localStorage.setItem('devanagariModeScript', $('#script').value);
+  else localStorage.setItem('devanagariModeScript', '');
+  $('#script').value = currentScriptKey();
+};
 /* Переключатель называется "Показывать пунктуацию" — включён (checked) значит пунктуация
    ВИДНА, то есть removePunct='false'. Раньше было наоборот: checked означал removePunct='true'
    (пунктуация убрана), при подписи "Пунктуация в пали" это читалось обратно тому, что
@@ -1221,6 +1252,7 @@ const STR = {
     script:'Система письма пали',
     scriptDesc:'Применяется к пали в поиске и в ридере. Заголовки текстов и отчёт по словам пока остаются латиницей.',
     scriptIast:'Латиница (IAST)', scriptBrahmi:'Брахми', scriptDeva:'Деванагари', scriptSinh:'Сингальская', scriptThai:'Тайская', scriptMymr:'Бирманская (Мьянма)', scriptOther:'Остальные',
+    scriptDevOnly:'Только в режиме «Devanagari»', scriptDevOnlyDesc:'Выбранная система письма выше — только для режима чтения «Devanagari» в ридере, не для всего сайта.',
     size:'Размер текста', punct:'Показывать пунктуацию в пали', punctDesc:'Выключите, чтобы убрать запятые/кавычки и заменить точки, ? и ! вертикальной чертой — ближе к виду рукописей.',
     gSearch:'Поиск', scope:'Где искать по умолчанию',
     scopeDesc:'В самом поиске область можно менять для одного запроса — здесь только значение по умолчанию.',
@@ -1258,6 +1290,7 @@ const STR = {
     script:'Pali script',
     scriptDesc:"Applies to Pali in search and in the reader. Text titles and the word report still stay in Latin script.",
     scriptIast:'Latin (IAST)', scriptBrahmi:'Brahmi', scriptDeva:'Devanagari', scriptSinh:'Sinhala', scriptThai:'Thai', scriptMymr:'Burmese (Myanmar)', scriptOther:'Other',
+    scriptDevOnly:'Only in "Devanagari" mode', scriptDevOnlyDesc:'The script picked above applies only to the reader’s “Devanagari” mode, not the whole site.',
     size:'Text size', punct:'Show Pali punctuation', punctDesc:'Turn off to drop commas/quotes and replace periods, ? and ! with a vertical bar — closer to the look of manuscripts.',
     gSearch:'Search', scope:'Default search scope',
     scopeDesc:'The scope can still be changed per search — this is only the default.',
@@ -1292,6 +1325,7 @@ function applyLang(){
    ['t-cloud','cloud'],['t-cloudDesc','cloudDesc'],['cloudBtn','cloudBtn'],
    ['t-g-reading','gReading'],['t-readLangs','readLangs'],['t-readLangsDesc','readLangsDesc'],['t-readHint','readHint'],
    ['t-script','script'],['t-scriptDesc','scriptDesc'],
+   ['t-scriptDevOnly','scriptDevOnly'],['t-scriptDevOnlyDesc','scriptDevOnlyDesc'],
    ['t-size','size'],['t-punct','punct'],['t-punctDesc','punctDesc'],
    ['t-g-search','gSearch'],['t-scope','scope'],['t-scopeDesc','scopeDesc'],
    ['t-searchLangs','searchLangs'],['t-searchLangsDesc','searchLangsDesc'],['t-sameAsRead','sameAsRead'],
