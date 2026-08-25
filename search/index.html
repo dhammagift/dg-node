@@ -949,17 +949,18 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
      site via the siteroot/assets symlink, untouched here). Exposes the same window.FontAwesome.
      icon() call shape faSvg()/faSpec()/faIcon() already rely on, nothing else about those
      callers changed. -->
-<script>
-  // document.write() here used to force the browser to run this JS before it could even
-  // discover the FontAwesome <script> URL — a parser-blocking hop that browsers actively
-  // penalize on slow connections. appendChild doesn't block parsing (TODO.md #global п.2:
-  // measured contributor to slower-than-prod loads) — same appendChild approach kept.
-  (function () {
-    var s = document.createElement('script');
-    s.src = '/assets/js/fontawesome-local.js';
-    document.head.appendChild(s);
-  })();
-</script>
+<!-- Обычный <script defer>, а НЕ вставка через appendChild (как было). Причина: скрипт,
+     добавленный из JS, по умолчанию async — порядок его выполнения относительно defer-скриптов
+     страницы (home-bundle.js, settings-bundle.js) ничем не задан, и получалась гонка. Замерено на
+     живой загрузке: fontawesome-local.js заканчивался за 4мс до home-bundle.js — то есть кто
+     успел, тот и первый. Когда FontAwesome не успевал, faSvg() (home.js) отдавал запасной
+     <i class="fa-solid …>, а его на этой странице разворачивать некому (сам FontAwesome тут за
+     DOM не следит — см. комментарий у faSvg), и значки просто не появлялись до перезагрузки
+     (owner: "иногда не загружается, нужно два-три раза перезагрузить").
+     defer-скрипты выполняются строго в порядке разметки, а этот тег стоит ВЫШЕ обоих бандлов —
+     значит FontAwesome готов раньше, независимо от скорости сети. Загрузку это по-прежнему не
+     блокирует: defer качается параллельно с разбором страницы. -->
+<script src="/assets/js/fontawesome-local.js" defer></script>
 <!-- datatables.js (1.9МБ) / search-render.js / natural.js / strip-html.js больше НЕ грузятся
      здесь — см. ensureSearchAssets() ниже по файлу и её вызов из initSearchApp(). Ничего из этого
      не нужно домашнему экрану (initSearchApp возвращается сразу после dgSetState('home'), до
@@ -1084,6 +1085,11 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
 </div>
 
 <div class="hero-row mb-2">
+  <!-- Объявление над полем (текст — configs/search/announcements.json, показ и «закрыть» —
+       home.js). Стоит В РАЗМЕТКЕ здесь, но выводится position:absolute в уже существующий
+       пустой отступ над полем (body.dg-state-home .hero-row { margin-top: 74px }), поэтому его
+       появление и закрытие не двигают ни поле, ни плитки. -->
+  <div id="dg-announce" hidden></div>
   <form id="form" class="dg-hero-form m-0" autocomplete="off">
     <label class="visually-hidden" for="paliauto">{{search.label}}</label>
     <!-- Поле собрано как строка поиска поисковика: слева знак сайта, дальше само поле, справа —
@@ -2911,9 +2917,13 @@ $(document).ready(function() {
             history.pushState({ dgReader: true }, '', '/' + encodeURIComponent(route.id) + (qs2 ? '?' + qs2 : ''));
             openReaderInPlace(route.id);
         } else {
-            // chapter — оглавление раздела, его пока отдаёт сервер отдельной страницей.
+            // chapter — узел оглавления ("mn", "sn56"). Открываем на нём TOC, НА МЕСТЕ: адрес
+            // тот же, на который сервер редиректит бывшие заглушки (/mn → /toc/mn), только без
+            // перезагрузки страницы (owner: "переходы MN an sn работают с перезагрузкой, а
+            // должны в спа") — как и поиск с ридером выше.
             var qs3 = currentParams.toString();
-            window.location.href = '/' + encodeURIComponent(route.id) + (qs3 ? '?' + qs3 : '');
+            history.pushState({ dgToc: true }, '', '/toc/' + encodeURIComponent(route.id) + (qs3 ? '?' + qs3 : ''));
+            openTocInPlace();
         }
     });
 
@@ -3394,7 +3404,9 @@ $(document).ready(function() {
             // ДО textIdFromPath: "toc" не похож на sutta id, так что коллизии нет, но порядок
             // важен на будущее, если появится реальная сутта с таким префиксом.
             var path = window.location.pathname.replace(/^\/+|\/+$/g, '');
-            if (path === 'toc') { openTocInPlace(); return; }
+            // "/toc/mn", "/toc/sn25" — тот же навигатор, открытый на нужном узле. Какой именно,
+            // читает сам /spa/toc.js из адреса (targetFromPath) — здесь только маршрут.
+            if (path === 'toc' || path.indexOf('toc/') === 0) { openTocInPlace(); return; }
             var id = textIdFromPath(window.location.pathname);
             if (id) { openReaderInPlace(id); return; }
         }
@@ -3634,11 +3646,14 @@ $(document).ready(function() {
          не своя JS-раскрывашка: меньше кода, работает без единой строчки скрипта. -->
     <details class="dg-drawer-group" open>
       <summary class="dg-group-title">{{menu.navigation}}</summary>
-      <a class="dg-drawer-row dg-go-home" href="/" data-dg-icon="home">{{buttons.main}}</a>
+      <!-- Ракушка вместо домика (owner) — та же картинка, что стоит слева в поле поиска
+           (.dg-shell-logo выше), где она уже значит "домой". Значок здесь прямо в разметке, без
+           data-dg-icon: paintDrawerIcons() (home.js) нужен только для значков FontAwesome, а
+           обычную картинку браузер покажет сам. -->
+      <a class="dg-drawer-row dg-go-home" href="/"><img class="dg-row-ic dg-row-ic-img" src="/assets/img/dgsankhaonly.png" alt="">{{buttons.main}}</a>
       <!-- Компас — тот же toggleQuickModal(), что у кнопки-компаса в выдаче/ридере (window.toggleQuickModal
            определяет /assets/js/settings.js, override-копия грузится на этой же странице). -->
       <a class="dg-drawer-row" href="javascript:void(0)" data-dg-icon="compass" onclick="if (typeof window.toggleQuickModal === 'function') window.toggleQuickModal();">{{toolbar.compassLabel}}</a>
-      <a class="dg-drawer-row" href="/history.php" data-dg-icon="clock">{{buttons.history}}</a>
       <a class="dg-drawer-row" href="javascript:void(0)" data-dg-icon="help" data-bs-toggle="modal" data-bs-target="#SearchResultHelp">{{global.common.help}}</a>
       <!-- Якоря на нижние блоки главной (Приложения/Контакты). Сами блоки видны только на широком
            экране (#home-extra, home.css) — на мобильном эти два пункта скрыты тем же порогом

@@ -53,7 +53,7 @@ html, body { overflow-x: hidden; }
    by source order, so the override has to come after, not before (this exact trap bit an earlier
    round of this file too, see the #dg-mega comment further down). */
 @media (max-width: 767.98px) {
-    :root { --dg-mobile-scale: 1.2; }
+    :root { --dg-mobile-scale: 1; }
     html { font-size: calc(100% * var(--dg-mobile-scale)); }
 }
 
@@ -249,15 +249,30 @@ body.dg-state-home #dg-hero-band .dg-brand-logo { filter: none; }
    Только на главной. В выдаче и в чтении вывеска убирается совсем — там от знака остаётся
    ракушка внутри поля, а бургер стоит правее поля (.dg-menu-btn-hero).
    ============================================================================ */
+/* Сетка «1fr auto 1fr», а не flex со space-between (owner: "сделай чтобы Find the Truth был в
+   центре страницы"): при space-between девиз вставал в середину ОСТАТКА между вывеской и
+   бургером, а вывеска заметно шире бургера — то есть левее центра страницы. Одинаковые боковые
+   колонки ставят среднюю ровно по центру полосы, независимо от ширины вывески. */
 #dg-topbar {
     display: none;
+    grid-template-columns: 1fr auto 1fr;
     align-items: center;
-    justify-content: space-between;
     gap: 0.75rem;
     padding: 16px 0 0;
     font-family: var(--dg-font);
 }
-body.dg-state-home #dg-topbar { display: flex; }
+body.dg-state-home #dg-topbar { display: grid; }
+/* Вывеска и бургер — по краям своих боковых колонок (по умолчанию grid растянул бы их на всю
+   колонку, и бургер уехал бы от правого края). */
+#dg-topbar > #dg-brand { justify-self: start; }
+#dg-topbar > .dg-menu-btn { justify-self: end; }
+/* На телефоне — как было до центрирования, flex со space-between (owner: "откати про Find the
+   Truth на мобильном, слишком близко стало к логотипу"). Там лого крупное и на всю ширину места
+   мало: центр страницы приходится почти вплотную к нему, и девиз слипался с вывеской. Ширина
+   экрана решает больше, чем формальная симметрия. */
+@media (max-width: 767.98px) {
+    body.dg-state-home #dg-topbar { display: flex; justify-content: space-between; }
+}
 
 /* Бургеров в разметке два — в шапке и рядом с полем: перенести один элемент между строками
    средствами CSS нельзя, а состояния требуют разных мест. Оба открывают одно и то же меню. */
@@ -323,13 +338,15 @@ body.dark .dg-brand-logo { filter: none; }
     letter-spacing: -0.01em;
     color: var(--dg-text);
 }
-/* Owner: "Dhamma.Gift с больших букв на десктоп" — desktop only (mobile keeps the plain
-   lowercase wordmark, owner: "на мобильной... только лого"). text-transform over rewriting the
-   text: "." breaks the word for capitalize the same way a space would ("dhamma.gift" ->
-   "Dhamma.Gift"), so this stays a one-line style rule instead of a second hardcoded string. */
-@media (min-width: 768px) {
-    .dg-brand-name { text-transform: capitalize; }
-}
+/* Owner: "Dhamma.Gift с больших букв". text-transform вместо переписывания текста: "." рвёт
+   слово для capitalize так же, как пробел ("dhamma.gift" -> "Dhamma.Gift"), поэтому одно правило
+   вместо второй захардкоженной строки.
+   БЕЗ медиазапроса (было `min-width: 768px`, owner: "на планшетах тоже с большой, а то разнобой"):
+   надпись в принципе показывается только там, где ей место (на главной ниже 768px её прячет
+   правило выше, остаётся одно лого), так что ограничивать ЕЩЁ и регистр было незачем — ровно это
+   и давало строчные буквы у той же надписи в шапке бокового меню, где она видна на любой ширине,
+   включая узкие планшеты и телефоны. */
+.dg-brand-name { text-transform: capitalize; }
 
 /* Кнопка-иконка шапки (бургер, крестик в меню) — без рамки и заливки. */
 .dg-icon-btn {
@@ -1072,6 +1089,69 @@ body.dg-no-anim * {
 }
 
 /* ============================================================================
+   Объявление над полем поиска (#dg-announce, см. hero-row в search/index.html)
+   ============================================================================ */
+/* Вне потока (owner: "без сдвига интерфейса"): лежит в уже существующем пустом отступе над полем
+   — body.dg-state-home .hero-row { margin-top: 74px } — поэтому и появление, и закрытие не
+   двигают ни поле, ни плитки под ним. Тот же приём, что у #home-hint выше, только сверху.
+   Только на главной: в выдаче и в чтении полосы нет, а поле переезжает наверх. */
+#dg-announce {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 100%;
+    margin-bottom: 12px;
+    display: flex;
+    justify-content: center;
+    /* Плавное появление (плашку показывает home.js через несколько секунд после загрузки).
+       Двигается только она сама — соседи стоят на месте: элемент вне потока. */
+    opacity: 0;
+    transform: translateY(-6px);
+    transition: opacity 0.35s ease, transform 0.35s ease;
+}
+#dg-announce.dg-announce-in { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) {
+    #dg-announce { transition: none; transform: none; }
+}
+body:not(.dg-state-home) #dg-announce { display: none; }
+.dg-announce-box {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    max-width: 100%;
+    padding: 7px 8px 7px 12px;
+    border-radius: 10px;
+    /* Светлая плашка поверх тёмной полосы — как у #home-hint: акцентная заливка там нечитаема. */
+    background: rgba(255, 255, 255, 0.16);
+    color: #fff;
+    font-family: var(--dg-font);
+    font-size: 0.82rem;
+    line-height: 1.3;
+}
+.dg-announce-box a { color: #fff; text-decoration: underline; }
+.dg-announce-close {
+    flex: none;
+    width: 22px;
+    height: 22px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: inherit;
+    opacity: 0.7;
+    cursor: pointer;
+}
+.dg-announce-close:hover, .dg-announce-close:focus-visible { opacity: 1; background: rgba(255, 255, 255, 0.18); }
+/* На узком экране отступ над полем тот же, но текст переносится в две строки — прижимаем плашку
+   к низу отступа, чтобы она не наезжала на шапку. */
+@media (max-width: 767.98px) {
+    .dg-announce-box { font-size: 0.78rem; padding: 6px 6px 6px 10px; }
+}
+
+/* ============================================================================
    Плитки
    ============================================================================ */
 .dg-tiles {
@@ -1561,7 +1641,11 @@ body.dg-no-anim * {
     font-size: 0.92rem;
     color: var(--dg-text);
 }
-.dg-scope-label { flex: 1; min-width: 0; cursor: pointer; }
+/* font-size: inherit — assets/css/extrastyles.css (legacy, shared) sets a global `label {
+   font-size: 20px }` that otherwise wins over inheriting .dg-scope-head's 0.92rem, since an
+   explicit rule on the element itself beats inheritance regardless of specificity. Same trap as
+   .dg-check-row below, which already has its own font-size for the same reason. */
+.dg-scope-label { flex: 1; min-width: 0; cursor: pointer; font-size: inherit; }
 .dg-scope-count {
     flex: none;
     font-size: 0.78rem;
@@ -1744,6 +1828,14 @@ body.dg-drawer-open {
     color: var(--dg-text-muted);
 }
 .dg-drawer-row:hover .dg-row-ic { color: var(--dg-accent-ink); }
+/* Значок-картинка (ракушка у «Главной»). object-fit — иначе картинка растянется в квадрат и
+   потеряет пропорции. Коробка РОВНО как у соседних svg (17px), иначе подпись «Главная» съезжает
+   вправо относительно остальных строк (замерено: при коробке 22px — 1013px против 1008px у
+   соседей, owner: "выбивается"). Крупнее соседей ракушка становится через transform, который
+   на раскладку не влияет: её рисунок узкий и с большими полями по бокам (замерено по пикселям
+   картинки: 117×188 краски в холсте 206×206), поэтому в общей коробке 17px она выходит заметно
+   мельче круглых значков рядом. */
+.dg-drawer-row .dg-row-ic-img { width: 17px; height: 17px; object-fit: contain; transform: scale(1.6); }
 /* Значок у заголовка раздела — того же роста, что и сама подпись раздела. */
 .dg-drawer-body .dg-group-title {
     display: flex;
@@ -1811,6 +1903,10 @@ body.dg-drawer-open {
    pointer-событиях, а не на HTML5 drag-and-drop: тот на мобильных браузерах не работает вовсе,
    а плитки нужны в первую очередь именно там.
    ============================================================================ */
+/* Deliberately NOT touch-action:none, even though that is the usual drag-and-drop recipe: tiles
+   cover most of the mobile home screen, and "none" would kill page scrolling from all of it. The
+   finger drag is unblocked in JS instead, only once the drag actually starts — see the
+   passive:false touchmove handler in wireTileDrag() (search/js/home.js). */
 .dg-tile { touch-action: manipulation; }
 /* Пока идёт перетаскивание — гасим переходы у соседей, иначе они «догоняют» палец, и целиться
    в позицию становится невозможно. */
@@ -2025,8 +2121,26 @@ body.dark #dg-carousel .carousel-control-prev-icon,
 body.dark #dg-carousel .carousel-control-next-icon { filter: none; }
 
 /* «Показать все» — внизу справа, приглушённой мелочью: как .text-end.mt-2 с .text-muted.small
-   на проде. */
+   на проде.
+   Отрицательный margin-top — owner: "показать все стоит слишком далеко от слайд-шоу, подними
+   ссылку вверх". Причина отрыва: lockCarouselHeight() (home.js) фиксирует min-height карусели по
+   САМОМУ ВЫСОКОМУ слайду, чтобы переключение не дёргало страницу — под коротким слайдом остаётся
+   пустая полоса (замерено по всем 18 слайдам: от 2px под самым длинным до 88px под самым
+   коротким), и ссылка висела под ней. Саму карусель НЕ трогаем (owner: "не трогай ничего по
+   слайд шоу" — попытки двигать .carousel-item ломали анимацию Bootstrap и съезжала «Читать»),
+   поднимаем только сам футер — он вне карусели. Наезда нет даже на самом длинном слайде:
+   «Показать все» прижата вправо, а «Читать»/текст слайда отцентрованы — по горизонтали не
+   пересекаются (проверено по всем слайдам). */
 .dg-slides-foot { margin-top: 8px; text-align: right; }
+/* Подъём футера — ТОЛЬКО на мобильной (owner: "на десктопе было и так хорошо, стало плохо;
+   проблема была только на мобильных"): на широком экране слайд занимает всю коробку карусели,
+   пустой полосы под ним нет, и -34px просто ставили «Показать все» вплотную к стрелке, на одну
+   строку с «Читать». z-index здесь же — плата за отрицательный margin: подняв футер, мы заводим
+   его под правую стрелку (.carousel-control-next — absolute, во всю высоту, z-index:1 у
+   bootstrap), и она перехватывала клики (owner: "ссылка больше не работает"). */
+@media (max-width: 767.98px) {
+    .dg-slides-foot { margin-top: -34px; position: relative; z-index: 2; }
+}
 .dg-slides-all {
     padding: 0;
     border: 0;

@@ -700,6 +700,17 @@ const TOC_BOOKS = require('./configs/reader/toc-books.json');
 const TRANSLATOR_TYPES = require('./configs/reader/translator-types.json');
 const INTERLINEAR_TRANSLATOR_KEYS = new Set(TRANSLATOR_TYPES.interlinear || []);
 
+// Каждый код оглавления — книга, «лишняя» книга или собрание ("kn") — чтобы /:slug в конце файла
+// мог отличить узел оглавления от поисковой строки и увести в /toc/<code>.
+const TOC_CODES = new Set(Object.entries(TOC_BOOKS)
+    .filter(([key]) => key !== '_comment')
+    .flatMap(([, cat]) => [
+        ...(cat.books || []),
+        ...(cat.extraBooks || []),
+        ...(cat.groups || []).flatMap(g => [g, ...(g.books || []), ...(g.extraBooks || [])]),
+    ])
+    .map(b => b.code));
+
 // Интерфейсные языки, которые реально поддерживает сайт — сканируется из configs/reader/
 // lang_*.json при старте (тот же приём auto-discovery, что и siteroot/, см. CLAUDE.md), а не
 // зашитый список. Растёт сам, когда кто-то кладёт новый lang_de.json — правка кода не нужна.
@@ -2749,27 +2760,12 @@ function findChapterChildren(prefix) {
     }).sort();
 }
 
-// Минимальная HTML-заглушка вместо полноценного TOC (аналога легаси read.php пока нет —
-// см. TODO.md ридер, нюансы). Просто список ссылок на дочерние тексты с заголовками.
-function renderTocStub(prefix, children) {
-    const items = children.map(id => {
-        const title = skeletonDB[id] && skeletonDB[id].title ? ` — ${skeletonDB[id].title}` : '';
-        return `<li><a href="/${encodeURIComponent(id)}">${id}</a>${title}</li>`;
-    }).join('\n');
-    return `<!DOCTYPE html><html><head><meta charset="UTF-8">
-<title>${prefix} — Dhamma.gift</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<style>body{font-family:sans-serif;max-width:640px;margin:2rem auto;padding:0 1rem}
-a{color:#0d6efd;text-decoration:none}a:hover{text-decoration:underline}
-li{margin:.4rem 0}</style></head><body>
-<p><a href="/">&larr; Dhamma.gift</a></p>
-<h1>${prefix}</h1>
-<p>Table of contents (stub) — ${children.length} texts.</p>
-<ul>
-${items}
-</ul>
-</body></html>`;
-}
+// /toc/<id> — оглавление, открытое на нужном месте ("/toc/mn", "/toc/sn25"). Та же SPA-страница,
+// что и голый /toc; какой узел раскрыть, клиент читает из СВОЕГО адреса (public/spa/toc.js,
+// targetFromPath) — сервер здесь только отдаёт шаблон, ничего про :code не знает.
+app.get('/toc/:code', (req, res) => {
+    res.sendFile(searchIndexPath);
+});
 
 // Чистые URL: /dn22 → ридер, /dn22:12.1 → ридер с прокруткой к сегменту (разбор ":" — на клиенте),
 // /kacchapa → страница поиска (search/index.html сам читает слово из пути — initSearchApp, если нет
@@ -2828,9 +2824,15 @@ app.get('/:slug', (req, res) => {
         const query = req.originalUrl.slice(req.path.length); // сохраняем ?s=, ?lang= и т.п.
         return res.redirect(302, '/' + encodeURIComponent(range) + ':' + encodeURIComponent(suttaId) + query);
     }
-    const children = findChapterChildren(suttaId);
-    if (children.length) {
-        return res.send(renderTocStub(suttaId, children));
+    // "Оглавленческий" id ("mn", "sn25", "pli-tv-bu-vb-") — не текст, а узел оглавления. Раньше
+    // здесь отдавалась самодельная HTML-заглушка со списком детей; теперь есть настоящий TOC —
+    // уводим в него, на нужный узел, вместо второй, урезанной копии того же самого.
+    // Код из toc-books.json проверяем отдельно от findChapterChildren: у собрания ("kn") своих
+    // текстов с таким префиксом нет вообще, дети — у его книг, так что по одному только скелету
+    // такой узел не опознать.
+    if (TOC_CODES.has(suttaId) || findChapterChildren(suttaId).length) {
+        const query = req.originalUrl.slice(req.path.length); // сохраняем ?lang= и т.п.
+        return res.redirect(302, '/toc/' + encodeURIComponent(suttaId) + query);
     }
     return res.sendFile(searchIndexPath);
 });

@@ -240,6 +240,10 @@
         var interlinearSet = new Set(bookData.interlinearKeys || []);
 
         var li = el('li', 'toc-leaf');
+        // Node id in the DOM — the only thing revealTarget() needs to find and open a node from
+        // the address ("/toc/sn25"); leaves and branches share one attribute, so it looks up both
+        // kinds with a single selector.
+        li.dataset.tocNode = node.id;
         var heading = el('span', 'toc-leaf-heading');
         var link = el('a', 'toc-leaf-link');
         link.href = '/' + encodeURIComponent(node.id);
@@ -300,6 +304,7 @@
         childList.classList.add('d-none');
 
         var li = el('li', 'toc-branch');
+        li.dataset.tocNode = node.slug; // see renderLeaf
         var header = el('div', 'toc-branch-header');
         var toggle = el('button', 'toc-toggle', '+');
         toggle.type = 'button';
@@ -345,10 +350,12 @@
         return count;
     }
 
+    // Returns the fetch promise so a caller that needs the rendered tree (revealTarget) can wait
+    // for it; the plain click path just ignores the return value as before.
     function renderBookTree(bodyEl, code, langs, filter) {
         bodyEl.innerHTML = '';
         bodyEl.appendChild(el('div', 'toc-loading', uiIsRu() ? 'Загрузка…' : 'Loading…'));
-        fetchBook(code, langs).then(function (bookData) {
+        return fetchBook(code, langs).then(function (bookData) {
             bodyEl.innerHTML = '';
             var ul = buildTreeChildren(bookData.tree, bookData, filter, langs);
             if (ul) {
@@ -496,12 +503,96 @@
     // stable node (not rebuilt from a string) so refreshFilterEffects can just update its
     // textContent later without touching the name or, for groups, the tooltip star.
 
+    /* "/toc/mn", "/toc/sn25" — какой узел оглавления открыть. Читается из СОБСТВЕННОГО адреса,
+       а не передаётся параметром: initToc() зовут из двух мест (авто-запуск при загрузке файла и
+       повторный вызов из search/index.html), и адрес — то единственное, что в обоих случаях уже
+       верное. Сюда же приходят бывшие заглушки /mn, /sn25 и т.п. — dg-light.js редиректит их на
+       /toc/<id>. */
+    function targetFromPath() {
+        var m = window.location.pathname.match(/^\/toc\/(.+?)\/?$/);
+        return m ? decodeURIComponent(m[1]).toLowerCase() : null;
+    }
+
+    // Open every collapsed branch on the way down to `node` (including its own children when it is
+    // itself a branch) by clicking the SAME headers a person would — no second copy of the
+    // toggle's open/close state logic (the "+/−" glyph, aria-expanded) living here.
+    function openAncestors(bodyEl, node) {
+        var chain = [];
+        for (var p = node; p && p !== bodyEl; p = p.parentNode) {
+            if (p.classList && p.classList.contains('toc-branch')) chain.push(p);
+        }
+        chain.reverse().forEach(function (li) {
+            var kids = li.querySelector('.toc-children'); // its own child list — first in doc order
+            if (kids && kids.classList.contains('d-none')) li.querySelector('.toc-branch-header').click();
+        });
+    }
+
+    // Book that owns `target`: the LONGEST matching code, so "snp1.1" resolves to snp, not sn, and
+    // "pli-tv-bu-vb-pj1" to pli-tv-bu-vb, not pli-tv-bu-pm. After the code, the rest must start
+    // with a digit or "-" — otherwise "sn" would swallow "snp" all the same.
+    function bookEntryFor(bookEntries, target) {
+        var best = null;
+        bookEntries.forEach(function (b) {
+            var rest = target.indexOf(b.code) === 0 ? target.slice(b.code.length) : null;
+            if (rest === null || (rest !== '' && !/^[\d-]/.test(rest))) return;
+            if (!best || b.code.length > best.code.length) best = b;
+        });
+        return best;
+    }
+
+    // Twice, ~half a second apart: the page is still settling when a target opens (the home hero
+    // collapses into TOC state on its own transition, ~140px above the tree), so a single scroll
+    // lands that much too far down. The repeat is a no-op once nothing moved.
+    function scrollTo(elem) {
+        elem.scrollIntoView({ block: 'start', behavior: 'smooth' });
+        setTimeout(function () { elem.scrollIntoView({ block: 'start', behavior: 'smooth' }); }, 500);
+    }
+
+    function revealTarget(target, bookEntries, groupEntries, langs, filter) {
+        // A whole collection ("kn") — its row holds book headers only, nothing to fetch.
+        var group = groupEntries.filter(function (g) { return g.group.code === target; })[0];
+        if (group) {
+            group.bodyEl.classList.remove('d-none');
+            scrollTo(group.groupEl);
+            return;
+        }
+        var entry = bookEntryFor(bookEntries, target);
+        if (!entry) return;
+        // A book INSIDE a collection ("dhp" under "kn") sits in that collection's collapsed body —
+        // open it first, or the row we are about to scroll to is display:none.
+        groupEntries.forEach(function (g) {
+            if (g.codes.indexOf(entry.code) !== -1) g.bodyEl.classList.remove('d-none');
+        });
+        if (!entry.bodyEl) { scrollTo(entry.bookEl); return; } // single-page book — the row IS the link
+        if (entry.singlePage) { entry.headerEl.click(); scrollTo(entry.bookEl); return; } // patimokkha
+        entry.bodyEl.classList.remove('d-none');
+        var loaded = entry.bodyEl.dataset.loaded
+            ? Promise.resolve()
+            : renderBookTree(entry.bodyEl, entry.code, langs, filter);
+        entry.bodyEl.dataset.loaded = 'tree';
+        // Scrolling waits for the tree: the fetched subtree is taller than the whole viewport, so
+        // scrolling to the header first and inserting the tree after it leaves the header far above.
+        loaded.then(function () {
+            var node = target === entry.code
+                ? null
+                : entry.bodyEl.querySelector('[data-toc-node="' + target.replace(/"/g, '\\"') + '"]');
+            if (node) openAncestors(entry.bodyEl, node);
+            // Всё, что НИЖЕ цели, раскрываем целиком (owner: "MN — значит развернуть всю никаю,
+            // sn56 — значит все вагги"): пришли по прямому адресу раздела, а не листаем дерево
+            // руками, так что промежуточные "+" здесь только мешают. Дерево книги уже отрисовано
+            // целиком (buildTreeChildren), expandAll лишь снимает d-none — лишних запросов нет.
+            expandAll(node || entry.bodyEl);
+            scrollTo(node || entry.bookEl);
+        });
+    }
+
     function renderTopLevel() {
         container.innerHTML = '';
         container.appendChild(el('div', 'toc-loading', uiIsRu() ? 'Загрузка…' : 'Loading…'));
 
         var langs = readReadingLangs();
         var filter = readTranslatorFilter();
+        var target = targetFromPath();
         ensureTranslatorPriority(); // warm the cache — leaf badges (sortRest) need it too, not just the filter panel
 
         fetchTopLevel().then(function (data) {
@@ -768,7 +859,7 @@
                 groupEl.appendChild(groupHeader);
                 groupEl.appendChild(bodyEl);
                 parentEl.appendChild(groupEl);
-                groupEntries.push({ headerEl: groupHeader, countEl: countEl, group: group, codes: visibleSubBooks.map(function (b) { return b.code; }) });
+                groupEntries.push({ groupEl: groupEl, bodyEl: bodyEl, headerEl: groupHeader, countEl: countEl, group: group, codes: visibleSubBooks.map(function (b) { return b.code; }) });
                 return visibleSubBooks;
             }
 
@@ -827,6 +918,7 @@
             });
 
             if (filter) refreshFilterEffects();
+            if (target) revealTarget(target, bookEntries, groupEntries, langs, filter);
         }).catch(function (e) {
             container.innerHTML = '';
             container.appendChild(el('div', 'toc-error', (uiIsRu() ? 'Не удалось загрузить оглавление: ' : 'Failed to load TOC: ') + e.message));

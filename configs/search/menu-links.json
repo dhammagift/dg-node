@@ -347,10 +347,10 @@
         {
           "name": "Типитака", "column": 1,
           "items": [
-            { "label": "S.4nt.org", "desc": "BJT, VRI и Thai издания в одном месте", "tpl": "/4nt/?q={{q}}", "blank": true, "star": true },
+            { "label": "S.4nt.org", "desc": "BJT, CST и Thai издания в одном месте", "tpl": "/4nt/?q={{q}}", "blank": true, "star": true },
             { "label": "BJT", "title": "Редакция Шри Ланки Buddha Jhayanti", "desc": "Шри-ланкийское издание канона, Buddha Jayanti", "href": "https://open.tipitaka.lk/", "blank": true },
             { "label": "Thai", "title": "Тайская Типитака на 84000.org", "desc": "Тайское издание, на 84000.org", "href": "https://84000.org/", "blank": true },
-            { "label": "VRI", "title": "Типитака VRI на Tipitaka.org", "desc": "Издание VRI, на Tipitaka.org", "href": "https://tipitaka.org/romn", "blank": true },
+            { "label": "CST", "title": "CST Типитака от VRI на Tipitaka.org", "desc": "Издание CST, на Tipitaka.org", "href": "https://tipitaka.org/romn", "blank": true },
             { "label": "PTS", "title": "Типитака PTS на GRETIL", "desc": "Издание PTS, на GRETIL", "href": "https://gretil.sub.uni-goettingen.de/gretil.html#Suttapit", "blank": true },
             { "label": "MS", "title": "Типитака Mahāsaṅgīti на SuttaCentral.net", "desc": "Издание Mahāsaṅgīti, на SuttaCentral.net", "href": "https://suttacentral.net/pitaka/sutta?lang=en", "blank": true }
           ]
@@ -358,7 +358,7 @@
         {
           "name": "Типитака CST", "column": 2,
           "items": [
-            { "label": "Paauksociety.orgA", "title": "Paauksociety.org", "desc": "Ai translaitons all Pali", "href": "https://apply.paauksociety.org/tipitaka/index.php", "blank": true },
+            { "label": "Paauksociety.org", "title": "Paauksociety.org", "desc": "ИИ-перевод всех текстов", "href": "https://apply.paauksociety.org/tipitaka/index.php", "blank": true },
             { "label": "Tipitaka.app", "title": "Tipitaka.app", "desc": "Multi-platform", "href": "https://tipitaka.app", "blank": true },
             { "label": "Tipitaka Pali Online", "title": "Tipitaka Pali Online", "desc": "Multi-platform", "href": "https://tipitakapali.org/", "blank": true },
             { "label": "Tipitaka Pali Reader", "title": "Tipitaka Pali Reader App", "desc": "Приложение — сайт на AmericanMonk.org", "href": "https://americanmonk.org/tipitaka-pali-reader/", "blank": true }
@@ -388,7 +388,7 @@
           "name": "Собрания", "column": 5,
           "blocks": [
             { "rows": [
-              { "label": "Digital Pali Reader", "desc": "Пали-ридер в браузере с пословным словарём; включает издания VRI и Thai", "href": "https://d.dhamma.gift/_dprhtml/index.html", "blank": true },
+              { "label": "Digital Pali Reader", "desc": "Пали-ридер в браузере с пословным словарём; включает издания CSCST и Thai", "href": "https://d.dhamma.gift/_dprhtml/index.html", "blank": true },
               { "label": "Simsapa Pali Reader (PC · Mac · Linux)", "desc": "Оффлайн-приложение для чтения и изучения канона", "href": "https://simsapa.github.io/", "blank": true }
             ] },
             { "divider": true, "inline": [

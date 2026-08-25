@@ -436,6 +436,7 @@
         sheet.classList.remove('show');
         if (backdrop && !isQuickOpen()) backdrop.classList.remove('show');
         currentSheetKey = null;
+        document.body.classList.remove('dg-mega-compact');
         // hidden ставим после анимации ухода, иначе шторка пропадёт рывком
         setTimeout(function () { if (!currentSheetKey) sheet.hidden = true; }, 320);
     }
@@ -705,7 +706,13 @@
             g.items.forEach(function (item) { body.appendChild(renderItem(item)); });
         });
 
+        // Owner: "на мобильной так же, как на десктопе — при открытии тайла инпут наверх, плитки
+        // прижимаются". Тот же приём, что openMega() уже делает (dg-mega-compact сжимает зазоры
+        // над рядом плиток, scrollForMega() подкручивает страницу до поля ввода) — CSS не завязан
+        // на ширину экрана, только JS-вызов раньше был только в openMega().
+        document.body.classList.add('dg-mega-compact');
         showLater(sheet, backdrop);
+        scrollForMega();
     }
 
     // ======================================================================
@@ -1862,7 +1869,15 @@
         host.addEventListener('pointermove', function (e) {
             if (!drag || e.pointerId !== drag.pointerId) return;
             if (!drag.active) {
-                var far = Math.abs(e.clientX - drag.startX) > 5 || Math.abs(e.clientY - drag.startY) > 5;
+                // Owner: "тайлы всё время срываются" при перетаскивании пальцем — 5px было впору
+                // мыши (точный курсор), но палец во время 250ms удержания (setTimeout выше)
+                // естественно дрожит на 5-10px и больше, отменяя ещё не начавшееся перетаскивание
+                // почти каждый раз. Мышь стартует сразу по движению (5px там и остаётся —
+                // курсор точный, дрожать нечему), у пальца порог для «это скролл, а не тряска
+                // руки» — заметно шире, типичный touch-slop (~24px и меньше уже даёт ложные
+                // отмены на реальном устройстве, судя по жалобе).
+                var slop = e.pointerType === 'mouse' ? 5 : 24;
+                var far = Math.abs(e.clientX - drag.startX) > slop || Math.abs(e.clientY - drag.startY) > slop;
                 if (!far) return;
                 if (e.pointerType === 'mouse') { drag.startX = e.clientX; drag.startY = e.clientY; start(e); }
                 // Палец сдвинулся до срабатывания удержания — это прокрутка, а не перетаскивание.
@@ -1872,6 +1887,20 @@
             e.preventDefault();
             move(e);
         });
+
+        /* Owner: "тайлы не драгабл в моб версии, только мышкой, пальцем не работает". Причина:
+           браузер решает "этот жест — прокрутка" по СВОИМ touch-событиям, и preventDefault на
+           pointermove выше на это не влияет — как только нативная прокрутка началась, указатель
+           отбирается (pointercancel) и перетаскивание умирает, ещё не начавшись. Гасить нужно
+           именно нативный touchmove, и слушатель обязан быть passive:false (по умолчанию для
+           touchmove он passive, preventDefault там молча игнорируется).
+           Гасим ТОЛЬКО когда перетаскивание уже началось (после 250 мс удержания) — до этого
+           палец должен листать страницу как обычно. По той же причине у .dg-tile НЕ стоит
+           touch-action:none (тоже чинит перетаскивание, но ценой прокрутки: с плитки, а они
+           занимают почти весь первый экран, страница вообще перестала бы листаться). */
+        host.addEventListener('touchmove', function (e) {
+            if (drag && drag.active) e.preventDefault();
+        }, { passive: false });
 
         host.addEventListener('pointerup', finish);
         host.addEventListener('pointercancel', finish);
@@ -1888,6 +1917,115 @@
     var SLIDES_URL = '/nodejs/res/slides.json';
     var slidesData = null;
     var slidesShown = [];
+
+    // ======================================================================
+    // Объявления над полем поиска
+    // ======================================================================
+    /* Короткая плашка с анонсом (новая версия, работы на сервере и т.п.). Всё, что определяет
+       поведение, лежит в configs/search/announcements.json — здесь только показ:
+         flag    — своя метка объявления, ИМЕННО ПО НЕЙ ведётся учёт «закрыто» в localStorage
+                   (если не задана — берётся id). Сменил метку — объявление снова увидят ВСЕ,
+                   даже те, кто закрыл прошлое; оставил ту же и поправил текст — увидят только
+                   те, кто ещё не закрывал.
+         delayMs — своя задержка показа у объявления (по умолчанию — общий delayMs из файла).
+       Показывается первое незакрытое из списка, так что новый анонс достаточно дописать в файл,
+       код трогать не нужно. Разметки в потоке страницы плашка не занимает (position:absolute,
+       см. #dg-announce в home.css). */
+    var ANNOUNCE_URL = '/nodejs/res/announcements.json';
+    var ANNOUNCE_KEY = 'dgAnnounceDismissed';
+    var ANNOUNCE_DEFAULT_DELAY_MS = 2000;
+    var announceData = null;   // { items: [...], delayMs }
+
+    function dismissedAnnounces() {
+        try {
+            var raw = JSON.parse(localStorage.getItem(ANNOUNCE_KEY) || '[]');
+            return Array.isArray(raw) ? raw : [];
+        } catch (e) {
+            return [];
+        }
+    }
+
+    // Метка, под которой объявление помнится закрытым. Отдельно от id, чтобы можно было
+    // «переоткрыть» объявление всем сразу, не выдумывая новый id.
+    function announceFlag(item) {
+        return item.flag || item.id;
+    }
+
+    // Первое незакрытое объявление — общая точка и для показа, и для расчёта задержки.
+    function pendingAnnounce() {
+        if (!announceData || !announceData.items) return null;
+        var done = dismissedAnnounces();
+        for (var i = 0; i < announceData.items.length; i++) {
+            var flag = announceFlag(announceData.items[i]);
+            if (flag && done.indexOf(flag) === -1) return announceData.items[i];
+        }
+        return null;
+    }
+
+    /* Плашка лежит в уже существующем пустом отступе над полем и НИЧЕГО не двигает — пока в этот
+       отступ помещается. На узком экране текст переносится в 2-3 строки и начинает наезжать на
+       шапку; только в этом случае (owner: "только на супер узких экранах воды не нарезать на
+       инпут, если будет хватать места никак не двигать") опускаем поле ровно на нехватку.
+       Считаем ПОСЛЕ сброса своей прошлой добавки — иначе при каждом пересчёте она копилась бы. */
+    function fitAnnounce(host) {
+        var hero = document.querySelector('.hero-row');
+        if (!hero) return;
+        hero.style.marginTop = '';
+        var bar = document.getElementById('dg-topbar');
+        if (!bar || host.hidden || !bar.offsetParent) return;
+        var GAP = 10; // воздух между шапкой и плашкой
+        var shortBy = (bar.getBoundingClientRect().bottom + GAP) - host.getBoundingClientRect().top;
+        if (shortBy > 0) hero.style.marginTop = (parseFloat(getComputedStyle(hero).marginTop) + shortBy) + 'px';
+    }
+
+    function renderAnnounce() {
+        var host = document.getElementById('dg-announce');
+        if (!host || !announceData) return;
+        var item = pendingAnnounce();
+        if (!item) { host.hidden = true; host.innerHTML = ''; fitAnnounce(host); return; }
+
+        var text = item[menuLang()] || item.en || item.ru || '';
+        host.innerHTML = '<div class="dg-announce-box" role="status">' +
+            '<span>' + text + '</span>' +
+            '<button type="button" class="dg-announce-close" aria-label="' +
+            (menuLang() === 'ru' ? 'Закрыть' : 'Dismiss') + '">' +
+            '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>' +
+            '</button></div>';
+        host.hidden = false;
+        fitAnnounce(host);
+        // Появление плавное — класс вешаем следующим кадром, чтобы переход отработал (в кадре
+        // вставки элемент только что получил начальное состояние, transition с него не стартует).
+        requestAnimationFrame(function () { host.classList.add('dg-announce-in'); });
+        host.querySelector('.dg-announce-close').addEventListener('click', function () {
+            var list = dismissedAnnounces();
+            var flag = announceFlag(item);
+            if (list.indexOf(flag) === -1) list.push(flag);
+            try { localStorage.setItem(ANNOUNCE_KEY, JSON.stringify(list)); } catch (e) { /* приватный режим */ }
+            host.classList.remove('dg-announce-in');
+            renderAnnounce(); // следующее незакрытое, если оно есть
+        });
+    }
+
+    /* Показ — не сразу, а через пару секунд после ПОЛНОЙ загрузки (owner): на первом экране
+       человек сначала видит страницу, а объявление приходит потом, само собой обратив на себя
+       внимание, и не участвует в гонке за первую отрисовку. Сколько ждать — из файла (общий
+       delayMs или свой у объявления). Пересчёт места — на resize/поворот экрана: ширина меняется,
+       число строк в плашке вместе с ней. */
+    function announceDelay() {
+        var item = pendingAnnounce();
+        var ms = (item && item.delayMs) || (announceData && announceData.delayMs);
+        return typeof ms === 'number' ? ms : ANNOUNCE_DEFAULT_DELAY_MS;
+    }
+
+    function scheduleAnnounce() {
+        var start = function () { setTimeout(renderAnnounce, announceDelay()); };
+        if (document.readyState === 'complete') start();
+        else window.addEventListener('load', start, { once: true });
+        window.addEventListener('resize', function () {
+            var host = document.getElementById('dg-announce');
+            if (host && !host.hidden) fitAnnounce(host);
+        });
+    }
 
     function slidesLang() {
         var lang = (window.DHAMMA_I18N && window.DHAMMA_I18N.language) ||
@@ -2742,6 +2880,11 @@
             .then(function (data) { slidesData = data; renderSlides(); })
             .catch(function (e) { console.warn('slides.json не загрузился:', e); });
 
+        fetch(ANNOUNCE_URL)
+            .then(function (r) { return r.json(); })
+            .then(function (data) { announceData = data; scheduleAnnounce(); })
+            .catch(function (e) { console.warn('announcements.json не загрузился:', e); });
+
         fetch(DICT_MODES_URL)
             .then(function (r) { return r.json(); })
             .then(function (data) { dictModeGroups = data.groups || []; })
@@ -2760,6 +2903,7 @@
         document.addEventListener('dhamma:languagechange', function () {
             if (menuData) applyMenuLangStrings();
             applyRandomPlaceholder();
+            renderAnnounce(); // у объявления свой текст на каждый язык
         });
         if (window.DHAMMA_I18N && window.DHAMMA_I18N.ready) {
             window.DHAMMA_I18N.ready.then(function () {
