@@ -146,17 +146,17 @@
     "matchesCol": "Совпадения"
   },
   "buttons": {
-    "main": "Main",
-    "history": "History",
-    "export": "Export",
+    "main": "Главная",
+    "history": "История",
+    "export": "Экспорт",
     "exportTxt": "TXT",
     "exportPdf": "PDF",
     "loading": "Загрузка...",
-    "read": "Read",
+    "read": "Читать",
     "makeList": "Make List",
     "listDiff": "List Diff",
     "suttaDiff": "Sutta Diff",
-    "visibility": "Visibility"
+    "visibility": "Видимость"
   },
   "datatables": {
     "search": "Фильтр:",
