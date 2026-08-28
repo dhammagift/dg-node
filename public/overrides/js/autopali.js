@@ -25,6 +25,33 @@ function uniCoder(textInput) {
         .replace(/\.h/g, "ḥ");
 }
 
+// Same digraph replacements as uniCoder, but anchored to the END of the string — used while
+// typing so only the pair the user just finished gets converted, not every "aa"/"ii"/"uu" that
+// already exists earlier in the field (uniCoder's global regex re-scans and re-converts the
+// WHOLE value on every keystroke, which clobbers genuine double-vowel Pali words like
+// "akaṇhaasukkaṁ" the instant you type one more character anywhere).
+function uniCoderTail(textTail) {
+    return textTail
+        .replace(/aa$/, "ā")
+        .replace(/ii$/, "ī")
+        .replace(/uu$/, "ū")
+        .replace(/\"n$/, "ṅ")
+        .replace(/\~n$/, "ñ")
+        .replace(/\.t$/, "ṭ")
+        .replace(/\.d$/, "ḍ")
+        .replace(/\.n$/, "ṇ")
+        .replace(/\.m$/, "ṃ")
+        .replace(/\.l$/, "ḷ")
+        .replace(/\.h$/, "ḥ");
+}
+
+// a/i/u doubled a 2nd time auto-convert to ā/ī/ū (uniCoderTail above). Real Pali words can have
+// a genuine double vowel right after one that just became a macron (e.g. "kaṇha" + "asukkaṁ" ->
+// "kaṇhaasukkaṁ") — with no way to type that, since every "aa" pair converts on sight. Fix:
+// typing the SAME vowel a 3rd time in a row undoes the macron back into two literal letters
+// (mobile-keyboard-style multi-tap), so "a","a","a" yields "aa", not "ā" or "āa".
+var VOWEL_UNDO_TARGET = { a: "ā", i: "ī", u: "ū" };
+
 let suttaWordsCache = null;
 
 const ruToEn = {
@@ -76,13 +103,35 @@ window.initPaliAutocomplete = function(selector) {
     if (inputEl.dataset.autopaliBound === "true") return;
     inputEl.dataset.autopaliBound = "true";
 
-    // 1. Мгновенно вешаем конвертер Юникода. Он легкий и должен работать сразу, 
+    // 1. Мгновенно вешаем конвертер Юникода. Он легкий и должен работать сразу,
     // даже пока грузятся тяжелые скрипты
-    inputEl.addEventListener("input", function () {
-        let textInput = inputEl.value;
-        let convertedText = uniCoder(textInput);
-        if (inputEl.value !== convertedText) {
-            inputEl.value = convertedText;
+    inputEl.addEventListener("input", function (e) {
+        // Deletion/paste/autofill: no per-keystroke cursor to anchor a tail-only convert against,
+        // fall back to the original whole-value pass (paste is the one place a global convert is
+        // still correct — the whole pasted chunk needs converting, not just its last two chars).
+        if (e.inputType && e.inputType.indexOf("delete") === 0) return;
+        if (!e.inputType || e.inputType === "insertFromPaste") {
+            let convertedText = uniCoder(inputEl.value);
+            if (inputEl.value !== convertedText) inputEl.value = convertedText;
+            return;
+        }
+
+        let pos = inputEl.selectionStart;
+        if (pos == null) return;
+        let before = inputEl.value.slice(0, pos);
+        let after = inputEl.value.slice(pos);
+
+        let lastChar = before.slice(-1);
+        let undoTarget = VOWEL_UNDO_TARGET[lastChar];
+        if (undoTarget && before.slice(-2, -1) === undoTarget) {
+            before = before.slice(0, -2) + lastChar + lastChar;
+        } else {
+            before = uniCoderTail(before);
+        }
+
+        if (before + after !== inputEl.value) {
+            inputEl.value = before + after;
+            inputEl.selectionStart = inputEl.selectionEnd = before.length;
         }
     });
 

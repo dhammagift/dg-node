@@ -14,6 +14,7 @@
     "noItems": "Nothing here yet"
   },
   "menu": {
+    "about": "About the project",
     "readingModes": "Reading modes",
     "navigation": "Navigation",
     "settings": "Settings",

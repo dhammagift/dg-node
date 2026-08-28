@@ -264,9 +264,9 @@
           "name": "On site", "column": 1,
           "items": [
             { "label": "DG (th)", "desc": "Dhamma.gift in Thai script", "href": "/th/?q=", "setsLang": "th" },
-            { "label": "old", "desc": "The previous version of the site", "href": "old.dhamma.gift/" },
-            { "label": "TTS", "title": "TTS Text-to-speech", "desc": "Text-to-speech playback of Pali/translation text", "tpl": "/tts.php?q={{q}}" },
-            { "label": "Read+", "title": "Read by Books or Chapters", "action": "readPlus", "base": "/r.php" }
+            { "label": "old", "desc": "The previous version of the site", "href": "https://old.dhamma.gift", "blank": true },
+            { "label": "TTS", "title": "TTS Text-to-speech", "desc": "Text-to-speech playback of Pali/translation text", "tpl": "https://old.dhamma.gift/tts.php?q={{q}}", "blank": true },
+            { "label": "Read+", "title": "Read by Books or Chapters", "action": "readPlus", "base": "https://old.dhamma.gift/r.php", "blank": true }
           ]
         },
         {
@@ -590,9 +590,9 @@
           "name": "На сайте", "column": 1,
           "items": [
             { "label": "DG (th)", "desc": "Dhamma.gift тайским письмом", "href": "/th/?q=", "setsLang": "th" },
-            { "label": "old", "desc": "Предыдущая версия сайта", "href": "/old.php" },
-            { "label": "TTS", "title": "TTS Текст-в-речь", "desc": "Озвучка текста пали/перевода синтезом речи", "tpl": "/ru/tts.php?q={{q}}" },
-            { "label": "Read+", "title": "Читать Книгами или Главами", "action": "readPlus", "base": "/ru/r.php" },
+            { "label": "old", "desc": "Предыдущая версия сайта", "href": "https://old.dhamma.gift", "blank": true },
+            { "label": "TTS", "title": "TTS Текст-в-речь", "desc": "Озвучка текста пали/перевода синтезом речи", "tpl": "https://old.dhamma.gift/ru/tts.php?q={{q}}", "blank": true },
+            { "label": "Read+", "title": "Читать Книгами или Главами", "action": "readPlus", "base": "https://old.dhamma.gift/ru/r.php", "blank": true },
             { "label": "bupm", "href": "/ru/pm.php?expand=true" },
             { "label": "bipm", "href": "/ru/bipm.php?expand=true" }
           ]

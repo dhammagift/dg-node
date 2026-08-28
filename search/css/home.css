@@ -983,6 +983,26 @@ body.dg-state-toc #language-button {
 .toc-patimokkha-body .level3.d-flex { margin-bottom: .5rem; }
 .toc-patimokkha-body .pli-lang { font-size: .92rem; line-height: 1.5; }
 .toc-patimokkha-body a.setReader { font-size: .85rem; font-weight: 600; }
+/* extrastyles.css (legacy) overrides .btn-primary's background-color directly (green, matching
+   this site's palette) but never touches Bootstrap's own :hover/:focus/:active states — those
+   still come from Bootstrap's --bs-btn-hover-bg variable, precomputed from ITS default blue
+   --bs-primary, not from the overridden background-color. Result: the "+"/"−" toggle squares
+   here read green at rest and flash bootstrap-blue on hover (owner: "делай тёмно зелёными как в
+   стилях"). Fixed with an explicit hover/focus/active shade of the same green instead of editing
+   the shared legacy file (see CLAUDE.md symlink policy) — darker in light mode (standard hover
+   treatment), lighter in dark mode (dark surfaces read hover as "lighter", not "darker"). */
+.toc-patimokkha-body .btn-primary:hover,
+.toc-patimokkha-body .btn-primary:focus,
+.toc-patimokkha-body .btn-primary:active {
+    background-color: #128a72 !important;
+    border-color: #159c81 !important;
+}
+[data-theme="dark"] .toc-patimokkha-body .btn-primary:hover,
+[data-theme="dark"] .toc-patimokkha-body .btn-primary:focus,
+[data-theme="dark"] .toc-patimokkha-body .btn-primary:active {
+    background-color: #036b57 !important;
+    border-color: #6b7d79 !important;
+}
 
 /* В ридере выдача остаётся в DOM (возврат по "назад" мгновенный), но не показывается. Раньше
    здесь прятались только ОТДЕЛЬНЫЕ кнопки внутри #results-toolbar (разворачивание строк,

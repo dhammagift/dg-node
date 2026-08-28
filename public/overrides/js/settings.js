@@ -823,14 +823,23 @@ async function saveToHistory(key, url) {
 }
 
 
-//установка фокуса в инпуте по нажатию / 
+// #paliauto sits in the sticky header stack that search/index.html's autoHideHeader() slides
+// off-screen on scroll (body.dg-header-hidden) — focusing it with the stack hidden left the box
+// invisible even though it technically had focus. Un-hide on every "/" press, whether or not the
+// box already had focus (see handleInputKeydown below for the already-focused case).
+function revealStickyHeader() {
+    document.body.classList.remove('dg-header-hidden');
+    if (typeof window.dgApplyHeaderPadding === 'function') window.dgApplyHeaderPadding();
+}
+
+//установка фокуса в инпуте по нажатию /
 document.addEventListener('keydown', function(event) {
     // Проверяем именно символ / (код 191 или Slash)
     if (event.key === '/' || event.code === 'Slash') {
         // Проверяем, активно ли модальное окно через глобальный window (защита от ReferenceError)
         const isModalActive = window.quickModalIsOpen && document.getElementById('quickSearchInput');
 
-        
+
         // Если модальное окно активно, устанавливаем фокус в его поле ввода
         if (isModalActive) {
             const modalInput = document.getElementById('quickSearchInput');
@@ -839,31 +848,37 @@ document.addEventListener('keydown', function(event) {
             modalInput.setSelectionRange(modalInput.value.length, modalInput.value.length);
             return; // Прерываем выполнение, так как модальное окно активно
         }
-        
+
         // Ищем все возможные инпуты (оригинальная логика)
         const inputs = document.querySelectorAll(
             '#paliauto[type="search"], #paliauto[type="text"], .dtsb-value.dtsb-input'
         );
-        
+
         // Если нет ни одного подходящего инпута - выходим
         if (inputs.length === 0) return;
-        
+
         // Берем первый подходящий инпут
         const input = inputs[0];
-        
+
         // Предотвращаем действие по умолчанию только если нашли инпут
         event.preventDefault();
-        
+
         // Фокусируемся и перемещаем курсор в конец
         input.focus();
         input.setSelectionRange(input.value.length, input.value.length);
+        revealStickyHeader();
     }
-}); 
+});
 
 // Отключаем перехват / когда фокус уже в инпуте
 const handleInputKeydown = (event) => {
     if (event.key === '/' || event.code === 'Slash') {
         event.stopPropagation();
+        // #paliauto has `autofocus`, so it's document.activeElement most of the time even while
+        // scrolled out of view under a hidden sticky header — the branch above never runs for it
+        // (stopPropagation here keeps this keydown from ever reaching that document listener), so
+        // this is the only place left to un-hide the header for the common "already focused" case.
+        if (event.target && event.target.id === 'paliauto') revealStickyHeader();
     }
 };
 

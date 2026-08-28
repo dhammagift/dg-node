@@ -508,9 +508,19 @@
        повторный вызов из search/index.html), и адрес — то единственное, что в обоих случаях уже
        верное. Сюда же приходят бывшие заглушки /mn, /sn25 и т.п. — dg-light.js редиректит их на
        /toc/<id>. */
+    // Short spellings people actually type/link for the two Pātimokkha entries (pli-tv-bu-pm /
+    // pli-tv-bi-pm) — "pm"/"bipm" match the existing /pm.php and /bipm.php legacy routes
+    // (dg-light.js), the rest are the variants owner asked to accept on top of those two.
+    var TOC_ALIASES = {
+        'pm': 'pli-tv-bu-pm', 'bu-pm': 'pli-tv-bu-pm', 'bupm': 'pli-tv-bu-pm',
+        'bi-pm': 'pli-tv-bi-pm', 'bipm': 'pli-tv-bi-pm'
+    };
+
     function targetFromPath() {
         var m = window.location.pathname.match(/^\/toc\/(.+?)\/?$/);
-        return m ? decodeURIComponent(m[1]).toLowerCase() : null;
+        if (!m) return null;
+        var raw = decodeURIComponent(m[1]).toLowerCase();
+        return TOC_ALIASES[raw] || raw;
     }
 
     // Open every collapsed branch on the way down to `node` (including its own children when it is

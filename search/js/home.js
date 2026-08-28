@@ -65,6 +65,7 @@
         language: ['fas', 'language'],
         plus: ['fas', 'plus'],
         compass: ['fas', 'compass'],
+        info: ['fas', 'circle-info'],
         at: ['fas', 'at'],
         sliders: ['fas', 'sliders']
     };
@@ -2232,6 +2233,22 @@
         });
     }
 
+    /* Drawer rows whose TARGET (not just label) depends on UI language — currently only "About
+       the project" (siteroot/assets/common/keyFeatures.html vs keyFeaturesRu.html, same naming
+       convention as o.html/o-en.html etc. in menu-links.json). menuLang() is the same ru/en
+       source of truth menu-links.json's per-language sections already key off of — not a new
+       hardcoded default.
+       Named "dg-about-link", deliberately NOT containing "-lang" — reader/css/uiextra.css has
+       `[class*="-lang"]{display:block}` (see search/css/home.css's .toc-filter-hdr comment for
+       the same landmine already hit once); a class of ours matching that substring silently loses
+       .dg-drawer-row's flex layout (icon and label collapse together, no gap). */
+    function paintDrawerLangHrefs() {
+        var ru = menuLang() === 'ru';
+        Array.prototype.forEach.call(document.querySelectorAll('.dg-about-link'), function (el) {
+            el.href = ru ? el.dataset.hrefRu : el.dataset.hrefEn;
+        });
+    }
+
     /* Список кнопок для правки. Открывается пунктом «Изменить кнопки» в меню: выбирать, что
        менять, надо ДО формы — на самой плитке крестик уже занят удалением, а второй значок
        превратил бы её в панель управления. */
@@ -2788,6 +2805,7 @@
         renderTiles();
         renderSlides();
         paintDrawerIcons();
+        paintDrawerLangHrefs();
         renderFooter();
         renderExtra();
         renderHowTo();
@@ -2862,6 +2880,7 @@
         wireDrawer();
 
         paintDrawerIcons();
+        paintDrawerLangHrefs();
         renderFooter();
         renderExtra();
         renderHowTo();

@@ -1664,13 +1664,55 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
       openAt(e.clientX, e.clientY);
     });
 
+    /* "Copy quote" — раньше просто брал ctxLine.textContent (текст ОДНОЙ строки, той, по которой
+       кликнули) и всё, без индекса сутты и ссылки — отличалось от ридера (copyToClipboard.js:
+       Цитата / (перевод, если клик был на нём) / индекс текста / ссылка). Разметка здесь
+       структурно та же, что в ридере (search-render.js: <span id="sutta:segment"> оборачивает
+       сиблингов .pli-lang[lang=pi]/.xx-lang[lang=xx] — тот же <span[id]>+[lang] паттерн, только
+       root/variant тут отдельные СОСЕДНИЕ строки, а не одна с вложенным .hidden-variant, как в
+       ридере), поэтому портируем тот же алгоритм, просто без reader-специфичного variant-narrowing
+       (variant, если есть, — своя строка, .pli-lang.variant, в цитату не тянем, как и в исходном
+       клике по одной строке). suttaId — не window._currentSlug (тот сутта-независимый — в ридере
+       она одна на страницу; здесь на странице сразу много сутт), а data-slug самой ✦-ссылки
+       ("dn1:1.22.2" → "dn1"), тот же источник, что уже использует пункт "Слушать" ниже. */
+    function buildQuoteCitation(ctxLine, link) {
+      var parentSpan = ctxLine.closest('span[id]');
+      if (!parentSpan) return ctxLine.textContent.replace(/✦/g, '').trim();
+
+      var clickedLang = ctxLine.getAttribute('lang');
+      var textParts = [];
+
+      var paliEl = parentSpan.querySelector('.pli-lang:not(.variant)');
+      if (paliEl) {
+        var paliText = paliEl.textContent.replace(/✦/g, '').trim();
+        if (paliText) textParts.push(paliText);
+      }
+
+      if (clickedLang !== 'pi') {
+        var clickedText = ctxLine.textContent.replace(/✦/g, '').trim();
+        if (clickedText) textParts.push(clickedText);
+
+        Array.from(parentSpan.querySelectorAll('[lang]:not([lang="pi"])'))
+          .filter(function (el) { return el !== ctxLine && el.getAttribute('lang') !== clickedLang; })
+          .map(function (el) { return el.textContent.replace(/✦/g, '').trim(); })
+          .filter(Boolean)
+          .forEach(function (otherText) { textParts.push(otherText); });
+      }
+
+      var suttaId = (link.getAttribute('data-slug') || '').split(':')[0];
+      var citation = textParts.join('\n\n');
+      if (suttaId) citation += '\n\n' + suttaId;
+      return citation;
+    }
+
     menu.addEventListener('click', function (e) {
       var btn = e.target.closest('button');
       if (!btn || !ctx) return;
       var act = btn.dataset.act;
       var link = ctx.link;
       var ctxLine = ctx.line;
-      // Текст строки без служебного ✦ обеих ссылок (они рисуются через ::before).
+      // Текст строки без служебного ✦ обеих ссылок (они рисуются через ::before) — используется
+      // ТОЛЬКО как fallback внутри buildQuoteCitation, когда строка не завёрнута в span[id].
       var text = ctxLine ? ctxLine.textContent.replace(/✦/g, '').trim() : '';
       var url = link.href;
       close(); // ctx обнуляется здесь, поэтому всё нужное снято в локальные переменные выше
@@ -1711,7 +1753,8 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
         if (window.isVoiceScriptLoaded) play();
         else if (typeof window.loadVoiceScripts === 'function') window.loadVoiceScripts(play, true);
       } else if (act === 'quote' || act === 'link') {
-        var payload = act === 'quote' ? text : url;
+        // Link directly under the id, no blank line — same layout as copyToClipboard.js (reader).
+        var payload = act === 'quote' ? (buildQuoteCitation(ctxLine, link) + '\n' + url) : url;
         navigator.clipboard.writeText(payload).then(function () {
           if (typeof window.showBubbleNotification === 'function') {
             window.showBubbleNotification(act === 'quote' ? L.copiedQuote : L.copiedLink);
@@ -3652,7 +3695,11 @@ $(document).ready(function() {
       <!-- Компас — тот же toggleQuickModal(), что у кнопки-компаса в выдаче/ридере (window.toggleQuickModal
            определяет /assets/js/settings.js, override-копия грузится на этой же странице). -->
       <a class="dg-drawer-row" href="javascript:void(0)" data-dg-icon="compass" onclick="if (typeof window.toggleQuickModal === 'function') window.toggleQuickModal();">{{toolbar.compassLabel}}</a>
-      <a class="dg-drawer-row" href="javascript:void(0)" data-dg-icon="help" data-bs-toggle="modal" data-bs-target="#SearchResultHelp">{{global.common.help}}</a>
+      <!-- О проекте — статическая страница (siteroot/assets/common/keyFeatures{Ru}.html),
+           не якорь на блок главной, поэтому обычная ссылка, а не data-dg-anchor. Язык страницы
+           переключает paintDrawerLangHrefs() (home.js) по data-href-ru, тем же принципом, что
+           already-established data-dg-icon (paintDrawerIcons) чуть выше. -->
+      <a class="dg-drawer-row dg-about-link" href="/assets/common/keyFeatures.html" data-href-en="/assets/common/keyFeatures.html" data-href-ru="/assets/common/keyFeaturesRu.html" data-dg-icon="info">{{menu.about}}</a>
       <!-- Якоря на нижние блоки главной (Приложения/Контакты). Сами блоки видны только на широком
            экране (#home-extra, home.css) — на мобильном эти два пункта скрыты тем же порогом
            (см. .dg-drawer-row[data-dg-anchor] в home.css), чтобы не вести в display:none. -->
@@ -3660,7 +3707,9 @@ $(document).ready(function() {
       <a class="dg-drawer-row" href="javascript:void(0)" data-dg-icon="at" data-dg-anchor="contacts">{{footer.contacts}}</a>
       <!-- Owner: "войти не в конце настроек, а после контактов, до настроек в целом" — перенесено
            из хвоста «Настроек» сюда, последним пунктом «Навигации» (это переход, а не настройка). -->
-      <a class="dg-drawer-row" href="/login" data-dg-icon="login">{{global.common.login}}</a>
+
+      <a class="dg-drawer-row" href="javascript:void(0)" data-dg-icon="help" data-bs-toggle="modal" data-bs-target="#SearchResultHelp">{{global.common.help}}</a>
+	   <a class="dg-drawer-row" href="/login" data-dg-icon="login">{{global.common.login}}</a>
     </details>
     <p class="dg-group-title">{{menu.settings}}</p>
     <!-- Язык/тема — переехали сюда, в «Настройки» (просьба владельца: часть настроек была вверху
