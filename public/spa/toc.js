@@ -285,20 +285,23 @@
         return li;
     }
 
-    function buildTreeChildren(nodes, bookData, filter, langs) {
+    // code/depth: which book ("sn","an","mn","dn",...) and how many branch levels below the book
+    // root we are — only used to decide autoExpand in renderBranch below. Both optional/undefined
+    // for callers that don't care (filter re-renders, KN sub-books forced open a different way).
+    function buildTreeChildren(nodes, bookData, filter, langs, code, depth) {
         var ul = el('ul', 'toc-tree');
         var any = false;
         nodes.forEach(function (node) {
             var li = node.type === 'leaf'
                 ? renderLeaf(node, bookData, filter, langs)
-                : renderBranch(node, bookData, filter, langs);
+                : renderBranch(node, bookData, filter, langs, code, depth);
             if (li) { ul.appendChild(li); any = true; }
         });
         return any ? ul : null;
     }
 
-    function renderBranch(node, bookData, filter, langs) {
-        var childList = buildTreeChildren(node.children, bookData, filter, langs);
+    function renderBranch(node, bookData, filter, langs, code, depth) {
+        var childList = buildTreeChildren(node.children, bookData, filter, langs, code, (depth || 0) + 1);
         if (!childList) return null;
         childList.classList.add('toc-children');
         childList.classList.add('d-none');
@@ -314,11 +317,19 @@
         li.appendChild(header);
         li.appendChild(childList);
 
+        // Owner: clicking a saṁyutta's "+" should open every vagga inside it at once, not one
+        // vagga at a time — same for AN's nipātas, and for MN/DN's own first branch level
+        // (paññāsa/vagga). SN's outer vagga-samyutta grouping (depth 0) is just structural, not a
+        // real "chapter" — stays a plain single-level toggle; its samyuttas (depth 1) get the
+        // full expand instead.
+        var autoExpand = (code === 'sn' && depth === 1) || (['an', 'mn', 'dn'].indexOf(code) !== -1 && !depth);
+
         header.addEventListener('click', function () {
             var willShow = childList.classList.contains('d-none');
             childList.classList.toggle('d-none', !willShow);
             toggle.textContent = willShow ? '−' : '+';
             toggle.setAttribute('aria-expanded', String(willShow));
+            if (willShow && autoExpand) expandAll(li);
         });
         return li;
     }
@@ -357,7 +368,7 @@
         bodyEl.appendChild(el('div', 'toc-loading', uiIsRu() ? 'Загрузка…' : 'Loading…'));
         return fetchBook(code, langs).then(function (bookData) {
             bodyEl.innerHTML = '';
-            var ul = buildTreeChildren(bookData.tree, bookData, filter, langs);
+            var ul = buildTreeChildren(bookData.tree, bookData, filter, langs, code, 0);
             if (ul) {
                 bodyEl.appendChild(ul);
             } else {
@@ -559,6 +570,11 @@
     }
 
     function revealTarget(target, bookEntries, groupEntries, langs, filter) {
+        // A whole category ("dhamma", "vinaya", "abhi") — /toc/dhamma, /toc/vinaya replace legacy
+        // read.php#dhamma/#vinaya (menu-links.json, "Dhamma.gift Сутты"/"Патимоккха"): just scroll
+        // to the section header, everything under it is already rendered (categories aren't lazy).
+        var catEl = document.getElementById('toc-category-' + target);
+        if (catEl) { scrollTo(catEl); return; }
         // A whole collection ("kn") — its row holds book headers only, nothing to fetch.
         var group = groupEntries.filter(function (g) { return g.group.code === target; })[0];
         if (group) {
@@ -728,7 +744,11 @@
             // (Khuddaka Nikāya's own books). Pushes into the shared bookEntries so filter/expand-
             // all logic (which queries by [data-toc-book-body] under the whole container) reaches
             // it regardless of nesting depth.
-            function renderBookRow(book, parentEl) {
+            // autoExpandFull: KN's sub-books ("для кн по книгам разворачивать сразу", owner) show
+            // their whole tree open the moment the book itself is opened — no per-vagga clicking.
+            // Only passed true by renderGroupRow below; plain top-level books keep the normal
+            // click-through-each-level behavior.
+            function renderBookRow(book, parentEl, autoExpandFull) {
                 var bookEl = el('div', 'toc-book');
                 // Patimokkha (pli-tv-bu-pm/pli-tv-bi-pm) — no per-rule tree to fetch (it's one
                 // combined recitation document), but unlike a plain singlePage link it expands
@@ -772,7 +792,8 @@
                         });
                     } else {
                         bodyEl.dataset.loaded = 'tree';
-                        renderBookTree(bodyEl, book.code, langs, filter);
+                        var loaded = renderBookTree(bodyEl, book.code, langs, filter);
+                        if (autoExpandFull) loaded.then(function () { expandAll(bodyEl); });
                     }
                 });
                 bookEl.appendChild(bookHeader);
@@ -864,7 +885,7 @@
                     bodyEl.classList.toggle('d-none');
                 });
                 var subBooksEl = el('div', 'toc-books');
-                visibleSubBooks.forEach(function (b) { renderBookRow(b, subBooksEl); });
+                visibleSubBooks.forEach(function (b) { renderBookRow(b, subBooksEl, true); });
                 bodyEl.appendChild(subBooksEl);
                 groupEl.appendChild(groupHeader);
                 groupEl.appendChild(bodyEl);
@@ -881,6 +902,10 @@
                 if (!visibleBooks.length && !groups.length) return;
 
                 var catEl = el('div', 'toc-category');
+                // "toc-category-" prefix, not the bare code — defensive against a future book/
+                // group code ever colliding with "dhamma"/"vinaya"/"abhi" (see revealTarget below,
+                // the /toc/dhamma, /toc/vinaya legacy read.php#dhamma/#vinaya replacement).
+                catEl.id = 'toc-category-' + cat.category;
                 var catHeader = el('div', 'toc-category-header');
                 // Chunky square toggle — same affordance prod uses for its one top-level
                 // "Dhamma"/collapse-all control (id="collapseAll" in read.php); individual

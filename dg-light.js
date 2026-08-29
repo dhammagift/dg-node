@@ -2458,7 +2458,8 @@ function humanizeSlug(slug, bookCode, firstLeafId, isTopLevel) {
         // top-level chapters) — a bare number nested deeper (SN's sn1..sn56 samyuttas, two levels
         // under the book root) is a different kind of unit entirely and must not get an AN-style
         // "Ekaka/Duka/..." label just because it happens to also be a bare digit.
-        if (isTopLevel && NIPATA_ORDINALS[n]) return NIPATA_ORDINALS[n] + 'nipāta';
+        // Owner: number AN's nipātas 1..11 (only AN asked for — Iti/Thag/etc keep the bare name).
+        if (isTopLevel && NIPATA_ORDINALS[n]) return (bookCode === 'an' ? `${n}. ` : '') + NIPATA_ORDINALS[n] + 'nipāta';
         if (firstLeafId) return numberedGroupFallback(firstLeafId, n);
     }
     return rest.charAt(0).toUpperCase() + rest.slice(1);
@@ -2633,6 +2634,12 @@ function annotateTree(node, bookCode, titleIdx, isTopLevel) {
         .filter(Boolean);
     const childIdx = siblingFirstLeaves.length ? pickBranchTitleIndex(siblingFirstLeaves) : 2;
     const children = childArr.map(c => annotateTree(c, bookCode, childIdx, false));
+    // Owner: number SN's samyuttas within each of its 5 outer vagga-groups, restarting at 1 per
+    // group (Sagāthāvagga 1..11, Nidānavagga 1..10, ...) — this node IS one of those groups
+    // whenever isTopLevel is true for SN (its own children are the samyuttas being numbered).
+    if (isTopLevel && bookCode === 'sn') {
+        children.forEach((child, i) => { child.title = `${i + 1}. ${child.title}`; });
+    }
     const firstLeaf = findFirstLeafId(rawChildren);
     const allLeaves = [];
     collectLeafIds(rawChildren, allLeaves);

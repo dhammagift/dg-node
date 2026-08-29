@@ -376,6 +376,18 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
         padding-top: 8px;
         padding-bottom: 8px;
     }
+    /* Bottom prev/next copy (#navigation-bottom, after #sutta) — same base row/gap/width as
+       uiextra.css's #navigation above, just static (no position:fixed/hide-on-scroll — that's
+       only for the top sticky copy, see #navigation rules around this block). */
+    #navigation-bottom {
+        display: flex;
+        flex-direction: row;
+        justify-content: space-between;
+        gap: 8px;
+        overflow: hidden;
+        max-width: 45rem;
+        margin: 0 auto;
+    }
     body.dg-header-hidden.dg-state-results #dg-hero-band,
     body.dg-header-hidden.dg-state-reader #dg-hero-band,
     body.dg-header-hidden.dg-state-results #results-toolbar,
@@ -2443,6 +2455,22 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
             <div id="next"></div>
         </div>
         <div id="sutta" class="sutta"></div>
+        <!-- Bottom prev/next — portированный аналог #navigation выше, тот же паттерн, что и на
+             проде (reader-template.html: #sutta, hr, #navigation#previous2/next2, .links-area).
+             megareader.js (renderNavigation) уже заполняет #previous2/#next2 сам — не хватало
+             только самой разметки здесь. id="navigation" задублирован намеренно, как на проде
+             (reader-template.html делает то же) — единственный код, который ищет ЭТОТ id
+             (getElementById('navigation') в autoHideHeader выше), берёт первый в документе,
+             id="navigation-bottom" — намеренно НЕ "navigation": этот id зарезервирован под
+             верхнюю sticky-копию (body.dg-state-reader #navigation, <style> выше/ниже, position:
+             fixed на скролле) — общий id утащил бы и нижнюю копию в те же fixed/hidden правила
+             (проверено: улетала за пределы экрана, top:2295px). Базовый flex/gap/max-width — своё
+             правило #navigation-bottom рядом с ними же. -->
+        <hr>
+        <div id="navigation-bottom" class="navigation">
+            <div id="previous2"></div>
+            <div id="next2"></div>
+        </div>
         <!-- Нижний ряд (.links-area) — портирован из reader-template.html почти дословно: там
              это по большей части голые внешние <a href>, которым скрипты не нужны вообще.
              #pdf-btn и #shareOnline — единственные два, что зовут JS (settings.js/copyToClipboard.js,

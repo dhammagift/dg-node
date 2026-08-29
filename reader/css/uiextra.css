@@ -232,12 +232,6 @@
   margin: 0 auto;
 }
 
-  #previous2,
-  #next2 {
-      max-width: 49%;
-    word-break: break-word;
-  }
-
   #previous,
   #previous2 {
     margin-right: auto;
@@ -254,9 +248,13 @@
      2-line -webkit-line-clamp on the container/link while .sutta-name (below) separately forced
      single-line nowrap, two conflicting truncation rules fighting each other. One line only,
      split down the middle (max-width:49% each side, unchanged), ellipsis for whatever doesn't
-     fit — matching what was asked ("не было бы переноса на след. строку"). */
+     fit — matching what was asked ("не было бы переноса на след. строку"). #previous2/#next2
+     (bottom copy, after #sutta) get the exact same treatment — same bug, just wasn't visible
+     until that copy actually had markup to render into (see search/index.html). */
   #previous,
-  #next {
+  #next,
+  #previous2,
+  #next2 {
     max-width: 49%;
     overflow: hidden;
     white-space: nowrap;
@@ -264,7 +262,9 @@
   }
 
   #previous a,
-  #next a {
+  #next a,
+  #previous2 a,
+  #next2 a {
     display: inline-block;
     overflow: hidden;
     white-space: nowrap;
@@ -1174,10 +1174,14 @@
 }
 
 /* apple-design audit: on narrow screens, this fixed bottom-right cluster (play/language
-   toggle, 38px, bottom:30px) permanently covered the last lines of the sutta with no way
-   to scroll them clear. Reserve a safe zone so content always clears the buttons. */
+   toggle, 38px, bottom:30px) permanently covered the last lines of the page with no way to
+   scroll them clear. Reserve a safe zone so content always clears the buttons.
+   Was on #sutta — right when #sutta really was the last element. Now hr/#navigation
+   (previous2/next2)/.links-area (footer icons) all follow it (search/index.html), so #sutta's
+   own padding just pushed an oversized gap in front of that hr instead of protecting anything
+   — .links-area is the real last element now, the safe zone belongs there. */
 @media (max-width: 600px) {
-  #sutta {
+  .links-area {
     padding-bottom: 96px;
   }
 }

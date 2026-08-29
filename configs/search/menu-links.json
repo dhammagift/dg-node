@@ -41,7 +41,7 @@
     "history": {
       "label": "History",
       "icon": "clock",
-      "href": "/history.php",
+      "href": "/assets/common/history.html",
       "modal": "quick"
     },
 
@@ -88,12 +88,12 @@
         {
           "name": "Prātimokṣa (Sanskrit)", "column": 4,
           "items": [
-            { "label": "Prātimokṣa", "desc": "Sanskrit", "href": "/san/d/mg.php" },
-            { "label": "Sarvāstivāda", "href": "/san/sarv.php" },
-            { "label": "Mahāsāṃghika", "href": "/san/mg.php" },
-            { "label": "Lokottaravāda", "href": "/san/lo.php" },
-            { "label": "Mūlasarvāstivāda (Gilgit 2)", "href": "/san/mu2.php" },
-            { "label": "Mūlasarvāstivāda (Gilgit 3)", "href": "/san/mu3.php" }
+            { "label": "Prātimokṣa", "desc": "Sanskrit", "href": "https://old.dhamma.gift/san/d/mg.php", "blank": true },
+            { "label": "Sarvāstivāda", "href": "https://old.dhamma.gift/san/sarv.php", "blank": true },
+            { "label": "Mahāsāṃghika", "href": "https://old.dhamma.gift/san/mg.php", "blank": true },
+            { "label": "Lokottaravāda", "href": "https://old.dhamma.gift/san/lo.php", "blank": true },
+            { "label": "Mūlasarvāstivāda (Gilgit 2)", "href": "https://old.dhamma.gift/san/mu2.php", "blank": true },
+            { "label": "Mūlasarvāstivāda (Gilgit 3)", "href": "https://old.dhamma.gift/san/mu3.php", "blank": true }
           ]
         },
         {
@@ -191,7 +191,7 @@
           "name": "Search", "column": 5,
           "items": [
             { "label": "Wisdomlib.org", "desc": "Search across a large Indology text library", "tpl": "https://www.wisdomlib.org/index.php?type=search&division=glossary&item=&mode=text&input={{q}}", "blank": true },
-            { "label": "Google Custom Search", "tpl": "/cse.php?q={{q}}", "blank": true }
+            { "label": "Google Custom Search", "tpl": "https://old.dhamma.gift/cse.php?q={{q}}", "blank": true }
           ]
         }
       ]
@@ -329,7 +329,7 @@
     "history": {
       "label": "История",
       "icon": "clock",
-      "href": "/ru/history.php",
+      "href": "/ru/assets/common/history.html",
       "modal": "quick"
     },
 
@@ -376,12 +376,12 @@
         {
           "name": "Prātimokṣa (санскрит)", "column": 4,
           "items": [
-            { "label": "Prātimokṣa", "desc": "Санскрит", "href": "/san/d/mg.php" },
-            { "label": "Sarvāstivāda", "href": "/san/sarv.php" },
-            { "label": "Mahāsāṃghika", "href": "/san/mg.php" },
-            { "label": "Lokottaravāda", "href": "/san/lo.php" },
-            { "label": "Mūlasarvāstivāda (Гилгит 2)", "href": "/san/mu2.php" },
-            { "label": "Mūlasarvāstivāda (Гилгит 3)", "href": "/san/mu3.php" }
+            { "label": "Prātimokṣa", "desc": "Санскрит", "href": "https://old.dhamma.gift/san/d/mg.php", "blank": true },
+            { "label": "Sarvāstivāda", "href": "https://old.dhamma.gift/san/sarv.php", "blank": true },
+            { "label": "Mahāsāṃghika", "href": "https://old.dhamma.gift/san/mg.php", "blank": true },
+            { "label": "Lokottaravāda", "href": "https://old.dhamma.gift/san/lo.php", "blank": true },
+            { "label": "Mūlasarvāstivāda (Гилгит 2)", "href": "https://old.dhamma.gift/san/mu2.php", "blank": true },
+            { "label": "Mūlasarvāstivāda (Гилгит 3)", "href": "https://old.dhamma.gift/san/mu3.php", "blank": true }
           ]
         },
         {
@@ -418,8 +418,8 @@
         {
           "name": "Dhamma.gift", "column": 1,
           "items": [
-            { "label": "Dhamma.gift Сутты", "desc": "Русские переводы сутт на этом сайте", "href": "/ru/read.php#dhamma" },
-            { "label": "Dhamma.gift Патимоккха", "desc": "Монашеские правила с переводом", "href": "/ru/read.php#vinaya" },
+            { "label": "Dhamma.gift Сутты", "desc": "Русские переводы сутт на этом сайте", "href": "/toc/dhamma" },
+            { "label": "Dhamma.gift Патимоккха", "desc": "Монашеские правила с переводом", "href": "/toc/vinaya" },
             { "label": "Принципы", "href": "/assets/common/o.html", "blank": true },
             { "label": "Проблематика", "href": "/assets/common/rationale.html" }
           ]
@@ -514,7 +514,7 @@
           "name": "Поиск", "column": 5,
           "items": [
             { "label": "Wisdomlib.org", "desc": "Поиск по большой библиотеке индологических текстов", "tpl": "https://www.wisdomlib.org/index.php?type=search&division=glossary&item=&mode=text&input={{q}}", "blank": true },
-            { "label": "Google Custom Search", "tpl": "/cse.php?q={{q}}", "blank": true }
+            { "label": "Google Custom Search", "tpl": "https://old.dhamma.gift/cse.php?q={{q}}", "blank": true }
           ]
         }
       ]
@@ -593,8 +593,8 @@
             { "label": "old", "desc": "Предыдущая версия сайта", "href": "https://old.dhamma.gift", "blank": true },
             { "label": "TTS", "title": "TTS Текст-в-речь", "desc": "Озвучка текста пали/перевода синтезом речи", "tpl": "https://old.dhamma.gift/ru/tts.php?q={{q}}", "blank": true },
             { "label": "Read+", "title": "Читать Книгами или Главами", "action": "readPlus", "base": "https://old.dhamma.gift/ru/r.php", "blank": true },
-            { "label": "bupm", "href": "/ru/pm.php?expand=true" },
-            { "label": "bipm", "href": "/ru/bipm.php?expand=true" }
+            { "label": "bupm", "href": "/toc/pm" },
+            { "label": "bipm", "href": "/toc/bipm" }
           ]
         },
         {

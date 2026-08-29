@@ -133,31 +133,52 @@ if (homeButton) {
 // ГЛОБАЛЬНЫЕ ФУНКЦИИ ЯЗЫКА И ИНТЕРФЕЙСА
 // ==========================================
 
+// #language-button is shared between the reader and the results page (search/index.html), and
+// toggleThePali() below re-clones+rebinds it on every buildSutta() call — so after visiting the
+// reader even once, its click handler is THIS module's, permanently, even once you navigate back
+// to results (SPA, no reload). Hardcoding suttaArea (module-level const, always #sutta) meant
+// that handler kept toggling the reader's own (now display:none) content instead of #search-pane
+// — the button looked identical but silently did nothing on the results page (owner: "если
+// перехожу в поиск из Ридера, переключение языков в результатах больше не работает"). Resolving
+// the target at CLICK time by current page state, instead of trusting which DOM node the button
+// happens to be, fixes it regardless of how many times it's been cloned. langswitch.js's own
+// #search-pane-scoped toggle (bound once, at initial page load, to whatever node was original)
+// still works standalone as long as the reader is never visited in that session; this makes the
+// reader's handler correct too once it inevitably takes over.
+function langToggleTarget() {
+    return document.body.classList.contains('dg-state-results')
+        ? document.getElementById('search-pane')
+        : suttaArea;
+}
+
 // НЕ window.showPaliEnglish — то же имя определяет и legacy switchView.js (без учёта
 // column-view), а он подключён с defer и выполняется ПОСЛЕ этого файла (megareader.js без
 // defer, выполняется синхронно раньше) — переопределил бы это присваивание и терялось бы
 // восстановление column-view при возврате в общий режим (Alt+Z/Space), настройка 1/2 колонки
 // "забывалась". switchView.js трогать нельзя — легаси, поэтому просто другое имя.
 window.showPaliAndTranslation = function() {
-    if (suttaArea) {
-        suttaArea.classList.remove("hide-pali", "hide-english", "hide-russian");
+    const target = langToggleTarget();
+    if (target) {
+        target.classList.remove("hide-pali", "hide-english", "hide-russian");
         const savedMode = localStorage.getItem('viewMode') || 'alternate';
-        if (savedMode === 'columns') suttaArea.classList.add('column-view');
+        if (savedMode === 'columns') target.classList.add('column-view');
     }
 };
 
 window.showEnglish = function() {
-    if (suttaArea) {
-        suttaArea.classList.add("hide-pali");
-        suttaArea.classList.remove("hide-english", "hide-russian", "column-view");
+    const target = langToggleTarget();
+    if (target) {
+        target.classList.add("hide-pali");
+        target.classList.remove("hide-english", "hide-russian", "column-view");
     }
 };
 
 window.showPali = function() {
-    if (suttaArea) {
-        suttaArea.classList.remove("hide-pali");
-        suttaArea.classList.add("hide-english", "hide-russian");
-        suttaArea.classList.remove('column-view');
+    const target = langToggleTarget();
+    if (target) {
+        target.classList.remove("hide-pali");
+        target.classList.add("hide-english", "hide-russian");
+        target.classList.remove('column-view');
     }
 };
 
