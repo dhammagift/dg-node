@@ -771,7 +771,9 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     }
     #dg-quote-menu[hidden] { display: none; }
     #dg-quote-menu button {
-        display: block;
+        display: flex;
+        align-items: center;
+        gap: 10px;
         width: 100%;
         padding: 9px 12px;
         border: 0;
@@ -786,6 +788,22 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     #dg-quote-menu button:hover,
     #dg-quote-menu button:focus {
         background: var(--bs-secondary-bg, #e9ecef);
+    }
+    /* Тот же .menu-icon (16px, серый на светлой/инверт на тёмной), что и в контекстном меню
+       ридера (reader/css/uiextra.css) — та таблица стилей сюда не подключена (см. комментарий
+       выше), поэтому дублируем только сам класс, не весь файл. Тема здесь определяется через
+       [data-bs-theme] на <html> (см. apply() выше) — тот же сигнал, на котором уже держатся
+       переменные --bs-* этого меню чуть выше, а не body.dark (легаси-класс ридера, на этой
+       странице никогда не выставляется). */
+    #dg-quote-menu .menu-icon {
+        width: 16px;
+        height: 16px;
+        flex: 0 0 auto;
+        opacity: .5;
+    }
+    [data-bs-theme="dark"] #dg-quote-menu .menu-icon {
+        filter: invert(1);
+        opacity: .7;
     }
     /* Поле-оболочка (.dg-input-shell: лупа + инпут + быстрые настройки в одной рамке) живёт в
        search/css/home.css — там же, где остальной минималистичный скин, и там же его тёмная
@@ -1275,7 +1293,11 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
 <script>
   // Нативный autofocus не срабатывает здесь (замерено раньше — element ещё не в DOM/не виден
   // в момент, когда браузер его обычно фокусирует). Фокусируем явно на window load.
+  // Пропускаем, если это прямой заход на URL ридера (routeFromUrl() уже отработал синхронно
+  // и выставил dg-state-reader ДО этого load-хендлера) — иначе фокус в поле съедал хоткеи
+  // ридера сразу после открытия (owner: "горячие клавиши не работают").
   window.addEventListener('load', function () {
+    if (document.body.classList.contains('dg-state-reader')) return;
     var el = document.getElementById('paliauto');
     if (el) el.focus();
   });
@@ -1415,14 +1437,12 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
   // #SearchResultHelp modal (kept in the DOM — see comments at its other call sites — until the
   // docs are confirmed to fully cover its content, then removed).
   function dgDrawerHelpHref() {
-    // RU docs were renamed to clean slugs (dhamma/, user/ folders); EN is frozen and still
-    // uses the old ones (about/, guide/) — see TODO.md — so the two need separate maps, not
-    // just a shared path with a different prefix. RU also lives at a REAL /ru/docs/ build
-    // (own baseUrl), not a /docs/ru/ redirect — see dg-docs/docusaurus.config.js.
+    // EN docs now share the same clean slugs as RU (dhamma/, user/ folders) — RU lives at a
+    // REAL /ru/docs/ build (own baseUrl), not a /docs/ru/ redirect — see dg-docs/docusaurus.config.js.
     const ru = (localStorage.getItem('dhammaLanguage') || 'en') === 'ru';
     const b = document.body.classList;
-    const path = b.contains('dg-state-reader') ? (ru ? 'read' : 'reader')
-      : b.contains('dg-state-toc') ? (ru ? 'toc' : 'toc-navigator')
+    const path = b.contains('dg-state-reader') ? 'read'
+      : b.contains('dg-state-toc') ? 'toc'
       : b.contains('dg-state-results') ? 'search-guide'
       : 'key-features'; // home fallback: drawer Help always goes to Key Features (owner) — the
       // home-screen multitool TILE's own Help goes to /multitool instead, see home.js tile.modal==='help'
@@ -1661,25 +1681,51 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
      При равных цели и фазе порядок решает регистрация — наш скрипт исполняется раньше, поэтому
      мы успеваем перехватить клик до того, как openFdg сам откроет попап. */
   (function quoteContextMenu() {
-    var isRu = (localStorage.getItem('dhammaLanguage') || localStorage.getItem('siteLanguage') || 'en') === 'ru'
-      || location.pathname.indexOf('/ru') === 0;
-    var L = isRu
-      ? { popup: 'Открыть в попапе', tab: 'Открыть в новой вкладке', quote: 'Копировать цитату',
-          link: 'Копировать ссылку', audio: 'Слушать',
-          copiedQuote: 'Цитата скопирована', copiedLink: 'Ссылка скопирована' }
-      : { popup: 'Open in popup', tab: 'Open in new tab', quote: 'Copy quote',
-          link: 'Copy link', audio: 'Listen',
-          copiedQuote: 'Quote copied', copiedLink: 'Link copied' };
+    var isRu, isLocalHost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    var L;
 
+    // Recomputed on 'dhamma:languagechange' (not just once at IIFE init) so the menu's labels
+    // switch live when the user toggles site language, instead of needing a page reload.
+    function computeLang() {
+      isRu = (localStorage.getItem('dhammaLanguage') || localStorage.getItem('siteLanguage') || 'en') === 'ru'
+        || location.pathname.indexOf('/ru') === 0;
+      L = isRu
+        ? { popup: 'Открыть в попапе', tab: 'Открыть в новой вкладке', quote: 'Копировать цитату',
+            link: 'Копировать ссылку', audio: 'Слушать', bookmark: 'Избранное', memo: 'Запомнить', compare: 'Сравнить',
+            copiedQuote: 'Цитата скопирована', copiedLink: 'Ссылка скопирована' }
+        : { popup: 'Open in popup', tab: 'Open in new tab', quote: 'Copy quote',
+            link: 'Copy link', audio: 'Listen', bookmark: 'Bookmark', memo: 'Memorize', compare: 'Compare',
+            copiedQuote: 'Quote copied', copiedLink: 'Link copied' };
+    }
+    computeLang();
+
+    // Иконки — те же файлы и те же пункты (Копировать цитату/ссылку/Слушать/Избранное/Запомнить/
+    // Сравнить), что и в контекстном меню ридера (reader/common.js #segment-context-menu) —
+    // общий вид между поиском и ридером, не выдуманы заново. "Открыть в попапе"/"в новой вкладке"
+    // специфичны для поиска (в ридере такого выбора нет — там сама страница уже открыта) и своих
+    // аналогов в ридере не имеют, поэтому их иконки подобраны отдельно. "Абзац" из ридера НЕ
+    // перенесён: на странице поиска нет соседних сегментов одного <p> вокруг цитаты (рендерится
+    // только сама совпавшая строка) — там это неизбежно совпадало бы 1-в-1 с "Копировать цитату",
+    // лишний пункт без своего смысла.
     var menu = document.createElement('div');
     menu.id = 'dg-quote-menu';
     menu.hidden = true;
-    menu.innerHTML =
-      '<button type="button" data-act="popup">' + L.popup + '</button>' +
-      '<button type="button" data-act="tab">' + L.tab + '</button>' +
-      '<button type="button" data-act="quote">' + L.quote + '</button>' +
-      '<button type="button" data-act="link">' + L.link + '</button>' +
-      '<button type="button" data-act="audio">' + L.audio + '</button>';
+
+    function renderMenuLabels() {
+      menu.innerHTML =
+        '<button type="button" data-act="popup"><img src="/assets/svg/eye.svg" class="menu-icon" alt="">' + L.popup + '</button>' +
+        '<button type="button" data-act="tab"><img src="/assets/svg/open-link.svg" class="menu-icon" alt="">' + L.tab + '</button>' +
+        '<button type="button" data-act="quote"><img src="/assets/svg/copy.svg" class="menu-icon" alt="">' + L.quote + '</button>' +
+        '<button type="button" data-act="link"><img src="/assets/svg/copy.svg" class="menu-icon" alt="">' + L.link + '</button>' +
+        '<button type="button" data-act="audio"><img src="/assets/svg/play.svg" class="menu-icon" alt="">' + L.audio + '</button>' +
+        '<button type="button" data-act="bookmark"><img src="/assets/svg/star-black.svg" class="menu-icon" alt="">' + L.bookmark + '</button>' +
+        '<button type="button" data-act="memo"><img src="/assets/svg/memo-black.svg" class="menu-icon" alt="">' + L.memo + '</button>' +
+        '<button type="button" data-act="compare"><img src="/assets/svg/code-compare-solid-full.svg" class="menu-icon" alt="">' + L.compare + '</button>';
+    }
+    renderMenuLabels();
+    // menu.addEventListener('click', ...) below is delegated on `menu` itself (e.target.closest
+    // ('button')), so re-rendering innerHTML on language change doesn't lose the handler.
+    document.addEventListener('dhamma:languagechange', function () { computeLang(); renderMenuLabels(); });
     document.addEventListener('DOMContentLoaded', function () { document.body.appendChild(menu); });
 
     var ctx = null;
@@ -1772,9 +1818,12 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
        клике по одной строке). suttaId — не window._currentSlug (тот сутта-независимый — в ридере
        она одна на страницу; здесь на странице сразу много сутт), а data-slug самой ✦-ссылки
        ("dn1:1.22.2" → "dn1"), тот же источник, что уже использует пункт "Слушать" ниже. */
-    function buildQuoteCitation(ctxLine, link) {
+    // Пали + переводы клетки (без suttaId/ссылки) — общий источник для "Копировать цитату"
+    // (buildQuoteCitation ниже добавляет suttaId) и для "Запомнить" (memo хочет просто текст,
+    // без метаданных цитирования, как и в ридере).
+    function getQuoteTextParts(ctxLine) {
       var parentSpan = ctxLine.closest('span[id]');
-      if (!parentSpan) return ctxLine.textContent.replace(/✦/g, '').trim();
+      if (!parentSpan) return [ctxLine.textContent.replace(/✦/g, '').trim()];
 
       var clickedLang = ctxLine.getAttribute('lang');
       var textParts = [];
@@ -1795,9 +1844,12 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
           .filter(Boolean)
           .forEach(function (otherText) { textParts.push(otherText); });
       }
+      return textParts;
+    }
 
+    function buildQuoteCitation(ctxLine, link) {
       var suttaId = (link.getAttribute('data-slug') || '').split(':')[0];
-      var citation = textParts.join('\n\n');
+      var citation = getQuoteTextParts(ctxLine).join('\n\n');
       if (suttaId) citation += '\n\n' + suttaId;
       return citation;
     }
@@ -1857,6 +1909,69 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
             window.showBubbleNotification(act === 'quote' ? L.copiedQuote : L.copiedLink);
           }
         });
+      } else if (act === 'bookmark') {
+        // Портировано из ридера (reader/common.js, sm-bookmark) — toggleFavoriteGlobal живёт в
+        // settings.js, общем для всего сайта. Отличие от ридера: там открытая страница ЕСТЬ
+        // сутта, поэтому bookmark хранит path/hash отдельно от полного адреса; здесь на странице
+        // сразу много сутт — сохраняем ГОТОВЫЙ адрес самой ✦-ссылки (её pathname уже содержит
+        // "sutta:segment", как строит search-render.js) без отдельного id/hash.
+        if (typeof window.toggleFavoriteGlobal !== 'function') return;
+        var suttaId = (link.getAttribute('data-slug') || '').split(':')[0];
+        if (!suttaId) return;
+        var u;
+        try { u = new URL(url, location.origin); } catch (err) { return; }
+        var snippet = text.length > 40 ? text.substring(0, 40) + '...' : text;
+        window.toggleFavoriteGlobal({
+          slug: link.getAttribute('data-slug'),
+          title: suttaId + ' - ' + snippet,
+          path: u.pathname,
+          search: u.search,
+          timestamp: Date.now()
+        });
+      } else if (act === 'memo') {
+        // Портировано из ридера (sm-memo) без "докрутки" от клика до конца текста — там читатель
+        // продолжает от места клика по уже открытой странице; здесь на выдаче ничего вокруг
+        // цитаты не отрендерено (только сама совпавшая строка), поэтому в /memo/ уходит ровно то
+        // же, что и в "Копировать цитату" (Пали + перевод), просто без suttaId в тексте.
+        var memoText = getQuoteTextParts(ctxLine).join('\n\n').trim();
+        var memoBase = isRu ? '/ru/memo/' : '/memo/';
+        if (memoText) {
+          if (memoText.length <= 1500) {
+            localStorage.removeItem('currentMemoText');
+            window.open(memoBase + '?text=' + encodeURIComponent(memoText), '_blank');
+          } else {
+            localStorage.setItem('currentMemoText', memoText);
+            window.open(memoBase, '_blank');
+          }
+        } else {
+          window.open(memoBase, '_blank');
+        }
+      } else if (act === 'compare') {
+        // Портировано из ридера (sm-compare) — get4ntUrl(slug) уже принимает явный slug и не
+        // зависит от того, что сейчас открыто в ридере (settings.js, общий для всего сайта).
+        if (typeof get4ntUrl !== 'function') return;
+        var cmpSlugParts = (link.getAttribute('data-slug') || '').split(':');
+        var cmpSuttaId = cmpSlugParts[0];
+        var cmpSegmentId = cmpSlugParts.slice(1).join(':');
+        if (!cmpSuttaId) return;
+        var url4nt = get4ntUrl(cmpSuttaId);
+        if (!url4nt) return;
+        try {
+          var anchorBase = url4nt.split('#')[1] || cmpSuttaId;
+          var parsedUrl = new URL(url4nt.split('#')[0], location.origin);
+          if (!isLocalHost) {
+            parsedUrl.protocol = 'https:';
+            parsedUrl.hostname = 's.dhamma.gift';
+            parsedUrl.pathname = parsedUrl.pathname.replace(/^\/4nt/, '');
+          }
+          var cmpParams = new URLSearchParams();
+          cmpParams.set('cols', 'pali,pali_royal_iast,pali_myanmar_iast,pali_bjt_iast');
+          parsedUrl.search = cmpParams.toString();
+          parsedUrl.hash = cmpSuttaId.includes('-') ? ('#tr-' + cmpSegmentId) : ('#tr-' + anchorBase + ':' + cmpSegmentId);
+          window.open(parsedUrl.href, '_blank');
+        } catch (err) {
+          console.error('4nt compare URL error', err);
+        }
       }
     });
 
@@ -2524,7 +2639,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
             <a href="javascript:void(0)" title="Compass" onclick="if (typeof window.toggleQuickModal === 'function') window.toggleQuickModal();">
                 <img src="/assets/svg/compass.svg" alt="Compass">
             </a>
-            <a href="/docs/reader" target="_blank" title="Help" data-href-en="/docs/reader" data-href-ru="/ru/docs/read">
+            <a href="/docs/read" target="_blank" title="Help" data-href-en="/docs/read" data-href-ru="/ru/docs/read">
                 <img src="/assets/svg/question.svg" alt="Help">
             </a>
             <!-- TOC (оглавление) — портировано из siteroot/read/js/common.js (легаси, общий с
@@ -2615,7 +2730,13 @@ window.siteLanguage = pathImpliesRu ? 'ru' : (localStorage.getItem('siteLanguage
 // Тот же паттерн чтения i18n-конфига, что и в search-render.js — этот инлайн-скрипт
 // собирает динамическую фразу результата (не токенизируется как {{...}}, т.к. в неё
 // подставляются серверные числа посреди строки).
-function t(path, fallback) {
+// Named dgT, not t: reader/megareader.js declares its own global `function t(path, fallback)`
+// (reads window.READER_LANG_CACHE, a separate config) and gets lazily loadScript()'d onto this
+// same page (see loadReaderScripts() below) — both are plain non-module <script>s sharing
+// `window`, so whichever loads last clobbers window.t. Was silently breaking "N texts and M
+// matches in ..." translations on live language switch (fallback strings kicked in instead),
+// masked because renderCurrentReport()'s own fallback text happened to already be Russian.
+function dgT(path, fallback) {
     var cfg = window.DHAMMA_I18N && window.DHAMMA_I18N.config;
     if (!cfg) return fallback;
     var value = path.split('.').reduce(function (v, k) { return (v == null) ? undefined : v[k]; }, cfg);
@@ -2732,7 +2853,7 @@ $(document).ready(function() {
             table = window.DgSearchRender.buildWordDataTable('#pali-words', lastSearchJson.wordReport, lastHighlightWord, lastSearchJson.metadata.scope);
             $('#pali-words_wrapper').removeClass('d-none');
             window.DgSearchRender.buildVariantsReport('#variants', lastSearchJson.variantSegments, keyword);
-            $('.forshellscript a').text(t('toolbar.wordsToggleHide', 'Тексты'));
+            $('.forshellscript a').text(dgT('toolbar.wordsToggleHide', 'Тексты'));
         } else {
             $('#pali-words, #pali-words_wrapper').addClass('d-none');
             $('#pali, #pali_wrapper').removeClass('d-none');
@@ -2749,7 +2870,7 @@ $(document).ready(function() {
             // обычно совпадает с этой эвристикой). Сам запрос к /search языки поиска использовал
             // и раньше — расходились именно запрос и отрисовка.
             table = window.DgSearchRender.buildDataTable('#pali', rows, lastHighlightWord, langsRequested ? langs : '', langsExplicit);
-            $('.forshellscript a').text(t('toolbar.wordsToggleShow', 'Слова'));
+            $('.forshellscript a').text(dgT('toolbar.wordsToggleShow', 'Слова'));
             // Именованное событие (.enrich) — таблица больше не пересоздаётся, так что "draw"
             // может сработать много раз за сессию; .off+.on тем же неймспейсом не даёт слушателям
             // накапливаться при повторных renderCurrentReport(). До старта обогащения
@@ -2980,12 +3101,12 @@ $(document).ready(function() {
         try { localStorage.setItem('siteLanguage', lang); } catch (_) {}
         updateLanguageButtons(lang);
         // DataTables' own strings (pagination, "Search:", lengthMenu, ...) are baked at table
-        // construction (commonOptions() -> t('datatables.*')) — a plain redraw doesn't re-read
+        // construction (commonOptions() -> dgT('datatables.*')) — a plain redraw doesn't re-read
         // them, so a language switch needs a fresh table instance to pick up the new locale.
         if (window.DgSearchRender && window.DgSearchRender.resetTablesForLanguageChange) {
             window.DgSearchRender.resetTablesForLanguageChange();
         }
-        // Заголовок результатов ("N текстов и M совпадений в ...") строится через t() тоже
+        // Заголовок результатов ("N текстов и M совпадений в ...") строится через dgT() тоже
         // (buildScopeLabel), но, в отличие от таблиц, ничего не подписано на смену языка сам
         // по себе — без этого вызова текст оставался в языке первой отрисовки (см. TODO.md
         // старый баг 2, "заголовок остался по-русски"). lastSearchJson — тот же самый объект,
@@ -3116,7 +3237,7 @@ $(document).ready(function() {
     var SCOPE_INLINE_LIMIT = 3;
 
     function namesOf(prefixes) {
-        return prefixes.map(function (p) { return t('scopeNames.' + p, p); }).join(', ');
+        return prefixes.map(function (p) { return dgT('scopeNames.' + p, p); }).join(', ');
     }
 
     /* Состав области поиска для подсказки — не сплошной строкой, а по разделам, как он и
@@ -3135,9 +3256,9 @@ $(document).ready(function() {
 
     function scopeTooltipHtml(prefixes) {
         var groups = [
-            { title: t('results.scopeGroupNikayas', '4 Nikāyas'), codes: FOUR_NIKAYA_PREFIXES },
-            { title: t('results.scopeGroupKn', 'Khuddaka Nikāya'), codes: KN_PREFIXES },
-            { title: t('results.scopeGroupVinaya', 'Vinaya'), codes: VINAYA_PREFIXES }
+            { title: dgT('results.scopeGroupNikayas', '4 Nikāyas'), codes: FOUR_NIKAYA_PREFIXES },
+            { title: dgT('results.scopeGroupKn', 'Khuddaka Nikāya'), codes: KN_PREFIXES },
+            { title: dgT('results.scopeGroupVinaya', 'Vinaya'), codes: VINAYA_PREFIXES }
         ];
         var used = {};
         var html = '';
@@ -3146,12 +3267,12 @@ $(document).ready(function() {
             if (!mine.length) return;
             mine.forEach(function (p) { used[p] = true; });
             html += '<div class="dg-scope-group"><b>' + escapeHtml(g.title) + ':</b> ' +
-                escapeHtml(mine.map(function (p) { return t('scopeNames.' + p, p); }).join(', ')) + '</div>';
+                escapeHtml(mine.map(function (p) { return dgT('scopeNames.' + p, p); }).join(', ')) + '</div>';
         });
         var rest = prefixes.filter(function (p) { return !used[p]; });
         if (rest.length) {
-            html += '<div class="dg-scope-group"><b>' + escapeHtml(t('results.scopeGroupOther', 'Other')) + ':</b> ' +
-                escapeHtml(rest.map(function (p) { return t('scopeNames.' + p, p); }).join(', ')) + '</div>';
+            html += '<div class="dg-scope-group"><b>' + escapeHtml(dgT('results.scopeGroupOther', 'Other')) + ':</b> ' +
+                escapeHtml(rest.map(function (p) { return dgT('scopeNames.' + p, p); }).join(', ')) + '</div>';
         }
         return html;
     }
@@ -3161,17 +3282,17 @@ $(document).ready(function() {
         // У обобщённых подписей ("4 Никаи + 6 КН") full — это РЕАЛЬНЫЙ список книг, а не та же
         // строка: именно его показывает звёздочка в заголовке, иначе подсказка дословно повторяла
         // бы видимый текст и не отвечала на вопрос "что именно сейчас выбрано".
-        if (sameSet(prefixes, ['all'])) return same(t('results.scopeAll', 'the whole corpus'));
+        if (sameSet(prefixes, ['all'])) return same(dgT('results.scopeAll', 'the whole corpus'));
         if (sameSet(prefixes, DEFAULT_SCOPE_PREFIXES)) {
-            return { short: t('results.scope4Nikaya6Kn', '4 Nikayas + 6 KN books'), full: namesOf(prefixes) };
+            return { short: dgT('results.scope4Nikaya6Kn', '4 Nikayas + 6 KN books'), full: namesOf(prefixes) };
         }
         if (sameSet(prefixes, FOUR_NIKAYA_PREFIXES)) {
-            return { short: t('results.scope4Nikaya', '4 Nikayas'), full: namesOf(prefixes) };
+            return { short: dgT('results.scope4Nikaya', '4 Nikayas'), full: namesOf(prefixes) };
         }
-        var names = prefixes.map(function (p) { return t('scopeNames.' + p, p); });
+        var names = prefixes.map(function (p) { return dgT('scopeNames.' + p, p); });
         var full = names.join(', ');
         if (names.length <= SCOPE_INLINE_LIMIT) return same(full);
-        var short = t('results.scopeSelected', 'selected sections ({n})').replace('{n}', names.length);
+        var short = dgT('results.scopeSelected', 'selected sections ({n})').replace('{n}', names.length);
         return { short: short, full: full };
     }
 
@@ -3180,14 +3301,14 @@ $(document).ready(function() {
     // Заголовок результатов + видимость ссылки на варианты — вызывается один раз из
     // initSearchApp() после fast=1 (числа там уже полные и финальные — см. TODO.md, нюансы по
     // "новому багу 1"), и затем повторно на каждую живую смену языка (syncSiteLanguage) с теми
-    // же данными, чтобы текст перегенерировался в новых строках t().
+    // же данными, чтобы текст перегенерировался в новых строках dgT().
     function renderResultHeader(json) {
         let scope = buildScopeLabel(json.metadata.resolvedPrefixes);
 
         let qStr = json.metadata.query || "";
         let capitalizedQuery = qStr ? qStr.charAt(0).toUpperCase() + qStr.slice(1) : "";
 
-        let head = `${capitalizedQuery} ${json.metadata.totalFiles} ${t('results.textsAndWord', 'texts and')} ${json.metadata.totalMatches} ${t('results.matchesInWord', 'matches in')} `;
+        let head = `${capitalizedQuery} ${json.metadata.totalFiles} ${dgT('results.textsAndWord', 'texts and')} ${json.metadata.totalMatches} ${dgT('results.matchesInWord', 'matches in')} `;
         let newTitle = head + scope.short;
 
         document.title = newTitle + " - Dhamma.gift";
@@ -3278,6 +3399,15 @@ $(document).ready(function() {
         var cls = 'dg-state-' + name;
         if (document.body.classList.contains(cls)) return;
         DG_STATES.forEach(function (s) { document.body.classList.toggle(s, s === cls); });
+        // Native autofocus on #paliauto (see input markup above) fires at HTML-parse time,
+        // well before this runs on a direct reader URL — so by the time we know we're in the
+        // reader, the field may already be focused, eating hotkeys (Ctrl+Arrow next/prev sutta
+        // in megareader.js). Blur it right here, the one place that actually knows the state
+        // changed to reader.
+        if (name === 'reader') {
+            var paliautoEl = document.getElementById('paliauto');
+            if (paliautoEl && document.activeElement === paliautoEl) paliautoEl.blur();
+        }
         if (name !== 'home' && window.DgHome) window.DgHome.closeSheet();
         // Автоскрытие шапки (см. autoHideHeader() выше) — новое состояние всегда стартует с
         // видимой панелью, не с той, что случайно была спрятана в предыдущем состоянии/скролле.

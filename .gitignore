@@ -34,3 +34,15 @@ public/overrides/js/fontawesome-local.js
 # randPlaceholder.js+home.js для меньшего числа HTTP-запросов на главной.
 public/overrides/js/settings-bundle.js
 public/overrides/js/home-bundle.js
+
+# Mobile app (offline Android/iOS) — build-offline-db.js output (core.db/lang_*.db, incl.
+# SQLite WAL/SHM sidecar files) and native platform folders `npx cap add` generates are build
+# artifacts, not source — same "each environment builds its own" logic as dg_db*.json above.
+# mobile/www/ is NOT ignored — that's the app's actual source (index.html/app.js/vendor libs),
+# analogous to search/ or reader/ above, not a build output.
+mobile/dist/
+mobile/android/
+mobile/ios/
+*.db
+*.db-wal
+*.db-shm

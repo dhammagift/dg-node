@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dhamma.gift (offline)</title>
+<link rel="stylesheet" href="vendor/bootstrap.5.3.1.min.css">
+<link rel="stylesheet" href="vendor/datatables.min.css">
+<link rel="stylesheet" href="vendor/table.css">
+<link rel="stylesheet" href="vendor/extrastyles.css">
+<style>
+    body { padding: 16px; background: #fafaf7; }
+    h1 { font-size: 1.4em; }
+    #status { color: #666; font-size: 0.9em; margin-bottom: 12px; }
+    #search-form { display: flex; gap: 8px; margin-bottom: 16px; }
+</style>
+</head>
+<body>
+<h1>Dhamma.gift — offline</h1>
+<div id="status">Starting...</div>
+<form id="search-form" class="mb-3">
+    <input id="search-input" type="text" class="form-control" placeholder="Search Pali, Russian, or English..." autocomplete="off">
+    <button type="submit" class="btn btn-primary">Search</button>
+</form>
+<table id="pali" class="table table-striped" style="width:100%"></table>
+
+<script src="vendor/jquery-3.7.0.min.js"></script>
+<script src="vendor/bootstrap.bundle.5.3.1.min.js"></script>
+<script src="vendor/datatables.min.js"></script>
+<script>
+    // search-render.js reads this global for locale-dependent link rendering (Ru/Pi/En quick
+    // links) — no i18n system bundled yet, hardcoded to ru for this first offline build.
+    window.siteLanguage = 'ru';
+</script>
+<script src="vendor/search-render.js"></script>
+<script src="vendor/sql-wasm.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

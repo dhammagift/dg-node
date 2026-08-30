@@ -1,7 +1,8 @@
-// EN is frozen (owner's call — finish RU first, sync EN in one pass later) so it still
-// reads from docs/about|guide/*; only the RU tree was renamed to docs/dhamma|user/* for
-// clean naming/slugs. Two branches here, not two sidebar files, since docusaurus.config.js
-// already selects the ru build via the same env var.
+// EN now mirrors RU's file set/slugs exactly (docs/dhamma/*, docs/user/*) — same page under
+// both locales, needed so the navbar language switcher (src/clientModules/langSwitch.js)
+// can stay on the same page across languages. Two branches here, not two sidebar files, only
+// because the category/link LABELS differ; docusaurus.config.js selects the ru build via the
+// same env var.
 const RU_BUILD = process.env.DOCS_BUILD_LOCALE === 'ru';
 
 /** @type {import('@docusaurus/plugin-content-docs').SidebarsConfig} */
@@ -53,23 +54,26 @@ const sidebars = {
           type: 'category',
           label: 'Dhamma',
           collapsed: false,
-          items: ['about/dhamma-principles', 'about/translation-principles', 'about/rationale'],
+          items: ['dhamma/sutta', 'dhamma/principles', 'dhamma/rationale'],
         },
         {
           type: 'category',
           label: 'User Help',
           collapsed: false,
           items: [
-            'about/index',
-            'guide/search',
-            'guide/reader',
-            'guide/settings',
-            'guide/toc',
-            'guide/voice-tts',
-            'guide/multitool',
-            'guide/login',
-            'guide/memo',
-            'about/policies',
+            'user/index',
+            'user/multitool',
+            'user/search',
+            'user/read',
+            'user/toc',
+            'user/dictionary',
+            'user/tts',
+            'user/login',
+            'user/memo',
+            'user/settings',
+            'user/quickmodal',
+            'user/translator',
+            'user/policies',
           ],
         },
         {

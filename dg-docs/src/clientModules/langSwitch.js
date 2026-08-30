@@ -5,24 +5,30 @@
 //
 // The language link recomputes its target on every route change (onRouteDidUpdate below) so
 // switching language preserves the current page instead of always landing on that build's
-// home — EN and RU mostly share the same slug, but RU's were cleaned up (see TODO.md), so a
-// few need an explicit pair. Add a page here when it exists in both builds; anything not
-// listed falls back to that build's home page (still correct, just not page-preserving).
+// home. EN now shares identical slugs with RU across the whole site (Dhamma + User Help both
+// ported off the old about/guide layout — see docs-todo.md), so every pair below is the same
+// slug on both sides; kept as pairs (not a flat list) so a future page that genuinely needs a
+// different EN/RU slug doesn't require reshaping this structure. Add a page here when it
+// exists in both builds; anything not listed falls back to that build's home page (still
+// correct, just not page-preserving).
 var PAGE_PAIRS = [
   ['/', '/'],
-  ['/dhamma-principles', '/sutta'],
-  ['/translation-principles', '/principles'],
+  ['/sutta', '/sutta'],
+  ['/principles', '/principles'],
   ['/rationale', '/rationale'],
   ['/key-features', '/key-features'],
   ['/search-guide', '/search-guide'],
-  ['/reader', '/read'],
-  ['/settings-guide', '/settings'],
-  ['/toc-navigator', '/toc'],
-  ['/voice-tts', '/tts'],
+  ['/read', '/read'],
+  ['/settings', '/settings'],
+  ['/toc', '/toc'],
+  ['/dictionary', '/dictionary'],
+  ['/tts', '/tts'],
   ['/multitool', '/multitool'],
   ['/login', '/login'],
   ['/memo', '/memo'],
-  ['/privacy', '/policies'],
+  ['/quickmodal', '/quickmodal'],
+  ['/translator', '/translator'],
+  ['/policies', '/policies'],
 ];
 
 function isRuBuild() {
@@ -114,7 +120,8 @@ function makeLangDropdown() {
   LOCALES.forEach(function (loc) {
     var li = document.createElement('li');
     var a = document.createElement('a');
-    a.className = 'dropdown__link' + (loc.base === currentBase() ? ' dropdown__link--active' : '');
+    a.className = 'dropdown__link dg-lang-link' + (loc.base === currentBase() ? ' dropdown__link--active' : '');
+    a.dataset.base = loc.base;
     a.href = hrefForLocale(loc.base);
     a.textContent = loc.label;
     li.appendChild(a);
@@ -204,8 +211,14 @@ if (typeof document !== 'undefined') {
 export function onRouteDidUpdate() {
   ensureControls();
   if (typeof document === 'undefined') return;
-  var href = otherLangHref();
+  // Per-link, not a single shared href: one of the two links is "this locale" (should point
+  // at the current page, i.e. do nothing) and the other is "the other locale" (should follow
+  // otherLangHref()) — stamping one href onto both broke the currently-active locale's own
+  // link into always pointing at the other locale. `ensureControls()` only creates this menu
+  // ONCE per session (guarded against re-creation), so every SPA-internal navigation after
+  // that first mount depends on this recompute — it's the only thing keeping the links from
+  // going stale on route changes that don't reload the page.
   document.querySelectorAll('.dg-lang-link').forEach(function (el) {
-    el.href = href;
+    el.href = hrefForLocale(el.dataset.base);
   });
 }

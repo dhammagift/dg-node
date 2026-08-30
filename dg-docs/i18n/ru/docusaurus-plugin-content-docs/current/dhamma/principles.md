@@ -6,8 +6,11 @@ sidebar_label: Принципы перевода
 
 import SiteLink from '@site/src/components/SiteLink';
 import PageTools from '@site/src/components/PageTools';
+import MemoBigwheel from '@site/static/img/albumart-memo-bigwheel-nobg.png';
 
 # Принципы перевода
+
+<img src={MemoBigwheel} alt="Принципы перевода" className="dg-hero-image" />
 
 <PageTools />
 

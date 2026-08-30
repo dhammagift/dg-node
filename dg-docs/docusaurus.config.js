@@ -40,6 +40,7 @@ const config = {
 
   clientModules: [
     './src/clientModules/themeFix.js',
+    './src/clientModules/scrollFix.js',
     './src/clientModules/quickModal.js',
     './src/clientModules/langSwitch.js',
   ],
@@ -109,7 +110,18 @@ const config = {
           // own baseUrl, it never sees the main app's /assets/ mount at runtime.
           alt: 'Dhamma.gift',
           src: 'img/dgsankhaonly.png',
-          href: '/', // site root within THIS build — Docusaurus adds baseUrl itself
+          // Owner: clicking the shell had no way back to the live app — only out to the docs
+          // home page. `href: '/'` here resolves to THIS build's baseUrl root (/docs/ or
+          // /ru/docs/), not the real site root — Docusaurus's Logo component always re-adds
+          // baseUrl internally (verified in its source: @docusaurus/theme-classic Logo/index.tsx
+          // calls useBaseUrl on logo.href, and even the `pathname://` escape hatch other links
+          // in this file use gets baseUrl re-applied afterwards for logo specifically, since
+          // Logo doesn't expose the `autoAddBaseUrl: false` prop that makes that escape hatch
+          // work elsewhere). Left as the in-docs home page here; the real fix — pointing at the
+          // live app's actual root — is a client-side href patch in langSwitch.js, the same
+          // "fix Docusaurus's rendered href after the fact" pattern already used there for the
+          // language links.
+          href: '/',
         },
         // No compass/language items here — Docusaurus's mobile sidebar silently drops
         // custom `type: 'html'` navbar.items (verified: desktop-only). Both are instead

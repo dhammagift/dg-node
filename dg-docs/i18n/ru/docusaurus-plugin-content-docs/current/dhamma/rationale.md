@@ -6,8 +6,11 @@ sidebar_label: Обоснование
 
 import SiteLink from '@site/src/components/SiteLink';
 import PageTools from '@site/src/components/PageTools';
+import Samadhi from '@site/static/img/albumart-samadhi-nobg.png';
 
 # Обоснование
+
+<img src={Samadhi} alt="Обоснование" className="dg-hero-image" />
 
 <PageTools />
 

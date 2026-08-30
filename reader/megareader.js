@@ -1054,13 +1054,21 @@ window.buildSutta = async function(rawSlug) {
     }
     let html = '';
 
+    // Finds the last "class='rule'" segment BEFORE the "Vinītavatthu" appendix (SC marks it
+    // with class='vinaya-vinita') — a rule's wording gets amended several times through its
+    // origin story (multiple 'rule'-classed <p>s), the last one before the appendix is the
+    // actual final ruling. The Vinītavatthu itself is a separate block of unrelated precedent
+    // cases that SC also happens to tag class='rule' (e.g. "you may close the door..."), so it
+    // must be excluded or the anchor lands on a random case ruling instead of the real rule.
+    // "patimokkha" (the old class name this searched for) no longer appears in this data at
+    // all — that's why the link had stopped showing up.
     let finalRulingAnchor = "";
     if (slug.includes("bu-") || slug.includes("bi-")) {
         for (let seg in htmlData) {
-            if (htmlData[seg] && htmlData[seg].includes("patimokkha")) {
-                finalRulingAnchor = seg.substring(seg.indexOf(':') + 1);
-                break;
-            }
+            const h = htmlData[seg];
+            if (!h) continue;
+            if (h.includes("vinaya-vinita")) break;
+            if (h.includes("class='rule'")) finalRulingAnchor = seg.substring(seg.indexOf(':') + 1);
         }
     }
 

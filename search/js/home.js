@@ -527,11 +527,6 @@
                 if (typeof window.openWithQueryMulti === 'function') window.openWithQueryMulti(e, item.tplMulti);
                 else e.preventDefault();
             });
-        } else if (item.action === 'openDictionaries') {
-            a.addEventListener('click', function (e) {
-                if (typeof window.openDictionaries === 'function') window.openDictionaries(e);
-                else e.preventDefault();
-            });
         } else if (item.action === 'readPlus') {
             /* "Read+" в легаси-меню: берёт из поля первый "книга+номер" (mn129 из "mn129 sati"),
                открывает /r.php?q=<книга+номер>#<весь запрос>. Повторено как было. */

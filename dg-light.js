@@ -410,12 +410,9 @@ async function buildTranslatorCatalogCache() {
         for (const f of files) {
             if (!f.endsWith('.json')) continue;
             const baseName = path.basename(f, '.json');
-            const parts = baseName.split('_');
-            if (parts.length < 2 || !parts[1].startsWith('translation-')) continue;
-            const suffix = parts[1].slice('translation-'.length); // "ru-o" / "en-sujato"
-            const dashIdx = suffix.indexOf('-');
-            if (dashIdx === -1) continue;
-            const translatorKey = suffix.slice(dashIdx + 1); // "o" / "sujato" / "sv+edited+o"
+            const parsed = parseTranslationFilename(baseName, baseName.split('_')[0]);
+            if (!parsed) continue;
+            const translatorKey = parsed.author; // "o" / "sujato" / "sv+edited+o" — bare, no lang prefix
             // "site" is SC's own UI-string translation (about/footer/home/...), not a sutta
             // translator — its ids never match a real suttaId so it's harmless everywhere except
             // this catalog, which just counts filenames regardless of id (owner: "ru_site и любой
@@ -554,7 +551,13 @@ app.use('/nodejs/res', express.static(path.join(__dirname, 'search'), { maxAge: 
 // {lang}.json, см. search/index.html DHAMMA_LANG_CONFIG_PATTERN) — второй static-маунт на тот же
 // префикс просто добавляет ещё одно место поиска файла, express пробует по очереди.
 app.use('/nodejs/res', express.static(path.join(__dirname, 'configs', 'search'), { maxAge: 60000 }));
-app.use('/nodejs', express.static(__dirname, { maxAge: 60000 }));
+// Раньше здесь был app.use('/nodejs', express.static(__dirname, ...)) — раздавал ВЕСЬ корень
+// проекта (dg-light.js, package.json, конфиги) наружу как статику. Единственная ссылка на
+// голый /nodejs/... (не /nodejs/res/... выше) во всём коде была reader/reader.html:18
+// (<script src="/nodejs/dg_db.js">) — файла dg_db.js на диске нет, а само reader.html никем
+// не подключается (мёртвый прототип, рабочий ридер — reader-template.html). siteroot/ (то,
+// что реально должно быть публичным) раздаётся отдельным циклом ниже по файлу, на /{имя}
+// напрямую — этого маунта не касается.
 // Явный роут ПЕРЕД static-маунтами ниже (express матчит по порядку регистрации, точное
 // совпадение пути в express.static тоже сработало бы, но раньше зарегистрированный роут
 // побеждает) — клиенту помимо самого mode-table.json нужен ещё и READER_LANGS (см. выше),
@@ -844,6 +847,23 @@ function sourceDirsForLang(lang) {
     };
 }
 
+// Парсит имя файла перевода ("{suttaId}_translation-{lang}-{author}.json", без .json) в
+// {lang, author, transKey}. Отрезаем suttaId ПО ДЛИНЕ, а не split('-') по всей строке —
+// range-сутты вроде "an1.1-10" сами содержат дефис: split('-') на полном
+// "an1.1-10_translation-ru-sv" рвал id пополам и портил transKey ("10_translation_ru-sv"
+// вместо "ru_sv") — из-за этого ru_other-переводы для AN-диапазонов не находились вовсе.
+// Раньше эта логика была независимо реализована 3 раза (collectTranslationFiles/
+// walkTranslationDir/classifyMatchSource) — тот же баг чинили дважды по отдельности, третья
+// копия (classifyMatchSource) получила фикс не сразу. Один хелпер — один источник истины.
+function parseTranslationFilename(baseName, suttaId) {
+    const suffix = baseName.slice(suttaId.length + 1); // "translation-ru-o"
+    const parts = suffix.split('-');
+    if (parts.length < 3 || parts[0] !== 'translation') return null;
+    const lang = parts[1];
+    const author = parts.slice(2).join('-');
+    return { lang, author, transKey: `${lang}_${author}` };
+}
+
 // Обходит список каталогов ПАРАЛЛЕЛЬНО (быстро) и пишет transKey→filePath в
 // общий results — группы одного языка вызываются ПОСЛЕДОВАТЕЛЬНО, в порядке
 // sourceWriteOrder(lang) (см. выше), чтобы порядок перезаписи для совпадающих
@@ -856,17 +876,8 @@ async function collectTranslationFiles(dirs, suttaId, results) {
         const files = await findFilesByPrefix(dir, suttaId);
         for (const filePath of files) {
             const baseName = path.basename(filePath, '.json');
-            // findFilesByPrefix гарантирует baseName === "${suttaId}_..." — отрезаем именно
-            // suttaId целиком, а не split('-') по всей строке. Range-сутты вроде "an1.1-10"
-            // сами содержат дефис: split('-') на полном "an1.1-10_translation-ru-sv" рвал ID
-            // пополам и портил transKey ("10_translation_ru-sv" вместо "ru_sv") — из-за этого
-            // ru_other-переводы для AN-диапазонов не находились вовсе.
-            const suffix = baseName.slice(suttaId.length + 1); // "translation-ru-o"
-            const parts = suffix.split('-');
-            if (parts.length >= 3 && parts[0] === 'translation') {
-                const transKey = `${parts[1]}_${parts.slice(2).join('-')}`;
-                results[transKey] = filePath;
-            }
+            const parsed = parseTranslationFilename(baseName, suttaId);
+            if (parsed) results[parsed.transKey] = filePath;
         }
     }));
 }
@@ -939,14 +950,10 @@ async function walkTranslationDir(dir, wantedIds, bySutta) {
         const suttaId = entry.name.split('_')[0];
         if (!wantedIds.has(suttaId)) return;
         const baseName = entry.name.slice(0, -'.json'.length);
-        // Тот же фикс, что и в findTranslationFiles: отрезаем suttaId по длине, а не split('-')
-        // по всей строке — иначе range-сутты ("an1.1-10") ломают разбор (см. комментарий там).
-        const suffix = baseName.slice(suttaId.length + 1);
-        const parts = suffix.split('-');
-        if (parts.length < 3 || parts[0] !== 'translation') return;
-        const transKey = `${parts[1]}_${parts.slice(2).join('-')}`;
+        const parsed = parseTranslationFilename(baseName, suttaId);
+        if (!parsed) return;
         if (!bySutta.has(suttaId)) bySutta.set(suttaId, {});
-        bySutta.get(suttaId)[transKey] = toPosixPath(full);
+        bySutta.get(suttaId)[parsed.transKey] = toPosixPath(full);
     }));
 }
 
@@ -1088,6 +1095,25 @@ function toPosixPath(p) {
     return p ? p.replace(/\\/g, '/') : p;
 }
 
+// Общий хвост buildWordReport/buildWordReportFast — оба насчитывают одну и ту же форму
+// words{word: {textIds, matchCount, links}} разными способами (полный grep-отчёт против
+// быстрого regex по уже найденным сегментам), но сериализуют и сортируют её одинаково.
+function finalizeWordReport(words) {
+    const report = Object.entries(words).map(([word, info]) => ({
+        word,
+        textCount: info.textIds.size,
+        matchCount: info.matchCount,
+        links: Array.from(info.links.entries()).map(([sutta_id, segment]) => ({ sutta_id, segment }))
+    }));
+
+    report.sort((a, b) => {
+        if (b.textCount !== a.textCount) return b.textCount - a.textCount;
+        return a.word.localeCompare(b.word, undefined, { sensitivity: 'base' });
+    });
+
+    return report;
+}
+
 // Отчёт с группировкой по словам — та же идея, что в легаси new/words.sh (grep по словам,
 // группировка по уникальному слову вместо суттs), но без повторного grep: агрегируем
 // уже собранные по каждой сутте сегменты (root_text/variant/unique_words) из searchWithGrep.
@@ -1117,19 +1143,7 @@ function buildWordReport(searchResults) {
         }
     }
 
-    const report = Object.entries(words).map(([word, info]) => ({
-        word,
-        textCount: info.textIds.size,
-        matchCount: info.matchCount,
-        links: Array.from(info.links.entries()).map(([sutta_id, segment]) => ({ sutta_id, segment }))
-    }));
-
-    report.sort((a, b) => {
-        if (b.textCount !== a.textCount) return b.textCount - a.textCount;
-        return a.word.localeCompare(b.word, undefined, { sensitivity: 'base' });
-    });
-
-    return report;
+    return finalizeWordReport(words);
 }
 
 // ---------------------------------------------------------------------------------------
@@ -1186,26 +1200,14 @@ function parseJsonLineFragment(fragment) {
 }
 
 // Classifies a matched file path by role — root/variant/translation(lang_author) — purely from
-// the filename, no file read. Mirrors the naming convention used by findTranslationFiles.
-//
-// TODO.md поиск, баг 3: requires suttaId (already known at the call site) to correctly slice off
-// the "_translation-{lang}-{author}" suffix — a naive baseName.split('-') breaks for any id that
-// itself contains a hyphen (range suttas like "an1.21-30", Vinaya ids like "pli-tv-bu-vb-ss1"):
-// the id's own hyphen gets split too, parts[0] no longer ends with "_translation", and the match
-// silently falls through to { type: 'unknown' } — the matched translator text is then never
-// written into seg.translations anywhere (assembleFromGrepMap only handles 'root'/'variant'/
-// 'translation'). Same class of bug already fixed the same way (slice by suttaId.length, not
-// split('-') on the whole string) in collectTranslationFiles/walkTranslationDir above — this was
-// a third, independent copy of the same filename-parsing logic that never got the same fix.
+// the filename, no file read. Mirrors the naming convention used by findTranslationFiles, via the
+// shared parseTranslationFilename() helper (see its comment above collectTranslationFiles).
 function classifyMatchSource(filePath, suttaId) {
     const baseName = path.basename(filePath, '.json');
     if (baseName.endsWith('_root-pli-ms')) return { type: 'root' };
     if (baseName.endsWith('_variant-pli-ms')) return { type: 'variant' };
-    const suffix = baseName.slice(suttaId.length + 1); // "translation-ru-sv"
-    const parts = suffix.split('-');
-    if (parts.length >= 3 && parts[0] === 'translation') {
-        return { type: 'translation', transKey: `${parts[1]}_${parts.slice(2).join('-')}` };
-    }
+    const parsed = parseTranslationFilename(baseName, suttaId);
+    if (parsed) return { type: 'translation', transKey: parsed.transKey };
     return { type: 'unknown' };
 }
 
@@ -1609,19 +1611,7 @@ function buildWordReportFast(searchResults, keyword) {
         }
     }
 
-    const report = Object.entries(words).map(([word, info]) => ({
-        word,
-        textCount: info.textIds.size,
-        matchCount: info.matchCount,
-        links: Array.from(info.links.entries()).map(([sutta_id, segment]) => ({ sutta_id, segment }))
-    }));
-
-    report.sort((a, b) => {
-        if (b.textCount !== a.textCount) return b.textCount - a.textCount;
-        return a.word.localeCompare(b.word, undefined, { sensitivity: 'base' });
-    });
-
-    return report;
+    return finalizeWordReport(words);
 }
 
 // "Variants for {keyword}" (легаси new/words.sh, секция под отчётом по словам) — список
@@ -2118,9 +2108,12 @@ async function searchWithGrep(keyword, searchScope, exactMatch, targetLangs, lb 
     };
 }
 
-// Полный текст одной сутты (все сегменты, не только совпадения) — для ридера.
-// Переиспользует те же хелперы, что и поиск, просто без grep-фильтра.
-async function getFullTextData(suttaId, targetLangs, explicitTranslators, multiForLangs) {
+// Пали-часть сутты (root/variant/html) — не зависит от targetLangs/переводчиков, поэтому
+// вынесена отдельно: /api/text/:suttaId на en-fallback ветке (нет перевода на запрошенный
+// язык) раньше звало getFullTextData() второй раз целиком и перечитывало+перепарсивало эти
+// же 3 файла с диска ради тех же самых данных — единственное, что там меняется, это подбор
+// перевода. Читаем один раз, переиспользуем.
+async function getSuttaBaseData(suttaId) {
     const suttaMeta = skeletonDB[suttaId];
     if (!suttaMeta) return null;
 
@@ -2138,6 +2131,12 @@ async function getFullTextData(suttaId, targetLangs, explicitTranslators, multiF
     const htmlData = htmlPath
         ? JSON.parse(await fs.readFile(htmlPath, 'utf8').catch(() => '{}'))
         : {};
+
+    return { suttaMeta, rootData, variantData, htmlData };
+}
+
+async function buildTextDataFromBase(base, suttaId, targetLangs, explicitTranslators, multiForLangs) {
+    const { suttaMeta, rootData, variantData, htmlData } = base;
 
     const translationFiles = await findTranslationFiles(suttaId, targetLangs, explicitTranslators, multiForLangs);
     const translationsData = {};
@@ -2167,6 +2166,14 @@ async function getFullTextData(suttaId, targetLangs, explicitTranslators, multiF
         mr: suttaMeta.mr,
         segments
     };
+}
+
+// Полный текст одной сутты (все сегменты, не только совпадения) — для ридера.
+// Переиспользует те же хелперы, что и поиск, просто без grep-фильтра.
+async function getFullTextData(suttaId, targetLangs, explicitTranslators, multiForLangs) {
+    const base = await getSuttaBaseData(suttaId);
+    if (!base) return null;
+    return buildTextDataFromBase(base, suttaId, targetLangs, explicitTranslators, multiForLangs);
 }
 
 app.get('/api/text/:suttaId', async (req, res) => {
@@ -2200,8 +2207,12 @@ app.get('/api/text/:suttaId', async (req, res) => {
         : (req.query.multiFor ? req.query.multiFor.split(',').map(l => l.trim()) : null);
 
     try {
-        let data = await getFullTextData(suttaId, targetLangs, explicitTranslators, multiForLangs);
-        if (!data) return res.status(404).json({ error: `Unknown sutta id: ${suttaId}` });
+        // Один раз читаем root/variant/html (не зависят от языка перевода) — основной вызов
+        // и en-fallback ниже переиспользуют один и тот же base, а не перечитывают эти 3 файла
+        // с диска дважды ради одних и тех же данных (см. getSuttaBaseData).
+        const base = await getSuttaBaseData(suttaId);
+        if (!base) return res.status(404).json({ error: `Unknown sutta id: ${suttaId}` });
+        let data = await buildTextDataFromBase(base, suttaId, targetLangs, explicitTranslators, multiForLangs);
         let effectiveLangs = targetLangs;
 
         // Явный ?langs= (не ?mode=) на редко покрытый язык (напр. de) часто не находит вообще
@@ -2211,7 +2222,7 @@ app.get('/api/text/:suttaId', async (req, res) => {
         // чтобы не менять поведение для существующих читателей без явного langs=.
         const hasAnyTranslation = data.segments.some(seg => Object.keys(seg.translations).length > 0);
         if (!modeConfig && !hasAnyTranslation && !targetLangs.includes('en') && !explicitTranslators) {
-            const fallbackData = await getFullTextData(suttaId, ['en'], null, multiForLangs);
+            const fallbackData = await buildTextDataFromBase(base, suttaId, ['en'], null, multiForLangs);
             const fallbackHasTranslation = fallbackData &&
                 fallbackData.segments.some(seg => Object.keys(seg.translations).length > 0);
             if (fallbackHasTranslation) {
@@ -2514,11 +2525,21 @@ function humanizeSlug(slug, bookCode, firstLeafId, isTopLevel) {
     }
     return rest.charAt(0).toUpperCase() + rest.slice(1);
 }
+// Root JSON per id, cached — same pattern as colophonCache/branchTitleCache below (TOC data is
+// static for the process lifetime, no TTL needed). pickBranchTitleIndex calls segmentAt for the
+// SAME id at multiple idx (2, 3, 4) while probing for a title level, and getBranchTitle/
+// annotateTree revisit the same firstLeafId across sibling branches — without this cache each of
+// those was its own uncached readFileSync+JSON.parse of the same file.
+const rootJsonCache = new Map(); // id -> parsed root JSON | null
 function segmentAt(id, idx) {
     try {
-        const rootPath = getRootPath(id);
-        if (!rootPath || !fsSync.existsSync(rootPath)) return null;
-        const data = JSON.parse(fsSync.readFileSync(rootPath, 'utf8'));
+        let data = rootJsonCache.get(id);
+        if (data === undefined) {
+            const rootPath = getRootPath(id);
+            data = (rootPath && fsSync.existsSync(rootPath)) ? JSON.parse(fsSync.readFileSync(rootPath, 'utf8')) : null;
+            rootJsonCache.set(id, data);
+        }
+        if (!data) return null;
         const key = Object.keys(data).find(k => k.endsWith(`:0.${idx}`));
         return key ? String(data[key]).trim() : null;
     } catch (e) { return null; }

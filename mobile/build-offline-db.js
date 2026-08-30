@@ -1,0 +1,147 @@
+// Builds the offline SQLite databases the mobile app ships/downloads — replaces dg-light.js's
+// live grep search, which needs an OS `grep` process a WebView can't spawn (see
+// /root/.claude/plans/vast-questing-russell.md for the full "why").
+//
+// Deliberately standalone: does not require anything from dg-light.js, and dg-light.js does not
+// require anything from here — the web server and the mobile app build must stay decoupled.
+//
+// Output:
+//   mobile/dist/core.db      — pali root + variant + html, mandatory, ships with the app
+//   mobile/dist/lang_<code>.db — one optional file per language, user downloads what they want
+//
+// ponytail: FTS4, not FTS5 — the client reads these files with sql.js (pure JS/WASM in the
+// WebView, no native plugin, fully testable in Node without a device), and sql.js's prebuilt
+// binary has no FTS5 module (verified empirically). FTS4 covers our MATCH-based search fine;
+// upgrade path if FTS5 ranking/features are ever needed: switch the client to
+// @capacitor-community/sqlite (native, has FTS5) instead of sql.js.
+//
+// Usage:
+//   node build-offline-db.js                          — full corpus, langs ru+en
+//   node build-offline-db.js --suttas=dn22,mn1 --langs=ru,en   — small test build
+
+const fs = require('fs').promises;
+const fsSync = require('fs');
+const path = require('path');
+const Database = require('better-sqlite3');
+const {
+    SC_BILARA, buildTranslationIndex,
+} = require('./lib/translation-sources');
+
+const SKELETON_PATH = path.join(__dirname, '..', 'dg_db_light.json');
+const OUT_DIR = path.join(__dirname, 'dist');
+
+function parseArgs() {
+    const args = { langs: ['ru', 'en'] };
+    for (const arg of process.argv.slice(2)) {
+        const [key, value] = arg.replace(/^--/, '').split('=');
+        if (key === 'suttas') args.suttas = value.split(',');
+        if (key === 'langs') args.langs = value.split(',');
+    }
+    return args;
+}
+
+async function readJsonIfExists(filePath) {
+    try {
+        return JSON.parse(await fs.readFile(filePath, 'utf8'));
+    } catch (e) {
+        return null;
+    }
+}
+
+function buildCoreDb(suttaIds, skeleton) {
+    const dbPath = path.join(OUT_DIR, 'core.db');
+    fsSync.rmSync(dbPath, { force: true });
+    const db = new Database(dbPath);
+    db.pragma('journal_mode = WAL');
+    db.exec(`
+        CREATE TABLE suttas (id TEXT PRIMARY KEY, category TEXT, dir_path TEXT, title TEXT, mr INTEGER);
+        CREATE TABLE segments (sutta_id TEXT, segment_id TEXT, root TEXT, variant TEXT, html TEXT);
+        CREATE VIRTUAL TABLE fts USING fts4(root, variant, segment_id, sutta_id, notindexed=segment_id, notindexed=sutta_id);
+    `);
+    const insertSutta = db.prepare('INSERT INTO suttas (id, category, dir_path, title, mr) VALUES (?, ?, ?, ?, ?)');
+    const insertSegment = db.prepare('INSERT INTO segments (sutta_id, segment_id, root, variant, html) VALUES (?, ?, ?, ?, ?)');
+    const insertFts = db.prepare('INSERT INTO fts (root, variant, segment_id, sutta_id) VALUES (?, ?, ?, ?)');
+
+    return (async () => {
+        const insertAll = db.transaction((suttaId, meta, root, variant, html) => {
+            insertSutta.run(suttaId, meta.category, meta.dir_path, meta.title, meta.mr);
+            for (const [segmentId, rootText] of Object.entries(root || {})) {
+                const variantText = variant ? (variant[segmentId] || null) : null;
+                const htmlText = html ? (html[segmentId] || null) : null;
+                insertSegment.run(suttaId, segmentId, rootText, variantText, htmlText);
+                insertFts.run(rootText, variantText, segmentId, suttaId);
+            }
+        });
+
+        let done = 0;
+        for (const suttaId of suttaIds) {
+            const meta = skeleton[suttaId];
+            if (!meta) continue;
+            const root = await readJsonIfExists(path.join(SC_BILARA, 'root', meta.dir_path, `${suttaId}_root-pli-ms.json`));
+            if (!root) continue; // no root text on disk — nothing to index for this id
+            const variant = await readJsonIfExists(path.join(SC_BILARA, 'variant', meta.dir_path, `${suttaId}_variant-pli-ms.json`));
+            const html = await readJsonIfExists(path.join(SC_BILARA, 'html', meta.dir_path, `${suttaId}_html.json`));
+            insertAll(suttaId, meta, root, variant, html);
+            done++;
+        }
+        db.close();
+        return done;
+    })();
+}
+
+async function buildLangDb(lang, suttaIds) {
+    const dbPath = path.join(OUT_DIR, `lang_${lang}.db`);
+    fsSync.rmSync(dbPath, { force: true });
+    const db = new Database(dbPath);
+    db.pragma('journal_mode = WAL');
+    db.exec(`
+        CREATE TABLE translations (sutta_id TEXT, segment_id TEXT, translator TEXT, text TEXT);
+        CREATE VIRTUAL TABLE fts USING fts4(text, segment_id, sutta_id, translator, notindexed=segment_id, notindexed=sutta_id, notindexed=translator);
+    `);
+    const insertTranslation = db.prepare('INSERT INTO translations (sutta_id, segment_id, translator, text) VALUES (?, ?, ?, ?)');
+    const insertFts = db.prepare('INSERT INTO fts (text, segment_id, sutta_id, translator) VALUES (?, ?, ?, ?)');
+    const insertAll = db.transaction((suttaId, translator, segments) => {
+        for (const [segmentId, text] of Object.entries(segments)) {
+            insertTranslation.run(suttaId, segmentId, translator, text);
+            insertFts.run(text, segmentId, suttaId, translator);
+        }
+    });
+
+    // buildTranslationIndex already applies the same SOURCE_PRIORITY/filterPreferredTranslators
+    // logic as the live web search (see lib/translation-sources.js header) — one preferred
+    // translator per sutta per language, not every translator ever recorded.
+    const bySutta = await buildTranslationIndex(suttaIds, [lang]);
+    let rows = 0;
+    for (const [suttaId, files] of bySutta) {
+        for (const [transKey, filePath] of Object.entries(files)) {
+            const segments = await readJsonIfExists(filePath);
+            if (!segments) continue;
+            insertAll(suttaId, transKey, segments);
+            rows += Object.keys(segments).length;
+        }
+    }
+    db.close();
+    return rows;
+}
+
+async function main() {
+    const args = parseArgs();
+    const skeleton = JSON.parse(await fs.readFile(SKELETON_PATH, 'utf8'));
+    const suttaIds = args.suttas || Object.keys(skeleton);
+    await fs.mkdir(OUT_DIR, { recursive: true });
+
+    console.log(`Building core.db for ${suttaIds.length} sutta id(s)...`);
+    const segCount = await buildCoreDb(suttaIds, skeleton);
+    console.log(`core.db: ${segCount} suttas with root text indexed.`);
+
+    for (const lang of args.langs) {
+        console.log(`Building lang_${lang}.db...`);
+        const rows = await buildLangDb(lang, suttaIds);
+        console.log(`lang_${lang}.db: ${rows} translated segments indexed.`);
+    }
+}
+
+main().catch(err => {
+    console.error(err);
+    process.exit(1);
+});

@@ -1,0 +1,19 @@
+{
+  "name": "dg-mobile",
+  "private": true,
+  "description": "Offline Android/iOS app build tooling — isolated from dg-light.js (the web server), no shared dependencies or requires in either direction.",
+  "scripts": {
+    "build-offline-db": "node build-offline-db.js",
+    "serve-dist": "node serve-dist.js"
+  },
+  "dependencies": {
+    "@capacitor-community/sqlite": "^6.0.2",
+    "@capacitor/core": "^6.2.1",
+    "better-sqlite3": "^11.3.0",
+    "sql.js": "^1.14.2"
+  },
+  "devDependencies": {
+    "@capacitor/android": "^6.2.1",
+    "@capacitor/cli": "^6.2.1"
+  }
+}

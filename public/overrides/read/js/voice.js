@@ -507,10 +507,23 @@ function detectTranslationLang() {
 // generic segments) instead of the clicked quote line. Only trust the .sutta match if it
 // actually has language-tagged content; otherwise scan the whole document like before dg-node
 // added that persistent empty shell.
+//
+// That "has content" check alone isn't enough either: dg-node switches between home/results/
+// reader by toggling a body.dg-state-* class (search/index.html dgSetState), never by tearing
+// down #sutta's DOM — so #sutta keeps the LAST sutta's rendered markup even after navigating
+// back to search results (owner: "проигрывает целиком сутту какую-либо" — whichever sutta was
+// last open in the reader, not the clicked search-result quote). Once the state-class system is
+// present (dg-node's own pages always set one of DG_STATES on load/route-change — see
+// dgSetState), only trust #sutta while body is ACTUALLY in dg-state-reader; otherwise fall
+// through to document, exactly like the truly-empty-#sutta case above. Pages with no dg-state-*
+// system at all (legacy PHP r.php/tr.php, the theravada.ru adapter — isLegacyPage() above) never
+// gain any dg-state-* class, so they keep the original content-only check unchanged.
 function getSuttaContainer() {
     const c = document.querySelector('.sutta-container, .sutta');
-    if (c && c.querySelector('[lang], .pli-lang')) return c;
-    return document;
+    if (!c || !c.querySelector('[lang], .pli-lang')) return document;
+    const hasStateSystem = /(^|\s)dg-state-\S+/.test(document.body.className);
+    if (hasStateSystem && !document.body.classList.contains('dg-state-reader')) return document;
+    return c;
 }
 
 function detectTranslationLang() {
@@ -1424,7 +1437,7 @@ function playBrowserTTS(text, langKey, rate, isPali) {
             
             const pathLang = location.pathname.split('/')[1];
 
-            const helpUrl = window.isRu ? '/ru/docs/tts' : '/docs/voice-tts';
+            const helpUrl = window.isRu ? '/ru/docs/tts' : '/docs/tts';
             const title = window.isRu ? 'TTS:' : 'TTS Hint:';
             const helpLink = `<a href="${helpUrl}" target="_blank" style="color: #4da6ff;">(?)</a>`;
             const message = window.isRu 
@@ -1510,7 +1523,13 @@ async function handleSuttaClick(e) {
       
       let slug = ttsState.currentSlug;
       if (!slug) {
-          const mainPlayBtn = document.querySelector('a.voice-link[data-slug]');
+          // #dg-voice-slug (search/index.html's right-click "Listen") is created specifically
+          // for this flow — prefer it over a generic a.voice-link[data-slug] lookup, which would
+          // otherwise match a STALE reader-page voice-link left in the DOM from a sutta viewed
+          // earlier in the session (dg-node keeps #sutta's old markup around across state
+          // switches instead of clearing it, see getSuttaContainer() above) and mislabel
+          // ttsState.currentSlug with that unrelated sutta.
+          const mainPlayBtn = document.getElementById('dg-voice-slug') || document.querySelector('a.voice-link[data-slug]');
           if (mainPlayBtn) slug = mainPlayBtn.dataset.slug;
       }
       // Search results page has no a.voice-link[data-slug] for a plain word click (only the
@@ -2019,9 +2038,9 @@ function getPlayerHtml() {
   }
 
 
-  // Points at the new Docs/Help portal now (RU slug renamed to /tts, EN frozen at old
-  // /voice-tts — see TODO.md), not the legacy static ttsHelp.html page.
-  const helpUrl = window.isRu ? '/ru/docs/tts' : '/docs/voice-tts';
+  // Points at the new Docs/Help portal (both RU and EN use the clean /tts slug now),
+  // not the legacy static ttsHelp.html page.
+  const helpUrl = window.isRu ? '/ru/docs/tts' : '/docs/tts';
 
   const modeLabels = window.isRu
     ? { 'pi': 'Пали', 'pi-trn': 'Пали + Рус', 'trn': 'Перевод', 'trn-pi': 'Рус + Пали' }
