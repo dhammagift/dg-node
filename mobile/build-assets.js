@@ -215,6 +215,18 @@ function copyReaderImages() {
     }
 }
 
+// settings/index.html is copied verbatim (via ASSETS above) on every run — this patches the
+// copy afterward, same one-liner every time, so a re-run after a site update doesn't silently
+// drop it. Gives the "Log in" button (native-bridge.js) a real browser to run Google/Firebase
+// auth in — see that file's header for why the WebView itself can't do it.
+function injectNativeBridge() {
+    const dest = path.join(WWW, 'settings', 'index.html');
+    let html = fs.readFileSync(dest, 'utf8');
+    const tag = '<script src="/native-bridge.js"></script>\n';
+    if (!html.includes(tag)) html = html.replace('<head>', `<head>\n${tag}`);
+    fs.writeFileSync(dest, html, 'utf8');
+}
+
 function main() {
     const args = parseArgs();
     let ok = 0, missing = 0;
@@ -225,6 +237,7 @@ function main() {
     buildModeTable(args.langs);
     const svgCount = copySvgIcons();
     copyReaderImages();
+    injectNativeBridge();
     console.log(`Assets: ${ok} copied, ${missing} missing. +${svgCount} svg icons, reader/images/, 2 generated bundles, mode-table.json (langs=${args.langs.join(',')}).`);
     if (missing > 0) process.exitCode = 1;
 }

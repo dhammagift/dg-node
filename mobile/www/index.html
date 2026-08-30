@@ -70,6 +70,9 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
      (search/index.html), copied verbatim — see /root/.claude/plans/vast-questing-russell.md for
      why (reuse the real frontend, only swap its data layer, don't rebuild the UI). -->
 <script src="app.js"></script>
+<!-- Routes memo/login/mirror-link's external opens through the device's real browser instead of
+     this app's own WebView — see native-bridge.js for why plain navigation doesn't work here. -->
+<script src="/native-bridge.js"></script>
 <script>
   // Тема — синхронно, ДО первой отрисовки: <html data-bs-theme> ниже был захардкожен на
   // "light" всегда, а реальную тёмную тему выставлял только themeswitch.js (грузится
