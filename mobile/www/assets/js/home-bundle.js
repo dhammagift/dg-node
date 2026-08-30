@@ -600,7 +600,15 @@ document.getElementById('paliauto').placeholder = example + words[randomW] + or 
                 } else {
                     e.preventDefault();
                     var q = (document.getElementById('paliauto') || {}).value || '';
-                    window.open(item.tpl.replace(/{{q}}/g, encodeURIComponent(q.trim())), item.blank ? '_blank' : '_self');
+                    var localUrl = item.tpl.replace(/{{q}}/g, encodeURIComponent(q.trim()));
+                    // onlineTpl (menu-links.json, e.g. S.4nt.org → s.dhamma.gift): same local-vs-
+                    // online resolution as item.localHref below, template substitution first.
+                    if (item.onlineTpl && typeof window.openMirrorLink === 'function') {
+                        var onlineUrl = item.onlineTpl.replace(/{{q}}/g, encodeURIComponent(q.trim()));
+                        window.openMirrorLink(localUrl, onlineUrl, item.blank);
+                    } else {
+                        window.open(localUrl, item.blank ? '_blank' : '_self');
+                    }
                 }
             });
         } else if (item.tplMulti) {
@@ -634,6 +642,14 @@ document.getElementById('paliauto').placeholder = example + words[randomW] + or 
                 if (typeof window.openMirrorLink === 'function') window.openMirrorLink(item.localHref, item.href);
                 else window.open(item.href, item.blank ? '_blank' : '_self');
             });
+        } else if (item.hideIfUnavailable) {
+            // Archived/legacy content with no online equivalent to fall back to (e.g. "Legacy"
+            // suttacentral.net — a snapshot of SC's old UI that isn't live anywhere anymore): if
+            // this server isn't actually serving item.href, hide the link instead of offering a
+            // dead one. Live check, not a hostname guess — same reasoning as mirror-link.js.
+            if (typeof window.checkMirrorReachable === 'function') {
+                window.checkMirrorReachable(item.href).then(function (ok) { if (!ok) a.style.display = 'none'; });
+            }
         }
         return a;
     }
