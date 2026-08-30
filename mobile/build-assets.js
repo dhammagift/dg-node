@@ -37,6 +37,7 @@ function parseArgs() {
 const ASSETS = [
     // ---- head, eager ----
     { url: '/assets/js/dhamma-i18n.js', sources: [f('public/overrides/js/dhamma-i18n.js')] },
+    { url: '/assets/js/mirror-link.js', sources: [f('public/overrides/js/mirror-link.js')] },
     { url: '/manifest.json', sources: [f('configs/manifest.json')] },
     { url: '/nodejs/res/menu-links.json', sources: [f('configs/search/menu-links.json')] },
     { url: '/assets/img/favico-noglass.png', sources: [l('img/favico-noglass.png')] },
@@ -114,6 +115,20 @@ const ASSETS = [
     { url: '/nodejs/res/announcements.json', sources: [f('configs/search/announcements.json')] },
     { url: '/nodejs/res/dict-modes.json', sources: [f('configs/search/dict-modes.json')] },
     { url: '/settings/scripts.json', sources: [f('settings/scripts.json')] },
+    // Server-generated at startup (buildTranslatorCatalogCache in dg-light.js) — static once
+    // built, same treatment as settings-bundle.js/home-bundle.js above: snapshot the current
+    // file rather than reimplement the aggregation. Used by /spa/toc.js for translator badges.
+    { url: '/settings/translator-catalog.json', sources: [f('settings/translator-catalog.json')] },
+    // Master settings page (settings/index.html) — a SEPARATE page from search/index.html (the
+    // gear icon does a real navigation to /settings/, not a modal), copied verbatim the same way,
+    // plus its own small dependency surface (all static — no server logic beyond what's already
+    // bundled above). buildSettingsDemoCache()/buildLangCountsCache() in dg-light.js generate the
+    // two JSON files at server startup — same one-time-snapshot treatment as translator-catalog.
+    { url: '/settings/index.html', sources: [f('settings/index.html')] },
+    { url: '/settings/preview-frame.html', sources: [f('settings/preview-frame.html')] },
+    { url: '/settings/demo-data.json', sources: [f('settings/demo-data.json')] },
+    { url: '/settings/lang-counts.json', sources: [f('settings/lang-counts.json')] },
+    { url: '/assets/css/styles.css', sources: [l('css/styles.css')] },
     { url: '/assets/texts/sutta_words.txt', sources: [l('texts/sutta_words.txt')] },
     { url: '/assets/js/textinfo.js', sources: [l('js/textinfo.js')] },
 

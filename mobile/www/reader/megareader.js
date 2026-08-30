@@ -532,8 +532,12 @@ window.generateThirdPartyLinks = function(slug, slugReady, texttype, translator)
             if (!window.location.pathname.startsWith('/b/') && isLocal) {
                 scLink += ` <a target="" class="sc-ext-link" title="BB and Other translations" href="/b/?q=${slug}">BB</a>`;
             }
+            // Local vs. online resolved live by mirror-link.js's click handler (class
+            // "mirror-link", data-local=candidate), not guessed from isLocal/hostname — a
+            // hostname guess can't tell a real dev/prod box with the mirror mounted apart from
+            // the packaged mobile app's localhost WebView, which never bundles it (too heavy).
             const book = (slug.match(/^[a-z]+/) || [""])[0];
-            scLink += ` <a target="_blank" class="sc-ext-link" title="TheBuddhasWords.net" href="${isLocal ? `/bw/${book}/${slug}.html` : `https://theBuddhasWords.net/${book}/${slug}.html`}">TBW</a>`;
+            scLink += ` <a target="_blank" class="sc-ext-link mirror-link" title="TheBuddhasWords.net" href="https://theBuddhasWords.net/${book}/${slug}.html" data-local="/bw/${book}/${slug}.html">TBW</a>`;
         }
     }
 
@@ -543,15 +547,23 @@ window.generateThirdPartyLinks = function(slug, slugReady, texttype, translator)
     if (window.isRuPath) {
         if (typeof thruLinksData !== 'undefined') {
             const ruItem = thruLinksData.find(item => item[0] === slug);
-            if (ruItem) scLink += ` <a title="Theravada.ru" target="_blank" class="sc-ext-link" href="/theravada.ru/Teaching/Canon/Suttanta/Texts/${ruItem[1]}">Th.ru</a>`;
+            // Same mirror-link.js resolution as TBW above — this one used to be a bare local
+            // path with no online fallback at all, 404ing outright wherever the mirror isn't
+            // mounted (the packaged mobile app, but also anyone off the dev/prod boxes).
+            if (ruItem) scLink += ` <a title="Theravada.ru" target="_blank" class="sc-ext-link mirror-link" href="https://theravada.ru/Teaching/Canon/Suttanta/Texts/${ruItem[1]}" data-local="/theravada.ru/Teaching/Canon/Suttanta/Texts/${ruItem[1]}">Th.ru</a>`;
         }
 
-        if (isLocal && typeof thsuLinksDataoffl !== 'undefined') {
-            const suItem = thsuLinksDataoffl.find(item => item[0] === slug);
-            if (suItem) scLink += ` <a title="Theravada.su" target="_blank" class="sc-ext-link" href="/tipitaka.theravada.su/dn/${suItem[1]}">Th.su</a>`;
-        } else if (!isLocal && typeof thsuLinksData !== 'undefined') {
-            const suItem = thsuLinksData.find(item => item[0] === slug);
-            if (suItem) scLink += ` <a title="Theravada.su" target="_blank" class="sc-ext-link" href="https://tipitaka.theravada.su/${suItem[1]}">Th.su</a>`;
+        // Th.su's local mirror (thsuLinksDataoffl, plain "dn1.html") and the online site
+        // (thsuLinksData, "node/table/1100") use genuinely different URL schemes, not just
+        // different domains — both datasets are looked up regardless of hostname, and
+        // mirror-link.js picks whichever is actually reachable at click time.
+        if (typeof thsuLinksData !== 'undefined') {
+            const suOnlineItem = thsuLinksData.find(item => item[0] === slug);
+            if (suOnlineItem) {
+                const suLocalItem = typeof thsuLinksDataoffl !== 'undefined' && thsuLinksDataoffl.find(item => item[0] === slug);
+                const suLocalAttr = suLocalItem ? ` data-local="/tipitaka.theravada.su/dn/${suLocalItem[1]}"` : '';
+                scLink += ` <a title="Theravada.su" target="_blank" class="sc-ext-link mirror-link" href="https://tipitaka.theravada.su/${suOnlineItem[1]}"${suLocalAttr}>Th.su</a>`;
+            }
         }
     }
     return scLink;

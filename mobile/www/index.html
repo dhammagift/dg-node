@@ -125,6 +125,10 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
   });
 </script>
 <script src="/assets/js/dhamma-i18n.js" defer></script>
+<!-- Loaded eagerly (not just in ensureReaderAssets()'s lazy bundle) — home-bundle.js's MultiTool
+     tiles (menu-links.json localHref) also need window.resolveMirrorUrl/openMirrorLink, and that
+     bundle is always present, even before the reader/search ever loads. -->
+<script src="/assets/js/mirror-link.js" defer></script>
 <title>Search Results - Dhamma.gift</title>
 <meta name="description" content="Search Results - Dhamma.gift">
 <link rel="manifest" href="/manifest.json">

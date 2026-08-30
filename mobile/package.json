@@ -4,6 +4,8 @@
   "description": "Offline Android/iOS app build tooling — isolated from dg-light.js (the web server), no shared dependencies or requires in either direction.",
   "scripts": {
     "build-offline-db": "node build-offline-db.js",
+    "build-assets": "node build-assets.js",
+    "build-toc-snapshot": "node build-toc-snapshot.js",
     "serve-dist": "node serve-dist.js"
   },
   "dependencies": {

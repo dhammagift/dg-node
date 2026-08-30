@@ -541,6 +541,18 @@
         } else if (item.setsLang) {
             // Легаси-пункт "DG (th)" ставил siteLanguage перед переходом — сохраняем поведение.
             a.addEventListener('click', function () { localStorage.setItem('siteLanguage', item.setsLang); });
+        } else if (item.localHref) {
+            // Sites we also keep an offline mirror of (menu-links.json's localHref — bw/
+            // theravada.ru/theravada.su, see CLAUDE.md "Публикация от корня сайта" /
+            // OFFLINE_MIRRORS_ROOT): prefer the local copy when THIS server is actually serving
+            // it, fall back to item.href (the real internet address) otherwise. Checked live via
+            // mirror-link.js, not guessed from hostname — the packaged mobile app's WebView is
+            // also "localhost" but never bundles these (too heavy).
+            a.addEventListener('click', function (e) {
+                e.preventDefault();
+                if (typeof window.openMirrorLink === 'function') window.openMirrorLink(item.localHref, item.href);
+                else window.open(item.href, item.blank ? '_blank' : '_self');
+            });
         }
         return a;
     }

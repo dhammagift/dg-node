@@ -192,6 +192,46 @@ function ensureControls() {
   });
 }
 
+// The navbar shell logo is a real Docusaurus <Link>, not a plain anchor we control — its
+// `href` is always re-prefixed with THIS build's baseUrl by @docusaurus/theme-classic's Logo
+// component (verified in its source: useBaseUrl(logo.href), and even the `pathname://` escape
+// hatch used elsewhere in this project gets baseUrl re-applied afterwards for logo links
+// specifically, since Logo doesn't expose the `autoAddBaseUrl: false` prop that makes that
+// trick work for plain sidebar/navbar items). Owner: clicking the shell had no way back to the
+// live app, only to the in-docs home page — needs to leave the docs build entirely. Since
+// React Router's own click handler lives on this exact <a> (attached by React, not by us),
+// simply overwriting its `href` attribute from here would change what a "copy link" shows but
+// NOT where a real click goes — React still calls history.push() with its own internal target.
+// A plain bubble-order listener registered directly ON the anchor fires before the event
+// reaches Docusaurus's delegated root-level handler (this element itself has no other
+// listener, so ours simply runs first); stopPropagation there keeps the click from ever
+// reaching React Router, and preventDefault stops the native navigation to the wrong
+// (baseUrl-prefixed) href — leaving only our own manual, real navigation to the actual root.
+//
+// One `<a class="navbar__brand">` wraps BOTH the shell icon (`.navbar__logo`) and the "Dhamma.
+// gift Help" text title — owner caught that redirecting the whole brand block made clicking
+// the word "Help" itself leave Help, landing on the live app instead (surprising: text says
+// "Help", click takes you away from it). Split by click target: the icon is the one
+// established "go to the live app" affordance (mirrors the main app's own shell icon,
+// `.dg-go-home`/`.dg-shell-logo`) — overridden here to a real navigation to site root. The
+// title text keeps the ORIGINAL default behavior (this is why only the icon branch calls
+// preventDefault/stopPropagation) — Docusaurus's own Logo component already resolves
+// `logo.href: '/'` to this build's baseUrl root (`/docs/` or `/ru/docs/`, the docs home page),
+// which is exactly what the title should do — no override needed there at all.
+function fixBrandLogoHref() {
+  if (typeof document === 'undefined') return;
+  var brand = document.querySelector('.navbar__brand');
+  if (!brand || brand.dataset.dgHomeFixed) return;
+  brand.dataset.dgHomeFixed = 'true';
+  brand.addEventListener('click', function (e) {
+    var onIcon = e.target.closest && e.target.closest('.navbar__logo');
+    if (!onIcon) return;
+    e.preventDefault();
+    e.stopPropagation();
+    window.location.href = '/';
+  });
+}
+
 // Delegated (not attached to the button itself): the hamburger doesn't exist in the DOM yet
 // at the moment onRouteDidUpdate first runs (verified — querySelector returns null then), so
 // a direct listener would silently never attach. Delegation on document works regardless of
@@ -210,6 +250,7 @@ if (typeof document !== 'undefined') {
 // from mutating the toggle's parent while React is still reconciling the server-rendered DOM.
 export function onRouteDidUpdate() {
   ensureControls();
+  fixBrandLogoHref();
   if (typeof document === 'undefined') return;
   // Per-link, not a single shared href: one of the two links is "this locale" (should point
   // at the current page, i.e. do nothing) and the other is "the other locale" (should follow

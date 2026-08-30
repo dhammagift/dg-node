@@ -16,11 +16,25 @@
 // for why not Cache Storage), which persists across app restarts and works offline once
 // downloaded.
 //
-// Deliberately NOT shimmed in this iteration (see plan's "what we don't do" — confirmed with the
-// project owner): /api/toc, /api/toc/book/:code (TOC — deferred fast-follow, cheap to snapshot
-// later), /api/transliterate (Aksharamukha script conversion — the affected UI option just won't
-// work offline, doesn't block search/read). Both fail soft (script 404 / unhandled 404 response),
-// they don't break anything else on the page.
+// TOC (/api/toc, /api/toc/book/:code) is served from a build-time snapshot of the live server's
+// JSON (see build-toc-snapshot.js), not reimplemented here — see that file's header for why.
+//
+// Deliberately NOT shimmed at all (confirmed with the project owner): /api/transliterate
+// (Aksharamukha script conversion) — the affected UI option just won't work offline, doesn't
+// block search/read/TOC. Fails soft (unhandled 404 response), doesn't break anything else.
+// App Shortcuts (long-press launcher icon, Android/MainActivity.java + res/xml/shortcuts.xml)
+// can't loadUrl() straight to a deep path — the static asset server behind this origin has no
+// file at e.g. "/toc/pli-tv-bu-pm" (only index.html at root), same reason a raw reload of a
+// pushState'd URL 404s. MainActivity instead loads "/?_nativeRoute=<path>" on the root, and this
+// runs FIRST — before the page's own bootstrap script (search/index.html's inline $(document).
+// ready handler) ever reads window.location — rewriting the visible URL to the real target via
+// the same history.replaceState() trick the SPA already uses for its own pushState navigation.
+// A plain browser load (no native shortcut involved) never has this param, so this is a no-op.
+(function rewriteNativeShortcutRoute() {
+    const route = new URLSearchParams(location.search).get('_nativeRoute');
+    if (route) history.replaceState(null, '', route);
+})();
+
 const DIST_BASE = 'https://test.dhamma.gift/mobile-data';
 const MIN_KEYWORD_LENGTH = 3; // mirrors dg-light.js's MIN_KEYWORD_LENGTH
 
@@ -371,6 +385,29 @@ function installFetchShim() {
             const suttaId = decodeURIComponent(p.slice('/api/nav/'.length)).toLowerCase();
             return jsonResponse(buildApiNavResponse(suttaId));
         }
+        // TOC — pre-baked at build time (mobile/build-toc-snapshot.js curls the live server's
+        // /api/toc and /api/toc/book/:code once and saves the JSON) rather than reimplemented
+        // client-side: dg-light.js's branch-title resolution (colophon lookups, curated SN
+        // overrides, etc — see annotateTree/getBranchTitle there) is intricate, one-off logic
+        // that only needs to change when the corpus or configs/reader/toc-books.json changes —
+        // the same cadence as core.db, not something worth duplicating for a per-request answer.
+        // No `await ready` needed — these are static files, not SQLite queries. ?langs= is
+        // ignored: the snapshot was baked for ru,en, the only two languages this app ships.
+        if (p === '/api/toc') {
+            return realFetch('/api-snapshots/toc.json', init);
+        }
+        if (p.startsWith('/api/toc/book/')) {
+            const code = decodeURIComponent(p.slice('/api/toc/book/'.length));
+            return realFetch(`/api-snapshots/toc-book-${code}.json`, init);
+        }
+        // /api/patimokkha-fragment/:side — TOC's inline Patimokkha expand (public/spa/toc.js).
+        // The file is already physically bundled at reader/{bu,bi}-pm-fragment.html
+        // (build-assets.js) — just the URL shape differs from dg-light.js's own route, so remap.
+        if (p.startsWith('/api/patimokkha-fragment/')) {
+            const side = p.slice('/api/patimokkha-fragment/'.length);
+            if (side !== 'bu' && side !== 'bi') return jsonResponse({ error: 'Not found' }, 404);
+            return realFetch(`/reader/${side}-pm-fragment.html`, init);
+        }
         if (p === '/search/enrich') {
             await ready;
             const keyword = parsed.searchParams.get('q') || '';
@@ -403,8 +440,8 @@ function loadScript(src) {
 }
 
 async function loadData() {
-    await loadScript('vendor/sql-wasm.js');
-    SQL = await initSqlJs({ locateFile: f => `vendor/${f}` });
+    await loadScript('/vendor/sql-wasm.js');
+    SQL = await initSqlJs({ locateFile: f => `/vendor/${f}` });
     const idb = await openStore();
     core = new SQL.Database(await fetchDbBytes(idb, 'core.db'));
     langDbs.ru = new SQL.Database(await fetchDbBytes(idb, 'lang_ru.db'));
