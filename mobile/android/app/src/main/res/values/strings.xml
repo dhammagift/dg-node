@@ -1,0 +1,15 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Dhamma.gift</string>
+    <string name="title_activity_main">Dhamma.gift</string>
+    <string name="package_name">gift.dhamma.mobile</string>
+    <string name="custom_url_scheme">gift.dhamma.mobile</string>
+
+    <!-- App Shortcuts labels (res/xml/shortcuts.xml) -->
+    <string name="shortcut_search_short">Search</string>
+    <string name="shortcut_search_long">Search Dhamma.gift</string>
+    <string name="shortcut_bu_pm_short">Bhikkhu Pātimokkha</string>
+    <string name="shortcut_bu_pm_long">Bhikkhu Pātimokkha</string>
+    <string name="shortcut_bi_pm_short">Bhikkhuni Pātimokkha</string>
+    <string name="shortcut_bi_pm_long">Bhikkhuni Pātimokkha</string>
+</resources>

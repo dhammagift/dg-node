@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Static App Shortcuts (long-press the launcher icon). Ported from dg-twa's web manifest
+     (app/src/main/res/raw/web_app_manifest.json "shortcuts") — a Capacitor WebView isn't a
+     Trusted Web Activity, so the OS doesn't wire these up from a web manifest automatically;
+     each one is a plain Android shortcut that launches MainActivity with a "route" extra
+     (see MainActivity.handleIntent), which loads that path in the already-running SPA.
+
+     Deliberately 3, not the original 4: "Dict.Dhamma.gift" (online-only DPD dictionary) and
+     "DG Read" (legacy /read.php, superseded by this app's own reader) were dropped — a
+     shortcut into a page that doesn't work offline, or a route this app doesn't have, defeats
+     the point of a fast offline entry point. "Bhikkhu/Bhikkhuni Patimokkha" point at the TOC
+     entries for those books (/toc/pli-tv-bu-pm, /toc/pli-tv-bi-pm) rather than the legacy
+     /pm.php-rendered single page (reader/bu-pm.html) — that page's own logic wasn't ported
+     into the offline shim, TOC already reaches the same content. -->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="search"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_search_short"
+        android:shortcutLongLabel="@string/shortcut_search_long">
+        <intent
+            android:action="android.intent.action.MAIN"
+            android:targetPackage="gift.dhamma.mobile"
+            android:targetClass="gift.dhamma.mobile.MainActivity">
+            <extra android:name="route" android:value="/" />
+        </intent>
+    </shortcut>
+    <shortcut
+        android:shortcutId="bhikkhu_patimokkha"
+        android:enabled="true"
+        android:icon="@drawable/shortcut_monk"
+        android:shortcutShortLabel="@string/shortcut_bu_pm_short"
+        android:shortcutLongLabel="@string/shortcut_bu_pm_long">
+        <intent
+            android:action="android.intent.action.MAIN"
+            android:targetPackage="gift.dhamma.mobile"
+            android:targetClass="gift.dhamma.mobile.MainActivity">
+            <extra android:name="route" android:value="/toc/pli-tv-bu-pm" />
+        </intent>
+    </shortcut>
+    <shortcut
+        android:shortcutId="bhikkhuni_patimokkha"
+        android:enabled="true"
+        android:icon="@drawable/shortcut_nun"
+        android:shortcutShortLabel="@string/shortcut_bi_pm_short"
+        android:shortcutLongLabel="@string/shortcut_bi_pm_long">
+        <intent
+            android:action="android.intent.action.MAIN"
+            android:targetPackage="gift.dhamma.mobile"
+            android:targetClass="gift.dhamma.mobile.MainActivity">
+            <extra android:name="route" android:value="/toc/pli-tv-bi-pm" />
+        </intent>
+    </shortcut>
+</shortcuts>

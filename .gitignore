@@ -41,8 +41,13 @@ public/overrides/js/home-bundle.js
 # mobile/www/ is NOT ignored — that's the app's actual source (index.html/app.js/vendor libs),
 # analogous to search/ or reader/ above, not a build output.
 mobile/dist/
-mobile/android/
 mobile/ios/
+# mobile/android/ used to be blanket-ignored here too, back when it was 100% untouched Capacitor
+# boilerplate. It now holds real hand-written native source (MainActivity.java's shortcut/
+# share-target intent handling, AndroidManifest.xml, res/xml/shortcuts.xml) that would be lost on
+# a fresh `npx cap add android` if it weren't tracked — Capacitor's own generated
+# mobile/android/.gitignore already correctly excludes build/, .gradle/, local.properties, the
+# copied web assets (app/src/main/assets/public), etc., so nothing extra is needed here.
 *.db
 *.db-wal
 *.db-shm
