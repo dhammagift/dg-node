@@ -1,0 +1,19 @@
+{
+  "common": {
+    "close": "Закрыть",
+    "clear": "Очистить",
+    "settings": "Настройки",
+    "help": "Помощь",
+    "home": "Домой",
+    "dictionary": "Словарь",
+    "history": "История",
+    "login": "Войти",
+    "apply": "Применить",
+    "reset": "Сбросить",
+    "other": "Другие",
+    "questionMark": "?"
+  },
+  "help": {
+    "languageButton": "Pāḷi / Рус"
+  }
+}

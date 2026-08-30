@@ -1,0 +1,1762 @@
+
+  .searchbar {
+    z-index:1;
+  }
+  ::-webkit-scrollbar {
+  width: 16px;
+  height: 16px; }
+
+  ::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.2);
+  -webkit-box-shadow: inset 1px 1px 0 rgba(0,0,0,0.10),inset 0 -1px 0 rgba(0,0,0,0.07); }
+
+  .ui-autocomplete { 
+  max-height: 220px; 
+  min-height: 38px;
+  overflow-y: auto; 
+  overflow-x: hidden;
+  scrollbar-color: #c1c1c1ff #424242; 
+  border-radius: 1rem;
+  max-width: 274px;
+  align-items: center;
+  }
+  /* Was hand-tuned negative margins (margin-left:-6px, margin-top:-15px) — assumed a button box
+     model that no longer matches (body #scrollToTopBtn in search/index.html sets a fixed 30x30,
+     padding:0, border:2px); measured live: icon center sat ~5px above true center. Tried
+     display:flex on #scrollToTopBtn first — didn't stick: smoothScroll.js toggles this button's
+     visibility with an INLINE style.display ('block'/'none') on every scroll event, and inline
+     style always beats a stylesheet rule, so any `display` set here gets silently overwritten the
+     next time the user scrolls. Absolute-positioning the icon sidesteps that entirely — doesn't
+     care what `display` the button itself ends up with, as long as the button stays the
+     positioned ancestor (it does — position:fixed already). Explicit width, not auto: at
+     height:13px without a width the box rendered 15px wide instead of the ~9.8px the SVG's own
+     113x150 intrinsic ratio implies — pinned instead of chasing why. */
+  #arrowImg {
+      height: 17px;
+      width: 12.8px;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      margin: 0;
+  }
+
+  #arrowImg.dark {
+     color: #000;
+  }
+
+  article {
+      margin-left: 5px;
+  }
+
+  .sutta p, 
+  .sutta ol, 
+  .sutta ul, 
+  .sutta li { 
+    margin-bottom: 1.5rem; 
+    font-size: 1.1rem; 
+  }
+
+  .sutta h1 {
+    text-align: center;
+  }
+
+  .sutta hr { 
+  display: none;
+  }
+
+#scrollToTopBtn {
+  border-width: 2px;
+  border-radius: 32px;
+  bottom: 30px;
+  right: 90px;
+  /* background-color: #424269; border-color: #5A5A5A; */ /* Ваши старые комменты */
+  /* Matches #language-button's rendered height (38px) — see same note in search/index.html. */
+  height: 38px;
+  width: 38px;
+  /* НЕ ставить здесь display:flex — smoothScroll.js переключает видимость этой кнопки инлайновым
+     style.display ('block'/'none') на каждый скролл, инлайн всегда бьёт правило из таблицы
+     стилей, flex тут же слетал бы обратно в block. Центровка иконки — через position:absolute
+     на #arrowImg (см. выше), ей не важно, какой display у кнопки. */
+
+  /* --- ИЗМЕНЕНИЯ ЗДЕСЬ --- */
+  
+  /* 1. Начальное состояние перед анимацией */
+  opacity: 0; 
+  transform: scale(0.5); 
+
+  /* 2. Применяем ту же анимацию "пружины" */
+  animation: btnPopIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  
+  /* 3. Плавность для эффектов при наведении */
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+/* Добавим эффект наведения для комплекта, как у TTS кнопки */
+#scrollToTopBtn:hover {
+  transform: scale(1.15) !important; /* Чуть увеличиваем при наведении */
+  opacity: 1 !important; /* Делаем полностью непрозрачной */
+}
+
+
+  html.dark #scrollToTopBtn #arrowImg,
+  body.dark #scrollToTopBtn #arrowImg,
+  body[data-theme="dark"] #scrollToTopBtn #arrowImg {
+    filter: invert(1);
+  }
+
+  .go-button {
+    margin-left: 5px;
+    height: 35px;
+    width: 35px;
+    border-radius: 32px;
+    -webkit-border-radius: 32px;
+    border: 1px solid #5a5a5a; /* --dark-gray */
+    -webkit-appearance: none;
+    appearance: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    padding: 0;
+   /* background-color: transparent;*/
+    background-color: rgb(221, 221, 221);
+    color: #5a5a5a;
+  }
+
+  .byline p {
+    overflow: hidden;  
+    text-overflow: ellipsis; /* "..." если текст не помещается */
+    margin: 0;          /* Убираем отступы */
+  }
+
+    /* 
+  .rus-lang {
+    font-family: "Robto Serif", serif;
+  }
+  */
+
+  .hint {
+    font-family: sans-serif;
+    z-index:100;
+  }
+
+  .byline [class*="-lang"] {
+    display: inline;    /* Отменяем inline-block для byline */
+    width: auto;        /* Сбрасываем ширину */
+  }
+
+  /* Резервируем место, даже если текст пуст или скрыт */
+  .byline::after {
+    content: "";
+    display: inline-block;
+    height: 1.2rem;  /* Такая же высота, как у текста */
+    visibility: hidden;  /* Невидим, но сохраняет место */
+  }
+
+  .dark .go-button {
+    border-color: #dddddd; /* --off-white */
+    background-color: #42426a; /* --dark-blue */
+    color: #dddddd; /* --off-white */
+  }
+
+  .dark .go-button:hover {
+    background-color: #8f8f8f; /* --light-gray */
+  }
+
+  .roundedborder{
+    position: absolute; 
+    right :35px; 
+    z-index:999999;
+  }
+
+  input,
+  button,
+  select,
+  optgroup,
+  textarea {
+   /* font-family: "Robto Serif";*/
+    font-size: 0.8rem;
+    line-height: 1rem;
+  }
+  .svgarrow {
+    color: #000;
+  }
+
+  .dark .svgarrow {
+    color: #D5D5D5;
+  }
+
+  #match-button-next {
+    border-radius: 32px;
+    position: fixed; 
+    bottom: 30px; 
+    right: 100px; 
+    z-index: 99; 
+    padding: 5px; 
+  }
+
+  #match-button-clear {
+    display: none;
+    border-radius: 32px;
+    position: fixed; 
+    bottom: 30px; 
+    right: 100px; 
+    z-index: 99; 
+    padding: 5px; 
+  }
+
+  .warning {
+    color: #902A07;
+    text-align: center;
+  }
+
+  .dark p.warning {
+    color: rgb(170,69,16);
+  }
+
+  .close-warning {
+    cursor: pointer; 
+    margin-left: 0px; 
+    font-weight: bold;
+  }
+
+  /* На маленьких мобильных: показываем только номер */
+#navigation {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  gap: 8px; 
+  overflow: hidden;
+  max-width: 45rem;
+  margin: 0 auto;
+}
+
+  #previous,
+  #previous2 {
+    margin-right: auto;
+    text-align: left;
+  }
+
+  #next,
+  #next2 {
+    margin-left: auto;
+    text-align: right;
+  }
+
+  /* Owner: long sutta titles wrapped to a second line and threw off the row's layout — was a
+     2-line -webkit-line-clamp on the container/link while .sutta-name (below) separately forced
+     single-line nowrap, two conflicting truncation rules fighting each other. One line only,
+     split down the middle (max-width:49% each side, unchanged), ellipsis for whatever doesn't
+     fit — matching what was asked ("не было бы переноса на след. строку"). #previous2/#next2
+     (bottom copy, after #sutta) get the exact same treatment — same bug, just wasn't visible
+     until that copy actually had markup to render into (see search/index.html). */
+  #previous,
+  #next,
+  #previous2,
+  #next2 {
+    max-width: 49%;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  #previous a,
+  #next a,
+  #previous2 a,
+  #next2 a {
+    display: inline-block;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    max-width: 100%;
+    vertical-align: middle;
+  }
+
+  /* Стиль для названия сутты (одна строка + обрезка) */
+  .sutta-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+  }
+
+
+  .afternav {
+      display: none;
+    }
+
+    @media (max-width: 356px) {
+   .sutta-name {
+      display: none;
+    }
+
+  .afternav {
+        display: block;
+      }
+    }
+
+  .finder {
+    color: #902A07;
+      font-weight: bold;
+  }
+
+  .dark .finder  {
+    color: #DA420E;
+        font-weight: bold;
+  }  
+
+  .common-size-icon3 {
+    margin-top: -3px; 
+  margin-left: 0px;	
+    height: 25px; 
+    width: 22px;
+  }
+
+
+  .common-size-icon4 {
+    margin-top: -3px; 
+  margin-left: 6px;	
+    height: 25px; 
+    width: 22px;
+  }
+
+
+
+/* === Базовые стили для всех режимов === */
+
+[class*="-lang"] {
+  display: block;       /* Forces the element to take full width */
+  margin-bottom: 4px;   /* Adds a little breathing room between languages */
+}
+
+
+  .column-view [class*="-lang"] {
+    display: inline-block;
+    vertical-align: top;
+    text-align: left;
+    box-sizing: border-box;
+    word-wrap: break-word;
+  }
+
+  /* Старая раскладка (перевод прямым соседом .pli-lang, без .right-column) — сейчас
+     megareader.js всегда оборачивает переводы в .right-column (см. ниже), это правило на
+     случай прямого соседства без обёртки. */
+  .column-view .pli-lang:not(:empty) + [class*="-lang"]:not(:empty) {
+    width: 48%;
+  }
+
+  header .column-view .pli-lang:not(:empty) {
+      width: 100%;  
+
+  }
+
+  .column-view .pli-lang:not(:empty) {
+    width: 48%;
+    padding-right: 10px;
+    max-width: 48%;
+  }
+
+  /* === Новый стиль: с .right-column === */
+
+  /* Если внутри .column-view есть .right-column */
+  .column-view .right-column {
+    display: inline-block;
+    width: 48%;
+    padding-left: 10px;
+    vertical-align: top;
+    box-sizing: border-box;
+
+    /* Убираем возможные пробельные отступы между дочерними элементами 
+    font-size: 0;*/ /* Отключаем влияние размера шрифта на inline-block элементы */
+  }
+
+  /* Внутри right-column — восстанавливаем нормальный размер текста 
+  .column-view .right-column * {
+    font-size: medium;  
+  }*/
+
+  /* Pali — слева */
+  .column-view .pli-lang:not(:empty) {
+    width: 48%;
+    padding-right: 10px;
+    max-width: 48%;
+  }
+
+  /* Переводы внутри right-column — блочные элементы (любой язык, любое число переводчиков) */
+  .column-view .right-column [class*="-lang"] {
+    display: block;
+    width: 100%;
+    margin: 0; /* Убираем все внешние отступы */
+    padding: 0;
+  }
+
+  /* Owner: with 2+ translators/languages stacked in right-column, margin:0 above left them
+     touching with zero gap — "merge into one pile". Gap only BETWEEN blocks, not before the
+     first (right after the Pali line). */
+  .column-view .right-column [class*="-lang"] + [class*="-lang"] {
+    margin-top: 0.5em;
+  }
+
+  /* Убедимся, что <br> не добавляет лишний отступ */
+  .column-view .right-column br {
+    display: none; /* Либо удалите <br> из HTML, если он не нужен */
+  }
+
+  /* Скрытие пустых */
+  .column-view [class*="-lang"]:empty {
+    display: none;
+  }
+
+  /* Ширина контейнера — #sutta.column-view (ID+класс, специфичность 110), НЕ .sutta.column-view
+     (только классы, 20): index.css/rus-multi.css задают базовую ширину через #sutta{max-width:
+     45rem} (специфичность 100, тот же приём, что и на проде) — чисто классовый селектор здесь
+     проигрывал ему всегда, независимо от .column-view, поэтому 2-колоночный режим на десктопе
+     никогда реально не расширялся (владелец: "можно шире, см. прод"). На проде (read/css/
+     uiextra.css) этот же override — #sutta.column-view, тот же приём, здесь разошлось при
+     переносе. */
+  #sutta.column-view {
+    max-width: 105rem;
+  }
+
+  /* Перенос слов для читаемости    white-space: pre-wrap; */
+  .sutta * {
+    word-break: break-word;
+    overflow-wrap: break-word;
+  }
+
+
+  .greyedout {
+    color: #5a5a5a !important;
+  }
+
+  .dark .greyedout {
+    color: #8f8f8f !important;
+  }
+
+
+  .variant {
+    display: inline; /* или inline-block */
+    vertical-align: baseline;
+    line-height: 1.4; /* совпадает с основным текстом */
+    margin: 0;
+    padding: 0;
+    color: #95796b !important;
+  }
+
+  .dark .variant {
+    color: #83676a !important;
+  }
+
+  .dark .btn-close {
+    color: #989898 !important;
+    filter: invert(1) grayscale(100%) brightness(200%);
+  }
+
+
+  .hidden-variant {
+    display: none !important;
+  }
+
+
+  .sutta-title .variant {
+    display: block;
+    font-size: 18px;
+    font-weight: normal;
+    line-height: 1.4;
+  }
+
+#language-button {
+  border-radius: 32px;
+  position: fixed;
+  bottom: 30px;
+  right: 20px;
+  /* Поднимали до 1090 (выше дровера) — откат: владелец проверил живьём, кнопка налезала на
+     пункты открытого дровера и мешала по ним кликать. Обратно ниже дровера. */
+  z-index: 100;
+  padding: 5px;
+  /* Добавляем прозрачность и анимацию как у соседних кнопок */
+  opacity: 0.8; 
+  animation: btnPopIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+/* Эффект при наведении, чтобы она становилась полностью непрозрачной */
+#language-button:hover {
+  opacity: 1 !important;
+  transform: scale(1.1);
+}
+
+
+
+  #language-button-dummy {
+    border-radius: 32px !important;
+    /*position: absolute;
+    right: 10px;
+    top: 20px;*/
+    padding: 5px; 
+  }
+
+  .copyLink {
+      position: relative;
+      display: inline-block;
+      vertical-align: middle;
+      bottom: 0.2em;
+      -webkit-tap-highlight-color: transparent;
+      /* Owner: this invisible end-of-line marker (opacity:0, but still a real inline-block box)
+         was consuming real layout width — since browsers won't split an inline-block across a
+         line break, it could tip a line over its available width and force a wrap the matching
+         translation paragraph (with no such marker) wouldn't take, misaligning Pali/translation
+         line breaks. width:0 + overflow:visible removes it from the width calculation entirely
+         while letting its ::before glyph still paint past the zero-width box, same visual spot.
+         ::after's glow highlight below switches from left:0/right:0 (relative to this box, which
+         would now also compute to zero width) to an explicit width instead. */
+      width: 0;
+      overflow: visible;
+    /*   touch-action: manipulation;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none; */
+  }
+
+
+  .copyLink::after {
+      content: "";
+      position: absolute;
+      left: -0.2em;
+      width: 1.4em;
+      top: -2px;
+      bottom: -2px;
+      background-color: transparent;
+      transition: 
+          background-color 0.5s ease-out,
+          box-shadow 0.5s ease-out,
+          opacity 0.5s ease-out,
+          top 0.3s ease-out,
+          bottom 0.3s ease-out,
+          left 0.3s ease-out,
+          right 0.3s ease-out;
+      border-radius: 3px;
+      opacity: 0;
+      pointer-events: none;
+  }
+
+  /* Для десктопов - hover */
+  @media (hover: hover) {
+      .copyLink:hover::after {
+          background-color: rgba(19, 104, 87, 0.8); /* Полупрозрачный вариант */
+          top: -3px;
+          bottom: -3px;
+          left: -0.4em;
+          width: 1.8em;
+          box-shadow: 0 0 4px rgba(19, 104, 87, 0.5);
+          opacity: 1;
+      }
+  }
+
+  /* Яркое подтверждение при касании */
+  .copyLink:active::after {
+      background-color: #136857; /* Полностью непрозрачный */
+      box-shadow: 0 0 8px rgba(19, 104, 87, 0.8); /* Ярче свечение */
+      top: -4px;
+      bottom: -4px;
+      left: -0.5em;
+      width: 2em;
+      opacity: 1;
+      transition: 
+          background-color 0.1s ease-out,
+          box-shadow 0.1s ease-out,
+          top 0.1s ease-out,
+          bottom 0.1s ease-out,
+          left 0.1s ease-out,
+          right 0.1s ease-out; /* Очень быстрое появление */
+  }
+
+  /* Для тач-устройств - фокус после касания */
+  .copyLink:focus::after {
+      background-color: rgba(19, 104, 87, 0.6);
+      top: -3px;
+      bottom: -3px;
+      left: -0.4em;
+      width: 1.8em;
+      box-shadow: 0 0 4px rgba(19, 104, 87, 0.5);
+      opacity: 1;
+      outline: none;
+      transition-duration: 0.5s; /* Медленное затухание */
+  }
+
+  /* Убираем фокус для мыши */
+  @media (hover: hover) {
+      .copyLink:focus::after {
+          background-color: transparent;
+          box-shadow: none;
+          opacity: 0;
+      }
+  }
+
+  /* Делаем родительские элементы контекстом для позиционирования */
+  [class*="-lang"], .variant {
+    position: relative;
+  }
+
+
+  p .copyLink,
+  p .copyLink-start {
+      font-size: 1.2em; /* или другой желаемый размер */
+  }
+
+  a.copyLink::before,
+  a.copyLink-start::before {
+    content: '✦';
+  }
+
+  .copyLink {
+        opacity: 0;
+        cursor: pointer;
+      transition: opacity 0.3s ease;
+  }
+
+  .copyLink-start {
+      position: absolute;
+      top: -0.2em;
+      left: -1.0em;
+
+      color: inherit;
+      opacity: 0;
+      text-decoration: none;
+      cursor: pointer;
+      transition: opacity 0.3s ease;
+  }
+  .copyLink:hover,
+  .copyLink:focus,
+  .copyLink-start:hover,
+  .copyLink-start:focus {
+      opacity: 0.9;
+  }
+
+
+/* Базовое состояние для ссылок: прозрачность 0 и плавный переход */
+.copyLink .copyLink-start {
+    opacity: 0;
+    transition: opacity 0.4s ease-in-out; /* 0.4 секунды — достаточно плавно и приятно */
+}
+
+@media (min-width: 992px) {
+  [class*="-lang"]:hover .copyLink-start,
+  .variant:hover .copyLink-start {
+      /* Цвет с прозрачностью 30% (0.3) */
+    opacity: 0.9;
+  }
+}
+
+
+
+  h1.sutta-title > span,
+  header ul li > span {
+    position: relative;
+  /*  display: inline-block; */
+    vertical-align: top;
+  }
+
+  /* apple-design audit: large display text reads too loose at this size with default (0)
+     tracking; tighten it slightly, same discipline Apple applies to display type. */
+  h1.sutta-title {
+    letter-spacing: -0.01em;
+  }
+
+.plain-label {
+  all: unset;             
+  cursor: pointer;       
+  display: inline;
+}
+
+
+#settings, #paliLookupInfo{
+    z-index: 1000 !important;
+}
+
+
+.modal-backdrop {
+    z-index: 999 !important;
+}
+
+   /*   background-color: rgba(52, 52, 190, 0.2);
+     background-color: rgba(66, 66, 106, 0.6);
+  */
+/* Класс для подсветки текущего предложения при чтении */
+
+/* Реальное скрытие языка в тексте — раньше такого правила для .sutta не было вообще
+   (было только для #smart-toc-panel ниже), поэтому переключатель Pāḷi/Рус ничего не прятал.
+   [class*="-lang"] работает для любого кода языка (ru-lang, en-lang, ...), не только rus-lang/eng-lang.
+   Скрываем только .quote (сегменты текста, см. megareader.js) — не заголовок/byline
+   переводчика, у них того же .pli-lang, но это не цитата текста. */
+.sutta.hide-pali .pli-lang.quote {
+    display: none !important;
+}
+.sutta.hide-english [class*="-lang"].quote:not(.pli-lang),
+.sutta.hide-russian [class*="-lang"].quote:not(.pli-lang) {
+    display: none !important;
+}
+
+/* 1. Общее правило для обычного текста (оставляем как есть) */
+.sutta.hide-pali [class*="-lang"]:not(.pli-lang) {
+    display: block;
+    margin-bottom: 8px; /* Отступ для абзацев */
+}
+
+/* 2. СПЕЦИАЛЬНОЕ правило для стихов: убираем отступ */
+.sutta.hide-pali .verse-line [class*="-lang"]:not(.pli-lang) {
+    margin-bottom: 0; /* Строки стиха будут прижаты друг к другу */
+}
+
+/* 3. Дополнительно: добавить небольшой отступ всему блоку стиха, если нужно */
+.sutta.hide-pali .verse-line {
+    margin-bottom: 2px; /* Небольшой зазор между строками самого HTML контейнера */
+}
+
+
+
+/* Контейнер для умной кнопки */
+#smart-gear-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 10px;
+    
+    /* ВАЖНО: Контейнер прозрачен для кликов, чтобы не перекрывать сайт */
+    pointer-events: none;
+}
+
+/* Кнопка-триггер (шестеренка) */
+#smart-gear-btn {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    
+    background-color: rgb(221, 221, 221); 
+    border: 2px solid #5a5a5a;
+    
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: none;
+    padding: 0;
+    
+    opacity: 0;
+    transform: translateY(-20px) scale(0.5);
+    visibility: hidden;
+    transition: transform 0.2s ease, opacity 0.2s ease, visibility 0.2s;
+
+    /* ВАЖНО: Кнопка ловит клики, но только когда станет visible */
+    pointer-events: auto; 
+}
+
+/* Размер иконки */
+#smart-gear-btn img {
+    width: 16px;
+    height: 16px;
+    display: block;
+}
+
+/* Когда добавляем класс visible через JS */
+#smart-gear-btn.visible {
+    opacity: 0.8;
+    transform: translateY(0) scale(1);
+    visibility: visible;
+    /* pointer-events: auto уже наследуется, а visibility: visible включает его */
+}
+
+/* Эффект при наведении */
+#smart-gear-btn:hover {
+    opacity: 1 !important;
+    transform: scale(1.15) !important;
+    background-color: rgb(221, 221, 221);
+}
+
+/* Темная тема */
+.dark #smart-gear-btn {
+    background-color: #42426a;
+    border-color: #5a5a5a;
+}
+
+
+.dark #smart-gear-btn img {
+    filter: brightness(0) invert(0.7) !important;
+}
+
+#smart-panel {
+    background-color: rgba(255, 255, 255, 0.95);
+    border-radius: 12px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    border: 1px solid #ccc;
+    
+    max-height: calc(100vh - 80px); 
+    overflow-y: auto;               
+    -webkit-overflow-scrolling: touch; 
+    
+    opacity: 0;
+    visibility: hidden;
+    transform: scale(0.9);
+    transform-origin: top right;
+    transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    pointer-events: none;
+
+    font-family: sans-serif;
+    font-size: 1rem;
+    color: #535353;
+}
+
+#smart-panel.active {
+    opacity: 1;
+    visibility: visible;
+    transform: scale(1);
+    pointer-events: auto;
+}
+
+.smart-btn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 5px;
+    border-radius: 8px;
+    transition: background 0.2s;
+    
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+    color: inherit;
+    font-family: inherit;
+    font-size: inherit;
+}
+
+.smart-btn:hover {
+    background-color: rgba(0,0,0,0.1);
+}
+
+.smart-btn img {
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+}
+
+.dark #smart-panel {
+    background-color: #333;
+    border-color: #555;
+    /* Цвет шрифта для темной темы */
+    color: #909090;
+}
+
+.dark .smart-btn img {
+    filter: invert(1);
+}
+
+.dark .smart-btn:hover {
+    background-color: rgba(255,255,255,0.1);
+}
+
+/* Новые классы для замены инлайн-стилей из JS */
+.hidden-toc {
+    display: none !important;
+}
+
+.toc-item span {
+    cursor: pointer;
+}
+
+
+#dict-select {
+  width: 140px;
+  max-width: 180px;
+}
+.btn-language {
+    text-decoration: none;
+    color: white !important; 
+}
+
+
+@media (max-height: 520px) {
+  #smart-gear-container {
+    top: 8px;
+    right: max(20px, env(safe-area-inset-right, 0px));
+    align-items: flex-end;
+    pointer-events: none;
+    z-index: 1002;
+  }
+
+
+  #smart-panel {
+    position: fixed;
+    top: 52px;
+    right: max(20px, env(safe-area-inset-right, 0px));
+    max-height: calc(100vh - 64px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    transform-origin: top right;
+    box-sizing: border-box;
+    pointer-events: auto;
+  }
+
+  #smart-panel .smart-btn {
+    white-space: normal;
+    word-break: break-word;
+  }
+}
+
+
+/* Стилизация по ID для очистки HTML */
+#chapter-button img {
+    position: relative;
+    top: -2px;
+}
+
+#fontDec, #fontInc {
+    width: 32px;
+    height: 32px;
+    font-weight: bold;
+}
+
+#fontVal {
+    min-width: 45px;
+}
+
+/* Общие стили для иконок компаса в модальных окнах */
+.compass-icon {
+    cursor: pointer;
+    height: 25px;
+    width: 25px; /* фиксируем ширину */
+    color: grey;
+    margin-left: 0.5em; /* небольшой отступ от заголовка */
+    display: inline-flex; /* flex лучше центрирует картинку */
+    align-items: center;
+    justify-content: center;
+    vertical-align: middle;
+}
+.compass-icon img {
+    height: 100%;
+    width: auto;
+}
+
+
+/* Разделитель в смарт-панели */
+#smart-panel hr {
+    margin: 4px 0;
+    border-color: #ccc;
+}
+
+.smart-btn {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+    color: inherit;
+}
+
+.smart-btn img {
+    flex-shrink: 0;
+}
+
+
+
+/* Специальный зеленый варнинг для Devanagari и Memorize */
+.warning-green {
+    color: green !important;
+}
+
+/* Стили из начала memorize.js перенесены сюда для скорости */
+.mem-pli-size {
+    font-size: 1.4em !important;
+}
+
+.mem-copy-size {
+    font-size: 0.8em !important;
+}
+
+.mem-copy-pos {
+    bottom: 0em !important;
+    right: -0.6em !important;
+}
+
+  /* === ОБЩИЕ СТИЛИ === */
+    .mem-trigger {
+        cursor: pointer;
+        position: relative;
+        transition: color 0.2s, text-shadow 0.2s, border-bottom-color 0.2s;
+        border-bottom: 1px solid transparent;
+    }
+    
+    .mem-trigger:hover,
+    .mem-trigger.mem-active { 
+        color: var(--bs-primary, #0d6efd); 
+        border-bottom-color: var(--bs-primary, #0d6efd);
+    }
+
+    .mem-bubble {
+        position: absolute;
+        background-color: #ffffff;
+        color: #333333;
+        border: 1px solid #ccc;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        padding: 6px 12px; /* Чуть больше паддинг для многострочного текста */
+        border-radius: 6px;
+        font-size: 18px; 
+        font-family: sans-serif;
+        z-index: 10000;
+        
+        /* === ИЗМЕНЕНИЯ ДЛЯ ПЕРЕНОСА СЛОВ === */
+        white-space: normal;       /* Разрешаем перенос */
+        overflow-wrap: break-word; /* Ломаем длинные слова */
+        word-break: break-word;    /* Совместимость */
+        text-align: center;        /* Центрируем текст */
+        line-height: 1.3;          /* Межстрочный интервал */
+        
+        /* Ограничиваем ширину */
+        width: max-content;        /* Стремимся к ширине контента */
+        max-width: 300px;          /* Но не шире 300px на десктопе */
+        
+        /* На мобильных не шире экрана */
+        @media (max-width: 400px) {
+            max-width: 85vw;
+        }
+
+        pointer-events: auto; 
+        cursor: pointer; 
+        
+        transform: translateY(-100%); 
+        margin-top: -8px;
+        opacity: 0; 
+        transition: opacity 0.2s ease-out; 
+    }
+    
+    .mem-bubble.visible {
+        opacity: 1;
+    }
+
+    /* Стрелочка вниз */
+    .mem-bubble::after {
+        content: "";
+        position: absolute;
+        top: 100%;
+        left: var(--arrow-x, 50%); 
+        margin-left: -6px;
+        border-width: 6px;
+        border-style: solid;
+        border-color: #ffffff transparent transparent transparent; 
+    }
+    /* Обводка стрелочки */
+    .mem-bubble::before {
+        content: "";
+        position: absolute;
+        top: 100%;
+        left: var(--arrow-x, 50%);
+        margin-left: -7px;
+        border-width: 7px;
+        border-style: solid;
+        border-color: #ccc transparent transparent transparent; 
+    }
+
+    /* === ТЕМНАЯ ТЕМА === */
+    body.dark .mem-trigger:hover,
+    body.dark .mem-trigger.mem-active {
+        color: var(--bs-primary, #0d6efd); 
+        text-shadow: 0 0 8px rgba(13, 110, 253, 0.6); 
+    }
+    body.dark .mem-bubble {
+        background-color: #2b2b2b;
+        color: #e0e0e0;
+        border: 1px solid #555;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.6);
+    }
+    body.dark .mem-bubble::after {
+        border-color: #2b2b2b transparent transparent transparent;
+    }
+    body.dark .mem-bubble::before {
+        border-color: #555 transparent transparent transparent;
+    }
+    
+    
+/* Подсветка последнего нажатого слова (Bootstrap primary) */
+.active-word {
+  background-color: rgba(var(--bs-primary-rgb), 0.35);
+  border-radius: 0.25rem;
+  box-shadow: 0 0 0 1px rgba(var(--bs-secondary-rgb), 0.15);
+}
+
+.dark .active-word {
+  background-color: rgba(var(--bs-primary-rgb), 0.25);
+  box-shadow: 0 0 0 1px rgba(var(--bs-secondary-rgb), 0.15);
+}
+
+[class*="-lang"] {
+  transition: background-color 260ms ease-in-out;
+}
+
+
+/* Исключение для мини-кнопки: жестко фиксируем размеры */
+.tts-mini-button {
+  width: 17px !important; 
+  height: 17px !important; 
+  vertical-align: middle;
+}
+
+@keyframes btnPopIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.5); 
+  }
+  60% {
+    transform: scale(1.1); 
+  }
+  100% {
+    opacity: 0.8;
+    transform: scale(1);   
+  }
+}
+
+.dynamic-tts-btn {
+  position: fixed;
+  right: 90px;
+  bottom: 30px;
+  /* Откат до 99 — см. комментарий у #language-button выше: 1090 (выше дровера) перекрывало
+     пункты открытого меню. */
+  z-index: 99;
+  /* Matches #language-button's rendered height (38px) — see same note in search/index.html. */
+  width: 38px;
+  height: 38px;
+
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  
+  box-sizing: border-box;
+  border-radius: 50%; 
+  border: 2px solid #5a5a5a; 
+  background-color: rgb(221, 221, 221);
+  cursor: pointer;
+  
+  opacity: 0; 
+  transform: scale(0.5); 
+  animation: btnPopIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+
+  transition: all 0.3s ease; 
+  padding: 0;
+  margin: 0;
+}
+
+.dynamic-tts-btn.shifted {
+  /* 90 + 38 (button, border included) + 8 (gap) — was 132 for the old 30px/34px button. */
+  right: 136px;
+}
+
+.dynamic-tts-btn:hover {
+  opacity: 1 !important;
+  transform: scale(1.1) !important;
+}
+
+.dynamic-tts-btn img {
+  width: 18px;
+  height: 18px;
+  display: block;
+  margin: 0 auto; 
+  transform: none !important; 
+}
+
+.dark .dynamic-tts-btn {
+  border-color: #5a5a5a;
+  background-color: #42426a;
+}
+
+/* apple-design audit: on narrow screens, this fixed bottom-right cluster (play/language
+   toggle, 38px, bottom:30px) permanently covered the last lines of the page with no way to
+   scroll them clear. Reserve a safe zone so content always clears the buttons.
+   Was on #sutta — right when #sutta really was the last element. Now hr/#navigation
+   (previous2/next2)/.links-area (footer icons) all follow it (search/index.html), so #sutta's
+   own padding just pushed an oversized gap in front of that hr instead of protecting anything
+   — .links-area is the real last element now, the safe zone belongs there. */
+@media (max-width: 600px) {
+  .links-area {
+    padding-bottom: 96px;
+  }
+}
+
+.dark .dynamic-tts-btn img {
+  filter: invert(1);
+}
+
+
+#form.ui-widget #paliauto,
+#paliauto.ui-autocomplete-input,
+#paliauto {
+    font-size: 1.0rem !important; 
+    line-height: 1rem !important; 
+    font-family: var(--bs-font-sans-serif, sans-serif) !important; 
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+    height: 35px !important;
+    box-sizing: border-box !important;
+    -webkit-appearance: none !important;
+    appearance: none !important;
+}
+
+
+/*
+smart TOC 
+*/
+
+/* Контейнер для кнопки и панели оглавления */
+#smart-toc-container {
+    position: fixed;
+    top: 20px;
+    right: 60px; /* Сдвинуто левее шестеренки (30px + отступ) */
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 10px;
+    pointer-events: none;
+}
+
+/* Кнопка-пилюля */
+#smart-toc-btn {
+    height: 30px;
+    border-radius: 15px;
+    background-color: rgb(221, 221, 221);
+    border: 2px solid #5a5a5a;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    cursor: pointer;
+    padding: 0 10px;
+    gap: 8px;
+    max-width: 250px;
+    box-shadow: none;
+    
+    opacity: 0;
+    transform: translateY(-20px) scale(0.9);
+    visibility: hidden;
+    transition: transform 0.2s ease, opacity 0.2s ease, visibility 0.2s;
+    pointer-events: auto;
+}
+
+#smart-toc-btn.visible {
+    opacity: 0.8;
+    transform: translateY(0) scale(1);
+    visibility: visible;
+}
+
+#smart-toc-btn:hover {
+    opacity: 1 !important;
+    transform: scale(1.05) !important;
+    background-color: rgb(221, 221, 221);
+}
+
+#smart-toc-btn img {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+}
+
+
+/* Состояние только с иконкой (в самом верху страницы) */
+#smart-toc-btn.icon-only {
+    max-width: 30px; 
+    padding: 5px;
+    justify-content: center;
+}
+
+#smart-toc-btn.icon-only span {
+    display: none;
+}
+
+#smart-toc-current {
+    font-size: 16px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: #333;
+    font-family: sans-serif;
+}
+
+/* Выпадающая панель оглавления */
+#smart-toc-panel {
+    background-color: rgba(255, 255, 255, 0.95);
+    border-radius: 12px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    border: 1px solid #ccc;
+    
+    max-height: calc(100vh - 80px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+
+    opacity: 0;
+    visibility: hidden;
+    transform: scale(0.9);
+    transform-origin: top right;
+    transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    pointer-events: none;
+    
+    width: max-content;
+    max-width: 320px;
+}
+
+#smart-toc-panel.active {
+    opacity: 1;
+    visibility: visible;
+    transform: scale(1);
+    pointer-events: auto;
+}
+
+/* Элементы списка оглавления */
+.toc-item {
+    cursor: pointer;
+    padding: 6px 10px;
+    border-radius: 6px;
+    color: #333;
+    transition: background 0.2s;
+    word-break: break-word;
+    line-height: 1.2;
+    font-family: sans-serif;
+}
+
+.toc-item:hover {
+    background-color: rgba(0,0,0,0.05);
+}
+
+.toc-item.active {
+    background-color: rgba(var(--bs-primary-rgb, 13, 110, 253), 0.1);
+    color: var(--bs-primary, #0d6efd);
+    font-weight: bold;
+}
+
+/* Иерархия отступов */
+.toc-h1 { margin-left: 0; font-size: 16px; font-weight: bold; }
+.toc-h2 { margin-left: 12px; font-size: 14px; font-weight: bold; }
+.toc-h3 { margin-left: 24px; font-size: 14px; }
+.toc-h4, .toc-h5, .toc-h6 { margin-left: 36px; font-size: 13px; color: #555; }
+
+/* Темная тема */
+.dark #smart-toc-btn {
+    background-color: #42426a;
+    border-color: #5a5a5a;
+}
+.dark #smart-toc-btn img {
+    filter: brightness(0) invert(0.7);
+}
+.dark #smart-toc-current {
+    color: #ddd;
+}
+.dark #smart-toc-panel {
+    background-color: #333;
+    border-color: #555;
+}
+.dark .toc-item {
+    color: #e0e0e0;
+}
+.dark .toc-item:hover {
+    background-color: rgba(255,255,255,0.1);
+}
+.dark .toc-item.active {
+    background-color: rgba(13, 110, 253, 0.2);
+    color: #6ea8fe;
+}
+.dark .toc-h4, .dark .toc-h5, .dark .toc-h6 { color: #aaa; }
+
+/* Адаптация для мобильных как у шестеренки */
+@media (max-height: 520px) {
+    #smart-toc-container {
+        top: 8px;
+        right: max(60px, calc(env(safe-area-inset-right, 0px) + 40px));
+    }
+    #smart-toc-panel {
+        position: fixed;
+        top: 52px;
+        right: max(20px, env(safe-area-inset-right, 0px));
+        max-height: calc(100vh - 64px);
+    }
+}
+
+/* === Стили языков внутри оглавления === */
+.toc-item .pli-lang {
+    color: #222; /* Темный (основной) для Пали в светлой теме */
+    font-weight: 500;
+    line-height: 1.2;
+    margin-bottom: 2px;
+    display: block; /* Каждый язык с новой строки */
+}
+
+.toc-item .rus-lang, 
+.toc-item .eng-lang, 
+.toc-item .tha-lang {
+    color: #777; /* Серый (вторичный) для перевода в светлой теме */
+    line-height: 1.2;
+    display: block;
+}
+
+/* Темная тема для оглавления */
+.dark .toc-item .pli-lang {
+    color: #e0e0e0; /* Яркий белый для Пали в темной теме */
+}
+
+.dark .toc-item .rus-lang, 
+.dark .toc-item .eng-lang, 
+.dark .toc-item .tha-lang {
+    color: #999; /* Светло-серый для перевода в темной теме */
+}
+
+/* === Синхронизация видимости языков в TOC === */
+#smart-toc-panel.hide-pali .pli-lang,
+#smart-toc-panel.hide-russian .rus-lang,
+#smart-toc-panel.hide-english .eng-lang {
+    display: none !important;
+}
+
+
+/* Адаптация оглавления для мобильных экранов по ширине (портретный режим) */
+@media (max-width: 600px) {
+    #smart-toc-panel {
+        position: fixed; /* Отвязываем от контейнера */
+        top: 60px; /* Отступ сверху под кнопкой */
+        right: max(20px, env(safe-area-inset-right, 0px)); /* Прижимаем вплотную к правому краю экрана */
+        max-width: calc(100vw - 40px); /* Гарантируем, что панель уместится по ширине с аккуратными отступами */
+    }
+}
+
+
+.lang-2nd {
+  color: #666;
+}
+
+/*меню ссылок copylink*/
+
+/* --- СТИЛИ ВЫПАДАЮЩЕГО МЕНЮ (НАЖАТИЕ НА ✦) --- */
+#segment-context-menu {
+  position: absolute;
+  z-index: 100000;
+  background: #ffffff;
+  border: 1px solid #ccc;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  min-width: 160px;
+  
+  /* Добавляем это для стабильности */
+  margin-top: 8px; 
+}
+
+
+.dark #segment-context-menu {
+  background: #333333;
+  border-color: #555555;
+  color: #e0e0e0;
+}
+
+.segment-menu-hidden {
+  display: none !important;
+}
+
+#segment-context-menu ul {
+  list-style: none;
+  margin: 0;
+  padding: 8px 0;
+}
+
+#segment-context-menu li {
+  padding: 10px 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: sans-serif;
+  font-size: 1rem;
+}
+
+#segment-context-menu li:hover {
+  background: rgba(0,0,0,0.05);
+}
+
+.dark #segment-context-menu li:hover {
+  background: rgba(255,255,255,0.1);
+}
+
+.menu-icon {
+  width: 16px;
+  height: 16px;
+  opacity: 0.5; /* Делает черные иконки серыми */
+}
+
+.dark .menu-icon {
+  filter: invert(1);
+  opacity: 0.7; /* Светло-серые иконки в темной теме */
+}
+
+@media (max-width: 768px) {
+  .sutta {
+    padding-left: 5px;
+  }
+}
+
+/* Общие стили для скрытия дублирующих иконок во втором языке */
+.trn-title-icon { 
+    display: none !important; 
+}
+
+.sutta.hide-pali .trn-title-icon { 
+    display: inline-block !important; 
+}
+
+.title-play-btn {
+    display: inline-block;
+    vertical-align: middle;
+    font-size: 1.1em;
+    line-height: 1;
+    margin-right: 8px;
+    position: relative;
+    bottom: 0.2em;
+    user-select: none;
+    cursor: pointer;
+}
+
+/* === ССЫЛКА В СТРОКЕ 0.1 === */
+[id="0.1"] .copy-Link-special {
+    display: inline-block !important;
+    opacity: 1 !important;
+    margin-left: 8px;
+    text-decoration: none;
+}
+
+[id="0.1"] .copy-Link-special::before {
+    content: none !important;
+}
+
+/* Сохраняем логику скрытия/показа для оригинальной ссылки */
+[id="0.1"] .copy-Link-special.trn-title-icon {
+    display: none !important;
+}
+
+.sutta.hide-pali [id="0.1"] .copy-Link-special.trn-title-icon {
+    display: inline-block !important;
+}
+
+.title-svg-icon {
+    width: 1em;
+    height: 1em;
+    opacity: 0.5;
+    vertical-align: -0.1em;
+
+    transition: none !important;
+    animation: none !important;
+}
+
+.title-play-btn:hover .title-svg-icon,
+.copy-Link-special:hover .title-svg-icon {
+    opacity: 0.8;
+}
+
+.dark .title-svg-icon {
+    filter: invert(1);
+    opacity: 0.7;
+}
+
+.dark .title-play-btn:hover .title-svg-icon,
+.dark .copy-Link-special:hover .title-svg-icon {
+    opacity: 1;
+}
+
+/* ==========================================================================
+   Шапка ридера: домик — поле с лупой внутри — бургер.
+   Собрана так же, как на странице поиска (search/index.html), чтобы обе страницы
+   выглядели одинаково. Домик приехал сюда из ряда иконок #form-div, кнопка отправки
+   перестала быть отдельной подписанной кнопкой справа от поля.
+   ========================================================================== */
+.dg-reader-hero {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+  margin-bottom: 8px;
+}
+
+/* Кнопки шапки без рамки и заливки — иконка читается лучше, чем «пилюля» вокруг неё. */
+.dg-reader-hero .dg-plain-btn {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+  color: var(--dark-gray);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.dg-reader-hero .dg-plain-btn:hover,
+.dg-reader-hero .dg-plain-btn:focus-visible { color: var(--off-black); }
+.dark .dg-reader-hero .dg-plain-btn { color: var(--off-white); }
+.dark .dg-reader-hero .dg-plain-btn:hover,
+.dark .dg-reader-hero .dg-plain-btn:focus-visible { color: #fff; }
+
+/* Домик крупнее остальных — главная точка возврата. */
+/* Домик — <div id="home-button"> со вложенной <a> (id и вложенность нужны обработчикам в
+   settings.js/megareader.js и смарт-панели), поэтому кликабельной делаем именно ссылку. */
+.dg-reader-hero .dg-home-btn a { display: inline-flex; align-items: center; }
+.dg-reader-hero .dg-home-btn img { width: 30px; height: 30px; }
+.dark .dg-reader-hero .dg-home-btn img { filter: invert(1); }
+
+/* Поле поиска: лупа лежит ПОВЕРХ поля слева, поле освобождает под неё отступ. */
+.dg-reader-hero .dg-search-field {
+  position: relative;
+  display: block;
+  flex: 0 1 380px;
+  min-width: 0;
+}
+/* Селектор с #form.ui-widget — не для красоты: выше в этом же файле есть
+   "#form.ui-widget #paliauto, #paliauto.ui-autocomplete-input, #paliauto { padding-left: 10px
+   !important }". Там ДВА id против одного, поэтому и !important, и более поздняя позиция в
+   файле не помогали — правило проигрывало по специфичности, отступ оставался 10px, и текст
+   начинался на 144px при лупе, кончающейся на 163px (наезд 19px, замерено). Уравниваем
+   количество id и добавляем свой класс, чтобы выиграть. */
+#form.ui-widget .dg-search-field #paliauto,
+.dg-reader-hero .dg-search-field #paliauto {
+  width: 100%;
+  margin: 0;
+  padding-left: 42px !important;
+}
+.dg-reader-hero .dg-search-field #searchbtn {
+  position: absolute;
+  left: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  /* Выше поля: непрозрачный инпут иначе закрывает иконку собой (ровно эта ошибка была на
+     странице поиска — иконка существовала, но её не было видно, и клик уходил в поле). */
+  z-index: 12;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+}
+.dg-reader-hero .dg-search-field #searchbtn:hover { background: rgba(128, 128, 128, 0.18); }
+/* Линза справа, ручка влево-вниз. */
+.dg-reader-hero .dg-search-icon { transform: scaleX(-1); }
+
+/* === MEMORIZE MODE (mode-table.json "mem") — ported from prod's read/js/memorize.js + its
+   inline style block and read/css/uiextra.css's .mem-trigger/.mem-bubble rules. Scoped under
+   body.dg-mode-mem (set by megareader.js only while this mode is active) so the bigger
+   .pli-lang/.copyLink sizing doesn't leak into every other reading mode. */
+body.dg-mode-mem .pli-lang {
+  font-size: 1.4em !important;
+}
+body.dg-mode-mem .byline .pli-lang {
+  font-size: 1em !important;
+}
+body.dg-mode-mem .copyLink {
+  font-size: 0.8em !important;
+}
+body.dg-mode-mem .copyLink:not(.copyLink-start) {
+  bottom: 0em !important;
+  right: -0.6em !important;
+}
+body.dg-mode-mem .mem-bubble::selection {
+  background: transparent;
+}
+
+/* === DEVANAGARI MODE (mode-table.json "devanagari", dualScript) — the converted script
+   (.pli-lang, main line) reads visually smaller than Latin at the same font-size, so bump it
+   up to match; the ISO/Latin second line (".greyedout", not .pli-lang) stays at 1em. Scoped
+   under body.dg-mode-dev (set by megareader.js only while this mode is active). */
+body.dg-mode-dev .pli-lang {
+  font-size: 1.2em !important;
+}
+body.dg-mode-dev .byline .pli-lang {
+  font-size: 1em !important;
+}
+
+.mem-trigger {
+  cursor: pointer;
+  position: relative;
+  transition: color 0.2s, text-shadow 0.2s, border-bottom-color 0.2s;
+  border-bottom: 1px solid transparent;
+}
+.mem-trigger:hover,
+.mem-trigger.mem-active {
+  color: var(--bs-primary, #0d6efd);
+  border-bottom-color: var(--bs-primary, #0d6efd);
+}
+
+.mem-bubble {
+  position: absolute;
+  background-color: #ffffff;
+  color: #333333;
+  border: 1px solid #ccc;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 18px;
+  font-family: sans-serif;
+  z-index: 10000;
+  white-space: normal;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  text-align: center;
+  line-height: 1.3;
+  width: max-content;
+  max-width: 300px;
+  pointer-events: auto;
+  cursor: pointer;
+  transform: translateY(-100%);
+  margin-top: -8px;
+  opacity: 0;
+  transition: opacity 0.2s ease-out;
+}
+@media (max-width: 400px) {
+  .mem-bubble { max-width: 85vw; }
+}
+.mem-bubble.visible { opacity: 1; }
+
+.mem-bubble::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: var(--arrow-x, 50%);
+  margin-left: -6px;
+  border-width: 6px;
+  border-style: solid;
+  border-color: #ffffff transparent transparent transparent;
+}
+.mem-bubble::before {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: var(--arrow-x, 50%);
+  margin-left: -7px;
+  border-width: 7px;
+  border-style: solid;
+  border-color: #ccc transparent transparent transparent;
+}
+
+body.dark .mem-trigger:hover,
+body.dark .mem-trigger.mem-active {
+  color: var(--bs-primary, #0d6efd);
+  text-shadow: 0 0 8px rgba(13, 110, 253, 0.6);
+}
+body.dark .mem-bubble {
+  background-color: #2b2b2b;
+  color: #e0e0e0;
+  border: 1px solid #555;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.6);
+}
+body.dark .mem-bubble::after {
+  border-color: #2b2b2b transparent transparent transparent;
+}
+body.dark .mem-bubble::before {
+  border-color: #555 transparent transparent transparent;
+}

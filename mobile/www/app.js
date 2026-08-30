@@ -1,29 +1,38 @@
-// Main page + search for the offline app. Pure JS/WASM (sql.js) in the WebView — no native
-// plugin (see build-offline-db.js header for why: sql.js has no FTS5, so the DBs are FTS4).
+// Offline data-shim for the mobile app. This file does NOT own any UI — mobile/www/index.html is
+// a verbatim copy of the real production page (search/index.html); its own inline SPA engine
+// (routeFromUrl/dgSetState/openReaderInPlace/initSearchApp/etc.) and the real, unmodified
+// search-render.js/megareader.js/common.js drive everything the user sees. This file's only job
+// is to intercept the handful of fetch() calls that need dynamic data and answer them from a
+// local SQLite database instead of dg-light.js's grep API — see
+// /root/.claude/plans/vast-questing-russell.md for the full "why" of this pivot.
+//
+// Pure JS/WASM (sql.js) in the WebView — no native plugin (sql.js has no FTS5 in its prebuilt
+// binary, so the DBs built by build-offline-db.js are FTS4; see that file's header). Everything
+// NOT intercepted here (static JSON/HTML, CSS, scripts) is served as a plain local file by
+// whatever's hosting mobile/www/ — no shim code needed for those, see build-assets.js.
 //
 // DBs are downloaded at runtime (not bundled in the APK) so they stay updatable and support
 // adding languages later without a new app release — cached in IndexedDB (see openStore below
 // for why not Cache Storage), which persists across app restarts and works offline once
 // downloaded.
+//
+// Deliberately NOT shimmed in this iteration (see plan's "what we don't do" — confirmed with the
+// project owner): /api/toc, /api/toc/book/:code (TOC — deferred fast-follow, cheap to snapshot
+// later), /api/transliterate (Aksharamukha script conversion — the affected UI option just won't
+// work offline, doesn't block search/read). Both fail soft (script 404 / unhandled 404 response),
+// they don't break anything else on the page.
 const DIST_BASE = 'https://test.dhamma.gift/mobile-data';
-
-const statusEl = document.getElementById('status');
-const formEl = document.getElementById('search-form');
-const inputEl = document.getElementById('search-input');
-const resultsEl = document.getElementById('results');
+const MIN_KEYWORD_LENGTH = 3; // mirrors dg-light.js's MIN_KEYWORD_LENGTH
 
 let SQL;
 let core, langDbs = {}; // { ru: Database, en: Database }
+let ready; // Promise, resolves once core/langDbs are loaded — the fetch shim awaits this
 
-function setStatus(text) {
-    statusEl.textContent = text;
-}
-
-// IndexedDB, not Cache Storage — Cache.put() on a cross-origin Response (the WebView's own
-// origin is never the same as DIST_BASE) hit QuotaExceededError in testing even well under the
-// reported quota: Chromium pads cross-origin Cache Storage entries to block quota-based
-// cross-origin size probing, and that padding is enough to blow the budget for a 60MB+ file.
-// Storing the raw bytes ourselves in IndexedDB sidesteps that response-padding behavior.
+// IndexedDB, not Cache Storage — Cache.put() on a cross-origin Response (DIST_BASE is never the
+// WebView's own origin) hit QuotaExceededError in testing even well under the reported quota:
+// Chromium pads cross-origin Cache Storage entries to block quota-based cross-origin size
+// probing, and that padding is enough to blow the budget for a 60MB+ file. Storing the raw bytes
+// ourselves in IndexedDB sidesteps that response-padding behavior.
 function openStore() {
     return new Promise((resolve, reject) => {
         const req = indexedDB.open('dg-offline-v1', 1);
@@ -52,26 +61,11 @@ function idbSet(db, key, value) {
 async function fetchDbBytes(idb, name) {
     const cached = await idbGet(idb, name);
     if (cached) return new Uint8Array(cached);
-
-    setStatus(`Downloading ${name}...`);
     const response = await fetch(`${DIST_BASE}/${name}`);
     if (!response.ok) throw new Error(`${name}: HTTP ${response.status}`);
     const buf = await response.arrayBuffer();
     await idbSet(idb, name, buf);
     return new Uint8Array(buf);
-}
-
-async function init() {
-    setStatus('Loading SQL engine...');
-    SQL = await initSqlJs({ locateFile: f => `vendor/${f}` });
-    const idb = await openStore();
-
-    core = new SQL.Database(await fetchDbBytes(idb, 'core.db'));
-    langDbs.ru = new SQL.Database(await fetchDbBytes(idb, 'lang_ru.db'));
-    langDbs.en = new SQL.Database(await fetchDbBytes(idb, 'lang_en.db'));
-
-    setStatus('Ready — search in Pali, Russian, or English.');
-    formEl.addEventListener('submit', onSearch);
 }
 
 function rowsToObjects(result) {
@@ -88,14 +82,6 @@ function suttaMeta(suttaId) {
     return rows[0] || null;
 }
 
-function segmentRootVariant(suttaId, segmentId) {
-    const rows = rowsToObjects(core.exec(
-        'SELECT root, variant FROM segments WHERE sutta_id = ? AND segment_id = ? LIMIT 1',
-        [suttaId, segmentId]
-    ));
-    return rows[0] || { root: '', variant: '' };
-}
-
 function translationsForSegment(suttaId, segmentId) {
     const translations = {};
     for (const lang of Object.keys(langDbs)) {
@@ -108,45 +94,155 @@ function translationsForSegment(suttaId, segmentId) {
     return translations;
 }
 
-// Builds the same { sutta_id, category, dir_path, titles, mr, count, unique_words, segments }
-// shape as dg-light.js's /search response (see CLAUDE.md) so the real, unmodified
-// search-render.js (buildDataTable) can render it exactly as it does on the live site.
-//
-// ponytail: titles only carries the Pali root (no per-language translated title, no lb/la
-// context lines, unique_words is just the query itself, not the real matched word forms) —
-// search-render.js degrades gracefully for all of these (see its transKeys/__enriched checks).
-// Upgrade path: look up the title segment's translation the way dg-light.js's enrichment does,
-// once the reader/title pipeline is ported too.
-function buildSearchData(query) {
-    const paliMatches = rowsToObjects(core.exec(
-        'SELECT sutta_id, segment_id FROM fts WHERE fts MATCH ? LIMIT 200',
-        [query]
-    ));
-    const translationMatches = [];
+// Wraps a raw user search term as a quoted FTS4 phrase-prefix query — quoting protects against
+// the term containing FTS operators (AND/OR/NOT/NEAR, -, parens) by forcing it to match
+// literally, same intent as prod's grep -F (fixed-string) search; the trailing * makes the LAST
+// token a prefix match instead of exact. Pali is agglutinative (kacchapa/kacchapena/kacchapassa/
+// ...) — grep matches all of these as substrings, plain FTS exact-match finds only the bare form
+// (16x fewer hits, verified against the real corpus). Prefix isn't full substring match (a
+// mid-compound occurrence like "mahākacchapa" still won't match "kacchapa") — flagged gap, no
+// full-text LIKE fallback for now, prefix covers the common case cheaply. Doubling embedded
+// quotes is FTS4's own escape for a literal ".
+function ftsQuery(term) {
+    const escaped = term.replace(/"/g, '""').trim();
+    return `"${escaped}*"`;
+}
+
+const CATEGORY_ORDER = { dhamma: 1, khudakka: 2, khuddaka: 2, vinaya: 3, abhi: 4, abhidhamma: 4 };
+function sortSuttaIds(ids, metaById) {
+    return ids.slice().sort((a, b) => {
+        const oa = CATEGORY_ORDER[metaById[a].category] || 5;
+        const ob = CATEGORY_ORDER[metaById[b].category] || 5;
+        if (oa !== ob) return oa - ob;
+        const mrA = metaById[a].mr || 0, mrB = metaById[b].mr || 0;
+        if (mrA !== mrB) return mrB - mrA;
+        return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+    });
+}
+
+function chunkArray(arr, size) {
+    const out = [];
+    for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+    return out;
+}
+
+// Batched lookups for buildSearchData below — a common Pali stem ("dukkha") matches thousands of
+// segments across 1000+ suttas (verified against the real corpus). One query per segment (or per
+// segment per language) turned that into tens of thousands of sql.js calls and made the search
+// hang; grouping into a handful of `WHERE id IN (...)` queries (chunked to stay under SQLite's
+// bound-parameter limit) does the same work in single digits of queries.
+function fetchSuttaMetaBatch(suttaIds) {
+    const result = {};
+    for (const idChunk of chunkArray(suttaIds, 300)) {
+        const placeholders = idChunk.map(() => '?').join(',');
+        const rows = rowsToObjects(core.exec(
+            `SELECT id, category, dir_path, title, mr FROM suttas WHERE id IN (${placeholders})`, idChunk
+        ));
+        for (const row of rows) result[row.id] = row;
+    }
+    return result;
+}
+
+function fetchSegmentsBatch(suttaIds) {
+    const bySutta = new Map();
+    for (const idChunk of chunkArray(suttaIds, 300)) {
+        const placeholders = idChunk.map(() => '?').join(',');
+        const rows = rowsToObjects(core.exec(
+            `SELECT sutta_id, segment_id, root, variant FROM segments WHERE sutta_id IN (${placeholders})`, idChunk
+        ));
+        for (const row of rows) {
+            if (!bySutta.has(row.sutta_id)) bySutta.set(row.sutta_id, new Map());
+            bySutta.get(row.sutta_id).set(row.segment_id, { root: row.root, variant: row.variant });
+        }
+    }
+    return bySutta;
+}
+
+function fetchTranslationsBatch(suttaIds) {
+    const bySutta = new Map();
     for (const lang of Object.keys(langDbs)) {
-        translationMatches.push(...rowsToObjects(langDbs[lang].exec(
-            'SELECT sutta_id, segment_id FROM fts WHERE fts MATCH ? LIMIT 200',
-            [query]
+        for (const idChunk of chunkArray(suttaIds, 300)) {
+            const placeholders = idChunk.map(() => '?').join(',');
+            const rows = rowsToObjects(langDbs[lang].exec(
+                `SELECT sutta_id, segment_id, translator, text FROM translations WHERE sutta_id IN (${placeholders})`, idChunk
+            ));
+            for (const row of rows) {
+                if (!bySutta.has(row.sutta_id)) bySutta.set(row.sutta_id, new Map());
+                const segMap = bySutta.get(row.sutta_id);
+                if (!segMap.has(row.segment_id)) segMap.set(row.segment_id, {});
+                segMap.get(row.segment_id)[row.translator] = row.text;
+            }
+        }
+    }
+    return bySutta;
+}
+
+// Raw FTS match rows scanned before grouping — a safety cap, not a real-world limit for most
+// queries (see MAX_DETAILED_SUTTAS below for the actually-hit limit on common words).
+const MATCH_ROW_LIMIT = 10000;
+// How many matched suttas get fully detailed (segments/translations fetched) per search. Common
+// stems match 1000+ suttas; DataTables paginates 10-100 rows at a time anyway, and building
+// thousands of detail rows client-side is its own cost regardless of query speed. Sorted by the
+// same category/mr order as the real site BEFORE capping, so the cap drops the least-relevant
+// tail, not an arbitrary slice. metadata.totalFiles/totalMatches still reflect the FULL matched
+// set (see buildSearchResponse) — only which rows get full detail is capped.
+const MAX_DETAILED_SUTTAS = 300;
+
+// Builds the same {sutta_id, category, dir_path, titles, mr, count, unique_words, segments} shape
+// as dg-light.js's /search response (see CLAUDE.md) so the real, unmodified search-render.js
+// renders it exactly as on the live site.
+//
+// ponytail: unlike prod's two-phase fast=1 -> /search/enrich (grep-skeleton first, quotes filled
+// in later), this returns fully-enriched data in one pass — SQLite queries are cheap enough that
+// there's no need to replicate that optimization offline. __enriched:true on every row tells
+// search-render.js not to show the "Loading quotes..." placeholder. Also simplified: titles only
+// carries the Pali root (no per-language translated title), unique_words is just the search term
+// (not the real matched word forms/declensions), wordReport/variantSegments are empty (Words tab
+// and variant-match hint both render as empty, degrading gracefully — search-render.js already
+// handles zero rows there). Upgrade path: none planned, these are minor/secondary features next
+// to search+read working offline.
+function buildSearchData(keyword, targetLangs) {
+    const q = ftsQuery(keyword);
+    const matches = [...rowsToObjects(core.exec(
+        'SELECT sutta_id, segment_id FROM fts WHERE fts MATCH ? LIMIT ?', [q, MATCH_ROW_LIMIT]
+    ))];
+    for (const lang of targetLangs) {
+        if (!langDbs[lang]) continue;
+        matches.push(...rowsToObjects(langDbs[lang].exec(
+            'SELECT sutta_id, segment_id FROM fts WHERE fts MATCH ? LIMIT ?', [q, MATCH_ROW_LIMIT]
         )));
     }
 
     const segmentIdsBySutta = new Map();
-    for (const m of [...paliMatches, ...translationMatches]) {
+    for (const m of matches) {
         if (!segmentIdsBySutta.has(m.sutta_id)) segmentIdsBySutta.set(m.sutta_id, new Set());
         segmentIdsBySutta.get(m.sutta_id).add(m.segment_id);
     }
 
+    let suttaIds = [...segmentIdsBySutta.keys()];
+    const metaById = fetchSuttaMetaBatch(suttaIds);
+    suttaIds = sortSuttaIds(suttaIds.filter(id => metaById[id]), metaById);
+    const totalMatchedSuttas = suttaIds.length;
+    let totalMatchedSegments = 0;
+    for (const id of suttaIds) totalMatchedSegments += segmentIdsBySutta.get(id).size;
+    const detailedIds = suttaIds.slice(0, MAX_DETAILED_SUTTAS);
+
+    const segmentsBySutta = fetchSegmentsBatch(detailedIds);
+    const translationsBySutta = fetchTranslationsBatch(detailedIds);
+
     const data = {};
-    for (const [suttaId, segmentIds] of segmentIdsBySutta) {
-        const meta = suttaMeta(suttaId);
-        if (!meta) continue;
-        const segments = [...segmentIds].sort().map(segmentId => {
-            const rv = segmentRootVariant(suttaId, segmentId);
+    for (const suttaId of detailedIds) {
+        const meta = metaById[suttaId];
+        const segIds = [...segmentIdsBySutta.get(suttaId)].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+        const segMap = segmentsBySutta.get(suttaId) || new Map();
+        const transMap = translationsBySutta.get(suttaId) || new Map();
+        const segments = segIds.map(segmentId => {
+            const rv = segMap.get(segmentId) || {};
             return {
                 segment: segmentId,
                 root_text: rv.root || '',
                 variant: rv.variant || '',
-                translations: translationsForSegment(suttaId, segmentId),
+                translations: transMap.get(segmentId) || {},
             };
         });
         data[suttaId] = {
@@ -156,22 +252,164 @@ function buildSearchData(query) {
             titles: { root: meta.title },
             mr: meta.mr,
             count: segments.length,
-            unique_words: [query],
+            unique_words: [keyword],
             segments,
             __enriched: true,
         };
     }
-    return data;
+    return { data, totalMatchedSuttas, totalMatchedSegments };
 }
 
-function onSearch(e) {
-    e.preventDefault();
-    const query = inputEl.value.trim();
-    if (!query) return;
-    const data = buildSearchData(query);
-    const rows = Object.values(data);
-    setStatus(`${rows.length} sutta(s) matched.`);
-    window.DgSearchRender.buildDataTable('#pali', rows, query, 'ru,en', false);
+function buildSearchResponse(keyword, scope, targetLangs) {
+    if (!keyword || keyword.length < MIN_KEYWORD_LENGTH) {
+        return {
+            metadata: { query: keyword || '', scope, resolvedPrefixes: [], langs: targetLangs, totalFiles: 0, totalMatches: 0, hasVariantMatch: false, tooShort: true },
+            data: {}, wordReport: [], variantSegments: [],
+        };
+    }
+    // buildSearchData already returns data pre-sorted (category/mr order) and capped to
+    // MAX_DETAILED_SUTTAS — totalFiles/totalMatches below report the FULL matched set (pre-cap),
+    // same intent as prod's totalFiles/totalMatches meaning "how many texts/matches exist", not
+    // "how many rows did we bother detailing".
+    const { data, totalMatchedSuttas, totalMatchedSegments } = buildSearchData(keyword, targetLangs);
+    return {
+        metadata: { query: keyword, scope, resolvedPrefixes: [], langs: targetLangs, totalFiles: totalMatchedSuttas, totalMatches: totalMatchedSegments, hasVariantMatch: false },
+        data, wordReport: [], variantSegments: [],
+    };
 }
 
-init().catch(err => setStatus(`Error: ${err.message}`));
+// /search/enrich — prod's phase 2. Since buildSearchResponse above already returns fully-enriched
+// data in one pass, this just re-runs the same query and filters to the requested ids; the real
+// page only reads json.data from this response (see search/index.html's enrichChunk), so nothing
+// else needs to match prod's shape exactly here.
+function buildEnrichResponse(keyword, ids, targetLangs) {
+    if (!keyword || keyword.length < MIN_KEYWORD_LENGTH) return { data: {}, variantSegments: [] };
+    const { data } = buildSearchData(keyword, targetLangs);
+    const filtered = {};
+    for (const id of ids) if (data[id]) filtered[id] = data[id];
+    return { data: filtered, variantSegments: [] };
+}
+
+// Mirrors dg-light.js's getSuttaBaseData+buildTextDataFromBase+/api/text/:suttaId handler, reading
+// from local SQLite instead of the filesystem. Deliberately NOT ported: en-fallback when the
+// requested language has zero translations, ?script= (Aksharamukha) conversion, and multiFor
+// (second translator per language) — build-offline-db.js only stores one preferred translator per
+// sutta per language, so a multiFor-requesting mode just sees one entry here and
+// search-render.js's own "collapse to one column if the second translator is missing" fallback
+// kicks in, same as a sutta that genuinely has no second translator.
+function buildApiTextResponse(suttaId, params) {
+    const meta = suttaMeta(suttaId);
+    if (!meta) return null;
+
+    const lang = params.get('lang');
+    const langsParam = params.get('langs');
+    const targetLangs = langsParam
+        ? langsParam.split(',').map(s => s.trim())
+        : lang ? [lang] : 'ru,en'.split(',');
+
+    const segRows = rowsToObjects(core.exec(
+        'SELECT segment_id, root, variant, html FROM segments WHERE sutta_id = ? ORDER BY rowid',
+        [suttaId]
+    ));
+    const segments = segRows.map(row => ({
+        segment: row.segment_id,
+        root_text: row.root || '',
+        variant: row.variant || '',
+        html: row.html || '',
+        translations: translationsForSegment(suttaId, row.segment_id),
+    }));
+
+    return {
+        sutta_id: suttaId,
+        category: meta.category,
+        dir_path: meta.dir_path,
+        title: meta.title,
+        mr: meta.mr,
+        segments,
+        columns: targetLangs,
+        lang: lang || targetLangs[0] || null,
+    };
+}
+
+// Mirrors dg-light.js's /api/nav/:suttaId — prev/next by position in the suttas table. No scope
+// filtering yet (resolveAllowedPrefixes/matchesScope in dg-light.js) — every indexed sutta is a
+// candidate neighbor here, not just the default 4-nikaya/6-Khuddaka set.
+function buildApiNavResponse(suttaId) {
+    const rows = rowsToObjects(core.exec('SELECT id, title FROM suttas ORDER BY rowid'));
+    const idx = rows.findIndex(r => r.id === suttaId);
+    const toEntry = r => r ? { slug: r.id, title: r.title || '' } : null;
+    return {
+        prev: idx > 0 ? toEntry(rows[idx - 1]) : null,
+        next: idx !== -1 && idx < rows.length - 1 ? toEntry(rows[idx + 1]) : null,
+    };
+}
+
+function jsonResponse(obj, status = 200) {
+    return new Response(JSON.stringify(obj), { status, headers: { 'Content-Type': 'application/json' } });
+}
+
+// Installed synchronously, at the very top of <head> (see index.html) — before any other script
+// or asset on the page can issue a real fetch(). Requests this doesn't recognize pass straight
+// through to the real fetch (static JSON/HTML/CSS/JS all resolve as plain local files — see
+// build-assets.js, no shim code needed for those).
+function installFetchShim() {
+    const realFetch = window.fetch.bind(window);
+    window.fetch = async (input, init) => {
+        const url = typeof input === 'string' ? input : input.url;
+        let parsed;
+        try { parsed = new URL(url, location.href); } catch (e) { return realFetch(input, init); }
+        const p = parsed.pathname;
+
+        if (p.startsWith('/api/text/')) {
+            await ready;
+            const suttaId = decodeURIComponent(p.slice('/api/text/'.length)).toLowerCase();
+            const data = buildApiTextResponse(suttaId, parsed.searchParams);
+            return data ? jsonResponse(data) : jsonResponse({ error: `Unknown sutta id: ${suttaId}` }, 404);
+        }
+        if (p.startsWith('/api/nav/')) {
+            await ready;
+            const suttaId = decodeURIComponent(p.slice('/api/nav/'.length)).toLowerCase();
+            return jsonResponse(buildApiNavResponse(suttaId));
+        }
+        if (p === '/search/enrich') {
+            await ready;
+            const keyword = parsed.searchParams.get('q') || '';
+            const ids = (parsed.searchParams.get('ids') || '').split(',').map(s => s.trim()).filter(Boolean);
+            const targetLangs = (parsed.searchParams.get('langs') || 'ru,en').split(',').map(s => s.trim());
+            return jsonResponse(buildEnrichResponse(keyword, ids, targetLangs));
+        }
+        if (p === '/search' || (p.startsWith('/search/') && p !== '/search/enrich')) {
+            await ready;
+            const keyword = p === '/search' ? (parsed.searchParams.get('q') || '') : decodeURIComponent(p.slice('/search/'.length));
+            const scope = parsed.searchParams.get('scope') || 'default';
+            const targetLangs = (parsed.searchParams.get('langs') || 'ru,en').split(',').map(s => s.trim());
+            return jsonResponse(buildSearchResponse(keyword, scope, targetLangs));
+        }
+        return realFetch(input, init);
+    };
+}
+
+// app.js is the very first <script> in <head> (see index.html) — sql-wasm.js hasn't loaded yet
+// at that point, so it's injected here rather than declared as a separate earlier <script> tag,
+// keeping the "install the shim before anything else can fetch" ordering with a single tag.
+function loadScript(src) {
+    return new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = src;
+        s.onload = resolve;
+        s.onerror = reject;
+        document.head.appendChild(s);
+    });
+}
+
+async function loadData() {
+    await loadScript('vendor/sql-wasm.js');
+    SQL = await initSqlJs({ locateFile: f => `vendor/${f}` });
+    const idb = await openStore();
+    core = new SQL.Database(await fetchDbBytes(idb, 'core.db'));
+    langDbs.ru = new SQL.Database(await fetchDbBytes(idb, 'lang_ru.db'));
+    langDbs.en = new SQL.Database(await fetchDbBytes(idb, 'lang_en.db'));
+}
+
+installFetchShim();
+ready = loadData();

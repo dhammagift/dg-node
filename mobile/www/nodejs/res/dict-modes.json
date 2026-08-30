@@ -1,0 +1,24 @@
+{
+  "_comment": "Single source of truth for the dictionary-mode dropdown, shared by search/js/home.js (quick settings) and settings/index.html (full settings) — was two hand-maintained copies that drifted (settings/index.html additionally suffixed every EN option with \"(англ.)\", making the language show up to 5 times per group instead of once in the group header). Group id/labels stay, per-option labels don't repeat the language.",
+  "groups": [
+    { "id": "dictGroupEn", "labelRu": "DPD (en)", "labelEn": "DPD (en)", "options": [
+      { "value": "standalone", "ru": "Встроенный DPD", "en": "Built-in DPD" },
+      { "value": "dpdfull", "ru": "Попап Dict.DG", "en": "Dict.DG popup" },
+      { "value": "newwindow", "ru": "Dict.DG в новом окне", "en": "Dict.DG in new window" },
+      { "value": "dpdcompact", "ru": "Dict.DG мини", "en": "Dict.DG mini" }
+    ] },
+    { "id": "dictGroupRu", "labelRu": "DPD (ru)", "labelEn": "DPD (ru)", "options": [
+      { "value": "standaloneru", "ru": "Встроенный DPD", "en": "Built-in DPD" },
+      { "value": "dpdfullru", "ru": "Попап Dict.DG", "en": "Dict.DG popup" },
+      { "value": "newwindowru", "ru": "Dict.DG в новом окне", "en": "Dict.DG in new window" },
+      { "value": "dpdcompactru", "ru": "Dict.DG мини", "en": "Dict.DG mini" }
+    ] },
+    { "id": "dictGroupOther", "labelRu": "Другое", "labelEn": "Other", "options": [
+      { "value": "machinetranslation", "ru": "DharmaMitra.org", "en": "DharmaMitra.org" },
+      { "value": "searchonly", "ru": "Только поиск", "en": "Search only" },
+      { "value": "dicttango", "ru": "DictTango (Android)", "en": "DictTango (Android)" },
+      { "value": "mdict", "ru": "Mdict (iOS)", "en": "Mdict (iOS)" },
+      { "value": "goldenpc", "ru": "GoldenDict-NG (Desktop)", "en": "GoldenDict-NG (Desktop)" }
+    ] }
+  ]
+}
