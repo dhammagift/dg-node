@@ -6,11 +6,24 @@
     "description": "Search over the Pali Canon (Sutta/Vinaya) — API for dg-light.js. All responses are JSON."
   },
   "servers": [
-    { "url": "/", "description": "Current server" }
+    {
+      "url": "/",
+      "description": "Current server"
+    }
   ],
   "tags": [
-    { "name": "search", "description": "Keyword search" },
-    { "name": "text", "description": "Full sutta text for the reader" }
+    {
+      "name": "search",
+      "description": "Keyword search"
+    },
+    {
+      "name": "text",
+      "description": "Full sutta text for the reader"
+    },
+    {
+      "name": "toc",
+      "description": "Table of contents and text structure"
+    }
   ],
   "components": {
     "parameters": {
@@ -18,86 +31,210 @@
         "name": "scope",
         "in": "query",
         "description": "Search scope. `default` — the 4 Nikayas + 6 KN books (no Vinaya). `all` — the whole corpus (including Vinaya). You can list specific categories/ids separated by commas (e.g. `dn,mn` or `dhamma,vinaya`).",
-        "schema": { "type": "string", "default": "default", "example": "dhamma" }
+        "schema": {
+          "type": "string",
+          "default": "default",
+          "example": "dhamma"
+        }
       },
       "exact": {
         "name": "exact",
         "in": "query",
         "description": "Whole-word exact match (grep -w) instead of a substring match.",
-        "schema": { "type": "boolean", "default": false }
+        "schema": {
+          "type": "boolean",
+          "default": false
+        }
       },
       "langs": {
         "name": "langs",
         "in": "query",
         "description": "Translation languages, comma-separated. `all` — every available language.",
-        "schema": { "type": "string", "default": "ru,en", "example": "ru,en" }
+        "schema": {
+          "type": "string",
+          "default": "ru,en",
+          "example": "ru,en"
+        }
       },
       "lb": {
         "name": "lb",
         "in": "query",
         "description": "Number of context lines BEFORE the matched segment (Pali root text).",
-        "schema": { "type": "integer", "default": 0, "minimum": 0 }
+        "schema": {
+          "type": "integer",
+          "default": 0,
+          "minimum": 0
+        }
       },
       "la": {
         "name": "la",
         "in": "query",
         "description": "Number of context lines AFTER the matched segment (Pali root text).",
-        "schema": { "type": "integer", "default": 0, "minimum": 0 }
+        "schema": {
+          "type": "integer",
+          "default": 0,
+          "minimum": 0
+        }
       }
     },
     "schemas": {
       "SearchMetadata": {
         "type": "object",
         "properties": {
-          "query": { "type": "string" },
-          "scope": { "type": "string" },
-          "langs": { "type": "array", "items": { "type": "string" } },
-          "lb": { "type": "integer" },
-          "la": { "type": "integer" },
-          "exactMatch": { "type": "boolean" },
-          "totalFiles": { "type": "integer", "description": "Number of suttas found" },
-          "totalMatches": { "type": "integer", "description": "Total number of matches" },
-          "hasVariantMatch": { "type": "boolean", "description": "Whether variant readings exist for this word anywhere in the corpus (not only within the current scope)" },
-          "partial": { "type": "boolean", "description": "true — this is a `?fast=1` response, root text/translations for some segments haven't loaded yet (see /search/enrich)" },
-          "tooShort": { "type": "boolean", "description": "true — the keyword is shorter than the minimum length (3 characters), no search was performed" }
+          "query": {
+            "type": "string"
+          },
+          "scope": {
+            "type": "string"
+          },
+          "langs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "lb": {
+            "type": "integer"
+          },
+          "la": {
+            "type": "integer"
+          },
+          "exactMatch": {
+            "type": "boolean"
+          },
+          "totalFiles": {
+            "type": "integer",
+            "description": "Number of suttas found"
+          },
+          "totalMatches": {
+            "type": "integer",
+            "description": "Total number of matches"
+          },
+          "hasVariantMatch": {
+            "type": "boolean",
+            "description": "Whether variant readings exist for this word anywhere in the corpus (not only within the current scope)"
+          },
+          "partial": {
+            "type": "boolean",
+            "description": "true — this is a `?fast=1` response, root text/translations for some segments haven't loaded yet (see /search/enrich)"
+          },
+          "tooShort": {
+            "type": "boolean",
+            "description": "true — the keyword is shorter than the minimum length (3 characters), no search was performed"
+          }
         }
       },
       "Segment": {
         "type": "object",
         "properties": {
-          "segment": { "type": "string", "example": "dn1:1.1" },
-          "root_text": { "type": "string", "description": "Pali root reading" },
-          "variant": { "type": "string", "description": "Pali variant reading (if any)" },
-          "translations": { "type": "object", "description": "Key like \"ru_khantibalo\", \"en_sujato\" -> translation text", "additionalProperties": { "type": "string" } },
-          "html": { "type": "string" },
-          "lb_context": { "type": "array", "items": { "type": "object" } },
-          "la_context": { "type": "array", "items": { "type": "object" } }
+          "segment": {
+            "type": "string",
+            "example": "dn1:1.1"
+          },
+          "root_text": {
+            "type": "string",
+            "description": "Pali root reading"
+          },
+          "variant": {
+            "type": "string",
+            "description": "Pali variant reading (if any)"
+          },
+          "translations": {
+            "type": "object",
+            "description": "Key like \"ru_khantibalo\", \"en_sujato\" -> translation text",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "html": {
+            "type": "string"
+          },
+          "lb_context": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "la_context": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          }
         }
       },
       "SuttaResult": {
         "type": "object",
         "properties": {
-          "sutta_id": { "type": "string", "example": "dn1" },
-          "category": { "type": "string", "enum": ["dhamma", "khudakka", "vinaya", "abhi", "other"] },
-          "dir_path": { "type": "string" },
-          "titles": { "type": "object", "additionalProperties": { "type": "string" } },
-          "mr": { "type": "integer", "description": "Edition/relevance rank (mtph from textinfo)" },
-          "count": { "type": "integer", "description": "Number of matches in this sutta" },
-          "unique_words": { "type": "array", "items": { "type": "string" } },
-          "segments": { "type": "array", "items": { "$ref": "#/components/schemas/Segment" } }
+          "sutta_id": {
+            "type": "string",
+            "example": "dn1"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "dhamma",
+              "khudakka",
+              "vinaya",
+              "abhi",
+              "other"
+            ]
+          },
+          "dir_path": {
+            "type": "string"
+          },
+          "titles": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "mr": {
+            "type": "integer",
+            "description": "Edition/relevance rank (mtph from textinfo)"
+          },
+          "count": {
+            "type": "integer",
+            "description": "Number of matches in this sutta"
+          },
+          "unique_words": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "segments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Segment"
+            }
+          }
         }
       },
       "WordReportEntry": {
         "type": "object",
         "properties": {
-          "word": { "type": "string" },
-          "textCount": { "type": "integer" },
-          "matchCount": { "type": "integer" },
+          "word": {
+            "type": "string"
+          },
+          "textCount": {
+            "type": "integer"
+          },
+          "matchCount": {
+            "type": "integer"
+          },
           "links": {
             "type": "array",
             "items": {
               "type": "object",
-              "properties": { "sutta_id": { "type": "string" }, "segment": { "type": "string" } }
+              "properties": {
+                "sutta_id": {
+                  "type": "string"
+                },
+                "segment": {
+                  "type": "string"
+                }
+              }
             }
           }
         }
@@ -106,97 +243,275 @@
         "type": "object",
         "description": "A segment where the keyword occurs in the variant (non-root) reading — text is taken from the variant file as-is, including SuttaCentral's editorial notation (\"→\", \"(mr)\", \"(?)\").",
         "properties": {
-          "sutta_id": { "type": "string" },
-          "segment": { "type": "string" },
-          "text": { "type": "string", "example": "Macchakacchapasañchannā → macchakacchapasampannā (?) " }
+          "sutta_id": {
+            "type": "string"
+          },
+          "segment": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string",
+            "example": "Macchakacchapasañchannā → macchakacchapasampannā (?) "
+          }
         }
       },
       "SearchResponse": {
         "type": "object",
         "properties": {
-          "metadata": { "$ref": "#/components/schemas/SearchMetadata" },
-          "data": { "type": "object", "additionalProperties": { "$ref": "#/components/schemas/SuttaResult" } },
-          "wordReport": { "type": "array", "items": { "$ref": "#/components/schemas/WordReportEntry" } },
-          "variantSegments": { "type": "array", "items": { "$ref": "#/components/schemas/VariantSegment" } }
+          "metadata": {
+            "$ref": "#/components/schemas/SearchMetadata"
+          },
+          "data": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/SuttaResult"
+            }
+          },
+          "wordReport": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WordReportEntry"
+            }
+          },
+          "variantSegments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VariantSegment"
+            }
+          }
         }
       },
       "Error": {
         "type": "object",
-        "properties": { "error": { "type": "string" } }
+        "properties": {
+          "error": {
+            "type": "string"
+          }
+        }
       }
     }
   },
   "paths": {
     "/search": {
       "get": {
-        "tags": ["search"],
+        "tags": [
+          "search"
+        ],
         "summary": "Search by keyword",
         "description": "Without `?fast=1` — full response (root text/translations for all matched segments, wordReport, variantSegments). With `?fast=1` — a fast partial response (skeleton + wordReport + variantSegments only, no sutta file reads) — used for an instant first render; full data is then loaded via /search/enrich.",
         "parameters": [
-          { "name": "q", "in": "query", "required": true, "description": "Search word/phrase. Minimum 3 characters — shorter is ignored (see `tooShort` in the response).", "schema": { "type": "string" }, "example": "kacchapa" },
-          { "$ref": "#/components/parameters/scope" },
-          { "$ref": "#/components/parameters/exact" },
-          { "$ref": "#/components/parameters/langs" },
-          { "$ref": "#/components/parameters/lb" },
-          { "$ref": "#/components/parameters/la" },
-          { "name": "fast", "in": "query", "description": "`1` — fast partial response without reading sutta files (see description above).", "schema": { "type": "string", "enum": ["1"] } }
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "description": "Search word/phrase. Minimum 3 characters — shorter is ignored (see `tooShort` in the response).",
+            "schema": {
+              "type": "string"
+            },
+            "example": "kacchapa"
+          },
+          {
+            "$ref": "#/components/parameters/scope"
+          },
+          {
+            "$ref": "#/components/parameters/exact"
+          },
+          {
+            "$ref": "#/components/parameters/langs"
+          },
+          {
+            "$ref": "#/components/parameters/lb"
+          },
+          {
+            "$ref": "#/components/parameters/la"
+          },
+          {
+            "name": "fast",
+            "in": "query",
+            "description": "`1` — fast partial response without reading sutta files (see description above).",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ]
+            }
+          }
         ],
         "responses": {
-          "200": { "description": "Search result", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SearchResponse" } } } },
-          "400": { "description": "q was not provided", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "200": {
+            "description": "Search result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "q was not provided",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
         }
       }
     },
     "/search/{keyword}": {
       "get": {
-        "tags": ["search"],
+        "tags": [
+          "search"
+        ],
         "summary": "Same as /search?q={keyword} — keyword as part of the path",
         "description": "Short links: /search/kacchapa?scope=dhamma works the same as /search?q=kacchapa&scope=dhamma. The remaining parameters are the same query parameters as /search.",
         "parameters": [
-          { "name": "keyword", "in": "path", "required": true, "schema": { "type": "string" }, "example": "kacchapa" },
-          { "$ref": "#/components/parameters/scope" },
-          { "$ref": "#/components/parameters/exact" },
-          { "$ref": "#/components/parameters/langs" },
-          { "$ref": "#/components/parameters/lb" },
-          { "$ref": "#/components/parameters/la" },
-          { "name": "fast", "in": "query", "schema": { "type": "string", "enum": ["1"] } }
+          {
+            "name": "keyword",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "kacchapa"
+          },
+          {
+            "$ref": "#/components/parameters/scope"
+          },
+          {
+            "$ref": "#/components/parameters/exact"
+          },
+          {
+            "$ref": "#/components/parameters/langs"
+          },
+          {
+            "$ref": "#/components/parameters/lb"
+          },
+          {
+            "$ref": "#/components/parameters/la"
+          },
+          {
+            "name": "fast",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ]
+            }
+          }
         ],
         "responses": {
-          "200": { "description": "Search result", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SearchResponse" } } } }
+          "200": {
+            "description": "Search result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchResponse"
+                }
+              }
+            }
+          }
         }
       }
     },
     "/search/enrich": {
       "get": {
-        "tags": ["search"],
+        "tags": [
+          "search"
+        ],
         "summary": "Load full data (root text/translations) for specific sutta ids",
         "description": "Called after /search?fast=1 with the sutta ids that need to be \"enriched\" — e.g. the currently visible table page, or all found ids at once. keyword/scope must match the original /search?fast=1 call (otherwise it is recomputed from scratch, without reusing the cache).",
         "parameters": [
-          { "name": "q", "in": "query", "required": true, "schema": { "type": "string" }, "example": "kacchapa" },
-          { "name": "ids", "in": "query", "required": true, "description": "Comma-separated sutta ids.", "schema": { "type": "string" }, "example": "dn1,dn2,sn35.240" },
-          { "$ref": "#/components/parameters/scope" },
-          { "$ref": "#/components/parameters/exact" },
-          { "$ref": "#/components/parameters/langs" },
-          { "$ref": "#/components/parameters/lb" },
-          { "$ref": "#/components/parameters/la" }
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "kacchapa"
+          },
+          {
+            "name": "ids",
+            "in": "query",
+            "required": true,
+            "description": "Comma-separated sutta ids.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "dn1,dn2,sn35.240"
+          },
+          {
+            "$ref": "#/components/parameters/scope"
+          },
+          {
+            "$ref": "#/components/parameters/exact"
+          },
+          {
+            "$ref": "#/components/parameters/langs"
+          },
+          {
+            "$ref": "#/components/parameters/lb"
+          },
+          {
+            "$ref": "#/components/parameters/la"
+          }
         ],
         "responses": {
           "200": {
             "description": "Data for the requested ids (same shape as data[id] in /search) plus up-to-date wordReport/metadata/variantSegments",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SearchResponse" } } }
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchResponse"
+                }
+              }
+            }
           },
-          "400": { "description": "q or ids was not provided", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "400": {
+            "description": "q or ids was not provided",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
         }
       }
     },
     "/api/text/{suttaId}": {
       "get": {
-        "tags": ["text"],
+        "tags": [
+          "text"
+        ],
         "summary": "Full sutta text (all segments, not just matches) — for the reader",
         "parameters": [
-          { "name": "suttaId", "in": "path", "required": true, "schema": { "type": "string" }, "example": "dn22" },
-          { "$ref": "#/components/parameters/langs" },
-          { "name": "translators", "in": "query", "description": "Explicit comma-separated list of translators (e.g. `ru_o,ru_sv`) — two translations of the SAME language at once, bypassing the usual \"one translator per language\" selection.", "schema": { "type": "string" } }
+          {
+            "name": "suttaId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "dn22"
+          },
+          {
+            "$ref": "#/components/parameters/langs"
+          },
+          {
+            "name": "translators",
+            "in": "query",
+            "description": "Explicit comma-separated list of translators (e.g. `ru_o,ru_sv`) — two translations of the SAME language at once, bypassing the usual \"one translator per language\" selection.",
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
         "responses": {
           "200": {
@@ -206,27 +521,61 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "sutta_id": { "type": "string" },
-                    "category": { "type": "string" },
-                    "dir_path": { "type": "string" },
-                    "title": { "type": "string" },
-                    "mr": { "type": "integer" },
-                    "segments": { "type": "array", "items": { "$ref": "#/components/schemas/Segment" } }
+                    "sutta_id": {
+                      "type": "string"
+                    },
+                    "category": {
+                      "type": "string"
+                    },
+                    "dir_path": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "mr": {
+                      "type": "integer"
+                    },
+                    "segments": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Segment"
+                      }
+                    }
                   }
                 }
               }
             }
           },
-          "404": { "description": "Unknown sutta id", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "404": {
+            "description": "Unknown sutta id",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
         }
       }
     },
     "/api/nav/{suttaId}": {
       "get": {
-        "tags": ["text"],
+        "tags": [
+          "text"
+        ],
         "summary": "Previous/next sutta for reader navigation",
         "parameters": [
-          { "name": "suttaId", "in": "path", "required": true, "schema": { "type": "string" }, "example": "dn22" }
+          {
+            "name": "suttaId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "dn22"
+          }
         ],
         "responses": {
           "200": {
@@ -236,14 +585,221 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "prev": { "type": "object", "nullable": true, "properties": { "slug": { "type": "string" }, "title": { "type": "string" } } },
-                    "next": { "type": "object", "nullable": true, "properties": { "slug": { "type": "string" }, "title": { "type": "string" } } }
+                    "prev": {
+                      "type": "object",
+                      "nullable": true,
+                      "properties": {
+                        "slug": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "next": {
+                      "type": "object",
+                      "nullable": true,
+                      "properties": {
+                        "slug": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string"
+                        }
+                      }
+                    }
                   }
                 }
               }
             }
           },
-          "404": { "description": "Unknown sutta id", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "404": {
+            "description": "Unknown sutta id",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/toc": {
+      "get": {
+        "tags": [
+          "toc"
+        ],
+        "summary": "Category/book tree of the table of contents (Sutta/Vinaya and their sections)",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "categories": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/toc/book/{code}": {
+      "get": {
+        "tags": [
+          "toc"
+        ],
+        "summary": "Full tree of a single book, optionally with per-language translators",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "dn"
+          },
+          {
+            "name": "langs",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Comma-separated language codes to include translator availability for",
+            "example": "ru,en"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "tree": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      }
+                    },
+                    "translations": {
+                      "type": "object"
+                    },
+                    "interlinearKeys": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown book code",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/transliterate": {
+      "get": {
+        "tags": [
+          "text"
+        ],
+        "summary": "Transliterate the given text to IAST (Latin with diacritics)",
+        "parameters": [
+          {
+            "name": "text",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "kamma"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "text": {
+                      "type": "string"
+                    },
+                    "converted": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/patimokkha-fragment/{side}": {
+      "get": {
+        "tags": [
+          "text"
+        ],
+        "summary": "HTML fragment of the Patimokkha (bu — bhikkhu, bi — bhikkhuni) for edition comparison",
+        "parameters": [
+          {
+            "name": "side",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "bu",
+                "bi"
+              ]
+            },
+            "example": "bu"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Invalid side"
+          }
         }
       }
     }

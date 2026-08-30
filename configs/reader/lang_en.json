@@ -18,7 +18,7 @@
     "ogSiteName": "Dhamma.gift Read"
   },
   "routes": {
-    "manifest": "/manifest.php",
+    "manifest": "/manifest.json",
     "canonical": "https://dhamma.gift/read/",
     "alternateEnglish": "https://dhamma.gift/read/",
     "alternateRussian": "https://dhamma.gift/r/",
@@ -43,6 +43,18 @@
   "search": {
     "placeholder": "Try sn56.11",
     "submit": "Go"
+  },
+  "contextMenu": {
+    "quote": "Line",
+    "paragraph": "Paragraph",
+    "link": "Link",
+    "audio": "Voice",
+    "bookmark": "Bookmark",
+    "memo": "Memorize",
+    "meditate": "Meditate",
+    "compare": "Compare",
+    "paragraphCopied": "Paragraph copied",
+    "linkCopied": "Link copied"
   },
   "common": {
     "close": "Close",

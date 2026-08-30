@@ -902,15 +902,15 @@ body.dg-state-toc #language-button {
    collapsible row; kept collapsible here (large books like SN/AN genuinely need it lazy), but
    styled like a heading, not a list item, to match. */
 .toc-branch-header { display: flex; align-items: baseline; gap: .4rem; cursor: pointer; padding: .5rem 0 .3rem; }
-.toc-branch-title { color: var(--dg-text); font-weight: 700; font-size: 1.05rem; }
-/* Depth reads by nesting itself — .toc-children inside .toc-children marks each deeper level
-   (samyutta > paññāsaka > vagga, or nipāta > vagga, etc, however many levels a book has) — one
-   step smaller/lighter per level, so the hierarchy is visible at a glance instead of every branch
-   looking the same (owner: "уровни у тебя не отличаются... видно по уровню отличается", matching
-   prod where a nikāya/samyutta heading reads clearly bigger than the vagga below it). */
-.toc-children .toc-branch-title { font-weight: 600; font-size: .95rem; }
-.toc-children .toc-children .toc-branch-title { font-weight: 500; font-size: .88rem; color: var(--dg-text-2); }
-.toc-children .toc-children .toc-children .toc-branch-title { font-weight: 400; font-size: .84rem; color: var(--dg-text-muted); }
+.toc-branch-title { color: var(--dg-text-2); font-weight: 700; font-size: 1.05rem; }
+/* Depth reads two ways at once: size/weight taper (unchanged) plus a black/green color
+   alternation, one step smaller AND a swapped color per level, so hierarchy is visible at a
+   glance instead of every branch looking the same (owner: "уровни у тебя не отличаются", then
+   "саньютты зелёный поменять... вагги чёрным оставить" — vagga black, samyutta green, and the
+   same alternation continues for any book with more levels, not just SN). */
+.toc-children .toc-branch-title { color: var(--dg-accent-ink, var(--dg-accent)); font-weight: 600; font-size: .95rem; }
+.toc-children .toc-children .toc-branch-title { color: var(--dg-text-2); font-weight: 500; font-size: .88rem; }
+.toc-children .toc-children .toc-children .toc-branch-title { color: var(--dg-accent-ink, var(--dg-accent)); font-weight: 400; font-size: .84rem; }
 .toc-toggle {
     background: none; border: none; cursor: pointer; padding: 0;
     width: 1.3em; height: 1.3em; line-height: 1.3em; text-align: center;
@@ -2431,6 +2431,17 @@ body.dark .ui-autocomplete .autocomplete-history-icon { filter: invert(1); opaci
 }
 .dg-footer-link { color: var(--dg-text-2); text-decoration: none; }
 .dg-footer-link:hover { color: var(--dg-accent-ink); text-decoration: underline; }
+
+/* Owner: same fixed bottom-right cluster (#language-button + #scrollToTopBtn, uiextra.css) that
+   needed a mobile safe zone below the reader's footer links (reader/css/uiextra.css,
+   .links-area) also covers #dg-footer's terms/privacy links at the bottom of the RESULTS page —
+   #dg-footer is shown on results too (see comment above), just without the reserved space.
+   Home doesn't need this: both buttons are display:none there (body.dg-state-home rule above). */
+@media (max-width: 600px) {
+    body.dg-state-results #dg-footer {
+        padding-bottom: 96px;
+    }
+}
 .dg-terms-text {
     margin: 8px 0 4px;
     font-size: 0.92rem;

@@ -81,22 +81,33 @@ function getSavedSlugName(slug) {
 
 
 
-// --- ЛОГИКА ОПРЕДЕЛЕНИЯ КОНТЕКСТА (URL) ---
-function getContextInfo() {
+// --- ЛОГИКА ОПРЕДЕЛЕНИЯ КОНТЕКСТА (язык перевода) ---
+// Owner: "не имеет смысла читать латиницу русским [голосом] и кириллицу английским" —
+// this used to bucket by legacy PHP URL path prefix (/ru/, /r/, /ml/), which never occurs in
+// dg-node's clean SPA URLs (/mn28?lang=ru is just /mn28) — so every SPA reader page silently
+// fell into the 'en' bucket regardless of the real content language, and switching the reading
+// language in-SPA never changed anything either (pathname never changes). Now driven by the
+// actual detected segment/page language (Cyrillic vs Latin script, see detectDynamicLang/
+// detectTranslationLang) instead. ponytail: only ru/en voice buckets for now (owner: "с
+// немецким и тп уже будем после решать") — any other language still falls back to the 'en'
+// bucket rather than crashing; a real per-language bucket is the upgrade path once needed.
+function getContextInfo(langCode) {
   const path = window.location.pathname;
-  
-  // 1. Режим заучивания /d/ или /memorize/ (Индийский контекст для обоих слотов)
+
+  // Режим заучивания /d/ или /memorize/ (Индийский контекст для обоих слотов) — реальная
+  // отдельная фича по URL, не связана с языком перевода, оставляем как есть.
   if (path.includes('/d/') || path.includes('/memorize/')) {
       return {
           type: 'study',
           storageKey: GOOGLE_TRN_KEY_STUDY,
-          defaultConfig: { languageCode: 'pa-IN', name: 'pa-IN-Chirp3-HD-Achird' }, 
+          defaultConfig: { languageCode: 'pa-IN', name: 'pa-IN-Chirp3-HD-Achird' },
           isIndianContext: true
       };
   }
 
-  // 2. Русский контекст
-  if (path.includes('/ru') || path.includes('/r/') || path.includes('/ml')) {
+  const lang = langCode || detectTranslationLang();
+
+  if (lang === 'ru') {
       return {
           type: 'ru',
           storageKey: GOOGLE_TRN_KEY_RU,
@@ -105,7 +116,6 @@ function getContextInfo() {
       };
   }
 
-  // 3. Дефолт (Английский/Тайский и прочие)
   return {
       type: 'en',
       storageKey: GOOGLE_TRN_KEY_EN,
@@ -139,6 +149,31 @@ const ttsState = {
 window.TTS_SEGMENT_DELAY = (parseFloat(localStorage.getItem(SEGMENT_DELAY_KEY)) || 0) * 1000;
 
 const synth = window.speechSynthesis;
+
+// playBrowserTTS() only sets utterance.voice when the user picked a custom native voice —
+// otherwise it sets utterance.lang and lets the engine pick a default voice for that tag.
+// synth.getVoices() is the classic Web Speech API race: it can return [] synchronously right
+// after page load and populate later via 'voiceschanged'. Without waiting for that, the very
+// first speak() of a session can resolve to whatever system-default voice is active (commonly
+// English) even though utterance.lang is correctly 'ru-RU' — every later utterance is fine
+// because by then the voice list has populated (owner: "первая строчка читается с англ
+// акцентом, потом по-русски"). Resolves immediately once the list is non-empty; otherwise waits
+// once for 'voiceschanged' with a safety timeout so playback never hangs if a browser never
+// fires it.
+function ensureVoicesReady() {
+    if (synth.getVoices().length > 0) return Promise.resolve();
+    return new Promise((resolve) => {
+        let done = false;
+        const finish = () => {
+            if (done) return;
+            done = true;
+            synth.removeEventListener('voiceschanged', finish);
+            resolve();
+        };
+        synth.addEventListener('voiceschanged', finish);
+        setTimeout(finish, 400);
+    });
+}
 
 // --- Утилиты ---
 
@@ -200,10 +235,14 @@ function toggleSilence(enable) {
 
                     // 1. Ищем заголовок Пали
                     const paliNode = document.querySelector('h1 .pli-lang, .pli-lang h1, h1[lang="pi"], [lang="pi"] h1');
-                    const paliH1 = paliNode ? paliNode.innerText.trim() : '';            
-                  
+                    const paliH1 = paliNode ? paliNode.innerText.trim() : '';
+
+                    // document.title уже собран мегаридером в формате "Название slug" (см.
+                    // megareader.js renderNavigation) — берём его как есть вместо пересборки
+                    // из texttype/slug (data-slug вида "Dhamma/mn28"), которое раньше вылезало
+                    // сырым текстом в уведомлении на устройствах/плеерах без обложки.
                     navigator.mediaSession.metadata = new MediaMetadata({
-                        title: `${slug} ${paliH1}`.trim(),
+                        title: document.title || `${slug} ${paliH1}`.trim(),
                         artist: "Dhamma.gift Voice",
                         artwork: [{ src: '/assets/img/albumart.png', sizes: '1024x1024', type: 'image/png' }]
                     });
@@ -355,6 +394,61 @@ function setButtonIcon(type) {
 
 function resetUI() {
   document.querySelectorAll('.tts-active').forEach(el => el.classList.remove('tts-active'));
+}
+
+// Marks `item` as the currently-read segment (active-word + tts-active on its connected
+// pali/translation lines) and scrolls it into view when autoScroll is on. Was duplicated with
+// three slightly different, less complete copies (playCurrentSegment's own inline version, the
+// prev/next paused-branch, and rebuildActivePlaylist's paused branch) — consolidated into one so
+// every caller gets the same, most-complete behavior (paused nav/rebuild previously skipped
+// active-word and the connected-elements grouping that playCurrentSegment always did).
+//
+// Search-results rows can be collapsed (DataTables Responsive dtr-hidden — the segment DOM still
+// exists, just zero-size/invisible) — scrollIntoView on a hidden element is a no-op, and a
+// display:none .tts-active is invisible regardless of its background-color, so there was no way
+// to tell where reading was happening without expanding every row first (owner: "сейчас
+// невозможно разобраться где идет чтение"). When the segment isn't actually rendered, this
+// highlights+scrolls to its nearest <tr> instead (search/index.html: #results-tbody
+// tr.tts-active-row) — doesn't force the row open, just keeps the currently-read result visible
+// in the table, per owner: "может не разворачивать свернутые записи, но тогда подсвечивать ту
+// строку".
+function highlightAndScrollToItem(item) {
+  if (!item || !item.element) return;
+
+  document.querySelectorAll('.active-word').forEach(e => e.classList.remove('active-word'));
+  document.querySelectorAll('.tts-active-row').forEach(e => e.classList.remove('tts-active-row'));
+  resetUI();
+
+  if (item.element.classList.contains('pli-lang')) {
+    item.element.classList.add('active-word');
+  }
+
+  const segmentContainer = document.getElementById(item.id);
+  let scrollTarget = item.element;
+
+  if (segmentContainer) {
+    const connectedElements = segmentContainer.querySelectorAll('.pli-lang, .rus-lang, .tha-lang, .eng-lang, .lang-2nd, [lang]');
+    if (connectedElements.length > 0) {
+      connectedElements.forEach(el => el.classList.add('tts-active'));
+    } else {
+      segmentContainer.classList.add('tts-active');
+    }
+    scrollTarget = segmentContainer;
+  } else {
+    item.element.classList.add('tts-active');
+  }
+
+  if (scrollTarget.offsetParent === null) {
+    const row = scrollTarget.closest('tr');
+    if (row) {
+      row.classList.add('tts-active-row');
+      scrollTarget = row;
+    }
+  }
+
+  if (ttsState.autoScroll) {
+    scrollTarget.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
 }
 
 async function fetchSegmentsData(slug) {
@@ -617,8 +711,8 @@ async function populateVoiceSelectors(apiKey, forceRefresh = false) {
     // 1. Для Пали: Только Индийские
     const paliVoices = voices.filter(v => isIndianLang(v.languageCodes[0]));
 
-    // 2. Для Перевода: Зависит от контекста URL
-    const context = getContextInfo();
+    // 2. Для Перевода: Зависит от реального языка страницы (не от URL-пути, см. getContextInfo)
+    const context = getContextInfo(detectTranslationLang());
     let trnVoices = [];
 
     if (context.isIndianContext) {
@@ -699,7 +793,13 @@ async function fetchGoogleAudio(text, lang, rate, apiKey) {
 
   } else {
       // --- TRANSLATION (Dynamic) ---
-      const context = getContextInfo(); 
+      // `lang` here is the ACTUAL per-segment language already resolved by
+      // detectDynamicLang()/createPlaylistFromData() (Cyrillic → 'ru', Latin → the page's
+      // detected language, etc.) — pass it straight through instead of re-deriving from the
+      // URL path (see getContextInfo comment): this is the fix for "reads Russian with an
+      // English accent" / "language switch needs a reload", both root-caused to this call
+      // previously ignoring the language it was actually asked to speak.
+      const context = getContextInfo(lang);
       const savedTrn = localStorage.getItem(context.storageKey);
       if (savedTrn) {
           try { targetConfig = JSON.parse(savedTrn); } catch (e) {}
@@ -708,13 +808,13 @@ async function fetchGoogleAudio(text, lang, rate, apiKey) {
   }
 
   const url = `https://texttospeech.googleapis.com/v1/text:synthesize?key=${apiKey}`;
-  
+
   const payload = {
     input: { text: text },
     voice: { languageCode: targetConfig.languageCode, name: targetConfig.name },
-    audioConfig: { 
+    audioConfig: {
         audioEncoding: 'MP3',
-        speakingRate: rate 
+        speakingRate: rate
     }
   };
 
@@ -732,13 +832,13 @@ async function fetchGoogleAudio(text, lang, rate, apiKey) {
         throw new Error(data.error.message);
     }
 
-    return data.audioContent; 
+    return data.audioContent;
   } catch (e) {
     if (navigator.onLine && !e.message.includes('Google API Error') && !e.message.includes('Synthesize failed')) {
     }
 
     console.warn('Google TTS Fetch Error:', e);
-    return null; 
+    return null;
   }
 }
 
@@ -803,8 +903,36 @@ async function prepareTextData(slug) {
       return prepareLegacyData();
   }
 
-  const container = getSuttaContainer();
-  
+  let container = getSuttaContainer();
+  let scopeRoots = [container];
+
+  // Search results page has no .sutta-container/.sutta, so getSuttaContainer() falls back to the
+  // whole document. td.none (search-render.js's Quote column, the only column with that
+  // DataTables "never a real column" className) is the cell holding one row's Pali+translation
+  // markup — it's always in the DOM regardless of expand/collapse state (DataTables Responsive
+  // only toggles a dtr-hidden CSS class, never removes it).
+  //
+  // Owner: "Voice на поиске не работает потому что он открывает сутту, а должен идти по списку
+  // текстов... где много сутт и нужно читать не всю сутту, а только цитаты" — reading from the
+  // search results page means walking EVERY result's quote in order, not just the clicked row's.
+  // So the scope here is every td.none currently in the DOM under #results-tbody, not just the
+  // one the click happened in — that naturally also bounds itself to whatever DataTables page
+  // size the user picked (10/30/.../1000, see search-render.js pageLength/lengthMenu), since
+  // rows on other pages simply aren't in the DOM to query. Built as a list of per-cell roots
+  // (not one query against the whole tbody) so the Title column's <strong class="pli-lang">
+  // and Words column's <span class="pli-lang"> — real search-render.js markup with no id of
+  // their own — never enter scope in the first place, the same class of bug as the .byline case
+  // below, avoided here by construction instead of by another exclusion filter.
+  if (container === document) {
+      const activeWord = document.querySelector('.active-word');
+      const singleRowScope = activeWord && (activeWord.closest('td.none') || activeWord.closest('tr'));
+      if (singleRowScope) {
+          const resultsTbody = singleRowScope.closest('#results-tbody');
+          const allCells = resultsTbody ? Array.from(resultsTbody.querySelectorAll('td.none')) : [];
+          scopeRoots = allCells.length ? allCells : [singleRowScope];
+      }
+  }
+
   // .rus-lang/.eng-lang/.tha-lang/.second-translation-row — легаси-классы (совпадают с
   // разметкой r.php/tr.php и search-render.js), но dg-node megareader.js рендерит перевод
   // как .ru-lang/.en-lang/.lang-2nd (ISO-код класса, не трёхбуквенное сокращение) — из-за
@@ -812,8 +940,16 @@ async function prepareTextData(slug) {
   // .pli-lang класс общий у всех рендереров). lang-атрибут — то немногое, что действительно
   // совпадает везде (см. detectTranslationLang выше) — добавлен как основной, а не
   // единственный признак, легаси-классы остаются как доп. подстраховка.
-  const paliElements = container.querySelectorAll('.pli-lang, [lang="pi"]');
-  const translationElements = container.querySelectorAll('.rus-lang, .tha-lang, .eng-lang, .second-translation-row, .lang-2nd, [lang]:not([lang="pi"])');
+  // .byline (#trn, megareader.js renderNavigation) holds the "Pāḷi MS / Пер. ..." credit line —
+  // its spans carry lang="pi"/lang="ru" like real segments but have no id of their own, so
+  // getElementId()'s closest('[id]') fallback attributed them to the whole-page #trn id, making
+  // this credit line get spoken as a bogus first segment (owner: first line read in an English
+  // accent — it's the translator name/abbreviation mixed into a Russian sentence). Excluded here
+  // at the source rather than filtered later, since it isn't a real segment either way.
+  const notByline = (el) => !el.closest('.byline');
+  const queryAllRoots = (selector) => scopeRoots.flatMap(root => Array.from(root.querySelectorAll(selector)));
+  const paliElements = queryAllRoots('.pli-lang, [lang="pi"]').filter(notByline);
+  const translationElements = queryAllRoots('.rus-lang, .tha-lang, .eng-lang, .second-translation-row, .lang-2nd, [lang]:not([lang="pi"])').filter(notByline);
 
   if (paliElements.length === 0 && translationElements.length === 0) {
       return prepareGeneralArticleData();
@@ -821,8 +957,8 @@ async function prepareTextData(slug) {
   const paliJsonData = await fetchSegmentsData(slug);
 
   const allIds = new Set();
-  const allNodesInOrder = container.querySelectorAll('.pli-lang, .rus-lang, .tha-lang, .eng-lang, .second-translation-row, .lang-2nd, [lang]');
-  
+  const allNodesInOrder = queryAllRoots('.pli-lang, .rus-lang, .tha-lang, .eng-lang, .second-translation-row, .lang-2nd, [lang]');
+
   allNodesInOrder.forEach(el => {
     const id = getElementId(el);
     if (id) allIds.add(id);
@@ -1027,35 +1163,9 @@ async function playCurrentSegment() {
     }
   }
   
-  if (item.element) {
-    document.querySelectorAll('.active-word').forEach(e => e.classList.remove('active-word'));
-    
-    if (item.element.classList.contains('pli-lang')) {
-      item.element.classList.add('active-word');
-    }
-    
-    const segmentId = item.id;
-    const segmentContainer = document.getElementById(segmentId);
+  highlightAndScrollToItem(item);
 
-    if (segmentContainer) {
-        const connectedElements = segmentContainer.querySelectorAll('.pli-lang, .rus-lang, .tha-lang, .eng-lang, .lang-2nd, [lang]');
-        if (connectedElements.length > 0) {
-            connectedElements.forEach(el => el.classList.add('tts-active'));
-        } else {
-            segmentContainer.classList.add('tts-active');
-        }
-    } else {
-        item.element.classList.add('tts-active');
-    }
-    
-      if (ttsState.autoScroll) {
-      const scrollTarget = document.getElementById(item.id) || item.element;
-      scrollTarget.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-
-  }
-
-  let uiRate = 1.0;     
+  let uiRate = 1.0;
   let audioRateBrowser = 1.0; 
   let audioRateGoogle = 1.0;  
   
@@ -1314,7 +1424,7 @@ function playBrowserTTS(text, langKey, rate, isPali) {
             
             const pathLang = location.pathname.split('/')[1];
 
-            const helpUrl = window.isRu ? '/assets/common/ttsHelp.html#tts-help-ru' : '/assets/common/ttsHelp.html#tts-help-en';
+            const helpUrl = window.isRu ? '/ru/docs/tts' : '/docs/voice-tts';
             const title = window.isRu ? 'TTS:' : 'TTS Hint:';
             const helpLink = `<a href="${helpUrl}" target="_blank" style="color: #4da6ff;">(?)</a>`;
             const message = window.isRu 
@@ -1402,6 +1512,20 @@ async function handleSuttaClick(e) {
       if (!slug) {
           const mainPlayBtn = document.querySelector('a.voice-link[data-slug]');
           if (mainPlayBtn) slug = mainPlayBtn.dataset.slug;
+      }
+      // Search results page has no a.voice-link[data-slug] for a plain word click (only the
+      // right-click "Listen" menu manufactures one, a hidden #dg-voice-slug link, search/
+      // index.html) — so clicking the dynamic-tts-btn that a direct word click creates
+      // (settings.js activateSegmentForTTS) silently did nothing here (owner: "можно
+      // стартануть ттс через меню, но не через дин ттс кнопку"): slug stayed empty and this
+      // whole branch returned before ever calling startPlayback(). The active word's own id IS
+      // "sutta:segment" (search-render.js renderSegment) — same source prepareTextData already
+      // derives sutta ids from — so pull the slug from there instead of requiring a link.
+      if (!slug) {
+          const activeWordId = activeWord && getElementId(activeWord);
+          if (activeWordId && activeWordId.includes(':')) {
+              slug = activeWordId.split(':')[0];
+          }
       }
       if (!slug && typeof isLegacyPage === 'function' && isLegacyPage()) {
            slug = window.location.pathname.split('/').pop() || 'legacy_page';
@@ -1506,15 +1630,7 @@ async function handleSuttaClick(e) {
     }
     ttsState.currentIndex = newIndex;
     if (ttsState.paused) {
-      resetUI();
-      const item = ttsState.playlist[ttsState.currentIndex];
-      if (item && item.element) {
-        item.element.classList.add('tts-active');
-        if (ttsState.autoScroll) {
-          const scrollTarget = document.getElementById(item.id) || item.element;
-          scrollTarget.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-      }
+      highlightAndScrollToItem(ttsState.playlist[ttsState.currentIndex]);
     } else {
       playCurrentSegment();
     }
@@ -1652,6 +1768,79 @@ function stopPlayback() {
 }
 
 
+// Cancels current speech and re-scans the DOM to rebuild ttsState.playlist for `newMode`,
+// preserving the current segment's position by id. Originally only reachable from the
+// tts-mode-select change handler (switching pi/trn/pi-trn); also called directly by
+// megareader.js's switchReadingLanguage() right after it re-renders the sutta in the new
+// language (window.rebuildActivePlaylist() — top-level function decl, attaches to window in
+// this classic script), and from the dhamma:languagechange listener below as a catch-all for
+// any other path that changes the page language. `newMode` defaults to the current/saved mode
+// so callers outside this file (megareader.js) don't need to know about ttsState internals.
+// Returns false without changing anything if there is no active/paused session, or the rebuilt
+// playlist comes back empty.
+async function rebuildActivePlaylist(newMode) {
+  newMode = newMode || ttsState.langSettings || localStorage.getItem(MODE_STORAGE_KEY) || 'trn';
+  if (!(ttsState.speaking || ttsState.paused)) return false;
+
+  const wasPaused = ttsState.paused;
+  const currentId = ttsState.playlist[ttsState.currentIndex]?.id;
+  const pausedIndex = ttsState.currentIndex;
+
+  synth.cancel();
+  if (ttsState.googleAudio) {
+      ttsState.googleAudio.pause();
+      ttsState.googleAudio = null;
+  }
+
+  const textData = await prepareTextData(ttsState.currentSlug);
+  const newPlaylist = createPlaylistFromData(textData, newMode);
+
+  if (!newPlaylist.length) return false;
+
+  let newIndex = 0;
+  if (currentId) {
+    const foundIndex = newPlaylist.findIndex(item => item.id === currentId);
+    if (foundIndex !== -1) newIndex = foundIndex;
+  } else if (pausedIndex < newPlaylist.length) {
+    newIndex = pausedIndex;
+  }
+
+  ttsState.playlist = newPlaylist;
+  ttsState.currentIndex = newIndex;
+  ttsState.langSettings = newMode;
+  ttsState.speaking = true;
+  ttsState.paused = wasPaused;
+
+  if (!wasPaused) {
+    setButtonIcon('pause');
+    playCurrentSegment();
+  } else {
+    setButtonIcon('play');
+    highlightAndScrollToItem(ttsState.playlist[ttsState.currentIndex]);
+  }
+  return true;
+}
+
+// voice.js had no listener for dhamma:languagechange at all (unlike reader/common.js's
+// window.isRuPath/window.siteLanguage, which do react to it) — ttsState.playlist is a one-time
+// snapshot of text/lang/DOM-element taken when playback started, so switching the reading
+// language in-SPA (no reload) and pressing "continue" kept speaking the old language (owner:
+// "нужна перезагрузка чтобы поменять язык чтения... раньше это было невозможно без СПА режима").
+// IMPORTANT: this event fires from dhamma-i18n.js's setSiteLanguage() (interface-string config
+// load), which megareader.js's switchReadingLanguage() awaits BEFORE calling buildSutta() — so
+// by the time this listener runs, the sutta DOM is usually still in the OLD language, and a
+// rebuild here would just re-capture stale content. The authoritative rebuild for an actual
+// reading-language switch is the direct window.rebuildActivePlaylist() call in
+// switchReadingLanguage() itself, made AFTER buildSutta() finishes (see megareader.js). This
+// listener stays as a catch-all for any OTHER path that changes the page language without going
+// through switchReadingLanguage (harmless no-op re-scan if the content didn't actually change).
+document.addEventListener('dhamma:languagechange', function (e) {
+    if (e.detail && e.detail.language) window.isRu = e.detail.language === 'ru';
+    if (ttsState.playlist.length > 0) {
+        rebuildActivePlaylist();
+    }
+});
+
 async function startPlayback(container, mode, slug, startIndex = 0) {
   const textData = await prepareTextData(slug);
   if (!textData.length) {
@@ -1753,9 +1942,11 @@ async function startPlayback(container, mode, slug, startIndex = 0) {
       }
   }
   
-  setTimeout(() => {
-     playCurrentSegment();
-  }, 100);
+  ensureVoicesReady().then(() => {
+      setTimeout(() => {
+         playCurrentSegment();
+      }, 100);
+  });
 }
 
 function showVoiceHint(title, message, storageKey) {
@@ -1828,9 +2019,9 @@ function getPlayerHtml() {
   }
 
 
-  const helpUrl = window.isRu 
-    ? '/assets/common/ttsHelp.html#tts-help-ru' 
-    : '/assets/common/ttsHelp.html#tts-help-en';
+  // Points at the new Docs/Help portal now (RU slug renamed to /tts, EN frozen at old
+  // /voice-tts — see TODO.md), not the legacy static ttsHelp.html page.
+  const helpUrl = window.isRu ? '/ru/docs/tts' : '/docs/voice-tts';
 
   const modeLabels = window.isRu
     ? { 'pi': 'Пали', 'pi-trn': 'Пали + Рус', 'trn': 'Перевод', 'trn-pi': 'Рус + Пали' }
@@ -2147,54 +2338,7 @@ async function handleTTSSettingChange(e) {
     e.preventDefault();
     const newMode = e.target.value;
     localStorage.setItem(MODE_STORAGE_KEY, newMode);
-      
-    if (ttsState.speaking || ttsState.paused) {
-      const wasPaused = ttsState.paused;
-      const currentId = ttsState.playlist[ttsState.currentIndex]?.id;
-      const pausedIndex = ttsState.currentIndex;
-      
-      synth.cancel();
-      if (ttsState.googleAudio) {
-          ttsState.googleAudio.pause();
-          ttsState.googleAudio = null;
-      }
-      
-      const textData = await prepareTextData(ttsState.currentSlug);
-      const newPlaylist = createPlaylistFromData(textData, newMode);
-      
-      if (!newPlaylist.length) return;
-      
-      let newIndex = 0;
-      if (currentId) {
-        const foundIndex = newPlaylist.findIndex(item => item.id === currentId);
-        if (foundIndex !== -1) newIndex = foundIndex;
-      } else if (pausedIndex < newPlaylist.length) {
-        newIndex = pausedIndex;
-      }
-      
-      ttsState.playlist = newPlaylist;
-      ttsState.currentIndex = newIndex;
-      ttsState.langSettings = newMode;
-      ttsState.speaking = true;
-      ttsState.paused = wasPaused;
-      
-      if (!wasPaused) {
-        setButtonIcon('pause');
-        playCurrentSegment();
-      } else {
-        setButtonIcon('play');
-        resetUI();
-        const item = ttsState.playlist[ttsState.currentIndex];
-        if (item && item.element) {
-          item.element.classList.add('tts-active');
-        if (ttsState.autoScroll) {
-          const scrollTarget = document.getElementById(item.id) || item.element;
-          scrollTarget.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-
-        }
-      }
-    }
+    await rebuildActivePlaylist(newMode);
   }
   
   // 4. Rate
@@ -2232,11 +2376,7 @@ async function handleTTSSettingChange(e) {
      localStorage.setItem(SCROLL_STORAGE_KEY, e.target.checked);
 
      if (ttsState.autoScroll && (ttsState.speaking || ttsState.paused)) {
-        const item = ttsState.playlist[ttsState.currentIndex];
-        if (item && item.element) {
-           const scrollTarget = document.getElementById(item.id) || item.element;
-           scrollTarget.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
+        highlightAndScrollToItem(ttsState.playlist[ttsState.currentIndex]);
      }
 
   }
@@ -2423,7 +2563,7 @@ async function refreshVoiceDropdowns(forceRefresh = false) {
     const trnVoiceSelect = document.getElementById('google-voice-select-trn');
     
     if (trnLangSelect && trnVoiceSelect) {
-        const context = getContextInfo();
+        const context = getContextInfo(detectTranslationLang());
         if (isNativeTrn) {
             let trnNativeVoices = [];
             let defTrnNativeLang = 'en-US';

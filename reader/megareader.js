@@ -649,6 +649,71 @@ document.addEventListener('keydown', (event) => {
     if (slug) window.navigateSutta(null, slug);
 }, true);
 
+// Owner: "сохранение позиции при смене языка работает не как на проде... там есть логика с
+// active word и с позицией" — ported from prod's runWithTransition() (read/js/common.js): anchor
+// to whatever the user is actually looking at (or the segment TTS has highlighted) BEFORE the
+// re-render, put that SAME segment back at the SAME screen position after — a translation is
+// rarely the same length as the text it replaces, so a naive re-render silently scrolls the
+// reader to a different paragraph, and TTS's .active-word highlight/play-button just vanish.
+// Prod's version anchors by a LIVE ELEMENT REFERENCE because its transition only toggles
+// hide-pali/hide-russian CSS classes — the same DOM nodes survive. dg-node's buildSutta() fully
+// replaces #sutta's innerHTML (new nodes every time), so a stale reference into the destroyed
+// DOM would be useless after rebuild — anchor by SEGMENT ID instead, re-resolved with
+// getElementById() once the fresh DOM is in place.
+function captureReadingAnchor() {
+    const activeWord = document.querySelector('.active-word');
+    if (activeWord) {
+        const row = activeWord.closest('[id]') || activeWord;
+        if (!row.id) return null;
+        return { id: row.id, topOffset: row.getBoundingClientRect().top, hadActiveWord: true };
+    }
+    // No TTS highlight — anchor to the topmost segment that's still meaningfully on screen (same
+    // 30%-of-viewport threshold prod's getTopVisibleSegment() uses, not just "first segment
+    // touching the top edge", which would anchor to a sliver of the previous paragraph).
+    const targetLine = window.innerHeight * 0.3;
+    const segments = document.querySelectorAll('#sutta span[id]');
+    for (const segment of segments) {
+        const rect = segment.getBoundingClientRect();
+        if (rect.bottom > targetLine) {
+            return { id: segment.id, topOffset: rect.top, hadActiveWord: false };
+        }
+    }
+    return null;
+}
+
+function restoreReadingAnchor(anchor) {
+    if (!anchor) return;
+    const el = document.getElementById(anchor.id);
+    if (!el) return;
+
+    // Same math as prod: move by exactly the difference between where the anchor landed after
+    // rebuild and where it was before — not scrollIntoView (which would re-center it and still
+    // feel like a jump), the anchor stays pinned at its original screen position.
+    const newTop = el.getBoundingClientRect().top;
+    const targetScroll = window.scrollY + newTop - anchor.topOffset;
+
+    const html = document.documentElement;
+    const savedBehavior = html.style.scrollBehavior;
+    html.style.scrollBehavior = 'auto';
+    window.scrollTo(0, targetScroll);
+    setTimeout(() => { html.style.scrollBehavior = savedBehavior; }, 50);
+
+    if (anchor.hadActiveWord && typeof window.activateSegmentForTTS === 'function') {
+        // Same language may no longer be visible in the new render (e.g. switching away from the
+        // language that was active) — pick whichever language line in this row IS visible now,
+        // same fallback prod's runWithTransition uses.
+        const spans = el.querySelectorAll('[class*="-lang"]');
+        let visibleTarget = el;
+        for (const span of spans) {
+            if (span.offsetParent !== null) {
+                visibleTarget = span;
+                break;
+            }
+        }
+        window.activateSegmentForTTS(visibleTarget);
+    }
+}
+
 // Переключение режима колонок (R+R/R+E/En и т.п.) через SPA — без перезагрузки страницы.
 // modeKey — ключ из window.MODE_TABLE (reader/mode-table.json, тот же файл резолвит сервер).
 // Здесь берём только config.columns[0] — чисто презентационно, чтобы понять "это смена языка
@@ -674,7 +739,8 @@ window.switchReaderMode = function(modeKey, event) {
     params.set('mode', modeKey);
     history.pushState({ page: window._currentSlug, mode: modeKey }, "", `?${params.toString()}`);
 
-    if (window._currentSlug) window.buildSutta(window._currentSlug);
+    const anchor = captureReadingAnchor();
+    if (window._currentSlug) window.buildSutta(window._currentSlug).then(() => restoreReadingAnchor(anchor));
 };
 
 // Owner: "язык в бургере... интерфейс + 1ый язык перевода. чтобы он менял и язык чтения, но
@@ -710,8 +776,20 @@ window.switchReadingLanguage = async function (lang) {
     // set synchronously from `lang` directly below — redundant with the listener once this
     // awaits correctly, but cheap and removes any doubt about listener/event ordering.
     window.isRuPath = (lang === 'ru');
+    const anchor = captureReadingAnchor();
     if (typeof window.setSiteLanguage === 'function') await window.setSiteLanguage(lang);
-    if (window._currentSlug) window.buildSutta(window._currentSlug);
+    if (window._currentSlug) {
+        await window.buildSutta(window._currentSlug);
+        restoreReadingAnchor(anchor);
+        // Owner: "нужна перезагрузка чтобы поменять язык чтения" — voice.js's TTS playlist is a
+        // one-time DOM snapshot; setSiteLanguage() above already dispatched 'dhamma:languagechange'
+        // (voice.js listens for it too), but that fires BEFORE buildSutta() re-renders the sutta,
+        // so it would only re-capture the OLD language. Call the rebuild again here, now that the
+        // DOM is actually in the new language, so an active/paused TTS session picks up the new
+        // text/voice immediately and resumes from the same segment. No-op if TTS isn't loaded or
+        // nothing is playing/paused (rebuildActivePlaylist checks that itself).
+        if (typeof window.rebuildActivePlaylist === 'function') window.rebuildActivePlaylist();
+    }
 };
 
 // ==========================================
@@ -763,13 +841,18 @@ window.renderNavigation = async function(slug, suttaTitle) {
         return name === "" ? outSlug : `${outSlug} <span class="sutta-name"> ${name}</span>`;
     };
 
+    const nextArrowSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="11">
+                <g transform="matrix(0.021484375 0 0 0.021484375 2 -0)"><path d="M202.1 450C 196.03278 449.9987 190.56381 446.34256 188.24348 440.73654C 185.92316 435.13055 187.20845 428.67883 191.5 424.39L191.5 424.39L365.79 250.1L191.5 75.81C 185.81535 69.92433 185.89662 60.568687 191.68266 54.782654C 197.46869 48.996624 206.82434 48.91536 212.71 54.6L212.71 54.6L397.61 239.5C 403.4657 245.3575 403.4657 254.8525 397.61 260.71L397.61 260.71L212.70999 445.61C 209.89557 448.4226 206.07895 450.0018 202.1 450z" fill="#8f8f8f"/></g>
+            </svg>`;
+    const prevArrowSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="11">
+                <g transform="matrix(0.021484375 0 0 0.021484375 2 -0)"><path d="M353 450C 349.02106 450.0018 345.20444 448.4226 342.39 445.61L342.39 445.61L157.5 260.71C 151.64429 254.8525 151.64429 245.3575 157.5 239.5L157.5 239.5L342.39 54.6C 346.1788 50.809414 351.70206 49.328068 356.8792 50.713974C 362.05634 52.099876 366.10086 56.14248 367.4892 61.318974C 368.87753 66.49547 367.3988 72.01941 363.61002 75.81L363.61002 75.81L189.32 250.1L363.61 424.39C 367.90283 428.6801 369.18747 435.13425 366.8646 440.74118C 364.5417 446.34808 359.06903 450.00275 353 450z" fill="#8f8f8f"/></g>
+            </svg>`;
+
     if (nav.next) {
         let htmlNext = `<a href="${buildCleanSuttaUrl(nav.next.slug, navExtraParams)}" onclick="window.navigateSutta(event, '${nav.next.slug}')">${formatLink(nav.next)}
-            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="11">
-                <g transform="matrix(0.021484375 0 0 0.021484375 2 -0)"><path d="M202.1 450C 196.03278 449.9987 190.56381 446.34256 188.24348 440.73654C 185.92316 435.13055 187.20845 428.67883 191.5 424.39L191.5 424.39L365.79 250.1L191.5 75.81C 185.81535 69.92433 185.89662 60.568687 191.68266 54.782654C 197.46869 48.996624 206.82434 48.91536 212.71 54.6L212.71 54.6L397.61 239.5C 403.4657 245.3575 403.4657 254.8525 397.61 260.71L397.61 260.71L212.70999 445.61C 209.89557 448.4226 206.07895 450.0018 202.1 450z" fill="#8f8f8f"/></g>
-            </svg></a>`;
+            ${nextArrowSvg}</a>`;
         if (next) next.innerHTML = htmlNext;
-        if (next2) next2.innerHTML = htmlNext.replace(/class="sutta-name"/g, '');
+        if (next2) next2.innerHTML = htmlNext;
     } else {
         if (next) next.innerHTML = "";
         if (next2) next2.innerHTML = "";
@@ -777,11 +860,9 @@ window.renderNavigation = async function(slug, suttaTitle) {
 
     if (nav.prev) {
         let htmlPrev = `<a href="${buildCleanSuttaUrl(nav.prev.slug, navExtraParams)}" onclick="window.navigateSutta(event, '${nav.prev.slug}')">
-            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="11">
-                <g transform="matrix(0.021484375 0 0 0.021484375 2 -0)"><path d="M353 450C 349.02106 450.0018 345.20444 448.4226 342.39 445.61L342.39 445.61L157.5 260.71C 151.64429 254.8525 151.64429 245.3575 157.5 239.5L157.5 239.5L342.39 54.6C 346.1788 50.809414 351.70206 49.328068 356.8792 50.713974C 362.05634 52.099876 366.10086 56.14248 367.4892 61.318974C 368.87753 66.49547 367.3988 72.01941 363.61002 75.81L363.61002 75.81L189.32 250.1L363.61 424.39C 367.90283 428.6801 369.18747 435.13425 366.8646 440.74118C 364.5417 446.34808 359.06903 450.00275 353 450z" fill="#8f8f8f"/></g>
-            </svg>${formatLink(nav.prev)}</a>`;
+            ${prevArrowSvg}${formatLink(nav.prev)}</a>`;
         if (previous) previous.innerHTML = htmlPrev;
-        if (previous2) previous2.innerHTML = htmlPrev.replace(/class="sutta-name"/g, '');
+        if (previous2) previous2.innerHTML = htmlPrev;
     } else {
         if (previous) previous.innerHTML = "";
         if (previous2) previous2.innerHTML = "";

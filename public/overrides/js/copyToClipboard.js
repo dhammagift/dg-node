@@ -23,6 +23,64 @@ function getNotificationText() {
   }[language] || "Quote copied";
 }
 
+// Extracted from copyToClipboard()'s body so reader/common.js's "Paragraph" context-menu item
+// (copies every segment from the clicked one to the end of the enclosing <p>) can reuse the same
+// Pali+translation extraction per segment instead of duplicating it. clickedElement is optional —
+// passed for the segment the user actually clicked (disambiguates between two same-language
+// columns in R+R/E+E multiFor mode via closest()); sibling segments collected for a paragraph
+// copy have no click point, so they fall back to the first matching [lang] element instead.
+function getSegmentTextParts(parentSpan, clickedLang, clickedElement) {
+  let textParts = [];
+
+  // Ищем все блоки с lang="pi", чтобы захватить и мнемонику, и полный текст (для memorize.js)
+  const piElements = parentSpan.querySelectorAll('[lang="pi"]');
+
+  piElements.forEach(piElement => {
+    // Проверка на вложенность: если родитель тоже имеет lang="pi", пропускаем (чтобы избежать дублирования)
+    if (piElement.parentElement.closest('[lang="pi"]')) return;
+
+    const piClone = piElement.cloneNode(true);
+    // Удаляем только скрытые варианты
+    piClone.querySelectorAll('.hidden-variant').forEach(el => el.remove());
+
+    const piText = piClone.textContent
+      .trim()
+      .replace(/ /g, '\n')
+      .replace(/\s\s+/g, '\n');
+
+    if (piText) {
+      textParts.push(piText);
+    }
+  });
+
+  if (clickedLang !== 'pi') {
+    const translationElement = clickedElement
+      ? clickedElement.closest('[lang]:not([lang="pi"])')
+      : parentSpan.querySelector('[lang]:not([lang="pi"])');
+    // Owner (paragraph copy): a segment with no real translation still has an EMPTY [lang]
+    // element (untranslated), and pushing "" here left a doubled blank line once textParts got
+    // joined with '\n\n' across a multi-segment paragraph — truthy check, same as otherTranslations
+    // already does below.
+    if (translationElement && translationElement.textContent.trim()) {
+      textParts.push(translationElement.textContent.trim());
+    }
+
+    const otherTranslations = Array.from(
+      parentSpan.querySelectorAll('[lang]:not([lang="pi"]):not([lang="' + clickedLang + '"])')
+    )
+      .filter(el => !el.closest('.hidden-variant'))
+      .map(el => el.textContent.trim())
+      .filter(Boolean);
+
+    if (otherTranslations.length > 0) {
+      textParts = textParts.concat(otherTranslations);
+    }
+  }
+
+  return textParts;
+}
+window.getSegmentTextParts = getSegmentTextParts;
+
 // Основная функция копирования
 function copyToClipboard(text = "") {
 
@@ -72,52 +130,10 @@ function copyToClipboard(text = "") {
   // spans get rendered) is the authoritative current id in that case.
   const suttaId = new URL(text).searchParams.get('q') || window._currentSlug || ''; // Уже в нижнем регистре
 
-  let textParts = [];
-
-  // 1. Всегда добавляем текст пали (с видимыми вариантами)
-  // ИЗМЕНЕНИЕ: Ищем все блоки с lang="pi", чтобы захватить и мнемонику, и полный текст (для memorize.js)
-  const piElements = parentSpan.querySelectorAll('[lang="pi"]');
-
-  piElements.forEach(piElement => {
-    // Проверка на вложенность: если родитель тоже имеет lang="pi", пропускаем (чтобы избежать дублирования)
-    if (piElement.parentElement.closest('[lang="pi"]')) return;
-
-    const piClone = piElement.cloneNode(true);
-    // Удаляем только скрытые варианты
-    piClone.querySelectorAll('.hidden-variant').forEach(el => el.remove());
-
-    const piText = piClone.textContent
-      .trim()
-      .replace(/\u00A0/g, '\n')
-      .replace(/\s\s+/g, '\n');
-
-    if (piText) {
-      textParts.push(piText);
-    }
-  });
-
-  // 2. Если кликнули на перевод - добавляем его текст
-  if (clickedLang !== 'pi') {
-    const translationElement = clickedElement.closest('[lang]:not([lang="pi"])');
-    if (translationElement) {
-      const translationText = translationElement.textContent.trim();
-      textParts.push(translationText);
-    }
-  }
-
-  // 3. Добавляем все остальные видимые переводы (кроме кликнутого)
-  if (clickedLang !== 'pi') {
-    const otherTranslations = Array.from(
-      parentSpan.querySelectorAll('[lang]:not([lang="pi"]):not([lang="' + clickedLang + '"])')
-    )
-      .filter(el => !el.closest('.hidden-variant'))
-      .map(el => el.textContent.trim())
-      .filter(Boolean);
-
-    if (otherTranslations.length > 0) {
-      textParts = textParts.concat(otherTranslations);
-    }
-  }
+  // 1. Пали (с видимыми вариантами) + 2. кликнутый перевод + 3. остальные видимые переводы —
+  // общая логика вынесена в getSegmentTextParts() выше (её же переиспользует "Абзац" в
+  // reader/common.js).
+  let textParts = getSegmentTextParts(parentSpan, clickedLang, clickedElement);
 
 let textToCopy = textParts.join('\n\n')
   .replace(/✦/g, '')

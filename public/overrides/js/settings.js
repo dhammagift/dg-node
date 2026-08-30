@@ -423,6 +423,16 @@ window.removeAllHighlights = function() {
 // just the arrow, extended to also cover the language pill (always present) and skip
 // whichever of the two isn't actually rendered right now (checked via display, not
 // opacity — see the getBoundingClientRect()-returns-zeros bug this replaced).
+// Owner: "ScrollToTop appears at a bigger distance than [TTS]... make them equal, independent of
+// which order the buttons appear in" — this button's own neighbor-gap was a DIFFERENT constant
+// (8px) than the one already established between #scrollToTopBtn and #language-button themselves
+// (right:90 vs right:20, both 38px wide → 32px edge-to-edge gap; search/index.html's own
+// placeScrollTopButton() independently uses that same "+32" for its arrow-to-language gap). Using
+// 8 here meant the TTS button sat closer to whichever neighbor it was avoiding than that neighbor
+// sits from ITS OWN neighbor — inconsistent depending on which pair happened to be visible.
+// One shared constant, used everywhere in this corner cluster, fixes it regardless of order.
+// Shrunk from 32 to 19 (owner: gap between these buttons was too big).
+const CORNER_BUTTON_GAP = 19;
 function repositionTtsButton() {
     const btn = document.querySelector('.dynamic-tts-btn');
     if (!btn) return;
@@ -432,7 +442,7 @@ function repositionTtsButton() {
         .filter(function (r) { return r.width > 0; });
     if (rightCornerNeighbors.length) {
         const leftmost = Math.min.apply(null, rightCornerNeighbors.map(function (r) { return r.left; }));
-        btn.style.right = Math.round(window.innerWidth - leftmost + 8) + 'px';
+        btn.style.right = Math.round(window.innerWidth - leftmost + CORNER_BUTTON_GAP) + 'px';
     } else {
         btn.style.right = '';
     }
@@ -493,11 +503,7 @@ window.activateSegmentForTTS = function(element) {
 document.addEventListener("click", function (e) {
     // Игнорируем клики по самому плееру, кнопкам настроек или кнопке Play
     if (e.target.closest('.tts-ignore') || e.target.closest('.dynamic-tts-btn')) return;
-    
-    // === ИСКЛЮЧЕНИЕ ДЛЯ СТРАНИЦ РЕЗУЛЬТАТОВ ПОИСКА ===
-    const path = window.location.pathname;
-    const isSearchResult = (path === '/' || path === '/ru/') && window.location.search.includes('q=');
-    if (isSearchResult) return;
+
     // === ИСКЛЮЧЕНИЕ ДЛЯ /toc — оглавление показывает вложенный легаси-фрагмент Патимоккхи
     // (assets/texts/bupm.php/bipm.php), у которого текст в тех же .pli-lang классах, что и в
     // ридере — без этого исключения клик по нему создаёт плавающую .dynamic-tts-btn/active-word
@@ -516,6 +522,22 @@ document.addEventListener("click", function (e) {
             return;
         }
         window.activateSegmentForTTS(clickedSegment);
+
+        // Раньше здесь был безусловный `if (isSearchResult) return;` ДО этой ветки — он
+        // определял "страница результатов" по пути/query (`path === '/' && search.includes('q=')`),
+        // который перестал совпадать, когда роутер стал переписывать `/?q=...` в чистые `/keyword`
+        // URL (см. router.js) — на деле проверка молча никогда не срабатывала, и клик уже включал
+        // active-word/кнопку на выдаче. Но loadVoiceScripts() (см. её собственную проверку выше в
+        // этом файле) на выдаче НЕ грузит voice.js без force=true — а её вызывает только пункт
+        // "Слушать" в контекстном меню. Плавающая кнопка от клика по слову появлялась, но не
+        // работала: слушателя handleSuttaClick ещё не существовало (owner: "можно стартануть ттс
+        // через меню, но не через дин ттс кнопку"). Форсируем загрузку здесь тем же способом, что
+        // уже использует title-play-button в reader/common.js — активируем сразу (для мгновенной
+        // визуальной реакции), грузим скрипт в фоне, БЕЗ авто-клика по кнопке (в отличие от
+        // reader/common.js — здесь клик по слову должен только взвести кнопку, а не сразу играть).
+        if (document.body.classList.contains('dg-state-results') && !window.isVoiceScriptLoaded && typeof window.loadVoiceScripts === 'function') {
+            window.loadVoiceScripts(() => {}, true);
+        }
         return;
     }
 
@@ -1225,7 +1247,9 @@ if (event.altKey && (event.code === "KeyP" || event.code === "KeyY")) {
   }
 
 //Ctrl + ArrowRight navigate to next sutta
-  if (shouldIgnoreKeyEvent()) return;
+  // Owner: Alt+R (start/toggle TTS) must fire even while an input is focused — carved out of
+  // this blanket "ignore while typing" gate, which every other shortcut below still respects.
+  if (shouldIgnoreKeyEvent() && !(event.altKey && event.code === "KeyR")) return;
 
   if (event.ctrlKey && event.code === "ArrowRight") {
     const nextDiv = document.getElementById("next");
@@ -1339,12 +1363,8 @@ if (event.altKey && (event.code === "KeyP" || event.code === "KeyY")) {
 
 // --- Обработчик горячих клавиш (Alt + R) ---
 if (event.altKey && event.code === "KeyR") {
-    // 1. Пропускаем, если фокус в поле ввода
-    const activeTag = document.activeElement.tagName;
-    if (['INPUT', 'TEXTAREA'].includes(activeTag) || document.activeElement.isContentEditable) {
-        return;
-    }
-
+    // Owner: Alt+R must start/toggle TTS regardless of input focus (unlike Alt+F/Alt+N above,
+    // which intentionally skip when typing) — no input-focus exception here on purpose.
     event.preventDefault();
 
     // Если скрипты еще не загружены — грузим и запускаем
@@ -2501,13 +2521,17 @@ function toggleFavoriteGlobal(itemData) {
         document.head.appendChild(script);
     };
 
-    // Авто-открытие через URL параметры (вызовет заглушку и загрузит скрипт)
+    // Авто-открытие через URL параметры (вызовет заглушку и загрузит скрипт).
+    // Значение может быть 'true' (открыть на вкладке по умолчанию) или ключом конкретной
+    // вкладки ('tab-fav'|'tab-4as'|'tab-memo'|'tab-dpd') — используется, например, doc-страницей
+    // "Быстрое окно" для встраивания уже открытого окна на нужной вкладке (?action=tab-dpd).
     document.addEventListener("DOMContentLoaded", () => {
         const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.get('sacca') === 'true' || urlParams.get('action') === 'true') {
+        const trigger = urlParams.get('sacca') || urlParams.get('action');
+        if (trigger === 'true' || (trigger && trigger.indexOf('tab-') === 0)) {
             setTimeout(() => {
                 if (typeof window.toggleQuickModal === 'function') {
-                    window.toggleQuickModal();
+                    window.toggleQuickModal(trigger === 'true' ? undefined : trigger);
                 }
             }, 300);
         }

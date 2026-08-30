@@ -597,12 +597,13 @@
             if (typeof window.toggleQuickModal === 'function') { window.toggleQuickModal(); return; }
         }
         if (tile.modal === 'help') {
-            // Помощь — уже существующая bootstrap-модалка выдачи, второй копии не заводим.
-            var help = document.getElementById('SearchResultHelp');
-            if (help && window.bootstrap && window.bootstrap.Modal) {
-                window.bootstrap.Modal.getOrCreateInstance(help).show();
-                return;
-            }
+            // Помощь мультитула (эта плитка сама и есть мультитул) — ведёт на его собственную
+            // страницу в доках, не на общую bootstrap-модалку выдачи (#SearchResultHelp, для
+            // неё уже есть свой Help-путь в тулбаре/дровере — см. dgDrawerHelpHref() в index.html,
+            // у него для главной страницы отдельная цель — Key Features).
+            var ru = menuLang() === 'ru';
+            window.open((ru ? '/ru/docs/' : '/docs/') + 'multitool', '_blank');
+            return;
         }
         if (tile.href) {
             var finalHref = tile.custom ? fillTemplate(tile.href) : tile.href;
@@ -2233,18 +2234,19 @@
         });
     }
 
-    /* Drawer rows whose TARGET (not just label) depends on UI language — currently only "About
-       the project" (siteroot/assets/common/keyFeatures.html vs keyFeaturesRu.html, same naming
-       convention as o.html/o-en.html etc. in menu-links.json). menuLang() is the same ru/en
-       source of truth menu-links.json's per-language sections already key off of — not a new
-       hardcoded default.
-       Named "dg-about-link", deliberately NOT containing "-lang" — reader/css/uiextra.css has
-       `[class*="-lang"]{display:block}` (see search/css/home.css's .toc-filter-hdr comment for
-       the same landmine already hit once); a class of ours matching that substring silently loses
-       .dg-drawer-row's flex layout (icon and label collapse together, no gap). */
+    /* Any element whose TARGET (not just label) depends on UI language — "About the project"
+       (siteroot/assets/common/keyFeatures.html vs keyFeaturesRu.html, same naming convention as
+       o.html/o-en.html etc. in menu-links.json) plus the Help/Docs portal links (search/reader
+       toolbars — /docs/... vs /ru/docs/..., separate baseUrl builds, see dg-docs/docusaurus.config.js).
+       menuLang() is the same ru/en source of truth
+       menu-links.json's per-language sections already key off of — not a new hardcoded default.
+       Selected by the data-href-en/data-href-ru pair itself, not a shared class — a class name
+       containing "-lang" would silently lose .dg-drawer-row's flex layout, see
+       reader/css/uiextra.css's `[class*="-lang"]{display:block}` (search/css/home.css's
+       .toc-filter-hdr comment has the same landmine already hit once). */
     function paintDrawerLangHrefs() {
         var ru = menuLang() === 'ru';
-        Array.prototype.forEach.call(document.querySelectorAll('.dg-about-link'), function (el) {
+        Array.prototype.forEach.call(document.querySelectorAll('[data-href-en][data-href-ru]'), function (el) {
             el.href = ru ? el.dataset.hrefRu : el.dataset.hrefEn;
         });
     }
@@ -2921,12 +2923,14 @@
            в поле стояло «например, Kāyagat или sn56.11» вместо «пр. …». */
         document.addEventListener('dhamma:languagechange', function () {
             if (menuData) applyMenuLangStrings();
+            paintDrawerLangHrefs(); // не зависит от menuData — красим и до его загрузки (гонка при ?lang=ru)
             applyRandomPlaceholder();
             renderAnnounce(); // у объявления свой текст на каждый язык
         });
         if (window.DHAMMA_I18N && window.DHAMMA_I18N.ready) {
             window.DHAMMA_I18N.ready.then(function () {
                 if (menuData) applyMenuLangStrings();
+                paintDrawerLangHrefs();
                 applyRandomPlaceholder();
             });
         }

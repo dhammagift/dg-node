@@ -18,7 +18,7 @@
     "ogSiteName": "Dhamma.gift Read"
   },
   "routes": {
-    "manifest": "/ru/manifest.php",
+    "manifest": "/manifest.json",
     "canonical": "https://dhamma.gift/r/",
     "alternateEnglish": "https://dhamma.gift/read/",
     "alternateRussian": "https://dhamma.gift/r/",
@@ -43,6 +43,18 @@
   "search": {
     "placeholder": "Try sn56.11",
     "submit": "Go"
+  },
+  "contextMenu": {
+    "quote": "Строку",
+    "paragraph": "Абзац",
+    "link": "Ссылка",
+    "audio": "Слушать",
+    "bookmark": "Избранное",
+    "memo": "Запомнить",
+    "meditate": "Медитировать",
+    "compare": "Сравнить",
+    "paragraphCopied": "Абзац скопирован",
+    "linkCopied": "Ссылка скопирована"
   },
   "common": {
     "close": "Закрыть",

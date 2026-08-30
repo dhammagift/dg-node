@@ -545,10 +545,20 @@ function setupQuickModalHeaders() {
 }
 
 
-window.toggleQuickModal = function() {
+// Optional tabKey ('tab-fav'|'tab-4as'|'tab-memo'|'tab-dpd') deep-links straight to a tab —
+// used by dg-docs (Быстрое окно help page) and available from anywhere: window.toggleQuickModal('tab-dpd').
+// Already-open + tabKey just switches tab (doesn't close) — closing on a deep link would defeat
+// the point of the link. No tabKey keeps the original open/close toggle, unchanged.
+window.toggleQuickModal = function(tabKey) {
   if (!window.isQuickModalRendered) {
     buildQuickModalDOM();
     window.isQuickModalRendered = true;
+  }
+
+  if (tabKey && window.quickModalIsOpen) {
+    var tabBtn = quickModal.querySelector('.quick-tab-btn[data-tab="' + tabKey + '"]');
+    if (tabBtn) tabBtn.click();
+    return;
   }
 
   if (window.quickModalIsOpen) {
@@ -562,6 +572,11 @@ window.toggleQuickModal = function() {
     window.quickOverlay.classList.add("open");
     window.quickModal.classList.add("open");
     window.quickModalIsOpen = true;
+
+    if (tabKey) {
+        var openTabBtn = quickModal.querySelector('.quick-tab-btn[data-tab="' + tabKey + '"]');
+        if (openTabBtn) openTabBtn.click();
+    }
 
     // 2. Фокус на инпут для быстрого поиска
     setTimeout(() => {

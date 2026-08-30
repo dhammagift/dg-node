@@ -122,7 +122,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
 <script src="/assets/js/dhamma-i18n.js" defer></script>
 <title>Search Results - Dhamma.gift</title>
 <meta name="description" content="Search Results - Dhamma.gift">
-<link rel="manifest" href="/manifest.php">
+<link rel="manifest" href="/manifest.json">
 <!-- Home tiles (#home-tiles, "multitool") fetch this JSON last — after all deferred scripts run
      (see home.js init()). Preloading here starts the network request immediately, in parallel
      with everything else, so it's already in the browser's cache by the time home.js's own
@@ -378,10 +378,16 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     }
     /* Bottom prev/next copy (#navigation-bottom, after #sutta) — same base row/gap/width as
        uiextra.css's #navigation above, just static (no position:fixed/hide-on-scroll — that's
-       only for the top sticky copy, see #navigation rules around this block). */
+       only for the top sticky copy, see #navigation rules around this block).
+       Same !important as body.dg-state-reader #navigation above, same reason: on mobile this
+       computed as flex-direction:column from SOME rule not found in any loaded stylesheet
+       (index.css/rus-multi.css/uiextra.css all declare row; document.styleSheets enumeration
+       came up empty) — stacked previous2/next2 into two full rows instead of side by side.
+       #navigation got this !important workaround already; #navigation-bottom didn't, so it hit
+       the exact same bug (owner screenshot: "прев на 1 строке некст на второй строке"). */
     #navigation-bottom {
-        display: flex;
-        flex-direction: row;
+        display: flex !important;
+        flex-direction: row !important;
         justify-content: space-between;
         gap: 8px;
         overflow: hidden;
@@ -654,6 +660,23 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
         background-color: rgba(26, 188, 156, 0.25);
         border-radius: 6px;
         transition: background-color .2s ease;
+    }
+    /* Владелец: "может не разворачивать свернутые записи, но тогда подсвечивать ту строку".
+       Когда читаемый сегмент лежит в свёрнутой (dtr-hidden) строке результатов, voice.js
+       (highlightAndScrollToItem) подсвечивает и скроллит к самой <tr> вместо невидимого
+       сегмента внутри неё — без этого не было способа понять, где идёт чтение, не раскрывая
+       каждую строку по очереди. table-striped красит фон не на <tr>, а на каждой <td> через
+       CSS-переменную (`.table > :not(caption) > * > *`) — обычный фон на <tr> перебивается этим
+       правилом, поэтому красим ячейки напрямую, !important по той же причине, что и
+       #sutta span[id]:has(.tts-active) чуть выше (не трогаем сам bootstrap/DataTables). */
+    #results-tbody tr.tts-active-row {
+        scroll-margin-top: 30vh;
+    }
+    #results-tbody tr.tts-active-row > td {
+        background-color: rgba(26, 188, 156, 0.15) !important;
+    }
+    body.dark #results-tbody tr.tts-active-row > td {
+        background-color: rgba(26, 188, 156, 0.20) !important;
     }
     /* Групповая подсветка ЧИТАЕМОГО СЕЙЧАС сегмента (не то же самое, что .active-word-выделение
        выше) — рисует reader/css/voice.css (`#sutta span[id]:has(.tts-active)`), а это правило
@@ -1263,6 +1286,16 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
   // Автофокус оставляем (курсор в поле — это удобно), а меню держим закрытым, пока человек
   // реально не начнёт вводить или не ткнёт в поле. autopali.js — общий с продом файл
   // (siteroot/assets), его не трогаем: гасим здесь, на своей странице.
+  //
+  // Owner screenshot: набрал "mn1", нажал Enter — сработала навигация в ридер, а подсказки
+  // (mn1/mn10/mn11...) всплыли уже НАД ридером. Причина — гонка: autopali.js грузит jQuery UI +
+  // словарь асинхронно (запускается по первому focus/input), и если Enter нажат раньше, чем эта
+  // загрузка успела завершиться, её хвост (bindAutocomplete → autocomplete("search", value))
+  // отрабатывает уже ПОСЛЕ навигации, с тем же непустым value, что и открыл меню задним числом.
+  // closeAutocomplete() в обработчике submit (ниже) тут бессилен — на момент вызова виджета ещё
+  // не существует, закрывать нечего. "interacted" был одноразовым флагом (на всю жизнь страницы),
+  // поэтому не спасал: submitAutocompleteSuppression() ниже перевзводит его при каждой навигации,
+  // так что и эта отложенная гонка снова гасится тем же autocompleteopen-перехватчиком.
   (function suppressAutocompleteUntilInteraction() {
     var input = document.getElementById('paliauto');
     if (!input) return;
@@ -1275,6 +1308,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     jQuery(document).on('autocompleteopen', '#paliauto', function () {
       if (!interacted) jQuery(this).autocomplete('close');
     });
+    window.dgSuppressAutocompleteUntilInteraction = function () { interacted = false; };
   })();
 
   /* Кнопка "Фильтр+" разворачивает конструктор запросов DataTables. Он остаётся полноценным
@@ -1332,13 +1366,22 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
   /* Стрелка "наверх" встаёт левее кнопки языка по её РЕАЛЬНОЙ ширине. В ридере обе кнопки
      разведены фиксированными right:20 и right:90 — там подпись языка узкая и этого хватает.
      Здесь подпись шире (и меняется вместе с языком интерфейса), поэтому фиксированные 90px
-     не спасали: замерено, что стрелка налезала на кнопку на 26px. Считаем отступ от ширины. */
+     не спасали: замерено, что стрелка налезала на кнопку на 26px. Считаем отступ от ширины.
+     Owner: "ScrollToTop на большем расстоянии чем TTS-кнопка (появляется по клику на активное
+     слово), сделай равными". CORNER_BUTTON_GAP в settings.js (repositionTtsButton) — тот же
+     кластер кнопок, тот же требуемый зазор. Старая формула right = width + 32 МОЛЧА
+     предполагала, что кнопка языка стоит вплотную к правому краю (right:0) — на деле у неё
+     свой right:20px (uiextra.css), из-за чего реальный зазор получался 32-20=12px, не 32.
+     Считаем честно от РЕАЛЬНОГО левого края кнопки языка (innerWidth - lang.left + gap) — то
+     же самое выражение, что repositionTtsButton() уже использует для TTS-кнопки, теперь оба
+     места дают одинаковый зазор независимо от того, какая кнопка чью соседку объезжает. */
   (function placeScrollTopButton() {
+    var CORNER_BUTTON_GAP = 19; // shrunk from 32, matches settings.js repositionTtsButton()
     function place() {
       var lang = document.getElementById('language-button');
       var top = document.getElementById('scrollToTopBtn');
       if (!lang || !top) return;
-      top.style.right = Math.round(lang.getBoundingClientRect().width + 32) + 'px';
+      top.style.right = Math.round(window.innerWidth - lang.getBoundingClientRect().left + CORNER_BUTTON_GAP) + 'px';
     }
     window.addEventListener('load', place);
     window.addEventListener('resize', place);
@@ -1356,6 +1399,43 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
       if (++tries > 40) clearInterval(timer);
     }, 150);
   })();
+
+  // True only inside the small citation-preview iframe openQuotePopup() creates (.fdg-iframe) —
+  // that popup always sets `?scroll=instant` on the URL it loads (see openQuotePopup() above).
+  // A generic full-size embed (e.g. the Help/Docs site's <AppFrame>) is also `self !== top` but
+  // never sets this param, so it keeps its normal header/toolbar.
+  function dgIsCitationPreviewFrame() {
+    return new URLSearchParams(location.search).get('scroll') === 'instant';
+  }
+
+  // The drawer's "Help" row (unlike #helpMessage/reader-toolbar's fixed targets, painted by
+  // home.js's paintDrawerLangHrefs() via data-href-en/data-href-ru) needs to follow the current
+  // SPA state too, not just language — it's the one Help entry point reachable from every state
+  // (home/results/reader/toc). Points at the new Help/Docs portal instead of the old
+  // #SearchResultHelp modal (kept in the DOM — see comments at its other call sites — until the
+  // docs are confirmed to fully cover its content, then removed).
+  function dgDrawerHelpHref() {
+    // RU docs were renamed to clean slugs (dhamma/, user/ folders); EN is frozen and still
+    // uses the old ones (about/, guide/) — see TODO.md — so the two need separate maps, not
+    // just a shared path with a different prefix. RU also lives at a REAL /ru/docs/ build
+    // (own baseUrl), not a /docs/ru/ redirect — see dg-docs/docusaurus.config.js.
+    const ru = (localStorage.getItem('dhammaLanguage') || 'en') === 'ru';
+    const b = document.body.classList;
+    const path = b.contains('dg-state-reader') ? (ru ? 'read' : 'reader')
+      : b.contains('dg-state-toc') ? (ru ? 'toc' : 'toc-navigator')
+      : b.contains('dg-state-results') ? 'search-guide'
+      : 'key-features'; // home fallback: drawer Help always goes to Key Features (owner) — the
+      // home-screen multitool TILE's own Help goes to /multitool instead, see home.js tile.modal==='help'
+    return (ru ? '/ru/docs/' : '/docs/') + path;
+  }
+  function dgUpdateDrawerHelpLink() {
+    const drawerHelp = document.querySelector('.dg-drawer-row[data-dg-icon="help"]');
+    if (drawerHelp) drawerHelp.href = dgDrawerHelpHref();
+  }
+  document.addEventListener('dhamma:languagechange', dgUpdateDrawerHelpLink);
+  document.addEventListener('DOMContentLoaded', dgUpdateDrawerHelpLink);
+  new MutationObserver(dgUpdateDrawerHelpLink).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+  dgUpdateDrawerHelpLink();
 
   /* Автоскрытие верхней панели на скролле — видимость переключается CSS-ом (см. <style>,
      body.dg-header-hidden), здесь: (1) направление скролла, (2) top каждого элемента стека —
@@ -1382,7 +1462,12 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     // preview frame. Hide it once, permanently, and skip the whole scroll-driven mechanism
     // (including applyPadding's top-padding reservation — with the stack off-screen for good,
     // content should start at the top, not leave a blank gap where the header would have been).
-    if (window.self !== window.top) {
+    // NOTE: was `window.self !== window.top` — hid the header in ANY iframe, which also caught
+    // the Help/Docs site's full-size <AppFrame> live-demo embeds (dg-docs), leaving them with no
+    // search box or toolbar at all. openQuotePopup() always tags its small preview iframe with
+    // `?scroll=instant` (see openQuotePopup() above) — use that instead, so only the actual
+    // citation-preview frame collapses its header.
+    if (window.self !== window.top && dgIsCitationPreviewFrame()) {
       document.body.classList.add('dg-header-hidden');
       return;
     }
@@ -1840,8 +1925,11 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
 <!-- #helpMessage жил ПОСЛЕ старой #settings-модалки в исходнике — раньше это ничего не меняло
      (у modal display:none, поток не рвётся), но с новой .table-wrapper (см. выше) modal и всё,
      что за ней, оказалось СНАРУЖИ обёртки — кнопка съезжала на свою строку под остальными.
-     Переносим её сюда же, физически внутрь той же строки инструментов. -->
-    <a class="btn btn-light mb-1 form-check-inline mb-1 toggle-icon" alt="Help" data-i18n-alt="{{global.common.help}}" data-bs-toggle="modal" data-bs-target="#SearchResultHelp" id="helpMessage" href="javascript:void(0);">
+     Переносим её сюда же, физически внутрь той же строки инструментов.
+     Ссылка на #SearchResultHelp заменена на новый Help/Docs-портал (guide/search) — модалка
+     ниже (#SearchResultHelp) больше не открывается отсюда, оставлена в разметке до полного
+     переноса контента, затем на удаление. -->
+    <a class="btn btn-light mb-1 form-check-inline mb-1 toggle-icon" alt="Help" data-i18n-alt="{{global.common.help}}" id="helpMessage" data-href-en="/docs/search-guide" data-href-ru="/ru/docs/search-guide" href="/docs/search-guide" target="_blank">
         <img id="helpResult" class="table-home-icon" src="/assets/svg/question.svg"></img>
         </a>
     </div>
@@ -2110,6 +2198,10 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
 </div>
 
 <!-- Модальное окно "Помощь Рус" -->
+<!-- SUPERSEDED by the Help/Docs portal (dg-docs) — guide/search.md now covers this content
+     (hotkeys, ✦-link, Search/Custom Search Builder, Export). Nothing in the app opens this modal
+     anymore (see dgUpdateDrawerHelpLink() and the #helpMessage/reader-toolbar data-href-* above).
+     Candidate for deletion once the docs are confirmed to fully cover it — not removed yet. -->
 <div class="modal fade" id="SearchResultHelp" tabindex="-1" aria-labelledby="SearchResultHelpLabel" aria-hidden="true"  data-bs-focus="false">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
@@ -2432,7 +2524,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
             <a href="javascript:void(0)" title="Compass" onclick="if (typeof window.toggleQuickModal === 'function') window.toggleQuickModal();">
                 <img src="/assets/svg/compass.svg" alt="Compass">
             </a>
-            <a href="javascript:void(0)" title="Help" data-bs-toggle="modal" data-bs-target="#SearchResultHelp">
+            <a href="/docs/reader" target="_blank" title="Help" data-href-en="/docs/reader" data-href-ru="/ru/docs/read">
                 <img src="/assets/svg/question.svg" alt="Help">
             </a>
             <!-- TOC (оглавление) — портировано из siteroot/read/js/common.js (легаси, общий с
@@ -2943,6 +3035,11 @@ $(document).ready(function() {
         // Подсказки автодополнения после отправки не нужны: выдача уже показана, а меню
         // продолжало висеть поверх неё.
         if (window.DgHome && window.DgHome.closeAutocomplete) window.DgHome.closeAutocomplete();
+        // closeAutocomplete() above closes the widget IF it already exists — but autopali.js's
+        // lazy load (jQuery UI + dictionary fetch) can still be in flight and finish AFTER this
+        // navigation, re-opening the menu for the stale value (see suppressAutocompleteUntilInteraction
+        // above). Re-arm suppression here so that late reopen gets closed too.
+        if (window.dgSuppressAutocompleteUntilInteraction) window.dgSuppressAutocompleteUntilInteraction();
         var route = window.DgTextRouter ? window.DgTextRouter.classify(value) : { type: 'search', query: value };
         // Явно заданный ?langs= — переносим на новую навигацию тем же способом, что и scope
         // ниже: раньше отсюда терялись ВСЕ параметры кроме scope (баг, замечен пользователем) —
@@ -3184,11 +3281,11 @@ $(document).ready(function() {
         if (name !== 'home' && window.DgHome) window.DgHome.closeSheet();
         // Автоскрытие шапки (см. autoHideHeader() выше) — новое состояние всегда стартует с
         // видимой панелью, не с той, что случайно была спрятана в предыдущем состоянии/скролле.
-        // Except inside the citation-preview iframe (window.self !== window.top) — there
+        // Except inside the citation-preview iframe (dgIsCitationPreviewFrame()) — there
         // autoHideHeader() hides the stack permanently and never re-adds this class; without
         // this guard, opening a DIFFERENT sutta in an already-warm popup (dgNavigateInternal,
         // no full reload) would call dgSetState() again and pop the header back in.
-        if (window.self === window.top) {
+        if (!(window.self !== window.top && dgIsCitationPreviewFrame())) {
             document.body.classList.remove('dg-header-hidden');
             if (window.dgApplyHeaderPadding) window.dgApplyHeaderPadding();
         }
@@ -3463,22 +3560,44 @@ $(document).ready(function() {
         history.replaceState(history.state, '', rest + '?' + params.toString() + window.location.hash);
     }
 
+    /* Share Target (manifest.json's share_target sends OS-shared text as ?q=<text>) and old
+       legacy /?q= bookmarks both land in this same shape. Normalize ONCE to the clean-path form
+       every other internal navigation already uses, so routeFromUrl() below doesn't need a
+       separate ?q= branch: a shared word like "kacchapa" ends up on /kacchapa exactly like typing
+       it, a shared sutta id like "dn33" ends up on /dn33 and opens the reader — not a search for
+       the literal text "dn33". Other params (scope/langs/lb/la/s/lang) are preserved as-is. */
+    function normalizeShareTargetQuery() {
+        var params = new URLSearchParams(window.location.search);
+        var q = params.get('q');
+        if (!q) return;
+        // Android's share sheet sometimes wraps the selected text in quotes ("kacchapa") — a
+        // literal quote character never appears in the canon, so left unstripped this always
+        // returns zero (or, depending on backend quirks, a huge irrelevant) results instead of
+        // the word itself. Strip one matching wrapping pair, straight or curly.
+        q = q.trim().replace(/^(["'“‘])([\s\S]*)(["'”’])$/, function (m, open, inner, close) {
+            var pairs = { '"': '"', "'": "'", '“': '”', '‘': '’' };
+            return pairs[open] === close ? inner : m;
+        });
+        params.delete('q');
+        var rest = params.toString();
+        var cleanPath = '/' + encodeURIComponent(q) + (rest ? '?' + rest : '') + window.location.hash;
+        history.replaceState(history.state, '', cleanPath);
+    }
+
     /* Единственный решатель "что показать по текущему адресу". Раньше popstate безусловно звал
        runSearchFromUrl() — теперь адрес может означать и текст. */
     function routeFromUrl() {
         normalizeRuPrefix();
-        // Явный ?q= — всегда поиск (легаси-формат входа, старые ссылки и закладки).
-        if (!new URLSearchParams(window.location.search).has('q')) {
-            // /toc — оглавление/навигатор по канону (заменяет read.php, см. TODO.md). Ловим
-            // ДО textIdFromPath: "toc" не похож на sutta id, так что коллизии нет, но порядок
-            // важен на будущее, если появится реальная сутта с таким префиксом.
-            var path = window.location.pathname.replace(/^\/+|\/+$/g, '');
-            // "/toc/mn", "/toc/sn25" — тот же навигатор, открытый на нужном узле. Какой именно,
-            // читает сам /spa/toc.js из адреса (targetFromPath) — здесь только маршрут.
-            if (path === 'toc' || path.indexOf('toc/') === 0) { openTocInPlace(); return; }
-            var id = textIdFromPath(window.location.pathname);
-            if (id) { openReaderInPlace(id); return; }
-        }
+        normalizeShareTargetQuery();
+        // /toc — оглавление/навигатор по канону (заменяет read.php, см. TODO.md). Ловим
+        // ДО textIdFromPath: "toc" не похож на sutta id, так что коллизии нет, но порядок
+        // важен на будущее, если появится реальная сутта с таким префиксом.
+        var path = window.location.pathname.replace(/^\/+|\/+$/g, '');
+        // "/toc/mn", "/toc/sn25" — тот же навигатор, открытый на нужном узле. Какой именно,
+        // читает сам /spa/toc.js из адреса (targetFromPath) — здесь только маршрут.
+        if (path === 'toc' || path.indexOf('toc/') === 0) { openTocInPlace(); return; }
+        var id = textIdFromPath(window.location.pathname);
+        if (id) { openReaderInPlace(id); return; }
         runSearchFromUrl();
     }
 
@@ -3736,7 +3855,10 @@ $(document).ready(function() {
       <!-- Owner: "войти не в конце настроек, а после контактов, до настроек в целом" — перенесено
            из хвоста «Настроек» сюда, последним пунктом «Навигации» (это переход, а не настройка). -->
 
-      <a class="dg-drawer-row" href="javascript:void(0)" data-dg-icon="help" data-bs-toggle="modal" data-bs-target="#SearchResultHelp">{{global.common.help}}</a>
+      <!-- href painted per-state+language by dgUpdateDrawerHelpLink() above; was
+           data-bs-toggle="modal" data-bs-target="#SearchResultHelp" (old in-page modal, see
+           comments at its other call sites). -->
+      <a class="dg-drawer-row" href="/docs/key-features" target="_blank" data-dg-icon="help">{{global.common.help}}</a>
 	   <a class="dg-drawer-row" href="/login" data-dg-icon="login">{{global.common.login}}</a>
     </details>
     <p class="dg-group-title">{{menu.settings}}</p>

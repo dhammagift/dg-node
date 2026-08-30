@@ -64,6 +64,25 @@ app.get('/sw.js', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'service-worker.js'));
 });
 
+// /manifest.json — dg-node's own PWA manifest (configs/manifest.json), replacing the legacy
+// /manifest.php dependency search/index.html and reader-template.html used to link to (dead on
+// any host where dg-node serves the whole domain, e.g. test.dhamma.gift). One static manifest,
+// no ru/en variants: language here is client-side state (localStorage.siteLanguage / ?lang=),
+// not a URL fork like the legacy /ru/ prefix was, so a single manifest already covers every
+// language without hardcoding a list.
+app.get('/manifest.json', (req, res) => {
+    res.type('application/manifest+json');
+    res.sendFile(path.join(__dirname, 'configs', 'manifest.json'));
+});
+
+// /open?url=... — in-scope redirector for manifest shortcuts that point at external, cross-origin
+// sites (Aksharamukha, Dharmamitra): PWA manifest shortcuts must resolve to an in-scope URL or
+// some platforms won't show them, but the destination itself can be anywhere — same trick legacy
+// assets/openDDG.html used (client-side), just a one-line server redirect instead of a page.
+app.get('/open', (req, res) => {
+    res.redirect(typeof req.query.url === 'string' && req.query.url ? req.query.url : '/');
+});
+
 // Конвертация системы письма пали (настройка "selectedScript" в /settings/, приходит как
 // ?script= в адресе — тот же параметр, что уже слала кнопка Alt+L, раньше ничего не делавший).
 // Инициализация (~6-8с, поднимает Pyodide/Python-движок в самом Node, без браузера) стартует
@@ -499,6 +518,22 @@ app.use((req, res, next) => {
 // every mount, forcing a 304 round-trip on every asset on every navigation (TODO.md #global
 // п.2). 60s specifically: short enough that a file edited during active dev becomes visible
 // again within a minute, still long enough to cut the round-trip tax for normal browsing.
+// /assets/lbl-save.php — Label Tool save endpoint (assets/lbl.html, assets/lbl-en.html), dead
+// PHP under Node (siteroot/assets/lbl-save.php would otherwise serve raw unexecuted PHP source,
+// same reason as /pm.php, /bipm.php below). Reimplements the legacy PHP: write the POST body to
+// offline-data/lbl/{file}, creating the dir if missing.
+app.post('/assets/lbl-save.php', express.text({ type: '*/*', limit: '10mb' }), (req, res) => {
+    const filename = path.basename(req.query.file || `backup_${Date.now()}.json`);
+    const saveDir = path.join(OFFLINE_MIRRORS_ROOT, 'lbl');
+    try {
+        fsSync.mkdirSync(saveDir, { recursive: true });
+        fsSync.writeFileSync(path.join(saveDir, filename), req.body);
+        res.status(200).send('OK');
+    } catch (err) {
+        res.status(500).send('Error writing file: ' + err.message);
+    }
+});
+
 app.use('/assets', express.static(path.join(__dirname, 'public', 'overrides'), { maxAge: 60000 }));
 // /read/js/voice.js — тот же override-приоритет паттерн, что и /assets выше: наш патченный
 // voice.js (public/overrides/read/js/, чинит рассинхрон detectTranslationLang/prepareTextData
@@ -591,6 +626,11 @@ for (const name of siteRootEntries) {
 // Это не отдельная тулза в siteroot/, а второй URL для уже примонтированной — оставлены явно.
 app.use('/ru/memo', express.static(path.join(SITEROOT, 'memo'), { maxAge: 60000 }));
 app.use('/ru/login', express.static(path.join(SITEROOT, 'login'), { maxAge: 60000 }));
+
+// /ru/docs — real RU-locale docs build, baseUrl:'/ru/docs/' baked in at build time
+// (dg-docs/docusaurus.config.js, DOCS_BUILD_LOCALE=ru), so this is a genuine static mount,
+// not a redirect — /docs/ru/... never existed for readers to have bookmarked.
+app.use('/ru/docs', express.static(path.join(__dirname, 'dg-docs', 'build-ru'), { maxAge: 60000 }));
 
 // Офлайн-зеркала сторонних сайтов — /{имя-папки}/... отдаётся как статика напрямую из offline-data
 for (const name of offlineMirrors) {
@@ -1315,8 +1355,18 @@ async function execKeywordGrep(grepTargets, keyword, exactMatch, lb, la) {
     const grepArgs = ['-ri', '-n'];
     if (lb > 0) grepArgs.push(`-B${lb}`);
     if (la > 0) grepArgs.push(`-A${la}`);
-    if (exactMatch) grepArgs.push('-w');
-    if (!exactMatch && looksLikeFixedString(keyword)) grepArgs.push('-F');
+    // -E (extended regex): without it, GNU grep's default (basic regex) treats bare ( ) { } |
+    // as literal characters, not grouping/alternation — a query like "(a|b)" silently matched
+    // nothing instead of "a or b" (owner: slide queries built with alternation returned 0
+    // results). -F (fixed string) is mutually exclusive with -E and already means "no regex
+    // metacharacters at all", so it only applies when the keyword has none to begin with.
+    if (exactMatch) {
+        grepArgs.push('-w', '-E');
+    } else if (looksLikeFixedString(keyword)) {
+        grepArgs.push('-F');
+    } else {
+        grepArgs.push('-E');
+    }
     grepArgs.push(keyword, ...grepTargets);
     try {
         const result = await execFile('grep', grepArgs, { maxBuffer: 1024 * 1024 * 50 });

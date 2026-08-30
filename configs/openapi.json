@@ -6,11 +6,24 @@
     "description": "Поиск по палийскому канону (Sutta/Vinaya) — API для dg-light.js. Все ответы — JSON."
   },
   "servers": [
-    { "url": "/", "description": "Текущий сервер" }
+    {
+      "url": "/",
+      "description": "Текущий сервер"
+    }
   ],
   "tags": [
-    { "name": "search", "description": "Поиск по ключевому слову" },
-    { "name": "text", "description": "Полный текст сутты для ридера" }
+    {
+      "name": "search",
+      "description": "Поиск по ключевому слову"
+    },
+    {
+      "name": "text",
+      "description": "Полный текст сутты для ридера"
+    },
+    {
+      "name": "toc",
+      "description": "Оглавление и структура текстов"
+    }
   ],
   "components": {
     "parameters": {
@@ -18,86 +31,210 @@
         "name": "scope",
         "in": "query",
         "description": "Область поиска. `default` — 4 никаи + 6 книг KN (без винаи). `all` — весь корпус (включая винаю). Можно перечислить конкретные категории/id через запятую (например `dn,mn` или `dhamma,vinaya`).",
-        "schema": { "type": "string", "default": "default", "example": "dhamma" }
+        "schema": {
+          "type": "string",
+          "default": "default",
+          "example": "dhamma"
+        }
       },
       "exact": {
         "name": "exact",
         "in": "query",
         "description": "Точное совпадение слова целиком (grep -w), а не подстроки.",
-        "schema": { "type": "boolean", "default": false }
+        "schema": {
+          "type": "boolean",
+          "default": false
+        }
       },
       "langs": {
         "name": "langs",
         "in": "query",
         "description": "Языки переводов через запятую. `all` — все доступные языки.",
-        "schema": { "type": "string", "default": "ru,en", "example": "ru,en" }
+        "schema": {
+          "type": "string",
+          "default": "ru,en",
+          "example": "ru,en"
+        }
       },
       "lb": {
         "name": "lb",
         "in": "query",
         "description": "Число строк контекста ДО найденного сегмента (Пали root-текст).",
-        "schema": { "type": "integer", "default": 0, "minimum": 0 }
+        "schema": {
+          "type": "integer",
+          "default": 0,
+          "minimum": 0
+        }
       },
       "la": {
         "name": "la",
         "in": "query",
         "description": "Число строк контекста ПОСЛЕ найденного сегмента (Пали root-текст).",
-        "schema": { "type": "integer", "default": 0, "minimum": 0 }
+        "schema": {
+          "type": "integer",
+          "default": 0,
+          "minimum": 0
+        }
       }
     },
     "schemas": {
       "SearchMetadata": {
         "type": "object",
         "properties": {
-          "query": { "type": "string" },
-          "scope": { "type": "string" },
-          "langs": { "type": "array", "items": { "type": "string" } },
-          "lb": { "type": "integer" },
-          "la": { "type": "integer" },
-          "exactMatch": { "type": "boolean" },
-          "totalFiles": { "type": "integer", "description": "Число найденных сутт" },
-          "totalMatches": { "type": "integer", "description": "Суммарное число совпадений" },
-          "hasVariantMatch": { "type": "boolean", "description": "Есть ли варианты чтения для этого слова где-либо в корпусе (не только в текущем scope)" },
-          "partial": { "type": "boolean", "description": "true — это ответ ?fast=1, root-текст/переводы для части сегментов ещё не подгружены (см. /search/enrich)" },
-          "tooShort": { "type": "boolean", "description": "true — keyword короче минимальной длины (3 символа), поиск не выполнялся" }
+          "query": {
+            "type": "string"
+          },
+          "scope": {
+            "type": "string"
+          },
+          "langs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "lb": {
+            "type": "integer"
+          },
+          "la": {
+            "type": "integer"
+          },
+          "exactMatch": {
+            "type": "boolean"
+          },
+          "totalFiles": {
+            "type": "integer",
+            "description": "Число найденных сутт"
+          },
+          "totalMatches": {
+            "type": "integer",
+            "description": "Суммарное число совпадений"
+          },
+          "hasVariantMatch": {
+            "type": "boolean",
+            "description": "Есть ли варианты чтения для этого слова где-либо в корпусе (не только в текущем scope)"
+          },
+          "partial": {
+            "type": "boolean",
+            "description": "true — это ответ ?fast=1, root-текст/переводы для части сегментов ещё не подгружены (см. /search/enrich)"
+          },
+          "tooShort": {
+            "type": "boolean",
+            "description": "true — keyword короче минимальной длины (3 символа), поиск не выполнялся"
+          }
         }
       },
       "Segment": {
         "type": "object",
         "properties": {
-          "segment": { "type": "string", "example": "dn1:1.1" },
-          "root_text": { "type": "string", "description": "Пали, root-чтение" },
-          "variant": { "type": "string", "description": "Пали, вариантное чтение (если есть)" },
-          "translations": { "type": "object", "description": "Ключ вида \"ru_khantibalo\", \"en_sujato\" -> текст перевода", "additionalProperties": { "type": "string" } },
-          "html": { "type": "string" },
-          "lb_context": { "type": "array", "items": { "type": "object" } },
-          "la_context": { "type": "array", "items": { "type": "object" } }
+          "segment": {
+            "type": "string",
+            "example": "dn1:1.1"
+          },
+          "root_text": {
+            "type": "string",
+            "description": "Пали, root-чтение"
+          },
+          "variant": {
+            "type": "string",
+            "description": "Пали, вариантное чтение (если есть)"
+          },
+          "translations": {
+            "type": "object",
+            "description": "Ключ вида \"ru_khantibalo\", \"en_sujato\" -> текст перевода",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "html": {
+            "type": "string"
+          },
+          "lb_context": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "la_context": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          }
         }
       },
       "SuttaResult": {
         "type": "object",
         "properties": {
-          "sutta_id": { "type": "string", "example": "dn1" },
-          "category": { "type": "string", "enum": ["dhamma", "khudakka", "vinaya", "abhi", "other"] },
-          "dir_path": { "type": "string" },
-          "titles": { "type": "object", "additionalProperties": { "type": "string" } },
-          "mr": { "type": "integer", "description": "Ранг версии/релевантности (mtph из textinfo)" },
-          "count": { "type": "integer", "description": "Число совпадений в этой сутте" },
-          "unique_words": { "type": "array", "items": { "type": "string" } },
-          "segments": { "type": "array", "items": { "$ref": "#/components/schemas/Segment" } }
+          "sutta_id": {
+            "type": "string",
+            "example": "dn1"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "dhamma",
+              "khudakka",
+              "vinaya",
+              "abhi",
+              "other"
+            ]
+          },
+          "dir_path": {
+            "type": "string"
+          },
+          "titles": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "mr": {
+            "type": "integer",
+            "description": "Ранг версии/релевантности (mtph из textinfo)"
+          },
+          "count": {
+            "type": "integer",
+            "description": "Число совпадений в этой сутте"
+          },
+          "unique_words": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "segments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Segment"
+            }
+          }
         }
       },
       "WordReportEntry": {
         "type": "object",
         "properties": {
-          "word": { "type": "string" },
-          "textCount": { "type": "integer" },
-          "matchCount": { "type": "integer" },
+          "word": {
+            "type": "string"
+          },
+          "textCount": {
+            "type": "integer"
+          },
+          "matchCount": {
+            "type": "integer"
+          },
           "links": {
             "type": "array",
             "items": {
               "type": "object",
-              "properties": { "sutta_id": { "type": "string" }, "segment": { "type": "string" } }
+              "properties": {
+                "sutta_id": {
+                  "type": "string"
+                },
+                "segment": {
+                  "type": "string"
+                }
+              }
             }
           }
         }
@@ -106,97 +243,275 @@
         "type": "object",
         "description": "Сегмент, где keyword встречается в вариантном (не root) чтении — текст берётся из variant-файла как есть, включая редакторскую нотацию SuttaCentral (\"→\", \"(mr)\", \"(?)\").",
         "properties": {
-          "sutta_id": { "type": "string" },
-          "segment": { "type": "string" },
-          "text": { "type": "string", "example": "Macchakacchapasañchannā → macchakacchapasampannā (?) " }
+          "sutta_id": {
+            "type": "string"
+          },
+          "segment": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string",
+            "example": "Macchakacchapasañchannā → macchakacchapasampannā (?) "
+          }
         }
       },
       "SearchResponse": {
         "type": "object",
         "properties": {
-          "metadata": { "$ref": "#/components/schemas/SearchMetadata" },
-          "data": { "type": "object", "additionalProperties": { "$ref": "#/components/schemas/SuttaResult" } },
-          "wordReport": { "type": "array", "items": { "$ref": "#/components/schemas/WordReportEntry" } },
-          "variantSegments": { "type": "array", "items": { "$ref": "#/components/schemas/VariantSegment" } }
+          "metadata": {
+            "$ref": "#/components/schemas/SearchMetadata"
+          },
+          "data": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/SuttaResult"
+            }
+          },
+          "wordReport": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WordReportEntry"
+            }
+          },
+          "variantSegments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VariantSegment"
+            }
+          }
         }
       },
       "Error": {
         "type": "object",
-        "properties": { "error": { "type": "string" } }
+        "properties": {
+          "error": {
+            "type": "string"
+          }
+        }
       }
     }
   },
   "paths": {
     "/search": {
       "get": {
-        "tags": ["search"],
+        "tags": [
+          "search"
+        ],
         "summary": "Поиск по ключевому слову",
         "description": "Без `?fast=1` — полный ответ (root-текст/переводы для всех найденных сегментов, wordReport, variantSegments). С `?fast=1` — быстрый частичный ответ (только skeleton + wordReport + variantSegments, без чтения файлов сутт) — используется для мгновенного первого рендера, полные данные потом дозагружаются через /search/enrich.",
         "parameters": [
-          { "name": "q", "in": "query", "required": true, "description": "Искомое слово/фраза. Минимум 3 символа — короче игнорируется (см. `tooShort` в ответе).", "schema": { "type": "string" }, "example": "kacchapa" },
-          { "$ref": "#/components/parameters/scope" },
-          { "$ref": "#/components/parameters/exact" },
-          { "$ref": "#/components/parameters/langs" },
-          { "$ref": "#/components/parameters/lb" },
-          { "$ref": "#/components/parameters/la" },
-          { "name": "fast", "in": "query", "description": "`1` — быстрый частичный ответ без чтения файлов сутт (см. описание выше).", "schema": { "type": "string", "enum": ["1"] } }
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "description": "Искомое слово/фраза. Минимум 3 символа — короче игнорируется (см. `tooShort` в ответе).",
+            "schema": {
+              "type": "string"
+            },
+            "example": "kacchapa"
+          },
+          {
+            "$ref": "#/components/parameters/scope"
+          },
+          {
+            "$ref": "#/components/parameters/exact"
+          },
+          {
+            "$ref": "#/components/parameters/langs"
+          },
+          {
+            "$ref": "#/components/parameters/lb"
+          },
+          {
+            "$ref": "#/components/parameters/la"
+          },
+          {
+            "name": "fast",
+            "in": "query",
+            "description": "`1` — быстрый частичный ответ без чтения файлов сутт (см. описание выше).",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ]
+            }
+          }
         ],
         "responses": {
-          "200": { "description": "Результат поиска", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SearchResponse" } } } },
-          "400": { "description": "Не передан q", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "200": {
+            "description": "Результат поиска",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Не передан q",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
         }
       }
     },
     "/search/{keyword}": {
       "get": {
-        "tags": ["search"],
+        "tags": [
+          "search"
+        ],
         "summary": "То же самое, что /search?q={keyword} — keyword как часть пути",
         "description": "Короткие ссылки: /search/kacchapa?scope=dhamma работает наравне с /search?q=kacchapa&scope=dhamma. Остальные параметры — те же query-параметры, что у /search.",
         "parameters": [
-          { "name": "keyword", "in": "path", "required": true, "schema": { "type": "string" }, "example": "kacchapa" },
-          { "$ref": "#/components/parameters/scope" },
-          { "$ref": "#/components/parameters/exact" },
-          { "$ref": "#/components/parameters/langs" },
-          { "$ref": "#/components/parameters/lb" },
-          { "$ref": "#/components/parameters/la" },
-          { "name": "fast", "in": "query", "schema": { "type": "string", "enum": ["1"] } }
+          {
+            "name": "keyword",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "kacchapa"
+          },
+          {
+            "$ref": "#/components/parameters/scope"
+          },
+          {
+            "$ref": "#/components/parameters/exact"
+          },
+          {
+            "$ref": "#/components/parameters/langs"
+          },
+          {
+            "$ref": "#/components/parameters/lb"
+          },
+          {
+            "$ref": "#/components/parameters/la"
+          },
+          {
+            "name": "fast",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ]
+            }
+          }
         ],
         "responses": {
-          "200": { "description": "Результат поиска", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SearchResponse" } } } }
+          "200": {
+            "description": "Результат поиска",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchResponse"
+                }
+              }
+            }
+          }
         }
       }
     },
     "/search/enrich": {
       "get": {
-        "tags": ["search"],
+        "tags": [
+          "search"
+        ],
         "summary": "Догрузить полные данные (root-текст/переводы) для конкретных id сутт",
         "description": "Вызывается вслед за /search?fast=1 с id сутт, которые нужно \"дообогатить\" — например видимую страницу таблицы, или сразу все найденные id разом. keyword/scope должны совпадать с исходным вызовом /search?fast=1 (иначе будет считаться заново, без переиспользования кеша).",
         "parameters": [
-          { "name": "q", "in": "query", "required": true, "schema": { "type": "string" }, "example": "kacchapa" },
-          { "name": "ids", "in": "query", "required": true, "description": "Id сутт через запятую.", "schema": { "type": "string" }, "example": "dn1,dn2,sn35.240" },
-          { "$ref": "#/components/parameters/scope" },
-          { "$ref": "#/components/parameters/exact" },
-          { "$ref": "#/components/parameters/langs" },
-          { "$ref": "#/components/parameters/lb" },
-          { "$ref": "#/components/parameters/la" }
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "kacchapa"
+          },
+          {
+            "name": "ids",
+            "in": "query",
+            "required": true,
+            "description": "Id сутт через запятую.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "dn1,dn2,sn35.240"
+          },
+          {
+            "$ref": "#/components/parameters/scope"
+          },
+          {
+            "$ref": "#/components/parameters/exact"
+          },
+          {
+            "$ref": "#/components/parameters/langs"
+          },
+          {
+            "$ref": "#/components/parameters/lb"
+          },
+          {
+            "$ref": "#/components/parameters/la"
+          }
         ],
         "responses": {
           "200": {
             "description": "Данные по запрошенным id (та же форма, что и data[id] у /search) плюс актуальные wordReport/metadata/variantSegments",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SearchResponse" } } }
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchResponse"
+                }
+              }
+            }
           },
-          "400": { "description": "Не передан q или ids", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "400": {
+            "description": "Не передан q или ids",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
         }
       }
     },
     "/api/text/{suttaId}": {
       "get": {
-        "tags": ["text"],
+        "tags": [
+          "text"
+        ],
         "summary": "Полный текст сутты (все сегменты, не только совпадения) — для ридера",
         "parameters": [
-          { "name": "suttaId", "in": "path", "required": true, "schema": { "type": "string" }, "example": "dn22" },
-          { "$ref": "#/components/parameters/langs" },
-          { "name": "translators", "in": "query", "description": "Явный список переводчиков через запятую (например `ru_o,ru_sv`) — два перевода ОДНОГО языка одновременно, в обход обычного выбора \"один переводчик на язык\".", "schema": { "type": "string" } }
+          {
+            "name": "suttaId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "dn22"
+          },
+          {
+            "$ref": "#/components/parameters/langs"
+          },
+          {
+            "name": "translators",
+            "in": "query",
+            "description": "Явный список переводчиков через запятую (например `ru_o,ru_sv`) — два перевода ОДНОГО языка одновременно, в обход обычного выбора \"один переводчик на язык\".",
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
         "responses": {
           "200": {
@@ -206,27 +521,61 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "sutta_id": { "type": "string" },
-                    "category": { "type": "string" },
-                    "dir_path": { "type": "string" },
-                    "title": { "type": "string" },
-                    "mr": { "type": "integer" },
-                    "segments": { "type": "array", "items": { "$ref": "#/components/schemas/Segment" } }
+                    "sutta_id": {
+                      "type": "string"
+                    },
+                    "category": {
+                      "type": "string"
+                    },
+                    "dir_path": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "mr": {
+                      "type": "integer"
+                    },
+                    "segments": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Segment"
+                      }
+                    }
                   }
                 }
               }
             }
           },
-          "404": { "description": "Неизвестный id сутты", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "404": {
+            "description": "Неизвестный id сутты",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
         }
       }
     },
     "/api/nav/{suttaId}": {
       "get": {
-        "tags": ["text"],
+        "tags": [
+          "text"
+        ],
         "summary": "Предыдущая/следующая сутта для навигации в ридере",
         "parameters": [
-          { "name": "suttaId", "in": "path", "required": true, "schema": { "type": "string" }, "example": "dn22" }
+          {
+            "name": "suttaId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "dn22"
+          }
         ],
         "responses": {
           "200": {
@@ -236,14 +585,221 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "prev": { "type": "object", "nullable": true, "properties": { "slug": { "type": "string" }, "title": { "type": "string" } } },
-                    "next": { "type": "object", "nullable": true, "properties": { "slug": { "type": "string" }, "title": { "type": "string" } } }
+                    "prev": {
+                      "type": "object",
+                      "nullable": true,
+                      "properties": {
+                        "slug": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "next": {
+                      "type": "object",
+                      "nullable": true,
+                      "properties": {
+                        "slug": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string"
+                        }
+                      }
+                    }
                   }
                 }
               }
             }
           },
-          "404": { "description": "Неизвестный id сутты", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "404": {
+            "description": "Неизвестный id сутты",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/toc": {
+      "get": {
+        "tags": [
+          "toc"
+        ],
+        "summary": "Дерево категорий/книг оглавления (Sutta/Vinaya и их разделы)",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "categories": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/toc/book/{code}": {
+      "get": {
+        "tags": [
+          "toc"
+        ],
+        "summary": "Полное дерево одной книги, опционально с переводчиками по языкам",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "dn"
+          },
+          {
+            "name": "langs",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Языки через запятую — для каких показать доступных переводчиков",
+            "example": "ru,en"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "tree": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      }
+                    },
+                    "translations": {
+                      "type": "object"
+                    },
+                    "interlinearKeys": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Неизвестный код книги",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/transliterate": {
+      "get": {
+        "tags": [
+          "text"
+        ],
+        "summary": "Транслитерация введённого текста в IAST (латиница с диакритикой)",
+        "parameters": [
+          {
+            "name": "text",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "kamma"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "text": {
+                      "type": "string"
+                    },
+                    "converted": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/patimokkha-fragment/{side}": {
+      "get": {
+        "tags": [
+          "text"
+        ],
+        "summary": "HTML-фрагмент Патимоккхи (bu — бхиккху, bi — бхиккхуни) для сравнения редакций",
+        "parameters": [
+          {
+            "name": "side",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "bu",
+                "bi"
+              ]
+            },
+            "example": "bu"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Некорректный side"
+          }
         }
       }
     }

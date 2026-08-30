@@ -376,7 +376,13 @@ async function handleWordLookup(word, event) {
     }
 
     if (translation) {
-        const isDarkMode = document.body.classList.contains('dark') || document.documentElement.getAttribute('data-theme') === 'dark';
+        // Was checking documentElement's data-theme, but the site sets that attribute on <body>
+        // (search/index.html setTheme()) — always false there, silently relying on the
+        // body.classList('dark') half alone. getEffectiveTheme() is the one source of truth
+        // already used everywhere else in this file (localStorage.theme first, OS preference
+        // fallback) — using it here too instead of re-deriving from DOM state removes the drift
+        // that showed up as dark-on-dark text (owner: "разъезжаться тема... тёмный шрифт").
+        const isDarkMode = getEffectiveTheme() === 'dark';
         const themeClass = isDarkMode ? 'dark' : '';
 
         const tempDiv = document.createElement('div');
@@ -860,18 +866,24 @@ function createPopup() {
         iframe.style.pointerEvents = 'none';
         popup.classList.add('dragging');
 
-        if (popup.style.transform && popup.style.transform !== 'none') {
-            const rect = popup.getBoundingClientRect();
-            popup.style.transform = 'none';
-            popup.style.top = rect.top + 'px';
-            popup.style.left = rect.left + 'px';
-            popup.style.right = '';
-        }
+        // The popup can be positioned via left/top, right/top (default corner placement, see
+        // applyPopupSizeForMode), or a centering transform — whichever it is, getBoundingClientRect()
+        // is what's actually on screen. Pin it down to plain left/top from the rect BEFORE the
+        // first drag reads it: the old code only ever normalized the transform case and, for the
+        // right-positioned default, left the `right` px in place while parseInt(popup.style.left
+        // || 0) silently read an empty string as 0 — the first drag then jumped initialLeft from
+        // "wherever right put it" to 0, teleporting the window out from under the cursor (owner:
+        // "первое перемещение... окно улетает из-под пальца или курсора").
+        const rect = popup.getBoundingClientRect();
+        popup.style.transform = 'none';
+        popup.style.top = rect.top + 'px';
+        popup.style.left = rect.left + 'px';
+        popup.style.right = '';
 
         startX = e.clientX || e.touches[0].clientX;
         startY = e.clientY || e.touches[0].clientY;
-        initialLeft = parseInt(popup.style.left || 0, 10);
-        initialTop = parseInt(popup.style.top || 0, 10);
+        initialLeft = rect.left;
+        initialTop = rect.top;
         e.preventDefault();
     }
 

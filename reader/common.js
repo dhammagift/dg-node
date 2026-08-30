@@ -149,21 +149,39 @@ window.addEventListener('suttaRenderedCentral', addIconsTo01);
 // ==========================================
 // Контекстное меню на невидимых .copyLink ссылках (Цитата/Ссылка/Голос/Закладка/Запомнить/Сравнить)
 // ==========================================
-onReady(() => {
-    const labels = {
-        quote: window.isRuPath ? 'Цитата' : 'Quote',
-        link: window.isRuPath ? 'Ссылка' : 'Link',
-        audio: window.isRuPath ? 'Слушать' : 'Voice',
-        bookmark: window.isRuPath ? 'Избранное' : 'Bookmark',
-        memo: window.isRuPath ? 'Запомнить' : 'Memorize',
-        compare: window.isRuPath ? 'Сравнить' : 'Compare'
+// Labels come from configs/reader/lang_{lang}.json's "contextMenu" key — the same i18n files
+// the rest of the reader uses (megareader.js's t()/READER_LANG_CACHE) — keyed off the reader's
+// CONTENT language (window.READER_MODE.lang, set by megareader.js before any segment renders),
+// not the site UI language toggle: you can read a Russian translation with an English interface,
+// and the menu should match what's on screen. Falls back to the old hardcoded ru/en pair only if
+// the config genuinely isn't loaded yet (defensive — buildSutta() awaits it before rendering).
+function getContextMenuLabels() {
+    const lang = (window.READER_MODE && window.READER_MODE.lang) || (localStorage.getItem('dhammaLanguage') || 'en');
+    const cm = (window.READER_LANG_CACHE && window.READER_LANG_CACHE[lang] && window.READER_LANG_CACHE[lang].contextMenu) || null;
+    const isRu = lang === 'ru';
+    return {
+        quote: (cm && cm.quote) || (isRu ? 'Строку' : 'Line'),
+        paragraph: (cm && cm.paragraph) || (isRu ? 'Абзац' : 'Paragraph'),
+        link: (cm && cm.link) || (isRu ? 'Ссылка' : 'Link'),
+        audio: (cm && cm.audio) || (isRu ? 'Слушать' : 'Voice'),
+        bookmark: (cm && cm.bookmark) || (isRu ? 'Избранное' : 'Bookmark'),
+        memo: (cm && cm.memo) || (isRu ? 'Запомнить' : 'Memorize'),
+        meditate: (cm && cm.meditate) || (isRu ? 'Медитировать' : 'Meditate'),
+        compare: (cm && cm.compare) || (isRu ? 'Сравнить' : 'Compare'),
+        paragraphCopied: (cm && cm.paragraphCopied) || (isRu ? 'Абзац скопирован' : 'Paragraph copied'),
+        linkCopied: (cm && cm.linkCopied) || (isRu ? 'Ссылка скопирована' : 'Link copied')
     };
+}
+
+onReady(() => {
+    const labels = getContextMenuLabels();
 
     // 1. Создаём HTML структуру меню
     const menuHtml = `
     <div id="segment-context-menu" class="segment-menu-hidden">
       <ul>
         <li id="sm-quote"><img src="/assets/svg/copy.svg" class="menu-icon" alt=""> ${labels.quote}</li>
+        <li id="sm-paragraph"><img src="/assets/svg/copy.svg" class="menu-icon" alt=""> ${labels.paragraph}</li>
         <li id="sm-link"><img src="/assets/svg/copy.svg" class="menu-icon" alt=""> ${labels.link}</li>
         <li id="sm-audio"><img src="/assets/svg/play.svg" class="menu-icon" alt=""> ${labels.audio}</li>
         <li id="sm-bookmark"><img src="/assets/svg/star-black.svg" class="menu-icon" alt=""> ${labels.bookmark}</li>
@@ -190,12 +208,24 @@ onReady(() => {
             e.preventDefault();
             e.stopImmediatePropagation();
 
+            const freshLabels = getContextMenuLabels();
+            const menuItems = {
+                'sm-quote': { icon: 'copy.svg', text: freshLabels.quote },
+                'sm-paragraph': { icon: 'copy.svg', text: freshLabels.paragraph },
+                'sm-link': { icon: 'copy.svg', text: freshLabels.link },
+                'sm-audio': { icon: 'play.svg', text: freshLabels.audio },
+                'sm-bookmark': { icon: 'star-black.svg', text: freshLabels.bookmark },
+                'sm-compare': { icon: 'code-compare-solid-full.svg', text: freshLabels.compare }
+            };
+            Object.entries(menuItems).forEach(([id, { icon, text }]) => {
+                const el = document.getElementById(id);
+                if (el) el.innerHTML = `<img src="/assets/svg/${icon}" class="menu-icon" alt=""> ${text}`;
+            });
+
             const memoBtn = document.getElementById('sm-memo');
             if (memoBtn) {
                 const isMeditate = Math.random() > 0.5;
-                const textRu = isMeditate ? 'Медитировать' : 'Запомнить';
-                const textEn = isMeditate ? 'Meditate' : 'Memorize';
-                memoBtn.innerHTML = `<img src="/assets/svg/memo-black.svg" class="menu-icon" alt=""> ${window.isRuPath ? textRu : textEn}`;
+                memoBtn.innerHTML = `<img src="/assets/svg/memo-black.svg" class="menu-icon" alt=""> ${isMeditate ? freshLabels.meditate : freshLabels.memo}`;
             }
 
             const parentSpan = copyBtn.closest('span[id]');
@@ -246,7 +276,7 @@ onReady(() => {
 
     // 3. Логика кнопок меню
 
-    // --- ЦИТАТА ---
+    // --- ЦИТАТА (одна строка) ---
     document.getElementById('sm-quote').addEventListener('click', (e) => {
         e.stopPropagation();
         menu.classList.add('segment-menu-hidden');
@@ -255,6 +285,103 @@ onReady(() => {
         const clickEvent = new MouseEvent('click', { bubbles: true, cancelable: true });
         clickEvent.isSimulated = true;
         currentContext.element.dispatchEvent(clickEvent);
+    });
+
+    // --- АБЗАЦ (от кликнутого сегмента и до конца абзаца, т.е. до конца <p>) ---
+    // Owner: "копируем с той строки откуда кликнул юзер и до конца параграфа с одним id" —
+    // segments within one paragraph are rendered as sibling <span id="1.4">/<span id="1.5">/...
+    // DIRECTLY inside the same block element (megareader.js builds `${openHtml}<span
+    // id="${anchor}">...</span>${closeHtml}`, and openHtml/closeHtml only open/close that
+    // wrapping tag on the FIRST/LAST segment of the paragraph, empty in between — verified live:
+    // <p> containing #1.4..#1.8 for a prose paragraph in an4.10).
+    // Owner (correction): "не всегда есть параграф... странно копировать текст которого юзер не
+    // видит" — NOT every segment sits in a shared <p>. Verse/gatha texts (checked live: dhp1-20)
+    // wrap EACH line in its own tiny one-child container (a bare <span> or <h2>), so
+    // parentElement there is NOT a shared paragraph at all — sweeping "all children of
+    // parentElement" would be safe there (only 1 child exists), but there is no guarantee some
+    // OTHER text layout doesn't leave a run of bare, unwrapped segments as direct siblings under
+    // a much bigger container (#sutta itself, worst case) — openHtml/closeHtml are only "" when
+    // the skeleton's html field has no tag for that segment, and nothing stops many consecutive
+    // segments from having that. Only trust a REAL <p> as "this is one paragraph"; anything else
+    // (heading, a generic wrapper, #sutta) falls back to just the single clicked segment — same
+    // scope as "Строку"/"Line", never reaching into unrelated/invisible content.
+    // Reuses getSegmentTextParts() (copyToClipboard.js) per segment instead of duplicating the
+    // Pali+translation extraction — same helper the single-line "Строку"/"Line" above calls.
+    document.getElementById('sm-paragraph').addEventListener('click', (e) => {
+        e.stopPropagation();
+        menu.classList.add('segment-menu-hidden');
+        if (!currentContext || typeof window.getSegmentTextParts !== 'function') return;
+
+        const startSpan = currentContext.parentSpan;
+        const container = startSpan.parentElement;
+        if (!container) return;
+
+        // ponytail: 30-segment ceiling — a real prose paragraph is a handful of segments; this
+        // is just insurance against a data quirk producing an implausibly large <p>, raise if a
+        // legitimate paragraph is ever found longer than this.
+        const MAX_PARAGRAPH_SEGMENTS = 30;
+        let siblings = [startSpan];
+        if (container.tagName === 'P') {
+            siblings = Array.from(container.children)
+                .filter(el => el.tagName === 'SPAN' && el.id)
+                // Skip anything not actually visible (hidden toggle, collapsed, etc.) — copying
+                // a paragraph should never pull in text the user can't currently see.
+                .filter(el => el.offsetParent !== null);
+        }
+        const startIdx = siblings.indexOf(startSpan);
+        if (startIdx === -1) return;
+
+        const clickedLang = currentContext.element.closest('[lang]')?.getAttribute('lang');
+        let allParts = [];
+        siblings.slice(startIdx, startIdx + MAX_PARAGRAPH_SEGMENTS).forEach(span => {
+            // clickedElement passed only for the FIRST (invoking) segment — see getSegmentTextParts.
+            const el = span === startSpan ? currentContext.element : null;
+            allParts = allParts.concat(window.getSegmentTextParts(span, clickedLang, el));
+        });
+
+        let textToCopy = allParts.join('\n\n')
+            .replace(/✦/g, '')
+            .replace(/  /g, '')
+            .replace(/^ +/gm, '')
+            .trim();
+
+        const suttaId = window._currentSlug || '';
+        if (suttaId) textToCopy += `\n\n${suttaId}`;
+
+        // Link points to the segment the user invoked the menu FROM (currentContext.url/hash),
+        // NOT the last segment copied — same URL-cleanup as "Ссылка"/"Link" below.
+        let link = currentContext.url;
+        try {
+            const baseUrl = new URL(link);
+            if (baseUrl.searchParams.has('q')) {
+                baseUrl.searchParams.set('q', baseUrl.searchParams.get('q').toLowerCase());
+            }
+            baseUrl.hash = currentContext.hash;
+            link = baseUrl.href;
+        } catch (err) {
+            console.error('URL parse error', err);
+        }
+        if (window.isLocalHost) {
+            link = link.replace(/https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/gi, 'https://dhamma.gift');
+        }
+        textToCopy += `\n${link}`;
+
+        const notify = () => {
+            if (typeof showBubbleNotification === 'function') {
+                showBubbleNotification(getContextMenuLabels().paragraphCopied);
+            }
+        };
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(textToCopy).then(notify).catch(() => {
+                const textarea = document.createElement('textarea');
+                textarea.value = textToCopy;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                notify();
+            });
+        }
     });
 
     // --- ССЫЛКА ---
@@ -277,7 +404,7 @@ onReady(() => {
 
             navigator.clipboard.writeText(finalUrl).then(() => {
                 if (typeof showBubbleNotification === 'function') {
-                    showBubbleNotification(window.isRuPath ? "Ссылка скопирована" : "Link copied");
+                    showBubbleNotification(getContextMenuLabels().linkCopied);
                 }
             });
         } catch (err) {

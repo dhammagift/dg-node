@@ -266,7 +266,7 @@
             { "label": "DG (th)", "desc": "Dhamma.gift in Thai script", "href": "/th/?q=", "setsLang": "th" },
             { "label": "old", "desc": "The previous version of the site", "href": "https://old.dhamma.gift", "blank": true },
             { "label": "TTS", "title": "TTS Text-to-speech", "desc": "Text-to-speech playback of Pali/translation text", "tpl": "https://old.dhamma.gift/tts.php?q={{q}}", "blank": true },
-            { "label": "Read+", "title": "Read by Books or Chapters", "action": "readPlus", "base": "https://old.dhamma.gift/r.php", "blank": true }
+            { "label": "Read+", "title": "Read by Books or Chapters", "desc": "Browse and read whole books or individual chapters", "action": "readPlus", "base": "https://old.dhamma.gift/r.php", "blank": true }
           ]
         },
         {
@@ -280,39 +280,38 @@
           "items": [
             { "label": "Aksharamukha script converter", "desc": "Convert Pali text between ~160 writing systems (Devanagari, Thai, etc.)", "tpl": "https://www.aksharamukha.com/converter?source=IASTPali&target=Devanagari&text={{q}}", "blank": true, "star": true },
             { "label": "PTS Converter #1", "desc": "Convert a sutta reference to its PTS page number", "href": "https://palistudies.blogspot.com/2020/02/sutta-number-to-pts-reference-converter.html", "blank": true },
-            { "label": "PTS Converter #2", "href": "https://benmneb.github.io/pts-converter/", "blank": true }
+            { "label": "PTS Converter #2", "desc": "Convert a PTS reference back to its modern sutta number", "href": "https://benmneb.github.io/pts-converter/", "blank": true }
           ]
         },
         {
           "name": "Principles", "column": 4,
           "items": [
             { "label": "Translation", "desc": "Our approach and principles for translating texts", "href": "/assets/common/o-en.html", "blank": true },
-            { "label": "Rationale", "href": "/assets/common/rationale-en.html" }
+            { "label": "Rationale", "desc": "Why consistent terminology matters in Pali-English translation", "href": "/assets/common/rationale-en.html" }
           ]
         },
         {
           "name": "Indexes", "column": 3,
           "items": [
             { "label": "ReadingFaithfully Sutta Index", "desc": "Cross-reference index of sutta numbers across editions", "href": "https://index.readingfaithfully.org/", "blank": true },
-            { "label": "Blurbs", "href": "/assets/br/", "blank": true }
+            { "label": "Blurbs", "desc": "Build a custom JSON file of sutta blurbs from SuttaCentral.net", "href": "/assets/br/", "blank": true }
           ]
         },
         {
           "name": "Timers", "column": 4,
           "items": [
             { "label": "Loop Timer", "desc": "Repeats a passage on a timer, for memorization drills", "href": "/memo/?delay=300&end=10&trn=0&loop=1&lc=%E2%88%9E&snd=gong.mp3", "blank": true },
-            { "label": "Repeat timer #2", "href": "/assets/repeat-timer/", "blank": true },
-            { "label": "Pomodoro", "href": "/assets/pomodoro-timer/", "blank": true }
+            { "label": "Repeat timer #2", "desc": "Sounds an alarm at regular intervals", "href": "/assets/repeat-timer/", "blank": true },
+            { "label": "Pomodoro", "desc": "25/5-minute Pomodoro study timer, reverse mode included", "href": "/assets/pomodoro-timer/", "blank": true }
           ]
         },
         {
           "name": "Text tools", "column": 3,
           "items": [
             { "label": "Line-by-line Translation Tool", "desc": "Aligns Pali and translation line by line", "tpl": "/assets/lbl-en.html?q={{q}}", "blank": true },
-            { "label": "Sutta Difference", "tpl": "/assets/diff/?lang=pl&one={{q}}&two={{q}}", "blank": true },
-            { "label": "List Difference", "href": "/assets/listdiff.html" },
-            { "label": "Line to List", "href": "/assets/makelist.html", "star": true },
-            { "label": "Multi-Tool Help", "href": "/assets/common/multiTool.html" }
+            { "label": "Sutta Difference", "desc": "Find the difference between two suttas", "tpl": "/assets/diff/?lang=pl&one={{q}}&two={{q}}", "blank": true },
+            { "label": "List Difference", "desc": "Compare two plain-text lists line by line", "href": "/assets/listdiff.html" },
+            { "label": "Line to List", "desc": "Create lists from lines of text", "href": "/assets/makelist.html", "star": true }
           ]
         }
       ]
@@ -592,9 +591,9 @@
             { "label": "DG (th)", "desc": "Dhamma.gift тайским письмом", "href": "/th/?q=", "setsLang": "th" },
             { "label": "old", "desc": "Предыдущая версия сайта", "href": "https://old.dhamma.gift", "blank": true },
             { "label": "TTS", "title": "TTS Текст-в-речь", "desc": "Озвучка текста пали/перевода синтезом речи", "tpl": "https://old.dhamma.gift/ru/tts.php?q={{q}}", "blank": true },
-            { "label": "Read+", "title": "Читать Книгами или Главами", "action": "readPlus", "base": "https://old.dhamma.gift/ru/r.php", "blank": true },
-            { "label": "bupm", "href": "/toc/pm" },
-            { "label": "bipm", "href": "/toc/bipm" }
+            { "label": "Read+", "title": "Читать Книгами или Главами", "desc": "Чтение целыми книгами или отдельными главами", "action": "readPlus", "base": "https://old.dhamma.gift/ru/r.php", "blank": true },
+            { "label": "bupm", "desc": "Патимоккха бхиккху", "href": "/toc/pm" },
+            { "label": "bipm", "desc": "Патимоккха бхиккхуни", "href": "/toc/bipm" }
           ]
         },
         {
@@ -608,32 +607,31 @@
           "items": [
             { "label": "Aksharamukha текстовый конвертер", "desc": "Конвертация текста пали между ~160 системами письма (деванагари, тайская и др.)", "tpl": "https://www.aksharamukha.com/converter?source=IASTPali&target=Devanagari&text={{q}}", "blank": true, "star": true },
             { "label": "PTS Конвертер #1", "desc": "Перевод ссылки на сутту в номер страницы издания PTS", "href": "https://palistudies.blogspot.com/2020/02/sutta-number-to-pts-reference-converter.html", "blank": true },
-            { "label": "PTS Конвертер #2", "href": "https://benmneb.github.io/pts-converter/" }
+            { "label": "PTS Конвертер #2", "desc": "Обратный перевод: номер страницы PTS в современную ссылку на сутту", "href": "https://benmneb.github.io/pts-converter/" }
           ]
         },
         {
           "name": "Указатели", "column": 3,
           "items": [
             { "label": "ReadingFaithfully Индекс Сутт", "desc": "Сверка номеров сутт между изданиями", "href": "https://index.readingfaithfully.org/", "blank": true },
-            { "label": "Кратко", "href": "/assets/br/" }
+            { "label": "Кратко", "desc": "Сборка своего JSON-файла с краткими описаниями сутт с SuttaCentral.net", "href": "/assets/br/" }
           ]
         },
         {
           "name": "Таймеры", "column": 4,
           "items": [
             { "label": "Loop Timer", "desc": "Циклично повторяет отрывок для заучивания", "href": "/ru/memo/?delay=300&end=10&trn=0&loop=1&lc=%E2%88%9E&snd=gong.mp3", "blank": true },
-            { "label": "Repeat timer #2", "href": "/assets/repeat-timer/", "blank": true },
-            { "label": "Pomodoro", "href": "/assets/pomodoro-timer/", "blank": true }
+            { "label": "Repeat timer #2", "desc": "Звуковой сигнал через равные промежутки времени", "href": "/assets/repeat-timer/", "blank": true },
+            { "label": "Pomodoro", "desc": "Таймер Помодоро 25/5 минут, есть обратный режим", "href": "/assets/pomodoro-timer/", "blank": true }
           ]
         },
         {
           "name": "Работа с текстом", "column": 3,
           "items": [
             { "label": "Редактировать Перевод", "desc": "Построчное сопоставление пали и перевода", "tpl": "/ru/assets/lbl.html?q={{q}}", "blank": true },
-            { "label": "Сравнить Две Сутты", "tpl": "/ru/assets/diff/?lang=pl&one={{q}}&two={{q}}", "blank": true },
-            { "label": "Сравнить Два Списка", "href": "/assets/listdiff.html" },
-            { "label": "Сделать список из строки", "href": "/ru/assets/makelist.html", "star": true },
-            { "label": "Помощь по Multi-Tool", "href": "/assets/common/multiToolRu.html" }
+            { "label": "Сравнить Две Сутты", "desc": "Найти различия между двумя суттами", "tpl": "/ru/assets/diff/?lang=pl&one={{q}}&two={{q}}", "blank": true },
+            { "label": "Сравнить Два Списка", "desc": "Построчное сравнение двух текстовых списков", "href": "/assets/listdiff.html" },
+            { "label": "Сделать список из строки", "desc": "Составить список из строк текста", "href": "/ru/assets/makelist.html", "star": true }
           ]
         }
       ]

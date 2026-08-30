@@ -1,0 +1,18 @@
+{
+  "version.label": {
+    "message": "Текущая",
+    "description": "The label for version current"
+  },
+  "sidebar.mainSidebar.category.Dhamma": {
+    "message": "Дхамма",
+    "description": "The label for category 'Dhamma' in sidebar 'mainSidebar'"
+  },
+  "sidebar.mainSidebar.category.User Help": {
+    "message": "Помощь пользователю",
+    "description": "The label for category 'User Help' in sidebar 'mainSidebar'"
+  },
+  "sidebar.mainSidebar.link.API": {
+    "message": "API",
+    "description": "The label for link 'API' in sidebar 'mainSidebar', linking to '/api-docs/'"
+  }
+}
