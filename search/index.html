@@ -1749,13 +1749,19 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
        (резкий прыжок в маленьком окне), кнопке "в новом окне" — чистая, с плавной прокруткой. */
     function openQuotePopup(url) {
       // Offline app (window.dgOfflineReady only exists there, see mobile/www/app.js) has no
-      // server behind this iframe's absolute local URL — every SPA-only path (anything but the
-      // real root) 404s as a real navigation (see routeFromUrl()/textIdFromPath() below: only
-      // client-side pushState ever resolves them). Route straight into the in-place reader
-      // instead, same as clicking the main sutta link already does — leaves .fdg-open-new-window-btn's
-      // href unset too, so that button stays inert instead of offering a second broken path.
+      // server behind this iframe's absolute local URL directly — every SPA-only path (anything
+      // but the real root) 404s as a real navigation. On a phone there's no room for a preview
+      // pane worth the cost of booting a second copy of the app inside it anyway — go straight
+      // to the in-place reader, same as clicking the main sutta link (owner: "для мобилки это ок
+      // сразу открывать в ридере"). isMobile mirrors openFdg.js's own createFdgPopup() breakpoint
+      // (same 768px decides its layout) — one definition of "is this a phone", not two.
       if (typeof window.dgOfflineReady !== 'undefined') {
-        if (typeof window.dgNavigateInternal === 'function') window.dgNavigateInternal(url);
+        var isMobile = window.innerWidth <= 768;
+        if (isMobile) {
+          if (typeof window.dgNavigateInternal === 'function') window.dgNavigateInternal(url);
+        } else {
+          openOfflineQuotePreview(url);
+        }
         return;
       }
       setTimeout(function () {
@@ -1782,6 +1788,57 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
         } else {
           window.open(url, '_blank', 'noopener'); // попапа на странице нет — не молчим
         }
+      }, 0);
+    }
+
+    // Offline app, tablet/desktop-sized viewport: a genuine iframe preview IS possible here — not
+    // by loading the target URL directly (no server behind it, see openQuotePopup() above), but
+    // by loading the ONE real static asset ('/') and letting that second copy of the app rewrite
+    // its OWN location to the target before its bootstrap ever reads window.location. This is the
+    // exact same trick MainActivity.java/app.js already use for App Shortcuts' deep links
+    // ("_nativeRoute" — see app.js's rewriteNativeShortcutRoute(), which runs first, synchronously,
+    // before anything else on the page) — reused verbatim, just triggered by a click instead of a
+    // native intent extra.
+    function openOfflineQuotePreview(url) {
+      setTimeout(function () {
+        var popupEl = document.querySelector('.fdg-popup');
+        var frameEl = document.querySelector('.fdg-iframe');
+        if (!popupEl || !frameEl) {
+          if (typeof window.dgNavigateInternal === 'function') window.dgNavigateInternal(url);
+          return;
+        }
+        var target = new URL(url, location.origin);
+        target.searchParams.set('scroll', 'instant');
+        var route = target.pathname + target.search + target.hash;
+
+        // Warm reuse: once the preview frame has booted its own app instance (own sql.js/WASM +
+        // IndexedDB open — the slow part, a couple seconds, same cost the old website-only
+        // shortcut avoided, see the comment above), just re-route IT instead of paying that cost
+        // again on every quote click in the same session.
+        var warmWin = frameEl.dataset.dgWarm === '1' ? frameEl.contentWindow : null;
+        if (warmWin && typeof warmWin.dgNavigateInternal === 'function') {
+          warmWin.dgNavigateInternal(route);
+        } else {
+          frameEl.dataset.dgWarm = '1';
+          frameEl.src = location.origin + '/?_nativeRoute=' + encodeURIComponent(route);
+        }
+
+        // .fdg-open-new-window-btn — same "no real second window here either" reasoning as the
+        // phone path above, but this button is actually VISIBLE now (popup is showing) so it
+        // needs a real behavior, not an inert href: route through the in-place reader too,
+        // closing the preview first (fdgCloseBtn's own click handler already does the same
+        // popupEl.style.display toggle, mirrored here rather than calling it directly since it
+        // also clears `ctx`/other popup-only state this click never set).
+        var newWinBtn = popupEl.querySelector('.fdg-open-new-window-btn');
+        if (newWinBtn) {
+          newWinBtn.removeAttribute('href');
+          newWinBtn.onclick = function (e) {
+            e.preventDefault();
+            popupEl.style.display = 'none';
+            if (typeof window.dgNavigateInternal === 'function') window.dgNavigateInternal(url);
+          };
+        }
+        popupEl.style.display = 'block';
       }, 0);
     }
 
