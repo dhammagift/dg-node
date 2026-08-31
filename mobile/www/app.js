@@ -97,6 +97,18 @@ function reportProgress(name, step, loaded, total) {
     }));
 }
 
+// Owner: "добавь чтобы спиннер появлялся даже на открытие текстов, чтобы человек понимал что
+// он уже нажал и просто ждёт" — opening a sutta has no visible feedback between the tap and the
+// page rendering (reader-template.html's own spinner only starts once ITS fetch resolves, so a
+// slow first fetch just looks like a dead tap). Fires around the /api/text/ shim branch only —
+// this event, not a DOM element, keeps app.js UI-free (offline-status.js renders it).
+function withLoadingEvent(fn) {
+    window.dispatchEvent(new CustomEvent('dg:api-loading', { detail: { active: true } }));
+    return fn().finally(() => {
+        window.dispatchEvent(new CustomEvent('dg:api-loading', { detail: { active: false } }));
+    });
+}
+
 async function fetchDbBytes(idb, name, step) {
     const cached = await idbGet(idb, name);
     if (cached) return new Uint8Array(cached);
@@ -151,18 +163,6 @@ function suttaMeta(suttaId) {
         [suttaId]
     ));
     return rows[0] || null;
-}
-
-function translationsForSegment(suttaId, segmentId) {
-    const translations = {};
-    for (const lang of Object.keys(langDbs)) {
-        const rows = rowsToObjects(langDbs[lang].exec(
-            'SELECT translator, text FROM translations WHERE sutta_id = ? AND segment_id = ? LIMIT 1',
-            [suttaId, segmentId]
-        ));
-        if (rows[0]) translations[rows[0].translator] = rows[0].text;
-    }
-    return translations;
 }
 
 // Wraps a raw user search term as a quoted FTS4 phrase-prefix query — quoting protects against
@@ -389,12 +389,18 @@ function buildApiTextResponse(suttaId, params) {
         'SELECT segment_id, root, variant, html FROM segments WHERE sutta_id = ? ORDER BY rowid',
         [suttaId]
     ));
+    // One batched query per language (fetchTranslationsBatch, already used by search) instead of
+    // translationsForSegment()'s old per-segment-per-language lookups — a long sutta has hundreds
+    // of segments, and hundreds of separate sql.js/WASM round-trips was the other half of "opening
+    // a text is slower than the live site" (the other half was the missing index, see
+    // build-offline-db.js).
+    const translationsBySegment = fetchTranslationsBatch([suttaId]).get(suttaId) || new Map();
     const segments = segRows.map(row => ({
         segment: row.segment_id,
         root_text: row.root || '',
         variant: row.variant || '',
         html: row.html || '',
-        translations: translationsForSegment(suttaId, row.segment_id),
+        translations: translationsBySegment.get(row.segment_id) || {},
     }));
 
     return {
@@ -471,10 +477,12 @@ function installFetchShim() {
         const p = parsed.pathname;
 
         if (p.startsWith('/api/text/')) {
-            await ready;
-            const suttaId = decodeURIComponent(p.slice('/api/text/'.length)).toLowerCase();
-            const data = buildApiTextResponse(suttaId, parsed.searchParams);
-            return data ? jsonResponse(data) : jsonResponse({ error: `Unknown sutta id: ${suttaId}` }, 404);
+            return withLoadingEvent(async () => {
+                await ready;
+                const suttaId = decodeURIComponent(p.slice('/api/text/'.length)).toLowerCase();
+                const data = buildApiTextResponse(suttaId, parsed.searchParams);
+                return data ? jsonResponse(data) : jsonResponse({ error: `Unknown sutta id: ${suttaId}` }, 404);
+            });
         }
         if (p.startsWith('/api/nav/')) {
             await ready;

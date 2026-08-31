@@ -20,6 +20,25 @@
         return name;
     }
 
+    // Self-colored (like .bubble-notification above), no dark/light variant needed — visible on
+    // either theme the same way the existing toast is.
+    const style = document.createElement('style');
+    style.textContent = `
+        #dgApiLoadingDot {
+            position: fixed; right: 16px; bottom: 16px; width: 28px; height: 28px;
+            border-radius: 50%; background: rgba(0,0,0,0.7); z-index: 10001;
+            opacity: 0; transition: opacity 0.15s ease; pointer-events: none;
+        }
+        #dgApiLoadingDot.show { opacity: 1; }
+        #dgApiLoadingDot::after {
+            content: ""; position: absolute; inset: 5px; border-radius: 50%;
+            border: 2px solid rgba(255,255,255,0.35); border-top-color: #fff;
+            animation: dgApiLoadingSpin 0.7s linear infinite;
+        }
+        @keyframes dgApiLoadingSpin { to { transform: rotate(360deg); } }
+    `;
+    document.head.appendChild(style);
+
     let bar = null;
     function ensureBar() {
         if (bar) return bar;
@@ -44,12 +63,43 @@
 
     // app.js dispatches this (and awaits the resolve it carries) only when a download is
     // actually needed AND the connection isn't Wi-Fi — never on a fully-cached return visit.
+    //
+    // Owner: "указывай разархивированный объём и заархивированный, человек должен понимать
+    // хватит ли места на телефоне" — this app has no separate unpack step (what fetchDbBytes
+    // downloads is byte-for-byte what's stored in IndexedDB), so download size and on-device
+    // size are the same number; stated explicitly as "storage" (the number that answers "will
+    // it fit") rather than left ambiguous as if it were only a network transfer size.
     window.addEventListener('dg:need-consent', function (e) {
         const ru = isRuLang();
         const msg = ru
-            ? 'Для полного офлайн поиска и чтения нужно скачать ~255МБ. Сейчас не Wi-Fi — продолжить по мобильному интернету?'
-            : 'Full offline search & reading needs ~255MB. You are not on Wi-Fi — continue on mobile data?';
+            ? 'Офлайн-библиотека займёт ~275МБ места на телефоне (столько же будет скачано). Сейчас не Wi-Fi — продолжить по мобильному интернету?'
+            : 'The offline library needs ~275MB of storage on your phone (that is also how much will be downloaded). You are not on Wi-Fi — continue on mobile data?';
         e.detail.resolve(window.confirm(msg));
+    });
+
+    // Owner: "добавь спиннер даже на открытие текстов, чтобы юзер понимал что уже нажал" — a
+    // small persistent dot in the corner, not a bubble/toast: text opens are usually fast (see
+    // app.js's withLoadingEvent + the index fix in build-offline-db.js), so this should read as
+    // "working" for a beat, not steal the screen like the download banner does.
+    let loadingDot = null;
+    let loadingTimer = null;
+    window.addEventListener('dg:api-loading', function (e) {
+        if (e.detail.active) {
+            // Delayed show — after the index/batching fix (build-offline-db.js,
+            // buildApiTextResponse) most opens resolve well under this, so the common case is no
+            // flash at all; only genuinely slow ones (first run, big sutta) show it.
+            loadingTimer = setTimeout(function () {
+                if (!loadingDot) {
+                    loadingDot = document.createElement('div');
+                    loadingDot.id = 'dgApiLoadingDot';
+                    document.body.appendChild(loadingDot);
+                }
+                loadingDot.classList.add('show');
+            }, 150);
+        } else {
+            clearTimeout(loadingTimer);
+            if (loadingDot) loadingDot.classList.remove('show');
+        }
     });
 
     if (window.dgOfflineReady && typeof window.dgOfflineReady.then === 'function') {

@@ -84,6 +84,12 @@ function buildCoreDb(suttaIds, skeleton) {
             insertAll(suttaId, meta, root, variant, html);
             done++;
         }
+        // Built AFTER the bulk insert (cheap: one sorted pass) rather than declared up front
+        // (which would maintain the b-tree on every single INSERT). Without this, opening any
+        // sutta did `WHERE sutta_id = ?` over the whole segments table with no index — a full
+        // scan of the entire core.db on every text open (reported as "reading is slower than the
+        // live site" — confirmed root cause, not sql.js/WASM overhead).
+        db.exec('CREATE INDEX idx_segments_sutta ON segments(sutta_id);');
         db.close();
         return done;
     })();
@@ -120,6 +126,10 @@ async function buildLangDb(lang, suttaIds) {
             rows += Object.keys(segments).length;
         }
     }
+    // Same fix as core.db's segments index — translationsForSegment() was doing
+    // `WHERE sutta_id = ? AND segment_id = ?` over the whole (un-indexed) translations table,
+    // once per segment per language, i.e. a full 65MB+ scan repeated N times per sutta opened.
+    db.exec('CREATE INDEX idx_translations_lookup ON translations(sutta_id, segment_id);');
     db.close();
     return rows;
 }
