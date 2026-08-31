@@ -240,6 +240,35 @@ function injectNativeBridge() {
     fs.writeFileSync(dest, html, 'utf8');
 }
 
+// Same patch-the-copy pattern as injectNativeBridge() above, applied to the same file — adds
+// the "Offline library" status/download row (and a disabled "Offline docs" placeholder, see
+// build-assets.js's copyDocs-removal comment) to the live settings page's own "Данные"/"Data"
+// section. Markup only; offline-library-settings.js (separate file) does the actual status
+// check + bilingual text, so this stays a dumb structural patch, safe to re-run every build.
+function injectOfflineLibraryRow() {
+    const dest = path.join(WWW, 'settings', 'index.html');
+    let html = fs.readFileSync(dest, 'utf8');
+    const marker = '<div class="rows">\n      <div class="row">\n        <div><p class="row-title" id="t-clearHist">';
+    const rows = `<div class="rows">
+      <div class="row" id="dgOfflineLibRow">
+        <div><p class="row-title" id="dgOfflineLibTitle">Offline library</p><p class="row-desc" id="dgOfflineLibDesc">&nbsp;</p></div>
+        <div class="row-control"><button class="btn" type="button" id="dgOfflineLibBtn">Download now</button></div>
+      </div>
+      <div class="row">
+        <div><p class="row-title" id="dgOfflineDocsTitle">Offline docs<span class="badge">soon</span></p><p class="row-desc" id="dgOfflineDocsDesc">&nbsp;</p></div>
+        <div class="row-control"><button class="btn" type="button" disabled>Download</button></div>
+      </div>
+      <div class="row">
+        <div><p class="row-title" id="t-clearHist">`;
+    if (!html.includes('id="dgOfflineLibRow"')) {
+        if (!html.includes(marker)) { console.warn('offline-library-settings: anchor not found, skipped'); return; }
+        html = html.replace(marker, rows);
+    }
+    const tag = '<script src="/offline-library-settings.js"></script>\n';
+    if (!html.includes(tag)) html = html.replace('</body>', `${tag}</body>`);
+    fs.writeFileSync(dest, html, 'utf8');
+}
+
 // dg-docs (Help/Docs portal): deliberately NOT bundled. First cut baked the ~23MB Docusaurus
 // build (en+ru) into the APK, but owner (weighing APK size vs. offline benefit): docs are read
 // occasionally, not offline-critical the way search/reader are — the DB download at first launch
@@ -260,6 +289,7 @@ function main() {
     const svgCount = copySvgIcons();
     copyReaderImages();
     injectNativeBridge();
+    injectOfflineLibraryRow();
     console.log(`Assets: ${ok} copied, ${missing} missing. +${svgCount} svg icons, reader/images/, 2 generated bundles, mode-table.json (langs=${args.langs.join(',')}).`);
     if (missing > 0) process.exitCode = 1;
 }

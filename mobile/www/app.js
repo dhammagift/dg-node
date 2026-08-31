@@ -45,6 +45,7 @@
             if (typeof window.toggleQuickModal === 'function') window.toggleQuickModal();
         });
     }
+
 })();
 
 const DIST_BASE = 'https://test.dhamma.gift/mobile-data';
@@ -84,14 +85,58 @@ function idbSet(db, key, value) {
     });
 }
 
-async function fetchDbBytes(idb, name) {
+const DB_FILES = ['core.db', 'lang_ru.db', 'lang_en.db'];
+
+// Per-file progress, not one blended percentage across all 3 — avoids needing an upfront
+// HEAD-request pass just to learn a combined total (which would also have to special-case
+// "everything's already cached, don't touch the network at all" to stay correct fully offline).
+// offline-status.js (separate file — see its header) renders this; app.js stays UI-free.
+function reportProgress(name, step, loaded, total) {
+    window.dispatchEvent(new CustomEvent('dg:dl-progress', {
+        detail: { name, step, totalSteps: DB_FILES.length, loaded, total }
+    }));
+}
+
+async function fetchDbBytes(idb, name, step) {
     const cached = await idbGet(idb, name);
     if (cached) return new Uint8Array(cached);
     const response = await fetch(`${DIST_BASE}/${name}`);
     if (!response.ok) throw new Error(`${name}: HTTP ${response.status}`);
-    const buf = await response.arrayBuffer();
-    await idbSet(idb, name, buf);
-    return new Uint8Array(buf);
+    const total = Number(response.headers.get('Content-Length')) || 0;
+    const reader = response.body.getReader();
+    const chunks = [];
+    let loaded = 0, lastReportTs = 0;
+    for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+        loaded += value.byteLength;
+        const now = Date.now();
+        if (now - lastReportTs > 200) { reportProgress(name, step, loaded, total); lastReportTs = now; }
+    }
+    reportProgress(name, step, loaded, total);
+    const buf = new Uint8Array(loaded);
+    let offset = 0;
+    for (const chunk of chunks) { buf.set(chunk, offset); offset += chunk.byteLength; }
+    await idbSet(idb, name, buf.buffer);
+    return buf;
+}
+
+// Owner: "предупредить что даты много, и если мобильные данные — получить согласие" — Wi-Fi
+// proceeds immediately (just the progress banner); anything else (cellular/unknown/no plugin
+// info) asks first via a UI-owned confirm, wired through a plain event so app.js doesn't need
+// any DOM/dialog code of its own (offline-status.js listens for 'dg:need-consent' and calls
+// the carried `resolve`). No plugin (plain browser dev/testing) — skip the check entirely, same
+// "no Capacitor runtime" fallback native-bridge.js already uses.
+async function hasNetworkConsent() {
+    const Network = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Network;
+    if (!Network) return true;
+    let status;
+    try { status = await Network.getStatus(); } catch (e) { return true; }
+    if (status.connectionType === 'wifi') return true;
+    return new Promise(resolve => {
+        window.dispatchEvent(new CustomEvent('dg:need-consent', { detail: { resolve } }));
+    });
 }
 
 function rowsToObjects(result) {
@@ -494,10 +539,35 @@ async function loadData() {
     await loadScript('/vendor/sql-wasm.js');
     SQL = await initSqlJs({ locateFile: f => `/vendor/${f}` });
     const idb = await openStore();
-    core = new SQL.Database(await fetchDbBytes(idb, 'core.db'));
-    langDbs.ru = new SQL.Database(await fetchDbBytes(idb, 'lang_ru.db'));
-    langDbs.en = new SQL.Database(await fetchDbBytes(idb, 'lang_en.db'));
+
+    // Only ask for consent (and only touch the network at all) for files not already cached —
+    // a fully-cached returning user must stay 100% offline-capable, never blocked on a
+    // Network.getStatus() call that could itself hang/fail with no connectivity.
+    const missing = [];
+    for (const name of DB_FILES) { if (!(await idbGet(idb, name))) missing.push(name); }
+    if (missing.length > 0 && !(await hasNetworkConsent())) {
+        throw new Error('offline-data-download-declined');
+    }
+
+    core = new SQL.Database(await fetchDbBytes(idb, 'core.db', 1));
+    langDbs.ru = new SQL.Database(await fetchDbBytes(idb, 'lang_ru.db', 2));
+    langDbs.en = new SQL.Database(await fetchDbBytes(idb, 'lang_en.db', 3));
 }
 
 installFetchShim();
 ready = loadData();
+window.dgOfflineReady = ready;
+ready.catch(() => {}); // consent declined -> ready rejects; silence the console's unhandled-
+                       // rejection warning here, real awaiters (fetch shim, retry button) still
+                       // see the rejection independently via their own `await`/`.catch`.
+
+// Settings' "Download now"/"Re-download" button and offline-status.js's retry action share
+// this single code path — declining consent rejects `ready` once, this re-runs loadData() from
+// scratch (idbGet short-circuits whatever's already cached, so a retry after a partial failure
+// doesn't re-download files that already succeeded).
+window.dgRetryOfflineDownload = function () {
+    ready = loadData();
+    window.dgOfflineReady = ready;
+    ready.catch(() => {});
+    return ready;
+};

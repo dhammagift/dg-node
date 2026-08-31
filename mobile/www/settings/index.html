@@ -555,6 +555,14 @@ kbd{font:inherit;font-size:12.5px;background:var(--line);border:1px solid var(--
   <section class="group" id="data">
     <h2 id="t-g-data">Данные</h2>
     <div class="rows">
+      <div class="row" id="dgOfflineLibRow">
+        <div><p class="row-title" id="dgOfflineLibTitle">Offline library</p><p class="row-desc" id="dgOfflineLibDesc">&nbsp;</p></div>
+        <div class="row-control"><button class="btn" type="button" id="dgOfflineLibBtn">Download now</button></div>
+      </div>
+      <div class="row">
+        <div><p class="row-title" id="dgOfflineDocsTitle">Offline docs<span class="badge">soon</span></p><p class="row-desc" id="dgOfflineDocsDesc">&nbsp;</p></div>
+        <div class="row-control"><button class="btn" type="button" disabled>Download</button></div>
+      </div>
       <div class="row">
         <div><p class="row-title" id="t-clearHist">История поиска и избранное</p><p class="row-desc" id="t-clearHistDesc">Хранится на устройстве.</p></div>
         <div class="row-control"><button class="btn btn-danger" type="button" id="clearHistBtn">Очистить</button></div>
@@ -1480,5 +1488,6 @@ window.addEventListener('message', handlePreviewMessage);
 setTheme(localStorage.getItem('theme') || 'auto');
 applyLang();
 </script>
+<script src="/offline-library-settings.js"></script>
 </body>
 </html>
