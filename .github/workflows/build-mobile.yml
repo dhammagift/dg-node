@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - 'mobile-v*'
+  workflow_dispatch:
 
 jobs:
   build:
@@ -16,19 +17,23 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
+          cache: 'gradle'
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
         with:
           api-level: 36
           build-tools-version: 36.0.0
+
+      - name: Check mobile directory structure
+        run: ls -la mobile/ && ls -la mobile/android/ || echo "Android dir not found"
 
       - name: Install root dependencies
         run: npm ci
@@ -48,31 +53,18 @@ jobs:
       - name: Sync Capacitor
         run: cd mobile && npx cap sync android
 
+      - name: Grant gradlew permissions
+        run: chmod +x mobile/android/gradlew
+
       - name: Build Android Release APK
         run: cd mobile/android && ./gradlew assembleRelease
 
-      - name: Build Android Release Bundle
-        run: cd mobile/android && ./gradlew bundleRelease
-
-      - name: Sign APK
-        uses: r0adkll/sign-android-release@v1
-        with:
-          releaseDirectory: mobile/android/app/build/outputs/apk/release
-          signingKeyBase64: ${{ secrets.KEYSTORE_BASE64 }}
-          alias: ${{ secrets.KEYSTORE_ALIAS }}
-          keyStorePassword: ${{ secrets.KEYSTORE_PASSWORD }}
-          keyPassword: ${{ secrets.KEY_PASSWORD }}
-        env:
-          BUILD_TOOLS_VERSION: "36.0.0"
+      - name: List build outputs
+        run: find mobile/android -name "*.apk" -o -name "*.aab" 2>/dev/null || echo "No APK/AAB found"
 
       - name: Create Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           files: |
-            mobile/android/app/build/outputs/apk/release/*.apk
-            mobile/android/app/build/outputs/bundle/release/*.aab
-          draft: false
-          prerelease: false
-          generate_release_notes: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            mobile/android/app/build/outputs/apk/release/app-release.apk
+          token: ${{ secrets.GITHUB_TOKEN }}
