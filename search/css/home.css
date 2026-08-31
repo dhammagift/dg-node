@@ -687,7 +687,12 @@ body.dg-state-home #results-divider,
 body.dg-state-home #search-pane,
 body.dg-state-home #reader-pane,
 body.dg-state-home #language-button,
-body.dg-state-home #scrollToTopBtn {
+body.dg-state-home #scrollToTopBtn,
+/* #dynamicHeader lives outside #results-toolbar on purpose (see its own comment in index.html —
+   shouldn't hide/show on scroll like the rest of the toolbar) and is already hidden for
+   dg-state-toc/dg-state-reader, but was missing here: going home after a search left the old
+   "N texts and M matches..." title floating below the page (owner screenshot). */
+body.dg-state-home #dynamicHeader {
     display: none;
 }
 /* ============================================================================
