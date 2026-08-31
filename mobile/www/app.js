@@ -179,6 +179,19 @@ function ftsQuery(term) {
     return `"${escaped}*"`;
 }
 
+// Mirrors dg-light.js's WORD_BOUNDARY_CHARS/wordRegex exactly — a search for "kacchap" should
+// surface the actual word forms present in the text ("kacchapa", "kacchapaṁ", "mahākacchapa"...),
+// not just echo the raw search term back as if that were what matched (owner: "должен выводить
+// не мой поисковый запрос а фактическое совпадение из текста").
+const WORD_BOUNDARY_CHARS = '\\s,.:;!?"\'\\u201C\\u201D\\u2018\\u2019\\u00AB\\u00BB()\\[\\]{}';
+function collectUniqueWords(keyword, texts, into) {
+    const wordRegex = new RegExp(`[^${WORD_BOUNDARY_CHARS}]*${keyword}[^${WORD_BOUNDARY_CHARS}]*`, 'gi');
+    for (const text of texts) {
+        if (!text) continue;
+        for (const w of text.match(wordRegex) || []) into.add(w.toLowerCase());
+    }
+}
+
 const CATEGORY_ORDER = { dhamma: 1, khudakka: 2, khuddaka: 2, vinaya: 3, abhi: 4, abhidhamma: 4 };
 function sortSuttaIds(ids, metaById) {
     return ids.slice().sort((a, b) => {
@@ -207,7 +220,7 @@ function fetchSuttaMetaBatch(suttaIds) {
     for (const idChunk of chunkArray(suttaIds, 300)) {
         const placeholders = idChunk.map(() => '?').join(',');
         const rows = rowsToObjects(core.exec(
-            `SELECT id, category, dir_path, title, mr FROM suttas WHERE id IN (${placeholders})`, idChunk
+            `SELECT id, category, dir_path, title, mr, title_seg_id FROM suttas WHERE id IN (${placeholders})`, idChunk
         ));
         for (const row of rows) result[row.id] = row;
     }
@@ -266,12 +279,10 @@ const MAX_DETAILED_SUTTAS = 300;
 // ponytail: unlike prod's two-phase fast=1 -> /search/enrich (grep-skeleton first, quotes filled
 // in later), this returns fully-enriched data in one pass — SQLite queries are cheap enough that
 // there's no need to replicate that optimization offline. __enriched:true on every row tells
-// search-render.js not to show the "Loading quotes..." placeholder. Also simplified: titles only
-// carries the Pali root (no per-language translated title), unique_words is just the search term
-// (not the real matched word forms/declensions), wordReport/variantSegments are empty (Words tab
-// and variant-match hint both render as empty, degrading gracefully — search-render.js already
-// handles zero rows there). Upgrade path: none planned, these are minor/secondary features next
-// to search+read working offline.
+// search-render.js not to show the "Loading quotes..." placeholder. Also simplified:
+// wordReport/variantSegments are empty (Words tab and variant-match hint both render as empty,
+// degrading gracefully — search-render.js already handles zero rows there). Upgrade path: none
+// planned, these are minor/secondary features next to search+read working offline.
 function buildSearchData(keyword, targetLangs, scope) {
     const q = ftsQuery(keyword);
     const matches = [...rowsToObjects(core.exec(
@@ -314,23 +325,31 @@ function buildSearchData(keyword, targetLangs, scope) {
         const segIds = [...segmentIdsBySutta.get(suttaId)].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
         const segMap = segmentsBySutta.get(suttaId) || new Map();
         const transMap = translationsBySutta.get(suttaId) || new Map();
+        const uniqueWords = new Set();
         const segments = segIds.map(segmentId => {
             const rv = segMap.get(segmentId) || {};
+            const translations = transMap.get(segmentId) || {};
+            collectUniqueWords(keyword, [rv.root, rv.variant, ...Object.values(translations)], uniqueWords);
             return {
                 segment: segmentId,
                 root_text: rv.root || '',
                 variant: rv.variant || '',
-                translations: transMap.get(segmentId) || {},
+                translations,
             };
         });
+        // Same segment translations already fetched above (transMap covers every segment of this
+        // sutta, not just the matched ones) — the title segment's row in there IS the translated
+        // title, no extra query needed. meta.title_seg_id is null for suttas without one (rare
+        // skeleton gaps); titles then just falls back to the Pali root, same as before this fix.
+        const titleTranslations = meta.title_seg_id ? (transMap.get(meta.title_seg_id) || {}) : {};
         data[suttaId] = {
             sutta_id: suttaId,
             category: meta.category,
             dir_path: meta.dir_path,
-            titles: { root: meta.title },
+            titles: { root: meta.title, ...titleTranslations },
             mr: meta.mr,
             count: segments.length,
-            unique_words: [keyword],
+            unique_words: Array.from(uniqueWords),
             segments,
             __enriched: true,
         };

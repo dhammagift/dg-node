@@ -48,23 +48,35 @@ async function readJsonIfExists(filePath) {
     }
 }
 
+// Mirrors dg-light.js's findTitleSegmentIdRecursive: the title is the LAST segment in the file
+// whose id has major index 0 (":0" or ":0.N", e.g. "dn1:0.4") — SC Bilara root files list book/
+// vagga/collection headers before the sutta's own title at that same "0.N" level, in file order,
+// so "last one" is the actual sutta title. JS object key order preserves JSON file order, so a
+// plain forward scan replicates the grep-based "last match wins" behavior exactly.
+function findTitleSegId(suttaId, root) {
+    const re = new RegExp(`^${suttaId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}:0(\\.\\d+)?$`);
+    let found = null;
+    for (const segmentId of Object.keys(root || {})) if (re.test(segmentId)) found = segmentId;
+    return found;
+}
+
 function buildCoreDb(suttaIds, skeleton) {
     const dbPath = path.join(OUT_DIR, 'core.db');
     fsSync.rmSync(dbPath, { force: true });
     const db = new Database(dbPath);
     db.pragma('journal_mode = WAL');
     db.exec(`
-        CREATE TABLE suttas (id TEXT PRIMARY KEY, category TEXT, dir_path TEXT, title TEXT, mr INTEGER);
+        CREATE TABLE suttas (id TEXT PRIMARY KEY, category TEXT, dir_path TEXT, title TEXT, mr INTEGER, title_seg_id TEXT);
         CREATE TABLE segments (sutta_id TEXT, segment_id TEXT, root TEXT, variant TEXT, html TEXT);
         CREATE VIRTUAL TABLE fts USING fts4(root, variant, segment_id, sutta_id, notindexed=segment_id, notindexed=sutta_id);
     `);
-    const insertSutta = db.prepare('INSERT INTO suttas (id, category, dir_path, title, mr) VALUES (?, ?, ?, ?, ?)');
+    const insertSutta = db.prepare('INSERT INTO suttas (id, category, dir_path, title, mr, title_seg_id) VALUES (?, ?, ?, ?, ?, ?)');
     const insertSegment = db.prepare('INSERT INTO segments (sutta_id, segment_id, root, variant, html) VALUES (?, ?, ?, ?, ?)');
     const insertFts = db.prepare('INSERT INTO fts (root, variant, segment_id, sutta_id) VALUES (?, ?, ?, ?)');
 
     return (async () => {
         const insertAll = db.transaction((suttaId, meta, root, variant, html) => {
-            insertSutta.run(suttaId, meta.category, meta.dir_path, meta.title, meta.mr);
+            insertSutta.run(suttaId, meta.category, meta.dir_path, meta.title, meta.mr, findTitleSegId(suttaId, root));
             for (const [segmentId, rootText] of Object.entries(root || {})) {
                 const variantText = variant ? (variant[segmentId] || null) : null;
                 const htmlText = html ? (html[segmentId] || null) : null;
