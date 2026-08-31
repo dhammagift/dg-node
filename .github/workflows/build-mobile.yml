@@ -32,14 +32,11 @@ jobs:
           api-level: 36
           build-tools-version: 36.0.0
 
-      - name: Check mobile directory structure
-        run: ls -la mobile/ && ls -la mobile/android/ || echo "Android dir not found"
-
       - name: Install root dependencies
-        run: npm ci
+        run: npm install --legacy-peer-deps
 
       - name: Install mobile dependencies
-        run: cd mobile && npm ci
+        run: cd mobile && npm install --legacy-peer-deps
 
       - name: Build offline database
         run: cd mobile && npm run build-offline-db
