@@ -59,10 +59,19 @@ const ASSETS = [
     { url: '/assets/js/uihelp.js', sources: [l('js/uihelp.js')] },
     { url: '/assets/css/jquery-ui.min.css', sources: [l('css/jquery-ui.min.css')] },
     { url: '/assets/js/jquery-ui.min.js', sources: [l('js/jquery-ui.min.js')] },
-    // paliLookup.js itself is a local script (Category B); the DPD dictionary it LINKS to
-    // (dict.dhamma.gift) is genuinely online-only (Category C) and deliberately not shimmed —
-    // clicking a word offline will open/fail that external link, same as any other outbound link.
+    // paliLookup.js itself is a local script (Category B). Its dict.dhamma.gift iframe modes
+    // ("dpdfull" etc, and the "newwindow" mode) are genuinely online-only (Category C) and
+    // deliberately not shimmed. BUT: owner (real usage) — "не работает словарь встроенный" —
+    // "standalone"/"standaloneru" (word-tap popup dictionary) is actually the DEFAULT mode
+    // whenever the user hasn't picked one (see paliLookup.js's own fallback right after
+    // `if (savedDict) {...} else { savedDict = "standalone(ru)" }`), and it's fully offline —
+    // it works off 3 plain JS data files (dpd_i2h/dpd_deconstructor/dpd_ebts, ~24MB for both
+    // langs), no dict.dhamma.gift involved at all. Those 3 were the actual missing piece.
     { url: '/assets/js/paliLookup.js', sources: [f('public/overrides/js/paliLookup.js')] },
+    { url: '/assets/js/standalone-dpd/dpd_i2h.js', sources: [l('js/standalone-dpd/dpd_i2h.js')] },
+    { url: '/assets/js/standalone-dpd/dpd_deconstructor.js', sources: [l('js/standalone-dpd/dpd_deconstructor.js')] },
+    { url: '/assets/js/standalone-dpd/dpd_ebts.js', sources: [l('js/standalone-dpd/dpd_ebts.js')] },
+    { url: '/assets/js/standalone-dpd/ru/dpd_ebts.js', sources: [l('js/standalone-dpd/ru/dpd_ebts.js')] },
     // Lazy-loaded by settings.js's toggleQuickModal() stub (script.src = "/assets/js/quickModal.js")
     // on first Quick Menu open — was missing here entirely, so that fetch 404'd and History/
     // Favorites/Quick search never rendered offline (the stub silently swallows script.onerror).
@@ -231,31 +240,14 @@ function injectNativeBridge() {
     fs.writeFileSync(dest, html, 'utf8');
 }
 
-// dg-docs (Help/Docs portal) — bundled as static files, same as everything else here, not
-// downloaded at runtime like the SQLite DBs: it's a normal Docusaurus static build (~11MB en +
-// ~12MB ru with its own baked-in offline search index, docusaurus-search-local), not a single
-// growable blob, so there's no simple "one file to fetch and cache" story the DB path already
-// solves — building a per-file runtime cache for a whole site tree is a bigger undertaking than
-// the ~23MB it costs to just bake it into the APK once here (owner: "docs — большая часть
-// проекта", currently the app has none at all).
-//
-// Known, accepted gap: pages under dhamma/dhamma-principles etc. embed live <AppFrame src="..."/>
-// iframes pointing at the production search/reader UI (e.g. "/mn1", "/toc") — those paths don't
-// exist as real static files in this app (only "/" serves index.html, see MainActivity's
-// _nativeRoute comment), so those iframes will fail to load offline. The docs TEXT/guide content
-// itself (what the owner actually asked for) works fully offline; only the embedded live demos
-// degrade — same "fails soft, doesn't block the rest" treatment as /api/transliterate.
-function copyDocs() {
-    const pairs = [
-        [f('dg-docs/build'), path.join(WWW, 'docs')],
-        [f('dg-docs/build-ru'), path.join(WWW, 'ru', 'docs')],
-    ];
-    for (const [src, dest] of pairs) {
-        if (!fs.existsSync(src)) { console.warn(`docs: missing ${src}, skipped (run dg-docs' build first)`); continue; }
-        fs.rmSync(dest, { recursive: true, force: true });
-        fs.cpSync(src, dest, { recursive: true });
-    }
-}
+// dg-docs (Help/Docs portal): deliberately NOT bundled. First cut baked the ~23MB Docusaurus
+// build (en+ru) into the APK, but owner (weighing APK size vs. offline benefit): docs are read
+// occasionally, not offline-critical the way search/reader are — the DB download at first launch
+// already costs real MB/time, docs shouldn't tax every install for content most sessions never
+// open. native-bridge.js routes /docs and /ru/docs links to the live site instead (same treatment
+// as memo/login — see that file). A real "download docs for offline" toggle is a bigger separate
+// feature (packaging+extracting a whole static site tree at runtime, not a single blob like the
+// DBs) — worth doing if actually wanted, not implemented here.
 
 function main() {
     const args = parseArgs();
@@ -268,8 +260,7 @@ function main() {
     const svgCount = copySvgIcons();
     copyReaderImages();
     injectNativeBridge();
-    copyDocs();
-    console.log(`Assets: ${ok} copied, ${missing} missing. +${svgCount} svg icons, reader/images/, 2 generated bundles, mode-table.json (langs=${args.langs.join(',')}), docs/ru+docs/.`);
+    console.log(`Assets: ${ok} copied, ${missing} missing. +${svgCount} svg icons, reader/images/, 2 generated bundles, mode-table.json (langs=${args.langs.join(',')}).`);
     if (missing > 0) process.exitCode = 1;
 }
 
