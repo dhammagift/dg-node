@@ -1748,6 +1748,16 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
        about:blank). Значения — те же, что строит openFdg: попапу ссылка со scroll=instant
        (резкий прыжок в маленьком окне), кнопке "в новом окне" — чистая, с плавной прокруткой. */
     function openQuotePopup(url) {
+      // Offline app (window.dgOfflineReady only exists there, see mobile/www/app.js) has no
+      // server behind this iframe's absolute local URL — every SPA-only path (anything but the
+      // real root) 404s as a real navigation (see routeFromUrl()/textIdFromPath() below: only
+      // client-side pushState ever resolves them). Route straight into the in-place reader
+      // instead, same as clicking the main sutta link already does — leaves .fdg-open-new-window-btn's
+      // href unset too, so that button stays inert instead of offering a second broken path.
+      if (typeof window.dgOfflineReady !== 'undefined') {
+        if (typeof window.dgNavigateInternal === 'function') window.dgNavigateInternal(url);
+        return;
+      }
       setTimeout(function () {
         var popupEl = document.querySelector('.fdg-popup');
         var frameEl = document.querySelector('.fdg-iframe');
@@ -1873,7 +1883,14 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
       if (act === 'popup') {
         openQuotePopup(url);
       } else if (act === 'tab') {
-        window.open(url, '_blank', 'noopener');
+        // Offline app: same reasoning as openQuotePopup() above — a real new tab to a SPA-only
+        // path has no static asset to load. Fall back to in-place navigation instead of a dead
+        // second tab.
+        if (typeof window.dgOfflineReady !== 'undefined' && typeof window.dgNavigateInternal === 'function') {
+          window.dgNavigateInternal(url);
+        } else {
+          window.open(url, '_blank', 'noopener');
+        }
       } else if (act === 'audio') {
         // Тот же путь, что у пункта "Слушать" в ридере (reader/common.js, sm-audio):
         // activateSegmentForTTS помечает строку активной и создаёт .dynamic-tts-btn, дальше
@@ -3603,9 +3620,13 @@ $(document).ready(function() {
                 if (!firstTime && typeof window.initReader === 'function') return window.initReader();
             })
             .catch(function (err) {
-                // Не смогли собрать ридер на месте — уходим на отдельную страницу ридера, как
-                // это работало до SPA. Лучше лишняя перезагрузка, чем пустой экран.
-                console.error('Ридер не поднялся на месте, ухожу на отдельную страницу:', err);
+                console.error('Ридер не поднялся на месте:', err);
+                // Offline app: '/' + slug has no static asset behind it either (same reason as
+                // openQuotePopup() above) — a real navigation here would strand the user on the
+                // exact same unrecoverable net::ERR_INVALID_RESPONSE screen instead of recovering.
+                if (typeof window.dgOfflineReady !== 'undefined') return;
+                // Website: не смогли собрать ридер на месте — уходим на отдельную страницу
+                // ридера, как это работало до SPA. Лучше лишняя перезагрузка, чем пустой экран.
                 window.location.href = '/' + encodeURIComponent(slug);
             });
     }
