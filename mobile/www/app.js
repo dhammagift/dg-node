@@ -31,8 +31,20 @@
 // the same history.replaceState() trick the SPA already uses for its own pushState navigation.
 // A plain browser load (no native shortcut involved) never has this param, so this is a no-op.
 (function rewriteNativeShortcutRoute() {
-    const route = new URLSearchParams(location.search).get('_nativeRoute');
+    const params = new URLSearchParams(location.search);
+    const route = params.get('_nativeRoute');
     if (route) history.replaceState(null, '', route);
+
+    // "favorites" App Shortcut (res/xml/shortcuts.xml) — no dedicated route exists for
+    // Favorites/History (they live inside the Quick Modal, not the SPA router), so this just
+    // opens the modal once its lazy-load stub (settings-bundle.js) exists. No tab argument needed:
+    // tab-fav (Favorites+History combined) is already the modal's default active tab.
+    if (params.has('_openQuickModal')) {
+        history.replaceState(null, '', route || location.pathname);
+        window.addEventListener('load', () => {
+            if (typeof window.toggleQuickModal === 'function') window.toggleQuickModal();
+        });
+    }
 })();
 
 const DIST_BASE = 'https://test.dhamma.gift/mobile-data';
@@ -215,7 +227,7 @@ const MAX_DETAILED_SUTTAS = 300;
 // and variant-match hint both render as empty, degrading gracefully — search-render.js already
 // handles zero rows there). Upgrade path: none planned, these are minor/secondary features next
 // to search+read working offline.
-function buildSearchData(keyword, targetLangs) {
+function buildSearchData(keyword, targetLangs, scope) {
     const q = ftsQuery(keyword);
     const matches = [...rowsToObjects(core.exec(
         'SELECT sutta_id, segment_id FROM fts WHERE fts MATCH ? LIMIT ?', [q, MATCH_ROW_LIMIT]
@@ -235,7 +247,14 @@ function buildSearchData(keyword, targetLangs) {
 
     let suttaIds = [...segmentIdsBySutta.keys()];
     const metaById = fetchSuttaMetaBatch(suttaIds);
-    suttaIds = sortSuttaIds(suttaIds.filter(id => metaById[id]), metaById);
+    // Mirrors dg-light.js's buildMatchSkeleton scope filter — without it, search ignores the
+    // user's scope selection entirely and surfaces hits from the whole indexed corpus (Vinaya,
+    // Abhidhamma, Apadana, ...) even under the default 4-nikaya/6-Khuddaka scope.
+    const allowedPrefixes = resolveAllowedPrefixes(scope);
+    suttaIds = sortSuttaIds(
+        suttaIds.filter(id => metaById[id] && matchesScope(metaById[id].category, id, allowedPrefixes)),
+        metaById
+    );
     const totalMatchedSuttas = suttaIds.length;
     let totalMatchedSegments = 0;
     for (const id of suttaIds) totalMatchedSegments += segmentIdsBySutta.get(id).size;
@@ -285,9 +304,9 @@ function buildSearchResponse(keyword, scope, targetLangs) {
     // MAX_DETAILED_SUTTAS — totalFiles/totalMatches below report the FULL matched set (pre-cap),
     // same intent as prod's totalFiles/totalMatches meaning "how many texts/matches exist", not
     // "how many rows did we bother detailing".
-    const { data, totalMatchedSuttas, totalMatchedSegments } = buildSearchData(keyword, targetLangs);
+    const { data, totalMatchedSuttas, totalMatchedSegments } = buildSearchData(keyword, targetLangs, scope);
     return {
-        metadata: { query: keyword, scope, resolvedPrefixes: [], langs: targetLangs, totalFiles: totalMatchedSuttas, totalMatches: totalMatchedSegments, hasVariantMatch: false },
+        metadata: { query: keyword, scope, resolvedPrefixes: resolveAllowedPrefixes(scope), langs: targetLangs, totalFiles: totalMatchedSuttas, totalMatches: totalMatchedSegments, hasVariantMatch: false },
         data, wordReport: [], variantSegments: [],
     };
 }
@@ -345,17 +364,49 @@ function buildApiTextResponse(suttaId, params) {
     };
 }
 
-// Mirrors dg-light.js's /api/nav/:suttaId — prev/next by position in the suttas table. No scope
-// filtering yet (resolveAllowedPrefixes/matchesScope in dg-light.js) — every indexed sutta is a
-// candidate neighbor here, not just the default 4-nikaya/6-Khuddaka set.
-function buildApiNavResponse(suttaId) {
-    const rows = rowsToObjects(core.exec('SELECT id, title FROM suttas ORDER BY rowid'));
+// 4 nikaya + 6 kn books — mirrors dg-light.js's DEFAULT_SCOPE_PREFIXES exactly (vinaya is
+// opt-in via explicit ?scope=, not part of default).
+const DEFAULT_SCOPE_PREFIXES = ['dn', 'mn', 'sn', 'an', 'ud', 'snp', 'dhp', 'thag', 'thig', 'iti'];
+
+function resolveAllowedPrefixes(searchScope) {
+    if (!searchScope || searchScope === 'default') return DEFAULT_SCOPE_PREFIXES;
+    if (searchScope === 'all') return ['all'];
+    const prefixes = [];
+    for (const p of searchScope.split(',').map(s => s.trim())) {
+        prefixes.push(...(p === 'default' ? DEFAULT_SCOPE_PREFIXES : [p]));
+    }
+    return prefixes;
+}
+
+function matchesScope(category, suttaId, allowedPrefixes) {
+    if (allowedPrefixes.includes('all')) return true;
+    return allowedPrefixes.some(prefix => {
+        if (category === prefix) return true;
+        if (suttaId === prefix) return true;
+        if (suttaId.startsWith(prefix)) return /[0-9.-]/.test(suttaId.charAt(prefix.length));
+        return false;
+    });
+}
+
+// Mirrors dg-light.js's /api/nav/:suttaId, scope filtering included (owner: "попал в ридере в
+// текст, который вообще не должен быть доступен без спец настройки — ротация прев/некст должна
+// быть в рамках текстов, выбранных пользователем, или по умолчанию 4 никаи + 6 книг Кхуддаки").
+// Was a bare positional walk over the whole suttas table — fixed to skip out-of-scope neighbors,
+// same as the server.
+function buildApiNavResponse(suttaId, scope) {
+    const rows = rowsToObjects(core.exec('SELECT id, category, title FROM suttas ORDER BY rowid'));
     const idx = rows.findIndex(r => r.id === suttaId);
+    if (idx === -1) return { prev: null, next: null };
+
+    const allowedPrefixes = resolveAllowedPrefixes(scope);
+    const inScope = (i) => matchesScope(rows[i].category, rows[i].id, allowedPrefixes);
     const toEntry = r => r ? { slug: r.id, title: r.title || '' } : null;
-    return {
-        prev: idx > 0 ? toEntry(rows[idx - 1]) : null,
-        next: idx !== -1 && idx < rows.length - 1 ? toEntry(rows[idx + 1]) : null,
-    };
+
+    let prev = null;
+    for (let i = idx - 1; i >= 0; i--) { if (inScope(i)) { prev = toEntry(rows[i]); break; } }
+    let next = null;
+    for (let i = idx + 1; i < rows.length; i++) { if (inScope(i)) { next = toEntry(rows[i]); break; } }
+    return { prev, next };
 }
 
 function jsonResponse(obj, status = 200) {
@@ -383,7 +434,7 @@ function installFetchShim() {
         if (p.startsWith('/api/nav/')) {
             await ready;
             const suttaId = decodeURIComponent(p.slice('/api/nav/'.length)).toLowerCase();
-            return jsonResponse(buildApiNavResponse(suttaId));
+            return jsonResponse(buildApiNavResponse(suttaId, parsed.searchParams.get('scope')));
         }
         // TOC — pre-baked at build time (mobile/build-toc-snapshot.js curls the live server's
         // /api/toc and /api/toc/book/:code once and saves the JSON) rather than reimplemented

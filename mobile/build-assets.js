@@ -63,6 +63,10 @@ const ASSETS = [
     // (dict.dhamma.gift) is genuinely online-only (Category C) and deliberately not shimmed —
     // clicking a word offline will open/fail that external link, same as any other outbound link.
     { url: '/assets/js/paliLookup.js', sources: [f('public/overrides/js/paliLookup.js')] },
+    // Lazy-loaded by settings.js's toggleQuickModal() stub (script.src = "/assets/js/quickModal.js")
+    // on first Quick Menu open — was missing here entirely, so that fetch 404'd and History/
+    // Favorites/Quick search never rendered offline (the stub silently swallows script.onerror).
+    { url: '/assets/js/quickModal.js', sources: [f('public/overrides/js/quickModal.js')] },
     { url: '/assets/img/buttons/chrome-cta.png', sources: [l('img/buttons/chrome-cta.png')] },
     { url: '/assets/img/buttons/firefox-cta.png', sources: [l('img/buttons/firefox-cta.png')] },
     { url: '/assets/img/buttons/edge-cta.png', sources: [l('img/buttons/edge-cta.png')] },
@@ -227,6 +231,32 @@ function injectNativeBridge() {
     fs.writeFileSync(dest, html, 'utf8');
 }
 
+// dg-docs (Help/Docs portal) — bundled as static files, same as everything else here, not
+// downloaded at runtime like the SQLite DBs: it's a normal Docusaurus static build (~11MB en +
+// ~12MB ru with its own baked-in offline search index, docusaurus-search-local), not a single
+// growable blob, so there's no simple "one file to fetch and cache" story the DB path already
+// solves — building a per-file runtime cache for a whole site tree is a bigger undertaking than
+// the ~23MB it costs to just bake it into the APK once here (owner: "docs — большая часть
+// проекта", currently the app has none at all).
+//
+// Known, accepted gap: pages under dhamma/dhamma-principles etc. embed live <AppFrame src="..."/>
+// iframes pointing at the production search/reader UI (e.g. "/mn1", "/toc") — those paths don't
+// exist as real static files in this app (only "/" serves index.html, see MainActivity's
+// _nativeRoute comment), so those iframes will fail to load offline. The docs TEXT/guide content
+// itself (what the owner actually asked for) works fully offline; only the embedded live demos
+// degrade — same "fails soft, doesn't block the rest" treatment as /api/transliterate.
+function copyDocs() {
+    const pairs = [
+        [f('dg-docs/build'), path.join(WWW, 'docs')],
+        [f('dg-docs/build-ru'), path.join(WWW, 'ru', 'docs')],
+    ];
+    for (const [src, dest] of pairs) {
+        if (!fs.existsSync(src)) { console.warn(`docs: missing ${src}, skipped (run dg-docs' build first)`); continue; }
+        fs.rmSync(dest, { recursive: true, force: true });
+        fs.cpSync(src, dest, { recursive: true });
+    }
+}
+
 function main() {
     const args = parseArgs();
     let ok = 0, missing = 0;
@@ -238,7 +268,8 @@ function main() {
     const svgCount = copySvgIcons();
     copyReaderImages();
     injectNativeBridge();
-    console.log(`Assets: ${ok} copied, ${missing} missing. +${svgCount} svg icons, reader/images/, 2 generated bundles, mode-table.json (langs=${args.langs.join(',')}).`);
+    copyDocs();
+    console.log(`Assets: ${ok} copied, ${missing} missing. +${svgCount} svg icons, reader/images/, 2 generated bundles, mode-table.json (langs=${args.langs.join(',')}), docs/ru+docs/.`);
     if (missing > 0) process.exitCode = 1;
 }
 

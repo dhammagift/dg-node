@@ -6,10 +6,12 @@
     <string name="custom_url_scheme">gift.dhamma.mobile</string>
 
     <!-- App Shortcuts labels (res/xml/shortcuts.xml) -->
-    <string name="shortcut_search_short">Search</string>
-    <string name="shortcut_search_long">Search Dhamma.gift</string>
+    <string name="shortcut_toc_short">TOC</string>
+    <string name="shortcut_toc_long">Table of Contents</string>
     <string name="shortcut_bu_pm_short">Bhikkhu Pātimokkha</string>
     <string name="shortcut_bu_pm_long">Bhikkhu Pātimokkha</string>
     <string name="shortcut_bi_pm_short">Bhikkhuni Pātimokkha</string>
     <string name="shortcut_bi_pm_long">Bhikkhuni Pātimokkha</string>
+    <string name="shortcut_favorites_short">Favorites</string>
+    <string name="shortcut_favorites_long">Favorites &amp; History</string>
 </resources>

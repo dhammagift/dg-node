@@ -53,6 +53,10 @@ public class MainActivity extends BridgeActivity {
             String route = intent.getStringExtra("route");
             if (route != null) {
                 url = "https://localhost/?_nativeRoute=" + Uri.encode(route);
+            } else if (intent.getStringExtra("openQuickModal") != null) {
+                // <extra> in shortcuts.xml always yields a String extra (no boolean type there),
+                // so this is checked for presence, not parsed as a boolean.
+                url = "https://localhost/?_openQuickModal=1";
             }
         }
         if (url == null) return;

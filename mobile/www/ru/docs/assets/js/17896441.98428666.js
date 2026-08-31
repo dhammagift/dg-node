@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunkdg_docs=self.webpackChunkdg_docs||[]).push([["106"],{6087(s,n,a){a.d(n,{A:()=>d});var c=a(4848);a(6540);var e=a(6497);function d(s){let n=(0,e.Ay)("img/dgsankhaonly.png");return(0,c.jsx)("img",{src:n,alt:"",...s})}}}]);
