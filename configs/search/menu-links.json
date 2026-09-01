@@ -59,7 +59,7 @@
         {
           "name": "Tipitaka", "column": 1,
           "items": [
-            { "label": "S.4nt.org", "desc": "BJT, CST, and Thai editions together", "tpl": "/4nt/?q={{q}}", "blank": true, "star": true },
+            { "label": "S.4nt.org", "desc": "BJT, CST, and Thai editions together", "tpl": "/4nt/?q={{q}}", "onlineTpl": "https://s.dhamma.gift/?q={{q}}", "blank": true, "star": true },
             { "label": "BJT", "title": "Sri Lankan Edition Buddha Jayanti", "desc": "Sri Lankan Buddha Jayanti edition of the Pāḷi canon", "href": "https://open.tipitaka.lk/", "blank": true },
             { "label": "Thai", "title": "Thai Tipitaka at 84000.org", "desc": "The Thai edition, at 84000.org", "href": "https://84000.org/", "blank": true },
             { "label": "CST", "title": "CST Tripitaka by VRI at Tipitaka.org", "desc": "The CST edition by VRI at Tipitaka.org", "href": "https://tipitaka.org/romn", "blank": true },
@@ -80,7 +80,7 @@
           "name": "Patimokkha", "column": 3,
           "items": [
             { "label": "Accesstoinsight.org", "desc": "Translation by Thanissaro Bhikkhu", "href": "https://www.accesstoinsight.org/tipitaka/vin/sv/index.html", "blank": true },
-            { "label": "BMC", "desc": "Commentary by Thanissaro Bhikkhu", "href": "/dhammatalks.org/vinaya/bmc/Section0000.html", "blank": true },
+            { "label": "BMC", "desc": "Commentary by Thanissaro Bhikkhu", "href": "https://www.dhammatalks.org/vinaya/bmc/Section0000.html", "localHref": "/dhammatalks.org/vinaya/bmc/Section0000.html", "blank": true },
             { "label": "Bhikkhu Patimokkha trans. by Ven Nanatusita", "desc": "Grammar analysis", "href": "/assets/materials/bupm_trn_by_nanatusita.pdf" },
             { "label": "Bhikkhuni Patimokkha trans. by Ch Kabilsingh", "desc": "Comparasmento of 6 versions", "href": "/assets/materials/bipm_trn_by_chatsumarn_kabilsingh.pdf" }
           ]
@@ -107,7 +107,7 @@
               { "label": "SuttaCentral.net", "title": "Mahāsaṅgīti Edition", "href": "https://suttacentral.net/pitaka/sutta?lang=en", "blank": true },
               { "label": "Vinaya", "href": "https://suttacentral.net/pitaka/vinaya?lang=en", "blank": true },
               { "label": "Voice", "href": "https://www.sc-voice.net/", "blank": true },
-              { "label": "Legacy", "href": "/legacy.suttacentral.net/", "blank": true }
+              { "label": "Legacy", "href": "/legacy.suttacentral.net/", "hideIfUnavailable": true, "blank": true }
             ] },
             { "divider": true, "rows": [
               { "label": "The Buddha's Words", "desc": "Colleciton of tanslations with Pali", "href": "https://thebuddhaswords.net", "localHref": "/bw/", "blank": true }
@@ -346,7 +346,7 @@
         {
           "name": "Типитака", "column": 1,
           "items": [
-            { "label": "S.4nt.org", "desc": "BJT, CST и Thai издания в одном месте", "tpl": "/4nt/?q={{q}}", "blank": true, "star": true },
+            { "label": "S.4nt.org", "desc": "BJT, CST и Thai издания в одном месте", "tpl": "/4nt/?q={{q}}", "onlineTpl": "https://s.dhamma.gift/?q={{q}}", "blank": true, "star": true },
             { "label": "BJT", "title": "Редакция Шри Ланки Buddha Jhayanti", "desc": "Шри-ланкийское издание канона, Buddha Jayanti", "href": "https://open.tipitaka.lk/", "blank": true },
             { "label": "Thai", "title": "Тайская Типитака на 84000.org", "desc": "Тайское издание, на 84000.org", "href": "https://84000.org/", "blank": true },
             { "label": "CST", "title": "CST Типитака от VRI на Tipitaka.org", "desc": "Издание CST, на Tipitaka.org", "href": "https://tipitaka.org/romn", "blank": true },
@@ -367,7 +367,7 @@
           "name": "Патимоккха", "column": 3,
           "items": [
             { "label": "ATI", "desc": "Перевод Тханиссаро Бхиккху", "href": "https://www.accesstoinsight.org/tipitaka/vin/sv/index.html", "blank": true },
-            { "label": "BMC", "desc": "Комментарий Тханиссаро Бхиккху", "href": "/dhammatalks.org/vinaya/bmc/Section0000.html", "blank": true },
+            { "label": "BMC", "desc": "Комментарий Тханиссаро Бхиккху", "href": "https://www.dhammatalks.org/vinaya/bmc/Section0000.html", "localHref": "/dhammatalks.org/vinaya/bmc/Section0000.html", "blank": true },
             { "label": "Nanatusita", "desc": "Перевод бхиккху Ньянатусита", "href": "/assets/materials/bupm_trn_by_nanatusita.pdf" },
             { "label": "Patimokkha Bi пер. Ch Kabilsingh", "desc": "Бхиккхуни-патимоккха (PDF)", "href": "/assets/materials/bipm_trn_by_chatsumarn_kabilsingh.pdf", "blank": true }
           ]
@@ -394,7 +394,7 @@
               { "label": "SuttaCentral", "href": "https://suttacentral.net/pitaka/sutta?lang=en", "blank": true },
               { "label": "Виная", "href": "https://suttacentral.net/pitaka/vinaya?lang=ru", "blank": true },
               { "label": "Voice", "href": "https://www.sc-voice.net/", "blank": true },
-              { "label": "Legacy", "href": "/legacy.suttacentral.net/", "blank": true }
+              { "label": "Legacy", "href": "/legacy.suttacentral.net/", "hideIfUnavailable": true, "blank": true }
             ] },
             { "divider": true, "rows": [
               { "label": "The Buddha's Words", "desc": "Подборка ключевых учений Будды от Бхиккху Бодхи", "href": "https://thebuddhaswords.net", "localHref": "/bw/", "blank": true }
@@ -434,7 +434,7 @@
           "items": [
             { "label": "Тхеравада.рф Сутты", "href": "https://xn--80aaaglc1fo1a.xn--p1ai/palicanon/%D1%81%D1%83%D1%82%D1%82%D0%B0%D0%BD%D1%82%D0%B0", "blank": true },
             { "label": "Тхеравада.рф Патимоккха", "href": "http://xn--80aaaglc1fo1a.xn--p1ai/palicanon/%d0%b2%d0%b8%d0%bd%d0%b0%d1%8f", "blank": true },
-            { "label": "Dhamma.ru Сутты", "href": "/dhamma.ru/index-sutta.html", "blank": true },
+            { "label": "Dhamma.ru Сутты", "href": "http://dhamma.ru/index-sutta.html", "localHref": "/dhamma.ru/index-sutta.html", "blank": true },
             { "label": "Dhamma.ru Патимоккха", "href": "/assets/materials/prat.html", "blank": true },
             { "label": "Theravada.ru", "href": "https://theravada.ru/Teaching/Canon/Suttanta/samyutta.htm", "localHref": "/theravada.ru/Teaching/Canon/Suttanta/samyutta.htm", "blank": true },
             { "label": "Theravada.su", "href": "https://tipitaka.theravada.su/toc/translations/1097", "localHref": "/tipitaka.theravada.su/toc_thsu.html", "blank": true }

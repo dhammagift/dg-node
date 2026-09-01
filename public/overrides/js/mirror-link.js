@@ -8,19 +8,32 @@
 // app (net::ERR_HTTP_RESPONSE_CODE_FAILURE) even though the exact same code works on a real dev
 // box or on the live site where the mirror actually is mounted. A live HEAD check is the only
 // thing that's true in both places.
+function probeMirror(url) {
+    var signal;
+    try { signal = AbortSignal.timeout(2000); } catch (e) { signal = undefined; }
+    return fetch(url, { method: 'HEAD', cache: 'no-store', signal: signal })
+        .then(function (res) { return res.ok; })
+        .catch(function () { return false; });
+}
+
 window.resolveMirrorUrl = function (localUrl, onlineUrl) {
     if (!localUrl) return Promise.resolve(onlineUrl);
     if (!onlineUrl) onlineUrl = localUrl;
-    var signal;
-    try { signal = AbortSignal.timeout(2000); } catch (e) { signal = undefined; }
-    return fetch(localUrl, { method: 'HEAD', cache: 'no-store', signal: signal })
-        .then(function (res) { return res.ok ? localUrl : onlineUrl; })
-        .catch(function () { return onlineUrl; });
+    return probeMirror(localUrl).then(function (ok) { return ok ? localUrl : onlineUrl; });
 };
 
-// Opens a blank tab SYNCHRONOUSLY (before the async HEAD check) so browsers still treat it as a
-// direct response to the click, not a popup, then routes it once resolveMirrorUrl() settles.
-window.openMirrorLink = function (localUrl, onlineUrl) {
+// For links with no online equivalent (e.g. an archived legacy snapshot) — just answers
+// "is this actually here", so the caller can hide the link instead of resolving a fallback.
+window.checkMirrorReachable = probeMirror;
+
+// Opens a resolved link. blank !== false opens a new tab (opened SYNCHRONOUSLY, before the async
+// HEAD check, so browsers still treat it as a direct response to the click, not a popup) and
+// routes it once resolveMirrorUrl() settles; blank === false navigates the current tab instead.
+window.openMirrorLink = function (localUrl, onlineUrl, blank) {
+    if (blank === false) {
+        window.resolveMirrorUrl(localUrl, onlineUrl).then(function (url) { window.location.href = url; });
+        return;
+    }
     var win = window.open('', '_blank');
     window.resolveMirrorUrl(localUrl, onlineUrl).then(function (url) {
         if (win && !win.closed) win.location = url; else window.open(url, '_blank');

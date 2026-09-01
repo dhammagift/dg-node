@@ -500,12 +500,15 @@ window.generateThirdPartyLinks = function(slug, slugReady, texttype, translator)
     // #top-links-container alone no longer reliably contains them.
     scLink += `<a data-slug="${texttype}/${slugReady}" href="javascript:void(0)" title="Text-to-Speech (Alt+R)" class="voice-link sc-ext-link">Voice</a>`;
 
-    // 4nt (s.4nt.org edition comparison) — get4ntUrl() already exists in settings.js, just
-    // never got called from here (legacy read/js/common.js has the equivalent line). Needs
-    // /4nt mounted on this server too (dg-light.js, symlink at repo root like login/memo).
+    // 4nt (BJT/CST/Thai edition comparison) — get4ntUrl() (settings.js) always returns the
+    // local /4nt/... path (siteroot/4nt); mirror-link.js falls back to the project's own
+    // s.dhamma.gift copy of the same tool when /4nt isn't actually mounted (packaged mobile app).
     if (typeof get4ntUrl === 'function') {
         let url4nt = get4ntUrl(slug);
-        if (url4nt) scLink += ` <a target="_blank" class="s4ntLink sc-ext-link" title="s.4nt.org" href="${url4nt}">4nt</a>`;
+        if (url4nt) {
+            let onlineUrl4nt = url4nt.replace(/^\/4nt/, 'https://s.dhamma.gift');
+            scLink += ` <a target="_blank" class="s4ntLink sc-ext-link mirror-link" title="s.4nt.org" href="${onlineUrl4nt}" data-local="${url4nt}">4nt</a>`;
+        }
     }
 
     let dprUrl = null;
