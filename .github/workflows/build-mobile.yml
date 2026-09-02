@@ -117,6 +117,23 @@ jobs:
           sudo chown -R "$(id -u):$(id -g)" /var/www || true
           sudo chown -R "$(id -u):$(id -g)" /offline-data || true
 
+          # Replace placeholder text-files in the checked-out repo that represent relative symlink targets
+          # with real symlinks that point at the locations we just created. This mirrors the production layout
+          # where siteroot/data/<site> are actual symlinks.
+          DG_NODE_DATA="$GITHUB_WORKSPACE/repos/dg-node/siteroot/data"
+          if [ -d "$DG_NODE_DATA" ]; then
+            # suttacentral.net placeholder -> link to /var/www/suttacentral.net
+            if [ -f "$DG_NODE_DATA/suttacentral.net" ] && [ ! -L "$DG_NODE_DATA/suttacentral.net" ]; then
+              sudo rm -f "$DG_NODE_DATA/suttacentral.net"
+              sudo ln -s /var/www/suttacentral.net "$DG_NODE_DATA/suttacentral.net"
+            fi
+            # dhammagift placeholder -> link to /offline-data/dhammagift
+            if [ -f "$DG_NODE_DATA/dhammagift" ] && [ ! -L "$DG_NODE_DATA/dhammagift" ]; then
+              sudo rm -f "$DG_NODE_DATA/dhammagift"
+              sudo ln -s /offline-data/dhammagift "$DG_NODE_DATA/dhammagift"
+            fi
+          fi
+
       - name: Verify data layout resolves
         working-directory: /var/www/html/nodejs
         run: |
