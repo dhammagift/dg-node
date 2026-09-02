@@ -23,11 +23,6 @@ const NODEJS_ROOT = path.join(__dirname, '..');
 const LEGACY_ASSETS = '/var/www/html/assets';
 const WWW = path.join(__dirname, 'www');
 
-console.log(`DEBUG: __dirname = ${__dirname}`);
-console.log(`DEBUG: NODEJS_ROOT = ${NODEJS_ROOT}`);
-console.log(`DEBUG: LEGACY_ASSETS = ${LEGACY_ASSETS}`);
-console.log(`DEBUG: WWW = ${WWW}`);
-
 function parseArgs() {
     const args = { langs: ['ru', 'en'] };
     for (const arg of process.argv.slice(2)) {
@@ -226,7 +221,6 @@ function copySvgIcons() {
 
 function copyReaderImages() {
     const srcDir = f('reader/images');
-    console.log(`DEBUG: copyReaderImages srcDir = ${srcDir}, exists = ${fs.existsSync(srcDir)}`);
     if (!fs.existsSync(srcDir)) {
         console.warn(`MISSING: reader/images directory does not exist`);
         return;
@@ -234,10 +228,7 @@ function copyReaderImages() {
     const destDir = path.join(WWW, 'reader', 'images');
     fs.mkdirSync(destDir, { recursive: true });
     for (const name of fs.readdirSync(srcDir)) {
-        const src = path.join(srcDir, name);
-        const dest = path.join(destDir, name);
-        console.log(`DEBUG: copying ${src} -> ${dest}`);
-        fs.copyFileSync(src, dest);
+        fs.copyFileSync(path.join(srcDir, name), path.join(destDir, name));
     }
 }
 

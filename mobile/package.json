@@ -14,7 +14,7 @@
     "@capacitor/browser": "^6.0.6",
     "@capacitor/core": "^6.2.1",
     "@capacitor/network": "^6.0.4",
-    "better-sqlite3": "^11.3.0",
+    "better-sqlite3": "^13.0.3",
     "sql.js": "^1.14.2"
   },
   "devDependencies": {
