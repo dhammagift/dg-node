@@ -122,17 +122,20 @@ jobs:
           # where siteroot/data/<site> are actual symlinks.
           DG_NODE_DATA="$GITHUB_WORKSPACE/repos/dg-node/siteroot/data"
           if [ -d "$DG_NODE_DATA" ]; then
-            # suttacentral.net placeholder -> link to /var/www/suttacentral.net
-            if [ -f "$DG_NODE_DATA/suttacentral.net" ] && [ ! -L "$DG_NODE_DATA/suttacentral.net" ]; then
-              sudo rm -f "$DG_NODE_DATA/suttacentral.net"
-              sudo ln -s /var/www/suttacentral.net "$DG_NODE_DATA/suttacentral.net"
-            fi
-            # dhammagift placeholder -> link to /offline-data/dhammagift
-            if [ -f "$DG_NODE_DATA/dhammagift" ] && [ ! -L "$DG_NODE_DATA/dhammagift" ]; then
-              sudo rm -f "$DG_NODE_DATA/dhammagift"
-              sudo ln -s /offline-data/dhammagift "$DG_NODE_DATA/dhammagift"
-            fi
+            echo "Replacing siteroot/data placeholders with symlinks (force)"
+            sudo rm -rf "$DG_NODE_DATA/suttacentral.net" || true
+            sudo ln -s /var/www/suttacentral.net "$DG_NODE_DATA/suttacentral.net"
+            sudo rm -rf "$DG_NODE_DATA/dhammagift" || true
+            sudo ln -s /offline-data/dhammagift "$DG_NODE_DATA/dhammagift"
           fi
+
+          # Debug info: show workspace and sc-data contents, and resolve the created symlink
+          echo "Workspace repos:"
+          ls -la "$GITHUB_WORKSPACE/repos" || true
+          echo "sc-data contents:"
+          ls -la "$GITHUB_WORKSPACE/repos/sc-data" || true
+          echo "Resolved link for repo siteroot/data/suttacentral.net:"
+          readlink -f "$DG_NODE_DATA/suttacentral.net" || true
 
       - name: Verify data layout resolves
         working-directory: /var/www/html/nodejs
@@ -187,9 +190,9 @@ jobs:
         working-directory: /var/www/html/nodejs/mobile
         run: npm run build-assets
 
-      # build-toc-snapshot.js reads from a LIVE dg-light.js (see that file's own header) — it's a
-      # one-time build-step client of the web server's JSON output, not a runtime dependency of
-      # the app. Start it, wait for it to actually answer, snapshot, then stop it.
+      # Skeleton (dg_db_light.json) is gitignored — each environment builds its own, and
+      # build-offline-db.js reads it from the repo root. Needed before build-offline-db AND
+      # before dg-light.js can boot for the TOC snapshot step below.
       - name: Start dg-light.js for TOC snapshot
         working-directory: /var/www/html/nodejs
         run: |
