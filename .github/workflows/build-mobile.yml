@@ -1,5 +1,27 @@
 name: Build Mobile App
 
+# Builds mobile/dist/*.db + the Android APK entirely on GitHub's runner — the prod server has no
+# disk headroom for this (core.db+lang_ru.db+lang_en.db alone are ~260MB, plus Gradle/Android SDK
+# caches). Needs 4 repos on disk in the EXACT relative layout mobile/lib/translation-sources.js
+# and mobile/build-assets.js expect (see nodejs/CLAUDE.md "Прод: пути и symlinks" — this workflow
+# recreates that layout instead of the prod symlink chain, since GH Actions starts from nothing):
+#   /var/www/html/                    <- dhammagift/dg (legacy PHP repo) — only assets/ needed
+#   /var/www/html/nodejs/             <- dhammagift/dg-node (this repo)
+#   /var/www/html/suttacentral.net/sc-data/  <- suttacentral/sc-data (public)
+#   /var/www/offline-data/            <- dhammagift/offline-data — only dhammagift/ subtree needed
+# nodejs/siteroot/data/{suttacentral.net,dhammagift} are committed relative symlinks pointing at
+# exactly this layout — once the 4 repos land at these paths, no path edits are needed anywhere.
+#
+# Checkout order matters: dg (legacy) MUST land first, before anything is placed inside its
+# subdirectories (dg-node at .../html/nodejs, sc-data at .../html/suttacentral.net) — actions/
+# checkout runs `git clean -ffdx` scoped to its own target dir, which would otherwise wipe a
+# sibling checkout that arrived first. offline-data's target is a fully independent tree, order
+# doesn't matter for it.
+#
+# Needs one repo secret: DG_REPOS_TOKEN — a GitHub PAT (fine-grained, read-only is enough) with
+# access to the two PRIVATE repos, dhammagift/dg and dhammagift/offline-data. sc-data is public,
+# no token needed for it.
+
 on:
   push:
     tags:
@@ -9,10 +31,62 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    
+
     steps:
-      - name: Checkout code
+      - name: Prepare /var/www layout
+        run: |
+          sudo mkdir -p /var/www/html
+          sudo chown -R "$(id -u):$(id -g)" /var/www
+
+      # First: lands at /var/www/html, the shared parent of the next two checkouts.
+      - name: Checkout legacy dg (assets only)
         uses: actions/checkout@v4
+        with:
+          repository: dhammagift/dg
+          token: ${{ secrets.DG_REPOS_TOKEN }}
+          path: /var/www/html
+          sparse-checkout: |
+            assets/img
+            assets/css
+            assets/js
+            assets/svg
+            assets/texts
+          sparse-checkout-cone-mode: true
+          fetch-depth: 1
+
+      - name: Checkout dg-node (this repo)
+        uses: actions/checkout@v4
+        with:
+          path: /var/www/html/nodejs
+
+      - name: Checkout SuttaCentral bilara data (public, root/variant/html/translation only)
+        uses: actions/checkout@v4
+        with:
+          repository: suttacentral/sc-data
+          path: /var/www/html/suttacentral.net/sc-data
+          sparse-checkout: |
+            sc_bilara_data
+          sparse-checkout-cone-mode: true
+          fetch-depth: 1
+
+      - name: Checkout DhammaGift offline translations
+        uses: actions/checkout@v4
+        with:
+          repository: dhammagift/offline-data
+          token: ${{ secrets.DG_REPOS_TOKEN }}
+          path: /var/www/offline-data
+          sparse-checkout: |
+            dhammagift
+          sparse-checkout-cone-mode: true
+          fetch-depth: 1
+
+      - name: Verify data layout resolves
+        working-directory: /var/www/html/nodejs
+        run: |
+          test -d siteroot/data/suttacentral.net/sc_bilara_data/root || { echo "::error::sc-data did not land where siteroot/data/suttacentral.net expects it"; exit 1; }
+          test -d siteroot/data/dhammagift/translation/en || { echo "::error::offline-data did not land where siteroot/data/dhammagift expects it"; exit 1; }
+          test -f /var/www/html/assets/js/textinfo.json || { echo "::error::legacy assets/js missing (textinfo.json) — dblight.js needs it"; exit 1; }
+          echo "Data layout OK."
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -33,35 +107,76 @@ jobs:
           build-tools-version: 36.0.0
 
       - name: Install root dependencies
+        working-directory: /var/www/html/nodejs
         run: npm install --legacy-peer-deps
 
       - name: Install mobile dependencies
-        run: cd mobile && npm install --legacy-peer-deps
+        working-directory: /var/www/html/nodejs/mobile
+        run: npm install --legacy-peer-deps
+
+      # Skeleton (dg_db_light.json) is gitignored — each environment builds its own, and
+      # build-offline-db.js reads it from the repo root. Needed before build-offline-db AND
+      # before dg-light.js can boot for the TOC snapshot step below.
+      - name: Build skeleton (dg_db_light.json)
+        working-directory: /var/www/html/nodejs
+        run: npm run build-db
 
       - name: Build offline database
-        run: cd mobile && npm run build-offline-db
+        working-directory: /var/www/html/nodejs/mobile
+        run: npm run build-offline-db
 
       - name: Build assets
-        run: cd mobile && npm run build-assets
+        working-directory: /var/www/html/nodejs/mobile
+        run: npm run build-assets
+
+      # build-toc-snapshot.js reads from a LIVE dg-light.js (see that file's own header) — it's a
+      # one-time build-step client of the web server's JSON output, not a runtime dependency of
+      # the app. Start it, wait for it to actually answer, snapshot, then stop it.
+      - name: Start dg-light.js for TOC snapshot
+        working-directory: /var/www/html/nodejs
+        run: |
+          npm start > /tmp/dg-light.log 2>&1 &
+          echo $! > /tmp/dg-light.pid
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:3000/api/toc > /dev/null; then
+              echo "dg-light.js is up."
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "::error::dg-light.js did not respond on :3000/api/toc within 30s"
+          cat /tmp/dg-light.log
+          exit 1
 
       - name: Build TOC snapshot
-        run: cd mobile && npm run build-toc-snapshot
+        working-directory: /var/www/html/nodejs/mobile
+        run: npm run build-toc-snapshot
+
+      - name: Stop dg-light.js
+        if: always()
+        run: kill "$(cat /tmp/dg-light.pid)" 2>/dev/null || true
 
       - name: Sync Capacitor
-        run: cd mobile && npx cap sync android
+        working-directory: /var/www/html/nodejs/mobile
+        run: npx cap sync android
 
       - name: Grant gradlew permissions
-        run: chmod +x mobile/android/gradlew
+        run: chmod +x /var/www/html/nodejs/mobile/android/gradlew
 
-      - name: Build Android Release APK
-        run: cd mobile/android && ./gradlew assembleRelease
+      # assembleRelease (not used here) has no signingConfig in build.gradle — it would produce
+      # app-release-unsigned.apk, not installable without a separate signing step. assembleDebug
+      # is auto-signed with the Android debug keystore (no secrets needed) — same command every
+      # manual build in this project's history has used (see TODO.md).
+      - name: Build Android Debug APK
+        working-directory: /var/www/html/nodejs/mobile/android
+        run: ./gradlew assembleDebug
 
       - name: List build outputs
-        run: find mobile/android -name "*.apk" -o -name "*.aab" 2>/dev/null || echo "No APK/AAB found"
+        run: find /var/www/html/nodejs/mobile/android -name "*.apk" -o -name "*.aab" 2>/dev/null || echo "No APK/AAB found"
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            mobile/android/app/build/outputs/apk/release/app-release.apk
+            /var/www/html/nodejs/mobile/android/app/build/outputs/apk/debug/app-debug.apk
           token: ${{ secrets.GITHUB_TOKEN }}
