@@ -7,13 +7,13 @@ name: Build Mobile App
 # recreates that layout instead of the prod symlink chain, since GH Actions starts from nothing):
 #   /var/www/html/                    <- dhammagift/dg (legacy PHP repo) — only assets/ needed
 #   /var/www/html/nodejs/             <- dhammagift/dg-node (this repo)
-#   /var/www/html/suttacentral.net/sc-data/  <- suttacentral/sc-data (public)
-#   /var/www/offline-data/            <- dhammagift/offline-data — only dhammagift/ subtree needed
+#   /var/www/suttacentral.net/sc-data/  <- suttacentral/sc-data (public)
+#   /offline-data/                    <- dhammagift/offline-data — only dhammagift/ subtree needed
 # nodejs/siteroot/data/{suttacentral.net,dhammagift} are committed relative symlinks pointing at
 # exactly this layout — once the 4 repos land at these paths, no path edits are needed anywhere.
 #
 # Checkout order matters: dg (legacy) MUST land first, before anything is placed inside its
-# subdirectories (dg-node at .../html/nodejs, sc-data at .../html/suttacentral.net) — actions/
+# subdirectories (dg-node at .../html/nodejs, sc-data at .../suttacentral.net) — actions/
 # checkout runs `git clean -ffdx` scoped to its own target dir, which would otherwise wipe a
 # sibling checkout that arrived first. offline-data's target is a fully independent tree, order
 # doesn't matter for it.
@@ -86,24 +86,36 @@ jobs:
           sparse-checkout-cone-mode: true
           fetch-depth: 1
 
-      - name: Create symlink structure at /var/www
+      - name: Create symlink structure at /var/www and expected global locations
         run: |
+          # Create both the html and global paths that the repo's committed relative symlinks may point at.
           sudo mkdir -p /var/www/html/suttacentral.net
+          sudo mkdir -p /var/www/suttacentral.net
           sudo mkdir -p /var/www/offline-data
-          
+          sudo mkdir -p /offline-data
+
           # Remove any existing symlinks to avoid conflicts
           sudo rm -f /var/www/html/nodejs || true
-          sudo rm -f /var/www/html/suttacentral.net/sc-data || true
+          sudo rm -f /var/www/html/suttacentral.net/sc_bilara_data || true
+          sudo rm -f /var/www/suttacentral.net/sc_bilara_data || true
           sudo rm -f /var/www/offline-data/dhammagift || true
-          
-          # Create symlinks from workspace repos to /var/www paths
+          sudo rm -f /offline-data/dhammagift || true
+
+          # Create symlinks from workspace repos to the locations referenced by the code's relative symlinks
           sudo ln -s "$GITHUB_WORKSPACE/repos/dg" /var/www/html/dg-assets
           sudo ln -s "$GITHUB_WORKSPACE/repos/dg/assets" /var/www/html/assets
           sudo ln -s "$GITHUB_WORKSPACE/repos/dg-node" /var/www/html/nodejs
-          sudo ln -s "$GITHUB_WORKSPACE/repos/sc-data/sc_bilara_data" /var/www/html/suttacentral.net/sc-data
+
+          # SuttaCentral bilara data: place in both /var/www/html and /var/www so either relative layout works
+          sudo ln -s "$GITHUB_WORKSPACE/repos/sc-data/sc_bilara_data" /var/www/html/suttacentral.net/sc_bilara_data
+          sudo ln -s "$GITHUB_WORKSPACE/repos/sc-data/sc_bilara_data" /var/www/suttacentral.net/sc_bilara_data
+
+          # Offline translations: place under /var/www/offline-data and also root /offline-data to satisfy different relative links
           sudo ln -s "$GITHUB_WORKSPACE/repos/offline-data/dhammagift" /var/www/offline-data/dhammagift
-          
-          sudo chown -R "$(id -u):$(id -g)" /var/www
+          sudo ln -s "$GITHUB_WORKSPACE/repos/offline-data/dhammagift" /offline-data/dhammagift
+
+          sudo chown -R "$(id -u):$(id -g)" /var/www || true
+          sudo chown -R "$(id -u):$(id -g)" /offline-data || true
 
       - name: Verify data layout resolves
         working-directory: /var/www/html/nodejs
