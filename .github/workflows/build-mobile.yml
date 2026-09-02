@@ -147,12 +147,31 @@ jobs:
           echo "Data layout OK."
           ls -la siteroot/data/
 
+      - name: Ensure cache directories exist
+        run: |
+          echo "Preparing cache directories"
+          mkdir -p ~/.npm
+          mkdir -p ~/.cache/yarn
+          mkdir -p "$GITHUB_WORKSPACE/repos/dg-node/node_modules"
+          mkdir -p "$GITHUB_WORKSPACE/repos/dg-node/mobile/node_modules"
+          echo "Cache directories ready"
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '24.x'
-          cache: 'npm'
-          cache-dependency-path: /var/www/html/nodejs/package-lock.json
+
+      - name: Restore npm/yarn cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.npm
+            ~/.cache/yarn
+            repos/dg-node/node_modules
+            repos/dg-node/mobile/node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('repos/dg-node/**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
