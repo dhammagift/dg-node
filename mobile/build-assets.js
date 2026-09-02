@@ -221,6 +221,10 @@ function copySvgIcons() {
 
 function copyReaderImages() {
     const srcDir = f('reader/images');
+    if (!fs.existsSync(srcDir)) {
+        console.warn(`MISSING: reader/images directory does not exist`);
+        return;
+    }
     const destDir = path.join(WWW, 'reader', 'images');
     fs.mkdirSync(destDir, { recursive: true });
     for (const name of fs.readdirSync(srcDir)) {
