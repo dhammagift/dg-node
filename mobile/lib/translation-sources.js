@@ -194,7 +194,7 @@ async function walkTranslationDir(dir, wantedIds, bySutta) {
     }));
 }
 
-async function buildTranslationIndex(suttaIds, targetLangs) {
+async function buildTranslationIndex(suttaIds, targetLangs, multiForLangs) {
     const wantedIds = new Set(suttaIds);
     const bySutta = new Map();
 
@@ -227,7 +227,7 @@ async function buildTranslationIndex(suttaIds, targetLangs) {
 
     const result = new Map();
     for (const suttaId of suttaIds) {
-        result.set(suttaId, filterPreferredTranslators(bySutta.get(suttaId) || {}));
+        result.set(suttaId, filterPreferredTranslators(bySutta.get(suttaId) || {}, multiForLangs));
     }
     return result;
 }

@@ -11,10 +11,48 @@ window.isRu = window.location.pathname.includes('/r/') ||
                      window.location.pathname.includes('/ml/') || 
                      window.location.pathname.includes('/mt/');
 // Делаем переменные глобальными для доступа из других скриптов
-window.isQuickModalRendered = false; 
-window.quickModalIsOpen = false;     
+window.isQuickModalRendered = false;
+window.quickModalIsOpen = false;
 window.quickOverlay = null;
 window.quickModal = null;
+
+// Offline app only (window.dgOfflineReady, set by mobile/www/app.js — undefined on the real
+// site, so this never runs there). Google OAuth login can't come back into the app: the "Log in"
+// button opens the real site in an external Chrome Custom Tab (native-bridge.js, required by
+// Google — it rejects OAuth inside any embedded WebView), but that tab is a different browser
+// with different storage on a different origin (dhamma.gift vs the app's own https://localhost)
+// — there is no channel back into the app's WebView, so the resulting Firebase session, and any
+// favorites/history it would sync, never reach the app (owner-reported: page shows logged in,
+// modal stays empty). The site's /login already has a second, OAuth-free path for exactly this —
+// a user-chosen passphrase (login/indexBak.html's uiLoginPhrase: SHA-256 hash, "anon_" + first 24
+// hex chars, is the Firestore doc id) — same phrase on two devices reaches the same cloud data,
+// no browser handoff needed. Reproduced here (not called via a page navigation, since /login
+// itself isn't part of this app) using window.syncEnablePhrase, already loaded on this page via
+// settings-bundle.js. This is the "Merge" choice from that page's confirmation modal (keep local
+// data, add cloud on top) — the only non-destructive one (settings.js's setupCloudListeners does
+// this merge automatically); "Overwrite" (wipe local first) isn't offered here, same result is
+// reachable by clearing favorites/history first if that's ever actually wanted.
+async function dgOfflineLoginWithPhrase() {
+    const phrase = window.prompt(window.isRu
+        ? 'Секретная фраза для синхронизации (или придумайте новую, от 8 символов) — та же фраза на другом устройстве подключит те же избранное/историю:'
+        : 'Sync passphrase (or make up a new one, 8+ characters) — the same phrase on another device connects the same favorites/history:');
+    if (!phrase) return;
+    const rawPhrase = phrase.trim().toLowerCase().replace(/\s+/g, '-');
+    if (rawPhrase.length < 8) {
+        if (typeof showBubbleNotification === 'function') {
+            showBubbleNotification(window.isRu ? '❌ Слишком короткая фраза' : '❌ Phrase too short');
+        }
+        return;
+    }
+    if (typeof window.syncEnablePhrase !== 'function') return;
+    const hashBuffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(rawPhrase));
+    const hashHex = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+    await window.syncEnablePhrase(rawPhrase, 'anon_' + hashHex.substring(0, 24));
+    if (typeof window.refreshQuickModalData === 'function') window.refreshQuickModalData();
+    if (typeof showBubbleNotification === 'function') {
+        showBubbleNotification(window.isRu ? '✅ Вход выполнен' : '✅ Logged in', 2500, 'success');
+    }
+}
 
 function buildQuickModalDOM() {
   const currentPath = window.location.pathname;
@@ -250,6 +288,8 @@ function buildQuickModalDOM() {
               }
               
               btnSyncNow.style.opacity = '1';
+          } else if (window.dgOfflineReady) {
+              dgOfflineLoginWithPhrase();
           } else {
               window.location.href = window.isRu ? '/ru/login' : '/login';
           }
@@ -258,14 +298,16 @@ function buildQuickModalDOM() {
       // НОВОЕ: Обработчик правого клика и долгого нажатия на мобильных (contextmenu)
       btnSyncNow.addEventListener('contextmenu', (e) => {
           e.preventDefault(); // Отключаем стандартное контекстное меню браузера
-          window.location.href = window.isRu ? '/ru/login' : '/login';
+          if (window.dgOfflineReady) dgOfflineLoginWithPhrase();
+          else window.location.href = window.isRu ? '/ru/login' : '/login';
       });
 
       // НОВОЕ: Обработчик клика колесиком мыши (auxclick)
       btnSyncNow.addEventListener('auxclick', (e) => {
           if (e.button === 1) { // button 1 означает среднюю кнопку (колесико)
               e.preventDefault();
-              window.location.href = window.isRu ? '/ru/login' : '/login';
+              if (window.dgOfflineReady) dgOfflineLoginWithPhrase();
+              else window.location.href = window.isRu ? '/ru/login' : '/login';
           }
       });
   }

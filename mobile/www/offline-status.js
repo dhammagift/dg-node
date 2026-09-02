@@ -64,16 +64,21 @@
     // app.js dispatches this (and awaits the resolve it carries) only when a download is
     // actually needed AND the connection isn't Wi-Fi — never on a fully-cached return visit.
     //
-    // Owner: "указывай разархивированный объём и заархивированный, человек должен понимать
-    // хватит ли места на телефоне" — this app has no separate unpack step (what fetchDbBytes
-    // downloads is byte-for-byte what's stored in IndexedDB), so download size and on-device
-    // size are the same number; stated explicitly as "storage" (the number that answers "will
-    // it fit") rather than left ambiguous as if it were only a network transfer size.
+    // Owner (round 2): the previous single "~275MB, that's also what gets downloaded" number was
+    // wrong — dg-light.js's compression() gzips these responses (see CLAUDE.md/TODO.md), so the
+    // ACTUAL network transfer is much smaller than the on-disk/IndexedDB size fetch() ends up
+    // storing (measured 2026-09-02 against the live mobile-data endpoint: core+ru+en gzip to
+    // ~60MB total vs ~260MB decompressed). Mobile-data cost cares about the wire number, free-
+    // space cares about the storage number — showing only one of them is misleading either way.
+    // Not computed at runtime (would need an upfront HEAD pass, see fetchDbBytes's own comment on
+    // why that's avoided) — re-measure and update these if the corpus is rebuilt and grows.
+    const DOWNLOAD_MB = 60;
+    const STORAGE_MB = 260;
     window.addEventListener('dg:need-consent', function (e) {
         const ru = isRuLang();
         const msg = ru
-            ? 'Офлайн-библиотека займёт ~275МБ места на телефоне (столько же будет скачано). Сейчас не Wi-Fi — продолжить по мобильному интернету?'
-            : 'The offline library needs ~275MB of storage on your phone (that is also how much will be downloaded). You are not on Wi-Fi — continue on mobile data?';
+            ? `Скачается ~${DOWNLOAD_MB}МБ трафика (сжато), а после распаковки офлайн-библиотека займёт ~${STORAGE_MB}МБ места на телефоне. Сейчас не Wi-Fi — продолжить по мобильному интернету?`
+            : `~${DOWNLOAD_MB}MB will be downloaded (compressed); unpacked, the offline library needs ~${STORAGE_MB}MB of storage on your phone. You are not on Wi-Fi — continue on mobile data?`;
         e.detail.resolve(window.confirm(msg));
     });
 
@@ -114,15 +119,16 @@
                 );
             }
         }).catch(function () {
-            // Declining consent rejects before any 'dg:dl-progress' ever fires, so `bar` can
-            // still be null here — unlike the success path, this message must always show.
-            const el = ensureBar();
-            el.classList.add('show');
-            el.textContent = isRuLang()
-                ? 'Скачивание отложено — повторите в Настройках'
-                : 'Download postponed — retry from Settings';
-            // Stays visible (no auto-hide) — search/reading are degraded until the user retries,
-            // this is the one persistent reminder that something still needs attention.
+            // Owner: a permanent banner just sits there forever after declining — a few-second
+            // heads-up is enough (same toast the success path already uses below); Settings'
+            // own "Offline library" row (offline-library-settings.js) is the persistent, always-
+            // visible reminder/retry point, this doesn't need to duplicate that by staying up.
+            if (typeof window.showBubbleNotification === 'function') {
+                window.showBubbleNotification(
+                    isRuLang() ? 'Скачивание отложено — повторите в Настройках' : 'Download postponed — retry from Settings',
+                    4000, 'info'
+                );
+            }
         });
     }
 })();

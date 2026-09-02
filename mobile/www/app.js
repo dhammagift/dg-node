@@ -389,11 +389,11 @@ function buildEnrichResponse(keyword, ids, targetLangs) {
 
 // Mirrors dg-light.js's getSuttaBaseData+buildTextDataFromBase+/api/text/:suttaId handler, reading
 // from local SQLite instead of the filesystem. Deliberately NOT ported: en-fallback when the
-// requested language has zero translations, ?script= (Aksharamukha) conversion, and multiFor
-// (second translator per language) — build-offline-db.js only stores one preferred translator per
-// sutta per language, so a multiFor-requesting mode just sees one entry here and
-// search-render.js's own "collapse to one column if the second translator is missing" fallback
-// kicks in, same as a sutta that genuinely has no second translator.
+// requested language has zero translations, and ?script= (Aksharamukha) conversion. multiFor
+// (second translator per language) IS ported — build-offline-db.js now asks
+// buildTranslationIndex for a second, "_other"-sourced translator per language too, so
+// `translations` below can carry 2 keys per lang; search-render.js's own "collapse to one column
+// if the second translator is missing" fallback still covers suttas that genuinely have only one.
 function buildApiTextResponse(suttaId, params) {
     const meta = suttaMeta(suttaId);
     if (!meta) return null;

@@ -125,10 +125,13 @@ async function buildLangDb(lang, suttaIds) {
         }
     });
 
-    // buildTranslationIndex already applies the same SOURCE_PRIORITY/filterPreferredTranslators
-    // logic as the live web search (see lib/translation-sources.js header) — one preferred
-    // translator per sutta per language, not every translator ever recorded.
-    const bySutta = await buildTranslationIndex(suttaIds, [lang]);
+    // buildTranslationIndex applies the same SOURCE_PRIORITY/filterPreferredTranslators logic as
+    // the live web search (see lib/translation-sources.js header). Passing `lang` as a multiFor
+    // language too (3rd arg) makes it keep a second, "_other"-sourced translator per sutta when
+    // one exists — the same "second opinion" dg-light.js's ee/mt reader modes show online — not
+    // just the single preferred one; buildApiTextResponse (mobile/www/app.js) already forwards
+    // whatever translator keys land in `translations` as-is, no client change needed for this.
+    const bySutta = await buildTranslationIndex(suttaIds, [lang], [lang]);
     let rows = 0;
     for (const [suttaId, files] of bySutta) {
         for (const [transKey, filePath] of Object.entries(files)) {

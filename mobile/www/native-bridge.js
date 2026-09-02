@@ -68,14 +68,20 @@
             return;
         }
         // settings/index.html's "Log in" button navigates via `location.href = ...` from its own
-        // .onclick, set after this listener runs (capture phase) — same target, same problem as
-        // the anchors above, just not an <a>. isRu mirrors that page's own `const isRu = ...`
-        // check (settings/index.html:580) since this file has no access to that local variable.
+        // .onclick, set after this listener runs (capture phase) — same target as the anchors
+        // above, but NOT sent externally like them: opening /login in a Custom Tab is a dead end
+        // for this specific button (owner-reported "sends you somewhere you can't get into") —
+        // that tab's resulting Firebase session lives in a different browser on a different
+        // origin, it can never reach back into this app's own WebView storage (see quickModal.js
+        // override's dgOfflineLoginWithPhrase() for the actual fix — a passphrase, entered right
+        // here in the app, no browser handoff needed). Route to the real working control instead
+        // of the dead-end external one: home + auto-open the Quick Modal (same `_openQuickModal`
+        // native-shortcut param app.js already handles, see its own header) where that sync
+        // button lives.
         if (e.target.closest('#cloudBtn')) {
             e.preventDefault();
             e.stopPropagation();
-            var isRu = (localStorage.getItem('dhammaLanguage') || localStorage.getItem('siteLanguage') || 'en') === 'ru';
-            openExternal(ONLINE_ORIGIN + (isRu ? '/ru/login' : '/login'));
+            location.href = '/?_openQuickModal=1';
         }
     }, true);
 
