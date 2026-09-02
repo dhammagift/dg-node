@@ -26,6 +26,9 @@ on:
       - 'mobile-v*'
   workflow_dispatch:
 
+env:
+  REPOS_ROOT: ${{ github.workspace }}/repos
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -33,17 +36,17 @@ jobs:
     steps:
       - name: Prepare workspace layout
         run: |
-          mkdir -p "$GITHUB_WORKSPACE/repos/dg"
-          mkdir -p "$GITHUB_WORKSPACE/repos/dg-node"
-          mkdir -p "$GITHUB_WORKSPACE/repos/sc-data"
-          mkdir -p "$GITHUB_WORKSPACE/repos/offline-data"
+          mkdir -p "$REPOS_ROOT/dg"
+          mkdir -p "$REPOS_ROOT/dg-node"
+          mkdir -p "$REPOS_ROOT/sc-data"
+          mkdir -p "$REPOS_ROOT/offline-data"
 
       - name: Configure git safe directories
         run: |
-          git config --global --add safe.directory "$GITHUB_WORKSPACE/repos/dg"
-          git config --global --add safe.directory "$GITHUB_WORKSPACE/repos/dg-node"
-          git config --global --add safe.directory "$GITHUB_WORKSPACE/repos/sc-data"
-          git config --global --add safe.directory "$GITHUB_WORKSPACE/repos/offline-data"
+          git config --global --add safe.directory "$REPOS_ROOT/dg"
+          git config --global --add safe.directory "$REPOS_ROOT/dg-node"
+          git config --global --add safe.directory "$REPOS_ROOT/sc-data"
+          git config --global --add safe.directory "$REPOS_ROOT/offline-data"
 
       # First: lands at workspace/repos/dg
       - name: Checkout legacy dg (assets only)
@@ -102,17 +105,17 @@ jobs:
           sudo rm -f /offline-data/dhammagift || true
 
           # Create symlinks from workspace repos to the locations referenced by the code's relative symlinks
-          sudo ln -s "$GITHUB_WORKSPACE/repos/dg" /var/www/html/dg-assets
-          sudo ln -s "$GITHUB_WORKSPACE/repos/dg/assets" /var/www/html/assets
-          sudo ln -s "$GITHUB_WORKSPACE/repos/dg-node" /var/www/html/nodejs
+          sudo ln -s "$REPOS_ROOT/dg" /var/www/html/dg-assets
+          sudo ln -s "$REPOS_ROOT/dg/assets" /var/www/html/assets
+          sudo ln -s "$REPOS_ROOT/dg-node" /var/www/html/nodejs
 
           # SuttaCentral bilara data: place in both /var/www/html and /var/www so either relative layout works
-          sudo ln -s "$GITHUB_WORKSPACE/repos/sc-data/sc_bilara_data" /var/www/html/suttacentral.net/sc_bilara_data
-          sudo ln -s "$GITHUB_WORKSPACE/repos/sc-data/sc_bilara_data" /var/www/suttacentral.net/sc_bilara_data
+          sudo ln -s "$REPOS_ROOT/sc-data/sc_bilara_data" /var/www/html/suttacentral.net/sc_bilara_data
+          sudo ln -s "$REPOS_ROOT/sc-data/sc_bilara_data" /var/www/suttacentral.net/sc_bilara_data
 
           # Offline translations: place under /var/www/offline-data and also root /offline-data to satisfy different relative links
-          sudo ln -s "$GITHUB_WORKSPACE/repos/offline-data/dhammagift" /var/www/offline-data/dhammagift
-          sudo ln -s "$GITHUB_WORKSPACE/repos/offline-data/dhammagift" /offline-data/dhammagift
+          sudo ln -s "$REPOS_ROOT/offline-data/dhammagift" /var/www/offline-data/dhammagift
+          sudo ln -s "$REPOS_ROOT/offline-data/dhammagift" /offline-data/dhammagift
 
           sudo chown -R "$(id -u):$(id -g)" /var/www || true
           sudo chown -R "$(id -u):$(id -g)" /offline-data || true
@@ -120,7 +123,7 @@ jobs:
           # Replace placeholder text-files in the checked-out repo that represent relative symlink targets
           # with real symlinks that point at the locations we just created. This mirrors the production layout
           # where siteroot/data/<site> are actual symlinks.
-          DG_NODE_DATA="$GITHUB_WORKSPACE/repos/dg-node/siteroot/data"
+          DG_NODE_DATA="$REPOS_ROOT/dg-node/siteroot/data"
           if [ -d "$DG_NODE_DATA" ]; then
             echo "Replacing siteroot/data placeholders with symlinks (force)"
             sudo rm -rf "$DG_NODE_DATA/suttacentral.net" || true
@@ -131,9 +134,9 @@ jobs:
 
           # Debug info: show workspace and sc-data contents, and resolve the created symlink
           echo "Workspace repos:"
-          ls -la "$GITHUB_WORKSPACE/repos" || true
+          ls -la "$REPOS_ROOT" || true
           echo "sc-data contents:"
-          ls -la "$GITHUB_WORKSPACE/repos/sc-data" || true
+          ls -la "$REPOS_ROOT/sc-data" || true
           echo "Resolved link for repo siteroot/data/suttacentral.net:"
           readlink -f "$DG_NODE_DATA/suttacentral.net" || true
 
@@ -152,8 +155,8 @@ jobs:
           echo "Preparing cache directories"
           mkdir -p ~/.npm
           mkdir -p ~/.cache/yarn
-          mkdir -p "$GITHUB_WORKSPACE/repos/dg-node/node_modules"
-          mkdir -p "$GITHUB_WORKSPACE/repos/dg-node/mobile/node_modules"
+          mkdir -p "$REPOS_ROOT/dg-node/node_modules"
+          mkdir -p "$REPOS_ROOT/dg-node/mobile/node_modules"
           echo "Cache directories ready"
 
       - name: Set up Node.js
