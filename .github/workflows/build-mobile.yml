@@ -274,7 +274,21 @@ jobs:
       # same command succeeds on a long-lived dev box where the server had already run before.
       - name: Build assets
         working-directory: /var/www/html/nodejs/mobile
-        run: npm run build-assets
+        run: |
+          ls -la /var/www/html/nodejs/settings/ | tee /tmp/build-assets-debug.log
+          npm run build-assets 2>&1 | tee -a /tmp/build-assets-debug.log
+          exit ${PIPESTATUS[0]}
+        shell: bash
+
+      # Temporary diagnostic: repo has no admin-scoped log access for this session to debug CI
+      # failures with — remove once "Build assets" is confirmed green for a few runs.
+      - name: Upload build-assets debug log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-assets-debug-log
+          path: /tmp/build-assets-debug.log
+          retention-days: 3
 
       - name: Sync Capacitor
         working-directory: /var/www/html/nodejs/mobile
