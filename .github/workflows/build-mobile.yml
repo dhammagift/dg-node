@@ -222,21 +222,32 @@ jobs:
       # Skeleton (dg_db_light.json) is gitignored — each environment builds its own, and
       # build-offline-db.js reads it from the repo root. Needed before build-offline-db AND
       # before dg-light.js can boot for the TOC snapshot step below.
+      #
+      # dg-light.js's app.listen() accepts connections immediately, while its async initServer()
+      # (buildSettingsDemoCache — Aksharamukha conversion for every script — then
+      # buildScriptListCache/buildLangCountsCache/buildTranslatorCatalogCache) keeps running
+      # concurrently in the background and writes settings/{scripts,demo-data,lang-counts,
+      # translator-catalog}.json only once it's done. Measured locally: /api/toc responds in ~6s,
+      # "Build TOC snapshot" (below) finishes by ~16s, but translator-catalog.json — the LAST file
+      # in that sequence — doesn't land until ~36s. "Stop dg-light.js" (further below) then kills
+      # the process, freezing initServer() wherever it was — so "Build assets" (which needs all 4
+      # of those files) failed with some of them permanently missing. Waiting for
+      # translator-catalog.json here, not just /api/toc, closes that window.
       - name: Start dg-light.js for TOC snapshot
         working-directory: /var/www/html/nodejs
         run: |
           npm start > /tmp/dg-light.log 2>&1 &
           echo $! > /tmp/dg-light.pid
-          echo "Waiting for dg-light.js to start..."
-          for i in $(seq 1 30); do
-            if curl -sf http://localhost:3000/api/toc > /dev/null 2>&1; then
-              echo "dg-light.js is up on attempt $i."
+          echo "Waiting for dg-light.js to start and finish its async init..."
+          for i in $(seq 1 45); do
+            if curl -sf http://localhost:3000/api/toc > /dev/null 2>&1 && [ -f settings/translator-catalog.json ]; then
+              echo "dg-light.js is up and fully initialized on attempt $i."
               exit 0
             fi
-            echo "Attempt $i/30..."
+            echo "Attempt $i/45..."
             sleep 2
           done
-          echo "::error::dg-light.js did not respond on :3000/api/toc within 60s"
+          echo "::error::dg-light.js did not become fully ready within 90s"
           cat /tmp/dg-light.log
           exit 1
 
