@@ -158,11 +158,18 @@ async function main() {
     console.log(`Building core.db for ${suttaIds.length} sutta id(s)...`);
     const segCount = await buildCoreDb(suttaIds, skeleton);
     console.log(`core.db: ${segCount} suttas with root text indexed.`);
+    // Catches a broken SC_BILARA path early and loud (readJsonIfExists swallows ENOENT per-file,
+    // so a wrong data root silently produces a near-empty db instead of an error) — cheaper to
+    // fail here than 20 minutes later when the offline app's TOC/search comes up empty.
+    if (segCount === 0 && suttaIds.length > 0) {
+        throw new Error('0 suttas indexed into core.db — SC_BILARA path is likely wrong or empty (see lib/translation-sources.js)');
+    }
 
     for (const lang of args.langs) {
         console.log(`Building lang_${lang}.db...`);
         const rows = await buildLangDb(lang, suttaIds);
         console.log(`lang_${lang}.db: ${rows} translated segments indexed.`);
+        if (rows === 0) throw new Error(`0 segments indexed into lang_${lang}.db — translation source path is likely wrong or empty`);
     }
 }
 

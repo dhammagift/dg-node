@@ -99,8 +99,8 @@ jobs:
 
           # Remove any existing symlinks to avoid conflicts
           sudo rm -f /var/www/html/nodejs || true
-          sudo rm -f /var/www/html/suttacentral.net/sc_bilara_data || true
-          sudo rm -f /var/www/suttacentral.net/sc_bilara_data || true
+          sudo rm -f /var/www/html/suttacentral.net/sc-data || true
+          sudo rm -f /var/www/suttacentral.net/sc-data || true
           sudo rm -f /var/www/offline-data/dhammagift || true
           sudo rm -f /offline-data/dhammagift || true
 
@@ -109,9 +109,13 @@ jobs:
           sudo ln -s "$REPOS_ROOT/dg/assets" /var/www/html/assets
           sudo ln -s "$REPOS_ROOT/dg-node" /var/www/html/nodejs
 
-          # SuttaCentral bilara data: place in both /var/www/html and /var/www so either relative layout works
-          sudo ln -s "$REPOS_ROOT/sc-data/sc_bilara_data" /var/www/html/suttacentral.net/sc_bilara_data
-          sudo ln -s "$REPOS_ROOT/sc-data/sc_bilara_data" /var/www/suttacentral.net/sc_bilara_data
+          # SuttaCentral bilara data: dblight.js/dg-light.js/mobile's translation-sources.js all
+          # read from .../suttacentral.net/sc-data/sc_bilara_data (the real prod layout has an
+          # actual sc-data/ directory there, see nodejs/CLAUDE.md). Symlink the CHECKED-OUT sc-data
+          # dir itself (not its sc_bilara_data subfolder) one level up so that "sc-data" segment
+          # resolves — place in both /var/www/html and /var/www so either relative layout works.
+          sudo ln -s "$REPOS_ROOT/sc-data" /var/www/html/suttacentral.net/sc-data
+          sudo ln -s "$REPOS_ROOT/sc-data" /var/www/suttacentral.net/sc-data
 
           # Offline translations: place under /var/www/offline-data and also root /offline-data to satisfy different relative links
           sudo ln -s "$REPOS_ROOT/offline-data/dhammagift" /var/www/offline-data/dhammagift
@@ -144,7 +148,7 @@ jobs:
         working-directory: /var/www/html/nodejs
         run: |
           echo "Checking data layout..."
-          test -d siteroot/data/suttacentral.net/sc_bilara_data/root || { echo "::error::sc-data did not land where siteroot/data/suttacentral.net expects it"; exit 1; }
+          test -d siteroot/data/suttacentral.net/sc-data/sc_bilara_data/root || { echo "::error::sc-data did not land where siteroot/data/suttacentral.net/sc-data expects it"; exit 1; }
           test -d siteroot/data/dhammagift/translation/en || { echo "::error::offline-data did not land where siteroot/data/dhammagift expects it"; exit 1; }
           test -f /var/www/html/assets/js/textinfo.json || { echo "::error::legacy assets/js missing (textinfo.json) — dblight.js needs it"; exit 1; }
           echo "Data layout OK."

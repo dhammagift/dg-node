@@ -158,6 +158,13 @@ async function compileLightSkeleton() {
         }
     }
 
+    // walkDirectory() swallows a missing/unreadable root dir silently (returns early, no suttas
+    // found) — without this check a broken SC_BILARA_ROOT path (e.g. a symlink chain missing a
+    // path segment) produces an empty-but-"successful" skeleton instead of an error.
+    if (Object.keys(finalSkeleton).length === 0) {
+        throw new Error(`0 suttas in skeleton — SC_BILARA_ROOT is likely wrong or empty: ${SC_BILARA_ROOT}`);
+    }
+
     console.log(`Saving Skeleton into ${outputFile}...`);
     await fs.writeFile(outputFile, JSON.stringify(finalSkeleton), 'utf8');
     console.log('Build done!');
