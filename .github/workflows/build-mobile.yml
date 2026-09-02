@@ -33,26 +33,27 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Prepare /var/www layout
+      - name: Prepare workspace layout
         run: |
-          sudo mkdir -p /var/www/html
-          sudo mkdir -p /var/www/offline-data
-          sudo chown -R "$(id -u):$(id -g)" /var/www
+          mkdir -p "$GITHUB_WORKSPACE/repos/dg"
+          mkdir -p "$GITHUB_WORKSPACE/repos/dg-node"
+          mkdir -p "$GITHUB_WORKSPACE/repos/sc-data"
+          mkdir -p "$GITHUB_WORKSPACE/repos/offline-data"
 
       - name: Configure git safe directories
         run: |
-          git config --global --add safe.directory /var/www/html
-          git config --global --add safe.directory /var/www/html/nodejs
-          git config --global --add safe.directory /var/www/html/suttacentral.net/sc-data
-          git config --global --add safe.directory /var/www/offline-data
+          git config --global --add safe.directory "$GITHUB_WORKSPACE/repos/dg"
+          git config --global --add safe.directory "$GITHUB_WORKSPACE/repos/dg-node"
+          git config --global --add safe.directory "$GITHUB_WORKSPACE/repos/sc-data"
+          git config --global --add safe.directory "$GITHUB_WORKSPACE/repos/offline-data"
 
-      # First: lands at /var/www/html, the shared parent of the next two checkouts.
+      # First: lands at workspace/repos/dg
       - name: Checkout legacy dg (assets only)
         uses: actions/checkout@v4
         with:
           repository: dhammagift/dg
           token: ${{ secrets.DG_REPOS_TOKEN }}
-          path: /var/www/html
+          path: repos/dg
           sparse-checkout: |
             assets/img
             assets/css
@@ -61,36 +62,52 @@ jobs:
             assets/texts
           sparse-checkout-cone-mode: true
           fetch-depth: 1
-          unsafe: true
 
       - name: Checkout dg-node (this repo)
         uses: actions/checkout@v4
         with:
-          path: /var/www/html/nodejs
-          unsafe: true
+          path: repos/dg-node
+          fetch-depth: 1
 
       - name: Checkout SuttaCentral bilara data (public, root/variant/html/translation only)
         uses: actions/checkout@v4
         with:
           repository: suttacentral/sc-data
-          path: /var/www/html/suttacentral.net/sc-data
+          path: repos/sc-data
           sparse-checkout: |
             sc_bilara_data
           sparse-checkout-cone-mode: true
           fetch-depth: 1
-          unsafe: true
 
       - name: Checkout DhammaGift offline translations
         uses: actions/checkout@v4
         with:
           repository: dhammagift/offline-data
           token: ${{ secrets.DG_REPOS_TOKEN }}
-          path: /var/www/offline-data
+          path: repos/offline-data
           sparse-checkout: |
             dhammagift
           sparse-checkout-cone-mode: true
           fetch-depth: 1
-          unsafe: true
+
+      - name: Create symlink structure at /var/www
+        run: |
+          sudo mkdir -p /var/www/html/suttacentral.net
+          sudo mkdir -p /var/www/offline-data
+          
+          # Remove any existing symlinks to avoid conflicts
+          sudo rm -f /var/www/html/nodejs || true
+          sudo rm -f /var/www/html/suttacentral.net/sc-data || true
+          sudo rm -f /var/www/offline-data/dhammagift || true
+          
+          # Create symlinks from workspace repos to /var/www paths
+          sudo ln -s "$GITHUB_WORKSPACE/repos/dg" /var/www/html/dg-assets
+          sudo ln -s "$GITHUB_WORKSPACE/repos/dg/assets" /var/www/html/assets
+          sudo ln -s "$GITHUB_WORKSPACE/repos/dg-node" /var/www/html/nodejs
+          sudo ln -s "$GITHUB_WORKSPACE/repos/sc-data/sc_bilara_data" /var/www/html/suttacentral.net/sc-data
+          sudo ln -s "$GITHUB_WORKSPACE/repos/offline-data/dhammagift" /var/www/offline-data/dhammagift
+          
+          sudo chown -R "$(id -u):$(id -g)" /var/www
 
       - name: Verify data layout resolves
         working-directory: /var/www/html/nodejs
