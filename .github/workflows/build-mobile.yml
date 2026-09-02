@@ -69,6 +69,11 @@ jobs:
           path: repos/dg-node
           fetch-depth: 1
 
+      # structure/tree is NOT optional — dg-light.js's TOC_TREE_ROOT reads
+      # .../sc-data/structure/tree/{sutta,vinaya,abhidhamma}/{code}-tree.json for every single
+      # /api/toc/book/:code request. Missing it doesn't error at checkout time (sc_bilara_data
+      # alone builds a perfectly valid skeleton/offline-db) — every book lookup just 404s at
+      # request time instead, which is exactly what silently broke "Build TOC snapshot" 46/46.
       - name: Checkout SuttaCentral bilara data (public, root/variant/html/translation only)
         uses: actions/checkout@v4
         with:
@@ -76,6 +81,7 @@ jobs:
           path: repos/sc-data
           sparse-checkout: |
             sc_bilara_data
+            structure
           sparse-checkout-cone-mode: true
           fetch-depth: 1
 
@@ -149,6 +155,7 @@ jobs:
         run: |
           echo "Checking data layout..."
           test -d siteroot/data/suttacentral.net/sc-data/sc_bilara_data/root || { echo "::error::sc-data did not land where siteroot/data/suttacentral.net/sc-data expects it"; exit 1; }
+          test -d siteroot/data/suttacentral.net/sc-data/structure/tree/sutta || { echo "::error::sc-data's structure/tree missing — every /api/toc/book/:code request 404s without it (TOC_TREE_ROOT in dg-light.js)"; exit 1; }
           test -d siteroot/data/dhammagift/translation/en || { echo "::error::offline-data did not land where siteroot/data/dhammagift expects it"; exit 1; }
           test -f /var/www/html/assets/js/textinfo.json || { echo "::error::legacy assets/js missing (textinfo.json) — dblight.js needs it"; exit 1; }
           echo "Data layout OK."

@@ -24,6 +24,7 @@ public/overrides/js/datatables/
 settings/demo-data.json
 settings/lang-counts.json
 settings/scripts.json
+settings/translator-catalog.json
 
 # Генерируется build-icons.js (npm run build-icons) из @fortawesome/fontawesome-free —
 # та же логика, что и dg_db*.json выше: не источник, каждое окружение строит сам.
