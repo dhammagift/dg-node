@@ -2,21 +2,29 @@ name: Build Mobile App
 
 # Builds mobile/dist/*.db + the Android APK entirely on GitHub's runner — the prod server has no
 # disk headroom for this (core.db+lang_ru.db+lang_en.db alone are ~260MB, plus Gradle/Android SDK
-# caches). Needs 4 repos on disk in the EXACT relative layout mobile/lib/translation-sources.js
-# and mobile/build-assets.js expect (see nodejs/CLAUDE.md "Прод: пути и symlinks" — this workflow
-# recreates that layout instead of the prod symlink chain, since GH Actions starts from nothing):
-#   /var/www/html/                    <- dhammagift/dg (legacy PHP repo) — only assets/ needed
-#   /var/www/html/nodejs/             <- dhammagift/dg-node (this repo)
-#   /var/www/suttacentral.net/sc-data/  <- suttacentral/sc-data (public)
-#   /offline-data/                    <- dhammagift/offline-data — only dhammagift/ subtree needed
-# nodejs/siteroot/data/{suttacentral.net,dhammagift} are committed relative symlinks pointing at
-# exactly this layout — once the 4 repos land at these paths, no path edits are needed anywhere.
+# caches).
 #
-# Checkout order matters: dg (legacy) MUST land first, before anything is placed inside its
-# subdirectories (dg-node at .../html/nodejs, sc-data at .../suttacentral.net) — actions/
-# checkout runs `git clean -ffdx` scoped to its own target dir, which would otherwise wipe a
-# sibling checkout that arrived first. offline-data's target is a fully independent tree, order
-# doesn't matter for it.
+# dg-node has many git-tracked RELATIVE symlinks (reader/images/*.png, reader/css/index.css,
+# siteroot/*, ...) that assume the exact prod directory depth:
+#   /var/www/html/                    <- dhammagift/dg (legacy PHP repo)
+#   /var/www/html/nodejs/             <- dhammagift/dg-node (this repo)
+# A relative symlink resolves against the REAL (kernel-canonicalized) path, not any alias on top
+# of it — so checking dg-node out to some other location (e.g. a workspace-relative repos/dg-node/)
+# and then symlink-ALIASING /var/www/html/nodejs to it does NOT make those relative symlinks
+# resolve correctly: Node's readdirSync/copyFileSync/__dirname all see the real underlying path,
+# not the alias. Learned this the hard way — reader/images/favicon-name-black.png ->
+# ../../../assets/img/read/... and reader/css/index.css -> ../../../read/css/index.css both broke
+# "Build assets" with ENOENT until dg and dg-node were checked out DIRECTLY to their real absolute
+# prod paths below. No alias needed for either anymore.
+#
+# sc-data and offline-data don't have this problem: they're referenced only through
+# nodejs/siteroot/data/{suttacentral.net,dhammagift}, which this workflow force-replaces with
+# hand-made ABSOLUTE symlinks anyway (see "Create symlink structure" below) — independent of
+# checkout path depth, so they stay under the workspace-relative repos/ for simplicity.
+#
+# Checkout order matters: dg (legacy) MUST land first, since dg-node's target is nested inside it
+# (/var/www/html/nodejs) — actions/checkout runs `git clean -ffdx` scoped to its own target dir,
+# which would otherwise wipe a sibling checkout that arrived first.
 #
 # All repos are public, so no token needed.
 
@@ -36,37 +44,40 @@ jobs:
     steps:
       - name: Prepare workspace layout
         run: |
-          mkdir -p "$REPOS_ROOT/dg"
-          mkdir -p "$REPOS_ROOT/dg-node"
+          sudo mkdir -p /var/www/html
+          sudo chown -R "$(id -u):$(id -g)" /var/www/html
           mkdir -p "$REPOS_ROOT/sc-data"
           mkdir -p "$REPOS_ROOT/offline-data"
 
       - name: Configure git safe directories
         run: |
-          git config --global --add safe.directory "$REPOS_ROOT/dg"
-          git config --global --add safe.directory "$REPOS_ROOT/dg-node"
+          git config --global --add safe.directory /var/www/html
+          git config --global --add safe.directory /var/www/html/nodejs
           git config --global --add safe.directory "$REPOS_ROOT/sc-data"
           git config --global --add safe.directory "$REPOS_ROOT/offline-data"
 
-      # First: lands at workspace/repos/dg
-      - name: Checkout legacy dg (assets only)
+      # Lands directly at the real prod path (not a workspace-relative alias) — see header comment
+      # for why this matters. "read" added alongside assets/* — reader/css/index.css's relative
+      # symlink needs /var/www/html/read/css/index.css to exist.
+      - name: Checkout legacy dg (assets + read only)
         uses: actions/checkout@v4
         with:
           repository: dhammagift/dg
-          path: repos/dg
+          path: /var/www/html
           sparse-checkout: |
             assets/img
             assets/css
             assets/js
             assets/svg
             assets/texts
+            read
           sparse-checkout-cone-mode: true
           fetch-depth: 1
 
       - name: Checkout dg-node (this repo)
         uses: actions/checkout@v4
         with:
-          path: repos/dg-node
+          path: /var/www/html/nodejs
           fetch-depth: 1
 
       # structure/tree is NOT optional — dg-light.js's TOC_TREE_ROOT reads
@@ -95,25 +106,18 @@ jobs:
           sparse-checkout-cone-mode: true
           fetch-depth: 1
 
-      - name: Create symlink structure at /var/www and expected global locations
+      - name: Create symlink structure for sc-data/offline-data
         run: |
-          # Create both the html and global paths that the repo's committed relative symlinks may point at.
           sudo mkdir -p /var/www/html/suttacentral.net
           sudo mkdir -p /var/www/suttacentral.net
           sudo mkdir -p /var/www/offline-data
           sudo mkdir -p /offline-data
 
           # Remove any existing symlinks to avoid conflicts
-          sudo rm -f /var/www/html/nodejs || true
           sudo rm -f /var/www/html/suttacentral.net/sc-data || true
           sudo rm -f /var/www/suttacentral.net/sc-data || true
           sudo rm -f /var/www/offline-data/dhammagift || true
           sudo rm -f /offline-data/dhammagift || true
-
-          # Create symlinks from workspace repos to the locations referenced by the code's relative symlinks
-          sudo ln -s "$REPOS_ROOT/dg" /var/www/html/dg-assets
-          sudo ln -s "$REPOS_ROOT/dg/assets" /var/www/html/assets
-          sudo ln -s "$REPOS_ROOT/dg-node" /var/www/html/nodejs
 
           # SuttaCentral bilara data: dblight.js/dg-light.js/mobile's translation-sources.js all
           # read from .../suttacentral.net/sc-data/sc_bilara_data (the real prod layout has an
@@ -127,27 +131,20 @@ jobs:
           sudo ln -s "$REPOS_ROOT/offline-data/dhammagift" /var/www/offline-data/dhammagift
           sudo ln -s "$REPOS_ROOT/offline-data/dhammagift" /offline-data/dhammagift
 
-          sudo chown -R "$(id -u):$(id -g)" /var/www || true
-          sudo chown -R "$(id -u):$(id -g)" /offline-data || true
+          sudo chown -R "$(id -u):$(id -g)" /var/www/suttacentral.net /var/www/offline-data /offline-data /var/www/html/suttacentral.net || true
 
-          # Replace placeholder text-files in the checked-out repo that represent relative symlink targets
-          # with real symlinks that point at the locations we just created. This mirrors the production layout
-          # where siteroot/data/<site> are actual symlinks.
-          DG_NODE_DATA="$REPOS_ROOT/dg-node/siteroot/data"
-          if [ -d "$DG_NODE_DATA" ]; then
-            echo "Replacing siteroot/data placeholders with symlinks (force)"
-            sudo rm -rf "$DG_NODE_DATA/suttacentral.net" || true
-            sudo ln -s /var/www/suttacentral.net "$DG_NODE_DATA/suttacentral.net"
-            sudo rm -rf "$DG_NODE_DATA/dhammagift" || true
-            sudo ln -s /offline-data/dhammagift "$DG_NODE_DATA/dhammagift"
-          fi
+          # Replace placeholder text-files in the checked-out repo that represent relative symlink
+          # targets with real (absolute) symlinks pointing at the locations just created — same
+          # treatment prod gives siteroot/data/<site>.
+          DG_NODE_DATA=/var/www/html/nodejs/siteroot/data
+          echo "Replacing siteroot/data placeholders with symlinks (force)"
+          sudo rm -rf "$DG_NODE_DATA/suttacentral.net" || true
+          sudo ln -s /var/www/suttacentral.net "$DG_NODE_DATA/suttacentral.net"
+          sudo rm -rf "$DG_NODE_DATA/dhammagift" || true
+          sudo ln -s /offline-data/dhammagift "$DG_NODE_DATA/dhammagift"
+          sudo chown -R "$(id -u):$(id -g)" "$DG_NODE_DATA" || true
 
-          # Debug info: show workspace and sc-data contents, and resolve the created symlink
-          echo "Workspace repos:"
-          ls -la "$REPOS_ROOT" || true
-          echo "sc-data contents:"
-          ls -la "$REPOS_ROOT/sc-data" || true
-          echo "Resolved link for repo siteroot/data/suttacentral.net:"
+          echo "Resolved link for siteroot/data/suttacentral.net:"
           readlink -f "$DG_NODE_DATA/suttacentral.net" || true
 
       - name: Verify data layout resolves
@@ -158,6 +155,8 @@ jobs:
           test -d siteroot/data/suttacentral.net/sc-data/structure/tree/sutta || { echo "::error::sc-data's structure/tree missing — every /api/toc/book/:code request 404s without it (TOC_TREE_ROOT in dg-light.js)"; exit 1; }
           test -d siteroot/data/dhammagift/translation/en || { echo "::error::offline-data did not land where siteroot/data/dhammagift expects it"; exit 1; }
           test -f /var/www/html/assets/js/textinfo.json || { echo "::error::legacy assets/js missing (textinfo.json) — dblight.js needs it"; exit 1; }
+          test -f reader/images/favicon-name-black.png || { echo "::error::reader/images relative symlink didn't resolve — dg and dg-node must be checked out at their real absolute prod paths (see workflow header comment)"; exit 1; }
+          test -f reader/css/index.css || { echo "::error::reader/css/index.css relative symlink didn't resolve — needs /var/www/html/read/css/index.css, check dg's sparse-checkout includes 'read'"; exit 1; }
           echo "Data layout OK."
           ls -la siteroot/data/
 
@@ -166,8 +165,8 @@ jobs:
           echo "Preparing cache directories"
           mkdir -p ~/.npm
           mkdir -p ~/.cache/yarn
-          mkdir -p "$REPOS_ROOT/dg-node/node_modules"
-          mkdir -p "$REPOS_ROOT/dg-node/mobile/node_modules"
+          mkdir -p /var/www/html/nodejs/node_modules
+          mkdir -p /var/www/html/nodejs/mobile/node_modules
           echo "Cache directories ready"
 
       - name: Set up Node.js
@@ -181,9 +180,9 @@ jobs:
           path: |
             ~/.npm
             ~/.cache/yarn
-            repos/dg-node/node_modules
-            repos/dg-node/mobile/node_modules
-          key: ${{ runner.os }}-node-${{ hashFiles('repos/dg-node/**/package-lock.json') }}
+            /var/www/html/nodejs/node_modules
+            /var/www/html/nodejs/mobile/node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('/var/www/html/nodejs/**/package-lock.json') }}
           restore-keys: |
             ${{ runner.os }}-node-
 
@@ -219,10 +218,6 @@ jobs:
         working-directory: /var/www/html/nodejs/mobile
         run: npm run build-offline-db
 
-      # Skeleton (dg_db_light.json) is gitignored — each environment builds its own, and
-      # build-offline-db.js reads it from the repo root. Needed before build-offline-db AND
-      # before dg-light.js can boot for the TOC snapshot step below.
-      #
       # dg-light.js's app.listen() accepts connections immediately, while its async initServer()
       # (buildSettingsDemoCache — Aksharamukha conversion for every script — then
       # buildScriptListCache/buildLangCountsCache/buildTranslatorCatalogCache) keeps running
@@ -267,11 +262,8 @@ jobs:
 
       # MUST run after dg-light.js has started at least once: settings/{scripts,demo-data,
       # lang-counts,translator-catalog}.json are gitignored and generated by dg-light.js at
-      # server startup (buildSettingsDemoCache/buildScriptListCache/buildLangCountsCache/
-      # buildTranslatorCatalogCache in dg-light.js), not committed to git — on a fresh checkout
-      # they don't exist until the server has booted once. Running this before "Start dg-light.js"
-      # made every CI run fail here with 4 MISSING assets (exit code 1), even though the exact
-      # same command succeeds on a long-lived dev box where the server had already run before.
+      # server startup, not committed to git — on a fresh checkout they don't exist until the
+      # server has booted once.
       - name: Build assets
         working-directory: /var/www/html/nodejs/mobile
         run: |
