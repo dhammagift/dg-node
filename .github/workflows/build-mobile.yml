@@ -18,9 +18,7 @@ name: Build Mobile App
 # sibling checkout that arrived first. offline-data's target is a fully independent tree, order
 # doesn't matter for it.
 #
-# Needs one repo secret: DG_REPOS_TOKEN — a GitHub PAT (fine-grained, read-only is enough) with
-# access to the two PRIVATE repos, dhammagift/dg and dhammagift/offline-data. sc-data is public,
-# no token needed for it.
+# All repos are public, so no token needed.
 
 on:
   push:
@@ -52,7 +50,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: dhammagift/dg
-          token: ${{ secrets.DG_REPOS_TOKEN }}
           path: repos/dg
           sparse-checkout: |
             assets/img
@@ -83,7 +80,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: dhammagift/offline-data
-          token: ${{ secrets.DG_REPOS_TOKEN }}
           path: repos/offline-data
           sparse-checkout: |
             dhammagift
