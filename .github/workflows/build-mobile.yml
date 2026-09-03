@@ -334,8 +334,23 @@ jobs:
           find /var/www/html/nodejs/mobile/android -name "*.apk" -o -name "*.aab" 2>/dev/null || echo "No APK/AAB found"
           ls -lah /var/www/html/nodejs/mobile/android/app/build/outputs/apk/debug/ 2>/dev/null || echo "Debug APK directory not found"
 
-      - name: Create Release
+      # Always uploaded (any trigger, including manual workflow_dispatch on a branch) — a manual
+      # run that builds a real APK but hands back nothing usable isn't actually working. Downloaded
+      # from the run's own Summary page ("Artifacts" section) rather than a GitHub Release.
+      - name: Upload APK artifact
         if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug-apk
+          path: /var/www/html/nodejs/mobile/android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30
+
+      # softprops/action-gh-release hard-requires a tag ref to attach to — a workflow_dispatch run
+      # on a branch has none ("⚠️ GitHub Releases requires a tag"), so only attempt this on the
+      # mobile-v* tag pushes this workflow is also triggered by (see `on:` above). Manual runs still
+      # get their APK via "Upload APK artifact" above.
+      - name: Create Release
+        if: success() && startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
           files: |
