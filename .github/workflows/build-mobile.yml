@@ -59,26 +59,34 @@ jobs:
       # Lands directly at the real prod path (not a workspace-relative alias) — see header comment
       # for why this matters. "read" added alongside assets/* — reader/css/index.css's relative
       # symlink needs /var/www/html/read/css/index.css to exist.
+      #
+      # actions/checkout@v4 REFUSES any `path:` outside $GITHUB_WORKSPACE ("Repository path
+      # '/var/www/html' is not under ...") — no supported override. Plain git commands don't have
+      # that restriction, so these two use git directly instead (exact same recipe verified
+      # locally against the real GitHub remotes during development of this workflow).
       - name: Checkout legacy dg (assets + read only)
-        uses: actions/checkout@v4
-        with:
-          repository: dhammagift/dg
-          path: /var/www/html
-          sparse-checkout: |
-            assets/img
-            assets/css
-            assets/js
-            assets/svg
-            assets/texts
-            read
-          sparse-checkout-cone-mode: true
-          fetch-depth: 1
+        working-directory: /var/www/html
+        run: |
+          git init -q
+          git remote add origin https://github.com/dhammagift/dg.git
+          git config core.sparseCheckout true
+          git sparse-checkout init --cone
+          git sparse-checkout set assets/img assets/css assets/js assets/svg assets/texts read
+          git fetch --depth 1 origin main -q
+          git checkout -q FETCH_HEAD
 
+      # Anonymous `git fetch origin <full-sha>` returns HTTP 401 for this repo (GitHub's
+      # allowReachableSHA1InWant extension isn't enabled here) — fetch by ref name instead
+      # (always in the standard ref advertisement) and verify it landed on the expected commit.
       - name: Checkout dg-node (this repo)
-        uses: actions/checkout@v4
-        with:
-          path: /var/www/html/nodejs
-          fetch-depth: 1
+        run: |
+          mkdir -p /var/www/html/nodejs
+          cd /var/www/html/nodejs
+          git init -q
+          git remote add origin https://github.com/dhammagift/dg-node.git
+          git fetch --depth 1 origin ${{ github.ref }} -q
+          git checkout -q FETCH_HEAD
+          test "$(git rev-parse HEAD)" = "${{ github.sha }}" || { echo "::error::checked out $(git rev-parse HEAD), expected ${{ github.sha }}"; exit 1; }
 
       # structure/tree is NOT optional — dg-light.js's TOC_TREE_ROOT reads
       # .../sc-data/structure/tree/{sutta,vinaya,abhidhamma}/{code}-tree.json for every single
