@@ -1,0 +1,756 @@
+.tts-active {
+    background-color: rgba(var(--bs-primary-rgb), 0.2); /* Чуть прозрачнее, чем слово */
+    border-radius: 0.25rem;
+    box-shadow: 0 0 0 1px rgba(var(--bs-secondary-rgb), 0.2);
+    transition: background-color 260ms ease-in-out;
+    scroll-margin-top: 20vh;
+    /* Чтобы подсветка красиво переносилась на новые строки */
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+}
+
+@media (max-width: 768px) {
+  .tts-active {
+    scroll-margin-top: 15vh; 
+  }
+}
+
+
+/* Универсальный класс для кнопок-иконок в меню Voice */
+.tts-icon-btn {
+    text-decoration: none !important;
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    vertical-align: middle;
+    line-height: 0 !important;
+    outline: none;
+    border: none;
+    padding: 2px;
+    transition: opacity 0.2s;
+}
+
+.tts-icon-btn:hover {
+    opacity: 0.7;
+    text-decoration: none !important;
+}
+
+/* Точечное увеличение иконок (шестеренка и т.д.) на 20% */
+.tts-icon-btn img {
+    display: block;
+    margin: 0;
+    transform: scale(1.2); 
+}
+
+/* Убираем стандартные подчеркивания ссылок внутри плеера */
+.voice-player a {
+    text-decoration: none !important;
+}
+
+/* Объединенный стиль для селекторов режима и скорости */
+.tts-mode-select, 
+.tts-rate-select {
+    background: transparent;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 14px; 
+    padding: 2px;
+    color: #666;
+    cursor: pointer;
+    margin-bottom: 5px; 
+}
+
+/* Стилизация темной темы для обоих селекторов */
+.dark .tts-mode-select,
+.dark .tts-rate-select {
+    border-color: #555;
+    color: #ccc;
+    background-color: #333;
+}
+
+/* Контейнер для подписи "Speed" */
+.tts-speed-label {
+    font-size: 14px; 
+    color: #888;
+    margin-right: 3px;
+}
+
+.tts-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+    margin-bottom: 10px;
+}
+
+.tts-icon-btn.large .tts-main-img {
+    width: 32px;
+    height: 32px;
+}
+
+.tts-footer {
+    margin-top: 8px;
+    font-size: 0.9em;
+}
+
+/* Убираем подчеркивание в любой ситуации */
+.tts-icon-btn, .tts-icon-btn img {
+    text-decoration: none !important;
+    border: none !important;
+}
+
+.voice-dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.next-main-button {
+  position: relative; 
+  top: -2px;
+  right: 6px;
+}
+
+.voice-link {
+    position: relative; 
+    display: inline-block;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.voice-player {
+    display: block; 
+    visibility: hidden;
+    opacity: 0;
+    position: fixed;
+
+    bottom: 50px; 
+    left: 50%;
+    
+    /* Состояние "Скрыто": смещаем вниз на 120% высоты элемента */
+    transform: translate(-50%, 120%);
+    
+    background: white;
+    padding: 10px; 
+    border: 1px solid #ddd;
+    z-index: 999;
+    min-width: 130px;
+    max-width: 90vw;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    border-radius: 24px;
+
+    /* Плавная анимация выезда */
+    transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.4s ease, visibility 0s 0.4s;
+}
+
+.voice-dropdown.active .voice-player {
+    /* Состояние "Показано" */
+    visibility: visible;
+    opacity: 1;
+    
+    /* Поднимаем чуть выше края экрана */
+    transform: translate(-50%, -30px);
+    
+    /* Убираем задержку видимости при появлении */
+    transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.4s ease, visibility 0s;
+}
+
+/* Темная тема */
+.dark .voice-player {
+    background: #333;
+    border-color: #555;
+    color: #fff;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+}
+
+.player-links {
+    margin-top: 15px;
+}
+
+/* Мобильная адаптация */
+@media (max-width: 768px) {
+    .voice-player {
+        width: 95%;  
+        max-width: 210px; 
+        max-height: 95vh; 
+        overflow-y: auto;
+    }
+    
+    .tts-link {
+        font-size: 0.85em; 
+        position: relative;
+        top: -2px;
+    }
+    .voice-dropdown.active .voice-player {
+         transform: translate(-50%, -20px);
+    }
+}
+
+.close-tts-btn {
+  position: relative; 
+  top: -3px;    
+  cursor: pointer;
+  color: #999;
+  text-decoration: none !important;
+  z-index: 10;
+  font-size: 1.3em; 
+}
+
+.close-tts-btn:hover {
+  opacity: 0.7;
+  color: #333;        
+}
+
+.dark .close-tts-btn {
+  color: #bbb;
+}
+.dark .close-tts-btn:hover {
+  color: #fff;
+}
+
+.tts-icon {
+  display: inline-block;
+}
+
+.tts-icon.backward, .tts-icon.forward {
+  width: 24px; 
+  transform: none; 
+}
+
+.tts-icon.play {
+  width: 45px; 
+  transform: none; 
+}
+
+.tts-icon.forward {
+  position: relative;
+  right:5px;
+}
+
+.tts-mode-select,
+.tts-rate-select {
+  font-size: 16px; 
+}
+
+/* Лейбл точь-в-точь как Scroll и Autoplay */
+.tts-delay-label { 
+    font-size: 16px; 
+    color: #666; 
+    margin: 0; 
+    display: inline-flex; 
+    align-items: center; 
+    justify-content: center;
+    gap: 3px; /* СУЗИЛИ: было 6px, теперь песочные часы ближе к тексту/инпуту */
+    line-height: 1;
+    padding: 2px 4px; /* Немного уменьшили боковые отступы */
+}
+
+.dark .tts-delay-label {
+    color: #ccc;
+}
+
+/* Инпут прозрачный, с цветами как у остального текста */
+.tts-delay-input { 
+    width: 40px; /* СУЗИЛИ: было 44px, чтобы сэкономить место для корзины */
+    height: 26px; 
+    box-sizing: border-box;
+    background: transparent; 
+    border: 1px solid #ccc; 
+    color: #666; 
+    border-radius: 4px; 
+    padding: 0; 
+    margin: 0;
+    font-size: 16px; 
+    text-align: center; 
+    outline: none;
+    -webkit-appearance: none; 
+    appearance: none;
+    box-shadow: none;
+}
+
+.dark .tts-delay-input { 
+    background: #333; 
+    border-color: #555; 
+    color: #ccc; 
+}
+
+/* Контейнер лейбла */
+.tts-checkbox-custom {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  font-size: 14px;
+  padding: 2px 6px;
+  color: #666;
+  cursor: pointer;
+  margin-top: 5px;
+  width: auto;
+}
+
+.tts-checkbox-custom input {
+  appearance: checkbox !important;
+  -webkit-appearance: checkbox !important;
+  display: inline-block !important;
+  width: 13px !important;
+  height: 13px !important;
+  margin: 0 6px 0 0 !important;
+  cursor: pointer;
+  vertical-align: middle;
+  border-radius: 4px;
+  color-scheme: light; 
+}
+
+.dark .tts-checkbox-custom {
+  border-color: #555;
+  color: #ccc;
+  background-color: #333;
+}
+
+.dark .tts-checkbox-custom input {
+    color-scheme: dark;
+}
+
+.tts-checkbox-custom input[type="checkbox"] {
+  accent-color: #5a5a5a; 
+}
+
+/* ГРУППОВАЯ ПОДСВЕТКА БЛОКА */
+#sutta span[id]:has(.tts-active) {
+    display: block; 
+    scroll-margin-top: 15vh;
+    background-color: rgba(var(--bs-primary-rgb), 0.25);
+    border-radius: 6px;
+    transition: background-color 0.2s ease;
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+}
+
+.dark #sutta span[id]:has(.tts-active),
+body[data-theme="dark"] #sutta span[id]:has(.tts-active) {
+    background-color: rgba(var(--bs-primary-rgb), 0.30); 
+}
+
+#sutta span[id]:has(.tts-active) .tts-active,
+#sutta span[id]:has(.tts-active) .active-word {
+    background-color: transparent !important;
+    box-shadow: none !important; 
+    border: none !important;
+    border-radius: 0;
+    /* padding: 0; */ 
+}
+
+.column-view #sutta span[id]:has(.tts-active) {
+    display: flow-root;
+}
+
+@media (min-width: 475px) {
+    .voice-dropdown.active .voice-player {
+        transform: translate(-50%, 25px);
+    }
+}
+
+/* Универсальный класс для полей ввода (A-B таймеры) */
+.tts-editable-span { 
+    display: inline-block;
+    box-sizing: border-box;
+    min-width: 46px; /* СУЗИЛИ: было 50px (изначально 42px). Золотая середина для вместимости */
+    background: #eee; 
+    border: 1px solid #ccc; 
+    color: #333; 
+    border-radius: 4px; 
+    padding: 0 2px; 
+    font-size: 13px; 
+    text-align: center; 
+    outline: none;
+    line-height: 21px; 
+    cursor: text;
+    transition: background 0.3s, color 0.3s; 
+}
+
+.dark .tts-editable-span { 
+    background: #333; 
+    border: 1px solid #555; 
+    color: #ccc; 
+}
+
+.refresh-api-btn img, 
+.reset-tts-btn img {
+    pointer-events: none;
+}
+
+
+/* --- ОБНОВЛЕНИЕ СУЩЕСТВУЮЩИХ СЕЛЕКТОРОВ --- */
+
+.tts-main-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    gap: 15px;
+    height: 40px;
+    position: relative; /* Добавлено из JS */
+}
+
+/* =========================================
+   A-B Loop / Voice Memory Styles (Из voice-mem.js)
+   ========================================= */
+
+.memo-app-btn {
+    position: absolute;
+    left: 20px;
+    top: 34px;
+    background: transparent;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    color: #777;
+    font-size: 9px;
+    font-family: sans-serif;
+    font-weight: 700;
+    padding: 2px 4px;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: inline-flex;
+    align-items: center;
+    text-decoration: none;
+    z-index: 10;
+    line-height: 1;
+}
+.memo-app-btn:hover { background: #eee; color: #333; border-color: #bbb; }
+.dark .memo-app-btn { border-color: #555; color: #aaa; }
+.dark .memo-app-btn:hover { background: #444; color: #fff; border-color: #777; }
+
+.ab-loop-toggle-btn {
+    position: absolute;
+    right: 20px; 
+    top: 34px;   
+    background: transparent;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    color: #777;
+    font-size: 9px;
+    font-family: sans-serif;
+    font-weight: 700;
+    padding: 2px 4px;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    z-index: 10;
+    line-height: 1;
+}
+.ab-loop-toggle-btn:hover { background: #eee; color: #333; border-color: #bbb; }
+.dark .ab-loop-toggle-btn { border-color: #555; color: #aaa; }
+.dark .ab-loop-toggle-btn:hover { background: #444; color: #fff; border-color: #777; }
+
+.ab-loop-toggle-btn.loop-active {
+    color: var(--blue, #3434be);
+    border-color: var(--blue, #3434be);
+    background: rgba(52, 52, 190, 0.05);
+}
+.dark .ab-loop-toggle-btn.loop-active {
+    color: rgb(122, 122, 249);
+    border-color: rgb(122, 122, 249);
+    background: rgba(122, 122, 249, 0.1);
+}
+
+#memorize-panel {
+    width: 100%;
+    box-sizing: border-box;
+    max-height: 0; opacity: 0; overflow: hidden;
+    transition: max-height 0.3s ease, opacity 0.3s ease, margin-top 0.3s ease;
+    border-top: 1px dashed #555;
+    background: transparent;
+    padding: 0 5px;
+}
+#memorize-panel.visible {
+    max-height: 400px; opacity: 1; margin-top: 10px; padding-top: 8px;
+}
+.mem-row { 
+    width: 100%; box-sizing: border-box; 
+    display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; gap: 8px; 
+}
+
+.mem-row-actions {
+    justify-content: space-around; 
+    gap: 5px;
+}
+
+.mem-btn-wrapper { 
+    display: flex; align-items: center; gap: 4px; 
+    flex: 1; min-width: 0; width: 50%;
+}
+.mem-btn-label { color: #aaa; font-size: 11px; flex-shrink: 0; font-weight: 600; }
+
+.mem-pick-btn {
+    flex: 1; min-width: 0; width: 100%; 
+    background: #eee; border: 1px dashed #ccc; color: #555;
+    padding: 4px; border-radius: 4px; font-size: 11px; cursor: pointer;
+    transition: all 0.2s; text-align: left; 
+    overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+    user-select: none; -webkit-user-select: none; 
+    display: block; 
+}
+
+.mem-pick-btn span {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    width: 58px;
+}
+
+.dark .mem-pick-btn { background: #333; border-color: #555; color: #aaa; }
+
+.mem-pick-btn.picking { border-color: var(--blue, #3434be); background: rgba(52, 52, 190, 0.1); animation: memPulseLight 1.5s infinite; color: #333; }
+.mem-pick-btn.set { border-color: var(--blue, #3434be); border-style: solid; color: #000; }
+.mem-status { font-size: 11px; color: var(--blue, #3434be); text-align: center; margin-top: 2px; min-height: 14px; }
+
+.dark .mem-pick-btn.picking { border-color: rgb(122, 122, 249); background: rgba(122, 122, 249, 0.15); animation: memPulseDark 1.5s infinite; color: #fff; }
+.dark .mem-pick-btn.set { border-color: rgb(122, 122, 249); color: #fff; }
+.dark .mem-status { color: rgb(122, 122, 249); }
+
+.memorize-highlight { 
+    border-left: 3px solid var(--blue, #3434be) !important; 
+    padding-left: 5px !important; 
+    margin-bottom: 0 !important;
+    padding-bottom: 4px !important;
+}
+.dark .memorize-highlight { 
+    border-left: 3px solid rgb(122, 122, 249) !important; 
+}
+
+#sutta span[id]:has(.tts-active) .memorize-highlight.tts-active,
+#sutta span[id]:has(.tts-active) .memorize-highlight.active-word {
+    border-left: 3px solid var(--blue, #3434be) !important;
+    padding-left: 5px !important;
+    margin-bottom: 0 !important;
+    padding-bottom: 4px !important;
+}
+.dark #sutta span[id]:has(.tts-active) .memorize-highlight.tts-active,
+.dark #sutta span[id]:has(.tts-active) .memorize-highlight.active-word {
+    border-left: 3px solid rgb(122, 122, 249) !important;
+}
+
+.mem-label { font-size: 11px; color: #aaa; margin: 0; display: flex; align-items: center; gap: 5px; }
+
+.mem-clear-btn {
+    background: transparent; border: none; font-size: 14px; cursor: pointer; padding: 2px;
+    display: flex; align-items: center; justify-content: center; opacity: 0.7; transition: 0.2s;
+}
+.mem-clear-btn:hover { opacity: 1; transform: scale(1.1); }
+
+@keyframes memPulseLight { 0% { box-shadow: 0 0 0 0 rgba(52, 52, 190, 0.4); } 70% { box-shadow: 0 0 0 4px rgba(52, 52, 190, 0); } 100% { box-shadow: 0 0 0 0 rgba(52, 52, 190, 0); } }
+@keyframes memPulseDark { 0% { box-shadow: 0 0 0 0 rgba(122, 122, 249, 0.4); } 70% { box-shadow: 0 0 0 4px rgba(122, 122, 249, 0); } 100% { box-shadow: 0 0 0 0 rgba(122, 122, 249, 0); } }
+
+.ab-btn-timer-text {
+    display: none; 
+    margin-left: 2px; 
+    font-variant-numeric: tabular-nums;
+}
+.mem-timer-icon {
+    margin-right: 4px; 
+    vertical-align: text-bottom;
+}
+
+
+/* =========================================
+   ИЗВЛЕЧЕННЫЕ СТИЛИ (Из JS функции getPlayerHtml)
+   ========================================= */
+
+.tts-container-inner { text-align: center; }
+
+.tts-settings-btn { left: 15px; }
+.close-tts-btn { right: 15px; }
+
+.tts-top-btn {
+    position: static !important;
+    color: #555;
+    font-size: 24px;
+    text-decoration: none !important;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.2s;
+}
+
+.tts-top-btn:hover { color: #000; }
+.dark .tts-top-btn { color: #bbb; }
+.dark .tts-top-btn:hover { color: #fff; }
+
+.tts-controls-row {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    margin-top: 5px;
+    margin-bottom: 5px;
+}
+
+#tts-settings-panel {
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    transition: max-height 0.4s ease, opacity 0.4s ease, margin-top 0.4s ease;
+    margin-top: 0;
+}
+
+#tts-settings-panel.visible {
+    max-height: 800px;
+    opacity: 1;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid #444;
+}
+
+#tts-basic-settings {
+    overflow: hidden;
+    transition: max-height 0.4s ease, opacity 0.4s ease;
+    max-height: 200px;
+    opacity: 1;
+}
+
+#tts-settings-icon { transition: transform 0.3s ease; }
+
+.tts-toggles-row {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 5px;
+}
+
+.tts-delay-row {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 8px;
+}
+
+.tts-delay-label img { vertical-align: text-bottom; }
+
+.tts-links-row {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 5px;
+    margin-top: 8px;
+    flex-wrap: wrap;
+}
+
+#audio-file-link-placeholder { display: none; }
+.tts-help-link { text-decoration: none; }
+
+/* --- Advanced Settings Styles --- */
+#tts-advanced-settings {
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    transition: max-height 0.4s ease, opacity 0.4s ease;
+    margin-top: 0;
+    border-top: 1px solid #555;
+    padding-top: 0;
+}
+
+#tts-advanced-settings.visible {
+    max-height: 500px;
+    opacity: 1;
+    margin-top: 8px;
+    padding-top: 8px;
+}
+
+.extra-settings-toggle {
+    background: none;
+    border: none;
+    color: #777;
+    font-size: 11px;
+    width: 100%;
+    cursor: pointer;
+    margin-top: 8px;
+    padding: 4px 0;
+    transition: color 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+}
+
+.extra-settings-toggle:hover { color: #ccc; }
+
+.extra-settings-toggle.advanced-btn {
+    width: auto;
+    margin: 0;
+    padding: 0;
+    display: inline-flex;
+}
+
+.tts-icon { filter: invert(0.5); }
+.close-tts-btn { transform: translate(-5px, 0px); }
+
+#google-api-key-input {
+    width: 100px;
+    background: #eee;
+    border: 1px solid #ccc;
+    color: #333;
+    border-radius: 4px;
+    padding: 2px 4px;
+    font-size: 11px;
+    transition: background 0.3s, color 0.3s;
+}
+
+.dark #google-api-key-input {
+    background: #333;
+    border: 1px solid #555;
+    color: #ccc;
+}
+
+.refresh-api-btn, .reset-tts-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    padding: 0 4px;
+    transition: color 0.2s;
+    display: inline-flex;
+    align-items: center;
+}
+.refresh-api-btn { color: #999; }
+.refresh-api-btn:hover { color: #fff; }
+.reset-tts-btn { color: #777; }
+.reset-tts-btn:hover { color: #ff5555; }
+
+.api-key-row {
+    display: flex; 
+    align-items: center; 
+    justify-content: center;
+    gap: 5px;
+    margin-top: 5px;
+}
+
+#google-voice-settings-container {
+    display: none;
+    margin-top: 8px;
+}
+
+.google-voice-select-group { margin-bottom: 8px; }
+
+.google-voice-label { font-size: 11px; color: #aaa; margin-bottom: 0; }
+.tts-native-label { margin: 0; font-size: 10px; }
+
+.google-voice-dropdown {
+    width: 100%; 
+    max-width: 150px; 
+    margin-bottom: 4px; 
+    font-size: 11px; 
+    border: 1px solid #ccc;
+    background: #eee; 
+    color: #333; 
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.dark .google-voice-dropdown {
+    background: #333; 
+    color: #ccc; 
+    border: 1px solid #555;
+}

@@ -582,6 +582,14 @@ app.use('/reader', express.static(path.join(__dirname, 'configs', 'reader'), { m
 app.get('/pm.php', (req, res) => res.sendFile(path.join(__dirname, 'reader', 'bu-pm.html')));
 app.get('/bipm.php', (req, res) => res.sendFile(path.join(__dirname, 'reader', 'bi-pm.html')));
 
+// /config/tts-config.json, /config/sync-config.json — the only 2 files out of the legacy
+// siteroot/config/ (67 tracked files: apache/systemd/AndroidManifest, AWS creds, config.zip)
+// dg-node code actually fetches (public/overrides/read/js/voice.js, settings.js/
+// settings-bundle.js). Vendored into configs/legacy/ so siteroot/config can be dropped
+// entirely instead of publishing the rest of that directory's unrelated legacy server files.
+app.get('/config/tts-config.json', (req, res) => res.sendFile(path.join(__dirname, 'configs', 'legacy', 'tts-config.json')));
+app.get('/config/sync-config.json', (req, res) => res.sendFile(path.join(__dirname, 'configs', 'legacy', 'sync-config.json')));
+
 // Bare fragment (no page shell) of the same content, for /toc's inline expand
 // (public/spa/toc.js renderBookRow) — fetched once on first click, not preloaded.
 app.get('/api/patimokkha-fragment/:side', (req, res) => {
