@@ -3,11 +3,47 @@ import React from 'react';
 // Static mockup of a chat with @dgift_bot, styled after Telegram's own look
 // (header blue #54A9EB, bubble radius/shadow) and using the bot's REAL
 // welcome text and inline-query result format, taken as-is from
-// dgift_bot/main.py (WELCOME_MESSAGES['ru'], inline_query()). Not a live
+// dgift_bot/main.py (WELCOME_MESSAGES[lang], inline_query()). Not a live
 // embed — Telegram chats can't be iframed from a docs site — and not a real
 // screenshot either, for the same reason as <ExtensionMock/> (no network
 // access to Telegram from this environment). See the note under the mockup.
-export default function TelegramMock() {
+const TEXT = {
+  ru: {
+    welcome: (
+      <>
+        Добро пожаловать в Dhamma Gift Bot!
+        <br />
+        <br />
+        🔍 <strong>Как использовать:</strong>
+        <br />
+        ⌨️ Напишите <code>@dgift_bot</code> или <code>@dhammagift_bot</code> в любом чате и
+        начните печатать слово или номер сутты (например, <code>sn12.2</code>)
+      </>
+    ),
+    send: '✏️ Отправить: kacchapa',
+    search: '🔎 Найти на Dhamma.Gift',
+    dict: '📖 Словарь',
+  },
+  en: {
+    welcome: (
+      <>
+        ✨ Welcome to Dhamma Gift Bot!
+        <br />
+        <br />
+        ❓ <strong>How to use:</strong>
+        <br />
+        ⌨️ Type <code>@dgift_bot</code> or <code>@dhammagift_bot</code> in any chat and start
+        typing a word to search or a sutta reference (e.g. <code>sn12.2</code>)
+      </>
+    ),
+    send: '✏️ Send: kacchapa',
+    search: '🔎 Search on Dhamma.Gift',
+    dict: '📖 Dictionary',
+  },
+};
+
+export default function TelegramMock({ lang = 'ru' }) {
+  const t = TEXT[lang] ?? TEXT.ru;
   return (
     <div
       style={{
@@ -64,13 +100,7 @@ export default function TelegramMock() {
             boxShadow: '0 1px 2px rgba(0,0,0,.15)',
           }}
         >
-          Добро пожаловать в Dhamma Gift Bot!
-          <br />
-          <br />
-          🔍 <strong>Как использовать:</strong>
-          <br />
-          ⌨️ Напишите <code>@dgift_bot</code> или <code>@dhammagift_bot</code> в любом чате и
-          начните печатать слово или номер сутты (например, <code>sn12.2</code>)
+          {t.welcome}
         </div>
 
         <div style={{ alignSelf: 'flex-end', maxWidth: '92%' }}>
@@ -84,14 +114,14 @@ export default function TelegramMock() {
               boxShadow: '0 1px 2px rgba(0,0,0,.15)',
             }}
           >
-            ✏️ Отправить: kacchapa
+            {t.send}
             <br />
             <a href="#" onClick={(e) => e.preventDefault()} style={{ color: '#2678b6' }}>
-              🔎 Найти на Dhamma.Gift
+              {t.search}
             </a>{' '}
             ·{' '}
             <a href="#" onClick={(e) => e.preventDefault()} style={{ color: '#2678b6' }}>
-              📖 Словарь
+              {t.dict}
             </a>
           </div>
           <div style={{ fontSize: 10, color: '#5a7185', textAlign: 'right', marginTop: 2 }}>

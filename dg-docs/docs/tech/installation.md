@@ -1,0 +1,128 @@
+---
+slug: /installation
+sidebar_position: 1
+---
+
+# Installation and running
+
+The Dhamma.gift ecosystem is several independent git repositories that
+together make up one product:
+
+| Repository | What it is |
+|---|---|
+| [`dg-node`](https://github.com/dhammagift/dg-node) | The main site (Express + SPA) — search, reader, this docs portal (`dg-docs/`), the offline app (`mobile/`) |
+| [`dg`](https://github.com/dhammagift/dg) | The legacy PHP site — the source of assets (`assets/`), 4nt, the TTS player (`read/`) and old pages (`config/`, `login/`, `memo/`) that `dg-node` links to via symlinks |
+| [`offline-data`](https://github.com/dhammagift/offline-data) | The project's own translations (best ru/en translation, second opinion, AI translation) |
+| [`suttacentral/sc-data`](https://github.com/suttacentral/sc-data) | The external SuttaCentral repository — Pali texts and translations in Bilara format (not ours, public) |
+| [`dgift_bot`](https://github.com/dhammagift/dgift_bot) | The Telegram bot (Python) |
+| [`dg-twa`](https://github.com/dhammagift/dg-twa) | The **Dhamma.Gift online** Android app (Bubblewrap/TWA) |
+| [`dictPlugin`](https://github.com/dhammagift/dictPlugin) | The browser extension (Chrome/Firefox) + userscript |
+
+Only the site itself (`dg-node`) can be brought up fully automatically
+with one script — everything else (the legacy repo, the texts) it uses
+as external data, wired in via symlinks (see `CLAUDE.md` → "Prod: paths
+and symlinks"), not as npm dependencies.
+
+## The site (`dg-node`) — automatic setup
+
+Requires: **Node.js** (CI uses 24.20.0, `package.json` has no hard
+version pin — a current LTS should work), **npm**, **git**.
+
+```bash
+git clone https://github.com/dhammagift/dg-node.git
+cd dg-node
+./scripts/setup.sh
+./scripts/start.sh
+```
+
+`scripts/setup.sh` does everything in one pass:
+
+1. Sparse-clones three external repositories next to `dg-node` — by
+   default into `../dg-data/`:
+   - `suttacentral/sc-data` (`sc_bilara_data/`, `structure/`) — Pali texts
+   - `dhammagift/offline-data` (`dhammagift/`) — the project's translations
+   - `dhammagift/dg` (`assets/`, `4nt/`, `config/`, `login/`, `memo/`,
+     `read/`) — legacy assets
+2. Rebuilds the symlinks `siteroot/{assets,4nt,config,login,memo,read}`
+   and `siteroot/data/{suttacentral.net,dhammagift}` so they point at the
+   fresh clones (the same thing `.github/workflows/build-mobile.yml` does
+   in CI, just without `sudo` or system paths — this version is meant for
+   a regular dev machine).
+3. `npm install` — both in the `dg-node` root and in `dg-docs/` (this
+   docs portal).
+4. `npm run build-db` — builds the search skeleton `dg_db_light.json`
+   from the texts just wired up.
+
+Safe to re-run: already-cloned repositories are left alone (unless
+`--force` is passed), symlinks are just rebuilt.
+
+`DATA_DIR=/other/path ./scripts/setup.sh` — if you'd rather not clone
+next to `dg-node`.
+
+After that the server listens on `http://localhost:3000`. API test:
+`http://localhost:3000/search?q=kacchapa&scope=dhamma&langs=ru,en`.
+
+The docs portal itself (what you're reading now) builds separately, in
+two locales:
+
+```bash
+cd dg-docs
+npm run build      # English version → build/
+npm run build:ru   # Russian version → build-ru/
+```
+
+## Telegram bot (`dgift_bot`)
+
+Requires: Python 3.9+.
+
+```bash
+git clone https://github.com/dhammagift/dgift_bot.git
+cd dgift_bot
+./setup.sh
+```
+
+The script creates a venv (`telegram/`), installs the dependencies
+(`python-telegram-bot>=20`, `watchdog`) and drafts two config files —
+`config.dgift_bot.json` and `config.dhammagift_bot.json` (it's the same
+code, two bot accounts under different names — see the
+[Telegram bot page](/telegram-bot)). Fill in a real `TOKEN` in each.
+Then:
+
+```bash
+telegram/bin/python main.py config.dgift_bot.json
+```
+
+For a production setup (systemd services, autostart for both bots) —
+`install_sysctl_bots.sh` in the same repository.
+
+Word autocomplete and `watcher.py`'s notifications expect a `dg-node`
+running alongside (they read `assets/texts/...`) — the bot doesn't crash
+without it, those features just silently stay off.
+
+## Android app (`dg-twa`)
+
+Requires: JDK 17, Android SDK (API 36, build-tools 36.0.0).
+
+```bash
+git clone https://github.com/dhammagift/dg-twa.git
+cd dg-twa
+./scripts/build.sh
+```
+
+Builds the APK/AAB with the same command CI uses
+(`./gradlew app:assembleRelease`/`bundleRelease`). The result is
+**unsigned** — CI applies the signature in a separate step from secrets
+(`KEYSTORE_BASE64` etc.), locally you'll need to sign it yourself
+(`apksigner`) before installing it on a device.
+
+## Browser extension (`dictPlugin`)
+
+The Chrome and Firefox builds already sit as ready folders in the
+repository (`browser-extention/dictLookup-extention-*-{chrome,firefox}/`)
+— no build step needed. To test locally: `chrome://extensions` →
+"Developer mode" → "Load unpacked" → pick the folder.
+
+## See also
+
+The reference for every site endpoint — Swagger/OpenAPI, lives right
+next to this page in the same section.
