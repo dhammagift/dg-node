@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" type="image/png" sizes="32x32" href="https://dhamma.gift/assets/img/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="56x56" href="https://dhamma.gift/assets/img/favicon-56x56.png">
+  <link rel="icon" type="image/png" sizes="128x128" href="https://dhamma.gift/assets/img/icon-128x128.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="/assets/css/bootstrap.5.3.1.min.css" rel="stylesheet" />
+<link href="/assets/css/extrastyles.css" rel="stylesheet" />
+<link href="/assets/css/pages.css" rel="stylesheet" />
+<title>Калькулятор дней Упосатхи по Суттам</title>
+
+<link rel="canonical" href="https://dhamma.gift/assets/common/lunarRu.html">
+<link rel="alternate" href="https://dhamma.gift/assets/common/lunarRu.html" hreflang="ru">
+<link rel="alternate" href="https://dhamma.gift/assets/common/lunar.html" hreflang="en">
+
+<meta name="keywords" content="Будда, Buddha, Дхамма, Дхарма, Виная, поиск, Сутта, Сутты, Суттапитака, Винаяпитака, suttapitaka, vinayapitaka Пали, Палийский канон, буддизм, dhamma, sutta, Buddhism, pali Canon, патимоккха, пратимокша, patimokkha, pratimoksasutra">
+<meta name="description" content="Что такое Dhamma.gift? Ключевые особенности Dhamma.gift — ваш универсальный портал для доступа к пали-текстам, переводам и ресурсам для изучения учений Будды, Сутт, Винаи и буддийской доктрины. Найдите переводы и ссылки для изучения Дхаммы Будды.">
+</head>
+<body>
+<div class="container mt-3">
+<div class="d-flex align-items-center">
+<div class="input-group align-items-center">
+<top-nav-icons type="read" show-dict></top-nav-icons>
+
+<a class="text-reset text-decoration-none ms-2" href="https://jasonsturges.com/lunarphase-js/">
+candima
+</a>
+</div>
+
+<div class="ms-auto d-inline-flex align-items-center">
+<a class="btn btn-sm btn-secondary rounded-pill text-decoration-none ms-1" href="./lunar.html">en</a>
+<span class="ms-2">ru</span>
+</div>
+</div>
+</div>
+<div class="container mt-5">
+<h1>Дни Упосатхи по Суттам</h1>
+<p>
+Сегодня <span id="lunarDay"></span>-й лунный день (с учетом измененной схемы начала суток с 18:00 предыдущего дня).
+</p>
+<p>
+Относится к фазе луны: <span id="moonPhase"></span>
+</p>
+<p class="d-none">
+Число месяца: <span id="dayOfMonth"></span>
+</p>
+<p>
+Ближайший 8 лунный день: <span id="lunar8"></span>
+</p>
+<p>
+Ближайший 14 лунный день: <span id="lunar14"></span> начало в 18:00
+</p>
+<p>
+Ближайший 15 лунный день: <span id="lunar15"></span> окончание в 18:00
+</p>
+</div>
+
+<div class="container mt-5">
+<h2>Основные сутты по Упосатхам для начала</h2>
+<ul>
+<li><a href="/mt/?q=an10.46&s=al%C4%81bh%C4%81|dulladdha%E1%B9%81|appekad%C4%81#1.5">an10.46</a> — пропускать упосатхи нельзя («это ваша потеря и неудача»).</li>
+<li><a href="/mt/?s=c%C4%81tuddasi%E1%B9%81%20pa%C3%B1cadasi%E1%B9%81%20a%E1%B9%AD%E1%B9%ADhami%C3%B1ca&q=mn83#3.3">mn83</a> — нужно соблюдать 14, 15 и 8 дни.</li>
+<li><a href="/mt/?q=mn146&s=%C5%ABno|pu%E1%B9%87%E1%B9%87o#15.2">mn146</a> — 14-я неполная луна, 15-я полная.</li>
+<li><a href="/mt/?q=an3.37&s=A%E1%B9%AD%E1%B9%ADham|pannaras|C%C4%81tuddas#1.1">an3.37</a> — сопоставление 14-го, 15-го и 8-го дней с визитами божеств разного ранга.</li>
+<li><a href="/mt/?q=an3.70&s=ratti%E1%B9%81|divas#19.3">an3.70</a> — «ночи и дня», а не «дня и ночи». В пали есть устойчивое выражение <i>ahoratta</i> («день-ночь») — в других контекстах.<br>
+Также в этой сутте описано, как упосатхи НЕ должны проводится: "пастушья" и "нигантхов" и как должна проводится Упосатха Благородного.</li>
+</ul>
+</div>
+
+<div class="container mt-5">
+<h3>Внимание!</h3>
+<p>
+<strong>Возможны погрешности в расчетах!</strong> Для более точного определения фазы и состояния Луны используйте:
+</p>
+
+<p>
+<ul>
+<li>
+Онлайн-сайты:
+<a href="https://www.timeanddate.com/moon/phases/" target="_blank" class="text-decoration-none">
+Time and Date Moon Phases
+</a>
+</li>
+
+<li>
+Приложения:
+<a href="https://play.google.com/store/apps/details?id=com.dafftin.android.moon_phase" target="_blank" class="text-decoration-none">
+Daff Moon (Android)
+</a>
+или
+<a href="https://apps.apple.com/ph/app/moon-current-moon-phase/id660036257" target="_blank" class="text-decoration-none">
+Moon (iOS)
+</a>
+</li>
+
+<li>
+Для разработчиков:
+<a href="https://jasonsturges.com/lunarphase-js/" target="_blank" class="text-decoration-none">
+LunarPhase-js
+</a>
+</li>
+</ul>
+</p>
+</div>
+
+<script src="/assets/js/bootstrap.bundle.5.3.1.min.js"></script>
+<script src="/assets/js/lunar.js"></script>
+<script src="/assets/js/settings.js" defer></script>
+<script src="/assets/js/nav-component.js" defer></script>
+<script src="/assets/js/themeswitch.js" defer></script>
+</body>
+</html>

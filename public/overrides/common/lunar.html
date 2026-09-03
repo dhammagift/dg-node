@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" type="image/png" sizes="32x32" href="https://dhamma.gift/assets/img/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="56x56" href="https://dhamma.gift/assets/img/favicon-56x56.png">
+  <link rel="icon" type="image/png" sizes="128x128" href="https://dhamma.gift/assets/img/icon-128x128.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="/assets/css/bootstrap.5.3.1.min.css" rel="stylesheet" />
+  <link href="/assets/css/extrastyles.css" rel="stylesheet" />
+  <link href="/assets/css/pages.css" rel="stylesheet" />
+  <title>Uposatha Days Calculator from the Suttas</title>
+
+  <link rel="canonical" href="https://dhamma.gift/assets/common/lunar.html">
+  <link rel="alternate" href="https://dhamma.gift/assets/common/lunarRu.html" hreflang="ru">
+  <link rel="alternate" href="https://dhamma.gift/assets/common/lunar.html" hreflang="en">
+
+  <meta name="keywords" content="Buddha, Dhamma, Dharma, Vinaya, search, Sutta, Suttas, Suttapitaka, Vinayapitaka, Pali, Pali Canon, Buddhism, patimokkha, pratimoksasutra">
+  <meta name="description" content="What is Dhamma.gift? Key features of Dhamma.gift — your portal for accessing Pali texts, translations, and resources for learning the Buddha's teachings, Suttas, Vinaya, and Buddhist doctrine. Find translations and study links for the Buddha's Dhamma.">
+</head>
+<body>
+<div class="container mt-3">
+  <div class="d-flex align-items-center">
+    <div class="input-group align-items-center">
+      <top-nav-icons type="read" show-dict></top-nav-icons>
+
+      <a class="text-reset text-decoration-none ms-2" href="https://jasonsturges.com/lunarphase-js/">
+        candima 
+      </a>
+    </div>
+
+    <div class="ms-auto d-inline-flex align-items-center">
+      <span class="ms-2">en</span>
+      <a class="btn btn-sm btn-secondary rounded-pill text-decoration-none ms-1" href="./lunarRu.html">ru</a>
+    </div>
+  </div>
+</div>
+
+<div class="container mt-5">
+  <h1>Uposatha Days According to the Suttas</h1>
+<p>Today is the <span id="lunarDay"></span>th lunar day (according to the adjusted scheme where the day starts at 6:00 PM of the previous day).</p>  <p>Related moon phase: <span id="moonPhase"></span></p>
+  <p class="d-none">Day of the month: <span id="dayOfMonth"></span></p>
+  <p>Nearest 14th lunar day: <span id="lunar14"></span></p>
+  <p>Nearest 15th lunar day: <span id="lunar15"></span></p>
+  <p>Nearest 8th lunar day: <span id="lunar8"></span></p>
+</div>
+
+<div class="container mt-5">
+<h2>Key Suttas on Uposatha to Start with</h2>
+<ul>
+    <li><a href="/multi/?q=an10.46&s=al%C4%81bh%C4%81|dulladdha%E1%B9%81|appekad%C4%81#1.5">an10.46</a> — skipping uposathas is not allowed ("it is your loss and failure").</li>
+    <li><a href="/multi/?s=c%C4%81tuddasi%E1%B9%81%20pa%C3%B1cadasi%E1%B9%81%20a%E1%B9%AD%E1%B9%ADhami%C3%B1ca&q=mn83#3.3">mn83</a> — one should observe the 14th, 15th, and 8th days.</li>
+    <li><a href="/multi/?q=mn146&s=%C5%ABno|pu%E1%B9%87%E1%B9%87o#15.2">mn146</a> — 14th waxing moon, 15th full moon.</li>
+    <li><a href="/multi/?q=an3.37&s=A%E1%B9%AD%E1%B9%ADham|pannaras|C%C4%81tuddas#1.1">an3.37</a> — comparing the 14th, 15th, and 8th days with visits by deities of different ranks.</li>
+    <li><a href="/multi/?q=an3.70&s=ratti%E1%B9%81|divas#19.3">an3.70</a> — "nights and days" rather than "days and nights"; the Pali has the fixed expression <i>ahoratta</i> (“day-night”) — in other contexts.<br>
+    This sutta also explains how Uposatha should NOT be observed—the “cowherd’s Uposatha” and the “Nigaṇṭha’s Uposatha”—and how the Noble One’s Uposatha should be observed.</li>
+</ul>
+</div>
+
+<div class="container mt-5">
+  <h3>Attention!</h3>
+<p><strong>Calculation errors are possible!</strong> For more accurate moon phase determination, use:</p>  
+<p>
+  <ul>
+    <li>
+      Websites: <a href="https://www.timeanddate.com/moon/phases/" target="_blank" class="text-decoration-none">
+       Time and Date Moon Phases
+      </a>
+    </li>
+    <li>
+      Apps: <a href="https://play.google.com/store/apps/details?id=com.dafftin.android.moon_phase" target="_blank" class="text-decoration-none">
+      Daff Moon (Android)
+      </a> or <a href="https://apps.apple.com/ph/app/moon-current-moon-phase/id660036257" target="_blank" class="text-decoration-none">
+        Moon (iOS)
+      </a>
+    </li>
+    <li>
+      For developers: <a href="https://jasonsturges.com/lunarphase-js/" target="_blank" class="text-decoration-none">
+      LunarPhase-js
+      </a>
+    </li>
+  </ul>
+</p>
+</div>
+
+<script src="/assets/js/bootstrap.bundle.5.3.1.min.js"></script>
+<script src="/assets/js/lunar.js"></script>
+<script src="/assets/js/settings.js" defer></script>
+<script src="/assets/js/nav-component.js" defer></script>
+<script src="/assets/js/themeswitch.js" defer></script>
+</body>
+</html>
