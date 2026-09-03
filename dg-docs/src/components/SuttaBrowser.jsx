@@ -9,8 +9,15 @@ import React, { useState, useRef, useEffect } from 'react';
 // и то же").
 export default function SuttaBrowser({ items, height = 550 }) {
   const [active, setActive] = useState(0);
+  // Starts false (matches server-rendered output) and is corrected client-side, same pattern
+  // as PageTools.jsx's isRu — avoids a hydration mismatch from reading window at render time.
+  const [isRu, setIsRu] = useState(false);
   const current = items[active];
   const frameRef = useRef(null);
+
+  useEffect(() => {
+    setIsRu(window.location.pathname.startsWith('/ru/'));
+  }, []);
 
   // The prose above can be much taller than the viewport (mobile especially) — without this,
   // picking a sutta leaves the reader below the fold, out of sight, so nothing visibly
@@ -53,7 +60,7 @@ export default function SuttaBrowser({ items, height = 550 }) {
         }}
       >
         <span>
-          Сейчас открыто: <strong>{current.label}</strong>
+          {isRu ? 'Сейчас открыто:' : 'Now open:'} <strong>{current.label}</strong>
         </span>
         <select
           value={active}
