@@ -4,6 +4,8 @@ sidebar_position: 1
 ---
 
 import SiteLink from '@site/src/components/SiteLink';
+import TelegramMock from '@site/src/components/TelegramMock';
+import ExtensionMock from '@site/src/components/ExtensionMock';
 
 # Ключевые особенности
 
@@ -15,8 +17,10 @@ Dhamma.gift — это набор связанных инструментов в
 
 <div style={{display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center', margin: '1rem 0'}}>
   <SiteLink to="/"><img src="/assets/img/buttons/pwa-cta.png" alt="Установить как PWA" style={{maxWidth: '220px'}} /></SiteLink>
-  <a href="https://play.google.com/store/apps/details?id=gift.dhamma.twa"><img src="/assets/img/buttons/google-play-cta.png" alt="Скачать в Google Play" style={{maxWidth: '220px'}} /></a>
+  <a href="https://play.google.com/store/apps/details?id=gift.dhamma.twa"><img src="/assets/img/buttons/google-play-cta.png" alt="Скачать Dhamma.Gift online в Google Play" style={{maxWidth: '220px'}} /></a>
 </div>
+
+Все способы установить Dhamma.gift как приложение — см. раздел «Приложения» ниже.
 
 ## Dhamma.Gift — мультитул / портал в одно окно
 
@@ -113,22 +117,56 @@ Gandhari Dictionary, PTS Dictionary, Buddhadust Glossology, Wisdom Library,
 
 <div style={{clear: 'both'}} />
 
+## Приложения
+
+<div style={{display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center', margin: '1rem 0'}}>
+  <a href="https://play.google.com/store/apps/details?id=gift.dhamma.twa"><img src="/assets/img/buttons/google-play-cta.png" alt="Dhamma.Gift online в Google Play" style={{maxWidth: '220px'}} /></a>
+  <SiteLink to="/"><img src="/assets/img/buttons/pwa-cta.png" alt="Установить как PWA" style={{maxWidth: '220px'}} /></SiteLink>
+</div>
+
+- **[Dhamma.Gift online](https://play.google.com/store/apps/details?id=gift.dhamma.twa)**
+  — приложение в Google Play. Это буквально весь сайт целиком (та же
+  страница поиска и ридер, без урезаний), просто в собственном окне,
+  плюс два системных бонуса — ярлыки быстрого доступа и «Поделиться,
+  чтобы найти» (выделили слово в любом приложении → «Поделиться» →
+  Dhamma.Gift → готовый поиск). Подробности — на отдельной странице
+  [«PWA: ярлыки и Sharing API»](/pwa).
+- **Dhamma.Gift Full** — второе приложение, сейчас в разработке: тот же
+  сайт, но полностью офлайн — все тексты, переводы и словарь хранятся
+  на самом устройстве (кроме принципиально онлайн-функций вроде голосов
+  Google или внешних словарей — они и на сайте работают только при
+  подключении к интернету). Те же ярлыки и «Поделиться, чтобы найти» —
+  тот же принцип, что и в Dhamma.Gift online. Ссылка на скачивание
+  появится здесь, когда приложение будет готово.
+- Установка как **PWA** (кнопка выше) — третий, самый быстрый способ:
+  ничего скачивать из магазина не нужно, работает на Android, Windows и
+  Mac.
+
 ## @DGift_bot — Telegram-бот и мини-приложения
 
 <div style={{textAlign: 'center', margin: '1em 0'}}>
   <a href="https://t.me/dgift_bot"><img src="/assets/img/buttons/telegram-cta.png" alt="Открыть @dgift_bot в Telegram" style={{maxWidth: '220px'}} /></a>
 </div>
 
-Наберите в любом чате или группе [@Dhammagift_bot](https://t.me/dhammagift_bot)
-(или короткое имя [@Dgift_bot](https://t.me/dgift_bot)), начните вводить
-слово на пали или номер текста — бот покажет варианты и даст ссылки на
-Чтение/Поиск и Словарь. Отдельные мини-приложения:
+Это один и тот же бот под двумя именами — [@Dhammagift_bot](https://t.me/dhammagift_bot)
+и его короткая форма [@Dgift_bot](https://t.me/dgift_bot) — функциональность
+одинаковая, писать можно любому из двух. Наберите его имя в любом чате или
+группе, начните вводить слово на пали или номер текста — бот покажет
+варианты и даст ссылки на Чтение/Поиск и Словарь. Отдельные мини-приложения:
 [поиск](http://t.me/dhammagift_bot/find), [чтение](http://t.me/dhammagift_bot/read)
 и [словарь](http://t.me/dhammagift_bot/dict).
 
+<TelegramMock />
+
 ## Браузерные расширения
 
-Поиск по суттам и всплывающий пали-словарь DPD на любом сайте:
+Поиск по суттам и всплывающий пали-словарь DPD на любом сайте: выделите
+слово или фразу (или просто кликните по слову), и расширение покажет
+перевод/словарную статью на месте, без перехода на другой сайт — либо
+отправит выделенный текст в поиск на Dhamma.gift через контекстное меню
+правой кнопки мыши. Включается/выключается кликом по иконке расширения
+или горячей клавишей (по умолчанию `Ctrl+Shift+L`, можно поменять в
+настройках браузера).
 
 <div style={{display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center', margin: '1rem 0'}}>
   <a href="https://chromewebstore.google.com/detail/dhammagift-search-and-wor/dnnogjdcmhbiobpnkhdbfnfjnjlikabd"><img src="/assets/img/buttons/chrome-cta.png" alt="Chrome Web Store" style={{maxWidth: '180px'}} /></a>
@@ -137,8 +175,20 @@ Gandhari Dictionary, PTS Dictionary, Buddhadust Glossology, Wisdom Library,
   <a href="https://chromewebstore.google.com/detail/dhammagift-search-and-wor/dnnogjdcmhbiobpnkhdbfnfjnjlikabd"><img src="/assets/img/buttons/opera-cta.png" alt="Opera Add-ons" style={{maxWidth: '180px'}} /></a>
 </div>
 
-Скрипт для Tampermonkey: [инструкция по установке](https://github.com/dhammagift/dictPlugin/blob/main/ExtentionMethod.md).
+Скрипт для Tampermonkey (подходит и для Safari — там расширений нет, но
+скрипт работает так же): [инструкция по установке](https://github.com/dhammagift/dictPlugin/blob/main/ExtentionMethod.md).
 Плагин всплывающего словаря можно встроить на любой сайт — [описание здесь](https://github.com/dhammagift/dictPlugin?tab=readme-ov-file#dictplugin).
+
+<ExtensionMock />
+
+:::note[Мокап вместо скриншота]
+Расширение и Telegram-бот выше показаны не настоящими скриншотами (это
+отдельные приложения, не часть сайта — их нельзя вставить как `<iframe>`,
+как остальные примеры на этой странице), а мокапами, собранными из
+реальных цветов и текста самого кода (`dictPlugin/.../content.js`,
+`dgift_bot/main.py`). Настоящие скриншоты можно добавить взамен в любой
+момент.
+:::
 
 ## Общие принципы
 

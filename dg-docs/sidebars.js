@@ -22,6 +22,7 @@ const sidebars = {
           collapsed: false,
           items: [
             'user/index',
+            'user/pwa',
             'user/multitool',
             'user/search',
             'user/read',
