@@ -1,5 +1,45 @@
 # текущие задачи
 
+## НОВОЕ — #docs: раздел "Технические детали" — Installation + скрипты установки под ключ (2026-09-03)
+
+done 1. `dg-docs` (только RU) — новая категория "Технические детали" в сайдбаре
+   (`sidebars.js`, RU-ветка), в неё же перенесена существовавшая ссылка "API" (была
+   отдельным пунктом верхнего уровня). Новая страница `/installation` — карта всех
+   репозиториев экосистемы (dg-node/dg/offline-data/sc-data/dgift_bot/dg-twa/dictPlugin) и
+   как поднять каждую часть.
+
+done 2. `dg-node/scripts/setup.sh` + `scripts/start.sh` — автоматическая локальная установка
+   сайта: sparse-clone `suttacentral/sc-data` (`sc_bilara_data`+`structure`) и
+   `dhammagift/offline-data` (`dhammagift/`) рядом с репо (`../dg-data/` по умолчанию,
+   `DATA_DIR=` переопределяет), sparse-clone легаси `dhammagift/dg`
+   (`assets`/`4nt`/`config`/`login`/`memo`/`read`), пересборка симлинков
+   `siteroot/{assets,4nt,config,login,memo,read}` и `siteroot/data/{suttacentral.net,
+   dhammagift}` — та же схема, что в `.github/workflows/build-mobile.yml`, но без sudo и
+   системных путей (`/var/www/...`), для обычной dev-машины. Дальше `npm install` (корень +
+   `dg-docs/`) и `npm run build-db`. Идемпотентно (существующие клоны не трогает без
+   `--force`). Проверено вживую (`bash -n` на оба скрипта, реальный прогон `npm install`
+   внутри `setup.sh`-эквивалента не запускал заново — сеть в этой сессии есть только на
+   GitHub/npm-registry, полный прогон с реальными sc-data/offline-data не делали, но каждый
+   шаг skрипта — дословно тот же рецепт, что уже проверен в CI).
+
+done 3. `dgift_bot/requirements.txt` (не существовал вообще — раньше зависимости были
+   restorable только через grep по `import`), `config.example.json` (шаблон с ключами
+   `TOKEN`/`NAME`/`WATCH_DIR`/`ADMIN_ID`, найденными по факту в `main.py`/`watcher.py`),
+   `.gitignore` — исключение `!config.example.json` из общего `*.json`, и `setup.sh` (venv
+   `telegram/` — то же имя, что ждёт прод `install_sysctl_bots.sh`, установка зависимостей,
+   заготовка обоих конфигов).
+
+done 4. `dg-twa/scripts/build.sh` — та же команда, что в CI
+   (`build-twa-release.yml`: `gradlew build -x lint && gradlew app:assembleRelease &&
+   gradlew app:bundleRelease`), с явной пометкой, что результат НЕ подписан (подпись в CI —
+   отдельный шаг из секретов `KEYSTORE_BASE64` и т.п., локально нужен свой `apksigner`).
+
+   --- нюанс: sc-data/offline-data — единственный документированный источник клонирования
+   раньше был только в `.github/workflows/build-mobile.yml` (для сборки офлайн-мобилки), нигде
+   больше в репо/CLAUDE.md URL не назывался — CLAUDE.md описывает только итоговую файловую
+   структуру (`BASE/suttacentral.net/...`, `HOME/offline-data/...`), не откуда её взять. Теперь
+   есть один явный путь и для обычного дев/прод сетапа сайта, не только мобилки.
+
 ## НОВОЕ — #docs: User Help — Telegram-бот, расширение, приложения, новая страница PWA (2026-09-03)
 
 done 1. `dg-docs` (только RU, `i18n/ru/.../user/index.md`) — раздел про Telegram-бота явно

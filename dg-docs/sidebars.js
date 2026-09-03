@@ -38,15 +38,24 @@ const sidebars = {
           ],
         },
         {
-          // /api-docs/ is served by the same Express app as the docs build itself, at the
-          // site root, not under this build's own baseUrl (/docs/ or /ru/docs/). The
-          // `pathname://` prefix + autoAddBaseUrl:false make Docusaurus's sidebar <Link>
-          // treat this as a plain external-style link (full navigation, no baseUrl prefix,
-          // not checked by onBrokenLinks) so it resolves correctly on prod/test/any mirror.
-          type: 'link',
-          label: 'API',
-          href: 'pathname:///api-docs/',
-          autoAddBaseUrl: false,
+          type: 'category',
+          label: 'Технические детали',
+          collapsed: false,
+          items: [
+            'tech/installation',
+            {
+              // /api-docs/ is served by the same Express app as the docs build itself, at
+              // the site root, not under this build's own baseUrl (/docs/ or /ru/docs/).
+              // The `pathname://` prefix + autoAddBaseUrl:false make Docusaurus's sidebar
+              // <Link> treat this as a plain external-style link (full navigation, no
+              // baseUrl prefix, not checked by onBrokenLinks) so it resolves correctly on
+              // prod/test/any mirror.
+              type: 'link',
+              label: 'API',
+              href: 'pathname:///api-docs/',
+              autoAddBaseUrl: false,
+            },
+          ],
         },
       ]
     : [
