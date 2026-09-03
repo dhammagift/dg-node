@@ -201,12 +201,20 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-node-
 
+      # cache-dependency-path is required here: setup-java's gradle cache glob defaults to
+      # $GITHUB_WORKSPACE (/home/runner/work/dg-node/dg-node), which stays empty in this workflow —
+      # dg-node is checked out to the real prod path /var/www/html/nodejs instead (see header
+      # comment) — so the default glob matches nothing and setup-java hard-errors instead of just
+      # skipping the cache.
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
           cache: 'gradle'
+          cache-dependency-path: |
+            /var/www/html/nodejs/mobile/android/**/*.gradle*
+            /var/www/html/nodejs/mobile/android/gradle/wrapper/gradle-wrapper.properties
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
