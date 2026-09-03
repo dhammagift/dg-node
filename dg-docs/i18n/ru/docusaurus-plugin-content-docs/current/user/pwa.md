@@ -1,6 +1,6 @@
 ---
 slug: /pwa
-sidebar_position: 2
+sidebar_position: 17
 ---
 
 import AppFrame from '@site/src/components/AppFrame';
@@ -18,7 +18,7 @@ Progressive Web App) — без App Store/Google Play, одной кнопкой
 После установки на телефоне или компьютере появляется отдельная иконка — как
 у обычного приложения, без адресной строки браузера. Ровно тот же сайт,
 только в собственном окне. У установленного приложения на Android (и у
-нативного [Dhamma.Gift online](/key-features)) есть два бонуса поверх
+нативного [Dhamma.Gift online](/dhamma-gift-online)) есть два бонуса поверх
 обычного сайта — ярлыки и «Поделиться, чтобы найти».
 
 ## Ярлыки (Shortcuts)
@@ -56,17 +56,16 @@ Progressive Web App) — без App Store/Google Play, одной кнопкой
 | Где | Ярлыки | Поделиться, чтобы найти |
 |---|---|---|
 | Установленный PWA на Android (Chrome/Edge) | ✅ | ✅ |
-| [Dhamma.Gift online](/key-features) (Google Play) | ✅ | ✅ |
-| Dhamma.Gift Full (готовится, офлайн) | ✅ | ✅ (нативно, тот же принцип) |
+| [Dhamma.Gift online](/dhamma-gift-online) (Google Play) | ✅ | ✅ |
+| [Dhamma.Gift Full](/dhamma-gift-full) (готовится, офлайн) | ✅ | ✅ (нативно, тот же принцип) |
 | Установленный PWA на Windows/Mac (Chrome/Edge) | ✅ | частично (зависит от ОС) |
 | iPhone / iPad (Safari, PWA или обычный сайт) | — | — |
 
 На iOS Safari пока не поддерживает Web Share Target для установленных
 веб-приложений — на iPhone тот же результат («выделил и сразу нашёл на
-Dhamma.gift») удобнее получить через [браузерное расширение](/key-features)
+Dhamma.gift») удобнее получить через [браузерное расширение](/browser-extension)
 (для настольного Safari через Tampermonkey-скрипт) или через
-[Telegram-бота](/key-features) — оба описаны на странице «Ключевые
-особенности».
+[Telegram-бота](/telegram-bot).
 
 :::tip[Один и тот же механизм везде]
 И в Google Play-приложении **Dhamma.Gift online**, и в будущем офлайн
