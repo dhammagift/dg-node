@@ -225,6 +225,15 @@ jobs:
         working-directory: /var/www/html/nodejs
         run: npm install --legacy-peer-deps --no-audit
 
+      # public/overrides/js/fontawesome-local.js is gitignored (generated from the
+      # @fortawesome/fontawesome-free root dependency, see build-icons.js) — a fresh checkout never
+      # has it, so mobile/build-assets.js's ASSETS list (which has no legacy fallback for it) always
+      # reported it MISSING and exited 1. Needs to run after root deps are installed (reads from
+      # node_modules/@fortawesome/fontawesome-free/svgs) and before "Build assets" below.
+      - name: Build FontAwesome icon subset
+        working-directory: /var/www/html/nodejs
+        run: npm run build-icons
+
       - name: Install mobile dependencies
         working-directory: /var/www/html/nodejs/mobile
         run: npm install --legacy-peer-deps --no-audit
