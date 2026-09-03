@@ -104,12 +104,12 @@ const config = {
       navbar: {
         title: RU_BUILD ? 'Справка Dhamma.gift' : 'Dhamma.gift Help',
         logo: {
-          // Shell (shankha), not a house — same "home" mark the main app already uses
-          // (search/index.html .dg-shell-logo / dg-go-home), owner's explicit convention.
+          // Diamond mark (owner's later call, replacing the shell/shankha that used to match
+          // the main app's own "home" icon — see dgsankhaonly.png, still on disk but unused).
           // Copied into dg-docs/static/img/ — this build is served in isolation under its
           // own baseUrl, it never sees the main app's /assets/ mount at runtime.
           alt: 'Dhamma.gift',
-          src: 'img/dgsankhaonly.png',
+          src: 'img/diamond-logo.png',
           // Owner: clicking the shell had no way back to the live app — only out to the docs
           // home page. `href: '/'` here resolves to THIS build's baseUrl root (/docs/ or
           // /ru/docs/), not the real site root — Docusaurus's Logo component always re-adds
