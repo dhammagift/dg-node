@@ -116,13 +116,20 @@ jobs:
 
       - name: Create symlink structure for sc-data/offline-data
         run: |
-          sudo mkdir -p /var/www/html/suttacentral.net
+          # NOTE: /var/www/html/suttacentral.net is NOT created here — the legacy dg checkout
+          # (previous step) already brought it in as a git-tracked symlink pointing at
+          # ../suttacentral.net (dg's root sparse-checkout in cone mode always includes root-level
+          # entries, symlinks included, regardless of the sparse-checkout dir list). It resolves to
+          # exactly /var/www/suttacentral.net below, so it's already an alias for it — `mkdir -p` on
+          # a dangling symlink fails with "File exists" (the directory entry exists even though its
+          # target doesn't yet), and a second `ln -s` at the alias path would fail the same way once
+          # the target below exists. Only the real target needs creating; the alias resolves through
+          # it automatically.
           sudo mkdir -p /var/www/suttacentral.net
           sudo mkdir -p /var/www/offline-data
           sudo mkdir -p /offline-data
 
           # Remove any existing symlinks to avoid conflicts
-          sudo rm -f /var/www/html/suttacentral.net/sc-data || true
           sudo rm -f /var/www/suttacentral.net/sc-data || true
           sudo rm -f /var/www/offline-data/dhammagift || true
           sudo rm -f /offline-data/dhammagift || true
@@ -131,15 +138,15 @@ jobs:
           # read from .../suttacentral.net/sc-data/sc_bilara_data (the real prod layout has an
           # actual sc-data/ directory there, see nodejs/CLAUDE.md). Symlink the CHECKED-OUT sc-data
           # dir itself (not its sc_bilara_data subfolder) one level up so that "sc-data" segment
-          # resolves — place in both /var/www/html and /var/www so either relative layout works.
-          sudo ln -s "$REPOS_ROOT/sc-data" /var/www/html/suttacentral.net/sc-data
+          # resolves. /var/www/html/suttacentral.net/sc-data resolves to the same place through the
+          # alias described above, so it needs no separate symlink.
           sudo ln -s "$REPOS_ROOT/sc-data" /var/www/suttacentral.net/sc-data
 
           # Offline translations: place under /var/www/offline-data and also root /offline-data to satisfy different relative links
           sudo ln -s "$REPOS_ROOT/offline-data/dhammagift" /var/www/offline-data/dhammagift
           sudo ln -s "$REPOS_ROOT/offline-data/dhammagift" /offline-data/dhammagift
 
-          sudo chown -R "$(id -u):$(id -g)" /var/www/suttacentral.net /var/www/offline-data /offline-data /var/www/html/suttacentral.net || true
+          sudo chown -R "$(id -u):$(id -g)" /var/www/suttacentral.net /var/www/offline-data /offline-data || true
 
           # Replace placeholder text-files in the checked-out repo that represent relative symlink
           # targets with real (absolute) symlinks pointing at the locations just created — same
