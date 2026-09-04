@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <title>404</title>
+    <link rel="icon" type="image/png" href="/assets/img/favico-noglass.png" />
+    <link href="/assets/css/styles.css" rel="stylesheet" />
+    <link href="/assets/css/extrastyles.css" rel="stylesheet" />
+</head>
+<body>
+    <div class="d-flex align-items-center justify-content-center vh-100">
+        <div class="text-center">
+            <h1 class="display-1 fw-bold">404</h1>
+            <p class="fs-3"><span class="text-danger">Aho!</span> <span data-404-text="p404">Page not found. But</span></p>
+            <p class="lead">
+                &ldquo;Atthi kho, &#257;vuso, maggo atthi pa&#7789;ipad&#257;,<br />
+                etassa dukkhassa pari&ntilde;&ntilde;&#257;y&#257;&rdquo;ti.
+                <a target="_blank" class="text-decoration-none" href="/sn38.4">sn38.4</a>
+            </p>
+            <a href="/" id="back" class="btn btn-primary" data-404-text="home">Go Home</a>
+        </div>
+    </div>
+    <script src="/assets/js/bootstrap.bundle.5.3.1.min.js"></script>
+    <script defer src="/assets/js/themeswitch.js"></script>
+    <script>
+        // Same client-side-only i18n convention as the rest of dg-node (see dg-light.js
+        // comment near /manifest.json): no server-side language variants, just localStorage/
+        // ?lang= read on load. Inline strings here instead of the shared DHAMMA_I18N fetch
+        // engine on purpose — an error page should render even if a JSON fetch would fail.
+        (function () {
+            var STRINGS = {
+                ru: { p404: 'Страница не найдена. Но', home: 'На Главную' },
+                en: { p404: 'Page not found. But', home: 'Go Home' }
+            };
+            var lang = new URLSearchParams(location.search).get('lang')
+                || localStorage.getItem('siteLanguage')
+                || (navigator.language || '').slice(0, 2);
+            var t = STRINGS[lang] || STRINGS.en;
+            document.documentElement.lang = STRINGS[lang] ? lang : 'en';
+            document.querySelectorAll('[data-404-text]').forEach(function (el) {
+                el.textContent = t[el.getAttribute('data-404-text')];
+            });
+        })();
+    </script>
+</body>
+</html>
