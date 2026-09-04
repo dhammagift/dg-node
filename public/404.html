@@ -8,6 +8,11 @@
     <link href="/assets/css/styles.css" rel="stylesheet" />
     <link href="/assets/css/extrastyles.css" rel="stylesheet" />
     <link href="/nodejs/res/css/home.css" rel="stylesheet" />
+    <!-- Autocomplete dropdown width (.ui-autocomplete, max-width 274px) lives here, not in
+         home.css or jquery-ui's own default (which stretches to the input's full width, what
+         "коряво" turned out to be — confirmed live by comparing against the real search page,
+         which also loads this despite a comment elsewhere calling it reader-only/lazy). -->
+    <link href="/reader/css/uiextra.css" rel="stylesheet" />
     <script>
         // Same config as search/index.html's <head> — real {{token}} localization for the
         // hero band/drawer markup below (copied from that page verbatim), not the hand-typed
@@ -123,6 +128,17 @@
         </div>
         <nav id="dg-404-menu"></nav>
     </div>
+
+    <!-- Real bug found live: the drawer's theme segmented control (home.js, applyTheme())
+         doesn't set the theme directly — it drives the site-wide theme by clicking the results
+         toolbar's real #theme-button (themeswitch.js owns all the actual localStorage writes,
+         see its toggleThemeManually(); home.js deliberately doesn't duplicate that logic). That
+         button didn't exist on this page, so applyTheme()'s `if (!btn) return;` silently
+         no-op'd — clicking a theme option in the drawer visually looked like it worked (system
+         prefers-color-scheme happened to already match), but nothing was written to
+         localStorage, so it reverted on reload. Hidden button, no visible icon needed — only
+         themeswitch.js's own click listener on this id matters, not its on-page appearance. -->
+    <button id="theme-button" hidden></button>
 
     <!-- Drawer — copied verbatim from search/index.html's #dg-drawer (same IDs/classes,
          opened by the .dg-menu-btn buttons above via home.js's openDrawer()). -->
