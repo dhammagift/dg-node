@@ -50,6 +50,13 @@
                 clock: 'clock-rotate-left', cap: 'graduation-cap', wrench: 'screwdriver-wrench',
                 help: 'circle-question'
             };
+            // Same default order as the home page tiles/drawer (DEFAULT_TILE_ORDER in
+            // search/js/home.js) — menu-links.json's own key order doesn't match it (JSON
+            // groups history/help right after read, the real site puts them last).
+            var ORDER = {
+                en: ['read', 'external', 'dicts', 'materials', 'tools', 'history', 'help'],
+                ru: ['read', 'external', 'russian', 'dicts', 'materials', 'tools', 'history', 'help']
+            };
             var lang = new URLSearchParams(location.search).get('lang')
                 || localStorage.getItem('siteLanguage')
                 || (navigator.language || '').slice(0, 2);
@@ -59,8 +66,9 @@
                 .then(function (data) {
                     var items = data[lang];
                     var host = document.getElementById('dg-404-menu');
-                    Object.keys(items).forEach(function (key) {
+                    ORDER[lang].forEach(function (key) {
                         var item = items[key];
+                        if (!item) return;
                         var href = (key === 'read' && item.href) ? item.href : '/';
                         var a = document.createElement('a');
                         a.href = href;
