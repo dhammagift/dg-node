@@ -7,9 +7,18 @@
     <link rel="icon" type="image/png" href="/assets/img/favico-noglass.png" />
     <link href="/assets/css/styles.css" rel="stylesheet" />
     <link href="/assets/css/extrastyles.css" rel="stylesheet" />
+    <style>
+        /* Compact variant of the home page's .dg-tile grid (search/js/home.js) — same icon
+           font, small instead of card-sized: this is a secondary nav aid on an error page,
+           not the primary way to browse. */
+        #dg-404-menu { display: flex; flex-wrap: wrap; justify-content: center; gap: 1.25rem 1.5rem; margin-top: 2rem; max-width: 32rem; }
+        #dg-404-menu a { display: flex; flex-direction: column; align-items: center; gap: .3rem; width: 4.5rem; color: var(--bs-emphasis-color); text-decoration: none; }
+        #dg-404-menu a i, #dg-404-menu a svg { width: 1.15rem; height: 1.15rem; color: var(--bs-primary); }
+        #dg-404-menu a span { font-size: .72rem; line-height: 1.1; text-align: center; }
+    </style>
 </head>
 <body>
-    <div class="d-flex align-items-center justify-content-center vh-100">
+    <div class="d-flex align-items-center justify-content-center flex-column vh-100">
         <div class="text-center">
             <h1 class="display-1 fw-bold">404</h1>
             <p class="fs-3"><span class="text-danger">Aho!</span> <span data-404-text="p404">Page not found. But</span></p>
@@ -20,9 +29,61 @@
             </p>
             <a href="/" id="back" class="btn btn-primary" data-404-text="home">Go Home</a>
         </div>
+        <nav id="dg-404-menu"></nav>
     </div>
     <script src="/assets/js/bootstrap.bundle.5.3.1.min.js"></script>
+    <script src="/assets/js/fontawesome-local.js" defer></script>
     <script defer src="/assets/js/themeswitch.js"></script>
+    <script>
+        // Compact reproduction of the site's real multitool menu (search/js/home.js
+        // renderTiles()/ICONS — same icon-name convention, same data source), not a
+        // reimplementation: fetches dg-node's own already-independent
+        // configs/search/menu-links.json (ported from legacy horizontalMenuEn/Ru.php once,
+        // "nothing invented" per that file's own comment) rather than hand-typing labels
+        // here. Most entries are mega-dropdowns or modal triggers on the real site — none of
+        // that JS exists on a bare error page, so every entry link to "/" except "read",
+        // which has a real plain URL (/toc). Wrapped in try/catch: this is decoration, the
+        // 404 page's actual job (message + Go Home) must render even if the fetch fails.
+        (function () {
+            var ICON_CLASS = {
+                book: 'book-bookmark', bookmark: 'book', globe: 'book', dict: 'book-atlas',
+                clock: 'clock-rotate-left', cap: 'graduation-cap', wrench: 'screwdriver-wrench',
+                help: 'circle-question'
+            };
+            var lang = new URLSearchParams(location.search).get('lang')
+                || localStorage.getItem('siteLanguage')
+                || (navigator.language || '').slice(0, 2);
+            lang = (lang === 'ru') ? 'ru' : 'en';
+            fetch('/nodejs/res/menu-links.json')
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    var items = data[lang];
+                    var host = document.getElementById('dg-404-menu');
+                    Object.keys(items).forEach(function (key) {
+                        var item = items[key];
+                        var href = (key === 'read' && item.href) ? item.href : '/';
+                        var a = document.createElement('a');
+                        a.href = href;
+                        var iconName = ICON_CLASS[item.icon] || 'circle-question';
+                        // Same as faSvg() in search/js/home.js: these are added after page
+                        // load (post-fetch), so fontawesome-local.js's DOMContentLoaded
+                        // <i class="fa-solid fa-X"> auto-replace pass never sees them — call
+                        // its SVG-generation API directly instead of relying on that scan.
+                        var made = window.FontAwesome && window.FontAwesome.icon
+                            ? window.FontAwesome.icon({ prefix: 'fas', iconName: iconName })
+                            : null;
+                        a.innerHTML = (made && made.html && made.html[0])
+                            ? made.html[0]
+                            : '<i class="fa-solid fa-' + iconName + '" aria-hidden="true"></i>';
+                        var label = document.createElement('span');
+                        label.textContent = item.label;
+                        a.appendChild(label);
+                        host.appendChild(a);
+                    });
+                })
+                .catch(function () { /* decoration only, see comment above */ });
+        })();
+    </script>
     <script>
         // Same client-side-only i18n convention as the rest of dg-node (see dg-light.js
         // comment near /manifest.json): no server-side language variants, just localStorage/
