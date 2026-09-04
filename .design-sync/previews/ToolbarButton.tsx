@@ -1,0 +1,37 @@
+import { Icon, Toolbar, ToolbarButton } from '@dhammagift/dg-ui';
+
+/** A glyph-only pill — the shape most of the toolbar is made of. */
+export const Glyph = () => (
+  <ToolbarButton label="Dictionary"><Icon name="comment" /></ToolbarButton>
+);
+
+/** A short word instead of a glyph, for the two actions the app spells out. */
+export const TextLabel = () => (
+  <Toolbar>
+    <ToolbarButton label="Expand / collapse all">Expand all</ToolbarButton>
+    <ToolbarButton label="Show matched words">Words</ToolbarButton>
+  </Toolbar>
+);
+
+/**
+ * Sticky toggles carry `pressed`. In this system that is announced, not drawn — both pills
+ * below are the same `.btn-light` shape; only `aria-pressed` differs.
+ */
+export const Toggle = () => (
+  <Toolbar>
+    <ToolbarButton label="Read marks off" pressed={false}><Icon name="regularStar" /></ToolbarButton>
+    <ToolbarButton label="Read marks on" pressed><Icon name="solidStar" /></ToolbarButton>
+  </Toolbar>
+);
+
+/** Glyph plus word in one pill — how the reader labels its edition and mode switches. */
+export const GlyphAndText = () => (
+  <Toolbar>
+    <ToolbarButton label="Mahāsaṅgīti edition">
+      <Icon name="book" /> <span>MS</span>
+    </ToolbarButton>
+    <ToolbarButton label="Russian and English columns">
+      <Icon name="tableColumns" /> <span>R+E</span>
+    </ToolbarButton>
+  </Toolbar>
+);

@@ -18,6 +18,8 @@ export interface SheetProps {
   onClose?: () => void;
   /** Renders the dimmed backdrop behind the sheet. */
   backdrop?: boolean;
+  /** Raises the sheet. It sits below the viewport until the app adds `show`. */
+  open?: boolean;
   className?: string;
 }
 
@@ -27,12 +29,12 @@ export interface SheetProps {
  * On phones it rises from the bottom edge; above 768px the same markup is centred as a panel.
  */
 export function Sheet({
-  title, children, tabs, activeTab, onTabChange, onClose, backdrop = true, className,
+  title, children, tabs, activeTab, onTabChange, onClose, backdrop = true, open = true, className,
 }: SheetProps) {
   return (
     <>
-      {backdrop && <div id="dg-sheet-backdrop" />}
-      <div id="dg-sheet" className={['dg-sheet', className].filter(Boolean).join(' ')}>
+      {backdrop && <div id="dg-sheet-backdrop" className={open ? 'show' : undefined} />}
+      <div id="dg-sheet" className={['dg-sheet', open ? 'show' : '', className].filter(Boolean).join(' ')}>
         <div className="dg-sheet-handle" />
         <div className="dg-sheet-head">
           <h2 id="dg-sheet-title">{title}</h2>

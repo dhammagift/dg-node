@@ -8,9 +8,9 @@ const here = path.dirname(url.fileURLToPath(import.meta.url));
 const OUT = path.resolve(here, '../docs');
 
 const DOCS = [
-  ['Icon', 'Icons', 'A single glyph from the site\'s own icon set, inlined as SVG so it inherits `currentColor` and needs no asset origin.',
+  ['Icon', 'Icons', 'A single glyph from the site\'s own icon set, inlined as SVG so it needs no asset origin.',
     `<Icon name="compass" size={18} title="Four Noble Truths" />`,
-    'Names come from the app\'s shipped set: `compass`, `gear`, `question`, `book`, `star`, `moon`, `sun`, `play`, `memo`, `copy`, `eye`, `home-icon` → `homeIcon`, and 30 more. File names are camel-cased: `open-link.svg` is `openLink`.'],
+    'Names come from the app\'s shipped set: `compass`, `gear`, `question`, `book`, `star`, `moon`, `sun`, `play`, `memo`, `copy`, `eye`, and 30 more. File names are camel-cased: `open-link.svg` is `openLink`.\n\nTwo things to know before picking one. Most glyphs hard-code `fill="#989898"`, which beats the `currentColor` on the `<svg>` — they read grey on any ground, light or dark, which is how the app looks too. Only `select`, `memo`, `play`, `tableColumns`, `linkSolidFull` and `codeCompareSolidFull` follow `currentColor`. And `homeIcon` is unusable at normal sizes: its artwork occupies roughly the top-left 3% of its viewBox, so it renders as near-nothing — reach for `tableColumns` instead.\n\nThe set has no envelope and no brand marks; the app pulls those from Font Awesome at runtime.'],
   ['Brand', 'Shell', 'The dhamma.gift signboard — logo plus wordmark, and the page\'s primary way home.',
     `<Brand />\n<Brand variant="mark" />`,
     'Shown only on the home state. In results and reader the signboard is gone and the conch alone lives inside the search field — pass `variant="mark"` for that one.'],
@@ -85,7 +85,7 @@ const DOCS = [
     'Titles come as a pair on purpose — the Pali is the stable identity, the translated title is what a reader recognizes. Show the inflected forms grep actually matched, not just the query.'],
   ['QuoteSegment', 'Results', 'One canonical segment as the results render it: the Pali line, its variant reading, and every translation stacked in the right column.',
     `<QuoteSegment\n  id="sn56.11:2.1"\n  pali={<>Dveme, bhikkhave, antā pabbajitena na sevitabbā.</>}\n  translations={[{ lang: 'ru', text: 'Монахи, эти две крайности не должны practiced.', translator: 'ru_o' }]}\n/>`,
-    'Segment ids are the addressing scheme end to end — the same `sn56.11:2.1` is the anchor, the copy-link target and the reader\'s scroll destination. Pass `context` for the lines shown around a hit.'],
+    'Pass `context` for the lines shown around a hit — it emits the same Bootstrap utilities the results view emits (`opacity-90` on the Pali, `text-muted opacity-75` on the translations). Only the translation side actually dims: `opacity-90` and `font-weight-light` are Bootstrap 4 names the app kept through its Bootstrap 5 upgrade, and neither resolves to a rule. The component reproduces them rather than silently correcting the app.\n\nSegment ids are the addressing scheme end to end — the same `sn56.11:2.1` is the anchor, the copy-link target and the reader\'s scroll destination.'],
   ['Match', 'Results', 'A search hit inside a line.',
     `<>Atha kho so <Match>kacchapo</Match> …</>`,
     'The results view wraps every occurrence in one of these, including the inflected forms grep found — which is why a search for `kacchapa` highlights `kacchapānaṁ` too.'],
@@ -103,7 +103,7 @@ const DOCS = [
     'Modes come from `configs/reader/mode-table.json`, which the server and the client both read; the order of keys there is the order of rows here.'],
   ['TocItem', 'Reader', 'One line of a sutta\'s table of contents.',
     `<TocItem level="h1" pali="Uddesa" translated="Изложение" />\n<TocItem level="h3" pali="Kāyānupassanā" translated="Созерцание тела" />`,
-    'Both scripts sit in the same row and each is separately clickable, so tapping either scrolls to the same place — the reader\'s language toggle then decides which is visible.'],
+    'Both scripts sit in the same row and each is separately clickable, so tapping either scrolls to the same place — the reader\'s language toggle then decides which is visible.\n\n`lang` takes the reader\'s **three-letter** codes here — `rus`, `eng`, `tha` — not the two-letter codes `ReaderSegment` and `QuoteSegment` use. The TOC styles are written as `.toc-item .rus-lang, .toc-item .eng-lang`, so `ru` renders unstyled. Default is `rus`.'],
   ['SmartButton', 'Reader', 'One control in the reader\'s floating smart panel.',
     `<SmartButton label="Variants"><Icon name="eye" size={18} /></SmartButton>`,
     'Each button shortcuts a control that also lives in the toolbar; the panel exists so the common few are reachable without leaving the text.'],

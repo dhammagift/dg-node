@@ -50,6 +50,51 @@ library follows. If a NEW class appears that the DS should carry, add it to `DS_
 - The second and later translations render **muted** (`lang-2nd`) by design — that is the app's
   hierarchy, not a rendering fault.
 
+## Icon-set facts (cost a preview round to rediscover)
+
+- **`homeIcon` is effectively invisible.** Its artwork is a 0-123 unit drawing wrapped in a
+  `transform: matrix(0.1338 …)` inside a `0 0 512 512` viewBox, so it paints in the top-left
+  ~3% of the box at any normal size. Use `tableColumns` for an app-window glyph.
+- **Most glyphs hard-code `fill="#989898"`** on their paths, which beats the `currentColor` on
+  the `<svg>` — they read grey on every ground. That is how the app looks too (it renders them
+  as `<img>`); do not "fix" it. Only `select`, `memo`, `play`, `tableColumns`, `linkSolidFull`
+  and `codeCompareSolidFull` follow `currentColor`.
+- The set has **no envelope and no brand marks** — the app pulls GitHub/Telegram/etc. from Font
+  Awesome at runtime, which the DS does not bundle.
+- `memo` is artwork of the letters "MEMO"; unreadable at row size.
+
+## Components that need the surface they ship on
+
+- **Overlays are parked out of view until the app adds `show`.** `Sheet`, `Drawer` and
+  `MegaMenu` therefore take an `open` prop (default `true`) that emits that class — without it
+  the drawer sits off-screen and the mega menu renders at `opacity: 0; scale(.35)`. Previews
+  additionally pass `backdrop={false}`, or the card screenshots as a dark rectangle.
+- **`AnnounceBox`** is `rgba(255,255,255,.16)` with `#fff` text — cut for the home screen's
+  `#dg-hero-band`, invisible on white. Previews wrap it in
+  `linear-gradient(165deg, var(--dg-navy) 0%, var(--dg-navy) 38%, var(--dg-accent-dark) 100%)`.
+- **`ScopeSummary`** needs `className="dg-scope"` — the panel chrome lives on the wrapper the
+  app supplies, not on the component. `.dg-scope-group` has no padding, so pair with `px-3 py-2`.
+- **`SheetRow`** is unstyled outside a `.dg-sheet` host. **`ResultRow`** needs a `ResultsTable`
+  around it (it is a `<tr>`). **`SmartButton`** stretches (`justify-content: flex-end`), so box
+  it at ~190px like the real floating panel.
+- **`TocItem`** takes the reader's THREE-letter language codes (`rus`/`eng`/`tha`), unlike
+  `ReaderSegment`/`QuoteSegment` which take `ru`/`en`. Passing `ru` to a TocItem leaves it
+  unstyled.
+- `ResultsTable`/`ResultRow` settle at ~740px in a ~1000px card, so **no `cardMode` override is
+  needed** — re-check if the default column set ever grows.
+- An empty `TileGrid` is a real app state (the skeleton shimmer) but screenshots as a blank
+  rectangle indistinguishable from an error — sweep tile *count* instead.
+
+## The CSS harvest missed id-scoped chrome once — watch for it again
+
+The first harvest matched **class** selectors only, so everything the app styles by **id** was
+silently absent from the bundle: `#dg-drawer` and its backdrop (the whole 320px panel, border,
+shadow and slide transform), `#dg-sheet`, `#dg-mega`, `#dg-busy-indicator`, `#sutta`. The
+components rendered "fine" — they just had no surface, which is exactly the failure mode that
+looks like a design choice rather than a bug. `EXTRA_SELECTORS` in `build-css.mjs` now carries
+an id alternation; **add to it whenever a component is styled by id**. Same class of miss:
+`.dg-mega-block-divider` was absent, which made `MegaMenuGroup`'s `divider` prop a no-op.
+
 ## Known render warns
 
 (none triaged yet — populate as they appear)
@@ -60,6 +105,16 @@ library follows. If a NEW class appears that the DS should carry, add it to `DS_
   CSS rule anywhere in the repo** — it is a pure DOM hook for anchors and copy-link handling.
   Real, but do not cite it as a styling class in `conventions.md`; the header names
   `dg-drawer-row` instead, which does carry rules.
+
+## Findings in the app, surfaced by the extraction
+
+- **Dead Bootstrap 4 class names survive in the results view.** `search-render.js` dims context
+  lines with `opacity-90` (Pali/variant) and `text-muted font-weight-light` + `opacity-75`
+  (translations). Bootstrap 5 ships `.opacity-{0,25,50,75,100}` and renamed `font-weight-light`
+  to `fw-light`, so **`opacity-90` and `font-weight-light` resolve to nothing** — in the live
+  app as much as here. Net effect: context translations dim (via `opacity-75`), context Pali
+  does not. `QuoteSegment` reproduces the app's classes verbatim rather than quietly correcting
+  them; fixing it belongs in `search-render.js`, not in the design system.
 
 ## Re-sync risks
 

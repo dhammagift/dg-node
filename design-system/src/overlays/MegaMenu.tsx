@@ -8,6 +8,11 @@ export interface MegaMenuProps {
   onClose?: () => void;
   /** Tightens the gaps, for menus with many short entries. */
   compact?: boolean;
+  /**
+   * Reveals the panel. It is parked at `opacity: 0; scale(.35)` until the app adds `show`, so
+   * a preview or a static composition needs this set.
+   */
+  open?: boolean;
   className?: string;
 }
 
@@ -17,12 +22,12 @@ export interface MegaMenuProps {
  *
  * Closes on Escape and on backdrop click in the app.
  */
-export function MegaMenu({ title, children, onClose, compact, className }: MegaMenuProps) {
+export function MegaMenu({ title, children, onClose, compact, open = true, className }: MegaMenuProps) {
   return (
     <div
       id="dg-mega"
-      className={['dg-sheet', 'dg-anchored', 'dg-mega', compact ? 'dg-mega-compact' : '', className]
-        .filter(Boolean).join(' ')}
+      className={['dg-sheet', 'dg-anchored', 'dg-mega', compact ? 'dg-mega-compact' : '',
+        open ? 'show' : '', className].filter(Boolean).join(' ')}
       role="dialog"
       aria-modal="true"
     >

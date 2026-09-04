@@ -5,6 +5,13 @@ export interface DrawerProps {
   children: ReactNode;
   /** Renders the dimmed backdrop behind the drawer. */
   backdrop?: boolean;
+  /** Content of the drawer's header strip, beside the close button. */
+  head?: ReactNode;
+  /**
+   * Slides the panel in. The drawer is parked off-screen until the app adds `show`, so a
+   * preview or a static composition needs this set.
+   */
+  open?: boolean;
   className?: string;
 }
 
@@ -14,11 +21,25 @@ export interface DrawerProps {
  * Replaced a Bootstrap dropdown: the drawer is what makes the page read as an app rather
  * than as a website menu.
  */
-export function Drawer({ children, backdrop = true, className }: DrawerProps) {
+export function Drawer({ children, backdrop = true, head, open = true, className }: DrawerProps) {
   return (
     <>
-      {backdrop && <div id="dg-drawer-backdrop" />}
-      <nav id="dg-drawer" className={className}>{children}</nav>
+      {backdrop && <div id="dg-drawer-backdrop" className={open ? 'show' : undefined} />}
+      {/* <aside> wrapping a <nav class="dg-drawer-body">, as the app builds it: the group-title
+          and row rules are scoped to that inner class, so a single flat element loses them. */}
+      <aside
+        id="dg-drawer"
+        aria-label="Menu"
+        className={[open ? 'show' : '', className].filter(Boolean).join(' ') || undefined}
+      >
+        <div className="dg-drawer-head">
+          {head}
+          <button type="button" className="dg-icon-btn dg-drawer-close" aria-label="Close">
+            &times;
+          </button>
+        </div>
+        <nav className="dg-drawer-body">{children}</nav>
+      </aside>
     </>
   );
 }

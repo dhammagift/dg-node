@@ -18,7 +18,12 @@ export interface QuoteSegmentProps {
   variant?: ReactNode;
   /** One entry per translation column. */
   translations?: SegmentTranslation[];
-  /** Dims the segment as surrounding context rather than a hit. */
+  /**
+   * Marks the segment as surrounding context rather than a hit.
+   *
+   * Emits the classes the results view emits (`opacity-90` on the Pali, `opacity-75` on the
+   * translations). Note that `opacity-90` is dead in Bootstrap 5 — see the component's docs.
+   */
   context?: boolean;
   className?: string;
 }
@@ -31,18 +36,23 @@ export interface QuoteSegmentProps {
  * the copy-link target and the reader's scroll destination.
  */
 export function QuoteSegment({ id, pali, variant, translations = [], context, className }: QuoteSegmentProps) {
-  const ctx = context ? ' context' : '';
+  // The results view dims context lines with Bootstrap utilities, not a class of its own:
+  // opacity-90 on the Pali and variant, text-muted + opacity-75 on the translations
+  // (public/overrides/js/search-render.js). Emitted verbatim so the markup stays
+  // substitutable for the app's own.
+  const paliCtx = context ? ' opacity-90' : '';
+  const transCtx = context ? ' opacity-75' : '';
   return (
     <span id={id} className={['quote-segment', className].filter(Boolean).join(' ')}>
       {pali && (
         <>
-          <span className={`pli-lang inputscript-ISOPali quote${ctx}`} lang="pi">{pali}</span>
+          <span className={`pli-lang inputscript-ISOPali quote${paliCtx}`} lang="pi">{pali}</span>
           <br className="styled pli-lang quote" />
         </>
       )}
       {variant && (
         <>
-          <span className={`pli-lang variant quote${ctx}`} lang="pi">{variant}</span>
+          <span className={`pli-lang variant quote${paliCtx}`} lang="pi">{variant}</span>
           <br className="styled pli-lang quote" />
         </>
       )}
@@ -51,7 +61,7 @@ export function QuoteSegment({ id, pali, variant, translations = [], context, cl
           {translations.map((t, i) => (
             <span key={`${t.lang}-${i}`}>
               <span
-                className={`${t.lang}-lang${i > 0 ? ' lang-2nd' : ''} quote${ctx}`}
+                className={`${t.lang}-lang text-muted font-weight-light quote${transCtx}`}
                 lang={t.lang}
                 data-translator={t.translator}
               >

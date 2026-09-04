@@ -41,11 +41,14 @@ export const ToolbarGlyphs = () => (
     <Glyph name="circleHalfStroke" />
     <Glyph name="comment" />
     <Glyph name="commentSlash" />
+    <Glyph name="select" />
     <Glyph name="selectSlash" />
     <Glyph name="alignRight" />
     <Glyph name="alignLeft" />
     <Glyph name="solidStar" />
     <Glyph name="regularStar" />
+    <Glyph name="star" />
+    <Glyph name="starBlack" />
     <Glyph name="compass" />
     <Glyph name="gear" />
     <Glyph name="question" />
@@ -61,6 +64,7 @@ export const ReaderGlyphs = () => (
     <Glyph name="tableColumns" />
     <Glyph name="codeCompareSolidFull" />
     <Glyph name="memo" />
+    <Glyph name="memoBlack" />
     <Glyph name="copy" />
     <Glyph name="openLink" />
     <Glyph name="linkSolidFull" />
@@ -68,21 +72,23 @@ export const ReaderGlyphs = () => (
     <Glyph name="eye" />
     <Glyph name="eyeSlash" />
     <Glyph name="clockRotateLeft" />
+    <Glyph name="dgLogoDark" />
   </div>
 );
 
-/** The legacy TTS player's transport row, plus theme and home. */
+/** The legacy TTS player's transport row, plus the theme and scroll glyphs. */
 export const PlayerGlyphs = () => (
   <div style={grid}>
     <Glyph name="backwardStep" />
+    <Glyph name="play" />
     <Glyph name="playGrey" />
     <Glyph name="pauseGrey" />
     <Glyph name="forwardStep" />
     <Glyph name="volumeSolidFull" />
     <Glyph name="rotateSolidFull" />
+    <Glyph name="rotateRightSolidFull" />
     <Glyph name="hourglassRegularFull" />
     <Glyph name="trashCanRegularFull" />
-    <Glyph name="homeIcon" />
     <Glyph name="moon" />
     <Glyph name="sun" />
     <Glyph name="arrowUpDark" />

@@ -22,6 +22,12 @@ export const HomeScreen = () => (
   </TileGrid>
 );
 
-// An empty grid is not a bug: it holds the home screen's height and shimmers while
-// menu-links.json is still in flight (`.dg-tiles:empty`).
-export const Loading = () => <TileGrid>{null}</TileGrid>;
+// Exactly one row: at >=576px the grid is four columns, so four tiles fill it without wrapping.
+export const Nikayas = () => (
+  <TileGrid>
+    <Tile label="Dīgha" description="34 long discourses" icon={<Icon name="book" size={20} />} />
+    <Tile label="Majjhima" description="152 middle-length discourses" icon={<Icon name="book" size={20} />} />
+    <Tile label="Saṁyutta" description="Connected discourses" icon={<Icon name="book" size={20} />} />
+    <Tile label="Aṅguttara" description="Numbered discourses" icon={<Icon name="book" size={20} />} />
+  </TileGrid>
+);

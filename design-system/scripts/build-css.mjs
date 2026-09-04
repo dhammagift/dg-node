@@ -64,7 +64,7 @@ const DS_CLASSES = [
   'dg-row-ic-img', 'dg-row-icon', 'dg-row-label', 'dg-row-desc', 'dg-row-star', 'dg-group-title',
   'dg-qs-note', 'dg-toggle-label', 'dg-tile-label', 'dg-drawer', 'dg-drawer-row', 'dg-drawer-head',
   'dg-drawer-body', 'dg-drawer-group', 'dg-drawer-backdrop', 'dg-mega', 'dg-mega-col',
-  'dg-mega-compact', 'dg-toggle-row', 'dg-tgl', 'dg-toggle-hotkey', 'dg-icon-opt', 'dg-mode-row',
+  'dg-mega-compact', 'dg-mega-block-divider', 'dg-drawer-head', 'dg-drawer-close', 'dg-toggle-row', 'dg-tgl', 'dg-toggle-hotkey', 'dg-icon-opt', 'dg-mode-row',
   'dg-mode-row-top', 'dg-mode-row-hotkey', 'dg-mode-row-desc', 'dg-mega-block', 'dg-chip-group',
   'smart-btn', 'smart-label', 'dg-field-input', 'dg-diac', 'dg-anchored', 'dg-topbar',
   // results
@@ -117,7 +117,15 @@ function harvestPlain(css) {
 
 /* Selectors the class matcher can't see: the reader styles translation columns by attribute
    (`[class*="-lang"]`), and the sutta body hangs off #sutta. */
-const EXTRA_SELECTORS = [/\[class\*=["']-lang["']\]/, /#sutta\b/, /\.(?:ru|en|pli)-lang\b/, /p\.sc-link/];
+const EXTRA_SELECTORS = [
+  /\[class\*=["']-lang["']\]/,
+  /\.(?:ru|en|pli)-lang\b/,
+  /p\.sc-link/,
+  // Several shells are styled by id, not class — the drawer's panel chrome and its backdrop,
+  // the sheet, the mega menu, the busy indicator, the sutta body. Matching classes alone
+  // shipped those components without their surface.
+  /#(?:dg-drawer|dg-drawer-backdrop|dg-sheet|dg-sheet-backdrop|dg-mega|dg-busy-indicator|dg-topbar|dg-hero-band|dg-header-backdrop|dg-announce|home-tiles|smart-panel|sutta)\b/,
+];
 
 function keepPlain(rule) {
   const sel = selectorOf(rule);
