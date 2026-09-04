@@ -1086,6 +1086,12 @@ window.DgSearchRender = (function () {
 
         var options = $.extend({}, commonOptions(), {
             data: data,
+            // Same "Q" dom slot as the sutta table (commonOptions()) — without this option
+            // SearchBuilder never activates for this table instance, so the slot stays empty
+            // (owner-reported: button missing on the Words report). No preDefined criteria
+            // here — the sutta table's ("Quote" doesn't-contain "ExcludeMe") is specific to a
+            // column this table doesn't have.
+            searchBuilder: {},
             columns: [
                 // 0: Word — подсвечиваем искомое слово внутри (как в колонке Words по-суттного
                 // отчёта), а не просто выводим голый текст.
@@ -1136,6 +1142,13 @@ window.DgSearchRender = (function () {
 
         wordTableApi = $table.DataTable(options);
         bindExpandCollapseButtons($table);
+        // Same relocated static button as the sutta table (attachFilterPlusButton's own
+        // comment explains why it moves one node rather than creating a second) — without this
+        // call the button stays wherever the sutta table last put it (or d-none, if the words
+        // report is what's showing on first load), and #btn-filter-builder's own click handler
+        // (search/index.html) already looks for THIS table's .dtsb-searchBuilder panel, which
+        // only exists now that searchBuilder: {} above is set.
+        attachFilterPlusButton($table);
         return wordTableApi;
     }
 
