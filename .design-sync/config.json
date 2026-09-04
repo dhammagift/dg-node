@@ -1,0 +1,11 @@
+{
+  "pkg": "@dhammagift/dg-ui",
+  "globalName": "DgUi",
+  "shape": "package",
+  "buildCmd": "npm run build --prefix design-system",
+  "srcDir": "src",
+  "cssEntry": "dist/dg-ui.css",
+  "docsDir": "docs",
+  "guidelinesGlob": [],
+  "readmeHeader": ".design-sync/conventions.md"
+}
