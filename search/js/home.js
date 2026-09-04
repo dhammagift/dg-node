@@ -2974,7 +2974,11 @@
         quickButtonHtml: quickButtonHtml,
         // Зовётся из перехватчика beforeinstallprompt/appinstalled в index.html — перерисовать
         // тайл «Установить» в #dg-cta, когда событие пришло уже после первого рендера.
-        renderExtra: renderExtra
+        renderExtra: renderExtra,
+        // Зовётся с public/404.html: тот рисует свою компактную строку иконок мультитула (не
+        // домашние карточки), но клики должны открывать РЕАЛЬНЫЕ шторку/мега-меню, а не
+        // хардкоженные href на странице ошибки — тут ровно та же логика, что у настоящих плиток.
+        runTile: runTile
     };
 
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
