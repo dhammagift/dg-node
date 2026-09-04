@@ -9,15 +9,15 @@ export interface BusyIndicatorProps {
  * search or a sutta is in flight.
  */
 export function BusyIndicator({ label = 'Loading…', className }: BusyIndicatorProps) {
+  // The indicator is display:none at rest and revealed by the shell's own state
+  // (body.dg-busy.dg-header-hidden in the app). The wrapper carries that state here, so the
+  // component shows itself instead of waiting for a <body> it cannot reach.
   return (
-    <div
-      id="dg-busy-indicator"
-      className={className}
-      role="status"
-      aria-live="polite"
-    >
-      <div className="spinner-border" />
-      <span className="visually-hidden">{label}</span>
+    <div className={['dg-busy', 'dg-header-hidden', className].filter(Boolean).join(' ')}>
+      <div id="dg-busy-indicator" role="status" aria-live="polite">
+        <div className="spinner-border" />
+        <span className="visually-hidden">{label}</span>
+      </div>
     </div>
   );
 }

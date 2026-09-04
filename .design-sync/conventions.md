@@ -16,6 +16,11 @@ for the reader's serif, the `--dg-*` token layer, and the harvested component ru
 import { SearchShell, TileGrid, Tile, Icon } from '@dhammagift/dg-ui';
 ```
 
+**Shell state is a prop, not a page mode.** The app gates chrome on `body.dg-state-results`,
+`body.dg-busy` and friends. Since your composition has no such `<body>`, the components carry
+that state themselves — `<SearchShell state="home" | "results" | "reader" | "toc">`, and
+`BusyIndicator` reveals itself. Pick the state you are designing, don't add body classes.
+
 **Dark theme** is a class, not a prop. Tokens are defined on `:root` for light and redefined
 under `.dark`, `[data-theme="dark"]` and `prefers-color-scheme: dark`. To force one, put the
 class on a wrapper:
@@ -86,7 +91,7 @@ CSS — a lookalike element with a made-up class gets none of that behaviour.
 
 ```jsx
 <div className="d-flex flex-column gap-3" style={{ background: 'var(--dg-page)', padding: '1rem' }}>
-  <SearchShell placeholder="kacchapa" showLogo={false} />
+  <SearchShell state="home" placeholder="kacchapa" />
   <TileGrid>
     <Tile label="Dīgha Nikāya" description="34 long discourses" icon={<Icon name="book" size={20} />} />
     <Tile label="Dhammapada" description="423 verses" icon={<Icon name="book" size={20} />} />

@@ -57,6 +57,7 @@ const DS_CLASSES = [
   'dg-howto-quote', 'dg-howto-refs', 'dg-howto-warn', 'dg-extra-title', 'dg-cta', 'dg-cta-btn',
   'dg-contacts', 'dg-contact-btn', 'dg-contacts-motto', 'dg-powered-by', 'dg-announce',
   'dg-announce-box', 'dg-announce-close', 'dg-footer-link',
+  'dg-state-home', 'dg-state-results', 'dg-state-reader', 'dg-state-toc', 'dg-header-hidden',
   'dg-hero-band', 'dg-header-backdrop', 'table-wrapper', 'container-fluid',
   // overlays
   'dg-sheet', 'dg-sheet-backdrop', 'dg-sheet-handle', 'dg-sheet-head', 'dg-sheet-close',
@@ -88,6 +89,11 @@ function rescope(selector) {
       .replace(/body\.dg-skin-minimal\.dark\b/g, '.dark')
       .replace(/body\.dg-skin-minimal\b\s*/g, '')
       .replace(/body\.dark\b/g, '.dark')
+      // The app gates a lot of chrome on the shell's own state — body.dg-state-results,
+      // body.dg-busy, body.dg-header-hidden. A library consumer has no such <body>, so the
+      // `body` qualifier is dropped and the component carries the state class itself (see
+      // SearchShell's `state` prop and BusyIndicator's wrapper).
+      .replace(/\bbody(\.[\w-]+)/g, '$1')
       .replace(/^\s*body\s+/, '')
       .trim())
     .filter(Boolean)
@@ -124,7 +130,8 @@ const EXTRA_SELECTORS = [
   // Several shells are styled by id, not class — the drawer's panel chrome and its backdrop,
   // the sheet, the mega menu, the busy indicator, the sutta body. Matching classes alone
   // shipped those components without their surface.
-  /#(?:dg-drawer|dg-drawer-backdrop|dg-sheet|dg-sheet-backdrop|dg-mega|dg-busy-indicator|dg-topbar|dg-hero-band|dg-header-backdrop|dg-announce|home-tiles|smart-panel|sutta)\b/,
+  /#(?:form|paliauto|searchbtn)\b/,
+  /#(?:dg-drawer|dg-drawer-backdrop|dg-sheet|dg-sheet-backdrop|dg-mega|dg-busy-indicator|dg-topbar|dg-hero-band|dg-header-backdrop|dg-announce|dg-brand|home-tiles|smart-panel|sutta)\b/,
 ];
 
 function keepPlain(rule) {
