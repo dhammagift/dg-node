@@ -37,11 +37,16 @@ function splitRules(css) {
       if (depth === 0) { out.push(css.slice(start, i + 1).trim()); start = i + 1; }
     }
   }
-  return out.filter(Boolean);
+  // Comments are stripped from each chunk before anything looks at it. They can contain braces
+  // — home.css quotes whole rules in its commentary — and a raw indexOf('{') then slices the
+  // selector out of the middle of a comment, emitting the rule verbatim and un-rescoped. It
+  // also lets a comment-prefixed @media block be recognized as one.
+  return out.map(stripComments).map((r) => r.trim()).filter(Boolean);
 }
 
-const selectorOf = (rule) =>
-  rule.slice(0, rule.indexOf('{')).replace(/\/\*[\s\S]*?\*\//g, '').trim();
+const stripComments = (css) => css.replace(/\/\*[\s\S]*?\*\//g, '');
+
+const selectorOf = (rule) => rule.slice(0, rule.indexOf('{')).trim();
 const bodyOf = (rule) => rule.slice(rule.indexOf('{') + 1, rule.lastIndexOf('}'));
 
 /** Classes the design system ships. A rule is kept when its selector mentions one of them. */

@@ -2,8 +2,27 @@ import type { ReactNode } from 'react';
 import { Drawer, DrawerGroup, DrawerRow, Segmented, Brand, Icon } from '@dhammagift/dg-ui';
 
 // Groups are shown in the drawer they belong to — it carries its own panel surface.
+// A fixed-position overlay needs a containing block with a real height. The preview card's
+// root carries `transform: translateZ(0)` and, with only the out-of-flow panel inside it,
+// measures 0px tall — the drawer then computes `height: 0` from its own `top/bottom` and
+// clips itself away. This stage is that missing viewport, nothing more: page ground, a
+// height, and the transform that makes it the containing block.
+const Stage = ({ children, height = 560 }: { children: ReactNode; height?: number }) => (
+  <div style={{
+    position: 'relative',
+    height,
+    transform: 'translateZ(0)',
+    overflow: 'hidden',
+    background: 'var(--dg-page)',
+  }}>
+    {children}
+  </div>
+);
+
 const Menu = ({ children }: { children: ReactNode }) => (
-  <Drawer backdrop={false} head={<Brand />}>{children}</Drawer>
+  <Stage height={400}>
+    <Drawer backdrop={false} head={<Brand />}>{children}</Drawer>
+  </Stage>
 );
 
 export const Open = () => (

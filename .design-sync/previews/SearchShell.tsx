@@ -1,54 +1,57 @@
+import * as React from 'react';
 import { Brand, Icon, IconButton, SearchShell } from '@dhammagift/dg-ui';
 
-// The shell has no width of its own — in the app the page state caps it at 520px (results,
-// reader, toc) and 640px on home. A consumer supplies that from its own layout, so the
-// stories do too.
-const column = { maxWidth: 520 };
-const homeColumn = { maxWidth: 640, margin: '0 auto' };
+// The shell sizes itself from its wrapper: .hero-row is a centred block capped at 700px, and
+// .dg-state-* caps the form at 640px (home) or 520px (results/reader/toc). The preview cell
+// centres its content as a flex item, which shrink-wraps that block to the pill's content
+// width — so each story is given a full-width frame and the shell's own maxima do the rest.
+// The cell shrink-wraps its content, so `width: 100%` resolves to the pill's own width. An
+// explicit 640px — the app's home-state column — lets .dg-state-*'s own maxima (640 home,
+// 520 results/reader) do the sizing, which is what the proportions should show.
+const Frame = ({ children }: { children: React.ReactNode }) => (
+  <div style={{ width: 640 }}>{children}</div>
+);
 
-/** The field in results state: conch on the left (the way home), query, clear, quick settings, magnifier. */
+/** Results state: the conch on the left is the way home, then the query, clear, quick settings, magnifier. */
 export const Results = () => (
-  <div style={column}>
-    <SearchShell state="results" value="kacchapa" showClear />
-  </div>
+  <Frame><SearchShell state="results" value="kacchapa" showClear /></Frame>
 );
 
 /** Empty field. The app rotates a real Pali word — or a sutta id — through the placeholder. */
 export const Placeholder = () => (
-  <div style={column}>
-    <SearchShell state="results" placeholder="Kāyagatā or sn56.11" />
-  </div>
+  <Frame><SearchShell state="results" placeholder="Kāyagatā or sn56.11" /></Frame>
 );
 
 /** A search in flight — the magnifier hands over to the spinner inside the same button. */
 export const Busy = () => (
-  <div style={column}>
-    <SearchShell state="results" value="satipaṭṭhāna" showClear busy />
-  </div>
+  <Frame><SearchShell state="results" value="satipaṭṭhāna" showClear busy /></Frame>
 );
 
 /**
  * Home state: the signboard above carries the brand, so the field drops the in-field conch
- * and becomes a plain shadowed pill with the navy submit button. The burger sits outside the
+ * and becomes a white shadowed pill with the navy submit button. The burger sits outside the
  * shell, to its right.
  */
 export const OnHome = () => (
-  <div style={homeColumn}>
+  <Frame>
     <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 18 }}>
       <Brand />
     </div>
-    <div className="hero-row" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-      <SearchShell state="home" placeholder="kacchapa" />
+    <div
+      className="hero-row"
+      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+    >
+      <div style={{ flex: '1 1 auto', minWidth: 0 }}>
+        <SearchShell state="home" placeholder="kacchapa" />
+      </div>
       <IconButton label="Menu" variant="menu">
         <Icon name="listUlSolidFull" size={19} />
       </IconButton>
     </div>
-  </div>
+  </Frame>
 );
 
 /** Reader state, quick-settings dot suppressed — the leanest shell the app ships. */
 export const Reader = () => (
-  <div style={column}>
-    <SearchShell state="reader" value="dn22:2.2" showQuickSettings={false} />
-  </div>
+  <Frame><SearchShell state="reader" value="dn22:2.2" showQuickSettings={false} /></Frame>
 );

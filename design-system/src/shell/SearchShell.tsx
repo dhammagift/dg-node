@@ -38,16 +38,18 @@ export function SearchShell({
   showQuickSettings = true,
   className,
 }: SearchShellProps) {
+  // The state class goes on the WRAPPER, not the form: the app's rules are descendant
+  // selectors hanging off <body> (`.dg-state-results .dg-hero-form`, `.dg-busy
+  // .dg-shell-spinner`), so a class on the form itself matches none of them. The wrapper also
+  // carries .hero-row, which is the form's real parent in the app.
+  //
   // id="form" / id="paliauto" / id="searchbtn" are the app's own ids, and several rules key off
   // them (`#form #paliauto.searchinput` strips the Bootstrap box inside the glass pill). Kept
   // verbatim: one search shell per page, as in the app.
   return (
-    <form
-      id="form"
-      className={['dg-hero-form', 'm-0', `dg-state-${state}`, busy ? 'dg-busy' : '', className]
-        .filter(Boolean).join(' ')}
-      autoComplete="off"
-    >
+    <div className={['hero-row', `dg-state-${state}`, busy ? 'dg-busy' : '', className]
+      .filter(Boolean).join(' ')}>
+    <form id="form" className="dg-hero-form m-0" autoComplete="off">
       <label className="visually-hidden" htmlFor="paliauto">Search</label>
       <div className="dg-input-shell">
         {/* Hidden by CSS on the home state, where the full signboard shows instead. */}
@@ -84,5 +86,6 @@ export function SearchShell({
         </button>
       </div>
     </form>
+    </div>
   );
 }

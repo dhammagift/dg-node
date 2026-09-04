@@ -104,9 +104,58 @@ an id alternation; **add to it whenever a component is styled by id**. Same clas
   of you at the time.** `ResultsTable`/`ResultRow` genuinely fit before the id-scoped rules were
   harvested and overflowed after. Re-check every wide component after any CSS re-harvest.
 
+## Fixed overlays measure 0px in a preview card — use a Stage
+
+The card root (`.ds-cell` / `.ds-single` in `.ds-sync/lib/emit.mjs`) carries
+`transform: translateZ(0)`, which makes IT — not the viewport — the containing block for any
+`position: fixed` descendant, and its own height is 0 when the out-of-flow panel is its only
+child. Measured, not inferred:
+
+```
+#r0         transform: matrix(1,0,0,1,0,0)   height: 0
+#dg-drawer  position: fixed                  height: 0px   overflow-y: auto
+```
+
+The drawer resolves `top:0; bottom:0` against a zero-height box and clips itself away; `Sheet`
+fails from the other edge (`bottom: 20px` of a zero-height box lands above the card). Cards go
+**completely blank** — this is what `[RENDER_THIN]`/`[RENDER_BLANK]` report on `Drawer`,
+`DrawerRow`, `DrawerGroup`, `Sheet`, `SheetRow` and `BusyIndicator`, and it is NOT benign.
+
+**Preview fix (applied):** a `Stage` — one div with `position: relative`, an explicit `height`,
+`overflow: hidden`, `background: var(--dg-page)` and `transform: translateZ(0)`. It supplies the
+missing viewport and nothing else — no surface, border or shadow — so every visible edge is
+still the component's. Copy it from `previews/Drawer.tsx`.
+
+**Real fix, if ever wanted:** drop `transform: translateZ(0)` from `.ds-cell`/`.ds-single` in
+the harness, or give them a `min-height`. That is converter territory, not this repo, and it
+affects any design system with a fixed overlay. `MegaMenu` needs no stage — it is
+`position: absolute`, so it lands at its static position.
+
+## Composition rules
+
+- **`SheetRow` is unstyled outside a sheet** — `.dg-sheet-row`, `.dg-row-desc` and `.dg-chip`
+  are scoped under `.dg-sheet`. Put it inside `Sheet` or `MegaMenu` (both carry that class).
+- **`DrawerGroup` needs a `Drawer`** — its heading rules are `.dg-drawer-body .dg-group-title`,
+  and only `Drawer` emits that class.
+- **`ToggleRow` is the one overlay that needs no stage.**
+- **`.dg-qs-btn` renders empty** — the app fills the quick-settings dot from JS, so in a static
+  composition it is a 34px gap between the separator and the magnifier. Pass
+  `showQuickSettings={false}` unless the gap is wanted.
+- **`SearchShell` sizes itself from its wrapper**, and the preview cell shrink-wraps its
+  content, so `width: 100%` collapses to the pill's own width. Give the story an explicit width
+  (640px) and let `.dg-state-*`'s maxima (640 home / 520 results) do the sizing.
+
 ## Known render warns
 
-(none triaged yet — populate as they appear)
+- `[TOKENS_MISSING]` — 4 vars: `--bs-body-text-align`, `--bs-nav-link-font-size`,
+  `--bs-breadcrumb-font-size` (Bootstrap sets these contextually) and `--dg-mobile-scale`
+  (home.css defines it only inside the `max-width: 767.98px` media query, and the only rule
+  using it lives in that same query). Benign — do not chase.
+- **Emoji render as tofu boxes in the headless container** (no emoji font installed). The
+  `AnnounceBox.Beta` card shows this: its text is the app's real shipped announcement from
+  `configs/search/announcements.json`, which genuinely contains 🎉. It renders correctly in any
+  real browser, and so in the design pane. Faithful content, container limitation — do not
+  "fix" the preview by stripping the emoji.
 
 ## Verified-name findings
 
@@ -116,6 +165,11 @@ an id alternation; **add to it whenever a component is styled by id**. Same clas
   `dg-drawer-row` instead, which does carry rules.
 
 ## Findings in the app, surfaced by the extraction
+
+- **The drawer's own comment contradicts its CSS.** `search/index.html` says the menu
+  "выезжает слева" (slides out from the left), but `#dg-drawer` in `home.css` is `right: 0`
+  with `border-left` and a `-8px` shadow — it docks on the RIGHT, which is what the extracted
+  component reproduces. The comment is stale, not the CSS.
 
 - **Dead Bootstrap 4 class names survive in the results view.** `search-render.js` dims context
   lines with `opacity-90` (Pali/variant) and `text-muted font-weight-light` + `opacity-75`
