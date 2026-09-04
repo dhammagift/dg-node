@@ -138,11 +138,12 @@
         {
           "name": "AI", "layout": "chips", "column": 3,
           "items": [
+            { "label": "Tripitaka-mcp.com", "href": "https://tripitaka-mcp.com/", "blank": true },
+            { "label": "Claude", "href": "https://claude.ai", "blank": true },
             { "label": "ChatGPT", "href": "https://chatgpt.com", "blank": true },
             { "label": "Gemini", "href": "https://gemini.google/", "blank": true },
             { "label": "DeepSeek", "href": "https://chat.deepseek.com", "blank": true },
-            { "label": "Norbu AI", "href": "https://norbu-ai.org/", "blank": true },
-            { "label": "Tripitaka-mcp.com", "href": "https://tripitaka-mcp.com/", "blank": true }
+            { "label": "Norbu AI", "href": "https://norbu-ai.org/", "blank": true }
           ]
         },
         {
@@ -230,8 +231,8 @@
           "items": [
             { "label": "Learn Pali Guides", "desc": "Blog with guided readings of Pali suttas", "href": "https://palistudies.blogspot.com/2019/04/intro-kaya-section-satipatthana-sutta.html?m=1", "blank": true },
             { "label": "James Whelan. Pali & Sanskrit", "href": "https://www.thebuddhistsociety.org/page/sanskrit-and-pali-study-resources-guide-by-james-whelan", "blank": true },
-            { "label": "gd", "href": "https://drive.google.com/drive/folders/1jAy_xD6qkrnIkmXO9e4KtI_--nDMySSn", "blank": true },
-            { "label": "yt", "href": "https://www.youtube.com/@jameswhelan2381", "blank": true }
+            { "label": "GDrive Materials", "href": "https://drive.google.com/drive/folders/1jAy_xD6qkrnIkmXO9e4KtI_--nDMySSn", "blank": true },
+            { "label": "YT Channel", "href": "https://www.youtube.com/@jameswhelan2381", "blank": true }
           ]
         },
         {
@@ -555,8 +556,8 @@
           "items": [
             { "label": "Learn Pali Переводы", "desc": "Блог с разбором сутт на пали", "href": "https://palistudies.blogspot.com/2019/04/intro-kaya-section-satipatthana-sutta.html?m=1", "blank": true },
             { "label": "Джеймс Велан. Пали и Санскрит", "href": "https://www.thebuddhistsociety.org/page/sanskrit-and-pali-study-resources-guide-by-james-whelan", "blank": true },
-            { "label": "gd", "href": "https://drive.google.com/drive/folders/1jAy_xD6qkrnIkmXO9e4KtI_--nDMySSn", "blank": true },
-            { "label": "yt", "href": "https://www.youtube.com/@jameswhelan2381", "blank": true }
+            { "label": "Материалы в GDrive", "href": "https://drive.google.com/drive/folders/1jAy_xD6qkrnIkmXO9e4KtI_--nDMySSn", "blank": true },
+            { "label": "Канал на YT", "href": "https://www.youtube.com/@jameswhelan2381", "blank": true }
           ]
         },
         {
