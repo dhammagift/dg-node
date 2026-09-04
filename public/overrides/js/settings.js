@@ -1569,7 +1569,11 @@ if (dictSelect) {
     // Загрузка сохраненного значения из localStorage
   const savedScript = localStorage.getItem('selectedScript');
 
-    // Установка сохраненного значения в select при загрузке страницы
+    // Установка сохраненного значения в select при загрузке страницы — same "only if the
+    // element exists on this page" guard as dictSelect above (this one was missing it: threw
+    // on any page without the full settings markup, e.g. 404.html, killing the rest of this
+    // DOMContentLoaded handler — Apply/Reset button wiring, reader-mode radios below).
+if (scriptSelect) {
 if (savedScript) {
   scriptSelect.value = savedScript;
 } else {
@@ -1581,6 +1585,7 @@ if (savedScript) {
   // absent key again, so it silently lost that default forever. Not persisting here — only the
   // select control's displayed value defaults to ISOPali, localStorage stays untouched until the
   // user actually picks something via Apply (below).
+}
 }
 
 if (applyButton) {
