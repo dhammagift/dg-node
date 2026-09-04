@@ -11,7 +11,7 @@ const openapiSpecEn = require('./configs/openapi.en.json');
 const { default: Aksharamukha, Scripts: AKSH_SCRIPTS } = require('aksharamukha');
 
 const app = express();
-const PORT = 3000;
+const PORT = 3902;
 
 // gzip/br для ВСЕГО, что отдаёт сервер — HTML, JSON, JS, CSS. Прод (легаси PHP) летает именно
 // потому, что перед ним Apache/nginx сжимают ответы по умолчанию; у этого сервера такого слоя

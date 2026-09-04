@@ -81,8 +81,8 @@
           "items": [
             { "label": "Accesstoinsight.org", "desc": "Translation by Thanissaro Bhikkhu", "href": "https://www.accesstoinsight.org/tipitaka/vin/sv/index.html", "blank": true },
             { "label": "BMC", "desc": "Commentary by Thanissaro Bhikkhu", "href": "https://www.dhammatalks.org/vinaya/bmc/Section0000.html", "localHref": "/dhammatalks.org/vinaya/bmc/Section0000.html", "blank": true },
-            { "label": "Bhikkhu Patimokkha trans. by Ven Nanatusita", "desc": "Grammar analysis", "href": "/assets/materials/bupm_trn_by_nanatusita.pdf" },
-            { "label": "Bhikkhuni Patimokkha trans. by Ch Kabilsingh", "desc": "Comparasmento of 6 versions", "href": "/assets/materials/bipm_trn_by_chatsumarn_kabilsingh.pdf" }
+            { "label": "Bhikkhu Patimokkha trans. by Ven Nanatusita", "desc": "Grammar analysis", "href": "/documents/bupm_trn_by_nanatusita.pdf" },
+            { "label": "Bhikkhuni Patimokkha trans. by Ch Kabilsingh", "desc": "Comparasmento of 6 versions", "href": "/documents/bipm_trn_by_chatsumarn_kabilsingh.pdf" }
           ]
         },
         {
@@ -368,8 +368,8 @@
           "items": [
             { "label": "ATI", "desc": "Перевод Тханиссаро Бхиккху", "href": "https://www.accesstoinsight.org/tipitaka/vin/sv/index.html", "blank": true },
             { "label": "BMC", "desc": "Комментарий Тханиссаро Бхиккху", "href": "https://www.dhammatalks.org/vinaya/bmc/Section0000.html", "localHref": "/dhammatalks.org/vinaya/bmc/Section0000.html", "blank": true },
-            { "label": "Nanatusita", "desc": "Перевод бхиккху Ньянатусита", "href": "/assets/materials/bupm_trn_by_nanatusita.pdf" },
-            { "label": "Patimokkha Bi пер. Ch Kabilsingh", "desc": "Бхиккхуни-патимоккха (PDF)", "href": "/assets/materials/bipm_trn_by_chatsumarn_kabilsingh.pdf", "blank": true }
+            { "label": "Nanatusita", "desc": "Перевод бхиккху Ньянатусита", "href": "/documents/bupm_trn_by_nanatusita.pdf" },
+            { "label": "Patimokkha Bi пер. Ch Kabilsingh", "desc": "Бхиккхуни-патимоккха (PDF)", "href": "/documents/bipm_trn_by_chatsumarn_kabilsingh.pdf", "blank": true }
           ]
         },
         {
@@ -435,7 +435,7 @@
             { "label": "Тхеравада.рф Сутты", "href": "https://xn--80aaaglc1fo1a.xn--p1ai/palicanon/%D1%81%D1%83%D1%82%D1%82%D0%B0%D0%BD%D1%82%D0%B0", "blank": true },
             { "label": "Тхеравада.рф Патимоккха", "href": "http://xn--80aaaglc1fo1a.xn--p1ai/palicanon/%d0%b2%d0%b8%d0%bd%d0%b0%d1%8f", "blank": true },
             { "label": "Dhamma.ru Сутты", "href": "http://dhamma.ru/index-sutta.html", "localHref": "/dhamma.ru/index-sutta.html", "blank": true },
-            { "label": "Dhamma.ru Патимоккха", "href": "/assets/materials/prat.html", "blank": true },
+            { "label": "Dhamma.ru Патимоккха", "href": "/documents/prat.html", "blank": true },
             { "label": "Theravada.ru", "href": "https://theravada.ru/Teaching/Canon/Suttanta/samyutta.htm", "localHref": "/theravada.ru/Teaching/Canon/Suttanta/samyutta.htm", "blank": true },
             { "label": "Theravada.su", "href": "https://tipitaka.theravada.su/toc/translations/1097", "localHref": "/tipitaka.theravada.su/toc_thsu.html", "blank": true }
           ]
@@ -528,8 +528,8 @@
           "name": "Грамматика", "column": 2,
           "items": [
             { "label": "Падежи — таблица", "desc": "Окончания существительных и прилагательных одной таблицей", "href": "https://drive.google.com/file/d/1HVRK6yTMT59uHCCvTdQukRy7fmHNntOr/view?usp=drivesdk", "star": true },
-            { "label": "Падежи — примеры", "desc": "Склонения с примерами, PDF", "href": "/assets/materials/pali_declensions_ru.pdf" },
-            { "label": "Спряжения (рус)", "href": "/assets/materials/pali_conjugations_ru.pdf", "star": true },
+            { "label": "Падежи — примеры", "desc": "Склонения с примерами, PDF", "href": "/documents/pali_declensions_ru.pdf" },
+            { "label": "Спряжения (рус)", "href": "/documents/pali_conjugations_ru.pdf", "star": true },
             { "label": "Спряжения (англ)", "href": "https://drive.google.com/file/d/1HzPCYsVBEkWErAk6TqSWRYKseM1hqMCb/view?usp=sharing" }
           ]
         },
@@ -537,7 +537,7 @@
           "name": "Учебники", "column": 1,
           "items": [
             { "label": "Дж. Гейр — Курс по Пали", "desc": "Академический курс грамматики пали", "href": "https://drive.google.com/file/d/1H_mhKNgrBYevOOnax-FUBgxkfSuwHItu/view?usp=share_link", "star": true },
-            { "label": "Елизаренкова, Топоров — Язык Пали", "href": "/assets/materials/yelizarenkova_toporov_pali.pdf", "star": true },
+            { "label": "Елизаренкова, Топоров — Язык Пали", "href": "/documents/yelizarenkova_toporov_pali.pdf", "star": true },
             { "label": "Вардер — Введение в Пали (англ)", "href": "https://drive.google.com/file/d/1b0sTtKF5wuGcDtr_u5sSSWGY5_QzBF-h/view?usp=drivesdk" },
             { "label": "Тхануттамо Бх — Пали (англ)", "href": "https://drive.google.com/file/d/1jeXT4tkuudnN2EB1ABp4eHLGXbw-_EBk/view?usp=drivesdk" }
           ]
@@ -628,10 +628,10 @@
         {
           "name": "Работа с текстом", "column": 3,
           "items": [
-            { "label": "Редактировать Перевод", "desc": "Построчное сопоставление пали и перевода", "tpl": "/ru/assets/lbl.html?q={{q}}", "blank": true },
-            { "label": "Сравнить Две Сутты", "desc": "Найти различия между двумя суттами", "tpl": "/ru/assets/diff/?lang=pl&one={{q}}&two={{q}}", "blank": true },
+            { "label": "Редактировать Перевод", "desc": "Построчное сопоставление пали и перевода", "tpl": "/assets/lbl.html?q={{q}}", "blank": true },
+            { "label": "Сравнить Две Сутты", "desc": "Найти различия между двумя суттами", "tpl": "/assets/diff/?lang=pl&one={{q}}&two={{q}}", "blank": true },
             { "label": "Сравнить Два Списка", "desc": "Построчное сравнение двух текстовых списков", "href": "/assets/listdiff.html" },
-            { "label": "Сделать список из строки", "desc": "Составить список из строк текста", "href": "/ru/assets/makelist.html", "star": true }
+            { "label": "Сделать список из строки", "desc": "Составить список из строк текста", "href": "/assets/makelist.html", "star": true }
           ]
         }
       ]
