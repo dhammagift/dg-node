@@ -2915,6 +2915,16 @@ app.get('/:slug', (req, res) => {
     return res.sendFile(searchIndexPath);
 });
 
+// Native 404 (public/404.html) — replaces legacy /assets/404.php (PHP includes for
+// config/translate.php + a horizontal-menu partial, both from the old dg repo). This is a
+// real 404 status, unlike the /:slug route above which always answers 200 (single-segment
+// unknown slugs are valid search queries, not errors) — this only fires for what nothing else
+// matched: multi-segment paths and missing static files under /assets etc. Self-contained,
+// no legacy dependency (only /assets/{css,js,img} files already vendored in public/overrides/).
+app.use((req, res) => {
+    res.status(404).sendFile(path.join(__dirname, 'public', '404.html'));
+});
+
 app.listen(PORT, () => {
     console.log(`\n=== Dhamma.gift Server (dg-light.js) ===\n`);
     console.log(`SPA (new): http://localhost:${PORT}/spa/`);
