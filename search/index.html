@@ -923,6 +923,10 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
         display: flex;
         align-items: center;
         gap: 6px;
+        /* Owner-reported: filter row sat flush against the table header, no breathing room
+           (measured 0px live). Nothing upstream was setting this — not a DataTables default,
+           not the .row grid it lives in. */
+        margin-bottom: 12px;
         /* Owner: the filter field/row shouldn't be able to widen the page. min-width:0 lets a
            flex/grid item actually shrink below its content size instead of forcing overflow
            (the default "auto" min-width doesn't); flex-wrap lets the length-selector row wrap
