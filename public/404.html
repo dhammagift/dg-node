@@ -8,7 +8,33 @@
     <link href="/assets/css/styles.css" rel="stylesheet" />
     <link href="/assets/css/extrastyles.css" rel="stylesheet" />
     <link href="/nodejs/res/css/home.css" rel="stylesheet" />
+    <script>
+        // Same config as search/index.html's <head> — real {{token}} localization for the
+        // hero band/drawer markup below (copied from that page verbatim), not the hand-typed
+        // EN/RU pair further down (that one stays: this engine is a fetch, the 404 message
+        // itself shouldn't depend on it succeeding).
+        window.DHAMMA_LANG_CONFIG_PATTERN = "/nodejs/res/lang_{lang}.json";
+        window.DHAMMA_GLOBAL_LANG_CONFIG_PATTERN = "/assets/i18n/lang_global_{lang}.json";
+    </script>
+    <script src="/assets/js/dhamma-i18n.js" defer></script>
     <style>
+        /* .hero-row's base layout (display:flex etc.) is defined in search/index.html's own
+           inline <style>, not home.css — copied verbatim (that one rule only; the thousands of
+           other lines there are page-specific and not needed here) rather than left missing,
+           which collapsed the row to block and dropped the burger onto its own line below the
+           input instead of beside it. */
+        .hero-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            position: relative;
+        }
+        /* #dg-hero-band's own padding is 0 outside dg-state-home (home.css) — on the real
+           search/reader pages that's fine, they sit inside a container with its own mt-2; this
+           page has no such wrapper, so the bar rendered flush against the viewport edge. */
+        #dg-hero-band { padding-top: 1.5rem; }
         /* Compact variant of the home page's .dg-tile grid — same icon font, smaller than the
            card-sized home tiles (this is a secondary nav aid on an error page, not the primary
            way to browse), but still comfortably tappable. Sheet/mega popovers themselves come
@@ -19,8 +45,72 @@
         #dg-404-menu button span { font-size: .78rem; line-height: 1.15; text-align: center; }
     </style>
 </head>
-<body>
-    <div class="d-flex align-items-center justify-content-center flex-column vh-100">
+<body class="dg-state-results">
+    <!-- dg-state-results (home.css): not "home" (no topbar/tiles — a 404 isn't the home page),
+         closest of the other three states (results/reader/toc) that show the shell-logo +
+         .dg-menu-btn-hero burger next to the input instead. -->
+    <!-- Hero band (search input + burger) — copied verbatim from search/index.html's
+         #dg-hero-band (same IDs/classes) so home.js's existing, already-loaded init() wires
+         it up without any 404-specific JS: #paliauto input handling, .dg-menu-btn click ->
+         openDrawer(), #dg-quick-btn (quickButtonHtml), the "Find the Truth"/"Найдите Истину"
+         FOUC seed script. Only #form's submit is 404-local (see script at the bottom) — the
+         real one (search/index.html inline script) drives in-place SPA state this static page
+         doesn't have. -->
+    <div id="dg-hero-band">
+    <div class="dg-hero-inner">
+    <div id="dg-topbar">
+      <a href="/" id="dg-brand" class="dg-go-home" title="Dhamma.Gift">
+        <img class="dg-brand-logo" src="/assets/img/dgsanhkalogo.png" alt="Dhamma.Gift">
+        <span class="dg-brand-name">dhamma.gift</span>
+      </a>
+      <p id="home-motto">Найдите Истину</p>
+      <script>
+        (function () {
+          try {
+            var lang = localStorage.getItem('dhammaLanguage') || localStorage.getItem('siteLanguage') || 'en';
+            if (lang !== 'ru') document.getElementById('home-motto').textContent = 'Find the Truth';
+          } catch (e) {}
+        })();
+      </script>
+      <button type="button" class="dg-icon-btn dg-menu-btn" aria-label="Menu" title="Menu" data-i18n-aria-label="{{toolbar.menuAriaLabel}}" data-i18n-title="{{toolbar.menuTitle}}">
+        <svg viewBox="0 0 448 512" width="19" height="19" fill="currentColor" aria-hidden="true">
+          <path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/>
+        </svg>
+      </button>
+    </div>
+    <div class="hero-row mb-2">
+      <div id="dg-announce" hidden></div>
+      <form id="form" class="dg-hero-form m-0" autocomplete="off">
+        <label class="visually-hidden" for="paliauto">{{search.label}}</label>
+        <div class="dg-input-shell">
+          <a href="/" class="dg-shell-logo dg-go-home" title="Home" data-i18n-title="{{global.common.home}}">
+            <img src="/assets/img/dgsankhaonly.png" alt="Dhamma.Gift">
+          </a>
+          <input class="form-control searchinput" id="paliauto" type="search" data-i18n-placeholder="{{search.placeholder}}" autocomplete="off">
+          <button type="button" id="dg-clear-btn" class="dg-shell-btn" hidden aria-label="Clear" data-i18n-aria-label="{{global.common.clear}}">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+          </button>
+          <span class="dg-shell-sep" aria-hidden="true"></span>
+          <button type="button" id="dg-quick-btn" class="dg-qs-btn" aria-label="Quick settings" title="Quick settings" aria-expanded="false" data-i18n-aria-label="{{quick.title}}" data-i18n-title="{{quick.title}}"></button>
+          <button type="submit" id="searchbtn" class="dg-shell-btn dg-shell-go" aria-label="Search" data-i18n-aria-label="{{search.label}}">
+            <svg class="dg-search-icon" viewBox="0 0 512 512" width="17" height="17" fill="currentColor" aria-hidden="true" style="transform: scaleX(-1)">
+              <path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352a144 144 0 1 0 0-288 144 144 0 1 0 0 288z"/>
+            </svg>
+            <span class="dg-shell-spinner" role="status" aria-live="polite" aria-hidden="true"></span>
+          </button>
+        </div>
+      </form>
+      <div id="home-hint" aria-live="polite"></div>
+      <button type="button" class="dg-icon-btn dg-menu-btn dg-menu-btn-hero" aria-label="Menu" title="Menu" data-i18n-aria-label="{{toolbar.menuAriaLabel}}" data-i18n-title="{{toolbar.menuTitle}}">
+        <svg viewBox="0 0 448 512" width="19" height="19" fill="currentColor" aria-hidden="true">
+          <path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/>
+        </svg>
+      </button>
+    </div>
+    </div>
+    </div>
+
+    <div class="d-flex align-items-center justify-content-center flex-column py-5">
         <div class="text-center">
             <h1 class="display-1 fw-bold">404</h1>
             <p class="fs-3"><span class="text-danger">Aho!</span> <span data-404-text="p404">Page not found. But</span></p>
@@ -33,6 +123,47 @@
         </div>
         <nav id="dg-404-menu"></nav>
     </div>
+
+    <!-- Drawer — copied verbatim from search/index.html's #dg-drawer (same IDs/classes,
+         opened by the .dg-menu-btn buttons above via home.js's openDrawer()). -->
+    <div id="dg-drawer-backdrop" hidden></div>
+    <aside id="dg-drawer" hidden aria-label="Menu" data-i18n-aria-label="{{toolbar.menuAriaLabel}}">
+      <div class="dg-drawer-head">
+        <img class="dg-brand-logo" src="/assets/img/dgsanhkalogo.png" alt="">
+        <span class="dg-brand-name">dhamma.gift</span>
+        <button type="button" class="dg-icon-btn dg-drawer-close" aria-label="Close" data-i18n-aria-label="{{global.common.close}}">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+      <nav class="dg-drawer-body">
+        <details class="dg-drawer-group" open>
+          <summary class="dg-group-title">{{menu.navigation}}</summary>
+          <a class="dg-drawer-row dg-go-home" href="/"><img class="dg-row-ic dg-row-ic-img" src="/assets/img/dgsankhaonly.png" alt="">{{buttons.main}}</a>
+          <a class="dg-drawer-row" href="javascript:void(0)" data-dg-icon="compass" onclick="if (typeof window.toggleQuickModal === 'function') window.toggleQuickModal();">{{toolbar.compassLabel}}</a>
+          <a class="dg-drawer-row dg-about-link" href="/assets/common/keyFeatures.html" data-href-en="/assets/common/keyFeatures.html" data-href-ru="/assets/common/keyFeaturesRu.html" data-dg-icon="info">{{menu.about}}</a>
+          <a class="dg-drawer-row" href="/docs/key-features" target="_blank" data-dg-icon="help">{{global.common.help}}</a>
+          <a class="dg-drawer-row" href="/login" data-dg-icon="login">{{global.common.login}}</a>
+        </details>
+        <p class="dg-group-title" data-dg-icon="language">{{menu.language}}</p>
+        <div id="dg-lang-seg"></div>
+        <p class="dg-group-title">{{menu.theme}}</p>
+        <div id="dg-theme-seg"></div>
+        <a class="dg-drawer-row" href="/settings/" data-dg-icon="gear">{{global.common.settings}}</a>
+      </nav>
+    </aside>
+
+    <script>
+        // Form submit — 404-local, not the real one (search/index.html's own inline script,
+        // deep in SPA state this static page doesn't have). A plain navigation to the site's
+        // clean-URL search entry point (already how e.g. /kacchapa itself works) is the
+        // correct behavior here anyway: there's no in-place results table on an error page to
+        // update, an actual page load is what should happen.
+        document.getElementById('form').addEventListener('submit', function (e) {
+            e.preventDefault();
+            var q = (document.getElementById('paliauto').value || '').trim();
+            if (q) window.location.href = '/' + encodeURIComponent(q);
+        });
+    </script>
     <script src="/assets/js/jquery-3.7.0.min.js"></script>
     <script src="/assets/js/bootstrap.bundle.5.3.1.min.js"></script>
     <script src="/assets/js/fontawesome-local.js" defer></script>
@@ -54,12 +185,14 @@
             if (/^\/(ru|r|ml|mt)(\/|$)/.test(location.pathname)) return 'ru';
             return localStorage.getItem('siteLanguage') === 'ru' ? 'ru' : 'en';
         })();
-        // search/js/home.js's own menuLang() checks window.DHAMMA_I18N.language first (before
-        // localStorage) — that engine isn't loaded here on purpose (see comment below), but
-        // without this stub home.js would resolve a DIFFERENT language than the button row
-        // above it whenever dg404Lang came from the path rather than localStorage, and a click
-        // would open the sheet/mega in the wrong language.
-        window.DHAMMA_I18N = { language: window.dg404Lang };
+        // dhamma-i18n.js (loaded above, deferred) resolves window.DHAMMA_I18N.language itself
+        // now, same precedence/regex as dg404Lang above (verified against its source) — no
+        // stub needed here anymore. It's async (a JSON fetch), so home.js's menuLang() falls
+        // back to localStorage/dg404Lang in the gap before it resolves; a click in that
+        // narrow window is the only case where the sheet/mega could open in the "wrong"
+        // language relative to dg404Lang, and only if dg404Lang came from the path rather than
+        // localStorage — accepted as a rare, self-correcting edge case rather than blocking the
+        // whole page on that fetch.
     </script>
     <script>
         // Compact reproduction of the site's real multitool menu: same icon-name convention,
@@ -90,57 +223,77 @@
                 en: ['read', 'external', 'dicts', 'materials', 'tools', 'history', 'help'],
                 ru: ['read', 'external', 'russian', 'dicts', 'materials', 'tools', 'history', 'help']
             };
-            var lang = window.dg404Lang;
+            var menuData = null;
+            function renderMenu() {
+                if (!menuData) return;
+                var lang = window.dg404Lang;
+                var items = menuData[lang];
+                var host = document.getElementById('dg-404-menu');
+                host.innerHTML = '';
+                ORDER[lang].forEach(function (key) {
+                    var item = items[key];
+                    if (!item) return;
+                    var btn = document.createElement('button');
+                    btn.type = 'button';
+                    var iconName = ICON_CLASS[item.icon] || 'circle-question';
+                    // Same as faSvg() in search/js/home.js: these are added after page
+                    // load (post-fetch), so fontawesome-local.js's DOMContentLoaded
+                    // <i class="fa-solid fa-X"> auto-replace pass never sees them — call
+                    // its SVG-generation API directly instead of relying on that scan.
+                    var made = window.FontAwesome && window.FontAwesome.icon
+                        ? window.FontAwesome.icon({ prefix: 'fas', iconName: iconName })
+                        : null;
+                    btn.innerHTML = (made && made.html && made.html[0])
+                        ? made.html[0]
+                        : '<i class="fa-solid fa-' + iconName + '" aria-hidden="true"></i>';
+                    var label = document.createElement('span');
+                    label.textContent = item.label;
+                    btn.appendChild(label);
+                    btn.addEventListener('click', function () {
+                        if (window.DgHome && window.DgHome.runTile) window.DgHome.runTile(key, btn);
+                        else window.location.href = (key === 'read' ? '/toc' : '/');
+                    });
+                    host.appendChild(btn);
+                });
+            }
             fetch('/nodejs/res/menu-links.json')
                 .then(function (r) { return r.json(); })
-                .then(function (data) {
-                    var items = data[lang];
-                    var host = document.getElementById('dg-404-menu');
-                    ORDER[lang].forEach(function (key) {
-                        var item = items[key];
-                        if (!item) return;
-                        var btn = document.createElement('button');
-                        btn.type = 'button';
-                        var iconName = ICON_CLASS[item.icon] || 'circle-question';
-                        // Same as faSvg() in search/js/home.js: these are added after page
-                        // load (post-fetch), so fontawesome-local.js's DOMContentLoaded
-                        // <i class="fa-solid fa-X"> auto-replace pass never sees them — call
-                        // its SVG-generation API directly instead of relying on that scan.
-                        var made = window.FontAwesome && window.FontAwesome.icon
-                            ? window.FontAwesome.icon({ prefix: 'fas', iconName: iconName })
-                            : null;
-                        btn.innerHTML = (made && made.html && made.html[0])
-                            ? made.html[0]
-                            : '<i class="fa-solid fa-' + iconName + '" aria-hidden="true"></i>';
-                        var label = document.createElement('span');
-                        label.textContent = item.label;
-                        btn.appendChild(label);
-                        btn.addEventListener('click', function () {
-                            if (window.DgHome && window.DgHome.runTile) window.DgHome.runTile(key, btn);
-                            else window.location.href = (key === 'read' ? '/toc' : '/');
-                        });
-                        host.appendChild(btn);
-                    });
-                })
+                .then(function (data) { menuData = data; renderMenu(); })
                 .catch(function () { /* decoration only, see comment above */ });
+            // The drawer's language toggle (real dhamma-i18n.js, loaded above) now lets a
+            // visitor actually switch language on this page — without this listener the button
+            // row stayed in whatever language it first rendered in, out of sync with the
+            // drawer/hero band it sits right below.
+            document.addEventListener('dhamma:languagechange', function () {
+                window.dg404Lang = (window.DHAMMA_I18N && window.DHAMMA_I18N.language) || window.dg404Lang;
+                renderMenu();
+            });
         })();
     </script>
     <script>
         // Same client-side-only i18n convention as the rest of dg-node (see dg-light.js
-        // comment near /manifest.json): no server-side language variants, just resolved once
-        // above (window.dg404Lang) and read here. Inline strings rather than the shared
-        // DHAMMA_I18N fetch engine on purpose — an error page should render even if a JSON
-        // fetch would fail.
+        // comment near /manifest.json): resolved once above (window.dg404Lang) and read here.
+        // Inline strings rather than the shared DHAMMA_I18N fetch engine on purpose — this
+        // particular text (the actual 404 message) should render even if a JSON fetch would
+        // fail; the live language toggle in the drawer above is a bonus once dhamma-i18n.js
+        // does load, handled by the listener below.
         (function () {
             var STRINGS = {
                 ru: { p404: 'Страница не найдена. Но', home: 'На Главную' },
                 en: { p404: 'Page not found. But', home: 'Go Home' }
             };
-            var lang = window.dg404Lang;
-            var t = STRINGS[lang] || STRINGS.en;
-            document.documentElement.lang = lang;
-            document.querySelectorAll('[data-404-text]').forEach(function (el) {
-                el.textContent = t[el.getAttribute('data-404-text')];
+            function render() {
+                var lang = window.dg404Lang;
+                var t = STRINGS[lang] || STRINGS.en;
+                document.documentElement.lang = lang;
+                document.querySelectorAll('[data-404-text]').forEach(function (el) {
+                    el.textContent = t[el.getAttribute('data-404-text')];
+                });
+            }
+            render();
+            document.addEventListener('dhamma:languagechange', function () {
+                window.dg404Lang = (window.DHAMMA_I18N && window.DHAMMA_I18N.language) || window.dg404Lang;
+                render();
             });
         })();
     </script>
