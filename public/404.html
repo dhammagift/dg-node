@@ -7,14 +7,16 @@
     <link rel="icon" type="image/png" href="/assets/img/favico-noglass.png" />
     <link href="/assets/css/styles.css" rel="stylesheet" />
     <link href="/assets/css/extrastyles.css" rel="stylesheet" />
+    <link href="/nodejs/res/css/home.css" rel="stylesheet" />
     <style>
-        /* Compact variant of the home page's .dg-tile grid (search/js/home.js) — same icon
-           font, small instead of card-sized: this is a secondary nav aid on an error page,
-           not the primary way to browse. */
-        #dg-404-menu { display: flex; flex-wrap: wrap; justify-content: center; gap: 1.25rem 1.5rem; margin-top: 2rem; max-width: 32rem; }
-        #dg-404-menu a { display: flex; flex-direction: column; align-items: center; gap: .3rem; width: 4.5rem; color: var(--bs-emphasis-color); text-decoration: none; }
-        #dg-404-menu a i, #dg-404-menu a svg { width: 1.15rem; height: 1.15rem; color: var(--bs-primary); }
-        #dg-404-menu a span { font-size: .72rem; line-height: 1.1; text-align: center; }
+        /* Compact variant of the home page's .dg-tile grid — same icon font, smaller than the
+           card-sized home tiles (this is a secondary nav aid on an error page, not the primary
+           way to browse), but still comfortably tappable. Sheet/mega popovers themselves come
+           from home.css unmodified — only this button row is custom. */
+        #dg-404-menu { display: flex; flex-wrap: wrap; justify-content: center; gap: 1.5rem 1.75rem; margin-top: 2rem; max-width: 34rem; }
+        #dg-404-menu button { display: flex; flex-direction: column; align-items: center; gap: .4rem; width: 5.5rem; background: none; border: 0; padding: 0; color: var(--bs-emphasis-color); }
+        #dg-404-menu button i, #dg-404-menu button svg { width: 1.7rem; height: 1.7rem; color: var(--bs-primary); }
+        #dg-404-menu button span { font-size: .78rem; line-height: 1.15; text-align: center; }
     </style>
 </head>
 <body>
@@ -31,19 +33,28 @@
         </div>
         <nav id="dg-404-menu"></nav>
     </div>
+    <script src="/assets/js/jquery-3.7.0.min.js"></script>
     <script src="/assets/js/bootstrap.bundle.5.3.1.min.js"></script>
     <script src="/assets/js/fontawesome-local.js" defer></script>
     <script defer src="/assets/js/themeswitch.js"></script>
+    <script defer src="/assets/js/openDicts.js"></script>
+    <script defer src="/nodejs/res/js/home.js"></script>
     <script>
-        // Compact reproduction of the site's real multitool menu (search/js/home.js
-        // renderTiles()/ICONS — same icon-name convention, same data source), not a
-        // reimplementation: fetches dg-node's own already-independent
-        // configs/search/menu-links.json (ported from legacy horizontalMenuEn/Ru.php once,
-        // "nothing invented" per that file's own comment) rather than hand-typing labels
-        // here. Most entries are mega-dropdowns or modal triggers on the real site — none of
-        // that JS exists on a bare error page, so every entry link to "/" except "read",
-        // which has a real plain URL (/toc). Wrapped in try/catch: this is decoration, the
-        // 404 page's actual job (message + Go Home) must render even if the fetch fails.
+        // Compact reproduction of the site's real multitool menu: same icon-name convention,
+        // same data source (configs/search/menu-links.json — the "nothing invented" port of
+        // the legacy horizontalMenuEn/Ru.php, see that file's own header comment), and clicks
+        // go through the REAL search/js/home.js runTile() (exported as window.DgHome.runTile
+        // for this page) — not a reimplementation, so "External"/"AI & Dicts"/etc. open the
+        // actual sheet/mega popover in place, exactly like on the home page, instead of a
+        // dead-end href guess. "Help" likewise opens /docs/multitool via runTile's own
+        // modal==='help' branch (window.open), not hardcoded here. home.js is written
+        // defensively throughout (guards every DOM lookup with `if (el)`) so loading it on a
+        // page with none of the home-page markup is safe — verified live, no console errors.
+        //
+        // This script only builds the button row itself with its own small
+        // configs/search/menu-links.json fetch (home.js's copy of the same data lives in its
+        // own closure, unreachable from here); wrapped in try/catch since it's decoration on
+        // top of the 404 page's actual job (message + Go Home), which must render regardless.
         (function () {
             var ICON_CLASS = {
                 book: 'book-bookmark', bookmark: 'book', globe: 'book', dict: 'book-atlas',
@@ -69,9 +80,8 @@
                     ORDER[lang].forEach(function (key) {
                         var item = items[key];
                         if (!item) return;
-                        var href = (key === 'read' && item.href) ? item.href : '/';
-                        var a = document.createElement('a');
-                        a.href = href;
+                        var btn = document.createElement('button');
+                        btn.type = 'button';
                         var iconName = ICON_CLASS[item.icon] || 'circle-question';
                         // Same as faSvg() in search/js/home.js: these are added after page
                         // load (post-fetch), so fontawesome-local.js's DOMContentLoaded
@@ -80,13 +90,17 @@
                         var made = window.FontAwesome && window.FontAwesome.icon
                             ? window.FontAwesome.icon({ prefix: 'fas', iconName: iconName })
                             : null;
-                        a.innerHTML = (made && made.html && made.html[0])
+                        btn.innerHTML = (made && made.html && made.html[0])
                             ? made.html[0]
                             : '<i class="fa-solid fa-' + iconName + '" aria-hidden="true"></i>';
                         var label = document.createElement('span');
                         label.textContent = item.label;
-                        a.appendChild(label);
-                        host.appendChild(a);
+                        btn.appendChild(label);
+                        btn.addEventListener('click', function () {
+                            if (window.DgHome && window.DgHome.runTile) window.DgHome.runTile(key, btn);
+                            else window.location.href = (key === 'read' ? '/toc' : '/');
+                        });
+                        host.appendChild(btn);
                     });
                 })
                 .catch(function () { /* decoration only, see comment above */ });
