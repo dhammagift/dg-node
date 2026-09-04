@@ -445,6 +445,12 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
            touch target) — grow the tappable area without changing the icon's visual size. */
         min-width: 44px;
         min-height: 44px;
+        /* Owner: "гигантский квадрат при хувере... над ссылками вначале и вконце в ридере" —
+           mobile Safari/Chrome's native tap-highlight flash is sized to the full 44x44 hit box
+           above, not the 19px icon inside it — 2.3x the glyph in each direction reads as
+           "giant". Never reset here before; :hover img{opacity:1} below already gives visual
+           feedback without it. */
+        -webkit-tap-highlight-color: transparent;
     }
     .dg-reader-toolbar img {
         width: 19px;
@@ -715,31 +721,51 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
         border: none !important;
         border-radius: 0;
     }
-    /* Режим колонок для цитат поиска — тот же переключатель (localStorage.viewMode) и та же
-       идея, что в ридере (reader/css/uiextra.css: .column-view/.right-column), но своя копия
-       CSS: та таблица стилей здесь не подключена (ридер-only, лениво грузится только при
-       открытии текста), а тянуть её целиком сюда ради пары правил — лишнее. Разметку под это
-       уже строит search-render.js (renderSegment: переводы обёрнуты в <span
-       class="right-column">, как в megareader.js). span[class*="-lang"] (не голое .quote) —
-       иначе селектор ловил бы и служебные <br class="... quote"> из той же разметки. */
-    #search-pane.column-view span[class*="-lang"].quote {
-        display: inline-block;
-        vertical-align: top;
-        box-sizing: border-box;
+    /* Режим колонок для цитат поиска — тот же переключатель (localStorage.viewMode), что в
+       ридере, но своя копия CSS (reader/css/uiextra.css грузится лениво только в самом ридере).
+       search-render.js оборачивает каждый сегмент в <span class="quote-segment"> (root+variant
+       слева, .right-column с переводами справа). Grid с двумя треками, а не прежний
+       inline-block+width:48% — та пара правил ловила ОБА span.pli-lang.quote (root И variant —
+       у variant те же классы pli-lang+quote) одной и той же шириной/inline-block, из-за чего
+       variant вставал РЯДОМ с root (заняв визуально место колонки перевода), а не строкой ПОД
+       ним в одной с ним колонке (владелец: "варианты должны оставаться в колонке пали"). Grid
+       без явного grid-row чинит это сам: у root и variant явный grid-column:1 — авто-раскладка
+       кладёт root в ряд 1, variant (колонка занята) — в ряд 2 той же колонки; right-column
+       (grid-column:2) встаёт в ряд 1 рядом с root, и его высота растягивает ряд 1 под текст
+       перевода — variant остаётся под root, не перекрывается. */
+    #search-pane.column-view .quote-segment {
+        display: grid;
+        grid-template-columns: 48% 48%;
+        column-gap: 4%;
     }
-    #search-pane.column-view span.pli-lang.quote {
-        width: 48%;
-        max-width: 48%;
-        padding-right: 10px;
+    #search-pane.column-view .quote-segment > span.pli-lang.quote {
+        grid-column: 1;
+        /* Cancels reader/css/uiextra.css's ".column-view .pli-lang" (width/max-width/padding:
+           unscoped to #sutta, so it also matches here) — that rule fought the grid track for
+           width, capping the text to 48% of the ALREADY-48%-wide column (~23% of the row), the
+           "узкие колбаски" the owner caught live. The grid track itself is already the right
+           width; this element just needs to fill it. */
+        width: 100%;
+        max-width: 100%;
+        padding-right: 0;
     }
-    #search-pane.column-view .right-column {
-        display: inline-block;
-        width: 48%;
-        vertical-align: top;
-        box-sizing: border-box;
-        padding-left: 10px;
+    /* grid-row:1 explicit, not auto: when root+variant both sit in column 1, the auto-placement
+       cursor advances to row 2 for variant — an auto row on right-column would then land THERE
+       too (level with variant, not root), which is the exact bug the owner just caught live
+       ("перевод должен быть напротив пали, не варианта"). Pinning row 1 keeps translation level
+       with root regardless of how many lines stack under it in column 1. */
+    #search-pane.column-view .quote-segment > .right-column {
+        grid-column: 2;
+        grid-row: 1;
+        /* Same leaked-rule cancel as the Pali span above (reader/css/uiextra.css's
+           ".column-view .right-column" is unscoped too — display:inline-block + width:48% +
+           padding-left there fought this element's own grid track). */
+        display: block;
+        width: 100%;
+        max-width: 100%;
+        padding-left: 0;
     }
-    #search-pane.column-view .right-column span[class*="-lang"].quote {
+    #search-pane.column-view .quote-segment > .right-column span[class*="-lang"].quote {
         display: block;
         width: 100%;
         margin: 0;
@@ -748,16 +774,15 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     /* Owner: with 2+ translators/languages stacked in right-column, zero margin left them
        touching — "merge into one pile" in the quote. Gap only BETWEEN blocks, not before the
        first (right after the Pali line). ~ (general sibling), not + (adjacent): each .quote span
-       is followed by its own hidden <br class="... quote"> (see the br.quote rule above), which
+       is followed by its own hidden <br class="... quote"> (see the br.quote rule below), which
        sits between two translation spans and breaks a plain + adjacent-sibling match. Same fix
        as reader/css/uiextra.css. */
-    #search-pane.column-view .right-column span[class*="-lang"].quote ~ span[class*="-lang"].quote {
+    #search-pane.column-view .quote-segment > .right-column span[class*="-lang"].quote ~ span[class*="-lang"].quote {
         margin-top: 0.5em;
     }
-    /* Разрывы строк между цитатами держат вертикальный поток в обычном режиме — в колоночном
-       они ломают ряд (пали и right-column должны стоять РЯДОМ, а <br> между inline-block
-       соседями всегда переносит следующий на новую строку). */
-    #search-pane.column-view br.quote {
+    /* <br> между сегментами внутри .quote-segment — теперь лишние: grid уже разводит root/
+       variant/right-column по колонкам и рядам сам, строчный перенос им не нужен и мешал бы. */
+    #search-pane.column-view .quote-segment > br.quote {
         display: none;
     }
     /* Контекстное меню цитаты. Ридеровское #segment-context-menu живёт в reader/css/uiextra.css,
@@ -2082,6 +2107,12 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
 
 <button class="btn btn-light mb-1  toggle-dict-btn" type="button" ><img class="" src="/assets/svg/comment.svg"></img></button>
 
+<!-- Multi-select — тот же переключатель, что в #reader-toolbar (id="toggle-multiselect"),
+     свой id (тот же дубль-id-паттерн, что и у toggle-mode-btn чуть ниже — обе кнопки
+     одновременно в DOM), общий класс .toggle-multiselect-btn — paliLookup.js делегирует
+     клик и обновляет иконку по классу, не по id. -->
+<button id="toggle-multiselect-results" class="btn btn-light mb-1 toggle-multiselect-btn" type="button" title="Multi-select"><img src="/assets/svg/select-slash.svg" alt="Multi-select"></img></button>
+
 <!-- 1/2-column toggle для цитат выдачи — то же состояние (localStorage.viewMode), что и
      #toggle-mode в #reader-toolbar; свой id (не тот же — на странице одновременно есть оба
      элемента, просто один скрыт в текущем состоянии, см. body.dg-state-*, так что дублировать
@@ -2715,7 +2746,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
             <a class="toggle-dict-btn" href="javascript:void(0)" title="Dictionary">
                 <img src="/assets/svg/comment.svg" alt="Dictionary">
             </a>
-            <a id="toggle-multiselect" href="javascript:void(0)" title="Multi-select">
+            <a id="toggle-multiselect" class="toggle-multiselect-btn" href="javascript:void(0)" title="Multi-select">
                 <img src="/assets/svg/select-slash.svg" alt="Multi-select">
             </a>
             <a href="javascript:void(0)" title="Compass" onclick="if (typeof window.toggleQuickModal === 'function') window.toggleQuickModal();">
@@ -2770,6 +2801,11 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
              (cat_server.js), точный публичный URL не выяснял, не хотел давать неверную ссылку. -->
         <div class="links-area text-center">
             <a href="/" title="Search"><img width="22px" alt="Search" src="/assets/img/gray.png"></a>
+            <!-- Read-by-chapters — owner: it belongs here (footer links row, right after
+                 Search), not the top toolbar where it was first put back. Old PHP chapter
+                 reader (r.php) is fine as the target for now, same data-href-en/data-href-ru +
+                 paintDrawerLangHrefs() pattern the Help link on this same page already uses. -->
+            <a href="/r.php" data-href-en="/r.php" data-href-ru="/ru/r.php" title="Read by Chapters"><img width="20px" alt="Chapters" src="/assets/svg/book.svg"></a>
             <a href="/assets/makelist.html" title="Create Lists">
                 <svg fill="#383838" height="20px" width="20px" viewBox="0 0 487.3 487.3" aria-hidden="true">
                     <path d="M487.2,69.7c0,12.9-10.5,23.4-23.4,23.4h-322c-12.9,0-23.4-10.5-23.4-23.4s10.5-23.4,23.4-23.4h322.1 C476.8,46.4,487.2,56.8,487.2,69.7z M463.9,162.3H141.8c-12.9,0-23.4,10.5-23.4,23.4s10.5,23.4,23.4,23.4h322.1 c12.9,0,23.4-10.5,23.4-23.4C487.2,172.8,476.8,162.3,463.9,162.3z M463.9,278.3H141.8c-12.9,0-23.4,10.5-23.4,23.4 s10.5,23.4,23.4,23.4h322.1c12.9,0,23.4-10.5,23.4-23.4C487.2,288.8,476.8,278.3,463.9,278.3z M463.9,394.3H141.8 c-12.9,0-23.4,10.5-23.4,23.4s10.5,23.4,23.4,23.4h322.1c12.9,0,23.4-10.5,23.4-23.4C487.2,404.8,476.8,394.3,463.9,394.3z M38.9,30.8C17.4,30.8,0,48.2,0,69.7s17.4,39,38.9,39s38.9-17.5,38.9-39S60.4,30.8,38.9,30.8z M38.9,146.8 C17.4,146.8,0,164.2,0,185.7s17.4,38.9,38.9,38.9s38.9-17.4,38.9-38.9S60.4,146.8,38.9,146.8z M38.9,262.8 C17.4,262.8,0,280.2,0,301.7s17.4,38.9,38.9,38.9s38.9-17.4,38.9-38.9S60.4,262.8,38.9,262.8z M38.9,378.7 C17.4,378.7,0,396.1,0,417.6s17.4,38.9,38.9,38.9s38.9-17.4,38.9-38.9C77.8,396.2,60.4,378.7,38.9,378.7z"/>
@@ -3966,8 +4002,25 @@ $(document).ready(function() {
             if (reportMode === 'suttas') ensureEnrichmentStarted();
         } catch (error) {
             console.error('Ошибка при поиске:', error);
-            // Ошибку тоже показываем в выдаче (там для неё есть #search-message), иначе человек
-            // остался бы на главной со спиннером и без объяснений.
+            // Ошибку показываем в #search-message и прячем таблицу — иначе человек видел бы
+            // пустую выдачу без единого намёка на то, что запрос вообще не выполнился (например,
+            // некорректный regex вроде "[abc" — сервер отвечает 500, но раньше это молчаливо
+            // проглатывалось).
+            lastSearchJson = null;
+            $('#pali, #pali_wrapper, #pali-words, #pali-words_wrapper, #variants, #variants-hint, .forshellscript').addClass('d-none');
+            currentTable = null;
+            let errMsgDiv = document.getElementById('search-message');
+            if (errMsgDiv) {
+                // Owner: an actual error isn't the tooShort/noResults case above (that one shows
+                // both languages at once on purpose) — a technical error message should just
+                // follow the site's own language, one line, not two.
+                fetchLangConfig(window.siteLanguage).then(function (config) {
+                    var text = tFrom(config, 'results.errorMessage', '');
+                    document.getElementById('search-message-ru').textContent = window.siteLanguage === 'ru' ? text : '';
+                    document.getElementById('search-message-en').textContent = window.siteLanguage === 'ru' ? '' : text;
+                });
+                errMsgDiv.classList.remove('d-none');
+            }
             dgSetState('results');
         } finally {
             dgSetBusy(false);

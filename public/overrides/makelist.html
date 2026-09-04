@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Make List from Text</title>
+    <link href="/assets/css/bootstrap.5.3.1.min.css" rel="stylesheet" />
+    <link href="/assets/css/extrastyles.css" rel="stylesheet" />
+    <link rel="stylesheet" href="/assets/css/paliLookup.css">
+    
+    <link rel="icon" type="image/png" href="/assets/img/favico-noglass.png" />
+    <script src="/assets/js/jquery-3.7.0.min.js"></script>
+    <script src="/assets/js/bootstrap.bundle.5.3.1.min.js"></script>
+    <script src="/assets/js/nav-component.js" defer></script>
+
+    <style>
+        .table {
+            color: initial;
+            background-color: initial;
+        }
+
+        #resultOutput {
+            white-space: pre-wrap;
+        }
+
+        .full-width {
+            width: 100%;
+        }
+
+        .copy-button {
+            margin-right: 5px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container mt-5">
+        <div class="mb-4" style="display: inline-flex;">
+            <top-nav-icons type="read" show-dict></top-nav-icons>
+        </div>
+
+        <div class="row">
+            <div class="col-md-12">
+                <div class="form-group">
+                    <label for="paliTextInput">Pali Text:</label>
+                    <textarea class="form-control full-width" id="paliTextInput" rows="5" placeholder="e.g. sammādiṭṭhi, sammāsaṅkappo, sammāvācā, sammākammanto, sammāājīvo, sammāvāyāmo, sammāsati, sammāsamādhi"></textarea>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-12">
+                <div class="form-group">
+                    <label for="otherTextInput">Other Language Text:</label>
+                    <textarea class="form-control full-width" id="otherTextInput" rows="5" placeholder="e.g. правильный взгляд, правильная заготовка=привычка+намерение, правильная речь, правильный поступок, правильный быт, правильное старание, правильная фокусировка-памятование, правильное объединение опыта"></textarea>
+                </div>
+            </div>
+        </div>
+        <div class="row my-2">
+            <div class="col-md-12">
+                <div class="form-group" id="additionalInputs"></div>
+                <button class="btn btn-info" id="addInputButton">+</button>
+                <button class="btn btn-danger" id="removeInputButton">-</button>
+            </div>
+        </div>
+        <div class="row my-2">
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label for="delimiterInput">Custom Delimiter:</label>
+                    <input type="text" class="form-control full-width" id="delimiterInput" placeholder="Enter delimiter" value=".,:;?!—…">
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label for="delimiterBeforeWord">Delimiter Before Word:</label>
+                    <input type="text" class="form-control full-width" id="delimiterBeforeWord" placeholder="Delimiter before word e.g. or">
+                </div>
+            </div>
+        </div>
+        <div class="form-group my-2">
+            <label for="checkbox">With Headers:</label>
+            <input type="checkbox" id="checkbox" checked>
+        </div>
+
+        <div class="row">
+            <div class="col-md-12">
+                <div class="btn-group">
+                    <button class="btn btn-primary" id="transformButton">Transform</button>
+                    <button class="btn btn-secondary" id="clearButton">Clear</button>
+                    <a href="#" class="btn btn-success" id="downloadButton" download="result.csv" style="display: none;">Download CSV</a>
+                    <button class="btn btn-primary" id="copyAllButton" style="display: none;">Copy All</button>
+                </div>
+            </div>
+        </div>
+
+
+        <div class="row mt-4">
+            <div class="col-md-12">
+                <h5>Result:</h5>
+                <div id="resultOutput"></div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- LOCAL STORAGE FUNCTIONS ---
+
+        // Глобальные переменные для хранения контента
+        let generatedCsvContent = ""; // Для скачивания файла (CSV)
+        let generatedTsvContent = ""; // Для копирования в буфер (TSV - для Excel/Google Sheets)
+
+        function saveToStorage() {
+            localStorage.setItem('mk_paliText', document.getElementById('paliTextInput').value);
+            localStorage.setItem('mk_otherText', document.getElementById('otherTextInput').value);
+            localStorage.setItem('mk_delimiter', document.getElementById('delimiterInput').value);
+            localStorage.setItem('mk_delimiterBefore', document.getElementById('delimiterBeforeWord').value);
+            localStorage.setItem('mk_checkbox', document.getElementById('checkbox').checked);
+            localStorage.setItem('mk_result', document.getElementById('resultOutput').innerHTML);
+
+            // Save additional inputs as a JSON array
+            const additionalTexts = [];
+            document.querySelectorAll('.additional-text').forEach(el => {
+                additionalTexts.push(el.value);
+            });
+            localStorage.setItem('mk_additional', JSON.stringify(additionalTexts));
+        }
+
+        function loadFromStorage() {
+            if (localStorage.getItem('mk_paliText') !== null) {
+                document.getElementById('paliTextInput').value = localStorage.getItem('mk_paliText');
+            }
+            if (localStorage.getItem('mk_otherText') !== null) {
+                document.getElementById('otherTextInput').value = localStorage.getItem('mk_otherText');
+            }
+            if (localStorage.getItem('mk_delimiter') !== null) {
+                document.getElementById('delimiterInput').value = localStorage.getItem('mk_delimiter');
+            }
+            if (localStorage.getItem('mk_delimiterBefore') !== null) {
+                document.getElementById('delimiterBeforeWord').value = localStorage.getItem('mk_delimiterBefore');
+            }
+            if (localStorage.getItem('mk_checkbox') !== null) {
+                document.getElementById('checkbox').checked = (localStorage.getItem('mk_checkbox') === 'true');
+            }
+            
+             // Restore Result if it exists
+            if (localStorage.getItem('mk_result')) {
+                 document.getElementById('resultOutput').innerHTML = localStorage.getItem('mk_result');
+            }
+
+            // Restore additional inputs
+            const additionalJSON = localStorage.getItem('mk_additional');
+            if (additionalJSON) {
+                const additionalTexts = JSON.parse(additionalJSON);
+                additionalTexts.forEach(text => {
+                    addAdditionalInput(text);
+                });
+            }
+        }
+
+        // --- EVENT LISTENERS FOR AUTO-SAVE ---
+
+        const inputsToTrack = ['paliTextInput', 'otherTextInput', 'delimiterInput', 'delimiterBeforeWord', 'checkbox'];
+        inputsToTrack.forEach(id => {
+            document.getElementById(id).addEventListener('input', saveToStorage);
+            document.getElementById(id).addEventListener('change', saveToStorage); 
+        });
+
+        // Initialize on load
+        window.addEventListener('load', loadFromStorage);
+
+
+        // --- MAIN LOGIC ---
+
+        function addAdditionalInput(value = '') {
+            var additionalInputs = document.getElementById('additionalInputs');
+            var textArea = document.createElement('textarea');
+            textArea.setAttribute('class', 'form-control full-width additional-text mb-2'); 
+            textArea.setAttribute('rows', '5');
+            textArea.setAttribute('placeholder', 'e.g. additional text');
+            textArea.value = value;
+            
+            textArea.addEventListener('input', saveToStorage);
+            additionalInputs.appendChild(textArea);
+        }
+
+
+        document.getElementById('transformButton').addEventListener('click', function () {
+            var delimiter = document.getElementById('delimiterInput').value;
+            var delimiterBeforeWord = document.getElementById('delimiterBeforeWord').value;
+
+            var paliText = document.getElementById('paliTextInput').value;
+            var otherText = document.getElementById('otherTextInput').value;
+
+            var additionalTexts = document.getElementsByClassName('additional-text');
+            var additionalLines = [];
+            for (var j = 0; j < additionalTexts.length; j++) {
+                var pattern = '[' + delimiter + ']';
+                if (delimiterBeforeWord) {
+                    pattern = '(?=' + delimiterBeforeWord + ')|[' + delimiter + ']';
+                }
+                additionalLines.push(additionalTexts[j].value.split(new RegExp(pattern, 'g')));
+            }
+
+            var pattern = '[' + delimiter + ']';
+            if (delimiterBeforeWord) {
+                pattern = '(?=' + delimiterBeforeWord + ')|[' + delimiter + ']';
+            }
+
+            var paliLines = paliText.split(new RegExp(pattern, 'g'));
+            var otherLines = otherText.split(new RegExp(pattern, 'g'));
+
+            var csv = ''; // Сюда собираем CSV (для файла)
+            var tsv = ''; // Сюда собираем TSV (для копирования)
+
+            var maxLines = Math.max(paliLines.length, otherLines.length);
+            for (var j = 0; j < additionalLines.length; j++) {
+                maxLines = Math.max(maxLines, additionalLines[j].length);
+            }
+
+            for (var i = 0; i < maxLines; i++) {
+                var paliPart = paliLines[i] ? paliLines[i].trim() : '';
+                var otherPart = otherLines[i] ? otherLines[i].trim() : '';
+                
+                // Временные массивы для сбора строки
+                var rowCsv = [];
+                var rowTsv = [];
+
+                // 1. Обработка индекса/заголовка
+                if (document.getElementById('checkbox').checked) {
+                    if (i === 0) {
+                        rowCsv.push('#');
+                        rowTsv.push('#');
+                    } else {
+                        rowCsv.push(i);
+                        rowTsv.push(i);
+                    }
+                } else {
+                    rowCsv.push(i + 1);
+                    rowTsv.push(i + 1);
+                }
+
+                // 2. Основные колонки
+                // Для CSV экранируем запятые и кавычки
+                rowCsv.push(escapeCommas(paliPart));
+                rowCsv.push(escapeCommas(otherPart));
+                
+                // Для TSV (копирования) оставляем текст как есть
+                rowTsv.push(paliPart);
+                rowTsv.push(otherPart);
+
+                // 3. Дополнительные колонки
+                for (var j = 0; j < additionalLines.length; j++) {
+                    var additionalPart = additionalLines[j][i] ? additionalLines[j][i].trim() : '';
+                    rowCsv.push(escapeCommas(additionalPart));
+                    rowTsv.push(additionalPart);
+                }
+
+                // Собираем строки
+                csv += rowCsv.join(',') + '\n';
+                tsv += rowTsv.join('\t') + '\n';
+            }
+
+            // Сохраняем в глобальные переменные
+            generatedCsvContent = csv;
+            generatedTsvContent = tsv;
+
+            var resultTable = generateResultTable(csv); 
+            document.getElementById('resultOutput').innerHTML = resultTable;
+            
+            saveToStorage();
+
+            document.getElementById('downloadButton').style.display = 'block';
+            document.getElementById('copyAllButton').style.display = 'block';
+
+            var blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csv], { type: 'text/csv;charset=utf-8;' });
+            var url = URL.createObjectURL(blob);
+            document.getElementById('downloadButton').href = url;
+        });
+
+        // COPY ALL BUTTON
+        document.getElementById('copyAllButton').addEventListener('click', function() {
+            copyListDataToClipboard(generatedTsvContent);
+        });
+
+        document.getElementById('clearButton').addEventListener('click', function () {
+            if (confirm('This will erase all text. Sure?')) {
+                localStorage.removeItem('mk_paliText');
+                localStorage.removeItem('mk_otherText');
+                localStorage.removeItem('mk_delimiter');
+                localStorage.removeItem('mk_delimiterBefore');
+                localStorage.removeItem('mk_checkbox');
+                localStorage.removeItem('mk_additional');
+                localStorage.removeItem('mk_result');
+                
+                location.reload(); 
+            }
+        });
+
+        document.getElementById('addInputButton').addEventListener('click', function () {
+            addAdditionalInput(); 
+            saveToStorage(); 
+        });
+
+        document.getElementById('removeInputButton').addEventListener('click', function () {
+            var additionalInputs = document.getElementById('additionalInputs');
+            if (additionalInputs.childElementCount > 0) {
+                additionalInputs.removeChild(additionalInputs.lastChild);
+                saveToStorage(); 
+            }
+        });
+
+        function generateResultTable(csv) {
+            var lines = csv.split('\n');
+
+            var tableHtml = '<table class="table table-bordered">';
+            tableHtml += '<tr>';
+
+            var headerLine = lines[0];
+            if(!headerLine) return ''; 
+            
+            var headers = headerLine.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+            for (var j = 0; j < headers.length; j++) {
+                tableHtml += '<th><button class="btn btn-sm btn-secondary copy-button copy-column-button" data-column-index="' + j + '">Copy</button></th>';
+            }
+            tableHtml += '</tr>';
+            for (var i = 0; i < lines.length; i++) {
+                if(lines[i].trim() === "") continue;
+                tableHtml += '<tr>';
+                var columns = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+                for (var j = 0; j < columns.length; j++) {
+                    let cellContent = columns[j];
+                    
+                    // Убираем внешние кавычки CSV для корректной работы словаря и отображения в браузере
+                    if (cellContent.startsWith('"') && cellContent.endsWith('"')) {
+                        cellContent = cellContent.slice(1, -1).replace(/""/g, '"');
+                    }
+
+                    if (j === 0) {
+                        tableHtml += '<td>' + cellContent + '</td>';
+                    } else {
+                        tableHtml += '<td class="pli-lang">' + cellContent + '</td>';
+                    }
+                }
+                tableHtml += '</tr>';
+            }
+            tableHtml += '</table>';
+            return tableHtml;
+        }
+
+        // Новая функция копирования с другим названием, чтобы не конфликтовать с глобальной copyToClipboard
+        function copyListDataToClipboard(text) {
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(text).then(() => {
+                    triggerBubbleNotification();
+                }).catch(err => {
+                    fallbackCopyListData(text);
+                });
+            } else {
+                fallbackCopyListData(text);
+            }
+        }
+
+        function fallbackCopyListData(text) {
+            var textarea = document.createElement('textarea');
+            textarea.value = text;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            triggerBubbleNotification();
+        }
+
+        function triggerBubbleNotification() {
+            if (typeof showBubbleNotification === 'function') {
+                const path = window.location.pathname;
+                const language = localStorage.getItem('siteLanguage') || (path.includes('/r/') ? 'ru' : 'en');
+                const notificationText = {
+                    ru: "Скопировано",
+                    en: "Copied"
+                }[language] || "Copied";
+                
+                showBubbleNotification(notificationText);
+            }
+        }
+
+        function copyColumnToClipboard(columnIndex) {
+            var table = document.getElementsByTagName('table')[0];
+            var rows = table.getElementsByTagName('tr');
+            var columnData = [];
+            for (var i = 1; i < rows.length; i++) {
+                var cells = rows[i].getElementsByTagName('td');
+                if (cells[columnIndex]) {
+                    // Используем textContent чтобы избежать попадания html тегов (например pli-lang)
+                    columnData.push(cells[columnIndex].textContent);
+                }
+            }
+            var columnText = columnData.join('\n');
+            copyListDataToClipboard(columnText);
+        }
+
+        function escapeCommas(text) {
+            if (text.includes(',')) {
+                return '"' + text.replace(/"/g, '""') + '"';
+            }
+            return text;
+        }
+
+        document.addEventListener('click', function (event) {
+            if (event.target.classList.contains('copy-column-button')) {
+                var columnIndex = event.target.dataset.columnIndex;
+                copyColumnToClipboard(columnIndex);
+            }
+        });
+    </script>
+    <script defer src="/assets/js/themeswitch.js"></script>
+    <script src="/assets/js/settings.js"></script>
+
+</body>
+
+</html>

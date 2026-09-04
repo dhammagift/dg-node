@@ -546,8 +546,7 @@
           background-color: rgba(19, 104, 87, 0.8); /* Полупрозрачный вариант */
           top: -3px;
           bottom: -3px;
-          left: -0.4em;
-          width: 1.8em;
+        
           box-shadow: 0 0 4px rgba(19, 104, 87, 0.5);
           opacity: 1;
       }
@@ -559,8 +558,7 @@
       box-shadow: 0 0 8px rgba(19, 104, 87, 0.8); /* Ярче свечение */
       top: -4px;
       bottom: -4px;
-      left: -0.5em;
-      width: 2em;
+     
       opacity: 1;
       transition: 
           background-color 0.1s ease-out,
@@ -576,8 +574,7 @@
       background-color: rgba(19, 104, 87, 0.6);
       top: -3px;
       bottom: -3px;
-      left: -0.4em;
-      width: 1.8em;
+     
       box-shadow: 0 0 4px rgba(19, 104, 87, 0.5);
       opacity: 1;
       outline: none;

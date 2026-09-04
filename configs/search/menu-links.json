@@ -110,7 +110,7 @@
               { "label": "Legacy", "href": "/legacy.suttacentral.net/", "hideIfUnavailable": true, "blank": true }
             ] },
             { "divider": true, "rows": [
-              { "label": "The Buddha's Words", "desc": "Colleciton of tanslations with Pali", "href": "https://thebuddhaswords.net", "localHref": "/bw/", "blank": true }
+              { "label": "The Buddha's Words", "desc": "Colleciton of tanslations with Pali", "href": "https://thebuddhaswords.net", "localHref": "/bw/", "forceLocalGate": true, "blank": true }
             ] },
             { "divider": true, "rows": [
               { "label": "Ancient Buddhist Texts", "desc": "By Bhikkhu Ānandajoti", "href": "https://ancient-buddhist-texts.net/index.htm", "blank": true },
@@ -237,18 +237,24 @@
         },
         {
           "name": "Memorization", "column": 1,
-          "items": [
-            { "label": "Memorizer", "desc": "Tool for memorizing suttas line by line", "href": "/memo/", "star": true },
-            { "label": "sn56.11", "href": "/memorize/?q=sn56.11" },
-            { "label": "dn22", "href": "/memorize/?q=dn22" },
-            { "label": "sn12.2", "href": "/memorize/?q=sn12.2" },
-            { "label": "Memorisation Tips & Tricks", "href": "https://docs.google.com/document/d/1JWHEFqcaNhYwYneWBnTp9rkgWecDB4IIHX1l3AxSiWM/edit?usp=drivesdk" }
+          "blocks": [
+            { "rows": [
+              { "label": "Memorizer", "desc": "Tool for memorizing suttas line by line", "href": "/memo/", "star": true }
+            ] },
+            { "inline": [
+              { "label": "sn56.11", "href": "/memorize/?q=sn56.11" },
+              { "label": "dn22", "href": "/memorize/?q=dn22" },
+              { "label": "sn12.2", "href": "/memorize/?q=sn12.2" }
+            ] },
+            { "rows": [
+              { "label": "Memorisation Tips & Tricks", "href": "https://docs.google.com/document/d/1JWHEFqcaNhYwYneWBnTp9rkgWecDB4IIHX1l3AxSiWM/edit?usp=drivesdk" }
+            ] }
           ]
         },
         {
           "name": "Trainers", "column": 3,
           "items": [
-            { "label": "Declensions", "href": "/ru/assets/grammar/nouns.html" },
+            { "label": "Declensions", "href": "/assets/grammar/nouns.html" },
             { "label": "Patimokkha", "href": "/assets/rr.html" },
             { "label": "Pali Practice App", "desc": "Interactive drills for grammar and vocabulary", "href": "https://www.dhammabytes.org/pali-practice/", "blank": true }
           ]
@@ -398,7 +404,7 @@
               { "label": "Legacy", "href": "/legacy.suttacentral.net/", "hideIfUnavailable": true, "blank": true }
             ] },
             { "divider": true, "rows": [
-              { "label": "The Buddha's Words", "desc": "Подборка ключевых учений Будды от Бхиккху Бодхи", "href": "https://thebuddhaswords.net", "localHref": "/bw/", "blank": true }
+              { "label": "The Buddha's Words", "desc": "Подборка ключевых учений Будды от Бхиккху Бодхи", "href": "https://thebuddhaswords.net", "localHref": "/bw/", "forceLocalGate": true, "blank": true }
             ] },
             { "divider": true, "rows": [
               { "label": "Ancient Buddhist Texts", "desc": "Автор — бхиккху Анандаджоти", "href": "https://ancient-buddhist-texts.net/index.htm", "blank": true },
@@ -427,7 +433,7 @@
         {
           "name": "Переводы", "column": 2,
           "items": [
-            { "label": "ДН пер. А. Я. Сыркина «2025»", "href": "/assets/audio/documents/dn_Syrkin_2020_ed_2025.pdf" }
+            { "label": "ДН пер. А. Я. Сыркина «2025»", "href": "/documents/dn-syrkin-2020_edited_2025.pdf" }
           ]
         },
         {
@@ -564,19 +570,25 @@
         },
         {
           "name": "Запоминание", "column": 1,
-          "items": [
-            { "label": "Мнемотехника", "desc": "Инструмент для заучивания сутт строка за строкой", "href": "/ru/memo/", "star": true },
-            { "label": "sn56.11", "href": "/memorize/?q=sn56.11" },
-            { "label": "dn22", "href": "/memorize/?q=dn22" },
-            { "label": "sn12.2", "href": "/memorize/?q=sn12.2" },
-            { "label": "Советы-секреты «Как запоминать легче»", "href": "https://docs.google.com/document/d/12A4jNFrSQywZubM7bL2pgQK0fOtr6LEBJMjGb7nTNlw/edit?usp=drivesdk", "blank": true }
+          "blocks": [
+            { "rows": [
+              { "label": "Мнемотехника", "desc": "Инструмент для заучивания сутт строка за строкой", "href": "/ru/memo/", "star": true }
+            ] },
+            { "inline": [
+              { "label": "sn56.11", "href": "/memorize/?q=sn56.11" },
+              { "label": "dn22", "href": "/memorize/?q=dn22" },
+              { "label": "sn12.2", "href": "/memorize/?q=sn12.2" }
+            ] },
+            { "rows": [
+              { "label": "Советы-секреты «Как запоминать легче»", "href": "https://docs.google.com/document/d/12A4jNFrSQywZubM7bL2pgQK0fOtr6LEBJMjGb7nTNlw/edit?usp=drivesdk", "blank": true }
+            ] }
           ]
         },
         {
           "name": "Тренажёры", "column": 3,
           "items": [
-            { "label": "Грамматика", "href": "/ru/assets/grammar/nouns.html" },
-            { "label": "Патимоккха", "href": "/ru/assets/rr.html" },
+            { "label": "Грамматика", "href": "/assets/grammar/nouns.html" },
+            { "label": "Патимоккха", "href": "/assets/rr.html" },
             { "label": "Pali Practice App", "desc": "Интерактивные упражнения по грамматике и лексике", "href": "https://www.dhammabytes.org/pali-practice/", "blank": true }
           ]
         }

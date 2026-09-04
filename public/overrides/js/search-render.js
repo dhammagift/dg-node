@@ -552,15 +552,30 @@ window.DgSearchRender = (function () {
         return url + '?' + params.join('&');
     }
 
+    // Mirrors dg-light.js's foldSearchPattern — а server-side "kacchapam" match found via the
+    // ṁ/ṃ fold must still highlight client-side, or the row would show up with nothing bolded.
+    var HIGHLIGHT_METACHARS = /[.*+?^${}()|[\]\\]/;
+    var HIGHLIGHT_FOLD_GROUPS = [['е', 'ё'], ['m', 'ṁ', 'ṃ']];
+    function foldHighlightPattern(word) {
+        if (HIGHLIGHT_METACHARS.test(word)) return word;
+        var pattern = '';
+        for (var i = 0; i < word.length; i++) {
+            var ch = word[i];
+            var group = HIGHLIGHT_FOLD_GROUPS.find(function (g) { return g.indexOf(ch.toLowerCase()) !== -1; });
+            pattern += group ? '[' + group.join('') + ']' : ch;
+        }
+        return pattern;
+    }
+
     function highlightText(text, highlightWord) {
         if (!highlightWord || !text) return text;
-        var regexHighlight = new RegExp(highlightWord, 'gi');
+        var regexHighlight = new RegExp(foldHighlightPattern(highlightWord), 'gi');
         return text.replace(regexHighlight, function (match) { return '<b class="match finder">' + match + '</b>'; });
     }
 
     function textHasMatch(text, highlightWord) {
         if (!highlightWord || !text) return false;
-        return new RegExp(highlightWord, 'i').test(text);
+        return new RegExp(foldHighlightPattern(highlightWord), 'i').test(text);
     }
 
     // Отчёт с группировкой по суттам (текущий, основной вид). container — стабильный
@@ -765,7 +780,12 @@ window.DgSearchRender = (function () {
                         // toggle itself is the indicator. Only mark the Pali side hideable when a
                         // translation actually exists: on a sutta with no translation at all,
                         // toggling to "English only" must not blank out its only title text.
-                        var paliClass = 'pli-lang inputscript-ISOPali';
+                        // "dg-title-pali" (unconditional, unlike dg-title-lang below) keeps the
+                        // Pali title inline with whatever follows it — real translation OR the
+                        // loading skeleton bar — so the row doesn't render as two lines while
+                        // enrichment is pending and then jump to one line once it lands (owner:
+                        // "скелет... грузится второй строкой... дёргание интерфейса").
+                        var paliClass = 'pli-lang inputscript-ISOPali dg-title-pali';
                         var titleHtml;
                         if (titleText) {
                             paliClass += ' dg-title-lang';
@@ -958,7 +978,7 @@ window.DgSearchRender = (function () {
                             // globally unique across all rows on the results page (unlike the
                             // reader's own bare segment id, which only needs to be unique within
                             // one sutta's page).
-                            return '<span id="' + urlwithanchor + '">' + html + '</span>' + (isContext ? '' : '<br>');
+                            return '<span id="' + urlwithanchor + '" class="quote-segment">' + html + '</span>' + (isContext ? '' : '<br>');
                         };
 
                         data.forEach(function (seg) {

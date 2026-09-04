@@ -178,6 +178,7 @@
     "variantsForLabel": "Варианты для",
     "tooShortMessage": "Запрос «{query}» слишком короткий — введите не менее 3 символов.",
     "noResultsMessage": "По запросу «{query}» ничего не найдено.",
+    "errorMessage": "Ошибка поиска — проверьте запрос (возможно, некорректное регулярное выражение) и попробуйте снова.",
     "scopeGroupNikayas": "4 Никаи",
     "scopeGroupKn": "Кхуддака Никая",
     "scopeGroupVinaya": "Виная",

@@ -1191,6 +1191,36 @@ function looksLikeFixedString(keyword) {
     return !REGEX_METACHARS.test(keyword);
 }
 
+// Punctuation a person routinely pastes in from a translation (commas, quotes, colons…) that
+// should never need to be typed back exactly to find a match — stripped once at the request door
+// so grep/regex counting/cache-key/history all agree. Deliberately excludes regex-metacharacter
+// punctuation (. ? * + ^ $ { } ( ) | [ ] \) — that stays meaningful for the power-user regex path.
+const SEARCH_PUNCTUATION = /[,;:!"'“”‘’«»]/g;
+function stripSearchPunctuation(keyword) {
+    return keyword.replace(SEARCH_PUNCTUATION, '').trim();
+}
+
+// Owner: е/ё (Russian) and m/ṁ/ṃ (Pali niggahita — same sound, written differently depending on
+// keyboard/edition) must be treated as the same character everywhere a keyword becomes a
+// text-matching pattern — grep's own match AND the JS regexes that re-count/extract text
+// server-side (buildWordReportFast/enrichSuttaBatch) must agree, or a fold-only match would be
+// found by grep but then undercounted or missing from the words report. `changed` tells the grep
+// caller a character class was introduced, so it knows -F (fixed-string) is no longer safe.
+// Skipped whenever the keyword already has regex metacharacters — that's the power-user regex
+// path (see the invalid-regex error handling above), folding could corrupt deliberate syntax.
+const SEARCH_FOLD_GROUPS = [['е', 'ё'], ['m', 'ṁ', 'ṃ']];
+function foldSearchPattern(keyword) {
+    if (REGEX_METACHARS.test(keyword)) return { pattern: keyword, changed: false };
+    let pattern = '';
+    let changed = false;
+    for (const ch of keyword) {
+        const group = SEARCH_FOLD_GROUPS.find(g => g.includes(ch.toLowerCase()));
+        if (group) { pattern += `[${group.join('')}]`; changed = true; }
+        else pattern += ch;
+    }
+    return { pattern, changed };
+}
+
 // Parses one JSON-line fragment ("segId": "text",) into {segmentId, text} — the same format
 // grep returns both for the full-corpus phase-1 scan and for phase-2 point lookups, since SC
 // Bilara / DhammaGift JSON always has one segment per line.
@@ -1370,14 +1400,15 @@ async function execKeywordGrep(grepTargets, keyword, exactMatch, lb, la) {
     // nothing instead of "a or b" (owner: slide queries built with alternation returned 0
     // results). -F (fixed string) is mutually exclusive with -E and already means "no regex
     // metacharacters at all", so it only applies when the keyword has none to begin with.
+    const folded = foldSearchPattern(keyword);
     if (exactMatch) {
         grepArgs.push('-w', '-E');
-    } else if (looksLikeFixedString(keyword)) {
+    } else if (!folded.changed && looksLikeFixedString(keyword)) {
         grepArgs.push('-F');
     } else {
         grepArgs.push('-E');
     }
-    grepArgs.push(keyword, ...grepTargets);
+    grepArgs.push(folded.pattern, ...grepTargets);
     try {
         const result = await execFile('grep', grepArgs, { maxBuffer: 1024 * 1024 * 50 });
         return result.stdout;
@@ -1583,7 +1614,7 @@ const WORD_BOUNDARY_CHARS = '\\s,.:;!?"\'\\u201C\\u201D\\u2018\\u2019\\u00AB\\u0
 // translations of the same text don't inflate word counts — same intent as
 // filterPreferredTranslators, but decided by translation key only (no file reads needed).
 function buildWordReportFast(searchResults, keyword) {
-    const wordRegex = new RegExp(`[^${WORD_BOUNDARY_CHARS}]*${keyword}[^${WORD_BOUNDARY_CHARS}]*`, 'gi');
+    const wordRegex = new RegExp(`[^${WORD_BOUNDARY_CHARS}]*${foldSearchPattern(keyword).pattern}[^${WORD_BOUNDARY_CHARS}]*`, 'gi');
     const words = {};
 
     const addWordsFromText = (text, suttaId, segmentId) => {
@@ -1908,8 +1939,9 @@ function extractContextWindow(lineMap, segId, lb, la) {
 // переводы) — для них здесь довозится root+context отдельным точечным id-грепом, обычно
 // затрагивающим ноль или единицы сегментов, не всю страницу.
 async function enrichSuttaBatch(searchResults, suttaIds, targetLangs, keyword, searchScope, lb = 0, la = 0) {
-    const regex = new RegExp(keyword, 'gi');
-    const wordRegex = new RegExp(`[^${WORD_BOUNDARY_CHARS}]*${keyword}[^${WORD_BOUNDARY_CHARS}]*`, 'gi');
+    const foldedKeyword = foldSearchPattern(keyword).pattern;
+    const regex = new RegExp(foldedKeyword, 'gi');
+    const wordRegex = new RegExp(`[^${WORD_BOUNDARY_CHARS}]*${foldedKeyword}[^${WORD_BOUNDARY_CHARS}]*`, 'gi');
     let globalTotalMatches = 0;
     let globalHasVariants = false;
 
@@ -2321,7 +2353,9 @@ async function searchHandler(req, res) {
     // Express 5 отдаёт req.query геттером без сохранённого состояния (заново парсит на каждое
     // обращение) — писать в req.query.q в отдельном middleware бесполезно, оно не переживёт
     // следующий доступ. Читаем обе возможные формы напрямую, без мутации req.query.
-    const keyword = req.params.keyword || req.query.q;
+    let keyword = req.params.keyword || req.query.q;
+    if (!keyword) return res.status(400).json({ error: 'Parameter "q" is mandatory.' });
+    keyword = stripSearchPunctuation(keyword);
     if (!keyword) return res.status(400).json({ error: 'Parameter "q" is mandatory.' });
 
     const scope      = req.query.scope || 'default';
@@ -2358,10 +2392,12 @@ async function searchHandler(req, res) {
 // Client calls this with the ids of the currently visible page (from a prior ?fast=1 call),
 // then again for further pages/background load. Response shape matches /search's data[id].
 app.get('/search/enrich', async (req, res) => {
-    const keyword = req.query.q;
+    let keyword = req.query.q;
     const idsParam = req.query.ids;
     if (!keyword) return res.status(400).json({ error: 'Parameter "q" is mandatory.' });
     if (!idsParam) return res.status(400).json({ error: 'Parameter "ids" is mandatory.' });
+    keyword = stripSearchPunctuation(keyword);
+    if (!keyword) return res.status(400).json({ error: 'Parameter "q" is mandatory.' });
 
     const scope      = req.query.scope || 'default';
     const exact      = req.query.exact === 'true';

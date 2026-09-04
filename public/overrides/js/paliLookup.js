@@ -1116,15 +1116,14 @@ const svgSelectActive = "/assets/svg/select.svg";
 const svgSelectSlashed = "/assets/svg/select-slash.svg";
 
 function updateMultiSelectUI() {
-    const toggleBtn = document.getElementById('toggle-multiselect');
-    if (toggleBtn) {
+    // .toggle-multiselect-btn, not #toggle-multiselect — the same button now also lives in the
+    // search-results toolbar (#dg-toolbar-buttons) under a different id (duplicate ids aren't
+    // valid), same pattern as .toggle-mode-btn. querySelectorAll covers both at once.
+    document.querySelectorAll('.toggle-multiselect-btn').forEach(toggleBtn => {
         const img = toggleBtn.querySelector('img');
-        if (isMultiSelectMode) {
-            if (img) img.src = svgSelectActive;
-        } else {
-            if (img) img.src = svgSelectSlashed;
-        }
-    }
+        if (!img) return;
+        img.src = isMultiSelectMode ? svgSelectActive : svgSelectSlashed;
+    });
     if (typeof window.syncSmartIcons === 'function') window.syncSmartIcons();
 }
 
@@ -1135,7 +1134,7 @@ if (document.readyState === 'loading') {
 }
 
 document.addEventListener('click', (e) => {
-    const msBtn = e.target.closest('#toggle-multiselect');
+    const msBtn = e.target.closest('.toggle-multiselect-btn');
     
     if (msBtn) {
         e.preventDefault();

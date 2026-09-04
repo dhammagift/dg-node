@@ -212,6 +212,9 @@ p.sc-link {
 p.sc-link a {
   display: inline-block;
   padding: 6px 8px;
+  /* Owner: "гигантский квадрат при хувере... над ссылками вначале и вконце в ридере" — same
+     apple-design-audit padding above is exactly what native mobile tap-highlight flashes to. */
+  -webkit-tap-highlight-color: transparent;
 }
 
 span.pli-lang,
@@ -395,9 +398,14 @@ br {
   line-height: 0px;
 }
 
+/* Owner: "почему не влезли иконки... нужно не влияя на ширину страницы чтобы они умещались" —
+   no flex-wrap meant nowrap (the default), so the extra Chapters icon pushed this row past
+   narrow mobile widths with no wrap and no overflow handling, overflowing the page horizontally
+   instead of dropping to a second line. */
 .links-area {
   display: flex;
   flex-direction: row;
+  flex-wrap: wrap;
   gap: 1rem;
   justify-content: center;
   margin-top: 2rem;
@@ -409,6 +417,10 @@ br {
   top: 0;
   transition: all ease 0.5s;
   filter: opacity(40%);
+  /* Owner: "гигантский квадрат при хувере... над ссылками вначале и вконце в ридере" — native
+     mobile tap-highlight flash, sized to this link's own padding box, was never reset here;
+     :hover below (opacity+lift) already gives feedback without it. */
+  -webkit-tap-highlight-color: transparent;
 }
 
 .links-area a:hover {

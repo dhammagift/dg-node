@@ -43,6 +43,15 @@
         #dg-404-menu { display: flex; flex-wrap: wrap; justify-content: center; gap: 1.5rem 1.75rem; margin-top: 2rem; max-width: 34rem; }
         #dg-404-menu button { display: flex; flex-direction: column; align-items: center; gap: .4rem; width: 5.5rem; background: none; border: 0; padding: 0; color: var(--bs-emphasis-color); }
         #dg-404-menu button i, #dg-404-menu button svg { width: 1.7rem; height: 1.7rem; color: var(--bs-primary); }
+        /* Owner: dark theme should match the real site's icon color, light theme stays as-is.
+           var(--bs-primary) is defined on bare :root (extrastyles.css) so it never actually
+           shifts between themes on its own — the real multitool row gets its dark-mode color
+           through a separate rule keyed on body[data-theme="dark"] (extrastyles.css: .menu-icon,
+           #136857), not through --bs-primary at all. Same attribute/value here, not the
+           .menu-icon class itself — that class also carries font-size:2em, which would resize
+           any <i> font icons in this row. */
+        [data-theme="dark"] #dg-404-menu button i,
+        [data-theme="dark"] #dg-404-menu button svg { color: #136857; }
         #dg-404-menu button span { font-size: .78rem; line-height: 1.15; text-align: center; }
     </style>
 </head>
