@@ -1,24 +1,13 @@
 import type { ReactNode } from 'react';
-import { Drawer, DrawerGroup, DrawerRow, Segmented, Icon } from '@dhammagift/dg-ui';
+import { Drawer, DrawerGroup, DrawerRow, Segmented, Brand, Icon } from '@dhammagift/dg-ui';
 
-// The panel frame (`#dg-drawer` in the app) is supplied here with --dg-* tokens; the group
-// itself is what these stories vary.
-const Panel = ({ children }: { children: ReactNode }) => (
-  <div style={{
-    width: 320,
-    background: 'var(--dg-surface)',
-    color: 'var(--dg-text)',
-    fontFamily: 'var(--dg-font)',
-    border: '1px solid var(--dg-border-strong)',
-    borderRadius: 'var(--dg-radius)',
-    overflow: 'hidden',
-  }}>
-    <Drawer backdrop={false} className="dg-drawer-body">{children}</Drawer>
-  </div>
+// Groups are shown in the drawer they belong to — it carries its own panel surface.
+const Menu = ({ children }: { children: ReactNode }) => (
+  <Drawer backdrop={false} head={<Brand />}>{children}</Drawer>
 );
 
 export const Open = () => (
-  <Panel>
+  <Menu>
     <DrawerGroup title="Navigation" open>
       <DrawerRow href="/" icon={<Icon name="dharmachakra" className="dg-row-ic" />}>Home</DrawerRow>
       <DrawerRow icon={<Icon name="compass" className="dg-row-ic" />}>Four Noble Truths</DrawerRow>
@@ -26,11 +15,11 @@ export const Open = () => (
       <DrawerRow icon={<Icon name="comment" className="dg-row-ic" />}>Contacts</DrawerRow>
       <DrawerRow href="/login" icon={<Icon name="openLink" className="dg-row-ic" />}>Login</DrawerRow>
     </DrawerGroup>
-  </Panel>
+  </Menu>
 );
 
 export const Collapsed = () => (
-  <Panel>
+  <Menu>
     <DrawerGroup title="Navigation" open={false}>
       <DrawerRow href="/" icon={<Icon name="dharmachakra" className="dg-row-ic" />}>Home</DrawerRow>
       <DrawerRow icon={<Icon name="compass" className="dg-row-ic" />}>Four Noble Truths</DrawerRow>
@@ -41,11 +30,11 @@ export const Collapsed = () => (
       <DrawerRow icon={<Icon name="codeCompareSolidFull" className="dg-row-ic" />}>Multi Language</DrawerRow>
       <DrawerRow icon={<Icon name="eyeSlash" className="dg-row-ic" />}>Memorize</DrawerRow>
     </DrawerGroup>
-  </Panel>
+  </Menu>
 );
 
 export const PlainHeading = () => (
-  <Panel>
+  <Menu>
     <DrawerGroup title="Settings" collapsible={false}>
       <Segmented value="en" options={[{ value: 'ru', label: 'RU' }, { value: 'en', label: 'EN' }]} />
       <Segmented
@@ -57,5 +46,5 @@ export const PlainHeading = () => (
       />
       <DrawerRow href="/settings/" icon={<Icon name="gear" className="dg-row-ic" />}>Settings</DrawerRow>
     </DrawerGroup>
-  </Panel>
+  </Menu>
 );

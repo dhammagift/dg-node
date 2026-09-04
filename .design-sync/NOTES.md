@@ -95,6 +95,15 @@ looks like a design choice rather than a bug. `EXTRA_SELECTORS` in `build-css.mj
 an id alternation; **add to it whenever a component is styled by id**. Same class of miss:
 `.dg-mega-block-divider` was absent, which made `MegaMenuGroup`'s `divider` prop a no-op.
 
+## Two traps in the verify loop itself
+
+- **`package-capture.mjs` keys grades off the authored `.tsx`, not the library build.** After a
+  change under `design-system/src`, a plain re-run prints "carried forward" and serves the STALE
+  sheet — you will grade the old render. Pass `--force` whenever the component source moved.
+- **A "fits the card, no override needed" measurement is only valid for the CSS bundle in front
+  of you at the time.** `ResultsTable`/`ResultRow` genuinely fit before the id-scoped rules were
+  harvested and overflowed after. Re-check every wide component after any CSS re-harvest.
+
 ## Known render warns
 
 (none triaged yet — populate as they appear)

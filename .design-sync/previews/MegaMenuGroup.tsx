@@ -1,10 +1,10 @@
 import { MegaMenu, MegaMenuGroup, SheetRow } from '@dhammagift/dg-ui';
 
 // The group's styling comes from the `#dg-mega` panel around it, so every story is shown
-// inside one; `show` is the class the app adds once the panel is anchored to its tile.
+// inside one.
 
 export const Rows = () => (
-  <MegaMenu title="Materials" className="show">
+  <MegaMenu title="Materials">
     <MegaMenuGroup title="Grammar">
       <SheetRow label="Cases" description="Noun and adjective endings" />
       <SheetRow label="Conjugations" description="Verb endings by tense and person" />
@@ -17,7 +17,7 @@ export const Rows = () => (
 );
 
 export const Chips = () => (
-  <MegaMenu title="AI &amp; Dicts" className="show">
+  <MegaMenu title="AI &amp; Dicts">
     <MegaMenuGroup title="AI" layout="chips">
       <SheetRow label="Claude" chip />
       <SheetRow label="ChatGPT" chip />
@@ -34,8 +34,8 @@ export const Chips = () => (
   </MegaMenu>
 );
 
-export const SeveralGroups = () => (
-  <MegaMenu title="Collections" className="show">
+export const Divided = () => (
+  <MegaMenu title="Collections">
     <MegaMenuGroup title="Readers">
       <SheetRow label="Digital Pali Reader" description="CST and Thai editions" />
       <SheetRow label="Simsapa Pali Reader" description="PC · Mac · Linux" />
