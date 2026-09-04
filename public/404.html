@@ -41,6 +41,27 @@
     <script defer src="/assets/js/quickModal.js"></script>
     <script defer src="/nodejs/res/js/home.js"></script>
     <script>
+        // Same precedence as search/index.html's own inline fallback seed (see the comment
+        // right above its window.siteLanguage assignment): ?lang= override, then a /ru (or /r,
+        // /ml, /mt) path prefix — same regex as that page's pathImpliesRu and settings.js's
+        // window.notEn — then the stored preference, then "en". Previously missing the path
+        // check entirely, which is why /ru/... URLs rendered English here whenever nothing was
+        // already stored (own tab, cleared storage, etc.) while every other page on the site
+        // got it right from the URL alone.
+        window.dg404Lang = (function () {
+            var qs = new URLSearchParams(location.search).get('lang');
+            if (qs === 'ru' || qs === 'en') return qs;
+            if (/^\/(ru|r|ml|mt)(\/|$)/.test(location.pathname)) return 'ru';
+            return localStorage.getItem('siteLanguage') === 'ru' ? 'ru' : 'en';
+        })();
+        // search/js/home.js's own menuLang() checks window.DHAMMA_I18N.language first (before
+        // localStorage) — that engine isn't loaded here on purpose (see comment below), but
+        // without this stub home.js would resolve a DIFFERENT language than the button row
+        // above it whenever dg404Lang came from the path rather than localStorage, and a click
+        // would open the sheet/mega in the wrong language.
+        window.DHAMMA_I18N = { language: window.dg404Lang };
+    </script>
+    <script>
         // Compact reproduction of the site's real multitool menu: same icon-name convention,
         // same data source (configs/search/menu-links.json — the "nothing invented" port of
         // the legacy horizontalMenuEn/Ru.php, see that file's own header comment), and clicks
@@ -69,10 +90,7 @@
                 en: ['read', 'external', 'dicts', 'materials', 'tools', 'history', 'help'],
                 ru: ['read', 'external', 'russian', 'dicts', 'materials', 'tools', 'history', 'help']
             };
-            var lang = new URLSearchParams(location.search).get('lang')
-                || localStorage.getItem('siteLanguage')
-                || (navigator.language || '').slice(0, 2);
-            lang = (lang === 'ru') ? 'ru' : 'en';
+            var lang = window.dg404Lang;
             fetch('/nodejs/res/menu-links.json')
                 .then(function (r) { return r.json(); })
                 .then(function (data) {
@@ -109,19 +127,18 @@
     </script>
     <script>
         // Same client-side-only i18n convention as the rest of dg-node (see dg-light.js
-        // comment near /manifest.json): no server-side language variants, just localStorage/
-        // ?lang= read on load. Inline strings here instead of the shared DHAMMA_I18N fetch
-        // engine on purpose — an error page should render even if a JSON fetch would fail.
+        // comment near /manifest.json): no server-side language variants, just resolved once
+        // above (window.dg404Lang) and read here. Inline strings rather than the shared
+        // DHAMMA_I18N fetch engine on purpose — an error page should render even if a JSON
+        // fetch would fail.
         (function () {
             var STRINGS = {
                 ru: { p404: 'Страница не найдена. Но', home: 'На Главную' },
                 en: { p404: 'Page not found. But', home: 'Go Home' }
             };
-            var lang = new URLSearchParams(location.search).get('lang')
-                || localStorage.getItem('siteLanguage')
-                || (navigator.language || '').slice(0, 2);
+            var lang = window.dg404Lang;
             var t = STRINGS[lang] || STRINGS.en;
-            document.documentElement.lang = STRINGS[lang] ? lang : 'en';
+            document.documentElement.lang = lang;
             document.querySelectorAll('[data-404-text]').forEach(function (el) {
                 el.textContent = t[el.getAttribute('data-404-text')];
             });
