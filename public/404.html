@@ -31,10 +31,6 @@
             flex-wrap: wrap;
             position: relative;
         }
-        /* #dg-hero-band's own padding is 0 outside dg-state-home (home.css) — on the real
-           search/reader pages that's fine, they sit inside a container with its own mt-2; this
-           page has no such wrapper, so the bar rendered flush against the viewport edge. */
-        #dg-hero-band { padding-top: 1.5rem; }
         /* Compact variant of the home page's .dg-tile grid — same icon font, smaller than the
            card-sized home tiles (this is a secondary nav aid on an error page, not the primary
            way to browse), but still comfortably tappable. Sheet/mega popovers themselves come
@@ -55,7 +51,10 @@
          openDrawer(), #dg-quick-btn (quickButtonHtml), the "Find the Truth"/"Найдите Истину"
          FOUC seed script. Only #form's submit is 404-local (see script at the bottom) — the
          real one (search/index.html inline script) drives in-place SPA state this static page
-         doesn't have. -->
+         doesn't have. Wrapped in the same .container-fluid.mt-2 the real search-results page
+         wraps it in (#dg-hero-band itself has zero padding outside dg-state-home, home.css) —
+         that 8px .mt-2 IS the real page's spacing above the bar, not a value picked to taste. -->
+    <div class="container-fluid mt-2">
     <div id="dg-hero-band">
     <div class="dg-hero-inner">
     <div id="dg-topbar">
@@ -109,6 +108,7 @@
     </div>
     </div>
     </div>
+    </div><!-- /.container-fluid.mt-2 -->
 
     <div class="d-flex align-items-center justify-content-center flex-column py-5">
         <div class="text-center">
@@ -170,6 +170,10 @@
     <script defer src="/assets/js/themeswitch.js"></script>
     <script defer src="/assets/js/openDicts.js"></script>
     <script defer src="/assets/js/quickModal.js"></script>
+    <!-- Loads for its autoLoadAutopali() IIFE, which injects assets/js/autopali.js (the real
+         jQuery-UI autocomplete + search-history dropdown on #paliauto) — without it the input
+         above was a dead visual clone of the real one, no suggestions, no history. -->
+    <script defer src="/assets/js/settings.js"></script>
     <script defer src="/nodejs/res/js/home.js"></script>
     <script>
         // Same precedence as search/index.html's own inline fallback seed (see the comment
