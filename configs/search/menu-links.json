@@ -460,11 +460,13 @@
         {
           "name": "ИИ", "layout": "chips", "column": 3,
           "items": [
-            { "label": "ChatGPT", "href": "https://chatgpt.com", "blank": true },
+            { "label": "Tripitaka-mcp.com", "href": "https://tripitaka-mcp.com/", "blank": true },                                
+            { "label": "Claude", "href": "https://claude.ai", "blank": true },
+            { "label": "Notebook LM", "href": "https://notebooklm.google.com/", "blank": true },
             { "label": "Gemini", "href": "https://gemini.google/", "blank": true },
             { "label": "DeepSeek", "href": "https://chat.deepseek.com", "blank": true },
-            { "label": "Norbu AI", "href": "https://norbu-ai.org/", "blank": true },
-            { "label": "Tripitaka-mcp.com", "href": "https://tripitaka-mcp.com/", "blank": true }                                
+            { "label": "ChatGPT", "href": "https://chatgpt.com", "blank": true },
+            { "label": "Norbu AI", "href": "https://norbu-ai.org/", "blank": true }
           ]
         },
         {
