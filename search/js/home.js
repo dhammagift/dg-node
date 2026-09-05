@@ -719,6 +719,7 @@
 
         var body = document.getElementById('dg-sheet-body');
         body.innerHTML = '';
+        body.className = 'dg-sheet-body';
         var groups = tile.groups || [];
         if (!groups.length) {
             body.innerHTML = '<p class="dg-sheet-empty">' + esc(t('home.noItems', 'Пока пусто')) + '</p>';
@@ -1747,6 +1748,9 @@
     function revealAnchorSection() {
         var id = (window.location.hash || '').slice(1);
         if (!id) return;
+        // «Как искать» / «Приложения» / «Контакты» больше не блоки главной, а разделы шторки
+        // «О проекте» — старые якоря (/#contacts из бургера и из «Показать все») ведут в неё.
+        if (id === 'howto' || id === 'links' || id === 'contacts') { openAbout(id); return; }
         var el = document.getElementById(id);
         if (!el) return;
         var section = el.closest('#home-extra, #home-howto');
@@ -2599,6 +2603,11 @@
     function renderFooter() {
         var host = document.getElementById('dg-copyright');
         if (!host) return;
+        buildCopyright(host, true);
+    }
+
+    // short — the one-line page footer ("Условия · Политика"); the About sheet gets full labels.
+    function buildCopyright(host, short) {
         host.innerHTML = '';
         // 2022 — год начала проекта, второй год всегда текущий (на проде date("Y")).
         host.appendChild(document.createTextNode('© 2022–' + new Date().getFullYear() + ' dhamma.gift · '));
@@ -2606,7 +2615,7 @@
         var terms = document.createElement('a');
         terms.href = 'javascript:void(0)';
         terms.className = 'dg-footer-link';
-        terms.textContent = t('footer.terms', 'Условия использования');
+        terms.textContent = short ? t('footer.termsShort', 'Условия') : t('footer.terms', 'Условия использования');
         terms.addEventListener('click', openTerms);
         host.appendChild(terms);
 
@@ -2619,7 +2628,7 @@
         privacy.href = menuLang() === 'ru'
             ? '/assets/common/privacy-ru.html'
             : '/assets/common/privacy.html';
-        privacy.textContent = t('footer.privacy', 'Политика конфиденциальности');
+        privacy.textContent = short ? t('footer.privacyShort', 'Политика') : t('footer.privacy', 'Политика конфиденциальности');
         host.appendChild(privacy);
     }
 
@@ -2664,23 +2673,36 @@
         var host = document.getElementById('home-howto');
         if (!host) return;
         host.hidden = false;
-        document.getElementById('dg-howto-title').textContent = t('howto.title', 'Как Искать?');
-        document.getElementById('dg-howto-pali').textContent = t('howto.pali', '');
-        document.getElementById('dg-howto-body').textContent = t('howto.body', '');
-        document.getElementById('dg-warn-title').textContent = t('howto.warnTitle', 'Пожалуйста, обратите внимание!');
-        document.getElementById('dg-warn-body').textContent = t('howto.warnBody', '');
+        // Short form on the page (intro.* in lang_*.json); the full quote/warning (howto.*)
+        // moved into the "About" sheet — see openAbout().
+        document.getElementById('dg-intro-pali').textContent = t('intro.pali', '');
+        document.getElementById('dg-intro-body').textContent = t('intro.body', '');
+        document.getElementById('dg-intro-ref').textContent = t('intro.ref', 'DN 16');
+        document.getElementById('dg-intro-warn-title').textContent = t('intro.warnTitle', '');
+        document.getElementById('dg-intro-warn-body').textContent = t('intro.warnBody', '');
     }
 
     function renderExtra() {
-        var host = document.getElementById('home-extra');
-        if (!host) return;
-        host.hidden = false;
+        // Footer: "How to search · Apps · Contacts" open the About sheet at that section.
+        var nav = document.getElementById('dg-footer-nav');
+        if (nav) {
+            nav.innerHTML = '';
+            nav.insertAdjacentHTML('afterbegin', '<svg class="dg-footer-nav-ic" viewBox="0 0 512 512" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM232 344V280H168c-13.3 0-24-10.7-24-24s10.7-24 24-24h64V168c0-13.3 10.7-24 24-24s24 10.7 24 24v64h64c13.3 0 24 10.7 24 24s-10.7 24-24 24H280v64c0 13.3-10.7 24-24 24s-24-10.7-24-24z"/></svg> ');
+            [['howto', t('footer.howto', 'Как искать')], ['links', t('footer.linksShort', 'Приложения')], ['contacts', t('footer.contacts', 'Контакты')]]
+                .forEach(function (pair, i) {
+                    if (i) nav.appendChild(document.createTextNode(' · '));
+                    var a = document.createElement('a');
+                    a.href = '#' + pair[0];
+                    a.textContent = pair[1];
+                    a.addEventListener('click', function (ev) { ev.preventDefault(); openAbout(pair[0]); });
+                    nav.appendChild(a);
+                });
+        }
+        var footContacts = document.getElementById('dg-footer-contacts');
+        if (footContacts) buildContacts(footContacts);
+    }
 
-        document.getElementById('links').textContent = t('footer.links', 'Приложения и расширения');
-        document.getElementById('contacts').textContent = t('footer.contacts', 'Контакты');
-        document.getElementById('dg-contacts-motto').textContent = t('home.motto', 'Найдите Истину');
-
-        var cta = document.getElementById('dg-cta');
+    function buildCta(cta) {
         cta.innerHTML = '';
         CTA_BUTTONS.forEach(function (b) {
             /* Кнопка установки PWA — единственная без готовой ссылки: её показывает и включает
@@ -2709,8 +2731,9 @@
             }
             cta.appendChild(el);
         });
+    }
 
-        var contacts = document.getElementById('dg-contacts');
+    function buildContacts(contacts) {
         contacts.innerHTML = '';
         CONTACTS.forEach(function (c) {
             var a = document.createElement('a');
@@ -2722,14 +2745,14 @@
             a.innerHTML = faSpec(c.icon);
             contacts.appendChild(a);
         });
+    }
 
-        // Ported from legacy config/translate.php ($poweredby/$tooltippoweredby) — "Powered by
-        // DI"/"Powered by NI" signature with a tooltip explaining the pun (Dhamma/Natural
-        // Intelligence), same text per language as prod. Owner: was previously buried inline in
-        // the tiny copyright footer line at the very bottom of the page (easy to miss) — prod
-        // shows it as its OWN line right under the contact icons, matching that here.
-        var poweredBy = document.getElementById('dg-powered-by');
-        if (poweredBy) {
+    // Ported from legacy config/translate.php ($poweredby/$tooltippoweredby) — "Powered by
+    // DI"/"Powered by NI" signature with a tooltip explaining the pun (Dhamma/Natural
+    // Intelligence), same text per language as prod. Lives in the footer (and repeats at the
+    // bottom of the About sheet) — owner: must stay exactly as it is.
+    function buildPoweredBy(poweredBy) {
+        {
             poweredBy.innerHTML = '';
             poweredBy.appendChild(document.createTextNode(t('footer.poweredby', 'Powered by DI')));
             var poweredTip = document.createElement('a');
@@ -2744,6 +2767,86 @@
             if (window.bootstrap && bootstrap.Tooltip) {
                 new bootstrap.Tooltip(poweredTip);
             }
+        }
+    }
+
+    /* Шторка «О проекте» — всё, что раньше лежало развёрнутым на главной: полная цитата «Tāni ce
+       sutte…» с переводом и ссылками, полная памятка о переводах, кнопки приложений/расширений,
+       контакты, копирайт и «Powered by». section — 'howto' | 'links' | 'contacts': к какому
+       разделу прокрутить после открытия (те же id, что были у якорей на странице — /#contacts
+       из шторки-бургера и «Показать все» продолжают работать через revealAnchorSection). */
+    function openAbout(section) {
+        closeMega();
+        ensureSheet();
+        var sheet = document.getElementById('dg-sheet');
+        var backdrop = document.getElementById('dg-sheet-backdrop');
+        sheet.hidden = false;
+        document.getElementById('dg-sheet-title').textContent = t('menu.about', 'О проекте');
+        document.getElementById('dg-sheet-tabs').innerHTML = '';
+
+        var body = document.getElementById('dg-sheet-body');
+        body.innerHTML = '';
+        body.className = 'dg-sheet-body dg-about';
+
+        // Owner: formatting from the design mockup (left-aligned, small-caps section labels, a
+        // quiet grey card for the warning, round contact buttons), CONTENT from prod (the full
+        // "Tāni ce sutte…" quote with translation and refs, the full "Please remember" text, all
+        // app/extension buttons, all contacts, "Powered by NI *", the copyright line).
+        function title(id, text) {
+            var h = document.createElement('p');
+            h.className = 'dg-group-title';
+            h.id = id;
+            h.textContent = text;
+            body.appendChild(h);
+        }
+        function el(tag, cls, text) {
+            var e = document.createElement(tag);
+            if (cls) e.className = cls;
+            if (text !== undefined) e.textContent = text;
+            return e;
+        }
+
+        title('howto', t('howto.title', 'Как искать?'));
+        body.appendChild(el('p', 'dg-about-pali pli-lang', t('howto.pali', '')));
+        body.appendChild(el('p', 'dg-about-body', t('howto.body', '')));
+        var refs = el('p', 'dg-about-refs');
+        [['dn16', '/dn16?s=T%C4%81ni'], ['an4.180', '/an4.180?s=T%C4%81ni']].forEach(function (r, i) {
+            if (i) refs.appendChild(document.createTextNode(' · '));
+            var a = el('a', null, r[0]);
+            a.href = r[1]; a.target = '_blank'; a.rel = 'noopener';
+            refs.appendChild(a);
+        });
+        body.appendChild(refs);
+        var warn = el('div', 'dg-intro-warn dg-about-warn');
+        warn.appendChild(el('strong', null, t('howto.warnTitle', 'Пожалуйста, обратите внимание!')));
+        warn.appendChild(el('p', null, t('howto.warnBody', '')));
+        body.appendChild(warn);
+
+        title('links', t('footer.links', 'Приложения и расширения'));
+        var cta = el('div', 'dg-cta');
+        buildCta(cta);
+        body.appendChild(cta);
+
+        title('contacts', t('footer.contacts', 'Контакты'));
+        body.appendChild(el('p', 'dg-about-note', t('footer.contactsNote', 'Пишите — о находках, ошибках и переводах. Будем вам рады.')));
+        var contacts = el('div', 'dg-contacts');
+        buildContacts(contacts);
+        body.appendChild(contacts);
+        var powered = el('p', 'dg-powered-by dg-about-powered');
+        buildPoweredBy(powered);
+        body.appendChild(powered);
+
+        var foot = el('div', 'dg-about-foot');
+        buildCopyright(foot, false);
+        body.appendChild(foot);
+
+        currentSheetKey = '__about__';
+        showLater(sheet, backdrop);
+        if (section && section !== 'howto') {
+            var target = document.getElementById(section);
+            // After the slide-in: scrolling the sheet body while it is still translating off-screen
+            // is a no-op in some browsers.
+            setTimeout(function () { if (target) target.scrollIntoView({ block: 'start', behavior: 'smooth' }); }, 350);
         }
     }
 

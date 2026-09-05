@@ -2439,30 +2439,48 @@ body.dg-skin-minimal .ui-autocomplete .autocomplete-history-icon {
 body.dark .ui-autocomplete .autocomplete-history-icon { filter: invert(1); opacity: 0.7; }
 
 /* ============================================================================
-   Подвал — виден всегда (мобильный браузер, десктоп, установленное PWA-приложение): владелец
-   явно попросил копирайт видимым везде, скрывать в приложении раньше было ошибкой.
+   Подвал — виден всегда (мобильный браузер, десктоп, установленное PWA-приложение).
+   Слева: ссылки на шторку «О проекте», копирайт, «Powered by»; справа — иконки контактов.
    ============================================================================ */
 #dg-footer {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: flex-start;
+    align-items: center;
+    gap: 14px 24px;
     margin: 34px 0 6px;
-    padding-top: 16px;
+    padding-top: 18px;
     border-top: 1px solid var(--dg-border);
     font-family: var(--dg-font);
     font-size: 0.78rem;
     color: var(--dg-text-muted);
-    text-align: center;
+    text-align: left;
 }
+#dg-footer p { margin: 0; }
+/* На главной подвал держит ту же колонку, что цитата над ним (#home-howto), а не всю ширину окна. */
+body.dg-state-home #dg-footer { max-width: 720px; margin-left: auto; margin-right: auto; }
+/* Две строки слева (ссылки; копирайт) — в 720px-колонку одна строка вместе с иконками контактов
+   справа не влезает. */
+.dg-footer-main { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.dg-footer-nav {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.98rem;
+    color: var(--dg-accent-ink);
+}
+.dg-footer-nav .dg-footer-nav-ic { flex: none; color: var(--dg-accent); }
+.dg-footer-nav a { color: var(--dg-accent-ink); text-decoration: none; }
+.dg-footer-nav a:hover { text-decoration: underline; }
 .dg-footer-link { color: var(--dg-text-2); text-decoration: none; }
 .dg-footer-link:hover { color: var(--dg-accent-ink); text-decoration: underline; }
-
-/* Owner: same fixed bottom-right cluster (#language-button + #scrollToTopBtn, uiextra.css) that
-   needed a mobile safe zone below the reader's footer links (reader/css/uiextra.css,
-   .links-area) also covers #dg-footer's terms/privacy links at the bottom of the RESULTS page —
-   #dg-footer is shown on results too (see comment above), just without the reserved space.
-   Home doesn't need this: both buttons are display:none there (body.dg-state-home rule above). */
+.dg-footer-contacts { flex: none; }
+.dg-footer-contacts .dg-contact-btn { width: 36px; height: 36px; }
+.dg-footer-contacts .dg-contact-btn svg { width: 15px; height: 15px; }
 @media (max-width: 600px) {
-    body.dg-state-results #dg-footer {
-        padding-bottom: 96px;
-    }
+    #dg-footer { flex-direction: column; }
+    body.dg-state-results #dg-footer { padding-bottom: 96px; }
 }
 .dg-terms-text {
     margin: 8px 0 4px;
@@ -2473,107 +2491,97 @@ body.dark .ui-autocomplete .autocomplete-history-icon { filter: invert(1); opaci
 .dg-terms-text a { color: var(--dg-accent-ink); }
 
 /* ============================================================================
-   «Как искать» + памятка о переводах — перенос блоков боевой главной.
-   На широком экране всегда видно. На узком — свёрнуто по умолчанию (владелец: главная и так
-   длинная на телефоне), но НЕ display:none навсегда — якорь из бургера/списка "Show all" должен
-   до него доводить. .dg-anchor-revealed добавляет revealAnchorSection() (home.js) при переходе
-   по хешу внутрь блока — тем же классом раскрывается и #home-extra ниже.
+   Короткая цитата (DN 16) + памятка о переводах в одну строку — низ главной.
+   На широком экране всегда видно; на узком свёрнуто (главная и так длинная), раскрывается
+   .dg-anchor-revealed из revealAnchorSection(), как и раньше.
    ============================================================================ */
-#home-howto { max-width: 640px; margin: 0 auto; }
+#home-howto {
+    max-width: 720px;
+    margin: 44px auto 0;
+    padding-top: 30px;
+    border-top: 1px solid var(--dg-border);
+    font-family: var(--dg-font);
+}
 body.dg-state-home #home-howto:not([hidden]) { display: block; }
 @media (max-width: 991.98px) {
     body.dg-state-home #home-howto:not(.dg-anchor-revealed) { display: none; }
 }
-.dg-howto-quote {
-    margin: 46px 0 0;
-    padding: 20px 24px;
-    border: 1px solid var(--dg-border);
-    border-radius: 12px;
-    text-align: center;
-}
-.dg-howto-quote .pli-lang {
+.dg-intro-pali {
+    margin: 0 0 12px;
     font-style: italic;
+    font-size: 1.22rem;
+    line-height: 1.5;
+    color: var(--dg-text);
+}
+.dg-intro-body {
+    margin: 0 0 10px;
+    max-width: 62ch;
     font-size: 0.98rem;
     line-height: 1.6;
-    color: var(--dg-text);
-    margin: 0 0 12px;
-}
-#dg-howto-body {
-    font-size: 0.92rem;
-    line-height: 1.6;
     color: var(--dg-text-2);
-    margin: 0 0 10px;
 }
-.dg-howto-refs { margin: 0; font-size: 0.85rem; }
-.dg-howto-refs a {
-    color: var(--dg-accent-ink);
-    text-decoration: none;
-    margin: 0 6px;
-}
-.dg-howto-refs a:hover { text-decoration: underline; }
-
-.dg-howto-warn {
-    display: flex;
-    gap: 12px;
-    align-items: flex-start;
-    margin: 18px 0 0;
-    padding: 16px 20px;
+.dg-intro-ref { margin: 0 0 22px; font-size: 0.85rem; color: var(--dg-text-muted); }
+.dg-intro-ref a { color: inherit; text-decoration: none; }
+.dg-intro-ref a:hover { color: var(--dg-accent-ink); text-decoration: underline; }
+.dg-intro-warn {
+    max-width: 62ch;
+    padding: 14px 18px;
+    border: 1px solid var(--dg-border);
     border-radius: 12px;
-    background: var(--dg-accent-bg);
-    color: var(--dg-text);
-}
-.dg-howto-warn svg { flex: none; margin-top: 2px; color: var(--dg-accent-ink); }
-.dg-howto-warn strong { display: block; font-size: 0.95rem; margin-bottom: 6px; }
-.dg-howto-warn p {
-    margin: 0;
-    font-size: 0.88rem;
+    background: var(--dg-surface);
+    font-size: 0.95rem;
     line-height: 1.6;
     color: var(--dg-text-2);
-    white-space: pre-line;
+}
+.dg-intro-warn strong { color: var(--dg-text); font-weight: 600; }
+
+/* Шторка «О проекте» (home.js openAbout): форматирование макета — заголовки-подписи как у
+   списков плиток (.dg-group-title), всё по левому краю, серая карточка памятки, круглые
+   кнопки контактов; содержимое — полное, как на проде. */
+.dg-about .dg-group-title { margin-top: 1.7em; }
+.dg-about .dg-group-title:first-child { margin-top: 0.4em; }
+.dg-about-pali {
+    margin: 0 0 10px;
+    font-style: italic;
+    font-size: 1.08rem;
+    line-height: 1.55;
+    color: var(--dg-text);
+}
+.dg-about-body { margin: 0 0 8px; font-size: 0.95rem; line-height: 1.6; color: var(--dg-text-2); }
+.dg-about-refs { margin: 0 0 16px; font-size: 0.85rem; color: var(--dg-text-muted); }
+.dg-about-refs a { color: var(--dg-accent-ink); text-decoration: none; }
+.dg-about-refs a:hover { text-decoration: underline; }
+.dg-about-warn { max-width: none; }
+.dg-about-warn strong { display: block; margin-bottom: 4px; }
+.dg-about-warn p { margin: 0; white-space: pre-line; }
+.dg-about-note { margin: 0 0 14px; font-size: 0.95rem; line-height: 1.6; color: var(--dg-text-2); }
+.dg-about-powered {
+    margin: 18px 0 0;
+    font-family: var(--dg-font);
+    font-size: 1rem;
+    color: var(--dg-text-2);
+}
+.dg-about-foot {
+    margin-top: 28px;
+    padding-top: 14px;
+    border-top: 1px solid var(--dg-border);
+    font-size: 0.8rem;
+    color: var(--dg-text-muted);
 }
 
-/* ============================================================================
-   Приложения, расширения и контакты — нижние блоки боевой главной.
-   Widescreen: всегда видно. Узкий экран: свёрнуто по умолчанию (владелец: главная и так длинная
-   на телефоне), раскрывается тем же .dg-anchor-revealed, что и #home-howto выше — переход по
-   якорю из бургера или из списка "Show all" доводит до цели вместо второй отдельной страницы.
-   ============================================================================ */
-body.dg-state-home #home-extra:not([hidden]) { display: block; }
-@media (max-width: 991.98px) {
-    body.dg-state-home #home-extra:not(.dg-anchor-revealed) { display: none; }
-}
-.dg-extra-title {
-    margin: 46px 0 18px;
-    font-family: var(--dg-font);
-    font-size: 0.82rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--dg-text-muted);
-    text-align: center;
-}
+/* Кнопки приложений и контакты — общие для шторки. */
 .dg-cta {
     display: flex;
     flex-wrap: wrap;
-    justify-content: center;
     gap: 10px;
     max-width: 820px;
-    margin: 0 auto;
 }
 .dg-cta-btn { display: inline-flex; line-height: 0; border-radius: 8px; }
 .dg-cta-btn img { height: 44px; width: auto; display: block; border-radius: 8px; }
 .dg-cta-btn:hover img { opacity: 0.85; }
-
-.dg-contacts-motto {
-    margin: 0 0 18px;
-    font-family: var(--dg-font);
-    font-size: 1rem;
-    color: var(--dg-text-2);
-    text-align: center;
-}
 .dg-contacts {
     display: flex;
-    justify-content: center;
+    flex-wrap: wrap;
     gap: 12px;
 }
 .dg-contact-btn {
@@ -2593,15 +2601,6 @@ body.dg-state-home #home-extra:not([hidden]) { display: block; }
     background: var(--dg-accent-bg);
     border-color: var(--dg-accent);
     color: var(--dg-accent-ink);
-}
-
-/* Prod: <p class="lead mt-4">$poweredby ... *</p> right under the contact icons. */
-.dg-powered-by {
-    margin: 18px 0 0;
-    font-family: var(--dg-font);
-    font-size: 1.1rem;
-    color: var(--dg-text-2);
-    text-align: center;
 }
 
 /* apple-design audit — #pali/#pali-words carry DataTables' "responsive" class but the

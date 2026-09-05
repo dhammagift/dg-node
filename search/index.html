@@ -1275,53 +1275,31 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
   <div class="dg-tiles" id="home-tiles"></div>
   <div id="home-slides" hidden></div>
 
-  <!-- «Как искать» + памятка «Переводы не от Будды» — перенос двух блоков боевой главной
-       (index.php: $howtosearchquote/$howtoheader и $transwarning из config/translate.php).
-       Тот же порог, что у #home-extra: ТОЛЬКО широкий экран (см. home.css), главная и так
-       длинная на телефоне. Ссылки dn16/an4.180 — в свой ридер с подсветкой цитаты (?s=). -->
+  <!-- Короткая цитата + памятка о переводах. Владелец (2026-09-05): низ главной был «вата» —
+       большой блок с полной цитатой, длинной памяткой, кнопками приложений и контактами. Теперь
+       на странице только короткая цитата (DN 16) и памятка в одну строку; всё полное (цитата
+       «Tāni ce sutte…», развёрнутая памятка, приложения/расширения, контакты, копирайт) — в
+       шторке «О проекте», которую открывают ссылки подвала (home.js openAbout). Тот же порог,
+       что и раньше: на телефоне блок свёрнут (home.css), подвал виден всегда. -->
   <section id="home-howto" hidden>
-    <h2 class="dg-extra-title" id="dg-howto-title"></h2>
-    <div class="dg-howto-quote">
-      <p class="pli-lang" id="dg-howto-pali"></p>
-      <p id="dg-howto-body"></p>
-      <p class="dg-howto-refs">
-        <a href="/dn16?s=T%C4%81ni" target="_blank">dn16</a>
-        <a href="/an4.180?s=T%C4%81ni" target="_blank">an4.180</a>
-      </p>
+    <div class="dg-intro">
+      <p class="dg-intro-pali pli-lang" id="dg-intro-pali"></p>
+      <p class="dg-intro-body" id="dg-intro-body"></p>
+      <p class="dg-intro-ref"><a id="dg-intro-ref" href="/dn16?s=mamaccayena" target="_blank"></a></p>
     </div>
-    <div class="dg-howto-warn">
-      <svg viewBox="0 0 512 512" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M256 32c14.2 0 27.3 7.5 34.5 19.8l216 368c7.3 12.4 7.3 27.7 .2 40.1S486.3 480 472 480H40c-14.3 0-27.6-7.7-34.7-20.1s-7-27.8 .2-40.1l216-368C228.7 39.5 241.8 32 256 32zm0 128c-13.3 0-24 10.7-24 24V296c0 13.3 10.7 24 24 24s24-10.7 24-24V184c0-13.3-10.7-24-24-24zm32 224a32 32 0 1 0 -64 0 32 32 0 1 0 64 0z"/></svg>
-      <div>
-        <strong id="dg-warn-title"></strong>
-        <p id="dg-warn-body"></p>
-      </div>
-    </div>
+    <div class="dg-intro-warn"><strong id="dg-intro-warn-title"></strong> <span id="dg-intro-warn-body"></span></div>
   </section>
 
-  <!-- Приложения, расширения и контакты — перенос двух нижних блоков боевой главной (index.php:
-       $ctaButtons и #contacts). ТОЛЬКО для широких экранов: на телефоне главная и так длинная,
-       а эти блоки там ничего не решают (см. медиазапрос в home.css).
-       Три белых блока «RESEARCH / READ / STUDY» с полными списками ссылок сюда НЕ переносятся
-       намеренно: всё, что в них перечислено, уже лежит в плитках и их шторках, а второй, отдельно
-       обновляемый список неизбежно разойдётся с первым. -->
-  <section id="home-extra" hidden>
-    <h2 class="dg-extra-title" id="links"></h2>
-    <div class="dg-cta" id="dg-cta"></div>
-
-    <h2 class="dg-extra-title" id="contacts"></h2>
-    <p class="dg-contacts-motto" id="dg-contacts-motto"></p>
-    <div class="dg-contacts" id="dg-contacts"></div>
-    <!-- Prod (index.php): <p class="lead mt-4">$poweredby ... *</p> right under the contact
-         icons — own line, not folded into the copyright footer. Filled by home.js renderExtra(). -->
-    <p class="dg-powered-by" id="dg-powered-by"></p>
-  </section>
-
-  <!-- Подвал. В установленном приложении (PWA) он не показывается: там это не сайт со страницей
-       «о нас», а приложение, и строка копирайта внизу экрана только занимает место. Признак —
-       display-mode: standalone, см. медиазапрос в home.css. Годы и ссылки проставляет home.js:
-       жёстко вписанный год к январю всегда оказывается прошлогодним. -->
+  <!-- Подвал — виден всегда, одной строкой: ссылки-открывашки шторки «О проекте» (Как искать ·
+       Приложения · Контакты), рядом копирайт с сокращёнными «Условия · Политика»; справа —
+       иконки контактов. «Powered by NI *» — внутри шторки, под контактами, как на проде.
+       Наполняет home.js (renderFooter/renderExtra). -->
   <footer id="dg-footer">
-    <span id="dg-copyright"></span>
+    <div class="dg-footer-main">
+      <p class="dg-footer-nav" id="dg-footer-nav"></p>
+      <p id="dg-copyright"></p>
+    </div>
+    <div class="dg-contacts dg-footer-contacts" id="dg-footer-contacts"></div>
   </footer>
 </div>
 
