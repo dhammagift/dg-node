@@ -4,7 +4,7 @@ sidebar_position: 0
 sidebar_label: Главная
 ---
 
-import Albumart from '@site/static/img/albumart.png';
+import Albumart from '@site/static/img/diamond-logo.png';
 import SiteLink from '@site/src/components/SiteLink';
 
 # Справка Dhamma.gift (БЕТА)

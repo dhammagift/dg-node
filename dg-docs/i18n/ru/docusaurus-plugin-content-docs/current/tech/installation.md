@@ -85,8 +85,8 @@ cd dgift_bot
 (`python-telegram-bot>=20`, `watchdog`) и заготавливает два конфига —
 `config.dgift_bot.json` и `config.dhammagift_bot.json` (это один и тот же
 код, две учётные записи бота под разными именами — см.
-[раздел про Telegram-бота на странице «Ключевые особенности»](/key-features)).
-В каждый нужно вписать настоящий `TOKEN`. Дальше:
+[страницу Telegram-бота](/telegram-bot)). В каждый нужно вписать настоящий
+`TOKEN`. Дальше:
 
 ```bash
 telegram/bin/python main.py config.dgift_bot.json

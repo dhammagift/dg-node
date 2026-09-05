@@ -4,7 +4,7 @@ sidebar_position: 0
 sidebar_label: Home
 ---
 
-import Albumart from '@site/static/img/albumart.png';
+import Albumart from '@site/static/img/diamond-logo.png';
 import SiteLink from '@site/src/components/SiteLink';
 
 # Dhamma.gift Help (BETA)
