@@ -11,7 +11,9 @@ const openapiSpecEn = require('./configs/openapi.en.json');
 const { default: Aksharamukha, Scripts: AKSH_SCRIPTS } = require('aksharamukha');
 
 const app = express();
-const PORT = 3902;
+// The legacy Express + grep server. 3001 keeps it clear of dg-fastify.js on 3000, so both
+// can run at once for comparison.
+const PORT = Number(process.env.PORT) || 3001;
 
 // ---------------------------------------------------------------------------------------
 // Cache policy (see cache.md at repo root for the full design writeup) — content-hash

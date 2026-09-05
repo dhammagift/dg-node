@@ -24,19 +24,22 @@ with one script — everything else (the legacy repo, the texts) it uses
 as external data, wired in via symlinks (see `CLAUDE.md` → "Prod: paths
 and symlinks"), not as npm dependencies.
 
-## The site (`dg-node`) — automatic setup
+## The site (`dg-node`) — from nothing to a running server
 
-Requires: **Node.js** (CI uses 24.20.0, `package.json` has no hard
-version pin — a current LTS should work), **npm**, **git**.
+Requires **Node.js 22.5 or newer** (production runs 24.20.0), **npm** and
+**git**. The version floor is not a preference: the server reads its search
+database through `node:sqlite`, which only exists from 22.5 on. `setup.sh`
+checks this first and stops with a clear message rather than letting it fail
+later.
 
 ```bash
 git clone https://github.com/dhammagift/dg-node.git
 cd dg-node
-./scripts/setup.sh
-./scripts/start.sh
+./scripts/setup.sh     # a few minutes, mostly cloning the texts
+./scripts/start.sh     # → http://localhost:3000
 ```
 
-`scripts/setup.sh` does everything in one pass:
+That is the whole thing. `setup.sh` does, in one pass:
 
 1. Sparse-clones three external repositories next to `dg-node` — by
    default into `../dg-data/`:
@@ -46,25 +49,46 @@ cd dg-node
      `read/`) — legacy assets
 2. Rebuilds the symlinks `siteroot/{assets,4nt,config,login,memo,read}`
    and `siteroot/data/{suttacentral.net,dhammagift}` so they point at the
-   fresh clones (the same thing `.github/workflows/build-mobile.yml` does
-   in CI, just without `sudo` or system paths — this version is meant for
-   a regular dev machine).
+   fresh clones (the same thing CI does, just without `sudo` or system
+   paths — this version is meant for a regular dev machine).
 3. `npm install` — both in the `dg-node` root and in `dg-docs/` (this
    docs portal).
-4. `npm run build-db` — builds the search skeleton `dg_db_light.json`
-   from the texts just wired up.
+4. `npm run build-db` — the search skeleton `dg_db_light.json`, used by the
+   legacy Express server.
+5. `npm run build-search-db` — **`dg.db`, the SQLite/FTS5 corpus the
+   production server reads.** Around 600 MB and a minute or two; this is the
+   slow step.
+6. `node test-search-db.js` — asserts the freshly built database is sane
+   before you ever start the server.
 
 Safe to re-run: already-cloned repositories are left alone (unless
-`--force` is passed), symlinks are just rebuilt.
+`--force` is passed), symlinks are just rebuilt, the databases are rebuilt
+from scratch.
 
 `DATA_DIR=/other/path ./scripts/setup.sh` — if you'd rather not clone
 next to `dg-node`.
 
-After that the server listens on `http://localhost:3000`. API test:
-`http://localhost:3000/search?q=kacchapa&scope=dhamma&langs=ru,en`.
+Check it works:
 
-The docs portal itself (what you're reading now) builds separately, in
-two locales:
+```
+http://localhost:3000/search?q=kacchapa&scope=dhamma&langs=ru,en
+http://localhost:3000/dn22:1.1
+```
+
+### Which server is running
+
+There are two in the repository, serving the same site from the same texts:
+
+| | Engine | Start | Default port |
+|---|---|---|---|
+| `dg-fastify.js` | Fastify, SQLite FTS5 (`dg.db`) | `./scripts/start.sh` or `npm run start:fastify` | 3000 |
+| `dg-light.js` | Express, searches by shelling out to `grep` | `npm start` | 3001 |
+
+`scripts/start.sh` launches the first one — it is what production serves.
+Both honour `PORT`, and their defaults differ so you can run them side by
+side and compare.
+
+The docs portal (what you're reading now) builds separately, in two locales:
 
 ```bash
 cd dg-docs
@@ -72,17 +96,12 @@ npm run build      # English version → build/
 npm run build:ru   # Russian version → build-ru/
 ```
 
+The built output is git-ignored, so a fresh checkout has no `dg-docs/build/`
+until you run this — the `/docs` route stays empty until then.
+
 ## The search database (`dg.db`) and the Fastify server
 
-There are two servers in the repository, serving the same site from the same
-data:
-
-| | Engine | Start |
-|---|---|---|
-| `dg-light.js` | Express, searches by shelling out to `grep` | `npm start` |
-| `dg-fastify.js` | Fastify, searches a SQLite FTS5 database | `npm run start:fastify` |
-
-The Fastify one is what runs in production. It exists because `grep` was not
+The Fastify server exists because `grep` was not
 the slow part: a full-corpus `/search?q=dukkha` took about 42 seconds, of
 which raw `grep` was half a second — the rest was re-reading thousands of JSON
 files to fill in quotes, translations and titles for the hits. Moving the
@@ -129,8 +148,8 @@ anything older, `require('node:sqlite')` throws
 ### Running
 
 ```bash
-npm run start:fastify          # port 3902
-PORT=3903 npm run start:fastify   # or anywhere else
+npm run start:fastify             # port 3000
+PORT=3005 npm run start:fastify   # or anywhere else
 ```
 
 ### Under PM2

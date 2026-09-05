@@ -3,7 +3,8 @@
 # legacy assets repo, wires them into siteroot/ exactly the way dg-light.js expects
 # (same recipe as .github/workflows/build-mobile.yml's "Create symlink structure"
 # step, just without sudo/system paths — everything lives under $DATA_DIR instead),
-# then installs npm deps and builds the search skeleton (dg_db_light.json).
+# then installs npm deps and builds both databases the servers need: the skeleton
+# dg_db_light.json (Express) and the SQLite/FTS5 corpus dg.db (Fastify, production).
 #
 # Safe to re-run: existing clones/symlinks are left alone unless --force is passed.
 #
@@ -24,6 +25,15 @@ OFFLINE_DATA_DIR="$DATA_DIR/offline-data" # dhammagift/offline-data (dhammagift/
 LEGACY_DG_DIR="$DATA_DIR/dg"              # dhammagift/dg (legacy PHP site: assets/4nt/config/login/memo/read)
 
 log() { echo "==> $*"; }
+
+# node:sqlite is what dg-fastify.js reads the corpus through, and it only exists from
+# Node 22.5 on. Checked here rather than left to blow up later: without it the build
+# below still succeeds and the server then refuses to start with ERR_UNKNOWN_BUILTIN_MODULE.
+node -e 'const [maj, min] = process.versions.node.split(".").map(Number);
+if (maj < 22 || (maj === 22 && min < 5)) {
+  console.error(`Node ${process.versions.node} is too old — dg-fastify.js needs node:sqlite, added in 22.5. Install a current Node and re-run.`);
+  process.exit(1);
+}'
 
 # $1 = target dir, $2 = git URL, $3... = sparse-checkout cone-mode paths
 sparse_clone() {
@@ -75,7 +85,15 @@ log "npm install (dg-node)"
 log "npm install (dg-docs)"
 (cd "$REPO_ROOT/dg-docs" && npm install)
 
-log "building search skeleton (dg_db_light.json)"
+log "building search skeleton (dg_db_light.json) — used by dg-light.js"
 (cd "$REPO_ROOT" && npm run build-db)
+
+# The one the production server actually reads. Takes ~85s and lands ~600MB in dg.db;
+# dg-fastify.js refuses to start without it.
+log "building search corpus (dg.db) — used by dg-fastify.js, takes a minute or two"
+(cd "$REPO_ROOT" && npm run build-search-db)
+
+log "verifying dg.db"
+(cd "$REPO_ROOT" && node test-search-db.js)
 
 log "done — start the server with ./scripts/start.sh"

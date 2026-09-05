@@ -21,9 +21,9 @@ const { default: Aksharamukha, Scripts: AKSH_SCRIPTS } = require('aksharamukha')
 // bodyLimit mirrors the express.text({limit:'10mb'}) on /assets/lbl-save.php below — Fastify's
 // body limit is instance-wide, not per-route, so it's set here instead.
 const app = Fastify({ bodyLimit: 10 * 1024 * 1024 });
-// Overridable so this can run next to the Express server it is being compared against, which
-// holds the same default port in this worktree.
-const PORT = Number(process.env.PORT) || 3902;
+// 3000 is where production serves from (both dhamma.gift and test.dhamma.gift proxy here);
+// dg-light.js, the legacy Express server, defaults to 3001 so the two can run side by side.
+const PORT = Number(process.env.PORT) || 3000;
 
 // The only POST route in this file (/assets/lbl-save.php) always wants the raw body as a string,
 // regardless of what Content-Type the client sends — same as express.text({type:'*/*'}) did.
@@ -455,7 +455,6 @@ try {
 const readerTemplatePath = path.join(__dirname, 'reader', 'reader-template.html');
 const searchIndexPath = path.join(__dirname, 'search', 'index.html');
 
-const skeletonPath = path.join(__dirname, 'dg_db_light.json');
 let skeletonDB = {};
 
 // Демо-сегменты для живого образца в /settings/ — заданы владельцем проекта явно, не
