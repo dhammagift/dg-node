@@ -21,13 +21,36 @@ import { SearchShell, TileGrid, Tile, Icon } from '@dhammagift/dg-ui';
 that state themselves — `<SearchShell state="home" | "results" | "reader" | "toc">`, and
 `BusyIndicator` reveals itself. Pick the state you are designing, don't add body classes.
 
-**Dark theme** is a class, not a prop. Tokens are defined on `:root` for light and redefined
-under `.dark`, `[data-theme="dark"]` and `prefers-color-scheme: dark`. To force one, put the
-class on a wrapper:
+**Dark theme is a first-class part of this system, not an afterthought** — it is how people
+read long Pali texts. It is a CLASS, not a prop: tokens are defined on `:root` for light and
+redefined under `.dark`, `[data-theme="dark"]` and `prefers-color-scheme: dark`. Custom
+properties inherit, so putting the class on any wrapper themes everything inside it — and that
+wrapper should paint the page token itself, or it will sit on a light ground:
 
 ```jsx
-<div data-theme="dark">…</div>
+<div className="dark" style={{ background: 'var(--dg-page)' }}>
+  <TileGrid>…</TileGrid>
+</div>
 ```
+
+**Design both themes.** Every token in the table below has a dark value; use the token and both
+themes follow for free. Hard-coded colours are the one thing that breaks this system.
+
+| | light | dark |
+|---|---|---|
+| `--dg-page` | `#ffffff` | `#111111` |
+| `--dg-surface` | `#ffffff` | `#191919` |
+| `--dg-surface-hover` | `#f5f4f1` | `#202020` |
+| `--dg-border` | `#e7e5de` | `#2c2c2c` |
+| `--dg-text` | `#1b1d19` | `rgb(221,221,221)` |
+| `--dg-text-muted` | `#6e716a` | `#7c7c7c` |
+| `--dg-accent` | `#149c7c` | `#136857` |
+| `--dg-accent-ink` (text) | `#0f7c63` | `#09967a` |
+| `--dg-accent-bg` | `#dff3ec` | `#12241f` |
+
+The dark accent is deliberately quieter than the light one, and `--dg-accent-ink` is a
+*lighter* tone than `--dg-accent` in dark theme — the icon green is unreadable as text there.
+That asymmetry is the reason both tokens exist.
 
 ### The styling idiom
 

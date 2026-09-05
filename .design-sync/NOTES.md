@@ -131,6 +131,20 @@ the harness, or give them a `min-height`. That is converter territory, not this 
 affects any design system with a fixed overlay. `MegaMenu` needs no stage — it is
 `position: absolute`, so it lands at its static position.
 
+## Dark theme in previews
+
+Dark is a CLASS, not a prop, and custom properties inherit — so a wrapper themes everything
+inside it. The wrapper must paint `--dg-page` itself, or the card's own ground stays light:
+
+```tsx
+const Dark = ({ children }: { children: ReactNode }) => (
+  <div className="dark" style={{ background: 'var(--dg-page)', padding: 20 }}>{children}</div>
+);
+```
+
+For a fixed overlay, put `className="dark"` on the Stage div rather than nesting another
+wrapper. Verified on `Tile`: surfaces drop to #191919, accent discs to #12241f, text to #a8a8a8.
+
 ## Composition rules
 
 - **`SheetRow` is unstyled outside a sheet** — `.dg-sheet-row`, `.dg-row-desc` and `.dg-chip`
