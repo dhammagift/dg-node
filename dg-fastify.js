@@ -35,8 +35,16 @@ app.addContentTypeParser('*', { parseAs: 'string' }, (req, body, done) => done(n
 // outside @fastify/static's single-root reply decorator, which doesn't fit the multi-root
 // override/fallback mounts below) — every sendFile() call in this file targets a known .html/.js
 // file, so a small explicit-type reader covers all of them.
-async function sendFile(reply, filePath, type) {
+// Express's res.sendFile() attaches an ETag for free and answers 304 on a matching
+// If-None-Match; this hand-rolled stand-in has to do it explicitly, or every route built on it
+// re-sends the whole body on each visit. That matters most for the config JSON, which cache.md
+// deliberately serves with no-cache — no-cache means "revalidate every time", which is only
+// cheap if a 304 is possible.
+async function sendFile(req, reply, filePath, type) {
     const buf = await fs.readFile(filePath);
+    const etag = '"' + crypto.createHash('md5').update(buf).digest('hex') + '"';
+    reply.header('etag', etag);
+    if (req && req.headers['if-none-match'] === etag) return reply.code(304).send();
     reply.type(type || 'text/html; charset=utf-8');
     return reply.send(buf);
 }
@@ -245,7 +253,7 @@ try {
 // checks silently). Registered early so nothing else can shadow it.
 app.get('/sw.js', (req, res) => {
     res.header('cache-control', 'no-cache'); // cache.md §4 — stale service worker must always revalidate
-    sendFile(res, path.join(__dirname, 'public', 'service-worker.js'), 'application/javascript');
+    sendFile(req, res, path.join(__dirname, 'public', 'service-worker.js'), 'application/javascript');
 });
 
 // /manifest.json — dg-node's own PWA manifest (configs/manifest.json), replacing the legacy
@@ -255,7 +263,7 @@ app.get('/sw.js', (req, res) => {
 // not a URL fork like the legacy /ru/ prefix was, so a single manifest already covers every
 // language without hardcoding a list.
 app.get('/manifest.json', (req, res) => {
-    sendFile(res, path.join(__dirname, 'configs', 'manifest.json'), 'application/manifest+json');
+    sendFile(req, res, path.join(__dirname, 'configs', 'manifest.json'), 'application/manifest+json');
 });
 
 // /open?url=... — in-scope redirector for manifest shortcuts that point at external, cross-origin
@@ -697,7 +705,7 @@ app.post('/assets/lbl-save.php', (req, res) => {
 // Same 5-minute tier staticCacheHeaders gives any .json.
 app.get('/assets/js/translators.json', (req, res) => {
     res.header('Cache-Control', CACHE_CONFIG_JSON);
-    return sendFile(res, path.join(__dirname, 'configs', 'reader', 'translators.json'), 'application/json');
+    return sendFile(req, res, path.join(__dirname, 'configs', 'reader', 'translators.json'), 'application/json');
 });
 app.register(fastifyStatic, {
     root: [path.join(__dirname, 'public', 'overrides'), path.join(__dirname, 'siteroot', 'assets')],
@@ -791,8 +799,8 @@ app.get('/bipm.php', (req, res) => sendVersionedHtml(req, res, path.join(__dirna
 // dg-node code actually fetches (public/overrides/read/js/voice.js, settings.js/
 // settings-bundle.js). Vendored into configs/legacy/ so siteroot/config can be dropped
 // entirely instead of publishing the rest of that directory's unrelated legacy server files.
-app.get('/config/tts-config.json', (req, res) => sendFile(res, path.join(__dirname, 'configs', 'legacy', 'tts-config.json'), 'application/json'));
-app.get('/config/sync-config.json', (req, res) => sendFile(res, path.join(__dirname, 'configs', 'legacy', 'sync-config.json'), 'application/json'));
+app.get('/config/tts-config.json', (req, res) => sendFile(req, res, path.join(__dirname, 'configs', 'legacy', 'tts-config.json'), 'application/json'));
+app.get('/config/sync-config.json', (req, res) => sendFile(req, res, path.join(__dirname, 'configs', 'legacy', 'sync-config.json'), 'application/json'));
 
 // Bare fragment (no page shell) of the same content, for /toc's inline expand
 // (public/spa/toc.js renderBookRow) — fetched once on first click, not preloaded.
