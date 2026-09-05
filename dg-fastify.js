@@ -142,9 +142,20 @@ const CACHE_LEGACY_CODE = 'public, max-age=86400';
 const CACHE_CONFIG_JSON = 'no-cache'; // @fastify/static uses @fastify/send under the hood — real ETag by default, same as Express's serve-static (cache.md)
 const CACHE_STATIC_SHORT = 'public, max-age=36000';
 
+// Third-party bundles vendored into public/overrides/js so dg-node no longer depends on the
+// legacy repo's assets/ for them (DataTables, the DPD dictionary data used by paliLookup.js).
+// They are pulled in by lazy <script> injection (search/index.html ensureSearchAssets,
+// paliLookup.js), never through an HTML tag sendVersionedHtml could stamp a ?v= onto — so the
+// immutable one-year tier above would pin whatever copy a browser got first until it expires
+// (a DataTables upgrade at the same URL would not reach returning visitors for a year).
+// They get the same 24h tier the legacy copies had under siteroot/assets.
+const UNVERSIONED_VENDOR_DIRS = ['datatables', 'standalone-dpd']
+    .map(dir => path.join(__dirname, 'public', 'overrides', 'js', dir) + path.sep);
+
 function staticCacheHeaders(reply, filePath) {
     const ext = path.extname(filePath).toLowerCase();
-    const inVersionedRoot = VERSIONED_STATIC_ROOTS.some(root => filePath.startsWith(root + path.sep));
+    const inVersionedRoot = VERSIONED_STATIC_ROOTS.some(root => filePath.startsWith(root + path.sep))
+        && !UNVERSIONED_VENDOR_DIRS.some(dir => filePath.startsWith(dir));
     if (inVersionedRoot && ['.js', '.css', '.svg', '.png', '.ico'].includes(ext)) {
         reply.header('Cache-Control', CACHE_IMMUTABLE_YEAR);
     } else if (['.woff', '.woff2', '.ttf', '.eot', '.otf'].includes(ext)) {
@@ -385,11 +396,62 @@ app.get('/api/transliterate', async (req, res) => {
 // виден и никого не касается.
 app.get('/openapi.json', (req, res) => res.send(openapiSpec));
 app.get('/openapi.en.json', (req, res) => res.send(openapiSpecEn));
-// /api-docs — skipped: swagger-ui-express has no Fastify equivalent installed here (would need
-// @fastify/swagger-ui as a new dependency for a documentation-only page, not perf-relevant to
-// the Express-vs-Fastify comparison this file exists for). /openapi*.json above still serve the
-// raw specs directly. Add @fastify/swagger-ui if the docs UI itself is ever needed on this port.
-app.get('/api-docs', (req, res) => res.redirect('/openapi.json'));
+// /api-docs — the same Swagger UI dg-light.js gets from swagger-ui-express, without adding a
+// Fastify-specific plugin: swagger-ui-express only wraps the static swagger-ui-dist bundle
+// (already installed as its dependency, now also a direct one in package.json) plus a tiny
+// HTML page with the init call, so the page is written out here by hand and the dist folder
+// is served under the same prefix. This is the server that runs in production — the
+// redirect-to-raw-JSON stub this replaced was what made https://dhamma.gift/api-docs/ look
+// broken (a JSON dump instead of the docs UI). `urls` + StandaloneLayout = the language
+// picker at the top (English / Русский), same as `explorer: true` in dg-light.js.
+const swaggerUiDistPath = require('swagger-ui-dist').getAbsoluteFSPath();
+const SWAGGER_UI_HTML = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dhamma.gift API</title>
+<link rel="stylesheet" href="./swagger-ui.css">
+<link rel="icon" type="image/png" href="./favicon-32x32.png" sizes="32x32">
+<link rel="icon" type="image/png" href="./favicon-16x16.png" sizes="16x16">
+</head>
+<body>
+<div id="swagger-ui"></div>
+<script src="./swagger-ui-bundle.js"></script>
+<script src="./swagger-ui-standalone-preset.js"></script>
+<script>
+window.onload = function () {
+    window.ui = SwaggerUIBundle({
+        urls: [
+            { url: '/openapi.en.json', name: 'English' },
+            { url: '/openapi.json', name: 'Русский' }
+        ],
+        dom_id: '#swagger-ui',
+        deepLinking: true,
+        presets: [SwaggerUIBundle.presets.apis, SwaggerUIStandalonePreset],
+        layout: 'StandaloneLayout'
+    });
+};
+</script>
+</body>
+</html>
+`;
+// Relative asset URLs in the page (./swagger-ui.css) need the trailing slash — without the
+// redirect /api-docs would resolve them against the site root.
+app.get('/api-docs', (req, res) => res.redirect('/api-docs/'));
+app.get('/api-docs/', (req, res) => {
+    res.header('cache-control', 'public, max-age=0, must-revalidate');
+    return res.type('text/html; charset=utf-8').send(SWAGGER_UI_HTML);
+});
+// index: false — the dist folder's own index.html would otherwise shadow the page above
+// (same static route, `/api-docs/` is an exact match and wins, but no reason to leave both).
+app.register(fastifyStatic, {
+    root: swaggerUiDistPath,
+    prefix: '/api-docs/',
+    index: false,
+    setHeaders: staticCacheHeaders,
+    decorateReply: false,
+});
 
 // Легаси (config/script_config.sh) везде держит minlength=2..3 не просто так — короткий keyword
 // (особенно 1 символ) matches почти КАЖДУЮ строку всего корпуса; grep -ri на таком запросе

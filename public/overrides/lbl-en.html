@@ -1,0 +1,1993 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" type="text/css" href="/assets/css/bootstrap.5.3.1.min.css"/>
+    <link href="/assets/css/styles.css" rel="stylesheet" />
+    <link href="/assets/css/extrastyles.css" rel="stylesheet" />
+    <link href="/assets/css/lbl.css" rel="stylesheet" />
+    <link rel="stylesheet" href="/assets/css/paliLookup.css">
+
+    <link rel="icon" type="image/png" href="/assets/img/favico-noglass.png" />
+	
+	<link href="/assets/css/jquery-ui.min.css" rel="stylesheet"/>
+<script src="/assets/js/jquery-3.7.0.min.js"></script>
+<script src="/assets/js/jquery-ui.min.js"></script>
+	
+<script type="text/javascript" src="/assets/js/bootstrap.bundle.5.3.1.min.js"></script>
+    <script src="/assets/js/nav-component.js" defer></script>
+
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Line-by-Line Translations</title>
+
+</head>
+<body>
+    <div class="mt-3">
+        <div class="align-items-center align-items-center toggle-switch input-group-append">
+            <div id="" class="input-group">
+                <div style="display: inline-flex; margin-top: -30px;">
+                    <top-nav-icons type="read" show-dict></top-nav-icons>
+                </div>
+                <a href="#" onclick="openHelpModal();" title="Instructions" class="ms-2 text-muted" target=""><i class="fa-solid fa-question"></i></a>
+              
+                   <a href="/assets/thns.php" title="Ready" class=" ms-2 me-0 text-muted" target="_blank">
+<i class="fa-solid fa-list"></i>
+   </a>  
+
+                <a href="https://www.site24x7.com/tools/diff-checker.html" target="_blank" title="Diff Checker"  class="ms-2 text-muted" target="">
+                  <i class="fa-solid fa-code-compare"></i>
+                  </a>
+   
+                <a href="/assets/lbl.html" title="Russian " class=" ms-2 me-2 text-muted text-decoration-none">ru</a>  
+                
+                <div class="input-group-append ms-1 me-3 mb-2">
+                    <div class=" ms-1">
+                        <button title="Previous text" class="input-group-append btn btn-primary" onclick="loadPrev(); loadAndCheckRanges()">
+                            <i class="fa-solid fa-chevron-left"></i>
+                        </button>
+                        <button title="Next text" class="input-group-append btn btn-primary" onclick="loadNext(); loadAndCheckRanges()">
+                            <i class="fa-solid fa-chevron-right"></i>
+                        </button>
+                    </div>
+                    <div class="ms-1" id="checkResult" style="margin-top: 10px;"></div>
+                </div>
+                
+                <div>
+                    <input style="width: 150px;" type="search" onclick="loadAndCheckRanges()" class="form-control input-sm mb-2" id="indexInput" title="Text Index, e.g., sn56.11, an3.70, sn23.1, etc." placeholder="Sutta Number" autofocus>   
+                </div>
+
+<div class="input-group-append ms-1">
+    <select title="Source file language" class="form-select input-sm" id="languageSelect">
+        <option value="pli">Pali</option>
+        <option value="en">English</option>
+        <option value="ru">Russian</option>
+    </select>
+</div>
+                
+                <div class="input-group-append ms-1 me-3">
+                    <button class="btn btn-primary mb-1" title="Open text on dhamma.gift" id="linkButton2">DT.org</button>
+                    <button class="btn btn-primary mb-1" title="Open text on dhamma.gift" id="linkButton1">DG</button>
+                </div>
+
+                <div class="input-group-append ms-1 me-3">
+                    <button class="btn btn-primary ms-2 me-1 input-group-append " title="Update translation" onclick="loadText()">Update <i class="fa-solid fa-arrow-rotate-right"></i></button>
+                    <button class="btn btn-primary me-1" title="Find and Replace" onclick="openSearchModal();"><i class="fas fa-search"></i></button>
+                    <button class="btn btn-primary me-1" title="Find and Replace" id="formatButton"><i class="fa-solid fa-text-width"></i></button>
+                    <button class="btn btn-danger me-1" title="Clear text input window" onclick="clearInputs()"><i class="fa-solid fa-eraser"></i></button>
+                    <button id="uploadButton" title="Open Saved File" class="btn btn-secondary me-1"><i class="fa-solid fa-upload"></i></button>
+                    <button id="loadFromServerButton" class="btn btn-secondary me-1" title="Load translation from server (beta)"><i class="fa-regular fa-folder-open"></i></button>
+                    <button class="btn btn-primary me-1" title="Save JSON" onclick="downloadJson()">Save <i class="fa-solid fa-download"></i></button>
+                    
+                    <div class="d-flex align-items-center">
+                        <div class="form-check me-2">
+                            <input class="form-check-input" title="Format text" type="checkbox" id="lineBreakCheckbox">
+                            <label class="form-check-label" for="lineBreakCheckbox">Format</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" title="Replace +edited+o in filename with o" type="checkbox" id="customTranslatorName">
+                            <label class="form-check-label" for="customTranslatorName">tr. o</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<div id="translationJsonOutput"></div>
+
+<div class="content-container">
+    <div class="table-container mt-2 mb-3">
+        <table class="table-hover">
+            <thead>
+                <tr>
+                    <th class="resizable">Text</th>
+                    <th class="resizable">Indexes</th>
+                    <th class="resizable">Translation</th>
+                    <th class=""><i class="fa-solid fa-link"></i></th>
+                </tr>
+            </thead>
+            <tbody id="outputTableBody"></tbody>
+        </table>
+    </div>
+
+    <div class="textarea-container my-3">
+        <textarea id="translationInput" placeholder="1. Enter the text number in 'Sutta Number'&#10;2. Paste the translation here&#10;3. Click 'Update'&#10;&#10;The tool will add a title and line breaks.&#10;Line breaks can be adjusted manually. &#10;If a line break is not needed somewhere, combine the sentences in the translation.&#10;&#10;Alternatively, you can paste the copied text of a JSON file directly here instead of using 'Upload JSON'." class="form-control custom-textarea" rows="15"></textarea>
+    </div>
+</div>
+
+<script>
+        window.onload = function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const qParam = urlParams.get('q');
+            if (qParam) {
+                document.getElementById('indexInput').value = qParam;
+				loadText();
+				window.history.replaceState(null, '', window.location.origin + window.location.pathname);
+            }
+            
+            // Запуск проверки сразу при загрузке страницы
+            loadAndCheckRanges();
+        };
+
+
+
+async function loadAndCheckRanges() {
+    const inputField = document.getElementById('indexInput');
+    const checkResult = document.getElementById('checkResult');
+    let debounceTimer;
+
+    // Вспомогательная функция для генерации пути
+    function getFileUrls(indexValue, translator) {
+        let lettersOnly = indexValue.match(/[a-z]+/)?.[0] ?? '';
+        let beforeDot = indexValue.split('.')[0];
+        let firstNumberOnly = beforeDot.match(/[0-9]+/)?.[0] ?? null;
+
+        if (['snp', 'ud', 'dhp', 'iti'].some(kn => indexValue.includes(kn))) {
+            lettersOnly = 'kn/' + lettersOnly;
+            if (indexValue.includes('snp') || indexValue.includes('ud')) {
+                beforeDot = 'vagga' + firstNumberOnly;
+            } else if (indexValue.includes('dhp')) {
+                beforeDot = '';
+            } else if (indexValue.includes('iti') && typeof findItiVagga === 'function') {
+                beforeDot = 'vagga' + findItiVagga(firstNumberOnly);
+            }
+        }
+
+        let middlePart = (indexValue.match(/dn|mn/)) ? '' : (beforeDot ? `${beforeDot}/` : '');
+        let fileName = `${indexValue}_translation-${translator}.json`;
+        
+        return [
+            `/assets/texts/en_other/sutta/${lettersOnly}/${middlePart}${fileName}`.replace(/([^:]\/)\/+/g, "$1"),
+            `/assets/texts/lbl/${fileName}`
+        ];
+    }
+
+    // Вынесли логику проверки в отдельную функцию, чтобы вызывать её без триггера автокомплита
+    async function performCheck(inputValue) {
+        if (!inputValue) {
+            checkResult.innerHTML = '';
+            return;
+        }
+
+        checkResult.innerHTML = '<div class="status-badge-container"><span class="text-muted status-badge-text"><i class="fa-solid fa-spinner fa-spin"></i> Checking...</span></div>';
+
+        const urls = getFileUrls(inputValue, 'en-thanissaro');
+        let found = false;
+
+        for (const url of urls) {
+            try {
+                const response = await fetch(url, { method: 'HEAD' });
+                if (response.ok) {
+                    found = true;
+                    break;
+                }
+            } catch (error) {
+                continue;
+            }
+        }
+        
+        if (found) {
+            checkResult.innerHTML = '<div class="status-badge-container"><span class="text-success status-badge-text"><i class="fa-solid fa-check"></i> Already exists</span></div>';
+        } else {
+            checkResult.innerHTML = '<div class="status-badge-container"><span class="text-muted status-badge-text"><i class="fa-solid fa-xmark"></i> Not ready yet</span></div>';
+        }
+    }
+
+    inputField.addEventListener('input', function () {
+        clearTimeout(debounceTimer);
+        const inputValue = this.value.trim().toLowerCase();
+        
+        debounceTimer = setTimeout(() => {
+            performCheck(inputValue);
+        }, 500); 
+    });
+
+    // Принудительный тихий запуск проверки без генерации события input (комплит не вылезет)
+    if (inputField && inputField.value.trim() !== '') {
+        performCheck(inputField.value.trim().toLowerCase());
+    }
+}
+
+// Запускаем функцию
+loadAndCheckRanges();
+
+  
+
+  function gotoLine(lineNumber) {
+    // Принудительно закрываем редактирование ячейки (если она активна)
+    const activeTextarea = document.querySelector('#outputTableBody textarea.table-textarea');
+    if (activeTextarea) {
+      activeTextarea.blur();
+    }
+
+    // Задержка в 10мс, чтобы blur успел перенести текст в левое окно
+    setTimeout(() => {
+      const textarea = document.getElementById('translationInput');
+      const lines = textarea.value.split('\n');
+      
+      if (lineNumber > lines.length) {
+        console.log("Line number exceeds text lines.");
+        return;
+      }
+
+      let charCount = 0;
+
+      for (let i = 0; i < lineNumber - 1 && i < lines.length; i++) {
+        charCount += lines[i].length + 1; 
+      }
+
+      const lineEnd = charCount + lines[lineNumber - 1].length;
+
+      textarea.focus();
+      textarea.setSelectionRange(charCount, lineEnd);
+      
+      if (textarea.scrollHeight > 0) {
+        textarea.scrollTop = textarea.scrollHeight * (charCount / textarea.value.length);
+      }
+    }, 10);
+  }
+</script>
+
+<div id="searchModal" class="modal">
+  <div class="modal-content">
+    <div id="modalHeader" class="modal-header">	        
+	<button class="mb-1 btn btn-link text-decoration-none close closeBtn" id="">&times;</button>
+      <h3>Find and Replace</h3>
+    </div>
+    <div class="modal-body">
+      <label for="searchText">Find:</label>
+      <input type="text" id="searchText">
+      <br>
+      <label for="replaceText">Replace with:</label>
+      <input type="text" id="replaceText">
+      <br><br>
+      <button class="mb-1 btn btn-primary" id="findBtn">Find</button>
+      <button  class="mb-1 btn btn-primary" id="replaceOneBtn">Replace</button>
+      <button class="mb-1 btn btn-primary" id="replaceAllBtn">Replace all</button>
+      <button class="mb-1 btn btn-secondary closeBtn" id="">Close</button>
+      <br>
+      <button class="mb-1 btn btn-primary btn-sm" data-template="«Это – боль», «Это – скапливание боли», «Это – истечение боли», «Это – к истечению боли ведущая практика».">4nt</button>
+      <button class="mb-1 btn btn-primary btn-sm" data-template="«Это – боль»… «Это – к истечению боли ведущая практика». ">4nt short</button>
+      <button class="mb-1 btn btn-primary btn-sm" data-template="Правильный взгляд, правильное намерение-заготовка, правильная речь, правильные действия, правильные быт, правильное старание, правильное памятование, правильное объединение опыта. ">n8p</button>
+      <button class="mb-1 btn btn-primary btn-sm" data-template="Правильный взгляд… правильное объединение опыта. ">n8p short</button>
+      <button class="mb-1 btn btn-primary btn-sm" data-template="Так сказал Благословенный. Довольные монахи обрадовались речи Благословенного. ">Thus said…</button>
+      <button class="mb-1 btn btn-primary btn-sm" data-template="—">—</button>
+      <button class="mb-1 btn btn-primary btn-sm" data-template="“”">“”</button>
+      <button class="mb-1 btn btn-primary btn-sm" data-template="¿">¿</button>
+    </div>
+  </div>
+</div>
+
+<div id="helpModal" style="z-index:100;" class="modal">
+  <div class="modal-content">
+    <div id="modalHeader" class="modal-header">
+      <button class="mb-1 btn btn-link text-decoration-none close closeBtn" id="">&times;</button>
+      <h3>Help</h3>
+    </div>
+    <div class="modal-body">
+        <button class="btn btn-link text-decoration-none" data-bs-toggle="collapse" data-bs-target="#tableHelp" aria-expanded="false" aria-controls="tableHelp">
+              <h3>Table Mode</h3><p>show / hide</p>
+        </button>
+      <div class="collapse" id="tableHelp">
+        <p>
+          Click on a text cell to edit.<br><br>
+          Click on <i class="fa-solid fa-link"></i> to go to this line in quick edit.<br><br>
+          When a table cell is active:<br><br>
+          <strong><i class="fa-solid fa-arrow-up"></i> or <i class="fa-solid fa-arrow-left"></i></strong> - move up between cells<br><br>
+          <strong><i class="fa-solid fa-arrow-down"></i> or <i class="fa-solid fa-arrow-right"></i></strong> - move down between cells<br><br>
+          <strong>enter</strong> - add an empty line or move text to a new line<br><br>
+          <strong>ctrl+enter</strong> - move text to the beginning of the next line<br><br>
+          <strong>backspace</strong> at the beginning of a line moves the text one line up.<br><br>
+          <strong>delete</strong> at the end of a line moves the text to the current line.
+        </p>
+      </div>
+      <br><br>
+        <button class="btn btn-link text-decoration-none" data-bs-toggle="collapse" data-bs-target="#textInputHelp" aria-expanded="false" aria-controls="textInputHelp">
+                    <h3>Input Window Mode</h3><p>show / hide</p>    
+        </button>
+      <div class="collapse" id="textInputHelp">
+        <p>
+          <strong>ctrl+Q</strong> - select a vertical list and press the combination. This will convert the vertical list into a single string.<br><br>
+          <strong>ctrl+F or ctrl+H</strong> - text replacement. () or [] must be escaped like this: \(\) and \[\] .
+        </p>
+      </div>
+      <br><br>
+      <h3>
+        <a href="https://youtu.be/cRrMSuL3UWM?is=UZ3J58xLELtarPew" title="Video tutorial" class="ms-2" target="_blank">
+          <i class="fa-brands fa-youtube"></i> Video tutorial
+        </a>
+      </h3>
+      <br><br>
+      <button class="mb-1 btn btn-primary closeBtn" id="">Close</button>
+    </div>
+  </div>
+</div>
+
+<div id="settings" class="modal">
+  <div class="modal-content">
+    <div id="modalHeader" class="modal-header">
+	<button class="mb-1 btn btn-link text-decoration-none close closeBtn" id="">&times;</button>
+      <h3>Settings</h3>
+    </div>
+    <div class="modal-body">
+      <label for="translator">Translator:</label>
+      <input type="text" id="translator">
+      <br><br>
+      <button class="mb-1 btn btn-primary" id="saveSettings">Save</button>
+      <button  class="mb-1 btn btn-primary" id="resetSettings">Reset</button>
+      <button class="mb-1 btn btn-primary" id="closeBtn">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<button style="display: none;" class="btn btn-primary" title="Emulate Ctrl key" id="ctrlEnterButton">Ctrl + Enter</button>
+
+<div class="my-3">
+    <input type="file" id="fileInput" style="display:none" accept=".json" />
+<script>
+ function findItiVagga(suttaNumber) {
+  if (suttaNumber >= 1 && suttaNumber <= 10) {
+    return "1";
+  } else if (suttaNumber >= 11 && suttaNumber <= 20) {
+    return "2";
+  } else if (suttaNumber >= 21 && suttaNumber <= 27) {
+    return "3";
+  } else if (suttaNumber >= 28 && suttaNumber <= 37) {
+    return "4";
+  } else if (suttaNumber >= 38 && suttaNumber <= 49) {
+    return "5";
+  } else if (suttaNumber >= 50 && suttaNumber <= 59) {
+    return "6";
+  } else if (suttaNumber >= 60 && suttaNumber <= 69) {
+    return "7";
+  } else if (suttaNumber >= 70 && suttaNumber <= 79) {
+    return "8";
+  } else if (suttaNumber >= 80 && suttaNumber <= 89) {
+    return "9";
+  } else if (suttaNumber >= 90 && suttaNumber <= 99) {
+    return "10";
+  } else if (suttaNumber >= 100 && suttaNumber <= 112) {
+    return "11";
+  }
+} 
+  
+  document.getElementById('uploadButton').addEventListener('click', function() {
+    const inputText = document.getElementById('translationInput').value;
+    if (inputText.trim() === '') {
+      document.getElementById('fileInput').click();
+    } else {
+      processJson(inputText);
+    }
+  });
+
+  document.getElementById('fileInput').addEventListener('change', function(event) {
+    const file = event.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const fileContent = e.target.result;
+        processJson(fileContent);
+      };
+      reader.readAsText(file);
+    }
+  });
+
+  function processJson(inputText) {
+    try {
+      const jsonObject = JSON.parse(inputText);
+      const values = Object.values(jsonObject);
+      const result = values.join('\n');
+      document.getElementById('translationInput').value = result;
+    } catch (error) {
+      const proceed = confirm('Do you want to upload a file to replace the data?');
+      if (proceed) {
+        document.getElementById('fileInput').click();
+      }
+    }
+  }
+</script>
+</div>
+
+<script>
+  
+ function downloadJson() {
+    // Docs "Translator" help page embeds this exact tool live (?demo=1) — saving (local
+    // download AND the server-side lbl-save.php write below) must not fire from there, or
+    // anyone poking around in the help page could overwrite real translation files.
+    if (new URLSearchParams(window.location.search).get('demo') === '1') {
+        alert('This is the help demo — saving is disabled here. Open the tool directly at /assets/lbl-en.html to save.');
+        return;
+    }
+    const language = document.getElementById('languageSelect').value;
+    const indexValue = document.getElementById('indexInput').value.trim().toLowerCase();
+    const translation = document.getElementById('translationInput').value.trim();
+
+    const translationLines = translation.split('\n');
+    const jsonData = {};
+
+    let lettersOnly = indexValue.match(/[a-z]+/)[0];
+    let beforeDot = indexValue.split('.')[0];
+    let firstNumberOnly = beforeDot.match(/[0-9]+/)?.[0] ?? null;
+
+    if (indexValue.includes('snp') || indexValue.includes('ud') || indexValue.includes('dhp') || indexValue.includes('iti')) {
+        lettersOnly = 'kn/' + lettersOnly;
+    }
+
+    if (indexValue.includes('snp') || indexValue.includes('ud')) {
+        beforeDot = 'vagga' + firstNumberOnly;
+    } else if (indexValue.includes('dhp')) {
+        beforeDot = '';
+    }
+
+    if (indexValue.includes('iti')) {
+        beforeDot = 'vagga' + findItiVagga(firstNumberOnly);
+    }
+
+    let url;
+    if (indexValue.includes('bu-') || indexValue.includes('bi-')) {
+        let buOrbi = indexValue.split('-')[0];
+        let lawIndex = indexValue.split('-')[1];
+        let lawType = lawIndex.match(/[a-z]+/)[0];
+        let fileNameBlock = 'pli-tv-' + buOrbi + '-vb/pli-tv-' + buOrbi + '-vb-' + lawType + '/pli-tv-' + buOrbi + '-vb-' + lawIndex;
+
+        if (indexValue.includes('-pm')) {
+            fileNameBlock = 'pli-tv-' + buOrbi + '-pm';
+        }
+        // Добавлено || language === 'ru' для получения палийской основы
+        if (language === 'pli' || language === 'ru') {
+            url = `/suttacentral.net/sc-data/sc_bilara_data/root/pli/ms/vinaya/${fileNameBlock}_root-pli-ms.json`;
+        } else if (language === 'en') {
+            url = `/suttacentral.net/sc-data/sc_bilara_data/translation/en/brahmali/vinaya/${fileNameBlock}_translation-en-brahmali.json`;
+        }
+    } else if (language === 'pli' || language === 'ru') {
+        url = `/suttacentral.net/sc-data/sc_bilara_data/root/pli/ms/sutta/${lettersOnly}/${beforeDot}/${indexValue}_root-pli-ms.json`;
+    } else if (language === 'en') {
+        url = `/suttacentral.net/sc-data/sc_bilara_data/translation/en/sujato/sutta/${lettersOnly}/${beforeDot}/${indexValue}_translation-en-sujato.json`;
+    }
+
+    if (indexValue.match(/dn|mn/)) {
+        if (language === 'pli' || language === 'ru') {
+            url = `/suttacentral.net/sc-data/sc_bilara_data/root/pli/ms/sutta/${lettersOnly}/${indexValue}_root-pli-ms.json`;
+        } else if (language === 'en') {
+            url = `/suttacentral.net/sc-data/sc_bilara_data/translation/en/sujato/sutta/${lettersOnly}/${indexValue}_translation-en-sujato.json`;
+        }
+    }
+
+    const translations = {
+        "Paṭhamaṁ.": "The First.",
+        "Dutiyaṁ.": "The Second.",
+        "Tatiyaṁ.": "The Third.",
+        "Catutthaṁ.": "The Fourth.",
+        "Pañcamaṁ.": "The Fifth.",
+        "Chaṭṭhaṁ.": "The Sixth.",
+        "Sattamaṁ.": "The Seventh.",
+        "Aṭṭhamaṁ.": "The Eighth.",
+        "Navamaṁ.": "The Ninth.",
+        "Dasamaṁ.": "The Tenth.",
+        "Ekādasamaṁ.": "The Eleventh.",
+        "Dvādasamaṁ.": "The Twelfth.",
+        "Terasamaṁ.": "The Thirteenth.",
+        "Cuddasamaṁ.": "The Fourteenth.",
+        "Pannarasamaṁ.": "The Fifteenth.",
+        "Soḷasamaṁ.": "The Sixteenth.",
+        "Sattarasamaṁ.": "The Seventeenth.",
+        "Aṭṭhārasamaṁ.": "The Eighteenth.",
+        "Tiṁsatimaṁ.": "The Thirtieth.",
+        "Tassuddānaṁ": "The Summary"
+    };
+
+    fetch(url)
+        .then(response => {
+            if (!response.ok) throw new Error('Network response was not ok');
+            return response.json();
+        })
+        .then(data => {
+            const dataArray = Object.entries(data);
+            dataArray.forEach(([key, value], index) => {
+                let translationLine = translationLines[index] || '';
+                if (translations[value.trim()]) {
+                    translationLine = translations[value.trim()];
+                }
+                jsonData[key] = translationLine;
+            });
+
+            const jsonString = JSON.stringify(jsonData, null, 2);
+            let translatorName = 'thanissaro';
+            if (document.getElementById('customTranslatorName').checked) {
+                translatorName = 'o';
+            }
+            const fullFileName = indexValue + '_translation-en-' + translatorName + '.json';
+
+            // Инициализация Toast
+            const toastEl = document.getElementById('toastMessage');
+            const toastText = document.getElementById('toastText');
+
+            // --- Отправка копии на сервер ---
+            fetch('/assets/lbl-save.php?file=' + encodeURIComponent(fullFileName), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: jsonString
+            })
+            .then(res => {
+                if (res.ok) {
+                    toastEl.classList.remove('bg-danger');
+                    toastEl.classList.add('bg-success');
+                    toastText.textContent = 'File uploaded to server successfully.';
+                    new bootstrap.Toast(toastEl, { autohide: true }).show();
+                } else {
+                    throw new Error('Upload failed');
+                }
+            })
+            .catch(err => {
+                console.error('Network error:', err);
+                toastEl.classList.remove('bg-success');
+                toastEl.classList.add('bg-danger');
+                toastText.textContent = 'Error: Failed to upload file to server.';
+                new bootstrap.Toast(toastEl, { autohide: false }).show();
+            });
+
+            // --- Локальное скачивание ---
+            const blob = new Blob([jsonString], { type: 'application/json' });
+            const objectUrl = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = objectUrl;
+            a.download = fullFileName;
+            document.body.appendChild(a);
+            a.click();
+            URL.revokeObjectURL(objectUrl);
+            document.body.removeChild(a);
+        })
+        .catch(error => console.error('Error fetching data:', error.message));
+} 
+  
+
+function loadText() {
+  const language = document.getElementById('languageSelect').value;
+  const indexValue = document.getElementById('indexInput').value.trim().toLowerCase();
+  let translation = document.getElementById('translationInput').value;
+  let cleanedTranslation = translation;
+
+  try {
+    const jsonObject = JSON.parse(translation);
+    processJson(translation);
+    return;  
+  } catch (error) {
+  }
+
+  if (document.getElementById('lineBreakCheckbox').checked) {
+    cleanedTranslation = translation.replace(/[\.…:?!] /g, (match, offset, fullString) => {
+      if (match === '. ' && offset >= 3 && fullString.substring(offset - 3, offset) === 'Ven') {
+        return match;
+      }
+      if (fullString.charAt(offset + match.length) !== '\n') {
+        return `${match}\n`;
+      }
+      return match;
+    });
+
+    cleanedTranslation = cleanedTranslation.replace(/\([А-Я]* [0-9]*\.[0-9]*\)/g, '');
+    cleanedTranslation = cleanedTranslation.replace(/ {2,}/g, ' ');
+    cleanedTranslation = cleanedTranslation.replace(/АН\s[0-9]+\.[0-9]+\s+[\s\S]*?Anguttara Nikaya.*$/gm, '');
+    cleanedTranslation = cleanedTranslation.replace(/СН\s[0-9]+\.[0-9]+\s+[\s\S]*?Samyutta Nikaya.*$/gm, '');
+    cleanedTranslation = cleanedTranslation.replace(/(\(1\)|1\)) ([а-я])/g, function(match, p1, p2) {
+      return p1 + ' ' + p2.toUpperCase();
+    });
+
+    cleanedTranslation = cleanedTranslation.replace(/(?<![a-zA-Z])in the same way/g, '\nin the same way');
+    cleanedTranslation = cleanedTranslation.replace(/Just as/g, '\nJust as');
+    cleanedTranslation = cleanedTranslation.replace(/Why is that\? /g, 'Why is that?\n');
+    cleanedTranslation = cleanedTranslation.replace(/What do you think /g, '\nWhat do you think');
+    cleanedTranslation = cleanedTranslation.replace(/said, “/g, 'said, \n“');
+    cleanedTranslation = cleanedTranslation.replace(/I have heard that/g, 'I have heard\nthat');
+    cleanedTranslation = cleanedTranslation.replace(/discerned that \‘/g, 'discerned that \n\‘');
+    cleanedTranslation = cleanedTranslation.replace(/В каких/g, '\nВ каких');
+    cleanedTranslation = cleanedTranslation.replace(/\[Благословенный сказал\]:/gm, '');
+    cleanedTranslation = cleanedTranslation.replace(/\[Благословенный сказал:/gm, '');
+    cleanedTranslation = cleanedTranslation.replace(/^.*\[И далее он добавил\]:.*$/gm, '');
+    cleanedTranslation = cleanedTranslation.replace(/Там Благословенный обратился к монахам:/g, '\nТам Благословенный обратился к монахам:\n');
+    cleanedTranslation = cleanedTranslation.replace(/Так сказал Благословенный./g, '\nТак сказал Благословенный.\n');
+    cleanedTranslation = cleanedTranslation.replace(/\(I\)/g, 'Первая');
+    cleanedTranslation = cleanedTranslation.replace(/\(II\)/g, 'Вторая');
+    cleanedTranslation = cleanedTranslation.replace(/\(III\)/g, 'Третья');
+    cleanedTranslation = cleanedTranslation.replace(/\(IV\)/g, 'Четвёртая');
+    cleanedTranslation = cleanedTranslation.replace(/^\*\s+/gm, '');
+    cleanedTranslation = cleanedTranslation.replace(/[0-9]*"/g, '');
+    cleanedTranslation = cleanedTranslation.replace(/^–\s+/gm, '');
+    cleanedTranslation = cleanedTranslation.replace(/\([1-9][0-9]?\) /g, '');
+    cleanedTranslation = cleanedTranslation.replace(/\([1-9][0-9]?-[1-9][0-9]?\) /g, '');
+    cleanedTranslation = cleanedTranslation.replace(/[1-9][0-9]?\) /g, '');
+    cleanedTranslation = cleanedTranslation.replace(/^\s*[\r\n]/gm, '');
+    cleanedTranslation = cleanedTranslation.replace(/([А-Яа-я»…\]])\d+\b/g, '$1');
+  }
+
+  if (/sn[0-9]/.test(indexValue)) {
+      if (!cleanedTranslation.startsWith("Linked Discourses")) {
+          const additionalLines = `Linked Discourses ${indexValue.replace(/[a-z]/g, '')}\nChapter \nSutta \n\n\n`;
+          cleanedTranslation = additionalLines + cleanedTranslation;
+      } else if (cleanedTranslation.startsWith("Linked Discourses")) {
+          cleanedTranslation = `Linked Discourses ${indexValue.replace(/[a-z]/g, '')}${cleanedTranslation.substring(cleanedTranslation.indexOf("\n"))}`;
+      }
+  } else if (indexValue.includes("an")) {
+      if (!cleanedTranslation.startsWith("Numbered Discourses")) {
+          const additionalLines = `Numbered Discourses ${indexValue.replace(/[a-z]/g, '')}\nChapter \nSutta \n\n\n`;
+          cleanedTranslation = additionalLines + cleanedTranslation;
+      } else if (cleanedTranslation.startsWith("Numbered Discourses")) {
+          cleanedTranslation = `Numbered Discourses ${indexValue.replace(/[a-z]/g, '')}${cleanedTranslation.substring(cleanedTranslation.indexOf("\n"))}`;
+      }
+  } else if (indexValue.includes("mn")) {
+      if (!cleanedTranslation.startsWith("Middle Discourses")) {
+          const additionalLines = `Middle Discourses ${indexValue.replace(/[a-z]/g, '')} \nSutta \n\n\n`;
+          cleanedTranslation = additionalLines + cleanedTranslation;
+      } else if (cleanedTranslation.startsWith("Middle Discourses")) {
+          cleanedTranslation = `Middle Discourses ${indexValue.replace(/[a-z]/g, '')}${cleanedTranslation.substring(cleanedTranslation.indexOf("\n"))}`;
+      }
+  } else if (indexValue.includes("dn")) {
+      if (!cleanedTranslation.startsWith("Long Discourses")) {
+          const additionalLines = `Long Discourses ${indexValue.replace(/[a-z]/g, '')} \nSutta \n\n\n`;
+          cleanedTranslation = additionalLines + cleanedTranslation;
+      } else if (cleanedTranslation.startsWith("Long Discourses")) {
+          cleanedTranslation = `Long Discourses ${indexValue.replace(/[a-z]/g, '')}${cleanedTranslation.substring(cleanedTranslation.indexOf("\n"))}`;
+      }
+  } else if (indexValue.includes("snp")) {
+      if (!cleanedTranslation.startsWith("Sutta Nipata")) {
+          const additionalLines = `Sutta Nipata ${indexValue.replace(/[a-z]/g, '')}\nName\n\n`;
+          cleanedTranslation = additionalLines + cleanedTranslation;
+      } else if (cleanedTranslation.startsWith("Sutta Nipata")) {
+          cleanedTranslation = `Sutta Nipata ${indexValue.replace(/[a-z]/g, '')}${cleanedTranslation.substring(cleanedTranslation.indexOf("\n"))}`;
+      }
+  } else if (indexValue.includes("ud")) {
+      if (!cleanedTranslation.startsWith("Udana")) {
+          const additionalLines = `Udana ${indexValue.replace(/[a-z]/g, '')}\nSutta \n\n`;
+          cleanedTranslation = additionalLines + cleanedTranslation;
+      } else if (cleanedTranslation.startsWith("Udana")) {
+          cleanedTranslation = `Udana ${indexValue.replace(/[a-z]/g, '')}${cleanedTranslation.substring(cleanedTranslation.indexOf("\n"))}`;
+      }
+  } else if (indexValue.includes("iti")) {
+      if (!cleanedTranslation.startsWith("Thus Was Said")) {
+          const additionalLines = `Thus Was Said ${indexValue.replace(/[a-z]/g, '')}\nNipata \nChapter \nSutta \n`;
+          cleanedTranslation = additionalLines + cleanedTranslation;
+      } else if (cleanedTranslation.startsWith("Thus Was Said")) {
+          cleanedTranslation = `Thus Was Said ${indexValue.replace(/[a-z]/g, '')}${cleanedTranslation.substring(cleanedTranslation.indexOf("\n"))}`;
+      }
+  }
+
+  // Очистка от лишних пробелов в концах строк и гарантированное добавление одного пробела
+  cleanedTranslation = cleanedTranslation
+      .replace(/[ \t]+$/gm, '')
+      .replace(/([^\r\n])$/gm, '$1 ');
+
+  document.getElementById('translationInput').value = cleanedTranslation;
+  document.getElementById('lineBreakCheckbox').checked = false;
+
+  const translationLines = cleanedTranslation.split('\n');
+  let lettersOnly = indexValue.match(/[a-z]+/)[0];
+  let beforeDot = indexValue.split('.')[0];
+  let firstNumberOnly = beforeDot.match(/[0-9]+/)?.[0] ?? null;
+
+  if (indexValue.includes('snp') || indexValue.includes('ud') || indexValue.includes('dhp') || indexValue.includes('iti')) {
+    lettersOnly = 'kn/' + lettersOnly;
+  }
+
+  if (indexValue.includes('snp') || indexValue.includes('ud')) {
+    beforeDot = 'vagga' + firstNumberOnly;
+  } else if (indexValue.includes('dhp')) {
+    beforeDot = '';
+  }  
+  
+  if ( indexValue.includes('iti')) {
+    beforeDot = 'vagga' + findItiVagga(firstNumberOnly);
+  } 
+  
+  let pliUrl;
+  let enUrl;
+  let fileNameBlock;
+  
+  if (indexValue.includes('bu-') || indexValue.includes('bi-')) {
+    let buOrbi = indexValue.split('-')[0]; 
+    let lawIndex = indexValue.split('-')[1]; 
+    let lawType = lawIndex.match(/[a-z]+/)[0];
+    fileNameBlock = 'pli-tv-' + buOrbi + '-vb/pli-tv-' + buOrbi + '-vb-' + lawType + '/pli-tv-' + buOrbi + '-vb-' + lawIndex;
+    if (indexValue.includes('-pm')) {
+      fileNameBlock = 'pli-tv-' + buOrbi + '-pm';
+    } 
+    console.log('fileNameBlock ' + fileNameBlock) ;
+    pliUrl = `/suttacentral.net/sc-data/sc_bilara_data/root/pli/ms/vinaya/${fileNameBlock}_root-pli-ms.json`;    
+    enUrl = `/suttacentral.net/sc-data/sc_bilara_data/translation/en/brahmali/vinaya/${fileNameBlock}_translation-en-brahmali.json`;
+  } else {
+    pliUrl = `/suttacentral.net/sc-data/sc_bilara_data/root/pli/ms/sutta/${lettersOnly}/${beforeDot}/${indexValue}_root-pli-ms.json`;
+    enUrl = `/suttacentral.net/sc-data/sc_bilara_data/translation/en/sujato/sutta/${lettersOnly}/${beforeDot}/${indexValue}_translation-en-sujato.json`;
+  }
+  
+  if (indexValue.match(/dn|mn/)) {
+    pliUrl = `/suttacentral.net/sc-data/sc_bilara_data/root/pli/ms/sutta/${lettersOnly}/${indexValue}_root-pli-ms.json`;
+    enUrl = `/suttacentral.net/sc-data/sc_bilara_data/translation/en/sujato/sutta/${lettersOnly}/${indexValue}_translation-en-sujato.json`;
+  }
+  
+  console.log('pliUrl ' + pliUrl) ;
+  console.log('enUrl ' + enUrl) ;
+
+  // Загружаем список переводчиков из JSON файла
+  fetch('/assets/js/translators.json')
+    .then(response => {
+      if (!response.ok) throw new Error('Failed to load translators.json');
+      return response.json();
+    })
+    .then(translatorsData => {
+      // Функция для последовательного перебора вариантов русского перевода на основе загруженного списка
+      const trimmedUrlForRu = pliUrl.match(/\/(sutta|vinaya)\/.*/)[0];
+      const baseUrlRu = `/assets/texts/ru${trimmedUrlForRu.split('_')[0]}`;
+      
+      const ruTranslatorsKeys = Object.keys(translatorsData.ru || {});
+      const ruUrlsToTry = ruTranslatorsKeys.map(key => `${baseUrlRu}_translation-ru-${key}.json`);
+
+      async function fetchRuData() {
+          for (const url of ruUrlsToTry) {
+              try {
+                  const response = await fetch(url);
+                  if (response.ok) {
+                      return await response.json();
+                  }
+              } catch (error) {
+                  // Игнорируем ошибку и пробуем следующий URL
+              }
+          }
+          return {}; // Возвращаем пустой объект, если ничего не найдено
+      }
+
+      // Запрашиваем пали как основу в любом случае, английский или русский - если выбран в селекте
+      return Promise.all([
+        fetch(pliUrl).then(response => {
+          if (!response.ok) throw new Error('Network response was not ok for Pali root');
+          return response.json();
+        }),
+        language === 'en' ? fetch(enUrl).then(response => response.ok ? response.json() : {}).catch(() => ({})) : Promise.resolve({}),
+        language === 'ru' ? fetchRuData() : Promise.resolve({})
+      ])
+      .then(([pliData, enData, ruData]) => {
+          const tableBody = document.getElementById('outputTableBody');
+          const translationInput = document.getElementById('translationInput'); 
+
+          let tableHtml = '';
+          const dataArray = Object.entries(pliData);
+          const translationLines = translationInput.value.split('\n'); 
+          let rowCounter = 0; 
+
+          dataArray.forEach(([key, pliValue], index) => {
+            const translationLine = translationLines[index] || ''; 
+            const texts = translationLine.split('\n'); 
+
+            // Логика подстановки Пали в пропущенные строки Английского
+            let sourceText = pliValue.trimEnd();
+            if (language === 'en') {
+                const enValue = enData[key];
+                if (enValue && enValue.trim() !== '') {
+                    sourceText = enValue.trimEnd();
+                }
+            } else if (language === 'ru') {
+                const ruValue = ruData[key];
+                if (ruValue && ruValue.trim() !== '') {
+                    sourceText = ruValue.trimEnd();
+                }
+            }
+
+            texts.forEach((text, textIndex) => {
+              const currentText = texts[textIndex] || ''; 
+              rowCounter++;
+              const row = `<tr>
+                            <td class="pli-lang">${sourceText}</td>
+                            <td>${key}</td>
+                            <td>${currentText}</td>
+                            <td><a href="#" title="${key}" onmousedown="gotoLine(${rowCounter})"><i class="fa-solid fa-link"></i></a></td>
+                          </tr>`;
+              tableHtml += row;
+            });
+          });
+
+          if (translationLines.length > dataArray.length) {
+            for (let i = dataArray.length; i < translationLines.length; i++) {
+              rowCounter++;
+              const extraText = translationLines[i] || ''; 
+              const extraRow = `<tr>
+                                <td></td><td></td>
+                                <td>${extraText}</td>
+                                <td><a href="#" onmousedown="gotoLine(${rowCounter})"><i class="fa-solid fa-link"></i></a></td>
+                              </tr>`;
+              tableHtml += extraRow;
+            }
+          }
+
+          tableBody.innerHTML = tableHtml;
+
+                  // Клонируем кнопку загрузки для сброса старых слушателей перед навешиванием нового
+          const loadBtn = document.getElementById('loadFromServerButton');
+          const newLoadBtn = loadBtn.cloneNode(true);
+          loadBtn.parentNode.replaceChild(newLoadBtn, loadBtn);
+
+          // Вспомогательная функция для проверки существования файла
+          async function checkFileExists(url) {
+              try {
+                  const response = await fetch(url, { method: 'HEAD' });
+                  return response.ok;
+              } catch (error) {
+                  return false;
+              }
+          }
+
+          newLoadBtn.addEventListener('click', async function() {
+              try {
+                  const isVinaya = indexValue.includes('bu-') || indexValue.includes('bi-');
+                  let urlsToTest = [];
+
+                  if (isVinaya) {
+                      urlsToTest.push({ name: "Brahmali", url: `/suttacentral.net/sc-data/sc_bilara_data/translation/en/brahmali/vinaya/${fileNameBlock}_translation-en-brahmali.json` });
+                  } else {
+                      let scMiddlePath = indexValue.match(/dn|mn/) ? `${lettersOnly}/` : `${lettersOnly}/${beforeDot}/`;
+                      scMiddlePath = scMiddlePath.replace(/\/+/g, '/'); // защита от двойных слешей
+
+                      urlsToTest.push({ name: "Unpublished", url: `/assets/texts/lbl/${indexValue}_translation-en-thanissaro.json` });
+                      urlsToTest.push({ name: "Thanissaro", url: `/assets/texts/en_other/sutta/${scMiddlePath}${indexValue}_translation-en-thanissaro.json` });
+                      urlsToTest.push({ name: "o", url: `/assets/texts/en/sutta/${scMiddlePath}${indexValue}_translation-en-o.json` });
+                      urlsToTest.push({ name: "Sujato", url: `/suttacentral.net/sc-data/sc_bilara_data/translation/en/sujato/sutta/${scMiddlePath}${indexValue}_translation-en-sujato.json` });
+                  }
+
+                  // Визуальный индикатор поиска на кнопке
+                  const originalBtnHtml = newLoadBtn.innerHTML;
+                  newLoadBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+
+                  // Ищем, какие файлы реально существуют
+                  let availableOptions = [];
+                  for (const item of urlsToTest) {
+                      let exists = await checkFileExists(item.url);
+                      if (exists) {
+                          availableOptions.push(item);
+                      }
+                  }
+
+                  newLoadBtn.innerHTML = originalBtnHtml; // Возвращаем иконку
+
+                  if (availableOptions.length === 0) {
+                      alert('Translations for this text were not found on the server.');
+                      return;
+                  }
+
+                  if (availableOptions.length === 1) {
+                      // Если файл всего один, загружаем сразу
+                      loadSelectedFile(availableOptions[0].url);
+                  } else {
+                      // Показываем модальное окно выбора
+                      showModernSelectionModal(availableOptions);
+                  }
+
+               // Функция генерации и показа модального окна
+              function showModernSelectionModal(options) {
+                  // Удаляем старое окно, если оно почему-то осталось в DOM
+                  const existingModal = document.getElementById('modernFileSelectModal');
+                  if (existingModal) existingModal.remove();
+
+                  // Создаем чистую структуру окна
+                  const modalHtml = `
+                  <div class="modal fade" id="modernFileSelectModal" tabindex="-1" aria-hidden="true">
+                      <div class="modal-dialog modal-dialog-centered">
+                          <div class="modal-content">
+                              <div class="modal-header border-bottom-0">
+                                  <h5 class="modal-title">Choose trn version</h5>
+                                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                              </div>
+                              <div class="modal-body pt-0">
+                                  <ul class="server-file-list" id="serverFileList">
+                                      ${options.map(opt => `
+                                          <li data-url="${opt.url}">
+                                              <i class="fa-solid fa-file-code"></i>
+                                              <span>Translatiion: <strong>${opt.name}</strong></span>
+                                          </li>
+                                      `).join('')}
+                                  </ul>
+                              </div>
+                          </div>
+                      </div>
+                  </div>`;
+
+                  // Вставляем окно в конец body
+                  document.body.insertAdjacentHTML('beforeend', modalHtml);
+                  const modalElement = document.getElementById('modernFileSelectModal');
+                  const bsModal = new bootstrap.Modal(modalElement);
+
+                  // Обработка клика по элементу списка
+                  const listItems = modalElement.querySelectorAll('#serverFileList li');
+                  listItems.forEach(item => {
+                      item.addEventListener('click', function() {
+                          const selectedUrl = this.getAttribute('data-url');
+                          bsModal.hide(); // Прячем окно
+                          loadSelectedFile(selectedUrl); // Запускаем загрузку
+                      });
+                  });
+
+                  // Полная очистка DOM после закрытия окна
+                  modalElement.addEventListener('hidden.bs.modal', function () {
+                      modalElement.remove();
+                  });
+
+                  bsModal.show();
+              }
+
+                  // Функция загрузки файла и обновления интерфейса
+                  async function loadSelectedFile(selectedUrl) {
+                      try {
+                          newLoadBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+                          const response = await fetch(selectedUrl);
+                          if (response.ok) {
+                              const content = await response.text();
+                              document.getElementById('translationInput').value = content;
+                              
+                              // Уведомление об успехе
+                              const toastEl = document.getElementById('toastMessage');
+                              const toastText = document.getElementById('toastText');
+                              if (toastEl && toastText) {
+                                  toastEl.classList.remove('bg-danger');
+                                  toastEl.classList.add('bg-success');
+                                  toastText.textContent = `Loaded: ${selectedUrl.split('/').pop()}`;
+                                  new bootstrap.Toast(toastEl, { autohide: true }).show();
+                              }
+
+                              // Обновляем таблицу, если функция доступна
+                              if (typeof syncTextToTable === 'function') {
+                                  syncTextToTable();
+                              }
+                          } else {
+                              throw new Error('Network response was not ok');
+                          }
+                      } catch (error) {
+                          console.error('File load error:', error);
+                          alert('An error occurred while loading the file.');
+                      } finally {
+                          newLoadBtn.innerHTML = originalBtnHtml;
+                      }
+                  }
+
+              } catch (err) {
+                  console.error('CRITICAL ERROR: ', err.message);
+              }
+          });
+
+
+          // Клонируем таблицу для сброса старых слушателей клика (защита от дублирования событий)
+          const tableBodyEl = document.getElementById('outputTableBody');
+          const newTableBodyEl = tableBodyEl.cloneNode(true);
+          tableBodyEl.parentNode.replaceChild(newTableBodyEl, tableBodyEl);
+
+          newTableBodyEl.addEventListener('click', function(event) {
+              let target = event.target;
+              
+              while (target && target.tagName !== 'TD') {
+                  target = target.parentElement;
+              }
+
+              if (target && target.tagName === 'TD' && target.cellIndex === 2) {
+                  let cursorPosition = null;
+                  
+                  const selection = window.getSelection();
+                  if (selection.rangeCount > 0) {
+                      const range = selection.getRangeAt(0);
+                      if (target.contains(range.startContainer)) {
+                          const preCaretRange = range.cloneRange();
+                          preCaretRange.selectNodeContents(target);
+                          preCaretRange.setEnd(range.startContainer, range.startOffset);
+                          cursorPosition = preCaretRange.toString().length;
+                      }
+                  }
+                  
+                  makeCellEditable(target, cursorPosition);
+              }
+          });
+
+          function makeCellEditable(cell, cursorPosition = null) {
+              if (cell.querySelector('textarea')) return; 
+
+              const currentOffsetHeight = cell.offsetHeight;
+              const computedStyle = window.getComputedStyle(cell);
+              const paddingTop = parseFloat(computedStyle.paddingTop) || 0;
+              const paddingBottom = parseFloat(computedStyle.paddingBottom) || 0;
+              const innerHeight = currentOffsetHeight - paddingTop - paddingBottom;
+
+              const originalRawLength = cell.textContent.trimEnd().length;
+
+              let originalText = cell.textContent.trimStart(); 
+              if (originalText !== '') {
+                  originalText = originalText.trimEnd() + ' ';
+              }
+              
+              const textarea = document.createElement('textarea');
+              textarea.value = originalText;
+              textarea.classList.add('table-textarea'); 
+
+              cell.style.height = `${currentOffsetHeight}px`;
+              
+              textarea.style.width = '100%';
+              textarea.style.height = `${innerHeight}px`;
+              textarea.style.boxSizing = 'border-box';
+              textarea.style.resize = 'none'; 
+              textarea.style.overflowY = 'auto'; 
+              
+              cell.dataset.originalText = originalText;
+              
+              cell.textContent = '';
+              cell.appendChild(textarea);
+              textarea.focus();
+
+              if (cursorPosition !== null) {
+                  let position;
+                  const textLength = textarea.value.length;
+
+                  if (cursorPosition === 'start') {
+                      position = 0;
+                  } else if (cursorPosition === 'end') {
+                      position = textLength;
+                  } else if (typeof cursorPosition === 'number') {
+                      if (cursorPosition >= originalRawLength) {
+                          position = textLength; 
+                      } else if (cursorPosition >= 0) {
+                          position = Math.min(cursorPosition, textLength); 
+                      } else {
+                          position = Math.max(textLength + cursorPosition, 0); 
+                      }
+                  }
+
+                  textarea.setSelectionRange(position, position); 
+              } else {
+                  textarea.setSelectionRange(textarea.value.length, textarea.value.length); 
+              }
+
+              function finishEditing() {
+                  let newText = textarea.value.trimStart(); 
+                  if (newText !== '') {
+                      newText = newText.trimEnd() + ' ';
+                  }
+                  cell.textContent = newText; 
+                  cell.style.height = ''; 
+                  delete cell.dataset.originalText; 
+                  updateTranslationTextarea();
+                  saveInputs();
+              }
+
+              textarea.addEventListener('blur', finishEditing);
+
+              textarea.addEventListener('keydown', function(event) {
+                  const currentRow = cell.parentElement;
+                  const tbody = currentRow.parentElement;
+                  const rows = Array.from(tbody.children);
+                  const rowIndex = rows.indexOf(currentRow);
+
+                  if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+                      if (!event.ctrlKey && !event.shiftKey && textarea.selectionStart === textarea.value.length) {
+                          event.preventDefault();
+                          const nextRow = currentRow.nextElementSibling;
+                          if (nextRow) makeCellEditable(nextRow.cells[2], 0);
+                          return;
+                      }
+                  }
+
+                  if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+                      if (!event.ctrlKey && !event.shiftKey && textarea.selectionStart === 0) {
+                          event.preventDefault();
+                          const prevRow = currentRow.previousElementSibling;
+                          if (prevRow) makeCellEditable(prevRow.cells[2], 'end');
+                          return;
+                      }
+                  }
+
+                  if (event.key === 'Enter' || event.key === 'Backspace' || event.key === 'Delete') {
+                      
+                      if (event.key === 'Backspace' && textarea.selectionStart !== 0) return;
+                      if (event.key === 'Delete' && textarea.selectionStart !== textarea.value.length) return;
+                      if ((event.key === 'Backspace' || event.key === 'Delete') && textarea.selectionStart !== textarea.selectionEnd) return;
+
+                      event.preventDefault();
+
+                      let translations = rows.map(r => {
+                          const c = r.cells[2];
+                          if (c.querySelector('textarea')) return textarea.value.trim();
+                          return c.textContent.trim();
+                      });
+
+                      const cursorPosition = textarea.selectionStart;
+                      let targetCell = null;
+                      let targetCursorPos = 0;
+                      
+                      textarea.removeEventListener('blur', finishEditing);
+                      cell.textContent = ''; 
+                      cell.style.height = '';
+
+                      if (event.key === 'Enter' && !event.ctrlKey) {
+                          const textBefore = textarea.value.slice(0, cursorPosition).trim();
+                          const textAfter = textarea.value.slice(cursorPosition).trim();
+                          
+                          translations[rowIndex] = textBefore;
+                          translations.splice(rowIndex + 1, 0, textAfter);
+                          
+                          targetCell = currentRow.nextElementSibling ? currentRow.nextElementSibling.cells[2] : null;
+                          targetCursorPos = 0;
+                      } 
+                      else if (event.key === 'Enter' && event.ctrlKey) {
+                          const textBefore = textarea.value.slice(0, cursorPosition).trim();
+                          const textAfter = textarea.value.slice(cursorPosition).trim();
+                          
+                          translations[rowIndex] = textBefore;
+                          
+                          if (rowIndex + 1 < translations.length) {
+                              const existingNext = translations[rowIndex + 1];
+                              translations[rowIndex + 1] = textAfter + (existingNext ? ' ' : '') + existingNext;
+                          } else {
+                              translations.push(textAfter);
+                          }
+                          
+                          targetCell = currentRow.nextElementSibling ? currentRow.nextElementSibling.cells[2] : null;
+                          targetCursorPos = 0;
+                      }
+                      else if (event.key === 'Backspace' && rowIndex > 0) {
+                          const currentText = textarea.value.trim();
+                          const prevText = translations[rowIndex - 1];
+                          targetCursorPos = prevText.length > 0 ? prevText.length + 1 : 0;
+                          
+                          translations[rowIndex - 1] = prevText + (prevText ? ' ' : '') + currentText;
+                          translations.splice(rowIndex, 1);
+                          
+                          targetCell = currentRow.previousElementSibling.cells[2];
+                      }
+                      else if (event.key === 'Delete' && rowIndex < translations.length - 1) {
+                          const currentText = textarea.value.trim();
+                          const nextText = translations[rowIndex + 1];
+                          
+                          translations[rowIndex] = currentText + (currentText ? ' ' : '') + nextText;
+                          translations.splice(rowIndex + 1, 1);
+                          
+                          targetCell = cell;
+                          targetCursorPos = currentText.length;
+                      } else {
+                          cell.textContent = textarea.value.trim() !== '' ? textarea.value.trim() + ' ' : '';
+                          makeCellEditable(cell, cursorPosition);
+                          return;
+                      }
+
+                      for (let i = 0; i < rows.length; i++) {
+                          const expected = translations[i] !== undefined ? translations[i] : '';
+                          const expectedFormatted = expected !== '' ? expected + ' ' : '';
+                          
+                          if (i < translations.length) {
+                              if (rows[i].cells[2].textContent !== expectedFormatted) {
+                                  rows[i].cells[2].textContent = expectedFormatted;
+                              }
+                          } else {
+                              rows[i].cells[2].textContent = '';
+                          }
+                      }
+
+                      while (rows.length < translations.length) {
+                          const i = rows.length;
+                          const expected = translations[i] || '';
+                          const expectedFormatted = expected !== '' ? expected + ' ' : '';
+                          const tr = document.createElement('tr');
+                          tr.innerHTML = `<td></td><td></td><td>${expectedFormatted}</td><td><a href="#" onclick="gotoLine(${i + 1})"><i class="fa-solid fa-link"></i></a></td>`;
+                          tbody.appendChild(tr);
+                          rows.push(tr); 
+                      }
+
+                      while (rows.length > translations.length) {
+                          const lastRow = rows[rows.length - 1];
+                          if (lastRow.cells[0].textContent.trim() === '') {
+                              lastRow.remove();
+                              rows.pop();
+                          } else {
+                              break; 
+                          }
+                      }
+
+                      document.getElementById('translationInput').value = translations.join('\n');
+                      saveInputs();
+
+                      if (!targetCell && event.key === 'Enter' && !event.ctrlKey) {
+                           targetCell = tbody.lastElementChild.cells[2];
+                      }
+                      if (targetCell) {
+                          makeCellEditable(targetCell, targetCursorPos);
+                      }
+                  }
+              });
+
+              function shiftCellsUp(startRow) {
+                  let rowToMove = startRow;
+                  while (rowToMove.nextElementSibling) {
+                      const nextRow = rowToMove.nextElementSibling;
+                      rowToMove.cells[2].textContent = nextRow.cells[2].textContent;
+                      rowToMove = nextRow;
+                  }
+                  rowToMove.cells[2].textContent = '';
+                  
+                  let rowToUpdate = startRow;
+                  while (rowToUpdate) {
+                      updateSingleTranslationRow(rowToUpdate.cells[2]);
+                      rowToUpdate = rowToUpdate.nextElementSibling;
+                  }
+              }
+
+              function updateTranslationInput() {
+                  const rows = document.querySelectorAll('tr');
+                  const translations = Array.from(rows).map(row => {
+                      let text = row.cells[2].textContent.trimStart();
+                      return text !== '' ? text.trimEnd() + ' ' : '';
+                  });
+                  translationInput.value = translations.join('\n').replace(/\n$/, '');
+              }
+          }
+
+          function updateTranslationTextarea() {
+              const tableRows = document.querySelectorAll('#outputTableBody tr');
+              let updatedTranslation = '';
+              
+              tableRows.forEach(row => {
+                  const translationCell = row.cells[2]; 
+                  let text = translationCell.textContent.trim();
+                  updatedTranslation += (text !== '' ? text + ' ' : '') + '\n'; 
+              });
+              
+              document.getElementById('translationInput').value = updatedTranslation.replace(/\n$/, ''); 
+          }
+
+          function updateSingleTranslationRow(cell) {
+              const currentText = document.getElementById('translationInput').value;
+              const rows = currentText.split('\n');
+              const rowIndex = Array.prototype.indexOf.call(cell.parentElement.parentElement.children, cell.parentElement);
+              
+              let text = cell.textContent.trim();
+              rows[rowIndex] = text !== '' ? text + ' ' : '';
+              
+              document.getElementById('translationInput').value = rows.join('\n');
+          }
+
+          document.addEventListener('DOMContentLoaded', updateTranslationTextarea);
+
+      });
+    })
+    .catch(error => console.error('Error loading translators.json:', error));
+}
+
+function ifKn(indexValue) {
+  let beforeDot = "";
+  let lettersOnly = "";
+  if (indexValue.includes('snp') || indexValue.includes('ud') || indexValue.includes('dhp') || indexValue.includes('iti')) {
+    lettersOnly = 'kn/' + lettersOnly;
+
+    if (indexValue.includes('snp') || indexValue.includes('ud')) {
+      beforeDot = 'vagga' + firstNumberOnly;
+    } else if (indexValue.includes('dhp')) {
+      beforeDot = '';
+    } else if (indexValue.includes('iti')) {
+      beforeDot = 'vagga' + findItiVagga(firstNumberOnly);
+    }
+  }
+
+  let valueForApi = lettersOnly + "/" + beforeDot + "/" + indexValue;
+  return valueForApi;
+}
+
+function loadPrev() {
+  const texttype = 'sutta';
+  const indexValue = document.getElementById('indexInput').value.trim().toLowerCase();
+  const textPart = indexValue.split('.')[0]; 
+  const book = indexValue.replace(/[^a-zA-Z]/g, ''); 
+  let  valueForApi = book + "/" + textPart + "/" + indexValue;
+
+  const url = "/read/php/api.php?fromjs=" + texttype + "/" + valueForApi + "&type=B";
+  const originalValue = indexValue;
+
+  console.log("Prev URL: ", url);
+  fetch(url)
+      .then(response => response.text()) 
+      .then(data => {
+          console.log("Prev Data: ", data);
+          const newIndexValue = extractIndexValue(data);
+          if (newIndexValue) {
+            const inputField = document.getElementById('indexInput');
+            inputField.value = newIndexValue; 
+            inputField.dispatchEvent(new Event('input')); 
+          }
+          loadText();
+      })
+      .catch(error => {
+          console.error('Error fetching prev data:', error);
+          document.getElementById('indexInput').value = originalValue;
+      });
+}
+
+function loadNext() {
+  const texttype = 'sutta';
+  const indexValue = document.getElementById('indexInput').value.trim().toLowerCase();
+  const textPart = indexValue.split('.')[0]; 
+  const book = indexValue.replace(/[^a-zA-Z]/g, ''); 
+  const valueForApi = book + "/" + textPart + "/" + indexValue;
+  const url = "/read/php/api.php?fromjs=" + texttype + "/" + valueForApi + "&type=A";
+  const originalValue = indexValue;
+
+  console.log("Next URL: ", url);
+  fetch(url)
+      .then(response => response.text()) 
+      .then(data => {
+          console.log("Next Data: ", data);
+          const newIndexValue = extractIndexValue(data);
+          if (newIndexValue) {
+            const inputField = document.getElementById('indexInput');
+            inputField.value = newIndexValue; 
+            inputField.dispatchEvent(new Event('input')); 
+          }
+          loadText();
+      })
+      .catch(error => {
+          console.error('Error fetching next data:', error);
+          document.getElementById('indexInput').value = originalValue;
+          inputField.dispatchEvent(new Event('input')); 
+      });
+}
+
+function extractIndexValue(data) {
+    return data.split(' ')[0]; 
+}
+</script>
+
+<script>
+// Общий обработчик для элементов с id "indexInput" и "languageSelect"
+document.addEventListener('keydown', function(event) {
+    const target = event.target;
+    
+    // Проверяем, если фокус находится на поле indexInput или languageSelect
+    if ((target.id === 'indexInput' || target.id === 'languageSelect') && event.key === 'Enter') {
+        event.preventDefault(); // Отменяем стандартное поведение Enter
+        loadText(); // Запускаем функцию обновления текста
+    }
+});
+
+const customTranslatorCheckbox = document.getElementById('customTranslatorName');
+const languageSelect = document.getElementById('languageSelect');
+
+// Функция для сохранения значений
+function saveInputs() {
+  localStorage.setItem('indexValue', indexInput.value);
+  localStorage.setItem('translationValue', translationInput.value);
+  localStorage.setItem('customTranslatorCheckboxState', customTranslatorCheckbox.checked);
+  // Сохраняем состояние списка языков
+  localStorage.setItem('languageSelectValue', languageSelect.value);
+}
+
+// Слушатель для сохранения при каждом изменении translationInput
+translationInput.addEventListener('input', function() {
+  saveInputs();
+  localStorage.setItem('translationValue', translationInput.value);
+});
+
+customTranslatorCheckbox.addEventListener('change', saveInputs);
+
+// Слушатель для автоматического обновления при переключении языка
+languageSelect.addEventListener('change', function() {
+  saveInputs();
+  loadText();
+});
+
+// Функция для загрузки сохраненных значений
+function loadInputs() {
+  const savedCheckboxState = localStorage.getItem('customTranslatorCheckboxState');
+  if (savedCheckboxState !== null) {
+    customTranslatorCheckbox.checked = savedCheckboxState === 'true';
+  }
+
+  // Загружаем сохраненный язык с проверкой существования опции
+  const savedLanguage = localStorage.getItem('languageSelectValue');
+  if (savedLanguage) {
+    const optionExists = Array.from(languageSelect.options).some(opt => opt.value === savedLanguage);
+    if (optionExists) {
+      languageSelect.value = savedLanguage;
+    } else {
+      // Если языка нет (например, 'ru' в английской версии), 
+      // визуально ставим 'en', но НЕ перезаписываем localStorage
+      languageSelect.value = 'en';
+    }
+  }
+	
+  if (localStorage.getItem('indexValue')) { 
+    indexInput.value = localStorage.getItem('indexValue');
+  } else {
+    // Выполняем fetch для получения содержимого файла
+    fetch('/assets/texts/miss_longest')
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+        return response.text();
+      })
+      .then(data => {
+        // Разделяем содержимое файла на строки и берем первую строку
+        const firstLine = data.split('\n')[0];
+        
+        // Получаем первую часть первой строки (до пробела)
+        const firstPart = firstLine.split(' ')[0];
+        
+        // Устанавливаем значение в indexInput, если его нет в localStorage
+        indexInput.value = firstPart;
+      })
+      .catch(error => {
+        console.error('Ошибка при получении файла:', error);
+        // В случае ошибки использовать значение по умолчанию
+        indexInput.value = 'sn37.30';
+      });
+  }
+
+  // Загружаем другие значения из localStorage
+  translationInput.value = localStorage.getItem('translationValue') || '';
+}
+
+// Вызываем функцию загрузки сохраненных значений при загрузке страницы
+loadInputs();
+// Сохраняем значения при изменении инпутов
+indexInput.addEventListener('input', saveInputs);
+translationInput.addEventListener('input', saveInputs);
+lineBreakCheckbox.addEventListener('input', saveInputs);
+ 
+function clearInputs() {
+  // Показать предупреждение
+  if (confirm('Вы действительно хотите очистить перевод?')) {
+    // Если пользователь подтвердил, очищаем значения инпутов
+    document.getElementById('translationInput').value = '';
+
+    // Очищаем сохраненные значения в localStorage
+    localStorage.removeItem('translationValue');
+    localStorage.removeItem('lineBreakCheckboxState');
+  }
+}
+</script>
+
+<script defer src="/assets/js/themeswitch.js"></script>
+<script src="/assets/js/linksru.js"></script>
+	
+<script>
+    document.getElementById('linkButton1').addEventListener('click', function() {
+        var indexValue = document.getElementById('indexInput').value;
+        var url = '/multi/?q=' + indexValue;
+        window.open(url, '_blank');
+    });
+</script> 
+	
+<script>
+    document.getElementById('linkButton2').addEventListener('click', function() {
+        var indexValue = document.getElementById('indexInput').value;
+        var found = false;
+
+        for (var i = 0; i < thruLinksData.length; i++) {
+            if (thruLinksData[i][0] === indexValue) {
+                var path = thruLinksData[i][1];
+                window.open('https://www.dhammatalks.org/suttas/', '_blank');
+                found = true;
+                break;
+            }
+        }
+
+        if (!found) {
+    var match = indexValue.match(/(an|sn|mn|dn)(\d+)(?:\.\d+)?/i);
+
+    if (match) {
+        var prefix = match[1].toUpperCase();
+
+        var url = 'https://www.dhammatalks.org/suttas/';
+
+        if (prefix === 'an') {
+            url += 'AN/';
+        } else if (prefix === 'sn') {
+            url += 'SN/';
+        } else if (prefix === 'mn') {
+            url += 'MN/';
+        } else if (prefix === 'dn') {
+            url += 'DN/';
+        }
+
+        window.open(url, '_blank');
+    } else {
+        window.open('https://www.dhammatalks.org/suttas/', '_blank');
+    }
+}
+    });
+</script>
+
+<script>
+$.ajax({
+  url: "/assets/texts/sutta_words.txt",
+  dataType: "text",
+  success: function(data) {
+    var accentMap = {
+      "ā": "a", "ī": "i", "ū": "u", "ḍ": "d", "ḷ": "l", "ṃ": "ṁ", "ṁ": "n", 
+      "ṅ": "n", "ṇ": "n", "ṭ": "t", "ñ": "n", "ññ": "n", "ss": "s", "aa": "a", 
+      "ii": "i", "uu": "u", "dd": "d", "kk": "k", "ḍḍ": "d", "ḷḷ": "l", "ṇṇ": "n", 
+      "ṭṭ": "t", "cc": "c", "pp": "p", "cch": "c", "ch": "c", "kh": "k", "ph": "p", 
+      "th": "t", "ṭh": "t"
+    };
+
+    var normalize = function(term) {
+      var ret = "";
+      for (var i = 0; i < term.length; i++) {
+          ret += accentMap[term.charAt(i)] || term.charAt(i);
+      }
+      return ret;
+    };
+
+    var allWords = data.split('\n');
+
+    $("#indexInput").autocomplete({
+      position: {
+        my: "left bottom",
+        at: "left top",
+        collision: "flip"
+      },
+      minLength: 0,
+      multiple: /[\s\*]/, 
+      source: function(request, response) {
+        var terms = request.term.split(/[\|\s\*]/); 
+        var lastTerm = terms.pop().trim();
+        var otherMinLength = 3;
+
+        if (lastTerm.length < otherMinLength) {
+          response([]);
+          return;
+        }
+
+        var re = $.ui.autocomplete.escapeRegex(lastTerm);
+        var matchbeginonly = new RegExp("^" + re, "i");
+        var matchall = new RegExp(re.replace(/([a-z])\1/gi, "$1$1"), "i");
+
+        var listBeginOnly = $.grep(allWords, function(value) {
+          value = value.label || value.value || value;
+          var results = matchbeginonly.test(value) || matchbeginonly.test(normalize(value));
+          return results;
+        });
+
+        var listAll = $.grep(allWords, function(value) {
+          value = value.label || value.value || value;
+          var results = matchall.test(value) || matchall.test(normalize(value));
+          return results;
+        });
+
+        listAll = listAll.filter(function(el) {
+          return !listBeginOnly.includes(el);
+        });
+
+        var maxRecord = 1000;
+        var resultList = listBeginOnly.concat(listAll).slice(0, maxRecord);
+
+        response(resultList);
+      },
+      focus: function(event, ui) {
+        return false;
+      },
+      select: function(event, ui) {
+        var terms = this.value.split(/([\|\s\*])/);
+        terms.pop();
+  
+        var selectedValue = ui.item.value;
+        if (/\s+\d+$/.test(selectedValue)) {
+            selectedValue = selectedValue.split(/\s+/)[0];
+        }
+        
+        if (/\d+\s+/.test(selectedValue)) {
+            selectedValue = selectedValue.split(/\s+/)[0];
+        }
+        
+        if (/b[ui]pm|b[ui]-pm|pm/.test(selectedValue)) {
+            selectedValue = selectedValue.split(/\s+/)[0];
+        }
+  
+        terms.push(selectedValue);
+					
+        for (var i = 1; i < terms.length; i += 2) {
+          if (terms[i] === "*") {
+            terms[i] = "*";
+          } else if (terms[i] === "|") {
+            terms[i] = "|";
+          } else {
+            terms[i] = " ";
+          }
+        }
+
+        this.value = terms.join("");
+        return false;
+      }
+    }).autocomplete("widget").addClass("fixed-height");
+  }
+});
+</script>
+
+<script>
+    const translationInput = document.getElementById('translationInput');
+    const searchModal = document.getElementById('searchModal');
+    const searchText = document.getElementById('searchText');
+    const replaceText = document.getElementById('replaceText');
+    const findBtn = document.getElementById('findBtn');
+    const replaceOneBtn = document.getElementById('replaceOneBtn');
+    const replaceAllBtn = document.getElementById('replaceAllBtn');
+
+    let lastIndex = 0;
+
+    function openSearchModal() {
+      console.log('Opening search modal');
+      lastIndex = 0; 
+      searchModal.style.display = 'block';
+      searchText.focus();
+    }
+
+    const helpModal = document.getElementById('helpModal');
+
+    function openHelpModal() {
+      console.log('Opening help modal');
+      lastIndex = 0; 
+      helpModal.style.display = 'block';
+    }
+
+function closeModal(modal) {
+  console.log(`Closing ${modal.id}`);
+  modal.style.display = 'none';
+  setTimeout(() => {
+    translationInput.focus(); 
+  }, 0);
+}
+
+const closeBtns = document.querySelectorAll('.closeBtn');
+closeBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    const modal = btn.closest('.modal'); 
+    if (modal) {
+      closeModal(modal); 
+    }
+  });
+});
+
+    findBtn.addEventListener('click', function () {
+      const searchValue = searchText.value;
+      if (searchValue) {
+        const content = translationInput.value;
+        lastIndex = content.indexOf(searchValue, lastIndex + 1);
+
+        if (lastIndex !== -1) {
+          console.log(`Text found at index ${lastIndex}`);
+          translationInput.focus();
+          translationInput.setSelectionRange(lastIndex, lastIndex + searchValue.length);
+        } else {
+          alert('No more matches');
+          console.log('No more matches found');
+          lastIndex = 0; 
+        }
+      }
+    });
+
+    replaceOneBtn.addEventListener('click', function () {
+      const searchValue = searchText.value;
+      const replaceValue = replaceText.value;
+      if (searchValue) {
+        const content = translationInput.value;
+        lastIndex = content.indexOf(searchValue, lastIndex);
+
+        if (lastIndex !== -1) {
+          translationInput.value = 
+            content.slice(0, lastIndex) + replaceValue + content.slice(lastIndex + searchValue.length);
+          console.log(`Replaced text at index ${lastIndex}`);
+          lastIndex += replaceValue.length;
+          translationInput.focus();
+          translationInput.setSelectionRange(lastIndex, lastIndex);
+        } else {
+          alert('No more matches');
+          console.log('No more matches found for replacement');
+          lastIndex = 0;
+        }
+      }
+    });
+
+    replaceAllBtn.addEventListener('click', function () {
+      const searchValue = searchText.value;
+      const replaceValue = replaceText.value;
+      if (searchValue) {
+        const regex = new RegExp(searchValue, 'g');
+        translationInput.value = translationInput.value.replace(regex, replaceValue);
+        console.log('Replaced all occurrences');
+      }
+    });
+
+   document.addEventListener('keydown', function (e) {
+  if (e.ctrlKey && e.shiftKey && (e.code === 'KeyF' || e.code === 'KeyH')) {
+    console.log('Key combination pressed: ', e.code);
+    e.preventDefault();
+    openSearchModal();
+  }
+});
+
+    window.addEventListener('click', function (e) {
+      if (e.target == searchModal) {
+        console.log('Clicked outside the modal');
+        closeSearchModal();
+      }
+    });
+
+const modal = document.getElementById("searchModal");
+const modalHeader = document.getElementById("modalHeader");
+let isDragging = false;
+let offsetX = 0, offsetY = 0;
+
+modalHeader.addEventListener('mousedown', function (e) {
+  isDragging = true;
+  offsetX = e.clientX - modal.offsetLeft;
+  offsetY = e.clientY - modal.offsetTop;
+  document.body.style.cursor = "move"; 
+});
+
+document.addEventListener('mousemove', function (e) {
+  if (isDragging) {
+    modal.style.left = (e.clientX - offsetX) + "px";
+    modal.style.top = (e.clientY - offsetY) + "px";
+  }
+});
+
+document.addEventListener('mouseup', function () {
+  isDragging = false;
+  document.body.style.cursor = "default"; 
+});
+
+document.addEventListener('keydown', function (e) {
+  if (e.ctrlKey && e.shiftKey && (e.code === 'KeyF' || e.code === 'KeyH')) {
+    console.log('Key combination pressed: ', e.code);
+    e.preventDefault();
+    openSearchModal();
+  }
+});
+
+function openSearchModal() {
+  console.log("Opening search modal");
+  modal.style.display = "block";
+}
+
+window.addEventListener('click', function(event) {
+  if (event.target == modal) {
+    modal.style.display = "none";
+  }
+});
+</script>
+
+<script>
+document.querySelectorAll('button[data-template]').forEach(function(button) {
+    button.addEventListener('click', function() {
+        var translationInput = document.getElementById('translationInput');
+
+        if (!translationInput) {
+            console.error("Element with id 'translationInput' not found");
+            return;
+        }
+
+        var textToInsert = button.getAttribute('data-template');
+
+        if (textToInsert === null || textToInsert === undefined) {
+            console.error("No text found in data-template attribute");
+            return;
+        }
+
+        var startPos = translationInput.selectionStart;
+        var endPos = translationInput.selectionEnd;
+
+        var beforeCursor = translationInput.value.substring(0, startPos);
+        var afterCursor = translationInput.value.substring(endPos, translationInput.value.length);
+        translationInput.value = beforeCursor + textToInsert + afterCursor;
+
+        translationInput.selectionStart = translationInput.selectionEnd = startPos + textToInsert.length;
+        translationInput.focus();
+    });
+});
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+        loadText();
+    });
+</script>
+
+<script src="/assets/js/fontawesome.6.6.all.js" defer></script>
+ <script src="/assets/js/smoothScroll.js" defer></script>
+
+<script>
+function syncTextToTable() {
+  const textarea = document.getElementById('translationInput');
+  const tableBody = document.getElementById('outputTableBody');
+  
+  if (!textarea || !tableBody || tableBody.rows.length === 0) return;
+
+  const translationLines = textarea.value.split('\n');
+  const rows = tableBody.rows;
+
+  // Обновляем существующие ряды
+  for (let i = 0; i < rows.length; i++) {
+    const currentText = translationLines[i] || '';
+    const cell = rows[i].cells[2]; 
+    
+    if (cell && !cell.querySelector('textarea')) {
+      if (cell.textContent !== currentText) {
+        cell.textContent = currentText;
+      }
+    }
+  }
+
+  // Добавляем новые ряды для дополнительных строк из текстового окна
+  while (rows.length < translationLines.length) {
+    const i = rows.length;
+    const extraText = translationLines[i] || '';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td></td><td></td><td>${extraText}</td><td><a href="#" onmousedown="gotoLine(${i + 1})"><i class="fa-solid fa-link"></i></a></td>`;
+    tableBody.appendChild(tr);
+  }
+
+  // Удаляем ряды с конца, если строк стало меньше и это пустые ряды (без оригинального текста)
+  while (rows.length > translationLines.length) {
+    const lastRow = rows[rows.length - 1];
+    if (lastRow.cells[0].textContent.trim() === '') {
+        lastRow.remove();
+    } else {
+        break; 
+    }
+  }
+}
+
+function init() {
+  const textarea = document.getElementById('translationInput');
+  if (!textarea) {
+    console.error('Textarea not found!');
+    return;
+  }
+
+  let typingTimer; 
+  const typingInterval = 300; 
+
+  function handleKeyPress(event) {
+    const key = event.key || event.keyCode;
+
+    if (key === 'Enter' || key === 'Backspace' || key === 'Delete' || event.keyCode === 13 || event.keyCode === 8 || event.keyCode === 46 || event.keyCode === 32 || event.keyCode === 229) {
+      clearTimeout(typingTimer); 
+      typingTimer = setTimeout(syncTextToTable, typingInterval); 
+    }
+  }
+
+  textarea.addEventListener('keyup', handleKeyPress);
+
+  textarea.addEventListener('input', function() {
+    clearTimeout(typingTimer); 
+    typingTimer = setTimeout(syncTextToTable, typingInterval); 
+  });
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+
+<script>
+document.getElementById("formatButton").addEventListener("click", joinSelectedText);
+
+document.addEventListener("keydown", function(event) {
+    if (event.ctrlKey && event.code === 'KeyQ') {
+        event.preventDefault();
+        joinSelectedText(); // Новая функция для выпрямления
+    }
+});
+
+function formatSelectedText() {
+    const textarea = document.getElementById("translationInput");
+    const selectionStart = textarea.selectionStart;
+    const selectionEnd = textarea.selectionEnd;
+
+    if (selectionStart !== selectionEnd) {
+        // Форматирование для выделенного куска текста
+        const selectedText = textarea.value.substring(selectionStart, selectionEnd);
+        
+        const formattedText = selectedText
+            .replace(/[ \t]+$/gm, '') // Сначала убираем все пробелы и табы на концах строк
+            .replace(/([^\r\n])$/gm, '$1 '); // Добавляем ровно один пробел в конец каждой непустой строки
+
+        const newText = textarea.value.substring(0, selectionStart) + formattedText + textarea.value.substring(selectionEnd);
+        textarea.value = newText;
+
+        syncTextToTable();
+        textarea.setSelectionRange(selectionStart, selectionStart + formattedText.length);
+    } else {
+        // Если ничего не выделено, легковесно и быстро форматируем весь текст
+        const currentPosition = textarea.selectionStart;
+        
+        textarea.value = textarea.value
+            .replace(/[ \t]+$/gm, '')
+            .replace(/([^\r\n])$/gm, '$1 ');
+
+        syncTextToTable();
+        textarea.setSelectionRange(currentPosition, currentPosition);
+    }
+}
+
+
+function joinSelectedText() {
+    const textarea = document.getElementById("translationInput");
+    const selectionStart = textarea.selectionStart;
+    const selectionEnd = textarea.selectionEnd;
+
+    if (selectionStart !== selectionEnd) {
+        const selectedText = textarea.value.substring(selectionStart, selectionEnd);
+        
+        // Превращаем вертикальный список в строку
+        const joinedText = selectedText
+            .replace(/\r?\n|\r/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+
+        const newText = textarea.value.substring(0, selectionStart) + joinedText + textarea.value.substring(selectionEnd);
+        textarea.value = newText;
+
+        syncTextToTable();
+        textarea.setSelectionRange(selectionStart, selectionStart + joinedText.length);
+    }
+}
+
+
+
+document.addEventListener("DOMContentLoaded", function() {
+    let timeoutId;
+    const indexInput = document.getElementById("indexInput");
+
+    indexInput.addEventListener("input", function() {
+        clearTimeout(timeoutId); 
+        timeoutId = setTimeout(function() {
+            const textIndex = indexInput.value;
+            if (textIndex) {
+                document.title = textIndex;
+            }
+        }, 1000); 
+    });
+});
+</script>
+<script src="/assets/js/settings.js"></script>
+<div id="statusNotification" class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1050;">
+    <div id="toastMessage" class="toast align-items-center text-white border-0" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+            <div id="toastText" class="toast-body"></div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    </div>
+</div>
+<script>
+    // Блокировка кнопки TTS на странице lbl-en
+    const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+            mutation.addedNodes.forEach((node) => {
+                if (node.classList && node.classList.contains('dynamic-tts-btn')) {
+                    node.remove();
+                }
+            });
+        });
+    });
+
+    observer.observe(document.body, { childList: true });
+</script>
+
+
+</body>
+</html>

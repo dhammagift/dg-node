@@ -100,9 +100,20 @@ const CACHE_LEGACY_CODE = 'public, max-age=86400';  // 1 day — legacy JS/CSS (
 const CACHE_CONFIG_JSON = 'no-cache';               // announcements.json/slides.json etc.: fetched once per SPA session, not per navigation, so the revalidation round-trip is free — express.static/res.sendFile already set a real ETag here, so this is an exact-freshness win over any guessed TTL, not a slower one (cache.md)
 const CACHE_STATIC_SHORT = 'public, max-age=36000'; // 600 min — .html outside sendVersionedHtml + anything uncategorized
 
+// Third-party bundles vendored into public/overrides/js so dg-node no longer depends on the
+// legacy repo's assets/ for them (DataTables, the DPD dictionary data used by paliLookup.js).
+// They are pulled in by lazy <script> injection (search/index.html ensureSearchAssets,
+// paliLookup.js), never through an HTML tag sendVersionedHtml could stamp a ?v= onto — so the
+// immutable one-year tier above would pin whatever copy a browser got first until it expires
+// (a DataTables upgrade at the same URL would not reach returning visitors for a year).
+// They get the same 24h tier the legacy copies had under siteroot/assets.
+const UNVERSIONED_VENDOR_DIRS = ['datatables', 'standalone-dpd']
+    .map(dir => path.join(__dirname, 'public', 'overrides', 'js', dir) + path.sep);
+
 function staticCacheHeaders(res, filePath) {
     const ext = path.extname(filePath).toLowerCase();
-    const inVersionedRoot = VERSIONED_STATIC_ROOTS.some(root => filePath.startsWith(root + path.sep));
+    const inVersionedRoot = VERSIONED_STATIC_ROOTS.some(root => filePath.startsWith(root + path.sep))
+        && !UNVERSIONED_VENDOR_DIRS.some(dir => filePath.startsWith(dir));
     if (inVersionedRoot && ['.js', '.css', '.svg', '.png', '.ico'].includes(ext)) {
         res.setHeader('Cache-Control', CACHE_IMMUTABLE_YEAR);
     } else if (['.woff', '.woff2', '.ttf', '.eot', '.otf'].includes(ext)) {

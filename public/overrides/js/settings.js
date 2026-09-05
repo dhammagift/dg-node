@@ -1915,13 +1915,36 @@ function getQueryParams() {
 // print the digit next to each mode row in the burger drawer, one source of truth for both.
 window.MODE_HOTKEY_DIGITS = { single: 1, multiTran: 2, memorize: 3, devanagari: 4, multiLang: 5 };
 
+// Owner: "везде при смене языка по хоткеям показывать наш бабл" — one announcement for every
+// hotkey-driven language switch (home, results, reader), in the language just switched TO.
+window.dgAnnounceLanguage = function (lang) {
+    if (typeof window.showBubbleNotification !== 'function') return;
+    window.showBubbleNotification(lang === 'ru' ? 'Язык: Русский' : 'Language: English', 2000, 'info');
+};
+
+// Is the reader the view on screen right now? The SPA (search/index.html) marks its state on
+// <body> (dg-state-home / dg-state-results / dg-state-reader, see home.js currentState); the
+// standalone reader template has no such classes — there the presence of a mode is the answer.
+function dgReaderIsActive() {
+    const cls = document.body && document.body.classList;
+    if (cls && (cls.contains('dg-state-home') || cls.contains('dg-state-results') || cls.contains('dg-state-reader'))) {
+        return cls.contains('dg-state-reader');
+    }
+    return !!(window.MODE_TABLE && window.READER_MODE && window.READER_MODE.modeKey);
+}
+
 document.addEventListener("keydown", (event) => {
     if (!event.altKey || !event.code.startsWith("Digit")) return;
     const digit = parseInt(event.code.replace("Digit", ""), 10);
 
     const modeTable = window.MODE_TABLE;
     const readerMode = window.READER_MODE;
-    if (!modeTable || !readerMode) {
+    // Owner bug: on the results page the FIRST Alt+1 "switched to single mode" (a mode the
+    // results have no notion of) and only the next presses toggled the language. Cause: in
+    // the SPA megareader.js is loaded on every page, so window.MODE_TABLE/READER_MODE exist
+    // outside the reader too — the old "no mode table = not the reader" test was true only on
+    // a page that had never loaded the reader code. Decide by the view actually on screen.
+    if (!modeTable || !readerMode || !dgReaderIsActive()) {
         // Outside the reader (home page, search results) there's no mode to switch, only a
         // site language — Alt+1 there does the same EN/RU toggle as the burger's language switch
         // (home.js renderLangSwitch), so the shortcut is universal across every page instead of
@@ -1929,7 +1952,9 @@ document.addEventListener("keydown", (event) => {
         if (digit === 1 && window.DHAMMA_I18N && window.DHAMMA_I18N.setLanguage) {
             event.preventDefault();
             const active = window.DHAMMA_I18N.language || localStorage.getItem('dhammaLanguage') || 'en';
-            window.DHAMMA_I18N.setLanguage(active === 'ru' ? 'en' : 'ru');
+            const next = active === 'ru' ? 'en' : 'ru';
+            window.DHAMMA_I18N.setLanguage(next);
+            window.dgAnnounceLanguage(next);
         }
         return;
     }
@@ -1948,12 +1973,15 @@ document.addEventListener("keydown", (event) => {
         // two interface languages this app actually has (configs/search/lang_{ru,en}.json).
         const cols = readerMode.columns || [];
         if (typeof window.switchReadingLanguage !== 'function') return;
+        let nextLang;
         if (cols.length > 1) {
             const idx = cols.indexOf(readerMode.lang);
-            window.switchReadingLanguage(cols[(idx + 1) % cols.length]);
+            nextLang = cols[(idx + 1) % cols.length];
         } else {
-            window.switchReadingLanguage(readerMode.lang === 'ru' ? 'en' : 'ru');
+            nextLang = readerMode.lang === 'ru' ? 'en' : 'ru';
         }
+        window.switchReadingLanguage(nextLang);
+        window.dgAnnounceLanguage(nextLang);
     } else {
         window.switchReaderMode(type);
     }

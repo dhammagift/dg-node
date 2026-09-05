@@ -191,9 +191,15 @@ const ScrollManager = {
                 // и s=, и scroll=instant. Прокрутка была жёстко "smooth", поэтому во встроенном
                 // попапе (маленькое окно, там нужен резкий прыжок) всё равно ехала анимация.
                 const instantFinder = urlParams.get('scroll') === 'instant';
-                // 'auto' would defer to :root's CSS `scroll-behavior: smooth` and animate anyway —
-                // literal 'instant' bypasses that CSS (same fix as megareader.js's segment jump).
-                textElement.scrollIntoView({ behavior: instantFinder ? "instant" : "smooth", block: "start" });
+                // textElement is the <b class="match finder"> around the WORD, and this used to be
+                // scrollIntoView({block:'start'}) on it: the matched word's line landed flush
+                // with the viewport top, everything of the segment before that line was already
+                // above the fold, and the fixed toolbar covered the rest — the first hit
+                // scrolled out of sight (owner: kacchapa in dn1/dn2). Scroll the SEGMENT
+                // container (ttsTarget, resolved below) through the same executeScroll() the
+                // hash/progress paths use, with the same eye-level offset (config.eyeLevel).
+                const ttsTarget = textElement.closest('[class*="-lang"], .pli-lang, .rus-lang, .eng-lang, .tha-lang') || textElement;
+                this.executeScroll(ttsTarget, this.config.eyeLevel, instantFinder);
                 // ВСЕ остальные scroll-to-segment пути в этом файле (scrollToHash ниже, через
                 // highlightById/highlightAllById) сразу зовут activateSegmentForTTS — эта ветка
                 // не звала (TODO.md ридер п.5: "не активирует динамик ттс кнопку"). Тот же
@@ -207,7 +213,6 @@ const ScrollManager = {
                 // (read/js/common.js:2226 — closest('.pli-lang, .rus-lang, .eng-lang, .tha-lang')
                 // перед вызовом) — здесь дополнительно [class*="-lang"], т.к. megareader.js
                 // использует короткие ISO-классы (ru-lang/en-lang), а не легаси rus-lang/eng-lang.
-                const ttsTarget = textElement.closest('[class*="-lang"], .pli-lang, .rus-lang, .eng-lang, .tha-lang') || textElement;
                 if (typeof window.activateSegmentForTTS === 'function') {
                     window.activateSegmentForTTS(ttsTarget);
                 } else {

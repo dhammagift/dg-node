@@ -1,6 +1,6 @@
 # dg-node
 
-Поиск и ридер текстов Пали-канона (SuttaCentral Bilara + переводы проекта DhammaGift). Node.js/Express, самодостаточный — все статические ассеты (jQuery, Bootstrap, DataTables, стили) лежат в `siteroot/assets/`, ничего не берётся с соседних репозиториев в рантайме.
+Поиск и ридер текстов Пали-канона (SuttaCentral Bilara + переводы проекта DhammaGift). Node.js (Fastify в проде, Express — старый сервер), самодостаточный — всё, что фронтенд реально запрашивает из `/assets/...` (jQuery, Bootstrap, DataTables, словарь DPD, картинки кнопок, тулзы мультитула), лежит в `public/overrides/`; `siteroot/assets/` (symlink на легаси-репо) остаётся только запасным маунтом для того, чего в `public/overrides/` нет (тяжёлые PDF/аудио, тексты).
 
 Архитектура и правила разработки — см. [CLAUDE.md](CLAUDE.md).
 
@@ -21,7 +21,7 @@ npm start          # запустить сервер (dg-light.js), порт 300
 
 ```bash
 curl "http://localhost:3000/search?q=kacchapa&scope=dhamma&langs=ru,en"
-curl -I "http://localhost:3000/assets/js/datatables/datatables.js"   # 200 из siteroot/assets, не из соседнего репо
+curl -I "http://localhost:3000/assets/js/datatables/datatables.min.js"   # 200 из public/overrides/js/datatables, не из легаси-репо
 curl -I "http://localhost:3000/dn22"                                  # ридер по чистому URL
 curl -I "http://localhost:3000/dn22:10.5"                             # сегментная ссылка (скролл к 10.5)
 ```
