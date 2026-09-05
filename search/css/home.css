@@ -2649,3 +2649,12 @@ body.dg-state-home #home-howto:not([hidden]) { display: block; }
     #results-toolbar,
     #reader-toolbar { font-size: calc(1rem / var(--dg-mobile-scale)); }
 }
+
+/* ============================================================================
+   Мультитул в бургере (#dg-drawer-tiles, home.js renderDrawerTiles) — список плиток; значок
+   плитки в той же 17px-коробке, что у остальных строк меню.
+   ============================================================================ */
+.dg-brand-link { display: flex; align-items: center; gap: inherit; color: inherit; text-decoration: none; min-width: 0; }
+.dg-drawer-tile-ic { display: inline-flex; align-items: center; justify-content: center; }
+.dg-drawer-tile-ic svg { width: 17px; height: 17px; color: var(--dg-text-muted); }
+.dg-drawer-row:hover .dg-drawer-tile-ic svg { color: var(--dg-accent-ink); }

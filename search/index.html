@@ -4117,8 +4117,9 @@ $(document).ready(function() {
 <div id="dg-drawer-backdrop" hidden></div>
 <aside id="dg-drawer" hidden aria-label="Menu" data-i18n-aria-label="{{toolbar.menuAriaLabel}}">
   <div class="dg-drawer-head">
-    <img class="dg-brand-logo" src="/assets/img/dgsanhkalogo.png" alt="">
-    <span class="dg-brand-name">dhamma.gift</span>
+    <!-- Шапка шторки ведёт на главную — пункт «Главная» ушёл вместе с «Навигацией», а домой
+         из выдачи/ридера через бургер всё равно нужно уметь. -->
+    <a class="dg-brand-link" href="/"><img class="dg-brand-logo" src="/assets/img/dgsanhkalogo.png" alt=""><span class="dg-brand-name">dhamma.gift</span></a>
     <button type="button" class="dg-icon-btn dg-drawer-close" aria-label="Close" data-i18n-aria-label="{{global.common.close}}">
       <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
     </button>
@@ -4135,36 +4136,14 @@ $(document).ready(function() {
       <p class="dg-group-title">{{menu.readingModes}}</p>
       <div id="dg-drawer-modes-list"></div>
     </div>
-    <!-- Сворачиваемая (owner: "делай раздел навигация сворачивающимся") — нативный <details>,
-         не своя JS-раскрывашка: меньше кода, работает без единой строчки скрипта. -->
-    <details class="dg-drawer-group" open>
-      <summary class="dg-group-title">{{menu.navigation}}</summary>
-      <!-- Ракушка вместо домика (owner) — та же картинка, что стоит слева в поле поиска
-           (.dg-shell-logo выше), где она уже значит "домой". Значок здесь прямо в разметке, без
-           data-dg-icon: paintDrawerIcons() (home.js) нужен только для значков FontAwesome, а
-           обычную картинку браузер покажет сам. -->
-      <a class="dg-drawer-row dg-go-home" href="/"><img class="dg-row-ic dg-row-ic-img" src="/assets/img/dgsankhaonly.png" alt="">{{buttons.main}}</a>
-      <!-- Компас — тот же toggleQuickModal(), что у кнопки-компаса в выдаче/ридере (window.toggleQuickModal
-           определяет /assets/js/settings.js, override-копия грузится на этой же странице). -->
-      <a class="dg-drawer-row" href="javascript:void(0)" data-dg-icon="compass" onclick="if (typeof window.toggleQuickModal === 'function') window.toggleQuickModal();">{{toolbar.compassLabel}}</a>
-      <!-- О проекте — статическая страница (siteroot/assets/common/keyFeatures{Ru}.html),
-           не якорь на блок главной, поэтому обычная ссылка, а не data-dg-anchor. Язык страницы
-           переключает paintDrawerLangHrefs() (home.js) по data-href-ru, тем же принципом, что
-           already-established data-dg-icon (paintDrawerIcons) чуть выше. -->
-      <a class="dg-drawer-row dg-about-link" href="/assets/common/keyFeatures.html" data-href-en="/assets/common/keyFeatures.html" data-href-ru="/assets/common/keyFeaturesRu.html" data-dg-icon="info">{{menu.about}}</a>
-      <!-- Якоря на нижние блоки главной (Приложения/Контакты). Сами блоки видны только на широком
-           экране (#home-extra, home.css) — на мобильном эти два пункта скрыты тем же порогом
-           (см. .dg-drawer-row[data-dg-anchor] в home.css), чтобы не вести в display:none. -->
-      <a class="dg-drawer-row" href="javascript:void(0)" data-dg-icon="external" data-dg-anchor="links">{{footer.links}}</a>
-      <a class="dg-drawer-row" href="javascript:void(0)" data-dg-icon="at" data-dg-anchor="contacts">{{footer.contacts}}</a>
-      <!-- Owner: "войти не в конце настроек, а после контактов, до настроек в целом" — перенесено
-           из хвоста «Настроек» сюда, последним пунктом «Навигации» (это переход, а не настройка). -->
-
-      <!-- href painted per-state+language by dgUpdateDrawerHelpLink() above; was
-           data-bs-toggle="modal" data-bs-target="#SearchResultHelp" (old in-page modal, see
-           comments at its other call sites). -->
-      <a class="dg-drawer-row" href="/docs/key-features" target="_blank" data-dg-icon="help">{{global.common.help}}</a>
-	   <a class="dg-drawer-row" href="/login" data-dg-icon="login">{{global.common.login}}</a>
+    <!-- Мультитул вместо «Навигации» (owner, 2026-09-05): список плиток главной, чтобы мультитул
+         был под рукой в любом месте сайта — в выдаче, в ридере, в TOC. Нативный <details>, свёрнут
+         по умолчанию везде, включая главную (там мультитул и так на всю страницу). Список строит
+         home.js renderDrawerTiles() из тех же menu-links.json / tileOrder() / hiddenTiles(), что и
+         плитки; клик по строке = клик по плитке (мегаменю на десктопе, шторка на телефоне). -->
+    <details class="dg-drawer-group" id="dg-drawer-multitool">
+      <summary class="dg-group-title">{{menu.multitool}}</summary>
+      <div id="dg-drawer-tiles"></div>
     </details>
     <p class="dg-group-title">{{menu.settings}}</p>
     <!-- Язык/тема — переехали сюда, в «Настройки» (просьба владельца: часть настроек была вверху
@@ -4193,6 +4172,9 @@ $(document).ready(function() {
     <a class="dg-drawer-row" href="javascript:void(0)" id="dg-edit-tiles" data-dg-icon="wrench">{{menu.editTiles}}</a>
     <!-- Появляется, только если есть что возвращать: убрана кнопка ИЛИ переставлен порядок. -->
     <a class="dg-drawer-row" href="javascript:void(0)" id="dg-restore-tiles" data-dg-icon="star" hidden>{{menu.restoreTiles}}</a>
+    <!-- Owner (2026-09-05): «Логин в самый низ блока настроек» — переехал сюда из «Навигации»,
+         которую заменил мультитул. -->
+    <a class="dg-drawer-row" href="/login" data-dg-icon="login">{{global.common.login}}</a>
   </nav>
 </aside>
 
