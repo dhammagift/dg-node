@@ -17,7 +17,11 @@
 - Поиск и ридер в одном окне (SPA)
 - Умная URL маршрутизация (`/keyword`, `/dn22:2.2`, `/dn22:2.2/kacchapa`)
 - Единое модальное окно с вкладками (Settings + Compass + Help)
-- Конечная цель: нативное Android приложение через Capacitor + SQLite
+
+**Приложение (Capacitor):**
+- https://github.com/dhammagift/dg-app-full
+- Офлайн Android (iOS запланирован), UI генерируется из dg-node на сборке
+- Раньше было папкой `mobile/` внутри dg-node — см. раздел «Приложение (dg-app-full)» ниже
 
 ---
 
@@ -48,8 +52,8 @@ dg-node из старого репо (ассеты, `read/js/*` и т.п.), св
 
 ## Что это
 Поиск и ридер текстов Пали-канона (SuttaCentral Bilara + переводы проекта DhammaGift).  
-Конечная цель — нативное Android-приложение через **Capacitor + SQLite**.  
-**Не PWA, не TWA** — полноценный APK.  
+Нативное Android-приложение через **Capacitor + SQLite** — **не PWA и не TWA**, полноценный APK —
+живёт в отдельном репозитории `dg-app-full` и собирает свой UI из этого.  
 Веб-версия остаётся параллельно и навсегда.
 
 ---
@@ -74,8 +78,9 @@ dg-node из старого репо (ассеты, `read/js/*` и т.п.), св
 │  └── reader/         — ридер            │
 ├─────────────────────────────────────────┤
 │  Data layer (зависит от платформы)      │
-│  ├── Web:     Express + grep + JSON     │
-│  └── Android: Capacitor SQLite (FTS5)   │
+│  ├── Web:     Express/Fastify + SQLite  │
+│  └── Android: тот же UI, свой SQLite    │
+│               (dg-app-full, fetch-shim) │
 └─────────────────────────────────────────┘
 ```
 
@@ -497,23 +502,46 @@ URL in → Router parses → State updates → Views re-render
 
 ---
 
-## Путь к Android (Capacitor)
+## Приложение (dg-app-full)
 
-Когда поиск + ридер стабилизируются:
-```
-npm install @capacitor/core @capacitor/android @capacitor-community/sqlite
-npx cap init && npx cap add android
-```
+Офлайн-приложение (Capacitor, Android; iOS запланирован) живёт в отдельном репозитории —
+**https://github.com/dhammagift/dg-app-full**. Раньше это была папка `mobile/` здесь; она
+вынесена через `git subtree split` (история сохранена), а состояние этого репо до удаления
+лежит в ветке `mobbak`.
 
-Конвертировать `dg_db_light.json` + тексты → `dhamma.db` (SQLite с FTS5):
-```sql
-CREATE TABLE suttas (id TEXT PRIMARY KEY, category TEXT, dir_path TEXT, title TEXT, mr INTEGER);
-CREATE TABLE segments (sutta_id TEXT, segment_id TEXT, root TEXT, html TEXT);
-CREATE VIRTUAL TABLE fts USING fts5(root, segment_id UNINDEXED, sutta_id UNINDEXED);
-```
+**Почему вынесли.** Приложение дублировало сайт: 215 закоммиченных копий фронтенда в
+`mobile/www/`, причём `mobile/www/index.html` копировался руками, без скрипта, и отстал от
+`search/index.html` на 147 строк — из них осмысленных отличий было 4, остальные ~143 просто
+не доехали до APK. Теперь `www/` там генерируется на сборке из чекаута ЭТОГО репо
+(`build-page.js` + `build-assets.js`), в git не коммитится, и расходиться ему негде.
 
-API-ответ `/search` должен быть **идентичным** независимо от источника (grep или SQLite).  
-Это позволит не переписывать UI при переходе на Android.
+**Что это значит для правок здесь.** Ничего специального: приложение подтягивает
+`search/index.html`, `reader/*`, `public/overrides/*` и конфиги из `configs/` само.
+Версия dg-node, с которой оно собирается, закреплена файлом `DG_NODE_REF` в том репозитории.
+Две вещи, о которых стоит знать при правке фронтенда:
+
+- Ветки «только для приложения» помечены `window.dgOfflineReady` (`search/index.html:1787`,
+  `:1975`, `:3724`, `public/overrides/js/quickModal.js`) — этот флаг выставляет только
+  `src/app.js` в dg-app-full. На сайте он не определён.
+- `build-page.js` там снимает регистрацию service worker и вставляет три `<script>` в начало
+  `<head>`. Если структура `<head>` или блок регистрации SW в `search/index.html` заметно
+  поменяется — сборка приложения упадёт с внятной ошибкой, а не соберёт молча битую страницу.
+
+**Что осталось здесь — только раздача.** `siteroot/mobile-data` и `siteroot/mobile-apk`
+по-прежнему смотрят внутрь `mobile/`: на прод-машине это НЕтрекавшиеся каталоги сборки
+(`mobile/dist/*.db`, `mobile/android/.../apk/debug/`), которые удаление исходников из git не
+трогает, поэтому `test.dhamma.gift/mobile-data/` продолжает отдавать базы без ручных действий.
+Когда артефакты переедут в чекаут dg-app-full — перенаправить эти два симлинка туда.
+
+**Как работает бэкенд приложения.** Сервера на устройстве нет и Node там нет.
+`src/app.js` подменяет `window.fetch` до того, как любой другой скрипт страницы успеет сходить
+в сеть, и отвечает на `/search`, `/api/text`, `/api/nav` из локального SQLite; всё остальное
+проходит насквозь к обычным файлам. Фронтенд разницы не видит — он шлёт тот же
+`fetch('/search?q=…')`, что и в вебе.
+
+Требование, которое из этого следует и держится: **ответ `/search` должен быть идентичным
+независимо от источника** (grep, `dg.db`/FTS5 или SQLite приложения) — иначе UI придётся
+переписывать под каждый бэкенд.
 
 ---
 

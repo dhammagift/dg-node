@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <!-- dg-twa's web manifest background_color — the app's brand teal/orange logo
-         (pwa-bold-monocolor-512.png, see mobile/make-icons.py) sits on this behind the scenes. -->
-    <color name="ic_launcher_background">#2E3E50</color>
-</resources>

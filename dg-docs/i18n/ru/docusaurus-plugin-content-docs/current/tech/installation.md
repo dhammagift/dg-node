@@ -10,7 +10,8 @@ sidebar_position: 1
 
 | Репозиторий | Что это |
 |---|---|
-| [`dg-node`](https://github.com/dhammagift/dg-node) | Основной сайт (Express + SPA) — поиск, ридер, этот docs-портал (`dg-docs/`), офлайн-приложение (`mobile/`) |
+| [`dg-node`](https://github.com/dhammagift/dg-node) | Основной сайт (Express + SPA) — поиск, ридер, этот docs-портал (`dg-docs/`) |
+| [`dg-app-full`](https://github.com/dhammagift/dg-app-full) | Офлайн-приложение Android/iOS (Capacitor). Свой UI собирает из чекаута `dg-node` — руками ничего не копируется |
 | [`dg`](https://github.com/dhammagift/dg) | Легаси PHP-сайт — источник ассетов (`assets/`), 4nt, TTS-плеера (`read/`) и старых страниц (`config/`, `login/`, `memo/`), на которые `dg-node` ссылается симлинками |
 | [`offline-data`](https://github.com/dhammagift/offline-data) | Собственные переводы проекта (лучший ru/en перевод, второе мнение, AI-перевод) |
 | [`suttacentral/sc-data`](https://github.com/suttacentral/sc-data) | Внешний репозиторий SuttaCentral — пали-тексты и переводы в формате Bilara (не наш, публичный) |

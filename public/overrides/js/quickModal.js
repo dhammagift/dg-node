@@ -16,7 +16,7 @@ window.quickModalIsOpen = false;
 window.quickOverlay = null;
 window.quickModal = null;
 
-// Offline app only (window.dgOfflineReady, set by mobile/www/app.js — undefined on the real
+// Offline app only (window.dgOfflineReady, set by dg-app-full's src/app.js — undefined on the real
 // site, so this never runs there). Google OAuth login can't come back into the app: the "Log in"
 // button opens the real site in an external Chrome Custom Tab (native-bridge.js, required by
 // Google — it rejects OAuth inside any embedded WebView), but that tab is a different browser

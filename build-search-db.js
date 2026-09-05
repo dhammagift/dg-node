@@ -6,7 +6,7 @@
 // not dg-light.js or dg-fastify.js, and nothing requires() it back. The sutta metadata it needs
 // (category, dir_path, title, mr) is derived here from the same rules dblight.js uses, copied
 // rather than shared, so the Express server's skeleton pipeline and this one can change
-// independently. Same isolation rule already applied to mobile/.
+// independently. Same isolation rule the offline app follows from its own repo (dg-app-full).
 const { DatabaseSync } = require('node:sqlite');
 const fs = require('fs');
 const path = require('path');

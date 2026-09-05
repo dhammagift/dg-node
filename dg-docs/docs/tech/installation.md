@@ -10,7 +10,8 @@ together make up one product:
 
 | Repository | What it is |
 |---|---|
-| [`dg-node`](https://github.com/dhammagift/dg-node) | The main site (Express + SPA) — search, reader, this docs portal (`dg-docs/`), the offline app (`mobile/`) |
+| [`dg-node`](https://github.com/dhammagift/dg-node) | The main site (Express + SPA) — search, reader, this docs portal (`dg-docs/`) |
+| [`dg-app-full`](https://github.com/dhammagift/dg-app-full) | The offline Android/iOS app (Capacitor). Builds its UI from a `dg-node` checkout — nothing is copied by hand |
 | [`dg`](https://github.com/dhammagift/dg) | The legacy PHP site — the source of assets (`assets/`), 4nt, the TTS player (`read/`) and old pages (`config/`, `login/`, `memo/`) that `dg-node` links to via symlinks |
 | [`offline-data`](https://github.com/dhammagift/offline-data) | The project's own translations (best ru/en translation, second opinion, AI translation) |
 | [`suttacentral/sc-data`](https://github.com/suttacentral/sc-data) | The external SuttaCentral repository — Pali texts and translations in Bilara format (not ours, public) |

@@ -36,19 +36,16 @@ public/overrides/js/fontawesome-local.js
 public/overrides/js/settings-bundle.js
 public/overrides/js/home-bundle.js
 
-# Mobile app (offline Android/iOS) — build-offline-db.js output (core.db/lang_*.db, incl.
-# SQLite WAL/SHM sidecar files) and native platform folders `npx cap add` generates are build
-# artifacts, not source — same "each environment builds its own" logic as dg_db*.json above.
-# mobile/www/ is NOT ignored — that's the app's actual source (index.html/app.js/vendor libs),
-# analogous to search/ or reader/ above, not a build output.
-mobile/dist/
-mobile/ios/
-# mobile/android/ used to be blanket-ignored here too, back when it was 100% untouched Capacitor
-# boilerplate. It now holds real hand-written native source (MainActivity.java's shortcut/
-# share-target intent handling, AndroidManifest.xml, res/xml/shortcuts.xml) that would be lost on
-# a fresh `npx cap add android` if it weren't tracked — Capacitor's own generated
-# mobile/android/.gitignore already correctly excludes build/, .gradle/, local.properties, the
-# copied web assets (app/src/main/assets/public), etc., so nothing extra is needed here.
+# The offline Android/iOS app moved out of this repo to dhammagift/dg-app-full (its history was
+# split out with `git subtree split`, and the pre-removal state of this repo is kept on the
+# `mobbak` branch). What stays here is the DISTRIBUTION of its artifacts: siteroot/mobile-data and
+# siteroot/mobile-apk — see CLAUDE.md, "Приложение (dg-app-full)".
+#
+# mobile/ itself is still ignored on purpose: on the prod machine the artifact directories it
+# used to hold (mobile/dist/*.db, mobile/android/.../apk/debug/) were never tracked, so removing
+# the app's SOURCE from git deliberately leaves them in place and the two symlinks above keep
+# serving without any manual step.
+mobile/
 *.db
 *.db-wal
 *.db-shm

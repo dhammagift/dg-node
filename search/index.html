@@ -1777,7 +1777,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
        about:blank). Значения — те же, что строит openFdg: попапу ссылка со scroll=instant
        (резкий прыжок в маленьком окне), кнопке "в новом окне" — чистая, с плавной прокруткой. */
     function openQuotePopup(url) {
-      // Offline app (window.dgOfflineReady only exists there, see mobile/www/app.js) has no
+      // Offline app (window.dgOfflineReady only exists there, see dg-app-full src/app.js) has no
       // server behind this iframe's absolute local URL directly — every SPA-only path (anything
       // but the real root) 404s as a real navigation. On a phone there's no room for a preview
       // pane worth the cost of booting a second copy of the app inside it anyway — go straight
