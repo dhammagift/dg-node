@@ -204,12 +204,15 @@ Two dark gaps left visible on purpose, both the app's own:
 
 ## Findings in the app, surfaced by the extraction
 
-- **The drawer's own comment contradicts its CSS.** `search/index.html` says the menu
-  "выезжает слева" (slides out from the left), but `#dg-drawer` in `home.css` is `right: 0`
-  with `border-left` and a `-8px` shadow — it docks on the RIGHT, which is what the extracted
-  component reproduces. The comment is stale, not the CSS.
+- **The drawer's comments claimed the wrong side — fixed.** `search/index.html` and
+  `search/js/home.js` both said the menu "выезжает слева", while `#dg-drawer` in `home.css` is
+  `right: 0` with `border-left` and a `-8px` shadow — it docks on the RIGHT. Both comments now
+  say "шторкой" without naming a side, and point at the CSS as the authority, so they cannot go
+  stale again. The extracted component always followed the CSS.
 
-- **Dead Bootstrap 4 class names survive in the results view.** `search-render.js` dims context
+- **Dead Bootstrap 4 class names in the results view — owner says prod is fine, left alone.**
+  Measured in this checkout: context Pali renders at `opacity: 1`, identical to a hit, while
+  context translations dim correctly at `0.75`. `search-render.js` dims context
   lines with `opacity-90` (Pali/variant) and `text-muted font-weight-light` + `opacity-75`
   (translations). Bootstrap 5 ships `.opacity-{0,25,50,75,100}` and renamed `font-weight-light`
   to `fw-light`, so **`opacity-90` and `font-weight-light` resolve to nothing** — in the live

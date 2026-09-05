@@ -1581,7 +1581,7 @@
     }
 
     // ======================================================================
-    // Боковое меню (выезжает слева)
+    // Боковое меню (выезжает шторкой; сторону задаёт #dg-drawer в home.css)
     // ======================================================================
     // Owner: "не нужны ru en r+r ee и т.п." — modeTable[key].label (Ru/En/R+R/E+E/Mem) is a
     // presentational short code meant for the tight in-text mode-switch panel (scLink,
