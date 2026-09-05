@@ -136,7 +136,11 @@ const EXTRA_SELECTORS = [
   // the sheet, the mega menu, the busy indicator, the sutta body. Matching classes alone
   // shipped those components without their surface.
   /#(?:form|paliauto|searchbtn)\b/,
-  /\[data-bs-theme[~^]?=/,
+  // Bare theme scopes only — the variable blocks (`:root, [data-bs-theme=light]` and
+  // `[data-bs-theme=dark]` in table.css) that define --bs-btn-*. Anything with a real selector
+  // beside them is left to the class matcher, so unrelated chrome (the PWA banner's
+  // #closePwaBanner rules, which reference three --bs-*-dark vars nothing defines) stays out.
+  /^\s*(?::root|\[data-bs-theme=[\w-]+\])(?:\s*,\s*(?::root|\[data-bs-theme=[\w-]+\]))*\s*$/,
   /#(?:dg-drawer|dg-drawer-backdrop|dg-sheet|dg-sheet-backdrop|dg-mega|dg-busy-indicator|dg-topbar|dg-hero-band|dg-header-backdrop|dg-announce|dg-brand|home-tiles|smart-panel|sutta)\b/,
 ];
 
@@ -171,6 +175,22 @@ if (!lightTokens || !darkTokens) throw new Error('token block not found in searc
 // has no extrastyles.css, so the dark scope carries its own ink here.
 const DARK_INK = 'color: var(--dg-text);';
 
+// Bootstrap's own dark variables, re-emitted under OUR dark hook.
+//
+// The app flips two switches: themeswitch.js sets body.dark (which drives --dg-*) AND
+// data-bs-theme="dark" on <html> (which drives --bs-*). A library consumer setting a single
+// `dark` class got the first and not the second, so Pali lines, table cells, muted
+// translations and form fields kept Bootstrap's LIGHT --bs-body-color on a dark ground —
+// unreadable, and the failure looked like the theme simply not working. Rather than invent
+// values, the vendored build's own `[data-bs-theme=dark]` declarations are lifted verbatim and
+// re-hosted, so one class gives a consumer a complete dark theme. Setting data-bs-theme
+// directly keeps working natively.
+const bootstrapDarkVars = (() => {
+  const m = /\[data-bs-theme=dark\]\{(.*?)\}/s.exec(read('public/overrides/css/bootstrap.5.3.1.min.css'));
+  if (!m) throw new Error('[data-bs-theme=dark] block not found in the vendored Bootstrap build');
+  return m[1].trim().replace(/;$/, '') + ';';
+})();
+
 const tokenLayer = `/* ---- design tokens, from search/css/home.css ---- */
 :root,
 .dg-skin-minimal {
@@ -182,12 +202,14 @@ const tokenLayer = `/* ---- design tokens, from search/css/home.css ---- */
 .dg-skin-minimal.dark {
     ${darkTokens}
     ${DARK_INK}
+    ${bootstrapDarkVars}
 }
 
 @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]):not(.dg-theme-light) {
         ${darkTokens}
         ${DARK_INK}
+        ${bootstrapDarkVars}
     }
 }
 

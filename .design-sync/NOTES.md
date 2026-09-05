@@ -159,12 +159,36 @@ wrapper. Verified on `Tile`: surfaces drop to #191919, accent discs to #12241f, 
   content, so `width: 100%` collapses to the pill's own width. Give the story an explicit width
   (640px) and let `.dg-state-*`'s maxima (640 home / 520 results) do the sizing.
 
+## Dark theme needs BOTH hooks — and the bundle now sets both
+
+`.dark` drives `--dg-*`; Bootstrap's `--bs-*` (body colour, table cells, muted text, form
+fields) are driven by `data-bs-theme`. The app flips both — `themeswitch.js` sets `body.dark`
+AND `data-bs-theme="dark"` on `<html>` — so a consumer setting only the class got DG tokens
+with Bootstrap's LIGHT ink: Pali and translations at `#212529` on `#111`, and a fully light
+results table inside a dark gutter. That is what made the theme look broken rather than merely
+absent.
+
+`build-css.mjs` now lifts the vendored build's own `[data-bs-theme=dark]` declarations verbatim
+and re-hosts them under `.dark` / `[data-theme="dark"]`, so **one class is enough**. Verified:
+with only `.dark` on a wrapper, table cell ink goes from `rgb(33,37,41)` to `rgb(222,226,230)`.
+Setting `data-bs-theme` directly still works natively.
+
+Two dark gaps left visible on purpose, both the app's own:
+- `.dark p .pli-lang` / `.dark p .lang-2nd` need a `<p>` that no component emits, so a second
+  translation keeps light-theme `#616161` on `#111` (~3:1).
+- `.dark .smart-btn img` is dead in the library — `Icon` inlines SVG instead of `<img>`.
+
 ## Known render warns
 
 - `[TOKENS_MISSING]` — 4 vars: `--bs-body-text-align`, `--bs-nav-link-font-size`,
   `--bs-breadcrumb-font-size` (Bootstrap sets these contextually) and `--dg-mobile-scale`
   (home.css defines it only inside the `max-width: 767.98px` media query, and the only rule
   using it lives in that same query). Benign — do not chase.
+- `[FONT_MISSING] "Lato"` — **not a missing asset.** `extrastyles.css` and `styles.css` name
+  Lato first in `--bs-font-sans-serif`, but nothing in the repo ever loads it: there is no
+  `@font-face`, no `<link>` to a font host, and CLAUDE.md rules out external CDN fonts on prod.
+  The app itself renders in the fallback system stack, and so does the bundle. There is no font
+  to ship; shipping one would make the library diverge from the app. Leave it.
 - **Emoji render as tofu boxes in the headless container** (no emoji font installed). The
   `AnnounceBox.Beta` card shows this: its text is the app's real shipped announcement from
   `configs/search/announcements.json`, which genuinely contains 🎉. It renders correctly in any
