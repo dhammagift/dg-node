@@ -961,7 +961,13 @@ for (const name of siteRootEntries) {
     let isDir = false;
     try { isDir = fsSync.statSync(target).isDirectory(); } catch (e) {}
     if (!isDir) { skippedPrefixes.push(name); continue; }
-    app.register(fastifyStatic, { root: target, prefix: `/${name}`, setHeaders: staticCacheHeaders, decorateReply: false });
+    // redirect: true — a directory requested without its trailing slash ("/4nt", "/4nt/sn/sn45")
+    // gets a 301 to the slash form, the way Express's serve-static does by default. Without it
+    // @fastify/static served the directory's index.html AT the slash-less URL, and every
+    // relative link inside these self-contained tools (4nt's "../../help.html", "an/index.html")
+    // resolved one directory too high. The bare prefix ("/4nt") is also caught in the /:slug
+    // catch-all below for the same reason — see there.
+    app.register(fastifyStatic, { root: target, prefix: `/${name}`, setHeaders: staticCacheHeaders, decorateReply: false, redirect: true });
     mountedPrefixes.add(name);
 }
 if (skippedPrefixes.length) {
@@ -972,8 +978,8 @@ if (skippedPrefixes.length) {
 }
 // ru/memo, ru/login — унаследованные от легаси языковые алиасы (тот же контент ещё и под /ru/).
 // Это не отдельная тулза в siteroot/, а второй URL для уже примонтированной — оставлены явно.
-app.register(fastifyStatic, { root: path.join(SITEROOT, 'memo'), prefix: '/ru/memo', setHeaders: staticCacheHeaders, decorateReply: false });
-app.register(fastifyStatic, { root: path.join(SITEROOT, 'login'), prefix: '/ru/login', setHeaders: staticCacheHeaders, decorateReply: false });
+app.register(fastifyStatic, { root: path.join(SITEROOT, 'memo'), prefix: '/ru/memo', setHeaders: staticCacheHeaders, decorateReply: false, redirect: true });
+app.register(fastifyStatic, { root: path.join(SITEROOT, 'login'), prefix: '/ru/login', setHeaders: staticCacheHeaders, decorateReply: false, redirect: true });
 
 // /ru/docs — real RU-locale docs build, baseUrl:'/ru/docs/' baked in at build time
 // (dg-docs/docusaurus.config.js, DOCS_BUILD_LOCALE=ru), so this is a genuine static mount,
@@ -985,7 +991,7 @@ app.register(fastifyStatic, { root: path.join(__dirname, 'dg-docs', 'build-ru'),
 // registration-order chaining gave it) instead of hard-erroring on a duplicate prefix.
 for (const name of offlineMirrors) {
     if (mountedPrefixes.has(name)) { console.warn(`Offline mirror '${name}' skipped — prefix already mounted from siteroot/`); continue; }
-    app.register(fastifyStatic, { root: path.join(OFFLINE_MIRRORS_ROOT, name), prefix: `/${name}`, setHeaders: staticCacheHeaders, decorateReply: false });
+    app.register(fastifyStatic, { root: path.join(OFFLINE_MIRRORS_ROOT, name), prefix: `/${name}`, setHeaders: staticCacheHeaders, decorateReply: false, redirect: true }); // redirect: see siteroot loop
     mountedPrefixes.add(name);
 }
 
@@ -1736,6 +1742,21 @@ function findRangeContaining(id) {
 
 app.get('/:slug', (req, res) => {
     const rawSlug = req.params.slug;
+    // A mounted directory asked for WITHOUT its trailing slash — "/4nt", "/dict", "/b" — is
+    // not a search query. @fastify/static registers only "/4nt/*" for a prefix, so the bare
+    // "/4nt" fell through to this catch-all and ran a full-text search for the word "4nt"
+    // (Express's serve-static redirects to the slash form on its own; Fastify has to be told).
+    // Redirecting rather than serving the index in place keeps the tool's own relative links
+    // ("an/index.html") resolving under /4nt/, not under /. Query string is kept: 4nt's own
+    // citation router is "/4nt/?q=mn1". mountedPrefixes = everything the siteroot/ and
+    // offline-mirror scan loops actually registered (plus /assets, /read); /settings is the one
+    // hand-mounted directory with an index page of its own.
+    if (mountedPrefixes.has(rawSlug) || rawSlug === 'settings') {
+        return res.redirect('/' + rawSlug + '/' + queryString(req), 301);
+    }
+    // A siteroot/ entry whose target is missing on this machine (skippedPrefixes at startup):
+    // still a folder name, not a keyword — an honest 404 beats "0 texts found for mobile-data".
+    if (siteRootEntries.has(rawSlug)) return res.callNotFound();
     const suttaId = rawSlug.split(':')[0].toLowerCase();
     if (skeletonDB[suttaId]) {
         // Раньше отдавали отдельную reader-template.html — прямой заход/reload/шаринг ссылки на
