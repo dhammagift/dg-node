@@ -165,7 +165,67 @@
     "info": "Показано _START_-_END_ из _TOTAL_ записей",
     "infoEmpty": "Показано 0-0 из 0 записей",
     "infoFiltered": "(отфильтровано из _MAX_ записей)",
-    "zeroRecords": "Совпадений не найдено"
+    "zeroRecords": "Совпадений не найдено",
+    "searchBuilder": {
+      "title": {
+        "0": "Расширенный фильтр",
+        "_": "Расширенный фильтр (%d)"
+      },
+      "add": "Добавить условие",
+      "condition": "Условие",
+      "data": "Колонка",
+      "value": "Значение",
+      "clearAll": "Очистить",
+      "deleteTitle": "Удалить условие",
+      "leftTitle": "Сдвинуть влево",
+      "rightTitle": "Сдвинуть вправо",
+      "logicAnd": "И",
+      "logicOr": "Или",
+      "conditions": {
+        "string": {
+          "contains": "Содержит",
+          "notContains": "Не содержит",
+          "equals": "Равно",
+          "not": "Не равно",
+          "startsWith": "Начинается с",
+          "notStartsWith": "Не начинается с",
+          "endsWith": "Заканчивается на",
+          "notEndsWith": "Не заканчивается на",
+          "empty": "Пусто",
+          "notEmpty": "Не пусто"
+        },
+        "number": {
+          "equals": "Равно",
+          "not": "Не равно",
+          "gt": "Больше",
+          "gte": "Не меньше",
+          "lt": "Меньше",
+          "lte": "Не больше",
+          "between": "Между",
+          "notBetween": "Не между",
+          "empty": "Пусто",
+          "notEmpty": "Не пусто"
+        },
+        "date": {
+          "equals": "Равно",
+          "not": "Не равно",
+          "after": "После",
+          "before": "До",
+          "between": "Между",
+          "notBetween": "Не между",
+          "empty": "Пусто",
+          "notEmpty": "Не пусто"
+        },
+        "array": {
+          "contains": "Содержит",
+          "without": "Не содержит",
+          "equals": "Равно",
+          "not": "Не равно",
+          "empty": "Пусто",
+          "notEmpty": "Не пусто"
+        }
+      }
+    }
   },
   "results": {
     "textsAndWord": "текстов и",

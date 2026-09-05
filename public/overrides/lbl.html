@@ -1,0 +1,2372 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" type="text/css" href="/assets/css/bootstrap.5.3.1.min.css"/>
+    <link href="/assets/css/styles.css" rel="stylesheet" />
+    <link href="/assets/css/extrastyles.css" rel="stylesheet" />
+    <link href="/assets/css/lbl.css" rel="stylesheet" />
+    <link rel="stylesheet" href="/assets/css/paliLookup.css">
+    
+    <link rel="icon" type="image/png" href="/assets/img/favico-noglass.png" />
+	
+	<link href="/assets/css/jquery-ui.min.css" rel="stylesheet"/>
+<script src="/assets/js/jquery-3.7.0.min.js"></script>
+<script src="/assets/js/jquery-ui.min.js"></script>
+	
+<script type="text/javascript" src="/assets/js/bootstrap.bundle.5.3.1.min.js"></script>
+    <script src="/assets/js/nav-component.js" defer></script>
+
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Построчные Переводы</title>
+
+</head>
+<body>
+    <div class="mt-3">
+        <div class="align-items-center toggle-switch input-group-append">
+            <div id="" class="input-group align-items-center">
+                
+                <!-- Переносим margin-top на общий контейнер, чтобы выравнивание внутри было идеальным -->
+                <div class="d-flex align-items-center mb-2 me-3" style="margin-top: -5px;">
+                    <top-nav-icons type="read" show-dict></top-nav-icons>
+                    
+                    <a id="ttsLink" href="javascript:void(0)" class="ms-2 text-muted text-decoration-none voice-link tts-ignore" title="Text-to-Speech Mode" style="display: flex; align-items: center;">
+                        <img src="/assets/svg/volume-high.svg" style="width: 20px; height: 20px; opacity: 0.6;" alt="TTS">
+                    </a>
+
+                    <a href="#" onclick="openHelpModal();" title="Инструкция" class="ms-2 text-muted" style="display: flex; align-items: center;"><i class="fa-solid fa-question"></i></a>
+                    
+                    <a href="https://docs.google.com/spreadsheets/d/1s7n7ogJhdtSIweVO9aad63_k7lWrZgyPRUFg34AobMg/edit?usp=drivesdk" title=" Список Терминов" class="ms-2 text-muted" target="_blank" style="display: flex; align-items: center;"><i class="fa-solid fa-list"></i></a>  
+                    
+                    <a href="/assets/lbl-en.html" title="English" class="ms-2 text-muted text-decoration-none" style="display: flex; align-items: center;">en</a>  
+                    
+                    <a href="https://ruscorpora.ru/" target="_blank" title="Russian texual corpus" class="ms-2 text-muted text-decoration-none" style="display: flex; align-items: center;">crp</a>  
+                </div>
+
+                <div class="input-group-append ms-1 me-3 mb-2">
+                    <div class="ms-1">
+                        <button title="Предыдущий текст" class="btn btn-primary" onclick="loadPrev(); loadAndCheckRanges()">
+                            <i class="fa-solid fa-chevron-left"></i>
+                        </button>
+                        <button title="Следующий текст" class="btn btn-primary" onclick="loadNext(); loadAndCheckRanges()">
+                            <i class="fa-solid fa-chevron-right"></i>
+                        </button>
+                    </div>
+                    <div class="ms-1" id="checkResult" style="margin-top: 10px;"></div>
+                </div>
+                
+                <div>
+                    <input style="width: 150px;" type="search" onclick="loadAndCheckRanges()" class="form-control input-sm mb-2" id="indexInput" title="Индекс Текста пример sn56.11, an3.70, sn23.1 и т.п." placeholder="Номер Сутты" autofocus>   
+                </div>
+
+                <div class="input-group-append ms-1 mb-2">
+                    <select title="Язык левой колонки" class="form-select input-sm" id="languageSelect">
+                        <option value="pli">Пали</option>
+                        <option value="ru">Русский</option>
+                        <option value="en">Англ</option>
+                    </select>
+                </div>
+  
+                <div class="input-group-append ms-3 me-3 mb-2">
+                    <button class="btn btn-primary" title="Открыть текст на dhamma.gift" id="linkButton1">DG</button>
+                    <button class="btn btn-primary ms-1" title="Открыть текст на dhamma.gift" id="linkButton3">4nt</button>
+                </div>
+
+                <div class="input-group-append ms-1 mb-2">
+                    <button class="btn btn-primary me-1" title="Обновить перевод" onclick="loadText();                 loadAndCheckRanges();">Обновить <i class="fa-solid fa-arrow-rotate-right"></i></button>
+                    <button class="btn btn-warning me-1" title="✨ AI: переписать нижние строки в стиле верхних" onclick="aiStyleRows()">✨</button>
+                    <button class="btn btn-primary me-1" title="Найти и Заменить" onclick="openSearchModal();"><i class="fas fa-search"></i></button>
+                    <button class="btn btn-primary me-1" title="Найти и Заменить" id="formatButton"><i class="fa-solid fa-text-width"></i></button>
+                    <button class="btn btn-danger me-1" title="Очистить окно ввода текста" onclick="clearInputs()"><i class="fa-solid fa-eraser"></i></button>
+                    <button id="uploadButton" title="Открыть сохраненный файл" class="btn btn-secondary me-1"><i class="fa-solid fa-upload"></i></button>
+                    <button id="loadFromServerButton" class="btn btn-secondary me-1" title="Загрузить перевод с сервера (Alt + O)"><i class="fa-regular fa-folder-open"></i></button>
+                    <button class="btn btn-primary me-1" title="Сохранить JSON на сервер и в файл (Alt + S)" onclick="downloadJson()">Сохранить <i class="fa-solid fa-download"></i></button>
+                </div>
+                
+                <div class="d-flex align-items-center mb-2 ms-2">
+                    <div class="form-check me-2">
+                        <input class="form-check-input" title="Отформатировать текст" type="checkbox" id="lineBreakCheckbox">
+                        <label class="form-check-label" for="lineBreakCheckbox">Формат</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" title="Заменить +edited+o в название файла на o" type="checkbox" id="customTranslatorName">
+                        <label class="form-check-label" for="customTranslatorName">пер. o</label>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+
+<div id="translationJsonOutput"></div>
+
+<div class="content-container">
+    <div class="table-container mt-2 mb-3">
+        <table class="table-hover">
+            <thead>
+                <tr>
+                    <th class="resizable">Текст</th>
+                    <th class="resizable">Индексы</th>
+                    <th class="resizable">Перевод</th>
+                    <th class=""><i class="fa-solid fa-link"></i></th>
+                </tr>
+            </thead>
+            <tbody id="outputTableBody"></tbody>
+        </table>
+    </div>
+
+    <div class="textarea-container my-3">
+        <textarea id="translationInput" placeholder="1. Введите номер текста в 'Номер Текста'&#10;2. Вставьте русский перевод сюда&#10;3. Нажмите 'Обновить'&#10;&#10;Инструмент добавит заголовок и переносы строк.&#10;Можно будет поправить переноcы вручную. &#10;Если перенос строки где-то не нужен, то нужно объеденить предложения в переводе.&#10;&#10;Также вместо 'Загрузить JSON' в это окно можно вставить скопированный текст JSON файла напрямую." class="form-control custom-textarea" rows="15"></textarea>
+    </div>
+</div>
+
+<script>
+        window.onload = function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const qParam = urlParams.get('q');
+            if (qParam) {
+                document.getElementById('indexInput').value = qParam;
+                loadText();
+                loadAndCheckRanges();
+            }
+        };
+
+async function loadAndCheckRanges() {
+    const inputField = document.getElementById('indexInput');
+    const checkResult = document.getElementById('checkResult');
+    let debounceTimer;
+
+    // Вспомогательная функция для генерации пути
+    function getFileUrls(indexValue, translator) {
+        let lettersOnly = indexValue.match(/[a-z]+/)?.[0] ?? '';
+        let beforeDot = indexValue.split('.')[0];
+        let firstNumberOnly = beforeDot.match(/[0-9]+/)?.[0] ?? null;
+
+        if (['snp', 'ud', 'dhp', 'iti'].some(kn => indexValue.includes(kn))) {
+            lettersOnly = 'kn/' + lettersOnly;
+            if (indexValue.includes('snp') || indexValue.includes('ud')) {
+                beforeDot = 'vagga' + firstNumberOnly;
+            } else if (indexValue.includes('dhp')) {
+                beforeDot = '';
+            } else if (indexValue.includes('iti') && typeof findItiVagga === 'function') {
+                beforeDot = 'vagga' + findItiVagga(firstNumberOnly);
+            }
+        }
+
+        let middlePart = (indexValue.match(/dn|mn/)) ? '' : (beforeDot ? `${beforeDot}/` : '');
+        let fileName = `${indexValue}_translation-${translator}.json`;
+        
+        return [
+            `/assets/texts/ru/sutta/${lettersOnly}/${middlePart}${fileName}`.replace(/([^:]\/)\/+/g, "$1"),
+            `/assets/texts/lbl/${fileName}`
+        ];
+    }
+
+    // Логика проверки существования файла
+    async function performCheck(inputValue) {
+        if (!inputValue) {
+            checkResult.innerHTML = '';
+            return;
+        }
+
+        checkResult.innerHTML = '<div class="status-badge-container"><span class="text-muted status-badge-text"><i class="fa-solid fa-spinner fa-spin"></i> Проверка...</span></div>';
+
+        const urls = getFileUrls(inputValue, 'ru-o');
+        let found = false;
+
+        for (const url of urls) {
+            try {
+                const response = await fetch(url, { method: 'HEAD' });
+                if (response.ok) {
+                    found = true;
+                    break;
+                }
+            } catch (error) {
+                continue;
+            }
+        }
+        
+        if (found) {
+            checkResult.innerHTML = '<div class="status-badge-container"><span class="text-success status-badge-text"><i class="fa-solid fa-check"></i> Уже есть</span></div>';
+        } else {
+            checkResult.innerHTML = '<div class="status-badge-container"><span class="text-muted status-badge-text"><i class="fa-solid fa-xmark"></i> Ещё нет</span></div>';
+        }
+    }
+
+    inputField.addEventListener('input', function () {
+        clearTimeout(debounceTimer);
+        const inputValue = this.value.trim().toLowerCase();
+        
+        debounceTimer = setTimeout(() => {
+            performCheck(inputValue);
+        }, 500); 
+    });
+
+    // Принудительный тихий запуск проверки без генерации события input
+    if (inputField && inputField.value.trim() !== '') {
+        performCheck(inputField.value.trim().toLowerCase());
+    }
+}
+
+// Запускаем функцию
+loadAndCheckRanges();
+
+    loadAndCheckRanges();
+
+  function gotoLine(lineNumber) {
+    // Принудительно закрываем редактирование ячейки (если она активна)
+    const activeTextarea = document.querySelector('#outputTableBody textarea.table-textarea');
+    if (activeTextarea) {
+      activeTextarea.blur();
+    }
+
+    // Задержка в 10мс, чтобы blur успел перенести текст в левое окно
+    setTimeout(() => {
+      const textarea = document.getElementById('translationInput');
+      const lines = textarea.value.split('\n');
+      
+      if (lineNumber > lines.length) {
+        console.log("Номер строки превышает количество строк в тексте.");
+        return;
+      }
+
+      let charCount = 0;
+
+      for (let i = 0; i < lineNumber - 1 && i < lines.length; i++) {
+        charCount += lines[i].length + 1; 
+      }
+
+      const lineEnd = charCount + lines[lineNumber - 1].length;
+
+      textarea.focus();
+      textarea.setSelectionRange(charCount, lineEnd);
+      
+      if (textarea.scrollHeight > 0) {
+        textarea.scrollTop = textarea.scrollHeight * (charCount / textarea.value.length);
+      }
+    }, 10);
+  }
+</script>
+
+<div id="searchModal" class="modal">
+  <div class="modal-content">
+    <div id="modalHeader" class="modal-header">	        
+	<button class="mb-1 btn btn-link text-decoration-none close closeBtn" id="">&times;</button>
+      <h3>Поиск и замена</h3>
+    </div>
+    <div class="modal-body">
+      <label for="searchText">Найти:</label>
+      <input type="text" id="searchText">
+      <br>
+      <label for="replaceText">Заменить на:</label>
+      <input type="text" id="replaceText">
+      <br><br>
+      <button class="mb-1 btn btn-primary" id="findBtn">Найти</button>
+      <button  class="mb-1 btn btn-primary" id="replaceOneBtn">Заменить</button>
+      <button class="mb-1 btn btn-primary" id="replaceAllBtn">Заменить все</button>
+      <button class="mb-1 btn btn-secondary closeBtn" id="">Закрыть</button>
+      <br>
+      <button class="mb-1 btn btn-primary btn-sm" data-template="«Это – боль», «Это – скапливание боли», «Это – истечение боли», «Это – к истечению боли ведущая практика».">4би</button>
+      <button class="mb-1 btn btn-primary btn-sm" data-template="«Это – боль»… «Это – к истечению боли ведущая практика». ">4би short</button>
+      <button class="mb-1 btn btn-primary btn-sm" data-template="Правильный взгляд, правильное намерение-заготовка, правильная речь, правильные действия, правильные быт, правильное старание, правильное памятование, правильное объединение опыта. ">б8п</button>
+      <button class="mb-1 btn btn-primary btn-sm" data-template="Правильный взгляд… правильное объединение опыта. ">б8п short</button>
+      <button class="mb-1 btn btn-primary btn-sm" data-template="Так сказал Благословенный. Довольные монахи обрадовались речи Благословенного. ">Так сказал…</button>
+      <button class="mb-1 btn btn-primary btn-sm" data-template="—">—</button>
+      <button class="mb-1 btn btn-primary btn-sm" data-template="“”">“”</button>
+      <button class="mb-1 btn btn-primary btn-sm" data-template="¿">¿</button>
+    </div>
+  </div>
+</div>
+
+<div id="helpModal" style="z-index:100;" class="modal">
+  <div class="modal-content">
+    <div id="modalHeader" class="modal-header">
+      <button class="mb-1 btn btn-link text-decoration-none close closeBtn" id="">&times;</button>
+      <h3>Помощь</h3>
+    </div>
+    <div class="modal-body">
+        <button class="btn btn-link text-decoration-none" data-bs-toggle="collapse" data-bs-target="#tableHelp" aria-expanded="false" aria-controls="tableHelp">
+              <h3>В Режиме Таблицы</h3><p>показать / скрыть</p>
+        </button>
+      <div class="collapse" id="tableHelp">
+        <p>
+          Клик по ячейке с русским текстом - редактировать.<br><br>
+          Клик по <i class="fa-solid fa-link"></i> - перейти в эту строку в быстром редактировании.<br><br>
+          Когда ячейка таблицы активна:<br><br>
+          <strong><i class="fa-solid fa-arrow-up"></i> или <i class="fa-solid fa-arrow-left"></i></strong> - переход между ячейками вверх<br><br>
+          <strong><i class="fa-solid fa-arrow-down"></i> или <i class="fa-solid fa-arrow-right"></i></strong> - переход между ячейками вниз<br><br>
+          <strong>enter</strong> - добавить пустую строку или перенести текст в новую строку<br><br>
+          <strong>ctrl+enter</strong> - перенести текст в начало следующей строки<br><br>
+          <strong>backspace</strong> в начале строки переместит текст на строку выше.<br><br>
+          <strong>delete</strong> в конце строки переместит текст на текущую строку.
+        </p>
+      </div>
+      <br><br>
+        <button class="btn btn-link text-decoration-none" data-bs-toggle="collapse" data-bs-target="#textInputHelp" aria-expanded="false" aria-controls="textInputHelp">
+                    <h3>В Режиме Окна Ввода</h3><p>показать / скрыть</p>    
+        </button>
+      <div class="collapse" id="textInputHelp">
+        <p>
+          <strong>ctrl+Q</strong> - выделить вертикальный список и нажать комбинацию. Это переделает вертикальный список в строку.<br><br>
+          <strong>ctrl+F или ctrl+H</strong> - замена текста. () или [] нужно экранировать так: \(\) и \[\] .
+        </p>
+      </div>
+      <br><br>
+      <h3>
+        <a href="https://youtu.be/JkJNgMhmv64" title="Видео Инструкция" class="ms-2" target="_blank">
+          <i class="fa-brands fa-youtube"></i> Видео-инструкция
+        </a>
+      </h3>
+      <br><br>
+      <button class="mb-1 btn btn-primary closeBtn" id="">Закрыть</button>
+    </div>
+  </div>
+</div>
+
+<div id="settings" class="modal">
+  <div class="modal-content">
+    <div id="modalHeader" class="modal-header">
+	<button class="mb-1 btn btn-link text-decoration-none close closeBtn" id="">&times;</button>
+      <h3>Настройки</h3>
+    </div>
+    <div class="modal-body">
+      <label for="translator">Переводчик:</label>
+      <input type="text" id="translator">
+      <br><br>
+      <button class="mb-1 btn btn-primary" id="saveSettings">Сохранить</button>
+      <button  class="mb-1 btn btn-primary" id="resetSettings">Сбросить</button>
+      <button class="mb-1 btn btn-primary" id="closeBtn">Отмена</button>
+    </div>
+  </div>
+</div>
+
+<button style="display: none;" class="btn btn-primary" title="Эмулировать клавишу Ctrl" id="ctrlEnterButton">Ctrl + Enter</button>
+
+<div class="my-3">
+    <input type="file" id="fileInput" style="display:none" accept=".json" />
+<script>
+ function findItiVagga(suttaNumber) {
+  if (suttaNumber >= 1 && suttaNumber <= 10) {
+    return "1";
+  } else if (suttaNumber >= 11 && suttaNumber <= 20) {
+    return "2";
+  } else if (suttaNumber >= 21 && suttaNumber <= 27) {
+    return "3";
+  } else if (suttaNumber >= 28 && suttaNumber <= 37) {
+    return "4";
+  } else if (suttaNumber >= 38 && suttaNumber <= 49) {
+    return "5";
+  } else if (suttaNumber >= 50 && suttaNumber <= 59) {
+    return "6";
+  } else if (suttaNumber >= 60 && suttaNumber <= 69) {
+    return "7";
+  } else if (suttaNumber >= 70 && suttaNumber <= 79) {
+    return "8";
+  } else if (suttaNumber >= 80 && suttaNumber <= 89) {
+    return "9";
+  } else if (suttaNumber >= 90 && suttaNumber <= 99) {
+    return "10";
+  } else if (suttaNumber >= 100 && suttaNumber <= 112) {
+    return "11";
+  }
+} 
+  
+  document.getElementById('uploadButton').addEventListener('click', function() {
+    const inputText = document.getElementById('translationInput').value;
+    if (inputText.trim() === '') {
+      document.getElementById('fileInput').click();
+    } else {
+      processJson(inputText);
+    }
+  });
+
+  document.getElementById('fileInput').addEventListener('change', function(event) {
+    const file = event.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const fileContent = e.target.result;
+        processJson(fileContent);
+      };
+      reader.readAsText(file);
+    }
+  });
+
+  function processJson(inputText) {
+    try {
+      const jsonObject = JSON.parse(inputText);
+      const values = Object.values(jsonObject);
+      const result = values.join('\n');
+      document.getElementById('translationInput').value = result;
+      loadText(); 
+    } catch (error) {
+      const proceed = confirm('Хотите загрузить файл для замены данных?');
+      if (proceed) {
+        document.getElementById('fileInput').click();
+      }
+    }
+  }
+</script>
+</div>
+
+<script>
+function downloadJson() {
+    // Docs "Редактор переводов" embeds this exact tool live (?demo=1) — sohranenie (local
+    // download AND the server-side lbl-save.php write below) must not fire from there, or
+    // anyone poking around in the help page could overwrite real translation files.
+    if (new URLSearchParams(window.location.search).get('demo') === '1') {
+        alert('Это справка — сохранение здесь отключено. Откройте инструмент по прямой ссылке /assets/lbl.html, чтобы сохранять.');
+        return;
+    }
+    const language = document.getElementById('languageSelect').value;
+    const indexValue = document.getElementById('indexInput').value.trim().toLowerCase();
+    const translation = document.getElementById('translationInput').value.trim();
+
+    const translationLines = translation.split('\n');
+    const jsonData = {};
+
+    let lettersOnly = indexValue.match(/[a-z]+/)[0];
+    let beforeDot = indexValue.split('.')[0];
+    let firstNumberOnly = beforeDot.match(/[0-9]+/)?.[0] ?? null;
+
+    if (indexValue.includes('snp') || indexValue.includes('ud') || indexValue.includes('dhp') || indexValue.includes('iti')) {
+        lettersOnly = 'kn/' + lettersOnly;
+    }
+
+    if (indexValue.includes('snp') || indexValue.includes('ud')) {
+        beforeDot = 'vagga' + firstNumberOnly;
+    } else if (indexValue.includes('dhp')) {
+        beforeDot = '';
+    }
+
+    if (indexValue.includes('iti')) {
+        beforeDot = 'vagga' + findItiVagga(firstNumberOnly);
+    }
+
+    let url;
+    if (indexValue.includes('bu-') || indexValue.includes('bi-')) {
+        let buOrbi = indexValue.split('-')[0];
+        let lawIndex = indexValue.split('-')[1];
+        let lawType = lawIndex.match(/[a-z]+/)[0];
+        let fileNameBlock = 'pli-tv-' + buOrbi + '-vb/pli-tv-' + buOrbi + '-vb-' + lawType + '/pli-tv-' + buOrbi + '-vb-' + lawIndex;
+
+        if (indexValue.includes('-pm')) {
+            fileNameBlock = 'pli-tv-' + buOrbi + '-pm';
+        }
+        // Добавлено || language === 'ru' для получения палийской основы
+        if (language === 'pli' || language === 'ru') {
+            url = `/suttacentral.net/sc-data/sc_bilara_data/root/pli/ms/vinaya/${fileNameBlock}_root-pli-ms.json`;
+        } else if (language === 'en') {
+            url = `/suttacentral.net/sc-data/sc_bilara_data/translation/en/brahmali/vinaya/${fileNameBlock}_translation-en-brahmali.json`;
+        }
+    } else if (language === 'pli' || language === 'ru') {
+        url = `/suttacentral.net/sc-data/sc_bilara_data/root/pli/ms/sutta/${lettersOnly}/${beforeDot}/${indexValue}_root-pli-ms.json`;
+    } else if (language === 'en') {
+        url = `/suttacentral.net/sc-data/sc_bilara_data/translation/en/sujato/sutta/${lettersOnly}/${beforeDot}/${indexValue}_translation-en-sujato.json`;
+    }
+
+    if (indexValue.match(/dn|mn/)) {
+        if (language === 'pli' || language === 'ru') {
+            url = `/suttacentral.net/sc-data/sc_bilara_data/root/pli/ms/sutta/${lettersOnly}/${indexValue}_root-pli-ms.json`;
+        } else if (language === 'en') {
+            url = `/suttacentral.net/sc-data/sc_bilara_data/translation/en/sujato/sutta/${lettersOnly}/${indexValue}_translation-en-sujato.json`;
+        }
+    }
+
+    const translations = {
+        "Paṭhamaṁ.": "Первая.",
+        "Dutiyaṁ.": "Вторая.",
+        "Tatiyaṁ.": "Третья.",
+        "Catutthaṁ.": "Четвёртая.",
+        "Pañcamaṁ.": "Пятая.",
+        "Chaṭṭhaṁ.": "Шестая.",
+        "Sattamaṁ.": "Седьмая.",
+        "Aṭṭhamaṁ.": "Восьмая.",
+        "Navamaṁ.": "Девятая.",
+        "Dasamaṁ.": "Десятая.",
+        "Ekādasamaṁ.": "Одниннадцатая.",
+        "Dvādasamaṁ.": "Двенадцатая.",
+        "Terasamaṁ.": "Тринадцатая.",
+        "Cuddasamaṁ.": "Четырнадцатая.",
+        "Pannarasamaṁ.": "Пятнадцатая.",
+        "Soḷasamaṁ.": "Шестнадцатая.",
+        "Sattarasamaṁ.": "Семнадцатая.",
+        "Aṭṭhārasamaṁ.": "Восемнадцатая.",
+        "Tiṁsatimaṁ.": "Тридцатая.",
+        "Tassuddānaṁ": "Оглавление"
+    };
+
+    fetch(url)
+        .then(response => {
+            if (!response.ok) throw new Error('Network response was not ok');
+            return response.json();
+        })
+        .then(data => {
+            const dataArray = Object.entries(data);
+            dataArray.forEach(([key, value], index) => {
+                let translationLine = translationLines[index] || '';
+                if (translations[value.trim()]) {
+                    translationLine = translations[value.trim()];
+                }
+                jsonData[key] = translationLine;
+            });
+
+            const jsonString = JSON.stringify(jsonData, null, 2);
+            let translatorName = 'sv+edited+o';
+            if (document.getElementById('customTranslatorName').checked) {
+                translatorName = 'o';
+            }
+            const fullFileName = indexValue + '_translation-ru-' + translatorName + '.json';
+
+            // Инициализация Toast
+            const toastEl = document.getElementById('toastMessage');
+            const toastText = document.getElementById('toastText');
+
+            // --- Отправка копии на сервер ---
+            fetch('/assets/lbl-save.php?file=' + encodeURIComponent(fullFileName), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: jsonString
+            })
+            .then(res => {
+                if (res.ok) {
+                    toastEl.classList.remove('bg-danger');
+                    toastEl.classList.add('bg-success');
+                    toastText.textContent = 'File uploaded to server successfully.';
+                    new bootstrap.Toast(toastEl, { autohide: true }).show();
+                } else {
+                    throw new Error('Upload failed');
+                }
+                  loadAndCheckRanges();
+
+            })
+            .catch(err => {
+                console.error('Network error:', err);
+                toastEl.classList.remove('bg-success');
+                toastEl.classList.add('bg-danger');
+                toastText.textContent = 'Error: Failed to upload file to server.';
+                new bootstrap.Toast(toastEl, { autohide: false }).show();
+            });
+
+            // --- Локальное скачивание ---
+            const blob = new Blob([jsonString], { type: 'application/json' });
+            const objectUrl = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = objectUrl;
+            a.download = fullFileName;
+            document.body.appendChild(a);
+            a.click();
+            URL.revokeObjectURL(objectUrl);
+            document.body.removeChild(a);
+        })
+        .catch(error => console.error('Error fetching data:', error.message));
+}
+
+function loadText() {
+
+  const language = document.getElementById('languageSelect').value;
+  const indexValue = document.getElementById('indexInput').value.trim().toLowerCase();
+  let translation = document.getElementById('translationInput').value;
+  let cleanedTranslation = translation;
+
+  if (indexValue) {
+    document.title = indexValue;
+}
+
+  try {
+    const jsonObject = JSON.parse(translation);
+    const values = Object.values(jsonObject);
+    translation = values.join('\n');
+    document.getElementById('translationInput').value = translation;
+    cleanedTranslation = translation;
+  } catch (error) {
+  }
+
+  if (document.getElementById('lineBreakCheckbox').checked) {
+    cleanedTranslation = translation.replace(/[\.…:?!] /g, match => {
+      let index = translation.indexOf(match);
+      if (translation.charAt(index + match.length) !== '\n') {
+        return `${match}\n`;
+      }
+      return match;
+    });
+ 
+    cleanedTranslation = cleanedTranslation.replace(/\([А-Я]* [0-9]*\.[0-9]*\)/g, '');
+    cleanedTranslation = cleanedTranslation.replace(/ {2,}/g, ' ');
+    cleanedTranslation = cleanedTranslation.replace(/АН\s[0-9]+\.[0-9]+\s+[\s\S]*?Anguttara Nikaya.*$/gm, '');
+    cleanedTranslation = cleanedTranslation.replace(/СН\s[0-9]+\.[0-9]+\s+[\s\S]*?Samyutta Nikaya.*$/gm, '');
+    cleanedTranslation = cleanedTranslation.replace(/(\(1\)|1\)) ([а-я])/g, function(match, p1, p2) {
+      return p1 + ' ' + p2.toUpperCase();
+    });
+
+    cleanedTranslation = cleanedTranslation.replace(/(?<![а-яА-Я])то точно также/g, 'точно также');
+    cleanedTranslation = cleanedTranslation.replace(/точно также/g, '\nточно также');
+    cleanedTranslation = cleanedTranslation.replace(/Как ты думаешь, /g, 'Как ты думаешь,\n');
+    cleanedTranslation = cleanedTranslation.replace(/Как вы думаете, /g, 'Как вы думаете,\n');
+    cleanedTranslation = cleanedTranslation.replace(/или как ты считаешь/g, '\nили как ты считаешь');
+    cleanedTranslation = cleanedTranslation.replace(/или как вы считаете/g, '\nили как вы считаете');
+    cleanedTranslation = cleanedTranslation.replace(/Каки/g, '\nКаки');
+    cleanedTranslation = cleanedTranslation.replace(/В каких/g, '\nВ каких');
+    cleanedTranslation = cleanedTranslation.replace(/\[Благословенный сказал\]:/gm, '');
+    cleanedTranslation = cleanedTranslation.replace(/\[Благословенный сказал:/gm, '');
+    cleanedTranslation = cleanedTranslation.replace(/^.*\[И далее он добавил\]:.*$/gm, '');
+    cleanedTranslation = cleanedTranslation.replace(/Там Благословенный обратился к монахам:/g, '\nТам Благословенный обратился к монахам:\n');
+    cleanedTranslation = cleanedTranslation.replace(/Так сказал Благословенный./g, '\nТак сказал Благословенный.\n');
+    cleanedTranslation = cleanedTranslation.replace(/\(I\)/g, 'Первая');
+    cleanedTranslation = cleanedTranslation.replace(/\(II\)/g, 'Вторая');
+    cleanedTranslation = cleanedTranslation.replace(/\(III\)/g, 'Третья');
+    cleanedTranslation = cleanedTranslation.replace(/\(IV\)/g, 'Четвёртая');
+    cleanedTranslation = cleanedTranslation.replace(/^\*\s+/gm, '');
+    cleanedTranslation = cleanedTranslation.replace(/[0-9]*"/g, '');
+    cleanedTranslation = cleanedTranslation.replace(/^–\s+/gm, '');
+    cleanedTranslation = cleanedTranslation.replace(/\([1-9][0-9]?\) /g, '');
+    cleanedTranslation = cleanedTranslation.replace(/\([1-9][0-9]?-[1-9][0-9]?\) /g, '');
+    cleanedTranslation = cleanedTranslation.replace(/[1-9][0-9]?\) /g, '');
+    cleanedTranslation = cleanedTranslation.replace(/^\s*[\r\n]/gm, '');
+    cleanedTranslation = cleanedTranslation.replace(/([А-Яа-я»…\]])\d+\b/g, '$1');
+  }
+
+  if (/sn[0-9]/.test(indexValue)) {
+      if (!cleanedTranslation.startsWith("Связанные Наставления")) {
+          const additionalLines = `Связанные Наставления ${indexValue.replace(/[a-z]/g, '')}\nРаздел \nСутта \n\n\n`;
+          cleanedTranslation = additionalLines + cleanedTranslation;
+      } else if (cleanedTranslation.startsWith("Связанные Наставления")) {
+          cleanedTranslation = `Связанные Наставления ${indexValue.replace(/[a-z]/g, '')}${cleanedTranslation.substring(cleanedTranslation.indexOf("\n"))}`;
+      }
+  } else if (indexValue.includes("an")) {
+      if (!cleanedTranslation.startsWith("Восходящие Наставления")) {
+          const additionalLines = `Восходящие Наставления ${indexValue.replace(/[a-z]/g, '')}\nРаздел \nСутта \n\n\n`;
+          cleanedTranslation = additionalLines + cleanedTranslation;
+      } else if (cleanedTranslation.startsWith("Восходящие Наставления")) {
+          cleanedTranslation = `Восходящие Наставления ${indexValue.replace(/[a-z]/g, '')}${cleanedTranslation.substring(cleanedTranslation.indexOf("\n"))}`;
+      }
+  } else if (indexValue.includes("snp")) {
+      if (!cleanedTranslation.startsWith("Сутта Нипата")) {
+          const additionalLines = `Сутта Нипата ${indexValue.replace(/[a-z]/g, '')}\nНазвание\n\n`;
+          cleanedTranslation = additionalLines + cleanedTranslation;
+      } else if (cleanedTranslation.startsWith("Сутта Нипата")) {
+          cleanedTranslation = `Сутта Нипата ${indexValue.replace(/[a-z]/g, '')}${cleanedTranslation.substring(cleanedTranslation.indexOf("\n"))}`;
+      }
+  } else if (indexValue.includes("ud")) {
+      if (!cleanedTranslation.startsWith("Удана")) {
+          const additionalLines = `Удана ${indexValue.replace(/[a-z]/g, '')}\nСутта \n\n`;
+          cleanedTranslation = additionalLines + cleanedTranslation;
+      } else if (cleanedTranslation.startsWith("Удана")) {
+          cleanedTranslation = `Удана ${indexValue.replace(/[a-z]/g, '')}${cleanedTranslation.substring(cleanedTranslation.indexOf("\n"))}`;
+      }
+  } else if (indexValue.includes("iti")) {
+      if (!cleanedTranslation.startsWith("Это Сказано")) {
+          const additionalLines = `Это Сказано ${indexValue.replace(/[a-z]/g, '')}\nСобрание \nРаздел \nСутта \n`;
+          cleanedTranslation = additionalLines + cleanedTranslation;
+      } else if (cleanedTranslation.startsWith("Это Сказано")) {
+          cleanedTranslation = `Это Сказано ${indexValue.replace(/[a-z]/g, '')}${cleanedTranslation.substring(cleanedTranslation.indexOf("\n"))}`;
+      }
+  }
+
+  // Очистка от лишних пробелов в концах строк и гарантированное добавление одного пробела
+  cleanedTranslation = cleanedTranslation
+      .replace(/[ \t]+$/gm, '')
+      .replace(/([^\r\n])$/gm, '$1 ');
+
+  document.getElementById('translationInput').value = cleanedTranslation;
+  document.getElementById('lineBreakCheckbox').checked = false;
+
+  const translationLines = cleanedTranslation.split('\n');
+  let lettersOnly = indexValue.match(/[a-z]+/)[0];
+  let beforeDot = indexValue.split('.')[0];
+  let firstNumberOnly = beforeDot.match(/[0-9]+/)?.[0] ?? null;
+
+  if (indexValue.includes('snp') || indexValue.includes('ud') || indexValue.includes('dhp') || indexValue.includes('iti')) {
+    lettersOnly = 'kn/' + lettersOnly;
+  }
+
+  if (indexValue.includes('snp') || indexValue.includes('ud')) {
+    beforeDot = 'vagga' + firstNumberOnly;
+  } else if (indexValue.includes('dhp')) {
+    beforeDot = '';
+  }  
+  
+  if ( indexValue.includes('iti')) {
+    beforeDot = 'vagga' + findItiVagga(firstNumberOnly);
+  } 
+  
+  let pliUrl;
+  let enUrl;
+  let fileNameBlock;
+  
+  if (indexValue.includes('bu-') || indexValue.includes('bi-')) {
+    let buOrbi = indexValue.split('-')[0]; 
+    let lawIndex = indexValue.split('-')[1]; 
+    let lawType = lawIndex.match(/[a-z]+/)[0];
+    fileNameBlock = 'pli-tv-' + buOrbi + '-vb/pli-tv-' + buOrbi + '-vb-' + lawType + '/pli-tv-' + buOrbi + '-vb-' + lawIndex;
+    if (indexValue.includes('-pm')) {
+      fileNameBlock = 'pli-tv-' + buOrbi + '-pm';
+    } 
+    console.log('fileNameBlock ' + fileNameBlock) ;
+    pliUrl = `/suttacentral.net/sc-data/sc_bilara_data/root/pli/ms/vinaya/${fileNameBlock}_root-pli-ms.json`;    
+    enUrl = `/suttacentral.net/sc-data/sc_bilara_data/translation/en/brahmali/vinaya/${fileNameBlock}_translation-en-brahmali.json`;
+  } else {
+    pliUrl = `/suttacentral.net/sc-data/sc_bilara_data/root/pli/ms/sutta/${lettersOnly}/${beforeDot}/${indexValue}_root-pli-ms.json`;
+    enUrl = `/suttacentral.net/sc-data/sc_bilara_data/translation/en/sujato/sutta/${lettersOnly}/${beforeDot}/${indexValue}_translation-en-sujato.json`;
+  }
+  
+  if (indexValue.match(/dn|mn/)) {
+    pliUrl = `/suttacentral.net/sc-data/sc_bilara_data/root/pli/ms/sutta/${lettersOnly}/${indexValue}_root-pli-ms.json`;
+    enUrl = `/suttacentral.net/sc-data/sc_bilara_data/translation/en/sujato/sutta/${lettersOnly}/${indexValue}_translation-en-sujato.json`;
+  }
+  
+  console.log('pliUrl ' + pliUrl) ;
+  console.log('enUrl ' + enUrl) ;
+
+  // Загружаем список переводчиков из JSON файла
+  fetch('/assets/js/translators.json')
+    .then(response => {
+      if (!response.ok) throw new Error('Failed to load translators.json');
+      return response.json();
+    })
+    .then(translatorsData => {
+      const trimmedUrlForRu = pliUrl.match(/\/(sutta|vinaya)\/.*/)[0];
+      const pathPart = trimmedUrlForRu.split('_')[0];
+      
+      const ruTranslatorsKeys = Object.keys(translatorsData.ru || {});
+      const priorityKeys = ['o', 'ai', 'sv+edited+o', 'sv'];
+      const otherKeys = ruTranslatorsKeys.filter(key => !priorityKeys.includes(key));
+      
+      let ruUrlsToTry = [];
+      
+      // 1. Папка 1 (ru) и пул
+      priorityKeys.forEach(key => {
+          ruUrlsToTry.push(`/assets/texts/ru${pathPart}_translation-ru-${key}.json`);
+          if (key === 'ai') {
+              ruUrlsToTry.push(`/assets/texts/ai${pathPart}_translation-ru-ai.json`);
+          }
+      });
+      // 2. Папка 1 (ru) и остальные
+      otherKeys.forEach(key => ruUrlsToTry.push(`/assets/texts/ru${pathPart}_translation-ru-${key}.json`));
+      // 3. Папка 2 (ru_other) и пул
+      priorityKeys.forEach(key => ruUrlsToTry.push(`/assets/texts/ru_other${pathPart}_translation-ru-${key}.json`));
+      // 4. Папка 2 (ru_other) и остальные
+      otherKeys.forEach(key => ruUrlsToTry.push(`/assets/texts/ru_other${pathPart}_translation-ru-${key}.json`));
+
+      async function fetchRuData() {
+          for (const url of ruUrlsToTry) {
+              try {
+                  const response = await fetch(url);
+                  if (response.ok) {
+                      return await response.json();
+                  }
+              } catch (error) {
+                  // Игнорируем ошибку и пробуем следующий URL
+              }
+          }
+          return {}; // Возвращаем пустой объект, если ничего не найдено
+      }
+
+      // Запрашиваем пали как основу в любом случае, английский или русский - если выбран в селекте
+      return Promise.all([
+        fetch(pliUrl).then(response => {
+          if (!response.ok) throw new Error('Network response was not ok for Pali root');
+          return response.json();
+        }),
+        language === 'en' ? fetch(enUrl).then(response => response.ok ? response.json() : {}).catch(() => ({})) : Promise.resolve({}),
+        language === 'ru' ? fetchRuData() : Promise.resolve({})
+      ])
+      .then(([pliData, enData, ruData]) => {
+          const tableBody = document.getElementById('outputTableBody');
+          const translationInput = document.getElementById('translationInput'); 
+
+          let tableHtml = '';
+          const dataArray = Object.entries(pliData);
+          const translationLines = translationInput.value.split('\n'); 
+          let rowCounter = 0; 
+
+          dataArray.forEach(([key, pliValue], index) => {
+            const translationLine = translationLines[index] || ''; 
+            const texts = translationLine.split('\n'); 
+            
+            // Логика подстановки Пали, Русского или Английского в левую колонку
+            let sourceText = pliValue.trimEnd();
+            if (language === 'en') {
+                const enValue = enData[key];
+                if (enValue && enValue.trim() !== '') {
+                    sourceText = enValue.trimEnd();
+                }
+            } else if (language === 'ru') {
+                const ruValue = ruData[key];
+                if (ruValue && ruValue.trim() !== '') {
+                    sourceText = ruValue.trimEnd();
+                }
+            }
+
+            // Выбираем класс для языка перевода
+            const translationClass = (language === 'en') ? 'eng-lang' : 'rus-lang';
+
+            texts.forEach((text, textIndex) => {
+              const currentText = texts[textIndex] || ''; 
+              rowCounter++;
+              // КЛЮЧЕВОЕ ИЗМЕНЕНИЕ: Добавлен id="${key}" к <tr> для работы очередей TTS
+              const row = `<tr id="${key}">
+                            <td class="pli-lang" lang="pi">
+                                <a href="/4nt/?q=${key}&cols=pali%2Cru_dhammagift%2Cbodhi-esque%2Csujato-corrected%2Cpts%2Cthanissaro" target="_blank" class="verse-ref-trigger text-decoration-none me-2 tts-ignore" style="opacity: 0.12;" title="${key}"><i class="fa-solid fa-link"></i></a>
+                                <a href="#" class="cat-trigger text-decoration-none me-2 tts-ignore" style="opacity: 0.5;" title="Искать перевод" onclick="event.preventDefault();"><i class="fa-solid fa-link"></i></a>
+                                <span class="source-text">${sourceText}</span>
+                            </td>
+                            <td class="tts-ignore">${key}</td>
+                            <td class="${translationClass}" lang="${language === 'en' ? 'en' : 'ru'}">${currentText}</td>
+                            <td class="tts-ignore"><a href="#" title="${key}" onmousedown="gotoLine(${rowCounter})"><i class="fa-solid fa-link"></i></a></td>
+                          </tr>`;
+              tableHtml += row;
+            });
+          });
+
+
+          if (translationLines.length > dataArray.length) {
+            for (let i = dataArray.length; i < translationLines.length; i++) {
+              rowCounter++;
+              const extraText = translationLines[i] || ''; 
+              const extraRow = `<tr>
+                                <td></td><td></td>
+                                <td>${extraText}</td>
+                                <td><a href="#" onmousedown="gotoLine(${rowCounter})"><i class="fa-solid fa-link"></i></a></td>
+                              </tr>`;
+              tableHtml += extraRow;
+            }
+          }
+
+          tableBody.innerHTML = tableHtml;
+
+          // Клонируем кнопку загрузки для очистки дублей событий
+          const loadBtn = document.getElementById('loadFromServerButton');
+          const newLoadBtn = loadBtn.cloneNode(true);
+          loadBtn.parentNode.replaceChild(newLoadBtn, loadBtn);
+
+          // Вспомогательная функция для проверки существования файла
+          async function checkFileExists(url) {
+              try {
+                  const response = await fetch(url, { method: 'HEAD' });
+                  return response.ok;
+              } catch (error) {
+                  return false;
+              }
+          }
+
+          newLoadBtn.addEventListener('click', async function() {
+              const trimmedUrl = pliUrl.match(/\/(sutta|vinaya)\/.*/)[0];
+              const pathPart = trimmedUrl.split('_')[0];
+              
+              const priorityGroup = [];
+              const otherGroup = [];
+
+              // 1. Собираем ссылки на приоритетные переводы
+              priorityKeys.forEach(key => {
+                  priorityGroup.push({ name: `${key} (Неопублик)`, url: `/assets/texts/lbl/${indexValue}_translation-ru-${key}.json` });
+                  priorityGroup.push({ name: `${key} (ru)`, url: `/assets/texts/ru${pathPart}_translation-ru-${key}.json` });
+                  priorityGroup.push({ name: `${key} (ru_other)`, url: `/assets/texts/ru_other${pathPart}_translation-ru-${key}.json` });
+                  if (key === 'ai') {
+                      priorityGroup.push({ name: `ai (ai)`, url: `/assets/texts/ai${pathPart}_translation-ru-ai.json` });
+                  }
+              });
+
+              // 2. Собираем ссылки на остальные переводы
+              otherKeys.forEach(key => {
+                  otherGroup.push({ name: `${key} (Неопублик)`, url: `/assets/texts/lbl/${indexValue}_translation-ru-${key}.json` });
+                  otherGroup.push({ name: `${key} (ru)`, url: `/assets/texts/ru${pathPart}_translation-ru-${key}.json` });
+                  otherGroup.push({ name: `${key} (ru_other)`, url: `/assets/texts/ru_other${pathPart}_translation-ru-${key}.json` });
+              });
+
+              // Функция для параллельной проверки наличия файлов в переданной группе
+              async function checkBatch(urls) {
+                  const checks = urls.map(async item => {
+                      if (await checkFileExists(item.url)) return item;
+                      return null;
+                  });
+                  const results = await Promise.all(checks);
+                  return results.filter(item => item !== null);
+              }
+
+              const originalBtnHtml = newLoadBtn.innerHTML;
+              newLoadBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+
+              // Запускаем оба поиска одновременно, чтобы не терять время
+              const priorityPromise = checkBatch(priorityGroup);
+              const otherPromise = checkBatch(otherGroup);
+
+              // Сначала дожидаемся ответа только от приоритетных вариантов
+              const priorityOptions = await priorityPromise;
+
+              if (priorityOptions.length > 1) {
+                  // Показываем окно сразу, если есть из чего выбрать среди приоритетных
+                  newLoadBtn.innerHTML = originalBtnHtml;
+                  showModernSelectionModal(priorityOptions, true);
+                  
+                  // Ждем остальные варианты на фоне
+                  const otherOptions = await otherPromise;
+                  if (otherOptions.length > 0) {
+                      appendOptionsToModal(otherOptions);
+                  }
+                  removeSpinnerFromModal();
+              } else {
+                  // Если приоритетных 0 или 1, ждем остальные, чтобы понять точное общее число вариантов
+                  const otherOptions = await otherPromise;
+                  const allOptions = [...priorityOptions, ...otherOptions];
+                  
+                  newLoadBtn.innerHTML = originalBtnHtml;
+
+                  if (allOptions.length === 0) {
+                      alert('Переводы для этого текста не найдены на сервере.');
+                  } else if (allOptions.length === 1) {
+                      // Только если вариант вообще один из всех возможных, загружаем молча
+                      loadSelectedFile(allOptions[0].url);
+                  } else {
+                      // Если вариантов несколько, показываем окно
+                      showModernSelectionModal(allOptions, false);
+                  }
+              }
+
+              // --- Функции для работы с диалоговым окном ---
+              
+              function showModernSelectionModal(options, isWaitingForMore) {
+                  const existingModal = document.getElementById('modernFileSelectModal');
+                  if (existingModal) existingModal.remove();
+
+                  const spinnerHtml = isWaitingForMore 
+                      ? '<span id="searchMoreSpinner" class="text-muted ms-2" style="font-size: 1rem;"><i class="fa-solid fa-spinner fa-spin"></i></span>' 
+                      : '';
+
+                  const modalHtml = `
+                  <div class="modal fade" id="modernFileSelectModal" tabindex="-1" aria-hidden="true">
+                      <div class="modal-dialog modal-dialog-centered">
+                          <div class="modal-content">
+                              <div class="modal-header border-bottom-0 align-items-center">
+                                  <h5 class="modal-title mb-0">Выберите версию перевода ${spinnerHtml}</h5>
+                                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                              </div>
+                              <div class="modal-body pt-0">
+                                  <ul class="server-file-list" id="serverFileList">
+                                      ${options.map(opt => createListItem(opt)).join('')}
+                                  </ul>
+                              </div>
+                          </div>
+                      </div>
+                  </div>`;
+
+                  document.body.insertAdjacentHTML('beforeend', modalHtml);
+                  const modalElement = document.getElementById('modernFileSelectModal');
+                  const bsModal = new bootstrap.Modal(modalElement);
+
+                  const listContainer = document.getElementById('serverFileList');
+                  listContainer.addEventListener('click', function(e) {
+                      const li = e.target.closest('li[data-url]');
+                      if (li) {
+                          const selectedUrl = li.getAttribute('data-url');
+                          bsModal.hide();
+                          loadSelectedFile(selectedUrl);
+                      }
+                  });
+
+                  modalElement.addEventListener('hidden.bs.modal', function () {
+                      modalElement.remove();
+                  });
+
+                  bsModal.show();
+              }
+
+              function createListItem(opt) {
+                  return `
+                      <li data-url="${opt.url}">
+                          <i class="fa-solid fa-file-code"></i>
+                          <span>Переводчик: <strong>${opt.name}</strong></span>
+                      </li>
+                  `;
+              }
+
+              function appendOptionsToModal(options) {
+                  const listContainer = document.getElementById('serverFileList');
+                  if (!listContainer) return; 
+                  
+                  const newItemsHtml = options.map(opt => createListItem(opt)).join('');
+                  listContainer.insertAdjacentHTML('beforeend', newItemsHtml);
+              }
+
+              function removeSpinnerFromModal() {
+                  const spinner = document.getElementById('searchMoreSpinner');
+                  if (spinner) spinner.remove();
+              }
+
+              async function loadSelectedFile(selectedUrl) {
+                  try {
+                      newLoadBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+                      const response = await fetch(selectedUrl);
+                      if (response.ok) {
+                          const content = await response.text(); 
+                          document.getElementById('translationInput').value = content;
+                          
+                          const toastEl = document.getElementById('toastMessage');
+                          const toastText = document.getElementById('toastText');
+                          if (toastEl && toastText) {
+                              toastEl.classList.remove('bg-danger');
+                              toastEl.classList.add('bg-success');
+                              toastText.textContent = `Загружен: ${selectedUrl.split('/').pop()}`;
+                              new bootstrap.Toast(toastEl, { autohide: true }).show();
+                          }
+
+                          loadText();
+                      } else {
+                          throw new Error('Network response was not ok');
+                      }
+                  } catch (error) {
+                      console.error('Ошибка загрузки файла:', error);
+                      alert('Произошла ошибка при загрузке файла.');
+                  } finally {
+                      newLoadBtn.innerHTML = originalBtnHtml;
+                  }
+              }
+          });
+
+          // Клонируем таблицу для сброса старых слушателей клика (защита от дублирования событий)
+          const tableBodyEl = document.getElementById('outputTableBody');
+          const newTableBodyEl = tableBodyEl.cloneNode(true);
+          tableBodyEl.parentNode.replaceChild(newTableBodyEl, tableBodyEl);
+
+          newTableBodyEl.addEventListener('click', function(event) {
+              let target = event.target;
+              
+              while (target && target.tagName !== 'TD') {
+                  target = target.parentElement;
+              }
+
+              if (target && target.tagName === 'TD' && target.cellIndex === 2) {
+                  let cursorPosition = null;
+                  
+                  const selection = window.getSelection();
+                  if (selection.rangeCount > 0) {
+                      const range = selection.getRangeAt(0);
+                      if (target.contains(range.startContainer)) {
+                          const preCaretRange = range.cloneRange();
+                          preCaretRange.selectNodeContents(target);
+                          preCaretRange.setEnd(range.startContainer, range.startOffset);
+                          cursorPosition = preCaretRange.toString().length;
+                      }
+                  }
+                  
+                  makeCellEditable(target, cursorPosition);
+              }
+          });
+
+          function makeCellEditable(cell, cursorPosition = null) {
+              if (cell.querySelector('textarea')) return; 
+
+              const currentOffsetHeight = cell.offsetHeight;
+              const computedStyle = window.getComputedStyle(cell);
+              const paddingTop = parseFloat(computedStyle.paddingTop) || 0;
+              const paddingBottom = parseFloat(computedStyle.paddingBottom) || 0;
+              const innerHeight = currentOffsetHeight - paddingTop - paddingBottom;
+
+              const originalRawLength = cell.textContent.trimEnd().length;
+
+              let originalText = cell.textContent.trimStart(); 
+              if (originalText !== '') {
+                  originalText = originalText.trimEnd() + ' ';
+              }
+              
+              const textarea = document.createElement('textarea');
+              textarea.value = originalText;
+              textarea.classList.add('table-textarea'); 
+
+              cell.style.height = `${currentOffsetHeight}px`;
+              
+              textarea.style.width = '100%';
+              textarea.style.height = `${innerHeight}px`;
+              textarea.style.boxSizing = 'border-box';
+              textarea.style.resize = 'none'; 
+              textarea.style.overflowY = 'auto'; 
+              
+              cell.dataset.originalText = originalText;
+              
+              cell.textContent = '';
+              cell.appendChild(textarea);
+              textarea.focus();
+
+              if (cursorPosition !== null) {
+                  let position;
+                  const textLength = textarea.value.length;
+
+                  if (cursorPosition === 'start') {
+                      position = 0;
+                  } else if (cursorPosition === 'end') {
+                      position = textLength;
+                  } else if (typeof cursorPosition === 'number') {
+                      if (cursorPosition >= originalRawLength) {
+                          position = textLength; 
+                      } else if (cursorPosition >= 0) {
+                          position = Math.min(cursorPosition, textLength); 
+                      } else {
+                          position = Math.max(textLength + cursorPosition, 0); 
+                      }
+                  }
+
+                  textarea.setSelectionRange(position, position); 
+              } else {
+                  textarea.setSelectionRange(textarea.value.length, textarea.value.length); 
+              }
+
+              function finishEditing() {
+                  let newText = textarea.value.trimStart(); 
+                  if (newText !== '') {
+                      newText = newText.trimEnd() + ' ';
+                  }
+                  cell.textContent = newText; 
+                  cell.style.height = ''; 
+                  delete cell.dataset.originalText; 
+                  updateTranslationTextarea();
+                  saveInputs();
+              }
+
+              textarea.addEventListener('blur', finishEditing);
+
+              textarea.addEventListener('keydown', function(event) {
+                  const currentRow = cell.parentElement;
+                  const tbody = currentRow.parentElement;
+                  const rows = Array.from(tbody.children);
+                  const rowIndex = rows.indexOf(currentRow);
+
+                  if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+                      if (!event.ctrlKey && !event.shiftKey && textarea.selectionStart === textarea.value.length) {
+                          event.preventDefault();
+                          const nextRow = currentRow.nextElementSibling;
+                          if (nextRow) makeCellEditable(nextRow.cells[2], 0);
+                          return;
+                      }
+                  }
+
+                  if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+                      if (!event.ctrlKey && !event.shiftKey && textarea.selectionStart === 0) {
+                          event.preventDefault();
+                          const prevRow = currentRow.previousElementSibling;
+                          if (prevRow) makeCellEditable(prevRow.cells[2], 'end');
+                          return;
+                      }
+                  }
+
+                  if (event.key === 'Enter' || event.key === 'Backspace' || event.key === 'Delete') {
+                      
+                      if (event.key === 'Backspace' && textarea.selectionStart !== 0) return;
+                      if (event.key === 'Delete' && textarea.selectionStart !== textarea.value.length) return;
+                      if ((event.key === 'Backspace' || event.key === 'Delete') && textarea.selectionStart !== textarea.selectionEnd) return;
+
+                      event.preventDefault();
+
+                      let translations = rows.map(r => {
+                          const c = r.cells[2];
+                          if (c.querySelector('textarea')) return textarea.value.trim();
+                          return c.textContent.trim();
+                      });
+
+                      const cursorPosition = textarea.selectionStart;
+                      let targetCell = null;
+                      let targetCursorPos = 0;
+                      
+                      textarea.removeEventListener('blur', finishEditing);
+                      cell.textContent = ''; 
+                      cell.style.height = '';
+
+                      if (event.key === 'Enter' && !event.ctrlKey) {
+                          const textBefore = textarea.value.slice(0, cursorPosition).trim();
+                          const textAfter = textarea.value.slice(cursorPosition).trim();
+                          
+                          translations[rowIndex] = textBefore;
+                          translations.splice(rowIndex + 1, 0, textAfter);
+                          
+                          targetCell = currentRow.nextElementSibling ? currentRow.nextElementSibling.cells[2] : null;
+                          targetCursorPos = 0;
+                      } 
+                      else if (event.key === 'Enter' && event.ctrlKey) {
+                          const textBefore = textarea.value.slice(0, cursorPosition).trim();
+                          const textAfter = textarea.value.slice(cursorPosition).trim();
+                          
+                          translations[rowIndex] = textBefore;
+                          
+                          if (rowIndex + 1 < translations.length) {
+                              const existingNext = translations[rowIndex + 1];
+                              translations[rowIndex + 1] = textAfter + (existingNext ? ' ' : '') + existingNext;
+                          } else {
+                              translations.push(textAfter);
+                          }
+                          
+                          targetCell = currentRow.nextElementSibling ? currentRow.nextElementSibling.cells[2] : null;
+                          targetCursorPos = 0;
+                      }
+                      else if (event.key === 'Backspace' && rowIndex > 0) {
+                          const currentText = textarea.value.trim();
+                          const prevText = translations[rowIndex - 1];
+                          targetCursorPos = prevText.length > 0 ? prevText.length + 1 : 0;
+                          
+                          translations[rowIndex - 1] = prevText + (prevText ? ' ' : '') + currentText;
+                          translations.splice(rowIndex, 1);
+                          
+                          targetCell = currentRow.previousElementSibling.cells[2];
+                      }
+                      else if (event.key === 'Delete' && rowIndex < translations.length - 1) {
+                          const currentText = textarea.value.trim();
+                          const nextText = translations[rowIndex + 1];
+                          
+                          translations[rowIndex] = currentText + (currentText ? ' ' : '') + nextText;
+                          translations.splice(rowIndex + 1, 1);
+                          
+                          targetCell = cell;
+                          targetCursorPos = currentText.length;
+                      } else {
+                          cell.textContent = textarea.value.trim() !== '' ? textarea.value.trim() + ' ' : '';
+                          makeCellEditable(cell, cursorPosition);
+                          return;
+                      }
+
+                      for (let i = 0; i < rows.length; i++) {
+                          const expected = translations[i] !== undefined ? translations[i] : '';
+                          const expectedFormatted = expected !== '' ? expected + ' ' : '';
+                          
+                          if (i < translations.length) {
+                              if (rows[i].cells[2].textContent !== expectedFormatted) {
+                                  rows[i].cells[2].textContent = expectedFormatted;
+                              }
+                          } else {
+                              rows[i].cells[2].textContent = '';
+                          }
+                      }
+
+                      while (rows.length < translations.length) {
+                          const i = rows.length;
+                          const expected = translations[i] || '';
+                          const expectedFormatted = expected !== '' ? expected + ' ' : '';
+                          const tr = document.createElement('tr');
+                          tr.innerHTML = `<td></td><td></td><td>${expectedFormatted}</td><td><a href="#" onclick="gotoLine(${i + 1})"><i class="fa-solid fa-link"></i></a></td>`;
+                          tbody.appendChild(tr);
+                          rows.push(tr); 
+                      }
+
+                      while (rows.length > translations.length) {
+                          const lastRow = rows[rows.length - 1];
+                          if (lastRow.cells[0].textContent.trim() === '') {
+                              lastRow.remove();
+                              rows.pop();
+                          } else {
+                              break; 
+                          }
+                      }
+
+                      document.getElementById('translationInput').value = translations.join('\n');
+                      saveInputs();
+
+                      if (!targetCell && event.key === 'Enter' && !event.ctrlKey) {
+                           targetCell = tbody.lastElementChild.cells[2];
+                      }
+                      if (targetCell) {
+                          makeCellEditable(targetCell, targetCursorPos);
+                      }
+                  }
+              });
+
+              function shiftCellsUp(startRow) {
+                  let rowToMove = startRow;
+                  while (rowToMove.nextElementSibling) {
+                      const nextRow = rowToMove.nextElementSibling;
+                      rowToMove.cells[2].textContent = nextRow.cells[2].textContent;
+                      rowToMove = nextRow;
+                  }
+                  rowToMove.cells[2].textContent = '';
+                  
+                  let rowToUpdate = startRow;
+                  while (rowToUpdate) {
+                      updateSingleTranslationRow(rowToUpdate.cells[2]);
+                      rowToUpdate = rowToUpdate.nextElementSibling;
+                  }
+              }
+
+              function updateTranslationInput() {
+                  const rows = document.querySelectorAll('tr');
+                  const translations = Array.from(rows).map(row => {
+                      let text = row.cells[2].textContent.trimStart();
+                      return text !== '' ? text.trimEnd() + ' ' : '';
+                  });
+                  translationInput.value = translations.join('\n').replace(/\n$/, '');
+              }
+          }
+
+          function updateTranslationTextarea() {
+              const tableRows = document.querySelectorAll('#outputTableBody tr');
+              let updatedTranslation = '';
+              
+              tableRows.forEach(row => {
+                  const translationCell = row.cells[2]; 
+                  let text = translationCell.textContent.trim();
+                  updatedTranslation += (text !== '' ? text + ' ' : '') + '\n'; 
+              });
+              
+              document.getElementById('translationInput').value = updatedTranslation.replace(/\n$/, ''); 
+          }
+
+          function updateSingleTranslationRow(cell) {
+              const currentText = document.getElementById('translationInput').value;
+              const rows = currentText.split('\n');
+              const rowIndex = Array.prototype.indexOf.call(cell.parentElement.parentElement.children, cell.parentElement);
+              
+              let text = cell.textContent.trim();
+              rows[rowIndex] = text !== '' ? text + ' ' : '';
+              
+              document.getElementById('translationInput').value = rows.join('\n');
+          }
+
+          document.addEventListener('DOMContentLoaded', updateTranslationTextarea);
+
+      });
+    })
+    .catch(error => console.error('Error loading translators.json:', error));
+
+}
+
+function ifKn(indexValue) {
+  let beforeDot = "";
+  let lettersOnly = "";
+  if (indexValue.includes('snp') || indexValue.includes('ud') || indexValue.includes('dhp') || indexValue.includes('iti')) {
+    lettersOnly = 'kn/' + lettersOnly;
+
+    if (indexValue.includes('snp') || indexValue.includes('ud')) {
+      beforeDot = 'vagga' + firstNumberOnly;
+    } else if (indexValue.includes('dhp')) {
+      beforeDot = '';
+    } else if (indexValue.includes('iti')) {
+      beforeDot = 'vagga' + findItiVagga(firstNumberOnly);
+    }
+  }
+
+  let valueForApi = lettersOnly + "/" + beforeDot + "/" + indexValue;
+  return valueForApi;
+}
+
+function loadPrev() {
+  const texttype = 'sutta';
+  const indexValue = document.getElementById('indexInput').value.trim().toLowerCase();
+  const textPart = indexValue.split('.')[0]; 
+  const book = indexValue.replace(/[^a-zA-Z]/g, ''); 
+  let  valueForApi = book + "/" + textPart + "/" + indexValue;
+
+  const url = "/read/php/api.php?fromjs=" + texttype + "/" + valueForApi + "&type=B";
+  const originalValue = indexValue;
+
+  console.log("Prev URL: ", url);
+  fetch(url)
+      .then(response => response.text()) 
+      .then(data => {
+          console.log("Prev Data: ", data);
+          const newIndexValue = extractIndexValue(data);
+          if (newIndexValue) {
+            const inputField = document.getElementById('indexInput');
+            inputField.value = newIndexValue; 
+            inputField.dispatchEvent(new Event('input')); 
+          }
+          loadText();
+      })
+      .catch(error => {
+          console.error('Error fetching prev data:', error);
+          document.getElementById('indexInput').value = originalValue;
+      });
+}
+
+function loadNext() {
+  const texttype = 'sutta';
+  const indexValue = document.getElementById('indexInput').value.trim().toLowerCase();
+  const textPart = indexValue.split('.')[0]; 
+  const book = indexValue.replace(/[^a-zA-Z]/g, ''); 
+  const valueForApi = book + "/" + textPart + "/" + indexValue;
+  const url = "/read/php/api.php?fromjs=" + texttype + "/" + valueForApi + "&type=A";
+  const originalValue = indexValue;
+
+  console.log("Next URL: ", url);
+  fetch(url)
+      .then(response => response.text()) 
+      .then(data => {
+          console.log("Next Data: ", data);
+          const newIndexValue = extractIndexValue(data);
+          if (newIndexValue) {
+            const inputField = document.getElementById('indexInput');
+            inputField.value = newIndexValue; 
+            inputField.dispatchEvent(new Event('input')); 
+          }
+          loadText();
+      })
+      .catch(error => {
+          console.error('Error fetching next data:', error);
+          document.getElementById('indexInput').value = originalValue;
+          inputField.dispatchEvent(new Event('input')); 
+      });
+}
+
+function extractIndexValue(data) {
+    return data.split(' ')[0]; 
+}
+</script>
+
+<script>
+// Общий обработчик для элементов с id "indexInput" и "languageSelect"
+document.addEventListener('keydown', function(event) {
+    const target = event.target;
+    
+    // Проверяем, если фокус находится на поле indexInput или languageSelect
+    if ((target.id === 'indexInput' || target.id === 'languageSelect') && event.key === 'Enter') {
+        event.preventDefault(); // Отменяем стандартное поведение Enter
+        loadText(); // Запускаем функцию обновления текста
+    }
+});
+
+const customTranslatorCheckbox = document.getElementById('customTranslatorName');
+const languageSelect = document.getElementById('languageSelect');
+
+// Функция для сохранения значений и синхронизации адресной строки
+function saveInputs() {
+  localStorage.setItem('indexValue', indexInput.value);
+  localStorage.setItem('translationValue', translationInput.value);
+  localStorage.setItem('customTranslatorCheckboxState', customTranslatorCheckbox.checked);
+  localStorage.setItem('languageSelectValue', languageSelect.value);
+
+  if (indexInput.value) {
+      document.title = indexInput.value;
+      const currentUrl = new URL(window.location);
+      currentUrl.searchParams.set('q', indexInput.value);
+      window.history.replaceState(null, '', currentUrl);
+  }
+}
+
+// Слушатель для сохранения при каждом изменении translationInput
+translationInput.addEventListener('input', function() {
+  saveInputs();
+  localStorage.setItem('translationValue', translationInput.value);
+});
+
+customTranslatorCheckbox.addEventListener('change', saveInputs);
+
+// Слушатель для автоматического обновления при переключении языка
+languageSelect.addEventListener('change', function() {
+  saveInputs();
+  loadText();
+});
+
+// Функция для загрузки сохраненных значений
+function loadInputs() {
+  const savedCheckboxState = localStorage.getItem('customTranslatorCheckboxState');
+  if (savedCheckboxState !== null) {
+    customTranslatorCheckbox.checked = savedCheckboxState === 'true';
+  }
+
+  // Загружаем сохраненный язык
+  const savedLanguage = localStorage.getItem('languageSelectValue');
+  if (savedLanguage) {
+    languageSelect.value = savedLanguage;
+  }
+	
+  if (localStorage.getItem('indexValue')) { 
+    indexInput.value = localStorage.getItem('indexValue');
+  } else {
+    // Выполняем fetch для получения содержимого файла
+    fetch('/assets/texts/miss_longest')
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+        return response.text();
+      })
+      .then(data => {
+        // Разделяем содержимое файла на строки и берем первую строку
+        const firstLine = data.split('\n')[0];
+        
+        // Получаем первую часть первой строки (до пробела)
+        const firstPart = firstLine.split(' ')[0];
+        
+        // Устанавливаем значение в indexInput, если его нет в localStorage
+        indexInput.value = firstPart;
+      })
+      .catch(error => {
+        console.error('Ошибка при получении файла:', error);
+        // В случае ошибки использовать значение по умолчанию
+        indexInput.value = 'sn37.30';
+      });
+  }
+
+  // Загружаем другие значения из localStorage
+  translationInput.value = localStorage.getItem('translationValue') || '';
+}
+
+// Вызываем функцию загрузки сохраненных значений при загрузке страницы
+loadInputs();
+// Сохраняем значения при изменении инпутов
+indexInput.addEventListener('input', saveInputs);
+translationInput.addEventListener('input', saveInputs);
+lineBreakCheckbox.addEventListener('input', saveInputs);
+ 
+function clearInputs() {
+  // Показать предупреждение
+  if (confirm('Вы действительно хотите очистить перевод?')) {
+    // Если пользователь подтвердил, очищаем значения инпутов
+    document.getElementById('translationInput').value = '';
+
+    // Очищаем сохраненные значения в localStorage
+    localStorage.removeItem('translationValue');
+    localStorage.removeItem('lineBreakCheckboxState');
+  }
+}
+</script>
+
+
+<script defer src="/assets/js/themeswitch.js"></script>
+<script src="/assets/js/linksru.js"></script>
+	
+<script>
+    document.getElementById('linkButton1').addEventListener('click', function() {
+        var indexValue = document.getElementById('indexInput').value;
+        var url = '/r/?q=' + indexValue;
+        window.open(url, '_blank');
+    });
+</script> 
+	
+<script>
+    document.getElementById('linkButton3').addEventListener('click', function() {
+        var indexValue = document.getElementById('indexInput').value;
+                window.open('/4nt/?cols=pali%2Cpali_royal_iast%2Cpali_myanmar_iast%2Cpali_bjt_iast&q=' + indexValue, '_blank');
+    });
+
+    document.getElementById('linkButton2').addEventListener('click', function() {
+        var indexValue = document.getElementById('indexInput').value;
+        var found = false;
+
+        for (var i = 0; i < thruLinksData.length; i++) {
+            if (thruLinksData[i][0] === indexValue) {
+                var path = thruLinksData[i][1];
+                window.open('/theravada.ru/Teaching/Canon/Suttanta/Texts/' + path, '_blank');
+                found = true;
+                break;
+            }
+        }
+
+        if (!found) {
+            var match = indexValue.match(/(an|sn)(\d+)\.\d+/i);
+            if (match) {
+                var prefix = match[1].toUpperCase();
+                var bookNumber = match[2];
+
+                if (prefix === 'AN') {
+                    var url = '/theravada.ru/Teaching/Canon/Suttanta/AN/anguttara-' + bookNumber + '.htm';
+                } else if (prefix === 'SN') {
+                    var url = '/theravada.ru/Teaching/Canon/Suttanta/SN/samyutta-' + bookNumber + '.htm';
+                }
+                window.open(url, '_blank');
+            } else {
+                var url = '/ru/sc?q=' + indexValue;
+                window.open(url, '_blank');
+            }
+        }
+    });
+</script>
+
+<script>
+$.ajax({
+  url: "/assets/texts/sutta_words.txt",
+  dataType: "text",
+  success: function(data) {
+    var accentMap = {
+      "ā": "a", "ī": "i", "ū": "u", "ḍ": "d", "ḷ": "l", "ṃ": "ṁ", "ṁ": "n", 
+      "ṅ": "n", "ṇ": "n", "ṭ": "t", "ñ": "n", "ññ": "n", "ss": "s", "aa": "a", 
+      "ii": "i", "uu": "u", "dd": "d", "kk": "k", "ḍḍ": "d", "ḷḷ": "l", "ṇṇ": "n", 
+      "ṭṭ": "t", "cc": "c", "pp": "p", "cch": "c", "ch": "c", "kh": "k", "ph": "p", 
+      "th": "t", "ṭh": "t"
+    };
+
+    var normalize = function(term) {
+      var ret = "";
+      for (var i = 0; i < term.length; i++) {
+          ret += accentMap[term.charAt(i)] || term.charAt(i);
+      }
+      return ret;
+    };
+
+    var allWords = data.split('\n');
+
+    $("#indexInput").autocomplete({
+      position: {
+        my: "left bottom",
+        at: "left top",
+        collision: "flip"
+      },
+      minLength: 0,
+      multiple: /[\s\*]/, 
+      source: function(request, response) {
+        var terms = request.term.split(/[\|\s\*]/); 
+        var lastTerm = terms.pop().trim();
+        var otherMinLength = 3;
+
+        if (lastTerm.length < otherMinLength) {
+          response([]);
+          return;
+        }
+
+        var re = $.ui.autocomplete.escapeRegex(lastTerm);
+        var matchbeginonly = new RegExp("^" + re, "i");
+        var matchall = new RegExp(re.replace(/([a-z])\1/gi, "$1$1"), "i");
+
+        var listBeginOnly = $.grep(allWords, function(value) {
+          value = value.label || value.value || value;
+          var results = matchbeginonly.test(value) || matchbeginonly.test(normalize(value));
+          return results;
+        });
+
+        var listAll = $.grep(allWords, function(value) {
+          value = value.label || value.value || value;
+          var results = matchall.test(value) || matchall.test(normalize(value));
+          return results;
+        });
+
+        listAll = listAll.filter(function(el) {
+          return !listBeginOnly.includes(el);
+        });
+
+        var maxRecord = 1000;
+        var resultList = listBeginOnly.concat(listAll).slice(0, maxRecord);
+
+        response(resultList);
+      },
+      focus: function(event, ui) {
+        return false;
+      },
+      select: function(event, ui) {
+        var terms = this.value.split(/([\|\s\*])/);
+        terms.pop();
+  
+        var selectedValue = ui.item.value;
+        if (/\s+\d+$/.test(selectedValue)) {
+            selectedValue = selectedValue.split(/\s+/)[0];
+        }
+        
+        if (/\d+\s+/.test(selectedValue)) {
+            selectedValue = selectedValue.split(/\s+/)[0];
+        }
+        
+        if (/b[ui]pm|b[ui]-pm|pm/.test(selectedValue)) {
+            selectedValue = selectedValue.split(/\s+/)[0];
+        }
+  
+        terms.push(selectedValue);
+					
+        for (var i = 1; i < terms.length; i += 2) {
+          if (terms[i] === "*") {
+            terms[i] = "*";
+          } else if (terms[i] === "|") {
+            terms[i] = "|";
+          } else {
+            terms[i] = " ";
+          }
+        }
+
+        this.value = terms.join("");
+        return false;
+      }
+    }).autocomplete("widget").addClass("fixed-height");
+  }
+});
+</script>
+
+<script>
+    const translationInput = document.getElementById('translationInput');
+    const searchModal = document.getElementById('searchModal');
+    const searchText = document.getElementById('searchText');
+    const replaceText = document.getElementById('replaceText');
+    const findBtn = document.getElementById('findBtn');
+    const replaceOneBtn = document.getElementById('replaceOneBtn');
+    const replaceAllBtn = document.getElementById('replaceAllBtn');
+
+    let lastIndex = 0;
+
+    function openSearchModal() {
+      console.log('Opening search modal');
+      lastIndex = 0; 
+      searchModal.style.display = 'block';
+      searchText.focus();
+    }
+
+    const helpModal = document.getElementById('helpModal');
+
+    function openHelpModal() {
+      console.log('Opening help modal');
+      lastIndex = 0; 
+      helpModal.style.display = 'block';
+    }
+
+function closeModal(modal) {
+  console.log(`Closing ${modal.id}`);
+  modal.style.display = 'none';
+  setTimeout(() => {
+    translationInput.focus(); 
+  }, 0);
+}
+
+const closeBtns = document.querySelectorAll('.closeBtn');
+closeBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    const modal = btn.closest('.modal'); 
+    if (modal) {
+      closeModal(modal); 
+    }
+  });
+});
+
+    findBtn.addEventListener('click', function () {
+      const searchValue = searchText.value;
+      if (searchValue) {
+        const content = translationInput.value;
+        lastIndex = content.indexOf(searchValue, lastIndex + 1);
+
+        if (lastIndex !== -1) {
+          console.log(`Text found at index ${lastIndex}`);
+          translationInput.focus();
+          translationInput.setSelectionRange(lastIndex, lastIndex + searchValue.length);
+        } else {
+          alert('Совпадений больше нет');
+          console.log('No more matches found');
+          lastIndex = 0; 
+        }
+      }
+    });
+
+    replaceOneBtn.addEventListener('click', function () {
+      const searchValue = searchText.value;
+      const replaceValue = replaceText.value;
+      if (searchValue) {
+        const content = translationInput.value;
+        lastIndex = content.indexOf(searchValue, lastIndex);
+
+        if (lastIndex !== -1) {
+          translationInput.value = 
+            content.slice(0, lastIndex) + replaceValue + content.slice(lastIndex + searchValue.length);
+          console.log(`Replaced text at index ${lastIndex}`);
+          lastIndex += replaceValue.length;
+          translationInput.focus();
+          translationInput.setSelectionRange(lastIndex, lastIndex);
+        } else {
+          alert('Совпадений больше нет');
+          console.log('No more matches found for replacement');
+          lastIndex = 0;
+        }
+      }
+    });
+
+    replaceAllBtn.addEventListener('click', function () {
+      const searchValue = searchText.value;
+      const replaceValue = replaceText.value;
+      if (searchValue) {
+        const regex = new RegExp(searchValue, 'g');
+        translationInput.value = translationInput.value.replace(regex, replaceValue);
+        console.log('Replaced all occurrences');
+      }
+    });
+
+   document.addEventListener('keydown', function (e) {
+  if (e.ctrlKey && e.shiftKey && (e.code === 'KeyF' || e.code === 'KeyH')) {
+    console.log('Key combination pressed: ', e.code);
+    e.preventDefault();
+    openSearchModal();
+  }
+});
+
+    window.addEventListener('click', function (e) {
+      if (e.target == searchModal) {
+        console.log('Clicked outside the modal');
+        closeSearchModal();
+      }
+    });
+
+const modal = document.getElementById("searchModal");
+const modalHeader = document.getElementById("modalHeader");
+let isDragging = false;
+let offsetX = 0, offsetY = 0;
+
+modalHeader.addEventListener('mousedown', function (e) {
+  isDragging = true;
+  offsetX = e.clientX - modal.offsetLeft;
+  offsetY = e.clientY - modal.offsetTop;
+  document.body.style.cursor = "move"; 
+});
+
+document.addEventListener('mousemove', function (e) {
+  if (isDragging) {
+    modal.style.left = (e.clientX - offsetX) + "px";
+    modal.style.top = (e.clientY - offsetY) + "px";
+  }
+});
+
+document.addEventListener('mouseup', function () {
+  isDragging = false;
+  document.body.style.cursor = "default"; 
+});
+
+document.addEventListener('keydown', function (e) {
+  if (e.ctrlKey && e.shiftKey && (e.code === 'KeyF' || e.code === 'KeyH')) {
+    console.log('Key combination pressed: ', e.code);
+    e.preventDefault();
+    openSearchModal();
+  }
+});
+
+function openSearchModal() {
+  console.log("Opening search modal");
+  modal.style.display = "block";
+}
+
+window.addEventListener('click', function(event) {
+  if (event.target == modal) {
+    modal.style.display = "none";
+  }
+});
+</script>
+
+<script>
+document.querySelectorAll('button[data-template]').forEach(function(button) {
+    button.addEventListener('click', function() {
+        var translationInput = document.getElementById('translationInput');
+
+        if (!translationInput) {
+            console.error("Element with id 'translationInput' not found");
+            return;
+        }
+
+        var textToInsert = button.getAttribute('data-template');
+
+        if (textToInsert === null || textToInsert === undefined) {
+            console.error("No text found in data-template attribute");
+            return;
+        }
+
+        var startPos = translationInput.selectionStart;
+        var endPos = translationInput.selectionEnd;
+
+        var beforeCursor = translationInput.value.substring(0, startPos);
+        var afterCursor = translationInput.value.substring(endPos, translationInput.value.length);
+        translationInput.value = beforeCursor + textToInsert + afterCursor;
+
+        translationInput.selectionStart = translationInput.selectionEnd = startPos + textToInsert.length;
+        translationInput.focus();
+    });
+});
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+        loadText();
+    });
+</script>
+
+<script src="/assets/js/fontawesome.6.6.all.js" defer></script>
+ <script src="/assets/js/smoothScroll.js" defer></script>
+
+<script>
+function syncTextToTable() {
+  const textarea = document.getElementById('translationInput');
+  const tableBody = document.getElementById('outputTableBody');
+  
+  if (!textarea || !tableBody || tableBody.rows.length === 0) return;
+
+  const translationLines = textarea.value.split('\n');
+  const rows = tableBody.rows;
+
+  // Обновляем существующие ряды
+  for (let i = 0; i < rows.length; i++) {
+    const currentText = translationLines[i] || '';
+    const cell = rows[i].cells[2]; 
+    
+    if (cell && !cell.querySelector('textarea')) {
+      if (cell.textContent !== currentText) {
+        cell.textContent = currentText;
+      }
+    }
+  }
+
+  // Добавляем новые ряды для дополнительных строк из текстового окна
+  while (rows.length < translationLines.length) {
+    const i = rows.length;
+    const extraText = translationLines[i] || '';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td></td><td></td><td>${extraText}</td><td><a href="#" onmousedown="gotoLine(${i + 1})"><i class="fa-solid fa-link"></i></a></td>`;
+    tableBody.appendChild(tr);
+  }
+
+  // Удаляем ряды с конца, если строк стало меньше и это пустые ряды (без оригинального текста)
+  while (rows.length > translationLines.length) {
+    const lastRow = rows[rows.length - 1];
+    if (lastRow.cells[0].textContent.trim() === '') {
+        lastRow.remove();
+    } else {
+        break; 
+    }
+  }
+}
+
+function init() {
+  const textarea = document.getElementById('translationInput');
+  if (!textarea) {
+    console.error('Textarea not found!');
+    return;
+  }
+
+  let typingTimer; 
+  const typingInterval = 300; 
+
+  function handleKeyPress(event) {
+    const key = event.key || event.keyCode;
+
+    if (key === 'Enter' || key === 'Backspace' || key === 'Delete' || event.keyCode === 13 || event.keyCode === 8 || event.keyCode === 46 || event.keyCode === 32 || event.keyCode === 229) {
+      clearTimeout(typingTimer); 
+      typingTimer = setTimeout(syncTextToTable, typingInterval); 
+    }
+  }
+
+  textarea.addEventListener('keyup', handleKeyPress);
+
+  textarea.addEventListener('input', function() {
+    clearTimeout(typingTimer); 
+    typingTimer = setTimeout(syncTextToTable, typingInterval); 
+  });
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+
+
+
+<script>
+document.getElementById("formatButton").addEventListener("click", joinSelectedText);
+
+document.addEventListener("keydown", function(event) {
+    // Выпрямление текста (Ctrl + Q)
+    // Добавлена проверка !event.altKey, чтобы избежать конфликтов
+    if (event.ctrlKey && !event.altKey && event.code === 'KeyQ') {
+        event.preventDefault();
+        joinSelectedText(); 
+    }
+    
+    // Загрузка перевода с сервера (Левый Alt + O или Правый AltGr + O)
+    if ((event.altKey || event.getModifierState("AltGraph")) && event.code === 'KeyO') {
+        event.preventDefault();
+        const loadBtn = document.getElementById('loadFromServerButton');
+        if (loadBtn) {
+            loadBtn.click();
+        }
+    }
+
+    // Сохранение JSON на сервер (Левый Alt + S или Правый AltGr + S)
+    if ((event.altKey || event.getModifierState("AltGraph")) && event.code === 'KeyS') {
+        event.preventDefault();
+        downloadJson(); 
+    }
+});
+
+function formatSelectedText() {
+    const textarea = document.getElementById("translationInput");
+    const selectionStart = textarea.selectionStart;
+    const selectionEnd = textarea.selectionEnd;
+
+    if (selectionStart !== selectionEnd) {
+        // Форматирование для выделенного куска текста
+        const selectedText = textarea.value.substring(selectionStart, selectionEnd);
+        
+        const formattedText = selectedText
+            .replace(/[ \t]+$/gm, '') // Сначала убираем все пробелы и табы на концах строк
+            .replace(/([^\r\n])$/gm, '$1 '); // Добавляем ровно один пробел в конец каждой непустой строки
+
+        const newText = textarea.value.substring(0, selectionStart) + formattedText + textarea.value.substring(selectionEnd);
+        textarea.value = newText;
+
+        syncTextToTable();
+        textarea.setSelectionRange(selectionStart, selectionStart + formattedText.length);
+    } else {
+        // Если ничего не выделено, легковесно и быстро форматируем весь текст
+        const currentPosition = textarea.selectionStart;
+        
+        textarea.value = textarea.value
+            .replace(/[ \t]+$/gm, '')
+            .replace(/([^\r\n])$/gm, '$1 ');
+
+        syncTextToTable();
+        textarea.setSelectionRange(currentPosition, currentPosition);
+    }
+}
+
+function joinSelectedText() {
+    const textarea = document.getElementById("translationInput");
+    const selectionStart = textarea.selectionStart;
+    const selectionEnd = textarea.selectionEnd;
+
+    if (selectionStart !== selectionEnd) {
+        const selectedText = textarea.value.substring(selectionStart, selectionEnd);
+        
+        // Превращаем вертикальный список в строку
+        const joinedText = selectedText
+            .replace(/\r?\n|\r/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+
+        const newText = textarea.value.substring(0, selectionStart) + joinedText + textarea.value.substring(selectionEnd);
+        textarea.value = newText;
+
+        syncTextToTable();
+        textarea.setSelectionRange(selectionStart, selectionStart + joinedText.length);
+    }
+}
+</script>
+
+<script src="/assets/js/settings.js"></script>
+<div id="statusNotification" class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1050;">
+    <div id="toastMessage" class="toast align-items-center text-white border-0" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+            <div id="toastText" class="toast-body"></div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    </div>
+</div>
+
+<div id="catDropdown" class="cat-dropdown"></div>
+
+<script>
+let isCatModeActive = true;
+let currentTargetRowIndex = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+    const dropdown = document.getElementById('catDropdown');
+    const catToggleBtn = document.getElementById('catToggleBtn');
+
+    if (catToggleBtn) {
+        if (isCatModeActive) {
+            catToggleBtn.classList.remove('btn-outline-secondary');
+            catToggleBtn.classList.add('btn-primary');
+        }
+
+        catToggleBtn.addEventListener('click', function() {
+            isCatModeActive = !isCatModeActive;
+            if (isCatModeActive) {
+                this.classList.remove('btn-outline-secondary');
+                this.classList.add('btn-primary');
+            } else {
+                this.classList.remove('btn-primary');
+                this.classList.add('btn-outline-secondary');
+                if (dropdown) dropdown.style.display = 'none';
+            }
+        });
+    }
+
+    document.addEventListener('click', async function(event) {
+        let target = event.target;
+        
+        if (dropdown && dropdown.contains(target)) {
+            return;
+        }
+
+        const catTrigger = target.closest ? target.closest('.cat-trigger') : null;
+        
+        if (isCatModeActive && catTrigger) {
+            const pliLangCell = catTrigger.closest('.pli-lang');
+            const sourceTextElement = pliLangCell.querySelector('.source-text');
+            const sourceText = sourceTextElement ? sourceTextElement.textContent.trim() : pliLangCell.textContent.trim();
+            
+            const row = pliLangCell.parentElement;
+            const tbody = row.parentElement;
+            
+            const segmentId = row.cells[1] ? row.cells[1].textContent.trim() : '';
+            currentTargetRowIndex = Array.from(tbody.children).indexOf(row);
+            
+            if (dropdown) {
+                dropdown.innerHTML = `<div class="cat-dropdown-item text-muted">Ищем...<br><small>Текст: ${sourceText.substring(0, 30)}...</small></div>`;
+                
+                const translationCellRect = row.cells[2].getBoundingClientRect();
+                
+                dropdown.style.display = 'block';
+                dropdown.style.position = 'fixed';
+                dropdown.style.width = '45vw';
+                dropdown.style.minWidth = '450px';
+                dropdown.style.left = translationCellRect.left + 'px'; 
+                dropdown.style.top = '15vh'; 
+                dropdown.style.bottom = 'auto'; 
+                dropdown.style.maxHeight = '75vh'; 
+                dropdown.style.overflowY = 'auto';
+                dropdown.style.zIndex = '1060';
+                dropdown.style.boxShadow = '0px 10px 30px rgba(0, 0, 0, 0.2)'; 
+                dropdown.style.borderRadius = '8px';
+            }
+
+            try {
+                const apiHost = location.hostname === 'localhost' || location.hostname === '127.0.0.1' ? 'http://localhost:3001' : '';
+                const currentLang = document.getElementById('languageSelect').value === 'en' ? 'en' : 'ru';
+
+                const response = await fetch(`${apiHost}/api/find-match-stream`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        text: sourceText,
+                        id: segmentId,
+                        lang: currentLang
+                    })
+                });
+
+                if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder('utf-8');
+                let buffer = '';
+                let matchCount = 0;
+                let isFirstResult = true;
+                
+                const aggregatedMatches = {};
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop();
+                    
+                    for (const line of lines) {
+                        if (line.trim()) {
+                            const match = JSON.parse(line);
+                            matchCount++;
+                            
+                            if (dropdown) {
+                                if (isFirstResult) {
+                                    dropdown.innerHTML = `
+                                        <div id="cat-group-o"></div>
+                                        <div id="cat-group-ai"></div>
+                                        <div id="cat-group-sv-edited"></div>
+                                        <div id="cat-group-sv"></div>
+                                        <div id="cat-group-other"></div>
+                                    `;
+                                    isFirstResult = false;
+                                }
+
+                                let shortTranslator = match.translator;
+                                const trMatch = shortTranslator.match(/-([^-]+)\.json$/);
+                                if (trMatch && trMatch[1]) {
+                                    shortTranslator = trMatch[1];
+                                }
+
+                                let cleanContent = match.content;
+                                const contentMatch = cleanContent.match(/^"[^"]+"\s*:\s*"(.*)"\s*,?$/);
+                                if (contentMatch && contentMatch[1]) {
+                                    cleanContent = contentMatch[1];
+                                }
+
+                                let targetContainerId = 'cat-group-other';
+                                if (shortTranslator === 'o' || shortTranslator === 'ru') {
+                                    targetContainerId = 'cat-group-o';
+                                } else if (shortTranslator === 'ai') {
+                                    targetContainerId = 'cat-group-ai';
+                                } else if (shortTranslator === 'sv+edited+o') {
+                                    targetContainerId = 'cat-group-sv-edited';
+                                } else if (shortTranslator === 'sv') {
+                                    targetContainerId = 'cat-group-sv';
+                                }
+
+                                const aggKey = `${targetContainerId}|${shortTranslator}|${cleanContent}`;
+
+                                const generateIdHtml = (idStr) => {
+                                    if (idStr && idStr.includes(':')) {
+                                        const parts = idStr.split(':');
+                                        const linkUrl = `${currentLang === 'en' ? '/multi/' : '/mt/'}?q=${parts[0]}#${parts[1]}`;
+                                        return `<a href="${linkUrl}" target="_blank" style="font-size: 0.75em; color: #0d6efd; text-decoration: none;" class="cat-id-link">${idStr}</a>`;
+                                    }
+                                    return `<span style="font-size: 0.7em; color: #adb5bd;">${idStr}</span>`;
+                                };
+
+                                if (aggregatedMatches[aggKey]) {
+                                    const aggData = aggregatedMatches[aggKey];
+                                    aggData.idCount++;
+                                    
+                                    if (aggData.idCount <= 5) {
+                                        const newIdHtml = generateIdHtml(match.id);
+                                        aggData.idsContainer.insertAdjacentHTML('beforeend', ', ' + newIdHtml);
+                                        
+                                        const newLinks = aggData.idsContainer.querySelectorAll('.cat-id-link');
+                                        const lastLink = newLinks[newLinks.length - 1];
+                                        if (lastLink) {
+                                            lastLink.addEventListener('click', e => e.stopPropagation());
+                                        }
+                                    } else if (aggData.idCount === 6) {
+                                        aggData.idsContainer.insertAdjacentHTML('beforeend', `<span style="font-size: 0.7em; color: #6c757d; margin-left: 5px;">[ещё...]</span>`);
+                                    }
+                                } else {
+                                    const itemDiv = document.createElement('div');
+                                    itemDiv.className = 'cat-dropdown-item';
+                                    
+                                    const initialIdHtml = generateIdHtml(match.id);
+                                    
+                                    let scoreDisplay = '';
+                                    if ('score' in match && match.score !== null) {
+                                        let badgeClass = 'badge';
+                                        let badgeStyle = 'margin-right: 8px; color: #fff;';
+                                        
+                                        if (match.score === 100) {
+                                            badgeClass = 'badge bg-primary';
+                                        } else if (match.score < 50) {
+                                            badgeClass = 'badge bg-secondary';
+                                        } else {
+                                            // Считаем долю primary в смешанном цвете (50% score = 0% primary, 99% score = 98% primary)
+                                            const primaryPercent = (match.score - 50) * 2;
+                                            badgeStyle += `background-color: color-mix(in srgb, var(--bs-primary) ${primaryPercent}%, var(--bs-secondary));`;
+                                        }
+
+                                        scoreDisplay = `<span class="${badgeClass}" style="${badgeStyle}" title="Процент совпадения текста">${match.score}%</span>`;
+                                    } else {
+                                        scoreDisplay = `<span class="badge bg-danger" style="margin-right: 8px;" title="Сервер не прислал процент">?%</span>`;
+                                    }
+
+                                    itemDiv.innerHTML = `
+                                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; border-bottom:1px solid #ddd; padding-bottom:4px;">
+                                            <div class="cat-ids-wrapper" style="flex-grow: 1; padding-right: 10px;">${initialIdHtml}</div>
+                                            <div style="display:flex; align-items:center;">
+                                                ${scoreDisplay}
+                                                <span class="badge bg-secondary" style="font-size: 0.8em; font-weight: normal; letter-spacing: 0.5px; flex-shrink: 0;">
+                                                    ${shortTranslator} | <span style="opacity: 0.8;">${match.folder}</span>
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div class="cat-match-text" style="font-size: 0.95em; white-space: pre-wrap;">${cleanContent}</div>
+                                    `;
+
+                                    const linkElement = itemDiv.querySelector('.cat-id-link');
+                                    if (linkElement) {
+                                        linkElement.addEventListener('click', function(e) {
+                                            e.stopPropagation();
+                                        });
+                                    }
+
+                                    itemDiv.addEventListener('click', function (e) {
+                                        e.stopPropagation();
+
+                                        if (currentTargetRowIndex !== null) {
+                                            const textarea = document.getElementById('translationInput');
+                                            if (textarea) {
+                                                let linesText = textarea.value.split('\n');
+                                                while (linesText.length <= currentTargetRowIndex) linesText.push('');
+
+                                                linesText[currentTargetRowIndex] = cleanContent + ' ';
+                                                textarea.value = linesText.join('\n');
+
+                                                if (typeof syncTextToTable === 'function') syncTextToTable();
+                                                if (typeof saveInputs === 'function') saveInputs();
+                                            }
+                                            dropdown.style.display = 'none';
+                                        }
+                                    });
+
+                                    const targetContainer = document.getElementById(targetContainerId);
+                                    if (targetContainer) {
+                                        targetContainer.appendChild(itemDiv);
+                                    }
+
+                                    aggregatedMatches[aggKey] = {
+                                        element: itemDiv,
+                                        idCount: 1,
+                                        idsContainer: itemDiv.querySelector('.cat-ids-wrapper')
+                                    };
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                if (matchCount === 0 && dropdown) {
+                    dropdown.innerHTML = `<div class="cat-dropdown-item text-muted">Нет совпадений</div>`;
+                }
+
+            } catch (error) {
+                console.error('CAT Tool Ошибка:', error);
+                if (dropdown) {
+                    dropdown.innerHTML = `<div class="cat-dropdown-item text-danger">Ошибка загрузки</div>`;
+                }
+            }
+            return;
+        }
+
+        if (dropdown) {
+            dropdown.style.display = 'none';
+        }
+    });
+});
+</script>
+
+<script>
+function aiStyleRows() {
+    const tbody = document.getElementById('outputTableBody');
+    if (!tbody) return;
+
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+    if (!rows.length) return;
+
+    // Определяем активную строку: active-word на tr/td, или focused textarea, или последний клик
+    let activeRow = null;
+    const activeWordEl = document.querySelector('#outputTableBody .active-word');
+    if (activeWordEl) {
+        activeRow = activeWordEl.closest('tr');
+    }
+    if (!activeRow) {
+        const focused = document.querySelector('#outputTableBody textarea:focus');
+        if (focused) activeRow = focused.closest('tr');
+    }
+    if (!activeRow) {
+        alert('Кликните на строку в таблице, чтобы обозначить позицию.');
+        return;
+    }
+
+    const activeIdx = rows.indexOf(activeRow);
+    const CONTEXT_ABOVE = 5;
+    const CONTEXT_BELOW = 8;
+
+    const refStart = Math.max(0, activeIdx - CONTEXT_ABOVE);
+    const refRows = rows.slice(refStart, activeIdx);
+    const targetRows = rows.slice(activeIdx, Math.min(rows.length, activeIdx + CONTEXT_BELOW + 1));
+
+    function getRowText(row) {
+        const pali = (row.querySelector('.source-text') || row.querySelector('td:first-child'))?.textContent?.trim() || '';
+        const ruCell = row.querySelector('td.rus-lang, td.eng-lang');
+        const ru = ruCell
+            ? (ruCell.querySelector('textarea')?.value?.trim() || ruCell.textContent?.trim())
+            : (row.querySelector('td:nth-child(3)')?.textContent?.trim() || '');
+        return { pali, ru };
+    }
+
+    const refLines = refRows.map(r => {
+        const t = getRowText(r);
+        return t.pali && t.ru ? `${t.pali}\n${t.ru}` : (t.pali || t.ru);
+    }).filter(Boolean).join('\n\n');
+
+    const targetLines = targetRows.map(r => {
+        const t = getRowText(r);
+        return t.pali && t.ru ? `${t.pali}\n${t.ru}` : (t.pali || t.ru);
+    }).filter(Boolean).join('\n\n');
+
+    if (!refLines && !targetLines) {
+        alert('Нет текста для обработки.');
+        return;
+    }
+
+    const prompt = `Pali translator. Format: Pali line then its translation.
+
+REFERENCE (match their style, word order, terms):
+${refLines}
+
+REWORK (from highlighted):
+${targetLines}
+
+Rewrite translations to match reference style/word-order/terms. Keep any abbreviations ("...", "pe", etc.) as-is. Return ONLY the translations (no Pali), one per line, same line breaks as given.`;
+
+    const encoded = encodeURIComponent(prompt);
+    window.open(`https://chatgpt.com/?q=${encoded}`, '_blank');
+}
+</script>
+
+</body>
+</html>

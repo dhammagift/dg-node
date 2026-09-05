@@ -395,6 +395,26 @@ window.DgSearchRender = (function () {
         ];
     }
 
+    // Owner: the "N per page" choice reset to 10 on every reload. Remembered per browser
+    // (localStorage), shared by both report tables — one preference, not one per table.
+    // Only values from the menu are accepted back, so a stale/foreign value can't produce a
+    // page size the selector has no option for.
+    var PAGE_LENGTH_KEY = 'dgSearchPageLength';
+    var PAGE_LENGTH_MENU = [10, 30, 50, 100, 1000];
+    function savedPageLength() {
+        var v = null;
+        try { v = parseInt(localStorage.getItem(PAGE_LENGTH_KEY), 10); } catch (_) {}
+        return PAGE_LENGTH_MENU.indexOf(v) !== -1 ? v : PAGE_LENGTH_MENU[0];
+    }
+    // length.dt fires on every user change of the selector (not on init), so this only ever
+    // records deliberate choices. Namespaced so re-binding on a table rebuild doesn't stack.
+    function rememberPageLength($table) {
+        $table.off('length.dt.dgpl').on('length.dt.dgpl', function (e, settings, len) {
+            if (PAGE_LENGTH_MENU.indexOf(len) === -1) return;
+            try { localStorage.setItem(PAGE_LENGTH_KEY, String(len)); } catch (_) {}
+        });
+    }
+
     function commonOptions() {
         var desktopDom = '<"row"<"col-sm-12 col-md-4"l><"col-sm-12 col-md-5"p><"col-sm-12 col-md-3"f>>rt<"row"<"col-sm-12 col-md-4"i><"col-sm-12 col-md-8"p>><""Q><"footerlike"B>';
         var mobileDom = '<"row"<"col-sm-6"l><"col-sm-6"f>><"row"<"col-sm-12"p>>rt<"row"<"col-sm-12"i><"col-sm-12"p>><""Q><"footerlike"B>';
@@ -412,6 +432,12 @@ window.DgSearchRender = (function () {
                 infoEmpty: t('datatables.infoEmpty', 'Showing 0 to 0 of 0 entries'),
                 infoFiltered: t('datatables.infoFiltered', '(filtered from _MAX_ total entries)'),
                 zeroRecords: t('datatables.zeroRecords', 'No matching records found'),
+                // SearchBuilder's own strings (panel title, "Add Condition", the condition
+                // names) — DataTables ships them English-only; the RU table showed "Custom Search
+                // Builder" / "Does Not Contain" next to Russian column names. Whole nested block
+                // straight from lang_{ru,en}.json (datatables.searchBuilder); undefined when the
+                // config has none, which leaves DataTables' built-in English in place.
+                searchBuilder: t('datatables.searchBuilder', undefined),
                 // Компактные символы вместо слов — не переводятся (одинаковые для всех языков),
                 // экономят место в тулбаре пагинации.
                 paginate: {
@@ -429,8 +455,8 @@ window.DgSearchRender = (function () {
             paging: true,
             colReorder: true,
             orderMulti: true,
-            pageLength: 10,
-            lengthMenu: [10, 30, 50, 100, 1000],
+            pageLength: savedPageLength(),
+            lengthMenu: PAGE_LENGTH_MENU,
             // Owner: only show pagination controls (first/prev/next/last) when there's actually
             // more than one page — a single-page result set (the common case, e.g. 4 texts) has
             // nothing for them to do, just visual noise. The "Showing X to Y of Z" info text
@@ -439,10 +465,14 @@ window.DgSearchRender = (function () {
             // there's no pagination to affect, so it hides alongside .dt-paging.
             drawCallback: function () {
                 // DataTables 2.x class naming (.dt-paging, not the old 1.x .dataTables_paginate).
-                var pages = this.api().page.info().pages;
+                var info = this.api().page.info();
+                var pages = info.pages;
                 var container = $(this.api().table().container());
                 container.find('.dt-paging').toggle(pages > 1);
-                container.find('.dt-length').toggle(pages > 1);
+                // The length selector also stays when a REMEMBERED larger page size is what
+                // collapsed the results onto one page — otherwise the only control that could
+                // bring the size back down would be hidden precisely because it was raised.
+                container.find('.dt-length').toggle(pages > 1 || info.length > PAGE_LENGTH_MENU[0]);
             },
             // Responsive's own dtr-title caches the column heading at init time and sometimes
             // hands back "undefined" instead of the real text — DataTables' own column.title is
@@ -500,6 +530,24 @@ window.DgSearchRender = (function () {
         else if (localStorage.defaultReader === 'mem') baseUrl = window.location.origin + "/memorize/";
         else if (localStorage.defaultReader === 'fr') baseUrl = window.location.origin + "/frev/";
         return baseUrl;
+    }
+
+    // "Pi En" pair of the Links column, both on 4nt. 4nt keeps the column set (which Pāḷi
+    // editions / which translations) as a per-user preference inside the tool, not in the URL,
+    // so both labels open the same page — Pi and En are kept as two labels because that is
+    // how the column has always read; the tooltips say what each is for. A range file
+    // (an1.21-30, dhp1-20) is anchored at its first text: 4nt's TOC anchors are per sutta.
+    function build4ntLinks(suttaId) {
+        if (typeof window.get4ntUrl !== 'function' || !suttaId) return '';
+        var anchorId = /^[a-z]+\d+(?:\.\d+)?-\d+/.test(suttaId) ? suttaId.replace(/-.*$/, '') : suttaId;
+        var localUrl;
+        try { localUrl = window.get4ntUrl(anchorId); } catch (_) { localUrl = null; }
+        if (!localUrl) return '';
+        var onlineUrl = localUrl.replace(/^\/4nt/, 'https://s.dhamma.gift');
+        function link(label, title) {
+            return '<a class="mirror-link" target="_blank" rel="noopener" href="' + onlineUrl + '" data-local="' + localUrl + '" title="' + title + '">' + label + '</a>';
+        }
+        return link('Pi', 'Pāḷi editions (BJT / CST / Thai) at 4nt') + ' ' + link('En', 'English translations at 4nt');
     }
 
     // Ссылка на сутту/сегмент — ведёт на чистый /{suttaId} route этого репозитория (ридер уже
@@ -678,8 +726,21 @@ window.DgSearchRender = (function () {
     // action, and .destroy() (unlike silently re-calling .DataTable() on a live table) is the
     // officially documented safe teardown DataTables itself expects before reinitialising.
     function resetTablesForLanguageChange() {
+        // The Filter+ button (search/index.html, one static node) lives INSIDE the table's
+        // .dt-search wrapper once attachFilterPlusButton() moved it there — destroy() removes
+        // that wrapper along with everything in it, so the button vanished from the DOM on
+        // every language switch and the rebuilt table had nothing to re-attach (owner: icon
+        // "lost when switching language"). Park it outside first; the rebuild moves it back.
+        parkFilterPlusButton();
         if (suttaTableApi) { suttaTableApi.destroy(); suttaTableApi = null; }
         if (wordTableApi) { wordTableApi.destroy(); wordTableApi = null; }
+    }
+
+    function parkFilterPlusButton() {
+        var btn = document.getElementById('btn-filter-builder');
+        if (!btn) return;
+        btn.classList.add('d-none');
+        document.body.appendChild(btn);
     }
 
     function buildDataTable(container, dataArray, highlightWord, requestedLangs, langsFromUrl) {
@@ -719,6 +780,10 @@ window.DgSearchRender = (function () {
                     }
                 });
             }
+            // One shared button for two tables: after a visit to the Words report it sits in
+            // THAT table's (now hidden) .dt-search — pull it into this one on every render,
+            // not only on first init (owner: icon "sometimes doesn't appear").
+            attachFilterPlusButton($(container));
             return suttaTableApi;
         }
 
@@ -730,7 +795,14 @@ window.DgSearchRender = (function () {
             searchBuilder: {
                 preDefined: {
                     criteria: [
-                        { condition: '!contains', data: 'Quote', value: ['ExcludeMe'] }
+                        // SearchBuilder matches a preDefined criterion to a column by its
+                        // TITLE text (or by origData, the column's `data` key). This was the
+                        // hardcoded English 'Quote' — matched only while the UI was English;
+                        // on the Russian UI the column is "Цитата", nothing matched, and the
+                        // builder opened with an empty Data/Condition/Value row instead of the
+                        // prefilled "Quote doesn't contain ExcludeMe" (owner: works in EN, not
+                        // in RU). Localized title + origData covers both, whatever the language.
+                        { condition: '!contains', data: headerTitles[8], origData: 'segments', value: ['ExcludeMe'] }
                     ],
                     logic: 'AND'
                 }
@@ -877,6 +949,16 @@ window.DgSearchRender = (function () {
                         var ruLinkHtml = window.siteLanguage === 'ru'
                             ? '<a class=\'ruLink\' href=\'javascript:void(0)\' data-slug=\'' + data + '\' onclick="if(typeof openRu === \'function\') openRu(\'' + data + '\'); return false;">Ru</a>'
                             : '';
+                        // Owner: Pi/En go to 4nt (BJT/CST/Thai editions + translations side by
+                        // side, every text present) instead of DPR (its location table has
+                        // mismatched numbers and missing ranges) and thebuddhaswords. Same
+                        // pattern as the reader's 4nt link (megareader.js): get4ntUrl()
+                        // (settings.js) gives the local /4nt/... path, mirror-link.js probes it
+                        // on click and falls back to the project's s.dhamma.gift copy when
+                        // /4nt isn't mounted here (packaged app, dev box without the tool).
+                        var links4nt = build4ntLinks(data);
+                        if (links4nt) return links4nt + ' ' + ruLinkHtml;
+                        // No 4nt mapping for this book (ja/mil/vb*, ...) — the old DPR/TBW pair.
                         return '<a class=\'dprLink\' href=\'javascript:void(0)\' data-slug=\'' + data + '\' onclick="if(typeof openDpr === \'function\') openDpr(\'' + data + '\'); return false;">Pi</a> ' +
                             '<a class=\'bwLink\' href=\'javascript:void(0)\' data-slug=\'' + data + '\' onclick="if(typeof openBw === \'function\') openBw(\'' + data + '\'); return false;">En</a> ' +
                             ruLinkHtml;
@@ -1065,6 +1147,7 @@ window.DgSearchRender = (function () {
         bindExpandCollapseButtons($table);
         bindReadMarks($table);
         attachFilterPlusButton($table);
+        rememberPageLength($table);
         return suttaTableApi;
     }
 
@@ -1085,8 +1168,8 @@ window.DgSearchRender = (function () {
         // control, not a stray button at the edge of the toolbar.
         if (filterWrap.firstChild !== btn) {
             filterWrap.insertBefore(btn, filterWrap.firstChild);
-            btn.classList.remove('d-none');
         }
+        btn.classList.remove('d-none');
     }
 
     /* Колонка отметок: кнопка на панели показывает/прячет её, чекбоксы пишут состояние по ключу
@@ -1139,6 +1222,7 @@ window.DgSearchRender = (function () {
             applyHeaderTitles(wordTableApi, wordTableHeaderTitles());
             wordTableApi.draw(false);
             bindExpandCollapseButtons($(container));
+            attachFilterPlusButton($(container)); // same reason as in buildDataTable's fast path
             return wordTableApi;
         }
 
@@ -1210,6 +1294,7 @@ window.DgSearchRender = (function () {
         // (search/index.html) already looks for THIS table's .dtsb-searchBuilder panel, which
         // only exists now that searchBuilder: {} above is set.
         attachFilterPlusButton($table);
+        rememberPageLength($table);
         return wordTableApi;
     }
 

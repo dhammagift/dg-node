@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Список готовых Сутт</title>
+    <style>
+	.wrapper {
+    display: block; /* Контейнер будет занимать всю ширину */
+    width: 95%;
+}
+
+ul {
+    list-style-type: none; /* Убираем стандартную маркерную точку */
+    white-space: normal; /* Перенос текста внутри ul */
+    word-wrap: break-word; /* Перенос длинных слов */
+    padding: 0;
+    margin: 0;
+}
+
+ul li {
+    display: inline; /* Каждый элемент списка будет на новой строке */
+    width: 100%; /* Каждая строка занимает всю ширину контейнера */
+    margin-right: 10px; /* Добавляет отступ между элементами */
+}
+
+    </style>
+</head>
+<body>
+    <!-- Заголовок и список для переменных anranges -->
+        <h1>Списки Готовых Сутт</h1>
+        <p>Сутты из списков ниже уже есть в Пали-Рус формате
+ <a class="text-white text-decoration-none" href="/read/php/latest-rus.php">Обновить <img style="height: 15px;" src="/assets/svg/arrow-rotate-right.svg"></a> 
+ 
+ <br> 
+ <a class="text-white text-decoration-none" href="/assets/linebyline.html">lbl</a> 
+</p>
+  
+  <div id="outputFromLatestPhp"></div>
+ <div class="wrapper">
+    <!--  <h2>an</h2>
+    <ul id="anRanges"></ul>
+	Заголовок и список для переменных snranges -->
+    <h2>Бхиккху Виная Вибханга</h2>
+    <ul id="vinayaRanges"></ul>
+
+    <h2>sn Полностью</h2>
+    <ul id="snRanges"></ul>
+	
+    <h2>an Полностью</h2>
+    <!-- Заголовок и список для переменных mnranges -->
+    <h2>mn Полностью</h2>
+    <ul id="mnRanges"></ul>
+
+    <!-- Заголовок и список для переменных dnranges -->
+    <h2>dn Полностью</h2>
+    <ul id="dnRanges"></ul>
+</div>
+    <script>
+	
+fetch('/read/php/latest-rus.php')
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Ошибка при выполнении PHP-скрипта');
+        }
+        return response.text(); // Получаем текстовый ответ
+    })
+    .then(data => {
+        // Вставляем текст в элемент с id="output"
+        document.getElementById('outputFromLatestPhp').innerHTML = data;
+    })
+    .catch(error => {
+        console.error('Ошибка:', error);
+    });
+
+		
+        // Загрузка файла и обработка его содержимого
+        fetch('/read/js/ranges.js')
+            .then(response => response.text())
+            .then(data => {
+                // Извлечение переменных из текста файла
+                const regex = /let (\w+) = \[([\s\S]+?)\];/g;
+                let match;
+                let variables = {};
+
+                while ((match = regex.exec(data)) !== null) {
+                    let varName = match[1];
+                    let varValues = match[2].replace(/\s+/g, '').split(',');
+                    variables[varName] = varValues;
+                }
+
+       const vinayaList = document.getElementById('vinayaRanges');
+
+                variables['vinayaranges'].forEach(range => {
+                    const listItem = document.createElement('li');
+                    listItem.textContent = range;
+                    snList.appendChild(listItem);
+                });
+
+
+
+                // Вывод переменных anranges и snranges как списки
+             //   const anList = document.getElementById('anRanges');
+           
+         /*     const snList = document.getElementById('snRanges');
+       variables['anranges'].forEach(range => {
+                    const listItem = document.createElement('li');
+                    listItem.textContent = range;
+                    anList.appendChild(listItem);
+                }); 
+
+                variables['snranges'].forEach(range => {
+                    const listItem = document.createElement('li');
+                    listItem.textContent = range;
+                    snList.appendChild(listItem);
+                });
+
+                // Вывод переменных mnranges и dnranges как списки
+                const mnList = document.getElementById('mnRanges');
+                const dnList = document.getElementById('dnRanges');
+
+                variables['mnranges'].forEach(range => {
+                    const listItem = document.createElement('li');
+                    listItem.textContent = range;
+                    mnList.appendChild(listItem);
+                });
+
+                variables['dnranges'].forEach(range => {
+                    const listItem = document.createElement('li');
+                    listItem.textContent = range;
+                    dnList.appendChild(listItem);
+                }); */
+                
+            })
+            .catch(error => {
+                console.error('Error fetching file:', error);
+            });
+    </script>
+</body>
+</html>

@@ -165,7 +165,23 @@
     "info": "Showing _START_ to _END_ of _TOTAL_ entries",
     "infoEmpty": "Showing 0 to 0 of 0 entries",
     "infoFiltered": "(filtered from _MAX_ total entries)",
-    "zeroRecords": "No matching records found"
+    "zeroRecords": "No matching records found",
+    "searchBuilder": {
+      "title": {
+        "0": "Advanced filter",
+        "_": "Advanced filter (%d)"
+      },
+      "add": "Add Condition",
+      "condition": "Condition",
+      "data": "Column",
+      "value": "Value",
+      "clearAll": "Clear All",
+      "deleteTitle": "Delete filtering rule",
+      "leftTitle": "Outdent criteria",
+      "rightTitle": "Indent criteria",
+      "logicAnd": "And",
+      "logicOr": "Or"
+    }
   },
   "results": {
     "textsAndWord": "texts and",

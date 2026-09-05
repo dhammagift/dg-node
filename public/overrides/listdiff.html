@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Text Links Diff</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="/assets/css/bootstrap.5.3.1.min.css" rel="stylesheet" />
+  <link href="/assets/css/extrastyles.css" rel="stylesheet" />
+  <script src="/assets/js/jquery-3.7.0.min.js"></script>
+  <link href="/assets/css/paliLookup.css" rel="stylesheet" />
+
+  <script src="/assets/js/bootstrap.bundle.5.3.1.min.js"></script>
+  <link rel="icon" type="image/png" href="/assets/img/favico-noglass.png" />
+  
+  <script src="/assets/js/nav-component.js" defer></script>
+
+  <style>
+    /* Mobile Styles */
+    @media only screen and (max-width: 768px) {
+      .container {
+        padding: 10px;
+      }
+      .form-label {
+        display: block;
+        margin-bottom: 5px;
+      }
+      .form-control {
+        width: 100%;
+        margin-bottom: 10px;
+      }
+      .form-buttons {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container mt-3">
+      <div class="align-items-center toggle-switch input-group-append">
+          <div id="" class="input-group align-items-center">
+              
+              <top-nav-icons type="read" show-dict></top-nav-icons>
+              
+              <div class="ms-4 me- d-inline-flex align-items-center lang-switcher" id="lang-switcher">
+              </div>
+          </div>
+      </div>
+  </div>
+
+  <div class="container mt-5">
+    <h2>Show Difference Between Two Lists</h2><br>
+    <p></p>
+
+    <form id="textLinksForm">
+      <div class="row">
+        <div class="mb-3 col-12 col-lg-6">
+          <div class="form-label">
+            <label for="string1" class="form-label d-inline">List of Links or Words 1:</label>
+            <a href="#result1" class="ms-1" style="color: royalblue; font-weight: bold; text-decoration: underline;">(Blue)</a>
+          </div>
+          <textarea class="form-control" id="string1" name="string1" rows="6" placeholder="e.g. sn56.11 dn22 sn12.2" required></textarea>
+        </div>
+        <div class="mb-3 col-12 col-lg-6">
+          <div class="form-label">
+            <label for="string2" class="form-label d-inline">List of Links or Words 2:</label>
+            <a href="#result2" class="ms-1" style="color: firebrick; font-weight: bold; text-decoration: underline;">(Red)</a>
+          </div>
+          <textarea class="form-control" id="string2" name="string2" rows="6" placeholder="e.g. sn56.11 dn22" required></textarea>
+        </div>
+      </div>
+
+      <div class="form-buttons">
+        <button type="submit" class="btn btn-primary">Submit</button>
+        <button type="button" class="btn btn-secondary" id="clearFormBtn">Clear Form</button>
+      </div>
+    </form>
+
+    <div id="result" class="mt-4"></div>
+  </div>
+  
+  <script>
+    // Handle form submission
+    document.getElementById('textLinksForm').addEventListener('submit', function(event) {
+      event.preventDefault(); // Prevent form submission
+      processForm();
+    });
+
+    // Handle clear form button click
+    document.getElementById('clearFormBtn').addEventListener('click', function() {
+      clearForm();
+    });
+
+    // --- LOCAL STORAGE LOGIC START ---
+
+    // 1. Restore data on page load
+    window.addEventListener('load', function() {
+        const savedString1 = localStorage.getItem("diff_string1");
+        const savedString2 = localStorage.getItem("diff_string2");
+
+        if (savedString1) {
+            document.getElementById('string1').value = savedString1;
+        }
+        if (savedString2) {
+            document.getElementById('string2').value = savedString2;
+        }
+    });
+
+    // 2. Save data as you type (Input Event)
+    document.getElementById('string1').addEventListener('input', function() {
+        localStorage.setItem("diff_string1", this.value);
+    });
+
+    document.getElementById('string2').addEventListener('input', function() {
+        localStorage.setItem("diff_string2", this.value);
+    });
+
+    // --- LOCAL STORAGE LOGIC END ---
+
+  function processForm() {
+    // Get the input values
+    var string1Raw = document.getElementById('string1').value;
+    var string2Raw = document.getElementById('string2').value;
+
+    // Save to localStorage (redundant but safe)
+    localStorage.setItem("diff_string1", string1Raw);
+    localStorage.setItem("diff_string2", string2Raw);
+
+    var string1 = string1Raw.trim();
+    var string2 = string2Raw.trim();
+
+    // Remove prefixes before colon if present
+    if (string1.includes(":")) {
+      string1 = string1.substring(string1.indexOf(":") + 1).trim();
+    }
+    if (string2.includes(":")) {
+      string2 = string2.substring(string2.indexOf(":") + 1).trim();
+    }
+
+    // Remove trailing numbers like " (23)"
+    string1 = string1.replace(/ \(\d+\)$/, '');
+    string2 = string2.replace(/ \(\d+\)$/, '');
+
+    // Explode into arrays
+    var array1 = string1.split(/\s+/);
+    var array2 = string2.split(/\s+/);
+
+    // Differences
+    var onlyIn1 = array1.filter(value => !array2.includes(value));
+    var onlyIn2 = array2.filter(value => !array1.includes(value));
+
+    // Generate result HTML
+  let result = '<div class="row">';
+
+if (onlyIn1.length > 0) {
+  result += `
+  <div class="col-12 col-lg-6 mb-3" id="result1">
+    <span style="font-weight: bold; color: royalblue;">Only in List 1:</span><br>
+  <div style="color: royalblue;">
+  ${onlyIn1.map(word => `<div><span class="pli-lang inputscript-ISOPali" lang="pi" style="cursor: pointer;">${word}</span></div>`).join("")}
+</div>
+  </div>
+`;
+
+}
+
+if (onlyIn2.length > 0) {
+ result += `
+  <div class="col-12 col-lg-6 mb-3" id="result2">
+    <span style="font-weight: bold; color: firebrick;">Only in List 2:</span><br>
+  <div  style="color: firebrick;">
+  ${onlyIn2.map(word => `<div><span class="pli-lang inputscript-ISOPali" lang="pi" style="cursor: pointer;">${word}</span></div>`).join("")}
+</div>
+
+  </div>
+`;
+
+}
+
+result += '</div>';
+
+if (onlyIn1.length === 0 && onlyIn2.length === 0) {
+  result = `<div><span style="color: green; font-weight: bold;">No differences found.</span></div>`;
+}
+
+
+    if (onlyIn1.length === 0 && onlyIn2.length === 0) {
+      result = `<div><span style="color: green; font-weight: bold;">No differences found.</span></div>`;
+    }
+
+    document.getElementById('result').innerHTML = result;
+
+    document.getElementById('result').scrollIntoView({ behavior: 'smooth' });
+
+  }
+
+    function clearForm() {
+      // Add confirmation like in memo
+      if (confirm('This will erase the text from both lists. Sure?')) {
+          document.getElementById('textLinksForm').reset();
+          document.getElementById('result').innerHTML = "";
+          
+          // Clear localStorage
+          localStorage.removeItem("diff_string1");
+          localStorage.removeItem("diff_string2");
+      }
+    }
+  </script>
+  
+  <script src="/assets/js/themeswitch.js" defer></script>
+  <script src="/assets/js/settings.js"></script>
+
+</body>
+</html>

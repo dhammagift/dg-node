@@ -131,7 +131,10 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
      (see home.js init()). Preloading here starts the network request immediately, in parallel
      with everything else, so it's already in the browser's cache by the time home.js's own
      fetch() call happens — the tiles no longer visibly pop in after a round trip. -->
-<link rel="preload" href="/nodejs/res/menu-links.json" as="fetch">
+<link rel="preload" href="/nodejs/res/menu-links.json" as="fetch" crossorigin="anonymous">
+<!-- crossorigin="anonymous" matches fetch()'s defaults (mode cors, credentials same-origin);
+     without it a preload as="fetch" is a no-cors/include request, Chrome refuses to reuse it
+     ("request credentials mode does not match") and the JSON is downloaded twice. -->
 <meta name="theme-color" content="#243448">
 <meta property="og:type" content="article" />
 <meta property="og:title" content="Search Results - Dhamma.gift" />
@@ -1383,7 +1386,12 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
       btn.classList.toggle('active', open);
       if (!open) return;
 
-      var panel = pane.querySelector('.dtsb-searchBuilder');
+      // Two report tables (texts / words) each own a SearchBuilder panel; the first one in
+      // DOM order may belong to the hidden table, and scrolling/focusing a display:none node
+      // is a silent no-op — pick the one that is actually rendered.
+      var panel = Array.prototype.find.call(pane.querySelectorAll('.dtsb-searchBuilder'), function (el) {
+        return el.offsetParent !== null;
+      }) || pane.querySelector('.dtsb-searchBuilder');
       if (!panel) return;
       panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
       // scrollIntoView is async (smooth) — focusing right after the scroll settles avoids the

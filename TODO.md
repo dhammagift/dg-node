@@ -1,5 +1,118 @@
 # текущие задачи
 
+## НОВОЕ — #api-docs #поиск #хоткеи #independence: пачка правок по обратной связи владельца (2026-09-05)
+
+done 0. `https://dhamma.gift/api-docs/` — прод крутит `dg-fastify.js`, а там `/api-docs` был
+   заглушкой-редиректом на сырой `/openapi.json` (swagger-ui-express — Express-only). Теперь
+   Fastify отдаёт тот же Swagger UI, что и `dg-light.js`: страница-инициализатор написана руками
+   (`SWAGGER_UI_HTML`, `urls` English/Русский + StandaloneLayout = тот же переключатель спек,
+   что `explorer: true`), а статика берётся из `swagger-ui-dist` (уже стояла как зависимость
+   swagger-ui-express, теперь прописана и напрямую в `package.json`) под тем же префиксом
+   `/api-docs/`. `/api-docs` без слэша → 302 на `/api-docs/` (относительные `./swagger-ui.css`).
+   Проверено на голом Fastify-инстансе с этим же блоком кода: 302 / 200 html / 200 css+js / 404
+   на мусор.
+
+done 1. Иконка "Filter+" (SearchBuilder) в выдаче:
+   - "теряется при переключении языка" — кнопка одна на две таблицы и живёт ВНУТРИ `.dt-search`
+     DataTables; `destroy()` при смене языка (`resetTablesForLanguageChange`) сносил обёртку
+     вместе с ней, новой таблице было нечего подцеплять. Теперь перед destroy кнопка паркуется в
+     `body` (`parkFilterPlusButton`), после rebuild `attachFilterPlusButton` возвращает её.
+   - "то не загружается" — после захода в отчёт "Слова" кнопка оставалась в `.dt-search`
+     СКРЫТОЙ таблицы слов; `attachFilterPlusButton` теперь зовётся и на быстром пути
+     (`.clear().rows.add()`) обеих таблиц, а не только при первой инициализации.
+   - "в англ предзаполняет Цитата/исключить/ExcludeMe, в русской нет" — `preDefined.criteria[].data`
+     SearchBuilder сверяет с ЗАГОЛОВКОМ колонки; стоял хардкод `'Quote'`, по-русски колонка
+     "Цитата" → критерий не находил колонку, панель открывалась пустой. Теперь локализованный
+     заголовок (`headerTitles[8]`) + `origData: 'segments'` (второй способ сопоставления в самом
+     SearchBuilder — проверено по исходнику datatables 2.3.8).
+   - заодно: строки самого SearchBuilder ("Custom Search Builder", "Does Not Contain", ...) были
+     английскими в русском UI — добавлен блок `datatables.searchBuilder` в
+     `configs/search/lang_{ru,en}.json`, отдаётся в `language.searchBuilder`. Кнопка при открытии
+     теперь скроллит/фокусит ВИДИМУЮ панель (`offsetParent !== null`), а не первую в DOM (могла
+     принадлежать скрытой таблице).
+
+done 2. Alt+1 (settings.js):
+   - баг "первое нажатие вызывает сингл-мод в результатах поиска": в SPA `megareader.js` грузится
+     на каждой странице, так что `window.MODE_TABLE`/`READER_MODE` есть и вне ридера — старая
+     проверка "нет таблицы режимов = не ридер" была верна только на странице, куда ридер ни разу
+     не загружался. Теперь решает `dgReaderIsActive()`: по классам `body.dg-state-*` (SPA), а без
+     них (standalone-шаблон) — по наличию режима, как раньше.
+   - "везде при смене языка по хоткеям показывать наш бабл" — `window.dgAnnounceLanguage(lang)`
+     → `showBubbleNotification('Язык: Русский' | 'Language: English')` на обеих ветках: тоггл
+     EN/RU на главной/в выдаче и переключение языка чтения в ридере (Alt+1 в уже активном
+     сингл-моде). Alt+1 на главной и в выдаче — тот же тоггл языка, что в бургере, универсально.
+
+done 4. Колонка "Ссылки" в выдаче: Pi и En ведут на 4nt (`build4ntLinks` в search-render.js —
+   `get4ntUrl()` из settings.js даёт локальный `/4nt/...`, ссылка — `a.mirror-link` с
+   `data-local`, mirror-link.js на клике HEAD-пробует локальный 4nt и при отсутствии уходит на
+   `https://s.dhamma.gift/...` — тот же паттерн, что у 4nt-ссылки в ридере). Ru — как было
+   (openRu/linksru). Диапазоны (`an1.21-30`, `dhp1-20`) якорятся на первый текст (`#an1.21`) —
+   якоря в TOC-страницах 4nt по-суттные. Книги без маппинга в `get4ntUrl` (ja/mil/vb* и т.п.) —
+   прежняя пара DPR/TBW как фолбэк, linksdpr/openBw для них по-прежнему грузятся лениво.
+
+done 5. Ридер, `?s=слово` без `:сегмента` (первый результат из поиска): smoothScroll.js делал
+   `scrollIntoView({block:'start'})` по `<b class="match finder">` — строка со СЛОВОМ вставала
+   впритык к верху вьюпорта, начало сегмента уезжало выше, остаток закрывал fixed-тулбар.
+   Теперь скроллится сегмент-контейнер (`closest('[class*="-lang"]')`) через тот же
+   `executeScroll()` с `eyeLevel`-отступом, что и остальные пути (hash/прогресс).
+
+done 6. Кол-во записей на странице в выдаче запоминается (`localStorage.dgSearchPageLength`,
+   событие `length.dt`, общая настройка для обеих таблиц; принимаются только значения из меню
+   10/30/50/100/1000). Селектор "N на странице" не прячется, если именно запомненный большой
+   размер уложил всё в одну страницу — иначе уменьшить обратно было бы нечем.
+
+done 7. Консольные 404 со скрина (telegram-cta.png, chrome-cta.png, ..., sutta_words.txt) и
+   independence от легаси-репо: grep по всем `/assets/...` в коде dg-node (search/, reader/,
+   public/, configs/, оба сервера — 257 уникальных путей) → всё, чего не было в
+   `public/overrides/`, но есть в `dhammagift/dg`, скопировано в `public/overrides/` (≈39 МБ):
+   `js/datatables/{datatables.min.js,.min.css}` (в легаси `assets/js/datatables` — symlink на
+   `datatables2.3.8/`), `js/standalone-dpd/*` (словарь DPD, 24 МБ, без него не работал
+   пали-словарь), `img/buttons/*` (CTA-кнопки главной), `texts/sutta_words.txt` (автокомплит),
+   `js/grammar/*` + `grammar/*.html`, `js/dark-mode-switch/`, `js/lunar.js`,
+   `js/fontawesome.6.6.all.js` (нужен легаси-страницам грамматики/lbl), `css/pages.css`,
+   `css/lbl.css`, `common/{multiTool,multiToolRu,abbr}.html`, `texts/abbr.html`,
+   `lbl.html`/`lbl-en.html`/`js/lbl.js`, `listdiff.html`, `linebyline.html`,
+   `readylinebyline.html`, `diff/`, `br/`, `bru/`, `pomodoro-timer/`, `repeat-timer/`,
+   `materials/prat.html`, `svg/{dice,dpd-logo-dark,volume-high}.svg`, `sounds/silence.mp3`,
+   иконки/фавиконки из `img/`. Второй проход по скопированным HTML — их собственные `/assets/...`
+   ссылки тоже закрыты. `<link rel=preload menu-links.json>` получил `crossorigin="anonymous"`
+   (предупреждение Chrome "credentials mode does not match" — preload не переиспользовался).
+
+   --- нюанс (кэш): файлы в `public/overrides` с .js/.css получают `immutable, 1 год`, а
+   `datatables.min.js` и `standalone-dpd/*` грузятся лениво через `<script>` из JS — без `?v=`
+   (sendVersionedHtml штампует версию только в тегах HTML-страниц). Чтобы апгрейд DataTables по
+   тому же URL не застрял у вернувшихся посетителей на год, в обоих серверах
+   (`UNVERSIONED_VENDOR_DIRS`) эти две папки исключены из immutable-тира → 24 ч, как было у
+   легаси-копий под `siteroot/assets`.
+
+   --- нюанс (что НЕ скопировано, осознанно): тяжёлые PDF (`materials/*.pdf`,
+   `audio/documents/*.pdf`), аудио Патимоккхи (`audio/bu-pm`, `bi-pm`), корпус текстов
+   (`/assets/texts/{ru,en,ai,devanagari,...}` — это ДАННЫЕ, а не ассеты, им место в offline-data)
+   и мёртвый PHP (`404.php`, `horizontalMenu*.php`, `bipm.php`, `thns.php`). Для них остаётся
+   запасной маунт `siteroot/assets` на проде. Не найдено ни в легаси, ни здесь (битые ссылки
+   внутри самих легаси-страниц, не наши): `grammar/numerals*.html`, `materials/cases.html`,
+   `materials/conjugations.html`, `common/mutliTool.html` (опечатка), `brru/blurbs-ru.json`.
+
+   --- нюанс (4nt): папки `4nt` в легаси-репо `dhammagift/dg` НЕТ вообще — это отдельный репо
+   `dhammagift/4nt` (ветка `mod`, собирается GitHub Action'ом из upstream `frankksutta/s.4nt`);
+   на проде лежит рядом в `/var/www/html/4nt`. Локально `siteroot/4nt` — битый symlink, поэтому
+   mirror-link фолбэк на `s.dhamma.gift` — не подстраховка, а рабочая ветка для dev-машины и
+   приложения. Набор колонок (какие издания/переводы) 4nt хранит в своих настройках
+   (localStorage `debabel.viewer.v1`), в URL не принимает — поэтому Pi и En открывают одну и ту
+   же страницу; подписи оставлены обе (так колонка всегда читалась), различие — в title.
+
+   --- проверено: Playwright + локальный harness (статика dg-node как в dg-light.js, `/search` и
+   `/search/enrich` — фикстура из 4 строк, без корпуса): кнопка Filter+ в `.dt-search` на холодной
+   загрузке, после смены языка (обоих направлений), после переключения Тексты↔Слова и обратно;
+   критерий предзаполнен и в EN ("Quote / Does Not Contain / ExcludeMe") и в RU
+   ("Цитата / Не содержит / ExcludeMe"); Alt+1 в выдаче меняет язык, показывает бабл, `?mode=`
+   в URL не появляется, состояние остаётся `dg-state-results`; ссылки строк — `Pi`/`En` с
+   `data-local="/4nt/dn/dn1"` и href `https://s.dhamma.gift/dn/dn1`, `an1.21-30` →
+   `/4nt/an/an1/#an1.21`, `ja1` → фолбэк dprLink/bwLink; выбор "30 на странице" переживает
+   перезагрузку. Ридер (скролл п.5) в harness не рендерится (нет `/api/text`) — правка проверена
+   только чтением кода, глазами проверить на `/dn1?s=kacchapa&lang=ru`.
+
+
 ## ОТЛОЖЕНО — #mcp: MCP-сервер для AI-агентов — план записан, решение после прода и приложения (2026-09-05)
 
 Решение владельца: **сначала прод и приложение, потом решаем про MCP**. Ничего не начинаем,
