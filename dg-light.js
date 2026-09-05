@@ -95,7 +95,7 @@ const CACHE_IMMUTABLE_YEAR = 'public, max-age=31536000, immutable';
 const CACHE_FONT = 'public, max-age=604800';        // 7 days — fonts almost never change
 const CACHE_IMAGE = 'public, max-age=86400';        // 1 day — images not covered by versioning (referenced from CSS url())
 const CACHE_LEGACY_CODE = 'public, max-age=86400';  // 1 day — legacy JS/CSS (siteroot/assets etc.), not versioned but safe to cache a day
-const CACHE_CONFIG_JSON = 'public, max-age=300';    // 5 min — announcements.json/slides.json etc. need to roll out fast
+const CACHE_CONFIG_JSON = 'no-cache';               // announcements.json/slides.json etc.: fetched once per SPA session, not per navigation, so the revalidation round-trip is free — express.static/res.sendFile already set a real ETag here, so this is an exact-freshness win over any guessed TTL, not a slower one (cache.md)
 const CACHE_STATIC_SHORT = 'public, max-age=36000'; // 600 min — .html outside sendVersionedHtml + anything uncategorized
 
 function staticCacheHeaders(res, filePath) {
@@ -645,7 +645,8 @@ app.post('/assets/lbl-save.php', express.text({ type: '*/*', limit: '10mb' }), (
 // is regenerated from the corpus on every build and would wipe anything written by hand. The
 // public URL stays put, served by hand from its new home, the same trick the reader configs use.
 // Registered before the /assets mount so it wins over both public/overrides and the legacy
-// fallback. Same 5-minute tier staticCacheHeaders gives any .json.
+// fallback. Same no-cache tier staticCacheHeaders gives any .json (res.sendFile's own ETag
+// makes repeat fetches a cheap 304, not a guessed TTL — cache.md).
 app.get('/assets/js/translators.json', (req, res) => {
     res.set('Cache-Control', CACHE_CONFIG_JSON);
     res.sendFile(path.join(__dirname, 'configs', 'reader', 'translators.json'));
