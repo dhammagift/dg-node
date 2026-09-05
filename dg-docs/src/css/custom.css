@@ -29,6 +29,16 @@
   --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
 }
 
+/* Top-level sidebar categories (Dhamma / User Help / Tech) get a brand-green
+   accent so the structure is scannable at a glance instead of one flat pile
+   of links. Nested items stay default. */
+.dg-cat-dhamma > .menu__list-item-collapsible > .menu__link,
+.dg-cat-user > .menu__list-item-collapsible > .menu__link,
+.dg-cat-tech > .menu__list-item-collapsible > .menu__link {
+  color: var(--ifm-color-primary);
+  border-left: 3px solid var(--ifm-color-primary);
+}
+
 /* Homepage hero image (index.md) — floats beside the text where there's room (owner:
    "лучше если место есть то сюда"), stays centered above the text on narrow screens
    (owner: "на мобильных пусть показывается сверху как сейчас") — 996px matches

@@ -14,12 +14,14 @@ const sidebars = {
           type: 'category',
           label: 'Дхамма',
           collapsed: false,
+          className: 'dg-cat-dhamma',
           items: ['dhamma/sutta', 'dhamma/principles', 'dhamma/rationale'],
         },
         {
           type: 'category',
           label: 'Помощь пользователю',
           collapsed: false,
+          className: 'dg-cat-user',
           items: [
             'user/index',
             {
@@ -59,6 +61,7 @@ const sidebars = {
           type: 'category',
           label: 'Технические детали',
           collapsed: false,
+          className: 'dg-cat-tech',
           items: [
             'tech/installation',
             {
@@ -82,12 +85,14 @@ const sidebars = {
           type: 'category',
           label: 'Dhamma',
           collapsed: false,
+          className: 'dg-cat-dhamma',
           items: ['dhamma/sutta', 'dhamma/principles', 'dhamma/rationale'],
         },
         {
           type: 'category',
           label: 'User Help',
           collapsed: false,
+          className: 'dg-cat-user',
           items: [
             'user/index',
             {
@@ -127,6 +132,7 @@ const sidebars = {
           type: 'category',
           label: 'Tech',
           collapsed: false,
+          className: 'dg-cat-tech',
           items: [
             'tech/installation',
             {
