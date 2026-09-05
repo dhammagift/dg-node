@@ -4156,6 +4156,10 @@ $(document).ready(function() {
          «сейчас светлая». Значки тем — внутри самого переключателя, у своих вариантов. -->
     <p class="dg-group-title">{{menu.theme}}</p>
     <div id="dg-theme-seg"></div>
+    <!-- Строка-описание под названием каждой плитки главной (menu-links.json desc). Пробная
+         форма — переключатель оставляет и прежний вид (описание тогда только tooltip). -->
+    <p class="dg-group-title">{{menu.tileDesc}}</p>
+    <div id="dg-tiledesc-seg"></div>
     <!-- Полные настройки (шестерёнка) — ниже язык/тему по просьбе владельца: сначала быстрые
          переключатели, потом ссылка на полную страницу настроек. -->
     <a class="dg-drawer-row" href="/settings/" data-dg-icon="gear">{{global.common.settings}}</a>

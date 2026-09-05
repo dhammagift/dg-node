@@ -1,0 +1,19 @@
+{
+  "common": {
+    "close": "ปิด",
+    "clear": "ล้าง",
+    "settings": "การตั้งค่า",
+    "help": "ช่วยเหลือ",
+    "home": "หน้าแรก",
+    "dictionary": "พจนานุกรม",
+    "history": "ประวัติ",
+    "login": "เข้าสู่ระบบ",
+    "apply": "ใช้",
+    "reset": "รีเซ็ต",
+    "other": "อื่นๆ",
+    "questionMark": "?"
+  },
+  "help": {
+    "languageButton": "Pāḷi / ไทย"
+  }
+}

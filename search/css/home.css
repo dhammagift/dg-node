@@ -1251,6 +1251,22 @@ body:not(.dg-state-home) #dg-announce { display: none; }
     display: block;
     color: var(--dg-accent);
 }
+/* Мини-описание под названием плитки (menu-links.json desc; включается в шторке «Настройки»).
+   Мельче и бледнее подписи, не жирное, до двух строк — плитка остаётся значком с подписью, а
+   строка лишь отвечает «что там внутри». Отрицательный margin съедает часть gap'а плитки, чтобы
+   описание читалось как продолжение подписи, а не как третий равноправный элемент. */
+.dg-tile-desc {
+    display: block;
+    margin-top: -4px;
+    font-size: 0.74rem;
+    line-height: 1.25;
+    color: var(--dg-text-muted);
+    max-width: 100%;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
 
 /* ============================================================================
    Нижняя шторка со ссылками
@@ -2028,6 +2044,7 @@ body.dg-tiles-dragging { user-select: none; -webkit-user-select: none; }
     }
     .dg-tile-ic { width: 38px; height: 38px; }
     .dg-tile svg { width: 20px; height: 20px; }
+    .dg-tile-desc { font-size: 0.68rem; }
 }
 
 /* Owner: "инпут оказывался у верха страницы, расстояние... сужалось... мега меню открывалось

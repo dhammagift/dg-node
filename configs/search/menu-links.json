@@ -28,628 +28,1726 @@
     "             всем пунктам, а первым в наборе — по ним и видно, чем набор занимается.",
     "",
     "Плитка russian есть только в ru-меню (в en-меню такой группы нет) — показывать её только",
-    "при siteLanguage === 'ru', как это делает само легаси-меню."
+    "при siteLanguage === 'ru', как это делает само легаси-меню.",
+    "",
+    "desc у САМОЙ плитки (не у пункта) — мини-описание под названием на главной; показывается,",
+    "если в шторке «Настройки» включено «Описания кнопок» (localStorage.dgTileDesc, по умолчанию",
+    "включено), иначе остаётся нативным tooltip'ом, как раньше.",
+    "",
+    "Секция th (тайский) — ЧАСТИЧНАЯ: только label/desc самих плиток. Списки ссылок внутри",
+    "(groups/items) у неё не дублируются — home.js при загрузке собирает полный th из en +",
+    "эти подписи поверх (см. mergeMenuLang). Так же можно добавить любой следующий язык."
   ],
-
   "en": {
     "read": {
       "label": "Read Pāḷi",
+      "desc": "Table of contents of the Canon",
       "icon": "book",
       "href": "/toc"
     },
-
     "history": {
       "label": "History",
+      "desc": "Recently read",
       "icon": "clock",
       "href": "/assets/common/history.html",
       "modal": "quick"
     },
-
     "help": {
       "label": "Help",
+      "desc": "How to search and read",
       "icon": "help",
       "modal": "help"
     },
-
     "external": {
       "label": "External",
+      "desc": "Tipiṭaka, Pātimokkha, editions",
       "icon": "globe",
       "mega": true,
       "groups": [
         {
-          "name": "Tipitaka", "column": 1,
+          "name": "Tipitaka",
+          "column": 1,
           "items": [
-            { "label": "S.4nt.org", "desc": "BJT, CST, and Thai editions together", "tpl": "/4nt/?q={{q}}", "onlineTpl": "https://s.dhamma.gift/?q={{q}}", "blank": true, "star": true },
-            { "label": "BJT", "title": "Sri Lankan Edition Buddha Jayanti", "desc": "Sri Lankan Buddha Jayanti edition of the Pāḷi canon", "href": "https://open.tipitaka.lk/", "blank": true },
-            { "label": "Thai", "title": "Thai Tipitaka at 84000.org", "desc": "The Thai edition, at 84000.org", "href": "https://84000.org/", "blank": true },
-            { "label": "CST", "title": "CST Tripitaka by VRI at Tipitaka.org", "desc": "The CST edition by VRI at Tipitaka.org", "href": "https://tipitaka.org/romn", "blank": true },
-            { "label": "PTS", "title": "PTS Tipitaka at GRETIL", "desc": "The PTS edition, at GRETIL", "href": "https://gretil.sub.uni-goettingen.de/gretil.html#Suttapit", "blank": true },
-            { "label": "MS", "title": "Mahāsaṅgīti Edition at SuttaCentral.net", "desc": "The Mahāsaṅgīti edition, at SuttaCentral.net", "href": "https://suttacentral.net/pitaka/sutta?lang=en", "blank": true }
+            {
+              "label": "S.4nt.org",
+              "desc": "BJT, CST, and Thai editions together",
+              "tpl": "/4nt/?q={{q}}",
+              "onlineTpl": "https://s.dhamma.gift/?q={{q}}",
+              "blank": true,
+              "star": true
+            },
+            {
+              "label": "BJT",
+              "title": "Sri Lankan Edition Buddha Jayanti",
+              "desc": "Sri Lankan Buddha Jayanti edition of the Pāḷi canon",
+              "href": "https://open.tipitaka.lk/",
+              "blank": true
+            },
+            {
+              "label": "Thai",
+              "title": "Thai Tipitaka at 84000.org",
+              "desc": "The Thai edition, at 84000.org",
+              "href": "https://84000.org/",
+              "blank": true
+            },
+            {
+              "label": "CST",
+              "title": "CST Tripitaka by VRI at Tipitaka.org",
+              "desc": "The CST edition by VRI at Tipitaka.org",
+              "href": "https://tipitaka.org/romn",
+              "blank": true
+            },
+            {
+              "label": "PTS",
+              "title": "PTS Tipitaka at GRETIL",
+              "desc": "The PTS edition, at GRETIL",
+              "href": "https://gretil.sub.uni-goettingen.de/gretil.html#Suttapit",
+              "blank": true
+            },
+            {
+              "label": "MS",
+              "title": "Mahāsaṅgīti Edition at SuttaCentral.net",
+              "desc": "The Mahāsaṅgīti edition, at SuttaCentral.net",
+              "href": "https://suttacentral.net/pitaka/sutta?lang=en",
+              "blank": true
+            }
           ]
         },
         {
-          "name": "More Tipitaka CST", "column": 2,
+          "name": "More Tipitaka CST",
+          "column": 2,
           "items": [
-            { "label": "Paauksociety.org", "title": "Paauksociety.org", "desc": "AI translation of all texts", "href": "https://apply.paauksociety.org/tipitaka/index.php", "blank": true },
-            { "label": "Tipitaka.app", "title": "Tipitaka.app", "desc": "Multi-platform", "href": "https://tipitaka.app", "blank": true },
-            { "label": "Tipitaka Pali Online", "title": "Tipitaka Pali Online", "desc": "Multi-platform", "href": "https://tipitakapali.org/", "blank": true },
-            { "label": "Tipitaka Pali Reader", "title": "Tipitaka Pali Reader App", "desc": "with translations", "href": "https://americanmonk.org/tipitaka-pali-reader/", "blank": true }
+            {
+              "label": "Paauksociety.org",
+              "title": "Paauksociety.org",
+              "desc": "AI translation of all texts",
+              "href": "https://apply.paauksociety.org/tipitaka/index.php",
+              "blank": true
+            },
+            {
+              "label": "Tipitaka.app",
+              "title": "Tipitaka.app",
+              "desc": "Multi-platform",
+              "href": "https://tipitaka.app",
+              "blank": true
+            },
+            {
+              "label": "Tipitaka Pali Online",
+              "title": "Tipitaka Pali Online",
+              "desc": "Multi-platform",
+              "href": "https://tipitakapali.org/",
+              "blank": true
+            },
+            {
+              "label": "Tipitaka Pali Reader",
+              "title": "Tipitaka Pali Reader App",
+              "desc": "with translations",
+              "href": "https://americanmonk.org/tipitaka-pali-reader/",
+              "blank": true
+            }
           ]
         },
         {
-          "name": "Patimokkha", "column": 3,
+          "name": "Patimokkha",
+          "column": 3,
           "items": [
-            { "label": "Accesstoinsight.org", "desc": "Translation by Thanissaro Bhikkhu", "href": "https://www.accesstoinsight.org/tipitaka/vin/sv/index.html", "blank": true },
-            { "label": "BMC", "desc": "Commentary by Thanissaro Bhikkhu", "href": "https://www.dhammatalks.org/vinaya/bmc/Section0000.html", "localHref": "/dhammatalks.org/vinaya/bmc/Section0000.html", "blank": true },
-            { "label": "Bhikkhu Patimokkha trans. by Ven Nanatusita", "desc": "Grammar analysis", "href": "/documents/bupm_trn_by_nanatusita.pdf" },
-            { "label": "Bhikkhuni Patimokkha trans. by Ch Kabilsingh", "desc": "Comparasmento of 6 versions", "href": "/documents/bipm_trn_by_chatsumarn_kabilsingh.pdf" }
+            {
+              "label": "Accesstoinsight.org",
+              "desc": "Translation by Thanissaro Bhikkhu",
+              "href": "https://www.accesstoinsight.org/tipitaka/vin/sv/index.html",
+              "blank": true
+            },
+            {
+              "label": "BMC",
+              "desc": "Commentary by Thanissaro Bhikkhu",
+              "href": "https://www.dhammatalks.org/vinaya/bmc/Section0000.html",
+              "localHref": "/dhammatalks.org/vinaya/bmc/Section0000.html",
+              "blank": true
+            },
+            {
+              "label": "Bhikkhu Patimokkha trans. by Ven Nanatusita",
+              "desc": "Grammar analysis",
+              "href": "/documents/bupm_trn_by_nanatusita.pdf"
+            },
+            {
+              "label": "Bhikkhuni Patimokkha trans. by Ch Kabilsingh",
+              "desc": "Comparasmento of 6 versions",
+              "href": "/documents/bipm_trn_by_chatsumarn_kabilsingh.pdf"
+            }
           ]
         },
         {
-          "name": "Prātimokṣa (Sanskrit)", "column": 4,
+          "name": "Prātimokṣa (Sanskrit)",
+          "column": 4,
           "items": [
-            { "label": "Prātimokṣa", "desc": "Sanskrit", "href": "https://old.dhamma.gift/san/d/mg.php", "blank": true },
-            { "label": "Sarvāstivāda", "href": "https://old.dhamma.gift/san/sarv.php", "blank": true },
-            { "label": "Mahāsāṃghika", "href": "https://old.dhamma.gift/san/mg.php", "blank": true },
-            { "label": "Lokottaravāda", "href": "https://old.dhamma.gift/san/lo.php", "blank": true },
-            { "label": "Mūlasarvāstivāda (Gilgit 2)", "href": "https://old.dhamma.gift/san/mu2.php", "blank": true },
-            { "label": "Mūlasarvāstivāda (Gilgit 3)", "href": "https://old.dhamma.gift/san/mu3.php", "blank": true }
+            {
+              "label": "Prātimokṣa",
+              "desc": "Sanskrit",
+              "href": "https://old.dhamma.gift/san/d/mg.php",
+              "blank": true
+            },
+            {
+              "label": "Sarvāstivāda",
+              "href": "https://old.dhamma.gift/san/sarv.php",
+              "blank": true
+            },
+            {
+              "label": "Mahāsāṃghika",
+              "href": "https://old.dhamma.gift/san/mg.php",
+              "blank": true
+            },
+            {
+              "label": "Lokottaravāda",
+              "href": "https://old.dhamma.gift/san/lo.php",
+              "blank": true
+            },
+            {
+              "label": "Mūlasarvāstivāda (Gilgit 2)",
+              "href": "https://old.dhamma.gift/san/mu2.php",
+              "blank": true
+            },
+            {
+              "label": "Mūlasarvāstivāda (Gilgit 3)",
+              "href": "https://old.dhamma.gift/san/mu3.php",
+              "blank": true
+            }
           ]
         },
         {
-          "name": "Collections", "column": 5,
+          "name": "Collections",
+          "column": 5,
           "blocks": [
-            { "rows": [
-              { "label": "Digital Pali Reader", "desc": "CST and Thai editions", "href": "https://www.digitalpalireader.online/_dprhtml/index.html", "blank": true },
-              { "label": "Simsapa Pali Reader (PC · Mac · Linux)", "desc": "Multi-platform", "href": "https://simsapa.github.io/", "blank": true }
-            ] },
-            { "divider": true, "inline": [
-              { "label": "SuttaCentral.net", "title": "Mahāsaṅgīti Edition", "href": "https://suttacentral.net/pitaka/sutta?lang=en", "blank": true },
-              { "label": "Vinaya", "href": "https://suttacentral.net/pitaka/vinaya?lang=en", "blank": true },
-              { "label": "Voice", "href": "https://www.sc-voice.net/", "blank": true },
-              { "label": "Legacy", "href": "/legacy.suttacentral.net/", "hideIfUnavailable": true, "blank": true }
-            ] },
-            { "divider": true, "rows": [
-              { "label": "The Buddha's Words", "desc": "Colleciton of tanslations with Pali", "href": "https://thebuddhaswords.net", "localHref": "/bw/", "forceLocalGate": true, "blank": true }
-            ] },
-            { "divider": true, "rows": [
-              { "label": "Ancient Buddhist Texts", "desc": "By Bhikkhu Ānandajoti", "href": "https://ancient-buddhist-texts.net/index.htm", "blank": true },
-              { "label": "Buddhadust.net", "desc": "Translations by Micheal Olds + Glossolory", "href": "https://buddhadust.net/dhamma-vinaya/bd/dhamma-vinaya.htm", "blank": true },
-              { "label": "Articles at Dhammadana.org", "href": "https://en.dhammadana.org/sangha/dhutanga.htm", "blank": true }
-            ] }
+            {
+              "rows": [
+                {
+                  "label": "Digital Pali Reader",
+                  "desc": "CST and Thai editions",
+                  "href": "https://www.digitalpalireader.online/_dprhtml/index.html",
+                  "blank": true
+                },
+                {
+                  "label": "Simsapa Pali Reader (PC · Mac · Linux)",
+                  "desc": "Multi-platform",
+                  "href": "https://simsapa.github.io/",
+                  "blank": true
+                }
+              ]
+            },
+            {
+              "divider": true,
+              "inline": [
+                {
+                  "label": "SuttaCentral.net",
+                  "title": "Mahāsaṅgīti Edition",
+                  "href": "https://suttacentral.net/pitaka/sutta?lang=en",
+                  "blank": true
+                },
+                {
+                  "label": "Vinaya",
+                  "href": "https://suttacentral.net/pitaka/vinaya?lang=en",
+                  "blank": true
+                },
+                {
+                  "label": "Voice",
+                  "href": "https://www.sc-voice.net/",
+                  "blank": true
+                },
+                {
+                  "label": "Legacy",
+                  "href": "/legacy.suttacentral.net/",
+                  "hideIfUnavailable": true,
+                  "blank": true
+                }
+              ]
+            },
+            {
+              "divider": true,
+              "rows": [
+                {
+                  "label": "The Buddha's Words",
+                  "desc": "Colleciton of tanslations with Pali",
+                  "href": "https://thebuddhaswords.net",
+                  "localHref": "/bw/",
+                  "forceLocalGate": true,
+                  "blank": true
+                }
+              ]
+            },
+            {
+              "divider": true,
+              "rows": [
+                {
+                  "label": "Ancient Buddhist Texts",
+                  "desc": "By Bhikkhu Ānandajoti",
+                  "href": "https://ancient-buddhist-texts.net/index.htm",
+                  "blank": true
+                },
+                {
+                  "label": "Buddhadust.net",
+                  "desc": "Translations by Micheal Olds + Glossolory",
+                  "href": "https://buddhadust.net/dhamma-vinaya/bd/dhamma-vinaya.htm",
+                  "blank": true
+                },
+                {
+                  "label": "Articles at Dhammadana.org",
+                  "href": "https://en.dhammadana.org/sangha/dhutanga.htm",
+                  "blank": true
+                }
+              ]
+            }
           ]
         }
       ]
     },
-
     "dicts": {
       "label": "AI & Dicts",
+      "desc": "Dictionaries, AI, translators",
       "icon": "dict",
       "mega": true,
       "groups": [
         {
-          "name": "Dict.Dhamma.Gift", "column": 1,
+          "name": "Dict.Dhamma.Gift",
+          "column": 1,
           "items": [
-            { "label": "Dict.Dhamma.Gift", "title": "open Dict.Dhamma.Gift in extra window (Alt + N)", "desc": "Multi-dictionary powered by DPD — opens with the word from the search box", "tpl": "https://dict.dhamma.gift/?theme={{theme}}&source=pwa&q={{q}}", "blank": true, "star": true },
-            { "label": "DPD offline", "title": "download DPD for offline usage", "desc": "Digital Pāḷi Dictionary as a download — works without internet", "href": "https://digitalpalidictionary.github.io/", "blank": true },
-            { "label": "Extensions", "title": "Browser Extensions", "href": "#links" }
+            {
+              "label": "Dict.Dhamma.Gift",
+              "title": "open Dict.Dhamma.Gift in extra window (Alt + N)",
+              "desc": "Multi-dictionary powered by DPD — opens with the word from the search box",
+              "tpl": "https://dict.dhamma.gift/?theme={{theme}}&source=pwa&q={{q}}",
+              "blank": true,
+              "star": true
+            },
+            {
+              "label": "DPD offline",
+              "title": "download DPD for offline usage",
+              "desc": "Digital Pāḷi Dictionary as a download — works without internet",
+              "href": "https://digitalpalidictionary.github.io/",
+              "blank": true
+            },
+            {
+              "label": "Extensions",
+              "title": "Browser Extensions",
+              "href": "#links"
+            }
           ]
         },
         {
-          "name": "AI", "layout": "chips", "column": 3,
+          "name": "AI",
+          "layout": "chips",
+          "column": 3,
           "items": [
-            { "label": "Tripitaka-mcp.com", "href": "https://tripitaka-mcp.com/", "blank": true },
-            { "label": "Claude", "href": "https://claude.ai", "blank": true },
-            { "label": "ChatGPT", "href": "https://chatgpt.com", "blank": true },
-            { "label": "Gemini", "href": "https://gemini.google/", "blank": true },
-            { "label": "DeepSeek", "href": "https://chat.deepseek.com", "blank": true },
-            { "label": "Norbu AI", "href": "https://norbu-ai.org/", "blank": true }
+            {
+              "label": "Tripitaka-mcp.com",
+              "href": "https://tripitaka-mcp.com/",
+              "blank": true
+            },
+            {
+              "label": "Claude",
+              "href": "https://claude.ai",
+              "blank": true
+            },
+            {
+              "label": "ChatGPT",
+              "href": "https://chatgpt.com",
+              "blank": true
+            },
+            {
+              "label": "Gemini",
+              "href": "https://gemini.google/",
+              "blank": true
+            },
+            {
+              "label": "DeepSeek",
+              "href": "https://chat.deepseek.com",
+              "blank": true
+            },
+            {
+              "label": "Norbu AI",
+              "href": "https://norbu-ai.org/",
+              "blank": true
+            }
           ]
         },
         {
-          "name": "Translators", "layout": "chips", "column": 3,
+          "name": "Translators",
+          "layout": "chips",
+          "column": 3,
           "items": [
-            { "label": "Mitra Translator", "tpl": "https://dharmamitra.org/translate?input_sentence={{q}}", "blank": true, "star": true },
-            { "label": "Nexus", "href": "https://dharmamitra.org/nexus/db/pa", "blank": true }
+            {
+              "label": "Mitra Translator",
+              "tpl": "https://dharmamitra.org/translate?input_sentence={{q}}",
+              "blank": true,
+              "star": true
+            },
+            {
+              "label": "Nexus",
+              "href": "https://dharmamitra.org/nexus/db/pa",
+              "blank": true
+            }
           ]
         },
         {
-          "name": "Pāḷi dictionaries", "column": 2,
+          "name": "Pāḷi dictionaries",
+          "column": 2,
           "items": [
-            { "label": "Critical Pali Dict (CPD)", "tpl": "https://cpd.uni-koeln.de/search?query={{q}}", "blank": true },
-            { "label": "M. Cone dictionary Gandhari.org", "tpl": "https://gandhari.org/dictionary?section=dop&search={{q}}", "blank": true },
-            { "label": "DPR Analysis", "tpl": "https://www.digitalpalireader.online/_dprhtml/index.html?frombox=1&analysis={{q}}", "blank": true },
-            { "label": "R. Davids, W. Stede dictionary PTS", "desc": "The classic Pali-English dictionary", "tpl": "https://dsal.uchicago.edu/cgi-bin/app/pali_query.py?matchtype=default&qs={{q}}", "blank": true }
+            {
+              "label": "Critical Pali Dict (CPD)",
+              "tpl": "https://cpd.uni-koeln.de/search?query={{q}}",
+              "blank": true
+            },
+            {
+              "label": "M. Cone dictionary Gandhari.org",
+              "tpl": "https://gandhari.org/dictionary?section=dop&search={{q}}",
+              "blank": true
+            },
+            {
+              "label": "DPR Analysis",
+              "tpl": "https://www.digitalpalireader.online/_dprhtml/index.html?frombox=1&analysis={{q}}",
+              "blank": true
+            },
+            {
+              "label": "R. Davids, W. Stede dictionary PTS",
+              "desc": "The classic Pali-English dictionary",
+              "tpl": "https://dsal.uchicago.edu/cgi-bin/app/pali_query.py?matchtype=default&qs={{q}}",
+              "blank": true
+            }
           ]
         },
         {
-          "name": "Sanskrit", "column": 4,
+          "name": "Sanskrit",
+          "column": 4,
           "items": [
-            { "label": "Monier-Williams", "title": "Sanskrit-English Dictionary, 1899", "desc": "The standard Sanskrit-English dictionary", "tpl": "https://www.sanskrit-lexicon.uni-koeln.de/scans/MWScan/2020/web/webtc/indexcaller.php?transLit=roman&key={{q}}", "blank": true },
-            { "label": "Shabda-Sagara", "title": "Sanskrit-English Dictionary", "desc": "Sanskrit-English dictionary", "tpl": "https://www.sanskrit-lexicon.uni-koeln.de/scans/SHSScan/2020/web/webtc/indexcaller.php?transLit=roman&key={{q}}", "blank": true },
-            { "label": "Lexicon.uni-koeln.de", "title": "All available dictionaries at Cologne University Site", "href": "https://www.sanskrit-lexicon.uni-koeln.de/", "blank": true },
-            { "label": "Skrdict", "tpl": "https://sanskritdictionary.com/?iencoding=iast&q={{q}}&lang=sans&action=Search", "blank": true },
-            { "label": "Learnskr", "tpl": "https://www.learnsanskrit.cc/translate?dir=au&search={{q}}", "blank": true }
+            {
+              "label": "Monier-Williams",
+              "title": "Sanskrit-English Dictionary, 1899",
+              "desc": "The standard Sanskrit-English dictionary",
+              "tpl": "https://www.sanskrit-lexicon.uni-koeln.de/scans/MWScan/2020/web/webtc/indexcaller.php?transLit=roman&key={{q}}",
+              "blank": true
+            },
+            {
+              "label": "Shabda-Sagara",
+              "title": "Sanskrit-English Dictionary",
+              "desc": "Sanskrit-English dictionary",
+              "tpl": "https://www.sanskrit-lexicon.uni-koeln.de/scans/SHSScan/2020/web/webtc/indexcaller.php?transLit=roman&key={{q}}",
+              "blank": true
+            },
+            {
+              "label": "Lexicon.uni-koeln.de",
+              "title": "All available dictionaries at Cologne University Site",
+              "href": "https://www.sanskrit-lexicon.uni-koeln.de/",
+              "blank": true
+            },
+            {
+              "label": "Skrdict",
+              "tpl": "https://sanskritdictionary.com/?iencoding=iast&q={{q}}&lang=sans&action=Search",
+              "blank": true
+            },
+            {
+              "label": "Learnskr",
+              "tpl": "https://www.learnsanskrit.cc/translate?dir=au&search={{q}}",
+              "blank": true
+            }
           ]
         },
         {
-          "name": "Pali-Skr", "column": 4,
+          "name": "Pali-Skr",
+          "column": 4,
           "items": [
-            { "label": "Glosbe", "desc": "Community-built bilingual dictionary", "tpl": "https://glosbe.com/pi/sa/{{q}}", "blank": true },
-            { "label": "Sambhasha", "href": "https://sambhasha.ksu.ac.in/CompLing/pcl_1/html/Application%20home.html", "blank": true },
-            { "label": "Pl to SA AI", "href": "https://rephrasely.com/translate/translate-pali-to-sanskrit", "blank": true }
+            {
+              "label": "Glosbe",
+              "desc": "Community-built bilingual dictionary",
+              "tpl": "https://glosbe.com/pi/sa/{{q}}",
+              "blank": true
+            },
+            {
+              "label": "Sambhasha",
+              "href": "https://sambhasha.ksu.ac.in/CompLing/pcl_1/html/Application%20home.html",
+              "blank": true
+            },
+            {
+              "label": "Pl to SA AI",
+              "href": "https://rephrasely.com/translate/translate-pali-to-sanskrit",
+              "blank": true
+            }
           ]
         },
         {
-          "name": "Other dictionaries", "column": 5,
+          "name": "Other dictionaries",
+          "column": 5,
           "items": [
-            { "label": "Sutta.org", "desc": "General Pali-English dictionary", "href": "https://dictionary.sutta.org/", "blank": true },
-            { "label": "Buddhist University", "href": "https://buddhistuniversity.net/content/reference/pali-thai-english-sanskrit-dictionary", "blank": true },
-            { "label": "Eng-Pali", "href": "http://dictionary.tamilcube.com/pali-dictionary.aspx", "blank": true }
+            {
+              "label": "Sutta.org",
+              "desc": "General Pali-English dictionary",
+              "href": "https://dictionary.sutta.org/",
+              "blank": true
+            },
+            {
+              "label": "Buddhist University",
+              "href": "https://buddhistuniversity.net/content/reference/pali-thai-english-sanskrit-dictionary",
+              "blank": true
+            },
+            {
+              "label": "Eng-Pali",
+              "href": "http://dictionary.tamilcube.com/pali-dictionary.aspx",
+              "blank": true
+            }
           ]
         },
         {
-          "name": "Search", "column": 5,
+          "name": "Search",
+          "column": 5,
           "items": [
-            { "label": "Wisdomlib.org", "desc": "Search across a large Indology text library", "tpl": "https://www.wisdomlib.org/index.php?type=search&division=glossary&item=&mode=text&input={{q}}", "blank": true },
-            { "label": "Google Custom Search", "tpl": "https://old.dhamma.gift/cse.php?q={{q}}", "blank": true }
+            {
+              "label": "Wisdomlib.org",
+              "desc": "Search across a large Indology text library",
+              "tpl": "https://www.wisdomlib.org/index.php?type=search&division=glossary&item=&mode=text&input={{q}}",
+              "blank": true
+            },
+            {
+              "label": "Google Custom Search",
+              "tpl": "https://old.dhamma.gift/cse.php?q={{q}}",
+              "blank": true
+            }
           ]
         }
       ]
     },
-
     "materials": {
       "label": "Materials",
+      "desc": "Grammar, textbooks, drills",
       "icon": "cap",
       "mega": true,
       "groups": [
         {
-          "name": "Grammar", "column": 2,
+          "name": "Grammar",
+          "column": 2,
           "items": [
-            { "label": "Cases", "desc": "Declension tables: noun and adjective endings", "href": "https://docs.google.com/spreadsheets/d/1wo8YEXX72DEV7L2jH5FUBdmeQPdiyAIN/edit?usp=drivesdk&ouid=110812668327988798342&rtpof=true&sd=true", "star": true },
-            { "label": "Conjugations", "desc": "Verb endings by tense, person and number", "href": "https://drive.google.com/file/d/1HzPCYsVBEkWErAk6TqSWRYKseM1hqMCb/view?usp=sharing", "star": true }
+            {
+              "label": "Cases",
+              "desc": "Declension tables: noun and adjective endings",
+              "href": "https://docs.google.com/spreadsheets/d/1wo8YEXX72DEV7L2jH5FUBdmeQPdiyAIN/edit?usp=drivesdk&ouid=110812668327988798342&rtpof=true&sd=true",
+              "star": true
+            },
+            {
+              "label": "Conjugations",
+              "desc": "Verb endings by tense, person and number",
+              "href": "https://drive.google.com/file/d/1HzPCYsVBEkWErAk6TqSWRYKseM1hqMCb/view?usp=sharing",
+              "star": true
+            }
           ]
         },
         {
-          "name": "Textbooks", "column": 1,
+          "name": "Textbooks",
+          "column": 1,
           "items": [
-            { "label": "J.W. Gair – Pali Course", "desc": "Academic reference grammar for learning Pali", "href": "https://drive.google.com/file/d/1HYI0psEjzl5SHDTSI1arAVJMiJdO862G/view?usp=drivesdk", "star": true },
-            { "label": "A.K. Warder – Introduction to Pali", "href": "https://drive.google.com/file/d/1b0sTtKF5wuGcDtr_u5sSSWGY5_QzBF-h/view?usp=drivesdk", "star": true },
-            { "label": "Thauttamo Bh – Pali 3 ed.", "href": "https://drive.google.com/file/d/1jeXT4tkuudnN2EB1ABp4eHLGXbw-_EBk/view?usp=drivesdk", "star": true }
+            {
+              "label": "J.W. Gair – Pali Course",
+              "desc": "Academic reference grammar for learning Pali",
+              "href": "https://drive.google.com/file/d/1HYI0psEjzl5SHDTSI1arAVJMiJdO862G/view?usp=drivesdk",
+              "star": true
+            },
+            {
+              "label": "A.K. Warder – Introduction to Pali",
+              "href": "https://drive.google.com/file/d/1b0sTtKF5wuGcDtr_u5sSSWGY5_QzBF-h/view?usp=drivesdk",
+              "star": true
+            },
+            {
+              "label": "Thauttamo Bh – Pali 3 ed.",
+              "href": "https://drive.google.com/file/d/1jeXT4tkuudnN2EB1ABp4eHLGXbw-_EBk/view?usp=drivesdk",
+              "star": true
+            }
           ]
         },
         {
-          "name": "Materials", "column": 3,
+          "name": "Materials",
+          "column": 3,
           "items": [
-            { "label": "Gdrive", "desc": "Shared folder with scanned books and study materials", "href": "https://drive.google.com/drive/folders/1nrNtb_4s27nJGq61tpigf_b2sO_KOnVG" },
-            { "label": "ABT.net", "href": "https://www.ancient-buddhist-texts.net/Textual-Studies/index.htm", "blank": true },
-            { "label": "SBS", "href": "https://sasanarakkha.github.io/study-tools/", "blank": true }
+            {
+              "label": "Gdrive",
+              "desc": "Shared folder with scanned books and study materials",
+              "href": "https://drive.google.com/drive/folders/1nrNtb_4s27nJGq61tpigf_b2sO_KOnVG"
+            },
+            {
+              "label": "ABT.net",
+              "href": "https://www.ancient-buddhist-texts.net/Textual-Studies/index.htm",
+              "blank": true
+            },
+            {
+              "label": "SBS",
+              "href": "https://sasanarakkha.github.io/study-tools/",
+              "blank": true
+            }
           ]
         },
         {
-          "name": "Guides", "column": 2,
+          "name": "Guides",
+          "column": 2,
           "items": [
-            { "label": "Learn Pali Guides", "desc": "Blog with guided readings of Pali suttas", "href": "https://palistudies.blogspot.com/2019/04/intro-kaya-section-satipatthana-sutta.html?m=1", "blank": true },
-            { "label": "James Whelan. Pali & Sanskrit", "href": "https://www.thebuddhistsociety.org/page/sanskrit-and-pali-study-resources-guide-by-james-whelan", "blank": true },
-            { "label": "GDrive Materials", "href": "https://drive.google.com/drive/folders/1jAy_xD6qkrnIkmXO9e4KtI_--nDMySSn", "blank": true },
-            { "label": "YT Channel", "href": "https://www.youtube.com/@jameswhelan2381", "blank": true }
+            {
+              "label": "Learn Pali Guides",
+              "desc": "Blog with guided readings of Pali suttas",
+              "href": "https://palistudies.blogspot.com/2019/04/intro-kaya-section-satipatthana-sutta.html?m=1",
+              "blank": true
+            },
+            {
+              "label": "James Whelan. Pali & Sanskrit",
+              "href": "https://www.thebuddhistsociety.org/page/sanskrit-and-pali-study-resources-guide-by-james-whelan",
+              "blank": true
+            },
+            {
+              "label": "GDrive Materials",
+              "href": "https://drive.google.com/drive/folders/1jAy_xD6qkrnIkmXO9e4KtI_--nDMySSn",
+              "blank": true
+            },
+            {
+              "label": "YT Channel",
+              "href": "https://www.youtube.com/@jameswhelan2381",
+              "blank": true
+            }
           ]
         },
         {
-          "name": "Memorization", "column": 1,
+          "name": "Memorization",
+          "column": 1,
           "blocks": [
-            { "rows": [
-              { "label": "Memorizer", "desc": "Tool for memorizing suttas line by line", "href": "/memo/", "star": true }
-            ] },
-            { "inline": [
-              { "label": "sn56.11", "href": "/memorize/?q=sn56.11" },
-              { "label": "dn22", "href": "/memorize/?q=dn22" },
-              { "label": "sn12.2", "href": "/memorize/?q=sn12.2" }
-            ] },
-            { "rows": [
-              { "label": "Memorisation Tips & Tricks", "href": "https://docs.google.com/document/d/1JWHEFqcaNhYwYneWBnTp9rkgWecDB4IIHX1l3AxSiWM/edit?usp=drivesdk" }
-            ] }
+            {
+              "rows": [
+                {
+                  "label": "Memorizer",
+                  "desc": "Tool for memorizing suttas line by line",
+                  "href": "/memo/",
+                  "star": true
+                }
+              ]
+            },
+            {
+              "inline": [
+                {
+                  "label": "sn56.11",
+                  "href": "/memorize/?q=sn56.11"
+                },
+                {
+                  "label": "dn22",
+                  "href": "/memorize/?q=dn22"
+                },
+                {
+                  "label": "sn12.2",
+                  "href": "/memorize/?q=sn12.2"
+                }
+              ]
+            },
+            {
+              "rows": [
+                {
+                  "label": "Memorisation Tips & Tricks",
+                  "href": "https://docs.google.com/document/d/1JWHEFqcaNhYwYneWBnTp9rkgWecDB4IIHX1l3AxSiWM/edit?usp=drivesdk"
+                }
+              ]
+            }
           ]
         },
         {
-          "name": "Trainers", "column": 3,
+          "name": "Trainers",
+          "column": 3,
           "items": [
-            { "label": "Declensions", "href": "/assets/grammar/nouns.html" },
-            { "label": "Patimokkha", "href": "/assets/rr.html" },
-            { "label": "Pali Practice App", "desc": "Interactive drills for grammar and vocabulary", "href": "https://www.dhammabytes.org/pali-practice/", "blank": true }
+            {
+              "label": "Declensions",
+              "href": "/assets/grammar/nouns.html"
+            },
+            {
+              "label": "Patimokkha",
+              "href": "/assets/rr.html"
+            },
+            {
+              "label": "Pali Practice App",
+              "desc": "Interactive drills for grammar and vocabulary",
+              "href": "https://www.dhammabytes.org/pali-practice/",
+              "blank": true
+            }
           ]
         }
       ]
     },
-
     "tools": {
       "label": "Tools",
+      "desc": "Converters, timers, indexes",
       "icon": "wrench",
       "mega": true,
       "groups": [
         {
-          "name": "On site", "column": 1,
+          "name": "On site",
+          "column": 1,
           "items": [
-            { "label": "DG (th)", "desc": "Dhamma.gift in Thai script", "href": "/th/?q=", "setsLang": "th" },
-            { "label": "old", "desc": "The previous version of the site", "href": "https://old.dhamma.gift", "blank": true },
-            { "label": "TTS", "title": "TTS Text-to-speech", "desc": "Text-to-speech playback of Pali/translation text", "tpl": "https://old.dhamma.gift/tts.php?q={{q}}", "blank": true },
-            { "label": "Read+", "title": "Read by Books or Chapters", "desc": "Browse and read whole books or individual chapters", "action": "readPlus", "base": "https://old.dhamma.gift/r.php", "blank": true }
+            {
+              "label": "DG (th)",
+              "desc": "Dhamma.gift in Thai script",
+              "href": "/th/?q=",
+              "setsLang": "th"
+            },
+            {
+              "label": "old",
+              "desc": "The previous version of the site",
+              "href": "https://old.dhamma.gift",
+              "blank": true
+            },
+            {
+              "label": "TTS",
+              "title": "TTS Text-to-speech",
+              "desc": "Text-to-speech playback of Pali/translation text",
+              "tpl": "https://old.dhamma.gift/tts.php?q={{q}}",
+              "blank": true
+            },
+            {
+              "label": "Read+",
+              "title": "Read by Books or Chapters",
+              "desc": "Browse and read whole books or individual chapters",
+              "action": "readPlus",
+              "base": "https://old.dhamma.gift/r.php",
+              "blank": true
+            }
           ]
         },
         {
-          "name": "Calendar", "column": 2,
+          "name": "Calendar",
+          "column": 2,
           "items": [
-            { "label": "Sutta based Uposattha days", "desc": "Observance-day calendar based on the lunar cycle", "href": "/assets/common/lunar.html", "star": true }
+            {
+              "label": "Sutta based Uposattha days",
+              "desc": "Observance-day calendar based on the lunar cycle",
+              "href": "/assets/common/lunar.html",
+              "star": true
+            }
           ]
         },
         {
-          "name": "Converters", "column": 2,
+          "name": "Converters",
+          "column": 2,
           "items": [
-            { "label": "Aksharamukha script converter", "desc": "Convert Pali text between ~160 writing systems (Devanagari, Thai, etc.)", "tpl": "https://www.aksharamukha.com/converter?source=IASTPali&target=Devanagari&text={{q}}", "blank": true, "star": true },
-            { "label": "PTS Converter #1", "desc": "Convert a sutta reference to its PTS page number", "href": "https://palistudies.blogspot.com/2020/02/sutta-number-to-pts-reference-converter.html", "blank": true },
-            { "label": "PTS Converter #2", "desc": "Convert a PTS reference back to its modern sutta number", "href": "https://benmneb.github.io/pts-converter/", "blank": true }
+            {
+              "label": "Aksharamukha script converter",
+              "desc": "Convert Pali text between ~160 writing systems (Devanagari, Thai, etc.)",
+              "tpl": "https://www.aksharamukha.com/converter?source=IASTPali&target=Devanagari&text={{q}}",
+              "blank": true,
+              "star": true
+            },
+            {
+              "label": "PTS Converter #1",
+              "desc": "Convert a sutta reference to its PTS page number",
+              "href": "https://palistudies.blogspot.com/2020/02/sutta-number-to-pts-reference-converter.html",
+              "blank": true
+            },
+            {
+              "label": "PTS Converter #2",
+              "desc": "Convert a PTS reference back to its modern sutta number",
+              "href": "https://benmneb.github.io/pts-converter/",
+              "blank": true
+            }
           ]
         },
         {
-          "name": "Principles", "column": 4,
+          "name": "Principles",
+          "column": 4,
           "items": [
-            { "label": "Translation", "desc": "Our approach and principles for translating texts", "href": "/assets/common/o-en.html", "blank": true },
-            { "label": "Rationale", "desc": "Why consistent terminology matters in Pali-English translation", "href": "/assets/common/rationale-en.html" }
+            {
+              "label": "Translation",
+              "desc": "Our approach and principles for translating texts",
+              "href": "/assets/common/o-en.html",
+              "blank": true
+            },
+            {
+              "label": "Rationale",
+              "desc": "Why consistent terminology matters in Pali-English translation",
+              "href": "/assets/common/rationale-en.html"
+            }
           ]
         },
         {
-          "name": "Indexes", "column": 3,
+          "name": "Indexes",
+          "column": 3,
           "items": [
-            { "label": "ReadingFaithfully Sutta Index", "desc": "Cross-reference index of sutta numbers across editions", "href": "https://index.readingfaithfully.org/", "blank": true },
-            { "label": "Blurbs", "desc": "Build a custom JSON file of sutta blurbs from SuttaCentral.net", "href": "/assets/br/", "blank": true }
+            {
+              "label": "ReadingFaithfully Sutta Index",
+              "desc": "Cross-reference index of sutta numbers across editions",
+              "href": "https://index.readingfaithfully.org/",
+              "blank": true
+            },
+            {
+              "label": "Blurbs",
+              "desc": "Build a custom JSON file of sutta blurbs from SuttaCentral.net",
+              "href": "/assets/br/",
+              "blank": true
+            }
           ]
         },
         {
-          "name": "Timers", "column": 4,
+          "name": "Timers",
+          "column": 4,
           "items": [
-            { "label": "Loop Timer", "desc": "Repeats a passage on a timer, for memorization drills", "href": "/memo/?delay=300&end=10&trn=0&loop=1&lc=%E2%88%9E&snd=gong.mp3", "blank": true },
-            { "label": "Repeat timer #2", "desc": "Sounds an alarm at regular intervals", "href": "/assets/repeat-timer/", "blank": true },
-            { "label": "Pomodoro", "desc": "25/5-minute Pomodoro study timer, reverse mode included", "href": "/assets/pomodoro-timer/", "blank": true }
+            {
+              "label": "Loop Timer",
+              "desc": "Repeats a passage on a timer, for memorization drills",
+              "href": "/memo/?delay=300&end=10&trn=0&loop=1&lc=%E2%88%9E&snd=gong.mp3",
+              "blank": true
+            },
+            {
+              "label": "Repeat timer #2",
+              "desc": "Sounds an alarm at regular intervals",
+              "href": "/assets/repeat-timer/",
+              "blank": true
+            },
+            {
+              "label": "Pomodoro",
+              "desc": "25/5-minute Pomodoro study timer, reverse mode included",
+              "href": "/assets/pomodoro-timer/",
+              "blank": true
+            }
           ]
         },
         {
-          "name": "Text tools", "column": 3,
+          "name": "Text tools",
+          "column": 3,
           "items": [
-            { "label": "Line-by-line Translation Tool", "desc": "Aligns Pali and translation line by line", "tpl": "/assets/lbl-en.html?q={{q}}", "blank": true },
-            { "label": "Sutta Difference", "desc": "Find the difference between two suttas", "tpl": "/assets/diff/?lang=pl&one={{q}}&two={{q}}", "blank": true },
-            { "label": "List Difference", "desc": "Compare two plain-text lists line by line", "href": "/assets/listdiff.html" },
-            { "label": "Line to List", "desc": "Create lists from lines of text", "href": "/assets/makelist.html", "star": true }
+            {
+              "label": "Line-by-line Translation Tool",
+              "desc": "Aligns Pali and translation line by line",
+              "tpl": "/assets/lbl-en.html?q={{q}}",
+              "blank": true
+            },
+            {
+              "label": "Sutta Difference",
+              "desc": "Find the difference between two suttas",
+              "tpl": "/assets/diff/?lang=pl&one={{q}}&two={{q}}",
+              "blank": true
+            },
+            {
+              "label": "List Difference",
+              "desc": "Compare two plain-text lists line by line",
+              "href": "/assets/listdiff.html"
+            },
+            {
+              "label": "Line to List",
+              "desc": "Create lists from lines of text",
+              "href": "/assets/makelist.html",
+              "star": true
+            }
           ]
         }
       ]
     }
   },
-
   "ru": {
     "read": {
       "label": "Читать Pāḷi",
+      "desc": "Оглавление канона",
       "icon": "book",
       "href": "/toc"
     },
-
     "history": {
       "label": "История",
+      "desc": "Недавно прочитанное",
       "icon": "clock",
       "href": "/ru/assets/common/history.html",
       "modal": "quick"
     },
-
     "help": {
       "label": "Помощь",
+      "desc": "Как искать и читать",
       "icon": "help",
       "modal": "help"
     },
-
     "external": {
       "label": "Иностран.",
+      "desc": "Типитака, Патимоккха, издания",
       "icon": "globe",
       "mega": true,
       "groups": [
         {
-          "name": "Типитака", "column": 1,
+          "name": "Типитака",
+          "column": 1,
           "items": [
-            { "label": "S.4nt.org", "desc": "BJT, CST и Thai издания в одном месте", "tpl": "/4nt/?q={{q}}", "onlineTpl": "https://s.dhamma.gift/?q={{q}}", "blank": true, "star": true },
-            { "label": "BJT", "title": "Редакция Шри Ланки Buddha Jhayanti", "desc": "Шри-ланкийское издание канона, Buddha Jayanti", "href": "https://open.tipitaka.lk/", "blank": true },
-            { "label": "Thai", "title": "Тайская Типитака на 84000.org", "desc": "Тайское издание, на 84000.org", "href": "https://84000.org/", "blank": true },
-            { "label": "CST", "title": "CST Типитака от VRI на Tipitaka.org", "desc": "Издание CST, на Tipitaka.org", "href": "https://tipitaka.org/romn", "blank": true },
-            { "label": "PTS", "title": "Типитака PTS на GRETIL", "desc": "Издание PTS, на GRETIL", "href": "https://gretil.sub.uni-goettingen.de/gretil.html#Suttapit", "blank": true },
-            { "label": "MS", "title": "Типитака Mahāsaṅgīti на SuttaCentral.net", "desc": "Издание Mahāsaṅgīti, на SuttaCentral.net", "href": "https://suttacentral.net/pitaka/sutta?lang=en", "blank": true }
+            {
+              "label": "S.4nt.org",
+              "desc": "BJT, CST и Thai издания в одном месте",
+              "tpl": "/4nt/?q={{q}}",
+              "onlineTpl": "https://s.dhamma.gift/?q={{q}}",
+              "blank": true,
+              "star": true
+            },
+            {
+              "label": "BJT",
+              "title": "Редакция Шри Ланки Buddha Jhayanti",
+              "desc": "Шри-ланкийское издание канона, Buddha Jayanti",
+              "href": "https://open.tipitaka.lk/",
+              "blank": true
+            },
+            {
+              "label": "Thai",
+              "title": "Тайская Типитака на 84000.org",
+              "desc": "Тайское издание, на 84000.org",
+              "href": "https://84000.org/",
+              "blank": true
+            },
+            {
+              "label": "CST",
+              "title": "CST Типитака от VRI на Tipitaka.org",
+              "desc": "Издание CST, на Tipitaka.org",
+              "href": "https://tipitaka.org/romn",
+              "blank": true
+            },
+            {
+              "label": "PTS",
+              "title": "Типитака PTS на GRETIL",
+              "desc": "Издание PTS, на GRETIL",
+              "href": "https://gretil.sub.uni-goettingen.de/gretil.html#Suttapit",
+              "blank": true
+            },
+            {
+              "label": "MS",
+              "title": "Типитака Mahāsaṅgīti на SuttaCentral.net",
+              "desc": "Издание Mahāsaṅgīti, на SuttaCentral.net",
+              "href": "https://suttacentral.net/pitaka/sutta?lang=en",
+              "blank": true
+            }
           ]
         },
         {
-          "name": "Типитака CST", "column": 2,
+          "name": "Типитака CST",
+          "column": 2,
           "items": [
-            { "label": "Paauksociety.org", "title": "Paauksociety.org", "desc": "ИИ-перевод всех текстов", "href": "https://apply.paauksociety.org/tipitaka/index.php", "blank": true },
-            { "label": "Tipitaka.app", "title": "Tipitaka.app", "desc": "Multi-platform", "href": "https://tipitaka.app", "blank": true },
-            { "label": "Tipitaka Pali Online", "title": "Tipitaka Pali Online", "desc": "Multi-platform", "href": "https://tipitakapali.org/", "blank": true },
-            { "label": "Tipitaka Pali Reader", "title": "Tipitaka Pali Reader App", "desc": "Приложение — сайт на AmericanMonk.org", "href": "https://americanmonk.org/tipitaka-pali-reader/", "blank": true }
+            {
+              "label": "Paauksociety.org",
+              "title": "Paauksociety.org",
+              "desc": "ИИ-перевод всех текстов",
+              "href": "https://apply.paauksociety.org/tipitaka/index.php",
+              "blank": true
+            },
+            {
+              "label": "Tipitaka.app",
+              "title": "Tipitaka.app",
+              "desc": "Multi-platform",
+              "href": "https://tipitaka.app",
+              "blank": true
+            },
+            {
+              "label": "Tipitaka Pali Online",
+              "title": "Tipitaka Pali Online",
+              "desc": "Multi-platform",
+              "href": "https://tipitakapali.org/",
+              "blank": true
+            },
+            {
+              "label": "Tipitaka Pali Reader",
+              "title": "Tipitaka Pali Reader App",
+              "desc": "Приложение — сайт на AmericanMonk.org",
+              "href": "https://americanmonk.org/tipitaka-pali-reader/",
+              "blank": true
+            }
           ]
         },
         {
-          "name": "Патимоккха", "column": 3,
+          "name": "Патимоккха",
+          "column": 3,
           "items": [
-            { "label": "ATI", "desc": "Перевод Тханиссаро Бхиккху", "href": "https://www.accesstoinsight.org/tipitaka/vin/sv/index.html", "blank": true },
-            { "label": "BMC", "desc": "Комментарий Тханиссаро Бхиккху", "href": "https://www.dhammatalks.org/vinaya/bmc/Section0000.html", "localHref": "/dhammatalks.org/vinaya/bmc/Section0000.html", "blank": true },
-            { "label": "Nanatusita", "desc": "Перевод бхиккху Ньянатусита", "href": "/documents/bupm_trn_by_nanatusita.pdf" },
-            { "label": "Patimokkha Bi пер. Ch Kabilsingh", "desc": "Бхиккхуни-патимоккха (PDF)", "href": "/documents/bipm_trn_by_chatsumarn_kabilsingh.pdf", "blank": true }
+            {
+              "label": "ATI",
+              "desc": "Перевод Тханиссаро Бхиккху",
+              "href": "https://www.accesstoinsight.org/tipitaka/vin/sv/index.html",
+              "blank": true
+            },
+            {
+              "label": "BMC",
+              "desc": "Комментарий Тханиссаро Бхиккху",
+              "href": "https://www.dhammatalks.org/vinaya/bmc/Section0000.html",
+              "localHref": "/dhammatalks.org/vinaya/bmc/Section0000.html",
+              "blank": true
+            },
+            {
+              "label": "Nanatusita",
+              "desc": "Перевод бхиккху Ньянатусита",
+              "href": "/documents/bupm_trn_by_nanatusita.pdf"
+            },
+            {
+              "label": "Patimokkha Bi пер. Ch Kabilsingh",
+              "desc": "Бхиккхуни-патимоккха (PDF)",
+              "href": "/documents/bipm_trn_by_chatsumarn_kabilsingh.pdf",
+              "blank": true
+            }
           ]
         },
         {
-          "name": "Prātimokṣa (санскрит)", "column": 4,
+          "name": "Prātimokṣa (санскрит)",
+          "column": 4,
           "items": [
-            { "label": "Prātimokṣa", "desc": "Санскрит", "href": "https://old.dhamma.gift/san/d/mg.php", "blank": true },
-            { "label": "Sarvāstivāda", "href": "https://old.dhamma.gift/san/sarv.php", "blank": true },
-            { "label": "Mahāsāṃghika", "href": "https://old.dhamma.gift/san/mg.php", "blank": true },
-            { "label": "Lokottaravāda", "href": "https://old.dhamma.gift/san/lo.php", "blank": true },
-            { "label": "Mūlasarvāstivāda (Гилгит 2)", "href": "https://old.dhamma.gift/san/mu2.php", "blank": true },
-            { "label": "Mūlasarvāstivāda (Гилгит 3)", "href": "https://old.dhamma.gift/san/mu3.php", "blank": true }
+            {
+              "label": "Prātimokṣa",
+              "desc": "Санскрит",
+              "href": "https://old.dhamma.gift/san/d/mg.php",
+              "blank": true
+            },
+            {
+              "label": "Sarvāstivāda",
+              "href": "https://old.dhamma.gift/san/sarv.php",
+              "blank": true
+            },
+            {
+              "label": "Mahāsāṃghika",
+              "href": "https://old.dhamma.gift/san/mg.php",
+              "blank": true
+            },
+            {
+              "label": "Lokottaravāda",
+              "href": "https://old.dhamma.gift/san/lo.php",
+              "blank": true
+            },
+            {
+              "label": "Mūlasarvāstivāda (Гилгит 2)",
+              "href": "https://old.dhamma.gift/san/mu2.php",
+              "blank": true
+            },
+            {
+              "label": "Mūlasarvāstivāda (Гилгит 3)",
+              "href": "https://old.dhamma.gift/san/mu3.php",
+              "blank": true
+            }
           ]
         },
         {
-          "name": "Собрания", "column": 5,
+          "name": "Собрания",
+          "column": 5,
           "blocks": [
-            { "rows": [
-              { "label": "Digital Pali Reader", "desc": "Пали-ридер в браузере с пословным словарём; включает издания CSCST и Thai", "href": "https://d.dhamma.gift/_dprhtml/index.html", "blank": true },
-              { "label": "Simsapa Pali Reader (PC · Mac · Linux)", "desc": "Оффлайн-приложение для чтения и изучения канона", "href": "https://simsapa.github.io/", "blank": true }
-            ] },
-            { "divider": true, "inline": [
-              { "label": "SuttaCentral", "href": "https://suttacentral.net/pitaka/sutta?lang=en", "blank": true },
-              { "label": "Виная", "href": "https://suttacentral.net/pitaka/vinaya?lang=ru", "blank": true },
-              { "label": "Voice", "href": "https://www.sc-voice.net/", "blank": true },
-              { "label": "Legacy", "href": "/legacy.suttacentral.net/", "hideIfUnavailable": true, "blank": true }
-            ] },
-            { "divider": true, "rows": [
-              { "label": "The Buddha's Words", "desc": "Подборка ключевых учений Будды от Бхиккху Бодхи", "href": "https://thebuddhaswords.net", "localHref": "/bw/", "forceLocalGate": true, "blank": true }
-            ] },
-            { "divider": true, "rows": [
-              { "label": "Ancient Buddhist Texts", "desc": "Автор — бхиккху Анандаджоти", "href": "https://ancient-buddhist-texts.net/index.htm", "blank": true },
-              { "label": "Переводы Майкла Олдса", "href": "https://buddhadust.net/dhamma-vinaya/bd/dhamma-vinaya.htm", "blank": true },
-              { "label": "Статьи на Dhammadana.org", "href": "https://en.dhammadana.org/sangha/dhutanga.htm", "blank": true }
-            ] }
+            {
+              "rows": [
+                {
+                  "label": "Digital Pali Reader",
+                  "desc": "Пали-ридер в браузере с пословным словарём; включает издания CSCST и Thai",
+                  "href": "https://d.dhamma.gift/_dprhtml/index.html",
+                  "blank": true
+                },
+                {
+                  "label": "Simsapa Pali Reader (PC · Mac · Linux)",
+                  "desc": "Оффлайн-приложение для чтения и изучения канона",
+                  "href": "https://simsapa.github.io/",
+                  "blank": true
+                }
+              ]
+            },
+            {
+              "divider": true,
+              "inline": [
+                {
+                  "label": "SuttaCentral",
+                  "href": "https://suttacentral.net/pitaka/sutta?lang=en",
+                  "blank": true
+                },
+                {
+                  "label": "Виная",
+                  "href": "https://suttacentral.net/pitaka/vinaya?lang=ru",
+                  "blank": true
+                },
+                {
+                  "label": "Voice",
+                  "href": "https://www.sc-voice.net/",
+                  "blank": true
+                },
+                {
+                  "label": "Legacy",
+                  "href": "/legacy.suttacentral.net/",
+                  "hideIfUnavailable": true,
+                  "blank": true
+                }
+              ]
+            },
+            {
+              "divider": true,
+              "rows": [
+                {
+                  "label": "The Buddha's Words",
+                  "desc": "Подборка ключевых учений Будды от Бхиккху Бодхи",
+                  "href": "https://thebuddhaswords.net",
+                  "localHref": "/bw/",
+                  "forceLocalGate": true,
+                  "blank": true
+                }
+              ]
+            },
+            {
+              "divider": true,
+              "rows": [
+                {
+                  "label": "Ancient Buddhist Texts",
+                  "desc": "Автор — бхиккху Анандаджоти",
+                  "href": "https://ancient-buddhist-texts.net/index.htm",
+                  "blank": true
+                },
+                {
+                  "label": "Переводы Майкла Олдса",
+                  "href": "https://buddhadust.net/dhamma-vinaya/bd/dhamma-vinaya.htm",
+                  "blank": true
+                },
+                {
+                  "label": "Статьи на Dhammadana.org",
+                  "href": "https://en.dhammadana.org/sangha/dhutanga.htm",
+                  "blank": true
+                }
+              ]
+            }
           ]
         }
       ]
     },
-
     "russian": {
       "label": "Русские",
+      "desc": "Переводы и сайты",
       "icon": "bookmark",
       "mega": true,
       "groups": [
         {
-          "name": "Dhamma.gift", "column": 1,
+          "name": "Dhamma.gift",
+          "column": 1,
           "items": [
-            { "label": "Dhamma.gift Сутты", "desc": "Русские переводы сутт на этом сайте", "href": "/toc/dhamma" },
-            { "label": "Dhamma.gift Патимоккха", "desc": "Монашеские правила с переводом", "href": "/toc/vinaya" },
-            { "label": "Принципы", "href": "/assets/common/o.html", "blank": true },
-            { "label": "Проблематика", "href": "/assets/common/rationale.html" }
+            {
+              "label": "Dhamma.gift Сутты",
+              "desc": "Русские переводы сутт на этом сайте",
+              "href": "/toc/dhamma"
+            },
+            {
+              "label": "Dhamma.gift Патимоккха",
+              "desc": "Монашеские правила с переводом",
+              "href": "/toc/vinaya"
+            },
+            {
+              "label": "Принципы",
+              "href": "/assets/common/o.html",
+              "blank": true
+            },
+            {
+              "label": "Проблематика",
+              "href": "/assets/common/rationale.html"
+            }
           ]
         },
         {
-          "name": "Переводы", "column": 2,
+          "name": "Переводы",
+          "column": 2,
           "items": [
-            { "label": "ДН пер. А. Я. Сыркина «2025»", "href": "/documents/dn-syrkin-2020_edited_2025.pdf" }
+            {
+              "label": "ДН пер. А. Я. Сыркина «2025»",
+              "href": "/documents/dn-syrkin-2020_edited_2025.pdf"
+            }
           ]
         },
         {
-          "name": "Другие сайты", "column": 3,
+          "name": "Другие сайты",
+          "column": 3,
           "items": [
-            { "label": "Тхеравада.рф Сутты", "href": "https://xn--80aaaglc1fo1a.xn--p1ai/palicanon/%D1%81%D1%83%D1%82%D1%82%D0%B0%D0%BD%D1%82%D0%B0", "blank": true },
-            { "label": "Тхеравада.рф Патимоккха", "href": "http://xn--80aaaglc1fo1a.xn--p1ai/palicanon/%d0%b2%d0%b8%d0%bd%d0%b0%d1%8f", "blank": true },
-            { "label": "Dhamma.ru Сутты", "href": "http://dhamma.ru/index-sutta.html", "localHref": "/dhamma.ru/index-sutta.html", "blank": true },
-            { "label": "Dhamma.ru Патимоккха", "href": "/documents/prat.html", "blank": true },
-            { "label": "Theravada.ru", "href": "https://theravada.ru/Teaching/Canon/Suttanta/samyutta.htm", "localHref": "/theravada.ru/Teaching/Canon/Suttanta/samyutta.htm", "blank": true },
-            { "label": "Theravada.su", "href": "https://tipitaka.theravada.su/toc/translations/1097", "localHref": "/tipitaka.theravada.su/toc_thsu.html", "blank": true }
+            {
+              "label": "Тхеравада.рф Сутты",
+              "href": "https://xn--80aaaglc1fo1a.xn--p1ai/palicanon/%D1%81%D1%83%D1%82%D1%82%D0%B0%D0%BD%D1%82%D0%B0",
+              "blank": true
+            },
+            {
+              "label": "Тхеравада.рф Патимоккха",
+              "href": "http://xn--80aaaglc1fo1a.xn--p1ai/palicanon/%d0%b2%d0%b8%d0%bd%d0%b0%d1%8f",
+              "blank": true
+            },
+            {
+              "label": "Dhamma.ru Сутты",
+              "href": "http://dhamma.ru/index-sutta.html",
+              "localHref": "/dhamma.ru/index-sutta.html",
+              "blank": true
+            },
+            {
+              "label": "Dhamma.ru Патимоккха",
+              "href": "/documents/prat.html",
+              "blank": true
+            },
+            {
+              "label": "Theravada.ru",
+              "href": "https://theravada.ru/Teaching/Canon/Suttanta/samyutta.htm",
+              "localHref": "/theravada.ru/Teaching/Canon/Suttanta/samyutta.htm",
+              "blank": true
+            },
+            {
+              "label": "Theravada.su",
+              "href": "https://tipitaka.theravada.su/toc/translations/1097",
+              "localHref": "/tipitaka.theravada.su/toc_thsu.html",
+              "blank": true
+            }
           ]
         }
       ]
     },
-
     "dicts": {
       "label": "ИИ, Словари",
+      "desc": "Словари, ИИ, переводчики",
       "icon": "dict",
       "mega": true,
       "groups": [
         {
-          "name": "Dict.Dhamma.Gift", "column": 1,
+          "name": "Dict.Dhamma.Gift",
+          "column": 1,
           "items": [
-            { "label": "Dict.Dhamma.Gift", "title": "открыть Dict.Dhamma.Gift в новом окне (Alt + N)", "desc": "Мульти-словарь на основе DPD — открывается со словом из строки поиска", "tpl": "https://dict.dhamma.gift/ru/?theme={{theme}}&source=pwa&q={{q}}", "blank": true, "star": true },
-            { "label": "DPD оффлайн", "title": "Скачать DPD для использования оффлайн", "desc": "Digital Pāḷi Dictionary для скачивания — работает без интернета", "href": "https://digitalpalidictionary.github.io/", "blank": true },
-            { "label": "Расширения", "title": "Расширения для браузеров", "href": "#links" }
+            {
+              "label": "Dict.Dhamma.Gift",
+              "title": "открыть Dict.Dhamma.Gift в новом окне (Alt + N)",
+              "desc": "Мульти-словарь на основе DPD — открывается со словом из строки поиска",
+              "tpl": "https://dict.dhamma.gift/ru/?theme={{theme}}&source=pwa&q={{q}}",
+              "blank": true,
+              "star": true
+            },
+            {
+              "label": "DPD оффлайн",
+              "title": "Скачать DPD для использования оффлайн",
+              "desc": "Digital Pāḷi Dictionary для скачивания — работает без интернета",
+              "href": "https://digitalpalidictionary.github.io/",
+              "blank": true
+            },
+            {
+              "label": "Расширения",
+              "title": "Расширения для браузеров",
+              "href": "#links"
+            }
           ]
         },
         {
-          "name": "ИИ", "layout": "chips", "column": 3,
+          "name": "ИИ",
+          "layout": "chips",
+          "column": 3,
           "items": [
-            { "label": "Tripitaka-mcp.com", "href": "https://tripitaka-mcp.com/", "blank": true },                                
-            { "label": "Claude", "href": "https://claude.ai", "blank": true },
-            { "label": "Notebook LM", "href": "https://notebooklm.google.com/", "blank": true },
-            { "label": "Gemini", "href": "https://gemini.google/", "blank": true },
-            { "label": "DeepSeek", "href": "https://chat.deepseek.com", "blank": true },
-            { "label": "ChatGPT", "href": "https://chatgpt.com", "blank": true },
-            { "label": "Norbu AI", "href": "https://norbu-ai.org/", "blank": true }
+            {
+              "label": "Tripitaka-mcp.com",
+              "href": "https://tripitaka-mcp.com/",
+              "blank": true
+            },
+            {
+              "label": "Claude",
+              "href": "https://claude.ai",
+              "blank": true
+            },
+            {
+              "label": "Notebook LM",
+              "href": "https://notebooklm.google.com/",
+              "blank": true
+            },
+            {
+              "label": "Gemini",
+              "href": "https://gemini.google/",
+              "blank": true
+            },
+            {
+              "label": "DeepSeek",
+              "href": "https://chat.deepseek.com",
+              "blank": true
+            },
+            {
+              "label": "ChatGPT",
+              "href": "https://chatgpt.com",
+              "blank": true
+            },
+            {
+              "label": "Norbu AI",
+              "href": "https://norbu-ai.org/",
+              "blank": true
+            }
           ]
         },
         {
-          "name": "Переводчики", "layout": "chips", "column": 3,
+          "name": "Переводчики",
+          "layout": "chips",
+          "column": 3,
           "items": [
-            { "label": "Mitra Translator", "tpl": "https://dharmamitra.org/translate?input_sentence={{q}}", "blank": true, "star": true },
-            { "label": "Nexus", "href": "https://dharmamitra.org/nexus/db/pa", "blank": true }
+            {
+              "label": "Mitra Translator",
+              "tpl": "https://dharmamitra.org/translate?input_sentence={{q}}",
+              "blank": true,
+              "star": true
+            },
+            {
+              "label": "Nexus",
+              "href": "https://dharmamitra.org/nexus/db/pa",
+              "blank": true
+            }
           ]
         },
         {
-          "name": "Словари пали", "column": 2,
+          "name": "Словари пали",
+          "column": 2,
           "items": [
-            { "label": "Critical Pali Dict (CPD)", "tpl": "https://cpd.uni-koeln.de/search?query={{q}}", "blank": true },
-            { "label": "Cловарь M. Cone Gandhari.org", "tpl": "https://gandhari.org/dictionary?section=dop&search={{q}}", "blank": true },
-            { "label": "DPR Analysis", "tpl": "https://d.dhamma.gift/_dprhtml/index.html?frombox=1&analysis={{q}}", "blank": true },
-            { "label": "Cловарь R. Davids, W. Stede PTS", "desc": "Классический словарь пали-английский", "tpl": "https://dsal.uchicago.edu/cgi-bin/app/pali_query.py?matchtype=default&qs={{q}}", "blank": true }
+            {
+              "label": "Critical Pali Dict (CPD)",
+              "tpl": "https://cpd.uni-koeln.de/search?query={{q}}",
+              "blank": true
+            },
+            {
+              "label": "Cловарь M. Cone Gandhari.org",
+              "tpl": "https://gandhari.org/dictionary?section=dop&search={{q}}",
+              "blank": true
+            },
+            {
+              "label": "DPR Analysis",
+              "tpl": "https://d.dhamma.gift/_dprhtml/index.html?frombox=1&analysis={{q}}",
+              "blank": true
+            },
+            {
+              "label": "Cловарь R. Davids, W. Stede PTS",
+              "desc": "Классический словарь пали-английский",
+              "tpl": "https://dsal.uchicago.edu/cgi-bin/app/pali_query.py?matchtype=default&qs={{q}}",
+              "blank": true
+            }
           ]
         },
         {
-          "name": "Санскрит", "column": 4,
+          "name": "Санскрит",
+          "column": 4,
           "items": [
-            { "label": "Monier-Williams", "title": "Sanskrit-English Dictionary, 1899", "desc": "Стандартный санскритско-английский словарь", "tpl": "https://www.sanskrit-lexicon.uni-koeln.de/scans/MWScan/2020/web/webtc/indexcaller.php?transLit=roman&key={{q}}", "blank": true },
-            { "label": "Shabda-Sagara", "title": "Sanskrit-English Dictionary", "desc": "Cанскритско-английский словарь", "tpl": 
-	    "https://www.sanskrit-lexicon.uni-koeln.de/scans/SHSScan/2020/web/webtc/indexcaller.php?transLit=roman&key={{q}}", "blank": true },
-	    { "label": "Lexicon.uni-koeln.de", "title": "Все доступные словари на сайте Cologne University", "href": "https://www.sanskrit-lexicon.uni-koeln.de/", "blank": true },
-            { "label": "SkrDict", "tpl": "https://sanskritdictionary.com/?iencoding=iast&q={{q}}&lang=sans&action=Search", "blank": true },
-            { "label": "Learnskr", "tpl": "https://www.learnsanskrit.cc/translate?dir=au&search={{q}}", "blank": true }
+            {
+              "label": "Monier-Williams",
+              "title": "Sanskrit-English Dictionary, 1899",
+              "desc": "Стандартный санскритско-английский словарь",
+              "tpl": "https://www.sanskrit-lexicon.uni-koeln.de/scans/MWScan/2020/web/webtc/indexcaller.php?transLit=roman&key={{q}}",
+              "blank": true
+            },
+            {
+              "label": "Shabda-Sagara",
+              "title": "Sanskrit-English Dictionary",
+              "desc": "Cанскритско-английский словарь",
+              "tpl": "https://www.sanskrit-lexicon.uni-koeln.de/scans/SHSScan/2020/web/webtc/indexcaller.php?transLit=roman&key={{q}}",
+              "blank": true
+            },
+            {
+              "label": "Lexicon.uni-koeln.de",
+              "title": "Все доступные словари на сайте Cologne University",
+              "href": "https://www.sanskrit-lexicon.uni-koeln.de/",
+              "blank": true
+            },
+            {
+              "label": "SkrDict",
+              "tpl": "https://sanskritdictionary.com/?iencoding=iast&q={{q}}&lang=sans&action=Search",
+              "blank": true
+            },
+            {
+              "label": "Learnskr",
+              "tpl": "https://www.learnsanskrit.cc/translate?dir=au&search={{q}}",
+              "blank": true
+            }
           ]
         },
         {
-          "name": "Пали-санскрит", "column": 4,
+          "name": "Пали-санскрит",
+          "column": 4,
           "items": [
-            { "label": "Glosbe", "desc": "Многоязычный словарь от сообщества", "tpl": "https://glosbe.com/pi/sa/{{q}}", "blank": true },
-            { "label": "Sambhasha", "href": "https://sambhasha.ksu.ac.in/CompLing/pcl_1/html/Application%20home.html", "blank": true },
-            { "label": "Pl to SA AI", "href": "https://rephrasely.com/translate/translate-pali-to-sanskrit", "blank": true }
+            {
+              "label": "Glosbe",
+              "desc": "Многоязычный словарь от сообщества",
+              "tpl": "https://glosbe.com/pi/sa/{{q}}",
+              "blank": true
+            },
+            {
+              "label": "Sambhasha",
+              "href": "https://sambhasha.ksu.ac.in/CompLing/pcl_1/html/Application%20home.html",
+              "blank": true
+            },
+            {
+              "label": "Pl to SA AI",
+              "href": "https://rephrasely.com/translate/translate-pali-to-sanskrit",
+              "blank": true
+            }
           ]
         },
         {
-          "name": "Другие словари", "column": 5,
+          "name": "Другие словари",
+          "column": 5,
           "items": [
-            { "label": "Sutta.org", "desc": "Общий словарь пали-английский", "href": "https://dictionary.sutta.org/", "blank": true },
-            { "label": "Buddhist University", "href": "https://buddhistuniversity.net/content/reference/pali-thai-english-sanskrit-dictionary", "blank": true },
-            { "label": "Англ-Пали", "href": "http://dictionary.tamilcube.com/pali-dictionary.aspx", "blank": true }
+            {
+              "label": "Sutta.org",
+              "desc": "Общий словарь пали-английский",
+              "href": "https://dictionary.sutta.org/",
+              "blank": true
+            },
+            {
+              "label": "Buddhist University",
+              "href": "https://buddhistuniversity.net/content/reference/pali-thai-english-sanskrit-dictionary",
+              "blank": true
+            },
+            {
+              "label": "Англ-Пали",
+              "href": "http://dictionary.tamilcube.com/pali-dictionary.aspx",
+              "blank": true
+            }
           ]
         },
         {
-          "name": "Поиск", "column": 5,
+          "name": "Поиск",
+          "column": 5,
           "items": [
-            { "label": "Wisdomlib.org", "desc": "Поиск по большой библиотеке индологических текстов", "tpl": "https://www.wisdomlib.org/index.php?type=search&division=glossary&item=&mode=text&input={{q}}", "blank": true },
-            { "label": "Google Custom Search", "tpl": "https://old.dhamma.gift/cse.php?q={{q}}", "blank": true }
+            {
+              "label": "Wisdomlib.org",
+              "desc": "Поиск по большой библиотеке индологических текстов",
+              "tpl": "https://www.wisdomlib.org/index.php?type=search&division=glossary&item=&mode=text&input={{q}}",
+              "blank": true
+            },
+            {
+              "label": "Google Custom Search",
+              "tpl": "https://old.dhamma.gift/cse.php?q={{q}}",
+              "blank": true
+            }
           ]
         }
       ]
     },
-
     "materials": {
       "label": "Обучение",
+      "desc": "Грамматика, учебники, тренажёры",
       "icon": "cap",
       "mega": true,
       "groups": [
         {
-          "name": "Грамматика", "column": 2,
+          "name": "Грамматика",
+          "column": 2,
           "items": [
-            { "label": "Падежи — таблица", "desc": "Окончания существительных и прилагательных одной таблицей", "href": "https://drive.google.com/file/d/1HVRK6yTMT59uHCCvTdQukRy7fmHNntOr/view?usp=drivesdk", "star": true },
-            { "label": "Падежи — примеры", "desc": "Склонения с примерами, PDF", "href": "/documents/pali_declensions_ru.pdf" },
-            { "label": "Спряжения (рус)", "href": "/documents/pali_conjugations_ru.pdf", "star": true },
-            { "label": "Спряжения (англ)", "href": "https://drive.google.com/file/d/1HzPCYsVBEkWErAk6TqSWRYKseM1hqMCb/view?usp=sharing" }
+            {
+              "label": "Падежи — таблица",
+              "desc": "Окончания существительных и прилагательных одной таблицей",
+              "href": "https://drive.google.com/file/d/1HVRK6yTMT59uHCCvTdQukRy7fmHNntOr/view?usp=drivesdk",
+              "star": true
+            },
+            {
+              "label": "Падежи — примеры",
+              "desc": "Склонения с примерами, PDF",
+              "href": "/documents/pali_declensions_ru.pdf"
+            },
+            {
+              "label": "Спряжения (рус)",
+              "href": "/documents/pali_conjugations_ru.pdf",
+              "star": true
+            },
+            {
+              "label": "Спряжения (англ)",
+              "href": "https://drive.google.com/file/d/1HzPCYsVBEkWErAk6TqSWRYKseM1hqMCb/view?usp=sharing"
+            }
           ]
         },
         {
-          "name": "Учебники", "column": 1,
+          "name": "Учебники",
+          "column": 1,
           "items": [
-            { "label": "Дж. Гейр — Курс по Пали", "desc": "Академический курс грамматики пали", "href": "https://drive.google.com/file/d/1H_mhKNgrBYevOOnax-FUBgxkfSuwHItu/view?usp=share_link", "star": true },
-            { "label": "Елизаренкова, Топоров — Язык Пали", "href": "/documents/yelizarenkova_toporov_pali.pdf", "star": true },
-            { "label": "Вардер — Введение в Пали (англ)", "href": "https://drive.google.com/file/d/1b0sTtKF5wuGcDtr_u5sSSWGY5_QzBF-h/view?usp=drivesdk" },
-            { "label": "Тхануттамо Бх — Пали (англ)", "href": "https://drive.google.com/file/d/1jeXT4tkuudnN2EB1ABp4eHLGXbw-_EBk/view?usp=drivesdk" }
+            {
+              "label": "Дж. Гейр — Курс по Пали",
+              "desc": "Академический курс грамматики пали",
+              "href": "https://drive.google.com/file/d/1H_mhKNgrBYevOOnax-FUBgxkfSuwHItu/view?usp=share_link",
+              "star": true
+            },
+            {
+              "label": "Елизаренкова, Топоров — Язык Пали",
+              "href": "/documents/yelizarenkova_toporov_pali.pdf",
+              "star": true
+            },
+            {
+              "label": "Вардер — Введение в Пали (англ)",
+              "href": "https://drive.google.com/file/d/1b0sTtKF5wuGcDtr_u5sSSWGY5_QzBF-h/view?usp=drivesdk"
+            },
+            {
+              "label": "Тхануттамо Бх — Пали (англ)",
+              "href": "https://drive.google.com/file/d/1jeXT4tkuudnN2EB1ABp4eHLGXbw-_EBk/view?usp=drivesdk"
+            }
           ]
         },
         {
-          "name": "Материалы", "column": 3,
+          "name": "Материалы",
+          "column": 3,
           "items": [
-            { "label": "Gdrive", "desc": "Общая папка со сканами книг и учебными материалами", "href": "https://drive.google.com/drive/folders/1UU-y5idRNpfcVTripRUtyTVcOgdwjMGN" },
-            { "label": "ABT.net", "href": "https://www.ancient-buddhist-texts.net/Textual-Studies/index.htm" },
-            { "label": "SBS", "href": "https://sasanarakkha.github.io/study-tools/", "blank": true }
+            {
+              "label": "Gdrive",
+              "desc": "Общая папка со сканами книг и учебными материалами",
+              "href": "https://drive.google.com/drive/folders/1UU-y5idRNpfcVTripRUtyTVcOgdwjMGN"
+            },
+            {
+              "label": "ABT.net",
+              "href": "https://www.ancient-buddhist-texts.net/Textual-Studies/index.htm"
+            },
+            {
+              "label": "SBS",
+              "href": "https://sasanarakkha.github.io/study-tools/",
+              "blank": true
+            }
           ]
         },
         {
-          "name": "Руководства", "column": 2,
+          "name": "Руководства",
+          "column": 2,
           "items": [
-            { "label": "Learn Pali Переводы", "desc": "Блог с разбором сутт на пали", "href": "https://palistudies.blogspot.com/2019/04/intro-kaya-section-satipatthana-sutta.html?m=1", "blank": true },
-            { "label": "Джеймс Велан. Пали и Санскрит", "href": "https://www.thebuddhistsociety.org/page/sanskrit-and-pali-study-resources-guide-by-james-whelan", "blank": true },
-            { "label": "Материалы в GDrive", "href": "https://drive.google.com/drive/folders/1jAy_xD6qkrnIkmXO9e4KtI_--nDMySSn", "blank": true },
-            { "label": "Канал на YT", "href": "https://www.youtube.com/@jameswhelan2381", "blank": true }
+            {
+              "label": "Learn Pali Переводы",
+              "desc": "Блог с разбором сутт на пали",
+              "href": "https://palistudies.blogspot.com/2019/04/intro-kaya-section-satipatthana-sutta.html?m=1",
+              "blank": true
+            },
+            {
+              "label": "Джеймс Велан. Пали и Санскрит",
+              "href": "https://www.thebuddhistsociety.org/page/sanskrit-and-pali-study-resources-guide-by-james-whelan",
+              "blank": true
+            },
+            {
+              "label": "Материалы в GDrive",
+              "href": "https://drive.google.com/drive/folders/1jAy_xD6qkrnIkmXO9e4KtI_--nDMySSn",
+              "blank": true
+            },
+            {
+              "label": "Канал на YT",
+              "href": "https://www.youtube.com/@jameswhelan2381",
+              "blank": true
+            }
           ]
         },
         {
-          "name": "Запоминание", "column": 1,
+          "name": "Запоминание",
+          "column": 1,
           "blocks": [
-            { "rows": [
-              { "label": "Мнемотехника", "desc": "Инструмент для заучивания сутт строка за строкой", "href": "/ru/memo/", "star": true }
-            ] },
-            { "inline": [
-              { "label": "sn56.11", "href": "/memorize/?q=sn56.11" },
-              { "label": "dn22", "href": "/memorize/?q=dn22" },
-              { "label": "sn12.2", "href": "/memorize/?q=sn12.2" }
-            ] },
-            { "rows": [
-              { "label": "Советы-секреты «Как запоминать легче»", "href": "https://docs.google.com/document/d/12A4jNFrSQywZubM7bL2pgQK0fOtr6LEBJMjGb7nTNlw/edit?usp=drivesdk", "blank": true }
-            ] }
+            {
+              "rows": [
+                {
+                  "label": "Мнемотехника",
+                  "desc": "Инструмент для заучивания сутт строка за строкой",
+                  "href": "/ru/memo/",
+                  "star": true
+                }
+              ]
+            },
+            {
+              "inline": [
+                {
+                  "label": "sn56.11",
+                  "href": "/memorize/?q=sn56.11"
+                },
+                {
+                  "label": "dn22",
+                  "href": "/memorize/?q=dn22"
+                },
+                {
+                  "label": "sn12.2",
+                  "href": "/memorize/?q=sn12.2"
+                }
+              ]
+            },
+            {
+              "rows": [
+                {
+                  "label": "Советы-секреты «Как запоминать легче»",
+                  "href": "https://docs.google.com/document/d/12A4jNFrSQywZubM7bL2pgQK0fOtr6LEBJMjGb7nTNlw/edit?usp=drivesdk",
+                  "blank": true
+                }
+              ]
+            }
           ]
         },
         {
-          "name": "Тренажёры", "column": 3,
+          "name": "Тренажёры",
+          "column": 3,
           "items": [
-            { "label": "Грамматика", "href": "/assets/grammar/nouns.html" },
-            { "label": "Патимоккха", "href": "/assets/rr.html" },
-            { "label": "Pali Practice App", "desc": "Интерактивные упражнения по грамматике и лексике", "href": "https://www.dhammabytes.org/pali-practice/", "blank": true }
+            {
+              "label": "Грамматика",
+              "href": "/assets/grammar/nouns.html"
+            },
+            {
+              "label": "Патимоккха",
+              "href": "/assets/rr.html"
+            },
+            {
+              "label": "Pali Practice App",
+              "desc": "Интерактивные упражнения по грамматике и лексике",
+              "href": "https://www.dhammabytes.org/pali-practice/",
+              "blank": true
+            }
           ]
         }
       ]
     },
-
     "tools": {
       "label": "Инстр.",
+      "desc": "Конвертеры, таймеры, указатели",
       "icon": "wrench",
       "mega": true,
       "groups": [
         {
-          "name": "На сайте", "column": 1,
+          "name": "На сайте",
+          "column": 1,
           "items": [
-            { "label": "DG (th)", "desc": "Dhamma.gift тайским письмом", "href": "/th/?q=", "setsLang": "th" },
-            { "label": "old", "desc": "Предыдущая версия сайта", "href": "https://old.dhamma.gift", "blank": true },
-            { "label": "TTS", "title": "TTS Текст-в-речь", "desc": "Озвучка текста пали/перевода синтезом речи", "tpl": "https://old.dhamma.gift/ru/tts.php?q={{q}}", "blank": true },
-            { "label": "Read+", "title": "Читать Книгами или Главами", "desc": "Чтение целыми книгами или отдельными главами", "action": "readPlus", "base": "https://old.dhamma.gift/ru/r.php", "blank": true },
-            { "label": "bupm", "desc": "Патимоккха бхиккху", "href": "/toc/pm" },
-            { "label": "bipm", "desc": "Патимоккха бхиккхуни", "href": "/toc/bipm" }
+            {
+              "label": "DG (th)",
+              "desc": "Dhamma.gift тайским письмом",
+              "href": "/th/?q=",
+              "setsLang": "th"
+            },
+            {
+              "label": "old",
+              "desc": "Предыдущая версия сайта",
+              "href": "https://old.dhamma.gift",
+              "blank": true
+            },
+            {
+              "label": "TTS",
+              "title": "TTS Текст-в-речь",
+              "desc": "Озвучка текста пали/перевода синтезом речи",
+              "tpl": "https://old.dhamma.gift/ru/tts.php?q={{q}}",
+              "blank": true
+            },
+            {
+              "label": "Read+",
+              "title": "Читать Книгами или Главами",
+              "desc": "Чтение целыми книгами или отдельными главами",
+              "action": "readPlus",
+              "base": "https://old.dhamma.gift/ru/r.php",
+              "blank": true
+            },
+            {
+              "label": "bupm",
+              "desc": "Патимоккха бхиккху",
+              "href": "/toc/pm"
+            },
+            {
+              "label": "bipm",
+              "desc": "Патимоккха бхиккхуни",
+              "href": "/toc/bipm"
+            }
           ]
         },
         {
-          "name": "Календарь", "column": 2,
+          "name": "Календарь",
+          "column": 2,
           "items": [
-            { "label": "Дни Упосаттхи по Суттам", "desc": "Календарь дней упосаттхи по лунному циклу", "href": "/assets/common/lunarRu.html", "star": true }
+            {
+              "label": "Дни Упосаттхи по Суттам",
+              "desc": "Календарь дней упосаттхи по лунному циклу",
+              "href": "/assets/common/lunarRu.html",
+              "star": true
+            }
           ]
         },
         {
-          "name": "Конвертеры", "column": 2,
+          "name": "Конвертеры",
+          "column": 2,
           "items": [
-            { "label": "Aksharamukha текстовый конвертер", "desc": "Конвертация текста пали между ~160 системами письма (деванагари, тайская и др.)", "tpl": "https://www.aksharamukha.com/converter?source=IASTPali&target=Devanagari&text={{q}}", "blank": true, "star": true },
-            { "label": "PTS Конвертер #1", "desc": "Перевод ссылки на сутту в номер страницы издания PTS", "href": "https://palistudies.blogspot.com/2020/02/sutta-number-to-pts-reference-converter.html", "blank": true },
-            { "label": "PTS Конвертер #2", "desc": "Обратный перевод: номер страницы PTS в современную ссылку на сутту", "href": "https://benmneb.github.io/pts-converter/" }
+            {
+              "label": "Aksharamukha текстовый конвертер",
+              "desc": "Конвертация текста пали между ~160 системами письма (деванагари, тайская и др.)",
+              "tpl": "https://www.aksharamukha.com/converter?source=IASTPali&target=Devanagari&text={{q}}",
+              "blank": true,
+              "star": true
+            },
+            {
+              "label": "PTS Конвертер #1",
+              "desc": "Перевод ссылки на сутту в номер страницы издания PTS",
+              "href": "https://palistudies.blogspot.com/2020/02/sutta-number-to-pts-reference-converter.html",
+              "blank": true
+            },
+            {
+              "label": "PTS Конвертер #2",
+              "desc": "Обратный перевод: номер страницы PTS в современную ссылку на сутту",
+              "href": "https://benmneb.github.io/pts-converter/"
+            }
           ]
         },
         {
-          "name": "Указатели", "column": 3,
+          "name": "Указатели",
+          "column": 3,
           "items": [
-            { "label": "ReadingFaithfully Индекс Сутт", "desc": "Сверка номеров сутт между изданиями", "href": "https://index.readingfaithfully.org/", "blank": true },
-            { "label": "Кратко", "desc": "Сборка своего JSON-файла с краткими описаниями сутт с SuttaCentral.net", "href": "/assets/br/" }
+            {
+              "label": "ReadingFaithfully Индекс Сутт",
+              "desc": "Сверка номеров сутт между изданиями",
+              "href": "https://index.readingfaithfully.org/",
+              "blank": true
+            },
+            {
+              "label": "Кратко",
+              "desc": "Сборка своего JSON-файла с краткими описаниями сутт с SuttaCentral.net",
+              "href": "/assets/br/"
+            }
           ]
         },
         {
-          "name": "Таймеры", "column": 4,
+          "name": "Таймеры",
+          "column": 4,
           "items": [
-            { "label": "Loop Timer", "desc": "Циклично повторяет отрывок для заучивания", "href": "/ru/memo/?delay=300&end=10&trn=0&loop=1&lc=%E2%88%9E&snd=gong.mp3", "blank": true },
-            { "label": "Repeat timer #2", "desc": "Звуковой сигнал через равные промежутки времени", "href": "/assets/repeat-timer/", "blank": true },
-            { "label": "Pomodoro", "desc": "Таймер Помодоро 25/5 минут, есть обратный режим", "href": "/assets/pomodoro-timer/", "blank": true }
+            {
+              "label": "Loop Timer",
+              "desc": "Циклично повторяет отрывок для заучивания",
+              "href": "/ru/memo/?delay=300&end=10&trn=0&loop=1&lc=%E2%88%9E&snd=gong.mp3",
+              "blank": true
+            },
+            {
+              "label": "Repeat timer #2",
+              "desc": "Звуковой сигнал через равные промежутки времени",
+              "href": "/assets/repeat-timer/",
+              "blank": true
+            },
+            {
+              "label": "Pomodoro",
+              "desc": "Таймер Помодоро 25/5 минут, есть обратный режим",
+              "href": "/assets/pomodoro-timer/",
+              "blank": true
+            }
           ]
         },
         {
-          "name": "Работа с текстом", "column": 3,
+          "name": "Работа с текстом",
+          "column": 3,
           "items": [
-            { "label": "Редактировать Перевод", "desc": "Построчное сопоставление пали и перевода", "tpl": "/assets/lbl.html?q={{q}}", "blank": true },
-            { "label": "Сравнить Две Сутты", "desc": "Найти различия между двумя суттами", "tpl": "/assets/diff/?lang=pl&one={{q}}&two={{q}}", "blank": true },
-            { "label": "Сравнить Два Списка", "desc": "Построчное сравнение двух текстовых списков", "href": "/assets/listdiff.html" },
-            { "label": "Сделать список из строки", "desc": "Составить список из строк текста", "href": "/assets/makelist.html", "star": true }
+            {
+              "label": "Редактировать Перевод",
+              "desc": "Построчное сопоставление пали и перевода",
+              "tpl": "/assets/lbl.html?q={{q}}",
+              "blank": true
+            },
+            {
+              "label": "Сравнить Две Сутты",
+              "desc": "Найти различия между двумя суттами",
+              "tpl": "/assets/diff/?lang=pl&one={{q}}&two={{q}}",
+              "blank": true
+            },
+            {
+              "label": "Сравнить Два Списка",
+              "desc": "Построчное сравнение двух текстовых списков",
+              "href": "/assets/listdiff.html"
+            },
+            {
+              "label": "Сделать список из строки",
+              "desc": "Составить список из строк текста",
+              "href": "/assets/makelist.html",
+              "star": true
+            }
           ]
         }
       ]
+    }
+  },
+  "th": {
+    "read": {
+      "label": "อ่านบาลี",
+      "desc": "สารบัญพระไตรปิฎก"
+    },
+    "history": {
+      "label": "ประวัติ",
+      "desc": "ที่อ่านล่าสุด"
+    },
+    "help": {
+      "label": "ช่วยเหลือ",
+      "desc": "วิธีค้นหาและอ่าน"
+    },
+    "external": {
+      "label": "แหล่งอื่น",
+      "desc": "พระไตรปิฎก ปาติโมกข์ ฉบับต่างๆ"
+    },
+    "dicts": {
+      "label": "AI และพจนานุกรม",
+      "desc": "พจนานุกรม AI นักแปล"
+    },
+    "materials": {
+      "label": "สื่อการเรียน",
+      "desc": "ไวยากรณ์ ตำรา แบบฝึกหัด"
+    },
+    "tools": {
+      "label": "เครื่องมือ",
+      "desc": "ตัวแปลง นาฬิกาจับเวลา ดัชนี"
     }
   }
 }

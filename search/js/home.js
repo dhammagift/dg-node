@@ -144,7 +144,28 @@
     function menuLang() {
         var lang = (window.DHAMMA_I18N && window.DHAMMA_I18N.language) ||
             localStorage.getItem('dhammaLanguage') || localStorage.getItem('siteLanguage') || 'en';
-        return lang === 'ru' ? 'ru' : 'en';
+        if (lang === 'ru') return 'ru';
+        // Any further language (th, ...) counts once menu-links.json carries a section for it —
+        // a PARTIAL one is enough, mergeMenuLang() below fills it out from en at load time.
+        if (lang !== 'en' && menuData && menuData[lang]) return lang;
+        return 'en';
+    }
+
+    /* menu-links.json holds full link trees only for en/ru. A new UI language (th) adds just the
+       tiles' own label/desc; everything else (groups, items, icons, actions) is the English tree.
+       Merged once here, right after the fetch, so the rest of this file can keep treating
+       menuData[lang][key] as a complete tile. */
+    function mergeMenuLang(data) {
+        Object.keys(data).forEach(function (lang) {
+            if (lang === 'en' || lang === 'ru' || lang.charAt(0) === '_' || !data.en) return;
+            var partial = data[lang];
+            var full = {};
+            Object.keys(data.en).forEach(function (key) {
+                full[key] = Object.assign({}, data.en[key], partial[key] || {});
+            });
+            data[lang] = full;
+        });
+        return data;
     }
 
     var menuData = null;
@@ -1787,13 +1808,17 @@
             el.type = 'button';
             el.className = 'dg-tile';
             el.dataset.tile = key;
-            // Описание — необязательное поле формы правки, на плитке места под него нет, поэтому
-            // просто нативный tooltip, без изменений в сетке/CSS.
-            if (tile.desc) el.title = tile.desc;
+            /* Описание (menu-links.json desc у плитки, либо своё из формы правки). Owner: "мини
+               описания под названиями тайлов... текущую версию не убирай, может не зайдет" —
+               поэтому две формы: строкой под названием, когда включено в шторке «Настройки»
+               (tileDescEnabled, по умолчанию да), иначе — как раньше, нативный tooltip. */
+            var showDesc = tile.desc && tileDescEnabled();
+            if (tile.desc && !showDesc) el.title = tile.desc;
             /* Иконка — в кружке из акцентного фона: так плитка читается как значок с подписью,
                а не как строка списка в рамке. */
             el.innerHTML = '<span class="dg-tile-ic">' + iconHtml(tile.icon) + '</span>' +
-                '<span class="dg-tile-label">' + esc(tile.label) + '</span>';
+                '<span class="dg-tile-label">' + esc(tile.label) + '</span>' +
+                (showDesc ? '<span class="dg-tile-desc">' + esc(tile.desc) + '</span>' : '');
             el.addEventListener('click', function () {
                 // Клик, приходящий сразу за перетаскиванием, — не выбор плитки.
                 if (el.dataset.dragged === '1') { el.dataset.dragged = ''; return; }
@@ -2798,6 +2823,25 @@
         renderThemeSwitch();
     }
 
+    /* «Описания кнопок» — показывать ли строку под названием плитки. localStorage.dgTileDesc:
+       'off' прячет (возвращает прежний вид, описание остаётся tooltip'ом), всё остальное — 'on'. */
+    var TILE_DESC_KEY = 'dgTileDesc';
+    function tileDescEnabled() {
+        try { return localStorage.getItem(TILE_DESC_KEY) !== 'off'; } catch (e) { return true; }
+    }
+    function renderTileDescSwitch() {
+        var host = document.getElementById('dg-tiledesc-seg');
+        if (!host) return;
+        host.innerHTML = '';
+        host.appendChild(segmented([
+            { value: 'on', label: t('menu.tileDescOn', 'Показывать') },
+            { value: 'off', label: t('menu.tileDescOff', 'Скрыть') }
+        ], tileDescEnabled() ? 'on' : 'off', function (v) {
+            try { localStorage.setItem(TILE_DESC_KEY, v); } catch (e) { /* приватный режим */ }
+            renderTiles();
+        }));
+    }
+
     function renderThemeSwitch() {
         var host = document.getElementById('dg-theme-seg');
         if (!host) return;
@@ -2848,6 +2892,7 @@
         renderHowTo();
         renderLangSwitch();
         renderThemeSwitch();
+        renderTileDescSwitch();
         // Owner screenshot: mode titles ("Standard"/"Multi Trn") stayed in the OLD language
         // after clicking EN/RU inside an already-open drawer — paintReaderModes() only ran from
         // openDrawer(), never on a live language switch while the drawer was already showing.
@@ -2924,11 +2969,12 @@
         revealAnchorSection(); // прямой заход с хешем в адресе (/#contacts и т.п.)
         renderLangSwitch();
         renderThemeSwitch();
+        renderTileDescSwitch();
         syncRestoreLink();
 
         fetch(MENU_URL)
             .then(function (r) { return r.json(); })
-            .then(function (data) { menuData = data; applyMenuLangStrings(); })
+            .then(function (data) { menuData = mergeMenuLang(data); applyMenuLangStrings(); })
             .catch(function (e) { console.warn('menu-links.json не загрузился:', e); });
 
         fetch(SLIDES_URL)
