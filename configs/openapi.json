@@ -627,6 +627,205 @@
         }
       }
     },
+    "/api/chapter/{id}": {
+      "get": {
+        "tags": [
+          "text"
+        ],
+        "summary": "Ридер глав: что означает id (текст / глава / книга) и упорядоченный список текстов с числом сегментов",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "sn1",
+            "description": "id текста (sn1.1), главы (sn1, an3, pj) или книги (mn, dn, kn). Принимает легаси-формы r.php: \"mn 10\", \"bu-pj1\", \"pm\"."
+          },
+          {
+            "name": "lang",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ru",
+                "en"
+              ]
+            },
+            "description": "Язык подписи заголовка (ru|en)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Манифест. kind: text|chapter|book. anchor — исходный id, если он лежит внутри диапазона (an1.9 → an1.1-10).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "input": {
+                      "type": "string"
+                    },
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "text",
+                        "chapter",
+                        "book"
+                      ]
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "anchor": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "total_suttas": {
+                      "type": "integer"
+                    },
+                    "total_segments": {
+                      "type": "integer"
+                    },
+                    "suttas": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "n": {
+                            "type": "integer"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Неизвестный id"
+          }
+        }
+      }
+    },
+    "/api/chapter/{id}/texts": {
+      "get": {
+        "tags": [
+          "text"
+        ],
+        "summary": "Ридер глав: порция текстов (от from, count штук) в формате /api/text/{suttaId} — из dg.db, без файлов",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "sn1",
+            "description": "id текста (sn1.1), главы (sn1, an3, pj) или книги (mn, dn, kn). Принимает легаси-формы r.php: \"mn 10\", \"bu-pj1\", \"pm\"."
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 0
+            },
+            "description": "Индекс первого текста в списке манифеста"
+          },
+          {
+            "name": "count",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 10,
+              "minimum": 1,
+              "maximum": 25
+            },
+            "description": "Размер порции (1..25)"
+          },
+          {
+            "name": "langs",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "default": "ru,en"
+            },
+            "description": "Языки переводов, через запятую"
+          },
+          {
+            "name": "script",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "example": "Devanagari",
+            "description": "Система письма пали (ключ Aksharamukha; dev = Devanagari)"
+          },
+          {
+            "name": "rp",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Убрать пунктуацию из пали (легаси-флаг r.php)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Порция текстов главы/книги. Каждый элемент suttas — тот же объект, что возвращает /api/text/{suttaId} (тот же выбор переводчика).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "from": {
+                      "type": "integer"
+                    },
+                    "count": {
+                      "type": "integer"
+                    },
+                    "total": {
+                      "type": "integer"
+                    },
+                    "next": {
+                      "type": "integer",
+                      "nullable": true
+                    },
+                    "suttas": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "description": "Тот же объект, что ответ /api/text/{suttaId}"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Неизвестный id"
+          }
+        }
+      }
+    },
     "/api/toc": {
       "get": {
         "tags": [

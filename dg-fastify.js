@@ -2562,7 +2562,7 @@ function findChapterChildren(prefix) {
         if (prefix.endsWith('-')) return /^[a-z]/i.test(rest);
         if (/\d$/.test(prefix)) return /^[.:]/.test(rest);
         return /^\d/.test(rest);
-    }).sort();
+    });
 }
 
 // /toc/<id> — оглавление, открытое на нужном месте ("/toc/mn", "/toc/sn25"). Та же SPA-страница,
@@ -2607,6 +2607,284 @@ function findRangeContaining(id) {
     }
     return null;
 }
+
+// ===========================================================================================
+// Chapter reader — Node/SQLite replacement for the legacy PHP r.php ("Read by Books or
+// Chapters", old.dhamma.gift/r.php?q=sn1). One page = every segment of a text, a chapter
+// (sn1, an3, pli-tv-bu-vb-pj) or a whole book (mn, dn) in reading order.
+//
+// Why it is here and not a port of r.php's engine: r.php forked `find` via shell_exec ~8 times
+// per request, then file_get_contents+json_decode'd 600–7300 JSON files for q=mn/q=sn, usort'ed
+// tens of thousands of keys with a userland comparator and emitted ONE html table that
+// DataTables (paging:false) then had to lay out — that is where "тормозил страшно" came from.
+// Here everything comes out of dg.db (the same tables /api/text reads), in batches of suttas,
+// and the client streams the batches into the page. No grep, no directory walks, no per-request
+// file reads (owner: "если у нас будет бд то это будет только бд без файлов").
+//
+// Routes:
+//   GET /api/chapter/:id            — manifest: what the id resolves to + ordered sutta list
+//   GET /api/chapter/:id/texts      — one batch of suttas (?from=&count=), /api/text-shaped
+//   GET /chapter/:id, /chapter      — the SPA shell (client renders, see public/spa/chapter.js)
+//   GET /r.php, /r/?q=              — legacy aliases, 302 to /chapter/<id> (query params carried over)
+// ===========================================================================================
+const CHAPTER_DEFAULT_COUNT = 10;
+const CHAPTER_MAX_COUNT = 25;
+const chapterLeafCache = new Map();      // book code -> ordered leaf ids present in skeletonDB
+const chapterManifestCache = new Map();  // `${id}|${lang}` -> manifest (skeleton is static per process)
+
+// Input normalisation, ported from r.php:7-27 and extended with the bare Vinaya category codes
+// dg-text-router.js's classify() already understands ("pj" -> pli-tv-bu-vb-pj, "bi-ss" -> ...).
+// "mn 10" -> "mn10", "sn 1 1" -> "sn1.1", "pm"/"bu pm" -> pli-tv-bu-pm, "bu-pj1" -> pli-tv-bu-vb-pj1.
+// Anything after '#'/'?' is dropped (legacy links carried the anchor in q itself sometimes).
+const CHAPTER_VINAYA_CATS = ['pj', 'ss', 'ay', 'np', 'pc', 'pd', 'sk', 'as'];
+function normalizeChapterSlug(raw) {
+    let slug = String(raw || '').toLowerCase().replace(/[#?].*$/, '').trim();
+    slug = slug.replace(/(\d+)\s+(\d+)/g, '$1.$2').replace(/([a-z]+)\s+(\d)/g, '$1$2');
+    slug = slug.replace(/\s+/g, '-');
+    if (slug === 'pm' || slug === 'bupm' || slug === 'bpm' || /^bu-?pm$/.test(slug)) return 'pli-tv-bu-pm';
+    if (slug === 'bipm' || /^bi-?pm$/.test(slug)) return 'pli-tv-bi-pm';
+    if (slug === 'bu') return 'pli-tv-bu-vb-';
+    if (slug === 'bi') return 'pli-tv-bi-vb-';
+    if (slug.startsWith('pli-tv-')) return slug;
+    if (/^(kd|pvr)\d*$/.test(slug)) return 'pli-tv-' + slug;
+    const cat = slug.match(new RegExp('^(bi-|bu-)?(' + CHAPTER_VINAYA_CATS.join('|') + ')(\\d*)$'));
+    // Bare "an"/"as" collide with Aṅguttara / nothing useful — only take the Vinaya reading when the
+    // side prefix is explicit or the code is unambiguous (not a nikāya name).
+    if (cat && (cat[1] || !/^(an)$/.test(cat[2]))) {
+        return 'pli-tv-' + (cat[1] === 'bi-' ? 'bi' : 'bu') + '-vb-' + cat[2] + cat[3];
+    }
+    const side = slug.match(/^(bu|bi)-([a-z]{2}\d*)$/);
+    if (side) return 'pli-tv-' + side[1] + '-vb-' + side[2];
+    return slug;
+}
+
+// Which TOC entry (book or group) a code belongs to, with its bilingual label — from
+// configs/reader/toc-books.json, the same registry /api/toc is built from.
+function findTocEntry(code) {
+    for (const [key, cat] of Object.entries(TOC_BOOKS)) {
+        if (key === '_comment') continue;
+        for (const b of [...(cat.books || []), ...(cat.extraBooks || [])]) if (b.code === code) return { entry: b, group: null };
+        for (const g of (cat.groups || [])) {
+            if (g.code === code) return { entry: g, group: g };
+            for (const b of [...(g.books || []), ...(g.extraBooks || [])]) if (b.code === code) return { entry: b, group: null };
+        }
+    }
+    return null;
+}
+
+// Ordered leaf ids of a whole book/collection. Tree order (sc-data structure/tree, the same
+// files the TOC renders) is the reading order — NOT the skeleton's numeric sort, which for
+// Vinaya would put rule categories alphabetically (an, as, np, pc, pd, pj, sk, ss) instead of
+// canonically (pj, ss, ay, np, pc, pd, sk, as). Filtered to ids that actually exist in dg.db.
+// A group ("kn") is the concatenation of its member books in TOC order. Prefix children
+// (findChapterChildren) are the fallback for codes without a tree file. Cached per process;
+// warmed for every TOC code at startup (loop at the end of this section) so no request ever touches the disk.
+function chapterLeafIds(code) {
+    if (chapterLeafCache.has(code)) return chapterLeafCache.get(code);
+    let ids = [];
+    const toc = findTocEntry(code);
+    if (toc && toc.group) {
+        const members = [...(toc.group.books || []), ...(toc.group.extraBooks || [])];
+        ids = members.flatMap(b => chapterLeafIds(b.code));
+    } else {
+        const tree = loadBookTree(code);
+        if (tree) {
+            const leaves = [];
+            collectLeafIds(tree, leaves);
+            ids = leaves.filter(id => skeletonDB[id]);
+        }
+        if (!ids.length) ids = findChapterChildren(code);
+    }
+    chapterLeafCache.set(code, ids);
+    return ids;
+}
+
+// Resolve any user-facing id to { id, kind, ids, anchor }:
+//   text    — one sutta (skeletonDB[id]); an id INSIDE a range ("an1.9") resolves to the range
+//             text ("an1.1-10") with the requested id as the anchor to scroll to;
+//   book    — a TOC code (mn, dn, kn, pli-tv-bu-vb, ...);
+//   chapter — a prefix with children (sn1, an3, pli-tv-bu-vb-pj, pli-tv-bu-vb-).
+// Returns null when nothing matches (the client falls back to a normal search, like /:slug).
+function resolveChapterTarget(rawId) {
+    const slug = normalizeChapterSlug(rawId);
+    if (!slug) return null;
+    if (skeletonDB[slug]) return { id: slug, kind: 'text', ids: [slug], anchor: null };
+    const range = findRangeContaining(slug);
+    if (range) return { id: range, kind: 'text', ids: [range], anchor: slug };
+    if (TOC_CODES.has(slug)) {
+        const ids = chapterLeafIds(slug);
+        if (ids.length) return { id: slug, kind: 'book', ids, anchor: null };
+    }
+    const children = findChapterChildren(slug);
+    if (children.length) return { id: slug, kind: 'chapter', ids: children, anchor: null };
+    return null;
+}
+
+// Human title for the page header. text -> its own title (stored verbatim, see build-search-db);
+// sn<N> -> real saṁyutta name (SN_TOC, sn_toc.csv); book/group -> toc-books.json label in the UI
+// language; an<N> -> the "Aṅguttara Nikāya N" front-matter line (:0.1) of its first text; any
+// other chapter -> the first text's :0.2 line — exactly what r.php used as the title (its
+// `$key ends with :0.2` loop). Falls back to the id in upper case, as r.php did (strtoupper).
+function chapterTitle(target, lang) {
+    const first = target.ids[0];
+    if (target.kind === 'text') return (skeletonDB[first] && skeletonDB[first].title) || first.toUpperCase();
+    if (SN_TOC.byCode[target.id]) return SN_TOC.byCode[target.id];
+    const toc = findTocEntry(target.id);
+    if (toc && toc.entry.label) return toc.entry.label[lang] || toc.entry.label.en || target.id.toUpperCase();
+    // an<N>: ':0.1' is 'Aṅguttara Nikāya N'; Vinaya rule categories: ':0.3' is the kaṇḍa
+    // ('Pārājikakaṇḍa'), ':0.2' would be the whole 'Mahāvibhaṅga'; everything else: ':0.2'.
+    const idx = /^an\d+$/.test(target.id) ? 1 : target.id.startsWith('pli-tv-') ? 3 : 2;
+    let title = segmentAt(first, idx) || segmentAt(first, 2) || segmentAt(first, 1) || target.id.toUpperCase();
+    // 'Aṅguttara Nikāya 3.1' (first text's own header) -> 'Aṅguttara Nikāya 3' for the whole book-of-threes.
+    if (/^an\d+$/.test(target.id)) title = title.replace(/\.\d+\s*$/, '');
+    return title;
+}
+
+// r.php:159-164 — "rp" (remove punctuation) for the Pali line: dashes become spaces, sentence
+// punctuation (Latin and Devanagari daṇḍa) becomes " | ", every other punctuation/symbol is
+// dropped except the bar itself. Applied AFTER any script conversion so the daṇḍa case works.
+function stripPaliPunctuation(text) {
+    return String(text)
+        .replace(/[-—–]/g, ' ')
+        .replace(/[.?!]/g, ' | ')
+        .replace(/[।॥]/g, ' | ')
+        .replace(/(?!\|)[\p{P}\p{S}]/gu, '');
+}
+
+function chapterUiLang(req) {
+    return String(req.query.lang || '').toLowerCase().startsWith('ru') ? 'ru' : 'en';
+}
+
+// Manifest: what the id means and the ordered list of texts with their segment counts — the
+// client sizes its batches and draws the progress bar from this. Segment count = root segments
+// (the reader's rows are the root text's segments, translations never add rows). One grouped
+// query for the whole list (sqlRowsIn chunks the IN list), not one per sutta.
+app.get('/api/chapter/:id', (req, res) => {
+    const target = resolveChapterTarget(req.params.id);
+    if (!target) return res.code(404).send({ error: `Unknown text or chapter id: ${req.params.id}` });
+    const lang = chapterUiLang(req);
+    const key = `${target.id}|${lang}`;
+    let manifest = chapterManifestCache.get(key);
+    if (!manifest) {
+        const counts = new Map(sqlRowsIn('sutta_id, COUNT(*) AS n', 'texts', 'sutta_id', target.ids,
+            "AND kind = 'root' GROUP BY sutta_id").map(r => [r.sutta_id, r.n]));
+        const suttas = target.ids.map(id => ({ id, title: skeletonDB[id].title, n: counts.get(id) || 0 }));
+        manifest = {
+            id: target.id,
+            kind: target.kind,
+            title: chapterTitle(target, lang),
+            total_suttas: suttas.length,
+            total_segments: suttas.reduce((sum, s) => sum + s.n, 0),
+            suttas
+        };
+        chapterManifestCache.set(key, manifest);
+    }
+    res.header('Cache-Control', 'public, max-age=3600'); // cache.md §4 — same tier as /api/text
+    return res.send({ ...manifest, input: req.params.id, anchor: target.anchor });
+});
+
+// One batch of texts, each in exactly the shape /api/text/:suttaId returns (same
+// buildTextDataFromBase, same translator choice — translatorsForSutta/TRANSLATOR_PRIORITY —
+// so a sutta reads identically in the reader and in the chapter view; r.php, by contrast, took
+// whichever translator `find` happened to list first). Root/variant/html/translation rows for
+// the whole batch come from two IN-queries, then are grouped per sutta.
+//   ?from=   index into the manifest's sutta list (default 0)
+//   ?count=  batch size, 1..CHAPTER_MAX_COUNT (default CHAPTER_DEFAULT_COUNT)
+//   ?langs=  translation languages, comma list (default ru,en — what r.php always showed)
+//   ?script= Pali script (any Aksharamukha key; "dev" = legacy r.php alias for Devanagari)
+//   ?rp=     remove punctuation from the Pali line (legacy r.php flag)
+app.get('/api/chapter/:id/texts', async (req, res) => {
+    const target = resolveChapterTarget(req.params.id);
+    if (!target) return res.code(404).send({ error: `Unknown text or chapter id: ${req.params.id}` });
+
+    const from = Math.max(0, parseInt(req.query.from, 10) || 0);
+    const count = Math.min(CHAPTER_MAX_COUNT, Math.max(1, parseInt(req.query.count, 10) || CHAPTER_DEFAULT_COUNT));
+    const ids = target.ids.slice(from, from + count);
+    const targetLangs = String(req.query.langs || 'ru,en').split(',').map(l => l.trim()).filter(Boolean);
+    const wanted = targetLangs.includes('all') ? null : new Set(targetLangs.map(l => l.split('_')[0]));
+    const scriptCode = req.query.script === 'dev' ? 'Devanagari' : req.query.script;
+    const convertScript = !!resolveScriptKey(scriptCode);
+    const removePunct = req.query.rp !== undefined && req.query.rp !== 'false' && req.query.rp !== '0';
+
+    try {
+        const filter = langFilterSql(wanted);
+        const rowsById = new Map(ids.map(id => [id, []]));
+        for (const row of sqlRowsIn('sutta_id, segment_id, ord, kind, lang, translator, txt', 'texts', 'sutta_id',
+            ids, filter.sql, filter.params)) {
+            rowsById.get(row.sutta_id).push(row);
+        }
+        const htmlById = new Map(ids.map(id => [id, new Map()]));
+        for (const row of sqlRowsIn('sutta_id, segment_id, txt', 'html', 'sutta_id', ids)) {
+            htmlById.get(row.sutta_id).set(row.segment_id, row.txt);
+        }
+
+        const suttas = [];
+        for (const id of ids) {
+            const base = { suttaMeta: skeletonDB[id], rows: rowsById.get(id), htmlBySegment: htmlById.get(id) };
+            const data = await buildTextDataFromBase(base, id, targetLangs, null, null);
+            data.columns = targetLangs;
+            if (convertScript) {
+                await Promise.all(data.segments.map(async seg => {
+                    if (seg.root_text) seg.root_text = await convertPaliScript(seg.root_text, scriptCode);
+                    if (seg.variant) seg.variant = await convertPaliScript(seg.variant, scriptCode);
+                }));
+            }
+            if (removePunct) {
+                for (const seg of data.segments) if (seg.root_text) seg.root_text = stripPaliPunctuation(seg.root_text);
+            }
+            suttas.push(data);
+        }
+
+        res.header('Cache-Control', 'public, max-age=3600');
+        // `return` is load-bearing in an async Fastify handler (see /api/toc/book/:code above).
+        return res.send({
+            id: target.id,
+            from,
+            count: suttas.length,
+            total: target.ids.length,
+            next: from + suttas.length < target.ids.length ? from + suttas.length : null,
+            suttas
+        });
+    } catch (error) {
+        console.error(error);
+        return res.code(500).send({ error: 'Internal Server Error.' });
+    }
+});
+
+// /chapter/<id> — the chapter reader itself. Same SPA shell as "/" and /toc/:code: search/index.html's
+// routeFromUrl() sees the /chapter path and lazy-loads public/spa/chapter.js into #chapter-pane. Bare
+// /chapter (no id) is the reader's own start page (what r.php showed without ?q=). /ru/chapter/<id>
+// needs no route of its own — the not-found handler below already rewrites /ru/<x> to /<x>?lang=ru.
+// Not /r/<id>: legacy scripts shared with the site (paliLookup.js, quickModal.js, copyToClipboard.js,
+// dhamma-i18n.js, settings-bundle.js …) all read a /r/ path prefix as "the Russian reader" and
+// would flip dictionaries/UI language on that alone.
+app.get('/chapter', (req, res) => sendVersionedHtml(req, res, searchIndexPath));
+app.get('/chapter/:id', (req, res) => sendVersionedHtml(req, res, searchIndexPath));
+// Legacy /r/?q=dn22 — the old RUSSIAN reader's URL (/read/?q= was the English one): the language
+// rides along explicitly, since the /r path that used to imply it is gone after the redirect.
+app.get('/r', (req, res) => redirectLegacyChapterQuery(req, res, 'ru'));
+app.get('/r/', (req, res) => redirectLegacyChapterQuery(req, res, 'ru'));
+
+// /r.php?q=<id>[&script=dev][&rp] — the legacy r.php URL, kept as a 302 alias so every old link,
+// bookmark, the Read+ tile and Ctrl+3 (settings.js) keep working. The hash (#sn1.1:1.1) is not
+// sent to the server and browsers re-attach it to the redirect target automatically. Everything
+// else in the query (script, rp, lang) is carried over as-is.
+function redirectLegacyChapterQuery(req, res, defaultLang) {
+    const params = new URLSearchParams(queryString(req).slice(1));
+    const q = params.get('q');
+    params.delete('q');
+    if (defaultLang && !params.has('lang')) params.set('lang', defaultLang);
+    const rest = params.toString();
+    const target = q ? '/chapter/' + encodeURIComponent(normalizeChapterSlug(q)) : '/chapter';
+    return res.redirect(target + (rest ? '?' + rest : ''));
+}
+app.get('/r.php', redirectLegacyChapterQuery);
+
+// Warm the book/collection leaf lists once, here at startup (skeletonDB is already filled —
+// initServer() loads it synchronously before its first await), so no request ever has to read a
+// structure/tree file: after this loop chapterLeafIds() is a pure Map lookup.
+for (const code of TOC_CODES) chapterLeafIds(code);
+console.log(`Chapter reader: ${chapterLeafCache.size} book codes indexed`);
 
 app.get('/:slug', (req, res) => {
     const rawSlug = req.params.slug;

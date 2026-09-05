@@ -37,6 +37,29 @@ https://dhamma.gift/?q=dn22:2.2#12.1
 
 ---
 
+### Legacy Chapter Reader (r.php → /chapter/<id>)
+
+Легаси `r.php` ("Read by Books or Chapters", `old.dhamma.gift/r.php?q=sn1`) заменён ридером глав
+внутри SPA (`public/spa/chapter.js`, роуты в `dg-fastify.js`). Чистый адрес — `/chapter/<id>`, как у
+остальных страниц сайта (без `?q=`); все старые формы остаются рабочими как 302-алиасы:
+
+| Старый URL | Новый URL | Как |
+|---|---|---|
+| `/r.php?q=sn1` | `/chapter/sn1` | 302, query (`script`, `rp`, `lang`) переносится, hash браузер сохраняет сам |
+| `/ru/r.php?q=sn1` | `/chapter/sn1?lang=ru` | 302 через общий `/ru/*`-рерайт not-found-хендлера, затем как выше |
+| `/r.php?q=mn&script=dev` | `/chapter/mn?script=dev` | `dev` = алиас `Devanagari` (Aksharamukha на сервере) |
+| `/r.php?q=mn129#mn129 sati` (Read+/Ctrl+3) | `/chapter/mn129#mn129%20sati` | хвост hash после id становится фильтром на странице |
+| `/r/?q=dn22` (старый RU-ридер) | `/chapter/dn22` | 302 |
+| `/r.php` (без q) | `/chapter` | стартовая страница ридера глав (список книг из `/api/toc`) |
+
+Грамматика `<id>` — та же, что принимал `r.php` (`normalizeChapterSlug` в `dg-fastify.js`): `mn 10` → `mn10`,
+`sn 1 1` → `sn1.1`, `pm`/`bu pm` → `pli-tv-bu-pm`, `bu-pj1` → `pli-tv-bu-vb-pj1`, плюс голые Vinaya-категории
+(`pj`, `bi-ss`) и `kd1`/`pvr1` из `dg-text-router.js`. Id внутри диапазона (`an1.9`) открывает диапазон
+(`an1.1-10`) с прокруткой к нему. Якоря: `#sn1.5`, `#sn1.5:1.3`, легаси `#1.3` для одиночного текста.
+
+API: `GET /api/chapter/:id` (манифест) и `GET /api/chapter/:id/texts?from=&count=&langs=&script=&rp=`
+(порции в формате `/api/text/:suttaId`) — см. `/api-docs`. Данные только из `dg.db`.
+
 ## Redirect Strategy
 
 ### 301 vs Soft Redirect

@@ -2633,3 +2633,134 @@ body.dg-state-home #home-extra:not([hidden]) { display: block; }
     #results-toolbar,
     #reader-toolbar { font-size: calc(1rem / var(--dg-mobile-scale)); }
 }
+
+/* ================= Chapter reader (/chapter/<id>) — public/spa/chapter.js ================= */
+/* Same show/hide-by-state mechanics as #toc-pane above; reader CSS (index.css/rus-multi.css/
+   uiextra.css, loaded by ensureReaderAssets) styles the segments themselves — the .sutta body
+   below carries the reader's own hide-pali/hide-english/column-view classes. Palette: the site's
+   --dg-* tokens (theme-aware, body.dark redefines them), like the TOC. */
+#chapter-pane { display: none; }
+body.dg-state-chapter #chapter-pane { display: block; }
+body.dg-state-chapter #search-pane,
+body.dg-state-chapter #results-toolbar,
+body.dg-state-chapter #results-divider,
+body.dg-state-chapter #dynamicHeader,
+body.dg-state-chapter #language-button {
+    display: none;
+}
+body.dg-state-chapter .dg-menu-btn-hero { display: inline-flex; }
+body.dg-state-chapter .dg-shell-logo { display: inline-flex; }
+/* index.css/rus-multi.css set a global body margin/font once the reader CSS is on the page — the
+   same exception the reader/TOC states already get (see the body:not() rule above). */
+body.dg-state-chapter { margin: 0; font-family: var(--bs-body-font-family); background-color: var(--dg-page); }
+#chapter-pane { max-width: 1100px; margin: 0 auto; padding: 0 12px 3rem; color: var(--dg-text); }
+#chapter-pane a, #chapter-pane a:visited { color: var(--dg-accent-ink, var(--dg-accent)); }
+
+.dg-ch-head { text-align: center; margin: .25rem 0 .75rem; }
+.dg-ch-title-row { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: center; gap: .35rem .75rem; }
+.dg-ch-title { font-size: 1.55rem; font-weight: 600; margin: 0; line-height: 1.25; }
+.dg-ch-kind {
+    font-size: .74rem; letter-spacing: .04em; text-transform: uppercase;
+    color: var(--dg-text-2); border: 1px solid var(--dg-border); border-radius: 999px; padding: .1rem .55rem;
+    white-space: nowrap;
+}
+.dg-ch-meta { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: .4rem 1rem; margin-top: .45rem; font-size: .86rem; color: var(--dg-text-2); }
+.dg-ch-progress-wrap { display: inline-flex; align-items: center; gap: .5rem; }
+.dg-ch-progress { display: inline-block; width: 140px; height: 6px; border-radius: 999px; background: var(--dg-border); overflow: hidden; }
+.dg-ch-progress-bar { display: block; height: 100%; width: 0; background: var(--dg-accent); transition: width .25s ease; }
+.dg-ch-complete .dg-ch-progress-bar { width: 100% !important; }
+.dg-ch-progress-text { min-width: 7ch; }
+.dg-ch-complete .dg-ch-progress-text { color: var(--dg-accent-ink, var(--dg-accent)); }
+
+/* Sticky tool row under the site header (the header stack itself is fixed/sticky and reserves
+   its height via body padding — see applyPadding in search/index.html). */
+.dg-ch-toolbar {
+    position: sticky; top: 0; z-index: 5;
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem .75rem;
+    padding: .45rem .6rem; margin: 0 0 1rem;
+    background: var(--dg-surface); border: 1px solid var(--dg-border); border-radius: var(--dg-radius, 10px);
+    box-shadow: 0 6px 18px -14px rgba(0, 0, 0, .35);
+}
+.dg-ch-filter-wrap { display: flex; align-items: center; gap: .6rem; flex: 1 1 240px; min-width: 0; }
+.dg-ch-filter {
+    flex: 1 1 auto; min-width: 0; max-width: 360px;
+    border: 1px solid var(--dg-border); border-radius: 999px; background: var(--dg-page); color: var(--dg-text);
+    padding: .35rem .9rem; font: inherit; font-size: .92rem; outline: none;
+}
+.dg-ch-filter:focus { border-color: var(--dg-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--dg-accent) 22%, transparent); }
+.dg-ch-filter-count { font-size: .8rem; color: var(--dg-text-2); white-space: nowrap; }
+.dg-ch-tools { display: flex; align-items: center; gap: .15rem; }
+.dg-ch-tool {
+    display: inline-flex; align-items: center; justify-content: center; gap: .3rem;
+    min-width: 34px; height: 32px; padding: 0 .5rem; border-radius: 8px;
+    color: var(--dg-text) !important; text-decoration: none; font-size: .82rem; font-weight: 600;
+    transition: background-color .15s ease, opacity .15s ease;
+}
+.dg-ch-tool:hover { background: color-mix(in srgb, var(--dg-accent) 12%, transparent); }
+.dg-ch-tool img { width: 18px; height: 18px; display: block; }
+body.dark .dg-ch-tool img { filter: invert(.85); }
+.dg-ch-tool.dg-ch-off { opacity: .42; text-decoration: line-through; }
+.dg-ch-tool-text { line-height: 1; }
+
+/* The text body: the reader's own width rules (#sutta{max-width:45rem} / #sutta.column-view
+   {max-width:105rem}) are id-scoped, so they're mirrored here for the chapter body. */
+#chapter-pane .dg-ch-body { max-width: 45rem; margin: 0 auto; line-height: 1.5; }
+#chapter-pane .dg-ch-body.column-view { max-width: 105rem; }
+/* content-visibility:auto is what keeps a 43k-segment book (whole SN) streaming in ~7 s instead of
+   ~35 s: off-screen texts skip layout and use the estimate below. --dg-ch-seg-h is measured by
+   chapter.js from the first rendered batch (real px per segment for the current languages/width) so
+   the estimate is close to the truth — a fixed guess made texts ABOVE a deep anchor "grow" when they
+   came near the viewport and dragged the pinned anchor down (sn1#sn1.20 with 19 small texts above). */
+.dg-ch-sutta { content-visibility: auto; contain-intrinsic-size: auto calc(var(--dg-ch-n, 20) * var(--dg-ch-seg-h, 2.6em)); scroll-margin-top: 4.5rem; }
+.dg-ch-sutta + .dg-ch-sutta { margin-top: 2.25rem; padding-top: 1.25rem; border-top: 1px dashed var(--dg-border); }
+.dg-ch-pending { min-height: calc(var(--dg-ch-n, 20) * var(--dg-ch-seg-h, 2.6em)); }
+.dg-ch-ph { display: flex; flex-direction: column; gap: .5rem; opacity: .55; }
+.dg-ch-ph-id { font-size: .8rem; letter-spacing: .04em; text-transform: uppercase; color: var(--dg-text-2); }
+.dg-ch-ph-title { font-size: 1.15rem; font-weight: 600; }
+.dg-ch-ph::after {
+    content: ''; display: block; height: .9em; width: 62%; margin-top: .35rem; border-radius: 6px;
+    background: linear-gradient(90deg, var(--dg-border), color-mix(in srgb, var(--dg-border) 40%, transparent), var(--dg-border));
+    background-size: 200% 100%; animation: dg-ch-shimmer 1.4s linear infinite;
+}
+@keyframes dg-ch-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { .dg-ch-ph::after { animation: none; } }
+.dg-ch-sutta-head { display: flex; justify-content: flex-end; margin-bottom: -.4rem; }
+.dg-ch-sutta-link {
+    font-size: .74rem; letter-spacing: .04em; text-transform: uppercase; text-decoration: none;
+    color: var(--dg-text-2) !important; border: 1px solid var(--dg-border); border-radius: 999px; padding: .05rem .5rem;
+}
+.dg-ch-sutta-link:hover { color: var(--dg-accent-ink, var(--dg-accent)) !important; border-color: var(--dg-accent); }
+.dg-ch-seg { scroll-margin-top: 4.5rem; }
+.dg-ch-target { background: color-mix(in srgb, var(--dg-accent) 14%, transparent); border-radius: 4px; box-shadow: 0 0 0 4px color-mix(in srgb, var(--dg-accent) 14%, transparent); }
+
+/* Filter: hide non-matching segments and, via :has(), the now-empty block they lived in
+   (a <p>/<h2>/... whose every segment is hidden), plus whole texts with no match. */
+.dg-ch-hide { display: none !important; }
+.dg-ch-filtering :is(p, h1, h2, h3, h4, h5, h6, li, blockquote, header, article):not(:has(.dg-ch-seg:not(.dg-ch-hide))):has(.dg-ch-seg) { display: none; }
+.dg-ch-status { text-align: center; color: var(--dg-text-2); font-size: .85rem; margin-top: 1rem; }
+
+/* Start page (bare /chapter): what r.php showed without ?q=, now with the real book list from /api/toc. */
+.dg-ch-welcome { text-align: center; max-width: 780px; margin: 0 auto; }
+.dg-ch-welcome-text { color: var(--dg-text-2); margin: .75rem 0 1rem; }
+.dg-ch-notfound { color: var(--dg-text-2); }
+.dg-ch-examples { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: .35rem; margin-bottom: 1.5rem; }
+.dg-ch-examples-label { color: var(--dg-text-2); font-size: .85rem; }
+.dg-ch-book-cat { font-size: .8rem; letter-spacing: .06em; text-transform: uppercase; color: var(--dg-text-2); margin: 1.25rem 0 .5rem; }
+.dg-ch-chip-row { display: flex; flex-wrap: wrap; justify-content: center; gap: .45rem; }
+.dg-ch-chip {
+    display: inline-flex; align-items: center; gap: .4rem;
+    padding: .35rem .8rem; border-radius: 999px; text-decoration: none;
+    border: 1px solid var(--dg-border); background: var(--dg-surface); color: var(--dg-text) !important;
+    transition: border-color .15s ease, background-color .15s ease, transform .15s ease;
+}
+.dg-ch-chip:hover { border-color: var(--dg-accent); background: color-mix(in srgb, var(--dg-accent) 10%, var(--dg-surface)); transform: translateY(-1px); }
+.dg-ch-chip-sm { padding: .15rem .6rem; font-size: .85rem; font-family: var(--bs-font-monospace, monospace); }
+.dg-ch-chip-count { font-size: .75rem; color: var(--dg-text-2); }
+
+@media (max-width: 640px) {
+    .dg-ch-title { font-size: 1.25rem; }
+    .dg-ch-toolbar { padding: .4rem .45rem; gap: .4rem .5rem; }
+    .dg-ch-filter { max-width: none; }
+    .dg-ch-tool { min-width: 30px; height: 30px; padding: 0 .35rem; }
+    .dg-ch-progress { width: 90px; }
+}

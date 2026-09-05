@@ -537,11 +537,21 @@
             });
         } else if (item.action === 'readPlus') {
             /* "Read+" в легаси-меню: берёт из поля первый "книга+номер" (mn129 из "mn129 sati"),
-               открывает /r.php?q=<книга+номер>#<весь запрос>. Повторено как было. */
+               открывал /r.php?q=<книга+номер>#<весь запрос>. Теперь ридер глав свой (/chapter/<id>,
+               см. public/spa/chapter.js) — локальная base ("/r.php" в menu-links.json) открывается
+               на месте, в SPA, по чистому адресу; хвост запроса едет в hash, chapter.js делает из
+               него фильтр. Внешняя base (http…) — как было, в новой вкладке. */
             a.addEventListener('click', function (e) {
                 var raw = ((document.getElementById('paliauto') || {}).value || '').trim().toLowerCase();
                 var m = raw.match(/^([a-z]+[0-9]+)/i);
                 var base = m ? m[1] : raw;
+                if (item.base.charAt(0) === '/') {
+                    e.preventDefault();
+                    var clean = '/chapter' + (base ? '/' + encodeURIComponent(base) : '') + (raw && raw !== base ? '#' + encodeURIComponent(raw) : '');
+                    if (typeof window.dgNavigateInternal === 'function' && window.dgNavigateInternal(clean)) return;
+                    window.location.href = clean;
+                    return;
+                }
                 var url = item.base + '?q=' + encodeURIComponent(base) + '#' + encodeURIComponent(raw);
                 if (typeof window.openWithQuery === 'function') window.openWithQuery(e, url);
                 else { e.preventDefault(); window.open(url, '_blank'); }

@@ -627,6 +627,205 @@
         }
       }
     },
+    "/api/chapter/{id}": {
+      "get": {
+        "tags": [
+          "text"
+        ],
+        "summary": "Chapter reader: what an id means (text / chapter / book) and its ordered list of texts with segment counts",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "sn1",
+            "description": "Id of a text (sn1.1), chapter (sn1, an3, pj) or book (mn, dn, kn). Accepts the legacy r.php forms: \"mn 10\", \"bu-pj1\", \"pm\"."
+          },
+          {
+            "name": "lang",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ru",
+                "en"
+              ]
+            },
+            "description": "Language of the title label (ru|en)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Manifest. kind: text|chapter|book. anchor — the requested id when it lives inside a range text (an1.9 → an1.1-10).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "input": {
+                      "type": "string"
+                    },
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "text",
+                        "chapter",
+                        "book"
+                      ]
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "anchor": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "total_suttas": {
+                      "type": "integer"
+                    },
+                    "total_segments": {
+                      "type": "integer"
+                    },
+                    "suttas": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "n": {
+                            "type": "integer"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown id"
+          }
+        }
+      }
+    },
+    "/api/chapter/{id}/texts": {
+      "get": {
+        "tags": [
+          "text"
+        ],
+        "summary": "Chapter reader: one batch of texts (count texts starting at from) in the /api/text/{suttaId} shape — from dg.db, no files",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "sn1",
+            "description": "Id of a text (sn1.1), chapter (sn1, an3, pj) or book (mn, dn, kn). Accepts the legacy r.php forms: \"mn 10\", \"bu-pj1\", \"pm\"."
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 0
+            },
+            "description": "Index of the first text in the manifest list"
+          },
+          {
+            "name": "count",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 10,
+              "minimum": 1,
+              "maximum": 25
+            },
+            "description": "Batch size (1..25)"
+          },
+          {
+            "name": "langs",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "default": "ru,en"
+            },
+            "description": "Translation languages, comma-separated"
+          },
+          {
+            "name": "script",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "example": "Devanagari",
+            "description": "Pali script (Aksharamukha key; dev = Devanagari)"
+          },
+          {
+            "name": "rp",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Strip punctuation from the Pali line (legacy r.php flag)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "One batch of a chapter/book. Every suttas item is the same object /api/text/{suttaId} returns (same translator choice).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "from": {
+                      "type": "integer"
+                    },
+                    "count": {
+                      "type": "integer"
+                    },
+                    "total": {
+                      "type": "integer"
+                    },
+                    "next": {
+                      "type": "integer",
+                      "nullable": true
+                    },
+                    "suttas": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "description": "Same object as the /api/text/{suttaId} response"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown id"
+          }
+        }
+      }
+    },
     "/api/toc": {
       "get": {
         "tags": [

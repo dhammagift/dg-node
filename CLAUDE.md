@@ -273,7 +273,10 @@ nodejs/
 │       ├── state.js           — глобальное состояние (search + reader + UI)
 │       ├── app.js              — инициализация SPA и обработка навигации
 │       ├── views.js            — рендеринг представлений (landing, search, reader)
-│       └── modal.js            — единое модальное окно с вкладками (Settings, Compass, Help)
+│       ├── modal.js            — единое модальное окно с вкладками (Settings, Compass, Help)
+│       ├── toc.js              — TOC/навигатор (/toc, /toc/<code>), лениво грузится в #toc-pane
+│       └── chapter.js          — ридер глав (/chapter/<id>, замена легаси r.php), лениво грузится в
+│                                  #chapter-pane, см. раздел «Ридер глав» ниже
 │
 ├── unused/                    — подтверждённо неиспользуемые файлы (не удалять без проверки)
 │   ├── script.js, demo.html, result.json  — прототипы страницы поиска до search-render.js
@@ -357,6 +360,35 @@ voice-player) и их конфиги, а в будущем — учебники 
 работает по тому же принципу (скан папки → авто-маунт), но `siteroot/` — специально ВНУТРИ
 репозитория, для того, что должно быть частью проекта хотя бы как symlink (даже если сама
 цель — легаси-код снаружи).
+
+---
+
+## Ридер глав (`/chapter/<id>`, замена легаси `r.php`)
+
+Легаси `old.dhamma.gift/r.php?q=sn1` («Read by Books or Chapters») читал сутту/главу/книгу одной
+страницей и на `q=mn`/`q=an` замирал: ~8 форков `find` через `shell_exec` на запрос, сотни–тысячи
+`file_get_contents`+`json_decode`, `usort` по десяткам тысяч ключей и одна гигантская таблица в
+DataTables без пагинации. Здесь всё из `dg.db` (`suttas`/`texts`/`html`), ни одного чтения файлов на запрос.
+
+- **Сервер** (`dg-fastify.js`, блок «Chapter reader»): `normalizeChapterSlug()` (грамматика r.php +
+  Vinaya-коды), `resolveChapterTarget()` → `text | chapter | book` (skeletonDB → `findRangeContaining`
+  → `TOC_CODES` → `findChapterChildren`), `chapterLeafIds()` — порядок листьев книги из дерева
+  `structure/tree` (канонический, не численный сорт: для Vinaya это pj, ss, ay, np… а не алфавит),
+  кэш прогревается один раз при старте. `GET /api/chapter/:id` — манифест (kind, title, список
+  текстов с числом сегментов); `GET /api/chapter/:id/texts?from=&count=` — порция ≤25 текстов,
+  каждый в формате `/api/text` через тот же `buildTextDataFromBase()` (побайтово совпадает, проверено),
+  два IN-запроса на порцию. `/chapter`, `/chapter/:id` отдают SPA-оболочку; `/r.php`, `/r/?q=` — 302-алиасы.
+- **Клиент** (`public/spa/chapter.js`, состояние `dg-state-chapter`, `#chapter-pane`): по манифесту
+  сразу ставятся плейсхолдеры всех текстов (высота по числу сегментов), первая маленькая порция
+  рисуется мгновенно, остальные подтягиваются последовательно в фоне до 100 % — чтобы фильтр и
+  Ctrl+F работали по ВСЕЙ главе. Разметка сегментов — та же, что у `megareader.js` (`.pli-lang`,
+  `.right-column`, `<lang>-lang`, атрибут `lang`), поэтому словарь по клику, Pāḷi/перевод,
+  1/2 колонки (`viewMode` из settings.js) и TTS (`voice.js`) работают без правок. Якорь
+  `#sn1.5:1.3` — грузится сначала его текст, потом остальное. Строка поиска в шапке внутри ридера
+  глав открывает id главами же (`search/index.html`, сабмит `#form`).
+- Языки — `dhammaReaderLangs` (настройки чтения) либо `?langs=`; `?script=Devanagari` (`dev` —
+  легаси-алиас), `?rp=1` — убрать пунктуацию (легаси-флаг). Строки UI — `configs/search/lang_*.json`,
+  блок `chapter`. Плитка Read+ (`menu-links.json`) и Ctrl+3 (settings.js) ведут сюда.
 
 ---
 

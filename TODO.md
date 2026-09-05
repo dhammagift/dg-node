@@ -1,5 +1,119 @@
 # текущие задачи
 
+## НОВОЕ — #ридер-главами: перенос легаси r.php на Fastify + dg.db, `/chapter/<id>` (2026-09-05)
+
+Задача владельца: «есть классный тул old.dhamma.gift/r.php?q=sn1.1, читает по главам, но бывало
+тормозил страшно при больших объёмах типа вся mn dn целиком… переехать на нод… на БД + fastify…
+без грепа, без файлов»; «дизайн поправь под текущий TOC или ридер, с красивым инпутом, бургером»;
+«нужно чтобы грузилось быстро, но потом полностью — для поиска и фильтра»; «открываются тексты
+без ?q=, сразу от корня, или от /ru». Легаси-репо `dg` не трогали, `dg-light.js` — тоже.
+
+Почему r.php тормозил (разобран весь файл, 903 строки): на КАЖДЫЙ запрос ~8 форков `find` через
+`shell_exec`, затем `file_get_contents`+`json_decode` по 600 (mn) … 7300 (sn) файлам, `array_merge`
+в цикле, `usort` с userland-компаратором по 16–43 тыс. ключей, одна HTML-таблица на всё и
+DataTables с `paging:false`+`colReorder`+`searchBuilder` поверх 26–43 тыс. строк. Кэша нет.
+Попутные баги легаси: переводчик выбирался порядком обхода ФС (`find -print -quit`, последний
+`array_merge` побеждает), `/assets/js/voice.js` — 404 на каждой загрузке, `$mainpagenoslash` не
+определён (RU welcome-ссылки вели на EN), `darkSwitch` null → TypeError, грузился неминифицированный
+`datatables.js` 1.86 МБ. Ничего из этого сюда не переносилось.
+
+done 1. Сервер — `dg-fastify.js`, блок «Chapter reader» перед `/:slug`. Только `dg.db`
+   (`suttas`/`texts`/`html`), ни одного чтения файлов на запрос. `normalizeChapterSlug()` — грамматика
+   r.php:7-27 (`mn 10`→mn10, `sn 1 1`→sn1.1, `pm`→pli-tv-bu-pm, `bu-pj1`→pli-tv-bu-vb-pj1) + голые
+   Vinaya-коды из `classify()` (`pj`, `bi-ss`, `kd1`). `resolveChapterTarget()` → `text` (skeletonDB
+   или диапазон через `findRangeContaining`: an1.9 → an1.1-10 + anchor) | `book` (TOC_CODES) |
+   `chapter` (`findChapterChildren`). `chapterLeafIds()` — листья книги в порядке ДЕРЕВА
+   `structure/tree` (для Vinaya это pj, ss, ay, np, pc, pd, sk, as, а численный сорт skeletonDB дал бы
+   алфавит); группа `kn` = конкатенация книг; кэш прогревается один раз при старте («47 book codes
+   indexed»). `chapterTitle()`: text → title; sn<N> → SN_TOC (Devatāsaṁyuttaṁ); book → toc-books.json
+   по ?lang; an<N> → `:0.1` («Aṅguttara Nikāya 1»); pli-tv-* → `:0.3` (Pārājikakaṇḍa); иначе `:0.2`
+   как в r.php.
+   - `GET /api/chapter/:id?lang=` — манифест: kind, title, anchor, список текстов с числом
+     root-сегментов (один GROUP BY через `sqlRowsIn`), кэш в Map.
+   - `GET /api/chapter/:id/texts?from=&count=(≤25)&langs=&script=&rp=` — порция текстов, каждый
+     в формате `/api/text` через ТОТ ЖЕ `buildTextDataFromBase()` + `translatorsForSutta()`; два
+     IN-запроса на порцию (texts с `langFilterSql`, html), группировка по sutta_id. `script=dev` —
+     алиас Devanagari; `rp` — порт r.php:159-164 (после конвертации скрипта, чтобы даṇḍa тоже
+     сработала). `return res.send` (ловушка Fastify из #sqlite).
+   - `/chapter`, `/chapter/:id` → SPA-оболочка (`searchIndexPath`, как `/toc/:code`); `/ru/chapter/…`
+     — через общий `/ru/*`-рерайт not-found-хендлера. `/r.php?q=…` → 302 `/chapter/<id>` с переносом
+     query (hash браузер сохраняет сам); `/r/?q=dn22` (старый RU-ридер) → 302 `/chapter/dn22?lang=ru`.
+   - `findChapterChildren()`: убран финальный `.sort()` — лексический (sn1.10 < sn1.2); единственный
+     вызов смотрел только `.length`, порядок skeletonDB и так правильный.
+
+done 2. Клиент — `public/spa/chapter.js` (новый, ~650 строк), состояние `dg-state-chapter` +
+   `#chapter-pane` в `search/index.html` (тот же паттерн, что `toc.js`: `ensureChapterAssets()` →
+   `ensureReaderAssets()` + `<script>`; `openChapterInPlace()`; ветка в `routeFromUrl()`). По
+   манифесту сразу ставятся плейсхолдеры ВСЕХ текстов (высота ≈ n×2.6em, `content-visibility:auto`),
+   первая порция ~300 сегментов рисуется мгновенно, остальные (по ~1200 сегментов / ≤25 текстов)
+   подтягиваются последовательно в фоне с `requestIdleCallback` между append'ами — до 100 %,
+   прогресс-бар в шапке. Разметка сегментов — megareader.js (`.pli-lang` / `.right-column` /
+   `<lang>-lang` + атрибут `lang`, `copyLink`, `mergeGathas`), поэтому словарь по клику, Pāḷi/перевод
+   (`.hide-pali`/`.hide-english`), 1/2 колонки (`viewMode` + `.toggle-mode-btn` из settings.js) и TTS
+   (`voice.js` ищет по `lang`) работают без правок. Sticky-тулбар: фильтр, Pāḷi, Пер., колонки,
+   Деванагари↔латиница (`?script=`), пунктуация (`?rp=`), TOC/ридер. Языки — `dhammaReaderLangs`
+   (настройки чтения) или `?langs=`. Стартовая страница `/chapter` — то, что r.php показывал без `?q=`,
+   плюс реальный список книг из `/api/toc` чипами.
+
+done 3. Якорь: `#sn1.5`, `#sn1.5:1.3`, легаси `#1.3` (одиночный текст), `#mn129 sati` (Read+/Ctrl+3:
+   хвост после id → фильтр), an1.9 внутри диапазона. Порядок порций — с якорной сутты вперёд, потом
+   начало; пока порции ВЫШЕ якоря ещё меняют плейсхолдеры на текст, якорь держится прижатым к верху
+   (`pinAnchor`), до первого wheel/touch/keydown читателя.
+
+done 4. Фильтр: по всем загруженным сегментам, без учёта регистра/диакритики (NFD), по словам (AND),
+   скрывает сегменты, пустые `<p>`/`<h*>` через `:has()`, тексты без совпадений; счётчик «K из N
+   сегментов в M текстах»; нормализованный текст кэшируется в WeakMap и прогревается в idle после
+   полной загрузки.
+
+done 5. Ввод в шапке внутри ридера глав: `text`/`chapter` по `classify()` открывается главами же
+   (`/chapter/<id>`), слово — поиск. Кнопка-книжка в строке ссылок ридера → глава ТЕКУЩЕГО текста
+   (`chapterOfTextId`: sn1.5→sn1, an1.1-10→an1, mn10→mn, pli-tv-bu-vb-pj1→pli-tv-bu-vb-pj) с якорем
+   на него. Плитки Read+ (`menu-links.json`, были `https://old.dhamma.gift/r.php`) → локально, in-SPA.
+
+done 6. Конфиги/доки: `configs/search/lang_{ru,en}.json` блок `chapter`; `configs/openapi{,.en}.json`
+   — оба эндпоинта; `docs/BACKWARD_COMPAT.md` — контракт r.php → /chapter; `CLAUDE.md` — карта +
+   раздел «Ридер глав».
+
+done 7. Проверено локально (dg.db собран из sparse-clone sc-data + offline-data, 595 МБ / 39 с):
+   - API: манифест mn 6 мс, an 17 мс, kn (2351 текста) 48 мс; `mn/texts?count=10&langs=ru,en` 94 мс
+     (790 КБ), `count=25` 190 мс (1.9 МБ); `an/texts?count=25` 27 мс; 404 на мусор.
+   - Побайтово `segments` из `/api/chapter/<id>/texts` == `/api/text/<id>?langs=ru,en` для dn22 (454),
+     an1.1-10 (49), pli-tv-bu-vb-pj1 (1450), sn1.1 (20) — ноль расхождений.
+   - Браузер (playwright-cli, chromium): десктоп 1366×900 светлая RU `/chapter/sn1` — 81 текст /
+     1605 сегментов полностью за ~1 с; мобильный (Pixel) тёмная EN `/chapter/mn#mn10:1.1` — 152
+     текста / 27 195 сегментов полностью за ~3 с, mn10 отрисован первым (mn1 ещё плейсхолдер), после
+     полной загрузки якорь ровно под тулбаром (top 72px); фильтр «sati» по всей MN — 1915 сегментов
+     в 146 текстах за 0.4 с с дебаунсом (второй запрос 0.29 с); ВСЯ SN (1819 текстов / 43 466
+     сегментов) с якорем в середине (#sn22.59:1.1) — полностью за ~7 с, якорь после загрузки под
+     тулбаром, фильтр «nibbān» по всей SN 0.83 с; ВСЯ AN (1408 / 41 839) на мобильном — ~6 с, JS-heap
+     140 МБ; Pāḷi-toggle, колонки, welcome (48
+     чипов книг), редиректы `/r.php?q=…`, `/ru/r.php`, `/r/?q=`, `/ru/chapter/an1`. Ошибок консоли по
+     нашей части нет (единственная 404 — легаси `fontawesome-local.js`, не наш).
+   - Скрины: desktop-ru-light (sn1, фильтр, колонки, welcome), mobile-en-dark (mn#mn10, фильтр,
+     welcome, sn1.1) — приложены в чат.
+
+--- нюанс: Aksharamukha в песочнице не поднялся (pyodide тянет micropip с cdn.jsdelivr.net,
+    прокси режет) — `?script=Devanagari` здесь возвращает латиницу И у `/api/text`, и у
+    `/api/chapter` одинаково: путь конвертации общий (`convertPaliScript`), на проде работает как у
+    ридера. UI-переключатель проверен (URL/иконка/перезагрузка порций), сама конвертация — на проде.
+--- нюанс: префикс НЕ `/r/<id>`, хотя так короче: `/r/` — легаси-маркер «русского ридера», зашит в
+    8 общих скриптах (dhamma-i18n.js pathLanguage, settings-bundle.js notEn, quickModal.js isRu,
+    paliLookup.js выбор словарей, copyToClipboard.js, openFdg.js/search-render.js baseUrl) — на
+    `/r/mn` UI и словари молча переключались бы на русский. Поэтому `/chapter/<id>`.
+--- нюанс (не чинил, не моя задача): ВСЕ лениво подгружаемые скрипты SPA (`/spa/toc.js`,
+    `/reader/megareader.js`, `/reader/common.js`, `copyToClipboard.js`…) грузятся `loadScript(src)` без
+    `?v=`, а `staticCacheHeaders` для `public/spa`, `reader/`, `public/overrides` ставит
+    `immutable, max-age=31536000` на любой .js/.css НЕЗАВИСИМО от наличия `?v=`. То есть вернувшийся
+    посетитель может год сидеть на старом toc.js/megareader.js. Для chapter.js обошёл: в index.html
+    стоит `<link rel=prefetch id=dg-chapter-js href=/spa/chapter.js>`, `sendVersionedHtml` штампует на
+    него `?v=<hash>`, `ensureChapterAssets()` берёт src оттуда. Тот же приём подойдёт и остальным.
+--- нюанс: `mr` в локальной dg.db везде 0 (`textinfo.json` ищется по прод-пути /var/www/html) — на
+    ридер глав не влияет.
+--- деплой: `/chapter*`, `/r.php`, `/r`, `/r/` должны проксироваться на dg-fastify.js так же, как
+    `/toc`; `dg.db` пересобирать не нужно (новых таблиц нет). Проверить на test.dhamma.gift:
+    /chapter/sn1, /chapter/mn#mn10:1.1, /ru/chapter/an1, /chapter/dn?script=Devanagari,
+    /r.php?q=sn1#sn1.3:1.1, /chapter (стартовая), а также плитку Read+ и Ctrl+3 с «mn129 sati».
+
 ## ОТЛОЖЕНО — #mcp: MCP-сервер для AI-агентов — план записан, решение после прода и приложения (2026-09-05)
 
 Решение владельца: **сначала прод и приложение, потом решаем про MCP**. Ничего не начинаем,

@@ -215,5 +215,30 @@
     "contacts": "Contacts",
     "poweredby": "Powered by NI",
     "poweredbyTooltip": "Dhamma Intelligence, Natural Intelligence"
+  },
+  "chapter": {
+    "title": "Read by Books or Chapters",
+    "texts": "texts",
+    "segments": "segments",
+    "loading": "loading",
+    "loaded": "loaded",
+    "filter": "Filter…",
+    "filterCount": "{k} of {n} segments in {m} texts",
+    "noMatches": "No matches",
+    "pali": "Pāḷi",
+    "translation": "Translation",
+    "columns": "1/2 columns",
+    "devanagari": "Devanagari",
+    "roman": "Roman script",
+    "punct": "Punctuation",
+    "toc": "Table of contents",
+    "reader": "Open in reader",
+    "kindText": "Text",
+    "kindChapter": "Chapter",
+    "kindBook": "Book",
+    "welcome": "Enter a text, chapter or book id — e.g. <b>sn1</b>, <b>mn10</b>, <b>dn</b>, <b>an3</b>, <b>pj1</b> — into the search box above, or pick a book:",
+    "notFound": "Nothing found for “{q}”",
+    "searchInstead": "Search for it instead",
+    "examples": "Examples"
   }
 }

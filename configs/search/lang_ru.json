@@ -215,5 +215,30 @@
     "contacts": "Контакты",
     "poweredby": "Powered by DI",
     "poweredbyTooltip": "Дхамма Интеллект, Dhamma Intelligence, Естественный Интеллект, Natural Intelligence"
+  },
+  "chapter": {
+    "title": "Читать книгами и главами",
+    "texts": "текстов",
+    "segments": "сегментов",
+    "loading": "загрузка",
+    "loaded": "загружено",
+    "filter": "Фильтр…",
+    "filterCount": "{k} из {n} сегментов в {m} текстах",
+    "noMatches": "Ничего не найдено",
+    "pali": "Пали",
+    "translation": "Перевод",
+    "columns": "1/2 колонки",
+    "devanagari": "Деванагари",
+    "roman": "Латиница",
+    "punct": "Пунктуация",
+    "toc": "Оглавление",
+    "reader": "Открыть в ридере",
+    "kindText": "Текст",
+    "kindChapter": "Глава",
+    "kindBook": "Книга",
+    "welcome": "Введите в поле поиска сверху id текста, главы или книги — например <b>sn1</b>, <b>mn10</b>, <b>dn</b>, <b>an3</b>, <b>pj1</b> — или выберите книгу:",
+    "notFound": "Ничего не найдено по «{q}»",
+    "searchInstead": "Искать как слово",
+    "examples": "Примеры"
   }
 }

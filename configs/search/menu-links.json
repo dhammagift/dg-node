@@ -273,7 +273,7 @@
             { "label": "DG (th)", "desc": "Dhamma.gift in Thai script", "href": "/th/?q=", "setsLang": "th" },
             { "label": "old", "desc": "The previous version of the site", "href": "https://old.dhamma.gift", "blank": true },
             { "label": "TTS", "title": "TTS Text-to-speech", "desc": "Text-to-speech playback of Pali/translation text", "tpl": "https://old.dhamma.gift/tts.php?q={{q}}", "blank": true },
-            { "label": "Read+", "title": "Read by Books or Chapters", "desc": "Browse and read whole books or individual chapters", "action": "readPlus", "base": "https://old.dhamma.gift/r.php", "blank": true }
+            { "label": "Read+", "title": "Read by Books or Chapters", "desc": "Browse and read whole books or individual chapters", "action": "readPlus", "base": "/r.php" }
           ]
         },
         {
@@ -606,7 +606,7 @@
             { "label": "DG (th)", "desc": "Dhamma.gift тайским письмом", "href": "/th/?q=", "setsLang": "th" },
             { "label": "old", "desc": "Предыдущая версия сайта", "href": "https://old.dhamma.gift", "blank": true },
             { "label": "TTS", "title": "TTS Текст-в-речь", "desc": "Озвучка текста пали/перевода синтезом речи", "tpl": "https://old.dhamma.gift/ru/tts.php?q={{q}}", "blank": true },
-            { "label": "Read+", "title": "Читать Книгами или Главами", "desc": "Чтение целыми книгами или отдельными главами", "action": "readPlus", "base": "https://old.dhamma.gift/ru/r.php", "blank": true },
+            { "label": "Read+", "title": "Читать Книгами или Главами", "desc": "Чтение целыми книгами или отдельными главами", "action": "readPlus", "base": "/ru/r.php" },
             { "label": "bupm", "desc": "Патимоккха бхиккху", "href": "/toc/pm" },
             { "label": "bipm", "desc": "Патимоккха бхиккхуни", "href": "/toc/bipm" }
           ]
