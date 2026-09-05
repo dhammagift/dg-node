@@ -35,16 +35,17 @@ app.addContentTypeParser('*', { parseAs: 'string' }, (req, body, done) => done(n
 // outside @fastify/static's single-root reply decorator, which doesn't fit the multi-root
 // override/fallback mounts below) — every sendFile() call in this file targets a known .html/.js
 // file, so a small explicit-type reader covers all of them.
-// ETag: Express's res.sendFile computes one automatically (via `send`); this hand-rolled
-// helper didn't, which silently made `Cache-Control: no-cache` on any of its callers useless
-// (no validator to revalidate against — every "revalidation" was a full re-send, not a 304).
-// Needed so CACHE_CONFIG_JSON's switch to no-cache (see below) actually buys a cheap 304 for
-// /assets/js/translators.json instead of a full transfer every time.
+// Express's res.sendFile() attaches an ETag for free and answers 304 on a matching
+// If-None-Match; this hand-rolled stand-in has to do it explicitly, or every route built on it
+// re-sends the whole body on each visit. That matters most for the config JSON, which cache.md
+// deliberately serves with no-cache — no-cache means "revalidate every time", which is only
+// cheap if a 304 is possible.
 async function sendFile(req, reply, filePath, type) {
     const buf = await fs.readFile(filePath);
     const etag = '"' + crypto.createHash('md5').update(buf).digest('hex') + '"';
-    if (req.headers['if-none-match'] === etag) return reply.code(304).header('etag', etag).send();
-    reply.type(type || 'text/html; charset=utf-8').header('etag', etag);
+    reply.header('etag', etag);
+    if (req && req.headers['if-none-match'] === etag) return reply.code(304).send();
+    reply.type(type || 'text/html; charset=utf-8');
     return reply.send(buf);
 }
 
