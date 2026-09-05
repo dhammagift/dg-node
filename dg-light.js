@@ -638,6 +638,18 @@ app.post('/assets/lbl-save.php', express.text({ type: '*/*', limit: '10mb' }), (
     }
 });
 
+// Translator credits ("sv+edited+o" -> "SV theravada.ru с Англ, ред. o"). Hand-written editorial
+// text, so it lives with the project's other authored configs — next to translator-priority.json
+// and translator-types.json, which are about the same translators — rather than among the
+// vendored legacy assets. It is NOT corpus data and deliberately not a table in dg.db: that file
+// is regenerated from the corpus on every build and would wipe anything written by hand. The
+// public URL stays put, served by hand from its new home, the same trick the reader configs use.
+// Registered before the /assets mount so it wins over both public/overrides and the legacy
+// fallback. Same 5-minute tier staticCacheHeaders gives any .json.
+app.get('/assets/js/translators.json', (req, res) => {
+    res.set('Cache-Control', CACHE_CONFIG_JSON);
+    res.sendFile(path.join(__dirname, 'configs', 'reader', 'translators.json'));
+});
 app.use('/assets', express.static(path.join(__dirname, 'public', 'overrides'), { setHeaders: staticCacheHeaders }));
 // /read/js/voice.js — тот же override-приоритет паттерн, что и /assets выше: наш патченный
 // voice.js (public/overrides/read/js/, чинит рассинхрон detectTranslationLang/prepareTextData
