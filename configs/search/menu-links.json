@@ -81,8 +81,8 @@
           "items": [
             { "label": "Accesstoinsight.org", "desc": "Translation by Thanissaro Bhikkhu", "href": "https://www.accesstoinsight.org/tipitaka/vin/sv/index.html", "blank": true },
             { "label": "BMC", "desc": "Commentary by Thanissaro Bhikkhu", "href": "https://www.dhammatalks.org/vinaya/bmc/Section0000.html", "localHref": "/dhammatalks.org/vinaya/bmc/Section0000.html", "blank": true },
-            { "label": "Bhikkhu Patimokkha trans. by Ven Nanatusita", "desc": "Grammar analysis", "href": "/assets/materials/bupm_trn_by_nanatusita.pdf" },
-            { "label": "Bhikkhuni Patimokkha trans. by Ch Kabilsingh", "desc": "Comparasmento of 6 versions", "href": "/assets/materials/bipm_trn_by_chatsumarn_kabilsingh.pdf" }
+            { "label": "Bhikkhu Patimokkha trans. by Ven Nanatusita", "desc": "Grammar analysis", "href": "/documents/bupm_trn_by_nanatusita.pdf" },
+            { "label": "Bhikkhuni Patimokkha trans. by Ch Kabilsingh", "desc": "Comparasmento of 6 versions", "href": "/documents/bipm_trn_by_chatsumarn_kabilsingh.pdf" }
           ]
         },
         {
@@ -110,7 +110,7 @@
               { "label": "Legacy", "href": "/legacy.suttacentral.net/", "hideIfUnavailable": true, "blank": true }
             ] },
             { "divider": true, "rows": [
-              { "label": "The Buddha's Words", "desc": "Colleciton of tanslations with Pali", "href": "https://thebuddhaswords.net", "localHref": "/bw/", "blank": true }
+              { "label": "The Buddha's Words", "desc": "Colleciton of tanslations with Pali", "href": "https://thebuddhaswords.net", "localHref": "/bw/", "forceLocalGate": true, "blank": true }
             ] },
             { "divider": true, "rows": [
               { "label": "Ancient Buddhist Texts", "desc": "By Bhikkhu Ānandajoti", "href": "https://ancient-buddhist-texts.net/index.htm", "blank": true },
@@ -138,11 +138,12 @@
         {
           "name": "AI", "layout": "chips", "column": 3,
           "items": [
+            { "label": "Tripitaka-mcp.com", "href": "https://tripitaka-mcp.com/", "blank": true },
+            { "label": "Claude", "href": "https://claude.ai", "blank": true },
             { "label": "ChatGPT", "href": "https://chatgpt.com", "blank": true },
             { "label": "Gemini", "href": "https://gemini.google/", "blank": true },
             { "label": "DeepSeek", "href": "https://chat.deepseek.com", "blank": true },
-            { "label": "Norbu AI", "href": "https://norbu-ai.org/", "blank": true },
-            { "label": "Tripitaka-mcp.com", "href": "https://tripitaka-mcp.com/", "blank": true }
+            { "label": "Norbu AI", "href": "https://norbu-ai.org/", "blank": true }
           ]
         },
         {
@@ -230,24 +231,30 @@
           "items": [
             { "label": "Learn Pali Guides", "desc": "Blog with guided readings of Pali suttas", "href": "https://palistudies.blogspot.com/2019/04/intro-kaya-section-satipatthana-sutta.html?m=1", "blank": true },
             { "label": "James Whelan. Pali & Sanskrit", "href": "https://www.thebuddhistsociety.org/page/sanskrit-and-pali-study-resources-guide-by-james-whelan", "blank": true },
-            { "label": "gd", "href": "https://drive.google.com/drive/folders/1jAy_xD6qkrnIkmXO9e4KtI_--nDMySSn", "blank": true },
-            { "label": "yt", "href": "https://www.youtube.com/@jameswhelan2381", "blank": true }
+            { "label": "GDrive Materials", "href": "https://drive.google.com/drive/folders/1jAy_xD6qkrnIkmXO9e4KtI_--nDMySSn", "blank": true },
+            { "label": "YT Channel", "href": "https://www.youtube.com/@jameswhelan2381", "blank": true }
           ]
         },
         {
           "name": "Memorization", "column": 1,
-          "items": [
-            { "label": "Memorizer", "desc": "Tool for memorizing suttas line by line", "href": "/memo/", "star": true },
-            { "label": "sn56.11", "href": "/memorize/?q=sn56.11" },
-            { "label": "dn22", "href": "/memorize/?q=dn22" },
-            { "label": "sn12.2", "href": "/memorize/?q=sn12.2" },
-            { "label": "Memorisation Tips & Tricks", "href": "https://docs.google.com/document/d/1JWHEFqcaNhYwYneWBnTp9rkgWecDB4IIHX1l3AxSiWM/edit?usp=drivesdk" }
+          "blocks": [
+            { "rows": [
+              { "label": "Memorizer", "desc": "Tool for memorizing suttas line by line", "href": "/memo/", "star": true }
+            ] },
+            { "inline": [
+              { "label": "sn56.11", "href": "/memorize/?q=sn56.11" },
+              { "label": "dn22", "href": "/memorize/?q=dn22" },
+              { "label": "sn12.2", "href": "/memorize/?q=sn12.2" }
+            ] },
+            { "rows": [
+              { "label": "Memorisation Tips & Tricks", "href": "https://docs.google.com/document/d/1JWHEFqcaNhYwYneWBnTp9rkgWecDB4IIHX1l3AxSiWM/edit?usp=drivesdk" }
+            ] }
           ]
         },
         {
           "name": "Trainers", "column": 3,
           "items": [
-            { "label": "Declensions", "href": "/ru/assets/grammar/nouns.html" },
+            { "label": "Declensions", "href": "/assets/grammar/nouns.html" },
             { "label": "Patimokkha", "href": "/assets/rr.html" },
             { "label": "Pali Practice App", "desc": "Interactive drills for grammar and vocabulary", "href": "https://www.dhammabytes.org/pali-practice/", "blank": true }
           ]
@@ -368,8 +375,8 @@
           "items": [
             { "label": "ATI", "desc": "Перевод Тханиссаро Бхиккху", "href": "https://www.accesstoinsight.org/tipitaka/vin/sv/index.html", "blank": true },
             { "label": "BMC", "desc": "Комментарий Тханиссаро Бхиккху", "href": "https://www.dhammatalks.org/vinaya/bmc/Section0000.html", "localHref": "/dhammatalks.org/vinaya/bmc/Section0000.html", "blank": true },
-            { "label": "Nanatusita", "desc": "Перевод бхиккху Ньянатусита", "href": "/assets/materials/bupm_trn_by_nanatusita.pdf" },
-            { "label": "Patimokkha Bi пер. Ch Kabilsingh", "desc": "Бхиккхуни-патимоккха (PDF)", "href": "/assets/materials/bipm_trn_by_chatsumarn_kabilsingh.pdf", "blank": true }
+            { "label": "Nanatusita", "desc": "Перевод бхиккху Ньянатусита", "href": "/documents/bupm_trn_by_nanatusita.pdf" },
+            { "label": "Patimokkha Bi пер. Ch Kabilsingh", "desc": "Бхиккхуни-патимоккха (PDF)", "href": "/documents/bipm_trn_by_chatsumarn_kabilsingh.pdf", "blank": true }
           ]
         },
         {
@@ -397,7 +404,7 @@
               { "label": "Legacy", "href": "/legacy.suttacentral.net/", "hideIfUnavailable": true, "blank": true }
             ] },
             { "divider": true, "rows": [
-              { "label": "The Buddha's Words", "desc": "Подборка ключевых учений Будды от Бхиккху Бодхи", "href": "https://thebuddhaswords.net", "localHref": "/bw/", "blank": true }
+              { "label": "The Buddha's Words", "desc": "Подборка ключевых учений Будды от Бхиккху Бодхи", "href": "https://thebuddhaswords.net", "localHref": "/bw/", "forceLocalGate": true, "blank": true }
             ] },
             { "divider": true, "rows": [
               { "label": "Ancient Buddhist Texts", "desc": "Автор — бхиккху Анандаджоти", "href": "https://ancient-buddhist-texts.net/index.htm", "blank": true },
@@ -426,7 +433,7 @@
         {
           "name": "Переводы", "column": 2,
           "items": [
-            { "label": "ДН пер. А. Я. Сыркина «2025»", "href": "/assets/audio/documents/dn_Syrkin_2020_ed_2025.pdf" }
+            { "label": "ДН пер. А. Я. Сыркина «2025»", "href": "/documents/dn-syrkin-2020_edited_2025.pdf" }
           ]
         },
         {
@@ -435,7 +442,7 @@
             { "label": "Тхеравада.рф Сутты", "href": "https://xn--80aaaglc1fo1a.xn--p1ai/palicanon/%D1%81%D1%83%D1%82%D1%82%D0%B0%D0%BD%D1%82%D0%B0", "blank": true },
             { "label": "Тхеравада.рф Патимоккха", "href": "http://xn--80aaaglc1fo1a.xn--p1ai/palicanon/%d0%b2%d0%b8%d0%bd%d0%b0%d1%8f", "blank": true },
             { "label": "Dhamma.ru Сутты", "href": "http://dhamma.ru/index-sutta.html", "localHref": "/dhamma.ru/index-sutta.html", "blank": true },
-            { "label": "Dhamma.ru Патимоккха", "href": "/assets/materials/prat.html", "blank": true },
+            { "label": "Dhamma.ru Патимоккха", "href": "/documents/prat.html", "blank": true },
             { "label": "Theravada.ru", "href": "https://theravada.ru/Teaching/Canon/Suttanta/samyutta.htm", "localHref": "/theravada.ru/Teaching/Canon/Suttanta/samyutta.htm", "blank": true },
             { "label": "Theravada.su", "href": "https://tipitaka.theravada.su/toc/translations/1097", "localHref": "/tipitaka.theravada.su/toc_thsu.html", "blank": true }
           ]
@@ -459,11 +466,13 @@
         {
           "name": "ИИ", "layout": "chips", "column": 3,
           "items": [
-            { "label": "ChatGPT", "href": "https://chatgpt.com", "blank": true },
+            { "label": "Tripitaka-mcp.com", "href": "https://tripitaka-mcp.com/", "blank": true },                                
+            { "label": "Claude", "href": "https://claude.ai", "blank": true },
+            { "label": "Notebook LM", "href": "https://notebooklm.google.com/", "blank": true },
             { "label": "Gemini", "href": "https://gemini.google/", "blank": true },
             { "label": "DeepSeek", "href": "https://chat.deepseek.com", "blank": true },
-            { "label": "Norbu AI", "href": "https://norbu-ai.org/", "blank": true },
-            { "label": "Tripitaka-mcp.com", "href": "https://tripitaka-mcp.com/", "blank": true }                                
+            { "label": "ChatGPT", "href": "https://chatgpt.com", "blank": true },
+            { "label": "Norbu AI", "href": "https://norbu-ai.org/", "blank": true }
           ]
         },
         {
@@ -528,8 +537,8 @@
           "name": "Грамматика", "column": 2,
           "items": [
             { "label": "Падежи — таблица", "desc": "Окончания существительных и прилагательных одной таблицей", "href": "https://drive.google.com/file/d/1HVRK6yTMT59uHCCvTdQukRy7fmHNntOr/view?usp=drivesdk", "star": true },
-            { "label": "Падежи — примеры", "desc": "Склонения с примерами, PDF", "href": "/assets/materials/pali_declensions_ru.pdf" },
-            { "label": "Спряжения (рус)", "href": "/assets/materials/pali_conjugations_ru.pdf", "star": true },
+            { "label": "Падежи — примеры", "desc": "Склонения с примерами, PDF", "href": "/documents/pali_declensions_ru.pdf" },
+            { "label": "Спряжения (рус)", "href": "/documents/pali_conjugations_ru.pdf", "star": true },
             { "label": "Спряжения (англ)", "href": "https://drive.google.com/file/d/1HzPCYsVBEkWErAk6TqSWRYKseM1hqMCb/view?usp=sharing" }
           ]
         },
@@ -537,7 +546,7 @@
           "name": "Учебники", "column": 1,
           "items": [
             { "label": "Дж. Гейр — Курс по Пали", "desc": "Академический курс грамматики пали", "href": "https://drive.google.com/file/d/1H_mhKNgrBYevOOnax-FUBgxkfSuwHItu/view?usp=share_link", "star": true },
-            { "label": "Елизаренкова, Топоров — Язык Пали", "href": "/assets/materials/yelizarenkova_toporov_pali.pdf", "star": true },
+            { "label": "Елизаренкова, Топоров — Язык Пали", "href": "/documents/yelizarenkova_toporov_pali.pdf", "star": true },
             { "label": "Вардер — Введение в Пали (англ)", "href": "https://drive.google.com/file/d/1b0sTtKF5wuGcDtr_u5sSSWGY5_QzBF-h/view?usp=drivesdk" },
             { "label": "Тхануттамо Бх — Пали (англ)", "href": "https://drive.google.com/file/d/1jeXT4tkuudnN2EB1ABp4eHLGXbw-_EBk/view?usp=drivesdk" }
           ]
@@ -555,25 +564,31 @@
           "items": [
             { "label": "Learn Pali Переводы", "desc": "Блог с разбором сутт на пали", "href": "https://palistudies.blogspot.com/2019/04/intro-kaya-section-satipatthana-sutta.html?m=1", "blank": true },
             { "label": "Джеймс Велан. Пали и Санскрит", "href": "https://www.thebuddhistsociety.org/page/sanskrit-and-pali-study-resources-guide-by-james-whelan", "blank": true },
-            { "label": "gd", "href": "https://drive.google.com/drive/folders/1jAy_xD6qkrnIkmXO9e4KtI_--nDMySSn", "blank": true },
-            { "label": "yt", "href": "https://www.youtube.com/@jameswhelan2381", "blank": true }
+            { "label": "Материалы в GDrive", "href": "https://drive.google.com/drive/folders/1jAy_xD6qkrnIkmXO9e4KtI_--nDMySSn", "blank": true },
+            { "label": "Канал на YT", "href": "https://www.youtube.com/@jameswhelan2381", "blank": true }
           ]
         },
         {
           "name": "Запоминание", "column": 1,
-          "items": [
-            { "label": "Мнемотехника", "desc": "Инструмент для заучивания сутт строка за строкой", "href": "/ru/memo/", "star": true },
-            { "label": "sn56.11", "href": "/memorize/?q=sn56.11" },
-            { "label": "dn22", "href": "/memorize/?q=dn22" },
-            { "label": "sn12.2", "href": "/memorize/?q=sn12.2" },
-            { "label": "Советы-секреты «Как запоминать легче»", "href": "https://docs.google.com/document/d/12A4jNFrSQywZubM7bL2pgQK0fOtr6LEBJMjGb7nTNlw/edit?usp=drivesdk", "blank": true }
+          "blocks": [
+            { "rows": [
+              { "label": "Мнемотехника", "desc": "Инструмент для заучивания сутт строка за строкой", "href": "/ru/memo/", "star": true }
+            ] },
+            { "inline": [
+              { "label": "sn56.11", "href": "/memorize/?q=sn56.11" },
+              { "label": "dn22", "href": "/memorize/?q=dn22" },
+              { "label": "sn12.2", "href": "/memorize/?q=sn12.2" }
+            ] },
+            { "rows": [
+              { "label": "Советы-секреты «Как запоминать легче»", "href": "https://docs.google.com/document/d/12A4jNFrSQywZubM7bL2pgQK0fOtr6LEBJMjGb7nTNlw/edit?usp=drivesdk", "blank": true }
+            ] }
           ]
         },
         {
           "name": "Тренажёры", "column": 3,
           "items": [
-            { "label": "Грамматика", "href": "/ru/assets/grammar/nouns.html" },
-            { "label": "Патимоккха", "href": "/ru/assets/rr.html" },
+            { "label": "Грамматика", "href": "/assets/grammar/nouns.html" },
+            { "label": "Патимоккха", "href": "/assets/rr.html" },
             { "label": "Pali Practice App", "desc": "Интерактивные упражнения по грамматике и лексике", "href": "https://www.dhammabytes.org/pali-practice/", "blank": true }
           ]
         }
@@ -628,10 +643,10 @@
         {
           "name": "Работа с текстом", "column": 3,
           "items": [
-            { "label": "Редактировать Перевод", "desc": "Построчное сопоставление пали и перевода", "tpl": "/ru/assets/lbl.html?q={{q}}", "blank": true },
-            { "label": "Сравнить Две Сутты", "desc": "Найти различия между двумя суттами", "tpl": "/ru/assets/diff/?lang=pl&one={{q}}&two={{q}}", "blank": true },
+            { "label": "Редактировать Перевод", "desc": "Построчное сопоставление пали и перевода", "tpl": "/assets/lbl.html?q={{q}}", "blank": true },
+            { "label": "Сравнить Две Сутты", "desc": "Найти различия между двумя суттами", "tpl": "/assets/diff/?lang=pl&one={{q}}&two={{q}}", "blank": true },
             { "label": "Сравнить Два Списка", "desc": "Построчное сравнение двух текстовых списков", "href": "/assets/listdiff.html" },
-            { "label": "Сделать список из строки", "desc": "Составить список из строк текста", "href": "/ru/assets/makelist.html", "star": true }
+            { "label": "Сделать список из строки", "desc": "Составить список из строк текста", "href": "/assets/makelist.html", "star": true }
           ]
         }
       ]

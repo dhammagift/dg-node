@@ -1,0 +1,213 @@
+body { 
+    display: flex; 
+    flex-direction: column;
+    min-height: 100vh; 
+    margin: 0; 
+}
+
+/* Навигация строго по верхнему краю */
+.top-nav-bar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    padding: 20px 25px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 100;
+}
+
+.nav-icon {
+    color: #989898 !important;
+    font-size: 24px; 
+    transition: color 0.2s;
+}
+.nav-icon:hover {
+    color: var(--bs-body-color) !important;
+}
+
+/* Плашка синхронизации */
+.sync-wrapper { 
+    max-width: 450px; 
+    width: 100%; 
+    border-radius: 16px; 
+    padding: 30px; 
+    margin: 90px auto 40px auto; 
+    box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+    background-color: var(--bs-body-bg, #ffffff);
+    color: var(--bs-body-color, #212529);
+}
+
+/* ЖЕСТКОЕ ПЕРЕОПРЕДЕЛЕНИЕ ДЛЯ ТЕМНОЙ ТЕМЫ */
+body.dark .sync-wrapper,
+[data-bs-theme="dark"] .sync-wrapper, 
+[data-theme="dark"] .sync-wrapper,
+body.dark .modal-content,
+[data-bs-theme="dark"] .modal-content, 
+[data-theme="dark"] .modal-content {
+    background-color: #212529 !important;
+    border-color: #343a40 !important;
+    color: #f8f9fa !important;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.6) !important;
+}
+
+/* Улучшение читаемости серого текста в темной теме */
+body.dark .text-muted, [data-bs-theme="dark"] .text-muted, [data-theme="dark"] .text-muted,
+body.dark .opacity-75, [data-bs-theme="dark"] .opacity-75, [data-theme="dark"] .opacity-75 {
+    color: #ced4da !important;
+    opacity: 1 !important;
+}
+
+.logo-placeholder { 
+    text-align: center; 
+    font-size: 3.5rem; 
+    margin-bottom: 10px; 
+    line-height: 1; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    gap: 12px; 
+    color: #87CEEB;
+}
+
+.logo-icon {
+    width: 55px; 
+    height: 55px;
+}
+
+.status-card { 
+    border-radius: 10px; 
+    padding: 15px; 
+    background: rgba(128, 128, 128, 0.05);
+}
+
+#sync-phrase-value-status { 
+    font-family: monospace; 
+    padding: 2px 6px; 
+    border-radius: 4px; 
+    background: rgba(128, 128, 128, 0.1);
+}
+
+.sync-mini-btn { padding: 4px 10px; font-size: 0.85rem; }
+
+.danger-link { cursor: pointer; text-decoration: none; font-size: 0.85rem; }
+.danger-link:hover { text-decoration: underline; opacity: 0.8; }
+
+.logout-link { cursor: pointer; text-decoration: none; font-size: 0.85rem; transition: 0.2s; }
+.logout-link:hover { text-decoration: underline; }
+
+/* Темная тема для поля ввода */
+body.dark .form-control,
+[data-bs-theme="dark"] .form-control, 
+[data-theme="dark"] .form-control {
+    background-color: rgba(255, 255, 255, 0.05) !important;
+    border-color: #495057 !important;
+    color: #f8f9fa !important;
+}
+
+body.dark .form-control::placeholder,
+[data-bs-theme="dark"] .form-control::placeholder, 
+[data-theme="dark"] .form-control::placeholder {
+    color: #adb5bd !important;
+}
+
+/* Новые классы для очищенного HTML */
+.compass-icon {
+    height: 24px; 
+    opacity: 0.7; 
+    transition: opacity 0.2s;
+}
+
+.compass-icon:hover {
+    opacity: 1;
+}
+
+.sync-desc, .modal-body-text {
+    font-size: 0.95rem;
+}
+
+.sync-or {
+    font-size: 0.85rem;
+}
+
+.btn-eye {
+    width: 50px;
+}
+
+.sync-hint {
+    font-size: 0.85rem; 
+    line-height: 1.4;
+}
+
+.sync-label {
+    font-size: 0.85rem;
+}
+
+.sync-sessions-label {
+    font-size: 0.85rem; 
+    font-weight: 600;
+}
+
+.sync-user-info {
+    font-size: 1rem; 
+    word-break: break-all;
+}
+
+.sync-time-label {
+    font-size: 0.8rem; 
+    line-height: 1.2;
+}
+
+.sync-last-time {
+    font-size: 0.9rem;
+}
+
+.copy-textarea {
+    position: fixed; 
+    left: -999999px;
+}
+
+.sync-phrase-value {
+    letter-spacing: 2px; 
+    cursor: pointer;
+}
+
+.sync-phrase-real {
+    font-family: monospace; 
+    font-weight: bold; 
+    padding: 2px 6px; 
+    border-radius: 4px; 
+    background: rgba(128, 128, 128, 0.1); 
+    cursor: pointer;
+}
+
+.sync-status-eye {
+    border: 0; 
+    background: transparent;
+}
+
+.session-item {
+    background: rgba(128, 128, 128, 0.05);
+}
+
+.session-text-container {
+    line-height: 1.2;
+}
+
+.session-device-name {
+    font-size: 0.85rem; 
+    font-weight: 500;
+}
+
+.session-badge {
+    font-size: 0.65rem;
+}
+
+.session-date {
+    font-size: 0.75rem;
+}
+
+.session-terminate-btn {
+    border: none;
+}

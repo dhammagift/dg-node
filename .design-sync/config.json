@@ -1,0 +1,55 @@
+{
+  "pkg": "@dhammagift/dg-ui",
+  "globalName": "DgUi",
+  "shape": "package",
+  "buildCmd": "npm run build --prefix design-system",
+  "srcDir": "src",
+  "cssEntry": "dist/dg-ui.css",
+  "docsDir": "docs",
+  "guidelinesGlob": [],
+  "readmeHeader": ".design-sync/conventions.md",
+  "overrides": {
+    "Drawer": {
+      "cardMode": "single",
+      "primaryStory": "Full"
+    },
+    "DrawerGroup": {
+      "cardMode": "single",
+      "primaryStory": "Open"
+    },
+    "DrawerRow": {
+      "cardMode": "single",
+      "primaryStory": "Navigation"
+    },
+    "Sheet": {
+      "cardMode": "single",
+      "primaryStory": "WithTabs"
+    },
+    "SheetRow": {
+      "cardMode": "single",
+      "primaryStory": "WithDescription"
+    },
+    "BusyIndicator": {
+      "cardMode": "single",
+      "primaryStory": "Searching"
+    },
+    "MegaMenu": {
+      "cardMode": "column"
+    },
+    "MegaMenuGroup": {
+      "cardMode": "column"
+    },
+    "ToggleRow": {
+      "cardMode": "column"
+    },
+    "ResultRow": {
+      "cardMode": "column"
+    },
+    "ResultsTable": {
+      "cardMode": "column"
+    },
+    "SearchShell": {
+      "cardMode": "column"
+    }
+  }
+}

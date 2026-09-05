@@ -235,6 +235,12 @@ nodejs/
 │   ├── reader/
 │   │   ├── mode-table.json             — режимы ридера (st/mt/ml/read/ee), единственный источник истины
 │   │   ├── translator-priority.json    — приоритет переводчиков по языку ("ru": ["ru_o", ...])
+│   │   ├── translators.json            — подписи переводчиков ("sv+edited+o" → "SV theravada.ru
+│   │   │                                 с Англ, ред. o"); клиент фетчит по СТАРОМУ URL
+│   │   │                                 /assets/js/translators.json (явный роут перед маунтом
+│   │   │                                 /assets в обоих серверах). Авторский текст, поэтому
+│   │   │                                 НЕ таблица в dg.db: та пересобирается из корпуса и
+│   │   │                                 стёрла бы всё написанное руками
 │   │   └── lang_ru.json, lang_en.json  — локализация UI ридера
 │   └── search/
 │       └── lang_ru.json, lang_en.json  — локализация UI поиска (datatables/results/buttons и т.п.)

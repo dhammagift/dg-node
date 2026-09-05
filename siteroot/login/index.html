@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cloud Sync - Dhamma.gift</title>
+    
+    <link rel="icon" type="image/png" href="/assets/img/favico-noglass.png" />
+    
+    <link href="/assets/css/styles.css" rel="stylesheet" />
+    <link href="/assets/css/jquery-ui.min.css" rel="stylesheet" />
+    <link href="/assets/css/extrastyles.css" rel="stylesheet" />
+    <link href="/login/login.css" rel="stylesheet" />
+
+    <script src="/assets/js/fontawesome.6.1.all.js"></script>
+    <script src="/assets/js/nav-component.js" defer></script>
+	<link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://www.googleapis.com" crossorigin>
+</head>
+
+<body class="bg-body text-body">
+
+    <div class="top-nav-bar">
+        <div class="d-flex align-items-center gap-2">
+            
+            <top-nav-icons type="home"></top-nav-icons>
+            
+        </div>
+        <div id="lang-switcher" class="d-flex align-items-center"></div>
+    </div>
+
+
+    <div class="container d-flex justify-content-center px-3">
+        <div class="sync-wrapper border">
+            <div class="logo-placeholder">
+                <img src="/assets/img/pwa-bold-monocolor-192.png" alt="logo" class="logo-icon">
+                <i class="fa-solid fa-cloud"></i>
+            </div>
+            
+            <h2 id="sync-page-title" class="text-center mb-2 fw-bold">Cloud Sync</h2>
+            <p id="sync-page-desc" class="text-center opacity-75 mb-4 sync-desc">Sync your history, favorites, and settings.</p>
+
+            <div id="sync-logged-out">
+                <button id="btn-google-login" class="btn btn-outline-primary w-100 mb-3 fw-medium" onclick="syncLoginGoogleWrapper()">
+                    <i class="fa-brands fa-google me-2"></i> Sign in with Google
+                </button>
+
+                <div class="d-flex align-items-center mb-3">
+                    <hr class="flex-grow-1 border-secondary-subtle"><span id="sync-or" class="px-3 opacity-75 sync-or">or</span><hr class="flex-grow-1 border-secondary-subtle">
+                </div>
+                
+                <label id="sync-phrase-label" class="form-label fw-medium sync-label">Login Anonymously with Secret Passphrase</label>
+                <div class="input-group mb-2">
+                    <input type="password" id="sync-phrase-input" class="form-control" placeholder="e.g. Dukkha-Samudayo-8358">
+                    <button class="btn btn-outline-secondary btn-eye" type="button" onclick="uiToggleEyeInput()" id="btn-toggle-eye">
+                        <i class="fa-solid text-muted fa-eye"></i>
+                    </button>
+                </div>
+                
+                <div id="sync-hint" class="opacity-75 mb-4 sync-hint">
+                    Min 8 chars. Using this phrase, you can anonymously access your synced data from any device.
+                </div>
+                
+                <button id="btn-phrase-login" class="btn btn-primary w-100 fw-medium" onclick="uiLoginPhrase()">
+                    Anonymous Login
+                </button>
+            </div>
+
+            <div id="sync-logged-in" class="d-none">
+                <div class="status-card border mb-3">
+                    <div class="mb-3">
+                        <div id="sync-status-label" class="opacity-75 mb-1 sync-label">Account:</div>
+                        <div id="sync-user-info" class="text-primary fw-medium sync-user-info"></div>
+                    </div>
+
+                    <hr class="my-2 border-secondary-subtle">
+
+                    <div class="d-flex justify-content-between align-items-center mt-2">
+                        <div>
+                            <div id="sync-time-label" class="opacity-75 sync-time-label">Last synced:</div>
+                            <div id="sync-last-time" class="fw-semibold sync-last-time">Never</div>
+                        </div>
+                        <button id="btn-sync-now-login" class="btn btn-outline-primary sync-mini-btn" onclick="forceSyncNow()" title="Sync Now">
+                            <i class="fa-solid fa-rotate me-1"></i> <span id="lbl-sync">Sync</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="status-card border mb-3">
+                    <div id="sync-sessions-label" class="opacity-75 mb-2 sync-sessions-label">Устройства (Сессии)</div>
+                    <div id="sync-sessions-list" class="d-flex flex-column gap-2">
+                    </div>
+                </div>
+                
+                <div class="d-flex justify-content-between pt-2 px-1 align-items-center">
+                    <a class="logout-link opacity-75" onclick="syncLogout()">
+                        <i class="fa-solid fa-arrow-right-from-bracket me-1"></i> <span id="lbl-logout">Logout</span>
+                    </a>
+                    <a class="danger-link text-danger" onclick="uiDeleteAccount()">
+                        <i class="fa-solid fa-trash-can me-1"></i> <span id="lbl-delete">Delete Cloud Data</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="mergeChoiceModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header border-bottom-0 pb-0">
+            <h5 class="modal-title fw-bold" id="mergeModalTitle">Локальные данные</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body opacity-75 modal-body-text" id="mergeModalBody">
+            Мы нашли историю поиска и избранное на этом устройстве. Как вы хотите поступить при входе?
+          </div>
+          <div class="modal-footer border-top-0 pt-0 flex-column align-items-stretch gap-2 mt-2">
+            <button type="button" class="btn btn-primary m-0" id="btn-modal-merge" onclick="executePendingLogin('merge')" data-bs-dismiss="modal">
+                Объединить с облаком
+            </button>
+            <button type="button" class="btn btn-outline-danger m-0" id="btn-modal-overwrite" onclick="executePendingLogin('overwrite')" data-bs-dismiss="modal">
+                Заменить из облака (Удалить локальные)
+            </button>
+            <button type="button" class="btn btn-ghost text-muted m-0" id="btn-modal-cancel" data-bs-dismiss="modal">Отмена</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="/assets/js/jquery-3.7.0.min.js"></script>
+    <script src="/assets/js/bootstrap.bundle.5.3.1.min.js"></script>
+    <script defer src="/assets/js/themeswitch.js"></script>
+    <script src="/assets/js/settings.js"></script>
+    <script src="/login/login.js"></script> </body>
+</html>

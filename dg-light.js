@@ -11,7 +11,110 @@ const openapiSpecEn = require('./configs/openapi.en.json');
 const { default: Aksharamukha, Scripts: AKSH_SCRIPTS } = require('aksharamukha');
 
 const app = express();
-const PORT = 3000;
+const PORT = 3902;
+
+// ---------------------------------------------------------------------------------------
+// Cache policy (see cache.md at repo root for the full design writeup) — content-hash
+// versioning for our own static assets (§1-2) + differentiated Cache-Control by content
+// type (§3) and by dynamic-route family (§4-5).
+// ---------------------------------------------------------------------------------------
+
+// §1: lazy content-hash versioning, keyed by mtime — no server restart needed to pick up
+// an edited file, no new dependency (crypto is Node built-in).
+const crypto = require('crypto');
+
+const assetVersionCache = new Map(); // absPath -> { mtimeMs, hash }
+function getAssetVersion(absPath) {
+    try {
+        const stat = fsSync.statSync(absPath);
+        const cached = assetVersionCache.get(absPath);
+        if (cached && cached.mtimeMs === stat.mtimeMs) return cached.hash;
+        const hash = crypto.createHash('md5').update(fsSync.readFileSync(absPath)).digest('hex').slice(0, 10);
+        assetVersionCache.set(absPath, { mtimeMs: stat.mtimeMs, hash });
+        return hash;
+    } catch { return null; }
+}
+
+// Directories whose JS/CSS/SVG/PNG/ICO we own and version — legacy dirs (siteroot/*) are
+// deliberately excluded (see cache.md "Проблема" section — no version-safe way to hash
+// content we don't control the release cadence of the same way).
+const VERSIONED_STATIC_ROOTS = [
+    path.join(__dirname, 'public', 'overrides'),
+    path.join(__dirname, 'public', 'spa'),
+    path.join(__dirname, 'search'),
+    path.join(__dirname, 'reader'),
+    path.join(__dirname, 'settings'),
+];
+const HTML_ASSET_URL_ROOTS = {
+    '/assets': VERSIONED_STATIC_ROOTS[0],
+    '/spa': VERSIONED_STATIC_ROOTS[1],
+    '/nodejs/res': VERSIONED_STATIC_ROOTS[2],
+    '/reader': VERSIONED_STATIC_ROOTS[3],
+    '/settings': VERSIONED_STATIC_ROOTS[4],
+};
+
+// §2: HTML entry points render through this instead of a bare res.sendFile — rewrites
+// local asset URLs to carry ?v=<hash> (see getAssetVersion above) so they can be cached
+// forever safely (§3), while the HTML document itself always revalidates.
+//
+// ETag (md5 of the fully-rewritten body, so it changes whenever any referenced asset's own
+// version does, not just when the HTML source itself changes) added after an owner-run
+// cache-header checker on the live site flagged: `max-age=0, must-revalidate` with no
+// validator means every revalidation is a full re-download, never a cheap 304 — "stale
+// cache can only be re-validated with a full download". This keeps must-revalidate's
+// guarantee (client always asks the server first) while letting an unchanged page answer
+// with a 304 instead of re-sending the whole document.
+function sendVersionedHtml(req, res, absHtmlPath, status = 200) {
+    let html;
+    try { html = fsSync.readFileSync(absHtmlPath, 'utf8'); }
+    catch { return res.status(404).end(); }
+    const rewritten = html.replace(
+        /((?:src|href)=")(\/(?:assets|spa|nodejs\/res|reader|settings)\/[^"?#]+\.(?:js|css|svg|png|ico))(")/g,
+        (m, pre, url, post) => {
+            const prefix = Object.keys(HTML_ASSET_URL_ROOTS).find(p => url.startsWith(p + '/'));
+            if (!prefix) return m;
+            const relPath = url.slice(prefix.length + 1);
+            const absAssetPath = path.join(HTML_ASSET_URL_ROOTS[prefix], relPath);
+            const v = getAssetVersion(absAssetPath);
+            return v ? `${pre}${url}?v=${v}${post}` : m;
+        }
+    );
+    const etag = '"' + crypto.createHash('md5').update(rewritten).digest('hex') + '"';
+    res.set('Cache-Control', 'public, max-age=0, must-revalidate').set('ETag', etag);
+    if (status === 200 && req.headers['if-none-match'] === etag) {
+        return res.status(304).end();
+    }
+    res.status(status).type('html').send(rewritten);
+}
+
+// §3: Cache-Control by file type/root for every express.static(...) mount below. Checked
+// against the resolved file's PHYSICAL path, not the URL prefix — /assets/js/x.js from
+// public/overrides (versioned, see above) gets a year; /assets/js/y.js from siteroot/assets
+// (legacy fallback, same URL prefix, not versioned) gets the legacy-code tier instead.
+const CACHE_IMMUTABLE_YEAR = 'public, max-age=31536000, immutable';
+const CACHE_FONT = 'public, max-age=604800';        // 7 days — fonts almost never change
+const CACHE_IMAGE = 'public, max-age=86400';        // 1 day — images not covered by versioning (referenced from CSS url())
+const CACHE_LEGACY_CODE = 'public, max-age=86400';  // 1 day — legacy JS/CSS (siteroot/assets etc.), not versioned but safe to cache a day
+const CACHE_CONFIG_JSON = 'no-cache';               // announcements.json/slides.json etc.: fetched once per SPA session, not per navigation, so the revalidation round-trip is free — express.static/res.sendFile already set a real ETag here, so this is an exact-freshness win over any guessed TTL, not a slower one (cache.md)
+const CACHE_STATIC_SHORT = 'public, max-age=36000'; // 600 min — .html outside sendVersionedHtml + anything uncategorized
+
+function staticCacheHeaders(res, filePath) {
+    const ext = path.extname(filePath).toLowerCase();
+    const inVersionedRoot = VERSIONED_STATIC_ROOTS.some(root => filePath.startsWith(root + path.sep));
+    if (inVersionedRoot && ['.js', '.css', '.svg', '.png', '.ico'].includes(ext)) {
+        res.setHeader('Cache-Control', CACHE_IMMUTABLE_YEAR);
+    } else if (['.woff', '.woff2', '.ttf', '.eot', '.otf'].includes(ext)) {
+        res.setHeader('Cache-Control', CACHE_FONT);
+    } else if (['.png', '.jpg', '.jpeg', '.gif', '.webp', '.ico', '.svg'].includes(ext)) {
+        res.setHeader('Cache-Control', CACHE_IMAGE);
+    } else if (['.js', '.css'].includes(ext)) {
+        res.setHeader('Cache-Control', CACHE_LEGACY_CODE);
+    } else if (ext === '.json') {
+        res.setHeader('Cache-Control', CACHE_CONFIG_JSON);
+    } else {
+        res.setHeader('Cache-Control', CACHE_STATIC_SHORT);
+    }
+}
 
 // gzip/br для ВСЕГО, что отдаёт сервер — HTML, JSON, JS, CSS. Прод (легаси PHP) летает именно
 // потому, что перед ним Apache/nginx сжимают ответы по умолчанию; у этого сервера такого слоя
@@ -60,6 +163,7 @@ try {
 // /:slug catch-all below and gets served as SPA HTML (wrong content-type, breaks SW update
 // checks silently). Registered early so nothing else can shadow it.
 app.get('/sw.js', (req, res) => {
+    res.set('Cache-Control', 'no-cache'); // stale service worker must always revalidate (cache.md §4)
     res.type('application/javascript');
     res.sendFile(path.join(__dirname, 'public', 'service-worker.js'));
 });
@@ -71,6 +175,7 @@ app.get('/sw.js', (req, res) => {
 // not a URL fork like the legacy /ru/ prefix was, so a single manifest already covers every
 // language without hardcoding a list.
 app.get('/manifest.json', (req, res) => {
+    res.set('Cache-Control', 'public, max-age=3600'); // cache.md §4 (merged into primary tier, per owner)
     res.type('application/manifest+json');
     res.sendFile(path.join(__dirname, 'configs', 'manifest.json'));
 });
@@ -173,6 +278,7 @@ async function convertScriptInSearchResult(result, scriptCode) {
 // (paliLookup.js) only calls this when the word contains non-Latin characters at all; plain
 // IAST/ISO input never round-trips here.
 app.get('/api/transliterate', async (req, res) => {
+    res.set('Cache-Control', 'public, max-age=3600'); // cache.md §4 (merged into primary tier, per owner)
     const text = (req.query.text || '').toString();
     if (!text) return res.json({ text: '', converted: false });
     const aksh = await akshReady;
@@ -192,8 +298,8 @@ app.get('/api/transliterate', async (req, res) => {
 // (Swagger UI переключает спеки по URL, не по встроенному объекту). URL остаётся /openapi.json
 // (без /configs) — это отдельный app.get(), не статика, физический путь на диске клиенту не
 // виден и никого не касается.
-app.get('/openapi.json', (req, res) => res.json(openapiSpec));
-app.get('/openapi.en.json', (req, res) => res.json(openapiSpecEn));
+app.get('/openapi.json', (req, res) => { res.set('Cache-Control', 'public, max-age=3600'); res.json(openapiSpec); });
+app.get('/openapi.en.json', (req, res) => { res.set('Cache-Control', 'public, max-age=3600'); res.json(openapiSpecEn); });
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(null, {
     explorer: true,
     swaggerOptions: {
@@ -520,6 +626,7 @@ app.use((req, res, next) => {
 // same reason as /pm.php, /bipm.php below). Reimplements the legacy PHP: write the POST body to
 // offline-data/lbl/{file}, creating the dir if missing.
 app.post('/assets/lbl-save.php', express.text({ type: '*/*', limit: '10mb' }), (req, res) => {
+    res.set('Cache-Control', 'no-store'); // cache.md §5 — write endpoint
     const filename = path.basename(req.query.file || `backup_${Date.now()}.json`);
     const saveDir = path.join(OFFLINE_MIRRORS_ROOT, 'lbl');
     try {
@@ -531,26 +638,44 @@ app.post('/assets/lbl-save.php', express.text({ type: '*/*', limit: '10mb' }), (
     }
 });
 
-app.use('/assets', express.static(path.join(__dirname, 'public', 'overrides'), { maxAge: 60000 }));
+// Translator credits ("sv+edited+o" -> "SV theravada.ru с Англ, ред. o"). Hand-written editorial
+// text, so it lives with the project's other authored configs — next to translator-priority.json
+// and translator-types.json, which are about the same translators — rather than among the
+// vendored legacy assets. It is NOT corpus data and deliberately not a table in dg.db: that file
+// is regenerated from the corpus on every build and would wipe anything written by hand. The
+// public URL stays put, served by hand from its new home, the same trick the reader configs use.
+// Registered before the /assets mount so it wins over both public/overrides and the legacy
+// fallback. Same no-cache tier staticCacheHeaders gives any .json (res.sendFile's own ETag
+// makes repeat fetches a cheap 304, not a guessed TTL — cache.md).
+app.get('/assets/js/translators.json', (req, res) => {
+    res.set('Cache-Control', CACHE_CONFIG_JSON);
+    res.sendFile(path.join(__dirname, 'configs', 'reader', 'translators.json'));
+});
+app.use('/assets', express.static(path.join(__dirname, 'public', 'overrides'), { setHeaders: staticCacheHeaders }));
 // /read/js/voice.js — тот же override-приоритет паттерн, что и /assets выше: наш патченный
 // voice.js (public/overrides/read/js/, чинит рассинхрон detectTranslationLang/prepareTextData
 // с классами, которые реально рендерит megareader.js — rus-lang/eng-lang vs ru-lang/en-lang,
 // second-translation-row vs lang-2nd — переводы молча не находились на страницах ридера,
 // см. TODO.md) отдаётся ПЕРЕД siteroot/read/ (легаси-оригинал, дальше по файлу, generic-цикл).
-app.use('/read', express.static(path.join(__dirname, 'public', 'overrides', 'read'), { maxAge: 60000 }));
-app.use('/spa', express.static(path.join(__dirname, 'public', 'spa'), { maxAge: 60000 }));
+app.use('/read', express.static(path.join(__dirname, 'public', 'overrides', 'read'), { setHeaders: staticCacheHeaders }));
+app.use('/spa', express.static(path.join(__dirname, 'public', 'spa'), { setHeaders: staticCacheHeaders }));
 // /settings — мастер-настройки (единая страница, вызывается по шестерёнке; отдельно от
-// быстрых настроек в quickModal и смарт-панели ридера, см. TODO.md).
-app.use('/settings', express.static(path.join(__dirname, 'settings'), { maxAge: 60000 }));
+// быстрых настроек в quickModal и смарт-панели ридера, см. TODO.md). Explicit route (cache.md
+// §2) so its JS/CSS links get versioned — same "explicit route before static mount wins by
+// registration order" pattern as /reader/mode-table.json below.
+app.get(['/settings', '/settings/'], (req, res) => {
+    sendVersionedHtml(req, res, path.join(__dirname, 'settings', 'index.html'));
+});
+app.use('/settings', express.static(path.join(__dirname, 'settings'), { setHeaders: staticCacheHeaders }));
 // URL-префикс /nodejs/res сознательно НЕ переименован вслед за папкой (обратная совместимость
 // путей) — папка на диске называется search/ (см. CLAUDE.md "Структура проекта"), а
 // /nodejs/res/... как публичный URL как был, так и остался.
-app.use('/nodejs/res', express.static(path.join(__dirname, 'search'), { maxAge: 60000 }));
+app.use('/nodejs/res', express.static(path.join(__dirname, 'search'), { setHeaders: staticCacheHeaders }));
 // lang_ru.json/lang_en.json (поисковый UI) физически переехали в configs/search/ — все конфиги
 // проекта в одном месте (см. CLAUDE.md). URL не менялся (клиент шлёт fetch на /nodejs/res/lang_
 // {lang}.json, см. search/index.html DHAMMA_LANG_CONFIG_PATTERN) — второй static-маунт на тот же
 // префикс просто добавляет ещё одно место поиска файла, express пробует по очереди.
-app.use('/nodejs/res', express.static(path.join(__dirname, 'configs', 'search'), { maxAge: 60000 }));
+app.use('/nodejs/res', express.static(path.join(__dirname, 'configs', 'search'), { setHeaders: staticCacheHeaders }));
 // Раньше здесь был app.use('/nodejs', express.static(__dirname, ...)) — раздавал ВЕСЬ корень
 // проекта (dg-light.js, package.json, конфиги) наружу как статику. Единственная ссылка на
 // голый /nodejs/... (не /nodejs/res/... выше) во всём коде была reader/reader.html:18
@@ -564,14 +689,23 @@ app.use('/nodejs/res', express.static(path.join(__dirname, 'configs', 'search'),
 // а он не часть файла на диске (сканируется отдельно), поэтому раздаём JSON руками, а не
 // статикой.
 app.get('/reader/mode-table.json', (req, res) => {
+    res.set('Cache-Control', 'public, max-age=3600'); // cache.md §4 (merged into primary tier, per owner)
     res.json({ ...MODE_TABLE, availableLangs: READER_LANGS });
 });
-app.use('/reader', express.static(path.join(__dirname, 'reader'), { maxAge: 60000 }));
+// Same versioning treatment (cache.md §2) as /settings above — these two bare HTML files were
+// previously served as plain static (no ?v= rewriting of their own JS/CSS links).
+app.get('/reader/reader.html', (req, res) => {
+    sendVersionedHtml(req, res, path.join(__dirname, 'reader', 'reader.html'));
+});
+app.get('/reader/reader-template.html', (req, res) => {
+    sendVersionedHtml(req, res, path.join(__dirname, 'reader', 'reader-template.html'));
+});
+app.use('/reader', express.static(path.join(__dirname, 'reader'), { setHeaders: staticCacheHeaders }));
 // mode-table.json/translator-priority.json/lang_ru.json/lang_en.json (ридер) физически
 // переехали в configs/reader/ — тот же приём, что и с /nodejs/res выше: URL /reader/*.json не
 // менялся (megareader.js/reader-template.html фетчат по старым путям), просто ещё один
 // static-маунт на тот же префикс.
-app.use('/reader', express.static(path.join(__dirname, 'configs', 'reader'), { maxAge: 60000 }));
+app.use('/reader', express.static(path.join(__dirname, 'configs', 'reader'), { setHeaders: staticCacheHeaders }));
 
 // /pm.php, /bipm.php — Bhikkhu/Bhikkhuni Patimokkha, rendered inline (not the reader), with
 // rule links pointing at real dg-node routes. Static HTML generated once by
@@ -579,14 +713,22 @@ app.use('/reader', express.static(path.join(__dirname, 'configs', 'reader'), { m
 // siteroot/pm.php and siteroot/bipm.php below would otherwise serve raw unexecuted PHP source,
 // which is why the old menu links were broken). Registered before the siteroot scan loop so
 // these routes win over those dead symlinks (same override-precedence pattern as /assets, /read).
-app.get('/pm.php', (req, res) => res.sendFile(path.join(__dirname, 'reader', 'bu-pm.html')));
-app.get('/bipm.php', (req, res) => res.sendFile(path.join(__dirname, 'reader', 'bi-pm.html')));
+app.get('/pm.php', (req, res) => sendVersionedHtml(req, res, path.join(__dirname, 'reader', 'bu-pm.html')));
+app.get('/bipm.php', (req, res) => sendVersionedHtml(req, res, path.join(__dirname, 'reader', 'bi-pm.html')));
+
+// /config/tts-config.json, /config/sync-config.json — the only 2 files out of the legacy
+// siteroot/config/ (67 tracked files: apache/systemd/AndroidManifest, AWS creds, config.zip)
+// dg-node code actually fetches (public/overrides/read/js/voice.js, settings.js/
+// settings-bundle.js). Vendored into configs/legacy/ so siteroot/config can be dropped
+// entirely instead of publishing the rest of that directory's unrelated legacy server files.
+app.get('/config/tts-config.json', (req, res) => { res.set('Cache-Control', 'public, max-age=3600'); res.sendFile(path.join(__dirname, 'configs', 'legacy', 'tts-config.json')); });
+app.get('/config/sync-config.json', (req, res) => { res.set('Cache-Control', 'public, max-age=3600'); res.sendFile(path.join(__dirname, 'configs', 'legacy', 'sync-config.json')); });
 
 // Bare fragment (no page shell) of the same content, for /toc's inline expand
 // (public/spa/toc.js renderBookRow) — fetched once on first click, not preloaded.
 app.get('/api/patimokkha-fragment/:side', (req, res) => {
     if (req.params.side !== 'bu' && req.params.side !== 'bi') return res.status(404).end();
-    res.sendFile(path.join(__dirname, 'reader', `${req.params.side}-pm-fragment.html`));
+    sendVersionedHtml(req, res, path.join(__dirname, 'reader', `${req.params.side}-pm-fragment.html`));
 });
 
 // siteroot/ — публикация от корня сайта: самодостаточные легаси-приложения (Memorization
@@ -623,21 +765,21 @@ try {
     console.warn('Siteroot not found:', SITEROOT);
 }
 for (const name of siteRootEntries) {
-    app.use(`/${name}`, express.static(path.join(SITEROOT, name), { maxAge: 60000 }));
+    app.use(`/${name}`, express.static(path.join(SITEROOT, name), { setHeaders: staticCacheHeaders }));
 }
 // ru/memo, ru/login — унаследованные от легаси языковые алиасы (тот же контент ещё и под /ru/).
 // Это не отдельная тулза в siteroot/, а второй URL для уже примонтированной — оставлены явно.
-app.use('/ru/memo', express.static(path.join(SITEROOT, 'memo'), { maxAge: 60000 }));
-app.use('/ru/login', express.static(path.join(SITEROOT, 'login'), { maxAge: 60000 }));
+app.use('/ru/memo', express.static(path.join(SITEROOT, 'memo'), { setHeaders: staticCacheHeaders }));
+app.use('/ru/login', express.static(path.join(SITEROOT, 'login'), { setHeaders: staticCacheHeaders }));
 
 // /ru/docs — real RU-locale docs build, baseUrl:'/ru/docs/' baked in at build time
 // (dg-docs/docusaurus.config.js, DOCS_BUILD_LOCALE=ru), so this is a genuine static mount,
 // not a redirect — /docs/ru/... never existed for readers to have bookmarked.
-app.use('/ru/docs', express.static(path.join(__dirname, 'dg-docs', 'build-ru'), { maxAge: 60000 }));
+app.use('/ru/docs', express.static(path.join(__dirname, 'dg-docs', 'build-ru'), { setHeaders: staticCacheHeaders }));
 
 // Офлайн-зеркала сторонних сайтов — /{имя-папки}/... отдаётся как статика напрямую из offline-data
 for (const name of offlineMirrors) {
-    app.use(`/${name}`, express.static(path.join(OFFLINE_MIRRORS_ROOT, name), { maxAge: 60000 }));
+    app.use(`/${name}`, express.static(path.join(OFFLINE_MIRRORS_ROOT, name), { setHeaders: staticCacheHeaders }));
 }
 
 // /ru → same routing as without the prefix, plus lang=ru — legacy PHP used
@@ -658,7 +800,7 @@ app.use((req, res, next) => {
 // SPA главная точка входа — служит spa/index.html для всех маршрутов
 // клиентский router.js обрабатывает URL распознавание
 app.get('/spa/app', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'spa', 'index.html'));
+    sendVersionedHtml(req, res, path.join(__dirname, 'public', 'spa', 'index.html'));
 });
 
 // Поддержка SPA маршрутизации: любой неизвестный маршрут → spa/index.html
@@ -666,12 +808,12 @@ app.get('/spa/app', (req, res) => {
 // без сервер-сайд редиректов — браузер загружает SPA и router.js парсит URL
 app.get('/spa/*splat', (req, res) => {
     // Все запросы в /spa/* служат SPA index.html (за исключением статики)
-    res.sendFile(path.join(__dirname, 'public', 'spa', 'index.html'));
+    sendVersionedHtml(req, res, path.join(__dirname, 'public', 'spa', 'index.html'));
 });
 
 // Страница поиска — главная точка входа (легаси, для обратной совместимости)
 app.get('/', (req, res) => {
-    res.sendFile(searchIndexPath);
+    sendVersionedHtml(req, res, searchIndexPath);
 });
 
 // Детерминированный путь к root-файлу через dir_path из скелета
@@ -1183,6 +1325,36 @@ function looksLikeFixedString(keyword) {
     return !REGEX_METACHARS.test(keyword);
 }
 
+// Punctuation a person routinely pastes in from a translation (commas, quotes, colons…) that
+// should never need to be typed back exactly to find a match — stripped once at the request door
+// so grep/regex counting/cache-key/history all agree. Deliberately excludes regex-metacharacter
+// punctuation (. ? * + ^ $ { } ( ) | [ ] \) — that stays meaningful for the power-user regex path.
+const SEARCH_PUNCTUATION = /[,;:!"'“”‘’«»]/g;
+function stripSearchPunctuation(keyword) {
+    return keyword.replace(SEARCH_PUNCTUATION, '').trim();
+}
+
+// Owner: е/ё (Russian) and m/ṁ/ṃ (Pali niggahita — same sound, written differently depending on
+// keyboard/edition) must be treated as the same character everywhere a keyword becomes a
+// text-matching pattern — grep's own match AND the JS regexes that re-count/extract text
+// server-side (buildWordReportFast/enrichSuttaBatch) must agree, or a fold-only match would be
+// found by grep but then undercounted or missing from the words report. `changed` tells the grep
+// caller a character class was introduced, so it knows -F (fixed-string) is no longer safe.
+// Skipped whenever the keyword already has regex metacharacters — that's the power-user regex
+// path (see the invalid-regex error handling above), folding could corrupt deliberate syntax.
+const SEARCH_FOLD_GROUPS = [['е', 'ё'], ['m', 'ṁ', 'ṃ']];
+function foldSearchPattern(keyword) {
+    if (REGEX_METACHARS.test(keyword)) return { pattern: keyword, changed: false };
+    let pattern = '';
+    let changed = false;
+    for (const ch of keyword) {
+        const group = SEARCH_FOLD_GROUPS.find(g => g.includes(ch.toLowerCase()));
+        if (group) { pattern += `[${group.join('')}]`; changed = true; }
+        else pattern += ch;
+    }
+    return { pattern, changed };
+}
+
 // Parses one JSON-line fragment ("segId": "text",) into {segmentId, text} — the same format
 // grep returns both for the full-corpus phase-1 scan and for phase-2 point lookups, since SC
 // Bilara / DhammaGift JSON always has one segment per line.
@@ -1362,14 +1534,15 @@ async function execKeywordGrep(grepTargets, keyword, exactMatch, lb, la) {
     // nothing instead of "a or b" (owner: slide queries built with alternation returned 0
     // results). -F (fixed string) is mutually exclusive with -E and already means "no regex
     // metacharacters at all", so it only applies when the keyword has none to begin with.
+    const folded = foldSearchPattern(keyword);
     if (exactMatch) {
         grepArgs.push('-w', '-E');
-    } else if (looksLikeFixedString(keyword)) {
+    } else if (!folded.changed && looksLikeFixedString(keyword)) {
         grepArgs.push('-F');
     } else {
         grepArgs.push('-E');
     }
-    grepArgs.push(keyword, ...grepTargets);
+    grepArgs.push(folded.pattern, ...grepTargets);
     try {
         const result = await execFile('grep', grepArgs, { maxBuffer: 1024 * 1024 * 50 });
         return result.stdout;
@@ -1575,7 +1748,7 @@ const WORD_BOUNDARY_CHARS = '\\s,.:;!?"\'\\u201C\\u201D\\u2018\\u2019\\u00AB\\u0
 // translations of the same text don't inflate word counts — same intent as
 // filterPreferredTranslators, but decided by translation key only (no file reads needed).
 function buildWordReportFast(searchResults, keyword) {
-    const wordRegex = new RegExp(`[^${WORD_BOUNDARY_CHARS}]*${keyword}[^${WORD_BOUNDARY_CHARS}]*`, 'gi');
+    const wordRegex = new RegExp(`[^${WORD_BOUNDARY_CHARS}]*${foldSearchPattern(keyword).pattern}[^${WORD_BOUNDARY_CHARS}]*`, 'gi');
     const words = {};
 
     const addWordsFromText = (text, suttaId, segmentId) => {
@@ -1900,8 +2073,9 @@ function extractContextWindow(lineMap, segId, lb, la) {
 // переводы) — для них здесь довозится root+context отдельным точечным id-грепом, обычно
 // затрагивающим ноль или единицы сегментов, не всю страницу.
 async function enrichSuttaBatch(searchResults, suttaIds, targetLangs, keyword, searchScope, lb = 0, la = 0) {
-    const regex = new RegExp(keyword, 'gi');
-    const wordRegex = new RegExp(`[^${WORD_BOUNDARY_CHARS}]*${keyword}[^${WORD_BOUNDARY_CHARS}]*`, 'gi');
+    const foldedKeyword = foldSearchPattern(keyword).pattern;
+    const regex = new RegExp(foldedKeyword, 'gi');
+    const wordRegex = new RegExp(`[^${WORD_BOUNDARY_CHARS}]*${foldedKeyword}[^${WORD_BOUNDARY_CHARS}]*`, 'gi');
     let globalTotalMatches = 0;
     let globalHasVariants = false;
 
@@ -2177,6 +2351,7 @@ async function getFullTextData(suttaId, targetLangs, explicitTranslators, multiF
 }
 
 app.get('/api/text/:suttaId', async (req, res) => {
+    res.set('Cache-Control', 'public, max-age=3600'); // cache.md §4 primary tier
     const suttaId = req.params.suttaId.toLowerCase();
 
     // ?mode=multiTran — основной путь для ридера: сервер резолвит ПОВЕДЕНИЕ (multiFor/
@@ -2286,6 +2461,7 @@ app.get('/api/text/:suttaId', async (req, res) => {
 // — соседей всё равно ищем от его позиции в ПОЛНОМ dbKeys, просто пропуская несовпадающие: так
 // пользователь не застревает в исключённом тексте, а разумно попадает на ближайший подходящий.
 app.get('/api/nav/:suttaId', (req, res) => {
+    res.set('Cache-Control', 'public, max-age=3600'); // cache.md §4 primary tier
     const suttaId = req.params.suttaId.toLowerCase();
     const dbKeys = Object.keys(skeletonDB);
     const currentIndex = dbKeys.indexOf(suttaId);
@@ -2309,11 +2485,14 @@ app.get('/api/nav/:suttaId', (req, res) => {
 app.get('/search', searchHandler);
 
 async function searchHandler(req, res) {
+    res.set('Cache-Control', 'public, max-age=3600'); // cache.md §4 primary tier — covers /search and /search/:keyword (shared handler)
     // req.params.keyword — заход через /search/:keyword (путь); req.query.q — через /search?q=.
     // Express 5 отдаёт req.query геттером без сохранённого состояния (заново парсит на каждое
     // обращение) — писать в req.query.q в отдельном middleware бесполезно, оно не переживёт
     // следующий доступ. Читаем обе возможные формы напрямую, без мутации req.query.
-    const keyword = req.params.keyword || req.query.q;
+    let keyword = req.params.keyword || req.query.q;
+    if (!keyword) return res.status(400).json({ error: 'Parameter "q" is mandatory.' });
+    keyword = stripSearchPunctuation(keyword);
     if (!keyword) return res.status(400).json({ error: 'Parameter "q" is mandatory.' });
 
     const scope      = req.query.scope || 'default';
@@ -2350,10 +2529,13 @@ async function searchHandler(req, res) {
 // Client calls this with the ids of the currently visible page (from a prior ?fast=1 call),
 // then again for further pages/background load. Response shape matches /search's data[id].
 app.get('/search/enrich', async (req, res) => {
-    const keyword = req.query.q;
+    res.set('Cache-Control', 'public, max-age=3600'); // cache.md §4 primary tier
+    let keyword = req.query.q;
     const idsParam = req.query.ids;
     if (!keyword) return res.status(400).json({ error: 'Parameter "q" is mandatory.' });
     if (!idsParam) return res.status(400).json({ error: 'Parameter "ids" is mandatory.' });
+    keyword = stripSearchPunctuation(keyword);
+    if (!keyword) return res.status(400).json({ error: 'Parameter "q" is mandatory.' });
 
     const scope      = req.query.scope || 'default';
     const exact      = req.query.exact === 'true';
@@ -2770,6 +2952,7 @@ function describeGroup(group) {
 }
 
 app.get('/api/toc', (req, res) => {
+    res.set('Cache-Control', 'public, max-age=3600'); // cache.md §4 (merged into primary tier, per owner)
     const categories = Object.entries(TOC_BOOKS).filter(([key]) => key !== '_comment').map(([category, catData]) => {
         const books = (catData.books || []).map(b => describeBook(b, 'default'))
             .concat((catData.extraBooks || []).map(b => describeBook(b, 'extra')))
@@ -2787,6 +2970,7 @@ app.get('/api/toc', (req, res) => {
 // not the reader's "one preferred translator" collapsing) so the client can render badges without
 // a request per sutta.
 app.get('/api/toc/book/:code', async (req, res) => {
+    res.set('Cache-Control', 'public, max-age=3600'); // cache.md §4 (merged into primary tier, per owner)
     const code = req.params.code;
     const tree = loadBookTree(code);
     if (!tree) return res.status(404).json({ error: `Unknown book code: ${code}` });
@@ -2842,7 +3026,7 @@ function findChapterChildren(prefix) {
 // что и голый /toc; какой узел раскрыть, клиент читает из СВОЕГО адреса (public/spa/toc.js,
 // targetFromPath) — сервер здесь только отдаёт шаблон, ничего про :code не знает.
 app.get('/toc/:code', (req, res) => {
-    res.sendFile(searchIndexPath);
+    sendVersionedHtml(req, res, searchIndexPath);
 });
 
 // Чистые URL: /dn22 → ридер, /dn22:12.1 → ридер с прокруткой к сегменту (разбор ":" — на клиенте),
@@ -2892,7 +3076,7 @@ app.get('/:slug', (req, res) => {
         // openReaderInPlace(), который лениво подгружает ТОТ ЖЕ megareader.js в #reader-pane.
         // reader-template.html пока не в unused/ — держим как референс для допереноса
         // недостающих ссылок/кнопок в SPA-ридер (см. TODO.md, reader-бэклог).
-        return res.sendFile(searchIndexPath);
+        return sendVersionedHtml(req, res, searchIndexPath);
     }
     // Якорем идёт сам запрошенный id: внутри диапазона сегменты пронумерованы по вложенной
     // сутте ("an1.9:1.1"), и megareader.js для диапазонов кладёт в id элемента ПОЛНЫЙ segment id,
@@ -2912,7 +3096,17 @@ app.get('/:slug', (req, res) => {
         const query = req.originalUrl.slice(req.path.length); // сохраняем ?lang= и т.п.
         return res.redirect(302, '/toc/' + encodeURIComponent(suttaId) + query);
     }
-    return res.sendFile(searchIndexPath);
+    return sendVersionedHtml(req, res, searchIndexPath);
+});
+
+// Native 404 (public/404.html) — replaces legacy /assets/404.php (PHP includes for
+// config/translate.php + a horizontal-menu partial, both from the old dg repo). This is a
+// real 404 status, unlike the /:slug route above which always answers 200 (single-segment
+// unknown slugs are valid search queries, not errors) — this only fires for what nothing else
+// matched: multi-segment paths and missing static files under /assets etc. Self-contained,
+// no legacy dependency (only /assets/{css,js,img} files already vendored in public/overrides/).
+app.use((req, res) => {
+    sendVersionedHtml(req, res, path.join(__dirname, 'public', '404.html'), 404);
 });
 
 // Native 404 (public/404.html) — replaces legacy /assets/404.php (PHP includes for

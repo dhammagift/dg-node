@@ -178,6 +178,7 @@
     "variantsForLabel": "Variants for",
     "tooShortMessage": "Query \"{query}\" is too short — please enter at least 3 characters.",
     "noResultsMessage": "Nothing found for \"{query}\".",
+    "errorMessage": "Search error — check your query (it may be an invalid regular expression) and try again.",
     "scopeGroupNikayas": "4 Nikāyas",
     "scopeGroupKn": "Khuddaka Nikāya",
     "scopeGroupVinaya": "Vinaya",

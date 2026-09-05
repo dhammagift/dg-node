@@ -527,20 +527,38 @@ window.generateThirdPartyLinks = function(slug, slugReady, texttype, translator)
 
     scLink += ` <a target="_blank" class="sc-ext-link" title='SuttaCentral.net' href="https://suttacentral.net/${slug}">SC</a>`;
 
-    const isLocal = window.location.host.includes('localhost') || window.location.host.includes('127.0.0.1');
-    
+    // Owner (item 9): TBW/BB/AI must follow the explicit ?force_local flag, like the legacy site
+    // (assets/js/openBw-RealTBW.js/settings.js there) — NOT mirror-link.js's live-reachability
+    // probe used just above for other mirrors (theirs is "is it actually here right now",
+    // right for a mirror that may or may not be mounted; force_local is an explicit mode switch,
+    // wrong to derive from whether a fetch happens to succeed). localhost still counts as local
+    // too (matches legacy's isLocal, and is how this is tested without the URL flag).
+    const isForceLocal = localStorage.getItem('forceLocal') === 'true';
+    const isLocal = window.location.host.includes('localhost') || window.location.host.includes('127.0.0.1') || isForceLocal;
+
     if (typeof tbwLinksData !== 'undefined') {
         const hasTbw = tbwLinksData.find(item => Array.isArray(item) ? item[0] === slug : item === slug);
         if (hasTbw) {
-            if (!window.location.pathname.startsWith('/b/') && isLocal) {
-                scLink += ` <a target="" class="sc-ext-link" title="BB and Other translations" href="/b/?q=${slug}">BB</a>`;
-            }
-            // Local vs. online resolved live by mirror-link.js's click handler (class
-            // "mirror-link", data-local=candidate), not guessed from isLocal/hostname — a
-            // hostname guess can't tell a real dev/prod box with the mirror mounted apart from
-            // the packaged mobile app's localhost WebView, which never bundles it (too heavy).
+            const hashSeg = window.location.hash ? window.location.hash.slice(1) : '';
+            const segSuffix = hashSeg ? '#' + hashSeg : '';
+
+            // TBW always appears (public resource, not secret) — online by default, local mirror
+            // under force_local, in that order so "secret" bb/ai land after it, not before.
             const book = (slug.match(/^[a-z]+/) || [""])[0];
-            scLink += ` <a target="_blank" class="sc-ext-link mirror-link" title="TheBuddhasWords.net" href="https://theBuddhasWords.net/${book}/${slug}.html" data-local="/bw/${book}/${slug}.html">TBW</a>`;
+            const tbwUrl = isLocal ? `/bw/${book}/${slug}.html` : `https://thebuddhaswords.net/${book}/${slug}.html`;
+            scLink += ` <a target="_blank" class="sc-ext-link" title="TheBuddhasWords.net" href="${tbwUrl}">TBW</a>`;
+
+            // "bb"/"ai" (owner: secret, force_local-only — must not appear at all otherwise, no
+            // online fallback like TBW gets). bb reuses this same siteroot/b as the legacy site's
+            // /b/ tool; ai is the same siteroot/ai mount (see siteroot/ dir) of the legacy site's
+            // /ai/ reader, both now served locally by THIS site under force_local instead of
+            // pointing at old.dhamma.gift.
+            if (isLocal && !window.location.pathname.startsWith('/b/')) {
+                scLink += ` <a target="_blank" class="sc-ext-link" title="BB and Other translations" href="/b/?q=${encodeURIComponent(slug)}${segSuffix}">bb</a>`;
+            }
+            if (isLocal) {
+                scLink += ` <a target="_blank" class="sc-ext-link" title="AI" href="/ai/?q=${encodeURIComponent(slug)}${segSuffix}">ai</a>`;
+            }
         }
     }
 

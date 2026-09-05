@@ -301,6 +301,21 @@ dt {
   display: none !important;
 }
 
+/* Owner: "в результатах поиска как были в две строки Пали перевод названия так и остались" —
+   [class*="-lang"] is display:block globally (reader/css/index.css, alternate reading mode)
+   and this page loads that stylesheet too, so it forced the Title column's Pali+translation
+   onto two lines even when the column (~470px, measured) had plenty of room for both on one.
+   inline lets them sit side by side and wrap on their own via normal text flow when they
+   genuinely don't fit — same fix as the reader's sutta title (reader/css/uiextra.css). */
+/* dg-title-pali is unconditional (search-render.js), dg-title-lang only gets added once a
+   translation actually exists — the Pali side needs the inline treatment BOTH while the
+   skeleton bar is still loading (dg-title-pali) and once the real translation lands
+   (dg-title-lang), or the row flips from two lines to one and jitters (see search-render.js). */
+.dg-title-pali,
+.dg-title-lang {
+  display: inline !important;
+}
+
 span.eng-lang {
   margin-bottom: 0.4rem;
 }

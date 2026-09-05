@@ -8,8 +8,13 @@ window.notEn= /^\/(ru|r|ml|mt)(\/|$)/.test(window.location.pathname)
 // эту функцию глобально, а этот override её не содержал (скопирован раньше, чем она появилась в легаси).
 function checkForceLocalFlag() {
     const urlParams = new URLSearchParams(window.location.search);
+    // Owner: needs an explicit OFF too, not just "absent" — ?force_local=0 (or a falsy value)
+    // clears it the same as ?clear_local, so the flag can be removed from localStorage without
+    // separately remembering the clear_local param name.
     if (urlParams.has('force_local')) {
-        localStorage.setItem('forceLocal', 'true');
+        const val = urlParams.get('force_local');
+        if (val === '0' || val === 'false') localStorage.removeItem('forceLocal');
+        else localStorage.setItem('forceLocal', 'true');
     } else if (urlParams.has('clear_local')) {
         localStorage.removeItem('forceLocal');
     }
@@ -137,7 +142,7 @@ window.isRu = window.notEn;
 
         const isPaliWord = e.target.closest('.pli-lang, [lang="pi"]');
         const isDictBtn = e.target.closest('.toggle-dict-btn');
-        const isMultiSelectBtn = e.target.closest('#toggle-multiselect');
+        const isMultiSelectBtn = e.target.closest('.toggle-multiselect-btn');
 
         if (isPaliWord || isDictBtn || isMultiSelectBtn) {
             if (window.isDictScriptLoaded) return; 
@@ -572,6 +577,12 @@ document.addEventListener("click", function (e) {
 // .column-view to #sutta on every buildSutta() render from the same localStorage key — this
 // only needs to keep BOTH containers and BOTH button icons in sync on toggle/load, not on every
 // render.
+// Owner: 1/2-column mode only makes sense with 2+ translation LANGUAGES on screen — a single
+// language has nothing to put beside Pali in a second column ('mt'/'ee' reader modes are two
+// TRANSLATORS of the same one language, still "one language" for this check). READER_MODE.columns
+// is the real language list of the active reader mode (reader/mode-table.json);
+// lastSearchJson.metadata.langs is the same for the current search results. Neither present yet
+// (button hasn't seen a page context) — don't gate, only narrow once we actually know.
 function dgApplyColumnMode() {
     var isColumns = (localStorage.getItem('viewMode') || 'alternate') === 'columns';
     ['sutta', 'search-pane'].forEach(function (id) {
@@ -1910,7 +1921,18 @@ document.addEventListener("keydown", (event) => {
 
     const modeTable = window.MODE_TABLE;
     const readerMode = window.READER_MODE;
-    if (!modeTable || !readerMode) return;
+    if (!modeTable || !readerMode) {
+        // Outside the reader (home page, search results) there's no mode to switch, only a
+        // site language — Alt+1 there does the same EN/RU toggle as the burger's language switch
+        // (home.js renderLangSwitch), so the shortcut is universal across every page instead of
+        // reader-only (owner: "смена языка... также как в ридере... универсально").
+        if (digit === 1 && window.DHAMMA_I18N && window.DHAMMA_I18N.setLanguage) {
+            event.preventDefault();
+            const active = window.DHAMMA_I18N.language || localStorage.getItem('dhammaLanguage') || 'en';
+            window.DHAMMA_I18N.setLanguage(active === 'ru' ? 'en' : 'ru');
+        }
+        return;
+    }
     const type = Object.keys(window.MODE_HOTKEY_DIGITS).find((k) => window.MODE_HOTKEY_DIGITS[k] === digit && modeTable[k]);
     if (!type) return;
     event.preventDefault();
