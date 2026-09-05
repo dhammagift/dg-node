@@ -4762,3 +4762,24 @@ done 17. Подсветка в выдаче (`public/overrides/js/search-render.
     `bhiṅ[kacchāp]ā`, `maccha[kacchap]ā`, `[kacchap]o`; `nibbana` → `[nibbāna]ṁ`; `ещё` находит
     и `ещё`, и `еще`. Скриншоты: десктоп светлая (kacchapa и kacchap), мобильный тёмная
     (`nibbana` → подсвечен `nibbāna`ṁ в раскрытой строке).
+
+## НОВОЕ — ридер, ✦-подсветка сегмента (2026-09-05)
+
+done. Подсветка ✦-ссылки в начале строки (`.copyLink-start`, `reader/css/uiextra.css`) при
+   наведении растягивалась зелёной полосой на ВСЮ высоту сегмента, а в выдаче поиска
+   (`.quoteLink-start`, extrastyles.css) — как и задумано, бейдж на одну строку. Причина: у
+   стартового маркера ОБА класса (`copyLink copyLink-start`); `.copyLink` задаёт `bottom: 0.2em`
+   (сдвиг для inline-block маркера в КОНЦЕ строки), а `.copyLink-start` — `position: absolute;
+   top: -0.2em`. На absolute-элементе `top` + `bottom` вместе растягивают бокс от верха до низа
+   родителя (`[class*="-lang"]`, position: relative), и `::after`-свечение красило весь блок.
+   Фикс — `bottom: auto` у `.copyLink-start` (сдвиг вверх делает один `top`). Цвет не трогали —
+   тот же зелёный `rgba(19,104,87,…)`. Проверено playwright на реальной разметке ридера
+   (`megareader.js`), hover по ✦: бокс маркера 190px → 31.7px (= высота строки, как у конечного
+   маркера), `::after` 196px → 37.7px.
+
+---
+нюансы:
+- `mobile/www/reader/css/uiextra.css` — это копия `reader/css/uiextra.css` (build-assets.js копирует
+  файл 1:1), она отстала от исходника ещё на два коммита от 09-04 (ширины `::after`). Скопирована
+  вручную целиком — ровно то, что сделал бы следующий `node mobile/build-assets.js`; APK здесь
+  не собирается, для теста на телефоне нужна пересборка.
