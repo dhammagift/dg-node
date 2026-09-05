@@ -1317,9 +1317,9 @@ body:not(.dg-state-home) #dg-announce { display: none; }
         transform: translate(-50%, calc(100% + 20px));
     }
     .dg-sheet.show { transform: translate(-50%, 0); }
-    /* «О проекте» — во всю текстовую колонку (та же ширина, что у мегаменю, placeMegaAnchored),
-       а не 560px списка плиток: там длинная цитата и ряд кнопок приложений. */
-    .dg-sheet.dg-wide { width: min(1120px, calc(100vw - 32px)); }
+    /* «О проекте» — шире 560px списка плиток: поле поиска на главной 720px (.dg-hero-form ниже)
+       плюс по 100px с каждой стороны (owner), там длинная цитата и ряд кнопок приложений. */
+    .dg-sheet.dg-wide { width: min(920px, calc(100vw - 32px)); }
     .dg-sheet.dg-wide .dg-sheet-body { padding-left: 28px; padding-right: 28px; }
 }
 
