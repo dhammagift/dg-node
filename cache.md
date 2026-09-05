@@ -160,7 +160,7 @@ static-маунтов, чтобы победить по порядку реги�
 const CACHE_IMMUTABLE_YEAR = 'public, max-age=31536000, immutable';
 const CACHE_FONT = 'public, max-age=604800';     // 7 days — fonts almost never change
 const CACHE_IMAGE = 'public, max-age=86400';      // 1 day — images not covered by versioning (referenced from CSS url())
-const CACHE_CONFIG_JSON = 'public, max-age=300';  // 5 min — announcements.json/slides.json etc. need to roll out fast
+const CACHE_CONFIG_JSON = 'no-cache';             // see "JSON без версионирования" below — always revalidated, ETag makes repeat fetches cheap anyway
 const CACHE_STATIC_SHORT = 'public, max-age=60';  // current default, unchanged — for anything outside the versioned roots
 
 function staticCacheHeaders(res, filePath) {
@@ -173,7 +173,7 @@ function staticCacheHeaders(res, filePath) {
     } else if (['.png', '.jpg', '.jpeg', '.gif', '.webp', '.ico', '.svg'].includes(ext)) {
         res.setHeader('Cache-Control', CACHE_IMAGE);
     } else if (ext === '.json') {
-        res.setHeader('Cache-Control', CACHE_CONFIG_JSON);
+        res.setHeader('Cache-Control', CACHE_CONFIG_JSON); // no-cache — see rationale below
     } else {
         res.setHeader('Cache-Control', CACHE_STATIC_SHORT); // .html and everything else — today's behavior
     }
@@ -187,6 +187,38 @@ function staticCacheHeaders(res, filePath) {
 `max-age=60` как сейчас, хотя URL-префикс у обоих один и тот же `/assets`.
 Ради этого разделения дифспатч и должен быть path-aware, а не
 extension-only.
+
+#### JSON-конфиги без версионирования — почему `no-cache`, а не подобранный TTL
+
+`mode-table.json`, `translator-priority.json`, `lang_*.json`,
+`announcements.json`, `slides.json`, `menu-links.json`, `dict-modes.json`,
+`toc-books.json`, `translator-types.json` и т.п. в принципе МОЖНО было бы
+версионировать тем же `getAssetVersion` — но, в отличие от JS/CSS, они не
+подключаются через `<script src>`/`<link href>` в HTML, а фетчатся
+клиентским JS по захардкоженному пути (`fetch('/reader/mode-table.json')`
+в `megareader.js`/`settings.js`/`dhamma-i18n.js` и т.д.). Настоящее
+версионирование потребовало бы редактировать сами fetch-вызовы (добавлять
+`?v=` из манифеста) — заметно больше работы, чем переписывание HTML в
+`sendVersionedHtml`, и в этом заходе не делается.
+
+Вместо подбора произвольного TTL (5 минут? час?) — используем то, что эти
+файлы фетчатся РЕДКО (один раз за сессию SPA, а не на каждой навигации, как
+JS/CSS/картинки), значит 304-такс, из-за которого вообще начался весь
+разговор про кеш (TODO.md #global п.2), здесь не проблема: `Cache-Control:
+no-cache` (не "не кешировать", а "кешируй, но всегда сверяйся с сервером")
++ ETag, который Express добавляет автоматически для файлов, отданных через
+`express.static`/`res.sendFile` — гарантированно свежий ответ, а повторный
+запрос дешёвый (304 без тела). Никакого компромисса между "быстро" и
+"актуально" не нужно — колонка TTL просто не имеет смысла для
+низкочастотных файлов.
+
+Это касается ТОЛЬКО файлов, отданных `express.static`/`res.sendFile`
+(бесплатный ETag). `/manifest.json`, `/config/tts-config.json`,
+`/config/sync-config.json` — тоже `res.sendFile`, значит тоже попадают в
+эту группу (`no-cache`, не отдельный тир), несмотря на то что технически
+не проходят через `express.static`-маунт с диспатчем по `ext === '.json'`
+выше — им нужно то же самое `res.set('Cache-Control', 'no-cache')` явно
+в хендлере.
 
 ### 4. Динамические JSON-роуты — поиск и чтение сутт (~1 час)
 
@@ -202,14 +234,19 @@ extension-only.
 | `/api/text/:suttaId` | `dg-light.js:2219` | inline `async` хендлер |
 | `/api/nav/:suttaId` | `dg-light.js:2328` | inline хендлер |
 
-Остальные публичные JSON-эндпоинты (`/api/toc`, `/api/toc/book/:code`,
+Остальные публичные JSON-эндпоинты — `/api/toc`, `/api/toc/book/:code`,
 `/api/transliterate`, `/openapi.json`, `/openapi.en.json`,
-`/reader/mode-table.json`, `/manifest.json`) — тоже сейчас без
-Cache-Control вообще. Для консистентности им имеет смысл дать отдельный,
-более короткий тир `public, max-age=600` (10 мин) — это тоже не
-персональные данные, но явно не то, о чём шла речь ("кеш для поиска и
-ридера"), поэтому помечаем как второстепенный/опциональный довесок,
-который можно откатить отдельно от основного, не трогая §4-таблицу выше.
+`/reader/mode-table.json` — тоже сейчас без Cache-Control вообще, но, В
+ОТЛИЧИЕ от `/manifest.json`/`tts-config.json`/`sync-config.json` выше, они
+отданы через `res.json(...)` (генерируются на лету), а не
+`res.sendFile(...)` — значит бесплатного ETag от Express у них НЕТ, и
+`no-cache` здесь означал бы 304 не может быть, только 200 каждый раз (нет
+условного заголовка для сравнения) — т.е. `no-cache` тут был бы просто
+"не кешировать вообще", а не дешёвая ревалидация. Поэтому для них
+осмысленнее обычный TTL: `public, max-age=600` (10 мин) — не персональные
+данные, но явно не то, о чём шла речь ("кеш для поиска и ридера"),
+второстепенный/опциональный довесок, который можно откатить отдельно от
+основного, не трогая §4-таблицу выше.
 
 `/sw.js` (`dg-light.js:62`) — отдельно, явный `no-cache`: устаревший
 service-worker подвешивает пользователя на старой версии PWA, этот файл
