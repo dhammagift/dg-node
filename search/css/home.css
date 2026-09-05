@@ -1320,7 +1320,7 @@ body:not(.dg-state-home) #dg-announce { display: none; }
     /* «О проекте» — шире 560px списка плиток: поле поиска на главной 720px (.dg-hero-form ниже)
        плюс по 100px с каждой стороны (owner), там длинная цитата и ряд кнопок приложений. */
     .dg-sheet.dg-wide { width: min(920px, calc(100vw - 32px)); }
-    .dg-sheet.dg-wide .dg-sheet-body { padding-left: 28px; padding-right: 28px; }
+    .dg-sheet.dg-wide .dg-sheet-body { padding: 8px 40px 32px; }
 }
 
 /* Быстрые настройки — выпадашка ПОД шестерёнкой, на любой ширине. Нижняя шторка выглядела как
@@ -2463,7 +2463,7 @@ body.dark .ui-autocomplete .autocomplete-history-icon { filter: invert(1); opaci
 }
 #dg-footer p { margin: 0; }
 /* На главной подвал держит ту же колонку, что цитата над ним (#home-howto), а не всю ширину окна. */
-body.dg-state-home #dg-footer { max-width: 720px; margin-left: auto; margin-right: auto; }
+body.dg-state-home #dg-footer { max-width: 720px; margin: 40px auto 6px; padding-top: 20px; }
 /* Две строки слева (ссылки; копирайт) — в 720px-колонку одна строка вместе с иконками контактов
    справа не влезает. */
 .dg-footer-main { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
@@ -2475,10 +2475,13 @@ body.dg-state-home #dg-footer { max-width: 720px; margin-left: auto; margin-righ
     color: var(--dg-accent-ink);
 }
 .dg-footer-nav .dg-footer-nav-ic { flex: none; color: var(--dg-accent); }
-.dg-footer-nav a { color: var(--dg-accent-ink); text-decoration: none; }
-.dg-footer-nav a:hover { text-decoration: underline; }
-.dg-footer-link { color: var(--dg-text-2); text-decoration: none; }
-.dg-footer-link:hover { color: var(--dg-accent-ink); text-decoration: underline; }
+/* body.dg-skin-minimal в селекторах — не для красоты: langswitch.css несёт голое
+   `.dark a { color: rgb(122,122,249) }` (класс+тег), которое в тёмной теме перебивало эти правила
+   и красило ссылки подвала/цитаты/шторки и иконки контактов в сине-фиолетовый (живой скрин). */
+body.dg-skin-minimal .dg-footer-nav a, body.dg-skin-minimal .dg-footer-nav a:visited { color: var(--dg-accent-ink); text-decoration: none; }
+body.dg-skin-minimal .dg-footer-nav a:hover { text-decoration: underline; }
+body.dg-skin-minimal .dg-footer-link, body.dg-skin-minimal .dg-footer-link:visited { color: var(--dg-text-2); text-decoration: none; }
+body.dg-skin-minimal .dg-footer-link:hover { color: var(--dg-accent-ink); text-decoration: underline; }
 .dg-footer-contacts { flex: none; }
 .dg-footer-contacts .dg-contact-btn { width: 36px; height: 36px; }
 .dg-footer-contacts .dg-contact-btn svg { width: 15px; height: 15px; }
@@ -2501,32 +2504,36 @@ body.dg-state-home #dg-footer { max-width: 720px; margin-left: auto; margin-righ
    ============================================================================ */
 #home-howto {
     max-width: 720px;
-    margin: 44px auto 0;
-    padding-top: 30px;
+    margin: 52px auto 0;
+    padding-top: 36px;
     border-top: 1px solid var(--dg-border);
     font-family: var(--dg-font);
+}
+/* Та же колонка, что у сетки плиток (.dg-tiles: 720px до 992px, 680px дальше) — иначе цитата и
+   подвал выступали за плитки слева и справа (живой скрин владельца). */
+@media (min-width: 992px) {
+    #home-howto, body.dg-state-home #dg-footer { max-width: 680px; }
 }
 body.dg-state-home #home-howto:not([hidden]) { display: block; }
 @media (max-width: 991.98px) {
     body.dg-state-home #home-howto:not(.dg-anchor-revealed) { display: none; }
 }
 .dg-intro-pali {
-    margin: 0 0 12px;
+    margin: 0 0 14px;
     font-style: italic;
-    font-size: 1.22rem;
+    font-size: 1.35rem;
     line-height: 1.5;
     color: var(--dg-text);
 }
 .dg-intro-body {
-    margin: 0 0 10px;
-    max-width: 62ch;
-    font-size: 0.98rem;
-    line-height: 1.6;
+    margin: 0 0 12px;
+    font-size: 1.02rem;
+    line-height: 1.7;
     color: var(--dg-text-2);
 }
-.dg-intro-ref { margin: 0 0 22px; font-size: 0.85rem; color: var(--dg-text-muted); }
-.dg-intro-ref a { color: inherit; text-decoration: none; }
-.dg-intro-ref a:hover { color: var(--dg-accent-ink); text-decoration: underline; }
+.dg-intro-ref { margin: 0 0 26px; font-size: 0.9rem; color: var(--dg-text-muted); }
+body.dg-skin-minimal .dg-intro-ref a, body.dg-skin-minimal .dg-intro-ref a:visited { color: var(--dg-accent-ink); text-decoration: none; }
+body.dg-skin-minimal .dg-intro-ref a:hover { text-decoration: underline; }
 /* Памятка о переводах — зелёный блок со значком «i», как было на проде (только значок был
    треугольником). Общий для главной (#home-howto) и шторки «О проекте». */
 .dg-howto-warn {
@@ -2549,25 +2556,26 @@ body.dg-state-home #home-howto:not([hidden]) { display: block; }
     color: var(--dg-text-2);
     white-space: pre-line;
 }
-#home-howto .dg-howto-warn { max-width: 62ch; }
+#home-howto .dg-howto-warn { padding: 18px 22px; }
+#home-howto .dg-howto-warn p { font-size: 0.95rem; }
 
 /* Шторка «О проекте» (home.js openAbout): форматирование макета — заголовки-подписи как у
    списков плиток (.dg-group-title), всё по левому краю, серая карточка памятки, круглые
    кнопки контактов; содержимое — полное, как на проде. */
-.dg-about .dg-group-title { margin-top: 1.7em; }
-.dg-about .dg-group-title:first-child { margin-top: 0.4em; }
+.dg-about .dg-group-title { margin: 44px 0 14px; letter-spacing: 0.1em; }
+.dg-about .dg-group-title:first-child { margin-top: 10px; }
 .dg-about-pali {
-    margin: 0 0 10px;
+    margin: 0 0 12px;
     font-style: italic;
-    font-size: 1.08rem;
+    font-size: 1.25rem;
     line-height: 1.55;
     color: var(--dg-text);
 }
-.dg-about-body { margin: 0 0 8px; font-size: 0.95rem; line-height: 1.6; color: var(--dg-text-2); }
-.dg-about-refs { margin: 0 0 16px; font-size: 0.85rem; color: var(--dg-text-muted); }
-.dg-about-refs a { color: var(--dg-accent-ink); text-decoration: none; }
-.dg-about-refs a:hover { text-decoration: underline; }
-.dg-about-note { margin: 0 0 14px; font-size: 0.95rem; line-height: 1.6; color: var(--dg-text-2); }
+.dg-about-body { margin: 0 0 10px; font-size: 1rem; line-height: 1.7; color: var(--dg-text-2); }
+.dg-about-refs { margin: 0 0 20px; font-size: 0.9rem; color: var(--dg-text-muted); }
+body.dg-skin-minimal .dg-about-refs a, body.dg-skin-minimal .dg-about-refs a:visited { color: var(--dg-accent-ink); text-decoration: none; }
+body.dg-skin-minimal .dg-about-refs a:hover { text-decoration: underline; }
+.dg-about-note { margin: 0 0 16px; font-size: 1rem; line-height: 1.7; color: var(--dg-text-2); }
 .dg-about-powered {
     margin: 18px 0 0;
     font-family: var(--dg-font);
@@ -2597,7 +2605,8 @@ body.dg-state-home #home-howto:not([hidden]) { display: block; }
     flex-wrap: wrap;
     gap: 12px;
 }
-.dg-contact-btn {
+body.dg-skin-minimal .dg-contact-btn,
+body.dg-skin-minimal .dg-contact-btn:visited {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -2610,7 +2619,7 @@ body.dg-state-home #home-howto:not([hidden]) { display: block; }
     transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 .dg-contact-btn svg { width: 18px; height: 18px; }
-.dg-contact-btn:hover {
+body.dg-skin-minimal .dg-contact-btn:hover {
     background: var(--dg-accent-bg);
     border-color: var(--dg-accent);
     color: var(--dg-accent-ink);
