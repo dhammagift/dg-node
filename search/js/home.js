@@ -1787,10 +1787,7 @@
         if (drawer) {
             // Пункт «помощь» открывает bootstrap-модалку — меню при этом должно уйти само.
             drawer.addEventListener('click', function (e) {
-                if (!e.target.closest) return;
-                // Раскрывашки плиток мультитула (summary) — не переход, шторка остаётся.
-                if (e.target.closest('.dg-drawer-tile-summary')) return;
-                if (e.target.closest('.dg-drawer-row, .dg-sheet-row, .dg-chip')) closeDrawer();
+                if (e.target.closest && e.target.closest('.dg-drawer-row')) closeDrawer();
             });
         }
         document.addEventListener('keydown', function (e) {
@@ -1844,11 +1841,12 @@
         renderDrawerTiles();
     }
 
-    /* Мультитул в бургере (search/index.html #dg-drawer-tiles) — те же плитки в том же порядке
-       и с теми же скрытиями, что на главной, но списком: плитка со списками ссылок — вложенная
-       раскрывашка со своими группами (renderGroupInto, общий с нижней шторкой), плитка-действие
-       (Читать Pāḷi, История, Помощь, своя кнопка) — обычная строка, делает то же, что и клик по
-       плитке (runTile). Перестраивается вместе с плитками: смена языка, порядка, скрытие. */
+    /* Мультитул в бургере (search/index.html #dg-drawer-tiles) — просто список плиток, в том же
+       порядке и с теми же скрытиями, что на главной (owner: «меню компактнее, только из тайлов»).
+       Клик делает ровно то же, что клик по плитке на главной — runTile(): на десктопе мегаменю
+       (у плиток с mega:true) или нижняя шторка, на телефоне — шторка; плитки-действия (Читать
+       Pāḷi, История, Помощь) — своё действие. Якорь для мегаменю — сама плитка главной, если она
+       на экране, иначе кнопка бургера (мегаменю встаёт под ней и центрируется по полю поиска). */
     function renderDrawerTiles() {
         var host = document.getElementById('dg-drawer-tiles');
         if (!host || !menuData) return;
@@ -1857,33 +1855,24 @@
         tileOrder().forEach(function (key) {
             var tile = tileData(key);
             if (!tile || hidden.indexOf(key) !== -1) return;
-            var labelHtml = '<span class="dg-row-ic dg-drawer-tile-ic">' + iconHtml(tile.icon) + '</span>' +
+            var a = document.createElement('a');
+            a.className = 'dg-drawer-row';
+            a.href = tile.href || 'javascript:void(0)';
+            a.innerHTML = '<span class="dg-row-ic dg-drawer-tile-ic">' + iconHtml(tile.icon) + '</span>' +
                 '<span class="dg-row-label">' + esc(tile.label) + '</span>';
-            if (tile.groups && tile.groups.length) {
-                var det = document.createElement('details');
-                det.className = 'dg-drawer-tile';
-                det.dataset.tile = key;
-                var sum = document.createElement('summary');
-                sum.className = 'dg-drawer-row dg-drawer-tile-summary';
-                sum.innerHTML = labelHtml;
-                det.appendChild(sum);
-                var inner = document.createElement('div');
-                inner.className = 'dg-drawer-tile-body';
-                tile.groups.forEach(function (g) { renderGroupInto(inner, g); });
-                det.appendChild(inner);
-                host.appendChild(det);
-            } else {
-                var a = document.createElement('a');
-                a.className = 'dg-drawer-row';
-                a.href = tile.href || 'javascript:void(0)';
-                a.innerHTML = labelHtml;
-                a.addEventListener('click', function (e) {
-                    e.preventDefault();
-                    closeDrawer();
-                    setTimeout(function () { runTile(key); }, 150);
-                });
-                host.appendChild(a);
-            }
+            a.addEventListener('click', function (e) {
+                e.preventDefault();
+                closeDrawer();
+                // After the drawer has slid away — the mega/sheet backdrop is the same element the
+                // drawer uses, and its open/close transitions would otherwise fight each other.
+                setTimeout(function () {
+                    var homeTile = document.querySelector('.dg-tile[data-tile="' + key + '"]');
+                    var anchor = (homeTile && homeTile.offsetParent) ? homeTile
+                        : Array.prototype.find.call(document.querySelectorAll('.dg-menu-btn'), function (b) { return b.offsetParent; }) || null;
+                    runTile(key, anchor);
+                }, 250);
+            });
+            host.appendChild(a);
         });
     }
 
