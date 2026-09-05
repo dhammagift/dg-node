@@ -1457,6 +1457,34 @@ function sortSuttaResults(searchResults) {
 // чтобы больше не наступить на ту же ловушку визуально неотличимых символов.
 const WORD_BOUNDARY_CHARS = '\\s,.:;!?"\'\\u201C\\u201D\\u2018\\u2019\\u00AB\\u00BB()\\[\\]{}';
 
+// One place deciding how a keyword is turned into matchers, because three call sites need the
+// identical rule and any drift between them shows up as the Words column changing under the
+// reader as the phased answer fills in. A regex keyword is matched against the raw text exactly
+// as grep -E was; anything else is matched against folded text, so a query typed without
+// diacritics still finds the real form.
+function keywordMatchers(keyword) {
+    const isRegexQuery = REGEX_METACHARS.test(keyword);
+    const pattern = isRegexQuery ? keyword : escapeRegExp(foldText(keyword));
+    return {
+        prepare: isRegexQuery ? (text => text) : foldText,
+        matchRegex: new RegExp(pattern, 'gi'),
+        wordRegex: new RegExp(`[^${WORD_BOUNDARY_CHARS}]*${pattern}[^${WORD_BOUNDARY_CHARS}]*`, 'gi'),
+    };
+}
+
+// Calls back with every whole word containing the keyword, sliced out of the ORIGINAL text —
+// offsets come from the folded copy, which foldText keeps the same length for exactly this.
+function forEachWordForm(text, m, onWord) {
+    if (!text) return;
+    const haystack = m.prepare(text);
+    m.wordRegex.lastIndex = 0;
+    let hit;
+    while ((hit = m.wordRegex.exec(haystack)) !== null) {
+        if (hit[0].length === 0) { m.wordRegex.lastIndex++; continue; }
+        onWord(text.slice(hit.index, hit.index + hit[0].length).toLowerCase());
+    }
+}
+
 // Word report built directly from phase-1's raw grep matches — no file reads at all. Mirrors
 // legacy new/words.sh's grepForWords (its own dedicated grep, fully independent of the
 // quotes/citations report), just reusing the text buildMatchSkeleton already parsed instead of
@@ -1464,27 +1492,16 @@ const WORD_BOUNDARY_CHARS = '\\s,.:;!?"\'\\u201C\\u201D\\u2018\\u2019\\u00AB\\u0
 // translations of the same text don't inflate word counts — same intent as
 // filterPreferredTranslators, but decided by translation key only (no file reads needed).
 function buildWordReportFast(searchResults, keyword) {
-    // Same folding rule as enrichSuttaBatch, so ?fast=1 and the enriched answer report the same
-    // word forms rather than two slightly different lists.
-    const isRegexQuery = REGEX_METACHARS.test(keyword);
-    const pattern = isRegexQuery ? keyword : escapeRegExp(foldText(keyword));
-    const prepare = isRegexQuery ? (text => text) : foldText;
-    const wordRegex = new RegExp(`[^${WORD_BOUNDARY_CHARS}]*${pattern}[^${WORD_BOUNDARY_CHARS}]*`, 'gi');
+    const m = keywordMatchers(keyword);
     const words = {};
 
     const addWordsFromText = (text, suttaId, segmentId) => {
-        if (!text) return;
-        const haystack = prepare(text);
-        wordRegex.lastIndex = 0;
-        let hit;
-        while ((hit = wordRegex.exec(haystack)) !== null) {
-            if (hit[0].length === 0) { wordRegex.lastIndex++; continue; }
-            const word = text.slice(hit.index, hit.index + hit[0].length).toLowerCase();
+        forEachWordForm(text, m, word => {
             if (!words[word]) words[word] = { textIds: new Set(), matchCount: 0, links: new Map() };
             words[word].textIds.add(suttaId);
             words[word].matchCount += 1;
             if (!words[word].links.has(suttaId)) words[word].links.set(suttaId, segmentId);
-        }
+        });
     };
 
     for (const suttaId in searchResults) {
@@ -1601,11 +1618,8 @@ async function enrichSuttaBatch(searchResults, suttaIds, targetLangs, keyword, s
     // A regex keyword is matched against the raw text exactly as grep -E did. A plain keyword is
     // matched against folded text, so that a query typed without diacritics ("kacchapanam") still
     // counts the real form ("kacchapānaṁ") — the same folding the index itself applies.
-    const isRegexQuery = REGEX_METACHARS.test(keyword);
-    const pattern = isRegexQuery ? keyword : escapeRegExp(foldText(keyword));
-    const prepare = isRegexQuery ? (text => text) : foldText;
-    const matchRegex = new RegExp(pattern, 'gi');
-    const wordRegex = new RegExp(`[^${WORD_BOUNDARY_CHARS}]*${pattern}[^${WORD_BOUNDARY_CHARS}]*`, 'gi');
+    const m = keywordMatchers(keyword);
+    const { prepare, matchRegex } = m;
 
     let globalTotalMatches = 0;
     let globalHasVariants = false;
@@ -1712,14 +1726,7 @@ async function enrichSuttaBatch(searchResults, suttaIds, targetLangs, keyword, s
                 matchCount += found.length;
                 if (isVariant) globalHasVariants = true;
             }
-            // Offsets come from the folded string but the word is sliced out of the original, so
-            // the report shows the real form. foldText is length-preserving for exactly this.
-            wordRegex.lastIndex = 0;
-            let hit;
-            while ((hit = wordRegex.exec(haystack)) !== null) {
-                if (hit[0].length === 0) { wordRegex.lastIndex++; continue; }
-                uniqueWords.add(text.slice(hit.index, hit.index + hit[0].length).toLowerCase());
-            }
+            forEachWordForm(text, m, word => uniqueWords.add(word));
         };
 
         for (const seg of suttaRes.segments) {
