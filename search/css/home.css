@@ -1317,6 +1317,10 @@ body:not(.dg-state-home) #dg-announce { display: none; }
         transform: translate(-50%, calc(100% + 20px));
     }
     .dg-sheet.show { transform: translate(-50%, 0); }
+    /* «О проекте» — во всю текстовую колонку (та же ширина, что у мегаменю, placeMegaAnchored),
+       а не 560px списка плиток: там длинная цитата и ряд кнопок приложений. */
+    .dg-sheet.dg-wide { width: min(1120px, calc(100vw - 32px)); }
+    .dg-sheet.dg-wide .dg-sheet-body { padding-left: 28px; padding-right: 28px; }
 }
 
 /* Быстрые настройки — выпадашка ПОД шестерёнкой, на любой ширине. Нижняя шторка выглядела как
@@ -2523,17 +2527,29 @@ body.dg-state-home #home-howto:not([hidden]) { display: block; }
 .dg-intro-ref { margin: 0 0 22px; font-size: 0.85rem; color: var(--dg-text-muted); }
 .dg-intro-ref a { color: inherit; text-decoration: none; }
 .dg-intro-ref a:hover { color: var(--dg-accent-ink); text-decoration: underline; }
-.dg-intro-warn {
-    max-width: 62ch;
-    padding: 14px 18px;
-    border: 1px solid var(--dg-border);
+/* Памятка о переводах — зелёный блок со значком «i», как было на проде (только значок был
+   треугольником). Общий для главной (#home-howto) и шторки «О проекте». */
+.dg-howto-warn {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    margin: 0;
+    padding: 16px 20px;
     border-radius: 12px;
-    background: var(--dg-surface);
-    font-size: 0.95rem;
+    background: var(--dg-accent-bg);
+    color: var(--dg-text);
+    font-family: var(--dg-font);
+}
+.dg-howto-warn svg { flex: none; margin-top: 2px; color: var(--dg-accent-ink); }
+.dg-howto-warn strong { display: block; font-size: 0.95rem; margin-bottom: 6px; }
+.dg-howto-warn p {
+    margin: 0;
+    font-size: 0.9rem;
     line-height: 1.6;
     color: var(--dg-text-2);
+    white-space: pre-line;
 }
-.dg-intro-warn strong { color: var(--dg-text); font-weight: 600; }
+#home-howto .dg-howto-warn { max-width: 62ch; }
 
 /* Шторка «О проекте» (home.js openAbout): форматирование макета — заголовки-подписи как у
    списков плиток (.dg-group-title), всё по левому краю, серая карточка памятки, круглые
@@ -2551,9 +2567,6 @@ body.dg-state-home #home-howto:not([hidden]) { display: block; }
 .dg-about-refs { margin: 0 0 16px; font-size: 0.85rem; color: var(--dg-text-muted); }
 .dg-about-refs a { color: var(--dg-accent-ink); text-decoration: none; }
 .dg-about-refs a:hover { text-decoration: underline; }
-.dg-about-warn { max-width: none; }
-.dg-about-warn strong { display: block; margin-bottom: 4px; }
-.dg-about-warn p { margin: 0; white-space: pre-line; }
 .dg-about-note { margin: 0 0 14px; font-size: 0.95rem; line-height: 1.6; color: var(--dg-text-2); }
 .dg-about-powered {
     margin: 18px 0 0;
@@ -2658,3 +2671,13 @@ body.dg-state-home #home-howto:not([hidden]) { display: block; }
 .dg-drawer-tile-ic { display: inline-flex; align-items: center; justify-content: center; }
 .dg-drawer-tile-ic svg { width: 17px; height: 17px; color: var(--dg-text-muted); }
 .dg-drawer-row:hover .dg-drawer-tile-ic svg { color: var(--dg-accent-ink); }
+
+/* Значок «внешняя ссылка» у пунктов мультитула — owner: слишком громоздкий и навязчивый.
+   Меньше подписи и приглушён, читается как пометка, а не как второй значок строки. */
+.dg-sheet .dg-sheet-row .dg-row-icon,
+#dg-mega .dg-sheet-row .dg-row-icon { width: 12px; height: 12px; margin-top: 5px; opacity: 0.45; }
+.dg-sheet .dg-sheet-row:hover .dg-row-icon,
+#dg-mega .dg-sheet-row:hover .dg-row-icon { opacity: 0.8; }
+/* Bootstrap-тултипы (звёздочка «Powered by NI», состав области поиска) должны быть выше
+   шторок/мегаменю/бургера (1081–1084) — иначе тултип внутри шторки рисовался под ней. */
+.tooltip { z-index: 1200 !important; }

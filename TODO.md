@@ -1,5 +1,46 @@
 # текущие задачи
 
+## НОВОЕ — #главная #мультитул: правки владельца по скринам, `menu` влита в main (2026-09-05)
+
+done 0. Ветка `menu` (мультитул в бургере) влита в main (конфликт только в TODO.md — оба
+   раздела оставлены). Дальше всё делаем в main (решение владельца).
+
+done 1. Шторка «О проекте» на десктопе — во всю текстовую колонку: `.dg-sheet.dg-wide`
+   (`min(1120px, 100vw − 32px)`, та же ширина, что у мегаменю), класс ставит `openAbout()`,
+   снимают `openSheet()`/`openTerms()` — списки плиток остаются 560px.
+
+done 2. На главной вместо короткой цитаты DN 16 — сокращённая «Tāni ce sutte…» (первая фраза с
+   многоточием + перевод до «следует сделать заключение…», ссылки dn16 · an4.180; `intro.*` в
+   lang_ru/en/th). Памятка на главной — первый абзац `howto.warnBody` (берётся из него же при
+   генерации, не дублируется руками). Полные тексты — в шторке.
+
+done 3. Форматирование памятки возвращено к прежнему зелёному блоку (`.dg-howto-warn`, общий для
+   главной и шторки), значок — «i в круге» вместо треугольника с «!» (owner).
+
+done 4. «Powered by NI» и в русском (`footer.poweredby` ru был «Powered by DI»); тултип со
+   расшифровкой (Dhamma Intelligence…) прежний. Тултип был ПОД шторкой (bootstrap `.tooltip`
+   z-index 1080 < шторка 1081) — `.tooltip { z-index: 1200 !important }` в home.css.
+
+done 5. `footer.contactsNote` без тире: «Пишите о находках, ошибках и переводах. Будем вам рады.»
+   (en/th аналогично).
+
+done 6. Мультитул: «Принципы»/«Проблематика» (плитка «Русские») → `/ru/docs/principles`,
+   `/ru/docs/rationale` (были легаси `/assets/common/o.html`, `rationale.html`), с описаниями.
+   В EN группа «Principles» (Translation/Rationale → `o-en.html`/`rationale-en.html`)
+   перенесена из плитки Tools в Materials: «Principles — Our approach and principles for
+   translating texts» → `/docs/principles`, «Rationale — Why consistent terminology matters in
+   Pali-English translation» → `/docs/rationale`. Ссылок на легаси `o*.html`/`rationale*.html`
+   в menu-links.json больше нет.
+
+done 7. Значок «внешняя ссылка» у пунктов мультитула (шторка и мегаменю) — 12px и opacity .45
+   (был 17px в полный цвет — «громоздкий и навязчивый»), при наведении .8.
+
+   --- проверено (Playwright, harness): низ главной — сокращённая цитата, зелёная памятка с «i»;
+   шторка «О проекте» на 1300px — широкая, полные тексты, тултип у «Powered by NI *» рисуется
+   ПОВЕРХ шторки (elementFromPoint → .tooltip); EN Materials — мегаменю с Principles/Rationale
+   на /docs/…; RU «Русские» — Принципы/Проблематика на /ru/docs/…; ошибок в консоли нет.
+
+
 ## НОВОЕ — #иконки: fontawesome-local.js собирается сервером при старте (2026-09-05)
 
 done 1. Владелец: «font awesome иконки сломались» — консоль test.dhamma.gift:

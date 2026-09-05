@@ -1274,19 +1274,26 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
   <div class="dg-tiles" id="home-tiles"></div>
   <div id="home-slides" hidden></div>
 
-  <!-- Короткая цитата + памятка о переводах. Владелец (2026-09-05): низ главной был «вата» —
-       большой блок с полной цитатой, длинной памяткой, кнопками приложений и контактами. Теперь
-       на странице только короткая цитата (DN 16) и памятка в одну строку; всё полное (цитата
-       «Tāni ce sutte…», развёрнутая памятка, приложения/расширения, контакты, копирайт) — в
-       шторке «О проекте», которую открывают ссылки подвала (home.js openAbout). Тот же порог,
-       что и раньше: на телефоне блок свёрнут (home.css), подвал виден всегда. -->
+  <!-- Сокращённая цитата «Tāni ce sutte…» (первая фраза + перевод с многоточием, intro.* в
+       lang_*.json) и первый абзац памятки о переводах. Владелец (2026-09-05): низ главной был
+       «вата». Полные тексты, приложения/расширения, контакты, копирайт — в шторке «О проекте»,
+       которую открывают ссылки подвала (home.js openAbout). Порог прежний: на телефоне блок
+       свёрнут (home.css), подвал виден всегда. -->
   <section id="home-howto" hidden>
     <div class="dg-intro">
       <p class="dg-intro-pali pli-lang" id="dg-intro-pali"></p>
       <p class="dg-intro-body" id="dg-intro-body"></p>
-      <p class="dg-intro-ref"><a id="dg-intro-ref" href="/dn16?s=mamaccayena" target="_blank"></a></p>
+      <p class="dg-intro-ref"><a href="/dn16?s=T%C4%81ni" target="_blank">dn16</a> · <a href="/an4.180?s=T%C4%81ni" target="_blank">an4.180</a></p>
     </div>
-    <div class="dg-intro-warn"><strong id="dg-intro-warn-title"></strong> <span id="dg-intro-warn-body"></span></div>
+    <!-- Памятка — тот же зелёный блок, что был раньше, только значок «i в круге» вместо
+         треугольника с «!» (owner). Текст на странице — первый абзац, полный — в шторке. -->
+    <div class="dg-howto-warn">
+      <svg viewBox="0 0 512 512" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM216 336h24V272H216c-13.3 0-24-10.7-24-24s10.7-24 24-24h48c13.3 0 24 10.7 24 24v88h8c13.3 0 24 10.7 24 24s-10.7 24-24 24H216c-13.3 0-24-10.7-24-24s10.7-24 24-24zm40-208a32 32 0 1 1 0 64 32 32 0 1 1 0-64z"/></svg>
+      <div>
+        <strong id="dg-intro-warn-title"></strong>
+        <p id="dg-intro-warn-body"></p>
+      </div>
+    </div>
   </section>
 
   <!-- Подвал — виден всегда, одной строкой: ссылки-открывашки шторки «О проекте» (Как искать ·

@@ -738,6 +738,7 @@
         var sheet = document.getElementById('dg-sheet');
         var backdrop = document.getElementById('dg-sheet-backdrop');
         sheet.hidden = false;
+        sheet.classList.remove('dg-wide');
 
         document.getElementById('dg-sheet-title').textContent = tile.label;
 
@@ -2717,7 +2718,6 @@
         // moved into the "About" sheet — see openAbout().
         document.getElementById('dg-intro-pali').textContent = t('intro.pali', '');
         document.getElementById('dg-intro-body').textContent = t('intro.body', '');
-        document.getElementById('dg-intro-ref').textContent = t('intro.ref', 'DN 16');
         document.getElementById('dg-intro-warn-title').textContent = t('intro.warnTitle', '');
         document.getElementById('dg-intro-warn-body').textContent = t('intro.warnBody', '');
     }
@@ -2821,6 +2821,9 @@
         var sheet = document.getElementById('dg-sheet');
         var backdrop = document.getElementById('dg-sheet-backdrop');
         sheet.hidden = false;
+        // Owner: on desktop this sheet spans the text column (as wide as the mega menu), not the
+        // 560px list width the tile sheets use. openSheet()/openTerms() clear the class again.
+        sheet.classList.add('dg-wide');
         document.getElementById('dg-sheet-title').textContent = t('menu.about', 'О проекте');
         document.getElementById('dg-sheet-tabs').innerHTML = '';
 
@@ -2857,9 +2860,12 @@
             refs.appendChild(a);
         });
         body.appendChild(refs);
-        var warn = el('div', 'dg-intro-warn dg-about-warn');
-        warn.appendChild(el('strong', null, t('howto.warnTitle', 'Пожалуйста, обратите внимание!')));
-        warn.appendChild(el('p', null, t('howto.warnBody', '')));
+        var warn = el('div', 'dg-howto-warn');
+        warn.innerHTML = '<svg viewBox="0 0 512 512" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM216 336h24V272H216c-13.3 0-24-10.7-24-24s10.7-24 24-24h48c13.3 0 24 10.7 24 24v88h8c13.3 0 24 10.7 24 24s-10.7 24-24 24H216c-13.3 0-24-10.7-24-24s10.7-24 24-24zm40-208a32 32 0 1 1 0 64 32 32 0 1 1 0-64z"/></svg>';
+        var warnText = el('div');
+        warnText.appendChild(el('strong', null, t('howto.warnTitle', 'Пожалуйста, обратите внимание!')));
+        warnText.appendChild(el('p', null, t('howto.warnBody', '')));
+        warn.appendChild(warnText);
         body.appendChild(warn);
 
         title('links', t('footer.links', 'Приложения и расширения'));
@@ -2896,6 +2902,7 @@
         var sheet = document.getElementById('dg-sheet');
         var backdrop = document.getElementById('dg-sheet-backdrop');
         sheet.hidden = false;
+        sheet.classList.remove('dg-wide');
         document.getElementById('dg-sheet-title').textContent = t('footer.terms', 'Условия использования');
         document.getElementById('dg-sheet-tabs').innerHTML = '';
 

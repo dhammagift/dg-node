@@ -665,6 +665,21 @@
               "blank": true
             }
           ]
+        },
+        {
+          "name": "Principles",
+          "items": [
+            {
+              "label": "Principles",
+              "desc": "Our approach and principles for translating texts",
+              "href": "/docs/principles"
+            },
+            {
+              "label": "Rationale",
+              "desc": "Why consistent terminology matters in Pali-English translation",
+              "href": "/docs/rationale"
+            }
+          ]
         }
       ]
     },
@@ -741,23 +756,6 @@
               "desc": "Convert a PTS reference back to its modern sutta number",
               "href": "https://benmneb.github.io/pts-converter/",
               "blank": true
-            }
-          ]
-        },
-        {
-          "name": "Principles",
-          "column": 4,
-          "items": [
-            {
-              "label": "Translation",
-              "desc": "Our approach and principles for translating texts",
-              "href": "/assets/common/o-en.html",
-              "blank": true
-            },
-            {
-              "label": "Rationale",
-              "desc": "Why consistent terminology matters in Pali-English translation",
-              "href": "/assets/common/rationale-en.html"
             }
           ]
         },
@@ -1117,12 +1115,13 @@
             },
             {
               "label": "Принципы",
-              "href": "/assets/common/o.html",
-              "blank": true
+              "href": "/ru/docs/principles",
+              "desc": "Наш подход и принципы перевода текстов"
             },
             {
               "label": "Проблематика",
-              "href": "/assets/common/rationale.html"
+              "href": "/ru/docs/rationale",
+              "desc": "Почему важна единая терминология в переводе с пали"
             }
           ]
         },
