@@ -131,10 +131,9 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
      (see home.js init()). Preloading here starts the network request immediately, in parallel
      with everything else, so it's already in the browser's cache by the time home.js's own
      fetch() call happens — the tiles no longer visibly pop in after a round trip. -->
-<link rel="preload" href="/nodejs/res/menu-links.json" as="fetch" crossorigin="anonymous">
-<!-- crossorigin="anonymous" matches fetch()'s defaults (mode cors, credentials same-origin);
-     without it a preload as="fetch" is a no-cors/include request, Chrome refuses to reuse it
-     ("request credentials mode does not match") and the JSON is downloaded twice. -->
+<!-- No <link rel="preload"> for menu-links.json any more: with the service worker in front
+     Chrome never reuses it ("cross-world service worker resource mismatch") and the JSON was
+     simply fetched twice on every load. home.js fetches it once, that's it. -->
 <meta name="theme-color" content="#243448">
 <meta property="og:type" content="article" />
 <meta property="og:title" content="Search Results - Dhamma.gift" />

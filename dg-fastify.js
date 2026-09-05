@@ -262,21 +262,31 @@ app.addHook('onSend', (req, reply, payload, done) => {
 // silently shipping a blank icon. Wrapped in try/catch on purpose: this must never stop the
 // server from starting (missing bundle on a fresh checkout, unreadable file, whatever) — it's a
 // dev-convenience warning, not a requirement.
+// Rebuilt HERE, at startup, instead of only warning: the file is gitignored, so a fresh
+// checkout / clean deploy has no copy at all and every FontAwesome icon on the site goes blank
+// (test.dhamma.gift, 2026-09-05: fontawesome-local.js 404 after a deploy that never ran
+// `npm run build-icons`). Same pattern as buildScriptBundle() below. build-icons.js needs the
+// @fortawesome/fontawesome-free devDependency — if it is not installed the build fails and we
+// fall back to the warning, but never stop the server.
 try {
     const iconBundlePath = path.join(__dirname, 'public', 'overrides', 'js', 'fontawesome-local.js');
-    if (!fsSync.existsSync(iconBundlePath)) {
-        console.warn('[fontawesome-local] Not built yet — run `npm run build-icons`.');
-    } else {
+    const used = new Set();
+    const homeSrc = fsSync.readFileSync(path.join(__dirname, 'search', 'js', 'home.js'), 'utf8');
+    for (const m of homeSrc.matchAll(/\[\s*'(fa[srb])'\s*,\s*'([a-z0-9-]+)'\s*\]/g)) used.add(m[1] + '/' + m[2]);
+    const settingsSrc = fsSync.readFileSync(path.join(__dirname, 'public', 'overrides', 'js', 'settings.js'), 'utf8');
+    for (const m of settingsSrc.matchAll(/\bfaIcon\('([a-z0-9-]+)'\)/g)) used.add('fas/' + m[1]);
+    let missing = [...used];
+    if (fsSync.existsSync(iconBundlePath)) {
         const manifestMatch = fsSync.readFileSync(iconBundlePath, 'utf8').match(/MANIFEST:\s*([^\n*]*)/);
         const known = new Set((manifestMatch ? manifestMatch[1] : '').split(',').map(s => s.trim()).filter(Boolean));
-        const used = new Set();
-        const homeSrc = fsSync.readFileSync(path.join(__dirname, 'search', 'js', 'home.js'), 'utf8');
-        for (const m of homeSrc.matchAll(/\[\s*'(fa[srb])'\s*,\s*'([a-z0-9-]+)'\s*\]/g)) used.add(m[1] + '/' + m[2]);
-        const settingsSrc = fsSync.readFileSync(path.join(__dirname, 'public', 'overrides', 'js', 'settings.js'), 'utf8');
-        for (const m of settingsSrc.matchAll(/\bfaIcon\('([a-z0-9-]+)'\)/g)) used.add('fas/' + m[1]);
-        const missing = [...used].filter(k => !known.has(k));
-        if (missing.length) {
-            console.warn('[fontawesome-local] New icons not in the built subset, run `npm run build-icons`:', missing.join(', '));
+        missing = [...used].filter(k => !known.has(k));
+    }
+    if (missing.length) {
+        console.warn('[fontawesome-local] ' + (fsSync.existsSync(iconBundlePath) ? 'stale subset, missing: ' + missing.join(', ') : 'not built yet') + ' — building now (build-icons.js)');
+        try {
+            require('child_process').execFileSync(process.execPath, [path.join(__dirname, 'build-icons.js')], { stdio: 'inherit' });
+        } catch (buildErr) {
+            console.warn('[fontawesome-local] build failed — run `npm install` (devDependency @fortawesome/fontawesome-free) and `npm run build-icons`:', buildErr.message);
         }
     }
 } catch (e) {
