@@ -1921,7 +1921,18 @@ document.addEventListener("keydown", (event) => {
 
     const modeTable = window.MODE_TABLE;
     const readerMode = window.READER_MODE;
-    if (!modeTable || !readerMode) return;
+    if (!modeTable || !readerMode) {
+        // Outside the reader (home page, search results) there's no mode to switch, only a
+        // site language — Alt+1 there does the same EN/RU toggle as the burger's language switch
+        // (home.js renderLangSwitch), so the shortcut is universal across every page instead of
+        // reader-only (owner: "смена языка... также как в ридере... универсально").
+        if (digit === 1 && window.DHAMMA_I18N && window.DHAMMA_I18N.setLanguage) {
+            event.preventDefault();
+            const active = window.DHAMMA_I18N.language || localStorage.getItem('dhammaLanguage') || 'en';
+            window.DHAMMA_I18N.setLanguage(active === 'ru' ? 'en' : 'ru');
+        }
+        return;
+    }
     const type = Object.keys(window.MODE_HOTKEY_DIGITS).find((k) => window.MODE_HOTKEY_DIGITS[k] === digit && modeTable[k]);
     if (!type) return;
     event.preventDefault();

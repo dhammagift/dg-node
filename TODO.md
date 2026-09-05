@@ -4530,7 +4530,9 @@ done п.13 (Патимоккха — единый текст, как на про
    персональных эндпоинтов (сейчас таких в `dg-light.js` нет). Отдельный блок в конце `cache.md` —
    что меняется при возможном переходе Express → Fastify (сама политика не меняется, только
    механика: `setHeaders` у `@fastify/static`, `onSend`-хуки вместо `res.set` в хендлерах).
-   Внедрение в `dg-light.js` — отдельным пунктом, ещё не сделано.
+   done Внедрено в `dg-light.js` (`getAssetVersion`/`sendVersionedHtml`/`staticCacheHeaders` +
+   тиры `CACHE_*`); в `dg-fastify.js` та же логика лежит рядом, отличается только
+   `sendVersionedHtml` (адаптирован под reply-API Fastify).
 
 ---
 
