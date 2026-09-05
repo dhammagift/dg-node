@@ -1,4 +1,32 @@
+import type { ReactNode } from 'react';
 import { QuoteSegment, Match } from '@dhammagift/dg-ui';
+
+// Dark theme is a class, not a prop: the tokens are redefined on `.dark`, and custom
+// properties inherit, so putting the class on a wrapper themes everything inside it. The
+// wrapper paints --dg-page itself — the card's own ground stays light otherwise.
+//
+// `.dark` alone is only half the app's theme switch, and the half that misses everything
+// coloured by Bootstrap. themeswitch.js sets BOTH `body.dark` (which re-tokenizes --dg-*)
+// and `data-bs-theme="dark"` on <html> (which re-tokenizes --bs-*), and the text colour of
+// a Pali line, a table cell, a .text-muted translation, a link and a .form-control all come
+// from --bs-body-color / --bs-body-bg. With `.dark` on its own the card's ground goes #111
+// while the text stays #212529 — near-black on near-black. Bootstrap 5.3 scopes
+// [data-bs-theme=dark] to any element, so the same wrapper can carry both.
+//
+// The wrapper also paints `color` for the same reason it paints `background`: re-tokenizing
+// --bs-body-color does not re-run the `color` declaration that sits on <body>, so plain
+// inherited text (a `.pli-lang` span carries no colour rule of its own outside a <p>) would
+// keep inheriting the light-mode ink. --dg-text resolves to the same rgb(221,221,221) the
+// reader's own `.dark p .pli-lang` uses.
+const Dark = ({ children }: { children: ReactNode }) => (
+  <div
+    className="dark"
+    data-bs-theme="dark"
+    style={{ background: 'var(--dg-page)', color: 'var(--dg-text)', padding: 20 }}
+  >
+    {children}
+  </div>
+);
 
 // The reader's column CSS is scoped to #sutta, so the quotes go inside it.
 
@@ -66,4 +94,28 @@ export const HitWithContext = () => (
       ]}
     />
   </div>
+);
+
+/** A hit and a variant reading in dark theme — .dark .finder and .dark .variant both show here. */
+export const DarkTheme = () => (
+  <Dark>
+    <div id="sutta">
+      <QuoteSegment
+        id="sn35.240:2.1"
+        pali={<>Bhūtapubbaṁ, bhikkhave, kummo <Match>kacchapo</Match> sāyanhasamayaṁ anunadītīre gocarapasuto ahosi.</>}
+        translations={[
+          { lang: 'ru', text: 'Однажды, монахи, черепаха под вечер искала пищу на берегу реки.', translator: 'ru_sv' },
+          { lang: 'en', text: 'Once upon a time, mendicants, a tortoise was hunting for food along the bank of a river in the evening.', translator: 'en_sujato' },
+        ]}
+      />
+      <QuoteSegment
+        id="dn22:1.4"
+        pali={<>“Ekāyano ayaṁ, bhikkhave, maggo sattānaṁ visuddhiyā, sokaparidevānaṁ <Match>samatikkamāya</Match>.</>}
+        variant="ekāyanvāyaṁ (bj, pts1ed)"
+        translations={[
+          { lang: 'ru', text: '«Монахи, есть прямой путь к очищению существ, к преодолению печали и стенаний,', translator: 'ru_o' },
+        ]}
+      />
+    </div>
+  </Dark>
 );
