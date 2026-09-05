@@ -1,4 +1,14 @@
+import type { ReactNode } from 'react';
 import { ContactButton, Icon } from '@dhammagift/dg-ui';
+
+// Dark is a CLASS, not a prop: the tokens are redefined on `.dark` and custom properties
+// inherit, so a wrapper themes everything inside it. It must paint --dg-page itself, or the
+// card's own ground stays light under a correctly themed component.
+const Dark = ({ children }: { children: ReactNode }) => (
+  <div className="dark" style={{ background: 'var(--dg-page)', padding: 20 }}>
+    {children}
+  </div>
+);
 
 // The home screen's contacts row, with the project's real channels.
 export const Contacts = () => (
@@ -53,4 +63,27 @@ export const Elsewhere = () => (
       <Icon name="openLink" />
     </ContactButton>
   </div>
+);
+
+/** The contacts row in dark theme — round frames on #191919, motto ink at --dg-text-2. */
+export const DarkTheme = () => (
+  <Dark>
+    <div>
+      <p className="dg-contacts-motto">Find the Truth</p>
+      <div className="dg-contacts">
+        <ContactButton title="GitHub" href="https://github.com/dhammagift/dg#readme">
+          <Icon name="codeCompareSolidFull" />
+        </ContactButton>
+        <ContactButton title="E-mail" href="mailto:agiftofdhamma@gmail.com">
+          <Icon name="memo" />
+        </ContactButton>
+        <ContactButton title="YouTube" href="https://m.youtube.com/channel/UCoyL5T0wMubqrj4OnKVOlMw">
+          <Icon name="play" />
+        </ContactButton>
+        <ContactButton title="Telegram" href="https://t.me/dhamma_gift">
+          <Icon name="comment" />
+        </ContactButton>
+      </div>
+    </div>
+  </Dark>
 );

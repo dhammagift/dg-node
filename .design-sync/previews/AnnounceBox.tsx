@@ -50,3 +50,18 @@ export const Persistent = () => (
     <AnnounceBox dismissible={false}>Maintenance 14 Sep, 02:00–03:00 UTC — search may be slow</AnnounceBox>
   </HeroBand>
 );
+
+/**
+ * Dark theme keeps the hero band: the gradient is the component's real ground in BOTH themes,
+ * so what changes is the tokens it is built from — --dg-navy #14304f→#1b2836 and
+ * --dg-accent-dark #0f7a63→#025242 — plus the page ground the band sits on.
+ */
+export const DarkTheme = () => (
+  <div className="dark" style={{ background: 'var(--dg-page)', padding: 20 }}>
+    <HeroBand>
+      <AnnounceBox>
+        🎉New Version🎉 Still in beta. The old one lives at <a href="https://old.dhamma.gift">old.dhamma.gift</a>
+      </AnnounceBox>
+    </HeroBand>
+  </div>
+);

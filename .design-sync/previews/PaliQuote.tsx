@@ -1,4 +1,14 @@
+import type { ReactNode } from 'react';
 import { PaliQuote } from '@dhammagift/dg-ui';
+
+// Dark is a CLASS, not a prop: the tokens are redefined on `.dark` and custom properties
+// inherit, so a wrapper themes everything inside it. It must paint --dg-page itself, or the
+// card's own ground stays light under a correctly themed component.
+const Dark = ({ children }: { children: ReactNode }) => (
+  <div className="dark" style={{ background: 'var(--dg-page)', padding: 20 }}>
+    {children}
+  </div>
+);
 
 // The triangle the app draws in front of the caveat (search/index.html, #home-howto).
 const WarnIcon = () => (
@@ -89,4 +99,42 @@ export const Verse = () => (
 // Pali alone — no translation offered for this line yet.
 export const PaliOnly = () => (
   <PaliQuote pali="Etaṁ santaṁ, etaṁ paṇītaṁ, yadidaṁ sabbasaṅkhārasamatho." refs={<a href="/an10.6">an10.6</a>} />
+);
+
+/**
+ * The same "How to Search" block in dark theme: the quote box takes the dark surface, the
+ * dn16/an4.180 refs the dark accent ink, and the caveat band the dark accent background.
+ */
+export const DarkTheme = () => (
+  <Dark>
+    <PaliQuote
+      pali={HOWTO_PALI}
+      translation={
+        'If they (teachings, practices, methods, quotes, stories, anything associated with the ' +
+        'Buddha) are not found in the Suttas and are not exhibited in the Vinaya, you should draw ' +
+        'the conclusion: ‘Clearly this is not the word of the Blessed One. It has been wrongly ' +
+        'understood by that monk.’ And so, monks, you should reject it.'
+      }
+      refs={
+        <>
+          <a href="/dn16?s=T%C4%81ni">dn16</a>
+          <a href="/an4.180?s=T%C4%81ni">an4.180</a>
+        </>
+      }
+      warning={
+        <>
+          <WarnIcon />
+          <div>
+            <strong>Please Remember!</strong>
+            <p>
+              Translations, dictionaries and commentaries do not originate directly from the Buddha
+              himself! Approach them with scrutiny and critical thinking. To acquire the fundamental
+              teachings, engage in the direct study of Suttas in Pali — at the very least the Middle
+              Practice and the Four Noble Truths, for instance a dedicated section from sn56.11.
+            </p>
+          </div>
+        </>
+      }
+    />
+  </Dark>
 );

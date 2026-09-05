@@ -53,3 +53,29 @@ export const Divided = () => (
     </MegaMenuGroup>
   </MegaMenu>
 );
+
+/**
+ * Groups in dark theme. The panel is `position: absolute`, so it needs no Stage — but the
+ * dark ground behind it does need its own sized box, and that box paints `var(--dg-page)`
+ * under the `.dark` class that redefines the tokens.
+ */
+export const DarkTheme = () => (
+  <div className="dark" style={{ background: 'var(--dg-page)', padding: 16, width: 600, height: 380 }}>
+    <MegaMenu title="Materials">
+      <MegaMenuGroup title="Grammar">
+        <SheetRow label="Cases" description="Noun and adjective endings" />
+        <SheetRow label="Conjugations" description="Verb endings by tense and person" />
+      </MegaMenuGroup>
+      <MegaMenuGroup title="Memorization">
+        <SheetRow label="sn56.11" description="Dhammacakkappavattana" starred />
+        <SheetRow label="dn22" description="Mahāsatipaṭṭhāna" />
+      </MegaMenuGroup>
+      <MegaMenuGroup title="Editions" layout="chips" divider>
+        <SheetRow label="Mahāsaṅgīti" chip starred />
+        <SheetRow label="Buddha Jayanthi" chip />
+        <SheetRow label="VRI" chip />
+        <SheetRow label="PTS" chip />
+      </MegaMenuGroup>
+    </MegaMenu>
+  </div>
+);

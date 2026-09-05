@@ -55,3 +55,27 @@ export const OnHome = () => (
 export const Reader = () => (
   <Frame><SearchShell state="reader" value="dn22:2.2" showQuickSettings={false} /></Frame>
 );
+
+// Dark theme is a class, not a prop. Two places need it here: the outer wrapper paints
+// --dg-page so the card's ground goes dark, and the shell itself takes className="dark"
+// because the shell's own dark rules are COMPOUND — `.dark.dg-state-results .dg-input-shell`
+// wants both classes on the same element, so an ancestor .dark alone leaves the pill light.
+const Dark = ({ children }: { children: React.ReactNode }) => (
+  <div className="dark" style={{ background: 'var(--dg-page)', padding: 20 }}>
+    {children}
+  </div>
+);
+
+/**
+ * Results and reader states in dark theme: the glass pill becomes the app's #42426a slate,
+ * the query text and both buttons go to #ddd, and the focus ring turns violet.
+ */
+export const DarkTheme = () => (
+  <Dark>
+    <Frame>
+      <SearchShell className="dark" state="results" value="satipaṭṭhāna" showClear />
+      <div style={{ height: 18 }} />
+      <SearchShell className="dark" state="reader" value="dn22:2.2" showQuickSettings={false} />
+    </Frame>
+  </Dark>
+);

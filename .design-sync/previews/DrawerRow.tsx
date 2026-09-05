@@ -7,8 +7,8 @@ import { Drawer, DrawerRow, Brand, Icon } from '@dhammagift/dg-ui';
 // measures 0px tall — the drawer then computes `height: 0` from its own `top/bottom` and
 // clips itself away. This stage is that missing viewport, nothing more: page ground, a
 // height, and the transform that makes it the containing block.
-const Stage = ({ children, height = 560 }: { children: ReactNode; height?: number }) => (
-  <div style={{
+const Stage = ({ children, height = 560, className }: { children: ReactNode; height?: number; className?: string }) => (
+  <div className={className} style={{
     position: 'relative',
     height,
     transform: 'translateZ(0)',
@@ -50,4 +50,20 @@ export const Actions = () => (
     <DrawerRow icon={<Icon name="rotateSolidFull" className="dg-row-ic" />} onClick={() => {}}>Restore buttons</DrawerRow>
     <DrawerRow icon={<Icon name="clockRotateLeft" className="dg-row-ic" />} onClick={() => {}}>History</DrawerRow>
   </Menu>
+);
+
+/**
+ * Rows in dark theme. `.dark` goes on the Stage — it already paints `var(--dg-page)`, so the
+ * page ground, the drawer surface and the row hover/divider tokens all flip together.
+ */
+export const DarkTheme = () => (
+  <Stage className="dark" height={400}>
+    <Drawer backdrop={false} head={<Brand />}>
+      <DrawerRow href="/" icon={<Icon name="dharmachakra" className="dg-row-ic" />}>Home</DrawerRow>
+      <DrawerRow icon={<Icon name="compass" className="dg-row-ic" />}>Four Noble Truths</DrawerRow>
+      <DrawerRow icon={<Icon name="clockRotateLeft" className="dg-row-ic" />}>History</DrawerRow>
+      <DrawerRow href="/settings/" icon={<Icon name="gear" className="dg-row-ic" />}>Settings</DrawerRow>
+      <DrawerRow href="/login" icon={<Icon name="openLink" className="dg-row-ic" />}>Login</DrawerRow>
+    </Drawer>
+  </Stage>
 );

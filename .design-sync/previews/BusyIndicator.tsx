@@ -6,8 +6,11 @@ import type { ReactNode } from 'react';
 // out-of-flow panel is its only child. The sheet then resolves its offsets against a
 // zero-height box and disappears. Stage supplies the missing viewport and nothing else: no
 // surface, border or shadow, so every visible edge is still the component's own.
-const Stage = ({ children, height = 520 }: { children: ReactNode; height?: number }) => (
-  <div style={{
+// `className` exists so the dark story can theme the stage itself: a fixed overlay already
+// needs the stage as its containing block, so putting `dark` on it beats nesting a second
+// themed wrapper inside. The stage paints --dg-page, so the ground follows the theme.
+const Stage = ({ children, height = 520, className }: { children: ReactNode; height?: number; className?: string }) => (
+  <div className={className} style={{
     position: 'relative',
     height,
     transform: 'translateZ(0)',
@@ -56,5 +59,29 @@ export const OverThePage = () => (
       Satipaṭṭhānasutta
     </p>
   </div>
+  </Stage>
+);
+
+/**
+ * The spinner in dark theme. The stage itself carries `dark` — a fixed overlay needs the stage
+ * as its containing block anyway, so nesting a second themed wrapper inside would only add a
+ * box. The ring is --dg-accent, which drops from #149c7c to #136857 here.
+ */
+export const DarkTheme = () => (
+  <Stage height={220} className="dark">
+    <div style={{ paddingTop: 56 }}>
+      <BusyIndicator label="Searching kacchapa across the Sutta Piṭaka…" />
+      <p
+        style={{
+          marginTop: 16,
+          maxWidth: 560,
+          fontFamily: 'var(--dg-font)',
+          color: 'var(--dg-text-muted)',
+        }}
+      >
+        dn22 — Mahāsatipaṭṭhānasutta · sn56.11 — Dhammacakkappavattanasutta · mn10 —
+        Satipaṭṭhānasutta
+      </p>
+    </div>
   </Stage>
 );

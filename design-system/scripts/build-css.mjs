@@ -63,7 +63,7 @@ const DS_CLASSES = [
   'dg-contacts', 'dg-contact-btn', 'dg-contacts-motto', 'dg-powered-by', 'dg-announce',
   'dg-announce-box', 'dg-announce-close', 'dg-footer-link',
   'dg-state-home', 'dg-state-results', 'dg-state-reader', 'dg-state-toc', 'dg-header-hidden',
-  'dg-hero-band', 'dg-header-backdrop', 'table-wrapper', 'container-fluid',
+  'btn-light', 'dg-hero-band', 'dg-header-backdrop', 'table-wrapper', 'container-fluid',
   // overlays
   'dg-sheet', 'dg-sheet-backdrop', 'dg-sheet-handle', 'dg-sheet-head', 'dg-sheet-close',
   'dg-sheet-tabs', 'dg-sheet-body', 'dg-sheet-row', 'dg-sheet-empty', 'dg-chip', 'dg-row-ic',
@@ -136,6 +136,7 @@ const EXTRA_SELECTORS = [
   // the sheet, the mega menu, the busy indicator, the sutta body. Matching classes alone
   // shipped those components without their surface.
   /#(?:form|paliauto|searchbtn)\b/,
+  /\[data-bs-theme[~^]?=/,
   /#(?:dg-drawer|dg-drawer-backdrop|dg-sheet|dg-sheet-backdrop|dg-mega|dg-busy-indicator|dg-topbar|dg-hero-band|dg-header-backdrop|dg-announce|dg-brand|home-tiles|smart-panel|sutta)\b/,
 ];
 
@@ -144,7 +145,14 @@ function keepPlain(rule) {
   if (!sel || sel.startsWith('@')) return '';
   if (!classRe.test(sel) && !EXTRA_SELECTORS.some((re) => re.test(sel))) return '';
   const rescoped = rescope(sel);
-  return rescoped ? `${rescoped} {${bodyOf(rule)}}` : '';
+  if (!rescoped) return '';
+  // Emit the attribute form alongside the class form: the app themes with body.dark, but a
+  // library consumer may reasonably use [data-theme="dark"], and the token block already
+  // accepts both — without this the attribute got tokens and no component rules.
+  const withAttr = /(^|[\s,>+~])\.dark\b/.test(rescoped)
+    ? `${rescoped}, ${rescoped.replace(/(^|[\s,>+~])\.dark\b/g, '$1[data-theme="dark"]')}`
+    : rescoped;
+  return `${withAttr} {${bodyOf(rule)}}`;
 }
 
 // ---- 3. token layer, lifted verbatim out of home.css ----------------------------------------
@@ -157,6 +165,12 @@ const lightTokens = grabBlock(homeCss, 'body.dg-skin-minimal');
 const darkTokens = grabBlock(homeCss, 'body.dg-skin-minimal.dark');
 if (!lightTokens || !darkTokens) throw new Error('token block not found in search/css/home.css');
 
+// Page-level ink. In the app this comes from extrastyles.css's `[data-theme="dark"]` block —
+// a bare page rule with no class for the harvest to match, so it never shipped, and any
+// component that leaves body copy to the page rendered near-black on #111. A library consumer
+// has no extrastyles.css, so the dark scope carries its own ink here.
+const DARK_INK = 'color: var(--dg-text);';
+
 const tokenLayer = `/* ---- design tokens, from search/css/home.css ---- */
 :root,
 .dg-skin-minimal {
@@ -167,11 +181,13 @@ const tokenLayer = `/* ---- design tokens, from search/css/home.css ---- */
 [data-theme="dark"],
 .dg-skin-minimal.dark {
     ${darkTokens}
+    ${DARK_INK}
 }
 
 @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]):not(.dg-theme-light) {
         ${darkTokens}
+        ${DARK_INK}
     }
 }
 
@@ -205,6 +221,7 @@ const out = [
   harvest(read('reader/css/uiextra.css'), 'reader/css/uiextra.css'),
   harvest(rusMulti, 'reader/css/rus-multi.css'),
   harvest(read('public/overrides/css/extrastyles.css'), 'public/overrides/css/extrastyles.css'),
+  harvest(read('public/overrides/css/table.css'), 'public/overrides/css/table.css'),
 ].filter(Boolean).join('\n\n');
 
 const dist = path.resolve(here, '../dist');

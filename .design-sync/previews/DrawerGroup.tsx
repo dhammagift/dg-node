@@ -7,8 +7,8 @@ import { Drawer, DrawerGroup, DrawerRow, Segmented, Brand, Icon } from '@dhammag
 // measures 0px tall — the drawer then computes `height: 0` from its own `top/bottom` and
 // clips itself away. This stage is that missing viewport, nothing more: page ground, a
 // height, and the transform that makes it the containing block.
-const Stage = ({ children, height = 560 }: { children: ReactNode; height?: number }) => (
-  <div style={{
+const Stage = ({ children, height = 560, className }: { children: ReactNode; height?: number; className?: string }) => (
+  <div className={className} style={{
     position: 'relative',
     height,
     transform: 'translateZ(0)',
@@ -66,4 +66,30 @@ export const PlainHeading = () => (
       <DrawerRow href="/settings/" icon={<Icon name="gear" className="dg-row-ic" />}>Settings</DrawerRow>
     </DrawerGroup>
   </Menu>
+);
+
+/**
+ * Groups in dark theme. `.dark` goes on the Stage — it already paints `var(--dg-page)`, so
+ * the group headings, dividers and the pressed Dark segment all flip with one wrapper.
+ */
+export const DarkTheme = () => (
+  <Stage className="dark" height={470}>
+    <Drawer backdrop={false} head={<Brand />}>
+      <DrawerGroup title="Reading modes" open>
+        <DrawerRow icon={<Icon name="alignLeft" className="dg-row-ic" />}>Single</DrawerRow>
+        <DrawerRow icon={<Icon name="tableColumns" className="dg-row-ic" />}>Multi Translators</DrawerRow>
+        <DrawerRow icon={<Icon name="codeCompareSolidFull" className="dg-row-ic" />}>Multi Language</DrawerRow>
+      </DrawerGroup>
+      <DrawerGroup title="Settings" collapsible={false}>
+        <Segmented
+          value="dark"
+          options={[
+            { value: 'light', label: 'Light', icon: <Icon name="sun" size={13} /> },
+            { value: 'dark', label: 'Dark', icon: <Icon name="moon" size={13} /> },
+          ]}
+        />
+        <DrawerRow href="/settings/" icon={<Icon name="gear" className="dg-row-ic" />}>Settings</DrawerRow>
+      </DrawerGroup>
+    </Drawer>
+  </Stage>
 );

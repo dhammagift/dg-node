@@ -6,8 +6,8 @@ import { Sheet, SheetRow, Icon } from '@dhammagift/dg-ui';
 // out-of-flow panel is its only child. The sheet then resolves its offsets against a
 // zero-height box and disappears. Stage supplies the missing viewport and nothing else: no
 // surface, border or shadow, so every visible edge is still the component's own.
-const Stage = ({ children, height = 520 }: { children: ReactNode; height?: number }) => (
-  <div style={{
+const Stage = ({ children, height = 520, className }: { children: ReactNode; height?: number; className?: string }) => (
+  <div className={className} style={{
     position: 'relative',
     height,
     transform: 'translateZ(0)',
@@ -58,5 +58,29 @@ export const Chips = () => (
     <SheetRow label="Bodhi" chip />
     <SheetRow label="Сыркин" chip />
   </Sheet>
+  </Stage>
+);
+
+/**
+ * The same sheet in dark theme. Dark is a class, not a prop — and since the Stage already
+ * paints `var(--dg-page)`, putting `.dark` on the Stage itself themes the ground and the
+ * panel above it in one go, without nesting a second wrapper inside a fixed-position card.
+ */
+export const DarkTheme = () => (
+  <Stage className="dark" height={450}>
+    <Sheet
+      title="Translations"
+      tabs={[{ id: 'ru', label: 'RU' }, { id: 'en', label: 'EN' }]}
+      activeTab="ru"
+      backdrop={false}
+    >
+      <SheetRow label="А.Я. Сыркин" description="С пали, ред. o" starred />
+      <SheetRow label="SV theravada.ru" description="С английского"
+                icon={<Icon name="book" className="dg-row-icon" />} />
+      <SheetRow label="Кхантибало Theravada.su" description="С примечаниями к комментариям"
+                icon={<Icon name="book" className="dg-row-icon" />} />
+      <SheetRow label="Нариньяни/Евмененко" description="Второе мнение проекта, ru_other"
+                icon={<Icon name="book" className="dg-row-icon" />} />
+    </Sheet>
   </Stage>
 );

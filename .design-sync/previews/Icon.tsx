@@ -104,3 +104,40 @@ export const Sizes = () => (
     <Glyph name="compass" size={30} note="30 — reader hero" />
   </div>
 );
+
+// Dark theme is a class, not a prop: the tokens are redefined on `.dark`, and custom
+// properties inherit, so putting the class on a wrapper themes everything inside it. The
+// wrapper paints --dg-page itself — the card's own ground stays light otherwise.
+const Dark = ({ children }) => (
+  <div className="dark" style={{ background: 'var(--dg-page)', padding: 20 }}>
+    {children}
+  </div>
+);
+
+/**
+ * The same gallery on the dark ground. Most glyphs hard-code `fill="#989898"` on their paths,
+ * which beats the `currentColor` on the `<svg>` — so they read the same grey in both themes.
+ * That is how the app looks too (it renders them as `<img>`), not a rendering fault. Only
+ * `select`, `memo`, `play`, `tableColumns`, `linkSolidFull` and `codeCompareSolidFull` follow
+ * `currentColor` and lighten here; the captions follow --dg-text-muted and lighten with them.
+ */
+export const DarkTheme = () => (
+  <Dark>
+    <div style={grid}>
+      <Glyph name="circleHalfStroke" />
+      <Glyph name="moon" />
+      <Glyph name="sun" />
+      <Glyph name="compass" />
+      <Glyph name="book" />
+      <Glyph name="dharmachakra" />
+      <Glyph name="tableColumns" />
+      <Glyph name="select" />
+      <Glyph name="linkSolidFull" />
+      <Glyph name="codeCompareSolidFull" />
+      <Glyph name="play" />
+      <Glyph name="gear" />
+      <Glyph name="question" />
+      <Glyph name="listUlSolidFull" />
+    </div>
+  </Dark>
+);

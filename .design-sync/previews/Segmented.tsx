@@ -1,4 +1,14 @@
+import type { ReactNode } from 'react';
 import { Segmented, Icon } from '@dhammagift/dg-ui';
+
+// Dark is a CLASS, not a prop: the tokens are redefined on `.dark` and custom properties
+// inherit, so a wrapper themes everything inside it. It must paint --dg-page itself, or the
+// card's own ground stays light under a correctly themed component.
+const Dark = ({ children }: { children: ReactNode }) => (
+  <div className="dark" style={{ background: 'var(--dg-page)', padding: 20 }}>
+    {children}
+  </div>
+);
 
 // Interface language — the drawer's own switch, EN first, exactly as home.js orders it.
 export const Language = () => (
@@ -44,4 +54,22 @@ export const ResultsView = () => (
       { value: 'words', label: 'Слова' },
     ]}
   />
+);
+
+/**
+ * The theme switch rendered in the theme it is currently set to. The earlier `Theme` cell only
+ * *names* dark as a value; this one actually themes the control — track and pressed half take
+ * the dark surface tokens (#191919 / #2a2a2a) and the label ink drops to #a8a8a8.
+ */
+export const DarkTheme = () => (
+  <Dark>
+    <Segmented
+      value="dark"
+      options={[
+        { value: 'dark', label: 'Тёмная', icon: <Icon name="moon" size={14} /> },
+        { value: 'light', label: 'Светлая', icon: <Icon name="sun" size={14} /> },
+        { value: 'auto', label: 'Авто', icon: <Icon name="circleHalfStroke" size={14} /> },
+      ]}
+    />
+  </Dark>
 );

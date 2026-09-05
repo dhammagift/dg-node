@@ -108,3 +108,64 @@ export const Variants = () => (
     </span>
   </div>
 );
+
+// Dark theme is a class, not a prop: the tokens are redefined on `.dark` and custom properties
+// inherit, so the wrapper themes everything inside it. It paints --dg-page itself, or the
+// card's own ground stays light.
+const Dark = ({ children }) => (
+  <div className="dark" style={{ background: 'var(--dg-page)', padding: 20 }}>
+    {children}
+  </div>
+);
+
+/**
+ * The chrome buttons on the dark ground. `.dg-icon-btn` takes its ink from --dg-text-2, which
+ * drops to #a8a8a8 here, and its hover disc from --dg-surface-hover (#202020). The `plain`
+ * row gets its own dark rule — `.dark .dg-reader-hero .dg-plain-btn` recolours it to the
+ * off-white the reader hero uses. The glyphs themselves hard-code `fill="#989898"` and stay
+ * grey in both themes; that is how the app renders them, not a defect.
+ */
+export const DarkTheme = () => (
+  <Dark>
+    <div style={row}>
+      <span style={item}>
+        <IconButton label="Cattāri Ariyasaccāni">
+          <Icon name="compass" size={19} />
+        </IconButton>
+        <span style={caption}>Cattāri Ariyasaccāni</span>
+      </span>
+      <span style={item}>
+        <IconButton label="History">
+          <Icon name="clockRotateLeft" size={19} />
+        </IconButton>
+        <span style={caption}>History</span>
+      </span>
+      <span style={item}>
+        <IconButton label="Menu" variant="menu">
+          <Icon name="listUlSolidFull" size={19} />
+        </IconButton>
+        <span style={caption}>Menu</span>
+      </span>
+    </div>
+    <div className="dg-reader-hero" style={{ ...row, marginTop: 24 }}>
+      <span style={item}>
+        <IconButton label="Table of contents" variant="plain">
+          <Icon name="listUlSolidFull" size={24} />
+        </IconButton>
+        <span style={caption}>Contents</span>
+      </span>
+      <span style={item}>
+        <IconButton label="Listen to dn22" variant="plain">
+          <Icon name="volumeSolidFull" size={24} />
+        </IconButton>
+        <span style={caption}>Listen</span>
+      </span>
+      <span style={item}>
+        <IconButton label="Copy Mahāsatipaṭṭhānasutta link" variant="plain">
+          <Icon name="copy" size={24} />
+        </IconButton>
+        <span style={caption}>Copy link</span>
+      </span>
+    </div>
+  </Dark>
+);

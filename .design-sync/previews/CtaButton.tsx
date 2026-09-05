@@ -1,4 +1,14 @@
+import type { ReactNode } from 'react';
 import { CtaButton, Icon, type IconName } from '@dhammagift/dg-ui';
+
+// Dark is a CLASS, not a prop: the tokens are redefined on `.dark` and custom properties
+// inherit, so a wrapper themes everything inside it. It must paint --dg-page itself, or the
+// card's own ground stays light under a correctly themed component.
+const Dark = ({ children }: { children: ReactNode }) => (
+  <div className="dark" style={{ background: 'var(--dg-page)', padding: 20 }}>
+    {children}
+  </div>
+);
 
 /**
  * The real buttons carry store-badge PNGs from /assets/img/buttons, which do not resolve
@@ -75,4 +85,24 @@ export const InstallAsApp = () => (
   <CtaButton title="Install Dhamma.gift as progressive web app" href="#install">
     <StoreBadge icon="tableColumns" kicker="Install as" name="Web App" />
   </CtaButton>
+);
+
+/**
+ * The apps row in dark theme — the `.dg-cta-btn` frames take the dark border and surface, and
+ * the badge stand-in follows --dg-navy down to #1b2836 the way the real PNG's ground would not.
+ */
+export const DarkTheme = () => (
+  <Dark>
+    <div className="dg-cta">
+      <CtaButton title="Download from Google Play" href="https://play.google.com/store/apps/details?id=gift.dhamma.twa">
+        <StoreBadge icon="dharmachakra" kicker="Get it on" name="Google Play" />
+      </CtaButton>
+      <CtaButton title="Download APK" href="https://github.com/dhammagift/dg-twa/releases">
+        <StoreBadge icon="codeCompareSolidFull" kicker="Download the" name="APK" />
+      </CtaButton>
+      <CtaButton title="Open DGift_bot" href="https://t.me/dgift_bot">
+        <StoreBadge icon="comment" kicker="Chat with" name="DGift_bot" />
+      </CtaButton>
+    </div>
+  </Dark>
 );

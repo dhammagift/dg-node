@@ -8,8 +8,8 @@ import { Sheet, SheetRow, Icon } from '@dhammagift/dg-ui';
 // measures 0px tall — the sheet then docks to a zero-height box and lands above the top
 // edge of the card. This stage is that missing viewport, nothing more: page ground, a
 // height, and the transform that makes it the containing block.
-const Stage = ({ children, height = 420 }: { children: ReactNode; height?: number }) => (
-  <div style={{
+const Stage = ({ children, height = 420, className }: { children: ReactNode; height?: number; className?: string }) => (
+  <div className={className} style={{
     position: 'relative',
     height,
     transform: 'translateZ(0)',
@@ -68,6 +68,24 @@ export const LabelOnly = () => (
       <SheetRow label="dn22" />
       <SheetRow label="sn12.2" />
       <SheetRow label="dhp1" />
+    </Sheet>
+  </Stage>
+);
+
+/**
+ * Rows in dark theme. The `.dark` class rides on the Stage, which already paints
+ * `var(--dg-page)` — one wrapper themes the ground, the sheet surface and every row inside.
+ */
+export const DarkTheme = () => (
+  <Stage className="dark" height={350}>
+    <Sheet title="Tipiṭaka" backdrop={false}>
+      <SheetRow label="MS" description="The Mahāsaṅgīti edition, at SuttaCentral.net" starred />
+      <SheetRow label="BJT" description="Sri Lankan Buddha Jayanthi edition of the Pāḷi canon"
+                icon={<Icon name="book" className="dg-row-icon" />} />
+      <SheetRow label="CST" description="The CST edition by VRI at Tipitaka.org"
+                icon={<Icon name="book" className="dg-row-icon" />} />
+      <SheetRow label="PTS" description="The PTS edition, at GRETIL"
+                icon={<Icon name="book" className="dg-row-icon" />} />
     </Sheet>
   </Stage>
 );
