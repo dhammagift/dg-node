@@ -684,6 +684,49 @@
             .replace(/\{\{\s*theme\s*\}\}/g, localStorage.getItem('theme') || 'light');
     }
 
+    /* One tile group (name + its items/blocks/chips) into any container — the bottom sheet
+       (openSheet) and the burger's multitool section (renderDrawerTiles) share it. */
+    function renderGroupInto(container, g) {
+            var h = document.createElement('p');
+            h.className = 'dg-group-title';
+            h.textContent = g.name;
+            container.appendChild(h);
+
+            /* "blocks" — same shape openMega() reads (menu-links.json's External "Collections":
+               several real prod clusters under one header, e.g. SC/Vinaya/Voice/Legacy with no
+               header of their own — just a quiet rule above them via block.divider). Groups
+               without "blocks" fall through to the plain items/chips rendering below, unchanged. */
+            if (g.blocks) {
+                g.blocks.forEach(function (block) {
+                    var blockWrap = document.createElement('div');
+                    blockWrap.className = block.divider ? 'dg-mega-block dg-mega-block-divider' : 'dg-mega-block';
+                    if (block.inline) {
+                        var line = document.createElement('div');
+                        line.className = 'dg-chip-group';
+                        block.inline.forEach(function (item) { line.appendChild(renderItem(item, true)); });
+                        blockWrap.appendChild(line);
+                    } else {
+                        (block.rows || []).forEach(function (item) { blockWrap.appendChild(renderItem(item)); });
+                    }
+                    container.appendChild(blockWrap);
+                });
+                return;
+            }
+
+            /* "layout": "chips" — группа рисуется вплотную, в одну-две строки, а не столбцом
+               полноразмерных строк. Так помечены наборы с короткими самоочевидными подписями
+               (ИИ, переводчики, коды изданий): четыре имени вроде Gemini или DeepSeek не стоят
+               четырёх строк на весь экран. */
+            if (g.layout === 'chips') {
+                var wrap = document.createElement('div');
+                wrap.className = 'dg-chip-group';
+                g.items.forEach(function (item) { wrap.appendChild(renderItem(item, true)); });
+                container.appendChild(wrap);
+                return;
+            }
+            g.items.forEach(function (item) { container.appendChild(renderItem(item)); });
+    }
+
     function openSheet(key) {
         closeMega();
         ensureSheet();
@@ -724,46 +767,7 @@
         if (!groups.length) {
             body.innerHTML = '<p class="dg-sheet-empty">' + esc(t('home.noItems', 'Пока пусто')) + '</p>';
         }
-        groups.forEach(function (g) {
-            var h = document.createElement('p');
-            h.className = 'dg-group-title';
-            h.textContent = g.name;
-            body.appendChild(h);
-
-            /* "blocks" — same shape openMega() reads (menu-links.json's External "Collections":
-               several real prod clusters under one header, e.g. SC/Vinaya/Voice/Legacy with no
-               header of their own — just a quiet rule above them via block.divider). Groups
-               without "blocks" fall through to the plain items/chips rendering below, unchanged. */
-            if (g.blocks) {
-                g.blocks.forEach(function (block) {
-                    var blockWrap = document.createElement('div');
-                    blockWrap.className = block.divider ? 'dg-mega-block dg-mega-block-divider' : 'dg-mega-block';
-                    if (block.inline) {
-                        var line = document.createElement('div');
-                        line.className = 'dg-chip-group';
-                        block.inline.forEach(function (item) { line.appendChild(renderItem(item, true)); });
-                        blockWrap.appendChild(line);
-                    } else {
-                        (block.rows || []).forEach(function (item) { blockWrap.appendChild(renderItem(item)); });
-                    }
-                    body.appendChild(blockWrap);
-                });
-                return;
-            }
-
-            /* "layout": "chips" — группа рисуется вплотную, в одну-две строки, а не столбцом
-               полноразмерных строк. Так помечены наборы с короткими самоочевидными подписями
-               (ИИ, переводчики, коды изданий): четыре имени вроде Gemini или DeepSeek не стоят
-               четырёх строк на весь экран. */
-            if (g.layout === 'chips') {
-                var wrap = document.createElement('div');
-                wrap.className = 'dg-chip-group';
-                g.items.forEach(function (item) { wrap.appendChild(renderItem(item, true)); });
-                body.appendChild(wrap);
-                return;
-            }
-            g.items.forEach(function (item) { body.appendChild(renderItem(item)); });
-        });
+        groups.forEach(function (g) { renderGroupInto(body, g); });
 
         // Owner: "на мобильной так же, как на десктопе — при открытии тайла инпут наверх, плитки
         // прижимаются". Тот же приём, что openMega() уже делает (dg-mega-compact сжимает зазоры
@@ -1783,7 +1787,10 @@
         if (drawer) {
             // Пункт «помощь» открывает bootstrap-модалку — меню при этом должно уйти само.
             drawer.addEventListener('click', function (e) {
-                if (e.target.closest && e.target.closest('.dg-drawer-row')) closeDrawer();
+                if (!e.target.closest) return;
+                // Раскрывашки плиток мультитула (summary) — не переход, шторка остаётся.
+                if (e.target.closest('.dg-drawer-tile-summary')) return;
+                if (e.target.closest('.dg-drawer-row, .dg-sheet-row, .dg-chip')) closeDrawer();
             });
         }
         document.addEventListener('keydown', function (e) {
@@ -1834,6 +1841,50 @@
 
         wireTileDrag(host);
         syncRestoreLink();
+        renderDrawerTiles();
+    }
+
+    /* Мультитул в бургере (search/index.html #dg-drawer-tiles) — те же плитки в том же порядке
+       и с теми же скрытиями, что на главной, но списком: плитка со списками ссылок — вложенная
+       раскрывашка со своими группами (renderGroupInto, общий с нижней шторкой), плитка-действие
+       (Читать Pāḷi, История, Помощь, своя кнопка) — обычная строка, делает то же, что и клик по
+       плитке (runTile). Перестраивается вместе с плитками: смена языка, порядка, скрытие. */
+    function renderDrawerTiles() {
+        var host = document.getElementById('dg-drawer-tiles');
+        if (!host || !menuData) return;
+        host.innerHTML = '';
+        var hidden = hiddenTiles();
+        tileOrder().forEach(function (key) {
+            var tile = tileData(key);
+            if (!tile || hidden.indexOf(key) !== -1) return;
+            var labelHtml = '<span class="dg-row-ic dg-drawer-tile-ic">' + iconHtml(tile.icon) + '</span>' +
+                '<span class="dg-row-label">' + esc(tile.label) + '</span>';
+            if (tile.groups && tile.groups.length) {
+                var det = document.createElement('details');
+                det.className = 'dg-drawer-tile';
+                det.dataset.tile = key;
+                var sum = document.createElement('summary');
+                sum.className = 'dg-drawer-row dg-drawer-tile-summary';
+                sum.innerHTML = labelHtml;
+                det.appendChild(sum);
+                var inner = document.createElement('div');
+                inner.className = 'dg-drawer-tile-body';
+                tile.groups.forEach(function (g) { renderGroupInto(inner, g); });
+                det.appendChild(inner);
+                host.appendChild(det);
+            } else {
+                var a = document.createElement('a');
+                a.className = 'dg-drawer-row';
+                a.href = tile.href || 'javascript:void(0)';
+                a.innerHTML = labelHtml;
+                a.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    closeDrawer();
+                    setTimeout(function () { runTile(key); }, 150);
+                });
+                host.appendChild(a);
+            }
+        });
     }
 
     /* Перетаскивание плиток.
