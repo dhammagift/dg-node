@@ -71,6 +71,97 @@ npm run build      # English version → build/
 npm run build:ru   # Russian version → build-ru/
 ```
 
+## The search database (`dg.db`) and the Fastify server
+
+There are two servers in the repository, serving the same site from the same
+data:
+
+| | Engine | Start |
+|---|---|---|
+| `dg-light.js` | Express, searches by shelling out to `grep` | `npm start` |
+| `dg-fastify.js` | Fastify, searches a SQLite FTS5 database | `npm run start:fastify` |
+
+The Fastify one is what runs in production. It exists because `grep` was not
+the slow part: a full-corpus `/search?q=dukkha` took about 42 seconds, of
+which raw `grep` was half a second — the rest was re-reading thousands of JSON
+files to fill in quotes, translations and titles for the hits. Moving the
+whole corpus into SQLite made that enrichment an indexed lookup instead of a
+filesystem walk, and the same query now answers in roughly two seconds.
+
+### Building it
+
+```bash
+npm run build-search-db     # → dg.db, about 600 MB, ~85 seconds
+```
+
+The build reads the corpus directly — the same trees `scripts/setup.sh` wires
+up — and derives everything it needs itself, so it does **not** depend on
+`dg_db_light.json` or on `npm run build-db` having been run first. (The
+Express server still uses that skeleton; the two pipelines are deliberately
+independent.) `scripts/setup.sh` does not call it yet, so on a fresh checkout
+run it by hand before starting the Fastify server.
+
+`dg.db` is generated and git-ignored. Never hand-edit it: the next build
+replaces the file wholesale. Anything written by a person — translator
+credits, reader modes, translator priority — lives in `configs/` instead.
+
+To check a freshly built database:
+
+```bash
+node test-search-db.js
+```
+
+It asserts the invariants a silent build regression would break: that the
+corpus is actually there, that the index does substring matching rather than
+prefix matching, that diacritics and `ё`/`е` fold, that hidden translations
+stay out of the index, that no segment is stored twice, and that the search
+queries use indexes instead of scanning.
+
+### Node version
+
+The server reads the database through **`node:sqlite`, built into Node since
+22.5** — there is no `better-sqlite3` or other native module to compile. That
+also makes the Node version a hard requirement rather than a preference: on
+anything older, `require('node:sqlite')` throws
+`ERR_UNKNOWN_BUILTIN_MODULE` and the server does not start.
+
+### Running
+
+```bash
+npm run start:fastify          # port 3902
+PORT=3903 npm run start:fastify   # or anywhere else
+```
+
+### Under PM2
+
+```bash
+pm2 start dg-fastify.js --name dg-fastify -i 2 --max-memory-restart 700M
+pm2 save
+```
+
+Two things are worth knowing before doing that.
+
+**PM2 spawns cluster workers with its own Node, not the one on your `PATH`.**
+If the PM2 daemon was started under an older Node, every worker dies the
+instant it reaches `require('node:sqlite')` — and because PM2 pipes a cluster
+worker's output through IPC, it dies before anything reaches the log, so you
+get an endless restart loop with empty log files. Fork mode hides the problem,
+since it launches a fresh `node` from `PATH`. Check with
+`ls -l /proc/$(pgrep -f 'God Daemon')/exe`; fix by pointing the `PATH` in
+`/etc/systemd/system/pm2-root.service` at a current Node, then
+`systemctl daemon-reload && pm2 save && pm2 update`.
+
+**Set a memory ceiling.** Each worker holds its own copy of the
+transliteration runtime and settles around 550–600 MB under load, so two
+workers on a 4 GB machine is comfortable and three is not. `max_memory_restart`
+restarts a worker that grows past the limit while the other keeps serving.
+
+Clustering is worth it because a heavy search occupies the event loop for its
+whole duration — `node:sqlite` is synchronous and the enrichment is CPU-bound
+JavaScript. On a single process a cheap query issued during a heavy one waits
+for it (measured: 0.07 s alone, 2.2 s behind a `dukkha` search); with two
+workers it is answered immediately.
+
 ## Telegram bot (`dgift_bot`)
 
 Requires: Python 3.9+.
