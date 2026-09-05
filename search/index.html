@@ -1117,7 +1117,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
 <!-- Верхняя панель — бренд слева, бургер справа, во ВСЕХ состояниях (главная, выдача, чтение).
      Раньше лого/ракушка стояли вплотную к полю ввода, а меню было bootstrap-выпадашкой: и то и
      другое — вид старого сайта. Теперь шапка отдельной строкой, как в приложении, а меню
-     выезжает слева (см. #dg-drawer в конце body). -->
+     выезжает шторкой (см. #dg-drawer в конце body). -->
 <!-- Шапка главной: полное лого с названием слева, бургер — в противовес ему справа. Показывается
      ТОЛЬКО на главной: в выдаче и в чтении вывеска не нужна, там от знака остаётся одна ракушка
      внутри поля (см. .dg-shell-logo ниже), а бургер стоит правее поля. -->
@@ -2920,8 +2920,15 @@ $(document).ready(function() {
     var keyword = '', scope = 'default', lb = 0, la = 0, langs = 'ru,en', langsExplicit = false, langsRequested = false;
 
     function buildUrl(path, extra) {
-        var isLocal = ['localhost', '127.0.0.1'].includes(window.location.hostname);
-        var base = isLocal ? 'http://localhost:3000' + path : path;
+        // Was: hardcoded to http://localhost:3000 on localhost/127.0.0.1, left over from when
+        // the search UI (legacy PHP, port 8080) and the node API (port 3000) were two separate
+        // processes on different ports. dg-node now serves both UI and API from the same origin
+        // always, and multiple node instances (dg-light/dg-fastify, different ports) can run side
+        // by side on localhost for comparison — a hardcoded port silently sent every search
+        // request to whichever one happened to be on 3000, regardless of which one served this
+        // page, hanging in a real browser whenever that port wasn't reachable. Relative path
+        // always targets the origin (host+port) that actually served this page.
+        var base = path;
         var qs = 'q=' + encodeURIComponent(keyword) + '&scope=' + scope + '&lb=' + lb + '&la=' + la + '&langs=' + encodeURIComponent(langs) + (extra || '');
         // Система письма пали (Aksharamukha, dg-light.js) — та же настройка, что и в ридере
         // (localStorage.selectedScript из /settings/); "ISOPali" — исходная латиница, конвертация

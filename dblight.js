@@ -34,8 +34,14 @@ const excludePatterns = [
     /subjects/i,
     /terminology/i,
     /similes/i,
-    /-guide-/i,        
-    /an-introduction/i 
+    /-guide-/i,
+    /an-introduction/i,
+    // dn84 is a truncated duplicate of dn16 that ships in the SuttaCentral corpus: same title,
+    // the same "dn16:…" segment ids, and its 549 segments are byte-identical to dn16's, but with
+    // one translation instead of eight and no variants. Indexed, it shows up as a second, poorer
+    // DN16 in every result — and because the two share segment ids, each pollutes the other's
+    // quotes. It is the only such pair in the corpus (owner: "она вообще не нужна").
+    /^dn84_/i
 ];
 
 async function loadTextInfo(filePath) {

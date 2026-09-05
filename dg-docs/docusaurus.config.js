@@ -104,8 +104,11 @@ const config = {
       navbar: {
         title: RU_BUILD ? 'Справка Dhamma.gift' : 'Dhamma.gift Help',
         logo: {
-          // Shell (shankha), not a house — same "home" mark the main app already uses
-          // (search/index.html .dg-shell-logo / dg-go-home), owner's explicit convention.
+          // Shell (shankha), not the diamond mark used elsewhere in the docs (breadcrumb
+          // Home icon) — owner: this one specifically is the "go back to the live app" link
+          // (see fixBrandLogoHref() in langSwitch.js below), so it keeps matching the main
+          // app's own "home" icon (search/index.html .dg-shell-logo / dg-go-home) rather than
+          // the diamond, which is only a docs-site brand mark, not a live-site affordance.
           // Copied into dg-docs/static/img/ — this build is served in isolation under its
           // own baseUrl, it never sees the main app's /assets/ mount at runtime.
           alt: 'Dhamma.gift',

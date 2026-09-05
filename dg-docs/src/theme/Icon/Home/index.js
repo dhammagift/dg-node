@@ -1,8 +1,8 @@
 import React from 'react';
 import useBaseUrl from '@docusaurus/useBaseUrl';
-// Shell (shankha), not a house — owner's convention, same mark as the navbar logo
-// (docusaurus.config.js) and the main app's own "home" icon (search/index.html).
+// Diamond mark, same as the navbar logo (docusaurus.config.js) — kept in sync so this
+// breadcrumb "home" icon and the navbar logo always match.
 export default function IconHome(props) {
-  const src = useBaseUrl('img/dgsankhaonly.png');
+  const src = useBaseUrl('img/diamond-logo.png');
   return <img src={src} alt="" {...props} />;
 }

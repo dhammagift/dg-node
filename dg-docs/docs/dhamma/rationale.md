@@ -5,21 +5,36 @@ sidebar_label: Rationale
 ---
 
 import SiteLink from '@site/src/components/SiteLink';
+import PageTools from '@site/src/components/PageTools';
 import AlbumartSamadhi from '@site/static/img/albumart-samadhi-nobg.png';
 
 # Rationale
 
 <img src={AlbumartSamadhi} alt="Rationale" className="dg-hero-image" />
 
-*The detailed reasoning and examples behind the [Principles of Translation](/principles). This page is translated from the Russian original, which is kept more up to date and contains a few additional examples — see the <SiteLink to="/ru/docs/rationale">Russian version</SiteLink>.*
+<PageTools />
+
+*The detailed reasoning and examples behind the [Principles of Translation](/principles).*
 
 ## Issues with Contextual Translation
 
+### Systematic Translation
+
 To avoid confusion, the following terms are used: **Systematic Translation (Consistent Terminology)** is an approach strictly grounded in the direct definitions of terms found within the primary sources themselves (the Suttas and Vinaya). It resolutely adheres to the original text's "internal glossary." The verified meaning is applied consistently and universally across the entire corpus, preserving the underlying logic, coherence, and original structure of the Teaching. For any given Pali concept, the closest possible equivalent — a single English word or a word cluster — is selected. While systematic translation is not always feasible, it is the preferred method wherever possible.
+
+### Contextual Translation
 
 **Contextual Translation** is an approach where the strict definitions provided by the primary sources are sidelined or ignored entirely. Consequently, the translation of a single word can vary drastically from one text to another. In these cases, the choice of terminology is driven not by the original's internal logic and glossary, but by established tradition, the translator's stylistic preferences, subjective interpretation, or the expectations of the audience.
 
+A related error is **heuristic, non-adaptive translation**: once a rendering is picked, it gets locked in and is never revisited, even after contexts turn up that call for a different word.
+
+### "Fully" Understood, Not Quite Full
+
+**Example:** `Pariññāta` is usually rendered as "fully understood." The choice looks heuristic, made without accounting for the form `pariññātantaṁ`. That creates a logical snag: if *pariññāta* already means "fully understood," then *pariññātantaṁ* would have to mean "understood even more fully" or "fully understood, for good" — leaving the original "fully" not actually full. This points to the need to revisit the initial rendering in light of the word's full range of use across the corpus.
+
 Contextual translation was an appropriate path of least resistance for primary text translations when there were no English translations at all — but a number of problems arose as a result, including fundamental ones.
+
+### The Effect of Contextual Translation
 
 **A case in point:** in an imaginary text, word X is translated as "flying fox"; in another, word X is translated as "polo mallet." Contextual translation led to the word "bat" losing both its meanings, or acquiring unnecessary additional connotations.
 
@@ -33,6 +48,8 @@ And the second case:
 "But he agrees to have them **rub, massage**, bathe, knead him."
 
 `ucchādana` (translated as "deformation" and "rubbing") — as with the word "bat" in the example above, the word's covering-related sense (smearing, covering, including as concealment — appropriate for the case of unreliability and disintegration) acquired an inappropriate meaning here, although it could have been verified and clarified. `parimaddana` (abrasion, massage) — a general word such as "kneading" (something being crumpled) would have been more appropriate.
+
+### Dukkha
 
 **Example 2, a fundamental problem:**
 `dukkha` — translated sometimes as pain, sometimes as suffering,[^1] led to the cause (pain) becoming less important, and the consequence (suffering) becoming the main goal of Liberation.
@@ -56,6 +73,8 @@ And what, friends, is "suffering" (discontent, dissatisfaction)? That which, fri
 There is no definition of dukkha (pain) as "suffering" anywhere in the Suttas or Vinaya — on the contrary, "suffering" (*domanassa*) is defined through the concept of "mental" pain (*dukkha*).
 
 In the case of bodily pain-discomfort, contextual translation was not even needed, since the word "pain" already has a meaning even more suitable than "suffering." In a figurative sense, "pain" is a problem, something requiring a solution, without the hyperbolic "loudness" of the word "suffering" — as in "this issue is my long-standing pain." The word "pain" thus covers all the necessary contexts and preserves the priority of bodily sensation over the reaction to that sensation (more on this below).
+
+### Anta
 
 There are also fundamental problems arising from ignoring context, as with the word `anta` — end, edge, boundary, threshold, limit — which is erroneously translated, and continues to be translated, as "extreme," even contrary to the context of the very passage where it is so translated, not to mention other occurrences where such a meaning is entirely inapplicable:
 
@@ -104,7 +123,13 @@ Based on this principle, bodily pain-discomfort can be understood to have always
 
 The concept of Semantic Divergence (shift, mismatch) describes cases more subtle than false cognates[^2] and "false friends of the translator" — where a pair of words in two languages does have a genuinely similar meaning and is treated as equivalent, but the words have different semantic cores and cultural overtones, so native speakers of each language perceive them differently.
 
-Example: *Happiness* (English) — a calm state of satisfaction, not necessarily a state of euphoria, ecstasy, or exaltation. *Счастье* (Russian) — an exalted experience of fullness, meaning of being, delight, and the highest degree of satisfaction. This is about the meaning of the words themselves, not the state of any particular person: for illustration only, happiness might be described as roughly 80% satisfaction/contentment and 20% intensive, vivid experience, whereas *счастье* is the reverse — an emotionally loud state 80% of the time, with 20% peace and measured being, if that is included in the sense of the word at all.
+Example: *Happiness* (English) — a calm state of satisfaction, not necessarily a state of euphoria, ecstasy, or exaltation. *Счастье* (Russian) — an exalted experience of fullness, meaning of being, delight, and the highest degree of satisfaction.
+
+### Bodily Pleasant Feeling, or Happiness?
+
+This is about the meaning of the words themselves, not the state of any particular person: for illustration only, happiness might be described as roughly 80% satisfaction/contentment and 20% intensive, vivid experience, whereas *счастье* is the reverse — an emotionally loud state 80% of the time, with 20% peace and measured being, if that is included in the sense of the word at all.
+
+#### Bodily Pleasant Feeling and the Mental One
 
 That is, the Pali word *somanassa* could, with a stretch, be described by the word *happiness* — but the word *счастье* would be inappropriate and contradictory, not to mention the word *sukha*, which has a fundamental meaning as the opposite of *dukkha* and is defined in the suttas as bodily pleasant:
 
@@ -124,11 +149,26 @@ And what, monks, is the faculty of satisfaction? That which, monks, is mental pl
 
 With happiness the problem is as fundamental as with dukkha, though due to contextual translation the reader less often encounters *sukha* translated as bodily pleasant feeling. With *taṇhā* the case is more severe, and the problem larger, since the reader has no way to learn that *taṇhā* is not "thirst."
 
+### If Taṇhā Is Thirst, a Lot Doesn't Add Up
+
 *Taṇhā* (Pali) or *tṛṣṇā* (Sanskrit) can indeed denote clinging, sticking, stickiness, grasping, and even a need to drink — but these are phenomena that can be pleasant, light, agreeable, and desirable, including in a figurative sense. Whereas "thirst" in English is a "loud" and mostly negative concept, even when used positively, as in "thirst for knowledge" or "thirst for travel" — the word itself is being discussed here, not whether wanting knowledge is good or not.
+
+### Emotional Divergence
 
 <SiteLink to="/read/?q=sn56.11&s=ta%E1%B9%87h%C4%81#4.4">sn56.11</SiteLink> — if *taṇhā* were a full equivalent of the word "thirst," it should be either an unpleasant experience of dryness and dehydration, or a strong, often passionate striving, need, or craving, sharply focused on the result (thirst for life — preserving life and its quality at any cost; thirst for knowledge — the desire to obtain information or experience without regard for other benefits). But the definition of the Second Noble Truth states that *taṇhā* **is accompanied** (*sahagata*, literally "goes together with") by joy-pleasure and passion-enchantment — not "pursues joy and passion," as if lacking them, nor "connected with them," as a potential outcome upon obtaining them, but as if they were already present in the current experience. Judging by the metaphors of one exhausted by heat and thirst, *tasinā* would fit that case better (see below).
 
 *Tatratatrābhinandinī* — delighting here-and-there, now this, now that — is inconsistent with the strong, one-directional, result-focused nature of the English word "thirst." A word like "wanting" would better convey this moderate, even pleasant, sense of desire — though that creates its own problem: both "thirst" and "wanting" produce a pleonasm when translating the common compound *kāma-taṇhā*, since *kāma* already means "desire" or "wanting," yielding either the redundant "desire-thirst" or the tautological "wanting-wanting."
+
+### Translating Taṇhā as "Thirst" Undermines the Second Noble Truth
+
+An even deeper and more serious problem: rendering and understanding *taṇhā* as "thirst" makes the Second Noble Truth untrue. Here is why: whichever approach is used, systematic or contextual, *dukkha* either means bodily pain or includes it — this follows, for instance, from dn22, mn141, and other texts:
+
+```
+soka-parideva-dukkha-domanass-upāyāsā-pi dukkhā
+```
+sorrow, lamentation, pain, displeasure, and despair are painful too.
+
+Clearly, "thirst" (a strong desire or urge) cannot be the source of all bodily pain. Pain from a long walk or from sitting still, for example, arises on its own and has nothing to do with whether any desire is present.
 
 An example of a more accurate and appropriate — though contextual, not systematic — translation of *taṇhā* than "thirst" can be found in the Chinese Taishō Tripiṭaka, where *taṇhā* is rendered as "love" (愛), as in "I love you" (我爱你, simplified Chinese):
 
@@ -137,6 +177,12 @@ An example of a more accurate and appropriate — though contextual, not systema
 > ([machine translation of the passage](https://dharmamitra.org/?target_lang=english-explained&input_sentence=%E4%BD%95%E8%AC%82%E8%8B%A6%E7%BF%92%EF%BC%9F%E8%AC%82%E5%BE%9E%E6%84%9B%E6%95%85%E8%80%8C%E4%BB%A4%E5%BE%A9%E6%9C%89%E6%A8%82%E6%80%A7%EF%BC%8C%E4%B8%8D%E9%9B%A2%E5%9C%A8%E5%9C%A8%E8%B2%AA%E6%86%99%EF%BC%8C%E6%AC%B2%E6%84%9B%E3%80%81%E8%89%B2%E6%84%9B%E3%80%81%E4%B8%8D%E8%89%B2%E4%B9%8B%E6%84%9B%EF%BC%8C%E6%98%AF%E7%BF%92%E7%82%BA%E8%8B%A6%E3%80%82%E4%BD%95%E8%AC%82%E8%8B%A6%E7%9B%A1%EF%BC%9F%E8%AC%82%E8%A6%BA%E5%BE%9E%E6%84%9B%E5%BE%A9%E6%9C%89%E6%89%80%E6%A8%82%EF%BC%8C%E5%A9%AC%E5%BF%B5%E4%B8%8D%E5%8F%97%EF%BC%8C%E4%B8%8D%E5%BF%B5%E7%84%A1%E9%A4%98%E7%84%A1%E5%A9%AC%EF%BC%8C%E6%8D%A8%E4%B9%8B%E7%84%A1%E5%BE%A9%E7%A6%AA%EF%BC%8C%E5%A6%82%E6%98%AF%E7%82%BA%E7%BF%92%E7%9B%A1%E3%80%82), [T0109](https://suttacentral.net/t109/lzh/taisho?lang=en&reference=none&highlight=false))
 
 By setting aside the semantic fields of clinging, stickiness, dryness, or thirsting-for-liquid, the translators nevertheless preserved what matters most — the lightness of the concept and its association with joy-passion. In English "love" is somewhat closer to *taṇhā* than "thirst," especially in its connotations of desire or craving, though it still overstates the emotional positivity of the term.
+
+### Taṇhā Is Clinging, Upādāna Is Sustaining — Not the Other Way Around
+
+Translating *taṇhā* as "thirst" and *upādāna* as "clinging" builds a mistaken sequence, as if desire arises first and clinging follows it. But even a faint desire is impossible without some prior clinging, some holding onto experience — not to mention bodily pain, which in most cases has nothing to do with desire at all. You cannot want something without first stopping on it, holding onto it. Clinging sits further upstream than desire, let alone thirst.
+
+*Upādāna* literally means holding, sustaining, feeding a process. It is not "clinging" itself — it denotes what sustains, feeds, and reinforces clinging that already exists. A more accurate rendering: *taṇhā* — clinging; *upādāna* — sustaining, holding — keeps the causal chain intact.
 
 ## Issues with Sanskritocentrism
 
@@ -178,6 +224,7 @@ With this in mind, in cases where Pali texts genuinely lack context or examples,
      - <SiteLink to="/read/?q=an4.199&s=ta%E1%B9%87ha#2.2">an4.199</SiteLink> — the phenomena listed here are so subtle that thirst could, if anything, be their result; calling "I am" and its further extensions "thirst" or currents thereof, in the sense of an "acute need for something," is very difficult — this passage concerns subtle, fundamental states inherent even in beings devoid of "thirst" in the ordinary sense of the word.
      - <SiteLink to="/read/?q=an4.9&s=ta%E1%B9%87ha#2.1">an4.9</SiteLink> — thirst is not the source of pain, but either one type of pain, or conversely a striving to stop something unpleasant. Otherwise thirst for water would be the cause of the unpleasant sensation of dryness — but on the contrary, thirst as the striving to drink is the *result* of the unpleasant sensation of dryness.
      - <SiteLink to="/read/?q=an6.61&s=ta%E1%B9%87ha#12.4">an6.61</SiteLink> — the phenomena listed here, including *phasso*, can be so subtle that there can be no talk of thirst in either a figurative or a direct sense, especially at moments of "quenched thirst" — yet these phenomena remain stitched together and held, whether or not there is "strong wanting."
+     - <SiteLink to="/read/?q=thag8.3#8.3">thag8.3</SiteLink> — `Sabbaṁ taṇhaṁ visosetvā`. Another oxymoron, "drying up thirst," on top of the "thirst is moisture" one above, instead of the logical "thirst is already dryness."
 
    In Pali texts, *taṇhā* has a more complex, subtler, and less "loud" meaning than the English word "thirst," in either its direct or figurative sense.
 3. `kāma`:

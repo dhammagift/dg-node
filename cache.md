@@ -1,10 +1,34 @@
 # Кеш-политика: версионирование статики + дифференцированный Cache-Control
 
-Статус: **план/дизайн, не внедрено**. Этот документ фиксирует решение,
-чтобы не передумывать заново при реализации (и при возможном переходе
-Express → Fastify — см. блок "Fastify" в конце). Когда политика будет
-реально внедрена в код, статус этого файла нужно поменять на done в TODO.md
-(см. низ файла).
+Статус: **внедрено** (2026-09-05) — во всех 4 файлах: `dg-light.js` и
+`dg-fastify.js`, в `main` (`/var/www/html/nodejs`) и `indep`
+(`/var/www/html/nodejs-indep`). Итоговый план реализации и уточнённые с
+владельцем детали — `/root/.claude/plans/merry-crafting-church.md`.
+
+Уточнения, принятые при внедрении (см. план для полного контекста):
+- Легаси JS/CSS (не версионируется) — сутки вместо изначальных 60 сек.
+- Общий фолбэк (`.html` вне `sendVersionedHtml` + некатегоризированное) —
+  600 минут вместо 60 сек.
+- `/config/tts-config.json`/`/config/sync-config.json` (есть только в
+  indep) — второстепенный тир, 10 минут.
+- В Fastify `@fastify/static`'s `setHeaders` вызывается с Fastify reply
+  (`reply.header(...)`), НЕ с сырым Node `res` — вопреки исходному
+  предположению ниже ("byte-identical") оказалось не так (проверено
+  эмпирически: `res.setHeader is not a function`, сервер падал). В
+  Fastify-файлах `staticCacheHeaders`/`sendVersionedHtml` используют
+  `reply.header()`, не `res.setHeader()`.
+- **ETag добавлен в `sendVersionedHtml` во всех 4 файлах** (после
+  внедрения, по живой проверке владельца через сторонний
+  cache-header-чекер на test.dhamma.gift): `max-age=0, must-revalidate`
+  без валидатора (`ETag`/`Last-Modified`) означает, что КАЖДАЯ
+  ревалидация — это полное скачивание страницы заново, 304 никогда не
+  возвращается. ETag = md5 от итогового (уже переписанного, с `?v=`)
+  HTML — меняется, когда меняется любой версионированный ассет на
+  странице, не только сам HTML-файл. Проверяется `If-None-Match` →
+  реальный 304 без тела. `sendVersionedHtml` теперь принимает `req`
+  первым параметром (`sendVersionedHtml(req, res, path, status)` в
+  Express / `sendVersionedHtml(req, reply, path, status)` в Fastify) —
+  все вызовы во всех 4 файлах обновлены.
 
 ## Проблема
 
@@ -287,12 +311,36 @@ GET-эндпоинтов в `dg-light.js` нет вообще, поэтому т
 
 ## TODO
 
-- [ ] Внедрить §1-2 (версионирование + `sendVersionedHtml`) в `dg-light.js`
-- [ ] Внедрить §3 (`staticCacheHeaders` на всех 15 static-маунтах)
-- [ ] Внедрить §4 (Cache-Control на `/search*`, `/api/text`, `/api/nav`, `/sw.js`)
-- [ ] Внедрить §5 (`no-store` на `/assets/lbl-save.php`)
-- [ ] Проверить живьём: `curl -I` на все категории + правка файла без
-      рестарта сервера (доказать, что lazy-инвалидация по mtime реально
-      работает) + визуальная проверка `/`, `/kacchapa`, `/dn22:1.1`,
-      `/settings/`, `/pm.php` в браузере
-- [ ] Отметить done в TODO.md после проверки, статус этого файла — тоже
+- [x] Внедрить §1-2 (версионирование + `sendVersionedHtml`) в `dg-light.js`
+      (main + indep) и `dg-fastify.js` (main + indep)
+- [x] Внедрить §3 (`staticCacheHeaders` на всех static-маунтах — 13 в
+      `dg-light.js`, 11 в `dg-fastify.js`, где `/assets`/`/read` схлопывают
+      override+fallback в один `root`-массив)
+- [x] Внедрить §4 (Cache-Control на `/search*`, `/api/text`, `/api/nav`,
+      `/sw.js`, второстепенный тир на `/api/toc`, `/openapi.json`,
+      `/manifest.json` и т.п.) — в Express per-handler `res.set(...)`, в
+      Fastify один `onSend`-хук по префиксам пути (заменил временный
+      плоский 60с-хук)
+- [x] Внедрить §5 (`no-store` на `/assets/lbl-save.php`)
+- [x] Проверено живьём на каждом из 4 файлов (сначала на отдельном
+      scratch-порту, прод — `dg-light.js` в main — в последнюю очередь,
+      только после подтверждения на indep): `curl -I` по всем категориям,
+      правка файла без рестарта сервера (хеш меняется, инвалидация по
+      mtime реально работает), override-precedence (`/assets`
+      public/overrides всё ещё побеждает siteroot-фолбэк), POST
+      `/assets/lbl-save.php` продолжает писать файл с `no-store`,
+      визуальная проверка в браузере (`playwright-cli`) — `/kacchapa`,
+      `/dn22` — 0 ошибок в консоли, все версионированные ассеты 200.
+      Прод (`dhamma.gift`, main `dg-light.js`) дополнительно проверен
+      через реальный путь Apache-прокси.
+
+**Отдельно найдено при внедрении, НЕ являлось частью этой задачи**:
+`dg-fastify.js` в indep содержит недоделанный SQLite/FTS5 поисковый бэкенд
+(`dg.db`, `build-search-db.js`) из более ранней, не связанной с кешем
+сессии — `openSearchDb()` определена, но нигде не вызывается, `/search`
+падает 500. По просьбе владельца не трогалось ("отдельная задача"). Из-за
+этого `dg-fastify.js` (indep) НЕ развёрнут как живой процесс на
+test.dhamma.gift — там по-прежнему `dg-light.js` (с уже внедрённым кешем).
+`dg-fastify.js` (main) этой проблемы не имеет — `/search` там работает
+штатно, но тоже не развёрнут как живой процесс (только `dg-light.js`
+обслуживает реальный трафик main).
