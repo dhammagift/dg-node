@@ -849,14 +849,27 @@ try {
 // express.static but a hard registration error for @fastify/static, which requires root to be a
 // directory).
 const mountedPrefixes = new Set(['assets', 'read']);
+// Skips are reported, not silent. statSync() follows symlinks, so an entry whose target has gone
+// away (siteroot/mobile-data -> a dist/ directory that was never built, say) is indistinguishable
+// here from a broken one — it just never gets a route, and every request under that prefix falls
+// through to the 404 handler and looks like a missing FILE rather than a missing MOUNT. That cost
+// real debugging time; one line at startup makes it obvious. Note the list is built ONCE: a new
+// entry in siteroot/, or an existing one repointed at something that now exists, needs a restart.
+const skippedPrefixes = [];
 for (const name of siteRootEntries) {
     if (mountedPrefixes.has(name)) continue;
     const target = path.join(SITEROOT, name);
     let isDir = false;
     try { isDir = fsSync.statSync(target).isDirectory(); } catch (e) {}
-    if (!isDir) continue;
+    if (!isDir) { skippedPrefixes.push(name); continue; }
     app.register(fastifyStatic, { root: target, prefix: `/${name}`, setHeaders: staticCacheHeaders, decorateReply: false });
     mountedPrefixes.add(name);
+}
+if (skippedPrefixes.length) {
+    console.warn(
+        `siteroot: NOT mounted (target missing or not a directory) — requests under these ` +
+        `prefixes 404 until the target exists AND the server is restarted: ${skippedPrefixes.join(', ')}`
+    );
 }
 // ru/memo, ru/login — унаследованные от легаси языковые алиасы (тот же контент ещё и под /ru/).
 // Это не отдельная тулза в siteroot/, а второй URL для уже примонтированной — оставлены явно.
