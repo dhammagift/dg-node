@@ -54,13 +54,13 @@
     },
     "help": {
       "label": "Help",
-      "desc": "Dhamma approach & Help",
+      "desc": "Dhamma Approach and How To",
       "icon": "help",
       "modal": "help"
     },
     "external": {
       "label": "External",
-      "desc": "National canons, Pātimokkha, other sites",
+      "desc": "National Editions, Patimokkha, other",
       "icon": "globe",
       "mega": true,
       "groups": [
@@ -857,7 +857,7 @@
     },
     "external": {
       "label": "Иностранные",
-      "desc": "Национальные каноны, Патимоккха, зарубежные сайты",
+      "desc": "Национальные каноны, Патимоккха, др. сайты",
       "icon": "globe",
       "mega": true,
       "groups": [
