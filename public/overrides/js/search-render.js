@@ -552,30 +552,71 @@ window.DgSearchRender = (function () {
         return url + '?' + params.join('&');
     }
 
-    // Mirrors dg-light.js's foldSearchPattern — а server-side "kacchapam" match found via the
-    // ṁ/ṃ fold must still highlight client-side, or the row would show up with nothing bolded.
+    // Highlighting has to fold exactly the way the search index folds, or a row comes back with
+    // nothing bolded: the server's FTS index strips every diacritic (ā→a, ṁ→m, ñ→n, ṇ→n) and
+    // maps ё→е, so a search for "kacchapa" legitimately matches "kacchapānaṁ". Only the matched
+    // run is bolded, not the whole word — "kacchap" bolds <b>kacchap</b>ānaṁ.
     var HIGHLIGHT_METACHARS = /[.*+?^${}()|[\]\\]/;
-    var HIGHLIGHT_FOLD_GROUPS = [['е', 'ё'], ['m', 'ṁ', 'ṃ']];
-    function foldHighlightPattern(word) {
-        if (HIGHLIGHT_METACHARS.test(word)) return word;
-        var pattern = '';
-        for (var i = 0; i < word.length; i++) {
-            var ch = word[i];
-            var group = HIGHLIGHT_FOLD_GROUPS.find(function (g) { return g.indexOf(ch.toLowerCase()) !== -1; });
-            pattern += group ? '[' + group.join('') + ']' : ch;
+
+    // Length-preserving on purpose: offsets found in the folded string address the very same
+    // characters in the original, so the bold tags can be wrapped around the real text (with its
+    // diacritics intact) rather than around the folded copy.
+    var foldCharCache = {};
+    function foldChar(ch) {
+        var folded = foldCharCache[ch];
+        if (folded === undefined) {
+            var stripped = ch.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
+            folded = stripped.length === 1 ? stripped : ch.toLowerCase();
+            if (folded.length !== 1) folded = ch;
+            if (folded === 'ё') folded = 'е';
+            foldCharCache[ch] = folded;
         }
-        return pattern;
+        return folded;
+    }
+
+    function foldForHighlight(text) {
+        return text.replace(/[A-Z\u0080-\uFFFF]/g, foldChar);
+    }
+
+    function escapeForRegExp(text) {
+        return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
+    // A keyword with regex metacharacters is the power-user path — matched against the raw text,
+    // exactly as the server matches it.
+    function highlightMatcher(highlightWord) {
+        var isRegex = HIGHLIGHT_METACHARS.test(highlightWord);
+        var source = isRegex ? highlightWord : escapeForRegExp(foldForHighlight(highlightWord));
+        try {
+            return { isRegex: isRegex, re: new RegExp(source, 'gi') };
+        } catch (e) {
+            return null;
+        }
     }
 
     function highlightText(text, highlightWord) {
         if (!highlightWord || !text) return text;
-        var regexHighlight = new RegExp(foldHighlightPattern(highlightWord), 'gi');
-        return text.replace(regexHighlight, function (match) { return '<b class="match finder">' + match + '</b>'; });
+        var matcher = highlightMatcher(highlightWord);
+        if (!matcher) return text;
+        var haystack = matcher.isRegex ? text : foldForHighlight(text);
+        var out = '';
+        var last = 0;
+        var hit;
+        matcher.re.lastIndex = 0;
+        while ((hit = matcher.re.exec(haystack)) !== null) {
+            if (hit[0].length === 0) { matcher.re.lastIndex++; continue; }
+            out += text.slice(last, hit.index) +
+                '<b class="match finder">' + text.slice(hit.index, hit.index + hit[0].length) + '</b>';
+            last = hit.index + hit[0].length;
+        }
+        return last === 0 ? text : out + text.slice(last);
     }
 
     function textHasMatch(text, highlightWord) {
         if (!highlightWord || !text) return false;
-        return new RegExp(foldHighlightPattern(highlightWord), 'i').test(text);
+        var matcher = highlightMatcher(highlightWord);
+        if (!matcher) return false;
+        return matcher.re.test(matcher.isRegex ? text : foldForHighlight(text));
     }
 
     // Отчёт с группировкой по суттам (текущий, основной вид). container — стабильный
