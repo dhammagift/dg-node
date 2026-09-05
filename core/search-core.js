@@ -1022,9 +1022,34 @@ async function getFullTextData(suttaId, targetLangs, explicitTranslators, multiF
     return buildTextDataFromBase(base, suttaId, targetLangs, explicitTranslators, multiForLangs);
 }
 
+// Previous/next sutta in corpus order, honouring the search scope. Lives here rather than in the
+// route because the app needs the same answer and the walk depends on skeletonDB's key order,
+// which is this module's own state — reproducing it outside would be a second implementation of
+// the one thing that must not drift: what "the next sutta" means.
+function navFor(suttaId, scope) {
+    const dbKeys = Object.keys(skeletonDB);
+    const currentIndex = dbKeys.indexOf(suttaId);
+    if (currentIndex === -1) return null;
+
+    const allowedPrefixes = resolveAllowedPrefixes(scope);
+    const inScope = (i) => matchesScope(skeletonDB[dbKeys[i]], dbKeys[i], allowedPrefixes);
+
+    let prevIndex = -1;
+    for (let i = currentIndex - 1; i >= 0; i--) { if (inScope(i)) { prevIndex = i; break; } }
+    let nextIndex = -1;
+    for (let i = currentIndex + 1; i < dbKeys.length; i++) { if (inScope(i)) { nextIndex = i; break; } }
+
+    const toNavEntry = (slug) => slug ? { slug, title: skeletonDB[slug].title || '' } : null;
+    return {
+        prev: prevIndex !== -1 ? toNavEntry(dbKeys[prevIndex]) : null,
+        next: nextIndex !== -1 ? toNavEntry(dbKeys[nextIndex]) : null,
+    };
+}
+
 module.exports = {
     init,
     setSkeleton,
+    navFor,
     DEFAULT_SCOPE_PREFIXES,
     INTERLINEAR_TRANSLATOR_KEYS,
     MODE_TABLE,

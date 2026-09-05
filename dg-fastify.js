@@ -43,6 +43,7 @@ const {
     getSuttaBaseData,
     langFilterSql,
     matchesScope,
+    navFor,
     resolveAllowedPrefixes,
     sortSuttaResults,
     sqlRowsIn,
@@ -1133,23 +1134,9 @@ app.get('/api/text/:suttaId', async (req, res) => {
 // пользователь не застревает в исключённом тексте, а разумно попадает на ближайший подходящий.
 app.get('/api/nav/:suttaId', (req, res) => {
     const suttaId = req.params.suttaId.toLowerCase();
-    const dbKeys = Object.keys(skeletonDB);
-    const currentIndex = dbKeys.indexOf(suttaId);
-    if (currentIndex === -1) return res.code(404).send({ error: `Unknown sutta id: ${suttaId}` });
-
-    const allowedPrefixes = resolveAllowedPrefixes(req.query.scope);
-    const inScope = (i) => matchesScope(skeletonDB[dbKeys[i]], dbKeys[i], allowedPrefixes);
-
-    let prevIndex = -1;
-    for (let i = currentIndex - 1; i >= 0; i--) { if (inScope(i)) { prevIndex = i; break; } }
-    let nextIndex = -1;
-    for (let i = currentIndex + 1; i < dbKeys.length; i++) { if (inScope(i)) { nextIndex = i; break; } }
-
-    const toNavEntry = (slug) => slug ? { slug, title: skeletonDB[slug].title || '' } : null;
-    res.send({
-        prev: prevIndex !== -1 ? toNavEntry(dbKeys[prevIndex]) : null,
-        next: nextIndex !== -1 ? toNavEntry(dbKeys[nextIndex]) : null
-    });
+    const nav = navFor(suttaId, req.query.scope);
+    if (!nav) return res.code(404).send({ error: `Unknown sutta id: ${suttaId}` });
+    res.send(nav);
 });
 
 app.get('/search', searchHandler);
