@@ -233,6 +233,16 @@
   "results": {
     "textsAndWord": "текстов и",
     "matchesInWord": "совпадений в",
+    "textsForms": [
+      "текст",
+      "текста",
+      "текстов"
+    ],
+    "matchesForms": [
+      "совпадение",
+      "совпадения",
+      "совпадений"
+    ],
     "scope4Nikaya6Kn": "4 Никаи + 6 КН",
     "scope4Nikaya": "4 Никаи",
     "scopeAll": "весь корпус",

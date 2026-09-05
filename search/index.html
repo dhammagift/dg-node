@@ -940,6 +940,17 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
        собственных line-height отступов h3) — владелец попросил слегка сузить. */
     /* Owner: too big at Bootstrap's default h3 size (28px) for a results-count subtitle. */
     .resultheader { margin-top: 4px; margin-bottom: 16px; font-size: 1.25rem; font-weight: 500; }
+    /* Заголовок из трёх частей: слово — счётчики — звёздочка/варианты, в одну строку,
+       переносится на узком экране. Слово — жирно и чуть крупнее; счётчики — приглушённые,
+       обычным весом, размером основного текста. */
+    .resultheader { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 12px; row-gap: 2px; }
+    .rh-keyword { font-weight: 700; font-size: 1.4rem; letter-spacing: 0.01em; }
+    .rh-stats { font-weight: 400; font-size: 1rem; color: var(--bs-secondary-color, #6c757d); }
+    .resultheader .scope-info-star { margin-left: -8px; font-size: 1.1rem; align-self: center; }
+    /* #variants-hint внутри заголовка — обычный инлайновый элемент строки, без своей
+       1600px-колонки (её правило ниже рассчитано на отдельную строку под заголовком). */
+    .resultheader #variants-hint { display: inline; max-width: none; margin: 0; padding: 0; font-size: 1rem; font-weight: 400; align-self: center; }
+    .resultheader #variants-hint svg { color: var(--bs-secondary-color, #6c757d); }
     /* Owner: multiple translations in a citation ran together into one clump. The shared
        br.styled (assets/css/table.css, 0.8em) is used elsewhere (reader) too — scoped here to
        just the search-results citation column instead of widening it globally. */
@@ -3431,6 +3442,22 @@ $(document).ready(function() {
 
     function same(text) { return { short: text, full: text }; }
 
+    // "7 текстов" / "1 текст" / "2 текста": forms = [one, few, many] (ru), [one, many] (en),
+    // or a single form (th). Rule chosen by how many forms the language config supplies.
+    function pluralCount(n, forms) {
+        if (!Array.isArray(forms) || !forms.length) return String(n);
+        var idx;
+        if (forms.length >= 3) {
+            var m10 = n % 10, m100 = n % 100;
+            idx = (m10 === 1 && m100 !== 11) ? 0 : (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) ? 1 : 2;
+        } else if (forms.length === 2) {
+            idx = n === 1 ? 0 : 1;
+        } else {
+            idx = 0;
+        }
+        return n + ' ' + forms[idx];
+    }
+
     // Заголовок результатов + видимость ссылки на варианты — вызывается один раз из
     // initSearchApp() после fast=1 (числа там уже полные и финальные — см. TODO.md, нюансы по
     // "новому багу 1"), и затем повторно на каждую живую смену языка (syncSiteLanguage) с теми
@@ -3441,20 +3468,33 @@ $(document).ready(function() {
         let qStr = json.metadata.query || "";
         let capitalizedQuery = qStr ? qStr.charAt(0).toUpperCase() + qStr.slice(1) : "";
 
-        let head = `${capitalizedQuery} ${json.metadata.totalFiles} ${dgT('results.textsAndWord', 'texts and')} ${json.metadata.totalMatches} ${dgT('results.matchesInWord', 'matches in')} `;
-        let newTitle = head + scope.short;
+        // Owner (2026-09-05): the header used to be one sentence — "Kacchapa 7 texts and 8
+        // matches in 4 Nikayas + 6 KN books *". Now three visual parts: the keyword on its own
+        // (bold, as typed), the counts as a muted "7 texts · 8 matches" (properly pluralised —
+        // results.textsForms/matchesForms in lang_*.json), and the search area moved entirely
+        // into the star's tooltip (4 Nikāyas listed by name, KN books listed) instead of a
+        // "4 Nikayas + 6 KN" stub in the sentence. The variants link joins the same line.
+        var stats = pluralCount(json.metadata.totalFiles, dgT('results.textsForms', ['text', 'texts'])) +
+            ' · ' + pluralCount(json.metadata.totalMatches, dgT('results.matchesForms', ['match', 'matches']));
+        var newTitle = qStr + ' · ' + stats;
 
         document.title = newTitle + " - Dhamma.gift";
-        // Состав области поиска доступен ПРЯМО ЗДЕСЬ, звёздочкой: заголовок называет область
-        // коротко ("4 Никаи + 6 КН", "выбранных разделах (14)"), а что именно в неё входит —
-        // видно по наведению или тапу на "*", без похода в настройки. Звёздочку показываем
-        // всегда, когда полный список отличается от короткой подписи ИЛИ подпись обобщённая
-        // (в обоих случаях по самому заголовку книги не перечислены). Ставим через DOM, а не
-        // .text() с разметкой: заголовок собирается из пользовательского запроса.
+        // Заголовок собирается из пользовательского запроса — только через DOM/textContent,
+        // никакой разметки из строки.
         var $head = $('.resultheader');
-        $head.text(newTitle);
+        $head.empty();
         $head.removeAttr('title');
-        if (scope.full !== scope.short) {
+        var kw = document.createElement('span');
+        kw.className = 'rh-keyword';
+        kw.textContent = qStr;
+        var st = document.createElement('span');
+        st.className = 'rh-stats';
+        st.textContent = stats;
+        $head[0].appendChild(kw);
+        $head[0].appendChild(st);
+        // The star is the ONLY place the search area is named now, so it is always present
+        // (before: only when the full list differed from the short label).
+        if (true) {
             var star = document.createElement('button');
             star.type = 'button';
             star.className = 'scope-info-star';
@@ -3490,8 +3530,12 @@ $(document).ready(function() {
         // клик перехватывается ниже и переключает отчёт на месте, без похода в сеть.
         let variantDiv = document.getElementById('variants-hint');
         if (variantDiv) {
+            // Same line as the header now (icon + "variants" right after the star), not a
+            // separate row under it — the node is MOVED, so the #variants-link click handler
+            // and the .d-none toggles elsewhere keep working on the same element.
+            if (variantDiv.parentNode !== $head[0]) $head[0].appendChild(variantDiv);
             if (json.metadata.hasVariantMatch) {
-                variantDiv.style.display = 'block';
+                variantDiv.style.display = 'inline';
                 $('#variants-link').attr('href', '/?q=' + encodeURIComponent(json.metadata.query) + '&scope=all&report=words#variants');
             } else {
                 variantDiv.style.display = 'none';

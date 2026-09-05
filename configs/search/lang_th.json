@@ -189,6 +189,12 @@
   "results": {
     "textsAndWord": "พระสูตร และ",
     "matchesInWord": "ที่พบ ใน",
+    "textsForms": [
+      "พระสูตร"
+    ],
+    "matchesForms": [
+      "ที่พบ"
+    ],
     "scope4Nikaya6Kn": "4 นิกาย + 6 คัมภีร์ขุททกนิกาย",
     "scope4Nikaya": "4 นิกาย",
     "scopeAll": "ทั้งพระไตรปิฎก",

@@ -41,26 +41,26 @@
   "en": {
     "read": {
       "label": "Read Pāḷi",
-      "desc": "Table of contents of the Canon",
+      "desc": "Suttas & Vinaya on the site",
       "icon": "book",
       "href": "/toc"
     },
     "history": {
       "label": "History",
-      "desc": "Recently read",
+      "desc": "Favorites, History, “4NT” window",
       "icon": "clock",
       "href": "/assets/common/history.html",
       "modal": "quick"
     },
     "help": {
       "label": "Help",
-      "desc": "How to search and read",
+      "desc": "Dhamma approach & Help",
       "icon": "help",
       "modal": "help"
     },
     "external": {
       "label": "External",
-      "desc": "Tipiṭaka, Pātimokkha, editions",
+      "desc": "National canons, Pātimokkha, other sites",
       "icon": "globe",
       "mega": true,
       "groups": [
@@ -301,7 +301,7 @@
     },
     "dicts": {
       "label": "AI & Dicts",
-      "desc": "Dictionaries, AI, translators",
+      "desc": "Pāḷi, Sanskrit, research",
       "icon": "dict",
       "mega": true,
       "groups": [
@@ -670,7 +670,7 @@
     },
     "tools": {
       "label": "Tools",
-      "desc": "Converters, timers, indexes",
+      "desc": "Uposatha, text tools, timers",
       "icon": "wrench",
       "mega": true,
       "groups": [
@@ -838,26 +838,26 @@
   "ru": {
     "read": {
       "label": "Читать Pāḷi",
-      "desc": "Оглавление канона",
+      "desc": "Сутты-Виная на сайте",
       "icon": "book",
       "href": "/toc"
     },
     "history": {
       "label": "История",
-      "desc": "Недавно прочитанное",
+      "desc": "Избранное, История, Окно «4БИ»",
       "icon": "clock",
       "href": "/ru/assets/common/history.html",
       "modal": "quick"
     },
     "help": {
       "label": "Помощь",
-      "desc": "Как искать и читать",
+      "desc": "Дхамма-подход и Справка",
       "icon": "help",
       "modal": "help"
     },
     "external": {
-      "label": "Иностран.",
-      "desc": "Типитака, Патимоккха, издания",
+      "label": "Иностранные",
+      "desc": "Национальные каноны, Патимоккха, зарубежные сайты",
       "icon": "globe",
       "mega": true,
       "groups": [
@@ -1179,7 +1179,7 @@
     },
     "dicts": {
       "label": "ИИ, Словари",
-      "desc": "Словари, ИИ, переводчики",
+      "desc": "Пали, санскрит, исследования",
       "icon": "dict",
       "mega": true,
       "groups": [
@@ -1563,8 +1563,8 @@
       ]
     },
     "tools": {
-      "label": "Инстр.",
-      "desc": "Конвертеры, таймеры, указатели",
+      "label": "Инструменты",
+      "desc": "Упосатха, работа с текстами, таймеры",
       "icon": "wrench",
       "mega": true,
       "groups": [
@@ -1723,23 +1723,23 @@
   "th": {
     "read": {
       "label": "อ่านบาลี",
-      "desc": "สารบัญพระไตรปิฎก"
+      "desc": "พระสูตร-พระวินัยบนเว็บไซต์"
     },
     "history": {
       "label": "ประวัติ",
-      "desc": "ที่อ่านล่าสุด"
+      "desc": "รายการโปรด ประวัติ หน้าต่าง «อริยสัจ 4»"
     },
     "help": {
       "label": "ช่วยเหลือ",
-      "desc": "วิธีค้นหาและอ่าน"
+      "desc": "แนวทางธรรมะและคู่มือ"
     },
     "external": {
       "label": "แหล่งอื่น",
-      "desc": "พระไตรปิฎก ปาติโมกข์ ฉบับต่างๆ"
+      "desc": "พระไตรปิฎกฉบับชาติต่างๆ ปาติโมกข์ เว็บไซต์อื่น"
     },
     "dicts": {
       "label": "AI และพจนานุกรม",
-      "desc": "พจนานุกรม AI นักแปล"
+      "desc": "บาลี สันสกฤต งานวิจัย"
     },
     "materials": {
       "label": "สื่อการเรียน",
@@ -1747,7 +1747,7 @@
     },
     "tools": {
       "label": "เครื่องมือ",
-      "desc": "ตัวแปลง นาฬิกาจับเวลา ดัชนี"
+      "desc": "วันอุโบสถ เครื่องมือข้อความ นาฬิกาจับเวลา"
     }
   }
 }
