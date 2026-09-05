@@ -1320,7 +1320,7 @@ body:not(.dg-state-home) #dg-announce { display: none; }
     /* «О проекте» — шире 560px списка плиток: поле поиска на главной 720px (.dg-hero-form ниже)
        плюс по 100px с каждой стороны (owner), там длинная цитата и ряд кнопок приложений. */
     .dg-sheet.dg-wide { width: min(920px, calc(100vw - 32px)); }
-    .dg-sheet.dg-wide .dg-sheet-body { padding: 8px 40px 32px; }
+    .dg-sheet.dg-wide .dg-sheet-body { padding: 8px 44px 40px; }
 }
 
 /* Быстрые настройки — выпадашка ПОД шестерёнкой, на любой ширине. Нижняя шторка выглядела как
@@ -2463,7 +2463,7 @@ body.dark .ui-autocomplete .autocomplete-history-icon { filter: invert(1); opaci
 }
 #dg-footer p { margin: 0; }
 /* На главной подвал держит ту же колонку, что цитата над ним (#home-howto), а не всю ширину окна. */
-body.dg-state-home #dg-footer { max-width: 720px; margin: 40px auto 6px; padding-top: 20px; }
+body.dg-state-home #dg-footer { max-width: 720px; margin: 64px auto 10px; padding-top: 28px; }
 /* Две строки слева (ссылки; копирайт) — в 720px-колонку одна строка вместе с иконками контактов
    справа не влезает. */
 .dg-footer-main { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
@@ -2504,8 +2504,8 @@ body.dg-skin-minimal .dg-footer-link:hover { color: var(--dg-accent-ink); text-d
    ============================================================================ */
 #home-howto {
     max-width: 720px;
-    margin: 52px auto 0;
-    padding-top: 36px;
+    margin: 72px auto 0;
+    padding-top: 52px;
     border-top: 1px solid var(--dg-border);
     font-family: var(--dg-font);
 }
@@ -2519,19 +2519,20 @@ body.dg-state-home #home-howto:not([hidden]) { display: block; }
     body.dg-state-home #home-howto:not(.dg-anchor-revealed) { display: none; }
 }
 .dg-intro-pali {
-    margin: 0 0 14px;
+    margin: 0 0 22px;
     font-style: italic;
     font-size: 1.35rem;
     line-height: 1.5;
     color: var(--dg-text);
 }
 .dg-intro-body {
-    margin: 0 0 12px;
+    margin: 0 0 18px;
+    max-width: 64ch;
     font-size: 1.02rem;
     line-height: 1.7;
     color: var(--dg-text-2);
 }
-.dg-intro-ref { margin: 0 0 26px; font-size: 0.9rem; color: var(--dg-text-muted); }
+.dg-intro-ref { margin: 0 0 40px; font-size: 0.9rem; color: var(--dg-text-muted); }
 body.dg-skin-minimal .dg-intro-ref a, body.dg-skin-minimal .dg-intro-ref a:visited { color: var(--dg-accent-ink); text-decoration: none; }
 body.dg-skin-minimal .dg-intro-ref a:hover { text-decoration: underline; }
 /* Памятка о переводах — зелёный блок со значком «i», как было на проде (только значок был
@@ -2556,35 +2557,35 @@ body.dg-skin-minimal .dg-intro-ref a:hover { text-decoration: underline; }
     color: var(--dg-text-2);
     white-space: pre-line;
 }
-#home-howto .dg-howto-warn { padding: 18px 22px; }
+#home-howto .dg-howto-warn { padding: 20px 24px; max-width: calc(64ch + 48px); }
 #home-howto .dg-howto-warn p { font-size: 0.95rem; }
 
 /* Шторка «О проекте» (home.js openAbout): форматирование макета — заголовки-подписи как у
    списков плиток (.dg-group-title), всё по левому краю, серая карточка памятки, круглые
    кнопки контактов; содержимое — полное, как на проде. */
-.dg-about .dg-group-title { margin: 44px 0 14px; letter-spacing: 0.1em; }
-.dg-about .dg-group-title:first-child { margin-top: 10px; }
+.dg-about .dg-group-title { margin: 56px 0 18px; letter-spacing: 0.1em; }
+.dg-about .dg-group-title:first-child { margin-top: 14px; }
 .dg-about-pali {
-    margin: 0 0 12px;
+    margin: 0 0 18px;
     font-style: italic;
     font-size: 1.25rem;
     line-height: 1.55;
     color: var(--dg-text);
 }
-.dg-about-body { margin: 0 0 10px; font-size: 1rem; line-height: 1.7; color: var(--dg-text-2); }
-.dg-about-refs { margin: 0 0 20px; font-size: 0.9rem; color: var(--dg-text-muted); }
+.dg-about-body { margin: 0 0 14px; font-size: 1rem; line-height: 1.7; color: var(--dg-text-2); }
+.dg-about-refs { margin: 0 0 28px; font-size: 0.9rem; color: var(--dg-text-muted); }
 body.dg-skin-minimal .dg-about-refs a, body.dg-skin-minimal .dg-about-refs a:visited { color: var(--dg-accent-ink); text-decoration: none; }
 body.dg-skin-minimal .dg-about-refs a:hover { text-decoration: underline; }
-.dg-about-note { margin: 0 0 16px; font-size: 1rem; line-height: 1.7; color: var(--dg-text-2); }
+.dg-about-note { margin: 0 0 22px; font-size: 1rem; line-height: 1.7; color: var(--dg-text-2); }
 .dg-about-powered {
-    margin: 18px 0 0;
+    margin: 28px 0 0;
     font-family: var(--dg-font);
     font-size: 1rem;
     color: var(--dg-text-2);
 }
 .dg-about-foot {
-    margin-top: 28px;
-    padding-top: 14px;
+    margin-top: 48px;
+    padding-top: 20px;
     border-top: 1px solid var(--dg-border);
     font-size: 0.8rem;
     color: var(--dg-text-muted);
