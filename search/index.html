@@ -4182,15 +4182,17 @@ $(document).ready(function() {
         routeFromUrl();
     });
 
-    // Полные настройки (шестерёнка) на узком экране — выезжающая шторка поверх текущей страницы
-    // вместо перехода на отдельную /settings/ (owner: "сделай чтобы настройки выезжали как меню
-    // тайлов в мобильном"). Делегированный обработчик ловит и видимую строку бургера, и скрытую
-    // #settingsButton (см. комментарий выше неё) — Alt+S (settings.js) кликает именно её. На
-    // desktop (>=768px, тот же порог, что у .dg-sheet/openMega()) — обычная навигация, без правок.
+    // Полные настройки (шестерёнка) — выезжающая шторка поверх текущей страницы вместо перехода
+    // на отдельную /settings/ (owner: "сделай чтобы настройки выезжали как меню тайлов в
+    // мобильном", позже — "и на десктопе тоже, так красивее и функциональнее"). Делегированный
+    // обработчик ловит и видимую строку бургера, и скрытую #settingsButton (см. комментарий выше
+    // неё) — Alt+S (settings.js) кликает именно её. Одно и то же поведение на любой ширине —
+    // .dg-sheet сам рисует себя иначе на десктопе (центрированная широкая карточка, не нижняя
+    // шторка), отдельная развилка здесь не нужна.
     document.addEventListener('click', function (e) {
         if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.defaultPrevented) return;
         var a = e.target.closest ? e.target.closest('a[href="/settings/"]') : null;
-        if (!a || window.innerWidth >= 768 || !window.DgHome) return;
+        if (!a || !window.DgHome) return;
         e.preventDefault();
         window.DgHome.closeDrawer();
         window.DgHome.openSettingsSheet();

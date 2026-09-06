@@ -1499,14 +1499,31 @@ body:not(.dg-state-home) #dg-announce { display: none; }
 .dg-sheet-body.dg-about #contacts {
     margin-top: auto;
 }
-/* Settings page embedded as a mobile sheet (owner: "настройки должны выезжать как меню тайлов
-   в мобильном, а не как отдельная страница") — reuses the same .dg-sheet chrome as the
-   multitool tile sheet, but hosts the real /settings/ page in an iframe instead of a rendered
-   link list, so there's exactly one settings implementation. Explicit height, not just
-   max-height like the plain .dg-sheet: a shrink-to-fit box has nothing for the iframe's
-   height:100% to fill against. Desktop stays a normal page navigation (owner scoped this to
-   mobile only) — home.js only opens this sheet under the 768px breakpoint. */
-.dg-sheet.dg-settings-embed { height: 88vh; }
+/* Settings page embedded as a slide-in sheet on any screen size (owner: "настройки должны
+   выезжать как меню тайлов в мобильном, а не как отдельная страница" → "и на десктопе тоже, так
+   красивее и функциональнее" → "можешь занять весь экран, зачем видеть хедер") — reuses the
+   same .dg-sheet chrome as the multitool tile sheet, but hosts the real /settings/ page in an
+   iframe instead of a rendered link list, so there's exactly one settings implementation.
+   Fullscreen rather than a floating card: overrides .dg-sheet/.dg-wide's own position/size
+   (same selector specificity, this rule comes later in the file — the desktop `@media` block
+   above does NOT need its own copy of this override to win at that width too). No backdrop
+   showing the site's own header behind it, nothing to click "outside" of — closing is the
+   sheet's own X, the embedded page's back arrow, or the browser/phone back button. */
+.dg-sheet.dg-settings-embed {
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: auto;
+    height: 100%;
+    max-height: none;
+    min-height: 0;
+    border: 0;
+    border-radius: 0;
+    transform: translateY(100%);
+}
+.dg-sheet.dg-settings-embed.show { transform: translateY(0); }
+.dg-sheet.dg-settings-embed .dg-sheet-handle { display: none; }
 .dg-sheet.dg-settings-embed .dg-sheet-body { padding: 0; overflow: hidden; min-height: 0; }
 .dg-sheet.dg-settings-embed .dg-sheet-body iframe { width: 100%; height: 100%; border: 0; display: block; }
 /* Заголовок набора отбит пустой строкой сверху и снизу — до правки он прилипал к предыдущему
