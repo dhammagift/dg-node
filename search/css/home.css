@@ -1537,6 +1537,19 @@ body:not(.dg-state-home) #dg-announce { display: none; }
     .dg-sheet.dg-settings-embed.show { transform: translateY(0); }
     .dg-sheet.dg-settings-embed .dg-sheet-handle { display: none; }
 }
+@media (min-width: 768px) {
+    /* Owner: the plain .dg-wide box (min-height:74vh, anchored to bottom:20px) left a tall gap
+       above it showing the full site header/hero — "сделай чтобы до самого верха настройки
+       открывались". Same 20px margin on top now as .dg-sheet already uses on bottom, so it
+       reaches near the top edge instead of floating in the lower 74%, while still framed on all
+       four sides (keeps reading as a sheet, not a full page — the width stays 920px too). */
+    .dg-sheet.dg-settings-embed {
+        top: 20px;
+        height: auto;
+        max-height: none;
+        min-height: 0;
+    }
+}
 /* Заголовок набора отбит пустой строкой сверху и снизу — до правки он прилипал к предыдущему
    пункту и читался как его продолжение, а не как начало нового набора. */
 .dg-sheet .dg-group-title {
