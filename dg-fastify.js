@@ -55,7 +55,7 @@ const {
 const app = Fastify({ bodyLimit: 10 * 1024 * 1024 });
 // 3000 is where production serves from (both dhamma.gift and test.dhamma.gift proxy here);
 // dg-light.js, the legacy Express server, defaults to 3001 so the two can run side by side.
-const PORT = Number(process.env.PORT) || 3000;
+const PORT = Number(process.env.PORT) || 3001;
 
 // The only POST route in this file (/assets/lbl-save.php) always wants the raw body as a string,
 // regardless of what Content-Type the client sends — same as express.text({type:'*/*'}) did.
@@ -174,20 +174,28 @@ const CACHE_LEGACY_CODE = 'public, max-age=86400';
 const CACHE_CONFIG_JSON = 'no-cache'; // @fastify/static uses @fastify/send under the hood — real ETag by default, same as Express's serve-static (cache.md)
 const CACHE_STATIC_SHORT = 'public, max-age=36000';
 
-// Third-party bundles vendored into public/overrides/js so dg-node no longer depends on the
-// legacy repo's assets/ for them (DataTables, the DPD dictionary data used by paliLookup.js).
-// They are pulled in by lazy <script> injection (search/index.html ensureSearchAssets,
-// paliLookup.js), never through an HTML tag sendVersionedHtml could stamp a ?v= onto — so the
-// immutable one-year tier above would pin whatever copy a browser got first until it expires
-// (a DataTables upgrade at the same URL would not reach returning visitors for a year).
-// They get the same 24h tier the legacy copies had under siteroot/assets.
-const UNVERSIONED_VENDOR_DIRS = ['datatables', 'standalone-dpd']
-    .map(dir => path.join(__dirname, 'public', 'overrides', 'js', dir) + path.sep);
+// Anything pulled in by lazy <script> injection (search/index.html's ensureSearchAssets/
+// ensureReaderAssets/ensureTocAssets, paliLookup.js) rather than a static HTML <script src="">
+// tag never gets the ?v=<hash> sendVersionedHtml() stamps onto real tags — so the immutable
+// one-year tier above would pin whatever copy a browser got first until it expires. Two flavors
+// share the problem: third-party bundles vendored into public/overrides/js (DataTables, the DPD
+// dictionary data) so dg-node no longer depends on the legacy repo's assets/ for them, AND our
+// own app code that happens to load the same lazy way — public/spa/ (toc.js today; the rest of
+// that directory is unused Phase-1 scaffold, see CLAUDE.md, but harmless to cover too) and the
+// reader's own common.js/megareader.js. All get the same 24h tier the legacy copies had under
+// siteroot/assets — confirmed live: a toc.js fix sat cached for a year in an already-visited
+// browser until this was added (owner, 2026-09-06).
+const UNVERSIONED_LAZY_PATHS = [
+    ...['datatables', 'standalone-dpd'].map(dir => path.join(__dirname, 'public', 'overrides', 'js', dir) + path.sep),
+    path.join(__dirname, 'public', 'spa') + path.sep,
+    path.join(__dirname, 'reader', 'common.js'),
+    path.join(__dirname, 'reader', 'megareader.js')
+];
 
 function staticCacheHeaders(reply, filePath) {
     const ext = path.extname(filePath).toLowerCase();
     const inVersionedRoot = VERSIONED_STATIC_ROOTS.some(root => filePath.startsWith(root + path.sep))
-        && !UNVERSIONED_VENDOR_DIRS.some(dir => filePath.startsWith(dir));
+        && !UNVERSIONED_LAZY_PATHS.some(p => filePath.startsWith(p));
     if (inVersionedRoot && ['.js', '.css', '.svg', '.png', '.ico'].includes(ext)) {
         reply.header('Cache-Control', CACHE_IMMUTABLE_YEAR);
     } else if (['.woff', '.woff2', '.ttf', '.eot', '.otf'].includes(ext)) {

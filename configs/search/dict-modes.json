@@ -16,6 +16,7 @@
     { "id": "dictGroupOther", "labelRu": "Другое", "labelEn": "Other", "options": [
       { "value": "machinetranslation", "ru": "DharmaMitra.org", "en": "DharmaMitra.org" },
       { "value": "searchonly", "ru": "Только поиск", "en": "Search only" },
+      { "value": "dictapp", "ru": "DPD Android", "en": "DPD Android" },
       { "value": "dicttango", "ru": "DictTango (Android)", "en": "DictTango (Android)" },
       { "value": "mdict", "ru": "Mdict (iOS)", "en": "Mdict (iOS)" },
       { "value": "goldenpc", "ru": "GoldenDict-NG (Desktop)", "en": "GoldenDict-NG (Desktop)" }

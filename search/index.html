@@ -2818,6 +2818,15 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
             <a href="/history.php" title="History"><img width="20px" alt="History" src="/assets/svg/clock-rotate-left.svg"></a>
             <a id="pdf-btn" href="javascript:void(0);" title="Export PDF"><img width="20px" alt="PDF" src="/assets/svg/pdf.svg"></a>
             <a href="/memo/" class="memo-button" title="Memo" target="_blank"><img width="25px" alt="Memo" src="/assets/svg/memo.svg"></a>
+            <!-- Edit-translation icon (reader-template.html's .q-link) was skipped when this footer
+                 was first ported (see comment above the .links-area block) because the old CAT-tool
+                 URL wasn't confirmed — owner later pointed at lbl.html/lbl-en.html specifically, so
+                 restoring it here with THOSE targets, not the CAT tool. data-href-en/data-href-ru +
+                 paintDrawerLangHrefs() is the same pattern "Read by Chapters" above already uses for
+                 a link whose TARGET (not just label) depends on UI language; the ?q=<slug> part is
+                 appended on click (see .q-link handler below) since the current sutta id isn't known
+                 at paint time and changes as the reader navigates without a repaint. -->
+            <a href="/assets/lbl-en.html" data-href-en="/assets/lbl-en.html" data-href-ru="/assets/lbl.html" class="q-link" title="Edit Translation" target="_blank" rel="noreferrer"><img width="20px" alt="Edit Translation" src="/assets/svg/table-columns.svg"></a>
             <a id="shareOnline" href="javascript:void(0)" onclick="copyToClipboard()" title="Copy Link"><img height="20px" alt="Copy" src="/assets/svg/copy.svg"></a>
             <a href="https://DharmaMitra.org/" title="DharmaMitra" target="_blank"><img width="20px" alt="DharmaMitra" src="/assets/svg/dharmachakra.svg"></a>
             <a href="https://s.dhamma.gift/sn/sn45/?cols=pali%2Cpali_royal_iast%2Cpali_myanmar_iast%2Cpali_bjt_iast#tr-sn45.8:1.1" title="s.4nt.org" target="_blank"><img width="24px" alt="4nt" src="/assets/img/logo4nt_plain.png"></a>
@@ -2827,6 +2836,19 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     </div>
 
 <script type='text/javascript'>
+// .q-link click — appends the CURRENT sutta id to whichever of lbl.html/lbl-en.html
+// paintDrawerLangHrefs() (home.js) already resolved into .href for the active UI language, then
+// opens it in a new tab. window._currentSlug is megareader.js's own global (buildSutta() sets it,
+// public/overrides/js/copyToClipboard.js's Copy Link button already reads the same one) — not
+// #paliauto's value, which is the SEARCH box and unrelated to whatever text the reader has open.
+document.addEventListener('click', function (e) {
+    var a = e.target.closest('.q-link');
+    if (!a) return;
+    e.preventDefault();
+    var slug = window._currentSlug || '';
+    var url = a.href + (slug ? '?q=' + encodeURIComponent(slug) : '');
+    window.open(url, '_blank', 'noopener,noreferrer');
+});
 // Резолюшн UI-языка (какой lang_{lang}.json подгрузить) теперь берёт на себя
 // window.DHAMMA_I18N (dhamma-i18n.js, см. <head>) — свой порядок: ?lang= → localStorage.dhammaLanguage
 // → data-default-lang → "en" (дефолт по умолчанию — английский, см. TODO.md), и сам пишет
@@ -2921,6 +2943,11 @@ $(document).ready(function() {
     // langsRequested — языки вообще заданы пользователем: из адреса ИЛИ из мастер-настроек
     // ("Языки для поиска"). Для отрисовки важно именно второе.
     var keyword = '', scope = 'default', lb = 0, la = 0, langs = 'ru,en', langsExplicit = false, langsRequested = false;
+    // Quick-modal tab order — shared between the "4as" search-box shortcut (form submit handler,
+    // below) and the /4as/N URL route (routeFromUrl(), further down): both need the exact same
+    // index-to-tab mapping, so it lives once here rather than as two copies that could drift.
+    // Matches the real tab markup order in public/overrides/js/quickModal.js buildQuickModalDOM().
+    var QUICK_MODAL_TABS = ['tab-fav', 'tab-4as', 'tab-memo', 'tab-dpd'];
 
     function buildUrl(path, extra) {
         // Was: hardcoded to http://localhost:3000 on localhost/127.0.0.1, left over from when
@@ -3331,13 +3358,28 @@ $(document).ready(function() {
             var qs2 = currentParams.toString();
             history.pushState({ dgReader: true }, '', '/' + encodeURIComponent(route.id) + (qs2 ? '?' + qs2 : ''));
             openReaderInPlace(route.id);
+        } else if (route.type === 'external') {
+            // dict.dg / aksharamukha / dharmamitra — a plain external tool, not part of this
+            // site at all. Opens in a new tab; the search box/page stay exactly as they were.
+            window.open(route.url, '_blank', 'noopener');
+        } else if (route.type === 'quickmodal') {
+            // "4as"/"4as2".."4as4" typed in the search box — same destination as visiting
+            // /4as, /4as/2../4as/4 directly, so just become that URL and let routeFromUrl()'s
+            // own (already-written) quick-modal-tab logic take it from here instead of a second
+            // copy of it here.
+            var tabIndex = QUICK_MODAL_TABS.indexOf(route.tab) + 1;
+            var qmPath = '/4as' + (tabIndex > 1 ? '/' + tabIndex : '');
+            history.pushState({ dgQuickModal: true }, '', qmPath);
+            routeFromUrl();
         } else {
-            // chapter — узел оглавления ("mn", "sn56"). Открываем на нём TOC, НА МЕСТЕ: адрес
-            // тот же, на который сервер редиректит бывшие заглушки (/mn → /toc/mn), только без
+            // chapter — узел оглавления ("mn", "sn56", или "" — сам корень /toc, см.
+            // DgTextRouter.classify()'s "toc" case). Открываем на нём TOC, НА МЕСТЕ: адрес тот
+            // же, на который сервер редиректит бывшие заглушки (/mn → /toc/mn), только без
             // перезагрузки страницы (owner: "переходы MN an sn работают с перезагрузкой, а
             // должны в спа") — как и поиск с ридером выше.
             var qs3 = currentParams.toString();
-            history.pushState({ dgToc: true }, '', '/toc/' + encodeURIComponent(route.id) + (qs3 ? '?' + qs3 : ''));
+            var tocPath = '/toc' + (route.id ? '/' + encodeURIComponent(route.id) : '');
+            history.pushState({ dgToc: true }, '', tocPath + (qs3 ? '?' + qs3 : ''));
             openTocInPlace();
         }
     });
@@ -3466,6 +3508,16 @@ $(document).ready(function() {
         // Заголовок собирается из пользовательского запроса — только через DOM/textContent,
         // никакой разметки из строки.
         var $head = $('.resultheader');
+        // #variants-hint gets moved INTO $head below (see the variantDiv block further down) —
+        // on every render AFTER the first, it is already a child of $head at this point. Detach
+        // it BEFORE $head.empty() runs, or jQuery's empty() treats it as a descendant: it strips
+        // the #variants-link click handler (jQuery cleanData) and detaches the node from the
+        // document, so the LATER `document.getElementById('variants-hint')` in this same function
+        // returns null and the whole variants indicator vanishes for the rest of the session
+        // (owner: "варианты показываются только при полной перезагрузке, в СПА не появляются" —
+        // a fresh page load is the only time variantDiv ISN'T already inside $head yet).
+        var variantDiv = document.getElementById('variants-hint');
+        if (variantDiv && variantDiv.parentNode) variantDiv.parentNode.removeChild(variantDiv);
         $head.empty();
         $head.removeAttr('title');
         var kw = document.createElement('span');
@@ -3512,7 +3564,7 @@ $(document).ready(function() {
         // scope-выдаче — variantSegments уже пришли вместе с этим же ответом. href на всякий
         // случай указывает на валидный прямой URL (открыть в новой вкладке и т.п.) — обычный
         // клик перехватывается ниже и переключает отчёт на месте, без похода в сеть.
-        let variantDiv = document.getElementById('variants-hint');
+        // (variantDiv itself was already captured/detached above, before $head.empty().)
         if (variantDiv) {
             // Same line as the header now (icon + "variants" right after the star), not a
             // separate row under it — the node is MOVED, so the #variants-link click handler
@@ -3891,6 +3943,37 @@ $(document).ready(function() {
         // "/toc/mn", "/toc/sn25" — тот же навигатор, открытый на нужном узле. Какой именно,
         // читает сам /spa/toc.js из адреса (targetFromPath) — здесь только маршрут.
         if (path === 'toc' || path.indexOf('toc/') === 0) { openTocInPlace(); return; }
+        // /4as, /4as/2, /4as/3, /4as/4 — shortcut straight into one tab of the quick modal, home
+        // page behind it (owner: "сделать /4as чтобы... открывалась главная с запущенным
+        // модальным окном", then "/4as первая /4as/2 вторая и тп... это для истории вообще" —
+        // bare /4as defaults to tab 1, Favorites/history, not the Four Noble Truths tab this
+        // started as; that one is still reachable at /4as/2). Order matches the actual tab
+        // markup (public/overrides/js/quickModal.js buildQuickModalDOM): fav, 4as, memo, dpd.
+        // QUICK_MODAL_TABS itself is declared once, near the top of this script (shared with the
+        // "4as" search-box shortcut in the form submit handler above).
+        var quickModalMatch = path.match(/^4as(?:\/(\d))?$/);
+        if (quickModalMatch) {
+            var tabKey = QUICK_MODAL_TABS[(parseInt(quickModalMatch[1], 10) || 1) - 1] || QUICK_MODAL_TABS[0];
+            dgSetBusy(false);
+            dgSetState('home');
+            // toggleQuickModal is defined in settings-bundle.js (defer script) — routeFromUrl()
+            // can run before it finishes loading on a cold load, hence the poll rather than
+            // assuming it's already there.
+            (function openQuickModalWhenReady() {
+                if (typeof window.toggleQuickModal !== 'function') { setTimeout(openQuickModalWhenReady, 50); return; }
+                window.toggleQuickModal(tabKey);
+                // Something else touches the modal's tab state shortly after a cold-load open
+                // (measured: the tab click sticks fine when toggleQuickModal() runs well after
+                // load — e.g. a normal compass-button click — but a call this early in
+                // routeFromUrl() lands back on "Favorites" instead) — re-asserting the tab a beat
+                // later is cheaper than tracing every other init path that could be touching it.
+                setTimeout(function () {
+                    var tabBtn = document.querySelector('.quick-tab-btn[data-tab="' + tabKey + '"]');
+                    if (tabBtn && !tabBtn.classList.contains('active')) tabBtn.click();
+                }, 300);
+            })();
+            return;
+        }
         var id = textIdFromPath(window.location.pathname);
         if (id) { openReaderInPlace(id); return; }
         runSearchFromUrl();
@@ -4087,7 +4170,31 @@ $(document).ready(function() {
     // Кнопки "назад/вперёд" браузера при SPA-навигации: адрес меняется, а страница та же —
     // перерисовываем содержимое под новый адрес сами. Через routeFromUrl(), а не сразу
     // runSearchFromUrl(): в истории теперь бывают и адреса текстов, не только запросов.
-    window.addEventListener('popstate', function () { routeFromUrl(); });
+    // Settings sheet (mobile) checked FIRST: openSettingsSheet() (home.js) pushes a no-op
+    // history entry with the same URL, so a back-press here means "collapse the sheet", not
+    // "re-route" — routeFromUrl() would just re-render the exact same state anyway, but
+    // skipping it keeps this a plain toggle instead of a page-navigation side effect.
+    window.addEventListener('popstate', function () {
+        if (window.DgHome && window.DgHome.isSettingsSheetOpen && window.DgHome.isSettingsSheetOpen()) {
+            window.DgHome.closeSettingsSheet(true);
+            return;
+        }
+        routeFromUrl();
+    });
+
+    // Полные настройки (шестерёнка) на узком экране — выезжающая шторка поверх текущей страницы
+    // вместо перехода на отдельную /settings/ (owner: "сделай чтобы настройки выезжали как меню
+    // тайлов в мобильном"). Делегированный обработчик ловит и видимую строку бургера, и скрытую
+    // #settingsButton (см. комментарий выше неё) — Alt+S (settings.js) кликает именно её. На
+    // desktop (>=768px, тот же порог, что у .dg-sheet/openMega()) — обычная навигация, без правок.
+    document.addEventListener('click', function (e) {
+        if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.defaultPrevented) return;
+        var a = e.target.closest ? e.target.closest('a[href="/settings/"]') : null;
+        if (!a || window.innerWidth >= 768 || !window.DgHome) return;
+        e.preventDefault();
+        window.DgHome.closeDrawer();
+        window.DgHome.openSettingsSheet();
+    });
 
     /* Ракушка / лого / "Main" в бургере — все ведут на "/", но раньше были обычными <a href="/">
        и делали полную перезагрузку страницы: SPA это не спасало, потому что переход домой никогда
@@ -4134,15 +4241,31 @@ $(document).ready(function() {
   <nav class="dg-drawer-body">
     <!-- Значки у пунктов проставляет home.js (data-dg-icon → FontAwesome.icon), чтобы набор был
          тот же, что у плиток и в боевом меню, и не разъезжался при правках. -->
+    <!-- «Найти на странице» — первой строкой, одно место на весь сайт (бургер один и тот же на
+         главной/в выдаче/в ридере/в оглавлении). Открывает dg-page-find-ui.js (клик слушает сам
+         этот файл, closeDrawer перед открытием — см. там же). Ctrl/Cmd+Shift+F делает то же
+         самое (Shift обязателен — голый Ctrl/Cmd+F в реальном Chrome уходит в системный поиск
+         браузера раньше, чем страница успевает его перехватить). data-dg-icon="magnifier" — тот
+         же ключ ICONS в home.js, что уже даёт fas/magnifying-glass; "magnifying-glass" здесь не
+         матчился ни с одним ключом и молча падал на ICONS.external (стрелка). Owner asked for a
+         page+magnifying-glass icon specifically ("листик с лупой") — FA6 Free doesn't ship that
+         one (file-magnifying-glass/file-search is Pro-only, checked node_modules directly), so
+         this stays the plain lens rather than a hand-drawn substitute breaking the icon system's
+         "every drawer icon comes from ICONS/FontAwesome" convention. -->
+    <a class="dg-drawer-row dg-find-open" href="javascript:void(0)" data-dg-icon="magnifier">{{menu.findOnPage}}</a>
     <!-- Режимы чтения — только в состоянии ридера (owner: "выводи первым делом режимы ридера" —
          протестировать/переключить их иначе можно было только руками через ?mode= в адресе).
          Список строит home.js (paintReaderModes) из reader/mode-table.json — тот же источник
          правды, что уже питает панель переключения режимов внутри самого текста (scLink,
-         megareader.js), никакой второй копии режимов здесь не заводится. -->
-    <div id="dg-drawer-modes" hidden>
-      <p class="dg-group-title">{{menu.readingModes}}</p>
+         megareader.js), никакой второй копии режимов здесь не заводится.
+         <details>, не голый <div> — owner: "сделай режимы чтения сворачиваемыми... запомнить что
+         свёрнуто", тем же native-элементом, что уже здесь для «Мультитул» ниже. Открыт/закрыт
+         запоминается в localStorage (paintReaderModes/wireReaderModesToggle, home.js) — читается
+         только при показе секции, а не при каждой перерисовке списка внутри неё. -->
+    <details id="dg-drawer-modes" hidden>
+      <summary class="dg-group-title">{{menu.readingModes}}</summary>
       <div id="dg-drawer-modes-list"></div>
-    </div>
+    </details>
     <!-- Мультитул вместо «Навигации» (owner, 2026-09-05): список плиток главной, чтобы мультитул
          был под рукой в любом месте сайта — в выдаче, в ридере, в TOC. Нативный <details>, свёрнут
          по умолчанию везде, включая главную (там мультитул и так на всю страницу). Список строит
@@ -4163,10 +4286,10 @@ $(document).ready(function() {
          «сейчас светлая». Значки тем — внутри самого переключателя, у своих вариантов. -->
     <p class="dg-group-title">{{menu.theme}}</p>
     <div id="dg-theme-seg"></div>
-    <!-- Строка-описание под названием каждой плитки главной (menu-links.json desc). Пробная
-         форма — переключатель оставляет и прежний вид (описание тогда только tooltip). -->
-    <p class="dg-group-title">{{menu.tileDesc}}</p>
-    <div id="dg-tiledesc-seg"></div>
+    <!-- "Описания кнопок" (dgTileDesc) moved to /settings/ — owner: "очень неважная настройка",
+         doesn't need to sit in the quick-access drawer next to language/theme. tileDescEnabled()
+         in home.js still reads the same localStorage key when actually rendering tile rows. -->
+
     <!-- Полные настройки (шестерёнка) — ниже язык/тему по просьбе владельца: сначала быстрые
          переключатели, потом ссылка на полную страницу настроек. -->
     <a class="dg-drawer-row" href="/settings/" data-dg-icon="gear">{{global.common.settings}}</a>
@@ -4193,6 +4316,18 @@ $(document).ready(function() {
              loaded synchronously in <head>, unaffected either way). -->
         <script src="/assets/js/openFdg.js" defer></script>
 	  <script src="/assets/js/smoothScroll.js" defer></script>
+    <!-- Ctrl/Cmd+Shift+F "find on page" replacement — owner: "поиск на всей странице... лучше
+         браузерного", then "возьми [готовый дизайн/движок] и внедри" (docs/Поиск текста для
+         dhamma.gift.zip). dg-page-find.js is the vendored ENGINE (match collection,
+         normalization incl. doubled-letter folding, Range.surroundContents highlighting,
+         cross-node-boundary matches) — draws no UI itself; dg-page-find-ui.js is the panel
+         (ВНЕДРЕНИЕ.md: mobile/desktop layouts, settings toggles, match list with copy-link
+         chips) plus the Aksharamukha transliteration for Brahmic-script queries the vendored
+         engine doesn't know about. Order matters (both defer, so document order = execution
+         order): the UI file reads window.DGPageFind at load time. Eager, not the lazy
+         ensure*Assets() pattern, so the shortcut works before any click. -->
+    <script src="/assets/js/dg-page-find.js" defer></script>
+    <script src="/assets/js/dg-page-find-ui.js" defer></script>
     <script defer type="module" src="/assets/js/langswitch.js"></script>
     <!-- linksdpr.js/openDpr.js, linksru.js/openRu.js, linksbw.js/openBw.js — теперь загружаются
          лениво, см. loadPiEnRuScripts() в wireResultLinks() выше: незачем парсить ~469 КБ

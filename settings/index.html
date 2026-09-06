@@ -291,6 +291,9 @@ kbd{font:inherit;font-size:12.5px;background:var(--line);border:1px solid var(--
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
+<!-- Same Ctrl/Cmd+Shift+F "find on page" as the rest of the site — see search/index.html for context. -->
+<script src="/assets/js/dg-page-find.js" defer></script>
+<script src="/assets/js/dg-page-find-ui.js" defer></script>
 </head>
 <body>
 <div class="wrap">
@@ -366,6 +369,14 @@ kbd{font:inherit;font-size:12.5px;background:var(--line);border:1px solid var(--
       <div class="row">
         <div><p class="row-title" id="t-cloud">Облако</p><p class="row-desc" id="t-cloudDesc">Синхронизация закладок, заметок и настроек между устройствами.</p></div>
         <div class="row-control"><button class="btn btn-primary" type="button" id="cloudBtn">Войти</button></div>
+      </div>
+      <!-- Moved here from the burger drawer's quick-settings (owner: "очень неважная настройка",
+           didn't need to sit next to language/theme) — home.js's tileDescEnabled() reads the same
+           localStorage.dgTileDesc key when it renders the home-screen/multitool tile rows. -->
+      <div class="row">
+        <div><p class="row-title" id="t-tileDesc">Описания кнопок</p>
+        <p class="row-desc" id="t-tileDescDesc">Короткая строка под названием каждой кнопки на главной. Если выключить, описание остаётся только всплывающей подсказкой.</p></div>
+        <div class="row-control"><span class="switch"><input type="checkbox" id="tileDesc" checked><span class="track"></span><span class="thumb"></span></span></div>
       </div>
     </div>
   </section>
@@ -860,6 +871,11 @@ $('#scriptDevOnly').onchange = e=> {
    показывает переключатель — сама причина жалобы "обозначение переключателя обманчиво". */
 $('#punct').checked = localStorage.getItem('removePunct') !== 'true';
 $('#punct').onchange = e=> localStorage.setItem('removePunct', e.target.checked ? 'false' : 'true');
+// Same key/semantics as home.js's tileDescEnabled() (localStorage.dgTileDesc — 'off' hides,
+// anything else shows) — this row is the only place left to change it, moved here from the
+// burger drawer's quick-settings (owner: "очень неважная настройка").
+$('#tileDesc').checked = localStorage.getItem('dgTileDesc') !== 'off';
+$('#tileDesc').onchange = e=> localStorage.setItem('dgTileDesc', e.target.checked ? 'on' : 'off');
 $('#dictOn').checked = localStorage.getItem('dictionaryVisible') !== 'false';
 $('#dictBlock').hidden = !$('#dictOn').checked;
 $('#dictOn').onchange = e=>{ $('#dictBlock').hidden = !e.target.checked; localStorage.setItem('dictionaryVisible', e.target.checked ? 'true' : 'false'); };
@@ -1248,6 +1264,7 @@ const STR = {
     gGeneral:'Общее', uiLang:'Язык интерфейса', uiLangDesc:'Меню и подписи. На языки текстов не влияет.',
     themeLbl:'Тема', thAuto:'Авто', thLight:'Светлая', thDark:'Тёмная',
     cloud:'Облако', cloudDesc:'Синхронизация закладок, заметок и настроек между устройствами.', cloudBtn:'Войти',
+    tileDesc:'Описания кнопок', tileDescDesc:'Короткая строка под названием каждой кнопки на главной. Если выключить, описание остаётся только всплывающей подсказкой.',
     gReading:'Чтение', readLangs:'Языки для чтения',
     readLangsDesc:'Первый язык — основной; от числа языков зависит и режим отображения в ридере.',
     readHint:'Перетащите чип за ⠿ или нажмите на нём ← →, чтобы изменить порядок.',
@@ -1263,7 +1280,7 @@ const STR = {
     ctx:'Строк контекста', ctxDesc:'Сколько строк показывать вокруг совпадения.', ctxBefore:'до', ctxAfter:'после',
     anydist:'Несколько слов — в любом порядке', anydistDesc:'Пока не реализовано на сервере', soon:'см. список доработок',
     gDict:'Словарь', dictOnDesc:'Сводный словарь, включает DPD и другие источники.', dictMode:'Режим',
-    autoLookup:'Искать выделенный текст автоматически', autoLookupDesc:'То же самое, что кнопка мультивыбора в ридере.',
+    autoLookup:'Мульти-селект', autoLookupDesc:'Искать выделенный текст автоматически. То же самое, что кнопка мультивыбора в ридере.',
     delay:'Задержка',
     gRoot:'Коренной текст пали', edLbl:'Издание',
     edDesc:'Сейчас поиск всегда идёт по Mahāsaṅgīti — остальные готовятся только для ридера.', badgeSoon:'скоро',
@@ -1286,6 +1303,7 @@ const STR = {
     gGeneral:'General', uiLang:'Interface language', uiLangDesc:"Menus and labels. Doesn't affect text languages.",
     themeLbl:'Theme', thAuto:'Auto', thLight:'Light', thDark:'Dark',
     cloud:'Cloud', cloudDesc:'Sync bookmarks, notes, and settings across devices.', cloudBtn:'Log in',
+    tileDesc:'Button descriptions', tileDescDesc:'A short line under each home-screen button’s name. Turn it off and the description stays as a hover tooltip only.',
     gReading:'Reading', readLangs:'Reading languages',
     readLangsDesc:"The first language is primary; the number of languages sets the reader's display mode.",
     readHint:'Drag a chip by ⠿, or focus it and press ← →, to reorder.',
@@ -1301,7 +1319,7 @@ const STR = {
     ctx:'Context lines', ctxDesc:'How many lines to show around a match.', ctxBefore:'before', ctxAfter:'after',
     anydist:'Multiple words — any order', anydistDesc:'Not yet implemented server-side', soon:'see backlog',
     gDict:'Dictionary', dictOnDesc:'Combined dictionary, includes DPD and other sources.', dictMode:'Mode',
-    autoLookup:'Auto-look-up selected text', autoLookupDesc:'Same as the multi-select button in the reader.',
+    autoLookup:'Multi-select', autoLookupDesc:'Auto-look-up selected text. Same as the multi-select button in the reader.',
     delay:'Delay',
     gRoot:'Pali root text', edLbl:'Edition',
     edDesc:'Search currently always uses Mahāsaṅgīti — the others are being prepared for the reader only.', badgeSoon:'soon',
@@ -1325,6 +1343,7 @@ function applyLang(){
    ['t-g-general','gGeneral'],['t-uiLang','uiLang'],['t-uiLangDesc','uiLangDesc'],
    ['themeLbl','themeLbl'],['t-th-auto','thAuto'],['t-th-light','thLight'],['t-th-dark','thDark'],
    ['t-cloud','cloud'],['t-cloudDesc','cloudDesc'],['cloudBtn','cloudBtn'],
+   ['t-tileDesc','tileDesc'],['t-tileDescDesc','tileDescDesc'],
    ['t-g-reading','gReading'],['t-readLangs','readLangs'],['t-readLangsDesc','readLangsDesc'],['t-readHint','readHint'],
    ['t-script','script'],['t-scriptDesc','scriptDesc'],
    ['t-scriptDevOnly','scriptDevOnly'],['t-scriptDevOnlyDesc','scriptDevOnlyDesc'],
@@ -1407,6 +1426,11 @@ $('#previewCollapse').onclick = () => {
    sticky, чтобы не скроллить наверх ради возврата). */
 function goBack(e){
   e.preventDefault();
+  // Embedded in the mobile settings sheet (home.js openSettingsSheet(), search/index.html) —
+  // there's no "back"/"home" to navigate to inside the iframe itself, just tell the parent to
+  // collapse the sheet, same as its own X button. See home.js's message listener next to
+  // ensureSettingsSheet().
+  if (window.parent !== window) { window.parent.postMessage({ dgSettingsSheetClose: true }, location.origin); return; }
   // history.length одного не хватает: если настройки открыли прямо в новой вкладке, в истории
   // уже может лежать служебная запись (новая вкладка/пустая страница), длина > 1 — и back()
   // увозил именно туда, на пустой экран браузера. Возвращаемся назад только если пришли с

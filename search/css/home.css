@@ -1320,6 +1320,14 @@ body:not(.dg-state-home) #dg-announce { display: none; }
     /* «О проекте» — шире 560px списка плиток: поле поиска на главной 720px (.dg-hero-form ниже)
        плюс по 100px с каждой стороны (owner), там длинная цитата и ряд кнопок приложений. */
     .dg-sheet.dg-wide { width: min(920px, calc(100vw - 32px)); }
+    /* Owner: "если место позволяет нужно чтобы футер был внизу" — .dg-sheet has no explicit
+       height (max-height only, sized to fit its own content), so the .dg-about #contacts
+       margin-top:auto trick above has nothing to push against on a tall viewport with short
+       content. Same value as max-height above: the sheet locks to a real 74vh box whenever
+       content fits inside it (giving margin-top:auto real room to push the footer down to the
+       bottom of THAT box), and content taller than 74vh simply overflows/scrolls exactly like
+       today — min-height can't force it shorter than its own content. */
+    .dg-sheet.dg-wide { min-height: 74vh; }
     .dg-sheet.dg-wide .dg-sheet-body { padding: 8px 44px 40px; }
 }
 
@@ -1479,6 +1487,28 @@ body:not(.dg-state-home) #dg-announce { display: none; }
     padding: 4px 18px 22px;
     flex: 1 1 auto;
 }
+/* Owner: "если место позволяет нужно чтобы футер... был внизу" — the About sheet's own contacts
+   block (openAbout(), search/js/home.js) is a flex column so short content (a small viewport's
+   worth or less) pins "Контакты"+icons+"Powered by"+copyright to the bottom of the sheet instead
+   of floating right under "Приложения и расширения"; long content still just scrolls normally,
+   margin-top:auto only pushes down as far as there's actual leftover space. */
+.dg-sheet-body.dg-about {
+    display: flex;
+    flex-direction: column;
+}
+.dg-sheet-body.dg-about #contacts {
+    margin-top: auto;
+}
+/* Settings page embedded as a mobile sheet (owner: "настройки должны выезжать как меню тайлов
+   в мобильном, а не как отдельная страница") — reuses the same .dg-sheet chrome as the
+   multitool tile sheet, but hosts the real /settings/ page in an iframe instead of a rendered
+   link list, so there's exactly one settings implementation. Explicit height, not just
+   max-height like the plain .dg-sheet: a shrink-to-fit box has nothing for the iframe's
+   height:100% to fill against. Desktop stays a normal page navigation (owner scoped this to
+   mobile only) — home.js only opens this sheet under the 768px breakpoint. */
+.dg-sheet.dg-settings-embed { height: 88vh; }
+.dg-sheet.dg-settings-embed .dg-sheet-body { padding: 0; overflow: hidden; min-height: 0; }
+.dg-sheet.dg-settings-embed .dg-sheet-body iframe { width: 100%; height: 100%; border: 0; display: block; }
 /* Заголовок набора отбит пустой строкой сверху и снизу — до правки он прилипал к предыдущему
    пункту и читался как его продолжение, а не как начало нового набора. */
 .dg-sheet .dg-group-title {

@@ -176,6 +176,12 @@
     var currentMegaKey = null;
     var currentMegaBtn = null;
 
+    // Full settings page, embedded as a mobile-only slide-in sheet (owner: "настройки должны
+    // выезжать как меню тайлов в мобильном, а не как отдельная страница"). Own tracking flag
+    // (not currentSheetKey) — it's not a tile-menu list, it hosts the real /settings/ page in
+    // an iframe, so there's exactly one settings implementation instead of two.
+    var settingsSheetOpen = false;
+
     // ======================================================================
     // Состояния страницы: home / results / reader
     // ======================================================================
@@ -421,7 +427,7 @@
         backdrop = document.createElement('div');
         backdrop.id = 'dg-sheet-backdrop';
         // Подложка общая для всех трёх шторок — закрываем ту, что открыта.
-        backdrop.addEventListener('click', function () { closeSheet(); closeQuick(); closeMega(); });
+        backdrop.addEventListener('click', function () { closeSheet(); closeQuick(); closeMega(); closeSettingsSheet(false); });
         document.body.appendChild(backdrop);
         return backdrop;
     }
@@ -461,6 +467,69 @@
         document.body.classList.remove('dg-mega-compact');
         // hidden ставим после анимации ухода, иначе шторка пропадёт рывком
         setTimeout(function () { if (!currentSheetKey) sheet.hidden = true; }, 320);
+    }
+
+    function ensureSettingsSheet() {
+        if (document.getElementById('dg-settings-sheet')) return;
+        ensureBackdrop();
+        var sheet = document.createElement('div');
+        sheet.id = 'dg-settings-sheet';
+        sheet.className = 'dg-sheet dg-settings-embed';
+        sheet.setAttribute('role', 'dialog');
+        sheet.setAttribute('aria-modal', 'true');
+        sheet.hidden = true;
+        sheet.innerHTML =
+            '<div class="dg-sheet-handle"></div>' +
+            '<div class="dg-sheet-head"><h2>' + esc(t('global.common.settings', 'Settings')) + '</h2>' +
+            '<button type="button" class="dg-sheet-close" aria-label="' + esc(t('global.common.close', 'Close')) + '">&times;</button></div>' +
+            '<div class="dg-sheet-body"><iframe title="' + esc(t('global.common.settings', 'Settings')) + '"></iframe></div>';
+        sheet.querySelector('.dg-sheet-close').addEventListener('click', function () { closeSettingsSheet(false); });
+        document.body.appendChild(sheet);
+
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && settingsSheetOpen) closeSettingsSheet(false);
+        });
+        // The embedded page's own back arrow (settings/index.html #backLink/#backLinkPreview,
+        // both href="/") posts this instead of navigating itself when it detects it's inside a
+        // parent frame — see settings/index.html. Closes the sheet exactly like our own X.
+        window.addEventListener('message', function (e) {
+            if (e.origin === location.origin && e.data && e.data.dgSettingsSheetClose) closeSettingsSheet(false);
+        });
+    }
+
+    /* Back-button support: opening pushes a no-op history entry (same URL) so the phone's back
+       gesture / browser back button collapses the sheet instead of leaving whatever page was
+       open underneath it (owner: "кнопка назад должна сворачивать меню, а не вести себя как
+       текущая навигация"). The shared popstate listener (routeFromUrl(), index.html) checks
+       settingsSheetOpen first and calls closeSettingsSheet(true) instead of re-routing. */
+    function openSettingsSheet() {
+        if (settingsSheetOpen) return;
+        closeMega();
+        closeSheet();
+        closeQuick();
+        ensureSettingsSheet();
+        var sheet = document.getElementById('dg-settings-sheet');
+        var backdrop = document.getElementById('dg-sheet-backdrop');
+        // Fresh load every time: settings can change from another tab, and a stale form (e.g.
+        // mid-drag script order) should never greet the user on reopen.
+        sheet.querySelector('iframe').src = '/settings/';
+        sheet.hidden = false;
+        settingsSheetOpen = true;
+        history.pushState({ dgSettingsSheet: true }, '', location.href);
+        showLater(sheet, backdrop);
+    }
+
+    function closeSettingsSheet(fromPopstate) {
+        if (!settingsSheetOpen) return;
+        settingsSheetOpen = false;
+        var sheet = document.getElementById('dg-settings-sheet');
+        var backdrop = document.getElementById('dg-sheet-backdrop');
+        sheet.classList.remove('show');
+        if (backdrop && !isQuickOpen()) backdrop.classList.remove('show');
+        setTimeout(function () { if (!settingsSheetOpen) sheet.hidden = true; }, 320);
+        // Consume the pushState from openSettingsSheet() so a later back-press doesn't land on
+        // a phantom step — skipped when THIS close was itself caused by that back-press.
+        if (!fromPopstate && history.state && history.state.dgSettingsSheet) history.back();
     }
 
     /* Личные отметки пунктов мультитула (шторки Read Pāḷi/External/AI & Dicts/…) — поверх
@@ -1675,10 +1744,29 @@
         return row;
     }
 
+    // owner: "сделай режимы чтения сворачиваемыми... и запомнить что свёрнуто" — same "read only
+    // when shown, persist on the native <details> 'toggle' event" pattern public/spa/toc.js
+    // already uses for its translator-filter aside (dhammaTocAsideOpen). Default OPEN (unlike
+    // that aside's responsive default): this list already existed open-by-default, collapsing is
+    // an opt-in for someone who doesn't need it, not a new default to discover.
+    function readerModesOpenPref() {
+        var raw = localStorage.getItem('dgReaderModesOpen');
+        return raw === null ? true : raw === '1';
+    }
+
     function paintReaderModes() {
         var section = document.getElementById('dg-drawer-modes');
         var list = document.getElementById('dg-drawer-modes-list');
         if (!section || !list) return;
+
+        // Wired once (not on every repaint, which runs on every drawer open) — the element
+        // itself is static in the HTML, only #dg-drawer-modes-list's contents get rebuilt below.
+        if (!section.dataset.toggleWired) {
+            section.dataset.toggleWired = '1';
+            section.addEventListener('toggle', function () {
+                localStorage.setItem('dgReaderModesOpen', section.open ? '1' : '0');
+            });
+        }
 
         var isReader = document.body.classList.contains('dg-state-reader');
         var modeTable = window.MODE_TABLE;
@@ -1686,6 +1774,7 @@
         if (!isReader || !modeTable || !readerMode) { section.hidden = true; return; }
 
         section.hidden = false;
+        section.open = readerModesOpenPref();
         list.innerHTML = '';
         var lang = menuLang() === 'ru' ? 'ru' : 'en';
 
@@ -2974,22 +3063,12 @@
     }
 
     /* «Описания кнопок» — показывать ли строку под названием плитки. localStorage.dgTileDesc:
-       'off' прячет (возвращает прежний вид, описание остаётся tooltip'ом), всё остальное — 'on'. */
+       'off' прячет (возвращает прежний вид, описание остаётся tooltip'ом), всё остальное — 'on'.
+       Сам переключатель живёт в /settings/ (owner: "очень неважная настройка" — не место в
+       быстром бургер-меню рядом с языком/темой); здесь только чтение флага при отрисовке плиток. */
     var TILE_DESC_KEY = 'dgTileDesc';
     function tileDescEnabled() {
         try { return localStorage.getItem(TILE_DESC_KEY) !== 'off'; } catch (e) { return true; }
-    }
-    function renderTileDescSwitch() {
-        var host = document.getElementById('dg-tiledesc-seg');
-        if (!host) return;
-        host.innerHTML = '';
-        host.appendChild(segmented([
-            { value: 'on', label: t('menu.tileDescOn', 'Показывать') },
-            { value: 'off', label: t('menu.tileDescOff', 'Скрыть') }
-        ], tileDescEnabled() ? 'on' : 'off', function (v) {
-            try { localStorage.setItem(TILE_DESC_KEY, v); } catch (e) { /* приватный режим */ }
-            renderTiles();
-        }));
     }
 
     function renderThemeSwitch() {
@@ -3042,7 +3121,6 @@
         renderHowTo();
         renderLangSwitch();
         renderThemeSwitch();
-        renderTileDescSwitch();
         // Owner screenshot: mode titles ("Standard"/"Multi Trn") stayed in the OLD language
         // after clicking EN/RU inside an already-open drawer — paintReaderModes() only ran from
         // openDrawer(), never on a live language switch while the drawer was already showing.
@@ -3119,7 +3197,6 @@
         revealAnchorSection(); // прямой заход с хешем в адресе (/#contacts и т.п.)
         renderLangSwitch();
         renderThemeSwitch();
-        renderTileDescSwitch();
         syncRestoreLink();
 
         fetch(MENU_URL)
@@ -3186,7 +3263,18 @@
         // Зовётся с public/404.html: тот рисует свою компактную строку иконок мультитула (не
         // домашние карточки), но клики должны открывать РЕАЛЬНЫЕ шторку/мега-меню, а не
         // хардкоженные href на странице ошибки — тут ровно та же логика, что у настоящих плиток.
-        runTile: runTile
+        runTile: runTile,
+        // Открыть/закрыть бургер — нужно public/overrides/js/dg-page-find-ui.js: пункт «Найти на
+        // странице» сам закрывает шторку после клика (как остальные пункты, см. makeModeRow), а
+        // движок поиска зовёт openDrawer() как reveal() для контейнера #dg-drawer, если найденное
+        // совпадение сидит внутри закрытой шторки.
+        openDrawer: openDrawer,
+        closeDrawer: closeDrawer,
+        // Mobile slide-in settings sheet (index.html intercepts the /settings/ link on narrow
+        // screens instead of navigating away — see the dg-drawer-row/settingsButton handler).
+        openSettingsSheet: openSettingsSheet,
+        closeSettingsSheet: closeSettingsSheet,
+        isSettingsSheetOpen: function () { return settingsSheetOpen; }
     };
 
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);

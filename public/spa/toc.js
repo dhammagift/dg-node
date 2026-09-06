@@ -11,6 +11,17 @@
     var bookCache = {}; // code -> parsed /api/toc/book/:code response
     var translatorNames = null; // window.siteTranslators, fetched once
 
+    // renderTopLevel() nukes and rebuilds #toc-pane from scratch on every entry into /toc,
+    // including a plain browser-back from a sutta the user just opened — without remembering
+    // which books/branches were open, that back navigation always landed on the fully collapsed
+    // tree, forcing the user to re-expand every level just to reach the NEXT sutta in the same
+    // vagga (owner: "возвращаюсь назад, а всё свёрнуто, нужно заново открывать"). These two maps
+    // live at module scope, outside renderTopLevel(), so they survive the rebuild for as long as
+    // toc.js itself stays loaded (i.e. the whole SPA session) — book/group code and branch slug
+    // are stable ids already used elsewhere in this file (data-toc-book-body, node.slug).
+    var expandedBooks = {};    // book or group code -> bool
+    var expandedBranches = {}; // branch node.slug -> bool
+
     function uiIsRu() {
         return (localStorage.getItem('dhammaLanguage') || localStorage.getItem('siteLanguage') || 'en') === 'ru';
     }
@@ -255,7 +266,17 @@
         // corpus numbering clutter here, not part of the name — strip it (a branch/vagga heading's
         // own "N. Name" is left alone, that numbering is prod's own convention there).
         var title = (node.title || '').trim().replace(/^\d+\.\s*/, '');
-        heading.appendChild(document.createTextNode(' ' + title));
+        heading.appendChild(document.createTextNode(' '));
+        // lang="pi" alone (no "pli-lang" class) is enough for paliLookup.js's click delegation
+        // (closest('.pli-lang, [lang="pi"]') matches either) — without it a click on the sutta's
+        // Pali title did nothing (owner: "в toc не работает словарь"). The class is deliberately
+        // skipped: reader/css/uiextra.css has `[class*="-lang"]{display:block}`, a substring rule
+        // that also matches "pli-lang" and forced this span onto its own line, splitting the id
+        // and title that used to sit on one line (owner: "верни чтобы были в одну строку") — the
+        // same landmine leafTranslatorLinks() above already sidesteps for the same reason.
+        var titleSpan = el('span', null, title);
+        titleSpan.setAttribute('lang', 'pi');
+        heading.appendChild(titleSpan);
         li.appendChild(heading);
 
         var anyLangShown = false;
@@ -324,13 +345,28 @@
         // full expand instead.
         var autoExpand = (code === 'sn' && depth === 1) || (['an', 'mn', 'dn'].indexOf(code) !== -1 && !depth);
 
-        header.addEventListener('click', function () {
-            var willShow = childList.classList.contains('d-none');
+        function setExpanded(willShow) {
             childList.classList.toggle('d-none', !willShow);
             toggle.textContent = willShow ? '−' : '+';
             toggle.setAttribute('aria-expanded', String(willShow));
-            if (willShow && autoExpand) expandAll(li);
+            expandedBranches[node.slug] = willShow;
+        }
+
+        function open() {
+            setExpanded(true);
+            if (autoExpand) expandAll(li);
+        }
+
+        header.addEventListener('click', function () {
+            if (childList.classList.contains('d-none')) open();
+            else setExpanded(false);
         });
+
+        // Restore this branch's own open/closed state from before the last rebuild (see
+        // expandedBranches above) — a plain rebuild-time re-open, not a click, but autoExpand
+        // still needs to cascade the same way it does on click, or a re-opened saṁyutta/nipāta
+        // would come back with its own vaggas collapsed again.
+        if (expandedBranches[node.slug]) open();
         return li;
     }
 
@@ -778,10 +814,9 @@
                 }
                 var bodyEl = el('div', patimokkhaSide ? 'toc-book-body toc-patimokkha-body d-none' : 'toc-book-body d-none');
                 bodyEl.setAttribute('data-toc-book-body', book.code);
-                bookHeader.addEventListener('click', function () {
-                    var willShow = bodyEl.classList.contains('d-none');
-                    bodyEl.classList.toggle('d-none', !willShow);
-                    if (!willShow || bodyEl.dataset.loaded) return;
+                function openBookBody() {
+                    bodyEl.classList.remove('d-none');
+                    if (bodyEl.dataset.loaded) return;
                     if (patimokkhaSide) {
                         bodyEl.dataset.loaded = 'fragment';
                         fetchPatimokkhaFragment(patimokkhaSide).then(function (html) {
@@ -795,6 +830,12 @@
                         var loaded = renderBookTree(bodyEl, book.code, langs, filter);
                         if (autoExpandFull) loaded.then(function () { expandAll(bodyEl); });
                     }
+                }
+                bookHeader.addEventListener('click', function () {
+                    var willShow = bodyEl.classList.contains('d-none');
+                    expandedBooks[book.code] = willShow;
+                    if (willShow) openBookBody();
+                    else bodyEl.classList.add('d-none');
                 });
                 bookEl.appendChild(bookHeader);
                 bookEl.appendChild(bodyEl);
@@ -803,6 +844,9 @@
                 // render inline here: the filter-count pass below (bookEntries.map -> if
                 // (b.singlePage) skip) still can't fetch a per-rule tree for these, same as before.
                 bookEntries.push({ bookEl: bookEl, bodyEl: bodyEl, headerEl: bookHeader, countEl: countEl, book: book, code: book.code, singlePage: book.singlePage || null });
+                // Restore this book's open/closed state from before the last rebuild (see
+                // expandedBooks above), same reasoning as renderBranch's own restore.
+                if (expandedBooks[book.code]) openBookBody();
             }
 
             // One expand-per-book step, shared by every "Expand all" trigger (category-level and,
@@ -882,7 +926,9 @@
                 }
                 var bodyEl = el('div', 'toc-book-body d-none');
                 groupHeader.addEventListener('click', function () {
-                    bodyEl.classList.toggle('d-none');
+                    var willShow = bodyEl.classList.contains('d-none');
+                    expandedBooks[group.code] = willShow;
+                    bodyEl.classList.toggle('d-none', !willShow);
                 });
                 var subBooksEl = el('div', 'toc-books');
                 visibleSubBooks.forEach(function (b) { renderBookRow(b, subBooksEl, true); });
@@ -890,6 +936,8 @@
                 groupEl.appendChild(groupHeader);
                 groupEl.appendChild(bodyEl);
                 parentEl.appendChild(groupEl);
+                // Restore this group's own open/closed state, same reasoning as renderBookRow's.
+                if (expandedBooks[group.code]) bodyEl.classList.remove('d-none');
                 groupEntries.push({ groupEl: groupEl, bodyEl: bodyEl, headerEl: groupHeader, countEl: countEl, group: group, codes: visibleSubBooks.map(function (b) { return b.code; }) });
                 return visibleSubBooks;
             }
@@ -1000,4 +1048,16 @@
     };
 
     if (!window.TOC_MANUAL_INIT) window.initToc();
+
+    // Every label in this file is picked once, at render time, via uiIsRu() — nothing here was
+    // listening for a LIVE language switch (dhamma-i18n.js's 'dhamma:languagechange', the same
+    // event search/index.html's syncSiteLanguage() and reader/common.js already redraw on), so
+    // the tree stayed in whichever language it was first rendered in until a full page reload
+    // (owner: "в toc смена языка не применяется на лету"). A plain re-render is enough — it goes
+    // through the exact same expandedBooks/expandedBranches restore as a rebuild triggered by
+    // browser back (see those maps above), so open books/branches survive the language switch
+    // too, not just a fresh fetch of the (small, already-cached) tree data.
+    document.addEventListener('dhamma:languagechange', function () {
+        if (container && document.body.classList.contains('dg-state-toc')) renderTopLevel();
+    });
 })();

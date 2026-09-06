@@ -846,7 +846,14 @@ async function enrichSuttaBatch(searchResults, suttaIds, targetLangs, keyword, s
                 if (row.kind === 'root') suttaRes.titles.root = row.txt;
                 else if (row.kind === 'translation') {
                     const key = `${row.lang}_${row.translator}`;
-                    if (!chosen || chosen.has(key)) suttaRes.titles[key] = row.txt;
+                    // "o" (translators.json) is DG's own literal from-Pali translator — legacy
+                    // prod's static textinfo.js baked a "(o)" suffix onto every title sourced from
+                    // it, so a searcher could spot a literal/from-Pali title at a glance (owner:
+                    // "если есть перевод (o) ... получали эту отметку"). Strict equality, not a
+                    // substring check: compound keys like "sv+edited+o" are a DIFFERENT translator.
+                    if (!chosen || chosen.has(key)) {
+                        suttaRes.titles[key] = row.translator === 'o' ? `${row.txt} (o)` : row.txt;
+                    }
                 }
             }
         }

@@ -88,10 +88,34 @@
     //                                     text — navigate to it too, dg-light.js renders a
     //                                     stub listing (or falls back to search if empty).
     //   { type: 'search', query }      — not a recognized reference, run a keyword search.
+    //   { type: 'quickmodal', tab }    — open the quick modal on this tab, no other navigation.
+    //   { type: 'external', url }      — open this URL in a new tab, no navigation at all.
     function classify(raw) {
         var original = String(raw == null ? '' : raw).trim();
         var q = normalize(raw);
         if (!q) return { type: 'search', query: '' };
+
+        // Bare-word shortcuts (owner: "в шорткатах чтобы было toc, pm, bipm, /4as, dict.dg,
+        // aksharamukha, dharmamitra" — pm/bipm already existed below, this adds the rest).
+        // "toc" — the navigator's own root, not a specific chapter within it (empty id, not
+        // "toc" itself: a chapter id of "toc" would build the URL "/toc/toc").
+        if (q === 'toc') return { type: 'chapter', id: '' };
+        // "4as", "4as2".."4as4" — same destination as visiting /4as, /4as/2../4as/4 directly
+        // (routeFromUrl in search/index.html): home page with one tab of the quick modal already
+        // open. Order matches quickModal.js's actual tab markup: fav (history/favorites,
+        // bare "4as"'s default), 4as (Four Noble Truths), memo, dpd.
+        var quickModalTabMatch = q.match(/^4as([234])?$/);
+        if (quickModalTabMatch) {
+            var qmTabs = ['tab-fav', 'tab-4as', 'tab-memo', 'tab-dpd'];
+            return { type: 'quickmodal', tab: qmTabs[quickModalTabMatch[1] ? Number(quickModalTabMatch[1]) - 1 : 0] };
+        }
+        // External tools — open in a new tab, no SPA navigation at all.
+        var EXTERNAL_SHORTCUTS = {
+            'dict.dg': 'https://dict.dhamma.gift',
+            'aksharamukha': 'https://www.aksharamukha.com/',
+            'dharmamitra': 'https://dharmamitra.org/'
+        };
+        if (EXTERNAL_SHORTCUTS[q]) return { type: 'external', url: EXTERNAL_SHORTCUTS[q] };
 
         // Fully-qualified Vinaya id, already in skeleton-key form — pass through.
         if (/^pli-tv-/.test(q)) return { type: 'text', id: q };
