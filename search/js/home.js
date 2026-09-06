@@ -474,7 +474,10 @@
         ensureBackdrop();
         var sheet = document.createElement('div');
         sheet.id = 'dg-settings-sheet';
-        sheet.className = 'dg-sheet dg-settings-embed';
+        // dg-wide: same 920px desktop floating-card width as the About sheet (home.css) — on
+        // mobile that class is a no-op (gated by the same 768px media query dg-settings-embed's
+        // own fullscreen override uses), the desktop card is scoped entirely in CSS.
+        sheet.className = 'dg-sheet dg-settings-embed dg-wide';
         sheet.setAttribute('role', 'dialog');
         sheet.setAttribute('aria-modal', 'true');
         sheet.hidden = true;

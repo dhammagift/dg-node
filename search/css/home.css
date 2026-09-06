@@ -1499,33 +1499,37 @@ body:not(.dg-state-home) #dg-announce { display: none; }
 .dg-sheet-body.dg-about #contacts {
     margin-top: auto;
 }
-/* Settings page embedded as a slide-in sheet on any screen size (owner: "настройки должны
-   выезжать как меню тайлов в мобильном, а не как отдельная страница" → "и на десктопе тоже, так
-   красивее и функциональнее" → "можешь занять весь экран, зачем видеть хедер") — reuses the
-   same .dg-sheet chrome as the multitool tile sheet, but hosts the real /settings/ page in an
-   iframe instead of a rendered link list, so there's exactly one settings implementation.
-   Fullscreen rather than a floating card: overrides .dg-sheet/.dg-wide's own position/size
-   (same selector specificity, this rule comes later in the file — the desktop `@media` block
-   above does NOT need its own copy of this override to win at that width too). No backdrop
-   showing the site's own header behind it, nothing to click "outside" of — closing is the
-   sheet's own X, the embedded page's back arrow, or the browser/phone back button. */
-.dg-sheet.dg-settings-embed {
-    left: 0;
-    right: 0;
-    top: 0;
-    bottom: 0;
-    width: auto;
-    height: 100%;
-    max-height: none;
-    min-height: 0;
-    border: 0;
-    border-radius: 0;
-    transform: translateY(100%);
-}
-.dg-sheet.dg-settings-embed.show { transform: translateY(0); }
-.dg-sheet.dg-settings-embed .dg-sheet-handle { display: none; }
+/* Settings page embedded as a slide-in sheet (owner: "настройки должны выезжать как меню
+   тайлов в мобильном, а не как отдельная страница" → "и на десктопе тоже, так красивее и
+   функциональнее") — reuses the same .dg-sheet chrome as the multitool tile sheet, but hosts
+   the real /settings/ page in an iframe instead of a rendered link list, so there's exactly one
+   settings implementation. dg-wide (home.js): same 920px floating-card width as the About
+   sheet on desktop — owner explicitly wants it to still READ as a sheet there, not a full page
+   ("а-то меню не отличить от полной страницы"); iframe/body sizing below is shared, only the
+   position/size override just under it is mobile-only ("на мобильных пусть занимает всю
+   страницу"). */
 .dg-sheet.dg-settings-embed .dg-sheet-body { padding: 0; overflow: hidden; min-height: 0; }
 .dg-sheet.dg-settings-embed .dg-sheet-body iframe { width: 100%; height: 100%; border: 0; display: block; }
+@media (max-width: 767px) {
+    /* Fullscreen below the desktop breakpoint: no backdrop sliver of the site's own header
+       behind it, nothing to click "outside" of — closing is the sheet's own X, the embedded
+       page's back arrow, or the phone's back button/gesture. */
+    .dg-sheet.dg-settings-embed {
+        left: 0;
+        right: 0;
+        top: 0;
+        bottom: 0;
+        width: auto;
+        height: 100%;
+        max-height: none;
+        min-height: 0;
+        border: 0;
+        border-radius: 0;
+        transform: translateY(100%);
+    }
+    .dg-sheet.dg-settings-embed.show { transform: translateY(0); }
+    .dg-sheet.dg-settings-embed .dg-sheet-handle { display: none; }
+}
 /* Заголовок набора отбит пустой строкой сверху и снизу — до правки он прилипал к предыдущему
    пункту и читался как его продолжение, а не как начало нового набора. */
 .dg-sheet .dg-group-title {
