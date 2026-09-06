@@ -114,15 +114,12 @@ function addIconsTo01() {
         playBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             if (typeof window.activateSegmentForTTS === 'function') {
-                window.activateSegmentForTTS(span);
+                // force=true: this is an explicit "play THIS" command, not a passive text click —
+                // must always (re)target the dynamic-tts-btn at this segment, never just resume/
+                // toggle whatever was already playing (see settings.js's addTtsButton comment).
+                window.activateSegmentForTTS(span, true);
 
-                const playerContainer = document.getElementById('voice-player-container');
-                const isPlayerActive = playerContainer && playerContainer.classList.contains('active');
-
-                if (isPlayerActive) {
-                    const mainPlayBtn = playerContainer.querySelector('.play-main-button');
-                    if (mainPlayBtn) mainPlayBtn.click();
-                } else if (!window.isVoiceScriptLoaded && typeof window.loadVoiceScripts === 'function') {
+                if (!window.isVoiceScriptLoaded && typeof window.loadVoiceScripts === 'function') {
                     window.loadVoiceScripts(() => {
                         // voice.js определяет window.isRu по пути (/r/, /ru/...) при первой
                         // загрузке — у нас пути чистые (/dn22), поэтому переопределяем на
@@ -421,15 +418,13 @@ onReady(() => {
         const targetLangSegment = currentContext.element.closest('[class*="-lang"]');
 
         if (targetLangSegment && typeof window.activateSegmentForTTS === 'function') {
-            window.activateSegmentForTTS(targetLangSegment);
+            // Owner: "Ссылка войс либо продолжает ТТС либо проигрывает перевод" — force=true so
+            // this explicit "Слушать"/"Voice" pick always (re)targets THIS segment/language, even
+            // while something else is already speaking, instead of just toggling play/pause on
+            // whatever was already cued (which could be a different segment or column entirely).
+            window.activateSegmentForTTS(targetLangSegment, true);
 
-            const playerContainer = document.getElementById('voice-player-container');
-            const isPlayerActive = playerContainer && playerContainer.classList.contains('active');
-
-            if (isPlayerActive) {
-                const playBtn = playerContainer.querySelector('.play-main-button');
-                if (playBtn) playBtn.click();
-            } else if (!window.isVoiceScriptLoaded && typeof window.loadVoiceScripts === 'function') {
+            if (!window.isVoiceScriptLoaded && typeof window.loadVoiceScripts === 'function') {
                 window.loadVoiceScripts(() => {
                     window.isRu = window.isRuPath;
                     const dynamicBtn = document.querySelector('.dynamic-tts-btn');
@@ -510,7 +505,14 @@ onReady(() => {
             let currentLength = 0;
             let textArr = [];
             for (let i = startIndex; i < allValidElements.length; i++) {
-                let text = (allValidElements[i].innerText || allValidElements[i].textContent).replace(/✦/g, '').trim();
+                // Owner: "в контекстном меню медитировать/запоминать не должно передавать
+                // варианты" — .variant is rendered inline (megareader.js) regardless of the
+                // hidden-variant toggle's CSS state, and innerText/textContent both include it
+                // as plain text either way. Strip it from a clone before reading, same fix as
+                // voice.js's TTS extraction.
+                const elClone = allValidElements[i].cloneNode(true);
+                elClone.querySelectorAll('.variant').forEach(v => v.remove());
+                let text = elClone.textContent.replace(/✦/g, '').trim();
                 if (text) {
                     if (currentLength + text.length > MAX_CHARS) {
                         let remainingSpace = Math.max(0, MAX_CHARS - currentLength - 3);

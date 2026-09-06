@@ -17,6 +17,10 @@ const execFile = util.promisify(require('child_process').execFile);
 const openapiSpec = require('./configs/openapi.json');
 const openapiSpecEn = require('./configs/openapi.en.json');
 const { default: Aksharamukha, Scripts: AKSH_SCRIPTS } = require('aksharamukha');
+// Same classifier the client (search/index.html's textIdFromPath) uses to recognize a text id —
+// reused here so a shared link like "an 10.72" (space instead of dot — Android share sheets do
+// this) resolves server-side too, not just when the client's own copy happens to be loaded yet.
+const { DgTextRouter } = require('./public/overrides/js/dg-text-router.js');
 
 // The search/reader core lives in core/search-core.js — see that file for why. Destructured
 // here so the routes below read exactly as they did when the functions were declared in this
@@ -1775,7 +1779,20 @@ app.get('/:slug', (req, res) => {
     // A siteroot/ entry whose target is missing on this machine (skippedPrefixes at startup):
     // still a folder name, not a keyword — an honest 404 beats "0 texts found for mobile-data".
     if (siteRootEntries.has(rawSlug)) return res.callNotFound();
-    const suttaId = rawSlug.split(':')[0].toLowerCase();
+    const colonIdx = rawSlug.indexOf(':');
+    const rawBase = (colonIdx === -1 ? rawSlug : rawSlug.slice(0, colonIdx)).toLowerCase();
+    const anchorSuffix = colonIdx === -1 ? '' : rawSlug.slice(colonIdx);
+    // Owner (live bug): sharing "AN 10.72" from a phone's OS share sheet produced a link with a
+    // literal space ("/an%2010.72") instead of "an10.72" — the raw slug never matched skeletonDB,
+    // so this fell through all the way to a useless 0-result keyword search. classify() already
+    // knows how to join "letter <space> digit" (and other loose typo shorthands); redirect to the
+    // canonical id when it resolves to something DIFFERENT from the raw slug, same pattern as the
+    // range/TOC redirects below — a clean URL also sidesteps the client re-deriving the wrong id.
+    const classified = DgTextRouter.classify(rawBase);
+    if (classified.type === 'text' && classified.id !== rawBase) {
+        return res.redirect('/' + encodeURIComponent(classified.id) + anchorSuffix + queryString(req), 301);
+    }
+    const suttaId = rawBase;
     if (skeletonDB[suttaId]) {
         // Раньше отдавали отдельную reader-template.html — прямой заход/reload/шаринг ссылки на
         // сутту НЕ был SPA (свой header, свой bootstrap, дублировал search/index.html). Теперь

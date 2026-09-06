@@ -43,10 +43,25 @@ function getSegmentTextParts(parentSpan, clickedLang, clickedElement) {
     // Удаляем только скрытые варианты
     piClone.querySelectorAll('.hidden-variant').forEach(el => el.remove());
 
-    const piText = piClone.textContent
+    // Owner: "если варианты включены то нужно копировать с отступом если выключены варианты
+    // вообще не нужно копировать" - a visible .variant (megareader.js: <font class="variant">)
+    // sits inline in the same [lang="pi"] element, so the per-word split below (one word per
+    // line, for the mnemonic-style Pali quote) would otherwise chop the variant note apart word
+    // by word along with the real text. Pull its text out first and re-add it as its own
+    // indented line afterwards. Hidden variants never reach here - already removed above.
+    var visibleVariants = Array.from(piClone.querySelectorAll('.variant'))
+      .map(function (el) { return el.textContent.trim(); })
+      .filter(Boolean);
+    piClone.querySelectorAll('.variant').forEach(function (el) { el.remove(); });
+
+    let piText = piClone.textContent
       .trim()
       .replace(/ /g, '\n')
       .replace(/\s\s+/g, '\n');
+
+    if (visibleVariants.length) {
+      piText += (piText ? '\n' : '') + visibleVariants.map(function (v) { return '\t' + v; }).join('\n');
+    }
 
     if (piText) {
       textParts.push(piText);

@@ -466,13 +466,19 @@ window.addEventListener('scroll', function () {
     requestAnimationFrame(function () { ttsRepositionQueued = false; repositionTtsButton(); });
 }, { passive: true });
 
-window.addTtsButton = function(containerElement, specificElement) {
+window.addTtsButton = function(containerElement, specificElement, force) {
     // Безопасная проверка видимости плеера (до загрузки voice.js ttsState не существует)
     const player = document.getElementById('voice-player-container');
     const isPlayerVisible = player && player.classList.contains('active');
     const isSpeakingOrPaused = typeof ttsState !== 'undefined' && (ttsState.speaking || ttsState.paused);
 
-    if (isPlayerVisible && isSpeakingOrPaused) return;
+    // force=true (reader/common.js: title play icon, context menu "Voice") means the user
+    // explicitly picked THIS segment to play — skip the "don't interrupt with a floating button
+    // while already reading" guard below, which exists for passive text clicks, not deliberate
+    // play commands. Owner: "Ссылка войс либо продолжает ТТС либо проигрывает перевод" — without
+    // this, addTtsButton() silently no-opped while speaking, leaving the OLD .dynamic-tts-btn (a
+    // different segment/language) in place, so the click handler resumed/continued that instead.
+    if (isPlayerVisible && isSpeakingOrPaused && !force) return;
 
     const oldBtn = document.querySelector('.dynamic-tts-btn');
     if (oldBtn) oldBtn.remove();
@@ -485,9 +491,9 @@ window.addTtsButton = function(containerElement, specificElement) {
     repositionTtsButton();
 };
 
-window.activateSegmentForTTS = function(element) {
+window.activateSegmentForTTS = function(element, force) {
     if (!element) return;
-    
+
     let targetElement = element;
     if (!targetElement.matches('[class*="-lang"]')) {
         const childLang = targetElement.querySelector('[class*="-lang"]');
@@ -500,9 +506,9 @@ window.activateSegmentForTTS = function(element) {
 
     window.removeAllHighlights();
     targetElement.classList.add("active-word");
-    
+
     const rowContainer = targetElement.closest("[id]") || targetElement;
-    window.addTtsButton(rowContainer, targetElement);
+    window.addTtsButton(rowContainer, targetElement, force);
 };
 
 document.addEventListener("click", function (e) {

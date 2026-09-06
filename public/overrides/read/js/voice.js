@@ -1026,7 +1026,15 @@ async function prepareTextData(slug) {
         }
       }
     } else if (paliElement) {
-      let rawDomText = paliElement.textContent.replace(/<[^>]*>/g, '').trim();
+      // Owner: "Voice не должен читать варианты не важно вкл они или выкл" — unlike the JSON
+      // path above (fetchSegmentsData returns bare root text, no variant markup at all), this DOM
+      // fallback reads the RENDERED [lang="pi"] element, which has the variant note injected
+      // inline (<font class="variant">, megareader.js) regardless of its current hidden-variant
+      // display toggle — .textContent ignores CSS visibility, so it was always read aloud. Same
+      // clone-and-strip as the translation branches below.
+      const paliClone = paliElement.cloneNode(true);
+      paliClone.querySelectorAll('.variant, .not_translate, sup, .ref').forEach(v => v.remove());
+      let rawDomText = paliClone.textContent.replace(/<[^>]*>/g, '').trim();
       let cleanedText = cleanTextForTTS(rawDomText);
       if (window.convertPaliToDevanagari) {
           paliDev = window.convertPaliToDevanagari(cleanedText);
