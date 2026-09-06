@@ -1508,8 +1508,15 @@ body:not(.dg-state-home) #dg-announce { display: none; }
    ("а-то меню не отличить от полной страницы"); iframe/body sizing below is shared, only the
    position/size override just under it is mobile-only ("на мобильных пусть занимает всю
    страницу"). */
-.dg-sheet.dg-settings-embed .dg-sheet-body { padding: 0; overflow: hidden; min-height: 0; }
-.dg-sheet.dg-settings-embed .dg-sheet-body iframe { width: 100%; height: 100%; border: 0; display: block; }
+/* height:100% on the iframe (a percentage against a flex-item ancestor whose own height comes
+   from flex-grow, not an explicit value) doesn't reliably resolve in Chromium — confirmed live:
+   at some window sizes the iframe silently fell back to the UA default 150px, leaving most of
+   the sheet blank (owner screenshot, incognito/no-cache — not a caching artifact). Absolute-fill
+   instead: position:relative on the body makes it the containing block, inset:0 on the iframe
+   sizes it directly from that box's padding edges, without depending on percentage-height
+   resolution at all. */
+.dg-sheet.dg-settings-embed .dg-sheet-body { padding: 0; overflow: hidden; min-height: 0; position: relative; }
+.dg-sheet.dg-settings-embed .dg-sheet-body iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: block; }
 @media (max-width: 767px) {
     /* Fullscreen below the desktop breakpoint: no backdrop sliver of the site's own header
        behind it, nothing to click "outside" of — closing is the sheet's own X, the embedded
