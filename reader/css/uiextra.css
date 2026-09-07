@@ -39,6 +39,14 @@
       left: 50%;
       transform: translate(-50%, -50%);
       margin: 0;
+      /* Owner: the icon read noticeably heavier/more solid than the language pill next to it,
+         even though both buttons share the same 0.8 container opacity (#scrollToTopBtn,
+         .dynamic-tts-btn below) — a solid glyph shape just reads as more opaque than antialiased
+         text at the same numeric value. Fade the glyph itself too, same value as the TTS icon. */
+      opacity: 0.8;
+  }
+  #scrollToTopBtn:hover #arrowImg {
+      opacity: 1;
   }
 
   #arrowImg.dark {
@@ -1169,9 +1177,13 @@
   width: 18px;
   height: 18px;
   display: block;
-  margin: 0 auto; 
-  transform: none !important; 
+  margin: 0 auto;
+  transform: none !important;
+  /* Same fade as #arrowImg (uiextra.css) — matches the pill's own muted look instead of
+     standing out as a solid black glyph against it. */
+  opacity: 0.8;
 }
+.dynamic-tts-btn:hover img { opacity: 1; }
 
 .dark .dynamic-tts-btn {
   border-color: #5a5a5a;
