@@ -1275,6 +1275,23 @@
     };
     function langMenuStr(key) { return LANGMENU_STR[key][menuLang() === 'ru' ? 'ru' : 'en']; }
     var pillLangs = [];
+    // Site/reading language changed (burger EN/RU, Alt+1, or megareader's switchReadingLanguage —
+    // all go through dhamma-i18n.js setSiteLanguage, which dispatches this on document). Owner:
+    // the language you just left stays "activated" — EN→RU turns [en] into [ru, en], so the
+    // "···" button appears right away, in results and reader alike. Same prepend semantics as
+    // megareader.js setLangOrderFirst (new first, rest kept). Outside the reader we repaint the
+    // pill here; inside it buildSutta() repaints at the end of its own re-render (painting here
+    // too would flash the old DOM's language for a moment).
+    document.addEventListener('dhamma:languagechange', function (e) {
+        var lang = e.detail && e.detail.language;
+        if (!lang) return;
+        try {
+            var order = JSON.parse(localStorage.getItem('dgReadingLangOrder')) || [];
+            if (!Array.isArray(order)) order = [];
+            localStorage.setItem('dgReadingLangOrder', JSON.stringify([lang].concat(order.filter(function (l) { return l !== lang; }))));
+        } catch (err) { /* приватный режим */ }
+        if (currentState() !== 'reader') dgRenderLangPill();
+    });
     function dgLangMenuHost() {
         var menu = document.getElementById('dg-lpmenu');
         if (menu) return menu;
@@ -1341,6 +1358,15 @@
         try { localStorage.setItem('dgReadingLangOrder', JSON.stringify(ordered)); } catch (e) { /* приватный режим */ }
         dgSetLangMenuMain(menu, mainLang);
 
+        // Results listing: its "reading language" IS the site UI language (search-render.js
+        // reads window.siteLanguage per row; search/index.html rebuilds the table on
+        // dhamma:languagechange) — so making a language main there = switching the site.
+        if (currentState() === 'results') {
+            var i18n = window.DHAMMA_I18N;
+            if (i18n && i18n.setLanguage && mainLang !== (i18n.language || localStorage.getItem('dhammaLanguage'))) i18n.setLanguage(mainLang);
+            else dgRenderLangPill(); // set didn't change the site language (e.g. unchecked a non-main one) — repaint "···" ourselves
+            return;
+        }
         if (currentState() !== 'reader' || !window.READER_MODE || !window._currentSlug) return;
         if (window.READER_MODE.modeKey === 'multiLang') {
             window.READER_MODE.lang = mainLang;
@@ -1351,6 +1377,8 @@
             if (typeof window.buildSutta === 'function') window.buildSutta(window._currentSlug);
         } else if (mainLang !== window.READER_MODE.lang && typeof window.switchReadingLanguage === 'function') {
             window.switchReadingLanguage(mainLang);
+        } else {
+            dgRenderLangPill(); // single-column mode, shown language unchanged — only "···" needs repainting
         }
     }
     function dgToggleLangMenu() {
