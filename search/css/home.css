@@ -3456,6 +3456,17 @@ body.dark .dg-lpill button[aria-pressed="true"]:hover { background: #5050f0; }
 .dg-lpmenu-pin:hover { background: var(--dg-border); color: var(--dg-text); }
 .dg-lpmenu-row.is-main .dg-lpmenu-pin { display: none; }
 @media (max-width: 767.98px) { .dg-lpmenu { right: 12px; bottom: 58px; } }
+/* A language this text has no translation in (READER_MODE.availableLangs, from /api/text). */
+.dg-lpmenu-row.is-missing { opacity: .55; }
+.dg-lpmenu-row.is-missing .dg-lpmenu-pin { display: none; }
+.dg-lpmenu-missing { display: none; font-size: 10.5px; color: var(--dg-text-muted); }
+.dg-lpmenu-row.is-missing .dg-lpmenu-missing { display: inline; }
+
+/* Byline: only the main translator shows, the rest folds under "*" (megareader.js
+   translatorByline; toggle handler in home.js). */
+.dg-trn-star { border: 0; background: none; color: var(--dg-accent-ink); font: inherit; font-weight: 700; font-size: .9em; line-height: 1; padding: 0 5px; cursor: pointer; vertical-align: super; }
+.dg-trn-star:hover, .dg-trn-star[aria-expanded="true"] { color: var(--dg-text); }
+.dg-trn-rest:not([hidden]) { display: block; }
 
 
 /* ============================================================================

@@ -1122,6 +1122,11 @@ app.get('/api/text/:suttaId', async (req, res) => {
         // (mode-table.json), теперь режим языка не хранит вообще, так что явно возвращаем его
         // отдельным полем.
         data.lang = req.query.lang || effectiveLangs[0] || null;
+        // Languages THIS text has any translation in — whatever mode/langs were requested. The
+        // reader's language popover marks the rest "нет перевода" right at load time (owner)
+        // instead of discovering it one refetch at a time. One indexed read of the same table
+        // the root text came from.
+        data.availableLangs = searchDb.prepare("SELECT DISTINCT lang FROM texts WHERE sutta_id = ? AND kind = 'translation'").all(suttaId).map(r => r.lang);
 
         // Конвертация системы письма пали (?script=Devanagari/Thai/... — любой ключ
         // Aksharamukha.Scripts, см. akshReady/resolveScriptKey выше). Только root_text/variant —

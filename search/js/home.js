@@ -1271,10 +1271,21 @@
     var LANGMENU_STR = {
         title: { ru: 'Языки перевода', en: 'Translation Languages' },
         main: { ru: 'основной', en: 'main' },
-        setMain: { ru: 'сделать основным', en: 'set as main' }
+        setMain: { ru: 'сделать основным', en: 'set as main' },
+        missing: { ru: 'нет перевода', en: 'no translation' }
     };
     function langMenuStr(key) { return LANGMENU_STR[key][menuLang() === 'ru' ? 'ru' : 'en']; }
     var pillLangs = [];
+    var pillLiveLangs = []; // what's actually rendered right now (reader: DOM; results: the UI language)
+    // Byline "*" (megareader.js translatorByline): unfolds the other translators under it.
+    document.addEventListener('click', function (e) {
+        var star = e.target.closest('.dg-trn-star');
+        if (!star) return;
+        var rest = star.nextElementSibling;
+        if (!rest) return;
+        rest.hidden = !rest.hidden;
+        star.setAttribute('aria-expanded', String(!rest.hidden));
+    });
     // Site/reading language changed (burger EN/RU, Alt+1, or megareader's switchReadingLanguage —
     // all go through dhamma-i18n.js setSiteLanguage, which dispatches this on document). Owner:
     // the language you just left stays "activated" — EN→RU turns [en] into [ru, en], so the
@@ -1305,7 +1316,7 @@
             if (pin) { dgApplyLangSelection(menu, pin.closest('.dg-lpmenu-row').dataset.lang); return; }
             // Row click outside the checkbox itself still toggles it (bigger hit target).
             var row = e.target.closest('.dg-lpmenu-row');
-            if (row && e.target.tagName !== 'INPUT') {
+            if (row && !row.classList.contains('is-missing') && e.target.tagName !== 'INPUT') {
                 var box = row.querySelector('.dg-check');
                 if (box) { box.checked = !box.checked; dgApplyLangSelection(menu); }
             }
@@ -1340,6 +1351,12 @@
          was the one actually showing — switchReadingLanguage() covers that (and no-ops via its
          own guard when it wasn't). */
     function dgApplyLangSelection(menu, forceMainLang) {
+        var st = currentState();
+        var rm = window.READER_MODE;
+        // Owner: two presets over one mechanism. multiLang = "my saved set" (persisted). Every
+        // other reader mode = "just the main language", where the checkboxes are a per-TEXT
+        // trial: applied at once, never saved, allowed to go all the way down to Pāḷi only.
+        var trial = st === 'reader' && !!rm && rm.modeKey !== 'multiLang';
         if (forceMainLang) {
             menu.querySelectorAll('.dg-lpmenu-row').forEach(function (row) {
                 if (row.dataset.lang === forceMainLang) row.querySelector('.dg-check').checked = true;
@@ -1348,50 +1365,78 @@
         var rows = Array.prototype.slice.call(menu.querySelectorAll('.dg-lpmenu-row'));
         var checked = rows.filter(function (r) { return r.querySelector('.dg-check').checked; })
             .map(function (r) { return r.dataset.lang; });
-        if (!checked.length && rows.length) {
+        if (!checked.length && rows.length && !trial) { // saved sets keep ≥1; a trial may drop to Pāḷi only
             rows[0].querySelector('.dg-check').checked = true;
             checked = [rows[0].dataset.lang];
         }
-        var mainLang = forceMainLang || (checked.indexOf(pillLangs[0]) !== -1 ? pillLangs[0] : checked[0]);
+        var mainLang = forceMainLang || (checked.indexOf(pillLangs[0]) !== -1 ? pillLangs[0] : (checked[0] || pillLangs[0]));
         var ordered = [mainLang].concat(checked.filter(function (l) { return l !== mainLang; }));
         pillLangs = ordered;
-        try { localStorage.setItem('dgReadingLangOrder', JSON.stringify(ordered)); } catch (e) { /* приватный режим */ }
+        if (!trial) { try { localStorage.setItem('dgReadingLangOrder', JSON.stringify(ordered)); } catch (e) { /* приватный режим */ } }
         dgSetLangMenuMain(menu, mainLang);
 
         // Results listing: its "reading language" IS the site UI language (search-render.js
         // reads window.siteLanguage per row; search/index.html rebuilds the table on
         // dhamma:languagechange) — so making a language main there = switching the site.
-        if (currentState() === 'results') {
+        if (st === 'results') {
             var i18n = window.DHAMMA_I18N;
             if (i18n && i18n.setLanguage && mainLang !== (i18n.language || localStorage.getItem('dhammaLanguage'))) i18n.setLanguage(mainLang);
             else dgRenderLangPill(); // set didn't change the site language (e.g. unchecked a non-main one) — repaint "···" ourselves
             return;
         }
-        if (currentState() !== 'reader' || !window.READER_MODE || !window._currentSlug) return;
-        if (window.READER_MODE.modeKey === 'multiLang') {
-            window.READER_MODE.lang = mainLang;
+        if (st !== 'reader' || !rm || !window._currentSlug) return;
+        if (rm.modeKey === 'multiLang') {
+            rm.lang = mainLang;
             var params = new URLSearchParams(document.location.search);
             params.set('lang', mainLang);
             params.delete('langs'); // stale explicit langs= would otherwise outrank dgReadingLangOrder — see buildSutta()
             history.pushState({ page: window._currentSlug, mode: 'multiLang' }, "", '?' + params.toString());
             if (typeof window.buildSutta === 'function') window.buildSutta(window._currentSlug);
-        } else if (mainLang !== window.READER_MODE.lang && typeof window.switchReadingLanguage === 'function') {
-            window.switchReadingLanguage(mainLang);
-        } else {
-            dgRenderLangPill(); // single-column mode, shown language unchanged — only "···" needs repainting
+            return;
         }
+        // Trial (single/memorize/devanagari/multiTran). The pin is the one thing that DOES persist:
+        // it's the reading language (= site language), switchReadingLanguage() saves it itself.
+        if (forceMainLang && mainLang !== rm.lang && typeof window.switchReadingLanguage === 'function') {
+            rm.tempLangs = null;
+            window.switchReadingLanguage(mainLang);
+            return;
+        }
+        var shown = checked.indexOf(mainLang) !== -1 ? ordered : checked; // main may itself be unchecked
+        rm.tempLangs = shown.length ? shown : [mainLang];
+        rm.tempSlug = window._currentSlug;
+        // Nothing checked = Pāḷi only — that's the pill's own 2nd-segment toggle, reuse it (and
+        // keep whatever the user had for the Pāḷi segment when turning translations back on).
+        dgSetPaliToggle(shown.length ? (dgPillMode().pli ? 'pli-2nd' : '2nd') : 'pli');
+        if (shown.length && typeof window.buildSutta === 'function') window.buildSutta(window._currentSlug);
+        else dgRenderLangPill();
+    }
+    // The pill's pli/2nd segments and the trial above share this: megareader's setLanguage()
+    // (hide-pali/hide-english/... classes) + the same localStorage/cloud bookkeeping as before.
+    function dgSetPaliToggle(next) {
+        try { localStorage.setItem('paliToggle', next); localStorage.setItem('dg_localSettingsTimestamp', String(Date.now())); } catch (err) { /* приватный режим */ }
+        window.language = next;
+        if (typeof window.setLanguage === 'function') window.setLanguage(next);
+        if (typeof window.syncSettingsToCloud === 'function') window.syncSettingsToCloud();
+        dgSyncLangPill();
     }
     function dgToggleLangMenu() {
         var menu = dgLangMenuHost();
         if (!menu.hidden) { menu.hidden = true; return; }
         var main = pillLangs[0];
+        var inReader = currentState() === 'reader';
+        var avail = inReader && window.READER_MODE && Array.isArray(window.READER_MODE.availableLangs) ? window.READER_MODE.availableLangs : null;
         menu.innerHTML = '<div class="dg-lpmenu-title">' + esc(langMenuStr('title')) + '</div>' +
             pillLangs.map(function (lang) {
                 var name = LANG_FULL_NAME[lang] || (lang.charAt(0).toUpperCase() + lang.slice(1));
-                return '<div class="dg-lpmenu-row' + (lang === main ? ' is-main' : '') + '" data-lang="' + esc(lang) + '">' +
-                    '<input type="checkbox" class="dg-check" checked>' +
+                var missing = !!(avail && avail.indexOf(lang) === -1); // this text has no translation in it
+                // Reader: checked = on screen right now (single-column modes list the activated-
+                // but-hidden languages unchecked). Results: the activated set itself is the state.
+                var on = !missing && (!inReader || pillLiveLangs.indexOf(lang) !== -1);
+                return '<div class="dg-lpmenu-row' + (lang === main ? ' is-main' : '') + (missing ? ' is-missing' : '') + '" data-lang="' + esc(lang) + '">' +
+                    '<input type="checkbox" class="dg-check"' + (on ? ' checked' : '') + (missing ? ' disabled' : '') + '>' +
                     '<span class="dg-lpmenu-name">' + esc(name) + '</span>' +
                     '<span class="dg-lpmenu-tag">' + esc(langMenuStr('main')) + '</span>' +
+                    '<span class="dg-lpmenu-missing">' + esc(langMenuStr('missing')) + '</span>' +
                     '<button type="button" class="dg-lpmenu-pin">' + esc(langMenuStr('setMain')) + '</button>' +
                     '</div>';
             }).join('');
@@ -1419,6 +1464,7 @@
             // The listing shows the UI language's translation (langswitch.js: paliToggleRuSearch).
             langs.push((localStorage.getItem('dhammaLanguage') || localStorage.getItem('siteLanguage') || 'en') === 'ru' ? 'ru' : 'en');
         }
+        pillLiveLangs = langs.slice();
         // Owner: "доп кнопку показывать во всех режимах чтения и в результатах, если уже есть
         // больше одного активированного языка" — a mode like single/memorize/devanagari (or the
         // results listing) only ever renders ONE language at a time, so `langs` above stays
@@ -1456,12 +1502,7 @@
                     dgSyncLangPill();
                     return;
                 }
-                var next = pli && trn ? 'pli-2nd' : (pli ? 'pli' : '2nd');
-                try { localStorage.setItem('paliToggle', next); localStorage.setItem('dg_localSettingsTimestamp', String(Date.now())); } catch (err) { /* приватный режим */ }
-                window.language = next;
-                if (typeof window.setLanguage === 'function') window.setLanguage(next);
-                if (typeof window.syncSettingsToCloud === 'function') window.syncSettingsToCloud();
-                dgSyncLangPill();
+                dgSetPaliToggle(pli && trn ? 'pli-2nd' : (pli ? 'pli' : '2nd'));
             });
             // Alt+Z / hidden #language-button still cycle the mode — mirror it here afterwards.
             document.addEventListener('keydown', function () { setTimeout(dgSyncLangPill, 60); });

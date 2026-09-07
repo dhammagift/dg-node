@@ -995,6 +995,12 @@ window.buildSutta = async function(rawSlug) {
             }
             langsQuery = `mode=${encodeURIComponent(READER_MODE.modeKey)}` +
                 (langs.length ? `&langs=${encodeURIComponent(langs.join(','))}` : '');
+        } else if (READER_MODE.tempLangs && READER_MODE.tempLangs.length && READER_MODE.tempSlug === slug) {
+            // Single-column modes: the language popover's checkboxes are a per-TEXT trial (owner:
+            // "применялось, но не сохранялось") — sent as an explicit langs=, never written to
+            // dgReadingLangOrder. tempSlug pins it to this text, so the next one is back to just
+            // the main language. multiLang persists instead (branch above). Set by home.js.
+            langsQuery = `mode=${encodeURIComponent(READER_MODE.modeKey)}&langs=${encodeURIComponent(READER_MODE.tempLangs.join(','))}`;
         } else {
             const langParam = READER_MODE.lang ? `&lang=${encodeURIComponent(READER_MODE.lang)}` : '';
             langsQuery = `mode=${encodeURIComponent(READER_MODE.modeKey)}${langParam}`;
@@ -1041,6 +1047,7 @@ window.buildSutta = async function(rawSlug) {
     // см. LANG_ORDER_KEY выше): состав колонок остаётся серверным, меняется только их порядок.
     const columns = reorderColumnsByLangOrder(suttaData.columns || []);
     READER_MODE.columns = columns; // кэш последнего известного состояния — для switchReaderMode
+    READER_MODE.availableLangs = Array.isArray(suttaData.availableLangs) ? suttaData.availableLangs : null; // languages THIS text has a translation in (dg-fastify.js) — the popover marks the rest "нет перевода"
     // Owner: "показывать доп кнопку [языковой пилюли] во всех режимах... раз языки уже
     // активированы" — home.js's dgRenderLangPill reads LANG_ORDER_KEY to decide whether to show
     // its "more languages" dots button outside multiLang too (single/results/etc, where only ONE
@@ -1299,9 +1306,17 @@ window.buildSutta = async function(rawSlug) {
         return `<span class="${rowClass}" lang="${lang}"> ${label}${displayName}</span>`;
     });
 
+    // Owner: "не загружать интерфейс" — only the main translator stays on the byline; every
+    // further one (other languages, or a 2nd translator of the same language) folds under a
+    // "*" right after it. Not <details>: that isn't phrasing content, the parser would close
+    // the <p> around it. The "*" toggle is one delegated click handler in home.js.
+    const [firstTranslator, ...moreTranslators] = translatorSpans;
+    const bylineTranslators = moreTranslators.length
+        ? `${firstTranslator}<button type="button" class="dg-trn-star" aria-expanded="false" title="${window.isRuPath ? 'Другие переводчики' : 'Other translators'}">*</button><span class="dg-trn-rest" hidden>${moreTranslators.join('<br>')}</span>`
+        : (firstTranslator || '');
     const translatorByline = `<div id="trn" class="byline">
     <p><span class="pli-lang" lang="pi">Pāḷi <a class="text-decoration-none text-reset" href="/assets/texts/abbr.html?s=ms" title="Mahāsaṅgīti Pāḷi">MS</a></span>
-    <span class="right-column">${translatorSpans.join('<br>')}</span></p></div>`;
+    <span class="right-column">${bylineTranslators}</span></p></div>`;
 
     let cleanSlugReady = slug;
 
