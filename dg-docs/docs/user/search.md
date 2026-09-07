@@ -139,7 +139,8 @@ For edition abbreviations (`ms`, `pts1ed`, `sya-all`, `mr`, etc.), see the
 | Key | Action |
 |---|---|
 | Alt+A | Toggle dictionary (clicking a word triggers [DPD](pathname:///assets/common/dictHelp.html)) |
-| Alt+S | Show/hide settings |
+| Alt+S | Open/close [Quick Settings](/settings) (the sliders icon next to the search box) |
+| Alt+Shift+S | Open/close the full [Settings](/settings) page |
 | Alt+T | Dark / light / auto theme |
 | Alt+Space, Alt+Z | Show/hide Pali or other languages in results |
 | Shift+Space | Collapse/expand all search results |

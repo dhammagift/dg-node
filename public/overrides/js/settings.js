@@ -438,20 +438,20 @@ window.removeAllHighlights = function() {
 // One shared constant, used everywhere in this corner cluster, fixes it regardless of order.
 // Shrunk from 32 to 19 (owner: gap between these buttons was too big).
 const CORNER_BUTTON_GAP = 5; // same 5px as placeScrollTopButton() in search/index.html (owner: equal gaps)
-function repositionTtsButton() {
-    const btn = document.querySelector('.dynamic-tts-btn');
-    if (!btn) return;
-    // #dg-langpill (home.js) is the reader's language control; #language-button is hidden there.
+// #dg-langpill (home.js) is the reader's language control; #language-button is hidden there.
+function cornerButtonRight() {
     const rightCornerNeighbors = [document.getElementById('scrollToTopBtn'), document.getElementById('dg-langpill'), document.getElementById('language-button')]
         .filter(function (el) { return el && window.getComputedStyle(el).display !== 'none'; })
         .map(function (el) { return el.getBoundingClientRect(); })
         .filter(function (r) { return r.width > 0; });
-    if (rightCornerNeighbors.length) {
-        const leftmost = Math.min.apply(null, rightCornerNeighbors.map(function (r) { return r.left; }));
-        btn.style.right = Math.round(window.innerWidth - leftmost + CORNER_BUTTON_GAP) + 'px';
-    } else {
-        btn.style.right = '';
-    }
+    if (!rightCornerNeighbors.length) return '';
+    const leftmost = Math.min.apply(null, rightCornerNeighbors.map(function (r) { return r.left; }));
+    return Math.round(window.innerWidth - leftmost + CORNER_BUTTON_GAP) + 'px';
+}
+function repositionTtsButton() {
+    const btn = document.querySelector('.dynamic-tts-btn');
+    if (!btn) return;
+    btn.style.right = cornerButtonRight();
 }
 // scrollToTopBtn only TOGGLES DISPLAY on scroll (smoothScroll.js, window.scrollY > 600) — it
 // doesn't move, but its appearance/disappearance mid-scroll changes which neighbors the TTS
@@ -487,9 +487,18 @@ window.addTtsButton = function(containerElement, specificElement, force) {
     const btnContainer = document.createElement('div');
     btnContainer.className = 'dynamic-tts-btn';
     btnContainer.innerHTML = `<img src="/assets/svg/play.svg" alt="Play">`;
+    // Set the real position BEFORE the element is ever in the document, not right after — owner:
+    // "она с самого края экрана едет" (it slides in from the screen edge). The CSS still carries
+    // a static right:90px fallback (reader/css/uiextra.css, from before the pill started hugging
+    // the text column on wide screens instead of the viewport edge — see search/css/home.css
+    // .dg-lpill); appendChild-then-reposition let the browser paint that stale 90px as this
+    // button's first real frame, and `transition: all` (same file) then animated it edge→pill.
+    // Computing the target first means the FIRST paint is already correct — nothing to slide from.
+    // Later repositions (scroll, neighbors moving) still go through repositionTtsButton() below
+    // and still animate, same as before — only the initial spawn skips the bogus edge-to-pill leg.
+    btnContainer.style.right = cornerButtonRight();
 
     document.body.appendChild(btnContainer);
-    repositionTtsButton();
 };
 
 window.activateSegmentForTTS = function(element, force) {
@@ -1249,9 +1258,21 @@ window.addEventListener("keydown", (event) => {
     // Добавляем обработчик сочетания клавиш Alt + Space (физическая клавиша)
 document.addEventListener("keydown", (event) => {
     if ((event.altKey && event.code === "Space") || (event.altKey && event.code === "KeyZ")) {
-        const languageButton = document.getElementById("language-button");
+      event.preventDefault();
+      // On results, the visible pill (home.js #dg-langpill) now owns this state — its "2nd"
+      // segment toggles the MAIN language's own visibility (dgSetResultsLangVisibility), the
+      // same flag its popover checkbox reads/writes. The legacy #language-button still exists
+      // (hidden) but drives a SEPARATE blanket paliToggleSearch the pill no longer reads — Alt+Z
+      // clicking it here would silently desync the pill/checkboxes from what's actually shown.
+      // Reader is untouched: megareader.js rebinds #language-button itself there, and that IS
+      // still the pill's own single source of truth (localStorage.paliToggle) — no divergence.
+      if (document.body.classList.contains('dg-state-results')) {
+        const pillToggle = document.querySelector('#dg-langpill [data-k="2nd"]');
+        if (pillToggle) pillToggle.click();
+        return;
+      }
+      const languageButton = document.getElementById("language-button");
       if (languageButton) {
-       event.preventDefault();
        // Имитируем клик по кнопке
       languageButton.click();
       }
@@ -1419,9 +1440,20 @@ if (event.altKey && event.code === "KeyR") {
 
 
 
+    // Alt+S — Quick Settings (the sliders icon inside the search field, #dg-quick-btn);
+    // Alt+Shift+S — the full Settings page/modal (#settingsButton). Was one binding (Alt+S →
+    // full settings only) — owner: split them so Alt+S reaches the lighter, faster panel and
+    // Alt+Shift+S is still there for the full page. Falls back to full settings on pages that
+    // don't have a Quick Settings button at all (e.g. the standalone reader template), so Alt+S
+    // isn't simply dead there.
     if (event.altKey && event.code === "KeyS") {
-      // Имитируем клик по кнопке
-      settingsButton.click();
+      if (event.shiftKey) {
+        if (settingsButton) settingsButton.click();
+      } else {
+        const quickBtn = document.getElementById('dg-quick-btn');
+        if (quickBtn) quickBtn.click();
+        else if (settingsButton) settingsButton.click();
+      }
     }
 
 // Мультиселект Alt + J (физическая клавиша J)

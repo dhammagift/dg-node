@@ -1277,6 +1277,7 @@
     function langMenuStr(key) { return LANGMENU_STR[key][menuLang() === 'ru' ? 'ru' : 'en']; }
     var pillLangs = [];
     var pillLiveLangs = []; // what's actually rendered right now (reader: DOM; results: the UI language)
+    var resultsHiddenLangs = []; // results-page per-language toggle state (dgSetResultsLangVisibility) — the popover's checkboxes read this back, see dgToggleLangMenu
     // Byline "*" (megareader.js translatorByline): unfolds the other translators under it.
     document.addEventListener('click', function (e) {
         var star = e.target.closest('.dg-trn-star');
@@ -1353,6 +1354,30 @@
          ONE language on screen, so there's nothing to refetch UNLESS the language that changed
          was the one actually showing — switchReadingLanguage() covers that (and no-ops via its
          own guard when it wasn't). */
+    // One <style> rule per hidden language, targeting the `lang="xx"` attribute search-render.js
+    // already puts on every translation <span class="quote">, PLUS the title's own translated
+    // line (search-render.js: `<span class="${lang}-lang dg-title-lang">`) — that one has no
+    // `lang=` attribute (only ever one language's title renders per row, whichever won the
+    // priority pick), so it needs its own class-based selector. Owner: "галочка русс должна быть
+    // тоже самое что кнопка рус — кнопка рус отключает и название на русском тоже, а галочка нет"
+    // — was quote-only, title kept showing its translated line regardless of the checkbox.
+    // A stylesheet rule (not per-element inline style) so it keeps applying to rows DataTables
+    // redraws later (sort/page/search) without needing a redraw hook.
+    function dgSetResultsLangVisibility(allLangs, checkedLangs) {
+        var style = document.getElementById('dg-results-lang-hide');
+        if (!style) {
+            style = document.createElement('style');
+            style.id = 'dg-results-lang-hide';
+            document.head.appendChild(style);
+        }
+        resultsHiddenLangs = allLangs.filter(function (l) { return /^[a-z]{2,3}$/.test(l) && checkedLangs.indexOf(l) === -1; }); // guard: only plain ISO codes reach the stylesheet
+        style.textContent = resultsHiddenLangs
+            // !important: langswitch.css unconditionally forces `.dg-title-lang { display: inline
+            // !important }` (keeps the Pali+translation title on one line) — a plain rule here
+            // would lose to that regardless of this rule's own specificity.
+            .map(function (l) { return '#search-pane [lang="' + l + '"].quote{display:none}\n#search-pane .' + l + '-lang.dg-title-lang{display:none !important}'; })
+            .join('\n');
+    }
     function dgApplyLangSelection(menu, forceMainLang) {
         var st = currentState();
         var rm = window.READER_MODE;
@@ -1360,6 +1385,12 @@
         // other reader mode = "just the main language", where the checkboxes are a per-TEXT
         // trial: applied at once, never saved, allowed to go all the way down to Pāḷi only.
         var trial = st === 'reader' && !!rm && rm.modeKey !== 'multiLang';
+        // Results may ALSO drop to zero (Pāḷi only) — owner: "у нас есть даже более рекомендуемый
+        // режим, только пали" — it's the same Pāḷi-only view the pill's own left segment already
+        // reaches (dgSetResultsLangVisibility hides every language when nothing's checked), not a
+        // dead end that needs a language forced back on. Only multiLang's saved set still floors
+        // at 1 (its own "Pāḷi only" is the separate pli/2nd pill toggle, not this popover).
+        var allowZero = trial || st === 'results';
         if (forceMainLang) {
             menu.querySelectorAll('.dg-lpmenu-row').forEach(function (row) {
                 if (row.dataset.lang === forceMainLang) row.querySelector('.dg-check').checked = true;
@@ -1368,11 +1399,20 @@
         var rows = Array.prototype.slice.call(menu.querySelectorAll('.dg-lpmenu-row'));
         var checked = rows.filter(function (r) { return r.querySelector('.dg-check').checked; })
             .map(function (r) { return r.dataset.lang; });
-        if (!checked.length && rows.length && !trial) { // saved sets keep ≥1; a trial may drop to Pāḷi only
+        if (!checked.length && rows.length && !allowZero) { // saved sets (multiLang) keep ≥1; trial/results may drop to Pāḷi only
             rows[0].querySelector('.dg-check').checked = true;
             checked = [rows[0].dataset.lang];
         }
-        var mainLang = forceMainLang || (checked.indexOf(pillLangs[0]) !== -1 ? pillLangs[0] : (checked[0] || pillLangs[0]));
+        // Owner: "галочка не влияет на язык по умолчанию — галочка влияет на видимость языка,
+        // основной — это который открывается первым, их не нужно смешивать". Results: main only
+        // ever changes via the pin (forceMainLang) — unchecking/rechecking any row, including the
+        // current main's own row, never moves it. Was tied together (unchecking main silently
+        // promoted whichever row was still checked and switched the SITE language to it) — reader
+        // trial modes keep that promotion-on-uncheck behavior on purpose (memory: "unchecking the
+        // currently-main language... promotes the next checked one"), only results decouples.
+        var mainLang = st === 'results'
+            ? (forceMainLang || pillLangs[0])
+            : (forceMainLang || (checked.indexOf(pillLangs[0]) !== -1 ? pillLangs[0] : (checked[0] || pillLangs[0])));
         var ordered = [mainLang].concat(checked.filter(function (l) { return l !== mainLang; }));
         pillLangs = ordered;
         if (!trial) { try { localStorage.setItem('dgReadingLangOrder', JSON.stringify(ordered)); } catch (e) { /* приватный режим */ } }
@@ -1382,9 +1422,26 @@
         // reads window.siteLanguage per row; search/index.html rebuilds the table on
         // dhamma:languagechange) — so making a language main there = switching the site.
         if (st === 'results') {
+            // Owner: "одна кнопка ru отключает все переводы, нужно разделять чтобы каждый
+            // перевод отключался своей частью". Was: unchecking a non-main row here did nothing
+            // visible — the only real toggle on results was the legacy #language-button (single
+            // hide-english class hiding EVERY [class*="-lang"] row at once, see langswitch.js).
+            // Each row's checkbox now hides just that language's <span lang="xx" class="quote">
+            // (search-render.js already renders one such span per language shown per segment).
+            var allLangs = rows.map(function (r) { return r.dataset.lang; });
+            dgSetResultsLangVisibility(allLangs, checked);
             var i18n = window.DHAMMA_I18N;
-            if (i18n && i18n.setLanguage && mainLang !== (i18n.language || localStorage.getItem('dhammaLanguage'))) i18n.setLanguage(mainLang);
-            else dgRenderLangPill(); // set didn't change the site language (e.g. unchecked a non-main one) — repaint "···" ourselves
+            if (i18n && i18n.setLanguage && mainLang !== (i18n.language || localStorage.getItem('dhammaLanguage'))) {
+                i18n.setLanguage(mainLang); // switches the whole site — table rebuilds anyway, closing the popover is fine here
+            } else {
+                dgRenderLangPill(); // repaint "···" pill wording/visibility
+                // dgRenderLangPill() just closed the popover (see its own comment on openMenu2) —
+                // reopen it right away, rebuilt from the fresh hidden set above, so a) the row the
+                // user just clicked shows its real new state instead of always "checked" (see
+                // dgToggleLangMenu) and b) they can flip more than one language without reopening
+                // the menu after every single click.
+                dgToggleLangMenu();
+            }
             return;
         }
         if (st !== 'reader' || !rm || !window._currentSlug) return;
@@ -1433,8 +1490,13 @@
                 var name = LANG_FULL_NAME[lang] || (lang.charAt(0).toUpperCase() + lang.slice(1));
                 var missing = !!(avail && avail.indexOf(lang) === -1); // this text has no translation in it
                 // Reader: checked = on screen right now (single-column modes list the activated-
-                // but-hidden languages unchecked). Results: the activated set itself is the state.
-                var on = !missing && (!inReader || pillLiveLangs.indexOf(lang) !== -1);
+                // but-hidden languages unchecked). Results: checked = not in the hidden set left by
+                // dgSetResultsLangVisibility — was unconditionally true here, so a row the user had
+                // just unchecked (hiding that language's column) came back checked the next time the
+                // popover opened, with no way to tell it was already off (owner: "галочка англ...
+                // остаётся вкл... больше англ вкл нельзя" — looked stuck, because visually it never
+                // showed as off in the first place).
+                var on = !missing && (inReader ? pillLiveLangs.indexOf(lang) !== -1 : resultsHiddenLangs.indexOf(lang) === -1);
                 return '<div class="dg-lpmenu-row' + (lang === main ? ' is-main' : '') + (missing ? ' is-missing' : '') + '" data-lang="' + esc(lang) + '">' +
                     '<input type="checkbox" class="dg-check"' + (on ? ' checked' : '') + (missing ? ' disabled' : '') + '>' +
                     '<span class="dg-lpmenu-name">' + esc(name) + '</span>' +
@@ -1443,6 +1505,18 @@
                     '<button type="button" class="dg-lpmenu-pin">' + esc(langMenuStr('setMain')) + '</button>' +
                     '</div>';
             }).join('');
+        // Was a static CSS right/bottom (right:20px), independent of the pill's own position —
+        // drifted away from the dots button once .dg-lpill started hugging the text column on
+        // wide screens instead of sitting flush at the viewport edge (owner: "уехало меню, должно
+        // быть связано с третьей кнопкой"). Anchor it to the pill's REAL rect instead, same
+        // technique placeScrollTopButton()/repositionTtsButton() already use for the neighboring
+        // corner buttons — right edge flush with the pill's right edge, sitting just above it.
+        var pillHost = document.getElementById('dg-langpill');
+        if (pillHost) {
+            var hostRect = pillHost.getBoundingClientRect();
+            menu.style.right = Math.round(window.innerWidth - hostRect.right) + 'px';
+            menu.style.bottom = Math.round(window.innerHeight - hostRect.top + 8) + 'px';
+        }
         menu.hidden = false;
     }
     function dgRenderLangPill() {
@@ -1464,8 +1538,21 @@
                 if (l && l !== 'pi' && langs.indexOf(l) === -1) langs.push(l);
             });
         } else {
-            // The listing shows the UI language's translation (langswitch.js: paliToggleRuSearch).
-            langs.push((localStorage.getItem('dhammaLanguage') || localStorage.getItem('siteLanguage') || 'en') === 'ru' ? 'ru' : 'en');
+            // Was: always just the UI language, on the assumption the listing only ever shows
+            // one translation. Not true any more — search-render.js renders one <span lang="xx">
+            // per language actually present (?langs=ru,en, or ru+en for a non-en interface). The
+            // UI language goes first — it's what "main" means on results (dgApplyLangSelection
+            // switches the SITE language when the main row changes) — the rest of what's actually
+            // on screen (found via the DOM, same as the reader branch above) is appended after it.
+            // Getting this order wrong once flipped the site to Russian just from unchecking a
+            // non-main row: langs[0] (someone else's DOM order, e.g. ?langs=ru,en) ≠ the real site
+            // language, so dgApplyLangSelection's mainLang-changed check misfired.
+            var uiLang = (localStorage.getItem('dhammaLanguage') || localStorage.getItem('siteLanguage') || 'en') === 'ru' ? 'ru' : 'en';
+            langs.push(uiLang);
+            document.querySelectorAll('#pali .quote[lang]').forEach(function (q) {
+                var l = q.getAttribute('lang');
+                if (l && l !== 'pi' && langs.indexOf(l) === -1) langs.push(l);
+            });
         }
         pillLiveLangs = langs.slice();
         // Owner: "доп кнопку показывать во всех режимах чтения и в результатах, если уже есть
@@ -1497,11 +1584,22 @@
                 if (b.dataset.k === 'pli') pli = !pli; else trn = !trn;
                 if (!pli && !trn) { if (b.dataset.k === 'pli') trn = true; else pli = true; }
                 if (currentState() === 'results') {
-                    // langswitch.js keeps its mode in a module closure — the only way in is its
-                    // own button, which cycles pli-eng -> pli -> eng. Click until it matches.
-                    var target = pli && trn ? 'pli-eng' : (pli ? 'pli' : 'eng');
-                    var legacy = document.getElementById('language-button');
-                    for (var i = 0; i < 3 && legacy && localStorage.getItem('paliToggleSearch') !== target; i++) legacy.click();
+                    // Owner: "нажали кнопку — нажали галочку, это одно и то же" — this segment
+                    // must drive the exact same state the main row's popover checkbox does, not
+                    // langswitch.js's own separate paliToggleSearch (which blanket-hides EVERY
+                    // language at once — reintroducing the "one button kills all translations"
+                    // bug this whole feature exists to fix, the moment 2+ languages are active).
+                    var searchPane = document.getElementById('search-pane');
+                    if (searchPane) searchPane.classList.toggle('hide-pali', !pli);
+                    var mainLang = pillLangs[0];
+                    if (mainLang) {
+                        var allLangs = pillLangs.slice();
+                        var checkedNow = allLangs.filter(function (l) { return resultsHiddenLangs.indexOf(l) === -1; });
+                        var idx = checkedNow.indexOf(mainLang);
+                        if (trn && idx === -1) checkedNow.push(mainLang);
+                        else if (!trn && idx !== -1) checkedNow.splice(idx, 1);
+                        dgSetResultsLangVisibility(allLangs, checkedNow);
+                    }
                     dgSyncLangPill();
                     return;
                 }
@@ -1515,7 +1613,12 @@
         pillLangs = langs;
         var openMenu2 = document.getElementById('dg-lpmenu');
         if (openMenu2) openMenu2.hidden = true; // stale rows would outlive a mode/language change
-        var main = langs[0] || 'ru';
+        // Fallback before real content is in the DOM (e.g. body.dg-state-reader flips just
+        // before buildSutta() fills #sutta — MutationObserver above fires a repaint on that class
+        // change): was hardcoded 'ru', so an English-site load flashed "Pāḷi Рус" for a moment
+        // before the real repaint corrected it to "Pāḷi En". Use the same site-language resolver
+        // as the results branch above instead of guessing ru.
+        var main = langs[0] || (localStorage.getItem('dhammaLanguage') || localStorage.getItem('siteLanguage') || 'en');
         var label = LANG_LABEL[main] || (main.charAt(0).toUpperCase() + main.slice(1));
         host.hidden = false;
         host.innerHTML =
@@ -1528,11 +1631,15 @@
         window.dispatchEvent(new Event('resize')); // #scrollToTopBtn re-measures its right offset
     }
     /* Current {pli, trn} of the screen: reader — localStorage.paliToggle (pli-2nd/pli/2nd),
-       results — localStorage.paliToggleSearch (pli-eng/pli/eng, langswitch.js). */
+       results — #search-pane.hide-pali + resultsHiddenLangs (dgSetResultsLangVisibility; trn
+       tracks the MAIN language specifically, same flag its own popover checkbox reads/writes —
+       not the legacy langswitch.js paliToggleSearch, see the pill's click handler above). */
     function dgPillMode() {
         if (currentState() === 'results') {
-            var m = localStorage.getItem('paliToggleSearch') || 'pli-eng';
-            return { pli: m !== 'eng', trn: m !== 'pli' };
+            var searchPane = document.getElementById('search-pane');
+            var pli = !(searchPane && searchPane.classList.contains('hide-pali'));
+            var trn = resultsHiddenLangs.indexOf(pillLangs[0]) === -1;
+            return { pli: pli, trn: trn };
         }
         var mode = localStorage.getItem('paliToggle') || 'pli-2nd';
         return { pli: mode !== '2nd', trn: mode !== 'pli' };

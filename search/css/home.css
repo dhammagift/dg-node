@@ -3429,6 +3429,20 @@ body.dark .dg-lpill { background: #42426a; color: rgb(221, 221, 221); }
 body.dark .dg-lpill button[aria-pressed="true"] { background: rgba(80, 80, 230, 0.6); }
 body.dark .dg-lpill button[aria-pressed="true"]:hover { background: #5050f0; }
 @media (max-width: 767.98px) { .dg-lpill { right: 12px; bottom: 14px; } .dg-lpill button { font-size: 12.5px; padding: 0 8px; } }
+/* Owner: on wide/large screens the pill (and, via placeScrollTopButton()/repositionTtsButton(),
+   the "to top" arrow + the TTS play button, which both measure THIS element's live rect and
+   follow it — see search/index.html and settings.js) sat glued to the browser's right edge, far
+   from the reading column, which is centered and capped at 45rem (reader #sutta) / 880px
+   (results #search-pane) — see body.dg-state-reader #sutta / body.dg-state-results #search-pane
+   below. Pull it in to hug that column's right edge instead once there's room to (min-width
+   768px keeps mobile's own right:12px above untouched — the calc() term is negative there
+   anyway). 200px reserved ≈ worst-case pill width (two language buttons + the six-dot "more"
+   button) so it doesn't crowd the text on the largest realistic pill. max() means this only ever
+   pulls the pill INWARD from its normal 20px, never further out. */
+@media (min-width: 768px) {
+    body.dg-state-reader .dg-lpill { right: max(20px, calc((100vw - 45rem) / 2 - 200px)); }
+    body.dg-state-results .dg-lpill { right: max(20px, calc((100vw - 880px) / 2 - 200px)); }
+}
 
 /* "Языки перевода" popover — the pill's six-dot button (production-v4 mock,
    docs/Fresults-standalone.html: .langmenu/.lrow). STAGE 1 UI only, see the "без логики"

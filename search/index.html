@@ -886,7 +886,8 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     /* Тема и настройки переехали в бургер-меню, в ряду кнопок выдачи они дублировались.
        УДАЛИТЬ элементы нельзя: переключатель темы в самом меню работает, НАЖИМАЯ эту кнопку
        (home.js: document.getElementById('theme-button').click()), её же читает themeswitch.js,
-       а settings.js по Alt+S кликает #settingsButton. Поэтому прячем, оставляя в разметке. */
+       а settings.js по Alt+Shift+S кликает #settingsButton (Alt+S без Shift теперь открывает
+       #dg-quick-btn — Быстрые настройки). Поэтому прячем, оставляя в разметке. */
     #results-toolbar #theme-button,
     #results-toolbar #settingsButton,
     /* Компас пробуем убрать из общего ряда кнопок (эксперимент, просьба владельца) — та же
@@ -2254,8 +2255,8 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
 
 
 <!-- Раньше открывала старую inline-модалку (#settings ниже) — теперь ведёт на общую страницу
-     /settings/ (⚙ Мастер-настройки). Alt+S НЕ трогаю (settings.js — отдельный код, per
-     владелец, ещё вызывает старую модалку до отдельного решения по горячим клавишам). -->
+     /settings/ (⚙ Мастер-настройки). Горячая клавиша — Alt+Shift+S (settings.js); просто Alt+S
+     открывает #dg-quick-btn (Быстрые настройки) вместо этой кнопки. -->
  <a title="settings" data-i18n-title="{{global.common.settings}}" id="settingsButton" href="/settings/" class="btn btn-light mb-1 toggle-icon text-decoration-none">
   <img id="gearSettings" alt="settings" data-i18n-alt="{{global.common.settings}}" src="/assets/svg/gear.svg" class="common-size-icon4"></img>
   </a>
@@ -2759,7 +2760,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
   </svg>
 </button>
 
-<table id="pali" class="display table table-striped table-hover responsive " cellspacing="0" width="100%">
+<table id="pali" class="display table table-striped table-hover responsive d-none" cellspacing="0" width="100%">
    <thead class="thead-light">
         <tr>
             <th>{{table.suttaCol}}</th>
@@ -3149,6 +3150,11 @@ $(document).ready(function() {
         }
         currentTable = table;
         applyFilterValue(table);
+        // Language pill (home.js): its results-state language list is read straight off #pali's
+        // rendered <span lang="xx">s (see dgRenderLangPill) — needs a repaint after every render,
+        // not just on body.dg-state-results first appearing (typing a new query while already on
+        // the results page changes which languages are on screen without any body-class change).
+        if (typeof window.dgRenderLangPill === 'function') window.dgRenderLangPill();
     }
 
     // Pi/En/Ru колонка ссылок (.dprLink/.bwLink/.ruLink) — данные и логика (linksdpr.js/openDpr.js,
@@ -4352,7 +4358,7 @@ $(document).ready(function() {
     // на отдельную /settings/ (owner: "сделай чтобы настройки выезжали как меню тайлов в
     // мобильном", позже — "и на десктопе тоже, так красивее и функциональнее"). Делегированный
     // обработчик ловит и видимую строку бургера, и скрытую #settingsButton (см. комментарий выше
-    // неё) — Alt+S (settings.js) кликает именно её. Одно и то же поведение на любой ширине —
+    // неё) — Alt+Shift+S (settings.js) кликает именно её. Одно и то же поведение на любой ширине —
     // .dg-sheet сам рисует себя иначе на десктопе (центрированная широкая карточка, не нижняя
     // шторка), отдельная развилка здесь не нужна.
     document.addEventListener('click', function (e) {
