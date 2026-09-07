@@ -3531,6 +3531,24 @@ $(document).ready(function() {
         'vv', 'pv', 'cp', 'bv', 'ps', 'ne', 'cnd', 'mnd', 'kp', 'pe'];
     var VINAYA_PREFIXES = ['pli-tv-bi', 'pli-tv-bu', 'pli-tv-kd', 'pli-tv-pvr'];
 
+    // dg-fastify.js's resolveAllowedPrefixes() only expands scope='default' into
+    // DEFAULT_SCOPE_PREFIXES — category scopes ('dhamma'/'khudakka'/'vinaya') come back from the
+    // server as-is, a single-element resolvedPrefixes: ['dhamma'] (matchesScope() there checks
+    // suttaMeta.category === 'dhamma' directly, no expansion needed for matching). Fine for
+    // search, but broke the star's tooltip here: 'dhamma' isn't in FOUR_NIKAYA_PREFIXES so the
+    // grouping loop below fell through to "Other: 4 Nikayas" (scopeNames.dhamma's short LABEL,
+    // not an actual book) instead of ever listing the real books. Expand category tokens back to
+    // their book prefixes here, client-side only — doesn't touch search matching at all.
+    var CATEGORY_EXPANSION = { dhamma: FOUR_NIKAYA_PREFIXES, khudakka: KN_PREFIXES, vinaya: VINAYA_PREFIXES };
+    function expandCategoryPrefixes(prefixes) {
+        var out = [];
+        prefixes.forEach(function (p) {
+            if (CATEGORY_EXPANSION[p]) out.push.apply(out, CATEGORY_EXPANSION[p]);
+            else out.push(p);
+        });
+        return out;
+    }
+
     function escapeHtml(s) {
         return String(s).replace(/[&<>"]/g, function (c) {
             return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
@@ -3538,6 +3556,7 @@ $(document).ready(function() {
     }
 
     function scopeTooltipHtml(prefixes) {
+        prefixes = expandCategoryPrefixes(prefixes);
         var groups = [
             { title: dgT('results.scopeGroupNikayas', '4 Nikāyas'), codes: FOUR_NIKAYA_PREFIXES },
             { title: dgT('results.scopeGroupKn', 'Khuddaka Nikāya'), codes: KN_PREFIXES },
@@ -3561,7 +3580,7 @@ $(document).ready(function() {
     }
 
     function buildScopeLabel(resolvedPrefixes) {
-        var prefixes = resolvedPrefixes || DEFAULT_SCOPE_PREFIXES;
+        var prefixes = expandCategoryPrefixes(resolvedPrefixes || DEFAULT_SCOPE_PREFIXES);
         // У обобщённых подписей ("4 Никаи + 6 КН") full — это РЕАЛЬНЫЙ список книг, а не та же
         // строка: именно его показывает звёздочка в заголовке, иначе подсказка дословно повторяла
         // бы видимый текст и не отвечала на вопрос "что именно сейчас выбрано".
