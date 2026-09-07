@@ -109,11 +109,13 @@ window.DgSearchRender = (function () {
         $('#btn-show-all-children').off('click').on('click', function () {
             var $expandable = visibleTable().find('tbody tr').has('td.dtr-control');
             var $collapsed = $expandable.not('.dtr-expanded');
-            if ($collapsed.length) {
-                $collapsed.find('td:first-child').trigger('click');
-            } else {
-                $expandable.filter('.dtr-expanded').find('td:first-child').trigger('click');
-            }
+            // Native .click(), NOT jQuery .trigger('click'): trigger runs the jQuery handlers
+            // (DataTables expands the row) and THEN dispatches a real click on top — which the
+            // fold interceptor below (document capture listener on td.dtr-control) now sees on
+            // an already-expanded row and folds it straight back. Owner: "разворачивает и
+            // сразу сворачивается". One real click = one toggle.
+            var $targets = $collapsed.length ? $collapsed : $expandable.filter('.dtr-expanded');
+            $targets.find('td:first-child').each(function () { this.click(); });
         });
     }
 
@@ -776,7 +778,7 @@ window.DgSearchRender = (function () {
                 suttaTableApi.rows().every(function () {
                     var d = this.data();
                     if (d && expandedIds[d.sutta_id]) {
-                        $(this.node()).find('td.dtr-control, td:first-child').trigger('click');
+                        $(this.node()).find('td.dtr-control, td:first-child').first().each(function () { this.click(); }); // native, see bindExpandCollapseButtons
                     }
                 });
             }
