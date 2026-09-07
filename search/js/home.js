@@ -1314,9 +1314,12 @@
         menu.addEventListener('click', function (e) {
             var pin = e.target.closest('.dg-lpmenu-pin');
             if (pin) { dgApplyLangSelection(menu, pin.closest('.dg-lpmenu-row').dataset.lang); return; }
-            // Row click outside the checkbox itself still toggles it (bigger hit target).
+            // Row click outside the checkbox itself still toggles it (bigger hit target) — except
+            // on the MAIN row: owner tapped its "основной" badge and lost the language (and with
+            // it the "···" button, the set being down to one). Dropping the main language is a
+            // deliberate act — its own checkbox only.
             var row = e.target.closest('.dg-lpmenu-row');
-            if (row && !row.classList.contains('is-missing') && e.target.tagName !== 'INPUT') {
+            if (row && !row.classList.contains('is-missing') && !row.classList.contains('is-main') && e.target.tagName !== 'INPUT') {
                 var box = row.querySelector('.dg-check');
                 if (box) { box.checked = !box.checked; dgApplyLangSelection(menu); }
             }
