@@ -437,11 +437,12 @@ window.removeAllHighlights = function() {
 // sits from ITS OWN neighbor — inconsistent depending on which pair happened to be visible.
 // One shared constant, used everywhere in this corner cluster, fixes it regardless of order.
 // Shrunk from 32 to 19 (owner: gap between these buttons was too big).
-const CORNER_BUTTON_GAP = 19;
+const CORNER_BUTTON_GAP = 5; // same 5px as placeScrollTopButton() in search/index.html (owner: equal gaps)
 function repositionTtsButton() {
     const btn = document.querySelector('.dynamic-tts-btn');
     if (!btn) return;
-    const rightCornerNeighbors = [document.getElementById('scrollToTopBtn'), document.getElementById('language-button')]
+    // #dg-langpill (home.js) is the reader's language control; #language-button is hidden there.
+    const rightCornerNeighbors = [document.getElementById('scrollToTopBtn'), document.getElementById('dg-langpill'), document.getElementById('language-button')]
         .filter(function (el) { return el && window.getComputedStyle(el).display !== 'none'; })
         .map(function (el) { return el.getBoundingClientRect(); })
         .filter(function (r) { return r.width > 0; });

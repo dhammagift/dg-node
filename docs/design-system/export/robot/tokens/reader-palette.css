@@ -1,0 +1,14 @@
+/* The reader's older palette (reader/css/rus-multi.css). Predates --dg-*; specific to
+   the text-reading surfaces. Use only when extending the reader itself.
+   --dark-gray2/--light-gray2 are the second-translation greys behind .lang-2nd. */
+:root {
+  --off-white: rgb(221, 221, 221);
+  --light-off-white: rgb(253, 253, 253);
+  --off-black: rgb(4, 1, 19);
+  --dark-gray: #5a5a5a;
+  --light-gray: #8f8f8f;
+  --dark-gray2: #9E9E9E;
+  --light-gray2: #616161;
+  --dark-blue: #42426a;
+  --blue: #3434be;
+}

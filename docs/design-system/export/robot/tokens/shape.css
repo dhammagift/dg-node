@@ -1,0 +1,12 @@
+/* Shape & motion. --dg-radius is the single corner radius of the whole system;
+   --dg-ease is the one easing curve; --dg-gutter is the tile/row gutter (3px on phones). */
+:root,
+.dg-skin-minimal {
+  --dg-radius: 10px/* @kind radius */;
+  --dg-ease: cubic-bezier(0.22, 0.68, 0, 1)/* @kind other */;
+  --dg-gutter: 12px/* @kind spacing */;
+}
+
+@media (max-width: 767.98px) {
+  :root, .dg-skin-minimal { --dg-gutter: 3px/* @kind spacing */; }
+}

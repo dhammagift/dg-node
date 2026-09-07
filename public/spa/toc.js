@@ -1031,13 +1031,8 @@
         // (dg-reader-enter) — triggered automatically once dgSetState('reader') below actually
         // flips the state. Play the exit first: dgSetState('reader') sets #toc-pane to
         // display:none immediately, which would otherwise cut this transition off mid-flight.
-        var layout = container.querySelector('.toc-layout');
-        if (layout && !(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) {
-            layout.classList.add('dg-toc-leaving');
-            setTimeout(function () { window.dgNavigateInternal(href); }, 280);
-        } else {
-            window.dgNavigateInternal(href);
-        }
+        // The exit animation (.toc-out) is played by routeFromUrl() in search/index.html.
+        window.dgNavigateInternal(href);
     }
 
     window.initToc = function () {

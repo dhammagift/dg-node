@@ -9,6 +9,14 @@
   },
   "home": {
     "motto": "Найдите Истину",
+    "subtitle": "В Палийских Суттах и Винае",
+    "searchBtn": "Искать",
+    "scopeNikayas": "Никаи",
+    "scopeKn": "КН",
+    "scopeVinaya": "Виная",
+    "scopeChange": "изменить",
+    "picks": "Подборки",
+    "howtoEyebrow": "Как искать?",
     "hintSearch": "искать «{q}»",
     "hintText": "похоже на ссылку на текст",
     "noItems": "Пока пусто"

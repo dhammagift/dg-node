@@ -9,6 +9,14 @@
   },
   "home": {
     "motto": "Find the Truth",
+    "subtitle": "In the Pāli Suttas and Vinaya",
+    "searchBtn": "Search",
+    "scopeNikayas": "Nikayas",
+    "scopeKn": "KN",
+    "scopeVinaya": "Vinaya",
+    "scopeChange": "change",
+    "picks": "Collections",
+    "howtoEyebrow": "How to search?",
     "hintSearch": "search for “{q}”",
     "hintText": "looks like a link to a text",
     "noItems": "Nothing here yet"

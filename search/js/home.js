@@ -198,6 +198,7 @@
     function currentState() {
         if (document.body.classList.contains('dg-state-reader')) return 'reader';
         if (document.body.classList.contains('dg-state-results')) return 'results';
+        if (document.body.classList.contains('dg-state-toc')) return 'toc';
         return 'home';
     }
 
@@ -409,13 +410,19 @@
        не проигрывается, если класс поставить в том же кадре. Таймер — не подстраховка, а рабочая
        ветка: в фоновой (не отрисовываемой) вкладке requestAnimationFrame не вызывается вообще, и
        шторка не открылась бы совсем. Те же грабли уже ловили с dg-no-anim в index.html. */
-    function showLater(el, backdrop) {
+    /* transparent: the quick-settings/mega popovers keep the page visible under them. Decided
+       HERE, by whoever opens, never by the closers: dropping dg-transparent on close made the
+       backdrop turn dark for the 0.22s of its own fade-out (owner: "экран моргает чёрным"). */
+    function showLater(el, backdrop, transparent) {
         var done = false;
         var show = function () {
             if (done) return;
             done = true;
             el.classList.add('show');
-            if (backdrop) backdrop.classList.add('show');
+            if (backdrop) {
+                backdrop.classList.toggle('dg-transparent', !!transparent);
+                backdrop.classList.add('show');
+            }
         };
         requestAnimationFrame(show);
         setTimeout(show, 60);
@@ -811,6 +818,7 @@
         var backdrop = document.getElementById('dg-sheet-backdrop');
         sheet.hidden = false;
         sheet.classList.remove('dg-wide');
+        sheet.classList.remove('dg-about-sheet');
 
         document.getElementById('dg-sheet-title').textContent = tile.label;
 
@@ -1104,10 +1112,7 @@
         var btn = document.getElementById('dg-quick-btn');
         if (!sheet) return;
         sheet.classList.remove('show');
-        if (backdrop && !currentSheetKey) {
-            backdrop.classList.remove('show');
-            backdrop.classList.remove('dg-transparent');
-        }
+        if (backdrop && !currentSheetKey) backdrop.classList.remove('show');
         if (btn) btn.setAttribute('aria-expanded', 'false');
         setTimeout(function () { if (!isQuickOpen()) sheet.hidden = true; }, 320);
     }
@@ -1230,6 +1235,272 @@
         });
         writeScope(list);
         notifySaved();
+        renderScopeSummary();
+    }
+
+    /* Строка "N Никаи · M КН" под полем поиска (production-v4 redesign,
+       docs/Home-standalone.html) — те же SCOPE_GROUPS/readScope(), что у scopePicker() выше,
+       просто счётчик вместо чекбоксов: сколько пунктов группы сейчас включено в поиск. Группа
+       без единого включённого пункта (Виная по умолчанию) в строке не показывается — нулю
+       незачем занимать место. "Изменить" открывает ту же шторку, что и обычная шестерёнка
+       быстрых настроек (#dg-quick-btn) — свою логику открытия не заводим. */
+    var SCOPE_SUMMARY_SHORT = {
+        'quick.scope.nikayas': ['home.scopeNikayas', 'Никаи'],
+        'quick.scope.kn': ['home.scopeKn', 'КН'],
+        'quick.scope.vinaya': ['home.scopeVinaya', 'Виная']
+    };
+    /* Corner language pill of the reader (owner, production-v4 mock): "Pāḷi | <main language>"
+       as two independent toggles instead of the old single button that cycled pli→pli+2nd→2nd,
+       plus a six-dot "more" button that appears only when the text carries more than one
+       translation language (it opens the burger's reading modes, where the extra languages
+       live). Drives the SAME state as before — localStorage paliToggle + window.setLanguage()
+       (megareader.js showPali/showEnglish/showPaliAndTranslation) — so Alt+Z and the hidden
+       #language-button keep working; the pill just re-reads the state after them. At least one
+       text stays on: switching off the last lit segment lights the other one (reference). */
+    var LANG_LABEL = { ru: 'Рус', en: 'En', th: 'ไทย', de: 'De', fr: 'Fr', es: 'Es', it: 'It', pt: 'Pt', pl: 'Pl', cs: 'Cs', si: 'Si', my: 'My', vi: 'Vi', id: 'Id', jp: 'Jp', zh: 'Zh', hi: 'Hi', bn: 'Bn', lt: 'Lt', nl: 'Nl', sv: 'Sv', fi: 'Fi', no: 'No', hu: 'Hu', ro: 'Ro', sr: 'Sr', sl: 'Sl', uk: 'Uk', kn: 'Kn', ta: 'Ta' };
+    var LANG_FULL_NAME = { ru: 'Русский', en: 'English', th: 'ไทย', de: 'Deutsch', fr: 'Français', es: 'Español', it: 'Italiano', pt: 'Português', pl: 'Polski', cs: 'Čeština', si: 'Sinhala', my: 'Myanmar', vi: 'Tiếng Việt', id: 'Indonesia', jp: '日本語', zh: '中文', hi: 'हिन्दी', bn: 'বাংলা', lt: 'Lietuvių', nl: 'Nederlands', sv: 'Svenska', fi: 'Suomi', no: 'Norsk', hu: 'Magyar', ro: 'Română', sr: 'Српски', sl: 'Slovenščina', uk: 'Українська', kn: 'ಕನ್ನಡ', ta: 'தமிழ்' };
+
+    /* "ЯЗЫКИ ПЕРЕВОДА" popover (production-v4 mock, docs/Fresults-standalone.html) — the
+       six-dot "more" button's target. STAGE 2 (owner: "нужно чтобы можно было отключить язык",
+       "в том числе основной с помощью галочки") — the checkbox and "сделать основным" pin now
+       both drive the real reader: dgApplyLangSelection() below persists the checked set to
+       dgReadingLangOrder and either refetches (multiLang: adding/removing a column is a real
+       content change) or calls switchReadingLanguage() (single-column modes: unchecking the
+       language on screen switches to the next checked one) — see its comment for the split.
+       Inline ru/en dictionaries, same pattern as MODE_TITLES/MODE_DESCRIPTIONS above. */
+    var LANGMENU_STR = {
+        title: { ru: 'Языки перевода', en: 'Translation Languages' },
+        main: { ru: 'основной', en: 'main' },
+        setMain: { ru: 'сделать основным', en: 'set as main' }
+    };
+    function langMenuStr(key) { return LANGMENU_STR[key][menuLang() === 'ru' ? 'ru' : 'en']; }
+    var pillLangs = [];
+    function dgLangMenuHost() {
+        var menu = document.getElementById('dg-lpmenu');
+        if (menu) return menu;
+        menu = document.createElement('div');
+        menu.id = 'dg-lpmenu';
+        menu.className = 'dg-lpmenu';
+        menu.hidden = true;
+        document.body.appendChild(menu);
+        menu.addEventListener('click', function (e) {
+            var pin = e.target.closest('.dg-lpmenu-pin');
+            if (pin) { dgApplyLangSelection(menu, pin.closest('.dg-lpmenu-row').dataset.lang); return; }
+            // Row click outside the checkbox itself still toggles it (bigger hit target).
+            var row = e.target.closest('.dg-lpmenu-row');
+            if (row && e.target.tagName !== 'INPUT') {
+                var box = row.querySelector('.dg-check');
+                if (box) { box.checked = !box.checked; dgApplyLangSelection(menu); }
+            }
+        });
+        // Clicking the checkbox itself fires its own native 'change' — the row-click branch
+        // above skips INPUT targets so this is the only path for a direct checkbox click.
+        menu.addEventListener('change', function (e) {
+            if (e.target.classList.contains('dg-check')) dgApplyLangSelection(menu);
+        });
+        document.addEventListener('click', function (e) {
+            if (menu.hidden || e.target.closest('#dg-lpmenu') || e.target.closest('.dg-lpill-more')) return;
+            menu.hidden = true;
+        });
+        document.addEventListener('keydown', function (e) { if (e.key === 'Escape') menu.hidden = true; });
+        return menu;
+    }
+    function dgSetLangMenuMain(menu, lang) {
+        menu.querySelectorAll('.dg-lpmenu-row').forEach(function (row) {
+            row.classList.toggle('is-main', row.dataset.lang === lang);
+        });
+        var btn = document.querySelector('#dg-langpill button[data-k="2nd"]');
+        if (btn) btn.textContent = LANG_LABEL[lang] || (lang.charAt(0).toUpperCase() + lang.slice(1));
+    }
+    /* Reads the popover's checkboxes, persists the result, and makes it real:
+       - forceMainLang (pin click, "сделать основным"): that language wins main even if it was
+         unchecked — promoting a language also turns it on.
+       - Unchecking every row is refused (same "at least one text stays on" rule the pli/2nd pill
+         toggle already follows) — the row just clicked is put back on instead.
+       - multiLang mode can show several columns at once, so ANY change to the checked set (not
+         just which one is main) is a real content change — refetch. Other modes only ever show
+         ONE language on screen, so there's nothing to refetch UNLESS the language that changed
+         was the one actually showing — switchReadingLanguage() covers that (and no-ops via its
+         own guard when it wasn't). */
+    function dgApplyLangSelection(menu, forceMainLang) {
+        if (forceMainLang) {
+            menu.querySelectorAll('.dg-lpmenu-row').forEach(function (row) {
+                if (row.dataset.lang === forceMainLang) row.querySelector('.dg-check').checked = true;
+            });
+        }
+        var rows = Array.prototype.slice.call(menu.querySelectorAll('.dg-lpmenu-row'));
+        var checked = rows.filter(function (r) { return r.querySelector('.dg-check').checked; })
+            .map(function (r) { return r.dataset.lang; });
+        if (!checked.length && rows.length) {
+            rows[0].querySelector('.dg-check').checked = true;
+            checked = [rows[0].dataset.lang];
+        }
+        var mainLang = forceMainLang || (checked.indexOf(pillLangs[0]) !== -1 ? pillLangs[0] : checked[0]);
+        var ordered = [mainLang].concat(checked.filter(function (l) { return l !== mainLang; }));
+        pillLangs = ordered;
+        try { localStorage.setItem('dgReadingLangOrder', JSON.stringify(ordered)); } catch (e) { /* приватный режим */ }
+        dgSetLangMenuMain(menu, mainLang);
+
+        if (currentState() !== 'reader' || !window.READER_MODE || !window._currentSlug) return;
+        if (window.READER_MODE.modeKey === 'multiLang') {
+            window.READER_MODE.lang = mainLang;
+            var params = new URLSearchParams(document.location.search);
+            params.set('lang', mainLang);
+            params.delete('langs'); // stale explicit langs= would otherwise outrank dgReadingLangOrder — see buildSutta()
+            history.pushState({ page: window._currentSlug, mode: 'multiLang' }, "", '?' + params.toString());
+            if (typeof window.buildSutta === 'function') window.buildSutta(window._currentSlug);
+        } else if (mainLang !== window.READER_MODE.lang && typeof window.switchReadingLanguage === 'function') {
+            window.switchReadingLanguage(mainLang);
+        }
+    }
+    function dgToggleLangMenu() {
+        var menu = dgLangMenuHost();
+        if (!menu.hidden) { menu.hidden = true; return; }
+        var main = pillLangs[0];
+        menu.innerHTML = '<div class="dg-lpmenu-title">' + esc(langMenuStr('title')) + '</div>' +
+            pillLangs.map(function (lang) {
+                var name = LANG_FULL_NAME[lang] || (lang.charAt(0).toUpperCase() + lang.slice(1));
+                return '<div class="dg-lpmenu-row' + (lang === main ? ' is-main' : '') + '" data-lang="' + esc(lang) + '">' +
+                    '<input type="checkbox" class="dg-check" checked>' +
+                    '<span class="dg-lpmenu-name">' + esc(name) + '</span>' +
+                    '<span class="dg-lpmenu-tag">' + esc(langMenuStr('main')) + '</span>' +
+                    '<button type="button" class="dg-lpmenu-pin">' + esc(langMenuStr('setMain')) + '</button>' +
+                    '</div>';
+            }).join('');
+        menu.hidden = false;
+    }
+    function dgRenderLangPill() {
+        var host = document.getElementById('dg-langpill');
+        var sutta = document.getElementById('sutta');
+        var st = currentState();
+        // Results too (owner: "в результатах старая кнопка"): there the pill drives langswitch.js
+        // (the hidden legacy #language-button) instead of megareader's setLanguage().
+        if (!((st === 'reader' && sutta) || st === 'results')) {
+            if (host) host.hidden = true;
+            var openMenu = document.getElementById('dg-lpmenu');
+            if (openMenu) openMenu.hidden = true;
+            return;
+        }
+        var langs = [];
+        if (st === 'reader') {
+            sutta.querySelectorAll('.right-column .quote[lang]').forEach(function (q) {
+                var l = q.getAttribute('lang');
+                if (l && l !== 'pi' && langs.indexOf(l) === -1) langs.push(l);
+            });
+        } else {
+            // The listing shows the UI language's translation (langswitch.js: paliToggleRuSearch).
+            langs.push((localStorage.getItem('dhammaLanguage') || localStorage.getItem('siteLanguage') || 'en') === 'ru' ? 'ru' : 'en');
+        }
+        // Owner: "доп кнопку показывать во всех режимах чтения и в результатах, если уже есть
+        // больше одного активированного языка" — a mode like single/memorize/devanagari (or the
+        // results listing) only ever renders ONE language at a time, so `langs` above stays
+        // length 1 there even for a user who already turned on several languages via multiLang.
+        // dgReadingLangOrder (megareader.js LANG_ORDER_KEY) is that persisted set — read directly
+        // here (not via megareader.js's getLangOrder(), which isn't guaranteed loaded outside the
+        // reader) so the dots button reflects "already activated", not just "on screen right now".
+        // langs[0] (what THIS view actually shows) stays first; the rest only append.
+        try {
+            var activated = JSON.parse(localStorage.getItem('dgReadingLangOrder'));
+            if (Array.isArray(activated)) {
+                activated.forEach(function (l) { if (l && l !== 'pi' && langs.indexOf(l) === -1) langs.push(l); });
+            }
+        } catch (e) { /* приватный режим / битый JSON */ }
+        if (!host) {
+            host = document.createElement('div');
+            host.id = 'dg-langpill';
+            host.className = 'dg-lpill';
+            host.setAttribute('role', 'group');
+            document.body.appendChild(host);
+            host.addEventListener('click', function (e) {
+                var b = e.target.closest('button');
+                if (!b) return;
+                if (b.classList.contains('dg-lpill-more')) { dgToggleLangMenu(); return; }
+                var cur = dgPillMode();
+                var pli = cur.pli, trn = cur.trn;
+                if (b.dataset.k === 'pli') pli = !pli; else trn = !trn;
+                if (!pli && !trn) { if (b.dataset.k === 'pli') trn = true; else pli = true; }
+                if (currentState() === 'results') {
+                    // langswitch.js keeps its mode in a module closure — the only way in is its
+                    // own button, which cycles pli-eng -> pli -> eng. Click until it matches.
+                    var target = pli && trn ? 'pli-eng' : (pli ? 'pli' : 'eng');
+                    var legacy = document.getElementById('language-button');
+                    for (var i = 0; i < 3 && legacy && localStorage.getItem('paliToggleSearch') !== target; i++) legacy.click();
+                    dgSyncLangPill();
+                    return;
+                }
+                var next = pli && trn ? 'pli-2nd' : (pli ? 'pli' : '2nd');
+                try { localStorage.setItem('paliToggle', next); localStorage.setItem('dg_localSettingsTimestamp', String(Date.now())); } catch (err) { /* приватный режим */ }
+                window.language = next;
+                if (typeof window.setLanguage === 'function') window.setLanguage(next);
+                if (typeof window.syncSettingsToCloud === 'function') window.syncSettingsToCloud();
+                dgSyncLangPill();
+            });
+            // Alt+Z / hidden #language-button still cycle the mode — mirror it here afterwards.
+            document.addEventListener('keydown', function () { setTimeout(dgSyncLangPill, 60); });
+            var legacyBtn = document.getElementById('language-button');
+            if (legacyBtn) legacyBtn.addEventListener('click', function () { setTimeout(dgSyncLangPill, 60); });
+        }
+        pillLangs = langs;
+        var openMenu2 = document.getElementById('dg-lpmenu');
+        if (openMenu2) openMenu2.hidden = true; // stale rows would outlive a mode/language change
+        var main = langs[0] || 'ru';
+        var label = LANG_LABEL[main] || (main.charAt(0).toUpperCase() + main.slice(1));
+        host.hidden = false;
+        host.innerHTML =
+            '<button type="button" data-k="pli" aria-pressed="true">Pāḷi</button>' +
+            '<button type="button" data-k="2nd" aria-pressed="true">' + esc(label) + '</button>' +
+            (langs.length > 1
+                ? '<button type="button" class="dg-lpill-more" title="' + esc(langMenuStr('title')) + '" aria-label="' + esc(langMenuStr('title')) + '"><span class="dg-dots" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span></button>'
+                : '');
+        dgSyncLangPill();
+        window.dispatchEvent(new Event('resize')); // #scrollToTopBtn re-measures its right offset
+    }
+    /* Current {pli, trn} of the screen: reader — localStorage.paliToggle (pli-2nd/pli/2nd),
+       results — localStorage.paliToggleSearch (pli-eng/pli/eng, langswitch.js). */
+    function dgPillMode() {
+        if (currentState() === 'results') {
+            var m = localStorage.getItem('paliToggleSearch') || 'pli-eng';
+            return { pli: m !== 'eng', trn: m !== 'pli' };
+        }
+        var mode = localStorage.getItem('paliToggle') || 'pli-2nd';
+        return { pli: mode !== '2nd', trn: mode !== 'pli' };
+    }
+    function dgSyncLangPill() {
+        var host = document.getElementById('dg-langpill');
+        if (!host) return;
+        var cur = dgPillMode();
+        var pli = host.querySelector('[data-k="pli"]'), trn = host.querySelector('[data-k="2nd"]');
+        if (pli) pli.setAttribute('aria-pressed', cur.pli ? 'true' : 'false');
+        if (trn) trn.setAttribute('aria-pressed', cur.trn ? 'true' : 'false');
+    }
+    window.dgRenderLangPill = dgRenderLangPill;
+    // Screen changes (and dg-busy dropping once results are in) re-render the pill; the reader
+    // additionally calls it itself after every buildSutta().
+    new MutationObserver(function () { dgRenderLangPill(); }).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+
+    function renderScopeSummary() {
+        var host = document.getElementById('home-scope-summary');
+        if (!host) return;
+        var scope = readScope();
+        var parts = [];
+        SCOPE_GROUPS.forEach(function (g) {
+            var on = g.items.filter(function (it) {
+                return it.codes.every(function (c) { return scope.indexOf(c) !== -1; });
+            }).length;
+            var short = SCOPE_SUMMARY_SHORT[g.label];
+            if (on > 0 && short) parts.push(on + ' ' + t(short[0], short[1]));
+        });
+        var textEl = host.querySelector('.dg-scope-summary-text');
+        if (textEl) textEl.textContent = parts.join(' · ');
+        var changeEl = host.querySelector('.dg-scope-change');
+        if (changeEl) {
+            // Sliders glyph before the word (reference: fa-sliders + "изменить") — same SVG as
+            // the field's own quick-settings button, inserted once; the label is re-set on
+            // every language switch.
+            if (!changeEl.querySelector('svg')) changeEl.insertAdjacentHTML('afterbegin', quickButtonHtml());
+            var label = changeEl.querySelector('.dg-scope-change-label');
+            if (label) label.textContent = t('home.scopeChange', 'изменить');
+        }
     }
 
     /* Подтверждение «Сохранено» — всё в быстрых настройках и так пишется в localStorage сразу по
@@ -1259,7 +1530,7 @@
         host.appendChild(groupTitle(t('quick.dictMode', 'Словарь')));
         host.appendChild(dictModePicker());
 
-        if (state !== 'reader') {
+        if (state !== 'reader' && state !== 'toc') {
             host.appendChild(groupTitle(t('quick.context', 'Контекст в цитатах')));
             var ctx = String(localStorage.getItem('dhammaSearchContextBefore') || 0);
             host.appendChild(segmented([
@@ -1295,7 +1566,7 @@
             }));
         }
 
-        if (state === 'reader' || state === 'results') {
+        if (state === 'reader' || state === 'results' || state === 'toc') {
             /* Варианты чтения и режим колонок уже переключаются настоящими кнопками тулбара
                (#toggle-variants/#toggle-mode в ридере, #toggle-mode-results в выдаче,
                reader-template.html + megareader.js/switchView.js) — здесь просто ЖМЁМ их, как
@@ -1305,8 +1576,9 @@
                мёртвый тумблер. Режим колонок и раньше был общесайтовым (dgApplyColumnMode в
                settings.js применяет .column-view и к #sutta, и к #search-pane) — здесь просто
                появилась видимая ручка для выдачи, поведение не менялось. */
-            var variantsBtn = state === 'reader' ? document.getElementById('toggle-variants') : null;
-            var columnsBtn = document.getElementById(state === 'reader' ? 'toggle-mode' : 'toggle-mode-results');
+            var readerLike = state === 'reader' || state === 'toc';
+            var variantsBtn = readerLike ? document.getElementById('toggle-variants') : null;
+            var columnsBtn = document.getElementById(readerLike ? 'toggle-mode' : 'toggle-mode-results');
             if (variantsBtn || columnsBtn) host.appendChild(groupTitle(t('quick.reading', 'Чтение')));
             if (variantsBtn) {
                 var variantsOn = localStorage.getItem('variantVisibility') !== 'hidden';
@@ -1487,18 +1759,21 @@
         var sheet = document.getElementById('dg-quick');
         var backdrop = document.getElementById('dg-sheet-backdrop');
         var btn = document.getElementById('dg-quick-btn');
+        // Home screen hides the sliders button inside the field (production-v4 redesign) and
+        // opens this sheet from the "изменить" link under it instead — a display:none button has
+        // no box to anchor to, so anchor to the link in that case.
+        if (btn && !btn.offsetParent) btn = document.querySelector('.dg-scope-change') || btn;
         sheet.hidden = false;
         document.getElementById('dg-quick-title').textContent = t('quick.title', 'Быстрые настройки');
         buildQuickBody(document.getElementById('dg-quick-body'));
 
         var anchored = !!btn;
         sheet.classList.toggle('dg-anchored', anchored);
-        if (backdrop) backdrop.classList.toggle('dg-transparent', anchored);
         if (anchored) placeAnchored(sheet, btn);
         else sheet.removeAttribute('style');
 
         if (btn) btn.setAttribute('aria-expanded', 'true');
-        showLater(sheet, backdrop);
+        showLater(sheet, backdrop, anchored);
     }
 
     // ======================================================================
@@ -1540,10 +1815,7 @@
         var backdrop = document.getElementById('dg-sheet-backdrop');
         if (!sheet) return;
         sheet.classList.remove('show');
-        if (backdrop && !currentSheetKey && !isQuickOpen()) {
-            backdrop.classList.remove('show');
-            backdrop.classList.remove('dg-transparent');
-        }
+        if (backdrop && !currentSheetKey && !isQuickOpen()) backdrop.classList.remove('show');
         currentMegaKey = null;
         document.body.classList.remove('dg-mega-compact');
         setTimeout(function () { if (!isMegaOpen()) sheet.hidden = true; }, 320);
@@ -1675,7 +1947,7 @@
         // post-compact position, otherwise it'd anchor to where the row sat before the shrink.
         document.body.classList.add('dg-mega-compact');
         placeMegaAnchored(sheet, btn);
-        showLater(sheet, backdrop);
+        showLater(sheet, backdrop, true);
         scrollForMega();
     }
 
@@ -1771,7 +2043,8 @@
             });
         }
 
-        var isReader = document.body.classList.contains('dg-state-reader');
+        // TOC shares the reader's modes (owner: same modes, same burger/quick settings there).
+        var isReader = document.body.classList.contains('dg-state-reader') || document.body.classList.contains('dg-state-toc');
         var modeTable = window.MODE_TABLE;
         var readerMode = window.READER_MODE;
         if (!isReader || !modeTable || !readerMode) { section.hidden = true; return; }
@@ -1817,6 +2090,13 @@
         var b = document.getElementById('dg-drawer-backdrop');
         if (!d) return;
         paintReaderModes();
+        // Owner (2026-09-06, per the production-v4 mock): on the home screen the burger opens
+        // with the multitool list unfolded; results/reader/toc keep it folded (default markup).
+        var multitool = document.getElementById('dg-drawer-multitool');
+        if (multitool && currentState() === 'home') multitool.open = true;
+        // Reader: always folded, never remembered (owner: "чтобы юзер не потерял режимы чтения"
+        // — the reading-modes list sits right under it).
+        if (multitool && (currentState() === 'reader' || currentState() === 'toc')) multitool.open = false;
         d.hidden = false;
         if (b) b.hidden = false;
         // Locks body scroll (home.css: body.dg-drawer-open { overflow: hidden }) — mobile
@@ -1893,6 +2173,10 @@
     // ======================================================================
     function renderTiles() {
         var host = document.getElementById('home-tiles');
+        // Pages without the tile grid (public/404.html) still have the burger's multitool
+        // list — it was only ever rendered from the tail of this function, so it stayed empty
+        // there (owner screenshot, 2026-09-06).
+        if (!host && menuData) renderDrawerTiles();
         if (!host || !menuData) return;
         var data = menuData[menuLang()];
         host.innerHTML = '';
@@ -2166,35 +2450,28 @@
        шапку; только в этом случае (owner: "только на супер узких экранах воды не нарезать на
        инпут, если будет хватать места никак не двигать") опускаем поле ровно на нехватку.
        Считаем ПОСЛЕ сброса своей прошлой добавки — иначе при каждом пересчёте она копилась бы. */
-    function fitAnnounce(host) {
-        var hero = document.querySelector('.hero-row');
-        if (!hero) return;
-        hero.style.marginTop = '';
-        var bar = document.getElementById('dg-topbar');
-        if (!bar || host.hidden || !bar.offsetParent) return;
-        var GAP = 10; // воздух между шапкой и плашкой
-        var shortBy = (bar.getBoundingClientRect().bottom + GAP) - host.getBoundingClientRect().top;
-        if (shortBy > 0) hero.style.marginTop = (parseFloat(getComputedStyle(hero).marginTop) + shortBy) + 'px';
-    }
-
     function renderAnnounce() {
         var host = document.getElementById('dg-announce');
         if (!host || !announceData) return;
         var item = pendingAnnounce();
-        if (!item) { host.hidden = true; host.innerHTML = ''; fitAnnounce(host); return; }
+        if (!item) { host.hidden = true; host.innerHTML = ''; return; }
 
         var text = item[menuLang()] || item.en || item.ru || '';
-        host.innerHTML = '<div class="dg-announce-box" role="status">' +
+        // Optional short badge before the text ("Beta"), see announcements.json.
+        var tag = item.tag ? '<span class="dg-announce-tag">' + esc(item.tag) + '</span>' : '';
+        host.innerHTML = '<div class="dg-announce-box" role="status">' + tag +
             '<span>' + text + '</span>' +
             '<button type="button" class="dg-announce-close" aria-label="' +
             (menuLang() === 'ru' ? 'Закрыть' : 'Dismiss') + '">' +
-            '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>' +
+            '<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>' +
             '</button></div>';
         host.hidden = false;
-        fitAnnounce(host);
         // Появление плавное — класс вешаем следующим кадром, чтобы переход отработал (в кадре
         // вставки элемент только что получил начальное состояние, transition с него не стартует).
-        requestAnimationFrame(function () { host.classList.add('dg-announce-in'); });
+        // display:none → flex тоже переключает этот класс (home.css), поэтому два кадра: в
+        // первом элемент получает display, во втором — стартует transition.
+        host.style.display = 'flex';
+        requestAnimationFrame(function () { host.classList.add('dg-announce-in'); host.style.display = ''; });
         host.querySelector('.dg-announce-close').addEventListener('click', function () {
             var list = dismissedAnnounces();
             var flag = announceFlag(item);
@@ -2208,8 +2485,7 @@
     /* Показ — не сразу, а через пару секунд после ПОЛНОЙ загрузки (owner): на первом экране
        человек сначала видит страницу, а объявление приходит потом, само собой обратив на себя
        внимание, и не участвует в гонке за первую отрисовку. Сколько ждать — из файла (общий
-       delayMs или свой у объявления). Пересчёт места — на resize/поворот экрана: ширина меняется,
-       число строк в плашке вместе с ней. */
+       delayMs или свой у объявления). */
     function announceDelay() {
         var item = pendingAnnounce();
         var ms = (item && item.delayMs) || (announceData && announceData.delayMs);
@@ -2220,10 +2496,6 @@
         var start = function () { setTimeout(renderAnnounce, announceDelay()); };
         if (document.readyState === 'complete') start();
         else window.addEventListener('load', start, { once: true });
-        window.addEventListener('resize', function () {
-            var host = document.getElementById('dg-announce');
-            if (host && !host.hidden) fitAnnounce(host);
-        });
     }
 
     function slidesLang() {
@@ -2317,32 +2589,62 @@
                 '<h5>' + s.title + '</h5>' +
                 '<span>' + s.desc + '</span>' +
                 '<br>' +
-                '<a href="' + esc(s.link) + '" class="text-start">' + read + '</a>' +
+                '<a href="' + esc(s.link) + '" class="text-start">' + read +
+                // Small angle-right after "Читать" (reference .read); FontAwesome 6 solid path.
+                '<svg class="dg-slides-chev" viewBox="0 0 320 512" width="10" height="10" fill="currentColor" aria-hidden="true"><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg>' +
+                '</a>' +
                 '</div>';
         }).join('');
+        // Dots — Bootstrap's own indicators (data-bs-slide-to), just placed under the card by CSS.
+        var dots = slidesShown.map(function (s, i) {
+            return '<button type="button" data-bs-target="#dg-carousel" data-bs-slide-to="' + i + '"' +
+                (i === 0 ? ' class="active" aria-current="true"' : '') + ' aria-label="' + (i + 1) + '"></button>';
+        }).join('');
 
+        /* Production-v4 redesign (docs/Home-standalone.html): eyebrow + "показать все" row above,
+           the carousel in a bordered card (.dg-slides-box, holds the arrows), dots below the
+           card. The slide markup itself is still the legacy one. */
         host.innerHTML =
             '<div class="dg-slides">' +
+            '<div class="dg-slides-head"><h2 class="dg-eyebrow dg-slides-title"></h2>' +
+            '<button type="button" class="dg-slides-all"></button></div>' +
             '<div id="dg-carousel" class="carousel slide" data-bs-ride="carousel" data-bs-interval="7000">' +
+            '<div class="dg-slides-box">' +
             '<div class="carousel-inner">' + items + '</div>' +
             '<button class="carousel-control-prev" type="button" data-bs-target="#dg-carousel" data-bs-slide="prev">' +
-            '<span class="carousel-control-prev-icon" aria-hidden="true"></span>' +
+            '<svg class="dg-slides-arw" viewBox="0 0 320 512" fill="currentColor" aria-hidden="true"><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg>' +
             '<span class="visually-hidden">Previous</span></button>' +
             '<button class="carousel-control-next" type="button" data-bs-target="#dg-carousel" data-bs-slide="next">' +
-            '<span class="carousel-control-next-icon" aria-hidden="true"></span>' +
+            '<svg class="dg-slides-arw" viewBox="0 0 320 512" fill="currentColor" aria-hidden="true"><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg>' +
             '<span class="visually-hidden">Next</span></button>' +
             '</div>' +
-            '<div class="dg-slides-foot"><button type="button" class="dg-slides-all"></button></div>' +
+            '<div class="carousel-indicators">' + dots + '</div>' +
+            '</div>' +
             '</div>';
 
+        host.querySelector('.dg-slides-title').textContent = t('home.picks', 'Подборки');
         host.querySelector('.dg-slides-all').textContent = t('slides.showAll', 'Показать все');
         host.querySelector('.dg-slides-all').addEventListener('click', openSlidesList);
 
         /* data-bs-ride поднимает карусель только при разборе страницы; наша появляется позже,
            поэтому заводим её вручную. */
+        var carousel = document.getElementById('dg-carousel');
         if (window.bootstrap && window.bootstrap.Carousel) {
-            window.bootstrap.Carousel.getOrCreateInstance(document.getElementById('dg-carousel'));
+            window.bootstrap.Carousel.getOrCreateInstance(carousel);
         }
+        // Dots taper with distance from the active slide (see .carousel-indicators [data-d] in
+        // home.css): Bootstrap only toggles .active, the distance is ours to keep up to date.
+        var dotEls = carousel.querySelectorAll('.carousel-indicators [data-bs-slide-to]');
+        function paintSlideDots(active) {
+            Array.prototype.forEach.call(dotEls, function (d, i) {
+                d.setAttribute('data-d', Math.min(4, Math.abs(i - active)));
+            });
+        }
+        paintSlideDots(0);
+        // On slide START (not slid/END): Bootstrap moves .active to the new dot at start, so the
+        // distances must move in the same frame — repainting at the end left the dots stepping
+        // twice, 0.32s apart (owner: "дёргается"). The reference repaints everything at once.
+        carousel.addEventListener('slide.bs.carousel', function (e) { paintSlideDots(e.to); });
         lockCarouselHeight();
     }
 
@@ -2363,7 +2665,10 @@
             tallest = Math.max(tallest, item.getBoundingClientRect().height);
             if (!wasActive) { item.style.display = ''; item.style.position = ''; item.style.visibility = ''; }
         });
-        if (tallest) inner.style.minHeight = Math.ceil(tallest) + 'px';
+        // Capped at the reference card's stage height (~108px inside its 144px card at 1280):
+        // a couple of outlier slides with three-line blurbs used to stretch every slide into a
+        // half-empty card. Those still grow the card by a line when shown; the rest don't jump.
+        if (tallest) inner.style.minHeight = Math.ceil(Math.min(tallest, 110)) + 'px';
     }
 
     // ======================================================================
@@ -2758,9 +3063,9 @@
         privacy.className = 'dg-footer-link';
         privacy.target = '_blank';
         privacy.rel = 'noopener';
-        privacy.href = menuLang() === 'ru'
-            ? '/assets/common/privacy-ru.html'
-            : '/assets/common/privacy.html';
+        // Owner (2026-09-06): the live policy page is /docs/policies (dg-docs), the old
+        // /assets/common/privacy*.html copies are stale.
+        privacy.href = menuLang() === 'ru' ? '/ru/docs/policies' : '/docs/policies';
         privacy.textContent = short ? t('footer.privacyShort', 'Политика') : t('footer.privacy', 'Политика конфиденциальности');
         host.appendChild(privacy);
     }
@@ -2808,6 +3113,7 @@
         host.hidden = false;
         // Short form on the page (intro.* in lang_*.json); the full quote/warning (howto.*)
         // moved into the "About" sheet — see openAbout().
+        document.getElementById('dg-intro-eyebrow').textContent = t('home.howtoEyebrow', 'Как искать?');
         document.getElementById('dg-intro-pali').textContent = t('intro.pali', '');
         document.getElementById('dg-intro-body').textContent = t('intro.body', '');
         document.getElementById('dg-intro-warn-title').textContent = t('intro.warnTitle', '');
@@ -2916,6 +3222,10 @@
         // Owner: on desktop this sheet spans the text column (as wide as the mega menu), not the
         // 560px list width the tile sheets use. openSheet()/openTerms() clear the class again.
         sheet.classList.add('dg-wide');
+        // Bottom-sheet chrome for this one (production-v4 redesign, docs/Home-standalone.html
+        // .sheet): full-width from the bottom edge, drag handle, no title bar — see
+        // .dg-sheet.dg-about-sheet in home.css. openSheet()/openTerms() clear it with dg-wide.
+        sheet.classList.add('dg-about-sheet');
         document.getElementById('dg-sheet-title').textContent = t('menu.about', 'О проекте');
         document.getElementById('dg-sheet-tabs').innerHTML = '';
 
@@ -2995,6 +3305,7 @@
         var backdrop = document.getElementById('dg-sheet-backdrop');
         sheet.hidden = false;
         sheet.classList.remove('dg-wide');
+        sheet.classList.remove('dg-about-sheet');
         document.getElementById('dg-sheet-title').textContent = t('footer.terms', 'Условия использования');
         document.getElementById('dg-sheet-tabs').innerHTML = '';
 
@@ -3115,6 +3426,11 @@
         // а девиз и подсказки — из lang_{lang}.json через DHAMMA_I18N.
         var motto = document.getElementById('home-motto');
         if (motto) motto.textContent = t('home.motto', 'Найдите Истину');
+        var subtitle = document.getElementById('home-subtitle');
+        if (subtitle) subtitle.textContent = t('home.subtitle', 'В Палийских Суттах и Винае');
+        var goLabel = document.querySelector('.dg-shell-go-label');
+        if (goLabel) goLabel.textContent = t('home.searchBtn', 'Искать');
+        renderScopeSummary();
         renderTiles();
         renderSlides();
         paintDrawerIcons();

@@ -651,11 +651,20 @@ window.navigateSutta = function(event, slug) {
     const citation = document.getElementById("paliauto");
     if (citation) citation.value = slug;
     
-    // Строим сутту из памяти
-    window.buildSutta(slug);
-    
-    // Прокручиваем страницу наверх
-    window.scrollTo(0, 0);
+    // Reader exit animation (.reader-out, home.css), then build; buildSutta() replays the enter.
+    var pane = document.getElementById('reader-pane');
+    var build = function () {
+        window.__dgReplayEnter = true;
+        window.buildSutta(slug);
+        window.scrollTo(0, 0);
+    };
+    if (pane && !(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)) {
+        pane.classList.add('reader-out');
+        // Stay hidden (.reader-pending) while the next text loads — no flash of the old one.
+        setTimeout(function () { pane.classList.remove('reader-out'); pane.classList.add('reader-pending'); build(); }, 240);
+    } else {
+        build();
+    }
 };
 
 // Ctrl+←/→ (пред./след. сутта) через SPA, а не полную перезагрузку. Слушатель на capture-фазе —
@@ -929,6 +938,19 @@ function getSkeletonHTML() {
     return '<div class="dg-sutta-skeleton" aria-hidden="true">' + bars + '</div>';
 }
 
+// Show #reader-pane once the text is in the DOM: drops .reader-pending (set by openReaderInPlace /
+// navigateSutta while loading) and plays the enter animation (.reader-in, home.css) when the pane
+// was pending or the caller asked for it (window.__dgReplayEnter — reader -> reader links).
+function dgReaderReveal(animate) {
+    var pane = document.getElementById('reader-pane');
+    if (!pane) return;
+    var wasPending = pane.classList.contains('reader-pending');
+    pane.classList.remove('reader-pending', 'reader-in');
+    if (!(animate || wasPending) || (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)) return;
+    void pane.offsetWidth;
+    pane.classList.add('reader-in');
+}
+
 window.buildSutta = async function(rawSlug) {
     const slug = window.normalizeSlugToDbKey(rawSlug);
     window._currentSlug = slug;
@@ -999,6 +1021,7 @@ window.buildSutta = async function(rawSlug) {
         const response = await fetch(apiUrl);
         if (!response.ok) {
             if (response.status === 404 && typeof window.executeGlobalSearch === 'function') {
+                dgReaderReveal(false);
                 window.executeGlobalSearch(rawSlug);
                 return false;
             }
@@ -1009,6 +1032,7 @@ window.buildSutta = async function(rawSlug) {
     } catch (error) {
         console.error('Ошибка загрузки текста:', error);
         if (typeof window.handleFetchError === 'function') window.handleFetchError(rawSlug, true);
+        dgReaderReveal(false);
         return false;
     }
 
@@ -1017,6 +1041,17 @@ window.buildSutta = async function(rawSlug) {
     // см. LANG_ORDER_KEY выше): состав колонок остаётся серверным, меняется только их порядок.
     const columns = reorderColumnsByLangOrder(suttaData.columns || []);
     READER_MODE.columns = columns; // кэш последнего известного состояния — для switchReaderMode
+    // Owner: "показывать доп кнопку [языковой пилюли] во всех режимах... раз языки уже
+    // активированы" — home.js's dgRenderLangPill reads LANG_ORDER_KEY to decide whether to show
+    // its "more languages" dots button outside multiLang too (single/results/etc, where only ONE
+    // language is ever actually rendered). Previously this key was written ONLY by
+    // switchReadingLanguage() (an explicit pill click) — a user who opened multiLang from the
+    // burger row and never touched the toggle got 2 real columns on screen but no persisted
+    // record of it, so the dots button never appeared anywhere else. Just landing on multiLang
+    // with 2+ columns now counts as "activated" too.
+    if (READER_MODE.modeKey === 'multiLang' && columns.length > 1) {
+        try { localStorage.setItem(LANG_ORDER_KEY, JSON.stringify(columns)); } catch (e) { /* приватный режим */ }
+    }
     READER_MODE.lang = suttaData.lang || columns[0] || READER_MODE.lang; // сервер резолвил язык явно, см. dg-light.js
     // t() (warning text below) reads this — must be ready before that, see the cache's comment.
     await ensureReaderLangConfig(READER_MODE.lang);
@@ -1315,8 +1350,8 @@ window.buildSutta = async function(rawSlug) {
         (!isWarningClosed ? warning : '') +
         translatorByline + 
         html + 
-        translatorByline + 
-        (!isWarningClosed ? warning : '') + 
+        // Owner (2026-09-06, production-v4 reader mock): the footer is sources → prev/next →
+        // tools → legal, no second copy of the byline and the warning under the text.
         `<div id="bottom-links-container" class="min-h-24"></div>`;
     
     const topContainer = document.getElementById('top-links-container');
@@ -1390,6 +1425,9 @@ window.buildSutta = async function(rawSlug) {
     }
 
     window.toggleThePali();
+    if (typeof window.dgRenderLangPill === 'function') window.dgRenderLangPill();
+    dgReaderReveal(window.__dgReplayEnter);
+    window.__dgReplayEnter = false;
     if (typeof window.addToSearchHistory === 'function') window.addToSearchHistory();
     return true;
 };
@@ -1507,5 +1545,7 @@ async function initReader() {
 window.initReader = initReader;
 
 if (!window.MEGAREADER_MANUAL_INIT) {
-    initReader();
+    // Exposed so search/index.html (openReaderInPlace) can wait for the FIRST build on a cold
+    // load before it drops .reader-pending — otherwise the pane was revealed before the text.
+    window.__dgInitReaderPromise = initReader();
 }

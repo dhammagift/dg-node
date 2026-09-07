@@ -40,22 +40,63 @@
            card-sized home tiles (this is a secondary nav aid on an error page, not the primary
            way to browse), but still comfortably tappable. Sheet/mega popovers themselves come
            from home.css unmodified — only this button row is custom. */
-        #dg-404-menu { display: flex; flex-wrap: wrap; justify-content: center; gap: 1.5rem 1.75rem; margin-top: 2rem; max-width: 34rem; }
-        #dg-404-menu button { display: flex; flex-direction: column; align-items: center; gap: .4rem; width: 5.5rem; background: none; border: 0; padding: 0; color: var(--bs-emphasis-color); }
-        #dg-404-menu button i, #dg-404-menu button svg { width: 1.7rem; height: 1.7rem; color: var(--bs-primary); }
-        /* Owner: dark theme should match the real site's icon color, light theme stays as-is.
-           var(--bs-primary) is defined on bare :root (extrastyles.css) so it never actually
-           shifts between themes on its own — the real multitool row gets its dark-mode color
-           through a separate rule keyed on body[data-theme="dark"] (extrastyles.css: .menu-icon,
-           #136857), not through --bs-primary at all. Same attribute/value here, not the
-           .menu-icon class itself — that class also carries font-size:2em, which would resize
-           any <i> font icons in this row. */
-        [data-theme="dark"] #dg-404-menu button i,
-        [data-theme="dark"] #dg-404-menu button svg { color: #136857; }
-        #dg-404-menu button span { font-size: .78rem; line-height: 1.15; text-align: center; }
+        /* Production-v4 redesign (owner's E404 mock, 2026-09-06): thin wide-tracked "404" with
+           the middle zero in the accent, italic accent "Aho!", the sn38.4 verse, a pill
+           button, and the section grid as glyph-on-disc + label without cards. Tokens
+           (--dg-*) come from home.css via body.dg-skin-minimal; --dg-font is Lato there. */
+        .nf { max-width: 600px; margin: 0 auto; padding: 44px 20px 64px; text-align: center; font-family: var(--dg-font); }
+        .nf .code { font-size: 104px; line-height: .92; font-weight: 200; letter-spacing: .06em; color: var(--dg-text); margin: 0; font-feature-settings: "tnum"; }
+        .nf .code em { font-style: normal; color: var(--dg-accent); }
+        .nf h1 { font-family: var(--dg-font); font-size: 25px; font-weight: 500; line-height: 1.3; margin: 18px 0 0; letter-spacing: -.01em; text-wrap: balance; color: var(--dg-text); }
+        .nf h1 .aho { color: var(--dg-accent-ink); font-style: italic; }
+        .nf .verse { margin: 22px auto 0; max-width: 46ch; }
+        .nf .verse .pali { margin: 0; font-size: 16px; line-height: 1.65; font-style: italic; color: var(--dg-text-2); text-wrap: pretty; }
+        .nf .verse .pali a { color: var(--dg-accent-ink); font-style: normal; font-size: 14px; white-space: nowrap; text-decoration: none; }
+        .nf .verse .pali a:hover { text-decoration: underline; text-underline-offset: 3px; }
+        .nf .verse .tr { margin: 9px 0 0; font-size: 13px; line-height: 1.6; color: var(--dg-text-muted); text-wrap: pretty; }
+        .nf .acts { display: flex; justify-content: center; align-items: center; gap: 14px; flex-wrap: wrap; padding: 26px 0 0; }
+        .nf .acts .primary { display: inline-block; border: 0; border-radius: 999px; background: var(--dg-accent-dark); color: #fff; font: inherit; font-size: 14px; font-weight: 500; padding: 10px 26px; cursor: pointer; text-decoration: none; box-shadow: 0 2px 12px rgba(15,124,99,.22); transition: background .15s var(--dg-ease), box-shadow .15s var(--dg-ease); }
+        .nf .acts .primary:hover { background: var(--dg-accent); color: #fff; box-shadow: 0 4px 18px rgba(15,124,99,.28); }
+        .nf .acts .primary:active { transform: translateY(1px); }
+        #dg-404-menu { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px 6px; margin: 36px auto 0; padding: 26px 0 0; border-top: 1px solid var(--dg-border); }
+        #dg-404-menu button { display: flex; flex-direction: column; align-items: center; gap: 9px; padding: 12px 6px 14px; border: 0; border-radius: 12px; background: none; color: var(--dg-text-2); font-family: var(--dg-font); font-size: 12.5px; line-height: 1.3; text-align: center; cursor: pointer; transition: color .15s var(--dg-ease), background .15s var(--dg-ease); }
+        #dg-404-menu button:hover { background: var(--dg-surface-hover); color: var(--dg-text); }
+        #dg-404-menu .disc { width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; background: var(--dg-accent-bg); color: var(--dg-icon-ink); transition: background .15s var(--dg-ease), color .15s var(--dg-ease); }
+        #dg-404-menu .disc i, #dg-404-menu .disc svg { width: 18px; height: 18px; font-size: 18px; }
+        #dg-404-menu button:hover .disc { background: var(--dg-accent-dark); color: #fff; }
+        @media (max-width: 760px) { .nf .code { font-size: 76px; } .nf h1 { font-size: 21px; } #dg-404-menu button { font-size: 11.5px; } }
+        /* Enter animation (owner's animations.md): the digits settle from above with a slight
+           overshoot (500ms); title / verse / button follow at 60 / 120 / 180ms; the section grid
+           is a checkerboard cascade (40ms step: delay = (row + column) * 40ms, 4 columns). The
+           exit fade is not implemented: leaving this page is a real navigation. */
+        @keyframes e404-drop { from { opacity: 0; transform: translateY(-28px); } 70% { opacity: 1; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+        @keyframes e404-in { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: none; } }
+        .nf .code { animation: e404-drop 500ms var(--dg-ease) backwards; }
+        .nf h1 { animation: e404-in 300ms var(--dg-ease) 60ms backwards; }
+        .nf .verse { animation: e404-in 300ms var(--dg-ease) 120ms backwards; }
+        .nf .acts { animation: e404-in 300ms var(--dg-ease) 180ms backwards; }
+        #dg-404-menu button { animation: e404-in 300ms var(--dg-ease) 200ms backwards; }
+        #dg-404-menu button:nth-child(2), #dg-404-menu button:nth-child(5) { animation-delay: 240ms; }
+        #dg-404-menu button:nth-child(3), #dg-404-menu button:nth-child(6), #dg-404-menu button:nth-child(9) { animation-delay: 280ms; }
+        #dg-404-menu button:nth-child(4), #dg-404-menu button:nth-child(7), #dg-404-menu button:nth-child(10) { animation-delay: 320ms; }
+        #dg-404-menu button:nth-child(8), #dg-404-menu button:nth-child(11) { animation-delay: 360ms; }
+        #dg-404-menu button:nth-child(12) { animation-delay: 400ms; }
+        @media (prefers-reduced-motion: reduce) { .nf .code, .nf h1, .nf .verse, .nf .acts, #dg-404-menu button { animation: none; } }
     </style>
 </head>
-<body class="dg-state-results">
+<body class="dg-skin-minimal dg-state-results">
+<script>
+// Theme before first paint — same early step as search/index.html's <body> script: the dark
+// shell/page rules key on body.dark, and themeswitch.js (deferred) sets it too late — the
+// input flashed white on a dark 404 (owner).
+(function () {
+    var theme = localStorage.getItem('theme') || 'auto';
+    var dark = theme === 'dark' || (theme === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches);
+    document.body.classList.toggle('dark', dark);
+    if (dark) document.body.setAttribute('data-theme', 'dark');
+    document.documentElement.setAttribute('data-bs-theme', dark ? 'dark' : 'light');
+})();
+</script>
     <!-- dg-state-results (home.css): not "home" (no topbar/tiles — a 404 isn't the home page),
          closest of the other three states (results/reader/toc) that show the shell-logo +
          .dg-menu-btn-hero burger next to the input instead. -->
@@ -124,19 +165,18 @@
     </div>
     </div><!-- /.container-fluid.mt-2 -->
 
-    <div class="d-flex align-items-center justify-content-center flex-column py-5">
-        <div class="text-center">
-            <h1 class="display-1 fw-bold">404</h1>
-            <p class="fs-3"><span class="text-danger">Aho!</span> <span data-404-text="p404">Page not found. But</span></p>
-            <p class="lead">
-                &ldquo;Atthi kho, &#257;vuso, maggo atthi pa&#7789;ipad&#257;,<br />
-                etassa dukkhassa pari&ntilde;&ntilde;&#257;y&#257;&rdquo;ti.
-                <a target="_blank" class="text-decoration-none" href="/sn38.4#1.4">sn38.4</a>
-            </p>
-            <a href="/" id="back" class="btn btn-primary" data-404-text="home">Go Home</a>
+    <main class="nf">
+        <p class="code">4<em>0</em>4</p>
+        <h1><span class="aho">Aho!</span> <span data-404-text="p404">Page not found. But…</span></h1>
+        <div class="verse">
+            <p class="pali">&ldquo;Atthi kho, &#257;vuso, maggo atthi pa&#7789;ipad&#257;, etassa dukkhassa pari&ntilde;&ntilde;&#257;y&#257;&rdquo;ti. <a target="_blank" href="/sn38.4#1.4">sn38.4</a></p>
+            <p class="tr" data-404-text="tr"></p>
+        </div>
+        <div class="acts">
+            <a href="/" id="back" class="primary" data-404-text="home">Go Home</a>
         </div>
         <nav id="dg-404-menu"></nav>
-    </div>
+    </main>
 
     <!-- Real bug found live: the drawer's theme segmented control (home.js, applyTheme())
          doesn't set the theme directly — it drives the site-wide theme by clicking the results
@@ -151,31 +191,90 @@
 
     <!-- Drawer — copied verbatim from search/index.html's #dg-drawer (same IDs/classes,
          opened by the .dg-menu-btn buttons above via home.js's openDrawer()). -->
-    <div id="dg-drawer-backdrop" hidden></div>
-    <aside id="dg-drawer" hidden aria-label="Menu" data-i18n-aria-label="{{toolbar.menuAriaLabel}}">
-      <div class="dg-drawer-head">
-        <img class="dg-brand-logo" src="/assets/img/dgsanhkalogo.png" alt="">
-        <span class="dg-brand-name">dhamma.gift</span>
-        <button type="button" class="dg-icon-btn dg-drawer-close" aria-label="Close" data-i18n-aria-label="{{global.common.close}}">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
-        </button>
-      </div>
-      <nav class="dg-drawer-body">
-        <details class="dg-drawer-group" open>
-          <summary class="dg-group-title">{{menu.navigation}}</summary>
-          <a class="dg-drawer-row dg-go-home" href="/"><img class="dg-row-ic dg-row-ic-img" src="/assets/img/dgsankhaonly.png" alt="">{{buttons.main}}</a>
-          <a class="dg-drawer-row" href="javascript:void(0)" data-dg-icon="compass" onclick="if (typeof window.toggleQuickModal === 'function') window.toggleQuickModal();">{{toolbar.compassLabel}}</a>
-          <a class="dg-drawer-row dg-about-link" href="/assets/common/keyFeatures.html" data-href-en="/assets/common/keyFeatures.html" data-href-ru="/assets/common/keyFeaturesRu.html" data-dg-icon="info">{{menu.about}}</a>
-          <a class="dg-drawer-row" href="/docs/key-features" target="_blank" data-dg-icon="help">{{global.common.help}}</a>
-          <a class="dg-drawer-row" href="/login" data-dg-icon="login">{{global.common.login}}</a>
-        </details>
-        <p class="dg-group-title" data-dg-icon="language">{{menu.language}}</p>
-        <div id="dg-lang-seg"></div>
-        <p class="dg-group-title">{{menu.theme}}</p>
-        <div id="dg-theme-seg"></div>
-        <a class="dg-drawer-row" href="/settings/" data-dg-icon="gear">{{global.common.settings}}</a>
-      </nav>
-    </aside>
+    <!-- Drawer — verbatim copy of search/index.html #dg-drawer (owner, 2026-09-06: "на 404 не
+         актуальный бургер, должен быть как на главной"). home.js fills the multitool list, language/
+         theme segments, reading modes (hidden here: no reader). Keep in sync with index.html. -->
+<div id="dg-drawer-backdrop" hidden></div>
+<aside id="dg-drawer" hidden aria-label="Menu" data-i18n-aria-label="{{toolbar.menuAriaLabel}}">
+  <div class="dg-drawer-head">
+    <!-- Шапка шторки ведёт на главную — пункт «Главная» ушёл вместе с «Навигацией», а домой
+         из выдачи/ридера через бургер всё равно нужно уметь. -->
+    <a class="dg-brand-link" href="/"><img class="dg-brand-logo" src="/assets/img/dgsanhkalogo.png" alt=""><span class="dg-brand-name">dhamma.gift</span></a>
+    <button type="button" class="dg-icon-btn dg-drawer-close" aria-label="Close" data-i18n-aria-label="{{global.common.close}}">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+  </div>
+  <nav class="dg-drawer-body">
+    <!-- Значки у пунктов проставляет home.js (data-dg-icon → FontAwesome.icon), чтобы набор был
+         тот же, что у плиток и в боевом меню, и не разъезжался при правках. -->
+    <!-- «Найти на странице» — первой строкой, одно место на весь сайт (бургер один и тот же на
+         главной/в выдаче/в ридере/в оглавлении). Открывает dg-page-find-ui.js (клик слушает сам
+         этот файл, closeDrawer перед открытием — см. там же). Ctrl/Cmd+Shift+F делает то же
+         самое (Shift обязателен — голый Ctrl/Cmd+F в реальном Chrome уходит в системный поиск
+         браузера раньше, чем страница успевает его перехватить). data-dg-icon="magnifier" — тот
+         же ключ ICONS в home.js, что уже даёт fas/magnifying-glass; "magnifying-glass" здесь не
+         матчился ни с одним ключом и молча падал на ICONS.external (стрелка). Owner asked for a
+         page+magnifying-glass icon specifically ("листик с лупой") — FA6 Free doesn't ship that
+         one (file-magnifying-glass/file-search is Pro-only, checked node_modules directly), so
+         this stays the plain lens rather than a hand-drawn substitute breaking the icon system's
+         "every drawer icon comes from ICONS/FontAwesome" convention. -->
+    <a class="dg-drawer-row dg-find-open" href="javascript:void(0)" data-dg-icon="magnifier">{{menu.findOnPage}}</a>
+    <!-- Мультитул вместо «Навигации» (owner, 2026-09-05): список плиток главной, чтобы мультитул
+         был под рукой в любом месте сайта — в выдаче, в ридере, в TOC. Нативный <details>, свёрнут
+         по умолчанию в выдаче/ридере/TOC; на главной openDrawer() (home.js) раскрывает его при
+         каждом открытии бургера (owner, 2026-09-06, как в макете). Список строит
+         home.js renderDrawerTiles() из тех же menu-links.json / tileOrder() / hiddenTiles(), что и
+         плитки; клик по строке = клик по плитке (мегаменю на десктопе, шторка на телефоне). -->
+    <details class="dg-drawer-group" id="dg-drawer-multitool">
+      <summary class="dg-group-title">{{menu.multitool}}</summary>
+      <div id="dg-drawer-tiles"></div>
+    </details>
+    <!-- Режимы чтения — только в состоянии ридера (owner: "выводи первым делом режимы ридера" —
+         протестировать/переключить их иначе можно было только руками через ?mode= в адресе).
+         Список строит home.js (paintReaderModes) из reader/mode-table.json — тот же источник
+         правды, что уже питает панель переключения режимов внутри самого текста (scLink,
+         megareader.js), никакой второй копии режимов здесь не заводится.
+         <details>, не голый <div> — owner: "сделай режимы чтения сворачиваемыми... запомнить что
+         свёрнуто", тем же native-элементом, что уже здесь для «Мультитул» ниже. Открыт/закрыт
+         запоминается в localStorage (paintReaderModes/wireReaderModesToggle, home.js) — читается
+         только при показе секции, а не при каждой перерисовке списка внутри неё. -->
+    <details id="dg-drawer-modes" hidden>
+      <summary class="dg-group-title">{{menu.readingModes}}</summary>
+      <div id="dg-drawer-modes-list"></div>
+    </details>
+
+    <p class="dg-group-title">{{menu.settings}}</p>
+    <!-- Язык/тема — переехали сюда, в «Настройки» (просьба владельца: часть настроек была вверху
+         шторки, часть внизу — всё в одном месте). Переключатели наполняет и обслуживает home.js,
+         контейнеры БЕЗ класса .dg-segmented (сам переключатель — <div class="dg-segmented">,
+         который создаёт segmented() и кладёт сюда). -->
+    <p class="dg-group-title" data-dg-icon="language">{{menu.language}}</p>
+    <div id="dg-lang-seg"></div>
+    <!-- Значка у этого заголовка нет намеренно: солнце рядом со словом «Тема» читалось бы как
+         «сейчас светлая». Значки тем — внутри самого переключателя, у своих вариантов. -->
+    <p class="dg-group-title">{{menu.theme}}</p>
+    <div id="dg-theme-seg"></div>
+    <!-- "Описания кнопок" (dgTileDesc) moved to /settings/ — owner: "очень неважная настройка",
+         doesn't need to sit in the quick-access drawer next to language/theme. tileDescEnabled()
+         in home.js still reads the same localStorage key when actually rendering tile rows. -->
+
+    <!-- Полные настройки (шестерёнка) — ниже язык/тему по просьбе владельца: сначала быстрые
+         переключатели, потом ссылка на полную страницу настроек. -->
+    <a class="dg-drawer-row" href="/settings/" data-dg-icon="gear">{{global.common.settings}}</a>
+    <!-- Своя кнопка на главную: подпись, адрес, значок. Форму рисует home.js в обычной шторке.
+         Перенесено сюда из «Навигации» по просьбе владельца — это управление кнопками, то есть
+         настройка, а не переход. -->
+    <a class="dg-drawer-row" href="javascript:void(0)" id="dg-add-tile" data-dg-icon="plus">{{menu.addTile}}</a>
+    <!-- Правка любой кнопки: сперва список, потом та же форма. Выбирать плитку на самой главной
+         негде — крестик там уже занят удалением. -->
+    <a class="dg-drawer-row" href="javascript:void(0)" id="dg-edit-tiles" data-dg-icon="wrench">{{menu.editTiles}}</a>
+    <!-- Появляется, только если есть что возвращать: убрана кнопка ИЛИ переставлен порядок. -->
+    <a class="dg-drawer-row" href="javascript:void(0)" id="dg-restore-tiles" data-dg-icon="star" hidden>{{menu.restoreTiles}}</a>
+    <!-- Owner (2026-09-05): «Логин в самый низ блока настроек» — переехал сюда из «Навигации»,
+         которую заменил мультитул. -->
+    <a class="dg-drawer-row" href="/login" data-dg-icon="login">{{global.common.login}}</a>
+  </nav>
+</aside>
 
     <script>
         // Form submit — 404-local, not the real one (search/index.html's own inline script,
@@ -272,9 +371,10 @@
                     var made = window.FontAwesome && window.FontAwesome.icon
                         ? window.FontAwesome.icon({ prefix: 'fas', iconName: iconName })
                         : null;
-                    btn.innerHTML = (made && made.html && made.html[0])
+                    // Glyph sits on a soft accent disc (E404 mock .disc), label below.
+                    btn.innerHTML = '<span class="disc">' + ((made && made.html && made.html[0])
                         ? made.html[0]
-                        : '<i class="fa-solid fa-' + iconName + '" aria-hidden="true"></i>';
+                        : '<i class="fa-solid fa-' + iconName + '" aria-hidden="true"></i>') + '</span>';
                     var label = document.createElement('span');
                     label.textContent = item.label;
                     btn.appendChild(label);
@@ -308,8 +408,8 @@
         // does load, handled by the listener below.
         (function () {
             var STRINGS = {
-                ru: { p404: 'Страница не найдена. Но', home: 'На Главную' },
-                en: { p404: 'Page not found. But', home: 'Go Home' }
+                ru: { p404: 'Страница не найдена. Но…', home: 'На главную', tr: '«Есть, друг, путь, есть практика — для полного понимания этой дуккхи».' },
+                en: { p404: 'Page not found. But…', home: 'Go Home', tr: '“There is, friend, a path, there is a practice for the full understanding of this suffering.”' }
             };
             function render() {
                 var lang = window.dg404Lang;

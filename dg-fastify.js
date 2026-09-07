@@ -146,7 +146,10 @@ function sendVersionedHtml(req, reply, absHtmlPath, statusCode = 200) {
     try { html = fsSync.readFileSync(absHtmlPath, 'utf8'); }
     catch { return reply.code(404).send(); }
     const rewritten = html.replace(
-        /((?:src|href)=")(\/(?:assets|spa|nodejs\/res|reader|settings)\/[^"?#]+\.(?:js|css|svg|png|ico))(")/g,
+        // Also stamps the lazy loadScript('/reader/megareader.js') / ('/spa/toc.js') calls in
+        // search/index.html — otherwise a 24h-cached copy could outlive the HTML that expects a
+        // newer one (e.g. .reader-pending needs buildSutta() to clear it).
+        /((?:src|href)="|loadScript\(')(\/(?:assets|spa|nodejs\/res|reader|settings)\/[^"'?#]+\.(?:js|css|svg|png|ico))("|')/g,
         (m, pre, url, post) => {
             const prefix = Object.keys(HTML_ASSET_URL_ROOTS).find(p => url.startsWith(p + '/'));
             if (!prefix) return m;
@@ -1064,9 +1067,17 @@ app.get('/api/text/:suttaId', async (req, res) => {
         ? req.query.langs.split(',').map(l => l.trim())
         : req.query.lang
             ? [req.query.lang]
-            // Ни mode, ни lang, ни langs — тот же фоллбэк, что и был здесь всегда для голого
-            // ручного доступа (curl/api-docs без единого языкового параметра), не новый хардкод.
-            : (req.query.langs || 'ru,en').split(',').map(l => l.trim());
+            : modeConfig
+                // Owner-reported bug: a real ?mode= with no &lang= (e.g. a cold /dn1?mode=single
+                // load — switchReaderMode() never touches ?lang=, see megareader.js, so a fresh
+                // page load can hit this with no lang set yet) used to fall through to the bare
+                // "ru,en" branch below regardless of mode, silently rendering a SECOND language
+                // in modes meant for exactly one. Only the truly bare "no mode at all" case
+                // (curl/api-docs) should get the multi-lang fallback.
+                ? ['ru']
+                // Ни mode, ни lang, ни langs — тот же фоллбэк, что и был здесь всегда для голого
+                // ручного доступа (curl/api-docs без единого языкового параметра), не новый хардкод.
+                : (req.query.langs || 'ru,en').split(',').map(l => l.trim());
     // ?translators=ru_o,ru_sv — ручной оверрайд, для multiTran (два перевода ОДНОГО языка
     // одновременно), в обход обычного "один переводчик на язык" (см. findTranslationFiles).
     const explicitTranslators = req.query.translators

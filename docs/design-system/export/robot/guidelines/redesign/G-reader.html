@@ -1,0 +1,1345 @@
+<!-- @dsCard group="Освежение сайта" viewport="1280x900" name="Ридер — на разработку" subtitle="Один экран чтения: липкая шапка, оглавление раздела, режимы, озвучка, языки, поиск по странице." -->
+<!-- ФАЙЛ ДЛЯ РАЗРАБОТКИ. Только экран ридера, вырезан из D-refresh.html.
+     Внутри — прод-инвентарь чтения: липкая шапка сутты, оглавление раздела (#sectoc),
+     режимы чтения (в бургере, #modes), варианты чтения, озвучка (.playpill), кнопка «Наверх»,
+     языковая пилюля + меню языков (#langmenu), избранное (звезда), поиск по странице (.findbar),
+     подвал ридера (источники, переходы, права), быстрые настройки (#qsp), бургер (#drawer),
+     мультитул (#mt). Ничего из этого не удалять — см. RULES-for-robot.md / CLAUDE.md. -->
+<!doctype html><html lang="ru" data-theme="light"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Dhamma.gift — ридер</title>
+<template id="__bundler_thumbnail"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#1e3a4c"/><circle cx="50" cy="50" r="21" fill="none" stroke="#7fd4bd" stroke-width="4"/><path d="M42 58 L58 42" stroke="#7fd4bd" stroke-width="4" stroke-linecap="round"/></svg></template>
+<link rel="stylesheet" href="../../styles.css">
+<!-- Иконки: свой набор проекта из assets/svg (маска, наследуют currentColor).
+     FontAwesome оставлен ТОЛЬКО там, где своего глифа нет: лупа, ×, ползунки, ☰,
+     circle-info, circle-plus, circle-check, graduation-cap, screwdriver-wrench,
+     book-atlas, volume-high, угловые стрелки, карандаш и брендовые at/telegram/github/youtube/whatsapp.
+     Знак Memo набран текстом: в memo.svg он нарисован тегом <text> без размеров,
+     поэтому как CSS-маска не отрисовывается. -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
+<style>
+*{box-sizing:border-box}
+/* display/width заданы жёстко: во внешнем предпросмотре body получал
+   display:inline-block и сжимался по содержимому до 920px — страница липла
+   к левому краю, а navy-полоса обрывалась на середине окна. */
+html{width:100%}
+body{display:block!important;width:100%;min-width:0;margin:0;background:var(--dg-page);color:var(--dg-text);font-family:var(--dg-font);-webkit-font-smoothing:antialiased;font-size:15px}
+a{color:var(--dg-accent-ink);text-decoration:none}a:hover{color:var(--dg-accent-ink)}
+h1,h2,h3{font-family:var(--dg-font);font-weight:600;letter-spacing:-.01em}
+.wrap{max-width:920px;margin:0 auto;padding:0 20px}
+.only-desktop{display:block}
+/* иконки проекта: SVG из assets/svg через маску — наследуют currentColor */
+.gi{display:inline-block;width:1em;height:1em;background:currentColor;-webkit-mask:var(--u) center/contain no-repeat;mask:var(--u) center/contain no-repeat;vertical-align:-.12em;flex:none}
+/* ── переключатель демо (не часть дизайна) ───────────────── */
+#demo{position:fixed;right:14px;bottom:14px;z-index:80;display:flex;gap:4px;background:var(--dg-surface);border:1px solid var(--dg-border);border-radius:999px;padding:4px;box-shadow:0 4px 20px rgba(27,29,25,.13);font-size:12px}
+#demo button{border:0;background:none;font:inherit;color:var(--dg-text-2);padding:5px 11px;border-radius:999px;cursor:pointer}
+#demo button[aria-pressed=true]{background:var(--dg-accent-bg);color:var(--dg-on-accent-bg)}
+/* ── прод-шелл поиска: пилюля с ракушкой, ×, ползунками и лупой ── */
+.shell{display:flex;align-items:center;gap:8px;width:100%;max-width:620px;background:var(--dg-surface-hover);border:1px solid var(--dg-border);border-radius:999px;padding:7px 8px 7px 16px;transition:border-color .15s var(--dg-ease),box-shadow .15s var(--dg-ease)}
+.shell:focus-within{border-color:var(--dg-accent);box-shadow:0 0 0 3px var(--dg-accent-bg)}
+.shell .conch{width:20px;height:20px;flex:none;opacity:.85;display:grid;place-items:center;border-radius:5px;transition:opacity .15s var(--dg-ease)}
+.shell a.conch:hover{opacity:1}
+.shell .conch img{width:20px;height:20px;display:block}
+.shell input{flex:1;border:0;outline:0;background:none;font:inherit;font-size:16px;color:var(--dg-text);min-width:0}
+.shell input::placeholder{color:var(--dg-text-muted);opacity:.75}
+.shell .clr{width:28px;height:28px;border:0;border-radius:50%;background:none;color:var(--dg-text-muted);cursor:pointer;font-size:13px;flex:none;display:grid;place-items:center}
+.shell .clr:hover{background:var(--dg-border);color:var(--dg-text)}
+.shell .rnd{width:34px;height:34px;border:1px solid var(--dg-border-strong);border-radius:50%;background:var(--dg-surface);color:var(--dg-text-2);cursor:pointer;font-size:13.5px;flex:none;display:grid;place-items:center;transition:all .15s var(--dg-ease)}
+.shell .rnd:hover{border-color:var(--dg-accent);color:var(--dg-accent-ink)}
+.shell .rnd.go{background:var(--dg-navy);border-color:var(--dg-navy);color:#fff}
+.shell .rnd.go:hover{background:var(--dg-accent-dark);border-color:var(--dg-accent-ink);color:#fff}
+/* круглая кнопка рядом с шеллом (бургер, компас) */
+.rb{width:38px;height:38px;border:1.5px solid var(--dg-border-strong);border-radius:50%;background:var(--dg-surface);color:var(--dg-text-2);cursor:pointer;font-size:14px;flex:none;display:grid;place-items:center;transition:all .15s var(--dg-ease)}
+.rb:hover{border-color:var(--dg-accent);color:var(--dg-accent-ink)}
+.rb:active{transform:translateY(1px)}
+.rb.plain{border:0;background:none;color:var(--dg-text-2);font-size:17px}
+.rb.plain:hover{background:var(--dg-surface-hover);color:var(--dg-text)}
+/* ── slim navy шапка: только на главной ─────────────────── */
+.bar{background:var(--dg-navy);color:#eaeff4;height:60px;transition:box-shadow .18s var(--dg-ease);display:flex;align-items:center;padding:0 20px}
+body:not([data-screen=home]) .bar{display:none}
+body.scrolled .bar{box-shadow:0 6px 18px rgba(27,29,25,.16)}
+body.scrolled .tbar{border-bottom-color:var(--dg-border);box-shadow:0 4px 14px rgba(27,29,25,.07)}
+.bar .in{max-width:920px;margin:0 auto;width:100%;display:flex;align-items:center;gap:10px}
+.brandmark{display:flex;align-items:center;gap:8px;margin-right:auto;cursor:pointer}
+.brandmark img{width:auto;height:30px}
+.brandmark b{font-weight:600;font-size:15px;color:#fff;letter-spacing:-.01em}
+.brandmark span{font-size:11.5px;color:#93a5b8;padding-left:2px;white-space:nowrap}
+.ib{width:33px;height:33px;border:0;border-radius:8px;background:transparent;color:#cfdae5;display:grid;place-items:center;cursor:pointer;font-size:14px;transition:background .15s var(--dg-ease),color .15s var(--dg-ease)}
+.ib:hover{background:rgba(255,255,255,.12);color:#fff}
+.ib:active{background:rgba(255,255,255,.2)}
+/* ── верхняя строка на остальных экранах: шелл по центру ── */
+:root{--tbar-h:70px}
+.tbar{background:var(--dg-page);border-bottom:1px solid transparent;padding:12px 20px 8px;display:flex;align-items:center;justify-content:center;gap:9px}
+body[data-screen=home] .tbar{display:none}
+.tbar .shell{max-width:560px}
+/* На внутренних экранах ползунки стоят вертикально, как в проде; на главной — лежат */
+.tbar .shell .rnd .fa-sliders{transform:rotate(90deg)}
+/* ── экраны ──/* ── экраны ──────────────────────────────────────────────── */
+.screen{display:none}
+body[data-screen=home] #s-home,body[data-screen=results] #s-results,body[data-screen=reader] #s-reader,body[data-screen=toc] #s-toc,body[data-screen=e404] #s-e404{display:block}
+/* ── 404 ─────────────────────────────────────────────────── */
+body[data-screen=e404] .corner,body[data-screen=e404] .langmenu{display:none}
+body[data-screen=e404] #qs-ctx,body[data-screen=e404] #qs-read{display:none}
+.nf{max-width:600px;margin:0 auto;padding:44px 0 64px;text-align:center}
+/* Цифра набрана тонким начертанием с широким трекингом: тот же жест, что в проде,
+   но без «блокбастерной» жирности — и средний нуль приглушён до акцентного тона. */
+.nf .code{font-size:104px;line-height:.92;font-weight:200;letter-spacing:.06em;color:var(--dg-text);margin:0;font-feature-settings:"tnum"}
+.nf .code em{font-style:normal;color:var(--dg-accent)}
+.nf h1{font-size:25px;font-weight:500;line-height:1.3;margin:18px 0 0;text-wrap:balance}
+.nf h1 span{color:var(--dg-accent-ink);font-style:italic}
+.nf .verse{margin:22px auto 0;max-width:46ch}
+.nf .verse .pali{margin:0;font-size:16px;line-height:1.65;font-style:italic;color:var(--dg-text-2);text-wrap:pretty}
+.nf .verse .pali a{color:var(--dg-accent-ink);font-style:normal;font-size:14px;white-space:nowrap}
+.nf .verse .pali a:hover{text-decoration:underline;text-underline-offset:3px}
+.nf .verse .tr{margin:9px 0 0;font-size:13px;line-height:1.6;color:var(--dg-text-muted);text-wrap:pretty}
+.nf .acts{display:flex;justify-content:center;align-items:center;gap:14px;flex-wrap:wrap;padding:26px 0 0}
+.nf .acts .primary{border:0;border-radius:999px;background:var(--dg-accent-dark);color:#fff;font:inherit;font-size:14px;font-weight:500;padding:10px 26px;cursor:pointer;box-shadow:0 2px 12px rgba(15,124,99,.22);transition:background .15s var(--dg-ease),box-shadow .15s var(--dg-ease)}
+.nf .acts .primary:hover{background:var(--dg-accent);box-shadow:0 4px 18px rgba(15,124,99,.28)}
+.nf .acts .primary:active{transform:translateY(1px)}
+.nf .acts .ghost{border:0;background:none;font:inherit;font-size:13.5px;color:var(--dg-text-2);padding:10px 2px;cursor:pointer;display:inline-flex;align-items:center;gap:7px;transition:color .15s var(--dg-ease)}
+.nf .acts .ghost:hover{color:var(--dg-accent-ink)}
+/* Сетка разделов — как в проде: глиф сверху, подпись снизу, без карточек.
+   Стиля добавляет мягкий кружок, темнеющий под курсором. */
+.nfgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:2px 6px;margin:36px auto 0;padding:26px 0 0;border-top:1px solid var(--dg-border)}
+.nfgrid a{display:flex;flex-direction:column;align-items:center;gap:9px;padding:12px 6px 14px;border-radius:12px;color:var(--dg-text-2);font-size:12.5px;line-height:1.3;text-align:center;transition:color .15s var(--dg-ease),background .15s var(--dg-ease)}
+.nfgrid a:hover{background:var(--dg-surface-hover);color:var(--dg-text)}
+.nfgrid a .disc{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;background:var(--dg-accent-bg);color:var(--dg-on-accent-bg);font-size:18px;transition:background .15s var(--dg-ease),color .15s var(--dg-ease)}
+.nfgrid a:hover .disc{background:var(--dg-accent-dark);color:#fff}
+@media(max-width:760px){.nf .code{font-size:76px}.nf h1{font-size:21px}.nfgrid a{font-size:11.5px}}
+/* ── главная ─────────────────────────────────────────────── */
+.hero{padding:38px 0 22px;text-align:center}
+.hero h1{font-size:30px;margin:0 0 6px}
+.hero p{margin:0 0 22px;color:var(--dg-text-2);font-size:14px}
+.field{display:flex;align-items:center;gap:10px;max-width:620px;margin:0 auto;background:var(--dg-surface);border:1px solid var(--dg-border-strong);border-radius:12px;padding:10px 8px 10px 15px;transition:border-color .15s var(--dg-ease),box-shadow .15s var(--dg-ease)}
+.field:focus-within{border-color:var(--dg-accent);box-shadow:0 0 0 3px var(--dg-accent-bg)}
+.field>i{color:var(--dg-text-muted);font-size:14px}
+.field input{flex:1;border:0;outline:0;background:none;font:inherit;font-size:17px;color:var(--dg-text);min-width:0}
+.field input::placeholder{color:var(--dg-text-muted);opacity:.6}
+/* На десктопе область поиска правится строкой под полем, на мобильном —
+   ползунками внутри поля: строка «4 Никаи · изменить» там только мешает. */
+.fslide{display:none;width:31px;height:31px;border:0;border-radius:50%;background:none;color:var(--dg-text-muted);cursor:pointer;font-size:13px;flex:none;place-items:center}
+.fslide:hover{background:var(--dg-surface-hover);color:var(--dg-text)}
+.fslide .fa-sliders{transform:rotate(90deg)}
+body[data-view=mobile] .fslide{display:grid}
+body[data-view=mobile] .scope-line{display:none}
+.go{border:0;border-radius:8px;background:var(--dg-accent-dark);color:#fff;font:inherit;font-size:13.5px;font-weight:500;padding:8px 16px;cursor:pointer;flex:none;transition:background .15s var(--dg-ease)}
+.go:hover{background:var(--dg-accent)}
+.go:active{transform:translateY(1px)}
+/* область поиска ушла в меню — здесь только её итог, одной строкой */
+.scope-line{max-width:620px;margin:11px auto 0;display:flex;align-items:center;justify-content:center;gap:7px;flex-wrap:wrap;white-space:nowrap;font-size:12.5px;color:var(--dg-text-muted)}
+.scope-line #scope-summary{color:var(--dg-text)}
+.scope-line button{border:0;background:none;font:inherit;font-size:12.5px;color:var(--dg-accent-ink);cursor:pointer;padding:0;display:flex;align-items:center;gap:5px}
+.scope-line button:hover{color:var(--dg-accent-ink);text-decoration:underline}
+/* Плашка обжимается по тексту и стоит по центру: на 620px растянутая полоса
+   с одной короткой фразой выглядела пустой. */
+.announce{display:inline-flex;align-items:center;gap:9px;max-width:640px;margin:18px auto 0;padding:7px 8px 7px 13px;font-size:13px;line-height:1.45;text-align:left;color:var(--dg-text-2);background:var(--dg-accent-bg);border-radius:12px}
+.announce-row{display:flex;justify-content:center}
+.announce>i{color:var(--dg-on-accent-bg);font-size:12.5px;flex:none}
+.announce .tag{flex:none;font-size:10.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#fff;background:var(--dg-accent-dark);border-radius:6px;padding:2px 7px}
+/* Фраза короткая — держим её одной строкой, чтобы плашка не росла в высоту */
+.announce .txt{white-space:nowrap}
+@media(max-width:700px){.announce .txt{white-space:normal}}
+.announce a{color:var(--dg-on-accent-bg);text-decoration:underline;text-underline-offset:2px}
+.announce a:hover{color:var(--dg-on-accent-bg);text-decoration-thickness:2px}
+.announce button{flex:none;width:22px;height:22px;border:0;border-radius:6px;background:none;color:var(--dg-on-accent-bg);cursor:pointer;font-size:11px;opacity:.6;display:grid;place-items:center}
+.announce button:hover{opacity:1;background:rgba(15,124,99,.14)}
+/* карточки разделов — как сейчас, только опрятнее */
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:24px 0 10px}
+.tile{background:var(--dg-surface);border:1px solid var(--dg-border);border-radius:var(--dg-radius);padding:18px 14px;display:flex;flex-direction:column;align-items:center;gap:9px;text-align:center;color:inherit;cursor:pointer;transition:border-color .15s var(--dg-ease),background .15s var(--dg-ease),transform .15s var(--dg-ease)}
+.tile:hover{border-color:var(--dg-border-strong);background:var(--dg-surface-hover)}
+.tile:active{transform:translateY(1px)}
+.tile .disc{width:46px;height:46px;border-radius:50%;background:var(--dg-accent-bg);color:var(--dg-on-accent-bg);display:grid;place-items:center;font-size:21px}
+.tile b{font-weight:600;font-size:14px}
+.tile em{font-style:normal;font-size:12px;color:var(--dg-text-2);line-height:1.4;text-wrap:pretty}
+@media(max-width:760px){.tiles{grid-template-columns:repeat(2,1fr)}}
+/* ── подборка: одна карточка за раз, стрелки по краям ───── */
+.pick{margin:26px 0 0}
+.pick .head{display:flex;align-items:baseline;gap:10px;margin:0 0 12px}
+.pick .head h2{font-size:10.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--dg-text-muted);margin:0}
+.pick .head a{margin-left:auto;font-size:12.5px;color:var(--dg-text-muted)}
+.pick .head a:hover{color:var(--dg-accent-ink);text-decoration:underline}
+.pick .box{position:relative;display:flex;align-items:center;gap:8px;background:var(--dg-surface);border:1px solid var(--dg-border);border-radius:var(--dg-radius);padding:20px 12px 16px}
+.pick .arw{width:34px;height:34px;border:0;border-radius:50%;background:none;color:var(--dg-text-muted);cursor:pointer;font-size:14px;flex:none;display:grid;place-items:center;transition:background .15s var(--dg-ease),color .15s var(--dg-ease)}
+.pick .arw:hover{background:var(--dg-surface-hover);color:var(--dg-text)}
+.pick .stage{flex:1;min-width:0;overflow:hidden}
+.pick .track{display:flex;transition:transform .32s var(--dg-ease)}
+.pick .slide{flex:0 0 100%;padding:0 6px;text-align:center}
+.pick .slide b{display:block;font-size:17px;font-weight:600;letter-spacing:-.01em;margin:0 0 6px}
+.pick .slide p{margin:0 auto;max-width:46ch;font-size:13.5px;line-height:1.55;color:var(--dg-text-2);text-wrap:pretty}
+.pick .slide .read{display:inline-flex;align-items:center;gap:6px;margin:12px 0 0;font-size:13.5px;font-weight:500;color:var(--dg-accent-ink)}
+.pick .slide .read:hover{color:var(--dg-accent-ink)}
+.pick .dots{display:flex;justify-content:center;gap:6px;padding:14px 0 0}
+/* Точек тринадцать, поэтому они убывают по мере удаления от активной:
+   рядом — обычные, дальше — всё мельче и бледнее, активная тянется в капсулу. */
+.pick .dots{align-items:center}
+.pick .dots button{width:6px;height:6px;padding:0;border:0;border-radius:50%;background:var(--dg-border-strong);cursor:pointer;flex:none;transition:width .22s var(--dg-ease),height .22s var(--dg-ease),background .22s var(--dg-ease),opacity .22s var(--dg-ease)}
+.pick .dots button:hover{background:var(--dg-accent-ink)}
+.pick .dots button[data-d="2"]{width:5px;height:5px;opacity:.8}
+.pick .dots button[data-d="3"]{width:4px;height:4px;opacity:.6}
+.pick .dots button[data-d="4"]{width:3px;height:3px;opacity:.42}
+.pick .dots button[aria-current=true]{width:18px;height:6px;border-radius:999px;background:var(--dg-accent);opacity:1}
+/* цитата на пали — оставлена на главной */
+.quote{margin:38px 0 0;padding:26px 0 0;border-top:1px solid var(--dg-border)}
+.quote .pali{margin:0;max-width:72ch;font-size:17px;line-height:1.55;color:var(--dg-text);font-style:italic;text-wrap:pretty}
+.quote .tr{margin:11px 0 0;max-width:72ch;font-size:14px;line-height:1.6;color:var(--dg-text-2);text-wrap:pretty}
+.quote .refs{margin:12px 0 0;font-size:12px;color:var(--dg-text-muted);letter-spacing:.02em}
+.quote h2{font-size:10.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--dg-text-muted);margin:0 0 14px}
+.quote .refs a{color:var(--dg-accent-ink)}
+.warn{margin:22px 0 0;padding:15px 17px;background:var(--dg-surface-hover);border:1px solid var(--dg-border);border-radius:var(--dg-radius);max-width:78ch}
+.warn .ttl{display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:600;color:var(--dg-text);margin:0 0 8px}
+.warn .ttl i{color:var(--dg-accent-ink);font-size:13px}
+.warn p{margin:0;font-size:13px;line-height:1.65;color:var(--dg-text-2)}
+.warn p+p{margin-top:11px}
+/* подвал: три блока живут в панели */
+.pagefoot{margin:34px 0 0;padding:20px 0 44px;border-top:1px solid var(--dg-border);display:flex;align-items:flex-end;gap:20px;flex-wrap:wrap}
+.pagefoot .col{display:flex;flex-direction:column;gap:7px;margin-right:auto}
+.pagefoot .lnks{display:flex;align-items:center;gap:7px;flex-wrap:wrap;font-size:13.5px}
+.pagefoot .lnks a,.pagefoot .lnks button{border:0;background:none;font:inherit;font-size:13.5px;color:var(--dg-accent-ink);cursor:pointer;padding:0;display:flex;align-items:center;gap:6px}
+.pagefoot .lnks a:hover,.pagefoot .lnks button:hover{color:var(--dg-accent-ink);text-decoration:underline}
+.pagefoot .lnks .dot{color:var(--dg-text-muted);font-size:12px}
+.pagefoot .legal{display:flex;align-items:center;gap:7px;flex-wrap:wrap;font-size:12px;color:var(--dg-text-muted)}
+.pagefoot .legal a{color:var(--dg-text-muted);text-decoration:none}
+.pagefoot .legal a:hover{color:var(--dg-text-2);text-decoration:underline}
+.pagefoot .sp{display:flex;gap:7px}
+.pagefoot .sp a{width:38px;height:38px;border-radius:50%;background:var(--dg-surface-hover);display:grid;place-items:center;color:var(--dg-text-2);font-size:15px;transition:background .15s var(--dg-ease),color .15s var(--dg-ease)}
+.pagefoot .sp a:hover{background:var(--dg-accent-bg);color:var(--dg-on-accent-bg)}
+/* ── результаты поиска: DataTable как в проде, только опрятнее ─── */
+/* --dg-match / --dg-tblue* / --dg-on-accent-bg живут в tokens/colors.css и dark-theme.css */
+/* панель быстрых настроек под поиском — прод-ряд, ничего не выкинуто */
+.qs{display:flex;align-items:center;justify-content:center;gap:5px;flex-wrap:wrap;padding:9px 0 10px}
+.qs button{white-space:nowrap;border:1px solid transparent;background:var(--dg-surface-hover);color:var(--dg-text-2);border-radius:999px;font:inherit;font-size:12px;padding:4px 11px;cursor:pointer;transition:all .15s var(--dg-ease)}
+.qs button:hover{border-color:var(--dg-border-strong);color:var(--dg-text)}
+.qs button[aria-pressed=true]{background:var(--dg-accent-bg);border-color:var(--dg-accent);color:var(--dg-on-accent-bg)}
+.qs .ic{width:27px;height:27px;padding:0;border-radius:50%;background:none;display:grid;place-items:center;font-size:12.5px;color:var(--dg-text-muted)}
+.qs .ic:hover{background:var(--dg-surface-hover);color:var(--dg-text)}
+.qs .ic[aria-pressed=true]{background:var(--dg-accent-bg);color:var(--dg-on-accent-bg)}
+/* заголовок выдачи */
+.rhead{display:flex;align-items:baseline;gap:10px;padding:34px 0 22px;flex-wrap:wrap}
+.rhead h2{font-size:21px;margin:0;font-weight:600;letter-spacing:-.01em}
+.rhead .n{font-size:13px;color:var(--dg-text-muted);white-space:nowrap}
+.rhead .star{color:var(--dg-text-muted);font-size:13px}
+.rhead .var{font-size:13px;display:flex;align-items:center;gap:5px}
+.rhead .var a{color:var(--dg-tblue)}
+/* строка управления DataTable: длина · страницы · фильтр */
+.dtbar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:0 0 14px;font-size:13px;color:var(--dg-text-2)}
+.dtbar label{display:flex;align-items:center;gap:7px}
+.dtbar select,.dtbar .fi{border:1px solid var(--dg-border-strong);background:var(--dg-surface);color:var(--dg-text);border-radius:7px;font:inherit;font-size:13px;padding:5px 8px}
+.dtbar select{padding-right:22px;cursor:pointer}
+.dtbar .fi{width:190px}
+.dtbar .fi:focus{outline:0;border-color:var(--dg-accent);box-shadow:0 0 0 3px var(--dg-accent-bg)}
+.dtwrap .hid{display:none}
+.dtwrap.show-hidden .hid{display:table-cell}
+.dg-read-mark{color:var(--dg-accent-ink);font-size:12px}
+.ttype{font-size:11.5px;color:var(--dg-text-muted);white-space:nowrap}
+.dtbar .right{margin-left:auto;display:flex;align-items:center;gap:8px}
+.pager{display:flex;gap:2px;margin:0 auto}
+.pager button{min-width:29px;height:29px;border:1px solid transparent;background:none;color:var(--dg-text-muted);border-radius:7px;font:inherit;font-size:12.5px;cursor:pointer;padding:0 6px;transition:border-color .15s var(--dg-ease),background .15s var(--dg-ease),color .15s var(--dg-ease)}
+.pager:hover button{border-color:var(--dg-border);background:var(--dg-surface);color:var(--dg-text-2)}
+.pager button:hover:not([aria-current=true]){border-color:var(--dg-border-strong);background:var(--dg-surface);color:var(--dg-text)}
+/* Активная страница — та же спокойная navy-заливка, что и включённый язык в пилюле:
+   ярко-синий рядом с синими ссылками таблицы перегружал строку. */
+/* Без наведения — просто цифры, активная выделена только насыщенностью текста. */
+.pager button[aria-current=true]{color:var(--dg-text);font-weight:700}
+.pager:hover button[aria-current=true]{background:var(--dg-surface-hover);border-color:var(--dg-navy);color:var(--dg-navy)}
+.pager button:disabled{color:var(--dg-text-muted);cursor:default}
+/* сама таблица */
+.dtwrap{border-top:1px solid var(--dg-border)}
+@media(max-width:820px){.dtwrap{overflow-x:auto}}
+body[data-view=mobile] .dtwrap{overflow-x:auto}
+table.dt{width:100%;border-collapse:collapse;font-size:14px}
+table.dt th{text-align:left;font-size:11.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--dg-text-muted);padding:9px 10px;border-bottom:1px solid var(--dg-border-strong);white-space:nowrap;background:var(--dg-page);cursor:pointer;user-select:none}
+table.dt th:hover{color:var(--dg-text)}
+table.dt th.num,table.dt td.num{text-align:right;font-variant-numeric:tabular-nums}
+/* Без зебры: чередование фона на 10 строках читается как «деревянные» полосы
+   и мешает глазу вести строку. Разделяют волосяные линии, выделяет — курсор. */
+table.dt td{padding:10px;border-bottom:1px solid var(--dg-border);vertical-align:top;background:none}
+table.dt tbody tr.r:nth-child(even)>td{background:none}
+table.dt tr.r:hover>td{background:var(--dg-surface-hover)}
+.tw{width:20px;padding:10px 0 10px 2px!important}
+/* На мобильном колонку раскрытия убираем совсем — строка и так раскрывается
+   по нажатию в любом месте. */
+body[data-view=mobile] .tw{display:none}
+body[data-view=mobile] table.dt td,body[data-view=mobile] table.dt th{padding:9px 7px}
+.tw button{border:0;background:none;color:var(--dg-text-2);cursor:pointer;font-size:10px;padding:2px 4px;line-height:1}
+.tw button:hover{color:var(--dg-accent-ink)}
+td.sid a{font-weight:500;white-space:nowrap;color:var(--dg-tblue)}
+td.sid a:hover{color:var(--dg-tblue);text-decoration:underline}
+td.ti{line-height:1.45}
+td.ti b{font-weight:600;letter-spacing:-.005em}
+td.ti span{color:var(--dg-text-muted)}
+td.wd{line-height:1.5;word-break:break-word}
+td.wd em{font-style:normal;color:var(--dg-text-2)}
+td.wd b{color:var(--dg-match);font-weight:600}
+td.ln{white-space:nowrap}
+td.ln a{font-size:12.5px;padding:1px 3px;border-radius:4px;color:var(--dg-tblue)}
+td.ln a:hover{background:var(--dg-accent-bg);color:var(--dg-tblue);text-decoration:underline}
+/* ── отчёт по словам: второй вид выдачи ─────────────────── */
+body:not([data-res=words]) #dt-words{display:none}
+body[data-res=words] #dt-texts{display:none}
+table.dt th.srt::after{content:"⇅";font-size:9px;padding-left:5px;opacity:.55}
+table.dt th.srt[aria-sort=desc]::after{content:"▼";font-size:7px;opacity:.85}
+table.dt th.srt[aria-sort=asc]::after{content:"▲";font-size:7px;opacity:.85}
+td.wrd{font-size:14.5px;line-height:1.45}
+td.wrd b{color:var(--dg-match);font-weight:600}
+td.wrd em{font-style:normal;color:var(--dg-text-2)}
+tr.r.cur>td{background:var(--dg-accent-bg)!important}
+tr.r.cur td.wrd{font-weight:500}
+td.cnt a{color:var(--dg-tblue);font-variant-numeric:tabular-nums}
+td.cnt a:hover{text-decoration:underline}
+tr.refs>td{background:var(--dg-surface-hover);padding:9px 10px 9px 22px}
+tr.refs .k{font-size:12px;color:var(--dg-text-2);padding-right:12px}
+tr.refs a{color:var(--dg-tblue);font-size:13px;padding:1px 4px;border-radius:4px;white-space:nowrap}
+tr.refs a:hover{background:var(--dg-accent-bg);text-decoration:underline}
+tr.refs .list{display:flex;flex-wrap:wrap;gap:2px}
+/* раскрытая дочерняя строка: та же цитата, что в проде */
+tr.child>td{background:var(--dg-surface-hover);padding:14px 16px 16px 24px}
+.cseg{max-width:76ch}
+.cseg .h{margin:0 0 3px;font-size:15px;font-weight:600;color:var(--dg-match)}
+.cseg .h2{margin:0 0 14px;font-size:13.5px;color:var(--dg-text-2)}
+.cseg .h3{margin:0 0 14px;font-size:13px;color:var(--dg-text-2)}
+.cseg .g{margin:0 0 14px}
+.cseg .g:last-child{margin-bottom:0}
+.cseg .pli{margin:0;font-size:14.5px;line-height:1.6}
+.cseg .pli b{color:var(--dg-match);font-weight:600}
+.cseg .sec{margin:2px 0 0;font-size:13.5px;line-height:1.6;color:var(--dg-text-2)}
+.cseg .thi{margin:2px 0 0;font-size:13px;line-height:1.6;color:var(--dg-text-2)}
+/* плавающая пилюля переключения языков — прод-элемент */
+/* Озвучка и языки — один ряд в углу. Контейнер вне потока (fixed), а в мобильной
+   рамке — sticky внутри её собственной прокрутки. */
+.corner{position:fixed;right:14px;bottom:58px;z-index:45;display:flex;align-items:center;gap:5px}
+body[data-screen=home] .corner,body[data-screen=toc] .corner{display:none}
+/* Ридер — страница для чтения: пилюля почти незаметна, пока к ней не подвели
+   курсор. Включённый язык помечен лишь бледной подложкой; тёмная navy-заливка
+   (как в проде) появляется только при наведении на пилюлю. */
+.langpill{display:flex;gap:0;background:var(--dg-surface);border:1px solid var(--dg-border);border-radius:999px;padding:3px;box-shadow:0 1px 6px rgba(27,29,25,.06);opacity:.72;transition:opacity .15s var(--dg-ease),border-color .15s var(--dg-ease),box-shadow .15s var(--dg-ease)}
+.langpill:hover,.langpill:focus-within{opacity:1;border-color:var(--dg-border-strong);box-shadow:0 3px 14px rgba(27,29,25,.12)}
+.langpill button{border:0;background:none;font:inherit;font-size:12px;color:var(--dg-text-2);padding:5px 11px;border-radius:999px;cursor:pointer;transition:background .15s var(--dg-ease),color .15s var(--dg-ease)}
+/* Ридер и выдача живут в «синей» части темы (ссылки Pi/En/Ru, пагинация),
+   поэтому языковая пилюля тоже синяя, а не зелёная. */
+/* Как в проде: спокойная серая пилюля, включённый язык — тёмная navy-заливка.
+   Без ярких акцентов: рядом и так синие ссылки таблицы. */
+.langpill button{color:var(--dg-text-muted)}
+.langpill button[aria-pressed=true]{background:var(--dg-surface-hover);color:var(--dg-text-2);font-weight:500}
+.langpill:hover button[aria-pressed=true]{background:var(--dg-navy);color:#fff}
+.langpill:hover button:not([aria-pressed=true]):hover{color:var(--dg-text)}
+/* Вместо «+3» — точки: в углу рядом ещё TTS и стрелка наверх, и пилюля
+   не должна занимать пол экрана. Включённые доп. языки помечает точка. */
+.langpill .more{position:relative;width:22px;padding:4px 0;display:grid;place-items:center;color:var(--dg-text-muted)}
+/* Шесть точек (2×3), чтобы знак не путался с бургером и с ползунками настроек */
+.langpill .more .dots{display:grid;grid-template-columns:repeat(3,2px);grid-auto-rows:2px;gap:2.5px}
+.langpill .more .dots::before,.langpill .more .dots::after{content:"";display:none}
+.langpill .more .dots{background:none}
+.langpill .more .dots i{display:block;width:2px;height:2px;border-radius:50%;background:currentColor}
+.langpill .more[data-on="true"]::after{content:"";position:absolute;top:2px;right:2px;width:4px;height:4px;border-radius:50%;background:var(--dg-navy)}
+.langpill .more:hover{background:var(--dg-surface-hover);color:var(--dg-text)}
+.langpill .more[aria-expanded=true]{background:var(--dg-navy);color:#fff}
+.langpill[data-extra="0"] .more{display:none}
+/* список остальных языков: открывается над пилюлей, растёт вверх */
+.langmenu{position:fixed;right:14px;bottom:64px;z-index:46;width:220px;max-height:56vh;overflow:auto;background:var(--dg-surface);border:1px solid var(--dg-border);border-radius:12px;box-shadow:0 8px 30px rgba(27,29,25,.18);padding:8px;opacity:0;pointer-events:none;transform:translateY(6px);transition:opacity .15s var(--dg-ease),transform .15s var(--dg-ease)}
+.langmenu[data-open=true]{opacity:1;pointer-events:auto;transform:none}
+body[data-screen=home] .langmenu,body[data-screen=toc] .langmenu{display:none}
+.langmenu h5{font-size:10.5px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--dg-text-muted);margin:6px 6px 6px}
+.lrow{display:flex;align-items:center;gap:9px;width:100%;border:0;background:none;font:inherit;font-size:13.5px;color:inherit;padding:7px 8px;border-radius:8px;cursor:pointer;text-align:left}
+.lrow:hover{background:var(--dg-surface-hover)}
+.lrow .bx{width:15px;height:15px;border-radius:4px;border:1.5px solid var(--dg-border-strong);display:grid;place-items:center;flex:none;font-size:10px;color:#fff}
+.lrow[aria-pressed=true] .bx{background:var(--dg-accent);border-color:var(--dg-accent)}
+.lrow .nm{margin-right:auto}
+.lrow .pin{font-size:10px;color:var(--dg-text-muted);opacity:0;padding:2px 4px;border-radius:4px}
+.lrow:hover .pin{opacity:1}
+.lrow .pin:hover{background:var(--dg-border);color:var(--dg-text)}
+.lrow .main{font-size:10px;color:var(--dg-on-accent-bg);letter-spacing:.04em;text-transform:uppercase}
+/* ── ридер: прод-набор целиком ───────────────────────────── */
+.rsticky{background:var(--dg-page)}
+.rtools{display:flex;align-items:center;gap:3px;padding:11px 0 9px;flex-wrap:wrap;justify-content:center}
+.rtools a.src{font-size:13px;padding:3px 6px;border-radius:6px;white-space:nowrap;color:var(--dg-tblue)}
+.rtools a.src:hover{background:var(--dg-accent-bg)}
+.rtools .sep{width:1px;height:17px;background:var(--dg-border);margin:0 5px}
+.rtools .t{width:29px;height:29px;border:0;background:none;border-radius:7px;color:var(--dg-text-muted);display:grid;place-items:center;cursor:pointer;font-size:13px;transition:all .15s var(--dg-ease)}
+.rtools .t:hover{background:var(--dg-surface-hover);color:var(--dg-text)}
+.rtools .t[aria-pressed=true]{background:var(--dg-accent-bg);color:var(--dg-on-accent-bg)}
+.rtools .secpill{display:flex;align-items:center;gap:6px;border:1px solid var(--dg-border);background:var(--dg-surface);border-radius:999px;font:inherit;font-size:12.5px;color:var(--dg-text-2);padding:4px 11px;cursor:pointer;max-width:170px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rtools .secpill:hover{border-color:var(--dg-border-strong);color:var(--dg-text)}
+/* Оглавление ОДНОЙ сутты — не канона: список строится из её разделов */
+.sectoc{position:fixed;z-index:70;top:96px;left:50%;transform:translateX(-50%) scale(.98);width:320px;max-width:92vw;max-height:60vh;overflow:auto;background:var(--dg-surface);border:1px solid var(--dg-border);border-radius:12px;box-shadow:0 12px 40px rgba(27,29,25,.2);padding:8px;opacity:0;pointer-events:none;transition:opacity .16s var(--dg-ease),transform .16s var(--dg-ease)}
+.sectoc[data-open=true]{opacity:1;pointer-events:auto;transform:translateX(-50%) scale(1)}
+.sectoc h5{font-size:10.5px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--dg-text-muted);margin:6px 8px 8px}
+.sectoc a{display:block;padding:8px 9px;border-radius:8px;color:inherit;font-size:13.5px;line-height:1.35}
+.sectoc a:hover{background:var(--dg-surface-hover);color:inherit}
+.sectoc a b{display:block;font-weight:600;color:var(--dg-match)}
+.sectoc a em{font-style:normal;font-size:12px;color:var(--dg-text-muted)}
+.prevnext{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:2px 0 11px;font-size:13px;border-bottom:1px solid var(--dg-border)}
+.prevnext a{display:flex;align-items:center;gap:6px;color:var(--dg-tblue)}
+.prevnext .sp{color:var(--dg-text-muted)}
+.rnote{margin:14px auto 0;max-width:60ch;text-align:center;font-size:13px;line-height:1.55;color:var(--dg-match)}
+.rnote b{font-weight:600}
+.rnote button{border:0;background:none;color:var(--dg-match);cursor:pointer;font-size:13px;padding:0 0 0 4px}
+.byline{margin:20px auto 0;max-width:64ch;text-align:center;font-size:13.5px;color:var(--dg-text-2);font-style:italic}
+.byline .pli{font-style:normal;font-weight:500;color:var(--dg-text)}
+.byline a{color:var(--dg-tblue)}
+.suttaref{margin:20px auto 0;text-align:center}
+.suttaref .l1{display:flex;align-items:center;justify-content:center;gap:8px;font-size:15px;color:var(--dg-text)}
+.suttaref .l1 button{border:0;background:none;color:var(--dg-text-muted);cursor:pointer;font-size:13px;padding:2px 4px;border-radius:5px}
+.suttaref .l1 button:hover{background:var(--dg-surface-hover);color:var(--dg-text)}
+.suttaref .l2{margin:3px 0 0;font-size:13.5px;color:var(--dg-text-muted)}
+.stitle{margin:22px auto 0;text-align:center}
+.stitle h1{margin:0;font-size:28px;font-weight:700;letter-spacing:-.015em}
+.stitle .ru{margin:4px 0 0;font-size:21px;font-weight:600;color:var(--dg-text-2);letter-spacing:-.01em}
+.sutta{max-width:45rem;margin:26px auto 0;padding-bottom:60px}
+.sechead{margin:26px 0 14px}
+.sechead .pli{display:inline-block;margin:0;font-size:19px;font-weight:700;color:var(--dg-match);background:var(--dg-accent-bg);padding:3px 9px;border-radius:5px}
+.sechead .ru{margin:6px 0 0;font-size:18px;font-weight:600;color:var(--dg-text-2)}
+.sutta .g{margin:0 0 15px}
+.sutta .pli-lang{margin:0;font-size:15.5px;line-height:1.62;color:var(--dg-text)}
+.sutta .pli-lang b{color:var(--dg-match);font-weight:600}
+.sutta .lang-2nd{margin:3px 0 0;font-size:14.5px;line-height:1.62;color:var(--dg-text-2)}
+/* ── подвал ридера: источники, переходы, инструменты, права ── */
+.rfoot{max-width:45rem;margin:0 auto;padding:0 0 46px}
+.rf-srcs{display:flex;flex-wrap:wrap;justify-content:center;gap:2px;padding:6px 0 14px}
+.rf-srcs a{font-size:14px;color:var(--dg-tblue);padding:3px 7px;border-radius:6px;white-space:nowrap}
+.rf-srcs a:hover{background:var(--dg-accent-bg);text-decoration:underline}
+.rf-nav{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0 0;border-top:1px solid var(--dg-border);font-size:13.5px}
+.rf-nav a{display:flex;align-items:center;gap:6px;color:var(--dg-tblue)}
+.rf-nav a:hover{text-decoration:underline}
+.rf-tools{display:flex;flex-wrap:wrap;justify-content:center;gap:4px;padding:18px 0 6px}
+.rf-ic{width:36px;height:36px;border-radius:8px;display:grid;place-items:center;color:var(--dg-text-muted);font-size:17px}
+.rf-ic:hover{background:var(--dg-surface-hover);color:var(--dg-text)}
+/* Memo — собственный инструмент проекта, поэтому не служебный глиф,
+   а словесный знак: две строки ME/MO, как в проде. */
+.rf-ic.memo{color:var(--dg-accent-ink)}
+.rf-ic.memo:hover{background:var(--dg-accent-bg);color:var(--dg-on-accent-bg)}
+.memo-mark{font-size:9px;font-weight:700;line-height:.92;letter-spacing:.06em;text-align:center;font-family:var(--dg-font)}
+.rf-legal{text-align:center;font-size:12.5px;color:var(--dg-text-muted);padding:10px 0 0}
+.rf-legal a{color:var(--dg-tblue)}
+.rf-legal a:hover{text-decoration:underline}
+/* Уголок как в проде: два кружка (озвучка, наверх) и языковая пилюля вплотную.
+   Спокойные контуры, тёмная navy-заливка — только под курсором. */
+.playpill,.uppill{width:38px;height:38px;border-radius:50%;border:1px solid var(--dg-border-strong);background:var(--dg-surface);color:var(--dg-text-2);cursor:pointer;font-size:13px;box-shadow:0 1px 6px rgba(27,29,25,.07);display:grid;place-items:center;transition:background .15s var(--dg-ease),color .15s var(--dg-ease),border-color .15s var(--dg-ease)}
+.playpill:hover,.uppill:hover{background:var(--dg-navy);border-color:var(--dg-navy);color:#fff}
+.playpill{display:none}
+body[data-screen=reader] .playpill{display:grid}
+/* режимы чтения в меню */
+/* Кнопка по умолчанию шириной по содержимому — из-за этого строки режимов
+   были шире панели и уезжали лестницей вправо. */
+.mode{display:block;width:100%;box-sizing:border-box;border:0;border-bottom:1px solid var(--dg-border);background:none;font:inherit;color:inherit;text-align:left;padding:9px 2px;cursor:pointer}
+.mode:last-child{border-bottom:0}
+.mode .l{display:flex;align-items:baseline;gap:8px;width:100%;font-size:13.5px;font-weight:500}
+.mode .l em{font-style:normal;margin-left:auto;font-size:11px;color:var(--dg-text-muted);font-family:var(--dg-font-mono)}
+.mode .d{display:block;font-size:11.5px;line-height:1.4;color:var(--dg-text-muted);margin-top:2px}
+.mode[aria-pressed=true] .l{color:var(--dg-on-accent-bg)}
+/* ── оглавление ──────────────────────────────────────────── */
+.toc{padding:16px 0 50px}
+.toc .lvl1{margin:22px 0 0;font-size:15px;font-weight:600;padding-bottom:7px;border-bottom:1px solid var(--dg-border)}
+.toc a{display:flex;align-items:baseline;gap:10px;padding:9px 8px;border-radius:7px;color:inherit;font-size:14px}
+.toc a:hover{background:var(--dg-surface-hover)}
+.toc a .id{font-size:11.5px;color:var(--dg-accent-ink);font-weight:600;min-width:62px;letter-spacing:.03em}
+.toc a em{font-style:normal;color:var(--dg-text-muted);font-size:12px;margin-left:auto}
+.toc .l2{padding-left:16px}
+/* ── поиск по странице: заменяет браузерный Ctrl+F ───────── */
+.findbar{position:fixed;left:0;right:0;top:0;z-index:72;background:var(--dg-surface);border-bottom:1px solid var(--dg-border);box-shadow:0 6px 24px rgba(27,29,25,.12);padding:10px 14px 12px;transform:translateY(-101%);transition:transform .24s var(--dg-ease)}
+.findbar[data-open=true]{transform:none}
+.findbar .in{max-width:620px;margin:0 auto;display:flex;flex-direction:column;gap:8px}
+.fpill{display:flex;align-items:center;gap:8px;height:46px;padding:0 6px 0 16px;background:var(--dg-surface-hover);border:1px solid var(--dg-border-strong);border-radius:999px}
+.fpill:focus-within{border-color:var(--dg-accent);box-shadow:0 0 0 3px var(--dg-accent-bg)}
+.fpill input{flex:1;min-width:0;border:0;outline:0;background:none;font:inherit;font-size:16px;color:var(--dg-text)}
+.fpill .cnt{flex:none;font-size:13.5px;font-variant-numeric:tabular-nums;color:var(--dg-text-2)}
+.fpill .x{width:32px;height:32px;border:0;border-radius:50%;background:none;color:var(--dg-text-muted);cursor:pointer;font-size:13px;display:grid;place-items:center;flex:none}
+.fpill .x:hover{background:var(--dg-border);color:var(--dg-text)}
+.frow{display:flex;align-items:center;gap:4px}
+.frow .fb{width:38px;height:38px;border:1px solid var(--dg-border);border-radius:9px;background:var(--dg-surface);color:var(--dg-text-2);cursor:pointer;font-size:13px;display:grid;place-items:center;flex:none}
+.frow .fb:hover{border-color:var(--dg-border-strong);color:var(--dg-text)}
+.frow .fb[aria-pressed=true]{background:var(--dg-accent-bg);border-color:var(--dg-accent);color:var(--dg-on-accent-bg)}
+.frow .fb:disabled{opacity:.4;cursor:default}
+.frow .sp{flex:1}
+.frow .down i{transform:rotate(180deg)}
+.fpanel{border:1px solid var(--dg-border);border-radius:10px;background:var(--dg-surface);overflow:hidden}
+.fpanel[hidden]{display:none}
+.fopt{display:flex;align-items:center;gap:10px;padding:11px 14px;font-size:13.5px;border-bottom:1px solid var(--dg-border);cursor:pointer}
+.fopt:last-child{border-bottom:0}
+.fopt input{accent-color:var(--dg-accent);margin:0;width:15px;height:15px}
+.flist{max-height:230px;overflow:auto}
+.flist .hd{padding:9px 14px;font-size:12px;color:var(--dg-text-2);border-bottom:1px solid var(--dg-border)}
+.fmatch{display:block;width:100%;text-align:left;border:0;border-bottom:1px solid var(--dg-border);background:none;font:inherit;padding:9px 14px;cursor:pointer;color:inherit}
+.fmatch:last-child{border-bottom:0}
+.fmatch:hover{background:var(--dg-surface-hover)}
+.fmatch b{display:block;font-size:13.5px;font-weight:500;line-height:1.35}
+.fmatch em{display:block;font-style:normal;font-size:12px;color:var(--dg-text-muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fmatch[aria-current=true]{background:var(--dg-accent-bg)}
+/* Чернила подсветки заданы жёстко: с color:inherit жёлтый в тёмной теме
+   получал светлый текст (1.13:1). Текущее совпадение — на accent-dark:
+   белым по --dg-accent было 3.46:1 при кегле 15.5px. */
+mark.fmark{background:#ffe9a8;color:#1b1d19;padding:0 1px;border-radius:2px}
+mark.fmark[data-cur=true]{background:var(--dg-accent-dark);color:#fff}
+/* ── модальное окно: все интересные запросы ─────────────── */
+.modal{position:fixed;inset:0;z-index:75;display:grid;place-items:end center;padding:34px 20px 0;background:rgba(27,29,25,.42);opacity:0;pointer-events:none;transition:opacity .22s var(--dg-ease)}
+.modal[data-open=true]{opacity:1;pointer-events:auto}
+.mbox{width:100%;min-width:0;max-width:860px;max-height:calc(100vh - 34px);display:flex;flex-direction:column;background:var(--dg-surface);border-radius:16px 16px 0 0;box-shadow:0 -10px 44px rgba(27,29,25,.24);transform:translateY(101%);transition:transform .3s var(--dg-ease)}
+.modal[data-open=true] .mbox{transform:none}
+.mlist{padding-bottom:22px}
+.mhead{display:flex;align-items:center;gap:10px;padding:14px 20px;border-bottom:1px solid var(--dg-border);flex:none}
+.mhandle{width:38px;height:4px;border-radius:999px;background:var(--dg-border-strong);margin:7px auto 0;flex:none}
+.mhead b{font-size:16px;font-weight:600;margin-right:auto}
+.mhead button{width:30px;height:30px;border:0;border-radius:50%;background:none;color:var(--dg-text-muted);cursor:pointer;font-size:15px;display:grid;place-items:center}
+.mhead button:hover{background:var(--dg-surface-hover);color:var(--dg-text)}
+.mlist{overflow:auto;padding:4px 8px 10px}
+.qrow{display:flex;align-items:center;gap:14px;padding:13px 12px;border-radius:9px;color:inherit}
+.qrow+.qrow{border-top:1px solid var(--dg-border)}
+.qrow:hover{background:var(--dg-surface-hover);color:inherit}
+.qrow .tx{flex:1;min-width:0}
+.qrow b{display:block;font-size:14.5px;font-weight:500;line-height:1.35;text-wrap:pretty}
+.qrow em{display:block;font-style:normal;font-size:12.5px;line-height:1.45;color:var(--dg-text-muted);margin-top:3px;text-wrap:pretty}
+.qrow>i{color:var(--dg-text-muted);font-size:13px;flex:none}
+.qrow:hover>i{color:var(--dg-accent-ink)}
+/* ── окно (диалог по центру), в отличие от выезжающих панелей ── */
+.modal.win{place-items:center;padding:24px 20px}
+.modal.win .mbox{border-radius:16px;max-height:calc(100vh - 48px);box-shadow:0 24px 70px rgba(27,29,25,.34);transform:translateY(10px) scale(.985);transition:transform .2s var(--dg-ease)}
+.modal.win[data-open=true] .mbox{transform:none}
+.winclose{position:absolute;top:-12px;right:-12px;width:34px;height:34px;border:2px solid var(--dg-surface);border-radius:50%;background:#c0392b;color:#fff;cursor:pointer;font-size:13px;display:grid;place-items:center;box-shadow:0 3px 12px rgba(0,0,0,.28);z-index:2}
+.winclose:hover{background:#a5322a}
+/* ── избранное, история, заметки, словарь ───────────────── */
+.mbox.tool{position:relative;width:100%;min-width:0;max-width:600px;overflow:visible}
+.mbox.tool .tbody{border-radius:0 0 16px 16px}
+.tsearch{display:flex;align-items:center;gap:9px;padding:14px 18px 12px;flex:none}
+.tsearch .f{flex:1;min-width:0;border:1px solid var(--dg-border-strong);background:var(--dg-page);border-radius:999px;font:inherit;font-size:14px;padding:10px 16px;color:var(--dg-text)}
+.tsearch .f:focus{outline:0;border-color:var(--dg-accent);box-shadow:0 0 0 3px var(--dg-accent-bg)}
+.tsearch .go{width:40px;height:40px;border:0;border-radius:50%;background:var(--dg-accent-dark);color:#fff;cursor:pointer;font-size:14px;flex:none;display:grid;place-items:center}
+.tsearch .go:hover{background:var(--dg-accent)}
+.ttabs{display:flex;align-items:center;gap:2px;padding:0 18px;border-bottom:1px solid var(--dg-border);flex:none;min-width:0;overflow-x:auto;scrollbar-width:thin}
+.ttabs button{border:0;background:none;font:inherit;font-size:13.5px;color:var(--dg-text-muted);cursor:pointer;padding:9px 11px;border-bottom:2px solid transparent;display:flex;align-items:center;gap:6px;white-space:nowrap}
+.ttabs button:hover{color:var(--dg-text)}
+.ttabs button[aria-pressed=true]{color:var(--dg-text);font-weight:600;border-bottom-color:var(--dg-accent)}
+.ttabs .st{display:grid;place-items:center;font-size:12px}
+.ttabs button[aria-pressed=true] .st{color:#e8a020}
+.ttabs .sp{margin-left:auto;display:flex;gap:1px}
+.ttabs .sp button{padding:8px;color:var(--dg-text-muted);border-radius:7px;border-bottom:0}
+.ttabs .sp button:hover{background:var(--dg-surface-hover);color:var(--dg-text)}
+.tbody{overflow:auto;padding:6px 18px 18px}
+.tpanel{display:none}
+.mbox.tool[data-tab=fav] [data-panel=fav],.mbox.tool[data-tab="4bi"] [data-panel="4bi"],.mbox.tool[data-tab=memo] [data-panel=memo],.mbox.tool[data-tab=dict] [data-panel=dict]{display:block}
+/* Содержимого этих закладок в проде я не видел — честная заглушка вместо
+   подмены списком избранного. */
+.tempty{padding:34px 10px 30px;text-align:center}
+.tempty i{font-size:20px;color:var(--dg-border-strong)}
+.tempty b{display:block;margin:11px 0 5px;font-size:14px;font-weight:600}
+.tempty p{margin:0 auto;max-width:38ch;font-size:12.5px;line-height:1.55;color:var(--dg-text-muted)}
+.tgrp{display:flex;align-items:center;gap:8px;padding:14px 2px 6px;font-size:10.5px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--dg-text-muted)}
+.tgrp .cv{font-size:8px}
+.tgrp .srt{margin-left:auto;border:0;background:none;color:var(--dg-accent-ink);cursor:pointer;font-size:11px;padding:3px 5px;border-radius:5px}
+.tgrp .srt:hover{background:var(--dg-accent-bg)}
+.trow{display:flex;align-items:center;gap:11px;padding:9px 4px;border-bottom:1px dotted var(--dg-border);font-size:14px}
+.trow:last-child{border-bottom:0}
+.trow:hover{background:var(--dg-surface-hover);border-radius:7px;border-bottom-color:transparent}
+.trow .ic{color:var(--dg-text-muted);font-size:12px;flex:none;width:15px;display:grid;place-items:center}
+.trow .ic.fav{color:#e8a020;font-size:14px;display:grid;place-items:center}
+.trow a.nm{flex:1;min-width:0;color:var(--dg-tblue);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.trow a.nm:hover{text-decoration:underline}
+.trow .dt{font-size:11.5px;color:var(--dg-text-muted);font-variant-numeric:tabular-nums;flex:none}
+.trow .act{border:0;background:none;color:var(--dg-text-muted);cursor:pointer;font-size:11.5px;padding:4px 5px;border-radius:6px;flex:none}
+.trow .act:hover{background:var(--dg-border);color:var(--dg-text)}
+.trow .star{border:0;background:none;cursor:pointer;font-size:14px;padding:4px;border-radius:6px;flex:none;color:var(--dg-border-strong);display:grid;place-items:center;line-height:0}
+.trow .star[aria-pressed=true]{color:#e8a020}
+.trow .star:hover{background:var(--dg-surface-hover)}
+.tfoot{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 4px 0;margin-top:6px;border-top:1px solid var(--dg-border);font-size:13px}
+.tfoot a{color:var(--dg-accent-ink)}
+.tfoot a:hover{color:var(--dg-accent-ink);text-decoration:underline}
+/* ── быстрые настройки: поповер от ползунков в поле поиска ─ */
+.qsp{position:fixed;z-index:70;top:62px;left:50%;transform:translateX(-30px) scale(.97);transform-origin:top center;width:330px;max-width:92vw;max-height:78vh;overflow:auto;background:var(--dg-surface);border:1px solid var(--dg-border);border-radius:14px;box-shadow:0 12px 44px rgba(27,29,25,.2);padding:14px 16px 18px;opacity:0;pointer-events:none;transition:opacity .16s var(--dg-ease),transform .16s var(--dg-ease)}
+.qsp[data-open=true]{opacity:1;pointer-events:auto;transform:translateX(-30px) scale(1)}
+body[data-screen=home] .qsp{top:250px}
+@media(max-width:700px){.qsp{transform:translateX(-50%) scale(.97);left:50%}.qsp[data-open=true]{transform:translateX(-50%) scale(1)}}
+.qsp .hd{display:flex;align-items:center;margin:0 0 6px}
+.qsp .hd b{font-size:15px;font-weight:600;margin-right:auto}
+.qsp .hd button{border:0;background:none;color:var(--dg-text-muted);font-size:15px;cursor:pointer;padding:2px 4px}
+.qsp .hd button:hover{color:var(--dg-text)}
+.qsp h4{font-size:10.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--dg-text-muted);margin:18px 0 8px}
+.qsp .note{margin:7px 0 0;font-size:11.5px;line-height:1.5;color:var(--dg-text-muted)}
+/* где искать — трёхпозиционные группы со счётчиком */
+.scopebox{border:1px solid var(--dg-border);border-radius:10px;overflow:hidden}
+.scoperow{display:flex;align-items:center;gap:10px;padding:10px 11px;border-bottom:1px solid var(--dg-border);font-size:13.5px;cursor:pointer;background:none;border-left:0;border-right:0;border-top:0;width:100%;font-family:inherit;color:inherit;text-align:left}
+.scoperow:last-child{border-bottom:0}
+.scoperow:hover{background:var(--dg-surface-hover)}
+.scoperow .bx{width:17px;height:17px;border-radius:4px;border:1.5px solid var(--dg-border-strong);display:grid;place-items:center;flex:none;font-size:11px;color:#fff}
+.scoperow[data-st=all] .bx{background:var(--dg-accent);border-color:var(--dg-accent)}
+.scoperow[data-st=some] .bx{background:var(--dg-accent);border-color:var(--dg-accent)}
+.scoperow .lb{margin-right:auto}
+.scoperow .ct{font-size:12.5px;color:var(--dg-on-accent-bg);font-variant-numeric:tabular-nums}
+.scoperow[data-st=none] .ct{color:var(--dg-text-muted)}
+.scoperow .ch{color:var(--dg-text-muted);font-size:10px}
+.qsp select{width:100%;border:1px solid var(--dg-border-strong);background:var(--dg-surface);color:var(--dg-text);border-radius:9px;font:inherit;font-size:13.5px;padding:9px 10px;cursor:pointer}
+/* сегменты */
+.segrow{display:flex;background:var(--dg-surface-hover);border-radius:9px;padding:3px;gap:2px}
+.segrow button{flex:1;border:0;background:none;font:inherit;font-size:12.5px;color:var(--dg-text-2);padding:7px 4px;border-radius:7px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.segrow button[aria-pressed=true]{background:var(--dg-surface);color:var(--dg-text);font-weight:500;box-shadow:0 1px 3px rgba(27,29,25,.1)}
+/* переключатели чтения */
+.swrow{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--dg-border);font-size:13.5px}
+.swrow:last-of-type{border-bottom:0}
+.swrow .k{margin-right:auto}
+.swrow .k em{font-style:normal;color:var(--dg-text-muted);font-size:11px;font-family:var(--dg-font-mono);padding-left:6px}
+.sw{width:38px;height:22px;border-radius:999px;border:0;background:var(--dg-border-strong);cursor:pointer;position:relative;flex:none;transition:background .18s var(--dg-ease)}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:transform .18s var(--dg-ease);box-shadow:0 1px 2px rgba(0,0,0,.2)}
+.sw[aria-pressed=true]{background:var(--dg-accent)}
+.sw[aria-pressed=true]::after{transform:translateX(16px)}
+/* диакритика */
+.diac{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.diac button{border:1px solid var(--dg-border);background:var(--dg-surface);border-radius:8px;font-family:var(--dg-font-serif);font-size:15px;color:var(--dg-text);padding:8px 0;cursor:pointer}
+.diac button:hover{border-color:var(--dg-accent);background:var(--dg-accent-bg);color:var(--dg-on-accent-bg)}
+/* контекстность: что показываем на каком экране */
+body[data-screen=reader] #qs-ctx,body[data-screen=toc] #qs-ctx{display:none}
+/* «Режимы чтения» в бургере — только в ридере */
+body:not([data-screen=reader]) #modes{display:none}
+body:not([data-screen=results]) #qs-view{display:none}
+body[data-screen=home] #qs-read,body[data-screen=toc] #qs-read{display:none}
+body:not([data-screen=reader]) #qs-variants{display:none}
+/* ── подвал выдачи: как в проде ──────────────────────────── */
+.dtfoot{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:12px 0 0;font-size:12.5px;color:var(--dg-text-muted)}
+.dtfoot .cnt{white-space:nowrap}
+/* ── продвинутый фильтр выдачи (билдер условий) ────────────
+   Открывается кнопкой-ползунками у поля «Фильтр». Это ПРОД-функция:
+   в проде это Advanced filter с условиями Quote / Does Not Contain / значение,
+   строками «Добавить условие» и «Очистить всё». Не удалять при правках —
+   без билдера выдача теряет точную фильтрацию по цитатам и полям. */
+.advf{display:none;margin:6px 0 0;padding:14px 15px;background:var(--dg-surface);border:1px solid var(--dg-border);border-radius:12px}
+.advf[data-open=true]{display:block}
+.advf .hd{display:flex;align-items:center;gap:10px;margin:0 0 11px}
+.advf .hd b{font-size:13px;font-weight:600;margin-right:auto}
+.advf .hd .n{font-size:11px;font-weight:600;color:var(--dg-on-accent-bg);background:var(--dg-accent-bg);border-radius:999px;padding:2px 8px}
+.advf .hd button{border:0;background:none;font:inherit;font-size:12.5px;color:var(--dg-accent-ink);cursor:pointer;padding:3px 7px;border-radius:6px}
+.advf .hd button:hover{background:var(--dg-accent-bg);text-decoration:underline}
+.cond{display:flex;align-items:center;gap:7px;padding:5px 0}
+.cond select,.cond input{border:1px solid var(--dg-border-strong);background:var(--dg-page);border-radius:8px;font:inherit;font-size:13px;padding:7px 9px;color:var(--dg-text)}
+.cond select{cursor:pointer}
+.cond input{flex:1;min-width:0}
+.cond select:focus,.cond input:focus{outline:0;border-color:var(--dg-accent);box-shadow:0 0 0 3px var(--dg-accent-bg)}
+.cond .join{font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--dg-text-muted);width:26px;flex:none}
+.cond .rm{width:28px;height:28px;flex:none;border:0;border-radius:50%;background:none;color:var(--dg-text-muted);cursor:pointer;font-size:12px;display:grid;place-items:center}
+.cond .rm:hover{background:var(--dg-surface-hover);color:var(--dg-text)}
+.advf .add{margin:9px 0 0;border:1px dashed var(--dg-border-strong);background:none;font:inherit;font-size:12.5px;color:var(--dg-text-2);border-radius:8px;padding:7px 13px;cursor:pointer;display:inline-flex;align-items:center;gap:7px}
+.advf .add:hover{border-color:var(--dg-accent);color:var(--dg-accent-ink);border-style:solid}
+.dtbar .fbtn{width:26px;height:26px;border:0;border-radius:7px;background:none;color:var(--dg-text-muted);cursor:pointer;font-size:12px;display:grid;place-items:center;flex:none}
+.dtbar .fbtn:hover{background:var(--dg-surface-hover);color:var(--dg-text)}
+.dtbar .fbtn[aria-pressed=true]{background:var(--dg-accent-bg);color:var(--dg-on-accent-bg)}
+@media(max-width:700px){.cond{flex-wrap:wrap}.cond input{width:100%;flex:1 0 100%}}
+.dtlinks{display:flex;gap:3px;flex-wrap:wrap;padding:10px 0 50px}
+.dtlinks a,.dtlinks button{border:0;background:none;font:inherit;font-size:13px;color:var(--dg-tblue);cursor:pointer;padding:4px 8px;border-radius:6px;display:flex;align-items:center;gap:5px}
+.dtlinks a:hover,.dtlinks button:hover{background:var(--dg-accent-bg);color:var(--dg-tblue);text-decoration:underline}
+/* ── оглавление: Дхамма / Виная + фильтр переводчиков ───── */
+.tocgrid{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:26px;padding:18px 20px 50px;align-items:start}
+/* Появление оглавления: список сутт въезжает слева, фильтр переводчиков — справа.
+   Анимация играет при показе экрана (screen переходит из display:none в block). */
+@keyframes toc-in-left{from{opacity:0;transform:translateX(-22px)}to{opacity:1;transform:none}}
+@keyframes toc-in-right{from{opacity:0;transform:translateX(22px)}to{opacity:1;transform:none}}
+body[data-screen=toc] .tocgrid>div:first-child{animation:toc-in-left .34s var(--dg-ease) both}
+body[data-screen=toc] .tocgrid>.trfilter{animation:toc-in-right .34s .06s var(--dg-ease) both}
+/* Уход со страницы — обратный жест: колонки разъезжаются в стороны и гаснут. */
+@keyframes toc-out-left{from{opacity:1;transform:none}to{opacity:0;transform:translateX(-26px)}}
+@keyframes toc-out-right{from{opacity:1;transform:none}to{opacity:0;transform:translateX(26px)}}
+body.toc-out[data-screen=toc] .tocgrid>div:first-child{animation:toc-out-left .24s var(--dg-ease) both}
+body.toc-out[data-screen=toc] .tocgrid>.trfilter{animation:toc-out-right .24s var(--dg-ease) both}
+@media(prefers-reduced-motion:reduce){body[data-screen=toc] .tocgrid>div:first-child,body[data-screen=toc] .tocgrid>.trfilter,body.toc-out[data-screen=toc] .tocgrid>div:first-child,body.toc-out[data-screen=toc] .tocgrid>.trfilter{animation:none}}
+@media(max-width:820px){.tocgrid{grid-template-columns:1fr}}
+.tocsec{margin:0 0 26px}
+.tocsec .hd{display:flex;align-items:center;gap:10px;margin:0 0 4px}
+.tocsec .hd .pm{width:24px;height:24px;border-radius:6px;border:0;background:var(--dg-accent-dark);color:#fff;font-size:14px;line-height:1;cursor:pointer;display:grid;place-items:center}
+.tocsec .hd b{font-size:16px;font-weight:600}
+.tocsec[data-folded=true] a,.tocsec[data-folded=true] .tocsub{display:none}
+.tocsec a{display:flex;align-items:baseline;gap:7px;padding:10px 4px;border-bottom:1px solid var(--dg-border);font-size:15px;font-weight:500;color:var(--dg-accent-ink)}
+.tocsec a:hover{background:var(--dg-surface-hover);color:var(--dg-accent-ink)}
+.tocsec a u{text-decoration:none;border-bottom:1px solid currentColor}
+.tocsec a span{font-weight:400;font-size:13px;color:var(--dg-text-muted)}
+/* На телефоне оглавление в одну колонку, фильтр переводчиков — сверху */
+@media(max-width:820px){.tocgrid{grid-template-columns:1fr}.trfilter{order:-1}}
+body[data-view=mobile] .tocgrid{grid-template-columns:1fr;padding:14px 12px 40px;gap:18px}
+body[data-view=mobile] .trfilter{order:-1}
+/* вложенность: вагга и сутты с переводчиками */
+.tocsub{padding:2px 0 10px 2px}
+.tocgrp{display:flex;align-items:center;gap:9px;padding:12px 2px 6px;font-size:14px;font-weight:600;color:var(--dg-text-2)}
+.tocgrp button{width:20px;height:20px;border:0;border-radius:5px;background:none;color:var(--dg-text-2);cursor:pointer;font-size:13px;line-height:1;display:grid;place-items:center;flex:none}
+.tocgrp button:hover{background:var(--dg-surface-hover);color:var(--dg-text)}
+.tocsub[data-folded=true] .tocitem{display:none}
+.tocitem{display:block;padding:9px 4px 9px 14px;border-bottom:1px solid var(--dg-border);color:inherit}
+.tocitem:hover{background:var(--dg-surface-hover);color:inherit;border-radius:7px;border-bottom-color:transparent}
+.tocitem .ln{font-size:14.5px;line-height:1.35}
+.tocitem .ln u{text-decoration:none;font-weight:600;color:var(--dg-accent-ink);border-bottom:1px solid currentColor}
+.tocitem .ln span{color:var(--dg-text)}
+.tocitem .tr{display:block;margin-top:3px;font-size:12px;color:var(--dg-accent-ink)}
+.tocitem .tr em{font-style:normal;color:var(--dg-text-muted);padding-left:5px}
+.trfilter{border:1px solid var(--dg-border);border-radius:12px;padding:14px 15px;background:var(--dg-surface)}
+.trfilter .hd{display:flex;align-items:center;gap:8px;margin:0 0 11px}
+.trfilter .hd b{font-size:14px;font-weight:600;margin-right:auto}
+.trfilter .hd button{border:0;background:none;color:var(--dg-text-2);cursor:pointer;font-size:13px;width:22px;height:22px;border-radius:6px;line-height:1}
+.trfilter .hd button:hover{background:var(--dg-surface-hover);color:var(--dg-text)}
+.trfilter[data-folded=true] .fbody{display:none}
+.trfilter[data-folded=true] .hd{margin-bottom:0}
+.trfilter input.f{width:100%;border:1px solid var(--dg-border-strong);background:var(--dg-page);border-radius:8px;font:inherit;font-size:13px;padding:7px 9px;color:var(--dg-text);margin:0 0 12px}
+.trfilter input.f:focus{outline:0;border-color:var(--dg-accent);box-shadow:0 0 0 3px var(--dg-accent-bg)}
+.trgroup{margin:0 0 14px}
+.trgroup>label{display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:600;padding:0 0 7px;cursor:pointer}
+.trgroup label{display:flex;align-items:flex-start;gap:8px;font-size:12.5px;line-height:1.45;padding:4px 0;cursor:pointer;color:var(--dg-text-2)}
+.trgroup input{accent-color:var(--dg-accent);margin:2px 0 0;width:14px;height:14px;flex:none}
+.trgroup .more{border:0;background:none;font:inherit;font-size:12.5px;color:var(--dg-accent-ink);cursor:pointer;padding:3px 0 0}
+.trgroup .more:hover{color:var(--dg-accent-ink);text-decoration:underline}
+/* ── меню-ящик: области поиска здесь ────────────────────── */
+.scrim{position:fixed;inset:0;background:rgba(27,29,25,.4);opacity:0;pointer-events:none;transition:opacity .25s var(--dg-ease);z-index:50}
+.scrim[data-open=true]{opacity:1;pointer-events:auto}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:340px;max-width:88vw;background:var(--dg-surface);border-left:1px solid var(--dg-border);z-index:60;transform:translateX(101%);transition:transform .28s var(--dg-ease);overflow:auto;padding:16px 18px 30px}
+.drawer[data-open=true]{transform:none}
+.dhead{display:flex;align-items:center;margin-bottom:6px}
+.dhead{align-items:center}
+.dbrand{display:flex;align-items:center;gap:7px;margin-right:auto;color:inherit;padding:3px 5px 3px 0;border-radius:7px}
+.dbrand:hover{color:var(--dg-accent-ink)}
+.dbrand img{width:19px;height:19px}
+.dhead b{font-size:14px;font-weight:600}
+.dhead button{border:0;background:none;color:var(--dg-text-muted);font-size:15px;cursor:pointer}
+.dgroup{margin:20px 0 0}
+.dgroup h3{display:flex;align-items:center;gap:7px;font-size:10.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--dg-text-muted);margin:0 0 9px}
+.dgroup h3 .fold{border:0;background:none;color:var(--dg-text-muted);cursor:pointer;font-size:10px;padding:2px 4px;border-radius:5px;line-height:1}
+.dgroup h3 .fold:hover{background:var(--dg-surface-hover);color:var(--dg-text)}
+.dgroup h3 .fold[aria-expanded=false] i{transform:rotate(-90deg)}
+.dgroup h3 .fold i{display:inline-block;transition:transform .15s var(--dg-ease)}
+/* Мультитул одинаков на всех экранах: стоит сразу под «Найти на странице»
+   и свёрнут, пока пользователь сам его не раскроет. */
+#mt:not([data-folded=false]) .dbody{display:none}
+.tgl{display:flex;align-items:center;gap:10px;padding:9px 2px;font-size:13.5px;cursor:pointer;border-bottom:1px solid var(--dg-border)}
+.tgl:last-child{border-bottom:0}
+.tgl input{accent-color:var(--dg-accent);margin:0;width:15px;height:15px}
+.tgl em{font-style:normal;margin-left:auto;font-size:11px;color:var(--dg-text-muted);font-family:var(--dg-font-mono)}
+.dlink{display:flex;align-items:center;gap:10px;padding:9px 2px;font-size:13.5px;color:inherit;border-bottom:1px solid var(--dg-border)}
+.dlink:last-child{border-bottom:0}
+.dlink i{width:16px;text-align:center;color:var(--dg-text-muted);font-size:12.5px}
+.dlink:hover{color:var(--dg-accent-ink)}
+.dlink.pending{color:var(--dg-text-muted);cursor:default}
+.dlink.pending em{font-style:normal;margin-left:auto;font-size:10.5px;letter-spacing:.04em;text-transform:uppercase;color:var(--dg-text-muted);opacity:.8}
+/* ── панель: как искать · приложения · контакты ─────────── */
+.sheet{position:fixed;left:0;right:0;bottom:0;background:var(--dg-surface);border-top:1px solid var(--dg-border);border-radius:16px 16px 0 0;box-shadow:0 -10px 44px rgba(27,29,25,.16);z-index:60;transform:translateY(101%);transition:transform .3s var(--dg-ease);max-height:84vh;overflow:auto;padding:8px 20px 30px}
+.sheet[data-open=true]{transform:none}
+/* Панель — материал главной: на других экранах её не показываем */
+body:not([data-screen=home]) .sheet{display:none}
+.handle{width:38px;height:4px;border-radius:999px;background:var(--dg-border-strong);margin:6px auto 4px}
+.sheet .in{max-width:660px;margin:0 auto;position:relative}
+.sheet .x{position:absolute;right:-4px;top:2px;border:0;background:none;color:var(--dg-text-muted);font-size:15px;cursor:pointer}
+.sheet h2{font-size:10.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--dg-text-muted);margin:26px 0 13px}
+.sheet h2:first-of-type{margin-top:14px}
+.apps{display:flex;flex-wrap:wrap;gap:9px}
+.apps a{line-height:0;opacity:.93;transition:opacity .15s var(--dg-ease)}
+.apps a:hover{opacity:1}
+.apps img{height:40px;display:block;border-radius:7px}
+.motto{margin:0 0 12px;font-size:13px;color:var(--dg-text-2);line-height:1.6}
+.cts{display:flex;gap:6px}
+.cts{display:flex;gap:7px}
+.cts a{width:38px;height:38px;border:0;border-radius:50%;background:var(--dg-surface-hover);display:grid;place-items:center;color:var(--dg-text-2);font-size:15px;transition:background .15s var(--dg-ease),color .15s var(--dg-ease)}
+.cts a:hover{background:var(--dg-accent-bg);color:var(--dg-on-accent-bg)}
+.powered{margin:20px 0 0;font-size:13px;color:var(--dg-text-muted)}
+.powered span{cursor:help}
+.credit{margin:24px 0 0;padding-top:16px;border-top:1px solid var(--dg-border);display:flex;align-items:center;gap:7px;flex-wrap:wrap;font-size:12px;color:var(--dg-text-muted)}
+.credit a{color:var(--dg-text-muted)}
+.credit a:hover{color:var(--dg-text-2);text-decoration:underline}
+.credit .dot{font-size:11px}
+/* ── мобильный кадр ─────────────────────────────────────── */
+body[data-view=mobile]{background:#8c8f88;padding:22px 0}
+body[data-view=mobile] .frame{width:390px;margin:0 auto;background:var(--dg-page);border-radius:26px;box-shadow:0 12px 50px rgba(0,0,0,.3);position:relative;height:800px;overflow:hidden}
+body[data-view=mobile] .bar{padding:0 14px}
+body[data-view=mobile] .tbar{padding:10px 12px 6px}
+body[data-view=mobile]{--tbar-h:64px}
+body[data-view=mobile] .wrap{padding:0 14px}
+body[data-view=mobile] .hero{padding:26px 0 20px}
+body[data-view=mobile] .hero h1{font-size:23px}
+body[data-view=mobile] .tiles{grid-template-columns:1fr 1fr;gap:8px;padding:22px 0 4px}
+body[data-view=mobile] .seg{grid-template-columns:1fr;gap:7px}
+body[data-view=mobile] .drawer,body[data-view=mobile] .sheet,body[data-view=mobile] .scrim,
+body[data-view=mobile] .modal,body[data-view=mobile] .findbar,body[data-view=mobile] .qsp,
+body[data-view=mobile] .sectoc,body[data-view=mobile] .corner,body[data-view=mobile] .langmenu{position:absolute}
+body[data-view=mobile] .qsp,body[data-view=mobile] .sectoc{left:12px;right:12px;width:auto;transform:none}
+body[data-view=mobile] .qsp[data-open=true],body[data-view=mobile] .sectoc[data-open=true]{transform:none}
+body[data-view=mobile] .langmenu{right:12px;left:auto;bottom:66px;width:246px}
+/* Пилюля языков и кнопка озвучки — часть страницы, поэтому в мобильном кадре
+   они прижимаются к его краям, а не к краям окна браузера. */
+body[data-view=mobile] .langpill{box-shadow:0 3px 18px rgba(27,29,25,.18)}
+body[data-view=mobile] .corner{right:12px;bottom:14px;margin:0}
+/* На телефоне крест уводим внутрь окна: снаружи он упирается в край рамки */
+body[data-view=mobile] .winclose{top:8px;right:8px}
+body[data-view=mobile] .langmenu:not([data-open=true]){display:none}
+body[data-view=mobile] .langpill button{font-size:12.5px;padding:6px 13px}
+
+body[data-view=mobile] .drawer{width:300px}
+body[data-view=mobile] .field input{font-size:16px}
+body[data-view=mobile] .shell input{font-size:16px}
+body[data-view=mobile] .only-desktop{display:none}
+/* ── мобильный: плотнее плитки, аккуратная плашка, компактный слайдер ── */
+/* На телефоне заголовок и подзаголовок скрыты — «Найдите Истину» уже стоит
+   в шапке, а поле поиска говорит о себе само. На планшетах остаются. */
+body[data-view=mobile] .hero{padding:14px 0 4px}
+body[data-view=mobile] .hero h1,body[data-view=mobile] .hero p{display:none}
+body[data-view=mobile] .announce{display:flex;width:100%;max-width:none;margin:14px 0 0;padding:6px 6px 6px 10px;gap:7px;font-size:12px;border-radius:10px}
+body[data-view=mobile] .announce .txt{white-space:normal;line-height:1.4}
+body[data-view=mobile] .announce .tag{font-size:9.5px;padding:2px 6px}
+body[data-view=mobile] .tiles{grid-template-columns:1fr 1fr;gap:8px;padding:18px 0 4px}
+body[data-view=mobile] .tile{padding:12px 9px;gap:6px;border-radius:10px}
+body[data-view=mobile] .tile .disc{width:36px;height:36px;font-size:16px}
+body[data-view=mobile] .tile b{font-size:13px}
+body[data-view=mobile] .tile em{font-size:11px;line-height:1.35}
+body[data-view=mobile] .pick{margin:20px 0 0}
+body[data-view=mobile] .pick .box{padding:15px 4px 12px}
+body[data-view=mobile] .pick .arw{width:28px;height:28px;font-size:13px}
+body[data-view=mobile] .pick .slide b{font-size:15px}
+body[data-view=mobile] .pick .slide p{font-size:12.5px}
+body[data-view=mobile] .quote{display:none}
+body[data-view=mobile] .pagefoot{margin:24px 0 0;padding:16px 0 30px;flex-direction:column;align-items:center;gap:14px}
+body[data-view=mobile] .pagefoot .col{margin-right:0;align-items:center}
+body[data-view=mobile] .mbox{border-radius:14px 14px 0 0}
+body[data-view=mobile] .modal{padding:22px 10px 0}
+.frame{position:relative}
+/* Прокрутка живёт во внутренней обёртке, а сама рамка неподвижна — иначе
+   absolute-оверлеи уезжают с контентом, а fixed убегают в окно браузера. */
+.fscroll{display:contents}
+body[data-view=mobile] .fscroll{display:block;height:100%;overflow-y:auto;overscroll-behavior:contain}
+</style></head>
+<body data-screen="reader" data-view="desktop" data-res="texts">
+<div class="frame">
+<div class="fscroll">
+
+<header class="bar">
+  <div class="in">
+    <div class="brandmark" onclick="go('home')"><img src="../../assets/img/dgsanhkalogo.png" alt="Dhamma.gift"><b>Dhamma.gift</b><span>Pāḷi Canon</span></div>
+    <button class="ib only-desktop" type="button" title="Избранное и история" onclick="open_('multi')"><i class="gi" style="--u:url(../../assets/svg/compass.svg)"></i></button>
+    <button class="ib" type="button" title="Тема" onclick="toggleTheme()"><i class="gi" style="--u:url(../../assets/svg/circle-half-stroke.svg)"></i></button>
+    <button class="ib" type="button" title="Меню" onclick="open_('drawer')"><i class="fa-solid fa-bars"></i></button>
+  </div>
+</header>
+
+<div class="tbar">
+  <form class="shell" onsubmit="go('results');return false">
+    <a class="conch" href="#" title="На главную" onclick="go('home');return false"><img src="../../assets/img/dgsankhaonly.png" alt="Dhamma.gift"></a>
+    <input value="paṭiccasamuppād" aria-label="Поиск">
+    <button class="clr" type="button" title="Очистить" onclick="this.previousElementSibling.value='';this.previousElementSibling.focus()"><i class="fa-solid fa-xmark"></i></button>
+    <button class="rnd" type="button" title="Быстрые настройки" onclick="open_('qsp')"><i class="fa-solid fa-sliders"></i></button>
+    <button class="rnd" type="submit" title="Искать"><i class="fa-solid fa-magnifying-glass"></i></button>
+  </form>
+  <button class="rb plain" type="button" title="Меню" onclick="open_('drawer')"><i class="fa-solid fa-bars"></i></button>
+</div>
+
+<!-- ═══ ридер ═══ -->
+<main class="screen" id="s-reader">
+  <div class="wrap">
+    <div class="rsticky">
+    <div class="rtools">
+      <a class="src" href="#">Voice</a><a class="src" href="#">4nt</a><a class="src" href="#">DPR</a><a class="src" href="#">BJT</a><a class="src" href="#">SC</a><a class="src" href="#">TBW</a><a class="src" href="#">Th.ru</a><a class="src" href="#">Th.su</a>
+      <span class="sep"></span>
+      <button class="t" type="button" title="Скрыть перевод" onclick="tp(this)"><i class="gi" style="--u:url(../../assets/svg/eye-slash.svg)"></i></button>
+      <button class="t" type="button" title="Компактный вид" onclick="tp(this)"><i class="gi" style="--u:url(../../assets/svg/list-ul-solid-full.svg)"></i></button>
+      <button class="t" type="button" title="Комментарии" onclick="tp(this)"><i class="gi" style="--u:url(../../assets/svg/comment.svg)"></i></button>
+      <button class="t" type="button" title="Избранное и история" onclick="open_('multi')"><i class="gi" style="--u:url(../../assets/svg/select.svg)"></i></button>
+      <button class="t" type="button" title="Режимы чтения" onclick="open_('drawer')"><i class="gi" style="--u:url(../../assets/svg/compass.svg)"></i></button>
+      <button class="t" type="button" title="Помощь"><i class="gi" style="--u:url(../../assets/svg/question.svg)"></i></button>
+      <button class="t" type="button" title="Содержание канона" onclick="go('toc')"><i class="gi" style="--u:url(../../assets/svg/book.svg)"></i></button>
+      <button class="secpill" type="button" onclick="open_('sectoc')"><i class="gi" style="--u:url(../../assets/svg/list-ul-solid-full.svg);font-size:11px"></i>1. Paṭiccasamuppāda</button>
+    </div>
+    <div class="prevnext">
+      <a href="#" onclick="return false"><i class="fa-solid fa-angle-left" style="font-size:11px"></i>dn14 Mahāpadānasutta</a>
+      <a href="#" onclick="return false">dn16 Mahāparinibbānasutta<i class="fa-solid fa-angle-right" style="font-size:11px"></i></a>
+    </div>
+    </div>
+    <p class="rnote"><b>Заметка:</b> Переводы, словари и комментарии сделаны не Благословенным. Сверяйтесь с Пали в 4 основных никаях.<button type="button" title="Скрыть" onclick="this.parentNode.remove()">✕</button></p>
+    <p class="byline"><span class="pli">Pāḷi MS</span> Пер. <a href="#">А.Я. Сыркин</a> с Пали, ред. <a href="#">о</a></p>
+    <div class="suttaref">
+      <div class="l1"><button type="button" title="Озвучить"><i class="fa-solid fa-volume-high"></i></button>Dīgha Nikāya 15<button type="button" title="Скопировать ссылку"><i class="gi" style="--u:url(../../assets/svg/link-solid-full.svg)"></i></button></div>
+      <p class="l2">Длинные Наставления 15</p>
+    </div>
+    <div class="stitle"><h1>Mahānidānasutta</h1><p class="ru">Маха Нидана Сутта</p></div>
+    <article class="sutta">
+      <div class="sechead"><p class="pli">1. <b>Paṭiccasamuppād</b>a</p><p class="ru">1. Обусловленная Последовательность</p></div>
+      <div class="g"><p class="pli-lang">Evaṁ me sutaṁ—</p><p class="lang-2nd">Так я слышал</p></div>
+      <div class="g"><p class="pli-lang">ekaṁ samayaṁ bhagavā kurūsu viharati kammāsadhammaṁ nāma kurūnaṁ nigamo.</p><p class="lang-2nd">однажды Благословенный проживал среди куру. У народа куру был город под названием Каммасадхамма [где он проживал].</p></div>
+      <div class="g"><p class="pli-lang">Atha kho āyasmā ānando yena bhagavā tenupasaṅkami, upasaṅkamitvā bhagavantaṁ abhivādetvā ekamantaṁ nisīdi. Ekamantaṁ nisinno kho āyasmā ānando bhagavantaṁ etadavoca:</p><p class="lang-2nd">Одно время уважаемый Ананда подошёл к Благословенному, подойдя и выразив почтение, он сел в одной стороне от Благословенного. Сидя в одной стороне от него почтенный Ананда сказал Благословенному:</p></div>
+      <div class="g"><p class="pli-lang">“acchariyaṁ, bhante, abbhutaṁ, bhante.</p><p class="lang-2nd">'Это необычайно, почтенный, это невероятно, почтенный.</p></div>
+      <div class="g"><p class="pli-lang">Yāva gambhīro cāyaṁ, bhante, <b>paṭiccasamuppād</b>o gambhīrāvabhāso ca, atha ca pana me uttānakuttānako viya khāyatī”ti.</p><p class="lang-2nd">Сколь глубоко это обусловленное возникновение и сколь глубоким выглядит, и в то же время оно кажется мне ясным как что-то ясное'.</p></div>
+      <div class="g"><p class="pli-lang">“Mā hevaṁ, ānanda, avaca, mā hevaṁ, ānanda, avaca.</p><p class="lang-2nd">[Будда:]'Не говори так, Ананда, не говори так.</p></div>
+      <div class="g"><p class="pli-lang">Gambhīro cāyaṁ, ānanda, <b>paṭiccasamuppād</b>o gambhīrāvabhāso ca.</p><p class="lang-2nd">Это обусловленное возникновение, Ананда, глубоко и выглядит глубоким.</p></div>
+      <div class="g"><p class="pli-lang">Etassa, ānanda, dhammassa ananubodhā appaṭivedhā evamayaṁ pajā tantākulakajātā kulagaṇṭhikajātā.</p><p class="lang-2nd">Из-за непонимания, из-за непостижения этой Дхаммы, Ананда, это поколение запуталось словно клубок нитей, словно птичье гнездо.</p></div>
+    </article>
+    <div class="rfoot">
+      <div class="rf-srcs">
+        <a href="#" onclick="return false">Voice</a><a href="#" onclick="return false">4nt</a><a href="#" onclick="return false">DPR</a>
+        <a href="#" onclick="return false">BJT</a><a href="#" onclick="return false">SC</a><a href="#" onclick="return false">TBW</a><a href="#" onclick="return false">Th.ru</a>
+      </div>
+      <div class="rf-nav">
+        <a href="#" onclick="return false"><i class="fa-solid fa-angle-left" style="font-size:11px"></i>dn14 Mahāpadānasutta</a>
+        <a href="#" onclick="return false">dn16 Mahāparinibbānasutta<i class="fa-solid fa-angle-right" style="font-size:11px"></i></a>
+      </div>
+      <div class="rf-tools">
+        <a class="rf-ic" href="#" title="Словарь DPD" onclick="return false"><i class="gi" style="--u:url(../../assets/svg/dharmachakra.svg)"></i></a>
+        <a class="rf-ic" href="#" title="Читать" onclick="return false"><i class="gi" style="--u:url(../../assets/svg/book.svg)"></i></a>
+        <a class="rf-ic" href="#" title="Оглавление сутты" onclick="return false"><i class="gi" style="--u:url(../../assets/svg/list-ul-solid-full.svg)"></i></a>
+        <a class="rf-ic" href="#" title="Сравнить переводы" onclick="return false"><i class="gi" style="--u:url(../../assets/svg/code-compare-solid-full.svg)"></i></a>
+        <a class="rf-ic" href="#" title="История" onclick="return false"><i class="gi" style="--u:url(../../assets/svg/clock-rotate-left.svg)"></i></a>
+        <a class="rf-ic" href="#" title="Скачать PDF" onclick="return false"><i class="gi" style="--u:url(../../assets/svg/pdf.svg)"></i></a>
+        <a class="rf-ic memo" href="#" title="Memo — заметки к суттам" onclick="return false"><span class="memo-mark">ME<br>MO</span></a>
+        <a class="rf-ic" href="#" title="Режим колонок" onclick="return false"><i class="gi" style="--u:url(../../assets/svg/table-columns.svg)"></i></a>
+        <a class="rf-ic" href="#" title="Скопировать" onclick="return false"><i class="gi" style="--u:url(../../assets/svg/copy.svg)"></i></a>
+      </div>
+      <p class="rf-legal"><a href="#" onclick="return false">О правах</a> © Dhamma.gift 2022–2026</p>
+    </div>
+  </div>
+</main>
+
+
+</div>
+
+<!-- ═══ меню: области поиска здесь ═══ -->
+<aside class="drawer" id="drawer" data-open="false">
+  <div class="dhead"><a class="dbrand" href="#" title="На главную" onclick="go('home');closeAll();return false"><img src="../../assets/img/dgsankhaonly.png" alt=""><b>Dhamma.Gift</b></a><button type="button" onclick="closeAll()"><i class="fa-solid fa-xmark"></i></button></div>
+  <a class="dlink" href="#" onclick="findOpen();return false" style="font-size:14.5px;padding:11px 2px;border-bottom:0"><i class="fa-solid fa-magnifying-glass"></i>Найти на странице</a>
+  <div class="dgroup" id="mt">
+    <h3><button type="button" class="fold" aria-expanded="false" onclick="foldMt(this)"><i class="fa-solid fa-caret-down"></i></button>Мультитул</h3>
+    <div class="dbody">
+    <a class="dlink" href="#" onclick="go('toc');closeAll();return false"><i class="gi" style="--u:url(../../assets/svg/book.svg)"></i>Читать Pāḷi</a>
+    <a class="dlink" href="#" onclick="open_('multi');return false"><i class="gi" style="--u:url(../../assets/svg/clock-rotate-left.svg)"></i>Избранное, история</a>
+    <a class="dlink" href="#" onclick="closeAll();return false"><i class="gi" style="--u:url(../../assets/svg/book.svg)"></i>Иностранные</a>
+    <a class="dlink" href="#" onclick="closeAll();return false"><i class="gi" style="--u:url(../../assets/svg/book.svg)"></i>Русские</a>
+    <a class="dlink" href="#" onclick="closeAll();return false"><i class="fa-solid fa-book-atlas"></i>ИИ, Словари</a>
+    <a class="dlink" href="#" onclick="closeAll();return false"><i class="fa-solid fa-graduation-cap"></i>Обучение</a>
+    <a class="dlink" href="#" onclick="closeAll();return false"><i class="fa-solid fa-screwdriver-wrench"></i>Инструменты</a>
+    <a class="dlink" href="#" onclick="closeAll();return false"><i class="gi" style="--u:url(../../assets/svg/question.svg)"></i>Помощь</a>
+    </div>
+  </div>
+  <div class="dgroup" id="modes">
+    <h3>Режимы чтения</h3>
+    <button class="mode" type="button" aria-pressed="true" onclick="md(this)"><span class="l">Один перевод<em>Alt+1</em></span><span class="d">Pāḷi + перевод</span></button>
+    <button class="mode" type="button" aria-pressed="false" onclick="md(this)"><span class="l">Мульти перевод<em>Alt+2</em></span><span class="d">Pāḷi + перевод (2 переводчика)</span></button>
+    <button class="mode" type="button" aria-pressed="false" onclick="md(this)"><span class="l">Для запоминания<em>Alt+3</em></span><span class="d">Мнемоника по первой букве</span></button>
+    <button class="mode" type="button" aria-pressed="false" onclick="md(this)"><span class="l">Деванагари<em>Alt+4</em></span><span class="d">Pāḷi в другом письме + Pāḷi латиницей</span></button>
+    <button class="mode" type="button" aria-pressed="false" onclick="md(this)"><span class="l">Мульти язык<em>Alt+5</em></span><span class="d">Pāḷi на нескольких языках перевода</span></button>
+  </div>
+  <div class="dgroup">
+    <h3>Язык</h3>
+    <div class="segrow"><button type="button" aria-pressed="false" onclick="sg(this)">EN</button><button type="button" aria-pressed="true" onclick="sg(this)">RU</button></div>
+    <h3>Тема</h3>
+    <div class="segrow"><button type="button" aria-pressed="false" onclick="sg(this);setTheme('dark')"><i class="gi" style="--u:url(../../assets/svg/moon.svg);font-size:11px"></i>Тёмная</button><button type="button" aria-pressed="true" onclick="sg(this);setTheme('light')"><i class="gi" style="--u:url(../../assets/svg/sun.svg);font-size:11px"></i>Светлая</button><button type="button" aria-pressed="false" onclick="sg(this)"><i class="gi" style="--u:url(../../assets/svg/circle-half-stroke.svg);font-size:11px"></i>Авто</button></div>
+  </div>
+  <div class="dgroup">
+    <a class="dlink" href="#" onclick="closeAll();return false"><i class="gi" style="--u:url(../../assets/svg/gear.svg)"></i>Настройки</a>
+    <a class="dlink" href="#" onclick="closeAll();return false"><i class="fa-solid fa-plus"></i>Добавить свою кнопку</a>
+    <a class="dlink" href="#" onclick="closeAll();return false"><i class="gi" style="--u:url(../../assets/svg/select-slash.svg)"></i>Изменить кнопки</a>
+    <a class="dlink" href="#" onclick="go('home');open_('sheet');return false"><i class="fa-solid fa-circle-plus"></i>О проекте и приложения</a>
+    <a class="dlink" href="#" onclick="closeAll();return false"><i class="fa-solid fa-right-to-bracket"></i>Войти</a>
+  </div>
+</aside>
+
+
+<div class="sectoc" id="sectoc" data-open="false">
+  <h5>Разделы сутты</h5>
+  <div id="sectoc-list"></div>
+</div>
+
+<!-- ═══ поиск по странице ═══ -->
+<div class="findbar" id="findbar" data-open="false">
+  <div class="in">
+    <div class="fpill">
+      <input id="fq" type="search" placeholder="Найти на странице" aria-label="Найти на странице" oninput="findRun()" onkeydown="findKey(event)">
+      <span class="cnt" id="fcnt"></span>
+      <button class="x" type="button" title="Очистить" onclick="findClear()"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="frow">
+      <button class="fb" type="button" aria-pressed="false" title="Настройки поиска" onclick="fpanel('fopts',this)"><i class="gi" style="--u:url(../../assets/svg/gear.svg)"></i></button>
+      <button class="fb" type="button" aria-pressed="false" title="Список совпадений" onclick="fpanel('flist',this)"><i class="gi" style="--u:url(../../assets/svg/list-ul-solid-full.svg)"></i></button>
+      <span class="sp"></span>
+      <button class="fb" id="fprev" type="button" title="Предыдущее совпадение" onclick="findStep(-1)"><i class="gi" style="--u:url(../../assets/svg/arrow-up-dark.svg)"></i></button>
+      <button class="fb down" id="fnext" type="button" title="Следующее совпадение" onclick="findStep(1)"><i class="gi" style="--u:url(../../assets/svg/arrow-up-dark.svg)"></i></button>
+      <button class="fb" type="button" title="Закрыть поиск" onclick="findClose()"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="fpanel" id="fopts" hidden>
+      <label class="fopt"><input type="checkbox" onchange="findRun()" id="fo-diac">Учитывать диакритику</label>
+      <label class="fopt"><input type="checkbox" onchange="findRun()" id="fo-case">Учитывать регистр</label>
+      <label class="fopt"><input type="checkbox" onchange="findRun()" id="fo-word">Только целые слова</label>
+      <label class="fopt"><input type="checkbox" onchange="findRun()" id="fo-pali">Искать только в Pāḷi</label>
+      <label class="fopt"><input type="checkbox" onchange="findRun()" id="fo-tr">Искать только в переводе</label>
+    </div>
+    <div class="fpanel flist" id="flist" hidden><div class="hd" id="flist-hd">Ничего не найдено</div><div id="flist-rows"></div></div>
+  </div>
+</div>
+
+<!-- ═══ окно: избранное и история ═══ -->
+<div class="modal win" id="multi" data-open="false" onclick="if(event.target===this)closeAll()">
+  <div class="mbox tool" data-tab="fav">
+    <button class="winclose" type="button" title="Закрыть" onclick="closeAll()"><i class="fa-solid fa-xmark"></i></button>
+    <div class="tsearch">
+      <input class="f" type="search" placeholder="напр. Kāyagatā или sn56.11" aria-label="Поиск по избранному и истории">
+      <button class="go" type="button" onclick="go('results');closeAll()" title="Искать"><i class="fa-solid fa-magnifying-glass"></i></button>
+    </div>
+    <div class="ttabs">
+      <button type="button" aria-pressed="true" onclick="ttab(this,'fav')"><span class="st"><i class="gi" style="--u:url(../../assets/svg/solid-star.svg)"></i></span>Избранное</button>
+      <button type="button" aria-pressed="false" onclick="ttab(this,'4bi')">4 БИ</button>
+      <button type="button" aria-pressed="false" onclick="ttab(this,'memo')">Memo</button>
+      <button type="button" aria-pressed="false" onclick="ttab(this,'dict')">Словарь</button>
+      <span class="sp">
+        <button type="button" title="Обновить"><i class="gi" style="--u:url(../../assets/svg/rotate-right-solid-full.svg)"></i></button>
+        <button type="button" title="Очистить"><i class="fa-regular fa-trash-can"></i></button>
+      </span>
+    </div>
+    <div class="tbody">
+      <div class="tpanel" data-panel="fav">
+      <div class="tgrp"><i class="fa-solid fa-caret-down cv"></i>Избранное<button class="srt" type="button" title="Сортировка"><i class="fa-solid fa-arrow-up-long"></i><i class="fa-solid fa-arrow-down-long"></i></button></div>
+      <div class="trow"><span class="ic fav"><i class="gi" style="--u:url(../../assets/svg/solid-star.svg)"></i></span><a class="nm" href="#" onclick="go('reader');closeAll();return false">sn35.242 Dutiyadārukkhandhopamasutta</a><span class="dt">06.09.2026</span><button class="act" type="button" title="Заметка Memo"><i class="fa-solid fa-pencil"></i></button><button class="act" type="button" title="Убрать" onclick="this.closest('.trow').remove()"><i class="fa-solid fa-xmark"></i></button></div>
+      <div class="trow"><span class="ic fav"><i class="gi" style="--u:url(../../assets/svg/solid-star.svg)"></i></span><a class="nm" href="#" onclick="go('reader');closeAll();return false">kacchapa</a><span class="dt">06.09.2026</span><button class="act" type="button" title="Заметка Memo"><i class="fa-solid fa-pencil"></i></button><button class="act" type="button" title="Убрать" onclick="this.closest('.trow').remove()"><i class="fa-solid fa-xmark"></i></button></div>
+      <div class="trow"><span class="ic fav"><i class="gi" style="--u:url(../../assets/svg/solid-star.svg)"></i></span><a class="nm" href="#" onclick="go('reader');closeAll();return false">sn35.246 Vīṇopamasutta</a><span class="dt">06.09.2026</span><button class="act" type="button" title="Заметка Memo"><i class="fa-solid fa-pencil"></i></button><button class="act" type="button" title="Убрать" onclick="this.closest('.trow').remove()"><i class="fa-solid fa-xmark"></i></button></div>
+      <div class="tgrp"><i class="fa-solid fa-caret-down cv"></i>История поиска<button class="srt" type="button" title="Сортировка"><i class="fa-solid fa-arrow-up-long"></i><i class="fa-solid fa-arrow-down-long"></i></button></div>
+      <div class="trow"><i class="gi ic" style="--u:url(../../assets/svg/clock-rotate-left.svg);font-size:12px"></i><a class="nm" href="#" onclick="go('reader');closeAll();return false">sn35.246 Vīṇopamasutta</a><span class="dt">06.09.2026</span><button class="star" type="button" aria-pressed="true" onclick="starToggle(this)" title="В избранное"><i class="gi" style="--u:url(../../assets/svg/solid-star.svg)"></i></button></div>
+      <div class="trow"><i class="gi ic" style="--u:url(../../assets/svg/clock-rotate-left.svg);font-size:12px"></i><a class="nm" href="#" onclick="go('reader');closeAll();return false">sn35.245 Kiṁsukopamasutta</a><span class="dt">06.09.2026</span><button class="star" type="button" aria-pressed="false" onclick="starToggle(this)" title="В избранное"><i class="gi" style="--u:url(../../assets/svg/regular-star.svg)"></i></button></div>
+      <div class="trow"><i class="gi ic" style="--u:url(../../assets/svg/clock-rotate-left.svg);font-size:12px"></i><a class="nm" href="#" onclick="go('reader');closeAll();return false">sn35.244 Dukkhadhammasutta</a><span class="dt">06.09.2026</span><button class="star" type="button" aria-pressed="false" onclick="starToggle(this)" title="В избранное"><i class="gi" style="--u:url(../../assets/svg/regular-star.svg)"></i></button></div>
+      <div class="trow"><i class="gi ic" style="--u:url(../../assets/svg/clock-rotate-left.svg);font-size:12px"></i><a class="nm" href="#" onclick="go('reader');closeAll();return false">sn35.243 Avassutapariyāyasutta</a><span class="dt">06.09.2026</span><button class="star" type="button" aria-pressed="false" onclick="starToggle(this)" title="В избранное"><i class="gi" style="--u:url(../../assets/svg/regular-star.svg)"></i></button></div>
+      <div class="trow"><i class="gi ic" style="--u:url(../../assets/svg/clock-rotate-left.svg);font-size:12px"></i><a class="nm" href="#" onclick="go('reader');closeAll();return false">sn35.242 Dutiyadārukkhandhopamasutta</a><span class="dt">06.09.2026</span><button class="star" type="button" aria-pressed="true" onclick="starToggle(this)" title="В избранное"><i class="gi" style="--u:url(../../assets/svg/solid-star.svg)"></i></button></div>
+      <div class="trow"><i class="gi ic" style="--u:url(../../assets/svg/clock-rotate-left.svg);font-size:12px"></i><a class="nm" href="#" onclick="go('reader');closeAll();return false">sn35.241 Paṭhamadārukkhandhopamasutta</a><span class="dt">06.09.2026</span><button class="star" type="button" aria-pressed="false" onclick="starToggle(this)" title="В избранное"><i class="gi" style="--u:url(../../assets/svg/regular-star.svg)"></i></button></div>
+      <div class="trow"><i class="gi ic" style="--u:url(../../assets/svg/clock-rotate-left.svg);font-size:12px"></i><a class="nm" href="#" onclick="go('reader');closeAll();return false">sn35.240:1.5</a><span class="dt">06.09.2026</span><button class="star" type="button" aria-pressed="false" onclick="starToggle(this)" title="В избранное"><i class="gi" style="--u:url(../../assets/svg/regular-star.svg)"></i></button></div>
+      <div class="trow"><i class="gi ic" style="--u:url(../../assets/svg/clock-rotate-left.svg);font-size:12px"></i><a class="nm" href="#" onclick="go('reader');closeAll();return false">kacchapa</a><span class="dt">06.09.2026</span><button class="star" type="button" aria-pressed="true" onclick="starToggle(this)" title="В избранное"><i class="gi" style="--u:url(../../assets/svg/solid-star.svg)"></i></button></div>
+      <div class="tfoot"><a href="#" onclick="return false">← Ваша история</a><a href="#" onclick="return false">Общая история →</a></div>
+      </div>
+      <div class="tpanel" data-panel="4bi"><div class="tempty"><i class="gi" style="--u:url(../../assets/svg/dharmachakra.svg)"></i><b>4 Ariyasaccāni</b><p>Содержимое этой закладки я не видел в проде — в прототипе она пустая. Пришлите скриншот, соберу.</p></div></div>
+      <div class="tpanel" data-panel="memo"><div class="tempty"><span class="memo-mark" style="font-size:15px;color:var(--dg-accent-ink)">ME<br>MO</span><b>Memo</b><p>Содержимое этой закладки я не видел в проде — в прототипе она пустая. Пришлите скриншот, соберу.</p></div></div>
+      <div class="tpanel" data-panel="dict"><div class="tempty"><i class="fa-solid fa-book-atlas"></i><b>Словарь</b><p>Содержимое этой закладки я не видел в проде — в прототипе она пустая. Пришлите скриншот, соберу.</p></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ все интересные запросы ═══ -->
+<div class="modal" id="allq" data-open="false" onclick="if(event.target===this)closeAll()">
+  <div class="mbox">
+    <div class="mhandle"></div>
+    <div class="mhead"><b>Все интересные запросы</b><button type="button" onclick="closeAll()"><i class="fa-solid fa-xmark"></i></button></div>
+    <div class="mlist">
+      <a class="qrow" href="#" onclick="pickTo(0);closeAll();return false"><span class="tx"><b>Татхагата не признавал, что Пробудился в наивысшее, пока не…</b><em>Список для самопроверки ищущим Пробуждение</em></span><i class="fa-solid fa-angle-right"></i></a>
+      <a class="qrow" href="#" onclick="pickTo(1);closeAll();return false"><span class="tx"><b>Крайние сроки на Пробуждение для монахов и мирян от Будды</b><em>Максимум 7 и 10 лет, соответственно</em></span><i class="fa-solid fa-angle-right"></i></a>
+      <a class="qrow" href="#" onclick="pickTo(2);closeAll();return false"><span class="tx"><b>Определение понятия dukkha в суттах</b><em>Может ли быть, чтобы терминология в Учении Будды была не сквозной?</em></span><i class="fa-solid fa-angle-right"></i></a>
+      <a class="qrow" href="#" onclick="pickTo(3);closeAll();return false"><span class="tx"><b>Виды личностей в Учении Татхагаты</b><em>Начиная от 3 видов и до 10</em></span><i class="fa-solid fa-angle-right"></i></a>
+      <a class="qrow" href="#" onclick="pickTo(4);closeAll();return false"><span class="tx"><b>Упадок и Не-упадок в Учении Татхагаты</b><em>Пример: остановится на полпути — это упадок</em></span><i class="fa-solid fa-angle-right"></i></a>
+      <a class="qrow" href="#" onclick="pickTo(5);closeAll();return false"><span class="tx"><b>Благородные «Средства Передвижения»</b><em>Когда … сделано средством передвижения</em></span><i class="fa-solid fa-angle-right"></i></a>
+      <a class="qrow" href="#" onclick="pickTo(6);closeAll();return false"><span class="tx"><b>До моего пробуждения</b><em>Будда делится размышлениями и практиками, которые привели его к Пробуждению</em></span><i class="fa-solid fa-angle-right"></i></a>
+      <a class="qrow" href="#" onclick="pickTo(7);closeAll();return false"><span class="tx"><b>Джатаки из Сутт</b><em>Будда и некоторые ученики — о своих прошлых жизнях</em></span><i class="fa-solid fa-angle-right"></i></a>
+      <a class="qrow" href="#" onclick="pickTo(8);closeAll();return false"><span class="tx"><b>Благородный Глоссарий</b><em>Различные понятия в очищении благородного (Ariyassa vinaye)</em></span><i class="fa-solid fa-angle-right"></i></a>
+      <a class="qrow" href="#" onclick="pickTo(9);closeAll();return false"><span class="tx"><b>Пища для размышлений</b><em>Все случаи из Сутт, когда спрашивают: «Как вы думаете?»</em></span><i class="fa-solid fa-angle-right"></i></a>
+      <a class="qrow" href="#" onclick="pickTo(10);closeAll();return false"><span class="tx"><b>Я научу вас благородному …</b><em>Что такое благородное мытьё, слабительное, рвотное, путь и самадхи</em></span><i class="fa-solid fa-angle-right"></i></a>
+      <a class="qrow" href="#" onclick="pickTo(11);closeAll();return false"><span class="tx"><b>Комментарии Дхаммы по Дхамме</b><em>Примеры правильных комментариев из Сутт</em></span><i class="fa-solid fa-angle-right"></i></a>
+      <a class="qrow" href="#" onclick="pickTo(12);closeAll();return false"><span class="tx"><b>Бывает такой период…</b><em>Различные события, которые периодически происходят</em></span><i class="fa-solid fa-angle-right"></i></a>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ быстрые настройки: контекстные, от ползунков в поле поиска ═══ -->
+<div class="qsp" id="qsp" data-open="false">
+  <div class="hd"><b>Быстрые настройки</b><button type="button" onclick="closeAll()"><i class="fa-solid fa-xmark"></i></button></div>
+  <h4>Где искать</h4>
+  <div class="scopebox">
+    <button class="scoperow" type="button" data-st="all" onclick="sc3(this)"><span class="bx">✓</span><span class="lb">4 Никаи</span><span class="ct">4/4</span><i class="fa-solid fa-chevron-down ch"></i></button>
+    <button class="scoperow" type="button" data-st="some" onclick="sc3(this)"><span class="bx">–</span><span class="lb">Кхуддака Никая</span><span class="ct">6/20</span><i class="fa-solid fa-chevron-down ch"></i></button>
+    <button class="scoperow" type="button" data-st="none" onclick="sc3(this)"><span class="bx"></span><span class="lb">Виная</span><span class="ct">0/3</span><i class="fa-solid fa-chevron-down ch"></i></button>
+  </div>
+  <h4>Словарь</h4>
+  <select><option>Встроенный DPD</option><option>DPD онлайн</option><option>PTS Pali–English</option><option>Без словаря</option></select>
+  <div id="qs-ctx">
+    <h4>Контекст в цитатах</h4>
+    <div class="segrow"><button type="button" aria-pressed="true" onclick="sg(this)">Только строка</button><button type="button" aria-pressed="false" onclick="sg(this)">+1 строка</button><button type="button" aria-pressed="false" onclick="sg(this)">+2 строки</button></div>
+    <p class="note">Сколько строк показывать до и после найденной — с каждой стороны.</p>
+  </div>
+  <div id="qs-view">
+    <h4>Вид выдачи</h4>
+    <div class="segrow"><button type="button" aria-pressed="true" onclick="sg(this);setRes('texts')">Тексты</button><button type="button" aria-pressed="false" onclick="sg(this);setRes('words')">Слова</button></div>
+  </div>
+  <div id="qs-read">
+    <h4>Чтение</h4>
+    <div class="swrow" id="qs-variants"><span class="k">Варианты чтения<em>Alt+V</em></span><button class="sw" type="button" aria-pressed="true" onclick="tp(this)"></button></div>
+    <div class="swrow"><span class="k">Режим колонок<em>Alt+C</em></span><button class="sw" type="button" aria-pressed="false" onclick="tp(this)"></button></div>
+    <div class="swrow"><span class="k">Скрыть пунктуацию Pāḷi<em>Alt+.</em></span><button class="sw" type="button" aria-pressed="false" onclick="tp(this)"></button></div>
+  </div>
+  <h4>Диакритика Pāḷi</h4>
+  <div class="diac">
+    <button type="button">ā</button><button type="button">ī</button><button type="button">ū</button><button type="button">ṁ</button><button type="button">ñ</button>
+    <button type="button">ṅ</button><button type="button">ṭ</button><button type="button">ḍ</button><button type="button">ṇ</button><button type="button">ḷ</button>
+  </div>
+  <p class="note">Значения по умолчанию и подробный разбор по книгам — в полных настройках.</p>
+</div>
+
+<!-- ═══ панель: как искать · приложения · контакты ═══ -->
+<div class="sheet" id="sheet" data-open="false">
+  <div class="handle"></div>
+  <div class="in">
+    <button class="x" type="button" onclick="closeAll()"><i class="fa-solid fa-xmark"></i></button>
+    <h2>Как искать</h2>
+    <p class="pali" style="margin:0;font-size:15px;line-height:1.55;font-style:italic">Tāni ce sutte osāriyamānāni vinaye sandassiyamānāni na ceva sutte osaranti, na ca vinaye sandissanti, niṭṭhamettha gantabbaṁ: "addhā, idaṁ na ceva tassa bhagavato vacanaṁ; imassa ca bhikkhuno duggahita"nti. Iti hetaṁ, bhikkhave, chaḍḍeyyātha.</p>
+    <p style="margin:9px 0 0;font-size:13px;line-height:1.6;color:var(--dg-text-2)">Если при поиске в Суттах и сверке с Винаей они (учения, практики, методы, цитаты, истории, что-либо приписываемое Будде) не находятся в Суттах и не проходят сверку с Винаей, следует сделать заключение: «Определенно, это не слово Благословенного, оно ошибочно понято тем монахом». Таким образом, монахи, вам следует это отвергнуть.</p>
+    <p style="margin:11px 0 0;font-size:11.5px;color:var(--dg-text-muted)"><a href="#" onclick="go('reader');closeAll();return false">dn16</a> · <a href="#" onclick="go('reader');closeAll();return false">an4.180</a></p>
+    <div class="warn" style="margin-top:16px">
+      <p class="ttl"><i class="fa-solid fa-circle-info"></i>Пожалуйста, обратите внимание!</p>
+      <p>Переводы, словари и комментарии созданы не самим Буддой. Они могут содержать неточности, упрощения или даже серьёзные искажения ключевых положений его Учения. Поэтому их стоит изучать внимательно и с критическим подходом.</p>
+      <p>Самое важное в Учении Будды лучше изучить самостоятельно по Суттам на Пали. Хорошей отправной точкой будет Серединная Практика и Четыре Благородные Истины. Например, несколько абзацев из <a href="#" onclick="go('reader');return false">sn56.11</a>.</p>
+    </div>
+    <h2>Приложения и расширения</h2>
+    <div class="apps">
+      <a href="#"><img src="../../assets/img/buttons/google-play-cta.png" alt="Google Play"></a>
+      <a href="#"><img src="../../assets/img/buttons/apk-cta.png" alt="APK"></a>
+      <a href="#"><img src="../../assets/img/buttons/chrome-cta.png" alt="Chrome"></a>
+      <a href="#"><img src="../../assets/img/buttons/firefox-cta.png" alt="Firefox"></a>
+      <a href="#"><img src="../../assets/img/buttons/edge-cta.png" alt="Edge"></a>
+      <a href="#"><img src="../../assets/img/buttons/opera-cta.png" alt="Opera"></a>
+      <a href="#"><img src="../../assets/img/buttons/telegram-cta.png" alt="Telegram"></a>
+    </div>
+    <h2>Контакты</h2>
+    <p class="motto">Пишите о находках, ошибках и переводах. Будем вам рады.</p>
+    <div class="cts">
+      <a href="https://github.com/dhammagift" title="GitHub"><i class="fa-brands fa-github"></i></a>
+      <a href="mailto:dhamma@dhamma.gift" title="Почта"><i class="fa-solid fa-at"></i></a>
+      <a href="#" title="YouTube"><i class="fa-brands fa-youtube"></i></a>
+      <a href="#" title="WhatsApp"><i class="fa-brands fa-whatsapp"></i></a>
+      <a href="https://t.me/dhammagift" title="Telegram"><i class="fa-brands fa-telegram"></i></a>
+    </div>
+    <p class="powered">Powered by NI <span title="Natural Intelligence">*</span></p>
+    <p class="credit"><span>© 2022–2026 dhamma.gift</span><span class="dot">·</span><a href="#">Условия использования</a><span class="dot">·</span><a href="#">Политика конфиденциальности</a></p>
+  </div>
+</div>
+
+<div class="corner">
+<button class="playpill" type="button" title="Озвучить сутту"><i class="gi" style="--u:url(../../assets/svg/play.svg)"></i></button>
+<button class="uppill" type="button" title="Наверх" onclick="upTop()"><i class="fa-solid fa-arrow-up"></i></button>
+<div class="langpill" id="langpill" data-extra="3">
+    <button type="button" aria-pressed="true" onclick="langBtn(this)">Pāḷi</button>
+    <button type="button" aria-pressed="true" onclick="langBtn(this)" id="lang-main">Рус</button>
+    <button class="more" type="button" aria-expanded="false" onclick="open_('langmenu');this.ariaExpanded=String(document.getElementById('langmenu').dataset.open==='true')" title="Другие языки" aria-label="Другие языки"><span class="dots" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span></button>
+</div>
+
+
+</div>
+
+<div class="langmenu" id="langmenu" data-open="false">
+  <h5>Языки перевода</h5>
+  <button class="lrow" type="button" aria-pressed="true" onclick="lrow(this)"><span class="bx">✓</span><span class="nm">Русский</span><span class="main">основной</span></button>
+  <button class="lrow" type="button" aria-pressed="false" onclick="lrow(this)"><span class="bx"></span><span class="nm">English</span><span class="pin" onclick="setMain(event,'Eng','English')">основным</span></button>
+  <button class="lrow" type="button" aria-pressed="false" onclick="lrow(this)"><span class="bx"></span><span class="nm">Deutsch</span><span class="pin" onclick="setMain(event,'Deu','Deutsch')">основным</span></button>
+  <button class="lrow" type="button" aria-pressed="false" onclick="lrow(this)"><span class="bx"></span><span class="nm">Sinhala</span><span class="pin" onclick="setMain(event,'Sin','Sinhala')">основным</span></button>
+</div>
+
+
+<div id="demo">
+  <button type="button" id="vb" aria-pressed="false" onclick="toggleView()">Мобильный</button>
+</div>
+
+<script>
+/* Одиночный экран: переходы на другие страницы ведут в полный прототип. */
+function go(s){location.href='./D-refresh.html#'+s}
+function goFull(s){const b=document.body;
+  /* С оглавления уходим с обратной анимацией: колонки разъезжаются, потом смена экрана. */
+  const anim=b.dataset.screen==='toc'&&s!=='toc'&&!matchMedia('(prefers-reduced-motion:reduce)').matches;
+  if(anim){b.classList.add('toc-out');setTimeout(()=>{b.classList.remove('toc-out');setScreen(s)},230);
+    closeAll();document.querySelectorAll('#demo button[data-s]').forEach(x=>x.ariaPressed=String(x.dataset.s===s));return}
+  setScreen(s)}
+function setScreen(s){document.body.dataset.screen=s;closeAll();
+  document.querySelectorAll('#demo button[data-s]').forEach(b=>b.ariaPressed=String(b.dataset.s===s));window.scrollTo(0,0)}
+function syncMt(){const g=document.getElementById('mt');if(!g)return;
+  const b=g.querySelector('.fold');
+  b.ariaExpanded=String(g.dataset.folded==='false')}
+function open_(id){if(id==='drawer')syncMt();const wasOpen=document.getElementById(id).dataset.open==='true';closeAll();if(wasOpen)return;
+  document.getElementById(id).dataset.open='true';
+  const sc=document.getElementById('scrim');
+  if(sc&&!['qsp','langmenu','allq','multi','sectoc'].includes(id))sc.dataset.open='true'}
+function closeAll(){['drawer','sheet','qsp','langmenu','allq','multi','sectoc','scrim'].forEach(i=>{const e=document.getElementById(i);if(e)e.dataset.open='false'})}
+function toggleTheme(){const r=document.documentElement;setTheme(r.dataset.theme==='dark'?'light':'dark')}
+function setTheme(t){document.documentElement.dataset.theme=t}
+function starToggle(el){const on=el.ariaPressed!=='true';el.ariaPressed=String(on);
+  el.querySelector('.gi').style.setProperty('--u','url(../../assets/svg/'+(on?'solid-star':'regular-star')+'.svg)')}
+/* Свёртыватели: были декоративными, теперь действительно скрывают своё тело. */
+function foldMt(b){const g=document.getElementById('mt');
+  const nowFolded=g.dataset.folded!=='false';
+  g.dataset.folded=String(!nowFolded);b.ariaExpanded=String(nowFolded)}
+/* Продвинутый фильтр (прод-функция — не удалять): кнопка-ползунки у поля «Фильтр»
+   раскрывает билдер условий; условия можно добавлять, убирать и сбрасывать. */
+function advf(b){const p=document.getElementById('advf'),on=p.dataset.open!=='true';
+  p.dataset.open=String(on);b.ariaPressed=String(on)}
+function advfCount(){}
+/* Строка условия собирается из шаблона, а не клонированием первой строки:
+   иначе после «Очистить всё» билдер становился неработоспособным. */
+function condHtml(join){return '<div class="cond">'
+  +'<span class="join">'+join+'</span>'
+  +'<select aria-label="Поле"><option>Цитата</option><option>Сутта</option><option>Название</option><option>Слова</option><option>Переводчик</option></select>'
+  +'<select aria-label="Условие"><option>содержит</option><option>не содержит</option><option>равно</option><option>начинается с</option><option>regex</option></select>'
+  +'<input type="text" aria-label="Значение">'
+  +'<button class="rm" type="button" title="Убрать условие" onclick="rmCond(this)"><i class="fa-solid fa-xmark"></i></button>'
+  +'</div>'}
+function addCond(){const list=document.getElementById('advf-list');
+  const join=list.querySelector('.cond')?'и':'где';
+  list.insertAdjacentHTML('beforeend',condHtml(join));
+  advfCount();list.lastElementChild.querySelector('input').focus()}
+function rmCond(b){b.closest('.cond').remove();
+  const f=document.querySelector('#advf-list .cond .join');if(f)f.textContent='где';advfCount()}
+function advfClear(){document.getElementById('advf-list').innerHTML='';advfCount()}
+function fold(b){const box=b.closest('.trfilter'),on=box.dataset.folded!=='true';
+  box.dataset.folded=String(on);b.ariaExpanded=String(!on);b.textContent=on?'+':'−';b.title=on?'Развернуть':'Свернуть'}
+function foldSec(b){const s=b.closest('.tocsec'),on=s.dataset.folded!=='true';
+  s.dataset.folded=String(on);b.ariaExpanded=String(!on);b.textContent=on?'+':'−';b.title=on?'Развернуть':'Свернуть'}
+function foldGrp(b){const g=b.closest('.tocsub'),on=g.dataset.folded!=='true';
+  g.dataset.folded=String(on);b.ariaExpanded=String(!on);b.textContent=on?'+':'−';b.title=on?'Развернуть':'Свернуть'}
+function ttab(el,k){sg(el);el.closest('.mbox').dataset.tab=k}
+function sg(el){[...el.parentNode.children].forEach(b=>b.ariaPressed='false');el.ariaPressed='true'}
+function sc3(el){const o={all:'none',none:'some',some:'all'};el.dataset.st=o[el.dataset.st];
+  const bx=el.querySelector('.bx');bx.textContent=el.dataset.st==='all'?'✓':el.dataset.st==='some'?'–':'';sumScope()}
+function toggleView(){const b=document.body;const m=b.dataset.view!=='mobile';b.dataset.view=m?'mobile':'desktop';document.getElementById('vb').ariaPressed=String(m)}
+/* «Наверх»: в мобильном кадре прокручивается сам кадр, а не окно. */
+function upTop(){const sc=document.querySelector('.fscroll');
+  if(sc&&sc.scrollHeight>sc.clientHeight+2)sc.scrollTo({top:0,behavior:'smooth'});
+  else window.scrollTo({top:0,behavior:'smooth'})}
+function tp(el){el.ariaPressed=el.ariaPressed==='true'?'false':'true'}
+/* Языки в пилюле — не чекбоксы: хотя бы один текст на странице должен остаться.
+   Если гасят последний включённый, автоматически загорается тот, что выключили
+   раньше всех (при двух кнопках — просто вторая), и пилюля работает как переключатель.
+   Порядок выключения помним в data-off: чем меньше номер, тем раньше выключили. */
+let langOffSeq=0;
+function langBtn(el){const pill=el.closest('.langpill');
+  const btns=[...pill.querySelectorAll('button:not(.more)')];
+  const on=el.ariaPressed==='true';
+  if(!on){el.ariaPressed='true';delete el.dataset.off;return}
+  const others=btns.filter(b=>b!==el);
+  const stillOn=others.some(b=>b.ariaPressed==='true');
+  el.ariaPressed='false';el.dataset.off=String(++langOffSeq);
+  if(stillOn)return;
+  // гасили последний — поднимаем самый давно выключенный из остальных
+  const back=others.sort((a,b)=>(+a.dataset.off||0)-(+b.dataset.off||0))[0];
+  if(back){back.ariaPressed='true';delete back.dataset.off}}
+function lp(el){langBtn(el)}
+/* Пилюля всегда показывает Pāḷi и основной язык; остальные живут под «+N»,
+   поэтому она одинаково работает и на двух языках, и на десяти. */
+function lrow(el){const on=el.ariaPressed!=='true';el.ariaPressed=String(on);
+  el.querySelector('.bx').textContent=on?'✓':'';countExtra()}
+function setMain(ev,short,full){ev.stopPropagation();
+  const menu=document.getElementById('langmenu');
+  menu.querySelectorAll('.main').forEach(m=>m.remove());
+  const row=[...menu.querySelectorAll('.lrow')].find(r=>r.querySelector('.nm').textContent===full);
+  const pin=row.querySelector('.pin');if(pin)pin.remove();
+  const tag=document.createElement('span');tag.className='main';tag.textContent='основной';row.append(tag);
+  row.ariaPressed='true';row.querySelector('.bx').textContent='✓';
+  document.getElementById('lang-main').textContent=short;
+  document.getElementById('lang-main').ariaPressed='true';countExtra()}
+function countExtra(){const menu=document.getElementById('langmenu');
+  const rows=[...menu.querySelectorAll('.lrow')];
+  const extra=rows.filter(r=>!r.querySelector('.main')).length;
+  const on=rows.filter(r=>r.ariaPressed==='true'&&!r.querySelector('.main')).length;
+  const pill=document.getElementById('langpill');pill.dataset.extra=String(extra);
+  const b=pill.querySelector('.more');
+  b.dataset.on=String(on>0);
+  b.title=on?'Другие языки — включено: '+on:'Другие языки';
+  b.setAttribute('aria-label',b.title)}
+function md(el){el.parentNode.querySelectorAll('.mode').forEach(m=>m.ariaPressed='false');el.ariaPressed='true'}
+function setRes(r){document.body.dataset.res=r;
+  const c=document.getElementById('viewchip');c.textContent=r==='words'?'Тексты':'Слова';c.ariaPressed=String(r==='words');
+  const sg=document.querySelectorAll('#qs-view .segrow button');
+  if(sg.length){sg[0].ariaPressed=String(r==='texts');sg[1].ariaPressed=String(r==='words')}
+  document.querySelector('.rhead .n').textContent=r==='words'?'24 текста · 42 совпадения · 18 форм':'24 текста · 42 совпадения'}
+function togw(tr){const b=tr.querySelector('.tw button'),o=b.ariaExpanded!=='true';b.ariaExpanded=String(o);b.textContent=o?'▼':'►';
+  const nx=tr.nextElementSibling;
+  if(nx&&nx.classList.contains('refs')){nx.style.display=o?'':'none';return}
+  if(!o)return;
+  const c=document.createElement('tr');c.className='refs';
+  c.innerHTML='<td colspan="4"><div style="display:flex;align-items:baseline"><span class="k">Ссылки</span><span class="list"><a href="#">dn14</a><a href="#">mn85</a></span></div></td>';
+  tr.after(c)}
+function tog(tr){const b=tr.querySelector('.tw button'),o=b.ariaExpanded!=='true';b.ariaExpanded=String(o);b.textContent=o?'▼':'►';
+  const nx=tr.nextElementSibling;
+  if(nx&&nx.classList.contains('child')){nx.style.display=o?'':'none';return}
+  if(!o)return;
+  const c=document.createElement('tr');c.className='child';
+  c.innerHTML='<td colspan="9"><div class="cseg"><p class="h">Сегменты этой сутты</p><p class="h2">В прототипе раскрыта только dn15 — там показан полный вид цитаты.</p></div></td>';
+  tr.after(c)}
+function sumScope(){const ab={'4 Никаи':'Никаи','Кхуддака Никая':'КН','Виная':'Виная'};
+  const parts=[...document.querySelectorAll('.scoperow')].filter(r=>r.dataset.st!=='none').map(r=>{
+    const nm=r.querySelector('.lb').textContent.trim(),[sel,tot]=r.querySelector('.ct').textContent.trim().split('/');
+    // выбрано целиком — как в проде («4 Никаи»); частично — числом выбранных книг («6 КН»)
+    return r.dataset.st==='all'?nm:sel+' '+(ab[nm]||nm)});
+  document.getElementById('scope-summary').textContent=parts.length?parts.join(' · '):'ничего не выбрано'}
+let pickI=0;
+function pickTo(i){const t=document.getElementById('pick-track'),n=t.children.length;
+  pickI=(i+n)%n;t.style.transform='translateX('+(-pickI*100)+'%)';
+  [...document.getElementById('pick-dots').children].forEach((d,j)=>{
+    d.ariaCurrent=String(j===pickI);
+    d.dataset.d=String(Math.min(Math.abs(j-pickI),4))})}
+function pick(d){pickTo(pickI+d)}
+sumScope();countExtra();pickTo(0);
+// список разделов берём из самой сутты, а не из оглавления канона
+document.getElementById('sectoc-list').innerHTML=[...document.querySelectorAll('.sutta .sechead')].map((s,i)=>{
+  const pli=s.querySelector('.pli').textContent.trim(),ru=s.querySelector('.ru').textContent.trim();
+  return '<a href="#" onclick="closeAll();return false"><b>'+pli+'</b><em>'+ru+'</em></a>'}).join('')
+  ||'<a href="#" onclick="return false"><em>В этой сутте один раздел</em></a>';
+addEventListener('scroll',()=>{const y=scrollY||document.documentElement.scrollTop;
+  document.body.classList.toggle('far',y>420);
+  document.body.classList.toggle('scrolled',y>4)},{passive:true});
+/* ── поиск по странице: настоящий, а не декоративный ────── */
+let fMarks=[],fCur=-1;
+const fFold=s=>s.normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+function findOpen(){closeAll();document.getElementById('findbar').dataset.open='true';
+  const q=document.getElementById('fq');q.focus();q.select();findRun()}
+function findClose(){findWipe();document.getElementById('findbar').dataset.open='false'}
+function fpanel(id,btn){const p=document.getElementById(id),open=p.hidden;
+  document.querySelectorAll('.findbar .fpanel').forEach(x=>x.hidden=true);
+  document.querySelectorAll('.findbar .frow .fb[aria-pressed]').forEach(b=>b.ariaPressed='false');
+  p.hidden=!open;btn.ariaPressed=String(open)}
+function findWipe(){document.querySelectorAll('mark.fmark').forEach(m=>{
+    const t=document.createTextNode(m.textContent);m.replaceWith(t);t.parentNode.normalize()});
+  fMarks=[];fCur=-1}
+function findClear(){document.getElementById('fq').value='';findRun();document.getElementById('fq').focus()}
+function findRun(){findWipe();
+  const raw=document.getElementById('fq').value.trim();
+  const cnt=document.getElementById('fcnt'),rows=document.getElementById('flist-rows'),hd=document.getElementById('flist-hd');
+  if(!raw){cnt.textContent='';rows.innerHTML='';hd.textContent='Введите запрос';fNav();return}
+  const diac=document.getElementById('fo-diac').checked, cs=document.getElementById('fo-case').checked;
+  const word=document.getElementById('fo-word').checked;
+  const onlyP=document.getElementById('fo-pali').checked, onlyT=document.getElementById('fo-tr').checked;
+  const prep=s=>{let x=diac?s:fFold(s);return cs?x:x.toLowerCase()};
+  const needle=prep(raw);
+  const scope=document.querySelector('body[data-screen] .screen:not([style*="none"])')||document.querySelector('.screen');
+  const root=[...document.querySelectorAll('.screen')].find(s=>getComputedStyle(s).display!=='none')||scope;
+  const skip=el=>el.closest('.findbar,.drawer,.sheet,.modal,.qsp,.langmenu,.sectoc,#demo,script,style');
+  const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,{acceptNode(n){
+    if(!n.nodeValue.trim())return NodeFilter.FILTER_REJECT;
+    const p=n.parentElement;if(!p||skip(p))return NodeFilter.FILTER_REJECT;
+    if(onlyP&&!p.closest('.pli-lang,.pali,.pli,td.wd,.cseg .pli'))return NodeFilter.FILTER_REJECT;
+    if(onlyT&&!p.closest('.lang-2nd,.tr,.sec,.ru,td.ti'))return NodeFilter.FILTER_REJECT;
+    return NodeFilter.FILTER_ACCEPT}});
+  const targets=[];let n;while(n=walker.nextNode())targets.push(n);
+  for(const node of targets){
+    const text=node.nodeValue,hay=prep(text);let from=0,pieces=[],last=0;
+    while(true){const at=hay.indexOf(needle,from);if(at<0)break;
+      if(word){const a=hay[at-1],b=hay[at+needle.length];
+        if((a&&/[\p{L}\p{N}]/u.test(a))||(b&&/[\p{L}\p{N}]/u.test(b))){from=at+1;continue}}
+      pieces.push([at,at+needle.length]);from=at+needle.length}
+    if(!pieces.length)continue;
+    const frag=document.createDocumentFragment();
+    for(const [a,b] of pieces){
+      if(a>last)frag.append(document.createTextNode(text.slice(last,a)));
+      const m=document.createElement('mark');m.className='fmark';m.textContent=text.slice(a,b);
+      frag.append(m);fMarks.push(m);last=b}
+    if(last<text.length)frag.append(document.createTextNode(text.slice(last)));
+    node.parentNode.replaceChild(frag,node)}
+  cnt.textContent=fMarks.length?'1 / '+fMarks.length:'0';
+  hd.textContent=fMarks.length?'Совпадений: '+fMarks.length:'Ничего не найдено';
+  rows.innerHTML=fMarks.map((m,i)=>{
+    const host=m.closest('.g,.trow,tr,.slide,p,li,div')||m.parentElement;
+    const pali=(host.querySelector?.('.pli-lang,.pali,.pli')?.textContent||host.textContent||'').trim().slice(0,64);
+    const tr=(host.querySelector?.('.lang-2nd,.tr,.sec')?.textContent||'').trim().slice(0,72);
+    return '<button class="fmatch" type="button" onclick="findGo('+i+')"><b>'+pali+'</b>'+(tr?'<em>'+tr+'</em>':'')+'</button>'}).join('');
+  if(fMarks.length)findGo(0);else fNav()}
+function findGo(i){if(!fMarks.length)return;
+  fCur=(i+fMarks.length)%fMarks.length;
+  fMarks.forEach((m,j)=>m.dataset.cur=String(j===fCur));
+  document.querySelectorAll('.fmatch').forEach((b,j)=>b.ariaCurrent=String(j===fCur));
+  document.getElementById('fcnt').textContent=(fCur+1)+' / '+fMarks.length;
+  const r=fMarks[fCur].getBoundingClientRect();
+  const box=document.querySelector('body[data-view=mobile] .frame');
+  if(box&&getComputedStyle(box).overflowY==='auto'){const br=box.getBoundingClientRect();
+    box.scrollTop+=r.top-br.top-br.height/2}
+  else window.scrollTo({top:window.scrollY+r.top-innerHeight/2,behavior:'smooth'});
+  fNav()}
+function findStep(d){findGo(fCur+d)}
+function fNav(){const on=fMarks.length>1;
+  document.getElementById('fprev').disabled=!on;document.getElementById('fnext').disabled=!on}
+function findKey(e){if(e.key==='Enter'){e.preventDefault();findStep(e.shiftKey?-1:1)}
+  if(e.key==='Escape'){e.preventDefault();findClose()}}
+document.addEventListener('keydown',e=>{
+  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='f'){e.preventDefault();findOpen();return}
+  if(e.key==='Escape'){closeAll();
+    if(document.getElementById('findbar').dataset.open==='true')findClose()}});
+document.addEventListener('click',e=>{const p=document.getElementById('qsp');
+  if(p.dataset.open==='true'&&!p.contains(e.target)&&!e.target.closest('[onclick*="qsp"]'))p.dataset.open='false';
+  const m=document.getElementById('langmenu');
+  if(m.dataset.open==='true'&&!m.contains(e.target)&&!e.target.closest('.langpill')){m.dataset.open='false';
+    document.querySelector('.langpill .more').ariaExpanded='false'}});
+</script>
+</body></html>

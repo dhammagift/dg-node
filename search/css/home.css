@@ -38,6 +38,14 @@
    body.dg-skin-minimal) — this single shell page (search/index.html) serves home/results/reader
    alike, and the bug isn't specific to the minimal skin. */
 html, body { overflow-x: hidden; }
+/* Owner: "сдвигаются на мм инпуты между ридером и результатами" — without this, the vertical
+   scrollbar only appears once a page's content actually overflows, and since the centered
+   .dg-hero-form's width is the same 520px in results/reader/toc/404 (see body.dg-skin-minimal
+   rules below), a short results page (no scrollbar) vs a long reader page (scrollbar) differ by
+   the scrollbar's width, shifting the centered field left/right by half of it. Reserving the
+   gutter unconditionally keeps the field pixel-identical across states regardless of content
+   height. Not scoped to dg-skin-minimal, same reasoning as overflow-x above. */
+html { scrollbar-gutter: stable; }
 
 /* Owner: "текст на мобильном слишком мелкий... во всех частях... в 1.2 раза крупнее" (было 1.5 —
    owner: "слишком крупно"). Unscoped (not under body.dg-skin-minimal) on purpose, same reasoning
@@ -57,6 +65,14 @@ html, body { overflow-x: hidden; }
     html { font-size: calc(100% * var(--dg-mobile-scale)); }
 }
 
+/* Lato — the reference's typeface, self-hosted (public/overrides/fonts/), not a CDN link — the
+   "no external fonts" rule above still holds. Lato 2.015 (Debian fonts-lato, OFL): unlike the
+   Google-hosted v1 it has Cyrillic and the Pāḷi diacritics (ā ī ū ṁ ṅ ñ ṭ ḍ ṇ ḷ), so headings,
+   Russian UI and quotes all set in one face; a real Semibold for the 600 headings/labels. */
+@font-face { font-family: "Lato"; font-style: normal; font-weight: 400; font-display: swap; src: url("/assets/fonts/lato-400.woff2") format("woff2"); }
+@font-face { font-family: "Lato"; font-style: italic; font-weight: 400; font-display: swap; src: url("/assets/fonts/lato-400-italic.woff2") format("woff2"); }
+@font-face { font-family: "Lato"; font-style: normal; font-weight: 600; font-display: swap; src: url("/assets/fonts/lato-600.woff2") format("woff2"); }
+@font-face { font-family: "Lato"; font-style: normal; font-weight: 700; font-display: swap; src: url("/assets/fonts/lato-700.woff2") format("woff2"); }
 body.dg-skin-minimal {
     /* Фон страницы. Отдельным токеном, а не через --bs-body-bg: тот у Bootstrap белый ВСЕГДА —
        тёмную тему на этом сайте делает body.dark из langswitch.css, до бутстраповских переменных
@@ -80,8 +96,10 @@ body.dg-skin-minimal {
     --dg-accent-ink: #0f7c63;
     --dg-accent-dark: #0f7c63;
     --dg-accent-bg: #dff3ec;
+    /* Glyph on the accent-bg disc (tile icons, announcement close) — reference .disc color. */
+    --dg-icon-ink: #0c6a55;
     --dg-radius: 10px;
-    --dg-font: var(--bs-body-font-family);
+    --dg-font: "Lato", var(--bs-body-font-family);
     --dg-ease: cubic-bezier(0.22, 0.68, 0, 1);
     /* Боковое поле страницы: столько добавляет .container-fluid вокруг .table-wrapper. Нужно
        hero-полосе, чтобы вылезти из этого поля на всю ширину экрана (margin с минусом). На
@@ -121,6 +139,7 @@ body.dg-skin-minimal.dark {
     --dg-accent-ink: #09967a;
     --dg-accent-dark: #025242;
     --dg-accent-bg: #12241f;
+    --dg-icon-ink: #16b394;
 }
 
 /* ============================================================================
@@ -130,7 +149,6 @@ body.dg-skin-minimal.dark {
    рывком. max-height заведомо больше реальной высоты; overflow:hidden прячет остаток во время
    перехода. Шторки живут отдельно, в конце <body>, и под это схлопывание не попадают.
    ============================================================================ */
-#home-motto,
 #home-hint,
 #home-pane {
     overflow: hidden;
@@ -138,15 +156,13 @@ body.dg-skin-minimal.dark {
     opacity: 0;
     transform: translateY(-6px);
     pointer-events: none;
-    transition:
-        max-height 0.34s var(--dg-ease),
-        opacity 0.22s ease,
-        transform 0.34s var(--dg-ease),
-        margin 0.34s var(--dg-ease);
+    /* No transition anymore: the home screen's enter/exit (dg-drop-in / home-out keyframes
+       further down) already animates the tiles; this collapse ran AFTER home-out and made the
+       tiles vanish last, after everything else (owner). #home-hint keeps its own below. */
     margin: 0;
 }
+#home-hint { transition: max-height 0.34s var(--dg-ease), opacity 0.22s ease, transform 0.34s var(--dg-ease), margin 0.34s var(--dg-ease); }
 
-body.dg-state-home #home-motto,
 body.dg-state-home #home-hint,
 body.dg-state-home #home-pane {
     opacity: 1;
@@ -154,11 +170,12 @@ body.dg-state-home #home-pane {
     pointer-events: auto;
 }
 
-/* Отступ инпута от шапки — раньше держался целиком на #home-motto (девиз стоял отдельной
-   строкой прямо над .hero-row, его margin и был этим воздухом). Owner: девиз переехал в
-   #dg-topbar (round 3 правки выше), а инпут не должен был сдвигаться — теперь отступ здесь,
-   на самой .hero-row, независимо от того, где физически стоит текст девиза. */
-body.dg-state-home .hero-row { margin-top: 74px; }
+/* Отступ инпута от заголовка — раньше был большим (74px) специально, чтобы под собой
+   зарезервировать место для #dg-announce (плашка лежала АБСОЛЮТНО над полем, см. её комментарий
+   ниже). Теперь плашка в обычном потоке ПОСЛЕ поля (production-v4 redesign,
+   docs/Home-standalone.html: поле → строка области поиска → плашка → плитки), резервировать
+   тут больше нечего — просто небольшой зазор от подзаголовка. */
+body.dg-state-home .hero-row { margin-top: 22px; }
 body.dg-state-home #home-pane  { max-height: 2000px; margin: 22px 0 0; }
 /* #home-hint — position:absolute (см. .hero-row/#home-hint в search/index.html), max-height/
    opacity/transform ниже всё ещё нужны для схлопывания при уходе с главной, margin — только
@@ -174,7 +191,7 @@ body.dg-state-home #home-hint { max-height: 60px; margin-top: 8px; }
    flex-элементом и сжималась до содержимого — 269px вместо 640px, и вдобавок выравнивалась по
    базовой линии. Здесь форма — простой блок, а вся раскладка внутри у .dg-input-shell. */
 body.dg-skin-minimal #form.dg-hero-form { display: block; width: 100%; }
-body.dg-skin-minimal.dg-state-home .dg-hero-form { max-width: 640px; }
+body.dg-skin-minimal.dg-state-home .dg-hero-form { max-width: 620px; }
 body.dg-skin-minimal.dg-state-results .dg-hero-form,
 body.dg-skin-minimal.dg-state-reader .dg-hero-form,
 body.dg-skin-minimal.dg-state-toc .dg-hero-form { max-width: 520px; }
@@ -207,11 +224,20 @@ body.dg-state-home #dg-hero-band {
     /* Съедаем .mt-2 родителя: полоса должна начинаться от самого верха окна, иначе над ней
        остаётся белая щель в 8px и она перестаёт читаться как шапка. */
     margin-top: -0.5rem;
-    padding-bottom: 30px;
-    background: linear-gradient(165deg,
-        var(--dg-navy) 0%,
-        var(--dg-navy) 38%,
-        var(--dg-accent-dark) 100%);
+    padding-bottom: 24px;
+    /* No background of its own anymore — the dark color lives on #dg-hero-navbar below, sized
+       to just the navbar row, not the whole band (production-v4 redesign,
+       docs/Home-standalone.html: a slim dark bar, headline/search on the plain page below it). */
+}
+/* Full-bleed dark navbar strip, home only — same 100vw/negative-margin trick as #dg-hero-band
+   itself, just for the (much shorter) top row alone. */
+#dg-hero-navbar { display: none; }
+body.dg-state-home #dg-hero-navbar {
+    display: block;
+    width: 100vw;
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
+    background: var(--dg-navy);
 }
 .dg-hero-inner {
     max-width: 700px;
@@ -249,30 +275,47 @@ body.dg-state-home #dg-hero-band .dg-brand-logo { filter: none; }
    Только на главной. В выдаче и в чтении вывеска убирается совсем — там от знака остаётся
    ракушка внутри поля, а бургер стоит правее поля (.dg-menu-btn-hero).
    ============================================================================ */
-/* Сетка «1fr auto 1fr», а не flex со space-between (owner: "сделай чтобы Find the Truth был в
-   центре страницы"): при space-between девиз вставал в середину ОСТАТКА между вывеской и
-   бургером, а вывеска заметно шире бургера — то есть левее центра страницы. Одинаковые боковые
-   колонки ставят среднюю ровно по центру полосы, независимо от ширины вывески. */
+/* Two children only (brand, menu button) since the headline moved into its own block below
+   (#dg-hero-heading) — plain space-between, no grid/centering math needed for a middle child
+   anymore. */
+/* Geometry measured off the reference (docs/Home-standalone.html, header.bar): 60px tall strip,
+   33px content row vertically centered, 920px inner width. Fixed height rather than padding so
+   the bar reads the same regardless of what the logo/wordmark happen to measure. */
 #dg-topbar {
     display: none;
-    grid-template-columns: 1fr auto 1fr;
+    position: relative; z-index: 20; /* the Brahmi tag tooltip must paint over the content below the bar */
     align-items: center;
-    gap: 0.75rem;
-    padding: 16px 0 0;
+    justify-content: space-between;
+    gap: 10px;
+    height: 60px;
+    padding: 0;
     font-family: var(--dg-font);
 }
-body.dg-state-home #dg-topbar { display: grid; }
-/* Вывеска и бургер — по краям своих боковых колонок (по умолчанию grid растянул бы их на всю
-   колонку, и бургер уехал бы от правого края). */
-#dg-topbar > #dg-brand { justify-self: start; }
-#dg-topbar > .dg-menu-btn { justify-self: end; }
-/* На телефоне — как было до центрирования, flex со space-between (owner: "откати про Find the
-   Truth на мобильном, слишком близко стало к логотипу"). Там лого крупное и на всю ширину места
-   мало: центр страницы приходится почти вплотную к нему, и девиз слипался с вывеской. Ширина
-   экрана решает больше, чем формальная симметрия. */
-@media (max-width: 767.98px) {
-    body.dg-state-home #dg-topbar { display: flex; justify-content: space-between; }
+body.dg-state-home #dg-topbar { display: flex; }
+body.dg-state-home .dg-hero-inner { max-width: 920px; }
+
+/* Compass/theme/burger cluster, right side of the navbar row. Reference: 33px square buttons,
+   8px radius, 14px glyphs, light steel-blue ink (#cfdae5), 10px apart. */
+.dg-topbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
 }
+@media (min-width: 768px) { .dg-topbar-actions { gap: 0; } }
+body.dg-state-home #dg-topbar .dg-icon-btn {
+    width: 33px;
+    height: 33px;
+    border-radius: 8px;
+    color: #cfdae5;
+}
+body.dg-state-home #dg-topbar .dg-menu-btn svg { width: 15px; height: 15px; }
+/* compass.svg/circle-half-stroke.svg ship with a fixed mid-gray fill (#989898) for use on light
+   backgrounds elsewhere on the site — brighten them for this dark strip the same way dark-theme
+   icon adjustments already do elsewhere in this codebase (invert-based filters, see e.g.
+   .autocomplete-history-icon further down this file), rather than fork separate white asset
+   files just for this one row. opacity(0.85) lands them on the same #cfdae5-ish tone as the
+   inline-SVG burger next to them. */
+.dg-topbar-icon-img { width: 14px; height: 14px; display: block; filter: brightness(0) invert(1) opacity(0.85); }
 
 /* Бургеров в разметке два — в шапке и рядом с полем: перенести один элемент между строками
    средствами CSS нельзя, а состояния требуют разных мест. Оба открывают одно и то же меню. */
@@ -286,9 +329,17 @@ body.dg-state-toc .dg-menu-btn-hero { display: inline-flex; }
 #dg-brand {
     display: inline-flex;
     align-items: center;
-    gap: 0.55rem;
+    gap: 10px;
     text-decoration: none;
     color: var(--dg-text);
+}
+/* "Pāḷi Canon" next to the wordmark (reference header.bar: 11.5px, muted steel blue). */
+@font-face { font-family: "DG Brahmi"; font-display: swap; src: url("/assets/fonts/brahmi-subset.woff2") format("woff2"); unicode-range: U+11000-1107F; }
+.dg-brand-tag {
+    font-size: 11.5px;
+    font-weight: 400;
+    color: #93a5b8;
+    white-space: nowrap;
 }
 #dg-brand:hover { color: var(--dg-text); }
 
@@ -316,24 +367,17 @@ body.dark .dg-brand-logo { filter: none; }
    "мелко"). #dg-brand — единственный полный лого+название лок-ап, показывается только на
    главной (в выдаче/чтении остаётся только ракушка внутри поля, другая картинка) — точечный
    override, не трогает базовый размер, которым пользуются другие места (боковое меню ниже). */
-/* Owner: "ещё крупнее на 30%" — 37px × 1.3 ≈ 48px. Owner: "покрупнее на 50%" — 48px × 1.5 = 72px. */
-#dg-brand .dg-brand-logo { width: 72px; height: 72px; }
-/* Owner: "на мобильной вёрстке только лого ещё крупнее, размером как на проде" — matches the
-   legacy PHP site's actual header logo (measured live, dhamma.gift/read.php: rendered
-   width:100px, height auto ≈58px — same source image, its own natural ratio 688:399, not
-   letterboxed into a square like the 72×72 box above). */
-@media (max-width: 767px) {
-    #dg-brand .dg-brand-logo { width: 100px; height: 58px; }
-    /* Owner: "на мобильном вообще не должно быть надписи Dhamma gift только крупное лого" —
-       drop the wordmark text entirely on mobile, logo alone carries the brand there. */
-    #dg-brand .dg-brand-name { display: none; }
-}
+/* History: 34 → 37 → 48 → 72px square, and 100×58 + no wordmark on phones (owner rounds).
+   Superseded by the production-v4 redesign (docs/Home-standalone.html): the slim 60px bar
+   carries a 30px-tall logo at its natural ratio (≈52×30) with the wordmark beside it, on every
+   width — the big-logo/mobile-only-logo rules are gone with the tall band they were sized for. */
+#dg-brand .dg-brand-logo { width: auto; height: 30px; }
 
 /* Маленькая копия лого в шапке бокового меню — там та же история со светлыми лепестками. */
 .dg-drawer-head .dg-brand-logo { width: 26px; height: 26px; }
 
 .dg-brand-name {
-    font-size: 1rem;
+    font-size: 15px;
     font-weight: 600;
     letter-spacing: -0.01em;
     color: var(--dg-text);
@@ -455,21 +499,34 @@ body.dark.dg-state-toc .dg-input-shell:focus-within {
     box-shadow: 0 0 0 3px rgba(122, 122, 249, 0.6);
 }
 
-/* На полосе поле — светлая карточка, лежащая ПОВЕРХ тёмного фона: не пилюля, а прямоугольник со
-   скруглением 10px и заметной тенью (так в макете). Тень обязательна: без неё карточка сливается
-   с нижним, уже позеленевшим краем градиента. */
-/* Скругление — то же, что у поля в выдаче и в чтении (28px у .dg-input-shell выше): прямоугольник
-   с радиусом 10 из макета рядом с остальным сайтом смотрелся чужим. На главной поле только крупнее
-   и с тенью — оно лежит поверх тёмной полосы и должно от неё отделяться. */
+/* Поле на главной крупнее, чем в выдаче/чтении — оно тут центр экрана, а не строка в ряду.
+   Раньше это была светлая карточка с тенью, лежащая поверх тёмной полосы (тень нужна была,
+   чтобы отделиться от градиента); теперь поле стоит на обычном фоне страницы вместе с
+   заголовком, так что ему хватает того же бордера, что у .dg-input-shell везде — своей тени
+   и прозрачной рамки больше нет (production-v4 redesign, docs/Home-standalone.html). */
 body.dg-state-home .dg-input-shell {
-    padding: 11px 11px 11px 16px;
-    border-color: transparent;
-    box-shadow: 0 6px 18px rgba(15, 20, 15, 0.18);
+    /* Reference .search-shell: 12px corners (not the 28px pill of results/reader), the
+       stronger border tone, white fill, 10/8/10/15 padding, 10px between children. */
+    padding: 10px 8px 10px 15px;
+    gap: 10px;
+    border-radius: 12px;
+    border-color: var(--dg-border-strong);
+    background: var(--dg-surface);
 }
-body.dg-state-home .dg-input-shell:focus-within {
-    border-color: transparent;
-    box-shadow: 0 6px 18px rgba(15, 20, 15, 0.22), 0 0 0 3px rgba(255, 255, 255, 0.28);
+/* Magnifying glass inside the field, left edge (reference: 14px, muted) — home only; results/
+   reader keep the shell logo there instead (.dg-shell-logo above). */
+.dg-shell-search-ic { display: none; }
+body.dg-state-home .dg-shell-search-ic {
+    display: inline-flex;
+    flex: none;
+    color: var(--dg-text-muted);
+    line-height: 0;
 }
+/* Quick-settings sliders leave the field on the home screen — the reference moves that action
+   to the "изменить" link under the field (#home-scope-summary). The button stays in the DOM
+   (hidden): "изменить" clicks it, and openQuick() (home.js) anchors the sheet to the link when
+   the button itself has no box. Results/reader keep the sliders in the field as before. */
+body.dg-state-home #dg-quick-btn { display: none; }
 
 /* Порядок справа: сперва быстрые настройки, потом лупа. Лупа — последняя кнопка строки, у самого
    края: это действие «искать», и оно завершает ввод. Разделитель между «очистить» и парой кнопок
@@ -514,6 +571,12 @@ body.dg-state-toc .dg-shell-logo { display: inline-flex; }
 }
 body.dg-busy .dg-shell-spinner { display: block; }
 body.dg-busy #searchbtn .dg-search-icon { display: none; }
+/* Home: the button is a text pill — the spinner replaces the label (owner: label + spinner
+   side by side made the button jump in width). Same footprint: the label's line box is kept
+   by a min-width on the pill, the spinner just sits centered inside it. */
+body.dg-state-home.dg-busy .dg-shell-go-label { display: none; }
+body.dg-state-home .dg-shell-go { min-width: 74px; justify-content: center; }
+body.dg-state-home .dg-shell-spinner { width: 16px; height: 16px; margin: 2px 0; }
 @keyframes dg-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) {
     .dg-shell-spinner { animation-duration: 2s; }
@@ -567,7 +630,56 @@ body #form #paliauto.form-control {
     font-size: 1rem;
     outline: none;
 }
-body.dg-state-home #form #paliauto.searchinput { font-size: 1.12rem; }
+body.dg-state-home #form #paliauto.searchinput { font-size: 17px; font-family: var(--dg-font); }
+/* Legacy sheets (index.css & co.) pin p/span/h5/a to their own family; on the home screen
+   everything is Lato (reference), so claim the whole home column and the drawers/sheets at
+   once instead of chasing each tag. */
+body.dg-state-home #home-pane,
+body.dg-state-home #home-pane *,
+body.dg-state-home #dg-hero-band *,
+body.dg-skin-minimal .dg-sheet,
+body.dg-skin-minimal .dg-sheet *,
+body.dg-skin-minimal .dg-drawer,
+body.dg-skin-minimal .dg-drawer * { font-family: var(--dg-font); }
+
+/* ============================================================================
+   Phone layout of the home screen (owner's phone mock, 2026-09-06): no big headline, the field
+   straight under the bar with the sliders back INSIDE it (no "изменить" line), announcement
+   right below, compact tiles, compass off the bar.
+   ============================================================================ */
+@media (max-width: 767.98px) {
+    /* html prefix: the desktop show-rules for these two live further down at the same
+       specificity and would win on source order otherwise. */
+    html body.dg-state-home #dg-hero-heading { display: none; }
+    body.dg-state-home .hero-row { margin-top: 16px; }
+    body.dg-state-home #dg-quick-btn { display: inline-flex; }
+    html body.dg-state-home #home-scope-summary { display: none; }
+    body.dg-state-home #dg-topbar .dg-compass-btn-home { display: none; }
+    /* body.dg-state-home prefix: the base tile/announce rules sit further down this file at the
+       same specificity, so plain selectors here would lose on source order. */
+    /* Values below: the reference's own body[data-view="mobile"] rule set. */
+    body.dg-state-home #dg-announce { margin-top: 14px; }
+    body.dg-state-home .dg-announce-box { width: 100%; max-width: none; padding: 6px 6px 6px 10px; gap: 7px; font-size: 12px; border-radius: 10px; line-height: 1.4; }
+    body.dg-state-home .dg-announce-tag { font-size: 9.5px; padding: 2px 6px; }
+    body.dg-state-home #dg-hero-band { padding-bottom: 4px; }
+    body.dg-state-home #home-pane { margin-top: 18px; }
+    body.dg-state-home .dg-tiles { gap: 8px; padding: 0 0 4px; }
+    body.dg-state-home .dg-tile { padding: 12px 9px; gap: 6px; font-size: 13px; }
+    body.dg-state-home .dg-tile-ic { width: 36px; height: 36px; }
+    body.dg-state-home .dg-tile svg { width: 16px; height: 16px; }
+    body.dg-state-home .dg-tile-desc { font-size: 11px; line-height: 1.35; }
+    body.dg-state-home #home-slides { margin-top: 16px; }
+    body.dg-state-home .dg-slides-box { padding: 15px 4px 12px; }
+    body.dg-state-home #dg-carousel .carousel-item { padding: 0 30px; }
+    body.dg-state-home #dg-carousel .carousel-control-prev,
+    body.dg-state-home #dg-carousel .carousel-control-next { width: 28px; height: 28px; }
+    body.dg-state-home #dg-carousel .carousel-control-prev { left: 4px; }
+    body.dg-state-home #dg-carousel .carousel-control-next { right: 4px; }
+    body.dg-state-home #dg-carousel .dg-slides-arw { width: 8px; height: 13px; }
+    body.dg-state-home #dg-carousel h5 { font-size: 15px; }
+    body.dg-state-home #dg-carousel span { font-size: 12.5px; }
+    body.dg-state-home #dg-footer { margin: 24px auto 0; padding: 16px 0 30px; }
+}
 body #form #paliauto.searchinput::placeholder { color: var(--dg-text-muted); }
 /* Родной крестик type="search" (только webkit) — вместо него своя кнопка #dg-clear-btn: родной
    не поддаётся оформлению и вставал бы вплотную к нашим кнопкам. */
@@ -641,17 +753,36 @@ body #form #paliauto.searchinput::-webkit-search-cancel-button { display: none; 
    по наведению).
    transition:none по той же причине, что и у полосы: цвет здесь меняет СОСТОЯНИЕ страницы, а не
    наведение, и не должен зависеть от того, рисует ли вкладка кадры. */
+/* Text label — added to the button markup (index.html) for every state, but only shown on the
+   home screen: results/reader keep the compact icon-only button, there's no room for a label in
+   that toolbar-sized field. */
+.dg-shell-go-label { display: none; }
 body.dg-state-home .dg-shell-go,
 body:not(.dg-state-home) .dg-shell-go { transition: none; }
+/* Reference button.go: text only, 13.5px/500, 8px/16px padding, 8px corners, accent fill
+   (--dg-accent-dark: #0f7c63 light / #025242 dark — both measured off the reference). The
+   magnifying glass stays in the markup for results/reader (icon-only button there) and for the
+   busy spinner that swaps in for it; on home the label is the whole button. */
 body.dg-state-home .dg-shell-go {
-    background: var(--dg-navy);
+    background: var(--dg-accent-dark);
     color: #fff;
-    width: 34px;
-    height: 34px;
+    width: auto;
+    height: auto;
+    padding: 8px 16px;
+    border-radius: 8px;
+    gap: 0;
 }
 body.dg-state-home .dg-shell-go:hover,
-body.dg-state-home .dg-shell-go:focus-visible { background: var(--dg-navy-2); color: #fff; }
-body.dg-state-home .dg-shell-go .dg-search-icon { width: 19px; height: 19px; }
+body.dg-state-home .dg-shell-go:focus-visible { background: var(--dg-accent); color: #fff; }
+body.dg-state-home .dg-shell-go .dg-search-icon { display: none; }
+body.dg-state-home .dg-shell-go-label {
+    display: inline;
+    font-family: var(--dg-font);
+    font-size: 13.5px;
+    font-weight: 500;
+    line-height: 1.45;
+    white-space: nowrap;
+}
 
 /* Ожидание ответа поиска: пока крутится спиннер, выдачи (даже пустой) быть не должно — ради
    этого весь класс и заведён. Домашние блоки при этом НЕ прячем: смысл в том, чтобы человек
@@ -659,9 +790,21 @@ body.dg-state-home .dg-shell-go .dg-search-icon { width: 19px; height: 19px; }
 body.dg-busy #results-toolbar,
 body.dg-busy #results-divider,
 body.dg-busy #search-pane,
-body.dg-busy #reader-pane {
+body.dg-busy:not(.dg-state-reader) #reader-pane {
     display: none;
 }
+/* Reader while loading (cold load: dg-busy; in-app: .reader-pending): the toolbar and prev/next
+   rows stay in place with shimmer rows where the links will land; only #sutta is hidden. */
+body.dg-state-reader.dg-busy #sutta, #reader-pane.reader-pending #sutta { visibility: hidden; }
+#reader-pane.reader-pending #reader-toolbar .sc-ext-link { display: none; }
+body.dg-state-reader.dg-busy #reader-toolbar::before, #reader-pane.reader-pending #reader-toolbar::before,
+body.dg-state-reader.dg-busy #navigation::before, #reader-pane.reader-pending #navigation::before {
+    content: ''; display: block; height: 13px; width: 300px; max-width: 45%; border-radius: 999px;
+    background: linear-gradient(90deg, var(--dg-surface-hover) 25%, var(--dg-border) 50%, var(--dg-surface-hover) 75%);
+    background-size: 200% 100%; animation: dg-tiles-skeleton 1.4s ease-in-out infinite;
+}
+body.dg-state-reader #navigation { min-height: 34px; }
+body.dg-state-reader.dg-busy #navigation a, #reader-pane.reader-pending #navigation a { display: none; }
 body.dg-busy #variants-hint { display: none !important; }
 
 #dg-loading {
@@ -720,19 +863,31 @@ body:not(.dg-state-reader):not(.dg-state-toc) {
    d-none (display:none !important) — его перебить состоянием было нельзя, поэтому класс снят, а
    видимость целиком здесь. */
 #reader-pane { display: none; }
-/* Owner: "toc и фильтр переводчиков разлетались в свои стороны... в центре была бы сутта уже
-   ридер режим" — сутта "вырастает" из центра, пока TOC/фильтр разлетаются по бокам (см.
-   .dg-toc-leaving ниже). Анимация переигрывается только при ПЕРЕХОДЕ в ридер (display:none →
-   block снимает и заново вешает CSS-анимацию), а не при переключении между суттами внутри уже
-   открытого ридера — dgSetState() рано выходит, если dg-state-reader уже стоял (search/index.html),
-   так что #reader-pane всё это время остаётся block и анимация не перезапускается. */
-@keyframes dg-reader-enter {
-    from { opacity: 0; transform: scale(.96); }
-    to { opacity: 1; transform: scale(1); }
+/* Reader screen transition (owner spec). Enter: 380ms, scale(.94)->1, translateY(10px)->0,
+   fade in, origin 50%/40% of the viewport (40vh, not 40% of the pane — the pane is as tall as
+   the whole sutta). Plays automatically on display:none -> block (dgSetState('reader')) and is
+   restarted by hand in megareader.js between neighbouring suttas. Exit: 240ms, scale 1->.9,
+   translateY 0->-6px, fade — class .reader-out added by routeFromUrl() (search/index.html) /
+   navigateSutta() (megareader.js); the screen switches only after it finishes. */
+@keyframes dg-reader-in {
+    from { opacity: 0; transform: scale(.94) translateY(10px); }
+    to { opacity: 1; transform: none; }
 }
-body.dg-state-reader #reader-pane { display: block; animation: dg-reader-enter .28s var(--dg-ease); }
+@keyframes dg-reader-out {
+    to { opacity: 0; transform: scale(.9) translateY(-6px); }
+}
+/* No fill-mode on the enter: a filled transform (even the identity one) makes #reader-pane the
+   containing block of its position:fixed header stack (#reader-toolbar etc.), shifting it. */
+body.dg-state-reader #reader-pane { display: block; }
+/* The animation runs on #sutta (the text), not the pane: the fixed toolbar/nav rows inside the
+   pane stay put (owner: "шапка монолитна"). .reader-pending (text still loading, see the
+   skeleton rules above) keeps the stale text hidden so the enter plays once, on the NEW text;
+   .reader-in is added by buildSutta() (megareader.js) when the text is in the DOM. */
+body.dg-state-reader #sutta { transform-origin: 50% 40vh; }
+body.dg-state-reader #reader-pane.reader-in #sutta { animation: dg-reader-in 380ms var(--dg-ease); }
+body.dg-state-reader #reader-pane.reader-out #sutta { animation: dg-reader-out 240ms var(--dg-ease) both; }
 @media (prefers-reduced-motion: reduce) {
-    body.dg-state-reader #reader-pane { animation: none; }
+    body.dg-state-reader #reader-pane.reader-in #sutta, body.dg-state-reader #reader-pane.reader-out #sutta { animation: none; }
 }
 
 /* Панель TOC/навигатора — тот же приём, что #reader-pane выше. Первая, минимальная версия
@@ -776,17 +931,23 @@ body.dg-state-toc #language-button {
     padding: .75rem .9rem;
     background: var(--dg-surface);
 }
-/* Owner: "toc и фильтр переводчиков разлетались в свои стороны" — played by toc.js right before
-   navigating to a sutta (window.dgNavigateInternal), timed to finish before dg-state-toc→reader
-   switches #toc-pane to display:none (which would otherwise cut the animation off mid-flight —
-   see .dg-toc-leaving's duration mirrored in toc.js's setTimeout). Skipped when reduced motion is
-   requested — toc.js checks prefers-reduced-motion itself and navigates immediately instead of
-   adding this class. */
-.toc-main, .toc-aside {
-    transition: transform .28s var(--dg-ease), opacity .28s ease;
+/* TOC screen transition (owner spec). Enter: 340ms, list (left) from -22px, translator filter
+   (right) from +22px with a 60ms delay, both fade in; plays on display:none -> block and on the
+   rebuilt nodes of renderTopLevel(). Exit: 240ms, columns fly outward (-26px / +26px) and fade —
+   class .toc-out on #toc-pane, added by routeFromUrl() (search/index.html); the screen switches
+   only after it finishes. */
+@keyframes dg-toc-in-left { from { opacity: 0; transform: translateX(-22px); } to { opacity: 1; transform: none; } }
+@keyframes dg-toc-in-right { from { opacity: 0; transform: translateX(22px); } to { opacity: 1; transform: none; } }
+@keyframes dg-toc-out-left { to { opacity: 0; transform: translateX(-26px); } }
+@keyframes dg-toc-out-right { to { opacity: 0; transform: translateX(26px); } }
+body.dg-state-toc .toc-main { animation: dg-toc-in-left 340ms var(--dg-ease); }
+body.dg-state-toc .toc-aside { animation: dg-toc-in-right 340ms var(--dg-ease) 60ms backwards; }
+body.dg-state-toc #toc-pane.toc-out .toc-main { animation: dg-toc-out-left 240ms var(--dg-ease) both; }
+body.dg-state-toc #toc-pane.toc-out .toc-aside { animation: dg-toc-out-right 240ms var(--dg-ease) both; }
+@media (prefers-reduced-motion: reduce) {
+    body.dg-state-toc .toc-main, body.dg-state-toc .toc-aside,
+    body.dg-state-toc #toc-pane.toc-out .toc-main, body.dg-state-toc #toc-pane.toc-out .toc-aside { animation: none; }
 }
-.toc-layout.dg-toc-leaving .toc-main { transform: translateX(-40px); opacity: 0; }
-.toc-layout.dg-toc-leaving .toc-aside { transform: translateX(40px); opacity: 0; }
 .toc-aside-title { font-size: .95rem; margin: 0 0 .5rem; color: var(--dg-text-2); }
 /* Same button-reset + "+/-" affordance as the category expand-all toggle — collapsible on
    phones so arriving at /toc lands on the Pali contents, not this panel (owner: "на мобильном
@@ -1064,96 +1225,164 @@ body.dg-no-anim * {
 }
 
 /* ============================================================================
-   Девиз — на месте подписи из макета, прямо над полем
+   Заголовок главной (production-v4 redesign, docs/Home-standalone.html)
+   Крупный H1 + подзаголовок, центрированные, собственным блоком между шапкой и полем поиска —
+   не строка рядом с вывеской, как раньше (см. #dg-hero-heading в index.html).
    ============================================================================ */
-/* Девиз — обращение к читателю НА полосе, слева над полем, а не крупный заголовок по центру:
-   вывеска в этом экране одна, и вторая крупная строка спорила бы с ней. */
-#home-motto {
-    text-align: left;
-    font-family: var(--dg-font);
-    font-size: 1rem;
-    font-weight: 400;
-    line-height: 1.35;
-    color: rgba(255, 255, 255, 0.82);
+/* Sizes measured off the reference: 38px above the H1, 30px/600 H1 with 6px below, 14px
+   subtitle with 22px below it (that 22px lives on .hero-row's margin-top, see above). */
+#dg-hero-heading {
+    display: none;
+    text-align: center;
+    /* Horizontal inset already comes from the parent .dg-hero-inner — just top spacing here. */
+    padding: 38px 0 0;
 }
-
-/* Owner: "Find the Truth между лого и бургером" — now a flex child of #dg-topbar itself
-   (between #dg-brand and the menu button), not its own line below with the old
-   collapse-on-state-change spacing (margin/max-height from the shared #home-motto/#home-hint/
-   #home-pane block above). #dg-topbar #home-motto (2 IDs) outranks the old
-   `body.dg-state-home #home-motto` rule (1 ID) regardless of source order. */
-#dg-topbar #home-motto {
+body.dg-state-home #dg-hero-heading { display: block; }
+#home-motto {
+    margin: 0 0 6px;
+    font-family: var(--dg-font);
+    font-size: 30px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    line-height: 1.2;
+    /* On the plain page background now (not the dark band) — dark text in light theme, light
+       text in dark theme, same tokens the rest of the page's headings use. */
+    color: var(--dg-text);
+}
+#home-subtitle {
     margin: 0;
-    max-height: none;
-    white-space: nowrap;
-    flex: none;
+    font-family: var(--dg-font);
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--dg-text-2);
+}
+@media (max-width: 767.98px) {
+    #home-motto { font-size: 26px; }
 }
 
 /* Подсказка под полем: "искать «…»" / "похоже на ссылку на текст". На полосе — светлая плашка
    поверх тёмного фона; акцентная заливка там нечитаема.
    Owner (round 3): справа, под полем — не в потоке (иначе снова толкала бы плитки вниз), а
-   position:absolute от .hero-row (position:relative там же, search/index.html), правым краем
-   вровень с полем. Автодополнение (.ui-autocomplete, uiextra.css) висит у ЛЕВОГО края поля и
-   не шире 274px — справа под широким полем места достаточно, не пересекаются. */
+   position:absolute от .dg-hero-form (position:relative там же, search/index.html — раньше был
+   от .hero-row, но та растянута на всю строку и шире самого поля, из-за чего подсказка уезжала
+   вправо от кнопки поиска; теперь #home-hint — последний child формы, а не .hero-row, и правым
+   краем совпадает ровно с полем/кнопкой), вровень с полем. Автодополнение (.ui-autocomplete,
+   uiextra.css) висит у ЛЕВОГО края поля и не шире 274px — справа под широким полем места
+   достаточно, не пересекаются. Скрыта на мобильных (see media query below) — owner. */
 #home-hint {
     text-align: right;
     position: absolute;
     top: 100%;
     right: 0;
 }
+@media (max-width: 767.98px) { #home-hint { display: none; } }
 #home-hint .dg-hint {
     display: inline-flex;
     align-items: center;
     gap: 0.35rem;
     font-size: 0.72rem;
     font-weight: 600;
-    color: #fff;
-    background: rgba(255, 255, 255, 0.16);
+    /* Was a translucent-white chip for sitting on the dark band; the hint now sits on the plain
+       page background alongside the search field, so it takes the same neutral surface/border
+       tokens as everything else there. */
+    color: var(--dg-text-2);
+    background: var(--dg-surface-hover);
     padding: 5px 10px;
     border-radius: 7px;
 }
 
 /* ============================================================================
-   Объявление над полем поиска (#dg-announce, см. hero-row в search/index.html)
+   Строка области поиска — "N Никаи · M КН · изменить" (production-v4 redesign,
+   docs/Home-standalone.html). Текст считает renderScopeSummary() (home.js) из тех же
+   SCOPE_GROUPS/readScope(), что и обычная шторка быстрых настроек.
    ============================================================================ */
-/* Вне потока (owner: "без сдвига интерфейса"): лежит в уже существующем пустом отступе над полем
-   — body.dg-state-home .hero-row { margin-top: 74px } — поэтому и появление, и закрытие не
-   двигают ни поле, ни плитки под ним. Тот же приём, что у #home-hint выше, только сверху.
-   Только на главной: в выдаче и в чтении полосы нет, а поле переезжает наверх. */
-#dg-announce {
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 100%;
-    margin-bottom: 12px;
-    display: flex;
+/* Reference .scope-line: 11px under the field, 12.5px muted text, 7px gap, the link in accent
+   with a 13px sliders glyph 5px before the word. */
+#home-scope-summary {
+    display: none;
     justify-content: center;
-    /* Плавное появление (плашку показывает home.js через несколько секунд после загрузки).
-       Двигается только она сама — соседи стоят на месте: элемент вне потока. */
+    align-items: center;
+    gap: 7px;
+    margin-top: 11px;
+    font-family: var(--dg-font);
+    font-size: 12.5px;
+    color: var(--dg-text-muted);
+}
+body.dg-state-home #home-scope-summary { display: flex; }
+.dg-scope-change {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: none;
+    border: 0;
+    padding: 0;
+    margin: 0;
+    cursor: pointer;
+    color: var(--dg-accent-ink);
+    font-family: var(--dg-font);
+    font-size: inherit;
+}
+/* Same sliders SVG as the quick-settings button (quickButtonHtml(), home.js) — unrotated here,
+   like the reference's fa-sliders; .dg-qs-btn's 90° turn is scoped to that button only. */
+.dg-scope-change .dg-qs-gear { width: 13px; height: 13px; display: block; }
+.dg-scope-change:hover, .dg-scope-change:focus-visible { text-decoration: underline; }
+
+/* ============================================================================
+   Объявление под полем поиска (#dg-announce, см. .dg-hero-inner в search/index.html)
+   ============================================================================ */
+/* Было position:absolute НАД полем (owner: "без сдвига интерфейса") — .hero-row держал
+   зарезервированный пустой отступ специально под неё. В production-v4 redesign
+   (docs/Home-standalone.html) плашка стоит ПОСЛЕ поля, в обычном потоке — резервировать место
+   больше незачем, а появление/закрытие просто раздвигает/сдвигает то, что ниже (плитки), один
+   раз при показе, а не постоянно занимает воздух над полем. */
+/* Takes no space until an announcement is actually shown (display:none, not just opacity):
+   the one shift when it appears a couple of seconds after load is accepted (owner, 2026-09-06 —
+   a first-paint reservation was tried and rejected: it can't help the very first visit anyway). */
+#dg-announce {
+    display: none;
+    justify-content: center;
+    margin-top: 18px;
+    /* Плавное появление (плашку показывает home.js через несколько секунд после загрузки). */
     opacity: 0;
     transform: translateY(-6px);
     transition: opacity 0.35s ease, transform 0.35s ease;
 }
-#dg-announce.dg-announce-in { opacity: 1; transform: none; }
+#dg-announce.dg-announce-in { display: flex; opacity: 1; transform: none; }
 @media (prefers-reduced-motion: reduce) {
     #dg-announce { transition: none; transform: none; }
 }
 body:not(.dg-state-home) #dg-announce { display: none; }
+/* Reference .announce: 13px text, 7/8/7/13 padding, 12px corners, 9px gaps, ≤640px; a small
+   uppercase "BETA" badge in front (item.tag, announcements.json); accent-colored link and close. */
 .dg-announce-box {
     display: flex;
     align-items: center;
-    gap: 10px;
-    max-width: 100%;
-    padding: 7px 8px 7px 12px;
-    border-radius: 10px;
-    /* Светлая плашка поверх тёмной полосы — как у #home-hint: акцентная заливка там нечитаема. */
-    background: rgba(255, 255, 255, 0.16);
-    color: #fff;
+    gap: 9px;
+    max-width: 640px;
+    padding: 7px 8px 7px 13px;
+    border-radius: 12px;
+    /* Was a translucent-white chip for the dark band; now on the plain page, so it can use the
+       real accent-tinted pill everywhere else on the page uses (production-v4 redesign,
+       docs/Home-standalone.html) instead of a fake-transparent stand-in. */
+    background: var(--dg-accent-bg);
+    color: var(--dg-text-2);
     font-family: var(--dg-font);
-    font-size: 0.82rem;
-    line-height: 1.3;
+    font-size: 13px;
+    line-height: 1.45;
 }
-.dg-announce-box a { color: #fff; text-decoration: underline; }
+.dg-announce-box a { color: var(--dg-accent-ink); text-decoration: underline; }
+.dg-announce-tag {
+    flex: none;
+    padding: 2px 7px;
+    border-radius: 6px;
+    background: var(--dg-accent-dark);
+    color: #fff;
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    line-height: 1.45;
+}
 .dg-announce-close {
     flex: none;
     width: 22px;
@@ -1165,11 +1394,11 @@ body:not(.dg-state-home) #dg-announce { display: none; }
     border: 0;
     border-radius: 6px;
     background: transparent;
-    color: inherit;
-    opacity: 0.7;
+    color: var(--dg-accent-ink);
+    opacity: 0.6;
     cursor: pointer;
 }
-.dg-announce-close:hover, .dg-announce-close:focus-visible { opacity: 1; background: rgba(255, 255, 255, 0.18); }
+.dg-announce-close:hover, .dg-announce-close:focus-visible { opacity: 1; background: rgba(0, 0, 0, 0.08); }
 /* На узком экране отступ над полем тот же, но текст переносится в две строки — прижимаем плашку
    к низу отступа, чтобы она не наезжала на шапку. */
 @media (max-width: 767.98px) {
@@ -1179,12 +1408,14 @@ body:not(.dg-state-home) #dg-announce { display: none; }
 /* ============================================================================
    Плитки
    ============================================================================ */
+/* Reference nav: the full 880px content column, 4 × 1fr, 10px gaps, 24px above / 10px below. */
 .dg-tiles {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;
-    max-width: 560px;
+    max-width: 880px;
     margin: 0 auto;
+    padding: 2px 0 10px;
     /* Reserve space for the tiles home.js fills in after its menu-links.json fetch resolves —
        without this the empty grid collapses to 0 height and everything below (footer etc.)
        jumps down once tiles pop in. Sized for the default 8 tiles at 2 cols (4 rows); narrower
@@ -1202,24 +1433,28 @@ body:not(.dg-state-home) #dg-announce { display: none; }
     0% { background-position: 200% 0; }
     100% { background-position: -200% 0; }
 }
-@media (min-width: 576px) {
-    .dg-tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); max-width: 720px; min-height: 226px; }
+/* 4 columns from tablet width up; phones keep 2 (reference: 2 columns below 760px). */
+@media (min-width: 768px) {
+    .dg-tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); max-width: 880px; min-height: 336px; }
 }
 
+/* Reference .tile: 18/14 padding, 10px corners, 9px between disc/label/desc, 14px/600 label,
+   12px description. */
 .dg-tile {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    padding: 16px 6px;
+    gap: 9px;
+    padding: 18px 14px;
     background: var(--dg-surface);
     border: 1px solid var(--dg-border);
-    border-radius: 12px;
+    border-radius: 10px;
     font-family: var(--dg-font);
-    font-size: 0.92rem;
-    line-height: 1.3;
-    color: var(--dg-text-2);
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.5;
+    color: var(--dg-text);
     text-align: center;
     text-decoration: none;
     cursor: pointer;
@@ -1246,10 +1481,10 @@ body:not(.dg-state-home) #dg-announce { display: none; }
     background: var(--dg-accent-bg);
 }
 .dg-tile svg {
-    width: 24px;
-    height: 24px;
+    width: 21px;
+    height: 21px;
     display: block;
-    color: var(--dg-accent);
+    color: var(--dg-icon-ink);
 }
 /* Мини-описание под названием плитки (menu-links.json desc; включается в шторке «Настройки»).
    Мельче и бледнее подписи, не жирное, до двух строк — плитка остаётся значком с подписью, а
@@ -1258,9 +1493,10 @@ body:not(.dg-state-home) #dg-announce { display: none; }
 .dg-tile-desc {
     display: block;
     margin-top: -4px;
-    font-size: 0.74rem;
-    line-height: 1.25;
-    color: var(--dg-text-muted);
+    font-size: 12px;
+    font-weight: 400;
+    line-height: 1.4;
+    color: var(--dg-text-2);
     max-width: 100%;
     overflow: hidden;
     display: -webkit-box;
@@ -1980,6 +2216,8 @@ body.dg-drawer-open {
     transition: transform 0.15s ease;
 }
 .dg-drawer-group:not([open]) summary.dg-group-title::after { transform: rotate(-45deg); }
+/* Folded: keep the same breathing room under the title as the section body would leave. */
+.dg-drawer-group:not([open]) summary.dg-group-title { margin-bottom: 8px; }
 
 /* Список режимов чтения в бургере — тот же паттерн, что у .dg-drawer-row, плюс вторая строка
    описания под подписью. Owner: "не нужны радио кнопки" — was a radio-style filled/empty
@@ -2089,38 +2327,16 @@ body.dg-tiles-dragging { user-select: none; -webkit-user-select: none; }
    здесь, а не в общих правилах: на телефоне эта же прибавка увела бы плитки за нижний край.
    ============================================================================ */
 @media (min-width: 992px) {
-    body.dg-state-home #dg-hero-band { padding-bottom: 54px; }
-    body.dg-state-home #dg-topbar { padding-top: 26px; }
-    /* Restores the desktop-specific gap the old standalone #home-motto (64px margin + its own
-       text height) used to hold before it moved into #dg-topbar — same reasoning as the base
-       .hero-row margin-top above, just the wider desktop value. */
-    body.dg-state-home .hero-row { margin-top: 107px; }
-    body.dg-state-home #home-pane { margin-top: 40px; }
-    /* Поле на десктопе крупнее: оно — центр экрана, а не строка в ряду. */
-    body.dg-state-home .dg-input-shell { padding: 14px 14px 14px 20px; }
-    body.dg-state-home #form #paliauto.searchinput { font-size: 1.2rem; }
-    body.dg-skin-minimal.dg-state-home .dg-hero-form { max-width: 720px; }
+    /* Reference keeps one geometry for the header/heading/field at every width (60px bar,
+       38px above the H1, 620px field) — the old desktop-only enlargements of the band, the
+       topbar padding, the field and its type are gone; only the gap before the tiles stays. */
     .dg-hero-inner { max-width: 760px; }
     #home-slides { margin-top: 46px; }
     #dg-footer { margin-top: 56px; }
 }
 
-@media (min-width: 992px) {
-    .dg-tiles {
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 14px;
-        max-width: 680px;
-    }
-    .dg-tile {
-        gap: 7px;
-        padding: 14px 6px;
-        font-size: 0.82rem;
-        border-radius: 10px;
-    }
-    .dg-tile-ic { width: 38px; height: 38px; }
-    .dg-tile svg { width: 20px; height: 20px; }
-    .dg-tile-desc { font-size: 0.68rem; }
-}
+/* (Desktop used to shrink the tiles to a 680px, 38px-disc grid here; the reference keeps one
+   size for the tile grid at every width, so nothing to override anymore.) */
 
 /* Owner: "инпут оказывался у верха страницы, расстояние... сужалось... мега меню открывалось
    максимально без скролла" — toggled by scrollForMega() (home.js) right before a mega tile opens
@@ -2188,54 +2404,150 @@ body.dg-mega-compact.dg-state-home #home-pane { margin-top: 14px; }
    поля под боковые стрелки и цвет значков этих стрелок. Ни рамки, ни подложки, ни своих кнопок
    в шапке — от них наш вариант и выглядел хуже оригинала.
    ============================================================================ */
-#home-slides { margin-top: 26px; }
+/* Production-v4 redesign (docs/Home-standalone.html) restyles the block: an eyebrow row
+   ("ПОДБОРКИ" left, "Показать все" right) over a bordered 880px card with the arrows inside it
+   and pill dots under it. The Bootstrap carousel itself and the slide markup (h5/span/br/a) are
+   untouched — only wrapped and restyled; owner: "не трогай ничего по слайд шоу". */
+#home-slides { margin-top: 16px; } /* + the grid's own 10px bottom padding = reference 26px */
 #home-slides[hidden] { display: none; }
 
-/* max-width 450 и центрирование — те самые .max-w-450 и .container-lg с прода. Текст по центру:
-   на боевой главной карусель стоит внутри .container.text-center. */
 .dg-slides {
-    max-width: 450px;
+    max-width: 880px;
     margin: 0 auto;
     font-family: var(--dg-font);
     text-align: center;
 }
 
-/* Боковые стрелки Bootstrap занимают полосу поверх содержимого. Даём слайду поля, чтобы длинный
-   заголовок не заезжал под них. */
-#dg-carousel .carousel-item { padding: 0 44px; }
+/* Small uppercase section label — shared by "Подборки" and "Как искать?" (reference h2). */
+.dg-eyebrow {
+    margin: 0;
+    font-family: var(--dg-font);
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--dg-text-muted);
+}
+.dg-slides-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+/* The card. position:relative so the arrows (absolute) center on the card, not on the whole
+   carousel element that also holds the dots below the card. */
+.dg-slides-box {
+    position: relative;
+    padding: 20px 12px 16px;
+    border: 1px solid var(--dg-border);
+    border-radius: 10px;
+    background: var(--dg-surface);
+}
+/* Поля под боковые стрелки, чтобы длинный заголовок не заезжал под них. */
+#dg-carousel .carousel-item { padding: 0 48px; }
 #dg-carousel h5 {
     margin: 0 0 6px;
-    font-size: 1rem;
+    font-size: 17px;
     font-weight: 600;
-    line-height: 1.4;
+    line-height: 1.5;
     color: var(--dg-text);
 }
-#dg-carousel span { font-size: 0.88rem; line-height: 1.5; color: var(--dg-text-2); }
+/* Direct child only: the blurb text itself carries nested <span title="…"> hints (slides.json,
+   e.g. "10", "11", "12" with sutta refs on hover) that must stay inline. */
+#dg-carousel .carousel-item > span {
+    display: block;
+    margin: 0 auto;
+    max-width: 46ch;
+    font-size: 13.5px;
+    line-height: 1.55;
+    color: var(--dg-text-2);
+    text-wrap: pretty;
+}
+#dg-carousel h5 { letter-spacing: -0.01em; }
+/* Reference .track: one quick 0.32s slide on the site's own ease curve instead of Bootstrap's
+   0.6s ease-in-out — Bootstrap just waits for transitionend, so overriding the transition on
+   the items is enough. */
+#dg-carousel .carousel-item { transition: transform 0.32s var(--dg-ease); }
+/* The legacy slide markup has a <br> between the blurb and "Читать"; with the blurb now a block
+   it only adds an empty line above the link. */
+#dg-carousel .carousel-item br { display: none; }
 #dg-carousel a {
-    display: inline-block;
-    margin-top: 8px;
-    font-size: 0.88rem;
-    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 12px;
+    font-size: 13.5px;
+    font-weight: 500;
     color: var(--dg-accent-ink);
     text-decoration: none;
 }
 #dg-carousel a:hover { text-decoration: underline; }
+#dg-carousel a .dg-slides-chev { display: block; }
 
-/* Значок стрелки у Bootstrap белый — он рассчитан на фотографию во всю карточку. На светлом фоне
-   его не видно, поэтому инвертируем, как это делает штатный вариант .carousel-dark. В тёмной
-   теме белый как раз к месту, там инверсия снимается. */
+/* Arrows: 34px round buttons pinned to the card's left/right edge, vertically centered
+   (reference .arw). Bootstrap's own control is a full-height 15% strip with a white glyph
+   meant for photos — resized here, glyph darkened via invert on the light theme. */
 #dg-carousel .carousel-control-prev,
-#dg-carousel .carousel-control-next { width: 40px; opacity: 0.45; }
-#dg-carousel .carousel-control-prev:hover,
-#dg-carousel .carousel-control-next:hover { opacity: 0.9; }
-#dg-carousel .carousel-control-prev-icon,
-#dg-carousel .carousel-control-next-icon {
-    width: 1.4rem;
-    height: 1.4rem;
-    filter: invert(1) grayscale(100);
+#dg-carousel .carousel-control-next {
+    top: 50%;
+    bottom: auto;
+    width: 34px;
+    height: 34px;
+    transform: translateY(-50%);
+    border-radius: 50%;
+    opacity: 1;
 }
-body.dark #dg-carousel .carousel-control-prev-icon,
-body.dark #dg-carousel .carousel-control-next-icon { filter: none; }
+#dg-carousel .carousel-control-prev { left: 12px; }
+#dg-carousel .carousel-control-next { right: 12px; }
+#dg-carousel .carousel-control-prev:hover,
+#dg-carousel .carousel-control-next:hover { background: var(--dg-surface-hover); }
+/* Thin angle glyph (FA angle-left/right, 14px, muted) inline in renderSlides() instead of
+   Bootstrap's bold white chevron background image. */
+#dg-carousel .carousel-control-prev,
+#dg-carousel .carousel-control-next { color: var(--dg-text-muted); opacity: 1; }
+#dg-carousel .dg-slides-arw { width: 9px; height: 14px; display: block; }
+
+/* Dots under the card (reference: 6px circles, active one an 18×6 accent pill). Bootstrap's
+   .carousel-indicators is absolute at the carousel's bottom edge — made static here so it sits
+   below the card in flow; the buttons keep their data-bs-slide-to wiring. */
+#dg-carousel .carousel-indicators {
+    position: static;
+    margin: 0;
+    padding: 14px 0 0;
+    justify-content: center;
+    align-items: center;
+    gap: 6px;
+}
+/* Dots taper off with distance from the active one (reference .pick .dots: data-d = distance,
+   1 → 6px, 2 → 5px/0.8, 3 → 4px/0.6, 4+ → 3px/0.42) so a long list reads as a soft trail, not
+   a row of eighteen equal dots. data-d is set by paintSlideDots() (home.js) on every slide. */
+#dg-carousel .carousel-indicators [data-bs-target] {
+    box-sizing: border-box;
+    flex: 0 0 auto;
+    width: 6px;
+    height: 6px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: var(--dg-border-strong);
+    opacity: 1;
+    text-indent: 0;
+    transition: width 0.22s var(--dg-ease), height 0.22s var(--dg-ease),
+        background-color 0.22s var(--dg-ease), opacity 0.22s var(--dg-ease);
+}
+#dg-carousel .carousel-indicators [data-bs-target]:hover { background: var(--dg-accent-ink); }
+#dg-carousel .carousel-indicators [data-d="2"] { width: 5px; height: 5px; opacity: 0.8; }
+#dg-carousel .carousel-indicators [data-d="3"] { width: 4px; height: 4px; opacity: 0.6; }
+#dg-carousel .carousel-indicators [data-d="4"] { width: 3px; height: 3px; opacity: 0.42; }
+#dg-carousel .carousel-indicators .active {
+    width: 18px;
+    height: 6px;
+    border-radius: 999px;
+    background: var(--dg-accent);
+    opacity: 1;
+}
 
 /* «Показать все» — внизу справа, приглушённой мелочью: как .text-end.mt-2 с .text-muted.small
    на проде.
@@ -2248,23 +2560,15 @@ body.dark #dg-carousel .carousel-control-next-icon { filter: none; }
    поднимаем только сам футер — он вне карусели. Наезда нет даже на самом длинном слайде:
    «Показать все» прижата вправо, а «Читать»/текст слайда отцентрованы — по горизонтали не
    пересекаются (проверено по всем слайдам). */
-.dg-slides-foot { margin-top: 8px; text-align: right; }
-/* Подъём футера — ТОЛЬКО на мобильной (owner: "на десктопе было и так хорошо, стало плохо;
-   проблема была только на мобильных"): на широком экране слайд занимает всю коробку карусели,
-   пустой полосы под ним нет, и -34px просто ставили «Показать все» вплотную к стрелке, на одну
-   строку с «Читать». z-index здесь же — плата за отрицательный margin: подняв футер, мы заводим
-   его под правую стрелку (.carousel-control-next — absolute, во всю высоту, z-index:1 у
-   bootstrap), и она перехватывала клики (owner: "ссылка больше не работает"). */
-@media (max-width: 767.98px) {
-    .dg-slides-foot { margin-top: -34px; position: relative; z-index: 2; }
-}
+/* «Показать все» — now in the head row, right of the eyebrow (reference); the old footer under
+   the carousel (and its mobile negative-margin lift) is gone with it. */
 .dg-slides-all {
     padding: 0;
     border: 0;
     background: transparent;
     color: var(--dg-text-muted);
     font-family: var(--dg-font);
-    font-size: 0.78rem;
+    font-size: 12.5px;
     cursor: pointer;
 }
 .dg-slides-all:hover { color: var(--dg-text-2); text-decoration: underline; }
@@ -2534,7 +2838,7 @@ body.dark .ui-autocomplete .autocomplete-history-icon { filter: invert(1); opaci
 }
 #dg-footer p { margin: 0; }
 /* На главной подвал держит ту же колонку, что цитата над ним (#home-howto), а не всю ширину окна. */
-body.dg-state-home #dg-footer { max-width: 720px; margin: 64px auto 10px; padding-top: 28px; }
+body.dg-state-home #dg-footer { max-width: 880px; margin: 34px auto 10px; padding-top: 20px; }
 /* Две строки слева (ссылки; копирайт) — в 720px-колонку одна строка вместе с иконками контактов
    справа не влезает. */
 .dg-footer-main { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
@@ -2573,37 +2877,35 @@ body.dg-skin-minimal .dg-footer-link:hover { color: var(--dg-accent-ink); text-d
    На широком экране всегда видно; на узком свёрнуто (главная и так длинная), раскрывается
    .dg-anchor-revealed из revealAnchorSection(), как и раньше.
    ============================================================================ */
+/* Reference: 38px above the divider, 26px under it, the same 880px column as the tiles. */
 #home-howto {
-    max-width: 720px;
-    margin: 72px auto 0;
-    padding-top: 52px;
+    max-width: 880px;
+    margin: 38px auto 0;
+    padding-top: 26px;
     border-top: 1px solid var(--dg-border);
     font-family: var(--dg-font);
 }
-/* Та же колонка, что у сетки плиток (.dg-tiles: 720px до 992px, 680px дальше) — иначе цитата и
-   подвал выступали за плитки слева и справа (живой скрин владельца). */
-@media (min-width: 992px) {
-    #home-howto, body.dg-state-home #dg-footer { max-width: 680px; }
-}
+#home-howto .dg-eyebrow { margin-bottom: 14px; }
 body.dg-state-home #home-howto:not([hidden]) { display: block; }
 @media (max-width: 991.98px) {
     body.dg-state-home #home-howto:not(.dg-anchor-revealed) { display: none; }
 }
+/* Reference .pali / body / ref: 17px italic, 14px body up to ~585px, 12px reference line. */
 .dg-intro-pali {
-    margin: 0 0 22px;
+    margin: 0 0 12px;
     font-style: italic;
-    font-size: 1.35rem;
-    line-height: 1.5;
+    font-size: 17px;
+    line-height: 1.55;
     color: var(--dg-text);
 }
 .dg-intro-body {
-    margin: 0 0 18px;
+    margin: 0;
     max-width: 64ch;
-    font-size: 1.02rem;
-    line-height: 1.7;
+    font-size: 14px;
+    line-height: 1.6;
     color: var(--dg-text-2);
 }
-.dg-intro-ref { margin: 0 0 40px; font-size: 0.9rem; color: var(--dg-text-muted); }
+.dg-intro-ref { margin: 12px 0 22px; font-size: 12px; color: var(--dg-text-muted); }
 body.dg-skin-minimal .dg-intro-ref a, body.dg-skin-minimal .dg-intro-ref a:visited { color: var(--dg-accent-ink); text-decoration: none; }
 body.dg-skin-minimal .dg-intro-ref a:hover { text-decoration: underline; }
 /* Памятка о переводах — зелёный блок со значком «i», как было на проде (только значок был
@@ -2628,8 +2930,19 @@ body.dg-skin-minimal .dg-intro-ref a:hover { text-decoration: underline; }
     color: var(--dg-text-2);
     white-space: pre-line;
 }
-#home-howto .dg-howto-warn { padding: 20px 24px; max-width: calc(64ch + 48px); }
-#home-howto .dg-howto-warn p { font-size: 0.95rem; }
+/* Reference .warn on the home page: neutral surface + hairline (not the accent tint the About
+   sheet's copy keeps), 15/17 padding, 13.5px/600 title with a 13px glyph, 13px body. */
+#home-howto .dg-howto-warn {
+    padding: 15px 17px;
+    max-width: calc(64ch + 48px);
+    gap: 8px;
+    border: 1px solid var(--dg-border);
+    border-radius: 10px;
+    background: var(--dg-surface-hover);
+}
+#home-howto .dg-howto-warn svg { width: 13px; height: 13px; margin-top: 4px; }
+#home-howto .dg-howto-warn strong { font-size: 13.5px; margin-bottom: 8px; }
+#home-howto .dg-howto-warn p { font-size: 13px; line-height: 1.65; }
 
 /* Шторка «О проекте» (home.js openAbout): форматирование макета — заголовки-подписи как у
    списков плиток (.dg-group-title), всё по левому краю, серая карточка памятки, круглые
@@ -2762,3 +3075,496 @@ body.dg-skin-minimal .dg-contact-btn:hover {
 /* Bootstrap-тултипы (звёздочка «Powered by NI», состав области поиска) должны быть выше
    шторок/мегаменю/бургера (1081–1084) — иначе тултип внутри шторки рисовался под ней. */
 .tooltip { z-index: 1200 !important; }
+
+/* ============================================================================
+   «О проекте» как нижняя шторка (production-v4 redesign, docs/Home-standalone.html .sheet):
+   во всю ширину от нижнего края, ручка сверху, без заголовка-полосы (только ×), контент в
+   колонке 660px. Замеры — с макета. Класс вешает openAbout() (home.js); остальные шторки
+   (#dg-sheet для плиток, условия) остаются плавающей карточкой.
+   ============================================================================ */
+.dg-sheet.dg-about-sheet {
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: auto;
+    min-height: 0;
+    max-height: 84vh;
+    border: 0;
+    border-radius: 16px 16px 0 0;
+    box-shadow: 0 -10px 44px rgba(27, 29, 25, 0.16);
+    transform: translateY(100%);
+}
+.dg-sheet.dg-about-sheet.show { transform: translateY(0); }
+.dg-sheet.dg-about-sheet .dg-sheet-handle {
+    display: block;
+    width: 38px;
+    height: 4px;
+    border-radius: 999px;
+    margin: 6px auto 4px;
+}
+.dg-sheet.dg-about-sheet .dg-sheet-head {
+    position: relative;
+    max-width: 660px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 0;
+    height: 0;
+}
+.dg-sheet.dg-about-sheet .dg-sheet-head h2 { display: none; }
+.dg-sheet.dg-about-sheet .dg-sheet-close {
+    position: absolute;
+    top: 8px;
+    right: -4px;
+    z-index: 1;
+    font-size: 15px;
+    color: var(--dg-text-muted);
+}
+.dg-sheet.dg-about-sheet .dg-sheet-body.dg-about {
+    max-width: 660px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 0 0 30px;
+}
+@media (max-width: 767.98px) {
+    .dg-sheet.dg-about-sheet .dg-sheet-head,
+    .dg-sheet.dg-about-sheet .dg-sheet-body.dg-about { padding-left: 18px; padding-right: 18px; }
+    .dg-sheet.dg-about-sheet .dg-sheet-close { right: 14px; }
+}
+.dg-about-sheet .dg-about .dg-group-title { margin: 40px 0 13px; font-size: 10.5px; letter-spacing: 0.1em; }
+.dg-about-sheet .dg-about .dg-group-title:first-child { margin-top: 14px; }
+.dg-about-sheet .dg-about-pali { margin: 0; font-size: 15px; line-height: 1.55; font-style: italic; color: var(--dg-text); }
+.dg-about-sheet .dg-about-body { margin: 9px 0 0; font-size: 13px; line-height: 1.6; color: var(--dg-text-2); }
+.dg-about-sheet .dg-about-refs { margin: 11px 0 0; font-size: 11.5px; color: var(--dg-text-muted); }
+.dg-about-sheet .dg-howto-warn {
+    margin-top: 16px;
+    padding: 15px 17px;
+    gap: 8px;
+    border: 1px solid var(--dg-border);
+    border-radius: 10px;
+    background: var(--dg-surface-hover);
+}
+.dg-about-sheet .dg-howto-warn svg { width: 13px; height: 13px; margin-top: 4px; }
+.dg-about-sheet .dg-howto-warn strong { font-size: 13.5px; margin-bottom: 8px; }
+.dg-about-sheet .dg-howto-warn p { font-size: 13px; line-height: 1.65; }
+.dg-about-sheet .dg-cta { gap: 9px; }
+.dg-about-sheet .dg-cta-btn img { height: 40px; }
+.dg-about-sheet .dg-about-note { margin: 0 0 14px; font-size: 13.5px; line-height: 1.6; }
+.dg-about-sheet .dg-about-powered { font-size: 13px; }
+.dg-about-sheet .dg-about-foot { font-size: 12px; color: var(--dg-text-muted); }
+/* The floating-card variant pins #contacts to the bottom with margin-top:auto (id rule above);
+   in the bottom sheet the sections just flow with the same 40px gap as the other titles. */
+.dg-sheet-body.dg-about #contacts { margin-top: 40px; }
+.dg-about-sheet .dg-about .dg-cta { margin-bottom: 0; }
+
+/* ============================================================================
+   Phone field in results/reader/toc/404 (owner, 2026-09-06: "на мобильных инпут выглядит
+   коряво"): everything inside the pill was competing for ~330px — 26px conch, separator,
+   34px sliders, 32px glass. Tighter pill, smaller conch, no separator, 30px buttons, so the
+   text keeps the room and nothing crowds the edges.
+   ============================================================================ */
+@media (max-width: 767.98px) {
+    body.dg-state-results .dg-input-shell,
+    body.dg-state-reader .dg-input-shell,
+    body.dg-state-toc .dg-input-shell { padding: 4px 5px 4px 9px; gap: 2px; }
+    body.dg-state-results .dg-shell-logo img,
+    body.dg-state-reader .dg-shell-logo img,
+    body.dg-state-toc .dg-shell-logo img { width: 22px; height: 22px; }
+    body.dg-state-results .dg-shell-sep,
+    body.dg-state-reader .dg-shell-sep,
+    body.dg-state-toc .dg-shell-sep { display: none; }
+    body.dg-state-results .dg-input-shell .dg-shell-btn,
+    body.dg-state-reader .dg-input-shell .dg-shell-btn,
+    body.dg-state-toc .dg-input-shell .dg-shell-btn,
+    body.dg-state-results .dg-qs-btn,
+    body.dg-state-reader .dg-qs-btn,
+    body.dg-state-toc .dg-qs-btn { width: 30px; height: 30px; }
+    body.dg-state-results #form #paliauto.searchinput,
+    body.dg-state-reader #form #paliauto.searchinput,
+    body.dg-state-toc #form #paliauto.searchinput { font-size: 16px; padding-left: 6px; }
+    .hero-row { gap: 4px; }
+}
+
+/* ============================================================================
+   Выдача (production-v4 redesign, docs/Fresults-standalone.html): тот же DataTable, только
+   опрятнее — чипсы-настройки, заголовок 21px, одна строка управления, таблица без зебры с
+   волосяными разделителями и капительной шапкой, синие ссылки/оранжевые совпадения (прод-цвета),
+   раскрытая цитата на мягкой подложке. Только стили, разметка/скрипты выдачи не тронуты.
+   ============================================================================ */
+body.dg-skin-minimal {
+    /* Link blue / match orange of the results & reader — the site's own production values
+       (reader --blue, table.css --highligh-td-b), just named. */
+    --dg-tblue: #3434be;
+    --dg-match: #a8341c;
+}
+body.dg-skin-minimal.dark { --dg-tblue: #8f8fe8; --dg-match: #ff6b45; }
+/* table.css pins * { font-family: sans-serif } — the results column is Lato like the rest. */
+body.dg-state-results #results-toolbar, body.dg-state-results #results-toolbar *,
+body.dg-state-results #dynamicHeader, body.dg-state-results #dynamicHeader *,
+body.dg-state-results #search-pane, body.dg-state-results #search-pane * { font-family: var(--dg-font); }
+
+/* ряд быстрых настроек — чипсы (reference .qs) */
+body.dg-state-results #dg-toolbar-buttons { gap: 5px; padding: 9px 0 10px; border-bottom: 0; max-width: 880px; }
+body.dg-state-results #results-toolbar .btn {
+    border: 1px solid transparent;
+    background: var(--dg-surface-hover);
+    color: var(--dg-text-2);
+    font-size: 12px;
+    padding: 4px 11px;
+    margin: 0 !important;
+    line-height: 1.4;
+}
+body.dg-state-results #results-toolbar .btn:hover { border-color: var(--dg-border-strong); color: var(--dg-text); background: var(--dg-surface-hover); }
+body.dg-state-results #results-toolbar .btn.active,
+body.dg-state-results #results-toolbar .btn[aria-pressed="true"] { background: var(--dg-accent-bg); border-color: var(--dg-accent); color: var(--dg-icon-ink); }
+/* кнопки-значки: круглые, без заливки (reference .qs .ic) */
+body.dg-state-results #results-toolbar .toggle-dict-btn,
+body.dg-state-results #results-toolbar .toggle-multiselect-btn,
+body.dg-state-results #results-toolbar .toggle-mode-btn,
+body.dg-state-results #results-toolbar #btn-read-marks,
+body.dg-state-results #results-toolbar #helpMessage {
+    width: 27px; height: 27px; padding: 0; border-radius: 50%; background: none;
+    display: inline-flex; align-items: center; justify-content: center; color: var(--dg-text-muted);
+}
+body.dg-state-results #results-toolbar .toggle-dict-btn:hover,
+body.dg-state-results #results-toolbar .toggle-multiselect-btn:hover,
+body.dg-state-results #results-toolbar .toggle-mode-btn:hover,
+body.dg-state-results #results-toolbar #btn-read-marks:hover,
+body.dg-state-results #results-toolbar #helpMessage:hover { background: var(--dg-surface-hover); border-color: transparent; color: var(--dg-text); }
+body.dg-state-results #results-toolbar .btn img, body.dg-state-results #results-toolbar .btn svg { width: 14px; height: 14px; }
+
+/* заголовок выдачи (reference .rhead) */
+body.dg-state-results .resultheader { max-width: 880px; margin: 0 auto; padding: 24px 0 18px; column-gap: 10px; }
+body.dg-state-results .rh-keyword { font-size: 21px; font-weight: 600; letter-spacing: -0.01em; color: var(--dg-text); }
+body.dg-state-results .rh-stats { font-size: 13px; color: var(--dg-text-muted); }
+body.dg-state-results .resultheader .scope-info-star { font-size: 13px; color: var(--dg-text-muted); }
+body.dg-state-results .resultheader #variants-hint { font-size: 13px; }
+body.dg-state-results .resultheader #variants-hint a { color: var(--dg-tblue); }
+
+/* строка управления DataTable (reference .dtbar) */
+body.dg-state-results #search-pane { max-width: 880px; margin: 0 auto; padding-left: 0; padding-right: 0; }
+body.dg-state-results #pali_wrapper > .row, body.dg-state-results #pali-words_wrapper > .row { align-items: center; row-gap: 6px; padding: 0 0 8px; font-size: 13px; color: var(--dg-text-2); }
+body.dg-state-results #pali_wrapper .dt-length, body.dg-state-results #pali-words_wrapper .dt-length,
+body.dg-state-results #pali_wrapper .dt-search, body.dg-state-results #pali-words_wrapper .dt-search { display: flex; align-items: center; gap: 7px; }
+body.dg-state-results #pali_wrapper .dt-length select, body.dg-state-results #pali-words_wrapper .dt-length select,
+body.dg-state-results #pali_wrapper .dt-search input, body.dg-state-results #pali-words_wrapper .dt-search input {
+    border: 1px solid var(--dg-border-strong); background: var(--dg-surface); color: var(--dg-text);
+    border-radius: 7px; font: inherit; font-size: 13px; padding: 5px 8px; box-shadow: none; width: auto;
+}
+body.dg-state-results #pali_wrapper .dt-length select, body.dg-state-results #pali-words_wrapper .dt-length select { padding-right: 24px; }
+body.dg-state-results #pali_wrapper .dt-search input, body.dg-state-results #pali-words_wrapper .dt-search input { max-width: 190px; }
+body.dg-state-results #pali_wrapper .dt-search input:focus, body.dg-state-results #pali-words_wrapper .dt-search input:focus { border-color: var(--dg-accent); box-shadow: 0 0 0 3px var(--dg-accent-bg); outline: 0; }
+body.dg-state-results #pali_wrapper .dt-search label, body.dg-state-results #pali-words_wrapper .dt-search label { margin: 0; color: var(--dg-text-2); }
+body.dg-state-results #pali_wrapper .dt-search .dg-filter-plus-btn, body.dg-state-results #pali-words_wrapper .dt-search .dg-filter-plus-btn { border: 0; border-radius: 7px; background: none; color: var(--dg-text-muted); }
+body.dg-state-results #pali_wrapper .dt-search .dg-filter-plus-btn:hover, body.dg-state-results #pali-words_wrapper .dt-search .dg-filter-plus-btn:hover { background: var(--dg-surface-hover); color: var(--dg-text); }
+body.dg-state-results #pali_wrapper .dt-search .dg-filter-plus-btn[aria-pressed="true"], body.dg-state-results #pali-words_wrapper .dt-search .dg-filter-plus-btn[aria-pressed="true"] { background: var(--dg-accent-bg); color: var(--dg-icon-ink); }
+body.dg-state-results #pali_wrapper .dt-info, body.dg-state-results #pali-words_wrapper .dt-info { font-size: 12.5px; color: var(--dg-text-muted); padding: 0; }
+body.dg-state-results #pali_wrapper .dt-paging .pagination, body.dg-state-results #pali-words_wrapper .dt-paging .pagination { gap: 2px; margin: 0; }
+body.dg-state-results #pali_wrapper .dt-paging .page-link, body.dg-state-results #pali-words_wrapper .dt-paging .page-link {
+    min-width: 29px; height: 29px; padding: 0 6px; display: inline-flex; align-items: center; justify-content: center;
+    border: 1px solid transparent; border-radius: 7px; background: none; color: var(--dg-text-muted); font-size: 12.5px; box-shadow: none;
+}
+body.dg-state-results #pali_wrapper .dt-paging .page-link:hover, body.dg-state-results #pali-words_wrapper .dt-paging .page-link:hover { border-color: var(--dg-border-strong); background: var(--dg-surface); color: var(--dg-text); }
+body.dg-state-results #pali_wrapper .dt-paging .page-item.active .page-link, body.dg-state-results #pali-words_wrapper .dt-paging .page-item.active .page-link { color: var(--dg-text); font-weight: 700; background: none; border-color: transparent; }
+body.dg-state-results #pali_wrapper .dt-paging .page-item.disabled .page-link, body.dg-state-results #pali-words_wrapper .dt-paging .page-item.disabled .page-link { color: var(--dg-text-muted); opacity: 0.5; }
+
+/* сама таблица (reference table.dt): без зебры, hairline между строками, hover-подсветка */
+body.dg-state-results #search-pane table.dataTable {
+    --bs-table-bg: transparent; --bs-table-striped-bg: transparent; --bs-table-color: var(--dg-text);
+    --bs-table-hover-bg: var(--dg-surface-hover); --bs-table-hover-color: var(--dg-text);
+    --bs-table-border-color: var(--dg-border);
+    font-size: 14px; border-top: 1px solid var(--dg-border); margin-top: 6px;
+}
+body.dg-state-results #search-pane table.dataTable > thead > tr > th {
+    font-size: 11.5px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--dg-text-muted);
+    padding: 9px 10px; border-bottom: 1px solid var(--dg-border-strong); background: none; white-space: nowrap;
+}
+body.dg-state-results #search-pane table.dataTable > thead > tr > th:hover { color: var(--dg-text); }
+body.dg-state-results #search-pane table.dataTable > tbody > tr > td { padding: 10px; border-bottom: 1px solid var(--dg-border); vertical-align: top; line-height: 1.45; }
+body.dg-state-results #search-pane table.dataTable > tbody > tr.child > td { background: var(--dg-surface-hover); padding: 14px 16px 16px 24px; }
+body.dg-state-results #search-pane table.dataTable td.dt-type-numeric, body.dg-state-results #search-pane table.dataTable th.dt-type-numeric { text-align: right; font-variant-numeric: tabular-nums; }
+body.dg-state-results #search-pane a.mainLink { color: var(--dg-tblue); font-weight: 500; }
+body.dg-state-results #search-pane a.mainLink:hover { text-decoration: underline; }
+body.dg-state-results #search-pane .dg-title-pali { font-weight: 600; letter-spacing: -0.005em; color: var(--dg-text); }
+body.dg-state-results #search-pane td .dg-title-lang.text-muted { color: var(--dg-text-muted) !important; }
+body.dg-state-results #search-pane td .text-muted { color: var(--dg-text-2) !important; }
+body.dg-state-results #search-pane b.match, body.dg-state-results #search-pane b { color: var(--dg-match); font-weight: 600; }
+body.dg-state-results #search-pane a.mirror-link { font-size: 12.5px; padding: 1px 3px; border-radius: 4px; color: var(--dg-tblue); }
+body.dg-state-results #search-pane a.mirror-link:hover { background: var(--dg-accent-bg); text-decoration: underline; }
+/* раскрытая цитата (reference .cseg) */
+body.dg-state-results #search-pane ul.dtr-details { max-width: 76ch; }
+body.dg-state-results #search-pane ul.dtr-details > li { border: 0; padding: 0; }
+body.dg-state-results #search-pane .quote-segment .pli-lang { font-size: 14.5px; line-height: 1.6; color: var(--dg-text); }
+body.dg-state-results #search-pane .quote-segment .right-column .quote { font-size: 13.5px; line-height: 1.6; color: var(--dg-text-2) !important; font-weight: 400; }
+/* ссылки под таблицей (reference .dtlinks) */
+body.dg-state-results #search-pane .dt-buttons { gap: 3px; padding: 10px 0 40px; }
+body.dg-state-results #search-pane .dt-buttons .btn {
+    border: 0; background: none; box-shadow: none; font-size: 13px; color: var(--dg-tblue);
+    padding: 4px 8px; border-radius: 6px; text-decoration: none;
+}
+body.dg-state-results #search-pane .dt-buttons .btn:hover { background: var(--dg-accent-bg); text-decoration: underline; color: var(--dg-tblue); }
+/* угол: стрелка "наверх" вплотную к кнопке языка (reference .corner gap 5px); сама кнопка языка
+   и её цвета/прозрачность — как были (owner). */
+body #scrollToTopBtn { right: 121px; }
+@media (max-width: 767.98px) {
+    body.dg-state-results #search-pane table.dataTable > tbody > tr > td,
+    body.dg-state-results #search-pane table.dataTable > thead > tr > th { padding: 9px 7px; }
+    body.dg-state-results #search-pane table.dataTable > tbody > tr.child > td { padding: 12px 10px 14px 14px; }
+    body.dg-state-results .resultheader { padding: 16px 0 12px; }
+}
+/* --- results skin, round 2 --- */
+/* zebra: legacy/bootstrap striping sets the row background per nth-child — kill it at the cell
+   level (reference: no stripes, hairlines + hover only) */
+body.dg-state-results #search-pane table.dataTable > tbody > tr > * { --bs-table-bg-type: transparent; --bs-table-color-type: inherit; background-color: transparent; box-shadow: none; }
+body.dg-state-results #search-pane table.dataTable > tbody > tr:not(.child):hover > * { background-color: var(--dg-surface-hover); }
+/* control row: 13px labels (legacy label sizing pushed them to ~18px), one line on desktop */
+body.dg-state-results #pali_wrapper label, body.dg-state-results #pali-words_wrapper label { font-size: 13px; margin: 0; color: var(--dg-text-2); font-weight: 400; }
+@media (min-width: 768px) {
+body.dg-state-results #pali_wrapper .dt-search, body.dg-state-results #pali-words_wrapper .dt-search { flex-wrap: nowrap; justify-content: flex-end; margin-bottom: 0; }
+body.dg-state-results #pali_wrapper .dt-paging, body.dg-state-results #pali-words_wrapper .dt-paging { display: flex; justify-content: center; }
+body.dg-state-results #pali_wrapper > .row:first-of-type > .col-md-5, body.dg-state-results #pali-words_wrapper > .row:first-of-type > .col-md-5 { display: flex; justify-content: center; }
+}
+body.dg-state-results #pali_wrapper .dt-length select, body.dg-state-results #pali-words_wrapper .dt-length select { min-width: 64px; }
+/* search shell on results/reader/toc (reference .shell): neutral pill, round bordered sliders and
+   search buttons, conch 20px — replaces the old gray/#42426a field. */
+body.dg-state-results .dg-input-shell, body.dg-state-reader .dg-input-shell, body.dg-state-toc .dg-input-shell {
+    background: var(--dg-surface-hover); border-color: var(--dg-border); padding: 5px 6px 5px 14px; gap: 6px;
+}
+/* Dark: the filled #42426a shell from production stays (rule above) — owner: "с заливкой и стильнее". */
+body.dg-state-results .dg-input-shell:focus-within, body.dg-state-reader .dg-input-shell:focus-within, body.dg-state-toc .dg-input-shell:focus-within,
+body.dark.dg-state-results .dg-input-shell:focus-within, body.dark.dg-state-reader .dg-input-shell:focus-within, body.dark.dg-state-toc .dg-input-shell:focus-within { border-color: var(--dg-accent); box-shadow: 0 0 0 3px var(--dg-accent-bg); }
+body.dg-state-results .dg-shell-logo img, body.dg-state-reader .dg-shell-logo img, body.dg-state-toc .dg-shell-logo img { width: 20px; height: 20px; opacity: 0.85; }
+body.dg-state-results #form #paliauto.searchinput, body.dg-state-reader #form #paliauto.searchinput, body.dg-state-toc #form #paliauto.searchinput,
+body.dark.dg-state-results #form #paliauto.searchinput, body.dark.dg-state-reader #form #paliauto.searchinput, body.dark.dg-state-toc #form #paliauto.searchinput { color: var(--dg-text); font-family: var(--dg-font); font-size: 16px; }
+body.dg-state-results .dg-input-shell .dg-shell-btn, body.dg-state-reader .dg-input-shell .dg-shell-btn, body.dg-state-toc .dg-input-shell .dg-shell-btn { color: var(--dg-text-muted); }
+body.dg-state-results .dg-shell-sep, body.dg-state-reader .dg-shell-sep, body.dg-state-toc .dg-shell-sep { display: none; }
+body.dg-state-results .dg-qs-btn, body.dg-state-reader .dg-qs-btn, body.dg-state-toc .dg-qs-btn,
+body.dg-state-results .dg-shell-go, body.dg-state-reader .dg-shell-go, body.dg-state-toc .dg-shell-go {
+    width: 34px; height: 34px; border: 1px solid var(--dg-border-strong); background: var(--dg-surface); color: var(--dg-text-2); --dg-qs-bg: var(--dg-surface); --dg-qs-fg: var(--dg-text-2);
+    transition: border-color .15s var(--dg-ease), color .15s var(--dg-ease);
+}
+body.dg-state-results .dg-qs-btn:hover, body.dg-state-reader .dg-qs-btn:hover, body.dg-state-toc .dg-qs-btn:hover,
+body.dg-state-results .dg-shell-go:hover, body.dg-state-reader .dg-shell-go:hover, body.dg-state-toc .dg-shell-go:hover { border-color: var(--dg-accent); color: var(--dg-accent-ink); background: var(--dg-surface); --dg-qs-bg: var(--dg-surface); --dg-qs-fg: var(--dg-accent-ink); }
+@media (max-width: 767.98px) {
+    body.dg-state-results .dg-input-shell, body.dg-state-reader .dg-input-shell, body.dg-state-toc .dg-input-shell { padding: 4px 5px 4px 10px; gap: 4px; }
+    body.dg-state-results .dg-qs-btn, body.dg-state-reader .dg-qs-btn, body.dg-state-toc .dg-qs-btn,
+    body.dg-state-results .dg-shell-go, body.dg-state-reader .dg-shell-go, body.dg-state-toc .dg-shell-go { width: 30px; height: 30px; }
+}
+
+/* ============================================================================
+   Ридер (production-v4 redesign, docs/design-system/.../G-reader.html): та же разметка
+   megareader.js, только типографика/отступы по макету — колонка 45rem, пали 15.5px, перевод
+   14.5px приглушённо, тулбар ссылок/значков, prev/next, заметка, футер: источники → prev/next
+   → инструменты → права. Угол: озвучка, «наверх», пилюля языков (цвета — прежней кнопки языка).
+   ============================================================================ */
+body.dg-state-reader #reader-pane, body.dg-state-reader #reader-pane * { font-family: var(--dg-font); }
+body.dg-state-reader #reader-toolbar .sc-link a, body.dg-state-reader #top-links-container .sc-link a, body.dg-state-reader #bottom-links-container .sc-link a {
+    font-size: 13px; padding: 3px 6px; border-radius: 6px; color: var(--dg-tblue); text-decoration: none; white-space: nowrap;
+}
+body.dg-state-reader #reader-toolbar .sc-link a:hover, body.dg-state-reader #bottom-links-container .sc-link a:hover { background: var(--dg-accent-bg); }
+body.dg-state-reader #reader-toolbar > a, body.dg-state-reader #reader-toolbar > button:not(#smart-toc-btn) {
+    width: 29px; height: 29px; border-radius: 7px; display: inline-flex; align-items: center; justify-content: center; color: var(--dg-text-muted);
+}
+body.dg-state-reader #reader-toolbar > a:hover { background: var(--dg-surface-hover); color: var(--dg-text); }
+body.dg-state-reader #smart-toc-btn {
+    border: 1px solid var(--dg-border); background: var(--dg-surface); border-radius: 999px; font-size: 12.5px; color: var(--dg-text-2); padding: 4px 11px; max-width: 170px; flex: 0 1 auto; min-width: 0;
+}
+@media (max-width: 767.98px) { body.dg-state-reader #smart-toc-btn { max-width: 96px; padding: 4px 8px; } }
+body.dg-state-reader #smart-toc-btn:hover { border-color: var(--dg-border-strong); color: var(--dg-text); }
+body.dg-state-reader #reader-pane .navigation { font-size: 13px; padding: 2px 0 11px; }
+body.dg-state-reader #reader-pane .navigation a { color: var(--dg-tblue); display: inline-flex; align-items: center; gap: 6px; }
+body.dg-state-reader #reader-pane .navigation a:hover { text-decoration: underline; }
+body.dg-state-reader #navigation { border-bottom: 1px solid var(--dg-border); }
+body.dg-state-reader #navigation-bottom { border-top: 1px solid var(--dg-border); padding-top: 12px; max-width: 45rem; margin: 0 auto; }
+body.dg-state-reader .warning-container p.warning { margin: 14px auto 0; max-width: 60ch; text-align: center; font-size: 13px; line-height: 1.55; color: var(--dg-match); }
+body.dg-state-reader .warning-container p.warning a { color: inherit; }
+body.dg-state-reader .warning-container .close-warning { color: var(--dg-match); padding-left: 4px; cursor: pointer; }
+body.dg-state-reader #sutta { max-width: 45rem; margin: 0 auto; padding-bottom: 40px; }
+body.dg-state-reader #sutta header { margin: 22px auto 0; text-align: center; }
+body.dg-state-reader #sutta header ul { list-style: none; padding: 0; margin: 0; }
+body.dg-state-reader #sutta header li.division .pli-lang { font-size: 15px; color: var(--dg-text); }
+body.dg-state-reader #sutta header li.division .right-column .quote { font-size: 13.5px; color: var(--dg-text-muted); }
+body.dg-state-reader #sutta h1 .pli-lang { font-size: 28px; font-weight: 700; letter-spacing: -0.015em; color: var(--dg-text); }
+body.dg-state-reader #sutta h1 .right-column .quote { font-size: 21px; font-weight: 600; color: var(--dg-text-2); letter-spacing: -0.01em; }
+body.dg-state-reader #sutta h2 { margin: 26px 0 14px; }
+/* Owner: "ИИ сделал пример с мокапа основным" — this used to hardcode var(--dg-match) (the
+   search-keyword highlight color) + an accent-bg pill on EVERY h2 (every chapter heading in the
+   whole reader), permanently looking "highlighted/matched". That look was only ever meant to
+   demo the reader's real match/active-word highlighting (body.dg-state-reader #sutta b.match,
+   .finder below) — a plain heading with no active word/search match should read like h1 above. */
+body.dg-state-reader #sutta h2 .pli-lang { font-size: 19px; font-weight: 700; color: var(--dg-text); }
+body.dg-state-reader #sutta h2 .right-column .quote { font-size: 18px; font-weight: 600; color: var(--dg-text-2); }
+body.dg-state-reader #sutta p .pli-lang { font-size: 15.5px; line-height: 1.62; color: var(--dg-text); }
+body.dg-state-reader #sutta p .right-column .quote, body.dg-state-reader #sutta .lang-2nd { font-size: 14.5px; line-height: 1.62; color: var(--dg-text-2); }
+body.dg-state-reader #sutta b.match, body.dg-state-reader #sutta .finder { color: var(--dg-match); font-weight: 600; }
+body.dg-state-reader #bottom-links-container { max-width: 45rem; margin: 0 auto; }
+body.dg-state-reader #bottom-links-container .sc-link { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px; padding: 6px 0 14px; margin: 0; }
+body.dg-state-reader #bottom-links-container .sc-link a { font-size: 14px; padding: 3px 7px; }
+body.dg-state-reader #reader-pane .links-area { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; padding: 18px 0 6px; }
+body.dg-state-reader #reader-pane .links-area a { width: 36px; height: 36px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; }
+body.dg-state-reader #reader-pane .links-area a:hover { background: var(--dg-surface-hover); }
+body.dg-state-reader #reader-pane > hr { display: none; }
+
+/* --- corner: TTS · up · language pill. Pill colors = the old #language-button (owner). --- */
+body.dg-state-reader #language-button { display: none !important; }
+.dg-lpill {
+    position: fixed; right: 20px; bottom: 30px; z-index: 100;
+    display: flex; align-items: center; gap: 3px; padding: 2px; height: 38px; box-sizing: border-box;
+    background: rgb(221, 221, 221); border: 2px solid #5a5a5a; border-radius: 32px;
+    color: rgb(4, 1, 19); opacity: 0.8; font-family: var(--dg-font);
+    transition: opacity 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
+}
+.dg-lpill[hidden], body:not(.dg-state-reader):not(.dg-state-results) .dg-lpill, body.dg-busy .dg-lpill { display: none; } /* reader + results corner control */
+body.dg-state-results #language-button { display: none !important; }
+.dg-lpill:hover { opacity: 1; }
+.dg-lpill button { border: 0; background: none; color: inherit; font: inherit; font-size: 13px; line-height: 1; padding: 0 9px; height: 30px; border-radius: 30px; cursor: pointer; opacity: 0.6; transition: background-color .15s ease, opacity .15s ease; }
+/* Owner: the lit segment must read as "on" without hovering (translucent blue), and hover
+   only reacts on the lit segment — the others get no hover at all. */
+.dg-lpill button[aria-pressed="true"] { opacity: 1; background: rgba(52, 52, 190, 0.55); color: #fff; font-weight: 600; }
+.dg-lpill button[aria-pressed="true"]:hover { background: #3434be; }
+.dg-lpill .dg-lpill-more { width: 26px; padding: 5px 0; display: grid; place-items: center; opacity: 0.7; }
+.dg-lpill .dg-lpill-more:hover { opacity: 1; }
+.dg-lpill .dg-dots { display: grid; grid-template-columns: repeat(3, 2.5px); grid-auto-rows: 2.5px; gap: 2.5px; }
+.dg-lpill .dg-dots i { display: block; width: 2.5px; height: 2.5px; border-radius: 50%; background: currentColor; }
+body.dark .dg-lpill { background: #42426a; color: rgb(221, 221, 221); }
+body.dark .dg-lpill button[aria-pressed="true"] { background: rgba(80, 80, 230, 0.6); }
+body.dark .dg-lpill button[aria-pressed="true"]:hover { background: #5050f0; }
+@media (max-width: 767.98px) { .dg-lpill { right: 12px; bottom: 14px; } .dg-lpill button { font-size: 12.5px; padding: 0 8px; } }
+
+/* "Языки перевода" popover — the pill's six-dot button (production-v4 mock,
+   docs/Fresults-standalone.html: .langmenu/.lrow). STAGE 1 UI only, see the "без логики"
+   comment in home.js (dgToggleLangMenu) — this is just the shell: hover-reveal "сделать
+   основным" + a static tag on the current main row, not wired to the reader yet.
+   Uses the app's own surface/border/accent tokens (design-system, always in scope — see
+   body.dg-skin-minimal below), not the mockup's literal colors: it sits right above the
+   legacy-styled .dg-lpill on purpose (same modern-card look as #dg-quick-btn's own sheet). */
+.dg-lpmenu {
+    position: fixed; right: 20px; bottom: 76px; z-index: 101;
+    min-width: 210px; max-width: 260px; padding: 6px;
+    background: var(--dg-surface); border: 1px solid var(--dg-border); border-radius: 12px;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, .18); font-family: var(--dg-font);
+}
+.dg-lpmenu[hidden] { display: none; }
+.dg-lpmenu-title { padding: 6px 8px 4px; font-size: 10.5px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--dg-text-muted); }
+.dg-lpmenu-row { display: flex; align-items: center; gap: 8px; padding: 7px 8px; border-radius: 8px; cursor: pointer; }
+.dg-lpmenu-row:hover { background: var(--dg-surface-hover); }
+.dg-lpmenu-row input.dg-check { width: 16px; height: 16px; flex: none; margin: 0; accent-color: var(--dg-accent); cursor: pointer; }
+.dg-lpmenu-name { margin-right: auto; font-size: 13.5px; color: var(--dg-text); }
+.dg-lpmenu-tag { display: none; font-size: 10px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: #fff; background: var(--dg-accent); padding: 2px 6px; border-radius: 5px; }
+.dg-lpmenu-row.is-main .dg-lpmenu-tag { display: inline-block; }
+.dg-lpmenu-pin { border: 0; background: none; font: inherit; font-size: 10.5px; color: var(--dg-text-muted); padding: 3px 6px; border-radius: 5px; opacity: 0; transition: opacity .15s ease; }
+.dg-lpmenu-row:hover .dg-lpmenu-pin { opacity: 1; }
+.dg-lpmenu-pin:hover { background: var(--dg-border); color: var(--dg-text); }
+.dg-lpmenu-row.is-main .dg-lpmenu-pin { display: none; }
+@media (max-width: 767.98px) { .dg-lpmenu { right: 12px; bottom: 58px; } }
+
+
+/* ============================================================================
+   TOC — шрифты и фильтр переводчиков по макету (.tocsec/.tocitem/.trfilter), логика прежняя.
+   ============================================================================ */
+body.dg-state-toc #toc-pane, body.dg-state-toc #toc-pane * { font-family: var(--dg-font); }
+body.dg-state-toc .toc-book-header { font-size: 15px; font-weight: 500; color: var(--dg-accent-ink); }
+body.dg-state-toc .toc-count { font-size: 13px; color: var(--dg-text-muted); font-weight: 400; }
+body.dg-state-toc .toc-aside { border: 1px solid var(--dg-border); border-radius: 12px; padding: 14px 15px; background: var(--dg-surface); }
+body.dg-state-toc .toc-aside-title { font-size: 14px; font-weight: 600; color: var(--dg-text); }
+body.dg-state-toc .toc-filter-search { border: 1px solid var(--dg-border-strong); background: var(--dg-page); border-radius: 8px; font-size: 13px; padding: 7px 9px; color: var(--dg-text); margin: 0 0 12px; }
+body.dg-state-toc .toc-filter-search:focus { outline: 0; border-color: var(--dg-accent); box-shadow: 0 0 0 3px var(--dg-accent-bg); }
+body.dg-state-toc .toc-filter-title { font-size: 13.5px; font-weight: 600; color: var(--dg-text); }
+body.dg-state-toc .toc-filter-item { font-size: 12.5px; line-height: 1.45; color: var(--dg-text-2); padding: 4px 0; }
+body.dg-state-toc .toc-filter-checkbox { accent-color: var(--dg-accent); width: 14px; height: 14px; }
+body.dg-state-toc .toc-filter-more, body.dg-state-toc .toc-filter-reset a { font-size: 12.5px; color: var(--dg-accent-ink); }
+
+/* ============================================================================
+   Screen enter/exit animations — owner's animations.md. Curve --dg-ease, enter 300–400ms,
+   exit 200–260ms, everything off under prefers-reduced-motion. Enters are keyed on the
+   body.dg-state-* class (the rule starts matching -> the animation starts), exits on the
+   *-out classes that dgLeaveScreen() (search/index.html) sets for the exit duration.
+   ============================================================================ */
+/* Results: "the list assembles" — header slides in from the left, toolbar rises 60ms later,
+   rows rise in a 30ms cascade (1st 100ms … 7th 280ms, the rest 310ms). */
+@keyframes dg-in-left { from { opacity: 0; transform: translateX(-14px); } to { opacity: 1; transform: none; } }
+@keyframes dg-rise { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: none; } }
+@keyframes dg-out-up { to { opacity: 0; transform: translateY(-14px); } }
+body.dg-state-results:not(.dg-busy) #dynamicHeader { animation: dg-in-left 300ms var(--dg-ease) backwards; }
+body.dg-state-results:not(.dg-busy) #results-toolbar { animation: dg-rise 300ms var(--dg-ease) 60ms backwards; }
+body.dg-state-results #search-pane table.dataTable > tbody > tr:not(.child) { animation: dg-rise 260ms var(--dg-ease) 310ms backwards; }
+body.dg-state-results #search-pane table.dataTable > tbody > tr:not(.child):nth-child(1) { animation-delay: 100ms; }
+body.dg-state-results #search-pane table.dataTable > tbody > tr:not(.child):nth-child(2) { animation-delay: 130ms; }
+body.dg-state-results #search-pane table.dataTable > tbody > tr:not(.child):nth-child(3) { animation-delay: 160ms; }
+body.dg-state-results #search-pane table.dataTable > tbody > tr:not(.child):nth-child(4) { animation-delay: 190ms; }
+body.dg-state-results #search-pane table.dataTable > tbody > tr:not(.child):nth-child(5) { animation-delay: 220ms; }
+body.dg-state-results #search-pane table.dataTable > tbody > tr:not(.child):nth-child(6) { animation-delay: 250ms; }
+body.dg-state-results #search-pane table.dataTable > tbody > tr:not(.child):nth-child(7) { animation-delay: 280ms; }
+body.results-out #dynamicHeader, body.results-out #results-toolbar, body.results-out #search-pane { animation: dg-out-up 220ms var(--dg-ease) both; }
+
+/* Home: blocks fade in top-down (50ms step) sliding from above; the navy bar slides from under
+   the top edge. Exit: the whole page moves up 40px (to where the search bar lives on the inner
+   screens) and fades. The search field itself is excluded — it travels by its own transitions. */
+@keyframes dg-drop-in { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: none; } }
+@keyframes dg-navbar-in { from { transform: translateY(-100%); } to { transform: none; } }
+@keyframes dg-home-out { to { opacity: 0; transform: translateY(-40px); } }
+/* The field moves up with the page but stays visible: it carries the busy spinner while the
+   results are fetched, and becomes the inner screens' field right after. */
+@keyframes dg-home-out-field { to { transform: translateY(-40px); } }
+body.home-out.dg-state-home .hero-row { animation: dg-home-out-field 240ms var(--dg-ease) both; } /* outranks the drop-in rule below */
+body.dg-state-home #dg-hero-navbar { animation: dg-navbar-in 300ms var(--dg-ease) backwards; }
+body.dg-state-home #dg-hero-heading { animation: dg-drop-in 300ms var(--dg-ease) 50ms backwards; }
+body.dg-state-home .hero-row { animation: dg-drop-in 300ms var(--dg-ease) 100ms backwards; }
+body.dg-state-home #home-scope-summary { animation: dg-drop-in 300ms var(--dg-ease) 100ms backwards; }
+body.dg-state-home #dg-announce { animation: dg-drop-in 300ms var(--dg-ease) 150ms backwards; }
+body.dg-state-home #home-tiles, body.dg-state-home #home-slides { animation: dg-drop-in 300ms var(--dg-ease) 200ms backwards; }
+body.dg-state-home #home-howto { animation: dg-drop-in 300ms var(--dg-ease) 250ms backwards; }
+body.home-out #dg-hero-navbar, body.home-out #dg-hero-heading, body.home-out #home-scope-summary, body.home-out #dg-announce,
+body.home-out #home-tiles, body.home-out #home-slides, body.home-out #home-howto { animation: dg-home-out 240ms var(--dg-ease) both; }
+
+@media (prefers-reduced-motion: reduce) {
+    body.dg-state-results #dynamicHeader, body.dg-state-results #results-toolbar,
+    body.dg-state-results #search-pane table.dataTable > tbody > tr:not(.child),
+    body.results-out #dynamicHeader, body.results-out #results-toolbar, body.results-out #search-pane,
+    body.dg-state-home #dg-hero-navbar, body.dg-state-home #dg-hero-heading, body.dg-state-home #home-scope-summary, body.dg-state-home #dg-announce,
+    body.dg-state-home #home-tiles, body.dg-state-home #home-slides, body.dg-state-home #home-howto,
+    body.home-out #dg-hero-navbar, body.home-out #dg-hero-heading, body.home-out #home-scope-summary, body.home-out #dg-announce,
+    body.home-out #home-tiles, body.home-out #home-slides, body.home-out #home-howto { animation: none; }
+}
+/* Quote fold (search-render.js rowFold): no scroll anchoring while the row's height animates. */
+body.dg-state-results #search-pane tbody { overflow-anchor: none; }
+/* overflow:hidden stays on permanently: with it switched off at the end child margins would
+   collapse and the height would snap by a few px (owner: "последние миллиметры дёргается"). */
+body.dg-state-results #search-pane td.child > .dtr-details { overflow-anchor: none; overflow: hidden; }
+
+/* Toasts (showBubbleNotification, extrastyles.css): the "info" flavour was Solarized blue —
+   owner: "зелёного делать классического", one green for every toast in the skin. */
+body.dg-skin-minimal .bubble-notification, body.dg-skin-minimal .bubble-notification.info { background: #136857; color: #fff; }
+
+/* Lato ships a standard "ti" ligature (t and i drawn joined — "Section" read as one blob, owner);
+   the fi/fl ones look the same without it, so all standard ligatures are off. */
+body.dg-skin-minimal, body.dg-skin-minimal * { font-variant-ligatures: no-common-ligatures; }
+/* Lato Bold sets "t" and "i" touching at heading sizes ("Section" — owner); a hair of tracking
+   on the reader headings keeps them apart. */
+body.dg-state-reader #sutta h1, body.dg-state-reader #sutta h2, body.dg-state-reader #sutta h3, body.dg-state-reader #sutta h4 { letter-spacing: .015em; }
+/* Results: with room, the table filter sits on the header line (word · counts · variants) instead
+   of on its own row below (owner). The header keeps its 18px bottom padding, the pane is pulled
+   up by header-text-height + gap so the filter row (40px) centers on the header text. */
+@media (min-width: 768px) {
+    body.dg-state-results #search-pane { margin-top: -50px !important; }
+    body.dg-state-results #pali_wrapper > .row:first-child, body.dg-state-results #pali-words_wrapper > .row:first-child { position: relative; z-index: 2; }
+    body.dg-state-results #pali_wrapper > table, body.dg-state-results #pali-words_wrapper > table { margin-top: 12px; }
+}
+/* Wide screens: more air between the header/filter row and the table, and the bottom link row
+   (.footerlike: Main / History / Export …) sits at the bottom of the viewport when the table is
+   short (owner: "на больших экранах просторнее … ссылки внизу к нижнему краю"). */
+@media (min-width: 992px) {
+    body.dg-state-results #pali_wrapper > table, body.dg-state-results #pali-words_wrapper > table { margin-top: 26px; }
+    body.dg-state-results #search-pane { display: flex; flex-direction: column; min-height: calc(100vh - 112px); } /* 112 = fixed header stack; the pane ends at the viewport bottom */
+    body.dg-state-results #pali_wrapper, body.dg-state-results #pali-words_wrapper { display: flex; flex-direction: column; flex: 1 0 auto; }
+    /* Links line centred on the corner pill (bottom 30px, 38px tall -> centre 49px up). */
+    body.dg-state-results #pali_wrapper > .footerlike, body.dg-state-results #pali-words_wrapper > .footerlike { margin-top: auto; padding: 28px 0 30px; }
+    body.dg-state-results #search-pane .footerlike .dt-buttons { padding-bottom: 0; } /* its own 40px bottom padding (rule above, id-scoped) would push the links up again */
+}
+/* TOC: the search field fixed at the same 10px as on results/reader (was static, 24px — owner:
+   "в toc инпут немного ниже"). Same fixed rules as search/index.html's results/reader stack. */
+body.dg-state-toc #dg-hero-band { position: fixed; top: 10px; left: 0; right: 0; z-index: 850; background: var(--dg-surface, #fff); width: auto; margin-left: 0; margin-right: 0; }
+body.dg-state-toc #dg-header-backdrop { display: block; position: fixed; top: 0; left: 0; right: 0; height: 65px; z-index: 849; background: var(--dg-surface, #fff); }
+body.dg-state-toc #toc-pane { padding-top: 62px; }
+/* Folded with dgFold(): overflow stays hidden so the animated height equals the natural one
+   (otherwise the last child's margin collapses when the fold ends and the panel snaps ~13px). */
+#search-pane .dtsb-searchBuilder { overflow: hidden; }
