@@ -59,7 +59,7 @@ const {
 const app = Fastify({ bodyLimit: 10 * 1024 * 1024 });
 // 3000 is where production serves from (both dhamma.gift and test.dhamma.gift proxy here);
 // dg-light.js, the legacy Express server, defaults to 3001 so the two can run side by side.
-const PORT = Number(process.env.PORT) || 3001;
+const PORT = Number(process.env.PORT) || 3000;
 
 // The only POST route in this file (/assets/lbl-save.php) always wants the raw body as a string,
 // regardless of what Content-Type the client sends — same as express.text({type:'*/*'}) did.
