@@ -369,7 +369,11 @@ function cleanTextForTTS(text) {
     .replace(/’ति/g, 'ति')
     .replace(/\{.*?\}/g, '')
     .replace(/\(.*?\)/g, '')
-    .replace(/\|/g, ' ') // pipe used as segment/verse separator in source markup — never read aloud
+    // "|"/"||" is danda punctuation (half-verse/verse pause), not noise — collapsing it to a
+    // bare space would glue clauses together with no pause (cf. "казнить нельзя помиловать").
+    // Map to real danda so TTS still pauses there, same as ";" is mapped below for long segments.
+    .replace(/\|\|/g, ' ॥ ')
+    .replace(/\|/g, ' । ')
     .replace(/[ \t]+/g, ' ')
     .replace(/[-–—]/g, ' ')
     .replace(/_/g, '').trim();
@@ -2850,7 +2854,10 @@ function prepareLegacyData() {
             .replace(/\d+\)/g, '')
             .replace(/^\d+\./, '')
             .replace(/\(.*?\)/g, '') // legacy TTS skipped parenthetical asides — keep that behavior
-            .replace(/\|/g, ' ')
+            // "|" here is Cyrillic/legacy text, not Pali danda — map to comma/period so TTS still
+            // pauses instead of gluing clauses together (cf. "казнить нельзя помиловать").
+            .replace(/\|\|/g, '. ')
+            .replace(/\|/g, ', ')
             .replace(/\s+/g, ' ')
             .replace(/\*/g, '')
             .replace(/^[\*\-•]\s*/, '')
