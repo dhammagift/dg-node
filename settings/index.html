@@ -411,7 +411,7 @@ kbd{font:inherit;font-size:12.5px;background:var(--line);border:1px solid var(--
         </select></div>
       </div>
       <div class="row">
-        <div><p class="row-title" id="t-scriptDevOnly">Только в режиме «Деванагари»</p>
+        <div><p class="row-title" id="t-scriptDevOnly">Только в режиме «Devanagari»</p>
         <p class="row-desc" id="t-scriptDevOnlyDesc">Выбранная система письма выше — только для режима чтения «Деванагари» в ридере, не для всего сайта.</p></div>
         <div class="row-control"><span class="switch"><input type="checkbox" id="scriptDevOnly"><span class="track"></span><span class="thumb"></span></span></div>
       </div>
@@ -614,7 +614,7 @@ fetch('/settings/lang-counts.json').then(r => r.ok ? r.json() : {}).then(c => { 
    тот же самый "не конвертировать" вариант, что уже первым пунктом в списке (Латиница/IAST).*/
 const SCRIPT_MAIN_KEYS = new Set(['ISOPali','Brahmi','Devanagari','Sinhala','Thai','BurmeseMyanmar']);
 const SCRIPT_SKIP_KEYS = new Set(['RomanIAST','RomanISO15919PI']);
-/* "Только в режиме «Деванагари»" (#scriptDevOnly, row added below the script row) — reuses this
+/* "Только в режиме «Devanagari»" (#scriptDevOnly, row added below the script row) — reuses this
    SAME #script select for two different scopes instead of a second ~165-option dropdown.
    devanagariModeScript is read by megareader.js only while dualScript mode is active. Three
    real states live in that one key: absent = never touched (default OFF here — someone on this
@@ -1271,7 +1271,7 @@ const STR = {
     script:'Система письма пали',
     scriptDesc:'Применяется к пали в поиске и в ридере. Заголовки текстов и отчёт по словам пока остаются латиницей.',
     scriptIast:'Латиница (IAST)', scriptBrahmi:'Брахми', scriptDeva:'Деванагари', scriptSinh:'Сингальская', scriptThai:'Тайская', scriptMymr:'Бирманская (Мьянма)', scriptOther:'Остальные',
-    scriptDevOnly:'Только в режиме «Деванагари»', scriptDevOnlyDesc:'Выбранная система письма выше — только для режима чтения «Деванагари» в ридере, не для всего сайта.',
+    scriptDevOnly:'Только в режиме «Devanagari»', scriptDevOnlyDesc:'Выбранная система письма выше — только для режима чтения «Devanagari» в ридере, не для всего сайта.',
     size:'Размер текста', punct:'Показывать пунктуацию в пали', punctDesc:'Выключите, чтобы убрать запятые/кавычки и заменить точки, ? и ! вертикальной чертой — ближе к виду рукописей.',
     gSearch:'Поиск', scope:'Где искать по умолчанию',
     scopeDesc:'В самом поиске область можно менять для одного запроса — здесь только значение по умолчанию.',

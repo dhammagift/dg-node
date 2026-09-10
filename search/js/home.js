@@ -2191,7 +2191,9 @@
         multiTran: { ru: 'Мульти перевод', en: 'Multi Translation' },
         multiLang: { ru: 'Мульти язык', en: 'Multi Language' },
         memorize: { ru: 'Для запоминания', en: 'For Memorization' },
-        devanagari: { ru: 'Деванагари', en: 'Devanagari' }
+        // Owner: this one row's name stays quoted — "Devanagari" is used loosely for the whole
+        // mode (any non-Latin script, not literally the Devanagari script), quotes flag that.
+        devanagari: { ru: '"Деванагари"', en: '"Devanagari"' }
     };
     var MODE_DESCRIPTIONS = {
         single: { ru: 'Pāḷi + перевод', en: 'Pāḷi + translation' },
