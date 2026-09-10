@@ -217,6 +217,12 @@
             display: inline-flex; align-items: center; justify-content: center;
         }
         #dgDlCard .dgdl-toggle:hover { color: var(--dgc-ink); background: var(--dgc-sunk); }
+        #dgDlCard .dgdl-close {
+            flex: none; width: 22px; height: 22px; padding: 0; border: 0; cursor: pointer;
+            background: transparent; color: var(--dgc-faint); border-radius: 6px;
+            display: inline-flex; align-items: center; justify-content: center;
+        }
+        #dgDlCard .dgdl-close:hover { color: #c0392b; background: var(--dgc-sunk); }
         #dgDlCard .dgdl-toggle svg { transition: transform .18s ease; }
         #dgDlCard .dgdl-head { align-items: center; }
         #dgDlCard .dgdl-pct { margin-left: auto; }
@@ -234,7 +240,7 @@
         #dgDlCard.dgdl-collapsed .dgdl-debug { display: none; }
         #dgDlCard.dgdl-collapsed .dgdl-track { height: 4px; }
         #dgDlCard.dgdl-collapsed .dgdl-toggle svg { transform: rotate(180deg); }
-        #dgDlCard .dgdl-toggle, #dgDlCard.dgdl-collapsed { pointer-events: auto; }
+        #dgDlCard .dgdl-toggle, #dgDlCard .dgdl-close, #dgDlCard.dgdl-collapsed { pointer-events: auto; }
         @media (prefers-reduced-motion: reduce) {
             #dgConsent, #dgConsentSheet, #dgDlCard, #dgDlCard .dgdl-fill,
             #dgDlCard .dgdl-fact, #dgDlCard .dgdl-toggle svg { transition: none; }
@@ -273,6 +279,15 @@
                     'stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
                     '<path d="M6 9l6 6 6-6"/></svg>' +
                 '</button>' +
+                // Started by mistake, or on mobile data: stopping has to be one tap away, not hidden
+                // behind a settings page (owner). Cancelling also deletes the partial download, so
+                // the next visit does not silently pick it up again.
+                '<button class="dgdl-close" type="button" aria-label="' +
+                    (isRuLang() ? 'Отменить загрузку' : 'Cancel the download') + '">' +
+                    '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" ' +
+                    'stroke-width="2.4" stroke-linecap="round" aria-hidden="true">' +
+                    '<path d="M6 6l12 12M18 6L6 18"/></svg>' +
+                '</button>' +
             '</div>' +
             '<div class="dgdl-track"><div class="dgdl-fill"></div></div>' +
             '<div class="dgdl-sub"></div>' +
@@ -292,6 +307,14 @@
         toggle.addEventListener('click', function (event) {
             event.stopPropagation();
             applyCollapsed(!dlCard.classList.contains('dgdl-collapsed'));
+        });
+        dlCard.querySelector('.dgdl-close').addEventListener('click', function (event) {
+            event.stopPropagation();
+            // The card goes at once — waiting for the worker to unwind a 479MB transfer would look
+            // like the button did nothing. app.js answers with a short "cancelled" toast.
+            stopFacts();
+            dlCard.classList.remove('show');
+            if (typeof window.dgCancelOfflineDownload === 'function') window.dgCancelOfflineDownload();
         });
         // Folded, the whole strip is the target — it is 4px of bar and a percentage, nothing else.
         dlCard.addEventListener('click', function () {
@@ -317,7 +340,7 @@
         ru: [
             'Поиск в Суттах и Винае — без интернета',
             'Чтение Сутт и Винаи офлайн, с переводами',
-            'Языки: русский и английский',
+            'Языки: пали, английский и русский',
             'Переходы между суттами, закладки и история — тоже офлайн',
             'Прервали загрузку? Она продолжится с того же места',
             'Библиотека живёт на устройстве — искать можно и в самолёте'
@@ -325,7 +348,7 @@
         en: [
             'Search the Suttas and Vinaya — no connection',
             'Read the Suttas and Vinaya offline, translations included',
-            'Languages: Russian and English',
+            'Languages: Pali, English and Russian',
             'Sutta-to-sutta navigation, bookmarks and history offline too',
             'Download interrupted? It resumes where it stopped',
             'The library lives on your device — search on a plane'
@@ -601,6 +624,8 @@
             // loadData() marks the choice explicitly ('offline-data-download-declined'), so
             // anything else is a real failure and now says what went wrong — fetchDbBytes throws
             // "<file>: HTTP <status>", which points straight at the server rather than the user.
+            // A deliberate cancel is neither a decline nor a fault: the card's × already answered.
+            if (err && /cancelled/.test(err.message || '')) return;
             var declined = err && err.message === 'offline-data-download-declined';
             if (!declined) console.error('[dg-offline] database download failed:', err);
 

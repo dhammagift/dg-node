@@ -172,6 +172,22 @@
         requestDownload(kind === 'update' ? 'update' : 'open');
     };
 
+    // The card's ×. The worker drops the partial download with it (see the abort op), so a later
+    // visit has nothing to resume — which is the point when the download was started by mistake or
+    // is running on mobile data.
+    window.dgCancelOfflineDownload = function () {
+        return call('abort', {}).then(function () {
+            local = false;
+            rememberState({ present: false, build_id: null, update: null });
+            var ru = (localStorage.getItem('dhammaLanguage') || localStorage.getItem('siteLanguage') || 'en') === 'ru';
+            notify(ru ? 'Загрузка отменена' : 'Download cancelled');
+            return true;
+        }).catch(function (e) {
+            log('cancel failed:', e && e.message);
+            return false;
+        });
+    };
+
     // Returns false when there is no way to hand it over, so the caller can say so instead.
     function askOwningTab(kind) {
         if (!channel) return false;
@@ -420,9 +436,26 @@
                 // pressed a button in Settings (the intent key is that click).
                 rememberState({ present: false, build_id: null, update: null });
                 if (wantsData || wantsUpdate) return download('open');
+
+                // An unfinished download continues by itself. The reader asked once; the bytes are
+                // still in OPFS (db-worker.js's scratch file, and a retry resumes with Range from
+                // exactly there); making them find the button again after a reload — or a browser
+                // restart — would be a strange thing to require of a 479MB transfer. The progress
+                // card comes back on its own, so nothing needs saying.
+                if (status.partialBytes > 0) {
+                    log('continuing an unfinished download:', status.partialBytes, 'bytes already on disk');
+                    return download('open');
+                }
                 return null;
             });
         }).catch(function (e) {
+            // A reader pressing × is not a failure: it must not raise the "could not download"
+            // toast, and it must not reject `dgOfflineReady` (offline-status.js turns a rejection
+            // into exactly that toast). The cancel itself already answered with its own message.
+            if (e && /cancelled/.test(e.message || '')) {
+                log('download cancelled by the reader');
+                return null;
+            }
             // A failed open of a copy that IS there is a real fault the reader should hear about
             // (offline-status.js turns it into a toast); an absent database never reaches here.
             log('offline layer not activated:', e && e.message);

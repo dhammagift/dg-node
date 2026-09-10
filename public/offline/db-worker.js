@@ -78,11 +78,17 @@ const OPAQUE_DIR = '.opaque';
 const SCHEMA_VERSION = 1;
 
 function dbNameFor(buildId) { return `${DB_PREFIX}${buildId}.db`; }
+function cancelledError() { return Object.assign(new Error('download cancelled'), { cancelled: true }); }
 function nameToBuild(name) { return name.slice(DB_PREFIX.length, -'.db'.length); }
 
 let db = null;
 let ready = null;
 let poolPromise = null;
+// Cancellation, so a reader who started this by mistake — or is on mobile data — can stop it. The
+// transfer has to be interrupted from outside the retry loop, and a cancel must NOT come back as a
+// resumable partial: the scratch file goes too, or the next page load would quietly pick it up.
+let cancelRequested = false;
+let activeAbort = null;
 
 function post(msg) {
     self.postMessage(msg);
@@ -187,9 +193,32 @@ async function openScratch(scratchName) {
     catch (e) { return await handle.createSyncAccessHandle(); }
 }
 
+// The scratch handle is closed by downloadInto on the cancel path; this only removes the file, so a
+// later page load has nothing to resume from.
+async function dropScratchAfterCancel(scratchName) {
+    try { (await opfsRoot()).removeEntry(scratchName); } catch (e) { /* already gone */ }
+}
+
 async function dropScratch(scratch, scratchName) {
     try { scratch.close(); } catch (e) { /* already closed */ }
     try { (await opfsRoot()).removeEntry(scratchName); } catch (e) { /* already gone */ }
+}
+
+// Bytes of an unfinished download already on disk, whichever build they belong to. Cheap: OPFS
+// directory entries only — no pool, no wasm, no manifest. This is what lets a page that was reloaded
+// (or a browser that was restarted) pick a download back up on its own instead of pretending the
+// reader never asked.
+async function partialBytesAny() {
+    let total = 0;
+    try {
+        const root = await opfsRoot();
+        for await (const [name, handle] of root) {
+            if (handle.kind !== 'file') continue;
+            if (!name.startsWith(SCRATCH_PREFIX) || !name.endsWith(SCRATCH_SUFFIX)) continue;
+            try { total += (await handle.getFile()).size || 0; } catch (e) { /* unreadable — ignore */ }
+        }
+    } catch (e) { /* no OPFS enumeration available */ }
+    return total;
 }
 
 // A partial file is only meaningful for the build it came from (it gets prepended to that build's
@@ -212,7 +241,9 @@ async function downloadInto(pool, url, name, expectedWireBytes, expectedDbBytes,
     const scratch = await openScratch(scratchName);
 
     for (let attempt = 1; ; attempt++) {
+        if (cancelRequested) { try { scratch.close(); } catch (_) {} throw cancelledError(); }
         const controller = new AbortController();
+        activeAbort = controller;
         let reader = null;
 
         try {
@@ -323,15 +354,25 @@ async function downloadInto(pool, url, name, expectedWireBytes, expectedDbBytes,
             // The whole file is in the pool now; the scratch copy has no further purpose and 170MB
             // of it sitting in OPFS would be the reader's storage quietly halved.
             await dropScratch(scratch, scratchName);
+            activeAbort = null;
             return loadedBytes;
         } catch (e) {
-            if (e && e.mismatch) { try { scratch.close(); } catch (_) {} throw e; } // a server misconfiguration, not a network blip — retrying serves nobody
+            if (cancelRequested) {
+                // The reader said stop: no retry, and no scratch left behind for a later page load.
+                controller.abort();
+                if (reader) reader.cancel().catch(() => {});
+                await dropScratch(scratch, scratchName);
+                activeAbort = null;
+                throw cancelledError();
+            }
+            if (e && e.mismatch) { activeAbort = null; try { scratch.close(); } catch (_) {} throw e; } // a server misconfiguration, not a network blip — retrying serves nobody
             const stalled = e && e.name === 'AbortError';
             controller.abort();
             if (reader) reader.cancel().catch(() => {});
             if (attempt >= MAX_ATTEMPTS) {
                 // Give up, but keep the scratch file: a later retry (the reader pressing the
                 // button again, or a better connection) continues from here instead of 0.
+                activeAbort = null;
                 try { scratch.close(); } catch (_) {}
                 throw stalled
                     ? new Error(`dg-mobile.db: stalled (no data for ${STALL_MS / 1000}s), ` +
@@ -500,6 +541,7 @@ function checkIntegrity(pool, name) {
 }
 
 async function fetchCurrent(pool, distBase) {
+    cancelRequested = false; // a fresh attempt clears any earlier cancel
     const manifest = await fetchManifest(distBase);
     if (manifest && Number(manifest.schema_version) !== SCHEMA_VERSION) {
         throw new Error(
@@ -529,7 +571,17 @@ async function fetchCurrent(pool, distBase) {
     // causes (the network, this browser's storage, or the check afterwards) and guessing between
     // them wastes everyone's time. Cheap enough to keep.
     const tTransfer = Date.now();
-    const transferred = await downloadInto(pool, `${distBase}/${file}`, target, expectedWireBytes, manifest && manifest.bytes, gzip, scratchName);
+    let transferred;
+    try {
+        transferred = await downloadInto(pool, `${distBase}/${file}`, target, expectedWireBytes, manifest && manifest.bytes, gzip, scratchName);
+    } catch (e) {
+        if (e && e.cancelled) {
+            // Nothing half-written is left to confuse the next visit: no pool file, no scratch.
+            try { pool.unlink(target); } catch (_) {}
+            await dropScratchAfterCancel(scratchName);
+        }
+        throw e;
+    }
     const transferSec = (Date.now() - tTransfer) / 1000;
     console.log(`[dg-offline] transfer: ${(transferred / 1048576).toFixed(1)}MB in ${transferSec.toFixed(1)}s ` +
         `(${(transferred / 1048576 / transferSec).toFixed(1)} MB/s)`);
@@ -624,6 +676,15 @@ async function open(distBase, allowDownload) {
     for (const name of storedDatabases(pool)) {
         const candidate = inspect(pool, name);
         if (!candidate.ok) { try { pool.unlink(name); } catch (_) {} continue; }
+        // A non-empty scratch file for THIS build means the download that produced this copy never
+        // finished — whatever the file's own meta claims (meta is written before the tail of the
+        // file, so a truncated import can carry a perfectly valid build id). Do not adopt it: the
+        // download path resumes into a fresh copy and unlinks this one when it succeeds.
+        if (await partialBytes(scratchNameFor(name)) > 0) {
+            console.log(`[dg-offline] ${name} has an unfinished download beside it — not adopting it`);
+            candidate.handle.close();
+            continue;
+        }
         const suttas = adopt(candidate);
         return { suttas, build_id: candidate.meta.build_id, downloaded: false, present: true };
     }
@@ -742,9 +803,14 @@ self.onmessage = async (event) => {
         try {
             // Cheap path first: nothing stored is the common case, and it must cost nothing.
             if (!(await anyStoredFiles())) {
-                post({ id, ok: true, result: { present: false, bytes: null, build_id: null, langs: null } });
+                const partialBytes = await partialBytesAny();
+                post({ id, ok: true, result: { present: false, partialBytes, bytes: null, build_id: null, langs: null } });
                 return;
             }
+            // Reported in BOTH branches: with only a half-imported pool file on disk (a download
+            // interrupted by a reload) the stored file is rejected below, and this figure is the
+            // only thing that tells the page there is something to continue.
+            const partialBytes = await partialBytesAny();
             const pool = await getPool();
             const present = storedDatabases(pool).length > 0;
             // The manifest is fetched before the reader is asked about a download, so that the
@@ -755,6 +821,9 @@ self.onmessage = async (event) => {
             const manifest = (present || !wantManifest) ? null : await fetchManifest(args && args.distBase);
             post({ id, ok: true, result: {
                 present,
+                // With a working library present there is nothing to continue (an interrupted UPDATE
+                // leaves the old copy in place and usable), so the figure only matters otherwise.
+                partialBytes: present ? 0 : partialBytes,
                 // The consent dialog states what actually crosses the connection, not the size on
                 // disk afterward — for a gzipped manifest those are no longer the same number.
                 bytes: manifest ? (manifest.bytes_gz || manifest.bytes) : null,
@@ -808,6 +877,16 @@ self.onmessage = async (event) => {
         ready = ready || open(distBase, true);
         try { post({ id, ok: true, result: await ready }); }
         catch (e) { ready = null; post({ id, ok: false, error: e.message }); }
+        return;
+    }
+
+    // Stop an in-flight download. Unsolicited by the page's own flow — the card's × — so it answers
+    // immediately and does not touch `ready`: the rejecting `open` call already does that.
+    if (op === 'abort') {
+        cancelRequested = true;
+        try { if (activeAbort) activeAbort.abort(); } catch (_) {}
+        console.log('[dg-offline] download cancelled by the reader');
+        post({ id, ok: true, result: { cancelled: true } });
         return;
     }
 
