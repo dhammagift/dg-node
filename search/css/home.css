@@ -3541,6 +3541,7 @@ body.dg-state-toc .toc-filter-title { font-size: 13.5px; font-weight: 600; color
 body.dg-state-toc .toc-filter-item { font-size: 12.5px; line-height: 1.45; color: var(--dg-text-2); padding: 4px 0; }
 body.dg-state-toc .toc-filter-checkbox { accent-color: var(--dg-accent); width: 14px; height: 14px; }
 body.dg-state-toc .toc-filter-more, body.dg-state-toc .toc-filter-reset a { font-size: 12.5px; color: var(--dg-accent-ink); }
+body.dg-state-toc .toc-filter-patimokkha.dg-toggle-row { font-size: 12.5px; padding: 8px 0; }
 
 /* ============================================================================
    Screen enter/exit animations — owner's animations.md. Curve --dg-ease, enter 300–400ms,

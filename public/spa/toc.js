@@ -490,23 +490,26 @@
 
         // Independent Pātimokkha visibility switch, at the very bottom under the translator
         // lists (owner: "в самый низ под списками переводчиков просто добавим тоггл show hide
-        // патимоккхи. по умолчанию он вкл") — NOT one of the checkboxes above (those filter by
-        // translator; the Pātimokkha has no translator to filter by, see readPatimokkhaVisible).
-        var pmRow = el('div', 'toc-filter-patimokkha');
-        var pmLabel = document.createElement('label');
-        pmLabel.className = 'toc-filter-item';
-        var pmCb = document.createElement('input');
-        pmCb.type = 'checkbox';
-        pmCb.className = 'toc-filter-checkbox';
-        pmCb.checked = readPatimokkhaVisible();
-        pmCb.addEventListener('change', function () {
-            savePatimokkhaVisible(pmCb.checked);
+        // патимоккхи. по умолчанию он вкл") — a real on/off SWITCH (.dg-toggle-row/.dg-tgl, same
+        // component quick-settings uses), not another checkbox: a checkbox here read as just
+        // one more translator to filter by (owner screenshot: "кажется что это одна из опций
+        // фильтра"), when it's actually a completely separate, unrelated setting.
+        var pmOn = readPatimokkhaVisible();
+        var pmToggle = document.createElement('button');
+        pmToggle.type = 'button';
+        pmToggle.className = 'dg-toggle-row toc-filter-patimokkha';
+        pmToggle.setAttribute('aria-pressed', pmOn ? 'true' : 'false');
+        pmToggle.appendChild(el('span', 'dg-toggle-label', uiIsRu() ? 'Показывать Патимоккху' : 'Show the Pātimokkha'));
+        var pmTgl = el('span', 'dg-tgl');
+        pmTgl.setAttribute('aria-hidden', 'true');
+        pmToggle.appendChild(pmTgl);
+        pmToggle.addEventListener('click', function () {
+            var next = pmToggle.getAttribute('aria-pressed') !== 'true';
+            pmToggle.setAttribute('aria-pressed', next ? 'true' : 'false');
+            savePatimokkhaVisible(next);
             if (onPatimokkhaChange) onPatimokkhaChange();
         });
-        pmLabel.appendChild(pmCb);
-        pmLabel.appendChild(document.createTextNode(' ' + (uiIsRu() ? 'Показывать Патимоккху' : 'Show the Pātimokkha')));
-        pmRow.appendChild(pmLabel);
-        panelEl.appendChild(pmRow);
+        panelEl.appendChild(pmToggle);
 
         // Live name search across every language at once (owner: "напечатать часть его имени...
         // сюжета в английском есть, или сабо в немецком") — filters the rows already in the DOM,
