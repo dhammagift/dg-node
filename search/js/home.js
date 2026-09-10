@@ -1971,24 +1971,29 @@
         if (isQuickOpen()) buildQuickBody(document.getElementById('dg-quick-body'));
     };
 
-    // Lets other, separately-loaded modules (public/overrides/js/quickModal.js's own Quick
-    // Settings gear) fill THEIR OWN container with the exact same Quick Settings content this
-    // module's #dg-quick sheet uses — same function, not a second copy of everything it builds
-    // (scope picker, dict mode, reading toggles, ...). buildQuickBody() only ever reads the
-    // container it's given plus page state (currentState(), localStorage) — no dependency on
-    // #dg-quick specifically.
-    window.dgBuildQuickSettingsBody = buildQuickBody;
-
-    function openQuick() {
+    // anchorBtn: optional — lets a caller outside the normal page chrome (public/overrides/js/
+    // quickModal.js's own Quick Settings gear, inside its own modal) open this EXACT SAME sheet
+    // anchored to ITS OWN button, instead of duplicating buildQuickBody()/the sheet markup a
+    // second time. Owner: it must be the real dropdown "as everywhere else", not a fake tab
+    // embedded in the modal — this is that real dropdown, just anchored elsewhere.
+    function openQuick(anchorBtn) {
         closeMega();
         ensureQuick();
         var sheet = document.getElementById('dg-quick');
         var backdrop = document.getElementById('dg-sheet-backdrop');
-        var btn = document.getElementById('dg-quick-btn');
+        var btn = anchorBtn || document.getElementById('dg-quick-btn');
         // Home screen hides the sliders button inside the field (production-v4 redesign) and
         // opens this sheet from the "изменить" link under it instead — a display:none button has
-        // no box to anchor to, so anchor to the link in that case.
-        if (btn && !btn.offsetParent) btn = document.querySelector('.dg-scope-change') || btn;
+        // no box to anchor to, so anchor to the link in that case. Only for the default button —
+        // an explicit anchorBtn (quickModal.js's gear) is never display:none while its own modal
+        // is open, so it never needs this fallback.
+        if (!anchorBtn && btn && !btn.offsetParent) btn = document.querySelector('.dg-scope-change') || btn;
+        // The quick modal (public/overrides/css/extrastyles.css .quick-modal-container) sits at
+        // z-index 10000 — well above this sheet's normal 1081 (home.css .dg-sheet) — so a sheet
+        // anchored to a button inside it would render invisibly BEHIND that modal without this.
+        var aboveQuickModal = !!(btn && btn.closest('.quick-modal-container'));
+        sheet.classList.toggle('dg-above-quick-modal', aboveQuickModal);
+        if (backdrop) backdrop.classList.toggle('dg-above-quick-modal', aboveQuickModal);
         sheet.hidden = false;
         document.getElementById('dg-quick-title').textContent = t('quick.title', 'Быстрые настройки');
         buildQuickBody(document.getElementById('dg-quick-body'));
@@ -2001,6 +2006,7 @@
         if (btn) btn.setAttribute('aria-expanded', 'true');
         showLater(sheet, backdrop, anchored);
     }
+    window.dgOpenQuickSettings = openQuick;
 
     // ======================================================================
     // Мега-меню (пилот на плитке External) — тот же анкоренный попап, что у быстрых настроек

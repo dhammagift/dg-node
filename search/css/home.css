@@ -1546,6 +1546,10 @@ body:not(.dg-state-home) #dg-announce { display: none; }
 /* Под выпадашкой быстрых настроек подложка невидима, но клики по странице всё так же ловит:
    затемнять весь экран ради маленького меню — перебор, а закрывать по клику мимо нужно. */
 #dg-sheet-backdrop.dg-transparent { background: transparent; }
+/* openQuick(anchorBtn) toggles this (home.js) when the anchor is quickModal.js's own gear,
+   inside .quick-modal-container (extrastyles.css, z-index 10000) — without it this sheet's
+   normal 1081 would render behind that modal. */
+#dg-sheet-backdrop.dg-above-quick-modal { z-index: 10040; }
 
 .dg-sheet {
     position: fixed;
@@ -1564,6 +1568,8 @@ body:not(.dg-state-home) #dg-announce { display: none; }
     transform: translateY(100%);
     transition: transform 0.3s var(--dg-ease);
 }
+/* See #dg-sheet-backdrop.dg-above-quick-modal above — same reason, same trigger (openQuick). */
+.dg-sheet.dg-above-quick-modal { z-index: 10050; }
 .dg-sheet.show { transform: translateY(0); }
 @media (min-width: 768px) {
     .dg-sheet {

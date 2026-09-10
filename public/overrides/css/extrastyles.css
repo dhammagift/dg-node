@@ -1676,32 +1676,6 @@ body.dark .quick-tabs-wrapper { border-bottom-color: #444; }
 /* Индивидуальные настройки вкладок */
 #tab-fav, #tab-4as { padding-left: 1.5rem; padding-right: 1.5rem; }
 
-/* #tab-settings content (window.dgBuildQuickSettingsBody, home.js's own buildQuickBody()) is
-   built for home.css's ".dg-sheet .dg-group-title"/".dg-sheet .dg-sheet-body" etc. selectors —
-   without a real .dg-sheet ancestor around it here, group titles/scope picker/toggle rows would
-   render with NO styling at all (those rules don't have a bare, unscoped fallback). Rather than
-   copy every such rule a second time (and have the two drift apart), quickModal.js wraps its
-   #quick-settings-body in a real ".dg-sheet" element — .dg-sheet-inline here neutralizes just
-   the floating-panel CHROME that class also carries (fixed position, its own background/shadow/
-   slide transform) so it sits as plain flow content inside .quick-tab-content instead of trying
-   to float as a second bottom sheet. ".dg-sheet-body" on the actual content div (not this
-   wrapper) still needs a real .dg-sheet ancestor to pick up its padding/overflow — that's exactly
-   what this wrapper is for. */
-.dg-sheet.dg-sheet-inline {
-    position: static;
-    display: block;
-    z-index: auto;
-    max-height: none;
-    width: auto;
-    background: transparent;
-    color: inherit;
-    border: 0;
-    border-radius: 0;
-    box-shadow: none;
-    transform: none;
-    transition: none;
-}
-
 /* ИЗМЕНЕНО: Те же гибкие ограничители для iframe, вместо жестких 450px */
 #tab-dpd, #tab-memo { padding-left: 0; padding-right: 0; height: 60vh; min-height: min(450px, calc(90vh - 170px)); max-height: calc(90vh - 170px); }
 .quick-iframe { width: 100%; height: 100%; border: none; border-radius: 8px; background: transparent; }

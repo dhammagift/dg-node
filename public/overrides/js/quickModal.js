@@ -220,19 +220,6 @@ function buildQuickModalDOM() {
         <iframe data-src="${dpdUrl}" class="quick-iframe"></iframe>
       </div>
 
-      <!-- Not a real ".quick-tab-btn" tab (no button in .quick-tabs row) — reached only via the
-           gear icon (#quickSettingsBtn) next to the search field, same as the main site input.
-           Filled by window.dgBuildQuickSettingsBody(host) — home.js's OWN buildQuickBody(), the
-           exact function the site-wide #dg-quick sheet already uses, not a second copy of it.
-           The nested .dg-sheet/.dg-sheet-body wrapper is styling plumbing only (see
-           extrastyles.css .dg-sheet-inline) — buildQuickBody()'s output needs a real .dg-sheet
-           ancestor to pick up home.css's group-title/row/etc. styling. -->
-      <div id="tab-settings" class="quick-tab-content">
-        <div class="dg-sheet dg-sheet-inline">
-          <div id="quick-settings-body" class="dg-sheet-body"></div>
-        </div>
-      </div>
-
     </div>
   `;
 
@@ -292,20 +279,20 @@ function buildQuickModalDOM() {
 
   // Owner: "добавить быстрые настройки в быстрое меню, чтобы было похоже на главный инпут" —
   // this modal's own search field only had the magnifier button, unlike the main site input
-  // (search/index.html) which also has a gear/quick-settings button next to it. Owner follow-up:
-  // must open ITS OWN settings INSIDE this modal (not the site-wide #dg-quick sheet, which sits
-  // behind/outside the modal's own overlay and doesn't exist at all on some pages) — but reusing
-  // the EXACT same underlying code, not a second copy of it. window.dgBuildQuickSettingsBody is
-  // home.js's own buildQuickBody(host) exposed on window for exactly this — same function the
-  // site-wide sheet already calls, just filling this modal's own "tab-settings" container
-  // instead. Not exposed at all (home.js never loaded, e.g. the standalone legacy
-  // reader-template.html) → hide the gear entirely rather than a dead/no-op button.
+  // (search/index.html) which also has a gear/quick-settings button next to it. Owner follow-up
+  // (after a first attempt that embedded the settings as a fake tab inside this modal): it must
+  // be the SAME real dropdown as everywhere else, just anchored to THIS gear — not a copy of it
+  // embedded in the modal. window.dgOpenQuickSettings(anchorBtn) is home.js's own openQuick(),
+  // exposed to accept an external anchor for exactly this — it builds/positions/shows the real
+  // #dg-quick sheet (same buildQuickBody() content, same code, nothing duplicated here) and
+  // raises its z-index above this modal's own (see home.css .dg-above-quick-modal / openQuick).
+  // Not exposed at all (home.js never loaded, e.g. the standalone legacy reader-template.html)
+  // → hide the gear entirely rather than a dead/no-op button.
   const quickSettingsBtn = quickModal.querySelector('#quickSettingsBtn');
   if (quickSettingsBtn) {
-      if (typeof window.dgBuildQuickSettingsBody === 'function') {
+      if (typeof window.dgOpenQuickSettings === 'function') {
           quickSettingsBtn.addEventListener('click', () => {
-              window.dgBuildQuickSettingsBody(quickModal.querySelector('#quick-settings-body'));
-              activateTab('tab-settings');
+              window.dgOpenQuickSettings(quickSettingsBtn);
           });
       } else {
           quickSettingsBtn.style.display = 'none';
