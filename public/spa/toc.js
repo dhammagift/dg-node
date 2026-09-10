@@ -766,7 +766,24 @@
                 // exactly that unpredictability, even though it came from an earlier, well-meant
                 // request to make the filter's effect obviously visible.
                 var pending = bookEntries.map(function (b) {
-                    if (b.singlePage) return Promise.resolve();
+                    if (b.singlePage) {
+                        // Pātimokkha (pli-tv-bu-pm/pli-tv-bi-pm) is pure Pāli liturgy, rendered
+                        // from a static legacy fragment (reader/{bu,bi}-pm-fragment.html) with no
+                        // translator's own work in it at all — no translation, no per-book tree
+                        // to check matches against. Owner: "будет выглядеть как будто все
+                        // переводчики перевели патимоккху" — under an active, non-empty filter
+                        // ("only what THIS translator did") it has nothing that matches ANY
+                        // translator, so it hides like any other zero-match book; the "show all
+                        // Pāli" branch above (no filter / filter cleared to empty) still shows it,
+                        // same as a regular leaf with no matching translation would. Untouched:
+                        // any OTHER future singlePage book (not Pātimokkha) that does carry real
+                        // per-translator content — matched narrowly, not by b.singlePage alone.
+                        if (/^pli-tv-(bu|bi)-pm$/.test(b.singlePage)) {
+                            b.bookEl.classList.add('d-none');
+                            updateCategoryVisibility();
+                        }
+                        return Promise.resolve();
+                    }
                     return fetchBook(b.code, langs).then(function (bookData) {
                         var count = matchedLeafCount(bookData, filter);
                         matchedCounts[b.code] = count;
