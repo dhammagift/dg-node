@@ -801,6 +801,11 @@ body.dg-state-home .dg-shell-go-label {
         display: block;
         transform: none !important;
     }
+    /* Owner: with the submit button now showing its own glass (right, above), the decorative
+       one at the field's left edge (.dg-shell-search-ic, home-only) is a second, redundant
+       glass on the same narrow row — hide it on mobile specifically, desktop home keeps it
+       (there the submit button is still the text pill, no icon of its own to duplicate it). */
+    body.dg-state-home .dg-shell-search-ic { display: none; }
 }
 
 /* Ожидание ответа поиска: пока крутится спиннер, выдачи (даже пустой) быть не должно — ради
