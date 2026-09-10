@@ -62,6 +62,15 @@
     function saveTranslatorFilter(set) {
         localStorage.setItem('dhammaTranslatorFilter', JSON.stringify(Array.from(set)));
     }
+    // Owner: "если не выбран ни один переводчик — просто показывай все пали тексты" — every
+    // translator unchecked (filter is a real, touched Set, just empty) used to hide the ENTIRE
+    // tree (matchedLeafCount/leafTranslatorLinks: nothing ever matches an empty set) — the same
+    // dead-end a raw grep for "" would be. Treated the same as no filter for HIDING purposes
+    // (nothing disappears), while leafTranslatorLinks still correctly shows zero badges — the
+    // filter genuinely says "no translator", only the tree's shape stops respecting that.
+    function filterIsEmpty(filter) {
+        return !!(filter && filter.size === 0);
+    }
 
     // Whether the Translators panel starts open. No stored choice yet -> responsive default
     // (closed on phones, so arriving at the TOC lands you in the Pali contents, not a translator
@@ -309,7 +318,11 @@
 
         // Under an active filter, a leaf with translations that simply don't match anyone
         // selected disappears entirely rather than showing as a bare, translation-less row.
-        if (filter && transKeys.length && !anyLangShown) return null;
+        // Except when the filter is empty (nobody selected at all, see filterIsEmpty) — there
+        // "nothing matches" is true for every single leaf, so this would hide the whole tree;
+        // the leaf shows instead, bare (Pāli only, no badges — leafTranslatorLinks already
+        // renders none for an empty filter, that part is correct).
+        if (filter && !filterIsEmpty(filter) && transKeys.length && !anyLangShown) return null;
         return li;
     }
 
@@ -717,7 +730,7 @@
                 // "нужно чтобы все остальные тексты никаи и тк скрылись"). Coverage is derived
                 // from the same per-book endpoint "expand all" already uses, just without
                 // building the DOM tree.
-                if (!filter) {
+                if (!filter || filterIsEmpty(filter)) {
                     bookEntries.forEach(function (b) {
                         b.bookEl.classList.remove('d-none');
                         if (b.countEl) b.countEl.textContent = '(' + b.book.count + ')';
@@ -773,6 +786,15 @@
             function onFilterChange(newFilter) {
                 filter = newFilter;
                 refreshFilterEffects();
+                // Owner: "покажи бабл, что ни одного переводчика не выбрано, показаны пали
+                // тексты" — the tree itself now recovers on its own (see filterIsEmpty above),
+                // but that recovery is silent; without this a user who just unchecked the last
+                // box would have no idea why the translator badges disappeared everywhere.
+                if (filterIsEmpty(newFilter) && typeof window.showBubbleNotification === 'function') {
+                    window.showBubbleNotification(uiIsRu()
+                        ? 'Ни один переводчик не выбран — показаны только пали тексты'
+                        : 'No translator selected — showing Pāli texts only');
+                }
             }
             renderFilterPanel(filterPanel, langs, onFilterChange);
             resetLink.addEventListener('click', function (e) {
