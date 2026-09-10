@@ -190,13 +190,24 @@ window.setLanguage = function(lang) {
 
 window.toggleThePali = function() {
     const storageKey = "paliToggle";
-    const modes = ["pli-2nd", "pli", "2nd"];
+    // Owner: memorize (mnemonic) and devanagari (dualScript) — the main line IS the mode, hiding
+    // it defeats the point, so "2nd" (hide-pali) is dropped from the reachable states; the button
+    // only ever toggles the second (reference Pali / ISO-Latin) line. Same lock as home.js's
+    // dgPaliLockedReaderMode() (.dg-lpill click handler) — this is the OTHER path to the same
+    // toggle, the hidden legacy #language-button that Alt+Z/Alt+Space (settings.js) still clicks.
+    const isPaliLocked = isMnemonicMode(READER_MODE.modeKey) || isDualScriptMode(READER_MODE.modeKey);
+    const modes = isPaliLocked ? ["pli-2nd", "pli"] : ["pli-2nd", "pli", "2nd"];
     const defaultMode = "pli-2nd";
     const languageButton = document.getElementById("language-button");
     if (!languageButton) return;
 
     if (!localStorage.getItem(storageKey)) {
         localStorage.setItem(storageKey, defaultMode);
+    }
+    // Self-heal a "2nd" preference saved before this mode became pali-locked (or from a non-locked
+    // mode) — never apply hide-pali while locked.
+    if (isPaliLocked && localStorage.getItem(storageKey) === "2nd") {
+        localStorage.setItem(storageKey, "pli");
     }
     window.language = localStorage.getItem(storageKey);
     // Owner: "видимость пали/перевода сбрасывается, всегда показывает оба" — this function ran

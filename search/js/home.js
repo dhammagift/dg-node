@@ -1278,6 +1278,16 @@
     var pillLangs = [];
     var pillLiveLangs = []; // what's actually rendered right now (reader: DOM; results: the UI language)
     var resultsHiddenLangs = []; // results-page per-language toggle state (dgSetResultsLangVisibility) — the popover's checkboxes read this back, see dgToggleLangMenu
+    // Owner: in memorize (mnemonic first-letters) and devanagari (dualScript) reader modes, the
+    // main line IS the mode — hiding it makes the mode pointless — so the pill's "pli" segment
+    // must be inert there; the pill only ever toggles the second (reference Pali / ISO-Latin)
+    // line on/off. window.MODE_TABLE flags (mnemonic/dualScript, reader/mode-table.json) are the
+    // same ones megareader.js's isMnemonicMode()/isDualScriptMode() read.
+    function dgPaliLockedReaderMode() {
+        var rm = window.READER_MODE;
+        var cfg = rm && window.MODE_TABLE && window.MODE_TABLE[rm.modeKey];
+        return currentState() === 'reader' && !!(cfg && (cfg.mnemonic || cfg.dualScript));
+    }
     // Byline "*" (megareader.js translatorByline): unfolds the other translators under it.
     document.addEventListener('click', function (e) {
         var star = e.target.closest('.dg-trn-star');
@@ -1579,6 +1589,13 @@
                 var b = e.target.closest('button');
                 if (!b) return;
                 if (b.classList.contains('dg-lpill-more')) { dgToggleLangMenu(); return; }
+                // Memorize/devanagari: "pli" segment is inert (see dgPaliLockedReaderMode above) —
+                // the main line can't be hidden, only the second line toggles, pli always stays on.
+                if (dgPaliLockedReaderMode()) {
+                    if (b.dataset.k === 'pli') return;
+                    dgSetPaliToggle(dgPillMode().trn ? 'pli' : 'pli-2nd');
+                    return;
+                }
                 var cur = dgPillMode();
                 var pli = cur.pli, trn = cur.trn;
                 if (b.dataset.k === 'pli') pli = !pli; else trn = !trn;
@@ -1621,8 +1638,13 @@
         var main = langs[0] || (localStorage.getItem('dhammaLanguage') || localStorage.getItem('siteLanguage') || 'en');
         var label = LANG_LABEL[main] || (main.charAt(0).toUpperCase() + main.slice(1));
         host.hidden = false;
+        var paliLocked = dgPaliLockedReaderMode();
+        var paliLockedTitle = menuLang() === 'ru'
+            ? 'Основная строка режима, всегда включена'
+            : "This mode's main line, always on";
         host.innerHTML =
-            '<button type="button" data-k="pli" aria-pressed="true">Pāḷi</button>' +
+            '<button type="button" data-k="pli" aria-pressed="true"' +
+            (paliLocked ? ' disabled title="' + esc(paliLockedTitle) + '"' : '') + '>Pāḷi</button>' +
             '<button type="button" data-k="2nd" aria-pressed="true">' + esc(label) + '</button>' +
             (langs.length > 1
                 ? '<button type="button" class="dg-lpill-more" title="' + esc(langMenuStr('title')) + '" aria-label="' + esc(langMenuStr('title')) + '"><span class="dg-dots" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span></button>'
@@ -1642,6 +1664,10 @@
             return { pli: pli, trn: trn };
         }
         var mode = localStorage.getItem('paliToggle') || 'pli-2nd';
+        // Locked modes never actually reach '2nd' any more (click handler above blocks it), but
+        // this also guards a stored value left over from before that mode existed — pli always
+        // reads as on here regardless of what's in localStorage.
+        if (dgPaliLockedReaderMode()) return { pli: true, trn: mode !== 'pli' };
         return { pli: mode !== '2nd', trn: mode !== 'pli' };
     }
     function dgSyncLangPill() {

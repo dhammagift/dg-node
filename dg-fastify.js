@@ -975,7 +975,7 @@ try {
 // read.php, sitemap.xml — are symlinks to individual FILES, harmless dead weight for
 // express.static but a hard registration error for @fastify/static, which requires root to be a
 // directory).
-const mountedPrefixes = new Set(['assets', 'read']);
+const mountedPrefixes = new Set(['assets', 'read', 'memorize', 'devanagari']);
 // Skips are reported, not silent. statSync() follows symlinks, so an entry whose target has gone
 // away (siteroot/mobile-data -> a dist/ directory that was never built, say) is indistinguishable
 // here from a broken one — it just never gets a route, and every request under that prefix falls
@@ -1004,6 +1004,36 @@ if (skippedPrefixes.length) {
         `prefixes 404 until the target exists AND the server is restarted: ${skippedPrefixes.join(', ')}`
     );
 }
+// /memorize, /devanagari — 'memorize'/'devanagari' were pre-added to mountedPrefixes above so
+// the siteroot/ loop skips them (siteroot/memorize is a symlink to the legacy PHP memorize.js
+// tool; siteroot/devanagari doesn't even exist). Legacy URL shape:
+// `/memorize/?q=<suttaId>#<segment>` — `#segment` is a URL FRAGMENT, never sent to the server
+// (browsers strip it before the request), so this can only be resolved client-side, never as a
+// server-side redirect. Target is dg-node's own clean URL,
+// `/<suttaId>[:<segment>]?mode=<memorize|devanagari>` (the /:slug route further down parses the
+// ":segment" suffix client-side, router.js) — a same-origin relative redirect, works under
+// whichever hostname this server answers for (owner tested against f.dhamma.gift).
+function legacyModeRedirectStub(modeKey) {
+    return `<!doctype html><html><head><meta charset="utf-8"><title>Redirecting…</title></head><body><script>
+(function () {
+  var params = new URLSearchParams(location.search);
+  var q = params.get('q') || '';
+  params.delete('q');
+  var seg = location.hash ? decodeURIComponent(location.hash.slice(1)) : '';
+  var path = '/' + encodeURIComponent(q) + (seg ? ':' + encodeURIComponent(seg) : '');
+  params.set('mode', ${JSON.stringify(modeKey)});
+  location.replace(path + (params.toString() ? '?' + params.toString() : ''));
+})();
+</script></body></html>`;
+}
+for (const [urlPrefix, modeKey] of [['memorize', 'memorize'], ['devanagari', 'devanagari']]) {
+    for (const routePath of [`/${urlPrefix}`, `/${urlPrefix}/`]) {
+        app.get(routePath, (req, reply) => {
+            reply.type('text/html; charset=utf-8').send(legacyModeRedirectStub(modeKey));
+        });
+    }
+}
+
 // ru/memo, ru/login — унаследованные от легаси языковые алиасы (тот же контент ещё и под /ru/).
 // Это не отдельная тулза в siteroot/, а второй URL для уже примонтированной — оставлены явно.
 app.register(fastifyStatic, { root: path.join(SITEROOT, 'memo'), prefix: '/ru/memo', setHeaders: staticCacheHeaders, decorateReply: false, redirect: true });

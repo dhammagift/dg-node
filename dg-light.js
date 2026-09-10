@@ -787,34 +787,6 @@ try {
 } catch (e) {
     console.warn('Siteroot not found:', SITEROOT);
 }
-// /memorize, /devanagari — same override-by-registration-order trick as /assets above: these
-// two exact routes are registered BEFORE the siteroot/ scan loop below, so they win over
-// `siteroot/memorize` (legacy PHP memorize.js tool, symlink) purely by coming first — no static
-// asset under /memorize/... is served through dg-node any more, every request becomes a
-// same-origin client redirect into the SPA reader's memorize/devanagari mode. `siteroot/
-// devanagari` doesn't even exist yet (no legacy tool at that path) — this is simply its first
-// route. Legacy URL shape: `/memorize/?q=<suttaId>#<segment>` — `#segment` is a URL FRAGMENT,
-// never sent to the server (browsers strip it before the request), so it can only be resolved
-// client-side, never as a server-side 302. Target is dg-node's own clean URL,
-// `/<suttaId>[:<segment>]?mode=<memorize|devanagari>` (the `/:slug` route further down parses
-// the ":segment" suffix client-side, router.js) — a same-origin relative redirect, so it works
-// under whichever hostname this server answers for (owner tested against f.dhamma.gift).
-function legacyModeRedirectStub(modeKey) {
-    return `<!doctype html><html><head><meta charset="utf-8"><title>Redirecting…</title></head><body><script>
-(function () {
-  var params = new URLSearchParams(location.search);
-  var q = params.get('q') || '';
-  params.delete('q');
-  var seg = location.hash ? decodeURIComponent(location.hash.slice(1)) : '';
-  var path = '/' + encodeURIComponent(q) + (seg ? ':' + encodeURIComponent(seg) : '');
-  params.set('mode', ${JSON.stringify(modeKey)});
-  location.replace(path + (params.toString() ? '?' + params.toString() : ''));
-})();
-</script></body></html>`;
-}
-app.get(['/memorize', '/memorize/'], (req, res) => res.type('html').send(legacyModeRedirectStub('memorize')));
-app.get(['/devanagari', '/devanagari/'], (req, res) => res.type('html').send(legacyModeRedirectStub('devanagari')));
-
 for (const name of siteRootEntries) {
     app.use(`/${name}`, express.static(path.join(SITEROOT, name), { setHeaders: staticCacheHeaders }));
 }
