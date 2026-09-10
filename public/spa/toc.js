@@ -202,17 +202,24 @@
     // header with no matching children (owner: filter should really hide non-matching texts, not
     // just grey out badges).
 
+    // Owner: "фильтр не работает как надо — o показывается даже с выключенным o" — interlinearSet
+    // used to mean "always shown, filter doesn't apply" (see the old matchedLeafCount comment
+    // below), but that made the translator filter panel's own checkbox for these translators
+    // (ru_o/en_o/bb_o/th_o, translator-types.json) a no-op lie: unchecking "o" left it showing
+    // anyway. interlinearSet now only decides DISPLAY (shown first, .toc-mark-primary styling) —
+    // the filter itself applies uniformly to every translator, interlinear or not.
     function leafTranslatorLinks(id, transKeys, interlinearSet, filter) {
         var interlinear = transKeys.filter(function (k) { return interlinearSet.has(k); });
+        var filteredInterlinear = filter ? interlinear.filter(function (k) { return filter.has(k); }) : interlinear;
         var rest = sortRest(transKeys.filter(function (k) { return !interlinearSet.has(k); }));
         var filteredRest = filter ? rest.filter(function (k) { return filter.has(k); }) : rest;
-        if (!interlinear.length && !filteredRest.length) return null;
+        if (!filteredInterlinear.length && !filteredRest.length) return null;
 
         // Plain small marks, like prod's muted "TB"/"BS" initials next to a leaf — not filled
         // chip/badge boxes (owner: side-by-side with prod, the chip look reads as an admin panel,
         // not a canon listing).
         var frag = document.createDocumentFragment();
-        interlinear.forEach(function (k) {
+        filteredInterlinear.forEach(function (k) {
             var a = el('a', 'toc-mark toc-mark-primary', translatorLabel(k));
             a.href = '/' + encodeURIComponent(id) + '?translators=' + encodeURIComponent(k);
             frag.appendChild(a);
@@ -383,16 +390,16 @@
         return matchedLeafCount(bookData, filter) > 0;
     }
 
-    // How many texts in this book actually match the current filter (interlinear always counts,
-    // same rule as the per-leaf badges) — used to replace a book's static total ("34") with the
-    // real filtered count while a filter is active (owner: "количество текстов вообще не
-    // поменялось... хотя в дигха никае только два перевода, а написано 34").
+    // How many texts in this book actually match the current filter — used to replace a book's
+    // static total ("34") with the real filtered count while a filter is active (owner:
+    // "количество текстов вообще не поменялось... хотя в дигха никае только два перевода, а
+    // написано 34"). Same rule as the per-leaf badges (leafTranslatorLinks): the filter applies
+    // uniformly, interlinear translators included — see the comment there for why.
     function matchedLeafCount(bookData, filter) {
-        var interlinearSet = new Set(bookData.interlinearKeys || []);
         var translations = bookData.translations || {};
         var count = 0;
         Object.keys(translations).forEach(function (id) {
-            if (translations[id].some(function (k) { return interlinearSet.has(k) || filter.has(k); })) count++;
+            if (translations[id].some(function (k) { return filter.has(k); })) count++;
         });
         return count;
     }
