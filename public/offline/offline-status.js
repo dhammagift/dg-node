@@ -338,9 +338,10 @@
     // languages — all of those stay online.
     var FACTS = {
         ru: [
-            // First slide on purpose: backgrounding the tab (or locking the phone) is what actually
-            // kills this transfer on mobile, and it comes back around every cycle.
-            'Не выключайте телефон и не сворачивайте браузер',
+            // First slide on purpose: backgrounding the tab (or letting the device sleep) is what
+            // actually kills this transfer, and it comes back around every cycle. Says "device", not
+            // "phone": the same library installs and works on a laptop or desktop browser.
+            'Не выключайте устройство и не сворачивайте браузер',
             'Поиск в Суттах и Винае — без интернета',
             'Чтение Сутт и Винаи офлайн, с переводами',
             'Языки: пали, английский и русский',
@@ -349,7 +350,7 @@
             'Библиотека живёт на устройстве — искать можно и в самолёте'
         ],
         en: [
-            'Keep the phone on and leave this tab open',
+            'Keep the device on and leave this tab open',
             'Search the Suttas and Vinaya — no connection',
             'Read the Suttas and Vinaya offline, translations included',
             'Languages: Pali, English and Russian',
