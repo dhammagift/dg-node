@@ -1263,7 +1263,7 @@
     // "Ru"/"En" language label there is just wrong, not merely mistranslated. Owner: show one
     // button, no language label at all.
     var SECOND_LINE_LABEL = {
-        memorize: { ru: 'Полностью', en: 'Full' },
+        memorize: { ru: 'Полн.', en: 'Hint' },
         devanagari: { ru: 'Лат.', en: 'Lat.' }
     };
     var LANG_FULL_NAME = { ru: 'Русский', en: 'English', th: 'ไทย', de: 'Deutsch', fr: 'Français', es: 'Español', it: 'Italiano', pt: 'Português', pl: 'Polski', cs: 'Čeština', si: 'Sinhala', my: 'Myanmar', vi: 'Tiếng Việt', id: 'Indonesia', jp: '日本語', zh: '中文', hi: 'हिन्दी', bn: 'বাংলা', lt: 'Lietuvių', nl: 'Nederlands', sv: 'Svenska', fi: 'Suomi', no: 'Norsk', hu: 'Magyar', ro: 'Română', sr: 'Српски', sl: 'Slovenščina', uk: 'Українська', kn: 'ಕನ್ನಡ', ta: 'தமிழ்' };
