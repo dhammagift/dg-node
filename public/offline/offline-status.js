@@ -63,6 +63,9 @@
 
     // Self-colored (like .bubble-notification above), no dark/light variant needed — visible on
     // either theme the same way the existing toast is.
+    // Folded/unfolded is the reader's choice about their own screen, so it outlives one download.
+    const COLLAPSE_KEY = 'dg.offline.cardCompact';
+
     const style = document.createElement('style');
     style.textContent = `
         #dgApiLoadingDot {
@@ -204,8 +207,37 @@
             font-size: 10.5px; font-family: monospace; color: var(--dgc-faint); opacity: 0.8;
             margin-top: 4px;
         }
+        /* The card can be folded into a thin "thread": progress keeps moving, the page underneath
+           is not covered. The choice is the reader's screen, not this download, so it is remembered.
+           The card itself stays pointer-events:none (a tap meant for the page must not be eaten) —
+           only the toggle and the folded strip accept clicks. */
+        #dgDlCard .dgdl-toggle {
+            flex: none; width: 22px; height: 22px; padding: 0; border: 0; cursor: pointer;
+            background: transparent; color: var(--dgc-faint); border-radius: 6px;
+            display: inline-flex; align-items: center; justify-content: center;
+        }
+        #dgDlCard .dgdl-toggle:hover { color: var(--dgc-ink); background: var(--dgc-sunk); }
+        #dgDlCard .dgdl-toggle svg { transition: transform .18s ease; }
+        #dgDlCard .dgdl-head { align-items: center; }
+        #dgDlCard .dgdl-pct { margin-left: auto; }
+        #dgDlCard .dgdl-facts { min-height: 32px; display: flex; align-items: center; }
+        #dgDlCard .dgdl-fact {
+            font-size: 12px; line-height: 1.35; color: var(--dgc-muted);
+            opacity: 0; transform: translateY(4px);
+            transition: opacity .35s ease, transform .35s ease;
+        }
+        #dgDlCard .dgdl-fact.dgdl-fact-in { opacity: 1; transform: translateY(0); }
+        #dgDlCard.dgdl-collapsed { padding: 8px 12px 9px; gap: 6px; border-radius: 14px; cursor: pointer; }
+        #dgDlCard.dgdl-collapsed .dgdl-title,
+        #dgDlCard.dgdl-collapsed .dgdl-sub,
+        #dgDlCard.dgdl-collapsed .dgdl-facts,
+        #dgDlCard.dgdl-collapsed .dgdl-debug { display: none; }
+        #dgDlCard.dgdl-collapsed .dgdl-track { height: 4px; }
+        #dgDlCard.dgdl-collapsed .dgdl-toggle svg { transform: rotate(180deg); }
+        #dgDlCard .dgdl-toggle, #dgDlCard.dgdl-collapsed { pointer-events: auto; }
         @media (prefers-reduced-motion: reduce) {
-            #dgConsent, #dgConsentSheet, #dgDlCard, #dgDlCard .dgdl-fill { transition: none; }
+            #dgConsent, #dgConsentSheet, #dgDlCard, #dgDlCard .dgdl-fill,
+            #dgDlCard .dgdl-fact, #dgDlCard .dgdl-toggle svg { transition: none; }
             #dgDlCard.indeterminate .dgdl-fill { animation: none; }
         }
     `;
@@ -232,12 +264,92 @@
         dlCard.setAttribute('role', 'status');
         dlCard.setAttribute('aria-live', 'polite');
         dlCard.innerHTML =
-            '<div class="dgdl-head"><span class="dgdl-title"></span><span class="dgdl-pct"></span></div>' +
+            '<div class="dgdl-head">' +
+                '<span class="dgdl-title"></span>' +
+                '<span class="dgdl-pct"></span>' +
+                '<button class="dgdl-toggle" type="button" aria-expanded="true" aria-label="' +
+                    (isRuLang() ? 'Свернуть в полоску' : 'Collapse to a bar') + '">' +
+                    '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" ' +
+                    'stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+                    '<path d="M6 9l6 6 6-6"/></svg>' +
+                '</button>' +
+            '</div>' +
             '<div class="dgdl-track"><div class="dgdl-fill"></div></div>' +
             '<div class="dgdl-sub"></div>' +
+            '<div class="dgdl-facts"><span class="dgdl-fact"></span></div>' +
             '<div class="dgdl-debug" hidden></div>';
         document.body.appendChild(dlCard);
+
+        var toggle = dlCard.querySelector('.dgdl-toggle');
+        function applyCollapsed(collapsed) {
+            dlCard.classList.toggle('dgdl-collapsed', collapsed);
+            toggle.setAttribute('aria-expanded', String(!collapsed));
+            toggle.setAttribute('aria-label', collapsed
+                ? (isRuLang() ? 'Развернуть' : 'Expand')
+                : (isRuLang() ? 'Свернуть в полоску' : 'Collapse to a bar'));
+            try { localStorage.setItem(COLLAPSE_KEY, collapsed ? '1' : '0'); } catch (e) { /* приватный режим */ }
+        }
+        toggle.addEventListener('click', function (event) {
+            event.stopPropagation();
+            applyCollapsed(!dlCard.classList.contains('dgdl-collapsed'));
+        });
+        // Folded, the whole strip is the target — it is 4px of bar and a percentage, nothing else.
+        dlCard.addEventListener('click', function () {
+            if (dlCard.classList.contains('dgdl-collapsed')) applyCollapsed(false);
+        });
+        var stored = null;
+        try { stored = localStorage.getItem(COLLAPSE_KEY); } catch (e) { /* приватный режим */ }
+        applyCollapsed(stored === '1');
         return dlCard;
+    }
+
+    // What the reader is actually buying with 479MB and several minutes of their connection. A small
+    // rotation rather than a paragraph: it fills the wait with something true and useful instead of
+    // a motionless percentage (owner: "чтобы не скучно было и информативно"). Kept strictly to what
+    // the offline layer really serves — see docs/OFFLINE_PWA_PLAN.md: search, the reader with its
+    // ru+en translations and Pali editions, navigation between suttas. NOT listed, because they stay
+    // online: Google TTS, dictionaries, script conversion (?script=), other languages.
+    // Only claims the slice actually backs (checked against the built dg-mobile.db: kind=root,
+    // kind=translation for ru+en, kind=variant; nothing else). Deliberately absent: the bjt/vri/siam
+    // editions (file-based, not in dg.db), Google TTS, dictionaries, script conversion, other
+    // languages — all of those stay online.
+    var FACTS = {
+        ru: [
+            'Поиск по всему канону — без интернета',
+            'Чтение сутт офлайн, с переводами',
+            'Языки: русский и английский',
+            'Переходы между суттами, закладки и история — тоже офлайн',
+            'Прервали загрузку? Она продолжится с того же места',
+            'Библиотека живёт на устройстве — искать можно и в самолёте'
+        ],
+        en: [
+            'Search the whole canon — no connection',
+            'Read suttas offline, translations included',
+            'Languages: Russian and English',
+            'Sutta-to-sutta navigation, bookmarks and history offline too',
+            'Download interrupted? It resumes where it stopped',
+            'The library lives on your device — search on a plane'
+        ]
+    };
+    var factIndex = 0;
+    var factTimer = null;
+    function stopFacts() {
+        if (factTimer) { clearInterval(factTimer); factTimer = null; }
+    }
+    function startFacts(card) {
+        if (factTimer) return;
+        var el = card.querySelector('.dgdl-fact');
+        var show = function () {
+            var lines = FACTS[isRuLang() ? 'ru' : 'en'];
+            el.classList.remove('dgdl-fact-in');
+            el.textContent = lines[factIndex % lines.length];
+            factIndex++;
+            // Force a reflow so the fade restarts even when the same node is reused twice in a row.
+            void el.offsetWidth;
+            el.classList.add('dgdl-fact-in');
+        };
+        show();
+        factTimer = setInterval(show, 4200);
     }
 
     var dlHideTimer = null;
@@ -279,6 +391,10 @@
         debugEl.hidden = !debugEl.textContent;
 
         card.classList.add('show');
+
+        // The rotation runs while bytes are crossing the network, and stops for the import phase
+        // (nothing to read then: it is local CPU) and once the library is ready.
+        if (!detail.done && !importing) startFacts(card); else stopFacts();
 
         clearTimeout(dlHideTimer);
         // detail.done is set on downloadInto()'s own final post(), not inferred from loaded/total —
