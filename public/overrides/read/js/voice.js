@@ -345,6 +345,55 @@ function clearTtsStorage() {
   localStorage.removeItem(LAST_INDEX_KEY);
 }
 
+// --- УНИВЕРСАЛЬНАЯ ЧИНКА ДЛИННЫХ ПАЛИЙСКИХ СЛОВОСЛИЯНИЙ (samāsa) ДЛЯ TTS ---
+// Pali freely glues many words into ONE unbroken compound (samāsa), e.g.
+// "sokaparidevadukkhadomanassupāyāsā" — something no ordinary Hindi/Sanskrit word ever is.
+// Hindi/Sanskrit TTS voices (both the browser's native sa-IN/hi-IN engine here and Google Cloud
+// TTS, see the "Google-specific Pali patch" in fetchGoogleAudio below) apply schwa-deletion /
+// vowel-reduction heuristics tuned for ordinary-length words; fed a single 25+ character token
+// they misfire throughout the middle ("sokaparidevadukkha..." read as "sokparidevdukkha...").
+// The boundary-anchored patches elsewhere in this file (both here and in fetchGoogleAudio) only
+// fix the LAST syllable of each whitespace-delimited "word" — no help here, since the whole
+// compound IS one word with no whitespace at all.
+// Fix: break any Devanagari run of SYLLABLE_BREAK_MIN_SYLLABLES+ syllables into chunks of
+// SYLLABLE_BREAK_CHUNK_SIZE syllables with a real space between them — same "give the engine
+// smaller bites" idea as the SAFE_LENGTH_LIMIT clause-splitting below, one level down (syllables
+// inside a single word, not clauses inside a segment). A syllable/akshara boundary is any
+// Devanagari consonant or independent vowel that is NOT immediately preceded by a virama (्) —
+// i.e. it starts a new akshara rather than continuing a conjunct. No dictionary of actual Pali
+// morpheme joints is used (we don't have one) — this is a generic length rule, not linguistics,
+// so the break points won't always land exactly on a morpheme boundary, only close enough that a
+// small pause there sounds like natural recitation rather than a cut mid-syllable.
+var SYLLABLE_BREAK_MIN_SYLLABLES = 7;
+var SYLLABLE_BREAK_CHUNK_SIZE = 3;
+var DEVANAGARI_SYLLABLE_START = /[\u0904-\u0939\u0958-\u095F]/;
+var DEVANAGARI_VIRAMA = '्';
+
+function isPaliSyllableStart(chars, idx) {
+  var prev = idx > 0 ? chars[idx - 1] : '';
+  return DEVANAGARI_SYLLABLE_START.test(chars[idx]) && prev !== DEVANAGARI_VIRAMA;
+}
+
+function insertPaliSyllableBreaks(devWord) {
+  var chars = Array.from(devWord);
+  var syllableCount = 0;
+  for (var i = 0; i < chars.length; i++) {
+    if (isPaliSyllableStart(chars, i)) syllableCount++;
+  }
+  if (syllableCount < SYLLABLE_BREAK_MIN_SYLLABLES) return devWord;
+
+  var out = '';
+  var syllableIdx = 0;
+  for (var idx = 0; idx < chars.length; idx++) {
+    if (isPaliSyllableStart(chars, idx)) {
+      if (syllableIdx > 0 && syllableIdx % SYLLABLE_BREAK_CHUNK_SIZE === 0) out += ' ';
+      syllableIdx++;
+    }
+    out += chars[idx];
+  }
+  return out;
+}
+
 function cleanTextForTTS(text) {
   if (!text) return "";
 
@@ -377,6 +426,11 @@ function cleanTextForTTS(text) {
     .replace(/[ \t]+/g, ' ')
     .replace(/[-–—]/g, ' ')
     .replace(/_/g, '').trim();
+
+  // Break up overly long Pāli samāsa compounds (see insertPaliSyllableBreaks above) — must run
+  // on every Devanagari run in the text, not just Pāli segments, since the translation columns
+  // can themselves contain quoted/glossed Pāli terms.
+  clean = clean.replace(/[ऀ-ॿ‌‍]+/g, insertPaliSyllableBreaks);
 
   // --- УМНАЯ ЛОГИКА (SMART SPLIT) ---
   const SAFE_LENGTH_LIMIT = 200;
