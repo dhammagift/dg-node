@@ -95,7 +95,7 @@
     var deferredRequest = null;   // asked for before this page knew whether it owns the pool
     var probePending = true;      // true until acquireOwnership() has answered
     var releaseOwnership = null;  // resolves the Web Lock callback, see yieldLibrary()
-    var releaseAsked = false;     // one takeover attempt per page, not a loop
+    var lastReleaseAsk = 0;       // throttles takeover requests (one every few seconds, not a loop)
     if (channel) {
         channel.onmessage = function (event) {
             var msg = event.data || {};
@@ -121,6 +121,7 @@
             }
             if (msg.type === 'released') {
                 log('the other tab released the offline library — taking it over');
+                lastReleaseAsk = 0;
                 reopenIfNeeded();
                 return;
             }
@@ -221,8 +222,11 @@
 
     // The tab the reader is actually looking at asks for the pool once; a hidden owner hands it over.
     function requestTakeover() {
-        if (local || downloadInFlight || probePending || releaseAsked || !channel) return;
-        releaseAsked = true;
+        if (local || downloadInFlight || probePending || !channel) return;
+        // Throttled, not one-shot: the holder may still have been busy (or downloading) the first
+        // time, and a second tab that keeps being looked at deserves another try.
+        if (Date.now() - lastReleaseAsk < 3000) return;
+        lastReleaseAsk = Date.now();
         log('asking the other tab to hand the offline library over');
         channel.postMessage({ type: 'release-request' });
     }
@@ -552,7 +556,9 @@
         }).catch(function (e) {
             if (!ownsLibrary && e && /Access Handle|createSyncAccessHandle|not opened/i.test(e.message || '')) {
                 // The storage really is held by another document: this is the one honest "not owner".
+                // Ask it to let go (it will, if it is hidden and idle) and try again on the reply.
                 rememberMode(true, 'not-owner');
+                requestTakeover();
             }
             // A reader pressing × is not a failure: it must not raise the "could not download"
             // toast, and it must not reject `dgOfflineReady` (offline-status.js turns a rejection
