@@ -503,7 +503,13 @@
         // both href="/") posts this instead of navigating itself when it detects it's inside a
         // parent frame — see settings/index.html. Closes the sheet exactly like our own X.
         window.addEventListener('message', function (e) {
-            if (e.origin === location.origin && e.data && e.data.dgSettingsSheetClose) closeSettingsSheet(false);
+            if (e.origin !== location.origin || !e.data) return;
+            if (e.data.dgSettingsSheetClose) { closeSettingsSheet(false); return; }
+            // "Download now" inside the embedded settings page. It does not navigate its own frame
+            // (that would load the home page, and a second downloader, INSIDE this sheet), so it
+            // asks us to collapse the sheet here: the progress card belongs to this page, and
+            // public/offline/app.js listens for the same message to start the transfer.
+            if (e.data.dgOfflineDownloadRequest) closeSettingsSheet(false);
         });
     }
 
@@ -2691,12 +2697,17 @@
     }
 
     // Первое незакрытое объявление — общая точка и для показа, и для расчёта задержки.
+    // Запись с "enabled": false пропускается: в JSON нет комментариев, а объявление, которое
+    // «полежит и потом включим», удобнее держать готовым в этом же файле и включать одной
+    // строкой (enabled: true или просто убрать поле — по умолчанию запись включена).
     function pendingAnnounce() {
         if (!announceData || !announceData.items) return null;
         var done = dismissedAnnounces();
         for (var i = 0; i < announceData.items.length; i++) {
-            var flag = announceFlag(announceData.items[i]);
-            if (flag && done.indexOf(flag) === -1) return announceData.items[i];
+            var item = announceData.items[i];
+            if (item.enabled === false) continue;
+            var flag = announceFlag(item);
+            if (flag && done.indexOf(flag) === -1) return item;
         }
         return null;
     }
@@ -2728,13 +2739,23 @@
         // первом элемент получает display, во втором — стартует transition.
         host.style.display = 'flex';
         requestAnimationFrame(function () { host.classList.add('dg-announce-in'); host.style.display = ''; });
-        host.querySelector('.dg-announce-close').addEventListener('click', function () {
+        function dismissAnnounce() {
             var list = dismissedAnnounces();
             var flag = announceFlag(item);
             if (list.indexOf(flag) === -1) list.push(flag);
             try { localStorage.setItem(ANNOUNCE_KEY, JSON.stringify(list)); } catch (e) { /* приватный режим */ }
             host.classList.remove('dg-announce-in');
             renderAnnounce(); // следующее незакрытое, если оно есть
+        }
+        host.querySelector('.dg-announce-close').addEventListener('click', dismissAnnounce);
+        // An announcement may carry the offline download as a link
+        // (<a href="#offline-download">…</a>, see announcements.json). The click itself is handled
+        // by public/offline/app.js; here it only means the announcement has done its job and should
+        // not keep nagging someone who has just acted on it.
+        host.querySelector('.dg-announce-box').addEventListener('click', function (event) {
+            var link = event.target && event.target.closest
+                ? event.target.closest('a[href="#offline-download"], [data-dg-offline-download]') : null;
+            if (link) dismissAnnounce();
         });
     }
 

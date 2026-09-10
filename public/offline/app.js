@@ -91,7 +91,8 @@
     // was the old behaviour and the worst option: the click was consumed, the key stayed in
     // localStorage, the reader saw no progress and no reason, and NO request ever left the browser.
     var channel = (typeof BroadcastChannel === 'function') ? new BroadcastChannel('dg-offline') : null;
-    var deferredRequest = null;
+    var deferredRequest = null;   // asked for before this page knew whether it owns the pool
+    var probePending = true;      // true until acquireOwnership() has answered
     if (channel) {
         channel.onmessage = function (event) {
             var msg = event.data || {};
@@ -108,7 +109,8 @@
             }
             if (msg.type !== 'download') return;
             var kind = msg.kind === 'update' ? 'update' : 'open';
-            if (!ownsLibrary) { deferredRequest = kind; return; } // this tab's own probe may not have finished yet
+            if (probePending) { deferredRequest = kind; return; } // this tab's own probe may not have finished yet
+            if (!ownsLibrary) return; // the tab that owns the pool received the same broadcast
             log('another tab asked for the offline library — downloading here');
             download(kind).catch(function (e) {
                 log('download asked for by another tab failed:', e && e.message);
@@ -116,6 +118,59 @@
             });
         };
     }
+
+    // The settings SHEET asks for the download by message instead of navigating its own frame (see
+    // offline-library-settings.js): it is an iframe ON this page, so navigating it would load a
+    // second copy of the home page — and a second downloader — inside the sheet while the sheet
+    // still covered the first. This page is already running, so the transfer starts here: no reload,
+    // no navigation, one progress card, and the sheet is collapsed by search/js/home.js on the same
+    // message.
+    window.addEventListener('message', function (event) {
+        if (event.origin !== location.origin) return;
+        var data = event.data || {};
+        if (!data.dgOfflineDownloadRequest) return;
+        var kind = data.dgOfflineDownloadRequest === 'update' ? 'update' : 'open';
+        if (probePending) { deferredRequest = kind; return; }
+        requestDownload(kind);
+    });
+
+    // "Start it on this page if we can, otherwise hand it to whoever can."
+    function requestDownload(kind) {
+        // The frame also writes the intent keys before messaging (that is how a standalone settings
+        // page asks). This message is the real request, so consume them — otherwise the next page
+        // load would act on a click that has already been served.
+        readIntent(WANT_DATA_KEY);
+        readIntent(WANT_UPDATE_KEY);
+        if (!opfsAvailable()) {
+            notify('HTTPS is required for the offline library (or localhost)');
+            return;
+        }
+        if (ownsLibrary) {
+            download(kind).catch(function (e) { notify((e && e.message) || 'download failed'); });
+            return;
+        }
+        if (!askOwningTab(kind)) notify('the offline library is in use by another tab — close it and try again');
+    }
+
+    // Anything on the page can start the download with a plain link — the obvious use is a home-page
+    // announcement (configs/search/announcements.json), e.g.
+    //   <a href="#offline-download">Скачать офлайн-библиотеку</a>
+    // Delegated, so it also works for markup rendered later (the announcement appears a couple of
+    // seconds after load) and for anything added in the future without touching this file again.
+    document.addEventListener('click', function (event) {
+        var el = event.target && event.target.closest
+            ? event.target.closest('a[href="#offline-download"], [data-dg-offline-download]') : null;
+        if (!el) return;
+        event.preventDefault();
+        var asked = el.getAttribute('data-dg-offline-download');
+        requestDownload(asked === 'update' ? 'update' : 'open');
+    });
+
+    // The same thing for code that would rather call it directly (the settings page cannot — it is a
+    // separate realm — but anything on this page can).
+    window.dgStartOfflineDownload = function (kind) {
+        requestDownload(kind === 'update' ? 'update' : 'open');
+    };
 
     // Returns false when there is no way to hand it over, so the caller can say so instead.
     function askOwningTab(kind) {
@@ -286,6 +341,7 @@
     function probe() {
         return acquireOwnership().then(function (owns) {
             ownsLibrary = owns;
+            probePending = false;
 
             // The intent is consumed FIRST, whatever happens next. Leaving it behind is how a click
             // used to turn into nothing at all: the key stayed in localStorage, and the reader's
@@ -310,6 +366,12 @@
                     if (!askOwningTab(wantsUpdate ? 'update' : 'open')) {
                         throw new Error('the offline library is in use by another tab — close it and try again');
                     }
+                } else if (deferredRequest) {
+                    // Asked for (sheet message or another tab) while this page was still finding out
+                    // that it does not own the pool — pass it on rather than dropping it.
+                    var pending = deferredRequest;
+                    deferredRequest = null;
+                    askOwningTab(pending);
                 }
                 return null;
             }

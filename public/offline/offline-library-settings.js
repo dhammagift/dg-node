@@ -61,6 +61,20 @@
     // there — this page cannot touch any of it (see the header).
     function goHomeWith(key) {
         try { localStorage.setItem(key, '1'); } catch (e) { /* ignore */ }
+        // Inside the settings SHEET (search/js/home.js's #dg-settings-sheet iframe) navigating this
+        // frame to "/" loads the whole home page INSIDE the sheet: a second app.js, a second
+        // downloader, a second progress card — with the sheet still covering the first one. The page
+        // that owns the sheet is asked instead (same idea as the back arrow's dgSettingsSheetClose):
+        // it collapses the sheet, and public/offline/app.js — which is already running up there —
+        // starts the download.
+        if (window.self !== window.top) {
+            try {
+                window.parent.postMessage(
+                    { dgOfflineDownloadRequest: key === WANT_UPDATE_KEY ? 'update' : 'open' },
+                    location.origin);
+                return;
+            } catch (e) { /* cross-origin parent — fall back to navigating this frame */ }
+        }
         location.href = '/';
     }
 
