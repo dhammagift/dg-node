@@ -3439,7 +3439,10 @@ body.dg-state-results #language-button { display: none !important; }
 body.dark .dg-lpill { background: #42426a; color: rgb(221, 221, 221); }
 body.dark .dg-lpill button[aria-pressed="true"] { background: rgba(80, 80, 230, 0.6); }
 body.dark .dg-lpill button[aria-pressed="true"]:hover { background: #5050f0; }
-@media (max-width: 767.98px) { .dg-lpill { right: 12px; bottom: 14px; } .dg-lpill button { font-size: 12.5px; padding: 0 8px; } }
+/* bottom stays 30px, same as #scrollToTopBtn (search/index.html) and .dynamic-tts-btn
+   (reader/css/uiextra.css) — neither has its own mobile override, so a different bottom here
+   used to drop this pill visibly below its two corner-cluster neighbors on mobile. */
+@media (max-width: 767.98px) { .dg-lpill { right: 12px; bottom: 30px; } .dg-lpill button { font-size: 12.5px; padding: 0 8px; } }
 /* Owner: on wide/large screens the pill (and, via placeScrollTopButton()/repositionTtsButton(),
    the "to top" arrow + the TTS play button, which both measure THIS element's live rect and
    follow it — see search/index.html and settings.js) sat glued to the browser's right edge, far
