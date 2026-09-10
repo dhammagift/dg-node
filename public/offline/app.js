@@ -493,26 +493,12 @@
                 return null;
             }
 
-            if (!owns) {
-                log('another tab owns the offline database — this tab stays server-backed');
-                // Still worth knowing whether a library EXISTS: "downloaded but another tab holds it"
-                // and "nothing downloaded" need different answers, and the settings row shows which.
-                call('status', { distBase: DIST_BASE, wantManifest: false }).then(function (st) {
-                    rememberMode(st && st.present, 'not-owner');
-                }).catch(function () { rememberMode(false, 'not-owner'); });
-                if (wantsData || wantsUpdate) {
-                    if (!askOwningTab(wantsUpdate ? 'update' : 'open')) {
-                        throw new Error('the offline library is in use by another tab — close it and try again');
-                    }
-                } else if (deferredRequest) {
-                    // Asked for (sheet message or another tab) while this page was still finding out
-                    // that it does not own the pool — pass it on rather than dropping it.
-                    var pending = deferredRequest;
-                    deferredRequest = null;
-                    askOwningTab(pending);
-                }
-                return null;
-            }
+            // The lock is ADVISORY. What really decides is the storage itself: the OPFS pool refuses a
+            // second writer on its own, so if it opens here, this tab is the one that got there —
+            // whatever the lock says. Trusting the lock alone left a single tab in Opera showing
+            // "another tab or the app is using it" with nobody else around. A tab that has an intent
+            // (or was asked) still passes the request on if opening fails below.
+            if (!owns) log('the pool lock is held elsewhere — trying the library anyway');
 
             // A request that arrived from another tab before this one knew it owned the pool.
             if (deferredRequest) {
@@ -532,7 +518,12 @@
                     return call('open', { distBase: DIST_BASE, download: false }).then(function (opened) {
                         if (!opened || opened.present === false) {
                             log('stored database is unusable — staying server-backed');
-                            rememberMode(true, 'unusable');
+                            rememberMode(true, owns ? 'unusable' : 'not-owner');
+                            if (!owns && (wantsData || wantsUpdate || deferredRequest)) {
+                                var asked = deferredRequest || (wantsUpdate ? 'update' : 'open');
+                                deferredRequest = null;
+                                askOwningTab(asked);
+                            }
                             return null;
                         }
                         markLocal(opened);
@@ -559,6 +550,10 @@
                 return null;
             });
         }).catch(function (e) {
+            if (!ownsLibrary && e && /Access Handle|createSyncAccessHandle|not opened/i.test(e.message || '')) {
+                // The storage really is held by another document: this is the one honest "not owner".
+                rememberMode(true, 'not-owner');
+            }
             // A reader pressing × is not a failure: it must not raise the "could not download"
             // toast, and it must not reject `dgOfflineReady` (offline-status.js turns a rejection
             // into exactly that toast). The cancel itself already answered with its own message.
