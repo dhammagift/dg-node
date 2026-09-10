@@ -1634,7 +1634,7 @@ body.dark .quick-modal-content-wrapper {
 }
 
 /* Поиск */
-.quick-search-form { display: flex; gap: 8px; margin-bottom: 1rem; margin-top: 10px; padding-right: 3.5rem; }
+.quick-search-form { display: flex; align-items: center; gap: 8px; margin-bottom: 1rem; margin-top: 10px; padding-right: 3.5rem; }
 .quick-search-input {
     flex-grow: 1; border: 1px solid #ccc; background-color: #f8f9fa;
     color: #212529; padding: 10px 14px; border-radius: 20px; font-size: 0.95rem; outline: none;
@@ -1645,6 +1645,11 @@ body.dark .quick-search-input { border-color: #444; background-color: #2c3a47; c
     background-color: #025242; color: white; border: none; width: 40px; height: 40px;
     border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
 }
+/* #quickSettingsBtn (.dg-qs-btn, home.css) — the "quick settings" gear, same button/icon as the
+   one next to the main site input (owner: "чтобы было похоже на главный инпут"). Its own fixed
+   34px height would otherwise sit flush to the row's cross-start under the default flex stretch
+   this form used before align-items:center was added above; center keeps the 40px search button
+   and 34px gear visually aligned regardless. */
 
 /* Вкладки */
 .quick-tabs-wrapper { 
