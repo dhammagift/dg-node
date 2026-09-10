@@ -72,6 +72,62 @@
         console.log.apply(console, args);
     }
 
+    // OPFS exists only in a secure context (HTTPS, or localhost, which browsers treat as one). The
+    // shim itself is harmless without it — it simply never activates — but a download the reader
+    // asked for has to say so, instead of dying inside the worker with "Missing required OPFS APIs".
+    function opfsAvailable() {
+        return !!window.isSecureContext && !!navigator.storage &&
+               typeof navigator.storage.getDirectory === 'function';
+    }
+
+    // A reader-visible sentence, through the site's own toast (settings-bundle.js). Guarded because
+    // this file also runs in builds that do not have it.
+    function notify(text) {
+        if (typeof window.showBubbleNotification === 'function') window.showBubbleNotification(text, 6000, 'info');
+    }
+
+    // Only ONE tab can hold the OPFS pool (see acquireOwnership), so a download asked for in another
+    // tab cannot be done here — it has to be handed to the tab that owns it. Doing nothing at all
+    // was the old behaviour and the worst option: the click was consumed, the key stayed in
+    // localStorage, the reader saw no progress and no reason, and NO request ever left the browser.
+    var channel = (typeof BroadcastChannel === 'function') ? new BroadcastChannel('dg-offline') : null;
+    var deferredRequest = null;
+    if (channel) {
+        channel.onmessage = function (event) {
+            var msg = event.data || {};
+            // Progress made by the tab that owns the pool, replayed here as a local event so the
+            // reader who pressed the button in THIS tab sees the same bar (offline-status.js listens
+            // for dg:dl-progress on window).
+            if (msg.type === 'progress') {
+                window.dispatchEvent(new CustomEvent('dg:dl-progress', { detail: msg.detail }));
+                return;
+            }
+            if (msg.type === 'error') {
+                notify(msg.message || 'download failed');
+                return;
+            }
+            if (msg.type !== 'download') return;
+            var kind = msg.kind === 'update' ? 'update' : 'open';
+            if (!ownsLibrary) { deferredRequest = kind; return; } // this tab's own probe may not have finished yet
+            log('another tab asked for the offline library — downloading here');
+            download(kind).catch(function (e) {
+                log('download asked for by another tab failed:', e && e.message);
+                if (channel) channel.postMessage({ type: 'error', message: e && e.message });
+            });
+        };
+    }
+
+    // Returns false when there is no way to hand it over, so the caller can say so instead.
+    function askOwningTab(kind) {
+        if (!channel) return false;
+        channel.postMessage({ type: 'download', kind: kind });
+        var ru = (localStorage.getItem('dhammaLanguage') || localStorage.getItem('siteLanguage') || 'en') === 'ru';
+        notify(ru
+            ? 'Загрузка идёт в другой вкладке этой страницы — прогресс и результат там. Когда закончится, обновите эту вкладку.'
+            : 'The download is running in another tab of this site — progress is there. Reload this tab when it finishes.');
+        return true;
+    }
+
     // ---------------------------------------------------------------------------------------
     // Worker plumbing
     // ---------------------------------------------------------------------------------------
@@ -85,15 +141,17 @@
             var msg = event.data || {};
             if (msg.type === 'progress') {
                 if (msg.retrying) log('stalled, retrying (attempt ' + msg.retrying + ')');
-                window.dispatchEvent(new CustomEvent('dg:dl-progress', {
-                    detail: {
-                        name: 'dg-mobile.db', step: 1, totalSteps: 1,
-                        loaded: msg.loaded, total: msg.total, phase: msg.phase || 'download',
-                        done: !!msg.done,
-                        reason: msg.retrying ? 'stalled, retrying (attempt ' + msg.retrying + ')' : null,
-                        resumed: msg.resumed,
-                    },
-                }));
+                var detail = {
+                    name: 'dg-mobile.db', step: 1, totalSteps: 1,
+                    loaded: msg.loaded, total: msg.total, phase: msg.phase || 'download',
+                    done: !!msg.done,
+                    reason: msg.retrying ? 'stalled, retrying (attempt ' + msg.retrying + ')' : null,
+                    resumed: msg.resumed,
+                };
+                window.dispatchEvent(new CustomEvent('dg:dl-progress', { detail: detail }));
+                // Same event to the other tabs of this origin, which cannot run the download
+                // themselves but can show its progress (see the channel handler above).
+                if (channel) channel.postMessage({ type: 'progress', detail: detail });
                 return;
             }
             if (msg.type === 'downloading') return;
@@ -228,12 +286,41 @@
     function probe() {
         return acquireOwnership().then(function (owns) {
             ownsLibrary = owns;
-            if (!owns) {
-                log('another tab owns the offline database — this tab stays server-backed');
-                return null;
-            }
+
+            // The intent is consumed FIRST, whatever happens next. Leaving it behind is how a click
+            // used to turn into nothing at all: the key stayed in localStorage, and the reader's
+            // next visit would try to act on a request they had already forgotten making.
             var wantsUpdate = readIntent(WANT_UPDATE_KEY);
             var wantsData = readIntent(WANT_DATA_KEY);
+
+            // A secure context is checked before anything else touches OPFS. A plain visit over
+            // HTTP stays silent — the site is simply the site — while a download the reader did ask
+            // for says what is missing (offline-status.js turns the rejection into a toast).
+            if (!opfsAvailable()) {
+                log('offline storage unavailable: a secure context (HTTPS or localhost) is required');
+                if (wantsData || wantsUpdate) {
+                    throw new Error('HTTPS is required for the offline library (or localhost)');
+                }
+                return null;
+            }
+
+            if (!owns) {
+                log('another tab owns the offline database — this tab stays server-backed');
+                if (wantsData || wantsUpdate) {
+                    if (!askOwningTab(wantsUpdate ? 'update' : 'open')) {
+                        throw new Error('the offline library is in use by another tab — close it and try again');
+                    }
+                }
+                return null;
+            }
+
+            // A request that arrived from another tab before this one knew it owned the pool.
+            if (deferredRequest) {
+                var kind = deferredRequest;
+                deferredRequest = null;
+                log('running the download another tab asked for before this one owned the pool');
+                return download(kind);
+            }
 
             // wantManifest:false — the site never shows the size before asking (its button in
             // Settings is the consent), so the startup probe stays one cheap request-free check.

@@ -48,6 +48,14 @@
     var state = readState();
     var update = state && state.update;
 
+    // OPFS — and the service worker with it — exist only in a SECURE CONTEXT. Served over plain
+    // HTTP (how the test host is reachable today) the button looks perfectly fine, writes the
+    // intent, navigates, and then dies inside the worker with "Missing required OPFS APIs": the
+    // exact dead end this row exists to prevent, and one nobody can diagnose from the interface.
+    // So the row says what is actually wrong, before anything is clicked.
+    var secure = !!window.isSecureContext && !!navigator.storage &&
+                 typeof navigator.storage.getDirectory === 'function';
+
     // Every button below only records the intent and then navigates to the main page: that page
     // owns the worker, the SQLite database and the consent dialog, so the download itself belongs
     // there — this page cannot touch any of it (see the header).
@@ -56,7 +64,13 @@
         location.href = '/';
     }
 
-    if (!state || !state.present) {
+    if (!secure) {
+        descEl.textContent = isRu
+            ? 'Недоступно по HTTP: браузер даёт офлайн-хранилище только на HTTPS (или localhost).'
+            : 'Not available over HTTP: browsers expose offline storage only on HTTPS (or localhost).';
+        btnEl.textContent = isRu ? 'Нужен HTTPS' : 'HTTPS required';
+        btnEl.disabled = true;
+    } else if (!state || !state.present) {
         descEl.textContent = isRu ? 'Не скачано.' : 'Not downloaded.';
         btnEl.textContent = isRu ? 'Скачать сейчас' : 'Download now';
         // First download — the extra key the app copy does not need (the app downloads
@@ -86,4 +100,9 @@
     if (docsDescEl) docsDescEl.textContent = isRu
         ? 'Пока справка открывается онлайн — чтобы офлайн-библиотека оставалась компактной.'
         : 'Help currently opens online, to keep the offline library small.';
+    // The disabled button too: it has no t-* id (data-swapped states live in this file, not in the
+    // page's STR table), so applyLang() leaves it in the markup's language — which is how the
+    // English page ended up with a Russian "Скачать" next to an English "Download now".
+    var docsBtnEl = document.getElementById('dgOfflineDocsBtn');
+    if (docsBtnEl) docsBtnEl.textContent = isRu ? 'Скачать' : 'Download';
 })();
