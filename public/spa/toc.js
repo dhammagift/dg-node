@@ -82,6 +82,19 @@
         return !!(filter && filter.size === 0);
     }
 
+    // Pātimokkha visibility (pli-tv-bu-pm/pli-tv-bi-pm rows) — a SEPARATE on/off switch, not
+    // part of the translator filter above. It's pure Pāli liturgy with no translator's own
+    // work in it (see docs/PATIMOKKHA_TRANSLATIONS_PLAN.md), so it can never "match" any
+    // translator filter — hiding it whenever a filter was active made it look like the whole
+    // TOC had shrunk, but owner: it's core TOC content and must stay visible by default,
+    // independent of whatever translators are checked. Defaults to visible (unset === true).
+    function readPatimokkhaVisible() {
+        return localStorage.getItem('dhammaShowPatimokkha') !== '0';
+    }
+    function savePatimokkhaVisible(visible) {
+        localStorage.setItem('dhammaShowPatimokkha', visible ? '1' : '0');
+    }
+
     // Whether the Translators panel starts open. No stored choice yet -> responsive default
     // (closed on phones, so arriving at the TOC lands you in the Pali contents, not a translator
     // checklist; open on tablet/desktop, same 640px breakpoint as the column layout). Once the
@@ -452,7 +465,7 @@
     // "ещё" disclosure — no custom dropdown JS needed for that.
     var TOP_N_VISIBLE = 5;
 
-    function renderFilterPanel(panelEl, langs, onChange) {
+    function renderFilterPanel(panelEl, langs, onChange, onPatimokkhaChange) {
         panelEl.innerHTML = '';
         var filter = readTranslatorFilter();
 
@@ -474,6 +487,26 @@
         panelEl.appendChild(searchInput);
         var groupsWrap = el('div', 'toc-filter-groups');
         panelEl.appendChild(groupsWrap);
+
+        // Independent Pātimokkha visibility switch, at the very bottom under the translator
+        // lists (owner: "в самый низ под списками переводчиков просто добавим тоггл show hide
+        // патимоккхи. по умолчанию он вкл") — NOT one of the checkboxes above (those filter by
+        // translator; the Pātimokkha has no translator to filter by, see readPatimokkhaVisible).
+        var pmRow = el('div', 'toc-filter-patimokkha');
+        var pmLabel = document.createElement('label');
+        pmLabel.className = 'toc-filter-item';
+        var pmCb = document.createElement('input');
+        pmCb.type = 'checkbox';
+        pmCb.className = 'toc-filter-checkbox';
+        pmCb.checked = readPatimokkhaVisible();
+        pmCb.addEventListener('change', function () {
+            savePatimokkhaVisible(pmCb.checked);
+            if (onPatimokkhaChange) onPatimokkhaChange();
+        });
+        pmLabel.appendChild(pmCb);
+        pmLabel.appendChild(document.createTextNode(' ' + (uiIsRu() ? 'Показывать Патимоккху' : 'Show the Pātimokkha')));
+        pmRow.appendChild(pmLabel);
+        panelEl.appendChild(pmRow);
 
         // Live name search across every language at once (owner: "напечатать часть его имени...
         // сюжета в английском есть, или сабо в немецком") — filters the rows already in the DOM,
@@ -729,6 +762,18 @@
             var groupEntries = []; // { headerEl, group, codes }
             var matchedCounts = {}; // code -> matched leaf count under the current filter
 
+            // Applies the standalone Pātimokkha toggle (see readPatimokkhaVisible above) to the
+            // two singlePage rows — called from BOTH branches of refreshFilterEffects below, last,
+            // so it always wins regardless of what the translator filter just did to other books.
+            function applyPatimokkhaVisibility() {
+                var visible = readPatimokkhaVisible();
+                bookEntries.forEach(function (b) {
+                    if (!b.singlePage) return;
+                    b.bookEl.classList.toggle('d-none', !visible);
+                });
+                updateCategoryVisibility();
+            }
+
             function refreshFilterEffects() {
                 resetRow.classList.toggle('d-none', !filter);
                 container.querySelectorAll('[data-toc-book-body]').forEach(function (bodyEl) {
@@ -749,7 +794,7 @@
                         g.countEl.textContent = '(' + visibleGroupCount(g.group) + ')';
                         g.headerEl.closest('.toc-book').classList.remove('d-none');
                     });
-                    updateCategoryVisibility();
+                    applyPatimokkhaVisibility();
                     return;
                 }
                 // Every book's "(N)" switches from its static total to how many of ITS texts
@@ -766,7 +811,13 @@
                 // exactly that unpredictability, even though it came from an earlier, well-meant
                 // request to make the filter's effect obviously visible.
                 var pending = bookEntries.map(function (b) {
-                    if (b.singlePage) return Promise.resolve();
+                    if (b.singlePage) {
+                        // Pātimokkha has no per-book tree to check matches against (no
+                        // translator's own work in it — see readPatimokkhaVisible above), so the
+                        // translator filter simply doesn't apply to it either way; its own
+                        // visibility is decided solely by applyPatimokkhaVisibility() below.
+                        return Promise.resolve();
+                    }
                     return fetchBook(b.code, langs).then(function (bookData) {
                         var count = matchedLeafCount(bookData, filter);
                         matchedCounts[b.code] = count;
@@ -781,7 +832,7 @@
                         g.countEl.textContent = '(' + total + ')';
                         g.headerEl.closest('.toc-book').classList.toggle('d-none', total === 0);
                     });
-                    updateCategoryVisibility();
+                    applyPatimokkhaVisibility();
                 });
             }
             function updateCategoryVisibility() {
@@ -806,12 +857,12 @@
                         : 'No translator selected — showing Pāli texts only');
                 }
             }
-            renderFilterPanel(filterPanel, langs, onFilterChange);
+            renderFilterPanel(filterPanel, langs, onFilterChange, applyPatimokkhaVisibility);
             resetLink.addEventListener('click', function (e) {
                 e.preventDefault();
                 localStorage.removeItem('dhammaTranslatorFilter');
                 filter = null;
-                renderFilterPanel(filterPanel, langs, onFilterChange);
+                renderFilterPanel(filterPanel, langs, onFilterChange, applyPatimokkhaVisibility);
                 refreshFilterEffects();
             });
 
@@ -1040,6 +1091,10 @@
             });
 
             if (filter) refreshFilterEffects();
+            // Independent of the translator filter (see readPatimokkhaVisible above) — must run
+            // even when there's no filter at all, or a previously OFF toggle would stay ignored
+            // until the user touches something that happens to call refreshFilterEffects().
+            else applyPatimokkhaVisibility();
             if (target) revealTarget(target, bookEntries, groupEntries, langs, filter);
         }).catch(function (e) {
             container.innerHTML = '';
