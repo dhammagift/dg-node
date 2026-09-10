@@ -220,6 +220,19 @@ function buildQuickModalDOM() {
         <iframe data-src="${dpdUrl}" class="quick-iframe"></iframe>
       </div>
 
+      <!-- Not a real ".quick-tab-btn" tab (no button in .quick-tabs row) — reached only via the
+           gear icon (#quickSettingsBtn) next to the search field, same as the main site input.
+           Filled by window.dgBuildQuickSettingsBody(host) — home.js's OWN buildQuickBody(), the
+           exact function the site-wide #dg-quick sheet already uses, not a second copy of it.
+           The nested .dg-sheet/.dg-sheet-body wrapper is styling plumbing only (see
+           extrastyles.css .dg-sheet-inline) — buildQuickBody()'s output needs a real .dg-sheet
+           ancestor to pick up home.css's group-title/row/etc. styling. -->
+      <div id="tab-settings" class="quick-tab-content">
+        <div class="dg-sheet dg-sheet-inline">
+          <div id="quick-settings-body" class="dg-sheet-body"></div>
+        </div>
+      </div>
+
     </div>
   `;
 
@@ -241,40 +254,26 @@ function buildQuickModalDOM() {
       }
   });
 
-  // Owner: "добавить быстрые настройки в быстрое меню, чтобы было похоже на главный инпут" —
-  // this modal's own search field only had the magnifier button, unlike the main site input
-  // (search/index.html) which also has a gear/quick-settings button next to it (#dg-quick-btn,
-  // opens home.js's #dg-quick sheet). Reuses that SAME element/handler rather than building a
-  // second copy of the Quick Settings sheet here — it's page-scoped in home.js's closure, not
-  // exposed on window, so the established way to trigger it from outside that closure is a
-  // synthetic click (same trick search/index.html's own ".dg-scope-change" link already uses).
-  // #dg-quick-btn doesn't exist on every page this modal can be open on (e.g. the standalone
-  // legacy reader-template.html) — no-ops there rather than erroring.
-  const quickSettingsBtn = quickModal.querySelector('#quickSettingsBtn');
-  if (quickSettingsBtn) {
-      quickSettingsBtn.addEventListener('click', () => {
-          const btn = document.getElementById('dg-quick-btn');
-          if (btn) btn.click();
-      });
-  }
-
   // Обработка вкладок
   const tabBtns = quickModal.querySelectorAll('.quick-tab-btn');
   const tabContents = quickModal.querySelectorAll('.quick-tab-content');
   const mainTrashIcon = document.getElementById('main-trash-icon');
-  const mainOpenWindowIcon = document.getElementById('main-open-window-icon'); 
+  const mainOpenWindowIcon = document.getElementById('main-open-window-icon');
   const btnSyncNow = document.getElementById('btn-sync-now');
 
-  tabBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
+  // Shared by the tab row below AND the gear button (#quickSettingsBtn) further down — the gear
+  // switches to "tab-settings" the exact same way a real tab button would, it just isn't one of
+  // the buttons in .quick-tabs itself (no room there, same reasoning .quick-actions-right's icons
+  // already sit outside that row).
+  function activateTab(targetTab) {
       tabBtns.forEach(b => b.classList.remove('active'));
       tabContents.forEach(c => c.classList.remove('active'));
-      btn.classList.add('active');
-      
-      const targetTab = btn.dataset.tab;
+      const activeBtn = quickModal.querySelector(`.quick-tab-btn[data-tab="${targetTab}"]`);
+      if (activeBtn) activeBtn.classList.add('active');
+
       const targetContent = quickModal.querySelector(`#${targetTab}`);
       targetContent.classList.add('active');
-      
+
       const iframe = targetContent.querySelector('iframe');
       if (iframe && !iframe.getAttribute('src')) {
           iframe.setAttribute('src', iframe.getAttribute('data-src'));
@@ -285,8 +284,33 @@ function buildQuickModalDOM() {
       if (mainOpenWindowIcon) {
           mainOpenWindowIcon.style.display = (targetTab === 'tab-memo' || targetTab === 'tab-dpd') ? 'block' : 'none';
       }
-    });
+  }
+
+  tabBtns.forEach(btn => {
+    btn.addEventListener('click', () => activateTab(btn.dataset.tab));
   });
+
+  // Owner: "добавить быстрые настройки в быстрое меню, чтобы было похоже на главный инпут" —
+  // this modal's own search field only had the magnifier button, unlike the main site input
+  // (search/index.html) which also has a gear/quick-settings button next to it. Owner follow-up:
+  // must open ITS OWN settings INSIDE this modal (not the site-wide #dg-quick sheet, which sits
+  // behind/outside the modal's own overlay and doesn't exist at all on some pages) — but reusing
+  // the EXACT same underlying code, not a second copy of it. window.dgBuildQuickSettingsBody is
+  // home.js's own buildQuickBody(host) exposed on window for exactly this — same function the
+  // site-wide sheet already calls, just filling this modal's own "tab-settings" container
+  // instead. Not exposed at all (home.js never loaded, e.g. the standalone legacy
+  // reader-template.html) → hide the gear entirely rather than a dead/no-op button.
+  const quickSettingsBtn = quickModal.querySelector('#quickSettingsBtn');
+  if (quickSettingsBtn) {
+      if (typeof window.dgBuildQuickSettingsBody === 'function') {
+          quickSettingsBtn.addEventListener('click', () => {
+              window.dgBuildQuickSettingsBody(quickModal.querySelector('#quick-settings-body'));
+              activateTab('tab-settings');
+          });
+      } else {
+          quickSettingsBtn.style.display = 'none';
+      }
+  }
 
     if (btnSyncNow) {
       // Существующий обработчик левого клика

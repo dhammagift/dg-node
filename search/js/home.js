@@ -1971,6 +1971,14 @@
         if (isQuickOpen()) buildQuickBody(document.getElementById('dg-quick-body'));
     };
 
+    // Lets other, separately-loaded modules (public/overrides/js/quickModal.js's own Quick
+    // Settings gear) fill THEIR OWN container with the exact same Quick Settings content this
+    // module's #dg-quick sheet uses — same function, not a second copy of everything it builds
+    // (scope picker, dict mode, reading toggles, ...). buildQuickBody() only ever reads the
+    // container it's given plus page state (currentState(), localStorage) — no dependency on
+    // #dg-quick specifically.
+    window.dgBuildQuickSettingsBody = buildQuickBody;
+
     function openQuick() {
         closeMega();
         ensureQuick();

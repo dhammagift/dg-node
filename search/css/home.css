@@ -783,6 +783,25 @@ body.dg-state-home .dg-shell-go-label {
     line-height: 1.45;
     white-space: nowrap;
 }
+/* Owner: on mobile the "Искать" pill crowds the field (screenshot: label clipping the query
+   text) — icon-only there, same as results/reader already are, instead of the text button.
+   The glass points right (its natural, un-mirrored orientation — the scaleX(-1) inline style on
+   the <svg> in index.html flips it to point left/down for the text-button version elsewhere;
+   !important is required here specifically to win over that inline style). */
+@media (max-width: 767.98px) {
+    body.dg-state-home .dg-shell-go {
+        width: 34px;
+        height: 34px;
+        min-width: 0;
+        padding: 0;
+        border-radius: 50%;
+    }
+    body.dg-state-home .dg-shell-go-label { display: none; }
+    body.dg-state-home .dg-shell-go .dg-search-icon {
+        display: block;
+        transform: none !important;
+    }
+}
 
 /* Ожидание ответа поиска: пока крутится спиннер, выдачи (даже пустой) быть не должно — ради
    этого весь класс и заведён. Домашние блоки при этом НЕ прячем: смысл в том, чтобы человек
