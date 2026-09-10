@@ -1789,7 +1789,10 @@ body:not(.dg-state-home) #dg-announce { display: none; }
 /* Заголовок набора отбит пустой строкой сверху и снизу — до правки он прилипал к предыдущему
    пункту и читался как его продолжение, а не как начало нового набора. */
 .dg-sheet .dg-group-title {
-    font-size: 0.72rem;
+    /* Owner: main menu items must read bigger than their sub-items, not smaller — was 0.72rem
+       against .dg-sheet-row's 0.95rem (below), backwards from the intended hierarchy. Also
+       covers #dg-mega (desktop mega-menu), which only overrides margin, not font-size. */
+    font-size: 1.05rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.06em;
@@ -2151,7 +2154,9 @@ body.dg-drawer-open {
 .dg-drawer-head .dg-brand-name { flex: 1; min-width: 0; }
 .dg-drawer-body { padding: 8px 18px 24px; }
 .dg-drawer-body .dg-group-title {
-    font-size: 0.66rem;
+    /* Owner: main menu items must read bigger than their sub-items, not smaller — was 0.66rem
+       against .dg-drawer-row's 0.95rem (below), backwards from the intended hierarchy. */
+    font-size: 1.05rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.06em;
