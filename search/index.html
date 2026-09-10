@@ -65,6 +65,15 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
 <!DOCTYPE html>
 <html data-bs-theme="light" data-default-lang="en">
 <head>
+<!-- dg:app-scripts — the optional offline layer (docs/OFFLINE_PWA_PLAN.md, Stage 1). These three
+     are loaded before ANY other script on the page on purpose: app.js replaces window.fetch, and
+     it has to be in place before the first request is issued. platform.js must stay first — a
+     native build (dg-app-full) supplies its own window.dgPlatform, and app.js reads it there.
+     Do not move these below the page's own scripts, and keep this marker: the app's build
+     (dg-app-full/build-page.js) looks for it instead of guessing at <head>'s structure. -->
+<script src="/offline/platform.js"></script>
+<script src="/offline/app.js"></script>
+<script src="/offline/offline-status.js"></script>
 <script>
   // Тема — синхронно, ДО первой отрисовки: <html data-bs-theme> ниже был захардкожен на
   // "light" всегда, а реальную тёмную тему выставлял только themeswitch.js (грузится

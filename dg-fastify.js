@@ -180,6 +180,7 @@ const CACHE_IMAGE = 'public, max-age=86400';
 const CACHE_LEGACY_CODE = 'public, max-age=86400';
 const CACHE_CONFIG_JSON = 'no-cache'; // @fastify/static uses @fastify/send under the hood — real ETag by default, same as Express's serve-static (cache.md)
 const CACHE_STATIC_SHORT = 'public, max-age=36000';
+const CACHE_DB = 'public, max-age=3600'; // 1 h — /mobile-data/*.db; keep in lockstep with dg-light.js's CACHE_DB (same rationale there)
 
 // Anything pulled in by lazy <script> injection (search/index.html's ensureSearchAssets/
 // ensureReaderAssets/ensureTocAssets, paliLookup.js) rather than a static HTML <script src="">
@@ -211,6 +212,8 @@ function staticCacheHeaders(reply, filePath) {
         reply.header('Cache-Control', CACHE_IMAGE);
     } else if (['.js', '.css'].includes(ext)) {
         reply.header('Cache-Control', CACHE_LEGACY_CODE);
+    } else if (ext === '.db') {
+        reply.header('Cache-Control', CACHE_DB);
     } else if (ext === '.json') {
         reply.header('Cache-Control', CACHE_CONFIG_JSON);
     } else {
@@ -235,6 +238,27 @@ function staticCacheHeaders(reply, filePath) {
 // потому, что перед ним Apache/nginx сжимают ответы по умолчанию; у этого сервера такого слоя
 // нет, и текстовые ответы уходили НЕСЖАТЫМИ. Регистрируем максимально рано — до всех
 // static-маунтов и роутов ниже, — чтобы сжатие покрывало вообще все ответы.
+// /mobile-data/*.db is served as application/octet-stream (mime-db has no `.db` entry, so
+// @fastify/static/send falls back to that default type) — and @fastify/compress's
+// defaultCompressibleTypes regex lists `octet-stream` explicitly, while its own shouldCompress()
+// ALSO falls back to mime-db, which marks application/octet-stream `compressible: true`. There
+// is no option that REMOVES a type from that set: `customTypes` only adds to it (a custom
+// function returning false still hits the mime-db fallback and returns true). So the
+// /mobile-data route opts out per-route with `compress: false` — documented @fastify/compress
+// behaviour ("Setting compress: false on any route will disable compression on the route even
+// if global compression is enabled"). Verified with curl before this: the 200 carried
+// `content-encoding: br` on the 170 MB-class .db.
+//
+// This onRoute hook MUST be registered BEFORE the compress plugin below: compress adds its OWN
+// onRoute hook, and that hook attaches the compression onSend to each route as it is declared —
+// a hook registered afterwards cannot undo it (verified empirically: with the same hook added
+// after app.register(fastifyCompress), /mobile-data still came back gzipped). dg-light.js gets
+// the same result with a content-type filter on compression(); keep the two in lockstep.
+app.addHook('onRoute', (routeOptions) => {
+    if (typeof routeOptions.url === 'string' && routeOptions.url.startsWith('/mobile-data')) {
+        routeOptions.compress = false;
+    }
+});
 await app.register(fastifyCompress);
 await app.register(fastifyCors, {
     origin: '*',
@@ -911,6 +935,16 @@ app.register(fastifyStatic, {
     setHeaders: staticCacheHeaders,
     decorateReply: false,
 });
+// /offline — the optional offline PWA layer (docs/OFFLINE_PWA_PLAN.md, "Этап 1"): fetch shim,
+// platform.js, data worker, bundled search core, sqlite-wasm vendor, status UI. Same no-cache
+// reasoning as dg-light.js's mount: app.js and db-worker.js must be the same vintage, and ETag
+// revalidation makes that free.
+app.register(fastifyStatic, {
+    root: path.join(__dirname, 'public', 'offline'),
+    prefix: '/offline',
+    setHeaders: (res) => res.header('Cache-Control', CACHE_CONFIG_JSON),
+    decorateReply: false,
+});
 
 // /pm.php, /bipm.php — Bhikkhu/Bhikkhuni Patimokkha, rendered inline (not the reader), with
 // rule links pointing at real dg-node routes. Static HTML generated once by
@@ -955,6 +989,29 @@ app.get('/api/patimokkha-fragment/:side', (req, res) => {
 // обработки в самом цикле нет, всё ничем не отличается от 4nt/config/login/memo с точки
 // зрения этого кода.
 const SITEROOT = path.join(__dirname, 'siteroot');
+// /mobile-data — the optional offline PWA's ~170 MB SQLite database (public/offline/* fetches
+// /mobile-data/dg-mobile.db). Same explicit mount as dg-light.js (see there for the full
+// rationale); the two must stay behaviourally identical:
+//   * registered BEFORE the siteroot/ scan just below; 'mobile-data' is also pre-added to
+//     mountedPrefixes further down so the scan skips it instead of throwing a duplicate route;
+//   * missing directory = clean 404, no crash. suppressWarning silences @fastify/static's
+//     startup `"root" path ... must exist` warning for this known-optional build artifact
+//     (the route exists either way, the file just isn't there yet);
+//   * a miss never falls through to another route — @fastify/static answers 404 via the
+//     not-found handler, the same clean 404 dg-light.js produces with its explicit 404
+//     middleware (there the SPA catch-all would otherwise return 200 text/html);
+//   * @fastify/static goes through @fastify/send, which serves byte ranges out of the box
+//     (Accept-Ranges: bytes on 200, 206 + Content-Range on Range) — required for resumable
+//     170 MB downloads (docs/OFFLINE_PWA_PLAN.md). The hand-rolled sendFile() helper in this
+//     file reads the whole file into a Buffer and must NOT be used for this path.
+app.register(fastifyStatic, {
+    root: path.join(SITEROOT, 'mobile-data'),
+    prefix: '/mobile-data',
+    setHeaders: staticCacheHeaders,
+    decorateReply: false,
+    redirect: true, // bare /mobile-data -> 301 /mobile-data/, like every other siteroot mount
+    suppressWarning: true,
+});
 let siteRootEntries = new Set();
 try {
     siteRootEntries = new Set(
@@ -975,7 +1032,7 @@ try {
 // read.php, sitemap.xml — are symlinks to individual FILES, harmless dead weight for
 // express.static but a hard registration error for @fastify/static, which requires root to be a
 // directory).
-const mountedPrefixes = new Set(['assets', 'read', 'memorize', 'devanagari']);
+const mountedPrefixes = new Set(['assets', 'read', 'memorize', 'devanagari', 'mobile-data']); // 'mobile-data' is the explicit /mobile-data mount above — the scan must not re-register it (duplicate route = hard error)
 // Skips are reported, not silent. statSync() follows symlinks, so an entry whose target has gone
 // away (siteroot/mobile-data -> a dist/ directory that was never built, say) is indistinguishable
 // here from a broken one — it just never gets a route, and every request under that prefix falls

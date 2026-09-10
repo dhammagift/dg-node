@@ -8,36 +8,289 @@
 // network genuinely fails (offline), caching opportunistically as it goes instead of a
 // hand-maintained URL list that inevitably goes stale.
 //
-// Bump CACHE_NAME on any change that should invalidate old cached responses — activate()
-// deletes every cache that doesn't match, which also cleans up the legacy 'pwa-fdg-v1' cache
-// on browsers still carrying it.
-const CACHE_NAME = 'dg-node-v1';
+// The shell is now precached at install so the SPA also opens offline (including a reload of a
+// pushState URL like /dn22:2.2 — see the navigate branch below). The cache name is no longer a
+// hand-bumped constant: it is 'dg-shell-<build_id>', read from /offline/build-id.json, which
+// build-offline.js regenerates (a content hash of the offline layer) on every build. A deploy
+// therefore lands in a NEW cache and activate() retires the old one, so the "cache name nobody
+// ever bumps" failure mode above cannot come back through the precache path either. When
+// build-id.json is missing (fresh checkout, build not run yet) we fall back to 'dg-shell-dev'
+// rather than failing install.
+//
+// activate() deletes EVERY cache whose name is not the current one. That one rule is what
+// cleans up the legacy 'pwa-fdg-v1' cache and this file's previous 'dg-node-v1' one on
+// browsers still carrying them — deliberately not special-cased by name, because a list of
+// legacy names is one more thing that rots.
+//
+// Bump nothing here by hand — change a file the build hashes (build-offline.js HASHED_FILES)
+// and the next build picks a new build_id.
+var CACHE_PREFIX = 'dg-shell-';
+var DEV_CACHE_NAME = 'dg-shell-dev';
+var BUILD_ID_URL = '/offline/build-id.json';
+var SHELL_URL = '/';
+var MOBILE_DATA_PREFIX = '/mobile-data/';
 
-self.addEventListener('install', () => {
-    self.skipWaiting();
-});
+// URL roots whose asset URLs the server stamps with a ?v=<hash> cache-buster (sendVersionedHtml
+// in dg-light.js). Precaching only knows the bare path, so offline lookups of the versioned
+// form need ignoreSearch — see matchCached().
+var VERSIONED_ASSET_ROOTS = ['/assets/', '/spa/', '/nodejs/res/', '/reader/', '/settings/'];
 
-self.addEventListener('activate', (event) => {
+// Everything the shell needs to boot, and to run a search / open the reader, with no network.
+// Some entries are GENERATED and may legitimately be absent on a fresh checkout (/offline/*,
+// home-bundle.js, settings-bundle.js) — install() tolerates each URL failing on its own, so a
+// missing file here never aborts the install.
+var PRECACHE_URLS = [
+    // The shell document itself; also the offline fallback for every navigation.
+    '/',
+    '/manifest.json',
+
+    // The optional offline layer: fetch shim, data worker, sqlite-wasm vendor files.
+    '/offline/app.js',
+    '/offline/db-worker.js',
+    '/offline/offline-status.js',
+    '/offline/offline-library-settings.js',
+    '/offline/core-bundle.js',
+    '/offline/vendor/sqlite-wasm/index.js',
+    '/offline/vendor/sqlite-wasm/sqlite3.wasm',
+    '/offline/vendor/sqlite-wasm/sqlite3-opfs-async-proxy.js',
+
+    // Reader mode definitions — the reader cannot resolve a mode without this, online or off.
+    '/reader/mode-table.json',
+
+    // Stylesheets in the shell's <head>.
+    '/assets/css/bootstrap.5.3.1.min.css',
+    '/assets/css/langswitch.css',
+    '/assets/css/paliLookup.css',
+    '/assets/css/extrastyles.css',
+    '/assets/css/table.css',
+    '/nodejs/res/css/home.css',
+
+    // Scripts in the shell's <head>.
+    '/assets/js/jquery-3.7.0.min.js',
+    '/assets/js/bootstrap.bundle.5.3.1.min.js',
+    '/assets/js/fontawesome-local.js',
+    '/assets/js/diacritics.js',
+    '/assets/js/dhamma-i18n.js',
+    '/assets/js/mirror-link.js',
+    '/assets/js/langswitch.js',
+    '/assets/js/themeswitch.js',
+    '/assets/js/openDicts.js',
+    '/assets/js/openFdg.js',
+    '/assets/js/smoothScroll.js',
+    '/assets/js/dg-page-find.js',
+    '/assets/js/dg-page-find-ui.js',
+    '/assets/js/settings-bundle.js',
+    '/assets/js/home-bundle.js',
+
+    // Loaded lazily by the shell (loadScript) when a search runs or the reader opens — without
+    // these the page boots offline but search and reader come up empty.
+    '/assets/js/datatables/datatables.min.js',
+    '/assets/js/search-render.js',
+    '/assets/js/natural.js',
+    '/assets/js/strip-html.js',
+    '/assets/js/copyToClipboard.js',
+    '/assets/js/linksdpr.js',
+    '/assets/js/linksbjt.js',
+    '/assets/js/linksbw.js',
+    '/assets/js/linksru.js',
+    '/assets/js/openBw.js',
+    '/assets/js/openDpr.js',
+    '/assets/js/openRu.js',
+    '/reader/common.js',
+    '/reader/megareader.js',
+    '/spa/toc.js',
+
+    // Home-tile data fetched on first paint.
+    '/nodejs/res/menu-links.json',
+    '/nodejs/res/slides.json',
+
+    // webfonts @font-face'd by the stylesheets above; without them text reflows to a fallback
+    // face online-offline.
+    '/assets/fonts/lato-400.woff2',
+    '/assets/fonts/lato-400-italic.woff2',
+    '/assets/fonts/lato-600.woff2',
+    '/assets/fonts/lato-700.woff2',
+    '/assets/fonts/brahmi-subset.woff2'
+];
+
+// Memoized so install, activate and the fetch handler all agree on one name without racing
+// three separate /offline/build-id.json fetches in the same worker instance.
+var cacheNamePromise = null;
+
+// build-offline.js writes {"build_id": "...", "built_at": "..."}, but accept the obvious
+// sibling keys and a bare plain-text body too — a rename over there should not silently turn
+// versioning off and quietly reintroduce a cache nobody bumps.
+function readBuildId(text) {
+    var raw = String(text || '').trim();
+    if (!raw) return '';
+    try {
+        var data = JSON.parse(raw);
+        if (data && typeof data === 'object') {
+            raw = data.build_id || data.buildId || data.id || data.version || '';
+        } else {
+            raw = String(data);
+        }
+    } catch (e) {
+        // Not JSON: treat the whole body as the id, unless it merely LOOKS like a JSON document
+        // (starts with { or [) that failed to parse — an error page truncated into a bad cache
+        // name is worse than falling back to the dev name.
+        if (raw.charAt(0) === '{' || raw.charAt(0) === '[') raw = '';
+    }
+    // A build id is a hash or a version string; keep the cache name to a safe charset so a
+    // corrupted body cannot invent a name full of spaces or slashes.
+    return typeof raw === 'string' ? raw.replace(/[^A-Za-z0-9._-]/g, '').trim() : '';
+}
+
+function getCacheName() {
+    if (!cacheNamePromise) {
+        // cache: 'no-store' — a build id read out of the HTTP cache would version the new shell
+        // under the previous build's name, which is the whole thing this scheme exists to avoid.
+        cacheNamePromise = fetch(BUILD_ID_URL, { cache: 'no-store' })
+            .then(function (response) {
+                return response.ok ? response.text() : '';
+            })
+            .then(function (text) {
+                var id = readBuildId(text);
+                return id ? CACHE_PREFIX + id : DEV_CACHE_NAME;
+            })
+            .catch(function () {
+                // Generated file, possibly not built yet, or the first install happens offline.
+                // Neither may fail install().
+                return DEV_CACHE_NAME;
+            });
+    }
+    return cacheNamePromise;
+}
+
+self.addEventListener('install', function (event) {
     event.waitUntil(
-        caches.keys()
-            .then((names) => Promise.all(names.filter((n) => n !== CACHE_NAME).map((n) => caches.delete(n))))
-            .then(() => self.clients.claim())
+        getCacheName()
+            .then(function (cacheName) {
+                return caches.open(cacheName).then(function (cache) {
+                    // allSettled + one cache.add per URL, never cache.addAll: addAll is atomic,
+                    // so a single 404 (a generated file not built yet, an asset absent from this
+                    // deploy) would abort the WHOLE install and leave no shell cached at all. A
+                    // missing entry is recoverable through network-first; an empty cache while
+                    // offline is not.
+                    //
+                    // cache: 'reload' bypasses the HTTP cache for the precache fetch: the
+                    // server marks public/overrides assets immutable for a year, so without it
+                    // a returning browser could precache yesterday's JS into today's cache.
+                    return Promise.allSettled(PRECACHE_URLS.map(function (url) {
+                        return cache.add(new Request(url, { cache: 'reload' }));
+                    }));
+                });
+            })
+            .then(function () {
+                // Take over immediately: the point is to displace the legacy worker's stale
+                // state, not to wait for every tab to close. Network-first makes an in-place
+                // update safe — no page is served a cached response while online.
+                return self.skipWaiting();
+            })
     );
 });
 
-self.addEventListener('fetch', (event) => {
-    if (event.request.method !== 'GET') return;
+self.addEventListener('activate', function (event) {
+    event.waitUntil(
+        getCacheName()
+            .then(function (cacheName) {
+                return caches.keys().then(function (names) {
+                    // Everything that is not the current cache goes. That includes the legacy
+                    // 'pwa-fdg-v1' cache and the old constant-name 'dg-node-v1' one.
+                    return Promise.all(
+                        names
+                            .filter(function (name) { return name !== cacheName; })
+                            .map(function (name) { return caches.delete(name); })
+                    );
+                });
+            })
+            .then(function () {
+                return self.clients.claim();
+            })
+    );
+});
+
+// Fallback for a failed network fetch: exact URL first (so a query string is honoured whenever
+// that exact response was cached opportunistically). Only if that misses AND the path is a
+// versioned static asset do we retry with ignoreSearch — the shell HTML carries ?v=<hash> on
+// its asset URLs while precache knows only the bare paths, so without this every script and
+// stylesheet would fail offline. Never do this for /search or /api: a query string there
+// selects the response, and ignoring it would serve another query's cached data as if it were
+// this one's.
+function matchCached(request, url) {
+    return caches.match(request).then(function (cached) {
+        if (cached) return cached;
+        for (var i = 0; i < VERSIONED_ASSET_ROOTS.length; i++) {
+            if (url.pathname.indexOf(VERSIONED_ASSET_ROOTS[i]) === 0) {
+                return caches.match(request, { ignoreSearch: true });
+            }
+        }
+        return undefined;
+    });
+}
+
+self.addEventListener('fetch', function (event) {
+    var request = event.request;
+
+    // Non-GET (the offline DB download's range probes, form posts) must reach the network
+    // untouched — Cache Storage only speaks GET.
+    if (request.method !== 'GET') return;
+
+    var url;
+    try {
+        url = new URL(request.url);
+    } catch (e) {
+        return;
+    }
+
+    // Non-same-origin: never intercept. Third-party responses (the Aksharamukha converter
+    // script) are not ours to cache, and an opaque one cached here would be an unusable blob.
+    if (url.origin !== self.location.origin) return;
+
+    // /mobile-data/ is the ~170 MB offline database download. Caching it in Cache Storage is
+    // both wrong (it is not a shell asset) and enormous; the offline layer streams it into OPFS
+    // itself and does not want a second copy.
+    if (url.pathname.indexOf(MOBILE_DATA_PREFIX) === 0) return;
+
+    // Range requests are partial responses (the resumable database download). Caching one
+    // would store a chunk as if it were the complete file and later serve that chunk as the
+    // whole response.
+    if (request.headers.get('range')) return;
+
+    // Navigations stay network-first, but when the network fails answer with the precached
+    // shell instead of letting the error through: offline, /dn22:2.2 has no server to return
+    // search/index.html, and the SPA router needs that HTML to resolve the URL client-side.
+    if (request.mode === 'navigate') {
+        event.respondWith(
+            fetch(request).catch(function () {
+                return caches.match(SHELL_URL);
+            })
+        );
+        return;
+    }
+
     event.respondWith(
-        fetch(event.request)
-            .then((response) => {
+        fetch(request)
+            .then(function (response) {
                 // Only cache real, same-origin, successful responses — an opaque/cross-origin
                 // or error response cached here would just serve that error offline forever.
                 if (response.ok && response.type === 'basic') {
-                    const copy = response.clone();
-                    caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+                    var copy = response.clone();
+                    getCacheName()
+                        .then(function (cacheName) {
+                            return caches.open(cacheName).then(function (cache) {
+                                return cache.put(request, copy);
+                            });
+                        })
+                        .catch(function () {
+                            // Caching is best-effort: a quota or clone failure must not break
+                            // the response the page is waiting for.
+                        });
                 }
                 return response;
             })
-            .catch(() => caches.match(event.request))
+            .catch(function () {
+                return matchCached(request, url);
+            })
     );
 });
