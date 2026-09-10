@@ -1038,6 +1038,7 @@ body.dg-state-toc #toc-pane.toc-out .toc-aside { animation: dg-toc-out-right 240
 }
 .toc-filter-group { margin-bottom: 1.1rem; padding-top: .6rem; border-top: 1px solid var(--dg-border); }
 .toc-filter-group:first-child { padding-top: 0; border-top: none; }
+.toc-filter-patimokkha { margin-top: .4rem; padding-top: .6rem; border-top: 1px solid var(--dg-border); }
 /* Named ...-hdr/-title, deliberately NOT ...-lang-row/...-lang: reader/css/uiextra.css has its own
    "[class*='-lang']{display:block}" (targets .pli-lang/.eng-lang/etc.) — any class of ours that
    happens to contain that substring gets silently forced to display:block too (same specificity,
