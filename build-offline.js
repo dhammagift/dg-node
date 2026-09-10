@@ -151,8 +151,16 @@ function writeBuildId() {
     const hash = crypto.createHash('sha256');
     for (const file of HASHED_FILES) {
         if (!fs.existsSync(file)) continue;
+        let content = fs.readFileSync(file);
+        // core-bundle.js stamps itself with a build time. Hashing that would change the id — and
+        // with it the service worker's cache name — on every rebuild even when nothing else did:
+        // the "cache name nobody ever bumps" trap this id exists to avoid, approached from the
+        // other side.
+        if (path.basename(file) === 'core-bundle.js') {
+            content = Buffer.from(String(content).replace(/^\/\/ Built: .*$/m, ''), 'utf8');
+        }
         hash.update(path.basename(file));
-        hash.update(fs.readFileSync(file));
+        hash.update(content);
     }
     for (const name of fs.readdirSync(VENDOR).sort()) {
         hash.update(name + ':' + fs.statSync(path.join(VENDOR, name)).size);

@@ -654,6 +654,14 @@ const OPS = {
         }
         data.columns = effectiveLangs;
         data.lang = lang || effectiveLangs[0] || null;
+        // Languages THIS text has a translation in, answering the same query dg-fastify.js's route
+        // does (see the comment there: the reader's language popover greys out the rest at load
+        // time). What it means here is "in the offline slice": the server reads the whole corpus and
+        // can name more (dn22 has sr and de as well), those are languages this library does not
+        // have, and app.js sends a request for them to the server whenever there is a connection.
+        data.availableLangs = db.selectObjects(
+            "SELECT DISTINCT lang FROM texts WHERE sutta_id = ? AND kind = 'translation'", [suttaId]
+        ).map(r => r.lang);
         return data;
     },
 

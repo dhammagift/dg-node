@@ -88,10 +88,13 @@ function fail(msg) {
 const { DatabaseSync } = require('node:sqlite');
 const { pathToFileURL } = require('url');
 
+let referenceDb = null;
+
 async function loadReference() {
     const mod = await import(pathToFileURL(path.join(ROOT, 'public', 'offline', 'core-bundle.js')).href);
     const core = mod.default;
     const db = new DatabaseSync(path.join(ROOT, 'dg.db'), { readOnly: true });
+    referenceDb = db;
     core.init({
         searchDb: {
             prepare: (sql) => ({ all: (...p) => db.prepare(sql).all(...p), get: (...p) => db.prepare(sql).get(...p) }),
@@ -174,6 +177,8 @@ async function referenceAnswer(core, url) {
         }
         data.columns = effectiveLangs;
         data.lang = lang || effectiveLangs[0] || null;
+        data.availableLangs = referenceDb.prepare(
+            "SELECT DISTINCT lang FROM texts WHERE sutta_id = ? AND kind = 'translation'").all(suttaId).map((r) => r.lang);
         return wrap(data);
     }
 
@@ -240,8 +245,38 @@ async function waitForServer(timeoutMs) {
     throw new Error(`server did not answer on ${BASE} within ${timeoutMs / 1000}s`);
 }
 
-function readJson(manifest) {
-    return { build_id: manifest.build_id, bytes: manifest.bytes };
+// Order-insensitive comparison for object keys (arrays keep their order — segment order is part
+// of the answer). The server and the worker build the same object by different routes, and JSON
+// key insertion order is not part of the API.
+function canonical(value) {
+    if (Array.isArray(value)) return value.map(canonical);
+    if (value && typeof value === 'object') {
+        const out = {};
+        for (const k of Object.keys(value).sort()) out[k] = canonical(value[k]);
+        return out;
+    }
+    return value;
+}
+const J = (value) => JSON.stringify(canonical(value));
+
+// availableLangs is the one field the offline library cannot reproduce exactly, by design: it
+// answers from its own ru+en slice, while the server reads the whole corpus (dn22 has sr and de
+// too). Everything else is compared strictly; this one is checked as a SUBSET — a language the
+// library claims but the server does not have would still be a bug.
+function withoutAvailableLangs(body) {
+    if (!body || !Array.isArray(body.segments)) return body;
+    const copy = Object.assign({}, body);
+    delete copy.availableLangs;
+    return copy;
+}
+function availableLangsOf(body) {
+    return (body && Array.isArray(body.availableLangs)) ? body.availableLangs.slice().sort() : null;
+}
+function subsetProblem(localBody, serverBody) {
+    const l = availableLangsOf(localBody), sr = availableLangsOf(serverBody);
+    if (!l || !sr) return null;
+    const extra = l.filter((x) => !sr.includes(x));
+    return extra.length ? `availableLangs not a subset of the server's: ${extra.join(',')}` : null;
 }
 
 (async () => {
@@ -354,11 +389,13 @@ function readJson(manifest) {
             }, url);
             const reference = await referenceAnswer(core, url);
 
-            const a = JSON.stringify(reference), b = JSON.stringify(local);
-            if (a === b) { same++; console.log('SAME  ' + name); }
+            const a = J({ status: reference.status, body: withoutAvailableLangs(reference.body) });
+            const b = J({ status: local.status, body: withoutAvailableLangs(local.body) });
+            const subset = subsetProblem(local.body, reference.body);
+            if (a === b && !subset) { same++; console.log('SAME  ' + name); }
             else {
                 differing.push(name);
-                console.log('DIFF  ' + name);
+                console.log('DIFF  ' + name + (subset ? ' (' + subset + ')' : ''));
                 console.log('   dg.db: ' + a.slice(0, 300));
                 console.log('   local: ' + b.slice(0, 300));
             }
@@ -377,7 +414,11 @@ function readJson(manifest) {
             }, url);
             const res = await page.request.get(BASE + url);
             let body; try { body = await res.json(); } catch (e) { body = { __nonJson: true }; }
-            if (JSON.stringify({ status: res.status(), body }) !== JSON.stringify(local)) serverDiff.push(name);
+            const subset = subsetProblem(local.body, body);
+            if (J({ status: res.status(), body: withoutAvailableLangs(body) }) !==
+                J({ status: local.status, body: withoutAvailableLangs(local.body) }) || subset) {
+                serverDiff.push(name + (subset ? ' (' + subset + ')' : ''));
+            }
         }
         console.log(`${serverFile}: agrees on ${CASES.length - serverDiff.length}/${CASES.length}` +
             (serverDiff.length ? `; differs on: ${serverDiff.join(', ')}` : ''));
