@@ -538,9 +538,31 @@
             });
         }
 
+        // The routes the offline library can answer. Used for the one thing worth doing while it is
+        // NOT installed: explaining a failure honestly.
+        function isDataRoute(p) {
+            return p === '/search' || p.indexOf('/search/') === 0 ||
+                   p.indexOf('/api/text/') === 0 || p.indexOf('/api/nav/') === 0;
+        }
+
         window.fetch = function (input, init) {
-            // The gate. Not local → the site's own fetch, untouched, with no bookkeeping at all.
-            if (!local) return realFetch(input, init);
+            // The gate. Not local → the site's own fetch, with no bookkeeping — except for a data
+            // request that fails, where "Search error — check your query (it may be an invalid
+            // regular expression)" is flatly wrong when the real cause is "no network and no library"
+            // (owner's phone, offline, nothing downloaded: the message sent them after their query).
+            if (!local) {
+                var raw = typeof input === 'string' ? input : input.url;
+                var where;
+                try { where = new URL(raw, location.href); } catch (e) { return realFetch(input, init); }
+                if (where.origin !== location.origin || !isDataRoute(where.pathname)) return realFetch(input, init);
+                return realFetch(input, init).catch(function (e) {
+                    var ru = (localStorage.getItem('dhammaLanguage') || localStorage.getItem('siteLanguage') || 'en') === 'ru';
+                    notify(ru
+                        ? 'Нет сети, и офлайн-библиотека не скачана: Настройки → Офлайн-библиотека → Скачать'
+                        : 'No connection, and the offline library is not downloaded: Settings → Offline library → Download');
+                    throw e;
+                });
+            }
 
             var url = typeof input === 'string' ? input : input.url;
             var parsed;

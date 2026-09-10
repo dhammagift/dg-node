@@ -402,6 +402,10 @@
             : (detail.titleRu && detail.titleEn ? (ru ? detail.titleRu : detail.titleEn)
                                                  : (ru ? 'Загрузка офлайн-библиотеки' : 'Downloading the offline library'));
         if (importing) pct = null;
+        // 100% used to mean "ready", which it does not: after the bytes arrive the file is checked and
+        // opened, and that can still fail. Say what is happening instead of claiming success.
+        var verifying = !detail.done && pct === 100;
+        if (verifying) card.querySelector('.dgdl-title').textContent = ru ? 'Проверяем и открываем' : 'Verifying and opening';
         card.querySelector('.dgdl-pct').textContent = pct === null ? '' : pct + '%';
         card.classList.toggle('indeterminate', pct === null);
         if (pct !== null) card.querySelector('.dgdl-fill').style.width = pct + '%';
@@ -630,6 +634,9 @@
             // "<file>: HTTP <status>", which points straight at the server rather than the user.
             // A deliberate cancel is neither a decline nor a fault: the card's × already answered.
             if (err && /cancelled/.test(err.message || '')) return;
+            // Nothing is installed, so a card sitting at 100% would be a lie — take it away and let
+            // the message below explain what happened.
+            if (dlCard) { stopFacts(); dlCard.classList.remove('show'); }
             var declined = err && err.message === 'offline-data-download-declined';
             if (!declined) console.error('[dg-offline] database download failed:', err);
 

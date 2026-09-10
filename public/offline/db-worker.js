@@ -363,7 +363,11 @@ async function downloadInto(pool, url, name, expectedWireBytes, expectedDbBytes,
                     `expected ${Math.round(expectedDbBytes / 1048576)}MB — connection likely dropped mid-transfer`);
             }
             console.log(`[dg-offline] attempt ${attempt}: imported ${loadedBytes} bytes`);
-            post({ type: 'progress', loaded, total: gzip ? (expectedDbBytes || 0) : total, phase, done: true });
+            // NOT done:true. The card says "Library ready" on done, and posting it here made the
+            // page claim success before the file had been opened — the reader then saw "готово"
+            // followed by an error, and settings still saying "Not downloaded" (owner's phone).
+            // The real done is posted by fetchCurrent() once the library is actually open.
+            post({ type: 'progress', loaded, total: gzip ? (expectedDbBytes || 0) : total, phase, done: false });
             // The whole file is in the pool now; the scratch copy has no further purpose and 170MB
             // of it sitting in OPFS would be the reader's storage quietly halved.
             lastTransferStats = {
@@ -669,6 +673,8 @@ async function fetchCurrent(pool, distBase, args) {
         console.log(`[dg-offline] opened ${suttas} suttas in ${((Date.now() - tAdopt) / 1000).toFixed(1)}s`);
 
         for (const name of stale) { try { pool.unlink(name); } catch (_) {} }
+        // Now it is true.
+        post({ type: 'progress', loaded: 1, total: 1, phase: 'download', done: true });
         scheduleFullCheck(pool, target);
         return { suttas, build_id: candidate.meta.build_id, downloaded: true, present: true };
     };
