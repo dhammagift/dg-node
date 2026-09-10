@@ -50,6 +50,16 @@
         if (!scope) return false;
         return extraScopeCodes.some(function (code) { return scope.indexOf(code) !== -1; });
     }
+    // Owner: "видимо все тексты [считает], но выведена только часть — он может актуальное кол-во
+    // выводить?" — group.count (from /api/toc) sums EVERY member book, default tier AND the
+    // extra tier the search-scope setting keeps hidden (that's the whole reason for the "*" next
+    // to it, see renderGroupRow below). Recomputes just the tier-visible books' own counts, so the
+    // number actually matches what's rendered under it right now.
+    function visibleGroupCount(group) {
+        return group.books
+            .filter(function (b) { return b.tier === 'default' || extraTierUnlocked(group.extraScopeCodes); })
+            .reduce(function (sum, b) { return sum + b.count; }, 0);
+    }
 
     // null = no filter set yet (show every translator). Once the user touches the panel, this
     // becomes an explicit array of allowed transKeys, same "don't write until touched" pattern
@@ -736,7 +746,7 @@
                         if (b.countEl) b.countEl.textContent = '(' + b.book.count + ')';
                     });
                     groupEntries.forEach(function (g) {
-                        g.countEl.textContent = '(' + g.group.count + ')';
+                        g.countEl.textContent = '(' + visibleGroupCount(g.group) + ')';
                         g.headerEl.closest('.toc-book').classList.remove('d-none');
                     });
                     updateCategoryVisibility();
@@ -924,7 +934,7 @@
                 groupHeader.type = 'button';
                 groupHeader.appendChild(document.createTextNode(group.label[uiIsRu() ? 'ru' : 'en']));
                 groupHeader.appendChild(document.createTextNode(' '));
-                var countEl = el('span', 'toc-count', '(' + group.count + ')');
+                var countEl = el('span', 'toc-count', '(' + visibleGroupCount(group) + ')');
                 groupHeader.appendChild(countEl);
                 // Asterisk (prod's own convention for "not the complete collection", settings/
                 // index.html ABHI_MARK) — grouped with the count, same muted gray, not part of the
