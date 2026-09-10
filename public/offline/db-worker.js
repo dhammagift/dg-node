@@ -220,6 +220,7 @@ async function downloadInto(pool, url, name, expectedWireBytes, expectedDbBytes,
             // compressed stream has no meaningful byte offset to continue from), so they always
             // start from zero.
             const have = gzip ? 0 : scratch.getSize();
+            console.log(`[dg-offline] attempt ${attempt}: ${have} bytes already on disk`);
             const response = await fetch(url, {
                 signal: controller.signal,
                 headers: have > 0 ? { Range: `bytes=${have}-` } : undefined,
@@ -317,6 +318,7 @@ async function downloadInto(pool, url, name, expectedWireBytes, expectedDbBytes,
                 throw new Error(`dg-mobile.db: stream ended after ${Math.round(loadedBytes / 1048576)}MB, ` +
                     `expected ${Math.round(expectedDbBytes / 1048576)}MB — connection likely dropped mid-transfer`);
             }
+            console.log(`[dg-offline] attempt ${attempt}: imported ${loadedBytes} bytes`);
             post({ type: 'progress', loaded, total: gzip ? (expectedDbBytes || 0) : total, phase, done: true });
             // The whole file is in the pool now; the scratch copy has no further purpose and 170MB
             // of it sitting in OPFS would be the reader's storage quietly halved.
@@ -338,7 +340,10 @@ async function downloadInto(pool, url, name, expectedWireBytes, expectedDbBytes,
             }
             // importDbChunked() (sqlite-wasm) already removes the partial file on the exception
             // this abort caused, so the next attempt starts clean — nothing to unlink here.
-            post({ type: 'progress', loaded: 0, total: 0, phase, retrying: attempt + 1 });
+            // `resumed` is what the NEXT attempt will ask the server for — the bytes already on
+            // disk. Reported so "did the retry resume or start over" is answerable from the UI/logs
+            // instead of by watching the network.
+            post({ type: 'progress', loaded: 0, total: 0, phase, retrying: attempt + 1, resumed: scratch.getSize() });
             await new Promise(resolve => setTimeout(resolve, RETRY_BACKOFF_MS(attempt)));
         }
     }

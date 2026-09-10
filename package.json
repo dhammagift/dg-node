@@ -6,7 +6,9 @@
     "build-icons": "node build-icons.js",
     "build-search-db": "node build-search-db.js",
     "build-offline": "node build-offline.js",
-    "test-offline": "node test/offline-e2e.js"
+    "test-offline": "node test/offline-e2e.js",
+    "test-offline-parity": "node test/offline-parity.js",
+    "test-offline-resume": "node test/offline-resume.js"
   },
   "dependencies": {
     "@fastify/compress": "^9.2.0",

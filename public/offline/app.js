@@ -91,6 +91,7 @@
                         loaded: msg.loaded, total: msg.total, phase: msg.phase || 'download',
                         done: !!msg.done,
                         reason: msg.retrying ? 'stalled, retrying (attempt ' + msg.retrying + ')' : null,
+                        resumed: msg.resumed,
                     },
                 }));
                 return;
