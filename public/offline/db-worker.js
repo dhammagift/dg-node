@@ -754,14 +754,26 @@ async function open(distBase, allowDownload, args) {
     for (const name of storedDatabases(pool)) {
         const candidate = inspect(pool, name);
         if (!candidate.ok) { try { pool.unlink(name); } catch (_) {} continue; }
-        // A non-empty scratch file for THIS build means the download that produced this copy never
-        // finished — whatever the file's own meta claims (meta is written before the tail of the
-        // file, so a truncated import can carry a perfectly valid build id). Do not adopt it: the
-        // download path resumes into a fresh copy and unlinks this one when it succeeds.
-        if (await partialBytes(scratchNameFor(name)) > 0) {
-            console.log(`[dg-offline] ${name} has an unfinished download beside it — not adopting it`);
+        // The scratch file is only a HINT that a download once stopped here, never proof that THIS
+        // stored copy is the incomplete one: a failed attempt leaves one behind while a later attempt
+        // completes the very same file — and then the page refused to open a perfectly good library
+        // on every visit, offline dead, with settings honestly reading "Downloaded" (owner's phone).
+        // So the file itself decides, cheaply, and a stale partial copy is cleaned up on the way
+        // through. A genuinely incomplete copy fails the check and keeps its scratch for a resume.
+        const scratchName = scratchNameFor(name);
+        const partial = await partialBytes(scratchName);
+        const problem = checkCheap(candidate.handle, null);
+        if (problem) {
+            console.log(`[dg-offline] ${name} is incomplete (${problem})` +
+                (partial ? ` with ${Math.round(partial / 1048576)}MB of a partial download beside it` : '') +
+                ` — not adopting it`);
             candidate.handle.close();
             continue;
+        }
+        if (partial) {
+            console.log(`[dg-offline] ${name} is complete — dropping a stale partial copy ` +
+                `(${Math.round(partial / 1048576)}MB)`);
+            await dropScratchAfterCancel(scratchName);
         }
         const suttas = adopt(candidate);
         return { suttas, build_id: candidate.meta.build_id, downloaded: false, present: true };

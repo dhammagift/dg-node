@@ -269,15 +269,26 @@
         if (!navigator.locks || typeof navigator.locks.request !== 'function') {
             return Promise.resolve(true); // no Web Locks: no election possible, proceed
         }
-        return new Promise(function (resolve) {
-            navigator.locks.request(LOCK_NAME, { mode: 'exclusive', ifAvailable: true }, function (lock) {
-                if (!lock) { resolve(false); return undefined; }
-                resolve(true);
-                return new Promise(function (release) {
-                    window.addEventListener('pagehide', function () { release(); }, { once: true });
-                });
-            }).catch(function () { resolve(true); });
-        });
+        function attempt(triesLeft) {
+            return new Promise(function (resolve) {
+                navigator.locks.request(LOCK_NAME, { mode: 'exclusive', ifAvailable: true }, function (lock) {
+                    if (!lock) { resolve(false); return undefined; }
+                    resolve(true);
+                    return new Promise(function (release) {
+                        window.addEventListener('pagehide', function () { release(); }, { once: true });
+                    });
+                }).catch(function () { resolve(true); });
+            }).then(function (got) {
+                if (got) return true;
+                // A lock held by the page we were just reloaded from (or restored from the back/forward
+                // cache) is released a moment AFTER the new document starts: without this retry the new
+                // page elected itself out, stayed server-backed, and offline simply did not work while
+                // settings happily said "Downloaded" (owner's phone; also caught by test-offline-resume).
+                if (triesLeft <= 0) return false;
+                return new Promise(function (r) { setTimeout(r, 400); }).then(function () { return attempt(triesLeft - 1); });
+            });
+        }
+        return attempt(6);
     }
 
     // ---------------------------------------------------------------------------------------
@@ -310,7 +321,15 @@
 
     function markLocal(opened) {
         local = true;
-        rememberState({ present: true, build_id: (opened && opened.build_id) || null, update: null });
+        rememberState({ present: true, build_id: (opened && opened.build_id) || null, update: null,
+                        local: true, reason: 'local' });
+    }
+
+    // Why this tab is NOT reading from the library it may well have on disk. There is no console on
+    // a phone, so the answer has to reach the settings row (offline-library-settings.js renders it):
+    // 'insecure' | 'not-owner' | 'unusable' | 'none' | 'local'.
+    function rememberMode(present, reason) {
+        rememberState({ present: !!present, local: false, reason: reason });
     }
 
     // Ask for persistent storage before spending hundreds of megabytes of the reader's connection.
@@ -386,6 +405,7 @@
             // for says what is missing (offline-status.js turns the rejection into a toast).
             if (!opfsAvailable()) {
                 log('offline storage unavailable: a secure context (HTTPS or localhost) is required');
+                rememberMode(false, 'insecure');
                 if (wantsData || wantsUpdate) {
                     throw new Error('HTTPS is required for the offline library (or localhost)');
                 }
@@ -394,6 +414,11 @@
 
             if (!owns) {
                 log('another tab owns the offline database — this tab stays server-backed');
+                // Still worth knowing whether a library EXISTS: "downloaded but another tab holds it"
+                // and "nothing downloaded" need different answers, and the settings row shows which.
+                call('status', { distBase: DIST_BASE, wantManifest: false }).then(function (st) {
+                    rememberMode(st && st.present, 'not-owner');
+                }).catch(function () { rememberMode(false, 'not-owner'); });
                 if (wantsData || wantsUpdate) {
                     if (!askOwningTab(wantsUpdate ? 'update' : 'open')) {
                         throw new Error('the offline library is in use by another tab — close it and try again');
@@ -426,7 +451,7 @@
                     return call('open', { distBase: DIST_BASE, download: false }).then(function (opened) {
                         if (!opened || opened.present === false) {
                             log('stored database is unusable — staying server-backed');
-                            rememberState({ present: false, build_id: null, update: null });
+                            rememberMode(true, 'unusable');
                             return null;
                         }
                         markLocal(opened);
@@ -438,7 +463,7 @@
 
                 // Nothing stored: exactly the site as it was, and no download unless the reader
                 // pressed a button in Settings (the intent key is that click).
-                rememberState({ present: false, build_id: null, update: null });
+                rememberMode(false, 'none');
                 if (wantsData || wantsUpdate) return download('open');
 
                 // An unfinished download continues by itself. The reader asked once; the bytes are
@@ -557,9 +582,14 @@
                 if (where.origin !== location.origin || !isDataRoute(where.pathname)) return realFetch(input, init);
                 return realFetch(input, init).catch(function (e) {
                     var ru = (localStorage.getItem('dhammaLanguage') || localStorage.getItem('siteLanguage') || 'en') === 'ru';
-                    notify(ru
-                        ? 'Нет сети, и офлайн-библиотека не скачана: Настройки → Офлайн-библиотека → Скачать'
-                        : 'No connection, and the offline library is not downloaded: Settings → Offline library → Download');
+                    var st = null;
+                    try { st = JSON.parse(localStorage.getItem(STATE_KEY) || 'null'); } catch (err) { /* ignore */ }
+                    var why = st && st.present
+                        ? (ru ? 'Библиотека скачана, но эта вкладка её не использует — закройте другие вкладки этого сайта и приложение, затем обновите страницу'
+                              : 'The library is downloaded, but this tab is not using it — close the site’s other tabs and the installed app, then reload')
+                        : (ru ? 'Нет сети, и офлайн-библиотека не скачана: Настройки → Офлайн-библиотека → Скачать'
+                              : 'No connection, and the offline library is not downloaded: Settings → Offline library → Download');
+                    notify(why);
                     throw e;
                 });
             }

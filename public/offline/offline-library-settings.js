@@ -99,9 +99,25 @@
         btnEl.textContent = isRu ? 'Обновить' : 'Update';
         btnEl.onclick = function () { goHomeWith(WANT_UPDATE_KEY); };
     } else {
+        // "Downloaded" on its own hid a real failure mode: a library that is on disk but which THIS
+        // tab cannot use (another tab/app holds the single-writer OPFS pool) reads exactly like a
+        // healthy one — until the reader goes offline and everything fails. Say which it is.
+        var reason = state.reason;
+        var note = '';
+        if (reason === 'not-owner') {
+            note = isRu ? ' Использует другая вкладка или приложение — закройте их и обновите страницу.'
+                        : ' Another tab or the installed app is using it — close them and reload.';
+        } else if (reason === 'unusable') {
+            note = isRu ? ' Файл не открылся — нажмите «Перескачать».'
+                        : ' The file could not be opened — press Re-download.';
+        } else if (reason === 'insecure') {
+            note = isRu ? ' Нужен HTTPS.' : ' HTTPS required.';
+        } else if (reason === 'local') {
+            note = isRu ? ' Работает офлайн.' : ' Working offline.';
+        }
         descEl.textContent = isRu
-            ? ('Скачано, сборка ' + (state.build_id || '?') + '. Обновлений нет.')
-            : ('Downloaded, build ' + (state.build_id || '?') + '. Up to date.');
+            ? ('Скачано, сборка ' + (state.build_id || '?') + '.' + note)
+            : ('Downloaded, build ' + (state.build_id || '?') + '.' + note);
         btnEl.textContent = isRu ? 'Перескачать' : 'Re-download';
         btnEl.onclick = function () { goHomeWith(WANT_UPDATE_KEY); };
     }
