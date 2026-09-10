@@ -1328,10 +1328,28 @@ if (event.altKey && (event.code === "KeyP" || event.code === "KeyY")) {
             return;
         }
 
-        // 2. Попытка для Читалки (эмулируем клик по скрытой/видимой кнопке в read.php)
+        // 2. Легаси-читалка (reader-template.html, read.php) — эмулируем клик по её кнопке.
         const readerFavBtn = document.getElementById('toggle-favorite');
         if (readerFavBtn) {
-            readerFavBtn.click(); 
+            readerFavBtn.click();
+            return;
+        }
+
+        // 2.5. Текущий SPA-ридер (search/index.html + megareader.js) — #toggle-favorite здесь
+        // никогда не появится, он только в старом reader-template.html; страница открыта чистым
+        // слагом (/dn22), не ?q=, так что и фолбэк №3 ниже тоже мимо. Раньше Alt+F на реальной
+        // странице ридера просто ничего не делал — owner: "alt f тоже [не работает]". Всю суттy,
+        // не конкретный сегмент — точечная закладка уже есть отдельно (sm-bookmark, common.js,
+        // требует сначала выделить строку).
+        if (window._currentSlug && typeof toggleFavoriteGlobal === 'function') {
+            toggleFavoriteGlobal({
+                slug: window._currentSlug,
+                id: window._currentSlug,
+                title: document.title || window._currentSlug,
+                path: window.location.pathname,
+                search: window.location.search,
+                timestamp: Date.now()
+            });
             return;
         }
 

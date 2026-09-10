@@ -771,7 +771,7 @@ async function enrichSuttaBatch(searchResults, suttaIds, targetLangs, keyword, s
     // handed a path shaped like the one it expects.
     const rosterBySutta = new Map();
     for (const row of sqlRowsIn('DISTINCT sutta_id, lang, translator, source', 'texts', 'sutta_id',
-        presentIds, "AND kind = 'translation'")) {
+        presentIds, "AND kind = 'translation' AND translator <> 'ai'")) {
         if (wantedLangs && !wantedLangs.has(row.lang)) continue;
         let roster = rosterBySutta.get(row.sutta_id);
         if (!roster) rosterBySutta.set(row.sutta_id, roster = {});
@@ -952,16 +952,25 @@ function translatorsForSutta(suttaId, targetLangs, explicitTranslators, multiFor
         : new Set(targetLangs.map(l => l.split('_')[0]));
 
     const roster = {};
+    // autoRoster excludes "ai" (offline-data/dhammagift/ai/, a working AI-assisted draft meant
+    // only for /assets/lbl.html's line-by-line tool) — never eligible as a picked-automatically
+    // fallback translator (owner: "ru_ai не должен быть виден пользователю нигде на сайте, это
+    // только для lbl.html"). Kept IN the full roster below so an explicit ?translators=ru_ai
+    // (lbl.html's own access path, branch right below) still resolves — this only narrows what
+    // filterPreferredTranslators() is allowed to choose from on its own.
+    const autoRoster = {};
     for (const row of rows) {
         if (wanted && !wanted.has(row.lang)) continue;
-        roster[`${row.lang}_${row.translator}`] =
-            row.source === 'dgmain' ? path.join(DG_OFFLINE, row.lang, 'x.json') : '';
+        const key = `${row.lang}_${row.translator}`;
+        const value = row.source === 'dgmain' ? path.join(DG_OFFLINE, row.lang, 'x.json') : '';
+        roster[key] = value;
+        if (row.translator !== 'ai') autoRoster[key] = value;
     }
 
     if (explicitTranslators && explicitTranslators.length) {
         return new Set(explicitTranslators.filter(key => key in roster));
     }
-    return new Set(Object.keys(filterPreferredTranslators(roster, multiForLangs)));
+    return new Set(Object.keys(filterPreferredTranslators(autoRoster, multiForLangs)));
 }
 
 // Everything stored for one sutta, fetched once. Split out from the assembly below for the same

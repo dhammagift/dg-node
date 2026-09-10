@@ -59,7 +59,7 @@ const {
 const app = Fastify({ bodyLimit: 10 * 1024 * 1024 });
 // 3000 is where production serves from (both dhamma.gift and test.dhamma.gift proxy here);
 // dg-light.js, the legacy Express server, defaults to 3001 so the two can run side by side.
-const PORT = Number(process.env.PORT) || 3001;
+const PORT = Number(process.env.PORT) || 3003;
 
 // The only POST route in this file (/assets/lbl-save.php) always wants the raw body as a string,
 // regardless of what Content-Type the client sends — same as express.text({type:'*/*'}) did.
@@ -693,11 +693,14 @@ async function buildTranslatorCatalogCache() {
     const countsByLang = {};
     for (const row of searchDb.prepare(
         `SELECT lang, translator, count(DISTINCT sutta_id) c FROM texts
-         WHERE kind = 'translation' AND translator <> 'site' GROUP BY lang, translator`
+         WHERE kind = 'translation' AND translator NOT IN ('site', 'ai') GROUP BY lang, translator`
     ).all()) {
         // "site" (excluded above) is SC's own UI-string translation — about/footer/home strings,
         // not a sutta translator (owner: "ru_site и любой другой site не должны попадать в
-        // списки переводчиков").
+        // списки переводчиков"). "ai" (offline-data/dhammagift/ai/) is a working AI-assisted
+        // draft for /assets/lbl.html's line-by-line tool only — same exclusion as the TOC's own
+        // translator badges (see /api/toc/book/:code above) and core/search-core.js's search
+        // matching (owner: "ru_ai не должен быть виден пользователю нигде на сайте").
         (countsByLang[row.lang] = countsByLang[row.lang] || {})[row.translator] = row.c;
     }
     try {
@@ -1701,8 +1704,14 @@ app.get('/api/toc/book/:code', async (req, res) => {
         // the reader would collapse to. Used to walk each language's whole directory tree.
         const wanted = targetLangs.includes('all') ? null : new Set(targetLangs.map(l => l.split('_')[0]));
         const filter = langFilterSql(wanted);
+        // translator <> 'ai': same exclusion core/search-core.js already applies to search
+        // matching — "ai" (offline-data/dhammagift/ai/) is a working AI-assisted draft meant
+        // only for /assets/lbl.html's line-by-line tool, not a real public translator. TOC badges
+        // are otherwise deliberately "every translator, unfiltered" (comment above) — this is the
+        // one deliberate exception, not a narrowing of that intent (owner: "ru_ai не должен быть
+        // виден пользователю нигде на сайте, это только для lbl.html").
         for (const row of sqlRowsIn('DISTINCT sutta_id, lang, translator', 'texts', 'sutta_id',
-            leafIds, `AND kind = 'translation' ${filter.sql}`, filter.params)) {
+            leafIds, `AND kind = 'translation' AND translator <> 'ai' ${filter.sql}`, filter.params)) {
             (translations[row.sutta_id] = translations[row.sutta_id] || []).push(`${row.lang}_${row.translator}`);
         }
     }

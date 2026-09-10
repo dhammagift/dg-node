@@ -126,6 +126,7 @@ shown in the UI but marked "coming soon" — not available yet.
 |---|---|
 | Alt+S | Open/close Quick Settings (the sliders icon next to search) |
 | Alt+Shift+S | Open/close this full Settings page |
+| Ctrl+Shift+F (Cmd+Shift+F on Mac) | Find on page — not Alt+F, that's [favorites](/read); not plain Ctrl+F either, real browsers reserve that for their own find bar |
 | Alt+Space / Alt+Z | Switch interface language |
 | Alt+T | Theme |
 | Alt+. | Strip Pali punctuation |

@@ -198,7 +198,15 @@ window.toggleThePali = function() {
     if (!localStorage.getItem(storageKey)) {
         localStorage.setItem(storageKey, defaultMode);
     }
-    window.language = localStorage.getItem(storageKey); 
+    window.language = localStorage.getItem(storageKey);
+    // Owner: "видимость пали/перевода сбрасывается, всегда показывает оба" — this function ran
+    // on every buildSutta() (fresh load, mode switch, next/prev text...) but only ever REBOUND
+    // the click listener for the NEXT click; it read the stored mode into window.language and
+    // stopped there, never applying it to the freshly-rendered DOM. The pill's own label synced
+    // correctly (dgSyncLangPill reads localStorage directly), so it visibly disagreed with the
+    // actual text on screen — pill said "off", translation stayed visible until the user clicked
+    // again. Apply the stored preference to THIS render too, not just future ones.
+    window.setLanguage(window.language);
 
     const newButton = languageButton.cloneNode(true);
     languageButton.parentNode.replaceChild(newButton, languageButton);
@@ -970,8 +978,23 @@ window.buildSutta = async function(rawSlug) {
         // ручной оверрайд набора языков, работает независимо от ?mode=/?lang= (см.
         // /api/text/:suttaId в dg-light.js).
         const explicitLangs = new URLSearchParams(document.location.search).get('langs');
+        // ?translators=en_brahmali — TOC's own per-translator links (public/spa/toc.js
+        // leafTranslatorLinks): a bare "/{id}?translators={key}", never paired with a
+        // langs=/lang=/mode= of its own. Was never read here at all, so every one of those
+        // links silently fell through to whatever mode/lang the reader happened to already be
+        // in — clicking a specific translator always rendered the DEFAULT one instead (owner:
+        // "нажал на Брахмали, открылся русский"). The server (dg-fastify.js explicitTranslators)
+        // already supports it fine standalone; only forwarding it from the URL was missing.
+        // Only meaningful without an explicit langs= already narrowing the column(s) — derive the
+        // language from the translator key's own prefix (en_brahmali → en) so the two agree; a
+        // same-language multi-translator link (?translators=ru_o,ru_sv) still resolves to one
+        // language, `split(',')[0]` on the first key is enough.
+        const explicitTranslators = new URLSearchParams(document.location.search).get('translators');
         let langsQuery;
-        if (explicitLangs) {
+        if (!explicitLangs && explicitTranslators) {
+            const derivedLang = explicitTranslators.split(',')[0].split('_')[0];
+            langsQuery = `mode=single&lang=${encodeURIComponent(derivedLang)}&translators=${encodeURIComponent(explicitTranslators)}`;
+        } else if (explicitLangs) {
             // mode= still needed even with an explicit langs= override — the server resolves
             // BEHAVIOR (dualScript/mnemonic/multiFor) from mode alone (dg-light.js modeConfig),
             // langs= only overrides which languages/columns to fetch. Dropping mode= here broke

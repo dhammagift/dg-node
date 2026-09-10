@@ -2795,6 +2795,17 @@ body.dg-skin-minimal .ui-autocomplete .ui-menu-item-wrapper {
     background: transparent;
     color: var(--dg-text);
 }
+/* Owner: long compound Pali words (autopali.js's <span>item.label</span>, e.g. a long jātaka
+   title) ran off the edge of the dropdown instead of wrapping — flex items default to
+   min-width:auto, which keeps them at their content's natural (unwrapped) width no matter how
+   narrow the flex container actually is. min-width:0 lets the span actually shrink to the row's
+   width; overflow-wrap breaks the long word itself once it does, since it has no spaces to wrap
+   on normally. */
+body.dg-skin-minimal .ui-autocomplete .autopali-dropdown-item span,
+body.dg-skin-minimal .ui-autocomplete .ui-menu-item-wrapper span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
 body.dg-skin-minimal .ui-autocomplete .ui-state-active,
 body.dg-skin-minimal .ui-autocomplete .ui-state-active .autopali-dropdown-item,
 body.dg-skin-minimal .ui-autocomplete .autopali-dropdown-item:hover,
@@ -3568,11 +3579,19 @@ body.dg-skin-minimal, body.dg-skin-minimal * { font-variant-ligatures: no-common
 body.dg-state-reader #sutta h1, body.dg-state-reader #sutta h2, body.dg-state-reader #sutta h3, body.dg-state-reader #sutta h4 { letter-spacing: .015em; }
 /* Results: with room, the table filter sits on the header line (word · counts · variants) instead
    of on its own row below (owner). The header keeps its 18px bottom padding, the pane is pulled
-   up by header-text-height + gap so the filter row (40px) centers on the header text. */
+   up by header-text-height + gap so the filter row (40px) centers on the header text.
+   ONLY when that control row is the single short line this pull-up assumes — #search-pane.dg-has-
+   paging (updatePagingLayoutClass(), search/index.html) means real pagination is showing, an
+   extra row DataTables adds beneath dt-length/dt-search, which this fixed -50px doesn't account
+   for: it landed on top of the header/keyword text instead of the filter row centering on it
+   (owner, screenshot: "10 per page" overlapping "kacchapa"). With pagination, skip the pull-up
+   entirely — header on its own line, the whole control block normally below it. */
 @media (min-width: 768px) {
-    body.dg-state-results #search-pane { margin-top: -50px !important; }
-    body.dg-state-results #pali_wrapper > .row:first-child, body.dg-state-results #pali-words_wrapper > .row:first-child { position: relative; z-index: 2; }
-    body.dg-state-results #pali_wrapper > table, body.dg-state-results #pali-words_wrapper > table { margin-top: 12px; }
+    body.dg-state-results #search-pane:not(.dg-has-paging) { margin-top: -50px !important; }
+    body.dg-state-results #search-pane:not(.dg-has-paging) #pali_wrapper > .row:first-child,
+    body.dg-state-results #search-pane:not(.dg-has-paging) #pali-words_wrapper > .row:first-child { position: relative; z-index: 2; }
+    body.dg-state-results #search-pane:not(.dg-has-paging) #pali_wrapper > table,
+    body.dg-state-results #search-pane:not(.dg-has-paging) #pali-words_wrapper > table { margin-top: 12px; }
 }
 /* Wide screens: more air between the header/filter row and the table, and the bottom link row
    (.footerlike: Main / History / Export …) sits at the bottom of the viewport when the table is

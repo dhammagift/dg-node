@@ -2208,6 +2208,19 @@
         return raw === null ? true : raw === '1';
     }
 
+    // Same pattern for #dg-drawer-multitool itself, everywhere EXCEPT reader/TOC — owner:
+    // "мультитул нужно сворачивать не сохраняя состояние только там где есть режимы для чтения
+    // [reader/TOC]... в остальных местах нужно запоминать в каком состоянии был мультитул и
+    // сохранять его". Reader/TOC keep the old unconditional force-closed (openDrawer() below,
+    // unchanged) — the reading-modes list sits right under it there and must never get buried by
+    // a remembered "was open" from some other page. Default true: home's own behavior used to be
+    // "always force open" outright; defaulting the remembered pref to open preserves that as the
+    // first-time experience, after which the user's own last choice takes over.
+    function multitoolOpenPref() {
+        var raw = localStorage.getItem('dgMultitoolOpen');
+        return raw === null ? true : raw === '1';
+    }
+
     function paintReaderModes() {
         var section = document.getElementById('dg-drawer-modes');
         var list = document.getElementById('dg-drawer-modes-list');
@@ -2269,13 +2282,31 @@
         var b = document.getElementById('dg-drawer-backdrop');
         if (!d) return;
         paintReaderModes();
-        // Owner (2026-09-06, per the production-v4 mock): on the home screen the burger opens
-        // with the multitool list unfolded; results/reader/toc keep it folded (default markup).
         var multitool = document.getElementById('dg-drawer-multitool');
-        if (multitool && currentState() === 'home') multitool.open = true;
-        // Reader: always folded, never remembered (owner: "чтобы юзер не потерял режимы чтения"
-        // — the reading-modes list sits right under it).
-        if (multitool && (currentState() === 'reader' || currentState() === 'toc')) multitool.open = false;
+        if (multitool) {
+            // Wired once — the element is static in the HTML, this listener just needs to exist.
+            if (!multitool.dataset.toggleWired) {
+                multitool.dataset.toggleWired = '1';
+                multitool.addEventListener('toggle', function () {
+                    var st = currentState();
+                    // Reader/TOC force it closed every time (branch below) — a toggle event CAN
+                    // still fire there (paintReaderModes' own "навигация... должен быть свёрнут"
+                    // collapse, or the user clicking it right before navigating away), and saving
+                    // that would leak into every OTHER page's remembered state. Only persist where
+                    // the memory is actually meant to apply.
+                    if (st !== 'reader' && st !== 'toc') {
+                        localStorage.setItem('dgMultitoolOpen', multitool.open ? '1' : '0');
+                    }
+                });
+            }
+            // Reader/TOC: always folded, never remembered (owner: "чтобы юзер не потерял режимы
+            // чтения" — the reading-modes list sits right under it). Everywhere else (home,
+            // results, ...): whatever the user last left it as (owner: "если открыто — открытым
+            // было, если свёрнутым — свёрнутым") — replaces the old hardcoded "home always forces
+            // it open".
+            if (currentState() === 'reader' || currentState() === 'toc') multitool.open = false;
+            else multitool.open = multitoolOpenPref();
+        }
         d.hidden = false;
         if (b) b.hidden = false;
         // Locks body scroll (home.css: body.dg-drawer-open { overflow: hidden }) — mobile
@@ -2414,8 +2445,13 @@
             var a = document.createElement('a');
             a.className = 'dg-drawer-row';
             a.href = tile.href || 'javascript:void(0)';
-            a.innerHTML = '<span class="dg-row-ic dg-drawer-tile-ic">' + iconHtml(tile.icon) + '</span>' +
-                '<span class="dg-row-label">' + esc(tile.label) + '</span>';
+            // drawerLabel/drawerIcon (menu-links.json, optional): burger-only override, home tile
+            // untouched — owner: "History" reads as covering just history, but the row (and the
+            // quickModal it opens) is really Favorites+History+4NT together; wanted that spelled
+            // out with a star in the drawer specifically, NOT as a second row and NOT on the home
+            // tile grid ("на главной плитки не трогай").
+            a.innerHTML = '<span class="dg-row-ic dg-drawer-tile-ic">' + iconHtml(tile.drawerIcon || tile.icon) + '</span>' +
+                '<span class="dg-row-label">' + esc(tile.drawerLabel || tile.label) + '</span>';
             a.addEventListener('click', function (e) {
                 e.preventDefault();
                 closeDrawer();

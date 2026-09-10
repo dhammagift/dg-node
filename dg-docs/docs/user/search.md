@@ -143,6 +143,7 @@ For edition abbreviations (`ms`, `pts1ed`, `sya-all`, `mr`, etc.), see the
 | Alt+Shift+S | Open/close the full [Settings](/settings) page |
 | Alt+T | Dark / light / auto theme |
 | Alt+Space, Alt+Z | Show/hide Pali or other languages in results |
+| Ctrl+Shift+F (Cmd+Shift+F on Mac) | Find on page (site-wide, not just here) — also in the burger menu |
 | Shift+Space | Collapse/expand all search results |
 | / | Focus the Search Builder input |
 

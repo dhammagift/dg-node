@@ -3085,6 +3085,18 @@ $(document).ready(function() {
         }
     }
 
+    // #search-pane.dg-has-paging — whichever of #pali_wrapper/#pali-words_wrapper is currently
+    // shown really does have more than one page right now. DataTables itself already tracks
+    // this: its .dt-paging gets an inline style="display: none" the moment a table fits on one
+    // page, and drops that inline style (back to its own CSS, display:flex) the moment it
+    // doesn't — reusing that instead of recomputing page counts here.
+    function updatePagingLayoutClass() {
+        var activeWrapper = document.querySelector('#pali_wrapper:not(.d-none), #pali-words_wrapper:not(.d-none)');
+        var paging = activeWrapper && activeWrapper.querySelector('.dt-paging');
+        var hasPaging = !!paging && paging.style.display !== 'none';
+        document.getElementById('search-pane').classList.toggle('dg-has-paging', hasPaging);
+    }
+
     // Переключение между отчётом по суттам и по словам — тот же ответ /search, без повторного
     // запроса (json.wordReport уже пришёл вместе с json.data начиная с фазы 1). Обе таблицы
     // (#pali, #pali-words) теперь стабильны и живут постоянно — переключение это show/hide
@@ -3099,6 +3111,7 @@ $(document).ready(function() {
         if (meta.tooShort || meta.totalFiles === 0) {
             $('#pali, #pali_wrapper, #pali-words, #pali-words_wrapper, #variants, #variants-hint, .forshellscript').addClass('d-none');
             currentTable = null;
+            $('#search-pane').removeClass('dg-has-paging');
             return;
         }
         $('.forshellscript').removeClass('d-none');
@@ -3148,6 +3161,14 @@ $(document).ready(function() {
             table.off('draw.links').on('draw.links', wireResultLinks);
             wireResultLinks();
         }
+        // Filter+ (#search-pane.dg-has-paging, CSS): the desktop "pull the filter row up onto
+        // the header line" trick (@media min-width:768px, home.css) assumes a single short
+        // control row — with real pagination the extra row collided with the header/keyword
+        // text instead (owner, screenshot: "10 per page" landing on top of "kacchapa"). Bound to
+        // 'draw' (not just called once here), on BOTH tables — typing in the Filter box can drop
+        // the match count below one page's worth without a full rebuild, DataTables just re-draws.
+        table.off('draw.paging-layout').on('draw.paging-layout', updatePagingLayoutClass);
+        updatePagingLayoutClass();
         currentTable = table;
         applyFilterValue(table);
         // Language pill (home.js): its results-state language list is read straight off #pali's
