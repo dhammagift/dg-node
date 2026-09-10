@@ -958,10 +958,16 @@ self.onmessage = async (event) => {
         // not this empty answer replayed from `ready`.
         if (args && args.download === false) {
             try {
-                const result = await open(distBase, false, args || {});
+                // A successful ADOPTION is memoised exactly like a download — without this the worker
+                // forgot the database it had just opened, and every later data request died with
+                // "database not opened" while the page believed it was offline-ready: settings said
+                // "Working offline", and the site's own search said "check your query (invalid regular
+                // expression)". Direct fetches looked fine only because they happened in the page that
+                // had done the download (which does set `ready`). Owner's Opera, reproduced here.
+                const result = await (ready = ready || open(distBase, false, args || {}));
                 if (result && result.present === false) ready = null;
                 post({ id, ok: true, result });
-            } catch (e) { post({ id, ok: false, error: e.message }); }
+            } catch (e) { ready = null; post({ id, ok: false, error: e.message }); }
             return;
         }
         ready = ready || open(distBase, true, args || {});

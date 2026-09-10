@@ -447,11 +447,18 @@ function subsetProblem(localBody, serverBody) {
         try {
             const res = await page.goto(`${BASE}/dn22:2.2`, { waitUntil: 'domcontentloaded', timeout: 30000 });
             const text = await page.evaluate(async () => {
+                // /search is the one the READER uses (the reader links and the search box), and a page
+                // that adopted an installed library used to answer it with "database not opened" — so
+                // both routes are checked here, on a page that did NOT do the downloading.
+                const s = await fetch('/search?q=kacchapa&langs=ru,en');
+                const sj = await s.json();
                 const r = await fetch('/api/text/dn22?mode=st');
                 const j = await r.json();
-                return { status: r.status, segments: (j.segments || []).length };
+                return { status: r.status, segments: (j.segments || []).length,
+                         searchStatus: s.status, searchFiles: (sj.metadata || {}).totalFiles };
             });
-            offlineOk = !!res && res.status() === 200 && text.status === 200 && text.segments > 0;
+            offlineOk = !!res && res.status() === 200 && text.status === 200 && text.segments > 0 &&
+                       text.searchStatus === 200 && text.searchFiles > 0;
             offlineNote = `navigation ${res && res.status()}, /api/text/dn22 -> ${JSON.stringify(text)}`;
         } catch (e) {
             offlineNote = 'threw: ' + e.message;
