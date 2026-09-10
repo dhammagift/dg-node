@@ -201,6 +201,15 @@
         #dgDlCard .dgdl-sub {
             font-size: 11.5px; color: var(--dgc-muted); font-variant-numeric: tabular-nums;
         }
+        /* First thing the reader reads while 479MB moves: backgrounding the tab (or locking the
+           phone) is what actually kills the transfer on mobile, and no progress bar can explain
+           that after the fact. A notice, not a rotating fact — it stays put. */
+        #dgDlCard .dgdl-keep {
+            display: flex; align-items: flex-start; gap: 7px;
+            background: var(--dgc-sunk); border-radius: 10px; padding: 7px 9px;
+            font-size: 11.5px; line-height: 1.35; color: var(--dgc-ink);
+        }
+        #dgDlCard .dgdl-keep svg { flex: none; margin-top: 1px; color: var(--dgc-accent); }
         /* Set only while a stalled connection is being retried — see downloadInto() in
            db-worker.js — the one thing worth screenshotting instead of pulling logcat. */
         #dgDlCard .dgdl-debug {
@@ -236,6 +245,7 @@
         #dgDlCard.dgdl-collapsed { padding: 8px 12px 9px; gap: 6px; border-radius: 14px; cursor: pointer; }
         #dgDlCard.dgdl-collapsed .dgdl-title,
         #dgDlCard.dgdl-collapsed .dgdl-sub,
+        #dgDlCard.dgdl-collapsed .dgdl-keep,
         #dgDlCard.dgdl-collapsed .dgdl-facts,
         #dgDlCard.dgdl-collapsed .dgdl-debug { display: none; }
         #dgDlCard.dgdl-collapsed .dgdl-track { height: 4px; }
@@ -290,6 +300,13 @@
                 '</button>' +
             '</div>' +
             '<div class="dgdl-track"><div class="dgdl-fill"></div></div>' +
+            '<div class="dgdl-keep">' +
+                '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" ' +
+                'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+                '<path d="M12 8v5"/><path d="M12 16.5h.01"/>' +
+                '<circle cx="12" cy="12" r="9"/></svg>' +
+                '<span class="dgdl-keep-text"></span>' +
+            '</div>' +
             '<div class="dgdl-sub"></div>' +
             '<div class="dgdl-facts"><span class="dgdl-fact"></span></div>' +
             '<div class="dgdl-debug" hidden></div>';
@@ -401,6 +418,9 @@
         card.querySelector('.dgdl-pct').textContent = pct === null ? '' : pct + '%';
         card.classList.toggle('indeterminate', pct === null);
         if (pct !== null) card.querySelector('.dgdl-fill').style.width = pct + '%';
+        card.querySelector('.dgdl-keep-text').textContent = importing ? ''
+            : (ru ? 'Не выключайте телефон и не сворачивайте браузер'
+                  : 'Keep the phone on and leave this tab open');
         card.querySelector('.dgdl-sub').textContent = importing ? ''
             : total
                 ? (ru ? formatMb(loaded) + ' МБ из ' + formatMb(total) + ' МБ'
