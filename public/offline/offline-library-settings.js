@@ -113,7 +113,9 @@
         } else if (reason === 'insecure') {
             note = isRu ? ' Нужен HTTPS.' : ' HTTPS required.';
         } else if (reason === 'local') {
-            note = isRu ? ' Работает офлайн.' : ' Working offline.';
+            // Not "working offline" — that reads as a claim about the CONNECTION ("I'm online, this is
+            // not true", owner). It is about the library being usable without one.
+            note = isRu ? ' Готова к работе без интернета.' : ' Ready to work without a connection.';
         }
         descEl.textContent = isRu
             ? ('Скачано, сборка ' + (state.build_id || '?') + '.' + note)
