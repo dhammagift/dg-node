@@ -284,6 +284,7 @@ function subsetProblem(localBody, serverBody) {
     console.log(`fixture: ${path.relative(ROOT, FIXTURE_DIR)} (build ${manifest.build_id}, ` +
         `${(manifest.bytes / 1048576).toFixed(1)}MB)`);
 
+    const profileDir = path.join(FIXTURE_DIR, 'chrome-profile');
     const linked = linkMobileData();
     const serverLog = [];
     // dg-fastify.js by default: it is the server that actually answers /search from core/search-core.js
@@ -307,6 +308,7 @@ function subsetProblem(localBody, serverBody) {
         if (browser) browser.close().catch(() => {});
         server.kill('SIGTERM');
         unlinkMobileData(created.linked);
+        try { fs.rmSync(profileDir, { recursive: true, force: true }); } catch (e) { /* still flushing */ }
     };
     process.on('exit', cleanup);
 
@@ -321,7 +323,9 @@ function subsetProblem(localBody, serverBody) {
         // ephemeral context turns this test into a check of Playwright's profile layout rather than
         // of the offline layer. A real reader's browser is disk-backed; this reproduces that, and
         // the profile lives in the gitignored .offline-test and is wiped before every run.
-        const profileDir = path.join(FIXTURE_DIR, 'chrome-profile');
+        // Chrome's profile holds the whole downloaded library in OPFS — ~500MB on this slice — so it
+        // is wiped before AND removed after the run: a handful of forgotten profiles is several GB,
+        // which is enough to fill a small disk (measured the hard way).
         fs.rmSync(profileDir, { recursive: true, force: true });
         context = await chromium.launchPersistentContext(profileDir, {
             executablePath: BROWSER,

@@ -147,6 +147,9 @@ window.addEventListener('dg:dl-progress', (e) => window.__events.push(e.detail))
         console.log('progress events:', JSON.stringify(await page.evaluate(() => window.__events)));
         await context.close();
         server.close();
+        // The profile holds the fixture's database in OPFS; the whole working directory is a
+        // throwaway (it is rebuilt at the start of every run), so it goes too.
+        try { fs.rmSync(WORK, { recursive: true, force: true }); } catch (e) { /* still flushing */ }
 
         const resumed = attempts.slice(1).filter((a) => a.range && a.start > 0);
         if (!result || !result.ok) fail(`the resumed download did not finish: ${result && result.error}`);
