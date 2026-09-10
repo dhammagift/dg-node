@@ -1258,6 +1258,14 @@
        #language-button keep working; the pill just re-reads the state after them. At least one
        text stays on: switching off the last lit segment lights the other one (reference). */
     var LANG_LABEL = { ru: 'Рус', en: 'En', th: 'ไทย', de: 'De', fr: 'Fr', es: 'Es', it: 'It', pt: 'Pt', pl: 'Pl', cs: 'Cs', si: 'Si', my: 'My', vi: 'Vi', id: 'Id', jp: 'Jp', zh: 'Zh', hi: 'Hi', bn: 'Bn', lt: 'Lt', nl: 'Nl', sv: 'Sv', fi: 'Fi', no: 'No', hu: 'Hu', ro: 'Ro', sr: 'Sr', sl: 'Sl', uk: 'Uk', kn: 'Kn', ta: 'Ta' };
+    // Memorize/devanagari: the second line isn't a translation (it's Pali too — the full
+    // untransformed reference text for memorize, the ISO/Latin line for devanagari), so an
+    // "Ru"/"En" language label there is just wrong, not merely mistranslated. Owner: show one
+    // button, no language label at all.
+    var SECOND_LINE_LABEL = {
+        memorize: { ru: 'Полностью', en: 'Full' },
+        devanagari: { ru: 'Лат.', en: 'Lat.' }
+    };
     var LANG_FULL_NAME = { ru: 'Русский', en: 'English', th: 'ไทย', de: 'Deutsch', fr: 'Français', es: 'Español', it: 'Italiano', pt: 'Português', pl: 'Polski', cs: 'Čeština', si: 'Sinhala', my: 'Myanmar', vi: 'Tiếng Việt', id: 'Indonesia', jp: '日本語', zh: '中文', hi: 'हिन्दी', bn: 'বাংলা', lt: 'Lietuvių', nl: 'Nederlands', sv: 'Svenska', fi: 'Suomi', no: 'Norsk', hu: 'Magyar', ro: 'Română', sr: 'Српски', sl: 'Slovenščina', uk: 'Українська', kn: 'ಕನ್ನಡ', ta: 'தமிழ்' };
 
     /* "ЯЗЫКИ ПЕРЕВОДА" popover (production-v4 mock, docs/Fresults-standalone.html) — the
@@ -1589,10 +1597,9 @@
                 var b = e.target.closest('button');
                 if (!b) return;
                 if (b.classList.contains('dg-lpill-more')) { dgToggleLangMenu(); return; }
-                // Memorize/devanagari: "pli" segment is inert (see dgPaliLockedReaderMode above) —
-                // the main line can't be hidden, only the second line toggles, pli always stays on.
+                // Memorize/devanagari: only the "2nd" button is rendered at all (see
+                // dgRenderLangPill above) — a plain on/off, main line always stays on.
                 if (dgPaliLockedReaderMode()) {
-                    if (b.dataset.k === 'pli') return;
                     dgSetPaliToggle(dgPillMode().trn ? 'pli' : 'pli-2nd');
                     return;
                 }
@@ -1639,16 +1646,22 @@
         var label = LANG_LABEL[main] || (main.charAt(0).toUpperCase() + main.slice(1));
         host.hidden = false;
         var paliLocked = dgPaliLockedReaderMode();
-        var paliLockedTitle = menuLang() === 'ru'
-            ? 'Основная строка режима, всегда включена'
-            : "This mode's main line, always on";
-        host.innerHTML =
-            '<button type="button" data-k="pli" aria-pressed="true"' +
-            (paliLocked ? ' disabled title="' + esc(paliLockedTitle) + '"' : '') + '>Pāḷi</button>' +
-            '<button type="button" data-k="2nd" aria-pressed="true">' + esc(label) + '</button>' +
-            (langs.length > 1
-                ? '<button type="button" class="dg-lpill-more" title="' + esc(langMenuStr('title')) + '" aria-label="' + esc(langMenuStr('title')) + '"><span class="dg-dots" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span></button>'
-                : '');
+        if (paliLocked) {
+            // Owner: just one button here, no "Pāḷi" segment (that line can't be turned off, see
+            // dgPaliLockedReaderMode above) and no ru/en label (the second line isn't a
+            // translation in either mode) — a plain on/off for the second line only.
+            var modeKey = window.READER_MODE && window.READER_MODE.modeKey;
+            var secondLabels = SECOND_LINE_LABEL[modeKey] || SECOND_LINE_LABEL.memorize;
+            var secondLabel = secondLabels[menuLang() === 'ru' ? 'ru' : 'en'];
+            host.innerHTML = '<button type="button" data-k="2nd" aria-pressed="true">' + esc(secondLabel) + '</button>';
+        } else {
+            host.innerHTML =
+                '<button type="button" data-k="pli" aria-pressed="true">Pāḷi</button>' +
+                '<button type="button" data-k="2nd" aria-pressed="true">' + esc(label) + '</button>' +
+                (langs.length > 1
+                    ? '<button type="button" class="dg-lpill-more" title="' + esc(langMenuStr('title')) + '" aria-label="' + esc(langMenuStr('title')) + '"><span class="dg-dots" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span></button>'
+                    : '');
+        }
         dgSyncLangPill();
         window.dispatchEvent(new Event('resize')); // #scrollToTopBtn re-measures its right offset
     }

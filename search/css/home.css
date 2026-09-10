@@ -3433,11 +3433,6 @@ body.dg-state-reader #language-button { display: none !important; }
 body.dg-state-results #language-button { display: none !important; }
 .dg-lpill:hover { opacity: 1; }
 .dg-lpill button { border: 0; background: none; color: inherit; font: inherit; font-size: 13px; line-height: 1; padding: 0 9px; height: 30px; border-radius: 30px; cursor: pointer; opacity: 0.6; transition: background-color .15s ease, opacity .15s ease; }
-/* Memorize/devanagari: the "pli" segment is always on and inert (dgPaliLockedReaderMode, home.js)
-   — still reads as the lit/active segment (aria-pressed="true" + the [aria-pressed="true"] rule
-   below), just without the pointer cursor or hover feedback a clickable control would have. */
-.dg-lpill button:disabled { cursor: default; }
-.dg-lpill button:disabled:hover { background: none; }
 /* Owner: the lit segment must read as "on" without hovering (translucent blue), and hover
    only reacts on the lit segment — the others get no hover at all. */
 .dg-lpill button[aria-pressed="true"] { opacity: 1; background: rgba(52, 52, 190, 0.55); color: #fff; font-weight: 600; }
