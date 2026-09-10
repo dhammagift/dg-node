@@ -442,6 +442,45 @@ async function assertStorageFor(dbBytes) {
     }
 }
 
+// What can be checked WITHOUT reading the whole file: the table we are about to depend on exists and
+// has rows, and the file SQLite sees is not shorter than the manifest promised (a transfer that ran
+// out of room produces exactly that). Returns null when nothing is wrong.
+function checkCheap(handle, expectedBytes) {
+    try {
+        const suttas = handle.selectObject('SELECT count(*) c FROM suttas');
+        if (!suttas || !suttas.c) return 'no suttas table';
+    } catch (e) {
+        return e.message;
+    }
+    if (expectedBytes) {
+        try {
+            const pages = handle.selectObject('PRAGMA page_count');
+            const size = handle.selectObject('PRAGMA page_size');
+            const bytes = (pages && pages.page_count ? pages.page_count : 0) *
+                          (size && size.page_size ? size.page_size : 0);
+            // Only "shorter than promised" — page_count*page_size is not guaranteed to equal the file
+            // size byte for byte, and a false rejection would be worse than this check is worth.
+            if (bytes && bytes < expectedBytes) return `only ${bytes} of ${expectedBytes} bytes`;
+        } catch (e) { /* no page_count — the count(*) above is what matters */ }
+    }
+    return null;
+}
+
+// Runs after the library is already usable. On failure the file is dropped, the worker forgets it and
+// the page is told, so the reader falls back to the server instead of reading a holey database.
+function scheduleFullCheck(pool, name) {
+    setTimeout(() => {
+        const t0 = Date.now();
+        const result = checkIntegrity(pool, name);
+        console.log(`[dg-offline] full check after install: ${result} (${((Date.now() - t0) / 1000).toFixed(1)}s)`);
+        if (result === 'ok') return;
+        post({ type: 'library-invalid', reason: result });
+        try { pool.unlink(name); } catch (_) {}
+        if (db) { try { db.close(); } catch (_) {} db = null; }
+        ready = null;
+    }, 500);
+}
+
 // 'ok' or the first problem SQLite names. quick_check() walks every page — the point is to touch
 // pages the reader's first query would not (a hole in the middle of a table nobody has searched
 // yet is exactly the case a cheap count(*) cannot see).
@@ -486,7 +525,14 @@ async function fetchCurrent(pool, distBase) {
 
     post({ type: 'downloading' });
     await assertStorageFor(manifest && manifest.bytes);
-    await downloadInto(pool, `${distBase}/${file}`, target, expectedWireBytes, manifest && manifest.bytes, gzip, scratchName);
+    // Phase timings, in the worker's own log: "the download is slow" has three very different
+    // causes (the network, this browser's storage, or the check afterwards) and guessing between
+    // them wastes everyone's time. Cheap enough to keep.
+    const tTransfer = Date.now();
+    const transferred = await downloadInto(pool, `${distBase}/${file}`, target, expectedWireBytes, manifest && manifest.bytes, gzip, scratchName);
+    const transferSec = (Date.now() - tTransfer) / 1000;
+    console.log(`[dg-offline] transfer: ${(transferred / 1048576).toFixed(1)}MB in ${transferSec.toFixed(1)}s ` +
+        `(${(transferred / 1048576 / transferSec).toFixed(1)} MB/s)`);
 
     // The pool's importDb() never looks at what the filesystem says about each write, and it does
     // not throw when storage runs out mid-file: Chrome answers such a write with a negative count
@@ -494,21 +540,32 @@ async function fetchCurrent(pool, distBase) {
     // arrives here complete-looking — right name, right size, some pages missing. Adopting that
     // and hoping the unread pages were spare is how a reader ends up with a library that searches
     // wrong weeks later, so the file is checked while it is still only a candidate.
-    const integrity = checkIntegrity(pool, target);
-    if (integrity !== 'ok') {
-        try { pool.unlink(target); } catch (_) {}
-        throw new Error(`downloaded database failed its integrity check (${integrity}) — ` +
-            `storage may have run out mid-transfer; the partial file was removed, try again`);
-    }
-
+    // Measure, do not guess: the full page-by-page check takes ~36s on 479MB — far too long to hold
+    // a reader in front of a bar that already reads 100%. What it guards against is a storage layer
+    // that ran out mid-transfer and left holes, and the truncation that failure actually produces is
+    // caught cheaply, before opening: a short file, or no suttas table at all. So the cheap check
+    // gates the install and the full one runs afterwards, off the critical path — if it does find
+    // something, the library is dropped and the page is told to fall back to the server (see the
+    // `library-invalid` message app.js handles).
     const candidate = inspect(pool, target);
     if (!candidate.ok) {
         try { pool.unlink(target); } catch (_) {}
         throw new Error(`downloaded database unusable: ${candidate.reason}`);
     }
+    const cheapProblem = checkCheap(candidate.handle, manifest && manifest.bytes);
+    if (cheapProblem) {
+        candidate.handle.close();
+        try { pool.unlink(target); } catch (_) {}
+        throw new Error(`downloaded database is incomplete (${cheapProblem}) — ` +
+            `storage may have run out mid-transfer; the partial file was removed, try again`);
+    }
     if (db) { try { db.close(); } catch (_) {} db = null; }
+    const tAdopt = Date.now();
     const suttas = adopt(candidate);
+    console.log(`[dg-offline] opened ${suttas} suttas in ${((Date.now() - tAdopt) / 1000).toFixed(1)}s`);
+
     for (const name of stale) { try { pool.unlink(name); } catch (_) {} }
+    scheduleFullCheck(pool, target);
     return { suttas, build_id: candidate.meta.build_id, downloaded: true, present: true };
 }
 

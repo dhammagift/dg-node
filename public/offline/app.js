@@ -210,6 +210,18 @@
                 return;
             }
             if (msg.type === 'downloading') return;
+            // The background integrity check found the freshly installed library unusable (the
+            // storage layer ran out mid-transfer and left holes — see db-worker.js's checkCheap /
+            // scheduleFullCheck). Better to read from the server than from a broken database.
+            if (msg.type === 'library-invalid') {
+                local = false;
+                rememberState({ present: false, build_id: null, update: null });
+                var ruInvalid = (localStorage.getItem('dhammaLanguage') || localStorage.getItem('siteLanguage') || 'en') === 'ru';
+                notify(ruInvalid
+                    ? 'Скачанная библиотека повреждена — попробуйте скачать заново'
+                    : 'The downloaded library is corrupted — please download it again');
+                return;
+            }
             var entry = pending.get(msg.id);
             if (!entry) return;
             pending.delete(msg.id);
