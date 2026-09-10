@@ -89,6 +89,10 @@ let poolPromise = null;
 // resumable partial: the scratch file goes too, or the next page load would quietly pick it up.
 let cancelRequested = false;
 let activeAbort = null;
+// What the last transfer actually did: bytes handed to the pool, the size of the partial copy we
+// wrote ourselves, and how many of OUR writes came up short. On a phone a SQLITE_CORRUPT at the end
+// has several possible causes and no DevTools to look at, so the failure message carries these.
+let lastTransferStats = null;
 
 function post(msg) {
     self.postMessage(msg);
@@ -236,12 +240,16 @@ async function cleanScratchExcept(keepName) {
     } catch (e) { /* no OPFS enumeration — nothing to clean */ }
 }
 
-async function downloadInto(pool, url, name, expectedWireBytes, expectedDbBytes, gzip, scratchName) {
+async function downloadInto(pool, url, name, expectedWireBytes, expectedDbBytes, gzip, scratchName, resumable) {
     const phase = 'download';
-    const scratch = await openScratch(scratchName);
+    // 'plain' mode (no room for two copies) runs with no scratch file at all: no resume, and half the
+    // peak space, which is the difference between finishing and SQLITE_CORRUPT near the end.
+    const useScratch = resumable !== false;
+    const scratch = useScratch ? await openScratch(scratchName) : null;
+    let scratchShortWrites = 0;
 
     for (let attempt = 1; ; attempt++) {
-        if (cancelRequested) { try { scratch.close(); } catch (_) {} throw cancelledError(); }
+        if (cancelRequested) { if (scratch) { try { scratch.close(); } catch (_) {} } throw cancelledError(); }
         const controller = new AbortController();
         activeAbort = controller;
         let reader = null;
@@ -250,7 +258,7 @@ async function downloadInto(pool, url, name, expectedWireBytes, expectedDbBytes,
             // What an earlier attempt already paid for. gzip transfers are never resumed (a
             // compressed stream has no meaningful byte offset to continue from), so they always
             // start from zero.
-            const have = gzip ? 0 : scratch.getSize();
+            const have = (gzip || !scratch) ? 0 : scratch.getSize();
             console.log(`[dg-offline] attempt ${attempt}: ${have} bytes already on disk`);
             const response = await fetch(url, {
                 signal: controller.signal,
@@ -260,7 +268,7 @@ async function downloadInto(pool, url, name, expectedWireBytes, expectedDbBytes,
             // A 200 answering a Range request means the server ignored it, or the file changed
             // under us. The body starts at zero, so the prefix we hold is worthless — drop it
             // rather than glue two different beginnings together.
-            if (have > 0 && response.status === 200) scratch.truncate(0);
+            if (have > 0 && scratch && response.status === 200) scratch.truncate(0);
             const resumedFrom = (have > 0 && response.status === 206) ? have : 0;
             const remaining = Number(response.headers.get('Content-Length')) || 0;
             const total = resumedFrom + remaining;
@@ -308,10 +316,15 @@ async function downloadInto(pool, url, name, expectedWireBytes, expectedDbBytes,
                 }
                 const { done, value } = await readWithTimeout(reader, STALL_MS);
                 if (done) return undefined;
-                if (!gzip) {
-                    // Best effort: a scratch write that fails costs the next attempt its resume,
-                    // never this transfer.
-                    try { scratch.write(value, { at: writeAt }); } catch (e) { /* see above */ }
+                if (!gzip && scratch) {
+                    // Best effort for the transfer (a failed scratch write costs the next attempt its
+                    // resume, never this one) — but COUNTED, because a short write here is the first
+                    // sign of a storage layer that is not taking what it is given, and that is what
+                    // turns into SQLITE_CORRUPT a moment later.
+                    try {
+                        const wrote = scratch.write(value, { at: writeAt });
+                        if (wrote !== value.byteLength) scratchShortWrites++;
+                    } catch (e) { scratchShortWrites++; }
                 }
                 writeAt += value.byteLength;
                 loaded += value.byteLength;
@@ -353,7 +366,13 @@ async function downloadInto(pool, url, name, expectedWireBytes, expectedDbBytes,
             post({ type: 'progress', loaded, total: gzip ? (expectedDbBytes || 0) : total, phase, done: true });
             // The whole file is in the pool now; the scratch copy has no further purpose and 170MB
             // of it sitting in OPFS would be the reader's storage quietly halved.
-            await dropScratch(scratch, scratchName);
+            lastTransferStats = {
+                fed: loadedBytes,
+                expected: expectedDbBytes || null,
+                scratchSize: scratch ? scratch.getSize() : null,
+                scratchShortWrites,
+            };
+            if (scratch) await dropScratch(scratch, scratchName);
             activeAbort = null;
             return loadedBytes;
         } catch (e) {
@@ -361,11 +380,11 @@ async function downloadInto(pool, url, name, expectedWireBytes, expectedDbBytes,
                 // The reader said stop: no retry, and no scratch left behind for a later page load.
                 controller.abort();
                 if (reader) reader.cancel().catch(() => {});
-                await dropScratch(scratch, scratchName);
+                if (scratch) await dropScratch(scratch, scratchName);
                 activeAbort = null;
                 throw cancelledError();
             }
-            if (e && e.mismatch) { activeAbort = null; try { scratch.close(); } catch (_) {} throw e; } // a server misconfiguration, not a network blip — retrying serves nobody
+            if (e && e.mismatch) { activeAbort = null; if (scratch) { try { scratch.close(); } catch (_) {} } throw e; } // a server misconfiguration, not a network blip — retrying serves nobody
             const stalled = e && e.name === 'AbortError';
             controller.abort();
             if (reader) reader.cancel().catch(() => {});
@@ -373,7 +392,7 @@ async function downloadInto(pool, url, name, expectedWireBytes, expectedDbBytes,
                 // Give up, but keep the scratch file: a later retry (the reader pressing the
                 // button again, or a better connection) continues from here instead of 0.
                 activeAbort = null;
-                try { scratch.close(); } catch (_) {}
+                if (scratch) { try { scratch.close(); } catch (_) {} }
                 throw stalled
                     ? new Error(`dg-mobile.db: stalled (no data for ${STALL_MS / 1000}s), ` +
                         `gave up after ${MAX_ATTEMPTS} attempts`)
@@ -469,18 +488,44 @@ function adopt(candidate) {
 // little headroom for SQLite's own temp use. estimate() is advisory — a browser is free to lie,
 // and the integrity check after the download is the backstop; this only spares the reader the
 // download.
-async function assertStorageFor(dbBytes) {
-    if (!dbBytes) return;
+// Appended to a corruption message: the one number that explains it and the one thing to do.
+function storageHint(plan) {
+    const t = lastTransferStats;
+    const facts = t ? ` [received ${Math.round(t.fed / 1048576)}MB` +
+        (t.expected ? ` of ${Math.round(t.expected / 1048576)}MB` : '') +
+        `, partial copy ${t.scratchSize === null ? 'none' : Math.round(t.scratchSize / 1048576) + 'MB'}` +
+        (t.scratchShortWrites ? `, ${t.scratchShortWrites} short write(s) by this page` : '') + `]` : '';
+    if (!plan || !plan.freeBytes) return facts;
+    return facts + ` (device reports ${Math.round(plan.freeBytes / 1048576)}MB free, this download ` +
+        `wanted about ${Math.round(plan.neededBytes / 1048576)}MB)`;
+}
+
+// How much room this download actually needs, and therefore how it can be done:
+//   'resume' — the database plus its resumable partial copy (peak ~2x), a dropped connection can be
+//              continued with a Range request;
+//   'plain'  — the database alone (peak ~1x). No resume, but it FITS: on a phone with ~1GB free the
+//              2x requirement is exactly what produced "качал-качал" and then SQLITE_CORRUPT, because
+//              the writes started failing near the end (the pool's importDb does not check them).
+// Throws only when even 'plain' does not fit, naming the numbers.
+async function storagePlanFor(dbBytes) {
+    if (!dbBytes) return { mode: 'resume', freeBytes: null, neededBytes: null };
     let est;
-    try { est = await navigator.storage.estimate(); } catch (e) { return; }
-    if (!est || !est.quota) return;
-    const needed = Math.ceil(dbBytes * 2.1) + (32 * 1048576);
+    try { est = await navigator.storage.estimate(); } catch (e) { return { mode: 'resume', freeBytes: null, neededBytes: null }; }
+    if (!est || !est.quota) return { mode: 'resume', freeBytes: null, neededBytes: null };
     const free = est.quota - (est.usage || 0);
-    if (free < needed) {
-        throw new Error(`not enough storage for the offline library: about ` +
-            `${Math.round(needed / 1048576)}MB is needed (the database plus its resumable partial ` +
-            `copy of the same size), this browser allows ${Math.round(free / 1048576)}MB more`);
+    const headroom = 32 * 1048576;
+    const resumeNeeds = Math.ceil(dbBytes * 2.1) + headroom;
+    const plainNeeds = Math.ceil(dbBytes * 1.15) + headroom;
+    if (free >= resumeNeeds) return { mode: 'resume', freeBytes: free, neededBytes: resumeNeeds };
+    if (free >= plainNeeds) {
+        console.log(`[dg-offline] only ${Math.round(free / 1048576)}MB free: downloading without the ` +
+            `resumable partial copy (needs ${Math.round(plainNeeds / 1048576)}MB instead of ` +
+            `${Math.round(resumeNeeds / 1048576)}MB)`);
+        return { mode: 'plain', freeBytes: free, neededBytes: plainNeeds };
     }
+    throw new Error(`not enough storage for the offline library: about ` +
+        `${Math.round(plainNeeds / 1048576)}MB of free space is needed, this browser allows ` +
+        `${Math.round(free / 1048576)}MB more — free up space and try again`);
 }
 
 // What can be checked WITHOUT reading the whole file: the table we are about to depend on exists and
@@ -540,7 +585,7 @@ function checkIntegrity(pool, name) {
     }
 }
 
-async function fetchCurrent(pool, distBase) {
+async function fetchCurrent(pool, distBase, args) {
     cancelRequested = false; // a fresh attempt clears any earlier cancel
     const manifest = await fetchManifest(distBase);
     if (manifest && Number(manifest.schema_version) !== SCHEMA_VERSION) {
@@ -565,60 +610,87 @@ async function fetchCurrent(pool, distBase) {
     const file = gzip ? manifest.file_gz : (manifest && manifest.file) || 'dg-mobile.db';
     const expectedWireBytes = gzip ? manifest.bytes_gz : (manifest && manifest.bytes);
 
-    post({ type: 'downloading' });
-    await assertStorageFor(manifest && manifest.bytes);
-    // Phase timings, in the worker's own log: "the download is slow" has three very different
-    // causes (the network, this browser's storage, or the check afterwards) and guessing between
-    // them wastes everyone's time. Cheap enough to keep.
-    const tTransfer = Date.now();
-    let transferred;
-    try {
-        transferred = await downloadInto(pool, `${distBase}/${file}`, target, expectedWireBytes, manifest && manifest.bytes, gzip, scratchName);
-    } catch (e) {
-        if (e && e.cancelled) {
-            // Nothing half-written is left to confuse the next visit: no pool file, no scratch.
+    // How this download can be done: with a resumable partial copy (peak ~2x the file) or as a
+    // single file (peak ~1x, no resume). On a phone with little room the 2x was what produced a
+    // long download ending in SQLITE_CORRUPT — the writes fail near the end and importDb does not
+    // check them. storagePlanFor() throws before anything is transferred when even one copy does
+    // not fit, naming the numbers.
+    const plan = await storagePlanFor(manifest && manifest.bytes);
+    const wanted = (args && args.noResume) ? 'plain' : plan.mode;
+    const modes = wanted === 'resume' ? ['resume', 'plain'] : ['plain'];
+
+    // One attempt, from the transfer to an opened library. A corruption failure is marked retryable
+    // so the caller can try again without the resumable copy — the most likely reason it happened.
+    const runAttempt = async (resumable) => {
+        post({ type: 'downloading' });
+        // Phase timings, in the worker's own log: "the download is slow" has three very different
+        // causes (the network, this browser's storage, or the check afterwards) and guessing between
+        // them wastes everyone's time. Cheap enough to keep.
+        const tTransfer = Date.now();
+        let transferred;
+        try {
+            transferred = await downloadInto(pool, `${distBase}/${file}`, target, expectedWireBytes,
+                manifest && manifest.bytes, gzip, scratchName, resumable);
+        } catch (e) {
+            if (e && e.cancelled) {
+                // Nothing half-written is left to confuse the next visit: no pool file, no scratch.
+                try { pool.unlink(target); } catch (_) {}
+                await dropScratchAfterCancel(scratchName);
+            }
+            throw e;
+        }
+        const transferSec = (Date.now() - tTransfer) / 1000;
+        console.log(`[dg-offline] transfer: ${(transferred / 1048576).toFixed(1)}MB in ${transferSec.toFixed(1)}s ` +
+            `(${(transferred / 1048576 / transferSec).toFixed(1)} MB/s${resumable ? '' : ', no resumable copy'})`);
+
+        // Measure, do not guess: the full page-by-page check takes ~36s on 479MB — far too long to
+        // hold a reader in front of a bar that already reads 100%. What it guards against is a
+        // storage layer that ran out mid-transfer and left holes, and the truncation that failure
+        // actually produces is caught cheaply, before opening: a short file, or no suttas table at
+        // all. So the cheap check gates the install and the full one runs afterwards, off the
+        // critical path — if it does find something, the library is dropped and the page is told to
+        // fall back to the server (see the `library-invalid` message app.js handles).
+        const candidate = inspect(pool, target);
+        if (!candidate.ok) {
+            try { pool.unlink(target); } catch (_) {}
+            throw Object.assign(new Error(`downloaded database unusable: ${candidate.reason}` +
+                storageHint(plan)), { corrupt: true });
+        }
+        const cheapProblem = checkCheap(candidate.handle, manifest && manifest.bytes);
+        if (cheapProblem) {
+            candidate.handle.close();
+            try { pool.unlink(target); } catch (_) {}
+            throw Object.assign(new Error(`downloaded database is incomplete (${cheapProblem})` +
+                storageHint(plan)), { corrupt: true });
+        }
+        if (db) { try { db.close(); } catch (_) {} db = null; }
+        const tAdopt = Date.now();
+        const suttas = adopt(candidate);
+        console.log(`[dg-offline] opened ${suttas} suttas in ${((Date.now() - tAdopt) / 1000).toFixed(1)}s`);
+
+        for (const name of stale) { try { pool.unlink(name); } catch (_) {} }
+        scheduleFullCheck(pool, target);
+        return { suttas, build_id: candidate.meta.build_id, downloaded: true, present: true };
+    };
+
+    for (let i = 0; i < modes.length; i++) {
+        const resumable = modes[i] === 'resume';
+        if (i > 0) {
+            console.log('[dg-offline] retrying as a single file: the resumable copy is what ran the ' +
+                'device out of room');
+            post({ type: 'progress', loaded: 0, total: 0, phase: 'download',
+                   reason: (typeof navigator !== 'undefined' ? '' : '') });
             try { pool.unlink(target); } catch (_) {}
             await dropScratchAfterCancel(scratchName);
         }
-        throw e;
+        try {
+            return await runAttempt(resumable);
+        } catch (e) {
+            if (e && e.corrupt && resumable && i + 1 < modes.length) continue;
+            throw e;
+        }
     }
-    const transferSec = (Date.now() - tTransfer) / 1000;
-    console.log(`[dg-offline] transfer: ${(transferred / 1048576).toFixed(1)}MB in ${transferSec.toFixed(1)}s ` +
-        `(${(transferred / 1048576 / transferSec).toFixed(1)} MB/s)`);
-
-    // The pool's importDb() never looks at what the filesystem says about each write, and it does
-    // not throw when storage runs out mid-file: Chrome answers such a write with a negative count
-    // (FILE_ERROR_NO_SPACE), the pool keeps counting the bytes it MEANT to write, and the result
-    // arrives here complete-looking — right name, right size, some pages missing. Adopting that
-    // and hoping the unread pages were spare is how a reader ends up with a library that searches
-    // wrong weeks later, so the file is checked while it is still only a candidate.
-    // Measure, do not guess: the full page-by-page check takes ~36s on 479MB — far too long to hold
-    // a reader in front of a bar that already reads 100%. What it guards against is a storage layer
-    // that ran out mid-transfer and left holes, and the truncation that failure actually produces is
-    // caught cheaply, before opening: a short file, or no suttas table at all. So the cheap check
-    // gates the install and the full one runs afterwards, off the critical path — if it does find
-    // something, the library is dropped and the page is told to fall back to the server (see the
-    // `library-invalid` message app.js handles).
-    const candidate = inspect(pool, target);
-    if (!candidate.ok) {
-        try { pool.unlink(target); } catch (_) {}
-        throw new Error(`downloaded database unusable: ${candidate.reason}`);
-    }
-    const cheapProblem = checkCheap(candidate.handle, manifest && manifest.bytes);
-    if (cheapProblem) {
-        candidate.handle.close();
-        try { pool.unlink(target); } catch (_) {}
-        throw new Error(`downloaded database is incomplete (${cheapProblem}) — ` +
-            `storage may have run out mid-transfer; the partial file was removed, try again`);
-    }
-    if (db) { try { db.close(); } catch (_) {} db = null; }
-    const tAdopt = Date.now();
-    const suttas = adopt(candidate);
-    console.log(`[dg-offline] opened ${suttas} suttas in ${((Date.now() - tAdopt) / 1000).toFixed(1)}s`);
-
-    for (const name of stale) { try { pool.unlink(name); } catch (_) {} }
-    scheduleFullCheck(pool, target);
-    return { suttas, build_id: candidate.meta.build_id, downloaded: true, present: true };
+    throw new Error('download failed');
 }
 
 // The manifest is small and its absence is not an error: a device that is offline, or pointed at
@@ -670,7 +742,7 @@ async function anyStoredFiles() {
 
 // allowDownload=false is the site's startup path: adopt what is stored, and when nothing usable is
 // there, say so instead of turning a page load into a 170MB transfer (see point 1 of the header).
-async function open(distBase, allowDownload) {
+async function open(distBase, allowDownload, args) {
     const pool = await getPool();
 
     for (const name of storedDatabases(pool)) {
@@ -689,7 +761,7 @@ async function open(distBase, allowDownload) {
         return { suttas, build_id: candidate.meta.build_id, downloaded: false, present: true };
     }
     if (!allowDownload) return { suttas: 0, build_id: null, downloaded: false, present: false };
-    return fetchCurrent(pool, distBase);
+    return fetchCurrent(pool, distBase, args);
 }
 
 // One operation per endpoint the shim intercepts. Each is the few lines dg-fastify.js's route
@@ -868,13 +940,13 @@ self.onmessage = async (event) => {
         // not this empty answer replayed from `ready`.
         if (args && args.download === false) {
             try {
-                const result = await open(distBase, false);
+                const result = await open(distBase, false, args || {});
                 if (result && result.present === false) ready = null;
                 post({ id, ok: true, result });
             } catch (e) { post({ id, ok: false, error: e.message }); }
             return;
         }
-        ready = ready || open(distBase, true);
+        ready = ready || open(distBase, true, args || {});
         try { post({ id, ok: true, result: await ready }); }
         catch (e) { ready = null; post({ id, ok: false, error: e.message }); }
         return;

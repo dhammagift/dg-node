@@ -336,9 +336,13 @@
             // 'update' replaces a copy that is already there; 'open' adopts an existing one or
             // downloads when there is none. Both leave a working copy in place until the new file
             // is proven (db-worker.js's fetchCurrent).
+            // noResume is a test/debug override (window.DG_NO_RESUME) and the hook a reader-facing
+            // "download as one file" switch would use. It can only take resume away — the worker
+            // still decides from the free space whether one copy even fits.
+            var opts = { distBase: DIST_BASE, noResume: !!window.DG_NO_RESUME };
             return kind === 'update'
-                ? call('update', { distBase: DIST_BASE })
-                : call('open', { distBase: DIST_BASE, download: true });
+                ? call('update', opts)
+                : call('open', Object.assign({ download: true }, opts));
         }).then(function (result) {
             markLocal(result);
             return result;
