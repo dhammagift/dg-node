@@ -56,6 +56,12 @@ var PRECACHE_URLS = [
 
     // Reader mode definitions — the reader cannot resolve a mode without this, online or off.
     '/reader/mode-table.json',
+    // The settings page and the TOC: both are things a reader reaches for exactly when something is
+    // wrong ("is the library there? what is in the canon?"), and neither was cached until visited —
+    // so offline they failed with a browser error (measured: /settings/ would not open with the
+    // server down). Both are small.
+    '/settings/',
+    '/api/toc',
 
     // Stylesheets in the shell's <head>.
     '/assets/css/bootstrap.5.3.1.min.css',
