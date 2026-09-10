@@ -315,16 +315,16 @@
     // languages — all of those stay online.
     var FACTS = {
         ru: [
-            'Поиск по всему канону — без интернета',
-            'Чтение сутт офлайн, с переводами',
+            'Поиск в Суттах и Винае — без интернета',
+            'Чтение Сутт и Винаи офлайн, с переводами',
             'Языки: русский и английский',
             'Переходы между суттами, закладки и история — тоже офлайн',
             'Прервали загрузку? Она продолжится с того же места',
             'Библиотека живёт на устройстве — искать можно и в самолёте'
         ],
         en: [
-            'Search the whole canon — no connection',
-            'Read suttas offline, translations included',
+            'Search the Suttas and Vinaya — no connection',
+            'Read the Suttas and Vinaya offline, translations included',
             'Languages: Russian and English',
             'Sutta-to-sutta navigation, bookmarks and history offline too',
             'Download interrupted? It resumes where it stopped',
