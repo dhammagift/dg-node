@@ -94,6 +94,8 @@
     var channel = (typeof BroadcastChannel === 'function') ? new BroadcastChannel('dg-offline') : null;
     var deferredRequest = null;   // asked for before this page knew whether it owns the pool
     var probePending = true;      // true until acquireOwnership() has answered
+    var releaseOwnership = null;  // resolves the Web Lock callback, see yieldLibrary()
+    var releaseAsked = false;     // one takeover attempt per page, not a loop
     if (channel) {
         channel.onmessage = function (event) {
             var msg = event.data || {};
@@ -106,6 +108,20 @@
             }
             if (msg.type === 'error') {
                 notify(msg.message || 'download failed');
+                return;
+            }
+            // Another tab needs the pool and is in front of the reader: give it up if this page is
+            // hidden and idle (a visible page keeps it — the reader is looking at that one).
+            if (msg.type === 'release-request') {
+                if (yieldLibrary()) {
+                    log('handed the offline library over to the tab in front');
+                    if (channel) channel.postMessage({ type: 'released' });
+                }
+                return;
+            }
+            if (msg.type === 'released') {
+                log('the other tab released the offline library — taking it over');
+                reopenIfNeeded();
                 return;
             }
             if (msg.type !== 'download') return;
@@ -189,6 +205,28 @@
         });
     };
 
+    // Let go of the pool so another tab can own it: the worker holds the exclusive OPFS handles, so
+    // terminating it is what actually releases them (same reasoning as the pagehide handler), and the
+    // Web Lock has to be released too or the next tab cannot even try.
+    function yieldLibrary() {
+        if (!local || downloadInFlight) return false;
+        if (document.visibilityState === 'visible') return false; // in use right now
+        log('yielding the offline library to another tab');
+        local = false;
+        if (worker) { try { worker.terminate(); } catch (e) { /* already gone */ } worker = null; }
+        pending.clear();
+        if (releaseOwnership) { try { releaseOwnership(); } catch (e) { /* already released */ } releaseOwnership = null; }
+        return true;
+    }
+
+    // The tab the reader is actually looking at asks for the pool once; a hidden owner hands it over.
+    function requestTakeover() {
+        if (local || downloadInFlight || probePending || releaseAsked || !channel) return;
+        releaseAsked = true;
+        log('asking the other tab to hand the offline library over');
+        channel.postMessage({ type: 'release-request' });
+    }
+
     // Returns false when there is no way to hand it over, so the caller can say so instead.
     function askOwningTab(kind) {
         if (!channel) return false;
@@ -270,12 +308,18 @@
         if (!navigator.locks || typeof navigator.locks.request !== 'function') {
             return Promise.resolve(true); // no Web Locks: no election possible, proceed
         }
+        // Web Locks are NOT reentrant: asking again while this page already holds it reports "taken"
+        // and the page concludes it is not the owner — of its own lock, with a single tab open
+        // (owner's desktop, one tab, "used by another tab or the app"). A page that already owns it
+        // owns it.
+        if (releaseOwnership) return Promise.resolve(true);
         function attempt(triesLeft) {
             return new Promise(function (resolve) {
                 navigator.locks.request(LOCK_NAME, { mode: 'exclusive', ifAvailable: true }, function (lock) {
-                    if (!lock) { resolve(false); return undefined; }
+                        if (!lock) { resolve(false); return undefined; }
                     resolve(true);
                     return new Promise(function (release) {
+                        releaseOwnership = release;   // so a visible tab can take over (yieldLibrary)
                         window.addEventListener('pagehide', function () { release(); }, { once: true });
                     });
                 }).catch(function () { resolve(true); });
@@ -397,9 +441,11 @@
         probe().catch(function () { /* the console log already says what happened */ });
     }
     window.addEventListener('pageshow', reopenIfNeeded);
-    window.addEventListener('focus', reopenIfNeeded);
+    window.addEventListener('focus', function () { reopenIfNeeded(); requestTakeover(); });
     document.addEventListener('visibilitychange', function () {
-        if (document.visibilityState === 'visible') reopenIfNeeded();
+        if (document.visibilityState !== 'visible') return;
+        reopenIfNeeded();
+        requestTakeover();
     });
 
     // "Is there anything new?" — asked once per load, AFTER a working database is open, and it
