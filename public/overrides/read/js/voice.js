@@ -369,7 +369,8 @@ function cleanTextForTTS(text) {
     .replace(/’ति/g, 'ति')
     .replace(/\{.*?\}/g, '')
     .replace(/\(.*?\)/g, '')
-    .replace(/[ \t]+/g, ' ')  
+    .replace(/\|/g, ' ') // pipe used as segment/verse separator in source markup — never read aloud
+    .replace(/[ \t]+/g, ' ')
     .replace(/[-–—]/g, ' ')
     .replace(/_/g, '').trim();
 
@@ -1035,12 +1036,11 @@ async function prepareTextData(slug) {
       const paliClone = paliElement.cloneNode(true);
       paliClone.querySelectorAll('.variant, .not_translate, sup, .ref').forEach(v => v.remove());
       let rawDomText = paliClone.textContent.replace(/<[^>]*>/g, '').trim();
-      let cleanedText = cleanTextForTTS(rawDomText);
-      if (window.convertPaliToDevanagari) {
-          paliDev = window.convertPaliToDevanagari(cleanedText);
-      } else {
-          paliDev = cleanedText;
-      }
+      // Devanagari conversion must run BEFORE cleanTextForTTS, not after: cleanTextForTTS's
+      // Pali-specific fixes (e.g. फस्स -> प्हस्स so TTS says "phasso" not "fasso", …पे… -> …पेय्याल…)
+      // are written against Devanagari script and are no-ops on raw IAST Latin text.
+      let paliSource = window.convertPaliToDevanagari ? window.convertPaliToDevanagari(rawDomText) : rawDomText;
+      paliDev = cleanTextForTTS(paliSource);
     }
     
     if (trnEl1) {
@@ -2845,11 +2845,13 @@ function prepareLegacyData() {
         
         // Чистим текст для TTS
         const cleanText = text
-            .replace(/\[\d+\]/g, '')      
-            .replace(/\(\d+\)/g, '')      
-            .replace(/\d+\)/g, '')      
-            .replace(/^\d+\./, '')        
-            .replace(/\s+/g, ' ')  
+            .replace(/\[\d+\]/g, '')
+            .replace(/\(\d+\)/g, '')
+            .replace(/\d+\)/g, '')
+            .replace(/^\d+\./, '')
+            .replace(/\(.*?\)/g, '') // legacy TTS skipped parenthetical asides — keep that behavior
+            .replace(/\|/g, ' ')
+            .replace(/\s+/g, ' ')
             .replace(/\*/g, '')
             .replace(/^[\*\-•]\s*/, '')
             .trim();
