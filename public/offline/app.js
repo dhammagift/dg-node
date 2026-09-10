@@ -384,9 +384,22 @@
         if (worker) { try { worker.terminate(); } catch (e) { /* already gone */ } worker = null; }
         pending.clear();
     });
-    window.addEventListener('pageshow', function (event) {
-        if (!event.persisted) return;
-        probe().catch(function () { /* the log already says what happened */ });
+
+    // Reopening after the page was hidden, backgrounded, frozen or restored. pagehide releases the
+    // pool (see above), and on a phone that release does NOT reliably come back as
+    // pageshow(persisted=true) — with only that handler the tab stayed server-backed for good, and
+    // every search answered "the library is downloaded, but this tab is not using it" in whichever
+    // language it was (owner: exactly that, English and Russian, no navigation involved). probe() is
+    // idempotent — it re-reads nothing, re-acquires the lock, adopts the stored copy and marks the
+    // tab local again.
+    function reopenIfNeeded() {
+        if (local || downloadInFlight || probePending) return;
+        probe().catch(function () { /* the console log already says what happened */ });
+    }
+    window.addEventListener('pageshow', reopenIfNeeded);
+    window.addEventListener('focus', reopenIfNeeded);
+    document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'visible') reopenIfNeeded();
     });
 
     // "Is there anything new?" — asked once per load, AFTER a working database is open, and it
@@ -411,6 +424,7 @@
     // ---------------------------------------------------------------------------------------
 
     function probe() {
+        probePending = true;
         return acquireOwnership().then(function (owns) {
             ownsLibrary = owns;
             probePending = false;
