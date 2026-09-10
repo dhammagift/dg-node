@@ -57,6 +57,7 @@
     var worker = null;
     var nextCallId = 1;
     var pending = new Map();
+    var downloadInFlight = false;   // pagehide must not cut a transfer short
     // The gate. False until a database is open in THIS tab; every data route checks it first.
     var local = false;
     var ownsLibrary = false;
@@ -348,6 +349,7 @@
     // called us): ask the platform, then download or update.
     function download(kind) {
         var info = {};
+        downloadInFlight = true;
         return requestPersistence().then(function () {
             return platform.askConsent(info);
         }).then(function (ok) {
@@ -365,8 +367,27 @@
         }).then(function (result) {
             markLocal(result);
             return result;
+        }).finally(function () {
+            downloadInFlight = false;
         });
     }
+
+    // A page that goes into the back/forward cache stays alive and keeps its worker — and that worker
+    // holds the OPFS pool's EXCLUSIVE file handles. The document the reader navigated TO then cannot
+    // open the library at all, so it comes up server-backed and says "the library is downloaded, but
+    // this tab is not using it" (measured: switching the interface language navigates exactly like
+    // that). Terminating the worker releases the handles; the next document starts a fresh one, and a
+    // document restored from that cache re-opens the library itself.
+    window.addEventListener('pagehide', function () {
+        if (downloadInFlight) return; // never cut a transfer short
+        local = false;
+        if (worker) { try { worker.terminate(); } catch (e) { /* already gone */ } worker = null; }
+        pending.clear();
+    });
+    window.addEventListener('pageshow', function (event) {
+        if (!event.persisted) return;
+        probe().catch(function () { /* the log already says what happened */ });
+    });
 
     // "Is there anything new?" — asked once per load, AFTER a working database is open, and it
     // only reports: replacing 170MB stays the reader's decision (docs/OFFLINE_PWA_PLAN.md).
