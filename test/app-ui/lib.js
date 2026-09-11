@@ -33,8 +33,9 @@ const LIBRARY_PROFILE = 'library';
 function findAppDir() {
     const candidates = [
         process.env.DG_APP_PATH,
-        path.join(ROOT, 'dg-app-full'),
-        path.join(ROOT, '..', 'dg-app-full'),
+        path.join(ROOT, 'dg-app-full'),            // nested temporarily (see the repo's history)
+        path.join(ROOT, '..', 'dg-app-full'),      // siblings, e.g. /var/www/html/{nodejs,dg-app-full}
+        path.join(ROOT, '..', '..', 'dg-app-full'),// this checkout's layout: /var/www/{dg-app-full,dg-node-test}
     ].filter(Boolean);
     for (const c of candidates) {
         if (fs.existsSync(path.join(c, 'capacitor.config.json'))) return path.resolve(c);
