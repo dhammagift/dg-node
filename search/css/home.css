@@ -1342,7 +1342,8 @@ body.dg-state-home #dg-hero-heading { display: block; }
         /* linear, not var(--dg-ease): that token is a strong ease-out for entering/exiting UI
            (see the file's other uses) — this is constant, marquee-like motion crossing the
            screen, which wants linear (AUDIT.md §2, improve-animations skill). */
-        animation: dg-motto-shine 1.4s linear 0.3s 1 both;
+        /* Owner: "нужно сделать чтобы ещё была медленно... хотя бы за 3 сек" — was 1.4s. */
+        animation: dg-motto-shine 3s linear 0.3s 1 both;
     }
 }
 @keyframes dg-motto-shine {
