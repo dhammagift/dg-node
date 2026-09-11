@@ -66,7 +66,7 @@
 
     var resolveReady, rejectReady;
     var ready = new Promise(function (resolve, reject) { resolveReady = resolve; rejectReady = reject; });
-    window.dgOfflineReady = ready;
+    window.dgOfflineLibrary = ready;
     ready.catch(function () {}); // an unobserved rejection must stay quiet; uploaders await it
 
     function log() {
@@ -689,7 +689,7 @@
                 requestTakeover();
             }
             // A reader pressing × is not a failure: it must not raise the "could not download"
-            // toast, and it must not reject `dgOfflineReady` (offline-status.js turns a rejection
+            // toast, and it must not reject `dgOfflineLibrary` (offline-status.js turns a rejection
             // into exactly that toast). The cancel itself already answered with its own message.
             if (e && /cancelled/.test(e.message || '')) {
                 log('download cancelled by the reader');

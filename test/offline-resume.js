@@ -70,7 +70,7 @@ window.__events = [];
 window.addEventListener('dg:dl-progress', (e) => window.__events.push(e.detail));
 (async () => {
     try {
-        await window.dgOfflineReady;
+        await window.dgOfflineLibrary;
         const nav = await fetch('/api/nav/dn22');
         const navBody = await nav.json();
         window.__result = { ok: true, diagnostics: window.dgOfflineDiagnostics(),

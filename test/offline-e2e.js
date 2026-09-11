@@ -8,7 +8,7 @@
 //   1. State 1 (no library): the page must NOT intercept anything. `dgOfflineDiagnostics()` says
 //      "server", no worker is started, and a reload with no library must not begin a download.
 //   2. Opt-in: the settings page's button only records an intent in localStorage; this test sets
-//      that same intent and reloads, then waits for window.dgOfflineReady — a real 170MB download
+//      that same intent and reloads, then waits for window.dgOfflineLibrary — a real 170MB download
 //      into OPFS through the real worker.
 //   3. Parity: every request in CASES is fetched TWICE — once through the page (local SQLite) and
 //      once through Playwright's request context (the real server, no page JS, so no shim) — and
@@ -345,7 +345,7 @@ function subsetProblem(localBody, serverBody) {
 
         // ---- 1. state 1: nothing downloaded, nothing intercepted -----------------------------
         await page.goto(`${BASE}/`, { waitUntil: 'domcontentloaded', timeout: 60000 });
-        await page.evaluate(() => window.dgOfflineReady);
+        await page.evaluate(() => window.dgOfflineLibrary);
         const idle = await page.evaluate(() => window.dgOfflineDiagnostics());
         const state = await page.evaluate(() => JSON.parse(localStorage.getItem('dg.offline.state') || 'null'));
         console.log(`state 1 (no library): diagnostics=${JSON.stringify(idle)} state=${JSON.stringify(state)}`);
@@ -358,7 +358,7 @@ function subsetProblem(localBody, serverBody) {
         const t0 = Date.now();
         await page.reload({ waitUntil: 'domcontentloaded', timeout: 60000 });
         const downloaded = await page.evaluate(async () => {
-            try { return { ok: true, result: await window.dgOfflineReady }; }
+            try { return { ok: true, result: await window.dgOfflineLibrary }; }
             catch (e) { return { ok: false, error: e.message }; }
         });
         console.log(`download (${((Date.now() - t0) / 1000).toFixed(1)}s) -> ${JSON.stringify(downloaded)}`);
@@ -440,7 +440,7 @@ function subsetProblem(localBody, serverBody) {
 
         // ---- 4. offline: pushState URL + local data with the network off ----------------------
         await page.goto(`${BASE}/`, { waitUntil: 'domcontentloaded', timeout: 60000 });
-        await page.evaluate(() => window.dgOfflineReady);
+        await page.evaluate(() => window.dgOfflineLibrary);
         // The SW registers on 'load'; give it a moment to activate and claim this page.
         await page.waitForFunction(() => navigator.serviceWorker && navigator.serviceWorker.controller, null,
             { timeout: 30000 }).catch(() => {});

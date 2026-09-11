@@ -611,8 +611,8 @@
         }
     });
 
-    if (window.dgOfflineReady && typeof window.dgOfflineReady.then === 'function') {
-        window.dgOfflineReady.then(function () {
+    if (window.dgOfflineLibrary && typeof window.dgOfflineLibrary.then === 'function') {
+        window.dgOfflineLibrary.then(function () {
             // Nothing was ever shown — already fully cached, ready resolved near-instantly.
             // Stay silent, exactly as the owner asked ("полоска не должна даже мелькать").
             if (!bar) return;
