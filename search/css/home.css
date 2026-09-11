@@ -469,7 +469,8 @@ body.dg-state-toc .dg-input-shell {
 }
 body.dg-state-results .dg-input-shell .dg-shell-btn,
 body.dg-state-reader .dg-input-shell .dg-shell-btn,
-body.dg-state-toc .dg-input-shell .dg-shell-btn {
+body.dg-state-toc .dg-input-shell .dg-shell-btn,
+body.dg-state-reader .dg-shell-toc {
     color: #5a5a5a;
 }
 body.dg-state-results #form #paliauto.searchinput,
@@ -490,7 +491,8 @@ body.dark.dg-state-toc .dg-input-shell {
 }
 body.dark.dg-state-results .dg-input-shell .dg-shell-btn,
 body.dark.dg-state-reader .dg-input-shell .dg-shell-btn,
-body.dark.dg-state-toc .dg-input-shell .dg-shell-btn {
+body.dark.dg-state-toc .dg-input-shell .dg-shell-btn,
+body.dark.dg-state-reader .dg-shell-toc {
     color: rgb(221, 221, 221);
 }
 body.dark.dg-state-results #form #paliauto.searchinput,
