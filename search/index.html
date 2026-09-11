@@ -3203,15 +3203,21 @@ $(document).ready(function() {
     // always running comfortably apart in practice. One registry keyed by src, shared by both.
     window.__dgLoadScriptOnce = window.__dgLoadScriptOnce || {};
     function dgLoadScriptOnce(src) {
-        if (window.__dgLoadScriptOnce[src]) return window.__dgLoadScriptOnce[src];
-        window.__dgLoadScriptOnce[src] = new Promise(function (resolve, reject) {
+        // Keyed WITHOUT the query string: the same file is asked for both bare and as
+        // '/assets/js/linksru.js?v=<build>' (the versioned form comes from the shell markup), and with
+        // the query in the key those were two different entries — two <script> tags for one file, and
+        // those legacy files declare top-level consts, so the second execution threw
+        // "Identifier 'thsuLinksDataoffl' has already been declared" (also tbwLinksData).
+        var key = String(src).split('?')[0];
+        if (window.__dgLoadScriptOnce[key]) return window.__dgLoadScriptOnce[key];
+        window.__dgLoadScriptOnce[key] = new Promise(function (resolve, reject) {
             var script = document.createElement('script');
             script.src = src;
             script.onload = resolve;
             script.onerror = reject;
             document.head.appendChild(script);
         });
-        return window.__dgLoadScriptOnce[src];
+        return window.__dgLoadScriptOnce[key];
     }
 
     var piEnRuScriptsPromise = null;

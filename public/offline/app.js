@@ -427,6 +427,10 @@
     function markLocal(opened) {
         local = true;
         try { localStorage.setItem(LIBRARY_KEY, '1'); } catch (e) { /* private mode */ }
+        // Always: a reader who installed the library before the dictionary existed must still get it.
+        // The call is idempotent and cheap on a visit where the files are already cached (a match per
+        // file and nothing else).
+        cacheDictionary();
         rememberState({ present: true, build_id: (opened && opened.build_id) || null, update: null,
                         local: true, reason: 'local' });
     }
@@ -452,6 +456,51 @@
 
     // The reader asked for this (settings' button wrote the intent, or offline-status.js's retry
     // called us): ask the platform, then download or update.
+    // The Pali dictionary (DPD) the reader opens by tapping a word. ~24MB, deliberately not part of the
+    // database slice, but it belongs offline too — so it is fetched once in the background after the
+    // library is in place and kept in the service worker's shell cache, which is where the reader's
+    // fetch of it will look when there is no network. Idempotent: present files are skipped.
+    var DICTIONARY_URLS = [
+        '/assets/js/standalone-dpd/dpd_ebts.js',
+        '/assets/js/standalone-dpd/dpd_i2h.js',
+        '/assets/js/standalone-dpd/dpd_deconstructor.js',
+        '/assets/js/standalone-dpd/ru/dpd_ebts.js',
+    ];
+    var dictionaryRun = null;
+    function cacheDictionary() {
+        if (dictionaryRun) return dictionaryRun;
+        dictionaryRun = Promise.resolve()
+            .then(function () {
+                if (!window.caches || !navigator.serviceWorker || !navigator.serviceWorker.controller) return false;
+                return caches.keys().then(function (names) {
+                    var name = names.filter(function (n) { return n.indexOf('dg-shell-') === 0; })[0];
+                    if (!name) return false;
+                    return caches.open(name).then(function (cache) {
+                        return DICTIONARY_URLS.reduce(function (chain, url) {
+                            return chain.then(function () {
+                                return cache.match(url, { ignoreSearch: true }).then(function (hit) {
+                                    if (hit) return null;
+                                    log('caching the dictionary for offline use:', url);
+                                    return fetch(url, { cache: 'reload' }).then(function (res) {
+                                        if (res && res.ok) return cache.put(url, res);
+                                    });
+                                });
+                            });
+                        }, Promise.resolve()).then(function () {
+                            log('offline dictionary ready');
+                            return true;
+                        });
+                    });
+                });
+            })
+            .catch(function (e) {
+                log('dictionary could not be cached (stays online-only):', (e && e.message) || e);
+                dictionaryRun = null;   // a later visit may have a network again
+                return false;
+            });
+        return dictionaryRun;
+    }
+
     function download(kind) {
         var info = {};
         downloadInFlight = true;
@@ -471,6 +520,7 @@
                 : call('open', Object.assign({ download: true }, opts));
         }).then(function (result) {
             markLocal(result);
+            cacheDictionary();   // background: the library is usable, the dictionary can follow
             return result;
         }).finally(function () {
             downloadInFlight = false;
