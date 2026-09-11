@@ -133,7 +133,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
      tiles (menu-links.json localHref) also need window.resolveMirrorUrl/openMirrorLink, and that
      bundle is always present, even before the reader/search ever loads. -->
 <script src="/assets/js/mirror-link.js" defer></script>
-<title>Search Results - Dhamma.gift</title>
+<title>Dhamma.gift</title>
 <meta name="description" content="Search Results - Dhamma.gift">
 <link rel="manifest" href="/manifest.json">
 <!-- Home tiles (#home-tiles, "multitool") fetch this JSON last — after all deferred scripts run
@@ -4499,7 +4499,7 @@ $(document).ready(function() {
         // раньше строчки, которая его меняет (она вообще только для выдачи). Тот же текст,
         // что в <title> при чистой загрузке "/", иначе после поиска в вкладке так и остаётся
         // "Kacchapa ... - Dhamma.gift" даже дома.
-        document.title = 'Search Results - Dhamma.gift';
+        document.title = 'Dhamma.gift';
         // Поле поиска — та же логика: свежая загрузка "/" даёт пустое поле, а SPA-переход иначе
         // оставлял бы прошлый запрос висеть в поле над плитками главной.
         var input = document.getElementById('paliauto');
@@ -4620,6 +4620,10 @@ $(document).ready(function() {
     <!-- linksdpr.js/openDpr.js, linksru.js/openRu.js, linksbw.js/openBw.js — теперь загружаются
          лениво, см. loadPiEnRuScripts() в wireResultLinks() выше: незачем парсить ~469 КБ
          ссылочных данных на каждой загрузке страницы, если в ней ещё нет результатов поиска. -->
+                <!-- mode+lang <-> localStorage.selectedDict string, shared with settings/index.html
+                     (see dict-mode-shared.js) — must come before home-bundle.js below, whose
+                     dictModePicker() (quick settings) calls into it. -->
+                <script src="/assets/js/dict-mode-shared.js" defer></script>
                 <!-- settings.js + dg-text-router.js concatenated at server startup (dg-light.js
                      buildScriptBundle(), same pattern as build-icons.js) into one request — both
                      are dg-node-owned files (public/overrides/js/), order preserved exactly, so

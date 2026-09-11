@@ -1056,14 +1056,24 @@
         return wrap;
     }
 
+    // issue #4: dict-modes.json groups no longer duplicate every DPD mode per dictionary
+    // language (dictGroupEn/dictGroupRu merged into dictGroupDpd, hasLangToggle:true) — the
+    // mode+lang <-> localStorage.selectedDict string conversion lives in
+    // /assets/js/dict-mode-shared.js (window.DictModeShared), shared with settings/index.html's
+    // renderDictMode() (used to be a hand-copied pair of implementations).
+
     /* Тот же список режимов, что и на /settings/ (dict-modes.json) — переиспользуем select, не
        делаем свою версию. Выбор пишется в тот же localStorage.selectedDict, что читает
        settings/index.html и paliLookup.js — общий ключ, значит смена в любом месте видна везде. */
     function dictModePicker() {
+        var wrap = document.createElement('div');
+
         var select = document.createElement('select');
         select.className = 'dg-field-input dg-dict-select';
         var current = localStorage.getItem('selectedDict') || 'standalone';
+        var split = DictModeShared.splitValue(dictModeGroups, current);
         var ru = menuLang() === 'ru';
+        var dictLang = split.lang || (ru ? 'ru' : 'en');
         (dictModeGroups || []).forEach(function (g) {
             var group = document.createElement('optgroup');
             group.label = ru ? g.labelRu : g.labelEn;
@@ -1071,13 +1081,15 @@
                 var opt = document.createElement('option');
                 opt.value = o.value;
                 opt.textContent = ru ? o.ru : o.en;
-                if (o.value === current) opt.selected = true;
+                if (o.value === split.mode) opt.selected = true;
                 group.appendChild(opt);
             });
             select.appendChild(group);
         });
-        select.addEventListener('change', function () {
-            var value = select.value;
+        wrap.appendChild(select);
+
+        function saveAndApply() {
+            var value = DictModeShared.composeValue(dictModeGroups, select.value, dictLang);
             localStorage.setItem('selectedDict', value);
             // paliLookup.js грузится лениво (по первому клику по слову) — если он уже загружен,
             // применяем смену немедленно через тот же applyDictConfig, что и /settings/; если
@@ -1089,8 +1101,26 @@
                 window.dg_loadDictionaryScripts();
             }
             notifySaved();
+        }
+
+        var langSeg = segmented([
+            { value: 'en', label: 'En' },
+            { value: 'ru', label: 'Ru' }
+        ], dictLang, function (lang) {
+            dictLang = lang;
+            saveAndApply();
         });
-        return select;
+        var initialGroup = DictModeShared.groupFor(dictModeGroups, select.value);
+        langSeg.hidden = !(initialGroup && initialGroup.hasLangToggle);
+        wrap.appendChild(langSeg);
+
+        select.addEventListener('change', function () {
+            var g = DictModeShared.groupFor(dictModeGroups, select.value);
+            langSeg.hidden = !(g && g.hasLangToggle);
+            saveAndApply();
+        });
+
+        return wrap;
     }
 
     function ensureQuick() {

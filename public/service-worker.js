@@ -126,6 +126,7 @@ var PRECACHE_URLS = [
     '/assets/js/smoothScroll.js',
     '/assets/js/dg-page-find.js',
     '/assets/js/dg-page-find-ui.js',
+    '/assets/js/dict-mode-shared.js', // settings-bundle.js and home-bundle.js below both call into it
     '/assets/js/settings-bundle.js',
     '/assets/js/home-bundle.js',
 

@@ -118,6 +118,13 @@ a#previewRead:hover{color:var(--accent)}
 .group.flash{box-shadow:0 0 0 3px var(--accent);transition:box-shadow .4s ease}
 .group > h2{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);margin:0;padding:14px 18px 10px;font-weight:600}
 .rows{border-top:1px solid var(--line)}
+/* Any element with an author `display:flex/inline-flex` rule of equal specificity beats the
+   browser's own `[hidden]{display:none}` (author origin wins ties over user-agent) — JS setting
+   `.hidden=true` on it then does nothing visible. Hit this once already for .nested (line below,
+   narrow patch); #delayRow (.row) and #dictLangSeg (.seg) had the same bug unpatched — owner
+   report: "Задержка" stayed visible with Multi-select off. One global override instead of
+   patching every flex-ish class one at a time. */
+[hidden]{display:none!important}
 .row{display:flex;gap:16px;align-items:center;justify-content:space-between;padding:12px 18px;min-height:60px}
 .row + .row{border-top:1px solid var(--line)}
 .row-stack{flex-direction:column;align-items:stretch;gap:10px}
@@ -255,6 +262,19 @@ dialog::backdrop{background:rgba(10,16,24,.5)}
 .dlg-search{width:calc(100% - 36px);margin:10px 18px 0;min-height:44px;border:1px solid var(--line-strong);border-radius:var(--r-sm);padding:0 12px;font:inherit;font-size:15px;background:var(--surface);color:var(--ink)}
 kbd{font:inherit;font-size:12.5px;background:var(--line);border:1px solid var(--line-strong);border-radius:6px;padding:2px 6px}
 :where(a,button,select,input,[tabindex]):focus-visible{outline:3px solid var(--accent);outline-offset:2px;border-radius:6px}
+/* Owner: "на больших экранах странно, что демо занимает почти весь экран" — .wrap стал одной
+   узкой колонкой (700px), где .preview просто идёт первым блоком сверху. Ниже 1100px это и
+   остаётся так (мало места — то же поведение, что было). От 1100px и шире — .settings-layout
+   становится строкой: настройки слева (растягиваются), образец фиксированной ширины справа.
+   align-items не переопределяется — родной stretch растягивает .preview-col по высоте
+   .settings-col, иначе sticky (см. .preview{position:sticky}) стикаться было бы негде: у
+   родителя короче содержимого нет пространства для "проезда" вниз при скролле. */
+@media (min-width:1100px){
+  .wrap{max-width:1180px}
+  .settings-layout{display:flex;gap:32px}
+  .preview-col{flex:0 0 380px;order:2}
+  .settings-col{flex:1;min-width:0;order:1}
+}
 @media (max-width:560px){
   .row{flex-direction:column;align-items:flex-start;gap:10px}
   .row-control{width:100%}
@@ -310,6 +330,11 @@ kbd{font:inherit;font-size:12.5px;background:var(--line);border:1px solid var(--
   </div>
   <p class="head-sub" id="t-sub">Значения по умолчанию для поиска и чтения на всём сайте.</p>
 
+  <!-- Один столбец на узких экранах (образец сверху, как раньше) — на широких .settings-layout
+       (CSS ниже) становится строкой из двух колонок, образец уходит направо и остаётся sticky
+       на всю высоту настроек, а не только на ширину узкой колонки. -->
+  <div class="settings-layout">
+  <div class="preview-col">
   <!-- ОБРАЗЕЦ — реальная разметка и настоящие стили сайта (preview-frame.html), в iframe,
        чтобы стили ридера/поиска не задевали стили самой страницы настроек. -->
   <section class="preview" id="preview">
@@ -345,7 +370,9 @@ kbd{font:inherit;font-size:12.5px;background:var(--line);border:1px solid var(--
        deep in the page fired the old notice off-screen at the very top, so it went unseen.
        Position is computed in showReloadNotice() from #preview's live bottom edge. -->
   <p class="reload-notice" id="reloadNotice">⟳ <span id="t-reloadNotice">Обновите страницу поиска/чтения, чтобы изменение вступило в силу.</span><button type="button" class="x" id="reloadNoticeClose" aria-label="Close">✕</button></p>
+  </div>
 
+  <div class="settings-col">
   <!-- ОБЩЕЕ -->
   <section class="group" id="general">
     <h2 id="t-g-general">Общее</h2>
@@ -496,7 +523,13 @@ kbd{font:inherit;font-size:12.5px;background:var(--line);border:1px solid var(--
                того же файла, что читают быстрые настройки (search/js/home.js) — раньше было два
                вручную поддерживаемых списка (плюс третья, JS-only копия подписей ниже по этому
                файлу), разъезжались при добавлении нового режима. -->
-          <div class="row-control"><select id="dictMode" class="control"></select></div>
+          <div class="row-control">
+            <select id="dictMode" class="control"></select>
+            <div class="seg" role="group" aria-label="Dictionary language" id="dictLangSeg" hidden>
+              <button type="button" data-lang="en" aria-pressed="true">En</button>
+              <button type="button" data-lang="ru" aria-pressed="false">Ru</button>
+            </div>
+          </div>
         </div>
         <div class="row">
           <div><p class="row-title" id="t-autoLookup">Искать выделенный текст автоматически</p>
@@ -585,6 +618,8 @@ kbd{font:inherit;font-size:12.5px;background:var(--line);border:1px solid var(--
       </div>
     </div>
   </section>
+  </div>
+  </div>
 </div>
 
 <!-- ЯЗЫКИ -->
@@ -597,6 +632,9 @@ kbd{font:inherit;font-size:12.5px;background:var(--line);border:1px solid var(--
     <button class="btn btn-primary" type="button" id="langAdd">Добавить</button></div>
 </dialog>
 
+<!-- mode+lang <-> localStorage.selectedDict string, shared with search/js/home.js's quick
+     settings (see dict-mode-shared.js) — must load before this script uses DictModeShared. -->
+<script src="/assets/js/dict-mode-shared.js"></script>
 <script>
 const $ = s => document.querySelector(s);
 const isRu = (localStorage.getItem('dhammaLanguage') || localStorage.getItem('siteLanguage') || 'en') === 'ru';
@@ -698,7 +736,13 @@ function commitLangs(){ langsTouched = true; render(); showReloadNotice(); }
 function showReloadNotice(){
   const el = $('#reloadNotice');
   const preview = $('#preview');
-  el.style.top = (preview.getBoundingClientRect().bottom + 8) + 'px';
+  // left/CSS translateX(-50%) below used to just be page-center, same thing as preview-center
+  // while preview was the only, full-width column — no longer true once .preview-col becomes a
+  // fixed-width right-hand column (see @media min-width:1100px above), so center over the
+  // actual preview card instead of the page.
+  const rect = preview.getBoundingClientRect();
+  el.style.top = (rect.bottom + 8) + 'px';
+  el.style.left = (rect.left + rect.width / 2) + 'px';
   el.classList.add('show');
 }
 $('#reloadNoticeClose').addEventListener('click', () => $('#reloadNotice').classList.remove('show'));
@@ -891,9 +935,18 @@ $('#dictOn').checked = localStorage.getItem('dictionaryVisible') !== 'false';
 $('#dictBlock').hidden = !$('#dictOn').checked;
 $('#dictOn').onchange = e=>{ $('#dictBlock').hidden = !e.target.checked; localStorage.setItem('dictionaryVisible', e.target.checked ? 'true' : 'false'); };
 // .value здесь больше не выставляем — #dictMode пуст до fetch(dict-modes.json), renderDictMode()
-// сама помечает нужный option selected при построении. Слушатель — на самом select, переживает
-// renderDictMode()'ю innerHTML='' (та чистит только детей, не сам элемент).
-$('#dictMode').onchange = e=> localStorage.setItem('selectedDict', e.target.value);
+// сама помечает нужный option selected при построении. Слушатели — на самих select/seg, переживают
+// renderDictMode()'ю innerHTML='' (та чистит только детей select, не сам элемент, и не трогает seg).
+$('#dictMode').onchange = e=>{
+  updateDictLangSeg();
+  localStorage.setItem('selectedDict', DictModeShared.composeValue(dictModeGroups, e.target.value, dictLangState));
+};
+$('#dictLangSeg').onclick = e=>{
+  const b = e.target.closest('button'); if(!b) return;
+  dictLangState = b.dataset.lang;
+  updateDictLangSeg();
+  localStorage.setItem('selectedDict', DictModeShared.composeValue(dictModeGroups, $('#dictMode').value, dictLangState));
+};
 
 /* Автопоиск выделения — та же кнопка/ключ, что и "мультивыбор" в ридере (paliLookup.js,
    #toggle-multiselect), не отдельная новая настройка. Задержка — 3 или 5 секунд (2с сочли
@@ -1228,21 +1281,30 @@ if(location.hash) setTimeout(()=>goAnchor(location.hash.slice(1)),50);
    (переписывала разметку через applyLang()) — она же добавляла суффикс "(ru)"/"(en)" КАЖДОЙ
    опции поверх заголовка группы, который его и так уже называет (владелец: "не пиши en/ru пять
    раз, только для заголовка"). Теперь один файл на обе страницы —
-   configs/search/dict-modes.json — и подписи внутри группы больше не повторяют её же язык. */
+   configs/search/dict-modes.json — и подписи внутри группы больше не повторяют её же язык.
+   issue #4: DPD-режимы раньше дублировались ЦЕЛИКОМ на en/ru (dictGroupEn/dictGroupRu) — теперь
+   один dictGroupDpd (hasLangToggle) + отдельный тоггл #dictLangSeg для языка словаря. Само
+   mode+lang <-> localStorage-строка преобразование — в /assets/js/dict-mode-shared.js
+   (window.DictModeShared), общее с search/js/home.js — было по копии в каждом файле. */
 let dictModeGroups = null;
+let dictLangState = isRu ? 'ru' : 'en';
+
+function updateDictLangSeg(){
+  const seg = $('#dictLangSeg');
+  if (!seg) return;
+  const g = DictModeShared.groupFor(dictModeGroups, $('#dictMode').value);
+  seg.hidden = !(g && g.hasLangToggle);
+  seg.querySelectorAll('button').forEach(b=>
+    b.setAttribute('aria-pressed', String(b.dataset.lang === dictLangState)));
+}
 function renderDictMode(){
   const dm = $('#dictMode');
   if (!dm || !dictModeGroups) return;
-  const current = dm.value || localStorage.getItem('selectedDict') || 'standalone';
+  const saved = localStorage.getItem('selectedDict') || 'standalone';
+  const split = DictModeShared.splitValue(dictModeGroups, saved);
+  if (split.lang) dictLangState = split.lang;
   dm.innerHTML = '';
-  // Родной язык интерфейса первым (RU-интерфейс -> сперва русская группа DPD, EN -> сперва
-  // английская) — то же поведение, что было у ручного insertBefore() раньше, теперь просто
-  // порядок построения, а не перестановка готовых узлов.
-  const sorted = dictModeGroups.slice().sort((a,b)=>{
-    const rank = g => (isRu ? g.id==='dictGroupRu' : g.id==='dictGroupEn') ? 0 : (g.id==='dictGroupOther' ? 2 : 1);
-    return rank(a) - rank(b);
-  });
-  sorted.forEach(g=>{
+  dictModeGroups.forEach(g=>{
     const group = document.createElement('optgroup');
     group.id = g.id;
     group.label = isRu ? g.labelRu : g.labelEn;
@@ -1250,11 +1312,12 @@ function renderDictMode(){
       const opt = document.createElement('option');
       opt.value = o.value;
       opt.textContent = isRu ? o.ru : o.en;
-      if (o.value === current) opt.selected = true;
+      if (o.value === split.mode) opt.selected = true;
       group.appendChild(opt);
     });
     dm.appendChild(group);
   });
+  updateDictLangSeg();
 }
 fetch('/nodejs/res/dict-modes.json')
   .then(r=>r.json())
@@ -1375,8 +1438,8 @@ function applyLang(){
 
   $('#langSearch').placeholder = t.langSearchPh; $('#langSearch').setAttribute('aria-label', t.langSearchPh);
   document.querySelectorAll('.badge').forEach(b=>b.textContent=t.badgeSoon);
-  // #dictMode целиком строит renderDictMode() (dict-modes.json) — она же решает порядок групп
-  // по isRu, applyLang() сюда лезть не должен: uiLang.onchange делает location.reload() (см.
+  // #dictMode целиком строит renderDictMode() (dict-modes.json), applyLang() сюда лезть не
+  // должен: uiLang.onchange делает location.reload() (см.
   // ниже), а не живую смену — эта функция и так вызывается только один раз за загрузку.
   const sc = $('#script');
   const scriptLabels = {ISOPali:'scriptIast', Brahmi:'scriptBrahmi', Devanagari:'scriptDeva', Sinhala:'scriptSinh', Thai:'scriptThai', BurmeseMyanmar:'scriptMymr'};
@@ -1497,11 +1560,15 @@ window.addEventListener('message', handlePreviewMessage);
 /* Липкость образца — только пока видны разделы Чтение/Словарь (между ними в разметке лежит
    Поиск — они идут подряд, так что это один непрерывный диапазон скролла, а не переключение
    туда-сюда). Дальше Словаря (Коренной текст и ниже) — снимаем sticky, там образцу уже нечего
-   показывать по делу. */
+   показывать по делу. Это правило только для узкого однoколоночного макета: с 1100px
+   (.settings-layout из CSS выше) образец стоит в своей колонке справа и уместен на всю высоту
+   настроек — там его никогда не снимаем. */
 (function stickyPreviewRange(){
   const preview = $('#preview'), dict = $('#dict');
   if (!preview || !dict) return;
+  const wideLayout = window.matchMedia('(min-width:1100px)');
   function update(){
+    if (wideLayout.matches) { preview.classList.remove('not-sticky'); return; }
     const pastDict = dict.getBoundingClientRect().bottom < 0;
     preview.classList.toggle('not-sticky', pastDict);
   }

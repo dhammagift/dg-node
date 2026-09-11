@@ -1343,7 +1343,7 @@ body.dg-state-home #dg-hero-heading { display: block; }
            (see the file's other uses) — this is constant, marquee-like motion crossing the
            screen, which wants linear (AUDIT.md §2, improve-animations skill). */
         /* Owner: "нужно сделать чтобы ещё была медленно... хотя бы за 3 сек" — was 1.4s. */
-        animation: dg-motto-shine 3s linear 0.3s 1 both;
+        animation: dg-motto-shine 8s linear 0.3s 1 both;
     }
 }
 @keyframes dg-motto-shine {
@@ -2030,6 +2030,11 @@ body:not(.dg-state-home) #dg-announce { display: none; }
 /* Переключатель «одно из нескольких». Размеры по макету: кнопки крупнее прежних — в них
    попадают пальцем, а не курсором. Выбранное — нейтральной заливкой, не акцентной: акцент в
    этом экране закреплён за действиями, а выбранный пункт действием не является. */
+/* Same gotcha as the other [hidden] patches in this file (#dg-loading, .dg-scope-list, ...):
+   `display:flex` below beats the browser's own `[hidden]{display:none}` on a specificity tie
+   (author origin wins over user-agent) — dictModePicker()'s language seg staying .hidden did
+   nothing visible without this. */
+.dg-segmented[hidden] { display: none; }
 .dg-segmented {
     display: flex;
     margin: 8px 0 2px;
