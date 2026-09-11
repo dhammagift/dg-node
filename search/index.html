@@ -4084,11 +4084,17 @@ $(document).ready(function() {
         var params = new URLSearchParams(window.location.search);
         var q = params.get('q');
         if (!q) return;
+        // Sharing selected text (ours or another app's) into Dhamma.Gift often arrives as
+        // `"<text>" <source url>` or `"<text>"\n<source url>` — Chrome's own "Share" from a text
+        // selection appends the page's link (and Scroll-To-Text-Fragment #:~:text=...) the same
+        // way. That trailing link is never part of what the user meant to search/open, so drop it
+        // (with whatever whitespace/newline precedes it) before anything else.
+        q = q.trim().replace(/\s+https?:\/\/\S+$/i, '').trim();
         // Android's share sheet sometimes wraps the selected text in quotes ("kacchapa") — a
         // literal quote character never appears in the canon, so left unstripped this always
         // returns zero (or, depending on backend quirks, a huge irrelevant) results instead of
         // the word itself. Strip one matching wrapping pair, straight or curly.
-        q = q.trim().replace(/^(["'“‘])([\s\S]*)(["'”’])$/, function (m, open, inner, close) {
+        q = q.replace(/^(["'“‘])([\s\S]*)(["'”’])$/, function (m, open, inner, close) {
             var pairs = { '"': '"', "'": "'", '“': '”', '‘': '’' };
             return pairs[open] === close ? inner : m;
         });
