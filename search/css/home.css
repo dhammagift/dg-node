@@ -36,8 +36,16 @@
    overflow-x:auto (home.css's own #dg-hero-band horizontal scrollers etc. are unaffected, they
    scroll inside their own box regardless of what the page root clips). Unscoped (not under
    body.dg-skin-minimal) — this single shell page (search/index.html) serves home/results/reader
-   alike, and the bug isn't specific to the minimal skin. */
-html, body { overflow-x: hidden; }
+   alike, and the bug isn't specific to the minimal skin.
+
+   clip, not hidden: `overflow-x: hidden` on html/body makes the body a scroll container, which
+   silently kills `position: sticky` for every descendant (Chrome: the sticky element has no
+   scrollport left to stick within). That is what kept .toc-aside (Translator filter) from parking
+   under the pinned header — it just scrolled away with the list and slid under the band. `clip`
+   clips the same stray overflow without creating a scroll container, so sticky works (verified in
+   the browser: aside top goes 81 -> 77 = stack height + gap on scroll). `hidden` stays first as
+   the fallback for engines without `clip` (pre-16 Safari), which keep today's behaviour. */
+html, body { overflow-x: hidden; overflow-x: clip; }
 /* Owner: "сдвигаются на мм инпуты между ридером и результатами" — without this, the vertical
    scrollbar only appears once a page's content actually overflows, and since the centered
    .dg-hero-form's width is the same 520px in results/reader/toc/404 (see body.dg-skin-minimal
@@ -948,12 +956,24 @@ body.dg-state-toc #language-button {
 #toc-pane a:visited { color: var(--dg-accent-ink, var(--dg-accent)); }
 .toc-layout { display: flex; gap: 2rem; align-items: flex-start; }
 .toc-main { flex: 1 1 auto; min-width: 0; }
+/* Pinned just under the header stack, not at a fixed 1rem: the stack is position:fixed, so a
+   hardcoded top slid this column underneath the band (the filter's own title was the first thing
+   to disappear — same "закрывает" complaint). --dg-stack-height is written by applyPadding()
+   (search/index.html); the fallback covers the instant before it first runs. */
 .toc-aside {
     flex: 0 0 260px;
-    position: sticky; top: 1rem;
+    position: sticky; top: calc(var(--dg-stack-height, 65px) + 12px);
     border: 1px solid var(--dg-border); border-radius: var(--dg-radius, 10px);
     padding: .75rem .9rem;
     background: var(--dg-surface);
+}
+/* Scroll targets of /spa/toc.js's scrollTo() (revealTarget): scrollIntoView({block:'start'}) puts
+   the element's top edge at the viewport top, i.e. exactly under the fixed band. scroll-margin-top
+   shifts that edge below the stack instead, so arriving at /toc/dn lands on "Dīgha Nikāya (34)"
+   rather than behind the search field. */
+#toc-pane [id^="toc-category-"],
+#toc-pane .toc-book, #toc-pane [data-toc-node], #toc-pane .toc-group {
+    scroll-margin-top: calc(var(--dg-stack-height, 65px) + 8px);
 }
 /* TOC screen transition (owner spec). Enter: 340ms, list (left) from -22px, translator filter
    (right) from +22px with a 60ms delay, both fade in; plays on display:none -> block and on the
@@ -3638,11 +3658,16 @@ body.dg-state-reader #sutta h1, body.dg-state-reader #sutta h2, body.dg-state-re
     body.dg-state-results #pali_wrapper > .footerlike, body.dg-state-results #pali-words_wrapper > .footerlike { margin-top: auto; padding: 28px 0 30px; }
     body.dg-state-results #search-pane .footerlike .dt-buttons { padding-bottom: 0; } /* its own 40px bottom padding (rule above, id-scoped) would push the links up again */
 }
-/* TOC: the search field fixed at the same 10px as on results/reader (was static, 24px — owner:
-   "в toc инпут немного ниже"). Same fixed rules as search/index.html's results/reader stack. */
-body.dg-state-toc #dg-hero-band { position: fixed; top: 10px; left: 0; right: 0; z-index: 850; background: var(--dg-surface, #fff); width: auto; margin-left: 0; margin-right: 0; }
-body.dg-state-toc #dg-header-backdrop { display: block; position: fixed; top: 0; left: 0; right: 0; height: 65px; z-index: 849; background: var(--dg-surface, #fff); }
-body.dg-state-toc #toc-pane { padding-top: 62px; }
+/* TOC: the search field sits at the same 10px as on results/reader, pinned and hidden on scroll
+   down the same way — but through the SHARED header stack (search/index.html's <style> +
+   autoHideHeader()/applyPadding()/stackConfig(), which now knows the toc state), not a second
+   hand-rolled copy here. The old copy (fixed band + hardcoded 65px backdrop +
+   #toc-pane{padding-top:62px}) is gone: it took no part in the hide-on-scroll mechanism, so on
+   /toc the band stayed put over a scrolling list and covered the first rows and the Translator
+   filter title (owner: "на странице toc шапка как в ридере, так не должно быть, она закрывает"),
+   and its hardcoded numbers could silently drift from the band's real height. Padding, backdrop
+   height and --dg-stack-height are computed in one place now, so nothing here needs a fixed
+   empty stripe of its own. */
 /* Folded with dgFold(): overflow stays hidden so the animated height equals the natural one
    (otherwise the last child's margin collapses when the fold ends and the panel snaps ~13px). */
 #search-pane .dtsb-searchBuilder { overflow: hidden; }
