@@ -142,6 +142,47 @@ const PROFILE = LIBRARY_PROFILE;
                 JSON.stringify(onlineOnly));
             await page.unroute('https://dhamma.gift/**');
 
+            // Dynamic shortcuts: the payload the page hands to DgShortcuts must contain only real
+            // texts (the owner's launcher showed "toc", "bupm", "история", "запись1", "запись2"),
+            // at most two of them — Contents/Favorites/Dictionary/Memo are static XML now.
+            // The stub has to be an init script (it must exist before native-bridge runs) and the
+            // reload has to happen from here: calling location.reload() inside page.evaluate is the
+            // documented way to make the evaluate itself die with the context.
+            await page.addInitScript(() => {
+                window.Capacitor = window.Capacitor || {};
+                window.Capacitor.Plugins = window.Capacitor.Plugins || {};
+                window.Capacitor.Plugins.DgShortcuts = { set: (p) => { window.__shortcutPayload = p; return Promise.resolve(); } };
+                // native-bridge pushes the list from inside its App-plugin block (that is where the
+                // back-button hook lives too), so a stub without App would make this check pass by
+                // never running the code under test.
+                window.Capacitor.Plugins.App = {
+                    addListener: () => Promise.resolve(),
+                    getInfo: () => Promise.resolve({ version: 'test', build: '1' }),
+                    exitApp: () => {},
+                };
+            });
+            await page.evaluate(() => {
+                localStorage.setItem('localSearchHistory', JSON.stringify([
+                    ['toc', '/toc', '2026-01-01'], ['bupm', '/bupm', '2026-01-02'],
+                    ['запись1', '/memo/index.html', '2026-01-03'],
+                    ['черепаха', '/?q=%D1%87%D0%B5%D1%80%D0%B5%D0%BF%D0%B0%D1%85%D0%B0', '2026-01-04'],
+                    ['kacchapa', '/sn56.11?s=Kacchap', '2026-01-05'],
+                ]));
+                localStorage.setItem('dg_favorites', JSON.stringify([{ slug: 'dn22', title: 'DN 22' }]));
+            });
+            await page.reload({ waitUntil: 'domcontentloaded', timeout: 60000 });
+            await page.waitForTimeout(4000);
+            const shortcuts = await page.evaluate(() => window.__shortcutPayload);
+            const payload = shortcuts && shortcuts.items ? shortcuts.items : [];
+            check('dynamic shortcuts contain only recent texts, at most two',
+                payload.length > 0 && payload.length <= 2 &&
+                payload.every(i => /^\/[a-z][a-z-]*\d/i.test(i.route)) &&
+                !payload.some(i => /bupm|memo|\?q=/.test(i.route)),
+                JSON.stringify(payload));
+
+            await page.goto(APP + '/', { waitUntil: 'domcontentloaded', timeout: 60000 });
+            await page.waitForTimeout(2000);
+
             const links = await page.evaluate(async () => {
                 try {
                     const r = await fetch('/nodejs/res/menu-links.json');
