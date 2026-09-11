@@ -8,7 +8,8 @@
     "build-offline": "node build-offline.js",
     "test-offline": "node test/offline-e2e.js",
     "test-offline-parity": "node test/offline-parity.js",
-    "test-offline-resume": "node test/offline-resume.js"
+    "test-offline-resume": "node test/offline-resume.js",
+    "build-mobile-db": "node build-mobile-db.js"
   },
   "dependencies": {
     "@fastify/compress": "^9.2.0",
@@ -17,6 +18,7 @@
     "@sqlite.org/sqlite-wasm": "^3.53.0-build1",
     "aksharamukha": "^2.3.0-32",
     "compression": "^1.8.1",
+    "cors": "^2.8.6",
     "express": "^5.2.1",
     "fastify": "^5.12.3",
     "swagger-ui-dist": "^5.32.15",
