@@ -753,7 +753,16 @@ async function open(distBase, allowDownload, args) {
 
     for (const name of storedDatabases(pool)) {
         const candidate = inspect(pool, name);
-        if (!candidate.ok) { try { pool.unlink(name); } catch (_) {} continue; }
+        if (!candidate.ok) {
+            // Delete ONLY what is provably the wrong file: a copy missing its build id, or one this
+            // build cannot read. An ambiguous failure (a lock, an I/O hiccup, the pool still waking
+            // up) must never cost the reader the 479MB they downloaded — that is how a phone ended up
+            // with "downloaded, but nothing works": the library was deleted by a transient error.
+            const provablyBad = /incomplete download|schema \d+ !=/i.test(candidate.reason || '');
+            console.log(`[dg-offline] ${name} was not adopted (${candidate.reason})${provablyBad ? ' — deleting it' : ' — keeping the file'}`);
+            if (provablyBad) { try { pool.unlink(name); } catch (_) {} }
+            continue;
+        }
         // The scratch file is only a HINT that a download once stopped here, never proof that THIS
         // stored copy is the incomplete one: a failed attempt leaves one behind while a later attempt
         // completes the very same file — and then the page refused to open a perfectly good library

@@ -56,6 +56,18 @@ var PRECACHE_URLS = [
 
     // Reader mode definitions — the reader cannot resolve a mode without this, online or off.
     '/reader/mode-table.json',
+    '/reader/translator-priority.json',
+    // Exposed by a REAL outage (pm2 test stopped, nginx 503 for everything): these were missing, so
+    // the shell came up with i18n placeholders ({{search.label}}) and a search box that silently did
+    // nothing. Kept as bare paths — the page requests them with ?v=<hash> and matchCached() retries
+    // with ignoreSearch.
+    '/assets/js/datatables/datatables.min.css',
+    '/assets/js/paliLookup.js',
+    '/assets/js/paliLookup.css',
+    '/nodejs/res/lang_ru.json',
+    '/nodejs/res/lang_en.json',
+    '/assets/i18n/lang_global_ru.json',
+    '/assets/i18n/lang_global_en.json',
     // The settings page and the TOC: both are things a reader reaches for exactly when something is
     // wrong ("is the library there? what is in the canon?"), and neither was cached until visited —
     // so offline they failed with a browser error (measured: /settings/ would not open with the
@@ -274,7 +286,7 @@ self.addEventListener('fetch', function (event) {
                     // nginx answers 502 and the reader saw that page instead of the cached shell —
                     // the fetch only *rejects* when the connection itself fails (airplane mode,
                     // DevTools offline), which is why this looked like it worked.
-                    if (response.status >= 500) return caches.match(SHELL_URL).then(function (c) { return c || response; });
+                    if (response.status >= 500) return matchCached(SHELL_URL).then(function (c) { return c || response; });
                     return response;
                 })
                 .catch(function () {
@@ -290,7 +302,10 @@ self.addEventListener('fetch', function (event) {
                 // Same reasoning as navigations: a 5xx means the app is down, so serve what we have
                 // cached (if anything) instead of the proxy's error page.
                 if (response.status >= 500) {
-                    return caches.match(request).then(function (c) { return c || response; });
+                    // matchCached(), not caches.match(): the page asks for '/assets/js/search-render.js?v=<hash>'
+                    // and the precache holds the bare path — without ignoreSearch the 503 came straight
+                    // through, which is exactly what a real outage looked like (pm2 stopped).
+                    return matchCached(request).then(function (c) { return c || response; });
                 }
                 // Only cache real, same-origin, successful responses — an opaque/cross-origin
                 // or error response cached here would just serve that error offline forever.
