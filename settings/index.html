@@ -892,8 +892,11 @@ function setTheme(t){
 }
 document.querySelectorAll('#themeSeg button').forEach(b=> b.onclick=()=> setTheme(b.dataset.theme));
 
-/* Размер текста — тот же живой механизм, что уже использует ридер (settings.js, uiScale):
-   document.documentElement.style.fontSize, диапазон 70–150%, без перезагрузки. */
+/* Размер текста — тот же ключ, что теперь и у стрелок в бургере (issue #5, search/js/home.js
+   renderFontSizeControl()). Раньше applyлился только ВНУТРИ setScale() (то есть только по клику
+   на +/-) — при обычном заходе на страницу с уже сохранённым нестандартным значением ни сам
+   текст страницы, ни цифра в #sizeVal его не подхватывали (оставались 100%, пока не нажать
+   стрелку хоть раз). */
 let scale = parseInt(localStorage.getItem('uiScale')) || 100;
 function setScale(v){
   scale = Math.min(150, Math.max(70, v));
@@ -901,6 +904,8 @@ function setScale(v){
   localStorage.setItem('uiScale', scale);
   $('#sizeVal').textContent = scale + '%';
 }
+document.documentElement.style.fontSize = scale + '%';
+$('#sizeVal').textContent = scale + '%';
 $('#sizeMinus').onclick=()=>setScale(scale-10);
 $('#sizePlus').onclick=()=>setScale(scale+10);
 

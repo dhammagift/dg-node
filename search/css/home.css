@@ -2080,6 +2080,28 @@ body:not(.dg-state-home) #dg-announce { display: none; }
     color: var(--dg-text);
 }
 
+/* issue #5: font-size stepper in the drawer, right under the theme switch — owner ask: same
+   style as the En/Ru and theme .dg-segmented switches. #dg-fontsize-ctrl carries
+   class="dg-segmented" itself (search/index.html) for the shared border/radius/flex container.
+   Owner: three EQUAL thirds ("−" / "100%" / "+"), same as .dg-segmented button's own flex:1 —
+   no cell-level width override needed for that part, .dg-fontsize-val only needs its own
+   look (no hover/pointer, muted color) since it isn't a button. */
+#dg-fontsize-ctrl .dg-fontsize-btn { font-size: 1.2rem; font-weight: 700; }
+#dg-fontsize-ctrl .dg-fontsize-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+#dg-fontsize-ctrl .dg-fontsize-btn:disabled:hover { background: var(--dg-surface); color: var(--dg-text-2); }
+#dg-fontsize-ctrl .dg-fontsize-val {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--dg-font);
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--dg-text-2);
+    border-left: 1px solid var(--dg-border);
+    border-right: 1px solid var(--dg-border);
+}
+
 /* ============================================================================
    Область поиска — раскрывающийся список с галочками
    Восемь переключателей подряд занимали пол-экрана и открывались на каждый запрос. Переключатель
@@ -2262,6 +2284,11 @@ body.dg-drawer-open {
     padding: 14px 12px 10px 16px;
     border-bottom: 1px solid var(--dg-border);
 }
+/* issue #5: owner ask — share/close must hug the drawer's right edge. .dg-brand-name's own
+   flex:1 only grows within .dg-brand-link's OWN flex row (logo + name); .dg-brand-link itself
+   was never a growing child of .dg-drawer-head, so it (and everything after it) just sat at its
+   natural content width, leaving share/close stranded mid-row with empty space after them. */
+.dg-drawer-head .dg-brand-link { flex: 1; min-width: 0; }
 .dg-drawer-head .dg-brand-name { flex: 1; min-width: 0; }
 .dg-drawer-body { padding: 8px 18px 24px; }
 .dg-drawer-body .dg-group-title {
@@ -2275,6 +2302,21 @@ body.dg-drawer-open {
     margin: 18px 0 2px;
 }
 .dg-drawer-body .dg-group-title:first-child { margin-top: 2px; }
+/* issue #5: Язык/Тема/Размер шрифта — подпункты "Настроек" (dg-group-title выше в разметке),
+   не отдельные секции того же уровня — были на .dg-group-title, читались равнозначно с
+   MULTITOOL/SETTINGS (owner: "равнозначные, слишком большие"). Меньше и без uppercase/жирности. */
+.dg-drawer-body .dg-drawer-subtitle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--dg-text-2);
+    margin: 14px 0 4px;
+}
+/* Without this the injected FontAwesome <svg> (paintDrawerIcons, "Language" row) renders at its
+   raw intrinsic size — .dg-group-title's own .dg-row-ic rule doesn't match .dg-drawer-subtitle. */
+.dg-drawer-body .dg-drawer-subtitle .dg-row-ic { width: 13px; height: 13px; flex: none; color: var(--dg-text-muted); }
 /* Пункты меню — со значками: без них список ссылок читается сплошной серой простынёй, и глазом
    не за что зацепиться. Значки те же, что у плиток (Font Awesome, см. paintDrawerIcons). */
 .dg-drawer-row {
@@ -3507,6 +3549,13 @@ body.dg-state-reader .warning-container p.warning { margin: 14px auto 0; max-wid
 body.dg-state-reader .warning-container p.warning a { color: inherit; }
 body.dg-state-reader .warning-container .close-warning { color: var(--dg-match); padding-left: 4px; cursor: pointer; }
 body.dg-state-reader #sutta { max-width: 45rem; margin: 0 auto; padding-bottom: 40px; }
+/* issue #5: reader/css/uiextra.css's own #sutta.column-view{max-width:105rem} (ID+class,
+   specificity 110) is meant to widen column (2-language side-by-side) mode on desktop — but this
+   SPA-scoped rule right above it is body.dg-state-reader #sutta (element+class+ID, specificity
+   111) and always won regardless, so column mode never actually got wider than single-column
+   (owner: "делает на одну ширину и получается очень узко", screenshot showed a huge empty right
+   half at 1920px). Same body.dg-state-reader prefix, +.column-view for the matching bump. */
+body.dg-state-reader #sutta.column-view { max-width: 105rem; }
 body.dg-state-reader #sutta header { margin: 22px auto 0; text-align: center; }
 body.dg-state-reader #sutta header ul { list-style: none; padding: 0; margin: 0; }
 body.dg-state-reader #sutta header li.division .pli-lang { font-size: 15px; color: var(--dg-text); }
@@ -3573,6 +3622,13 @@ body.dark .dg-lpill button[aria-pressed="true"]:hover { background: #5050f0; }
 @media (min-width: 768px) {
     body.dg-state-reader .dg-lpill { right: max(20px, calc((100vw - 45rem) / 2 - 200px)); }
     body.dg-state-results .dg-lpill { right: max(20px, calc((100vw - 880px) / 2 - 200px)); }
+    /* issue #5: column-view (#sutta.column-view, max-width 105rem — see body.dg-state-reader
+       #sutta.column-view above) widens the reading column a lot on large screens; the formula
+       above still assumed the narrow 45rem column, so the pill it "hugs" ended up sitting ON TOP
+       of the now much wider text instead of beside it (owner: "получается над текстом"). Higher
+       specificity than the plain body.dg-state-reader rule above (extra :has()), same formula
+       with 105rem swapped in. */
+    body.dg-state-reader:has(#sutta.column-view) .dg-lpill { right: max(20px, calc((100vw - 105rem) / 2 - 200px)); }
 }
 
 /* "Языки перевода" popover — the pill's six-dot button (production-v4 mock,

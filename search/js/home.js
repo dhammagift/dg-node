@@ -2451,6 +2451,28 @@
         if (back) back.addEventListener('click', closeDrawer);
         var close = document.querySelector('#dg-drawer .dg-drawer-close');
         if (close) close.addEventListener('click', closeDrawer);
+        // issue #5: navigator.share() opens the native OS sheet (Android/iOS/most mobile
+        // browsers); desktop browsers that lack it fall back to copying the current URL, same
+        // idea as copyToClipboard.js's "Copy Link" elsewhere on the page (kept independent here —
+        // that one is scoped to a specific quote's citation link, this is just "this page").
+        var shareBtn = document.querySelector('#dg-drawer .dg-drawer-share');
+        if (shareBtn) {
+            shareBtn.addEventListener('click', function () {
+                var url = window.location.href;
+                var title = document.title;
+                if (navigator.share) {
+                    navigator.share({ title: title, url: url }).catch(function () { /* user cancelled — not an error */ });
+                    return;
+                }
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(url).then(function () {
+                        if (typeof window.showBubbleNotification === 'function') {
+                            window.showBubbleNotification(t('menu.linkCopied', 'Ссылка скопирована'));
+                        }
+                    });
+                }
+            });
+        }
         var drawer = document.getElementById('dg-drawer');
         if (drawer) {
             // Пункт «помощь» открывает bootstrap-модалку — меню при этом должно уйти само.
@@ -3717,6 +3739,58 @@
         ], active, applyTheme));
     }
 
+    /* issue #5: same localStorage.uiScale key and 70-150/step-10 range as /settings/'s own
+       "Text size" row (settings/index.html #sizeMinus/#sizePlus) — a second, independent
+       implementation because that page is a separate small vanilla-JS document, same as
+       renderThemeSwitch() above duplicates themeswitch.js's own step logic rather than sharing
+       it. Unlike the theme switch, there is no reader/document.documentElement.style.fontSize
+       applied WITHOUT this: settings.js's older #fontDec/#fontInc apply-on-click handler targets
+       ids that only ever existed in the legacy reader-template.html, never on this page — so the
+       saved scale silently never took effect here or in the reader before this. Applying it here
+       on every render (not just on click) is what actually fixes that, whether or not the drawer
+       itself was ever opened this session. */
+    var FONT_SCALE_KEY = 'uiScale';
+    function currentFontScale() {
+        var v = parseInt(localStorage.getItem(FONT_SCALE_KEY), 10);
+        return (v >= 70 && v <= 150) ? v : 100;
+    }
+    function renderFontSizeControl() {
+        var scale = currentFontScale();
+        document.documentElement.style.fontSize = scale + '%';
+        var host = document.getElementById('dg-fontsize-ctrl');
+        if (!host) return;
+        host.innerHTML = '';
+        var dec = document.createElement('button');
+        dec.type = 'button';
+        dec.className = 'dg-fontsize-btn';
+        dec.textContent = '−';
+        dec.setAttribute('aria-label', t('menu.fontSizeDec', 'Уменьшить шрифт'));
+        var val = document.createElement('span');
+        val.className = 'dg-fontsize-val';
+        var inc = document.createElement('button');
+        inc.type = 'button';
+        inc.className = 'dg-fontsize-btn';
+        inc.textContent = '+';
+        inc.setAttribute('aria-label', t('menu.fontSizeInc', 'Увеличить шрифт'));
+        function paint() {
+            val.textContent = scale + '%';
+            dec.disabled = scale <= 70;
+            inc.disabled = scale >= 150;
+        }
+        function set(v) {
+            scale = Math.min(150, Math.max(70, v));
+            localStorage.setItem(FONT_SCALE_KEY, scale);
+            document.documentElement.style.fontSize = scale + '%';
+            paint();
+        }
+        dec.addEventListener('click', function () { set(scale - 10); });
+        inc.addEventListener('click', function () { set(scale + 10); });
+        paint();
+        host.appendChild(dec);
+        host.appendChild(val);
+        host.appendChild(inc);
+    }
+
     // ======================================================================
     // Подсказка под полем
     // ======================================================================
@@ -3755,6 +3829,7 @@
         renderHowTo();
         renderLangSwitch();
         renderThemeSwitch();
+        renderFontSizeControl();
         // Owner screenshot: mode titles ("Standard"/"Multi Trn") stayed in the OLD language
         // after clicking EN/RU inside an already-open drawer — paintReaderModes() only ran from
         // openDrawer(), never on a live language switch while the drawer was already showing.
@@ -3831,6 +3906,7 @@
         revealAnchorSection(); // прямой заход с хешем в адресе (/#contacts и т.п.)
         renderLangSwitch();
         renderThemeSwitch();
+        renderFontSizeControl();
         syncRestoreLink();
 
         fetch(MENU_URL)

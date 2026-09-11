@@ -82,7 +82,7 @@
   "related_applications": [],
   "start_url": "/?source=pwa",
   "scope": "/",
-  "display": "minimal-ui",
+  "display": "standalone",
   "background_color": "#2E3E50",
   "theme_color": "#000000",
   "share_target": {

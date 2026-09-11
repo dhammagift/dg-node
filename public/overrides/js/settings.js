@@ -700,8 +700,16 @@ function processSearchQuery(query) {
 async function tryEnhanceKey(key) {
     const textinfo = await loadTextData();
     const baseKey = key.split(/\s+/)[0];
-    const suttaName = textinfo[baseKey]?.pi;
-    return suttaName ? `${baseKey} ${suttaName}` : key;
+    // issue #5: a history entry deep-linked to a segment ("sn56.48:1.4", "dn1:1.22.2") kept the
+    // raw id+segment as its title forever — textinfo.js is keyed by bare sutta id only
+    // ("sn56.48"), so textinfo[baseKey] with the ":1.4" still attached always missed. Look up by
+    // the part before ':'. Owner follow-up: the segment is navigation plumbing (the actual href
+    // is stored separately as `value`, unaffected by this label) — show just "sn56.48 Title",
+    // not "sn56.48:1.4 Title", to the user. saveToHistory() below strips ':...' the same way when
+    // grouping, so this still replaces the raw un-enhanced entry instead of duplicating it.
+    const suttaId = baseKey.split(':')[0];
+    const suttaName = textinfo[suttaId]?.pi;
+    return suttaName ? `${suttaId} ${suttaName}` : key;
 }
 
 async function loadTextData() {
@@ -837,15 +845,19 @@ async function saveToHistory(key, url) {
     
     const firstWord = key.split(/\s+/)[0];
     const isSutta = /\d/.test(firstWord);
-    const rootKey = isSutta ? firstWord : key;
+    // issue #5: strip ':segment' before grouping — a raw un-enhanced entry ("sn56.48:1.4") and
+    // its later-enhanced replacement ("sn56.48 Dutiyachiggaḷayugasutta", segment now dropped from
+    // the label by tryEnhanceKey) must land on the same rootKey so the enhanced one replaces the
+    // raw one below instead of sitting next to it as a duplicate row.
+    const rootKey = isSutta ? firstWord.split(':')[0] : key;
 
-    let bestKey = key; 
-    
+    let bestKey = key;
+
     history = history.filter(([k]) => {
-        if (k === key) return false; 
-        
+        if (k === key) return false;
+
         if (isSutta) {
-            const kRoot = k.split(/\s+/)[0];
+            const kRoot = k.split(/\s+/)[0].split(':')[0];
             if (kRoot === rootKey) {
                 if (k.length > bestKey.length) {
                     bestKey = k;
@@ -2285,7 +2297,15 @@ function saveExactScrollPosition() {
 
     // Текущий масштаб из памяти (или 100%)
     let currentScale = parseInt(localStorage.getItem('uiScale')) || 100;
-    
+
+    // issue #5: раньше применялся только ВНУТРИ changeScale() (то есть только по клику на
+    // fontDec/fontInc) — а этих id на этой странице вообще нет (только в старом
+    // reader-template.html), значит сохранённый масштаб никогда фактически не накладывался
+    // здесь сам по себе. search/js/home.js теперь тоже применяет его (быстрые настройки/бургер,
+    // тот же ключ uiScale) — эта строка просто не даёт полагаться только на порядок загрузки
+    // скриптов между ними.
+    document.documentElement.style.fontSize = currentScale + '%';
+
     // Обновляем цифру в меню настроек при открытии
     if (valDisplay) valDisplay.textContent = currentScale + '%';
 
