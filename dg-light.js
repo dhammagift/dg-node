@@ -15,6 +15,10 @@ const app = express();
 // can run at once for comparison.
 const PORT = Number(process.env.PORT) || 3001;
 
+// Input limits for the two endpoints that accept free-form client input (see their handlers).
+const TRANSLITERATE_MAX_LENGTH = 500;
+const LBL_SAVE_FILENAME_RE = /^[A-Za-z0-9._+ -]+\.json$/; // space: a raw '+' in the query decodes to one
+
 // ---------------------------------------------------------------------------------------
 // Cache policy (see cache.md at repo root for the full design writeup) — content-hash
 // versioning for our own static assets (§1-2) + differentiated Cache-Control by content
@@ -225,8 +229,25 @@ app.get('/manifest.json', (req, res) => {
 // sites (Aksharamukha, Dharmamitra): PWA manifest shortcuts must resolve to an in-scope URL or
 // some platforms won't show them, but the destination itself can be anywhere — same trick legacy
 // assets/openDDG.html used (client-side), just a one-line server redirect instead of a page.
+// Destination allowlist, read from the manifest itself (configs/manifest.json shortcuts) — no
+// second, hand-maintained list: adding a shortcut there is what makes its URL redirectable here.
+// Without it /open forwards to ANY absolute URL on request, i.e. an open redirect on our own
+// domain (a phishing link reading https://dhamma.gift/open?url=...). Anything not declared as a
+// shortcut answers with the home page, exactly like a missing/empty ?url= already did.
+const OPEN_REDIRECT_ALLOWLIST = (() => {
+    const allowed = new Set();
+    try {
+        const manifest = require('./configs/manifest.json');
+        for (const shortcut of manifest.shortcuts || []) {
+            const m = /^\/open\?url=(.+)$/.exec(shortcut.url || '');
+            if (m) allowed.add(decodeURIComponent(m[1]));
+        }
+    } catch (e) { console.warn('/open: manifest shortcuts not read:', e.message); }
+    return allowed;
+})();
 app.get('/open', (req, res) => {
-    res.redirect(typeof req.query.url === 'string' && req.query.url ? req.query.url : '/');
+    const target = typeof req.query.url === 'string' ? req.query.url : '';
+    res.redirect(OPEN_REDIRECT_ALLOWLIST.has(target) ? target : '/');
 });
 
 // Конвертация системы письма пали (настройка "selectedScript" в /settings/, приходит как
@@ -322,6 +343,12 @@ app.get('/api/transliterate', async (req, res) => {
     res.set('Cache-Control', 'public, max-age=3600'); // cache.md §4 (merged into primary tier, per owner)
     const text = (req.query.text || '').toString();
     if (!text) return res.json({ text: '', converted: false });
+    // Callers send ONE clicked word (paliLookup.js ensureIastWord). Conversion runs through
+    // Pyodide in-process, so an unbounded ?text= is a cheap way to burn the server's single
+    // thread — cap it instead of transliterating a megabyte of pasted text.
+    if (text.length > TRANSLITERATE_MAX_LENGTH) {
+        return res.status(400).json({ error: `Parameter "text" is too long (max ${TRANSLITERATE_MAX_LENGTH} characters).` });
+    }
     const aksh = await akshReady;
     if (!aksh) return res.json({ text, converted: false });
     try {
@@ -669,6 +696,14 @@ app.use((req, res, next) => {
 app.post('/assets/lbl-save.php', express.text({ type: '*/*', limit: '10mb' }), (req, res) => {
     res.set('Cache-Control', 'no-store'); // cache.md §5 — write endpoint
     const filename = path.basename(req.query.file || `backup_${Date.now()}.json`);
+    // The Label Tool only ever saves corpus JSON ("dn22_translation-ru-sv+edited+o.json", see
+    // public/overrides/lbl.html). Enforcing that shape matters because OFFLINE_MIRRORS_ROOT's
+    // subdirectories are auto-published as static routes (/{name}/...) — an unauthenticated POST
+    // that could pick the extension could drop a .html/.js file onto our own origin. path.basename
+    // above already stops traversal; this stops the content type.
+    if (!LBL_SAVE_FILENAME_RE.test(filename)) {
+        return res.status(400).send('Invalid file name (expected a plain *.json name)');
+    }
     const saveDir = path.join(OFFLINE_MIRRORS_ROOT, 'lbl');
     try {
         fsSync.mkdirSync(saveDir, { recursive: true });
@@ -2669,6 +2704,7 @@ app.get('/search/:keyword', searchHandler);
 // build or hardcode a tree: just read the small file for whichever book was requested.
 const TOC_TREE_ROOT = path.join(DATA_ROOT, 'suttacentral.net', 'sc-data', 'structure', 'tree');
 const TOC_TREE_KINDS = ['sutta', 'vinaya', 'abhidhamma'];
+const TOC_BOOK_CODE_RE = /^[a-z0-9][a-z0-9-]*$/i;
 const tocTreeCache = new Map(); // code -> parsed tree JSON | null (small files, static for process lifetime)
 
 // Real samyutta/group names for SN — legacy's own TOC data (assets/texts/sn_toc.csv, columns:
@@ -2697,6 +2733,11 @@ function loadSnTocOverrides() {
 const SN_TOC = loadSnTocOverrides();
 
 function loadBookTree(code) {
+    // :code comes straight from the URL and is interpolated into a file path below. Corpus book
+    // codes are plain [a-z0-9-] slugs ("dn", "pli-tv-bu-vb"); rejecting everything else keeps a
+    // "../.."-style code from reaching outside TOC_TREE_ROOT and keeps tocTreeCache (unbounded,
+    // process-lifetime) from being filled with junk keys by repeated bogus requests.
+    if (!TOC_BOOK_CODE_RE.test(code)) return null;
     if (tocTreeCache.has(code)) return tocTreeCache.get(code);
     let tree = null;
     for (const kind of TOC_TREE_KINDS) {
@@ -3185,16 +3226,6 @@ app.get('/:slug', (req, res) => {
 // no legacy dependency (only /assets/{css,js,img} files already vendored in public/overrides/).
 app.use((req, res) => {
     sendVersionedHtml(req, res, path.join(__dirname, 'public', '404.html'), 404);
-});
-
-// Native 404 (public/404.html) — replaces legacy /assets/404.php (PHP includes for
-// config/translate.php + a horizontal-menu partial, both from the old dg repo). This is a
-// real 404 status, unlike the /:slug route above which always answers 200 (single-segment
-// unknown slugs are valid search queries, not errors) — this only fires for what nothing else
-// matched: multi-segment paths and missing static files under /assets etc. Self-contained,
-// no legacy dependency (only /assets/{css,js,img} files already vendored in public/overrides/).
-app.use((req, res) => {
-    res.status(404).sendFile(path.join(__dirname, 'public', '404.html'));
 });
 
 app.listen(PORT, () => {

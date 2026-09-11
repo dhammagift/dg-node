@@ -117,8 +117,17 @@
         });
     }
 
+    // Failed responses must not be cached: these promise caches live for the whole SPA session,
+    // so one request that lost the network used to pin its rejection permanently — every later
+    // attempt to open that book (or the TOC itself) re-read the same rejected promise and showed
+    // the error again without ever retrying. Drop the entry on failure, keep it on success.
     function fetchTopLevel() {
-        if (!topLevelPromise) topLevelPromise = fetchJSON('/api/toc');
+        if (!topLevelPromise) {
+            topLevelPromise = fetchJSON('/api/toc').catch(function (e) {
+                topLevelPromise = null;
+                throw e;
+            });
+        }
         return topLevelPromise;
     }
 
@@ -126,7 +135,10 @@
         var cacheKey = code + '|' + langs.join(',');
         if (bookCache[cacheKey]) return bookCache[cacheKey];
         var url = '/api/toc/book/' + encodeURIComponent(code) + '?langs=' + encodeURIComponent(langs.join(','));
-        bookCache[cacheKey] = fetchJSON(url);
+        bookCache[cacheKey] = fetchJSON(url).catch(function (e) {
+            delete bookCache[cacheKey];
+            throw e;
+        });
         return bookCache[cacheKey];
     }
 
@@ -139,7 +151,8 @@
     function fetchPatimokkhaFragment(side) {
         if (patimokkhaFragmentCache[side]) return patimokkhaFragmentCache[side];
         patimokkhaFragmentCache[side] = fetch('/api/patimokkha-fragment/' + side)
-            .then(function (r) { if (!r.ok) throw new Error('http ' + r.status); return r.text(); });
+            .then(function (r) { if (!r.ok) throw new Error('http ' + r.status); return r.text(); })
+            .catch(function (e) { delete patimokkhaFragmentCache[side]; throw e; });
         return patimokkhaFragmentCache[side];
     }
 

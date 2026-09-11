@@ -3080,6 +3080,14 @@ $(document).ready(function() {
     var reportMode = new URLSearchParams(window.location.search).get('report') === 'words' ? 'words' : 'suttas';
     var lastSearchJson = null;
     var lastHighlightWord = '';
+    // Каждый запуск поиска (initSearchApp) берёт себе новый номер. Всё, что возвращается из сети
+    // асинхронно — сам fast=1-ответ и догрузка цитат (/search/enrich) — перед тем как что-то
+    // нарисовать, сверяет свой номер с текущим и молча выходит, если пользователь успел запустить
+    // другой поиск. Без этого ответ на ПРЕДЫДУЩИЙ запрос, пришедший позже нового, перерисовывал
+    // выдачу под чужое слово (адрес уже новый, таблица — старая), а enrichChunk дописывал цитаты
+    // старого слова в данные нового поиска (Object.assign в объект, который либо уже null —
+    // TypeError в консоль, либо принадлежит другой выдаче — тихо неверные цитаты).
+    var searchRunToken = 0;
 
     // TODO.md поиск п.5 — состояние фазированной загрузки. currentTable: живой инстанс
     // DataTables API текущего видимого отчёта — обе таблицы (#pali, #pali-words) теперь
@@ -3326,11 +3334,16 @@ $(document).ready(function() {
     var ENRICH_CHUNK_SIZE = 500;
 
     function enrichChunk(chunkIds) {
+        var myRun = searchRunToken;
         return fetch(buildUrl('/search/enrich', '&ids=' + chunkIds.map(encodeURIComponent).join(',')))
             .then(function (r) { return r.json(); })
             .then(function (json) {
                 chunkIds.forEach(function (id) { pendingIds.delete(id); });
+                // Догрузка принадлежит запуску поиска, который её начал (см. searchRunToken):
+                // если пользователь уже ищет другое слово, эти цитаты чужие — выбрасываем.
+                if (myRun !== searchRunToken || !lastSearchJson) return;
                 Object.keys(json.data).forEach(function (id) {
+                    if (!lastSearchJson.data[id]) return;
                     Object.assign(lastSearchJson.data[id], json.data[id]);
                     enrichedIds.add(id);
                 });
@@ -4282,6 +4295,7 @@ $(document).ready(function() {
     });
 
     async function initSearchApp() {
+        const myRun = ++searchRunToken;
         let urlParams = new URLSearchParams(window.location.search);
 
         keyword = urlParams.get('q');
@@ -4353,6 +4367,7 @@ $(document).ready(function() {
                 return fastResponse.json();
             })();
             if (!cachedFastJson) searchResultCache.set(searchUrl, fastJson);
+            if (myRun !== searchRunToken) return; // пока ждали сеть, начался другой поиск
 
             // 0 результатов + в запросе кириллица — возможно, ввели латинское слово, но
             // раскладка ОС была русской ("kacchapa" -> "лфссрфзф", буквы с тех же клавиш —
@@ -4370,6 +4385,7 @@ $(document).ready(function() {
                     try {
                         const retryResponse = await fetch(retryUrl);
                         const retryJson = retryResponse.ok ? await retryResponse.json() : null;
+                        if (myRun !== searchRunToken) return; // см. searchRunToken выше
                         if (retryJson && retryJson.metadata.totalFiles > 0) {
                             fastJson = retryJson;
                             searchResultCache.set(retryUrl, retryJson);
@@ -4410,6 +4426,7 @@ $(document).ready(function() {
 
             if (reportMode === 'suttas') ensureEnrichmentStarted();
         } catch (error) {
+            if (myRun !== searchRunToken) return; // ошибка устаревшего запроса — новый уже идёт
             console.error('Ошибка при поиске:', error);
             // Ошибку показываем в #search-message и прячем таблицу — иначе человек видел бы
             // пустую выдачу без единого намёка на то, что запрос вообще не выполнился (например,
@@ -4432,7 +4449,9 @@ $(document).ready(function() {
             }
             dgSetState('results');
         } finally {
-            dgSetBusy(false);
+            // Индикатор гасит только САМЫЙ СВЕЖИЙ запуск: устаревший, завершившийся позже, иначе
+            // снял бы "идёт поиск" с ещё выполняющегося нового.
+            if (myRun === searchRunToken) dgSetBusy(false);
         }
     }
 

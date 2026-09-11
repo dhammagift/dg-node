@@ -2771,6 +2771,18 @@ function sanitizeId(str) {
     return encodeURIComponent(str).replace(/\./g, '%2E');
 }
 
+// script.async = FALSE (not true) and an onerror path — two separate live bugs:
+//   1. auth-compat/firestore-compat both require app-compat to have RUN first (they extend the
+//      global `firebase` namespace it creates). A dynamically created <script> defaults to
+//      async=true, i.e. "execute whenever it arrives" — whichever of the three downloads first
+//      wins, so on a cold cache auth-compat could execute before app-compat and throw
+//      ("firebase is not defined"), leaving sync dead until a reload happened to race the other
+//      way. `async = false` on an injected script means "still don't block the parser, but
+//      execute in insertion order" — exactly what's needed here.
+//   2. no onerror meant a blocked/offline CDN never settled the promise at all: initFirebase()
+//      awaited it forever, and every caller that awaits initFirebase/forceSyncNow (the quick
+//      modal's sync spinner among them) hung with no error anywhere. Resolve on failure and let
+//      the `firebase.apps` check below report the real problem.
 function loadFirebaseScripts() {
     return new Promise((resolve) => {
         if (window.firebase) { resolve(); return; }
@@ -2779,14 +2791,14 @@ function loadFirebaseScripts() {
             "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth-compat.js",
             "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore-compat.js"
         ];
-        let loadedCount = 0;
+        let settledCount = 0;
+        const settle = () => { if (++settledCount === scripts.length) resolve(); };
         scripts.forEach(src => {
             const script = document.createElement('script');
-            script.src = src; script.async = true; 
-            script.onload = () => {
-                loadedCount++;
-                if (loadedCount === scripts.length) resolve();
-            };
+            script.src = src;
+            script.async = false; // preserve execution order (app-compat must run first)
+            script.onload = settle;
+            script.onerror = () => { console.warn('Firebase script failed to load:', src); settle(); };
             document.head.appendChild(script);
         });
     });
@@ -3202,9 +3214,16 @@ window.clearCloudHistory = async function() {
     const uid = getUid();
     try {
         const snap = await db.collection("users").doc(uid).collection("history").get();
-        const batch = db.batch();
-        snap.docs.forEach(doc => batch.delete(doc.ref));
-        await batch.commit();
+        // Firestore rejects a write batch of more than 500 operations, and history holds up to
+        // 8400 entries (see the history listener above) — one batch for everything meant "Clear
+        // ALL history" silently failed for exactly the heavy users who needed it, wiping the
+        // local copy while the cloud kept every record and pushed it straight back. Chunked.
+        const BATCH_LIMIT = 450;
+        for (let i = 0; i < snap.docs.length; i += BATCH_LIMIT) {
+            const batch = db.batch();
+            snap.docs.slice(i, i + BATCH_LIMIT).forEach(doc => batch.delete(doc.ref));
+            await batch.commit();
+        }
         refreshSyncTimeUI();
     } catch (e) { console.error("Error clearing history:", e); }
 };

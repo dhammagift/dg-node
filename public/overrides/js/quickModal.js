@@ -54,6 +54,33 @@ async function dgOfflineLoginWithPhrase() {
     }
 }
 
+// Favorites and history rows are rendered with innerHTML, and their text is NOT ours: a search
+// query goes into history verbatim, a favorite title is user-typed (rename) and can also arrive
+// from the cloud (another device, settings.js setupCloudListeners). Any of those containing
+// markup used to be parsed as HTML here — a stored-XSS foothold inside the modal, and at minimum
+// a row that renders as garbage. Every interpolated value goes through this now.
+function qmEscape(value) {
+    return String(value == null ? '' : value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+// One corrupt entry (a half-written value, another tool's data under the same key) used to throw
+// straight out of renderQuickLists and leave the modal permanently empty with no way back except
+// devtools. Parse defensively and fall back to an empty list instead.
+function qmReadList(key) {
+    try {
+        const parsed = JSON.parse(localStorage.getItem(key));
+        return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+        console.warn('quickModal: ignoring unreadable ' + key, e);
+        return [];
+    }
+}
+
 function buildQuickModalDOM() {
   const currentPath = window.location.pathname;
   let currentUrl = window.location.href;
@@ -334,7 +361,7 @@ function buildQuickModalDOM() {
       // --- ЛОГИКА УДАЛЕНИЯ ---
       if (e.target.classList.contains('remove-fav-btn')) {
           const slug = e.target.dataset.slug;
-          let favData = JSON.parse(localStorage.getItem('dg_favorites')) || [];
+          let favData = qmReadList('dg_favorites');
           const itemIndex = favData.findIndex(f => f.slug === slug);
           
           if (itemIndex !== -1) {
@@ -361,7 +388,7 @@ function buildQuickModalDOM() {
       // --- ЛОГИКА ПЕРЕИМЕНОВАНИЯ ---
       if (e.target.classList.contains('rename-fav-btn')) {
           const slug = e.target.dataset.slug;
-          let favData = JSON.parse(localStorage.getItem('dg_favorites')) || [];
+          let favData = qmReadList('dg_favorites');
           const itemIndex = favData.findIndex(f => f.slug === slug);
           
           if (itemIndex !== -1) {
@@ -389,13 +416,11 @@ function buildQuickModalDOM() {
           const slug = e.target.dataset.slug;
           const displayKey = e.target.dataset.display;
           const url = e.target.dataset.url;
-          let currentFavs = JSON.parse(localStorage.getItem('dg_favorites')) || [];
+          let currentFavs = qmReadList('dg_favorites');
           const idx = currentFavs.findIndex(f => f.slug === slug);
           
           const parser = new URL(url, window.location.origin);
-          const isSearchPage = parser.pathname === '/' || parser.pathname === '/ru/' || parser.pathname.endsWith('index.php');
-          let finalTitle = displayKey;
-          if (isSearchPage && !finalTitle.startsWith("")) finalTitle = finalTitle;
+          const finalTitle = displayKey;
           
           const favObj = {
               slug: slug, id: slug, title: finalTitle, 
@@ -423,12 +448,12 @@ function buildQuickModalDOM() {
           
           if (confirm(window.isRu ? "Стереть этот запрос из истории?" : "Delete this search from history?")) {
               
-              let deletedHist = JSON.parse(localStorage.getItem('dg_deleted_history')) || [];
+              let deletedHist = qmReadList('dg_deleted_history');
               deletedHist.push({ slug: slug, deletedAt: Date.now() });
               if (deletedHist.length > 300) deletedHist.shift(); 
               localStorage.setItem('dg_deleted_history', JSON.stringify(deletedHist));
 
-              let histData = JSON.parse(localStorage.getItem('localSearchHistory')) || [];
+              let histData = qmReadList('localSearchHistory');
               histData = histData.filter(h => {
                   let currentSlug = h[0];
                   try { 
@@ -481,8 +506,8 @@ function buildQuickModalDOM() {
 
 
 function renderQuickLists(isRu, queryBase) {
-    const favData = JSON.parse(localStorage.getItem('dg_favorites')) || [];
-    const histData = JSON.parse(localStorage.getItem('localSearchHistory')) || [];
+    const favData = qmReadList('dg_favorites');
+    const histData = qmReadList('localSearchHistory');
     
     const favContainer = document.querySelector('#quick-favorites-container');
     const histContainer = document.querySelector('#quick-history-container');
@@ -516,10 +541,10 @@ function renderQuickLists(isRu, queryBase) {
         const dateStr = fav.timestamp ? new Date(fav.timestamp).toLocaleDateString() : "";
         
         // Добавили кнопку rename-fav-btn (карандаш) перед кнопкой удаления
-        favHtml += `<li><span class="fav-star-icon">★</span><a href="${url}">${fav.title || fav.slug}</a>
-        <span class="item-date">${dateStr}</span>
-        <span class="action-btn rename-fav-btn" data-slug="${fav.slug}" title="${window.isRu ? 'Переименовать' : 'Rename'}">✎</span>
-        <span class="action-btn remove-fav-btn" data-slug="${fav.slug}">×</span></li>`;
+        favHtml += `<li><span class="fav-star-icon">★</span><a href="${qmEscape(url)}">${qmEscape(fav.title || fav.slug)}</a>
+        <span class="item-date">${qmEscape(dateStr)}</span>
+        <span class="action-btn rename-fav-btn" data-slug="${qmEscape(fav.slug)}" title="${window.isRu ? 'Переименовать' : 'Rename'}">✎</span>
+        <span class="action-btn remove-fav-btn" data-slug="${qmEscape(fav.slug)}">×</span></li>`;
       });
       favHtml += '</ul>';
       favContainer.innerHTML = favHtml;
@@ -548,8 +573,8 @@ function renderQuickLists(isRu, queryBase) {
         
 // Добавили hidden-delete-hist и data-slug
 histHtml += `<li><span class="hist-icon"><img src="/assets/svg/clock-rotate-left.svg" width="14" height="14"></span>
-<a href="${h[1]}">${h[0]}</a><span class="item-date hidden-delete-hist" data-slug="${realSlug}">${dateStr}</span>
-<span class="action-btn toggle-fav-btn-hist" data-slug="${realSlug}" data-display="${h[0]}" data-url="${h[1]}">${isFav ? "★" : "☆"}</span></li>`;
+<a href="${qmEscape(h[1])}">${qmEscape(h[0])}</a><span class="item-date hidden-delete-hist" data-slug="${qmEscape(realSlug)}">${qmEscape(dateStr)}</span>
+<span class="action-btn toggle-fav-btn-hist" data-slug="${qmEscape(realSlug)}" data-display="${qmEscape(h[0])}" data-url="${qmEscape(h[1])}">${isFav ? "★" : "☆"}</span></li>`;
 
       });
       histHtml += '</ul>';
@@ -634,11 +659,15 @@ window.toggleQuickModal = function(tabKey) {
         if (syncImg) syncImg.classList.add('custom-spin');
 
         // Вызываем синхронизацию (без await, чтобы не блокировать окно)
+        // .catch/.finally, not a bare .then: a rejected sync (offline, Firestore error) used to
+        // leave the icon spinning forever with no way to retry short of reopening the modal.
         forceSyncNow().then(() => {
             if (window.quickModalIsOpen && typeof window.refreshQuickModalData === 'function') {
                 window.refreshQuickModalData();
             }
-            // Выключаем вращение, когда загрузка завершена
+        }).catch((e) => {
+            console.warn('quickModal: background sync failed', e);
+        }).finally(() => {
             if (syncImg) syncImg.classList.remove('custom-spin');
         });
     }

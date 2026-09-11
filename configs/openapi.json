@@ -738,7 +738,8 @@
             "in": "query",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "maxLength": 500
             },
             "example": "kamma"
           }

@@ -61,6 +61,12 @@ const app = Fastify({ bodyLimit: 10 * 1024 * 1024 });
 // dg-light.js, the legacy Express server, defaults to 3001 so the two can run side by side.
 const PORT = Number(process.env.PORT) || 3003;
 
+// Input limits for the two endpoints that accept free-form client input (see their handlers).
+// Kept in lockstep with dg-light.js.
+const TRANSLITERATE_MAX_LENGTH = 500;
+const LBL_SAVE_FILENAME_RE = /^[A-Za-z0-9._+ -]+\.json$/; // space: a raw '+' in the query decodes to one
+const TOC_BOOK_CODE_RE = /^[a-z0-9][a-z0-9-]*$/i;
+
 // The only POST route in this file (/assets/lbl-save.php) always wants the raw body as a string,
 // regardless of what Content-Type the client sends — same as express.text({type:'*/*'}) did.
 // Removing the default parsers (json/urlencoded) is safe: no other route reads a body.
@@ -362,8 +368,25 @@ app.get('/manifest.json', (req, res) => {
 // sites (Aksharamukha, Dharmamitra): PWA manifest shortcuts must resolve to an in-scope URL or
 // some platforms won't show them, but the destination itself can be anywhere — same trick legacy
 // assets/openDDG.html used (client-side), just a one-line server redirect instead of a page.
+// Destination allowlist, read from the manifest itself (configs/manifest.json shortcuts) — no
+// second, hand-maintained list: adding a shortcut there is what makes its URL redirectable here.
+// Without it /open forwards to ANY absolute URL on request, i.e. an open redirect on our own
+// domain (a phishing link reading https://dhamma.gift/open?url=...). Anything not declared as a
+// shortcut answers with the home page, exactly like a missing/empty ?url= already did.
+const OPEN_REDIRECT_ALLOWLIST = (() => {
+    const allowed = new Set();
+    try {
+        const manifest = require('./configs/manifest.json');
+        for (const shortcut of manifest.shortcuts || []) {
+            const m = /^\/open\?url=(.+)$/.exec(shortcut.url || '');
+            if (m) allowed.add(decodeURIComponent(m[1]));
+        }
+    } catch (e) { console.warn('/open: manifest shortcuts not read:', e.message); }
+    return allowed;
+})();
 app.get('/open', (req, res) => {
-    res.redirect(typeof req.query.url === 'string' && req.query.url ? req.query.url : '/');
+    const target = typeof req.query.url === 'string' ? req.query.url : '';
+    res.redirect(OPEN_REDIRECT_ALLOWLIST.has(target) ? target : '/');
 });
 
 // Конвертация системы письма пали (настройка "selectedScript" в /settings/, приходит как
@@ -458,6 +481,12 @@ async function convertScriptInSearchResult(result, scriptCode) {
 app.get('/api/transliterate', async (req, res) => {
     const text = (req.query.text || '').toString();
     if (!text) return res.send({ text: '', converted: false });
+    // Callers send ONE clicked word (paliLookup.js ensureIastWord). Conversion runs through
+    // Pyodide in-process, so an unbounded ?text= is a cheap way to burn the server's single
+    // thread — cap it instead of transliterating a megabyte of pasted text.
+    if (text.length > TRANSLITERATE_MAX_LENGTH) {
+        return res.code(400).send({ error: `Parameter "text" is too long (max ${TRANSLITERATE_MAX_LENGTH} characters).` });
+    }
     const aksh = await akshReady;
     if (!aksh) return res.send({ text, converted: false });
     try {
@@ -845,6 +874,14 @@ initServer();
 app.post('/assets/lbl-save.php', (req, res) => {
     res.header('cache-control', 'no-store'); // cache.md §5 — write endpoint
     const filename = path.basename(req.query.file || `backup_${Date.now()}.json`);
+    // The Label Tool only ever saves corpus JSON ("dn22_translation-ru-sv+edited+o.json", see
+    // public/overrides/lbl.html). Enforcing that shape matters because OFFLINE_MIRRORS_ROOT's
+    // subdirectories are auto-published as static routes (/{name}/...) — an unauthenticated POST
+    // that could pick the extension could drop a .html/.js file onto our own origin. path.basename
+    // above already stops traversal; this stops the content type.
+    if (!LBL_SAVE_FILENAME_RE.test(filename)) {
+        return res.code(400).send('Invalid file name (expected a plain *.json name)');
+    }
     const saveDir = path.join(OFFLINE_MIRRORS_ROOT, 'lbl');
     try {
         fsSync.mkdirSync(saveDir, { recursive: true });
@@ -1426,6 +1463,11 @@ function loadSnTocOverrides() {
 const SN_TOC = loadSnTocOverrides();
 
 function loadBookTree(code) {
+    // :code comes straight from the URL and is interpolated into a file path below. Corpus book
+    // codes are plain [a-z0-9-] slugs ("dn", "pli-tv-bu-vb"); rejecting everything else keeps a
+    // "../.."-style code from reaching outside TOC_TREE_ROOT and keeps tocTreeCache (unbounded,
+    // process-lifetime) from being filled with junk keys by repeated bogus requests.
+    if (!TOC_BOOK_CODE_RE.test(code)) return null;
     if (tocTreeCache.has(code)) return tocTreeCache.get(code);
     let tree = null;
     for (const kind of TOC_TREE_KINDS) {

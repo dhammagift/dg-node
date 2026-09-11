@@ -71,9 +71,15 @@ if (!READER_MODE.lang && langFromUrl) READER_MODE.lang = langFromUrl;
 // (not a copy) window.READER_MODE points to; every later `READER_MODE.modeKey = ...` elsewhere
 // in this file mutates the object in place, so the reference below stays live automatically.
 window.READER_MODE = READER_MODE;
+// .catch, not a bare chain: initReader() awaits this promise before doing anything at all, so a
+// failed/invalid mode-table.json used to abort reader initialisation entirely (nothing rendered,
+// one rejection in the console). The table is presentational only — every reader of it already
+// guards with `window.MODE_TABLE && ...` — so an empty table degrades the mode-switch panel
+// instead of taking the whole reader down with it.
 window.modeTableReady = fetch('/reader/mode-table.json')
     .then(r => r.json())
-    .then(data => { window.MODE_TABLE = data; return data; });
+    .then(data => { window.MODE_TABLE = data; return data; })
+    .catch(e => { console.warn('Reader mode table not loaded:', e.message); window.MODE_TABLE = {}; return {}; });
 
 // Owner: the burger's EN/RU switch should also change "reading language" (which translation
 // leads), not just interface strings — but for a mode that already shows several languages at
