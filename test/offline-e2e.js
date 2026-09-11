@@ -212,9 +212,9 @@ function requireFixture() {
     const db = path.join(FIXTURE_DIR, 'dg-mobile.db');
     const manifest = path.join(FIXTURE_DIR, 'db-manifest.json');
     if (!fs.existsSync(db) || !fs.existsSync(manifest)) {
-        fail(`no database slice in ${FIXTURE_DIR}.\nBuild one first:\n` +
-            `  cd /var/www/dg-app-full && DG_NODE_PATH=${ROOT} node build-app-db.js \\\n` +
-            `      --from=${ROOT}/dg.db --langs=ru,en --out=${FIXTURE_DIR}/dg-mobile.db`);
+        fail(`no database slice in ${FIXTURE_DIR}.\nBuild one first (from this repository):\n` +
+            `  npm run build-search-db\n` +
+            `  node build-mobile-db.js --source=${ROOT}/dg.db --langs=ru,en --out=${FIXTURE_DIR}`);
     }
     return JSON.parse(fs.readFileSync(manifest, 'utf8'));
 }

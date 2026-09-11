@@ -22,8 +22,13 @@ const crypto = require('crypto');
 const { DatabaseSync } = require('node:sqlite');
 
 function arg(name, fallback) {
-    const hit = process.argv.slice(2).find((a) => a.startsWith(`--${name}=`));
-    return hit ? hit.slice(name.length + 3) : fallback;
+    // --from is accepted as an alias for --source: that is the name the old app's build used, and the
+    // test's build hint.
+    for (const key of [name, name === 'source' ? 'from' : name]) {
+        const hit = process.argv.slice(2).find((a) => a.startsWith(`--${key}=`));
+        if (hit) return hit.slice(key.length + 3);
+    }
+    return fallback;
 }
 
 const LANGS = arg('langs', 'ru,en').split(',').map((s) => s.trim()).filter(Boolean);

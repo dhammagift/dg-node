@@ -37,16 +37,11 @@ public/overrides/js/fontawesome-local.js
 public/overrides/js/settings-bundle.js
 public/overrides/js/home-bundle.js
 
-# The offline Android/iOS app moved out of this repo to dhammagift/dg-app-full (its history was
-# split out with `git subtree split`, and the pre-removal state of this repo is kept on the
-# `mobbak` branch). What stays here is the DISTRIBUTION of its artifacts: siteroot/mobile-data and
-# siteroot/mobile-apk — see CLAUDE.md, "Приложение (dg-app-full)".
-#
-# mobile/ itself is still ignored on purpose: on the prod machine the artifact directories it
-# used to hold (mobile/dist/*.db, mobile/android/.../apk/debug/) were never tracked, so removing
-# the app's SOURCE from git deliberately leaves them in place and the two symlinks above keep
-# serving without any manual step.
-mobile/
+# The offline library that /mobile-data serves is built HERE now: `npm run build-search-db` makes
+# dg.db, `npm run build-mobile-db` turns it into siteroot/mobile-data/dg-mobile.db + db-manifest.json.
+# The artifacts are never tracked (hundreds of MB, rebuildable), and nothing depends on the old
+# dg-app-full checkout any more: siteroot/mobile-apk (a link into its removed build tree) is gone,
+# and mobile/ is not part of this repository.
 *.db
 *.db-wal
 *.db-shm

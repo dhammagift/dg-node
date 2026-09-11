@@ -1,4 +1,13 @@
 # Dhamma.gift — Node.js SPA Project
+- Be extremely concise.
+- Do not explain obvious things.
+- Do not repeat the user's request.
+- Prefer commands over explanations.
+- After completing a task, give only a short summary.
+- Do not provide long plans unless explicitly requested.
+- Do not narrate every action or tool call.
+- If the task is clear, act immediately.
+- Keep responses to the minimum necessary.
 
 ## Два проекта
 
@@ -527,11 +536,14 @@ URL in → Router parses → State updates → Views re-render
   `<head>`. Если структура `<head>` или блок регистрации SW в `search/index.html` заметно
   поменяется — сборка приложения упадёт с внятной ошибкой, а не соберёт молча битую страницу.
 
-**Что осталось здесь — только раздача.** `siteroot/mobile-data` и `siteroot/mobile-apk`
-по-прежнему смотрят внутрь `mobile/`: на прод-машине это НЕтрекавшиеся каталоги сборки
-(`mobile/dist/*.db`, `mobile/android/.../apk/debug/`), которые удаление исходников из git не
-трогает, поэтому `test.dhamma.gift/mobile-data/` продолжает отдавать базы без ручных действий.
-Когда артефакты переедут в чекаут dg-app-full — перенаправить эти два симлинка туда.
+**Что осталось здесь — только данные.** Базу для офлайна собирает сам dg-node:
+`npm run build-search-db` → `dg.db`, затем `npm run build-mobile-db` → `siteroot/mobile-data/
+dg-mobile.db` + `db-manifest.json` (срез: все сутты, root+variant, переводы для `--langs`, html,
+`chunks` с хешами, FTS5 trigram). Раньше этот артефакт лежал в старой сборке приложения
+(`mobile/dist/*.db`, на тест-хосте — симлинк `siteroot/mobile-data -> .offline-test`), и сайт
+раздавал то, что сам не собирал. Симлинк `siteroot/mobile-apk` (в удалённый `mobile/android/...`)
+удалён как ненужный; `mobile/` в этом репозитории больше нет — исходники приложения живут в
+`dg-app-full`.
 
 **Как работает бэкенд приложения.** Сервера на устройстве нет и Node там нет.
 `src/app.js` подменяет `window.fetch` до того, как любой другой скрипт страницы успеет сходить
