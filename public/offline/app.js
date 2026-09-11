@@ -460,11 +460,27 @@
     // database slice, but it belongs offline too — so it is fetched once in the background after the
     // library is in place and kept in the service worker's shell cache, which is where the reader's
     // fetch of it will look when there is no network. Idempotent: present files are skipped.
-    var DICTIONARY_URLS = [
+    // Everything the reader needs that the service worker's install pass has proven unreliable about:
+    // it lost quickModal.js and friends often enough that oфлайн the toolbar showed broken icons and
+    // the quick modal failed to load ("The FetchEvent for .../quickModal.js resulted in a network error
+    // response" — owner's console, with the file answering 200 on the server). Cached from HERE, which
+    // never failed: cache.put() from the page was always fine, only the SW's install pass is flaky.
+    var OFFLINE_EXTRA_URLS = [
         '/assets/js/standalone-dpd/dpd_ebts.js',
         '/assets/js/standalone-dpd/dpd_i2h.js',
         '/assets/js/standalone-dpd/dpd_deconstructor.js',
         '/assets/js/standalone-dpd/ru/dpd_ebts.js',
+        '/assets/css/paliLookup.css',
+        '/assets/js/quickModal.js',
+        '/assets/js/translators.js',
+        '/assets/js/linksdpr.js', '/assets/js/openDpr.js',
+        '/assets/js/linksru.js', '/assets/js/openRu.js',
+        '/assets/js/linksbw.js', '/assets/js/openBw.js',
+        '/assets/js/linksbjt.js',
+        '/assets/svg/eye.svg', '/assets/svg/eye-slash.svg',
+        '/assets/svg/clock-rotate-left.svg', '/assets/svg/rotate-solid-full.svg',
+        '/assets/svg/open-link.svg', '/assets/svg/trash-can-regular-full.svg',
+        '/assets/svg/link-solid-full.svg', '/assets/svg/volume-solid-full.svg',
     ];
     var dictionaryRun = null;
     function cacheDictionary() {
@@ -476,25 +492,25 @@
                     var name = names.filter(function (n) { return n.indexOf('dg-shell-') === 0; })[0];
                     if (!name) return false;
                     return caches.open(name).then(function (cache) {
-                        return DICTIONARY_URLS.reduce(function (chain, url) {
+                        return OFFLINE_EXTRA_URLS.reduce(function (chain, url) {
                             return chain.then(function () {
                                 return cache.match(url, { ignoreSearch: true }).then(function (hit) {
                                     if (hit) return null;
-                                    log('caching the dictionary for offline use:', url);
+                                    log('caching for offline use:', url);
                                     return fetch(url, { cache: 'reload' }).then(function (res) {
                                         if (res && res.ok) return cache.put(url, res);
                                     });
                                 });
                             });
                         }, Promise.resolve()).then(function () {
-                            log('offline dictionary ready');
+                            log('offline extras ready');
                             return true;
                         });
                     });
                 });
             })
             .catch(function (e) {
-                log('dictionary could not be cached (stays online-only):', (e && e.message) || e);
+                log('offline extras could not be cached (they stay online-only):', (e && e.message) || e);
                 dictionaryRun = null;   // a later visit may have a network again
                 return false;
             });
