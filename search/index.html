@@ -1275,6 +1275,18 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
       <a href="/" class="dg-shell-logo dg-go-home" title="Home" data-i18n-title="{{global.common.home}}">
         <img src="/assets/img/dgsankhaonly.png" alt="Dhamma.Gift">
       </a>
+      <!-- Same spot, reader only (see home.css): the logo there would still say "home", but in
+           the reader owner wants one tap to /toc instead — a deliberately DIFFERENT icon
+           (fa-table-list, not the logo) so it doesn't read as "the home button broke", just as a
+           different action in the same slot. Inlined SVG, not <i class="fa-solid …">: icons in
+           static markup on this page are never auto-expanded, only ones built at runtime by
+           home.js's faSvg() are (see fontawesome-local.js comment above) — same reason
+           .dg-shell-search-ic below is inlined rather than an <i>. -->
+      <a href="/toc" class="dg-shell-toc" title="Contents" data-i18n-title="{{toolbar.tocLinkTitle}}">
+        <svg viewBox="0 0 448 512" fill="currentColor" aria-hidden="true">
+          <path d="M0 96C0 60.7 28.7 32 64 32l320 0c35.3 0 64 28.7 64 64l0 320c0 35.3-28.7 64-64 64L64 480c-35.3 0-64-28.7-64-64L0 96zm64 0l0 64 64 0 0-64-64 0zm320 0l-192 0 0 64 192 0 0-64zM64 224l0 64 64 0 0-64-64 0zm320 0l-192 0 0 64 192 0 0-64zM64 352l0 64 64 0 0-64-64 0zm320 0l-192 0 0 64 192 0 0-64z"/>
+        </svg>
+      </a>
       <!-- Home only (see .dg-shell-search-ic in home.css): a plain magnifying glass at the left
            edge of the field, where the reference has one. Same FontAwesome path as the submit
            button's icon below, just not mirrored. -->

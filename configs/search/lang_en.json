@@ -142,7 +142,8 @@
     "menuAriaLabel": "Open menu",
     "menuTitle": "Menu",
     "filterLabel": "Filter+",
-    "filterAriaLabel": "Advanced filter"
+    "filterAriaLabel": "Advanced filter",
+    "tocLinkTitle": "Contents"
   },
   "table": {
     "suttaCol": "Sutta",

@@ -1203,6 +1203,26 @@
   }
 }
 
+/* Владелец: "почему они такие разношёрстные по цвету, можно сделать одинаковые?" — .links-area's
+   footer icons (history/pdf/memo/table-columns/copy/makelist/dharmachakra, plus a couple of
+   raster favicons) are each an independently authored SVG/PNG file with its own baked-in color;
+   nothing ever unified them, and color/fill in CSS has no effect on a rasterized <img> or an
+   externally-referenced SVG — only filter reaches those pixels. brightness(0) crushes ANY source
+   color to black regardless of hue, then invert(X) dials that back to the site's existing flat
+   icon-gray (.gray-icon, extrastyles.css: #989898 ≈ invert(0.6) on black) — same recipe
+   #smart-gear-btn already uses for its own dark-mode icon, just above. Loaded last of the
+   reader's three stylesheets (index.css/rus-multi.css/uiextra.css), so this wins their cascade.
+   logo4nt_plain.png is excluded: an actual partner wordmark, not a generic feature glyph —
+   recoloring someone else's logo reads as defacing it, not as "joining our icon language". */
+.links-area img:not([src*="logo4nt"]),
+.links-area svg {
+  filter: brightness(0) invert(0.6);
+}
+.dark .links-area img:not([src*="logo4nt"]),
+.dark .links-area svg {
+  filter: brightness(0) invert(0.75);
+}
+
 .dark .dynamic-tts-btn img {
   filter: invert(1);
 }

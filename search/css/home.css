@@ -109,6 +109,11 @@ body.dg-skin-minimal {
     --dg-radius: 10px;
     --dg-font: "Lato", var(--bs-body-font-family);
     --dg-ease: cubic-bezier(0.22, 0.68, 0, 1);
+    /* One-time shine sweep on #home-motto (below) — dimmer than pure white here on purpose:
+       --dg-page is solid #fff in this theme, and --dg-text is near-black, so a full-white
+       highlight would wash the swept letters out against the page for an instant (owner: "чуть
+       менее ярким белым, чтобы пятно света не сливало буквы с фоном"). */
+    --dg-motto-shine: #cfcfcf;
     /* Боковое поле страницы: столько добавляет .container-fluid вокруг .table-wrapper. Нужно
        hero-полосе, чтобы вылезти из этого поля на всю ширину экрана (margin с минусом). На
        телефоне это поле сжато до 3px — см. медиазапрос в <head> index.html. */
@@ -132,6 +137,10 @@ body.dg-skin-minimal.dark {
     --dg-border: #2c2c2c;
     --dg-border-strong: #3b3b3b;
     --dg-text: rgb(221, 221, 221);
+    /* --dg-text here is already near-white on a near-black page — full white reads as a clean
+       glint with no wash-out risk (owner: "на темной она уже почти белая, так что свет можно
+       сделать чисто белым"). */
+    --dg-motto-shine: #ffffff;
     --dg-text-2: #a8a8a8;
     --dg-text-muted: #7c7c7c;
     --dg-navy: #1b2836;
@@ -541,13 +550,22 @@ body.dg-state-home #dg-quick-btn { display: none; }
    на главной не нужен — там и так просторно. */
 body.dg-state-home .dg-shell-sep { display: none; }
 
-/* Ракушка внутри поля — только в выдаче и в чтении: на главной знак и название уже стоят
-   в шапке. Она же кнопка «домой». */
+/* Ракушка внутри поля — только в выдаче и оглавлении: на главной знак и название уже стоят
+   в шапке. Она же кнопка «домой». В чтении на этом месте стоит .dg-shell-toc (ниже) — owner:
+   логотип там теперь ведёт в оглавление, не на главную (тот же паттерн, что у логотипа в
+   документационных сайтах — GitBook/Readthedocs, клик внутри статьи уводит в оглавление книги,
+   а не на маркетинговый home); с /toc «домой» по-прежнему одно касание через бургер. */
 body .dg-shell-logo { display: none; flex: none; line-height: 0; text-decoration: none; }
 body.dg-state-results .dg-shell-logo,
-body.dg-state-reader .dg-shell-logo,
 body.dg-state-toc .dg-shell-logo { display: inline-flex; }
 .dg-shell-logo img { width: 26px; height: 26px; object-fit: contain; display: block; }
+/* Оглавление — та же позиция в поле, что у ракушки, но только в чтении (см. комментарий выше) и
+   с другой иконкой (fa-table-list, не логотип), чтобы не читалось как «ракушка перестала быть
+   домой» — owner: "иконка должна быть другая... чтобы пользователь понимал, что это не дом".
+   Стили — 1:1 с .dg-shell-logo (та же ячейка строки, тот же паддинг/цвет вокруг). */
+body .dg-shell-toc { display: none; flex: none; line-height: 0; text-decoration: none; color: var(--dg-text-muted); }
+body.dg-state-reader .dg-shell-toc { display: inline-flex; align-items: center; justify-content: center; }
+.dg-shell-toc svg { width: 20px; height: 20px; display: block; }
 /* Разделитель перед блоком кнопок справа — как в строке поиска у поисковиков. */
 .dg-shell-sep {
     width: 1px;
@@ -1293,6 +1311,33 @@ body.dg-state-home #dg-hero-heading { display: block; }
     /* On the plain page background now (not the dark band) — dark text in light theme, light
        text in dark theme, same tokens the rest of the page's headings use. */
     color: var(--dg-text);
+}
+/* One-time shine sweep across "Найдите Истину" on first paint (owner: "чтобы при открытии один
+   раз по надписи прошёл такой свет по всей надписи") — delight tier, plays once per real page
+   load, never repeats (a plain CSS animation with no trigger to re-fire, not tied to any
+   frequently-toggled state). @supports-gated: browsers without background-clip:text just keep
+   the plain solid --dg-text color set above, never see transparent text. */
+@supports ((background-clip: text) or (-webkit-background-clip: text)) {
+    #home-motto {
+        background: linear-gradient(100deg,
+            var(--dg-text) 35%, var(--dg-motto-shine) 50%, var(--dg-text) 65%);
+        background-size: 250% 100%;
+        background-position: 160% 0;
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+        color: transparent;
+        animation: dg-motto-shine 1.6s var(--dg-ease) 0.3s 1 both;
+    }
+}
+@keyframes dg-motto-shine {
+    from { background-position: 160% 0; }
+    to { background-position: -60% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+    /* Delight-only motion, no comprehension purpose — reduced motion drops it entirely rather
+       than offering a gentler variant, per owner's usual pattern on purely decorative sweeps. */
+    #home-motto { animation: none; background: none; color: var(--dg-text); }
 }
 #home-subtitle {
     margin: 0;
@@ -3228,8 +3273,8 @@ body.dg-skin-minimal .dg-contact-btn:hover {
     body.dg-state-reader .dg-input-shell,
     body.dg-state-toc .dg-input-shell { padding: 4px 5px 4px 9px; gap: 2px; }
     body.dg-state-results .dg-shell-logo img,
-    body.dg-state-reader .dg-shell-logo img,
     body.dg-state-toc .dg-shell-logo img { width: 22px; height: 22px; }
+    body.dg-state-reader .dg-shell-toc svg { width: 18px; height: 18px; }
     body.dg-state-results .dg-shell-sep,
     body.dg-state-reader .dg-shell-sep,
     body.dg-state-toc .dg-shell-sep { display: none; }
@@ -3393,7 +3438,8 @@ body.dg-state-results .dg-input-shell, body.dg-state-reader .dg-input-shell, bod
 /* Dark: the filled #42426a shell from production stays (rule above) — owner: "с заливкой и стильнее". */
 body.dg-state-results .dg-input-shell:focus-within, body.dg-state-reader .dg-input-shell:focus-within, body.dg-state-toc .dg-input-shell:focus-within,
 body.dark.dg-state-results .dg-input-shell:focus-within, body.dark.dg-state-reader .dg-input-shell:focus-within, body.dark.dg-state-toc .dg-input-shell:focus-within { border-color: var(--dg-accent); box-shadow: 0 0 0 3px var(--dg-accent-bg); }
-body.dg-state-results .dg-shell-logo img, body.dg-state-reader .dg-shell-logo img, body.dg-state-toc .dg-shell-logo img { width: 20px; height: 20px; opacity: 0.85; }
+body.dg-state-results .dg-shell-logo img, body.dg-state-toc .dg-shell-logo img { width: 20px; height: 20px; opacity: 0.85; }
+body.dg-state-reader .dg-shell-toc svg { width: 17px; height: 17px; opacity: 0.85; }
 body.dg-state-results #form #paliauto.searchinput, body.dg-state-reader #form #paliauto.searchinput, body.dg-state-toc #form #paliauto.searchinput,
 body.dark.dg-state-results #form #paliauto.searchinput, body.dark.dg-state-reader #form #paliauto.searchinput, body.dark.dg-state-toc #form #paliauto.searchinput { color: var(--dg-text); font-family: var(--dg-font); font-size: 16px; }
 body.dg-state-results .dg-input-shell .dg-shell-btn, body.dg-state-reader .dg-input-shell .dg-shell-btn, body.dg-state-toc .dg-input-shell .dg-shell-btn { color: var(--dg-text-muted); }

@@ -134,7 +134,8 @@
     "menuAriaLabel": "เปิดเมนู",
     "menuTitle": "เมนู",
     "filterLabel": "ตัวกรอง+",
-    "filterAriaLabel": "ตัวกรองขั้นสูง"
+    "filterAriaLabel": "ตัวกรองขั้นสูง",
+    "tocLinkTitle": "สารบัญ"
   },
   "table": {
     "suttaCol": "พระสูตร",
