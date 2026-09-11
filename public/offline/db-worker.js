@@ -415,7 +415,12 @@ async function downloadInto(pool, url, name, expectedWireBytes, expectedDbBytes,
             // `resumed` is what the NEXT attempt will ask the server for — the bytes already on
             // disk. Reported so "did the retry resume or start over" is answerable from the UI/logs
             // instead of by watching the network.
-            post({ type: 'progress', loaded: 0, total: 0, phase, retrying: attempt + 1, resumed: scratch.getSize() });
+            // scratch is null in 'plain' mode (no room for a resumable copy) — reading getSize() off
+            // it threw a TypeError inside this catch, which killed the retry loop outright: on
+            // exactly the devices with the least room, the first dropped connection ended the
+            // download instead of being retried six times.
+            post({ type: 'progress', loaded: 0, total: 0, phase, retrying: attempt + 1,
+                   resumed: scratch ? scratch.getSize() : 0 });
             await new Promise(resolve => setTimeout(resolve, RETRY_BACKOFF_MS(attempt)));
         }
     }
@@ -692,7 +697,8 @@ async function fetchCurrent(pool, distBase, args) {
         // Now it is true.
         post({ type: 'progress', loaded: 1, total: 1, phase: 'download', done: true });
         scheduleFullCheck(pool, target);
-        return { suttas, build_id: candidate.meta.build_id, downloaded: true, present: true };
+        return { suttas, build_id: candidate.meta.build_id, langs: candidate.meta.langs || null,
+                 downloaded: true, present: true };
     };
 
     for (let i = 0; i < modes.length; i++) {
@@ -801,7 +807,10 @@ async function open(distBase, allowDownload, args) {
             await dropScratchAfterCancel(scratchName);
         }
         const suttas = adopt(candidate);
-        return { suttas, build_id: candidate.meta.build_id, downloaded: false, present: true };
+        // `langs` comes straight from the file's own meta (build-mobile-db.js --langs): the page
+        // decides from it which languages it can answer locally, instead of assuming ru+en.
+        return { suttas, build_id: candidate.meta.build_id, langs: candidate.meta.langs || null,
+                 downloaded: false, present: true };
     }
     if (!allowDownload) return { suttas: 0, build_id: null, downloaded: false, present: false };
     return fetchCurrent(pool, distBase, args);

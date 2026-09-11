@@ -221,6 +221,21 @@ app.get('/manifest.json', (req, res) => {
     res.sendFile(path.join(__dirname, 'configs', 'manifest.json'));
 });
 
+// /.well-known/assetlinks.json — Android App Links verification for the native apps (the same
+// route dg-fastify.js:529 already serves; it existed only there, so on this server — the one
+// production runs — the file came from whatever the legacy tree happens to hold, and that copy
+// lists the TWA only). A tap on a dhamma.gift link opens the app instead of the browser only after
+// Android fetches this file and finds the APK's signing certificate in it; without the Capacitor
+// build's certificate in the list, its links get the "Open with" chooser and are not intercepted
+// inside Chrome at all. configs/assetlinks.json lists BOTH apps.
+// Content-Type matters: Android rejects the file when it arrives as text/plain, which is exactly
+// what a generic static mount would do.
+app.get('/.well-known/assetlinks.json', (req, res) => {
+    res.set('Cache-Control', 'public, max-age=300');
+    res.type('application/json');
+    res.sendFile(path.join(__dirname, 'configs', 'assetlinks.json'));
+});
+
 // /open?url=... — in-scope redirector for manifest shortcuts that point at external, cross-origin
 // sites (Aksharamukha, Dharmamitra): PWA manifest shortcuts must resolve to an in-scope URL or
 // some platforms won't show them, but the destination itself can be anywhere — same trick legacy
