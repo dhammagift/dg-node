@@ -61,8 +61,8 @@ cannot hold NULL.
   "sha256": "…", "chunks": 36204, "patches": [] }
 ```
 
-A legacy manifest that older builds of the Android app used (`dg-ru-en.db` + `.gz`) is kept next to it
-as `db-manifest.legacy.json`; the web layer does not read it.
+The old artifacts that sat here (`dg-ru-en.db.gz` and the manifest describing it) were never used by
+anything and have been deleted; the directory holds exactly the built slice and its manifest.
 
 ## How a client uses it
 
