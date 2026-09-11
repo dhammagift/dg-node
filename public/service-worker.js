@@ -57,6 +57,12 @@ var PRECACHE_URLS = [
     // Reader mode definitions — the reader cannot resolve a mode without this, online or off.
     '/reader/mode-table.json',
     '/reader/translator-priority.json',
+    // The TOC's translator filter and the settings page read these generated caches; without them the
+    // TOC view died on a cold offline load ('/settings/translator-catalog.json' net::ERR_FAILED).
+    '/settings/translator-catalog.json',
+    '/settings/lang-counts.json',
+    '/settings/scripts.json',
+    '/settings/demo-data.json',
     // Exposed by a REAL outage (pm2 test stopped, nginx 503 for everything): these were missing, so
     // the shell came up with i18n placeholders ({{search.label}}) and a search box that silently did
     // nothing. Kept as bare paths — the page requests them with ?v=<hash> and matchCached() retries
@@ -180,6 +186,33 @@ function getCacheName() {
     return cacheNamePromise;
 }
 
+// One entry at a time, six at a time, one retry each; anything still missing is named. Measured
+// while chasing a real outage: a flat Promise.allSettled over ~145 URLs left the cache with 127
+// entries (and /spa/toc.js among the missing, though the server answered it 200) — the same files
+// cache perfectly when put from the page, so the gap is in this pass, not in the files.
+function precacheAll(cache, cacheName) {
+    var failed = [];
+    var queue = PRECACHE_URLS.slice();
+    function worker() {
+        var url = queue.shift();
+        if (!url) return Promise.resolve();
+        return cache.add(new Request(url, { cache: 'reload' }))
+            .catch(function () { return cache.add(new Request(url, { cache: 'reload' })); })
+            .catch(function () { failed.push(url); })
+            .then(worker);
+    }
+    return Promise.all([worker(), worker(), worker(), worker(), worker(), worker()])
+        .then(function () {
+            if (failed.length) {
+                console.warn('[sw] precache missed ' + failed.length + ' of ' + PRECACHE_URLS.length +
+                    ' for ' + cacheName + ': ' + failed.join(', '));
+            } else {
+                console.log('[sw] precache complete: ' + PRECACHE_URLS.length + ' entries in ' + cacheName);
+            }
+            return failed;
+        });
+}
+
 self.addEventListener('install', function (event) {
     event.waitUntil(
         getCacheName()
@@ -194,9 +227,12 @@ self.addEventListener('install', function (event) {
                     // cache: 'reload' bypasses the HTTP cache for the precache fetch: the
                     // server marks public/overrides assets immutable for a year, so without it
                     // a returning browser could precache yesterday's JS into today's cache.
-                    return Promise.allSettled(PRECACHE_URLS.map(function (url) {
-                        return cache.add(new Request(url, { cache: 'reload' }));
-                    }));
+                    // ... but NOT all at once: measured on a real outage, ~145 simultaneous cache.add
+                    // calls left the cache with 127 entries — /spa/toc.js and /reader/lang_ru.json among
+                    // the missing, which is exactly why /toc and a cold /dn22:2.2 died offline while the
+                    // server was answering those very files with 200. Small batches, one retry each, and
+                    // anything still missing is named in the log.
+                    return precacheAll(cache, cacheName);
                 });
             })
             .then(function () {
@@ -221,6 +257,21 @@ self.addEventListener('activate', function (event) {
                             .map(function (name) { return caches.delete(name); })
                     );
                 });
+            })
+            .then(function (cacheName) {
+                // Second pass, fire-and-forget: whatever the install pass missed gets another go here
+                // (a transient failure during install used to mean a shell file that was simply never
+                // cached — /spa/toc.js, /reader/lang_ru.json — and therefore a page that died offline).
+                return caches.open(cacheName).then(function (cache) {
+                    return Promise.all(PRECACHE_URLS.map(function (url) {
+                        return cache.match(url, { ignoreSearch: true });
+                    })).then(function (present) {
+                        var missing = PRECACHE_URLS.filter(function (url, i) { return !present[i]; });
+                        if (!missing.length) return;
+                        console.log('[sw] filling ' + missing.length + ' shell entries the install pass missed');
+                        return precacheAll(cache, cacheName);
+                    });
+                }).catch(function () { /* the cache is still usable as-is */ });
             })
             .then(function () {
                 return self.clients.claim();

@@ -58,6 +58,8 @@
     var nextCallId = 1;
     var pending = new Map();
     var downloadInFlight = false;   // pagehide must not cut a transfer short
+    var probeDone = null;           // the startup probe, awaited by the fetch gate (see installFetchShim)
+    var probeSettled = false;
     // The gate. False until a database is open in THIS tab; every data route checks it first.
     var local = false;
     var ownsLibrary = false;
@@ -656,11 +658,7 @@
                    p.indexOf('/api/text/') === 0 || p.indexOf('/api/nav/') === 0;
         }
 
-        window.fetch = function (input, init) {
-            // The gate. Not local → the site's own fetch, with no bookkeeping — except for a data
-            // request that fails, where "Search error — check your query (it may be an invalid
-            // regular expression)" is flatly wrong when the real cause is "no network and no library"
-            // (owner's phone, offline, nothing downloaded: the message sent them after their query).
+        function shimFetch(input, init) {
             if (!local) {
                 var raw = typeof input === 'string' ? input : input.url;
                 var where;
@@ -747,6 +745,21 @@
             }
 
             return realFetch(input, init);
+        }
+
+        window.fetch = function (input, init) {
+            if (local) return shimFetch(input, init);
+            var raw = typeof input === 'string' ? input : input.url;
+            var where;
+            try { where = new URL(raw, location.href); } catch (e) { return realFetch(input, init); }
+            // A data request that arrives BEFORE the probe has decided whether a library exists has to
+            // wait for that verdict, not go to the network: the reader starts fetching its text the
+            // moment the page loads, and on a cold offline load that race is exactly what left
+            // /dn22:2.2 showing the landing page with "Failed to fetch" in the console.
+            if (where.origin === location.origin && isDataRoute(where.pathname) && probeDone && !probeSettled) {
+                return probeDone.catch(function () {}).then(function () { return window.fetch(input, init); });
+            }
+            return shimFetch(input, init);
         };
     }
 
@@ -799,6 +812,7 @@
 
     installFetchShim();
 
-    probe().then(function () { resolveReady({ local: local }); },
-                 function (e) { rejectReady(e); });
+    probeDone = probe();
+    probeDone.then(function () { probeSettled = true; resolveReady({ local: local }); },
+                   function (e) { probeSettled = true; rejectReady(e); });
 })();
