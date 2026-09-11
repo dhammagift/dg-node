@@ -33,7 +33,9 @@ var MOBILE_DATA_PREFIX = '/mobile-data/';
 // URL roots whose asset URLs the server stamps with a ?v=<hash> cache-buster (sendVersionedHtml
 // in dg-light.js). Precaching only knows the bare path, so offline lookups of the versioned
 // form need ignoreSearch — see matchCached().
-var VERSIONED_ASSET_ROOTS = ['/assets/', '/spa/', '/nodejs/res/', '/reader/', '/settings/'];
+// Roots whose URLs legitimately carry a query (?v=<build> on assets, ?langs=ru,en on the TOC's
+// per-book trees) and where a cached bare path is the right answer for any query.
+var VERSIONED_ASSET_ROOTS = ['/assets/', '/spa/', '/nodejs/res/', '/reader/', '/settings/', '/api/toc/'];
 
 // Everything the shell needs to boot, and to run a search / open the reader, with no network.
 // Some entries are GENERATED and may legitimately be absent on a fresh checkout (/offline/*,
@@ -57,6 +59,18 @@ var PRECACHE_URLS = [
     // Reader mode definitions — the reader cannot resolve a mode without this, online or off.
     '/reader/mode-table.json',
     '/reader/translator-priority.json',
+    // The TOC opens a book by fetching /api/toc/book/<code>?langs=... — a route that was never cached,
+    // so offline the top-level list rendered and NOTHING could be expanded (owner: "покажи оглавление
+    // sn12 полностью развёрнутое"). Cached bare; the ??langs= variant is matched through the /api/toc/
+    // root above.
+    // The Patimokkha branches of the TOC and the two fragment endpoints they read: without these the
+    // tree expanded offline and then died on 'Failed to fetch' (measured with pm2 stopped).
+    '/api/patimokkha-fragment/bu', '/api/patimokkha-fragment/bi',
+    '/api/toc/book/dn', '/api/toc/book/mn', '/api/toc/book/sn', '/api/toc/book/an', '/api/toc/book/kn',
+    '/api/toc/book/iti', '/api/toc/book/ud', '/api/toc/book/snp', '/api/toc/book/dhp', '/api/toc/book/thag',
+    '/api/toc/book/thig', '/api/toc/book/mil', '/api/toc/book/kp', '/api/toc/book/pe',
+    '/api/toc/book/pli-tv-bu-pm', '/api/toc/book/pli-tv-bi-pm', '/api/toc/book/pli-tv-bu-vb',
+    '/api/toc/book/pli-tv-bi-vb', '/api/toc/book/pli-tv-kd', '/api/toc/book/pli-tv-pvr',
     // The TOC's translator filter and the settings page read these generated caches; without them the
     // TOC view died on a cold offline load ('/settings/translator-catalog.json' net::ERR_FAILED).
     '/settings/translator-catalog.json',
