@@ -550,10 +550,14 @@ window.generateThirdPartyLinks = function(slug, slugReady, texttype, translator)
     // (assets/js/openBw-RealTBW.js/settings.js there) — NOT mirror-link.js's live-reachability
     // probe used just above for other mirrors (theirs is "is it actually here right now",
     // right for a mirror that may or may not be mounted; force_local is an explicit mode switch,
-    // wrong to derive from whether a fetch happens to succeed). localhost still counts as local
-    // too (matches legacy's isLocal, and is how this is tested without the URL flag).
-    const isForceLocal = localStorage.getItem('forceLocal') === 'true';
-    const isLocal = window.location.host.includes('localhost') || window.location.host.includes('127.0.0.1') || isForceLocal;
+    // wrong to derive from whether a fetch happens to succeed).
+    //
+    // Hostname is deliberately NOT part of this any more. It used to say "localhost counts as
+    // local too", which was written for the dev server — but the Capacitor app's own origin is
+    // https://localhost, so every reader in the app got the secret/local links: "bb" and "ai"
+    // showed up for people who never asked for them (owner, screenshot of dn1 in the app). The
+    // switch is the flag, and only the flag.
+    const isLocal = localStorage.getItem('forceLocal') === 'true';
 
     if (typeof tbwLinksData !== 'undefined') {
         const hasTbw = tbwLinksData.find(item => Array.isArray(item) ? item[0] === slug : item === slug);

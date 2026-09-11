@@ -338,6 +338,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
        единым куском) — 200px с запасом больше любой реальной высоты этих тонких строк. */
     body.dg-state-results #dg-hero-band,
     body.dg-state-reader #dg-hero-band,
+    body.dg-state-toc #dg-hero-band,
     body.dg-state-results #results-toolbar,
     body.dg-state-reader #reader-toolbar,
     body.dg-state-reader #navigation,
@@ -352,7 +353,8 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     /* Сплошная подложка ниже по z-index, чем весь стек выше — высоту и transform ей задаёт тот
        же JS (applyPadding()/scroll-обработчик ниже), см. комментарий у самого div. */
     body.dg-state-results #dg-header-backdrop,
-    body.dg-state-reader #dg-header-backdrop {
+    body.dg-state-reader #dg-header-backdrop,
+    body.dg-state-toc #dg-header-backdrop {
         display: block;
         position: fixed;
         top: 0;
@@ -381,7 +383,8 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
         margin-top: 0;
     }
     body.dg-state-results #dg-hero-band,
-    body.dg-state-reader #dg-hero-band {
+    body.dg-state-reader #dg-hero-band,
+    body.dg-state-toc #dg-hero-band {
         width: auto; /* нейтрализует 100vw из базового #dg-hero-band (home.css) */
         margin-left: 0; /* и его же компенсирующие отрицательные margin */
         margin-right: 0;
@@ -426,12 +429,14 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     }
     body.dg-header-hidden.dg-state-results #dg-hero-band,
     body.dg-header-hidden.dg-state-reader #dg-hero-band,
+    body.dg-header-hidden.dg-state-toc #dg-hero-band,
     body.dg-header-hidden.dg-state-results #results-toolbar,
     body.dg-header-hidden.dg-state-reader #reader-toolbar,
     body.dg-header-hidden.dg-state-reader #navigation,
     body.dg-header-hidden.dg-state-reader #top-links-container,
     body.dg-header-hidden.dg-state-results #dg-header-backdrop,
-    body.dg-header-hidden.dg-state-reader #dg-header-backdrop {
+    body.dg-header-hidden.dg-state-reader #dg-header-backdrop,
+    body.dg-header-hidden.dg-state-toc #dg-header-backdrop {
         /* Owner: "торчит кусок стики панели, когда она свёрнута" — fixed -200px assumed larger
            than any real stack height (see comment above), but the reader stack is band +
            reader-toolbar + top-links-container + navigation, and that total (plus the 10px
@@ -1662,6 +1667,14 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     var UP_THRESHOLD = 4;    // "небольшой скролл назад" — реагирует охотнее, чем прячется
 
     function stackConfig() {
+      // TOC: only the band is pinned (no toolbar of its own) — the pane below it is the content
+      // that needs the reserved top padding. Before this it was hand-rolled in home.css (fixed
+      // band + a hardcoded 65px backdrop + #toc-pane{padding-top:62px}), which is why the TOC
+      // alone had no hide-on-scroll and kept a solid empty strip over the list (owner: "шапка как
+      // в ридере... она закрывает"). Same shared stack as results/reader now, heights from here.
+      if (document.body.classList.contains('dg-state-toc')) {
+        return { stack: [band], content: document.getElementById('toc-pane') };
+      }
       if (document.body.classList.contains('dg-state-results')) {
         // content — #dynamicHeader (заголовок "слово — кол-во текстов"), не #search-pane: сам
         // заголовок теперь физически ВНЕ #results-toolbar (владелец: скрываться на скролле
@@ -1756,6 +1769,11 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
       // +40px запаса поверх точной высоты — не 0, чтобы округления/на-миг-другая-высота во время
       // самого transition не давали такой же щели на пиксель-другой.
       document.documentElement.style.setProperty('--dg-hide-offset', Math.ceil(offset + tailOffset + 40) + 'px');
+      // Real stack height (offset already includes the 10px start) — consumers that must clear the
+      // pinned band but are not the padded content: the sticky Translator filter column and the
+      // scroll targets of /spa/toc.js's scrollTo() (scrollIntoView with block:'start' would
+      // otherwise park a heading exactly under the band, see revealTarget()).
+      document.documentElement.style.setProperty('--dg-stack-height', Math.ceil(offset + tailOffset) + 'px');
     }
     window.dgApplyHeaderPadding = applyPadding;
 
@@ -3522,6 +3540,10 @@ $(document).ready(function() {
             // dict.dg / aksharamukha / dharmamitra — a plain external tool, not part of this
             // site at all. Opens in a new tab; the search box/page stay exactly as they were.
             window.open(route.url, '_blank', 'noopener');
+        } else if (route.type === 'reload') {
+            // A typed switch that changes what the next render shows (force_local: the local-only
+            // reader links). Reload, do not pushState: nothing else in the SPA re-reads it.
+            location.reload();
         } else if (route.type === 'page') {
             // A bare word that names one of the site's own pages ("settings"/"настройки" — see
             // DgTextRouter's PAGE shortcut). A full navigation, not pushState: these pages are
