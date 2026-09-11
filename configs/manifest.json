@@ -95,17 +95,17 @@
   },
   "shortcuts": [
     {
-      "name": "Favorites & history",
-      "short_name": "Favorites",
-      "description": "Favorites and search history",
-      "url": "/4as",
+      "name": "Table of Contents",
+      "url": "/toc",
       "icons": [
         {
-          "src": "/assets/svg/bolt-solid.svg",
-          "sizes": "any",
-          "type": "image/svg+xml"
+          "src": "/assets/img/maniIcon.png",
+          "type": "image/png",
+          "sizes": "192x192"
         }
-      ]
+      ],
+      "short_name": "TOC",
+      "description": "Table of contents of the canon"
     },
     {
       "name": "Dictionary",
@@ -121,17 +121,17 @@
       "description": "Pali dictionary (DPD)"
     },
     {
-      "name": "TOC",
-      "url": "/toc",
+      "name": "Favorites & history",
+      "short_name": "Favorites",
+      "description": "Favorites and search history",
+      "url": "/4as",
       "icons": [
         {
-          "src": "/assets/img/maniIcon.png",
-          "type": "image/png",
-          "sizes": "192x192"
+          "src": "/assets/svg/star.svg",
+          "sizes": "any",
+          "type": "image/svg+xml"
         }
-      ],
-      "short_name": "TOC",
-      "description": "Table of contents of the canon"
+      ]
     },
     {
       "name": "Memo",
