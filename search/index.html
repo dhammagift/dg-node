@@ -3529,6 +3529,10 @@ $(document).ready(function() {
             // dict.dg / aksharamukha / dharmamitra — a plain external tool, not part of this
             // site at all. Opens in a new tab; the search box/page stay exactly as they were.
             window.open(route.url, '_blank', 'noopener');
+        } else if (route.type === 'reload') {
+            // A typed switch that changes what the next render shows (force_local: the local-only
+            // reader links). Reload, do not pushState: nothing else in the SPA re-reads it.
+            location.reload();
         } else if (route.type === 'page') {
             // A bare word that names one of the site's own pages ("settings"/"настройки" — see
             // DgTextRouter's PAGE shortcut). A full navigation, not pushState: these pages are

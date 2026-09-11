@@ -1,0 +1,26 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "gift.dhamma.mobile",
+      "sha256_cert_fingerprints": [
+        "78:E0:33:FA:83:8F:B0:8C:00:86:29:C7:3F:4E:B6:E7:00:75:DE:ED:5D:44:FA:AA:B3:58:DA:AC:03:AA:4C:CD"
+      ]
+    }
+  },
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "gift.dhamma.twa",
+      "sha256_cert_fingerprints": [
+        "52:E7:75:88:E9:01:11:BA:29:DD:AF:A6:69:19:96:BC:A7:BB:7F:52:FF:A8:82:6B:36:37:81:CE:C5:69:E8:2A"
+      ]
+    }
+  }
+]

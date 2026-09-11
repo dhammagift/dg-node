@@ -183,6 +183,28 @@ const PROFILE = LIBRARY_PROFILE;
             await page.goto(APP + '/', { waitUntil: 'domcontentloaded', timeout: 60000 });
             await page.waitForTimeout(2000);
 
+            // The local-only links (bb, ai, the local TBW mirror) must NOT appear by default — the
+            // app's own origin is https://localhost, and treating a local hostname as "the mirror
+            // is here" showed them to every app user (owner's screenshot of dn1). The explicit
+            // switch is localStorage.forceLocal, settable by ?force_local=1 or by typing the word
+            // in the search box.
+            const readLinks = async () => {
+                await page.goto(APP + '/dn1', { waitUntil: 'domcontentloaded', timeout: 60000 }).catch(() => {});
+                await page.waitForTimeout(7000);
+                return page.evaluate(() => [...document.querySelectorAll('.sc-ext-link')].map(a => a.textContent.trim()));
+            };
+            await page.evaluate(() => { try { localStorage.removeItem('forceLocal'); } catch (e) {} });
+            const withoutFlag = await readLinks();
+            check('the local-only reader links are hidden by default (no bb/ai)',
+                !withoutFlag.includes('bb') && !withoutFlag.includes('ai'),
+                JSON.stringify(withoutFlag));
+
+            await page.evaluate(() => { try { localStorage.setItem('forceLocal', 'true'); } catch (e) {} });
+            const withFlag = await readLinks();
+            check('the secret switch reveals them (?force_local=1 / typed word)',
+                withFlag.includes('bb') && withFlag.includes('ai'), JSON.stringify(withFlag));
+            await page.evaluate(() => { try { localStorage.removeItem('forceLocal'); } catch (e) {} });
+
             const links = await page.evaluate(async () => {
                 try {
                     const r = await fetch('/nodejs/res/menu-links.json');

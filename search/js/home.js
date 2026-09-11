@@ -667,12 +667,12 @@
             // TBW specifically (item 9, owner): must follow the explicit ?force_local flag, like
             // the legacy site — not mirror-link.js's live-reachability probe just below (that's
             // for mirrors that are simply THERE-or-not; TBW is an explicit mode switch, not a
-            // "happens to be reachable" check). localhost still counts as local too (matches
-            // legacy's isLocal, and how this is tested without the URL flag).
+            // "happens to be reachable" check). The flag only: the app's origin is
+            // https://localhost, so treating the hostname as "local mirror is here" sent app users
+            // to /bw/... which the app does not bundle.
             a.addEventListener('click', function (e) {
                 e.preventDefault();
-                var isLocal = window.location.host.includes('localhost') || window.location.host.includes('127.0.0.1')
-                    || localStorage.getItem('forceLocal') === 'true';
+                var isLocal = localStorage.getItem('forceLocal') === 'true';
                 window.open(isLocal ? item.localHref : item.href, item.blank ? '_blank' : '_self');
             });
         } else if (item.localHref) {

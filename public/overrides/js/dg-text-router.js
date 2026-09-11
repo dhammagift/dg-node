@@ -91,6 +91,8 @@
     //   { type: 'quickmodal', tab }    — open the quick modal on this tab, no other navigation.
     //   { type: 'external', url }      — open this URL in a new tab, no navigation at all.
     //   { type: 'page', url }          — leave the SPA for one of the site's own pages.
+    //   { type: 'reload' }             — the input changed a setting that only applies on the next
+    //                                     render (the secret force_local switch).
     // Where the settings page actually lives in THIS build. Normally "/settings/" (the site
     // resolves the directory), but the app build rewrites every settings link to
     // "/settings/index.html" — Capacitor has no directory resolution, and a path it cannot resolve
@@ -121,6 +123,21 @@
         if (q === 'settings' || q === 'setting' || q === 'настройки') {
             return { type: 'page', url: settingsUrl() };
         }
+        // Secret switch for the local-only links (bb, ai, the local TBW mirror). These used to show
+        // up for anyone whose host looked local, which in the Capacitor app is EVERYONE (its origin
+        // is https://localhost) — owner: "нужно изменить логику и сделать какой-то способ включать
+        // это секретно". The flag itself stays the single source of truth (?force_local=1 still
+        // works); this is the quiet way in: type the word in the search box. Nothing in the UI
+        // mentions it, and the words are not guessable search terms.
+        if (q === 'force_local' || q === 'forcelocal') {
+            try { localStorage.setItem('forceLocal', 'true'); } catch (e) { /* private mode */ }
+            return { type: 'reload' };
+        }
+        if (q === 'force_local_off' || q === 'forcelocal_off') {
+            try { localStorage.removeItem('forceLocal'); } catch (e) { /* private mode */ }
+            return { type: 'reload' };
+        }
+
         // "fav" only — NOT "history"/"favorites": those are ordinary English words a reader may
         // legitimately search the canon for, and a bare-word rule would hijack such a search
         // instead of answering it. The quick modal's first tab is already reachable as "4as".

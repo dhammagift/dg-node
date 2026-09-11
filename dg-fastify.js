@@ -519,6 +519,21 @@ window.onload = function () {
 `;
 // Relative asset URLs in the page (./swagger-ui.css) need the trailing slash — without the
 // redirect /api-docs would resolve them against the site root.
+// Android App Links verification for the native apps. A tap on a dhamma.gift link opens the app
+// instead of the browser only after Android fetches this file and finds the APK's signing
+// certificate in it; without it every link shows the "Open with" chooser, and links tapped inside
+// Chrome are not intercepted at all. The production host has a copy under .well-known in the legacy
+// tree that lists the TWA only — this one lists BOTH apps (configs/assetlinks.json), so it is the
+// file to serve if the domain is ever pointed here. Content-Type matters: Android rejects the file
+// when it arrives as text/plain, which is exactly what a generic static mount would do.
+app.get('/.well-known/assetlinks.json', (req, res) => {
+    // Read and send, not sendFile: this server registers its static plugin with decorateReply:false,
+    // so reply.sendFile is not guaranteed to exist here (it 500'd on the first attempt).
+    res.header('content-type', 'application/json; charset=utf-8');
+    res.header('cache-control', 'public, max-age=300');
+    return res.send(fsSync.readFileSync(path.join(__dirname, 'configs', 'assetlinks.json'), 'utf8'));
+});
+
 app.get('/api-docs', (req, res) => res.redirect('/api-docs/'));
 app.get('/api-docs/', (req, res) => {
     res.header('cache-control', 'public, max-age=0, must-revalidate');
