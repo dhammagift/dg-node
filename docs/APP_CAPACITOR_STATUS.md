@@ -155,7 +155,7 @@ UI и офлайн-слой — `dg-node` (ветка `pwa`).
 | Что | Где |
 |---|---|
 | UI, офлайн-слой, тесты, доки | `dg-node`, ветка `pwa` (в этом чекауте — `/var/www/html/dg-node-test`) |
-| Приложение, плагины, CI, APK/AAB | `dg-app-full`, ветка `claude/ponytail-full-9vo71m` |
+| Приложение, плагины, CI, APK/AAB | `dg-app-full`, ветка `claude/ponytail-full-9vo71m` (в этом чекауте — `/var/www/dg-app-full`; тесты находят его сами или через `DG_APP_PATH`) |
 | Офлайн-слой (шим, воркер, core-bundle) | `public/offline/`, сборка — `npm run build-offline` |
 | База офлайн | `siteroot/mobile-data/dg-mobile.db` + `db-manifest.json` (`npm run build-mobile-db`) |
 | Проверки сборки приложения | `test/app-ui/` (+ `README.md`) |

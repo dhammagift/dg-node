@@ -73,10 +73,6 @@ public/offline/vendor/
 # в тест-чекауте — симлинк на продовый, чтобы не держать вторую копию на 500 МБ.
 siteroot/mobile-data
 
-# dg-app-full перенесён сюда ВРЕМЕННО (сессия Capacitor), чтобы правки шли без sandbox-одобрений.
-# Вернуть на /var/www/dg-app-full после работы. В git не коммитить.
-/dg-app-full/
-
 # APK для тестов (артефакт сборки, публикуется от корня как /mobile-apk/...)
 siteroot/mobile-apk/
 
