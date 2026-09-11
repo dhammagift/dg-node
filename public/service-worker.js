@@ -268,9 +268,18 @@ self.addEventListener('fetch', function (event) {
     // search/index.html, and the SPA router needs that HTML to resolve the URL client-side.
     if (request.mode === 'navigate') {
         event.respondWith(
-            fetch(request).catch(function () {
-                return caches.match(SHELL_URL);
-            })
+            fetch(request)
+                .then(function (response) {
+                    // A 5xx is the app being down, not a page worth showing: with the server stopped,
+                    // nginx answers 502 and the reader saw that page instead of the cached shell —
+                    // the fetch only *rejects* when the connection itself fails (airplane mode,
+                    // DevTools offline), which is why this looked like it worked.
+                    if (response.status >= 500) return caches.match(SHELL_URL).then(function (c) { return c || response; });
+                    return response;
+                })
+                .catch(function () {
+                    return caches.match(SHELL_URL);
+                })
         );
         return;
     }
@@ -278,6 +287,11 @@ self.addEventListener('fetch', function (event) {
     event.respondWith(
         fetch(request)
             .then(function (response) {
+                // Same reasoning as navigations: a 5xx means the app is down, so serve what we have
+                // cached (if anything) instead of the proxy's error page.
+                if (response.status >= 500) {
+                    return caches.match(request).then(function (c) { return c || response; });
+                }
                 // Only cache real, same-origin, successful responses — an opaque/cross-origin
                 // or error response cached here would just serve that error offline forever.
                 if (response.ok && response.type === 'basic') {
