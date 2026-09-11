@@ -354,6 +354,17 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
         z-index: 849;
         background: var(--dg-surface, #fff);
         transition: transform 0.25s ease;
+        /* Purely decorative paint-over for the seam between independently positioned stack
+           pieces (see comment above) — never has interactive content of its own. Its height is
+           computed by the SAME JS/offset math as the content padding, but that computation can
+           be a frame stale (webfont swap, a translator badge wrapping to a second line after
+           the ResizeObserver callback already fired, etc.) — a slightly-too-tall backdrop then
+           silently eats clicks on whatever sits right under it (owner: "варианты не кликается,
+           filter ниже работает" — exactly the seam between the reserved padding and real
+           content). Since this div is never meant to receive clicks in the first place,
+           removing it from hit-testing entirely closes off the whole class of bug instead of
+           chasing the exact stale-height trigger. */
+        pointer-events: none;
     }
     /* p.sc-link внутри #top-links-container — margin-top:0.3rem (rus-multi.css) на нём же,
        плюс <br> перед контейнером в разметке megareader.js — небольшой, но лишний воздух, раз
