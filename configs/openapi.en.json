@@ -30,7 +30,7 @@
       "scope": {
         "name": "scope",
         "in": "query",
-        "description": "Search scope. `default` — the 4 Nikayas + 6 KN books (no Vinaya). `all` — the whole corpus (including Vinaya). You can list specific categories/ids separated by commas (e.g. `dn,mn` or `dhamma,vinaya`).",
+        "description": "Search scope. Composite scopes: `default` (or omit the parameter) — the 4 Nikāyas + 6 KN books, no Vinaya/Abhidhamma. `all` — the whole corpus. Category scopes (each matches a whole top-level division): `dhamma` — the 4 Nikāyas only (Dīgha, Majjhima, Saṁyutta, Aṅguttara). `khudakka` — the whole Khuddaka Nikāya (all its books, not just the 6 in `default`). `vinaya` — the whole Vinaya Piṭaka. `abhi` — the Abhidhamma. You can also list specific book/collection ids separated by commas, mixed with category names (e.g. `dn,mn` or `dhamma,vinaya`) — ids include `dn`, `mn`, `sn`, `an` (4 Nikāyas); `ud`, `snp`, `dhp`, `thag`, `thig`, `iti`, `ja`, `tha-ap`, `thi-ap`, `mil`, `vv`, `pv`, `cp`, `bv`, `ps`, `ne`, `cnd`, `mnd`, `kp`, `pe` (Khuddaka Nikāya); `pli-tv-bi`, `pli-tv-bu`, `pli-tv-kd`, `pli-tv-pvr` (Vinaya).",
         "schema": {
           "type": "string",
           "default": "default",

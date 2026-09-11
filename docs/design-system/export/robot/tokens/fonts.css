@@ -1,0 +1,17 @@
+/* Lato is the app's UI face (--bs-font-sans-serif in its Bootstrap build), but the repo
+   ships no Lato binary — it is pulled from Google Fonts here. Substitution flagged in
+   readme.md; drop in the real files and repoint these rules if the project has them. */
+@import url("https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&display=swap");
+
+/* The reader's serif. File name and family spelling are the app's own
+   (reader/css/rus-multi.css ships "Robto Serif"); the correct spelling is aliased. */
+@font-face {
+  font-family: "Robto Serif";
+  src: url("../assets/fonts/roboto-lightest.woff") format("woff");
+  font-display: swap;
+}
+@font-face {
+  font-family: "Roboto Serif";
+  src: url("../assets/fonts/roboto-lightest.woff") format("woff");
+  font-display: swap;
+}

@@ -1,0 +1,30 @@
+/* Dhamma.gift colour tokens — lifted verbatim from search/css/home.css
+   (body.dg-skin-minimal). Light theme. Dark values live in dark-theme.css. */
+:root,
+.dg-skin-minimal {
+  --dg-page: #ffffff;
+  --dg-surface: #ffffff;
+  --dg-surface-hover: #f5f4f1;
+  --dg-surface-active: #eae8e2;
+  --dg-border: #e7e5de;
+  --dg-border-strong: #d7d4c9;
+  --dg-text: #1b1d19;
+  --dg-text-2: #5c6058;
+  --dg-text-muted: #6e716a;
+  --dg-navy: #243448;
+  --dg-navy-2: #1b2836;
+  --dg-accent: #149c7c;
+  --dg-accent-ink: #0f7c63;
+  --dg-accent-dark: #0f7c63;
+  --dg-accent-bg: #dff3ec;
+
+  /* Derived tokens (not in home.css): contrast-safe ink for the accent tint, the matched-word
+     highlight of the reader/dictionary, the navy ink of source titles, and the app's table-link
+     blue. Kept here so pages stop redeclaring them in their own :root. */
+  --dg-on-accent-bg: #0c6a55;
+  --dg-match: #a8341c;
+  --dg-navy-ink: #2f4a63;
+  --dg-tblue: #3434be;
+  --dg-tblue-fill: #3434be;
+  --dg-tblue-ink: #ffffff;
+}

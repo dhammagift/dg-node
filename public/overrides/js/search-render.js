@@ -109,11 +109,13 @@ window.DgSearchRender = (function () {
         $('#btn-show-all-children').off('click').on('click', function () {
             var $expandable = visibleTable().find('tbody tr').has('td.dtr-control');
             var $collapsed = $expandable.not('.dtr-expanded');
-            if ($collapsed.length) {
-                $collapsed.find('td:first-child').trigger('click');
-            } else {
-                $expandable.filter('.dtr-expanded').find('td:first-child').trigger('click');
-            }
+            // Native .click(), NOT jQuery .trigger('click'): trigger runs the jQuery handlers
+            // (DataTables expands the row) and THEN dispatches a real click on top — which the
+            // fold interceptor below (document capture listener on td.dtr-control) now sees on
+            // an already-expanded row and folds it straight back. Owner: "разворачивает и
+            // сразу сворачивается". One real click = one toggle.
+            var $targets = $collapsed.length ? $collapsed : $expandable.filter('.dtr-expanded');
+            $targets.find('td:first-child').each(function () { this.click(); });
         });
     }
 
@@ -776,7 +778,7 @@ window.DgSearchRender = (function () {
                 suttaTableApi.rows().every(function () {
                     var d = this.data();
                     if (d && expandedIds[d.sutta_id]) {
-                        $(this.node()).find('td.dtr-control, td:first-child').trigger('click');
+                        $(this.node()).find('td.dtr-control, td:first-child').first().each(function () { this.click(); }); // native, see bindExpandCollapseButtons
                     }
                 });
             }
@@ -1337,4 +1339,122 @@ window.DgSearchRender = (function () {
         resetTablesForLanguageChange: resetTablesForLanguageChange,
         redraw: redraw
     };
+})();
+
+/* Quote fold animation (owner's animations.md, rowFold): DataTables Responsive inserts/removes
+   the child row (<tr class="child"><td class="child"><ul class="dtr-details">) instantly. Here
+   the inner block animates its height 0 <-> scrollHeight (+opacity, 300ms open / 260ms close)
+   together with the cell's vertical padding — otherwise a painted strip of the cell would
+   vanish with a snap. Closing: the click on the control cell is intercepted first, the fold
+   plays, and the same click is re-dispatched (marked) for Responsive to do the real collapse.
+   overflow-anchor:none on the block/tbody (home.css) keeps the page from "walking" while the
+   height changes. Skipped entirely under prefers-reduced-motion. */
+(function () {
+    var OPEN_MS = 300, CLOSE_MS = 260;
+    function reduced() { return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches; }
+    function block(childTr) {
+        var td = childTr && childTr.querySelector('td.child');
+        var ul = td && td.firstElementChild;
+        return ul ? { td: td, ul: ul } : null;
+    }
+    // Height folds get a plain material curve: --dg-ease has a long flat tail, and the last
+    // 30% of the time then moves a couple of px in 1px steps — read as a stutter (owner).
+    var FOLD_EASE = 'cubic-bezier(.4, 0, .2, 1)';
+    function fold(parts, open, done) {
+        var td = parts.td, ul = parts.ul;
+        var cs = getComputedStyle(td);
+        var padT = cs.paddingTop, padB = cs.paddingBottom;
+        var ms = open ? OPEN_MS : CLOSE_MS;
+        // Natural height in flow (overflow:hidden is permanent in home.css, so this equals the
+        // height the block will have when the inline height is cleared — no end snap).
+        ul.style.height = '';
+        var target = ul.offsetHeight;
+        ul.style.transition = 'none';
+        td.style.transition = 'none';
+        ul.style.height = (open ? 0 : target) + 'px';
+        ul.style.opacity = open ? '0' : '1';
+        td.style.paddingTop = open ? '0px' : padT;
+        td.style.paddingBottom = open ? '0px' : padB;
+        void ul.offsetHeight;
+        ul.style.transition = 'height ' + ms + 'ms ' + FOLD_EASE + ', opacity ' + ms + 'ms ' + FOLD_EASE;
+        td.style.transition = 'padding ' + ms + 'ms ' + FOLD_EASE;
+        var finished = false;
+        function finish() {
+            if (finished) return;
+            finished = true;
+            ul.removeEventListener('transitionend', onEnd);
+            if (open) { ul.style.height = ''; ul.style.opacity = ''; ul.style.transition = ''; td.style.transition = ''; td.style.paddingTop = ''; td.style.paddingBottom = ''; }
+            if (done) done();
+        }
+        function onEnd(e) { if (e.propertyName === 'height') finish(); }
+        ul.addEventListener('transitionend', onEnd);
+        setTimeout(finish, ms + 80); // safety net if transitionend never fires
+        ul.style.height = (open ? target : 0) + 'px';
+        ul.style.opacity = open ? '1' : '0';
+        td.style.paddingTop = open ? padT : '0px';
+        td.style.paddingBottom = open ? padB : '0px';
+    }
+    // Same fold for any block that is shown/hidden by a class (the SearchBuilder panel,
+    // search/index.html wireFilterBuilderToggle): `el` must already be display:block when
+    // opening; when closing, `done` runs after the fold and should hide it.
+    window.dgFold = function (el, open, done) {
+        if (!el || reduced()) { if (done) done(); return; }
+        var wrap = { td: el, ul: el };
+        var cs = getComputedStyle(el);
+        // fold() animates the "cell" padding and the "block" height; for a single element both
+        // are the element itself — use its margins as the collapsing spacing instead.
+        var mT = cs.marginTop, mB = cs.marginBottom;
+        var ms = open ? OPEN_MS : CLOSE_MS;
+        el.style.overflow = 'hidden';
+        el.style.transition = 'none';
+        el.style.height = '';
+        var target = el.offsetHeight;
+        el.style.height = (open ? 0 : target) + 'px';
+        el.style.opacity = open ? '0' : '1';
+        el.style.marginTop = open ? '0px' : mT; el.style.marginBottom = open ? '0px' : mB;
+        void el.offsetHeight;
+        el.style.transition = 'height ' + ms + 'ms ' + FOLD_EASE + ', opacity ' + ms + 'ms ' + FOLD_EASE + ', margin ' + ms + 'ms ' + FOLD_EASE;
+        var fin = false;
+        function finish() {
+            if (fin) return; fin = true;
+            el.removeEventListener('transitionend', onEnd);
+            el.style.transition = ''; el.style.height = ''; el.style.opacity = ''; el.style.overflow = ''; el.style.marginTop = ''; el.style.marginBottom = '';
+            if (done) done();
+        }
+        function onEnd(e) { if (e.propertyName === 'height') finish(); }
+        el.addEventListener('transitionend', onEnd);
+        setTimeout(finish, ms + 80);
+        el.style.height = (open ? target : 0) + 'px';
+        el.style.opacity = open ? '1' : '0';
+        el.style.marginTop = open ? mT : '0px'; el.style.marginBottom = open ? mB : '0px';
+    };
+    // Open: Responsive's 'responsive-display' is fired with triggerHandler (no bubbling) on a
+    // table that gets rebuilt — watching the DOM for the inserted child row is simpler.
+    new MutationObserver(function (muts) {
+        if (reduced()) return;
+        muts.forEach(function (m) {
+            Array.prototype.forEach.call(m.addedNodes, function (n) {
+                if (n.nodeType !== 1 || !n.matches('tr.child') || !n.closest('#search-pane')) return;
+                var parts = block(n);
+                if (parts) fold(parts, true);
+            });
+        });
+    }).observe(document.body, { childList: true, subtree: true });
+    // Close: intercept the control-cell click on an expanded row, fold, then let it through.
+    document.addEventListener('click', function (e) {
+        if (e.__dgFold || reduced()) return;
+        var td = e.target.closest && e.target.closest('td.dtr-control');
+        if (!td) return;
+        var tr = td.parentElement;
+        if (!tr.classList.contains('dtr-expanded')) return;
+        var parts = block(tr.nextElementSibling && tr.nextElementSibling.classList.contains('child') ? tr.nextElementSibling : null);
+        if (!parts || parts.ul.dataset.dgFolding) return;
+        e.preventDefault(); e.stopImmediatePropagation();
+        parts.ul.dataset.dgFolding = '1';
+        fold(parts, false, function () {
+            var again = new MouseEvent('click', { bubbles: true, cancelable: true });
+            again.__dgFold = true;
+            td.dispatchEvent(again);
+        });
+    }, true);
 })();

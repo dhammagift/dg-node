@@ -193,7 +193,11 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
            (на главной шире, в выдаче/чтении уже). */
         max-width: 640px;
         margin: 1.25rem 0 1rem;
-        transition: margin 0.35s ease, max-width 0.35s ease;
+        /* No transition: between screens the field must not move a pixel (owner) — on the home
+           screen it enters/leaves with the page blocks instead (home.css dg-drop-in/home-out). */
+        /* Positioning context for #home-hint (now a child of this form, not of .hero-row) — anchors
+           the hint to the actual field's right edge instead of the wider row's edge. */
+        position: relative;
     }
     /* Строка поля. После переезда лого/бургера в #dg-topbar здесь остался только сам инпут,
        но ряд сохранён: он центрирует поле и переживёт добавление соседей. */
@@ -836,6 +840,10 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
         filter: invert(1);
         opacity: .7;
     }
+    /* eye.svg / open-link.svg are drawn in #989898 (they serve the toolbars too) — here they
+       must match the black-drawn icons next to them (owner). */
+    #dg-quote-menu [data-act="popup"] .menu-icon, #dg-quote-menu [data-act="tab"] .menu-icon { filter: brightness(0); }
+    [data-bs-theme="dark"] #dg-quote-menu [data-act="popup"] .menu-icon, [data-bs-theme="dark"] #dg-quote-menu [data-act="tab"] .menu-icon { filter: brightness(0) invert(1); }
     /* Поле-оболочка (.dg-input-shell: лупа + инпут + быстрые настройки в одной рамке) живёт в
        search/css/home.css — там же, где остальной минималистичный скин, и там же его тёмная
        тема. Здесь оставлено только то, что к скину не относится. */
@@ -878,7 +886,8 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     /* Тема и настройки переехали в бургер-меню, в ряду кнопок выдачи они дублировались.
        УДАЛИТЬ элементы нельзя: переключатель темы в самом меню работает, НАЖИМАЯ эту кнопку
        (home.js: document.getElementById('theme-button').click()), её же читает themeswitch.js,
-       а settings.js по Alt+S кликает #settingsButton. Поэтому прячем, оставляя в разметке. */
+       а settings.js по Alt+Shift+S кликает #settingsButton (Alt+S без Shift теперь открывает
+       #dg-quick-btn — Быстрые настройки). Поэтому прячем, оставляя в разметке. */
     #results-toolbar #theme-button,
     #results-toolbar #settingsButton,
     /* Компас пробуем убрать из общего ряда кнопок (эксперимент, просьба владельца) — та же
@@ -1101,7 +1110,14 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     if (!hasQuery && (path === '' || path === '/index.html')) b.classList.add('dg-state-home');
     // Холодная загрузка со словом в адресе (/kacchapa, /?q=...): данных ещё нет, и без этого
     // класса первым кадром показалась бы пустая таблица с шапкой колонок. Снимет dgSetBusy().
-    else b.classList.add('dg-busy');
+    // The inner screen class goes on right away too (toc by path, results for the rest — the
+    // reader is told apart later by DgTextRouter, but its search field is styled the same, and
+    // dg-busy hides the results chrome meanwhile): otherwise the field first paints in its
+    // wide home look and morphs once initSearchApp() runs (owner: "инпут монолитен").
+    // Reader guess: "/dn1", "/sn12.2", "/thig12.1", "/an1.1-10" — letters then a digit; a search
+    // keyword practically never looks like that. Keeps the reader's toolbar/nav rows (skeleton
+    // rows, home.css) in place from the first frame; initSearchApp() corrects a wrong guess.
+    else b.classList.add('dg-busy', /^\/toc(\/|$)/.test(path) ? 'dg-state-toc' : (/^\/[a-z-]{1,12}\d/i.test(path) && !hasQuery ? 'dg-state-reader' : 'dg-state-results'));
     // Снимаем после первой отрисовки. Таймер — не подстраховка "на всякий случай", а рабочая
     // ветка: в фоновой вкладке requestAnimationFrame не вызывается вообще, и без него класс
     // залипал бы навсегда, отключив все переходы на странице (проверено).
@@ -1149,6 +1165,14 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
      Видим/скрыт по тому же классу body.dg-header-hidden, что и остальной стек. -->
 <div id="dg-header-backdrop"></div>
 <div id="dg-hero-band">
+<!-- Dark navbar strip — full-bleed, own background (home.css), sized to its own content
+     (#dg-topbar) rather than the whole band: #dg-hero-band itself has no background in home
+     state anymore, so #dg-hero-heading/.hero-row below render on the plain page background
+     (production-v4 redesign, docs/Home-standalone.html), while .hero-row still has to stay a
+     DOM descendant of #dg-hero-band — results/reader states position THAT element fixed as one
+     unit with the band (see #dg-hero-band comment in <style> above), moving it out would break
+     the sticky search bar there. -->
+<div id="dg-hero-navbar">
 <div class="dg-hero-inner">
 <div id="dg-topbar">
   <a href="/" id="dg-brand" class="dg-go-home" title="Dhamma.Gift">
@@ -1156,37 +1180,64 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
          пропадали. Вместо плашки — тонкий абрис по контуру самой картинки (filter в home.css). -->
     <img class="dg-brand-logo" src="/assets/img/dgsanhkalogo.png" alt="Dhamma.Gift">
     <span class="dg-brand-name">dhamma.gift</span>
+    <span class="dg-brand-tag">Dhamma Vinaya</span>
   </a>
-  <!-- Owner: "Find the Truth между лого и бургером" — moved from its own line below into the
-       topbar row itself, centered in the space between the brand lock-up and the menu button
-       (#dg-topbar's own justify-content:space-between spaces exactly 3 children this way). -->
-  <p id="home-motto">Найдите Истину</p>
-  <script>
-    // Same FOUC technique as the theme script in <head> (data-bs-theme, before first paint):
-    // the <p> above is hardcoded to the Russian fallback text; applyMenuLangStrings() (home.js,
-    // deferred, waits on menu-links.json) corrects it later for non-ru visitors, but only after
-    // the wrong text has already painted (owner, live: "Найдите истину" flashes before "Find the
-    // Truth"). Set it right here, synchronously, before the browser gets a chance to paint it.
-    (function () {
-      try {
-        var lang = localStorage.getItem('dhammaLanguage') || localStorage.getItem('siteLanguage') || 'en';
-        if (lang !== 'ru') document.getElementById('home-motto').textContent = 'Find the Truth';
-      } catch (e) {}
-    })();
-  </script>
-  <button type="button" class="dg-icon-btn dg-menu-btn" aria-label="Menu" title="Menu" data-i18n-aria-label="{{toolbar.menuAriaLabel}}" data-i18n-title="{{toolbar.menuTitle}}">
-    <svg viewBox="0 0 448 512" width="19" height="19" fill="currentColor" aria-hidden="true">
-      <path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/>
-    </svg>
-  </button>
+  <div class="dg-topbar-actions">
+    <!-- Compass — same global toggleQuickModal() as the compass button elsewhere on the site
+         (#results-toolbar .compass-btn), just a second entry point for the home screen. Same
+         i18n key as that button (toolbar.compassTitle) for both title and aria-label — there's
+         no separate toolbar.compassAriaLabel value in configs/reader/lang_*.json to point at. -->
+    <button type="button" class="dg-icon-btn dg-compass-btn-home" onclick="if (typeof window.toggleQuickModal === 'function') window.toggleQuickModal();" aria-label="Favorites / History" title="Favorites / History" data-i18n-aria-label="{{toolbar.compassTitle}}" data-i18n-title="{{toolbar.compassTitle}}">
+      <img src="/assets/svg/compass.svg" alt="" class="dg-topbar-icon-img">
+    </button>
+    <!-- Theme — clicks the real (hidden on this screen) #theme-button, same technique home.js
+         already uses for the drawer's theme switch (see home.js applyTheme()); themeswitch.js
+         owns all the actual state, this is just another way to press its button. No
+         toolbar.themeTitle key in the global i18n config this page loads (data-i18n-title on it
+         threw "Missing localization key" — measured live), so this one gets the same plain
+         FOUC-script treatment as the headline/subtitle above instead of {{...}}. -->
+    <button type="button" class="dg-icon-btn dg-theme-btn-home" onclick="var b=document.getElementById('theme-button'); if (b) b.click();" aria-label="Переключить тему" title="Переключить тему">
+      <img src="/assets/svg/circle-half-stroke.svg" alt="" class="dg-topbar-icon-img">
+    </button>
+    <button type="button" class="dg-icon-btn dg-menu-btn" aria-label="Menu" title="Menu" data-i18n-aria-label="{{toolbar.menuAriaLabel}}" data-i18n-title="{{toolbar.menuTitle}}">
+      <svg viewBox="0 0 448 512" width="19" height="19" fill="currentColor" aria-hidden="true">
+        <path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/>
+      </svg>
+    </button>
+  </div>
 </div>
+</div>
+</div><!-- /#dg-hero-navbar -->
+
+<div class="dg-hero-inner">
+<!-- Big headline (production-v4 redesign, docs/Home-standalone.html) — was a small tagline
+     inline in #dg-topbar next to the logo, now its own centered block above the search field. -->
+<div id="dg-hero-heading">
+  <h1 id="home-motto">Найдите Истину</h1>
+  <p id="home-subtitle">В Палийских Суттах и Винае</p>
+</div>
+<script>
+  // Same FOUC technique as the theme script in <head> (data-bs-theme, before first paint):
+  // the elements above are hardcoded to the Russian fallback text; applyMenuLangStrings()
+  // (home.js, deferred, waits on menu-links.json) corrects them later for non-ru visitors, but
+  // only after the wrong text has already painted (owner, live: "Найдите истину" flashes before
+  // "Find the Truth"). Set it right here, synchronously, before the browser gets a chance to
+  // paint it. The search button's label (.dg-shell-go-label) gets the same treatment separately,
+  // right after its own markup below — it doesn't exist yet at this point in the DOM.
+  (function () {
+    try {
+      var lang = localStorage.getItem('dhammaLanguage') || localStorage.getItem('siteLanguage') || 'en';
+      if (lang !== 'ru') {
+        document.getElementById('home-motto').textContent = 'Find the Truth';
+        document.getElementById('home-subtitle').textContent = 'In the Pāli Suttas and Vinaya';
+        var themeBtn = document.querySelector('.dg-theme-btn-home');
+        if (themeBtn) { themeBtn.title = 'Switch theme'; themeBtn.setAttribute('aria-label', 'Switch theme'); }
+      }
+    } catch (e) {}
+  })();
+</script>
 
 <div class="hero-row mb-2">
-  <!-- Объявление над полем (текст — configs/search/announcements.json, показ и «закрыть» —
-       home.js). Стоит В РАЗМЕТКЕ здесь, но выводится position:absolute в уже существующий
-       пустой отступ над полем (body.dg-state-home .hero-row { margin-top: 74px }), поэтому его
-       появление и закрытие не двигают ни поле, ни плитки. -->
-  <div id="dg-announce" hidden></div>
   <form id="form" class="dg-hero-form m-0" autocomplete="off">
     <label class="visually-hidden" for="paliauto">{{search.label}}</label>
     <!-- Поле собрано как строка поиска поисковика: слева знак сайта, дальше само поле, справа —
@@ -1199,6 +1250,14 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
       <a href="/" class="dg-shell-logo dg-go-home" title="Home" data-i18n-title="{{global.common.home}}">
         <img src="/assets/img/dgsankhaonly.png" alt="Dhamma.Gift">
       </a>
+      <!-- Home only (see .dg-shell-search-ic in home.css): a plain magnifying glass at the left
+           edge of the field, where the reference has one. Same FontAwesome path as the submit
+           button's icon below, just not mirrored. -->
+      <span class="dg-shell-search-ic" aria-hidden="true">
+        <svg viewBox="0 0 512 512" width="14" height="14" fill="currentColor" aria-hidden="true">
+          <path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352a144 144 0 1 0 0-288 144 144 0 1 0 0 288z"/>
+        </svg>
+      </span>
       <input class="form-control searchinput" id="paliauto" type="search" data-i18n-placeholder="{{search.placeholder}}" autocomplete="off" autofocus>
       <!--  placeholder="Kāyagat or sn56.11" Своё «очистить» вместо родного крестика type="search": родной рисуется только в
            webkit, не поддаётся оформлению и вставал бы вплотную к нашим кнопкам. Показывает и
@@ -1226,17 +1285,29 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
              строку, и на каждый запрос кнопки успевали дёрнуться туда и обратно. Теперь меняется
              только сама иконка, а геометрия строки не трогается вовсе. -->
         <span class="dg-shell-spinner" role="status" aria-live="polite" aria-hidden="true"></span>
+        <!-- Text label — home only (see .dg-shell-go-label in home.css); hidden in results/
+             reader where this same button is a plain icon. -->
+        <span class="dg-shell-go-label">Искать</span>
       </button>
     </div>
+    <!-- Moved inside the form (was a sibling of .hero-row): #home-hint is position:absolute and
+         needs to anchor to the actual field's right edge, not .hero-row's — .hero-row spans the
+         full row width while .dg-hero-form is narrower and centered inside it, so anchoring to
+         .hero-row drifted the hint away from the search button (owner: "не уезжала"). -->
+    <div id="home-hint" aria-live="polite"></div>
   </form>
-  <!-- Подсказка "искать «…» / похоже на ссылку на текст" — тот же DgTextRouter.classify(), что
-       и обработчик сабмита ниже, просто показанный заранее. Owner (round 3): to the RIGHT,
-       right under the input — not stacked below the autocomplete dropdown (which hugs the
-       input's LEFT edge, max-width 274px, see .ui-autocomplete in uiextra.css). position:
-       absolute (top:100% of .hero-row, which needs position:relative below — right:0) instead
-       of a big margin-top: clears the dropdown by being off to the side of it, not by pushing
-       far enough down to outrun it, and doesn't take up flow space that shoved the input down. -->
-  <div id="home-hint" aria-live="polite"></div>
+  <script>
+    // Same FOUC fix as the headline script above, for the button label added right before this.
+    (function () {
+      try {
+        var lang = localStorage.getItem('dhammaLanguage') || localStorage.getItem('siteLanguage') || 'en';
+        if (lang !== 'ru') {
+          var goLabel = document.querySelector('.dg-shell-go-label');
+          if (goLabel) goLabel.textContent = 'Search';
+        }
+      } catch (e) {}
+    })();
+  </script>
   <!-- Бургер выдачи и чтения — правее поля. На главной вместо него работает тот, что в шапке. -->
   <button type="button" class="dg-icon-btn dg-menu-btn dg-menu-btn-hero" aria-label="Menu" title="Menu" data-i18n-aria-label="{{toolbar.menuAriaLabel}}" data-i18n-title="{{toolbar.menuTitle}}">
     <svg viewBox="0 0 448 512" width="19" height="19" fill="currentColor" aria-hidden="true">
@@ -1244,6 +1315,31 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     </svg>
   </button>
 </div>
+
+<!-- "N Никаи · M КН · изменить" — текст считает renderScopeSummary() (home.js) из текущей
+     области поиска (localStorage dhammaSearchScope). "Изменить" открывает ту же шторку, что и
+     шестерёнка в поле (#dg-quick-btn) — своего способа открытия не заводим. -->
+<div id="home-scope-summary">
+  <span class="dg-scope-summary-text"></span>
+  <button type="button" class="dg-scope-change" onclick="var b=document.getElementById('dg-quick-btn'); if (b) b.click();"><span class="dg-scope-change-label">изменить</span></button>
+</div>
+<script>
+  // Same FOUC fix as the headline/button-label scripts above, for "изменить" added right before
+  // this. The summary text itself (.dg-scope-summary-text) starts empty either way — renderScopeSummary()
+  // (home.js) always fills it in from scratch, no hardcoded fallback to flash.
+  (function () {
+    try {
+      var lang = localStorage.getItem('dhammaLanguage') || localStorage.getItem('siteLanguage') || 'en';
+      if (lang !== 'ru') {
+        var changeLabel = document.querySelector('.dg-scope-change-label');
+        if (changeLabel) changeLabel.textContent = 'change';
+      }
+    } catch (e) {}
+  })();
+</script>
+
+<!-- Объявление (текст — configs/search/announcements.json, показ и «закрыть» — home.js). -->
+<div id="dg-announce" hidden></div>
 
 </div><!-- /.dg-hero-inner -->
 </div><!-- /#dg-hero-band -->
@@ -1280,6 +1376,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
        которую открывают ссылки подвала (home.js openAbout). Порог прежний: на телефоне блок
        свёрнут (home.css), подвал виден всегда. -->
   <section id="home-howto" hidden>
+    <h2 class="dg-eyebrow" id="dg-intro-eyebrow"></h2>
     <div class="dg-intro">
       <p class="dg-intro-pali pli-lang" id="dg-intro-pali"></p>
       <p class="dg-intro-body" id="dg-intro-body"></p>
@@ -1376,18 +1473,28 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
       if (!btn) return;
       var pane = document.getElementById('search-pane');
       if (!pane) return;
-      var open = pane.classList.toggle('dg-filter-open');
+      var open = !pane.classList.contains('dg-filter-open');
       btn.setAttribute('aria-pressed', open ? 'true' : 'false');
       btn.classList.toggle('active', open);
-      if (!open) return;
-
       // Two report tables (texts / words) each own a SearchBuilder panel; the first one in
       // DOM order may belong to the hidden table, and scrolling/focusing a display:none node
       // is a silent no-op — pick the one that is actually rendered.
-      var panel = Array.prototype.find.call(pane.querySelectorAll('.dtsb-searchBuilder'), function (el) {
-        return el.offsetParent !== null;
-      }) || pane.querySelector('.dtsb-searchBuilder');
+      var visiblePanel = function () {
+        return Array.prototype.find.call(pane.querySelectorAll('.dtsb-searchBuilder'), function (el) {
+          return el.offsetParent !== null;
+        }) || pane.querySelector('.dtsb-searchBuilder');
+      };
+      // Opens/closes with the same fold as the quote rows (window.dgFold, search-render.js).
+      if (!open) {
+        var closing = visiblePanel();
+        if (closing && window.dgFold) { window.dgFold(closing, false, function () { pane.classList.remove('dg-filter-open'); }); }
+        else pane.classList.remove('dg-filter-open');
+        return;
+      }
+      pane.classList.add('dg-filter-open');
+      var panel = visiblePanel();
       if (!panel) return;
+      if (window.dgFold) window.dgFold(panel, true);
       panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
       // scrollIntoView is async (smooth) — focusing right after the scroll settles avoids the
       // browser fighting its own scroll animation to bring the newly-focused input into view.
@@ -1434,9 +1541,10 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
      же самое выражение, что repositionTtsButton() уже использует для TTS-кнопки, теперь оба
      места дают одинаковый зазор независимо от того, какая кнопка чью соседку объезжает. */
   (function placeScrollTopButton() {
-    var CORNER_BUTTON_GAP = 19; // shrunk from 32, matches settings.js repositionTtsButton()
+    var CORNER_BUTTON_GAP = 5; // reference .corner: 5px between the corner controls
     function place() {
-      var lang = document.getElementById('language-button');
+      // The reader's language pill (#dg-langpill, home.js) replaces #language-button visually.
+      var lang = document.getElementById('dg-langpill') || document.getElementById('language-button');
       var top = document.getElementById('scrollToTopBtn');
       if (!lang || !top) return;
       top.style.right = Math.round(window.innerWidth - lang.getBoundingClientRect().left + CORNER_BUTTON_GAP) + 'px';
@@ -2147,8 +2255,8 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
 
 
 <!-- Раньше открывала старую inline-модалку (#settings ниже) — теперь ведёт на общую страницу
-     /settings/ (⚙ Мастер-настройки). Alt+S НЕ трогаю (settings.js — отдельный код, per
-     владелец, ещё вызывает старую модалку до отдельного решения по горячим клавишам). -->
+     /settings/ (⚙ Мастер-настройки). Горячая клавиша — Alt+Shift+S (settings.js); просто Alt+S
+     открывает #dg-quick-btn (Быстрые настройки) вместо этой кнопки. -->
  <a title="settings" data-i18n-title="{{global.common.settings}}" id="settingsButton" href="/settings/" class="btn btn-light mb-1 toggle-icon text-decoration-none">
   <img id="gearSettings" alt="settings" data-i18n-alt="{{global.common.settings}}" src="/assets/svg/gear.svg" class="common-size-icon4"></img>
   </a>
@@ -2652,7 +2760,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
   </svg>
 </button>
 
-<table id="pali" class="display table table-striped table-hover responsive " cellspacing="0" width="100%">
+<table id="pali" class="display table table-striped table-hover responsive d-none" cellspacing="0" width="100%">
    <thead class="thead-light">
         <tr>
             <th>{{table.suttaCol}}</th>
@@ -2977,6 +3085,18 @@ $(document).ready(function() {
         }
     }
 
+    // #search-pane.dg-has-paging — whichever of #pali_wrapper/#pali-words_wrapper is currently
+    // shown really does have more than one page right now. DataTables itself already tracks
+    // this: its .dt-paging gets an inline style="display: none" the moment a table fits on one
+    // page, and drops that inline style (back to its own CSS, display:flex) the moment it
+    // doesn't — reusing that instead of recomputing page counts here.
+    function updatePagingLayoutClass() {
+        var activeWrapper = document.querySelector('#pali_wrapper:not(.d-none), #pali-words_wrapper:not(.d-none)');
+        var paging = activeWrapper && activeWrapper.querySelector('.dt-paging');
+        var hasPaging = !!paging && paging.style.display !== 'none';
+        document.getElementById('search-pane').classList.toggle('dg-has-paging', hasPaging);
+    }
+
     // Переключение между отчётом по суттам и по словам — тот же ответ /search, без повторного
     // запроса (json.wordReport уже пришёл вместе с json.data начиная с фазы 1). Обе таблицы
     // (#pali, #pali-words) теперь стабильны и живут постоянно — переключение это show/hide
@@ -2991,6 +3111,7 @@ $(document).ready(function() {
         if (meta.tooShort || meta.totalFiles === 0) {
             $('#pali, #pali_wrapper, #pali-words, #pali-words_wrapper, #variants, #variants-hint, .forshellscript').addClass('d-none');
             currentTable = null;
+            $('#search-pane').removeClass('dg-has-paging');
             return;
         }
         $('.forshellscript').removeClass('d-none');
@@ -3040,8 +3161,21 @@ $(document).ready(function() {
             table.off('draw.links').on('draw.links', wireResultLinks);
             wireResultLinks();
         }
+        // Filter+ (#search-pane.dg-has-paging, CSS): the desktop "pull the filter row up onto
+        // the header line" trick (@media min-width:768px, home.css) assumes a single short
+        // control row — with real pagination the extra row collided with the header/keyword
+        // text instead (owner, screenshot: "10 per page" landing on top of "kacchapa"). Bound to
+        // 'draw' (not just called once here), on BOTH tables — typing in the Filter box can drop
+        // the match count below one page's worth without a full rebuild, DataTables just re-draws.
+        table.off('draw.paging-layout').on('draw.paging-layout', updatePagingLayoutClass);
+        updatePagingLayoutClass();
         currentTable = table;
         applyFilterValue(table);
+        // Language pill (home.js): its results-state language list is read straight off #pali's
+        // rendered <span lang="xx">s (see dgRenderLangPill) — needs a repaint after every render,
+        // not just on body.dg-state-results first appearing (typing a new query while already on
+        // the results page changes which languages are on screen without any body-class change).
+        if (typeof window.dgRenderLangPill === 'function') window.dgRenderLangPill();
     }
 
     // Pi/En/Ru колонка ссылок (.dprLink/.bwLink/.ruLink) — данные и логика (linksdpr.js/openDpr.js,
@@ -3351,13 +3485,13 @@ $(document).ready(function() {
             // вызов переехал туда, где уже известно totalFiles (см. runSearchFromUrl → результат
             // fetch, ниже по файлу), runSearchFromUrl() запускается следующей строкой и сама
             // приведёт к тому вызову, когда/если результат окажется непустым.
-            runSearchFromUrl();
+            dgLeaveScreen('results', runSearchFromUrl);
         } else if (route.type === 'text') {
             // Раньше здесь была настоящая навигация — ридер был другой страницей. Теперь текст
             // открывается на месте, тем же способом, что и клик по сутте в выдаче.
             var qs2 = currentParams.toString();
             history.pushState({ dgReader: true }, '', '/' + encodeURIComponent(route.id) + (qs2 ? '?' + qs2 : ''));
-            openReaderInPlace(route.id);
+            dgLeaveScreen('reader', function () { openReaderInPlace(route.id); });
         } else if (route.type === 'external') {
             // dict.dg / aksharamukha / dharmamitra — a plain external tool, not part of this
             // site at all. Opens in a new tab; the search box/page stay exactly as they were.
@@ -3418,6 +3552,24 @@ $(document).ready(function() {
         'vv', 'pv', 'cp', 'bv', 'ps', 'ne', 'cnd', 'mnd', 'kp', 'pe'];
     var VINAYA_PREFIXES = ['pli-tv-bi', 'pli-tv-bu', 'pli-tv-kd', 'pli-tv-pvr'];
 
+    // dg-fastify.js's resolveAllowedPrefixes() only expands scope='default' into
+    // DEFAULT_SCOPE_PREFIXES — category scopes ('dhamma'/'khudakka'/'vinaya') come back from the
+    // server as-is, a single-element resolvedPrefixes: ['dhamma'] (matchesScope() there checks
+    // suttaMeta.category === 'dhamma' directly, no expansion needed for matching). Fine for
+    // search, but broke the star's tooltip here: 'dhamma' isn't in FOUR_NIKAYA_PREFIXES so the
+    // grouping loop below fell through to "Other: 4 Nikayas" (scopeNames.dhamma's short LABEL,
+    // not an actual book) instead of ever listing the real books. Expand category tokens back to
+    // their book prefixes here, client-side only — doesn't touch search matching at all.
+    var CATEGORY_EXPANSION = { dhamma: FOUR_NIKAYA_PREFIXES, khudakka: KN_PREFIXES, vinaya: VINAYA_PREFIXES };
+    function expandCategoryPrefixes(prefixes) {
+        var out = [];
+        prefixes.forEach(function (p) {
+            if (CATEGORY_EXPANSION[p]) out.push.apply(out, CATEGORY_EXPANSION[p]);
+            else out.push(p);
+        });
+        return out;
+    }
+
     function escapeHtml(s) {
         return String(s).replace(/[&<>"]/g, function (c) {
             return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
@@ -3425,6 +3577,7 @@ $(document).ready(function() {
     }
 
     function scopeTooltipHtml(prefixes) {
+        prefixes = expandCategoryPrefixes(prefixes);
         var groups = [
             { title: dgT('results.scopeGroupNikayas', '4 Nikāyas'), codes: FOUR_NIKAYA_PREFIXES },
             { title: dgT('results.scopeGroupKn', 'Khuddaka Nikāya'), codes: KN_PREFIXES },
@@ -3448,7 +3601,7 @@ $(document).ready(function() {
     }
 
     function buildScopeLabel(resolvedPrefixes) {
-        var prefixes = resolvedPrefixes || DEFAULT_SCOPE_PREFIXES;
+        var prefixes = expandCategoryPrefixes(resolvedPrefixes || DEFAULT_SCOPE_PREFIXES);
         // У обобщённых подписей ("4 Никаи + 6 КН") full — это РЕАЛЬНЫЙ список книг, а не та же
         // строка: именно его показывает звёздочка в заголовке, иначе подсказка дословно повторяла
         // бы видимый текст и не отвечала на вопрос "что именно сейчас выбрано".
@@ -3610,6 +3763,7 @@ $(document).ready(function() {
     var DG_STATES = ['dg-state-home', 'dg-state-results', 'dg-state-reader', 'dg-state-toc'];
     function dgSetState(name) {
         var cls = 'dg-state-' + name;
+        document.body.classList.remove('home-out', 'results-out'); // exit played, screen switches now
         if (document.body.classList.contains(cls)) return;
         DG_STATES.forEach(function (s) { document.body.classList.toggle(s, s === cls); });
         // Native autofocus on #paliauto (see input markup above) fires at HTML-parse time,
@@ -3651,6 +3805,9 @@ $(document).ready(function() {
        скриптом в начале <body>. */
     function dgSetBusy(on) {
         document.body.classList.toggle('dg-busy', !!on);
+        // A failed/empty navigation ends here without dgSetState() — never leave the exit
+        // classes (page invisible) behind.
+        if (!on) document.body.classList.remove('home-out', 'results-out');
         var el = document.getElementById('dg-loading');
         if (el) el.hidden = !on;
         // dg-busy прячет #results-toolbar (home.css) — если автоскрытие шапки (autoHideHeader())
@@ -3805,14 +3962,24 @@ $(document).ready(function() {
        initReader(). При первом открытии его вызывает сам файл при загрузке, дальше зовём мы. */
     function openReaderInPlace(slug) {
         dgSetBusy(false);
+        // Coming from another screen: hide the (stale/empty) pane until buildSutta() has the new
+        // text, so the enter animation plays once, on real content (.reader-pending, home.css).
+        var pane = document.getElementById('reader-pane');
+        if (pane && !document.body.classList.contains('dg-state-reader')) pane.classList.add('reader-pending');
         dgSetState('reader');
         var firstTime = !readerAssetsPromise;
         return ensureReaderAssets()
             .then(function () {
                 if (!firstTime && typeof window.initReader === 'function') return window.initReader();
+                return window.__dgInitReaderPromise; // megareader.js self-init on first load
             })
+            // initReader() resolves after buildSutta() — by then the text is in the DOM.
+            // buildSutta() itself reveals the pane (with the enter animation); this is the
+            // belt-and-braces path for anything that returned early.
+            .then(function () { if (pane) pane.classList.remove('reader-pending'); })
             .catch(function (err) {
                 console.error('Ридер не поднялся на месте:', err);
+                if (pane) pane.classList.remove('reader-pending');
                 // Offline app: '/' + slug has no static asset behind it either (same reason as
                 // openQuotePopup() above) — a real navigation here would strand the user on the
                 // exact same unrecoverable net::ERR_INVALID_RESPONSE screen instead of recovering.
@@ -3933,7 +4100,52 @@ $(document).ready(function() {
 
     /* Единственный решатель "что показать по текущему адресу". Раньше popstate безусловно звал
        runSearchFromUrl() — теперь адрес может означать и текст. */
+    /* Screen exit animations (owner's animations.md): before switching screens play the exit of
+       the current one and switch only after it — reader-out / toc-out (240ms), results-out
+       (220ms), home-out (240ms), all in home.css, all off under prefers-reduced-motion. `to` is
+       the screen we are going to: leaving is skipped when it is the same screen (a new query on
+       the results page, a text link inside the reader is the exception — the reader replays its
+       enter on the new text). A second call while an exit is running just returns: the pending
+       one re-reads the (now newer) address. The search field is NOT part of any exit — it is
+       one DOM element in every state and travels by its own CSS transitions. */
+    var DG_EXIT = { reader: ['reader-pane', 'reader-out', 240], toc: ['toc-pane', 'toc-out', 240], results: [null, 'results-out', 220], home: [null, 'home-out', 240] };
+    function dgCurrentScreen() {
+        for (var k in DG_EXIT) if (document.body.classList.contains('dg-state-' + k)) return k;
+        return null;
+    }
+    function dgLeaveScreen(to, cb) {
+        var from = dgCurrentScreen();
+        var spec = from && DG_EXIT[from];
+        var same = from === to && from !== 'reader';
+        if (!spec || same || (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)) { cb(); return; }
+        var el = spec[0] ? document.getElementById(spec[0]) : document.body;
+        if (!el) { cb(); return; }
+        if (el.classList.contains(spec[1])) return;
+        el.classList.add(spec[1]);
+        setTimeout(function () {
+            // Pane-level exits (reader/toc) end here; the body-level ones (home-out /
+            // results-out) stay until the screen really changes — the results fetch can take a
+            // second, and dropping the class early brought the home page back in the meantime
+            // (owner: "тайлы странно исчезают"). dgSetState()/dgSetBusy(false) drop them.
+            if (spec[0]) el.classList.remove(spec[1]);
+            if (from === 'reader') window.__dgReplayEnter = true;
+            cb();
+        }, spec[2]);
+    }
+    /* Which screen the current address leads to — mirrors routeFromUrlNow()/initSearchApp(). */
+    function dgScreenFromUrl() {
+        var path = window.location.pathname.replace(/^\/+|\/+$/g, '');
+        if (path === 'toc' || path.indexOf('toc/') === 0) return 'toc';
+        if (/^4as(?:\/\d)?$/.test(path)) return 'home';
+        if (textIdFromPath(window.location.pathname)) return 'reader';
+        var last = path.split('/').pop();
+        var hasQuery = !!new URLSearchParams(window.location.search).get('q') || (last && ['search', 'index.html', 'result', 'nodejs'].indexOf(last.toLowerCase()) === -1);
+        return hasQuery ? 'results' : 'home';
+    }
     function routeFromUrl() {
+        dgLeaveScreen(dgScreenFromUrl(), routeFromUrlNow);
+    }
+    function routeFromUrlNow() {
         normalizeRuPrefix();
         normalizeShareTargetQuery();
         // /toc — оглавление/навигатор по канону (заменяет read.php, см. TODO.md). Ловим
@@ -4186,7 +4398,7 @@ $(document).ready(function() {
     // на отдельную /settings/ (owner: "сделай чтобы настройки выезжали как меню тайлов в
     // мобильном", позже — "и на десктопе тоже, так красивее и функциональнее"). Делегированный
     // обработчик ловит и видимую строку бургера, и скрытую #settingsButton (см. комментарий выше
-    // неё) — Alt+S (settings.js) кликает именно её. Одно и то же поведение на любой ширине —
+    // неё) — Alt+Shift+S (settings.js) кликает именно её. Одно и то же поведение на любой ширине —
     // .dg-sheet сам рисует себя иначе на десктопе (центрированная широкая карточка, не нижняя
     // шторка), отдельная развилка здесь не нужна.
     document.addEventListener('click', function (e) {
@@ -4255,6 +4467,16 @@ $(document).ready(function() {
          this stays the plain lens rather than a hand-drawn substitute breaking the icon system's
          "every drawer icon comes from ICONS/FontAwesome" convention. -->
     <a class="dg-drawer-row dg-find-open" href="javascript:void(0)" data-dg-icon="magnifier">{{menu.findOnPage}}</a>
+    <!-- Мультитул вместо «Навигации» (owner, 2026-09-05): список плиток главной, чтобы мультитул
+         был под рукой в любом месте сайта — в выдаче, в ридере, в TOC. Нативный <details>, свёрнут
+         по умолчанию в выдаче/ридере/TOC; на главной openDrawer() (home.js) раскрывает его при
+         каждом открытии бургера (owner, 2026-09-06, как в макете). Список строит
+         home.js renderDrawerTiles() из тех же menu-links.json / tileOrder() / hiddenTiles(), что и
+         плитки; клик по строке = клик по плитке (мегаменю на десктопе, шторка на телефоне). -->
+    <details class="dg-drawer-group" id="dg-drawer-multitool">
+      <summary class="dg-group-title">{{menu.multitool}}</summary>
+      <div id="dg-drawer-tiles"></div>
+    </details>
     <!-- Режимы чтения — только в состоянии ридера (owner: "выводи первым делом режимы ридера" —
          протестировать/переключить их иначе можно было только руками через ?mode= в адресе).
          Список строит home.js (paintReaderModes) из reader/mode-table.json — тот же источник
@@ -4264,19 +4486,11 @@ $(document).ready(function() {
          свёрнуто", тем же native-элементом, что уже здесь для «Мультитул» ниже. Открыт/закрыт
          запоминается в localStorage (paintReaderModes/wireReaderModesToggle, home.js) — читается
          только при показе секции, а не при каждой перерисовке списка внутри неё. -->
-    <details id="dg-drawer-modes" hidden>
+    <details class="dg-drawer-group" id="dg-drawer-modes" hidden>
       <summary class="dg-group-title">{{menu.readingModes}}</summary>
       <div id="dg-drawer-modes-list"></div>
     </details>
-    <!-- Мультитул вместо «Навигации» (owner, 2026-09-05): список плиток главной, чтобы мультитул
-         был под рукой в любом месте сайта — в выдаче, в ридере, в TOC. Нативный <details>, свёрнут
-         по умолчанию везде, включая главную (там мультитул и так на всю страницу). Список строит
-         home.js renderDrawerTiles() из тех же menu-links.json / tileOrder() / hiddenTiles(), что и
-         плитки; клик по строке = клик по плитке (мегаменю на десктопе, шторка на телефоне). -->
-    <details class="dg-drawer-group" id="dg-drawer-multitool">
-      <summary class="dg-group-title">{{menu.multitool}}</summary>
-      <div id="dg-drawer-tiles"></div>
-    </details>
+
     <p class="dg-group-title">{{menu.settings}}</p>
     <!-- Язык/тема — переехали сюда, в «Настройки» (просьба владельца: часть настроек была вверху
          шторки, часть внизу — всё в одном месте). Переключатели наполняет и обслуживает home.js,

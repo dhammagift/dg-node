@@ -443,9 +443,16 @@
     // opens Chrome's own find bar instead). +Shift is free. Burger-drawer entry ("Найти на
     // странице", search/index.html ".dg-find-open") is the touch-device entry point — no
     // keyboard involved there.
+    // Alt+Shift+F — second binding, same action (owner: Ctrl/Cmd+Shift+F didn't register for
+    // them at all — likely an external-keyboard-on-Android thing, that combo is exactly the
+    // kind OS/IME layers like to eat before it reaches the page; couldn't reproduce it here,
+    // desktop Chrome and the served prod file both fire fine). Alt+F is already taken
+    // (favorites, settings.js) so this is Alt+SHIFT+F specifically, not a swap.
     // ---------------------------------------------------------------
     document.addEventListener('keydown', function (e) {
-        if ((e.ctrlKey || e.metaKey) && e.shiftKey && !e.altKey && (e.key === 'f' || e.key === 'F')) {
+        var isCtrlShiftF = (e.ctrlKey || e.metaKey) && e.shiftKey && !e.altKey && (e.key === 'f' || e.key === 'F');
+        var isAltShiftF = e.altKey && e.shiftKey && !e.ctrlKey && !e.metaKey && (e.key === 'f' || e.key === 'F' || e.code === 'KeyF');
+        if (isCtrlShiftF || isAltShiftF) {
             e.preventDefault();
             openPanel();
         }

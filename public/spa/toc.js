@@ -50,6 +50,16 @@
         if (!scope) return false;
         return extraScopeCodes.some(function (code) { return scope.indexOf(code) !== -1; });
     }
+    // Owner: "видимо все тексты [считает], но выведена только часть — он может актуальное кол-во
+    // выводить?" — group.count (from /api/toc) sums EVERY member book, default tier AND the
+    // extra tier the search-scope setting keeps hidden (that's the whole reason for the "*" next
+    // to it, see renderGroupRow below). Recomputes just the tier-visible books' own counts, so the
+    // number actually matches what's rendered under it right now.
+    function visibleGroupCount(group) {
+        return group.books
+            .filter(function (b) { return b.tier === 'default' || extraTierUnlocked(group.extraScopeCodes); })
+            .reduce(function (sum, b) { return sum + b.count; }, 0);
+    }
 
     // null = no filter set yet (show every translator). Once the user touches the panel, this
     // becomes an explicit array of allowed transKeys, same "don't write until touched" pattern
@@ -61,6 +71,28 @@
     }
     function saveTranslatorFilter(set) {
         localStorage.setItem('dhammaTranslatorFilter', JSON.stringify(Array.from(set)));
+    }
+    // Owner: "если не выбран ни один переводчик — просто показывай все пали тексты" — every
+    // translator unchecked (filter is a real, touched Set, just empty) used to hide the ENTIRE
+    // tree (matchedLeafCount/leafTranslatorLinks: nothing ever matches an empty set) — the same
+    // dead-end a raw grep for "" would be. Treated the same as no filter for HIDING purposes
+    // (nothing disappears), while leafTranslatorLinks still correctly shows zero badges — the
+    // filter genuinely says "no translator", only the tree's shape stops respecting that.
+    function filterIsEmpty(filter) {
+        return !!(filter && filter.size === 0);
+    }
+
+    // Pātimokkha visibility (pli-tv-bu-pm/pli-tv-bi-pm rows) — a SEPARATE on/off switch, not
+    // part of the translator filter above. It's pure Pāli liturgy with no translator's own
+    // work in it (see docs/PATIMOKKHA_TRANSLATIONS_PLAN.md), so it can never "match" any
+    // translator filter — hiding it whenever a filter was active made it look like the whole
+    // TOC had shrunk, but owner: it's core TOC content and must stay visible by default,
+    // independent of whatever translators are checked. Defaults to visible (unset === true).
+    function readPatimokkhaVisible() {
+        return localStorage.getItem('dhammaShowPatimokkha') !== '0';
+    }
+    function savePatimokkhaVisible(visible) {
+        localStorage.setItem('dhammaShowPatimokkha', visible ? '1' : '0');
     }
 
     // Whether the Translators panel starts open. No stored choice yet -> responsive default
@@ -202,17 +234,24 @@
     // header with no matching children (owner: filter should really hide non-matching texts, not
     // just grey out badges).
 
+    // Owner: "фильтр не работает как надо — o показывается даже с выключенным o" — interlinearSet
+    // used to mean "always shown, filter doesn't apply" (see the old matchedLeafCount comment
+    // below), but that made the translator filter panel's own checkbox for these translators
+    // (ru_o/en_o/bb_o/th_o, translator-types.json) a no-op lie: unchecking "o" left it showing
+    // anyway. interlinearSet now only decides DISPLAY (shown first, .toc-mark-primary styling) —
+    // the filter itself applies uniformly to every translator, interlinear or not.
     function leafTranslatorLinks(id, transKeys, interlinearSet, filter) {
         var interlinear = transKeys.filter(function (k) { return interlinearSet.has(k); });
+        var filteredInterlinear = filter ? interlinear.filter(function (k) { return filter.has(k); }) : interlinear;
         var rest = sortRest(transKeys.filter(function (k) { return !interlinearSet.has(k); }));
         var filteredRest = filter ? rest.filter(function (k) { return filter.has(k); }) : rest;
-        if (!interlinear.length && !filteredRest.length) return null;
+        if (!filteredInterlinear.length && !filteredRest.length) return null;
 
         // Plain small marks, like prod's muted "TB"/"BS" initials next to a leaf — not filled
         // chip/badge boxes (owner: side-by-side with prod, the chip look reads as an admin panel,
         // not a canon listing).
         var frag = document.createDocumentFragment();
-        interlinear.forEach(function (k) {
+        filteredInterlinear.forEach(function (k) {
             var a = el('a', 'toc-mark toc-mark-primary', translatorLabel(k));
             a.href = '/' + encodeURIComponent(id) + '?translators=' + encodeURIComponent(k);
             frag.appendChild(a);
@@ -302,7 +341,11 @@
 
         // Under an active filter, a leaf with translations that simply don't match anyone
         // selected disappears entirely rather than showing as a bare, translation-less row.
-        if (filter && transKeys.length && !anyLangShown) return null;
+        // Except when the filter is empty (nobody selected at all, see filterIsEmpty) — there
+        // "nothing matches" is true for every single leaf, so this would hide the whole tree;
+        // the leaf shows instead, bare (Pāli only, no badges — leafTranslatorLinks already
+        // renders none for an empty filter, that part is correct).
+        if (filter && !filterIsEmpty(filter) && transKeys.length && !anyLangShown) return null;
         return li;
     }
 
@@ -383,16 +426,16 @@
         return matchedLeafCount(bookData, filter) > 0;
     }
 
-    // How many texts in this book actually match the current filter (interlinear always counts,
-    // same rule as the per-leaf badges) — used to replace a book's static total ("34") with the
-    // real filtered count while a filter is active (owner: "количество текстов вообще не
-    // поменялось... хотя в дигха никае только два перевода, а написано 34").
+    // How many texts in this book actually match the current filter — used to replace a book's
+    // static total ("34") with the real filtered count while a filter is active (owner:
+    // "количество текстов вообще не поменялось... хотя в дигха никае только два перевода, а
+    // написано 34"). Same rule as the per-leaf badges (leafTranslatorLinks): the filter applies
+    // uniformly, interlinear translators included — see the comment there for why.
     function matchedLeafCount(bookData, filter) {
-        var interlinearSet = new Set(bookData.interlinearKeys || []);
         var translations = bookData.translations || {};
         var count = 0;
         Object.keys(translations).forEach(function (id) {
-            if (translations[id].some(function (k) { return interlinearSet.has(k) || filter.has(k); })) count++;
+            if (translations[id].some(function (k) { return filter.has(k); })) count++;
         });
         return count;
     }
@@ -422,7 +465,7 @@
     // "ещё" disclosure — no custom dropdown JS needed for that.
     var TOP_N_VISIBLE = 5;
 
-    function renderFilterPanel(panelEl, langs, onChange) {
+    function renderFilterPanel(panelEl, langs, onChange, onPatimokkhaChange) {
         panelEl.innerHTML = '';
         var filter = readTranslatorFilter();
 
@@ -444,6 +487,29 @@
         panelEl.appendChild(searchInput);
         var groupsWrap = el('div', 'toc-filter-groups');
         panelEl.appendChild(groupsWrap);
+
+        // Independent Pātimokkha visibility switch, at the very bottom under the translator
+        // lists (owner: "в самый низ под списками переводчиков просто добавим тоггл show hide
+        // патимоккхи. по умолчанию он вкл") — a real on/off SWITCH (.dg-toggle-row/.dg-tgl, same
+        // component quick-settings uses), not another checkbox: a checkbox here read as just
+        // one more translator to filter by (owner screenshot: "кажется что это одна из опций
+        // фильтра"), when it's actually a completely separate, unrelated setting.
+        var pmOn = readPatimokkhaVisible();
+        var pmToggle = document.createElement('button');
+        pmToggle.type = 'button';
+        pmToggle.className = 'dg-toggle-row toc-filter-patimokkha';
+        pmToggle.setAttribute('aria-pressed', pmOn ? 'true' : 'false');
+        pmToggle.appendChild(el('span', 'dg-toggle-label', uiIsRu() ? 'Показывать Патимоккху' : 'Show the Pātimokkha'));
+        var pmTgl = el('span', 'dg-tgl');
+        pmTgl.setAttribute('aria-hidden', 'true');
+        pmToggle.appendChild(pmTgl);
+        pmToggle.addEventListener('click', function () {
+            var next = pmToggle.getAttribute('aria-pressed') !== 'true';
+            pmToggle.setAttribute('aria-pressed', next ? 'true' : 'false');
+            savePatimokkhaVisible(next);
+            if (onPatimokkhaChange) onPatimokkhaChange();
+        });
+        panelEl.appendChild(pmToggle);
 
         // Live name search across every language at once (owner: "напечатать часть его имени...
         // сюжета в английском есть, или сабо в немецком") — filters the rows already in the DOM,
@@ -699,6 +765,18 @@
             var groupEntries = []; // { headerEl, group, codes }
             var matchedCounts = {}; // code -> matched leaf count under the current filter
 
+            // Applies the standalone Pātimokkha toggle (see readPatimokkhaVisible above) to the
+            // two singlePage rows — called from BOTH branches of refreshFilterEffects below, last,
+            // so it always wins regardless of what the translator filter just did to other books.
+            function applyPatimokkhaVisibility() {
+                var visible = readPatimokkhaVisible();
+                bookEntries.forEach(function (b) {
+                    if (!b.singlePage) return;
+                    b.bookEl.classList.toggle('d-none', !visible);
+                });
+                updateCategoryVisibility();
+            }
+
             function refreshFilterEffects() {
                 resetRow.classList.toggle('d-none', !filter);
                 container.querySelectorAll('[data-toc-book-body]').forEach(function (bodyEl) {
@@ -710,16 +788,16 @@
                 // "нужно чтобы все остальные тексты никаи и тк скрылись"). Coverage is derived
                 // from the same per-book endpoint "expand all" already uses, just without
                 // building the DOM tree.
-                if (!filter) {
+                if (!filter || filterIsEmpty(filter)) {
                     bookEntries.forEach(function (b) {
                         b.bookEl.classList.remove('d-none');
                         if (b.countEl) b.countEl.textContent = '(' + b.book.count + ')';
                     });
                     groupEntries.forEach(function (g) {
-                        g.countEl.textContent = '(' + g.group.count + ')';
+                        g.countEl.textContent = '(' + visibleGroupCount(g.group) + ')';
                         g.headerEl.closest('.toc-book').classList.remove('d-none');
                     });
-                    updateCategoryVisibility();
+                    applyPatimokkhaVisibility();
                     return;
                 }
                 // Every book's "(N)" switches from its static total to how many of ITS texts
@@ -736,7 +814,13 @@
                 // exactly that unpredictability, even though it came from an earlier, well-meant
                 // request to make the filter's effect obviously visible.
                 var pending = bookEntries.map(function (b) {
-                    if (b.singlePage) return Promise.resolve();
+                    if (b.singlePage) {
+                        // Pātimokkha has no per-book tree to check matches against (no
+                        // translator's own work in it — see readPatimokkhaVisible above), so the
+                        // translator filter simply doesn't apply to it either way; its own
+                        // visibility is decided solely by applyPatimokkhaVisibility() below.
+                        return Promise.resolve();
+                    }
                     return fetchBook(b.code, langs).then(function (bookData) {
                         var count = matchedLeafCount(bookData, filter);
                         matchedCounts[b.code] = count;
@@ -751,7 +835,7 @@
                         g.countEl.textContent = '(' + total + ')';
                         g.headerEl.closest('.toc-book').classList.toggle('d-none', total === 0);
                     });
-                    updateCategoryVisibility();
+                    applyPatimokkhaVisibility();
                 });
             }
             function updateCategoryVisibility() {
@@ -766,13 +850,22 @@
             function onFilterChange(newFilter) {
                 filter = newFilter;
                 refreshFilterEffects();
+                // Owner: "покажи бабл, что ни одного переводчика не выбрано, показаны пали
+                // тексты" — the tree itself now recovers on its own (see filterIsEmpty above),
+                // but that recovery is silent; without this a user who just unchecked the last
+                // box would have no idea why the translator badges disappeared everywhere.
+                if (filterIsEmpty(newFilter) && typeof window.showBubbleNotification === 'function') {
+                    window.showBubbleNotification(uiIsRu()
+                        ? 'Ни один переводчик не выбран — показаны только пали тексты'
+                        : 'No translator selected — showing Pāli texts only');
+                }
             }
-            renderFilterPanel(filterPanel, langs, onFilterChange);
+            renderFilterPanel(filterPanel, langs, onFilterChange, applyPatimokkhaVisibility);
             resetLink.addEventListener('click', function (e) {
                 e.preventDefault();
                 localStorage.removeItem('dhammaTranslatorFilter');
                 filter = null;
-                renderFilterPanel(filterPanel, langs, onFilterChange);
+                renderFilterPanel(filterPanel, langs, onFilterChange, applyPatimokkhaVisibility);
                 refreshFilterEffects();
             });
 
@@ -895,7 +988,7 @@
                 groupHeader.type = 'button';
                 groupHeader.appendChild(document.createTextNode(group.label[uiIsRu() ? 'ru' : 'en']));
                 groupHeader.appendChild(document.createTextNode(' '));
-                var countEl = el('span', 'toc-count', '(' + group.count + ')');
+                var countEl = el('span', 'toc-count', '(' + visibleGroupCount(group) + ')');
                 groupHeader.appendChild(countEl);
                 // Asterisk (prod's own convention for "not the complete collection", settings/
                 // index.html ABHI_MARK) — grouped with the count, same muted gray, not part of the
@@ -1001,6 +1094,10 @@
             });
 
             if (filter) refreshFilterEffects();
+            // Independent of the translator filter (see readPatimokkhaVisible above) — must run
+            // even when there's no filter at all, or a previously OFF toggle would stay ignored
+            // until the user touches something that happens to call refreshFilterEffects().
+            else applyPatimokkhaVisibility();
             if (target) revealTarget(target, bookEntries, groupEntries, langs, filter);
         }).catch(function (e) {
             container.innerHTML = '';
@@ -1031,13 +1128,8 @@
         // (dg-reader-enter) — triggered automatically once dgSetState('reader') below actually
         // flips the state. Play the exit first: dgSetState('reader') sets #toc-pane to
         // display:none immediately, which would otherwise cut this transition off mid-flight.
-        var layout = container.querySelector('.toc-layout');
-        if (layout && !(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) {
-            layout.classList.add('dg-toc-leaving');
-            setTimeout(function () { window.dgNavigateInternal(href); }, 280);
-        } else {
-            window.dgNavigateInternal(href);
-        }
+        // The exit animation (.toc-out) is played by routeFromUrl() in search/index.html.
+        window.dgNavigateInternal(href);
     }
 
     window.initToc = function () {

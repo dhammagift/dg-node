@@ -1,0 +1,15 @@
+/* Dhamma.gift design system — global entry point. @import lines only.
+   Order is the app's cascade: Bootstrap, fonts, tokens, then harvested component rules.
+   Bootstrap 5.3.1 is the same official minified build the app vendors
+   (public/overrides/css/bootstrap.5.3.1.min.css, kept at vendor/ for offline use); it is
+   loaded from the CDN here so its ~98 component-scoped --bs-* internals are not mistaken
+   for design-system tokens. Point this line at vendor/bootstrap.5.3.1.min.css when working
+   offline. */
+@import url("https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css");
+@import "tokens/fonts.css";
+@import "tokens/reader-palette.css";
+@import "tokens/colors.css";
+@import "tokens/typography.css";
+@import "tokens/shape.css";
+@import "tokens/dark-theme.css";
+@import "css/components.css";

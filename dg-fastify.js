@@ -146,7 +146,10 @@ function sendVersionedHtml(req, reply, absHtmlPath, statusCode = 200) {
     try { html = fsSync.readFileSync(absHtmlPath, 'utf8'); }
     catch { return reply.code(404).send(); }
     const rewritten = html.replace(
-        /((?:src|href)=")(\/(?:assets|spa|nodejs\/res|reader|settings)\/[^"?#]+\.(?:js|css|svg|png|ico))(")/g,
+        // Also stamps the lazy loadScript('/reader/megareader.js') / ('/spa/toc.js') calls in
+        // search/index.html — otherwise a 24h-cached copy could outlive the HTML that expects a
+        // newer one (e.g. .reader-pending needs buildSutta() to clear it).
+        /((?:src|href)="|loadScript\(')(\/(?:assets|spa|nodejs\/res|reader|settings)\/[^"'?#]+\.(?:js|css|svg|png|ico))("|')/g,
         (m, pre, url, post) => {
             const prefix = Object.keys(HTML_ASSET_URL_ROOTS).find(p => url.startsWith(p + '/'));
             if (!prefix) return m;
@@ -690,11 +693,14 @@ async function buildTranslatorCatalogCache() {
     const countsByLang = {};
     for (const row of searchDb.prepare(
         `SELECT lang, translator, count(DISTINCT sutta_id) c FROM texts
-         WHERE kind = 'translation' AND translator <> 'site' GROUP BY lang, translator`
+         WHERE kind = 'translation' AND translator NOT IN ('site', 'ai') GROUP BY lang, translator`
     ).all()) {
         // "site" (excluded above) is SC's own UI-string translation — about/footer/home strings,
         // not a sutta translator (owner: "ru_site и любой другой site не должны попадать в
-        // списки переводчиков").
+        // списки переводчиков"). "ai" (offline-data/dhammagift/ai/) is a working AI-assisted
+        // draft for /assets/lbl.html's line-by-line tool only — same exclusion as the TOC's own
+        // translator badges (see /api/toc/book/:code above) and core/search-core.js's search
+        // matching (owner: "ru_ai не должен быть виден пользователю нигде на сайте").
         (countsByLang[row.lang] = countsByLang[row.lang] || {})[row.translator] = row.c;
     }
     try {
@@ -969,7 +975,7 @@ try {
 // read.php, sitemap.xml — are symlinks to individual FILES, harmless dead weight for
 // express.static but a hard registration error for @fastify/static, which requires root to be a
 // directory).
-const mountedPrefixes = new Set(['assets', 'read']);
+const mountedPrefixes = new Set(['assets', 'read', 'memorize', 'devanagari']);
 // Skips are reported, not silent. statSync() follows symlinks, so an entry whose target has gone
 // away (siteroot/mobile-data -> a dist/ directory that was never built, say) is indistinguishable
 // here from a broken one — it just never gets a route, and every request under that prefix falls
@@ -998,6 +1004,36 @@ if (skippedPrefixes.length) {
         `prefixes 404 until the target exists AND the server is restarted: ${skippedPrefixes.join(', ')}`
     );
 }
+// /memorize, /devanagari — 'memorize'/'devanagari' were pre-added to mountedPrefixes above so
+// the siteroot/ loop skips them (siteroot/memorize is a symlink to the legacy PHP memorize.js
+// tool; siteroot/devanagari doesn't even exist). Legacy URL shape:
+// `/memorize/?q=<suttaId>#<segment>` — `#segment` is a URL FRAGMENT, never sent to the server
+// (browsers strip it before the request), so this can only be resolved client-side, never as a
+// server-side redirect. Target is dg-node's own clean URL,
+// `/<suttaId>[:<segment>]?mode=<memorize|devanagari>` (the /:slug route further down parses the
+// ":segment" suffix client-side, router.js) — a same-origin relative redirect, works under
+// whichever hostname this server answers for (owner tested against f.dhamma.gift).
+function legacyModeRedirectStub(modeKey) {
+    return `<!doctype html><html><head><meta charset="utf-8"><title>Redirecting…</title></head><body><script>
+(function () {
+  var params = new URLSearchParams(location.search);
+  var q = params.get('q') || '';
+  params.delete('q');
+  var seg = location.hash ? decodeURIComponent(location.hash.slice(1)) : '';
+  var path = '/' + encodeURIComponent(q) + (seg ? ':' + encodeURIComponent(seg) : '');
+  params.set('mode', ${JSON.stringify(modeKey)});
+  location.replace(path + (params.toString() ? '?' + params.toString() : ''));
+})();
+</script></body></html>`;
+}
+for (const [urlPrefix, modeKey] of [['memorize', 'memorize'], ['devanagari', 'devanagari']]) {
+    for (const routePath of [`/${urlPrefix}`, `/${urlPrefix}/`]) {
+        app.get(routePath, (req, reply) => {
+            reply.type('text/html; charset=utf-8').send(legacyModeRedirectStub(modeKey));
+        });
+    }
+}
+
 // ru/memo, ru/login — унаследованные от легаси языковые алиасы (тот же контент ещё и под /ru/).
 // Это не отдельная тулза в siteroot/, а второй URL для уже примонтированной — оставлены явно.
 app.register(fastifyStatic, { root: path.join(SITEROOT, 'memo'), prefix: '/ru/memo', setHeaders: staticCacheHeaders, decorateReply: false, redirect: true });
@@ -1064,9 +1100,17 @@ app.get('/api/text/:suttaId', async (req, res) => {
         ? req.query.langs.split(',').map(l => l.trim())
         : req.query.lang
             ? [req.query.lang]
-            // Ни mode, ни lang, ни langs — тот же фоллбэк, что и был здесь всегда для голого
-            // ручного доступа (curl/api-docs без единого языкового параметра), не новый хардкод.
-            : (req.query.langs || 'ru,en').split(',').map(l => l.trim());
+            : modeConfig
+                // Owner-reported bug: a real ?mode= with no &lang= (e.g. a cold /dn1?mode=single
+                // load — switchReaderMode() never touches ?lang=, see megareader.js, so a fresh
+                // page load can hit this with no lang set yet) used to fall through to the bare
+                // "ru,en" branch below regardless of mode, silently rendering a SECOND language
+                // in modes meant for exactly one. Only the truly bare "no mode at all" case
+                // (curl/api-docs) should get the multi-lang fallback.
+                ? ['ru']
+                // Ни mode, ни lang, ни langs — тот же фоллбэк, что и был здесь всегда для голого
+                // ручного доступа (curl/api-docs без единого языкового параметра), не новый хардкод.
+                : (req.query.langs || 'ru,en').split(',').map(l => l.trim());
     // ?translators=ru_o,ru_sv — ручной оверрайд, для multiTran (два перевода ОДНОГО языка
     // одновременно), в обход обычного "один переводчик на язык" (см. findTranslationFiles).
     const explicitTranslators = req.query.translators
@@ -1111,6 +1155,11 @@ app.get('/api/text/:suttaId', async (req, res) => {
         // (mode-table.json), теперь режим языка не хранит вообще, так что явно возвращаем его
         // отдельным полем.
         data.lang = req.query.lang || effectiveLangs[0] || null;
+        // Languages THIS text has any translation in — whatever mode/langs were requested. The
+        // reader's language popover marks the rest "нет перевода" right at load time (owner)
+        // instead of discovering it one refetch at a time. One indexed read of the same table
+        // the root text came from.
+        data.availableLangs = searchDb.prepare("SELECT DISTINCT lang FROM texts WHERE sutta_id = ? AND kind = 'translation'").all(suttaId).map(r => r.lang);
 
         // Конвертация системы письма пали (?script=Devanagari/Thai/... — любой ключ
         // Aksharamukha.Scripts, см. akshReady/resolveScriptKey выше). Только root_text/variant —
@@ -1685,8 +1734,14 @@ app.get('/api/toc/book/:code', async (req, res) => {
         // the reader would collapse to. Used to walk each language's whole directory tree.
         const wanted = targetLangs.includes('all') ? null : new Set(targetLangs.map(l => l.split('_')[0]));
         const filter = langFilterSql(wanted);
+        // translator <> 'ai': same exclusion core/search-core.js already applies to search
+        // matching — "ai" (offline-data/dhammagift/ai/) is a working AI-assisted draft meant
+        // only for /assets/lbl.html's line-by-line tool, not a real public translator. TOC badges
+        // are otherwise deliberately "every translator, unfiltered" (comment above) — this is the
+        // one deliberate exception, not a narrowing of that intent (owner: "ru_ai не должен быть
+        // виден пользователю нигде на сайте, это только для lbl.html").
         for (const row of sqlRowsIn('DISTINCT sutta_id, lang, translator', 'texts', 'sutta_id',
-            leafIds, `AND kind = 'translation' ${filter.sql}`, filter.params)) {
+            leafIds, `AND kind = 'translation' AND translator <> 'ai' ${filter.sql}`, filter.params)) {
             (translations[row.sutta_id] = translations[row.sutta_id] || []).push(`${row.lang}_${row.translator}`);
         }
     }

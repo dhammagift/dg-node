@@ -1,0 +1,9 @@
+/* Type. The UI face is Bootstrap's own system stack (--bs-body-font-family);
+   "Robto Serif" (the app's spelling of the file) is the reader's serif, used for
+   long-form Pali and translation text. */
+:root,
+.dg-skin-minimal {
+  --dg-font: var(--bs-body-font-family);
+  --dg-font-serif: "Robto Serif", serif;
+  --dg-font-mono: monospace;
+}

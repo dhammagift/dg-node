@@ -670,6 +670,11 @@ onReady(() => {
                 for (var i = targetIndex; i < Math.min(targetIndex + 20, segments.length); i++) {
                     if (segments[i].id.match(/\.1$/)) { found = segments[i]; break; }
                 }
+                // Never fall back to a segment ABOVE the first real heading (the "Majjhima Nikāya
+                // 119" division line sits before <h1>): with the h1 below the 40%-eye-level line
+                // at scroll 0 it became the active "heading" and the pill showed the nikāya
+                // number instead of the sutta title (owner).
+                if (found && standardNodes[0] && (found.compareDocumentPosition(standardNodes[0]) & Node.DOCUMENT_POSITION_FOLLOWING)) found = null;
                 if (found && fallbackNodes.indexOf(found) === -1 && standardNodes.indexOf(found) === -1) {
                     found.dataset.fallback = 'true';
                     fallbackNodes.push(found);
@@ -897,6 +902,15 @@ onReady(() => {
             if (panel.innerHTML.trim() === '') buildFullTOC();
             var isOpening = !panel.classList.contains('active');
             panel.classList.toggle('active');
+            // Desktop: drop the panel right under its button instead of the far right corner of
+            // a wide screen (owner). Phones keep the CSS full-width placement.
+            if (window.innerWidth > 767.98) {
+                var br = btn.getBoundingClientRect();
+                var pw = panel.getBoundingClientRect().width || 320;
+                panel.style.left = Math.max(6, Math.min(br.left, window.innerWidth - pw - 12)) + 'px';
+                panel.style.right = 'auto';
+                panel.style.top = Math.round(br.bottom + 8) + 'px';
+            } else { panel.style.left = ''; panel.style.right = ''; panel.style.top = ''; }
             if (isOpening) {
                 syncTOC();
                 setTimeout(function () {

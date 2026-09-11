@@ -50,7 +50,9 @@
       "desc": "Favorites, History, “4NT” window",
       "icon": "clock",
       "href": "/assets/common/history.html",
-      "modal": "quick"
+      "modal": "quick",
+      "drawerLabel": "Favorites, History",
+      "drawerIcon": "star"
     },
     "help": {
       "label": "Help",
@@ -845,7 +847,9 @@
       "desc": "Избранное, История, Окно «4БИ»",
       "icon": "clock",
       "href": "/ru/assets/common/history.html",
-      "modal": "quick"
+      "modal": "quick",
+      "drawerLabel": "Избранное, История",
+      "drawerIcon": "star"
     },
     "help": {
       "label": "Помощь",
@@ -1726,7 +1730,8 @@
     },
     "history": {
       "label": "ประวัติ",
-      "desc": "รายการโปรด ประวัติ หน้าต่าง «อริยสัจ 4»"
+      "desc": "รายการโปรด ประวัติ หน้าต่าง «อริยสัจ 4»",
+      "drawerLabel": "รายการโปรด ประวัติ"
     },
     "help": {
       "label": "ช่วยเหลือ",

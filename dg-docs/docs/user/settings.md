@@ -17,7 +17,8 @@ The real, live Settings page — nothing to click or search for here:
 
 Besides this full page, there's a second, lighter panel — **Quick
 Settings**, the sliders icon next to the search box (the ⚙︎ icon left of
-the magnifying glass). It doesn't duplicate the settings page — it gives
+the magnifying glass), also reachable with **Alt+S**. It doesn't
+duplicate the settings page — it gives
 fast access to whatever's most relevant right where you're already
 working: on the home screen, in search results, or in the reader,
 without leaving for a separate page. Which groups show up depends on
@@ -123,6 +124,9 @@ shown in the UI but marked "coming soon" — not available yet.
 
 | Key | Action |
 |---|---|
+| Alt+S | Open/close Quick Settings (the sliders icon next to search) |
+| Alt+Shift+S | Open/close this full Settings page |
+| Ctrl+Shift+F (Cmd+Shift+F on Mac) | Find on page — not Alt+F, that's [favorites](/read); not plain Ctrl+F either, real browsers reserve that for their own find bar |
 | Alt+Space / Alt+Z | Switch interface language |
 | Alt+T | Theme |
 | Alt+. | Strip Pali punctuation |

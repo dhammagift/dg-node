@@ -190,7 +190,13 @@ window.setLanguage = function(lang) {
 
 window.toggleThePali = function() {
     const storageKey = "paliToggle";
-    const modes = ["pli-2nd", "pli", "2nd"];
+    // Owner: memorize (mnemonic) and devanagari (dualScript) — the main line IS the mode, hiding
+    // it defeats the point, so "2nd" (hide-pali) is dropped from the reachable states; the button
+    // only ever toggles the second (reference Pali / ISO-Latin) line. Same lock as home.js's
+    // dgPaliLockedReaderMode() (.dg-lpill click handler) — this is the OTHER path to the same
+    // toggle, the hidden legacy #language-button that Alt+Z/Alt+Space (settings.js) still clicks.
+    const isPaliLocked = isMnemonicMode(READER_MODE.modeKey) || isDualScriptMode(READER_MODE.modeKey);
+    const modes = isPaliLocked ? ["pli-2nd", "pli"] : ["pli-2nd", "pli", "2nd"];
     const defaultMode = "pli-2nd";
     const languageButton = document.getElementById("language-button");
     if (!languageButton) return;
@@ -198,7 +204,20 @@ window.toggleThePali = function() {
     if (!localStorage.getItem(storageKey)) {
         localStorage.setItem(storageKey, defaultMode);
     }
-    window.language = localStorage.getItem(storageKey); 
+    // Self-heal a "2nd" preference saved before this mode became pali-locked (or from a non-locked
+    // mode) — never apply hide-pali while locked.
+    if (isPaliLocked && localStorage.getItem(storageKey) === "2nd") {
+        localStorage.setItem(storageKey, "pli");
+    }
+    window.language = localStorage.getItem(storageKey);
+    // Owner: "видимость пали/перевода сбрасывается, всегда показывает оба" — this function ran
+    // on every buildSutta() (fresh load, mode switch, next/prev text...) but only ever REBOUND
+    // the click listener for the NEXT click; it read the stored mode into window.language and
+    // stopped there, never applying it to the freshly-rendered DOM. The pill's own label synced
+    // correctly (dgSyncLangPill reads localStorage directly), so it visibly disagreed with the
+    // actual text on screen — pill said "off", translation stayed visible until the user clicked
+    // again. Apply the stored preference to THIS render too, not just future ones.
+    window.setLanguage(window.language);
 
     const newButton = languageButton.cloneNode(true);
     languageButton.parentNode.replaceChild(newButton, languageButton);
@@ -651,11 +670,20 @@ window.navigateSutta = function(event, slug) {
     const citation = document.getElementById("paliauto");
     if (citation) citation.value = slug;
     
-    // Строим сутту из памяти
-    window.buildSutta(slug);
-    
-    // Прокручиваем страницу наверх
-    window.scrollTo(0, 0);
+    // Reader exit animation (.reader-out, home.css), then build; buildSutta() replays the enter.
+    var pane = document.getElementById('reader-pane');
+    var build = function () {
+        window.__dgReplayEnter = true;
+        window.buildSutta(slug);
+        window.scrollTo(0, 0);
+    };
+    if (pane && !(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)) {
+        pane.classList.add('reader-out');
+        // Stay hidden (.reader-pending) while the next text loads — no flash of the old one.
+        setTimeout(function () { pane.classList.remove('reader-out'); pane.classList.add('reader-pending'); build(); }, 240);
+    } else {
+        build();
+    }
 };
 
 // Ctrl+←/→ (пред./след. сутта) через SPA, а не полную перезагрузку. Слушатель на capture-фазе —
@@ -929,6 +957,19 @@ function getSkeletonHTML() {
     return '<div class="dg-sutta-skeleton" aria-hidden="true">' + bars + '</div>';
 }
 
+// Show #reader-pane once the text is in the DOM: drops .reader-pending (set by openReaderInPlace /
+// navigateSutta while loading) and plays the enter animation (.reader-in, home.css) when the pane
+// was pending or the caller asked for it (window.__dgReplayEnter — reader -> reader links).
+function dgReaderReveal(animate) {
+    var pane = document.getElementById('reader-pane');
+    if (!pane) return;
+    var wasPending = pane.classList.contains('reader-pending');
+    pane.classList.remove('reader-pending', 'reader-in');
+    if (!(animate || wasPending) || (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)) return;
+    void pane.offsetWidth;
+    pane.classList.add('reader-in');
+}
+
 window.buildSutta = async function(rawSlug) {
     const slug = window.normalizeSlugToDbKey(rawSlug);
     window._currentSlug = slug;
@@ -948,8 +989,23 @@ window.buildSutta = async function(rawSlug) {
         // ручной оверрайд набора языков, работает независимо от ?mode=/?lang= (см.
         // /api/text/:suttaId в dg-light.js).
         const explicitLangs = new URLSearchParams(document.location.search).get('langs');
+        // ?translators=en_brahmali — TOC's own per-translator links (public/spa/toc.js
+        // leafTranslatorLinks): a bare "/{id}?translators={key}", never paired with a
+        // langs=/lang=/mode= of its own. Was never read here at all, so every one of those
+        // links silently fell through to whatever mode/lang the reader happened to already be
+        // in — clicking a specific translator always rendered the DEFAULT one instead (owner:
+        // "нажал на Брахмали, открылся русский"). The server (dg-fastify.js explicitTranslators)
+        // already supports it fine standalone; only forwarding it from the URL was missing.
+        // Only meaningful without an explicit langs= already narrowing the column(s) — derive the
+        // language from the translator key's own prefix (en_brahmali → en) so the two agree; a
+        // same-language multi-translator link (?translators=ru_o,ru_sv) still resolves to one
+        // language, `split(',')[0]` on the first key is enough.
+        const explicitTranslators = new URLSearchParams(document.location.search).get('translators');
         let langsQuery;
-        if (explicitLangs) {
+        if (!explicitLangs && explicitTranslators) {
+            const derivedLang = explicitTranslators.split(',')[0].split('_')[0];
+            langsQuery = `mode=single&lang=${encodeURIComponent(derivedLang)}&translators=${encodeURIComponent(explicitTranslators)}`;
+        } else if (explicitLangs) {
             // mode= still needed even with an explicit langs= override — the server resolves
             // BEHAVIOR (dualScript/mnemonic/multiFor) from mode alone (dg-light.js modeConfig),
             // langs= only overrides which languages/columns to fetch. Dropping mode= here broke
@@ -973,6 +1029,12 @@ window.buildSutta = async function(rawSlug) {
             }
             langsQuery = `mode=${encodeURIComponent(READER_MODE.modeKey)}` +
                 (langs.length ? `&langs=${encodeURIComponent(langs.join(','))}` : '');
+        } else if (READER_MODE.tempLangs && READER_MODE.tempLangs.length && READER_MODE.tempSlug === slug) {
+            // Single-column modes: the language popover's checkboxes are a per-TEXT trial (owner:
+            // "применялось, но не сохранялось") — sent as an explicit langs=, never written to
+            // dgReadingLangOrder. tempSlug pins it to this text, so the next one is back to just
+            // the main language. multiLang persists instead (branch above). Set by home.js.
+            langsQuery = `mode=${encodeURIComponent(READER_MODE.modeKey)}&langs=${encodeURIComponent(READER_MODE.tempLangs.join(','))}`;
         } else {
             const langParam = READER_MODE.lang ? `&lang=${encodeURIComponent(READER_MODE.lang)}` : '';
             langsQuery = `mode=${encodeURIComponent(READER_MODE.modeKey)}${langParam}`;
@@ -999,6 +1061,7 @@ window.buildSutta = async function(rawSlug) {
         const response = await fetch(apiUrl);
         if (!response.ok) {
             if (response.status === 404 && typeof window.executeGlobalSearch === 'function') {
+                dgReaderReveal(false);
                 window.executeGlobalSearch(rawSlug);
                 return false;
             }
@@ -1009,6 +1072,7 @@ window.buildSutta = async function(rawSlug) {
     } catch (error) {
         console.error('Ошибка загрузки текста:', error);
         if (typeof window.handleFetchError === 'function') window.handleFetchError(rawSlug, true);
+        dgReaderReveal(false);
         return false;
     }
 
@@ -1017,6 +1081,18 @@ window.buildSutta = async function(rawSlug) {
     // см. LANG_ORDER_KEY выше): состав колонок остаётся серверным, меняется только их порядок.
     const columns = reorderColumnsByLangOrder(suttaData.columns || []);
     READER_MODE.columns = columns; // кэш последнего известного состояния — для switchReaderMode
+    READER_MODE.availableLangs = Array.isArray(suttaData.availableLangs) ? suttaData.availableLangs : null; // languages THIS text has a translation in (dg-fastify.js) — the popover marks the rest "нет перевода"
+    // Owner: "показывать доп кнопку [языковой пилюли] во всех режимах... раз языки уже
+    // активированы" — home.js's dgRenderLangPill reads LANG_ORDER_KEY to decide whether to show
+    // its "more languages" dots button outside multiLang too (single/results/etc, where only ONE
+    // language is ever actually rendered). Previously this key was written ONLY by
+    // switchReadingLanguage() (an explicit pill click) — a user who opened multiLang from the
+    // burger row and never touched the toggle got 2 real columns on screen but no persisted
+    // record of it, so the dots button never appeared anywhere else. Just landing on multiLang
+    // with 2+ columns now counts as "activated" too.
+    if (READER_MODE.modeKey === 'multiLang' && columns.length > 1) {
+        try { localStorage.setItem(LANG_ORDER_KEY, JSON.stringify(columns)); } catch (e) { /* приватный режим */ }
+    }
     READER_MODE.lang = suttaData.lang || columns[0] || READER_MODE.lang; // сервер резолвил язык явно, см. dg-light.js
     // t() (warning text below) reads this — must be ready before that, see the cache's comment.
     await ensureReaderLangConfig(READER_MODE.lang);
@@ -1264,9 +1340,17 @@ window.buildSutta = async function(rawSlug) {
         return `<span class="${rowClass}" lang="${lang}"> ${label}${displayName}</span>`;
     });
 
+    // Owner: "не загружать интерфейс" — only the main translator stays on the byline; every
+    // further one (other languages, or a 2nd translator of the same language) folds under a
+    // "*" right after it. Not <details>: that isn't phrasing content, the parser would close
+    // the <p> around it. The "*" toggle is one delegated click handler in home.js.
+    const [firstTranslator, ...moreTranslators] = translatorSpans;
+    const bylineTranslators = moreTranslators.length
+        ? `${firstTranslator}<button type="button" class="dg-trn-star" aria-expanded="false" title="${window.isRuPath ? 'Другие переводчики' : 'Other translators'}">*</button><span class="dg-trn-rest" hidden>${moreTranslators.join('<br>')}</span>`
+        : (firstTranslator || '');
     const translatorByline = `<div id="trn" class="byline">
     <p><span class="pli-lang" lang="pi">Pāḷi <a class="text-decoration-none text-reset" href="/assets/texts/abbr.html?s=ms" title="Mahāsaṅgīti Pāḷi">MS</a></span>
-    <span class="right-column">${translatorSpans.join('<br>')}</span></p></div>`;
+    <span class="right-column">${bylineTranslators}</span></p></div>`;
 
     let cleanSlugReady = slug;
 
@@ -1315,8 +1399,8 @@ window.buildSutta = async function(rawSlug) {
         (!isWarningClosed ? warning : '') +
         translatorByline + 
         html + 
-        translatorByline + 
-        (!isWarningClosed ? warning : '') + 
+        // Owner (2026-09-06, production-v4 reader mock): the footer is sources → prev/next →
+        // tools → legal, no second copy of the byline and the warning under the text.
         `<div id="bottom-links-container" class="min-h-24"></div>`;
     
     const topContainer = document.getElementById('top-links-container');
@@ -1390,6 +1474,9 @@ window.buildSutta = async function(rawSlug) {
     }
 
     window.toggleThePali();
+    if (typeof window.dgRenderLangPill === 'function') window.dgRenderLangPill();
+    dgReaderReveal(window.__dgReplayEnter);
+    window.__dgReplayEnter = false;
     if (typeof window.addToSearchHistory === 'function') window.addToSearchHistory();
     return true;
 };
@@ -1507,5 +1594,7 @@ async function initReader() {
 window.initReader = initReader;
 
 if (!window.MEGAREADER_MANUAL_INIT) {
-    initReader();
+    // Exposed so search/index.html (openReaderInPlace) can wait for the FIRST build on a cold
+    // load before it drops .reader-pending — otherwise the pane was revealed before the text.
+    window.__dgInitReaderPromise = initReader();
 }

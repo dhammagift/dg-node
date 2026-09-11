@@ -369,7 +369,12 @@ function cleanTextForTTS(text) {
     .replace(/’ति/g, 'ति')
     .replace(/\{.*?\}/g, '')
     .replace(/\(.*?\)/g, '')
-    .replace(/[ \t]+/g, ' ')  
+    // "|"/"||" is danda punctuation (half-verse/verse pause), not noise — collapsing it to a
+    // bare space would glue clauses together with no pause (cf. "казнить нельзя помиловать").
+    // Map to real danda so TTS still pauses there, same as ";" is mapped below for long segments.
+    .replace(/\|\|/g, ' ॥ ')
+    .replace(/\|/g, ' । ')
+    .replace(/[ \t]+/g, ' ')
     .replace(/[-–—]/g, ' ')
     .replace(/_/g, '').trim();
 
@@ -1035,12 +1040,11 @@ async function prepareTextData(slug) {
       const paliClone = paliElement.cloneNode(true);
       paliClone.querySelectorAll('.variant, .not_translate, sup, .ref').forEach(v => v.remove());
       let rawDomText = paliClone.textContent.replace(/<[^>]*>/g, '').trim();
-      let cleanedText = cleanTextForTTS(rawDomText);
-      if (window.convertPaliToDevanagari) {
-          paliDev = window.convertPaliToDevanagari(cleanedText);
-      } else {
-          paliDev = cleanedText;
-      }
+      // Devanagari conversion must run BEFORE cleanTextForTTS, not after: cleanTextForTTS's
+      // Pali-specific fixes (e.g. फस्स -> प्हस्स so TTS says "phasso" not "fasso", …पे… -> …पेय्याल…)
+      // are written against Devanagari script and are no-ops on raw IAST Latin text.
+      let paliSource = window.convertPaliToDevanagari ? window.convertPaliToDevanagari(rawDomText) : rawDomText;
+      paliDev = cleanTextForTTS(paliSource);
     }
     
     if (trnEl1) {
@@ -2845,11 +2849,16 @@ function prepareLegacyData() {
         
         // Чистим текст для TTS
         const cleanText = text
-            .replace(/\[\d+\]/g, '')      
-            .replace(/\(\d+\)/g, '')      
-            .replace(/\d+\)/g, '')      
-            .replace(/^\d+\./, '')        
-            .replace(/\s+/g, ' ')  
+            .replace(/\[\d+\]/g, '')
+            .replace(/\(\d+\)/g, '')
+            .replace(/\d+\)/g, '')
+            .replace(/^\d+\./, '')
+            .replace(/\(.*?\)/g, '') // legacy TTS skipped parenthetical asides — keep that behavior
+            // "|" here is Cyrillic/legacy text, not Pali danda — map to comma/period so TTS still
+            // pauses instead of gluing clauses together (cf. "казнить нельзя помиловать").
+            .replace(/\|\|/g, '. ')
+            .replace(/\|/g, ', ')
+            .replace(/\s+/g, ' ')
             .replace(/\*/g, '')
             .replace(/^[\*\-•]\s*/, '')
             .trim();
