@@ -101,6 +101,11 @@ body.dg-skin-minimal {
     --dg-radius: 10px;
     --dg-font: "Lato", var(--bs-body-font-family);
     --dg-ease: cubic-bezier(0.22, 0.68, 0, 1);
+    /* One-time shine sweep on #home-motto (below) — dimmer than pure white here on purpose:
+       --dg-page is solid #fff in this theme, and --dg-text is near-black, so a full-white
+       highlight would wash the swept letters out against the page for an instant (owner: "чуть
+       менее ярким белым, чтобы пятно света не сливало буквы с фоном"). */
+    --dg-motto-shine: #cfcfcf;
     /* Боковое поле страницы: столько добавляет .container-fluid вокруг .table-wrapper. Нужно
        hero-полосе, чтобы вылезти из этого поля на всю ширину экрана (margin с минусом). На
        телефоне это поле сжато до 3px — см. медиазапрос в <head> index.html. */
@@ -124,6 +129,10 @@ body.dg-skin-minimal.dark {
     --dg-border: #2c2c2c;
     --dg-border-strong: #3b3b3b;
     --dg-text: rgb(221, 221, 221);
+    /* --dg-text here is already near-white on a near-black page — full white reads as a clean
+       glint with no wash-out risk (owner: "на темной она уже почти белая, так что свет можно
+       сделать чисто белым"). */
+    --dg-motto-shine: #ffffff;
     --dg-text-2: #a8a8a8;
     --dg-text-muted: #7c7c7c;
     --dg-navy: #1b2836;
@@ -1282,6 +1291,33 @@ body.dg-state-home #dg-hero-heading { display: block; }
     /* On the plain page background now (not the dark band) — dark text in light theme, light
        text in dark theme, same tokens the rest of the page's headings use. */
     color: var(--dg-text);
+}
+/* One-time shine sweep across "Найдите Истину" on first paint (owner: "чтобы при открытии один
+   раз по надписи прошёл такой свет по всей надписи") — delight tier, plays once per real page
+   load, never repeats (a plain CSS animation with no trigger to re-fire, not tied to any
+   frequently-toggled state). @supports-gated: browsers without background-clip:text just keep
+   the plain solid --dg-text color set above, never see transparent text. */
+@supports ((background-clip: text) or (-webkit-background-clip: text)) {
+    #home-motto {
+        background: linear-gradient(100deg,
+            var(--dg-text) 35%, var(--dg-motto-shine) 50%, var(--dg-text) 65%);
+        background-size: 250% 100%;
+        background-position: 160% 0;
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+        color: transparent;
+        animation: dg-motto-shine 1.6s var(--dg-ease) 0.3s 1 both;
+    }
+}
+@keyframes dg-motto-shine {
+    from { background-position: 160% 0; }
+    to { background-position: -60% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+    /* Delight-only motion, no comprehension purpose — reduced motion drops it entirely rather
+       than offering a gentler variant, per owner's usual pattern on purely decorative sweeps. */
+    #home-motto { animation: none; background: none; color: var(--dg-text); }
 }
 #home-subtitle {
     margin: 0;
