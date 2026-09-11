@@ -142,7 +142,8 @@
     "menuAriaLabel": "Открыть меню",
     "menuTitle": "Меню",
     "filterLabel": "Filter+",
-    "filterAriaLabel": "Расширенный фильтр"
+    "filterAriaLabel": "Расширенный фильтр",
+    "tocLinkTitle": "Оглавление"
   },
   "table": {
     "suttaCol": "Sutta",

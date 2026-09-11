@@ -533,13 +533,22 @@ body.dg-state-home #dg-quick-btn { display: none; }
    на главной не нужен — там и так просторно. */
 body.dg-state-home .dg-shell-sep { display: none; }
 
-/* Ракушка внутри поля — только в выдаче и в чтении: на главной знак и название уже стоят
-   в шапке. Она же кнопка «домой». */
+/* Ракушка внутри поля — только в выдаче и оглавлении: на главной знак и название уже стоят
+   в шапке. Она же кнопка «домой». В чтении на этом месте стоит .dg-shell-toc (ниже) — owner:
+   логотип там теперь ведёт в оглавление, не на главную (тот же паттерн, что у логотипа в
+   документационных сайтах — GitBook/Readthedocs, клик внутри статьи уводит в оглавление книги,
+   а не на маркетинговый home); с /toc «домой» по-прежнему одно касание через бургер. */
 body .dg-shell-logo { display: none; flex: none; line-height: 0; text-decoration: none; }
 body.dg-state-results .dg-shell-logo,
-body.dg-state-reader .dg-shell-logo,
 body.dg-state-toc .dg-shell-logo { display: inline-flex; }
 .dg-shell-logo img { width: 26px; height: 26px; object-fit: contain; display: block; }
+/* Оглавление — та же позиция в поле, что у ракушки, но только в чтении (см. комментарий выше) и
+   с другой иконкой (fa-table-list, не логотип), чтобы не читалось как «ракушка перестала быть
+   домой» — owner: "иконка должна быть другая... чтобы пользователь понимал, что это не дом".
+   Стили — 1:1 с .dg-shell-logo (та же ячейка строки, тот же паддинг/цвет вокруг). */
+body .dg-shell-toc { display: none; flex: none; line-height: 0; text-decoration: none; color: var(--dg-text-muted); }
+body.dg-state-reader .dg-shell-toc { display: inline-flex; align-items: center; justify-content: center; }
+.dg-shell-toc svg { width: 20px; height: 20px; display: block; }
 /* Разделитель перед блоком кнопок справа — как в строке поиска у поисковиков. */
 .dg-shell-sep {
     width: 1px;
@@ -3208,8 +3217,8 @@ body.dg-skin-minimal .dg-contact-btn:hover {
     body.dg-state-reader .dg-input-shell,
     body.dg-state-toc .dg-input-shell { padding: 4px 5px 4px 9px; gap: 2px; }
     body.dg-state-results .dg-shell-logo img,
-    body.dg-state-reader .dg-shell-logo img,
     body.dg-state-toc .dg-shell-logo img { width: 22px; height: 22px; }
+    body.dg-state-reader .dg-shell-toc svg { width: 18px; height: 18px; }
     body.dg-state-results .dg-shell-sep,
     body.dg-state-reader .dg-shell-sep,
     body.dg-state-toc .dg-shell-sep { display: none; }
@@ -3373,7 +3382,8 @@ body.dg-state-results .dg-input-shell, body.dg-state-reader .dg-input-shell, bod
 /* Dark: the filled #42426a shell from production stays (rule above) — owner: "с заливкой и стильнее". */
 body.dg-state-results .dg-input-shell:focus-within, body.dg-state-reader .dg-input-shell:focus-within, body.dg-state-toc .dg-input-shell:focus-within,
 body.dark.dg-state-results .dg-input-shell:focus-within, body.dark.dg-state-reader .dg-input-shell:focus-within, body.dark.dg-state-toc .dg-input-shell:focus-within { border-color: var(--dg-accent); box-shadow: 0 0 0 3px var(--dg-accent-bg); }
-body.dg-state-results .dg-shell-logo img, body.dg-state-reader .dg-shell-logo img, body.dg-state-toc .dg-shell-logo img { width: 20px; height: 20px; opacity: 0.85; }
+body.dg-state-results .dg-shell-logo img, body.dg-state-toc .dg-shell-logo img { width: 20px; height: 20px; opacity: 0.85; }
+body.dg-state-reader .dg-shell-toc svg { width: 17px; height: 17px; opacity: 0.85; }
 body.dg-state-results #form #paliauto.searchinput, body.dg-state-reader #form #paliauto.searchinput, body.dg-state-toc #form #paliauto.searchinput,
 body.dark.dg-state-results #form #paliauto.searchinput, body.dark.dg-state-reader #form #paliauto.searchinput, body.dark.dg-state-toc #form #paliauto.searchinput { color: var(--dg-text); font-family: var(--dg-font); font-size: 16px; }
 body.dg-state-results .dg-input-shell .dg-shell-btn, body.dg-state-reader .dg-input-shell .dg-shell-btn, body.dg-state-toc .dg-input-shell .dg-shell-btn { color: var(--dg-text-muted); }
