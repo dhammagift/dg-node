@@ -41,6 +41,7 @@
     var titleEl = document.getElementById('dgOfflineLibTitle');
     var descEl = document.getElementById('dgOfflineLibDesc');
     var btnEl = document.getElementById('dgOfflineLibBtn');
+    var deleteEl = document.getElementById('dgOfflineLibDelete');
     if (!titleEl || !descEl || !btnEl) return; // rows weren't added — fail soft, not fatal
 
     titleEl.textContent = isRu ? 'Офлайн-библиотека' : 'Offline library';
@@ -87,6 +88,7 @@
     } else if (!state || !state.present) {
         descEl.textContent = isRu ? 'Не скачано.' : 'Not downloaded.';
         btnEl.textContent = isRu ? 'Скачать сейчас' : 'Download now';
+        if (deleteEl) deleteEl.style.display = 'none';
         // First download — the extra key the app copy does not need (the app downloads
         // unconditionally on its home page, the site does not).
         btnEl.onclick = function () { goHomeWith(WANT_DATA_KEY); };
@@ -97,6 +99,7 @@
             : ('Downloaded (build ' + (state.build_id || '?') + '). An update is available' +
                (update.bytes ? ', ' + mb(update.bytes) + 'MB.' : '.'));
         btnEl.textContent = isRu ? 'Обновить' : 'Update';
+        if (deleteEl) deleteEl.style.display = 'none';
         btnEl.onclick = function () { goHomeWith(WANT_UPDATE_KEY); };
     } else {
         // "Downloaded" on its own hid a real failure mode: a library that is on disk but which THIS
@@ -121,6 +124,9 @@
             ? ('Скачано, сборка ' + (state.build_id || '?') + '.' + note)
             : ('Downloaded, build ' + (state.build_id || '?') + '.' + note);
         btnEl.textContent = isRu ? 'Перескачать' : 'Re-download';
+        // Freeing the space has to be possible from here: without this the only way to get ~500MB back
+        // was clearing the whole site's data — "Reset all" does not touch the library.
+        if (deleteEl) deleteEl.style.display = '';
         btnEl.onclick = function () { goHomeWith(WANT_UPDATE_KEY); };
     }
 
@@ -137,4 +143,18 @@
     // English page ended up with a Russian "Скачать" next to an English "Download now".
     var docsBtnEl = document.getElementById('dgOfflineDocsBtn');
     if (docsBtnEl) docsBtnEl.textContent = isRu ? 'Скачать' : 'Download';
+
+    // Delete asks the SPA (this page runs in the settings sheet's iframe, where the offline layer —
+    // and its worker — live) to drop the library; the worker's own delete op unlinks the OPFS files.
+    if (deleteEl) {
+        deleteEl.addEventListener('click', function () {
+            var question = isRu
+                ? 'Удалить офлайн-библиотеку? Её можно будет скачать заново.'
+                : 'Delete the offline library? It can be downloaded again.';
+            if (!window.confirm(question)) return;
+            try {
+                window.parent.postMessage({ dgOfflineDeleteRequest: true }, window.location.origin);
+            } catch (e) { /* cross-origin or no parent: nothing to do */ }
+        });
+    }
 })();

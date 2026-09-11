@@ -197,6 +197,21 @@
     window.addEventListener('message', function (event) {
         if (event.origin !== location.origin) return;
         var data = event.data || {};
+        // Delete the library at the reader's request from the settings sheet.
+        if (data.dgOfflineDeleteRequest) {
+            var ru = (localStorage.getItem('dhammaLanguage') || localStorage.getItem('siteLanguage') || 'en') === 'ru';
+            window.dgDeleteOfflineData().then(function (result) {
+                local = false;
+                try { localStorage.removeItem(LIBRARY_KEY); } catch (e) { /* ignore */ }
+                rememberState({ present: false, build_id: null, update: null, local: false, reason: 'none' });
+                notify(ru ? 'Офлайн-библиотека удалена' : 'Offline library deleted');
+                log('library deleted at request:', (result && result.deleted) || 0, 'files');
+            }).catch(function (e) {
+                notify(ru ? 'Не удалось удалить библиотеку' : 'Could not delete the library');
+                log('delete failed:', (e && e.message) || e);
+            });
+            return;
+        }
         if (!data.dgOfflineDownloadRequest) return;
         var kind = data.dgOfflineDownloadRequest === 'update' ? 'update' : 'open';
         if (probePending) { deferredRequest = kind; return; }
