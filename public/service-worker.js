@@ -82,6 +82,15 @@ var PRECACHE_URLS = [
     // nothing. Kept as bare paths — the page requests them with ?v=<hash> and matchCached() retries
     // with ignoreSearch.
     '/assets/js/datatables/datatables.min.css',
+    // Asked for by the reader's toolbar and the quick modal; all 200 on the server but never cached,
+    // so offline the toolbar showed broken icons and quickModal.js failed to load (owner's screenshots).
+    '/assets/js/quickModal.js',
+    '/assets/css/paliLookup.css',   // the dictionary panel's own stylesheet — without it the panel opens unstyled/invisible
+    '/assets/js/translators.js',
+    '/assets/svg/clock-rotate-left.svg',
+    '/assets/svg/eye.svg',
+    '/assets/svg/rotate-solid-full.svg',
+    '/assets/svg/open-link.svg',
     '/assets/js/paliLookup.js',
     '/assets/js/paliLookup.css',
     '/nodejs/res/lang_ru.json',
@@ -370,7 +379,7 @@ self.addEventListener('fetch', function (event) {
                     // matchCached(), not caches.match(): the page asks for '/assets/js/search-render.js?v=<hash>'
                     // and the precache holds the bare path — without ignoreSearch the 503 came straight
                     // through, which is exactly what a real outage looked like (pm2 stopped).
-                    return matchCached(request).then(function (c) { return c || response; });
+                    return matchCached(request).then(function (c) { if (c) return c; throw new Error('HTTP ' + response.status); });
                 }
                 // Only cache real, same-origin, successful responses — an opaque/cross-origin
                 // or error response cached here would just serve that error offline forever.
@@ -389,8 +398,12 @@ self.addEventListener('fetch', function (event) {
                 }
                 return response;
             })
-            .catch(function () {
-                return matchCached(request, url);
+            .catch(function (e) {
+                // A miss here used to resolve to undefined, and respondWith(undefined) is a TypeError in
+                // the page — "Failed to convert value to 'Response'" (owner's console: quickModal.js and
+                // settings-bundle.js during an outage, with a spinner that never stopped). A missing
+                // cache entry has to look like a failed request, which is what it is.
+                return matchCached(request, url).then(function (c) { if (c) return c; throw e; });
             })
     );
 });
