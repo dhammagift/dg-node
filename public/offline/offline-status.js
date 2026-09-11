@@ -385,6 +385,7 @@
     }
 
     var dlHideTimer = null;
+    var lastSubText = null;   // last "X of Y MB" actually worth showing (see the done event above)
     window.addEventListener('dg:dl-progress', function (e) {
         var detail = e.detail || {};
         var loaded = detail.loaded || 0;
@@ -409,16 +410,33 @@
         if (importing) pct = null;
         // 100% used to mean "ready", which it does not: after the bytes arrive the file is checked and
         // opened, and that can still fail. Say what is happening instead of claiming success.
+        // The final "done" event carries loaded:1/total:1 (a sentinel, not a size), so the line used
+        // to end with "0.0 MB of 0.0 MB" — at the one moment the reader is actually looking at it.
+        // Remember the last real numbers and keep showing them.
+        var realNumbers = total && total > 1048576;
         var verifying = !detail.done && pct === 100;
         if (verifying) card.querySelector('.dgdl-title').textContent = ru ? 'Проверяем и открываем' : 'Verifying and opening';
-        card.querySelector('.dgdl-pct').textContent = pct === null ? '' : pct + '%';
+        // With no denominator there is still one honest number — the bytes received — and leaving
+        // the slot empty was the worst of the options: the collapsed strip is nothing BUT the bar
+        // and this number, so folded it showed a sliding bar with no information at all (owner:
+        // "в свернутом прогресс бане тоже из стороны в сторону качается заливка и не понятно
+        // сколько скачано"). db-worker.js now falls back to the manifest size, so a percentage is
+        // the normal case; this covers the one that is left (a server publishing no manifest).
+        card.querySelector('.dgdl-pct').textContent = pct === null
+            ? (loaded ? formatMb(loaded) + (ru ? ' МБ' : ' MB') : '')
+            : pct + '%';
+        // The bar itself is only meaningless when there is no denominator — keep the animation
+        // exactly for that case.
         card.classList.toggle('indeterminate', pct === null);
         if (pct !== null) card.querySelector('.dgdl-fill').style.width = pct + '%';
-        card.querySelector('.dgdl-sub').textContent = importing ? ''
+        var subText = importing ? ''
             : total
                 ? (ru ? formatMb(loaded) + ' МБ из ' + formatMb(total) + ' МБ'
                       : formatMb(loaded) + ' MB of ' + formatMb(total) + ' MB')
                 : (ru ? formatMb(loaded) + ' МБ' : formatMb(loaded) + ' MB');
+        if (realNumbers) lastSubText = subText;
+        card.querySelector('.dgdl-sub').textContent = (detail.done && !realNumbers && lastSubText)
+            ? lastSubText : subText;
 
         // Set only while a stalled connection is being retried (see STALL_MS/downloadInto in
         // db-worker.js) — the one thing worth a screenshot instead of pulling logcat.

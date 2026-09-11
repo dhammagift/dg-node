@@ -2671,3 +2671,269 @@ done `npm run build-mobile-db` (dg.db -> siteroot/mobile-data/dg-mobile.db + db-
 Документы: `docs/OFFLINE_PWA_PLAN.md` (решения: Capacitor, нативный список, обновления, ru/en), `docs/APP_SHELL_QUESTION.md` (вопрос для форума, помечен «решено: Capacitor»), `docs/PWA_SHORTCUTS.md`, `dg-docs/docs/tech/offline-db.md` (+ русская копия).
 Тест обрыва теперь в репозитории: `npm run test-offline-outage` (сам глушит `pm2 test` и поднимает обратно).
 Открыто: паритет 20/22 (решение по языкам — либо тест в пределах манифеста, либо FTS уважает `langs`), обновления базы (шардинг/патчи — только в плане), размер базы в строке настроек, влить `pwa` в `front`, известная нестабильность precache при установке SW. В этом же чекауте работает другая сессия: правки шаринга в `search/index.html`, `public/overrides/lbl*.html` и смена иконки шортката на `star.svg` — не перезаписывать.
+
+---
+# Capacitor: приложение «под ключ» (раунд 2026-09-11)
+Решение владельца: хранилище базы — **sqlite-wasm + OPFS в WebView** (тот же офлайн-слой, что в PWA;
+нативного кода базы нет, весь JS-слой общий с iOS). Нативное — только шорткаты, share, докачка, consent.
+done `dg-app-full` собирает UI и офлайн-слой из чекаута dg-node: `build-page.js` (маркер `dg:app-scripts`)
+и `build-assets.js` (`copyOfflineLayer` копирует `public/offline/*` целиком, `copyNativeFiles` — только
+`native-bridge.js`). Свои копии шима/воркера/движка из `src/` удалены — расходиться больше нечему.
+done шов платформы: в `public/offline/app.js` добавлены `platform.onlineBase` (в приложении запросы
+«нужен интернет» уходят на dhamma.gift, а не на мёртвый `https://localhost`) и `platform.mapStatic`
+(TOC → снятые снапшоты, patimokkha-fragment → предрендеренные файлы). Браузерная реализация — no-op.
+done `src/platform.js` в приложении: `distBase`, `onlineBase`, `mapStatic`, `askConsent` через
+`@capacitor/dialog` + `@capacitor/network` (Wi-Fi — молча, мобильная сеть — вопрос с размером),
+авто-скачивание при первом запуске (intent-ключ), отказ запоминается (`dg.app.downloadDeclined`).
+done отклонение загрузки больше не выглядит ошибкой: `probe()` в app.js шлёт `dg:download-declined`
+и не реджектит `dgOfflineLibrary` (сайт не затронут — там согласие всегда true).
+done динамические шорткаты: `DgShortcutsPlugin.java` (ShortcutManager.setDynamicShortcuts), страница
+отдаёт историю/избранное через `DgShortcuts.set` из `native-bridge.js` (при старте и при уходе в фон),
+`rewriteNativeShortcutRoute` (`?_nativeRoute=`) переехал туда же — сайтовый app.js его не содержит.
+done статические шорткаты: добавлен «Favorites & history» (`/?action=tab-fav`, т.к. `/4as` — маршрут
+манифеста, а в приложении модалку открывает `?action=`), порядок и иконки сверены с `docs/PWA_SHORTCUTS.md`.
+Открыто: сборка APK/подпись, прогон e2e на устройстве, фоновая докачка (WorkManager не может писать в
+OPFS — нужен либо нативный VFS, либо докачка в файл), локальный движок транслитерации (в сайте его нет,
+`?script=` в приложении уходит на dhamma.gift), паритет 20/22 (та же известная причина — языки среза).
+Нюанс окружения: `dg-app-full` временно перенесён в `dg-node-test/dg-app-full` (симлинк на старом пути),
+чтобы правки шли без sandbox-одобрений; вернуть на `/var/www/dg-app-full` после сессии.
+
+---
+# Capacitor: шейринг — чистим на сайте, не в обёртке
+Правило (владелец): входящий текст шаринга приводит в порядок **сайт**, а не каждое приложение.
+Сайт уже это делает — `search/index.html` в обработке `?q=` (коммит `b997d69`: срезает хвостовой
+URL источника, потом одну обёртку из кавычек). Поэтому из `MainActivity` удалён свой
+`cleanSharedText`: теперь, как и в `dg-twa.LauncherActivity`, наружу отдаётся сырой `EXTRA_TEXT`
+(`https://localhost/?q=<raw>`), и дальше работает общий сайтовый путь — тот же, что у web
+share_target, PWA и TWA. Две реализации одного правила — это ровно то, что расходится.
+
+---
+# Capacitor: сборка APK (2026-09-11)
+done собран и подписан release-APK: `gift.dhamma.mobile` **v1.1 (versionCode 2)**, ключ `android.keystore`
+(sha256 сертификата 78e033fa…), 10.9 МБ. Лежит как артефакт в `siteroot/mobile-apk/dg-app-1.1.apk` и
+публикуется от корня сайта: **http://192.168.1.32:3003/mobile-apk/dg-app-1.1.apk** (`test` в pm2
+перезапущен, чтобы siteroot пересканировался). sha256 файла: 40afdbd372bc804caa02bd1b…
+Как собиралось (локально, без CI): `dg-app-full` → `DG_NODE_PATH=<dg-node> node build-page.js`,
+`node build-assets.js`, `node build-toc-snapshot.js --base=http://localhost:3000`, затем
+`npx cap sync android` и `./gradlew assembleRelease` с `ANDROID_KEYSTORE_PATH/_PASSWORD/_ALIAS`.
+SDK/кэши Gradle держатся внутри `dg-app-full/.android-sdk`, `.gradle-home`, `.android-home`
+(в git не идут); `android/local.properties` указывает на этот SDK.
+Проверки перед сборкой: `test-offline-parity` в dg-node — 14/14; e2e приложения на собранной
+странице — **22/24** (2 известных расхождения: `search-russian`, `search-punctuation` — языки среза,
+см. выше), в APK лежат ровно один набор офлайн-скриптов, нативный `platform.js`, TOC-снапшоты,
+словарь DPD и класс `DgShortcuts`.
+Открыто: установка и прогон на живом устройстве (сеть/авиарежим, шорткаты после первого чтения,
+шаринг внутрь/наружу), iOS (тот же JS-слой, нативно — Swift-стороны плагинов).
+
+---
+# Capacitor: сборка v1.2 (2026-09-11, по багам с устройства)
+Владелец поставил v1.1 и прислал скриншоты. Что исправлено в **v1.2** (`siteroot/mobile-apk/dg-app-1.2.apk`,
+он же `dg-app-latest.apk`, versionCode 3):
+done **прогресс при свёрнутом приложении** — постоянное уведомление с процентами (`DgProgressPlugin`:
+канал `dg_download`, `setProgress`, POST_NOTIFICATIONS спрашивается при первом событии загрузки) плюс
+`DgDownloadService` (foreground service, `dataSync`) — держит процесс, пока идут 509 МБ; в манифест
+добавлены FOREGROUND_SERVICE / FOREGROUND_SERVICE_DATA_SYNC / POST_NOTIFICATIONS. Никакой логики
+загрузки в сервисе нет: качает по-прежнему воркер страницы, сервис только держит слот.
+done **сплеш** — был белый PNG для всех тем; теперь фон иконки (`@color/ic_launcher_background`) с
+`@mipmap/ic_launcher_foreground` через `windowSplashScreenBackground/AnimatedIcon` + `postSplashScreenTheme`;
+`AppTheme` переведён на `DayNight`.
+done **тема приложения** — `native-bridge` следит за `data-bs-theme` на `<html>` (MutationObserver) и
+переключает статус-бар через `@capacitor/status-bar` (Style.Dark = светлый текст на тёмном, цвета
+#101816/#ffffff). Тема по-прежнему одна — та, что выбрана на странице (`localStorage.theme`, включая auto).
+done **`createSyncAccessHandle`** — в `public/offline/app.js` добавлен один повтор с ЧИСТЫМ воркером
+(`refuseOfStorage`/`retryWithFreshWorker`) и на старте, и при обрыве загрузки: упавший
+`installOpfsSAHPoolVfs` оставляет VFS полу-зарегистрированным, поэтому повтор в том же воркере не
+может сработать. Докачка идёт с того же места (scratch-файл в OPFS).
+done мелочи: иконки PWA (`pwa-bold-monocolor-{192,512}.png`) в сборке (их просит `/manifest.json`).
+Проверено после правок: `test-offline-parity` 14/14; e2e приложения 22/24 (те же 2 известных расхождения).
+Открыто/нужны данные с устройства: (1) если загрузка снова падает — `adb logcat | grep -iE "dg-offline|chromium|sqlite"`,
+без лога причина `createSyncAccessHandle` не доказуема; (2) «настройки не работают» — страница настроек
+открывается (бургер → Settings), все строки на месте (проверено в браузере) — нужно уточнение, что именно
+не работает; (3) «в содержании нет фильтра» — «+ Translator filter» есть и в приложении, и на сайте (проверено);
+(4) `tier: default` в снапшоте TOC — это про раскрытие книг в UI, не про тексты.
+
+---
+# Capacitor: настройки в бургере открывались как поиск (v1.3)
+Баг с устройства (владелец: «нажимаю настройки в бургере, а они ищутся как текст»). Причина:
+`search/js/home.js` открывает шторку настроек как `<iframe src="/settings/">` — путь захардкожен.
+В приложении Capacitor не резолвит каталоги, `/settings/` падал в корневой `index.html`, и SPA внутри
+iframe читала «settings» как поисковый запрос («ничего не найдено по запросу Settings»).
+done `DgTextRouter.settingsUrl()` — единственный источник правды для этого адреса: берёт `href` у
+`#settingsButton` (в приложении build-page переписал его на `/settings/index.html`), иначе `/settings/`.
+Используется в `search/js/home.js` (src iframe) и в новом коротком слове `settings`/`настройки`
+(тип `page` → полная навигация; заодно `fav` → вкладка избранного; `page` обработан в
+`search/index.html`).
+done клик-обработчик шестерёнки в `search/index.html` матчит `a[href^="/settings/"]`, а не точное
+`/settings/` — иначе в приложении (после перезаписи href) он не срабатывал.
+Проверено в браузере на обоих билдах: APP `/settings/index.html` — 25 строк настроек, включая
+«Офлайн-библиотеку»; SITE `/settings/` — 24 строки. Никакого поиска слова «settings» больше нет.
+
+Публичная ссылка для тестов (владелец: внутр. IP недоступен): https://test.dhamma.gift/mobile-apk/ —
+листинг всех сборок (index.html), конкретная версия dg-app-<ver>.apk, всегда последняя dg-app-latest.apk.
+Содержимое каталога читается с диска на лету, рестарт сервера для новой сборки не нужен.
+
+---
+# Офлайн-библиотека: согласие на мобильных данных и на сайте
+Владелец: «начал загрузку с моб данных в браузере — она началась сразу; по Wi-Fi приглашение не нужно».
+done браузерная `public/offline/platform.js` больше не отвечает «всегда да»: `onMeteredConnection()` по
+Network Information API (`navigator.connection.type === 'cellular'` или `saveData` — единственные честные
+сигналы; `effectiveType: '4g'` годится и для Wi-Fi, поэтому по нему не спрашиваем), и если соединение
+лимитированное — та же шторка, что у приложения: `dg:need-consent` → `offline-status.js` рисует лист с
+размером из манифеста (`SIZE 509MB`), языками и кнопками «Не сейчас / Скачать». Размер берём из
+`db-manifest.json` (app.js передаёт пустой info — на сайте согласием была кнопка в настройках).
+Где API нет (iOS Safari) — не спрашиваем вовсе: угадывать «наверное, сотовая» значит приучать закрывать
+диалоги не читая.
+Проверено в браузере на 3003 с подменой `navigator.connection`: cellular → лист с 509MB, «Не сейчас» →
+загрузка не начинается; «Скачать» → пошла (16%, «79 MB of 509 MB»). wifi → листа нет, загрузка сразу.
+Правка только сайтовая (файл статический, рестарт не нужен); приложение уже спрашивает само через
+`@capacitor/network` + `@capacitor/dialog`, его копия platform.js — своя, эту не использует.
+
+---
+# Capacitor v1.4: страницы приложения открывались как поиск (найдено прогоном)
+Без устройства, прогоном сборки: сравнение app vs сайт по всем страницам меню/плиток. Нашлось
+серьёзное — десятки путей, которых в приложении нет, а отсутствующий путь в Capacitor отдаётся
+корневым `index.html`, то есть читатель получал страницу поиска вместо страницы:
+History (бургер и плитка), Materials (grammar, prat), Tools (multiTool, linebyline, listdiff,
+makelist, rr), Abbr., помощь/dictHelp, lbl/readylinebyline.
+done `build-assets.js`: `copyAssetTrees()` (common, grammar, css, js/grammar, js/dark-mode-switch, diff)
++ `ASSET_LOOSE_FILES` (страницы и скрипты вне деревьев) + нужные картинки по списку (не вся `img` —
+22 МБ PNG не нужны). Порядок копирования теперь ЛЕГАСИ → ASSETS (override побеждает): раньше
+`copySvgIcons()` шёл после списка и на каждой сборке перезатирал наш `/assets/svg/star.svg` легаси-звёздочкой.
+done `verifyReferencedAssets()` — сборка падает, если скопированная страница/скрипт ссылается на файл,
+которого нет в `www/`, с коротким списком исключений (шрифты, `.js`-фолбэки для `.json`, три страницы,
+которых нет и в легаси/на сайте). Это тот класс баг, что ловится только на устройстве.
+Проверено: 18/18 страниц меню/плиток совпадают с сайтом по заголовку и содержимому (было 2 отличия
+из 6 + 16 непроверяемых), e2e приложения 22/24 (те же 2 известных), APK v1.4 — 16 МБ (было 11).
+Чек-лист ручной проверки на устройстве: `docs/APP_TEST_CHECKLIST.md` (блокеры → навигация →
+шорткаты/шеринг → оформление → известные ограничения).
+
+---
+# Capacitor v1.5: прогресс без Content-Length, уведомление, шорткаты из dg-twa
+Владелец с устройства: «нет прогресс бара, полоса качается из стороны в сторону, нет общего кол-ва МБ;
+в трее прогресса нет, хотя доступ к уведомлениям спросили».
+Корень №1 (и страница, и шторка): `db-worker.js` брал знаменатель только из `Content-Length`. Прод отдаёт
+`dg-mobile.db` **chunked** (без этого заголовка) → `total = 0` → `pct === null` → неопределённая полоса и
+пустые проценты. Теперь запасной источник — размер из манифеста (`expectedDbBytes`/`expectedWireBytes`).
+Проверено на локальном chunked-сервере (намеренно без Content-Length): карточка показывает 29% → 69% →
+100% и «148 MB of 509 MB», финал «509 MB of 509 MB» (раньше было `0.0 MB of 0.0 MB`).
+Корень №2 (трей): `DgProgressPlugin.update()` при отсутствии разрешения СРАЗУ возвращался, поэтому первое
+событие прогресса (и все до выдачи разрешения) пропадали, а если читатель выдал доступ и свернул
+приложение — не было ни одного уведомления. Теперь постим всегда и просим разрешение параллельно
+(один раз за процесс), канал `dg_download_v2` с IMPORTANCE_DEFAULT (LOW попадал в раздел «тихие», где его
+и не находили), `FOREGROUND_SERVICE_IMMEDIATE`, чтобы Android не откладывал FGS-уведомление на ~10 с.
+Плюс в карточке при неизвестном знаменателе в слоте процентов теперь показываются полученные МБ — свёрнутая
+полоска перестала быть «просто бегающей».
+Шорткаты и иконки — из dg-twa (владелец): TOC (/toc), Dictionary (/dict), Favorites & history (/4as),
+Memo (/memo), иконки `drawable-*/shortcut_0..3.png` (+ `shortcut_background` из dg-twa's colors, без него
+AAPT валит сборку). Dictionary и Memo — серверные страницы, их надо открывать в браузере: добавить в
+`native-bridge.js` внешние маршруты (сделано вместе с этой сборкой).
+
+---
+# Capacitor v1.7: memorizer внутрь, возврат с легаси-страниц, мусор в шорткатах, PHP-ссылки
+done **memorizer (/memo/) внутри приложения** (владелец: «зачем на memorizer внешняя? посели его внутри»).
+`copyMemoApp()` копирует `siteroot/memo/*` (index.html, memo.js, memo.css, presets.json), `ROOT_FILES`
+добавляет то, что он грузит (`/read/js/voice.js`+`voice.css` из наших override, `ranges.js`,
+`voice-mem.js`, `reader-rus-translations.js`, `jsPlayer.js`, обложки, `themeswitch.js`, `texts/dn2.9.html`,
+`rrbi.html`), `ROOT_TREES` — `/read/images`. `/memo` больше не «внешний»: `NOT_BUNDLED_RE` и
+`EXTERNAL_ROUTES` его не содержат, шорткат Memo открывает `/memo/index.html`, ссылки-каталоги `/memo/`
+переписываются на файл (`resolveDirectoryLinksEverywhere`). Внешними остались `/memorize` (легаси-ридер
+в режиме заучивания, он на PHP — его в dg-node не выполнить) и `/dict`.
+done **возврат «назад» с легаси-страниц**: `injectBridgeIntoPages()` вшивает `native-bridge.js` в 42
+собранные страницы (grammar, materials, tools, memo…), без него на них не было обработчика кнопки
+«назад» вообще — читатель не мог вернуться, только закрыть приложение.
+done **мусор в шорткатах**: плагин отдавал в лончер всё из истории подряд — «toc», «bupm», «история»,
+«запись1/2» — и они вытесняли статические четыре. Теперь `isTextRoute()` пропускает только реальные
+тексты/книги (`/dn22`, `/sn56.11?s=…`, `/toc/<book>`), максимум 2 динамических, и список пушится ДАЖЕ
+пустым — иначе старый мусор оставался на устройстве навсегда.
+done **PHP-ссылки в наших файлах**: в `public/overrides/grammar/*.html` и `rr.html` иконка «home» вела на
+`../../read.php` (PHP-ридер, которого в dg-node нет) — теперь на `/toc`. Легаси-репозиторий не тронут.
+done верификатор сборки расширен на `/read`, `/memo`, `/api-snapshots` и перестал ловить `toc.json` как
+`toc.js` и ссылки внутри HTML-комментариев; добавлена проверка наличия TOC-снапшотов (`verifyTocSnapshot`)
+— без них `/api/toc` в приложении отдавал 404.
+Известное и не наше: `ReferenceError: showNumberOnly is not defined` на grammar-страницах — та же ошибка
+на сайте, файлы легаси.
+
+---
+# Capacitor v1.8: строка «App version» в настройках была пустой
+Владелец: «в настройках версия не отображалась». Две причины, обе устранены:
+1) строка заполнялась ТОЛЬКО через Capacitor `App.getInfo()` и только внутри блока `if (CapApp)` —
+   при любой ошибке (или в обычном браузере) оставался пустой `&nbsp;`;
+2) файл вшивается то в `<head>`, то в конец `<body>`, так что строки могло ещё не быть в DOM.
+done `fillVersionRow()` в `native-bridge.js`: ждёт DOM-ready, берёт версию из `App.getInfo()` (на
+устройстве это авторитетный источник — versionName/versionCode установленного пакета), а при
+недоступности плагина — из `/app-version.json`, который сборка пишет из `android/app/build.gradle`
+(`writeAppVersion()`, единственный источник правды). Проверено в браузере: «v1.7 (8)»; в APK v1.8
+лежит `app-version.json` = 1.8 (9).
+
+---
+# Диск: предохранитель, автоочистка и сторож (после инцидента)
+Мои прогоны e2e/app-ui оставили браузерные профили (в каждом скачанная база 509 МБ) и заполнили 49 ГБ
+диск до 100% — на сервере, где рядом прод. Владелец чистил руками. Сделано, чтобы это не повторилось:
+done `scripts/disk-guard.js` (+ `npm run disk-guard`, cron каждые 10 минут, лог `test/.disk-guard.log`):
+ниже 6 ГБ свободного — удаляет ТОЛЬКО свои временные артефакты (профили `test/.app-ui-profiles`,
+`dg-app-full/.e2e-profile*`, `/tmp/sdkdl`), ниже 2 ГБ — ALERT в лог и, если задан `DG_ALERT_WEBHOOK`,
+JSON в вебхук. Данные проекта (dg.db, siteroot/mobile-data, www, android/) сторож не трогает.
+done профиль браузера удаляется по завершении каждой проверки (`lib.finish`), `DG_APP_UI_KEEP_PROFILE=1`
+оставляет его для отладки; при старте пишется предупреждение, если свободно меньше 2.5 ГБ.
+done скачивание 509 МБ в проверках требует явного `DG_APP_UI_ALLOW_DOWNLOAD=1` и ≥3 ГБ свободного
+(`allowBigDownload`), иначе проверка честно SKIP-ает.
+
+---
+# CI: сборка APK + AAB под новую архитектуру (dg-app-full/.github/workflows/build-app.yml)
+Воркфлоу отставал от того, что уже сделано: он собирал базу в приложении (`build-app-db.js`) и
+собирал core-bundle у себя, а офлайн-слой давно живёт в dg-node.
+done шаги dg-node: `build-icons`, `build-search-db`, **`build-offline`** (шим, воркер, core-bundle,
+sqlite-wasm — их копирует `copyOfflineLayer`), позже `build-mobile-db` (509 МБ — это и то, что качают
+браузерные проверки, и то, что публикуется артефактом: тестируем и отдаём один и тот же файл).
+done сборка www теперь в два этапа с TOC-снапшотом между ними: `build-page.js` → снапшот (нужен
+запущенный dg-fastify) → `build-assets.js` (он падает без `www/api-snapshots/toc.json`).
+done в CI добавлены проверки из dg-node: `test/app-ui/check-pages.js` и `check-assets.js` против уже
+поднятого dg-fastify (`DG_SITE_URL`, `DG_APP_PATH`); сервер теперь останавливается ПОСЛЕ них.
+done убраны `build-app-db.js` / `build-core-bundle.js` из сборки и из package.json приложения;
+браузерный e2e подаёт базу из `nodejs/siteroot/mobile-data`, а не из своего `dist/`.
+done **AAB**: `./gradlew bundleRelease` тем же ключом и вариантом, что release-APK; артефакты APK
+(debug/release), AAB и база; на теге всё это уходит в релиз. Локально AAB собран и проверен (17 МБ) —
+в песочнице ему нужен `-Djava.io.tmpdir` внутри репозитория, в CI это не требуется.
+Осталось (руками, из-за git): запушить ветку `pwa` в dg-node и обновить `DG_NODE_REF` (сейчас `main`) —
+CI собирает UI из закреплённого рефа, а вся работа в `pwa`.
+
+---
+# Capacitor v1.11: размер библиотеки в настройках
+done строка «Офлайн-библиотека» показывает размер установленной библиотеки: берётся из опубликованного
+манифеста (`db-manifest.json`, несколько сотен байт, только на странице настроек), а не измерением OPFS —
+база живёт за однописательным SAH-пулом, и второй VFS сломал бы страницу, которая её использует.
+Проверено автотестом (`test/app-ui/check-offline.js`): «Downloaded, build 60d1e55ebe4500a7. 509 MB.
+Ready to work without a connection.»
+
+---
+# Capacitor v1.12: ссылки на заучивание и деванагари — через режимы ридера
+Владелец: старых страниц `/memorize/?q=…` и `/d/?q=…` быть не должно, у сайта есть режимы ридера
+(`configs/reader/mode-table.json`: single/multiTran/multiLang/memorize/devanagari), которые хорошо
+работают: `?mode=memorize` и `?mode=devanagari`.
+done все ссылки в dg-node переписаны на режимы: `configs/search/menu-links.json` (6), `search/index.html`
+(демо на главной), `public/overrides/common/multiTool{,Ru}.html`, `reader/reader-template.html`,
+`siteroot/memo/index.html`. `public/overrides/read/js/voice.js` теперь узнаёт режим по `?mode=` (старые
+пути `/d/`, `/memorize/` тоже принимает — файл общий с легаси-ридером).
+Проверено в сборке приложения офлайн: `/sn56.11?mode=memorize` рендерится (8103 знака, режим заучивания),
+`/sn56.11` — 13901; автотест `check-offline.js` — 13/13.
+Открыто: **`?mode=devanagari` офлайн не работает** — конвертация письма серверная (в плане это
+«локальный движок транслитерации — вне этапа»): в приложении запрос уходит на dhamma.gift, и без сети
+падает «Failed to fetch». Лечится переносом локального движка (Aksharamukha/Pyodide, ~16 МБ, загружается
+по требованию) в офлайн-слой — тогда режим заработает и без сети, как memorize.
+
+---
+# Capacitor v1.13: «нужен интернет» → предупреждение и переход в браузер
+Владелец: «сможешь его пробрасывать в браузер и предупреждать, если кто в оффлайн откроет, что нужен
+интернет для этого режима?»
+done `public/offline/app.js`: когда запрос уходит на сервер (конвертация письма `?mode=devanagari`/`?script=`,
+или язык вне среза) и падает, шим шлёт событие `dg:online-only` с URL, причиной (`script`/`lang`) и
+признаком `navigator.onLine === false`. Тост на сайте остался.
+done `native-bridge.js` (приложение): на это событие показывает нативный диалог «Нужен интернет —
+конвертация системы письма выполняется на сервере. Открыть этот текст в браузере?» и по «Открыть в браузере»
+отдаёт URL в системный браузер через плагин Browser. Адрес для браузера — страница читалки
+(`https://dhamma.gift/sn56.11?mode=devanagari`), а не API (`/api/text/...`, который показал бы JSON);
+по одному разу на URL, чтобы диалог не всплывал на каждый повтор.
+Проверено автотестом (`check-offline.js`, 14/14) с оборванными запросами к dhamma.gift: событие `script`,
+текст диалога и открытие именно `dhamma.gift/sn56.11?mode=devanagari`.
+Открыто: сам `?mode=devanagari` офлайн по-прежнему не конвертирует — для этого нужен локальный движок
+(Aksharamukha/Pyodide), это отдельная работа; сейчас режим честно отправляет в браузер.

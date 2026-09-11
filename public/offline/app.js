@@ -36,6 +36,14 @@
     var platform = (window.dgPlatform && typeof window.dgPlatform === 'object') ? window.dgPlatform : {
         name: 'browser',
         distBase: window.DG_DIST_BASE || '/mobile-data',
+        // Native builds only (see dg-app-full's platform.js). onlineBase: prefix for "needs the
+        // internet" requests when the page's own origin has no server behind it (the app's
+        // https://localhost) — the site keeps it empty and asks its own origin as before.
+        // mapStatic(p): rewrite an API URL the app serves as a bundled static file
+        // (/api/toc* -> build-time snapshots, /api/patimokkha-fragment -> /reader/...); the
+        // site has a real server behind every path and keeps it null.
+        onlineBase: '',
+        mapStatic: null,
         askConsent: function () { return Promise.resolve(true); },
     };
     var DIST_BASE = platform.distBase || window.DG_DIST_BASE || '/mobile-data';
@@ -58,6 +66,7 @@
     var nextCallId = 1;
     var pending = new Map();
     var downloadInFlight = false;   // pagehide must not cut a transfer short
+    var freshWorkerRetry = false;   // one retry per page, see refuseOfStorage()
     var probeDone = null;           // the startup probe, awaited by the fetch gate (see installFetchShim)
     var probeSettled = false;
     // The gate. False until a database is open in THIS tab; every data route checks it first.
@@ -346,6 +355,9 @@
             if (msg.type === 'library-invalid') {
                 local = false;
                 rememberState({ present: false, build_id: null, update: null });
+                // A native shell can be showing this transfer in the status bar (the app's
+                // DgProgress notification) — tell it the download is over, unsuccessfully.
+                window.dispatchEvent(new CustomEvent('dg:offline-invalid'));
                 var ruInvalid = (localStorage.getItem('dhammaLanguage') || localStorage.getItem('siteLanguage') || 'en') === 'ru';
                 notify(ruInvalid
                     ? 'Скачанная библиотека повреждена — попробуйте скачать заново'
@@ -553,6 +565,15 @@
             markLocal(result);
             cacheDictionary();   // background: the library is usable, the dictionary can follow
             return result;
+        }).catch(function (e) {
+            // The storage layer refused its own handles mid-transfer ("Failed to execute
+            // 'createSyncAccessHandle'" on a real device). One retry from a clean worker: the
+            // scratch file is still in OPFS, so this resumes instead of restarting the transfer.
+            if (refuseOfStorage(e) && retryWithFreshWorker('the download')) {
+                downloadInFlight = false;
+                return download(kind);
+            }
+            throw e;
         }).finally(function () {
             downloadInFlight = false;
         });
@@ -611,6 +632,33 @@
     // ---------------------------------------------------------------------------------------
     // Startup
     // ---------------------------------------------------------------------------------------
+
+    // A refusal from the storage layer itself — as opposed to "another document holds the
+    // handles", which is a normal state this file handles by waiting or relaying. The app hit the
+    // refusal on a real device: the download died with "Failed to execute 'createSyncAccessHandle'"
+    // and the toast stayed until the page was reloaded.
+    //
+    // Retrying inside the SAME worker cannot work: a failed installOpfsSAHPoolVfs() leaves
+    // sqlite-wasm's VFS half-registered there ("removeVfs() failed with no recovery strategy" —
+    // the same reason the takeover path below starts a fresh worker). So the one retry that can
+    // succeed is with a brand-new worker, which is what this does, once per page.
+    function refuseOfStorage(e) {
+        var msg = (e && e.message) || '';
+        return /Access Handle|createSyncAccessHandle|NoModificationAllowed|SAH|VFS|OPFS|storage/i.test(msg);
+    }
+
+    function dropWorker() {
+        if (worker) { try { worker.terminate(); } catch (e) { /* already gone */ } worker = null; }
+        pending.clear();
+    }
+
+    function retryWithFreshWorker(what) {
+        if (freshWorkerRetry) return false;
+        freshWorkerRetry = true;
+        log('the storage layer refused the offline library — retrying ' + what + ' with a fresh worker');
+        dropWorker();
+        return true;
+    }
 
     function probe() {
         probePending = true;
@@ -703,15 +751,27 @@
                 rememberMode(true, 'not-owner');
                 requestTakeover();
             }
-            // A reader pressing × is not a failure: it must not raise the "could not download"
-            // toast, and it must not reject `dgOfflineLibrary` (offline-status.js turns a rejection
-            // into exactly that toast). The cancel itself already answered with its own message.
+            // A reader pressing × — or saying "not now" to the platform's consent dialog (the
+            // native app's askConsent) — is not a failure: it must not raise the "could not
+            // download" toast, and it must not reject `dgOfflineLibrary`. The cancel already
+            // answered with its own message; the decline is announced so the platform can
+            // remember it (dg-app-full's platform.js listens for dg:download-declined).
             if (e && /cancelled/.test(e.message || '')) {
                 log('download cancelled by the reader');
                 return null;
             }
+            if (e && /declined/.test(e.message || '')) {
+                log('download declined by the reader');
+                try { window.dispatchEvent(new CustomEvent('dg:download-declined')); } catch (err) { /* ignore */ }
+                return null;
+            }
             // A failed open of a copy that IS there is a real fault the reader should hear about
             // (offline-status.js turns it into a toast); an absent database never reaches here.
+            // One exception: the storage layer refusing its own handles (see refuseOfStorage) —
+            // that is worth one retry from a clean worker before the reader is told anything.
+            if (refuseOfStorage(e) && retryWithFreshWorker('startup')) {
+                return new Promise(function (r) { setTimeout(r, 400); }).then(probe);
+            }
             log('offline layer not activated:', e && e.message);
             throw e;
         });
@@ -751,14 +811,57 @@
         // The server still answers this — when the reader is online it behaves exactly as before;
         // when they are offline the site's own error state is what they see, plus a toast that
         // says the real reason instead of "check your query".
-        function toServer(input, init) {
-            return realFetch(input, init).catch(function (e) {
+        // Native app: the page's own origin has no server, so "the server" is the real host,
+        // prefixed by the platform (platform.onlineBase). Same-origin URLs only — anything already
+        // absolute (the app's own distBase host, CDN links) passes through untouched.
+        function withOnlineBase(input, init) {
+            if (!platform.onlineBase) return input;
+            var raw = typeof input === 'string' ? input : input.url;
+            try {
+                var u = new URL(raw, location.href);
+                if (u.origin === location.origin) return platform.onlineBase + u.pathname + u.search;
+            } catch (e) { /* keep the input as-is */ }
+            return input;
+        }
+
+        // Bundled-instead-of-served routes (app only): TOC comes from build-time snapshots and the
+        // Patimokkha fragments are pre-rendered files, so neither needs the worker or the network.
+        function mapStatic(input, init) {
+            if (!platform.mapStatic) return null;
+            var raw = typeof input === 'string' ? input : input.url;
+            var where;
+            try { where = new URL(raw, location.href); } catch (e) { return null; }
+            if (where.origin !== location.origin) return null;
+            var mapped = platform.mapStatic(where.pathname);
+            return mapped ? realFetch(mapped + where.search, init) : null;
+        }
+
+        function toServer(input, init, why) {
+            // The URL as the REAL site would see it — the browser shell needs it to hand the reader
+            // over to a browser that is online (the app's own origin has no server). withOnlineBase
+            // does exactly that rewrite, so the same call serves both purposes here.
+            var target = withOnlineBase(input, init);
+            return realFetch(target).catch(function (e) {
                 if (typeof window.showBubbleNotification === 'function') {
                     var ru = (localStorage.getItem('dhammaLanguage') || localStorage.getItem('siteLanguage') || 'en') === 'ru';
                     window.showBubbleNotification(ru
                         ? 'Нужен интернет: эта система письма или язык не входят в офлайн-библиотеку'
                         : 'Needs internet: this script or language isn’t in the offline library', 5000);
                 }
+                // ...and a native shell can do better than a toast: the app offers to open the same
+                // URL in the device's own browser, which has no offline library and therefore asks
+                // the server for the conversion (owner: "сможешь его пробрасывать в браузер и
+                // предупреждать если кто в оффлайн откроет, что нужен интернет для этого режима?").
+                // `why` says which of the two reasons it was, so the message can name it.
+                try {
+                    window.dispatchEvent(new CustomEvent('dg:online-only', {
+                        detail: {
+                            url: (typeof target === 'string') ? target : (target && target.url) || '',
+                            reason: why || 'online',
+                            offline: (typeof navigator !== 'undefined' && navigator.onLine === false),
+                        },
+                    }));
+                } catch (err) { /* no CustomEvent — nothing to announce */ }
                 throw e;
             });
         }
@@ -832,12 +935,23 @@
         }
 
         function shimFetch(input, init) {
+            var bundled = mapStatic(input, init);
+            if (bundled) return bundled;
+
             if (!local) {
                 var raw = typeof input === 'string' ? input : input.url;
                 var where;
                 try { where = new URL(raw, location.href); } catch (e) { return realFetch(input, init); }
-                if (where.origin !== location.origin || !isDataRoute(where.pathname)) return realFetch(input, init);
-                return realFetch(input, init).catch(function (e) {
+                // /api/transliterate joins the forwarded routes: it is not a data route for the
+                // library, but in the app the page's own origin cannot answer it either.
+                if (where.origin !== location.origin ||
+                    (!isDataRoute(where.pathname) && where.pathname !== '/api/transliterate')) {
+                    return realFetch(input, init);
+                }
+                // Not installed yet (or not open here): the request goes to the network. In the
+                // native app that means the REAL host — the page's own origin has no server — so
+                // the same prefix the online branches use applies here too.
+                return realFetch(withOnlineBase(input, init), init).catch(function (e) {
                     var ru = (localStorage.getItem('dhammaLanguage') || localStorage.getItem('siteLanguage') || 'en') === 'ru';
                     var st = null;
                     try { st = JSON.parse(localStorage.getItem(STATE_KEY) || 'null'); } catch (err) { /* ignore */ }
@@ -860,12 +974,12 @@
             var qs = parsed.searchParams;
 
             if (p === '/api/transliterate') {
-                if (ensureScriptMode() === 'online') return toServer(input, init);
+                if (ensureScriptMode() === 'online') return toServer(input, init, 'script');
             }
 
             if (p.indexOf('/api/text/') === 0) {
-                if (langNeedsOnline(qs)) return toServer(input, init);
-                if (scriptRequested(qs)) return toServer(input, init);
+                if (langNeedsOnline(qs)) return toServer(input, init, 'lang');
+                if (scriptRequested(qs)) return toServer(input, init, 'script');
                 return withLoadingEvent(function () {
                     return call('text', {
                         suttaId: decodeURIComponent(p.slice('/api/text/'.length)).toLowerCase(),
@@ -886,8 +1000,8 @@
             }
 
             if (p === '/search/enrich') {
-                if (langNeedsOnline(qs)) return toServer(input, init);
-                if (scriptRequested(qs)) return toServer(input, init);
+                if (langNeedsOnline(qs)) return toServer(input, init, 'lang');
+                if (scriptRequested(qs)) return toServer(input, init, 'script');
                 return withLoadingEvent(function () {
                     return call('enrich', {
                         q: qs.get('q') || '',
@@ -902,8 +1016,8 @@
             }
 
             if (p === '/search' || (p.indexOf('/search/') === 0 && p !== '/search/enrich')) {
-                if (langNeedsOnline(qs)) return toServer(input, init);
-                if (scriptRequested(qs)) return toServer(input, init);
+                if (langNeedsOnline(qs)) return toServer(input, init, 'lang');
+                if (scriptRequested(qs)) return toServer(input, init, 'script');
                 return withLoadingEvent(function () {
                     return call('search', {
                         q: p === '/search' ? (qs.get('q') || '') : decodeURIComponent(p.slice('/search/'.length)),

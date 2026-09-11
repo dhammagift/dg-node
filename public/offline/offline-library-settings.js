@@ -38,6 +38,18 @@
     }
     function mb(bytes) { return Math.round(bytes / 1048576); }
 
+    // The installed library's size, for the row. The database itself cannot be measured from here
+    // (single-writer OPFS pool — see the header), but the published manifest states it, and asking
+    // for it costs a few hundred bytes on a page the reader had to open on purpose. TODO.js listed
+    // "размер базы в строке настроек" as the missing half of this row.
+    function withManifestSize(callback) {
+        var base = (window.dgPlatform && window.dgPlatform.distBase) || window.DG_DIST_BASE || '/mobile-data';
+        fetch(String(base).replace(/\/$/, '') + '/db-manifest.json', { cache: 'no-store' })
+            .then(function (r) { return r.ok ? r.json() : null; })
+            .then(function (m) { callback(m && m.bytes ? m.bytes : null); })
+            .catch(function () { callback(null); });   // offline: the row still says what it knows
+    }
+
     var titleEl = document.getElementById('dgOfflineLibTitle');
     var descEl = document.getElementById('dgOfflineLibDesc');
     var btnEl = document.getElementById('dgOfflineLibBtn');
@@ -95,9 +107,9 @@
     } else if (update) {
         descEl.textContent = isRu
             ? ('Скачано (сборка ' + (state.build_id || '?') + '). Доступно обновление' +
-               (update.bytes ? ', ' + mb(update.bytes) + 'МБ.' : '.'))
+               (update.bytes ? ', ' + mb(update.bytes) + ' МБ.' : '.'))
             : ('Downloaded (build ' + (state.build_id || '?') + '). An update is available' +
-               (update.bytes ? ', ' + mb(update.bytes) + 'MB.' : '.'));
+               (update.bytes ? ', ' + mb(update.bytes) + ' MB.' : '.'));
         btnEl.textContent = isRu ? 'Обновить' : 'Update';
         if (deleteEl) deleteEl.style.display = 'none';
         btnEl.onclick = function () { goHomeWith(WANT_UPDATE_KEY); };
@@ -120,9 +132,18 @@
             // not true", owner). It is about the library being usable without one.
             note = isRu ? ' Готова к работе без интернета.' : ' Ready to work without a connection.';
         }
-        descEl.textContent = isRu
-            ? ('Скачано, сборка ' + (state.build_id || '?') + '.' + note)
-            : ('Downloaded, build ' + (state.build_id || '?') + '.' + note);
+        function showDownloaded(bytes) {
+            var size = bytes ? ' ' + mb(bytes) + (isRu ? ' МБ.' : ' MB.') : '';
+            var build = isRu ? ('Скачано, сборка ' + (state.build_id || '?') + '.')
+                             : ('Downloaded, build ' + (state.build_id || '?') + '.');
+            descEl.textContent = build + size + note;
+        }
+        showDownloaded(state.bytes || null);
+        // Filled in a moment later (and never allowed to fail the row): the size comes from the
+        // published manifest, not from the reader's storage.
+        withManifestSize(function (bytes) {
+            if (bytes) { showDownloaded(bytes); }
+        });
         btnEl.textContent = isRu ? 'Перескачать' : 'Re-download';
         // Freeing the space has to be possible from here: without this the only way to get ~500MB back
         // was clearing the whole site's data — "Reset all" does not touch the library.

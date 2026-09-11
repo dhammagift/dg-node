@@ -528,7 +528,15 @@
         var backdrop = document.getElementById('dg-sheet-backdrop');
         // Fresh load every time: settings can change from another tab, and a stale form (e.g.
         // mid-drag script order) should never greet the user on reopen.
-        sheet.querySelector('iframe').src = '/settings/';
+        // NOT a hardcoded '/settings/': the app build rewrites the settings URL to
+        // /settings/index.html (Capacitor has no directory resolution), and in the app the
+        // hardcoded path made this iframe load the root index.html — the search page — inside the
+        // settings sheet, where the SPA then read "settings" as a keyword and searched for it
+        // ("ничего не найдено по запросу Settings", owner). The page's own settings link is the
+        // one place that knows the right URL in every build (see DgTextRouter.settingsUrl).
+        sheet.querySelector('iframe').src = (window.DgTextRouter && window.DgTextRouter.settingsUrl)
+            ? window.DgTextRouter.settingsUrl()
+            : '/settings/';
         sheet.hidden = false;
         settingsSheetOpen = true;
         history.pushState({ dgSettingsSheet: true }, '', location.href);

@@ -626,15 +626,15 @@
               "inline": [
                 {
                   "label": "sn56.11",
-                  "href": "/memorize/?q=sn56.11"
+                  "href": "/sn56.11?mode=memorize"
                 },
                 {
                   "label": "dn22",
-                  "href": "/memorize/?q=dn22"
+                  "href": "/dn22?mode=memorize"
                 },
                 {
                   "label": "sn12.2",
-                  "href": "/memorize/?q=sn12.2"
+                  "href": "/sn12.2?mode=memorize"
                 }
               ]
             },
@@ -1520,15 +1520,15 @@
               "inline": [
                 {
                   "label": "sn56.11",
-                  "href": "/memorize/?q=sn56.11"
+                  "href": "/sn56.11?mode=memorize"
                 },
                 {
                   "label": "dn22",
-                  "href": "/memorize/?q=dn22"
+                  "href": "/dn22?mode=memorize"
                 },
                 {
                   "label": "sn12.2",
-                  "href": "/memorize/?q=sn12.2"
+                  "href": "/sn12.2?mode=memorize"
                 }
               ]
             },

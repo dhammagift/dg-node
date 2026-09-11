@@ -21,13 +21,58 @@
         // (the end-to-end test serves a small database from a local server this way).
         distBase: window.DG_DIST_BASE || '/mobile-data',
 
+        // Native-only seams, defined here as no-ops so app.js can call them unconditionally
+        // (dg-app-full's src/platform.js is the implementation — it loads FIRST and this file
+        // returns early, so these defaults only ever run on the site):
+        //  - onlineBase: prefix for "this needs the internet" requests when the page's own origin
+        //    has no server behind it (the app's https://localhost). The site IS the server.
+        //  - mapStatic(p): rewrite an API URL the native build ships as a bundled file (TOC
+        //    snapshots, Patimokkha fragments). The site computes both at request time.
+        onlineBase: '',
+        mapStatic: null,
+
         // Is the reader OK with the download?
         //
-        // On the site the answer is already yes, and asking again would be theatre: a download
-        // here only ever starts because the reader pressed "Download now" in Settings with the
-        // size written next to it. The native build is different and asks for real — there the
-        // download can be started by the app itself (see dg-app-full's Network plugin check for
-        // Wi-Fi vs cellular).
-        askConsent: function () { return Promise.resolve(true); },
+        // Wi-Fi: the answer is already yes — the transfer only ever starts from "Download now" in
+        // Settings, with the size written next to it, and asking again would be theatre.
+        //
+        // Metered (cellular, or Data Saver on): ask for real. Owner started a download on mobile
+        // data in the browser and it went straight through — a 509MB transfer is exactly what a
+        // confirmation is for, and the site has the same sheet the native build uses
+        // (offline-status.js renders it on `dg:need-consent`, with the size from the published
+        // manifest). Where the Network Information API is missing (iOS Safari), nothing is asked:
+        // guessing "you are probably on cellular" would train the reader to dismiss dialogs.
+        askConsent: function (info) {
+            if (!onMeteredConnection()) return Promise.resolve(true);
+            return manifestBytes(info).then(function (bytes) {
+                return new Promise(function (resolve) {
+                    window.dispatchEvent(new CustomEvent('dg:need-consent', {
+                        detail: { resolve: resolve, bytes: bytes, langs: info && info.langs },
+                    }));
+                });
+            });
+        },
     };
+
+    // navigator.connection (Network Information API): Chrome/Android implement `type`, which is the
+    // only honest signal here — `effectiveType: '4g'` is true of Wi-Fi as well, so keying on it
+    // would ask the wrong readers. saveData is a direct request from the reader, so it always asks.
+    function onMeteredConnection() {
+        var c = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+        if (!c) return false;
+        if (c.saveData) return true;
+        return c.type === 'cellular';
+    }
+
+    // The real size of the file that is about to cross the connection, from the published
+    // manifest (a few hundred bytes). app.js calls askConsent({}) — its own consent is a Settings
+    // button with the number next to it — so without this the sheet could only guess.
+    function manifestBytes(info) {
+        if (info && info.bytes) return Promise.resolve(info.bytes);
+        var base = (window.dgPlatform && window.dgPlatform.distBase) || '/mobile-data';
+        return fetch(base.replace(/\/$/, '') + '/db-manifest.json')
+            .then(function (r) { return r.ok ? r.json() : null; })
+            .then(function (m) { return m && m.bytes ? m.bytes : null; })
+            .catch(function () { return null; });
+    }
 })();

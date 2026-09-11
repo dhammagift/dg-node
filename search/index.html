@@ -2448,7 +2448,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
         <div class="col-auto">
           <input class="form-check-input mt-2 border-secondary" name="reader" type="radio" id="dRadio" value="d"> 
           &nbsp;
-    <a id="dDemo" href="/d/?q=sn12.2"><strong>"Деванагари"</strong></a>
+    <a id="dDemo" href="/sn12.2?mode=devanagari"><strong>"Деванагари"</strong></a>
       
         </div>
         <div class="col text-end">
@@ -2463,7 +2463,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
             <div class="col-auto">
               <input class="form-check-input mt-2 border-secondary" name="reader" type="radio" id="memRadio" value="mem">
               &nbsp;
-              <a id="memDemo" href="/memorize/?q=an10.46">              <strong>Для запоминания</strong>
+              <a id="memDemo" href="/an10.46?mode=memorize">              <strong>Для запоминания</strong>
 </a>
             </div>
             <div class="col text-end">
@@ -3511,6 +3511,11 @@ $(document).ready(function() {
             // dict.dg / aksharamukha / dharmamitra — a plain external tool, not part of this
             // site at all. Opens in a new tab; the search box/page stay exactly as they were.
             window.open(route.url, '_blank', 'noopener');
+        } else if (route.type === 'page') {
+            // A bare word that names one of the site's own pages ("settings"/"настройки" — see
+            // DgTextRouter's PAGE shortcut). A full navigation, not pushState: these pages are
+            // separate documents (settings/index.html), which the SPA does not render.
+            window.location.href = route.url;
         } else if (route.type === 'quickmodal') {
             // "4as"/"4as2".."4as4" typed in the search box — same destination as visiting
             // /4as, /4as/2../4as/4 directly, so just become that URL and let routeFromUrl()'s
@@ -4424,7 +4429,8 @@ $(document).ready(function() {
     // шторка), отдельная развилка здесь не нужна.
     document.addEventListener('click', function (e) {
         if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.defaultPrevented) return;
-        var a = e.target.closest ? e.target.closest('a[href="/settings/"]') : null;
+        // starts-with, not equality: the app build rewrites the href to /settings/index.html
+        var a = e.target.closest ? e.target.closest('a[href^="/settings/"]') : null;
         if (!a || !window.DgHome) return;
         e.preventDefault();
         window.DgHome.closeDrawer();

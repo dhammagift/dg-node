@@ -72,3 +72,17 @@ public/offline/vendor/
 # Публикация собранной офлайн-базы: на сервере это настоящий каталог (npm run build-mobile-db),
 # в тест-чекауте — симлинк на продовый, чтобы не держать вторую копию на 500 МБ.
 siteroot/mobile-data
+
+# dg-app-full перенесён сюда ВРЕМЕННО (сессия Capacitor), чтобы правки шли без sandbox-одобрений.
+# Вернуть на /var/www/dg-app-full после работы. В git не коммитить.
+/dg-app-full/
+
+# APK для тестов (артефакт сборки, публикуется от корня как /mobile-apk/...)
+siteroot/mobile-apk/
+
+# Профили браузера для test/app-ui/* (в них лежит скачанная офлайн-библиотека)
+test/.app-ui-profiles/
+test/.disk-guard.log
+
+# Страница проверок приложения (публикуется от корня как /app-tests/)
+siteroot/app-tests/

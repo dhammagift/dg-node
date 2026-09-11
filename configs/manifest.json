@@ -108,19 +108,6 @@
       "description": "Table of contents of the canon"
     },
     {
-      "name": "Dictionary",
-      "url": "/dict",
-      "icons": [
-        {
-          "src": "/assets/svg/book-letter.svg",
-          "sizes": "any",
-          "type": "image/svg+xml"
-        }
-      ],
-      "short_name": "Dictionary",
-      "description": "Pali dictionary (DPD)"
-    },
-    {
       "name": "Favorites & history",
       "short_name": "Favorites",
       "description": "Favorites and search history",
@@ -132,6 +119,19 @@
           "type": "image/svg+xml"
         }
       ]
+    },
+    {
+      "name": "Dictionary",
+      "url": "/dict",
+      "icons": [
+        {
+          "src": "/assets/svg/book-letter.svg",
+          "sizes": "any",
+          "type": "image/svg+xml"
+        }
+      ],
+      "short_name": "Dictionary",
+      "description": "Pali dictionary (DPD)"
     },
     {
       "name": "Memo",

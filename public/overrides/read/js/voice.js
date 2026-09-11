@@ -94,9 +94,12 @@ function getSavedSlugName(slug) {
 function getContextInfo(langCode) {
   const path = window.location.pathname;
 
-  // Режим заучивания /d/ или /memorize/ (Индийский контекст для обоих слотов) — реальная
-  // отдельная фича по URL, не связана с языком перевода, оставляем как есть.
-  if (path.includes('/d/') || path.includes('/memorize/')) {
+  // Режим заучивания: Indian voice context for both slots. The SPA addresses it as a reader mode
+  // (?mode=memorize / ?mode=devanagari — see configs/reader/mode-table.json), so the URL no longer
+  // contains /memorize/ or /d/; both spellings are accepted because this file is shared with the
+  // legacy reader page, which is still served for its own URLs.
+  var dgMode = new URLSearchParams(window.location.search).get('mode');
+  if (path.includes('/d/') || path.includes('/memorize/') || dgMode === 'memorize' || dgMode === 'devanagari') {
       return {
           type: 'study',
           storageKey: GOOGLE_TRN_KEY_STUDY,
@@ -734,7 +737,7 @@ async function populateVoiceSelectors(apiKey, forceRefresh = false) {
     let trnVoices = [];
 
     if (context.isIndianContext) {
-        // Если это /d/ или /memorize/ -> предлагаем Индийские языки
+        // Study modes (memorize/devanagari) -> offer Indian languages
         trnVoices = voices.filter(v => isIndianLang(v.languageCodes[0]));
     } else {
         // Иначе -> Русский, Английский, Тайский

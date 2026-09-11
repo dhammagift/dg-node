@@ -271,7 +271,15 @@ async function downloadInto(pool, url, name, expectedWireBytes, expectedDbBytes,
             if (have > 0 && scratch && response.status === 200) scratch.truncate(0);
             const resumedFrom = (have > 0 && response.status === 206) ? have : 0;
             const remaining = Number(response.headers.get('Content-Length')) || 0;
-            const total = resumedFrom + remaining;
+            // The denominator. Content-Length alone is not enough: a chunked response (nginx
+            // proxying without buffering, an older deploy that has not got the per-route
+            // Content-Length/compression fix) has none, and then total was 0 — the card fell back
+            // to an indeterminate bar with no percentage and no "X of Y MB" anywhere, so the
+            // reader could not tell whether a 509MB transfer was 5% or 95% done (owner, on the
+            // device, twice). The published manifest states the size, and it is the same file, so
+            // it is the honest fallback; the overshoot check above still uses the manifest to
+            // catch a server serving the wrong file entirely.
+            const total = (resumedFrom + remaining) || expectedDbBytes || expectedWireBytes || 0;
             if (expectedWireBytes && total && total > expectedWireBytes * OVERSHOOT_FACTOR) {
                 throw Object.assign(
                     new Error(`dg-mobile.db: server offered ${Math.round(total / 1048576)}MB, ` +
