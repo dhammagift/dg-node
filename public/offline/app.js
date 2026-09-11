@@ -547,7 +547,11 @@
                 // exactly there); making them find the button again after a reload — or a browser
                 // restart — would be a strange thing to require of a 479MB transfer. The progress
                 // card comes back on its own, so nothing needs saying.
-                if (status.partialBytes > 0) {
+                // Only the OWNER continues a partial download. A tab that cannot have the pool (the
+                // handles are held by another document — NoModificationAllowedError in the log) used
+                // to fall through to a download it could never finish, and against a dead server that
+                // is a guaranteed failure instead of the honest "another tab has it".
+                if (ownsLibrary && status.partialBytes > 0) {
                     log('continuing an unfinished download:', status.partialBytes, 'bytes already on disk');
                     return download('open');
                 }
