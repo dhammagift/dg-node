@@ -98,6 +98,11 @@
     var probePending = true;      // true until acquireOwnership() has answered
     var releaseOwnership = null;  // resolves the Web Lock callback, see yieldLibrary()
     var lastReleaseAsk = 0;       // throttles takeover requests (one every few seconds, not a loop)
+    // "In use" means the reader is looking at THIS window/tab. visibilityState alone is not enough: a
+    // background WINDOW (two windows side by side, an installed app next to a browser tab) keeps
+    // reporting 'visible', so a visible-but-unfocused owner refused to hand over and the window the
+    // reader was actually using stayed server-backed (owner's desktop Opera).
+    var windowFocused = document.hasFocus();
     if (channel) {
         channel.onmessage = function (event) {
             var msg = event.data || {};
@@ -124,7 +129,18 @@
             if (msg.type === 'released') {
                 log('the other tab released the offline library — taking it over');
                 lastReleaseAsk = 0;
-                reopenIfNeeded();
+                // A few tries a second apart: the owner has just terminated its worker, and the
+                // browser can take a moment to actually drop the exclusive handles. One attempt that
+                // landed a fraction too early left the tab server-backed for good.
+                var tries = 0;
+                var take = function () {
+                    tries++;
+                    probe().then(function () {
+                        if (!local && tries < 4) setTimeout(take, 1200);
+                        else if (local) log('took the offline library over');
+                    }, function () { if (tries < 4) setTimeout(take, 1200); });
+                };
+                setTimeout(take, 300);
                 return;
             }
             if (msg.type !== 'download') return;
@@ -213,7 +229,10 @@
     // Web Lock has to be released too or the next tab cannot even try.
     function yieldLibrary() {
         if (!local || downloadInFlight) return false;
-        if (document.visibilityState === 'visible') return false; // in use right now
+        if (windowFocused && document.visibilityState === 'visible') {
+            log('not handing over: this window is the one being used');
+            return false; // in use right now
+        }
         log('yielding the offline library to another tab');
         local = false;
         if (worker) { try { worker.terminate(); } catch (e) { /* already gone */ } worker = null; }
@@ -225,6 +244,8 @@
     // The tab the reader is actually looking at asks for the pool once; a hidden owner hands it over.
     function requestTakeover() {
         if (local || downloadInFlight || probePending || !channel) return;
+        // Only the window being used takes the library over.
+        if (!windowFocused && document.visibilityState === 'visible' && document.hasFocus && !document.hasFocus()) return;
         // Throttled, not one-shot: the holder may still have been busy (or downloading) the first
         // time, and a second tab that keeps being looked at deserves another try.
         if (Date.now() - lastReleaseAsk < 3000) return;
@@ -446,8 +467,9 @@
         if (local || downloadInFlight || probePending) return;
         probe().catch(function () { /* the console log already says what happened */ });
     }
+    window.addEventListener('focus', function () { windowFocused = true; reopenIfNeeded(); requestTakeover(); });
+    window.addEventListener('blur', function () { windowFocused = false; });
     window.addEventListener('pageshow', reopenIfNeeded);
-    window.addEventListener('focus', function () { reopenIfNeeded(); requestTakeover(); });
     document.addEventListener('visibilitychange', function () {
         if (document.visibilityState !== 'visible') return;
         reopenIfNeeded();
