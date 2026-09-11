@@ -345,6 +345,9 @@
             'Поиск в Суттах и Винае — без интернета',
             'Чтение Сутт и Винаи офлайн, с переводами',
             'Языки: пали, английский и русский',
+            // Honest about what stays online: the reader should not discover it by hitting an error
+            // offline. TTS uses Google's service and script conversion is done by the server.
+            'Озвучка Google и конвертация системы письма работают только онлайн',
             'Переходы между суттами, закладки и история — тоже офлайн',
             'Прервали загрузку? Она продолжится с того же места',
             'Библиотека живёт на устройстве — искать можно и в самолёте'
@@ -354,6 +357,7 @@
             'Search the Suttas and Vinaya — no connection',
             'Read the Suttas and Vinaya offline, translations included',
             'Languages: Pali, English and Russian',
+            'Google TTS and script conversion work online only',
             'Sutta-to-sutta navigation, bookmarks and history offline too',
             'Download interrupted? It resumes where it stopped',
             'The library lives on your device — search on a plane'
