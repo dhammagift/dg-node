@@ -1,0 +1,71 @@
+# Шорткаты приложения: адреса, иконки, порядок
+
+Спецификация для агента, который будет дорабатывать шорткаты. Источник правды — **`configs/manifest.json`**,
+он же отдаётся сервером по `/manifest.json` (явный роут в `dg-fastify.js` и `dg-light.js`).
+
+## Почему порядок важен
+
+Телефон (лончер Android) показывает **только первые 3–4** шортката из массива, десктопные контекстные
+меню — все. Поэтому «для телефона» = первые четыре записи, «для ПК» = всё остальное. Никакой
+локализации у названий нет: манифест статический, имена заданы один раз (сейчас английские).
+
+## Текущий список (порядок в массиве = порядок в меню)
+
+| # | name | short_name | url | icon | где лежит иконка |
+|---|---|---|---|---|---|
+| 1 | Favorites & history | Favorites | `/4as` | `/assets/svg/bolt-solid.svg` | `public/overrides/svg/bolt-solid.svg` (наш файл) |
+| 2 | Dictionary | Dictionary | `/dict` | `/assets/svg/book-letter.svg` | `public/overrides/svg/book-letter.svg` (наш файл) |
+| 3 | TOC | TOC | `/toc` | `/assets/img/maniIcon.png` | `siteroot/assets/img/maniIcon.png` (легаси-репо) |
+| 4 | Memo | Memo | `/memo` | `/assets/svg/memo.svg` | `siteroot/assets/svg/memo.svg` (легаси-репо) |
+| 5 | Bhikkhu Patimokkha | — | `/toc/pm` | `/assets/img/monkIcon.png` | `siteroot/assets/img/monkIcon.png` |
+| 6 | Bhikkhuni Patimokkha | — | `/toc/bipm` | `/assets/img/nunIcon.png` | `siteroot/assets/img/nunIcon.png` |
+| 7 | Aksharamukha.com | — | `/open?url=https://www.aksharamukha.com/converter` | `/assets/img/maniIcon.png` | то же |
+| 8 | Dharmamitra.org | — | `/open?url=https://dharmamitra.org/` | `/assets/img/maniIcon.png` | то же |
+
+Пункты 1–4 — то, что видно на телефоне; 5–8 оставлены для десктопа.
+
+## JSON этих записей (как в `configs/manifest.json`)
+
+```json
+"shortcuts": [
+  { "name": "Favorites & history", "short_name": "Favorites",
+    "description": "Favorites and search history", "url": "/4as",
+    "icons": [{ "src": "/assets/svg/bolt-solid.svg", "sizes": "any", "type": "image/svg+xml" }] },
+  { "name": "Dictionary", "short_name": "Dictionary",
+    "description": "Pali dictionary (DPD)", "url": "/dict",
+    "icons": [{ "src": "/assets/svg/book-letter.svg", "sizes": "any", "type": "image/svg+xml" }] },
+  { "name": "TOC", "short_name": "TOC",
+    "description": "Table of contents of the canon", "url": "/toc",
+    "icons": [{ "src": "/assets/img/maniIcon.png", "sizes": "192x192", "type": "image/png" }] },
+  { "name": "Memo", "short_name": "Memo",
+    "description": "Memorize texts", "url": "/memo",
+    "icons": [{ "src": "/assets/svg/memo.svg", "sizes": "any", "type": "image/svg+xml" }] }
+]
+```
+
+## Иконки: правила и подводные камни
+
+- Наши иконки кладём в **`public/overrides/svg/`** — этот каталог монтируется на `/assets` **раньше**
+  легаси-репо, поэтому `/assets/svg/<файл>` отдаётся именно наш.
+- Легаси-иконки (`maniIcon.png`, `monkIcon.png`, `nunIcon.png`, `memo.svg`) живут в `siteroot/assets/`
+  (симлинк на легаси-репо), их править не нужно.
+- **Android может игнорировать SVG** в `icons` шортката (исторически ждёт bitmap). Если шорткат
+  пропадает из меню — первым делом заменить SVG на PNG 96×96 или больше (иконки приложения уже есть:
+  `/assets/img/pwa-bold-monocolor-192.png`, `/assets/img/pwa-bold-monocolor-512.png`).
+- Проверка: `curl -s http://127.0.0.1:3003/manifest.json | python3 -m json.tool | head -40` и
+  `curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3003/assets/svg/bolt-solid.svg` (ждём 200).
+
+## Динамические шорткаты (то, чего в манифесте быть не может)
+
+«Последние прочитанные» в пунктах 3–4 — только в нативном приложении (решение: Capacitor):
+
+- **Android:** `ShortcutManager.setDynamicShortcuts()` / `pushDynamicShortcut()` — хранит ~15,
+  лончер показывает 4.
+- **iOS:** `UIApplication.shared.shortcutItems` — максимум 4, показываются по долгому нажатию на иконку.
+- **Источник данных:** история сайта в `localStorage`: `localSearchHistory` (последние запросы),
+  `dg_favorites` (избранное), `visitCount`, `dg_deleted_history` (удалённое — не показывать).
+- **Важно:** нативная сторона `localStorage` прочитать не может. Страница (наш же билд сайта) читает
+  историю и отдаёт список в мост: `DgShortcuts.set({ items: [{ id, label, url }] })`; обновлять при
+  старте приложения и при уходе в фон (`appStateChange`).
+- В PWA и TWA динамических шорткатов не будет никогда: манифест статический, у TWA нет доступа к
+  `ShortcutManager`, а в iOS у веб-приложения на домашнем экране шорткатов нет вообще.
