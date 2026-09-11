@@ -9,7 +9,8 @@
     "test-offline": "node test/offline-e2e.js",
     "test-offline-parity": "node test/offline-parity.js",
     "test-offline-resume": "node test/offline-resume.js",
-    "build-mobile-db": "node build-mobile-db.js"
+    "build-mobile-db": "node build-mobile-db.js",
+    "test-offline-outage": "node test/offline-outage.js"
   },
   "dependencies": {
     "@fastify/compress": "^9.2.0",
