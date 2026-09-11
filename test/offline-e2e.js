@@ -36,6 +36,10 @@ const PLAYWRIGHT = process.env.DG_PLAYWRIGHT || '/var/www/dg-app-full/node_modul
 const BROWSER = process.env.DG_CHROMIUM || '/usr/bin/google-chrome';
 const PORT = Number(process.env.PORT) || 3123;
 const BASE = `http://127.0.0.1:${PORT}`;
+// Where the artifact is served from (a real directory on a server, a symlink to the production one on
+// a test box) and where this test keeps its own scratch — profiles must not be written next to the
+// artifact, which may be read-only.
+const ARTIFACT_DIR = process.env.OFFLINE_ARTIFACT_DIR || path.join(ROOT, 'siteroot', 'mobile-data');
 const FIXTURE_DIR = process.env.OFFLINE_TEST_DIR || path.join(ROOT, '.offline-test');
 const MOBILE_DATA = path.join(ROOT, 'siteroot', 'mobile-data');
 
@@ -209,12 +213,12 @@ async function referenceAnswer(core, url) {
 }
 
 function requireFixture() {
-    const db = path.join(FIXTURE_DIR, 'dg-mobile.db');
-    const manifest = path.join(FIXTURE_DIR, 'db-manifest.json');
+    const db = path.join(ARTIFACT_DIR, 'dg-mobile.db');
+    const manifest = path.join(ARTIFACT_DIR, 'db-manifest.json');
     if (!fs.existsSync(db) || !fs.existsSync(manifest)) {
-        fail(`no database slice in ${FIXTURE_DIR}.\nBuild one first (from this repository):\n` +
+        fail(`no database slice in ${ARTIFACT_DIR}.\nBuild one first (from this repository):\n` +
             `  npm run build-search-db\n` +
-            `  node build-mobile-db.js --source=${ROOT}/dg.db --langs=ru,en --out=${FIXTURE_DIR}`);
+            `  node build-mobile-db.js --source=${ROOT}/dg.db --langs=ru,en --out=${ARTIFACT_DIR}`);
     }
     return JSON.parse(fs.readFileSync(manifest, 'utf8'));
 }
@@ -224,7 +228,7 @@ function requireFixture() {
 // for its own run and removes it again — nothing is left behind for git to notice.
 function linkMobileData() {
     if (fs.existsSync(MOBILE_DATA)) return false;
-    fs.symlinkSync(path.relative(path.dirname(MOBILE_DATA), FIXTURE_DIR), MOBILE_DATA, 'dir');
+    fs.symlinkSync(path.relative(path.dirname(MOBILE_DATA), ARTIFACT_DIR), MOBILE_DATA, 'dir');
     return true;
 }
 
@@ -281,7 +285,7 @@ function subsetProblem(localBody, serverBody) {
 
 (async () => {
     const manifest = requireFixture();
-    console.log(`fixture: ${path.relative(ROOT, FIXTURE_DIR)} (build ${manifest.build_id}, ` +
+    console.log(`fixture: ${path.relative(ROOT, ARTIFACT_DIR)} (build ${manifest.build_id}, ` +
         `${(manifest.bytes / 1048576).toFixed(1)}MB)`);
 
     const profileDir = path.join(FIXTURE_DIR, 'chrome-profile');

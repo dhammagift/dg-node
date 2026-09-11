@@ -36,6 +36,9 @@ const SOURCE = path.resolve(arg('source', path.join(__dirname, 'dg.db')));
 const OUT_DIR = path.resolve(arg('out', path.join(__dirname, 'siteroot', 'mobile-data')));
 const OUT_DB = path.join(OUT_DIR, 'dg-mobile.db');
 const OUT_MANIFEST = path.join(OUT_DIR, 'db-manifest.json');
+// Computed once, before anything is written: it goes both into the file's meta table and into the
+// manifest, and the client insists they agree.
+const BUILD_ID = buildId(LANGS);
 
 const SCHEMA = `
 CREATE TABLE suttas (id TEXT PRIMARY KEY, category TEXT, dir_path TEXT, title TEXT, mr INTEGER);
@@ -86,7 +89,25 @@ function main() {
     const suttas = db.prepare('INSERT INTO suttas SELECT * FROM src.suttas').run().changes;
     const texts = db.prepare(`INSERT INTO texts SELECT * FROM src.texts WHERE ${slice}`).run().changes;
     const html = db.prepare('INSERT INTO html SELECT * FROM src.html').run().changes;
-    const meta = db.prepare('INSERT OR REPLACE INTO meta SELECT * FROM src.meta').run().changes;
+    // meta is ours to define: the corpus built by build-search-db.js has no such table (only the old
+    // app's slice did), so it is copied when it exists and filled with what clients may want.
+    let meta = 0;
+    const hasMeta = db.prepare("SELECT count(*) c FROM src.sqlite_master WHERE type='table' AND name='meta'").get().c > 0;
+    if (hasMeta) meta = db.prepare('INSERT OR REPLACE INTO meta SELECT * FROM src.meta').run().changes;
+    // The client checks that a stored file carries the build id its NAME claims (dg-mobile.<id>.db):
+    // a file saved under an id it does not carry is treated as a download that stopped partway, so an
+    // artifact without these rows is refused as "incomplete download" even when it is perfect. The old
+    // app's slice had them; this builder has to write them itself.
+    const metaRows = [
+        ['schema_version', '1'],
+        ['build_id', BUILD_ID],
+        ['langs', LANGS.join(',')],
+        ['fts', 'trigram'],
+        ['source', path.basename(SOURCE)],
+        ['built_at', new Date().toISOString()],
+    ];
+    const insMeta = db.prepare('INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)');
+    for (const [k, v] of metaRows) insMeta.run(k, v);
     console.log(`suttas ${suttas}, texts ${texts}, html ${html}, meta ${meta} (${Date.now() - t0}ms)`);
 
     // Per-group hash: the unit the apps use to see what changed without re-downloading 480MB.
@@ -128,7 +149,7 @@ function main() {
     const sha256 = crypto.createHash('sha256').update(fs.readFileSync(OUT_DB)).digest('hex');
     const manifest = {
         schema_version: 1,
-        build_id: buildId(LANGS),
+        build_id: BUILD_ID,
         langs: LANGS.join(','),
         fts: 'trigram',
         source: 'dg.db',

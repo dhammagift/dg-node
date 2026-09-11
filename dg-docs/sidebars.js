@@ -63,7 +63,7 @@ const sidebars = {
           collapsed: false,
           className: 'dg-cat-tech',
           items: [
-            'tech/installation',
+            'tech/installation', 'tech/offline-db',
             {
               // /api-docs/ is served by the same Express app as the docs build itself, at
               // the site root, not under this build's own baseUrl (/docs/ or /ru/docs/).
