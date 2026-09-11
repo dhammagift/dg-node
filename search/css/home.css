@@ -1321,25 +1321,33 @@ body.dg-state-home #dg-hero-heading { display: block; }
    the plain solid --dg-text color set above, never see transparent text. */
 @supports ((background-clip: text) or (-webkit-background-clip: text)) {
     #home-motto {
-        background: linear-gradient(100deg,
-            var(--dg-text) 44%, var(--dg-motto-shine) 50%, var(--dg-text) 56%);
-        background-size: 200% 100%;
-        background-position: 150% 0;
+        /* Owner: "какой формы луч я представлял круглый" — a round spot of light, not a
+           diagonal bar. background-color is the letters' normal resting color, always painted
+           (a plain color can't be a comma-separated background-image layer — that was tried
+           first and silently resolved to `none`, caught live via computed-style before
+           shipping). background-image is a single small radial circle (the travelling
+           spotlight, fading to transparent at its own edge) painted on top of that fill; only
+           its position animates, sliding left to right, so most of the word stays its normal
+           color and only the ~48px pool under the circle brightens as it passes — instead of
+           the whole word dimming/brightening together like the earlier diagonal-band version. */
+        background-color: var(--dg-text);
+        background-image: radial-gradient(circle 24px at center, var(--dg-motto-shine) 0%, transparent 100%);
+        background-repeat: no-repeat;
+        background-size: 48px 100%;
+        background-position: -48px 0;
         -webkit-background-clip: text;
         background-clip: text;
         -webkit-text-fill-color: transparent;
         color: transparent;
         /* linear, not var(--dg-ease): that token is a strong ease-out for entering/exiting UI
            (see the file's other uses) — this is constant, marquee-like motion crossing the
-           screen, which wants linear (AUDIT.md §2). ease-out here read as a flash: the band
-           decelerated hard and lingered near the end instead of sweeping through at a steady
-           pace (owner: "похожий на подгрузку шрифта"). */
+           screen, which wants linear (AUDIT.md §2, improve-animations skill). */
         animation: dg-motto-shine 1.4s linear 0.3s 1 both;
     }
 }
 @keyframes dg-motto-shine {
-    from { background-position: 150% 0; }
-    to { background-position: -50% 0; }
+    from { background-position: -48px 0; }
+    to { background-position: calc(100% + 48px) 0; }
 }
 @media (prefers-reduced-motion: reduce) {
     /* Delight-only motion, no comprehension purpose — reduced motion drops it entirely rather
