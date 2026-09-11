@@ -1290,67 +1290,36 @@ function ifKn(indexValue) {
   return valueForApi;
 }
 
-function loadPrev() {
-  const texttype = 'sutta';
-  const indexValue = document.getElementById('indexInput').value.trim().toLowerCase();
-  const textPart = indexValue.split('.')[0]; 
-  const book = indexValue.replace(/[^a-zA-Z]/g, ''); 
-  let  valueForApi = book + "/" + textPart + "/" + indexValue;
-
-  const url = "/read/php/api.php?fromjs=" + texttype + "/" + valueForApi + "&type=B";
+// DG node has no PHP backend — prev/next reuses the reader's own nav endpoint
+// (core/search-core.js navFor) instead of the legacy /read/php/api.php call.
+// scope=all: this is a translator tool, it must walk every text, not just the
+// default 4 nikayas + 6 Khuddaka books the reader restricts casual reading to.
+function navigateAdjacent(direction) {
+  const inputField = document.getElementById('indexInput');
+  const indexValue = inputField.value.trim().toLowerCase();
   const originalValue = indexValue;
+  const url = `/api/nav/${encodeURIComponent(indexValue)}?scope=all`;
 
-  console.log("Prev URL: ", url);
+  console.log(`${direction} URL: `, url);
   fetch(url)
-      .then(response => response.text()) 
-      .then(data => {
-          console.log("Prev Data: ", data);
-          const newIndexValue = extractIndexValue(data);
-          if (newIndexValue) {
-            const inputField = document.getElementById('indexInput');
-            inputField.value = newIndexValue; 
-            inputField.dispatchEvent(new Event('input')); 
+      .then(response => response.ok ? response.json() : Promise.reject(new Error(`HTTP ${response.status}`)))
+      .then(nav => {
+          console.log(`${direction} Data: `, nav);
+          const entry = direction === 'prev' ? nav.prev : nav.next;
+          if (entry && entry.slug) {
+            inputField.value = entry.slug;
+            inputField.dispatchEvent(new Event('input'));
           }
           loadText();
       })
       .catch(error => {
-          console.error('Error fetching prev data:', error);
-          document.getElementById('indexInput').value = originalValue;
+          console.error(`Error fetching ${direction} data:`, error);
+          inputField.value = originalValue;
       });
 }
 
-function loadNext() {
-  const texttype = 'sutta';
-  const indexValue = document.getElementById('indexInput').value.trim().toLowerCase();
-  const textPart = indexValue.split('.')[0]; 
-  const book = indexValue.replace(/[^a-zA-Z]/g, ''); 
-  const valueForApi = book + "/" + textPart + "/" + indexValue;
-  const url = "/read/php/api.php?fromjs=" + texttype + "/" + valueForApi + "&type=A";
-  const originalValue = indexValue;
-
-  console.log("Next URL: ", url);
-  fetch(url)
-      .then(response => response.text()) 
-      .then(data => {
-          console.log("Next Data: ", data);
-          const newIndexValue = extractIndexValue(data);
-          if (newIndexValue) {
-            const inputField = document.getElementById('indexInput');
-            inputField.value = newIndexValue; 
-            inputField.dispatchEvent(new Event('input')); 
-          }
-          loadText();
-      })
-      .catch(error => {
-          console.error('Error fetching next data:', error);
-          document.getElementById('indexInput').value = originalValue;
-          inputField.dispatchEvent(new Event('input')); 
-      });
-}
-
-function extractIndexValue(data) {
-    return data.split(' ')[0]; 
-}
+function loadPrev() { navigateAdjacent('prev'); }
+function loadNext() { navigateAdjacent('next'); }
 </script>
 
 <script>
