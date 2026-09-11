@@ -5,7 +5,7 @@ exact code, values, and verification steps. This index just tracks status and or
 
 | # | Title | Severity | Category | Status |
 | --- | --- | --- | --- | --- |
-| 001 | [Home-motto shine: read as a sweep, not a flash](001-home-motto-shine-linear-sweep.md) | MEDIUM | Easing & duration | TODO |
+| 001 | [Home-motto shine: read as a sweep, not a flash](001-home-motto-shine-linear-sweep.md) | MEDIUM | Easing & duration | DONE |
 
 ## Execution order
 

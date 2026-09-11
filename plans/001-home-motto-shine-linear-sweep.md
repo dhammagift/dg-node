@@ -1,6 +1,6 @@
 # 001 — Make the home-motto shine read as a light sweep, not a flash
 
-- **Status**: TODO
+- **Status**: DONE
 - **Commit**: b8813bc
 - **Severity**: MEDIUM
 - **Category**: Easing & duration (AUDIT.md §2), with a supporting craft issue in the gradient shape
