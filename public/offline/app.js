@@ -51,7 +51,20 @@
     // The languages the published slice is cut with (build-app-db.js --langs=ru,en). Anything else
     // the language picker offers exists on the corpus but not in this copy, and there is no
     // offline alternative for it — that request goes to the server or fails honestly.
+    // The default is only what has always been published: the real list comes from the database's
+    // own meta table (build-mobile-db.js writes `langs` there) as soon as one is open, so a slice
+    // cut with a different --langs no longer sends its own languages to the server as if they were
+    // missing.
     var OFFLINE_LANGS = ['ru', 'en'];
+
+    function setOfflineLangs(langs) {
+        var list = String(langs || '').split(',')
+            .map(function (s) { return s.trim(); })
+            .filter(Boolean);
+        if (!list.length) return;
+        OFFLINE_LANGS = list;
+        log('offline languages:', OFFLINE_LANGS.join(', '));
+    }
 
     // Written by this file, read by settings' "Offline library" row (offline-library-settings.js,
     // a separate page and a separate JS realm: it cannot see the worker or OPFS, so localStorage
@@ -453,6 +466,7 @@
 
     function markLocal(opened) {
         local = true;
+        setOfflineLangs(opened && opened.langs);
         try { localStorage.setItem(LIBRARY_KEY, '1'); } catch (e) { /* private mode */ }
         // Always: a reader who installed the library before the dictionary existed must still get it.
         // The call is idempotent and cheap on a visit where the files are already cached (a match per
@@ -483,32 +497,43 @@
 
     // The reader asked for this (settings' button wrote the intent, or offline-status.js's retry
     // called us): ask the platform, then download or update.
-    // The Pali dictionary (DPD) the reader opens by tapping a word. ~24MB, deliberately not part of the
-    // database slice, but it belongs offline too — so it is fetched once in the background after the
-    // library is in place and kept in the service worker's shell cache, which is where the reader's
-    // fetch of it will look when there is no network. Idempotent: present files are skipped.
-    // Everything the reader needs that the service worker's install pass has proven unreliable about:
-    // it lost quickModal.js and friends often enough that oфлайн the toolbar showed broken icons and
-    // the quick modal failed to load ("The FetchEvent for .../quickModal.js resulted in a network error
-    // response" — owner's console, with the file answering 200 on the server). Cached from HERE, which
-    // never failed: cache.put() from the page was always fine, only the SW's install pass is flaky.
+    // The Pali dictionary (DPD) the reader opens by tapping a word. ~24MB, deliberately not part of
+    // the database slice, but it belongs offline too — so it is fetched once in the background after
+    // the library is in place and kept in the service worker's shell cache, which is where the
+    // reader's fetch of it will look when there is no network. Idempotent: present files are skipped.
+    //
+    // This list used to repeat a dozen entries the service worker also precaches (quickModal.js,
+    // translators.js, the toolbar svgs, links*/open*), because the SW's INSTALL pass dropped them
+    // often enough to matter ("The FetchEvent for .../quickModal.js resulted in a network error
+    // response" — owner's console, with the file answering 200 on the server). Two lists of the same
+    // files is how they drift apart silently, and the reason for the copy is gone: the worker now
+    // re-checks its own shell list on a message from this file (askServiceWorkerToPrecache below) on
+    // EVERY page load and re-fetches only what is missing, so an entry lost at install is repaired
+    // on the next visit instead of staying lost. What is left here is what the worker does not
+    // precache at all: the dictionary, which is 24MB and only worth fetching for a reader who has
+    // actually installed the library.
     var OFFLINE_EXTRA_URLS = [
         '/assets/js/standalone-dpd/dpd_ebts.js',
         '/assets/js/standalone-dpd/dpd_i2h.js',
         '/assets/js/standalone-dpd/dpd_deconstructor.js',
         '/assets/js/standalone-dpd/ru/dpd_ebts.js',
-        '/assets/css/paliLookup.css',
-        '/assets/js/quickModal.js',
-        '/assets/js/translators.js',
-        '/assets/js/linksdpr.js', '/assets/js/openDpr.js',
-        '/assets/js/linksru.js', '/assets/js/openRu.js',
-        '/assets/js/linksbw.js', '/assets/js/openBw.js',
-        '/assets/js/linksbjt.js',
-        '/assets/svg/eye.svg', '/assets/svg/eye-slash.svg',
-        '/assets/svg/clock-rotate-left.svg', '/assets/svg/rotate-solid-full.svg',
-        '/assets/svg/open-link.svg', '/assets/svg/trash-can-regular-full.svg',
-        '/assets/svg/link-solid-full.svg', '/assets/svg/volume-solid-full.svg',
     ];
+
+    // "Fill in whatever is missing from your shell list" — the second tier of public/service-worker.js
+    // is no longer precached at install (it competed with the page's own assets over HTTP/1.1's six
+    // connections), so the page asks for it once it has finished loading. Costs a handful of cache
+    // lookups on every visit after the first, since the worker only fetches what it does not have.
+    function askServiceWorkerToPrecache() {
+        if (!navigator.serviceWorker || !navigator.serviceWorker.ready) return;
+        navigator.serviceWorker.ready.then(function (registration) {
+            var sw = registration && (registration.active || navigator.serviceWorker.controller);
+            if (!sw) return;
+            sw.postMessage({ type: 'dg-precache', scope: 'secondary' });
+        }).catch(function () { /* no worker here — everything is cached on use instead */ });
+    }
+    if (document.readyState === 'complete') askServiceWorkerToPrecache();
+    else window.addEventListener('load', askServiceWorkerToPrecache, { once: true });
+
     var dictionaryRun = null;
     function cacheDictionary() {
         if (dictionaryRun) return dictionaryRun;
@@ -519,17 +544,25 @@
                     var name = names.filter(function (n) { return n.indexOf('dg-shell-') === 0; })[0];
                     if (!name) return false;
                     return caches.open(name).then(function (cache) {
-                        return OFFLINE_EXTRA_URLS.reduce(function (chain, url) {
-                            return chain.then(function () {
-                                return cache.match(url, { ignoreSearch: true }).then(function (hit) {
-                                    if (hit) return null;
-                                    log('caching for offline use:', url);
-                                    return fetch(url, { cache: 'reload' }).then(function (res) {
-                                        if (res && res.ok) return cache.put(url, res);
-                                    });
+                        // Three at a time, and no cache:'reload'. The dictionary is 24MB of files the
+                        // server marks immutable for a year: forcing a revalidating network fetch made
+                        // a reader who already has them in the HTTP cache (they are loaded the first
+                        // time a word is tapped) pay for all 24MB a second time, for bytes the browser
+                        // was holding. A plain fetch reuses that copy — the same copy the page itself
+                        // would use — and only goes to the network for what is genuinely absent.
+                        var queue = OFFLINE_EXTRA_URLS.slice();
+                        function worker() {
+                            var url = queue.shift();
+                            if (!url) return Promise.resolve();
+                            return cache.match(url, { ignoreSearch: true }).then(function (hit) {
+                                if (hit) return null;
+                                log('caching for offline use:', url);
+                                return fetch(url).then(function (res) {
+                                    if (res && res.ok) return cache.put(url, res);
                                 });
-                            });
-                        }, Promise.resolve()).then(function () {
+                            }).then(worker);
+                        }
+                        return Promise.all([worker(), worker(), worker()]).then(function () {
                             log('offline extras ready');
                             return true;
                         });
@@ -803,9 +836,16 @@
 
         // Point 5 of the header: no local engine yet, so anything that needs script conversion
         // needs the server. Same path a reader without the offline library takes.
+        // Synchronous on purpose: the only caller compares the result to 'online' inline, and while
+        // this returned a Promise that comparison was always false — the whole "this needs the
+        // server" branch for /api/transliterate was dead code. Harmless on the site (the request
+        // fell through to realFetch, which is the same origin and the same server), wrong in the
+        // native build, where the page's own origin has no server and only toServer() adds
+        // platform.onlineBase. When the engine is ported it answers from memory too, so there is
+        // nothing here that needs to be async.
         function ensureScriptMode() {
-            if (!window.dgScriptEngine) return Promise.resolve('online');
-            return Promise.resolve(window.dgScriptEngine.getMode() || 'online');
+            if (!window.dgScriptEngine) return 'online';
+            return window.dgScriptEngine.getMode() || 'online';
         }
 
         // The server still answers this — when the reader is online it behaves exactly as before;
