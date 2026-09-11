@@ -68,3 +68,7 @@ public/offline/vendor/
 # Локальная сборка офлайн-базы (dg-app-full/build-app-db.js) для test/offline-e2e.js: ~170 МБ,
 # пересобирается из dg.db, в git не место.
 .offline-test/
+
+# Публикация собранной офлайн-базы: на сервере это настоящий каталог (npm run build-mobile-db),
+# в тест-чекауте — симлинк на продовый, чтобы не держать вторую копию на 500 МБ.
+siteroot/mobile-data
