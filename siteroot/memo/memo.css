@@ -443,3 +443,24 @@ NEW CLASSES EXTRACTED FROM INLINE STYLES
     transition: padding-bottom 0.4s ease;
     padding-bottom: 120px;
 }
+
+/* dg-node only: .active-word (marks the line a click will resume playback from,
+   settings.js activateSegmentForTTS) has no visible style on this page in either repo —
+   its only rule lives in read/css/uiextra.css, which memo/index.html never links (only
+   voice.css, which styles .tts-active, the "currently playing" highlight). uiextra.css's
+   own rule tints .active-word with the same --bs-primary as .tts-active (fine in the
+   reader, where both classes land on the same word almost the whole time) — here on memo
+   a click can mark a DIFFERENT line than the one currently playing, so reusing that color
+   made the two indicators nearly indistinguishable (owner: "это не то"). --bs-warning
+   (amber) instead, so "where a click will resume from" reads as visibly different from
+   "what's playing now" even when they're two different lines. */
+.active-word {
+  background-color: rgba(var(--bs-warning-rgb), 0.45);
+  border-radius: 0.25rem;
+  box-shadow: 0 0 0 1px rgba(var(--bs-warning-rgb), 0.6);
+}
+
+.dark .active-word {
+  background-color: rgba(var(--bs-warning-rgb), 0.35);
+  box-shadow: 0 0 0 1px rgba(var(--bs-warning-rgb), 0.5);
+}
