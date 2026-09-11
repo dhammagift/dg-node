@@ -1322,19 +1322,24 @@ body.dg-state-home #dg-hero-heading { display: block; }
 @supports ((background-clip: text) or (-webkit-background-clip: text)) {
     #home-motto {
         background: linear-gradient(100deg,
-            var(--dg-text) 35%, var(--dg-motto-shine) 50%, var(--dg-text) 65%);
-        background-size: 250% 100%;
-        background-position: 160% 0;
+            var(--dg-text) 44%, var(--dg-motto-shine) 50%, var(--dg-text) 56%);
+        background-size: 200% 100%;
+        background-position: 150% 0;
         -webkit-background-clip: text;
         background-clip: text;
         -webkit-text-fill-color: transparent;
         color: transparent;
-        animation: dg-motto-shine 1.6s var(--dg-ease) 0.3s 1 both;
+        /* linear, not var(--dg-ease): that token is a strong ease-out for entering/exiting UI
+           (see the file's other uses) — this is constant, marquee-like motion crossing the
+           screen, which wants linear (AUDIT.md §2). ease-out here read as a flash: the band
+           decelerated hard and lingered near the end instead of sweeping through at a steady
+           pace (owner: "похожий на подгрузку шрифта"). */
+        animation: dg-motto-shine 1.4s linear 0.3s 1 both;
     }
 }
 @keyframes dg-motto-shine {
-    from { background-position: 160% 0; }
-    to { background-position: -60% 0; }
+    from { background-position: 150% 0; }
+    to { background-position: -50% 0; }
 }
 @media (prefers-reduced-motion: reduce) {
     /* Delight-only motion, no comprehension purpose — reduced motion drops it entirely rather
