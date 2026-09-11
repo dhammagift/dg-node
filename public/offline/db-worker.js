@@ -416,12 +416,20 @@ async function downloadInto(pool, url, name, expectedWireBytes, expectedDbBytes,
 // Installing the VFS is cheap and idempotent per worker, and both status and open need it —
 // status so the page can decide whether to ask about network use before anything is downloaded.
 function getPool() {
+    // The memo must NOT survive a failure. While another document holds the exclusive handles the
+    // install throws NoModificationAllowedError, and a remembered rejection meant that a tab which
+    // was handed the library a second later kept failing instantly — it never tried again (second tab
+    // stayed server-backed for good, with "the other tab released the offline library — taking it
+    // over" in the log and nothing happening afterwards).
     poolPromise = poolPromise || (async () => {
         const sqlite3 = await sqlite3InitModule({ print: () => {}, printErr: () => {} });
         // opfs-sahpool, not the plain "opfs" VFS: the latter needs the page to be cross-origin
         // isolated (COOP/COEP headers), which a Capacitor WebView does not give us.
         return sqlite3.installOpfsSAHPoolVfs({ name: POOL_NAME, initialCapacity: 6 });
-    })();
+    })().catch((e) => {
+        poolPromise = null;   // let the next attempt try the storage for real
+        throw e;
+    });
     return poolPromise;
 }
 

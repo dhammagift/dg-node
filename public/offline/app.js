@@ -103,6 +103,12 @@
     // reporting 'visible', so a visible-but-unfocused owner refused to hand over and the window the
     // reader was actually using stayed server-backed (owner's desktop Opera).
     var windowFocused = document.hasFocus();
+    // A tab that cannot have the OPFS pool (another document holds the exclusive handles) answers its
+    // data requests through the tab that does — the pool is a single-writer resource, but the READING
+    // is not: the owner has the database open and can answer in a few milliseconds over the channel.
+    var relayRequests = new Map();
+    var relayUsed = false;
+    var LIBRARY_KEY = 'dg.offline.libraryExists';
     if (channel) {
         channel.onmessage = function (event) {
             var msg = event.data || {};
@@ -117,6 +123,26 @@
                 notify(msg.message || 'download failed');
                 return;
             }
+            // Serve another tab's data request from THIS tab's open database. Nothing is written and
+            // nothing is locked, so this works no matter which window the reader is looking at.
+            if (msg.type === 'data-request') {
+                if (!local || !isDataRoute(String(msg.path || ''))) return;
+                log('answering another tab:', msg.path);
+                shimFetch(msg.path, { method: msg.method || 'GET' }).then(function (res) {
+                    return res.text().then(function (body) { return { status: res.status, body: body }; });
+                }).then(function (out) {
+                    channel.postMessage({ type: 'data-response', id: msg.id, status: out.status, body: out.body });
+                }).catch(function (e) {
+                    channel.postMessage({ type: 'data-response', id: msg.id, error: String((e && e.message) || e) });
+                });
+                return;
+            }
+            if (msg.type === 'data-response') {
+                var deliver = relayRequests.get(msg.id);
+                if (deliver) { relayRequests.delete(msg.id); deliver(msg); }
+                return;
+            }
+
             // Another tab needs the pool and is in front of the reader: give it up if this page is
             // hidden and idle (a visible page keeps it — the reader is looking at that one).
             if (msg.type === 'release-request') {
@@ -135,10 +161,17 @@
                 var tries = 0;
                 var take = function () {
                     tries++;
+                    // Fresh worker per attempt: a failed pool install leaves that worker's SQLite VFS
+                    // half-registered ("removeVfs() failed with no recovery strategy"), so retrying
+                    // inside it can never succeed — the retry has to start from a clean wasm state.
+                    if (worker) { try { worker.terminate(); } catch (e) { /* gone */ } worker = null; pending.clear(); }
                     probe().then(function () {
                         if (!local && tries < 4) setTimeout(take, 1200);
                         else if (local) log('took the offline library over');
-                    }, function () { if (tries < 4) setTimeout(take, 1200); });
+                    }, function (e) {
+                        log('takeover attempt ' + tries + ' failed:', (e && e.message) || e);
+                        if (tries < 4) setTimeout(take, 1200);
+                    });
                 };
                 setTimeout(take, 300);
                 return;
@@ -393,6 +426,7 @@
 
     function markLocal(opened) {
         local = true;
+        try { localStorage.setItem(LIBRARY_KEY, '1'); } catch (e) { /* private mode */ }
         rememberState({ present: true, build_id: (opened && opened.build_id) || null, update: null,
                         local: true, reason: 'local' });
     }
@@ -675,9 +709,45 @@
 
         // The routes the offline library can answer. Used for the one thing worth doing while it is
         // NOT installed: explaining a failure honestly.
-        function isDataRoute(p) {
+        // Worth asking another tab only if a library exists somewhere: with nothing downloaded there is
+    // nobody to ask, and the reader should get the explanation immediately rather than after a wait.
+    function relayLikely() {
+        try {
+            // A flag the library itself sets, not the per-visit state: a tab whose own probe failed
+            // writes present:false over the shared state, which would make every other tab believe
+            // there is nothing to ask for.
+            if (localStorage.getItem(LIBRARY_KEY) === '1') return true;
+            var st = JSON.parse(localStorage.getItem(STATE_KEY) || 'null');
+            return !!(st && st.present);
+        } catch (e) { return false; }
+    }
+
+    function isDataRoute(p) {
             return p === '/search' || p.indexOf('/search/') === 0 ||
                    p.indexOf('/api/text/') === 0 || p.indexOf('/api/nav/') === 0;
+        }
+
+        // Ask the tab that owns the library to answer. Bounded, because the owner may be gone or
+        // busy: then this tab falls through to the honest explanation instead of hanging the reader.
+        function relayData(path, init) {
+            return new Promise(function (resolve, reject) {
+                var id = 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+                var timer = setTimeout(function () {
+                    relayRequests.delete(id);
+                    reject(new Error('no answer from the tab holding the library'));
+                }, 3500);
+                relayRequests.set(id, function (msg) {
+                    clearTimeout(timer);
+                    if (msg.error) { reject(new Error(msg.error)); return; }
+                    relayUsed = true;
+                    resolve(new Response(msg.body, {
+                        status: msg.status || 200,
+                        headers: { 'content-type': 'application/json' },
+                    }));
+                });
+                channel.postMessage({ type: 'data-request', id: id, path: path,
+                                      method: (init && init.method) || 'GET' });
+            });
         }
 
         function shimFetch(input, init) {
@@ -769,7 +839,12 @@
             return realFetch(input, init);
         }
 
-        window.fetch = function (input, init) {
+        window.fetch = function (input, init) { return gate(input, init, false); };
+
+        // `waited` matters: the probe can hang for good when the pool install is blocked by another
+        // document, and re-entering this gate would then wait 2.5s, again and again — the request never
+        // reached the relay and the reader stayed empty in the tab that had handed the library over.
+        function gate(input, init, waited) {
             if (local) return shimFetch(input, init);
             var raw = typeof input === 'string' ? input : input.url;
             var where;
@@ -778,8 +853,23 @@
             // wait for that verdict, not go to the network: the reader starts fetching its text the
             // moment the page loads, and on a cold offline load that race is exactly what left
             // /dn22:2.2 showing the landing page with "Failed to fetch" in the console.
-            if (where.origin === location.origin && isDataRoute(where.pathname) && probeDone && !probeSettled) {
-                return probeDone.catch(function () {}).then(function () { return window.fetch(input, init); });
+            if (where.origin === location.origin && isDataRoute(where.pathname) && !waited && probeDone && !probeSettled) {
+                // Bounded wait: a probe can hang for good when the pool install is blocked by another
+                // document, and then every request of this page would wait for a verdict that never
+                // comes (second tab: no relay, no error, just an empty result).
+                return Promise.race([
+                    probeDone.catch(function () {}),
+                    new Promise(function (r) { setTimeout(r, 2500); }),
+                ]).then(function () { return gate(input, init, true); });
+            }
+            // Not local: if another tab holds the library, it answers — that is the whole point of
+            // having opened the app twice. Only then does the plain explanation remain.
+            if (where.origin === location.origin && isDataRoute(where.pathname) && channel && relayLikely()) {
+                return relayData(where.pathname + where.search, init)
+                    .catch(function (e) {
+                        log('relayed request failed:', (e && e.message) || e);
+                        return shimFetch(input, init);
+                    });
             }
             return shimFetch(input, init);
         };
@@ -825,7 +915,10 @@
     // in. Not used by any product code.
     window.dgOfflineDiagnostics = function () {
         return { mode: local ? 'local' : 'server', ownsLibrary: ownsLibrary,
-                 distBase: DIST_BASE, workerStarted: !!worker };
+                 distBase: DIST_BASE, workerStarted: !!worker,
+                 // true once this tab has answered at least one request from the tab that owns the
+                 // library — the supported way for a second tab to work offline.
+                 relayed: relayUsed };
     };
 
     // ---------------------------------------------------------------------------------------
