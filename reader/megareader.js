@@ -61,7 +61,19 @@ const modeFromUrl = new URLSearchParams(window.location.search).get('mode');
 const langFromUrl = new URLSearchParams(window.location.search).get('lang');
 const READER_MODE_EXPLICIT = !!(window.READER_MODE && window.READER_MODE.modeKey) || !!modeFromUrl;
 let READER_MODE = window.READER_MODE || {};
+/* Режим, который выбрал сам пользователь (шторка/Alt+1..4) — чтобы следующий текст открывался
+   в нём, а не в том, куда ридер отклонился по дороге. Временный переход в multi (примерка
+   набора в «Читать») сюда не пишется: он не выбор, а способ показать вторую строку. */
+const MODE_KEY = 'dgReaderMode';
+function getSavedMode() {
+    try { return localStorage.getItem(MODE_KEY) || ''; } catch (e) { return ''; }
+}
+function saveMode(modeKey) {
+    try { localStorage.setItem(MODE_KEY, modeKey); } catch (e) { /* приватный режим */ }
+}
+window.getSavedReaderMode = getSavedMode;
 if (!READER_MODE.modeKey && modeFromUrl) READER_MODE.modeKey = modeFromUrl;
+if (!READER_MODE.modeKey) READER_MODE.modeKey = getSavedMode() || READER_MODE.modeKey;
 // issue #6: multiTran и multiLang слились в один multi — какие языки и каких переводчиков
 // показывать, стало одним набором, а не двумя разными режимами. Самих ключей больше нет в
 // mode-table.json (владелец: "старые не нужны"), но ссылка с ними могла кому-то уйти — чтобы
@@ -141,14 +153,47 @@ function getEnabledLangs() {
 }
 window.getEnabledLangs = getEnabledLangs;
 
+/* Две области, которые не должны драться:
+   — ГЛОБАЛЬНО (dhammaReaderLangs + dgReadingStack): мои языки и мой порядок чтения вообще.
+     Языки здесь задаются на /settings/, окно их не переписывает.
+   — ЛОКАЛЬНО (sessionStorage, привязано к id сутты): язык, которого в моём наборе нет, но
+     который есть у ЭТОГО текста (условный сербский). Включается в окне, живёт ровно пока не
+     ушёл на другой текст, в глобальные настройки не просачивается.
+   Порядок и выбор переводчиков внутри МОИХ языков сохраняются всегда — это и есть "как я читаю". */
 const STACK_KEY = 'dgReadingStack';
+const LOCAL_STACK_KEY = 'dgReadingStackLocal';
+function readLocalStack() {
+    try {
+        const v = JSON.parse(sessionStorage.getItem(LOCAL_STACK_KEY));
+        return (v && typeof v === 'object' && Array.isArray(v.keys)) ? v : null;
+    } catch (e) { return null; }
+}
 function getStack() {
+    // Тот же текст, что и в прошлый раз — отдаём рабочий порядок вместе с локальными языками;
+    // другой текст — только глобальную часть, локальное к нему не относится.
+    const local = readLocalStack();
+    if (local && local.slug && local.slug === window._currentSlug) return local.keys.slice();
     try {
         const v = JSON.parse(localStorage.getItem(STACK_KEY));
         return Array.isArray(v) ? v.filter(k => typeof k === 'string' && k.includes('_')) : [];
     } catch (e) { return []; }
 }
-function setStack(keys) {
+// opts.local — «только для этого текста»: так пишет режим «Читать» (любая правка там
+// одноразовая) и язык, которого нет в моих языках. Глобального набора это не касается вовсе.
+function setStack(keys, opts) {
+    const mine = getEnabledLangs();
+    const global = (opts && opts.local) ? [] : keys.filter(k => mine.includes(k.slice(0, k.indexOf('_'))));
+    try {
+        if (global.length !== keys.length) {
+            sessionStorage.setItem(LOCAL_STACK_KEY, JSON.stringify({
+                slug: window._currentSlug, keys: keys, trial: !!(opts && opts.local)
+            }));
+        } else {
+            sessionStorage.removeItem(LOCAL_STACK_KEY);
+        }
+    } catch (e) { /* приватный режим */ }
+    if (opts && opts.local) return;   // постоянное хранилище не трогаем вообще
+    keys = global;   // наружу, в постоянное хранилище, уходит только глобальная часть
     try {
         localStorage.setItem(STACK_KEY, JSON.stringify(keys));
         // keep the "activated languages" record in step, it is what the pill's "···" reads
@@ -881,6 +926,7 @@ function restoreReadingAnchor(anchor) {
 window.switchReaderMode = function(modeKey, event) {
     if (event) event.preventDefault();
     READER_MODE.modeKey = modeKey;
+    saveMode(modeKey);   // явный выбор — с ним и откроется следующий текст
 
     // Owner: memorize mode (first-letter mnemonic) and devanagari mode (dualScript — punctuation
     // is Latin-only, doesn't exist in the converted script) should default to punctuation
@@ -1075,6 +1121,20 @@ window.restoreReadingAnchor = restoreReadingAnchor;
 
 window.buildSutta = async function(rawSlug) {
     const slug = window.normalizeSlugToDbKey(rawSlug);
+    // Набор, собранный в режиме «Читать», одноразовый ЦЕЛИКОМ — вместе с самим режимом. Чтобы
+    // показать больше одной строки, ридер на время уходит в multi; на следующем тексте это надо
+    // отменить, иначе разовая примерка молча оставляла бы человека в мульти навсегда.
+    const trialStack = readLocalStack();
+    if (trialStack && trialStack.trial && trialStack.slug !== slug) {
+        try { sessionStorage.removeItem(LOCAL_STACK_KEY); } catch (e) { /* приватный режим */ }
+        const back = getSavedMode() || 'single';
+        if (READER_MODE.modeKey === 'multi' && back !== 'multi') {
+            READER_MODE.modeKey = back;
+            const p = new URLSearchParams(document.location.search);
+            p.set('mode', back);
+            history.replaceState(history.state, '', document.location.pathname + '?' + p.toString());
+        }
+    }
     window._currentSlug = slug;
     // Owner: the skeleton is only useful when the reader is opening cold (nothing on screen
     // yet) — swapping an ALREADY-rendered sutta out for a skeleton while the next one loads

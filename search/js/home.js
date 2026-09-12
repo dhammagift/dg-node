@@ -1790,7 +1790,15 @@
         close:  { ru: 'закрыть и читать', en: 'close and read' },
         sorting:{ ru: 'Сортировка временная — ваш порядок цел', en: 'Sorting is temporary — your order is kept' },
         addLang:{ ru: '+ язык', en: '+ language' },
-        addHint:{ ru: 'Языки чтения — общая настройка с /settings/', en: 'Reading languages are shared with /settings/' }
+        addHint:{ ru: 'Только для этого текста. Насовсем — в настройках',
+                  en: 'For this text only. For good — in settings' },
+        addLink:{ ru: 'Мои языки', en: 'My languages' },
+        localOnly:{ ru: 'только для этого текста', en: 'this text only' },
+        modeRead: { ru: 'Читать', en: 'Reading' },
+        modeMulti:{ ru: 'Мульти', en: 'Multi' },
+        readNote: { ru: 'правки только для этого текста', en: 'changes apply to this text only' },
+        multiNote:{ ru: 'сохранится для всех текстов', en: 'saved for every text' },
+        keepIt:   { ru: 'Оставить себе', en: 'Keep this' }
     };
     function tsStr(k) { return TRANS_STR[k][menuLang() === 'ru' ? 'ru' : 'en']; }
     var tsSort = 'manual';
@@ -1803,7 +1811,29 @@
         var rm = window.READER_MODE;
         return currentState() === 'reader' && rm && (rm.modeKey === 'single' || rm.modeKey === 'multi');
     }
-    function tsStack() { return (window.getReadingStack && window.getReadingStack()) || []; }
+    function tsStack() {
+        var saved = (window.getReadingStack && window.getReadingStack()) || [];
+        if (saved.length) return saved;
+        // Сохранённого набора ещё нет (обычное «Читать»: там набор и не сохраняется) — берём то,
+        // что сервер реально показал, иначе окно открывалось бы пустым при видимом переводе, и
+        // первый же клик не добавлял бы строку, а подменял весь набор.
+        var rm = window.READER_MODE;
+        return (rm && Array.isArray(rm.stack)) ? rm.stack.slice() : [];
+    }
+    // «Читать» — одноразовый режим: пришёл в него, поигрался с набором, ушёл на другой текст и
+    // он снова твой обычный. Флаг живёт отдельно от modeKey, потому что tsApply переводит
+    // ридер в multi, чтобы показать больше одной строки — но это не делает правку постоянной.
+    function tsTrialMode() {
+        var rm = window.READER_MODE;
+        if (rm && rm.modeKey === 'single') return true;
+        // Примерка уже идёт: ридер временно в multi, но набор записан как одноразовый (по id
+        // сутты, megareader.js). Состояние читается из записи, а не кэшируется в переменную —
+        // иначе после явного переключения режима бейдж врал бы до перезагрузки страницы.
+        try {
+            var v = JSON.parse(sessionStorage.getItem('dgReadingStackLocal'));
+            return !!(v && v.trial && v.slug === window._currentSlug);
+        } catch (e) { return false; }
+    }
     function tsAvailable() {
         var rm = window.READER_MODE;
         return (rm && Array.isArray(rm.availableTranslators)) ? rm.availableTranslators.slice() : [];
@@ -1814,15 +1844,10 @@
     function tsEnabledLangs() {
         return (window.getEnabledLangs && window.getEnabledLangs()) || ['en'];
     }
-    function tsEnableLang(lang) {
-        var next = tsEnabledLangs();
-        if (next.indexOf(lang) === -1) next.push(lang);
-        try {
-            localStorage.setItem('dhammaReaderLangs', next.join(','));
-            // страница настроек держит "языки поиска = языки чтения" по умолчанию — не рассинхронизируем
-            if (localStorage.getItem('dhammaSearchLangs') === null) localStorage.setItem('dhammaSearchLangs', next.join(','));
-        } catch (e) { /* приватный режим */ }
-    }
+    // Глобальный список языков принадлежит /settings/ — окно его НЕ трогает. Язык, которого там
+    // нет, включается здесь как локальный: он живёт на этом тексте (megareader.js setStack кладёт
+    // такой набор в sessionStorage по id сутты) и уходит вместе с ним.
+    function tsIsMine(lang) { return tsEnabledLangs().indexOf(lang) !== -1; }
     /* Кого брать, когда язык включают: не первого попавшегося, а того же, кого выбрал бы сервер —
        по configs/reader/translator-priority.json (для русского это "о" / "ред. о", как и было
        по умолчанию). */
@@ -1881,6 +1906,7 @@
         host.setAttribute('role', 'dialog');
         host.innerHTML =
             '<div class="dg-ts-head"><b class="dg-ts-title"></b><span class="dg-ts-count"></span>' +
+            '<span class="dg-ts-mode"></span>' +
             '<span class="dg-ts-grow"></span><button type="button" class="dg-ts-x" aria-label="✕">✕</button></div>' +
             '<div class="dg-ts-seg"></div><div class="dg-ts-chips"></div><div class="dg-ts-add-list" hidden></div>' +
             '<div class="dg-ts-body"><div class="dg-ts-rows"></div></div><div class="dg-ts-foot"></div>';
@@ -1922,6 +1948,13 @@
         host.querySelector('.dg-ts-title').textContent = tsStr('title');
         host.querySelector('.dg-ts-count').textContent = stack.length
             ? '· ' + stack.length + ' ' + tsStr('onNow') : '· ' + tsStr('pali');
+        // Какой это режим — видно сразу, потому что от него зависит судьба правок: в «Читать»
+        // они живут до следующего текста, в «Мульти» остаются насовсем.
+        var trial = tsTrialMode();
+        var modeEl = host.querySelector('.dg-ts-mode');
+        modeEl.className = 'dg-ts-mode' + (trial ? ' is-trial' : '');
+        modeEl.textContent = trial ? tsStr('modeRead') : tsStr('modeMulti');
+        modeEl.title = trial ? tsStr('readNote') : tsStr('multiNote');
         host.querySelector('.dg-ts-seg').innerHTML = ['manual', 'lang', 'name'].map(function (m) {
             return '<button type="button" data-ts-sort="' + m + '" aria-pressed="' + (tsSort === m) + '">' +
                 esc(tsStr(m === 'manual' ? 'manual' : m === 'lang' ? 'byLang' : 'byName')) + '</button>';
@@ -1937,8 +1970,11 @@
         host.querySelector('.dg-ts-chips').innerHTML = enabled.map(function (l) {
             var on = stackLangs.indexOf(l) !== -1;
             var missing = textLangs.indexOf(l) === -1;   // этот текст в этот язык не переведён
-            return '<button type="button" class="dg-ts-chip' + (missing ? ' is-missing' : '') + '" data-ts-lang="' + esc(l) + '"' +
-                (missing ? ' disabled' : '') + ' aria-pressed="' + on + '">' + esc(LANG_LABEL[l] || l) + '</button>';
+            var local = !tsIsMine(l);
+            return '<button type="button" class="dg-ts-chip' + (missing ? ' is-missing' : '') + (local ? ' is-local' : '') +
+                '" data-ts-lang="' + esc(l) + '"' + (missing ? ' disabled' : '') +
+                (local ? ' title="' + esc(tsStr('localOnly')) + '"' : '') +
+                ' aria-pressed="' + on + '">' + esc(LANG_LABEL[l] || l) + (local ? ' •' : '') + '</button>';
         }).join('') +
             (textLangs.some(function (l) { return enabled.indexOf(l) === -1; })
                 ? '<button type="button" class="dg-ts-chip dg-ts-add" data-ts-add aria-expanded="' + tsAddOpen + '">' + esc(tsStr('addLang')) + '</button>'
@@ -1948,7 +1984,8 @@
         if (tsAddOpen && !textLangs.some(function (l) { return enabled.indexOf(l) === -1; })) tsAddOpen = false;
         addHost.hidden = !tsAddOpen;
         addHost.innerHTML = !tsAddOpen ? '' :
-            '<p class="dg-ts-add-hint">' + esc(tsStr('addHint')) + '</p>' +
+            '<p class="dg-ts-add-hint">' + esc(tsStr('addHint')) +
+            ' · <a href="/settings/#langs">' + esc(tsStr('addLink')) + '</a></p>' +
             textLangs.filter(function (l) { return enabled.indexOf(l) === -1; }).map(function (l) {
                 var n = tsAvailable().filter(function (k) { return tsLangOf(k) === l; }).length;
                 return '<button type="button" class="dg-ts-add-row" data-ts-newlang="' + esc(l) + '">' +
@@ -1962,7 +1999,9 @@
                 '<span class="dg-ts-ord">' + (on ? i + 1 : '') + '</span>' +
                 '<button type="button" class="dg-ts-tick" role="checkbox" aria-checked="' + on + '"></button>' +
                 '<span class="dg-ts-name">' + esc(trnName(key)) + '</span>' +
-                '<span class="dg-ts-tag">' + esc(LANG_LABEL[lang] || lang) + '</span>' +
+                '<span class="dg-ts-tag' + (tsIsMine(lang) ? '' : ' is-local') + '" title="' +
+                (tsIsMine(lang) ? '' : esc(tsStr('localOnly'))) + '">' + esc(LANG_LABEL[lang] || lang) +
+                (tsIsMine(lang) ? '' : ' •') + '</span>' +
                 '<button type="button" class="dg-ts-star' + (stack[0] === key ? ' is-main' : '') + '" title="' +
                 esc(tsStr('setMain')) + '">' + (stack[0] === key ? '★' : '☆') + '</button>' +
                 '</div>';
@@ -1978,9 +2017,14 @@
             y += TS_ROW;
         });
         rows.style.height = y + 'px';
-        host.querySelector('.dg-ts-foot').innerHTML = tsSort === 'manual'
-            ? esc(tsStr('applied')) + '<b>' + esc(tsStr('close')) + '</b>'
-            : esc(tsStr('sorting'));
+        host.querySelector('.dg-ts-foot').innerHTML = tsSort !== 'manual'
+            ? esc(tsStr('sorting'))
+            : (trial
+                // В «Читать» важнее не «клик мимо», а то, что набор одноразовый — и как его
+                // всё-таки оставить себе, если понравилось.
+                ? esc(tsStr('modeRead')) + ' — ' + esc(tsStr('readNote')) +
+                  ' · <button type="button" class="dg-ts-keep" data-ts-keep>' + esc(tsStr('keepIt')) + '</button>'
+                : esc(tsStr('applied')) + '<b>' + esc(tsStr('close')) + '</b>');
         tsPlace();
     }
 
@@ -2026,7 +2070,7 @@
     function tsApply(next) {
         var rm = window.READER_MODE, slug = window._currentSlug;
         if (!rm || !slug || typeof window.buildSutta !== 'function') return;
-        window.setReadingStack(next);
+        window.setReadingStack(next, tsTrialMode() ? { local: true } : undefined);
         tsRender();
         // Быстрые клики не теряются: пока идёт перестроение, последний выбор ждёт своей очереди,
         // иначе текст остался бы на предпоследнем состоянии галочек.
@@ -2064,10 +2108,14 @@
         var row = e.target.closest('.dg-ts-row');
         var sortBtn = e.target.closest('[data-ts-sort]');
         if (sortBtn) { tsSort = sortBtn.dataset.tsSort; tsRender(); return; }
+        if (e.target.closest('[data-ts-keep]')) {
+            window.setReadingStack(tsStack());     // с этого момента набор обычный, сохраняемый
+            tsRender();
+            return;
+        }
         if (e.target.closest('[data-ts-add]')) { tsAddOpen = !tsAddOpen; tsRender(); return; }
         var newLang = e.target.closest('[data-ts-newlang]');
         if (newLang) {
-            tsEnableLang(newLang.dataset.tsNewlang);
             tsAddOpen = false;
             var addKey = tsPriorityKey(newLang.dataset.tsNewlang);
             addKey ? tsApply(tsStack().concat([addKey])) : tsRender();

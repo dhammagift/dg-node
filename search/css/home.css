@@ -3924,3 +3924,13 @@ body.dg-state-reader #sutta h1, body.dg-state-reader #sutta h2, body.dg-state-re
 /* Полосок теперь до шести — с трёх переводов помечаются все строки. */
 .dg-cue-5 { --dg-cue: #6a5acd; }
 .dg-cue-6 { --dg-cue: #c2611f; }
+/* Локальный язык — тот, которого нет в моих языках (/settings/): включён только на этом тексте. */
+.dg-ts-chip.is-local, .dg-ts-tag.is-local { border-style: dashed; border-color: var(--dg-border-strong); }
+.dg-ts-tag.is-local { border: 1px dashed var(--dg-border-strong); }
+.dg-ts-add-hint a { color: var(--dg-accent-ink); }
+/* Режим в шапке окна: «Читать» — набор одноразовый (пунктир, как у локального языка),
+   «Мульти» — сохраняется. Судьба правок должна быть видна до того, как их сделали. */
+.dg-ts-mode { margin-left: auto; font-size: 10.5px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--dg-accent-ink); background: var(--dg-accent-bg); border-radius: 6px; padding: 2px 7px; }
+.dg-ts-mode.is-trial { color: var(--dg-text-muted); background: none; border: 1px dashed var(--dg-border-strong); }
+.dg-ts-keep { border: 0; background: none; font: inherit; font-size: 11.5px; color: var(--dg-accent-ink); text-decoration: underline; padding: 0; cursor: pointer; }
+.dg-ts-head .dg-ts-grow { flex: 0; }
