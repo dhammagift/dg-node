@@ -1790,13 +1790,13 @@
         close:  { ru: 'закрыть и читать', en: 'close and read' },
         sorting:{ ru: 'Сортировка временная — ваш порядок цел', en: 'Sorting is temporary — your order is kept' },
         addLang:{ ru: '+ язык', en: '+ language' },
-        addHint:{ ru: 'Только для этого текста. Насовсем — в настройках',
-                  en: 'For this text only. For good — in settings' },
+        addHint:{ ru: 'Только на эту сессию. Насовсем — в настройках',
+                  en: 'For this session only. For good — in settings' },
         addLink:{ ru: 'Мои языки', en: 'My languages' },
-        localOnly:{ ru: 'только для этого текста', en: 'this text only' },
+        localOnly:{ ru: 'до конца сессии', en: 'until you close the tab' },
         modeRead: { ru: 'Читать', en: 'Reading' },
         modeMulti:{ ru: 'Мульти', en: 'Multi' },
-        readNote: { ru: 'правки только для этого текста', en: 'changes apply to this text only' },
+        readNote: { ru: 'правки до конца сессии', en: 'changes last for this session' },
         multiNote:{ ru: 'сохранится для всех текстов', en: 'saved for every text' },
         keepIt:   { ru: 'Оставить себе', en: 'Keep this' }
     };
@@ -1826,12 +1826,12 @@
     function tsTrialMode() {
         var rm = window.READER_MODE;
         if (rm && rm.modeKey === 'single') return true;
-        // Примерка уже идёт: ридер временно в multi, но набор записан как одноразовый (по id
-        // сутты, megareader.js). Состояние читается из записи, а не кэшируется в переменную —
+        // Примерка уже идёт: ридер временно в multi, но набор записан как временный (на
+        // сессию, megareader.js). Состояние читается из записи, а не кэшируется в переменную —
         // иначе после явного переключения режима бейдж врал бы до перезагрузки страницы.
         try {
             var v = JSON.parse(sessionStorage.getItem('dgReadingStackLocal'));
-            return !!(v && v.trial && v.slug === window._currentSlug);
+            return !!(v && v.trial);
         } catch (e) { return false; }
     }
     function tsAvailable() {

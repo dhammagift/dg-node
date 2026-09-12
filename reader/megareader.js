@@ -156,9 +156,10 @@ window.getEnabledLangs = getEnabledLangs;
 /* Две области, которые не должны драться:
    — ГЛОБАЛЬНО (dhammaReaderLangs + dgReadingStack): мои языки и мой порядок чтения вообще.
      Языки здесь задаются на /settings/, окно их не переписывает.
-   — ЛОКАЛЬНО (sessionStorage, привязано к id сутты): язык, которого в моём наборе нет, но
-     который есть у ЭТОГО текста (условный сербский). Включается в окне, живёт ровно пока не
-     ушёл на другой текст, в глобальные настройки не просачивается.
+   — НА СЕССИЮ (sessionStorage): примерка — язык, которого нет в моих языках, или набор,
+     собранный в режиме «Читать». Живёт до конца сессии и переходит вместе с человеком из
+     текста в текст (владелец: "переход в другой текст — не повод сбрасывать настройки"), но в
+     глобальные настройки не просачивается и закрытием вкладки заканчивается.
    Порядок и выбор переводчиков внутри МОИХ языков сохраняются всегда — это и есть "как я читаю". */
 const STACK_KEY = 'dgReadingStack';
 const LOCAL_STACK_KEY = 'dgReadingStackLocal';
@@ -169,10 +170,9 @@ function readLocalStack() {
     } catch (e) { return null; }
 }
 function getStack() {
-    // Тот же текст, что и в прошлый раз — отдаём рабочий порядок вместе с локальными языками;
-    // другой текст — только глобальную часть, локальное к нему не относится.
+    // Примерка этой сессии, если она есть, — она и есть рабочий набор, на любом тексте.
     const local = readLocalStack();
-    if (local && local.slug && local.slug === window._currentSlug) return local.keys.slice();
+    if (local) return local.keys.slice();
     try {
         const v = JSON.parse(localStorage.getItem(STACK_KEY));
         return Array.isArray(v) ? v.filter(k => typeof k === 'string' && k.includes('_')) : [];
@@ -186,7 +186,7 @@ function setStack(keys, opts) {
     try {
         if (global.length !== keys.length) {
             sessionStorage.setItem(LOCAL_STACK_KEY, JSON.stringify({
-                slug: window._currentSlug, keys: keys, trial: !!(opts && opts.local)
+                keys: keys, trial: !!(opts && opts.local)
             }));
         } else {
             sessionStorage.removeItem(LOCAL_STACK_KEY);
@@ -927,6 +927,9 @@ window.switchReaderMode = function(modeKey, event) {
     if (event) event.preventDefault();
     READER_MODE.modeKey = modeKey;
     saveMode(modeKey);   // явный выбор — с ним и откроется следующий текст
+    // ...и он же заканчивает примерку: человек сказал, каким режимом читать, значит временный
+    // набор («Читать» или чужой язык) больше не нужен — дальше работает сохранённый.
+    try { sessionStorage.removeItem(LOCAL_STACK_KEY); } catch (e) { /* приватный режим */ }
 
     // Owner: memorize mode (first-letter mnemonic) and devanagari mode (dualScript — punctuation
     // is Latin-only, doesn't exist in the converted script) should default to punctuation
@@ -1121,20 +1124,6 @@ window.restoreReadingAnchor = restoreReadingAnchor;
 
 window.buildSutta = async function(rawSlug) {
     const slug = window.normalizeSlugToDbKey(rawSlug);
-    // Набор, собранный в режиме «Читать», одноразовый ЦЕЛИКОМ — вместе с самим режимом. Чтобы
-    // показать больше одной строки, ридер на время уходит в multi; на следующем тексте это надо
-    // отменить, иначе разовая примерка молча оставляла бы человека в мульти навсегда.
-    const trialStack = readLocalStack();
-    if (trialStack && trialStack.trial && trialStack.slug !== slug) {
-        try { sessionStorage.removeItem(LOCAL_STACK_KEY); } catch (e) { /* приватный режим */ }
-        const back = getSavedMode() || 'single';
-        if (READER_MODE.modeKey === 'multi' && back !== 'multi') {
-            READER_MODE.modeKey = back;
-            const p = new URLSearchParams(document.location.search);
-            p.set('mode', back);
-            history.replaceState(history.state, '', document.location.pathname + '?' + p.toString());
-        }
-    }
     window._currentSlug = slug;
     // Owner: the skeleton is only useful when the reader is opening cold (nothing on screen
     // yet) — swapping an ALREADY-rendered sutta out for a skeleton while the next one loads
@@ -1353,8 +1342,13 @@ window.buildSutta = async function(rawSlug) {
     const orderedEntries = [];
     for (const key of stackOrder) {
         const lang = key.slice(0, key.indexOf('_'));
-        const entry = (transEntriesByLang[lang] || []).find(e => e.key === key);
-        if (entry) orderedEntries.push({ lang, entry });
+        const pool = transEntriesByLang[lang] || [];
+        // Точное совпадение, а если этого переводчика у текста нет — место в порядке всё равно
+        // держит его язык (сервер подставил другого по приоритету). Иначе русская строка, чей
+        // переводчик не переводил эту сутту, уезжала в конец, за английскую.
+        const entry = pool.find(e => e.key === key)
+            || pool.find(e => !orderedEntries.some(o => o.entry === e));
+        if (entry && !orderedEntries.some(o => o.entry === entry)) orderedEntries.push({ lang, entry });
     }
     for (const lang of columns) {
         for (const entry of (transEntriesByLang[lang] || [])) {
