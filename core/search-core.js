@@ -38,6 +38,13 @@ function setSkeleton(skeleton) {
     skeletonDB = skeleton;
 }
 
+// Cheap in-memory lookup ({category, dir_path, title, mr} or null) — for callers that only need
+// the Pali title/category for a preview (e.g. AI-search result cards), not the full reader data
+// getSuttaBaseData() reads from disk/dg.db for.
+function getSuttaMeta(suttaId) {
+    return skeletonDB[suttaId] || null;
+}
+
 const TRANSLATOR_PRIORITY = require('../configs/reader/translator-priority.json');
 
 // Единственный источник истины для "что значит режим single/multiTran/multiLang/memorize/
@@ -1088,6 +1095,7 @@ module.exports = {
     findVariantSegments,
     getFullTextData,
     getSuttaBaseData,
+    getSuttaMeta,
     translatorLangsFallback,
     langFilterSql,
     matchesScope,

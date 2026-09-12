@@ -623,7 +623,9 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
        позиционировалась от далёкого предка и уезжала за край строки. Отсюда и было "ссылки
        появляются только у пали". */
     #search-pane [class*="-lang"],
-    #search-pane .variant {
+    #search-pane .variant,
+    #ai-pane [class*="-lang"],
+    #ai-pane .variant {
         position: relative;
     }
     /* Без @media (hover: hover) and (pointer: fine): на гибридных устройствах (ноутбук с
@@ -632,7 +634,12 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
        машинах не работал ни один из двух путей. Простой :hover на тач-устройстве безвреден. */
     #search-pane [class*="-lang"]:hover > .quoteLink-start,
     #search-pane .variant:hover > .quoteLink-start,
-    #search-pane .dg-show-links > .quoteLink-start {
+    #search-pane .dg-show-links > .quoteLink-start,
+    /* ИИ-поиск (docs/AI_SEARCH_BRIEF.md) переиспользует тот же ✦-механизм — те же классы
+       (pli-lang/en-lang/quote), тот же reveal-on-hover, см. также JS-гейты ниже по файлу. */
+    #ai-pane [class*="-lang"]:hover > .quoteLink-start,
+    #ai-pane .variant:hover > .quoteLink-start,
+    #ai-pane .dg-show-links > .quoteLink-start {
         opacity: 0.9;
     }
     /* Отступ слева у цитаты был ДВОЙНОЙ: своё padding у ячейки развёрнутой строки и своё у
@@ -663,7 +670,8 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
         #pali tr.child .dtr-details li {
             padding-left: 13px;
         }
-        #search-pane .quoteLink-start {
+        #search-pane .quoteLink-start,
+        #ai-pane .quoteLink-start {
             left: -13px;
             font-size: 0.85em;
         }
@@ -1092,6 +1100,10 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
      значит FontAwesome готов раньше, независимо от скорости сети. Загрузку это по-прежнему не
      блокирует: defer качается параллельно с разбором страницы. -->
 <script src="/assets/js/fontawesome-local.js" defer></script>
+<!-- ИИ-поиск (docs/AI_SEARCH_BRIEF.md) — маленький самостоятельный модуль, грузится всегда
+     (не через ensureSearchAssets(), там про тяжёлый DataTables-бандл), задействуется только
+     при реальном вызове window.dgRunAiSearch(). -->
+<script src="/assets/js/ai-search.js" defer></script>
 <!-- datatables.js (1.9МБ) / search-render.js / natural.js / strip-html.js больше НЕ грузятся
      здесь — см. ensureSearchAssets() ниже по файлу и её вызов из initSearchApp(). Ничего из этого
      не нужно домашнему экрану (initSearchApp возвращается сразу после dgSetState('home'), до
@@ -1854,7 +1866,9 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
   (function revealQuoteLinkOnTap() {
     document.addEventListener('pointerup', function (e) {
       if (e.pointerType === 'mouse') return;
-      var pane = document.getElementById('search-pane');
+      // #ai-pane (docs/AI_SEARCH_BRIEF.md) reuses the same ✦-link mechanism as #search-pane —
+      // same lookup, just also accepting that container.
+      var pane = e.target.closest('#search-pane, #ai-pane');
       if (!pane) return;
       var line = e.target.closest('[class*="-lang"], .variant');
       var shown = pane.querySelector('.dg-show-links');
@@ -2047,7 +2061,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     document.addEventListener('click', function (e) {
       if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
       var link = e.target.closest && e.target.closest('a.fdgLink');
-      if (!link || !link.closest('.quote') || !link.closest('#search-pane')) return;
+      if (!link || !link.closest('.quote') || !link.closest('#search-pane, #ai-pane')) return;
       e.preventDefault();
       e.stopImmediatePropagation();
       close();
@@ -2057,8 +2071,8 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     /* Правый клик и долгое нажатие на тач-экране (браузер шлёт то же contextmenu) — контекстное
        меню. Достаточно попасть в саму СТРОКУ цитаты, целиться в ✦ не нужно. */
     document.addEventListener('contextmenu', function (e) {
-      var pane = document.getElementById('search-pane');
-      if (!pane || !pane.contains(e.target)) return;
+      var pane = e.target.closest('#search-pane, #ai-pane');
+      if (!pane) return;
       var line = e.target.closest('[class*="-lang"], .variant');
       if (!line) return;
       var link = line.querySelector('a.fdgLink');
@@ -2870,6 +2884,10 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
          на мобильном получались вдвое более широкие поля, чем на референсе. -->
     <!-- TOC/navigator — lazy-loaded /spa/toc.js, same pattern as #reader-pane below. -->
     <div id="toc-pane" class="mt-4"></div>
+
+    <!-- ИИ-поиск (docs/AI_SEARCH_BRIEF.md) — фолбэк при 0 точных результатов, наполняется
+         public/overrides/js/ai-search.js тем же приёмом, что #toc-pane выше. -->
+    <div id="ai-pane" class="mt-4"></div>
 
     <div id="reader-pane" class="mt-4">
         <!-- Портировано из reader-template.html (#form-div) — там же живут иконки прода
@@ -3825,7 +3843,7 @@ $(document).ready(function() {
        <body>, вся вёрстка и анимации переключаются CSS-ом (search/css/home.css). Единственный
        источник правды — адрес: initSearchApp() читает его и зовёт это, в том числе после
        pushState на сабмите и после popstate. */
-    var DG_STATES = ['dg-state-home', 'dg-state-results', 'dg-state-reader', 'dg-state-toc'];
+    var DG_STATES = ['dg-state-home', 'dg-state-results', 'dg-state-reader', 'dg-state-toc', 'dg-state-ai'];
     function dgSetState(name) {
         var cls = 'dg-state-' + name;
         document.body.classList.remove('home-out', 'results-out'); // exit played, screen switches now
@@ -3862,6 +3880,10 @@ $(document).ready(function() {
         // coupling it directly to dgSetState().
         window.dispatchEvent(new CustomEvent('dgStateChanged', { detail: { name: name } }));
     }
+    // Exposed for ai-search.js: it needs to REQUEST a state change (home.js's dgStateChanged
+    // event above is one-way, for reacting AFTER a change, not triggering one) — same window.Dg*
+    // convention as DgHome/DgTextRouter elsewhere in this file.
+    window.dgSetState = dgSetState;
 
     /* Ожидание ответа. Состояние страницы при этом НЕ меняется: пока данных нет, человек
        остаётся там, где был (на главной или на прошлой выдаче), и видит спиннер, а не пустую
@@ -4407,6 +4429,15 @@ $(document).ready(function() {
             // Состояние переключаем ТОЛЬКО здесь, когда таблица уже наполнена быстрым ответом.
             // Раньше это делалось до fetch, и выдача успевала показаться пустой.
             dgSetState('results');
+
+            // Точный поиск реально выполнился (не tooShort) и ничего не нашёл — фолбэк на
+            // ИИ-поиск вместо пустой таблицы (docs/AI_SEARCH_BRIEF.md). dgSetState('ai') внутри
+            // dgRunAiSearch() переключит состояние повторно — 'results' выше просто мгновенный
+            // промежуточный кадр, не видимый глазом.
+            if (!fastJson.metadata.tooShort && fastJson.metadata.totalFiles === 0
+                && typeof window.dgRunAiSearch === 'function') {
+                window.dgRunAiSearch(keyword, scope);
+            }
 
             if (reportMode === 'suttas') ensureEnrichmentStarted();
         } catch (error) {

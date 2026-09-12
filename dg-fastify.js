@@ -1,9 +1,9 @@
-// dg-fastify.js — Fastify port of dg-light.js (see CLAUDE.md), built to A/B-benchmark the two
-// frameworks against IDENTICAL business logic. Everything below that is not framework wiring
-// (grep search engine, translation/TOC resolution, path helpers — the bulk of this file) is a
-// verbatim copy of dg-light.js, never require()'d between the two files (owner: dg-light.js, the
-// live server, must stay byte-identical and untouched — see project memory on mobile isolation,
-// same rule applied here). dg-light.js is NOT modified by this file's existence.
+// dg-fastify.js — the production server (SQLite/FTS5 via dg.db), run under pm2 as "dg-prod".
+// Started life as an A/B port of dg-light.js (the older Express + grep server, see CLAUDE.md)
+// to benchmark the two frameworks on identical business logic; that benchmark is over and this
+// file won. dg-light.js is now legacy/unused — nothing requires() it and nothing runs it in
+// prod — kept in the repo only as reference until it's archived. The two files still don't
+// require() each other (comments below compare behavior for historical/porting context).
 const { DatabaseSync } = require('node:sqlite');
 const Fastify = require('fastify');
 const fastifyStatic = require('@fastify/static');
@@ -21,6 +21,13 @@ const { default: Aksharamukha, Scripts: AKSH_SCRIPTS } = require('aksharamukha')
 // reused here so a shared link like "an 10.72" (space instead of dot — Android share sheets do
 // this) resolves server-side too, not just when the client's own copy happens to be loaded yet.
 const { DgTextRouter } = require('./public/overrides/js/dg-text-router.js');
+// AI-search fallback (see docs/AI_SEARCH_BRIEF.md) — three independent, optional modules: the
+// route below degrades to "AI unavailable" if any of them throws (missing keys, provider down,
+// friend's MCP server unreachable), it never breaks plain exact search.
+const { normalizeQuery } = require('./core/ai-search.js');
+const { searchHybrid } = require('./core/tipitaka-mcp-client.js');
+const { verifyCandidates, suggestForTypo } = require('./core/dpd-lookup.js');
+const { mcpHandler } = require('./core/mcp-server.js');
 
 // The search/reader core lives in core/search-core.js — see that file for why. Destructured
 // here so the routes below read exactly as they did when the functions were declared in this
@@ -45,6 +52,7 @@ const {
     findVariantSegments,
     getFullTextData,
     getSuttaBaseData,
+    getSuttaMeta,
     translatorLangsFallback,
     langFilterSql,
     matchesScope,
@@ -799,9 +807,10 @@ searchDb.exec('PRAGMA cache_size = -16000'); // 16MB page cache, per connection
 
 async function initServer() {
     try {
-        // The skeleton now comes out of dg.db like everything else — dg_db_light.json is only a
-        // build-time input to build-search-db.js, nothing reads it at runtime. No ORDER BY: rows
-        // come back in insertion order, which is the id ordering dblight.js produced, and
+        // The skeleton comes out of dg.db like everything else — build-search-db.js derives it
+        // straight from the corpus and does not read dg_db_light.json (that file is dg-light.js's
+        // own build artifact, unrelated to this pipeline). No ORDER BY: rows come back in
+        // insertion order, which happens to match the id ordering dblight.js used to produce, and
         // /api/nav and the TOC walk skeletonDB's key order to find the previous/next sutta.
         skeletonDB = {};
         for (const row of searchDb.prepare('SELECT id, category, dir_path, title, mr FROM suttas').all()) {
@@ -1293,6 +1302,120 @@ app.get('/api/nav/:suttaId', (req, res) => {
     if (!nav) return res.code(404).send({ error: `Unknown sutta id: ${suttaId}` });
     res.send(nav);
 });
+
+// /api/ai-search — the fallback for "точный поиск дал 0 результатов" (and a direct button, see
+// docs/AI_SEARCH_BRIEF.md). Contract is provisional: built ahead of the UI design, so shapes here
+// may still need to change once the design is final — nothing else depends on this endpoint yet.
+//
+// The model in ai-search.js never writes text the user reads: `quotePali`/`quoteEnglish` below
+// are verbatim segments from search_hybrid, `titlePali` is the sutta's real skeleton title, and
+// `wordSuggestions` are DPD-verified real headwords. The model's own output (searchQuery,
+// paliCandidates) is only ever used as input to those two lookups, never shown directly.
+// Owner: "каждый раз ждать, пока перезагрузится страница" — going back to a query just made
+// (browser back, re-running the same search) shouldn't pay the full 6-8s pipeline again. Plain
+// in-memory Map, one process, no eviction beyond the TTL check on read — this endpoint's traffic
+// doesn't warrant an LRU cap. Keyed by exactly what changes the answer (query text + gloss lang).
+const AI_SEARCH_CACHE = new Map(); // `${lang}:${q}` -> { at, data }
+const AI_SEARCH_CACHE_TTL_MS = 10 * 60 * 1000;
+
+app.get('/api/ai-search', async (req, res) => {
+    const q = (req.query.q || '').trim();
+    if (!q) return res.code(400).send({ ok: false, reason: 'missing_query' });
+    const lang = req.query.lang === 'en' ? 'en' : 'ru'; // word gloss language; UI language, not content language
+    const scope = req.query.scope || 'default'; // same source as plain /search — passed through from the exact search that fell back here
+
+    const cacheKey = `${lang}:${scope}:${q.toLowerCase()}`;
+    const cached = AI_SEARCH_CACHE.get(cacheKey);
+    if (cached && Date.now() - cached.at < AI_SEARCH_CACHE_TTL_MS) {
+        return res.send(cached.data);
+    }
+
+    // Fast path: a single word (no spaces) that DPD doesn't recognize is almost always a typo or
+    // transliteration slip, not a natural-language description — DPD's OWN fuzzy "did you mean"
+    // list answers that faster and more reliably than a full LLM+semantic round trip would (owner:
+    // "не нужно было искать в ии режиме, а нужно было предположить что это другое слово" — this
+    // applies to the plain /search empty-result case too, see search/index.html's own use of
+    // this same endpoint). Falls through to the full pipeline below if DPD has nothing close either.
+    if (!/\s/.test(q)) {
+        try {
+            const typoSuggestions = await suggestForTypo(q, lang);
+            if (typoSuggestions.length) {
+                const responseBody = { ok: true, query: q, suttas: [], wordSuggestions: typoSuggestions };
+                AI_SEARCH_CACHE.set(cacheKey, { at: Date.now(), data: responseBody });
+                return res.send(responseBody);
+            }
+        } catch {
+            // DPD unreachable — not fatal, just skip the shortcut and try the full pipeline.
+        }
+    }
+
+    let dispatch;
+    try {
+        dispatch = await normalizeQuery(q);
+    } catch (err) {
+        // All three LLM providers failed/unconfigured — degrade to "try exact search",
+        // never a 500: this is an expected, handled state, not a server error.
+        return res.send({ ok: false, reason: 'ai_unavailable', detail: err.message });
+    }
+
+    const [hitsResult, wordsResult] = await Promise.allSettled([
+        searchHybrid(dispatch.searchQuery, 15), // over-fetch; deduped/trimmed to ~5 suttas below
+        verifyCandidates(dispatch.paliCandidates, lang),
+    ]);
+
+    const hits = hitsResult.status === 'fulfilled' ? hitsResult.value : [];
+    const wordSuggestions = wordsResult.status === 'fulfilled' ? wordsResult.value : [];
+
+    // search_hybrid knows nothing about this site's scope filter (it searches the whole
+    // Tipitaka) — filter its hits the same way plain /search already does, otherwise a scope
+    // that excludes Abhidhamma/Vinaya can still surface them here (owner: "он выводит абхидхамму
+    // вместо того чтобы следовать фильтру. ответы для ии тоже нужно фильтровать").
+    const allowedPrefixes = resolveAllowedPrefixes(scope);
+    const inScope = hits.filter(hit => {
+        const meta = getSuttaMeta(hit.sutta_id);
+        return meta && matchesScope(meta, hit.sutta_id, allowedPrefixes);
+    });
+
+    // One card per sutta, not per segment — search_hybrid returns segment-level hits and the same
+    // sutta_id can appear several times (see docs/AI_SEARCH_BRIEF.md, Block 1: "3-5 карточек, не
+    // 20"); keep each sutta's single best-scoring segment as its quote.
+    const bySutta = new Map();
+    for (const hit of inScope) {
+        const existing = bySutta.get(hit.sutta_id);
+        if (!existing || hit.rrf_score > existing.rrf_score) bySutta.set(hit.sutta_id, hit);
+    }
+    // Relevance (rrf_score) picks WHICH 5 suttas make the cut; the site's own canonical order
+    // (dhamma nikayas -> khuddaka -> vinaya -> abhi, sortSuttaResults()) decides the order they're
+    // shown in — same convention as plain /search, so the AI screen doesn't read as a foreign
+    // ranking dropped onto the site (owner: "почему сортировка не наша?").
+    const topHits = [...bySutta.values()].sort((a, b) => b.rrf_score - a.rrf_score).slice(0, 5);
+    const forSort = {};
+    for (const hit of topHits) {
+        const meta = getSuttaMeta(hit.sutta_id);
+        forSort[hit.sutta_id] = { category: meta ? meta.category : 'other', mr: meta ? meta.mr : 0, segments: [], hit, meta };
+    }
+    const suttas = Object.keys(sortSuttaResults(forSort)).map(suttaId => {
+        const { hit, meta } = forSort[suttaId];
+        return {
+            suttaId,
+            segmentId: hit.segment_id,
+            titlePali: meta ? meta.title : null,
+            quotePali: hit.text_pali,
+            quoteEnglish: hit.text_english,
+        };
+    });
+
+    const responseBody = { ok: true, query: q, suttas, wordSuggestions };
+    AI_SEARCH_CACHE.set(cacheKey, { at: Date.now(), data: responseBody });
+    res.send(responseBody);
+});
+
+// /mcp — dg-node's own data (search, get_text) exposed as MCP tools, symmetric to how
+// core/tipitaka-mcp-client.js calls the friend's server (see docs/AI_SEARCH_BRIEF.md). Stateless,
+// POST-only per the SDK's own stateless example; GET/DELETE answer the same 405 that example does.
+app.post('/mcp', mcpHandler);
+app.get('/mcp', (req, res) => res.code(405).send({ jsonrpc: '2.0', error: { code: -32000, message: 'Method not allowed.' }, id: null }));
+app.delete('/mcp', (req, res) => res.code(405).send({ jsonrpc: '2.0', error: { code: -32000, message: 'Method not allowed.' }, id: null }));
 
 app.get('/search', searchHandler);
 
