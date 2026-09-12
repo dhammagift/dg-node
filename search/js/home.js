@@ -1656,14 +1656,25 @@
     // нет, включается здесь как локальный: он живёт на этом тексте (megareader.js setStack кладёт
     // такой набор в sessionStorage по id сутты) и уходит вместе с ним.
     function tsIsMine(lang) { return tsEnabledLangs().indexOf(lang) !== -1; }
-    /* Кого брать, когда язык включают: не первого попавшегося, а того же, кого выбрал бы сервер —
-       по configs/reader/translator-priority.json (для русского это "о" / "ред. о", как и было
-       по умолчанию). */
-    function tsPriorityKey(lang) {
-        var avail = tsAvailable().filter(function (k) { return tsLangOf(k) === lang; });
+    /* Порядок переводчиков внутри языка — один на всё окно: и как идут строки в списке, и кого
+       подставлять, когда язык включают. Правило владельца: сначала «о» (перевод проекта с пали),
+       затем «ред. о» (проектная редактура чужого перевода), дальше — приоритет из
+       configs/reader/translator-priority.json, а кого и там нет — по имени. Для английского это
+       даёт «o», затем Thanissaro (он второй в том же файле), потом остальные. */
+    function tsRank(key) {
+        var lang = tsLangOf(key);
+        if (key === lang + '_o') return 0;
+        if (/\+edited\+o$/.test(key)) return 1;
         var prio = (window.translatorPriority && window.translatorPriority[lang]) || [];
-        for (var i = 0; i < prio.length; i++) if (avail.indexOf(prio[i]) !== -1) return prio[i];
-        return avail[0] || null;
+        var i = prio.indexOf(key);
+        return i === -1 ? 1e6 : 2 + i;
+    }
+    function tsByRank(a, b) {
+        var d = tsRank(a) - tsRank(b);
+        return d || trnName(a).localeCompare(trnName(b));
+    }
+    function tsPriorityKey(lang) {
+        return tsAvailable().filter(function (k) { return tsLangOf(k) === lang; }).sort(tsByRank)[0] || null;
     }
 
     // Строки ездят между слотами фиксированной высоты — этого хватает CSS-перехода
@@ -1704,17 +1715,19 @@
     function tsVisibleKeys() {
         var stack = tsStack(), avail = tsAvailable();
         // стек первым (в своём порядке), затем всё остальное, что есть у этого текста
+        // Выбранные — в своём порядке (его задаёт пользователь), остальные — по правилу выше.
         var keys = stack.filter(function (k) { return avail.indexOf(k) !== -1; });
-        avail.forEach(function (k) { if (keys.indexOf(k) === -1) keys.push(k); });
+        avail.filter(function (k) { return keys.indexOf(k) === -1; }).sort(tsByRank)
+            .forEach(function (k) { keys.push(k); });
         var pool = tsEnabledLangs().concat(stack.map(tsLangOf));
         keys = keys.filter(function (k) { return pool.indexOf(tsLangOf(k)) !== -1; });
         // Список переводчиков не прячем НИКОГДА: он и есть содержимое окна. Раньше он гасился,
         // пока открыт список языков, — и когда добавлять становилось нечего, кнопка "+ язык"
         // исчезала вместе с единственным способом его вернуть: окно оставалось с одними чипами.
-        if (tsSort === 'name') keys.sort(function (a, b) { return trnName(a).localeCompare(trnName(b)); });
+        if (tsSort === 'name') keys.sort(tsByRank);
         if (tsSort === 'lang') keys.sort(function (a, b) {
             var la = tsLangOf(a), lb = tsLangOf(b);
-            return la === lb ? trnName(a).localeCompare(trnName(b)) : la.localeCompare(lb);
+            return la === lb ? tsByRank(a, b) : la.localeCompare(lb);
         });
         return keys;
     }
