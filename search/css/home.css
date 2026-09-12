@@ -1353,6 +1353,18 @@ body.dg-state-ai .forshellscript {
    stretching across its (often very wide) container, and .ai-debug-value no longer pushes the
    copy icon out to the row's far edge — it sits right after the text, nowhere near the
    fixed-position Pāli/translation pill in the bottom-right corner regardless of panel width. */
+/* Owner: "твоя задача добавить в футер кнопки на 4 страницах... где-то вообще нет" — only the
+   real sutta-table outcome had an actual footer to plug into (.dt-buttons, Main/History/Export/…);
+   the other three (words-only, empty, error) just got the debug link dropped wherever a container
+   happened to exist, with no shared visual treatment. This border-top makes every placement read
+   as the same "footer strip" element regardless of what it's sitting inside; reset to nothing
+   inside .dt-buttons, which is already a real footer row and needs no second one nested in it. */
+.ai-debug-wrap { margin-top: 16px; padding-top: 10px; border-top: 1px solid var(--dg-border); }
+.dt-buttons .ai-debug-wrap { margin-top: 0; padding-top: 0; border-top: 0; display: inline-flex; align-items: center; }
+/* Owner: "3 места из 4" — #ai-error already has its OWN footer-styled .aifoot (border-top,
+   24px/12px/50px spacing, wraps "К точному поиску") right before this; adding a second border-top
+   here stacked two separator lines with an oversized gap between them, not one clean footer. */
+#ai-error .ai-debug-wrap { margin-top: 0; padding-top: 0; border-top: 0; }
 .ai-debug-link { border: 0; background: none; padding: 0; font-size: 12px; color: var(--dg-text-muted); text-decoration: underline; cursor: pointer; opacity: 0.7; }
 .ai-debug-link:hover { opacity: 1; }
 .ai-debug-panel { margin-top: 6px; max-width: min(360px, 100%); padding: 8px 10px; border: 1px solid var(--dg-border); border-radius: 8px; background: var(--dg-surface); font-size: 12px; }
