@@ -669,9 +669,17 @@
             // visible reminder/retry point, this doesn't need to duplicate that by staying up.
             // A real error gets longer on screen: unlike a decline, it isn't something the
             // reader already knows they did.
+            // Отказ хранилища ("Failed to execute 'createSyncAccessHandle'") значит ровно одно:
+            // файлы базы уже держит другая вкладка — в OPFS они монопольные. app.js к этому
+            // моменту уже повторил попытку со свежим воркером, так что сырой DOMException в
+            // подсказке бесполезен: человеку нужно действие, а не текст исключения.
+            var busy = /Access Handle|createSyncAccessHandle|NoModificationAllowed/i.test((err && err.message) || '');
             var text = declined
                 ? (isRuLang() ? 'Скачивание отложено — повторите в Настройках'
                               : 'Download postponed — retry from Settings')
+                : busy
+                ? (isRuLang() ? 'Библиотека открыта в другой вкладке сайта. Закройте её и повторите в Настройках'
+                              : 'The library is open in another tab. Close it and retry from Settings')
                 : (isRuLang() ? 'Не удалось скачать данные: ' : 'Could not download data: ') +
                   ((err && err.message) || (isRuLang() ? 'неизвестная ошибка' : 'unknown error'));
 
