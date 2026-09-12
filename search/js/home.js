@@ -1772,6 +1772,338 @@
         }
         menu.hidden = false;
     }
+    /* ——— issue #6 этап 3: окно «Переводы» — плоский упорядоченный список ————————————————
+       Один список строк вместо дерева «язык → его переводчики»: строка = один перевод
+       (переводчик + язык), порядок строк = порядок переводов под каждой строкой пали, включая
+       чередование языков ("о·рус, Sujato·англ, SV·рус"), которое старым хранилищем выразить
+       было нельзя. Источник истины — dgReadingStack (megareader.js), всё остальное из него
+       выводится. Применяется сразу; клик мимо окна просто закрывает его. */
+    var TRANS_STR = {
+        title:  { ru: 'Переводы', en: 'Translations' },
+        onNow:  { ru: 'на экране', en: 'on screen' },
+        pali:   { ru: 'только пали', en: 'Pāḷi only' },
+        manual: { ru: 'Мой порядок', en: 'My order' },
+        byLang: { ru: 'По языку', en: 'By language' },
+        byName: { ru: 'По переводчику', en: 'By translator' },
+        setMain:{ ru: 'сделать основным', en: 'set as main' },
+        applied:{ ru: 'Применяется сразу · клик мимо — ', en: 'Applied instantly · click away to ' },
+        close:  { ru: 'закрыть и читать', en: 'close and read' },
+        sorting:{ ru: 'Сортировка временная — ваш порядок цел', en: 'Sorting is temporary — your order is kept' }
+    };
+    function tsStr(k) { return TRANS_STR[k][menuLang() === 'ru' ? 'ru' : 'en']; }
+    var tsSort = 'manual';
+    var tsLangFilter = null;   // null = все языки текста; иначе Set выбранных чипов
+    var TS_ROW = 44;
+
+    // Окно заменяет старый попап только там, где стек вообще имеет смысл: обычное чтение и
+    // мульти. В memorize/devanagari вторая строка — не перевод, там остаётся прежний попап.
+    function tsActive() {
+        var rm = window.READER_MODE;
+        return currentState() === 'reader' && rm && (rm.modeKey === 'single' || rm.modeKey === 'multi');
+    }
+    function tsStack() { return (window.getReadingStack && window.getReadingStack()) || []; }
+    function tsAvailable() {
+        var rm = window.READER_MODE;
+        return (rm && Array.isArray(rm.availableTranslators)) ? rm.availableTranslators.slice() : [];
+    }
+    function tsLangOf(key) { return key.slice(0, key.indexOf('_')); }
+
+    /* Пружины: одна rAF-петля на все строки. Нужны не ради красоты — перетаскивание должно
+       перехватываться в любой момент, а CSS-переход этого не умеет. */
+    var tsLive = new Set(), tsRaf = 0, tsPrev = 0;
+    function tsLoop(t) {
+        var dt = Math.min((t - tsPrev) / 1000, 1 / 30); tsPrev = t;
+        tsLive.forEach(function (sp) { if (!sp.step(dt)) tsLive.delete(sp); });
+        tsRaf = tsLive.size ? requestAnimationFrame(tsLoop) : 0;
+    }
+    function TsSpring(value, apply) {
+        this.x = value; this.v = 0; this.target = value; this.apply = apply;
+        this.w = 2 * Math.PI / 0.4; this.z = 1;
+    }
+    TsSpring.prototype.set = function (v) { this.x = this.target = v; this.v = 0; this.apply(v); tsLive.delete(this); };
+    TsSpring.prototype.to = function (target, opts) {
+        opts = opts || {};
+        this.target = target;
+        if (opts.velocity !== undefined) this.v = opts.velocity;
+        if (opts.response) this.w = 2 * Math.PI / opts.response;
+        if (opts.damping !== undefined) this.z = opts.damping;
+        if (matchMedia('(prefers-reduced-motion: reduce)').matches) return this.set(target);
+        if (!tsLive.has(this)) tsLive.add(this);
+        if (!tsRaf) { tsPrev = performance.now(); tsRaf = requestAnimationFrame(tsLoop); }
+    };
+    TsSpring.prototype.step = function (dt) {
+        var k = this.w * this.w, c = 2 * this.z * this.w;
+        var steps = Math.max(1, Math.ceil(dt * 120)), h = dt / steps;
+        for (var i = 0; i < steps; i++) {
+            this.v += (-k * (this.x - this.target) - c * this.v) * h;
+            this.x += this.v * h;
+        }
+        var done = Math.abs(this.x - this.target) < 0.05 && Math.abs(this.v) < 0.05;
+        if (done) { this.x = this.target; this.v = 0; }
+        this.apply(this.x);
+        return !done;
+    };
+    // Куда долетит бросок (та же формула инерции, что у прокрутки).
+    function tsProject(v) { return (v / 1000) * 0.998 / (1 - 0.998); }
+
+    function tsHost() {
+        var host = document.getElementById('dg-ts');
+        if (host) return host;
+        host = document.createElement('div');
+        host.id = 'dg-ts';
+        host.className = 'dg-ts';
+        host.hidden = true;
+        host.setAttribute('role', 'dialog');
+        host.innerHTML =
+            '<div class="dg-ts-head"><b class="dg-ts-title"></b><span class="dg-ts-count"></span>' +
+            '<span class="dg-ts-grow"></span><button type="button" class="dg-ts-x" aria-label="✕">✕</button></div>' +
+            '<div class="dg-ts-seg"></div><div class="dg-ts-chips"></div>' +
+            '<div class="dg-ts-body"><div class="dg-ts-rows"></div></div><div class="dg-ts-foot"></div>';
+        document.body.appendChild(host);
+        host.addEventListener('click', tsClick);
+        host.querySelector('.dg-ts-x').addEventListener('click', function () { tsClose(); });
+        // Клик мимо = «всё, читаю дальше»: применять нечего, всё уже применено.
+        document.addEventListener('pointerdown', function (e) {
+            if (host.hidden) return;
+            if (e.target.closest('#dg-ts') || e.target.closest('.dg-lpill-more')) return;
+            tsClose();
+        }, true);
+        document.addEventListener('keydown', function (e) { if (e.key === 'Escape') tsClose(); });
+        return host;
+    }
+
+    function tsVisibleKeys() {
+        var stack = tsStack(), avail = tsAvailable();
+        // стек первым (в своём порядке), затем всё остальное, что есть у этого текста
+        var keys = stack.filter(function (k) { return avail.indexOf(k) !== -1; });
+        avail.forEach(function (k) { if (keys.indexOf(k) === -1) keys.push(k); });
+        if (tsLangFilter) keys = keys.filter(function (k) { return tsLangFilter.has(tsLangOf(k)); });
+        if (tsSort === 'name') keys.sort(function (a, b) { return trnName(a).localeCompare(trnName(b)); });
+        if (tsSort === 'lang') keys.sort(function (a, b) {
+            var la = tsLangOf(a), lb = tsLangOf(b);
+            return la === lb ? trnName(a).localeCompare(trnName(b)) : la.localeCompare(lb);
+        });
+        return keys;
+    }
+
+    function tsRender() {
+        var host = tsHost();
+        if (host.hidden) return;
+        var stack = tsStack(), keys = tsVisibleKeys(), rows = host.querySelector('.dg-ts-rows');
+        host.querySelector('.dg-ts-title').textContent = tsStr('title');
+        host.querySelector('.dg-ts-count').textContent = stack.length
+            ? '· ' + stack.length + ' ' + tsStr('onNow') : '· ' + tsStr('pali');
+        host.querySelector('.dg-ts-seg').innerHTML = ['manual', 'lang', 'name'].map(function (m) {
+            return '<button type="button" data-ts-sort="' + m + '" aria-pressed="' + (tsSort === m) + '">' +
+                esc(tsStr(m === 'manual' ? 'manual' : m === 'lang' ? 'byLang' : 'byName')) + '</button>';
+        }).join('');
+        var langs = [];
+        tsAvailable().forEach(function (k) { if (langs.indexOf(tsLangOf(k)) === -1) langs.push(tsLangOf(k)); });
+        host.querySelector('.dg-ts-chips').innerHTML = langs.map(function (l) {
+            var n = tsAvailable().filter(function (k) { return tsLangOf(k) === l; }).length;
+            var on = !tsLangFilter || tsLangFilter.has(l);
+            return '<button type="button" class="dg-ts-chip" data-ts-lang="' + esc(l) + '" aria-pressed="' + on + '">' +
+                esc(LANG_LABEL[l] || l) + ' ' + n + '</button>';
+        }).join('');
+
+        rows.innerHTML = keys.map(function (key) {
+            var lang = tsLangOf(key), i = stack.indexOf(key), on = i !== -1;
+            return '<div class="dg-ts-row' + (on ? ' is-on' : '') + '" data-ts-key="' + esc(key) + '">' +
+                '<span class="dg-ts-hnd" data-ts-drag><i></i><i></i><i></i><i></i><i></i><i></i></span>' +
+                '<span class="dg-ts-ord">' + (on ? i + 1 : '') + '</span>' +
+                '<button type="button" class="dg-ts-tick" role="checkbox" aria-checked="' + on + '"></button>' +
+                '<span class="dg-ts-name">' + esc(trnName(key)) + '</span>' +
+                '<span class="dg-ts-tag">' + esc(LANG_LABEL[lang] || lang) + '</span>' +
+                '<button type="button" class="dg-ts-star' + (stack[0] === key ? ' is-main' : '') + '" title="' +
+                esc(tsStr('setMain')) + '">' + (stack[0] === key ? '★' : '☆') + '</button>' +
+                '</div>';
+        }).join('');
+        rows.classList.toggle('is-sorted', tsSort !== 'manual');
+        var y = 0;
+        rows.querySelectorAll('.dg-ts-row').forEach(function (row) {
+            row.spring = new TsSpring(y, (function (el) {
+                return function (v) { el.style.transform = 'translate3d(0,' + v + 'px,0)'; };
+            })(row));
+            row.spring.set(y);
+            row.dataset.tsY = y;
+            y += TS_ROW;
+        });
+        rows.style.height = y + 'px';
+        host.querySelector('.dg-ts-foot').innerHTML = tsSort === 'manual'
+            ? esc(tsStr('applied')) + '<b>' + esc(tsStr('close')) + '</b>'
+            : esc(tsStr('sorting'));
+        tsPlace();
+    }
+
+    // Десктоп: окно висит над «···», как и старый попап. Мобильный: шторка снизу во всю ширину
+    // (позиция задана в CSS), считать нечего.
+    function tsPlace() {
+        var host = document.getElementById('dg-ts');
+        var pillHost = document.getElementById('dg-langpill');
+        if (!host) return;
+        if (window.innerWidth < 768) {
+            // Снять посадку у кнопки: инлайновые right/bottom с десктопа переживают смену
+            // ширины и побеждают CSS шторки (left:0;right:0) — окно оставалось узким слева.
+            host.style.right = host.style.bottom = '';
+            return;
+        }
+        if (!pillHost) return;
+        var r = pillHost.getBoundingClientRect();
+        host.style.right = Math.round(window.innerWidth - r.right) + 'px';
+        host.style.bottom = Math.round(window.innerHeight - r.top + 8) + 'px';
+    }
+
+    function tsOpen() {
+        var host = tsHost();
+        host.hidden = false;
+        document.body.classList.add('dg-ts-open');
+        tsRender();
+    }
+    function tsClose() {
+        var host = document.getElementById('dg-ts');
+        if (!host || host.hidden) return;
+        host.hidden = true;
+        document.body.classList.remove('dg-ts-open');
+    }
+    function tsToggle() {
+        var host = document.getElementById('dg-ts');
+        if (host && !host.hidden) { tsClose(); return; }
+        tsOpen();
+    }
+
+    /* Применить: записать стек и перестроить текст, не сдвинув читаемую строку. Перезагрузки
+       нет — это тот же buildSutta(), что и у переключения режимов. */
+    var tsBusy = false, tsPending = null;
+    function tsApply(next) {
+        var rm = window.READER_MODE, slug = window._currentSlug;
+        if (!rm || !slug || typeof window.buildSutta !== 'function') return;
+        window.setReadingStack(next);
+        tsRender();
+        // Быстрые клики не теряются: пока идёт перестроение, последний выбор ждёт своей очереди,
+        // иначе текст остался бы на предпоследнем состоянии галочек.
+        if (tsBusy) { tsPending = next; return; }
+        tsBusy = true;
+        var wantMode = next.length > 1 ? 'multi' : 'single';
+        var firstLang = next.length ? tsLangOf(next[0]) : rm.lang;
+        var params = new URLSearchParams(document.location.search);
+        params.delete('translators');   // стек главнее ссылки, из которой пришли
+        params.delete('langs');
+        params.set('mode', wantMode);
+        rm.modeKey = wantMode;
+        var done;
+        if (firstLang && firstLang !== rm.lang && typeof window.switchReadingLanguage === 'function') {
+            // основной язык сменился — это же и язык интерфейса, switchReadingLanguage сам
+            // сохранит его, перестроит текст и вернёт якорь чтения
+            history.replaceState(history.state, '', document.location.pathname + '?' + params.toString());
+            done = window.switchReadingLanguage(firstLang);
+        } else {
+            params.set('lang', rm.lang);
+            history.replaceState(history.state, '', document.location.pathname + '?' + params.toString());
+            var anchor = window.captureReadingAnchor && window.captureReadingAnchor();
+            done = window.buildSutta(slug).then(function () {
+                if (anchor && window.restoreReadingAnchor) window.restoreReadingAnchor(anchor);
+            });
+        }
+        Promise.resolve(done).then(function () {
+            tsBusy = false;
+            tsRender();
+            if (tsPending) { var again = tsPending; tsPending = null; tsApply(again); }
+        });
+    }
+
+    function tsClick(e) {
+        var row = e.target.closest('.dg-ts-row');
+        var sortBtn = e.target.closest('[data-ts-sort]');
+        if (sortBtn) { tsSort = sortBtn.dataset.tsSort; tsRender(); return; }
+        var chip = e.target.closest('[data-ts-lang]');
+        if (chip) {
+            var langs = [];
+            tsAvailable().forEach(function (k) { if (langs.indexOf(tsLangOf(k)) === -1) langs.push(tsLangOf(k)); });
+            if (!tsLangFilter) tsLangFilter = new Set(langs);
+            var l = chip.dataset.tsLang;
+            tsLangFilter.has(l) ? tsLangFilter.delete(l) : tsLangFilter.add(l);
+            if (!tsLangFilter.size) tsLangFilter.add(l);
+            tsRender();
+            return;
+        }
+        if (!row) return;
+        var key = row.dataset.tsKey, stack = tsStack().slice();
+        if (e.target.closest('.dg-ts-star')) {                       // основной = первый в списке
+            stack = [key].concat(stack.filter(function (k) { return k !== key; }));
+            tsApply(stack);
+            return;
+        }
+        if (e.target.closest('.dg-ts-tick') || e.target.closest('.dg-ts-name')) {
+            var i = stack.indexOf(key);
+            if (i === -1) stack.push(key); else stack.splice(i, 1);
+            if (!stack.length) stack = [key];                        // хотя бы один перевод остаётся
+            tsApply(stack);
+        }
+    }
+
+    /* Перетаскивание строк: палец ведёт строку 1:1, соседи разъезжаются пружинами, на отпускании
+       слот выбирается по спроецированной инерции, а не по точке отпускания. */
+    var tsDrag = null;
+    document.addEventListener('pointerdown', function (e) {
+        var handle = e.target.closest('[data-ts-drag]');
+        if (!handle || tsSort !== 'manual') return;
+        var row = handle.closest('.dg-ts-row');
+        var rows = [].slice.call(row.parentNode.querySelectorAll('.dg-ts-row'));
+        e.preventDefault();
+        handle.setPointerCapture(e.pointerId);
+        tsDrag = {
+            row: row, rows: rows, keys: rows.map(function (r) { return r.dataset.tsKey; }),
+            index: rows.indexOf(row), grabY: e.clientY, startY: row.spring.x, y: row.spring.x,
+            v: 0, lastY: e.clientY, lastT: performance.now()
+        };
+        row.classList.add('is-lift');
+        tsLive.delete(row.spring);
+    });
+    document.addEventListener('pointermove', function (e) {
+        if (!tsDrag) return;
+        var max = (tsDrag.keys.length - 1) * TS_ROW;
+        var y = tsDrag.startY + (e.clientY - tsDrag.grabY);
+        if (y < 0) y = (y * TS_ROW * 0.55) / (TS_ROW + 0.55 * Math.abs(y));           // резина у краёв
+        if (y > max) { var o = y - max; y = max + (o * TS_ROW * 0.55) / (TS_ROW + 0.55 * o); }
+        tsDrag.y = y;
+        tsDrag.row.style.transform = 'translate3d(0,' + y + 'px,0)';
+        var now = performance.now(), dt = (now - tsDrag.lastT) / 1000;
+        if (dt > 0.004) { tsDrag.v = (e.clientY - tsDrag.lastY) / dt; tsDrag.lastY = e.clientY; tsDrag.lastT = now; }
+        var want = Math.max(0, Math.min(tsDrag.keys.length - 1, Math.round(y / TS_ROW)));
+        if (want !== tsDrag.index) {
+            tsDrag.keys.splice(tsDrag.index, 1);
+            tsDrag.keys.splice(want, 0, tsDrag.row.dataset.tsKey);
+            tsDrag.index = want;
+            tsDrag.keys.forEach(function (k, i) {
+                var r = tsDrag.rows.find(function (x) { return x.dataset.tsKey === k; });
+                if (r && r !== tsDrag.row) { r.dataset.tsY = i * TS_ROW; r.spring.to(i * TS_ROW); }
+            });
+        }
+    });
+    function tsEndDrag() {
+        if (!tsDrag) return;
+        var d = tsDrag; tsDrag = null;
+        d.row.classList.remove('is-lift');
+        d.row.spring.x = d.y;
+        var slot = Math.max(0, Math.min(d.keys.length - 1, Math.round((d.y + tsProject(d.v) * 0.25) / TS_ROW)));
+        if (slot !== d.index) {
+            d.keys.splice(d.index, 1);
+            d.keys.splice(slot, 0, d.row.dataset.tsKey);
+            d.keys.forEach(function (k, i) {
+                var r = d.rows.find(function (x) { return x.dataset.tsKey === k; });
+                if (r && r !== d.row) { r.dataset.tsY = i * TS_ROW; r.spring.to(i * TS_ROW); }
+            });
+        }
+        d.row.spring.to(slot * TS_ROW, { velocity: d.v, damping: 0.8, response: 0.35 });
+        // порядок в тексте = порядок включённых строк; выключенные в стек не попадают
+        var stack = tsStack();
+        var next = d.keys.filter(function (k) { return stack.indexOf(k) !== -1; });
+        if (next.length && next.join() !== stack.join()) tsApply(next);
+    }
+    document.addEventListener('pointerup', tsEndDrag);
+    document.addEventListener('pointercancel', tsEndDrag);
+    window.addEventListener('resize', tsPlace);
+
     function dgRenderLangPill() {
         var host = document.getElementById('dg-langpill');
         var sutta = document.getElementById('sutta');
@@ -1831,7 +2163,7 @@
             host.addEventListener('click', function (e) {
                 var b = e.target.closest('button');
                 if (!b) return;
-                if (b.classList.contains('dg-lpill-more')) { dgToggleLangMenu(); return; }
+                if (b.classList.contains('dg-lpill-more')) { tsActive() ? tsToggle() : dgToggleLangMenu(); return; }
                 // Memorize/devanagari: only the "2nd" button is rendered at all (see
                 // dgRenderLangPill above) — a plain on/off, main line always stays on.
                 if (dgPaliLockedReaderMode()) {
@@ -1893,7 +2225,9 @@
             host.innerHTML =
                 '<button type="button" data-k="pli" aria-pressed="true">Pāḷi</button>' +
                 '<button type="button" data-k="2nd" aria-pressed="true">' + esc(label) + '</button>' +
-                (langs.length > 1
+                // "···" is the only door to the translations window now — it has to be there even
+                // when the text is showing a single language, or there is no way to add a second.
+                (langs.length > 1 || tsActive()
                     ? '<button type="button" class="dg-lpill-more" title="' + esc(langMenuStr('title')) + '" aria-label="' + esc(langMenuStr('title')) + '"><span class="dg-dots" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span></button>'
                     : '');
         }

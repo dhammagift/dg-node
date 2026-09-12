@@ -3834,3 +3834,80 @@ body.dg-state-reader #sutta h1, body.dg-state-reader #sutta h2, body.dg-state-re
 /* Folded with dgFold(): overflow stays hidden so the animated height equals the natural one
    (otherwise the last child's margin collapses when the fold ends and the panel snaps ~13px). */
 #search-pane .dtsb-searchBuilder { overflow: hidden; }
+
+/* ——— Окно «Переводы» (issue #6 этап 3, home.js tsRender) ————————————————————————————————
+   Плоский список: строка = один перевод (переводчик + язык), порядок строк = порядок под
+   каждой строкой пали. Заменяет дерево «язык → переводчики» в обычном чтении и мульти;
+   memorize/devanagari остаются на прежнем попапе (.dg-lpmenu выше). На десктопе висит над
+   кнопкой «···», на телефоне — шторка снизу: одна разметка, разная посадка. */
+.dg-ts {
+    position: fixed; right: 20px; bottom: 76px; z-index: 101;
+    width: 360px; max-height: min(72vh, 620px);
+    display: flex; flex-direction: column;
+    background: var(--dg-surface); border: 1px solid var(--dg-border); border-radius: 14px;
+    box-shadow: 0 8px 34px rgba(0, 0, 0, .22); font-family: var(--dg-font);
+    transform-origin: 100% 100%;
+    animation: dg-ts-in .26s var(--dg-ease);
+}
+.dg-ts[hidden] { display: none; }
+@keyframes dg-ts-in { from { opacity: 0; transform: scale(.96) translateY(6px); } }
+.dg-ts-head { display: flex; align-items: center; gap: 8px; padding: 11px 14px 8px; }
+.dg-ts-head b { font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--dg-text-muted); }
+.dg-ts-count { font-size: 11.5px; color: var(--dg-text-muted); }
+.dg-ts-grow { flex: 1; }
+.dg-ts-x { border: 0; background: none; color: var(--dg-text-muted); width: 26px; height: 26px; border-radius: 50%; line-height: 1; cursor: pointer; transition: transform .1s ease-out, background .15s; }
+.dg-ts-x:hover { background: var(--dg-surface-hover); color: var(--dg-text); }
+.dg-ts-x:active { transform: scale(.9); }
+
+.dg-ts-seg { display: flex; gap: 2px; margin: 0 14px; padding: 3px; background: var(--dg-surface-hover); border-radius: 10px; }
+.dg-ts-seg button { flex: 1; border: 0; background: none; font: inherit; font-size: 12px; color: var(--dg-text-muted); padding: 5px 4px; border-radius: 7px; cursor: pointer; white-space: nowrap; transition: transform .1s ease-out, background .18s, color .18s; }
+.dg-ts-seg button[aria-pressed="true"] { background: var(--dg-surface); color: var(--dg-text); font-weight: 600; box-shadow: 0 1px 3px rgba(0, 0, 0, .14); }
+.dg-ts-seg button:active { transform: scale(.97); }
+
+.dg-ts-chips { display: flex; gap: 5px; overflow-x: auto; padding: 9px 14px 2px; scrollbar-width: none; }
+.dg-ts-chips::-webkit-scrollbar { display: none; }
+.dg-ts-chip { flex: none; border: 1px solid transparent; background: var(--dg-surface-hover); color: var(--dg-text-muted); font: inherit; font-size: 11.5px; padding: 4px 10px; border-radius: 999px; cursor: pointer; transition: transform .1s ease-out, background .18s, color .18s, border-color .18s; }
+.dg-ts-chip[aria-pressed="true"] { background: var(--dg-accent-bg); color: var(--dg-text); border-color: var(--dg-accent); }
+.dg-ts-chip:active { transform: scale(.95); }
+
+.dg-ts-body { overflow-y: auto; overscroll-behavior: contain; padding: 6px 8px 0; }
+.dg-ts-rows { position: relative; }
+.dg-ts-row { position: absolute; left: 0; right: 0; height: 44px; display: flex; align-items: center; gap: 9px; padding: 0 6px; border-radius: 10px; will-change: transform; transition: background .18s; }
+.dg-ts-row.is-on { background: var(--dg-accent-bg); }
+.dg-ts-row.is-lift { z-index: 3; background: var(--dg-surface); box-shadow: 0 6px 22px rgba(0, 0, 0, .22); }
+.dg-ts-hnd { flex: none; width: 22px; height: 44px; display: grid; grid-template-columns: 3px 3px; grid-template-rows: repeat(3, 3px); gap: 3px; align-content: center; justify-content: center; cursor: grab; touch-action: none; opacity: .55; }
+.dg-ts-hnd i { display: block; width: 3px; height: 3px; border-radius: 50%; background: var(--dg-text-muted); }
+.dg-ts-rows.is-sorted .dg-ts-hnd { opacity: .15; cursor: default; }
+.dg-ts-ord { flex: none; width: 12px; text-align: right; font-size: 10.5px; color: var(--dg-text-muted); font-variant-numeric: tabular-nums; }
+.dg-ts-rows.is-sorted .dg-ts-ord { opacity: 0; }
+.dg-ts-tick { flex: none; width: 19px; height: 19px; padding: 0; border: 1.5px solid var(--dg-text-muted); border-radius: 6px; background: transparent; position: relative; cursor: pointer; transition: transform .1s ease-out, background .16s, border-color .16s; }
+.dg-ts-tick:active { transform: scale(.88); }
+.dg-ts-tick[aria-checked="true"] { background: var(--dg-accent); border-color: var(--dg-accent); }
+.dg-ts-tick[aria-checked="true"]::after { content: ""; position: absolute; left: 6px; top: 2px; width: 4px; height: 9px; border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(42deg); }
+.dg-ts-name { flex: 1; min-width: 0; font-size: 13.5px; color: var(--dg-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+.dg-ts-tag { flex: none; font-size: 10.5px; color: var(--dg-text-muted); background: var(--dg-surface-hover); border-radius: 6px; padding: 2px 6px; }
+.dg-ts-star { flex: none; width: 26px; height: 26px; border: 0; border-radius: 50%; background: none; font-size: 13px; line-height: 1; color: var(--dg-border-strong); cursor: pointer; transition: transform .1s ease-out, color .18s; }
+.dg-ts-star:hover { color: var(--dg-text-muted); }
+.dg-ts-star:active { transform: scale(.85); }
+.dg-ts-star.is-main { color: var(--dg-accent); }
+.dg-ts-foot { border-top: 1px solid var(--dg-border); padding: 9px 14px; font-size: 11.5px; color: var(--dg-text-muted); }
+.dg-ts-foot b { color: var(--dg-text); font-weight: 600; }
+
+/* Телефон: шторка снизу во всю ширину — на 360px окно у кнопки просто не помещается. */
+@media (max-width: 767.98px) {
+    .dg-ts { left: 0; right: 0; bottom: 0; width: auto; border-radius: 16px 16px 0 0; border-bottom: 0;
+        max-height: 82vh; padding-bottom: env(safe-area-inset-bottom);
+        animation: dg-ts-up .3s var(--dg-ease); }
+    @keyframes dg-ts-up { from { transform: translateY(100%); } }
+}
+@media (prefers-reduced-motion: reduce) { .dg-ts { animation: none; } }
+
+/* Второй перевод того же языка в самом тексте (megareader.js entry.cueClass): имени
+   переводчика над каждым абзацем нет — язык и так виден; метка появляется только там, где
+   двух переводов одного языка не различить, и только у «второго мнения». */
+.dg-cue { border-left: 2px solid var(--dg-cue, var(--dg-border-strong)); padding-left: 9px; }
+.dg-cue-1 { --dg-cue: #d08a1e; }
+.dg-cue-2 { --dg-cue: #3d7fd6; }
+.dg-cue-3 { --dg-cue: #b5539c; }
+.dg-cue-4 { --dg-cue: #2f9e6f; }
+#trn .dg-cue { border-left-width: 3px; padding-left: 6px; }

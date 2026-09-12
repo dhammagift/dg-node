@@ -120,6 +120,40 @@ function setLangOrderFirst(lang, fallbackColumns) {
 // defaults, so a language the user never touched follows the project's priority forever.
 // Deliberately a second key rather than a richer dgReadingLangOrder: that one has six readers
 // already (home.js, toc.js, settings…), all of which expect a plain array of language codes.
+/* issue #6 этап 3: ONE ordered list of translation keys — ["ru_o","en_sujato","ru_sv"] — is
+   what the reader actually renders, in exactly that order. It replaces the pair "order of
+   languages" + "translators per language", which could not express the thing the owner asked
+   for: two languages interleaved ("о·рус, Sujato·англ, SV·рус"). LANG_ORDER_KEY is still
+   written (the pill reads it to decide whether the "···" button is warranted), but it is
+   derived from this list now, not a second source of truth. */
+const STACK_KEY = 'dgReadingStack';
+function getStack() {
+    try {
+        const v = JSON.parse(localStorage.getItem(STACK_KEY));
+        return Array.isArray(v) ? v.filter(k => typeof k === 'string' && k.includes('_')) : [];
+    } catch (e) { return []; }
+}
+function setStack(keys) {
+    try {
+        localStorage.setItem(STACK_KEY, JSON.stringify(keys));
+        // keep the "activated languages" record in step, it is what the pill's "···" reads
+        // Merge, never shrink: this key is the record of languages the user has ACTIVATED, and
+        // the pill reads it. Replacing it with just the stack's languages would quietly
+        // de-activate a language the moment the stack held one — taking the "···" button, and
+        // with it the only way back, off the screen.
+        const stackLangs = [...new Set(keys.map(k => k.slice(0, k.indexOf('_'))))];
+        localStorage.setItem(LANG_ORDER_KEY, JSON.stringify(
+            stackLangs.concat(getLangOrder().filter(l => !stackLangs.includes(l)))));
+        // ...and the per-language translator map, which the single-column modes still read
+        // (translatorsQueryFor). Derived, never edited by hand — the stack is the original.
+        const byLang = {};
+        for (const k of keys) (byLang[k.slice(0, k.indexOf('_'))] ||= []).push(k);
+        localStorage.setItem(TRANSLATORS_KEY, JSON.stringify(byLang));
+    } catch (e) { /* приватный режим */ }
+}
+window.getReadingStack = getStack;
+window.setReadingStack = setStack;
+
 const TRANSLATORS_KEY = 'dgReadingTranslators';
 function getTranslatorChoice() {
     try { const v = JSON.parse(localStorage.getItem(TRANSLATORS_KEY)); return (v && typeof v === 'object') ? v : {}; }
@@ -1019,6 +1053,11 @@ function dgReaderReveal(animate) {
     pane.classList.add('reader-in');
 }
 
+// The translations window (home.js) rebuilds the sutta on every change; it needs the same
+// "keep the line you're reading on the same pixel" treatment mode/language switches get.
+window.captureReadingAnchor = captureReadingAnchor;
+window.restoreReadingAnchor = restoreReadingAnchor;
+
 window.buildSutta = async function(rawSlug) {
     const slug = window.normalizeSlugToDbKey(rawSlug);
     window._currentSlug = slug;
@@ -1078,7 +1117,7 @@ window.buildSutta = async function(rawSlug) {
             // выбор переводчика вообще может сосуществовать с несколькими языками.
             langsQuery = `mode=${encodeURIComponent(READER_MODE.modeKey)}&langs=${encodeURIComponent(explicitLangs)}` +
                 (trnQuery || '');
-        } else if (READER_MODE.modeKey === 'multi') {
+        } else if (READER_MODE.modeKey === 'multi') { multiBranch: {
             // Набор языков для multi — из уже сохранённого порядка пользователя
             // (getLangOrder(), тот же, что реордерит колонки). Owner: "не хардкодить языки" —
             // при первом заходе (порядок ещё не сохранён) единственный честный дефолт —
@@ -1086,6 +1125,15 @@ window.buildSutta = async function(rawSlug) {
             // dg-light.js — сканируется из configs/reader/lang_*.json, не список в коде).
             // Отправляем ТОЛЬКО langs= (её первый элемент и есть текущий/первый язык) — не
             // добавляем отдельный lang=, чтобы сервер не путался, какой из двух главнее.
+            // The saved stack decides both which languages and which translators, in one go.
+            const stack = getStack();
+            if (!trnQuery && stack.length) {   // an explicit ?translators= in the address still wins
+                const stackLangs = [...new Set(stack.map(k => k.split('_')[0]))];
+                langsQuery = `mode=${encodeURIComponent(READER_MODE.modeKey)}`
+                    + `&langs=${encodeURIComponent(stackLangs.join(','))}`
+                    + `&translators=${encodeURIComponent(stack.join(','))}`;
+                break multiBranch;
+            }
             let langs = getLangOrder();
             if (!langs.length) {
                 langs = READER_MODE.lang ? [READER_MODE.lang] : [];
@@ -1096,7 +1144,7 @@ window.buildSutta = async function(rawSlug) {
             langsQuery = `mode=${encodeURIComponent(READER_MODE.modeKey)}` +
                 (langs.length ? `&langs=${encodeURIComponent(langs.join(','))}` : '') +
                 (trnQuery || translatorsQueryFor());
-        } else if (READER_MODE.tempLangs && READER_MODE.tempLangs.length && READER_MODE.tempSlug === slug) {
+        } } else if (READER_MODE.tempLangs && READER_MODE.tempLangs.length && READER_MODE.tempSlug === slug) {
             // Single-column modes: the language popover's checkboxes are a per-TEXT trial (owner:
             // "применялось, но не сохранялось") — sent as an explicit langs=, never written to
             // dgReadingLangOrder. tempSlug pins it to this text, so the next one is back to just
@@ -1108,8 +1156,13 @@ window.buildSutta = async function(rawSlug) {
                 (trnQuery || translatorsQueryFor(READER_MODE.tempTranslators));
         } else {
             const langParam = READER_MODE.lang ? `&lang=${encodeURIComponent(READER_MODE.lang)}` : '';
+            // "Читать" is one language AND one translation — the first one in the stack that is
+            // in that language. Without this the derived per-language map would hand the server
+            // every translator the stack holds for it, and the single-column mode would quietly
+            // render two Russians (see setStack: the map is derived, the stack is the original).
+            const single = getStack().find(k => k.slice(0, k.indexOf('_')) === READER_MODE.lang);
             langsQuery = `mode=${encodeURIComponent(READER_MODE.modeKey)}${langParam}` +
-                (trnQuery || translatorsQueryFor());
+                (trnQuery || (single ? `&translators=${encodeURIComponent(single)}` : translatorsQueryFor()));
         }
         // Система письма пали (Aksharamukha, см. dg-light.js) — явный ?script= в адресе
         // побеждает, иначе берём сохранённое в /settings/ значение по умолчанию
@@ -1211,6 +1264,50 @@ window.buildSutta = async function(rawSlug) {
     // Who is on screen right now, per language — the popover ticks these, so a language left on
     // the server's priority default shows a real name instead of nothing (home.js).
     READER_MODE.shownTranslators = keysByLang;
+
+    /* The flat, user-ordered list of everything that will be printed under each Pāḷi line.
+       Grouping by language ("all the Russians, then all the English") is what made
+       "о·рус, Sujato·англ, SV·рус" impossible to express; the saved stack owns the order now and
+       the two render loops below walk THIS, not columns × translators. Anything the server sent
+       that the stack doesn't mention (a fallback translator, a language just switched on) keeps
+       its server order at the end rather than disappearing. */
+    const stackOrder = getStack();
+    const orderedEntries = [];
+    for (const key of stackOrder) {
+        const lang = key.slice(0, key.indexOf('_'));
+        const entry = (transEntriesByLang[lang] || []).find(e => e.key === key);
+        if (entry) orderedEntries.push({ lang, entry });
+    }
+    for (const lang of columns) {
+        for (const entry of (transEntriesByLang[lang] || [])) {
+            if (!orderedEntries.some(o => o.entry === entry)) orderedEntries.push({ lang, entry });
+        }
+    }
+    // First real render in "multi" with nothing saved yet seeds the stack from what the server
+    // actually chose — so the window opens on the true current state instead of empty.
+    if (READER_MODE.modeKey === 'multi' && !stackOrder.length && orderedEntries.length) {
+        setStack(orderedEntries.map(o => o.entry.key));
+    }
+    READER_MODE.stack = orderedEntries.map(o => o.entry.key);
+
+    /* Whose line is whose. The translator's name is NOT printed above every paragraph — the
+       language already says which line is which. It is only genuinely ambiguous when ONE
+       language has two translations on screen at once, and even then the first one stays clean:
+       the extra opinion is the thing that gets a thin coloured margin (.dg-cue-N, home.css) and
+       a hover title with the name. A plain ru+en reading gets no marks at all. */
+    const dupLangs = new Set(orderedEntries.map(o => o.lang).filter((l, i, a) => a.indexOf(l) !== i));
+    const seenPerLang = new Map();
+    let cueIndex = 0;
+    for (const { lang, entry } of orderedEntries) {
+        const nth = (seenPerLang.get(lang) || 0) + 1;
+        seenPerLang.set(lang, nth);
+        entry.cueClass = '';
+        entry.cueTitle = '';
+        if (!dupLangs.has(lang) || nth === 1) continue;
+        entry.cueClass = ' dg-cue dg-cue-' + (cueIndex++ % 4 + 1);
+        const raw = (window.siteTranslators && window.siteTranslators[lang] && window.siteTranslators[lang][entry.translatorId]) || entry.translatorId;
+        entry.cueTitle = String(raw).replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+    }
 
     for (const seg of suttaData.segments) {
         htmlData[seg.segment] = seg.html || "{}";
@@ -1389,15 +1486,16 @@ window.buildSutta = async function(rawSlug) {
             // .lang-2nd на второй и далее переводчик (позиционный маркер стиля, не языковой —
             // uiextra.css/rus-multi.css красят .lang-2nd приглушённым цветом).
             let transIndex = 0;
-            columns.forEach(lang => {
-                transEntriesByLang[lang].forEach(entry => {
-                    const val = entry.data[segment];
-                    if (val !== undefined) {
-                        const posClass = transIndex === 0 ? '' : ' lang-2nd';
-                        rightColumnHtml += `<span class="${lang}-lang${posClass} quote" lang="${lang}" data-translator="${entry.translatorId}">${linkToCopyStart}${val.trim()}${linkToCopy}</span>`;
-                        transIndex++;
-                    }
-                });
+            orderedEntries.forEach(({ lang, entry }) => {
+                const val = entry.data[segment];
+                if (val !== undefined) {
+                    const posClass = transIndex === 0 ? '' : ' lang-2nd';
+                    // A second translation of the SAME language is the only case the text itself
+                    // can't disambiguate — mark just those, and only the extra ones (see
+                    // dupLangs below). Everything else prints clean, no translator name per line.
+                    rightColumnHtml += `<span class="${lang}-lang${posClass}${entry.cueClass || ''} quote" lang="${lang}" data-translator="${entry.translatorId}"${entry.cueTitle ? ` title="${entry.cueTitle}"` : ''}>${linkToCopyStart}${val.trim()}${linkToCopy}</span>`;
+                    transIndex++;
+                }
             });
         }
         if (rightColumnHtml) inner += `<span class="right-column">${rightColumnHtml}</span>`;
@@ -1411,7 +1509,7 @@ window.buildSutta = async function(rawSlug) {
     // Класс — настоящий язык ("${lang}-lang", для hide-pali/hide-english/hide-russian, wildcard
     // [class*="-lang"] в uiextra.css) плюс .lang-2nd на второй и далее переводчик — позиционный
     // маркер стиля (приглушённый цвет), не языковой. См. тот же приём в тексте сегментов ниже.
-    const allEntries = columns.flatMap(lang => transEntriesByLang[lang].map(entry => ({ lang, entry })));
+    const allEntries = orderedEntries;
     const firstLang = allEntries[0] ? allEntries[0].lang : columns[0];
     const translatorSpans = allEntries.map(({ lang, entry }, i) => {
         let displayName = (window.siteTranslators && window.siteTranslators[lang] && window.siteTranslators[lang][entry.translatorId])
@@ -1424,7 +1522,7 @@ window.buildSutta = async function(rawSlug) {
         } else {
             label = lang === 'ru' ? 'Рус: ' : lang === 'en' ? 'Eng: ' : `${lang}: `;
         }
-        const rowClass = i === 0 ? `${lang}-lang` : `${lang}-lang lang-2nd`;
+        const rowClass = (i === 0 ? `${lang}-lang` : `${lang}-lang lang-2nd`) + (entry.cueClass || '');
         return `<span class="${rowClass}" lang="${lang}"> ${label}${displayName}</span>`;
     });
 
