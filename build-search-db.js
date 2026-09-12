@@ -11,7 +11,7 @@ const { DatabaseSync } = require('node:sqlite');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const { paliSkel } = require('./core/pali-skeleton.js');
+const { paliSkel } = require('./public/overrides/js/pali-skeleton.js');
 
 const DATA_ROOT = path.join(__dirname, 'siteroot', 'data');
 const SC_BILARA = path.join(DATA_ROOT, 'suttacentral.net', 'sc-data', 'sc_bilara_data');

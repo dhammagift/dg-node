@@ -19,7 +19,7 @@
 
 const fsSync = require('fs');
 const path = require('path');
-const { paliSkel } = require('./pali-skeleton.js');
+const { paliSkel } = require('../public/overrides/js/pali-skeleton.js');
 
 // searchDb is the open dg.db handle; skeletonDB is the in-memory sutta index, which is rebuilt
 // after the database is (re)loaded, so it arrives through a setter rather than being captured

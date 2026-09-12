@@ -168,6 +168,13 @@ window.initPaliAutocomplete = function(selector) {
                 await _loadScript('/assets/js/jquery-ui.min.js');
             }
 
+            // Shared with the server (build-search-db.js, core/search-core.js) — the same file,
+            // so the rules that decide "satipaṭṭhāna and satipathana are the same word" cannot
+            // drift between what the box predicts and what the search itself suggests.
+            if (typeof window.paliSkel !== 'function') {
+                await _loadScript('/assets/js/pali-skeleton.js');
+            }
+
             // Загружаем словарь через нативный fetch
             if (!suttaWordsCache) {
                 const response = await fetch("/assets/texts/sutta_words.txt");
@@ -206,6 +213,57 @@ window.initPaliAutocomplete = function(selector) {
     inputEl.addEventListener("input", lazyLoadAndInit);
     inputEl.addEventListener("click", lazyLoadAndInit);
 };
+
+/* Нечёткий фолбэк выпадающего списка. Собственный матчер выше прощает только удвоение
+   (`$1{1,2}`) и путаницу m/n, поэтому "satipatta" и "satipathana" не давали вообще ничего:
+   в словаре стоит "satipaṭṭhānā", а пропущенная аспирация и не та гласная ему не по зубам.
+   Скелет (pali-skeleton.js, общий с сервером) сворачивает именно это.
+
+   Сравниваем НАЧАЛОМ, а не целиком: человек ещё печатает, слово обычно недонабрано.
+   Индекс строится один раз и только когда фолбэк впервые понадобился — при точном вводе
+   (подавляющее большинство случаев) за это не платит никто. */
+var skelIndex = null;
+
+function buildSkelIndex(allWords) {
+    var index = new Map();
+    for (var i = 0; i < allWords.length; i++) {
+        var raw = allWords[i];
+        var label = raw.label || raw.value || raw;
+        // Entries look like "satipaṭṭhānā 117" (form + how often it occurs) or are plain
+        // phrases; the skeleton is built from the first word either way.
+        var head = String(label).trim().split(/\s+/)[0];
+        if (!head) continue;
+        var skel = window.paliSkel(head);
+        if (skel.length < 3) continue;
+        var bucket = index.get(skel);
+        if (!bucket) index.set(skel, bucket = []);
+        bucket.push(raw);
+    }
+    return index;
+}
+
+function fuzzyWordMatches(term, allWords, limit) {
+    if (typeof window.paliSkel !== 'function') return [];
+    var skel = window.paliSkel(term);
+    if (skel.length < 3) return [];
+    if (!skelIndex) skelIndex = buildSkelIndex(allWords);
+    var hits = [];
+    skelIndex.forEach(function (bucket, key) {
+        if (key.indexOf(skel) !== 0) return;
+        for (var i = 0; i < bucket.length; i++) hits.push({ item: bucket[i], extra: key.length - skel.length });
+    });
+    // Closest first (the whole word typed beats a long compound that merely starts the same),
+    // then by how often the form actually occurs — the trailing number in the dictionary line.
+    function occurrences(entry) {
+        var m = /\s(\d+)$/.exec(String(entry.label || entry.value || entry));
+        return m ? parseInt(m[1], 10) : 0;
+    }
+    hits.sort(function (a, b) {
+        if (a.extra !== b.extra) return a.extra - b.extra;
+        return occurrences(b.item) - occurrences(a.item);
+    });
+    return hits.slice(0, limit).map(function (h) { return h.item; });
+}
 
 function bindAutocomplete(selector, allWords) {
     var accentMap = {
@@ -335,6 +393,12 @@ function bindAutocomplete(selector, allWords) {
                 .concat(strictAllList)
                 .concat(looseAllList)
                 .slice(0, maxRecord);
+
+            // Ничего не совпало — скорее всего опечатка в пали, а не отсутствующее слово. Раньше
+            // выпадашка просто не открывалась, и человек узнавал об ошибке только после Enter.
+            if (!resultList.length) {
+                resultList = fuzzyWordMatches(lastTerm, allWords, 12);
+            }
 
             response(resultList);
         },

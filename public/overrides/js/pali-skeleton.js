@@ -1,7 +1,12 @@
-// pali-skeleton.js — one normalization shared by the vocabulary builder (build-search-db.js) and
-// the "did you mean" lookup (core/search-core.js suggestWords). It has to be the same function on
-// both sides: the builder stores a skeleton per word form, the query side computes one for what
-// was typed, and they only meet if the rules match exactly.
+// pali-skeleton.js — one normalization shared by everything that has to agree on "these two
+// spellings are the same Pali word": the vocabulary builder (build-search-db.js), the "did you
+// mean" lookup on the server (core/search-core.js suggestWords), and the typo-tolerant fallback
+// in the search box's own autocomplete (autopali.js). The builder stores a skeleton per word
+// form and the query side computes one for what was typed — they only meet if the rules match
+// exactly, so there is deliberately ONE copy of them.
+//
+// It lives under public/overrides/js/ (not core/) because the browser needs it too, and it is
+// served from there as /assets/js/pali-skeleton.js; the server just require()s the same file.
 //
 // The idea: reduce a Pali word to the shape it is usually MIS-spelled as, so the most common
 // mistakes cost a plain map lookup instead of an edit-distance scan. What gets folded is what
@@ -25,11 +30,13 @@ function paliSkel(word) {
         .replace(/m(?![aeiou])/g, 'n');
 }
 
-module.exports = { paliSkel };
+// Both sides of the same file: require() on the server, a plain <script> in the browser.
+if (typeof module !== 'undefined' && module.exports) module.exports = { paliSkel };
+if (typeof window !== 'undefined') window.paliSkel = paliSkel;
 
 // Self-check: `node core/pali-skeleton.js`. The point of the file is that these groups collapse
 // together and the last group does not — a rule change that breaks either direction shows up here.
-if (require.main === module) {
+if (typeof require !== 'undefined' && require.main === module) {
     const assert = require('assert');
     for (const group of [
         ['satipaṭṭhāna', 'satipatthana', 'satipattana', 'satipathana'],
