@@ -224,8 +224,8 @@ function getTranslatorChoice() {
 // anyway, and a language with no pick of its own keeps the priority default (translatorsForSutta),
 // so this composes with any langs= set without the client having to predict which language the
 // server will land on (it can't, on a cold load with no ?lang= yet).
-function translatorsQueryFor(override) {
-    const choice = override || getTranslatorChoice();
+function translatorsQueryFor() {
+    const choice = getTranslatorChoice();
     const keys = Object.keys(choice).reduce((acc, lang) =>
         acc.concat(Array.isArray(choice[lang]) ? choice[lang] : []), []);
     return keys.length ? `&translators=${encodeURIComponent(keys.join(','))}` : '';
@@ -1181,23 +1181,17 @@ window.buildSutta = async function(rawSlug) {
             // выбор переводчика вообще может сосуществовать с несколькими языками.
             langsQuery = `mode=${encodeURIComponent(READER_MODE.modeKey)}&langs=${encodeURIComponent(explicitLangs)}` +
                 (trnQuery || '');
-        } else if (READER_MODE.modeKey === 'multi') { multiBranch: {
-            // Набор языков для multi — из уже сохранённого порядка пользователя
-            // (getLangOrder(), тот же, что реордерит колонки). Owner: "не хардкодить языки" —
-            // при первом заходе (порядок ещё не сохранён) единственный честный дефолт —
-            // текущий язык + следующий РЕАЛЬНО доступный на сайте (availableLangs, см.
-            // dg-light.js — сканируется из configs/reader/lang_*.json, не список в коде).
+        } else if (READER_MODE.modeKey === 'multi' && !trnQuery && getStack().length) {
+            // Сохранённый набор решает сразу и какие языки, и каких переводчиков. Явный
+            // ?translators= в адресе всё же главнее — поэтому он в условии ветки.
+            const stack = getStack();
+            const stackLangs = [...new Set(stack.map(k => k.split('_')[0]))];
+            langsQuery = `mode=${encodeURIComponent(READER_MODE.modeKey)}`
+                + `&langs=${encodeURIComponent(stackLangs.join(','))}`
+                + `&translators=${encodeURIComponent(stack.join(','))}`;
+        } else if (READER_MODE.modeKey === 'multi') {
             // Отправляем ТОЛЬКО langs= (её первый элемент и есть текущий/первый язык) — не
             // добавляем отдельный lang=, чтобы сервер не путался, какой из двух главнее.
-            // The saved stack decides both which languages and which translators, in one go.
-            const stack = getStack();
-            if (!trnQuery && stack.length) {   // an explicit ?translators= in the address still wins
-                const stackLangs = [...new Set(stack.map(k => k.split('_')[0]))];
-                langsQuery = `mode=${encodeURIComponent(READER_MODE.modeKey)}`
-                    + `&langs=${encodeURIComponent(stackLangs.join(','))}`
-                    + `&translators=${encodeURIComponent(stack.join(','))}`;
-                break multiBranch;
-            }
             // Первый заход в мульти (стека ещё нет): берём включённые языки — ту же общую
             // настройку, что и /settings/. Одного dgReadingLangOrder мало: слушатель смены языка
             // в home.js пишет туда ТЕКУЩИЙ язык на каждой загрузке, так что на чистом профиле там
@@ -1211,16 +1205,6 @@ window.buildSutta = async function(rawSlug) {
             langsQuery = `mode=${encodeURIComponent(READER_MODE.modeKey)}` +
                 (langs.length ? `&langs=${encodeURIComponent(langs.join(','))}` : '') +
                 (trnQuery || translatorsQueryFor());
-        } } else if (READER_MODE.tempLangs && READER_MODE.tempLangs.length && READER_MODE.tempSlug === slug) {
-            // Single-column modes: the language popover's checkboxes are a per-TEXT trial (owner:
-            // "применялось, но не сохранялось") — sent as an explicit langs=, never written to
-            // dgReadingLangOrder. tempSlug pins it to this text, so the next one is back to just
-            // the main language. multi persists instead (branch above). Set by home.js.
-            // tempTranslators is the same per-text trial one level down: in "Читать" a translator
-            // picked for a language you are only peeking at lives exactly as long as the peek
-            // does; only the MAIN language's translator is written to TRANSLATORS_KEY (home.js).
-            langsQuery = `mode=${encodeURIComponent(READER_MODE.modeKey)}&langs=${encodeURIComponent(READER_MODE.tempLangs.join(','))}` +
-                (trnQuery || translatorsQueryFor(READER_MODE.tempTranslators));
         } else {
             const langParam = READER_MODE.lang ? `&lang=${encodeURIComponent(READER_MODE.lang)}` : '';
             // "Читать" is one language AND one translation — the first one in the stack that is
@@ -1315,8 +1299,7 @@ window.buildSutta = async function(rawSlug) {
     // them in the order the user picked instead, so "сделать основным" in the popover actually
     // moves that translation to the top of the language's stack. Keys the choice doesn't mention
     // (a language still on the server's priority default) keep the order they came in.
-    const trnChoice = (READER_MODE.tempTranslators && READER_MODE.tempSlug === slug)
-        ? READER_MODE.tempTranslators : getTranslatorChoice();
+    const trnChoice = getTranslatorChoice();
     columns.forEach(lang => {
         const picked = Array.isArray(trnChoice[lang]) ? trnChoice[lang] : [];
         const keys = (keysByLang[lang] || []).slice().sort((a, b) => {

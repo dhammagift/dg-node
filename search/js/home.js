@@ -1324,13 +1324,7 @@
         title: { ru: 'Языки перевода', en: 'Translation Languages' },
         main: { ru: 'основной', en: 'main' },
         setMain: { ru: 'сделать основным', en: 'set as main' },
-        missing: { ru: 'нет перевода', en: 'no translation' },
-        // issue #6 этап 2 — the translator sub-line under each language, and the one line that
-        // tells the two reader presets apart: "Мульти" keeps the set, "Читать" borrows it for
-        // this text only (owner: "не запомнится в мульти, а сохранится").
-        picked: { ru: 'выбрано', en: 'selected' },
-        saved: { ru: 'Сохранится', en: 'Saved' },
-        trial: { ru: 'Только для этого текста', en: 'This text only' }
+        missing: { ru: 'нет перевода', en: 'no translation' }
     };
     function langMenuStr(key) { return LANGMENU_STR[key][menuLang() === 'ru' ? 'ru' : 'en']; }
     var pillLangs = [];
@@ -1383,35 +1377,6 @@
         menu.addEventListener('click', function (e) {
             var pin = e.target.closest('.dg-lpmenu-pin');
             if (pin) { dgApplyLangSelection(menu, pin.closest('.dg-lpmenu-row').dataset.lang); return; }
-            // Translator sub-line: unfold/fold that language's list (issue #6 этап 2).
-            var trnBtn = e.target.closest('.dg-lpmenu-trn');
-            if (trnBtn) {
-                var list = trnBtn.nextElementSibling;
-                if (!list) return;
-                list.hidden = !list.hidden;
-                trnBtn.classList.toggle('is-open', !list.hidden);
-                trnBtn.setAttribute('aria-expanded', String(!list.hidden));
-                return;
-            }
-            var tpin = e.target.closest('.dg-lpmenu-tpin');
-            if (tpin) {
-                e.preventDefault(); // it sits inside the row's <label> — don't let it flip the checkbox too
-                dgApplyTranslatorSelection(menu, tpin.closest('.dg-lpmenu-tlist').dataset.lang, tpin.dataset.key);
-                return;
-            }
-            // Anywhere else in a translator row: toggle that translator (bigger hit target than
-            // the 14px box). A direct click on the box itself fires its own 'change' below.
-            var trow = e.target.closest('.dg-lpmenu-trow');
-            if (trow) {
-                if (e.target.tagName !== 'INPUT') {
-                    var tbox = trow.querySelector('.dg-tcheck');
-                    if (tbox) {
-                        tbox.checked = !tbox.checked;
-                        dgApplyTranslatorSelection(menu, trow.closest('.dg-lpmenu-tlist').dataset.lang);
-                    }
-                }
-                return;
-            }
             // Row click outside the checkbox itself still toggles it (bigger hit target) — except
             // on the MAIN row: owner tapped its "основной" badge and lost the language (and with
             // it the "···" button, the set being down to one). Dropping the main language is a
@@ -1426,9 +1391,6 @@
         // above skips INPUT targets so this is the only path for a direct checkbox click.
         menu.addEventListener('change', function (e) {
             if (e.target.classList.contains('dg-check')) dgApplyLangSelection(menu);
-            else if (e.target.classList.contains('dg-tcheck')) {
-                dgApplyTranslatorSelection(menu, e.target.closest('.dg-lpmenu-tlist').dataset.lang);
-            }
         });
         document.addEventListener('click', function (e) {
             if (menu.hidden || e.target.closest('#dg-lpmenu') || e.target.closest('.dg-lpill-more')) return;
@@ -1456,129 +1418,6 @@
             .replace(/<a[^>]*href=["']?https?:[^>]*>[\s\S]*?<\/a>/gi, '')
             .replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
         return name || (id.charAt(0).toUpperCase() + id.slice(1));
-    }
-    function trnAvailable(lang) {
-        var rm = window.READER_MODE;
-        var all = (rm && Array.isArray(rm.availableTranslators)) ? rm.availableTranslators : [];
-        return all.filter(function (k) { return k.indexOf(lang + '_') === 0; });
-    }
-    // What is ticked for a language: the user's own pick if there is one, otherwise whoever the
-    // server actually rendered (its priority default) — so an untouched language shows a real
-    // name instead of an empty line.
-    function trnSelected(lang, avail) {
-        var rm = window.READER_MODE;
-        // Same tempSlug guard buildSutta uses (megareader.js, tempLangs branch): a trial pick
-        // belongs to the text it was made on, and nothing resets tempTranslators on navigation —
-        // without the guard the next sutta renders the server's default while the popover still
-        // ticks and stars the translator from the previous text's peek.
-        var temp = (rm && rm.tempSlug === window._currentSlug) ? rm.tempTranslators : null;
-        var saved = (window.getTranslatorChoice && window.getTranslatorChoice()) || {};
-        var inAvail = function (k) { return !avail || avail.indexOf(k) !== -1; };
-        var raw = (temp && temp[lang]) || saved[lang];
-        // Filter BEFORE deciding the pick is usable: a saved translator who didn't translate THIS
-        // text leaves nothing of it, and the server has already fallen back to its priority
-        // default — fall back to whoever is actually on screen too, or the popover shows no
-        // checkbox, no ★ and a "сделать основным" pin on every row while a translation is visible.
-        var picked = (Array.isArray(raw) ? raw : []).filter(inAvail);
-        if (picked.length) return picked;
-        var shown = rm && rm.shownTranslators && rm.shownTranslators[lang];
-        return Array.isArray(shown) ? shown.filter(inAvail) : [];
-    }
-    function trnBlock(lang) {
-        var avail = trnAvailable(lang);
-        if (!avail.length) return '';
-        var sel = trnSelected(lang, avail);
-        // Selected first (in their own order — sel[0] is main), then the rest in the SERVER's
-        // priority order (translator-priority.json, fetched by megareader.js), then by name. The
-        // priority part matters for a language that is currently off: nothing is ticked, so the
-        // sub-line names ordered[0] — which has to be whoever the server would actually pick if
-        // the language were turned on, not just whoever sorts first alphabetically.
-        var prio = (window.translatorPriority && window.translatorPriority[lang]) || [];
-        var ordered = sel.concat(avail.filter(function (k) { return sel.indexOf(k) === -1; })
-            .sort(function (a, b) {
-                var ia = prio.indexOf(a), ib = prio.indexOf(b);
-                if (ia !== ib) return (ia === -1 ? 1e9 : ia) - (ib === -1 ? 1e9 : ib);
-                return trnName(a).localeCompare(trnName(b));
-            }));
-        var summary = sel.length > 1 ? (langMenuStr('picked') + ' ' + sel.length) : trnName(ordered[0]);
-        var rows = ordered.map(function (key) {
-            var on = sel.indexOf(key) !== -1;
-            // A <div>, not a <label>: legacy extrastyles.css carries a global
-            // `label input[type=checkbox] { display: none }` (see home.css:1093) that would hide
-            // every one of these. The row-click handler below toggles the box instead — which is
-            // how the language rows above have always worked anyway.
-            return '<div class="dg-lpmenu-trow' + (on ? ' is-on' : '') + '">' +
-                '<input type="checkbox" class="dg-tcheck" data-key="' + esc(key) + '"' + (on ? ' checked' : '') + '>' +
-                '<span class="dg-lpmenu-tname">' + esc(trnName(key)) + '</span>' +
-                (key === sel[0]
-                    ? '<span class="dg-lpmenu-tstar" aria-hidden="true">★</span>'
-                    : '<button type="button" class="dg-lpmenu-tpin" data-key="' + esc(key) + '" title="' + esc(langMenuStr('setMain')) + '">☆</button>') +
-                '</div>';
-        }).join('');
-        return '<button type="button" class="dg-lpmenu-trn" data-lang="' + esc(lang) + '" aria-expanded="false">' +
-            '<span class="dg-lpmenu-tsum">' + esc(summary) + '</span>' +
-            '<span class="dg-lpmenu-chev" aria-hidden="true">⌄</span></button>' +
-            '<div class="dg-lpmenu-tlist" data-lang="' + esc(lang) + '" hidden>' + rows + '</div>';
-    }
-    function dgSaveTranslatorChoice(lang, picked) {
-        try {
-            var all = (window.getTranslatorChoice && window.getTranslatorChoice()) || {};
-            all[lang] = picked;
-            localStorage.setItem('dgReadingTranslators', JSON.stringify(all));
-        } catch (e) { /* приватный режим */ }
-    }
-    /* Same split as dgApplyLangSelection: "Мульти" saves the set, every other reader mode treats
-       it as a per-text trial — except the MAIN language's translator, which is "как я читаю" and
-       persists in both (owner: "Читать — на основном языке, но можно подглядывать"). */
-    function dgApplyTranslatorSelection(menu, lang, makeMainKey) {
-        var rm = window.READER_MODE;
-        var list = menu.querySelector('.dg-lpmenu-tlist[data-lang="' + lang + '"]');
-        if (!list || !rm || !window._currentSlug) return;
-        var boxes = Array.prototype.slice.call(list.querySelectorAll('.dg-tcheck'));
-        if (makeMainKey) boxes.forEach(function (b) { if (b.dataset.key === makeMainKey) b.checked = true; });
-        var picked = boxes.filter(function (b) { return b.checked; }).map(function (b) { return b.dataset.key; });
-        // A language that is on screen always has someone translating it — unticking the last one
-        // would mean "this language, by nobody". Turning the language OFF is the row's own checkbox.
-        if (!picked.length && boxes.length) { boxes[0].checked = true; picked = [boxes[0].dataset.key]; }
-        if (makeMainKey) picked = [makeMainKey].concat(picked.filter(function (k) { return k !== makeMainKey; }));
-
-        var trial = rm.modeKey !== 'multi';
-        var base = trial ? (rm.tempTranslators || (window.getTranslatorChoice && window.getTranslatorChoice()) || {})
-            : ((window.getTranslatorChoice && window.getTranslatorChoice()) || {});
-        var next = Object.assign({}, base);
-        next[lang] = picked;
-        if (trial) {
-            rm.tempTranslators = next;
-            rm.tempSlug = window._currentSlug;
-            // buildSutta only reads tempTranslators on its tempLangs branch — a translator change
-            // with no language change yet has to put the current set there itself.
-            if (!rm.tempLangs || !rm.tempLangs.length) rm.tempLangs = pillLiveLangs.slice();
-            // READER_MODE.lang, not pillLangs[0]: the pill's order is rebuilt from the rendered
-            // DOM, so peeking at another language can put IT first there. The main language is
-            // the one the server resolved for this request.
-            if (lang === rm.lang) dgSaveTranslatorChoice(lang, picked);
-        } else {
-            dgSaveTranslatorChoice(lang, picked);
-        }
-        // A stale ?translators= in the address outranks everything else buildSutta() looks at
-        // (TOC per-translator links land that way and nothing ever cleared it — the reader stayed
-        // pinned to that translator forever). This popover owns the parameter now: drop it.
-        var params = new URLSearchParams(document.location.search);
-        if (params.has('translators')) {
-            params.delete('translators');
-            var qs = params.toString();
-            history.replaceState(history.state, '', document.location.pathname + (qs ? '?' + qs : ''));
-        }
-        if (typeof window.buildSutta !== 'function') return;
-        var done = window.buildSutta(window._currentSlug);
-        // buildSutta repaints the pill at the end, which closes this popover — reopen it on the
-        // fresh state with the same language still unfolded, so picking a second translator
-        // doesn't mean reopening two menus after every click.
-        if (done && done.then) done.then(function () {
-            if (document.getElementById('dg-lpmenu') && document.getElementById('dg-lpmenu').hidden) dgToggleLangMenu();
-            var btn = document.querySelector('.dg-lpmenu-trn[data-lang="' + lang + '"]');
-            if (btn) btn.click();
-        });
     }
     function dgSetLangMenuMain(menu, lang) {
         menu.querySelectorAll('.dg-lpmenu-row').forEach(function (row) {
@@ -1688,31 +1527,9 @@
             }
             return;
         }
-        if (st !== 'reader' || !rm || !window._currentSlug) return;
-        if (rm.modeKey === 'multi') {
-            rm.lang = mainLang;
-            var params = new URLSearchParams(document.location.search);
-            params.set('lang', mainLang);
-            params.delete('langs'); // stale explicit langs= would otherwise outrank dgReadingLangOrder — see buildSutta()
-            history.pushState({ page: window._currentSlug, mode: 'multi' }, "", '?' + params.toString());
-            if (typeof window.buildSutta === 'function') window.buildSutta(window._currentSlug);
-            return;
-        }
-        // Trial (single/memorize/devanagari). The pin is the one thing that DOES persist:
-        // it's the reading language (= site language), switchReadingLanguage() saves it itself.
-        if (forceMainLang && mainLang !== rm.lang && typeof window.switchReadingLanguage === 'function') {
-            rm.tempLangs = null;
-            window.switchReadingLanguage(mainLang);
-            return;
-        }
-        var shown = checked.indexOf(mainLang) !== -1 ? ordered : checked; // main may itself be unchecked
-        rm.tempLangs = shown.length ? shown : [mainLang];
-        rm.tempSlug = window._currentSlug;
-        // Nothing checked = Pāḷi only — that's the pill's own 2nd-segment toggle, reuse it (and
-        // keep whatever the user had for the Pāḷi segment when turning translations back on).
-        dgSetPaliToggle(shown.length ? (dgPillMode().pli ? 'pli-2nd' : '2nd') : 'pli');
-        if (shown.length && typeof window.buildSutta === 'function') window.buildSutta(window._currentSlug);
-        else dgRenderLangPill();
+        /* Ветки ридера отсюда убраны: в ридере этот попап больше не открывается — «···» ведёт
+           в окно «Переводы» (tsToggle), а в memorize/devanagari у плашки одна кнопка вкл/выкл и
+           точек нет вовсе. Остаётся страница результатов, она возвращается выше. */
     }
     // The pill's pli/2nd segments and the trial above share this: megareader's setLanguage()
     // (hide-pali/hide-english/... classes) + the same localStorage/cloud bookkeeping as before.
@@ -1747,17 +1564,8 @@
                     '<span class="dg-lpmenu-tag">' + esc(langMenuStr('main')) + '</span>' +
                     '<span class="dg-lpmenu-missing">' + esc(langMenuStr('missing')) + '</span>' +
                     '<button type="button" class="dg-lpmenu-pin">' + esc(langMenuStr('setMain')) + '</button>' +
-                    '</div>' +
-                    // Who translates this language, and the list behind it — reader only (the
-                    // results page has no per-text translator roster to offer).
-                    (inReader && !missing ? trnBlock(lang) : '');
-            }).join('') +
-            // The single line that tells "Мульти" (keeps the set) from "Читать" (borrows it for
-            // this text) — same popover otherwise, so the difference has to be visible here.
-            (inReader
-                ? '<div class="dg-lpmenu-foot' + (window.READER_MODE && window.READER_MODE.modeKey === 'multi' ? ' is-saved' : '') + '">' +
-                    esc(langMenuStr(window.READER_MODE && window.READER_MODE.modeKey === 'multi' ? 'saved' : 'trial')) + '</div>'
-                : '');
+                    '</div>';
+            }).join('');
         // Was a static CSS right/bottom (right:20px), independent of the pill's own position —
         // drifted away from the dots button once .dg-lpill started hugging the text column on
         // wide screens instead of sitting flush at the viewport edge (owner: "уехало меню, должно
