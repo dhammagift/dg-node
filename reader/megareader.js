@@ -1564,15 +1564,20 @@ window.buildSutta = async function(rawSlug) {
     // [class*="-lang"] в uiextra.css) плюс .lang-2nd на второй и далее переводчик — позиционный
     // маркер стиля (приглушённый цвет), не языковой. См. тот же приём в тексте сегментов ниже.
     const allEntries = orderedEntries;
-    const firstLang = allEntries[0] ? allEntries[0].lang : columns[0];
+    // Номер второго и следующих переводов считается ВНУТРИ языка, а не по всему списку: с тех
+    // пор как языки можно чередовать, сквозной индекс врал — второй английский при наборе
+    // "Sujato·англ, o·рус, Thanissaro·англ" подписывался "Translation 3".
+    const nthInLang = new Map();
     const translatorSpans = allEntries.map(({ lang, entry }, i) => {
+        const nth = (nthInLang.get(lang) || 0) + 1;
+        nthInLang.set(lang, nth);
         let displayName = (window.siteTranslators && window.siteTranslators[lang] && window.siteTranslators[lang][entry.translatorId])
             || (entry.translatorId.charAt(0).toUpperCase() + entry.translatorId.slice(1));
         let label;
         if (i === 0) {
             label = lang === 'ru' ? 'Пер. ' : lang === 'en' ? 'Trn: ' : `${lang}: `;
-        } else if (lang === firstLang) {
-            label = lang === 'ru' ? `Перевод ${i + 1}: ` : lang === 'en' ? `Translation ${i + 1}: ` : `${lang} ${i + 1}: `;
+        } else if (nth > 1) {
+            label = lang === 'ru' ? `Перевод ${nth}: ` : lang === 'en' ? `Translation ${nth}: ` : `${lang} ${nth}: `;
         } else {
             label = lang === 'ru' ? 'Рус: ' : lang === 'en' ? 'Eng: ' : `${lang}: `;
         }
