@@ -688,4 +688,21 @@
             }
         });
     }
+
+    /* Сверка версии базы уже была (app.js checkForUpdate на каждой загрузке), но узнать о новой
+       сборке можно было, только зайдя в Настройки: событие никто не слушал. Одна подсказка —
+       один раз на сборку, чтобы не долбить на каждой загрузке. Скачивание по-прежнему по кнопке
+       в Настройках: пол-гигабайта не качают без спроса (docs/OFFLINE_PWA_PLAN.md). */
+    var UPDATE_SEEN_KEY = 'dg.offline.updateSeen';
+    window.addEventListener('dg:update-available', function (e) {
+        var build = (e.detail && e.detail.build_id) || '';
+        try {
+            if (localStorage.getItem(UPDATE_SEEN_KEY) === build) return;
+            localStorage.setItem(UPDATE_SEEN_KEY, build);
+        } catch (err) { /* приватный режим — покажем подсказку, просто каждый раз */ }
+        if (typeof window.showBubbleNotification !== 'function') return;
+        window.showBubbleNotification(isRuLang()
+            ? 'Офлайн-библиотека обновилась — скачать новую версию можно в Настройках'
+            : 'The offline library has a new version — download it from Settings', 7000, 'info');
+    });
 })();
