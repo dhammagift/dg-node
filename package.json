@@ -11,6 +11,7 @@
     "test-offline-parity": "node test/offline-parity.js",
     "test-offline-resume": "node test/offline-resume.js",
     "build-mobile-db": "node build-mobile-db.js",
+    "publish-offline-db": "node publish-offline-db.js",
     "test-offline-outage": "node test/offline-outage.js",
     "test-app-ui": "node test/app-ui/run-all.js",
     "test-app-progress": "node test/app-ui/check-progress.js",
