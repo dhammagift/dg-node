@@ -1,0 +1,655 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Переводы — прототип окна</title>
+<style>
+/* ——— tokens ——————————————————————————————————————————————————————————————— */
+:root{
+  color-scheme: light dark;
+  --bg:#fbfbfd; --ink:#16161a; --ink-2:#5d5d6b; --muted:#71717f; --line:#e3e3ea;
+  --glass:rgba(255,255,255,.94); --glass-edge:rgba(255,255,255,.9);
+  --card:#ffffff; --sunk:#f1f1f5; --accent:#0a9e74; --accent-soft:rgba(10,158,116,.10);
+  --on-accent:#fff; --scrim:rgba(16,16,26,.32);
+  --shadow:0 1px 2px rgba(16,16,30,.06), 0 18px 50px -12px rgba(16,16,30,.28);
+  --row:46px;
+}
+/* dark: system setting via the media query, explicit choice via the attribute —
+   both must land on the same tokens */
+:root[data-theme="dark"]{
+    --bg:#0f0f14; --ink:#ededf4; --ink-2:#b6b6c4; --muted:#8b8b9c; --line:#2b2b36;
+    --glass:rgba(22,22,30,.93); --glass-edge:rgba(255,255,255,.12);
+    --card:#1a1a22; --sunk:#23232e; --accent:#17b98a; --accent-soft:rgba(23,185,138,.14);
+    --on-accent:#04140f; --scrim:rgba(0,0,0,.48);
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 22px 60px -14px rgba(0,0,0,.7);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f0f14; --ink:#ededf4; --ink-2:#b6b6c4; --muted:#8b8b9c; --line:#2b2b36;
+    --glass:rgba(22,22,30,.93); --glass-edge:rgba(255,255,255,.12);
+    --card:#1a1a22; --sunk:#23232e; --accent:#17b98a; --accent-soft:rgba(23,185,138,.14);
+    --on-accent:#04140f; --scrim:rgba(0,0,0,.48);
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 22px 60px -14px rgba(0,0,0,.7);
+  }
+}
+@media (prefers-reduced-transparency: reduce){
+  :root{ --glass:var(--card) }
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+button{font:inherit;color:inherit}
+
+/* ——— faux reader behind ——————————————————————————————————————————————————— */
+.reader{max-width:680px;margin:0 auto;padding:28px 20px 140px}
+.reader h1{font-size:clamp(1.5rem,4.5vw,2rem);line-height:1.1;letter-spacing:-.02em;
+  font-weight:650;margin:0 0 4px;text-align:center}
+.reader .sub{text-align:center;color:var(--muted);font-size:14px;margin:0 0 26px}
+.seg-pali{font-weight:600;margin:18px 0 6px}
+.seg-tr{color:var(--ink-2);margin:0 0 6px}
+.seg-tr .who{display:inline-block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--muted);margin-right:6px;vertical-align:1px}
+
+/* ——— pill with the ⠿ button ——————————————————————————————————————————————— */
+.pill{
+  position:fixed; right:16px; bottom:16px; z-index:5;
+  display:flex; align-items:center; gap:2px; padding:5px;
+  background:var(--glass); backdrop-filter:blur(20px) saturate(180%);
+  -webkit-backdrop-filter:blur(20px) saturate(180%);
+  border:1px solid var(--glass-edge); border-radius:999px; box-shadow:var(--shadow);
+}
+.pill button{
+  border:0; background:transparent; border-radius:999px; padding:7px 13px; font-size:13.5px;
+  cursor:pointer; transition:transform .1s ease-out, background .15s;
+}
+.pill button[aria-pressed="true"]{background:var(--sunk);font-weight:600}
+.pill button:active{transform:scale(.94)}
+.pill .more{padding:7px 11px;letter-spacing:1px;color:var(--muted)}
+
+/* ——— scrim + sheet ————————————————————————————————————————————————————————— */
+.scrim{
+  position:fixed; inset:0; background:var(--scrim); opacity:0; z-index:8;
+  backdrop-filter:blur(1px); -webkit-backdrop-filter:blur(1px);
+}
+.scrim[hidden]{display:none}
+
+.sheet{
+  position:fixed; z-index:9; left:0; right:0; bottom:0;
+  background:var(--glass); backdrop-filter:blur(40px) saturate(180%);
+  -webkit-backdrop-filter:blur(40px) saturate(180%);
+  border:1px solid var(--glass-edge); border-bottom:0;
+  border-radius:20px 20px 0 0; box-shadow:var(--shadow);
+  display:flex; flex-direction:column; max-height:min(86vh,720px);
+  padding-bottom:env(safe-area-inset-bottom);
+  will-change:transform;
+}
+.sheet[hidden]{display:none}
+@media (min-width:760px){
+  .sheet{
+    left:auto; right:18px; bottom:74px; width:392px; border-radius:18px;
+    border-bottom:1px solid var(--glass-edge); transform-origin:100% 100%;
+    max-height:min(72vh,640px);
+  }
+  .sheet .grabber{display:none}
+}
+
+.grabber{padding:9px 0 3px; cursor:grab; touch-action:none}
+.grabber i{display:block;width:38px;height:4px;border-radius:3px;background:var(--line);margin:0 auto}
+.head{display:flex;align-items:center;gap:10px;padding:6px 16px 10px;touch-action:none}
+.head h2{margin:0;font-size:12px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);
+  font-weight:700}
+.head .count{font-size:12px;color:var(--muted);letter-spacing:0;text-transform:none}
+.grow{flex:1}
+.icon-btn{border:0;background:transparent;color:var(--muted);width:30px;height:30px;border-radius:50%;
+  cursor:pointer;font-size:15px;line-height:1;transition:transform .1s ease-out,background .15s}
+.icon-btn:hover{background:var(--sunk);color:var(--ink)}
+.icon-btn:active{transform:scale(.9)}
+
+/* segmented sort */
+.seg{display:flex;gap:2px;margin:0 16px;padding:3px;background:var(--sunk);border-radius:11px}
+.seg button{
+  flex:1;border:0;background:transparent;color:var(--muted);font-size:13px;padding:6px 4px;
+  border-radius:8px;cursor:pointer;white-space:nowrap;
+  transition:transform .1s ease-out,color .15s,background .18s;
+}
+.seg button[aria-pressed="true"]{background:var(--card);color:var(--ink);font-weight:600;
+  box-shadow:0 1px 3px rgba(16,16,30,.14)}
+.seg button:active{transform:scale(.97)}
+
+/* language chips */
+.chips{display:flex;gap:6px;overflow-x:auto;padding:11px 16px 3px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{
+  flex:0 0 auto;border:1px solid transparent;background:var(--sunk);color:var(--muted);
+  font-size:12.5px;padding:5px 11px;border-radius:999px;cursor:pointer;
+  transition:transform .1s ease-out,background .18s,color .18s,border-color .18s;
+}
+.chip[aria-pressed="true"]{background:var(--accent-soft);color:var(--ink);border-color:var(--accent)}
+.chip:active{transform:scale(.95)}
+
+/* scrollable body with a soft scroll-edge instead of a hard divider */
+.body{overflow:auto;overscroll-behavior:contain;padding:8px 8px 0;
+  -webkit-mask-image:linear-gradient(to bottom,transparent 0,#000 10px);
+          mask-image:linear-gradient(to bottom,transparent 0,#000 10px)}
+
+.rows{position:relative}
+.row{
+  position:absolute;left:0;right:0;height:var(--row);display:flex;align-items:center;gap:10px;
+  padding:0 8px;border-radius:11px;cursor:default;will-change:transform;
+  transition:opacity .18s ease, background .18s;
+}
+.row.is-on{background:var(--accent-soft)}
+.row.is-hidden{opacity:0;pointer-events:none}
+.row.lift{z-index:3;background:var(--card);box-shadow:var(--shadow);transition:none}
+.row:active .name{transform:scale(.995)}
+.hnd{flex:0 0 auto;width:26px;height:var(--row);display:flex;align-items:center;justify-content:center;
+  color:var(--muted);cursor:grab;touch-action:none;opacity:.75;transition:opacity .2s}
+.hnd svg{display:block}
+.rows.sorted .hnd{opacity:.18;cursor:default}
+.tick{
+  flex:0 0 auto;width:20px;height:20px;border-radius:6px;border:1.5px solid var(--muted);
+  background:transparent;padding:0;cursor:pointer;position:relative;
+  transition:transform .1s ease-out,background .16s,border-color .16s;
+}
+.tick:active{transform:scale(.88)}
+.tick[aria-checked="true"]{background:var(--accent);border-color:var(--accent)}
+.tick[aria-checked="true"]::after{
+  content:"";position:absolute;left:6px;top:2.5px;width:5px;height:10px;
+  border:solid var(--on-accent);border-width:0 2px 2px 0;transform:rotate(42deg);
+}
+.name{flex:1;min-width:0;font-size:14.5px;letter-spacing:-.003em;white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis;cursor:pointer}
+.name small{color:var(--muted);font-size:12.5px}
+.tag{flex:0 0 auto;font-size:11px;color:var(--muted);background:var(--sunk);border-radius:6px;
+  padding:2px 7px;letter-spacing:.02em}
+.star{flex:0 0 auto;border:0;background:transparent;color:var(--line);cursor:pointer;font-size:14px;
+  width:28px;height:28px;border-radius:50%;transition:transform .1s ease-out,color .18s}
+.star:hover{color:var(--muted)}
+.star:active{transform:scale(.85)}
+.star.on{color:var(--accent)}
+.ord{flex:0 0 auto;width:12px;text-align:right;font-size:11px;color:var(--muted);
+  font-variant-numeric:tabular-nums}
+.rows.sorted .ord{opacity:0}
+/* the group header already names the language — don't repeat it on every row */
+#rows.sorted.by-lang .tag{opacity:0}
+
+.ghead{position:absolute;left:8px;right:8px;height:var(--row);display:flex;align-items:flex-end;
+  padding:0 4px 6px;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);
+  font-weight:700;will-change:transform;pointer-events:none}
+/* display:flex above beats the UA [hidden] rule — say it explicitly, or every group
+   header piles up on the first row */
+.ghead[hidden]{display:none}
+
+.sect{border-top:1px solid var(--line);margin-top:6px}
+.sect > button{
+  width:100%;display:flex;align-items:center;gap:9px;border:0;background:transparent;
+  padding:12px 12px;font-size:14px;cursor:pointer;text-align:left;
+}
+.sect .cnt{color:var(--muted);font-size:12.5px}
+.sect .chev{color:var(--muted);transition:transform .22s cubic-bezier(.2,.8,.2,1)}
+.sect[data-open="true"] .chev{transform:rotate(180deg)}
+.sect .inner{display:none;padding:0 0 6px}
+.sect[data-open="true"] .inner{display:block}
+
+.foot{
+  border-top:1px solid var(--line);padding:10px 16px;font-size:12.5px;color:var(--muted);
+  background:color-mix(in srgb,var(--card) 50%,transparent);
+}
+.foot b{color:var(--ink);font-weight:600}
+.hint{padding:10px 16px 0;font-size:12px;color:var(--muted)}
+
+@media (prefers-reduced-motion: reduce){
+  .row,.sheet{transition:opacity .18s ease !important}
+}
+@media (prefers-contrast: more){
+  :root{--glass:var(--card);--line:#8a8a99}
+  .row.is-on{outline:1px solid var(--accent)}
+}
+</style>
+</head>
+<body>
+
+<main class="reader" id="reader"></main>
+
+<div class="pill">
+  <button type="button" aria-pressed="true">Pāḷi</button>
+  <button type="button" aria-pressed="true" id="pillLang">Рус</button>
+  <button type="button" class="more" id="openBtn" aria-haspopup="dialog" title="Переводы">⠿</button>
+</div>
+
+<div class="scrim" id="scrim" hidden></div>
+
+<section class="sheet" id="sheet" role="dialog" aria-modal="true" aria-label="Переводы" hidden>
+  <div class="grabber" id="grabber"><i></i></div>
+  <div class="head" id="head">
+    <h2>Переводы <span class="count" id="count"></span></h2>
+    <span class="grow"></span>
+    <button class="icon-btn" id="closeBtn" title="Закрыть">✕</button>
+  </div>
+
+  <div class="seg" role="group" aria-label="Сортировка">
+    <button type="button" data-sort="manual" aria-pressed="true">Мой порядок</button>
+    <button type="button" data-sort="lang" aria-pressed="false">По языку</button>
+    <button type="button" data-sort="name" aria-pressed="false">По переводчику</button>
+  </div>
+
+  <div class="chips" id="chips"></div>
+
+  <div class="body" id="body">
+    <div class="rows" id="rows"></div>
+    <div class="sect" id="editions" data-open="false">
+      <button type="button" id="edToggle">
+        <span>Издания пали</span><span class="cnt" id="edCnt"></span>
+        <span class="grow"></span><span class="chev">⌄</span>
+      </button>
+      <div class="inner"><div class="rows" id="edRows"></div></div>
+    </div>
+  </div>
+
+  <div class="foot" id="foot"></div>
+</section>
+
+<script>
+/* ——————————————————————————————————————————————————————————————————————————————
+   Prototype of the reader's "translations" window. Mock data, real behaviour:
+   springs, 1:1 drag, velocity hand-off, interruptible open/close.
+—————————————————————————————————————————————————————————————————————————————— */
+const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const DESKTOP = () => matchMedia('(min-width:760px)').matches;
+const ROW = 46;
+
+const LANGS = { ru:'Рус', en:'Англ', de:'Deu', sr:'Srp', fr:'Fra' };
+const TRANSLATIONS = [
+  { key:'ru_o',            name:'о',                  note:'с Пали', lang:'ru' },
+  { key:'en_sujato',       name:'Bhikkhu Sujato',                    lang:'en' },
+  { key:'ru_sv',           name:'SV theravada.ru',    note:'с Англ', lang:'ru' },
+  { key:'en_thanissaro',   name:'Thanissaro Bhikkhu',                lang:'en' },
+  { key:'ru_khantibalo',   name:'Хантибало',                         lang:'ru' },
+  { key:'en_suddhaso',     name:'Bhikkhu Suddhaso',                  lang:'en' },
+  { key:'de_sabbamitta',   name:'Sabbamitta',                        lang:'de' },
+  { key:'sr_branko',       name:'Branko Kovačević',                  lang:'sr' },
+  { key:'fr_sekha',        name:'Sekha',                             lang:'fr' },
+];
+const EDITIONS = [
+  { key:'ms',   name:'Mahāsaṅgīti', note:'SuttaCentral', tag:'MS' },
+  { key:'bjt',  name:'Buddha Jayanti', note:'Шри-Ланка', tag:'BJT' },
+  { key:'vri',  name:'Vipassana Research', note:'Индия', tag:'VRI' },
+  { key:'siam', name:'Syāmaraṭṭha', note:'Таиланд',      tag:'Siam' },
+];
+
+const state = {
+  order: TRANSLATIONS.map(t => t.key),
+  on: new Set(['ru_o','en_sujato','ru_sv','en_thanissaro']),
+  langs: new Set(['ru','en']),          // chip filter: which languages the list shows
+  sort: 'manual',
+  edOrder: EDITIONS.map(e => e.key),
+  edOn: new Set(['ms']),
+};
+
+/* ——— spring engine ————————————————————————————————————————————————————————
+   One rAF loop for every animated value. Springs are described the way Apple
+   describes them (response + damping ratio), integrated per frame so a running
+   animation can be re-targeted from its live value and velocity at any moment. */
+const live = new Set();
+let raf = 0, prev = 0;
+function loop(t){
+  const dt = Math.min((t - prev) / 1000, 1/30); prev = t;
+  for (const s of live) if (!s.step(dt)) live.delete(s);
+  raf = live.size ? requestAnimationFrame(loop) : 0;
+}
+function kick(s){ if (!live.has(s)) live.add(s); if (!raf){ prev = performance.now(); raf = requestAnimationFrame(loop); } }
+
+class Spring {
+  constructor(value, apply, { response = 0.4, damping = 1 } = {}){
+    this.x = value; this.v = 0; this.target = value; this.apply = apply;
+    this.w = 2 * Math.PI / response; this.z = damping;
+  }
+  set(v){ this.x = this.target = v; this.v = 0; this.apply(this.x); live.delete(this); }
+  to(target, { velocity, response, damping } = {}){
+    this.target = target;
+    if (velocity !== undefined) this.v = velocity;
+    if (response !== undefined) this.w = 2 * Math.PI / response;
+    if (damping !== undefined) this.z = damping;
+    if (REDUCED) return this.set(target);
+    kick(this);
+  }
+  step(dt){
+    const k = this.w * this.w, c = 2 * this.z * this.w;
+    // sub-stepped semi-implicit Euler — stable at 60/120Hz and after a stall
+    const steps = Math.max(1, Math.ceil(dt / (1/120)));
+    const h = dt / steps;
+    for (let i = 0; i < steps; i++){
+      this.v += (-k * (this.x - this.target) - c * this.v) * h;
+      this.x += this.v * h;
+    }
+    const done = Math.abs(this.x - this.target) < 0.05 && Math.abs(this.v) < 0.05;
+    if (done){ this.x = this.target; this.v = 0; }
+    this.apply(this.x);
+    return !done;
+  }
+}
+/* Apple's momentum projection: where a flick would come to rest. */
+const project = (v, d = 0.998) => (v / 1000) * d / (1 - d);
+const tap = (ms) => { if (navigator.vibrate) navigator.vibrate(ms); };
+
+/* ——— row construction ——————————————————————————————————————————————————— */
+const HANDLE = '<svg width="12" height="16" viewBox="0 0 12 16" fill="currentColor" aria-hidden="true">'
+  + [2,7,12].map(y => [2,9].map(x => `<circle cx="${x}" cy="${y}" r="1.4"/>`).join('')).join('')
+  + '</svg>';
+
+function buildRow(item, kind){
+  const el = document.createElement('div');
+  el.className = 'row';
+  el.dataset.key = item.key;
+  el.dataset.kind = kind;
+  el.innerHTML =
+    `<span class="hnd" data-drag>${HANDLE}</span>` +
+    `<span class="ord"></span>` +
+    `<button class="tick" role="checkbox" aria-checked="false" aria-label="Показывать"></button>` +
+    `<span class="name">${item.name}${item.note ? ` <small>${item.note}</small>` : ''}</span>` +
+    `<span class="tag">${kind === 'tr' ? LANGS[item.lang] : item.tag}</span>` +
+    `<button class="star" title="Сделать основным">★</button>`;
+  el.spring = new Spring(0, y => { el.style.transform = `translate3d(0,${y}px,0)`; });
+  return el;
+}
+
+const rowsEl = document.getElementById('rows');
+const edRowsEl = document.getElementById('edRows');
+const byKey = new Map();
+for (const t of TRANSLATIONS){ const r = buildRow(t, 'tr');  byKey.set(t.key, r); rowsEl.appendChild(r); }
+for (const e of EDITIONS){     const r = buildRow(e, 'ed');  byKey.set(e.key, r); edRowsEl.appendChild(r); }
+
+/* group headers, used only while sorting by language */
+const groupHeads = new Map();
+for (const code of Object.keys(LANGS)){
+  const h = document.createElement('div');
+  h.className = 'ghead'; h.textContent = LANGS[code]; h.hidden = true;
+  h.spring = new Spring(0, y => { h.style.transform = `translate3d(0,${y}px,0)`; });
+  groupHeads.set(code, h); rowsEl.appendChild(h);
+}
+
+/* ——— layout ————————————————————————————————————————————————————————————— */
+function visibleTranslations(){
+  const items = state.order
+    .map(k => TRANSLATIONS.find(t => t.key === k))
+    .filter(t => state.langs.has(t.lang));
+  if (state.sort === 'name') items.sort((a,b) => a.name.localeCompare(b.name,'ru'));
+  if (state.sort === 'lang') items.sort((a,b) =>
+    a.lang === b.lang ? state.order.indexOf(a.key) - state.order.indexOf(b.key)
+                      : Object.keys(LANGS).indexOf(a.lang) - Object.keys(LANGS).indexOf(b.lang));
+  return items;
+}
+
+function layout({ animate = true, skip = null } = {}){
+  const items = visibleTranslations();
+  const sorted = state.sort !== 'manual';
+  rowsEl.classList.toggle('sorted', sorted);
+  rowsEl.classList.toggle('by-lang', state.sort === 'lang');
+
+  let y = 0, lastLang = null, n = 0;
+  for (const h of groupHeads.values()) h.hidden = true;
+
+  for (const it of items){
+    if (sorted && state.sort === 'lang' && it.lang !== lastLang){
+      const h = groupHeads.get(it.lang);
+      h.hidden = false;
+      animate ? h.spring.to(y) : h.spring.set(y);
+      y += ROW; lastLang = it.lang;
+    }
+    const row = byKey.get(it.key);
+    row.classList.remove('is-hidden');
+    row.querySelector('.ord').textContent = state.on.has(it.key) ? ++n : '';
+    if (row !== skip) animate ? row.spring.to(y) : row.spring.set(y);
+    row.dataset.y = y;
+    y += ROW;
+  }
+  for (const t of TRANSLATIONS){
+    if (!state.langs.has(t.lang)) byKey.get(t.key).classList.add('is-hidden');
+  }
+  rowsEl.style.height = y + 'px';
+
+  let ey = 0;
+  for (const key of state.edOrder){
+    const row = byKey.get(key);
+    animate ? row.spring.to(ey) : row.spring.set(ey);
+    row.dataset.y = ey; ey += ROW;
+  }
+  edRowsEl.style.height = ey + 'px';
+  paint();
+}
+
+function paint(){
+  for (const t of TRANSLATIONS){
+    const row = byKey.get(t.key), on = state.on.has(t.key);
+    row.classList.toggle('is-on', on);
+    row.querySelector('.tick').setAttribute('aria-checked', String(on));
+    row.querySelector('.star').classList.toggle('on', mainKey() === t.key);
+  }
+  for (const e of EDITIONS){
+    const row = byKey.get(e.key), on = state.edOn.has(e.key);
+    row.classList.toggle('is-on', on);
+    row.querySelector('.tick').setAttribute('aria-checked', String(on));
+    row.querySelector('.star').classList.toggle('on', state.edOrder.find(k => state.edOn.has(k)) === e.key);
+  }
+  const n = state.on.size;
+  document.getElementById('count').textContent = n ? `· ${n} на экране` : '· только пали';
+  document.getElementById('edCnt').textContent = '— ' + EDITIONS.map(e => e.tag).join(' · ');
+  document.getElementById('foot').innerHTML = state.sort === 'manual'
+    ? 'Порядок перетаскиванием · <b>★ — основной</b>'
+    : 'Сортировка временная — <b>ваш порядок</b> цел, он во вкладке «Мой порядок»';
+  const main = TRANSLATIONS.find(t => t.key === mainKey());
+  document.getElementById('pillLang').textContent = main ? LANGS[main.lang] : 'Pāḷi';
+  renderReader();
+}
+const mainKey = () => state.order.find(k => state.on.has(k));
+
+/* ——— faux reader text, so the list has visible consequences ————————————— */
+const SEGMENTS = [
+  { pali:'Evaṁ me sutaṁ—', tr:{ ru:'Так мной услышано—', en:'So I have heard.', de:'So habe ich es gehört.', sr:'Ovako sam čuo.', fr:'Ainsi ai-je entendu.' } },
+  { pali:'ekaṁ samayaṁ bhagavā kurūsu viharati kammāsadhammaṁ nāma kurūnaṁ nigamo.',
+    tr:{ ru:'По одному случаю Благословенный среди Куру располагается в Каммасадхамме.',
+         en:'At one time the Buddha was staying in the land of the Kurus, near Kammāsadamma.',
+         de:'Einst hielt sich der Buddha im Land der Kurus auf.',
+         sr:'Jednom je Blaženi boravio u zemlji Kuru.',
+         fr:'Un jour, le Bouddha séjournait chez les Kurus.' } },
+];
+function renderReader(){
+  const shown = state.order.filter(k => state.on.has(k));
+  const html = ['<h1>Mahāsatipaṭṭhānasutta</h1>',
+    '<p class="sub">Dīgha Nikāya 22 · прототип окна переводов</p>'];
+  for (const seg of SEGMENTS){
+    html.push(`<p class="seg-pali">${seg.pali}</p>`);
+    for (const key of shown){
+      const t = TRANSLATIONS.find(x => x.key === key);
+      html.push(`<p class="seg-tr"><span class="who">${t.name}</span>${seg.tr[t.lang] || '—'}</p>`);
+    }
+  }
+  document.getElementById('reader').innerHTML = html.join('');
+}
+
+/* ——— interactions ——————————————————————————————————————————————————————— */
+document.getElementById('rows').addEventListener('click', onListClick);
+document.getElementById('edRows').addEventListener('click', onListClick);
+function onListClick(e){
+  const row = e.target.closest('.row'); if (!row) return;
+  const key = row.dataset.key, isEd = row.dataset.kind === 'ed';
+  const on = isEd ? state.edOn : state.on;
+  if (e.target.closest('.star')){
+    // Promote: the main translation is simply the first one that is on.
+    const order = isEd ? state.edOrder : state.order;
+    order.splice(order.indexOf(key), 1); order.unshift(key);
+    on.add(key); tap(8); layout();
+    return;
+  }
+  if (e.target.closest('.tick') || e.target.closest('.name')){
+    on.has(key) ? on.delete(key) : on.add(key);
+    if (!isEd && !state.on.size) on.add(key); // at least one translation stays on
+    layout();
+  }
+}
+
+document.querySelectorAll('.seg button').forEach(b => b.addEventListener('click', () => {
+  state.sort = b.dataset.sort;
+  document.querySelectorAll('.seg button').forEach(x =>
+    x.setAttribute('aria-pressed', String(x === b)));
+  layout();
+}));
+
+const chipsEl = document.getElementById('chips');
+for (const [code, label] of Object.entries(LANGS)){
+  const n = TRANSLATIONS.filter(t => t.lang === code).length;
+  const b = document.createElement('button');
+  b.className = 'chip'; b.type = 'button'; b.textContent = `${label} ${n}`;
+  b.setAttribute('aria-pressed', String(state.langs.has(code)));
+  b.addEventListener('click', () => {
+    state.langs.has(code) ? state.langs.delete(code) : state.langs.add(code);
+    if (!state.langs.size) state.langs.add(code);
+    b.setAttribute('aria-pressed', String(state.langs.has(code)));
+    layout();
+  });
+  chipsEl.appendChild(b);
+}
+
+const ed = document.getElementById('editions');
+document.getElementById('edToggle').addEventListener('click', () => {
+  ed.dataset.open = ed.dataset.open === 'true' ? 'false' : 'true';
+  layout({ animate:false });
+});
+
+/* ——— drag to reorder ————————————————————————————————————————————————————— */
+let drag = null;
+document.addEventListener('pointerdown', e => {
+  const handle = e.target.closest('[data-drag]'); if (!handle) return;
+  if (state.sort !== 'manual') return;              // sorted view owns the order
+  const row = handle.closest('.row');
+  const isEd = row.dataset.kind === 'ed';
+  const list = isEd ? state.edOrder
+                    : visibleTranslations().map(t => t.key);
+  e.preventDefault();
+  handle.setPointerCapture(e.pointerId);
+  drag = {
+    row, isEd, list, key: row.dataset.key,
+    index: list.indexOf(row.dataset.key),
+    grabY: e.clientY, startY: row.spring.x, y: row.spring.x,
+    v: 0, lastY: e.clientY, lastT: performance.now(),
+  };
+  row.classList.add('lift');
+  live.delete(row.spring);
+  tap(5);
+});
+document.addEventListener('pointermove', e => {
+  if (!drag) return;
+  const max = (drag.list.length - 1) * ROW;
+  let y = drag.startY + (e.clientY - drag.grabY);
+  // rubber-band past the ends instead of a hard stop
+  if (y < 0) y = rubber(y, ROW);
+  if (y > max) y = max + rubber(y - max, ROW);
+  drag.y = y;
+  drag.row.style.transform = `translate3d(0,${y}px,0)`;
+  const now = performance.now(), dt = (now - drag.lastT) / 1000;
+  if (dt > 0.004){ drag.v = (e.clientY - drag.lastY) / dt; drag.lastY = e.clientY; drag.lastT = now; }
+
+  const want = Math.max(0, Math.min(drag.list.length - 1, Math.round(y / ROW)));
+  if (want !== drag.index){
+    drag.list.splice(drag.index, 1); drag.list.splice(want, 0, drag.key);
+    drag.index = want;
+    if (drag.isEd) state.edOrder = drag.list;
+    else {
+      // splice the visible order back into the full order, hidden rows untouched
+      const rest = state.order.filter(k => !drag.list.includes(k));
+      state.order = drag.list.concat(rest);
+    }
+    layout({ skip: drag.row });
+    tap(4);
+  }
+});
+function rubber(over, dim, c = 0.55){ return (over * dim * c) / (dim + c * Math.abs(over)); }
+function endDrag(){
+  if (!drag) return;
+  const d = drag; drag = null;
+  d.row.classList.remove('lift');
+  d.row.spring.x = d.y;
+  // hand the release velocity to the spring, with a touch of bounce since a
+  // flick preceded it; slot is decided by the projected landing point
+  const projected = d.y + project(d.v) * 0.25;
+  const slot = Math.max(0, Math.min(d.list.length - 1, Math.round(projected / ROW)));
+  if (slot !== d.index){
+    d.list.splice(d.index, 1); d.list.splice(slot, 0, d.key);
+    if (d.isEd) state.edOrder = d.list;
+    else state.order = d.list.concat(state.order.filter(k => !d.list.includes(k)));
+  }
+  layout({ skip: d.row });
+  d.row.spring.to(Number(d.row.dataset.y = slot * ROW + headOffset(d, slot)),
+    { velocity: d.v, damping: 0.8, response: 0.35 });
+  tap(8);
+}
+function headOffset(){ return 0; } // group headers only exist in sorted views
+document.addEventListener('pointerup', endDrag);
+document.addEventListener('pointercancel', endDrag);
+
+/* ——— open / close, with drag-to-dismiss ————————————————————————————————— */
+const sheet = document.getElementById('sheet'), scrim = document.getElementById('scrim');
+const sheetSpring = new Spring(0, y => {
+  sheet.style.transform = DESKTOP()
+    ? `translate3d(0,${y}px,0) scale(${1 - Math.min(y, 400) / 2600})`
+    : `translate3d(0,${y}px,0)`;
+  const p = 1 - Math.min(1, y / (sheet.offsetHeight || 400));
+  scrim.style.opacity = DESKTOP() ? 0 : String(p * 0.95);
+  sheet.style.opacity = String(0.25 + 0.75 * p);
+});
+let open = false;
+function openSheet(){
+  if (open) return; open = true;
+  sheet.hidden = false; scrim.hidden = DESKTOP();
+  layout({ animate:false });
+  const h = sheet.offsetHeight;
+  sheetSpring.x = h; sheetSpring.v = 0;
+  sheetSpring.to(0, { damping: 0.82, response: 0.42 });
+}
+function closeSheet(velocity = 0){
+  if (!open) return; open = false;
+  const h = sheet.offsetHeight;
+  sheetSpring.to(h, { velocity, damping: 1, response: 0.32 });
+  setTimeout(() => { if (!open){ sheet.hidden = true; scrim.hidden = true; } }, REDUCED ? 0 : 380);
+}
+document.getElementById('openBtn').addEventListener('click', () => open ? closeSheet() : openSheet());
+document.getElementById('closeBtn').addEventListener('click', () => closeSheet());
+scrim.addEventListener('click', () => closeSheet());
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSheet(); });
+
+let sd = null;
+for (const el of [document.getElementById('grabber'), document.getElementById('head')]){
+  el.addEventListener('pointerdown', e => {
+    if (DESKTOP() || e.target.closest('button')) return;
+    el.setPointerCapture(e.pointerId);
+    live.delete(sheetSpring);
+    sd = { grab: e.clientY, start: sheetSpring.x, v: 0, lastY: e.clientY, lastT: performance.now() };
+  });
+}
+document.addEventListener('pointermove', e => {
+  if (!sd) return;
+  let y = sd.start + (e.clientY - sd.grab);
+  if (y < 0) y = -rubber(-y, sheet.offsetHeight);   // resists upward past its open position
+  sheetSpring.x = y; sheetSpring.apply(y);
+  const now = performance.now(), dt = (now - sd.lastT) / 1000;
+  if (dt > 0.004){ sd.v = (e.clientY - sd.lastY) / dt; sd.lastY = e.clientY; sd.lastT = now; }
+});
+document.addEventListener('pointerup', () => {
+  if (!sd) return;
+  const d = sd; sd = null;
+  const h = sheet.offsetHeight;
+  // decide by where the flick is GOING, not where the finger let go
+  const projected = sheetSpring.x + project(d.v);
+  if (projected > h * 0.4) closeSheet(d.v);
+  else sheetSpring.to(0, { velocity: d.v, damping: 0.82, response: 0.4 });
+});
+
+layout({ animate:false });
+</script>
+</body>
+</html>
