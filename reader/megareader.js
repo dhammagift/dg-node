@@ -1049,9 +1049,20 @@ window.buildSutta = async function(rawSlug) {
         // language from the translator key's own prefix (en_brahmali → en) so the two agree; a
         // same-language multi-translator link (?translators=ru_o,ru_sv) still resolves to one
         // language, `split(',')[0]` on the first key is enough.
-        const explicitTranslators = new URLSearchParams(document.location.search).get('translators');
+        const urlQuery = new URLSearchParams(document.location.search);
+        const explicitTranslators = urlQuery.get('translators');
+        // ...and only when the address carries NOTHING else about mode/language, which is what a
+        // TOC link looks like. Checking langs= alone wasn't enough: a mode switch or the EN/RU
+        // toggle pushes mode=/lang= while a TOC ?translators= is still sitting in the address, and
+        // this branch then forced mode=single&lang=<translator's language> straight back over it —
+        // the drawer highlighted "Мульти" while the reader stayed one English column, and the
+        // language toggle did nothing at all. A translator key says who translates a language, not
+        // which mode to be in: everywhere else below it is passed through as a per-language
+        // narrowing (the server keeps its default translator for languages the key doesn't name).
+        const drivenExplicitly = urlQuery.has('mode') || urlQuery.has('lang');
+        const trnQuery = explicitTranslators ? `&translators=${encodeURIComponent(explicitTranslators)}` : null;
         let langsQuery;
-        if (!explicitLangs && explicitTranslators) {
+        if (!explicitLangs && explicitTranslators && !drivenExplicitly) {
             const derivedLang = explicitTranslators.split(',')[0].split('_')[0];
             langsQuery = `mode=single&lang=${encodeURIComponent(derivedLang)}&translators=${encodeURIComponent(explicitTranslators)}`;
         } else if (explicitLangs) {
@@ -1066,7 +1077,7 @@ window.buildSutta = async function(rawSlug) {
             // переводчики молча отбрасывались, приходил один на язык. Единственное место, где
             // выбор переводчика вообще может сосуществовать с несколькими языками.
             langsQuery = `mode=${encodeURIComponent(READER_MODE.modeKey)}&langs=${encodeURIComponent(explicitLangs)}` +
-                (explicitTranslators ? `&translators=${encodeURIComponent(explicitTranslators)}` : '');
+                (trnQuery || '');
         } else if (READER_MODE.modeKey === 'multi') {
             // Набор языков для multi — из уже сохранённого порядка пользователя
             // (getLangOrder(), тот же, что реордерит колонки). Owner: "не хардкодить языки" —
@@ -1084,7 +1095,7 @@ window.buildSutta = async function(rawSlug) {
             }
             langsQuery = `mode=${encodeURIComponent(READER_MODE.modeKey)}` +
                 (langs.length ? `&langs=${encodeURIComponent(langs.join(','))}` : '') +
-                translatorsQueryFor();
+                (trnQuery || translatorsQueryFor());
         } else if (READER_MODE.tempLangs && READER_MODE.tempLangs.length && READER_MODE.tempSlug === slug) {
             // Single-column modes: the language popover's checkboxes are a per-TEXT trial (owner:
             // "применялось, но не сохранялось") — sent as an explicit langs=, never written to
@@ -1094,11 +1105,11 @@ window.buildSutta = async function(rawSlug) {
             // picked for a language you are only peeking at lives exactly as long as the peek
             // does; only the MAIN language's translator is written to TRANSLATORS_KEY (home.js).
             langsQuery = `mode=${encodeURIComponent(READER_MODE.modeKey)}&langs=${encodeURIComponent(READER_MODE.tempLangs.join(','))}` +
-                translatorsQueryFor(READER_MODE.tempTranslators);
+                (trnQuery || translatorsQueryFor(READER_MODE.tempTranslators));
         } else {
             const langParam = READER_MODE.lang ? `&lang=${encodeURIComponent(READER_MODE.lang)}` : '';
             langsQuery = `mode=${encodeURIComponent(READER_MODE.modeKey)}${langParam}` +
-                translatorsQueryFor();
+                (trnQuery || translatorsQueryFor());
         }
         // Система письма пали (Aksharamukha, см. dg-light.js) — явный ?script= в адресе
         // побеждает, иначе берём сохранённое в /settings/ значение по умолчанию

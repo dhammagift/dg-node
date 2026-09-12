@@ -1,8 +1,9 @@
 {
   "scripts": {
-    "start": "node dg-light.js",
+    "start": "node dg-fastify.js",
+    "start:express": "node unused/dg-light.js",
     "start:fastify": "node dg-fastify.js",
-    "build-db": "node dblight.js",
+    "build-db": "node unused/dblight.js",
     "build-icons": "node build-icons.js",
     "build-search-db": "node build-search-db.js",
     "build-offline": "node build-offline.js",

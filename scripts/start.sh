@@ -6,7 +6,8 @@
 #   ./scripts/start.sh            # port 3902
 #   PORT=3000 ./scripts/start.sh  # anywhere else
 #
-# The older Express + grep server is still in the repo and still starts with `npm start`.
+# The older Express + grep server is still in the repo, now as `npm run start:express` — it has
+# not been kept in sync with the client (translator selection, issue #6), so `npm start` is this one.
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

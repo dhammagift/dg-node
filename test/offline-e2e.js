@@ -70,12 +70,14 @@ const CASES = [
     // типы (single/multi/memorize/devanagari). Ни один из них не резолвился, так что все пять
     // проверок молча ходили по ветке "режим неизвестен". Теперь ключи настоящие, а multi
     // проверяется в обоих своих видах — по языкам и с несколькими переводчиками одного языка.
+    // Переводчик здесь должен РЕАЛЬНО переводить dn22, иначе кейс тихо схлопывается в одного и
+    // мульти-переводчиковая ветка не проверяется вовсе (ru_sv тут не подходит — для dn22 его нет).
     ['text-dn22-single', '/api/text/dn22?mode=single&lang=ru'],
     ['text-dn22-multi-langs', '/api/text/dn22?mode=multi&langs=ru,en'],
-    ['text-dn22-multi-translators', '/api/text/dn22?mode=multi&langs=ru&translators=ru_o,ru_sv'],
+    ['text-dn22-multi-translators', '/api/text/dn22?mode=multi&langs=ru&translators=ru_o,ru_khantibalo'],
     ['text-dn22-memorize', '/api/text/dn22?mode=memorize&lang=ru'],
     ['text-dn22-devanagari', '/api/text/dn22?mode=devanagari&lang=ru'],
-    ['text-explicit-translators', '/api/text/dn22?translators=ru_o,ru_sv'],
+    ['text-explicit-translators', '/api/text/dn22?translators=ru_o,ru_khantibalo'],
     ['text-unknown', '/api/text/nosuchsutta'],
     ['nav-dn22', '/api/nav/dn22'],
     ['nav-sn56.11', '/api/nav/sn56.11'],

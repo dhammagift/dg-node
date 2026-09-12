@@ -1465,19 +1465,29 @@
     // What is ticked for a language: the user's own pick if there is one, otherwise whoever the
     // server actually rendered (its priority default) — so an untouched language shows a real
     // name instead of an empty line.
-    function trnSelected(lang) {
+    function trnSelected(lang, avail) {
         var rm = window.READER_MODE;
-        var temp = rm && rm.tempTranslators;
+        // Same tempSlug guard buildSutta uses (megareader.js, tempLangs branch): a trial pick
+        // belongs to the text it was made on, and nothing resets tempTranslators on navigation —
+        // without the guard the next sutta renders the server's default while the popover still
+        // ticks and stars the translator from the previous text's peek.
+        var temp = (rm && rm.tempSlug === window._currentSlug) ? rm.tempTranslators : null;
         var saved = (window.getTranslatorChoice && window.getTranslatorChoice()) || {};
-        var picked = (temp && temp[lang]) || saved[lang];
-        if (Array.isArray(picked) && picked.length) return picked;
+        var inAvail = function (k) { return !avail || avail.indexOf(k) !== -1; };
+        var raw = (temp && temp[lang]) || saved[lang];
+        // Filter BEFORE deciding the pick is usable: a saved translator who didn't translate THIS
+        // text leaves nothing of it, and the server has already fallen back to its priority
+        // default — fall back to whoever is actually on screen too, or the popover shows no
+        // checkbox, no ★ and a "сделать основным" pin on every row while a translation is visible.
+        var picked = (Array.isArray(raw) ? raw : []).filter(inAvail);
+        if (picked.length) return picked;
         var shown = rm && rm.shownTranslators && rm.shownTranslators[lang];
-        return Array.isArray(shown) ? shown : [];
+        return Array.isArray(shown) ? shown.filter(inAvail) : [];
     }
     function trnBlock(lang) {
         var avail = trnAvailable(lang);
         if (!avail.length) return '';
-        var sel = trnSelected(lang).filter(function (k) { return avail.indexOf(k) !== -1; });
+        var sel = trnSelected(lang, avail);
         // Selected first (in their own order — sel[0] is main), then the rest in the SERVER's
         // priority order (translator-priority.json, fetched by megareader.js), then by name. The
         // priority part matters for a language that is currently off: nothing is ticked, so the
