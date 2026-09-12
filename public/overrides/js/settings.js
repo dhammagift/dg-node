@@ -2038,7 +2038,7 @@ document.addEventListener("keydown", (event) => {
         // (mode type never touches language, see switchReaderMode), and only once you're
         // ALREADY there does a second press cycle the language, like the burger's EN/RU switch.
         // Cycles through languages ALREADY loaded for this text (readerMode.columns, from the
-        // last real server response). Single-column modes (single/multiTran/memorize/devanagari)
+        // last real server response). Single-column modes (single/memorize/devanagari)
         // never load more than one, so there's nothing to cycle through there — fall back to the
         // same EN/RU toggle as the burger's language switch (home.js renderLangSwitch), the only
         // two interface languages this app actually has (configs/search/lang_{ru,en}.json).

@@ -45,6 +45,7 @@ const {
     findVariantSegments,
     getFullTextData,
     getSuttaBaseData,
+    translatorLangsFallback,
     langFilterSql,
     matchesScope,
     navFor,
@@ -646,7 +647,7 @@ async function buildSettingsDemoCache() {
     const baseGroups = [];
     for (const def of SETTINGS_DEMO_DEF) {
         try {
-            const full = await getFullTextData(def.suttaId, ['all'], null, null);
+            const full = await getFullTextData(def.suttaId, ['all'], null);
             if (!full) continue;
             const segments = full.segments.filter(s => def.segments.includes(s.segment));
             if (segments.length) baseGroups.push({ sutta_id: full.sutta_id, title: full.title, segments });
@@ -1181,7 +1182,11 @@ app.get('/api/text/:suttaId', async (req, res) => {
                 ? ['ru']
                 // Ни mode, ни lang, ни langs — тот же фоллбэк, что и был здесь всегда для голого
                 // ручного доступа (curl/api-docs без единого языкового параметра), не новый хардкод.
-                : (req.query.langs || 'ru,en').split(',').map(l => l.trim());
+                // Исключение — голый ?translators=ru_o,ru_sv: языки названы в самих ключах, и брать
+                // вместо них "ru,en" значит доложить в ответ английский, которого не просили (с тех
+                // пор как явный список переводчиков перестал вытеснять остальные языки, см.
+                // translatorsForSutta).
+                : translatorLangsFallback(req.query.translators) || ['ru', 'en'];
     // ?translators=ru_o,ru_khantibalo — сколько переводчиков названо, столько и придёт, в обход
     // обычного "один переводчик на язык" (см. translatorsForSutta). issue #6: это единственный
     // способ получить несколько переводов одного языка — прежний автоподбор ?multiFor= убран
@@ -1222,11 +1227,17 @@ app.get('/api/text/:suttaId', async (req, res) => {
         // (mode-table.json), теперь режим языка не хранит вообще, так что явно возвращаем его
         // отдельным полем.
         data.lang = req.query.lang || effectiveLangs[0] || null;
-        // Languages THIS text has any translation in — whatever mode/langs were requested. The
-        // reader's language popover marks the rest "нет перевода" right at load time (owner)
-        // instead of discovering it one refetch at a time. One indexed read of the same table
-        // the root text came from.
-        data.availableLangs = searchDb.prepare("SELECT DISTINCT lang FROM texts WHERE sutta_id = ? AND kind = 'translation'").all(suttaId).map(r => r.lang);
+        // Who translated THIS text, whatever mode/langs were requested — the reader's language
+        // popover lists the translators of each language and marks languages with none "нет
+        // перевода" right at load time (owner) instead of discovering it one refetch at a time.
+        // One indexed read of the same table the root text came from; `translator <> 'ai'` for
+        // the reason spelled out in translatorsForSutta() — and it is what keeps a language whose
+        // ONLY translation is the AI draft (9 such (sutta, lang) pairs) out of availableLangs.
+        const roster = searchDb.prepare(
+            "SELECT DISTINCT lang, translator FROM texts WHERE sutta_id = ? AND kind = 'translation' AND translator <> 'ai'"
+        ).all(suttaId);
+        data.availableLangs = [...new Set(roster.map(r => r.lang))];
+        data.availableTranslators = roster.map(r => `${r.lang}_${r.translator}`);
 
         // Конвертация системы письма пали (?script=Devanagari/Thai/... — любой ключ
         // Aksharamukha.Scripts, см. akshReady/resolveScriptKey выше). Только root_text/variant —
@@ -1988,8 +1999,7 @@ app.listen({ port: PORT, host: '0.0.0.0' }, (err) => {
     console.log(`API docs: http://localhost:${PORT}/api-docs`);
     console.log(`Legacy Reader: http://localhost:${PORT}/dn22`);
     console.log(`Reader (single, 1 язык):    http://localhost:${PORT}/dn22?mode=single&lang=ru`);
-    console.log(`Reader (multiLang):         http://localhost:${PORT}/dn22?mode=multiLang&langs=ru,en`);
-    console.log(`Reader (multiTran):         http://localhost:${PORT}/dn22?mode=multiTran&lang=ru`);
+    console.log(`Reader (multi):             http://localhost:${PORT}/dn22?mode=multi&langs=ru,en`);
     console.log(`Reader (произвольный язык): http://localhost:${PORT}/dn22?langs=de`);
     console.log(`  (?mode= — временный резолвер до маршрутизации по префиксу пути, см. reader-template.html)`);
     console.log(`\n`);

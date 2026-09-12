@@ -871,7 +871,8 @@ const OPS = {
         const modeConfig = mode ? core.MODE_TABLE[mode] : null;
         const targetLangs = langs ? langs.split(',').map(l => l.trim())
             : lang ? [lang]
-            : ['ru', 'en'];
+            // Same as dg-fastify.js: a bare ?translators= names its languages in the keys.
+            : core.translatorLangsFallback(translators) || ['ru', 'en'];
         const explicitTranslators = translators ? translators.split(',').map(t => t.trim()) : null;
 
         const base = await core.getSuttaBaseData(suttaId);
@@ -896,9 +897,12 @@ const OPS = {
         // time). What it means here is "in the offline slice": the server reads the whole corpus and
         // can name more (dn22 has sr and de as well), those are languages this library does not
         // have, and app.js sends a request for them to the server whenever there is a connection.
-        data.availableLangs = db.selectObjects(
-            "SELECT DISTINCT lang FROM texts WHERE sutta_id = ? AND kind = 'translation'", [suttaId]
-        ).map(r => r.lang);
+        const roster = db.selectObjects(
+            "SELECT DISTINCT lang, translator FROM texts WHERE sutta_id = ? AND kind = 'translation' AND translator <> 'ai'",
+            [suttaId]
+        );
+        data.availableLangs = [...new Set(roster.map(r => r.lang))];
+        data.availableTranslators = roster.map(r => `${r.lang}_${r.translator}`);
         return data;
     },
 

@@ -930,6 +930,16 @@ async function buildSearchResponse(keyword, searchScope, exactMatch, targetLangs
 // unchanged — the same filterPreferredTranslators/TRANSLATOR_PRIORITY logic decides who is shown,
 // and it inspects its values as file paths to spot a DG-main translation, so `source` is handed
 // to it shaped like the path it expects.
+// A bare "?translators=ru_o,ru_sv" (no ?langs=/?lang=/?mode=) already names its languages — in
+// the keys themselves. Callers use this instead of their generic "ru,en" fallback, so an explicit
+// translator list doesn't drag an unasked-for language's default translation into the answer.
+function translatorLangsFallback(translators) {
+    if (!translators) return null;
+    const langs = [...new Set(String(translators).split(',')
+        .map(key => key.trim().split('_')[0]).filter(Boolean))];
+    return langs.length ? langs : null;
+}
+
 function translatorsForSutta(suttaId, targetLangs, explicitTranslators) {
     const rows = searchDb.prepare(
         `SELECT DISTINCT lang, translator, source FROM texts WHERE sutta_id = ? AND kind = 'translation'`
@@ -938,26 +948,33 @@ function translatorsForSutta(suttaId, targetLangs, explicitTranslators) {
         ? null
         : new Set(targetLangs.map(l => l.split('_')[0]));
 
+    // "ai" (offline-data/dhammagift/ai/) is a working AI-assisted draft meant only for
+    // /assets/lbl.html's line-by-line tool, and that tool reads those files straight off disk
+    // (/assets/texts/ai/..._translation-ru-ai.json, see public/overrides/lbl.html) — never
+    // through this API. So it is out of the roster outright: neither auto-picked NOR reachable
+    // by an explicit ?translators=ru_ai (owner: "AI перевод нельзя показывать, нигде, это
+    // только для lbl"). Same exclusion the TOC badges and search matching already apply.
     const roster = {};
-    // autoRoster excludes "ai" (offline-data/dhammagift/ai/, a working AI-assisted draft meant
-    // only for /assets/lbl.html's line-by-line tool) — never eligible as a picked-automatically
-    // fallback translator (owner: "ru_ai не должен быть виден пользователю нигде на сайте, это
-    // только для lbl.html"). Kept IN the full roster below so an explicit ?translators=ru_ai
-    // (lbl.html's own access path, branch right below) still resolves — this only narrows what
-    // filterPreferredTranslators() is allowed to choose from on its own.
-    const autoRoster = {};
     for (const row of rows) {
         if (wanted && !wanted.has(row.lang)) continue;
-        const key = `${row.lang}_${row.translator}`;
-        const value = row.source === 'dgmain' ? path.join(DG_OFFLINE, row.lang, 'x.json') : '';
-        roster[key] = value;
-        if (row.translator !== 'ai') autoRoster[key] = value;
+        if (row.translator === 'ai') continue;
+        roster[`${row.lang}_${row.translator}`] =
+            row.source === 'dgmain' ? path.join(DG_OFFLINE, row.lang, 'x.json') : '';
     }
 
     if (explicitTranslators && explicitTranslators.length) {
-        return new Set(explicitTranslators.filter(key => key in roster));
+        const picked = explicitTranslators.filter(key => key in roster);
+        // Languages the caller did NOT name keep their normal priority pick, so ?translators=
+        // can narrow ONE language without silently dropping the others. issue #6: the reader's
+        // popover picks translators per language (one row at a time) while several languages are
+        // on screen — before this, choosing a Russian translator in a ru+en set answered with
+        // Russian alone, because an explicit list used to be the ENTIRE answer.
+        const named = new Set(picked.map(key => key.split('_')[0]));
+        const rest = {};
+        for (const key of Object.keys(roster)) if (!named.has(key.split('_')[0])) rest[key] = roster[key];
+        return new Set(picked.concat(Object.keys(filterPreferredTranslators(rest))));
     }
-    return new Set(Object.keys(filterPreferredTranslators(autoRoster)));
+    return new Set(Object.keys(filterPreferredTranslators(roster)));
 }
 
 // Everything stored for one sutta, fetched once. Split out from the assembly below for the same
@@ -1071,6 +1088,7 @@ module.exports = {
     findVariantSegments,
     getFullTextData,
     getSuttaBaseData,
+    translatorLangsFallback,
     langFilterSql,
     matchesScope,
     resolveAllowedPrefixes,

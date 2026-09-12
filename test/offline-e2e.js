@@ -169,7 +169,7 @@ async function referenceAnswer(core, url) {
         const translators = qs.get('translators');
         const modeConfig = mode ? core.MODE_TABLE[mode] : null;
         const targetLangs = langs ? langs.split(',').map((s) => s.trim())
-            : lang ? [lang] : ['ru', 'en'];
+            : lang ? [lang] : core.translatorLangsFallback(translators) || ['ru', 'en'];
         const explicitTranslators = translators ? translators.split(',').map((s) => s.trim()) : null;
         const base = await core.getSuttaBaseData(suttaId);
         if (!base) return wrap({ __status: 404, error: `Unknown sutta id: ${suttaId}` });
@@ -183,8 +183,11 @@ async function referenceAnswer(core, url) {
         }
         data.columns = effectiveLangs;
         data.lang = lang || effectiveLangs[0] || null;
-        data.availableLangs = referenceDb.prepare(
-            "SELECT DISTINCT lang FROM texts WHERE sutta_id = ? AND kind = 'translation'").all(suttaId).map((r) => r.lang);
+        const roster = referenceDb.prepare(
+            "SELECT DISTINCT lang, translator FROM texts WHERE sutta_id = ? AND kind = 'translation' AND translator <> 'ai'"
+        ).all(suttaId);
+        data.availableLangs = [...new Set(roster.map((r) => r.lang))];
+        data.availableTranslators = roster.map((r) => `${r.lang}_${r.translator}`);
         return wrap(data);
     }
 
@@ -265,24 +268,26 @@ function canonical(value) {
 }
 const J = (value) => JSON.stringify(canonical(value));
 
-// availableLangs is the one field the offline library cannot reproduce exactly, by design: it
-// answers from its own ru+en slice, while the server reads the whole corpus (dn22 has sr and de
-// too). Everything else is compared strictly; this one is checked as a SUBSET — a language the
-// library claims but the server does not have would still be a bug.
-function withoutAvailableLangs(body) {
+// availableLangs/availableTranslators are the fields the offline library cannot reproduce
+// exactly, by design: it answers from its own ru+en slice, while the server reads the whole
+// corpus (dn22 has sr and de too). Everything else is compared strictly; these are checked as a
+// SUBSET — a language or translator the library claims but the server does not have is still a bug.
+const ROSTER_FIELDS = ['availableLangs', 'availableTranslators'];
+function withoutRoster(body) {
     if (!body || !Array.isArray(body.segments)) return body;
     const copy = Object.assign({}, body);
-    delete copy.availableLangs;
+    for (const f of ROSTER_FIELDS) delete copy[f];
     return copy;
 }
-function availableLangsOf(body) {
-    return (body && Array.isArray(body.availableLangs)) ? body.availableLangs.slice().sort() : null;
-}
 function subsetProblem(localBody, serverBody) {
-    const l = availableLangsOf(localBody), sr = availableLangsOf(serverBody);
-    if (!l || !sr) return null;
-    const extra = l.filter((x) => !sr.includes(x));
-    return extra.length ? `availableLangs not a subset of the server's: ${extra.join(',')}` : null;
+    for (const f of ROSTER_FIELDS) {
+        const l = localBody && Array.isArray(localBody[f]) ? localBody[f] : null;
+        const sr = serverBody && Array.isArray(serverBody[f]) ? serverBody[f] : null;
+        if (!l || !sr) continue;
+        const extra = l.filter((x) => !sr.includes(x));
+        if (extra.length) return `${f} not a subset of the server's: ${extra.join(',')}`;
+    }
+    return null;
 }
 
 (async () => {
@@ -399,8 +404,8 @@ function subsetProblem(localBody, serverBody) {
             }, url);
             const reference = await referenceAnswer(core, url);
 
-            const a = J({ status: reference.status, body: withoutAvailableLangs(reference.body) });
-            const b = J({ status: local.status, body: withoutAvailableLangs(local.body) });
+            const a = J({ status: reference.status, body: withoutRoster(reference.body) });
+            const b = J({ status: local.status, body: withoutRoster(local.body) });
             const subset = subsetProblem(local.body, reference.body);
             if (a === b && !subset) { same++; console.log('SAME  ' + name); }
             else {
@@ -425,8 +430,8 @@ function subsetProblem(localBody, serverBody) {
             const res = await page.request.get(BASE + url);
             let body; try { body = await res.json(); } catch (e) { body = { __nonJson: true }; }
             const subset = subsetProblem(local.body, body);
-            if (J({ status: res.status(), body: withoutAvailableLangs(body) }) !==
-                J({ status: local.status, body: withoutAvailableLangs(local.body) }) || subset) {
+            if (J({ status: res.status(), body: withoutRoster(body) }) !==
+                J({ status: local.status, body: withoutRoster(local.body) }) || subset) {
                 serverDiff.push(name + (subset ? ' (' + subset + ')' : ''));
             }
         }

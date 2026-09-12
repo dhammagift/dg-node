@@ -3640,7 +3640,10 @@ body.dark .dg-lpill button[aria-pressed="true"]:hover { background: #5050f0; }
    legacy-styled .dg-lpill on purpose (same modern-card look as #dg-quick-btn's own sheet). */
 .dg-lpmenu {
     position: fixed; right: 20px; bottom: 76px; z-index: 101;
-    min-width: 210px; max-width: 260px; padding: 6px;
+    min-width: 210px; max-width: 290px; padding: 6px;
+    /* Translator lists can make this tall (26 Russian translators exist for some texts) — scroll
+       inside the popover instead of growing past the viewport. */
+    max-height: min(70vh, 460px); overflow-y: auto;
     background: var(--dg-surface); border: 1px solid var(--dg-border); border-radius: 12px;
     box-shadow: 0 6px 24px rgba(0, 0, 0, .18); font-family: var(--dg-font);
 }
@@ -3662,6 +3665,43 @@ body.dark .dg-lpill button[aria-pressed="true"]:hover { background: #5050f0; }
 .dg-lpmenu-row.is-missing .dg-lpmenu-pin { display: none; }
 .dg-lpmenu-missing { display: none; font-size: 10.5px; color: var(--dg-text-muted); }
 .dg-lpmenu-row.is-missing .dg-lpmenu-missing { display: inline; }
+
+/* Translators of each language (issue #6 этап 2, home.js trnBlock): a muted sub-line under the
+   language row saying who translates it, unfolding into that language's translators as
+   checkboxes. Indented to the language name so the hierarchy reads without a divider; the
+   unfolded list gets its own surface so it can't be mistaken for the next language's row. */
+.dg-lpmenu-trn {
+    display: flex; align-items: center; gap: 4px; width: 100%;
+    border: 0; background: none; font: inherit; font-size: 11px; text-align: left;
+    color: var(--dg-text-muted); padding: 0 8px 6px 32px; margin-top: -3px;
+    border-radius: 8px; cursor: pointer;
+}
+.dg-lpmenu-trn:hover { color: var(--dg-text); }
+.dg-lpmenu-tsum { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dg-lpmenu-chev { font-size: 9px; line-height: 1; transition: transform .2s ease; }
+.dg-lpmenu-trn.is-open .dg-lpmenu-chev { transform: rotate(180deg); color: var(--dg-accent); }
+.dg-lpmenu-tlist { background: var(--dg-surface-hover); border-radius: 8px; padding: 3px 0; margin: 0 0 6px; }
+.dg-lpmenu-tlist[hidden] { display: none; }
+.dg-lpmenu-trow {
+    display: flex; align-items: center; gap: 8px; margin: 0;
+    padding: 5px 8px 5px 30px; font-size: 12px; color: var(--dg-text); cursor: pointer;
+}
+.dg-lpmenu-trow:hover { background: var(--dg-border); }
+.dg-lpmenu-trow.is-on { font-weight: 600; }
+.dg-lpmenu-trow input.dg-tcheck { display: block; width: 14px; height: 14px; flex: none; margin: 0; accent-color: var(--dg-accent); cursor: pointer; }
+.dg-lpmenu-tname { margin-right: auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dg-lpmenu-tstar { color: var(--dg-accent); font-size: 11px; line-height: 1; }
+.dg-lpmenu-tpin { border: 0; background: none; font: inherit; font-size: 11px; line-height: 1; color: var(--dg-text-muted); padding: 0 2px; border-radius: 4px; opacity: 0; transition: opacity .15s ease; }
+.dg-lpmenu-trow:hover .dg-lpmenu-tpin { opacity: 1; }
+.dg-lpmenu-tpin:hover { color: var(--dg-accent); }
+/* "Сохранится" / "Только для этого текста" — the one visible difference between the two reader
+   presets, since the popover itself is identical in both. */
+.dg-lpmenu-foot {
+    margin: 2px -6px -6px; padding: 7px 14px; font-size: 10.5px;
+    border-top: 1px solid var(--dg-border); border-radius: 0 0 12px 12px;
+    color: var(--dg-text-muted); background: var(--dg-surface-hover);
+}
+.dg-lpmenu-foot.is-saved { color: var(--dg-accent); }
 
 /* Byline: only the main translator shows, the rest folds under "*" (megareader.js
    translatorByline; toggle handler in home.js). */
