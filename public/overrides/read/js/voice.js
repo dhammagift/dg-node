@@ -80,7 +80,6 @@ function getSavedSlugName(slug) {
 }
 
 
-
 // --- ЛОГИКА ОПРЕДЕЛЕНИЯ КОНТЕКСТА (язык перевода) ---
 // Owner: "не имеет смысла читать латиницу русским [голосом] и кириллицу английским" —
 // this used to bucket by legacy PHP URL path prefix (/ru/, /r/, /ml/), which never occurs in
@@ -475,37 +474,6 @@ async function fetchSegmentsData(slug) {
 }
 
 
-/*
-function detectTranslationLang() {
-  const path = window.location.pathname;
-  if (path.includes('/th/') || path.includes('/thml/')) return 'th';
-  if (path.includes('/en/') || path.includes('/b/') || path.includes('/read/')) return 'en';
-  return 'ru';
-}
-*/
-
-
-/*
-function detectTranslationLang() {
-  // ---> НОВОЕ: Исключение ТОЛЬКО для новых статей (нет пали И это не Легаси) <---
-  const hasPali = document.querySelectorAll('.pli-lang').length > 0;
-  
-  if (!hasPali && !isLegacyPage()) {
-      const htmlLang = document.documentElement.lang ? document.documentElement.lang.toLowerCase() : '';
-      if (htmlLang.startsWith('en')) return 'en';
-      if (htmlLang.startsWith('th')) return 'th';
-      if (htmlLang.startsWith('ru')) return 'ru';
-  }
-
-  // ---> СТАРАЯ ЛОГИКА (для сутт и Легаси работает как раньше) <---
-  const path = window.location.pathname;
-  if (path.includes('/th/') || path.includes('/thml/')) return 'th';
-  if (path.includes('/en/') || path.includes('/b/') || path.includes('/read/')) return 'en';
-  
-  return 'ru';
-}
-*/
-
 // dg-node: the SPA shell keeps an empty <div id="sutta" class="sutta"> in the DOM at all
 // times (populated only in reader view, empty in search-results view) — a bare
 // `document.querySelector('.sutta-container, .sutta') || document` always matches THIS empty
@@ -849,75 +817,16 @@ async function fetchGoogleAudio(text, lang, rate, apiKey) {
     const data = await response.json();
 
     if (data.error) {
-        const errorMsg = JSON.stringify(data.error, null, 2);
         throw new Error(data.error.message);
     }
 
     return data.audioContent;
   } catch (e) {
-    if (navigator.onLine && !e.message.includes('Google API Error') && !e.message.includes('Synthesize failed')) {
-    }
-
     console.warn('Google TTS Fetch Error:', e);
     return null;
   }
 }
 
-
-/*
-async function fetchGoogleAudio(text, lang, rate, apiKey) {
-  let targetConfig = null;
-
-  if (lang === 'pi-dev') {
-      // --- PALI ---
-      const savedPali = localStorage.getItem(GOOGLE_PALI_SETTINGS_KEY);
-      if (savedPali) {
-          try { targetConfig = JSON.parse(savedPali); } catch (e) {}
-      }
-      if (!targetConfig) targetConfig = DEFAULT_PALI_CONFIG;
-  } else {
-      // --- TRANSLATION (Dynamic) ---
-      const context = getContextInfo(); // Получаем текущий контекст
-      
-      const savedTrn = localStorage.getItem(context.storageKey);
-      if (savedTrn) {
-          try { targetConfig = JSON.parse(savedTrn); } catch (e) {}
-      }
-      
-      // Если настройки нет, берем дефолт из контекста
-      if (!targetConfig) targetConfig = context.defaultConfig;
-  }
-
-  const url = `https://texttospeech.googleapis.com/v1/text:synthesize?key=${apiKey}`;
-  
-  const payload = {
-    input: { text: text },
-    voice: { languageCode: targetConfig.languageCode, name: targetConfig.name },
-    audioConfig: { 
-        audioEncoding: 'MP3',
-        speakingRate: rate 
-    }
-  };
-
-  try {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-
-    const data = await response.json();
-    if (data.error) {
-        throw new Error(data.error.message);
-    }
-    return data.audioContent; 
-  } catch (e) {
-    console.warn('Google TTS Fetch Error:', e);
-    return null;
-  }
-}
-
-*/
 
 async function prepareTextData(slug) {
   if (isLegacyPage()) {
@@ -1129,9 +1038,6 @@ function createPlaylistFromData(textData, mode) {
   
   return playlist;
 }
-
-
-
 
 
 function shouldRequestWakeLockForItem(item) {
@@ -1488,8 +1394,6 @@ function playBrowserTTS(text, langKey, rate, isPali) {
     }, 50);
   }
 }
-
-
 
 
 async function handleSuttaClick(e) {
@@ -2657,7 +2561,6 @@ async function refreshVoiceDropdowns(forceRefresh = false) {
 }
 
 
-
 window.speechSynthesis.onvoiceschanged = () => {
     synth.getVoices();
     // Если панель настроек голоса уже в DOM, обновляем ее, чтобы появились нативные голоса
@@ -2761,7 +2664,6 @@ if (document.readyState === 'loading') {
 } else {
     initTTS();
 }
-
 
 
 document.addEventListener('visibilitychange', async () => {

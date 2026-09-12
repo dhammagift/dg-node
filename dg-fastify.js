@@ -208,7 +208,14 @@ const UNVERSIONED_LAZY_PATHS = [
 
 function staticCacheHeaders(reply, filePath) {
     const ext = path.extname(filePath).toLowerCase();
-    const inVersionedRoot = VERSIONED_STATIC_ROOTS.some(root => filePath.startsWith(root + path.sep))
+    // "Год + immutable" законен ТОЛЬКО для адреса с ?v=<hash> — см. тот же комментарий в
+    // dg-light.js. Один и тот же файл приходит и с версией (её ставит sendVersionedHtml в
+    // разметке), и голым (иконки, которые вставляют из JS: themeswitch.js, settings.js,
+    // dg-page-find-ui.js, common.js). Голый адрес, закэшированный на год как immutable,
+    // заморозил бы иконку у вернувшегося посетителя навсегда.
+    const hasVersionParam = !!(reply && reply.request && reply.request.query && reply.request.query.v);
+    const inVersionedRoot = hasVersionParam
+        && VERSIONED_STATIC_ROOTS.some(root => filePath.startsWith(root + path.sep))
         && !UNVERSIONED_LAZY_PATHS.some(p => filePath.startsWith(p));
     if (inVersionedRoot && ['.js', '.css', '.svg', '.png', '.ico'].includes(ext)) {
         reply.header('Cache-Control', CACHE_IMMUTABLE_YEAR);
@@ -644,6 +651,32 @@ const searchIndexPath = path.join(__dirname, 'search', 'index.html');
 
 let skeletonDB = {};
 
+// Ключи скелета — один раз после загрузки, а не Object.keys(skeletonDB) на каждый запрос.
+// Скелет после initServer() не меняется, а массив это десятки тысяч строк: его пересборка
+// на КАЖДЫЙ /api/nav (переход prev/next в ридере) и на каждый неизвестный /:slug — чистая
+// трата. skeletonKeys() отдаёт один и тот же массив; чтение только, менять его нельзя.
+let skeletonKeysCache = null;
+function skeletonKeys() {
+    if (!skeletonKeysCache) skeletonKeysCache = Object.keys(skeletonDB);
+    return skeletonKeysCache;
+}
+// Позиция id в этом массиве — та же история: indexOf() по десяткам тысяч элементов на каждый
+// /api/nav. Map строится вместе с массивом и отвечает за O(1).
+let skeletonIndexCache = null;
+function skeletonIndexOf(id) {
+    if (!skeletonIndexCache) {
+        skeletonIndexCache = new Map();
+        skeletonKeys().forEach((key, i) => skeletonIndexCache.set(key, i));
+    }
+    const idx = skeletonIndexCache.get(id);
+    return idx === undefined ? -1 : idx;
+}
+function resetSkeletonCaches() {
+    skeletonKeysCache = null;
+    skeletonIndexCache = null;
+}
+
+
 // Демо-сегменты для живого образца в /settings/ — заданы владельцем проекта явно, не
 // подбираются автоматически. Сегменты одной сутты (dn22:18.18 + dn22:18.19) идут ОДНОЙ
 // группой — на странице настроек показываются вместе, не по одному сегменту за раз.
@@ -842,6 +875,7 @@ async function initServer() {
         // After it is filled, not before: initServer() replaces the object rather than clearing
         // it, so handing over the old one would leave the core reading an empty index.
         searchCore.setSkeleton(skeletonDB);
+        resetSkeletonCaches(); // скелет заменён — производные кэши (ключи/индекс) невалидны
         await buildSettingsDemoCache();
         await buildScriptListCache();
         await buildLangCountsCache();
@@ -1879,7 +1913,7 @@ app.get('/api/toc/book/:code', async (req, res) => {
 //   - префикс — голое имя никаи без цифр ("sn", "dhp") → дальше обязательно цифра (иначе
 //     "sn" ложно подхватил бы "snp1.1", т.к. "snp" тоже начинается на "sn").
 function findChapterChildren(prefix) {
-    return Object.keys(skeletonDB).filter(id => {
+    return skeletonKeys().filter(id => {
         if (id === prefix || !id.startsWith(prefix)) return false;
         const rest = id.slice(prefix.length);
         if (prefix.endsWith('-')) return /^[a-z]/i.test(rest);
@@ -1923,7 +1957,7 @@ function findRangeContaining(id) {
     const rangeRe = chapter
         ? new RegExp('^' + book + chapter + '\\.(\\d+)-(\\d+)$')
         : new RegExp('^' + book + '(\\d+)-(\\d+)$');
-    for (const key of Object.keys(skeletonDB)) {
+    for (const key of skeletonKeys()) {
         const m = key.match(rangeRe);
         if (!m) continue;
         if (num >= parseInt(m[1], 10) && num <= parseInt(m[2], 10)) return key;

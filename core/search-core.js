@@ -36,6 +36,27 @@ function init(deps) {
 
 function setSkeleton(skeleton) {
     skeletonDB = skeleton;
+    skeletonKeysCache = null;   // производные кэши ниже принадлежат ПРЕДЫДУЩЕМУ скелету
+    skeletonIndexCache = null;
+}
+
+// Ключи скелета и позиция id в них — считаются один раз на скелет, а не на каждый запрос.
+// navFor() зовётся на каждый переход prev/next в ридере, а это десятки тысяч сутт: и
+// Object.keys(), и indexOf() по такому массиву — заметная работа впустую, скелет между
+// запросами не меняется. Массив отдаётся как есть (только для чтения), позиция — через Map.
+let skeletonKeysCache = null;
+let skeletonIndexCache = null;
+function skeletonKeys() {
+    if (!skeletonKeysCache) skeletonKeysCache = Object.keys(skeletonDB);
+    return skeletonKeysCache;
+}
+function skeletonIndexOf(id) {
+    if (!skeletonIndexCache) {
+        skeletonIndexCache = new Map();
+        skeletonKeys().forEach((key, i) => skeletonIndexCache.set(key, i));
+    }
+    const idx = skeletonIndexCache.get(id);
+    return idx === undefined ? -1 : idx;
 }
 
 const TRANSLATOR_PRIORITY = require('../configs/reader/translator-priority.json');
@@ -1043,8 +1064,8 @@ async function getFullTextData(suttaId, targetLangs, explicitTranslators, multiF
 // which is this module's own state — reproducing it outside would be a second implementation of
 // the one thing that must not drift: what "the next sutta" means.
 function navFor(suttaId, scope) {
-    const dbKeys = Object.keys(skeletonDB);
-    const currentIndex = dbKeys.indexOf(suttaId);
+    const dbKeys = skeletonKeys();
+    const currentIndex = skeletonIndexOf(suttaId);
     if (currentIndex === -1) return null;
 
     const allowedPrefixes = resolveAllowedPrefixes(scope);

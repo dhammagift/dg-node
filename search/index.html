@@ -1203,7 +1203,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
   <a href="/" id="dg-brand" class="dg-go-home" title="Dhamma.Gift">
     <!-- Без кружка-подложки: у картинки почти белые лепестки-страницы, и на светлом фоне они
          пропадали. Вместо плашки — тонкий абрис по контуру самой картинки (filter в home.css). -->
-    <img class="dg-brand-logo" src="/assets/img/dgsanhkalogo.png" alt="Dhamma.Gift">
+    <img class="dg-brand-logo" src="/assets/img/dgsanhkalogo-160.png" alt="Dhamma.Gift">
     <span class="dg-brand-name">dhamma.gift</span>
     <span class="dg-brand-tag">Dhamma Vinaya</span>
   </a>
@@ -3100,6 +3100,17 @@ $(document).ready(function() {
     // выдачу не должны заново ждать сеть (жалоба владельца: "каждый раз ждать результаты не
     // хорошо"). Ключ — сама строка запроса к /search, она уже учитывает scope/lb/la/langs/script.
     var searchResultCache = new Map();
+    // Потолок на кэш: он живёт всю сессию вкладки и раньше рос без ограничений — у человека,
+    // который ищет долго и много, в памяти оставались ВСЕ ответы за сессию (каждый — полный JSON
+    // выдачи). Держим последние SEARCH_CACHE_LIMIT запросов: Map перебирает ключи в порядке
+    // вставки, так что самый старый — это первый ключ.
+    var SEARCH_CACHE_LIMIT = 30;
+    function cacheSearchResult(url, json) {
+        searchResultCache.set(url, json);
+        while (searchResultCache.size > SEARCH_CACHE_LIMIT) {
+            searchResultCache.delete(searchResultCache.keys().next().value);
+        }
+    }
     var currentTable = null;
     var enrichedIds = new Set();
     var pendingIds = new Set();
@@ -4366,7 +4377,7 @@ $(document).ready(function() {
                 if (!fastResponse.ok) throw new Error("Ошибка сети при получении данных");
                 return fastResponse.json();
             })();
-            if (!cachedFastJson) searchResultCache.set(searchUrl, fastJson);
+            if (!cachedFastJson) cacheSearchResult(searchUrl, fastJson);
             if (myRun !== searchRunToken) return; // пока ждали сеть, начался другой поиск
 
             // 0 результатов + в запросе кириллица — возможно, ввели латинское слово, но
@@ -4388,7 +4399,7 @@ $(document).ready(function() {
                         if (myRun !== searchRunToken) return; // см. searchRunToken выше
                         if (retryJson && retryJson.metadata.totalFiles > 0) {
                             fastJson = retryJson;
-                            searchResultCache.set(retryUrl, retryJson);
+                            cacheSearchResult(retryUrl, retryJson);
                             highlightWord = layoutFixed;
                             history.replaceState({ dgSearch: true }, '', '/' + encodeURIComponent(layoutFixed));
                             // Поле уже показывало исходный (кириллический) ввод — строка 2998,
@@ -4538,7 +4549,7 @@ $(document).ready(function() {
   <div class="dg-drawer-head">
     <!-- Шапка шторки ведёт на главную — пункт «Главная» ушёл вместе с «Навигацией», а домой
          из выдачи/ридера через бургер всё равно нужно уметь. -->
-    <a class="dg-brand-link" href="/"><img class="dg-brand-logo" src="/assets/img/dgsanhkalogo.png" alt=""><span class="dg-brand-name">dhamma.gift</span></a>
+    <a class="dg-brand-link" href="/"><img class="dg-brand-logo" src="/assets/img/dgsanhkalogo-160.png" alt=""><span class="dg-brand-name">dhamma.gift</span></a>
     <!-- issue #5: minimal-ui still shows Chrome's own share icon in its address bar, but that
          disappears the moment this is installed/used as standalone (no browser chrome at all) —
          needed our own share affordance regardless, not tied to changing the manifest display

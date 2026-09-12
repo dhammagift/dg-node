@@ -686,6 +686,30 @@ function checkStorage(key) {
 })();
 
 const MAX_HISTORY = 8400;
+
+// История — единственное, что растёт без потолка по объёму: 8400 записей это несколько мегабайт,
+// а квота localStorage ~5 МБ на origin и делится со ВСЕМИ остальными ключами (настройки,
+// избранное, прогресс, сохранённые тексты). Голый setItem в такой ситуации бросает
+// QuotaExceededError прямо посреди обработчика — и запись истории, и то, что шло после неё,
+// тихо умирали. Пишем через эту обёртку: не влезло — отрезаем половину самых старых записей и
+// пробуем снова, пока не влезет (история отсортирована от свежих к старым, теряется хвост).
+function writeHistorySafely(entries) {
+    let list = entries;
+    for (let attempt = 0; attempt < 8; attempt++) {
+        try {
+            localStorage.setItem('localSearchHistory', JSON.stringify(list));
+            return list;
+        } catch (e) {
+            if (list.length <= 50) {
+                console.warn('История не помещается в localStorage даже в урезанном виде:', e);
+                return list;
+            }
+            list = list.slice(0, Math.floor(list.length / 2));
+        }
+    }
+    return list;
+}
+window.dgWriteHistorySafely = writeHistorySafely;
 let textinfoCache = null; // Кеш для данных сутт
 
 
@@ -869,7 +893,7 @@ async function saveToHistory(key, url) {
     });
     
     history.unshift([bestKey, value, timestamp]);
-    localStorage.setItem("localSearchHistory", JSON.stringify(history.slice(0, MAX_HISTORY)));
+    writeHistorySafely(history.slice(0, MAX_HISTORY));
     
     // --- ИЗМЕНЕНО: Атомарная отправка истории ---
     if (typeof syncHistoryItemToCloud === 'function') {
@@ -2979,8 +3003,8 @@ window.setupCloudListeners = function(uid) {
         const finalHist = Array.from(histMap.values())
             .sort((a, b) => b.timestamp - a.timestamp)
             .map(h => [h.key, h.url, new Date(h.timestamp).toISOString()])
-            .slice(0, 8400);
-        localStorage.setItem('localSearchHistory', JSON.stringify(finalHist));
+            .slice(0, MAX_HISTORY);
+        writeHistorySafely(finalHist);
         if (typeof window.refreshQuickModalData === 'function' && window.quickModalIsOpen) window.refreshQuickModalData();
     });
 

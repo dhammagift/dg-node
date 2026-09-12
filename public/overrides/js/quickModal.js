@@ -463,7 +463,10 @@ function buildQuickModalDOM() {
                   return currentSlug !== slug;
               });
 
-              localStorage.setItem('localSearchHistory', JSON.stringify(histData));
+              // Тот же безопасный писатель, что и в settings.js (квота localStorage) — если его
+              // почему-то нет на странице, пишем как раньше.
+              if (typeof window.dgWriteHistorySafely === 'function') window.dgWriteHistorySafely(histData);
+              else localStorage.setItem('localSearchHistory', JSON.stringify(histData));
               
               // --- ИЗМЕНЕНО: Атомарная отправка ---
               if (typeof syncHistoryItemToCloud === 'function') {

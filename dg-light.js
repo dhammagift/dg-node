@@ -117,7 +117,17 @@ const UNVERSIONED_VENDOR_DIRS = ['datatables', 'standalone-dpd']
 
 function staticCacheHeaders(res, filePath) {
     const ext = path.extname(filePath).toLowerCase();
-    const inVersionedRoot = VERSIONED_STATIC_ROOTS.some(root => filePath.startsWith(root + path.sep))
+    // "Год + immutable" законен ТОЛЬКО для адреса, в котором есть ?v=<hash> — по такому адресу
+    // изменённый файл приезжает под новым адресом. Тот же самый файл часто запрашивают и БЕЗ
+    // версии: ?v= проставляет sendVersionedHtml в разметке, а скрипты, вставляющие иконки из JS
+    // (themeswitch.js, settings.js, dg-page-find-ui.js, common.js — /assets/svg/gear.svg и др.),
+    // пишут голый путь. Такой голый адрес, закэшированный на год как immutable, ЗАМОРАЖИВАЛ бы
+    // иконку у вернувшегося посетителя навсегда — новую он не увидел бы вообще. Теперь голая
+    // форма падает на суточный тир (ETag от express.static всё равно делает повторный запрос
+    // дешёвым 304), а годовой immutable остаётся ровно там, где он безопасен.
+    const hasVersionParam = !!(res.req && res.req.query && res.req.query.v);
+    const inVersionedRoot = hasVersionParam
+        && VERSIONED_STATIC_ROOTS.some(root => filePath.startsWith(root + path.sep))
         && !UNVERSIONED_VENDOR_DIRS.some(dir => filePath.startsWith(dir));
     if (inVersionedRoot && ['.js', '.css', '.svg', '.png', '.ico'].includes(ext)) {
         res.setHeader('Cache-Control', CACHE_IMMUTABLE_YEAR);
@@ -445,6 +455,32 @@ const searchIndexPath = path.join(__dirname, 'search', 'index.html');
 const skeletonPath = path.join(__dirname, 'dg_db_light.json');
 let skeletonDB = {};
 
+// Ключи скелета — один раз после загрузки, а не Object.keys(skeletonDB) на каждый запрос.
+// Скелет после initServer() не меняется, а массив это десятки тысяч строк: его пересборка
+// на КАЖДЫЙ /api/nav (переход prev/next в ридере) и на каждый неизвестный /:slug — чистая
+// трата. skeletonKeys() отдаёт один и тот же массив; чтение только, менять его нельзя.
+let skeletonKeysCache = null;
+function skeletonKeys() {
+    if (!skeletonKeysCache) skeletonKeysCache = Object.keys(skeletonDB);
+    return skeletonKeysCache;
+}
+// Позиция id в этом массиве — та же история: indexOf() по десяткам тысяч элементов на каждый
+// /api/nav. Map строится вместе с массивом и отвечает за O(1).
+let skeletonIndexCache = null;
+function skeletonIndexOf(id) {
+    if (!skeletonIndexCache) {
+        skeletonIndexCache = new Map();
+        skeletonKeys().forEach((key, i) => skeletonIndexCache.set(key, i));
+    }
+    const idx = skeletonIndexCache.get(id);
+    return idx === undefined ? -1 : idx;
+}
+function resetSkeletonCaches() {
+    skeletonKeysCache = null;
+    skeletonIndexCache = null;
+}
+
+
 // Демо-сегменты для живого образца в /settings/ — заданы владельцем проекта явно, не
 // подбираются автоматически. Сегменты одной сутты (dn22:18.18 + dn22:18.19) идут ОДНОЙ
 // группой — на странице настроек показываются вместе, не по одному сегменту за раз.
@@ -656,6 +692,7 @@ async function initServer() {
     try {
         const data = await fs.readFile(skeletonPath, 'utf8');
         skeletonDB = JSON.parse(data);
+        resetSkeletonCaches(); // скелет заменён — производные кэши (ключи/индекс) невалидны
         // skeletonDB не хот-релоадится — печатаем mtime файла, чтобы "я пересобрал скелет, а
         // сервер всё равно отдаёт старое" было видно в логе сразу, а не гадалось.
         const stat = await fs.stat(skeletonPath);
@@ -2576,8 +2613,8 @@ app.get('/api/text/:suttaId', async (req, res) => {
 app.get('/api/nav/:suttaId', (req, res) => {
     res.set('Cache-Control', 'public, max-age=3600'); // cache.md §4 primary tier
     const suttaId = req.params.suttaId.toLowerCase();
-    const dbKeys = Object.keys(skeletonDB);
-    const currentIndex = dbKeys.indexOf(suttaId);
+    const dbKeys = skeletonKeys();
+    const currentIndex = skeletonIndexOf(suttaId);
     if (currentIndex === -1) return res.status(404).json({ error: `Unknown sutta id: ${suttaId}` });
 
     const allowedPrefixes = resolveAllowedPrefixes(req.query.scope);
@@ -3132,7 +3169,7 @@ app.get('/api/toc/book/:code', async (req, res) => {
 //   - префикс — голое имя никаи без цифр ("sn", "dhp") → дальше обязательно цифра (иначе
 //     "sn" ложно подхватил бы "snp1.1", т.к. "snp" тоже начинается на "sn").
 function findChapterChildren(prefix) {
-    return Object.keys(skeletonDB).filter(id => {
+    return skeletonKeys().filter(id => {
         if (id === prefix || !id.startsWith(prefix)) return false;
         const rest = id.slice(prefix.length);
         if (prefix.endsWith('-')) return /^[a-z]/i.test(rest);
@@ -3176,7 +3213,7 @@ function findRangeContaining(id) {
     const rangeRe = chapter
         ? new RegExp('^' + book + chapter + '\\.(\\d+)-(\\d+)$')
         : new RegExp('^' + book + '(\\d+)-(\\d+)$');
-    for (const key of Object.keys(skeletonDB)) {
+    for (const key of skeletonKeys()) {
         const m = key.match(rangeRe);
         if (!m) continue;
         if (num >= parseInt(m[1], 10) && num <= parseInt(m[2], 10)) return key;
