@@ -700,9 +700,42 @@
             if (localStorage.getItem(UPDATE_SEEN_KEY) === build) return;
             localStorage.setItem(UPDATE_SEEN_KEY, build);
         } catch (err) { /* приватный режим — покажем подсказку, просто каждый раз */ }
-        if (typeof window.showBubbleNotification !== 'function') return;
-        window.showBubbleNotification(isRuLang()
+        var text = isRuLang()
             ? 'Офлайн-библиотека обновилась — скачать новую версию можно в Настройках'
-            : 'The offline library has a new version — download it from Settings', 7000, 'info');
+            : 'The offline library has a new version — download it from Settings';
+        // Системное уведомление, если разрешение уже дано (просим его в момент скачивания
+        // библиотеки — см. ниже; сами по себе окна с запросом прав не всплывают). Это локальное
+        // уведомление через уже зарегистрированный service worker: ни сервера, ни push-подписок
+        // для него не нужно, и в PWA/TWA/Capacitor оно работает одинаково.
+        if (!systemNotify(text) && typeof window.showBubbleNotification === 'function') {
+            window.showBubbleNotification(text, 7000, 'info');
+        }
+    });
+
+    function systemNotify(text) {
+        try {
+            if (!window.Notification || Notification.permission !== 'granted') return false;
+            if (!navigator.serviceWorker || !navigator.serviceWorker.ready) return false;
+            navigator.serviceWorker.ready.then(function (reg) {
+                reg.showNotification('Dhamma.Gift', {
+                    body: text,
+                    tag: 'dg-offline-update',          // новая заменяет старую, а не копится
+                    icon: '/assets/img/pwa-bold-monocolor-192.png',
+                });
+            }).catch(function () { /* нет SW — останется пузырь */ });
+            return true;
+        } catch (e) { return false; }
+    }
+
+    /* Разрешение спрашиваем один раз и только у того, кто сам начал качать библиотеку: он уже
+       сказал, что офлайн ему нужен, и обновление этой базы — единственное, о чём мы шлём. */
+    var ASKED_KEY = 'dg.offline.notifyAsked';
+    window.addEventListener('dg:dl-progress', function () {   // качает — значит офлайн ему нужен
+        try {
+            if (!window.Notification || Notification.permission !== 'default') return;
+            if (localStorage.getItem(ASKED_KEY)) return;
+            localStorage.setItem(ASKED_KEY, '1');
+            Notification.requestPermission();
+        } catch (e) { /* приватный режим */ }
     });
 })();
