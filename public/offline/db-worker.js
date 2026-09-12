@@ -863,26 +863,25 @@ const OPS = {
     },
 
     // Mirrors dg-fastify.js's /api/text route. Two things here are easy to get wrong and were:
-    // the columns come from ?langs/?lang, NOT from the mode's `columns` — a mode only supplies
-    // multiFor, and only when ?lang is given too; and a language with no translation at all falls
-    // back to English, which changes the columns it reports.
-    async text({ suttaId, mode, langs, lang, translators, multiFor }) {
+    // the columns come from ?langs/?lang, NOT from the mode's `columns` — a mode supplies only
+    // behaviour flags (dualScript/mnemonic); and a language with no translation at all falls back
+    // to English, which changes the columns it reports. issue #6: ?multiFor= убран и здесь —
+    // несколько переводчиков одного языка теперь приходят только по явному ?translators=.
+    async text({ suttaId, mode, langs, lang, translators }) {
         const modeConfig = mode ? core.MODE_TABLE[mode] : null;
         const targetLangs = langs ? langs.split(',').map(l => l.trim())
             : lang ? [lang]
             : ['ru', 'en'];
         const explicitTranslators = translators ? translators.split(',').map(t => t.trim()) : null;
-        const multiForLangs = (modeConfig && modeConfig.multiFor && lang) ? [lang]
-            : (multiFor ? multiFor.split(',').map(l => l.trim()) : null);
 
         const base = await core.getSuttaBaseData(suttaId);
         if (!base) return { __status: 404, error: `Unknown sutta id: ${suttaId}` };
-        let data = await core.buildTextDataFromBase(base, suttaId, targetLangs, explicitTranslators, multiForLangs);
+        let data = await core.buildTextDataFromBase(base, suttaId, targetLangs, explicitTranslators);
         let effectiveLangs = targetLangs;
 
         const hasAnyTranslation = data.segments.some(seg => Object.keys(seg.translations).length > 0);
         if (!modeConfig && !hasAnyTranslation && !targetLangs.includes('en') && !explicitTranslators) {
-            const fallbackData = await core.buildTextDataFromBase(base, suttaId, ['en'], null, multiForLangs);
+            const fallbackData = await core.buildTextDataFromBase(base, suttaId, ['en'], null);
             const fallbackHasTranslation = fallbackData &&
                 fallbackData.segments.some(seg => Object.keys(seg.translations).length > 0);
             if (fallbackHasTranslation) {

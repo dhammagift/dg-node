@@ -75,8 +75,11 @@ const READER_LANGS = fsSync.readdirSync(path.join(__dirname, '..', 'configs', 'r
     .map(f => f.match(/^lang_([a-z]+)\.json$/)[1])
     .sort();
 
-function filterPreferredTranslators(results, multiForLangs) {
-    const multiSet = new Set(multiForLangs || []);
+// issue #6: второй параметр (multiForLangs) убран вместе с самим ?multiFor= — он существовал
+// только ради режима multiTran, который слился в multi. «Ещё один переводчик» теперь не
+// угадывается сервером, а называется явно: ?translators=ru_o,ru_khantibalo (ветка
+// explicitTranslators в translatorsForSutta ниже), и сколько названо, столько и приходит.
+function filterPreferredTranslators(results) {
     const byLang = {};
     for (const key of Object.keys(results)) {
         const lang = key.split('_')[0];
@@ -110,22 +113,6 @@ function filterPreferredTranslators(results, multiForLangs) {
 
         if (!chosen) chosen = keys[0];
         filtered[chosen] = results[chosen];
-
-        if (multiSet.has(lang)) {
-            // Режим mt/ee (два перевода одного языка) — второй переводчик берётся из
-            // {lang}_other ("второе мнение" проекта), КТО БЫ там реально ни лежал для этой
-            // конкретной сутты, а не хардкод конкретного имени (ru_o+ru_khantibalo были
-            // захардкожены раньше — неверно, если хантибало не переводил именно этот текст).
-            // Если в {lang}_other ничего нет — берём любого другого доступного переводчика,
-            // чтобы режим не схлопывался в одну колонку без необходимости.
-            const isFromOtherDir = k => {
-                const p = results[k];
-                return !!p && p.replace(/\\/g, '/').includes(`/${lang}_other/`);
-            };
-            const secondary = keys.find(k => k !== chosen && isFromOtherDir(k))
-                || keys.find(k => k !== chosen);
-            if (secondary) filtered[secondary] = results[secondary];
-        }
     }
     return filtered;
 }
@@ -943,7 +930,7 @@ async function buildSearchResponse(keyword, searchScope, exactMatch, targetLangs
 // unchanged — the same filterPreferredTranslators/TRANSLATOR_PRIORITY logic decides who is shown,
 // and it inspects its values as file paths to spot a DG-main translation, so `source` is handed
 // to it shaped like the path it expects.
-function translatorsForSutta(suttaId, targetLangs, explicitTranslators, multiForLangs) {
+function translatorsForSutta(suttaId, targetLangs, explicitTranslators) {
     const rows = searchDb.prepare(
         `SELECT DISTINCT lang, translator, source FROM texts WHERE sutta_id = ? AND kind = 'translation'`
     ).all(suttaId);
@@ -970,7 +957,7 @@ function translatorsForSutta(suttaId, targetLangs, explicitTranslators, multiFor
     if (explicitTranslators && explicitTranslators.length) {
         return new Set(explicitTranslators.filter(key => key in roster));
     }
-    return new Set(Object.keys(filterPreferredTranslators(autoRoster, multiForLangs)));
+    return new Set(Object.keys(filterPreferredTranslators(autoRoster)));
 }
 
 // Everything stored for one sutta, fetched once. Split out from the assembly below for the same
@@ -988,9 +975,9 @@ async function getSuttaBaseData(suttaId) {
     return { suttaMeta, rows, htmlBySegment };
 }
 
-async function buildTextDataFromBase(base, suttaId, targetLangs, explicitTranslators, multiForLangs) {
+async function buildTextDataFromBase(base, suttaId, targetLangs, explicitTranslators) {
     const { suttaMeta, rows, htmlBySegment } = base;
-    const chosen = translatorsForSutta(suttaId, targetLangs, explicitTranslators, multiForLangs);
+    const chosen = translatorsForSutta(suttaId, targetLangs, explicitTranslators);
 
     // Segments come from the root text and keep its order (`ord`), exactly as iterating the root
     // JSON's keys used to — a translation segment with no root counterpart is not a segment.
@@ -1032,10 +1019,10 @@ async function buildTextDataFromBase(base, suttaId, targetLangs, explicitTransla
 
 // Полный текст одной сутты (все сегменты, не только совпадения) — для ридера.
 // Переиспользует те же хелперы, что и поиск, просто без grep-фильтра.
-async function getFullTextData(suttaId, targetLangs, explicitTranslators, multiForLangs) {
+async function getFullTextData(suttaId, targetLangs, explicitTranslators) {
     const base = await getSuttaBaseData(suttaId);
     if (!base) return null;
-    return buildTextDataFromBase(base, suttaId, targetLangs, explicitTranslators, multiForLangs);
+    return buildTextDataFromBase(base, suttaId, targetLangs, explicitTranslators);
 }
 
 // Previous/next sutta in corpus order, honouring the search scope. Lives here rather than in the

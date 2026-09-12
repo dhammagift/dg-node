@@ -1,7 +1,6 @@
 {
   "single": { "label": "Single" },
-  "multiTran": { "multiFor": true, "label": "Multi Translators" },
-  "multiLang": { "label": "Multi Language" },
+  "multi": { "label": "Multi" },
   "memorize": { "mnemonic": true, "label": "Memorize" },
   "devanagari": { "dualScript": true, "label": "Devanagari" }
 }

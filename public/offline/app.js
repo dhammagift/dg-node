@@ -987,7 +987,6 @@
                         langs: qs.get('langs'),
                         lang: qs.get('lang'),
                         translators: qs.get('translators'),
-                        multiFor: qs.get('multiFor'),
                     }).then(respond);
                 });
             }

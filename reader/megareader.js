@@ -62,6 +62,20 @@ const langFromUrl = new URLSearchParams(window.location.search).get('lang');
 const READER_MODE_EXPLICIT = !!(window.READER_MODE && window.READER_MODE.modeKey) || !!modeFromUrl;
 let READER_MODE = window.READER_MODE || {};
 if (!READER_MODE.modeKey && modeFromUrl) READER_MODE.modeKey = modeFromUrl;
+// issue #6: multiTran и multiLang слились в один multi — какие языки и каких переводчиков
+// показывать, стало одним набором, а не двумя разными режимами. Самих ключей больше нет в
+// mode-table.json (владелец: "старые не нужны"), но ссылка с ними могла кому-то уйти — чтобы
+// она не открывалась пустым дефолтом, ключ здесь молча приводится к multi, а адрес переписывается
+// на новый (replaceState, без лишней записи в историю).
+const LEGACY_MODE_ALIASES = { multiTran: 'multi', multiLang: 'multi' };
+if (LEGACY_MODE_ALIASES[READER_MODE.modeKey]) {
+    READER_MODE.modeKey = LEGACY_MODE_ALIASES[READER_MODE.modeKey];
+    if (modeFromUrl) {
+        const legacyParams = new URLSearchParams(window.location.search);
+        legacyParams.set('mode', READER_MODE.modeKey);
+        history.replaceState(history.state, '', window.location.pathname + '?' + legacyParams.toString() + window.location.hash);
+    }
+}
 // Same deal for lang — without this, a fresh load of e.g. ?mode=single&lang=en had no
 // READER_MODE.lang yet on the FIRST buildSutta() call (nothing sets it before then), so that
 // first request went out with no lang= at all and fell through to the server's bare fallback.
@@ -1016,8 +1030,8 @@ window.buildSutta = async function(rawSlug) {
             // devanagari (and memorize/multiTran) whenever the URL also carried an explicit
             // langs= — e.g. after switching modes while langs= was still set from a prior mode.
             langsQuery = `mode=${encodeURIComponent(READER_MODE.modeKey)}&langs=${encodeURIComponent(explicitLangs)}`;
-        } else if (READER_MODE.modeKey === 'multiLang') {
-            // Набор языков для multiLang — из уже сохранённого порядка пользователя
+        } else if (READER_MODE.modeKey === 'multi') {
+            // Набор языков для multi — из уже сохранённого порядка пользователя
             // (getLangOrder(), тот же, что реордерит колонки). Owner: "не хардкодить языки" —
             // при первом заходе (порядок ещё не сохранён) единственный честный дефолт —
             // текущий язык + следующий РЕАЛЬНО доступный на сайте (availableLangs, см.
@@ -1037,7 +1051,7 @@ window.buildSutta = async function(rawSlug) {
             // Single-column modes: the language popover's checkboxes are a per-TEXT trial (owner:
             // "применялось, но не сохранялось") — sent as an explicit langs=, never written to
             // dgReadingLangOrder. tempSlug pins it to this text, so the next one is back to just
-            // the main language. multiLang persists instead (branch above). Set by home.js.
+            // the main language. multi persists instead (branch above). Set by home.js.
             langsQuery = `mode=${encodeURIComponent(READER_MODE.modeKey)}&langs=${encodeURIComponent(READER_MODE.tempLangs.join(','))}`;
         } else {
             const langParam = READER_MODE.lang ? `&lang=${encodeURIComponent(READER_MODE.lang)}` : '';
@@ -1088,13 +1102,13 @@ window.buildSutta = async function(rawSlug) {
     READER_MODE.availableLangs = Array.isArray(suttaData.availableLangs) ? suttaData.availableLangs : null; // languages THIS text has a translation in (dg-fastify.js) — the popover marks the rest "нет перевода"
     // Owner: "показывать доп кнопку [языковой пилюли] во всех режимах... раз языки уже
     // активированы" — home.js's dgRenderLangPill reads LANG_ORDER_KEY to decide whether to show
-    // its "more languages" dots button outside multiLang too (single/results/etc, where only ONE
+    // its "more languages" dots button outside multi too (single/results/etc, where only ONE
     // language is ever actually rendered). Previously this key was written ONLY by
-    // switchReadingLanguage() (an explicit pill click) — a user who opened multiLang from the
-    // burger row and never touched the toggle got 2 real columns on screen but no persisted
-    // record of it, so the dots button never appeared anywhere else. Just landing on multiLang
-    // with 2+ columns now counts as "activated" too.
-    if (READER_MODE.modeKey === 'multiLang' && columns.length > 1) {
+    // switchReadingLanguage() (an explicit pill click) — a user who opened the multi-language
+    // mode from the burger row and never touched the toggle got 2 real columns on screen but no
+    // persisted record of it, so the dots button never appeared anywhere else. Just landing on
+    // multi with 2+ columns now counts as "activated" too.
+    if (READER_MODE.modeKey === 'multi' && columns.length > 1) {
         try { localStorage.setItem(LANG_ORDER_KEY, JSON.stringify(columns)); } catch (e) { /* приватный режим */ }
     }
     READER_MODE.lang = suttaData.lang || columns[0] || READER_MODE.lang; // сервер резолвил язык явно, см. dg-light.js

@@ -1978,11 +1978,13 @@ function getQueryParams() {
 // window.switchReaderMode() directly instead of a link proxy, and only for modes that actually
 // exist in dg-node (mode-table.json) — prod's Thai/Reverse/Full Reverse (Alt+6/7/8) aren't
 // implemented here, not wired.
-// Digit → mode TYPE. Mode-table.json keys are language-independent now (single/multiTran/
-// multiLang/memorize/devanagari — no more per-language duplicate keys like st/read), so one
-// digit per type, same in every language. window.MODE_HOTKEY_DIGITS is also read by home.js to
-// print the digit next to each mode row in the burger drawer, one source of truth for both.
-window.MODE_HOTKEY_DIGITS = { single: 1, multiTran: 2, memorize: 3, devanagari: 4, multiLang: 5 };
+// Digit → mode TYPE. Mode-table.json keys are language-independent now (single/multi/memorize/
+// devanagari — no more per-language duplicate keys like st/read), so one digit per type, same in
+// every language. window.MODE_HOTKEY_DIGITS is also read by home.js to print the digit next to
+// each mode row in the burger drawer, one source of truth for both.
+// issue #6: multiTran (был Alt+2) и multiLang (был Alt+5) слились в multi — он занимает Alt+2,
+// Alt+5 освобождается. Мнемоника и деванагари остаются на своих цифрах, чтобы не ломать привычку.
+window.MODE_HOTKEY_DIGITS = { single: 1, multi: 2, memorize: 3, devanagari: 4 };
 
 // Owner: "везде при смене языка по хоткеям показывать наш бабл" — one announcement for every
 // hotkey-driven language switch (home, results, reader), in the language just switched TO.

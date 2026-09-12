@@ -66,11 +66,15 @@ const CASES = [
     ['search-too-short', '/search?q=ka&langs=ru,en'],
     ['search-no-hits', '/search?q=zzzzzz&langs=ru,en'],
     ['enrich-dn22', '/search/enrich?q=kacchapa&ids=dn22&langs=ru,en'],
-    ['text-dn22-st', '/api/text/dn22?mode=st'],
-    ['text-dn22-mt', '/api/text/dn22?mode=mt'],
-    ['text-dn22-ml', '/api/text/dn22?mode=ml'],
-    ['text-dn22-read', '/api/text/dn22?mode=read'],
-    ['text-dn22-ee', '/api/text/dn22?mode=ee'],
+    // issue #6: были st/mt/ml/read/ee — ключи из таблицы режимов, которой нет с миграции на
+    // типы (single/multi/memorize/devanagari). Ни один из них не резолвился, так что все пять
+    // проверок молча ходили по ветке "режим неизвестен". Теперь ключи настоящие, а multi
+    // проверяется в обоих своих видах — по языкам и с несколькими переводчиками одного языка.
+    ['text-dn22-single', '/api/text/dn22?mode=single&lang=ru'],
+    ['text-dn22-multi-langs', '/api/text/dn22?mode=multi&langs=ru,en'],
+    ['text-dn22-multi-translators', '/api/text/dn22?mode=multi&langs=ru&translators=ru_o,ru_sv'],
+    ['text-dn22-memorize', '/api/text/dn22?mode=memorize&lang=ru'],
+    ['text-dn22-devanagari', '/api/text/dn22?mode=devanagari&lang=ru'],
     ['text-explicit-translators', '/api/text/dn22?translators=ru_o,ru_sv'],
     ['text-unknown', '/api/text/nosuchsutta'],
     ['nav-dn22', '/api/nav/dn22'],
@@ -162,20 +166,18 @@ async function referenceAnswer(core, url) {
     if (p.startsWith('/api/text/')) {
         const suttaId = decodeURIComponent(p.slice('/api/text/'.length)).toLowerCase();
         const mode = qs.get('mode'), langs = qs.get('langs'), lang = qs.get('lang');
-        const translators = qs.get('translators'), multiFor = qs.get('multiFor');
+        const translators = qs.get('translators');
         const modeConfig = mode ? core.MODE_TABLE[mode] : null;
         const targetLangs = langs ? langs.split(',').map((s) => s.trim())
             : lang ? [lang] : ['ru', 'en'];
         const explicitTranslators = translators ? translators.split(',').map((s) => s.trim()) : null;
-        const multiForLangs = (modeConfig && modeConfig.multiFor && lang) ? [lang]
-            : (multiFor ? multiFor.split(',').map((s) => s.trim()) : null);
         const base = await core.getSuttaBaseData(suttaId);
         if (!base) return wrap({ __status: 404, error: `Unknown sutta id: ${suttaId}` });
-        let data = await core.buildTextDataFromBase(base, suttaId, targetLangs, explicitTranslators, multiForLangs);
+        let data = await core.buildTextDataFromBase(base, suttaId, targetLangs, explicitTranslators);
         let effectiveLangs = targetLangs;
         const hasAnyTranslation = data.segments.some((seg) => Object.keys(seg.translations).length > 0);
         if (!modeConfig && !hasAnyTranslation && !targetLangs.includes('en') && !explicitTranslators) {
-            const fallback = await core.buildTextDataFromBase(base, suttaId, ['en'], null, multiForLangs);
+            const fallback = await core.buildTextDataFromBase(base, suttaId, ['en'], null);
             const fallbackHas = fallback && fallback.segments.some((seg) => Object.keys(seg.translations).length > 0);
             if (fallbackHas) { data = fallback; effectiveLangs = targetLangs.concat(['en']); }
         }

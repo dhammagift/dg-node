@@ -1160,12 +1160,11 @@ app.get('/', (req, res) => {
 app.get('/api/text/:suttaId', async (req, res) => {
     const suttaId = req.params.suttaId.toLowerCase();
 
-    // ?mode=multiTran — основной путь для ридера: сервер резолвит ПОВЕДЕНИЕ (multiFor/
-    // dualScript/mnemonic) из MODE_TABLE (reader/mode-table.json), клиенту не нужно знать эту
-    // логику вовсе. Язык режим больше не хранит — это отдельная ось, ?lang= (один язык) или
-    // ?langs= (список+порядок, для multiLang), см. CLAUDE.md/план: "не хардкодить языки".
-    // ?langs=/?multiFor=/?translators= остаются рабочими напрямую — ручной доступ, /api-docs,
-    // отладка через curl — но ридер ими больше не пользуется.
+    // ?mode=memorize — основной путь для ридера: сервер резолвит ПОВЕДЕНИЕ (dualScript/mnemonic)
+    // из MODE_TABLE (reader/mode-table.json), клиенту не нужно знать эту логику вовсе. Язык режим
+    // не хранит — это отдельная ось, ?lang= (один язык) или ?langs= (список+порядок, для multi),
+    // см. CLAUDE.md: "не хардкодить языки". ?langs=/?translators= работают и напрямую — ручной
+    // доступ, /api-docs, отладка через curl.
     const modeConfig = req.query.mode && MODE_TABLE[req.query.mode];
 
     const targetLangs = req.query.langs
@@ -1183,17 +1182,13 @@ app.get('/api/text/:suttaId', async (req, res) => {
                 // Ни mode, ни lang, ни langs — тот же фоллбэк, что и был здесь всегда для голого
                 // ручного доступа (curl/api-docs без единого языкового параметра), не новый хардкод.
                 : (req.query.langs || 'ru,en').split(',').map(l => l.trim());
-    // ?translators=ru_o,ru_sv — ручной оверрайд, для multiTran (два перевода ОДНОГО языка
-    // одновременно), в обход обычного "один переводчик на язык" (см. findTranslationFiles).
+    // ?translators=ru_o,ru_khantibalo — сколько переводчиков названо, столько и придёт, в обход
+    // обычного "один переводчик на язык" (см. translatorsForSutta). issue #6: это единственный
+    // способ получить несколько переводов одного языка — прежний автоподбор ?multiFor= убран
+    // вместе с режимом multiTran, ради которого он и существовал (владелец: "убери лишнее").
     const explicitTranslators = req.query.translators
         ? req.query.translators.split(',').map(t => t.trim())
         : null;
-    // Автоподбор ВТОРОГО переводчика для языка (см. filterPreferredTranslators): первый —
-    // как обычно по TRANSLATOR_PRIORITY, второй — кто реально нашёлся в {lang}_other для этой
-    // сутты. В отличие от explicitTranslators, ничьё конкретное имя не хардкодится.
-    const multiForLangs = (modeConfig && modeConfig.multiFor && req.query.lang)
-        ? [req.query.lang]
-        : (req.query.multiFor ? req.query.multiFor.split(',').map(l => l.trim()) : null);
 
     try {
         // Один раз читаем root/variant/html (не зависят от языка перевода) — основной вызов
@@ -1201,7 +1196,7 @@ app.get('/api/text/:suttaId', async (req, res) => {
         // с диска дважды ради одних и тех же данных (см. getSuttaBaseData).
         const base = await getSuttaBaseData(suttaId);
         if (!base) return res.code(404).send({ error: `Unknown sutta id: ${suttaId}` });
-        let data = await buildTextDataFromBase(base, suttaId, targetLangs, explicitTranslators, multiForLangs);
+        let data = await buildTextDataFromBase(base, suttaId, targetLangs, explicitTranslators);
         let effectiveLangs = targetLangs;
 
         // Явный ?langs= (не ?mode=) на редко покрытый язык (напр. de) часто не находит вообще
@@ -1211,7 +1206,7 @@ app.get('/api/text/:suttaId', async (req, res) => {
         // чтобы не менять поведение для существующих читателей без явного langs=.
         const hasAnyTranslation = data.segments.some(seg => Object.keys(seg.translations).length > 0);
         if (!modeConfig && !hasAnyTranslation && !targetLangs.includes('en') && !explicitTranslators) {
-            const fallbackData = await buildTextDataFromBase(base, suttaId, ['en'], null, multiForLangs);
+            const fallbackData = await buildTextDataFromBase(base, suttaId, ['en'], null);
             const fallbackHasTranslation = fallbackData &&
                 fallbackData.segments.some(seg => Object.keys(seg.translations).length > 0);
             if (fallbackHasTranslation) {

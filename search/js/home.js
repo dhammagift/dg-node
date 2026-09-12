@@ -1316,7 +1316,7 @@
        six-dot "more" button's target. STAGE 2 (owner: "нужно чтобы можно было отключить язык",
        "в том числе основной с помощью галочки") — the checkbox and "сделать основным" pin now
        both drive the real reader: dgApplyLangSelection() below persists the checked set to
-       dgReadingLangOrder and either refetches (multiLang: adding/removing a column is a real
+       dgReadingLangOrder and either refetches (multi: adding/removing a column is a real
        content change) or calls switchReadingLanguage() (single-column modes: unchecking the
        language on screen switches to the next checked one) — see its comment for the split.
        Inline ru/en dictionaries, same pattern as MODE_TITLES/MODE_DESCRIPTIONS above. */
@@ -1411,7 +1411,7 @@
          unchecked — promoting a language also turns it on.
        - Unchecking every row is refused (same "at least one text stays on" rule the pli/2nd pill
          toggle already follows) — the row just clicked is put back on instead.
-       - multiLang mode can show several columns at once, so ANY change to the checked set (not
+       - multi mode can show several columns at once, so ANY change to the checked set (not
          just which one is main) is a real content change — refetch. Other modes only ever show
          ONE language on screen, so there's nothing to refetch UNLESS the language that changed
          was the one actually showing — switchReadingLanguage() covers that (and no-ops via its
@@ -1443,14 +1443,15 @@
     function dgApplyLangSelection(menu, forceMainLang) {
         var st = currentState();
         var rm = window.READER_MODE;
-        // Owner: two presets over one mechanism. multiLang = "my saved set" (persisted). Every
+        // Owner: two presets over one mechanism. multi = "my saved set" (persisted). Every
         // other reader mode = "just the main language", where the checkboxes are a per-TEXT
         // trial: applied at once, never saved, allowed to go all the way down to Pāḷi only.
-        var trial = st === 'reader' && !!rm && rm.modeKey !== 'multiLang';
+        // issue #6: было 'multiLang' — ключ переименован при слиянии с multiTran, смысл тот же.
+        var trial = st === 'reader' && !!rm && rm.modeKey !== 'multi';
         // Results may ALSO drop to zero (Pāḷi only) — owner: "у нас есть даже более рекомендуемый
         // режим, только пали" — it's the same Pāḷi-only view the pill's own left segment already
         // reaches (dgSetResultsLangVisibility hides every language when nothing's checked), not a
-        // dead end that needs a language forced back on. Only multiLang's saved set still floors
+        // dead end that needs a language forced back on. Only multi's saved set still floors
         // at 1 (its own "Pāḷi only" is the separate pli/2nd pill toggle, not this popover).
         var allowZero = trial || st === 'results';
         if (forceMainLang) {
@@ -1461,7 +1462,7 @@
         var rows = Array.prototype.slice.call(menu.querySelectorAll('.dg-lpmenu-row'));
         var checked = rows.filter(function (r) { return r.querySelector('.dg-check').checked; })
             .map(function (r) { return r.dataset.lang; });
-        if (!checked.length && rows.length && !allowZero) { // saved sets (multiLang) keep ≥1; trial/results may drop to Pāḷi only
+        if (!checked.length && rows.length && !allowZero) { // saved sets (multi) keep ≥1; trial/results may drop to Pāḷi only
             rows[0].querySelector('.dg-check').checked = true;
             checked = [rows[0].dataset.lang];
         }
@@ -1507,16 +1508,16 @@
             return;
         }
         if (st !== 'reader' || !rm || !window._currentSlug) return;
-        if (rm.modeKey === 'multiLang') {
+        if (rm.modeKey === 'multi') {
             rm.lang = mainLang;
             var params = new URLSearchParams(document.location.search);
             params.set('lang', mainLang);
             params.delete('langs'); // stale explicit langs= would otherwise outrank dgReadingLangOrder — see buildSutta()
-            history.pushState({ page: window._currentSlug, mode: 'multiLang' }, "", '?' + params.toString());
+            history.pushState({ page: window._currentSlug, mode: 'multi' }, "", '?' + params.toString());
             if (typeof window.buildSutta === 'function') window.buildSutta(window._currentSlug);
             return;
         }
-        // Trial (single/memorize/devanagari/multiTran). The pin is the one thing that DOES persist:
+        // Trial (single/memorize/devanagari). The pin is the one thing that DOES persist:
         // it's the reading language (= site language), switchReadingLanguage() saves it itself.
         if (forceMainLang && mainLang !== rm.lang && typeof window.switchReadingLanguage === 'function') {
             rm.tempLangs = null;
@@ -1620,7 +1621,7 @@
         // Owner: "доп кнопку показывать во всех режимах чтения и в результатах, если уже есть
         // больше одного активированного языка" — a mode like single/memorize/devanagari (or the
         // results listing) only ever renders ONE language at a time, so `langs` above stays
-        // length 1 there even for a user who already turned on several languages via multiLang.
+        // length 1 there even for a user who already turned on several languages via multi.
         // dgReadingLangOrder (megareader.js LANG_ORDER_KEY) is that persisted set — read directly
         // here (not via megareader.js's getLangOrder(), which isn't guaranteed loaded outside the
         // reader) so the dots button reflects "already activated", not just "on screen right now".
@@ -2227,22 +2228,24 @@
     // in the burger drawer (not a cramped floating modal), full clear words beat vague/short
     // ones: "Standard" didn't say WHAT was standard, and "Multi Trn"/"Multi Lang" were only
     // abbreviated because the old modal had no room.
-    // Owner: режимы — язык-независимые типы (single/multiTran/multiLang/memorize/devanagari),
+    // Owner: режимы — язык-независимые типы (single/multi/memorize/devanagari),
     // язык — отдельная ось (?lang=/?langs=, см. megareader.js). Поэтому описания больше не могут
     // называть конкретный язык ("+ русский"/"+ английский") — они универсальны для любого языка.
     var MODE_TITLES = {
-        single: { ru: 'Один перевод', en: 'One Translation' },
-        multiTran: { ru: 'Мульти перевод', en: 'Multi Translation' },
-        multiLang: { ru: 'Мульти язык', en: 'Multi Language' },
+        single: { ru: 'Читать', en: 'Reading' },
+        multi: { ru: 'Мульти', en: 'Multi' },
         memorize: { ru: 'Для запоминания', en: 'For Memorization' },
         // Owner: this one row's name stays quoted — "Devanagari" is used loosely for the whole
         // mode (any non-Latin script, not literally the Devanagari script), quotes flag that.
         devanagari: { ru: '"Деванагари"', en: '"Devanagari"' }
     };
+    // issue #6: multiTran и multiLang слились в «Мульти» — набор языков и переводчиков теперь
+    // один, а разница между пунктами не в том, ЧТО можно включить, а в том, запоминается ли это:
+    // «Читать» всегда открывается на основном языке (включённое сверх — до конца текста),
+    // «Мульти» открывается на сохранённом наборе.
     var MODE_DESCRIPTIONS = {
-        single: { ru: 'Pāḷi + перевод', en: 'Pāḷi + translation' },
-        multiTran: { ru: 'Pāḷi + перевод (2 переводчика)', en: 'Pāḷi + translation (2 translators)' },
-        multiLang: { ru: 'Pāḷi на нескольких языках перевода', en: 'Pāḷi in multiple translation languages' },
+        single: { ru: 'Всегда на основном языке', en: 'Always in your main language' },
+        multi: { ru: 'Сохранённый набор языков и переводчиков', en: 'Your saved set of languages and translators' },
         memorize: { ru: 'Мнемоника по первой букве', en: 'First-letter mnemonic' },
         devanagari: { ru: 'Pāḷi в другом письме + Pāḷi латиницей', en: 'Pāḷi in another script + Pāḷi in Roman' }
     };
@@ -2331,8 +2334,8 @@
         list.innerHTML = '';
         var lang = menuLang() === 'ru' ? 'ru' : 'en';
 
-        // Owner: mode-table.json keys are language-independent types now (single/multiTran/
-        // multiLang/memorize/devanagari) — no more per-language duplicate keys (was st/mt/ml vs
+        // Owner: mode-table.json keys are language-independent types now (single/multi/
+        // memorize/devanagari) — no more per-language duplicate keys (was st/mt/ml vs
         // read/ee), so the "задублировались, пункты по два раза" family-filter this list used to
         // need doesn't apply anymore: exactly one row per type, always. Switching the reading
         // language is a separate, existing control (the language toggle), not this list's job.
@@ -2340,9 +2343,14 @@
         // одинаковом порядке режимы... они должны быть расположены в том же порядке в котором
         // идут их горячие клавиши" — sort by hotkey digit (settings.js — one source of truth for
         // both), same order in every language.
+        // Показываем только режимы, которые знает ЭТА сборка (у каждого есть цифра-хоткей,
+        // settings.js MODE_HOTKEY_DIGITS — тот же источник, по которому список и сортируется).
+        // issue #6: mode-table.json отдаётся с max-age=3600, поэтому после выката ключей
+        // (multiTran/multiLang уехали в multi) браузер до часа отдаёт старую таблицу из HTTP-кеша
+        // — без этого фильтра в меню висели два мёртвых пункта, которые ничего не переключают.
         var hotkeyDigits = window.MODE_HOTKEY_DIGITS || {};
-        var types = Object.keys(modeTable).filter(function (k) { return k !== 'availableLangs'; })
-            .sort(function (a, b) { return (hotkeyDigits[a] || 0) - (hotkeyDigits[b] || 0); });
+        var types = Object.keys(modeTable).filter(function (k) { return !!hotkeyDigits[k]; })
+            .sort(function (a, b) { return hotkeyDigits[a] - hotkeyDigits[b]; });
         types.forEach(function (type) {
             var isActive = readerMode.modeKey === type;
             var titleInfo = MODE_TITLES[type];
