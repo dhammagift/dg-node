@@ -1328,15 +1328,36 @@ body.dg-state-ai .forshellscript {
 .qg [class*="-lang"] { font-size: 14.5px; line-height: 1.6; }
 .qg .en-lang { font-size: 13.5px; }
 .aiwords { display: flex; flex-wrap: wrap; gap: 7px; }
-/* Слова-кандидаты ведут в словарь (dict.dhamma.gift, смонтирован локально на /dict/) —
-   обычная ссылка, открывается в новой вкладке, чтобы не терять карточки сутт из виду. */
-.aiword { display: inline-flex; align-items: baseline; gap: 7px; border: 1px solid var(--dg-border); background: none; border-radius: 999px; font: inherit; font-size: 13.5px; color: var(--dg-text); padding: 6px 13px; cursor: pointer; text-align: left; text-decoration: none; transition: border-color .15s var(--dg-ease), background .15s var(--dg-ease), color .15s var(--dg-ease); }
-.aiword em { font-style: normal; font-size: 12px; color: var(--dg-text-muted); }
+/* Owner: "клики по слову подставляют слово в инпут, а доп ссылочка — открыть в словаре" —
+   the pill is a container for two separate clickable pieces now, not one link: the word itself
+   (button, overwrites #paliauto) and a small ↗ (real link to dict.dhamma.gift, new tab). */
+.aiword { display: inline-flex; align-items: baseline; gap: 2px; border: 1px solid var(--dg-border); background: none; border-radius: 999px; font-size: 13.5px; color: var(--dg-text); padding: 2px 4px 2px 13px; transition: border-color .15s var(--dg-ease), background .15s var(--dg-ease), color .15s var(--dg-ease); }
 .aiword:hover { border-color: var(--dg-accent); background: var(--dg-accent-bg); color: var(--dg-text); }
+.aiword-term { display: inline-flex; align-items: baseline; gap: 7px; border: 0; background: none; font: inherit; font-size: inherit; color: inherit; padding: 4px 0; cursor: pointer; text-align: left; }
+.aiword em { font-style: normal; font-size: 12px; color: var(--dg-text-muted); }
+.aiword-fill { display: inline-flex; align-items: center; justify-content: center; border: 0; background: none; color: var(--dg-text-muted); padding: 6px; border-radius: 999px; cursor: pointer; }
+.aiword-fill:hover { color: var(--dg-accent); background: var(--dg-surface); }
 .aifoot { display: flex; align-items: center; gap: 3px; flex-wrap: wrap; margin: 24px 0 0; padding: 12px 0 50px; border-top: 1px solid var(--dg-border); }
 .aifoot .dis { font-size: 12px; color: var(--dg-text-muted); padding-left: 8px; }
 .aifoot a, .aifoot button { border: 0; background: none; font: inherit; font-size: 13px; color: var(--dg-tblue); cursor: pointer; padding: 4px 8px; border-radius: 6px; display: flex; align-items: center; gap: 5px; text-decoration: none; }
 .aifoot a:hover, .aifoot button:hover { background: var(--dg-accent-bg); color: var(--dg-tblue); text-decoration: underline; }
+/* Owner: "внизу маленькую кнопку raw data... кнопки копировать на каждой строке" — click-to-reveal
+   debug panel (ai-search.js showDebug/copyRow), replacing an earlier hover-only tooltip that
+   never worked on touch. Muted throughout on purpose — a debug aid, not a real feature.
+   Owner: "сделай МАЛЕНЬКУЮ кнопку... не растягивай тултип на весь экран... копировать может
+   оказаться за кнопкой языка" — the toggle now renders as a plain small link (no Bootstrap .btn
+   padding, see ai-search.js), the panel is capped to a real "small note" width instead of
+   stretching across its (often very wide) container, and .ai-debug-value no longer pushes the
+   copy icon out to the row's far edge — it sits right after the text, nowhere near the
+   fixed-position Pāli/translation pill in the bottom-right corner regardless of panel width. */
+.ai-debug-link { border: 0; background: none; padding: 0; font-size: 12px; color: var(--dg-text-muted); text-decoration: underline; cursor: pointer; opacity: 0.7; }
+.ai-debug-link:hover { opacity: 1; }
+.ai-debug-panel { margin-top: 6px; max-width: min(360px, 100%); padding: 8px 10px; border: 1px solid var(--dg-border); border-radius: 8px; background: var(--dg-surface); font-size: 12px; }
+.ai-debug-row { display: flex; align-items: baseline; gap: 6px; padding: 3px 0; flex-wrap: wrap; }
+.ai-debug-label { color: var(--dg-text-muted); flex-shrink: 0; }
+.ai-debug-value { color: var(--dg-text); word-break: break-word; }
+.ai-debug-copy { border: 1px solid var(--dg-border); background: none; color: var(--dg-text-muted); font-size: 11px; padding: 1px 7px; border-radius: 999px; cursor: pointer; flex-shrink: 0; }
+.ai-debug-copy:hover { color: var(--dg-accent); border-color: var(--dg-accent); }
 #ai-ready, #ai-load, #ai-empty, #ai-error { display: none; }
 [data-ai=ready] #ai-ready, [data-ai=load] #ai-load, [data-ai=empty] #ai-empty, [data-ai=error] #ai-error { display: block; }
 #ai-load .st { display: flex; align-items: center; gap: 9px; margin: 10px 0 0; font-size: 13.5px; color: var(--dg-text-2); }
@@ -3703,6 +3724,11 @@ body.dg-state-reader #language-button { display: none !important; }
 }
 .dg-lpill[hidden], body:not(.dg-state-reader):not(.dg-state-results) .dg-lpill, body.dg-busy .dg-lpill { display: none; } /* reader + results corner control */
 body.dg-state-results #language-button { display: none !important; }
+/* Owner: "ошибка юзера/ошибка тех - не нужна кнопка" — dg-state-ai (ai-search.js: load/empty/
+   error inside #ai-pane) was never added when the rules above were written, so this legacy dead
+   button (its own comment: does nothing on the results LISTING, only ever wired up in the reader)
+   defaulted back to visible there instead of hidden like its reader/results siblings above. */
+body.dg-state-ai #language-button { display: none !important; }
 .dg-lpill:hover { opacity: 1; }
 .dg-lpill button { border: 0; background: none; color: inherit; font: inherit; font-size: 13px; line-height: 1; padding: 0 9px; height: 30px; border-radius: 30px; cursor: pointer; opacity: 0.6; transition: background-color .15s ease, opacity .15s ease; }
 /* Owner: the lit segment must read as "on" without hovering (translucent blue), and hover
@@ -3884,6 +3910,15 @@ body.dg-state-reader #sutta h1, body.dg-state-reader #sutta h2, body.dg-state-re
     body.dg-state-results #search-pane:not(.dg-has-paging) #pali-words_wrapper > .row:first-child { position: relative; z-index: 2; }
     body.dg-state-results #search-pane:not(.dg-has-paging) #pali_wrapper > table,
     body.dg-state-results #search-pane:not(.dg-has-paging) #pali-words_wrapper > table { margin-top: 12px; }
+    /* #search-message (plain "not found"/"too short" text) and #ai-note-wrap (AI-search's "did
+       you mean"/sutta-guess note + word chips, ai-search.js) are #search-pane's own first
+       children — the -50px above pulls the WHOLE pane up, so whichever of them ends up the first
+       VISIBLE one needs this compensation or it renders pulled into .resultheader's space (found
+       live: 42px measured overlap). Scoped to the same breakpoint as -50px itself on purpose
+       (owner: "в мобильной версии какой-то дикий разрыв") — #search-pane keeps its normal +24px
+       (mt-4) below 768px, so there is nothing here to compensate for on mobile. */
+    body.dg-state-results #search-message,
+    body.dg-state-results #ai-note-wrap { margin-top: 54px; }
 }
 /* Wide screens: more air between the header/filter row and the table, and the bottom link row
    (.footerlike: Main / History / Export …) sits at the bottom of the viewport when the table is

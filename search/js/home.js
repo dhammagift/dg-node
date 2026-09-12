@@ -1993,7 +1993,24 @@
         var st = currentState();
         // Results too (owner: "в результатах старая кнопка"): there the pill drives langswitch.js
         // (the hidden legacy #language-button) instead of megareader's setLanguage().
-        if (!((st === 'reader' && sutta) || st === 'results')) {
+        // Owner: "на ошибках типа ничего не найдено и недоступен — не надо" — a Pāli/translation
+        // TOGGLE is meaningless with no quotes on screen to toggle (0 exact matches, AI-search
+        // "unavailable"/genuinely-empty states — all call dgSetState('results') with #pali hidden,
+        // see ai-search.js). Checking classList.contains('d-none') rather than just querying for
+        // .quote[lang] elements: #pali is a DataTables singleton (buildDataTable never destroys/
+        // rebuilds it, only shows/hides it, see search-render.js) — a PREVIOUS real search's rows
+        // can still be sitting in the DOM, just hidden, so their mere existence doesn't mean
+        // THIS screen has anything to show.
+        // Owner: "предложение слов - кнопка языка" — the AI-search "did you mean" word-chips-only
+        // outcome (#ai-words, ai-search.js) counts as real content too, same as a sutta table —
+        // only the two truly-empty/error outcomes should hide the pill.
+        var paliEl = document.getElementById('pali');
+        var aiWordsEl = document.getElementById('ai-words');
+        var hasResultsContent = st === 'results' && (
+            (!!paliEl && !paliEl.classList.contains('d-none') && !!paliEl.querySelector('.quote[lang]'))
+            || (!!aiWordsEl && !aiWordsEl.classList.contains('d-none') && aiWordsEl.children.length > 0)
+        );
+        if (!((st === 'reader' && sutta) || hasResultsContent)) {
             if (host) host.hidden = true;
             var openMenu = document.getElementById('dg-lpmenu');
             if (openMenu) openMenu.hidden = true;
@@ -2411,8 +2428,23 @@
         var left = Math.min(Math.max(margin, r.right - width), window.innerWidth - width - margin);
         sheet.style.width = width + 'px';
         sheet.style.left = left + 'px';
-        sheet.style.top = (r.bottom + 8) + 'px';
-        sheet.style.maxHeight = Math.max(220, window.innerHeight - r.bottom - 24) + 'px';
+        // Owner: "должны открываться вниз без прокрутки по максимуму... сейчас багово на главной"
+        // — strictly "below the button" left too little room when the anchor (the sliders button,
+        // OR the home screen's ".dg-scope-change" — "change" — link under the search field when
+        // that button is hidden there, see openQuick() above) sits high on a short page: measured
+        // live on the home screen, 427px available below vs 733px of real content, forcing heavy
+        // internal scroll even though the viewport itself had spare height ABOVE that point too.
+        // Pull the top up (never above `margin` from the viewport edge) just enough to fit the
+        // sheet's own natural height, so it only falls back to internal scrolling once the
+        // content is genuinely taller than the whole viewport, not just the slice below the
+        // anchor. sheet.scrollHeight reads the natural full height regardless of the max-height
+        // clamp set below — the sheet is already visible (openQuick sets hidden=false) and
+        // populated (buildQuickBody already ran) by the time this runs.
+        var naturalHeight = sheet.scrollHeight;
+        var maxTop = window.innerHeight - margin - naturalHeight;
+        var top = Math.min(r.bottom + 8, Math.max(margin, maxTop));
+        sheet.style.top = top + 'px';
+        sheet.style.maxHeight = Math.max(220, window.innerHeight - top - margin) + 'px';
     }
 
     /* External hotkeys (Alt+V/Alt+C/Alt+. in megareader.js/settings.js) change the underlying

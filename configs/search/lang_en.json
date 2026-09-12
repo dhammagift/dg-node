@@ -137,6 +137,7 @@
     "contextNote": "How many lines to show before and after the match — on each side."
   },
   "toolbar": {
+    "aiModeLabel": "AI mode",
     "expandCollapseLabel": "Saṁvaṭṭo / Vivaṭṭo",
     "readMarksLabel": "Read marks",
     "compassLabel": "Favorites / History",
@@ -219,8 +220,8 @@
     "scopeSelected": "selected sections ({n})",
     "variantsLinkText": "variants",
     "variantsForLabel": "Variants for",
-    "tooShortMessage": "Query \"{query}\" is too short — please enter at least 3 characters.",
-    "noResultsMessage": "Nothing found for \"{query}\".",
+    "tooShortMessage": "query too short — please enter at least 3 characters.",
+    "noResultsMessage": "not found.",
     "errorMessage": "Search error — check your query (it may be an invalid regular expression) and try again.",
     "scopeGroupNikayas": "4 Nikāyas",
     "scopeGroupKn": "Khuddaka Nikāya",

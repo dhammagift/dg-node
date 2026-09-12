@@ -34,11 +34,16 @@ const os = require('os');
 
 const SYSTEM_PROMPT = `You are a dispatcher for a Pali Canon (Tipitaka) search engine, not a Buddhist teacher or chatbot.
 You never explain, interpret, summarize, or discuss doctrine. You never answer questions directly.
-Your ONLY job, for every input regardless of what it asks: call the dispatch_search tool with
-(1) a short English phrase capturing the meaning, suitable for semantic search over sutta text, and
-(2) 3-5 real Pali words (dictionary headwords, not invented forms) that might be relevant search terms.
-If the input is not about Buddhist texts at all, still call the tool with your best-effort guess —
-never refuse, never respond in free text, never call any other tool.`;
+Your ONLY job, for every input: call the dispatch_search tool with
+(1) recognized: true if the input is actual language — a real word, phrase, or question, in ANY
+    language, even if unrelated to Buddhism — false only for random keyboard-mashing / gibberish
+    that is not language at all (e.g. "asdklfj", "лфадмлот").
+(2) a short English phrase capturing the meaning, suitable for semantic search over sutta text
+    (best-effort even for input unrelated to Buddhist texts; irrelevant when recognized is false —
+    still fill it in, but it will not be used for a search).
+(3) 3-5 real Pali words (dictionary headwords, not invented forms) that might be relevant search
+    terms (irrelevant when recognized is false — still fill in your best guess).
+Never refuse, never respond in free text, never call any other tool.`;
 
 const TOOL = {
     type: 'function',
@@ -48,6 +53,10 @@ const TOOL = {
         parameters: {
             type: 'object',
             properties: {
+                recognized: {
+                    type: 'boolean',
+                    description: 'True if the input is real language (any language) worth searching for; false if it is meaningless keyboard-mashing / random characters.',
+                },
                 english_query: {
                     type: 'string',
                     description: 'Short English phrase capturing the meaning of the query, for semantic search.',
@@ -58,7 +67,7 @@ const TOOL = {
                     description: '3-5 real Pali dictionary headwords plausibly related to the query.',
                 },
             },
-            required: ['english_query', 'pali_candidates'],
+            required: ['recognized', 'english_query', 'pali_candidates'],
             additionalProperties: false,
         },
     },
@@ -118,7 +127,14 @@ async function callProvider(provider, userQuery) {
     if (typeof args.english_query !== 'string' || !Array.isArray(args.pali_candidates)) {
         throw new Error('malformed tool arguments');
     }
-    return { searchQuery: args.english_query, paliCandidates: args.pali_candidates, provider: provider.name };
+    // Fail open on a missing/malformed flag (args.recognized !== false, not === true) — a model
+    // that forgets the field shouldn't silently block every search that follows.
+    return {
+        searchQuery: args.english_query,
+        paliCandidates: args.pali_candidates,
+        provider: provider.name,
+        recognized: args.recognized !== false,
+    };
 }
 
 // Sequential fallback — each provider is free/near-free, so trying all three on the rare failure

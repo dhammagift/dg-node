@@ -357,6 +357,12 @@ async function handleWordLookup(word, event) {
     if ((dictUrl === "standalone" || dictUrl === "standaloneru") && !translation) {
         const wordLink = `<strong>${createClickableLink(word)}</strong>`;
         const fallbackUrl = `${currentHost}${window.isRu ? "/ru" : ""}/?p=-kn&q=${encodeURIComponent(word)}`;
+        // Owner: "давай не будем писать искать в интернете, а писать искать в полной версии
+        // Dict.Dhamma.Gift" — the embedded standalone dict is a small offline subset; a miss there
+        // doesn't mean the word isn't in DPD at all, the FULL site (dict.dhamma.gift, same data
+        // this popup's own resolveDictConfig() links to elsewhere) is far more likely to have it
+        // than a generic web search.
+        const fullDictUrl = `https://dict.dhamma.gift/${window.isRu ? "ru/" : ""}?theme=${getEffectiveTheme()}&q=${encodeURIComponent(word)}`;
 
         translation = window.isRu ?
             `<div style="padding: 10px;">
@@ -364,14 +370,14 @@ async function handleWordLookup(word, event) {
                 <br><br>
                 <a href="${fallbackUrl}" target="_blank" rel="noopener noreferrer" style="text-decoration: underline; color: inherit;">Искать на Dhamma.gift</a>
                 <br>
-                <a href="/cse.php?q=${word}" target="_blank" rel="noopener noreferrer" style="text-decoration: underline; color: inherit;">Искать в интернете</a>
+                <a href="${fullDictUrl}" target="_blank" rel="noopener noreferrer" style="text-decoration: underline; color: inherit;">Искать в полной версии Dict.Dhamma.Gift</a>
             </div>` :
             `<div style="padding: 10px;">
                 ${wordLink} is not found in the built-in dictionary.
                 <br><br>
                 <a href="${fallbackUrl}" target="_blank" rel="noopener noreferrer" style="text-decoration: underline; color: inherit;">Search on Dhamma.gift</a>
                 <br>
-                <a href="/cse.php?q=${word}" target="_blank" rel="noopener noreferrer" style="text-decoration: underline; color: inherit;">Search on the internet</a>
+                <a href="${fullDictUrl}" target="_blank" rel="noopener noreferrer" style="text-decoration: underline; color: inherit;">Search in the full Dict.Dhamma.Gift</a>
             </div>`;
     }
 

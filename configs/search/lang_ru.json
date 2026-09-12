@@ -137,6 +137,7 @@
     "contextNote": "Сколько строк показывать до и после найденной — с каждой стороны."
   },
   "toolbar": {
+    "aiModeLabel": "ИИ-режим",
     "expandCollapseLabel": "Saṁvaṭṭo / Vivaṭṭo",
     "readMarksLabel": "Отметки",
     "compassLabel": "Избранное / История",
@@ -265,8 +266,8 @@
     "scopeSelected": "выбранных разделах ({n})",
     "variantsLinkText": "варианты",
     "variantsForLabel": "Варианты для",
-    "tooShortMessage": "Запрос «{query}» слишком короткий — введите не менее 3 символов.",
-    "noResultsMessage": "По запросу «{query}» ничего не найдено.",
+    "tooShortMessage": "слишком короткий запрос — введите не менее 3 символов.",
+    "noResultsMessage": "не найдено.",
     "errorMessage": "Ошибка поиска — проверьте запрос (возможно, некорректное регулярное выражение) и попробуйте снова.",
     "scopeGroupNikayas": "4 Никаи",
     "scopeGroupKn": "Кхуддака Никая",

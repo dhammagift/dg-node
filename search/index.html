@@ -2278,6 +2278,14 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
 </button>
 <button id="btn-show-all-children" class="btn btn-light mb-1" type="button">{{toolbar.expandCollapseLabel}}</button>
 
+<!-- Manual AI-search trigger (docs/AI_SEARCH_BRIEF.md, docs/AI_MODE_DESIGN.md) — the automatic
+     fallback only fires on 0 exact results; this lets someone re-run the CURRENT query through
+     the semantic pipeline on demand, e.g. when the exact matches found aren't what they meant.
+     Wired in public/overrides/js/ai-search.js (delegated click), not here — same reuse as
+     dgRunAiSearch itself. Persistent zero/always/off modes (docs/AI_MODE_DESIGN.md) are a bigger
+     feature, not built yet — this is the one-shot manual trigger only. -->
+<button id="btn-ai-mode" class="btn btn-light mb-1" type="button">{{toolbar.aiModeLabel}}</button>
+
 <button class="btn btn-light forshellscript mb-1" type="button"><a class="text-decoration-none " href="javascript:void(0)">{{toolbar.wordsToggleShow}}</a></button>
 
 <button class="btn btn-light mb-1  toggle-dict-btn" type="button" ><img class="" src="/assets/svg/comment.svg"></img></button>
@@ -2807,9 +2815,33 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
      каждая инициализируется один раз в search-render.js и живёт до конца сессии страницы;
      переключение между отчётами — просто show/hide (см. renderCurrentReport ниже), без
      destroy/rebuild. См. комментарий в начале public/overrides/js/search-render.js. -->
-<div id="search-message" class="alert alert-warning d-none" role="alert">
+<!-- Owner: "не надо показывать такие драматические ошибки жёлтым... как Google — там ничего
+     красного, ничего жёлтого нет, просто текст" — was Bootstrap .alert.alert-warning (bold yellow
+     box); plain muted text reads as information, not as something gone wrong. -->
+<!-- margin-top (home.css, desktop-only): same #search-pane -50px compensation as the ai-note/
+     ai-words wrapper below (see its comment) — the old .alert padding used to hide this overlap
+     by accident; plain text has no padding to hide behind. -->
+<div id="search-message" class="text-muted d-none" role="alert">
     <div id="search-message-ru"></div>
     <div id="search-message-en"></div>
+</div>
+
+<!-- ИИ-поиск (docs/AI_SEARCH_BRIEF.md): точных совпадений нет, но ИИ предположил слова/сутты.
+     Сутты идут в ту же #pali таблицу (buildDataTable — синглтон, второй не завести, см.
+     public/overrides/js/ai-search.js) — настоящие треугольники/анимация DataTables вместо
+     самодельных. Здесь — только пометка "это предположение" и слова-чипы. -->
+<!-- margin-top (home.css, desktop-only — see there) on the wrapper (not the children individually
+     — sibling margins would collapse against each other, not add) compensates #search-pane's own
+     -50px (tuned for the normal case where the first visible child is the table itself, right
+     after #search-message) — without it these render pulled up into .resultheader's space above
+     #search-pane (found live: 42px measured overlap). Either child can be the first VISIBLE one
+     (typo path shows only words). Owner: "в мобильной версии какой-то дикий разрыв" — the -50px
+     itself is @media (min-width:768px) only (home.css), so this compensation must match that
+     breakpoint exactly, or mobile gets BOTH #search-pane's normal +24px (mt-4, unaffected below
+     768px) AND this hack's +54px stacked on top of it — a ~54px gap with nothing pulling it back. -->
+<div id="ai-note-wrap">
+    <p id="ai-note" class="text-muted small d-none mb-2"></p>
+    <div id="ai-words" class="d-none mb-3"></div>
 </div>
 
 <!-- Расширенный фильтр (SearchBuilder). Живёт здесь как d-none заготовка — search-render.js
@@ -3728,7 +3760,6 @@ $(document).ready(function() {
         let scope = buildScopeLabel(json.metadata.resolvedPrefixes);
 
         let qStr = json.metadata.query || "";
-        let capitalizedQuery = qStr ? qStr.charAt(0).toUpperCase() + qStr.slice(1) : "";
 
         // Owner (2026-09-05): the header used to be one sentence — "Kacchapa 7 texts and 8
         // matches in 4 Nikayas + 6 KN books *". Now three visual parts: the keyword on its own
@@ -3763,7 +3794,10 @@ $(document).ready(function() {
         st.className = 'rh-stats';
         st.textContent = stats;
         $head[0].appendChild(kw);
-        $head[0].appendChild(st);
+        // Owner: "убери 0 0 совпадений - это итак понятно если ничего не найдено" — the stats
+        // pill only adds noise once the plain "not found" message below already says the same
+        // thing.
+        if (json.metadata.totalFiles > 0) $head[0].appendChild(st);
         // The star is the ONLY place the search area is named now, so it is always present
         // (before: only when the full list differed from the short label).
         if (true) {
@@ -3814,25 +3848,30 @@ $(document).ready(function() {
             }
         }
 
+        // Owner: "не пиши запрос два раза... можно сразу рядом с заголовком, после звёздочки
+        // сразу пиши" — "not found"/"too short" used to live in a separate block below
+        // (#search-message) and repeated the query a second time ("kachcap ... Kachcap not
+        // found."). Now it's one more span on the SAME header line, right after the star/variants
+        // — the query itself (kw, above) appears exactly once, so the message text no longer
+        // includes {query} at all (see lang_ru/en.json). #search-message stays d-none here; it's
+        // still used by the real-network-error path further down (a different failure, not this).
         let msgDiv = document.getElementById('search-message');
-        if (msgDiv) {
-            // Показываем оба языка сразу, каждый своей строкой (а не только текущий UI-язык и
-            // не смешивая языки в одну строку через "/") — это статус ошибки/пустого результата,
-            // а не элемент интерфейса, который переключается вместе с остальным сайтом. Тексты —
-            // из lang_ru.json/lang_en.json (results.tooShortMessage/noResultsMessage), с {query}.
-            let messageKey = json.metadata.tooShort ? 'results.tooShortMessage'
-                : (json.metadata.totalFiles === 0 ? 'results.noResultsMessage' : null);
-            if (messageKey) {
-                Promise.all([fetchLangConfig('ru'), fetchLangConfig('en')]).then(function (configs) {
-                    document.getElementById('search-message-ru').textContent =
-                        tFrom(configs[0], messageKey, '').replace('{query}', capitalizedQuery);
-                    document.getElementById('search-message-en').textContent =
-                        tFrom(configs[1], messageKey, '').replace('{query}', capitalizedQuery);
-                });
-                msgDiv.classList.remove('d-none');
-            } else {
-                msgDiv.classList.add('d-none');
-            }
+        if (msgDiv) msgDiv.classList.add('d-none');
+        let messageKey = json.metadata.tooShort ? 'results.tooShortMessage'
+            : (json.metadata.totalFiles === 0 ? 'results.noResultsMessage' : null);
+        if (messageKey) {
+            // Guards against a slower-to-resolve PREVIOUS render's fetchLangConfig appending its
+            // (stale/wrong-language) span into a header that $head.empty() + a NEWER call have
+            // already repopulated — renderResultHeader can re-run on a live language switch.
+            renderResultHeader._callId = (renderResultHeader._callId || 0) + 1;
+            let headerRenderId = renderResultHeader._callId;
+            fetchLangConfig(window.siteLanguage).then(function (config) {
+                if (renderResultHeader._callId !== headerRenderId) return;
+                let msgSpan = document.createElement('span');
+                msgSpan.className = 'rh-stats';
+                msgSpan.textContent = tFrom(config, messageKey, '');
+                $head[0].appendChild(msgSpan);
+            });
         }
     }
 
@@ -4425,6 +4464,14 @@ $(document).ready(function() {
                 && typeof window.addToSearchHistory === 'function') window.addToSearchHistory();
             renderResultHeader(fastJson);
             renderCurrentReport();
+            // Owner: "не должен продолжать показывать подсказки если это уже новый и тем более
+            // успешный поиск" — a previous query's AI-search note/word-chips/debug panel are only
+            // ever written by dgRunAiSearch(), never cleared on their own; a fresh search that
+            // this time actually finds something (or is simply too short) never calls it again,
+            // so those elements just kept showing whatever the LAST 0-result query had left in
+            // them. One choke point for every outcome here — the totalFiles===0 branch below
+            // still repopulates them itself moments later, this only matters for the other two.
+            if (typeof window.dgClearAiSearch === 'function') window.dgClearAiSearch();
 
             // Состояние переключаем ТОЛЬКО здесь, когда таблица уже наполнена быстрым ответом.
             // Раньше это делалось до fetch, и выдача успевала показаться пустой.

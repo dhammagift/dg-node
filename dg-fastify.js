@@ -26,7 +26,7 @@ const { DgTextRouter } = require('./public/overrides/js/dg-text-router.js');
 // friend's MCP server unreachable), it never breaks plain exact search.
 const { normalizeQuery } = require('./core/ai-search.js');
 const { searchHybrid } = require('./core/tipitaka-mcp-client.js');
-const { verifyCandidates, suggestForTypo } = require('./core/dpd-lookup.js');
+const { verifyCandidates, lookupWord } = require('./core/dpd-lookup.js');
 const { mcpHandler } = require('./core/mcp-server.js');
 
 // The search/reader core lives in core/search-core.js — see that file for why. Destructured
@@ -1318,6 +1318,72 @@ app.get('/api/nav/:suttaId', (req, res) => {
 const AI_SEARCH_CACHE = new Map(); // `${lang}:${q}` -> { at, data }
 const AI_SEARCH_CACHE_TTL_MS = 10 * 60 * 1000;
 
+// search_hybrid hits -> DataTables-shaped rows, filtered to scope and sorted the site's own way.
+// Shared by the two callers below (a single DPD-confirmed word, and the full LLM+semantic path) —
+// same reasoning either way: relevance picks which suttas make the cut, sortSuttaResults() decides
+// the order they're shown in (dhamma -> khuddaka -> vinaya -> abhi), not raw rank (owner: "почему
+// сортировка не наша?"). Shaped as a plain /search row (CLAUDE.md's documented response), not a
+// bespoke object, so the frontend can feed these straight into window.DgSearchRender.
+// buildDataTable() — real DataTables triangles/child-row animation, not a hand-rolled imitation
+// (owner: "по-настоящему DataTable"). Fields the column renderers don't get from us (unique_words,
+// lb_context/la_context, variant/html) are left empty — cheap degradation, not required for a
+// single best-guess segment per sutta.
+function hitsToSuttaRows(hits, scope) {
+    // search_hybrid knows nothing about this site's scope filter (it searches the whole
+    // Tipitaka) — filter its hits the same way plain /search already does, otherwise a scope
+    // that excludes Abhidhamma/Vinaya can still surface them here (owner: "он выводит абхидхамму
+    // вместо того чтобы следовать фильтру. ответы для ии тоже нужно фильтровать").
+    const allowedPrefixes = resolveAllowedPrefixes(scope);
+    const inScope = hits.filter(hit => {
+        const meta = getSuttaMeta(hit.sutta_id);
+        return meta && matchesScope(meta, hit.sutta_id, allowedPrefixes);
+    });
+
+    // One row per sutta, not per segment — search_hybrid returns segment-level hits and the same
+    // sutta_id can appear several times; keep each sutta's single best-scoring segment as its quote.
+    const bySutta = new Map();
+    for (const hit of inScope) {
+        const existing = bySutta.get(hit.sutta_id);
+        if (!existing || hit.rrf_score > existing.rrf_score) bySutta.set(hit.sutta_id, hit);
+    }
+    const topHits = [...bySutta.values()].sort((a, b) => b.rrf_score - a.rrf_score).slice(0, 5);
+    const forSort = {};
+    for (const hit of topHits) {
+        const meta = getSuttaMeta(hit.sutta_id);
+        forSort[hit.sutta_id] = { category: meta ? meta.category : 'other', mr: meta ? meta.mr : 0, segments: [], hit, meta };
+    }
+    return Object.keys(sortSuttaResults(forSort)).map(suttaId => {
+        const { hit, meta } = forSort[suttaId];
+        return {
+            sutta_id: suttaId,
+            category: meta ? meta.category : 'other',
+            dir_path: meta ? meta.dir_path : '',
+            mr: meta ? meta.mr : 0,
+            count: 1,
+            unique_words: [],
+            titles: meta && meta.title ? { root: meta.title } : {},
+            __enriched: true,
+            segments: [{
+                segment: hit.segment_id,
+                root_text: hit.text_pali || '',
+                variant: '',
+                html: '',
+                translations: hit.text_english ? { en_sujato: hit.text_english } : {},
+                lb_context: [],
+                la_context: [],
+            }],
+        };
+    });
+}
+
+// Owner: "лучше сделай лог у себя где-то чтобы ты видел" — one line per request, visible in
+// `pm2 logs`/stdout, so what the dispatcher actually did can be checked directly instead of
+// relying on a screenshot of the (now deliberately compact) debug tooltip in the UI.
+function logAiSearch(q, body) {
+    const d = body.debug || {};
+    console.log(`[ai-search] query="${q}" ok=${body.ok}${body.ok === false ? ` reason=${body.reason} detail="${body.detail}"` : ''} provider=${d.provider || '-'} normalized="${d.normalizedQuery || '-'}" candidates=[${(d.paliCandidates || []).join(', ')}] suttas=${body.suttas ? body.suttas.length : '-'} words=${body.wordSuggestions ? body.wordSuggestions.length : '-'}`);
+}
+
 app.get('/api/ai-search', async (req, res) => {
     const q = (req.query.q || '').trim();
     if (!q) return res.code(400).send({ ok: false, reason: 'missing_query' });
@@ -1330,22 +1396,62 @@ app.get('/api/ai-search', async (req, res) => {
         return res.send(cached.data);
     }
 
-    // Fast path: a single word (no spaces) that DPD doesn't recognize is almost always a typo or
-    // transliteration slip, not a natural-language description — DPD's OWN fuzzy "did you mean"
-    // list answers that faster and more reliably than a full LLM+semantic round trip would (owner:
-    // "не нужно было искать в ии режиме, а нужно было предположить что это другое слово" — this
-    // applies to the plain /search empty-result case too, see search/index.html's own use of
-    // this same endpoint). Falls through to the full pipeline below if DPD has nothing close either.
+    // Fast path for a single word (no spaces): figure out whether it's real Pali BEFORE ever
+    // asking the LLM to guess anything — owner: "сначала нужно понять, что сказал человек, если
+    // это вообще пали... нужно попробовать поискать его в DPD и уже потом от этих слов
+    // отталкиваться, потому что если он [LLM] будет отправлять в поиск сутт какое попало слово,
+    // не факт что найдётся то, что нужно". A description (multiple words) has no single headword
+    // to check this way — "если это описание, то смысла искать в дпд мало" — that case falls
+    // through untouched to the full LLM+semantic pipeline below.
     if (!/\s/.test(q)) {
         try {
-            const typoSuggestions = await suggestForTypo(q, lang);
-            if (typoSuggestions.length) {
-                const responseBody = { ok: true, query: q, suttas: [], wordSuggestions: typoSuggestions };
+            const wordInfo = await lookupWord(q, lang);
+            if (wordInfo.exists) {
+                // A real, DPD-confirmed word — plain exact search already found 0 for it (that's
+                // why we're here at all), so search by MEANING instead, grounded in DPD's own
+                // gloss rather than an LLM's guess of what this word might mean.
+                const hits = await searchHybrid(wordInfo.gloss ? `${q} — ${wordInfo.gloss}` : q, 15).catch(() => []);
+                const responseBody = {
+                    ok: true, query: q,
+                    suttas: hitsToSuttaRows(hits, scope),
+                    wordSuggestions: [{ word: q, gloss: wordInfo.gloss }],
+                    debug: { normalizedQuery: `(DPD-confirmed word, no LLM call) ${q}`, provider: 'dpd', paliCandidates: [q] },
+                };
+                logAiSearch(q, responseBody);
                 AI_SEARCH_CACHE.set(cacheKey, { at: Date.now(), data: responseBody });
                 return res.send(responseBody);
             }
+            if (wordInfo.closest.length) {
+                // Not a real word, but DPD's own fuzzy "did you mean" found near matches — show
+                // those instead of running the full pipeline at all (owner: "не нужно было искать
+                // в ии режиме, а нужно было предположить что это другое слово").
+                const typoSuggestions = await verifyCandidates(wordInfo.closest.slice(0, 5), lang);
+                const responseBody = {
+                    ok: true, query: q, suttas: [], wordSuggestions: typoSuggestions,
+                    debug: { normalizedQuery: `(DPD typo suggestions, no LLM call) ${q}`, provider: 'dpd', paliCandidates: wordInfo.closest.slice(0, 5) },
+                };
+                logAiSearch(q, responseBody);
+                AI_SEARCH_CACHE.set(cacheKey, { at: Date.now(), data: responseBody });
+                return res.send(responseBody);
+            }
+            // Owner: "кто придумал эту заглушку?.. убери её, не нужно отдавать такое на
+            // неподходящие вещи" — a single word that DPD couldn't verify AND had no fuzzy "did
+            // you mean" for either (real gibberish, or just not a Pali word at all) used to fall
+            // through to the full LLM pipeline like a multi-word description would. The model has
+            // no dictionary basis to search from at that point, so it reliably fell back to its
+            // own go-to Buddhist vocabulary ("dhamma, sacca, anicca, dukkha, nibbana" — seen live
+            // for "kachcapxyz") — a generic non-answer, not a real guess about THIS input. DPD
+            // already said there's nothing close; stop here instead of dressing that up.
+            const responseBody = {
+                ok: true, query: q, suttas: [], wordSuggestions: [],
+                debug: { normalizedQuery: `(DPD: no match, no close match, no LLM call) ${q}`, provider: 'dpd', paliCandidates: [] },
+            };
+            logAiSearch(q, responseBody);
+            AI_SEARCH_CACHE.set(cacheKey, { at: Date.now(), data: responseBody });
+            return res.send(responseBody);
         } catch {
-            // DPD unreachable — not fatal, just skip the shortcut and try the full pipeline.
+            // DPD unreachable (even after dpd-lookup.js's own retry) — not fatal, fall through to
+            // the full pipeline rather than fail outright.
         }
     }
 
@@ -1355,57 +1461,42 @@ app.get('/api/ai-search', async (req, res) => {
     } catch (err) {
         // All three LLM providers failed/unconfigured — degrade to "try exact search",
         // never a 500: this is an expected, handled state, not a server error.
-        return res.send({ ok: false, reason: 'ai_unavailable', detail: err.message });
+        const responseBody = { ok: false, reason: 'ai_unavailable', detail: err.message };
+        logAiSearch(q, responseBody);
+        return res.send(responseBody);
     }
 
-    const [hitsResult, wordsResult] = await Promise.allSettled([
-        searchHybrid(dispatch.searchQuery, 15), // over-fetch; deduped/trimmed to ~5 suttas below
-        verifyCandidates(dispatch.paliCandidates, lang),
-    ]);
+    // debug: what the LLM actually turned the query into — owner asked to see this to sanity-check
+    // the dispatcher, not shown as a real UI feature (rendered as a small muted link, ai-search.js).
+    const debug = { normalizedQuery: dispatch.searchQuery, provider: dispatch.provider, paliCandidates: dispatch.paliCandidates };
 
-    const hits = hitsResult.status === 'fulfilled' ? hitsResult.value : [];
-    const wordSuggestions = wordsResult.status === 'fulfilled' ? wordsResult.value : [];
-
-    // search_hybrid knows nothing about this site's scope filter (it searches the whole
-    // Tipitaka) — filter its hits the same way plain /search already does, otherwise a scope
-    // that excludes Abhidhamma/Vinaya can still surface them here (owner: "он выводит абхидхамму
-    // вместо того чтобы следовать фильтру. ответы для ии тоже нужно фильтровать").
-    const allowedPrefixes = resolveAllowedPrefixes(scope);
-    const inScope = hits.filter(hit => {
-        const meta = getSuttaMeta(hit.sutta_id);
-        return meta && matchesScope(meta, hit.sutta_id, allowedPrefixes);
-    });
-
-    // One card per sutta, not per segment — search_hybrid returns segment-level hits and the same
-    // sutta_id can appear several times (see docs/AI_SEARCH_BRIEF.md, Block 1: "3-5 карточек, не
-    // 20"); keep each sutta's single best-scoring segment as its quote.
-    const bySutta = new Map();
-    for (const hit of inScope) {
-        const existing = bySutta.get(hit.sutta_id);
-        if (!existing || hit.rrf_score > existing.rrf_score) bySutta.set(hit.sutta_id, hit);
+    // Owner: "я думаю что он дает ответы на белиберду - это нехороший знак... он должен отрезать
+    // такой поиск" — keyboard-mashed input ("лфадмлот") isn't a real query in any language, but
+    // the dispatcher was still forced to produce SOME english_query for it (the system prompt
+    // never lets it refuse outright) — that best-effort guess (seen live: literally "unknown
+    // query") is still just English TEXT, and searchHybrid happily finds semantic matches for it
+    // (e.g. "unknown query" matched a sutta literally about searching). dispatch.recognized (see
+    // core/ai-search.js) is a separate, explicit signal from the SAME tool call for exactly this
+    // — false means "not language at all", so there is nothing worth searching for.
+    if (!dispatch.recognized) {
+        const responseBody = { ok: true, query: q, suttas: [], wordSuggestions: [], debug };
+        logAiSearch(q, responseBody);
+        AI_SEARCH_CACHE.set(cacheKey, { at: Date.now(), data: responseBody });
+        return res.send(responseBody);
     }
-    // Relevance (rrf_score) picks WHICH 5 suttas make the cut; the site's own canonical order
-    // (dhamma nikayas -> khuddaka -> vinaya -> abhi, sortSuttaResults()) decides the order they're
-    // shown in — same convention as plain /search, so the AI screen doesn't read as a foreign
-    // ranking dropped onto the site (owner: "почему сортировка не наша?").
-    const topHits = [...bySutta.values()].sort((a, b) => b.rrf_score - a.rrf_score).slice(0, 5);
-    const forSort = {};
-    for (const hit of topHits) {
-        const meta = getSuttaMeta(hit.sutta_id);
-        forSort[hit.sutta_id] = { category: meta ? meta.category : 'other', mr: meta ? meta.mr : 0, segments: [], hit, meta };
-    }
-    const suttas = Object.keys(sortSuttaResults(forSort)).map(suttaId => {
-        const { hit, meta } = forSort[suttaId];
-        return {
-            suttaId,
-            segmentId: hit.segment_id,
-            titlePali: meta ? meta.title : null,
-            quotePali: hit.text_pali,
-            quoteEnglish: hit.text_english,
-        };
-    });
 
-    const responseBody = { ok: true, query: q, suttas, wordSuggestions };
+    // Owner: "эти заглушки dhamma sutta даже обращаться в другой сервер не нужно" — LLM-guessed
+    // pali_candidates are a generic best-effort shot in the dark (real dictionary words like
+    // "dhamma"/"sutta"/"kamma", so verifyCandidates always confirms them — that's not the same as
+    // being an actually relevant "did you mean" for this query). Not worth a DPD round-trip or a
+    // chip: only the DPD-typo-correction branch above (real fuzzy matches for an actual
+    // misspelled headword, no LLM involved) earns word-suggestion chips.
+    const hits = await searchHybrid(dispatch.searchQuery, 15).catch(() => []); // over-fetch; deduped/trimmed to ~5 suttas below
+
+    const responseBody = {
+        ok: true, query: q, suttas: hitsToSuttaRows(hits, scope), wordSuggestions: [], debug,
+    };
+    logAiSearch(q, responseBody);
     AI_SEARCH_CACHE.set(cacheKey, { at: Date.now(), data: responseBody });
     res.send(responseBody);
 });
