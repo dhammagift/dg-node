@@ -126,6 +126,21 @@ function setLangOrderFirst(lang, fallbackColumns) {
    for: two languages interleaved ("о·рус, Sujato·англ, SV·рус"). LANG_ORDER_KEY is still
    written (the pill reads it to decide whether the "···" button is warranted), but it is
    derived from this list now, not a second source of truth. */
+/* Какие языки вообще участвуют в чтении — ОБЩАЯ настройка, та же, что на /settings/
+   (dhammaReaderLangs, csv). Никакого своего списка у ридера нет: включил язык там — он есть
+   здесь, включил здесь — он есть там. Дефолт тот же, что у страницы настроек: интерфейс
+   русский → ru+en, любой другой язык X → X+en; немецкий/сербский и прочие сами не включаются. */
+function getEnabledLangs() {
+    let raw = '';
+    try { raw = localStorage.getItem('dhammaReaderLangs') || localStorage.getItem('dhammaSearchLangs') || ''; } catch (e) { /* приватный режим */ }
+    const saved = raw.split(',').map(x => x.trim()).filter(Boolean);
+    if (saved.length) return [...new Set(saved)];
+    let site = 'en';
+    try { site = localStorage.getItem('dhammaLanguage') || localStorage.getItem('siteLanguage') || 'en'; } catch (e) { /* приватный режим */ }
+    return [...new Set([site, 'en'])];
+}
+window.getEnabledLangs = getEnabledLangs;
+
 const STACK_KEY = 'dgReadingStack';
 function getStack() {
     try {
@@ -1134,13 +1149,16 @@ window.buildSutta = async function(rawSlug) {
                     + `&translators=${encodeURIComponent(stack.join(','))}`;
                 break multiBranch;
             }
+            // Первый заход в мульти (стека ещё нет): берём включённые языки — ту же общую
+            // настройку, что и /settings/. Одного dgReadingLangOrder мало: слушатель смены языка
+            // в home.js пишет туда ТЕКУЩИЙ язык на каждой загрузке, так что на чистом профиле там
+            // всегда ровно один язык, и мульти открывался одноколоночным. И наоборот — добирать
+            // "первый попавшийся из availableLangs всего сайта", как было раньше, нельзя: так в
+            // чтение сам собой приезжал немецкий или сербский.
             let langs = getLangOrder();
-            if (!langs.length) {
-                langs = READER_MODE.lang ? [READER_MODE.lang] : [];
-                const available = window.MODE_TABLE && window.MODE_TABLE.availableLangs;
-                const next = Array.isArray(available) && available.find(l => l !== READER_MODE.lang);
-                if (next) langs.push(next);
-            }
+            const enabled = getEnabledLangs();
+            langs = langs.concat(enabled.filter(l => !langs.includes(l)));
+            if (READER_MODE.lang) langs = [READER_MODE.lang].concat(langs.filter(l => l !== READER_MODE.lang));
             langsQuery = `mode=${encodeURIComponent(READER_MODE.modeKey)}` +
                 (langs.length ? `&langs=${encodeURIComponent(langs.join(','))}` : '') +
                 (trnQuery || translatorsQueryFor());
@@ -1295,16 +1313,16 @@ window.buildSutta = async function(rawSlug) {
        language has two translations on screen at once, and even then the first one stays clean:
        the extra opinion is the thing that gets a thin coloured margin (.dg-cue-N, home.css) and
        a hover title with the name. A plain ru+en reading gets no marks at all. */
-    const dupLangs = new Set(orderedEntries.map(o => o.lang).filter((l, i, a) => a.indexOf(l) !== i));
-    const seenPerLang = new Map();
+    // Owner: "полоски на все строки от 3-х, а то непонятно, почему у некоторых нет отметки".
+    // Два перевода читаются и так (это два разных языка либо очевидная пара), а с трёх строк
+    // помечаются ВСЕ — иначе метка выглядит как признак чего-то особенного у одной строки.
+    const cueAll = orderedEntries.length >= 3;
     let cueIndex = 0;
     for (const { lang, entry } of orderedEntries) {
-        const nth = (seenPerLang.get(lang) || 0) + 1;
-        seenPerLang.set(lang, nth);
         entry.cueClass = '';
         entry.cueTitle = '';
-        if (!dupLangs.has(lang) || nth === 1) continue;
-        entry.cueClass = ' dg-cue dg-cue-' + (cueIndex++ % 4 + 1);
+        if (!cueAll) continue;
+        entry.cueClass = ' dg-cue dg-cue-' + (cueIndex++ % 6 + 1);
         const raw = (window.siteTranslators && window.siteTranslators[lang] && window.siteTranslators[lang][entry.translatorId]) || entry.translatorId;
         entry.cueTitle = String(raw).replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
     }

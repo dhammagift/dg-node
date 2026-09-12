@@ -3911,3 +3911,16 @@ body.dg-state-reader #sutta h1, body.dg-state-reader #sutta h2, body.dg-state-re
 .dg-cue-3 { --dg-cue: #b5539c; }
 .dg-cue-4 { --dg-cue: #2f9e6f; }
 #trn .dg-cue { border-left-width: 3px; padding-left: 6px; }
+/* Языки чтения в окне: чипы — общая настройка (dhammaReaderLangs, та же, что на /settings/),
+   нажатый = язык сейчас в тексте. "+ язык" разворачивает остальные языки этого текста. */
+.dg-ts-chip.is-missing { opacity: .4; cursor: default; }
+.dg-ts-add { border-style: dashed !important; border-color: var(--dg-border-strong) !important; }
+.dg-ts-add-list { padding: 4px 10px 2px; max-height: 240px; overflow-y: auto; }
+.dg-ts-add-list[hidden] { display: none; }
+.dg-ts-add-hint { margin: 2px 4px 6px; font-size: 11px; color: var(--dg-text-muted); }
+.dg-ts-add-row { display: flex; width: 100%; align-items: center; gap: 8px; border: 0; background: none; font: inherit; font-size: 13px; color: var(--dg-text); padding: 7px 6px; border-radius: 8px; cursor: pointer; text-align: left; }
+.dg-ts-add-row:hover { background: var(--dg-surface-hover); }
+.dg-ts-add-n { margin-left: auto; font-size: 11px; color: var(--dg-text-muted); }
+/* Полосок теперь до шести — с трёх переводов помечаются все строки. */
+.dg-cue-5 { --dg-cue: #6a5acd; }
+.dg-cue-6 { --dg-cue: #c2611f; }

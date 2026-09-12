@@ -1788,11 +1788,13 @@
         setMain:{ ru: 'сделать основным', en: 'set as main' },
         applied:{ ru: 'Применяется сразу · клик мимо — ', en: 'Applied instantly · click away to ' },
         close:  { ru: 'закрыть и читать', en: 'close and read' },
-        sorting:{ ru: 'Сортировка временная — ваш порядок цел', en: 'Sorting is temporary — your order is kept' }
+        sorting:{ ru: 'Сортировка временная — ваш порядок цел', en: 'Sorting is temporary — your order is kept' },
+        addLang:{ ru: '+ язык', en: '+ language' },
+        addHint:{ ru: 'Языки чтения — общая настройка с /settings/', en: 'Reading languages are shared with /settings/' }
     };
     function tsStr(k) { return TRANS_STR[k][menuLang() === 'ru' ? 'ru' : 'en']; }
     var tsSort = 'manual';
-    var tsLangFilter = null;   // null = все языки текста; иначе Set выбранных чипов
+    var tsAddOpen = false;     // открыт список "какие ещё языки есть у этого текста"
     var TS_ROW = 44;
 
     // Окно заменяет старый попап только там, где стек вообще имеет смысл: обычное чтение и
@@ -1807,6 +1809,29 @@
         return (rm && Array.isArray(rm.availableTranslators)) ? rm.availableTranslators.slice() : [];
     }
     function tsLangOf(key) { return key.slice(0, key.indexOf('_')); }
+    // Языки чтения — ОБЩАЯ настройка (dhammaReaderLangs, та же, что на /settings/), не свой
+    // список окна: включил здесь — включено и там.
+    function tsEnabledLangs() {
+        return (window.getEnabledLangs && window.getEnabledLangs()) || ['en'];
+    }
+    function tsEnableLang(lang) {
+        var next = tsEnabledLangs();
+        if (next.indexOf(lang) === -1) next.push(lang);
+        try {
+            localStorage.setItem('dhammaReaderLangs', next.join(','));
+            // страница настроек держит "языки поиска = языки чтения" по умолчанию — не рассинхронизируем
+            if (localStorage.getItem('dhammaSearchLangs') === null) localStorage.setItem('dhammaSearchLangs', next.join(','));
+        } catch (e) { /* приватный режим */ }
+    }
+    /* Кого брать, когда язык включают: не первого попавшегося, а того же, кого выбрал бы сервер —
+       по configs/reader/translator-priority.json (для русского это "о" / "ред. о", как и было
+       по умолчанию). */
+    function tsPriorityKey(lang) {
+        var avail = tsAvailable().filter(function (k) { return tsLangOf(k) === lang; });
+        var prio = (window.translatorPriority && window.translatorPriority[lang]) || [];
+        for (var i = 0; i < prio.length; i++) if (avail.indexOf(prio[i]) !== -1) return prio[i];
+        return avail[0] || null;
+    }
 
     /* Пружины: одна rAF-петля на все строки. Нужны не ради красоты — перетаскивание должно
        перехватываться в любой момент, а CSS-переход этого не умеет. */
@@ -1857,7 +1882,7 @@
         host.innerHTML =
             '<div class="dg-ts-head"><b class="dg-ts-title"></b><span class="dg-ts-count"></span>' +
             '<span class="dg-ts-grow"></span><button type="button" class="dg-ts-x" aria-label="✕">✕</button></div>' +
-            '<div class="dg-ts-seg"></div><div class="dg-ts-chips"></div>' +
+            '<div class="dg-ts-seg"></div><div class="dg-ts-chips"></div><div class="dg-ts-add-list" hidden></div>' +
             '<div class="dg-ts-body"><div class="dg-ts-rows"></div></div><div class="dg-ts-foot"></div>';
         document.body.appendChild(host);
         host.addEventListener('click', tsClick);
@@ -1877,7 +1902,9 @@
         // стек первым (в своём порядке), затем всё остальное, что есть у этого текста
         var keys = stack.filter(function (k) { return avail.indexOf(k) !== -1; });
         avail.forEach(function (k) { if (keys.indexOf(k) === -1) keys.push(k); });
-        if (tsLangFilter) keys = keys.filter(function (k) { return tsLangFilter.has(tsLangOf(k)); });
+        var pool = tsEnabledLangs().concat(stack.map(tsLangOf));
+        keys = keys.filter(function (k) { return pool.indexOf(tsLangOf(k)) !== -1; });
+        if (tsAddOpen) keys = [];   // пока открыт список языков, строки переводов не мешают
         if (tsSort === 'name') keys.sort(function (a, b) { return trnName(a).localeCompare(trnName(b)); });
         if (tsSort === 'lang') keys.sort(function (a, b) {
             var la = tsLangOf(a), lb = tsLangOf(b);
@@ -1897,14 +1924,32 @@
             return '<button type="button" data-ts-sort="' + m + '" aria-pressed="' + (tsSort === m) + '">' +
                 esc(tsStr(m === 'manual' ? 'manual' : m === 'lang' ? 'byLang' : 'byName')) + '</button>';
         }).join('');
-        var langs = [];
-        tsAvailable().forEach(function (k) { if (langs.indexOf(tsLangOf(k)) === -1) langs.push(tsLangOf(k)); });
-        host.querySelector('.dg-ts-chips').innerHTML = langs.map(function (l) {
-            var n = tsAvailable().filter(function (k) { return tsLangOf(k) === l; }).length;
-            var on = !tsLangFilter || tsLangFilter.has(l);
-            return '<button type="button" class="dg-ts-chip" data-ts-lang="' + esc(l) + '" aria-pressed="' + on + '">' +
-                esc(LANG_LABEL[l] || l) + ' ' + n + '</button>';
-        }).join('');
+        // Чипы — это языки чтения (общая настройка), а не фильтр списка: нажал — язык появился
+        // в тексте своим приоритетным переводчиком, нажал ещё раз — ушёл. "+ язык" открывает
+        // остальные языки, в которых этот текст вообще есть.
+        var enabled = tsEnabledLangs();
+        var stackLangs = stack.map(tsLangOf);
+        enabled = enabled.concat(stackLangs.filter(function (l) { return enabled.indexOf(l) === -1; }));
+        var textLangs = [];
+        tsAvailable().forEach(function (k) { if (textLangs.indexOf(tsLangOf(k)) === -1) textLangs.push(tsLangOf(k)); });
+        host.querySelector('.dg-ts-chips').innerHTML = enabled.map(function (l) {
+            var on = stackLangs.indexOf(l) !== -1;
+            var missing = textLangs.indexOf(l) === -1;   // этот текст в этот язык не переведён
+            return '<button type="button" class="dg-ts-chip' + (missing ? ' is-missing' : '') + '" data-ts-lang="' + esc(l) + '"' +
+                (missing ? ' disabled' : '') + ' aria-pressed="' + on + '">' + esc(LANG_LABEL[l] || l) + '</button>';
+        }).join('') +
+            (textLangs.some(function (l) { return enabled.indexOf(l) === -1; })
+                ? '<button type="button" class="dg-ts-chip dg-ts-add" data-ts-add aria-expanded="' + tsAddOpen + '">' + esc(tsStr('addLang')) + '</button>'
+                : '');
+        var addHost = host.querySelector('.dg-ts-add-list');
+        addHost.hidden = !tsAddOpen;
+        addHost.innerHTML = !tsAddOpen ? '' :
+            '<p class="dg-ts-add-hint">' + esc(tsStr('addHint')) + '</p>' +
+            textLangs.filter(function (l) { return enabled.indexOf(l) === -1; }).map(function (l) {
+                var n = tsAvailable().filter(function (k) { return tsLangOf(k) === l; }).length;
+                return '<button type="button" class="dg-ts-add-row" data-ts-newlang="' + esc(l) + '">' +
+                    '<span>' + esc(LANG_FULL_NAME[l] || l) + '</span><span class="dg-ts-add-n">' + n + '</span></button>';
+            }).join('');
 
         rows.innerHTML = keys.map(function (key) {
             var lang = tsLangOf(key), i = stack.indexOf(key), on = i !== -1;
@@ -2015,15 +2060,27 @@
         var row = e.target.closest('.dg-ts-row');
         var sortBtn = e.target.closest('[data-ts-sort]');
         if (sortBtn) { tsSort = sortBtn.dataset.tsSort; tsRender(); return; }
+        if (e.target.closest('[data-ts-add]')) { tsAddOpen = !tsAddOpen; tsRender(); return; }
+        var newLang = e.target.closest('[data-ts-newlang]');
+        if (newLang) {
+            tsEnableLang(newLang.dataset.tsNewlang);
+            tsAddOpen = false;
+            var addKey = tsPriorityKey(newLang.dataset.tsNewlang);
+            addKey ? tsApply(tsStack().concat([addKey])) : tsRender();
+            return;
+        }
         var chip = e.target.closest('[data-ts-lang]');
         if (chip) {
-            var langs = [];
-            tsAvailable().forEach(function (k) { if (langs.indexOf(tsLangOf(k)) === -1) langs.push(tsLangOf(k)); });
-            if (!tsLangFilter) tsLangFilter = new Set(langs);
             var l = chip.dataset.tsLang;
-            tsLangFilter.has(l) ? tsLangFilter.delete(l) : tsLangFilter.add(l);
-            if (!tsLangFilter.size) tsLangFilter.add(l);
-            tsRender();
+            var cur = tsStack();
+            var has = cur.some(function (k) { return tsLangOf(k) === l; });
+            if (has) {
+                var left = cur.filter(function (k) { return tsLangOf(k) !== l; });
+                if (left.length) tsApply(left);          // последний язык не выключаем
+            } else {
+                var key = tsPriorityKey(l);
+                if (key) tsApply(cur.concat([key]));
+            }
             return;
         }
         if (!row) return;
