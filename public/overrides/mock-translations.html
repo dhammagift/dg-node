@@ -52,8 +52,16 @@ button{font:inherit;color:inherit}
 .reader .sub{text-align:center;color:var(--muted);font-size:14px;margin:0 0 26px}
 .seg-pali{font-weight:600;margin:18px 0 6px}
 .seg-tr{color:var(--ink-2);margin:0 0 6px}
-.seg-tr .who{display:inline-block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;
-  color:var(--muted);margin-right:6px;vertical-align:1px}
+/* The translator's name is NOT repeated on every line. It is only ambiguous when one language
+   has two translations on screen at once — then those lines get a colour cue in the margin and
+   the legend under the title says whose colour is whose. Everywhere else the language itself
+   already tells you which line is which, so nothing is printed at all. */
+.seg-tr.cued{border-left:2px solid var(--cue);padding-left:10px;margin-left:-12px}
+.legend{display:flex;flex-wrap:wrap;gap:4px 14px;justify-content:center;margin:0 0 24px;
+  font-size:12.5px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:8px;height:8px;border-radius:2px;background:var(--cue);display:inline-block}
+.legend .plain i{border-radius:50%;background:var(--line)}
 
 /* ——— pill with the ⠿ button ——————————————————————————————————————————————— */
 .pill{
@@ -440,7 +448,7 @@ function paint(){
   document.getElementById('count').textContent = n ? `· ${n} на экране` : '· только пали';
   document.getElementById('edCnt').textContent = '— ' + EDITIONS.map(e => e.tag).join(' · ');
   document.getElementById('foot').innerHTML = state.sort === 'manual'
-    ? 'Порядок перетаскиванием · <b>★ — основной</b>'
+    ? 'Применяется сразу · клик мимо — <b>закрыть и читать</b>'
     : 'Сортировка временная — <b>ваш порядок</b> цел, он во вкладке «Мой порядок»';
   const main = TRANSLATIONS.find(t => t.key === mainKey());
   document.getElementById('pillLang').textContent = main ? LANGS[main.lang] : 'Pāḷi';
@@ -458,18 +466,62 @@ const SEGMENTS = [
          sr:'Jednom je Blaženi boravio u zemlji Kuru.',
          fr:'Un jour, le Bouddha séjournait chez les Kurus.' } },
 ];
+const CUES = ['#d08a1e','#3d7fd6','#b5539c','#2f9e6f'];
+// enough text to actually scroll — the anchor logic below only matters mid-page
+const LONG = Array.from({length:8}, (_,i) => SEGMENTS.map(sg => ({
+  pali: sg.pali, tr: sg.tr, n: i
+}))).flat();
 function renderReader(){
-  const shown = state.order.filter(k => state.on.has(k));
+  const shown = state.order.filter(k => state.on.has(k))
+    .map(k => TRANSLATIONS.find(x => x.key === k));
+  // A cue is earned, not default: only a language showing more than one translation needs one.
+  // ?cue=all — mark every translation of a doubled language; ?cue=second (default) — leave the
+  // first one clean and mark only the extra ones, so a normal ru+en reading has no marks at all
+  // and a second opinion is the thing that stands out.
+  const MODE = new URLSearchParams(location.search).get('cue') || 'second';
+  const seen = new Map();
+  const doubled = new Set(shown.map(t => t.lang).filter((l, i, a) => a.indexOf(l) !== i));
+  let ci = 0;
+  const cue = new Map();
+  for (const t of shown){
+    const nth = (seen.get(t.lang) || 0) + 1; seen.set(t.lang, nth);
+    if (!doubled.has(t.lang)) continue;
+    if (MODE === 'second' && nth === 1) continue;
+    cue.set(t.key, CUES[ci++ % CUES.length]);
+  }
+
+  const legend = ['<p class="legend">', '<span class="plain"><i></i>Pāḷi MS</span>'];
+  for (const t of shown){
+    const c = cue.get(t.key);
+    legend.push(c
+      ? `<span style="--cue:${c}"><i></i>${t.name}${t.note ? ' ' + t.note : ''}</span>`
+      : `<span class="plain"><i></i>${LANGS[t.lang]} · ${t.name}</span>`);
+  }
+  legend.push('</p>');
+
   const html = ['<h1>Mahāsatipaṭṭhānasutta</h1>',
-    '<p class="sub">Dīgha Nikāya 22 · прототип окна переводов</p>'];
-  for (const seg of SEGMENTS){
+    '<p class="sub">Dīgha Nikāya 22 · прототип окна переводов</p>', legend.join('')];
+  for (const seg of LONG){
     html.push(`<p class="seg-pali">${seg.pali}</p>`);
-    for (const key of shown){
-      const t = TRANSLATIONS.find(x => x.key === key);
-      html.push(`<p class="seg-tr"><span class="who">${t.name}</span>${seg.tr[t.lang] || '—'}</p>`);
+    for (const t of shown){
+      const c = cue.get(t.key);
+      html.push(`<p class="seg-tr${c ? ' cued' : ''}"${c ? ` style="--cue:${c}"` : ''}`
+        + ` title="${t.name}${t.note ? ' ' + t.note : ''}">${seg.tr[t.lang] || '—'}</p>`);
     }
   }
-  document.getElementById('reader').innerHTML = html.join('');
+  keepPlace(() => { document.getElementById('reader').innerHTML = html.join(''); });
+}
+
+/* Adding or removing a translation must not slide the text out from under the reader:
+   remember which Pāḷi line was where on screen, re-render, put it back on the same pixel. */
+function keepPlace(render){
+  const lines = [...document.querySelectorAll('.seg-pali')];
+  const i = lines.findIndex(el => el.getBoundingClientRect().bottom > 0);
+  const before = i >= 0 ? lines[i].getBoundingClientRect().top : null;
+  render();
+  if (before === null) return;
+  const after = document.querySelectorAll('.seg-pali')[i];
+  if (after) scrollBy({ top: after.getBoundingClientRect().top - before, behavior:'instant' });
 }
 
 /* ——— interactions ——————————————————————————————————————————————————————— */
@@ -620,6 +672,11 @@ function closeSheet(velocity = 0){
 document.getElementById('openBtn').addEventListener('click', () => open ? closeSheet() : openSheet());
 document.getElementById('closeBtn').addEventListener('click', () => closeSheet());
 scrim.addEventListener('click', () => closeSheet());
+// Every change is applied the moment it is made, so a click outside means "done, back to
+// reading" — on desktop too, where there is no scrim to catch it.
+document.addEventListener('pointerdown', e => {
+  if (open && !e.target.closest('#sheet') && !e.target.closest('#openBtn')) closeSheet();
+}, true);
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSheet(); });
 
 let sd = null;
