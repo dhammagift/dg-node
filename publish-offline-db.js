@@ -1,5 +1,5 @@
-// publish-offline-db.js — готовит прод-базу к раздаче офлайн-клиентам: дописывает в неё таблицу
-// meta, сжимает и пишет манифест. Никакой второй базы больше не строится.
+// publish-offline-db.js — раздача офлайн-базы: сжимает dg.db и пишет манифест. База одна — та
+// самая, с которой работает сайт; meta лежит в ней с момента сборки (build-search-db.js).
 //
 // Владелец: "мы просто отдаём человеку сжатую полную базу, он скачал, она распаковалась, и всё
 // готово" — вместо урезанной копии (build-mobile-db.js) и вместо сборки индексов на устройстве,
@@ -13,7 +13,8 @@
 //
 // Почему meta обязательна: db-worker.js после распаковки читает `SELECT key, value FROM meta` и
 // сверяет build_id с именем, под которым сохранил файл. База без этих строк отвергается как
-// незавершённое скачивание — то есть человек скачал бы 215 МБ впустую.
+// незавершённое скачивание — то есть человек скачал бы 215 МБ впустую. Раньше таблицу дописывал
+// этот скрипт, во временную копию; теперь она приезжает вместе с базой, и копия не нужна.
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
@@ -47,42 +48,36 @@ function main() {
     }
     fs.mkdirSync(OUT_DIR, { recursive: true });
 
-    // build_id считаем по содержимому базы ДО того, как допишем meta: иначе id зависел бы сам от
-    // себя. Одинаковый корпус — одинаковый id, и клиент не станет перекачивать то же самое.
-    const t0 = Date.now();
-    const buildId = crypto.createHash('sha256')
-        .update('v1|all|').update(fs.readFileSync(SOURCE, { flag: 'r' }))
-        .digest('hex').slice(0, 16);
-
-    // Работаем на копии: dg.db может быть тем самым файлом, который прямо сейчас открыт рабочим
-    // сервером (в тест-репо это вообще симлинк на прод-базу). Дописывать таблицу в живой файл
-    // ради артефакта — не та цена; копия стоит 10 секунд и ничем не рискует.
-    const staged = path.join(OUT_DIR, '.staged-' + process.pid + '.db');
-    fs.copyFileSync(SOURCE, staged);
-    const db = new DatabaseSync(staged);
-    db.exec('CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT) WITHOUT ROWID');
-    const ins = db.prepare('INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)');
-    for (const [k, v] of [
-        ['schema_version', '1'],
-        ['build_id', buildId],
-        ['langs', 'all'],
-        ['fts', 'trigram'],
-        ['source', path.basename(SOURCE)],
-        ['built_at', new Date().toISOString()],
-    ]) ins.run(k, v);
+    // Никаких копий и дописываний: meta теперь часть самой базы (build-search-db.js writeMeta).
+    // Здесь только читаем оттуда build_id — публикация не должна менять то, что публикует.
+    const db = new DatabaseSync(`file:${SOURCE}?mode=ro`, { readOnly: true });
+    let buildId = null;
+    try {
+        buildId = db.prepare("SELECT value FROM meta WHERE key = 'build_id'").get()?.value || null;
+    } catch (e) { /* нет таблицы meta */ }
     db.close();
-    console.log(`meta записана, build ${buildId} (${Date.now() - t0}ms)`);
+    if (!buildId) {
+        console.error(`в ${SOURCE} нет meta.build_id — пересоберите базу: npm run build-search-db`);
+        process.exit(1);
+    }
+    // WAL: если рядом лежит непустой -wal, часть данных ещё не в самом файле, и сжимать его
+    // рано — получился бы архив без последних записей.
+    const wal = `${SOURCE}-wal`;
+    if (fs.existsSync(wal) && fs.statSync(wal).size > 0) {
+        console.error(`рядом с базой лежит непустой ${path.basename(wal)} — сначала закройте пишущий процесс`);
+        process.exit(1);
+    }
+    console.log(`база ${path.basename(SOURCE)}, build ${buildId}`);
 
-    const bytes = fs.statSync(staged).size;
-    const sha256 = sha256File(staged);
+    const bytes = fs.statSync(SOURCE).size;
+    const sha256 = sha256File(SOURCE);
 
     const tg = Date.now();
     const out = fs.openSync(OUT_GZ, 'w');
     try {
-        execFileSync('gzip', ['-6', '-c', staged], { stdio: ['ignore', out, 'inherit'] });
+        execFileSync('gzip', ['-6', '-c', SOURCE], { stdio: ['ignore', out, 'inherit'] });
     } finally {
         fs.closeSync(out);
-        fs.rmSync(staged, { force: true });   // распакованная копия нужна была только под gzip
     }
     const bytesGz = fs.statSync(OUT_GZ).size;
     console.log(`gzip ${(bytesGz / 1048576).toFixed(1)} МБ из ${(bytes / 1048576).toFixed(1)} ` +

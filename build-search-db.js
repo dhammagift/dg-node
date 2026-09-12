@@ -10,6 +10,7 @@
 const { DatabaseSync } = require('node:sqlite');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 
 const DATA_ROOT = path.join(__dirname, 'siteroot', 'data');
 const SC_BILARA = path.join(DATA_ROOT, 'suttacentral.net', 'sc-data', 'sc_bilara_data');
@@ -325,6 +326,7 @@ function build() {
 
     db.exec('PRAGMA journal_mode = WAL');
     db.exec('ANALYZE');
+    writeMeta(db);
     // Counted from `texts`, not from `fts`: on an external-content table `SELECT count(*) FROM
     // fts` reports the content table's row count, so it cannot show what is actually indexed.
     const unindexed = db.prepare(
@@ -336,6 +338,36 @@ function build() {
     console.log(`\n${OUT_PATH}: ${mb} MB, ${rows} text rows (${rows - unindexed} indexed, ` +
         `${unindexed} hidden from search), ${htmlRows} html rows`);
     console.log(`Total ${((Date.now() - started) / 1000).toFixed(1)}s`);
+}
+
+/* meta — часть базы, а не отдельная сборка. Офлайн-клиент (public/offline/db-worker.js) после
+   распаковки читает `SELECT key, value FROM meta` и сверяет build_id с именем, под которым
+   сохранил файл: база без этих строк отвергается как незавершённое скачивание. Раньше таблицу
+   дописывал сборщик урезанной копии (build-mobile-db.js), из-за чего баз было две. Теперь она
+   одна: dg.db и есть то, что раздаётся (в сжатом виде, publish-offline-db.js).
+
+   build_id считается по содержимому готовой базы ДО вставки самих строк — иначе он зависел бы
+   от себя. Одинаковый корпус даёт одинаковый id, и клиент не перекачивает то же самое. */
+function writeMeta(db) {
+    const h = crypto.createHash('sha256').update('v1|all|');
+    const fd = fs.openSync(OUT_PATH, 'r');
+    const buf = Buffer.allocUnsafe(1 << 20);
+    let n;
+    while ((n = fs.readSync(fd, buf, 0, buf.length, null)) > 0) h.update(buf.subarray(0, n));
+    fs.closeSync(fd);
+    const buildId = h.digest('hex').slice(0, 16);
+
+    db.exec('CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT) WITHOUT ROWID');
+    const ins = db.prepare('INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)');
+    for (const [k, v] of [
+        ['schema_version', '1'],
+        ['build_id', buildId],
+        ['langs', 'all'],
+        ['fts', 'trigram'],
+        ['source', path.basename(OUT_PATH)],
+        ['built_at', new Date().toISOString()],
+    ]) ins.run(k, v);
+    console.log(`meta: build ${buildId}`);
 }
 
 build();
