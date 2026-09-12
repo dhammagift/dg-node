@@ -4477,13 +4477,25 @@ $(document).ready(function() {
             // Раньше это делалось до fetch, и выдача успевала показаться пустой.
             dgSetState('results');
 
-            // Точный поиск реально выполнился (не tooShort) и ничего не нашёл — фолбэк на
-            // ИИ-поиск вместо пустой таблицы (docs/AI_SEARCH_BRIEF.md). dgSetState('ai') внутри
-            // dgRunAiSearch() переключит состояние повторно — 'results' выше просто мгновенный
-            // промежуточный кадр, не видимый глазом.
-            if (!fastJson.metadata.tooShort && fastJson.metadata.totalFiles === 0
-                && typeof window.dgRunAiSearch === 'function') {
-                window.dgRunAiSearch(keyword, scope);
+            // Точный поиск реально выполнился (не tooShort) и ничего не нашёл — вместо пустой таблицы
+            // надо ответить на вопрос "тогда что же искать". Два источника ответа, и дешёвый идёт
+            // первым:
+            //   1. metadata.suggestions — уже пришли В ЭТОМ ЖЕ ответе (dg-fastify.js withSuggestions
+            //      → core/search-core.js suggestWords): неточное совпадение по словоформам самого
+            //      корпуса. Владелец: "зачем это давать в отдельном ответе когда мы можем вместо
+            //      sutta words показывать сразу грамотные подсказки" — никакого второго запроса,
+            //      показываем тем же кадром, и работает даже когда ИИ недоступен.
+            //   2. Ничего похожего в корпусе нет — тогда ИИ-поиск как и раньше
+            //      (docs/AI_SEARCH_BRIEF.md): словарь DPD или поиск по смыслу. dgSetState('ai') внутри
+            //      dgRunAiSearch() переключит состояние повторно — 'results' выше просто мгновенный
+            //      промежуточный кадр, не видимый глазом.
+            if (!fastJson.metadata.tooShort && fastJson.metadata.totalFiles === 0) {
+                var nearForms = fastJson.metadata.suggestions || [];
+                if (nearForms.length && typeof window.dgShowWordChips === 'function') {
+                    window.dgShowWordChips(nearForms);
+                } else if (typeof window.dgRunAiSearch === 'function') {
+                    window.dgRunAiSearch(keyword, scope);
+                }
             }
 
             if (reportMode === 'suttas') ensureEnrichmentStarted();

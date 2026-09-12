@@ -82,3 +82,4 @@ test/.disk-guard.log
 
 # Страница проверок приложения (публикуется от корня как /app-tests/)
 siteroot/app-tests/
+dg.db.local*

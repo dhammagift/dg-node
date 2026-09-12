@@ -61,6 +61,7 @@ const {
     sortSuttaResults,
     sqlRowsIn,
     stripSearchPunctuation,
+    suggestWords,
 } = searchCore;
 
 // bodyLimit mirrors the express.text({limit:'10mb'}) on /assets/lbl-save.php below — Fastify's
@@ -1376,6 +1377,16 @@ function hitsToSuttaRows(hits, scope) {
     });
 }
 
+// Owner: "откуда берутся эти заглушки? кто их дорисовывает?" — the LLM's own pali_candidates are
+// a best-effort shot in the dark; when it isn't sure, it statistically reaches for the handful of
+// terms that appear constantly in its training data, so ~one of these tends to show up even in an
+// otherwise-good candidate list (e.g. "Buddho, nakhā, anta, paṭicca, DHAMMA" for the fingernail
+// simile — the first four are genuinely on-topic, the last is just noise). Filtered out before
+// candidates get blended into the actual search query below, so they don't dilute it query after
+// query. Not a blocklist of "bad Pali" — dhamma/sacca/etc. are perfectly real, central concepts;
+// they're excluded here only because they're too generic to ever narrow a search down.
+const GENERIC_PALI_TERMS = new Set(['dhamma', 'dhammā', 'sutta', 'sacca', 'anicca', 'dukkha', 'anatta', 'nibbāna', 'nibbana', 'kamma', 'magga', 'metta']);
+
 // Owner: "лучше сделай лог у себя где-то чтобы ты видел" — one line per request, visible in
 // `pm2 logs`/stdout, so what the dispatcher actually did can be checked directly instead of
 // relying on a screenshot of the (now deliberately compact) debug tooltip in the UI.
@@ -1485,13 +1496,24 @@ app.get('/api/ai-search', async (req, res) => {
         return res.send(responseBody);
     }
 
-    // Owner: "эти заглушки dhamma sutta даже обращаться в другой сервер не нужно" — LLM-guessed
-    // pali_candidates are a generic best-effort shot in the dark (real dictionary words like
-    // "dhamma"/"sutta"/"kamma", so verifyCandidates always confirms them — that's not the same as
-    // being an actually relevant "did you mean" for this query). Not worth a DPD round-trip or a
-    // chip: only the DPD-typo-correction branch above (real fuzzy matches for an actual
-    // misspelled headword, no LLM involved) earns word-suggestion chips.
-    const hits = await searchHybrid(dispatch.searchQuery, 15).catch(() => []); // over-fetch; deduped/trimmed to ~5 suttas below
+    // Owner: "эти заглушки dhamma sutta даже обращаться в другой сервер не нужно" — the generic
+    // ones are still not worth a DPD round-trip or a "did you mean" chip: only the DPD-typo-
+    // correction branch above (real fuzzy matches for an actual misspelled headword, no LLM
+    // involved) earns word-suggestion chips.
+    //
+    // Owner: "мы можем ему [tripitaka-mcp] как-то помочь?" — search_hybrid RRF-blends keyword +
+    // semantic internally, but we were only ever giving it the English gloss, never the Pali
+    // terms the SAME tool call already produced (seen live: it correctly named "nakhā" for a
+    // fingernail-simile query, we just never used it — search_hybrid's keyword half had nothing
+    // Pali to latch onto, only whatever English words happened to be in the gloss). Same pattern
+    // as the DPD-confirmed-word branch above ("{q} — {gloss}"): append the SPECIFIC candidates
+    // (generic ones filtered above) to the query text itself, giving the keyword half something
+    // precise instead of only the semantic half having anything to go on.
+    const specificCandidates = (dispatch.paliCandidates || []).filter(w => !GENERIC_PALI_TERMS.has(w.toLowerCase()));
+    const searchInput = specificCandidates.length
+        ? `${dispatch.searchQuery} — ${specificCandidates.join(', ')}`
+        : dispatch.searchQuery;
+    const hits = await searchHybrid(searchInput, 15).catch(() => []); // over-fetch; deduped/trimmed to ~5 suttas below
 
     const responseBody = {
         ok: true, query: q, suttas: hitsToSuttaRows(hits, scope), wordSuggestions: [], debug,
@@ -1509,6 +1531,21 @@ app.get('/mcp', (req, res) => res.code(405).send({ jsonrpc: '2.0', error: { code
 app.delete('/mcp', (req, res) => res.code(405).send({ jsonrpc: '2.0', error: { code: -32000, message: 'Method not allowed.' }, id: null }));
 
 app.get('/search', searchHandler);
+
+/* Подсказки "может быть, вы искали" едут в САМОМ ответе поиска, а не вторым запросом.
+   Владелец: "зачем это давать в отдельном ответе когда мы можем вместо sutta words показывать сразу
+   грамотные подсказки" — на нуле результатов отчёты (сутты/слова/варианты) всё равно пусты и
+   прячутся (search/index.html, renderCurrentReport), так что именно туда и просится ответ на вопрос "тогда
+   что же искать". Один запрос вместо двух, и подсказки есть даже когда ИИ-режим недоступен.
+
+   Считаются только на нуле, так что успешный запрос за это не платит ничего. Одно место на все формы
+   ответа (?fast=1 и полный), чтобы не разошлись. */
+function withSuggestions(body, keyword) {
+    if (body.metadata && !body.metadata.tooShort && body.metadata.totalFiles === 0) {
+        body.metadata.suggestions = suggestWords(keyword);
+    }
+    return body;
+}
 
 async function searchHandler(req, res) {
     // req.params.keyword — заход через /search/:keyword (путь); req.query.q — через /search?q=.
@@ -1538,11 +1575,11 @@ async function searchHandler(req, res) {
         if (req.query.fast === '1') {
             // ?fast=1 не содержит текста сегментов вообще (только grep-счётчики) — конвертировать
             // тут нечего, полный текст приходит позже через /search/enrich.
-            return res.send(await buildFastResponse(keyword, scope, exact, targetLangs, lb, la));
+            return res.send(withSuggestions(await buildFastResponse(keyword, scope, exact, targetLangs, lb, la), keyword));
         }
         const result = await buildSearchResponse(keyword, scope, exact, targetLangs, lb, la);
         await convertScriptInSearchResult(result, req.query.script);
-        return res.send(result);
+        return res.send(withSuggestions(result, keyword));
     } catch (error) {
         // A malformed regex keyword is the caller's mistake, not ours.
         if (error.badRequest) return res.code(400).send({ error: error.message });

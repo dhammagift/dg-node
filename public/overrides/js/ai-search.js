@@ -28,10 +28,13 @@
     // constraint documented elsewhere in search/index.html), so inlined as raw SVG rather than an
     // `<i class="fa-regular ...">` tag, which wouldn't render.
     const FILL_ICON_SVG = '<svg viewBox="0 0 512 512" width="13" height="13" fill="currentColor" aria-hidden="true"><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376C296.3 401.1 253.9 416 208 416 93.1 416 0 322.9 0 208S93.1 0 208 0 416 93.1 416 208zM305 225c9.4-9.4 9.4-24.6 0-33.9l-72-72c-9.4-9.4-24.6-9.4-33.9 0s-9.4 24.6 0 33.9l31 31-102.1 0c-13.3 0-24 10.7-24 24s10.7 24 24 24l102.1 0-31 31c-9.4 9.4-9.4 24.6 0 33.9s24.6 9.4 33.9 0l72-72z"/></svg>';
-    function wordChip(w, lang) {
+    function wordChip(w, lang, pending) {
         const fillTitle = lang === 'ru' ? 'Подставить в поиск' : 'Put into search';
+        // `pending` — глоссы ещё не знаем, но собираемся достать из встроенного DPD (fillGlosses ниже).
+        // Слово уже читаемо и кликабельно сразу; скелетон только на месте подписи.
+        const gloss = w.gloss ? `<em>${esc(w.gloss)}</em>` : (pending ? '<em class="is-loading"></em>' : '');
         return `<span class="aiword">`
-            + `<button type="button" class="aiword-term" data-ai-dict-word="${esc(w.word)}">${esc(w.word)}${w.gloss ? `<em>${esc(w.gloss)}</em>` : ''}</button>`
+            + `<button type="button" class="aiword-term" data-ai-dict-word="${esc(w.word)}">${esc(w.word)}${gloss}</button>`
             + `<button type="button" class="aiword-fill" data-ai-word="${esc(w.word)}" title="${esc(fillTitle)}" aria-label="${esc(fillTitle)}">${FILL_ICON_SVG}</button>`
             + `</span>`;
     }
@@ -42,6 +45,110 @@
         input.value = word;
         if (window.DgHome && window.DgHome.syncInput) window.DgHome.syncInput();
         input.focus();
+    }
+
+    // Note + chips for "nothing matched exactly, but these word forms are close". ONE renderer for
+    // the two places that answer can come from, so they cannot drift apart:
+    //   • the plain /search response itself — fuzzy match against the corpus's own Pali word forms
+    //     (dg-fastify.js withSuggestions → core/search-core.js suggestWords), no network, no AI
+    //     request at all; search/index.html calls this directly via window.dgShowWordChips;
+    //   • /api/ai-search — DPD's dictionary suggestions, for input the corpus vocabulary had
+    //     nothing close to.
+    // Paired with "расширить поиск" because a narrow scope is the other common reason nothing turned up.
+    function showWordSuggestions(words, lang) {
+        const noteEl = document.getElementById('ai-note');
+        if (noteEl) {
+            const tryWord = lang === 'ru' ? 'Попробуйте' : 'Try';
+            const expand = lang === 'ru' ? 'расширить поиск' : 'expand search';
+            const or = lang === 'ru' ? 'или' : 'or';
+            const mean = lang === 'ru' ? 'может быть, вы искали' : 'did you mean';
+            noteEl.innerHTML = `${esc(tryWord)} <button type="button" class="dg-scope-change ai-expand-scope">${esc(expand)}</button> ${esc(or)} ${esc(mean)}:`;
+            noteEl.classList.remove('d-none');
+        }
+        const wordsEl = document.getElementById('ai-words');
+        if (!wordsEl) return;
+        if (!words || !words.length) { wordsEl.classList.add('d-none'); return; }
+        // Suggestions from the corpus vocabulary arrive without glosses (there is no dictionary on
+        // the server side of that path, and the whole point of it is that it makes no network
+        // call) — those get filled in place from the bundled DPD below. DPD/LLM suggestions already
+        // carry their own gloss and need none of this.
+        const pending = !words.some(w => w.gloss);
+        wordsEl.innerHTML = words.map(w => wordChip(w, lang, pending)).join('');
+        wordsEl.querySelectorAll('[data-ai-word]').forEach(btn => btn.addEventListener('click', () => {
+            putWordInInput(btn.dataset.aiWord);
+        }));
+        wordsEl.classList.remove('d-none');
+        if (pending) enrichWithLocalDpd(wordsEl);
+    }
+
+    /* Подписи к подсказкам — из СВОЕГО же встроенного DPD (standalone-dpd/dpd_i2h.js — форма →
+       словарная статья, dpd_ebts.js — сама статья, русская или английская по настройке), а не по сети.
+       Владелец: "можешь попробовать обогатить переводами из встроенного дпд... зато страница сразу будет
+       и пару скелетов для отсутствующих переводов" — слова на экране сразу, подписи доезжают.
+
+       Загружаем словарь ТОЛЬКО тем, у кого он и так выбран (savedDict "standalone*", paliLookup.js):
+       эти ~14 МБ они всё равно скачают при первом клике по слову. Тянуть их ради подписи тем, кто
+       пользуется онлайн-словарём, — плохая сделка, им просто убираем скелетоны. */
+    function dpdGloss(word) {
+        if (!window.dpd_i2h || !window.dpd_ebts) return '';
+        const key = String(word).toLowerCase().replace(/[\u2019']/g, '');
+        // dpd_i2h maps INFLECTED forms to headwords, so a word that is already the dictionary form
+        // ("kacchapa") can be missing from it while sitting in dpd_ebts as its own entry — hence
+        // the direct lookups too, homonym suffix included.
+        const heads = (window.dpd_i2h[key] || []).concat(
+            window.dpd_ebts[key] ? [key] : (window.dpd_ebts[key + ' 1'] ? [key + ' 1'] : []));
+        if (!heads.length) return '';
+        // dpd_i2h lists every headword this form could belong to, alphabetically — not by relevance.
+        // For "nibbāna" that put "nibba" (eaves; edge of a roof) first, ahead of nibbāna itself.
+        // A Pali form is built by extending its lemma, so the longest headword that the form starts
+        // with IS the lemma; homonym numbers ("nibbāna 1") are not part of it.
+        const ranked = heads.slice().sort((a, b) => {
+            const la = a.replace(/ \d+$/, ''), lb = b.replace(/ \d+$/, '');
+            return (key.startsWith(lb) ? lb.length : -1) - (key.startsWith(la) ? la.length : -1);
+        });
+        for (const head of ranked) {
+            const entry = window.dpd_ebts[head];
+            if (!entry) continue;
+            // The meaning proper is the <b>…</b> run ("adj. <b>dull; drowsy</b>; lit. stiff [√thī]");
+            // the rest is grammar and etymology, too long for a chip subtitle.
+            const m = /<b>([\s\S]*?)<\/b>/.exec(entry);
+            if (!m) continue;
+            const text = m[1].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+            if (!text) continue;
+            return text.length > 54 ? text.slice(0, 53).replace(/[;,\s]+\S*$/, '') + '\u2026' : text;
+        }
+        return '';
+    }
+
+    function fillGlosses(container) {
+        container.querySelectorAll('.aiword-term').forEach(btn => {
+            const em = btn.querySelector('em.is-loading');
+            if (!em) return;
+            const gloss = dpdGloss(btn.dataset.aiDictWord);
+            if (gloss) { em.classList.remove('is-loading'); em.textContent = gloss; }
+            else em.remove(); // DPD has nothing for this form — a bare word reads better than a stuck bar
+        });
+    }
+
+    function enrichWithLocalDpd(container) {
+        const dropSkeletons = () => container.querySelectorAll('.aiword em.is-loading').forEach(em => em.remove());
+        if (window.dpd_i2h && window.dpd_ebts) return fillGlosses(container);
+        if (typeof window.dg_loadDictionaryScripts !== 'function') return dropSkeletons();
+        // typeof, not a bare read: savedDict/lazyLoadStandaloneScripts only exist once paliLookup.js
+        // is in, and touching an undeclared identifier directly would throw.
+        window.dg_loadDictionaryScripts().then(() => {
+            const local = typeof savedDict === 'string' && savedDict.indexOf('standalone') === 0;
+            if (!local || typeof lazyLoadStandaloneScripts !== 'function') return dropSkeletons();
+            return lazyLoadStandaloneScripts(savedDict === 'standaloneru' ? 'ru' : 'en')
+                .then(() => fillGlosses(container));
+        }).catch(dropSkeletons);
+    }
+
+    // home-bundle.js's Pāli/translation pill only shows itself in the 'results' state when #pali or
+    // #ai-words has content, and it repaints off body's class-change — which already fired, before
+    // those got their content. Nudging it is the same fix the AI path needed; both call this.
+    function nudgeLangPill() {
+        if (window.dgRenderLangPill) window.dgRenderLangPill();
     }
 
     function cardSkeleton() {
@@ -65,7 +172,11 @@
     // shown once the fetch resolves), just so the WAITING screen matches what's actually likely.
     function loadBlock(mode) {
         if (mode === 'words') {
-            return `<p class="st"><span class="gi">⟳</span>Ищем в словаре<span class="sub">обычно меньше секунды</span></p>
+            // Owner: "обычно меньше секунды — это неадекватное время. обычно до 10 секунд" —
+            // verifyCandidates (core/dpd-lookup.js) checks up to 5 candidates SEQUENTIALLY now
+            // (fixed live: dpdict.net can't handle them in parallel, see that file's own comment),
+            // so a cold typo-suggestions lookup routinely takes several seconds, not under one.
+            return `<p class="st"><span class="gi">⟳</span>Ищем в словаре<span class="sub">обычно до 10 секунд</span></p>
     <div class="aiwords">${wordSkeleton()}</div>`;
         }
         return `<p class="st"><span class="gi">⟳</span>Ищем по смыслу<span class="sub">обычно несколько секунд — словарь и поиск дольше пишущей машинки</span></p>
@@ -292,7 +403,11 @@
                     : 'No exact matches — guesses by meaning, check what you find against the suttas themselves.';
                 noteEl.classList.remove('d-none');
             }
-            showDataDebug(document.getElementById('ai-note-wrap'), data.debug, query, lang);
+            // Owner: "не показывает raw запрос. в футере" — a real sutta table has its own real
+            // footer row (Main/History/Export/Read/...), the natural home for a debug link once
+            // there's an actual table on screen; #ai-note-wrap (right under the header) is only
+            // the fallback for the other three AI outcomes, which have no such footer of their own.
+            showDataDebug(document.querySelector('.dt-buttons') || document.getElementById('ai-note-wrap'), data.debug, query, lang);
         } else {
             // No suttas but words.length > 0 (checked above) — typo fast path (dg-fastify.js):
             // only the word chips have anything to show, #ai-pane stays dormant (no data-ai value
@@ -309,30 +424,13 @@
             // narrow scope is the other common reason nothing turned up. Reuses .dg-scope-change
             // (see #home-scope-summary further up this file) — same "open quick settings" link,
             // not a new pattern.
-            const noteEl = document.getElementById('ai-note');
-            if (noteEl) {
-                const tryWord = lang === 'ru' ? 'Попробуйте' : 'Try';
-                const expand = lang === 'ru' ? 'расширить поиск' : 'expand search';
-                const or = lang === 'ru' ? 'или' : 'or';
-                const mean = lang === 'ru' ? 'может быть, вы искали' : 'did you mean';
-                noteEl.innerHTML = `${esc(tryWord)} <button type="button" class="dg-scope-change ai-expand-scope">${esc(expand)}</button> ${esc(or)} ${esc(mean)}:`;
-                noteEl.classList.remove('d-none');
-            }
+            showWordSuggestions(data.wordSuggestions, lang);
             showDataDebug(document.getElementById('ai-note-wrap'), data.debug, query, lang);
+            return nudgeLangPill();
         }
 
         const wordsEl = document.getElementById('ai-words');
-        if (wordsEl) {
-            if (data.wordSuggestions.length) {
-                wordsEl.innerHTML = data.wordSuggestions.map(w => wordChip(w, lang)).join('');
-                wordsEl.querySelectorAll('[data-ai-word]').forEach(btn => btn.addEventListener('click', () => {
-                    putWordInInput(btn.dataset.aiWord);
-                }));
-                wordsEl.classList.remove('d-none');
-            } else {
-                wordsEl.classList.add('d-none');
-            }
-        }
+        if (wordsEl) wordsEl.classList.add('d-none'); // suttas branch: the server never sends both
         // home-bundle.js's Pāli/translation pill repaints off body's class-change (fired by
         // dgSetState above, BEFORE #pali/#ai-words had their real content) — nudge it again now
         // that they do, or it stays hidden (dgRenderLangPill only shows it in 'results' state when
@@ -395,6 +493,12 @@
         document.querySelectorAll('.ai-debug-wrap').forEach(el => el.remove());
     }
 
+    // Called straight from search/index.html when plain /search already carried suggestions in its
+    // own answer (metadata.suggestions) — no AI request is made in that case.
+    window.dgShowWordChips = function (words) {
+        showWordSuggestions(words, (window.siteLanguage === 'en') ? 'en' : 'ru'); // same default as dgRunAiSearch above
+        nudgeLangPill();
+    };
     window.dgRunAiSearch = dgRunAiSearch;
     window.dgClearAiSearch = clearAiExtras;
 })();

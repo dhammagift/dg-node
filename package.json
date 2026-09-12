@@ -15,7 +15,8 @@
     "test-offline-outage": "node test/offline-outage.js",
     "test-app-ui": "node test/app-ui/run-all.js",
     "test-app-progress": "node test/app-ui/check-progress.js",
-    "disk-guard": "node scripts/disk-guard.js"
+    "disk-guard": "node scripts/disk-guard.js",
+    "test-suggest": "node test/suggest-words.js"
   },
   "dependencies": {
     "@fastify/compress": "^9.2.0",

@@ -19,6 +19,7 @@
 
 const fsSync = require('fs');
 const path = require('path');
+const { paliSkel } = require('./pali-skeleton.js');
 
 // searchDb is the open dg.db handle; skeletonDB is the in-memory sutta index, which is rebuilt
 // after the database is (re)loaded, so it arrives through a setter rather than being captured
@@ -383,6 +384,92 @@ function sqlRowsIn(columns, table, column, values, extraSql = '', extraParams = 
         ).all(...chunk, ...extraParams));
     }
     return out;
+}
+
+/* suggestWords — "может быть, вы искали" по словоформам самого корпуса (таблица vocab,
+   build-search-db.js). Вызывается только когда точный поиск ничего не нашёл, так что обычный запрос этого не
+   платит вообще. Почему по корпусу, а не по словарю: любую предложенную форму гарантированно находит
+   поиск — она взята из текстов.
+
+   Две ступени в одном проходе: совпадение скелетов (pali-skeleton.js) ловит путаницу с диакритикой,
+   удвоением и аспирацией (самые частые ошибки в пали) за distance 0, а обычные опечатки —
+   пропущенная буква, лишняя, не та гласная — расстоянием Левенштейна ≤ 2 по тем же скелетам. */
+let vocabIndex = null;
+
+function loadVocab() {
+    if (vocabIndex) return vocabIndex;
+    const bySkel = new Map();
+    try {
+        for (const r of searchDb.prepare('SELECT word, skel, df FROM vocab').all()) {
+            let forms = bySkel.get(r.skel);
+            if (!forms) bySkel.set(r.skel, forms = []);
+            forms.push({ word: r.word, df: r.df });
+        }
+    } catch {
+        // No vocab table — a database built before this existed. Suggestions stay empty; search
+        // itself is unaffected, so this is not worth failing a request over.
+    }
+    for (const forms of bySkel.values()) forms.sort((a, b) => b.df - a.df);
+    vocabIndex = { bySkel, skels: [...bySkel.keys()] };
+    return vocabIndex;
+}
+
+// Levenshtein with an early exit: the answer is only ever used as "≤ max or not", so a row whose
+// best cell already exceeds max can stop the whole comparison. Buffers are module-level because
+// this runs over every candidate skeleton of a similar length (tens of thousands) per query.
+const dpPrev = new Int32Array(128);
+const dpCur = new Int32Array(128);
+
+function editDistAtMost(a, b, max) {
+    const al = a.length, bl = b.length;
+    if (Math.abs(al - bl) > max) return max + 1;
+    if (al >= dpPrev.length || bl >= dpPrev.length) return max + 1;
+    for (let j = 0; j <= bl; j++) dpPrev[j] = j;
+    for (let i = 1; i <= al; i++) {
+        dpCur[0] = i;
+        let best = i;
+        const ca = a.charCodeAt(i - 1);
+        for (let j = 1; j <= bl; j++) {
+            const cost = ca === b.charCodeAt(j - 1) ? 0 : 1;
+            let v = dpPrev[j - 1] + cost;
+            if (dpPrev[j] + 1 < v) v = dpPrev[j] + 1;
+            if (dpCur[j - 1] + 1 < v) v = dpCur[j - 1] + 1;
+            dpCur[j] = v;
+            if (v < best) best = v;
+        }
+        if (best > max) return max + 1;
+        for (let j = 0; j <= bl; j++) dpPrev[j] = dpCur[j];
+    }
+    return dpPrev[bl];
+}
+
+function suggestWords(keyword, limit = 6) {
+    // One word only. A phrase that found nothing is not a misspelling we can repair form by form,
+    // and that case already has its own answer (the AI/semantic path in dg-fastify.js).
+    if (!keyword || /\s/.test(keyword)) return [];
+    const q = paliSkel(keyword);
+    // Under three letters the skeleton matches half the corpus; Cyrillic input reduces to '' here
+    // (paliSkel keeps only a-z), which is the right answer — the vocabulary is Pali.
+    if (q.length < 3) return [];
+    const { bySkel, skels } = loadVocab();
+    // One edit is plenty on a short word: at ≤ 5 letters, distance 2 stops being "a typo of this"
+    // and starts being "some other word of the same length".
+    const maxDist = q.length <= 5 ? 1 : 2;
+    const typed = foldText(keyword).toLowerCase();
+    const found = [];
+    for (const skel of skels) {
+        const d = skel === q ? 0 : editDistAtMost(skel, q, maxDist);
+        if (d > maxDist) continue;
+        for (const form of bySkel.get(skel)) {
+            // Never offer back what was typed: the exact search already reported zero for it, so
+            // repeating it as a suggestion is noise (it can still differ from `typed` only by
+            // diacritics — that one IS worth showing).
+            if (foldText(form.word).toLowerCase() === typed && form.word.toLowerCase() === typed) continue;
+            found.push({ word: form.word, df: form.df, dist: d });
+        }
+    }
+    found.sort((a, b) => a.dist - b.dist || b.df - a.df);
+    return found.slice(0, limit).map(f => ({ word: f.word, df: f.df }));
 }
 
 // "…AND (kind <> 'translation' OR lang IN (?,?))" for the requested languages, or nothing when
@@ -1103,4 +1190,5 @@ module.exports = {
     sortSuttaResults,
     sqlRowsIn,
     stripSearchPunctuation,
+    suggestWords,
 };

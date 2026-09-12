@@ -11,6 +11,7 @@ const { DatabaseSync } = require('node:sqlite');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const { paliSkel } = require('./core/pali-skeleton.js');
 
 const DATA_ROOT = path.join(__dirname, 'siteroot', 'data');
 const SC_BILARA = path.join(DATA_ROOT, 'suttacentral.net', 'sc-data', 'sc_bilara_data');
@@ -325,6 +326,7 @@ function build() {
     console.log(`fts index (${Date.now() - t}ms)`);
 
     db.exec('PRAGMA journal_mode = WAL');
+    buildVocab(db);
     db.exec('ANALYZE');
     writeMeta(db);
     // Counted from `texts`, not from `fts`: on an external-content table `SELECT count(*) FROM
@@ -370,4 +372,57 @@ function writeMeta(db) {
     console.log(`meta: build ${buildId}`);
 }
 
-build();
+/* vocab — словарь словоформ пали из самого корпуса, для подсказки "может быть, вы искали"
+   (core/search-core.js → suggestWords). Смысл в том, что подсказки берутся не из словаря, а из
+   текстов: каждую предложенную форму гарантированно можно найти поиском, потому что она там есть.
+
+   Владелец: "нам же нужно это делать только на pali тексты... это не страшный объём для такого" —
+   и правда не страшный: 157k форм, ~4 МБ в базе. Берутся все пали-корни (pli/%, не только четыре
+   никаи) — отдельного списка префиксов для этого не нужно, а подсказки заодно работают для винаи и
+   абхидхаммы при scope=all. lzh/san/pra исключены: это не пали. */
+function buildVocab(db) {
+    const t = Date.now();
+    db.exec(`
+        DROP TABLE IF EXISTS vocab;
+        CREATE TABLE vocab (word TEXT PRIMARY KEY, skel TEXT, df INTEGER) WITHOUT ROWID;
+    `);
+    // Apostrophes and hyphens stay in the stored form (it is shown to the person and pasted into
+    // the search box, so it has to be the real form); paliSkel drops them on both sides anyway.
+    const WORD = /[\p{L}\u2019'-]+/gu;
+    const df = new Map();
+    const rows = db.prepare(
+        "SELECT t.txt FROM texts t JOIN suttas s ON s.id = t.sutta_id " +
+        "WHERE t.kind = 'root' AND s.dir_path LIKE 'pli/%'"
+    ).all();
+    for (const r of rows) {
+        // Per segment, not per occurrence: df is only used to rank suggestions, and "appears in
+        // many places" is the useful signal, not "repeated inside one verse".
+        for (const w of new Set(String(r.txt || '').toLowerCase().match(WORD) || [])) {
+            df.set(w, (df.get(w) || 0) + 1);
+        }
+    }
+    const ins = db.prepare('INSERT INTO vocab VALUES (?,?,?)');
+    db.exec('BEGIN');
+    let kept = 0;
+    for (const [word, n] of df) {
+        const skel = paliSkel(word);
+        if (skel.length < 3) continue; // nothing to fuzzy-match against, and huge useless buckets
+        ins.run(word, skel, n);
+        kept++;
+    }
+    db.exec('COMMIT');
+    db.exec('CREATE INDEX idx_vocab_skel ON vocab(skel)');
+    console.log(`vocab: ${kept} pali word forms (${Date.now() - t}ms)`);
+}
+
+/* --vocab-only: пересобрать ТОЛЬКО таблицу vocab в уже существующей dg.db, без перестройки
+   корпуса (она идёт минутами и читает весь Bilara). Нужно ровно для одного случая — база собрана
+   сборщиком без vocab; при обычной сборке таблица появляется сама, вызовом выше. */
+if (process.argv.includes('--vocab-only')) {
+    const db = new DatabaseSync(OUT_PATH);
+    buildVocab(db);
+    db.exec('ANALYZE');
+    db.close();
+} else {
+    build();
+}

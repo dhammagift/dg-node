@@ -1335,6 +1335,9 @@ body.dg-state-ai .forshellscript {
 .aiword:hover { border-color: var(--dg-accent); background: var(--dg-accent-bg); color: var(--dg-text); }
 .aiword-term { display: inline-flex; align-items: baseline; gap: 7px; border: 0; background: none; font: inherit; font-size: inherit; color: inherit; padding: 4px 0; cursor: pointer; text-align: left; }
 .aiword em { font-style: normal; font-size: 12px; color: var(--dg-text-muted); }
+/* Gloss slot while the bundled DPD is still loading (ai-search.js enrichWithLocalDpd) — same
+   shimmer as the .skp/.skl skeletons above, sized to sit inline next to the word. */
+.aiword em.is-loading { display: inline-block; width: 58px; height: 9px; border-radius: 999px; background: var(--dg-surface-active); background-image: linear-gradient(90deg, transparent 0, var(--dg-surface) 50%, transparent 100%); background-size: 280% 100%; animation: ai-sk 1.4s ease-in-out infinite; }
 .aiword-fill { display: inline-flex; align-items: center; justify-content: center; border: 0; background: none; color: var(--dg-text-muted); padding: 6px; border-radius: 999px; cursor: pointer; }
 .aiword-fill:hover { color: var(--dg-accent); background: var(--dg-surface); }
 .aifoot { display: flex; align-items: center; gap: 3px; flex-wrap: wrap; margin: 24px 0 0; padding: 12px 0 50px; border-top: 1px solid var(--dg-border); }
@@ -1393,7 +1396,7 @@ body.dg-state-ai .forshellscript {
 .aierr { margin: 14px 0 0; max-width: 70ch; font-size: 12.5px; line-height: 1.6; color: var(--dg-text-muted); text-wrap: pretty; }
 .aierr button { border: 0; background: none; font: inherit; font-size: 12.5px; color: var(--dg-tblue); cursor: pointer; padding: 0; text-decoration: underline; text-underline-offset: 3px; }
 @media (prefers-reduced-motion: reduce) {
-    .skl, .skp, #ai-load .st .gi { animation: none; }
+    .skl, .skp, .aiword em.is-loading, #ai-load .st .gi { animation: none; }
     .aihead h2.sheening { animation: none; background: none; color: var(--dg-text); }
 }
 @media (max-width: 700px) {
@@ -3916,9 +3919,17 @@ body.dg-state-reader #sutta h1, body.dg-state-reader #sutta h2, body.dg-state-re
        VISIBLE one needs this compensation or it renders pulled into .resultheader's space (found
        live: 42px measured overlap). Scoped to the same breakpoint as -50px itself on purpose
        (owner: "в мобильной версии какой-то дикий разрыв") — #search-pane keeps its normal +24px
-       (mt-4) below 768px, so there is nothing here to compensate for on mobile. */
+       (mt-4) below 768px, so there is nothing here to compensate for on mobile.
+       Owner: "опять фильтр не на одной строке с заголовком... откуда регрессия?" — #search-message
+       collapses to zero box entirely when .d-none (display:none takes it out of layout, margin
+       included), but #ai-note-wrap itself is NEVER .d-none — only its two children (#ai-note,
+       #ai-words) are — so on every ordinary successful search (nothing to do with AI at all) this
+       margin was still landing on that empty-but-present wrapper, pushing the real filter/table
+       row down and breaking the single-line filter-next-to-header trick above for every
+       no-pagination result, not just AI-search ones. :has() scopes it to when there is actually
+       a visible child to compensate for. */
     body.dg-state-results #search-message,
-    body.dg-state-results #ai-note-wrap { margin-top: 54px; }
+    body.dg-state-results #ai-note-wrap:has(> :not(.d-none)) { margin-top: 54px; }
 }
 /* Wide screens: more air between the header/filter row and the table, and the bottom link row
    (.footerlike: Main / History / Export …) sits at the bottom of the viewport when the table is
