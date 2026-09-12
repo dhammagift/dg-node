@@ -3329,3 +3329,33 @@ home.css` объявляет их через `unicode-range`, сгенериро
 - Если когда-нибудь появится интерфейс/переводы на языке вне этих четырёх кусков (тайский,
   деванагари), их символов в Lato нет вовсе — там уже сейчас работает отдельный шрифт (например
   `DG Brahmi` с собственным unicode-range, тот же приём строчкой ниже в home.css).
+
+## done — http:// → https:// во внешних ссылках наших страниц
+
+Было 22 ссылки по голому `http://` в страницах, которые мы сами держим (`public/overrides/`).
+Все переведены на https. Проверить домены вживую из среды, где шло ревью, по-прежнему нельзя
+(egress-прокси блокирует их все), поэтому основанием служит не запрос, а то, что эти же домены
+УЖЕ линкуются по https из соседних строк тех же самых файлов:
+
+- `theravada.ru` — в `multiToolRu.html` рядом уже стоят `https://theravada.ru/Teaching/Canon/
+  Suttanta/suttanta.htm` и `.../vinaya_pitaka.htm`, т.е. TLS у домена заведомо есть;
+- `readingfaithfully.org` — в `multiTool.html`/`multiToolRu.html` уже `https://
+  readingfaithfully.org/` и `https://index.readingfaithfully.org/`;
+- `t.me` — Telegram сам редиректит любой http на https, риска нет вообще (18 ссылок, включая
+  видимый текст ссылок в keyFeatures*, где адрес показан пользователю как есть).
+
+Что поменялось: `multiTool.html`, `multiToolRu.html` (tamilcube, theravada.ru), `keyFeatures.html`,
+`keyFeaturesRu.html`, `privacy.html`, `privacy-ru.html` (t.me), `br/index.html`, `bru/index.html`,
+`diff/index.html` (readingfaithfully + поддомены r./daily.).
+
+---
+нюансы:
+- Единственные два адреса без прямого подтверждения — поддомены `r.readingfaithfully.org` и
+  `daily.readingfaithfully.org` (сам домен и `index.` по https работают, эти два в коде раньше
+  встречались только по http). Если вдруг окажется, что там нет сертификата — ссылка перестанет
+  открываться, вернуть обратно это одна правка. Проверка: `curl -sI https://r.readingfaithfully.org`.
+- `tamilcube` подтверждения тоже нет ни с одной стороны, но владелец сказал менять — поменяно.
+- `public/overrides/diff/index.html` в git хранится с CRLF-переносами. Первый проход правки
+  (обычное чтение/запись текста в Python) молча переписал бы ВЕСЬ файл на LF — 192 изменённые
+  строки вместо одной. Переделано побайтово, в диффе ровно одна строка. Если будете править этот
+  файл скриптом — помнить про это.
