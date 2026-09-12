@@ -2,12 +2,18 @@ const express = require('express');
 const compression = require('compression');
 const fs = require('fs').promises;
 const path = require('path');
+// Moved into unused/ (legacy, no longer run in prod — see CLAUDE.md). Every path.join(__dirname, ...)
+// below was written when this file lived at the repo root and still expects that layout (public/,
+// search/, reader/, siteroot/, configs/, etc.), so __dirname is redirected one level up rather than
+// rewriting 40+ call sites. require() calls are unaffected by this and were fixed separately (they
+// resolve against the file's real location, not this variable).
+__dirname = path.join(__dirname, '..');
 const fsSync = require('fs');
 const util = require('util');
 const execFile = util.promisify(require('child_process').execFile);
 const swaggerUi = require('swagger-ui-express');
-const openapiSpec = require('./configs/openapi.json');
-const openapiSpecEn = require('./configs/openapi.en.json');
+const openapiSpec = require('../configs/openapi.json');
+const openapiSpecEn = require('../configs/openapi.en.json');
 const { default: Aksharamukha, Scripts: AKSH_SCRIPTS } = require('aksharamukha');
 
 const app = express();
@@ -947,7 +953,7 @@ async function findFilesByPrefix(dir, prefix) {
 // "Структура проекта"), но URL остаётся /reader/translator-priority.json — см. второй
 // express.static на /reader ниже, серверный require() и клиентский fetch() указывают на один
 // и тот же файл двумя разными путями (диск vs URL), это нормально и намеренно.
-const TRANSLATOR_PRIORITY = require('./configs/reader/translator-priority.json');
+const TRANSLATOR_PRIORITY = require('../configs/reader/translator-priority.json');
 
 // Единственный источник истины для "что значит режим single/multiTran/multiLang/memorize/
 // devanagari" — раньше эту логику (columns/multiFor на каждый режим) дублировал клиент
@@ -955,12 +961,12 @@ const TRANSLATOR_PRIORITY = require('./configs/reader/translator-priority.json')
 // (см. /api/text/:suttaId). Owner: режим — это ТОЛЬКО поведенческий флаг (multiFor/dualScript/
 // mnemonic), язык режим больше не хранит вообще — язык это отдельная ось (?lang=/?langs=), не
 // хардкод в этом файле.
-const MODE_TABLE = require('./configs/reader/mode-table.json');
+const MODE_TABLE = require('../configs/reader/mode-table.json');
 
 // TOC/navigator: top-level book list (bilingual labels, one small file, see comment inside)
 // and the interlinear-vs-literary translator classification (see /api/toc/book/:code below).
-const TOC_BOOKS = require('./configs/reader/toc-books.json');
-const TRANSLATOR_TYPES = require('./configs/reader/translator-types.json');
+const TOC_BOOKS = require('../configs/reader/toc-books.json');
+const TRANSLATOR_TYPES = require('../configs/reader/translator-types.json');
 const INTERLINEAR_TRANSLATOR_KEYS = new Set(TRANSLATOR_TYPES.interlinear || []);
 
 // Каждый код оглавления — книга, «лишняя» книга или собрание ("kn") — чтобы /:slug в конце файла

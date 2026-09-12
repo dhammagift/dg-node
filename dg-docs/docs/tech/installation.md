@@ -77,16 +77,16 @@ http://localhost:3000/dn22:1.1
 
 ### Which server is running
 
-There are two in the repository, serving the same site from the same texts:
+`dg-fastify.js` is production — run under pm2 as `dg-prod`.
 
 | | Engine | Start | Default port |
 |---|---|---|---|
-| `dg-fastify.js` | Fastify, SQLite FTS5 (`dg.db`) | `./scripts/start.sh` or `npm run start:fastify` | 3000 |
-| `dg-light.js` | Express, searches by shelling out to `grep` | `npm start` | 3001 |
+| `dg-fastify.js` | Fastify, SQLite FTS5 (`dg.db`) | `./scripts/start.sh`, `npm start`, or `npm run start:fastify` | 3000 |
+| `dg-light.js` | Express, searches by shelling out to `grep` — **legacy, unused in prod** | `npm run start:express` | 3001 |
 
 `scripts/start.sh` launches the first one — it is what production serves.
-Both honour `PORT`, and their defaults differ so you can run them side by
-side and compare.
+`dg-light.js` is kept only for reference; nothing requires() it and it isn't
+kept in sync with the client anymore.
 
 The docs portal (what you're reading now) builds separately, in two locales:
 

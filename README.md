@@ -9,13 +9,16 @@
 ```bash
 git pull
 npm install
-npm run build-db   # пересобрать dg_db_light.json из свежих Bilara-данных (dblight.js)
-npm start          # запустить сервер (dg-light.js), порт 3000
+npm run build-search-db   # собрать dg.db (SQLite/FTS5) из свежих Bilara-данных
+npm start                 # запустить прод-сервер (dg-fastify.js), порт 3000
 ```
 
-`build-db` нужно перезапускать при изменении исходных текстов/переводов на диске — сервер каждый раз читает только уже собранный `dg_db_light.json`, не сканирует диск заново.
+`build-search-db` нужно перезапускать при изменении исходных текстов/переводов на диске — сервер каждый раз читает только уже собранный `dg.db`, не сканирует диск заново.
 
-Пути к данным (`SC_BILARA`, `DG_OFFLINE`, офлайн-зеркала) определяются автоматически по окружению (Termux / Windows-разработка / Linux-прод) в начале `dg-light.js` и `dblight.js`.
+Пути к данным (`SC_BILARA`, `DG_OFFLINE`, офлайн-зеркала) определяются автоматически по окружению (Termux / Windows-разработка / Linux-прод).
+
+`unused/dg-light.js`/`unused/dblight.js` (`npm run start:express`) — старый Express+grep
+сервер, legacy, в проде не используется (см. CLAUDE.md).
 
 ## Проверка после деплоя/обновления
 
@@ -39,10 +42,11 @@ curl -I "http://localhost:3000/dn22:10.5"                             # сегм
 ## Структура
 
 ```
-dg-light.js          — единый Express-сервер: /search, /api/text/:suttaId,
+dg-fastify.js         — прод-сервер (Fastify + SQLite/FTS5, dg.db): /search, /api/text/:suttaId,
                         статика (search/, reader/, siteroot/assets/), офлайн-зеркала,
                         чистые URL (/dn22, /dn22:12.1)
-dblight.js            — билд-скрипт → dg_db_light.json (скелет БД)
+unused/dg-light.js    — legacy Express+grep сервер, в проде не используется (см. CLAUDE.md)
+unused/dblight.js     — билд-скрипт dg-light.js → dg_db_light.json (легаси, не нужен dg.db)
 search/               — страница поиска (DataTables); URL остался /nodejs/res/... (см. CLAUDE.md)
 reader/               — ридер (reader-template.html + megareader.js)
 configs/              — json-конфиги проекта (openapi, reader/*, search/*), см. CLAUDE.md

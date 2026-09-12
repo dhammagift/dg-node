@@ -1,5 +1,9 @@
 const fs = require('fs').promises;
 const path = require('path');
+// Moved into unused/ (legacy — dg-light.js's build script, not used by dg-fastify.js/build-search-db.js).
+// __dirname is redirected one level up so siteroot/data and the dg_db_light.json output still
+// resolve against the repo root, matching the layout this file was written for.
+__dirname = path.join(__dirname, '..');
 const fsSync = require('fs');
 
 const isTermux  = fsSync.existsSync('/data/data/com.termux/files/usr');
