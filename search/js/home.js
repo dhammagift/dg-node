@@ -1904,7 +1904,9 @@
         avail.forEach(function (k) { if (keys.indexOf(k) === -1) keys.push(k); });
         var pool = tsEnabledLangs().concat(stack.map(tsLangOf));
         keys = keys.filter(function (k) { return pool.indexOf(tsLangOf(k)) !== -1; });
-        if (tsAddOpen) keys = [];   // пока открыт список языков, строки переводов не мешают
+        // Список переводчиков не прячем НИКОГДА: он и есть содержимое окна. Раньше он гасился,
+        // пока открыт список языков, — и когда добавлять становилось нечего, кнопка "+ язык"
+        // исчезала вместе с единственным способом его вернуть: окно оставалось с одними чипами.
         if (tsSort === 'name') keys.sort(function (a, b) { return trnName(a).localeCompare(trnName(b)); });
         if (tsSort === 'lang') keys.sort(function (a, b) {
             var la = tsLangOf(a), lb = tsLangOf(b);
@@ -1942,6 +1944,8 @@
                 ? '<button type="button" class="dg-ts-chip dg-ts-add" data-ts-add aria-expanded="' + tsAddOpen + '">' + esc(tsStr('addLang')) + '</button>'
                 : '');
         var addHost = host.querySelector('.dg-ts-add-list');
+        // Нечего добавлять — список закрывается сам, иначе он висел бы открытым и пустым.
+        if (tsAddOpen && !textLangs.some(function (l) { return enabled.indexOf(l) === -1; })) tsAddOpen = false;
         addHost.hidden = !tsAddOpen;
         addHost.innerHTML = !tsAddOpen ? '' :
             '<p class="dg-ts-add-hint">' + esc(tsStr('addHint')) + '</p>' +
