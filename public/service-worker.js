@@ -153,11 +153,16 @@ var PRECACHE_URLS = [
     '/nodejs/res/slides.json',
 
     // webfonts @font-face'd by the stylesheets above; without them text reflows to a fallback
-    // face online-offline.
-    '/assets/fonts/lato-400.woff2',
-    '/assets/fonts/lato-400-italic.woff2',
-    '/assets/fonts/lato-600.woff2',
-    '/assets/fonts/lato-700.woff2',
+    // face online-offline. Only the latin + cyrillic subsets of the two weights the UI actually
+    // sets (400 and 600) are precached — the whole set is 16 files now (see scripts/
+    // build-fonts.py), and precaching all of them would put ~500 KB of fonts into the offline
+    // cache to cover Polish/Vietnamese/Church-Slavonic glyphs that a reader may never meet.
+    // Everything else stays cache-on-use: the remaining subsets are ordinary requests and get
+    // cached the first time a page actually needs them, online.
+    '/assets/fonts/lato-400-latin.woff2',
+    '/assets/fonts/lato-400-cyrillic.woff2',
+    '/assets/fonts/lato-600-latin.woff2',
+    '/assets/fonts/lato-600-cyrillic.woff2',
     '/assets/fonts/brahmi-subset.woff2'
 ];
 
