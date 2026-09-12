@@ -71,7 +71,6 @@ function getSavedMode() {
 function saveMode(modeKey) {
     try { localStorage.setItem(MODE_KEY, modeKey); } catch (e) { /* приватный режим */ }
 }
-window.getSavedReaderMode = getSavedMode;
 if (!READER_MODE.modeKey && modeFromUrl) READER_MODE.modeKey = modeFromUrl;
 if (!READER_MODE.modeKey) READER_MODE.modeKey = getSavedMode() || READER_MODE.modeKey;
 // issue #6: multiTran и multiLang слились в один multi — какие языки и каких переводчиков

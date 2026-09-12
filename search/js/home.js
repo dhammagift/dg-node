@@ -1666,43 +1666,13 @@
         return avail[0] || null;
     }
 
-    /* Пружины: одна rAF-петля на все строки. Нужны не ради красоты — перетаскивание должно
-       перехватываться в любой момент, а CSS-переход этого не умеет. */
-    var tsLive = new Set(), tsRaf = 0, tsPrev = 0;
-    function tsLoop(t) {
-        var dt = Math.min((t - tsPrev) / 1000, 1 / 30); tsPrev = t;
-        tsLive.forEach(function (sp) { if (!sp.step(dt)) tsLive.delete(sp); });
-        tsRaf = tsLive.size ? requestAnimationFrame(tsLoop) : 0;
+    // Строки ездят между слотами фиксированной высоты — этого хватает CSS-перехода
+    // (.dg-ts-row, home.css). Перетаскиваемая строка позиционируется вручную и на время
+    // перетаскивания переход выключен (.is-lift), так что палец ведёт её 1:1, без сглаживания.
+    function tsSetY(row, y) {
+        row.dataset.tsY = y;
+        row.style.transform = 'translate3d(0,' + y + 'px,0)';
     }
-    function TsSpring(value, apply) {
-        this.x = value; this.v = 0; this.target = value; this.apply = apply;
-        this.w = 2 * Math.PI / 0.4; this.z = 1;
-    }
-    TsSpring.prototype.set = function (v) { this.x = this.target = v; this.v = 0; this.apply(v); tsLive.delete(this); };
-    TsSpring.prototype.to = function (target, opts) {
-        opts = opts || {};
-        this.target = target;
-        if (opts.velocity !== undefined) this.v = opts.velocity;
-        if (opts.response) this.w = 2 * Math.PI / opts.response;
-        if (opts.damping !== undefined) this.z = opts.damping;
-        if (matchMedia('(prefers-reduced-motion: reduce)').matches) return this.set(target);
-        if (!tsLive.has(this)) tsLive.add(this);
-        if (!tsRaf) { tsPrev = performance.now(); tsRaf = requestAnimationFrame(tsLoop); }
-    };
-    TsSpring.prototype.step = function (dt) {
-        var k = this.w * this.w, c = 2 * this.z * this.w;
-        var steps = Math.max(1, Math.ceil(dt * 120)), h = dt / steps;
-        for (var i = 0; i < steps; i++) {
-            this.v += (-k * (this.x - this.target) - c * this.v) * h;
-            this.x += this.v * h;
-        }
-        var done = Math.abs(this.x - this.target) < 0.05 && Math.abs(this.v) < 0.05;
-        if (done) { this.x = this.target; this.v = 0; }
-        this.apply(this.x);
-        return !done;
-    };
-    // Куда долетит бросок (та же формула инерции, что у прокрутки).
-    function tsProject(v) { return (v / 1000) * 0.998 / (1 - 0.998); }
 
     function tsHost() {
         var host = document.getElementById('dg-ts');
@@ -1715,7 +1685,7 @@
         host.innerHTML =
             '<div class="dg-ts-head"><b class="dg-ts-title"></b><span class="dg-ts-count"></span>' +
             '<span class="dg-ts-mode"></span>' +
-            '<span class="dg-ts-grow"></span><button type="button" class="dg-ts-x" aria-label="✕">✕</button></div>' +
+            '<button type="button" class="dg-ts-x" aria-label="✕">✕</button></div>' +
             '<div class="dg-ts-seg"></div><div class="dg-ts-chips"></div><div class="dg-ts-add-list" hidden></div>' +
             '<div class="dg-ts-body"><div class="dg-ts-rows"></div></div><div class="dg-ts-foot"></div>';
         document.body.appendChild(host);
@@ -1817,11 +1787,7 @@
         rows.classList.toggle('is-sorted', tsSort !== 'manual');
         var y = 0;
         rows.querySelectorAll('.dg-ts-row').forEach(function (row) {
-            row.spring = new TsSpring(y, (function (el) {
-                return function (v) { el.style.transform = 'translate3d(0,' + v + 'px,0)'; };
-            })(row));
-            row.spring.set(y);
-            row.dataset.tsY = y;
+            tsSetY(row, y);
             y += TS_ROW;
         });
         rows.style.height = y + 'px';
@@ -1968,13 +1934,12 @@
         var rows = [].slice.call(row.parentNode.querySelectorAll('.dg-ts-row'));
         e.preventDefault();
         handle.setPointerCapture(e.pointerId);
+        row.classList.add('is-lift');   // сначала класс, потом замер: он снимает переход
+        var startY = parseFloat(row.dataset.tsY) || 0;
         tsDrag = {
             row: row, rows: rows, keys: rows.map(function (r) { return r.dataset.tsKey; }),
-            index: rows.indexOf(row), grabY: e.clientY, startY: row.spring.x, y: row.spring.x,
-            v: 0, lastY: e.clientY, lastT: performance.now()
+            index: rows.indexOf(row), grabY: e.clientY, startY: startY, y: startY
         };
-        row.classList.add('is-lift');
-        tsLive.delete(row.spring);
     });
     document.addEventListener('pointermove', function (e) {
         if (!tsDrag) return;
@@ -1984,8 +1949,6 @@
         if (y > max) { var o = y - max; y = max + (o * TS_ROW * 0.55) / (TS_ROW + 0.55 * o); }
         tsDrag.y = y;
         tsDrag.row.style.transform = 'translate3d(0,' + y + 'px,0)';
-        var now = performance.now(), dt = (now - tsDrag.lastT) / 1000;
-        if (dt > 0.004) { tsDrag.v = (e.clientY - tsDrag.lastY) / dt; tsDrag.lastY = e.clientY; tsDrag.lastT = now; }
         var want = Math.max(0, Math.min(tsDrag.keys.length - 1, Math.round(y / TS_ROW)));
         if (want !== tsDrag.index) {
             tsDrag.keys.splice(tsDrag.index, 1);
@@ -1993,25 +1956,15 @@
             tsDrag.index = want;
             tsDrag.keys.forEach(function (k, i) {
                 var r = tsDrag.rows.find(function (x) { return x.dataset.tsKey === k; });
-                if (r && r !== tsDrag.row) { r.dataset.tsY = i * TS_ROW; r.spring.to(i * TS_ROW); }
+                if (r && r !== tsDrag.row) tsSetY(r, i * TS_ROW);
             });
         }
     });
     function tsEndDrag() {
         if (!tsDrag) return;
         var d = tsDrag; tsDrag = null;
-        d.row.classList.remove('is-lift');
-        d.row.spring.x = d.y;
-        var slot = Math.max(0, Math.min(d.keys.length - 1, Math.round((d.y + tsProject(d.v) * 0.25) / TS_ROW)));
-        if (slot !== d.index) {
-            d.keys.splice(d.index, 1);
-            d.keys.splice(slot, 0, d.row.dataset.tsKey);
-            d.keys.forEach(function (k, i) {
-                var r = d.rows.find(function (x) { return x.dataset.tsKey === k; });
-                if (r && r !== d.row) { r.dataset.tsY = i * TS_ROW; r.spring.to(i * TS_ROW); }
-            });
-        }
-        d.row.spring.to(slot * TS_ROW, { velocity: d.v, damping: 0.8, response: 0.35 });
+        d.row.classList.remove('is-lift');   // вернуть переход: строка доедет до своего слота
+        tsSetY(d.row, d.index * TS_ROW);     // соседей pointermove уже расставил
         // порядок в тексте = порядок включённых строк; выключенные в стек не попадают
         var stack = tsStack();
         var next = d.keys.filter(function (k) { return stack.indexOf(k) !== -1; });
