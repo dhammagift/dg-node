@@ -231,9 +231,11 @@ body.dg-skin-minimal.dg-state-toc .dg-hero-form { max-width: 520px; }
    как недоделанный кусок. 50% — середина колонки, 50vw — половина окна; разница и есть тот
    вылет, который нужно добрать с каждой стороны. */
 #dg-hero-band {
-    width: 100vw;
-    margin-left: calc(50% - 50vw);
-    margin-right: calc(50% - 50vw);
+    /* /var(--dg-zoom): при масштабе интерфейса (issue #13, зум на html) vw остаются в реальных
+       пикселях окна, а всё остальное уже масштабировано — без деления полоса выезжает за край. */
+    width: calc(100vw / var(--dg-zoom, 1));
+    margin-left: calc(50% - 50vw / var(--dg-zoom, 1));
+    margin-right: calc(50% - 50vw / var(--dg-zoom, 1));
     padding: 0;
     background: none;
 }
@@ -251,9 +253,9 @@ body.dg-state-home #dg-hero-band {
 #dg-hero-navbar { display: none; }
 body.dg-state-home #dg-hero-navbar {
     display: block;
-    width: 100vw;
-    margin-left: calc(50% - 50vw);
-    margin-right: calc(50% - 50vw);
+    width: calc(100vw / var(--dg-zoom, 1));
+    margin-left: calc(50% - 50vw / var(--dg-zoom, 1));
+    margin-right: calc(50% - 50vw / var(--dg-zoom, 1));
     background: var(--dg-navy);
 }
 .dg-hero-inner {
@@ -1268,6 +1270,115 @@ body.dg-state-reader .forshellscript {
 body.dg-state-reader #variants-hint,
 body.dg-state-toc #variants-hint { display: none !important; }
 
+/* ── ИИ-поиск (docs/AI_SEARCH_BRIEF.md, docs/AI_MODE_DESIGN.md) ──────────────────────────────
+   Фолбэк, когда точный поиск дал 0 результатов: #ai-pane пуст по умолчанию, наполняется JS
+   (public/overrides/js/ai-search.js) тем же приёмом, что #toc-pane/spa/toc.js — тег остаётся в
+   разметке всегда, содержимое приходит только когда реально нужно. */
+#ai-pane { display: none; }
+body.dg-state-ai #ai-pane { display: block; }
+body.dg-state-ai #search-pane,
+body.dg-state-ai #results-toolbar,
+body.dg-state-ai #results-divider,
+body.dg-state-ai #dynamicHeader,
+body.dg-state-ai .forshellscript {
+    display: none;
+}
+.ai { max-width: 840px; margin: 0 auto; padding: 22px 0 0; }
+.aihead { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.aihead h2 { font-size: 21px; margin: 0; font-weight: 600; letter-spacing: -.01em; flex: 1 1 auto; min-width: min(100%, 26ch); text-wrap: pretty; }
+.aihead .n { font-size: 13px; color: var(--dg-text-muted); }
+.aisec { margin: 22px 0 0; }
+/* На широком экране слова стоят сбоку от цитат; ниже 900px — колонкой, слова первыми
+   (мобильные брейкпоинты сайта работают через ширину экрана, отдельного mobile-флага нет). */
+.aigrid { display: grid; grid-template-columns: minmax(0, 1fr) 210px; gap: 0 30px; align-items: start; }
+/* Опечатка/не-найдено-по-смыслу: карточек сутт нет вовсе, только слова — не оставлять пустую
+   250px-колонку слева от них. */
+.aigrid:has(.aisec.cards[hidden]) { grid-template-columns: minmax(0, 1fr); }
+.aigrid .cards { grid-column: 1; grid-row: 1; }
+.aigrid .words { grid-column: 2; grid-row: 1; }
+.aigrid .words .aiwords { flex-direction: column; align-items: flex-start; gap: 6px; }
+@media (max-width: 900px) {
+    .aigrid { grid-template-columns: minmax(0, 1fr); }
+    .aigrid .cards, .aigrid .words { grid-column: 1; grid-row: auto; }
+    .aigrid .words { order: -1; }
+    .aigrid .words .aiwords { flex-direction: row; align-items: center; gap: 7px; }
+}
+.aisec > h3 { font-size: 10.5px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--dg-text-muted); margin: 0 0 12px; }
+.aicards { display: flex; flex-direction: column; gap: 0; border-top: 1px solid var(--dg-border); }
+/* Не карточки-плашки, а те же строки с волосяными линиями и тот же hover, что в выдаче —
+   чтобы ИИ-экран не выглядел другим сайтом. Пометка неточности живёт в шапке экрана. */
+.aicard { display: block; background: none; border: 0; border-bottom: 1px solid var(--dg-border); border-radius: 0; padding: 13px 10px 14px; }
+.aicard .hd { display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap; line-height: 1.45; }
+/* Только .sid — настоящая ссылка (как mainLink в обычной таблице выдачи); сама карточка и
+   цитата — нет, чтобы клик по слову внутри цитаты не улетал в ридер (owner: "кликая по словам,
+   я сразу перехожу в ридер"). */
+.aicard .sid { font-size: 14px; font-weight: 500; color: var(--dg-tblue); white-space: nowrap; text-decoration: none; }
+.aicard .sid:hover { color: var(--dg-tblue); text-decoration: underline; }
+.aicard .hd b { font-size: 14px; font-weight: 600; letter-spacing: -.005em; }
+.aicard .hd .ru { font-size: 14px; color: var(--dg-text-muted); min-width: 0; }
+/* Свёрнутый вид — только номера сутт, без названий и цитат (owner: "хочется свернуть все... только
+   номера сутт без титов"). */
+.aicollapse { border: 0; background: none; font: inherit; font-size: 11px; font-weight: 500; letter-spacing: normal; text-transform: none; color: var(--dg-tblue); cursor: pointer; padding: 0; margin-left: 10px; text-decoration: underline; text-underline-offset: 2px; }
+.aicards.collapsed .aicard { padding: 6px 10px; }
+.aicards.collapsed .aicard .hd b,
+.aicards.collapsed .aicard .qg { display: none; }
+/* padding-left — место под ✦-значок (.quoteLink-start, left:-1em по умолчанию из
+   extrastyles.css) слева от текста, не обрезается краем карточки. */
+.qg { margin: 9px 0 0; max-width: 76ch; padding-left: 14px; }
+.qg [class*="-lang"] { font-size: 14.5px; line-height: 1.6; }
+.qg .en-lang { font-size: 13.5px; }
+.aiwords { display: flex; flex-wrap: wrap; gap: 7px; }
+/* Слова-кандидаты ведут в словарь (dict.dhamma.gift, смонтирован локально на /dict/) —
+   обычная ссылка, открывается в новой вкладке, чтобы не терять карточки сутт из виду. */
+.aiword { display: inline-flex; align-items: baseline; gap: 7px; border: 1px solid var(--dg-border); background: none; border-radius: 999px; font: inherit; font-size: 13.5px; color: var(--dg-text); padding: 6px 13px; cursor: pointer; text-align: left; text-decoration: none; transition: border-color .15s var(--dg-ease), background .15s var(--dg-ease), color .15s var(--dg-ease); }
+.aiword em { font-style: normal; font-size: 12px; color: var(--dg-text-muted); }
+.aiword:hover { border-color: var(--dg-accent); background: var(--dg-accent-bg); color: var(--dg-text); }
+.aifoot { display: flex; align-items: center; gap: 3px; flex-wrap: wrap; margin: 24px 0 0; padding: 12px 0 50px; border-top: 1px solid var(--dg-border); }
+.aifoot .dis { font-size: 12px; color: var(--dg-text-muted); padding-left: 8px; }
+.aifoot a, .aifoot button { border: 0; background: none; font: inherit; font-size: 13px; color: var(--dg-tblue); cursor: pointer; padding: 4px 8px; border-radius: 6px; display: flex; align-items: center; gap: 5px; text-decoration: none; }
+.aifoot a:hover, .aifoot button:hover { background: var(--dg-accent-bg); color: var(--dg-tblue); text-decoration: underline; }
+#ai-ready, #ai-load, #ai-empty, #ai-error { display: none; }
+[data-ai=ready] #ai-ready, [data-ai=load] #ai-load, [data-ai=empty] #ai-empty, [data-ai=error] #ai-error { display: block; }
+#ai-load .st { display: flex; align-items: center; gap: 9px; margin: 10px 0 0; font-size: 13.5px; color: var(--dg-text-2); }
+#ai-load .st .gi { font-size: 14px; color: var(--dg-accent-ink); animation: ai-spin 1.1s linear infinite; }
+#ai-load .st .sub { font-size: 12px; color: var(--dg-text-muted); }
+.aisk { padding: 13px 10px 14px; border-bottom: 1px solid var(--dg-border); }
+.skp { display: block; height: 30px; border-radius: 999px; background: var(--dg-surface-active); background-image: linear-gradient(90deg, transparent 0, var(--dg-surface) 50%, transparent 100%); background-size: 280% 100%; animation: ai-sk 1.4s ease-in-out infinite; }
+.skl { height: 11px; border-radius: 6px; background: var(--dg-surface-active); background-image: linear-gradient(90deg, transparent 0, var(--dg-surface) 50%, transparent 100%); background-size: 280% 100%; animation: ai-sk 1.4s ease-in-out infinite; }
+.skl + .skl { margin-top: 9px; }
+@keyframes ai-sk { from { background-position: 160% 0; } to { background-position: -60% 0; } }
+@keyframes ai-spin { to { transform: rotate(360deg); } }
+/* Блик по фразе запроса, пока идёт подбор — ТОЛЬКО по буквам, не полосой через всю шапку
+   (owner: было "пучком по всей длине"). Тот же приём, что #home-motto выше в этом файле:
+   background-clip:text держит свет строго внутри контуров букв. */
+.aihead h2.sheening {
+    background-color: var(--dg-text);
+    background-image: radial-gradient(circle 20px at center, var(--dg-motto-shine) 0%, transparent 100%);
+    background-repeat: no-repeat;
+    background-size: 40px 100%;
+    background-position: -40px 0;
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent; color: transparent;
+    animation: ai-sheen 8s linear infinite;
+}
+@keyframes ai-sheen { from { background-position: -40px 0; } to { background-position: calc(100% + 40px) 0; } }
+.aistate { margin: 22px 0 0; padding: 26px 22px; background: var(--dg-surface-hover); border: 1px solid var(--dg-border); border-radius: var(--dg-radius); max-width: 64ch; }
+.aistate .ttl { margin: 0; font-size: 16px; font-weight: 600; letter-spacing: -.01em; display: flex; align-items: baseline; gap: 9px; }
+.aistate p { margin: 9px 0 0; font-size: 13.5px; line-height: 1.6; color: var(--dg-text-2); text-wrap: pretty; }
+.aistate .acts { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 18px 0 0; }
+.aistate .primary { border: 0; border-radius: 999px; background: var(--dg-accent-dark); color: #fff; font: inherit; font-size: 13.5px; font-weight: 500; padding: 9px 20px; cursor: pointer; transition: background .15s var(--dg-ease); }
+.aistate .primary:hover { background: var(--dg-accent); }
+.aistate .ghost { border: 0; background: none; font: inherit; font-size: 13.5px; color: var(--dg-tblue); cursor: pointer; padding: 9px 2px; text-decoration: underline; text-underline-offset: 3px; }
+.aierr { margin: 14px 0 0; max-width: 70ch; font-size: 12.5px; line-height: 1.6; color: var(--dg-text-muted); text-wrap: pretty; }
+.aierr button { border: 0; background: none; font: inherit; font-size: 12.5px; color: var(--dg-tblue); cursor: pointer; padding: 0; text-decoration: underline; text-underline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) {
+    .skl, .skp, #ai-load .st .gi { animation: none; }
+    .aihead h2.sheening { animation: none; background: none; color: var(--dg-text); }
+}
+@media (max-width: 700px) {
+    .aihead h2 { font-size: 19px; }
+}
+
 /* #variants-hint — отдельно и с !important: скрипт выдачи показывает его ИНЛАЙНОВЫМ
    style="display:block" (см. renderResultHeader в index.html), а инлайн бьёт любой селектор
    таблицы стилей. Без этого подсказка "у слова есть варианты" оставалась висеть на главной
@@ -1661,7 +1772,7 @@ body:not(.dg-state-home) #dg-announce { display: none; }
     .dg-sheet.show { transform: translate(-50%, 0); }
     /* «О проекте» — шире 560px списка плиток: поле поиска на главной 720px (.dg-hero-form ниже)
        плюс по 100px с каждой стороны (owner), там длинная цитата и ряд кнопок приложений. */
-    .dg-sheet.dg-wide { width: min(920px, calc(100vw - 32px)); }
+    .dg-sheet.dg-wide { width: min(920px, calc(100vw / var(--dg-zoom, 1) - 32px)); }
     /* Owner: "если место позволяет нужно чтобы футер был внизу" — .dg-sheet has no explicit
        height (max-height only, sized to fit its own content), so the .dg-about #contacts
        margin-top:auto trick above has nothing to push against on a tall viewport with short
@@ -3190,7 +3301,7 @@ body.dg-skin-minimal .dg-contact-btn:hover {
     #pali-words td:nth-child(2) {
         word-break: normal;
         overflow-wrap: anywhere;
-        min-width: 45vw;
+        min-width: calc(45vw / var(--dg-zoom, 1));
     }
     /* #search-pane specifically, not the bare .table-wrapper class — that class is ALSO reused
        (search/index.html:913, deliberately, for matching max-width/centering) by the page-wide

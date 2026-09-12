@@ -4395,9 +4395,25 @@
         var v = parseInt(localStorage.getItem(FONT_SCALE_KEY), 10);
         return (v >= 70 && v <= 150) ? v : 100;
     }
+    /* issue #13 ("непредсказуемо увеличиваются шрифты"): раньше размер применялся как
+       html { font-size: N% }. Это двигает ТОЛЬКО то, что задано в rem — а в этом файле 131
+       размер задан в px против 73 в rem, и ни одно поле/иконка/отступ не задан в rem вовсе.
+       Получалось ровно то, на что жалоба: подпись плитки (rem) росла в полтора раза, её
+       описание (px) не менялось, коробка плитки не менялась тоже — текст вылезал из рамки.
+       Зум масштабирует ВСЁ одинаково: и текст, и рамки, и иконки, и отступы, — то есть ровно
+       "все шрифты и все элементы интерфейса пропорционально". Переписывать 131 объявление в rem
+       не нужно, и отступы это всё равно бы не починило.
+       --dg-zoom рядом — для правил с vw (полосы во всю ширину окна): vw зумом не масштабируются,
+       без деления на него полоса вылезала бы за экран (см. home.css, #dg-hero-band). */
+    function applyUiScale(scale) {
+        var root = document.documentElement;
+        root.style.fontSize = '';
+        root.style.setProperty('--dg-zoom', scale / 100);
+        root.style.zoom = scale / 100;
+    }
     function renderFontSizeControl() {
         var scale = currentFontScale();
-        document.documentElement.style.fontSize = scale + '%';
+        applyUiScale(scale);
         var host = document.getElementById('dg-fontsize-ctrl');
         if (!host) return;
         host.innerHTML = '';
@@ -4421,7 +4437,7 @@
         function set(v) {
             scale = Math.min(150, Math.max(70, v));
             localStorage.setItem(FONT_SCALE_KEY, scale);
-            document.documentElement.style.fontSize = scale + '%';
+            applyUiScale(scale);
             paint();
         }
         dec.addEventListener('click', function () { set(scale - 10); });

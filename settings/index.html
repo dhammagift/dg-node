@@ -898,13 +898,22 @@ document.querySelectorAll('#themeSeg button').forEach(b=> b.onclick=()=> setThem
    текст страницы, ни цифра в #sizeVal его не подхватывали (оставались 100%, пока не нажать
    стрелку хоть раз). */
 let scale = parseInt(localStorage.getItem('uiScale')) || 100;
+/* issue #13: масштаб применяется зумом, а не html{font-size} — тот двигал только rem-размеры
+   (подписи росли, описания и коробки нет). Та же функция, что и в бургере поиска/ридера
+   (search/js/home.js applyUiScale) — страница отдельная, поэтому две строки продублированы,
+   как и переключатель темы рядом. */
+function applyUiScale(v){
+  document.documentElement.style.fontSize = '';
+  document.documentElement.style.setProperty('--dg-zoom', v / 100);
+  document.documentElement.style.zoom = v / 100;
+}
 function setScale(v){
   scale = Math.min(150, Math.max(70, v));
-  document.documentElement.style.fontSize = scale + '%';
+  applyUiScale(scale);
   localStorage.setItem('uiScale', scale);
   $('#sizeVal').textContent = scale + '%';
 }
-document.documentElement.style.fontSize = scale + '%';
+applyUiScale(scale);
 $('#sizeVal').textContent = scale + '%';
 $('#sizeMinus').onclick=()=>setScale(scale-10);
 $('#sizePlus').onclick=()=>setScale(scale+10);
