@@ -4405,8 +4405,13 @@
        не нужно, и отступы это всё равно бы не починило.
        --dg-zoom рядом — для правил с vw (полосы во всю ширину окна): vw зумом не масштабируются,
        без деления на него полоса вылезала бы за экран (см. home.css, #dg-hero-band). */
+    // zoom есть везде, кроме Safari до 17 и Firefox до 126 — там свойство просто игнорируется, и
+    // без запасного пути контрол размера на старом iPhone не делал бы РОВНО ничего (хуже, чем
+    // было). Фолбэк — прежний html{font-size}: двигает только rem, но это лучше пустой кнопки.
+    var CAN_ZOOM = !!(window.CSS && CSS.supports && CSS.supports('zoom', '1.5'));
     function applyUiScale(scale) {
         var root = document.documentElement;
+        if (!CAN_ZOOM) { root.style.fontSize = scale + '%'; return; }
         root.style.fontSize = '';
         root.style.setProperty('--dg-zoom', scale / 100);
         root.style.zoom = scale / 100;

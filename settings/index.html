@@ -902,7 +902,11 @@ let scale = parseInt(localStorage.getItem('uiScale')) || 100;
    (подписи росли, описания и коробки нет). Та же функция, что и в бургере поиска/ридера
    (search/js/home.js applyUiScale) — страница отдельная, поэтому две строки продублированы,
    как и переключатель темы рядом. */
+var CAN_ZOOM = !!(window.CSS && CSS.supports && CSS.supports('zoom', '1.5'));
 function applyUiScale(v){
+  // Safari < 17 / Firefox < 126 игнорируют zoom — там остаётся прежний html{font-size},
+  // иначе кнопки размера не делали бы ничего вообще (см. search/js/home.js).
+  if (!CAN_ZOOM) { document.documentElement.style.fontSize = v + '%'; return; }
   document.documentElement.style.fontSize = '';
   document.documentElement.style.setProperty('--dg-zoom', v / 100);
   document.documentElement.style.zoom = v / 100;
