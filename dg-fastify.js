@@ -95,7 +95,7 @@ const app = Fastify({ bodyLimit: 10 * 1024 * 1024 });
 const LEGACY_READERS = {
     '/read': {}, '/r': { lang: 'ru' }, '/d': { mode: 'devanagari' }, '/memorize': { mode: 'memorize' },
     '/ml': { mode: 'multi' }, '/mt': { mode: 'multi', lang: 'ru' }, '/multi': { mode: 'multi' },
-    '/th/read': { lang: 'th' }, '/mlth': { mode: 'multi', lang: 'th' },
+    '/th': { lang: 'th' }, '/th/read': { lang: 'th' }, '/mlth': { mode: 'multi', lang: 'th' },
 };
 function legacyReaderRedirect(url) {
     const [pathPart, queryPart = ''] = url.split('?');

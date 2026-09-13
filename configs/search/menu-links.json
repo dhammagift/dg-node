@@ -698,7 +698,7 @@
             {
               "label": "DG (th)",
               "desc": "Dhamma.gift in Thai script",
-              "href": "/th/?q=",
+              "href": "/?lang=th",
               "setsLang": "th"
             },
             {
@@ -1578,7 +1578,7 @@
             {
               "label": "DG (th)",
               "desc": "Dhamma.gift тайским письмом",
-              "href": "/th/?q=",
+              "href": "/?lang=th",
               "setsLang": "th"
             },
             {
