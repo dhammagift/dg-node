@@ -116,7 +116,7 @@
     "readerModes": "Alt+1 ถึง 7",
     "previousNext": "Ctrl + ← →",
     "script": "Alt + L",
-    "punctuationHelp": "Alt + . หรือ M",
+    "punctuationHelp": "Alt + . หรือ ,",
     "dictionaryMode": "Alt + B",
     "dictionaryNewWindow": "Alt + N",
     "search": "/",
@@ -124,7 +124,7 @@
     "scriptCompact": "Alt+L",
     "dictionaryCompact": "Alt+A",
     "fontSize": "Alt \"+-\"",
-    "punctuationSettings": "Alt+M",
+    "punctuationSettings": "Alt+.",
     "languageSettings": "Ctrl+1"
   },
   "help": {

@@ -1298,7 +1298,11 @@ if (event.altKey && (event.code === "KeyP" || event.code === "KeyY")) {
 //Ctrl + ArrowRight navigate to next sutta
   // Owner: Alt+R (start/toggle TTS) must fire even while an input is focused — carved out of
   // this blanket "ignore while typing" gate, which every other shortcut below still respects.
-  if (shouldIgnoreKeyEvent() && !(event.altKey && event.code === "KeyR")) return;
+  // Every Alt+… shortcut works while an input is focused too (owner: the reader focuses the search
+  // field on load, which silently swallowed them). Alt combinations do not type text — Option+key on
+  // macOS would, but the handlers below preventDefault. Only plain/Ctrl keys stay with the field
+  // (Ctrl+←/→ jumps words there).
+  if (shouldIgnoreKeyEvent() && !event.altKey) return;
 
   if (event.ctrlKey && event.code === "ArrowRight") {
     const nextDiv = document.getElementById("next");
@@ -1322,13 +1326,6 @@ if (event.altKey && (event.code === "KeyP" || event.code === "KeyY")) {
 
     // === УНИВЕРСАЛЬНОЕ ДОБАВЛЕНИЕ В ИЗБРАННОЕ (Alt+Shift+P или Alt+F) ===
     if ((event.altKey && event.code === "KeyF" && !event.shiftKey)) { // Alt+F без шифта
-        
-        // Игнорируем, если фокус в поле ввода (чтобы не мешать печатать)
-        const activeTag = document.activeElement.tagName;
-        if (['INPUT', 'TEXTAREA'].includes(activeTag) || document.activeElement.isContentEditable) {
-            return;
-        }
-
         event.preventDefault();
 
         // 1. Попытка для Memo (эмулируем клик по кнопке в memo)
@@ -1486,8 +1483,6 @@ if (event.altKey && event.code === "KeyR") {
 
 // Мультиселект Alt + J (физическая клавиша J)
 if (event.altKey && event.code === "KeyJ") {
-    // Пропускаем, если фокус в поле ввода (используем твою функцию)
-    if (typeof shouldIgnoreKeyEvent === 'function' && shouldIgnoreKeyEvent()) return;
 
     const multiSelectBtn = document.getElementById('toggle-multiselect');
     
@@ -1583,8 +1578,7 @@ if (event.altKey && event.code === "KeyJ") {
  if (
     event.altKey && // любой Alt
     (event.code === 'Period' ||
-     event.code === 'Comma' ||
-     event.code === 'KeyM')
+     event.code === 'Comma')  // Alt+M is the burger menu now (search/js/home.js)
   ) {
     event.preventDefault();
 

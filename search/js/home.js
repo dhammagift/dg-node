@@ -3014,6 +3014,13 @@
         }
         document.addEventListener('keydown', function (e) {
             if (e.key === 'Escape') closeDrawer();
+            // Alt+M opens/closes the burger menu (owner). By code, not key: Option+M on macOS
+            // produces "µ", and a non-Latin layout another letter. Punctuation stays on Alt+. / Alt+,.
+            if (e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey && e.code === 'KeyM') {
+                e.preventDefault();
+                var d = document.getElementById('dg-drawer');
+                if (d && !d.hidden && d.classList.contains('show')) closeDrawer(); else openDrawer();
+            }
         });
     }
 
