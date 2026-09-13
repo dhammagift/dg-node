@@ -390,7 +390,11 @@ function writeMeta(db) {
 function buildVocab(db) {
     const t = Date.now();
     db.exec(`
+        DROP INDEX IF EXISTS idx_vocab_skel; -- был в первой версии, никто им не пользовался
         DROP TABLE IF EXISTS vocab;
+        -- Без индекса по skel: читатели берут либо всю таблицу сразу (loadVocab в search-core.js
+        -- строит свою Map в памяти, build-sutta-words.js — весь список), либо одну строку по word,
+        -- а это и есть первичный ключ. Индекс стоил 2,6 МБ и не использовался ни разу.
         CREATE TABLE vocab (word TEXT PRIMARY KEY, skel TEXT, df INTEGER) WITHOUT ROWID;
     `);
     // Apostrophes and hyphens stay in the stored form (it is shown to the person and pasted into
@@ -428,7 +432,6 @@ function buildVocab(db) {
         kept++;
     }
     db.exec('COMMIT');
-    db.exec('CREATE INDEX idx_vocab_skel ON vocab(skel)');
     console.log(`vocab: ${kept} pali word forms from ${inScope.size} texts (${Date.now() - t}ms)`);
 }
 
