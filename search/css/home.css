@@ -1289,24 +1289,13 @@ body.dg-state-ai .forshellscript {
 .aihead { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
 .aihead h2 { font-size: 21px; margin: 0; font-weight: 600; letter-spacing: -.01em; flex: 1 1 auto; min-width: min(100%, 26ch); text-wrap: pretty; }
 .aihead .n { font-size: 13px; color: var(--dg-text-muted); }
-.aisec { margin: 22px 0 0; }
-/* На широком экране слова стоят сбоку от цитат; ниже 900px — колонкой, слова первыми
-   (мобильные брейкпоинты сайта работают через ширину экрана, отдельного mobile-флага нет). */
-.aigrid { display: grid; grid-template-columns: minmax(0, 1fr) 210px; gap: 0 30px; align-items: start; }
-/* Опечатка/не-найдено-по-смыслу: карточек сутт нет вовсе, только слова — не оставлять пустую
-   250px-колонку слева от них. */
-.aigrid:has(.aisec.cards[hidden]) { grid-template-columns: minmax(0, 1fr); }
-.aigrid .cards { grid-column: 1; grid-row: 1; }
-.aigrid .words { grid-column: 2; grid-row: 1; }
-.aigrid .words .aiwords { flex-direction: column; align-items: flex-start; gap: 6px; }
-@media (max-width: 900px) {
-    .aigrid { grid-template-columns: minmax(0, 1fr); }
-    .aigrid .cards, .aigrid .words { grid-column: 1; grid-row: auto; }
-    .aigrid .words { order: -1; }
-    .aigrid .words .aiwords { flex-direction: row; align-items: center; gap: 7px; }
-}
-.aisec > h3 { font-size: 10.5px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--dg-text-muted); margin: 0 0 12px; }
-/* .aicards stays — cardSkeleton() (ai-search.js) still uses it for the LOADING placeholder rows.
+/* Loading skeleton in the same order as the answer: note line, Pali word chips, results table rows
+   (owner: the old one showed a side column of words that the answer never had). */
+.aiskel { display: flex; flex-direction: column; gap: 16px; margin: 22px 0 0; }
+.aisk-row { display: flex; align-items: center; gap: 16px; }
+.aisk-row .skl + .skl { margin-top: 0; }
+.aisk-row .aisk-end { margin-left: auto; }
+/* .aicards stays — tableSkeleton() (ai-search.js) still uses it for the LOADING placeholder rows.
    The real thing (.aicard, .aicollapse, .aicards.collapsed, .qg — an actual rendered card with a
    sutta id/title/quote and its own collapse-all) never got built: real results reuse the site's
    own DataTable instead (#pali, docs/AI_SEARCH_BRIEF.md "по-настоящему DataTable"), triangles and
@@ -1323,8 +1312,8 @@ body.dg-state-ai .forshellscript {
 /* Gloss slot while the bundled DPD is still loading (ai-search.js enrichWithLocalDpd) — same
    shimmer as the .skp/.skl skeletons above, sized to sit inline next to the word. */
 .aiword em.is-loading { display: inline-block; width: 58px; height: 9px; border-radius: 999px; background: var(--dg-surface-active); background-image: linear-gradient(90deg, transparent 0, var(--dg-surface) 50%, transparent 100%); background-size: 280% 100%; animation: ai-sk 1.4s ease-in-out infinite; }
-.aiword-fill { display: inline-flex; align-items: center; justify-content: center; border: 0; background: none; color: var(--dg-text-muted); padding: 6px; border-radius: 999px; cursor: pointer; }
-.aiword-fill:hover { color: var(--dg-accent); background: var(--dg-surface); }
+.aiword-dict { display: inline-flex; align-items: center; justify-content: center; align-self: center; border: 0; background: none; color: var(--dg-text-muted); padding: 6px; border-radius: 999px; cursor: pointer; }
+.aiword-dict:hover { color: var(--dg-accent); background: var(--dg-surface); }
 .aifoot { display: flex; align-items: center; gap: 3px; flex-wrap: wrap; margin: 24px 0 0; padding: 12px 0 50px; border-top: 1px solid var(--dg-border); }
 .aifoot .dis { font-size: 12px; color: var(--dg-text-muted); padding-left: 8px; }
 .aifoot a, .aifoot button { border: 0; background: none; font: inherit; font-size: 13px; color: var(--dg-tblue); cursor: pointer; padding: 4px 8px; border-radius: 6px; display: flex; align-items: center; gap: 5px; text-decoration: none; }

@@ -145,6 +145,8 @@
         #dgConsentSheet button:focus-visible { outline: 2px solid var(--dgc-accent); outline-offset: 2px; }
         /* The language figure carries words now, not a "RU+EN" flag, so it gets its own scale
            and is allowed to wrap rather than being clipped by the number-sized rule above. */
+        /* With two size figures the languages take their own full-width line. */
+        #dgConsentSheet .dgc-fig:nth-child(3).dgc-fig-wide { grid-column: 1 / -1; }
         #dgConsentSheet .dgc-fig-wide dd {
             font-size: 13.5px; font-weight: 500; line-height: 1.35;
             font-variant-numeric: normal;
@@ -463,13 +465,10 @@
     // dialog states the file that is actually about to cross the connection, not a number compiled
     // in months ago.
     //
-    // It used to quote two: "~60MB downloaded, ~260MB stored", from when the library was three
-    // files and dg-light.js's gzip made the wire cost a fraction of the stored size. Neither half
-    // survives. It is one file now, and its bulk is the trigram index, which is high-entropy and
-    // does not compress — measured on a comparable slice, gzip turned 168MB into 177MB, i.e. made
-    // it bigger. Wire cost and storage cost are therefore the same number, and promising 60MB
-    // before pulling 168MB over someone's mobile data is precisely what this dialog exists to
-    // prevent. FALLBACK_MB is only for a server old enough to publish no manifest.
+    // Two figures, both from the manifest: the archive that downloads (bytes_gz) and the database it
+    // unpacks into on the device (bytes). A manifest without bytes_gz (an older server, or the
+    // native build's platform) shows the one number it has. FALLBACK_MB is only for a server old
+    // enough to publish no manifest.
     const FALLBACK_MB = 170;
     function sizeMb(bytes) { return bytes ? Math.round(bytes / 1048576) : FALLBACK_MB; }
     window.addEventListener('dg:need-consent', function (e) {
@@ -483,6 +482,8 @@
     function askConsent(ru, detail) {
         var mb = sizeMb(detail && detail.bytes);
         var approx = (detail && detail.bytes) ? '' : '~';
+        var gzMb = detail && detail.bytesGz ? sizeMb(detail.bytesGz) : null;
+        var unit = '<span>' + (ru ? 'МБ' : 'MB') + '</span>';
         var langs = (detail && detail.langs) || 'ru,en';
         return new Promise(function (resolve) {
             var previouslyFocused = document.activeElement;
@@ -496,12 +497,17 @@
                     (ru ? 'Скачать тексты для работы без сети?' : 'Download the texts for offline use?') +
                   '</p>' +
                   '<p class="dgc-body" id="dgConsentBody">' +
-                    (ru ? 'Это один файл — столько же скачается, столько же займёт на устройстве: он почти не сжимается. Сейчас соединение не через Wi-Fi; загрузку можно отложить и запустить позже в Настройках.'
-                        : 'It is a single file, so that is both what downloads and what it occupies — it barely compresses. You are not on Wi-Fi right now; you can postpone this and start it later from Settings.') +
+                    (gzMb
+                        ? (ru ? 'Скачивается сжатый архив, на устройстве он распаковывается в базу. Сейчас соединение не через Wi-Fi; загрузку можно отложить и запустить позже в Настройках.'
+                              : 'A compressed archive downloads and unpacks into the database on the device. You are not on Wi-Fi right now; you can postpone this and start it later from Settings.')
+                        : (ru ? 'Сейчас соединение не через Wi-Fi; загрузку можно отложить и запустить позже в Настройках.'
+                              : 'You are not on Wi-Fi right now; you can postpone this and start it later from Settings.')) +
                   '</p>' +
                   '<dl class="dgc-figures">' +
-                    '<div class="dgc-fig"><dt>' + (ru ? 'Размер' : 'Size') + '</dt>' +
-                      '<dd>' + approx + mb + '<span>' + (ru ? 'МБ' : 'MB') + '</span></dd></div>' +
+                    (gzMb
+                      ? '<div class="dgc-fig"><dt>' + (ru ? 'Скачать' : 'Download') + '</dt><dd>' + gzMb + unit + '</dd></div>' +
+                        '<div class="dgc-fig"><dt>' + (ru ? 'На устройстве' : 'On device') + '</dt><dd>' + mb + unit + '</dd></div>'
+                      : '<div class="dgc-fig"><dt>' + (ru ? 'Размер' : 'Size') + '</dt><dd>' + approx + mb + unit + '</dd></div>') +
                     '<div class="dgc-fig dgc-fig-wide"><dt>' + (ru ? 'Языки' : 'Languages') + '</dt>' +
                       '<dd>' + languageList(langs, ru) + '</dd></div>' +
                   '</dl>' +

@@ -46,7 +46,7 @@
         var base = (window.dgPlatform && window.dgPlatform.distBase) || window.DG_DIST_BASE || '/mobile-data';
         fetch(String(base).replace(/\/$/, '') + '/db-manifest.json', { cache: 'no-store' })
             .then(function (r) { return r.ok ? r.json() : null; })
-            .then(function (m) { callback(m && m.bytes ? m.bytes : null); })
+            .then(function (m) { callback(m && m.bytes ? m.bytes : null, (m && m.bytes_gz) || null); })
             .catch(function () { callback(null); });   // offline: the row still says what it knows
     }
 
@@ -132,17 +132,20 @@
             // not true", owner). It is about the library being usable without one.
             note = isRu ? ' Готова к работе без интернета.' : ' Ready to work without a connection.';
         }
-        function showDownloaded(bytes) {
-            var size = bytes ? ' ' + mb(bytes) + (isRu ? ' МБ.' : ' MB.') : '';
+        function showDownloaded(bytes, bytesGz) {
+            var size = !bytes ? ''
+                : bytesGz ? (isRu ? ' Архив ' + mb(bytesGz) + ' МБ, на устройстве ' + mb(bytes) + ' МБ.'
+                                  : ' Archive ' + mb(bytesGz) + ' MB, on device ' + mb(bytes) + ' MB.')
+                : ' ' + mb(bytes) + (isRu ? ' МБ.' : ' MB.');
             var build = isRu ? ('Скачано, сборка ' + (state.build_id || '?') + '.')
                              : ('Downloaded, build ' + (state.build_id || '?') + '.');
             descEl.textContent = build + size + note;
         }
         showDownloaded(state.bytes || null);
-        // Filled in a moment later (and never allowed to fail the row): the size comes from the
+        // Filled in a moment later (and never allowed to fail the row): the sizes come from the
         // published manifest, not from the reader's storage.
-        withManifestSize(function (bytes) {
-            if (bytes) { showDownloaded(bytes); }
+        withManifestSize(function (bytes, bytesGz) {
+            if (bytes) { showDownloaded(bytes, bytesGz); }
         });
         btnEl.textContent = isRu ? 'Перескачать' : 'Re-download';
         // Freeing the space has to be possible from here: without this the only way to get ~500MB back
@@ -168,6 +171,8 @@
     // Delete asks the SPA (this page runs in the settings sheet's iframe, where the offline layer —
     // and its worker — live) to drop the library; the worker's own delete op unlinks the OPFS files.
     if (deleteEl) {
+        // Same as the docs button above: no t-* id, so applyLang() left it Russian on the English page.
+        deleteEl.textContent = isRu ? 'Удалить' : 'Delete';
         deleteEl.addEventListener('click', function () {
             var question = isRu
                 ? 'Удалить офлайн-библиотеку? Её можно будет скачать заново.'

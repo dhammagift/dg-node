@@ -138,12 +138,16 @@ a#previewRead:hover{color:var(--accent)}
    report: "Задержка" stayed visible with Multi-select off. One global override instead of
    patching every flex-ish class one at a time. */
 [hidden]{display:none!important}
-.row{display:flex;gap:16px;align-items:center;justify-content:space-between;padding:12px 18px;min-height:60px}
+.row{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:space-between;padding:12px 18px;min-height:60px}
 .row + .row{border-top:1px solid var(--line)}
-.row-stack{flex-direction:column;align-items:stretch;gap:10px}
+.row-stack{flex-direction:column;flex-wrap:nowrap;align-items:stretch;gap:10px}
 .row-title{font-size:16px;font-weight:500;margin:0}
 .row-desc{font-size:13.5px;color:var(--ink-2);margin:3px 0 0}
-.row-control{flex:none;display:flex;align-items:center;gap:8px}
+/* Controls wrap before the text does: the label keeps at least 10em, anything that doesn't fit
+   beside it drops to its own line, and several buttons wrap among themselves (owner screenshot:
+   "Offline library" squeezed into a word-per-line column next to two buttons). */
+.row:not(.row-stack) > :not(.row-control){flex:1 1 10em;min-width:0}
+.row-control{flex:0 1 auto;flex-wrap:wrap;display:flex;align-items:center;gap:8px}
 .nested{background:color-mix(in srgb,var(--canvas) 60%,var(--surface));border-top:1px solid var(--line);padding:0 18px}
 .nested .row{padding-left:0;padding-right:0;min-height:56px}
 .nested[hidden]{display:none}
@@ -289,32 +293,10 @@ kbd{font:inherit;font-size:12.5px;background:var(--line);border:1px solid var(--
   .settings-col{flex:1;min-width:0;order:1}
 }
 @media (max-width:560px){
-  .row{flex-direction:column;align-items:flex-start;gap:10px}
-  .row-control{width:100%}
-  select.control{max-width:none;width:100%}
-
-  /* Switch AND plain-button rows stay inline even on narrow phones — owner request, extended
-     from switches to buttons after catching the same drop-to-next-line on "Log in" (Cloud row):
-     short button text has no real reason to push itself onto its own line under the label the
-     way a long <select> legitimately might. Scoped to rows whose control is a DIRECT child of
-     .row-control so it does NOT also match the outer .row.row-stack wrapping `sameAsRead`
-     (that outer row's .switch is a deeper descendant, not a direct grandchild — its own
-     .row-stack rule keeps stacking it correctly). select-control rows are untouched, they may
-     legitimately still stack. */
-  .row:has(> .row-control > .switch), .row:has(> .row-control > button){
-    flex-direction:row;
-    align-items:center;
-  }
-  .row:has(> .row-control > .switch) > .row-control,
-  .row:has(> .row-control > button) > .row-control{
-    width:auto;
-    flex:0 0 auto;
-  }
-  .row:has(> .row-control > .switch) > *:not(.row-control),
-  .row:has(> .row-control > button) > *:not(.row-control){
-    min-width:0;
-    flex:1 1 auto;
-  }
+  /* Switches and buttons stay beside the label while it fits (base .row wrap rules); a select
+     takes its own full-width line under the label. */
+  .row-control:has(> select){flex:1 1 100%}
+  select.control{max-width:none;flex:1 1 12em}
 
   /* Drop the desktop fixed-width column for scope group rows (4 Nikāyas/Khuddaka/Vinaya) — no
      room for a 200px+44px+gaps layout on a phone. Back to flexible full-width, triangle pinned

@@ -26,16 +26,27 @@ async function withClient(fn) {
 }
 
 // Returns the raw search_hybrid hits: [{ segment_id, sutta_id, text_pali, text_english, rrf_score, ... }]
-async function searchHybrid(query, limit = 5) {
-    return withClient(async client => {
-        const result = await client.callTool({
-            name: 'search_hybrid',
-            arguments: { query, limit, language: 'all' },
+// `trace` (optional) is filled with exactly what was sent and what came back, for the "raw data"
+// debug panel — owner: "чтобы понимать кто лажает, mcp или мы с запросом".
+async function searchHybrid(query, limit = 5, trace = {}) {
+    const args = { query, limit, language: 'all' };
+    Object.assign(trace, { server: SERVER_URL, tool: 'search_hybrid', arguments: args });
+    const started = Date.now();
+    try {
+        const hits = await withClient(async client => {
+            const result = await client.callTool({ name: 'search_hybrid', arguments: args });
+            const textBlock = result.content.find(c => c.type === 'text');
+            if (!textBlock) throw new Error('tripitaka-mcp: no text content in search_hybrid result');
+            return JSON.parse(textBlock.text);
         });
-        const textBlock = result.content.find(c => c.type === 'text');
-        if (!textBlock) throw new Error('tripitaka-mcp: no text content in search_hybrid result');
-        return JSON.parse(textBlock.text);
-    });
+        trace.hits = Array.isArray(hits) ? hits.map(h => ({ segment_id: h.segment_id, rrf_score: h.rrf_score })) : hits;
+        return hits;
+    } catch (err) {
+        trace.error = err.message;
+        throw err;
+    } finally {
+        trace.ms = Date.now() - started;
+    }
 }
 
 module.exports = { searchHybrid };

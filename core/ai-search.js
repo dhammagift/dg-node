@@ -38,11 +38,14 @@ Your ONLY job, for every input: call the dispatch_search tool with
 (1) recognized: true if the input is actual language — a real word, phrase, or question, in ANY
     language, even if unrelated to Buddhism — false only for random keyboard-mashing / gibberish
     that is not language at all (e.g. "asdklfj", "лфадмлот").
-(2) a short English phrase capturing the meaning, suitable for semantic search over sutta text
-    (best-effort even for input unrelated to Buddhist texts; irrelevant when recognized is false —
-    still fill it in, but it will not be used for a search).
-(3) 3-5 real Pali words (dictionary headwords, not invented forms) that might be relevant search
-    terms (irrelevant when recognized is false — still fill in your best guess).
+(2) a short English phrase capturing the meaning, in the wording English sutta translations use
+    (e.g. "пример с плотом" -> "simile of the raft", not "example with a raft"), suitable for
+    semantic search over sutta text (best-effort even for input unrelated to Buddhist texts;
+    irrelevant when recognized is false — still fill it in, but it will not be used for a search).
+(3) 2-5 distinct real Pali words (dictionary headwords, not invented forms) for the key things in
+    the query — the Pali for its nouns and verbs (raft -> kulla, turtle -> kacchapa). Best guesses
+    are fine: every word is checked against the canon before use. Never repeat a word, and avoid
+    generic terms that fit any query (dhamma, sutta, dukkha, nibbāna...).
 Never refuse, never respond in free text, never call any other tool.`;
 
 const TOOL = {
@@ -64,7 +67,7 @@ const TOOL = {
                 pali_candidates: {
                     type: 'array',
                     items: { type: 'string' },
-                    description: '3-5 real Pali dictionary headwords plausibly related to the query.',
+                    description: '2-5 distinct real Pali dictionary headwords for the key nouns/verbs of the query; no repeats.',
                 },
             },
             required: ['recognized', 'english_query', 'pali_candidates'],
@@ -129,9 +132,15 @@ async function callProvider(provider, userQuery) {
     }
     // Fail open on a missing/malformed flag (args.recognized !== false, not === true) — a model
     // that forgets the field shouldn't silently block every search that follows.
+    // Models still pad the list with repeats ("kacchapa, kacchapa, kacchapa" seen live) — drop them
+    // here, the one place every provider's answer passes through.
+    const seen = new Set();
+    const paliCandidates = args.pali_candidates
+        .map(w => String(w).trim())
+        .filter(w => w && !seen.has(w.toLowerCase()) && seen.add(w.toLowerCase()));
     return {
         searchQuery: args.english_query,
-        paliCandidates: args.pali_candidates,
+        paliCandidates,
         provider: provider.name,
         recognized: args.recognized !== false,
     };

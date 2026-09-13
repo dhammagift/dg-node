@@ -62,6 +62,7 @@ const {
     sqlRowsIn,
     stripSearchPunctuation,
     suggestWords,
+    inCorpusStem,
 } = searchCore;
 
 // bodyLimit mirrors the express.text({limit:'10mb'}) on /assets/lbl-save.php below — Fastify's
@@ -1421,12 +1422,18 @@ app.get('/api/ai-search', async (req, res) => {
                 // A real, DPD-confirmed word — plain exact search already found 0 for it (that's
                 // why we're here at all), so search by MEANING instead, grounded in DPD's own
                 // gloss rather than an LLM's guess of what this word might mean.
-                const hits = await searchHybrid(wordInfo.gloss ? `${q} — ${wordInfo.gloss}` : q, 15).catch(() => []);
+                // tripitaka-mcp holds Pāli + English only: the gloss sent there is always DPD's
+                // English one, whatever the UI language (`wordInfo.gloss` stays for the chip).
+                const enGloss = lang === 'en'
+                    ? wordInfo.gloss
+                    : await lookupWord(q, 'en').then(r => r.gloss).catch(() => null);
+                const mcp = {};
+                const hits = await searchHybrid(enGloss ? `${q} — ${enGloss}` : q, 15, mcp).catch(() => []);
                 const responseBody = {
                     ok: true, query: q,
                     suttas: hitsToSuttaRows(hits, scope),
                     wordSuggestions: [{ word: q, gloss: wordInfo.gloss }],
-                    debug: { normalizedQuery: `(DPD-confirmed word, no LLM call) ${q}`, provider: 'dpd', paliCandidates: [q] },
+                    debug: { normalizedQuery: `(DPD-confirmed word, no LLM call) ${q}`, provider: 'dpd', paliCandidates: [q], mcp },
                 };
                 logAiSearch(q, responseBody);
                 AI_SEARCH_CACHE.set(cacheKey, { at: Date.now(), data: responseBody });
@@ -1509,14 +1516,26 @@ app.get('/api/ai-search', async (req, res) => {
     // as the DPD-confirmed-word branch above ("{q} — {gloss}"): append the SPECIFIC candidates
     // (generic ones filtered above) to the query text itself, giving the keyword half something
     // precise instead of only the semantic half having anything to go on.
+    //
+    // Measured on 10 queries with a known right sutta, same candidates for every variant
+    // (2026-09-13), right sutta in the top 5: phrase + all candidates 4, phrase + candidates found in
+    // the corpus 5, both queries pooled 5 (but ranked the right sutta lower, at twice the MCP calls).
+    // The model invents or misspells some candidates ("alagaddupáma") and those cost hits — so only
+    // candidates the corpus actually contains a form of go into the query.
     const specificCandidates = (dispatch.paliCandidates || []).filter(w => !GENERIC_PALI_TERMS.has(w.toLowerCase()));
-    const searchInput = specificCandidates.length
-        ? `${dispatch.searchQuery} — ${specificCandidates.join(', ')}`
+    const verifiedCandidates = specificCandidates.filter(inCorpusStem);
+    debug.droppedCandidates = specificCandidates.filter(w => !verifiedCandidates.includes(w));
+    const searchInput = verifiedCandidates.length
+        ? `${dispatch.searchQuery} — ${verifiedCandidates.join(', ')}`
         : dispatch.searchQuery;
-    const hits = await searchHybrid(searchInput, 15).catch(() => []); // over-fetch; deduped/trimmed to ~5 suttas below
+    debug.mcp = {};
+    const hits = await searchHybrid(searchInput, 15, debug.mcp).catch(() => []); // over-fetch; deduped/trimmed to ~5 suttas below
 
     const responseBody = {
-        ok: true, query: q, suttas: hitsToSuttaRows(hits, scope), wordSuggestions: [], debug,
+        // Owner: the loading skeleton promised "похожие палийские слова" that never arrived — the
+        // corpus-checked candidates are exactly those, shown as chips above the table (glosses are
+        // filled on the page from the bundled DPD, see ai-search.js enrichWithLocalDpd).
+        ok: true, query: q, suttas: hitsToSuttaRows(hits, scope), wordSuggestions: verifiedCandidates.map(word => ({ word })), debug,
     };
     logAiSearch(q, responseBody);
     AI_SEARCH_CACHE.set(cacheKey, { at: Date.now(), data: responseBody });

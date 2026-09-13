@@ -44,10 +44,10 @@
         // guessing "you are probably on cellular" would train the reader to dismiss dialogs.
         askConsent: function (info) {
             if (!onMeteredConnection()) return Promise.resolve(true);
-            return manifestBytes(info).then(function (bytes) {
+            return manifestSizes(info).then(function (sizes) {
                 return new Promise(function (resolve) {
                     window.dispatchEvent(new CustomEvent('dg:need-consent', {
-                        detail: { resolve: resolve, bytes: bytes, langs: info && info.langs },
+                        detail: { resolve: resolve, bytes: sizes.bytes, bytesGz: sizes.bytesGz, langs: info && info.langs },
                     }));
                 });
             });
@@ -64,15 +64,16 @@
         return c.type === 'cellular';
     }
 
-    // The real size of the file that is about to cross the connection, from the published
-    // manifest (a few hundred bytes). app.js calls askConsent({}) — its own consent is a Settings
-    // button with the number next to it — so without this the sheet could only guess.
-    function manifestBytes(info) {
-        if (info && info.bytes) return Promise.resolve(info.bytes);
+    // The real sizes from the published manifest (a few hundred bytes): bytes_gz is the archive
+    // that crosses the connection, bytes the database it unpacks into. app.js calls askConsent({})
+    // — its own consent is a Settings button with the number next to it — so without this the
+    // sheet could only guess.
+    function manifestSizes(info) {
+        if (info && info.bytes) return Promise.resolve({ bytes: info.bytes, bytesGz: info.bytesGz || null });
         var base = (window.dgPlatform && window.dgPlatform.distBase) || '/mobile-data';
         return fetch(base.replace(/\/$/, '') + '/db-manifest.json')
             .then(function (r) { return r.ok ? r.json() : null; })
-            .then(function (m) { return m && m.bytes ? m.bytes : null; })
-            .catch(function () { return null; });
+            .then(function (m) { return { bytes: (m && m.bytes) || null, bytesGz: (m && m.bytes_gz) || null }; })
+            .catch(function () { return { bytes: null, bytesGz: null }; });
     }
 })();

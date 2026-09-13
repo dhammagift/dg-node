@@ -27,15 +27,19 @@
     // solid style in the free set actually installed here (checked node_modules directly, same
     // constraint documented elsewhere in search/index.html), so inlined as raw SVG rather than an
     // `<i class="fa-regular ...">` tag, which wouldn't render.
-    const FILL_ICON_SVG = '<svg viewBox="0 0 512 512" width="13" height="13" fill="currentColor" aria-hidden="true"><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376C296.3 401.1 253.9 416 208 416 93.1 416 0 322.9 0 208S93.1 0 208 0 416 93.1 416 208zM305 225c9.4-9.4 9.4-24.6 0-33.9l-72-72c-9.4-9.4-24.6-9.4-33.9 0s-9.4 24.6 0 33.9l31 31-102.1 0c-13.3 0-24 10.7-24 24s10.7 24 24 24l102.1 0-31 31c-9.4 9.4-9.4 24.6 0 33.9s24.6 9.4 33.9 0l72-72z"/></svg>';
+    // Font Awesome "book" (same glyph as /assets/svg/book.svg).
+    const DICT_ICON_SVG = '<svg viewBox="0 0 640 640" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M480 576L192 576C139 576 96 533 96 480L96 160C96 107 139 64 192 64L496 64C522.5 64 544 85.5 544 112L544 400C544 420.9 530.6 438.7 512 445.3L512 512C529.7 512 544 526.3 544 544C544 561.7 529.7 576 512 576L480 576zM192 448C174.3 448 160 462.3 160 480C160 497.7 174.3 512 192 512L448 512L448 448L192 448zM224 216C224 229.3 234.7 240 248 240L424 240C437.3 240 448 229.3 448 216C448 202.7 437.3 192 424 192L248 192C234.7 192 224 202.7 224 216zM248 288C234.7 288 224 298.7 224 312C224 325.3 234.7 336 248 336L424 336C437.3 336 448 325.3 448 312C448 298.7 437.3 288 424 288L248 288z"/></svg>';
+    // Owner: the word itself puts it into the search field; the small icon opens the dictionary —
+    // the gloss is already on the chip, the full entry is the extra.
     function wordChip(w, lang, pending) {
         const fillTitle = lang === 'ru' ? 'Подставить в поиск' : 'Put into search';
+        const dictTitle = lang === 'ru' ? 'Открыть в словаре' : 'Open in dictionary';
         // `pending` — глоссы ещё не знаем, но собираемся достать из встроенного DPD (fillGlosses ниже).
         // Слово уже читаемо и кликабельно сразу; скелетон только на месте подписи.
         const gloss = w.gloss ? `<em>${esc(w.gloss)}</em>` : (pending ? '<em class="is-loading"></em>' : '');
         return `<span class="aiword">`
-            + `<button type="button" class="aiword-term" data-ai-dict-word="${esc(w.word)}">${esc(w.word)}${gloss}</button>`
-            + `<button type="button" class="aiword-fill" data-ai-word="${esc(w.word)}" title="${esc(fillTitle)}" aria-label="${esc(fillTitle)}">${FILL_ICON_SVG}</button>`
+            + `<button type="button" class="aiword-term" data-ai-word="${esc(w.word)}" title="${esc(fillTitle)}">${esc(w.word)}${gloss}</button>`
+            + `<button type="button" class="aiword-dict" data-ai-dict-word="${esc(w.word)}" title="${esc(dictTitle)}" aria-label="${esc(dictTitle)}">${DICT_ICON_SVG}</button>`
             + `</span>`;
     }
 
@@ -45,6 +49,22 @@
         input.value = word;
         if (window.DgHome && window.DgHome.syncInput) window.DgHome.syncInput();
         input.focus();
+        // Even when the field already held this word: the tap still needs a visible answer.
+        flashInput(input);
+    }
+
+    // The field sits at the top of the screen, away from the chip that was tapped — without a cue
+    // the swap is easy to miss. The input is transparent inside its pill, so moving it reads as the
+    // new word rising into place. WAAPI rather than a CSS class: a second tap cancels and restarts.
+    function flashInput(input) {
+        if (!input.animate) return;
+        const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        const ease = getComputedStyle(input).getPropertyValue('--dg-ease').trim() || 'ease-out';
+        input.getAnimations().forEach(a => a.cancel());
+        input.animate(reduce
+            ? [{ opacity: 0.4 }, { opacity: 1 }]
+            : [{ opacity: 0, transform: 'translateY(60%)' }, { opacity: 1, transform: 'none' }],
+            { duration: 240, easing: ease });
     }
 
     // Note + chips for "nothing matched exactly, but these word forms are close". ONE renderer for
@@ -55,9 +75,11 @@
     //   • /api/ai-search — DPD's dictionary suggestions, for input the corpus vocabulary had
     //     nothing close to.
     // Paired with "расширить поиск" because a narrow scope is the other common reason nothing turned up.
-    function showWordSuggestions(words, lang) {
+    // keepNote: the sutta-results branch has already written its own note above the chips.
+    function showWordSuggestions(words, lang, keepNote) {
         const noteEl = document.getElementById('ai-note');
-        if (noteEl) {
+        shownKeepNote = !!keepNote;
+        if (noteEl && !keepNote) {
             const tryWord = lang === 'ru' ? 'Попробуйте' : 'Try';
             const expand = lang === 'ru' ? 'расширить поиск' : 'expand search';
             const or = lang === 'ru' ? 'или' : 'or';
@@ -72,14 +94,27 @@
         // the server side of that path, and the whole point of it is that it makes no network
         // call) — those get filled in place from the bundled DPD below. DPD/LLM suggestions already
         // carry their own gloss and need none of this.
+        shownWords = words;
         const pending = !words.some(w => w.gloss);
         wordsEl.innerHTML = words.map(w => wordChip(w, lang, pending)).join('');
         wordsEl.querySelectorAll('[data-ai-word]').forEach(btn => btn.addEventListener('click', () => {
             putWordInInput(btn.dataset.aiWord);
         }));
         wordsEl.classList.remove('d-none');
-        if (pending) enrichWithLocalDpd(wordsEl);
+        if (pending) enrichWithLocalDpd(wordsEl, lang);
     }
+
+    // Owner: "при смене языка нужно менять и переводы слов", without a reload. The note, the titles
+    // and the glosses are re-rendered in the new language; glosses always come from the local DPD
+    // then, since a server-provided gloss is in the language the request was made in.
+    let shownWords = null;
+    let shownKeepNote = false;
+    document.addEventListener('dhamma:languagechange', function (e) {
+        const wordsEl = document.getElementById('ai-words');
+        if (!shownWords || !wordsEl || wordsEl.classList.contains('d-none')) return;
+        const lang = (e.detail && e.detail.language) === 'en' ? 'en' : 'ru';
+        showWordSuggestions(shownWords.map(w => ({ word: w.word })), lang, shownKeepNote);
+    });
 
     /* Подписи к подсказкам — из СВОЕГО же встроенного DPD (standalone-dpd/dpd_i2h.js — форма →
        словарная статья, dpd_ebts.js — сама статья, русская или английская по настройке), а не по сети.
@@ -89,14 +124,14 @@
        Загружаем словарь ТОЛЬКО тем, у кого он и так выбран (savedDict "standalone*", paliLookup.js):
        эти ~14 МБ они всё равно скачают при первом клике по слову. Тянуть их ради подписи тем, кто
        пользуется онлайн-словарём, — плохая сделка, им просто убираем скелетоны. */
-    function dpdGloss(word) {
-        if (!window.dpd_i2h || !window.dpd_ebts) return '';
+    function dpdGloss(word, ebts) {
+        if (!window.dpd_i2h || !ebts) return '';
         const key = String(word).toLowerCase().replace(/[\u2019']/g, '');
         // dpd_i2h maps INFLECTED forms to headwords, so a word that is already the dictionary form
         // ("kacchapa") can be missing from it while sitting in dpd_ebts as its own entry — hence
         // the direct lookups too, homonym suffix included.
         const heads = (window.dpd_i2h[key] || []).concat(
-            window.dpd_ebts[key] ? [key] : (window.dpd_ebts[key + ' 1'] ? [key + ' 1'] : []));
+            ebts[key] ? [key] : (ebts[key + ' 1'] ? [key + ' 1'] : []));
         if (!heads.length) return '';
         // dpd_i2h lists every headword this form could belong to, alphabetically — not by relevance.
         // For "nibbāna" that put "nibba" (eaves; edge of a roof) first, ahead of nibbāna itself.
@@ -107,7 +142,7 @@
             return (key.startsWith(lb) ? lb.length : -1) - (key.startsWith(la) ? la.length : -1);
         });
         for (const head of ranked) {
-            const entry = window.dpd_ebts[head];
+            const entry = ebts[head];
             if (!entry) continue;
             // The meaning proper is the <b>…</b> run ("adj. <b>dull; drowsy</b>; lit. stiff [√thī]");
             // the rest is grammar and etymology, too long for a chip subtitle.
@@ -120,27 +155,46 @@
         return '';
     }
 
-    function fillGlosses(container) {
+    function fillGlosses(container, ebts) {
         container.querySelectorAll('.aiword-term').forEach(btn => {
             const em = btn.querySelector('em.is-loading');
             if (!em) return;
-            const gloss = dpdGloss(btn.dataset.aiDictWord);
+            const gloss = dpdGloss(btn.dataset.aiWord, ebts);
             if (gloss) { em.classList.remove('is-loading'); em.textContent = gloss; }
             else em.remove(); // DPD has nothing for this form — a bare word reads better than a stuck bar
         });
     }
 
-    function enrichWithLocalDpd(container) {
+    // Glosses follow the SITE language, while the popup dictionary keeps its own (a separate En/Ru
+    // setting). When the two differ, the other language's entries are fetched as plain data — loading
+    // them as a <script> would replace the global dpd_ebts the popup reads. Same URL as the script, so
+    // the browser's HTTP cache serves it once the popup has used that language.
+    const DPD_EBTS_URL = { en: '/assets/js/standalone-dpd/dpd_ebts.js', ru: '/assets/js/standalone-dpd/ru/dpd_ebts.js' };
+    const dpdDataCache = {};
+    function loadDpdData(url) {
+        return dpdDataCache[url] || (dpdDataCache[url] = fetch(url)
+            .then(r => r.ok ? r.text() : Promise.reject(new Error('HTTP ' + r.status)))
+            // "var dpd_ebts = {...}" — the object literal itself is valid JSON.
+            .then(s => JSON.parse(s.slice(s.indexOf('{'), s.lastIndexOf('}') + 1)))
+            .catch(err => { delete dpdDataCache[url]; throw err; }));
+    }
+
+    function enrichWithLocalDpd(container, lang) {
         const dropSkeletons = () => container.querySelectorAll('.aiword em.is-loading').forEach(em => em.remove());
-        if (window.dpd_i2h && window.dpd_ebts) return fillGlosses(container);
         if (typeof window.dg_loadDictionaryScripts !== 'function') return dropSkeletons();
+        container.dataset.glossLang = lang;
         // typeof, not a bare read: savedDict/lazyLoadStandaloneScripts only exist once paliLookup.js
         // is in, and touching an undeclared identifier directly would throw.
         window.dg_loadDictionaryScripts().then(() => {
             const local = typeof savedDict === 'string' && savedDict.indexOf('standalone') === 0;
             if (!local || typeof lazyLoadStandaloneScripts !== 'function') return dropSkeletons();
-            return lazyLoadStandaloneScripts(savedDict === 'standaloneru' ? 'ru' : 'en')
-                .then(() => fillGlosses(container));
+            const dictLang = savedDict === 'standaloneru' ? 'ru' : 'en';
+            return lazyLoadStandaloneScripts(dictLang)
+                .then(() => lang === dictLang ? window.dpd_ebts : loadDpdData(DPD_EBTS_URL[lang]))
+                .then(ebts => {
+                    // A later language switch re-rendered the chips; that call fills them.
+                    if (container.dataset.glossLang === lang) fillGlosses(container, ebts);
+                });
         }).catch(dropSkeletons);
     }
 
@@ -151,9 +205,10 @@
         if (window.dgRenderLangPill) window.dgRenderLangPill();
     }
 
-    function cardSkeleton() {
-        return Array.from({ length: 3 }, () =>
-            `<div class="aisk"><div class="skl" style="width:38%"></div><div class="skl" style="width:88%"></div><div class="skl" style="width:64%"></div></div>`
+    // Rows shaped like the results table the answer lands in (#pali: sutta id, title, count, links).
+    function tableSkeleton() {
+        return [58, 72, 46, 64, 52].map(w =>
+            `<div class="aisk aisk-row"><span class="skl" style="width:64px"></span><span class="skl" style="width:${w}%"></span><span class="skl aisk-end" style="width:28px"></span><span class="skl" style="width:64px"></span></div>`
         ).join('');
     }
     function wordSkeleton() {
@@ -180,9 +235,10 @@
     <div class="aiwords">${wordSkeleton()}</div>`;
         }
         return `<p class="st"><span class="gi">⟳</span>Ищем по смыслу<span class="sub">обычно несколько секунд — словарь и поиск дольше пишущей машинки</span></p>
-    <div class="aigrid">
-      <section class="aisec cards"><h3>Возможно, эти сутты</h3><div class="aicards">${cardSkeleton()}</div></section>
-      <section class="aisec words"><h3>Похожие палийские слова</h3><div class="aiwords">${wordSkeleton()}</div></section>
+    <div class="aiskel">
+      <div class="skl" style="width:min(520px, 90%)"></div>
+      <div class="aiwords">${wordSkeleton()}</div>
+      <div class="aicards">${tableSkeleton()}</div>
     </div>`;
     }
 
@@ -313,12 +369,35 @@
     function showDataDebug(container, debug, originalQuery, lang) {
         if (!debug) return;
         const t = lang === 'ru'
-            ? { ai: 'ИИ', input: 'Инпут', candidates: 'Кандидаты', normalized: 'Нормализованный инпут' }
-            : { ai: 'AI', input: 'Input', candidates: 'Candidates', normalized: 'Normalized input' };
+            ? { ai: 'ИИ', input: 'Инпут', candidates: 'Кандидаты', normalized: 'Нормализованный инпут',
+                mcpReq: 'MCP запрос', mcpRes: 'MCP ответ', notCalled: 'не вызывался', hits: 'совпадений', ms: 'мс', error: 'ошибка',
+                dropped: 'Отброшены (нет в корпусе)' }
+            : { ai: 'AI', input: 'Input', candidates: 'Candidates', normalized: 'Normalized input',
+                mcpReq: 'MCP request', mcpRes: 'MCP response', notCalled: 'not called', hits: 'hits', ms: 'ms', error: 'error',
+                dropped: 'Dropped (not in corpus)' };
+        // Exactly what went to tripitaka-mcp and what it returned (core/tipitaka-mcp-client.js trace):
+        // a bad request here is ours, a bad answer to a good request is theirs.
+        // One trace per MCP call — the LLM path sends two in parallel (phrase, phrase + candidates).
+        const traces = [].concat(debug.mcp || []).filter(m => m && m.tool);
+        const mcpRows = !traces.length
+            ? [[t.mcpReq, `— (${t.notCalled})`]]
+            : traces.flatMap((mcp, i) => {
+                const n = traces.length > 1 ? ` ${i + 1}` : '';
+                return [
+                    [t.mcpReq + n, `${mcp.server} → ${mcp.tool} ${JSON.stringify(mcp.arguments)}`],
+                    [t.mcpRes + n, mcp.error
+                        ? `${t.error}: ${mcp.error} (${mcp.ms} ${t.ms})`
+                        : `${(mcp.hits || []).length} ${t.hits}, ${mcp.ms} ${t.ms}: ${JSON.stringify(mcp.hits || [])}`],
+                ];
+            });
+        const dropped = debug.droppedCandidates && debug.droppedCandidates.length
+            ? [[t.dropped, debug.droppedCandidates.join(', ')]] : [];
         showDebug(container, `${t.ai} (${debug.provider}) — raw data`, [
             [t.input, originalQuery],
             [t.candidates, (debug.paliCandidates || []).join(', ') || '—'],
+            ...dropped,
             [t.normalized, debug.normalizedQuery],
+            ...mcpRows,
         ]);
     }
 
@@ -436,8 +515,15 @@
             return nudgeLangPill();
         }
 
-        const wordsEl = document.getElementById('ai-words');
-        if (wordsEl) wordsEl.classList.add('d-none'); // suttas branch: the server never sends both
+        // Suttas branch: the corpus-checked Pali candidates go above the table as chips.
+        if (data.wordSuggestions.length) {
+            const noteEl = document.getElementById('ai-note');
+            if (noteEl) noteEl.textContent += lang === 'ru' ? ' Палийские слова по запросу:' : ' Pali words for this query:';
+            showWordSuggestions(data.wordSuggestions, lang, true);
+        } else {
+            const wordsEl = document.getElementById('ai-words');
+            if (wordsEl) wordsEl.classList.add('d-none');
+        }
         // home-bundle.js's Pāli/translation pill repaints off body's class-change (fired by
         // dgSetState above, BEFORE #pali/#ai-words had their real content) — nudge it again now
         // that they do, or it stays hidden (dgRenderLangPill only shows it in 'results' state when
@@ -465,7 +551,7 @@
         if (qsBtn) qsBtn.click();
     });
 
-    // Clicking the word itself — same word-lookup pipeline every [lang="pi"] word on the site
+    // The dictionary icon next to the word — same word-lookup pipeline every [lang="pi"] word on the site
     // already uses (paliLookup.js, lazy-loaded on first use by settings.js's
     // window.dg_loadDictionaryScripts). Calling handleWordLookup directly instead of just tagging
     // the button lang="pi" and letting the site's generic delegated handler pick it up: that
@@ -473,7 +559,7 @@
     // paliLookup.js getClickedWordWithHTML) — fragile here since the button also renders a gloss
     // inside it (<em>...), not just the bare word.
     document.addEventListener('click', function (e) {
-        const btn = e.target.closest('.aiword-term');
+        const btn = e.target.closest('.aiword-dict');
         if (!btn) return;
         const word = btn.dataset.aiDictWord;
         if (!word) return;
@@ -497,6 +583,7 @@
         if (noteEl) { noteEl.classList.add('d-none'); noteEl.textContent = ''; }
         const wordsEl = document.getElementById('ai-words');
         if (wordsEl) { wordsEl.classList.add('d-none'); wordsEl.innerHTML = ''; }
+        shownWords = null;
         document.querySelectorAll('.ai-debug-wrap').forEach(el => el.remove());
     }
 

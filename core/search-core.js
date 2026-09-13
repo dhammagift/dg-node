@@ -394,6 +394,22 @@ function sqlRowsIn(columns, table, column, values, extraSql = '', extraParams = 
    Две ступени в одном проходе: совпадение скелетов (pali-skeleton.js) ловит путаницу с диакритикой,
    удвоением и аспирацией (самые частые ошибки в пали) за distance 0, а обычные опечатки —
    пропущенная буква, лишняя, не та гласная — расстоянием Левенштейна ≤ 2 по тем же скелетам. */
+/* inCorpusStem — does the corpus contain a form of this Pali word? Used to drop the AI dispatcher's
+   invented or misspelled candidates ("alagaddupáma") before they go into the MCP query. Checked by
+   stem, not exact form: a dictionary headword ("kacchapa", "pahāna") often never occurs literally,
+   only inflected ("kacchapo", "pahānaṁ"). ponytail: prefix of the stem, so a real-but-short stem can
+   over-match (kila → kilesa); good enough to catch misspellings, not a meaning check. */
+function inCorpusStem(word) {
+    const w = String(word || '').trim().toLowerCase();
+    let stem = w.replace(/[ṁṃ]$/, '').replace(/[aāiīuūeo]+$/, '');
+    if (stem.length < 3) stem = w;
+    try {
+        return !!searchDb.prepare('SELECT 1 FROM vocab WHERE word >= ? AND word < ? LIMIT 1').get(stem, stem + '￿');
+    } catch {
+        return true; // no vocab table: don't filter at all rather than drop every candidate
+    }
+}
+
 let vocabIndex = null;
 
 function loadVocab() {
@@ -1191,4 +1207,5 @@ module.exports = {
     sqlRowsIn,
     stripSearchPunctuation,
     suggestWords,
+    inCorpusStem,
 };
