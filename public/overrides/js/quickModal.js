@@ -6,10 +6,14 @@
 // read as "yet another gear" next to the real settings gear and the quick-settings icon (owner:
 // too many gears, confusing).
 
-window.isRu = window.location.pathname.includes('/r/') || 
-                     window.location.pathname.includes('/ru/') || 
-                     window.location.pathname.includes('/ml/') || 
-                     window.location.pathname.includes('/mt/');
+// The SPA serves Russian at /mn1?lang=ru (the /ru/ prefix redirects there), so the path alone said
+// "English" and the quick window's own labels stayed English on the Russian site. Same saved-language
+// fallback as search/index.html's early isRu.
+window.isRu = window.location.pathname.includes('/r/') ||
+                     window.location.pathname.includes('/ru/') ||
+                     window.location.pathname.includes('/ml/') ||
+                     window.location.pathname.includes('/mt/') ||
+                     localStorage.getItem('dhammaLanguage') === 'ru';
 // Делаем переменные глобальными для доступа из других скриптов
 window.isQuickModalRendered = false;
 window.quickModalIsOpen = false;
@@ -133,12 +137,10 @@ function buildQuickModalDOM() {
         </h6>
         <div id="quick-history-container"></div>
         
+        <!-- "Common history" link removed — that page no longer exists (owner). -->
         <div class="quick-all-history-wrapper" style="display: flex; justify-content: space-between; align-items: center;">
             <a href="${window.isRu ? '/ru/assets/common/history.html' : '/assets/common/history.html'}" class="quick-all-history-link">
-                ${window.isRu ? "← Ваша история" : "← Your history"}
-            </a>
-            <a href="/assets/common/history.html" class="quick-all-history-link">
-                ${window.isRu ? "Общая история →" : "Common history →"}
+                ${window.isRu ? "← Вся история" : "← All history"}
             </a>
         </div>
 

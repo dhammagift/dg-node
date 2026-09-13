@@ -1141,7 +1141,6 @@
             });
             select.appendChild(group);
         });
-        wrap.appendChild(select);
 
         function saveAndApply() {
             var value = DictModeShared.composeValue(dictModeGroups, select.value, dictLang);
@@ -1167,7 +1166,9 @@
         });
         var initialGroup = DictModeShared.groupFor(dictModeGroups, select.value);
         langSeg.hidden = !(initialGroup && initialGroup.hasLangToggle);
+        // Language first, the mode list under it (owner: the other way round was easy to misread).
         wrap.appendChild(langSeg);
+        wrap.appendChild(select);
 
         select.addEventListener('change', function () {
             var g = DictModeShared.groupFor(dictModeGroups, select.value);
@@ -2793,7 +2794,7 @@
         if (hotkey) {
             var hk = document.createElement('span');
             hk.className = 'dg-mode-row-hotkey';
-            hk.textContent = 'Alt+' + hotkey;
+            hk.textContent = 'Alt+Shift+' + hotkey;
             top.appendChild(hk);
         }
         row.appendChild(top);
@@ -4461,6 +4462,20 @@
             quickBtn.addEventListener('click', function () {
                 if (isQuickOpen()) closeQuick(); else openQuick();
             });
+            // ?quick=1 opens Quick settings on load — the docs' dictionary page embeds the reader
+            // this way ("pick a dictionary and try"). Waits until the page has rendered (reader and
+            // results load async, body.dg-busy meanwhile), so the sheet shows the sections of the
+            // view actually on screen.
+            if (new URLSearchParams(window.location.search).get('quick') === '1') {
+                var quickWaits = 0;
+                (function openQuickWhenReady() {
+                    if (document.body.classList.contains('dg-busy') && quickWaits++ < 50) {
+                        setTimeout(openQuickWhenReady, 100);
+                        return;
+                    }
+                    openQuick();
+                })();
+            }
         }
 
         wireDrawer();

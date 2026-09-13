@@ -2591,6 +2591,22 @@ body.dg-tiles-dragging { user-select: none; -webkit-user-select: none; }
    идёт напрямую в её обработчик (renderTiles() → runTile()), который сам переключает/закрывает
    через openMega()/openSheet() — тем же кликом, без второго тапа. */
 .dg-tile { position: relative; z-index: 1081; }
+/* That lift also keeps tiles out of the backdrop's shade: on the light theme they stayed bright
+   white while the rest of the page darkened under an open sheet (owner). Same tint as
+   #dg-sheet-backdrop, laid over each tile only while a shading backdrop shows — clicks still go
+   to the tile (pointer-events: none), so the one-tap switching above keeps working. */
+.dg-tile::after {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    background: rgba(20, 18, 10, 0.4);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.22s ease;
+}
+body:has(#dg-sheet-backdrop.show:not(.dg-transparent)) .dg-tile::after { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .dg-tile::after { transition: none; } }
 /* Полный стек z-index этой страницы (снизу вверх): 900 #dg-busy-indicator, 1080 #dg-sheet-
    backdrop, 1081 .dg-sheet/.dg-tile, 1082 #dg-drawer-backdrop, 1083 #dg-drawer, 1084 autocomplete,
    1090 плитка во время drag. Bootstrap-модалка (#SearchResultHelp — "Помощь", вызывается через

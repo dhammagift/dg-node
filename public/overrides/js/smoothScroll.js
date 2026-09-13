@@ -292,8 +292,11 @@ const ScrollManager = {
         this.hideProgressNotification(); 
         this.isWaitingForToast = true;
 
-        const textBtn = window.isRu ? "Продолжить чтение" : "Continue reading";
-        const textCheckbox = window.isRu ? "Больше не спрашивать" : "Don't ask again";
+        // The interface language right now. window.isRu is set by several scripts by different rules
+        // (URL path, a saved key, a regex match) and showed this toast in Russian on the English site.
+        const ru = String((window.DHAMMA_I18N && window.DHAMMA_I18N.language) || document.documentElement.lang || '').startsWith('ru');
+        const textBtn = ru ? "Продолжить чтение" : "Continue reading";
+        const textCheckbox = ru ? "Больше не спрашивать" : "Don't ask again";
 
         const toast = document.createElement('div');
         toast.id = 'progress-toast';

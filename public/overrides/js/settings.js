@@ -1922,58 +1922,51 @@ function dgReaderIsActive() {
     return !!(window.MODE_TABLE && window.READER_MODE && window.READER_MODE.modeKey);
 }
 
+// Site-wide Alt+digit (owner): Alt+1 — site language, Alt+2 — table of contents, Alt+3 — the
+// dictionary, the same on every page. Reading modes moved to Alt+Shift+digit (they used to own
+// Alt+1…Alt+4 in the reader, so Alt+2/3 meant different things on different pages).
 document.addEventListener("keydown", (event) => {
-    if (!event.altKey || !event.code.startsWith("Digit")) return;
+    if (!event.altKey || event.ctrlKey || event.metaKey || !event.code.startsWith("Digit")) return;
     const digit = parseInt(event.code.replace("Digit", ""), 10);
 
     const modeTable = window.MODE_TABLE;
     const readerMode = window.READER_MODE;
-    // Owner bug: on the results page the FIRST Alt+1 "switched to single mode" (a mode the
-    // results have no notion of) and only the next presses toggled the language. Cause: in
-    // the SPA megareader.js is loaded on every page, so window.MODE_TABLE/READER_MODE exist
-    // outside the reader too — the old "no mode table = not the reader" test was true only on
-    // a page that had never loaded the reader code. Decide by the view actually on screen.
-    if (!modeTable || !readerMode || !dgReaderIsActive()) {
-        // Outside the reader (home page, search results) there's no mode to switch, only a
-        // site language — Alt+1 there does the same EN/RU toggle as the burger's language switch
-        // (home.js renderLangSwitch), so the shortcut is universal across every page instead of
-        // reader-only (owner: "смена языка... также как в ридере... универсально").
-        if (digit === 1 && window.DHAMMA_I18N && window.DHAMMA_I18N.setLanguage) {
+    // In the SPA megareader.js is loaded on every page, so MODE_TABLE/READER_MODE exist outside
+    // the reader too — decide by the view actually on screen (dgReaderIsActive).
+    const inReader = !!(modeTable && readerMode && dgReaderIsActive());
+
+    if (!event.shiftKey) {
+        if (digit === 1) {
             event.preventDefault();
-            const active = window.DHAMMA_I18N.language || localStorage.getItem('dhammaLanguage') || 'en';
+            const active = (window.DHAMMA_I18N && window.DHAMMA_I18N.language) || localStorage.getItem('dhammaLanguage') || 'en';
             const next = active === 'ru' ? 'en' : 'ru';
-            window.DHAMMA_I18N.setLanguage(next);
+            // In the reader the text's own language follows (switchReadingLanguage also switches
+            // the site language); elsewhere the same EN/RU toggle as the burger's switch.
+            if (inReader && typeof window.switchReadingLanguage === 'function') {
+                window.switchReadingLanguage(next);
+            } else if (window.DHAMMA_I18N && window.DHAMMA_I18N.setLanguage) {
+                window.DHAMMA_I18N.setLanguage(next);
+            } else {
+                return;
+            }
             window.dgAnnounceLanguage(next);
+        } else if (digit === 2) {
+            event.preventDefault();
+            window.location.href = window.location.origin + "/toc";
+        } else if (digit === 3) {
+            event.preventDefault();
+            const ru = String((window.DHAMMA_I18N && window.DHAMMA_I18N.language) || document.documentElement.lang || '').startsWith('ru');
+            window.location.href = ru ? 'https://dict.dhamma.gift/ru/' : 'https://dict.dhamma.gift/';
         }
         return;
     }
+
+    // Alt+Shift+digit — reading modes, reader only.
+    if (!inReader) return;
     const type = Object.keys(window.MODE_HOTKEY_DIGITS).find((k) => window.MODE_HOTKEY_DIGITS[k] === digit && modeTable[k]);
     if (!type) return;
     event.preventDefault();
-    if (type === readerMode.modeKey) {
-        // Owner: "стандарт... из англ режимов alt+1 вел в англ, из ру в ру, и только потом
-        // работал как тогл" — Alt+1 first takes you to the mode IN YOUR CURRENT LANGUAGE
-        // (mode type never touches language, see switchReaderMode), and only once you're
-        // ALREADY there does a second press cycle the language, like the burger's EN/RU switch.
-        // Cycles through languages ALREADY loaded for this text (readerMode.columns, from the
-        // last real server response). Single-column modes (single/memorize/devanagari)
-        // never load more than one, so there's nothing to cycle through there — fall back to the
-        // same EN/RU toggle as the burger's language switch (home.js renderLangSwitch), the only
-        // two interface languages this app actually has (configs/search/lang_{ru,en}.json).
-        const cols = readerMode.columns || [];
-        if (typeof window.switchReadingLanguage !== 'function') return;
-        let nextLang;
-        if (cols.length > 1) {
-            const idx = cols.indexOf(readerMode.lang);
-            nextLang = cols[(idx + 1) % cols.length];
-        } else {
-            nextLang = readerMode.lang === 'ru' ? 'en' : 'ru';
-        }
-        window.switchReadingLanguage(nextLang);
-        window.dgAnnounceLanguage(nextLang);
-    } else {
-        window.switchReaderMode(type);
-    }
+    if (type !== readerMode.modeKey) window.switchReaderMode(type);
 });
 
 
