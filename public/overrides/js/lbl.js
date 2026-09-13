@@ -327,7 +327,7 @@ function downloadJson() {
 
     // Функция для загрузки данных и проверки индекса
     function loadAndCheckRanges() {
-        fetch('/read/reader-rus-translations.js')
+        fetch('/read/js/reader-rus-translations.js')
             .then(response => response.text())
             .then(data => {
                 // Извлечение переменных из текста файла

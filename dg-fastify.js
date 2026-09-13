@@ -1054,8 +1054,10 @@ app.register(fastifyStatic, {
 // с классами, которые реально рендерит megareader.js — rus-lang/eng-lang vs ru-lang/en-lang,
 // second-translation-row vs lang-2nd — переводы молча не находились на страницах ридера,
 // см. TODO.md) отдаётся ПЕРЕД siteroot/read/ (легаси-оригинал, второй элемент root-массива).
+// /read now serves only our own copies (voice player, ranges, icons): the legacy siteroot/read
+// tree is no longer a fallback — its reader pages redirect to the SPA (LEGACY_READERS above).
 app.register(fastifyStatic, {
-    root: [path.join(__dirname, 'public', 'overrides', 'read'), path.join(__dirname, 'siteroot', 'read')],
+    root: path.join(__dirname, 'public', 'overrides', 'read'),
     prefix: '/read',
     setHeaders: staticCacheHeaders,
     decorateReply: false,
