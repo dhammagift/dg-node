@@ -4352,6 +4352,11 @@
         host.appendChild(val);
         host.appendChild(inc);
     }
+    // Alt+− / Alt+= (settings.js) step the same scale as the drawer's −/+ buttons.
+    window.dgStepUiScale = function (delta) {
+        localStorage.setItem(FONT_SCALE_KEY, Math.min(150, Math.max(70, currentFontScale() + delta)));
+        renderFontSizeControl();
+    };
 
     // ======================================================================
     // Подсказка под полем

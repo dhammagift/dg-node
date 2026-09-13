@@ -774,7 +774,7 @@ async function populateVoiceSelectors(apiKey, forceRefresh = false) {
     }
     
     // Fallback
-    const finalDefaultConfig = bestDefaultVoice ? { languageCode: bestDefaultVoice.languageCodes[0], name: bestDefaultVoice.name } : context.defaultConfig;
+    const finalDefaultConfig = (bestDefaultVoice && bestDefaultVoice.languageCodes) ? { languageCode: bestDefaultVoice.languageCodes[0], name: bestDefaultVoice.name } : context.defaultConfig;
 
     // Важно: передаем context.storageKey
     setupVoiceSelectors(trnVoices, 'google-lang-select-trn', 'google-voice-select-trn', context.storageKey, finalDefaultConfig);
@@ -2638,7 +2638,7 @@ async function refreshVoiceDropdowns(forceRefresh = false) {
             let bestDefaultVoice = null;
             if (context.isIndianContext) {
                  bestDefaultVoice = trnVoices.find(v => v.name.includes('pa-IN-Standard-D')) || 
-                                    trnVoices.find(v => v.languageCodes[0].replace('_', '-').toLowerCase() === 'pa-in') ||
+                                    trnVoices.find(v => (v.languageCodes || [''])[0].replace('_', '-').toLowerCase() === 'pa-in') ||
                                     trnVoices[0];
             } else {
                 const pageLang = detectTranslationLang(); 
@@ -2646,10 +2646,10 @@ async function refreshVoiceDropdowns(forceRefresh = false) {
                                       (pageLang === 'th') ? 'th-TH-Standard-A' : 'en-US-Standard-D';
                 
                 bestDefaultVoice = trnVoices.find(v => v.name === preferredName) || 
-                                   trnVoices.find(v => v.name.includes('Standard') && v.languageCodes[0].replace('_', '-').toLowerCase().startsWith(pageLang)) ||
+                                   trnVoices.find(v => v.name.includes('Standard') && (v.languageCodes || [''])[0].replace('_', '-').toLowerCase().startsWith(pageLang)) ||
                                    context.defaultConfig;
             }
-            const finalDefaultConfig = bestDefaultVoice ? { languageCode: bestDefaultVoice.languageCodes[0], name: bestDefaultVoice.name } : context.defaultConfig;
+            const finalDefaultConfig = (bestDefaultVoice && bestDefaultVoice.languageCodes) ? { languageCode: bestDefaultVoice.languageCodes[0], name: bestDefaultVoice.name } : context.defaultConfig;
             
             setupVoiceSelectors(trnVoices, 'google-lang-select-trn', 'google-voice-select-trn', context.storageKey, finalDefaultConfig);
         }

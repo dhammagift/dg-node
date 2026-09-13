@@ -450,7 +450,7 @@
     // (favorites, settings.js) so this is Alt+SHIFT+F specifically, not a swap.
     // ---------------------------------------------------------------
     document.addEventListener('keydown', function (e) {
-        var isCtrlShiftF = (e.ctrlKey || e.metaKey) && e.shiftKey && !e.altKey && (e.key === 'f' || e.key === 'F');
+        var isCtrlShiftF = (e.ctrlKey || e.metaKey) && e.shiftKey && !e.altKey && (e.key === 'f' || e.key === 'F' || e.code === 'KeyF'); // code: Russian layout gives 'А'
         var isAltShiftF = e.altKey && e.shiftKey && !e.ctrlKey && !e.metaKey && (e.key === 'f' || e.key === 'F' || e.code === 'KeyF');
         if (isCtrlShiftF || isAltShiftF) {
             e.preventDefault();

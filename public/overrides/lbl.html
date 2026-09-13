@@ -2,6 +2,10 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
+<!-- Read the docs-demo flag before anything runs: the page may rewrite its own query string
+     (history.replaceState), and a save guard that looks for ?demo=1 only at click time can miss
+     it — that is how the English copy of this page wrote real files from the help-page demo. -->
+<script>window.DG_LBL_DEMO = new URLSearchParams(window.location.search).get('demo') === '1';</script>
 <link rel="stylesheet" type="text/css" href="/assets/css/bootstrap.5.3.1.min.css"/>
     <link href="/assets/css/styles.css" rel="stylesheet" />
     <link href="/assets/css/extrastyles.css" rel="stylesheet" />
@@ -416,7 +420,7 @@ function downloadJson() {
     // Docs "Редактор переводов" embeds this exact tool live (?demo=1) — sohranenie (local
     // download AND the server-side lbl-save.php write below) must not fire from there, or
     // anyone poking around in the help page could overwrite real translation files.
-    if (new URLSearchParams(window.location.search).get('demo') === '1') {
+    if (window.DG_LBL_DEMO) {
         alert('Это справка — сохранение здесь отключено. Откройте инструмент по прямой ссылке /assets/lbl.html, чтобы сохранять.');
         return;
     }

@@ -1416,7 +1416,10 @@ if (event.altKey && (event.code === "KeyP" || event.code === "KeyY")) {
       ? baseUrl + '/?silent&source=pwa&q=' + encodeURIComponent(q)
       : baseUrl + '/';
 
-    openDictionaryWindow(url);
+    event.preventDefault();
+    // openDictionaryWindow lives in paliLookup.js, which loads lazily — plain popup until then.
+    if (typeof openDictionaryWindow === 'function') openDictionaryWindow(url);
+    else window.open(url, 'dictionaryPopup');
   }
 
 //Help + Settings + History
@@ -1500,77 +1503,39 @@ if (event.altKey && event.code === "KeyJ") {
         const tocBtn = document.getElementById('smart-toc-btn');
         const gearBtn = document.getElementById('smart-gear-btn');
         
-        if (tocBtn && gearBtn) {
+        // #smart-gear-btn doesn't exist in the SPA reader — requiring it made Alt+W dead there.
+        if (tocBtn) {
             // Делаем кнопки физически видимыми
             tocBtn.classList.add('visible');
-            gearBtn.classList.add('visible');
+            if (gearBtn) gearBtn.classList.add('visible');
             // Эмулируем клик для открытия оглавления
             tocBtn.click();
         }
     }
   
-//alt + G history toggle
- function handleHistoryToggle() {
-  const currentUrl = window.location.pathname;
-  let historyPhpPath, historyHtmlPath;
-
-  // Если URL содержит языковой префикс (/ru/, /r/, /ml/)
-  if (currentUrl.match(/\/(ru|r|ml)\//)) {
-    const langPrefix = 'ru/';
-    historyPhpPath = `/${langPrefix}history.php`;
-    historyHtmlPath = `/${langPrefix}assets/common/history.html`;
-  } 
-  // Если URL содержит /assets/common/ (но без языкового префикса)
-  else if (currentUrl.includes('/assets/common/')) {
-    historyPhpPath = '/history.php';  // Переход в корень
-    historyHtmlPath = '/assets/common/history.html';
-  }
-  // Все остальные случаи (корень сайта или другие пути)
-  else {
-    historyPhpPath = '/history.php';
-    historyHtmlPath = '/assets/common/history.html';
-  }
-
-  // Переключение между history.php и history.html
-  if (currentUrl.endsWith('history.php')) {
-    window.location.href = historyHtmlPath;
-  } 
-  else if (currentUrl.endsWith('history.html')) {
-    window.location.href = historyPhpPath;
-  }
-  // Если не на странице истории, идём на history.php
-  else {
-    window.location.href = historyPhpPath;
-  }
-}
-
-  if (event.altKey && event.code === "KeyG") {
-    event.preventDefault(); // отключаем стандартное действие
-    handleHistoryToggle();
-  }
+// Alt+G is left free: Chrome uses it for Gemini (owner).
  
  //Language Alt + L
+  // Cycles the Pali script in place (owner: it used to reload the page) — same selectedScript key
+  // and the same re-render path as Alt+. below.
   if (event.altKey && event.code === "KeyL") {
-    event.preventDefault(); // Предотвращаем стандартное поведение
-
-    const scriptOptions = ['ISOPali', 'devanagari', 'thai']; // Доступные скрипты
+    event.preventDefault();
+    const scriptOptions = ['ISOPali', 'Devanagari', 'Thai'];
     const url = new URL(window.location.href);
-    let currentScript = url.searchParams.get('script') || 'ISOPali';
-
-    // Получаем следующий скрипт в списке
-    let nextIndex = (scriptOptions.indexOf(currentScript) + 1) % scriptOptions.length;
-    let nextScript = scriptOptions[nextIndex];
- 
-    localStorage.removeItem('selectedScript');
-
-    // Обновляем URL
-    if (nextScript === 'ISOPali') {
-      url.searchParams.delete('script'); // Удаляем параметр для ISOPali
-    } else {
-      url.searchParams.set('script', nextScript);
+    const current = (url.searchParams.get('script') || localStorage.getItem('selectedScript') || 'ISOPali').toLowerCase();
+    const idx = scriptOptions.findIndex((k) => k.toLowerCase() === current);
+    localStorage.setItem('selectedScript', scriptOptions[(idx + 1) % scriptOptions.length]);
+    // An explicit ?script= in the address beats the saved one (megareader.js) — drop it.
+    if (url.searchParams.has('script')) {
+      url.searchParams.delete('script');
+      history.replaceState(history.state, '', url.toString());
     }
-
-    window.location.href = url.toString(); // Перезагружаем страницу
+    if (typeof window.buildSutta === 'function' && window.currentReaderSlug) {
+      window.buildSutta(window.currentReaderSlug);
+    } else if (window.DgSearchRender && typeof window.DgSearchRender.redraw === 'function') {
+      window.DgSearchRender.redraw();
+    }
+    if (typeof window.refreshQuickSettings === 'function') window.refreshQuickSettings();
   }
  
   // Для отладки: смотри, что нажимается
@@ -1600,18 +1565,19 @@ if (event.altKey && event.code === "KeyJ") {
     if (event.altKey) {
         
         // Alt + Minus (на основной клавиатуре или на NumPad)
+        // The SPA has no #fontDec/#fontInc (legacy reader-template only) — step the drawer's scale.
         if (event.code === "Minus" || event.code === "NumpadSubtract") {
-            event.preventDefault(); // Отменяем стандартное действие браузера
-            const btnDec = document.getElementById('fontDec');
-            if (btnDec) btnDec.click(); // Имитируем клик по кнопке "-"
+            event.preventDefault();
+            if (window.dgStepUiScale) window.dgStepUiScale(-10);
+            else { const btnDec = document.getElementById('fontDec'); if (btnDec) btnDec.click(); }
         }
 
         // Alt + Plus (Клавиша "равно" считается плюсом, или NumPad Plus)
         // Мы используем "Equal", чтобы не требовать нажатия Shift
         if (event.code === "Equal" || event.code === "NumpadAdd") {
             event.preventDefault();
-            const btnInc = document.getElementById('fontInc');
-            if (btnInc) btnInc.click(); // Имитируем клик по кнопке "+"
+            if (window.dgStepUiScale) window.dgStepUiScale(10);
+            else { const btnInc = document.getElementById('fontInc'); if (btnInc) btnInc.click(); }
         }
     }
 });
@@ -2099,56 +2065,17 @@ document.addEventListener('keydown', function(event) {
 
 document.addEventListener("keydown", function (event) {
   const isCtrlPressed = event.ctrlKey || event.metaKey;
-  const currentPath = window.location.pathname;
   const baseUrl = window.location.origin;
 
-  const key = "preferredLanguage";
-  const savedLang = localStorage.getItem(key);
-  
-
-  // Функция: получить URL для заданного языка и страницы
-  function makeUrl(lang, isHomepage) {
-    if (isHomepage) {
-      return lang === "ru" ? `${baseUrl}/ru/` : `${baseUrl}/`;
-    } else {
-      return lang === "ru" ? `${baseUrl}/ru/read.php` : `${baseUrl}/read.php`;
-    }
-  }
-
-  // Функция: определить, нужно ли переключать язык или использовать сохранённый
-  function determineTargetUrl(isHomepage) {
-    const isCurrentTarget =
-      (isHomepage && (currentPath === "/" || currentPath === "/ru/")) ||
-      (!isHomepage && (currentPath === "/read.php" || currentPath === "/ru/read.php"));
-
-    let nextLang;
-
-    if (isCurrentTarget) {
-      // Уже на целевой странице — делаем toggle
-      nextLang = window.notEn ? "en" : "ru";
-      localStorage.setItem(key, nextLang);
-    } else {
-      // С других страниц — просто используем сохранённое предпочтение
-      nextLang = savedLang || (window.notEn ? "ru" : "en");
-      if (!savedLang) localStorage.setItem(key, nextLang); // сохранить при первом запуске
-    }
-
-    return makeUrl(nextLang, isHomepage);
-  }
-
-  // === Ctrl + 1: Переход на домашнюю страницу ===
-  // !event.shiftKey — иначе конфликтует с отдельным шорткатом Ctrl+Shift+1 (переключение языка сайта, см. ниже)
+  // Ctrl+1 — home, Ctrl+2 — table of contents (/toc replaced legacy read.php). The site language
+  // is global now (Alt+1), so these no longer toggle it or add /ru/.
   if (isCtrlPressed && !event.shiftKey && event.key === "1") {
     event.preventDefault();
-    const targetUrl = determineTargetUrl(true);
-    window.location.href = targetUrl;
+    window.location.href = baseUrl + "/";
   }
-
-  // === Ctrl + 2: Переход на read.php ===
-  if (isCtrlPressed && event.key === "2") {
+  if (isCtrlPressed && !event.shiftKey && event.key === "2") {
     event.preventDefault();
-    const targetUrl = determineTargetUrl(false);
-    window.location.href = targetUrl;
+    window.location.href = baseUrl + "/toc";
   }
   
   // === Ctrl + 3: клик по "Читать Главами" ===
@@ -2182,16 +2109,7 @@ if (isCtrlPressed && event.key === "3") {
   
 });
 
-document.addEventListener("keydown", function (event) {
-  if (event.ctrlKey && event.shiftKey && event.code === "Digit1") {
-    event.preventDefault();
 
-    if (typeof window.setSiteLanguage !== "function") return;
-    var current = (window.DHAMMA_I18N && window.DHAMMA_I18N.language) || document.documentElement.lang || "en";
-    var next = current.toLowerCase().startsWith("ru") ? "en" : "ru";
-    window.setSiteLanguage(next);
-  }
-});
 
 
 

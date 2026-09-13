@@ -18,7 +18,7 @@ let language = "pli-eng";
 
 
   document.addEventListener("keydown", (event) => {
-    if ((event.altKey && event.code === "KeyX") || (event.shiftKey && event.code === "Space")) {
+    if (event.shiftKey && event.code === "Space"  /* Alt+X freed (owner) */) {
     const ShowHideSearchResults = document.getElementById('btn-show-all-children');
 //  console.log("Элемент с ID 'btn-show-all-children' найден.");
       if (ShowHideSearchResults) {

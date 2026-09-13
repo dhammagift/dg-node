@@ -2,6 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<!-- Read the docs-demo flag before anything runs: the page later strips its own query string
+     (history.replaceState after reading ?q=), and the save guard used to look for ?demo=1 only
+     at click time — by then it was gone and the help-page demo wrote real files. -->
+<script>window.DG_LBL_DEMO = new URLSearchParams(window.location.search).get('demo') === '1';</script>
 <link rel="stylesheet" type="text/css" href="/assets/css/bootstrap.5.3.1.min.css"/>
     <link href="/assets/css/styles.css" rel="stylesheet" />
     <link href="/assets/css/extrastyles.css" rel="stylesheet" />
@@ -415,7 +419,7 @@ loadAndCheckRanges();
     // Docs "Translator" help page embeds this exact tool live (?demo=1) — saving (local
     // download AND the server-side lbl-save.php write below) must not fire from there, or
     // anyone poking around in the help page could overwrite real translation files.
-    if (new URLSearchParams(window.location.search).get('demo') === '1') {
+    if (window.DG_LBL_DEMO) {
         alert('This is the help demo — saving is disabled here. Open the tool directly at /assets/lbl-en.html to save.');
         return;
     }
