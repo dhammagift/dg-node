@@ -1026,6 +1026,28 @@ app.post('/assets/lbl-save.php', (req, res) => {
     }
 });
 
+// /api/app-log — error reports from the Android app (dg-app-full src/platform.js): JS errors,
+// unhandled rejections, failed resources and console.error, batched and sent with sendBeacon.
+// Answers 204 at once and appends after the reply, so a report never slows anyone down. One JSON
+// line per report in logs/app-errors.log (*.log is gitignored), capped so a crash loop on some
+// phone cannot fill the disk.
+const APP_LOG = path.join(__dirname, 'logs', 'app-errors.log');
+const APP_LOG_MAX_BYTES = 20 * 1024 * 1024;
+app.post('/api/app-log', { bodyLimit: 32 * 1024 }, (req, res) => {
+    res.header('cache-control', 'no-store').code(204).send();
+    let items;
+    try { items = JSON.parse(req.body); } catch (e) { return; }
+    if (!Array.isArray(items) || !items.length) return;
+    const at = new Date().toISOString();
+    const lines = items.slice(0, 50)
+        .map(it => JSON.stringify({ at, ...(it && typeof it === 'object' ? it : { msg: String(it) }) }).slice(0, 4000))
+        .join('\n') + '\n';
+    fsSync.promises.stat(APP_LOG).then(s => s.size, () => 0)
+        .then(size => size < APP_LOG_MAX_BYTES && fsSync.promises.mkdir(path.dirname(APP_LOG), { recursive: true })
+            .then(() => fsSync.promises.appendFile(APP_LOG, lines)))
+        .catch(err => console.error('[app-log] write failed:', err.message));
+});
+
 // Static mounts below use @fastify/static's array `root` (tries each dir in order, first match
 // wins) — the direct equivalent of Express's "register override dir, then fallback dir on the
 // same prefix, static.js calls next() on miss" chain used throughout dg-light.js. A prefix can
