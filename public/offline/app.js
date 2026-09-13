@@ -810,6 +810,13 @@
     // every static file and every route outside the data layer — /api/toc, /api/patimokkha-
     // fragment/*, /api/transliterate — which is deliberate: those are the server's, and the
     // service worker's shell cache is what keeps them available offline.
+    // The routes the offline library can answer. At IIFE level, not inside installFetchShim(): the
+    // cross-tab relay (channel.onmessage) calls it too, and there it was a ReferenceError.
+    function isDataRoute(p) {
+        return p === '/search' || p.indexOf('/search/') === 0 ||
+               p.indexOf('/api/text/') === 0 || p.indexOf('/api/nav/') === 0;
+    }
+
     function installFetchShim() {
         var realFetch = window.fetch.bind(window);
 
@@ -937,10 +944,6 @@
         } catch (e) { return false; }
     }
 
-    function isDataRoute(p) {
-            return p === '/search' || p.indexOf('/search/') === 0 ||
-                   p.indexOf('/api/text/') === 0 || p.indexOf('/api/nav/') === 0;
-        }
 
         // Ask the tab that owns the library to answer. Bounded, because the owner may be gone or
         // busy: then this tab falls through to the honest explanation instead of hanging the reader.

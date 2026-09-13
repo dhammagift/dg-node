@@ -86,6 +86,42 @@ const {
 // bodyLimit mirrors the express.text({limit:'10mb'}) on /assets/lbl-save.php below — Fastify's
 // body limit is instance-wide, not per-route, so it's set here instead.
 const app = Fastify({ bodyLimit: 10 * 1024 * 1024 });
+
+// Legacy reader URLs -> the SPA reader. External sites still link to them (SuttaCentral:
+// "find.dhamma.gift/read/?q=MN1"), so they redirect rather than disappear. Only the pages
+// themselves: /read/js/voice.js and the other files under these prefixes are left alone.
+// /rev/ and /frev/ have no SPA equivalent yet and keep being served as they are. /ru/read/ is
+// turned into /read/?…&lang=ru by the not-found handler first and lands here on the next hop.
+const LEGACY_READERS = {
+    '/read': {}, '/r': { lang: 'ru' }, '/d': { mode: 'devanagari' }, '/memorize': { mode: 'memorize' },
+    '/ml': { mode: 'multi' }, '/mt': { mode: 'multi', lang: 'ru' }, '/multi': { mode: 'multi' },
+    '/th/read': { lang: 'th' }, '/mlth': { mode: 'multi', lang: 'th' },
+};
+function legacyReaderRedirect(url) {
+    const [pathPart, queryPart = ''] = url.split('?');
+    const page = pathPart.replace(/\/(index\.(html|php))?$/, '') || '/';
+    const params = new URLSearchParams(queryPart);
+    if (page === '/rv') return '/rev/' + (queryPart ? '?' + queryPart : '');
+    if (page === '/history.php') return '/4as';
+    const target = LEGACY_READERS[page];
+    if (!target) return null;
+    const q = (params.get('q') || '').trim();
+    params.delete('q');
+    for (const [k, v] of Object.entries(target)) if (!params.has(k)) params.set(k, v);
+    const rest = params.toString();
+    if (!q) return '/' + (rest ? '?' + rest : '');
+    const [base, seg] = q.split(':');
+    const classified = DgTextRouter.classify(base.toLowerCase());
+    if (classified.type === 'text') {
+        return '/' + encodeURIComponent(classified.id) + (seg ? ':' + seg : '') + (rest ? '?' + rest : '');
+    }
+    return '/?q=' + encodeURIComponent(q) + (rest ? '&' + rest : '');
+}
+app.addHook('onRequest', (req, res, done) => {
+    const to = req.method === 'GET' ? legacyReaderRedirect(req.url) : null;
+    if (to) return res.redirect(to, 301);
+    done();
+});
 // 3000 is where production serves from (both dhamma.gift and test.dhamma.gift proxy here);
 // dg-light.js, the legacy Express server, defaults to 3001 so the two can run side by side.
 const PORT = Number(process.env.PORT) || 3000;

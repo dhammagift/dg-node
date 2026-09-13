@@ -112,7 +112,10 @@ function nodeSqliteShim(oo1db) {
             };
         },
         function(name, opts, fn) {
-            oo1db.createFunction(name, (_ctx, ...args) => fn(...args), { deterministic: !!opts?.deterministic });
+            // arity from fn itself: the (_ctx, ...args) wrapper has length 1, so SQLite registered the
+            // function with the wrong argument count and every regex search failed
+            // ("wrong number of arguments to function regexp_test()").
+            oo1db.createFunction(name, (_ctx, ...args) => fn(...args), { arity: fn.length, deterministic: !!opts?.deterministic });
         },
     };
 }
