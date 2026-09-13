@@ -168,6 +168,16 @@
     var docsBtnEl = document.getElementById('dgOfflineDocsBtn');
     if (docsBtnEl) docsBtnEl.textContent = isRu ? 'Скачать' : 'Download';
 
+    // The delete itself happens in the page around this iframe, which then records present:false in
+    // localStorage. This frame kept showing "Downloaded … Re-download / Delete" until the sheet was
+    // reopened; the storage event reaches it, so it redraws as soon as the library is gone.
+    window.addEventListener('storage', function (event) {
+        if (event.key !== 'dg.offline.state') return;
+        var next = null;
+        try { next = JSON.parse(event.newValue || 'null'); } catch (e) { /* ignore */ }
+        if (!(next && next.present) && deleteEl && deleteEl.style.display !== 'none') location.reload();
+    });
+
     // Delete asks the SPA (this page runs in the settings sheet's iframe, where the offline layer —
     // and its worker — live) to drop the library; the worker's own delete op unlinks the OPFS files.
     if (deleteEl) {
