@@ -16,7 +16,8 @@
     "test-app-ui": "node test/app-ui/run-all.js",
     "test-app-progress": "node test/app-ui/check-progress.js",
     "disk-guard": "node scripts/disk-guard.js",
-    "test-suggest": "node test/suggest-words.js"
+    "test-suggest": "node test/suggest-words.js",
+    "build-sutta-words": "node scripts/build-sutta-words.js"
   },
   "dependencies": {
     "@fastify/compress": "^9.2.0",
