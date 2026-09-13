@@ -1034,7 +1034,6 @@ function updateDemoLinks() {
     mtDemo: mtUrl,                    
     memDemo: window.location.origin + "/memorize/",
     dDemo: window.location.origin + "/d/",
-    mlDemo: window.location.origin + "/ml/",
     thDemo: window.location.origin + "/th/read/",
     rvDemo: window.location.origin + "/rev/",
     frDemo: window.location.origin + "/frev/",
@@ -1836,9 +1835,7 @@ function getBaseUrl() {
         baseUrl = window.location.origin + "/read/";
     }
 
-    if (localStorage.defaultReader === 'ml') {
-        baseUrl = window.location.origin + "/ml/";
-    } else if (localStorage.defaultReader === 'mt') {
+    if (localStorage.defaultReader === 'mt') {
         baseUrl = window.location.origin + "/mt/";
     } else if (localStorage.defaultReader === 'rv') {
         baseUrl = window.location.origin + "/rev/";
