@@ -221,8 +221,7 @@ onReady(() => {
 
             const memoBtn = document.getElementById('sm-memo');
             if (memoBtn) {
-                const isMeditate = Math.random() > 0.5;
-                memoBtn.innerHTML = `<img src="/assets/svg/memo-black.svg" class="menu-icon" alt=""> ${isMeditate ? freshLabels.meditate : freshLabels.memo}`;
+                memoBtn.innerHTML = `<img src="/assets/svg/memo-black.svg" class="menu-icon" alt=""> ${freshLabels.memo}`;
             }
 
             const parentSpan = copyBtn.closest('span[id]');
