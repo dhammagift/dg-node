@@ -1140,35 +1140,33 @@ window.addEventListener("keydown", (event) => {
             }
         }
 
-        // --- 1.2. General Hint Popup (С логами для Павла) ---
-        // Ищем все варианты уведомлений: старые, новые тосты и баблы
-        const hintElements = document.querySelectorAll('.dg-bottom-toast, .hint, .bubble-notification');
-        
-        for (let i = 0; i < hintElements.length; i++) {
-            const hintElement = hintElements[i];
-            const style = window.getComputedStyle(hintElement);
-            
-            // Проверяем наличие класса 'show' или фактическую видимость через opacity
-            const isVisible = hintElement.classList.contains('show') || 
-                              (style.display !== 'none' && style.opacity !== '0');
-            
-            if (isVisible) {
-                
-                // Ищем любую кнопку закрытия внутри
-                const closeHintButton = hintElement.querySelector('#closeHintBtn, .dg-toast-close, .close-btn, .dg-bottom-toast-close');
-                
-                if (closeHintButton) {
-                    closeHintButton.click();
-                } else {
-                    hintElement.classList.remove('show');
-                }
-                
-                event.preventDefault();
-                return; 
-            }
+        // --- 1.2. Any visible notice: toasts, banners, hints ---
+        // Owner: one rule for every notice the site shows, not a line per banner. A notice is
+        // anything with role="status"/"alert" or a toast/notification/announce/hint class. Esc
+        // presses its own close button when it has one (so whatever that button remembers — e.g.
+        // a dismissed announcement — is kept), otherwise just hides it. The last one in the DOM
+        // goes first: that is the one drawn on top.
+        const NOTICE_SELECTOR = '[role="status"], [role="alert"], .bubble-notification, .dg-bottom-toast, .hint, [class*="toast"], [class*="notification"], [class*="announce"]';
+        const CLOSE_LABEL = /close|dismiss|hide|закрыть|скрыть/i;
+        const notices = [...document.querySelectorAll(NOTICE_SELECTOR)].reverse();
+        for (const notice of notices) {
+            const style = window.getComputedStyle(notice);
+            const rect = notice.getBoundingClientRect();
+            const visible = style.display !== 'none' && style.visibility !== 'hidden' &&
+                            parseFloat(style.opacity) > 0.05 && rect.width > 2 && rect.height > 2;
+            if (!visible) continue;
+            const closeButton = [...notice.querySelectorAll('button, [role="button"], a')].find(el =>
+                CLOSE_LABEL.test(el.getAttribute('aria-label') || '') || CLOSE_LABEL.test(el.title || '') ||
+                /(^|[-_\s])close([-_\s]|$)|dismiss/i.test(el.className && el.className.toString()) ||
+                ['×', '✕', '✖'].includes((el.textContent || '').trim()));
+            if (closeButton) closeButton.click();
+            else if (notice.classList.contains('show')) notice.classList.remove('show');
+            else continue; // a live region with nothing to close (e.g. a screen-reader status line)
+            event.preventDefault();
+            return;
         }
 
-		
+
         // ==========================================
         // ПРИОРИТЕТ 2: СЛОВАРИ (Dictionaries)
         // ==========================================
