@@ -49,7 +49,7 @@
       "label": "History",
       "desc": "Favorites, History, “4NT” window",
       "icon": "clock",
-      "href": "/assets/common/history.html",
+      "href": "/4as",
       "modal": "quick",
       "drawerLabel": "Favorites, History",
       "drawerIcon": "star"
@@ -846,7 +846,7 @@
       "label": "История",
       "desc": "Избранное, История, Окно «4БИ»",
       "icon": "clock",
-      "href": "/ru/assets/common/history.html",
+      "href": "/4as",
       "modal": "quick",
       "drawerLabel": "Избранное, История",
       "drawerIcon": "star"
