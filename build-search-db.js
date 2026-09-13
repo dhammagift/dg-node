@@ -12,7 +12,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { paliSkel } = require('./public/overrides/js/pali-skeleton.js');
-// Только ради DEFAULT_SCOPE_PREFIXES/matchesScope для buildVocab (см. там). Модуль при require
+// Только ради DEFAULT_SCOPE_PREFIXES/matchesScope для словаря подсказок (см. build()). Модуль при require
 // ничего не делает — читает свои json-конфиги и ждёт init(), которого здесь не будет.
 const { DEFAULT_SCOPE_PREFIXES, matchesScope } = require('./core/search-core.js');
 
@@ -190,6 +190,35 @@ function build() {
     }
     console.log(`metadata: ${meta.size} suttas (${Date.now() - t0}ms)`);
 
+    /* Словарь подсказок ("может быть, вы искали", core/search-core.js suggestWords) собирается
+       ПОПУТНО, в ingest() ниже: тот же текст, что и так проходит через руки при записи.
+
+       Область — четыре никаи + шесть книг КН + виная: DEFAULT_SCOPE_PREFIXES, тот же список и тот
+       же предикат matchesScope, по которым ищет сам поиск, а не второй список префиксов рядом.
+       Владелец: "только на четыре никая... и шесть книг КН максимум" и отдельно "и + виная".
+       Виная в поиске — scope по запросу, но это канон, а не комментарий.
+
+       Почему не весь pli/%: первая версия брала все пали-корни, и в подсказки лезли слова из
+       джатак и абхидхаммы (kacchapajātaka, монстр на 66 букв). По ним дефолтный поиск возвращает
+       ноль — подсказка вела в пустоту, что хуже, чем не подсказать. df по той же причине
+       считается только внутри этой области. */
+    const vocabScope = new Set();
+    for (const [id, m] of meta) {
+        if (m.dir_path && m.dir_path.startsWith('pli/') &&
+            matchesScope(m, id, DEFAULT_SCOPE_PREFIXES.concat('vinaya'))) vocabScope.add(id);
+    }
+    // Apostrophes and hyphens stay in the stored form (it is shown to the person and pasted into
+    // the search box, so it has to be the real form); paliSkel drops them on both sides anyway.
+    const VOCAB_WORD = /[\p{L}\u2019'-]+/gu;
+    const vocabDf = new Map();
+    function countVocabWords(txt) {
+        // Per segment, not per occurrence: df only ranks suggestions, and "appears in many places"
+        // is the useful signal, not "repeated inside one verse".
+        for (const w of new Set(txt.toLowerCase().match(VOCAB_WORD) || [])) {
+            vocabDf.set(w, (vocabDf.get(w) || 0) + 1);
+        }
+    }
+
     fs.rmSync(OUT_PATH, { force: true });
     fs.rmSync(`${OUT_PATH}-wal`, { force: true });
     fs.rmSync(`${OUT_PATH}-shm`, { force: true });
@@ -229,12 +258,17 @@ function build() {
         if (!suttaId || !meta.has(suttaId)) return 0;
         const segments = readSegments(file);
         if (!segments) return 0;
+        const countWords = kind === 'root' && vocabScope.has(suttaId);
         let ord = 0;
         for (const segmentId of Object.keys(segments)) {
             const txt = segments[segmentId];
             if (typeof txt !== 'string' || !txt) continue;
             if (kind === 'html') insHtml.run(suttaId, segmentId, ord++, txt);
             else insText.run(suttaId, segmentId, ord++, kind, lang, translator, source ?? null, txt);
+            // Словарь подсказок считается здесь же, пока сегмент в руках. Раньше buildVocab читал
+            // все 485 тысяч корневых строк обратно из texts — тот же текст, только что записанный,
+            // вторым проходом. Считать на месте дешевле ровно на это чтение.
+            if (countWords) countVocabWords(txt);
         }
         return ord;
     }
@@ -329,7 +363,8 @@ function build() {
     console.log(`fts index (${Date.now() - t}ms)`);
 
     db.exec('PRAGMA journal_mode = WAL');
-    buildVocab(db);
+    const vocabWords = writeVocab(db, vocabDf);
+    writeSuttaWords(vocabDf, vocabWords);
     db.exec('ANALYZE');
     writeMeta(db);
     // Counted from `texts`, not from `fts`: on an external-content table `SELECT count(*) FROM
@@ -343,6 +378,55 @@ function build() {
     console.log(`\n${OUT_PATH}: ${mb} MB, ${rows} text rows (${rows - unindexed} indexed, ` +
         `${unindexed} hidden from search), ${htmlRows} html rows`);
     console.log(`Total ${((Date.now() - started) / 1000).toFixed(1)}s`);
+}
+
+/* sutta_words.txt — список для автоподсказок в самом поле поиска (autopali.js). Пишется здесь,
+   а не отдельным скриптом: данные те же самые и уже в руках, а отдельный скрипт означал бы второй
+   вход, чтение vocab обратно из базы и правило "запускать строго после сборки", которое однажды
+   забудут. Владелец: "что-то дописывается отдельно можно это все собрать централизовать".
+
+   Отдаётся как override-копия (public/overrides → /assets), легаси-файл в старом репо не трогаем:
+   его читает ещё и PHP-сайт. Из него же берутся первый и последний блоки — кураторские фразы
+   (37 факторов пробуждения, четыре истины) и id текстов с названиями. Они написаны руками и из
+   корпуса не выводятся; из корпуса выводится только средний, словарный блок. */
+const LEGACY_WORDS = '/var/www/html/assets/texts/sutta_words.txt';
+const OUT_WORDS = path.join(__dirname, 'public', 'overrides', 'texts', 'sutta_words.txt');
+const WORD_LINE = /^\S+ \d+$/;
+
+function writeSuttaWords(df, expected) {
+    const t = Date.now();
+    let legacy;
+    try {
+        legacy = fs.readFileSync(LEGACY_WORDS, 'utf8').split('\n');
+    } catch {
+        console.log(`sutta_words: пропущен, нет ${LEGACY_WORDS}`);
+        return;
+    }
+    const firstWord = legacy.findIndex(l => WORD_LINE.test(l));
+    const lastWord = legacy.length - 1 - [...legacy].reverse().findIndex(l => WORD_LINE.test(l));
+    if (firstWord < 0) throw new Error(`${LEGACY_WORDS}: не нашёл ни одной словарной строки "слово N"`);
+
+    /* Порядок строк = порядок подсказок: autopali.js отдаёт совпадения в порядке файла. Легаси-файл
+       был по алфавиту, и на большом списке это топит нужное — на "satipa" первым шёл satipaññañca
+       (1 вхождение), а satipaṭṭhānā уезжала вниз. Частота вперёд: то, что человек ищет, почти
+       всегда частотнее того, чего он не ищет. Внутри одинаковой частоты — по алфавиту без
+       диакритики, чтобы ā стояла рядом с a, а не после z, куда её отправила бы сортировка по кодам. */
+    const bare = w => w.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    const words = [];
+    for (const [word, n] of df) {
+        if (paliSkel(word).length < 3) continue; // тот же отсев, что и в vocab
+        words.push([word, n, bare(word)]);
+    }
+    words.sort((a, b) => (b[1] - a[1]) || (a[2] < b[2] ? -1 : a[2] > b[2] ? 1 : 0)
+        || (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
+    if (words.length !== expected) throw new Error(`sutta_words: ${words.length} слов против ${expected} в vocab`);
+
+    const out = legacy.slice(0, firstWord)
+        .concat(words.map(w => `${w[0]} ${w[1]}`), legacy.slice(lastWord + 1))
+        .join('\n');
+    fs.mkdirSync(path.dirname(OUT_WORDS), { recursive: true });
+    fs.writeFileSync(OUT_WORDS, out);
+    console.log(`sutta_words: ${words.length} форм, ${(Buffer.byteLength(out) / 1048576).toFixed(1)} МБ (${Date.now() - t}ms)`);
 }
 
 /* meta — часть базы, а не отдельная сборка. Офлайн-клиент (public/offline/db-worker.js) после
@@ -387,41 +471,15 @@ function writeMeta(db) {
    винаи и абхидхаммы (владелец заметил живьём: kacchapajātaka, и монстр на 60 букв оттуда же).
    Подсказать слово, по которому дефолтный поиск вернёт ноль — хуже, чем не подсказать ничего.
    Счётчик df по той же причине считается только внутри этого же scope. lzh/san/pra исключены: это не пали. */
-function buildVocab(db) {
+function writeVocab(db, df) {
     const t = Date.now();
     db.exec(`
         DROP INDEX IF EXISTS idx_vocab_skel; -- был в первой версии, никто им не пользовался
         DROP TABLE IF EXISTS vocab;
         -- Без индекса по skel: читатели берут либо всю таблицу сразу (loadVocab в search-core.js
-        -- строит свою Map в памяти, build-sutta-words.js — весь список), либо одну строку по word,
-        -- а это и есть первичный ключ. Индекс стоил 2,6 МБ и не использовался ни разу.
+        -- строит свою Map в памяти), либо одну строку по word, а это и есть первичный ключ.
         CREATE TABLE vocab (word TEXT PRIMARY KEY, skel TEXT, df INTEGER) WITHOUT ROWID;
     `);
-    // Apostrophes and hyphens stay in the stored form (it is shown to the person and pasted into
-    // the search box, so it has to be the real form); paliSkel drops them on both sides anyway.
-    const WORD = /[\p{L}\u2019'-]+/gu;
-    const df = new Map();
-    // Владелец: "и + виная". В самом поиске виная — scope по запросу, не дефолтный
-    // (см. DEFAULT_SCOPE_PREFIXES в core/search-core.js), но словарь подсказок она пополняет: это
-    // канон, а не комментарий. Оборотная сторона: чисто винайное слово будет подсказано,
-    // а поиск с дефолтным scope по нему ничего не найдёт, пока не расширить область.
-    const VOCAB_SCOPE = DEFAULT_SCOPE_PREFIXES.concat('vinaya');
-    const inScope = new Set(
-        db.prepare("SELECT id, category FROM suttas WHERE dir_path LIKE 'pli/%'").all()
-            .filter(sutta => matchesScope(sutta, sutta.id, VOCAB_SCOPE))
-            .map(sutta => sutta.id)
-    );
-    const rows = db.prepare(
-        "SELECT t.sutta_id, t.txt FROM texts t JOIN suttas s ON s.id = t.sutta_id " +
-        "WHERE t.kind = 'root' AND s.dir_path LIKE 'pli/%'"
-    ).all().filter(r => inScope.has(r.sutta_id));
-    for (const r of rows) {
-        // Per segment, not per occurrence: df is only used to rank suggestions, and "appears in
-        // many places" is the useful signal, not "repeated inside one verse".
-        for (const w of new Set(String(r.txt || '').toLowerCase().match(WORD) || [])) {
-            df.set(w, (df.get(w) || 0) + 1);
-        }
-    }
     const ins = db.prepare('INSERT INTO vocab VALUES (?,?,?)');
     db.exec('BEGIN');
     let kept = 0;
@@ -432,17 +490,8 @@ function buildVocab(db) {
         kept++;
     }
     db.exec('COMMIT');
-    console.log(`vocab: ${kept} pali word forms from ${inScope.size} texts (${Date.now() - t}ms)`);
+    console.log(`vocab: ${kept} pali word forms (${Date.now() - t}ms)`);
+    return kept;
 }
 
-/* --vocab-only: пересобрать ТОЛЬКО таблицу vocab в уже существующей dg.db, без перестройки
-   корпуса (она идёт минутами и читает весь Bilara). Нужно ровно для одного случая — база собрана
-   сборщиком без vocab; при обычной сборке таблица появляется сама, вызовом выше. */
-if (process.argv.includes('--vocab-only')) {
-    const db = new DatabaseSync(OUT_PATH);
-    buildVocab(db);
-    db.exec('ANALYZE');
-    db.close();
-} else {
-    build();
-}
+build();

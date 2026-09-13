@@ -553,12 +553,20 @@ URL in → Router parses → State updates → Views re-render
   `<head>`. Если структура `<head>` или блок регистрации SW в `search/index.html` заметно
   поменяется — сборка приложения упадёт с внятной ошибкой, а не соберёт молча битую страницу.
 
-**Что осталось здесь — только данные.** Базу для офлайна собирает сам dg-node:
-`npm run build-search-db` → `dg.db`, затем `npm run build-mobile-db` → `siteroot/mobile-data/
-dg-mobile.db` + `db-manifest.json` (срез: все сутты, root+variant, переводы для `--langs`, html,
-`chunks` с хешами, FTS5 trigram). Раньше этот артефакт лежал в старой сборке приложения
-(`mobile/dist/*.db`, на тест-хосте — симлинк `siteroot/mobile-data -> .offline-test`), и сайт
-раздавал то, что сам не собирал. Симлинк `siteroot/mobile-apk` (в удалённый `mobile/android/...`)
+**Что осталось здесь — только данные.** База **одна** и та же, что у сайта:
+`npm run build-search-db` → `dg.db` (корпус, FTS5 trigram, `vocab` — словарь словоформ для
+подсказок, `meta` — `build_id`/`schema_version`, плюс `public/overrides/texts/sutta_words.txt`
+для автоподсказок в поле). Затем `npm run publish-offline-db` сжимает ЭТУ ЖЕ базу в
+`siteroot/mobile-data/dg.db.gz` и пишет `db-manifest.json`.
+
+Раньше рядом жила вторая, урезанная база (`build-mobile-db.js` → `dg-mobile.db`, 510 МБ) —
+её собирали отдельно, отдельно дописывали в неё `meta`, и сайт раздавал не то, с чем сам
+работает. Владелец: «прод-базу нужно сразу собирать с нужной таблицей, чтобы была одна база,
+а не две» и «база должна быть одна, идентична с продом». Сборщик среза удалён; всё, что делает
+`publish-offline-db.js` — gzip готовой базы, никаких пересборок и дописываний.
+
+Ещё раньше артефакт лежал в старой сборке приложения (`mobile/dist/*.db`, на тест-хосте —
+симлинк `siteroot/mobile-data -> .offline-test`), и сайт раздавал то, что сам не собирал. Симлинк `siteroot/mobile-apk` (в удалённый `mobile/android/...`)
 удалён как ненужный; `mobile/` в этом репозитории больше нет — исходники приложения живут в
 `dg-app-full`.
 
