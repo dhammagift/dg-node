@@ -9,6 +9,7 @@
 <link rel="stylesheet" href="/reader/css/index.css">
 <link rel="stylesheet" href="/reader/css/rus-multi.css">
 <link rel="stylesheet" href="/reader/css/uiextra.css">
+<link rel="stylesheet" href="/nodejs/res/css/home.css">
 <style>
 /* Только раскладка контейнера — сам текст красят настоящие таблицы стилей выше, подключённые
    так же, как на search/index.html и reader-template.html. Так образец в /settings/ реально
@@ -28,14 +29,17 @@ body { padding: 4px 2px; }
    зависят реальные стили (reader/css/rus-multi.css #sutta{max-width,line-height} и все
    hide-pali/hide-english/column-view правила) — без него текст был лишь ПОХОЖ на прод, но не
    пользовался теми же CSS-правилами (это и была причина жалобы "не использует стили ридера"). */
-.demo-seg { margin-bottom: 14px; }
+/* Owner: the sample must be the real reader, not an approximation — the site's reader text comes
+   from home.css skin rules scoped to body.dg-skin-minimal.dg-state-reader #reader-pane #sutta, so the
+   same classes/wrapper are used here. Only the reader's page-level bottom padding is dropped. */
+body.dg-state-reader #sutta { padding-bottom: 0; }
 .demo-seg:last-child { margin-bottom: 0; }
 </style>
 </head>
-<body>
+<body class="dg-skin-minimal dg-state-reader">
 <a class="toggle-dict-btn dict-shim" aria-hidden="true" tabindex="-1"><img src="/assets/svg/comment.svg" alt=""></a>
 <a id="toggle-multiselect" class="dict-shim" aria-hidden="true" tabindex="-1"><img src="/assets/svg/select-slash.svg" alt=""></a>
-<div id="sutta" class="sutta"></div>
+<div id="reader-pane"><div id="sutta" class="sutta"></div></div>
 <script>
 // Та же самая замена, что reader/megareader.js's window.applyRemovePunct делает на проде —
 // скопировано буквально, символ в символ (запятая там БЫЛА в реальном regex, а в этом файле её
@@ -157,18 +161,32 @@ function applyTheme() {
   const t = localStorage.getItem('theme') || 'auto';
   const dark = t === 'dark' || (t === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches);
   document.body.classList.toggle('dark', dark);
+  // The site also marks body[data-theme="dark"] (search/index.html, themeswitch.js) — extrastyles.css
+  // paints the real dark reader background (#111) from it; without it the sample kept the old one.
+  if (dark) document.body.setAttribute('data-theme', 'dark'); else document.body.removeAttribute('data-theme');
   document.documentElement.setAttribute('data-bs-theme', dark ? 'dark' : 'light');
 }
 applyTheme();
-const scale = parseInt(localStorage.getItem('uiScale')) || 100;
-document.documentElement.style.fontSize = scale + '%';
+// The sample must look exactly like the site: same zoom-based scale, and not re-applied on top of
+// what the settings page (and the site behind the sheet) already zoomed — that propagates here.
+function applyUiScale() {
+  const v = parseInt(localStorage.getItem('uiScale')) || 100;
+  const root = document.documentElement;
+  if (!(window.CSS && CSS.supports && CSS.supports('zoom', '1.5'))) { root.style.fontSize = v + '%'; return; }
+  let inherited = 1, w = window;
+  try { while (w !== w.parent) { w = w.parent; inherited *= parseFloat(w.document.documentElement.style.zoom) || 1; } } catch (_) {}
+  root.style.fontSize = '';
+  root.style.zoom = v / 100 / inherited;
+}
+applyUiScale();
+addEventListener('resize', applyUiScale);
 fetch('/settings/demo-data.json').then(r => r.ok ? r.json() : {}).then(byScript => {
   window.__demoByScript = byScript || {};
   render();
 });
 window.addEventListener('storage', e => {
   if (['removePunct', 'dhammaReaderLangs', 'dhammaSearchLangs', 'uiScale', 'selectedScript'].includes(e.key)) {
-    if (e.key === 'uiScale') document.documentElement.style.fontSize = (parseInt(localStorage.getItem('uiScale')) || 100) + '%';
+    if (e.key === 'uiScale') applyUiScale();
     render();
   }
   if (e.key === 'theme') applyTheme();

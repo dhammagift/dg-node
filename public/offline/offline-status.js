@@ -81,12 +81,6 @@
         }
         @keyframes dgApiLoadingSpin { to { transform: rotate(360deg); } }
 
-        /* extrastyles.css gives .bubble-notification white-space:nowrap with max-width:80%.
-           Every toast the site itself raises is short enough to fit, so it never showed — but a
-           download error carries the reason ("core.db: HTTP 404"), and nowrap clipped exactly
-           the part worth reading. Wrapping only changes messages that were being truncated. */
-        .bubble-notification { white-space: normal; }
-
         /* Consent sheet. Replaces window.confirm(), which Android draws as an AppCompat
            AlertDialog: square-ish, uppercase buttons, and the page origin ("https://localhost")
            as its title — it reads as a browser warning about the app rather than as the app

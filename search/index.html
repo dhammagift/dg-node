@@ -3207,6 +3207,12 @@ $(document).ready(function() {
     // плюс обновление данных ТЕКУЩЕЙ через draw(false) внутри build*, без destroy/rebuild
     // (см. файловый комментарий в search-render.js) — попутно чинит и порчу sort order,
     // которая раньше возникала при частых пересборках одного и того же table-id.
+    // The Translations window on results (home.js tsApply) changed the shared reading set — redraw
+    // the listing with it (search-render.js orders each row's translations by that set).
+    document.addEventListener('dg:readingstackchange', function () {
+        if (lastSearchJson && reportMode !== 'words') renderCurrentReport();
+        if (window.dgRenderLangPill) window.dgRenderLangPill();
+    });
     function renderCurrentReport() {
         if (!lastSearchJson) return;
         var meta = lastSearchJson.metadata;

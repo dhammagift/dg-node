@@ -168,10 +168,12 @@ function readLocalStack() {
         return (v && typeof v === 'object' && Array.isArray(v.keys)) ? v : null;
     } catch (e) { return null; }
 }
-function getStack() {
+// opts.ignoreTrial — results page: its set is the saved one (like multi); a one-off "Читать" trial
+// (owner: session-only applies to the single-translator reading mode only) must not leak into it.
+function getStack(opts) {
     // Примерка этой сессии, если она есть, — она и есть рабочий набор, на любом тексте.
     const local = readLocalStack();
-    if (local) return local.keys.slice();
+    if (local && !(opts && opts.ignoreTrial && local.trial)) return local.keys.slice();
     try {
         const v = JSON.parse(localStorage.getItem(STACK_KEY));
         return Array.isArray(v) ? v.filter(k => typeof k === 'string' && k.includes('_')) : [];

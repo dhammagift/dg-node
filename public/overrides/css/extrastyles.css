@@ -949,7 +949,11 @@ video-container { position: relative; padding-bottom: 56.25%; padding-top: 30px;
       pointer-events: none;
       max-width: 80%;
       text-align: center;
-      white-space: nowrap;
+      /* Owner: a notification must wrap inside its bubble, never run past it — for every message. */
+      white-space: normal;
+      overflow-wrap: anywhere;
+      /* left:50% leaves shrink-to-fit only half the screen — size to the text, capped by max-width. */
+      width: max-content;
     }
     
     .bubble-notification.show {

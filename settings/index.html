@@ -60,12 +60,18 @@ html,body{margin:0}
 html{scroll-padding-top:16px}
 body{font-family:var(--ui);color:var(--ink);background:var(--page-bg);font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
 .wrap{max-width:700px;margin:0 auto;padding:20px 16px 100px}
-.head{display:flex;align-items:baseline;gap:12px}
+/* Owner: one row — back, title, "saves instantly", close. The title never shrinks below its word; the
+   note wraps by words inside itself, and where even that can't fit (phone at a large text size) the
+   note — the only non-essential item — is dropped rather than overlapping the title. */
+.head{display:flex;align-items:center;gap:12px;container-type:inline-size}
 .head-nav{flex:none;align-self:center;width:36px;height:36px;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;color:var(--ink-2);text-decoration:none}
 .head-nav:hover{background:var(--line)}
 .head-nav svg{width:20px;height:20px}
 .head h1{flex:1}
-.head .saved{flex:none;align-self:center}
+.head .saved{flex:0 1 auto;text-align:right;line-height:1.25}
+@container (max-width:330px){.head .saved{display:none}}
+.head-close{border:0;background:transparent;padding:0;cursor:pointer}
+.head-close[hidden]{display:none}
 .head h1{font-size:24px;margin:0;letter-spacing:-.01em}
 .head .saved{font-size:13px;color:var(--ink-3)}
 .head-sub{margin:4px 0 18px;font-size:14px;color:var(--ink-2)}
@@ -80,18 +86,25 @@ body{font-family:var(--ui);color:var(--ink);background:var(--page-bg);font-size:
    непрозрачный (см. ниже) — иначе контент под ним просвечивал бы при скролле. Липкость нужна
    только пока на виду разделы Чтение/Словарь (там реально настраивается то, что видно в
    образце) — дальше (Коренной текст/Озвучка/Данные) она просто занимала бы место без пользы;
-   .preview.not-sticky (JS ниже, по скроллу) снимает position:sticky. */
+   На телефоне при скролле вниз образец сворачивается сам (JS ниже, autoCollapsePreview). */
 /* Фон панели — РОВНО фон ридера, не выдуманный: rus-multi.css задаёт body{background:
    var(--light-off-white)} = rgb(253,253,253) и body.dark{background: var(--off-black)} =
    rgb(4,1,19). Раньше тут стоял песочный #FBF7EF с рамкой #E7DDC9 — цвет, которого нет ни в
    одной таблице стилей сайта; из-за него панель и сам образец внутри неё были разного цвета,
    и образец переставал быть демо ридера. */
 .preview{position:sticky;top:8px;z-index:5;background:rgb(253,253,253);border:1px solid var(--line);border-radius:var(--r-lg);padding:14px 16px;margin-bottom:22px;box-shadow:0 6px 16px -4px rgba(0,0,0,.18)}
-.preview.not-sticky{position:static}
+/* Single column: .preview-col is exactly as tall as the preview, so sticky had no room to stick and
+   the sample scrolled away — the preview sticks to the tall .settings-layout instead. */
+.preview-col{display:contents}
+/* Fold/unfold: an accordion — height is the one sanctioned layout property here. */
+#previewFrame{transition:height 200ms cubic-bezier(0.23,1,0.32,1),opacity 200ms cubic-bezier(0.23,1,0.32,1)}
+.preview.collapsed #previewFrame{height:0!important;opacity:0}
 .preview.collapsed .preview-label{margin-bottom:0}
 #previewCollapse{transition:transform .15s ease}
 .preview.collapsed #previewCollapse{transform:rotate(180deg)}
-body.dark .preview{background:rgb(4,1,19);border-color:var(--line)}
+/* Same as the real dark reader background (extrastyles.css [data-theme="dark"] #111) — the sample
+   inside now renders on it, so the card must match or it reads as a box within a box. */
+body.dark .preview{background:rgb(17,17,17);border-color:var(--line)}
 /* Grid, not flex+space-between: owner wants the sutta id centered in the bar, not clustered
    with the refresh/collapse icons on the right — a 3-column grid (left/center/right) puts it
    in the middle regardless of how wide the left/right clusters are. */
@@ -327,6 +340,10 @@ kbd{font:inherit;font-size:12.5px;background:var(--line);border:1px solid var(--
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
     </a>
     <h1 id="t-title">Настройки</h1><span class="saved" id="t-saved">Сохраняется сразу</span>
+    <!-- Only inside the site's settings sheet (JS below): the sheet has no header bar of its own. -->
+    <button type="button" class="head-nav head-close" id="sheetClose" title="Close" aria-label="Close" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+    </button>
   </div>
   <p class="head-sub" id="t-sub">Значения по умолчанию для поиска и чтения на всём сайте.</p>
 
@@ -738,7 +755,7 @@ function showReloadNotice(){
   const preview = $('#preview');
   // left/CSS translateX(-50%) below used to just be page-center, same thing as preview-center
   // while preview was the only, full-width column — no longer true once .preview-col becomes a
-  // fixed-width right-hand column (see @media min-width:1100px above), so center over the
+  // fixed-width right-hand column (see @media min-width:880px above), so center over the
   // actual preview card instead of the page.
   const rect = preview.getBoundingClientRect();
   el.style.top = (rect.bottom + 8) + 'px';
@@ -907,10 +924,23 @@ function applyUiScale(v){
   // Safari < 17 / Firefox < 126 игнорируют zoom — там остаётся прежний html{font-size},
   // иначе кнопки размера не делали бы ничего вообще (см. search/js/home.js).
   if (!CAN_ZOOM) { document.documentElement.style.fontSize = v + '%'; return; }
+  // Opened as the settings sheet inside the site, the parent page's zoom already reaches this
+  // iframe — applying the full scale again squared it (130% looked like 169%, the page overflowed).
+  // Only the part the ancestors haven't applied yet is added here.
+  const z = v / 100 / inheritedZoom();
   document.documentElement.style.fontSize = '';
-  document.documentElement.style.setProperty('--dg-zoom', v / 100);
-  document.documentElement.style.zoom = v / 100;
+  document.documentElement.style.setProperty('--dg-zoom', z);
+  document.documentElement.style.zoom = z;
 }
+// Product of the ancestor documents' own zoom (same-origin frames; a foreign parent counts as 1).
+// ponytail: assumes zoom propagates into iframes (Chromium/WebView — the Android targets).
+function inheritedZoom(){
+  let z = 1, w = window;
+  try { while (w !== w.parent) { w = w.parent; z *= parseFloat(w.document.documentElement.style.zoom) || 1; } } catch (_) {}
+  return z;
+}
+// The parent re-zooms after a change made here (its 'storage' event) — this frame then sees a resize.
+addEventListener('resize', () => applyUiScale(parseInt(localStorage.getItem('uiScale')) || 100));
 function setScale(v){
   scale = Math.min(150, Math.max(70, v));
   applyUiScale(scale);
@@ -1499,16 +1529,19 @@ $('#previewShuffle').onclick = () => {
 // Свернуть образец — без сохранения (см. разметка выше): просто класс, сбрасывается каждой
 // новой загрузкой страницы. Кнопка сама не двигается вместе с "Читать"/"⟳" — она в том же ряду,
 // но collapsed трогает только #previewFrame и отступ заголовка, не сам ряд кнопок.
-$('#previewCollapse').onclick = () => {
-  const collapsed = $('#preview').classList.toggle('collapsed');
+// The frame height itself folds in CSS (.preview.collapsed #previewFrame, animated).
+function setPreviewCollapsed(collapsed){
+  $('#preview').classList.toggle('collapsed', collapsed);
   const btn = $('#previewCollapse');
-  // Inline style="display:block" on the iframe outranks the stylesheet rule
-  // by specificity, so the CSS class alone can't hide it — toggle it directly too.
-  $('#previewFrame').style.display = collapsed ? 'none' : 'block';
   btn.setAttribute('aria-expanded', String(!collapsed));
   const t = STR[isRu?'ru':'en'];
   const label = collapsed ? t.previewExpand : t.previewCollapse;
   btn.title = label; btn.setAttribute('aria-label', label);
+}
+let autoCollapsed = false; // folded by scrolling, not by the button
+$('#previewCollapse').onclick = () => {
+  autoCollapsed = false;
+  setPreviewCollapsed(!$('#preview').classList.contains('collapsed'));
 };
 
 /* "Назад", не "домой" — переход в /settings/ обычно идёт с уже введённым в поиске словом или
@@ -1536,6 +1569,14 @@ function goBack(e){
 }
 $('#backLink').onclick = goBack;
 $('#backLinkPreview').onclick = goBack;
+// In the settings sheet this header is the only one (owner: no second "Settings" bar above it), so the
+// sheet's close button lives here — same message the back arrow already sends.
+if (window.parent !== window) {
+  const close = $('#sheetClose');
+  close.hidden = false;
+  close.title = isRu ? 'Закрыть' : 'Close'; close.setAttribute('aria-label', close.title);
+  close.onclick = () => window.parent.postMessage({ dgSettingsSheetClose: true }, location.origin);
+}
 
 /* "Читать" в образце — открыть тот же текст в настоящем ридере, если кому-то интересно
    почитать его целиком, а не только фрагмент. preview-frame.html сам не знает своего родителя
@@ -1575,24 +1616,26 @@ window.removeEventListener('message', window.__dgPreviewEarlyHandler);
 window.__dgPreviewMsgQueue = null;
 window.addEventListener('message', handlePreviewMessage);
 
-/* Липкость образца — только пока видны разделы Чтение/Словарь (между ними в разметке лежит
-   Поиск — они идут подряд, так что это один непрерывный диапазон скролла, а не переключение
-   туда-сюда). Дальше Словаря (Коренной текст и ниже) — снимаем sticky, там образцу уже нечего
-   показывать по делу. Это правило только для узкого однoколоночного макета: с 1100px
-   (.settings-layout из CSS выше) образец стоит в своей колонке справа и уместен на всю высоту
-   настроек — там его никогда не снимаем. */
-(function stickyPreviewRange(){
-  const preview = $('#preview'), dict = $('#dict');
-  if (!preview || !dict) return;
-  const wideLayout = window.matchMedia('(min-width:1100px)');
+/* Owner: on phones the sticky sample folds away while scrolling down and comes back at the top; in
+   the two-column layout (>=880px) it sits beside the settings and never folds by itself.
+   Edge-triggered, and only past the frame's own height: folding shrinks the page, scroll anchoring
+   then lifts scrollY by about that much — a smaller threshold would land back at the top and unfold
+   it again in a loop. A manual expand while scrolled down is left alone until the next pass. */
+(function autoCollapsePreview(){
+  const wideLayout = window.matchMedia('(min-width:880px)');
+  let armed = true;
   function update(){
-    if (wideLayout.matches) { preview.classList.remove('not-sticky'); return; }
-    const pastDict = dict.getBoundingClientRect().bottom < 0;
-    preview.classList.toggle('not-sticky', pastDict);
+    if (wideLayout.matches) return;
+    const y = window.scrollY;
+    if (armed && y > $('#previewFrame').offsetHeight + 60) {
+      armed = false;
+      if (!$('#preview').classList.contains('collapsed')) { setPreviewCollapsed(true); autoCollapsed = true; }
+    } else if (y < 8) {
+      armed = true;
+      if (autoCollapsed) { autoCollapsed = false; setPreviewCollapsed(false); }
+    }
   }
   window.addEventListener('scroll', update, { passive: true });
-  window.addEventListener('resize', update);
-  update();
 })();
 
 setTheme(localStorage.getItem('theme') || 'auto');

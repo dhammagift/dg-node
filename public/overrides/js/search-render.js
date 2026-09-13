@@ -57,6 +57,23 @@ window.DgSearchRender = (function () {
         .then(function (json) { translatorPriority = json || {}; })
         .catch(function () {});
 
+    // The reading set of the Translations window (megareader.js dgReadingStack) — one for the whole
+    // site, reader and results alike. Empty when nothing is saved.
+    function readingStack() {
+        // ignoreTrial: results use the saved set, like multi — never a one-off "Читать" trial.
+        try { return (window.getReadingStack && window.getReadingStack({ ignoreTrial: true })) || []; } catch (_) { return []; }
+    }
+    // Every translator present in the current results — what the Translations window offers here.
+    function availableTranslators() {
+        var keys = [];
+        (activeState.data || []).forEach(function (row) {
+            (row.segments || []).forEach(function (seg) {
+                Object.keys(seg.translations || {}).forEach(function (k) { if (keys.indexOf(k) === -1) keys.push(k); });
+            });
+        });
+        return keys;
+    }
+
     function translatorRank(lang, transKey) {
         var order = translatorPriority[lang];
         if (!order) return -1;
@@ -748,6 +765,7 @@ window.DgSearchRender = (function () {
     function buildDataTable(container, dataArray, highlightWord, requestedLangs, langsFromUrl) {
         activeState.highlightWord = highlightWord;
         activeState.langsFromUrl = !!langsFromUrl;
+        activeState.data = dataArray;   // availableTranslators() reads it
         // ?langs= — явный список языков, которые пользователь ПОПРОСИЛ увидеть (не только
         // ru/en-дефолт). Раз он попросил конкретный язык через langs=, показывать его
         // безусловно, а не только "если совпадение реально есть в нём" (см. alwaysShown ниже) —
@@ -1074,6 +1092,30 @@ window.DgSearchRender = (function () {
                                         });
                                 });
 
+                                // Owner: results follow the same reading set as the reader. Chosen
+                                // translators in the set's order; a language of the set without its
+                                // chosen translator in this segment falls back to its priority one.
+                                // Languages outside the set keep the match-only rule above. An explicit
+                                // ?langs= in the address still wins over the set.
+                                var stack = activeState.langsFromUrl ? [] : readingStack();
+                                if (stack.length) {
+                                    var stackLangs = [], byStack = [];
+                                    stack.forEach(function (k) { var l = k.split('_')[0]; if (stackLangs.indexOf(l) === -1) stackLangs.push(l); });
+                                    stack.forEach(function (k) {
+                                        var l = k.split('_')[0];
+                                        if (seg.translations[k]) { if (byStack.indexOf(k) === -1) byStack.push(k); return; }
+                                        if (stack.some(function (x) { return x.split('_')[0] === l && seg.translations[x]; })) return;
+                                        var fb = transKeys.filter(function (x) { return x.split('_')[0] === l; })
+                                            .sort(function (a, b) { return translatorRank(l, a) - translatorRank(l, b); })[0];
+                                        if (fb && byStack.indexOf(fb) === -1) byStack.push(fb);
+                                    });
+                                    sortedTransKeys.forEach(function (k) {
+                                        var l = k.split('_')[0];
+                                        if (stackLangs.indexOf(l) === -1 && alwaysShown.indexOf(l) === -1 && byStack.indexOf(k) === -1) byStack.push(k);
+                                    });
+                                    sortedTransKeys = byStack;
+                                }
+
                                 sortedTransKeys.forEach(function (key) {
                                     var transText = seg.translations[key];
                                     if (!transText) return;
@@ -1336,6 +1378,7 @@ window.DgSearchRender = (function () {
         buildDataTable: buildDataTable,
         buildWordDataTable: buildWordDataTable,
         buildVariantsReport: buildVariantsReport,
+        availableTranslators: availableTranslators,
         resetTablesForLanguageChange: resetTablesForLanguageChange,
         redraw: redraw
     };

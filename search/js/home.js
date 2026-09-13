@@ -488,12 +488,11 @@
         sheet.setAttribute('role', 'dialog');
         sheet.setAttribute('aria-modal', 'true');
         sheet.hidden = true;
+        // No header bar of its own (owner: "без двойных сеттингс") — the settings page's own header
+        // row carries the close button when embedded (settings/index.html #sheetClose).
         sheet.innerHTML =
             '<div class="dg-sheet-handle"></div>' +
-            '<div class="dg-sheet-head"><h2>' + esc(t('global.common.settings', 'Settings')) + '</h2>' +
-            '<button type="button" class="dg-sheet-close" aria-label="' + esc(t('global.common.close', 'Close')) + '">&times;</button></div>' +
             '<div class="dg-sheet-body"><iframe title="' + esc(t('global.common.settings', 'Settings')) + '"></iframe></div>';
-        sheet.querySelector('.dg-sheet-close').addEventListener('click', function () { closeSettingsSheet(false); });
         document.body.appendChild(sheet);
 
         document.addEventListener('keydown', function (e) {
@@ -1615,16 +1614,24 @@
 
     // Окно заменяет старый попап только там, где стек вообще имеет смысл: обычное чтение и
     // мульти. В memorize/devanagari вторая строка — не перевод, там остаётся прежний попап.
+    // Owner: results use the very same window — one reading set for the whole site, not a second
+    // language-only popover. search-render.js orders each row's translations by that set.
     function tsActive() {
+        if (currentState() === 'results') return true;
         var rm = window.READER_MODE;
         return currentState() === 'reader' && rm && (rm.modeKey === 'single' || rm.modeKey === 'multi');
     }
     function tsStack() {
-        var saved = (window.getReadingStack && window.getReadingStack()) || [];
+        // Results: the saved set (like multi); a one-off "Читать" trial belongs to the reader only.
+        var saved = (window.getReadingStack && window.getReadingStack(currentState() === 'results' ? { ignoreTrial: true } : undefined)) || [];
         if (saved.length) return saved;
         // Сохранённого набора ещё нет (обычное «Читать»: там набор и не сохраняется) — берём то,
         // что сервер реально показал, иначе окно открывалось бы пустым при видимом переводе, и
         // первый же клик не добавлял бы строку, а подменял весь набор.
+        if (currentState() === 'results') {
+            // Nothing saved yet: the priority translator of each language already on screen.
+            return pillLiveLangs.map(tsPriorityKey).filter(Boolean);
+        }
         var rm = window.READER_MODE;
         return (rm && Array.isArray(rm.stack)) ? rm.stack.slice() : [];
     }
@@ -1632,6 +1639,7 @@
     // он снова твой обычный. Флаг живёт отдельно от modeKey, потому что tsApply переводит
     // ридер в multi, чтобы показать больше одной строки — но это не делает правку постоянной.
     function tsTrialMode() {
+        if (currentState() === 'results') return false;   // results always use the saved set
         var rm = window.READER_MODE;
         if (rm && rm.modeKey === 'single') return true;
         // Примерка уже идёт: ридер временно в multi, но набор записан как временный (на
@@ -1643,6 +1651,10 @@
         } catch (e) { return false; }
     }
     function tsAvailable() {
+        if (currentState() === 'results') {
+            var sr = window.DgSearchRender;
+            return (sr && sr.availableTranslators) ? sr.availableTranslators() : [];
+        }
         var rm = window.READER_MODE;
         return (rm && Array.isArray(rm.availableTranslators)) ? rm.availableTranslators.slice() : [];
     }
@@ -1746,6 +1758,7 @@
         modeEl.className = 'dg-ts-mode' + (trial ? ' is-trial' : '');
         modeEl.textContent = trial ? tsStr('modeRead') : tsStr('modeMulti');
         modeEl.title = trial ? tsStr('readNote') : tsStr('multiNote');
+        modeEl.hidden = currentState() !== 'reader';   // results have no reading mode
         host.querySelector('.dg-ts-seg').innerHTML = ['manual', 'lang', 'name'].map(function (m) {
             return '<button type="button" data-ts-sort="' + m + '" aria-pressed="' + (tsSort === m) + '">' +
                 esc(tsStr(m === 'manual' ? 'manual' : m === 'lang' ? 'byLang' : 'byName')) + '</button>';
@@ -1755,7 +1768,8 @@
         // остальные языки, в которых этот текст вообще есть.
         var enabled = tsEnabledLangs();
         var stackLangs = stack.map(tsLangOf);
-        enabled = enabled.concat(stackLangs.filter(function (l) { return enabled.indexOf(l) === -1; }));
+        // Each language once: two translators of a language outside "my languages" used to add its chip twice.
+        enabled = enabled.concat(stackLangs.filter(function (l, i) { return enabled.indexOf(l) === -1 && stackLangs.indexOf(l) === i; }));
         var textLangs = [];
         tsAvailable().forEach(function (k) { if (textLangs.indexOf(tsLangOf(k)) === -1) textLangs.push(tsLangOf(k)); });
         host.querySelector('.dg-ts-chips').innerHTML = enabled.map(function (l) {
@@ -1855,6 +1869,21 @@
        нет — это тот же buildSutta(), что и у переключения режимов. */
     var tsBusy = false, tsPending = null;
     function tsApply(next) {
+        if (currentState() === 'results') {
+            window.setReadingStack(next);
+            // The old popover's per-language hiding would fight the set — the set decides now.
+            dgSetResultsLangVisibility([], []);
+            tsRender();
+            // Main translation in another language = switch the site to it, as the old popover's
+            // pin did (the table rebuilds on that change anyway); otherwise just redraw the rows.
+            var first = next.length ? tsLangOf(next[0]) : null, i18n = window.DHAMMA_I18N;
+            if (first && i18n && i18n.setLanguage && first !== (i18n.language || localStorage.getItem('dhammaLanguage'))) {
+                i18n.setLanguage(first);
+            } else {
+                document.dispatchEvent(new CustomEvent('dg:readingstackchange'));
+            }
+            return;
+        }
         var rm = window.READER_MODE, slug = window._currentSlug;
         if (!rm || !slug || typeof window.buildSutta !== 'function') return;
         window.setReadingStack(next, tsTrialMode() ? { local: true } : undefined);
@@ -4222,6 +4251,8 @@
         root.style.setProperty('--dg-zoom', scale / 100);
         root.style.zoom = scale / 100;
     }
+    // Size changed in the settings sheet (an iframe, same tab) — apply it to this page right away.
+    window.addEventListener('storage', function (e) { if (e.key === FONT_SCALE_KEY) renderFontSizeControl(); });
     function renderFontSizeControl() {
         var scale = currentFontScale();
         applyUiScale(scale);
