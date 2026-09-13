@@ -12,6 +12,9 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { paliSkel } = require('./public/overrides/js/pali-skeleton.js');
+// Только ради DEFAULT_SCOPE_PREFIXES/matchesScope для buildVocab (см. там). Модуль при require
+// ничего не делает — читает свои json-конфиги и ждёт init(), которого здесь не будет.
+const { DEFAULT_SCOPE_PREFIXES, matchesScope } = require('./core/search-core.js');
 
 const DATA_ROOT = path.join(__dirname, 'siteroot', 'data');
 const SC_BILARA = path.join(DATA_ROOT, 'suttacentral.net', 'sc-data', 'sc_bilara_data');
@@ -376,10 +379,14 @@ function writeMeta(db) {
    (core/search-core.js → suggestWords). Смысл в том, что подсказки берутся не из словаря, а из
    текстов: каждую предложенную форму гарантированно можно найти поиском, потому что она там есть.
 
-   Владелец: "нам же нужно это делать только на pali тексты... это не страшный объём для такого" —
-   и правда не страшный: 157k форм, ~4 МБ в базе. Берутся все пали-корни (pli/%, не только четыре
-   никаи) — отдельного списка префиксов для этого не нужно, а подсказки заодно работают для винаи и
-   абхидхаммы при scope=all. lzh/san/pra исключены: это не пали. */
+   Владелец: "нам же нужно это делать только на pali тексты... только на четыре никая... и шесть книг КН
+   максимум". Именно так и берётся — по DEFAULT_SCOPE_PREFIXES, тому же списку, по которому ищет
+   дефолтный поиск, и тем же предикатом matchesScope.
+
+   Почему не весь pli/%: сначала я взял все пали-корни — и в подсказки полезли слова из джатак,
+   винаи и абхидхаммы (владелец заметил живьём: kacchapajātaka, и монстр на 60 букв оттуда же).
+   Подсказать слово, по которому дефолтный поиск вернёт ноль — хуже, чем не подсказать ничего.
+   Счётчик df по той же причине считается только внутри этого же scope. lzh/san/pra исключены: это не пали. */
 function buildVocab(db) {
     const t = Date.now();
     db.exec(`
@@ -390,10 +397,20 @@ function buildVocab(db) {
     // the search box, so it has to be the real form); paliSkel drops them on both sides anyway.
     const WORD = /[\p{L}\u2019'-]+/gu;
     const df = new Map();
+    // Владелец: "и + виная". В самом поиске виная — scope по запросу, не дефолтный
+    // (см. DEFAULT_SCOPE_PREFIXES в core/search-core.js), но словарь подсказок она пополняет: это
+    // канон, а не комментарий. Оборотная сторона: чисто винайное слово будет подсказано,
+    // а поиск с дефолтным scope по нему ничего не найдёт, пока не расширить область.
+    const VOCAB_SCOPE = DEFAULT_SCOPE_PREFIXES.concat('vinaya');
+    const inScope = new Set(
+        db.prepare("SELECT id, category FROM suttas WHERE dir_path LIKE 'pli/%'").all()
+            .filter(sutta => matchesScope(sutta, sutta.id, VOCAB_SCOPE))
+            .map(sutta => sutta.id)
+    );
     const rows = db.prepare(
-        "SELECT t.txt FROM texts t JOIN suttas s ON s.id = t.sutta_id " +
+        "SELECT t.sutta_id, t.txt FROM texts t JOIN suttas s ON s.id = t.sutta_id " +
         "WHERE t.kind = 'root' AND s.dir_path LIKE 'pli/%'"
-    ).all();
+    ).all().filter(r => inScope.has(r.sutta_id));
     for (const r of rows) {
         // Per segment, not per occurrence: df is only used to rank suggestions, and "appears in
         // many places" is the useful signal, not "repeated inside one verse".
@@ -412,7 +429,7 @@ function buildVocab(db) {
     }
     db.exec('COMMIT');
     db.exec('CREATE INDEX idx_vocab_skel ON vocab(skel)');
-    console.log(`vocab: ${kept} pali word forms (${Date.now() - t}ms)`);
+    console.log(`vocab: ${kept} pali word forms from ${inScope.size} texts (${Date.now() - t}ms)`);
 }
 
 /* --vocab-only: пересобрать ТОЛЬКО таблицу vocab в уже существующей dg.db, без перестройки

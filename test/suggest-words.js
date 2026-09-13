@@ -21,7 +21,7 @@ const found = q => core.suggestWords(q).map(w => w.word);
 for (const [typo, expected] of [
     ['satipattana', 'satipaṭṭhānā'],   // gemination + aspiration + diacritics
     ['nibana', 'nibbāna'],                            // missing gemination
-    ['kachapa', 'kacchapa'],                               // dropped letter
+    ['kachapa', 'kacchapo'],                               // dropped letter
     ['bikkhave', 'bhikkhave'],                             // dropped aspirate
 ]) {
     const got = found(typo);
@@ -33,6 +33,16 @@ for (const nothing of ['kachcapxyz', 'sdfghjkl', 'сострадание', 'a', 
 }
 
 // A word that IS in the corpus never suggests itself back: exact search already answered for it.
-assert(!found('kacchapa').includes('kacchapa'), 'подсказка не должна повторять набранное слово');
+assert(!found('kacchapo').includes('kacchapo'), 'подсказка не должна повторять набранное слово');
+
+/* Словарь — четыре никаи + шесть книг КН + виная, и ничего сверх того (build-search-db.js,
+   VOCAB_SCOPE). Первая версия брала весь pli/%, и в подсказки лезли слова из джатак и
+   абхидхаммы — по ним дефолтный поиск возвращает ноль, то есть подсказка вела в пустоту. */
+const db = new DatabaseSync(DB, { readOnly: true });
+for (const [word, where] of [['kacchapajātaka', 'джатаки'], ['tesaṁtesaṁ', 'абхидхамма']]) {
+    const row = db.prepare('SELECT 1 FROM vocab WHERE word = ?').get(word);
+    assert(!row, `${word} (${where}) не должно быть в словаре подсказок`);
+}
+assert(db.prepare('SELECT 1 FROM vocab WHERE word = ?').get('pārājikaṁ'), 'винайные слова в словаре быть должны');
 
 console.log('suggest-words: ok');
