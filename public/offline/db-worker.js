@@ -59,11 +59,12 @@ const POOL_NAME = 'dg-offline';
 // somewhere this worker can read and append to with an ordinary sync access handle.
 const SCRATCH_PREFIX = 'dg-mobile.';
 const SCRATCH_SUFFIX = '.partial';
-function scratchNameFor(target) {
+function scratchNameFor(target, gzip) {
     // target is '/dg-mobile.<build>.db' (or the legacy '/dg-mobile.db'), so strip the pool path
-    // and the .db suffix and put .partial in their place.
+    // and the .db suffix and put .partial in their place. A gzip archive in progress gets its own
+    // name (.gz.partial): its bytes are compressed, and must never be read as a plain prefix.
     const base = target.replace(/^\//, '').replace(/\.db$/, '');
-    return `${base}${SCRATCH_SUFFIX}`;
+    return `${base}${gzip ? '.gz' : ''}${SCRATCH_SUFFIX}`;
 }
 const SCRATCH_CHUNK = 4 * 1024 * 1024;
 
@@ -240,7 +241,139 @@ async function cleanScratchExcept(keepName) {
     } catch (e) { /* no OPFS enumeration — nothing to clean */ }
 }
 
+// The gzip archive, in two phases like any download manager (owner: "скачиваешь архив, докачиваешь
+// когда надо, останавливаешь когда не надо, а когда он полностью лежит — разархивируешь"):
+//   1. the archive itself lands in OPFS (scratchName). Any interruption — a closed tab, a dropped
+//      connection, a later visit — continues with a Range request from the byte it stopped at;
+//   2. once it is complete, it is unpacked from disk into the pool. No network in this phase.
+// Unpacking on the fly while downloading (what this worker did before) left nothing to resume from:
+// the compressed bytes were never kept, so every interruption restarted the whole archive.
+async function downloadArchiveThenImport(pool, url, name, expectedWireBytes, expectedDbBytes, scratchName) {
+    const MB = n => Math.round(n / 1048576);
+    const scratch = await openScratch(scratchName);
+
+    // Phase 1: the archive.
+    for (let attempt = 1; ; attempt++) {
+        if (cancelRequested) { try { scratch.close(); } catch (_) {} throw cancelledError(); }
+        let have = scratch.getSize();
+        if (expectedWireBytes && have > expectedWireBytes) { scratch.truncate(0); have = 0; } // not this archive
+        if (expectedWireBytes && have === expectedWireBytes) break; // already all here from an earlier visit
+        const controller = new AbortController();
+        activeAbort = controller;
+        let reader = null;
+        try {
+            console.log(`[dg-offline] attempt ${attempt}: ${have} of ${expectedWireBytes || '?'} archive bytes already on disk`);
+            const response = await fetch(url, {
+                signal: controller.signal,
+                headers: have > 0 ? { Range: `bytes=${have}-` } : undefined,
+            });
+            if (!response.ok) throw new Error(`dg.db.gz: HTTP ${response.status}`);
+            // 200 to a Range request: the server ignored it or the file changed — start over.
+            if (have > 0 && response.status === 200) { scratch.truncate(0); have = 0; }
+            const total = expectedWireBytes || (have + (Number(response.headers.get('Content-Length')) || 0));
+            if (expectedWireBytes && have + (Number(response.headers.get('Content-Length')) || 0) > expectedWireBytes * OVERSHOOT_FACTOR) {
+                throw Object.assign(new Error(`dg.db.gz: server offered more than the ${MB(expectedWireBytes)}MB ` +
+                    `the manifest promised — check mobile-data on the server, it may point at the wrong file`), { mismatch: true });
+            }
+            reader = response.body.getReader();
+            let at = have, lastReport = 0;
+            for (;;) {
+                const { done, value } = await readWithTimeout(reader, STALL_MS);
+                if (done) break;
+                const wrote = scratch.write(value, { at });
+                if (wrote !== value.byteLength) {
+                    throw new Error('dg.db.gz: the browser storage did not accept the archive bytes (out of space?)');
+                }
+                at += wrote;
+                const now = Date.now();
+                if (now - lastReport > 200) {
+                    lastReport = now;
+                    post({ type: 'progress', loaded: at, total, phase: 'download', resumed: have || undefined });
+                }
+            }
+            scratch.flush();
+            if (expectedWireBytes && at !== expectedWireBytes) {
+                throw new Error(`dg.db.gz: stream ended after ${MB(at)}MB of ${MB(expectedWireBytes)}MB — connection likely dropped mid-transfer`);
+            }
+            activeAbort = null;
+            break;
+        } catch (e) {
+            if (cancelRequested) {
+                controller.abort();
+                if (reader) reader.cancel().catch(() => {});
+                await dropScratch(scratch, scratchName);
+                activeAbort = null;
+                throw cancelledError();
+            }
+            if (e && e.mismatch) { activeAbort = null; try { scratch.close(); } catch (_) {} throw e; }
+            const stalled = e && e.name === 'AbortError';
+            controller.abort();
+            if (reader) reader.cancel().catch(() => {});
+            if (attempt >= MAX_ATTEMPTS) {
+                // Give up for now, keeping every byte: the next attempt (a later visit continues by
+                // itself, see app.js) asks only for the rest.
+                activeAbort = null;
+                try { scratch.close(); } catch (_) {}
+                throw stalled ? new Error(`dg.db.gz: stalled (no data for ${STALL_MS / 1000}s), gave up after ${MAX_ATTEMPTS} attempts`) : e;
+            }
+            post({ type: 'progress', loaded: 0, total: 0, phase: 'download', retrying: attempt + 1, resumed: scratch.getSize() });
+            await new Promise(resolve => setTimeout(resolve, RETRY_BACKOFF_MS(attempt)));
+        }
+    }
+
+    // Phase 2: unpack the complete archive from disk into the pool.
+    post({ type: 'progress', loaded: 0, total: 0, phase: 'import' });
+    const size = scratch.getSize();
+    let readAt = 0;
+    const archive = new ReadableStream({
+        pull(ctrl) {
+            if (cancelRequested) { ctrl.error(cancelledError()); return; }
+            if (readAt >= size) { ctrl.close(); return; }
+            const buf = new Uint8Array(Math.min(SCRATCH_CHUNK, size - readAt));
+            const n = scratch.read(buf, { at: readAt });
+            if (n <= 0) { ctrl.error(new Error('dg.db.gz: the downloaded archive could not be read back')); return; }
+            readAt += n;
+            ctrl.enqueue(buf.subarray(0, n));
+        },
+    });
+    const reader = archive.pipeThrough(new DecompressionStream('gzip')).getReader();
+    let loaded = 0;
+    let loadedBytes;
+    try {
+        loadedBytes = await pool.importDb(name, async () => {
+            const { done, value } = await reader.read();
+            if (done) return undefined;
+            loaded += value.byteLength;
+            if (expectedDbBytes && loaded > expectedDbBytes * OVERSHOOT_FACTOR) {
+                throw Object.assign(new Error(`dg.db.gz: unpacks past ${MB(expectedDbBytes)}MB — not the published database`), { mismatch: true });
+            }
+            return value;
+        });
+    } catch (e) {
+        reader.cancel().catch(() => {});
+        // A damaged archive (or a cancel): its bytes are of no further use — the next attempt fetches it again.
+        await dropScratch(scratch, scratchName);
+        if (cancelRequested) throw cancelledError();
+        throw e;
+    }
+    if (expectedDbBytes && loadedBytes !== expectedDbBytes) {
+        await dropScratch(scratch, scratchName);
+        throw new Error(`dg.db.gz: unpacked ${MB(loadedBytes)}MB, expected ${MB(expectedDbBytes)}MB — the archive was damaged and will be downloaded again`);
+    }
+    console.log(`[dg-offline] unpacked ${loadedBytes} bytes from a ${size}-byte archive`);
+    lastTransferStats = { fed: loadedBytes, expected: expectedDbBytes || null, scratchSize: size, scratchShortWrites: 0 };
+    post({ type: 'progress', loaded: expectedDbBytes || loadedBytes, total: expectedDbBytes || loadedBytes, phase: 'download', done: false });
+    await dropScratch(scratch, scratchName);
+    activeAbort = null;
+    return loadedBytes;
+}
+
 async function downloadInto(pool, url, name, expectedWireBytes, expectedDbBytes, gzip, scratchName, resumable) {
+    // Room for the archive next to the database: download it whole (resumable), then unpack.
+    // Without that room ('plain' plan) the archive is unpacked on the fly below — no resume, but it fits.
+    if (gzip && resumable !== false) {
+        return downloadArchiveThenImport(pool, url, name, expectedWireBytes, expectedDbBytes, scratchName);
+    }
     const phase = 'download';
     // 'plain' mode (no room for two copies) runs with no scratch file at all: no resume, and half the
     // peak space, which is the difference between finishing and SQLITE_CORRUPT near the end.
@@ -415,7 +548,7 @@ async function downloadInto(pool, url, name, expectedWireBytes, expectedDbBytes,
             // `resumed` is what the NEXT attempt will ask the server for — the bytes already on
             // disk. Reported so "did the retry resume or start over" is answerable from the UI/logs
             // instead of by watching the network.
-            post({ type: 'progress', loaded: 0, total: 0, phase, retrying: attempt + 1, resumed: scratch.getSize() });
+            post({ type: 'progress', loaded: 0, total: 0, phase, retrying: attempt + 1, resumed: scratch ? scratch.getSize() : 0 });
             await new Promise(resolve => setTimeout(resolve, RETRY_BACKOFF_MS(attempt)));
         }
     }
@@ -617,26 +750,12 @@ async function fetchCurrent(pool, distBase, args) {
     // legacy name. That keeps an older server (one publishing no manifest) working.
     const target = manifest && manifest.build_id ? dbNameFor(manifest.build_id) : LEGACY_DB_NAME;
     const stale = storedDatabases(pool).filter(n => n !== target);
-    const scratchName = scratchNameFor(target);
+    // The plain file wins whenever the manifest publishes both. dg-node publishes only the gzip
+    // archive (216MB instead of 595MB); it resumes too now — the archive is downloaded whole into
+    // its own partial copy and unpacked afterwards (downloadArchiveThenImport).
+    const gzip = !!(manifest && manifest.file_gz) && !(manifest && manifest.file);
+    const scratchName = scratchNameFor(target, gzip);
     await cleanScratchExcept(scratchName);
-    let resumed = await partialBytes(scratchName);
-    // A server that publishes only the gzip archive (no `file` in the manifest — dg-node's own
-    // publish step) has nothing to resume from: a compressed stream cannot be continued at a byte
-    // offset, and the plain-file fallback below would ask for a "dg-mobile.db" that is not there
-    // (404; before that file was deleted it was a stale slice of another size). The partial copy is
-    // worthless then — drop it and fetch the archive again from the start.
-    if (resumed && manifest && manifest.file_gz && !manifest.file) {
-        console.log(`[dg-offline] dropping ${resumed} bytes of an interrupted transfer: only the gzip archive is published, it restarts from zero`);
-        await dropScratchAfterCancel(scratchName);
-        resumed = 0;
-    }
-
-    // The plain file wins over the gzipped one whenever the manifest publishes both: an
-    // interrupted gzip transfer cannot be continued (the bytes on the wire are not the bytes of
-    // the database), so it would restart from zero every time, while the plain one resumes with a
-    // Range request. Nothing of value is given up — the plan's own measurement found gzip a net
-    // loss on this database (168MB -> 177MB).
-    const gzip = !!(manifest && manifest.file_gz) && !(manifest && manifest.file) && !resumed;
     const file = gzip ? manifest.file_gz : (manifest && manifest.file) || 'dg-mobile.db';
     const expectedWireBytes = gzip ? manifest.bytes_gz : (manifest && manifest.bytes);
 
