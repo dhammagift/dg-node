@@ -427,6 +427,11 @@ function bindAutocomplete(selector, allWords) {
             // когда клавиатура открыта.
             var viewport = window.visualViewport ? window.visualViewport.height : window.innerHeight;
             var room = viewport - top - AUTOPALI_DROPDOWN_GUTTER;
+            // Owner: "до низа" is a wall of 20+ rows — at most 40% of the visible screen on a desktop,
+            // 50% on phones/tablets (with the keyboard up the visible area is already smaller; without
+            // it the list must not cover the whole page either).
+            var desktop = window.matchMedia('(min-width: 768px) and (hover: hover) and (pointer: fine)').matches;
+            room = Math.min(room, Math.round(viewport * (desktop ? 0.4 : 0.5)));
             menu.css('max-height', Math.max(AUTOPALI_DROPDOWN_MIN, room) + 'px');
         },
         focus: function() { return false; },
