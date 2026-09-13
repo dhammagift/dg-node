@@ -360,6 +360,8 @@ body.dg-state-toc .dg-menu-btn-hero { display: inline-flex; }
     color: #93a5b8;
     white-space: nowrap;
 }
+/* issue #14: phones — the tag is the first thing to give up so the header icons fit. */
+@media (max-width: 575.98px) { .dg-brand-tag { display: none; } }
 #dg-brand:hover { color: var(--dg-text); }
 
 /* Лого в шапке. Картинка почти белая (см. /assets/img/dgsanhkalogo.png: раскрытая книга серая,
@@ -3914,7 +3916,31 @@ body.dg-state-reader #sutta h1, body.dg-state-reader #sutta h2, body.dg-state-re
    for: it landed on top of the header/keyword text instead of the filter row centering on it
    (owner, screenshot: "10 per page" overlapping "kacchapa"). With pagination, skip the pull-up
    entirely — header on its own line, the whole control block normally below it. */
+/* issue #15: base — controls start right under the header text, no empty row between (mt-4's
+   24px was that row). Applies with pagination and on phones, where the filter can't share the line. */
+body.dg-state-results #search-pane { margin-top: -8px !important; }
+/* The pulled-up control row spans the header's full line: it must not swallow clicks on the header
+   (scope star, variants link) — only the controls themselves take pointer events. */
+body.dg-state-results #search-pane:not(.dg-has-paging) :is(#pali_wrapper, #pali-words_wrapper, #pali_wrapper > .row:first-child, #pali-words_wrapper > .row:first-child) { pointer-events: none; }
+body.dg-state-results #search-pane:not(.dg-has-paging) :is(#pali_wrapper, #pali-words_wrapper) > :not(.row:first-child),
+body.dg-state-results #search-pane:not(.dg-has-paging) .dt-search { pointer-events: auto; }
+/* Phones: the hidden page-size selector still left its empty column's 8px gutter above the filter. */
+@media (max-width: 575.98px) {
+    body.dg-state-results #search-pane { margin-top: -16px !important; }
+    body.dg-state-results :is(#pali_wrapper, #pali-words_wrapper) > .row:first-child > :has(> .dt-length[style*="none"]) { display: none; }
+}
+/* Tablets (mobile dom: filter in the right half): same header-line placement as desktop. The header
+   reserves the filter's width so a long header wraps instead of running under the filter. */
+@media (min-width: 576px) and (max-width: 767.98px) {
+    body.dg-state-results #search-pane:not(.dg-has-paging) { margin-top: -48px !important; }
+    body.dg-state-results #search-pane:not(.dg-has-paging) .dt-search { justify-content: flex-end; }
+    body.dg-state-results #search-pane:not(.dg-has-paging) .dt-search input { flex: 0 1 150px; }
+    body.dg-state-results:has(#search-pane:not(.dg-has-paging) .dt-container:not(.d-none)) #dynamicHeader { padding-right: 280px; }
+    body.dg-state-results #search-message,
+    body.dg-state-results #ai-note-wrap:has(> :not(.d-none)) { margin-top: 44px; }
+}
 @media (min-width: 768px) {
+    body.dg-state-results:has(#search-pane:not(.dg-has-paging) .dt-container:not(.d-none)) #dynamicHeader { padding-right: 215px; }
     body.dg-state-results #search-pane:not(.dg-has-paging) { margin-top: -50px !important; }
     body.dg-state-results #search-pane:not(.dg-has-paging) #pali_wrapper > .row:first-child,
     body.dg-state-results #search-pane:not(.dg-has-paging) #pali-words_wrapper > .row:first-child { position: relative; z-index: 2; }

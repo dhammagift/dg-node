@@ -990,7 +990,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     .resultheader .scope-info-star { margin-left: -8px; font-size: 1.1rem; align-self: center; }
     /* #variants-hint внутри заголовка — обычный инлайновый элемент строки, без своей
        1600px-колонки (её правило ниже рассчитано на отдельную строку под заголовком). */
-    .resultheader #variants-hint { display: inline; max-width: none; margin: 0; padding: 0; font-size: 1rem; font-weight: 400; align-self: center; }
+    .resultheader #variants-hint { display: inline; max-width: none; margin: 0; padding: 0; font-size: 1rem; font-weight: 400; align-self: baseline; }
     .resultheader #variants-hint svg { color: var(--bs-secondary-color, #6c757d); }
     /* Owner: multiple translations in a citation ran together into one clump. The shared
        br.styled (assets/css/table.css, 0.8em) is used elsewhere (reader) too — scoped here to
@@ -2284,7 +2284,8 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
      Wired in public/overrides/js/ai-search.js (delegated click), not here — same reuse as
      dgRunAiSearch itself. Persistent zero/always/off modes (docs/AI_MODE_DESIGN.md) are a bigger
      feature, not built yet — this is the one-shot manual trigger only. -->
-<button id="btn-ai-mode" class="btn btn-light mb-1" type="button">{{toolbar.aiModeLabel}}</button>
+<!-- Owner: hidden until AI search is mature enough to show even on test. Remove d-none to bring it back. -->
+<button id="btn-ai-mode" class="btn btn-light mb-1 d-none" type="button">{{toolbar.aiModeLabel}}</button>
 
 <button class="btn btn-light forshellscript mb-1" type="button"><a class="text-decoration-none " href="javascript:void(0)">{{toolbar.wordsToggleShow}}</a></button>
 
@@ -3193,7 +3194,10 @@ $(document).ready(function() {
     function updatePagingLayoutClass() {
         var activeWrapper = document.querySelector('#pali_wrapper:not(.d-none), #pali-words_wrapper:not(.d-none)');
         var paging = activeWrapper && activeWrapper.querySelector('.dt-paging');
-        var hasPaging = !!paging && paging.style.display !== 'none';
+        var length = activeWrapper && activeWrapper.querySelector('.dt-length');
+        // A visible page-size selector (remembered size > 10 on a single page) sits on the left of
+        // the same control row — it would land on the header text, so it takes the paging layout too.
+        var hasPaging = (!!paging && paging.style.display !== 'none') || (!!length && length.style.display !== 'none');
         document.getElementById('search-pane').classList.toggle('dg-has-paging', hasPaging);
     }
 
