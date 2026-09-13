@@ -1,3 +1,6 @@
+// checkForceLocalFlag lives in settings.js; pages without it (/assets/texts/abbr.html) threw on load.
+if (typeof checkForceLocalFlag !== 'function') window.checkForceLocalFlag = function () {};
+
 document.addEventListener('click', function(event) {
     // Ищем ближайший родительский элемент с классом link4nt (или bwLink, если решите оставить старый класс)
     const link = event.target.closest('a.ntLink');
