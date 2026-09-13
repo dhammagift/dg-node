@@ -1162,7 +1162,13 @@ function navFor(suttaId, scope) {
     if (currentIndex === -1) return null;
 
     const allowedPrefixes = resolveAllowedPrefixes(scope);
-    const inScope = (i) => matchesScope(skeletonDB[dbKeys[i]], dbKeys[i], allowedPrefixes);
+    const current = skeletonDB[suttaId];
+    // A text outside the scope (e.g. Vinaya opened by a direct link under the default sutta scope)
+    // walks its own category: skipping to the nearest in-scope text gave pli-tv-bu-vb-pj1 the
+    // neighbours mn152 / sn1.1.
+    const inScope = matchesScope(current, suttaId, allowedPrefixes)
+        ? (i) => matchesScope(skeletonDB[dbKeys[i]], dbKeys[i], allowedPrefixes)
+        : (i) => skeletonDB[dbKeys[i]].category === current.category;
 
     let prevIndex = -1;
     for (let i = currentIndex - 1; i >= 0; i--) { if (inScope(i)) { prevIndex = i; break; } }
