@@ -968,10 +968,11 @@
                 var raw = typeof input === 'string' ? input : input.url;
                 var where;
                 try { where = new URL(raw, location.href); } catch (e) { return realFetch(input, init); }
-                // /api/transliterate joins the forwarded routes: it is not a data route for the
-                // library, but in the app the page's own origin cannot answer it either.
+                // Every /api/ path joins the forwarded routes: not a data route for the library, but
+                // in the app the page's own origin cannot answer it either (withOnlineBase is a no-op
+                // on the site, which has no onlineBase).
                 if (where.origin !== location.origin ||
-                    (!isDataRoute(where.pathname) && where.pathname !== '/api/transliterate')) {
+                    (!isDataRoute(where.pathname) && where.pathname.indexOf('/api/') !== 0)) {
                     return realFetch(input, init);
                 }
                 // Not installed yet (or not open here): the request goes to the network. In the
@@ -1056,6 +1057,9 @@
                 });
             }
 
+            // An API the library does not answer (/api/ai-search, /api/settings-demo, ...): in the app
+            // it must reach the real host — https://localhost would answer it with index.html.
+            if (p.indexOf('/api/') === 0) return realFetch(withOnlineBase(input, init), init);
             return realFetch(input, init);
         }
 
