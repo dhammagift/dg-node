@@ -274,6 +274,8 @@
     window.dgCancelOfflineDownload = function () {
         return call('abort', {}).then(function () {
             local = false;
+            // A cancelled download must not start again by itself on the next visit.
+            try { localStorage.removeItem(STARTED_KEY); } catch (e) { /* private mode */ }
             rememberState({ present: false, build_id: null, update: null });
             var ru = (localStorage.getItem('dhammaLanguage') || localStorage.getItem('siteLanguage') || 'en') === 'ru';
             notify(ru ? 'Загрузка отменена' : 'Download cancelled');
@@ -577,6 +579,10 @@
                 downloadInFlight = false;
                 return download(kind);
             }
+            // "Not now" or ×: the reader's own choice — no automatic restart on the next visit.
+            if (e && /declined|cancelled/.test(e.message || '')) {
+                try { localStorage.removeItem(STARTED_KEY); } catch (err) { /* private mode */ }
+            }
             throw e;
         }).finally(function () {
             downloadInFlight = false;
@@ -755,7 +761,13 @@
                 // handles are held by another document — NoModificationAllowedError in the log) used
                 // to fall through to a download it could never finish, and against a dead server that
                 // is a guaranteed failure instead of the honest "another tab has it".
-                if (ownsLibrary && status.partialBytes > 0) {
+                // The gzip archive (all dg-node publishes) leaves no partial copy — a compressed
+                // stream cannot be resumed — so "the reader agreed to a download that never finished"
+                // (STARTED_KEY, cleared on install, delete, cancel or "not now") is enough on its own:
+                // the archive simply starts again (owner: "нужно чтобы сама продолжалась").
+                var agreedEarlier = false;
+                try { agreedEarlier = localStorage.getItem(STARTED_KEY) === '1'; } catch (e) { /* private mode */ }
+                if (ownsLibrary && (status.partialBytes > 0 || agreedEarlier)) {
                     log('continuing an unfinished download:', status.partialBytes, 'bytes already on disk');
                     return download('open');
                 }
