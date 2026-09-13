@@ -11,6 +11,7 @@ const { DatabaseSync } = require('node:sqlite');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const { execFileSync } = require('child_process');
 const { paliSkel } = require('./public/overrides/js/pali-skeleton.js');
 // Только ради DEFAULT_SCOPE_PREFIXES/matchesScope для словаря подсказок (см. build()). Модуль при require
 // ничего не делает — читает свои json-конфиги и ждёт init(), которого здесь не будет.
@@ -366,7 +367,7 @@ function build() {
     const vocabWords = writeVocab(db, vocabDf);
     writeSuttaWords(vocabDf, vocabWords);
     db.exec('ANALYZE');
-    writeMeta(db);
+    const buildId = writeMeta(db);
     // Counted from `texts`, not from `fts`: on an external-content table `SELECT count(*) FROM
     // fts` reports the content table's row count, so it cannot show what is actually indexed.
     const unindexed = db.prepare(
@@ -374,10 +375,78 @@ function build() {
     ).get(...UNINDEXED_TRANSLATORS).c;
     db.close();
 
+    if (process.argv.includes('--publish')) publishArchive(buildId);
+
     const mb = (fs.statSync(OUT_PATH).size / 1048576).toFixed(1);
     console.log(`\n${OUT_PATH}: ${mb} MB, ${rows} text rows (${rows - unindexed} indexed, ` +
         `${unindexed} hidden from search), ${htmlRows} html rows`);
     console.log(`Total ${((Date.now() - started) / 1000).toFixed(1)}s`);
+}
+
+/* --publish: положить на раздачу ТУ ЖЕ базу, которую только что собрали, сжатой. Владелец:
+   "почему не один общий провод делает одну базу и не кладет ее же в виде архива на раздачу".
+
+   Раньше это был отдельный скрипт (publish-offline-db.js): он заново открывал базу, заново читал
+   из неё build_id и заново решал, ту ли базу публикует. Три вопроса, которых просто нет, когда
+   архив делается здесь же из файла, который эта функция и записала.
+
+   Публикация специально НЕ происходит сама по себе: она меняет то, что качают люди, и смена
+   build_id — это оповещение "доступна новая база" всем, у кого офлайн уже скачан. Поэтому флаг.
+   Обратной операции "опубликовать уже готовую базу, не пересобирая" нет намеренно: сборка
+   детерминированная (тот же корпус → тот же build_id), 100 секунд, и так исчезает целый класс
+   ошибок вида "а ту ли базу я выложил". */
+function publishArchive(buildId) {
+    const outDir = (process.argv.find(a => a.startsWith('--out=')) || '').slice(6)
+        || path.join(__dirname, 'siteroot', 'mobile-data');
+    fs.mkdirSync(outDir, { recursive: true });
+    const outGz = path.join(outDir, 'dg.db.gz');
+    const t = Date.now();
+
+    const h = crypto.createHash('sha256');
+    const fd = fs.openSync(OUT_PATH, 'r');
+    const buf = Buffer.allocUnsafe(1 << 20);
+    let n;
+    while ((n = fs.readSync(fd, buf, 0, buf.length, null)) > 0) h.update(buf.subarray(0, n));
+    fs.closeSync(fd);
+
+    /* Во временный файл, потом rename. Прямая запись обрезала бы живой архив в первую же
+       миллисекунду, а gzip наполняет его минуты — всё это время посетители качали бы огрызок,
+       причём манифест ещё обещал бы старый sha256, так что проверка падала бы у них уже после
+       200 МБ. rename в пределах одной ФС атомарен: читатель видит либо старый архив целиком,
+       либо новый целиком. Манифест пишется последним. */
+    const tmpGz = `${outGz}.tmp-${process.pid}`;
+    let bytesGz;
+    try {
+        const out = fs.openSync(tmpGz, 'w');
+        try {
+            execFileSync('gzip', ['-6', '-c', OUT_PATH], { stdio: ['ignore', out, 'inherit'] });
+        } finally {
+            fs.closeSync(out);
+        }
+        bytesGz = fs.statSync(tmpGz).size;
+        fs.renameSync(tmpGz, outGz);
+    } catch (e) {
+        fs.rmSync(tmpGz, { force: true }); // не оставляем половину архива занимать место
+        throw e;
+    }
+
+    // Только file_gz, без file: клиент предпочитает несжатый файл, когда объявлены оба (его можно
+    // докачать после обрыва). Здесь выбран вес — 216 МБ против 595, ценой рестарта при обрыве.
+    const bytes = fs.statSync(OUT_PATH).size;
+    fs.writeFileSync(path.join(outDir, 'db-manifest.json'), JSON.stringify({
+        schema_version: 1,
+        build_id: buildId,
+        langs: 'all',
+        fts: 'trigram',
+        source: path.basename(OUT_PATH),
+        built_at: new Date().toISOString(),
+        file_gz: path.basename(outGz),
+        bytes_gz: bytesGz,
+        bytes,
+        sha256: h.digest('hex'),
+    }, null, 2) + '\n');
+    console.log(`published: ${(bytesGz / 1048576).toFixed(1)} МБ из ${(bytes / 1048576).toFixed(1)} ` +
+                `(${(bytes / bytesGz).toFixed(1)}x, ${((Date.now() - t) / 1000).toFixed(0)}с) → ${outDir}`);
 }
 
 /* sutta_words.txt — список для автоподсказок в самом поле поиска (autopali.js). Пишется здесь,
@@ -457,6 +526,7 @@ function writeMeta(db) {
         ['built_at', new Date().toISOString()],
     ]) ins.run(k, v);
     console.log(`meta: build ${buildId}`);
+    return buildId;
 }
 
 /* vocab — словарь словоформ пали из самого корпуса, для подсказки "может быть, вы искали"

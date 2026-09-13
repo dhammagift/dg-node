@@ -10,7 +10,7 @@
     "test-offline": "node test/offline-e2e.js",
     "test-offline-parity": "node test/offline-parity.js",
     "test-offline-resume": "node test/offline-resume.js",
-    "publish-offline-db": "node publish-offline-db.js",
+    "publish-offline-db": "node build-search-db.js --publish",
     "test-offline-outage": "node test/offline-outage.js",
     "test-app-ui": "node test/app-ui/run-all.js",
     "test-app-progress": "node test/app-ui/check-progress.js",
