@@ -72,14 +72,27 @@ function main() {
     const bytes = fs.statSync(SOURCE).size;
     const sha256 = sha256File(SOURCE);
 
+    /* Во временный файл, потом rename. Прямая запись в OUT_GZ обрезала бы живой архив в первую
+       же миллисекунду, а gzip наполняет его минуты — всё это время посетители качали бы огрызок,
+       причём манифест ещё обещал бы старый sha256, так что проверка у них падала бы уже после
+       200 МБ. rename в пределах одной ФС атомарен: читатели видят либо старый файл целиком, либо
+       новый целиком. Манифест пишется последним, после переименования. */
     const tg = Date.now();
-    const out = fs.openSync(OUT_GZ, 'w');
+    const tmpGz = `${OUT_GZ}.tmp-${process.pid}`;
+    let bytesGz;
     try {
-        execFileSync('gzip', ['-6', '-c', SOURCE], { stdio: ['ignore', out, 'inherit'] });
-    } finally {
-        fs.closeSync(out);
+        const out = fs.openSync(tmpGz, 'w');
+        try {
+            execFileSync('gzip', ['-6', '-c', SOURCE], { stdio: ['ignore', out, 'inherit'] });
+        } finally {
+            fs.closeSync(out);
+        }
+        bytesGz = fs.statSync(tmpGz).size;
+        fs.renameSync(tmpGz, OUT_GZ);
+    } catch (e) {
+        fs.rmSync(tmpGz, { force: true }); // не оставляем половину архива занимать место
+        throw e;
     }
-    const bytesGz = fs.statSync(OUT_GZ).size;
     console.log(`gzip ${(bytesGz / 1048576).toFixed(1)} МБ из ${(bytes / 1048576).toFixed(1)} ` +
                 `(${(bytes / bytesGz).toFixed(1)}x, ${((Date.now() - tg) / 1000).toFixed(0)}с)`);
 
