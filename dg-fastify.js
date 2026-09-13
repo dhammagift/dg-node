@@ -397,34 +397,89 @@ app.get('/open', (req, res) => {
 
 // Конвертация системы письма пали (настройка "selectedScript" в /settings/, приходит как
 // ?script= в адресе — тот же параметр, что уже слала кнопка Alt+L, раньше ничего не делавший).
-// Инициализация (~6-8с, поднимает Pyodide/Python-движок в самом Node, без браузера) стартует
-// сразу при загрузке модуля, НЕ блокируя старт сервера — запрос, которому конвертация нужна
-// раньше, чем инициализация закончится, просто дождётся этого же промиса. Один экземпляр на
-// всё время жизни процесса, конвертация после инициализации — единицы-десятки миллисекунд.
 //
-// Owner: "деванагари не работает" — Aksharamukha.new() with no options tries (in order):
-// getCurrentScriptPath() (browser-only, throws in Node) -> loadPyodide() with NO indexURL
-// (this is the one that should just work — the "pyodide" npm package is installed locally,
-// files and all) -> indexURL: <jsdelivr CDN>. In practice the middle branch was resolving to a
-// bogus path (node_modules/src/js/pyodide.asm.wasm — not a real path anywhere in this install,
-// some indexURL-detection quirk in pyodide 0.28.3 when it's reached via aksharamukha's own
-// indirect `new Function(...)("import(...)")` loader) and falling through to the CDN branch,
-// which then ALSO failed (dynamic import() of an https:// URL isn't network-fetched by this
-// Node runtime without --experimental-network-imports — it gets treated as a relative
-// filesystem path instead, hence the "no such file '.../https:/cdn.jsdelivr.net/...'" errors).
-// Loading pyodide ourselves with an explicit LOCAL indexURL sidesteps that whole fallback chain
-// — confirmed working standalone (Evaṁ me sutaṁ -> Devanagari) before wiring it in here.
-const akshReady = (async () => {
-    const { loadPyodide } = require('pyodide');
-    const pyodideDir = path.dirname(require.resolve('pyodide'));
-    // indexURL is used as a URL prefix internally (string-concatenated with filenames), not a
-    // filesystem path — always '/', not path.sep (this project also runs dev on Windows).
-    const pyodide = await loadPyodide({ indexURL: pyodideDir.replace(/\\/g, '/') + '/' });
-    return Aksharamukha.new({ pyodide });
-})().catch(err => {
-    console.error('Aksharamukha init failed (script conversion will be a no-op):', err.message);
-    return null;
-});
+// Aksharamukha runs as native Python (scripts/aksharamukha-convert.py), one short process per
+// request, not Pyodide inside this process. Measured on the server (2026-09-13): Pyodide kept
+// ~240MB of RSS for the life of the process and converted DN 16 in ~10s; the Python script does DN
+// 16 in ~0.7s with a 40MB peak that is gone when it exits (owner: "почему нельзя акшарамукху держать
+// как питон скрипт"). Every text one request needs is queued within the same tick and sent in a
+// single batch, so the call sites below keep converting segment by segment as before.
+//
+// The Python environment lives in a gitignored .venv-aksharamukha next to this file and installs
+// itself in the background the first time the server starts without it (same idea as the missing
+// npm packages above) — until it is ready, conversions return the text unchanged.
+const AKSH_VENV = path.join(__dirname, '.venv-aksharamukha');
+const AKSH_PYTHON = path.join(AKSH_VENV, 'bin', 'python');
+const AKSH_CONVERT = path.join(__dirname, 'scripts', 'aksharamukha-convert.py');
+let akshInstall = null;
+function akshReady() {
+    if (fsSync.existsSync(AKSH_PYTHON)) return true;
+    if (!akshInstall) {
+        console.log('Aksharamukha: installing Python environment in the background (.venv-aksharamukha)');
+        akshInstall = new Promise(resolve => {
+            const { exec } = require('child_process');
+            exec(`python3 -m venv "${AKSH_VENV}" && "${AKSH_VENV}/bin/pip" install -q aksharamukha==2.3`,
+                { timeout: 15 * 60 * 1000 }, err => {
+                    if (err) console.error('Aksharamukha: Python environment install failed:', err.message);
+                    else console.log('Aksharamukha: Python environment ready');
+                    akshInstall = null; // a failed install is retried on the next request that needs it
+                    resolve();
+                });
+        });
+    }
+    return false;
+}
+akshReady();
+
+function runAkshBatch(src, dst, texts) {
+    return new Promise(resolve => {
+        const { execFile } = require('child_process');
+        const child = execFile(AKSH_PYTHON, [AKSH_CONVERT], { timeout: 60000, maxBuffer: 256 * 1024 * 1024 }, (err, stdout) => {
+            if (err) {
+                console.warn(`Aksharamukha: ${src} -> ${dst} failed for ${texts.length} text(s):`, err.message.split('\n')[0]);
+                return resolve(texts);
+            }
+            try {
+                const out = JSON.parse(stdout);
+                resolve(Array.isArray(out) && out.length === texts.length ? out : texts);
+            } catch (e) {
+                console.warn('Aksharamukha: unreadable output:', e.message);
+                resolve(texts);
+            }
+        });
+        child.stdin.end(JSON.stringify({ src, dst, texts }));
+    });
+}
+
+// Queue per src->dst pair, flushed on the next turn of the event loop: all conversions started by
+// one request (Promise.all over its segments) land in the same batch.
+// ponytail: one Python process at a time (chain) — plenty for a handful of script requests a day;
+// allow 2 in parallel if script traffic ever makes requests wait on each other.
+const akshQueue = new Map(); // `${src}>${dst}` -> [{ text, resolve }]
+let akshFlushScheduled = false;
+let akshChain = Promise.resolve();
+function akshConvert(src, dst, text) {
+    if (!akshReady()) return Promise.resolve(text);
+    return new Promise(resolve => {
+        const key = src + '>' + dst;
+        if (!akshQueue.has(key)) akshQueue.set(key, []);
+        akshQueue.get(key).push({ text, resolve });
+        if (akshFlushScheduled) return;
+        akshFlushScheduled = true;
+        setImmediate(() => {
+            akshFlushScheduled = false;
+            const batches = [...akshQueue.entries()];
+            akshQueue.clear();
+            for (const [k, items] of batches) {
+                const [bSrc, bDst] = k.split('>');
+                akshChain = akshChain.then(async () => {
+                    const out = await runAkshBatch(bSrc, bDst, items.map(i => i.text));
+                    items.forEach((item, idx) => item.resolve(out[idx]));
+                });
+            }
+        });
+    });
+}
 // Раньше здесь была маленькая ручная таблица коротких кодов (deva/thai/sinh/mymr) на 4 системы
 // письма — владелец попросил показывать ВСЕ рабочие системы, которые реально умеет Aksharamukha
 // (проверено тестовым прогоном конвертации Pali IAST во все ключи Scripts — из ~163 не упал ни
@@ -439,17 +494,20 @@ for (const key of Object.keys(AKSH_SCRIPTS)) AKSH_SCRIPT_LOOKUP[key.toLowerCase(
 function resolveScriptKey(code) {
     return code ? (AKSH_SCRIPT_LOOKUP[code.toLowerCase()] || null) : null;
 }
+// The main Pali scripts are converted in-process by public/overrides/js/pali-script.js (pure JS,
+// same file the offline app can run on the device) — verified against Aksharamukha on the whole
+// vocab (89k word forms) + 3000 root segments with zero differences, except where Aksharamukha
+// itself is wrong for Pali: it reads ḷ as the Sanskrit vocalic l (ऌ) and a+i/a+u as diphthongs
+// (ै/ौ) because the source is IAST, not IASTPI. Everything else still goes to Python.
+const PaliScript = require('./public/overrides/js/pali-script.js');
 async function convertPaliScript(text, scriptCode) {
     const realKey = resolveScriptKey(scriptCode);
     if (!text || !realKey) return text;
-    const aksh = await akshReady;
-    if (!aksh) return text;
-    try {
-        return await aksh.processAsync(AKSH_SCRIPTS.IAST, AKSH_SCRIPTS[realKey], text);
-    } catch (err) {
-        console.warn(`Aksharamukha: conversion to ${scriptCode} failed:`, err.message);
-        return text;
-    }
+    if (PaliScript.scripts.includes(realKey)) return PaliScript.convert(text, realKey);
+    // ISOPali — the corpus is ISO 15919 Pali (SuttaCentral: ṁ, ḷ, long e/o), which is also why the site
+    // calls its unconverted script "ISOPali". Checked in native Aksharamukha 2.3: IAST reads ḷ as vocalic
+    // ऌ (daḷha -> दऌह), IASTPali leaves ṁ untouched (एवṁ), ISO makes e/o short; ISOPali gets all right.
+    return akshConvert(AKSH_SCRIPTS.ISOPI, AKSH_SCRIPTS[realKey], text);
 }
 
 // Та же конвертация, но для формы ответа /search и /search/enrich: data — по суттам, у каждой
@@ -487,15 +545,32 @@ async function convertScriptInSearchResult(result, scriptCode) {
 app.get('/api/transliterate', async (req, res) => {
     const text = (req.query.text || '').toString();
     if (!text) return res.send({ text: '', converted: false });
-    const aksh = await akshReady;
-    if (!aksh) return res.send({ text, converted: false });
-    try {
-        const converted = await aksh.processAsync(AKSH_SCRIPTS.AutoDetect, AKSH_SCRIPTS.IASTPI, text);
-        return res.send({ text: converted, converted: true });
-    } catch (err) {
-        console.warn('Transliterate to IAST failed:', err.message);
-        return res.send({ text, converted: false });
+    if (!akshReady()) return res.send({ text, converted: false });
+    // ?from= — the script the page shows (paliLookup.js). Autodetect guesses from the word alone and a
+    // short Lao Pali word (ນາປຣໍ) reads as modern Lao ("nāprṃ" instead of "nāparaṃ"). If the given
+    // script does not fit the word (letters left unconverted), autodetect still gets its chance.
+    const fromKey = resolveScriptKey((req.query.from || '').toString());
+    let converted = fromKey ? await akshConvert(AKSH_SCRIPTS[fromKey], AKSH_SCRIPTS.IASTPI, text) : text;
+    if (!fromKey || /[^\x00-\x7FĀ-ɏḀ-ỿ‐-―‘-‟…]/.test(converted)) {
+        converted = await akshConvert(AKSH_SCRIPTS.AutoDetect, AKSH_SCRIPTS.IASTPI, text);
     }
+    return res.send({ text: converted, converted: converted !== text });
+});
+
+// The settings sample in a script that demo-data.json does not carry (see SETTINGS_DEMO_SCRIPTS):
+// the same groups, converted now. preview-frame.html asks for it once per script.
+app.get('/api/settings-demo', async (req, res) => {
+    const realKey = resolveScriptKey((req.query.script || '').toString());
+    if (!realKey) return res.code(400).send({ error: 'unknown script' });
+    const groups = await Promise.all(settingsDemoBase.map(async group => ({
+        ...group,
+        segments: await Promise.all(group.segments.map(async seg => ({
+            ...seg,
+            root_text: await convertPaliScript(seg.root_text, realKey),
+            variant: await convertPaliScript(seg.variant, realKey),
+        }))),
+    })));
+    return res.send({ script: realKey, groups });
 });
 
 // Документация API — /api-docs. configs/openapi.json/openapi.en.json описывают /search,
@@ -670,9 +745,15 @@ const SETTINGS_DEMO_DEF = [
 // применяло — жалоба владельца). Формат файла — { "ISOPali": [...группы...], "Devanagari":
 // [...], ... }, тот же ключ (реальное имя Aksharamukha.Scripts), что и localStorage
 // selectedScript, preview-frame.html просто берёт groups[selectedScript] || groups.ISOPali.
+// Pre-converted only for the scripts the settings list shows first (settings/index.html
+// SCRIPT_MAIN_KEYS — keep the two lists in step); any other script is converted when someone picks
+// it, through /api/settings-demo (owner: "не делай все, а только основные").
+const SETTINGS_DEMO_SCRIPTS = ['Brahmi', 'Devanagari', 'Sinhala', 'Thai', 'BurmeseMyanmar'];
+let settingsDemoBase = [];
 async function buildSettingsDemoCache() {
     const cachePath = path.join(__dirname, 'settings', 'demo-data.json');
     const baseGroups = [];
+    settingsDemoBase = baseGroups;
     for (const def of SETTINGS_DEMO_DEF) {
         try {
             const full = await getFullTextData(def.suttaId, ['all'], null);
@@ -684,8 +765,31 @@ async function buildSettingsDemoCache() {
         }
     }
 
+    // Reuse the file when the sample texts are unchanged: converting them into every script needs
+    // Aksharamukha (Pyodide, ~240MB of RSS), which otherwise loaded on every server start for a
+    // result identical to the one already on disk. A new database or sample list rebuilds it.
+    try {
+        const prev = JSON.parse(await fs.readFile(cachePath, 'utf8'));
+        const sameScripts = JSON.stringify(Object.keys(prev).sort()) === JSON.stringify(['ISOPali', ...SETTINGS_DEMO_SCRIPTS].sort());
+        if (JSON.stringify(prev.ISOPali) === JSON.stringify(baseGroups) && sameScripts) {
+            console.log('Settings demo cache: sample texts unchanged, reusing settings/demo-data.json');
+            return;
+        }
+    } catch { /* no file yet or unreadable — build it below */ }
+
+    // First start on a machine without the Python environment: wait for its background install,
+    // and never write a "converted" file full of Latin text — the reuse check above would keep it
+    // forever. Not ready even then: leave the file alone, the next start tries again.
+    if (!akshReady()) {
+        if (akshInstall) await akshInstall;
+        if (!akshReady()) {
+            console.warn('Settings demo cache: Aksharamukha not ready — not written, retried on next start');
+            return;
+        }
+    }
+
     const byScript = { ISOPali: baseGroups };
-    for (const scriptCode of Object.keys(AKSH_SCRIPTS)) {
+    for (const scriptCode of SETTINGS_DEMO_SCRIPTS) {
         byScript[scriptCode] = await Promise.all(baseGroups.map(async group => ({
             ...group,
             segments: await Promise.all(group.segments.map(async seg => ({
@@ -1269,7 +1373,7 @@ app.get('/api/text/:suttaId', async (req, res) => {
         data.availableTranslators = roster.map(r => `${r.lang}_${r.translator}`);
 
         // Конвертация системы письма пали (?script=Devanagari/Thai/... — любой ключ
-        // Aksharamukha.Scripts, см. akshReady/resolveScriptKey выше). Только root_text/variant —
+        // Aksharamukha.Scripts, см. akshConvert/resolveScriptKey выше). Только root_text/variant —
         // сам пали, переводы не на пали и не трогаются. Параллельно по всем сегментам сразу
         // (Promise.all) — конвертация после инициализации быстрая (десятки мс), но
         // последовательно по сегментам целой сутты уже заметно набегало бы.

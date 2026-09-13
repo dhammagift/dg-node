@@ -266,7 +266,11 @@ const PALI_LATIN_RE = /^[\x00-\x7FĀ-ɏḀ-ỿ‐-―‘-‟…]*$/;
 async function ensureIastWord(word) {
     if (!word || PALI_LATIN_RE.test(word)) return word;
     try {
-        const res = await fetch(`${currentHost}/api/transliterate?text=${encodeURIComponent(word)}`);
+        // The script the page shows (same order megareader.js resolves it in), so the server does not
+        // have to guess: a short Lao Pali word (ນາປຣໍ) autodetects as modern Lao and comes back wrong.
+        const shownScript = new URLSearchParams(location.search).get('script') || localStorage.getItem('selectedScript') || '';
+        const from = shownScript && shownScript.toLowerCase() !== 'isopali' ? `&from=${encodeURIComponent(shownScript)}` : '';
+        const res = await fetch(`${currentHost}/api/transliterate?text=${encodeURIComponent(word)}${from}`);
         if (!res.ok) return word;
         const data = await res.json();
         return data.text || word;

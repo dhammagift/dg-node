@@ -85,3 +85,6 @@ siteroot/app-tests/
 dg.db.local*
 mobile-data
 .env
+
+# Aksharamukha (native Python) for script conversion — created by dg-fastify.js on first start
+.venv-aksharamukha/

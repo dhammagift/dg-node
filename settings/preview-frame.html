@@ -60,15 +60,24 @@ function pickReaderLangs() {
   const isRu = (localStorage.getItem('dhammaLanguage') || localStorage.getItem('siteLanguage') || 'en') === 'ru';
   return isRu ? ['ru', 'en'] : ['en'];
 }
-// Акшарамукха живёт только в Node (не в браузере посетителя) — образец берёт уже готовый,
-// заранее сконвертированный набор из settings/demo-data.json (dg-light.js, buildSettingsDemoCache
-// считает ISOPali + все SCRIPT_MAP-варианты при старте сервера), не конвертирует сам.
+// Акшарамукха живёт только на сервере (не в браузере посетителя). settings/demo-data.json несёт
+// готовый образец для основных систем письма (dg-fastify.js, SETTINGS_DEMO_SCRIPTS); любую другую
+// сервер конвертирует по запросу — /api/settings-demo, один раз на систему, пока ждём — латиница.
 function pickScript() {
   return localStorage.getItem('selectedScript') || 'ISOPali';
 }
+const demoScriptRequested = new Set();
 function currentGroups() {
   const byScript = window.__demoByScript || {};
-  return byScript[pickScript()] || byScript.ISOPali || [];
+  const script = pickScript();
+  if (!byScript[script] && script !== 'ISOPali' && window.__demoByScript && !demoScriptRequested.has(script)) {
+    demoScriptRequested.add(script);
+    fetch('/api/settings-demo?script=' + encodeURIComponent(script))
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d && d.groups && d.groups.length) { byScript[script] = d.groups; render(); } })
+      .catch(() => { /* stays in Latin script */ });
+  }
+  return byScript[script] || byScript.ISOPali || [];
 }
 // Та же разметка, что генерирует reader/megareader.js в реальном ридере (id сегмента,
 // .pli-lang.quote, .right-column с {lang}-lang.quote и .lang-2nd на втором переводчике) —
