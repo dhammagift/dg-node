@@ -11,15 +11,15 @@
 
 ## Текущий список (порядок в массиве = порядок в меню)
 
-Порядок 1–3 намеренно UX: TOC первым (самый частый вход), Favorites/history — вторым (владелец:
-"избранное историю ближе к пальцу и гарантированно на всех устройствах"), дальше Dictionary и Memo.
+Порядок — как в dg-twa (`app/build.gradle`, владелец 2026-09-13: "twa актуальнее", "на проде и в twa
+должно быть одинаково"): TOC, Dictionary, Favorites & history, Memo.
 Тот же порядок в приложении на Capacitor — там он достигается иначе (см. раздел про приложение).
 
 | # | name | short_name | url | icon | где лежит иконка |
 |---|---|---|---|---|---|
 | 1 | Table of Contents | TOC | `/toc` | `/assets/img/maniIcon.png` | `siteroot/assets/img/maniIcon.png` (легаси-репо) |
-| 2 | Favorites & history | Favorites | `/4as` | `/assets/svg/star.svg` | `public/overrides/svg/star.svg` (наш файл) |
-| 3 | Dictionary | Dictionary | `/dict` | `/assets/svg/book-letter.svg` | `public/overrides/svg/book-letter.svg` (наш файл) |
+| 2 | Dictionary | Dictionary | `/dict` | `/assets/svg/book-letter.svg` | `public/overrides/svg/book-letter.svg` (наш файл) |
+| 3 | Favorites & history | Favorites | `/4as` | `/assets/svg/star.svg` | `public/overrides/svg/star.svg` (наш файл) |
 | 4 | Memo | Memo | `/memo` | `/assets/svg/memo.svg` | `siteroot/assets/svg/memo.svg` (легаси-репо) |
 | 5 | Bhikkhu Patimokkha | — | `/toc/pm` | `/assets/img/monkIcon.png` | `siteroot/assets/img/monkIcon.png` |
 | 6 | Bhikkhuni Patimokkha | — | `/toc/bipm` | `/assets/img/nunIcon.png` | `siteroot/assets/img/nunIcon.png` |
@@ -35,12 +35,12 @@
   { "name": "Table of Contents", "short_name": "TOC",
     "description": "Table of contents of the canon", "url": "/toc",
     "icons": [{ "src": "/assets/img/maniIcon.png", "sizes": "192x192", "type": "image/png" }] },
-  { "name": "Favorites & history", "short_name": "Favorites",
-    "description": "Favorites and search history", "url": "/4as",
-    "icons": [{ "src": "/assets/svg/star.svg", "sizes": "any", "type": "image/svg+xml" }] },
   { "name": "Dictionary", "short_name": "Dictionary",
     "description": "Pali dictionary (DPD)", "url": "/dict",
     "icons": [{ "src": "/assets/svg/book-letter.svg", "sizes": "any", "type": "image/svg+xml" }] },
+  { "name": "Favorites & history", "short_name": "Favorites",
+    "description": "Favorites and search history", "url": "/4as",
+    "icons": [{ "src": "/assets/svg/star.svg", "sizes": "any", "type": "image/svg+xml" }] },
   { "name": "Memo", "short_name": "Memo",
     "description": "Memorize texts", "url": "/memo",
     "icons": [{ "src": "/assets/svg/memo.svg", "sizes": "any", "type": "image/svg+xml" }] }
@@ -79,14 +79,14 @@ extra'ом `route` (MainActivity → `https://localhost/?_nativeRoute=…`, ст
 поправками по существу:
 
 Приложение (Capacitor) держит **те же четыре статических шортката и в том же порядке**, что и
-манифест — Contents, Favorites & history, Dictionary, Memo (`res/xml/shortcuts.xml`, иконки из dg-twa).
+манифест — Contents, Dictionary, Favorites & history, Memo (`res/xml/shortcuts.xml`, иконки из dg-twa).
 Динамические («недавно прочитанное») добавляются к ним:
 
 | Слот | Что | Как задаётся |
 |---|---|---|
 | 1 | Table of Contents (`/toc`) | статический |
-| 2 | Favorites & history (`/4as`) | статический |
-| 3 | Dictionary (`/dict`) | статический, открывается в браузере (серверная страница) |
+| 2 | Dictionary (`/dict`) | статический, открывается в браузере (серверная страница) |
+| 3 | Favorites & history (`/4as`) | статический |
 | 4 | Memo (`/memo`) | статический, теперь внутри приложения |
 | далее | «недавно прочитанное» | динамические (`native-bridge.js` → `DgShortcuts`), только реальные тексты, максимум 2 |
 

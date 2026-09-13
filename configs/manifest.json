@@ -108,19 +108,6 @@
       "description": "Table of contents of the canon"
     },
     {
-      "name": "Favorites & history",
-      "short_name": "Favorites",
-      "description": "Favorites and search history",
-      "url": "/4as",
-      "icons": [
-        {
-          "src": "/assets/svg/star.svg",
-          "sizes": "any",
-          "type": "image/svg+xml"
-        }
-      ]
-    },
-    {
       "name": "Dictionary",
       "url": "/dict",
       "icons": [
@@ -132,6 +119,19 @@
       ],
       "short_name": "Dictionary",
       "description": "Pali dictionary (DPD)"
+    },
+    {
+      "name": "Favorites & history",
+      "short_name": "Favorites",
+      "description": "Favorites and search history",
+      "url": "/4as",
+      "icons": [
+        {
+          "src": "/assets/svg/star.svg",
+          "sizes": "any",
+          "type": "image/svg+xml"
+        }
+      ]
     },
     {
       "name": "Memo",
