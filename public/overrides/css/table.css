@@ -151,3 +151,20 @@ b {
 }
 
 }
+
+/* Results table on phones. home.css gives "td:nth-child(2)" (meant for Title) min-width 45vw —
+   with the Read marks column on, the 2nd cell is the checkbox, which took 185px and squeezed
+   Title/Words to a few letters per line. Any fixed min-width in that layout also makes
+   DataTables Responsive hide Title/Words entirely, so rows with the marks column get none. */
+@media (max-width: 480px) {
+    #pali tbody tr:has(> td.dg-read-cell) > td { min-width: 0; }
+}
+/* 1/2-column mode is for the reader's Pali/translation layout (reader/css/uiextra.css gives every
+   .pli-lang width 48%); inside the results table's Title/Words cells it split each cell in half.
+   Quote cells (.quote) keep the two-column layout. */
+#search-pane.column-view #pali td [class*="-lang"]:not(.quote),
+#search-pane.column-view #pali-words td [class*="-lang"]:not(.quote) {
+    width: auto;
+    max-width: none;
+    padding-right: 0;
+}
