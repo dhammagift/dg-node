@@ -7,12 +7,14 @@
 // It runs against a small synthetic database and a throwaway HTTP server, so it needs neither the
 // 479MB fixture nor dg-fastify.js, and takes seconds rather than a minute and a half.
 //
-// Usage: node test/offline-resume.js
+// Usage: node test/offline-resume.js          (plain file)
+//        OFFLINE_RESUME_GZ=1 node test/offline-resume.js   (gzip archive, as prod publishes)
 
 const fs = require('fs');
 const path = require('path');
 const express = require('express');
 const { DatabaseSync } = require('node:sqlite');
+const zlib = require('zlib');
 const { chromium } = require(process.env.DG_PLAYWRIGHT || '/var/www/dg-app-full/node_modules/playwright-core');
 
 const ROOT = path.resolve(__dirname, '..');
@@ -22,6 +24,8 @@ const BASE = `http://127.0.0.1:${PORT}`;
 const DB = path.join(WORK, 'dg-mobile.db');
 const BUILD_ID = 'resumeprobe';
 const TARGET_MB = 48;
+const GZ = !!process.env.OFFLINE_RESUME_GZ;
+const WIRE = GZ ? 'dg.db.gz' : 'dg-mobile.db';
 const CUT = 0.4; // share of the file the first attempt is allowed to deliver
 
 function fail(msg) {
@@ -49,13 +53,15 @@ function makeFixture() {
     for (const [k, v] of [['schema_version', '1'], ['build_id', BUILD_ID], ['langs', 'ru,en'], ['fts', 'none']]) {
         db.prepare('INSERT INTO meta VALUES (?,?)').run(k, v);
     }
-    const filler = db.prepare('INSERT INTO filler (blob) VALUES (zeroblob(?))');
+    const filler = db.prepare('INSERT INTO filler (blob) VALUES (randomblob(?))');
     const chunk = 1024 * 1024;
     while (fs.statSync(DB).size < TARGET_MB * chunk) filler.run(chunk);
     db.close();
     const bytes = fs.statSync(DB).size;
     fs.writeFileSync(path.join(WORK, 'db-manifest.json'), JSON.stringify({
-        schema_version: 1, build_id: BUILD_ID, langs: 'ru,en', fts: 'none', file: 'dg-mobile.db', bytes,
+        schema_version: 1, build_id: BUILD_ID, langs: 'ru,en', fts: 'none', bytes,
+        ...(GZ ? { file_gz: WIRE, bytes_gz: fs.writeFileSync(path.join(WORK, WIRE), zlib.gzipSync(fs.readFileSync(DB))) || fs.statSync(path.join(WORK, WIRE)).size }
+               : { file: WIRE }),
     }, null, 2) + '\n');
     return bytes;
 }
@@ -83,14 +89,14 @@ window.addEventListener('dg:dl-progress', (e) => window.__events.push(e.detail))
     const bytes = makeFixture();
     console.log(`fixture: ${(bytes / 1048576).toFixed(1)}MB, first attempt cut at ${(bytes * CUT / 1048576).toFixed(1)}MB`);
 
-    const buf = fs.readFileSync(DB);
+    const buf = fs.readFileSync(path.join(WORK, WIRE));
     const attempts = [];
     const app = express();
     app.use('/offline', express.static(path.join(ROOT, 'public', 'offline')));
     app.get('/reader/mode-table.json', (req, res) => res.sendFile(path.join(ROOT, 'configs', 'reader', 'mode-table.json')));
     // BEFORE the static mount below: express matches in registration order, so the other way round
     // the whole file is served and this test never interrupts anything.
-    app.get('/mobile-data/dg-mobile.db', (req, res) => {
+    app.get(`/mobile-data/${WIRE}`, (req, res) => {
         const range = req.headers.range;
         const m = range && /^bytes=(\d+)-$/.exec(range);
         const start = m ? Number(m[1]) : 0;
@@ -159,10 +165,10 @@ window.addEventListener('dg:dl-progress', (e) => window.__events.push(e.detail))
         }
         if (attempts.length < 2) fail('the connection was not actually cut — no retry happened');
         if (!resumed.length) fail(`the retry restarted from 0 instead of resuming: ${JSON.stringify(attempts)}`);
-        if (resumed[0].start < bytes * CUT * 0.9) {
-            fail(`resumed from ${resumed[0].start}, expected at least ${Math.floor(bytes * CUT * 0.9)} (the bytes already on disk)`);
+        if (resumed[0].start < buf.length * CUT * 0.9) {
+            fail(`resumed from ${resumed[0].start}, expected at least ${Math.floor(buf.length * CUT * 0.9)} (the bytes already on disk)`);
         }
-        console.log('\nOFFLINE RESUME OK');
+        console.log(`\nOFFLINE RESUME OK (${WIRE})`);
         process.exit(0);
     });
 })();

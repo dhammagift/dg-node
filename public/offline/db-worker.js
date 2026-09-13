@@ -201,12 +201,12 @@ async function openScratch(scratchName) {
 // The scratch handle is closed by downloadInto on the cancel path; this only removes the file, so a
 // later page load has nothing to resume from.
 async function dropScratchAfterCancel(scratchName) {
-    try { (await opfsRoot()).removeEntry(scratchName); } catch (e) { /* already gone */ }
+    try { await (await opfsRoot()).removeEntry(scratchName); } catch (e) { /* already gone */ }
 }
 
 async function dropScratch(scratch, scratchName) {
     try { scratch.close(); } catch (e) { /* already closed */ }
-    try { (await opfsRoot()).removeEntry(scratchName); } catch (e) { /* already gone */ }
+    try { await (await opfsRoot()).removeEntry(scratchName); } catch (e) { /* already gone */ }
 }
 
 // Bytes of an unfinished download already on disk, whichever build they belong to. Cheap: OPFS
@@ -341,7 +341,10 @@ async function downloadArchiveThenImport(pool, url, name, expectedWireBytes, exp
     let loadedBytes;
     try {
         loadedBytes = await pool.importDb(name, async () => {
-            const { done, value } = await reader.read();
+            let chunk;
+            // gzip verifies its own CRC: a decode error is the archive itself being bad.
+            try { chunk = await reader.read(); } catch (e) { throw Object.assign(e, { badArchive: true }); }
+            const { done, value } = chunk;
             if (done) return undefined;
             loaded += value.byteLength;
             if (expectedDbBytes && loaded > expectedDbBytes * OVERSHOOT_FACTOR) {
@@ -351,8 +354,10 @@ async function downloadArchiveThenImport(pool, url, name, expectedWireBytes, exp
         });
     } catch (e) {
         reader.cancel().catch(() => {});
-        // A damaged archive (or a cancel): its bytes are of no further use — the next attempt fetches it again.
-        await dropScratch(scratch, scratchName);
+        // Only a bad archive (or a cancel) is thrown away. Anything else — no room while unpacking, an
+        // I/O hiccup — keeps the complete archive: the next attempt unpacks it again, no download.
+        if (cancelRequested || (e && (e.badArchive || e.mismatch))) await dropScratch(scratch, scratchName);
+        else { try { scratch.close(); } catch (_) {} }
         if (cancelRequested) throw cancelledError();
         throw e;
     }
@@ -363,20 +368,17 @@ async function downloadArchiveThenImport(pool, url, name, expectedWireBytes, exp
     console.log(`[dg-offline] unpacked ${loadedBytes} bytes from a ${size}-byte archive`);
     lastTransferStats = { fed: loadedBytes, expected: expectedDbBytes || null, scratchSize: size, scratchShortWrites: 0 };
     post({ type: 'progress', loaded: expectedDbBytes || loadedBytes, total: expectedDbBytes || loadedBytes, phase: 'download', done: false });
-    await dropScratch(scratch, scratchName);
+    try { scratch.close(); } catch (_) {} // removed by fetchCurrent once the library has opened
     activeAbort = null;
     return loadedBytes;
 }
 
 async function downloadInto(pool, url, name, expectedWireBytes, expectedDbBytes, gzip, scratchName, resumable) {
     // Room for the archive next to the database: download it whole (resumable), then unpack.
-    // Without that room ('plain' plan) the archive is unpacked on the fly below — no resume, but it fits.
     if (gzip && resumable !== false) {
         return downloadArchiveThenImport(pool, url, name, expectedWireBytes, expectedDbBytes, scratchName);
     }
     const phase = 'download';
-    // 'plain' mode (no room for two copies) runs with no scratch file at all: no resume, and half the
-    // peak space, which is the difference between finishing and SQLITE_CORRUPT near the end.
     const useScratch = resumable !== false;
     const scratch = useScratch ? await openScratch(scratchName) : null;
     let scratchShortWrites = 0;
@@ -653,16 +655,11 @@ function storageHint(plan) {
         `wanted about ${Math.round(plan.neededBytes / 1048576)}MB)`;
 }
 
-// How much room this download actually needs, and therefore how it can be done:
-//   'resume' — the database plus its resumable partial copy (peak ~2x), a dropped connection can be
-//              continued with a Range request;
-//   'plain'  — the database alone (peak ~1x). No resume, but it FITS: on a phone with ~1GB free the
-//              2x requirement is exactly what produced "качал-качал" and then SQLITE_CORRUPT, because
-//              the writes started failing near the end (the pool's importDb does not check them).
-// Throws only when even 'plain' does not fit, naming the numbers.
-// `copyBytes` is what the resumable partial copy holds at its largest: the whole database again
-// for a plain transfer, only the archive (~1/3 of it) for a gzip one — so a phone with room for
-// database + archive gets resume, and is not pushed into 'plain' by a 2x rule written for plain files.
+// How much room this download needs: the database plus its resumable partial copy (the archive
+// for gzip). There is one way to download — resume, then unpack — so when that does not fit the
+// reader is told how much to free, before anything is transferred.
+// `copyBytes` is what the partial copy holds at its largest: the whole database again for a plain
+// transfer, only the archive (~1/3 of it) for a gzip one.
 async function storagePlanFor(dbBytes, copyBytes) {
     if (!dbBytes) return { mode: 'resume', freeBytes: null, neededBytes: null };
     let est;
@@ -671,16 +668,9 @@ async function storagePlanFor(dbBytes, copyBytes) {
     const free = est.quota - (est.usage || 0);
     const headroom = 32 * 1048576;
     const resumeNeeds = Math.ceil(dbBytes + (copyBytes || dbBytes) * 1.1) + headroom;
-    const plainNeeds = Math.ceil(dbBytes * 1.15) + headroom;
     if (free >= resumeNeeds) return { mode: 'resume', freeBytes: free, neededBytes: resumeNeeds };
-    if (free >= plainNeeds) {
-        console.log(`[dg-offline] only ${Math.round(free / 1048576)}MB free: downloading without the ` +
-            `resumable partial copy (needs ${Math.round(plainNeeds / 1048576)}MB instead of ` +
-            `${Math.round(resumeNeeds / 1048576)}MB)`);
-        return { mode: 'plain', freeBytes: free, neededBytes: plainNeeds };
-    }
     throw new Error(`not enough storage for the offline library: about ` +
-        `${Math.round(plainNeeds / 1048576)}MB of free space is needed, this browser allows ` +
+        `${Math.round(resumeNeeds / 1048576)}MB of free space is needed, this browser allows ` +
         `${Math.round(free / 1048576)}MB more — free up space and try again`);
 }
 
@@ -762,18 +752,12 @@ async function fetchCurrent(pool, distBase, args) {
     const file = gzip ? manifest.file_gz : (manifest && manifest.file) || 'dg-mobile.db';
     const expectedWireBytes = gzip ? manifest.bytes_gz : (manifest && manifest.bytes);
 
-    // How this download can be done: with a resumable partial copy (peak ~2x the file) or as a
-    // single file (peak ~1x, no resume). On a phone with little room the 2x was what produced a
-    // long download ending in SQLITE_CORRUPT — the writes fail near the end and importDb does not
-    // check them. storagePlanFor() throws before anything is transferred when even one copy does
-    // not fit, naming the numbers.
+    // storagePlanFor() throws before anything is transferred when the download does not fit.
     const plan = await storagePlanFor(manifest && manifest.bytes, expectedWireBytes);
-    const wanted = (args && args.noResume) ? 'plain' : plan.mode;
-    const modes = wanted === 'resume' ? ['resume', 'plain'] : ['plain'];
 
-    // One attempt, from the transfer to an opened library. A corruption failure is marked retryable
-    // so the caller can try again without the resumable copy — the most likely reason it happened.
-    const runAttempt = async (resumable) => {
+    // One attempt, from the transfer to an opened library. On failure the downloaded archive stays
+    // on disk: the next attempt continues or re-unpacks it instead of downloading it again.
+    const runAttempt = async () => {
         post({ type: 'downloading' });
         // Phase timings, in the worker's own log: "the download is slow" has three very different
         // causes (the network, this browser's storage, or the check afterwards) and guessing between
@@ -782,7 +766,7 @@ async function fetchCurrent(pool, distBase, args) {
         let transferred;
         try {
             transferred = await downloadInto(pool, `${distBase}/${file}`, target, expectedWireBytes,
-                manifest && manifest.bytes, gzip, scratchName, resumable);
+                manifest && manifest.bytes, gzip, scratchName, true);
         } catch (e) {
             if (e && e.cancelled) {
                 // Nothing half-written is left to confuse the next visit: no pool file, no scratch.
@@ -793,7 +777,7 @@ async function fetchCurrent(pool, distBase, args) {
         }
         const transferSec = (Date.now() - tTransfer) / 1000;
         console.log(`[dg-offline] transfer: ${(transferred / 1048576).toFixed(1)}MB in ${transferSec.toFixed(1)}s ` +
-            `(${(transferred / 1048576 / transferSec).toFixed(1)} MB/s${resumable ? '' : ', no resumable copy'})`);
+            `(${(transferred / 1048576 / transferSec).toFixed(1)} MB/s)`);
 
         // Measure, do not guess: the full page-by-page check takes ~36s on 479MB — far too long to
         // hold a reader in front of a bar that already reads 100%. What it guards against is a
@@ -821,30 +805,14 @@ async function fetchCurrent(pool, distBase, args) {
         console.log(`[dg-offline] opened ${suttas} suttas in ${((Date.now() - tAdopt) / 1000).toFixed(1)}s`);
 
         for (const name of stale) { try { pool.unlink(name); } catch (_) {} }
+        await dropScratchAfterCancel(scratchName); // the archive has done its job
         // Now it is true.
         post({ type: 'progress', loaded: 1, total: 1, phase: 'download', done: true });
         scheduleFullCheck(pool, target);
         return { suttas, build_id: candidate.meta.build_id, downloaded: true, present: true };
     };
 
-    for (let i = 0; i < modes.length; i++) {
-        const resumable = modes[i] === 'resume';
-        if (i > 0) {
-            console.log('[dg-offline] retrying as a single file: the resumable copy is what ran the ' +
-                'device out of room');
-            post({ type: 'progress', loaded: 0, total: 0, phase: 'download',
-                   reason: (typeof navigator !== 'undefined' ? '' : '') });
-            try { pool.unlink(target); } catch (_) {}
-            await dropScratchAfterCancel(scratchName);
-        }
-        try {
-            return await runAttempt(resumable);
-        } catch (e) {
-            if (e && e.corrupt && resumable && i + 1 < modes.length) continue;
-            throw e;
-        }
-    }
-    throw new Error('download failed');
+    return runAttempt();
 }
 
 // The manifest is small and its absence is not an error: a device that is offline, or pointed at
