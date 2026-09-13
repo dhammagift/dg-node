@@ -84,3 +84,4 @@ test/.disk-guard.log
 siteroot/app-tests/
 dg.db.local*
 mobile-data
+.env

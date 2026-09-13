@@ -118,6 +118,9 @@
     var relayRequests = new Map();
     var relayUsed = false;
     var LIBRARY_KEY = 'dg.offline.libraryExists';
+    // Set once the reader has agreed to a download, cleared when a library is installed or deleted:
+    // the only way this page knows an unfinished transfer is waiting without starting the worker.
+    var STARTED_KEY = 'dg.offline.downloadStarted';
     if (channel) {
         channel.onmessage = function (event) {
             var msg = event.data || {};
@@ -453,7 +456,7 @@
 
     function markLocal(opened) {
         local = true;
-        try { localStorage.setItem(LIBRARY_KEY, '1'); } catch (e) { /* private mode */ }
+        try { localStorage.setItem(LIBRARY_KEY, '1'); localStorage.removeItem(STARTED_KEY); } catch (e) { /* private mode */ }
         // Always: a reader who installed the library before the dictionary existed must still get it.
         // The call is idempotent and cheap on a visit where the files are already cached (a match per
         // file and nothing else).
@@ -551,6 +554,7 @@
             return platform.askConsent(info);
         }).then(function (ok) {
             if (!ok) throw new Error('offline-data-download-declined');
+            try { localStorage.setItem(STARTED_KEY, '1'); } catch (e) { /* private mode */ }
             // 'update' replaces a copy that is already there; 'open' adopts an existing one or
             // downloads when there is none. Both leave a working copy in place until the new file
             // is proven (db-worker.js's fetchCurrent).
@@ -697,6 +701,19 @@
                 deferredRequest = null;
                 log('running the download another tab asked for before this one owned the pool');
                 return download(kind);
+            }
+
+            // Owner: "почему без спроса он вообще пытается что-то делать? это нужно только если
+            // человек пытается скачать". The status check below starts the SQLite worker, and a worker
+            // that fails to start in some browser surfaced as "Could not download data" for readers
+            // who never downloaded anything. So the worker only starts for a reason: a library was
+            // installed here, a download was agreed to and may be unfinished, or a download is being
+            // asked for right now. Everyone else gets the plain site — no worker, no toast.
+            var hasReason = wantsData || wantsUpdate;
+            try { hasReason = hasReason || localStorage.getItem(LIBRARY_KEY) === '1' || localStorage.getItem(STARTED_KEY) === '1'; } catch (e) { /* private mode */ }
+            if (!hasReason) {
+                rememberMode(false, 'none');
+                return null;
             }
 
             // wantManifest:false — the site never shows the size before asking (its button in
@@ -1100,6 +1117,7 @@
     window.dgDeleteOfflineData = function () {
         return call('delete', {}).then(function (result) {
             local = false;
+            try { localStorage.removeItem(STARTED_KEY); } catch (e) { /* private mode */ }
             rememberState({ present: false, build_id: null, update: null });
             return result;
         });

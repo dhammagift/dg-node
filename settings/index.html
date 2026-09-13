@@ -286,10 +286,12 @@ kbd{font:inherit;font-size:12.5px;background:var(--line);border:1px solid var(--
    align-items не переопределяется — родной stretch растягивает .preview-col по высоте
    .settings-col, иначе sticky (см. .preview{position:sticky}) стикаться было бы негде: у
    родителя короче содержимого нет пространства для "проезда" вниз при скролле. */
-@media (min-width:1100px){
+/* 880, not 1100: the settings sheet on desktop is ~920px wide, and there the sample belongs beside
+   the settings too (owner). */
+@media (min-width:880px){
   .wrap{max-width:1180px}
   .settings-layout{display:flex;gap:32px}
-  .preview-col{flex:0 0 380px;order:2}
+  .preview-col{display:block;flex:0 0 380px;order:2}
   .settings-col{flex:1;min-width:0;order:1}
 }
 @media (max-width:560px){

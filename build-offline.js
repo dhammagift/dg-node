@@ -83,6 +83,21 @@ function buildCoreBundle() {
     });
     if (!inlined.length) throw new Error('no config requires found — has the core changed shape?');
 
+    // --- pali-skeleton.js: the browser-safe helper suggestWords needs, inlined without its tail --
+    // The file serves both sides: a plain <script> and require() on the server. Only the part above
+    // its export/self-check marker goes in — the tail carries module.exports and require('assert').
+    const skelRequire = "const { paliSkel } = require('../public/overrides/js/pali-skeleton.js');\n";
+    const skelSrc = fs.readFileSync(path.join(ROOT, 'public', 'overrides', 'js', 'pali-skeleton.js'), 'utf8');
+    // From the function itself: the header comment mentions "require()s", which the leftover check
+    // below would (rightly) refuse.
+    const skelStart = skelSrc.indexOf('function paliSkel');
+    const skelEnd = skelSrc.indexOf('// Both sides of the same file');
+    const skelBody = skelStart >= 0 && skelEnd > skelStart ? skelSrc.slice(skelStart, skelEnd) : skelSrc;
+    if (!code.includes(skelRequire) || skelBody === skelSrc) {
+        throw new Error('pali-skeleton require or its export marker not found — has the core changed shape?');
+    }
+    code = code.replace(skelRequire, skelBody);
+
     // --- READER_LANGS: the core scans configs/reader/ for lang_*.json -------------------------
     const readerDir = path.join(ROOT, 'configs', 'reader');
     const readerLangs = fs.readdirSync(readerDir)
