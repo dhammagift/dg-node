@@ -4,6 +4,24 @@
 // file won. dg-light.js is now legacy/unused — nothing requires() it and nothing runs it in
 // prod — kept in the repo only as reference until it's archived. The two files still don't
 // require() each other (comments below compare behavior for historical/porting context).
+
+// Per-checkout settings (PORT, AI tokens) live in a gitignored .env next to this file, so prod
+// and test checkouts keep their own port no matter how pm2 was started. Real env vars still win.
+try { process.loadEnvFile(require('path').join(__dirname, '.env')); } catch {}
+
+// A git pull can add a dependency without anyone running npm install — then the first require()
+// below crashes the server in a restart loop. Install whatever package.json lists but is missing.
+{
+    const { existsSync } = require('fs');
+    const { join } = require('path');
+    const deps = Object.keys(require('./package.json').dependencies || {});
+    const missing = deps.filter(d => !existsSync(join(__dirname, 'node_modules', d, 'package.json')));
+    if (missing.length) {
+        console.log(`Missing dependencies (${missing.join(', ')}) — running npm install`);
+        require('child_process').execSync('npm install --no-audit --no-fund', { cwd: __dirname, stdio: 'inherit' });
+    }
+}
+
 const { DatabaseSync } = require('node:sqlite');
 const Fastify = require('fastify');
 const fastifyStatic = require('@fastify/static');
