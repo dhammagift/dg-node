@@ -660,14 +660,17 @@ function storageHint(plan) {
 //              2x requirement is exactly what produced "качал-качал" and then SQLITE_CORRUPT, because
 //              the writes started failing near the end (the pool's importDb does not check them).
 // Throws only when even 'plain' does not fit, naming the numbers.
-async function storagePlanFor(dbBytes) {
+// `copyBytes` is what the resumable partial copy holds at its largest: the whole database again
+// for a plain transfer, only the archive (~1/3 of it) for a gzip one — so a phone with room for
+// database + archive gets resume, and is not pushed into 'plain' by a 2x rule written for plain files.
+async function storagePlanFor(dbBytes, copyBytes) {
     if (!dbBytes) return { mode: 'resume', freeBytes: null, neededBytes: null };
     let est;
     try { est = await navigator.storage.estimate(); } catch (e) { return { mode: 'resume', freeBytes: null, neededBytes: null }; }
     if (!est || !est.quota) return { mode: 'resume', freeBytes: null, neededBytes: null };
     const free = est.quota - (est.usage || 0);
     const headroom = 32 * 1048576;
-    const resumeNeeds = Math.ceil(dbBytes * 2.1) + headroom;
+    const resumeNeeds = Math.ceil(dbBytes + (copyBytes || dbBytes) * 1.1) + headroom;
     const plainNeeds = Math.ceil(dbBytes * 1.15) + headroom;
     if (free >= resumeNeeds) return { mode: 'resume', freeBytes: free, neededBytes: resumeNeeds };
     if (free >= plainNeeds) {
@@ -764,7 +767,7 @@ async function fetchCurrent(pool, distBase, args) {
     // long download ending in SQLITE_CORRUPT — the writes fail near the end and importDb does not
     // check them. storagePlanFor() throws before anything is transferred when even one copy does
     // not fit, naming the numbers.
-    const plan = await storagePlanFor(manifest && manifest.bytes);
+    const plan = await storagePlanFor(manifest && manifest.bytes, expectedWireBytes);
     const wanted = (args && args.noResume) ? 'plain' : plan.mode;
     const modes = wanted === 'resume' ? ['resume', 'plain'] : ['plain'];
 
