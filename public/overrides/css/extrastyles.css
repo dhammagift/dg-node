@@ -1803,3 +1803,13 @@ body.dark .dict-loading-indicator,
     animation: dgTempBlink 0.8s ease-in-out 3;
     border-radius: 6px;
 }
+
+/* Results page: the in-flow bottom bar (Make List / List Diff / Sutta Diff) ends up exactly where
+   the bottom toast sits ("Multi-select On" covered Sutta Diff, the button used right after it).
+   Show toasts under the top search bar there instead. */
+body.dg-state-results .bubble-notification {
+    bottom: auto;
+    top: calc(env(safe-area-inset-top, 0px) + 120px);
+    transform: translate(-50%, -20px);
+}
+body.dg-state-results .bubble-notification.show { transform: translate(-50%, 0); }
