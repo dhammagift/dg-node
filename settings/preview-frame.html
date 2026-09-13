@@ -168,7 +168,11 @@ window.addEventListener('resize', reportHeight);
 // выглядел светлым, даже когда сам сайт был в тёмной теме.
 function applyTheme() {
   const t = localStorage.getItem('theme') || 'auto';
-  const dark = t === 'dark' || (t === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches);
+  let dark = t === 'dark' || (t === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches);
+  // Inside /settings/ the sample takes the page's own resolved theme, so it can never differ from
+  // the card around it (owner: sample often loaded in a stale theme). settings/index.html
+  // setTheme() calls this again whenever it changes, whichever of the two loads first.
+  try { if (window.parent !== window && window.parent.document.body.classList.contains('dg-theme-ready')) dark = window.parent.document.body.classList.contains('dark'); } catch (_) {}
   document.body.classList.toggle('dark', dark);
   // The site also marks body[data-theme="dark"] (search/index.html, themeswitch.js) — extrastyles.css
   // paints the real dark reader background (#111) from it; without it the sample kept the old one.

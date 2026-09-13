@@ -1988,38 +1988,49 @@ body:not(.dg-state-home) #dg-announce { display: none; }
    resolution at all. */
 .dg-sheet.dg-settings-embed .dg-sheet-body { padding: 0; overflow: hidden; min-height: 0; position: relative; }
 .dg-sheet.dg-settings-embed .dg-sheet-body iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: block; }
+/* Settings = full-height side panel on the right at EVERY width (owner: "на всех открывать так,
+   просто на каких-то ничего не будет видно от старой страницы"). Wide screens keep the live page
+   visible and scrollable beside it (backdrop is transparent, see openSettingsSheet()); below
+   460px the panel is simply the whole screen. Selectors out-rank the generic .dg-sheet
+   breakpoint rules (left:50% + translate(-50%)). */
+.dg-sheet.dg-settings-embed,
+.dg-sheet.dg-settings-embed.show {
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: auto;
+    width: min(460px, 100%);
+    height: 100%;
+    max-height: none;
+    min-height: 0;
+    border: 0;
+    border-left: 1px solid var(--dg-border-strong);
+    border-radius: 0;
+    box-shadow: -12px 0 32px rgba(0, 0, 0, 0.18);
+}
+.dg-sheet.dg-settings-embed { transform: translateX(100%); }
+.dg-sheet.dg-settings-embed.show { transform: translateX(0); }
+.dg-sheet.dg-settings-embed .dg-sheet-handle { display: none; }
+/* Below 768px there is no useful room for the page beside the panel (only a strip of it stuck out,
+   owner; at 820px the side panel is still fine) — the panel is centered over a dimmed page instead
+   (backdrop: openSettingsSheet()). Same 768px as home.js and settings/index.html (sample folded
+   only when the page is visible) and the site's other sheet breakpoint above. */
 @media (max-width: 767px) {
-    /* Fullscreen below the desktop breakpoint: no backdrop sliver of the site's own header
-       behind it, nothing to click "outside" of — closing is the sheet's own X, the embedded
-       page's back arrow, or the phone's back button/gesture. */
-    .dg-sheet.dg-settings-embed {
+    .dg-sheet.dg-settings-embed,
+    .dg-sheet.dg-settings-embed.show {
         left: 0;
         right: 0;
-        top: 0;
-        bottom: 0;
-        width: auto;
-        height: 100%;
-        max-height: none;
-        min-height: 0;
-        border: 0;
-        border-radius: 0;
-        transform: translateY(100%);
+        margin: 0 auto;
+        border-right: 1px solid var(--dg-border-strong);
+        box-shadow: 0 0 32px rgba(0, 0, 0, 0.25);
     }
+    .dg-sheet.dg-settings-embed { transform: translateY(100%); }
     .dg-sheet.dg-settings-embed.show { transform: translateY(0); }
-    .dg-sheet.dg-settings-embed .dg-sheet-handle { display: none; }
 }
-@media (min-width: 768px) {
-    /* Owner: the plain .dg-wide box (min-height:74vh, anchored to bottom:20px) left a tall gap
-       above it showing the full site header/hero — "сделай чтобы до самого верха настройки
-       открывались". Same 20px margin on top now as .dg-sheet already uses on bottom, so it
-       reaches near the top edge instead of floating in the lower 74%, while still framed on all
-       four sides (keeps reading as a sheet, not a full page — the width stays 920px too). */
-    .dg-sheet.dg-settings-embed {
-        top: 20px;
-        height: auto;
-        max-height: none;
-        min-height: 0;
-    }
+/* Full-width panel: nothing beside it to separate from. */
+@media (max-width: 480px) {
+    .dg-sheet.dg-settings-embed,
+    .dg-sheet.dg-settings-embed.show { border-left: 0; box-shadow: none; }
 }
 /* Заголовок набора отбит пустой строкой сверху и снизу — до правки он прилипал к предыдущему
    пункту и читался как его продолжение, а не как начало нового набора. */

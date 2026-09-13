@@ -889,6 +889,10 @@ function setTheme(t){
     if (dark) localStorage.setItem('darkSwitch', 'dark'); else localStorage.removeItem('darkSwitch');
   }
   document.body.classList.toggle('dark', dark);
+  // The sample frame mirrors this page's theme (preview-frame.html applyTheme); the marker tells
+  // it this page has resolved its theme, the call covers a frame that loaded before that.
+  document.body.classList.add('dg-theme-ready');
+  try { document.getElementById('previewFrame').contentWindow.applyTheme(); } catch (_) {}
   document.querySelectorAll('#themeSeg button').forEach(b=>b.setAttribute('aria-pressed', String(b.dataset.theme===t)));
 }
 document.querySelectorAll('#themeSeg button').forEach(b=> b.onclick=()=> setTheme(b.dataset.theme));
@@ -1621,6 +1625,12 @@ window.addEventListener('message', handlePreviewMessage);
   }
   window.addEventListener('scroll', update, { passive: true });
 })();
+
+// Settings side panel (search/js/home.js) with the live page visible beside it: that page already
+// shows every change, so the sample starts folded (one tap on ︾ brings it back, e.g. on the home
+// page where there is no text). Below 768px the panel is centered over a dimmed page (home.css), so
+// the sample stays open there.
+if (window.parent !== window && window.parent.matchMedia('(min-width: 768px)').matches) setPreviewCollapsed(true);
 
 setTheme(localStorage.getItem('theme') || 'auto');
 applyLang();

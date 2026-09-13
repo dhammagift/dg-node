@@ -181,6 +181,11 @@
     // (not currentSheetKey) — it's not a tile-menu list, it hosts the real /settings/ page in
     // an iframe, so there's exactly one settings implementation instead of two.
     var settingsSheetOpen = false;
+    // True between closeSettingsSheet()'s own history.back() and the popstate it triggers.
+    var settingsBackPending = false;
+    var settingsPrevScrollRestoration = 'auto';
+    // Something was saved from inside the settings sheet since it opened (storage events below).
+    var settingsChanged = false;
 
     // ======================================================================
     // Состояния страницы: home / results / reader
@@ -481,10 +486,9 @@
         ensureBackdrop();
         var sheet = document.createElement('div');
         sheet.id = 'dg-settings-sheet';
-        // dg-wide: same 920px desktop floating-card width as the About sheet (home.css) — on
-        // mobile that class is a no-op (gated by the same 768px media query dg-settings-embed's
-        // own fullscreen override uses), the desktop card is scoped entirely in CSS.
-        sheet.className = 'dg-sheet dg-settings-embed dg-wide';
+        // Right-hand side panel at every width (owner: live page stays visible beside it; on a
+        // narrow screen the panel simply takes the whole width) — layout lives in home.css.
+        sheet.className = 'dg-sheet dg-settings-embed';
         sheet.setAttribute('role', 'dialog');
         sheet.setAttribute('aria-modal', 'true');
         sheet.hidden = true;
@@ -538,11 +542,53 @@
             : '/settings/';
         sheet.hidden = false;
         settingsSheetOpen = true;
+        settingsChanged = false;
+        // While the panel is open, any back step (ours on close, or the phone's back button) must
+        // not restore the scroll the browser saves with the history entry right now: the page may
+        // be scrolled or re-rendered meanwhile (owner: reading place lost on close).
+        settingsPrevScrollRestoration = history.scrollRestoration;
+        history.scrollRestoration = 'manual';
         history.pushState({ dgSettingsSheet: true }, '', location.href);
-        showLater(sheet, backdrop);
+        // Wide screens: no dimming, the page beside the panel shows setting changes live; a click
+        // on it still closes the panel (shared backdrop handler). Below 768px the panel is centered
+        // over a dimmed page (home.css).
+        showLater(sheet, backdrop, window.matchMedia('(min-width: 768px)').matches);
+    }
+
+    /* The settings sheet is an iframe of /settings/ that saves every change to localStorage at
+       once; this page hears it as a `storage` event. Text settings re-render the open reader
+       right away (the page stays visible beside the side panel), keeping the reading place. */
+    var READER_SETTING_KEYS = ['selectedScript', 'devanagariModeScript', 'removePunct', 'dhammaReaderLangs',
+        'dhammaLanguage', 'siteLanguage', 'variantVisibility', 'mergeGathas', 'viewMode'];
+    var readerRebuildTimer = null;
+    window.addEventListener('storage', function (e) {
+        if (!settingsSheetOpen || e.key === null) return;
+        settingsChanged = true;
+        if (READER_SETTING_KEYS.indexOf(e.key) === -1) return;
+        if (typeof window.buildSutta !== 'function' || !window.currentReaderSlug) return;
+        if (!document.body.classList.contains('dg-state-reader')) return;
+        clearTimeout(readerRebuildTimer);
+        readerRebuildTimer = setTimeout(rebuildReaderKeepingPlace, 250);
+    });
+    function rebuildReaderKeepingPlace() {
+        // Remember the segment on screen, re-render the text only (same as a reader mode switch,
+        // megareader.js), put the segment back. inPlace: not a new open of the text, so
+        // smoothScroll.js neither scrolls nor offers "Continue reading".
+        var anchor = window.captureReadingAnchor ? window.captureReadingAnchor() : null;
+        Promise.resolve(window.buildSutta(window.currentReaderSlug, { inPlace: true })).then(function () {
+            if (window.restoreReadingAnchor) window.restoreReadingAnchor(anchor);
+        });
     }
 
     function closeSettingsSheet(fromPopstate) {
+        // The popstate caused by our own history.back() below: swallow it. Otherwise the shared
+        // popstate listener (search/index.html) saw the sheet as already closed and ran
+        // routeFromUrl(), re-rendering the reader and jumping the sutta back to its top (owner).
+        if (fromPopstate && settingsBackPending) {
+            settingsBackPending = false;
+            history.scrollRestoration = settingsPrevScrollRestoration;
+            return;
+        }
         if (!settingsSheetOpen) return;
         settingsSheetOpen = false;
         var sheet = document.getElementById('dg-settings-sheet');
@@ -550,9 +596,19 @@
         sheet.classList.remove('show');
         if (backdrop && !isQuickOpen()) backdrop.classList.remove('show');
         setTimeout(function () { if (!settingsSheetOpen) sheet.hidden = true; }, 320);
+        // Reader already re-rendered live (see the storage listener above). Results/home still
+        // need one re-route to pick up changed defaults — only when something actually changed,
+        // otherwise closing made the results blink for nothing (owner).
+        if (settingsChanged && !document.body.classList.contains('dg-state-reader') && window.dgRouteFromUrl) window.dgRouteFromUrl();
+        settingsChanged = false;
         // Consume the pushState from openSettingsSheet() so a later back-press doesn't land on
         // a phantom step — skipped when THIS close was itself caused by that back-press.
-        if (!fromPopstate && history.state && history.state.dgSettingsSheet) history.back();
+        if (!fromPopstate && history.state && history.state.dgSettingsSheet) {
+            settingsBackPending = true;
+            history.back(); // scrollRestoration is put back once its popstate arrives (see top)
+        } else {
+            history.scrollRestoration = settingsPrevScrollRestoration;
+        }
     }
 
     /* Личные отметки пунктов мультитула (шторки Read Pāḷi/External/AI & Dicts/…) — поверх
@@ -4483,7 +4539,7 @@
         // screens instead of navigating away — see the dg-drawer-row/settingsButton handler).
         openSettingsSheet: openSettingsSheet,
         closeSettingsSheet: closeSettingsSheet,
-        isSettingsSheetOpen: function () { return settingsSheetOpen; }
+        isSettingsSheetOpen: function () { return settingsSheetOpen || settingsBackPending; }
     };
 
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);

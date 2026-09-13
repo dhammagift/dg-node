@@ -134,6 +134,9 @@ const ScrollManager = {
     },
 
  async handleInitialScroll(event) {
+        // Same text re-rendered in place (settings side panel, megareader.js buildSutta opts):
+        // the caller keeps the reading place itself — no hash jump, no "Continue reading".
+        if (event && event.detail && event.detail.inPlace) return;
         if (localStorage.getItem('dg_progressEnabled') === 'false') {
             window.isRestoringProgress = false;
             this.scrollToHash();

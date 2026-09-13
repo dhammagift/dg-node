@@ -1123,7 +1123,9 @@ function dgReaderReveal(animate) {
 window.captureReadingAnchor = captureReadingAnchor;
 window.restoreReadingAnchor = restoreReadingAnchor;
 
-window.buildSutta = async function(rawSlug) {
+// opts.inPlace — re-render of the text already on screen (a setting changed in the settings side
+// panel, search/js/home.js): passed on with 'suttaLoaded' so smoothScroll.js leaves scroll alone.
+window.buildSutta = async function(rawSlug, opts) {
     const slug = window.normalizeSlugToDbKey(rawSlug);
     window._currentSlug = slug;
     // Owner: the skeleton is only useful when the reader is opening cold (nothing on screen
@@ -1698,7 +1700,7 @@ window.buildSutta = async function(rawSlug) {
 
     window.renderNavigation(slug, suttaData.title);
 
-    window.dispatchEvent(new Event('suttaLoaded'));
+    window.dispatchEvent(new CustomEvent('suttaLoaded', { detail: { inPlace: !!(opts && opts.inPlace) } }));
     // 'suttaRenderedCentral' — same moment, but only in the main reader window, never inside
     // the search-results citation-preview iframe (this same megareader.js runs in both). Several
     // listeners across the codebase (reader/common.js, settings.js's dictionary preload,

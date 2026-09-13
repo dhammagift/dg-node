@@ -4287,6 +4287,8 @@ $(document).ready(function() {
     function routeFromUrl() {
         dgLeaveScreen(dgScreenFromUrl(), routeFromUrlNow);
     }
+    // home.js closeSettingsSheet(): re-route once after settings changed on results/home.
+    window.dgRouteFromUrl = routeFromUrl;
     function routeFromUrlNow() {
         normalizeRuPrefix();
         normalizeShareTargetQuery();
