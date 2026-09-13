@@ -103,6 +103,7 @@ function legacyReaderRedirect(url) {
     const params = new URLSearchParams(queryPart);
     if (page === '/rv') return '/rev/' + (queryPart ? '?' + queryPart : '');
     if (page === '/history.php') return '/4as';
+    if (page === '/read.php') return '/toc';
     const target = LEGACY_READERS[page];
     if (!target) return null;
     const q = (params.get('q') || '').trim();

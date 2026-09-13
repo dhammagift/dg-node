@@ -258,28 +258,11 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     let searchValue = sParam && sParam.trim() !== "" ? sParam : keyword;
 
-    let baseUrl;
-    // Определение языка (без изменений)
-    if (window.location.href.includes('/ru') || (localStorage.siteLanguage && localStorage.siteLanguage === 'ru')) {
-        baseUrl = window.location.origin + "/r/";
-    } else if (window.location.href.includes('/th') || (localStorage.siteLanguage && localStorage.siteLanguage === 'th')) {
-        baseUrl = window.location.origin + "/th/read/";
-    } else {
-        baseUrl = window.location.origin + "/read/";
-    }
-
-    // Определение режима ридера (без изменений)
-    if (localStorage.defaultReader === 'ml') {
-        baseUrl = window.location.origin + "/ml/";
-    } else if (localStorage.defaultReader === 'rv') {
-        baseUrl = window.location.origin + "/rv/";
-    } else if (localStorage.defaultReader === 'd') {
-        baseUrl = window.location.origin + "/d/";
-    } else if (localStorage.defaultReader === 'mem') {
-        baseUrl = window.location.origin + "/memorize/";
-    } else if (localStorage.defaultReader === 'fr') {
-        baseUrl = window.location.origin + "/frev/";
-    } 
+    // Only Reverse / Full Reverse keep their own pages; every other default reader is the SPA
+    // reader with ?mode= (legacy /read/, /r/, /d/, /ml/, /memorize/ redirect there anyway).
+    const spaMode = { mt: 'multi', ml: 'multi', d: 'devanagari', mem: 'memorize' }[localStorage.defaultReader];
+    const legacyMode = localStorage.defaultReader === 'rv' || localStorage.defaultReader === 'fr';
+    const baseUrl = window.location.origin + (localStorage.defaultReader === 'fr' ? "/frev/" : "/rev/");
 
     // 4. Обработка ссылок: только установка стандартных href
     const fdgLinks = document.querySelectorAll('.fdgLink');
@@ -287,7 +270,13 @@ document.addEventListener('DOMContentLoaded', function() {
         const slug = link.getAttribute('data-slug');
         const filter = link.getAttribute('data-filter');
         
-        const textUrl = findFdgTextUrl(slug, filter || searchValue, baseUrl);
+        let textUrl = findFdgTextUrl(slug, filter || searchValue, baseUrl);
+        if (textUrl && !legacyMode && textUrl.indexOf('/4nt/') !== 0) {
+            const params = new URLSearchParams();
+            if (filter || searchValue) params.set('s', filter || searchValue);
+            if (spaMode) params.set('mode', spaMode);
+            textUrl = '/' + slug + '?' + params.toString();
+        }
         
         if (!textUrl) {
             link.style.display = 'none';

@@ -153,7 +153,7 @@ function cleanPaliText(text) {
     </button>
     <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="burgerMenuBtn">
       <li><a class="dropdown-item" href="/">{{buttons.main}}</a></li>
-      <li><a class="dropdown-item" href="/history.php">{{buttons.history}}</a></li>
+      <li><a class="dropdown-item" href="/4as">{{buttons.history}}</a></li>
       <li><a class="dropdown-item" href="javascript:void(0)" data-bs-toggle="modal" data-bs-target="#paliLookupInfo">{{global.common.help}}</a></li>
       <li><a class="dropdown-item" href="/settings/">{{global.common.settings}}</a></li>
       <li><a class="dropdown-item" href="/login">{{global.common.login}}</a></li>
@@ -551,7 +551,7 @@ function cleanPaliText(text) {
 <div class="row align-items-center mb-2">
 <div class="col-auto">
 <input class="form-check-input mt-2 border-secondary" name="reader" type="radio" id="stRadio" value="st"> &nbsp;
-<a id="stDemo" href="/r/?q=sn56.11"><strong>{{settings.standard}}</strong></a>
+<a id="stDemo" href="/sn56.11"><strong>{{settings.standard}}</strong></a>
 </div>
 <div class="col text-end">{{settings.standardDescription}}</div>
 </div>
@@ -595,7 +595,7 @@ function cleanPaliText(text) {
 <div class="row align-items-center mb-2">
 <div class="col-auto">
 <input class="form-check-input mt-2 border-secondary" name="reader" type="radio" id="thRadio" value="th"> &nbsp;
-<a id="thDemo" href="/th/read/?q=sn5.56"><strong>{{settings.scriptThai}}</strong></a>
+<a id="thDemo" href="/sn5.56?lang=th"><strong>{{settings.scriptThai}}</strong></a>
 </div>
 <div class="col text-end">{{settings.thaiDescription}}</div>
 </div>

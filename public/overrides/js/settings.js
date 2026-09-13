@@ -1010,52 +1010,30 @@ function updateDemoLinks() {
       urlParams.set('q', newQ);
   }
 
-  // 3. Определяем базовый URL для "Standard" режима
-  let standardBaseUrl;
-  const currentPath = window.location.href;
-  const storedLang = localStorage.siteLanguage;
-
-  if (currentPath.includes('/ru/') || currentPath.includes('/r/') || storedLang === 'ru') {
-    standardBaseUrl = window.location.origin + "/r/";
-  } else if (currentPath.includes('/th') || storedLang === 'th') {
-    standardBaseUrl = window.location.origin + "/th/read/";
-  } else {
-    standardBaseUrl = window.location.origin + "/read/";
-  }
-
-
-  // Для русских – /mt/, для остальных – // (можно заменить на любой другой путь)
-  const mtUrl = window.notEn
-    ? window.location.origin + "/mt/"
-    : window.location.origin + "/multi/";
-
-  const linksMap = {
-    stDemo: standardBaseUrl,
-    mtDemo: mtUrl,                    
-    memDemo: window.location.origin + "/memorize/",
-    dDemo: window.location.origin + "/d/",
-    thDemo: window.location.origin + "/th/read/",
-    rvDemo: window.location.origin + "/rev/",
-    frDemo: window.location.origin + "/frev/",
-    mlthDemo: window.location.origin + "/mlth/"
+  // 3. Demo links open the SPA reader in each mode (legacy /read/, /r/, /d/, /mt/, /memorize/ are
+  //    gone: dg-fastify redirects them). Only Reverse and Full Reverse still have their own pages.
+  const q = urlParams.get('q') || 'sn56.11';
+  const isRuUi = window.location.href.includes('/ru/') || localStorage.siteLanguage === 'ru';
+  const hash = window.location.hash || '';
+  const spa = (mode) => {
+    const params = new URLSearchParams();
+    if (mode) params.set('mode', mode);
+    if (isRuUi) params.set('lang', 'ru');
+    const qs = params.toString();
+    return '/' + encodeURIComponent(q) + (qs ? '?' + qs : '') + hash;
   };
-  // 5. Обновляем href элементов
-  const hash = window.location.hash || ''; // Сохраняем якорь, если есть
-
+  const legacyQs = '?' + urlParams.toString() + hash;
+  const linksMap = {
+    stDemo: spa(''),
+    mtDemo: spa('multi'),
+    memDemo: spa('memorize'),
+    dDemo: spa('devanagari'),
+    rvDemo: '/rev/' + legacyQs,
+    frDemo: '/frev/' + legacyQs,
+  };
   Object.keys(linksMap).forEach(id => {
     const linkEl = document.getElementById(id);
-    if (!linkEl) return;
-
-    let newUrl = linksMap[id];
-    const queryString = urlParams.toString();
-    
-    // Добавляем строку параметров, если она не пустая
-    if (queryString) {
-        newUrl += `?${queryString}`;
-    }
-    
-    // Добавляем хэш в конец
-    linkEl.href = newUrl + hash;
+    if (linkEl) linkEl.href = linksMap[id];
   });
 }
 
@@ -1826,28 +1804,13 @@ if (savedReader) {
 const initialBaseUrl = getBaseUrl();
 const initialDefaultReader = localStorage.defaultReader;
 
-// Функция для получения текущего baseUrl
+// Функция для получения текущего baseUrl. The SPA reader shows every mode on its own URL
+// (?mode=), so changing the default reader keeps the page where it is; only Reverse / Full Reverse
+// still live on their own pages.
 function getBaseUrl() {
-    let baseUrl;
-    if (window.location.href.includes('/ru') || (localStorage.siteLanguage && localStorage.siteLanguage === 'ru')) {
-        baseUrl = window.location.origin + "/r/";
-    } else {
-        baseUrl = window.location.origin + "/read/";
-    }
-
-    if (localStorage.defaultReader === 'mt') {
-        baseUrl = window.location.origin + "/mt/";
-    } else if (localStorage.defaultReader === 'rv') {
-        baseUrl = window.location.origin + "/rev/";
-    } else if (localStorage.defaultReader === 'd') {
-        baseUrl = window.location.origin + "/d/";
-    } else if (localStorage.defaultReader === 'mem') {
-        baseUrl = window.location.origin + "/memorize/";
-    } else if (localStorage.defaultReader === 'fr') {
-        baseUrl = window.location.origin + "/frev/";
-    }
-
-    return baseUrl;
+    if (localStorage.defaultReader === 'rv') return window.location.origin + "/rev/";
+    if (localStorage.defaultReader === 'fr') return window.location.origin + "/frev/";
+    return window.location.origin + window.location.pathname;
 }
 
 // Функция для обновления URL

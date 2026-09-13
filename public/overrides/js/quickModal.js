@@ -58,9 +58,7 @@ function buildQuickModalDOM() {
   const currentPath = window.location.pathname;
   let currentUrl = window.location.href;
   let urlWithoutParams = currentUrl.split('?')[0];
-  let queryBase = urlWithoutParams.endsWith("/ru/") || urlWithoutParams.endsWith("/r/") 
-    ? "/r/?q=" 
-    : "/read/?q=";
+  let queryBase = "/?q="; // the SPA searches or opens the text itself; legacy /read/ and /r/ are gone
   
   const formAction = currentPath.match(/\/(ru|r)\//) ? '/ru/' : '/';
 
@@ -139,7 +137,7 @@ function buildQuickModalDOM() {
             <a href="${window.isRu ? '/ru/assets/common/history.html' : '/assets/common/history.html'}" class="quick-all-history-link">
                 ${window.isRu ? "← Ваша история" : "← Your history"}
             </a>
-            <a href="${window.isRu ? '/ru/history.php' : '/history.php'}" class="quick-all-history-link">
+            <a href="/assets/common/history.html" class="quick-all-history-link">
                 ${window.isRu ? "Общая история →" : "Common history →"}
             </a>
         </div>
