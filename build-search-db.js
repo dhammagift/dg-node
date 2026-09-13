@@ -392,9 +392,13 @@ function build() {
 
    Публикация специально НЕ происходит сама по себе: она меняет то, что качают люди, и смена
    build_id — это оповещение "доступна новая база" всем, у кого офлайн уже скачан. Поэтому флаг.
-   Обратной операции "опубликовать уже готовую базу, не пересобирая" нет намеренно: сборка
-   детерминированная (тот же корпус → тот же build_id), 100 секунд, и так исчезает целый класс
-   ошибок вида "а ту ли базу я выложил". */
+
+   `--no-build` — выложить базу, которая уже лежит, не пересобирая. Сначала этого не было: мол,
+   сборка детерминированная, проще пересобрать. Аргумент оказался пустой. Во-первых, "а ту ли базу
+   я выложил" здесь взяться неоткуда — эта функция хэширует ровно те байты, которые кладёт, и
+   build_id читает из того же файла. Во-вторых, пересборка меняет built_at, а значит и sha256
+   файла, и уже выложенная на прод база перестала бы совпадать с базой внутри архива — ровно то
+   расхождение, ради устранения которого всё и затевалось. */
 function publishArchive(buildId) {
     const outDir = (process.argv.find(a => a.startsWith('--out=')) || '').slice(6)
         || path.join(__dirname, 'siteroot', 'mobile-data');
@@ -564,4 +568,21 @@ function writeVocab(db, df) {
     return kept;
 }
 
-build();
+if (process.argv.includes('--no-build')) {
+    // Публикуем то, что уже собрано. build_id берём из самой базы — единственного места, где он
+    // есть; никаких предположений о том, что это за файл.
+    const db = new DatabaseSync(`file:${OUT_PATH}?mode=ro`, { readOnly: true });
+    let buildId = null;
+    try {
+        buildId = db.prepare("SELECT value FROM meta WHERE key = 'build_id'").get()?.value || null;
+    } catch { /* база собрана сборщиком без meta */ }
+    db.close();
+    if (!buildId) {
+        console.error(`в ${OUT_PATH} нет meta.build_id — соберите базу: npm run build-search-db`);
+        process.exit(1);
+    }
+    console.log(`публикуем готовую базу, build ${buildId}`);
+    publishArchive(buildId);
+} else {
+    build();
+}
