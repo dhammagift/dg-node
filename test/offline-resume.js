@@ -42,7 +42,7 @@ function makeFixture() {
     db.exec('PRAGMA journal_mode = delete');
     db.exec('CREATE TABLE suttas (id TEXT PRIMARY KEY, category TEXT, dir_path TEXT, title TEXT, mr INTEGER)');
     db.exec('CREATE TABLE texts (sutta_id TEXT, segment_id TEXT, ord INTEGER, kind TEXT, lang TEXT, translator TEXT, source TEXT, txt TEXT)');
-    db.exec('CREATE TABLE html (sutta_id TEXT, segment_id TEXT, html TEXT)');
+    db.exec('CREATE TABLE html (sutta_id TEXT, segment_id TEXT, ord INTEGER, txt TEXT)');
     db.exec('CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT)');
     db.exec('CREATE TABLE filler (id INTEGER PRIMARY KEY, blob BLOB)');
     const sutta = db.prepare('INSERT INTO suttas VALUES (?,?,?,?,?)');
@@ -79,8 +79,12 @@ window.addEventListener('dg:dl-progress', (e) => window.__events.push(e.detail))
         await window.dgOfflineLibrary;
         const nav = await fetch('/api/nav/dn22');
         const navBody = await nav.json();
+        // Script conversion: Devanagari is converted by the worker, a script pali-script.js lacks goes to the server.
+        const dev = await (await fetch('/api/text/dn22?script=devanagari')).json();
+        const other = await (await fetch('/api/text/dn22?script=cyrillic')).json();
         window.__result = { ok: true, diagnostics: window.dgOfflineDiagnostics(),
-                            nav: { status: nav.status, prev: navBody.prev && navBody.prev.slug, next: navBody.next && navBody.next.slug } };
+                            nav: { status: nav.status, prev: navBody.prev && navBody.prev.slug, next: navBody.next && navBody.next.slug },
+                            script: { dev: dev.segments && dev.segments.map(x => x.root_text).find(Boolean), other: other.from } };
     } catch (e) { window.__result = { ok: false, error: String((e && e.message) || e) }; }
 })();
 </script></body></html>`;
@@ -93,6 +97,9 @@ window.addEventListener('dg:dl-progress', (e) => window.__events.push(e.detail))
     const attempts = [];
     const app = express();
     app.use('/offline', express.static(path.join(ROOT, 'public', 'offline')));
+    app.use('/assets/js', express.static(path.join(ROOT, 'public', 'overrides', 'js')));
+    // Stand-in for the server: only a script the worker cannot convert should ever get here.
+    app.get('/api/text/:id', (req, res) => res.json({ from: 'server', script: req.query.script }));
     app.get('/reader/mode-table.json', (req, res) => res.sendFile(path.join(ROOT, 'configs', 'reader', 'mode-table.json')));
     // BEFORE the static mount below: express matches in registration order, so the other way round
     // the whole file is served and this test never interrupts anything.
@@ -163,6 +170,9 @@ window.addEventListener('dg:dl-progress', (e) => window.__events.push(e.detail))
         if (!result.nav || result.nav.status !== 200 || result.nav.prev !== 'dn21' || result.nav.next !== 'dn23') {
             fail(`the opened database does not answer /api/nav: ${JSON.stringify(result.nav)}`);
         }
+        const expectDev = require(path.join(ROOT, 'public', 'overrides', 'js', 'pali-script.js')).convert('evaṁ me sutaṁ', 'Devanagari');
+        if (!result.script || result.script.dev !== expectDev) fail(`?script=devanagari not converted locally: ${JSON.stringify(result.script)} (want ${expectDev})`);
+        if (result.script.other !== 'server') fail(`?script=cyrillic did not go to the server: ${JSON.stringify(result.script)}`);
         if (attempts.length < 2) fail('the connection was not actually cut — no retry happened');
         if (!resumed.length) fail(`the retry restarted from 0 instead of resuming: ${JSON.stringify(attempts)}`);
         if (resumed[0].start < buf.length * CUT * 0.9) {

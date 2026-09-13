@@ -907,6 +907,41 @@ async function open(distBase, allowDownload, args) {
     return fetchCurrent(pool, distBase, args);
 }
 
+// ?script= (Devanagari, Thai, ...): the scripts pali-script.js covers are converted here, the same
+// fields dg-fastify.js converts. Any other script answers __needsServer and app.js forwards the
+// request. pali-script.js is a classic file; imported into this module worker it attaches to self.
+async function scriptKey(script) {
+    if (!script) return null;
+    if (!self.PaliScript) await import('/assets/js/pali-script.js');
+    const want = String(script).toLowerCase();
+    return self.PaliScript.scripts.find(k => k.toLowerCase() === want) || null;
+}
+
+function convertSearchResult(result, key) {
+    const c = t => (t ? self.PaliScript.convert(t, key) : t);
+    for (const id in (result.data || {})) {
+        for (const seg of (result.data[id].segments || [])) {
+            seg.root_text = c(seg.root_text);
+            seg.variant = c(seg.variant);
+            (seg.lb_context || []).forEach(x => { x.root_text = c(x.root_text); });
+            (seg.la_context || []).forEach(x => { x.root_text = c(x.root_text); });
+        }
+    }
+    (result.variantSegments || []).forEach(v => { v.text = c(v.text); });
+    return result;
+}
+
+// A dualScript mode keeps the Latin line (root_text_iso) and leaves the variant unconverted.
+function convertTextResult(data, key, mode) {
+    const dual = !!(mode && core.MODE_TABLE[mode] && core.MODE_TABLE[mode].dualScript);
+    for (const seg of (data.segments || [])) {
+        if (dual) seg.root_text_iso = seg.root_text;
+        if (seg.root_text) seg.root_text = self.PaliScript.convert(seg.root_text, key);
+        if (!dual && seg.variant) seg.variant = self.PaliScript.convert(seg.variant, key);
+    }
+    return data;
+}
+
 // One operation per endpoint the shim intercepts. Each is the few lines dg-fastify.js's route
 // does around the core — parameter defaults and nothing else. Response building stays in the
 // core, which is the point.
@@ -1011,6 +1046,23 @@ const OPS = {
         return nav || { __status: 404, error: `Unknown sutta id: ${suttaId}` };
     },
 };
+
+for (const op of ['search', 'enrich', 'text']) {
+    const plain = OPS[op];
+    OPS[op] = async function (args) {
+        const key = await scriptKey(args && args.script);
+        if (args && args.script && !key) return { __needsServer: 'script' };
+        let result = await plain.call(OPS, args);
+        if (key && result && !result.__status) {
+            result = op === 'text' ? convertTextResult(result, key, args.mode) : convertSearchResult(result, key);
+        }
+        // dg-fastify.js's withSuggestions: a search with no hits offers the corpus's nearest word forms.
+        if (op === 'search' && result && result.metadata && !result.metadata.tooShort && result.metadata.totalFiles === 0) {
+            result.metadata.suggestions = core.suggestWords(core.stripSearchPunctuation(args.q || ''));
+        }
+        return result;
+    };
+}
 
 self.onmessage = async (event) => {
     const { id, op, args } = event.data || {};

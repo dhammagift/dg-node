@@ -25,10 +25,9 @@
 //     other tab simply stays server-backed (and says so in the console). This also means there is
 //     no stale-second-tab problem to solve after an update — the non-owning tabs never opened the
 //     old database in the first place.
-//  5. No local script engine yet. Aksharamukha/Pyodide (dg-app-full's script-engine.js, ~16MB) is
-//     not ported in this stage, so `?script=` requests and /api/transliterate go to the server,
-//     which is where they went before. The call sites below keep the app's shape, so porting the
-//     engine later is a change of one function (ensureScriptMode) and nothing else.
+//  5. Script conversion: `?script=` for the main Pali scripts (pali-script.js — Devanagari, Thai,
+//     Sinhala, Khmer, Burmese, ...) is converted locally by the worker; any other script and
+//     /api/transliterate (script -> IAST) still go to the server.
 
 (function () {
     'use strict';
@@ -899,6 +898,12 @@
             });
         }
 
+        // A script pali-script.js does not cover: the worker answers __needsServer and the request
+        // goes to the network, where it went before the offline layer could convert anything.
+        function localOrServer(result, input, init) {
+            return result && result.__needsServer ? toServer(input, init, result.__needsServer) : respond(result);
+        }
+
         // A worker result may carry the status the route would have set: an unknown sutta is a
         // 404, and answering 200 with an error body would be a different contract from the site's.
         function respond(result) {
@@ -1006,15 +1011,15 @@
 
             if (p.indexOf('/api/text/') === 0) {
                 if (langNeedsOnline(qs)) return toServer(input, init, 'lang');
-                if (scriptRequested(qs)) return toServer(input, init, 'script');
                 return withLoadingEvent(function () {
                     return call('text', {
+                        script: scriptRequested(qs),
                         suttaId: decodeURIComponent(p.slice('/api/text/'.length)).toLowerCase(),
                         mode: qs.get('mode'),
                         langs: qs.get('langs'),
                         lang: qs.get('lang'),
                         translators: qs.get('translators'),
-                    }).then(respond);
+                    }).then(function (r) { return localOrServer(r, input, init); });
                 });
             }
 
@@ -1027,9 +1032,9 @@
 
             if (p === '/search/enrich') {
                 if (langNeedsOnline(qs)) return toServer(input, init, 'lang');
-                if (scriptRequested(qs)) return toServer(input, init, 'script');
                 return withLoadingEvent(function () {
                     return call('enrich', {
+                        script: scriptRequested(qs),
                         q: qs.get('q') || '',
                         ids: qs.get('ids') || '',
                         langs: qs.get('langs') || 'ru,en',
@@ -1037,15 +1042,15 @@
                         exact: qs.get('exact') === 'true',
                         lb: parseInt(qs.get('lb'), 10) || 0,
                         la: parseInt(qs.get('la'), 10) || 0,
-                    }).then(respond);
+                    }).then(function (r) { return localOrServer(r, input, init); });
                 });
             }
 
             if (p === '/search' || (p.indexOf('/search/') === 0 && p !== '/search/enrich')) {
                 if (langNeedsOnline(qs)) return toServer(input, init, 'lang');
-                if (scriptRequested(qs)) return toServer(input, init, 'script');
                 return withLoadingEvent(function () {
                     return call('search', {
+                        script: scriptRequested(qs),
                         q: p === '/search' ? (qs.get('q') || '') : decodeURIComponent(p.slice('/search/'.length)),
                         scope: qs.get('scope') || 'default',
                         langs: qs.get('langs') || 'ru,en',
@@ -1053,7 +1058,7 @@
                         lb: parseInt(qs.get('lb'), 10) || 0,
                         la: parseInt(qs.get('la'), 10) || 0,
                         fast: qs.get('fast') === '1',
-                    }).then(respond);
+                    }).then(function (r) { return localOrServer(r, input, init); });
                 });
             }
 
