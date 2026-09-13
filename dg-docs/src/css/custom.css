@@ -54,3 +54,65 @@
     margin: 0 0 1rem 2rem;
   }
 }
+
+/* AppFrame (src/components/AppFrame.jsx): live app embed. The "open in a new
+   window" pill sits on the frame's top border and appears only while the user
+   interacts with the embed — hover over it, or a tap/click inside (focus). */
+.dg-appframe {
+  position: relative;
+  margin: 1.25rem 0 1rem;
+}
+.dg-appframe iframe {
+  display: block;
+  width: 100%;
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: 8px;
+  transition: border-color 200ms ease;
+}
+.dg-appframe__open {
+  position: absolute;
+  top: 0;
+  right: 12px;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: var(--ifm-color-emphasis-800);
+  background: var(--ifm-background-surface-color);
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: 999px;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.12);
+  text-decoration: none;
+  opacity: 0;
+  transform: translateY(-50%) scale(0.95);
+  pointer-events: none;
+  transition: opacity 180ms cubic-bezier(0.23, 1, 0.32, 1),
+    transform 180ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.dg-appframe__open:hover {
+  color: var(--ifm-color-primary);
+  text-decoration: none;
+}
+.dg-appframe:hover .dg-appframe__open,
+.dg-appframe:focus-within .dg-appframe__open,
+.dg-appframe.is-active .dg-appframe__open {
+  opacity: 1;
+  transform: translateY(-50%) scale(1);
+  pointer-events: auto;
+}
+.dg-appframe:hover iframe,
+.dg-appframe:focus-within iframe,
+.dg-appframe.is-active iframe {
+  border-color: var(--ifm-color-emphasis-500);
+}
+@media (prefers-reduced-motion: reduce) {
+  .dg-appframe__open,
+  .dg-appframe:hover .dg-appframe__open,
+  .dg-appframe:focus-within .dg-appframe__open,
+  .dg-appframe.is-active .dg-appframe__open {
+    transform: translateY(-50%);
+  }
+}
