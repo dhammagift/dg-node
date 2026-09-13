@@ -365,7 +365,12 @@
             if (!showedAiScreen) return; // plain "not found" already on screen, nothing more to add
             sheen(pane, false);
             pane.dataset.ai = 'error';
-            showDebug(pane.querySelector('#ai-error'), `${lang === 'ru' ? 'ИИ' : 'AI'} — raw data`,
+            // Owner: "К точному поиску на одной строке, raw data на другой... они же вместе
+            // должны быть" — appending after .aifoot (not inside it) landed below its own 50px
+            // bottom padding, reading as a disconnected second line. .aifoot is a flex row
+            // (align-items:center) — putting raw data INSIDE it puts them on the same line for
+            // real, wrapping together only if the screen is too narrow.
+            showDebug(pane.querySelector('#ai-error .aifoot'), `${lang === 'ru' ? 'ИИ' : 'AI'} — raw data`,
                 [[lang === 'ru' ? 'Инпут' : 'Input', query], [lang === 'ru' ? 'Ошибка' : 'Error', 'network error: ' + ((err && err.message) || '—')]]);
             return;
         }
@@ -374,7 +379,7 @@
             if (!showedAiScreen) return;
             sheen(pane, false);
             pane.dataset.ai = 'error';
-            showDebug(pane.querySelector('#ai-error'), `${lang === 'ru' ? 'ИИ' : 'AI'} — raw data`,
+            showDebug(pane.querySelector('#ai-error .aifoot'), `${lang === 'ru' ? 'ИИ' : 'AI'} — raw data`,
                 [[lang === 'ru' ? 'Инпут' : 'Input', query], [lang === 'ru' ? 'Ошибка' : 'Error', `${data.reason || 'unavailable'}: ${data.detail || '—'}`]]);
             return;
         }
@@ -382,7 +387,9 @@
             if (!showedAiScreen) return;
             sheen(pane, false);
             pane.dataset.ai = 'empty';
-            showDataDebug(pane.querySelector('#ai-empty .aistate'), data.debug, query, lang);
+            // Same reasoning as #ai-error above — .acts is the flex row with "К точному поиску",
+            // raw data goes IN it, not after it.
+            showDataDebug(pane.querySelector('#ai-empty .acts'), data.debug, query, lang);
             return;
         }
         if (showedAiScreen) sheen(pane, false);

@@ -1304,29 +1304,12 @@ body.dg-state-ai .forshellscript {
     .aigrid .words .aiwords { flex-direction: row; align-items: center; gap: 7px; }
 }
 .aisec > h3 { font-size: 10.5px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--dg-text-muted); margin: 0 0 12px; }
+/* .aicards stays — cardSkeleton() (ai-search.js) still uses it for the LOADING placeholder rows.
+   The real thing (.aicard, .aicollapse, .aicards.collapsed, .qg — an actual rendered card with a
+   sutta id/title/quote and its own collapse-all) never got built: real results reuse the site's
+   own DataTable instead (#pali, docs/AI_SEARCH_BRIEF.md "по-настоящему DataTable"), triangles and
+   collapse-all included for free. Deleted rather than left as dead weight (owner: "1 удали"). */
 .aicards { display: flex; flex-direction: column; gap: 0; border-top: 1px solid var(--dg-border); }
-/* Не карточки-плашки, а те же строки с волосяными линиями и тот же hover, что в выдаче —
-   чтобы ИИ-экран не выглядел другим сайтом. Пометка неточности живёт в шапке экрана. */
-.aicard { display: block; background: none; border: 0; border-bottom: 1px solid var(--dg-border); border-radius: 0; padding: 13px 10px 14px; }
-.aicard .hd { display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap; line-height: 1.45; }
-/* Только .sid — настоящая ссылка (как mainLink в обычной таблице выдачи); сама карточка и
-   цитата — нет, чтобы клик по слову внутри цитаты не улетал в ридер (owner: "кликая по словам,
-   я сразу перехожу в ридер"). */
-.aicard .sid { font-size: 14px; font-weight: 500; color: var(--dg-tblue); white-space: nowrap; text-decoration: none; }
-.aicard .sid:hover { color: var(--dg-tblue); text-decoration: underline; }
-.aicard .hd b { font-size: 14px; font-weight: 600; letter-spacing: -.005em; }
-.aicard .hd .ru { font-size: 14px; color: var(--dg-text-muted); min-width: 0; }
-/* Свёрнутый вид — только номера сутт, без названий и цитат (owner: "хочется свернуть все... только
-   номера сутт без титов"). */
-.aicollapse { border: 0; background: none; font: inherit; font-size: 11px; font-weight: 500; letter-spacing: normal; text-transform: none; color: var(--dg-tblue); cursor: pointer; padding: 0; margin-left: 10px; text-decoration: underline; text-underline-offset: 2px; }
-.aicards.collapsed .aicard { padding: 6px 10px; }
-.aicards.collapsed .aicard .hd b,
-.aicards.collapsed .aicard .qg { display: none; }
-/* padding-left — место под ✦-значок (.quoteLink-start, left:-1em по умолчанию из
-   extrastyles.css) слева от текста, не обрезается краем карточки. */
-.qg { margin: 9px 0 0; max-width: 76ch; padding-left: 14px; }
-.qg [class*="-lang"] { font-size: 14.5px; line-height: 1.6; }
-.qg .en-lang { font-size: 13.5px; }
 .aiwords { display: flex; flex-wrap: wrap; gap: 7px; }
 /* Owner: "клики по слову подставляют слово в инпут, а доп ссылочка — открыть в словаре" —
    the pill is a container for two separate clickable pieces now, not one link: the word itself
@@ -1360,11 +1343,19 @@ body.dg-state-ai .forshellscript {
    as the same "footer strip" element regardless of what it's sitting inside; reset to nothing
    inside .dt-buttons, which is already a real footer row and needs no second one nested in it. */
 .ai-debug-wrap { margin-top: 16px; padding-top: 10px; border-top: 1px solid var(--dg-border); }
-.dt-buttons .ai-debug-wrap { margin-top: 0; padding-top: 0; border-top: 0; display: inline-flex; align-items: center; }
-/* Owner: "3 места из 4" — #ai-error already has its OWN footer-styled .aifoot (border-top,
-   24px/12px/50px spacing, wraps "К точному поиску") right before this; adding a second border-top
-   here stacked two separator lines with an oversized gap between them, not one clean footer. */
-#ai-error .ai-debug-wrap { margin-top: 0; padding-top: 0; border-top: 0; }
+/* Owner: "К точному поиску на одной строке, raw data на другой... они же вместе должны быть" —
+   #ai-error/#ai-empty already have their own "back to exact search" button inside a flex row
+   (.aifoot / .acts); raw data is appended INSIDE that same row now (ai-search.js), not as a
+   block sibling after it — so it needs to behave like one more flex item on that row (same
+   treatment .dt-buttons already gets there), not the default stacked-below footer look. */
+.dt-buttons .ai-debug-wrap, .aifoot .ai-debug-wrap, .acts .ai-debug-wrap { margin-top: 0; padding-top: 0; border-top: 0; display: inline-block; }
+/* Collapsed, .ai-debug-wrap is short — sits inline right next to "К точному поиску" on the same
+   flex row. Expanded, the panel makes it tall — flex's default align-items:center would then
+   vertically float the short neighbour button in the middle of that height, reading as broken
+   (found live). flex-basis:100% forces it onto its own full-width line once open, same as any
+   ordinary expand/disclosure widget — only the SHORT collapsed state needs to share the row. */
+.aifoot .ai-debug-wrap:has(.ai-debug-panel:not(.d-none)),
+.acts .ai-debug-wrap:has(.ai-debug-panel:not(.d-none)) { flex-basis: 100%; }
 .ai-debug-link { border: 0; background: none; padding: 0; font-size: 12px; color: var(--dg-text-muted); text-decoration: underline; cursor: pointer; opacity: 0.7; }
 .ai-debug-link:hover { opacity: 1; }
 .ai-debug-panel { margin-top: 6px; max-width: min(360px, 100%); padding: 8px 10px; border: 1px solid var(--dg-border); border-radius: 8px; background: var(--dg-surface); font-size: 12px; }
