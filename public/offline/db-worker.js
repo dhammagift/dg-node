@@ -619,7 +619,17 @@ async function fetchCurrent(pool, distBase, args) {
     const stale = storedDatabases(pool).filter(n => n !== target);
     const scratchName = scratchNameFor(target);
     await cleanScratchExcept(scratchName);
-    const resumed = await partialBytes(scratchName);
+    let resumed = await partialBytes(scratchName);
+    // A server that publishes only the gzip archive (no `file` in the manifest — dg-node's own
+    // publish step) has nothing to resume from: a compressed stream cannot be continued at a byte
+    // offset, and the plain-file fallback below would ask for a "dg-mobile.db" that is not there
+    // (404; before that file was deleted it was a stale slice of another size). The partial copy is
+    // worthless then — drop it and fetch the archive again from the start.
+    if (resumed && manifest && manifest.file_gz && !manifest.file) {
+        console.log(`[dg-offline] dropping ${resumed} bytes of an interrupted transfer: only the gzip archive is published, it restarts from zero`);
+        await dropScratchAfterCancel(scratchName);
+        resumed = 0;
+    }
 
     // The plain file wins over the gzipped one whenever the manifest publishes both: an
     // interrupted gzip transfer cannot be continued (the bytes on the wire are not the bytes of
