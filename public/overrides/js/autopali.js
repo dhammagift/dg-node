@@ -265,6 +265,11 @@ function fuzzyWordMatches(term, allWords, limit) {
     return hits.slice(0, limit).map(function (h) { return h.item; });
 }
 
+// Сколько оставить под списком и ниже какой высоты не опускаться (см. open: ниже).
+// ~5 строк по 44px — ровно то, что было раньше всегда, теперь это только нижняя граница.
+var AUTOPALI_DROPDOWN_GUTTER = 16;
+var AUTOPALI_DROPDOWN_MIN = 220;
+
 function bindAutocomplete(selector, allWords) {
     var accentMap = {
         "ā": "a", "ī": "i", "ū": "u", 
@@ -401,6 +406,28 @@ function bindAutocomplete(selector, allWords) {
             }
 
             response(resultList);
+        },
+        /* Владелец: "много места а оно открывается как будто мало". Выпадашка была зажата
+           жёсткими 220px из легаси-стилей (extrastyles.css) — ровно пять строк и на телефоне, и на
+           планшете, и на десктопе, сколько бы пустого экрана под полем ни оставалось.
+
+           Фиксированное число здесь в принципе не может быть правильным: высота зависит от того, где на
+           экране оказалось поле — на главной оно высоко, в выдаче прижато к шапке, в ландшафте с
+           клавиатурой места почти нет. Поэтому мерим факт: к моменту open jQuery UI уже поставил
+           список на место, так что его собственный top — честный ответ на "сколько осталось внизу".
+
+           Ниже пяти строк не опускаемся даже в тесноте: список скроллится (overflow-y: auto), и дать
+           прокрутить лучше, чем схлопнуть в две строки. Снизу оставляем поля, чтобы край не лип к
+           границе экрана и было видно, что список закончился, а не обрезан. */
+        open: function () {
+            var menu = $(this).autocomplete('widget');
+            var top = menu[0].getBoundingClientRect().top;
+            // visualViewport, а не innerHeight: в Chrome на Android экранная клавиатура не уменьшает
+            // innerHeight, и список уехал бы под неё — а выпадашка почти всегда открывается именно
+            // когда клавиатура открыта.
+            var viewport = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+            var room = viewport - top - AUTOPALI_DROPDOWN_GUTTER;
+            menu.css('max-height', Math.max(AUTOPALI_DROPDOWN_MIN, room) + 'px');
         },
         focus: function() { return false; },
         select: function(event, ui) {

@@ -3068,6 +3068,10 @@ body.dark .dg-field-error { color: #ff8a80; }
    рамка, то же скругление, те же цвета и та же тень.
    ============================================================================ */
 body.dg-skin-minimal .ui-autocomplete {
+    /* Легаси-стили (extrastyles.css) зажимали список в 220px — ровно пять строк, сколько бы
+       экрана под полем ни оставалось. Точную высоту ставит autopali.js в open: по реальному
+       месту под полем; здесь — вменяемый потолок на случай, если тот ещё не отработал. */
+    max-height: min(64vh, 560px);
     padding: 6px;
     border: 1px solid var(--dg-border-strong);
     border-radius: var(--dg-radius);
