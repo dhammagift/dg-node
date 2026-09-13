@@ -181,8 +181,12 @@
         // Patimokkha, "bi/bipm" = whole Bhikkhuni Patimokkha, bare rule-category code
         // ("pj", "bi-pj", ...) = that category. Trailing "-" marks these as prefixes for the
         // server-side chapter-children lookup (see findChapterChildren in dg-light.js).
-        if (/^(bu|pm|bpm|bupm)$/.test(q)) return { type: 'chapter', id: 'pli-tv-bu-vb-' };
-        if (/^(bi|bipm)$/.test(q)) return { type: 'chapter', id: 'pli-tv-bi-vb-' };
+        // pm/bpm/bupm/bipm are the Pātimokkha itself (same ids as toc.js TOC_ALIASES), not the
+        // Vibhaṅga — they used to open /toc/pli-tv-bu-vb-.
+        if (/^(pm|bpm|bupm)$/.test(q)) return { type: 'chapter', id: 'pli-tv-bu-pm' };
+        if (q === 'bipm') return { type: 'chapter', id: 'pli-tv-bi-pm' };
+        if (q === 'bu') return { type: 'chapter', id: 'pli-tv-bu-vb-' };
+        if (q === 'bi') return { type: 'chapter', id: 'pli-tv-bi-vb-' };
         var bareCat = q.match(new RegExp('^(bi-)?(' + VINAYA_CATS.join('|') + ')$'));
         if (bareCat) {
             return { type: 'chapter', id: 'pli-tv-' + (bareCat[1] ? 'bi' : 'bu') + '-vb-' + bareCat[2] };
