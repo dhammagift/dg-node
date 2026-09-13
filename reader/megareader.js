@@ -657,7 +657,7 @@ window.generateThirdPartyLinks = function(slug, slugReady, texttype, translator)
     // links" (settings.js's PDF export) can find them by class instead of by parent container —
     // on desktop these get physically MOVED into #reader-toolbar (see buildSutta() below), so
     // #top-links-container alone no longer reliably contains them.
-    scLink += `<a data-slug="${texttype}/${slugReady}" href="javascript:void(0)" title="Text-to-Speech (Alt+R)" class="voice-link sc-ext-link">Voice</a>`;
+    scLink += `<a data-slug="${texttype}/${slugReady}" href="javascript:void(0)" title="Text-to-Speech (Alt+R)" class="voice-link sc-ext-link">${window.isRuPath ? 'Голос' : 'Voice'}</a>`;
 
     // 4nt (BJT/CST/Thai edition comparison) — get4ntUrl() (settings.js) always returns the
     // local /4nt/... path (siteroot/4nt); mirror-link.js falls back to the project's own

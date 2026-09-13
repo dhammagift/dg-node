@@ -174,9 +174,9 @@
     "exportPdf": "PDF",
     "loading": "Загрузка...",
     "read": "Читать",
-    "makeList": "Make List",
-    "listDiff": "List Diff",
-    "suttaDiff": "Sutta Diff",
+    "makeList": "Составить список",
+    "listDiff": "Сравнить списки",
+    "suttaDiff": "Сравнить сутты",
     "visibility": "Видимость"
   },
   "datatables": {
