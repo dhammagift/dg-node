@@ -88,3 +88,7 @@ mobile-data
 
 # Aksharamukha (native Python) for script conversion — created by dg-fastify.js on first start
 .venv-aksharamukha/
+
+# Docs live in github.com/dhammagift/dg-docs. Here dg-docs/ is a clone of its `dist` branch (built
+# HTML: build/ for /docs, build-ru/ for /ru/docs), refreshed periodically — not source.
+/dg-docs/
