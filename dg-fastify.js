@@ -2462,6 +2462,13 @@ app.setNotFoundHandler((req, res) => {
         params.set('lang', 'ru');
         return res.redirect(rest + '?' + params.toString());
     }
+    // Dictionary clean-path words (/dict/dukkha, /dict/ru/dukkha), same as dict.dhamma.gift/dukkha
+    // behind Apache's .htaccess: no such file under siteroot/dict -> serve the dictionary page,
+    // which reads the word from the path itself.
+    const dictWord = req.url.split('?')[0].match(/^\/dict\/(ru\/)?[^/]+\/?$/);
+    if (dictWord) {
+        return sendFile(req, res, path.join(SITEROOT, 'dict', dictWord[1] ? 'ru' : '', 'index.html'));
+    }
     sendVersionedHtml(req, res, path.join(__dirname, 'public', '404.html'), 404);
 });
 
