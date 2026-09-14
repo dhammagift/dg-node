@@ -45,6 +45,20 @@ if [ "$NEW" = "$CUR" ] && [ "$FORCE" = 0 ] && { [ "$APP" = 0 ] || [ "$APP_BUILD"
     exit 0
 fi
 
+# The GitHub build only sees what is committed and pushed in offline-data. Translation edits still
+# sitting in the server's working tree would be rolled back by installing it (2026-09-14: 93 ru/o
+# files) — refuse, also when run from cron.
+OFFLINE_DATA="${DG_OFFLINE_DATA_DIR:-/var/www/offline-data}"
+if [ -d "$OFFLINE_DATA/.git" ]; then
+    git -C "$OFFLINE_DATA" fetch -q origin 2>/dev/null || true
+    DIRTY="$(git -C "$OFFLINE_DATA" status --porcelain -- dhammagift | wc -l)"
+    UNPUSHED="$(git -C "$OFFLINE_DATA" rev-list --count '@{u}..HEAD' 2>/dev/null || echo 0)"
+    if [ "$DIRTY" -gt 0 ] || [ "$UNPUSHED" -gt 0 ]; then
+        echo "offline-data: $DIRTY uncommitted file(s), $UNPUSHED unpushed commit(s) — commit and push the translations first, then wait for the next build" >&2
+        exit 1
+    fi
+fi
+
 FREE_MB="$(df -Pm "$PROD" | awk 'NR==2 {print $4}')"
 if [ "$FREE_MB" -lt 1500 ]; then
     echo "need ~1.5 GB free on $(df -P "$PROD" | awk 'NR==2 {print $6}'), have ${FREE_MB} MB" >&2

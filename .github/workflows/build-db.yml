@@ -24,7 +24,9 @@ on:
       - configs/reader/**
       - .github/workflows/build-db.yml
   schedule:
-    - cron: '0 2 * * 1' # weekly, for new SuttaCentral texts and project translations
+    # Weekly, for new SuttaCentral texts and project translations: Sun 19:00 UTC = Mon 00:00 on the
+    # server (Asia/Almaty), so its cron (scripts/pull-db.sh, Mon 03:15) installs it overnight.
+    - cron: '0 19 * * 0'
 
 permissions:
   contents: write
