@@ -11,6 +11,10 @@ name: Build search database
 
 on:
   workflow_dispatch:
+  # For a push in dhammagift/offline-data (new translations): that repo can fire
+  # POST /repos/dhammagift/dg-node/dispatches {"event_type":"offline-data"} with a token allowed to.
+  repository_dispatch:
+    types: [offline-data]
   push:
     branches: [pwa, main]
     paths:
