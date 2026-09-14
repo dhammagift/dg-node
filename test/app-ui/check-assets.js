@@ -32,7 +32,7 @@ const PAGES = [
     '/assets/grammar/nouns.html',
     '/assets/materials/prat.html',
     '/assets/texts/abbr.html',
-    '/assets/linebyline.html',
+    '/assets/lbl.html', // linebyline.html is retired (owner); lbl.html is the line-by-line tool now
 ];
 
 // The same allowances the build makes; see REFERENCE_EXCEPTIONS in dg-app-full/build-assets.js.
