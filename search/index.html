@@ -1474,8 +1474,14 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
   // и выставил dg-state-reader ДО этого load-хендлера) — иначе фокус в поле съедал хоткеи
   // ридера сразу после открытия (owner: "горячие клавиши не работают").
   window.addEventListener('load', function () {
-    if (document.body.classList.contains('dg-state-reader')) return;
     var el = document.getElementById('paliauto');
+    // Touch screens: no focus at all. The native autofocus attribute does fire there, and a field
+    // left focused brought the on-screen keyboard up over the next text opened from History (tablet).
+    if (window.matchMedia('(hover: none) and (pointer: coarse)').matches) {
+      if (el && document.activeElement === el) el.blur();
+      return;
+    }
+    if (document.body.classList.contains('dg-state-reader')) return;
     if (el) el.focus();
   });
 
