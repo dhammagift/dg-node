@@ -1,4 +1,4 @@
-// checkForceLocalFlag lives in settings.js; pages without it (/assets/texts/abbr.html) threw on load.
+// checkForceLocalFlag lives in settings.js; pages without it (/assets/common/abbr.html) threw on load.
 if (typeof checkForceLocalFlag !== 'function') window.checkForceLocalFlag = function () {};
 
 document.addEventListener('click', function(event) {

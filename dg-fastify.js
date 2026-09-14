@@ -1078,6 +1078,11 @@ for (const [file, target] of Object.entries(LEGACY_HELP_REDIRECTS)) {
 }
 // Project tools retired on this site (owner: "не нужен", "было под проект"). The legacy tree keeps the
 // files for the old site, so without these routes the static fallback would still serve them here.
+// One edition-abbreviations page, /assets/common/abbr.html (the current copy); old links keep working.
+app.get('/assets/texts/abbr.html', (req, res) => {
+    const q = req.url.indexOf('?');
+    res.redirect('/assets/common/abbr.html' + (q === -1 ? '' : req.url.slice(q)), 301);
+});
 for (const file of ['linebyline.html', 'readylinebyline.html']) {
     for (const url of ['/assets/' + file, '/ru/assets/' + file]) {
         app.get(url, (req, res) => res.code(404).type('text/plain').send('Not found'));

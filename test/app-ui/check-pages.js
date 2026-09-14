@@ -18,13 +18,13 @@ const PROFILE = 'pages';
 const PAGES = [
     // dictHelp*.html and keyFeatures.html are gone: the site 301s them to the docs (LEGACY_HELP_REDIRECTS)
     // and the app opens them online. linebyline.html and readylinebyline.html were removed (owner: no longer needed).
+    // multiTool*.html stays on the site only (owner); the app opens it online.
     '/assets/common/history.html',
-    '/assets/common/multiTool.html',
+    '/assets/common/abbr.html',
     '/assets/grammar/nouns.html',
     '/assets/grammar/verbs.html',
     '/assets/grammar/declentions.html',
     '/assets/materials/prat.html',
-    '/assets/texts/abbr.html',
     '/assets/lbl.html',
     '/assets/lbl-en.html',
     '/assets/listdiff.html',

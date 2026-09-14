@@ -1598,7 +1598,7 @@ window.buildSutta = async function(rawSlug, opts) {
         ? `${firstTranslator}<button type="button" class="dg-trn-star" aria-expanded="false" title="${window.isRuPath ? 'Другие переводчики' : 'Other translators'}">*</button><span class="dg-trn-rest" hidden>${moreTranslators.join('<br>')}</span>`
         : (firstTranslator || '');
     const translatorByline = `<div id="trn" class="byline">
-    <p><span class="pli-lang" lang="pi">Pāḷi <a class="text-decoration-none text-reset" href="/assets/texts/abbr.html?s=ms" title="Mahāsaṅgīti Pāḷi">MS</a></span>
+    <p><span class="pli-lang" lang="pi">Pāḷi <a class="text-decoration-none text-reset" href="/assets/common/abbr.html?s=ms" title="Mahāsaṅgīti Pāḷi">MS</a></span>
     <span class="right-column">${bylineTranslators}</span></p></div>`;
 
     let cleanSlugReady = slug;

@@ -27,11 +27,10 @@ const PAGES = [
     '/toc',
     '/memo/index.html',
     '/settings/index.html',
-    '/assets/common/multiTool.html',
     '/assets/common/history.html',
     '/assets/grammar/nouns.html',
     '/assets/materials/prat.html',
-    '/assets/texts/abbr.html',
+    '/assets/common/abbr.html',
     '/assets/lbl.html', // linebyline.html is retired (owner); lbl.html is the line-by-line tool now
 ];
 
