@@ -58,20 +58,8 @@ ul li {
 </div>
     <script>
 	
-fetch('/read/php/latest-rus.php')
-    .then(response => {
-        if (!response.ok) {
-            throw new Error('Ошибка при выполнении PHP-скрипта');
-        }
-        return response.text(); // Получаем текстовый ответ
-    })
-    .then(data => {
-        // Вставляем текст в элемент с id="output"
-        document.getElementById('outputFromLatestPhp').innerHTML = data;
-    })
-    .catch(error => {
-        console.error('Ошибка:', error);
-    });
+// /read/php/latest-rus.php was the legacy PHP admin script (validate JSON, run the update shell
+// scripts). It does not exist under Node and must not be called from a public page.
 
 		
         // Загрузка файла и обработка его содержимого
@@ -79,22 +67,21 @@ fetch('/read/php/latest-rus.php')
             .then(response => response.text())
             .then(data => {
                 // Извлечение переменных из текста файла
-                const regex = /let (\w+) = \[([\s\S]+?)\];/g;
+                // ranges.js sets window.<name> = [...] now (it used to be `let <name> = [...]`).
+                const regex = /(?:let\s+|window\.)(\w+)\s*=\s*\[([\s\S]*?)\];/g;
                 let match;
                 let variables = {};
 
                 while ((match = regex.exec(data)) !== null) {
-                    let varName = match[1];
-                    let varValues = match[2].replace(/\s+/g, '').split(',');
-                    variables[varName] = varValues;
+                    variables[match[1]] = match[2].replace(/\s+/g, '').split(',').map(v => v.replace(/^['"]|['"]$/g, ''));
                 }
 
        const vinayaList = document.getElementById('vinayaRanges');
 
-                variables['vinayaranges'].forEach(range => {
+                (variables['vinayaranges'] || []).forEach(range => {
                     const listItem = document.createElement('li');
                     listItem.textContent = range;
-                    snList.appendChild(listItem);
+                    vinayaList.appendChild(listItem);
                 });
 
 

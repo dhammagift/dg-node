@@ -430,7 +430,7 @@ loadAndCheckRanges();
     const translationLines = translation.split('\n');
     const jsonData = {};
 
-    let lettersOnly = indexValue.match(/[a-z]+/)[0];
+    let lettersOnly = (indexValue.match(/[a-z]+/) || [])[0]; if (!lettersOnly) return; // no text id yet (?q= fills the field after load)
     let beforeDot = indexValue.split('.')[0];
     let firstNumberOnly = beforeDot.match(/[0-9]+/)?.[0] ?? null;
 
@@ -685,7 +685,7 @@ function loadText() {
   document.getElementById('lineBreakCheckbox').checked = false;
 
   const translationLines = cleanedTranslation.split('\n');
-  let lettersOnly = indexValue.match(/[a-z]+/)[0];
+  let lettersOnly = (indexValue.match(/[a-z]+/) || [])[0]; if (!lettersOnly) return; // no text id yet (?q= fills the field after load)
   let beforeDot = indexValue.split('.')[0];
   let firstNumberOnly = beforeDot.match(/[0-9]+/)?.[0] ?? null;
 
