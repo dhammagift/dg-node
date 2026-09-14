@@ -3,11 +3,25 @@
 # download, verify, swap into the prod checkout, restart. The build itself does not run on the
 # server — it needs more free memory than the box has.
 #
-# Usage: scripts/pull-db.sh [--force]     (--force: install even if the build_id is already there)
+# Usage: scripts/pull-db.sh [--app] [--force]
+#   (no flag)  the sites' database only — dg.db, used by /search and the reader
+#   --app      also the offline archive the app/PWA downloads (siteroot/mobile-data). A new archive
+#              means every offline user is told to download ~200 MB again, so this goes out rarely —
+#              owner: every 2 weeks to a month, not on each translation change.
+#   --force    install even if this build_id is already installed
 #
 # dg-node-test's dg.db is a symlink to prod's, so both sites get the new database. The previous one
 # stays next to it as dg.db.prev — to roll back, swap the two files back and restart.
 set -euo pipefail
+
+APP=0; FORCE=0
+for a in "$@"; do
+    case "$a" in
+        --app) APP=1 ;;
+        --force) FORCE=1 ;;
+        *) echo "unknown option $a" >&2; exit 2 ;;
+    esac
+done
 
 PROD="${DG_PROD_DIR:-/var/www/html/nodejs}"
 URL="https://github.com/dhammagift/dg-node/releases/download/db-latest"
@@ -23,7 +37,10 @@ db_build() { python3 -c 'import sqlite3,sys; print(sqlite3.connect("file:"+sys.a
 
 NEW="$(field "$TMP/db-manifest.json" build_id)"
 CUR="$(db_build dg.db)"
-if [ "$NEW" = "$CUR" ] && [ "${1:-}" != "--force" ]; then
+APP_BUILD="$(field siteroot/mobile-data/db-manifest.json build_id 2>/dev/null || echo none)"
+APP_DAYS="$(( ( $(date +%s) - $(stat -c %Y siteroot/mobile-data/db-manifest.json 2>/dev/null || date +%s) ) / 86400 ))"
+echo "app archive: build $APP_BUILD, published $APP_DAYS day(s) ago"
+if [ "$NEW" = "$CUR" ] && [ "$FORCE" = 0 ] && { [ "$APP" = 0 ] || [ "$APP_BUILD" = "$NEW" ]; }; then
     echo "already on build $CUR"
     exit 0
 fi
@@ -49,20 +66,26 @@ if [ "$(db_build "$TMP/dg.db")" != "$NEW" ]; then
     exit 1
 fi
 
-# Swap: the WAL/SHM files belong to the old database and must move with it, or SQLite would apply
-# them to the new one on the next open.
-mv -f dg.db dg.db.prev
-[ -f dg.db-wal ] && mv -f dg.db-wal dg.db.prev-wal
-[ -f dg.db-shm ] && mv -f dg.db-shm dg.db.prev-shm
-mv "$TMP/dg.db" dg.db
+if [ "$NEW" != "$CUR" ] || [ "$FORCE" = 1 ]; then
+    # Swap: the WAL/SHM files belong to the old database and must move with it, or SQLite would
+    # apply them to the new one on the next open.
+    mv -f dg.db dg.db.prev
+    [ -f dg.db-wal ] && mv -f dg.db-wal dg.db.prev-wal
+    [ -f dg.db-shm ] && mv -f dg.db-shm dg.db.prev-shm
+    mv "$TMP/dg.db" dg.db
+    pm2 restart dg-prod test >/dev/null
+    echo "sites: installed build $NEW (previous $CUR kept as dg.db.prev)"
+fi
 
-# The offline archive the app/PWA downloads: archive first, manifest last (it announces the build).
-mkdir -p siteroot/mobile-data
-mv "$TMP/dg.db.gz" siteroot/mobile-data/dg.db.gz.tmp && mv -f siteroot/mobile-data/dg.db.gz.tmp siteroot/mobile-data/dg.db.gz
-mv "$TMP/db-manifest.json" siteroot/mobile-data/db-manifest.json.tmp && mv -f siteroot/mobile-data/db-manifest.json.tmp siteroot/mobile-data/db-manifest.json
-
-pm2 restart dg-prod test >/dev/null
-echo "installed build $NEW (previous $CUR kept as dg.db.prev)"
+if [ "$APP" = 1 ]; then
+    # The offline archive the app/PWA downloads: archive first, manifest last (it announces the build).
+    mkdir -p siteroot/mobile-data
+    mv "$TMP/dg.db.gz" siteroot/mobile-data/dg.db.gz.tmp && mv -f siteroot/mobile-data/dg.db.gz.tmp siteroot/mobile-data/dg.db.gz
+    mv "$TMP/db-manifest.json" siteroot/mobile-data/db-manifest.json.tmp && mv -f siteroot/mobile-data/db-manifest.json.tmp siteroot/mobile-data/db-manifest.json
+    echo "app: published build $NEW — offline users will be offered the new download"
+else
+    echo "app archive left on build $APP_BUILD ($APP_DAYS day(s) old); publish with --app when it is time"
+fi
 
 # sutta_words.txt is tracked in git — not overwritten here, only reported, so the checkout stays clean.
 if ! cmp -s "$TMP/sutta_words.txt" public/overrides/texts/sutta_words.txt; then
