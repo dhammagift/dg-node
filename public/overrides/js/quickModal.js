@@ -662,12 +662,13 @@ window.addEventListener('storage', (e) => {
 
 // A link followed from inside the modal (a history row, a 4 Ariyasaccāni text) closes it. On a full page
 // load that happened by itself; the SPA and the app open the text in place, and the reader stayed
-// hidden under the still-open modal (tablet test).
+// hidden under the still-open modal (tablet test). Capture phase: the app's native-bridge.js handles
+// these links in its own document capture listener and stops propagation, so a bubble listener never ran.
 document.addEventListener('click', (e) => {
-    if (!window.quickModalIsOpen || !window.quickModal || e.defaultPrevented && !e.target.closest) return;
-    const a = e.target.closest && e.target.closest('a[href]');
+    if (!window.quickModalIsOpen || !window.quickModal || !e.target.closest) return;
+    const a = e.target.closest('a[href]');
     if (!a || !window.quickModal.contains(a)) return;
     const href = a.getAttribute('href') || '';
     if (!href || href.charAt(0) === '#' || /^javascript:/i.test(href)) return;
     setTimeout(() => { if (window.quickModalIsOpen) window.toggleQuickModal(); }, 0);
-});
+}, true);
