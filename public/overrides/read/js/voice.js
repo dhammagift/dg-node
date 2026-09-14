@@ -1159,7 +1159,7 @@ async function playCurrentSegment() {
       ttsState.googleAudio.onended = null; 
       ttsState.googleAudio = null;         
   }
-  window.speechSynthesis.cancel();         
+  if (window.speechSynthesis) window.speechSynthesis.cancel();
   
   if (ttsState.currentIndex < 0 || ttsState.currentIndex >= ttsState.playlist.length) {
     clearTtsStorage();
@@ -2658,7 +2658,9 @@ async function refreshVoiceDropdowns(forceRefresh = false) {
 
 
 
-window.speechSynthesis.onvoiceschanged = () => {
+// A browser/WebView without Web Speech (Android System WebView, some in-app browsers) has no
+// window.speechSynthesis: this line threw on load and took the rest of the file down (Memo in the app).
+if (window.speechSynthesis) window.speechSynthesis.onvoiceschanged = () => {
     synth.getVoices();
     // Если панель настроек голоса уже в DOM, обновляем ее, чтобы появились нативные голоса
     if (document.getElementById('google-voice-settings-container')) {
