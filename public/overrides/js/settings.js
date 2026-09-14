@@ -1301,8 +1301,10 @@ if (event.altKey && (event.code === "KeyP" || event.code === "KeyY")) {
     }
   }
 
-    // === УНИВЕРСАЛЬНОЕ ДОБАВЛЕНИЕ В ИЗБРАННОЕ (Alt+Shift+P или Alt+F) ===
-    if ((event.altKey && event.code === "KeyF" && !event.shiftKey)) { // Alt+F без шифта
+    // === УНИВЕРСАЛЬНОЕ ДОБАВЛЕНИЕ В ИЗБРАННОЕ (Alt+Q) ===
+    // Was Alt+F — owner: every F shortcut is find-on-page now (Alt+F, Alt+Shift+F, Ctrl+Shift+F,
+    // dg-page-find-ui.js); Alt+B, the other candidate, doesn't reach the page in Chrome.
+    if (event.altKey && event.code === "KeyQ" && !event.shiftKey) {
         event.preventDefault();
 
         // 1. Попытка для Memo (эмулируем клик по кнопке в memo)
@@ -1542,6 +1544,11 @@ if (event.altKey && event.code === "KeyJ") {
     if (event.altKey) {
         
         // Alt + Minus (на основной клавиатуре или на NumPad)
+        // Alt+0 — back to 100% (owner), the same scale Alt+− / Alt+= step.
+        if (event.code === "Digit0" || event.code === "Numpad0") {
+            event.preventDefault();
+            if (window.dgStepUiScale) window.dgStepUiScale(100 - (parseInt(localStorage.getItem('uiScale'), 10) || 100));
+        }
         // The SPA has no #fontDec/#fontInc (legacy reader-template only) — step the drawer's scale.
         if (event.code === "Minus" || event.code === "NumpadSubtract") {
             event.preventDefault();

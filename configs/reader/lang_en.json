@@ -93,7 +93,7 @@
     "dictionaryAlt": "Onclick popup dictionary",
     "multiselectModeAlt": "Multi-select Mode",
     "multiselectTitle": "Toggle Multi-select (Alt+J)",
-    "favoriteTitle": "Add to favorites (Alt+F)",
+    "favoriteTitle": "Add to favorites (Alt+Q)",
     "compassTitle": "Favorites / History (Alt+P)",
     "settingsTitle": "Settings (Alt+S)",
     "helpTitle": "Help (Alt+H)"
@@ -266,7 +266,7 @@
     "multiselectTitle": "Multiselect for dictionary (Alt+J)",
     "multiselectAlt": "Select",
     "multiselectLabel": "Multi-Select",
-    "favoriteTitle": "Favorites (Alt+F)",
+    "favoriteTitle": "Favorites (Alt+Q)",
     "favoriteAlt": "Favorite",
     "favoriteLabel": "Bookmark",
     "historyTitle": "History and Quick Links",

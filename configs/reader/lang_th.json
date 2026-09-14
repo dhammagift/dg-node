@@ -93,7 +93,7 @@
     "dictionaryAlt": "พจนานุกรมป๊อปอัปเมื่อคลิก",
     "multiselectModeAlt": "โหมดเลือกหลายคำ",
     "multiselectTitle": "สลับการเลือกหลายคำ (Alt+J)",
-    "favoriteTitle": "เพิ่มในรายการโปรด (Alt+F)",
+    "favoriteTitle": "เพิ่มในรายการโปรด (Alt+Q)",
     "compassTitle": "รายการโปรด / ประวัติ (Alt+P)",
     "settingsTitle": "การตั้งค่า (Alt+S)",
     "helpTitle": "ช่วยเหลือ (Alt+H)"
@@ -266,7 +266,7 @@
     "multiselectTitle": "เลือกหลายคำสำหรับพจนานุกรม (Alt+J)",
     "multiselectAlt": "เลือก",
     "multiselectLabel": "เลือกหลายคำ",
-    "favoriteTitle": "รายการโปรด (Alt+F)",
+    "favoriteTitle": "รายการโปรด (Alt+Q)",
     "favoriteAlt": "รายการโปรด",
     "favoriteLabel": "บุ๊กมาร์ก",
     "historyTitle": "ประวัติและลิงก์ด่วน",

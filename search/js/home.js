@@ -7,7 +7,7 @@
  * menu-links.json) и перенесены один-в-один из боевого горизонтального меню легаси-сайта
  * (assets/common/horizontalMenu{En,Ru}.php). Этот файл только рисует их.
  *
- * Шаблонные ссылки ({{q}}/{{theme}}) отдаём легаси-функциям openWithQuery/openWithQueryMulti из
+ * Шаблонные ссылки ({{q}}/{{theme}}) отдаём легаси-функциям openWithQuery из
  * /assets/js/openDicts.js — они же копируют запрос в буфер обмена и показывают уведомление, ровно
  * как в старом меню. openWithQuery читает event.currentTarget, поэтому обработчик вешается на
  * КАЖДУЮ ссылку отдельно: делегирование на контейнер сломало бы его (currentTarget был бы
@@ -626,7 +626,7 @@
     // Идентичность пункта — сам JSON не даёт устойчивого id, поэтому берём первое, что у него
     // реально есть и не меняется между рендерами: обычный href, либо адрес-шаблон, либо подпись.
     function itemKey(item) {
-        return item.href || item.tpl || item.tplMulti || item.label;
+        return item.href || item.tpl || item.label;
     }
 
     function isStarred(item) {
@@ -698,11 +698,6 @@
                         window.open(localUrl, item.blank ? '_blank' : '_self');
                     }
                 }
-            });
-        } else if (item.tplMulti) {
-            a.addEventListener('click', function (e) {
-                if (typeof window.openWithQueryMulti === 'function') window.openWithQueryMulti(e, item.tplMulti);
-                else e.preventDefault();
             });
         } else if (item.action === 'readPlus') {
             /* "Read+" в легаси-меню: берёт из поля первый "книга+номер" (mn129 из "mn129 sati"),

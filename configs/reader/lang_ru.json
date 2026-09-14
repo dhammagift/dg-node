@@ -93,7 +93,7 @@
     "dictionaryAlt": "Всплывающий по клику словарь",
     "multiselectModeAlt": "Режим Мульти-выбор",
     "multiselectTitle": "Вкл/Выкл Multi-select (Alt+J)",
-    "favoriteTitle": "Добавить в избранное (Alt+F)",
+    "favoriteTitle": "Добавить в избранное (Alt+Q)",
     "compassTitle": "Избранное / История (Alt+P)",
     "settingsTitle": "Настройки (Alt+S)",
     "helpTitle": "Помощь (Alt+H)"
@@ -266,7 +266,7 @@
     "multiselectTitle": "Выделять несколько слов для словаря (Alt+J)",
     "multiselectAlt": "Select",
     "multiselectLabel": "Мульти-Выбор",
-    "favoriteTitle": "Избранное (Alt+F)",
+    "favoriteTitle": "Избранное (Alt+Q)",
     "favoriteAlt": "Favorite",
     "favoriteLabel": "в Избранное",
     "historyTitle": "История и Быстрые ссылки",
