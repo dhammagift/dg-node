@@ -3437,6 +3437,18 @@ body.dg-skin-minimal .dg-contact-btn:hover {
     transform: translateY(100%);
 }
 .dg-sheet.dg-about-sheet.show { transform: translateY(0); }
+/* Wide screens: as wide as the page content (the hero column, 920px — same as .dg-wide), not the
+   whole window (owner). The dimmed page stays visible at the sides, so a tap there closes the sheet
+   like any other one. Phones keep the full-width bottom sheet. */
+@media (min-width: 768px) {
+    .dg-sheet.dg-about-sheet {
+        left: 50%;
+        right: auto;
+        width: min(920px, calc(100vw / var(--dg-zoom, 1) - 32px));
+        transform: translate(-50%, 100%);
+    }
+    .dg-sheet.dg-about-sheet.show { transform: translate(-50%, 0); }
+}
 .dg-sheet.dg-about-sheet .dg-sheet-handle {
     display: block;
     width: 38px;

@@ -1062,6 +1062,20 @@ app.post('/api/app-log', { bodyLimit: 32 * 1024 }, (req, res) => {
 // public URL stays put, served by hand from its new home, the same trick the reader configs use.
 // Same no-cache tier staticCacheHeaders gives any .json (cache.md — revalidated via the
 // ETag sendFile() now sets, not re-sent in full unless the file actually changed).
+// Old static help pages (/assets/common/*.html) now live in the docs (owner: "все документальные —
+// заменить на docs"). Permanent redirects keep old bookmarks and links from the legacy site working;
+// the tool/data pages next to them (history, lunar, multiTool, abbr, syrkin) are not help and stay.
+const LEGACY_HELP_REDIRECTS = {
+    'dictHelp.html': '/docs/dictionary', 'dictHelpRu.html': '/ru/docs/dictionary',
+    'keyFeatures.html': '/docs/key-features', 'keyFeaturesRu.html': '/ru/docs/key-features',
+    'privacy.html': '/docs/policies', 'privacy-ru.html': '/ru/docs/policies',
+    'rationale-en.html': '/docs/rationale', 'rationale.html': '/ru/docs/rationale',
+    'o-en.html': '/docs/principles', 'o.html': '/ru/docs/principles',
+    'ttsHelp.html': '/docs/tts',
+};
+for (const [file, target] of Object.entries(LEGACY_HELP_REDIRECTS)) {
+    app.get('/assets/common/' + file, (req, res) => res.redirect(target, 301));
+}
 app.get('/assets/js/translators.json', (req, res) => {
     res.header('Cache-Control', CACHE_CONFIG_JSON);
     return sendFile(req, res, path.join(__dirname, 'configs', 'reader', 'translators.json'), 'application/json');
