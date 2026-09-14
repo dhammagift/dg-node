@@ -673,15 +673,11 @@
             // файлы базы уже держит другая вкладка — в OPFS они монопольные. app.js к этому
             // моменту уже повторил попытку со свежим воркером, так что сырой DOMException в
             // подсказке бесполезен: человеку нужно действие, а не текст исключения.
-            var busy = /Access Handle|createSyncAccessHandle|NoModificationAllowed/i.test((err && err.message) || '');
-            var text = declined
-                ? (isRuLang() ? 'Скачивание отложено — повторите в Настройках'
-                              : 'Download postponed — retry from Settings')
-                : busy
-                ? (isRuLang() ? 'Библиотека открыта в другой вкладке сайта. Закройте её и повторите в Настройках'
-                              : 'The library is open in another tab. Close it and retry from Settings')
-                : (isRuLang() ? 'Не удалось скачать данные: ' : 'Could not download data: ') +
-                  ((err && err.message) || (isRuLang() ? 'неизвестная ошибка' : 'unknown error'));
+            // One short sentence for every case, the same wording app.js uses (dgOfflineErrorText);
+            // the raw exception is in the console line above.
+            var text = typeof window.dgOfflineErrorText === 'function'
+                ? window.dgOfflineErrorText(err)
+                : (isRuLang() ? 'Не удалось скачать библиотеку. Повторите позже' : 'Could not download the library. Try again later');
 
             if (typeof window.showBubbleNotification === 'function') {
                 window.showBubbleNotification(text, declined ? 4000 : 9000, declined ? 'info' : 'error');

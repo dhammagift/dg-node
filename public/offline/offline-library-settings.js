@@ -111,7 +111,8 @@
             : ('Downloaded (build ' + (state.build_id || '?') + '). An update is available' +
                (update.bytes ? ', ' + mb(update.bytes) + ' MB.' : '.'));
         btnEl.textContent = isRu ? 'Обновить' : 'Update';
-        if (deleteEl) deleteEl.style.display = 'none';
+        // Deleting must not require installing the update first (owner): the library is on disk here too.
+        if (deleteEl) deleteEl.style.display = '';
         btnEl.onclick = function () { goHomeWith(WANT_UPDATE_KEY); };
     } else {
         // "Downloaded" on its own hid a real failure mode: a library that is on disk but which THIS

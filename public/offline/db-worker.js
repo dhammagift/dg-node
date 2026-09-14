@@ -196,9 +196,20 @@ async function partialBytes(scratchName) {
 async function openScratch(scratchName) {
     const root = await opfsRoot();
     const handle = await root.getFileHandle(scratchName, { create: true });
-    // Newer Chrome wants the options bag; older builds reject it. Both are in the wild.
-    try { return await handle.createSyncAccessHandle({ mode: 'readwrite' }); }
-    catch (e) { return await handle.createSyncAccessHandle(); }
+    // A worker that was just terminated (app.js retries a refused download with a fresh worker, a tab
+    // hands the library over) keeps its handle for a moment. Opening at once failed with "Access
+    // Handles cannot be created if there is another open Access Handle" — so wait that out, briefly.
+    const busy = e => e && (e.name === 'NoModificationAllowedError' || /Access Handle/.test(e.message || ''));
+    for (let tries = 1; ; tries++) {
+        try {
+            // Newer Chrome wants the options bag; older builds reject it. Both are in the wild.
+            try { return await handle.createSyncAccessHandle({ mode: 'readwrite' }); }
+            catch (e) { if (busy(e)) throw e; return await handle.createSyncAccessHandle(); }
+        } catch (e) {
+            if (!busy(e) || tries >= 20) throw e; // ~10s: a live download in another tab really has it
+            await new Promise(resolve => setTimeout(resolve, 500));
+        }
+    }
 }
 
 // The scratch handle is closed by downloadInto on the cancel path; this only removes the file, so a

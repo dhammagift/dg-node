@@ -97,6 +97,38 @@
         if (typeof window.showBubbleNotification === 'function') window.showBubbleNotification(text, 6000, 'info');
     }
 
+    // What the reader is told when the offline library fails: one short sentence in their language
+    // saying what to do — never a raw exception ("Failed to execute 'createSyncAccessHandle' on
+    // 'FileSystemFileHandle'…" told nobody anything). Callers log the technical text to the console.
+    // offline-status.js uses the same wording through window.dgOfflineErrorText.
+    function offlineErrorText(e) {
+        var msg = String((e && e.message) || e || '');
+        var ru = (localStorage.getItem('dhammaLanguage') || localStorage.getItem('siteLanguage') || 'en') === 'ru';
+        var t = function (r, en) { return ru ? r : en; };
+        if (/declined/.test(msg)) return t('Скачивание отложено — повторите в Настройках', 'Download postponed — retry from Settings');
+        if (/cancelled/.test(msg)) return t('Загрузка отменена', 'Download cancelled');
+        if (/busy|Access Handle|createSyncAccessHandle|NoModificationAllowed/i.test(msg)) {
+            return t('Библиотека занята другой вкладкой. Закройте её и повторите', 'The library is busy in another tab. Close it and try again');
+        }
+        var space = /about (\d+)MB[\s\S]*allows (-?\d+)MB/.exec(msg);
+        if (space) {
+            var free = Math.max(0, Number(space[2]));
+            return t('Не хватает места: нужно ' + space[1] + ' МБ, свободно ' + free + ' МБ',
+                     'Not enough space: ' + space[1] + ' MB needed, ' + free + ' MB free');
+        }
+        if (/not enough storage|out of space|QuotaExceeded/i.test(msg)) return t('Не хватает места в браузере', 'Not enough browser storage');
+        if (/HTTPS/i.test(msg)) return t('Офлайн-библиотека работает только по HTTPS', 'The offline library needs HTTPS');
+        if (/schema|update the app/i.test(msg)) return t('Нужна новая версия приложения', 'Update the app first');
+        if (/damaged|unusable|incomplete|unpack|could not be read back/i.test(msg)) {
+            return t('Файл пришёл повреждённым. Повторите загрузку', 'The file arrived damaged. Try again');
+        }
+        if (/stalled|HTTP \d|Failed to fetch|NetworkError|dropped|timed out|network/i.test(msg)) {
+            return t('Нет связи с сервером. Повторите — загрузка продолжится с того же места', 'No connection. Try again — the download resumes where it stopped');
+        }
+        return t('Не удалось скачать библиотеку. Повторите позже', 'Could not download the library. Try again later');
+    }
+    window.dgOfflineErrorText = offlineErrorText;
+
     // Only ONE tab can hold the OPFS pool (see acquireOwnership), so a download asked for in another
     // tab cannot be done here — it has to be handed to the tab that owns it. Doing nothing at all
     // was the old behaviour and the worst option: the click was consumed, the key stayed in
@@ -131,7 +163,7 @@
                 return;
             }
             if (msg.type === 'error') {
-                notify(msg.message || 'download failed');
+                notify(offlineErrorText(msg.message));
                 return;
             }
             // Serve another tab's data request from THIS tab's open database. Nothing is written and
@@ -237,14 +269,17 @@
         readIntent(WANT_DATA_KEY);
         readIntent(WANT_UPDATE_KEY);
         if (!opfsAvailable()) {
-            notify('HTTPS is required for the offline library (or localhost)');
+            notify(offlineErrorText('HTTPS'));
             return;
         }
         if (ownsLibrary) {
-            download(kind).catch(function (e) { notify((e && e.message) || 'download failed'); });
+            download(kind).catch(function (e) {
+                log('download failed:', (e && e.message) || e);
+                notify(offlineErrorText(e));
+            });
             return;
         }
-        if (!askOwningTab(kind)) notify('the offline library is in use by another tab — close it and try again');
+        if (!askOwningTab(kind)) notify(offlineErrorText('busy'));
     }
 
     // Anything on the page can start the download with a plain link — the obvious use is a home-page
