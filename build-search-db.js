@@ -17,7 +17,9 @@ const { paliSkel } = require('./public/overrides/js/pali-skeleton.js');
 // ничего не делает — читает свои json-конфиги и ждёт init(), которого здесь не будет.
 const { DEFAULT_SCOPE_PREFIXES, matchesScope, stripSearchPunctuation } = require('./core/search-core.js');
 
-const DATA_ROOT = path.join(__dirname, 'siteroot', 'data');
+// DG_DATA_ROOT / DG_TEXTINFO / DG_LEGACY_WORDS: set by .github/workflows/build-db.yml, where the
+// corpus is checked out next to the repo instead of symlinked into siteroot/ as on the server.
+const DATA_ROOT = process.env.DG_DATA_ROOT || path.join(__dirname, 'siteroot', 'data');
 const SC_BILARA = path.join(DATA_ROOT, 'suttacentral.net', 'sc-data', 'sc_bilara_data');
 const SC_TRANS = path.join(SC_BILARA, 'translation');
 const DG_OFFLINE = path.join(DATA_ROOT, 'dhammagift');
@@ -34,11 +36,11 @@ const OUT_PATH = path.join(__dirname, 'dg.db');
 // `mr` (legacy relevance rank) is the one piece of sutta metadata that is not in the corpus —
 // it comes from the legacy site's textinfo.json. Everything else below is derived from the
 // corpus itself, so this build does not depend on dg_db_light.json / dblight.js at all.
-const TEXTINFO_PATH = fs.existsSync('/data/data/com.termux/files/usr')
+const TEXTINFO_PATH = process.env.DG_TEXTINFO || (fs.existsSync('/data/data/com.termux/files/usr')
     ? '/data/data/com.termux/files/usr/share/apache2/default-site/htdocs/assets/js/textinfo.json'
     : (process.platform === 'win32'
         ? 'C:/soft/dg/assets/js/textinfo.json'
-        : '/var/www/html/assets/js/textinfo.json');
+        : '/var/www/html/assets/js/textinfo.json'));
 
 // Files that are not sutta texts (UI strings, blurbs, subject indexes, study guides), plus one
 // real duplicate. Same list dblight.js keeps for the Express server's skeleton — duplicated
@@ -466,7 +468,7 @@ function publishArchive(buildId) {
    его читает ещё и PHP-сайт. Из него же берутся первый и последний блоки — кураторские фразы
    (37 факторов пробуждения, четыре истины) и id текстов с названиями. Они написаны руками и из
    корпуса не выводятся; из корпуса выводится только средний, словарный блок. */
-const LEGACY_WORDS = '/var/www/html/assets/texts/sutta_words.txt';
+const LEGACY_WORDS = process.env.DG_LEGACY_WORDS || '/var/www/html/assets/texts/sutta_words.txt';
 const OUT_WORDS = path.join(__dirname, 'public', 'overrides', 'texts', 'sutta_words.txt');
 const WORD_LINE = /^\S+ \d+$/;
 
