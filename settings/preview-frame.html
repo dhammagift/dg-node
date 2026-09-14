@@ -19,6 +19,11 @@
    var(--light-off-white), тёмная var(--off-black)), то есть по фону это было не демо. Свои
    у нас только отступы: у ридера body{margin:1rem 3rem}, в узком кадре это съедало ширину. */
 html, body { margin: 0; padding: 0; }
+/* The frame's height follows its text (reportHeight below). Where the scrollbar takes width (the
+   tablet's WebView, issue #10), a scrollbar appearing mid-resize narrowed the text, it re-wrapped
+   taller, the frame grew, the scrollbar went away, the text got shorter again — the preview jittered.
+   A reserved gutter keeps the text width the same with or without the scrollbar, so it settles. */
+html { scrollbar-gutter: stable; }
 body { padding: 4px 2px; }
 /* Скрытая копия кнопки словаря из панели ридера (reader-template.html: a.toggle-dict-btn > img).
    paliLookup.js читает её безусловно (`document.querySelector('.toggle-dict-btn img').src = …`)

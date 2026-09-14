@@ -247,9 +247,14 @@ onReady(() => {
 
             const offsetTop = 25;
             const offsetLeft = 0;
+            // The font-size control scales the page with CSS zoom on <html> (home.js applyUiScale).
+            // Rects and scrollY come back already zoomed, style.left/top get zoomed again: at 120% the
+            // menu opened ~100px off the link, and further the more the text was scrolled (issue #9).
+            // Everything below is in screen px; divided by the zoom only when written.
+            const zoom = parseFloat(getComputedStyle(document.documentElement).zoom) || 1;
 
             let left = btnRect.left + offsetLeft;
-            let top = btnRect.top + window.scrollY + offsetTop;
+            let top = btnRect.top + window.scrollY + offsetTop * zoom;
 
             if (left + menuRect.width > window.innerWidth) {
                 left = window.innerWidth - menuRect.width - 10;
@@ -259,8 +264,8 @@ onReady(() => {
                 top = btnRect.top + window.scrollY - menuRect.height - 10;
             }
 
-            menu.style.left = `${left}px`;
-            menu.style.top = `${top}px`;
+            menu.style.left = `${left / zoom}px`;
+            menu.style.top = `${top / zoom}px`;
 
             return;
         }
