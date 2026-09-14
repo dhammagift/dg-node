@@ -15,7 +15,7 @@ const { execFileSync } = require('child_process');
 const { paliSkel } = require('./public/overrides/js/pali-skeleton.js');
 // Только ради DEFAULT_SCOPE_PREFIXES/matchesScope для словаря подсказок (см. build()). Модуль при require
 // ничего не делает — читает свои json-конфиги и ждёт init(), которого здесь не будет.
-const { DEFAULT_SCOPE_PREFIXES, matchesScope } = require('./core/search-core.js');
+const { DEFAULT_SCOPE_PREFIXES, matchesScope, stripSearchPunctuation } = require('./core/search-core.js');
 
 const DATA_ROOT = path.join(__dirname, 'siteroot', 'data');
 const SC_BILARA = path.join(DATA_ROOT, 'suttacentral.net', 'sc-data', 'sc_bilara_data');
@@ -349,16 +349,20 @@ function build() {
             txt, content='texts', content_rowid='rowid',
             tokenize='trigram remove_diacritics 1');
     `);
-    // The indexed copy is ё-folded because the tokenizer will not do it: remove_diacritics folds
-    // the Pali marks (ā→a, ṁ→m, ñ→n, ṇ→n) but treats ё as its own Cyrillic letter, and the grep
-    // path this replaces folded е/ё by hand. The query side folds the same way. Storing a folded
-    // copy in the index is safe precisely because the index is external-content — the readable
-    // text lives in `texts` and is returned from there, never from here (so: never `rebuild`,
-    // which would repopulate the index from the unfolded content).
+    // The indexed copy is folded because the tokenizer will not do it: ё→е (remove_diacritics
+    // folds the Pali marks, ā→a, ṁ→m, but treats ё as its own Cyrillic letter), and the punctuation
+    // the query side strips at the door (search-core.js stripSearchPunctuation) is stripped here
+    // too — otherwise "evaṁ bhikkhave" never found "evaṁ, bhikkhave" (owner). The JS-side matchers
+    // allow those marks back between letters (search-core.js punctTolerantPattern). Storing a
+    // folded copy in the index is safe precisely because the index is external-content — the
+    // readable text lives in `texts` and is returned from there, never from here (so: never
+    // `rebuild`, which would repopulate the index from the unfolded content).
+    db.function('fts_fold', { deterministic: true },
+        s => stripSearchPunctuation(s || '').replace(/ё/g, 'е').replace(/Ё/g, 'Е'));
     const placeholders = [...UNINDEXED_TRANSLATORS].map(() => '?').join(',');
     db.prepare(
         `INSERT INTO fts(rowid, txt)
-         SELECT rowid, replace(replace(txt, 'ё', 'е'), 'Ё', 'Е') FROM texts
+         SELECT rowid, fts_fold(txt) FROM texts
          WHERE translator IS NULL OR translator NOT IN (${placeholders})`
     ).run(...UNINDEXED_TRANSLATORS);
     console.log(`fts index (${Date.now() - t}ms)`);
@@ -583,6 +587,16 @@ if (process.argv.includes('--no-build')) {
     }
     console.log(`публикуем готовую базу, build ${buildId}`);
     publishArchive(buildId);
+} else if (process.argv.includes('--finish')) {
+    // The last two steps of build() on a dg.db whose build was stopped after "sutta_words" (the
+    // server killed it for low memory, 2026-09-14): statistics and meta. Everything before them is
+    // already in the file — only valid for a build that got that far. Same order as build(): meta
+    // hashes the file after ANALYZE.
+    const db = new DatabaseSync(OUT_PATH);
+    db.exec('ANALYZE');
+    writeMeta(db);
+    db.close();
+    console.log(`${OUT_PATH}: ${(fs.statSync(OUT_PATH).size / 1048576).toFixed(1)} MB, finished`);
 } else {
     build();
 }

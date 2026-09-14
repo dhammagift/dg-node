@@ -1472,7 +1472,11 @@ window.buildSutta = async function(rawSlug, opts) {
 
         let finder = (params.get("s") || "").replace(/ṃ/g, "ṁ");
         if (finder && finder.trim() !== "") {
-            let regex = new RegExp(finder, 'gi');
+            // A plain search word is matched the way search matches it: punctuation between its
+            // letters in the text is ignored ("evaṁ bhikkhave" → "evaṁ, bhikkhave",
+            // core/search-core.js punctTolerantPattern). A regex keyword stays as typed.
+            const plainFinder = !/[.*+?^${}()|[\]\\]/.test(finder);
+            let regex = new RegExp(plainFinder ? Array.from(finder).join('[,;:!"\'“”‘’«»]*') : finder, 'gi');
             const highlight = match => `<b class='match finder'>${match}</b>`;
             try {
                 if (paliData[segment]) paliData[segment] = paliData[segment].replace(regex, highlight);

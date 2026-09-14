@@ -66,8 +66,9 @@ const CASES = [
     ['search exact', (c) => c.buildFastResponse('kacchapa', 'dhamma', true, ['ru', 'en'], 0, 0)],
     ['search russian', (c) => c.buildFastResponse('черепаха', 'default', false, ['ru', 'en'], 1, 2)],
     ['search too short', (c) => c.buildFastResponse('ka', 'default', false, ['ru', 'en'], 0, 0)],
-    // Word-final "ti" after a closing quote in the text (avisayasmin”ti) — tiQuoteVariants.
+    // Punctuation in the text between the keyword's letters/words (avisayasmin”ti, evaṁ, bhikkhave).
     ['search ti quote', (c) => c.buildFastResponse('avisayasminti', 'all', false, ['ru', 'en'], 0, 0)],
+    ['search comma phrase', (c) => c.buildFastResponse('evaṁ bhikkhave', 'all', false, ['ru', 'en'], 0, 0)],
     ['nav dn22', (c) => c.navFor('dn22', 'dhamma')],
     ['text dn22 st', async (c) => {
         const base = await c.getSuttaBaseData('dn22');

@@ -642,10 +642,10 @@ window.DgSearchRender = (function () {
     // exactly as the server matches it.
     function highlightMatcher(highlightWord) {
         var isRegex = HIGHLIGHT_METACHARS.test(highlightWord);
-        // Word-final "ti" also matches the text's closing quote before it (avisayasmin”ti) — same
-        // rule as the server's tiQuotePattern (core/search-core.js).
+        // Search ignores punctuation between the keyword's letters (core/search-core.js
+        // punctTolerantPattern): "evaṁ bhikkhave" highlights "evaṁ, bhikkhave" too.
         var source = isRegex ? highlightWord
-            : escapeForRegExp(foldForHighlight(highlightWord)).replace(/(?<=\p{L})ti(?![\p{L}\p{N}])/gu, '[’”]{0,2}ti');
+            : Array.from(foldForHighlight(highlightWord)).map(escapeForRegExp).join('[,;:!"\'“”‘’«»]*');
         try {
             return { isRegex: isRegex, re: new RegExp(source, 'gi') };
         } catch (e) {

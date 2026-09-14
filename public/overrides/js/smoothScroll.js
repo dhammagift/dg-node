@@ -107,7 +107,10 @@ const ScrollManager = {
                 if (!suttaArea) return null;
 
                 try {
-                    const regex = new RegExp(searchText, 'gi');
+                    // Same rule as megareader.js's highlight: punctuation between the letters of a
+                    // plain search word is ignored ("evaṁ bhikkhave" finds "evaṁ, bhikkhave").
+                    const plain = !/[.*+?^${}()|[\]\\]/.test(searchText);
+                    const regex = new RegExp(plain ? Array.from(searchText).join('[,;:!"\'“”‘’«»]*') : searchText, 'gi');
                     const textNodes = document.evaluate(
                         ".//text()[normalize-space(parent::*) != '']",
                         suttaArea, null, XPathResult.UNORDERED_NODE_SNAPSHOT_TYPE, null

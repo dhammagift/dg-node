@@ -238,6 +238,15 @@ function stripSearchPunctuation(keyword) {
     return keyword.replace(SEARCH_PUNCTUATION, '').trim();
 }
 
+// The FTS index is built with these same marks removed (build-search-db.js fts_fold), so a phrase
+// typed without them finds the text that has them: "evaṁ bhikkhave" → "evaṁ, bhikkhave",
+// "avisayasminti" → "avisayasmin”ti" (owner). The JS-side matchers (counts, word forms, exact
+// match) run over the real text, so they allow any of those marks between the keyword's letters.
+const PUNCT_GAP = SEARCH_PUNCTUATION.source + '*';
+function punctTolerantPattern(text) {
+    return [...text].map(escapeRegExp).join(PUNCT_GAP);
+}
+
 // Owner: е/ё (Russian) and m/ṁ/ṃ (Pali niggahita — same sound, written differently depending on
 // keyboard/edition) must be treated as the same character everywhere a keyword becomes a
 // text-matching pattern — grep's own match AND the JS regexes that re-count/extract text
@@ -297,23 +306,6 @@ function ftsPhrase(keyword) {
     return `"${keyword.replace(/ё/g, 'е').replace(/Ё/g, 'Е').replace(/"/g, '""')}"`;
 }
 
-// Pali closes a quote right before the quotative "ti": the root text has avisayasmin”ti, people
-// type avisayasminti (and quotes are stripped from the query at the door anyway), so nothing was
-// found (owner). Combinations in the root text: ”ti 23030, ’ti 11068, ’”ti 1343, ”’ti 72.
-const TI_QUOTES = ['”', '’', '’”', '”’'];
-const WORD_FINAL_TI = /(?<=\p{L})ti(?![\p{L}\p{N}])/gu;
-// ponytail: only the last two word-final "ti" of a phrase get variants (5^n phrases otherwise).
-function tiQuoteVariants(keyword) {
-    const at = [...keyword.matchAll(WORD_FINAL_TI)].map(m => m.index).slice(-2).reverse();
-    let out = [keyword];
-    for (const i of at) out = out.flatMap(k => [k, ...TI_QUOTES.map(q => k.slice(0, i) + q + k.slice(i))]);
-    return out;
-}
-// Same tolerance for an already-escaped regex source (JS-side counting, word forms, exact match).
-function tiQuotePattern(source) {
-    return source.replace(WORD_FINAL_TI, '[’”]{0,2}ti');
-}
-
 // Length-preserving fold approximating what the tokenizer does (strip diacritics, ё→е), used by
 // the JS-side match counting and word extraction. Length-preserving matters: match offsets in
 // the folded string have to line up with the original so the real word form ("kacchapānaṁ", not
@@ -368,7 +360,7 @@ function sqlKeywordRows(keyword) {
         }
         rows = searchDb.prepare(SQL_SCAN).all(keyword);
     } else {
-        rows = searchDb.prepare(SQL_MATCH).all(tiQuoteVariants(keyword).map(ftsPhrase).join(' OR '));
+        rows = searchDb.prepare(SQL_MATCH).all(ftsPhrase(keyword));
     }
     lastKeywordRows = { keyword, rows };
     return rows;
@@ -380,7 +372,7 @@ function sqlMatchRows(keyword, exactMatch) {
     if (lastExactRows.keyword === keyword) return lastExactRows.rows;
     // MATCH is a substring test; grep -w additionally demanded whole words. Cheaper to apply that
     // to the matched rows than to push word boundaries into a trigram index.
-    const bounded = new RegExp(`(?<![\\p{L}\\p{N}_])${tiQuotePattern(escapeRegExp(foldText(keyword)))}(?![\\p{L}\\p{N}_])`, 'u');
+    const bounded = new RegExp(`(?<![\\p{L}\\p{N}_])${punctTolerantPattern(foldText(keyword))}(?![\\p{L}\\p{N}_])`, 'u');
     const exact = rows.filter(r => bounded.test(foldText(r.txt)));
     lastExactRows = { keyword, rows: exact };
     return exact;
@@ -713,7 +705,7 @@ const WORD_BOUNDARY_CHARS = '\\s,.:;!?"\'\\u201C\\u201D\\u2018\\u2019\\u00AB\\u0
 // diacritics still finds the real form.
 function keywordMatchers(keyword) {
     const isRegexQuery = REGEX_METACHARS.test(keyword);
-    const pattern = isRegexQuery ? keyword : tiQuotePattern(escapeRegExp(foldText(keyword)));
+    const pattern = isRegexQuery ? keyword : punctTolerantPattern(foldText(keyword));
     return {
         prepare: isRegexQuery ? (text => text) : foldText,
         matchRegex: new RegExp(pattern, 'gi'),
@@ -1231,5 +1223,5 @@ module.exports = {
     stripSearchPunctuation,
     suggestWords,
     inCorpusStem,
-    tiQuoteVariants,
+    punctTolerantPattern,
 };
