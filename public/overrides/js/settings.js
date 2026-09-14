@@ -1403,8 +1403,11 @@ if (event.altKey && (event.code === "KeyP" || event.code === "KeyY")) {
 
 //Help + Settings + History
   if (event.altKey && event.code === "KeyH") {
-    // Имитируем клик по кнопке
-    helpButton.click();
+    // Help for the current state (search / reader / toc), same target as the drawer's Help row.
+    if (typeof window.dgDrawerHelpHref === 'function') {
+      event.preventDefault();
+      window.open(window.dgDrawerHelpHref(), '_blank');
+    } else if (helpButton) helpButton.click();
   }
 
 // --- Обработчик горячих клавиш (Alt + R) ---

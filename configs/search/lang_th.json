@@ -126,6 +126,7 @@
   "toolbar": {
     "expandCollapseLabel": "Saṁvaṭṭo / Vivaṭṭo",
     "readMarksLabel": "เครื่องหมายอ่านแล้ว",
+    "dictTitle": "พจนานุกรม (Alt+A)",
     "compassLabel": "รายการโปรด / ประวัติ",
     "wordsToggleShow": "คำ",
     "wordsToggleHide": "พระสูตร",

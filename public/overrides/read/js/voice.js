@@ -2723,7 +2723,7 @@ function initTTS() {
 
               // 4. СТРАХОВКА ОТ БЛОКИРОВКИ
               const forceUnlock = (e) => {
-                  const isPlayerClick = e && e.target && e.target.closest('.voice-player');
+                  const isPlayerClick = e && e.target && e.target.closest && e.target.closest('.voice-player');
                   
                   if (ttsState.speaking && ttsState.paused && !isPlayerClick) {
                       console.log("🔓 Audio Unlocked by Background Action!");
