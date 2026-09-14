@@ -421,7 +421,7 @@ function downloadJson() {
     // download AND the server-side lbl-save.php write below) must not fire from there, or
     // anyone poking around in the help page could overwrite real translation files.
     if (window.DG_LBL_DEMO) {
-        alert('Это справка — сохранение здесь отключено. Откройте инструмент по прямой ссылке /assets/lbl.html, чтобы сохранять.');
+        alert('Это демо — сохранение не работает.');
         return;
     }
     const language = document.getElementById('languageSelect').value;

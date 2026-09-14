@@ -420,7 +420,7 @@ loadAndCheckRanges();
     // download AND the server-side lbl-save.php write below) must not fire from there, or
     // anyone poking around in the help page could overwrite real translation files.
     if (window.DG_LBL_DEMO) {
-        alert('This is the help demo — saving is disabled here. Open the tool directly at /assets/lbl-en.html to save.');
+        alert('This is a demo — saving does not work.');
         return;
     }
     const language = document.getElementById('languageSelect').value;
