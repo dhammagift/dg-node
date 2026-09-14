@@ -1204,12 +1204,17 @@
     function closeQuick() {
         var sheet = document.getElementById('dg-quick');
         var backdrop = document.getElementById('dg-sheet-backdrop');
-        var btn = document.getElementById('dg-quick-btn');
+        var btn = quickAnchorBtn || document.getElementById('dg-quick-btn');
         if (!sheet) return;
         sheet.classList.remove('show');
         if (backdrop && !currentSheetKey) backdrop.classList.remove('show');
+        if (backdrop) backdrop.classList.remove('dg-above-quick-modal');
         if (btn) btn.setAttribute('aria-expanded', 'false');
-        setTimeout(function () { if (!isQuickOpen()) sheet.hidden = true; }, 320);
+        setTimeout(function () {
+            if (isQuickOpen()) return;
+            sheet.hidden = true;
+            sheet.classList.remove('dg-above-quick-modal');
+        }, 320);
     }
 
     /* Наполнение зависит от состояния страницы — в этом и смысл «быстрых» настроек: на главной
@@ -2536,16 +2541,25 @@
         if (isQuickOpen()) buildQuickBody(document.getElementById('dg-quick-body'));
     };
 
-    function openQuick() {
+    // anchorBtn: another gear to hang the same dropdown under — the quick window's own
+    // (quickModal.js #quickSettingsBtn; owner: "идентично, как в инпуте на главной", not a tab).
+    var quickAnchorBtn = null;
+    function openQuick(anchorBtn) {
         closeMega();
         ensureQuick();
         var sheet = document.getElementById('dg-quick');
         var backdrop = document.getElementById('dg-sheet-backdrop');
-        var btn = document.getElementById('dg-quick-btn');
+        var btn = anchorBtn || document.getElementById('dg-quick-btn');
         // Home screen hides the sliders button inside the field (production-v4 redesign) and
         // opens this sheet from the "изменить" link under it instead — a display:none button has
         // no box to anchor to, so anchor to the link in that case.
-        if (btn && !btn.offsetParent) btn = document.querySelector('.dg-scope-change') || btn;
+        if (!anchorBtn && btn && !btn.offsetParent) btn = document.querySelector('.dg-scope-change') || btn;
+        quickAnchorBtn = btn;
+        // The quick window sits at z-index 10000, above every sheet: lift the dropdown and its
+        // transparent backdrop over it, so a click beside the dropdown closes only the dropdown.
+        var aboveModal = !!(btn && btn.closest && btn.closest('.quick-modal-container'));
+        sheet.classList.toggle('dg-above-quick-modal', aboveModal);
+        if (backdrop) backdrop.classList.toggle('dg-above-quick-modal', aboveModal);
         sheet.hidden = false;
         document.getElementById('dg-quick-title').textContent = t('quick.title', 'Быстрые настройки');
         buildQuickBody(document.getElementById('dg-quick-body'));

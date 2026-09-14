@@ -830,9 +830,8 @@ body.dg-state-home .dg-shell-go-label {
 }
 /* Owner: on mobile the "Искать" pill crowds the field (screenshot: label clipping the query
    text) — icon-only there, same as results/reader already are, instead of the text button.
-   The glass points right (its natural, un-mirrored orientation — the scaleX(-1) inline style on
-   the <svg> in index.html flips it to point left/down for the text-button version elsewhere;
-   !important is required here specifically to win over that inline style). */
+   The glass keeps the site's mirrored orientation (lens right, handle down-left — the scaleX(-1)
+   inline style on the <svg> in index.html), same as in results/reader (owner: turn it right). */
 @media (max-width: 767.98px) {
     body.dg-state-home .dg-shell-go {
         width: 34px;
@@ -842,10 +841,7 @@ body.dg-state-home .dg-shell-go-label {
         border-radius: 50%;
     }
     body.dg-state-home .dg-shell-go-label { display: none; }
-    body.dg-state-home .dg-shell-go .dg-search-icon {
-        display: block;
-        transform: none !important;
-    }
+    body.dg-state-home .dg-shell-go .dg-search-icon { display: block; }
     /* Owner: with the submit button now showing its own glass (right, above), the decorative
        one at the field's left edge (.dg-shell-search-ic, home-only) is a second, redundant
        glass on the same narrow row — hide it on mobile specifically, desktop home keeps it
@@ -1832,6 +1828,10 @@ body:not(.dg-state-home) #dg-announce { display: none; }
     transition: transform 0.16s var(--dg-ease), opacity 0.16s ease;
 }
 .dg-sheet.dg-anchored.show { transform: translateY(0); opacity: 1; }
+/* Opened from the quick window's gear (quickModal.js): the window is at z-index 10000
+   (quick-modal.css), every sheet here at 1080/1081 — the dropdown would open behind it. */
+.dg-sheet.dg-above-quick-modal { z-index: 10050; }
+#dg-sheet-backdrop.dg-above-quick-modal { z-index: 10040; }
 /* У выпадашки ручки-«потяни вниз» быть не должно: тянуть её некуда. */
 .dg-sheet.dg-anchored .dg-sheet-handle { display: none; }
 

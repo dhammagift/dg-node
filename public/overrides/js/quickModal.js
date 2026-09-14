@@ -94,8 +94,9 @@ function buildQuickModalDOM() {
 
       <form id="quickSearchForm" class="quick-search-form" action="${formAction}" method="GET">
           <input type="search" name="q" id="quickSearchInput" class="quick-search-input" placeholder="e.g. Kāyagatā or sn56.11" autocomplete="off">
+          <button type="button" id="quickSettingsBtn" class="dg-qs-btn" hidden aria-expanded="false" style="align-self:center;margin-left:-48px;margin-right:6px;position:relative" aria-label="${window.isRu ? 'Быстрые настройки' : 'Quick settings'}" title="${window.isRu ? 'Быстрые настройки' : 'Quick settings'}"></button>
           <button type="submit" id="quickSearchBtn" class="quick-search-btn">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+              <svg style="transform: scaleX(-1)" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
           </button>
       </form>
 
@@ -229,6 +230,17 @@ function buildQuickModalDOM() {
   const quickSearchBtn = quickModal.querySelector('#quickSearchBtn');
   const quickSearchInput = quickModal.querySelector('#quickSearchInput');
   const quickSearchForm = quickModal.querySelector('#quickSearchForm');
+
+  // Quick settings: the same gear and the same anchored dropdown as the main search field
+  // (home.js openQuick) — owner: identical to the main input, not a tab inside this window (the
+  // earlier tab version was reverted, 7a3ffc4). Pages without home.js keep the window without it.
+  const quickSettingsBtn = quickModal.querySelector('#quickSettingsBtn');
+  if (window.DgHome && typeof window.DgHome.openQuick === 'function') {
+      quickSettingsBtn.innerHTML = window.DgHome.quickButtonHtml();
+      quickSettingsBtn.hidden = false;
+      quickSearchInput.style.paddingRight = '48px'; // the gear sits inside the field's right end
+      quickSettingsBtn.addEventListener('click', () => window.DgHome.openQuick(quickSettingsBtn));
+  }
 
   quickSearchBtn.addEventListener('contextmenu', (e) => {
       e.preventDefault(); // Отключаем контекстное меню браузера

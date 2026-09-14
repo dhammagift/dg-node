@@ -1181,6 +1181,15 @@ window.addEventListener("keydown", (event) => {
         // ПРИОРИТЕТ 3: МОДАЛЬНЫЕ ОКНА (Modals & Banners)
         // ==========================================
 
+        // --- 3.0. Quick settings dropdown (home.js #dg-quick) ---
+        // Opened from the quick window's own gear it lies ON TOP of that window: Esc closes the
+        // dropdown only, the window stays (next Esc closes it, 3.1).
+        if (document.querySelector('#dg-quick.show') && window.DgHome && typeof window.DgHome.closeQuick === 'function') {
+            window.DgHome.closeQuick();
+            event.preventDefault();
+            return;
+        }
+
         // --- 3.1. Quick Modal (Cattāri Ariyasaccāni) ---
         if (window.quickModalIsOpen) {
             if (typeof window.toggleQuickModal === 'function') {
