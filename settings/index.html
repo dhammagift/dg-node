@@ -1261,7 +1261,24 @@ $('#uiLang').onchange = e=>{
   location.reload();
 };
 $('#cloudBtn').onclick = ()=> location.href = isRu ? '/ru/login' : '/login';
-$('#voiceBtn').onclick = ()=> location.href = isRu ? '/ru/read/' : '/read/';
+// The voice panel is part of the reader (its speaker icon / Alt+R); the legacy /read/ page this used to
+// open now redirects to the home page, so the button did nothing useful (tablet test). Opened as the
+// settings sheet over a reader: close the sheet and start the reader's player there. Otherwise say where it is.
+$('#voiceBtn').onclick = ()=> {
+  const msg = isRu ? 'Откройте текст и нажмите значок озвучки (или Alt+R)' : 'Open a text and tap the speaker icon (or Alt+R)';
+  try {
+    const host = window.parent !== window ? window.parent : null;
+    const link = host && host.document.querySelector('.voice-link');
+    if (link && typeof host.loadVoiceScripts === 'function') {
+      host.postMessage({ dgSettingsSheetClose: true }, location.origin);
+      host.loadVoiceScripts(() => link.click(), true);
+      return;
+    }
+    if (host && typeof host.showBubbleNotification === 'function') { host.showBubbleNotification(msg, 5000, 'info'); return; }
+  } catch (_) { /* a foreign parent */ }
+  if (typeof window.showBubbleNotification === 'function') window.showBubbleNotification(msg, 5000, 'info');
+  else alert(msg);
+};
 
 /* Ключ Google Cloud TTS — тот же localStorage-ключ, что читает read/js/voice.js
    (GOOGLE_KEY_STORAGE = 'tts_google_key'), просто даём ввести его здесь напрямую, без захода

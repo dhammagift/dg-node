@@ -72,7 +72,9 @@ function buildQuickModalDOM() {
   const favTitleText = window.isRu ? "Избранное" : "Favorites";
   const tabLinksText = "4 Ariyasaccāni";
   const tabMemoText = window.isRu ? "Запоминание" : "Memo";
-  const memoPath = window.isRu ? "/ru/memo/" : "/memo/";
+  // The file, not the folder: the app has no directory resolution and answered /memo/ with its home
+  // page — the Memo tab ran a search for "memo" (tablet test). The site serves both the same way.
+  const memoPath = window.isRu ? "/ru/memo/index.html" : "/memo/index.html";
   const tabDpdText = window.isRu ? "Словарь" : "Dict";
   const histTitleText = window.isRu ? "История поиска" : "Search History";
   const titleClearAll = window.isRu ? "Очистить историю" : "Clear history";
@@ -656,4 +658,16 @@ window.addEventListener('storage', (e) => {
             window.refreshQuickModalData();
         }
     }
+});
+
+// A link followed from inside the modal (a history row, a 4 Ariyasaccāni text) closes it. On a full page
+// load that happened by itself; the SPA and the app open the text in place, and the reader stayed
+// hidden under the still-open modal (tablet test).
+document.addEventListener('click', (e) => {
+    if (!window.quickModalIsOpen || !window.quickModal || e.defaultPrevented && !e.target.closest) return;
+    const a = e.target.closest && e.target.closest('a[href]');
+    if (!a || !window.quickModal.contains(a)) return;
+    const href = a.getAttribute('href') || '';
+    if (!href || href.charAt(0) === '#' || /^javascript:/i.test(href)) return;
+    setTimeout(() => { if (window.quickModalIsOpen) window.toggleQuickModal(); }, 0);
 });

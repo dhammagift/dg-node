@@ -256,6 +256,13 @@ window.addEventListener('suttaRenderedCentral', () => {
         }
         // ==========================================
 
+        // Memo has its own <script src="/read/js/voice.js">: loading it a second time threw
+        // "Identifier 'TRIAL_BLOCK_KEY' has already been declared" and Play stayed silent (tablet).
+        if (!window.isVoiceScriptLoaded && path.includes('/memo/') &&
+            document.querySelector('script[src*="/read/js/voice.js"]')) {
+            window.isVoiceScriptLoaded = true;
+        }
+
         if (window.isVoiceScriptLoaded) {
             if (callback) callback();
             return;
