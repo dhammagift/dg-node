@@ -72,10 +72,12 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: 24
-          cache: npm
 
+      # The build itself needs no npm packages (node:sqlite is built in). build-offline, run by the
+      # tests below, copies sqlite-wasm out of node_modules — only that one package is installed, at
+      # the version package.json pins (there is no lockfile in the repo, so no `npm ci`/npm cache).
       - name: Install
-        run: npm ci --no-audit --no-fund --loglevel=error
+        run: npm install --no-save --no-package-lock --no-audit --no-fund --loglevel=error "@sqlite.org/sqlite-wasm@$(node -p "require('./package.json').dependencies['@sqlite.org/sqlite-wasm']")"
 
       - name: Build dg.db
         env:
