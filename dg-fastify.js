@@ -263,7 +263,9 @@ const UNVERSIONED_LAZY_PATHS = [
     ...['datatables', 'standalone-dpd'].map(dir => path.join(__dirname, 'public', 'overrides', 'js', dir) + path.sep),
     path.join(__dirname, 'public', 'spa') + path.sep,
     path.join(__dirname, 'reader', 'common.js'),
-    path.join(__dirname, 'reader', 'megareader.js')
+    path.join(__dirname, 'reader', 'megareader.js'),
+    // settings.js injects it on first use (History/Favorites): same lazy load, fixes sat cached for a year.
+    path.join(__dirname, 'public', 'overrides', 'js', 'quickModal.js')
 ];
 
 function staticCacheHeaders(reply, filePath) {

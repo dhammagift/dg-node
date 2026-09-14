@@ -2502,7 +2502,7 @@ function toggleFavoriteGlobal(itemData) {
 
         // 2. Скачиваем скрипт модального окна
         const script = document.createElement('script');
-        script.src = "/assets/js/quickModal.js"; // Проверьте правильность пути!
+        script.src = "/assets/js/quickModal.js?v=20260914"; // query drops copies a browser pinned for a year // Проверьте правильность пути!
         
         script.onload = () => {
             window.isQuickModalScriptLoaded = true;

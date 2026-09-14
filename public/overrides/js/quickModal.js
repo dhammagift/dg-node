@@ -606,6 +606,9 @@ window.toggleQuickModal = function(tabKey) {
   }
 
   if (window.quickModalIsOpen) {
+    // A focused field left inside the hidden modal keeps the on-screen keyboard up: on the tablet it
+    // covered half of the text a history link had just opened.
+    if (document.activeElement && window.quickModal.contains(document.activeElement)) document.activeElement.blur();
     window.quickOverlay.classList.remove("open");
     window.quickModal.classList.remove("open");
     window.quickModalIsOpen = false;
@@ -622,10 +625,11 @@ window.toggleQuickModal = function(tabKey) {
         if (openTabBtn) openTabBtn.click();
     }
 
-    // 2. Фокус на инпут для быстрого поиска
+    // 2. Фокус на инпут для быстрого поиска — only with a real keyboard: on a touch screen focusing
+    // pops the on-screen keyboard over the history the reader opened the modal to see.
     setTimeout(() => {
         const searchInput = document.getElementById('quickSearchInput');
-        if (searchInput) searchInput.focus();
+        if (searchInput && !window.matchMedia('(hover: none) and (pointer: coarse)').matches) searchInput.focus();
     }, 100);
 
     // 3. Фоновая синхронизация
