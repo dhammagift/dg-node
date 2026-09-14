@@ -832,6 +832,14 @@
             if (refuseOfStorage(e) && retryWithFreshWorker('startup')) {
                 return new Promise(function (r) { setTimeout(r, 400); }).then(probe);
             }
+            // Another tab or window holds the library: a normal state, not a fault. This tab works
+            // through the server (or, offline, through that tab — see gate), so the reader is told
+            // nothing. Owner: "закройте где-то, где-то открыто" is wrong for a site that is online.
+            if (e && /Access Handle|createSyncAccessHandle|NoModificationAllowed/i.test(e.message || '')) {
+                log('the library is held by another tab — this tab stays server-backed:', e.message);
+                rememberMode(true, 'not-owner');
+                return null;
+            }
             log('offline layer not activated:', e && e.message);
             throw e;
         });
@@ -1131,7 +1139,10 @@
             }
             // Not local: if another tab holds the library, it answers — that is the whole point of
             // having opened the app twice. Only then does the plain explanation remain.
-            if (where.origin === location.origin && isDataRoute(where.pathname) && channel && relayLikely()) {
+            // Offline only: online the server answers at once, while a relay to a tab that is hidden
+            // or has just handed the library over costs every request a 3.5s wait first.
+            if (where.origin === location.origin && isDataRoute(where.pathname) && channel && relayLikely() &&
+                navigator.onLine === false) {
                 return relayData(where.pathname + where.search, init)
                     .catch(function (e) {
                         log('relayed request failed:', (e && e.message) || e);
