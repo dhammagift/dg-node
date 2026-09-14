@@ -124,9 +124,20 @@
        Загружаем словарь ТОЛЬКО тем, у кого он и так выбран (savedDict "standalone*", paliLookup.js):
        эти ~14 МБ они всё равно скачают при первом клике по слову. Тянуть их ради подписи тем, кто
        пользуется онлайн-словарём, — плохая сделка, им просто убираем скелетоны. */
+    // The meaning proper is the <b>\u2026</b> run ("adj. <b>dull; drowsy</b>; lit. stiff [\u221ath\u012b]"); the
+    // rest is grammar and etymology, too long for a chip subtitle. Same for local and online entries.
+    function shortGloss(html) {
+        const m = /<b>([\s\S]*?)<\/b>/.exec(html || '');
+        if (!m) return '';
+        const text = m[1].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+        return text.length > 54 ? text.slice(0, 53).replace(/[;,\s]+\S*$/, '') + '\u2026' : text;
+    }
+
     function dpdGloss(word, ebts) {
         if (!window.dpd_i2h || !ebts) return '';
-        const key = String(word).toLowerCase().replace(/[\u2019']/g, '');
+        // Niggahita: the corpus (and so every suggestion chip) writes m-dot-above, the bundled DPD only
+        // m-dot-below \u2014 without folding it "avisayasmiM" never matched its own entry (owner: no gloss).
+        const key = String(word).toLowerCase().replace(/[\u2019']/g, '').replace(/\u1e41/g, '\u1e43');
         // dpd_i2h maps INFLECTED forms to headwords, so a word that is already the dictionary form
         // ("kacchapa") can be missing from it while sitting in dpd_ebts as its own entry — hence
         // the direct lookups too, homonym suffix included.
@@ -142,27 +153,48 @@
             return (key.startsWith(lb) ? lb.length : -1) - (key.startsWith(la) ? la.length : -1);
         });
         for (const head of ranked) {
-            const entry = ebts[head];
-            if (!entry) continue;
-            // The meaning proper is the <b>…</b> run ("adj. <b>dull; drowsy</b>; lit. stiff [√thī]");
-            // the rest is grammar and etymology, too long for a chip subtitle.
-            const m = /<b>([\s\S]*?)<\/b>/.exec(entry);
-            if (!m) continue;
-            const text = m[1].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
-            if (!text) continue;
-            return text.length > 54 ? text.slice(0, 53).replace(/[;,\s]+\S*$/, '') + '\u2026' : text;
+            const text = shortGloss(ebts[head]);
+            if (text) return text;
         }
         return '';
     }
 
+    // Leaves the skeleton on words the bundled DPD doesn't know — fillGlossesOnline() takes those.
     function fillGlosses(container, ebts) {
         container.querySelectorAll('.aiword-term').forEach(btn => {
             const em = btn.querySelector('em.is-loading');
             if (!em) return;
             const gloss = dpdGloss(btn.dataset.aiWord, ebts);
             if (gloss) { em.classList.remove('is-loading'); em.textContent = gloss; }
-            else em.remove(); // DPD has nothing for this form — a bare word reads better than a stuck bar
         });
+    }
+
+    // Owner: not in the bundled DPD (or the bundled DPD isn't the chosen dictionary) — the browser asks
+    // dpdict.net itself; it sends Access-Control-Allow-Origin: *, so nothing goes through our server.
+    // One word at a time: it can't take parallel requests (core/dpd-lookup.js). Offline the fetch
+    // fails and the skeleton just goes.
+    const onlineGlossCache = {};
+    function onlineGloss(word, lang) {
+        const key = lang + ':' + word;
+        return onlineGlossCache[key] || (onlineGlossCache[key] =
+            fetch('https://' + (lang === 'ru' ? 'ru' : 'www') + '.dpdict.net/search_json?q=' + encodeURIComponent(word),
+                { signal: AbortSignal.timeout(8000) })
+                .then(r => r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status)))
+                .then(d => {
+                    const first = /<p class="summary">([\s\S]*?)<\/p>/.exec(d.summary_html || '');
+                    return first ? shortGloss(first[1]) : '';
+                })
+                .catch(err => { delete onlineGlossCache[key]; throw err; }));
+    }
+    async function fillGlossesOnline(container, lang) {
+        for (const btn of container.querySelectorAll('.aiword-term')) {
+            const em = btn.querySelector('em.is-loading');
+            if (!em) continue;
+            const gloss = await onlineGloss(btn.dataset.aiWord, lang).catch(() => '');
+            if (container.dataset.glossLang !== lang) return; // chips re-rendered for another language
+            if (gloss) { em.classList.remove('is-loading'); em.textContent = gloss; }
+            else em.remove(); // no entry anywhere — a bare word reads better than a stuck bar
+        }
     }
 
     // Glosses follow the SITE language, while the popup dictionary keeps its own (a separate En/Ru
@@ -179,23 +211,26 @@
             .catch(err => { delete dpdDataCache[url]; throw err; }));
     }
 
+    // Bundled DPD first (only for people who chose it — see above), then dpdict.net for whatever is left.
     function enrichWithLocalDpd(container, lang) {
-        const dropSkeletons = () => container.querySelectorAll('.aiword em.is-loading').forEach(em => em.remove());
-        if (typeof window.dg_loadDictionaryScripts !== 'function') return dropSkeletons();
         container.dataset.glossLang = lang;
         // typeof, not a bare read: savedDict/lazyLoadStandaloneScripts only exist once paliLookup.js
         // is in, and touching an undeclared identifier directly would throw.
-        window.dg_loadDictionaryScripts().then(() => {
-            const local = typeof savedDict === 'string' && savedDict.indexOf('standalone') === 0;
-            if (!local || typeof lazyLoadStandaloneScripts !== 'function') return dropSkeletons();
-            const dictLang = savedDict === 'standaloneru' ? 'ru' : 'en';
-            return lazyLoadStandaloneScripts(dictLang)
-                .then(() => lang === dictLang ? window.dpd_ebts : loadDpdData(DPD_EBTS_URL[lang]))
-                .then(ebts => {
-                    // A later language switch re-rendered the chips; that call fills them.
-                    if (container.dataset.glossLang === lang) fillGlosses(container, ebts);
-                });
-        }).catch(dropSkeletons);
+        const local = typeof window.dg_loadDictionaryScripts !== 'function' ? Promise.resolve()
+            : window.dg_loadDictionaryScripts().then(() => {
+                const useLocal = typeof savedDict === 'string' && savedDict.indexOf('standalone') === 0;
+                if (!useLocal || typeof lazyLoadStandaloneScripts !== 'function') return;
+                const dictLang = savedDict === 'standaloneru' ? 'ru' : 'en';
+                return lazyLoadStandaloneScripts(dictLang)
+                    .then(() => lang === dictLang ? window.dpd_ebts : loadDpdData(DPD_EBTS_URL[lang]))
+                    .then(ebts => {
+                        // A later language switch re-rendered the chips; that call fills them.
+                        if (container.dataset.glossLang === lang) fillGlosses(container, ebts);
+                    });
+            });
+        local.catch(() => {}).then(() => {
+            if (container.dataset.glossLang === lang) fillGlossesOnline(container, lang);
+        });
     }
 
     // home-bundle.js's Pāli/translation pill only shows itself in the 'results' state when #pali or
