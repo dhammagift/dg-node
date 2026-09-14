@@ -48,8 +48,10 @@
   --ui:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
 }
 body.dark{
-  --ink:#E7ECF1; --ink-2:#A7B4C0; --ink-3:#8B99A6;
-  --line:#293441; --line-strong:#3A4753; --surface:#18212B; --canvas:#111820;
+  /* Neutral greys of the site's dark theme (search/css/home.css): blocks are the home tiles'
+     --dg-surface/--dg-border, text is --dg-text/--dg-text-2 — no blue tint of their own. */
+  --ink:#DDDDDD; --ink-2:#A8A8A8; --ink-3:#8A8A8A;
+  --line:#2C2C2C; --line-strong:#3B3B3B; --surface:#191919; --canvas:#141414;
   --page-bg:#111111;
   /* В тёмной теме — прод-зелёный ссылок #09967a ([data-theme="dark"] в assets/css/extrastyles.css),
      как и на главной: #149C7C на тёмном фоне уже теряет контраст. */
@@ -888,6 +890,11 @@ function setTheme(t){
     localStorage.setItem('lightMode', dark ? 'dark' : 'light');
     if (dark) localStorage.setItem('darkSwitch', 'dark'); else localStorage.removeItem('darkSwitch');
   }
+  showTheme(t);
+}
+// Paints a theme without writing anything: used by setTheme() and when the theme changes elsewhere.
+function showTheme(t){
+  const dark = t==='dark' || (t==='auto' && matchMedia('(prefers-color-scheme: dark)').matches);
   document.body.classList.toggle('dark', dark);
   // The sample frame mirrors this page's theme (preview-frame.html applyTheme); the marker tells
   // it this page has resolved its theme, the call covers a frame that loaded before that.
@@ -896,6 +903,12 @@ function setTheme(t){
   document.querySelectorAll('#themeSeg button').forEach(b=>b.setAttribute('aria-pressed', String(b.dataset.theme===t)));
 }
 document.querySelectorAll('#themeSeg button').forEach(b=> b.onclick=()=> setTheme(b.dataset.theme));
+// The site around this page (the settings sheet's parent, Alt+T there, another tab) changes the
+// theme in localStorage; follow it at once instead of keeping the theme this page opened with.
+addEventListener('storage', e => { if (e.key === 'theme') showTheme(localStorage.getItem('theme') || 'auto'); });
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+  if ((localStorage.getItem('theme') || 'auto') === 'auto') showTheme('auto');
+});
 
 /* Размер текста — тот же ключ, что теперь и у стрелок в бургере (issue #5, search/js/home.js
    renderFontSizeControl()). Раньше applyлился только ВНУТРИ setScale() (то есть только по клику
