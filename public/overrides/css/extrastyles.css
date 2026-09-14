@@ -9,7 +9,8 @@
   --bs-secondary-rgb: 44, 62, 80;
     --bs-body-color-rgb: 33, 37, 41;	
   --bs-body-bg-rgb: 255, 255, 255;	
-  --bs-font-sans-serif: "Lato", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  /* "DG Pali" (home.css) covers only non-Latin Pali script blocks — see the note there. */
+  --bs-font-sans-serif: "Lato", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "DG Pali", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
 }
 
 .masthead .masthead-heading

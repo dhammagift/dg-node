@@ -81,6 +81,19 @@ html { scrollbar-gutter: stable; }
 @font-face { font-family: "Lato"; font-style: italic; font-weight: 400; font-display: swap; src: url("/assets/fonts/lato-400-italic.woff2") format("woff2"); }
 @font-face { font-family: "Lato"; font-style: normal; font-weight: 600; font-display: swap; src: url("/assets/fonts/lato-600.woff2") format("woff2"); }
 @font-face { font-family: "Lato"; font-style: normal; font-weight: 700; font-display: swap; src: url("/assets/fonts/lato-700.woff2") format("woff2"); }
+/* Pali in scripts most devices ship no font for (?script=, public/overrides/js/pali-script.js):
+   Noto Sans Brahmi / Chakma / Tai Tham / Myanmar (Mon letters) / Lao (Pali letters), OFL. Each face
+   is limited to its own Unicode block, so Latin and Cyrillic keep their current fonts and a file is
+   downloaded only when a page actually shows letters from that block. Used as a fallback family
+   after sans-serif: table.css (* rule) and --bs-font-sans-serif (extrastyles.css/styles.css, which
+   every Lato stack ends in). font-weight 100-900 so bold headings use the same file. Not added as
+   extra "Lato" faces: faces with different weight descriptors are not merged into one family, so
+   the Noto faces were skipped for Lato text. */
+@font-face { font-family: "DG Pali"; font-weight: 100 900; font-display: swap; src: url("/assets/fonts/noto-brahmi.woff2") format("woff2"); unicode-range: U+11000-1107F; }
+@font-face { font-family: "DG Pali"; font-weight: 100 900; font-display: swap; src: url("/assets/fonts/noto-chakma.woff2") format("woff2"); unicode-range: U+11100-1114F; }
+@font-face { font-family: "DG Pali"; font-weight: 100 900; font-display: swap; src: url("/assets/fonts/noto-taitham.woff2") format("woff2"); unicode-range: U+1A20-1AAF; }
+@font-face { font-family: "DG Pali"; font-weight: 100 900; font-display: swap; src: url("/assets/fonts/noto-myanmar.woff2") format("woff2"); unicode-range: U+1000-109F, U+A9E0-A9FF, U+AA60-AA7F; }
+@font-face { font-family: "DG Pali"; font-weight: 100 900; font-display: swap; src: url("/assets/fonts/noto-lao.woff2") format("woff2"); unicode-range: U+0E80-0EFF; }
 body.dg-skin-minimal {
     /* Фон страницы. Отдельным токеном, а не через --bs-body-bg: тот у Bootstrap белый ВСЕГДА —
        тёмную тему на этом сайте делает body.dark из langswitch.css, до бутстраповских переменных

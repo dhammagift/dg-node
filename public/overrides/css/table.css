@@ -14,7 +14,9 @@
 }
 
 * {
-      font-family: sans-serif;
+      /* "DG Pali" only covers the non-Latin Pali script blocks (unicode-range, home.css) — Latin and
+         Cyrillic still render in sans-serif, the font file is fetched only if such letters appear. */
+      font-family: sans-serif, "DG Pali";
     }
 
 /* Применение к кнопкам */
