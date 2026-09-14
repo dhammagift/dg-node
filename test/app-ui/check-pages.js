@@ -16,11 +16,10 @@ const PROFILE = 'pages';
 // The menu/tile surface plus the tools behind them. Paths, not titles: a title difference is the
 // signal, and a fixed list keeps the check independent of menu markup changes.
 const PAGES = [
+    // dictHelp*.html and keyFeatures.html are gone: the site 301s them to the docs (LEGACY_HELP_REDIRECTS)
+    // and the app opens them online. linebyline.html and readylinebyline.html were removed (owner: no longer needed).
     '/assets/common/history.html',
-    '/assets/common/dictHelpRu.html',
-    '/assets/common/dictHelp.html',
     '/assets/common/multiTool.html',
-    '/assets/common/keyFeatures.html',
     '/assets/grammar/nouns.html',
     '/assets/grammar/verbs.html',
     '/assets/grammar/declentions.html',
@@ -28,8 +27,6 @@ const PAGES = [
     '/assets/texts/abbr.html',
     '/assets/lbl.html',
     '/assets/lbl-en.html',
-    '/assets/linebyline.html',
-    '/assets/readylinebyline.html',
     '/assets/listdiff.html',
     '/assets/makelist.html',
     '/assets/rr.html',

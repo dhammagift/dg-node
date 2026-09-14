@@ -1076,6 +1076,13 @@ const LEGACY_HELP_REDIRECTS = {
 for (const [file, target] of Object.entries(LEGACY_HELP_REDIRECTS)) {
     app.get('/assets/common/' + file, (req, res) => res.redirect(target, 301));
 }
+// Project tools retired on this site (owner: "не нужен", "было под проект"). The legacy tree keeps the
+// files for the old site, so without these routes the static fallback would still serve them here.
+for (const file of ['linebyline.html', 'readylinebyline.html']) {
+    for (const url of ['/assets/' + file, '/ru/assets/' + file]) {
+        app.get(url, (req, res) => res.code(404).type('text/plain').send('Not found'));
+    }
+}
 app.get('/assets/js/translators.json', (req, res) => {
     res.header('Cache-Control', CACHE_CONFIG_JSON);
     return sendFile(req, res, path.join(__dirname, 'configs', 'reader', 'translators.json'), 'application/json');
