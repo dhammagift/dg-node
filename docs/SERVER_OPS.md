@@ -59,8 +59,8 @@ Listed now: sc-data, tipitaka.lk. Our own repos (commits happen in them) and AI 
 # docs: prod every 5 h, test every minute
 0 */5 * * * git -C /var/www/html/nodejs/dg-docs fetch -q --depth 1 origin dist && git -C /var/www/html/nodejs/dg-docs reset -q --hard origin/dist >/dev/null 2>&1
 * * * * * git -C /var/www/html/dg-node-test/dg-docs fetch -q --depth 1 origin dist-preview && git -C /var/www/html/dg-node-test/dg-docs reset -q --hard origin/dist-preview >/dev/null 2>&1
-# third-party mirrors: Sunday 17:00, before the GitHub DB build
-0 17 * * 0 mkdir -p /var/www/html/nodejs/logs && /var/www/html/nodejs/scripts/update-external-repos.sh >> /var/www/html/nodejs/logs/update-external-repos.log 2>&1
+# third-party mirrors, then cache/tmp cleanup (scripts/weekly-cleanup.sh): Sunday 17:00, before the GitHub DB build
+0 17 * * 0 mkdir -p /var/www/html/nodejs/logs && { /var/www/html/nodejs/scripts/update-external-repos.sh; /var/www/html/nodejs/scripts/weekly-cleanup.sh; } >> /var/www/html/nodejs/logs/update-external-repos.log 2>&1
 # search DB: sites every Monday, app/PWA archive on the 1st and 15th
 15 3 * * 1 mkdir -p /var/www/html/nodejs/logs && PATH=/root/.nvm/versions/node/v24.20.0/bin:/usr/local/bin:/usr/bin:/bin /var/www/html/nodejs/scripts/pull-db.sh >> /var/www/html/nodejs/logs/pull-db.log 2>&1
 45 3 1,15 * * mkdir -p /var/www/html/nodejs/logs && PATH=/root/.nvm/versions/node/v24.20.0/bin:/usr/local/bin:/usr/bin:/bin /var/www/html/nodejs/scripts/pull-db.sh --app >> /var/www/html/nodejs/logs/pull-db.log 2>&1
