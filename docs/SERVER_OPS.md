@@ -8,8 +8,8 @@ and how to repeat it on another server. Everything here was set up and checked o
 
 | What | Path | Repo / branch | Served as |
 |---|---|---|---|
-| Site, prod | `/var/www/html/nodejs` | dhammagift/dg-node `pwa` | pm2 `dg-prod`, port 3000 → dhamma.gift |
-| Site, test | `/var/www/html/dg-node-test` | dhammagift/dg-node `pwa` | pm2 `test`, port 3003 (env `PORT=3003`) → test.dhamma.gift |
+| Site, prod | `/var/www/html/nodejs` | dhammagift/dg-node `main` | pm2 `dg-prod`, port 3000 → dhamma.gift |
+| Site, test | `/var/www/html/dg-node-test` | dhammagift/dg-node `main` | pm2 `test`, port 3003 (env `PORT=3003`) → test.dhamma.gift |
 | Search DB | `nodejs/dg.db` (test: symlink to it) | built on GitHub, see below | read by dg-fastify.js |
 | Docs | `nodejs/dg-docs`, `dg-node-test/dg-docs` | dhammagift/dg-docs `dist` / `dist-preview` | /docs, /ru/docs |
 | Dictionary | `/var/www/ddg-ui` | dhammagift/ddg-ui `main` | dict.dhamma.gift, dhamma.gift/dict (served from the working tree) |
@@ -73,7 +73,7 @@ Adjust the paths and the node `PATH` (`which node`) on another server.
 
 ## Repeating this on another server
 
-1. `git clone -b pwa git@github.com:dhammagift/dg-node.git <dir>`; data: `scripts/setup.sh` makes shallow
+1. `git clone git@github.com:dhammagift/dg-node.git <dir>`; data: `scripts/setup.sh` makes shallow
    sparse clones of sc-data / offline-data / dg and wires `siteroot/` (skip its DB build step, use step 3).
 2. `npm install`, `pm2 start dg-fastify.js --name dg-prod`, `pm2 save`.
 3. `scripts/pull-db.sh --force` (set `PROD=` inside the script if the site is not in `/var/www/html/nodejs`).

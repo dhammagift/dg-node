@@ -16,7 +16,7 @@ on:
   repository_dispatch:
     types: [offline-data]
   push:
-    branches: [pwa, main]
+    branches: [main]
     paths:
       - build-search-db.js
       - core/search-core.js
