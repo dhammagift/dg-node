@@ -100,26 +100,10 @@
         el('err').textContent = t('Не получилось войти. Попробуйте ещё раз.', 'Sign-in failed. Please try again.');
     }
 
-    // Owner: as seamless as possible. The page goes straight to Google's account chooser (a redirect
-    // needs no tap) and comes back here with the result; the button is only the fallback (popup) for a
-    // browser where the redirect result does not come back.
-    var TRIED = 'dg.appGoogle.redirected.' + state;
-    el('go').hidden = true;
-    el('desc').textContent = t('Открываем вход Google…', 'Opening Google sign-in…');
-    ready.then(function () {
-        return firebase.auth().getRedirectResult();
-    }).then(function (res) {
-        if (backToApp(res)) return;
-        if (sessionStorage.getItem(TRIED)) throw { code: 'redirect-result-missing' };
-        sessionStorage.setItem(TRIED, '1');
-        return firebase.auth().signInWithRedirect(new firebase.auth.GoogleAuthProvider());
-    }).catch(function (e) {
-        el('desc').textContent = t('Войдите, и приложение Dhamma.Gift подключит ваше облако: историю, избранное и настройки.',
-                                   'Sign in and the Dhamma.Gift app connects your cloud: history, favorites and settings.');
-        if (e && e.code === 'redirect-result-missing') { el('go').hidden = false; return; }
-        failed(e);
-    });
-
+    // A popup, not a redirect: a redirect comes back to dhamma.gift in this tab, and Android hands that
+    // URL to the app itself (its verified dhamma.gift links) — the app then showed a search for
+    // "app-google.html" and the sign-in never finished (owner, tablet). A popup keeps this page open.
+    ready.catch(failed);
     el('go').addEventListener('click', function () {
         el('err').textContent = '';
         el('go').disabled = true;

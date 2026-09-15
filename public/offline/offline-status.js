@@ -160,7 +160,9 @@
            a tap meant for the page underneath. */
         #dgDlCard {
             position: fixed; left: 50%; bottom: 14px; transform: translate(-50%, 14px);
-            width: min(420px, calc(100% - 28px)); z-index: 10001;
+            /* Below the burger drawer (1082/1083), the settings sheet (1080/1081) and modals (1095/1096,
+               search/css/home.css): the card covered the menu's last rows, so Log in could not be tapped (owner). */
+            width: min(420px, calc(100% - 28px)); z-index: 1070;
             --dgc-surface: #fff; --dgc-sunk: #f1f5f4; --dgc-rule: #dde5e2;
             --dgc-ink: #141a18; --dgc-muted: #5b6b66; --dgc-faint: #8a9994; --dgc-accent: #136857;
             background: var(--dgc-surface); color: var(--dgc-ink);
