@@ -3622,10 +3622,10 @@
         });
     }
 
-    /* Any element whose TARGET (not just label) depends on UI language — "About the project"
-       (siteroot/assets/common/keyFeatures.html vs keyFeaturesRu.html, same naming convention as
-       o.html/o-en.html etc. in menu-links.json) plus the Help/Docs portal links (search/reader
-       toolbars — /docs/... vs /ru/docs/..., separate baseUrl builds, see dg-docs/docusaurus.config.js).
+    /* Any element whose TARGET (not just label) depends on UI language — "About the project" and
+       the Help/Docs portal links (search/reader toolbars — /docs/... vs /ru/docs/..., separate
+       baseUrl builds, see dg-docs/docusaurus.config.js). The old /assets/common/*.html help pages
+       are gone; dg-fastify.js LEGACY_HELP_REDIRECTS 301s their URLs to the docs.
        menuLang() is the same ru/en source of truth
        menu-links.json's per-language sections already key off of — not a new hardcoded default.
        Selected by the data-href-en/data-href-ru pair itself, not a shared class — a class name
@@ -3949,8 +3949,8 @@
         privacy.className = 'dg-footer-link';
         privacy.target = '_blank';
         privacy.rel = 'noopener';
-        // Owner (2026-09-06): the live policy page is /docs/policies (dg-docs), the old
-        // /assets/common/privacy*.html copies are stale.
+        // Owner (2026-09-06): the policy page is /docs/policies (dg-docs); the old
+        // /assets/common/privacy*.html URLs only redirect there.
         privacy.href = menuLang() === 'ru' ? '/ru/docs/policies' : '/docs/policies';
         privacy.textContent = short ? t('footer.privacyShort', 'Политика') : t('footer.privacy', 'Политика конфиденциальности');
         host.appendChild(privacy);
