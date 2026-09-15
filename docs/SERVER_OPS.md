@@ -12,7 +12,7 @@ and how to repeat it on another server. Everything here was set up and checked o
 | Site, test | `/var/www/html/dg-node-test` | dhammagift/dg-node `pwa` | pm2 `test`, port 3003 (env `PORT=3003`) → test.dhamma.gift |
 | Search DB | `nodejs/dg.db` (test: symlink to it) | built on GitHub, see below | read by dg-fastify.js |
 | Docs | `nodejs/dg-docs`, `dg-node-test/dg-docs` | dhammagift/dg-docs `dist` / `dist-preview` | /docs, /ru/docs |
-| Dictionary | `/var/www/ddg-ui` | dhammagift/ddg-ui `ui` | dict.dhamma.gift, dhamma.gift/dict (served from the working tree) |
+| Dictionary | `/var/www/ddg-ui` | dhammagift/ddg-ui `main` | dict.dhamma.gift, dhamma.gift/dict (served from the working tree) |
 | SuttaCentral texts | `/var/www/suttacentral.net/sc-data` | suttacentral/sc-data `main`, **shallow mirror** | read by the site |
 | Our translations | `/var/www/offline-data` | dhammagift/offline-data `main` | translators commit here |
 | Legacy PHP site | `/var/www/html` | dhammagift/dg `main` | assets, 4nt, read, /old |
