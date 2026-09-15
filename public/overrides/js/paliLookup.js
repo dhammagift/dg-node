@@ -212,12 +212,12 @@ function applyDictConfig(newDict) {
     // Удаляем скрипт противоположного языка при переключении standalone-режима
     if (savedDict === "standalone") {
         const urlToRemove = '/assets/js/standalone-dpd/ru/dpd_ebts.js';
-        const el = document.querySelector(`script[src="${urlToRemove}"]`);
+        const el = document.querySelector(`script[src="${urlToRemove}"], script[data-src="${urlToRemove}"]`);
         if (el) el.remove();
         if (typeof scriptCache !== 'undefined') scriptCache.delete(urlToRemove);
     } else if (savedDict === "standaloneru") {
         const urlToRemove = '/assets/js/standalone-dpd/dpd_ebts.js';
-        const el = document.querySelector(`script[src="${urlToRemove}"]`);
+        const el = document.querySelector(`script[src="${urlToRemove}"], script[data-src="${urlToRemove}"]`);
         if (el) el.remove();
         if (typeof scriptCache !== 'undefined') scriptCache.delete(urlToRemove);
     }
@@ -539,7 +539,7 @@ function lazyLoadStandaloneScripts(lang = 'en') {
 
     const scripts = [...commonScripts, langSpecific];
     const scriptsToLoad = scripts.filter(src => {
-        return !document.querySelector(`script[src="${src}"]`) && !scriptCache.has(src);
+        return !document.querySelector(`script[src="${src}"], script[data-src="${src}"]`) && !scriptCache.has(src);
     });
 
     if (scriptsToLoad.length === 0) {
@@ -588,6 +588,19 @@ function lazyLoadStandaloneScripts(lang = 'en') {
         let anyFailed = false;
         const loadPromises = scriptsToLoad.map(src => {
             return new Promise((scriptResolve) => {
+                // The Android app keeps the dictionary out of the APK: native-bridge.js fetches it from the site
+                // and caches it for offline use (window.dgDictScript), so here it runs as inline text.
+                if (typeof window.dgDictScript === 'function') {
+                    window.dgDictScript(src).then((text) => {
+                        const inline = document.createElement('script');
+                        inline.dataset.src = src;
+                        inline.textContent = text;
+                        document.head.appendChild(inline);
+                        scriptCache.set(src, true);
+                        scriptResolve();
+                    }, () => { anyFailed = true; scriptResolve(); });
+                    return;
+                }
                 const script = document.createElement('script');
                 script.src = src;
                 script.onload = () => {
