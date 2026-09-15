@@ -1050,6 +1050,37 @@ app.post('/api/app-log', { bodyLimit: 32 * 1024 }, (req, res) => {
         .catch(err => console.error('[app-log] write failed:', err.message));
 });
 
+// Google Text-to-Speech through the site, for the Android app: the trial key (configs/legacy/
+// tts-config.json) only accepts requests from dhamma.gift pages, and the app's pages are
+// https://localhost (Google answers 403). Only the two calls read/js/voice.js makes; the key stays
+// on the server and is read per request, so a new key needs no restart and no app release (owner).
+// The app posts text/plain (a simple CORS request, no preflight); the site keeps calling Google itself.
+const TTS_KEY_FILE = path.join(__dirname, 'configs', 'legacy', 'tts-config.json');
+async function googleTts(res, apiPath, init) {
+    try {
+        const key = JSON.parse(await fsSync.promises.readFile(TTS_KEY_FILE, 'utf8')).key;
+        if (!key) return res.code(503).send({ error: { message: 'TTS key is not configured' } });
+        const url = 'https://texttospeech.googleapis.com/v1/' + apiPath + (apiPath.includes('?') ? '&' : '?') + 'key=' + encodeURIComponent(key);
+        const r = await fetch(url, {
+            ...init,
+            headers: { ...(init && init.headers), Referer: 'https://dhamma.gift/' },
+            signal: AbortSignal.timeout(20000),
+        });
+        return res.code(r.status).header('content-type', 'application/json').header('cache-control', 'no-store').send(await r.text());
+    } catch (err) {
+        console.error('[tts-proxy]', err.message);
+        return res.code(502).send({ error: { message: 'Text-to-Speech is unavailable' } });
+    }
+}
+app.get('/api/tts/voices', (req, res) =>
+    googleTts(res, 'voices' + (req.query.languageCode ? '?languageCode=' + encodeURIComponent(req.query.languageCode) : '')));
+app.post('/api/tts/synthesize', { bodyLimit: 64 * 1024 }, (req, res) =>
+    googleTts(res, 'text:synthesize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: typeof req.body === 'string' ? req.body : JSON.stringify(req.body),
+    }));
+
 // Static mounts below use @fastify/static's array `root` (tries each dir in order, first match
 // wins) — the direct equivalent of Express's "register override dir, then fallback dir on the
 // same prefix, static.js calls next() on miss" chain used throughout dg-light.js. A prefix can
