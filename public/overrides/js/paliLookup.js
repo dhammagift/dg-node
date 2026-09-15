@@ -2,7 +2,10 @@ const isMobileLike = (
             (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) ||
                         (window.innerWidth <= 768)
         );
-const isLocalhost = window.location.href.includes('localhost') || window.location.href.includes('127.0.0.1');
+// The Android app's pages are https://localhost too, but it is not a dev machine: its dictionary links open
+// the dictionary site, as online (owner) — the DPD app or DictTango may not be installed at all.
+const isNativeApp = !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform());
+const isLocalhost = !isNativeApp && (window.location.href.includes('localhost') || window.location.href.includes('127.0.0.1'));
 
 
 const currentHost = window.location.origin; 
@@ -185,7 +188,7 @@ if (window.location.search.includes('script=devanagari') || window.location.path
 }
 
 function createDictSearchUrl(word) {
-    if (isLocalhost || !navigator.onLine) {
+    if (isLocalhost || (!navigator.onLine && !isNativeApp)) {
         const isAndroid = /Android/i.test(navigator.userAgent);
         return isAndroid
             ? `dttp://app.dicttango/WordLookup?word=${encodeURIComponent(word)}`
@@ -640,7 +643,7 @@ function createClickableLink(wordToLink) {
     const wordSearchUrl = createDictSearchUrl(wordToLink);
     let clickAction;
 
-    if (isLocalhost || !navigator.onLine) {
+    if (isLocalhost || (!navigator.onLine && !isNativeApp)) {
         clickAction = `window.location.href=this.href; return false;`;
     } else {
         clickAction = `event.preventDefault(); event.stopPropagation(); parent.openDictionaryWindow(this.href); return false;`;
