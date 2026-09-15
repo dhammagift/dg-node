@@ -695,12 +695,6 @@
           "column": 1,
           "items": [
             {
-              "label": "DG (th)",
-              "desc": "Dhamma.gift in Thai script",
-              "href": "/?lang=th",
-              "setsLang": "th"
-            },
-            {
               "label": "old",
               "desc": "The previous version of the site",
               "href": "https://old.dhamma.gift",
@@ -1574,12 +1568,6 @@
           "name": "На сайте",
           "column": 1,
           "items": [
-            {
-              "label": "DG (th)",
-              "desc": "Dhamma.gift тайским письмом",
-              "href": "/?lang=th",
-              "setsLang": "th"
-            },
             {
               "label": "old",
               "desc": "Предыдущая версия сайта",
