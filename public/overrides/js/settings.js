@@ -256,6 +256,13 @@ window.addEventListener('suttaRenderedCentral', () => {
         }
         // ==========================================
 
+        // Memo has its own <script src="/read/js/voice.js">: loading it a second time threw
+        // "Identifier 'TRIAL_BLOCK_KEY' has already been declared" and Play stayed silent (tablet).
+        if (!window.isVoiceScriptLoaded && path.includes('/memo/') &&
+            document.querySelector('script[src*="/read/js/voice.js"]')) {
+            window.isVoiceScriptLoaded = true;
+        }
+
         if (window.isVoiceScriptLoaded) {
             if (callback) callback();
             return;
@@ -700,8 +707,16 @@ function processSearchQuery(query) {
 async function tryEnhanceKey(key) {
     const textinfo = await loadTextData();
     const baseKey = key.split(/\s+/)[0];
-    const suttaName = textinfo[baseKey]?.pi;
-    return suttaName ? `${baseKey} ${suttaName}` : key;
+    // issue #5: a history entry deep-linked to a segment ("sn56.48:1.4", "dn1:1.22.2") kept the
+    // raw id+segment as its title forever — textinfo.js is keyed by bare sutta id only
+    // ("sn56.48"), so textinfo[baseKey] with the ":1.4" still attached always missed. Look up by
+    // the part before ':'. Owner follow-up: the segment is navigation plumbing (the actual href
+    // is stored separately as `value`, unaffected by this label) — show just "sn56.48 Title",
+    // not "sn56.48:1.4 Title", to the user. saveToHistory() below strips ':...' the same way when
+    // grouping, so this still replaces the raw un-enhanced entry instead of duplicating it.
+    const suttaId = baseKey.split(':')[0];
+    const suttaName = textinfo[suttaId]?.pi;
+    return suttaName ? `${suttaId} ${suttaName}` : key;
 }
 
 async function loadTextData() {
@@ -837,15 +852,19 @@ async function saveToHistory(key, url) {
     
     const firstWord = key.split(/\s+/)[0];
     const isSutta = /\d/.test(firstWord);
-    const rootKey = isSutta ? firstWord : key;
+    // issue #5: strip ':segment' before grouping — a raw un-enhanced entry ("sn56.48:1.4") and
+    // its later-enhanced replacement ("sn56.48 Dutiyachiggaḷayugasutta", segment now dropped from
+    // the label by tryEnhanceKey) must land on the same rootKey so the enhanced one replaces the
+    // raw one below instead of sitting next to it as a duplicate row.
+    const rootKey = isSutta ? firstWord.split(':')[0] : key;
 
-    let bestKey = key; 
-    
+    let bestKey = key;
+
     history = history.filter(([k]) => {
-        if (k === key) return false; 
-        
+        if (k === key) return false;
+
         if (isSutta) {
-            const kRoot = k.split(/\s+/)[0];
+            const kRoot = k.split(/\s+/)[0].split(':')[0];
             if (kRoot === rootKey) {
                 if (k.length > bestKey.length) {
                     bestKey = k;
@@ -998,53 +1017,30 @@ function updateDemoLinks() {
       urlParams.set('q', newQ);
   }
 
-  // 3. Определяем базовый URL для "Standard" режима
-  let standardBaseUrl;
-  const currentPath = window.location.href;
-  const storedLang = localStorage.siteLanguage;
-
-  if (currentPath.includes('/ru/') || currentPath.includes('/r/') || storedLang === 'ru') {
-    standardBaseUrl = window.location.origin + "/r/";
-  } else if (currentPath.includes('/th') || storedLang === 'th') {
-    standardBaseUrl = window.location.origin + "/th/read/";
-  } else {
-    standardBaseUrl = window.location.origin + "/read/";
-  }
-
-
-  // Для русских – /mt/, для остальных – // (можно заменить на любой другой путь)
-  const mtUrl = window.notEn
-    ? window.location.origin + "/mt/"
-    : window.location.origin + "/multi/";
-
-  const linksMap = {
-    stDemo: standardBaseUrl,
-    mtDemo: mtUrl,                    
-    memDemo: window.location.origin + "/memorize/",
-    dDemo: window.location.origin + "/d/",
-    mlDemo: window.location.origin + "/ml/",
-    thDemo: window.location.origin + "/th/read/",
-    rvDemo: window.location.origin + "/rev/",
-    frDemo: window.location.origin + "/frev/",
-    mlthDemo: window.location.origin + "/mlth/"
+  // 3. Demo links open the SPA reader in each mode (legacy /read/, /r/, /d/, /mt/, /memorize/ are
+  //    gone: dg-fastify redirects them). Only Reverse and Full Reverse still have their own pages.
+  const q = urlParams.get('q') || 'sn56.11';
+  const isRuUi = window.location.href.includes('/ru/') || localStorage.siteLanguage === 'ru';
+  const hash = window.location.hash || '';
+  const spa = (mode) => {
+    const params = new URLSearchParams();
+    if (mode) params.set('mode', mode);
+    if (isRuUi) params.set('lang', 'ru');
+    const qs = params.toString();
+    return '/' + encodeURIComponent(q) + (qs ? '?' + qs : '') + hash;
   };
-  // 5. Обновляем href элементов
-  const hash = window.location.hash || ''; // Сохраняем якорь, если есть
-
+  const legacyQs = '?' + urlParams.toString() + hash;
+  const linksMap = {
+    stDemo: spa(''),
+    mtDemo: spa('multi'),
+    memDemo: spa('memorize'),
+    dDemo: spa('devanagari'),
+    rvDemo: '/rev/' + legacyQs,
+    frDemo: '/frev/' + legacyQs,
+  };
   Object.keys(linksMap).forEach(id => {
     const linkEl = document.getElementById(id);
-    if (!linkEl) return;
-
-    let newUrl = linksMap[id];
-    const queryString = urlParams.toString();
-    
-    // Добавляем строку параметров, если она не пустая
-    if (queryString) {
-        newUrl += `?${queryString}`;
-    }
-    
-    // Добавляем хэш в конец
-    linkEl.href = newUrl + hash;
+    if (linkEl) linkEl.href = linksMap[id];
   });
 }
 
@@ -1128,35 +1124,33 @@ window.addEventListener("keydown", (event) => {
             }
         }
 
-        // --- 1.2. General Hint Popup (С логами для Павла) ---
-        // Ищем все варианты уведомлений: старые, новые тосты и баблы
-        const hintElements = document.querySelectorAll('.dg-bottom-toast, .hint, .bubble-notification');
-        
-        for (let i = 0; i < hintElements.length; i++) {
-            const hintElement = hintElements[i];
-            const style = window.getComputedStyle(hintElement);
-            
-            // Проверяем наличие класса 'show' или фактическую видимость через opacity
-            const isVisible = hintElement.classList.contains('show') || 
-                              (style.display !== 'none' && style.opacity !== '0');
-            
-            if (isVisible) {
-                
-                // Ищем любую кнопку закрытия внутри
-                const closeHintButton = hintElement.querySelector('#closeHintBtn, .dg-toast-close, .close-btn, .dg-bottom-toast-close');
-                
-                if (closeHintButton) {
-                    closeHintButton.click();
-                } else {
-                    hintElement.classList.remove('show');
-                }
-                
-                event.preventDefault();
-                return; 
-            }
+        // --- 1.2. Any visible notice: toasts, banners, hints ---
+        // Owner: one rule for every notice the site shows, not a line per banner. A notice is
+        // anything with role="status"/"alert" or a toast/notification/announce/hint class. Esc
+        // presses its own close button when it has one (so whatever that button remembers — e.g.
+        // a dismissed announcement — is kept), otherwise just hides it. The last one in the DOM
+        // goes first: that is the one drawn on top.
+        const NOTICE_SELECTOR = '[role="status"], [role="alert"], .bubble-notification, .dg-bottom-toast, .hint, [class*="toast"], [class*="notification"], [class*="announce"]';
+        const CLOSE_LABEL = /close|dismiss|hide|закрыть|скрыть/i;
+        const notices = [...document.querySelectorAll(NOTICE_SELECTOR)].reverse();
+        for (const notice of notices) {
+            const style = window.getComputedStyle(notice);
+            const rect = notice.getBoundingClientRect();
+            const visible = style.display !== 'none' && style.visibility !== 'hidden' &&
+                            parseFloat(style.opacity) > 0.05 && rect.width > 2 && rect.height > 2;
+            if (!visible) continue;
+            const closeButton = [...notice.querySelectorAll('button, [role="button"], a')].find(el =>
+                CLOSE_LABEL.test(el.getAttribute('aria-label') || '') || CLOSE_LABEL.test(el.title || '') ||
+                /(^|[-_\s])close([-_\s]|$)|dismiss/i.test(el.className && el.className.toString()) ||
+                ['×', '✕', '✖'].includes((el.textContent || '').trim()));
+            if (closeButton) closeButton.click();
+            else if (notice.classList.contains('show')) notice.classList.remove('show');
+            else continue; // a live region with nothing to close (e.g. a screen-reader status line)
+            event.preventDefault();
+            return;
         }
 
-		
+
         // ==========================================
         // ПРИОРИТЕТ 2: СЛОВАРИ (Dictionaries)
         // ==========================================
@@ -1186,6 +1180,15 @@ window.addEventListener("keydown", (event) => {
         // ==========================================
         // ПРИОРИТЕТ 3: МОДАЛЬНЫЕ ОКНА (Modals & Banners)
         // ==========================================
+
+        // --- 3.0. Quick settings dropdown (home.js #dg-quick) ---
+        // Opened from the quick window's own gear it lies ON TOP of that window: Esc closes the
+        // dropdown only, the window stays (next Esc closes it, 3.1).
+        if (document.querySelector('#dg-quick.show') && window.DgHome && typeof window.DgHome.closeQuick === 'function') {
+            window.DgHome.closeQuick();
+            event.preventDefault();
+            return;
+        }
 
         // --- 3.1. Quick Modal (Cattāri Ariyasaccāni) ---
         if (window.quickModalIsOpen) {
@@ -1288,7 +1291,11 @@ if (event.altKey && (event.code === "KeyP" || event.code === "KeyY")) {
 //Ctrl + ArrowRight navigate to next sutta
   // Owner: Alt+R (start/toggle TTS) must fire even while an input is focused — carved out of
   // this blanket "ignore while typing" gate, which every other shortcut below still respects.
-  if (shouldIgnoreKeyEvent() && !(event.altKey && event.code === "KeyR")) return;
+  // Every Alt+… shortcut works while an input is focused too (owner: the reader focuses the search
+  // field on load, which silently swallowed them). Alt combinations do not type text — Option+key on
+  // macOS would, but the handlers below preventDefault. Only plain/Ctrl keys stay with the field
+  // (Ctrl+←/→ jumps words there).
+  if (shouldIgnoreKeyEvent() && !event.altKey) return;
 
   if (event.ctrlKey && event.code === "ArrowRight") {
     const nextDiv = document.getElementById("next");
@@ -1310,15 +1317,10 @@ if (event.altKey && (event.code === "KeyP" || event.code === "KeyY")) {
     }
   }
 
-    // === УНИВЕРСАЛЬНОЕ ДОБАВЛЕНИЕ В ИЗБРАННОЕ (Alt+Shift+P или Alt+F) ===
-    if ((event.altKey && event.code === "KeyF" && !event.shiftKey)) { // Alt+F без шифта
-        
-        // Игнорируем, если фокус в поле ввода (чтобы не мешать печатать)
-        const activeTag = document.activeElement.tagName;
-        if (['INPUT', 'TEXTAREA'].includes(activeTag) || document.activeElement.isContentEditable) {
-            return;
-        }
-
+    // === УНИВЕРСАЛЬНОЕ ДОБАВЛЕНИЕ В ИЗБРАННОЕ (Alt+Q) ===
+    // Was Alt+F — owner: every F shortcut is find-on-page now (Alt+F, Alt+Shift+F, Ctrl+Shift+F,
+    // dg-page-find-ui.js); Alt+B, the other candidate, doesn't reach the page in Chrome.
+    if (event.altKey && event.code === "KeyQ" && !event.shiftKey) {
         event.preventDefault();
 
         // 1. Попытка для Memo (эмулируем клик по кнопке в memo)
@@ -1409,13 +1411,19 @@ if (event.altKey && (event.code === "KeyP" || event.code === "KeyY")) {
       ? baseUrl + '/?silent&source=pwa&q=' + encodeURIComponent(q)
       : baseUrl + '/';
 
-    openDictionaryWindow(url);
+    event.preventDefault();
+    // openDictionaryWindow lives in paliLookup.js, which loads lazily — plain popup until then.
+    if (typeof openDictionaryWindow === 'function') openDictionaryWindow(url);
+    else window.open(url, 'dictionaryPopup');
   }
 
 //Help + Settings + History
   if (event.altKey && event.code === "KeyH") {
-    // Имитируем клик по кнопке
-    helpButton.click();
+    // Help for the current state (search / reader / toc), same target as the drawer's Help row.
+    if (typeof window.dgDrawerHelpHref === 'function') {
+      event.preventDefault();
+      window.open(window.dgDrawerHelpHref(), '_blank');
+    } else if (helpButton) helpButton.click();
   }
 
 // --- Обработчик горячих клавиш (Alt + R) ---
@@ -1476,8 +1484,6 @@ if (event.altKey && event.code === "KeyR") {
 
 // Мультиселект Alt + J (физическая клавиша J)
 if (event.altKey && event.code === "KeyJ") {
-    // Пропускаем, если фокус в поле ввода (используем твою функцию)
-    if (typeof shouldIgnoreKeyEvent === 'function' && shouldIgnoreKeyEvent()) return;
 
     const multiSelectBtn = document.getElementById('toggle-multiselect');
     
@@ -1495,77 +1501,39 @@ if (event.altKey && event.code === "KeyJ") {
         const tocBtn = document.getElementById('smart-toc-btn');
         const gearBtn = document.getElementById('smart-gear-btn');
         
-        if (tocBtn && gearBtn) {
+        // #smart-gear-btn doesn't exist in the SPA reader — requiring it made Alt+W dead there.
+        if (tocBtn) {
             // Делаем кнопки физически видимыми
             tocBtn.classList.add('visible');
-            gearBtn.classList.add('visible');
+            if (gearBtn) gearBtn.classList.add('visible');
             // Эмулируем клик для открытия оглавления
             tocBtn.click();
         }
     }
   
-//alt + G history toggle
- function handleHistoryToggle() {
-  const currentUrl = window.location.pathname;
-  let historyPhpPath, historyHtmlPath;
-
-  // Если URL содержит языковой префикс (/ru/, /r/, /ml/)
-  if (currentUrl.match(/\/(ru|r|ml)\//)) {
-    const langPrefix = 'ru/';
-    historyPhpPath = `/${langPrefix}history.php`;
-    historyHtmlPath = `/${langPrefix}assets/common/history.html`;
-  } 
-  // Если URL содержит /assets/common/ (но без языкового префикса)
-  else if (currentUrl.includes('/assets/common/')) {
-    historyPhpPath = '/history.php';  // Переход в корень
-    historyHtmlPath = '/assets/common/history.html';
-  }
-  // Все остальные случаи (корень сайта или другие пути)
-  else {
-    historyPhpPath = '/history.php';
-    historyHtmlPath = '/assets/common/history.html';
-  }
-
-  // Переключение между history.php и history.html
-  if (currentUrl.endsWith('history.php')) {
-    window.location.href = historyHtmlPath;
-  } 
-  else if (currentUrl.endsWith('history.html')) {
-    window.location.href = historyPhpPath;
-  }
-  // Если не на странице истории, идём на history.php
-  else {
-    window.location.href = historyPhpPath;
-  }
-}
-
-  if (event.altKey && event.code === "KeyG") {
-    event.preventDefault(); // отключаем стандартное действие
-    handleHistoryToggle();
-  }
+// Alt+G is left free: Chrome uses it for Gemini (owner).
  
  //Language Alt + L
+  // Cycles the Pali script in place (owner: it used to reload the page) — same selectedScript key
+  // and the same re-render path as Alt+. below.
   if (event.altKey && event.code === "KeyL") {
-    event.preventDefault(); // Предотвращаем стандартное поведение
-
-    const scriptOptions = ['ISOPali', 'devanagari', 'thai']; // Доступные скрипты
+    event.preventDefault();
+    const scriptOptions = ['ISOPali', 'Devanagari', 'Thai'];
     const url = new URL(window.location.href);
-    let currentScript = url.searchParams.get('script') || 'ISOPali';
-
-    // Получаем следующий скрипт в списке
-    let nextIndex = (scriptOptions.indexOf(currentScript) + 1) % scriptOptions.length;
-    let nextScript = scriptOptions[nextIndex];
- 
-    localStorage.removeItem('selectedScript');
-
-    // Обновляем URL
-    if (nextScript === 'ISOPali') {
-      url.searchParams.delete('script'); // Удаляем параметр для ISOPali
-    } else {
-      url.searchParams.set('script', nextScript);
+    const current = (url.searchParams.get('script') || localStorage.getItem('selectedScript') || 'ISOPali').toLowerCase();
+    const idx = scriptOptions.findIndex((k) => k.toLowerCase() === current);
+    localStorage.setItem('selectedScript', scriptOptions[(idx + 1) % scriptOptions.length]);
+    // An explicit ?script= in the address beats the saved one (megareader.js) — drop it.
+    if (url.searchParams.has('script')) {
+      url.searchParams.delete('script');
+      history.replaceState(history.state, '', url.toString());
     }
-
-    window.location.href = url.toString(); // Перезагружаем страницу
+    if (typeof window.buildSutta === 'function' && window.currentReaderSlug) {
+      window.buildSutta(window.currentReaderSlug);
+    } else if (window.DgSearchRender && typeof window.DgSearchRender.redraw === 'function') {
+      window.DgSearchRender.redraw();
+    }
+    if (typeof window.refreshQuickSettings === 'function') window.refreshQuickSettings();
   }
  
   // Для отладки: смотри, что нажимается
@@ -1573,8 +1541,7 @@ if (event.altKey && event.code === "KeyJ") {
  if (
     event.altKey && // любой Alt
     (event.code === 'Period' ||
-     event.code === 'Comma' ||
-     event.code === 'KeyM')
+     event.code === 'Comma')  // Alt+M is the burger menu now (search/js/home.js)
   ) {
     event.preventDefault();
 
@@ -1596,18 +1563,24 @@ if (event.altKey && event.code === "KeyJ") {
     if (event.altKey) {
         
         // Alt + Minus (на основной клавиатуре или на NumPad)
+        // Alt+0 — back to 100% (owner), the same scale Alt+− / Alt+= step.
+        if (event.code === "Digit0" || event.code === "Numpad0") {
+            event.preventDefault();
+            if (window.dgStepUiScale) window.dgStepUiScale(100 - (parseInt(localStorage.getItem('uiScale'), 10) || 100));
+        }
+        // The SPA has no #fontDec/#fontInc (legacy reader-template only) — step the drawer's scale.
         if (event.code === "Minus" || event.code === "NumpadSubtract") {
-            event.preventDefault(); // Отменяем стандартное действие браузера
-            const btnDec = document.getElementById('fontDec');
-            if (btnDec) btnDec.click(); // Имитируем клик по кнопке "-"
+            event.preventDefault();
+            if (window.dgStepUiScale) window.dgStepUiScale(-10);
+            else { const btnDec = document.getElementById('fontDec'); if (btnDec) btnDec.click(); }
         }
 
         // Alt + Plus (Клавиша "равно" считается плюсом, или NumPad Plus)
         // Мы используем "Equal", чтобы не требовать нажатия Shift
         if (event.code === "Equal" || event.code === "NumpadAdd") {
             event.preventDefault();
-            const btnInc = document.getElementById('fontInc');
-            if (btnInc) btnInc.click(); // Имитируем клик по кнопке "+"
+            if (window.dgStepUiScale) window.dgStepUiScale(10);
+            else { const btnInc = document.getElementById('fontInc'); if (btnInc) btnInc.click(); }
         }
     }
 });
@@ -1857,30 +1830,13 @@ if (savedReader) {
 const initialBaseUrl = getBaseUrl();
 const initialDefaultReader = localStorage.defaultReader;
 
-// Функция для получения текущего baseUrl
+// Функция для получения текущего baseUrl. The SPA reader shows every mode on its own URL
+// (?mode=), so changing the default reader keeps the page where it is; only Reverse / Full Reverse
+// still live on their own pages.
 function getBaseUrl() {
-    let baseUrl;
-    if (window.location.href.includes('/ru') || (localStorage.siteLanguage && localStorage.siteLanguage === 'ru')) {
-        baseUrl = window.location.origin + "/r/";
-    } else {
-        baseUrl = window.location.origin + "/read/";
-    }
-
-    if (localStorage.defaultReader === 'ml') {
-        baseUrl = window.location.origin + "/ml/";
-    } else if (localStorage.defaultReader === 'mt') {
-        baseUrl = window.location.origin + "/mt/";
-    } else if (localStorage.defaultReader === 'rv') {
-        baseUrl = window.location.origin + "/rev/";
-    } else if (localStorage.defaultReader === 'd') {
-        baseUrl = window.location.origin + "/d/";
-    } else if (localStorage.defaultReader === 'mem') {
-        baseUrl = window.location.origin + "/memorize/";
-    } else if (localStorage.defaultReader === 'fr') {
-        baseUrl = window.location.origin + "/frev/";
-    }
-
-    return baseUrl;
+    if (localStorage.defaultReader === 'rv') return window.location.origin + "/rev/";
+    if (localStorage.defaultReader === 'fr') return window.location.origin + "/frev/";
+    return window.location.origin + window.location.pathname;
 }
 
 // Функция для обновления URL
@@ -1966,11 +1922,13 @@ function getQueryParams() {
 // window.switchReaderMode() directly instead of a link proxy, and only for modes that actually
 // exist in dg-node (mode-table.json) — prod's Thai/Reverse/Full Reverse (Alt+6/7/8) aren't
 // implemented here, not wired.
-// Digit → mode TYPE. Mode-table.json keys are language-independent now (single/multiTran/
-// multiLang/memorize/devanagari — no more per-language duplicate keys like st/read), so one
-// digit per type, same in every language. window.MODE_HOTKEY_DIGITS is also read by home.js to
-// print the digit next to each mode row in the burger drawer, one source of truth for both.
-window.MODE_HOTKEY_DIGITS = { single: 1, multiTran: 2, memorize: 3, devanagari: 4, multiLang: 5 };
+// Digit → mode TYPE. Mode-table.json keys are language-independent now (single/multi/memorize/
+// devanagari — no more per-language duplicate keys like st/read), so one digit per type, same in
+// every language. window.MODE_HOTKEY_DIGITS is also read by home.js to print the digit next to
+// each mode row in the burger drawer, one source of truth for both.
+// issue #6: multiTran (был Alt+2) и multiLang (был Alt+5) слились в multi — он занимает Alt+2,
+// Alt+5 освобождается. Мнемоника и деванагари остаются на своих цифрах, чтобы не ломать привычку.
+window.MODE_HOTKEY_DIGITS = { single: 1, multi: 2, memorize: 3, devanagari: 4 };
 
 // Owner: "везде при смене языка по хоткеям показывать наш бабл" — one announcement for every
 // hotkey-driven language switch (home, results, reader), in the language just switched TO.
@@ -1990,58 +1948,51 @@ function dgReaderIsActive() {
     return !!(window.MODE_TABLE && window.READER_MODE && window.READER_MODE.modeKey);
 }
 
+// Site-wide Alt+digit (owner): Alt+1 — site language, Alt+2 — table of contents, Alt+3 — the
+// dictionary, the same on every page. Reading modes moved to Alt+Shift+digit (they used to own
+// Alt+1…Alt+4 in the reader, so Alt+2/3 meant different things on different pages).
 document.addEventListener("keydown", (event) => {
-    if (!event.altKey || !event.code.startsWith("Digit")) return;
+    if (!event.altKey || event.ctrlKey || event.metaKey || !event.code.startsWith("Digit")) return;
     const digit = parseInt(event.code.replace("Digit", ""), 10);
 
     const modeTable = window.MODE_TABLE;
     const readerMode = window.READER_MODE;
-    // Owner bug: on the results page the FIRST Alt+1 "switched to single mode" (a mode the
-    // results have no notion of) and only the next presses toggled the language. Cause: in
-    // the SPA megareader.js is loaded on every page, so window.MODE_TABLE/READER_MODE exist
-    // outside the reader too — the old "no mode table = not the reader" test was true only on
-    // a page that had never loaded the reader code. Decide by the view actually on screen.
-    if (!modeTable || !readerMode || !dgReaderIsActive()) {
-        // Outside the reader (home page, search results) there's no mode to switch, only a
-        // site language — Alt+1 there does the same EN/RU toggle as the burger's language switch
-        // (home.js renderLangSwitch), so the shortcut is universal across every page instead of
-        // reader-only (owner: "смена языка... также как в ридере... универсально").
-        if (digit === 1 && window.DHAMMA_I18N && window.DHAMMA_I18N.setLanguage) {
+    // In the SPA megareader.js is loaded on every page, so MODE_TABLE/READER_MODE exist outside
+    // the reader too — decide by the view actually on screen (dgReaderIsActive).
+    const inReader = !!(modeTable && readerMode && dgReaderIsActive());
+
+    if (!event.shiftKey) {
+        if (digit === 1) {
             event.preventDefault();
-            const active = window.DHAMMA_I18N.language || localStorage.getItem('dhammaLanguage') || 'en';
+            const active = (window.DHAMMA_I18N && window.DHAMMA_I18N.language) || localStorage.getItem('dhammaLanguage') || 'en';
             const next = active === 'ru' ? 'en' : 'ru';
-            window.DHAMMA_I18N.setLanguage(next);
+            // In the reader the text's own language follows (switchReadingLanguage also switches
+            // the site language); elsewhere the same EN/RU toggle as the burger's switch.
+            if (inReader && typeof window.switchReadingLanguage === 'function') {
+                window.switchReadingLanguage(next);
+            } else if (window.DHAMMA_I18N && window.DHAMMA_I18N.setLanguage) {
+                window.DHAMMA_I18N.setLanguage(next);
+            } else {
+                return;
+            }
             window.dgAnnounceLanguage(next);
+        } else if (digit === 2) {
+            event.preventDefault();
+            window.location.href = window.location.origin + "/toc";
+        } else if (digit === 3) {
+            event.preventDefault();
+            const ru = String((window.DHAMMA_I18N && window.DHAMMA_I18N.language) || document.documentElement.lang || '').startsWith('ru');
+            window.location.href = ru ? 'https://dict.dhamma.gift/ru/' : 'https://dict.dhamma.gift/';
         }
         return;
     }
+
+    // Alt+Shift+digit — reading modes, reader only.
+    if (!inReader) return;
     const type = Object.keys(window.MODE_HOTKEY_DIGITS).find((k) => window.MODE_HOTKEY_DIGITS[k] === digit && modeTable[k]);
     if (!type) return;
     event.preventDefault();
-    if (type === readerMode.modeKey) {
-        // Owner: "стандарт... из англ режимов alt+1 вел в англ, из ру в ру, и только потом
-        // работал как тогл" — Alt+1 first takes you to the mode IN YOUR CURRENT LANGUAGE
-        // (mode type never touches language, see switchReaderMode), and only once you're
-        // ALREADY there does a second press cycle the language, like the burger's EN/RU switch.
-        // Cycles through languages ALREADY loaded for this text (readerMode.columns, from the
-        // last real server response). Single-column modes (single/multiTran/memorize/devanagari)
-        // never load more than one, so there's nothing to cycle through there — fall back to the
-        // same EN/RU toggle as the burger's language switch (home.js renderLangSwitch), the only
-        // two interface languages this app actually has (configs/search/lang_{ru,en}.json).
-        const cols = readerMode.columns || [];
-        if (typeof window.switchReadingLanguage !== 'function') return;
-        let nextLang;
-        if (cols.length > 1) {
-            const idx = cols.indexOf(readerMode.lang);
-            nextLang = cols[(idx + 1) % cols.length];
-        } else {
-            nextLang = readerMode.lang === 'ru' ? 'en' : 'ru';
-        }
-        window.switchReadingLanguage(nextLang);
-        window.dgAnnounceLanguage(nextLang);
-    } else {
-        window.switchReaderMode(type);
-    }
+    if (type !== readerMode.modeKey) window.switchReaderMode(type);
 });
 
 
@@ -2093,56 +2044,17 @@ document.addEventListener('keydown', function(event) {
 
 document.addEventListener("keydown", function (event) {
   const isCtrlPressed = event.ctrlKey || event.metaKey;
-  const currentPath = window.location.pathname;
   const baseUrl = window.location.origin;
 
-  const key = "preferredLanguage";
-  const savedLang = localStorage.getItem(key);
-  
-
-  // Функция: получить URL для заданного языка и страницы
-  function makeUrl(lang, isHomepage) {
-    if (isHomepage) {
-      return lang === "ru" ? `${baseUrl}/ru/` : `${baseUrl}/`;
-    } else {
-      return lang === "ru" ? `${baseUrl}/ru/read.php` : `${baseUrl}/read.php`;
-    }
-  }
-
-  // Функция: определить, нужно ли переключать язык или использовать сохранённый
-  function determineTargetUrl(isHomepage) {
-    const isCurrentTarget =
-      (isHomepage && (currentPath === "/" || currentPath === "/ru/")) ||
-      (!isHomepage && (currentPath === "/read.php" || currentPath === "/ru/read.php"));
-
-    let nextLang;
-
-    if (isCurrentTarget) {
-      // Уже на целевой странице — делаем toggle
-      nextLang = window.notEn ? "en" : "ru";
-      localStorage.setItem(key, nextLang);
-    } else {
-      // С других страниц — просто используем сохранённое предпочтение
-      nextLang = savedLang || (window.notEn ? "ru" : "en");
-      if (!savedLang) localStorage.setItem(key, nextLang); // сохранить при первом запуске
-    }
-
-    return makeUrl(nextLang, isHomepage);
-  }
-
-  // === Ctrl + 1: Переход на домашнюю страницу ===
-  // !event.shiftKey — иначе конфликтует с отдельным шорткатом Ctrl+Shift+1 (переключение языка сайта, см. ниже)
+  // Ctrl+1 — home, Ctrl+2 — table of contents (/toc replaced legacy read.php). The site language
+  // is global now (Alt+1), so these no longer toggle it or add /ru/.
   if (isCtrlPressed && !event.shiftKey && event.key === "1") {
     event.preventDefault();
-    const targetUrl = determineTargetUrl(true);
-    window.location.href = targetUrl;
+    window.location.href = baseUrl + "/";
   }
-
-  // === Ctrl + 2: Переход на read.php ===
-  if (isCtrlPressed && event.key === "2") {
+  if (isCtrlPressed && !event.shiftKey && event.key === "2") {
     event.preventDefault();
-    const targetUrl = determineTargetUrl(false);
-    window.location.href = targetUrl;
+    window.location.href = baseUrl + "/toc";
   }
   
   // === Ctrl + 3: клик по "Читать Главами" ===
@@ -2176,16 +2088,7 @@ if (isCtrlPressed && event.key === "3") {
   
 });
 
-document.addEventListener("keydown", function (event) {
-  if (event.ctrlKey && event.shiftKey && event.code === "Digit1") {
-    event.preventDefault();
 
-    if (typeof window.setSiteLanguage !== "function") return;
-    var current = (window.DHAMMA_I18N && window.DHAMMA_I18N.language) || document.documentElement.lang || "en";
-    var next = current.toLowerCase().startsWith("ru") ? "en" : "ru";
-    window.setSiteLanguage(next);
-  }
-});
 
 
 
@@ -2285,7 +2188,15 @@ function saveExactScrollPosition() {
 
     // Текущий масштаб из памяти (или 100%)
     let currentScale = parseInt(localStorage.getItem('uiScale')) || 100;
-    
+
+    // issue #5: раньше применялся только ВНУТРИ changeScale() (то есть только по клику на
+    // fontDec/fontInc) — а этих id на этой странице вообще нет (только в старом
+    // reader-template.html), значит сохранённый масштаб никогда фактически не накладывался
+    // здесь сам по себе. search/js/home.js теперь тоже применяет его (быстрые настройки/бургер,
+    // тот же ключ uiScale) — эта строка просто не даёт полагаться только на порядок загрузки
+    // скриптов между ними.
+    document.documentElement.style.fontSize = currentScale + '%';
+
     // Обновляем цифру в меню настроек при открытии
     if (valDisplay) valDisplay.textContent = currentScale + '%';
 
@@ -2600,7 +2511,7 @@ function toggleFavoriteGlobal(itemData) {
 
         // 2. Скачиваем скрипт модального окна
         const script = document.createElement('script');
-        script.src = "/assets/js/quickModal.js"; // Проверьте правильность пути!
+        script.src = "/assets/js/quickModal.js?v=20260914"; // query drops copies a browser pinned for a year // Проверьте правильность пути!
         
         script.onload = () => {
             window.isQuickModalScriptLoaded = true;

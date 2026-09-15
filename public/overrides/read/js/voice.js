@@ -94,9 +94,12 @@ function getSavedSlugName(slug) {
 function getContextInfo(langCode) {
   const path = window.location.pathname;
 
-  // Режим заучивания /d/ или /memorize/ (Индийский контекст для обоих слотов) — реальная
-  // отдельная фича по URL, не связана с языком перевода, оставляем как есть.
-  if (path.includes('/d/') || path.includes('/memorize/')) {
+  // Режим заучивания: Indian voice context for both slots. The SPA addresses it as a reader mode
+  // (?mode=memorize / ?mode=devanagari — see configs/reader/mode-table.json), so the URL no longer
+  // contains /memorize/ or /d/; both spellings are accepted because this file is shared with the
+  // legacy reader page, which is still served for its own URLs.
+  var dgMode = new URLSearchParams(window.location.search).get('mode');
+  if (path.includes('/d/') || path.includes('/memorize/') || dgMode === 'memorize' || dgMode === 'devanagari') {
       return {
           type: 'study',
           storageKey: GOOGLE_TRN_KEY_STUDY,
@@ -734,7 +737,7 @@ async function populateVoiceSelectors(apiKey, forceRefresh = false) {
     let trnVoices = [];
 
     if (context.isIndianContext) {
-        // Если это /d/ или /memorize/ -> предлагаем Индийские языки
+        // Study modes (memorize/devanagari) -> offer Indian languages
         trnVoices = voices.filter(v => isIndianLang(v.languageCodes[0]));
     } else {
         // Иначе -> Русский, Английский, Тайский
@@ -771,7 +774,7 @@ async function populateVoiceSelectors(apiKey, forceRefresh = false) {
     }
     
     // Fallback
-    const finalDefaultConfig = bestDefaultVoice ? { languageCode: bestDefaultVoice.languageCodes[0], name: bestDefaultVoice.name } : context.defaultConfig;
+    const finalDefaultConfig = (bestDefaultVoice && bestDefaultVoice.languageCodes) ? { languageCode: bestDefaultVoice.languageCodes[0], name: bestDefaultVoice.name } : context.defaultConfig;
 
     // Важно: передаем context.storageKey
     setupVoiceSelectors(trnVoices, 'google-lang-select-trn', 'google-voice-select-trn', context.storageKey, finalDefaultConfig);
@@ -1156,7 +1159,7 @@ async function playCurrentSegment() {
       ttsState.googleAudio.onended = null; 
       ttsState.googleAudio = null;         
   }
-  window.speechSynthesis.cancel();         
+  if (window.speechSynthesis) window.speechSynthesis.cancel();
   
   if (ttsState.currentIndex < 0 || ttsState.currentIndex >= ttsState.playlist.length) {
     clearTtsStorage();
@@ -2635,7 +2638,7 @@ async function refreshVoiceDropdowns(forceRefresh = false) {
             let bestDefaultVoice = null;
             if (context.isIndianContext) {
                  bestDefaultVoice = trnVoices.find(v => v.name.includes('pa-IN-Standard-D')) || 
-                                    trnVoices.find(v => v.languageCodes[0].replace('_', '-').toLowerCase() === 'pa-in') ||
+                                    trnVoices.find(v => (v.languageCodes || [''])[0].replace('_', '-').toLowerCase() === 'pa-in') ||
                                     trnVoices[0];
             } else {
                 const pageLang = detectTranslationLang(); 
@@ -2643,10 +2646,10 @@ async function refreshVoiceDropdowns(forceRefresh = false) {
                                       (pageLang === 'th') ? 'th-TH-Standard-A' : 'en-US-Standard-D';
                 
                 bestDefaultVoice = trnVoices.find(v => v.name === preferredName) || 
-                                   trnVoices.find(v => v.name.includes('Standard') && v.languageCodes[0].replace('_', '-').toLowerCase().startsWith(pageLang)) ||
+                                   trnVoices.find(v => v.name.includes('Standard') && (v.languageCodes || [''])[0].replace('_', '-').toLowerCase().startsWith(pageLang)) ||
                                    context.defaultConfig;
             }
-            const finalDefaultConfig = bestDefaultVoice ? { languageCode: bestDefaultVoice.languageCodes[0], name: bestDefaultVoice.name } : context.defaultConfig;
+            const finalDefaultConfig = (bestDefaultVoice && bestDefaultVoice.languageCodes) ? { languageCode: bestDefaultVoice.languageCodes[0], name: bestDefaultVoice.name } : context.defaultConfig;
             
             setupVoiceSelectors(trnVoices, 'google-lang-select-trn', 'google-voice-select-trn', context.storageKey, finalDefaultConfig);
         }
@@ -2655,7 +2658,9 @@ async function refreshVoiceDropdowns(forceRefresh = false) {
 
 
 
-window.speechSynthesis.onvoiceschanged = () => {
+// A browser/WebView without Web Speech (Android System WebView, some in-app browsers) has no
+// window.speechSynthesis: this line threw on load and took the rest of the file down (Memo in the app).
+if (window.speechSynthesis) window.speechSynthesis.onvoiceschanged = () => {
     synth.getVoices();
     // Если панель настроек голоса уже в DOM, обновляем ее, чтобы появились нативные голоса
     if (document.getElementById('google-voice-settings-container')) {
@@ -2718,7 +2723,7 @@ function initTTS() {
 
               // 4. СТРАХОВКА ОТ БЛОКИРОВКИ
               const forceUnlock = (e) => {
-                  const isPlayerClick = e && e.target && e.target.closest('.voice-player');
+                  const isPlayerClick = e && e.target && e.target.closest && e.target.closest('.voice-player');
                   
                   if (ttsState.speaking && ttsState.paused && !isPlayerClick) {
                       console.log("🔓 Audio Unlocked by Background Action!");

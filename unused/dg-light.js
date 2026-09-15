@@ -1,0 +1,3225 @@
+const express = require('express');
+const compression = require('compression');
+const fs = require('fs').promises;
+const path = require('path');
+// Moved into unused/ (legacy, no longer run in prod — see CLAUDE.md). Every path.join(__dirname, ...)
+// below was written when this file lived at the repo root and still expects that layout (public/,
+// search/, reader/, siteroot/, configs/, etc.), so __dirname is redirected one level up rather than
+// rewriting 40+ call sites. require() calls are unaffected by this and were fixed separately (they
+// resolve against the file's real location, not this variable).
+__dirname = path.join(__dirname, '..');
+const fsSync = require('fs');
+const util = require('util');
+const execFile = util.promisify(require('child_process').execFile);
+const swaggerUi = require('swagger-ui-express');
+const openapiSpec = require('../configs/openapi.json');
+const openapiSpecEn = require('../configs/openapi.en.json');
+const { default: Aksharamukha, Scripts: AKSH_SCRIPTS } = require('aksharamukha');
+
+const app = express();
+// The legacy Express + grep server. 3001 keeps it clear of dg-fastify.js on 3000, so both
+// can run at once for comparison.
+const PORT = Number(process.env.PORT) || 3001;
+
+// ---------------------------------------------------------------------------------------
+// Cache policy (see cache.md at repo root for the full design writeup) — content-hash
+// versioning for our own static assets (§1-2) + differentiated Cache-Control by content
+// type (§3) and by dynamic-route family (§4-5).
+// ---------------------------------------------------------------------------------------
+
+// §1: lazy content-hash versioning, keyed by mtime — no server restart needed to pick up
+// an edited file, no new dependency (crypto is Node built-in).
+const crypto = require('crypto');
+
+const assetVersionCache = new Map(); // absPath -> { mtimeMs, hash }
+function getAssetVersion(absPath) {
+    try {
+        const stat = fsSync.statSync(absPath);
+        const cached = assetVersionCache.get(absPath);
+        if (cached && cached.mtimeMs === stat.mtimeMs) return cached.hash;
+        const hash = crypto.createHash('md5').update(fsSync.readFileSync(absPath)).digest('hex').slice(0, 10);
+        assetVersionCache.set(absPath, { mtimeMs: stat.mtimeMs, hash });
+        return hash;
+    } catch { return null; }
+}
+
+// Directories whose JS/CSS/SVG/PNG/ICO we own and version — legacy dirs (siteroot/*) are
+// deliberately excluded (see cache.md "Проблема" section — no version-safe way to hash
+// content we don't control the release cadence of the same way).
+const VERSIONED_STATIC_ROOTS = [
+    path.join(__dirname, 'public', 'overrides'),
+    path.join(__dirname, 'public', 'spa'),
+    path.join(__dirname, 'search'),
+    path.join(__dirname, 'reader'),
+    path.join(__dirname, 'settings'),
+];
+const HTML_ASSET_URL_ROOTS = {
+    '/assets': VERSIONED_STATIC_ROOTS[0],
+    '/spa': VERSIONED_STATIC_ROOTS[1],
+    '/nodejs/res': VERSIONED_STATIC_ROOTS[2],
+    '/reader': VERSIONED_STATIC_ROOTS[3],
+    '/settings': VERSIONED_STATIC_ROOTS[4],
+};
+
+// §2: HTML entry points render through this instead of a bare res.sendFile — rewrites
+// local asset URLs to carry ?v=<hash> (see getAssetVersion above) so they can be cached
+// forever safely (§3), while the HTML document itself always revalidates.
+//
+// ETag (md5 of the fully-rewritten body, so it changes whenever any referenced asset's own
+// version does, not just when the HTML source itself changes) added after an owner-run
+// cache-header checker on the live site flagged: `max-age=0, must-revalidate` with no
+// validator means every revalidation is a full re-download, never a cheap 304 — "stale
+// cache can only be re-validated with a full download". This keeps must-revalidate's
+// guarantee (client always asks the server first) while letting an unchanged page answer
+// with a 304 instead of re-sending the whole document.
+function sendVersionedHtml(req, res, absHtmlPath, status = 200) {
+    let html;
+    try { html = fsSync.readFileSync(absHtmlPath, 'utf8'); }
+    catch { return res.status(404).end(); }
+    const rewritten = html.replace(
+        /((?:src|href)=")(\/(?:assets|spa|nodejs\/res|reader|settings)\/[^"?#]+\.(?:js|css|svg|png|ico))(")/g,
+        (m, pre, url, post) => {
+            const prefix = Object.keys(HTML_ASSET_URL_ROOTS).find(p => url.startsWith(p + '/'));
+            if (!prefix) return m;
+            const relPath = url.slice(prefix.length + 1);
+            const absAssetPath = path.join(HTML_ASSET_URL_ROOTS[prefix], relPath);
+            const v = getAssetVersion(absAssetPath);
+            return v ? `${pre}${url}?v=${v}${post}` : m;
+        }
+    );
+    const etag = '"' + crypto.createHash('md5').update(rewritten).digest('hex') + '"';
+    res.set('Cache-Control', 'public, max-age=0, must-revalidate').set('ETag', etag);
+    if (status === 200 && req.headers['if-none-match'] === etag) {
+        return res.status(304).end();
+    }
+    res.status(status).type('html').send(rewritten);
+}
+
+// §3: Cache-Control by file type/root for every express.static(...) mount below. Checked
+// against the resolved file's PHYSICAL path, not the URL prefix — /assets/js/x.js from
+// public/overrides (versioned, see above) gets a year; /assets/js/y.js from siteroot/assets
+// (legacy fallback, same URL prefix, not versioned) gets the legacy-code tier instead.
+const CACHE_IMMUTABLE_YEAR = 'public, max-age=31536000, immutable';
+const CACHE_FONT = 'public, max-age=604800';        // 7 days — fonts almost never change
+const CACHE_IMAGE = 'public, max-age=86400';        // 1 day — images not covered by versioning (referenced from CSS url())
+const CACHE_LEGACY_CODE = 'public, max-age=86400';  // 1 day — legacy JS/CSS (siteroot/assets etc.), not versioned but safe to cache a day
+const CACHE_CONFIG_JSON = 'no-cache';               // announcements.json/slides.json etc.: fetched once per SPA session, not per navigation, so the revalidation round-trip is free — express.static/res.sendFile already set a real ETag here, so this is an exact-freshness win over any guessed TTL, not a slower one (cache.md)
+const CACHE_STATIC_SHORT = 'public, max-age=36000'; // 600 min — .html outside sendVersionedHtml + anything uncategorized
+const CACHE_DB = 'public, max-age=3600';            // 1 h — /mobile-data/*.db: a big, replaceable build artifact. A concrete TTL (not the 10h uncategorized fallback above, not no-cache) avoids re-downloading 170 MB during a session while still letting a rebuilt database reach returning visitors the same day; send()'s ETag keeps every revalidation after that a cheap 304. No content-hash scheme — see the /mobile-data mount below.
+
+// Third-party bundles vendored into public/overrides/js so dg-node no longer depends on the
+// legacy repo's assets/ for them (DataTables, the DPD dictionary data used by paliLookup.js).
+// They are pulled in by lazy <script> injection (search/index.html ensureSearchAssets,
+// paliLookup.js), never through an HTML tag sendVersionedHtml could stamp a ?v= onto — so the
+// immutable one-year tier above would pin whatever copy a browser got first until it expires
+// (a DataTables upgrade at the same URL would not reach returning visitors for a year).
+// They get the same 24h tier the legacy copies had under siteroot/assets.
+const UNVERSIONED_VENDOR_DIRS = ['datatables', 'standalone-dpd']
+    .map(dir => path.join(__dirname, 'public', 'overrides', 'js', dir) + path.sep);
+
+function staticCacheHeaders(res, filePath) {
+    const ext = path.extname(filePath).toLowerCase();
+    const inVersionedRoot = VERSIONED_STATIC_ROOTS.some(root => filePath.startsWith(root + path.sep))
+        && !UNVERSIONED_VENDOR_DIRS.some(dir => filePath.startsWith(dir));
+    if (inVersionedRoot && ['.js', '.css', '.svg', '.png', '.ico'].includes(ext)) {
+        res.setHeader('Cache-Control', CACHE_IMMUTABLE_YEAR);
+    } else if (['.woff', '.woff2', '.ttf', '.eot', '.otf'].includes(ext)) {
+        res.setHeader('Cache-Control', CACHE_FONT);
+    } else if (['.png', '.jpg', '.jpeg', '.gif', '.webp', '.ico', '.svg'].includes(ext)) {
+        res.setHeader('Cache-Control', CACHE_IMAGE);
+    } else if (['.js', '.css'].includes(ext)) {
+        res.setHeader('Cache-Control', CACHE_LEGACY_CODE);
+    } else if (ext === '.db') {
+        res.setHeader('Cache-Control', CACHE_DB);
+    } else if (ext === '.json') {
+        res.setHeader('Cache-Control', CACHE_CONFIG_JSON);
+    } else {
+        res.setHeader('Cache-Control', CACHE_STATIC_SHORT);
+    }
+}
+
+// gzip/br для ВСЕГО, что отдаёт сервер — HTML, JSON, JS, CSS. Прод (легаси PHP) летает именно
+// потому, что перед ним Apache/nginx сжимают ответы по умолчанию; у этого сервера такого слоя
+// нет, и текстовые ответы уходили НЕСЖАТЫМИ (проверено curl'ом с Accept-Encoding: gzip — сервер
+// его игнорировал, fontawesome.6.1.all.js уходил все 1.7МБ как есть). Регистрируем максимально
+// рано — до всех static-маунтов и роутов ниже, — чтобы сжатие покрывало вообще все ответы.
+// Filter: `compression()`'s default filter is mime-db's `compressible`, and mime-db marks
+// application/octet-stream as `compressible: true`. `.db` has no mime-db entry, so
+// express.static falls back to exactly that content type for /mobile-data/dg-mobile.db — the
+// ~170 MB offline SQLite database was gzipped/br'd on every download (verified with curl:
+// `Content-Encoding: br` on the 200). Gzipping an already-compact database costs CPU and
+// inflates the transfer (measured 168MB -> 177MB, docs/OFFLINE_PWA_PLAN.md), and on a 206 it
+// is outright wrong (Content-Range describes unencoded byte offsets, yet compression's default
+// filter does not exempt partial responses). Exclude application/octet-stream from the
+// compressible set explicitly; every other content type keeps the default behaviour.
+app.use(compression({
+    filter: (req, res) => {
+        const type = res.getHeader('Content-Type');
+        if (type && String(type).split(';', 1)[0].trim().toLowerCase() === 'application/octet-stream') return false;
+        return compression.filter(req, res);
+    },
+}));
+
+// Optional, non-blocking check: the local FontAwesome subset (public/overrides/js/
+// fontawesome-local.js) is generated by build-icons.js from the icons search/js/home.js and
+// settings.js actually reference (see MANIFEST comment in the generated file) — if someone adds
+// a new icon to the source and forgets to re-run `npm run build-icons`, warn about it instead of
+// silently shipping a blank icon. Wrapped in try/catch on purpose: this must never stop the
+// server from starting (missing bundle on a fresh checkout, unreadable file, whatever) — it's a
+// dev-convenience warning, not a requirement.
+// Rebuilt HERE, at startup, instead of only warning: the file is gitignored, so a fresh
+// checkout / clean deploy has no copy at all and every FontAwesome icon on the site goes blank
+// (test.dhamma.gift, 2026-09-05: fontawesome-local.js 404 after a deploy that never ran
+// `npm run build-icons`). Same pattern as buildScriptBundle() below. build-icons.js needs the
+// @fortawesome/fontawesome-free devDependency — if it is not installed the build fails and we
+// fall back to the warning, but never stop the server.
+try {
+    const iconBundlePath = path.join(__dirname, 'public', 'overrides', 'js', 'fontawesome-local.js');
+    const used = new Set();
+    const homeSrc = fsSync.readFileSync(path.join(__dirname, 'search', 'js', 'home.js'), 'utf8');
+    for (const m of homeSrc.matchAll(/\[\s*'(fa[srb])'\s*,\s*'([a-z0-9-]+)'\s*\]/g)) used.add(m[1] + '/' + m[2]);
+    const settingsSrc = fsSync.readFileSync(path.join(__dirname, 'public', 'overrides', 'js', 'settings.js'), 'utf8');
+    for (const m of settingsSrc.matchAll(/\bfaIcon\('([a-z0-9-]+)'\)/g)) used.add('fas/' + m[1]);
+    let missing = [...used];
+    if (fsSync.existsSync(iconBundlePath)) {
+        const manifestMatch = fsSync.readFileSync(iconBundlePath, 'utf8').match(/MANIFEST:\s*([^\n*]*)/);
+        const known = new Set((manifestMatch ? manifestMatch[1] : '').split(',').map(s => s.trim()).filter(Boolean));
+        missing = [...used].filter(k => !known.has(k));
+    }
+    if (missing.length) {
+        console.warn('[fontawesome-local] ' + (fsSync.existsSync(iconBundlePath) ? 'stale subset, missing: ' + missing.join(', ') : 'not built yet') + ' — building now (build-icons.js)');
+        try {
+            require('child_process').execFileSync(process.execPath, [path.join(__dirname, 'build-icons.js')], { stdio: 'inherit' });
+        } catch (buildErr) {
+            console.warn('[fontawesome-local] build failed — run `npm install` (devDependency @fortawesome/fontawesome-free) and `npm run build-icons`:', buildErr.message);
+        }
+    }
+} catch (e) {
+    console.warn('[fontawesome-local] Icon subset check skipped:', e.message);
+}
+
+// /sw.js — dg-node's own service worker (public/service-worker.js). Any browser that visited
+// this origin while it served the legacy PHP site directly (assets/common/history.html
+// registered navigator.serviceWorker.register('/sw.js'), see /var/www/html/sw.js) has a
+// permanent cache-first SW still serving its stale cached copies of smoothScroll.js/
+// paliLookup.js/settings.js/jquery/etc. today — invisible to every fix since, because it never
+// touches the network for those URLs (owner report: "isInstant doesn't work, every time",
+// traced back to this). Registering this SW at the same /sw.js scope replaces it — activate()
+// deletes any cache not matching the current CACHE_NAME, which cleans up the legacy
+// 'pwa-fdg-v1' cache too. Without an explicit route here /sw.js falls through to the generic
+// /:slug catch-all below and gets served as SPA HTML (wrong content-type, breaks SW update
+// checks silently). Registered early so nothing else can shadow it.
+app.get('/sw.js', (req, res) => {
+    res.set('Cache-Control', 'no-cache'); // stale service worker must always revalidate (cache.md §4)
+    res.type('application/javascript');
+    res.sendFile(path.join(__dirname, 'public', 'service-worker.js'));
+});
+
+// /manifest.json — dg-node's own PWA manifest (configs/manifest.json), replacing the legacy
+// /manifest.php dependency search/index.html and reader-template.html used to link to (dead on
+// any host where dg-node serves the whole domain, e.g. test.dhamma.gift). One static manifest,
+// no ru/en variants: language here is client-side state (localStorage.siteLanguage / ?lang=),
+// not a URL fork like the legacy /ru/ prefix was, so a single manifest already covers every
+// language without hardcoding a list.
+app.get('/manifest.json', (req, res) => {
+    res.set('Cache-Control', 'public, max-age=3600'); // cache.md §4 (merged into primary tier, per owner)
+    res.type('application/manifest+json');
+    res.sendFile(path.join(__dirname, 'configs', 'manifest.json'));
+});
+
+// /open?url=... — in-scope redirector for manifest shortcuts that point at external, cross-origin
+// sites (Aksharamukha, Dharmamitra): PWA manifest shortcuts must resolve to an in-scope URL or
+// some platforms won't show them, but the destination itself can be anywhere — same trick legacy
+// assets/openDDG.html used (client-side), just a one-line server redirect instead of a page.
+app.get('/open', (req, res) => {
+    res.redirect(typeof req.query.url === 'string' && req.query.url ? req.query.url : '/');
+});
+
+// Конвертация системы письма пали (настройка "selectedScript" в /settings/, приходит как
+// ?script= в адресе — тот же параметр, что уже слала кнопка Alt+L, раньше ничего не делавший).
+// Инициализация (~6-8с, поднимает Pyodide/Python-движок в самом Node, без браузера) стартует
+// сразу при загрузке модуля, НЕ блокируя старт сервера — запрос, которому конвертация нужна
+// раньше, чем инициализация закончится, просто дождётся этого же промиса. Один экземпляр на
+// всё время жизни процесса, конвертация после инициализации — единицы-десятки миллисекунд.
+//
+// Owner: "деванагари не работает" — Aksharamukha.new() with no options tries (in order):
+// getCurrentScriptPath() (browser-only, throws in Node) -> loadPyodide() with NO indexURL
+// (this is the one that should just work — the "pyodide" npm package is installed locally,
+// files and all) -> indexURL: <jsdelivr CDN>. In practice the middle branch was resolving to a
+// bogus path (node_modules/src/js/pyodide.asm.wasm — not a real path anywhere in this install,
+// some indexURL-detection quirk in pyodide 0.28.3 when it's reached via aksharamukha's own
+// indirect `new Function(...)("import(...)")` loader) and falling through to the CDN branch,
+// which then ALSO failed (dynamic import() of an https:// URL isn't network-fetched by this
+// Node runtime without --experimental-network-imports — it gets treated as a relative
+// filesystem path instead, hence the "no such file '.../https:/cdn.jsdelivr.net/...'" errors).
+// Loading pyodide ourselves with an explicit LOCAL indexURL sidesteps that whole fallback chain
+// — confirmed working standalone (Evaṁ me sutaṁ -> Devanagari) before wiring it in here.
+const akshReady = (async () => {
+    const { loadPyodide } = require('pyodide');
+    const pyodideDir = path.dirname(require.resolve('pyodide'));
+    // indexURL is used as a URL prefix internally (string-concatenated with filenames), not a
+    // filesystem path — always '/', not path.sep (this project also runs dev on Windows).
+    const pyodide = await loadPyodide({ indexURL: pyodideDir.replace(/\\/g, '/') + '/' });
+    return Aksharamukha.new({ pyodide });
+})().catch(err => {
+    console.error('Aksharamukha init failed (script conversion will be a no-op):', err.message);
+    return null;
+});
+// Раньше здесь была маленькая ручная таблица коротких кодов (deva/thai/sinh/mymr) на 4 системы
+// письма — владелец попросил показывать ВСЕ рабочие системы, которые реально умеет Aksharamukha
+// (проверено тестовым прогоном конвертации Pali IAST во все ключи Scripts — из ~163 не упал ни
+// один, даже совсем неожиданные для пали System типа иврита/кириллицы/японской кана дают
+// осмысленную фонетическую транслитерацию, а не мусор). Значит короткие коды — не нужны и не
+// масштабируются на 163 системы; ?script=/selectedScript теперь хранит РЕАЛЬНОЕ имя ключа
+// Aksharamukha.Scripts (например "BurmeseMyanmar", НЕ придуманное "mymr"). Клиент (megareader.js/
+// search/index.html) исторически шлёт значение в нижнем регистре (.toLowerCase(), трогать этот
+// код не стал — общий для читателя и поиска) — поэтому на сервере матчим регистронезависимо.
+const AKSH_SCRIPT_LOOKUP = {};
+for (const key of Object.keys(AKSH_SCRIPTS)) AKSH_SCRIPT_LOOKUP[key.toLowerCase()] = key;
+function resolveScriptKey(code) {
+    return code ? (AKSH_SCRIPT_LOOKUP[code.toLowerCase()] || null) : null;
+}
+async function convertPaliScript(text, scriptCode) {
+    const realKey = resolveScriptKey(scriptCode);
+    if (!text || !realKey) return text;
+    const aksh = await akshReady;
+    if (!aksh) return text;
+    try {
+        return await aksh.processAsync(AKSH_SCRIPTS.IAST, AKSH_SCRIPTS[realKey], text);
+    } catch (err) {
+        console.warn(`Aksharamukha: conversion to ${scriptCode} failed:`, err.message);
+        return text;
+    }
+}
+
+// Та же конвертация, но для формы ответа /search и /search/enrich: data — по суттам, у каждой
+// segments[] с root_text/variant И вложенными lb_context/la_context (соседние строки — тоже
+// пали, тоже нужно конвертировать); variantSegments — отдельный плоский список (поле text, не
+// root_text). Один Promise.all на все найденные строки сразу — конкурентно (~50 строк
+// пали конвертируются за ~130мс, замерено), а не одна за другой по сегментам/суттам.
+async function convertScriptInSearchResult(result, scriptCode) {
+    if (!resolveScriptKey(scriptCode)) return;
+    const jobs = [];
+    const convertField = (obj, field) => {
+        if (obj && obj[field]) jobs.push((async () => { obj[field] = await convertPaliScript(obj[field], scriptCode); })());
+    };
+    for (const suttaId in (result.data || {})) {
+        for (const seg of (result.data[suttaId].segments || [])) {
+            convertField(seg, 'root_text');
+            convertField(seg, 'variant');
+            (seg.lb_context || []).forEach(c => convertField(c, 'root_text'));
+            (seg.la_context || []).forEach(c => convertField(c, 'root_text'));
+        }
+    }
+    (result.variantSegments || []).forEach(v => convertField(v, 'text'));
+    await Promise.all(jobs);
+}
+
+// Word-click dictionary lookup (paliLookup.js, standalone DPD + external dict links) assumes
+// the clicked word is Pali IAST — true only when the reader is showing the default ISOPali
+// script. When the owner picks another script (Devanagari/Thai/any of the ~163 Aksharamukha
+// systems, ?script= in /settings/), the clicked word is in THAT script and none of it (standalone
+// dict, dict.dhamma.gift, CPD, PTS...) would find anything. AutoDetect (Aksharamukha's own script
+// detector, same package as convertPaliScript above) picks the source script so the client
+// doesn't need to know/send it. Owner: "для iast лишнюю лейтенси не добавляй" — the client
+// (paliLookup.js) only calls this when the word contains non-Latin characters at all; plain
+// IAST/ISO input never round-trips here.
+app.get('/api/transliterate', async (req, res) => {
+    res.set('Cache-Control', 'public, max-age=3600'); // cache.md §4 (merged into primary tier, per owner)
+    const text = (req.query.text || '').toString();
+    if (!text) return res.json({ text: '', converted: false });
+    const aksh = await akshReady;
+    if (!aksh) return res.json({ text, converted: false });
+    try {
+        const converted = await aksh.processAsync(AKSH_SCRIPTS.AutoDetect, AKSH_SCRIPTS.IASTPI, text);
+        res.json({ text: converted, converted: true });
+    } catch (err) {
+        console.warn('Transliterate to IAST failed:', err.message);
+        res.json({ text, converted: false });
+    }
+});
+
+// Документация API — /api-docs. configs/openapi.json/openapi.en.json описывают /search,
+// /search/enrich, /api/text, /api/nav и т.п.: какие параметры есть, что обязательно, что
+// возвращается. Раздаём оба JSON-файла напрямую — нужно для выпадающего списка языков ниже
+// (Swagger UI переключает спеки по URL, не по встроенному объекту). URL остаётся /openapi.json
+// (без /configs) — это отдельный app.get(), не статика, физический путь на диске клиенту не
+// виден и никого не касается.
+app.get('/openapi.json', (req, res) => { res.set('Cache-Control', 'public, max-age=3600'); res.json(openapiSpec); });
+app.get('/openapi.en.json', (req, res) => { res.set('Cache-Control', 'public, max-age=3600'); res.json(openapiSpecEn); });
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(null, {
+    explorer: true,
+    swaggerOptions: {
+        urls: [
+            { url: '/openapi.en.json', name: 'English' },
+            { url: '/openapi.json', name: 'Русский' },
+        ],
+    },
+}));
+
+// Легаси (config/script_config.sh) везде держит minlength=2..3 не просто так — короткий keyword
+// (особенно 1 символ) matches почти КАЖДУЮ строку всего корпуса; grep -ri на таком запросе
+// реально роняет процесс (ERR_CHILD_PROCESS_STDIO_MAXBUFFER — стандартный execFile maxBuffer не
+// успевает даже сработать как "мягкая" ошибка, вылетает как необработанное исключение). Тот же
+// порог здесь — отсекаем до первого grep, а не полагаемся только на maxBuffer как единственную
+// защиту.
+const MIN_KEYWORD_LENGTH = 3;
+
+const isTermux  = fsSync.existsSync('/data/data/com.termux/files/usr');
+const isWindows = process.platform === 'win32';
+
+// Offline mirrors root (внешние тяжёлые зеркала сторонних сайтов) — отдельный, не связанный с
+// текстовыми данными механизм, платформо-зависимый путь вне web-root не переезжает на siteroot/.
+let OFFLINE_MIRRORS_ROOT;
+if (isTermux) {
+    OFFLINE_MIRRORS_ROOT = '/data/data/com.termux/files/home/offline-data';
+} else if (isWindows) {
+    OFFLINE_MIRRORS_ROOT = 'C:/soft/offline-data';
+} else {
+    OFFLINE_MIRRORS_ROOT = '/var/www/offline-data';
+}
+
+// SuttaCentral Bilara (пали root/variant/html + переводы) и DhammaGift offline (лучшие переводы
+// проекта) — оба дерева читаются через один общий корень `siteroot/data/` (git-tracked symlink'и
+// на реальные данные, как и `siteroot/assets`/`siteroot/4nt`/и т.п. — см. CLAUDE.md "Публикация
+// от корня сайта"). Один и тот же путь для всех платформ — кроссплатформенность обеспечивает сам
+// symlink на диске, не платформенный if/else здесь (раньше было 3 разных хардкода абсолютных
+// путей — Termux/Windows/прод-Linux — унифицировано в этом раунде).
+const DATA_ROOT = path.join(__dirname, 'siteroot', 'data');
+const SC_BILARA = path.join(DATA_ROOT, 'suttacentral.net', 'sc-data', 'sc_bilara_data');
+
+const SC_ROOT     = `${SC_BILARA}/root/pli/ms`;
+const SC_VARIANT  = `${SC_BILARA}/variant/pli/ms`;
+const SC_TRANS    = `${SC_BILARA}/translation`;
+const DG_LANGS    = ['ru', 'ru_other', 'en', 'en_other', 'ai'];
+
+// DhammaGift offline — лучшие переводы проекта (один на язык), плоская структура (без подпапки
+// на переводчика, в отличие от SC — DG исторически один главный + один "other" переводчик на
+// язык, различаются именем файла). Структура (проверено напрямую на диске, включая реальный
+// путь, найденный владельцем через `find` в data/dhammagift — папки лежат прямо под
+// dhammagift/, БЕЗ промежуточной "translation/"; с ней путь был мёртвым — ru/en_other
+// физически существуют на диске по адресу без "translation", а `fsSync.existsSync` c ней
+// всегда давал false, так что все DG-переводы (главный "o" и "other") молча пропускались
+// везде — search, ридер, batch-индекс — и результат тихо падал на SC/en вместо DG/ru):
+// {DG_OFFLINE}/{lang}/sutta|vinaya/{nikaya}/{id}_translation-{lang}-{author}.json
+const DG_OFFLINE = path.join(DATA_ROOT, 'dhammagift');
+let offlineMirrors = new Set();
+try {
+    offlineMirrors = new Set(
+        fsSync.readdirSync(OFFLINE_MIRRORS_ROOT, { withFileTypes: true })
+            // isDirectory() смотрит на сырой тип записи и для symlink'а на директорию даёт
+            // false, даже если цель реально директория (проверено эмпирически) — офлайн-зеркала
+            // почти наверняка symlink'и на реальные данные, а не сами данные — без
+            // isSymbolicLink() они бы молча не подхватывались этим циклом.
+            .filter(d => d.isDirectory() || d.isSymbolicLink())
+            .map(d => d.name)
+    );
+} catch (e) {
+    console.warn('Offline mirrors root not found:', OFFLINE_MIRRORS_ROOT);
+}
+
+const readerTemplatePath = path.join(__dirname, 'reader', 'reader-template.html');
+const searchIndexPath = path.join(__dirname, 'search', 'index.html');
+
+const skeletonPath = path.join(__dirname, 'dg_db_light.json');
+let skeletonDB = {};
+
+// Демо-сегменты для живого образца в /settings/ — заданы владельцем проекта явно, не
+// подбираются автоматически. Сегменты одной сутты (dn22:18.18 + dn22:18.19) идут ОДНОЙ
+// группой — на странице настроек показываются вместе, не по одному сегменту за раз.
+const SETTINGS_DEMO_DEF = [
+    { suttaId: 'an4.180', segments: ['an4.180:4.7'] },
+    { suttaId: 'mn139', segments: ['mn139:3.9'] },
+    { suttaId: 'dn22', segments: ['dn22:18.18', 'dn22:18.19'] },
+    { suttaId: 'an6.63', segments: ['an6.63:12.2'] }
+];
+
+// Строится один раз при старте сервера (не на каждый запрос страницы настроек) — считает
+// пали + варианты + ВСЕ найденные переводы на всех языках (targetLangs=['all'], тот же
+// путь, что и обычный полнотекстовый обход) только для этих 5 сегментов, режет до них и
+// кладёт результат в settings/demo-data.json — этот файл уже отдаётся статикой через
+// app.use('/settings', ...) ниже, отдельный роут не нужен. getFullTextData/skeletonDB и
+// прочее объявлены ниже по файлу как function-декларации (hoisting) — на момент, когда
+// этот await реально выполнится (после fs.readFile выше), весь остальной модуль уже
+// синхронно доисполнился, так что здесь ничего не в TDZ.
+//
+// Каждый вариант системы письма (ISOPali + ВСЕ ключи AKSH_SCRIPTS, не только 4 избранных)
+// считается заранее, при старте, а не по запросу от preview-frame.html — данных мало (4 текста,
+// по сегменту-два), а Aksharamukha живёт только в Node (не в браузере посетителя), так что демо
+// в /settings/ иначе не смогло бы применить акшарамукху к образцу вообще (раньше и не
+// применяло — жалоба владельца). Формат файла — { "ISOPali": [...группы...], "Devanagari":
+// [...], ... }, тот же ключ (реальное имя Aksharamukha.Scripts), что и localStorage
+// selectedScript, preview-frame.html просто берёт groups[selectedScript] || groups.ISOPali.
+async function buildSettingsDemoCache() {
+    const cachePath = path.join(__dirname, 'settings', 'demo-data.json');
+    const baseGroups = [];
+    for (const def of SETTINGS_DEMO_DEF) {
+        try {
+            const full = await getFullTextData(def.suttaId, ['all'], null, null);
+            if (!full) continue;
+            const segments = full.segments.filter(s => def.segments.includes(s.segment));
+            if (segments.length) baseGroups.push({ sutta_id: full.sutta_id, title: full.title, segments });
+        } catch (e) {
+            console.warn('Settings demo cache: failed for', def.suttaId, e.message);
+        }
+    }
+
+    const byScript = { ISOPali: baseGroups };
+    for (const scriptCode of Object.keys(AKSH_SCRIPTS)) {
+        byScript[scriptCode] = await Promise.all(baseGroups.map(async group => ({
+            ...group,
+            segments: await Promise.all(group.segments.map(async seg => ({
+                ...seg,
+                root_text: await convertPaliScript(seg.root_text, scriptCode),
+                variant: await convertPaliScript(seg.variant, scriptCode)
+            })))
+        })));
+    }
+
+    try {
+        await fs.writeFile(cachePath, JSON.stringify(byScript, null, 2), 'utf8');
+        console.log(`Settings demo cache built: ${baseGroups.length} text(s) x ${Object.keys(byScript).length} script(s) -> settings/demo-data.json`);
+    } catch (e) {
+        console.warn('Settings demo cache: could not write file:', e.message);
+    }
+}
+
+// Список реальных ключей Aksharamukha.Scripts для дропдауна "Система письма пали" в
+// /settings/ — отдельный маленький файл, а не повторный fetch демо-данных (там на каждый ключ
+// висит целый набор текстов, незачем тащить это ради одного списка названий).
+async function buildScriptListCache() {
+    const cachePath = path.join(__dirname, 'settings', 'scripts.json');
+    try {
+        await fs.writeFile(cachePath, JSON.stringify(Object.keys(AKSH_SCRIPTS)), 'utf8');
+    } catch (e) {
+        console.warn('Script list cache: could not write file:', e.message);
+    }
+}
+
+// Реальное количество ТЕКСТОВ (уникальных sutta_id) на язык — для списка "Добавить язык" в
+// /settings/ (по просьбе владельца показывать реальные цифры). Считается один раз при старте,
+// не на каждый показ диалога.
+//
+// Считаем УНИКАЛЬНЫЕ suttaId, а не количество файлов — у одной сутты может быть несколько
+// переводчиков одного языка (sc_bilara_data/translation/{lang}/{translator}/...), каждый со
+// своим файлом; наивный подсчёт файлов посчитал бы такую сутту несколько раз (5 переводов
+// одной сутты — это всё равно один текст, не пять). Также сюда же сводим DG offline
+// (dhammagift/{ru,ru_other,en,en_other}) — иначе счётчик для ru/en в диалоге считал бы только
+// SC-зеркало и был бы меньше настоящего числа доступных текстов.
+async function buildLangCountsCache() {
+    const cachePath = path.join(__dirname, 'settings', 'lang-counts.json');
+    const suttaIdsByLang = {};
+    async function addFromDir(dir, lang) {
+        if (!fsSync.existsSync(dir)) return;
+        let files;
+        try { files = await fs.readdir(dir, { recursive: true }); } catch (e) { return; }
+        if (!suttaIdsByLang[lang]) suttaIdsByLang[lang] = new Set();
+        for (const f of files) {
+            if (!f.endsWith('.json')) continue;
+            suttaIdsByLang[lang].add(path.basename(f, '.json').split('_')[0]);
+        }
+    }
+    try {
+        const langDirs = await fs.readdir(SC_TRANS, { withFileTypes: true });
+        for (const d of langDirs) {
+            if (d.isDirectory()) await addFromDir(path.join(SC_TRANS, d.name), d.name);
+        }
+    } catch (e) {
+        console.warn('Lang counts cache: could not scan', SC_TRANS, e.message);
+    }
+    for (const l of DG_LANGS) {
+        await addFromDir(path.join(DG_OFFLINE, l), l.split('_')[0]);
+    }
+    const counts = {};
+    for (const lang in suttaIdsByLang) counts[lang] = suttaIdsByLang[lang].size;
+    try {
+        await fs.writeFile(cachePath, JSON.stringify(counts, null, 2), 'utf8');
+        console.log(`Lang counts cache built: ${Object.keys(counts).length} language(s) -> settings/lang-counts.json`);
+    } catch (e) {
+        console.warn('Lang counts cache: could not write file:', e.message);
+    }
+}
+
+// Catalog of every translator key (transKey) that physically exists on disk per language, with
+// a sutta count each — same walk as buildLangCountsCache (SC_TRANS + DG_OFFLINE), just grouped
+// one level deeper (by transKey, not only by language). Built once at startup, same as
+// lang-counts.json, so the TOC's translator-filter UI has something to populate its checkboxes
+// from without walking the whole corpus on every page load.
+async function buildTranslatorCatalogCache() {
+    const cachePath = path.join(__dirname, 'settings', 'translator-catalog.json');
+    const countsByLang = {}; // { lang: { translatorKey: count } } — bare translator key (no lang
+    // prefix): the outer object key already is the language, client does lang + '_' + key itself.
+    // SC_TRANS carries convenience symlinks straight into DG_OFFLINE for some translators (e.g.
+    // sc_bilara_data/translation/en/o -> .../dhammagift/translation/en/o, en/thanissaro ->
+    // .../en_other/) — walking both roots then counts the very same file twice. Dedupe by real
+    // path (not by name) so any such alias, present or future, only ever counts once (owner: "в
+    // англ o стоит 9 но реально только 3 перевода").
+    const seenRealPaths = new Set();
+    async function addFromDir(dir, lang) {
+        if (!fsSync.existsSync(dir)) return;
+        let files;
+        try { files = await fs.readdir(dir, { recursive: true }); } catch (e) { return; }
+        if (!countsByLang[lang]) countsByLang[lang] = {};
+        for (const f of files) {
+            if (!f.endsWith('.json')) continue;
+            const baseName = path.basename(f, '.json');
+            const parsed = parseTranslationFilename(baseName, baseName.split('_')[0]);
+            if (!parsed) continue;
+            const translatorKey = parsed.author; // "o" / "sujato" / "sv+edited+o" — bare, no lang prefix
+            // "site" is SC's own UI-string translation (about/footer/home/...), not a sutta
+            // translator — its ids never match a real suttaId so it's harmless everywhere except
+            // this catalog, which just counts filenames regardless of id (owner: "ru_site и любой
+            // другой site не должны попадать в списки переводчиков").
+            if (translatorKey === 'site') continue;
+            let real;
+            try { real = fsSync.realpathSync(path.join(dir, f)); } catch (e) { real = path.join(dir, f); }
+            if (seenRealPaths.has(real)) continue;
+            seenRealPaths.add(real);
+            countsByLang[lang][translatorKey] = (countsByLang[lang][translatorKey] || 0) + 1;
+        }
+    }
+    try {
+        const langDirs = await fs.readdir(SC_TRANS, { withFileTypes: true });
+        for (const d of langDirs) {
+            if (d.isDirectory()) await addFromDir(path.join(SC_TRANS, d.name), d.name);
+        }
+    } catch (e) {
+        console.warn('Translator catalog cache: could not scan', SC_TRANS, e.message);
+    }
+    for (const l of DG_LANGS) {
+        await addFromDir(path.join(DG_OFFLINE, l), l.split('_')[0]);
+    }
+    try {
+        await fs.writeFile(cachePath, JSON.stringify(countsByLang, null, 2), 'utf8');
+        console.log(`Translator catalog cache built: ${Object.keys(countsByLang).length} language(s) -> settings/translator-catalog.json`);
+    } catch (e) {
+        console.warn('Translator catalog cache: could not write file:', e.message);
+    }
+}
+
+// Concatenates a few always-loaded landing-page scripts into one file each, cutting HTTP
+// request count under HTTP/1.1's ~6-connections-per-host limit (TODO.md batch 7 #2, part 2).
+// Rebuilt on every server start (same pattern as buildSettingsDemoCache et al. above) rather
+// than a manual `npm run` step, so editing a source file during dev never leaves a stale bundle.
+// Only dg-node-owned files (public/overrides/js/, search/js/) are bundled, adjacent PAIRS that
+// are already next to each other in search/index.html's script order — this changes request
+// count only, not execution order, so it can't introduce a script-ordering bug. Legacy files
+// (siteroot/assets, symlinked from the old PHP repo) are left alone on purpose: bundling them
+// would mean baking a snapshot of someone else's repo into ours (see CLAUDE.md symlink policy).
+async function buildScriptBundle() {
+    const pairs = [
+        { out: 'settings-bundle.js', sources: [
+            path.join(__dirname, 'public', 'overrides', 'js', 'settings.js'),
+            path.join(__dirname, 'public', 'overrides', 'js', 'dg-text-router.js'),
+        ] },
+        { out: 'home-bundle.js', sources: [
+            path.join(__dirname, 'public', 'overrides', 'js', 'randPlaceholder.js'),
+            path.join(__dirname, 'search', 'js', 'home.js'),
+        ] },
+    ];
+    for (const { out, sources } of pairs) {
+        try {
+            const parts = await Promise.all(sources.map(async src => {
+                const content = await fs.readFile(src, 'utf8');
+                return `// ---- ${path.relative(__dirname, src)} ----\n${content}`;
+            }));
+            const outPath = path.join(__dirname, 'public', 'overrides', 'js', out);
+            await fs.writeFile(outPath, parts.join('\n;\n'), 'utf8');
+        } catch (e) {
+            console.warn(`Script bundle ${out}: could not build:`, e.message);
+        }
+    }
+}
+
+async function initServer() {
+    try {
+        const data = await fs.readFile(skeletonPath, 'utf8');
+        skeletonDB = JSON.parse(data);
+        // skeletonDB не хот-релоадится — печатаем mtime файла, чтобы "я пересобрал скелет, а
+        // сервер всё равно отдаёт старое" было видно в логе сразу, а не гадалось.
+        const stat = await fs.stat(skeletonPath);
+        console.log(`Skeleton loaded: ${Object.keys(skeletonDB).length} suttas (built ${stat.mtime.toISOString()})`);
+        await buildSettingsDemoCache();
+        await buildScriptListCache();
+        await buildLangCountsCache();
+        await buildTranslatorCatalogCache();
+        await buildScriptBundle();
+    } catch (err) {
+        console.error('Startup error:', err);
+    }
+}
+initServer();
+
+app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type');
+    next();
+});
+
+// Статика — dg-node самодостаточен, ничего не зависит от соседнего легаси-репозитория
+// Файлы, которые мы реально правим (не совпадают с легаси) — отдаём их первыми,
+// прежде чем упасть на весь /assets — единый симлинк на легаси-репозиторий целиком
+// (siteroot/assets, тот же паттерн, что и 4nt/config/login/memo/read, см. ниже) — второй
+// маунт под тем же префиксом регистрирует уже ОБЩИЙ scan-цикл siteroot/ дальше по файлу, не
+// отдельная явная строка здесь: порядок регистрации (overrides раньше siteroot-цикла) сам по
+// себе гарантирует приоритет override-файлов, ничего дополнительно синхронизировать не нужно.
+// maxAge: short (60s), dev-safe cache — was max-age=0 (express.static's bare default) on
+// every mount, forcing a 304 round-trip on every asset on every navigation (TODO.md #global
+// п.2). 60s specifically: short enough that a file edited during active dev becomes visible
+// again within a minute, still long enough to cut the round-trip tax for normal browsing.
+// /assets/lbl-save.php — Label Tool save endpoint (assets/lbl.html, assets/lbl-en.html), dead
+// PHP under Node (siteroot/assets/lbl-save.php would otherwise serve raw unexecuted PHP source,
+// same reason as /pm.php, /bipm.php below). Reimplements the legacy PHP: write the POST body to
+// offline-data/lbl/{file}, creating the dir if missing.
+app.post('/assets/lbl-save.php', express.text({ type: '*/*', limit: '10mb' }), (req, res) => {
+    res.set('Cache-Control', 'no-store'); // cache.md §5 — write endpoint
+    const filename = path.basename(req.query.file || `backup_${Date.now()}.json`);
+    const saveDir = path.join(OFFLINE_MIRRORS_ROOT, 'lbl');
+    try {
+        fsSync.mkdirSync(saveDir, { recursive: true });
+        fsSync.writeFileSync(path.join(saveDir, filename), req.body);
+        res.status(200).send('OK');
+    } catch (err) {
+        res.status(500).send('Error writing file: ' + err.message);
+    }
+});
+
+// Translator credits ("sv+edited+o" -> "SV theravada.ru с Англ, ред. o"). Hand-written editorial
+// text, so it lives with the project's other authored configs — next to translator-priority.json
+// and translator-types.json, which are about the same translators — rather than among the
+// vendored legacy assets. It is NOT corpus data and deliberately not a table in dg.db: that file
+// is regenerated from the corpus on every build and would wipe anything written by hand. The
+// public URL stays put, served by hand from its new home, the same trick the reader configs use.
+// Registered before the /assets mount so it wins over both public/overrides and the legacy
+// fallback. Same no-cache tier staticCacheHeaders gives any .json (res.sendFile's own ETag
+// makes repeat fetches a cheap 304, not a guessed TTL — cache.md).
+app.get('/assets/js/translators.json', (req, res) => {
+    res.set('Cache-Control', CACHE_CONFIG_JSON);
+    res.sendFile(path.join(__dirname, 'configs', 'reader', 'translators.json'));
+});
+app.use('/assets', express.static(path.join(__dirname, 'public', 'overrides'), { setHeaders: staticCacheHeaders }));
+// /read/js/voice.js — тот же override-приоритет паттерн, что и /assets выше: наш патченный
+// voice.js (public/overrides/read/js/, чинит рассинхрон detectTranslationLang/prepareTextData
+// с классами, которые реально рендерит megareader.js — rus-lang/eng-lang vs ru-lang/en-lang,
+// second-translation-row vs lang-2nd — переводы молча не находились на страницах ридера,
+// см. TODO.md) отдаётся ПЕРЕД siteroot/read/ (легаси-оригинал, дальше по файлу, generic-цикл).
+app.use('/read', express.static(path.join(__dirname, 'public', 'overrides', 'read'), { setHeaders: staticCacheHeaders }));
+app.use('/spa', express.static(path.join(__dirname, 'public', 'spa'), { setHeaders: staticCacheHeaders }));
+// /offline — the optional offline PWA layer (docs/OFFLINE_PWA_PLAN.md, "Этап 1"): fetch shim
+// (app.js), platform.js, the data worker, the bundled search core, the sqlite-wasm vendor and the
+// status UI. Sources are committed; core-bundle.js/build-id.json/vendor are generated by
+// `npm run build-offline`.
+//
+// Cache-Control is no-cache (i.e. revalidate, cheap 304 through the ETag static() already sets)
+// rather than the day-long legacy-script TTL: this is app code whose two halves must agree with
+// each other — an old app.js next to a new db-worker.js is a broken pair, and the files are small
+// enough that revalidation is free. /offline/vendor/sqlite3.wasm (865 KB) is the one sizeable
+// exception, and it is only fetched once the offline library is actually being used.
+app.use('/offline', express.static(path.join(__dirname, 'public', 'offline'), {
+    setHeaders: (res) => res.setHeader('Cache-Control', CACHE_CONFIG_JSON),
+}));
+// /settings — мастер-настройки (единая страница, вызывается по шестерёнке; отдельно от
+// быстрых настроек в quickModal и смарт-панели ридера, см. TODO.md). Explicit route (cache.md
+// §2) so its JS/CSS links get versioned — same "explicit route before static mount wins by
+// registration order" pattern as /reader/mode-table.json below.
+app.get(['/settings', '/settings/'], (req, res) => {
+    sendVersionedHtml(req, res, path.join(__dirname, 'settings', 'index.html'));
+});
+app.use('/settings', express.static(path.join(__dirname, 'settings'), { setHeaders: staticCacheHeaders }));
+// URL-префикс /nodejs/res сознательно НЕ переименован вслед за папкой (обратная совместимость
+// путей) — папка на диске называется search/ (см. CLAUDE.md "Структура проекта"), а
+// /nodejs/res/... как публичный URL как был, так и остался.
+app.use('/nodejs/res', express.static(path.join(__dirname, 'search'), { setHeaders: staticCacheHeaders }));
+// lang_ru.json/lang_en.json (поисковый UI) физически переехали в configs/search/ — все конфиги
+// проекта в одном месте (см. CLAUDE.md). URL не менялся (клиент шлёт fetch на /nodejs/res/lang_
+// {lang}.json, см. search/index.html DHAMMA_LANG_CONFIG_PATTERN) — второй static-маунт на тот же
+// префикс просто добавляет ещё одно место поиска файла, express пробует по очереди.
+app.use('/nodejs/res', express.static(path.join(__dirname, 'configs', 'search'), { setHeaders: staticCacheHeaders }));
+// Раньше здесь был app.use('/nodejs', express.static(__dirname, ...)) — раздавал ВЕСЬ корень
+// проекта (dg-light.js, package.json, конфиги) наружу как статику. Единственная ссылка на
+// голый /nodejs/... (не /nodejs/res/... выше) во всём коде была reader/reader.html:18
+// (<script src="/nodejs/dg_db.js">) — файла dg_db.js на диске нет, а само reader.html никем
+// не подключается (мёртвый прототип, рабочий ридер — reader-template.html). siteroot/ (то,
+// что реально должно быть публичным) раздаётся отдельным циклом ниже по файлу, на /{имя}
+// напрямую — этого маунта не касается.
+// Явный роут ПЕРЕД static-маунтами ниже (express матчит по порядку регистрации, точное
+// совпадение пути в express.static тоже сработало бы, но раньше зарегистрированный роут
+// побеждает) — клиенту помимо самого mode-table.json нужен ещё и READER_LANGS (см. выше),
+// а он не часть файла на диске (сканируется отдельно), поэтому раздаём JSON руками, а не
+// статикой.
+app.get('/reader/mode-table.json', (req, res) => {
+    res.set('Cache-Control', 'public, max-age=3600'); // cache.md §4 (merged into primary tier, per owner)
+    res.json({ ...MODE_TABLE, availableLangs: READER_LANGS });
+});
+// Same versioning treatment (cache.md §2) as /settings above — these two bare HTML files were
+// previously served as plain static (no ?v= rewriting of their own JS/CSS links).
+app.get('/reader/reader.html', (req, res) => {
+    sendVersionedHtml(req, res, path.join(__dirname, 'reader', 'reader.html'));
+});
+app.get('/reader/reader-template.html', (req, res) => {
+    sendVersionedHtml(req, res, path.join(__dirname, 'reader', 'reader-template.html'));
+});
+app.use('/reader', express.static(path.join(__dirname, 'reader'), { setHeaders: staticCacheHeaders }));
+// mode-table.json/translator-priority.json/lang_ru.json/lang_en.json (ридер) физически
+// переехали в configs/reader/ — тот же приём, что и с /nodejs/res выше: URL /reader/*.json не
+// менялся (megareader.js/reader-template.html фетчат по старым путям), просто ещё один
+// static-маунт на тот же префикс.
+app.use('/reader', express.static(path.join(__dirname, 'configs', 'reader'), { setHeaders: staticCacheHeaders }));
+
+// /pm.php, /bipm.php — Bhikkhu/Bhikkhuni Patimokkha, rendered inline (not the reader), with
+// rule links pointing at real dg-node routes. Static HTML generated once by
+// convert-patimokkha.js from the legacy assets/texts/{bupm,bipm}.php (PHP, dead under Node —
+// siteroot/pm.php and siteroot/bipm.php below would otherwise serve raw unexecuted PHP source,
+// which is why the old menu links were broken). Registered before the siteroot scan loop so
+// these routes win over those dead symlinks (same override-precedence pattern as /assets, /read).
+app.get('/pm.php', (req, res) => sendVersionedHtml(req, res, path.join(__dirname, 'reader', 'bu-pm.html')));
+app.get('/bipm.php', (req, res) => sendVersionedHtml(req, res, path.join(__dirname, 'reader', 'bi-pm.html')));
+
+// /config/tts-config.json, /config/sync-config.json — the only 2 files out of the legacy
+// siteroot/config/ (67 tracked files: apache/systemd/AndroidManifest, AWS creds, config.zip)
+// dg-node code actually fetches (public/overrides/read/js/voice.js, settings.js/
+// settings-bundle.js). Vendored into configs/legacy/ so siteroot/config can be dropped
+// entirely instead of publishing the rest of that directory's unrelated legacy server files.
+app.get('/config/tts-config.json', (req, res) => { res.set('Cache-Control', 'public, max-age=3600'); res.sendFile(path.join(__dirname, 'configs', 'legacy', 'tts-config.json')); });
+app.get('/config/sync-config.json', (req, res) => { res.set('Cache-Control', 'public, max-age=3600'); res.sendFile(path.join(__dirname, 'configs', 'legacy', 'sync-config.json')); });
+
+// Bare fragment (no page shell) of the same content, for /toc's inline expand
+// (public/spa/toc.js renderBookRow) — fetched once on first click, not preloaded.
+app.get('/api/patimokkha-fragment/:side', (req, res) => {
+    if (req.params.side !== 'bu' && req.params.side !== 'bi') return res.status(404).end();
+    sendVersionedHtml(req, res, path.join(__dirname, 'reader', `${req.params.side}-pm-fragment.html`));
+});
+
+// siteroot/ — публикация от корня сайта: самодостаточные легаси-приложения (Memorization
+// Helper, вход/облачная синхронизация, 4nt — сравнение изданий пали, TTS voice-player), их
+// конфиги, зеркала сторонних тулз/учебников, легаси-ассеты целиком (assets/) — не только
+// "зеркала" в узком смысле, поэтому не mirrors/. Каждый элемент — symlink на реальную папку
+// рядом с проектом (на проде, например, `siteroot/4nt` -> `../../4nt`, т.е. `/var/www/html/4nt`,
+// сосед `nodejs/`) ИЛИ обычная папка/файл прямо здесь. Никакого хардкода per-инструмент: что
+// появилось в siteroot/ — то и замаунтилось на /{имя} на следующем старте сервера (папка
+// сканируется один раз при старте, не на каждый запрос — новый symlink требует рестарта; правки
+// ВНУТРИ уже примонтированной папки видны сразу, без рестарта). Чтобы добавить новую тулзу/
+// зеркало/учебник — просто положить symlink (или реальные файлы) в siteroot/, рестартовать
+// сервер, ничего в коде трогать не нужно. Три элемента здесь — не совсем "новая тулза с нуля":
+// `read/` (TTS voice-player) — жёстко зашитый в settings.js путь "/read/js/voice.js" (легаси,
+// не трогаем), и сама папка становится ВТОРЫМ, запасным маунтом под /read — патченный
+// voice.js в public/overrides/read/ (см. выше) регистрируется раньше и побеждает по тому же
+// принципу, что и /assets; `assets/` — сюда же попадает ВТОРЫМ маунтом под /assets, публичным
+// API поверх override-файлов (см. выше) чисто порядком регистрации в файле — никакой особой
+// обработки в самом цикле нет, всё ничем не отличается от 4nt/config/login/memo с точки
+// зрения этого кода.
+const SITEROOT = path.join(__dirname, 'siteroot');
+// /mobile-data — the optional offline PWA's ~170 MB SQLite database (public/offline/* fetches
+// /mobile-data/dg-mobile.db). On production this prefix is a symlink INSIDE siteroot/
+// (siteroot/mobile-data -> a build-artifact directory, see CLAUDE.md "Приложение"), so the
+// generic siteroot/ scan just below would mount it anyway — but only when the symlink happens
+// to exist, and it cannot distinguish a missing ROUTE from a missing FILE. Made explicit:
+//   * registered BEFORE the siteroot/ scan, so it wins by registration order (same
+//     override-precedence pattern as /assets and /read — CLAUDE.md "Публикация от корня сайта");
+//   * if the directory is absent (as in this checkout) it just answers 404 — no crash, no
+//     per-request logging;
+//   * the explicit 404 handler right after the mount is what makes that true AND keeps parity:
+//     Express's serve-static calls next() on a miss, and the SPA catch-all further down would
+//     then answer 200 text/html, so a missing /mobile-data/dg-mobile.db would look like a valid
+//     page (the "missing ROUTE indistinguishable from a missing FILE" trap). @fastify/static
+//     never falls through — it answers 404 via the not-found handler. Using serve-static's
+//     `fallthrough: false` here instead does NOT work: it forwards a 404 Error to Express's
+//     finalhandler, which logs `Error: ENOENT ... stat '<abs path>'` to stderr on EVERY miss
+//     (verified) — noisy, and it leaks the server path. A plain 404 middleware is silent.
+//   * express.static is serve-static/send, which serves byte ranges out of the box
+//     (Accept-Ranges: bytes on 200, 206 + Content-Range on Range) — required so an interrupted
+//     170 MB download resumes instead of restarting (docs/OFFLINE_PWA_PLAN.md). Do NOT route
+//     this through a hand-rolled whole-file read: that has no Range support.
+// dg-fastify.js has the same mount; keep the two in lockstep.
+app.use('/mobile-data', express.static(path.join(SITEROOT, 'mobile-data'), { setHeaders: staticCacheHeaders }));
+app.use('/mobile-data', (req, res) => res.status(404).type('text/plain').send('Not Found'));
+let siteRootEntries = new Set();
+try {
+    siteRootEntries = new Set(
+        fsSync.readdirSync(SITEROOT, { withFileTypes: true })
+            // Dirent.isDirectory() отражает СЫРОЙ тип записи (d_type) и для symlink'а на
+            // директорию возвращает false, даже если цель — директория (проверено эмпирически,
+            // node -e с реальным symlink) — нужно явно включать isSymbolicLink() тоже, иначе
+            // все реальные записи в siteroot/ (это же и есть symlink'и) молча отфильтруются.
+            .filter(d => d.isDirectory() || d.isSymbolicLink())
+            .map(d => d.name)
+    );
+} catch (e) {
+    console.warn('Siteroot not found:', SITEROOT);
+}
+for (const name of siteRootEntries) {
+    app.use(`/${name}`, express.static(path.join(SITEROOT, name), { setHeaders: staticCacheHeaders }));
+}
+// ru/memo, ru/login — унаследованные от легаси языковые алиасы (тот же контент ещё и под /ru/).
+// Это не отдельная тулза в siteroot/, а второй URL для уже примонтированной — оставлены явно.
+app.use('/ru/memo', express.static(path.join(SITEROOT, 'memo'), { setHeaders: staticCacheHeaders }));
+app.use('/ru/login', express.static(path.join(SITEROOT, 'login'), { setHeaders: staticCacheHeaders }));
+
+// /ru/docs — real RU-locale docs build, baseUrl:'/ru/docs/' baked in at build time
+// (dg-docs/docusaurus.config.js, DOCS_BUILD_LOCALE=ru), so this is a genuine static mount,
+// not a redirect — /docs/ru/... never existed for readers to have bookmarked.
+app.use('/ru/docs', express.static(path.join(__dirname, 'dg-docs', 'build-ru'), { setHeaders: staticCacheHeaders }));
+
+// Офлайн-зеркала сторонних сайтов — /{имя-папки}/... отдаётся как статика напрямую из offline-data
+for (const name of offlineMirrors) {
+    app.use(`/${name}`, express.static(path.join(OFFLINE_MIRRORS_ROOT, name), { setHeaders: staticCacheHeaders }));
+}
+
+// /ru → same routing as without the prefix, plus lang=ru — legacy PHP used
+// REQUEST_URI.startsWith('/ru') site-wide for language detection; the SPA reads ?lang=
+// client-side instead (dhamma-i18n.js). Runs AFTER the static mounts above, so real files
+// under the legacy ru/ symlink (config, dpd, memo, login, ...) still win — this only catches
+// routes with no matching static file, restoring old /ru bookmarks/links (/ru, /ru/dn22, ...).
+app.use((req, res, next) => {
+    if (req.path === '/ru' || req.path.startsWith('/ru/')) {
+        const rest = req.path.slice(3) || '/';
+        const params = new URLSearchParams(req.query);
+        params.set('lang', 'ru');
+        req.url = rest + '?' + params.toString();
+    }
+    next();
+});
+
+// SPA главная точка входа — служит spa/index.html для всех маршрутов
+// клиентский router.js обрабатывает URL распознавание
+app.get('/spa/app', (req, res) => {
+    sendVersionedHtml(req, res, path.join(__dirname, 'public', 'spa', 'index.html'));
+});
+
+// Поддержка SPA маршрутизации: любой неизвестный маршрут → spa/index.html
+// Это позволяет использовать чистые URL (/, /kacchapa, /dn22:2.2, и т.д.)
+// без сервер-сайд редиректов — браузер загружает SPA и router.js парсит URL
+app.get('/spa/*splat', (req, res) => {
+    // Все запросы в /spa/* служат SPA index.html (за исключением статики)
+    sendVersionedHtml(req, res, path.join(__dirname, 'public', 'spa', 'index.html'));
+});
+
+// Страница поиска — главная точка входа (легаси, для обратной совместимости)
+app.get('/', (req, res) => {
+    sendVersionedHtml(req, res, searchIndexPath);
+});
+
+// Детерминированный путь к root-файлу через dir_path из скелета
+// dir_path пример: "pli/ms/sutta/dn"  →  .../root/pli/ms/sutta/dn/dn22_root-pli-ms.json
+function getRootPath(suttaId) {
+    const meta = skeletonDB[suttaId];
+    if (!meta) return null;
+    return path.join(SC_BILARA, 'root', meta.dir_path, `${suttaId}_root-pli-ms.json`);
+}
+
+function getVariantPath(suttaId) {
+    const meta = skeletonDB[suttaId];
+    if (!meta) return null;
+    return path.join(SC_BILARA, 'variant', meta.dir_path, `${suttaId}_variant-pli-ms.json`);
+}
+
+function getHtmlPath(suttaId) {
+    const meta = skeletonDB[suttaId];
+    if (!meta) return null;
+    return path.join(SC_BILARA, 'html', meta.dir_path, `${suttaId}_html.json`);
+}
+
+// Рекурсивный обход directory в поиске файлов "{suttaId}_*.json" — без внешнего find
+// (на Windows системный find.exe — это MS-DOS find, не POSIX find, полагаться на PATH нельзя)
+async function findFilesByPrefix(dir, prefix) {
+    const matches = [];
+    async function walk(current) {
+        let entries;
+        try {
+            entries = await fs.readdir(current, { withFileTypes: true });
+        } catch (e) { return; }
+        for (const entry of entries) {
+            const full = path.join(current, entry.name);
+            if (entry.isDirectory()) {
+                await walk(full);
+            } else if (entry.isFile() && entry.name.startsWith(`${prefix}_`) && entry.name.endsWith('.json')) {
+                matches.push(full);
+            }
+        }
+    }
+    await walk(dir);
+    return matches;
+}
+
+// Приоритет переводчиков на язык — при нескольких вариантах перевода одного текста
+// показываем только один, лучший, а не все подряд (TODO.md п.3: "куча русских переводов").
+// Языки вне списка — берём первый попавшийся файл.
+// Приоритет переводчиков по языку — { "ru": ["ru_o", "ru_sv", ...] }. Языки без записи
+// здесь не ломаются: filterPreferredTranslators() просто берёт первый найденный перевод
+// (см. ниже), так что новый язык из SC-репо читается сразу, без правки кода — приоритет
+// добавляется в этот файл только когда для языка есть за что выбирать.
+// Физически лежит в configs/reader/ (все конфиги проекта собраны в одном месте, см. CLAUDE.md
+// "Структура проекта"), но URL остаётся /reader/translator-priority.json — см. второй
+// express.static на /reader ниже, серверный require() и клиентский fetch() указывают на один
+// и тот же файл двумя разными путями (диск vs URL), это нормально и намеренно.
+const TRANSLATOR_PRIORITY = require('../configs/reader/translator-priority.json');
+
+// Единственный источник истины для "что значит режим single/multiTran/multiLang/memorize/
+// devanagari" — раньше эту логику (columns/multiFor на каждый режим) дублировал клиент
+// (MODE_CONFIGS в reader-template.html), теперь резолвится здесь, клиент просто шлёт ?mode=
+// (см. /api/text/:suttaId). Owner: режим — это ТОЛЬКО поведенческий флаг (multiFor/dualScript/
+// mnemonic), язык режим больше не хранит вообще — язык это отдельная ось (?lang=/?langs=), не
+// хардкод в этом файле.
+const MODE_TABLE = require('../configs/reader/mode-table.json');
+
+// TOC/navigator: top-level book list (bilingual labels, one small file, see comment inside)
+// and the interlinear-vs-literary translator classification (see /api/toc/book/:code below).
+const TOC_BOOKS = require('../configs/reader/toc-books.json');
+const TRANSLATOR_TYPES = require('../configs/reader/translator-types.json');
+const INTERLINEAR_TRANSLATOR_KEYS = new Set(TRANSLATOR_TYPES.interlinear || []);
+
+// Каждый код оглавления — книга, «лишняя» книга или собрание ("kn") — чтобы /:slug в конце файла
+// мог отличить узел оглавления от поисковой строки и увести в /toc/<code>.
+const TOC_CODES = new Set(Object.entries(TOC_BOOKS)
+    .filter(([key]) => key !== '_comment')
+    .flatMap(([, cat]) => [
+        ...(cat.books || []),
+        ...(cat.extraBooks || []),
+        ...(cat.groups || []).flatMap(g => [g, ...(g.books || []), ...(g.extraBooks || [])]),
+    ])
+    .map(b => b.code));
+
+// Интерфейсные языки, которые реально поддерживает сайт — сканируется из configs/reader/
+// lang_*.json при старте (тот же приём auto-discovery, что и siteroot/, см. CLAUDE.md), а не
+// зашитый список. Растёт сам, когда кто-то кладёт новый lang_de.json — правка кода не нужна.
+// Используется клиентом только для дефолта multiLang при первом заходе (без сохранённого
+// dgReadingLangOrder) — "текущий язык + следующий доступный", см. megareader.js buildSutta().
+const READER_LANGS = fsSync.readdirSync(path.join(__dirname, 'configs', 'reader'))
+    .filter(f => /^lang_[a-z]+\.json$/.test(f))
+    .map(f => f.match(/^lang_([a-z]+)\.json$/)[1])
+    .sort();
+
+function filterPreferredTranslators(results, multiForLangs) {
+    const multiSet = new Set(multiForLangs || []);
+    const byLang = {};
+    for (const key of Object.keys(results)) {
+        const lang = key.split('_')[0];
+        if (!byLang[lang]) byLang[lang] = [];
+        byLang[lang].push(key);
+    }
+
+    const filtered = {};
+    for (const [lang, keys] of Object.entries(byLang)) {
+        const priorities = TRANSLATOR_PRIORITY[lang];
+        let chosen = priorities && priorities.find(p => keys.includes(p));
+
+        if (!chosen && lang === 'en') {
+            // Sujato и так широко доступен на SuttaCentral — если есть другой переводчик
+            // (Thanissaro и т.п.), предпочитаем его; sujato берём только если больше никого нет.
+            chosen = keys.find(k => k !== 'en_sujato');
+        }
+
+        // Язык без записи в TRANSLATOR_PRIORITY (сейчас только будущие языки вроде тайского) —
+        // вместо произвольного keys[0] (порядок вставки для языка без приоритета: dgother → sc →
+        // dgmain, dgmain пишется ПОСЛЕДНИМ — значит keys[0] обычно НЕ dgmain) предпочитаем
+        // переводчика из основной DG-папки языка (DG_OFFLINE/{lang}/, не {lang}_other/ и не SC) —
+        // по ПАПКЕ, а не по имени файла (у нового языка переводчик DG не обязан называться "o").
+        if (!chosen) {
+            const dgMainDir = path.join(DG_OFFLINE, lang).replace(/\\/g, '/') + '/';
+            chosen = keys.find(k => {
+                const p = results[k];
+                return !!p && p.replace(/\\/g, '/').startsWith(dgMainDir);
+            });
+        }
+
+        if (!chosen) chosen = keys[0];
+        filtered[chosen] = results[chosen];
+
+        if (multiSet.has(lang)) {
+            // Режим mt/ee (два перевода одного языка) — второй переводчик берётся из
+            // {lang}_other ("второе мнение" проекта), КТО БЫ там реально ни лежал для этой
+            // конкретной сутты, а не хардкод конкретного имени (ru_o+ru_khantibalo были
+            // захардкожены раньше — неверно, если хантибало не переводил именно этот текст).
+            // Если в {lang}_other ничего нет — берём любого другого доступного переводчика,
+            // чтобы режим не схлопывался в одну колонку без необходимости.
+            const isFromOtherDir = k => {
+                const p = results[k];
+                return !!p && p.replace(/\\/g, '/').includes(`/${lang}_other/`);
+            };
+            const secondary = keys.find(k => k !== chosen && isFromOtherDir(k))
+                || keys.find(k => k !== chosen);
+            if (secondary) filtered[secondary] = results[secondary];
+        }
+    }
+    return filtered;
+}
+
+// Приоритет источников по языку — от САМОГО приоритетного к наименее (так задал
+// пользователь). Используется в обратном порядке как порядок ЗАПИСИ (см.
+// collectForLang) — кто пишет последним, тот и побеждает при совпадении
+// transKey (ru_sv/ru_khantibalo/ru_narinyanievmenenko физически лежат и в
+// SC-зеркале, и в DG-other одновременно). ru: DG — почти всегда доверенный
+// авторский текст, DG-other важнее сырого SC-зеркала. en: SC хостит десятки
+// признанных переводчиков, важнее единственного DG-other (thanissaro).
+const SOURCE_PRIORITY = {
+    ru: ['dgmain', 'dgother', 'sc'],
+    en: ['dgmain', 'sc', 'dgother'],
+};
+// Язык без явной записи (сайт сейчас только ru/en, задел на будущее) — DG-main
+// первым, если появится, дальше произвольно; SC перед DG-other как более
+// широкий источник по умолчанию.
+const DEFAULT_SOURCE_PRIORITY = ['dgmain', 'sc', 'dgother'];
+
+function sourceWriteOrder(lang) {
+    return [...(SOURCE_PRIORITY[lang] || DEFAULT_SOURCE_PRIORITY)].reverse();
+}
+
+function sourceDirsForLang(lang) {
+    return {
+        sc: [path.join(SC_TRANS, lang)],
+        dgmain: DG_LANGS.filter(l => l === lang).map(l => path.join(DG_OFFLINE, l)),
+        dgother: DG_LANGS.filter(l => l.startsWith(lang + '_')).map(l => path.join(DG_OFFLINE, l)),
+    };
+}
+
+// Парсит имя файла перевода ("{suttaId}_translation-{lang}-{author}.json", без .json) в
+// {lang, author, transKey}. Отрезаем suttaId ПО ДЛИНЕ, а не split('-') по всей строке —
+// range-сутты вроде "an1.1-10" сами содержат дефис: split('-') на полном
+// "an1.1-10_translation-ru-sv" рвал id пополам и портил transKey ("10_translation_ru-sv"
+// вместо "ru_sv") — из-за этого ru_other-переводы для AN-диапазонов не находились вовсе.
+// Раньше эта логика была независимо реализована 3 раза (collectTranslationFiles/
+// walkTranslationDir/classifyMatchSource) — тот же баг чинили дважды по отдельности, третья
+// копия (classifyMatchSource) получила фикс не сразу. Один хелпер — один источник истины.
+function parseTranslationFilename(baseName, suttaId) {
+    const suffix = baseName.slice(suttaId.length + 1); // "translation-ru-o"
+    const parts = suffix.split('-');
+    if (parts.length < 3 || parts[0] !== 'translation') return null;
+    const lang = parts[1];
+    const author = parts.slice(2).join('-');
+    return { lang, author, transKey: `${lang}_${author}` };
+}
+
+// Обходит список каталогов ПАРАЛЛЕЛЬНО (быстро) и пишет transKey→filePath в
+// общий results — группы одного языка вызываются ПОСЛЕДОВАТЕЛЬНО, в порядке
+// sourceWriteOrder(lang) (см. выше), чтобы порядок перезаписи для совпадающих
+// ключей был детерминированным, а не зависел от того, чей fs.readdir
+// завершился раньше. Разные языки пишут РАЗНЫЕ transKey (префикс "${lang}_"),
+// поэтому между языками гонки нет — их можно собирать параллельно.
+async function collectTranslationFiles(dirs, suttaId, results) {
+    await Promise.all(dirs.map(async dir => {
+        if (!fsSync.existsSync(dir)) return;
+        const files = await findFilesByPrefix(dir, suttaId);
+        for (const filePath of files) {
+            const baseName = path.basename(filePath, '.json');
+            const parsed = parseTranslationFilename(baseName, suttaId);
+            if (parsed) results[parsed.transKey] = filePath;
+        }
+    }));
+}
+
+// Поиск файлов переводов по suttaId (без предварительного индекса)
+// Возвращает { "ru_o": "/path/to/file.json", "en_sujato": "...", ... } — один файл на язык (см. выше),
+// ИЛИ, если передан explicitTranslators (для режима mt/multi — два перевода ОДНОГО языка
+// одновременно), ровно те ключи, что там перечислены, без схлопывания через filterPreferredTranslators.
+async function findTranslationFiles(suttaId, targetLangs, explicitTranslators, multiForLangs, skipPriorityFilter) {
+    const results = {};
+
+    if (targetLangs.includes('all')) {
+        // 'all' — полнотекстовый обход без языкового контекста, приоритет источников
+        // тут не задан по языку персонально — общий порядок DG-main → SC → DG-other.
+        const scAllDirs = [];
+        try {
+            const langs = await fs.readdir(SC_TRANS);
+            langs.forEach(l => scAllDirs.push(path.join(SC_TRANS, l)));
+        } catch (e) {}
+        const dgMainAllDirs = DG_LANGS.filter(l => !l.includes('_other')).map(l => path.join(DG_OFFLINE, l));
+        const dgOtherAllDirs = DG_LANGS.filter(l => l.includes('_other')).map(l => path.join(DG_OFFLINE, l));
+        await collectTranslationFiles(dgMainAllDirs, suttaId, results);
+        await collectTranslationFiles(scAllDirs, suttaId, results);
+        await collectTranslationFiles(dgOtherAllDirs, suttaId, results);
+    } else {
+        // Разные языки — параллельно; группы ВНУТРИ одного языка — последовательно,
+        // в порядке sourceWriteOrder(lang) (может отличаться для ru и en, см. выше).
+        await Promise.all(targetLangs.map(async lang => {
+            const dirsByGroup = sourceDirsForLang(lang);
+            for (const group of sourceWriteOrder(lang)) {
+                await collectTranslationFiles(dirsByGroup[group], suttaId, results);
+            }
+        }));
+    }
+
+    if (explicitTranslators && explicitTranslators.length) {
+        const filtered = {};
+        explicitTranslators.forEach(key => { if (results[key]) filtered[key] = results[key]; });
+        return filtered;
+    }
+
+    // TODO.md поиск, баг 3: getGrepTargetFiles needs EVERY translator's file to grep, not just
+    // the preferred one — a keyword can exist only in a non-priority translator's wording.
+    if (skipPriorityFilter) return results;
+
+    return filterPreferredTranslators(results, multiForLangs);
+}
+
+// Батчевая версия findTranslationFiles для целой страницы разом — узкое место, которое батчинг
+// grep'а (см. ниже) не трогал: enrichSuttaBatch раньше звал findTranslationFiles ОТДЕЛЬНО на
+// каждую сутту, а findFilesByPrefix каждый раз заново рекурсивно обходит ВЕСЬ каталог языка в
+// поисках файлов одной сутты — для 785 сутт это 785 обходов одного и того же дерева (67 из 90
+// секунд в профилировании). Тут — обходим каждый нужный каталог РОВНО ОДИН РАЗ, собирая индекс
+// suttaId -> {transKey: filePath} для ВСЕХ файлов сразу, потом просто читаем нужные суттs из
+// него. O(размер каталога) вместо O(число сутт × размер каталога); каталог не растёт с числом
+// совпавших сутт, так что это ровно тот же принцип батчинга, что и у grep-функций выше — просто
+// на fs.readdir, не на grep.
+async function walkTranslationDir(dir, wantedIds, bySutta) {
+    let entries;
+    try {
+        entries = await fs.readdir(dir, { withFileTypes: true });
+    } catch (e) { return; }
+    await Promise.all(entries.map(async entry => {
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+            await walkTranslationDir(full, wantedIds, bySutta);
+            return;
+        }
+        if (!entry.isFile() || !entry.name.endsWith('.json')) return;
+        const suttaId = entry.name.split('_')[0];
+        if (!wantedIds.has(suttaId)) return;
+        const baseName = entry.name.slice(0, -'.json'.length);
+        const parsed = parseTranslationFilename(baseName, suttaId);
+        if (!parsed) return;
+        if (!bySutta.has(suttaId)) bySutta.set(suttaId, {});
+        bySutta.get(suttaId)[parsed.transKey] = toPosixPath(full);
+    }));
+}
+
+async function buildTranslationIndex(suttaIds, targetLangs) {
+    const wantedIds = new Set(suttaIds);
+    const bySutta = new Map(); // suttaId -> { transKey: filePath }
+
+    async function walkGroup(dirs) {
+        await Promise.all([...new Set(dirs)].map(async dir => {
+            if (!fsSync.existsSync(dir)) return;
+            await walkTranslationDir(dir, wantedIds, bySutta);
+        }));
+    }
+
+    if (targetLangs.includes('all')) {
+        const scAllDirs = [];
+        try {
+            const langs = await fs.readdir(SC_TRANS);
+            langs.forEach(l => scAllDirs.push(path.join(SC_TRANS, l)));
+        } catch (e) {}
+        const dgMainAllDirs = DG_LANGS.filter(l => !l.includes('_other')).map(l => path.join(DG_OFFLINE, l));
+        const dgOtherAllDirs = DG_LANGS.filter(l => l.includes('_other')).map(l => path.join(DG_OFFLINE, l));
+        await walkGroup(dgMainAllDirs);
+        await walkGroup(scAllDirs);
+        await walkGroup(dgOtherAllDirs);
+    } else {
+        // Та же логика приоритета источников по языку, что и в findTranslationFiles
+        // (см. sourceWriteOrder) — группы одного языка последовательно, разные языки параллельно.
+        await Promise.all(targetLangs.map(async lang => {
+            const dirsByGroup = sourceDirsForLang(lang);
+            for (const group of sourceWriteOrder(lang)) {
+                await walkGroup(dirsByGroup[group]);
+            }
+        }));
+    }
+
+    const result = new Map();
+    for (const suttaId of suttaIds) {
+        result.set(suttaId, filterPreferredTranslators(bySutta.get(suttaId) || {}));
+    }
+    return result;
+}
+
+// Гибрид: buildTranslationIndex платит фиксированную цену (обход ВСЕГО языкового каталога)
+// один раз, независимо от числа сутт — окупается только когда сутт много (для 785 сутт это
+// быстрее в разы). Для обычной страницы (десятки сутт) эта фиксированная цена — единственное,
+// что видит запрос: 46 секунд на 3-сутточный батч при полном обходе, потому что деревья
+// SC_TRANS/ru и SC_TRANS/en покрывают ВЕСЬ корпус целиком. Точечный findTranslationFiles на
+// каждую сутту (обход дерева, где findFilesByPrefix ищет конкретный префикс)
+// быстрее для маленьких батчей, потому что каждый вызов недорогой сам по себе. Порог подобран
+// эмпирически (30 в профилировании — типичный размер страницы — быстро точечно; 785 — быстрее
+// батчево); при желании можно уточнить дальше.
+const TRANSLATION_INDEX_THRESHOLD = 80;
+
+// root/variant grep (enrichSuttaBatch) больше не нужен отдельный threshold-гибрид — resolveScopeDirs
+// (см. выше buildMatchSkeleton) даёт заранее узкий, кешированный список директорий по scope,
+// одинаково дешёвый для любого размера батча (не весь SC_ROOT/SC_VARIANT, но и не по файлу на сутту).
+
+async function findTranslationFilesForBatch(suttaIds, targetLangs) {
+    if (suttaIds.length <= TRANSLATION_INDEX_THRESHOLD) {
+        const result = new Map();
+        await Promise.all(suttaIds.map(async suttaId => {
+            const files = await findTranslationFiles(suttaId, targetLangs);
+            const normalized = {};
+            for (const [key, filePath] of Object.entries(files)) normalized[key] = toPosixPath(filePath);
+            result.set(suttaId, normalized);
+        }));
+        return result;
+    }
+    return buildTranslationIndex(suttaIds, targetLangs);
+}
+
+// Full (unfiltered) translator listing per sutta, for the TOC "what translations exist" badges —
+// buildTranslationIndex/findTranslationFilesForBatch always collapse to the ONE preferred
+// translator per language (filterPreferredTranslators), which is right for the reader but wrong
+// here: the TOC needs to show EVERY available translator, not just the preferred one. Reuses the
+// same directory walker (walkTranslationDir) as buildTranslationIndex, just skips the final
+// collapsing step.
+async function buildFullTranslationIndex(suttaIds, targetLangs) {
+    const wantedIds = new Set(suttaIds);
+    const bySutta = new Map(); // suttaId -> { transKey: filePath }
+    async function walkGroup(dirs) {
+        await Promise.all([...new Set(dirs)].map(async dir => {
+            if (!fsSync.existsSync(dir)) return;
+            await walkTranslationDir(dir, wantedIds, bySutta);
+        }));
+    }
+    await Promise.all(targetLangs.map(async lang => {
+        const dirsByGroup = sourceDirsForLang(lang);
+        for (const group of sourceWriteOrder(lang)) {
+            await walkGroup(dirsByGroup[group]);
+        }
+    }));
+    return bySutta;
+}
+
+// Директории для grep в зависимости от запрошенных языков
+function buildGrepDirs(targetLangs) {
+    const dirs = [];
+
+    if (fsSync.existsSync(SC_ROOT))    dirs.push(SC_ROOT);
+    if (fsSync.existsSync(SC_VARIANT)) dirs.push(SC_VARIANT);
+
+    for (const lang of targetLangs) {
+        if (lang === 'all') {
+            try {
+                fsSync.readdirSync(SC_TRANS).forEach(l => {
+                    const p = path.join(SC_TRANS, l);
+                    if (fsSync.existsSync(p)) dirs.push(p);
+                });
+            } catch (e) {}
+        } else {
+            const scLang = path.join(SC_TRANS, lang);
+            if (fsSync.existsSync(scLang)) dirs.push(scLang);
+        }
+    }
+
+    // DG offline переводы — всегда включаем (лучшие переводы проекта)
+    DG_LANGS.forEach(l => {
+        const p = path.join(DG_OFFLINE, l);
+        if (fsSync.existsSync(p)) dirs.push(p);
+    });
+
+    return dirs;
+}
+
+function escapeRegExp(str) {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// path.join() на Windows отдаёт путь с обратными слэшами — но grep -r (GNU grep через Git/MSYS)
+// САМ строит пути при рекурсии и всегда использует прямые слэши, независимо от того, как был
+// задан каталог на входе. Если хранить/искать по путям из path.join() как есть, а grep-результаты
+// класть в ту же Map — ключи никогда не совпадут (только "C:\...\dn1..." vs "C:/.../dn1..."),
+// и все per-sutta lookups после grepSegmentsWithContextRecursive() молча возвращают пусто.
+// Нормализуем к прямым слэшам везде, где путь служит ключом Map — это единственное место,
+// где это важно (fs.existsSync/fs.readFile на Windows одинаково едят оба варианта).
+function toPosixPath(p) {
+    return p ? p.replace(/\\/g, '/') : p;
+}
+
+// Общий хвост buildWordReport/buildWordReportFast — оба насчитывают одну и ту же форму
+// words{word: {textIds, matchCount, links}} разными способами (полный grep-отчёт против
+// быстрого regex по уже найденным сегментам), но сериализуют и сортируют её одинаково.
+function finalizeWordReport(words) {
+    const report = Object.entries(words).map(([word, info]) => ({
+        word,
+        textCount: info.textIds.size,
+        matchCount: info.matchCount,
+        links: Array.from(info.links.entries()).map(([sutta_id, segment]) => ({ sutta_id, segment }))
+    }));
+
+    report.sort((a, b) => {
+        if (b.textCount !== a.textCount) return b.textCount - a.textCount;
+        return a.word.localeCompare(b.word, undefined, { sensitivity: 'base' });
+    });
+
+    return report;
+}
+
+// Отчёт с группировкой по словам — та же идея, что в легаси new/words.sh (grep по словам,
+// группировка по уникальному слову вместо суттs), но без повторного grep: агрегируем
+// уже собранные по каждой сутте сегменты (root_text/variant/unique_words) из searchWithGrep.
+// Одна ссылка на сутту в links (не на каждый сегмент), как в легаси-отчёте.
+function buildWordReport(searchResults) {
+    const words = {}; // word -> { textIds: Set<suttaId>, matchCount, links: Map<suttaId, segmentId> }
+
+    for (const suttaId in searchResults) {
+        const suttaRes = searchResults[suttaId];
+        for (const seg of suttaRes.segments) {
+            const combinedText = `${seg.root_text || ''} ${seg.variant || ''}`;
+            if (!combinedText.trim()) continue;
+
+            for (const word of suttaRes.unique_words) {
+                const matches = combinedText.match(new RegExp(escapeRegExp(word), 'gi'));
+                if (!matches) continue;
+
+                if (!words[word]) {
+                    words[word] = { textIds: new Set(), matchCount: 0, links: new Map() };
+                }
+                words[word].textIds.add(suttaId);
+                words[word].matchCount += matches.length;
+                if (!words[word].links.has(suttaId)) {
+                    words[word].links.set(suttaId, seg.segment);
+                }
+            }
+        }
+    }
+
+    return finalizeWordReport(words);
+}
+
+// ---------------------------------------------------------------------------------------
+// Fast-search grep strategy (TODO.md, поиск п.5)
+//
+// The whole point of this module is: no pre-built search index, ever (CLAUDE.md — "Никакого
+// предварительного индекса файлов"). grep IS the index. That only stays fast if every grep
+// call is used deliberately:
+//
+//   1. One process for the whole corpus, not one per directory. buildGrepDirs() + a single
+//      execFile('grep', ['-ri', keyword, ...dirs]) lets GNU grep recurse the directory list
+//      itself in one process — never split this into per-language/per-type calls.
+//   2. Batch point-lookups instead of spawning one grep per file. A results page of ~25 suttas
+//      x 3-5 files (root+variant+translations) is ~100 files — one grep invocation accepts a
+//      list of files AND multiple -e patterns, so a whole sutta's root/variant/translation
+//      lookups happen in one process each (grepSegmentsWithContext), not one per segment.
+//   3. Never re-grep what a previous phase already found. Phase 1's grep already returns the
+//      matched line's own text for free (see buildMatchSkeleton) — phase 2 only greps for
+//      what's still missing: context lines (-B/-A) and sibling fields (variant/translations
+//      of a segment that matched only in root).
+//   4. Prefer -F (fixed-string) over regex whenever the pattern has no regex metacharacters —
+//      faster, and side-steps ReDoS entirely. Every segment-id lookup (grepSegmentsWithContext)
+//      is always -F, since a segment id is never a regex. The free-text keyword search opts
+//      into -F only when it's safe to (looksLikeFixedString).
+//   5. Run independent greps concurrently (Promise.all), never sequential awaits — root,
+//      variant, and each translation language for a sutta don't depend on each other.
+//   6. Only ever target deterministic, known files (getRootPath/getVariantPath/
+//      findTranslationFiles) — never walk a whole language tree per request.
+//   7. Keep maxBuffer proportional to what's actually being grepped: the full-corpus phase-1
+//      grep needs a generous buffer, but a handful of known files for one sutta does not.
+// ---------------------------------------------------------------------------------------
+
+const REGEX_METACHARS = /[.*+?^${}()|[\]\\]/;
+
+// True when keyword has no regex-special characters — safe (and faster) to grep with -F.
+function looksLikeFixedString(keyword) {
+    return !REGEX_METACHARS.test(keyword);
+}
+
+// Punctuation a person routinely pastes in from a translation (commas, quotes, colons…) that
+// should never need to be typed back exactly to find a match — stripped once at the request door
+// so grep/regex counting/cache-key/history all agree. Deliberately excludes regex-metacharacter
+// punctuation (. ? * + ^ $ { } ( ) | [ ] \) — that stays meaningful for the power-user regex path.
+const SEARCH_PUNCTUATION = /[,;:!"'“”‘’«»]/g;
+function stripSearchPunctuation(keyword) {
+    return keyword.replace(SEARCH_PUNCTUATION, '').trim();
+}
+
+// Owner: е/ё (Russian) and m/ṁ/ṃ (Pali niggahita — same sound, written differently depending on
+// keyboard/edition) must be treated as the same character everywhere a keyword becomes a
+// text-matching pattern — grep's own match AND the JS regexes that re-count/extract text
+// server-side (buildWordReportFast/enrichSuttaBatch) must agree, or a fold-only match would be
+// found by grep but then undercounted or missing from the words report. `changed` tells the grep
+// caller a character class was introduced, so it knows -F (fixed-string) is no longer safe.
+// Skipped whenever the keyword already has regex metacharacters — that's the power-user regex
+// path (see the invalid-regex error handling above), folding could corrupt deliberate syntax.
+const SEARCH_FOLD_GROUPS = [['е', 'ё'], ['m', 'ṁ', 'ṃ']];
+function foldSearchPattern(keyword) {
+    if (REGEX_METACHARS.test(keyword)) return { pattern: keyword, changed: false };
+    let pattern = '';
+    let changed = false;
+    for (const ch of keyword) {
+        const group = SEARCH_FOLD_GROUPS.find(g => g.includes(ch.toLowerCase()));
+        if (group) { pattern += `[${group.join('')}]`; changed = true; }
+        else pattern += ch;
+    }
+    return { pattern, changed };
+}
+
+// Parses one JSON-line fragment ("segId": "text",) into {segmentId, text} — the same format
+// grep returns both for the full-corpus phase-1 scan and for phase-2 point lookups, since SC
+// Bilara / DhammaGift JSON always has one segment per line.
+function parseJsonLineFragment(fragment) {
+    try {
+        const cleanLine = fragment.trim().replace(/,$/, '');
+        const parsed = JSON.parse(`{${cleanLine}}`);
+        const segmentId = Object.keys(parsed)[0];
+        return { segmentId, text: parsed[segmentId] };
+    } catch (e) {
+        const fb = fragment.trim().match(/^"([^"]+)"\s*:\s*"(.*)"\s*,?$/);
+        if (fb) return { segmentId: fb[1], text: fb[2] };
+        return null;
+    }
+}
+
+// Classifies a matched file path by role — root/variant/translation(lang_author) — purely from
+// the filename, no file read. Mirrors the naming convention used by findTranslationFiles, via the
+// shared parseTranslationFilename() helper (see its comment above collectTranslationFiles).
+function classifyMatchSource(filePath, suttaId) {
+    const baseName = path.basename(filePath, '.json');
+    if (baseName.endsWith('_root-pli-ms')) return { type: 'root' };
+    if (baseName.endsWith('_variant-pli-ms')) return { type: 'variant' };
+    const parsed = parseTranslationFilename(baseName, suttaId);
+    if (parsed) return { type: 'translation', transKey: parsed.transKey };
+    return { type: 'unknown' };
+}
+
+// Deterministic file list for one sutta (root + variant + EVERY translator's file per
+// requested language, not just the preferred one) — used to scope grep to a handful of known
+// files (restrictToIds below) instead of the whole corpus (buildGrepDirs). Must grep every
+// translator, not just the preferred one — the full-scan path (fast=1) already does (it greps
+// whole language directories directly), so this narrower per-sutta path needs to match it or a
+// keyword that only exists in a non-priority translator's wording silently disappears from this
+// code path (TODO.md поиск, баг 3).
+async function getGrepTargetFiles(suttaId, targetLangs) {
+    const files = [];
+    const rootPath = getRootPath(suttaId);
+    if (rootPath && fsSync.existsSync(rootPath)) files.push(rootPath);
+    const variantPath = getVariantPath(suttaId);
+    if (variantPath && fsSync.existsSync(variantPath)) files.push(variantPath);
+    const translationFiles = await findTranslationFiles(suttaId, targetLangs, null, null, true);
+    files.push(...Object.values(translationFiles));
+    return files;
+}
+
+// Легаси делает главный keyword-grep РОВНО ОДИН РАЗ на запрос. Наша фазированная загрузка
+// (TODO.md поиск п.5) без кеша гоняла его дважды за одну и ту же выдачу — один раз в
+// ?fast=1, и снова в фоновом полном /search несколько секунд спустя (см. search/index.html
+// ensureEnrichmentStarted), плюс ЕЩЁ раз (по restrictToIds, отдельным способом — см. ниже)
+// в /search/enrich за видимую страницу. Три прохода по корпусу на один и тот же keyword —
+// то самое "дальше не сделал хорошо". Короткоживущий кеш полного (нерестриктнутого)
+// скелета убирает два из трёх: /search/enrich и фоновый полный /search переиспользуют
+// результат ?fast=1, если тот успел прогреть кеш (обычно да — они всегда идут следом за
+// fast=1 в течение секунд, см. initSearchApp/ensureEnrichmentStarted).
+const skeletonCache = new Map();
+const SKELETON_CACHE_TTL_MS = 60000;
+
+function skeletonCacheKey(keyword, searchScope, exactMatch, targetLangs) {
+    return JSON.stringify([keyword, searchScope || 'default', exactMatch, targetLangs.slice().sort()]);
+}
+
+function getCachedSkeleton(keyword, searchScope, exactMatch, targetLangs) {
+    const entry = skeletonCache.get(skeletonCacheKey(keyword, searchScope, exactMatch, targetLangs));
+    if (!entry || Date.now() - entry.timestamp > SKELETON_CACHE_TTL_MS) return null;
+    return entry;
+}
+
+// 4 nikaya + 6 kn books — vinaya is an opt-in resource (via explicit scope), not part of default.
+const DEFAULT_SCOPE_PREFIXES = ['dn', 'mn', 'sn', 'an', 'ud', 'snp', 'dhp', 'thag', 'thig', 'iti'];
+
+// Разрешает scope-параметр в список "allowedPrefixes" — category-имена ('dhamma'/'khudakka'/…)
+// или id-префиксы ('dn'/'an'/…) для матчинга через matchesScope(). Чистая функция от searchScope,
+// без обращения к skeletonDB — переиспользуется и постфактум-фильтром, и resolveScopeDirs().
+function resolveAllowedPrefixes(searchScope) {
+    if (!searchScope || searchScope === 'default') return DEFAULT_SCOPE_PREFIXES;
+    if (searchScope === 'all') return ['all'];
+    const prefixes = [];
+    for (const p of searchScope.split(',').map(s => s.trim())) {
+        prefixes.push(...(p === 'default' ? DEFAULT_SCOPE_PREFIXES : [p]));
+    }
+    return prefixes;
+}
+
+// Тот же предикат, что раньше был инлайн в buildMatchSkeleton — сутта проходит под scope, если
+// её category ИЛИ id-префикс совпадают с одним из allowedPrefixes.
+function matchesScope(suttaMeta, suttaId, allowedPrefixes) {
+    if (allowedPrefixes.includes('all')) return true;
+    return allowedPrefixes.some(prefix => {
+        if (suttaMeta.category === prefix) return true;
+        if (suttaId === prefix) return true;
+        if (suttaId.startsWith(prefix)) return /[0-9.-]/.test(suttaId.charAt(prefix.length));
+        return false;
+    });
+}
+
+// Разрешает (scope, baseDir) в конкретный список директорий — ОДИН раз за время жизни процесса
+// на каждую уникальную пару (skeletonDB статична после старта, TTL не нужен). Работает только для
+// деревьев, чья структура повторяет root'а (root/variant — dir_path один и тот же для обоих, см.
+// getRootPath/getVariantPath), НЕ для translation/* (там между языком и nikoya есть ещё уровень
+// переводчика — translation/en/sujato/sutta/an/…, dir_path туда напрямую не ложится). Для
+// переводов используется отдельный, уже существующий и уже эффективный путь —
+// findTranslationFilesForBatch/buildTranslationIndex (per-sutta файлы, группировка по dirname).
+//
+// Только "pli/ms/..." dir_path — НЕ весь skeletonDB. getRootPath/getVariantPath/classifyMatchSource
+// (весь остальной код этого файла, не тронуто этой правкой) жёстко предполагают имя файла
+// "{suttaId}_root-pli-ms.json"/"_variant-pli-ms.json" — верно почти всегда, но НЕ для не-палийских
+// подкорпусов вроде Патна-Дхаммапады (dir_path "pra/pts/sutta/pdhp", файл "..._root-pra-pts.json").
+// Раньше это было не видно — старый SC_ROOT-константа физически не покрывала ничего за пределами
+// pli/ms, так что эти сутты просто НИКОГДА не участвовали в поиске. Теперь resolveScopeDirs строит
+// директории из dir_path напрямую и БЕЗ этого фильтра дотянулся бы и туда — но с неверным
+// (root_text/count) результатом, т.к. getRootPath там ищёт несуществующий "_root-pli-ms.json".
+// Правильный фикс — обобщить getRootPath/getVariantPath/classifyMatchSource на другие суффиксы;
+// это отдельная задача (потенциально несколько соглашений об именовании в корпусе), не в рамках
+// текущего перф-фикса. Фильтр здесь сохраняет ТЕКУЩЕЕ (как у SC_ROOT/SC_VARIANT) покрытие —
+// не хуже, чем было, без ложных "count: 0" на не-pli/ms текстах.
+const scopeDirsCache = new Map();
+
+function resolveScopeDirs(searchScope, baseDir) {
+    const cacheKey = (searchScope || 'default') + '|' + baseDir;
+    if (scopeDirsCache.has(cacheKey)) return scopeDirsCache.get(cacheKey);
+
+    const allowedPrefixes = resolveAllowedPrefixes(searchScope);
+    const dirs = new Set();
+    for (const suttaId in skeletonDB) {
+        const meta = skeletonDB[suttaId];
+        if (meta.dir_path && meta.dir_path.startsWith('pli/ms/') && matchesScope(meta, suttaId, allowedPrefixes)) {
+            dirs.add(path.join(baseDir, meta.dir_path));
+        }
+    }
+    const result = [...dirs].filter(d => fsSync.existsSync(d));
+    scopeDirsCache.set(cacheKey, result);
+    return result;
+}
+
+// Keyword может быть не только Пали — русский, английский и т.д. Грепать root/variant/переводы
+// всегда вместе тратит время на директории, где совпадение физически невозможно (кириллица не
+// бывает в Pali-файлах). Кириллица → это точно русский (или другой кириллический язык из
+// targetLangs) — грепаем только соответствующие переводы. Латиница/диакритика (может быть Пали,
+// может быть английский) — сначала только root+variant (Пали); если пусто — вторым заходом
+// переводы (некириллические языки из targetLangs).
+function isCyrillicScript(text) { return /[Ѐ-ӿ]/.test(text); }
+function isCyrillicLang(lang) { return lang === 'ru' || lang.startsWith('ru_'); }
+
+// Директории перевода для языка — целиком дерево языка (не nikaya-scoped, см. комментарий у
+// resolveScopeDirs — структура translation/* с уровнем переводчика не позволяет напрямую
+// переиспользовать dir_path). Всё ещё узко по языку — не "весь suttacentral".
+function translationLangDirs(lang) {
+    const dirs = [];
+    const scLang = path.join(SC_TRANS, lang);
+    if (fsSync.existsSync(scLang)) dirs.push(scLang);
+    const dgLang = path.join(DG_OFFLINE, lang);
+    if (fsSync.existsSync(dgLang)) dirs.push(dgLang);
+    // TODO.md поиск, баг 3 (продолжение): dgmain ("o") и SC-зеркало — не единственные места,
+    // где может физически лежать перевод. DG-other ("второе мнение" проекта — sv+edited+o,
+    // и т.п., см. CLAUDE.md) раньше грепался только в холодном restrictToIds-пути
+    // (getGrepTargetFiles -> findTranslationFiles), а тёплый/полносканирующий путь (эта
+    // функция — используется в fast=1 почти всегда) его не видел вовсе: если совпадение
+    // существует ТОЛЬКО в dgother (не мигрировало/не задублировано в SC-зеркало), сутта
+    // теряется из выдачи целиком, а не просто рендерится без видимого совпадения.
+    DG_LANGS.filter(l => l.startsWith(lang + '_')).forEach(l => {
+        const dgOtherLang = path.join(DG_OFFLINE, l);
+        if (fsSync.existsSync(dgOtherLang)) dirs.push(dgOtherLang);
+    });
+    return dirs;
+}
+
+// Низкоуровневый keyword-grep с контекстом (-B/-A) и номерами строк (-n, нужны для восстановления
+// lb/la-окна вокруг каждого совпадения). '' — пустой результат (в т.ч. код выхода 1 "нет совпадений").
+async function execKeywordGrep(grepTargets, keyword, exactMatch, lb, la) {
+    if (grepTargets.length === 0) return '';
+    const grepArgs = ['-ri', '-n'];
+    if (lb > 0) grepArgs.push(`-B${lb}`);
+    if (la > 0) grepArgs.push(`-A${la}`);
+    // -E (extended regex): without it, GNU grep's default (basic regex) treats bare ( ) { } |
+    // as literal characters, not grouping/alternation — a query like "(a|b)" silently matched
+    // nothing instead of "a or b" (owner: slide queries built with alternation returned 0
+    // results). -F (fixed string) is mutually exclusive with -E and already means "no regex
+    // metacharacters at all", so it only applies when the keyword has none to begin with.
+    const folded = foldSearchPattern(keyword);
+    if (exactMatch) {
+        grepArgs.push('-w', '-E');
+    } else if (!folded.changed && looksLikeFixedString(keyword)) {
+        grepArgs.push('-F');
+    } else {
+        grepArgs.push('-E');
+    }
+    grepArgs.push(folded.pattern, ...grepTargets);
+    try {
+        const result = await execFile('grep', grepArgs, { maxBuffer: 1024 * 1024 * 50 });
+        return result.stdout;
+    } catch (error) {
+        if (error.code === 1) return '';
+        throw error;
+    }
+}
+
+// Разбирает вывод execKeywordGrep (несколько разнородных directories/files в одном вызове — grep
+// сам префиксует каждую строку путём) в Map<filePath, Map<lineNumber, {segmentId,text,isMatch}>>.
+// isMatch различает реальное совпадение (разделитель ":") от контекстной строки -B/-A
+// (разделитель "-") — grep никогда не смешивает их в одной строке. "--" (разделитель между
+// несмежными группами контекста) не матчит .json-путь и просто пропускается.
+function parseGrepContextOutput(stdout) {
+    const result = new Map();
+    for (const line of stdout.split('\n')) {
+        if (!line.trim() || line === '--') continue;
+        let m = line.match(/^(.+\.json):(\d+):(.*)$/);
+        let isMatch = true;
+        if (!m) { m = line.match(/^(.+\.json)-(\d+)-(.*)$/); isMatch = false; }
+        if (!m) continue;
+        const parsed = parseJsonLineFragment(m[3]);
+        if (!parsed) continue;
+        const filePath = m[1];
+        const lineNum = parseInt(m[2], 10);
+        if (!result.has(filePath)) result.set(filePath, new Map());
+        const lineMap = result.get(filePath);
+        const existing = lineMap.get(lineNum);
+        if (!existing || isMatch) lineMap.set(lineNum, { segmentId: parsed.segmentId, text: parsed.text, isMatch });
+    }
+    return result;
+}
+
+// Собирает распарсенный Map (parseGrepContextOutput) в searchResults — по одному сегменту на
+// каждую РЕАЛЬНУЮ строку-совпадение (isMatch); контекстные строки в свои сегменты не идут (иначе
+// завысили бы word-report/count), а используются только для lb_context/la_context ОКОН вокруг
+// root-совпадений того же файла (контекст для variant/переводов — забота enrichSuttaBatch, шаг 2,
+// т.к. для не-root совпадений (кириллица/fallback-переводы) root-файл в этом grep не участвовал).
+function assembleFromGrepMap(fileMap, allowedPrefixes, searchResults, lb, la) {
+    for (const [filePath, lineMap] of fileMap) {
+        const fileName = path.basename(filePath);
+        const suttaId = fileName.split('_')[0];
+        const suttaMeta = skeletonDB[suttaId];
+        if (!suttaMeta) continue;
+        if (!matchesScope(suttaMeta, suttaId, allowedPrefixes)) continue;
+
+        const source = classifyMatchSource(filePath, suttaId);
+
+        for (const [lineNum, entry] of lineMap) {
+            if (!entry.isMatch) continue;
+
+            if (!searchResults[suttaId]) {
+                searchResults[suttaId] = {
+                    sutta_id: suttaId,
+                    category: suttaMeta.category,
+                    dir_path: suttaMeta.dir_path,
+                    titles: { root: suttaMeta.title || suttaId },
+                    mr: suttaMeta.mr,
+                    count: 0,
+                    unique_words: [],
+                    segments: []
+                };
+            }
+
+            let seg = searchResults[suttaId].segments.find(s => s.segment === entry.segmentId);
+            if (!seg) {
+                seg = { segment: entry.segmentId, root_text: '', variant: '', translations: {}, lb_context: [], la_context: [] };
+                searchResults[suttaId].segments.push(seg);
+            }
+
+            if (source.type === 'root') seg.root_text = entry.text;
+            else if (source.type === 'variant') seg.variant = entry.text;
+            else if (source.type === 'translation' && source.transKey) seg.translations[source.transKey] = entry.text;
+
+            // Контекст (root-текст соседних сегментов) — только для root-совпадений, только из
+            // ТОГО ЖЕ файла (variant/translation имеют свою собственную нумерацию строк, не
+            // совпадающую по смыслу с root'овым окном).
+            if (source.type === 'root' && (lb > 0 || la > 0) && seg.lb_context.length === 0 && seg.la_context.length === 0) {
+                for (let ln = lineNum - lb; ln < lineNum; ln++) {
+                    const c = lineMap.get(ln);
+                    if (c) seg.lb_context.push({ segment: c.segmentId, root_text: c.text, variant: '', translations: {} });
+                }
+                for (let ln = lineNum + 1; ln <= lineNum + la; ln++) {
+                    const c = lineMap.get(ln);
+                    if (c) seg.la_context.push({ segment: c.segmentId, root_text: c.text, variant: '', translations: {} });
+                }
+            }
+        }
+    }
+}
+
+// Phase 1: grep the corpus (or, when restrictToIds is given, only the known files of those
+// suttas) and parse matches into a skeleton per sutta — without reading any file a second
+// time. Each grep line already carries the matched segment's own text (and, now, its lb/la
+// root-context — see execKeywordGrep/assembleFromGrepMap above), since that's exactly what the
+// phase-1 word report and quote preview need, for free.
+async function buildMatchSkeleton(keyword, searchScope, exactMatch, targetLangs, lb = 0, la = 0, restrictToIds = null) {
+    const isFullScan = !restrictToIds || restrictToIds.length === 0;
+    const cacheKey = skeletonCacheKey(keyword, searchScope, exactMatch, targetLangs);
+
+    // И /search/enrich, и фоновый полный /search почти всегда идут следом за ?fast=1 в течение
+    // секунд, для того же запроса (см. initSearchApp/ensureEnrichmentStarted в search/index.html) —
+    // переиспользуем скелет, который ?fast=1 уже посчитал, вместо повторного grep по всему
+    // корпусу. Промах (прямой вызов без предшествующего fast=1, либо кеш протух за 60с) — падаем
+    // обратно на честный grep ниже.
+    const cached = getCachedSkeleton(keyword, searchScope, exactMatch, targetLangs);
+    if (cached) {
+        if (isFullScan) {
+            return JSON.parse(JSON.stringify({ searchResults: cached.searchResults, empty: cached.empty }));
+        }
+        const filtered = {};
+        for (const id of restrictToIds) {
+            if (cached.searchResults[id]) filtered[id] = JSON.parse(JSON.stringify(cached.searchResults[id]));
+        }
+        return { searchResults: filtered, empty: cached.empty };
+    }
+
+    const storeIfFullScan = (result) => {
+        if (isFullScan) skeletonCache.set(cacheKey, { ...result, timestamp: Date.now() });
+        return result;
+    };
+
+    const allowedPrefixes = isFullScan ? resolveAllowedPrefixes(searchScope) : ['all']; // restrictToIds — уже точно нужные суттs
+    const searchResults = {};
+    let anyMatch = false;
+
+    if (!isFullScan) {
+        // Известный небольшой список суттs (обычно холодный /search/enrich без прогретого
+        // fast=1-кеша) — explicit-file-list, как и раньше, просто теперь тоже с контекстом.
+        const fileLists = await Promise.all(restrictToIds.map(id => getGrepTargetFiles(id, targetLangs)));
+        const grepTargets = fileLists.flat();
+        if (grepTargets.length === 0) return storeIfFullScan({ searchResults: {}, empty: 'no-targets' });
+        const stdout = await execKeywordGrep(grepTargets, keyword, exactMatch, lb, la);
+        if (stdout) { assembleFromGrepMap(parseGrepContextOutput(stdout), allowedPrefixes, searchResults, lb, la); anyMatch = true; }
+    } else if (isCyrillicScript(keyword)) {
+        // Кириллица — точно не Пали. Грепаем только кириллические языки из targetLangs.
+        const dirs = targetLangs.filter(isCyrillicLang).flatMap(lang => translationLangDirs(lang));
+        if (dirs.length === 0) return storeIfFullScan({ searchResults: {}, empty: 'no-targets' });
+        const stdout = await execKeywordGrep(dirs, keyword, exactMatch, lb, la);
+        if (stdout) { assembleFromGrepMap(parseGrepContextOutput(stdout), allowedPrefixes, searchResults, lb, la); anyMatch = true; }
+    } else {
+        // Латиница/диакритика — может быть Пали, может быть английский и т.п. Пали — сначала,
+        // единственный вызов, если что-то нашлось (доминирующий сценарий для этого приложения).
+        const paliDirs = [...resolveScopeDirs(searchScope, path.join(SC_BILARA, 'root')), ...resolveScopeDirs(searchScope, path.join(SC_BILARA, 'variant'))];
+        const paliStdout = await execKeywordGrep(paliDirs, keyword, exactMatch, lb, la);
+        if (paliStdout) {
+            assembleFromGrepMap(parseGrepContextOutput(paliStdout), allowedPrefixes, searchResults, lb, la);
+            anyMatch = true;
+        } else {
+            // Пали пусто — вторым заходом некириллические языки (английский и т.п.).
+            const dirs = targetLangs.filter(l => !isCyrillicLang(l)).flatMap(lang => translationLangDirs(lang));
+            if (dirs.length > 0) {
+                const stdout = await execKeywordGrep(dirs, keyword, exactMatch, lb, la);
+                if (stdout) { assembleFromGrepMap(parseGrepContextOutput(stdout), allowedPrefixes, searchResults, lb, la); anyMatch = true; }
+            }
+        }
+    }
+
+    if (!anyMatch) return storeIfFullScan({ searchResults: {}, empty: 'no-matches' });
+    return storeIfFullScan({ searchResults });
+}
+
+// Sort suttas: category first (dhamma == the 4 nikayas — dn/mn/sn/an, see dblight.js — then
+// khudakka, vinaya, abhi, other), then legacy relevance/version rank `mr` (mtph in
+// textinfo.json) descending as a tiebreak (TODO.md поиск п.5's "версионная сортировка"), then id.
+function sortSuttaResults(searchResults) {
+    const categoryOrder = { dhamma: 1, khudakka: 2, vinaya: 3, abhi: 4, other: 5 };
+    const sortedKeys = Object.keys(searchResults).sort((a, b) => {
+        const oa = categoryOrder[searchResults[a].category] || 99;
+        const ob = categoryOrder[searchResults[b].category] || 99;
+        if (oa !== ob) return oa - ob;
+        const mrA = searchResults[a].mr || 0;
+        const mrB = searchResults[b].mr || 0;
+        if (mrA !== mrB) return mrB - mrA;
+        return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+    });
+
+    const sortedData = {};
+    for (const key of sortedKeys) {
+        searchResults[key].segments.sort((s1, s2) =>
+            s1.segment.localeCompare(s2.segment, undefined, { numeric: true, sensitivity: 'base' })
+        );
+        sortedData[key] = searchResults[key];
+    }
+    return sortedData;
+}
+
+// Границы "слова" в отчёте по словам — что НЕ считается частью самого слова, и там регэксп
+// должен остановиться. Раньше сюда пытались добавить типографские кавычки прямо в виде символов
+// ("""''") — редактор/шрифт отрисовывает их похоже на изогнутые, но по кодпоинтам это ОКАЗАЛИСЬ
+// дублирующиеся обычные ASCII " и ' — настоящие типографские кавычки (“ ” ‘ ’), которые реально
+// встречаются в корпусе, никогда не были исключены. Результат: слово "прилипало" к соседней
+// кавычке ("“‘dukkhaṁ" вместо "dukkhaṁ") и попадало в отчёт отдельной "грязной" строкой вместо
+// того, чтобы схлопнуться со "чистым" вхождением того же слова. Явные \u-escape здесь намеренно —
+// чтобы больше не наступить на ту же ловушку визуально неотличимых символов.
+const WORD_BOUNDARY_CHARS = '\\s,.:;!?"\'\\u201C\\u201D\\u2018\\u2019\\u00AB\\u00BB()\\[\\]{}';
+
+// Word report built directly from phase-1's raw grep matches — no file reads at all. Mirrors
+// legacy new/words.sh's grepForWords (its own dedicated grep, fully independent of the
+// quotes/citations report), just reusing the text buildMatchSkeleton already parsed instead of
+// grepping a second time. Keeps one preferred-translator match per (sutta, lang) so repeat
+// translations of the same text don't inflate word counts — same intent as
+// filterPreferredTranslators, but decided by translation key only (no file reads needed).
+function buildWordReportFast(searchResults, keyword) {
+    const wordRegex = new RegExp(`[^${WORD_BOUNDARY_CHARS}]*${foldSearchPattern(keyword).pattern}[^${WORD_BOUNDARY_CHARS}]*`, 'gi');
+    const words = {};
+
+    const addWordsFromText = (text, suttaId, segmentId) => {
+        if (!text) return;
+        const matches = text.match(wordRegex) || [];
+        for (const raw of matches) {
+            const word = raw.toLowerCase();
+            if (!words[word]) words[word] = { textIds: new Set(), matchCount: 0, links: new Map() };
+            words[word].textIds.add(suttaId);
+            words[word].matchCount += 1;
+            if (!words[word].links.has(suttaId)) words[word].links.set(suttaId, segmentId);
+        }
+    };
+
+    for (const suttaId in searchResults) {
+        const suttaRes = searchResults[suttaId];
+        for (const seg of suttaRes.segments) {
+            addWordsFromText(seg.root_text, suttaId, seg.segment);
+            addWordsFromText(seg.variant, suttaId, seg.segment);
+
+            const byLang = {};
+            for (const transKey of Object.keys(seg.translations)) {
+                const lang = transKey.split('_')[0];
+                (byLang[lang] = byLang[lang] || []).push(transKey);
+            }
+            for (const [lang, keys] of Object.entries(byLang)) {
+                const priorities = TRANSLATOR_PRIORITY[lang];
+                let chosen = priorities && priorities.find(p => keys.includes(p));
+                if (!chosen && lang === 'en') chosen = keys.find(k => k !== 'en_sujato');
+                if (!chosen) chosen = keys[0];
+                addWordsFromText(seg.translations[chosen], suttaId, seg.segment);
+            }
+        }
+    }
+
+    return finalizeWordReport(words);
+}
+
+// "Variants for {keyword}" (легаси new/words.sh, секция под отчётом по словам) — список
+// сегментов, где keyword встречается в ВАРИАНТНОМ (не root) чтении, по ВСЕМУ корпусу, независимо
+// от scope текущего поиска (по запросу пользователя — вариант можно искать везде). Важно: текст
+// сегмента (со стрелкой "→", "(mr)"/"(?)" и т.п.) — это НЕ наша разметка и не diff, который мы
+// вычисляем — это редакторская нотация SuttaCentral, УЖЕ буквально хранящаяся в самом
+// variant-файле как есть (проверено на живых данных: tha-ap407 → "Macchakacchapasañchannā →
+// macchakacchapasampannā (?)"). Мы просто находим нужные сегменты и отдаём их текст без изменений.
+//
+// Если текущий поиск и так уже был scope=all и его результаты уже под рукой (existingSearchResults)
+// — просто вынимаем то, что уже нашли (variant-совпадения из основного прохода), без повторного
+// grep. Иначе — отдельный, но дешёвый widened-проход по variant-дереву целиком.
+// Варианты — часть отчёта по словам, и он уже посчитан один раз в fast=1 (buildFastResponse) и
+// считается финальным (см. комментарий у buildFastResponse) — пересчитывать его же ещё раз в
+// /search/enrich (тот идёт следом за fast=1 в течение секунд для того же keyword+scope) не нужно,
+// это тот же самый widened-grep с тем же результатом. Кеш — тот же принцип, что и skeletonCache
+// выше: ключ по keyword+exactMatch (сам widened-проход всегда ищет "везде", scope вызывающего
+// кода на РЕЗУЛЬТАТ не влияет — влияет только на то, можно ли вообще пропустить grep, см. ветку
+// reuse ниже), TTL короткий, кеш в памяти на время жизни процесса.
+const variantSegmentsCache = new Map();
+
+function variantCacheKey(keyword, exactMatch) {
+    return JSON.stringify([keyword, exactMatch]);
+}
+
+async function findVariantSegments(keyword, exactMatch, searchScope, existingSearchResults) {
+    if (searchScope === 'all' && existingSearchResults) {
+        // Уже искали везде — вынимаем то, что уже нашли, без grep и без кеша (и так бесплатно).
+        const segments = [];
+        for (const suttaId in existingSearchResults) {
+            for (const seg of existingSearchResults[suttaId].segments) {
+                if (seg.variant) segments.push({ sutta_id: suttaId, segment: seg.segment, text: seg.variant });
+            }
+        }
+        segments.sort((a, b) => a.sutta_id.localeCompare(b.sutta_id, undefined, { numeric: true }) || a.segment.localeCompare(b.segment, undefined, { numeric: true }));
+        return segments;
+    }
+
+    const cacheKey = variantCacheKey(keyword, exactMatch);
+    const cached = variantSegmentsCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < SKELETON_CACHE_TTL_MS) {
+        return cached.segments;
+    }
+
+    const dirs = resolveScopeDirs('all', path.join(SC_BILARA, 'variant'));
+    const stdout = await execKeywordGrep(dirs, keyword, exactMatch, 0, 0);
+    const segments = [];
+    if (stdout) {
+        const fileMap = parseGrepContextOutput(stdout);
+        for (const [filePath, lineMap] of fileMap) {
+            const suttaId = path.basename(filePath).split('_')[0];
+            for (const entry of lineMap.values()) {
+                if (entry.isMatch) segments.push({ sutta_id: suttaId, segment: entry.segmentId, text: entry.text });
+            }
+        }
+        segments.sort((a, b) => a.sutta_id.localeCompare(b.sutta_id, undefined, { numeric: true }) || a.segment.localeCompare(b.segment, undefined, { numeric: true }));
+    }
+    variantSegmentsCache.set(cacheKey, { segments, timestamp: Date.now() });
+    return segments;
+}
+
+// Fast (zero file-read) response: skeleton sutta list + full word report, straight off phase-1's
+// grep. metadata.partial=true tells the client segments/translations are stubs pending
+// /search/enrich — wordReport, however, is already complete and final.
+async function buildFastResponse(keyword, searchScope, exactMatch, targetLangs, lb = 0, la = 0) {
+    const { searchResults, empty } = await buildMatchSkeleton(keyword, searchScope, exactMatch, targetLangs, lb, la);
+    const suttaIds = Object.keys(searchResults);
+
+    if (empty || suttaIds.length === 0) {
+        return {
+            metadata: { query: keyword, scope: searchScope || 'default', resolvedPrefixes: resolveAllowedPrefixes(searchScope), langs: targetLangs, totalFiles: 0, totalMatches: 0, hasVariantMatch: false, partial: true },
+            data: {},
+            wordReport: [],
+            variantSegments: []
+        };
+    }
+
+    let totalMatches = 0;
+    for (const id of suttaIds) {
+        searchResults[id].count = searchResults[id].segments.length; // approximate — exact count arrives with enrichment
+        totalMatches += searchResults[id].count;
+    }
+    const variantSegments = await findVariantSegments(keyword, exactMatch, searchScope, searchResults);
+
+    const wordReport = buildWordReportFast(searchResults, keyword);
+    const sortedData = sortSuttaResults(searchResults);
+
+    return {
+        metadata: {
+            query: keyword, scope: searchScope || 'default', resolvedPrefixes: resolveAllowedPrefixes(searchScope), langs: targetLangs,
+            totalFiles: suttaIds.length, totalMatches, hasVariantMatch: variantSegments.length > 0, partial: true
+        },
+        data: sortedData,
+        wordReport,
+        variantSegments
+    };
+}
+
+// Легаси (C:\soft\dg\new\functions.sh) не передаёт grep'у списки файлов вообще — оно грепает
+// маленький фиксированный набор ДИРЕКТОРИЙ рекурсивно (-r), и alternation по id сам отфильтровывает
+// нужное. Наша первая версия батчинга передавала явные пути файлов (по одному на сутту) — при
+// частом слове (785 сутт) это либо превышает лимит длины командной строки Windows (ENAMETOOLONG),
+// либо (после чанкинга по файлам) даёт кучу мелких chunk'ов и всё равно медленно (~3 минуты на
+// q=dukkha). Директории вместо файлов — тот же трюк, что у легаси: список аргументов больше не
+// растёт с числом сутт, растёт только id-alternation (которую тоже чанкуем на случай очень
+// большого корпуса, но это на порядки более редкий случай).
+const GREP_ID_BUDGET = 12000; // символов на -e id-паттерны в одном вызове
+// Per-call stdout ceiling for the segment greps. Not a hard limit on what can be fetched: on
+// overflow grepSegmentsWithContextRecursive splits the chunk and retries (see there).
+const GREP_MAX_BUFFER = 1024 * 1024 * 20;
+// Whole-command-line budget, ids AND directories together. Windows hard-fails the spawn at 32767
+// characters; staying well under it leaves room for quoting overhead we do not model exactly.
+const GREP_CMDLINE_BUDGET = 24000;
+
+function chunkByBudget(items, toArgString, budget) {
+    const chunks = [];
+    let current = [];
+    let currentLen = 0;
+    for (const item of items) {
+        const len = toArgString(item).length + 1; // +1 разделитель
+        if (current.length && currentLen + len > budget) {
+            chunks.push(current);
+            current = [];
+            currentLen = 0;
+        }
+        current.push(item);
+        currentLen += len;
+    }
+    if (current.length) chunks.push(current);
+    return chunks;
+}
+
+// Рекурсивный point-lookup grep: фиксированный небольшой набор ДИРЕКТОРИЙ (не файлов сутт —
+// список директорий не растёт с числом совпавших сутт), плюс lb/la контекст. GNU grep с -r и
+// несколькими каталогами/файлами префиксует каждую строку именем файла ("path:42:content" для
+// совпадения, "path-42-content" для контекстной строки -B/-A — проверено эмпирически). Всегда -F
+// (fixed-string), id сегмента никогда не регекс. Возвращает
+// Map<filePath, Map<lineNumber, {segmentId, text}>>.
+async function grepSegmentsWithContextRecursive(dirs, segmentIds, lb = 0, la = 0) {
+    const result = new Map();
+    const existingDirs = [...new Set(dirs.filter(d => d && fsSync.existsSync(d)))];
+    if (existingDirs.length === 0 || segmentIds.length === 0) return result;
+
+    const baseArgs = ['-r', '-n', '-F'];
+    if (lb > 0) baseArgs.push(`-B${lb}`);
+    if (la > 0) baseArgs.push(`-A${la}`);
+
+    // GREP_ID_BUDGET only ever counted the -e patterns, as if they were the whole command line.
+    // The directory list is part of it too, and it is not small: every reading language adds its
+    // own absolute path. Past ~32k characters Windows refuses to spawn at all (ENAMETOOLONG), and
+    // the error propagated out and failed the whole /search/enrich request with a 500 — in the
+    // browser that showed up as "Ошибка при догрузке цитат" and rows that never filled in their
+    // quotes. The dirs are now subtracted from the budget up front.
+    const dirsLen = existingDirs.reduce((n, d) => n + d.length + 3, 0)
+        + baseArgs.reduce((n, a) => n + a.length + 1, 0);
+    const idBudget = Math.max(1000, GREP_CMDLINE_BUDGET - dirsLen);
+    const idChunks = chunkByBudget(segmentIds, id => `-e "${id}":`, Math.min(GREP_ID_BUDGET, idBudget));
+
+    // Both remaining failure modes are recoverable rather than fatal. A command line that is
+    // still too long, or output past maxBuffer (the argument budget says nothing about how much
+    // grep will print — a page of long segments in every language can blow past it): halve the
+    // work and retry, ids first, then the directory list. Only a single id against a single
+    // directory that still fails is dropped, with a log line, instead of taking the batch down.
+    async function grepChunk(idChunk, dirSubset) {
+        const args = [...baseArgs];
+        for (const segId of idChunk) args.push('-e', `"${segId}":`);
+        args.push(...dirSubset);
+
+        try {
+            const res = await execFile('grep', args, { maxBuffer: GREP_MAX_BUFFER });
+            return res.stdout;
+        } catch (error) {
+            if (error.code === 1) return ''; // no matches for this id chunk
+            const recoverable = error.code === 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER' || error.code === 'ENAMETOOLONG';
+            if (!recoverable) throw error;
+
+            if (idChunk.length > 1) {
+                const mid = Math.ceil(idChunk.length / 2);
+                const halves = await Promise.all([
+                    grepChunk(idChunk.slice(0, mid), dirSubset),
+                    grepChunk(idChunk.slice(mid), dirSubset)
+                ]);
+                return halves.join('\n');
+            }
+            if (dirSubset.length > 1) {
+                const mid = Math.ceil(dirSubset.length / 2);
+                const halves = await Promise.all([
+                    grepChunk(idChunk, dirSubset.slice(0, mid)),
+                    grepChunk(idChunk, dirSubset.slice(mid))
+                ]);
+                return halves.join('\n');
+            }
+            console.error(`[enrich] grep failed (${error.code}) for ${idChunk[0]} in ${dirSubset[0]}, skipped`);
+            return '';
+        }
+    }
+
+    await Promise.all(idChunks.map(async idChunk => {
+        const stdout = await grepChunk(idChunk, existingDirs);
+        if (!stdout) return;
+
+        for (const line of stdout.split('\n')) {
+            if (!line.trim() || line === '--') continue;
+            // Жадный .+ вместо [^:]+ — путь к файлу на Windows содержит двоеточие буквы диска
+            // (C:/...); [:-] дважды — grep использует ":" для строк-совпадений и "-" для
+            // контекстных строк (-B/-A), но никогда не смешивает разделители внутри одной строки.
+            const m = line.match(/^(.+\.json)[:-](\d+)[:-](.*)$/);
+            if (!m) continue;
+            const parsed = parseJsonLineFragment(m[3]);
+            if (!parsed) continue;
+            // grep сохраняет РАЗДЕЛИТЕЛЬ директории-аргумента как есть (path.join даёт "\" на
+            // Windows) и добавляет "/" только для найденной внутри части — путь получается
+            // смешанным. toPosixPath приводит ключ к тому же виду, что и toPosixPath(getRootPath())
+            // и т.п. на стороне вызывающего кода, иначе Map-lookup молча не находит совпадений.
+            const filePath = toPosixPath(m[1]);
+            if (!result.has(filePath)) result.set(filePath, new Map());
+            result.get(filePath).set(parseInt(m[2], 10), parsed);
+        }
+    }));
+
+    return result;
+}
+
+// Рекурсивный title lookup — тот же паттерн (":0"-style front-matter, последний перед первым
+// реальным сегментом) одинаков для ЛЮБОЙ сутты, грепаем ВЕСЬ каталог(и) сразу одним процессом
+// (обычно только SC_ROOT). Возвращает Map<filePath, segmentId|null> — для файлов вне запрошенных
+// суттs результат просто не запрашивается вызывающим кодом (лишние строки не мешают).
+async function findTitleSegmentIdRecursive(dirs) {
+    const result = new Map();
+    const existingDirs = [...new Set(dirs.filter(d => d && fsSync.existsSync(d)))];
+    if (existingDirs.length === 0) return result;
+
+    let stdout = '';
+    try {
+        const res = await execFile('grep', ['-r', '-n', '-E', ':0(\\.[0-9]+)?":', ...existingDirs], { maxBuffer: 1024 * 1024 * 20 });
+        stdout = res.stdout;
+    } catch (error) {
+        if (error.code === 1) return result;
+        throw error;
+    }
+
+    // grep выдаёт совпадения каждого файла по возрастанию номера строки — просто перезаписываем
+    // на каждой новой строке того же файла, последняя и останется (без -B/-A: разделитель ":").
+    for (const line of stdout.split('\n')) {
+        if (!line.trim()) continue;
+        const m = line.match(/^(.+\.json):(\d+):(.*)$/);
+        if (!m) continue;
+        const parsed = parseJsonLineFragment(m[3]);
+        result.set(toPosixPath(m[1]), parsed ? parsed.segmentId : null); // см. комментарий в grepSegmentsWithContextRecursive
+    }
+
+    return result;
+}
+
+// Возвращает {root_text, lb_context, la_context} для сегмента segId из Map<lineNumber,
+// {segmentId,text}> (например, из grepSegmentsWithContextRecursive) — окно строится по
+// номеру строки совпадения segId в этом же файле, как и раньше делал inline-код enrichSuttaBatch.
+function extractContextWindow(lineMap, segId, lb, la) {
+    let anchorLine = null;
+    for (const [ln, v] of lineMap) { if (v.segmentId === segId) { anchorLine = ln; break; } }
+    const result = { root_text: '', lb_context: [], la_context: [] };
+    if (anchorLine == null) return result;
+    result.root_text = lineMap.get(anchorLine).text;
+    for (let ln = anchorLine - lb; ln < anchorLine; ln++) {
+        const c = lineMap.get(ln);
+        if (c) result.lb_context.push({ segment: c.segmentId, root_text: c.text, variant: '', translations: {} });
+    }
+    for (let ln = anchorLine + 1; ln <= anchorLine + la; ln++) {
+        const c = lineMap.get(ln);
+        if (c) result.la_context.push({ segment: c.segmentId, root_text: c.text, variant: '', translations: {} });
+    }
+    return result;
+}
+
+// Phase 2: enrich a known set of matched suttas with full segment/quote data — variant,
+// translations, title, and (only where missing — see below) root+context — entirely via targeted
+// grep, never a full-file JSON.parse. Батчинг по образцу C:\soft\dg\new\functions.sh
+// (getPliFromLangFirst/getLangFromVarFirst): собрать все нужные id для ВСЕГО батча разом, один
+// grep-процесс на группу директорий, а не один на сутту.
+//
+// Root+context для БОЛЬШИНСТВА сегментов уже пришёл из buildMatchSkeleton (шаг 1 теперь грепает
+// с -B/-A сразу) — см. её ассемблинг (assembleFromGrepMap). "Пробелы" (seg.root_text === '')
+// бывают только когда сама сутта была найдена НЕ через Пали-ветку шага 1 (variant-only матч в
+// смешанном root+variant вызове, или кириллица/латиница-fallback ветка, искавшая только
+// переводы) — для них здесь довозится root+context отдельным точечным id-грепом, обычно
+// затрагивающим ноль или единицы сегментов, не всю страницу.
+async function enrichSuttaBatch(searchResults, suttaIds, targetLangs, keyword, searchScope, lb = 0, la = 0) {
+    const foldedKeyword = foldSearchPattern(keyword).pattern;
+    const regex = new RegExp(foldedKeyword, 'gi');
+    const wordRegex = new RegExp(`[^${WORD_BOUNDARY_CHARS}]*${foldedKeyword}[^${WORD_BOUNDARY_CHARS}]*`, 'gi');
+    let globalTotalMatches = 0;
+    let globalHasVariants = false;
+
+    const rootPathBySutta = new Map();
+    const variantPathBySutta = new Map();
+    for (const suttaId of suttaIds) {
+        if (!searchResults[suttaId]) continue;
+        rootPathBySutta.set(suttaId, toPosixPath(getRootPath(suttaId)));
+        variantPathBySutta.set(suttaId, toPosixPath(getVariantPath(suttaId)));
+    }
+    const translationFilesBySutta = await findTranslationFilesForBatch(suttaIds, targetLangs);
+
+    // resolveScopeDirs — заранее известный, кешированный (навсегда, на время процесса) список
+    // директорий по scope. Не растёт с размером батча, не деградирует на маленьком (в отличие от
+    // старого [SC_ROOT]/[SC_VARIANT] whole-tree fallback).
+    const rootDirs = resolveScopeDirs(searchScope, path.join(SC_BILARA, 'root'));
+    const variantDirs = resolveScopeDirs(searchScope, path.join(SC_BILARA, 'variant'));
+
+    // 1. Title-сегменты — buildMatchSkeleton их не знает (title обычно не совпадает с keyword).
+    const titleSegIdByFile = await findTitleSegmentIdRecursive(rootDirs);
+
+    // 2. Gap-fill root+context — только для сегментов без root_text (см. комментарий функции).
+    const gapSegIdsBySutta = new Map();
+    for (const suttaId of suttaIds) {
+        const suttaRes = searchResults[suttaId];
+        if (!suttaRes) continue;
+        const gaps = suttaRes.segments.filter(s => !s.root_text).map(s => s.segment);
+        if (gaps.length) gapSegIdsBySutta.set(suttaId, gaps);
+    }
+    const allGapSegIds = [...new Set([...gapSegIdsBySutta.values()].flat())];
+    const gapRootLinesByFile = allGapSegIds.length
+        ? await grepSegmentsWithContextRecursive(rootDirs, allGapSegIds, lb, la)
+        : new Map();
+
+    for (const suttaId of suttaIds) {
+        const suttaRes = searchResults[suttaId];
+        if (!suttaRes || !gapSegIdsBySutta.has(suttaId)) continue;
+        const rootPath = rootPathBySutta.get(suttaId);
+        const gapLines = gapRootLinesByFile.get(rootPath) || new Map();
+        for (const seg of suttaRes.segments) {
+            if (seg.root_text) continue;
+            const win = extractContextWindow(gapLines, seg.segment, lb, la);
+            seg.root_text = win.root_text;
+            if (!seg.lb_context.length && !seg.la_context.length) {
+                seg.lb_context = win.lb_context;
+                seg.la_context = win.la_context;
+            }
+        }
+    }
+
+    // 3. title-текст, если он ещё не пришёл ни с шага 1, ни с gap-fill выше.
+    const titleTextNeededIds = new Set();
+    for (const suttaId of suttaIds) {
+        const titleSegId = titleSegIdByFile.get(rootPathBySutta.get(suttaId));
+        if (titleSegId) titleTextNeededIds.add(titleSegId);
+    }
+    const titleRootLinesByFile = titleTextNeededIds.size
+        ? await grepSegmentsWithContextRecursive(rootDirs, [...titleTextNeededIds], 0, 0)
+        : new Map();
+
+    // 4. Variant + переводы — ОДИН id-грep вместе (это просто разные директории в одном grep -r,
+    // не разные "типы файла" — все .json). Window = основные сегменты + их lb/la-контекст
+    // (теперь уже известный после шага 2 выше) + title.
+    const translationDirs = new Set();
+    for (const suttaId of suttaIds) {
+        for (const filePath of Object.values(translationFilesBySutta.get(suttaId) || {})) {
+            translationDirs.add(path.dirname(filePath));
+        }
+    }
+    const windowSegIdsBySutta = new Map();
+    for (const suttaId of suttaIds) {
+        const suttaRes = searchResults[suttaId];
+        if (!suttaRes) continue;
+        const ids = new Set();
+        for (const seg of suttaRes.segments) {
+            ids.add(seg.segment);
+            seg.lb_context.forEach(c => ids.add(c.segment));
+            seg.la_context.forEach(c => ids.add(c.segment));
+        }
+        const titleSegId = titleSegIdByFile.get(rootPathBySutta.get(suttaId));
+        if (titleSegId) ids.add(titleSegId);
+        windowSegIdsBySutta.set(suttaId, [...ids]);
+    }
+    const allWindowSegIds = [...new Set([...windowSegIdsBySutta.values()].flat())];
+    const combinedLinesByFile = await grepSegmentsWithContextRecursive(
+        [...variantDirs, ...translationDirs], allWindowSegIds, 0, 0
+    );
+
+    // --- Сборка результата по каждой сутте.
+    for (const suttaId of suttaIds) {
+        const suttaRes = searchResults[suttaId];
+        if (!suttaRes) continue;
+
+        const rootPath = rootPathBySutta.get(suttaId);
+        const variantPath = variantPathBySutta.get(suttaId);
+        const titleRootLine = titleRootLinesByFile.get(rootPath) || new Map();
+        const variantLines = combinedLinesByFile.get(variantPath) || new Map();
+        const titleSegId = titleSegIdByFile.get(rootPath) || null;
+
+        const translationFiles = translationFilesBySutta.get(suttaId) || {};
+        const translationKeys = Object.keys(translationFiles);
+        const translationLinesByKey = {};
+        for (const key of translationKeys) {
+            translationLinesByKey[key] = combinedLinesByFile.get(translationFiles[key]) || new Map();
+        }
+
+        const findBySegId = (lineMap, segId) => [...lineMap.values()].find(v => v.segmentId === segId);
+
+        if (titleSegId) {
+            const rootTitle = findBySegId(titleRootLine, titleSegId);
+            if (rootTitle) suttaRes.titles.root = rootTitle.text;
+            for (const key of translationKeys) {
+                const t = findBySegId(translationLinesByKey[key], titleSegId);
+                if (t) suttaRes.titles[key] = t.text;
+            }
+        }
+
+        // Дозаполняет variant/переводы/html на месте — root_text у segObj уже есть (с шага 1
+        // buildMatchSkeleton или с gap-fill выше).
+        const fillVariantTranslations = (segObj) => {
+            const variantLine = findBySegId(variantLines, segObj.segment);
+            if (variantLine) segObj.variant = variantLine.text;
+            segObj.translations = segObj.translations || {};
+            for (const key of translationKeys) {
+                const t = findBySegId(translationLinesByKey[key], segObj.segment);
+                if (t) segObj.translations[key] = t.text;
+            }
+        };
+
+        const uniqueWordsSet = new Set();
+        let matchCount = 0;
+        const processText = (text, isVariant = false) => {
+            if (!text) return;
+            const m = text.match(regex);
+            if (m) {
+                matchCount += m.length;
+                if (isVariant) globalHasVariants = true;
+            }
+            (text.match(wordRegex) || []).forEach(w => uniqueWordsSet.add(w.toLowerCase()));
+        };
+
+        for (const seg of suttaRes.segments) {
+            fillVariantTranslations(seg);
+            processText(seg.root_text, false);
+            processText(seg.variant, true);
+            Object.values(seg.translations).forEach(t => processText(t, false));
+
+            for (const c of seg.lb_context) fillVariantTranslations(c);
+            for (const c of seg.la_context) fillVariantTranslations(c);
+        }
+
+        suttaRes.count = matchCount;
+        // TODO.md поиск п.24: заголовок ("N текстов и M совпадений") скакал 20→21 между fast=1 и
+        // полным /search — fast=1 приближённо считает totalMatches как число СЕГМЕНТОВ
+        // (searchResults[id].segments.length, дёшево, без грепа текста), а здесь раньше суммировался
+        // matchCount — число РЕАЛЬНЫХ вхождений regex по всему тексту сегмента (root+variant+
+        // переводы), которое может быть БОЛЬШЕ числа сегментов, если слово встречается в одной
+        // цитате дважды (пример: sn35.240:1.6, "kacchapo ... kacchapaṁ" — 2 вхождения в 1 строке).
+        // matchCount по-прежнему идёт в suttaRes.count (колонка "Ct" — там это осмысленная,
+        // более гранулярная метрика), но totalMatches для заголовка считаем так же, как fast=1
+        // (по числу сегментов) — набор сегментов не меняется между fast и enrich, только их
+        // текст донабирается, так что это число стабильно с самого первого ответа и совпадает
+        // с тем, что пользователь реально может пересчитать по строкам таблицы.
+        globalTotalMatches += suttaRes.segments.length;
+        suttaRes.unique_words = Array.from(uniqueWordsSet);
+    }
+
+    return { globalTotalMatches, globalHasVariants };
+}
+
+// searchWithGrep: composition of the phases above. Reproduces the pre-refactor monolithic
+// function's exact output for the default (no-flag) /search path — same name/signature so
+// nothing else in this file needs to change.
+async function searchWithGrep(keyword, searchScope, exactMatch, targetLangs, lb = 0, la = 0) {
+    const { searchResults, empty } = await buildMatchSkeleton(keyword, searchScope, exactMatch, targetLangs, lb, la);
+
+    if (empty === 'no-targets') {
+        return { metadata: { query: keyword, totalFiles: 0, totalMatches: 0, hasVariantMatch: false }, data: {}, variantSegments: [] };
+    }
+    const suttaIds = Object.keys(searchResults);
+    if (empty === 'no-matches' || suttaIds.length === 0) {
+        return { metadata: { query: keyword, langs: targetLangs, totalFiles: 0, totalMatches: 0, hasVariantMatch: false }, data: {}, variantSegments: [] };
+    }
+
+    const { globalTotalMatches } = await enrichSuttaBatch(searchResults, suttaIds, targetLangs, keyword, searchScope, lb, la);
+    const wordReport = buildWordReport(searchResults);
+    const sortedData = sortSuttaResults(searchResults);
+    const variantSegments = await findVariantSegments(keyword, exactMatch, searchScope, searchResults);
+
+    return {
+        metadata: {
+            query: keyword,
+            scope: searchScope || 'default',
+            resolvedPrefixes: resolveAllowedPrefixes(searchScope),
+            langs: targetLangs,
+            lb, la, exactMatch,
+            totalFiles: Object.keys(sortedData).length,
+            totalMatches: globalTotalMatches,
+            hasVariantMatch: variantSegments.length > 0
+        },
+        data: sortedData,
+        wordReport,
+        variantSegments
+    };
+}
+
+// Пали-часть сутты (root/variant/html) — не зависит от targetLangs/переводчиков, поэтому
+// вынесена отдельно: /api/text/:suttaId на en-fallback ветке (нет перевода на запрошенный
+// язык) раньше звало getFullTextData() второй раз целиком и перечитывало+перепарсивало эти
+// же 3 файла с диска ради тех же самых данных — единственное, что там меняется, это подбор
+// перевода. Читаем один раз, переиспользуем.
+async function getSuttaBaseData(suttaId) {
+    const suttaMeta = skeletonDB[suttaId];
+    if (!suttaMeta) return null;
+
+    const rootPath = getRootPath(suttaId);
+    const rootData = rootPath
+        ? JSON.parse(await fs.readFile(rootPath, 'utf8').catch(() => '{}'))
+        : {};
+
+    const variantPath = getVariantPath(suttaId);
+    const variantData = variantPath
+        ? JSON.parse(await fs.readFile(variantPath, 'utf8').catch(() => '{}'))
+        : {};
+
+    const htmlPath = getHtmlPath(suttaId);
+    const htmlData = htmlPath
+        ? JSON.parse(await fs.readFile(htmlPath, 'utf8').catch(() => '{}'))
+        : {};
+
+    return { suttaMeta, rootData, variantData, htmlData };
+}
+
+async function buildTextDataFromBase(base, suttaId, targetLangs, explicitTranslators, multiForLangs) {
+    const { suttaMeta, rootData, variantData, htmlData } = base;
+
+    const translationFiles = await findTranslationFiles(suttaId, targetLangs, explicitTranslators, multiForLangs);
+    const translationsData = {};
+    for (const [transKey, tPath] of Object.entries(translationFiles)) {
+        translationsData[transKey] = JSON.parse(await fs.readFile(tPath, 'utf8').catch(() => '{}'));
+    }
+
+    const segments = Object.keys(rootData).map(id => {
+        const tr = {};
+        for (const tKey in translationsData) {
+            if (translationsData[tKey][id]) tr[tKey] = translationsData[tKey][id];
+        }
+        return {
+            segment: id,
+            root_text: rootData[id] || '',
+            variant: variantData[id] || '',
+            html: htmlData[id] || '',
+            translations: tr
+        };
+    });
+
+    return {
+        sutta_id: suttaId,
+        category: suttaMeta.category,
+        dir_path: suttaMeta.dir_path,
+        title: suttaMeta.title,
+        mr: suttaMeta.mr,
+        segments
+    };
+}
+
+// Полный текст одной сутты (все сегменты, не только совпадения) — для ридера.
+// Переиспользует те же хелперы, что и поиск, просто без grep-фильтра.
+async function getFullTextData(suttaId, targetLangs, explicitTranslators, multiForLangs) {
+    const base = await getSuttaBaseData(suttaId);
+    if (!base) return null;
+    return buildTextDataFromBase(base, suttaId, targetLangs, explicitTranslators, multiForLangs);
+}
+
+app.get('/api/text/:suttaId', async (req, res) => {
+    res.set('Cache-Control', 'public, max-age=3600'); // cache.md §4 primary tier
+    const suttaId = req.params.suttaId.toLowerCase();
+
+    // ?mode=multiTran — основной путь для ридера: сервер резолвит ПОВЕДЕНИЕ (multiFor/
+    // dualScript/mnemonic) из MODE_TABLE (reader/mode-table.json), клиенту не нужно знать эту
+    // логику вовсе. Язык режим больше не хранит — это отдельная ось, ?lang= (один язык) или
+    // ?langs= (список+порядок, для multiLang), см. CLAUDE.md/план: "не хардкодить языки".
+    // ?langs=/?multiFor=/?translators= остаются рабочими напрямую — ручной доступ, /api-docs,
+    // отладка через curl — но ридер ими больше не пользуется.
+    const modeConfig = req.query.mode && MODE_TABLE[req.query.mode];
+
+    const targetLangs = req.query.langs
+        ? req.query.langs.split(',').map(l => l.trim())
+        : req.query.lang
+            ? [req.query.lang]
+            // Ни mode, ни lang, ни langs — тот же фоллбэк, что и был здесь всегда для голого
+            // ручного доступа (curl/api-docs без единого языкового параметра), не новый хардкод.
+            : (req.query.langs || 'ru,en').split(',').map(l => l.trim());
+    // ?translators=ru_o,ru_sv — ручной оверрайд, для multiTran (два перевода ОДНОГО языка
+    // одновременно), в обход обычного "один переводчик на язык" (см. findTranslationFiles).
+    const explicitTranslators = req.query.translators
+        ? req.query.translators.split(',').map(t => t.trim())
+        : null;
+    // Автоподбор ВТОРОГО переводчика для языка (см. filterPreferredTranslators): первый —
+    // как обычно по TRANSLATOR_PRIORITY, второй — кто реально нашёлся в {lang}_other для этой
+    // сутты. В отличие от explicitTranslators, ничьё конкретное имя не хардкодится.
+    const multiForLangs = (modeConfig && modeConfig.multiFor && req.query.lang)
+        ? [req.query.lang]
+        : (req.query.multiFor ? req.query.multiFor.split(',').map(l => l.trim()) : null);
+
+    try {
+        // Один раз читаем root/variant/html (не зависят от языка перевода) — основной вызов
+        // и en-fallback ниже переиспользуют один и тот же base, а не перечитывают эти 3 файла
+        // с диска дважды ради одних и тех же данных (см. getSuttaBaseData).
+        const base = await getSuttaBaseData(suttaId);
+        if (!base) return res.status(404).json({ error: `Unknown sutta id: ${suttaId}` });
+        let data = await buildTextDataFromBase(base, suttaId, targetLangs, explicitTranslators, multiForLangs);
+        let effectiveLangs = targetLangs;
+
+        // Явный ?langs= (не ?mode=) на редко покрытый язык (напр. de) часто не находит вообще
+        // НИ ОДНОГО перевода для конкретной сутты — раньше это молча оставляло голый пали без
+        // перевода. Фоллбэк на "en" (общесайтовый дефолтный язык, см. dhamma-i18n.js) — только
+        // для этого ручного пути, ?mode= (обычное ru/en-чтение через mode-table.json) не трогаем,
+        // чтобы не менять поведение для существующих читателей без явного langs=.
+        const hasAnyTranslation = data.segments.some(seg => Object.keys(seg.translations).length > 0);
+        if (!modeConfig && !hasAnyTranslation && !targetLangs.includes('en') && !explicitTranslators) {
+            const fallbackData = await buildTextDataFromBase(base, suttaId, ['en'], null, multiForLangs);
+            const fallbackHasTranslation = fallbackData &&
+                fallbackData.segments.some(seg => Object.keys(seg.translations).length > 0);
+            if (fallbackHasTranslation) {
+                data = fallbackData;
+                effectiveLangs = targetLangs.concat(['en']);
+            }
+        }
+
+        // Порядок языков-колонок — чтобы клиент не держал собственную копию MODE_TABLE
+        // только ради того, чтобы знать порядок рендера.
+        data.columns = effectiveLangs;
+        // Резолвленный "текущий" язык — раньше клиент вычислял его из columns[0]/family
+        // (mode-table.json), теперь режим языка не хранит вообще, так что явно возвращаем его
+        // отдельным полем.
+        data.lang = req.query.lang || effectiveLangs[0] || null;
+
+        // Конвертация системы письма пали (?script=Devanagari/Thai/... — любой ключ
+        // Aksharamukha.Scripts, см. akshReady/resolveScriptKey выше). Только root_text/variant —
+        // сам пали, переводы не на пали и не трогаются. Параллельно по всем сегментам сразу
+        // (Promise.all) — конвертация после инициализации быстрая (десятки мс), но
+        // последовательно по сегментам целой сутты уже заметно набегало бы.
+        //
+        // Owner: "деванагари — это режим, 1 строка в НЕ латинском скрипте пали, а вторая —
+        // латинский пали... это уже есть в любом обычном режиме" — a dualScript mode
+        // (dev/dev_en в mode-table.json) needs BOTH: the converted script for the main line
+        // AND the original ISO/Latin Pali for the second line (root_text_iso — stashed here
+        // BEFORE overwriting root_text with the conversion, matching prod's devanagari.js which
+        // fetches paliData/paliDevanagariData as two separate fields). Variant is intentionally
+        // left UNconverted for dualScript modes — prod attaches it under the Latin line, not
+        // the converted one.
+        if (resolveScriptKey(req.query.script)) {
+            const dualScript = !!(modeConfig && modeConfig.dualScript);
+            await Promise.all(data.segments.map(async seg => {
+                if (dualScript) seg.root_text_iso = seg.root_text;
+                if (seg.root_text) seg.root_text = await convertPaliScript(seg.root_text, req.query.script);
+                if (!dualScript && seg.variant) seg.variant = await convertPaliScript(seg.variant, req.query.script);
+            }));
+        }
+
+        res.json(data);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Internal Server Error.' });
+    }
+});
+
+// Prev/next для навигации ридера — из уже загруженного в память skeletonDB, без похода на
+// диск и без скачивания клиентом всей 18-мегабайтной dg_db_light.json ради одной пары ссылок.
+//
+// Owner (живой баг): "попал в ридере в Милиндапаньху, которая вообще не должна быть доступна
+// без спец настройки — ротация прев/некст должна быть в рамках текстов, выбранных пользователем,
+// или по умолчанию 4 никаи + 6 книг Кхуддаки". Раньше здесь был голый позиционный проход по
+// ВСЕМУ dbKeys без какой-либо фильтрации по scope — mil8 оказывается соседом mn1 чисто по
+// алфавиту ("mil" < "mn"), никакого отношения к учебному порядку. Тот же resolveAllowedPrefixes()/
+// matchesScope(), что уже фильтрует /search (см. чуть выше по файлу), просто никогда не
+// подключался к этому эндпоинту. resolveAllowedPrefixes(undefined) уже возвращает
+// DEFAULT_SCOPE_PREFIXES (4 никаи + 6 КН) сама по себе — так что просто не требовать scope= от
+// клиента и есть правильный дефолт; explicit ?scope= (из localStorage.dhammaSearchScope,
+// reader/megareader.js) расширяет его ровно как /search уже умеет.
+// Если ТЕКУЩИЙ текст сам не входит в scope (открыт прямой ссылкой/поиском, а не через prev/next)
+// — соседей всё равно ищем от его позиции в ПОЛНОМ dbKeys, просто пропуская несовпадающие: так
+// пользователь не застревает в исключённом тексте, а разумно попадает на ближайший подходящий.
+app.get('/api/nav/:suttaId', (req, res) => {
+    res.set('Cache-Control', 'public, max-age=3600'); // cache.md §4 primary tier
+    const suttaId = req.params.suttaId.toLowerCase();
+    const dbKeys = Object.keys(skeletonDB);
+    const currentIndex = dbKeys.indexOf(suttaId);
+    if (currentIndex === -1) return res.status(404).json({ error: `Unknown sutta id: ${suttaId}` });
+
+    const allowedPrefixes = resolveAllowedPrefixes(req.query.scope);
+    const inScope = (i) => matchesScope(skeletonDB[dbKeys[i]], dbKeys[i], allowedPrefixes);
+
+    let prevIndex = -1;
+    for (let i = currentIndex - 1; i >= 0; i--) { if (inScope(i)) { prevIndex = i; break; } }
+    let nextIndex = -1;
+    for (let i = currentIndex + 1; i < dbKeys.length; i++) { if (inScope(i)) { nextIndex = i; break; } }
+
+    const toNavEntry = (slug) => slug ? { slug, title: skeletonDB[slug].title || '' } : null;
+    res.json({
+        prev: prevIndex !== -1 ? toNavEntry(dbKeys[prevIndex]) : null,
+        next: nextIndex !== -1 ? toNavEntry(dbKeys[nextIndex]) : null
+    });
+});
+
+app.get('/search', searchHandler);
+
+async function searchHandler(req, res) {
+    res.set('Cache-Control', 'public, max-age=3600'); // cache.md §4 primary tier — covers /search and /search/:keyword (shared handler)
+    // req.params.keyword — заход через /search/:keyword (путь); req.query.q — через /search?q=.
+    // Express 5 отдаёт req.query геттером без сохранённого состояния (заново парсит на каждое
+    // обращение) — писать в req.query.q в отдельном middleware бесполезно, оно не переживёт
+    // следующий доступ. Читаем обе возможные формы напрямую, без мутации req.query.
+    let keyword = req.params.keyword || req.query.q;
+    if (!keyword) return res.status(400).json({ error: 'Parameter "q" is mandatory.' });
+    keyword = stripSearchPunctuation(keyword);
+    if (!keyword) return res.status(400).json({ error: 'Parameter "q" is mandatory.' });
+
+    const scope      = req.query.scope || 'default';
+    const exact      = req.query.exact === 'true';
+    const targetLangs = (req.query.langs || 'ru,en').split(',').map(l => l.trim());
+    const lb         = parseInt(req.query.lb) || 0;
+    const la         = parseInt(req.query.la) || 0;
+
+    if (keyword.length < MIN_KEYWORD_LENGTH) {
+        return res.json({
+            metadata: { query: keyword, scope: scope || 'default', resolvedPrefixes: resolveAllowedPrefixes(scope), langs: targetLangs, totalFiles: 0, totalMatches: 0, hasVariantMatch: false, tooShort: true },
+            data: {}, wordReport: [], variantSegments: []
+        });
+    }
+
+    try {
+        // TODO.md поиск п.5: ?fast=1 skips per-sutta file reads entirely — grep-only skeleton
+        // + full wordReport, quotes/context arrive later via /search/enrich.
+        if (req.query.fast === '1') {
+            // ?fast=1 не содержит текста сегментов вообще (только grep-счётчики) — конвертировать
+            // тут нечего, полный текст приходит позже через /search/enrich.
+            return res.json(await buildFastResponse(keyword, scope, exact, targetLangs, lb, la));
+        }
+        const result = await searchWithGrep(keyword, scope, exact, targetLangs, lb, la);
+        await convertScriptInSearchResult(result, req.query.script);
+        res.json(result);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Internal Server Error.' });
+    }
+}
+
+// Phase 2 (TODO.md поиск п.5): enrich a known set of sutta ids with full segment/quote data.
+// Client calls this with the ids of the currently visible page (from a prior ?fast=1 call),
+// then again for further pages/background load. Response shape matches /search's data[id].
+app.get('/search/enrich', async (req, res) => {
+    res.set('Cache-Control', 'public, max-age=3600'); // cache.md §4 primary tier
+    let keyword = req.query.q;
+    const idsParam = req.query.ids;
+    if (!keyword) return res.status(400).json({ error: 'Parameter "q" is mandatory.' });
+    if (!idsParam) return res.status(400).json({ error: 'Parameter "ids" is mandatory.' });
+    keyword = stripSearchPunctuation(keyword);
+    if (!keyword) return res.status(400).json({ error: 'Parameter "q" is mandatory.' });
+
+    const scope      = req.query.scope || 'default';
+    const exact      = req.query.exact === 'true';
+    const targetLangs = (req.query.langs || 'ru,en').split(',').map(l => l.trim());
+    const lb         = parseInt(req.query.lb) || 0;
+    const la         = parseInt(req.query.la) || 0;
+    const requestedIds = idsParam.split(',').map(s => s.trim()).filter(Boolean);
+
+    if (keyword.length < MIN_KEYWORD_LENGTH) {
+        return res.json({ data: {}, variantSegments: [] });
+    }
+
+    try {
+        const { searchResults, empty } = await buildMatchSkeleton(keyword, scope, exact, targetLangs, lb, la, requestedIds);
+        const suttaIds = Object.keys(searchResults);
+        if (empty || suttaIds.length === 0) return res.json({ data: {}, variantSegments: [] });
+
+        await enrichSuttaBatch(searchResults, suttaIds, targetLangs, keyword, scope, lb, la);
+        const sortedData = sortSuttaResults(searchResults);
+        let totalMatches = 0;
+        for (const id of suttaIds) {
+            totalMatches += sortedData[id].count;
+        }
+        const variantSegments = await findVariantSegments(keyword, exact, scope, searchResults);
+        const enrichResult = {
+            data: sortedData,
+            wordReport: buildWordReport(searchResults), // не buildWordReportFast — та же семантика wordReport, что и полный /search (searchWithGrep), т.к. unique_words уже посчитаны enrichSuttaBatch
+            metadata: { query: keyword, scope: scope || 'default', resolvedPrefixes: resolveAllowedPrefixes(scope), langs: targetLangs, lb, la, exactMatch: exact, totalFiles: suttaIds.length, totalMatches, hasVariantMatch: variantSegments.length > 0 },
+            variantSegments
+        };
+        await convertScriptInSearchResult(enrichResult, req.query.script);
+        res.json(enrichResult);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Internal Server Error.' });
+    }
+});
+
+// /search/:keyword — то же самое, что /search?q=:keyword, просто keyword как часть пути
+// (короткие ссылки на время, пока нет полноценного SPA-роутинга): /search/kacchapa?scope=dhamma
+// работает наравне с /search?q=kacchapa&scope=dhamma — остальные параметры (scope/lb/la/fast/...)
+// всё так же читаются из query string, меняется только то, откуда берётся сам keyword.
+// ВАЖНО: регистрируется ПОСЛЕ /search/enrich — иначе как wildcard-параметр перехватил бы
+// "/search/enrich" тоже (Express матчит по порядку регистрации, а не по специфичности).
+app.get('/search/:keyword', searchHandler);
+
+// TOC/navigator — lazy tree browsing (see TODO.md, replaces the old read.php static-tree
+// approach). Two endpoints: /api/toc (light top-level book list with leaf counts) and
+// /api/toc/book/:code (one book's whole tree — small file, see comment on TOC_TREE_ROOT).
+
+// suttacentral.net/sc-data/structure/tree/{sutta,vinaya,abhidhamma}/{code}-tree.json already
+// holds the FULL canon tree, ready-made — 694 bytes for dn, up to ~74 KB for sn/an. No need to
+// build or hardcode a tree: just read the small file for whichever book was requested.
+const TOC_TREE_ROOT = path.join(DATA_ROOT, 'suttacentral.net', 'sc-data', 'structure', 'tree');
+const TOC_TREE_KINDS = ['sutta', 'vinaya', 'abhidhamma'];
+const tocTreeCache = new Map(); // code -> parsed tree JSON | null (small files, static for process lifetime)
+
+// Real samyutta/group names for SN — legacy's own TOC data (assets/texts/sn_toc.csv, columns:
+// groupNum,groupName,samyuttaCode,samyuttaName,vaggaNum,vaggaName,suttaId,suttaTitle), not
+// something to reconstruct from corpus headers — SN's corpus files simply don't carry a samyutta-
+// or group-level name anywhere (owner: real sn1..sn56 names, found in DG's own product/toc list).
+// byCode: samyutta code -> its name ("sn1" -> "Devatāsaṁyuttaṁ"). byLeaf: any sutta id -> the
+// group name it belongs to, used since a group's own firstLeafId is exactly one such sutta id.
+function loadSnTocOverrides() {
+    const result = { byCode: {}, byLeaf: {} };
+    const file = path.join(__dirname, 'siteroot', 'assets', 'texts', 'sn_toc.csv');
+    if (!fsSync.existsSync(file)) return result;
+    for (const line of fsSync.readFileSync(file, 'utf8').split('\n')) {
+        if (!line.trim()) continue;
+        const parts = line.split(',');
+        if (parts.length < 8) continue;
+        const groupName = parts[1].trim().replace(/p[āa]ḷi$/i, '').trim();
+        const samyuttaCode = parts[2].trim();
+        const samyuttaName = parts[3].trim();
+        const suttaId = parts[6].trim();
+        if (!result.byCode[samyuttaCode]) result.byCode[samyuttaCode] = samyuttaName;
+        if (!result.byLeaf[suttaId]) result.byLeaf[suttaId] = groupName;
+    }
+    return result;
+}
+const SN_TOC = loadSnTocOverrides();
+
+function loadBookTree(code) {
+    if (tocTreeCache.has(code)) return tocTreeCache.get(code);
+    let tree = null;
+    for (const kind of TOC_TREE_KINDS) {
+        const file = path.join(TOC_TREE_ROOT, kind, `${code}-tree.json`);
+        if (fsSync.existsSync(file)) {
+            try { tree = JSON.parse(fsSync.readFileSync(file, 'utf8')); } catch (e) { tree = null; }
+            break;
+        }
+    }
+    tocTreeCache.set(code, tree);
+    return tree;
+}
+
+// A tree node is either a leaf (sutta id string) or a branch ({slug: [...children]}, exactly one
+// key). Both collectLeafIds and findFirstLeafId walk this same generic shape.
+function collectLeafIds(node, out) {
+    if (typeof node === 'string') { out.push(node); return; }
+    if (Array.isArray(node)) { node.forEach(n => collectLeafIds(n, out)); return; }
+    if (node && typeof node === 'object') {
+        for (const key in node) collectLeafIds(node[key], out);
+    }
+}
+
+function findFirstLeafId(node) {
+    if (typeof node === 'string') return node;
+    if (Array.isArray(node)) {
+        for (const n of node) { const id = findFirstLeafId(n); if (id) return id; }
+        return null;
+    }
+    if (node && typeof node === 'object') {
+        for (const key in node) { const id = findFirstLeafId(node[key]); if (id) return id; }
+    }
+    return null;
+}
+
+// Best-effort title for a branch node (vagga/chapter/rule-category): reads a header segment
+// (":0.2", ":0.3", ...) of its first leaf's root-pli-ms text. Which index is the right one
+// varies by tree shape: SN's deep tree has its group title at ":0.2"; Vinaya-vibhanga's rule
+// categories (Pārājika, Saṅghādisesa, ...) sit at ":0.3" instead, because ":0.2" there is a
+// constant, book-wide "part" heading (e.g. "Mahāvibhaṅga") shared by every sibling branch — using
+// it verbatim would title every branch identically. pickBranchTitleIndex() picks whichever index
+// actually DISTINGUISHES a group of siblings, once, per sibling group (not per branch), instead of
+// hardcoding a fixed index per book. Corpus files also key header segments by their OWN base id,
+// which can differ from a range-folded leaf id ("pli-tv-bu-vb-as1-7" the leaf vs
+// "pli-tv-bu-vb-as1" the file's own segment keys) — segmentAt() matches by suffix, not exact id,
+// to survive that. Final fallback: the leaf's own skeletonDB title (right when a branch wraps a
+// single combined-range leaf whose title already IS the group name); last resort: humanized slug.
+const branchTitleCache = new Map();
+
+// Canonical Pali "nipāta" (numbered-chapter) ordinal names — a small, fixed vocabulary shared by
+// every book organized this way (Aṅguttara, Itivuttaka, Theragāthā, Therīgāthā...), not per-book
+// data. One-time-scraped from legacy read.php's own hardcoded headings (grep "nipāta" there)
+// instead of retyping it, so a bare-numbered top slug ("an3", "iti1"...) gets its real name
+// instead of just the digit.
+const NIPATA_ORDINALS = ['', 'Ekaka', 'Duka', 'Tika', 'Catukka', 'Pañcaka', 'Chakka', 'Sattaka', 'Aṭṭhaka', 'Navaka', 'Dasaka', 'Ekādasaka'];
+
+// Fallback for a bare-numbered slug beyond NIPATA_ORDINALS' range (e.g. SN's samyuttas, sn1..sn56
+// — no short canonical name exists for those, unlike nipātas): reuses the same "{Book} N" locator
+// text every leaf already carries at header segment ":0.1" (see getBookTitle), just for this one
+// number instead of the whole book — not hardcoded per book, reads whatever the corpus says.
+function numberedGroupFallback(firstLeafId, n) {
+    const raw = segmentAt(firstLeafId, 1);
+    if (!raw) return String(n);
+    // Trailing locator can be a combined-leaf range ("49.1–12", en-dash) as well as a plain
+    // "N.N" — [\d.] alone misses the dash and leaves it stuck onto the result.
+    const base = raw.replace(/\s+[\d.–-]+\s*$/, '').trim();
+    return base ? `${base} ${n}` : String(n);
+}
+
+function humanizeSlug(slug, bookCode, firstLeafId, isTopLevel) {
+    let rest = slug.startsWith(bookCode) ? slug.slice(bookCode.length) : slug;
+    // A leading "N-" is a position locator (peyyāla/paññāsaka groups tagged with their chapter
+    // number in the slug), not part of the name — strip it before humanizing.
+    rest = rest.replace(/^\d+-/, '');
+    rest = rest.replace(/^-+/, '');
+    if (!rest) rest = slug;
+    if (/^\d+$/.test(rest)) {
+        const n = parseInt(rest, 10);
+        // "nipāta" naming only applies to a bare-numbered BOOK-ROOT child (AN/Iti/Thag's own
+        // top-level chapters) — a bare number nested deeper (SN's sn1..sn56 samyuttas, two levels
+        // under the book root) is a different kind of unit entirely and must not get an AN-style
+        // "Ekaka/Duka/..." label just because it happens to also be a bare digit.
+        // Owner: number AN's nipātas 1..11 (only AN asked for — Iti/Thag/etc keep the bare name).
+        if (isTopLevel && NIPATA_ORDINALS[n]) return (bookCode === 'an' ? `${n}. ` : '') + NIPATA_ORDINALS[n] + 'nipāta';
+        if (firstLeafId) return numberedGroupFallback(firstLeafId, n);
+    }
+    return rest.charAt(0).toUpperCase() + rest.slice(1);
+}
+// Root JSON per id, cached — same pattern as colophonCache/branchTitleCache below (TOC data is
+// static for the process lifetime, no TTL needed). pickBranchTitleIndex calls segmentAt for the
+// SAME id at multiple idx (2, 3, 4) while probing for a title level, and getBranchTitle/
+// annotateTree revisit the same firstLeafId across sibling branches — without this cache each of
+// those was its own uncached readFileSync+JSON.parse of the same file.
+const rootJsonCache = new Map(); // id -> parsed root JSON | null
+function segmentAt(id, idx) {
+    try {
+        let data = rootJsonCache.get(id);
+        if (data === undefined) {
+            const rootPath = getRootPath(id);
+            data = (rootPath && fsSync.existsSync(rootPath)) ? JSON.parse(fsSync.readFileSync(rootPath, 'utf8')) : null;
+            rootJsonCache.set(id, data);
+        }
+        if (!data) return null;
+        const key = Object.keys(data).find(k => k.endsWith(`:0.${idx}`));
+        return key ? String(data[key]).trim() : null;
+    } catch (e) { return null; }
+}
+// A vagga's own root text almost always closes with a colophon line naming it — e.g. mn10:
+// "Mūlapariyāyavaggo niṭṭhito paṭhamo.", dn13: "Sīlakkhandhavaggo niṭṭhito.", an1.10: "Rūpādivaggo
+// paṭhamo." — the real, fully-diacritic Pali name, straight from the text, not a guess (owner:
+// "просканируй тексты возьми главы из текстов... по слову vaggo"). Not every vagga/book uses this
+// convention (checked below, at the LAST leaf of the vagga where the colophon lives); when absent
+// this just returns null and callers fall back to the existing segmentAt/slug guess.
+// The very last leaf of a book (or of one of SN's 5 outer groups) carries colophons for EVERY
+// level closing at once — vagga, samyutta, AND the outer group all use the identical "{Name}vaggo"
+// phrasing, stacked in the same file (e.g. sn11.25, last vagga of the last samyutta in Sagāthā-
+// vaggasaṁyutta: "Tatiyo vaggo." / "Sakkasaṁyuttaṁ samattaṁ." / "Sagāthāvaggo paṭhamo." / "Sagāthā-
+// vaggasaṁyuttapāḷi niṭṭhitā."). Reject a match that's actually one of SN's own group names (already
+// known from SN_TOC) so the OUTER colophon doesn't leak down as if it named this inner vagga.
+const SN_GROUP_NAMES = Array.from(new Set(Object.values(SN_TOC.byLeaf))).map(n => n.toLowerCase());
+const colophonCache = new Map();
+function findColophonVaggaName(lastLeafId) {
+    if (colophonCache.has(lastLeafId)) return colophonCache.get(lastLeafId);
+    let name = null;
+    try {
+        const rootPath = getRootPath(lastLeafId);
+        if (rootPath && fsSync.existsSync(rootPath)) {
+            const data = JSON.parse(fsSync.readFileSync(rootPath, 'utf8'));
+            for (const key of Object.keys(data)) {
+                // Letters+marks only (not \S) — some colophons are wrapped in "(...)" or split
+                // across segments ("vaggo sattamo." with the name in an earlier segment); this
+                // both skips punctuation getting glued onto the name and requires an actual name
+                // before "vaggo" (rejects a bare "vaggo" with nothing attached).
+                const m = String(data[key]).match(/([\p{L}\p{M}]+)vaggo\b/iu);
+                if (!m) continue;
+                const candidate = m[1] + 'vagga';
+                // Group names carry a "saṁyutta" suffix after the plain "vagga" word ("Sagāthā-
+                // vaggasaṁyutta"), so match by prefix, not exact equality.
+                const candidateLower = candidate.toLowerCase();
+                if (SN_GROUP_NAMES.some(gn => gn.startsWith(candidateLower))) continue;
+                // Mid-sentence Pali doesn't capitalize compounds the way a heading should.
+                name = candidate.charAt(0).toUpperCase() + candidate.slice(1);
+                break;
+            }
+        }
+    } catch (e) { /* no colophon here, that's fine */ }
+    colophonCache.set(lastLeafId, name);
+    return name;
+}
+function pickBranchTitleIndex(siblingFirstLeafIds) {
+    for (let idx = 2; idx <= 4; idx++) {
+        const values = siblingFirstLeafIds.map(id => segmentAt(id, idx));
+        if (!values.every(Boolean)) continue;
+        // If MOST siblings' value at this index just echoes their own leaf title, this index has
+        // gone PAST the group-title header level into the leaf-title level (happens on trees with
+        // no separate header segment for this depth at all, e.g. SN's outer division/samyutta
+        // levels) — stop escalating and keep the best-effort value found at a shallower index
+        // instead of showing individual leaf titles as if they were the group's name. A single
+        // coincidental match (a branch that legitimately wraps one combined-range leaf whose own
+        // title already IS the group's name, e.g. Vinaya's Adhikaraṇasamatha) is not enough to
+        // reject an otherwise-good, distinguishing index — only a majority is.
+        const leafTitleHits = siblingFirstLeafIds.filter((id, i) => {
+            const own = ((skeletonDB[id] && skeletonDB[id].title) || '').trim();
+            return own && values[i] === own;
+        }).length;
+        if (leafTitleHits > siblingFirstLeafIds.length / 2) break;
+        const distinct = new Set(values);
+        if (distinct.size === values.length) return idx;
+    }
+    return 2;
+}
+// singleLeaf: true when this branch wraps exactly one leaf overall (e.g. Vinaya's
+// Adhikaraṇasamatha, a single combined-range leaf) — there the leaf's own title legitimately IS
+// the group's name, so it's an accepted fallback. For a multi-leaf branch, a candidate that just
+// echoes its FIRST leaf's own title (DN: a vagga's first sutta title, read at an index with no
+// real vagga-title segment) is not real group-title information — humanizeSlug is the better
+// fallback there (crude but at least describes the group, not one arbitrary member of it).
+function getBranchTitle(firstLeafId, slug, bookCode, idx, singleLeaf, trustSegment, isTopLevel, lastLeafId) {
+    // Keyed by slug too, not just firstLeafId+idx: a branch and its own first child commonly
+    // share the same firstLeafId (both start at the same leaf) and can land on the same idx —
+    // without slug in the key they'd collide and the child's cached title would leak up to the
+    // parent (e.g. MN's paññāsa-level node showing its first vagga's title instead of its own).
+    const cacheKey = `${slug}:${firstLeafId}:${idx}`;
+    if (branchTitleCache.has(cacheKey)) return branchTitleCache.get(cacheKey);
+    const ownTitle = ((skeletonDB[firstLeafId] && skeletonDB[firstLeafId].title) || '').trim();
+    let title = humanizeSlug(slug, bookCode, firstLeafId, isTopLevel);
+    // Curated real name (SN_TOC) beats the generic slug-derived guess, at any level above the
+    // vagga (samyutta code "sn1" matches by slug; a group's own firstLeafId is exactly one of the
+    // sutta ids the CSV indexes) — see loadSnTocOverrides above.
+    if (!trustSegment) {
+        if (SN_TOC.byCode[slug]) title = SN_TOC.byCode[slug];
+        // byLeaf maps ANY leaf to its outer GROUP name — only valid for the group level itself
+        // (isTopLevel, SN's book-root children ARE the 5 groups). A samyutta with its own extra
+        // paññāsaka layer (sn22, sn35) is also !trustSegment but NOT top-level — without this
+        // guard it wrongly inherited the whole group's name (owner: found live, sn22's three
+        // paññāsaka all showing "Khandhavaggasaṁyutta").
+        else if (isTopLevel && SN_TOC.byLeaf[firstLeafId]) title = SN_TOC.byLeaf[firstLeafId];
+    }
+    // A leaf's own corpus file only ever carries ONE group-title header segment above its own
+    // title (the vagga it directly sits in) — there is no separate segment for a deeper ancestor
+    // (paññāsaka/samyutta/nipāta). trustSegment is only true when THIS branch's own children are
+    // leaves (i.e. it IS that directly-containing vagga); otherwise segmentAt's value would just
+    // be the vagga name leaking up from a grandchild, so skip it and keep the slug-derived title
+    // (owner: MN/SN/AN's outer levels were all showing their innermost vagga's name, repeated).
+    if (trustSegment) {
+        // The colophon (see findColophonVaggaName) is the vagga's REAL name, straight from the
+        // text — takes priority over the header-segment guess/humanized slug when it's there.
+        const colophonName = lastLeafId ? findColophonVaggaName(lastLeafId) : null;
+        if (colophonName) {
+            title = colophonName;
+        } else {
+            const candidate = segmentAt(firstLeafId, idx);
+            if (candidate && candidate !== ownTitle) {
+                title = candidate;
+            } else if (singleLeaf && ownTitle) {
+                title = ownTitle;
+            }
+        }
+    }
+    branchTitleCache.set(cacheKey, title);
+    return title;
+}
+
+// Book-level (top) title for books with no curated label in toc-books.json (Abhidhamma's
+// sub-books) — read straight from the corpus instead of guessing a translation: segment ":0.1"
+// of the book's first leaf is the book's own Pali name, sometimes with a trailing chapter/
+// position number ("Saṁyutta Nikāya 1.1") which we strip.
+const bookTitleCache = new Map();
+function getBookTitle(code, firstLeafId) {
+    if (bookTitleCache.has(code)) return bookTitleCache.get(code);
+    let title = code;
+    try {
+        const rootPath = getRootPath(firstLeafId);
+        if (rootPath && fsSync.existsSync(rootPath)) {
+            const data = JSON.parse(fsSync.readFileSync(rootPath, 'utf8'));
+            const raw = data[`${firstLeafId}:0.1`];
+            // Strips a leading OR trailing chapter/position locator ("1 Mūlayamaka" -> "Mūlayamaka",
+            // "Saṁyutta Nikāya 1.1" -> "Saṁyutta Nikāya") — which side it's on depends on the book.
+            if (raw) title = raw.replace(/^[\d.]+\s+/, '').replace(/\s+[\d.–-]+\s*$/, '').trim();
+        }
+    } catch (e) { /* keep code as last-resort fallback */ }
+    bookTitleCache.set(code, title);
+    return title;
+}
+
+// Recursively annotates a raw tree node into a shape the client can render generically: leaves
+// carry their skeletonDB title, branches carry a resolved title (getBranchTitle) plus children.
+// titleIdx is the header-segment index to use for THIS node's own title, decided by the caller
+// from this node's sibling group (see pickBranchTitleIndex); each level picks its OWN index for
+// its children's sibling group, since different tree depths map to different header segments.
+function annotateTree(node, bookCode, titleIdx, isTopLevel) {
+    if (typeof node === 'string') {
+        return { type: 'leaf', id: node, title: (skeletonDB[node] && skeletonDB[node].title) || node };
+    }
+    const slug = Object.keys(node)[0];
+    const rawChildren = node[slug];
+    const childArr = Array.isArray(rawChildren) ? rawChildren : [rawChildren];
+    // Only a branch whose OWN children are leaves directly contains suttas (a true vagga) — only
+    // there does the leaf's corpus header segment actually describe THIS level (see getBranchTitle
+    // trustSegment comment). A branch one or more levels above that (paññāsaka/samyutta/nipāta)
+    // gets its title from the slug instead.
+    const childrenAreLeaves = childArr.every(c => typeof c === 'string');
+    const siblingFirstLeaves = childArr
+        .filter(c => typeof c !== 'string')
+        .map(c => findFirstLeafId(c[Object.keys(c)[0]]))
+        .filter(Boolean);
+    const childIdx = siblingFirstLeaves.length ? pickBranchTitleIndex(siblingFirstLeaves) : 2;
+    const children = childArr.map(c => annotateTree(c, bookCode, childIdx, false));
+    // Owner: number SN's samyuttas within each of its 5 outer vagga-groups, restarting at 1 per
+    // group (Sagāthāvagga 1..11, Nidānavagga 1..10, ...) — this node IS one of those groups
+    // whenever isTopLevel is true for SN (its own children are the samyuttas being numbered).
+    if (isTopLevel && bookCode === 'sn') {
+        children.forEach((child, i) => { child.title = `${i + 1}. ${child.title}`; });
+    }
+    const firstLeaf = findFirstLeafId(rawChildren);
+    const allLeaves = [];
+    collectLeafIds(rawChildren, allLeaves);
+    const lastLeaf = allLeaves[allLeaves.length - 1];
+    const title = firstLeaf ? getBranchTitle(firstLeaf, slug, bookCode, titleIdx || 2, allLeaves.length === 1, childrenAreLeaves, isTopLevel, lastLeaf) : slug;
+    return { type: 'branch', slug, title, children };
+}
+
+// Top level: categories -> books, with bilingual labels (curated for sutta/vinaya/khudakka,
+// read live from the corpus for Abhidhamma sub-books, see getBookTitle) and a leaf count each
+// (countLeaves — cheap, the tree is already in memory once loadBookTree has cached it once).
+// A handful of Abhidhamma tree files under sc-data are empty, or list ids that turn out to be
+// non-Pali editions (Chinese Āgama/Abhidharma texts also tagged category:'abhi' in skeletonDB,
+// e.g. "sab"/"sg" -> dir_path "lzh/..."). Not part of this project's Pali-only scope (see
+// CLAUDE.md) — filter to leaves skeletonDB actually knows AND that live under root/pli/ms/...,
+// same convention resolveScopeDirs() already uses.
+function isPaliLeaf(id) {
+    const meta = skeletonDB[id];
+    return !!(meta && meta.dir_path && meta.dir_path.startsWith('pli/'));
+}
+
+// tier:'default' books always show; tier:'extra' books (rest of Khuddaka, all of Abhidhamma) only
+// unlock client-side once the user has enabled the matching group in the EXISTING search-scope
+// setting (dhammaSearchScope) — see extraScopeCodes comment in toc-books.json. Server doesn't know
+// that per-browser setting, so it just tags tier and ships extraScopeCodes; the client decides.
+function describeBook({ code, label, singlePage }, tier) {
+    const tree = loadBookTree(code);
+    const allLeafIds = [];
+    if (tree) collectLeafIds(tree, allLeafIds);
+    const leafIds = allLeafIds.filter(isPaliLeaf);
+    let resolvedLabel = label;
+    if (!resolvedLabel) {
+        const title = leafIds.length ? getBookTitle(code, leafIds[0]) : code;
+        resolvedLabel = { ru: title, en: title };
+    }
+    const entry = { code, label: resolvedLabel, count: leafIds.length, tier };
+    if (singlePage) entry.singlePage = singlePage;
+    return entry;
+}
+
+// A "group" is a Nikāya-level entry that itself contains books (Khuddaka, inside 'dhamma') — a
+// peer of DN/MN/SN/AN, not a flattened list of its member books (owner: "кн это отдельное собрание
+// как дн мн сн ан"). Same books/extraBooks/extraScopeCodes shape as a category, one level down.
+function describeGroup(group) {
+    const books = (group.books || []).map(b => describeBook(b, 'default'))
+        .concat((group.extraBooks || []).map(b => describeBook(b, 'extra')))
+        .filter(book => book.count > 0 || book.singlePage);
+    // Total across whichever of its books currently show — mirrors a plain book's count, so the
+    // Nikāya-level row (Khuddaka) reads the same way as DN/MN/SN/AN's "(34)" etc. hasExtra tells
+    // the client whether to mark it partial (prod's asterisk convention, settings/index.html
+    // ABHI_MARK) when the extra tier isn't unlocked — server doesn't know that per-browser setting.
+    const count = books.reduce((sum, b) => sum + b.count, 0);
+    const entry = { code: group.code, label: group.label, books, count };
+    if (group.extraScopeCodes) entry.extraScopeCodes = group.extraScopeCodes;
+    if ((group.extraBooks || []).length) entry.hasExtra = true;
+    return entry;
+}
+
+app.get('/api/toc', (req, res) => {
+    res.set('Cache-Control', 'public, max-age=3600'); // cache.md §4 (merged into primary tier, per owner)
+    const categories = Object.entries(TOC_BOOKS).filter(([key]) => key !== '_comment').map(([category, catData]) => {
+        const books = (catData.books || []).map(b => describeBook(b, 'default'))
+            .concat((catData.extraBooks || []).map(b => describeBook(b, 'extra')))
+            .filter(book => book.count > 0 || book.singlePage);
+        const groups = (catData.groups || []).map(describeGroup).filter(g => g.books.length > 0);
+        const entry = { category, label: catData.label, books, groups };
+        if (catData.extraScopeCodes) entry.extraScopeCodes = catData.extraScopeCodes;
+        return entry;
+    }).filter(cat => cat.books.length > 0 || cat.groups.length > 0);
+    res.json({ categories });
+});
+
+// One book's whole tree (small file — see TOC_TREE_ROOT comment above) plus, when ?langs= is
+// given, which translators exist for each of its leaves (raw/unfiltered — buildFullTranslationIndex,
+// not the reader's "one preferred translator" collapsing) so the client can render badges without
+// a request per sutta.
+app.get('/api/toc/book/:code', async (req, res) => {
+    res.set('Cache-Control', 'public, max-age=3600'); // cache.md §4 (merged into primary tier, per owner)
+    const code = req.params.code;
+    const tree = loadBookTree(code);
+    if (!tree) return res.status(404).json({ error: `Unknown book code: ${code}` });
+
+    const rootSlug = Object.keys(tree)[0];
+    const rawChildren = tree[rootSlug];
+    const childArr = Array.isArray(rawChildren) ? rawChildren : [rawChildren];
+    const topFirstLeaves = childArr
+        .filter(c => typeof c !== 'string')
+        .map(c => findFirstLeafId(c[Object.keys(c)[0]]))
+        .filter(Boolean);
+    const topIdx = topFirstLeaves.length ? pickBranchTitleIndex(topFirstLeaves) : 2;
+    const annotated = childArr.map(c => annotateTree(c, code, topIdx, true));
+    const leafIds = [];
+    collectLeafIds(tree, leafIds);
+
+    const targetLangs = (req.query.langs || '').split(',').map(s => s.trim()).filter(Boolean);
+    let translations = {};
+    if (targetLangs.length) {
+        const index = await buildFullTranslationIndex(leafIds, targetLangs);
+        for (const id of leafIds) {
+            const entry = index.get(id);
+            if (entry) translations[id] = Object.keys(entry);
+        }
+    }
+
+    res.json({ code, tree: annotated, translations, interlinearKeys: [...INTERLINEAR_TRANSLATOR_KEYS] });
+});
+
+// Заглушка TOC для "оглавленческих" id — целая никая/самьютта ("sn25", "mn") или Vinaya-
+// категория без номера ("pj", "pli-tv-bu-vb-"), у которых нет отдельного skeletonDB[id], но
+// есть дочерние тексты (sn25.1, sn25.2, ... / pli-tv-bu-vb-pj1, ...). Общая логика без
+// хардкода списка никай — см. public/overrides/js/dg-text-router.js (classify()) за тем, как
+// клиент строит такие id-префиксы из ввода пользователя ("sn25", "pm" и т.п.).
+// Три случая границы после префикса:
+//   - префикс оканчивается на "-" (Vinaya-категория целиком, "pli-tv-bu-vb-") → дальше буквы
+//     кода правила ("pj1", "ss3", ...);
+//   - префикс оканчивается цифрой ("sn25") → дальше обязательно "." или ":" (иначе "sn2"
+//     ложно подхватил бы "sn25.1");
+//   - префикс — голое имя никаи без цифр ("sn", "dhp") → дальше обязательно цифра (иначе
+//     "sn" ложно подхватил бы "snp1.1", т.к. "snp" тоже начинается на "sn").
+function findChapterChildren(prefix) {
+    return Object.keys(skeletonDB).filter(id => {
+        if (id === prefix || !id.startsWith(prefix)) return false;
+        const rest = id.slice(prefix.length);
+        if (prefix.endsWith('-')) return /^[a-z]/i.test(rest);
+        if (/\d$/.test(prefix)) return /^[.:]/.test(rest);
+        return /^\d/.test(rest);
+    }).sort();
+}
+
+// /toc/<id> — оглавление, открытое на нужном месте ("/toc/mn", "/toc/sn25"). Та же SPA-страница,
+// что и голый /toc; какой узел раскрыть, клиент читает из СВОЕГО адреса (public/spa/toc.js,
+// targetFromPath) — сервер здесь только отдаёт шаблон, ничего про :code не знает.
+app.get('/toc/:code', (req, res) => {
+    sendVersionedHtml(req, res, searchIndexPath);
+});
+
+// Чистые URL: /dn22 → ридер, /dn22:12.1 → ридер с прокруткой к сегменту (разбор ":" — на клиенте),
+// /kacchapa → страница поиска (search/index.html сам читает слово из пути — initSearchApp, если нет
+// ?q=). Старый формат /?q=kacchapa#12.1 по-прежнему полностью рабочий как ВХОДНОЙ формат (старые
+// ссылки/закладки) — initSearchApp читает ?q= первым делом, до пути — но сами мы теперь никогда
+// не генерируем ?q=, только чистый путь (см. search/index.html, submit-обработчик #form). Раньше
+// здесь был redirect на /?q=..., то есть адрес в строке браузера всё равно "портился" обратно
+// в ?q= даже для собственной навигации сайта — теперь просто отдаём ту же страницу поиска прямо
+// по чистому пути, без редиректа.
+// Отдельного текста an1.9 в корпусе нет — он лежит внутри диапазона an1.1-10 (так свёрстаны
+// короткие сутты в AN/SN/DHP и т.п.). Раньше такой запрос не находил ни текста, ни детей главы
+// и молча уезжал на страницу поиска по строке "an1.9", хотя сам текст есть. Ищем диапазон,
+// который его накрывает: сначала с номером главы ("an1.9" -> "an1.1-10"), затем без неё
+// ("dhp5" -> "dhp1-20"). Легаси делал то же самое отдельным ranges.sh (см. комментарий в
+// dg-text-router.js).
+function findRangeContaining(id) {
+    const withChapter = id.match(/^([a-z-]+)(\d+)\.(\d+)$/);
+    const flat = id.match(/^([a-z-]+)(\d+)$/);
+    let book, chapter, num;
+    if (withChapter) {
+        book = withChapter[1]; chapter = withChapter[2]; num = parseInt(withChapter[3], 10);
+    } else if (flat) {
+        book = flat[1]; chapter = null; num = parseInt(flat[2], 10);
+    } else {
+        return null;
+    }
+    const rangeRe = chapter
+        ? new RegExp('^' + book + chapter + '\\.(\\d+)-(\\d+)$')
+        : new RegExp('^' + book + '(\\d+)-(\\d+)$');
+    for (const key of Object.keys(skeletonDB)) {
+        const m = key.match(rangeRe);
+        if (!m) continue;
+        if (num >= parseInt(m[1], 10) && num <= parseInt(m[2], 10)) return key;
+    }
+    return null;
+}
+
+app.get('/:slug', (req, res) => {
+    const rawSlug = req.params.slug;
+    const suttaId = rawSlug.split(':')[0].toLowerCase();
+    if (skeletonDB[suttaId]) {
+        // Раньше отдавали отдельную reader-template.html — прямой заход/reload/шаринг ссылки на
+        // сутту НЕ был SPA (свой header, свой bootstrap, дублировал search/index.html). Теперь
+        // отдаём тот же SPA-шаблон, что и на "/" — его собственный routeFromUrl() (см. конец
+        // <script> в search/index.html) при загрузке сам распознаёт suttaId в пути и вызывает
+        // openReaderInPlace(), который лениво подгружает ТОТ ЖЕ megareader.js в #reader-pane.
+        // reader-template.html пока не в unused/ — держим как референс для допереноса
+        // недостающих ссылок/кнопок в SPA-ридер (см. TODO.md, reader-бэклог).
+        return sendVersionedHtml(req, res, searchIndexPath);
+    }
+    // Якорем идёт сам запрошенный id: внутри диапазона сегменты пронумерованы по вложенной
+    // сутте ("an1.9:1.1"), и megareader.js для диапазонов кладёт в id элемента ПОЛНЫЙ segment id,
+    // так что "an1.9" — валидный префикс якоря (точное совпадение ищется первым, см. там же).
+    const range = findRangeContaining(suttaId);
+    if (range) {
+        const query = req.originalUrl.slice(req.path.length); // сохраняем ?s=, ?lang= и т.п.
+        return res.redirect(302, '/' + encodeURIComponent(range) + ':' + encodeURIComponent(suttaId) + query);
+    }
+    // "Оглавленческий" id ("mn", "sn25", "pli-tv-bu-vb-") — не текст, а узел оглавления. Раньше
+    // здесь отдавалась самодельная HTML-заглушка со списком детей; теперь есть настоящий TOC —
+    // уводим в него, на нужный узел, вместо второй, урезанной копии того же самого.
+    // Код из toc-books.json проверяем отдельно от findChapterChildren: у собрания ("kn") своих
+    // текстов с таким префиксом нет вообще, дети — у его книг, так что по одному только скелету
+    // такой узел не опознать.
+    if (TOC_CODES.has(suttaId) || findChapterChildren(suttaId).length) {
+        const query = req.originalUrl.slice(req.path.length); // сохраняем ?lang= и т.п.
+        return res.redirect(302, '/toc/' + encodeURIComponent(suttaId) + query);
+    }
+    return sendVersionedHtml(req, res, searchIndexPath);
+});
+
+// Native 404 (public/404.html) — replaces legacy /assets/404.php (PHP includes for
+// config/translate.php + a horizontal-menu partial, both from the old dg repo). This is a
+// real 404 status, unlike the /:slug route above which always answers 200 (single-segment
+// unknown slugs are valid search queries, not errors) — this only fires for what nothing else
+// matched: multi-segment paths and missing static files under /assets etc. Self-contained,
+// no legacy dependency (only /assets/{css,js,img} files already vendored in public/overrides/).
+app.use((req, res) => {
+    sendVersionedHtml(req, res, path.join(__dirname, 'public', '404.html'), 404);
+});
+
+// Native 404 (public/404.html) — replaces legacy /assets/404.php (PHP includes for
+// config/translate.php + a horizontal-menu partial, both from the old dg repo). This is a
+// real 404 status, unlike the /:slug route above which always answers 200 (single-segment
+// unknown slugs are valid search queries, not errors) — this only fires for what nothing else
+// matched: multi-segment paths and missing static files under /assets etc. Self-contained,
+// no legacy dependency (only /assets/{css,js,img} files already vendored in public/overrides/).
+app.use((req, res) => {
+    res.status(404).sendFile(path.join(__dirname, 'public', '404.html'));
+});
+
+app.listen(PORT, () => {
+    console.log(`\n=== Dhamma.gift Server (dg-light.js) ===\n`);
+    console.log(`SPA (new): http://localhost:${PORT}/spa/`);
+    // /search — JSON API, ?q= здесь ОБЯЗАТЕЛЕН (не легаси) — это не HTML-страница с чистым
+    // URL, а сырой API-эндпоинт. Остальные примеры ниже — чистые URL (?q= там только как
+    // легаси-формат ВХОДА для старых ссылок, initSearchApp его всё ещё читает, но сама
+    // навигация сайта его больше не генерирует — см. TODO.md "Проверено реальным сервером...
+    // старый /?q=kacchapa по-прежнему работает").
+    console.log(`API: http://localhost:${PORT}/search?q=kacchapa&scope=dhamma&langs=ru,en`);
+    console.log(`API (произвольный язык): http://localhost:${PORT}/search?q=leiden&scope=dhamma&langs=de`);
+    console.log(`Search UI: http://localhost:${PORT}/kacchapa?lb=1&la=2&scope=dhamma`);
+    console.log(`API docs: http://localhost:${PORT}/api-docs`);
+    console.log(`Legacy Reader: http://localhost:${PORT}/dn22`);
+    console.log(`Reader (single, 1 язык):    http://localhost:${PORT}/dn22?mode=single&lang=ru`);
+    console.log(`Reader (multiLang):         http://localhost:${PORT}/dn22?mode=multiLang&langs=ru,en`);
+    console.log(`Reader (multiTran):         http://localhost:${PORT}/dn22?mode=multiTran&lang=ru`);
+    console.log(`Reader (произвольный язык): http://localhost:${PORT}/dn22?langs=de`);
+    console.log(`  (?mode= — временный резолвер до маршрутизации по префиксу пути, см. reader-template.html)`);
+    console.log(`\n`);
+});

@@ -492,4 +492,7 @@ const colors = [
             document.getElementById("hideRuleNameCheckbox").checked = true;
         }
         currentIndex = getRandomIndex(modifiedRecords.length);
-        updateDisplay();            
+        // verbs.html defines showNumberOnly() in an inline script AFTER this file: the first display
+        // has to wait for the page to finish parsing ("showNumberOnly is not defined" on load).
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', updateDisplay);
+        else updateDisplay();

@@ -1,0 +1,168 @@
+/* Quick window ("compass", quickModal.js) — moved out of extrastyles.css, which imports it.
+   Also loaded on its own by the dictionary (ddg-ui dg-site.js); body.dark-mode is its dark theme. */
+/* =========================================
+   QUICK MODAL STYLES (Оптимизировано)
+   ========================================= */
+.quick-overlay-element {
+    position: fixed; top: -20vh; left: -20vw; width: 140vw; height: 140vh;
+    z-index: 9999; background-color: rgba(0, 0, 0, 0.7);
+    opacity: 0; visibility: hidden; 
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+.quick-overlay-element.open {
+    opacity: 1; visibility: visible;
+}
+
+.quick-modal-container {
+    position: fixed; top: 50%; left: 50%;
+    transform: translate(-50%, -50%) scale(0.95);
+    z-index: 10000; opacity: 0; visibility: hidden;
+    transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s ease;
+    width: 95%; max-width: 600px; max-height: 90vh;
+    display: flex; flex-direction: column;
+}
+.quick-modal-container.open {
+    opacity: 1; visibility: visible;
+    transform: translate(-50%, -50%) scale(1);
+}
+
+/* Автоматическая адаптация под тему сайта */
+.quick-modal-content-wrapper {
+    background-color: #ffffff; color: #212529;
+    padding: 1.5rem; width: 100%; border-radius: 1rem;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.3); font-family: sans-serif; position: relative;
+}
+body.dark .quick-modal-content-wrapper, body.dark-mode .quick-modal-content-wrapper {
+    background-color: #1a252f; color: #ffffff;
+}
+
+/* Кнопка закрытия */
+.quick-close-btn {
+    position: absolute; top: 12px; right: 12px; background-color: #9e1c19; color: #fff;
+    border: none; width: 28px; height: 28px; border-radius: 50%; font-size: 1.1rem;
+    font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2); z-index: 10;
+}
+
+/* Поиск */
+.quick-search-form { display: flex; gap: 8px; margin-bottom: 1rem; margin-top: 10px; padding-right: 3.5rem; }
+.quick-search-input {
+    flex-grow: 1; border: 1px solid #ccc; background-color: #f8f9fa;
+    color: #212529; padding: 10px 14px; border-radius: 20px; font-size: 0.95rem; outline: none;
+}
+body.dark .quick-search-input, body.dark-mode .quick-search-input { border-color: #444; background-color: #2c3a47; color: #ffffff; }
+
+.quick-search-btn {
+    background-color: #025242; color: white; border: none; width: 40px; height: 40px;
+    border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+
+/* Вкладки */
+.quick-tabs-wrapper { 
+    display: flex; justify-content: space-between; align-items: center; 
+    margin-bottom: 15px; border-bottom: 1px solid #ccc; 
+}
+body.dark .quick-tabs-wrapper, body.dark-mode .quick-tabs-wrapper { border-bottom-color: #444; }
+
+.quick-tabs { display: flex; gap: 5px; overflow-x: auto; white-space: nowrap; scrollbar-width: none; }
+.quick-tabs::-webkit-scrollbar { display: none; }
+.quick-tab-btn { 
+    background: none; border: none; color: inherit; 
+    padding: 8px 5px; cursor: pointer; opacity: 0.6; font-size: 1.05rem;
+    border-bottom: 3px solid transparent; transition: all 0.2s;
+}
+.quick-tab-btn:hover { opacity: 1; }
+.quick-tab-btn.active { opacity: 1; border-bottom: 3px solid #859900; font-weight: bold; }
+
+/* ИЗМЕНЕНО: Добавлены гибкие ограничители высоты (max-height и min), чтобы в пейзаже окно ужималось, а в портрете оставалось 55vh */
+.quick-tab-content { display: none; height: 55vh; min-height: min(420px, calc(90vh - 170px)); max-height: calc(90vh - 170px); overflow-y: auto; box-sizing: border-box; }
+.quick-tab-content.active { display: block; animation: fadeIn 0.3s ease; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* Индивидуальные настройки вкладок */
+#tab-fav, #tab-4as { padding-left: 1.5rem; padding-right: 1.5rem; }
+
+/* ИЗМЕНЕНО: Те же гибкие ограничители для iframe, вместо жестких 450px */
+#tab-dpd, #tab-memo { padding-left: 0; padding-right: 0; height: 60vh; min-height: min(450px, calc(90vh - 170px)); max-height: calc(90vh - 170px); }
+.quick-iframe { width: 100%; height: 100%; border: none; border-radius: 8px; background: transparent; }
+
+/* Списки Истории и Избранного */
+/* Избранное: расширяется на всю длину, используя общий скролл вкладки */
+#quick-favorites-container { 
+    max-height: none !important; 
+    overflow: visible !important; 
+}
+
+#quick-history-container { max-height: 520px; overflow-y: hidden; padding-right: 5px; }
+
+
+.header-title { cursor: pointer; transition: color 0.2s; display: flex; align-items: center; }
+.header-title::before { content: '▼'; display: inline-block; margin-right: 6px; font-size: 0.75rem; transition: transform 0.2s; }
+.header-title.collapsed::before { transform: rotate(-90deg); }
+
+.compact-list { list-style: none; padding: 0; margin: 0; }
+.compact-list li { padding: 8px 0; border-bottom: 1px dashed #ccc; display: flex; align-items: center; justify-content: space-between; }
+body.dark .compact-list li, body.dark-mode .compact-list li { border-bottom-color: #444; }
+.compact-list li:last-child { border-bottom: none; }
+.compact-list a { color: inherit; text-decoration: none; flex-grow: 1; margin: 0 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.compact-list a:hover { color: #859900; }
+
+.fav-star-icon { color: #f39c12; font-size: 1.4rem; }
+.toggle-fav-btn-hist { color: #888; font-size: 1.4rem; }
+.toggle-fav-btn-hist:hover { color: #f39c12; }
+.hist-icon { display: flex; align-items: center; margin-right: 5px; }
+.hist-icon img { opacity: 0.6; }
+body.dark .hist-icon img, body.dark-mode .hist-icon img { filter: invert(0.7); opacity: 1; }
+.item-date { font-size: 0.75rem; color: #888; min-width: 65px; text-align: right; }
+
+.hidden-delete-fav, 
+.hidden-delete-hist {
+    cursor: default; /* Обычная стрелочка, как над интерфейсом */
+    user-select: none; /* Запрещает выделять текст даты двойным кликом, чтобы клики работали чище */
+}
+
+.action-btn { margin-left: 10px; cursor: pointer; opacity: 0.8; transition: opacity 0.2s, color 0.2s; padding: 0 4px; user-select: none; }
+.action-btn:hover { opacity: 1; }
+.remove-fav-btn { font-size: 1.2rem; }
+.remove-fav-btn:hover { color: #dc322f; }
+.sortable-header { margin-bottom: 10px; margin-top: 25px; color: #888; font-size: 0.85rem; text-transform: uppercase; display: flex; justify-content: space-between; align-items: center; user-select: none; }
+.sort-trigger { color: #859900; font-weight: bold; cursor: pointer; }
+
+/* Колонки ссылок 4as */
+.quick-links-container { display: flex; gap: 1.2rem; flex-wrap: wrap; justify-content: space-between; }
+.quick-links-column { flex: 1 1 45%; min-width: 200px; }
+.quick-links-column p { font-weight: bold; margin-bottom: 0.5rem; }
+.quick-links-column ul { padding-left: 1rem; font-size: 0.9rem; margin-top: 0; }
+.quick-links-column a { text-decoration: none; }
+.quick-links-column a:hover { text-decoration: underline; }
+.link-primary { color: #859900; }
+.link-success { color: #2aa198; }
+.link-warning { color: #cb4b16; }
+.link-danger { color: #dc322f; }
+
+@media (max-width: 500px) {
+  .quick-modal-container { width: 94% !important; height: 90% !important; }
+  .quick-modal-content-wrapper { padding: 1rem 0 0 0 !important; }
+  #tab-fav, #tab-4as { padding-left: 1.2rem !important; padding-right: 1.2rem !important; }
+  .quick-search-form { padding-left: 1.2rem !important; padding-right: 3.5rem !important; }
+}
+
+/* Сообщения о пустых списках */
+.quick-empty-msg {
+    font-size: 0.9rem; color: #888; font-style: italic; margin: 0;
+}
+
+/* Блок ссылки "Вся история" */
+.quick-all-history-wrapper {
+    text-align: right; margin-top: 10px;
+}
+.quick-all-history-link {
+    font-size: 0.85rem; color: #859900; text-decoration: none;
+}
+.quick-all-history-link:hover {
+    text-decoration: underline;
+}
+
+/* =========================================
+end   QUICK MODAL STYLES (Оптимизировано) end Css for settings.js 
+   ========================================= */

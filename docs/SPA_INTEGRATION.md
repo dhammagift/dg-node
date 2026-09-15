@@ -101,7 +101,7 @@
 
 ## How to Test Locally
 
-1. Start server: `npm start` (or `node dg-light.js`)
+1. Start server: `npm start` (dg-fastify.js — dg-light.js is legacy, unused in prod)
 2. Open browser: `http://localhost:3000/spa/`
 3. Try URLs:
    - `http://localhost:3000/spa/kacchapa` (search)

@@ -126,15 +126,17 @@
   "toolbar": {
     "expandCollapseLabel": "Saṁvaṭṭo / Vivaṭṭo",
     "readMarksLabel": "เครื่องหมายอ่านแล้ว",
+    "dictTitle": "พจนานุกรม (Alt+A)",
     "compassLabel": "รายการโปรด / ประวัติ",
     "wordsToggleShow": "คำ",
     "wordsToggleHide": "พระสูตร",
     "compassAriaLabel": "เปิด Cattāri Ariyasaccāni",
     "compassTitle": "เปิด Cattāri Ariyasaccāni (Alt+P)",
     "menuAriaLabel": "เปิดเมนู",
-    "menuTitle": "เมนู",
+    "menuTitle": "เมนู (Alt+M)",
     "filterLabel": "ตัวกรอง+",
-    "filterAriaLabel": "ตัวกรองขั้นสูง"
+    "filterAriaLabel": "ตัวกรองขั้นสูง",
+    "tocLinkTitle": "สารบัญ"
   },
   "table": {
     "suttaCol": "พระสูตร",

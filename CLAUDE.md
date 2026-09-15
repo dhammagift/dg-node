@@ -1,4 +1,13 @@
 # Dhamma.gift — Node.js SPA Project
+- Be extremely concise.
+- Do not explain obvious things.
+- Do not repeat the user's request.
+- Prefer commands over explanations.
+- After completing a task, give only a short summary.
+- Do not provide long plans unless explicitly requested.
+- Do not narrate every action or tool call.
+- If the task is clear, act immediately.
+- Keep responses to the minimum necessary.
 
 ## Два проекта
 
@@ -61,10 +70,12 @@ dg-node из старого репо (ассеты, `read/js/*` и т.п.), св
 ## С чего начинать сессию
 
 1. Этот файл (`CLAUDE.md`) — архитектура и правила
-2. `dg-light.js` — сервер поиска (главный файл)
+2. `dg-fastify.js` — сервер поиска (главный файл, прод, крутится под pm2 как `dg-prod`; читает
+   `dg.db` — SQLite/FTS5, собирается `npm run build-search-db`). `dg-light.js`/`dblight.js`/
+   `dg_db_light.json` — старый Express+grep сервер, **legacy, в проде не используется**,
+   ничего его не require()'ит; оставлен в репо только как референс до архивации в `unused/`.
 3. `search/index.html` — UI поиска (DataTables)
-4. `dg_db_light.json` — скелет БД (генерируется `dblight.js`)
-5. `reader/reader-template.html` — шаблон ридера
+4. `reader/reader-template.html` — шаблон ридера
 
 ---
 
@@ -224,16 +235,15 @@ HOME/offline-data/dhammagift/
 Карта репозитория — где что лежит и за что отвечает. Конфиги проекта (JSON, не
 исполняемый код) собраны в одном месте — `configs/` — а не разбросаны по `search/`/`reader/`/
 корню; документация не для разработки на каждый день — в `docs/`; всё подтверждённо
-неиспользуемое — в `unused/` (см. примечание под деревом, почему `unused/` здесь почти
-пустой и это не баг).
+неиспользуемое — в `unused/` (см. примечание под деревом про его состав).
 
 ```
 nodejs/
-├── dg-light.js              — Express сервер поиска, порт 3000 (главный файл, точка входа)
-├── dblight.js                — билд-скрипт → dg_db_light.json (npm run build-db)
-├── dg_db_light.json          — скелет БД (генерируется, в git не попадает, см. .gitignore)
+├── dg-fastify.js             — Fastify сервер поиска, порт 3000 (главный файл, точка входа,
+│                                прод под pm2 как `dg-prod`); данные — `dg.db` (SQLite/FTS5,
+│                                `npm run build-search-db`)
 ├── cat_server.js              — CAT-сервер для переводов (production, отдельный процесс, не трогать)
-├── package.json               — зависимости: express, cors, swagger-ui-express
+├── package.json               — зависимости: fastify, express (legacy), cors, swagger-ui-express
 │
 ├── configs/                   — ВСЕ json-конфиги проекта в одном месте (не легаси-config/, см. ниже)
 │   ├── openapi.json, openapi.en.json   — спека /api-docs (require в dg-light.js; URL /openapi*.json без /configs)
@@ -281,6 +291,16 @@ nodejs/
 │       └── modal.js            — единое модальное окно с вкладками (Settings, Compass, Help)
 │
 ├── unused/                    — подтверждённо неиспользуемые файлы (не удалять без проверки)
+│   ├── dg-light.js            — legacy Express+grep сервер (не прод, см. "С чего начинать
+│   │                              сессию"); запускается через `npm run start:express` — для
+│   │                              этого __dirname внутри файла сдвинут на уровень вверх, к
+│   │                              корню репо, а не переписаны 40+ мест с path.join(__dirname,…);
+│   │                              require() своих json-конфигов исправлены на `../configs/...`
+│   ├── dblight.js              — билд-скрипт dg-light.js → dg_db_light.json (`npm run build-db`);
+│   │                              та же поправка __dirname; build-search-db.js (пайплайн
+│   │                              dg-fastify.js) от него не зависит
+│   ├── dg_db_light.json        — скелет БД dg-light.js (генерируется в корень репо, в git не
+│   │                              попадает, см. .gitignore)
 │   ├── script.js, demo.html, result.json  — прототипы страницы поиска до search-render.js
 │   └── translators_config.js               — не используется продовым кодом (реальные имена
 │                                                переводчиков берутся из /assets/js/translators.json,
@@ -304,6 +324,12 @@ nodejs/
 они существуют только на реальной дев/прод-машине вне git. Подтверждено (grep по всему
 коду): ничего из них не используется, но физически перенести/удалить их отсюда нельзя — это
 нужно делать на той машине, где они реально лежат.
+
+`dg-light.js`/`dblight.js` (2026-09-12) — первые файлы, реально перенесённые в `unused/` в
+этом репо: подтверждено, что ничего их не require()'ит, npm-скрипт `start` уже смотрел не
+туда (см. "С чего начинать сессию"), pm2 в проде их не запускает. Перенесены с `git mv`
+(история сохранена), а не удалены — на случай если понадобится сравнить со старой
+grep-логикой.
 
 ---
 
@@ -527,11 +553,22 @@ URL in → Router parses → State updates → Views re-render
   `<head>`. Если структура `<head>` или блок регистрации SW в `search/index.html` заметно
   поменяется — сборка приложения упадёт с внятной ошибкой, а не соберёт молча битую страницу.
 
-**Что осталось здесь — только раздача.** `siteroot/mobile-data` и `siteroot/mobile-apk`
-по-прежнему смотрят внутрь `mobile/`: на прод-машине это НЕтрекавшиеся каталоги сборки
-(`mobile/dist/*.db`, `mobile/android/.../apk/debug/`), которые удаление исходников из git не
-трогает, поэтому `test.dhamma.gift/mobile-data/` продолжает отдавать базы без ручных действий.
-Когда артефакты переедут в чекаут dg-app-full — перенаправить эти два симлинка туда.
+**Что осталось здесь — только данные.** База **одна** и та же, что у сайта:
+`npm run build-search-db` → `dg.db` (корпус, FTS5 trigram, `vocab` — словарь словоформ для
+подсказок, `meta` — `build_id`/`schema_version`, плюс `public/overrides/texts/sutta_words.txt`
+для автоподсказок в поле). Затем `npm run publish-offline-db` сжимает ЭТУ ЖЕ базу в
+`siteroot/mobile-data/dg.db.gz` и пишет `db-manifest.json`.
+
+Раньше рядом жила вторая, урезанная база (`build-mobile-db.js` → `dg-mobile.db`, 510 МБ) —
+её собирали отдельно, отдельно дописывали в неё `meta`, и сайт раздавал не то, с чем сам
+работает. Владелец: «прод-базу нужно сразу собирать с нужной таблицей, чтобы была одна база,
+а не две» и «база должна быть одна, идентична с продом». Сборщик среза удалён; всё, что делает
+`publish-offline-db.js` — gzip готовой базы, никаких пересборок и дописываний.
+
+Ещё раньше артефакт лежал в старой сборке приложения (`mobile/dist/*.db`, на тест-хосте —
+симлинк `siteroot/mobile-data -> .offline-test`), и сайт раздавал то, что сам не собирал. Симлинк `siteroot/mobile-apk` (в удалённый `mobile/android/...`)
+удалён как ненужный; `mobile/` в этом репозитории больше нет — исходники приложения живут в
+`dg-app-full`.
 
 **Как работает бэкенд приложения.** Сервера на устройстве нет и Node там нет.
 `src/app.js` подменяет `window.fetch` до того, как любой другой скрипт страницы успеет сходить

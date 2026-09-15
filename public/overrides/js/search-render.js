@@ -57,6 +57,23 @@ window.DgSearchRender = (function () {
         .then(function (json) { translatorPriority = json || {}; })
         .catch(function () {});
 
+    // The reading set of the Translations window (megareader.js dgReadingStack) — one for the whole
+    // site, reader and results alike. Empty when nothing is saved.
+    function readingStack() {
+        // ignoreTrial: results use the saved set, like multi — never a one-off "Читать" trial.
+        try { return (window.getReadingStack && window.getReadingStack({ ignoreTrial: true })) || []; } catch (_) { return []; }
+    }
+    // Every translator present in the current results — what the Translations window offers here.
+    function availableTranslators() {
+        var keys = [];
+        (activeState.data || []).forEach(function (row) {
+            (row.segments || []).forEach(function (seg) {
+                Object.keys(seg.translations || {}).forEach(function (k) { if (keys.indexOf(k) === -1) keys.push(k); });
+            });
+        });
+        return keys;
+    }
+
     function translatorRank(lang, transKey) {
         var order = translatorPriority[lang];
         if (!order) return -1;
@@ -148,7 +165,7 @@ window.DgSearchRender = (function () {
                 text: t('buttons.history', 'History'),
                 className: 'btn btn-link',
                 action: function () {
-                    window.location.href = '/history.php';
+                    window.location.href = '/4as';
                 }
             },
             {
@@ -365,7 +382,7 @@ window.DgSearchRender = (function () {
                 text: t('buttons.read', 'Read'),
                 className: 'btn btn-link',
                 action: function () {
-                    window.location.href = "/read.php";
+                    window.location.href = "/toc";
                 }
             },
             {
@@ -386,7 +403,7 @@ window.DgSearchRender = (function () {
                 text: t('buttons.suttaDiff', 'Sutta Diff'),
                 className: 'btn btn-link',
                 action: function () {
-                    window.location.href = '/assets/diff';
+                    window.location.href = '/assets/diff/';
                 }
             },
             {
@@ -516,23 +533,13 @@ window.DgSearchRender = (function () {
     // DOMContentLoaded — язык/режим ридера пока идут через легаси-прод-ридер (наш /dn22
     // ещё не покрывает все режимы), поэтому ссылки должны вести именно туда, не на чистый
     // clean-URL /{suttaId} этого репозитория.
+    // Only Reverse / Full Reverse still have their own reader pages; everything else is the SPA
+    // reader with ?mode= (buildSuttaUrl). The base is still needed for findFdgTextUrl's /4nt exceptions.
     function computeLegacyBaseUrl() {
-        var lang = localStorage.siteLanguage;
-        var baseUrl;
-        if (window.location.href.includes('/ru') || lang === 'ru') {
-            baseUrl = window.location.origin + "/r/";
-        } else if (window.location.href.includes('/th') || lang === 'th') {
-            baseUrl = window.location.origin + "/th/read/";
-        } else {
-            baseUrl = window.location.origin + "/read/";
-        }
-        if (localStorage.defaultReader === 'ml') baseUrl = window.location.origin + "/ml/";
-        else if (localStorage.defaultReader === 'rv') baseUrl = window.location.origin + "/rv/";
-        else if (localStorage.defaultReader === 'd') baseUrl = window.location.origin + "/d/";
-        else if (localStorage.defaultReader === 'mem') baseUrl = window.location.origin + "/memorize/";
-        else if (localStorage.defaultReader === 'fr') baseUrl = window.location.origin + "/frev/";
-        return baseUrl;
+        if (localStorage.defaultReader === 'fr') return window.location.origin + "/frev/";
+        return window.location.origin + "/rev/";
     }
+    var SPA_MODE_FOR_READER = { mt: 'multi', ml: 'multi', d: 'devanagari', mem: 'memorize' };
 
     // "Pi En" pair of the Links column, both on 4nt. 4nt keeps the column set (which Pāḷi
     // editions / which translations) as a per-user preference inside the tool, not in the URL,
@@ -575,9 +582,7 @@ window.DgSearchRender = (function () {
             var legacyResult = window.findFdgTextUrl(slugForLegacy, highlightWord || '', computeLegacyBaseUrl());
             if (legacyResult.indexOf('/4nt/?q=') === 0) return legacyResult;
 
-            var unsupportedMode = ['rv', 'd', 'mem', 'fr'].indexOf(localStorage.defaultReader) !== -1;
-            var isThai = window.location.href.includes('/th') || localStorage.siteLanguage === 'th';
-            if (unsupportedMode || isThai) return legacyResult;
+            if (['rv', 'fr'].indexOf(localStorage.defaultReader) !== -1) return legacyResult;
         }
 
         var lang = (localStorage.dhammaLanguage || localStorage.siteLanguage || 'en') === 'ru' ? 'ru' : 'en';
@@ -585,6 +590,7 @@ window.DgSearchRender = (function () {
         var params = [];
         if (highlightWord) params.push('s=' + encodeURIComponent(highlightWord));
         params.push('lang=' + lang);
+        if (SPA_MODE_FOR_READER[localStorage.defaultReader]) params.push('mode=' + SPA_MODE_FOR_READER[localStorage.defaultReader]);
         // langs= (набор/порядок языков ПЕРЕВОДА — не путать с lang=, языком интерфейса выше).
         // Это ссылка В РИДЕР, поэтому языки берутся читательские, а не те, которыми показана
         // выдача. Важно с тех пор, как requestedLangs заполняется и из настройки "Языки для
@@ -636,7 +642,10 @@ window.DgSearchRender = (function () {
     // exactly as the server matches it.
     function highlightMatcher(highlightWord) {
         var isRegex = HIGHLIGHT_METACHARS.test(highlightWord);
-        var source = isRegex ? highlightWord : escapeForRegExp(foldForHighlight(highlightWord));
+        // Search ignores punctuation between the keyword's letters (core/search-core.js
+        // punctTolerantPattern): "evaṁ bhikkhave" highlights "evaṁ, bhikkhave" too.
+        var source = isRegex ? highlightWord
+            : Array.from(foldForHighlight(highlightWord)).map(escapeForRegExp).join('[,;:!"\'“”‘’«»]*');
         try {
             return { isRegex: isRegex, re: new RegExp(source, 'gi') };
         } catch (e) {
@@ -748,6 +757,7 @@ window.DgSearchRender = (function () {
     function buildDataTable(container, dataArray, highlightWord, requestedLangs, langsFromUrl) {
         activeState.highlightWord = highlightWord;
         activeState.langsFromUrl = !!langsFromUrl;
+        activeState.data = dataArray;   // availableTranslators() reads it
         // ?langs= — явный список языков, которые пользователь ПОПРОСИЛ увидеть (не только
         // ru/en-дефолт). Раз он попросил конкретный язык через langs=, показывать его
         // безусловно, а не только "если совпадение реально есть в нём" (см. alwaysShown ниже) —
@@ -1074,6 +1084,30 @@ window.DgSearchRender = (function () {
                                         });
                                 });
 
+                                // Owner: results follow the same reading set as the reader. Chosen
+                                // translators in the set's order; a language of the set without its
+                                // chosen translator in this segment falls back to its priority one.
+                                // Languages outside the set keep the match-only rule above. An explicit
+                                // ?langs= in the address still wins over the set.
+                                var stack = activeState.langsFromUrl ? [] : readingStack();
+                                if (stack.length) {
+                                    var stackLangs = [], byStack = [];
+                                    stack.forEach(function (k) { var l = k.split('_')[0]; if (stackLangs.indexOf(l) === -1) stackLangs.push(l); });
+                                    stack.forEach(function (k) {
+                                        var l = k.split('_')[0];
+                                        if (seg.translations[k]) { if (byStack.indexOf(k) === -1) byStack.push(k); return; }
+                                        if (stack.some(function (x) { return x.split('_')[0] === l && seg.translations[x]; })) return;
+                                        var fb = transKeys.filter(function (x) { return x.split('_')[0] === l; })
+                                            .sort(function (a, b) { return translatorRank(l, a) - translatorRank(l, b); })[0];
+                                        if (fb && byStack.indexOf(fb) === -1) byStack.push(fb);
+                                    });
+                                    sortedTransKeys.forEach(function (k) {
+                                        var l = k.split('_')[0];
+                                        if (stackLangs.indexOf(l) === -1 && alwaysShown.indexOf(l) === -1 && byStack.indexOf(k) === -1) byStack.push(k);
+                                    });
+                                    sortedTransKeys = byStack;
+                                }
+
                                 sortedTransKeys.forEach(function (key) {
                                     var transText = seg.translations[key];
                                     if (!transText) return;
@@ -1336,6 +1370,7 @@ window.DgSearchRender = (function () {
         buildDataTable: buildDataTable,
         buildWordDataTable: buildWordDataTable,
         buildVariantsReport: buildVariantsReport,
+        availableTranslators: availableTranslators,
         resetTablesForLanguageChange: resetTablesForLanguageChange,
         redraw: redraw
     };

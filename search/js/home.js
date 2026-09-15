@@ -7,7 +7,7 @@
  * menu-links.json) и перенесены один-в-один из боевого горизонтального меню легаси-сайта
  * (assets/common/horizontalMenu{En,Ru}.php). Этот файл только рисует их.
  *
- * Шаблонные ссылки ({{q}}/{{theme}}) отдаём легаси-функциям openWithQuery/openWithQueryMulti из
+ * Шаблонные ссылки ({{q}}/{{theme}}) отдаём легаси-функциям openWithQuery из
  * /assets/js/openDicts.js — они же копируют запрос в буфер обмена и показывают уведомление, ровно
  * как в старом меню. openWithQuery читает event.currentTarget, поэтому обработчик вешается на
  * КАЖДУЮ ссылку отдельно: делегирование на контейнер сломало бы его (currentTarget был бы
@@ -181,6 +181,11 @@
     // (not currentSheetKey) — it's not a tile-menu list, it hosts the real /settings/ page in
     // an iframe, so there's exactly one settings implementation instead of two.
     var settingsSheetOpen = false;
+    // True between closeSettingsSheet()'s own history.back() and the popstate it triggers.
+    var settingsBackPending = false;
+    var settingsPrevScrollRestoration = 'auto';
+    // Something was saved from inside the settings sheet since it opened (storage events below).
+    var settingsChanged = false;
 
     // ======================================================================
     // Состояния страницы: home / results / reader
@@ -481,19 +486,17 @@
         ensureBackdrop();
         var sheet = document.createElement('div');
         sheet.id = 'dg-settings-sheet';
-        // dg-wide: same 920px desktop floating-card width as the About sheet (home.css) — on
-        // mobile that class is a no-op (gated by the same 768px media query dg-settings-embed's
-        // own fullscreen override uses), the desktop card is scoped entirely in CSS.
-        sheet.className = 'dg-sheet dg-settings-embed dg-wide';
+        // Right-hand side panel at every width (owner: live page stays visible beside it; on a
+        // narrow screen the panel simply takes the whole width) — layout lives in home.css.
+        sheet.className = 'dg-sheet dg-settings-embed';
         sheet.setAttribute('role', 'dialog');
         sheet.setAttribute('aria-modal', 'true');
         sheet.hidden = true;
+        // No header bar of its own (owner: "без двойных сеттингс") — the settings page's own header
+        // row carries the close button when embedded (settings/index.html #sheetClose).
         sheet.innerHTML =
             '<div class="dg-sheet-handle"></div>' +
-            '<div class="dg-sheet-head"><h2>' + esc(t('global.common.settings', 'Settings')) + '</h2>' +
-            '<button type="button" class="dg-sheet-close" aria-label="' + esc(t('global.common.close', 'Close')) + '">&times;</button></div>' +
             '<div class="dg-sheet-body"><iframe title="' + esc(t('global.common.settings', 'Settings')) + '"></iframe></div>';
-        sheet.querySelector('.dg-sheet-close').addEventListener('click', function () { closeSettingsSheet(false); });
         document.body.appendChild(sheet);
 
         document.addEventListener('keydown', function (e) {
@@ -503,7 +506,13 @@
         // both href="/") posts this instead of navigating itself when it detects it's inside a
         // parent frame — see settings/index.html. Closes the sheet exactly like our own X.
         window.addEventListener('message', function (e) {
-            if (e.origin === location.origin && e.data && e.data.dgSettingsSheetClose) closeSettingsSheet(false);
+            if (e.origin !== location.origin || !e.data) return;
+            if (e.data.dgSettingsSheetClose) { closeSettingsSheet(false); return; }
+            // "Download now" inside the embedded settings page. It does not navigate its own frame
+            // (that would load the home page, and a second downloader, INSIDE this sheet), so it
+            // asks us to collapse the sheet here: the progress card belongs to this page, and
+            // public/offline/app.js listens for the same message to start the transfer.
+            if (e.data.dgOfflineDownloadRequest) closeSettingsSheet(false);
         });
     }
 
@@ -522,14 +531,64 @@
         var backdrop = document.getElementById('dg-sheet-backdrop');
         // Fresh load every time: settings can change from another tab, and a stale form (e.g.
         // mid-drag script order) should never greet the user on reopen.
-        sheet.querySelector('iframe').src = '/settings/';
+        // NOT a hardcoded '/settings/': the app build rewrites the settings URL to
+        // /settings/index.html (Capacitor has no directory resolution), and in the app the
+        // hardcoded path made this iframe load the root index.html — the search page — inside the
+        // settings sheet, where the SPA then read "settings" as a keyword and searched for it
+        // ("ничего не найдено по запросу Settings", owner). The page's own settings link is the
+        // one place that knows the right URL in every build (see DgTextRouter.settingsUrl).
+        sheet.querySelector('iframe').src = (window.DgTextRouter && window.DgTextRouter.settingsUrl)
+            ? window.DgTextRouter.settingsUrl()
+            : '/settings/';
         sheet.hidden = false;
         settingsSheetOpen = true;
+        settingsChanged = false;
+        // While the panel is open, any back step (ours on close, or the phone's back button) must
+        // not restore the scroll the browser saves with the history entry right now: the page may
+        // be scrolled or re-rendered meanwhile (owner: reading place lost on close).
+        settingsPrevScrollRestoration = history.scrollRestoration;
+        history.scrollRestoration = 'manual';
         history.pushState({ dgSettingsSheet: true }, '', location.href);
-        showLater(sheet, backdrop);
+        // Wide screens: no dimming, the page beside the panel shows setting changes live; a click
+        // on it still closes the panel (shared backdrop handler). Below 768px the panel is centered
+        // over a dimmed page (home.css).
+        showLater(sheet, backdrop, window.matchMedia('(min-width: 768px)').matches);
+    }
+
+    /* The settings sheet is an iframe of /settings/ that saves every change to localStorage at
+       once; this page hears it as a `storage` event. Text settings re-render the open reader
+       right away (the page stays visible beside the side panel), keeping the reading place. */
+    var READER_SETTING_KEYS = ['selectedScript', 'devanagariModeScript', 'removePunct', 'dhammaReaderLangs',
+        'dhammaLanguage', 'siteLanguage', 'variantVisibility', 'mergeGathas', 'viewMode'];
+    var readerRebuildTimer = null;
+    window.addEventListener('storage', function (e) {
+        if (!settingsSheetOpen || e.key === null) return;
+        settingsChanged = true;
+        if (READER_SETTING_KEYS.indexOf(e.key) === -1) return;
+        if (typeof window.buildSutta !== 'function' || !window.currentReaderSlug) return;
+        if (!document.body.classList.contains('dg-state-reader')) return;
+        clearTimeout(readerRebuildTimer);
+        readerRebuildTimer = setTimeout(rebuildReaderKeepingPlace, 250);
+    });
+    function rebuildReaderKeepingPlace() {
+        // Remember the segment on screen, re-render the text only (same as a reader mode switch,
+        // megareader.js), put the segment back. inPlace: not a new open of the text, so
+        // smoothScroll.js neither scrolls nor offers "Continue reading".
+        var anchor = window.captureReadingAnchor ? window.captureReadingAnchor() : null;
+        Promise.resolve(window.buildSutta(window.currentReaderSlug, { inPlace: true })).then(function () {
+            if (window.restoreReadingAnchor) window.restoreReadingAnchor(anchor);
+        });
     }
 
     function closeSettingsSheet(fromPopstate) {
+        // The popstate caused by our own history.back() below: swallow it. Otherwise the shared
+        // popstate listener (search/index.html) saw the sheet as already closed and ran
+        // routeFromUrl(), re-rendering the reader and jumping the sutta back to its top (owner).
+        if (fromPopstate && settingsBackPending) {
+            settingsBackPending = false;
+            history.scrollRestoration = settingsPrevScrollRestoration;
+            return;
+        }
         if (!settingsSheetOpen) return;
         settingsSheetOpen = false;
         var sheet = document.getElementById('dg-settings-sheet');
@@ -537,9 +596,19 @@
         sheet.classList.remove('show');
         if (backdrop && !isQuickOpen()) backdrop.classList.remove('show');
         setTimeout(function () { if (!settingsSheetOpen) sheet.hidden = true; }, 320);
+        // Reader already re-rendered live (see the storage listener above). Results/home still
+        // need one re-route to pick up changed defaults — only when something actually changed,
+        // otherwise closing made the results blink for nothing (owner).
+        if (settingsChanged && !document.body.classList.contains('dg-state-reader') && window.dgRouteFromUrl) window.dgRouteFromUrl();
+        settingsChanged = false;
         // Consume the pushState from openSettingsSheet() so a later back-press doesn't land on
         // a phantom step — skipped when THIS close was itself caused by that back-press.
-        if (!fromPopstate && history.state && history.state.dgSettingsSheet) history.back();
+        if (!fromPopstate && history.state && history.state.dgSettingsSheet) {
+            settingsBackPending = true;
+            history.back(); // scrollRestoration is put back once its popstate arrives (see top)
+        } else {
+            history.scrollRestoration = settingsPrevScrollRestoration;
+        }
     }
 
     /* Личные отметки пунктов мультитула (шторки Read Pāḷi/External/AI & Dicts/…) — поверх
@@ -557,7 +626,7 @@
     // Идентичность пункта — сам JSON не даёт устойчивого id, поэтому берём первое, что у него
     // реально есть и не меняется между рендерами: обычный href, либо адрес-шаблон, либо подпись.
     function itemKey(item) {
-        return item.href || item.tpl || item.tplMulti || item.label;
+        return item.href || item.tpl || item.label;
     }
 
     function isStarred(item) {
@@ -630,11 +699,6 @@
                     }
                 }
             });
-        } else if (item.tplMulti) {
-            a.addEventListener('click', function (e) {
-                if (typeof window.openWithQueryMulti === 'function') window.openWithQueryMulti(e, item.tplMulti);
-                else e.preventDefault();
-            });
         } else if (item.action === 'readPlus') {
             /* "Read+" в легаси-меню: берёт из поля первый "книга+номер" (mn129 из "mn129 sati"),
                открывает /r.php?q=<книга+номер>#<весь запрос>. Повторено как было. */
@@ -653,12 +717,12 @@
             // TBW specifically (item 9, owner): must follow the explicit ?force_local flag, like
             // the legacy site — not mirror-link.js's live-reachability probe just below (that's
             // for mirrors that are simply THERE-or-not; TBW is an explicit mode switch, not a
-            // "happens to be reachable" check). localhost still counts as local too (matches
-            // legacy's isLocal, and how this is tested without the URL flag).
+            // "happens to be reachable" check). The flag only: the app's origin is
+            // https://localhost, so treating the hostname as "local mirror is here" sent app users
+            // to /bw/... which the app does not bundle.
             a.addEventListener('click', function (e) {
                 e.preventDefault();
-                var isLocal = window.location.host.includes('localhost') || window.location.host.includes('127.0.0.1')
-                    || localStorage.getItem('forceLocal') === 'true';
+                var isLocal = localStorage.getItem('forceLocal') === 'true';
                 window.open(isLocal ? item.localHref : item.href, item.blank ? '_blank' : '_self');
             });
         } else if (item.localHref) {
@@ -1042,14 +1106,24 @@
         return wrap;
     }
 
+    // issue #4: dict-modes.json groups no longer duplicate every DPD mode per dictionary
+    // language (dictGroupEn/dictGroupRu merged into dictGroupDpd, hasLangToggle:true) — the
+    // mode+lang <-> localStorage.selectedDict string conversion lives in
+    // /assets/js/dict-mode-shared.js (window.DictModeShared), shared with settings/index.html's
+    // renderDictMode() (used to be a hand-copied pair of implementations).
+
     /* Тот же список режимов, что и на /settings/ (dict-modes.json) — переиспользуем select, не
        делаем свою версию. Выбор пишется в тот же localStorage.selectedDict, что читает
        settings/index.html и paliLookup.js — общий ключ, значит смена в любом месте видна везде. */
     function dictModePicker() {
+        var wrap = document.createElement('div');
+
         var select = document.createElement('select');
         select.className = 'dg-field-input dg-dict-select';
         var current = localStorage.getItem('selectedDict') || 'standalone';
+        var split = DictModeShared.splitValue(dictModeGroups, current);
         var ru = menuLang() === 'ru';
+        var dictLang = split.lang || (ru ? 'ru' : 'en');
         (dictModeGroups || []).forEach(function (g) {
             var group = document.createElement('optgroup');
             group.label = ru ? g.labelRu : g.labelEn;
@@ -1057,13 +1131,14 @@
                 var opt = document.createElement('option');
                 opt.value = o.value;
                 opt.textContent = ru ? o.ru : o.en;
-                if (o.value === current) opt.selected = true;
+                if (o.value === split.mode) opt.selected = true;
                 group.appendChild(opt);
             });
             select.appendChild(group);
         });
-        select.addEventListener('change', function () {
-            var value = select.value;
+
+        function saveAndApply() {
+            var value = DictModeShared.composeValue(dictModeGroups, select.value, dictLang);
             localStorage.setItem('selectedDict', value);
             // paliLookup.js грузится лениво (по первому клику по слову) — если он уже загружен,
             // применяем смену немедленно через тот же applyDictConfig, что и /settings/; если
@@ -1075,8 +1150,28 @@
                 window.dg_loadDictionaryScripts();
             }
             notifySaved();
+        }
+
+        var langSeg = segmented([
+            { value: 'en', label: 'En' },
+            { value: 'ru', label: 'Ru' }
+        ], dictLang, function (lang) {
+            dictLang = lang;
+            saveAndApply();
         });
-        return select;
+        var initialGroup = DictModeShared.groupFor(dictModeGroups, select.value);
+        langSeg.hidden = !(initialGroup && initialGroup.hasLangToggle);
+        // Language first, the mode list under it (owner: the other way round was easy to misread).
+        wrap.appendChild(langSeg);
+        wrap.appendChild(select);
+
+        select.addEventListener('change', function () {
+            var g = DictModeShared.groupFor(dictModeGroups, select.value);
+            langSeg.hidden = !(g && g.hasLangToggle);
+            saveAndApply();
+        });
+
+        return wrap;
     }
 
     function ensureQuick() {
@@ -1109,12 +1204,17 @@
     function closeQuick() {
         var sheet = document.getElementById('dg-quick');
         var backdrop = document.getElementById('dg-sheet-backdrop');
-        var btn = document.getElementById('dg-quick-btn');
+        var btn = quickAnchorBtn || document.getElementById('dg-quick-btn');
         if (!sheet) return;
         sheet.classList.remove('show');
         if (backdrop && !currentSheetKey) backdrop.classList.remove('show');
+        if (backdrop) backdrop.classList.remove('dg-above-quick-modal');
         if (btn) btn.setAttribute('aria-expanded', 'false');
-        setTimeout(function () { if (!isQuickOpen()) sheet.hidden = true; }, 320);
+        setTimeout(function () {
+            if (isQuickOpen()) return;
+            sheet.hidden = true;
+            sheet.classList.remove('dg-above-quick-modal');
+        }, 320);
     }
 
     /* Наполнение зависит от состояния страницы — в этом и смысл «быстрых» настроек: на главной
@@ -1272,7 +1372,7 @@
        six-dot "more" button's target. STAGE 2 (owner: "нужно чтобы можно было отключить язык",
        "в том числе основной с помощью галочки") — the checkbox and "сделать основным" pin now
        both drive the real reader: dgApplyLangSelection() below persists the checked set to
-       dgReadingLangOrder and either refetches (multiLang: adding/removing a column is a real
+       dgReadingLangOrder and either refetches (multi: adding/removing a column is a real
        content change) or calls switchReadingLanguage() (single-column modes: unchecking the
        language on screen switches to the next checked one) — see its comment for the split.
        Inline ru/en dictionaries, same pattern as MODE_TITLES/MODE_DESCRIPTIONS above. */
@@ -1355,6 +1455,26 @@
         document.addEventListener('keydown', function (e) { if (e.key === 'Escape') menu.hidden = true; });
         return menu;
     }
+    /* ——— Translators inside the same popover (issue #6 этап 2) ———————————————————————————
+       Owner: "переводчики в попапе", pill untouched — every non-main language AND every
+       translator lives behind the dots. One sub-line per language ("кто его сейчас переводит"),
+       tapping it unfolds that language's translators as CHECKBOXES: any number can be on at
+       once (each checked one is a separate translation in the text), the first is main. The AI
+       draft never appears — the server already keeps it out of availableTranslators. */
+    // Display names come from /assets/js/translators.json (window.siteTranslators, fetched by
+    // megareader.js) and carry <a href> links for the project's own translators — plain text here.
+    function trnName(key) {
+        var lang = key.split('_')[0], id = key.slice(lang.length + 1);
+        var raw = (window.siteTranslators && window.siteTranslators[lang] && window.siteTranslators[lang][id]) || '';
+        var name = String(raw)
+            // An EXTERNAL link is a "source" pointer appended to the name ("Thanissaro Bhikkhu
+            // <a href=https://dhammatalks.org/…>source</a>") — drop it whole. Internal ones ARE
+            // the name ("<a href=/assets/texts/syrkin.html>А.Я. Сыркин</a> с Пали, ред. <a>o</a>")
+            // — keep their text.
+            .replace(/<a[^>]*href=["']?https?:[^>]*>[\s\S]*?<\/a>/gi, '')
+            .replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+        return name || (id.charAt(0).toUpperCase() + id.slice(1));
+    }
     function dgSetLangMenuMain(menu, lang) {
         menu.querySelectorAll('.dg-lpmenu-row').forEach(function (row) {
             row.classList.toggle('is-main', row.dataset.lang === lang);
@@ -1367,7 +1487,7 @@
          unchecked — promoting a language also turns it on.
        - Unchecking every row is refused (same "at least one text stays on" rule the pli/2nd pill
          toggle already follows) — the row just clicked is put back on instead.
-       - multiLang mode can show several columns at once, so ANY change to the checked set (not
+       - multi mode can show several columns at once, so ANY change to the checked set (not
          just which one is main) is a real content change — refetch. Other modes only ever show
          ONE language on screen, so there's nothing to refetch UNLESS the language that changed
          was the one actually showing — switchReadingLanguage() covers that (and no-ops via its
@@ -1399,14 +1519,15 @@
     function dgApplyLangSelection(menu, forceMainLang) {
         var st = currentState();
         var rm = window.READER_MODE;
-        // Owner: two presets over one mechanism. multiLang = "my saved set" (persisted). Every
+        // Owner: two presets over one mechanism. multi = "my saved set" (persisted). Every
         // other reader mode = "just the main language", where the checkboxes are a per-TEXT
         // trial: applied at once, never saved, allowed to go all the way down to Pāḷi only.
-        var trial = st === 'reader' && !!rm && rm.modeKey !== 'multiLang';
+        // issue #6: было 'multiLang' — ключ переименован при слиянии с multiTran, смысл тот же.
+        var trial = st === 'reader' && !!rm && rm.modeKey !== 'multi';
         // Results may ALSO drop to zero (Pāḷi only) — owner: "у нас есть даже более рекомендуемый
         // режим, только пали" — it's the same Pāḷi-only view the pill's own left segment already
         // reaches (dgSetResultsLangVisibility hides every language when nothing's checked), not a
-        // dead end that needs a language forced back on. Only multiLang's saved set still floors
+        // dead end that needs a language forced back on. Only multi's saved set still floors
         // at 1 (its own "Pāḷi only" is the separate pli/2nd pill toggle, not this popover).
         var allowZero = trial || st === 'results';
         if (forceMainLang) {
@@ -1417,7 +1538,7 @@
         var rows = Array.prototype.slice.call(menu.querySelectorAll('.dg-lpmenu-row'));
         var checked = rows.filter(function (r) { return r.querySelector('.dg-check').checked; })
             .map(function (r) { return r.dataset.lang; });
-        if (!checked.length && rows.length && !allowZero) { // saved sets (multiLang) keep ≥1; trial/results may drop to Pāḷi only
+        if (!checked.length && rows.length && !allowZero) { // saved sets (multi) keep ≥1; trial/results may drop to Pāḷi only
             rows[0].querySelector('.dg-check').checked = true;
             checked = [rows[0].dataset.lang];
         }
@@ -1462,31 +1583,9 @@
             }
             return;
         }
-        if (st !== 'reader' || !rm || !window._currentSlug) return;
-        if (rm.modeKey === 'multiLang') {
-            rm.lang = mainLang;
-            var params = new URLSearchParams(document.location.search);
-            params.set('lang', mainLang);
-            params.delete('langs'); // stale explicit langs= would otherwise outrank dgReadingLangOrder — see buildSutta()
-            history.pushState({ page: window._currentSlug, mode: 'multiLang' }, "", '?' + params.toString());
-            if (typeof window.buildSutta === 'function') window.buildSutta(window._currentSlug);
-            return;
-        }
-        // Trial (single/memorize/devanagari/multiTran). The pin is the one thing that DOES persist:
-        // it's the reading language (= site language), switchReadingLanguage() saves it itself.
-        if (forceMainLang && mainLang !== rm.lang && typeof window.switchReadingLanguage === 'function') {
-            rm.tempLangs = null;
-            window.switchReadingLanguage(mainLang);
-            return;
-        }
-        var shown = checked.indexOf(mainLang) !== -1 ? ordered : checked; // main may itself be unchecked
-        rm.tempLangs = shown.length ? shown : [mainLang];
-        rm.tempSlug = window._currentSlug;
-        // Nothing checked = Pāḷi only — that's the pill's own 2nd-segment toggle, reuse it (and
-        // keep whatever the user had for the Pāḷi segment when turning translations back on).
-        dgSetPaliToggle(shown.length ? (dgPillMode().pli ? 'pli-2nd' : '2nd') : 'pli');
-        if (shown.length && typeof window.buildSutta === 'function') window.buildSutta(window._currentSlug);
-        else dgRenderLangPill();
+        /* Ветки ридера отсюда убраны: в ридере этот попап больше не открывается — «···» ведёт
+           в окно «Переводы» (tsToggle), а в memorize/devanagari у плашки одна кнопка вкл/выкл и
+           точек нет вовсе. Остаётся страница результатов, она возвращается выше. */
     }
     // The pill's pli/2nd segments and the trial above share this: megareader's setLanguage()
     // (hide-pali/hide-english/... classes) + the same localStorage/cloud bookkeeping as before.
@@ -1537,13 +1636,467 @@
         }
         menu.hidden = false;
     }
+    /* ——— issue #6 этап 3: окно «Переводы» — плоский упорядоченный список ————————————————
+       Один список строк вместо дерева «язык → его переводчики»: строка = один перевод
+       (переводчик + язык), порядок строк = порядок переводов под каждой строкой пали, включая
+       чередование языков ("о·рус, Sujato·англ, SV·рус"), которое старым хранилищем выразить
+       было нельзя. Источник истины — dgReadingStack (megareader.js), всё остальное из него
+       выводится. Применяется сразу; клик мимо окна просто закрывает его. */
+    var TRANS_STR = {
+        title:  { ru: 'Переводы', en: 'Translations' },
+        onNow:  { ru: 'на экране', en: 'on screen' },
+        pali:   { ru: 'только пали', en: 'Pāḷi only' },
+        manual: { ru: 'Мой порядок', en: 'My order' },
+        byLang: { ru: 'По языку', en: 'By language' },
+        byName: { ru: 'По переводчику', en: 'By translator' },
+        setMain:{ ru: 'сделать основным', en: 'set as main' },
+        applied:{ ru: 'Применяется сразу · клик мимо — ', en: 'Applied instantly · click away to ' },
+        close:  { ru: 'закрыть и читать', en: 'close and read' },
+        sorting:{ ru: 'Сортировка временная — ваш порядок цел', en: 'Sorting is temporary — your order is kept' },
+        addLang:{ ru: '+ язык', en: '+ language' },
+        addHint:{ ru: 'Только на эту сессию. Насовсем — в настройках',
+                  en: 'For this session only. For good — in settings' },
+        addLink:{ ru: 'Мои языки', en: 'My languages' },
+        localOnly:{ ru: 'до конца сессии', en: 'until you close the tab' },
+        modeRead: { ru: 'Читать', en: 'Reading' },
+        modeMulti:{ ru: 'Мульти', en: 'Multi' },
+        readNote: { ru: 'правки до конца сессии', en: 'changes last for this session' },
+        multiNote:{ ru: 'сохранится для всех текстов', en: 'saved for every text' },
+        keepIt:   { ru: 'Оставить себе', en: 'Keep this' }
+    };
+    function tsStr(k) { return TRANS_STR[k][menuLang() === 'ru' ? 'ru' : 'en']; }
+    var tsSort = 'manual';
+    var tsAddOpen = false;     // открыт список "какие ещё языки есть у этого текста"
+    var TS_ROW = 44;
+
+    // Окно заменяет старый попап только там, где стек вообще имеет смысл: обычное чтение и
+    // мульти. В memorize/devanagari вторая строка — не перевод, там остаётся прежний попап.
+    // Owner: results use the very same window — one reading set for the whole site, not a second
+    // language-only popover. search-render.js orders each row's translations by that set.
+    function tsActive() {
+        if (currentState() === 'results') return true;
+        var rm = window.READER_MODE;
+        return currentState() === 'reader' && rm && (rm.modeKey === 'single' || rm.modeKey === 'multi');
+    }
+    function tsStack() {
+        // Results: the saved set (like multi); a one-off "Читать" trial belongs to the reader only.
+        var saved = (window.getReadingStack && window.getReadingStack(currentState() === 'results' ? { ignoreTrial: true } : undefined)) || [];
+        if (saved.length) return saved;
+        // Сохранённого набора ещё нет (обычное «Читать»: там набор и не сохраняется) — берём то,
+        // что сервер реально показал, иначе окно открывалось бы пустым при видимом переводе, и
+        // первый же клик не добавлял бы строку, а подменял весь набор.
+        if (currentState() === 'results') {
+            // Nothing saved yet: the priority translator of each language already on screen.
+            return pillLiveLangs.map(tsPriorityKey).filter(Boolean);
+        }
+        var rm = window.READER_MODE;
+        return (rm && Array.isArray(rm.stack)) ? rm.stack.slice() : [];
+    }
+    // «Читать» — одноразовый режим: пришёл в него, поигрался с набором, ушёл на другой текст и
+    // он снова твой обычный. Флаг живёт отдельно от modeKey, потому что tsApply переводит
+    // ридер в multi, чтобы показать больше одной строки — но это не делает правку постоянной.
+    function tsTrialMode() {
+        if (currentState() === 'results') return false;   // results always use the saved set
+        var rm = window.READER_MODE;
+        if (rm && rm.modeKey === 'single') return true;
+        // Примерка уже идёт: ридер временно в multi, но набор записан как временный (на
+        // сессию, megareader.js). Состояние читается из записи, а не кэшируется в переменную —
+        // иначе после явного переключения режима бейдж врал бы до перезагрузки страницы.
+        try {
+            var v = JSON.parse(sessionStorage.getItem('dgReadingStackLocal'));
+            return !!(v && v.trial);
+        } catch (e) { return false; }
+    }
+    function tsAvailable() {
+        if (currentState() === 'results') {
+            var sr = window.DgSearchRender;
+            return (sr && sr.availableTranslators) ? sr.availableTranslators() : [];
+        }
+        var rm = window.READER_MODE;
+        return (rm && Array.isArray(rm.availableTranslators)) ? rm.availableTranslators.slice() : [];
+    }
+    function tsLangOf(key) { return key.slice(0, key.indexOf('_')); }
+    // Языки чтения — ОБЩАЯ настройка (dhammaReaderLangs, та же, что на /settings/), не свой
+    // список окна: включил здесь — включено и там.
+    function tsEnabledLangs() {
+        return (window.getEnabledLangs && window.getEnabledLangs()) || ['en'];
+    }
+    // Глобальный список языков принадлежит /settings/ — окно его НЕ трогает. Язык, которого там
+    // нет, включается здесь как локальный: он живёт на этом тексте (megareader.js setStack кладёт
+    // такой набор в sessionStorage по id сутты) и уходит вместе с ним.
+    function tsIsMine(lang) { return tsEnabledLangs().indexOf(lang) !== -1; }
+    /* Порядок переводчиков внутри языка — один на всё окно: и как идут строки в списке, и кого
+       подставлять, когда язык включают. Правило владельца: сначала «о» (перевод проекта с пали),
+       затем «ред. о» (проектная редактура чужого перевода), дальше — приоритет из
+       configs/reader/translator-priority.json, а кого и там нет — по имени. Для английского это
+       даёт «o», затем Thanissaro (он второй в том же файле), потом остальные. */
+    function tsRank(key) {
+        var lang = tsLangOf(key);
+        if (key === lang + '_o') return 0;
+        if (/\+edited\+o$/.test(key)) return 1;
+        var prio = (window.translatorPriority && window.translatorPriority[lang]) || [];
+        var i = prio.indexOf(key);
+        return i === -1 ? 1e6 : 2 + i;
+    }
+    function tsByRank(a, b) {
+        var d = tsRank(a) - tsRank(b);
+        return d || trnName(a).localeCompare(trnName(b));
+    }
+    function tsPriorityKey(lang) {
+        return tsAvailable().filter(function (k) { return tsLangOf(k) === lang; }).sort(tsByRank)[0] || null;
+    }
+
+    // Строки ездят между слотами фиксированной высоты — этого хватает CSS-перехода
+    // (.dg-ts-row, home.css). Перетаскиваемая строка позиционируется вручную и на время
+    // перетаскивания переход выключен (.is-lift), так что палец ведёт её 1:1, без сглаживания.
+    function tsSetY(row, y) {
+        row.dataset.tsY = y;
+        row.style.transform = 'translate3d(0,' + y + 'px,0)';
+    }
+
+    function tsHost() {
+        var host = document.getElementById('dg-ts');
+        if (host) return host;
+        host = document.createElement('div');
+        host.id = 'dg-ts';
+        host.className = 'dg-ts';
+        host.hidden = true;
+        host.setAttribute('role', 'dialog');
+        host.innerHTML =
+            '<div class="dg-ts-head"><b class="dg-ts-title"></b><span class="dg-ts-count"></span>' +
+            '<span class="dg-ts-mode"></span>' +
+            '<button type="button" class="dg-ts-x" aria-label="✕">✕</button></div>' +
+            '<div class="dg-ts-seg"></div><div class="dg-ts-chips"></div><div class="dg-ts-add-list" hidden></div>' +
+            '<div class="dg-ts-body"><div class="dg-ts-rows"></div></div><div class="dg-ts-foot"></div>';
+        document.body.appendChild(host);
+        host.addEventListener('click', tsClick);
+        host.querySelector('.dg-ts-x').addEventListener('click', function () { tsClose(); });
+        // Клик мимо = «всё, читаю дальше»: применять нечего, всё уже применено.
+        document.addEventListener('pointerdown', function (e) {
+            if (host.hidden) return;
+            if (e.target.closest('#dg-ts') || e.target.closest('.dg-lpill-more')) return;
+            tsClose();
+        }, true);
+        document.addEventListener('keydown', function (e) { if (e.key === 'Escape') tsClose(); });
+        return host;
+    }
+
+    function tsVisibleKeys() {
+        var stack = tsStack(), avail = tsAvailable();
+        // стек первым (в своём порядке), затем всё остальное, что есть у этого текста
+        // Выбранные — в своём порядке (его задаёт пользователь), остальные — по правилу выше.
+        var keys = stack.filter(function (k) { return avail.indexOf(k) !== -1; });
+        avail.filter(function (k) { return keys.indexOf(k) === -1; }).sort(tsByRank)
+            .forEach(function (k) { keys.push(k); });
+        var pool = tsEnabledLangs().concat(stack.map(tsLangOf));
+        keys = keys.filter(function (k) { return pool.indexOf(tsLangOf(k)) !== -1; });
+        // Список переводчиков не прячем НИКОГДА: он и есть содержимое окна. Раньше он гасился,
+        // пока открыт список языков, — и когда добавлять становилось нечего, кнопка "+ язык"
+        // исчезала вместе с единственным способом его вернуть: окно оставалось с одними чипами.
+        if (tsSort === 'name') keys.sort(tsByRank);
+        if (tsSort === 'lang') keys.sort(function (a, b) {
+            var la = tsLangOf(a), lb = tsLangOf(b);
+            return la === lb ? tsByRank(a, b) : la.localeCompare(lb);
+        });
+        return keys;
+    }
+
+    function tsRender() {
+        var host = tsHost();
+        if (host.hidden) return;
+        var stack = tsStack(), keys = tsVisibleKeys(), rows = host.querySelector('.dg-ts-rows');
+        host.querySelector('.dg-ts-title').textContent = tsStr('title');
+        host.querySelector('.dg-ts-count').textContent = stack.length
+            ? '· ' + stack.length + ' ' + tsStr('onNow') : '· ' + tsStr('pali');
+        // Какой это режим — видно сразу, потому что от него зависит судьба правок: в «Читать»
+        // они живут до следующего текста, в «Мульти» остаются насовсем.
+        var trial = tsTrialMode();
+        var modeEl = host.querySelector('.dg-ts-mode');
+        modeEl.className = 'dg-ts-mode' + (trial ? ' is-trial' : '');
+        modeEl.textContent = trial ? tsStr('modeRead') : tsStr('modeMulti');
+        modeEl.title = trial ? tsStr('readNote') : tsStr('multiNote');
+        modeEl.hidden = currentState() !== 'reader';   // results have no reading mode
+        host.querySelector('.dg-ts-seg').innerHTML = ['manual', 'lang', 'name'].map(function (m) {
+            return '<button type="button" data-ts-sort="' + m + '" aria-pressed="' + (tsSort === m) + '">' +
+                esc(tsStr(m === 'manual' ? 'manual' : m === 'lang' ? 'byLang' : 'byName')) + '</button>';
+        }).join('');
+        // Чипы — это языки чтения (общая настройка), а не фильтр списка: нажал — язык появился
+        // в тексте своим приоритетным переводчиком, нажал ещё раз — ушёл. "+ язык" открывает
+        // остальные языки, в которых этот текст вообще есть.
+        var enabled = tsEnabledLangs();
+        var stackLangs = stack.map(tsLangOf);
+        // Each language once: two translators of a language outside "my languages" used to add its chip twice.
+        enabled = enabled.concat(stackLangs.filter(function (l, i) { return enabled.indexOf(l) === -1 && stackLangs.indexOf(l) === i; }));
+        var textLangs = [];
+        tsAvailable().forEach(function (k) { if (textLangs.indexOf(tsLangOf(k)) === -1) textLangs.push(tsLangOf(k)); });
+        host.querySelector('.dg-ts-chips').innerHTML = enabled.map(function (l) {
+            var on = stackLangs.indexOf(l) !== -1;
+            var missing = textLangs.indexOf(l) === -1;   // этот текст в этот язык не переведён
+            var local = !tsIsMine(l);
+            return '<button type="button" class="dg-ts-chip' + (missing ? ' is-missing' : '') + (local ? ' is-local' : '') +
+                '" data-ts-lang="' + esc(l) + '"' + (missing ? ' disabled' : '') +
+                (local ? ' title="' + esc(tsStr('localOnly')) + '"' : '') +
+                ' aria-pressed="' + on + '">' + esc(LANG_LABEL[l] || l) + (local ? ' •' : '') + '</button>';
+        }).join('') +
+            (textLangs.some(function (l) { return enabled.indexOf(l) === -1; })
+                ? '<button type="button" class="dg-ts-chip dg-ts-add" data-ts-add aria-expanded="' + tsAddOpen + '">' + esc(tsStr('addLang')) + '</button>'
+                : '');
+        var addHost = host.querySelector('.dg-ts-add-list');
+        // Нечего добавлять — список закрывается сам, иначе он висел бы открытым и пустым.
+        if (tsAddOpen && !textLangs.some(function (l) { return enabled.indexOf(l) === -1; })) tsAddOpen = false;
+        addHost.hidden = !tsAddOpen;
+        addHost.innerHTML = !tsAddOpen ? '' :
+            '<p class="dg-ts-add-hint">' + esc(tsStr('addHint')) +
+            ' · <a href="/settings/#langs">' + esc(tsStr('addLink')) + '</a></p>' +
+            textLangs.filter(function (l) { return enabled.indexOf(l) === -1; }).map(function (l) {
+                var n = tsAvailable().filter(function (k) { return tsLangOf(k) === l; }).length;
+                return '<button type="button" class="dg-ts-add-row" data-ts-newlang="' + esc(l) + '">' +
+                    '<span>' + esc(LANG_FULL_NAME[l] || l) + '</span><span class="dg-ts-add-n">' + n + '</span></button>';
+            }).join('');
+
+        rows.innerHTML = keys.map(function (key) {
+            var lang = tsLangOf(key), i = stack.indexOf(key), on = i !== -1;
+            return '<div class="dg-ts-row' + (on ? ' is-on' : '') + '" data-ts-key="' + esc(key) + '">' +
+                '<span class="dg-ts-hnd" data-ts-drag><i></i><i></i><i></i><i></i><i></i><i></i></span>' +
+                '<span class="dg-ts-ord">' + (on ? i + 1 : '') + '</span>' +
+                '<button type="button" class="dg-ts-tick" role="checkbox" aria-checked="' + on + '"></button>' +
+                '<span class="dg-ts-name">' + esc(trnName(key)) + '</span>' +
+                '<span class="dg-ts-tag' + (tsIsMine(lang) ? '' : ' is-local') + '" title="' +
+                (tsIsMine(lang) ? '' : esc(tsStr('localOnly'))) + '">' + esc(LANG_LABEL[lang] || lang) +
+                (tsIsMine(lang) ? '' : ' •') + '</span>' +
+                '<button type="button" class="dg-ts-star' + (stack[0] === key ? ' is-main' : '') + '" title="' +
+                esc(tsStr('setMain')) + '">' + (stack[0] === key ? '★' : '☆') + '</button>' +
+                '</div>';
+        }).join('');
+        rows.classList.toggle('is-sorted', tsSort !== 'manual');
+        var y = 0;
+        rows.querySelectorAll('.dg-ts-row').forEach(function (row) {
+            tsSetY(row, y);
+            y += TS_ROW;
+        });
+        rows.style.height = y + 'px';
+        host.querySelector('.dg-ts-foot').innerHTML = tsSort !== 'manual'
+            ? esc(tsStr('sorting'))
+            : (trial
+                // В «Читать» важнее не «клик мимо», а то, что набор одноразовый — и как его
+                // всё-таки оставить себе, если понравилось.
+                ? esc(tsStr('modeRead')) + ' — ' + esc(tsStr('readNote')) +
+                  ' · <button type="button" class="dg-ts-keep" data-ts-keep>' + esc(tsStr('keepIt')) + '</button>'
+                : esc(tsStr('applied')) + '<b>' + esc(tsStr('close')) + '</b>');
+        tsPlace();
+    }
+
+    // Десктоп: окно висит над «···», как и старый попап. Мобильный: шторка снизу во всю ширину
+    // (позиция задана в CSS), считать нечего.
+    function tsPlace() {
+        var host = document.getElementById('dg-ts');
+        var pillHost = document.getElementById('dg-langpill');
+        if (!host) return;
+        if (window.innerWidth < 768) {
+            // Снять посадку у кнопки: инлайновые right/bottom с десктопа переживают смену
+            // ширины и побеждают CSS шторки (left:0;right:0) — окно оставалось узким слева.
+            host.style.right = host.style.bottom = '';
+            return;
+        }
+        if (!pillHost) return;
+        var r = pillHost.getBoundingClientRect();
+        host.style.right = Math.round(window.innerWidth - r.right) + 'px';
+        host.style.bottom = Math.round(window.innerHeight - r.top + 8) + 'px';
+    }
+
+    function tsOpen() {
+        var host = tsHost();
+        host.hidden = false;
+        document.body.classList.add('dg-ts-open');
+        tsRender();
+    }
+    function tsClose() {
+        var host = document.getElementById('dg-ts');
+        if (!host || host.hidden) return;
+        host.hidden = true;
+        document.body.classList.remove('dg-ts-open');
+    }
+    function tsToggle() {
+        var host = document.getElementById('dg-ts');
+        if (host && !host.hidden) { tsClose(); return; }
+        tsOpen();
+    }
+
+    /* Применить: записать стек и перестроить текст, не сдвинув читаемую строку. Перезагрузки
+       нет — это тот же buildSutta(), что и у переключения режимов. */
+    var tsBusy = false, tsPending = null;
+    function tsApply(next) {
+        if (currentState() === 'results') {
+            window.setReadingStack(next);
+            // The old popover's per-language hiding would fight the set — the set decides now.
+            dgSetResultsLangVisibility([], []);
+            tsRender();
+            // Main translation in another language = switch the site to it, as the old popover's
+            // pin did (the table rebuilds on that change anyway); otherwise just redraw the rows.
+            var first = next.length ? tsLangOf(next[0]) : null, i18n = window.DHAMMA_I18N;
+            if (first && i18n && i18n.setLanguage && first !== (i18n.language || localStorage.getItem('dhammaLanguage'))) {
+                i18n.setLanguage(first);
+            } else {
+                document.dispatchEvent(new CustomEvent('dg:readingstackchange'));
+            }
+            return;
+        }
+        var rm = window.READER_MODE, slug = window._currentSlug;
+        if (!rm || !slug || typeof window.buildSutta !== 'function') return;
+        window.setReadingStack(next, tsTrialMode() ? { local: true } : undefined);
+        tsRender();
+        // Быстрые клики не теряются: пока идёт перестроение, последний выбор ждёт своей очереди,
+        // иначе текст остался бы на предпоследнем состоянии галочек.
+        if (tsBusy) { tsPending = next; return; }
+        tsBusy = true;
+        var wantMode = next.length > 1 ? 'multi' : 'single';
+        var firstLang = next.length ? tsLangOf(next[0]) : rm.lang;
+        var params = new URLSearchParams(document.location.search);
+        params.delete('translators');   // стек главнее ссылки, из которой пришли
+        params.delete('langs');
+        params.set('mode', wantMode);
+        rm.modeKey = wantMode;
+        var done;
+        if (firstLang && firstLang !== rm.lang && typeof window.switchReadingLanguage === 'function') {
+            // основной язык сменился — это же и язык интерфейса, switchReadingLanguage сам
+            // сохранит его, перестроит текст и вернёт якорь чтения
+            history.replaceState(history.state, '', document.location.pathname + '?' + params.toString());
+            done = window.switchReadingLanguage(firstLang);
+        } else {
+            params.set('lang', rm.lang);
+            history.replaceState(history.state, '', document.location.pathname + '?' + params.toString());
+            var anchor = window.captureReadingAnchor && window.captureReadingAnchor();
+            done = window.buildSutta(slug).then(function () {
+                if (anchor && window.restoreReadingAnchor) window.restoreReadingAnchor(anchor);
+            });
+        }
+        Promise.resolve(done).then(function () {
+            tsBusy = false;
+            tsRender();
+            if (tsPending) { var again = tsPending; tsPending = null; tsApply(again); }
+        });
+    }
+
+    function tsClick(e) {
+        var row = e.target.closest('.dg-ts-row');
+        var sortBtn = e.target.closest('[data-ts-sort]');
+        if (sortBtn) { tsSort = sortBtn.dataset.tsSort; tsRender(); return; }
+        if (e.target.closest('[data-ts-keep]')) {
+            window.setReadingStack(tsStack());     // с этого момента набор обычный, сохраняемый
+            tsRender();
+            return;
+        }
+        if (e.target.closest('[data-ts-add]')) { tsAddOpen = !tsAddOpen; tsRender(); return; }
+        var newLang = e.target.closest('[data-ts-newlang]');
+        if (newLang) {
+            tsAddOpen = false;
+            var addKey = tsPriorityKey(newLang.dataset.tsNewlang);
+            addKey ? tsApply(tsStack().concat([addKey])) : tsRender();
+            return;
+        }
+        var chip = e.target.closest('[data-ts-lang]');
+        if (chip) {
+            var l = chip.dataset.tsLang;
+            var cur = tsStack();
+            var has = cur.some(function (k) { return tsLangOf(k) === l; });
+            if (has) {
+                var left = cur.filter(function (k) { return tsLangOf(k) !== l; });
+                if (left.length) tsApply(left);          // последний язык не выключаем
+            } else {
+                var key = tsPriorityKey(l);
+                if (key) tsApply(cur.concat([key]));
+            }
+            return;
+        }
+        if (!row) return;
+        var key = row.dataset.tsKey, stack = tsStack().slice();
+        if (e.target.closest('.dg-ts-star')) {                       // основной = первый в списке
+            stack = [key].concat(stack.filter(function (k) { return k !== key; }));
+            tsApply(stack);
+            return;
+        }
+        if (e.target.closest('.dg-ts-tick') || e.target.closest('.dg-ts-name')) {
+            var i = stack.indexOf(key);
+            if (i === -1) stack.push(key); else stack.splice(i, 1);
+            if (!stack.length) stack = [key];                        // хотя бы один перевод остаётся
+            tsApply(stack);
+        }
+    }
+
+    /* Перетаскивание строк: палец ведёт строку 1:1, соседи разъезжаются пружинами, на отпускании
+       слот выбирается по спроецированной инерции, а не по точке отпускания. */
+    var tsDrag = null;
+    document.addEventListener('pointerdown', function (e) {
+        var handle = e.target.closest('[data-ts-drag]');
+        if (!handle || tsSort !== 'manual') return;
+        var row = handle.closest('.dg-ts-row');
+        var rows = [].slice.call(row.parentNode.querySelectorAll('.dg-ts-row'));
+        e.preventDefault();
+        handle.setPointerCapture(e.pointerId);
+        row.classList.add('is-lift');   // сначала класс, потом замер: он снимает переход
+        var startY = parseFloat(row.dataset.tsY) || 0;
+        tsDrag = {
+            row: row, rows: rows, keys: rows.map(function (r) { return r.dataset.tsKey; }),
+            index: rows.indexOf(row), grabY: e.clientY, startY: startY, y: startY
+        };
+    });
+    document.addEventListener('pointermove', function (e) {
+        if (!tsDrag) return;
+        var max = (tsDrag.keys.length - 1) * TS_ROW;
+        var y = tsDrag.startY + (e.clientY - tsDrag.grabY);
+        if (y < 0) y = (y * TS_ROW * 0.55) / (TS_ROW + 0.55 * Math.abs(y));           // резина у краёв
+        if (y > max) { var o = y - max; y = max + (o * TS_ROW * 0.55) / (TS_ROW + 0.55 * o); }
+        tsDrag.y = y;
+        tsDrag.row.style.transform = 'translate3d(0,' + y + 'px,0)';
+        var want = Math.max(0, Math.min(tsDrag.keys.length - 1, Math.round(y / TS_ROW)));
+        if (want !== tsDrag.index) {
+            tsDrag.keys.splice(tsDrag.index, 1);
+            tsDrag.keys.splice(want, 0, tsDrag.row.dataset.tsKey);
+            tsDrag.index = want;
+            tsDrag.keys.forEach(function (k, i) {
+                var r = tsDrag.rows.find(function (x) { return x.dataset.tsKey === k; });
+                if (r && r !== tsDrag.row) tsSetY(r, i * TS_ROW);
+            });
+        }
+    });
+    function tsEndDrag() {
+        if (!tsDrag) return;
+        var d = tsDrag; tsDrag = null;
+        d.row.classList.remove('is-lift');   // вернуть переход: строка доедет до своего слота
+        tsSetY(d.row, d.index * TS_ROW);     // соседей pointermove уже расставил
+        // порядок в тексте = порядок включённых строк; выключенные в стек не попадают
+        var stack = tsStack();
+        var next = d.keys.filter(function (k) { return stack.indexOf(k) !== -1; });
+        if (next.length && next.join() !== stack.join()) tsApply(next);
+    }
+    document.addEventListener('pointerup', tsEndDrag);
+    document.addEventListener('pointercancel', tsEndDrag);
+    window.addEventListener('resize', tsPlace);
+
     function dgRenderLangPill() {
         var host = document.getElementById('dg-langpill');
         var sutta = document.getElementById('sutta');
         var st = currentState();
         // Results too (owner: "в результатах старая кнопка"): there the pill drives langswitch.js
         // (the hidden legacy #language-button) instead of megareader's setLanguage().
-        if (!((st === 'reader' && sutta) || st === 'results')) {
+        // Owner: "на ошибках типа ничего не найдено и недоступен — не надо" — a Pāli/translation
+        // TOGGLE is meaningless with no quotes on screen to toggle (0 exact matches, AI-search
+        // "unavailable"/genuinely-empty states — all call dgSetState('results') with #pali hidden,
+        // see ai-search.js). Checking classList.contains('d-none') rather than just querying for
+        // .quote[lang] elements: #pali is a DataTables singleton (buildDataTable never destroys/
+        // rebuilds it, only shows/hides it, see search-render.js) — a PREVIOUS real search's rows
+        // can still be sitting in the DOM, just hidden, so their mere existence doesn't mean
+        // THIS screen has anything to show.
+        // Owner: "предложение слов - кнопка языка" — the AI-search "did you mean" word-chips-only
+        // outcome (#ai-words, ai-search.js) counts as real content too, same as a sutta table —
+        // only the two truly-empty/error outcomes should hide the pill.
+        var paliEl = document.getElementById('pali');
+        var aiWordsEl = document.getElementById('ai-words');
+        var hasResultsContent = st === 'results' && (
+            (!!paliEl && !paliEl.classList.contains('d-none') && !!paliEl.querySelector('.quote[lang]'))
+            || (!!aiWordsEl && !aiWordsEl.classList.contains('d-none') && aiWordsEl.children.length > 0)
+        );
+        if (!((st === 'reader' && sutta) || hasResultsContent)) {
             if (host) host.hidden = true;
             var openMenu = document.getElementById('dg-lpmenu');
             if (openMenu) openMenu.hidden = true;
@@ -1576,7 +2129,7 @@
         // Owner: "доп кнопку показывать во всех режимах чтения и в результатах, если уже есть
         // больше одного активированного языка" — a mode like single/memorize/devanagari (or the
         // results listing) only ever renders ONE language at a time, so `langs` above stays
-        // length 1 there even for a user who already turned on several languages via multiLang.
+        // length 1 there even for a user who already turned on several languages via multi.
         // dgReadingLangOrder (megareader.js LANG_ORDER_KEY) is that persisted set — read directly
         // here (not via megareader.js's getLangOrder(), which isn't guaranteed loaded outside the
         // reader) so the dots button reflects "already activated", not just "on screen right now".
@@ -1596,7 +2149,7 @@
             host.addEventListener('click', function (e) {
                 var b = e.target.closest('button');
                 if (!b) return;
-                if (b.classList.contains('dg-lpill-more')) { dgToggleLangMenu(); return; }
+                if (b.classList.contains('dg-lpill-more')) { tsActive() ? tsToggle() : dgToggleLangMenu(); return; }
                 // Memorize/devanagari: only the "2nd" button is rendered at all (see
                 // dgRenderLangPill above) — a plain on/off, main line always stays on.
                 if (dgPaliLockedReaderMode()) {
@@ -1658,7 +2211,9 @@
             host.innerHTML =
                 '<button type="button" data-k="pli" aria-pressed="true">Pāḷi</button>' +
                 '<button type="button" data-k="2nd" aria-pressed="true">' + esc(label) + '</button>' +
-                (langs.length > 1
+                // "···" is the only door to the translations window now — it has to be there even
+                // when the text is showing a single language, or there is no way to add a second.
+                (langs.length > 1 || tsActive()
                     ? '<button type="button" class="dg-lpill-more" title="' + esc(langMenuStr('title')) + '" aria-label="' + esc(langMenuStr('title')) + '"><span class="dg-dots" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span></button>'
                     : '');
         }
@@ -1959,8 +2514,23 @@
         var left = Math.min(Math.max(margin, r.right - width), window.innerWidth - width - margin);
         sheet.style.width = width + 'px';
         sheet.style.left = left + 'px';
-        sheet.style.top = (r.bottom + 8) + 'px';
-        sheet.style.maxHeight = Math.max(220, window.innerHeight - r.bottom - 24) + 'px';
+        // Owner: "должны открываться вниз без прокрутки по максимуму... сейчас багово на главной"
+        // — strictly "below the button" left too little room when the anchor (the sliders button,
+        // OR the home screen's ".dg-scope-change" — "change" — link under the search field when
+        // that button is hidden there, see openQuick() above) sits high on a short page: measured
+        // live on the home screen, 427px available below vs 733px of real content, forcing heavy
+        // internal scroll even though the viewport itself had spare height ABOVE that point too.
+        // Pull the top up (never above `margin` from the viewport edge) just enough to fit the
+        // sheet's own natural height, so it only falls back to internal scrolling once the
+        // content is genuinely taller than the whole viewport, not just the slice below the
+        // anchor. sheet.scrollHeight reads the natural full height regardless of the max-height
+        // clamp set below — the sheet is already visible (openQuick sets hidden=false) and
+        // populated (buildQuickBody already ran) by the time this runs.
+        var naturalHeight = sheet.scrollHeight;
+        var maxTop = window.innerHeight - margin - naturalHeight;
+        var top = Math.min(r.bottom + 8, Math.max(margin, maxTop));
+        sheet.style.top = top + 'px';
+        sheet.style.maxHeight = Math.max(220, window.innerHeight - top - margin) + 'px';
     }
 
     /* External hotkeys (Alt+V/Alt+C/Alt+. in megareader.js/settings.js) change the underlying
@@ -1971,16 +2541,25 @@
         if (isQuickOpen()) buildQuickBody(document.getElementById('dg-quick-body'));
     };
 
-    function openQuick() {
+    // anchorBtn: another gear to hang the same dropdown under — the quick window's own
+    // (quickModal.js #quickSettingsBtn; owner: "идентично, как в инпуте на главной", not a tab).
+    var quickAnchorBtn = null;
+    function openQuick(anchorBtn) {
         closeMega();
         ensureQuick();
         var sheet = document.getElementById('dg-quick');
         var backdrop = document.getElementById('dg-sheet-backdrop');
-        var btn = document.getElementById('dg-quick-btn');
+        var btn = anchorBtn || document.getElementById('dg-quick-btn');
         // Home screen hides the sliders button inside the field (production-v4 redesign) and
         // opens this sheet from the "изменить" link under it instead — a display:none button has
         // no box to anchor to, so anchor to the link in that case.
-        if (btn && !btn.offsetParent) btn = document.querySelector('.dg-scope-change') || btn;
+        if (!anchorBtn && btn && !btn.offsetParent) btn = document.querySelector('.dg-scope-change') || btn;
+        quickAnchorBtn = btn;
+        // The quick window sits at z-index 10000, above every sheet: lift the dropdown and its
+        // transparent backdrop over it, so a click beside the dropdown closes only the dropdown.
+        var aboveModal = !!(btn && btn.closest && btn.closest('.quick-modal-container'));
+        sheet.classList.toggle('dg-above-quick-modal', aboveModal);
+        if (backdrop) backdrop.classList.toggle('dg-above-quick-modal', aboveModal);
         sheet.hidden = false;
         document.getElementById('dg-quick-title').textContent = t('quick.title', 'Быстрые настройки');
         buildQuickBody(document.getElementById('dg-quick-body'));
@@ -2183,22 +2762,24 @@
     // in the burger drawer (not a cramped floating modal), full clear words beat vague/short
     // ones: "Standard" didn't say WHAT was standard, and "Multi Trn"/"Multi Lang" were only
     // abbreviated because the old modal had no room.
-    // Owner: режимы — язык-независимые типы (single/multiTran/multiLang/memorize/devanagari),
+    // Owner: режимы — язык-независимые типы (single/multi/memorize/devanagari),
     // язык — отдельная ось (?lang=/?langs=, см. megareader.js). Поэтому описания больше не могут
     // называть конкретный язык ("+ русский"/"+ английский") — они универсальны для любого языка.
     var MODE_TITLES = {
-        single: { ru: 'Один перевод', en: 'One Translation' },
-        multiTran: { ru: 'Мульти перевод', en: 'Multi Translation' },
-        multiLang: { ru: 'Мульти язык', en: 'Multi Language' },
+        single: { ru: 'Читать', en: 'Reading' },
+        multi: { ru: 'Мульти', en: 'Multi' },
         memorize: { ru: 'Для запоминания', en: 'For Memorization' },
         // Owner: this one row's name stays quoted — "Devanagari" is used loosely for the whole
         // mode (any non-Latin script, not literally the Devanagari script), quotes flag that.
         devanagari: { ru: '"Деванагари"', en: '"Devanagari"' }
     };
+    // issue #6: multiTran и multiLang слились в «Мульти» — набор языков и переводчиков теперь
+    // один, а разница между пунктами не в том, ЧТО можно включить, а в том, запоминается ли это:
+    // «Читать» всегда открывается на основном языке (включённое сверх — до конца текста),
+    // «Мульти» открывается на сохранённом наборе.
     var MODE_DESCRIPTIONS = {
-        single: { ru: 'Pāḷi + перевод', en: 'Pāḷi + translation' },
-        multiTran: { ru: 'Pāḷi + перевод (2 переводчика)', en: 'Pāḷi + translation (2 translators)' },
-        multiLang: { ru: 'Pāḷi на нескольких языках перевода', en: 'Pāḷi in multiple translation languages' },
+        single: { ru: 'Всегда на основном языке', en: 'Always in your main language' },
+        multi: { ru: 'Сохранённый набор языков и переводчиков', en: 'Your saved set of languages and translators' },
         memorize: { ru: 'Мнемоника по первой букве', en: 'First-letter mnemonic' },
         devanagari: { ru: 'Pāḷi в другом письме + Pāḷi латиницей', en: 'Pāḷi in another script + Pāḷi in Roman' }
     };
@@ -2222,7 +2803,7 @@
         if (hotkey) {
             var hk = document.createElement('span');
             hk.className = 'dg-mode-row-hotkey';
-            hk.textContent = 'Alt+' + hotkey;
+            hk.textContent = 'Alt+Shift+' + hotkey;
             top.appendChild(hk);
         }
         row.appendChild(top);
@@ -2287,8 +2868,8 @@
         list.innerHTML = '';
         var lang = menuLang() === 'ru' ? 'ru' : 'en';
 
-        // Owner: mode-table.json keys are language-independent types now (single/multiTran/
-        // multiLang/memorize/devanagari) — no more per-language duplicate keys (was st/mt/ml vs
+        // Owner: mode-table.json keys are language-independent types now (single/multi/
+        // memorize/devanagari) — no more per-language duplicate keys (was st/mt/ml vs
         // read/ee), so the "задублировались, пункты по два раза" family-filter this list used to
         // need doesn't apply anymore: exactly one row per type, always. Switching the reading
         // language is a separate, existing control (the language toggle), not this list's job.
@@ -2296,9 +2877,14 @@
         // одинаковом порядке режимы... они должны быть расположены в том же порядке в котором
         // идут их горячие клавиши" — sort by hotkey digit (settings.js — one source of truth for
         // both), same order in every language.
+        // Показываем только режимы, которые знает ЭТА сборка (у каждого есть цифра-хоткей,
+        // settings.js MODE_HOTKEY_DIGITS — тот же источник, по которому список и сортируется).
+        // issue #6: mode-table.json отдаётся с max-age=3600, поэтому после выката ключей
+        // (multiTran/multiLang уехали в multi) браузер до часа отдаёт старую таблицу из HTTP-кеша
+        // — без этого фильтра в меню висели два мёртвых пункта, которые ничего не переключают.
         var hotkeyDigits = window.MODE_HOTKEY_DIGITS || {};
-        var types = Object.keys(modeTable).filter(function (k) { return k !== 'availableLangs'; })
-            .sort(function (a, b) { return (hotkeyDigits[a] || 0) - (hotkeyDigits[b] || 0); });
+        var types = Object.keys(modeTable).filter(function (k) { return !!hotkeyDigits[k]; })
+            .sort(function (a, b) { return hotkeyDigits[a] - hotkeyDigits[b]; });
         types.forEach(function (type) {
             var isActive = readerMode.modeKey === type;
             var titleInfo = MODE_TITLES[type];
@@ -2407,6 +2993,28 @@
         if (back) back.addEventListener('click', closeDrawer);
         var close = document.querySelector('#dg-drawer .dg-drawer-close');
         if (close) close.addEventListener('click', closeDrawer);
+        // issue #5: navigator.share() opens the native OS sheet (Android/iOS/most mobile
+        // browsers); desktop browsers that lack it fall back to copying the current URL, same
+        // idea as copyToClipboard.js's "Copy Link" elsewhere on the page (kept independent here —
+        // that one is scoped to a specific quote's citation link, this is just "this page").
+        var shareBtn = document.querySelector('#dg-drawer .dg-drawer-share');
+        if (shareBtn) {
+            shareBtn.addEventListener('click', function () {
+                var url = window.location.href;
+                var title = document.title;
+                if (navigator.share) {
+                    navigator.share({ title: title, url: url }).catch(function () { /* user cancelled — not an error */ });
+                    return;
+                }
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(url).then(function () {
+                        if (typeof window.showBubbleNotification === 'function') {
+                            window.showBubbleNotification(t('menu.linkCopied', 'Ссылка скопирована'));
+                        }
+                    });
+                }
+            });
+        }
         var drawer = document.getElementById('dg-drawer');
         if (drawer) {
             // Пункт «помощь» открывает bootstrap-модалку — меню при этом должно уйти само.
@@ -2416,6 +3024,13 @@
         }
         document.addEventListener('keydown', function (e) {
             if (e.key === 'Escape') closeDrawer();
+            // Alt+M opens/closes the burger menu (owner). By code, not key: Option+M on macOS
+            // produces "µ", and a non-Latin layout another letter. Punctuation stays on Alt+. / Alt+,.
+            if (e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey && e.code === 'KeyM') {
+                e.preventDefault();
+                var d = document.getElementById('dg-drawer');
+                if (d && !d.hidden && d.classList.contains('show')) closeDrawer(); else openDrawer();
+            }
         });
     }
 
@@ -2691,12 +3306,17 @@
     }
 
     // Первое незакрытое объявление — общая точка и для показа, и для расчёта задержки.
+    // Запись с "enabled": false пропускается: в JSON нет комментариев, а объявление, которое
+    // «полежит и потом включим», удобнее держать готовым в этом же файле и включать одной
+    // строкой (enabled: true или просто убрать поле — по умолчанию запись включена).
     function pendingAnnounce() {
         if (!announceData || !announceData.items) return null;
         var done = dismissedAnnounces();
         for (var i = 0; i < announceData.items.length; i++) {
-            var flag = announceFlag(announceData.items[i]);
-            if (flag && done.indexOf(flag) === -1) return announceData.items[i];
+            var item = announceData.items[i];
+            if (item.enabled === false) continue;
+            var flag = announceFlag(item);
+            if (flag && done.indexOf(flag) === -1) return item;
         }
         return null;
     }
@@ -2728,13 +3348,23 @@
         // первом элемент получает display, во втором — стартует transition.
         host.style.display = 'flex';
         requestAnimationFrame(function () { host.classList.add('dg-announce-in'); host.style.display = ''; });
-        host.querySelector('.dg-announce-close').addEventListener('click', function () {
+        function dismissAnnounce() {
             var list = dismissedAnnounces();
             var flag = announceFlag(item);
             if (list.indexOf(flag) === -1) list.push(flag);
             try { localStorage.setItem(ANNOUNCE_KEY, JSON.stringify(list)); } catch (e) { /* приватный режим */ }
             host.classList.remove('dg-announce-in');
             renderAnnounce(); // следующее незакрытое, если оно есть
+        }
+        host.querySelector('.dg-announce-close').addEventListener('click', dismissAnnounce);
+        // An announcement may carry the offline download as a link
+        // (<a href="#offline-download">…</a>, see announcements.json). The click itself is handled
+        // by public/offline/app.js; here it only means the announcement has done its job and should
+        // not keep nagging someone who has just acted on it.
+        host.querySelector('.dg-announce-box').addEventListener('click', function (event) {
+            var link = event.target && event.target.closest
+                ? event.target.closest('a[href="#offline-download"], [data-dg-offline-download]') : null;
+            if (link) dismissAnnounce();
         });
     }
 
@@ -3658,6 +4288,86 @@
         ], active, applyTheme));
     }
 
+    /* issue #5: same localStorage.uiScale key and 70-150/step-10 range as /settings/'s own
+       "Text size" row (settings/index.html #sizeMinus/#sizePlus) — a second, independent
+       implementation because that page is a separate small vanilla-JS document, same as
+       renderThemeSwitch() above duplicates themeswitch.js's own step logic rather than sharing
+       it. Unlike the theme switch, there is no reader/document.documentElement.style.fontSize
+       applied WITHOUT this: settings.js's older #fontDec/#fontInc apply-on-click handler targets
+       ids that only ever existed in the legacy reader-template.html, never on this page — so the
+       saved scale silently never took effect here or in the reader before this. Applying it here
+       on every render (not just on click) is what actually fixes that, whether or not the drawer
+       itself was ever opened this session. */
+    var FONT_SCALE_KEY = 'uiScale';
+    function currentFontScale() {
+        var v = parseInt(localStorage.getItem(FONT_SCALE_KEY), 10);
+        return (v >= 70 && v <= 150) ? v : 100;
+    }
+    /* issue #13 ("непредсказуемо увеличиваются шрифты"): раньше размер применялся как
+       html { font-size: N% }. Это двигает ТОЛЬКО то, что задано в rem — а в этом файле 131
+       размер задан в px против 73 в rem, и ни одно поле/иконка/отступ не задан в rem вовсе.
+       Получалось ровно то, на что жалоба: подпись плитки (rem) росла в полтора раза, её
+       описание (px) не менялось, коробка плитки не менялась тоже — текст вылезал из рамки.
+       Зум масштабирует ВСЁ одинаково: и текст, и рамки, и иконки, и отступы, — то есть ровно
+       "все шрифты и все элементы интерфейса пропорционально". Переписывать 131 объявление в rem
+       не нужно, и отступы это всё равно бы не починило.
+       --dg-zoom рядом — для правил с vw (полосы во всю ширину окна): vw зумом не масштабируются,
+       без деления на него полоса вылезала бы за экран (см. home.css, #dg-hero-band). */
+    // zoom есть везде, кроме Safari до 17 и Firefox до 126 — там свойство просто игнорируется, и
+    // без запасного пути контрол размера на старом iPhone не делал бы РОВНО ничего (хуже, чем
+    // было). Фолбэк — прежний html{font-size}: двигает только rem, но это лучше пустой кнопки.
+    var CAN_ZOOM = !!(window.CSS && CSS.supports && CSS.supports('zoom', '1.5'));
+    function applyUiScale(scale) {
+        var root = document.documentElement;
+        if (!CAN_ZOOM) { root.style.fontSize = scale + '%'; return; }
+        root.style.fontSize = '';
+        root.style.setProperty('--dg-zoom', scale / 100);
+        root.style.zoom = scale / 100;
+    }
+    // Size changed in the settings sheet (an iframe, same tab) — apply it to this page right away.
+    window.addEventListener('storage', function (e) { if (e.key === FONT_SCALE_KEY) renderFontSizeControl(); });
+    function renderFontSizeControl() {
+        var scale = currentFontScale();
+        applyUiScale(scale);
+        var host = document.getElementById('dg-fontsize-ctrl');
+        if (!host) return;
+        host.innerHTML = '';
+        var dec = document.createElement('button');
+        dec.type = 'button';
+        dec.className = 'dg-fontsize-btn';
+        dec.textContent = '−';
+        dec.setAttribute('aria-label', t('menu.fontSizeDec', 'Уменьшить шрифт'));
+        var val = document.createElement('span');
+        val.className = 'dg-fontsize-val';
+        var inc = document.createElement('button');
+        inc.type = 'button';
+        inc.className = 'dg-fontsize-btn';
+        inc.textContent = '+';
+        inc.setAttribute('aria-label', t('menu.fontSizeInc', 'Увеличить шрифт'));
+        function paint() {
+            val.textContent = scale + '%';
+            dec.disabled = scale <= 70;
+            inc.disabled = scale >= 150;
+        }
+        function set(v) {
+            scale = Math.min(150, Math.max(70, v));
+            localStorage.setItem(FONT_SCALE_KEY, scale);
+            applyUiScale(scale);
+            paint();
+        }
+        dec.addEventListener('click', function () { set(scale - 10); });
+        inc.addEventListener('click', function () { set(scale + 10); });
+        paint();
+        host.appendChild(dec);
+        host.appendChild(val);
+        host.appendChild(inc);
+    }
+    // Alt+− / Alt+= (settings.js) step the same scale as the drawer's −/+ buttons.
+    window.dgStepUiScale = function (delta) {
+        localStorage.setItem(FONT_SCALE_KEY, Math.min(150, Math.max(70, currentFontScale() + delta)));
+        renderFontSizeControl();
+    };
+
     // ======================================================================
     // Подсказка под полем
     // ======================================================================
@@ -3696,6 +4406,7 @@
         renderHowTo();
         renderLangSwitch();
         renderThemeSwitch();
+        renderFontSizeControl();
         // Owner screenshot: mode titles ("Standard"/"Multi Trn") stayed in the OLD language
         // after clicking EN/RU inside an already-open drawer — paintReaderModes() only ran from
         // openDrawer(), never on a live language switch while the drawer was already showing.
@@ -3760,6 +4471,20 @@
             quickBtn.addEventListener('click', function () {
                 if (isQuickOpen()) closeQuick(); else openQuick();
             });
+            // ?quick=1 opens Quick settings on load — the docs' dictionary page embeds the reader
+            // this way ("pick a dictionary and try"). Waits until the page has rendered (reader and
+            // results load async, body.dg-busy meanwhile), so the sheet shows the sections of the
+            // view actually on screen.
+            if (new URLSearchParams(window.location.search).get('quick') === '1') {
+                var quickWaits = 0;
+                (function openQuickWhenReady() {
+                    if (document.body.classList.contains('dg-busy') && quickWaits++ < 50) {
+                        setTimeout(openQuickWhenReady, 100);
+                        return;
+                    }
+                    openQuick();
+                })();
+            }
         }
 
         wireDrawer();
@@ -3772,6 +4497,7 @@
         revealAnchorSection(); // прямой заход с хешем в адресе (/#contacts и т.п.)
         renderLangSwitch();
         renderThemeSwitch();
+        renderFontSizeControl();
         syncRestoreLink();
 
         fetch(MENU_URL)
@@ -3849,7 +4575,7 @@
         // screens instead of navigating away — see the dg-drawer-row/settingsButton handler).
         openSettingsSheet: openSettingsSheet,
         closeSettingsSheet: closeSettingsSheet,
-        isSettingsSheetOpen: function () { return settingsSheetOpen; }
+        isSettingsSheetOpen: function () { return settingsSheetOpen || settingsBackPending; }
     };
 
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);

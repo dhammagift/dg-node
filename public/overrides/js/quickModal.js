@@ -6,10 +6,14 @@
 // read as "yet another gear" next to the real settings gear and the quick-settings icon (owner:
 // too many gears, confusing).
 
-window.isRu = window.location.pathname.includes('/r/') || 
-                     window.location.pathname.includes('/ru/') || 
-                     window.location.pathname.includes('/ml/') || 
-                     window.location.pathname.includes('/mt/');
+// The SPA serves Russian at /mn1?lang=ru (the /ru/ prefix redirects there), so the path alone said
+// "English" and the quick window's own labels stayed English on the Russian site. Same saved-language
+// fallback as search/index.html's early isRu.
+window.isRu = window.location.pathname.includes('/r/') ||
+                     window.location.pathname.includes('/ru/') ||
+                     window.location.pathname.includes('/ml/') ||
+                     window.location.pathname.includes('/mt/') ||
+                     localStorage.getItem('dhammaLanguage') === 'ru';
 // Делаем переменные глобальными для доступа из других скриптов
 window.isQuickModalRendered = false;
 window.quickModalIsOpen = false;
@@ -58,9 +62,7 @@ function buildQuickModalDOM() {
   const currentPath = window.location.pathname;
   let currentUrl = window.location.href;
   let urlWithoutParams = currentUrl.split('?')[0];
-  let queryBase = urlWithoutParams.endsWith("/ru/") || urlWithoutParams.endsWith("/r/") 
-    ? "/r/?q=" 
-    : "/read/?q=";
+  let queryBase = "/?q="; // the SPA searches or opens the text itself; legacy /read/ and /r/ are gone
   
   const formAction = currentPath.match(/\/(ru|r)\//) ? '/ru/' : '/';
 
@@ -70,7 +72,9 @@ function buildQuickModalDOM() {
   const favTitleText = window.isRu ? "Избранное" : "Favorites";
   const tabLinksText = "4 Ariyasaccāni";
   const tabMemoText = window.isRu ? "Запоминание" : "Memo";
-  const memoPath = window.isRu ? "/ru/memo/" : "/memo/";
+  // The file, not the folder: the app has no directory resolution and answered /memo/ with its home
+  // page — the Memo tab ran a search for "memo" (tablet test). The site serves both the same way.
+  const memoPath = window.isRu ? "/ru/memo/index.html" : "/memo/index.html";
   const tabDpdText = window.isRu ? "Словарь" : "Dict";
   const histTitleText = window.isRu ? "История поиска" : "Search History";
   const titleClearAll = window.isRu ? "Очистить историю" : "Clear history";
@@ -90,8 +94,9 @@ function buildQuickModalDOM() {
 
       <form id="quickSearchForm" class="quick-search-form" action="${formAction}" method="GET">
           <input type="search" name="q" id="quickSearchInput" class="quick-search-input" placeholder="e.g. Kāyagatā or sn56.11" autocomplete="off">
+          <button type="button" id="quickSettingsBtn" class="dg-qs-btn" hidden aria-expanded="false" style="align-self:center;margin-left:-48px;margin-right:6px;position:relative" aria-label="${window.isRu ? 'Быстрые настройки' : 'Quick settings'}" title="${window.isRu ? 'Быстрые настройки' : 'Quick settings'}"></button>
           <button type="submit" id="quickSearchBtn" class="quick-search-btn">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+              <svg style="transform: scaleX(-1)" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
           </button>
       </form>
 
@@ -135,12 +140,10 @@ function buildQuickModalDOM() {
         </h6>
         <div id="quick-history-container"></div>
         
+        <!-- "Common history" link removed — that page no longer exists (owner). -->
         <div class="quick-all-history-wrapper" style="display: flex; justify-content: space-between; align-items: center;">
             <a href="${window.isRu ? '/ru/assets/common/history.html' : '/assets/common/history.html'}" class="quick-all-history-link">
-                ${window.isRu ? "← Ваша история" : "← Your history"}
-            </a>
-            <a href="${window.isRu ? '/ru/history.php' : '/history.php'}" class="quick-all-history-link">
-                ${window.isRu ? "Общая история →" : "Common history →"}
+                ${window.isRu ? "← Вся история" : "← All history"}
             </a>
         </div>
 
@@ -227,6 +230,17 @@ function buildQuickModalDOM() {
   const quickSearchBtn = quickModal.querySelector('#quickSearchBtn');
   const quickSearchInput = quickModal.querySelector('#quickSearchInput');
   const quickSearchForm = quickModal.querySelector('#quickSearchForm');
+
+  // Quick settings: the same gear and the same anchored dropdown as the main search field
+  // (home.js openQuick) — owner: identical to the main input, not a tab inside this window (the
+  // earlier tab version was reverted, 7a3ffc4). Pages without home.js keep the window without it.
+  const quickSettingsBtn = quickModal.querySelector('#quickSettingsBtn');
+  if (window.DgHome && typeof window.DgHome.openQuick === 'function') {
+      quickSettingsBtn.innerHTML = window.DgHome.quickButtonHtml();
+      quickSettingsBtn.hidden = false;
+      quickSearchInput.style.paddingRight = '48px'; // the gear sits inside the field's right end
+      quickSettingsBtn.addEventListener('click', () => window.DgHome.openQuick(quickSettingsBtn));
+  }
 
   quickSearchBtn.addEventListener('contextmenu', (e) => {
       e.preventDefault(); // Отключаем контекстное меню браузера
@@ -604,6 +618,9 @@ window.toggleQuickModal = function(tabKey) {
   }
 
   if (window.quickModalIsOpen) {
+    // A focused field left inside the hidden modal keeps the on-screen keyboard up: on the tablet it
+    // covered half of the text a history link had just opened.
+    if (document.activeElement && window.quickModal.contains(document.activeElement)) document.activeElement.blur();
     window.quickOverlay.classList.remove("open");
     window.quickModal.classList.remove("open");
     window.quickModalIsOpen = false;
@@ -620,10 +637,11 @@ window.toggleQuickModal = function(tabKey) {
         if (openTabBtn) openTabBtn.click();
     }
 
-    // 2. Фокус на инпут для быстрого поиска
+    // 2. Фокус на инпут для быстрого поиска — only with a real keyboard: on a touch screen focusing
+    // pops the on-screen keyboard over the history the reader opened the modal to see.
     setTimeout(() => {
         const searchInput = document.getElementById('quickSearchInput');
-        if (searchInput) searchInput.focus();
+        if (searchInput && !window.matchMedia('(hover: none) and (pointer: coarse)').matches) searchInput.focus();
     }, 100);
 
     // 3. Фоновая синхронизация
@@ -657,3 +675,16 @@ window.addEventListener('storage', (e) => {
         }
     }
 });
+
+// A link followed from inside the modal (a history row, a 4 Ariyasaccāni text) closes it. On a full page
+// load that happened by itself; the SPA and the app open the text in place, and the reader stayed
+// hidden under the still-open modal (tablet test). Capture phase: the app's native-bridge.js handles
+// these links in its own document capture listener and stops propagation, so a bubble listener never ran.
+document.addEventListener('click', (e) => {
+    if (!window.quickModalIsOpen || !window.quickModal || !e.target.closest) return;
+    const a = e.target.closest('a[href]');
+    if (!a || !window.quickModal.contains(a)) return;
+    const href = a.getAttribute('href') || '';
+    if (!href || href.charAt(0) === '#' || /^javascript:/i.test(href)) return;
+    setTimeout(() => { if (window.quickModalIsOpen) window.toggleQuickModal(); }, 0);
+}, true);

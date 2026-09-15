@@ -21,7 +21,9 @@
 (function (global) {
   'use strict';
 
-  var PUNCT = /[.,;:!?'"“”«»—–\-()\[\]…\/]/;
+  /* Also typographic apostrophes and quotes (‘ ’ ‚ ‛ „ ‟ ʼ ` ´): SuttaCentral texts write avisayasmin’ti,
+     bhikkhavo”ti — a query typed without them (avisayasminti) must still match. */
+  var PUNCT = /[.,;:!?'"“”‘’‚‛„‟ʼ`´«»—–\-()\[\]…\/]/;
   var LETTER = /[\p{L}\p{N}]/u;
 
   var DEFAULTS = {

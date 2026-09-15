@@ -48,8 +48,10 @@
   --ui:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
 }
 body.dark{
-  --ink:#E7ECF1; --ink-2:#A7B4C0; --ink-3:#8B99A6;
-  --line:#293441; --line-strong:#3A4753; --surface:#18212B; --canvas:#111820;
+  /* Neutral greys of the site's dark theme (search/css/home.css): blocks are the home tiles'
+     --dg-surface/--dg-border, text is --dg-text/--dg-text-2 — no blue tint of their own. */
+  --ink:#DDDDDD; --ink-2:#A8A8A8; --ink-3:#8A8A8A;
+  --line:#2C2C2C; --line-strong:#3B3B3B; --surface:#191919; --canvas:#141414;
   --page-bg:#111111;
   /* В тёмной теме — прод-зелёный ссылок #09967a ([data-theme="dark"] в assets/css/extrastyles.css),
      как и на главной: #149C7C на тёмном фоне уже теряет контраст. */
@@ -60,12 +62,18 @@ html,body{margin:0}
 html{scroll-padding-top:16px}
 body{font-family:var(--ui);color:var(--ink);background:var(--page-bg);font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
 .wrap{max-width:700px;margin:0 auto;padding:20px 16px 100px}
-.head{display:flex;align-items:baseline;gap:12px}
+/* Owner: one row — back, title, "saves instantly", close. The title never shrinks below its word; the
+   note wraps by words inside itself, and where even that can't fit (phone at a large text size) the
+   note — the only non-essential item — is dropped rather than overlapping the title. */
+.head{display:flex;align-items:center;gap:12px;container-type:inline-size}
 .head-nav{flex:none;align-self:center;width:36px;height:36px;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;color:var(--ink-2);text-decoration:none}
 .head-nav:hover{background:var(--line)}
 .head-nav svg{width:20px;height:20px}
 .head h1{flex:1}
-.head .saved{flex:none;align-self:center}
+.head .saved{flex:0 1 auto;text-align:right;line-height:1.25}
+@container (max-width:330px){.head .saved{display:none}}
+.head-close{border:0;background:transparent;padding:0;cursor:pointer}
+.head-close[hidden]{display:none}
 .head h1{font-size:24px;margin:0;letter-spacing:-.01em}
 .head .saved{font-size:13px;color:var(--ink-3)}
 .head-sub{margin:4px 0 18px;font-size:14px;color:var(--ink-2)}
@@ -80,18 +88,25 @@ body{font-family:var(--ui);color:var(--ink);background:var(--page-bg);font-size:
    непрозрачный (см. ниже) — иначе контент под ним просвечивал бы при скролле. Липкость нужна
    только пока на виду разделы Чтение/Словарь (там реально настраивается то, что видно в
    образце) — дальше (Коренной текст/Озвучка/Данные) она просто занимала бы место без пользы;
-   .preview.not-sticky (JS ниже, по скроллу) снимает position:sticky. */
+   На телефоне при скролле вниз образец сворачивается сам (JS ниже, autoCollapsePreview). */
 /* Фон панели — РОВНО фон ридера, не выдуманный: rus-multi.css задаёт body{background:
    var(--light-off-white)} = rgb(253,253,253) и body.dark{background: var(--off-black)} =
    rgb(4,1,19). Раньше тут стоял песочный #FBF7EF с рамкой #E7DDC9 — цвет, которого нет ни в
    одной таблице стилей сайта; из-за него панель и сам образец внутри неё были разного цвета,
    и образец переставал быть демо ридера. */
 .preview{position:sticky;top:8px;z-index:5;background:rgb(253,253,253);border:1px solid var(--line);border-radius:var(--r-lg);padding:14px 16px;margin-bottom:22px;box-shadow:0 6px 16px -4px rgba(0,0,0,.18)}
-.preview.not-sticky{position:static}
+/* Single column: .preview-col is exactly as tall as the preview, so sticky had no room to stick and
+   the sample scrolled away — the preview sticks to the tall .settings-layout instead. */
+.preview-col{display:contents}
+/* Fold/unfold: an accordion — height is the one sanctioned layout property here. */
+#previewFrame{transition:height 200ms cubic-bezier(0.23,1,0.32,1),opacity 200ms cubic-bezier(0.23,1,0.32,1)}
+.preview.collapsed #previewFrame{height:0!important;opacity:0}
 .preview.collapsed .preview-label{margin-bottom:0}
 #previewCollapse{transition:transform .15s ease}
 .preview.collapsed #previewCollapse{transform:rotate(180deg)}
-body.dark .preview{background:rgb(4,1,19);border-color:var(--line)}
+/* Same as the real dark reader background (extrastyles.css [data-theme="dark"] #111) — the sample
+   inside now renders on it, so the card must match or it reads as a box within a box. */
+body.dark .preview{background:rgb(17,17,17);border-color:var(--line)}
 /* Grid, not flex+space-between: owner wants the sutta id centered in the bar, not clustered
    with the refresh/collapse icons on the right — a 3-column grid (left/center/right) puts it
    in the middle regardless of how wide the left/right clusters are. */
@@ -118,12 +133,23 @@ a#previewRead:hover{color:var(--accent)}
 .group.flash{box-shadow:0 0 0 3px var(--accent);transition:box-shadow .4s ease}
 .group > h2{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);margin:0;padding:14px 18px 10px;font-weight:600}
 .rows{border-top:1px solid var(--line)}
-.row{display:flex;gap:16px;align-items:center;justify-content:space-between;padding:12px 18px;min-height:60px}
+/* Any element with an author `display:flex/inline-flex` rule of equal specificity beats the
+   browser's own `[hidden]{display:none}` (author origin wins ties over user-agent) — JS setting
+   `.hidden=true` on it then does nothing visible. Hit this once already for .nested (line below,
+   narrow patch); #delayRow (.row) and #dictLangSeg (.seg) had the same bug unpatched — owner
+   report: "Задержка" stayed visible with Multi-select off. One global override instead of
+   patching every flex-ish class one at a time. */
+[hidden]{display:none!important}
+.row{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:space-between;padding:12px 18px;min-height:60px}
 .row + .row{border-top:1px solid var(--line)}
-.row-stack{flex-direction:column;align-items:stretch;gap:10px}
+.row-stack{flex-direction:column;flex-wrap:nowrap;align-items:stretch;gap:10px}
 .row-title{font-size:16px;font-weight:500;margin:0}
 .row-desc{font-size:13.5px;color:var(--ink-2);margin:3px 0 0}
-.row-control{flex:none;display:flex;align-items:center;gap:8px}
+/* Controls wrap before the text does: the label keeps at least 10em, anything that doesn't fit
+   beside it drops to its own line, and several buttons wrap among themselves (owner screenshot:
+   "Offline library" squeezed into a word-per-line column next to two buttons). */
+.row:not(.row-stack) > :not(.row-control){flex:1 1 10em;min-width:0}
+.row-control{flex:0 1 auto;flex-wrap:wrap;display:flex;align-items:center;gap:8px}
 .nested{background:color-mix(in srgb,var(--canvas) 60%,var(--surface));border-top:1px solid var(--line);padding:0 18px}
 .nested .row{padding-left:0;padding-right:0;min-height:56px}
 .nested[hidden]{display:none}
@@ -255,33 +281,26 @@ dialog::backdrop{background:rgba(10,16,24,.5)}
 .dlg-search{width:calc(100% - 36px);margin:10px 18px 0;min-height:44px;border:1px solid var(--line-strong);border-radius:var(--r-sm);padding:0 12px;font:inherit;font-size:15px;background:var(--surface);color:var(--ink)}
 kbd{font:inherit;font-size:12.5px;background:var(--line);border:1px solid var(--line-strong);border-radius:6px;padding:2px 6px}
 :where(a,button,select,input,[tabindex]):focus-visible{outline:3px solid var(--accent);outline-offset:2px;border-radius:6px}
+/* Owner: "на больших экранах странно, что демо занимает почти весь экран" — .wrap стал одной
+   узкой колонкой (700px), где .preview просто идёт первым блоком сверху. Ниже 1100px это и
+   остаётся так (мало места — то же поведение, что было). От 1100px и шире — .settings-layout
+   становится строкой: настройки слева (растягиваются), образец фиксированной ширины справа.
+   align-items не переопределяется — родной stretch растягивает .preview-col по высоте
+   .settings-col, иначе sticky (см. .preview{position:sticky}) стикаться было бы негде: у
+   родителя короче содержимого нет пространства для "проезда" вниз при скролле. */
+/* 880, not 1100: the settings sheet on desktop is ~920px wide, and there the sample belongs beside
+   the settings too (owner). */
+@media (min-width:880px){
+  .wrap{max-width:1180px}
+  .settings-layout{display:flex;gap:32px}
+  .preview-col{display:block;flex:0 0 380px;order:2}
+  .settings-col{flex:1;min-width:0;order:1}
+}
 @media (max-width:560px){
-  .row{flex-direction:column;align-items:flex-start;gap:10px}
-  .row-control{width:100%}
-  select.control{max-width:none;width:100%}
-
-  /* Switch AND plain-button rows stay inline even on narrow phones — owner request, extended
-     from switches to buttons after catching the same drop-to-next-line on "Log in" (Cloud row):
-     short button text has no real reason to push itself onto its own line under the label the
-     way a long <select> legitimately might. Scoped to rows whose control is a DIRECT child of
-     .row-control so it does NOT also match the outer .row.row-stack wrapping `sameAsRead`
-     (that outer row's .switch is a deeper descendant, not a direct grandchild — its own
-     .row-stack rule keeps stacking it correctly). select-control rows are untouched, they may
-     legitimately still stack. */
-  .row:has(> .row-control > .switch), .row:has(> .row-control > button){
-    flex-direction:row;
-    align-items:center;
-  }
-  .row:has(> .row-control > .switch) > .row-control,
-  .row:has(> .row-control > button) > .row-control{
-    width:auto;
-    flex:0 0 auto;
-  }
-  .row:has(> .row-control > .switch) > *:not(.row-control),
-  .row:has(> .row-control > button) > *:not(.row-control){
-    min-width:0;
-    flex:1 1 auto;
-  }
+  /* Switches and buttons stay beside the label while it fits (base .row wrap rules); a select
+     takes its own full-width line under the label. */
+  .row-control:has(> select){flex:1 1 100%}
+  select.control{max-width:none;flex:1 1 12em}
 
   /* Drop the desktop fixed-width column for scope group rows (4 Nikāyas/Khuddaka/Vinaya) — no
      room for a 200px+44px+gaps layout on a phone. Back to flexible full-width, triangle pinned
@@ -307,9 +326,18 @@ kbd{font:inherit;font-size:12.5px;background:var(--line);border:1px solid var(--
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
     </a>
     <h1 id="t-title">Настройки</h1><span class="saved" id="t-saved">Сохраняется сразу</span>
+    <!-- Only inside the site's settings sheet (JS below): the sheet has no header bar of its own. -->
+    <button type="button" class="head-nav head-close" id="sheetClose" title="Close" aria-label="Close" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+    </button>
   </div>
   <p class="head-sub" id="t-sub">Значения по умолчанию для поиска и чтения на всём сайте.</p>
 
+  <!-- Один столбец на узких экранах (образец сверху, как раньше) — на широких .settings-layout
+       (CSS ниже) становится строкой из двух колонок, образец уходит направо и остаётся sticky
+       на всю высоту настроек, а не только на ширину узкой колонки. -->
+  <div class="settings-layout">
+  <div class="preview-col">
   <!-- ОБРАЗЕЦ — реальная разметка и настоящие стили сайта (preview-frame.html), в iframe,
        чтобы стили ридера/поиска не задевали стили самой страницы настроек. -->
   <section class="preview" id="preview">
@@ -345,7 +373,9 @@ kbd{font:inherit;font-size:12.5px;background:var(--line);border:1px solid var(--
        deep in the page fired the old notice off-screen at the very top, so it went unseen.
        Position is computed in showReloadNotice() from #preview's live bottom edge. -->
   <p class="reload-notice" id="reloadNotice">⟳ <span id="t-reloadNotice">Обновите страницу поиска/чтения, чтобы изменение вступило в силу.</span><button type="button" class="x" id="reloadNoticeClose" aria-label="Close">✕</button></p>
+  </div>
 
+  <div class="settings-col">
   <!-- ОБЩЕЕ -->
   <section class="group" id="general">
     <h2 id="t-g-general">Общее</h2>
@@ -496,7 +526,13 @@ kbd{font:inherit;font-size:12.5px;background:var(--line);border:1px solid var(--
                того же файла, что читают быстрые настройки (search/js/home.js) — раньше было два
                вручную поддерживаемых списка (плюс третья, JS-only копия подписей ниже по этому
                файлу), разъезжались при добавлении нового режима. -->
-          <div class="row-control"><select id="dictMode" class="control"></select></div>
+          <div class="row-control">
+            <select id="dictMode" class="control"></select>
+            <div class="seg" role="group" aria-label="Dictionary language" id="dictLangSeg" hidden>
+              <button type="button" data-lang="en" aria-pressed="true">En</button>
+              <button type="button" data-lang="ru" aria-pressed="false">Ru</button>
+            </div>
+          </div>
         </div>
         <div class="row">
           <div><p class="row-title" id="t-autoLookup">Искать выделенный текст автоматически</p>
@@ -564,6 +600,17 @@ kbd{font:inherit;font-size:12.5px;background:var(--line);border:1px solid var(--
   <section class="group" id="data">
     <h2 id="t-g-data">Данные</h2>
     <div class="rows">
+      <div class="row" id="dgOfflineLibRow">
+        <div><p class="row-title" id="dgOfflineLibTitle">Офлайн-библиотека</p><p class="row-desc" id="dgOfflineLibDesc">&nbsp;</p></div>
+        <div class="row-control">
+          <button class="btn" type="button" id="dgOfflineLibBtn">Скачать</button>
+          <button class="btn btn-danger" type="button" id="dgOfflineLibDelete" style="display:none">Удалить</button>
+        </div>
+      </div>
+      <div class="row">
+        <div><p class="row-title" id="dgOfflineDocsTitle">Докс офлайн<span class="badge">скоро</span></p><p class="row-desc" id="dgOfflineDocsDesc">&nbsp;</p></div>
+        <div class="row-control"><button class="btn" type="button" id="dgOfflineDocsBtn" disabled>Скачать</button></div>
+      </div>
       <div class="row">
         <div><p class="row-title" id="t-clearHist">История поиска и избранное</p><p class="row-desc" id="t-clearHistDesc">Хранится на устройстве.</p></div>
         <div class="row-control"><button class="btn btn-danger" type="button" id="clearHistBtn">Очистить</button></div>
@@ -574,6 +621,8 @@ kbd{font:inherit;font-size:12.5px;background:var(--line);border:1px solid var(--
       </div>
     </div>
   </section>
+  </div>
+  </div>
 </div>
 
 <!-- ЯЗЫКИ -->
@@ -586,6 +635,9 @@ kbd{font:inherit;font-size:12.5px;background:var(--line);border:1px solid var(--
     <button class="btn btn-primary" type="button" id="langAdd">Добавить</button></div>
 </dialog>
 
+<!-- mode+lang <-> localStorage.selectedDict string, shared with search/js/home.js's quick
+     settings (see dict-mode-shared.js) — must load before this script uses DictModeShared. -->
+<script src="/assets/js/dict-mode-shared.js"></script>
 <script>
 const $ = s => document.querySelector(s);
 const isRu = (localStorage.getItem('dhammaLanguage') || localStorage.getItem('siteLanguage') || 'en') === 'ru';
@@ -687,7 +739,13 @@ function commitLangs(){ langsTouched = true; render(); showReloadNotice(); }
 function showReloadNotice(){
   const el = $('#reloadNotice');
   const preview = $('#preview');
-  el.style.top = (preview.getBoundingClientRect().bottom + 8) + 'px';
+  // left/CSS translateX(-50%) below used to just be page-center, same thing as preview-center
+  // while preview was the only, full-width column — no longer true once .preview-col becomes a
+  // fixed-width right-hand column (see @media min-width:880px above), so center over the
+  // actual preview card instead of the page.
+  const rect = preview.getBoundingClientRect();
+  el.style.top = (rect.bottom + 8) + 'px';
+  el.style.left = (rect.left + rect.width / 2) + 'px';
   el.classList.add('show');
 }
 $('#reloadNoticeClose').addEventListener('click', () => $('#reloadNotice').classList.remove('show'));
@@ -832,20 +890,66 @@ function setTheme(t){
     localStorage.setItem('lightMode', dark ? 'dark' : 'light');
     if (dark) localStorage.setItem('darkSwitch', 'dark'); else localStorage.removeItem('darkSwitch');
   }
+  showTheme(t);
+}
+// Paints a theme without writing anything: used by setTheme() and when the theme changes elsewhere.
+function showTheme(t){
+  const dark = t==='dark' || (t==='auto' && matchMedia('(prefers-color-scheme: dark)').matches);
   document.body.classList.toggle('dark', dark);
+  // The sample frame mirrors this page's theme (preview-frame.html applyTheme); the marker tells
+  // it this page has resolved its theme, the call covers a frame that loaded before that.
+  document.body.classList.add('dg-theme-ready');
+  try { document.getElementById('previewFrame').contentWindow.applyTheme(); } catch (_) {}
   document.querySelectorAll('#themeSeg button').forEach(b=>b.setAttribute('aria-pressed', String(b.dataset.theme===t)));
 }
 document.querySelectorAll('#themeSeg button').forEach(b=> b.onclick=()=> setTheme(b.dataset.theme));
+// The site around this page (the settings sheet's parent, Alt+T there, another tab) changes the
+// theme in localStorage; follow it at once instead of keeping the theme this page opened with.
+addEventListener('storage', e => { if (e.key === 'theme') showTheme(localStorage.getItem('theme') || 'auto'); });
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+  if ((localStorage.getItem('theme') || 'auto') === 'auto') showTheme('auto');
+});
 
-/* Размер текста — тот же живой механизм, что уже использует ридер (settings.js, uiScale):
-   document.documentElement.style.fontSize, диапазон 70–150%, без перезагрузки. */
+/* Размер текста — тот же ключ, что теперь и у стрелок в бургере (issue #5, search/js/home.js
+   renderFontSizeControl()). Раньше applyлился только ВНУТРИ setScale() (то есть только по клику
+   на +/-) — при обычном заходе на страницу с уже сохранённым нестандартным значением ни сам
+   текст страницы, ни цифра в #sizeVal его не подхватывали (оставались 100%, пока не нажать
+   стрелку хоть раз). */
 let scale = parseInt(localStorage.getItem('uiScale')) || 100;
+/* issue #13: масштаб применяется зумом, а не html{font-size} — тот двигал только rem-размеры
+   (подписи росли, описания и коробки нет). Та же функция, что и в бургере поиска/ридера
+   (search/js/home.js applyUiScale) — страница отдельная, поэтому две строки продублированы,
+   как и переключатель темы рядом. */
+var CAN_ZOOM = !!(window.CSS && CSS.supports && CSS.supports('zoom', '1.5'));
+function applyUiScale(v){
+  // Safari < 17 / Firefox < 126 игнорируют zoom — там остаётся прежний html{font-size},
+  // иначе кнопки размера не делали бы ничего вообще (см. search/js/home.js).
+  if (!CAN_ZOOM) { document.documentElement.style.fontSize = v + '%'; return; }
+  // Opened as the settings sheet inside the site, the parent page's zoom already reaches this
+  // iframe — applying the full scale again squared it (130% looked like 169%, the page overflowed).
+  // Only the part the ancestors haven't applied yet is added here.
+  const z = v / 100 / inheritedZoom();
+  document.documentElement.style.fontSize = '';
+  document.documentElement.style.setProperty('--dg-zoom', z);
+  document.documentElement.style.zoom = z;
+}
+// Product of the ancestor documents' own zoom (same-origin frames; a foreign parent counts as 1).
+// ponytail: assumes zoom propagates into iframes (Chromium/WebView — the Android targets).
+function inheritedZoom(){
+  let z = 1, w = window;
+  try { while (w !== w.parent) { w = w.parent; z *= parseFloat(w.document.documentElement.style.zoom) || 1; } } catch (_) {}
+  return z;
+}
+// The parent re-zooms after a change made here (its 'storage' event) — this frame then sees a resize.
+addEventListener('resize', () => applyUiScale(parseInt(localStorage.getItem('uiScale')) || 100));
 function setScale(v){
   scale = Math.min(150, Math.max(70, v));
-  document.documentElement.style.fontSize = scale + '%';
+  applyUiScale(scale);
   localStorage.setItem('uiScale', scale);
   $('#sizeVal').textContent = scale + '%';
 }
+applyUiScale(scale);
+$('#sizeVal').textContent = scale + '%';
 $('#sizeMinus').onclick=()=>setScale(scale-10);
 $('#sizePlus').onclick=()=>setScale(scale+10);
 
@@ -880,9 +984,18 @@ $('#dictOn').checked = localStorage.getItem('dictionaryVisible') !== 'false';
 $('#dictBlock').hidden = !$('#dictOn').checked;
 $('#dictOn').onchange = e=>{ $('#dictBlock').hidden = !e.target.checked; localStorage.setItem('dictionaryVisible', e.target.checked ? 'true' : 'false'); };
 // .value здесь больше не выставляем — #dictMode пуст до fetch(dict-modes.json), renderDictMode()
-// сама помечает нужный option selected при построении. Слушатель — на самом select, переживает
-// renderDictMode()'ю innerHTML='' (та чистит только детей, не сам элемент).
-$('#dictMode').onchange = e=> localStorage.setItem('selectedDict', e.target.value);
+// сама помечает нужный option selected при построении. Слушатели — на самих select/seg, переживают
+// renderDictMode()'ю innerHTML='' (та чистит только детей select, не сам элемент, и не трогает seg).
+$('#dictMode').onchange = e=>{
+  updateDictLangSeg();
+  localStorage.setItem('selectedDict', DictModeShared.composeValue(dictModeGroups, e.target.value, dictLangState));
+};
+$('#dictLangSeg').onclick = e=>{
+  const b = e.target.closest('button'); if(!b) return;
+  dictLangState = b.dataset.lang;
+  updateDictLangSeg();
+  localStorage.setItem('selectedDict', DictModeShared.composeValue(dictModeGroups, $('#dictMode').value, dictLangState));
+};
 
 /* Автопоиск выделения — та же кнопка/ключ, что и "мультивыбор" в ридере (paliLookup.js,
    #toggle-multiselect), не отдельная новая настройка. Задержка — 3 или 5 секунд (2с сочли
@@ -1161,7 +1274,24 @@ $('#uiLang').onchange = e=>{
   location.reload();
 };
 $('#cloudBtn').onclick = ()=> location.href = isRu ? '/ru/login' : '/login';
-$('#voiceBtn').onclick = ()=> location.href = isRu ? '/ru/read/' : '/read/';
+// The voice panel is part of the reader (its speaker icon / Alt+R); the legacy /read/ page this used to
+// open now redirects to the home page, so the button did nothing useful (tablet test). Opened as the
+// settings sheet over a reader: close the sheet and start the reader's player there. Otherwise say where it is.
+$('#voiceBtn').onclick = ()=> {
+  const msg = isRu ? 'Откройте текст и нажмите значок озвучки (или Alt+R)' : 'Open a text and tap the speaker icon (or Alt+R)';
+  try {
+    const host = window.parent !== window ? window.parent : null;
+    const link = host && host.document.querySelector('.voice-link');
+    if (link && typeof host.loadVoiceScripts === 'function') {
+      host.postMessage({ dgSettingsSheetClose: true }, location.origin);
+      host.loadVoiceScripts(() => link.click(), true);
+      return;
+    }
+    if (host && typeof host.showBubbleNotification === 'function') { host.showBubbleNotification(msg, 5000, 'info'); return; }
+  } catch (_) { /* a foreign parent */ }
+  if (typeof window.showBubbleNotification === 'function') window.showBubbleNotification(msg, 5000, 'info');
+  else alert(msg);
+};
 
 /* Ключ Google Cloud TTS — тот же localStorage-ключ, что читает read/js/voice.js
    (GOOGLE_KEY_STORAGE = 'tts_google_key'), просто даём ввести его здесь напрямую, без захода
@@ -1217,21 +1347,30 @@ if(location.hash) setTimeout(()=>goAnchor(location.hash.slice(1)),50);
    (переписывала разметку через applyLang()) — она же добавляла суффикс "(ru)"/"(en)" КАЖДОЙ
    опции поверх заголовка группы, который его и так уже называет (владелец: "не пиши en/ru пять
    раз, только для заголовка"). Теперь один файл на обе страницы —
-   configs/search/dict-modes.json — и подписи внутри группы больше не повторяют её же язык. */
+   configs/search/dict-modes.json — и подписи внутри группы больше не повторяют её же язык.
+   issue #4: DPD-режимы раньше дублировались ЦЕЛИКОМ на en/ru (dictGroupEn/dictGroupRu) — теперь
+   один dictGroupDpd (hasLangToggle) + отдельный тоггл #dictLangSeg для языка словаря. Само
+   mode+lang <-> localStorage-строка преобразование — в /assets/js/dict-mode-shared.js
+   (window.DictModeShared), общее с search/js/home.js — было по копии в каждом файле. */
 let dictModeGroups = null;
+let dictLangState = isRu ? 'ru' : 'en';
+
+function updateDictLangSeg(){
+  const seg = $('#dictLangSeg');
+  if (!seg) return;
+  const g = DictModeShared.groupFor(dictModeGroups, $('#dictMode').value);
+  seg.hidden = !(g && g.hasLangToggle);
+  seg.querySelectorAll('button').forEach(b=>
+    b.setAttribute('aria-pressed', String(b.dataset.lang === dictLangState)));
+}
 function renderDictMode(){
   const dm = $('#dictMode');
   if (!dm || !dictModeGroups) return;
-  const current = dm.value || localStorage.getItem('selectedDict') || 'standalone';
+  const saved = localStorage.getItem('selectedDict') || 'standalone';
+  const split = DictModeShared.splitValue(dictModeGroups, saved);
+  if (split.lang) dictLangState = split.lang;
   dm.innerHTML = '';
-  // Родной язык интерфейса первым (RU-интерфейс -> сперва русская группа DPD, EN -> сперва
-  // английская) — то же поведение, что было у ручного insertBefore() раньше, теперь просто
-  // порядок построения, а не перестановка готовых узлов.
-  const sorted = dictModeGroups.slice().sort((a,b)=>{
-    const rank = g => (isRu ? g.id==='dictGroupRu' : g.id==='dictGroupEn') ? 0 : (g.id==='dictGroupOther' ? 2 : 1);
-    return rank(a) - rank(b);
-  });
-  sorted.forEach(g=>{
+  dictModeGroups.forEach(g=>{
     const group = document.createElement('optgroup');
     group.id = g.id;
     group.label = isRu ? g.labelRu : g.labelEn;
@@ -1239,11 +1378,12 @@ function renderDictMode(){
       const opt = document.createElement('option');
       opt.value = o.value;
       opt.textContent = isRu ? o.ru : o.en;
-      if (o.value === current) opt.selected = true;
+      if (o.value === split.mode) opt.selected = true;
       group.appendChild(opt);
     });
     dm.appendChild(group);
   });
+  updateDictLangSeg();
 }
 fetch('/nodejs/res/dict-modes.json')
   .then(r=>r.json())
@@ -1364,8 +1504,8 @@ function applyLang(){
 
   $('#langSearch').placeholder = t.langSearchPh; $('#langSearch').setAttribute('aria-label', t.langSearchPh);
   document.querySelectorAll('.badge').forEach(b=>b.textContent=t.badgeSoon);
-  // #dictMode целиком строит renderDictMode() (dict-modes.json) — она же решает порядок групп
-  // по isRu, applyLang() сюда лезть не должен: uiLang.onchange делает location.reload() (см.
+  // #dictMode целиком строит renderDictMode() (dict-modes.json), applyLang() сюда лезть не
+  // должен: uiLang.onchange делает location.reload() (см.
   // ниже), а не живую смену — эта функция и так вызывается только один раз за загрузку.
   const sc = $('#script');
   const scriptLabels = {ISOPali:'scriptIast', Brahmi:'scriptBrahmi', Devanagari:'scriptDeva', Sinhala:'scriptSinh', Thai:'scriptThai', BurmeseMyanmar:'scriptMymr'};
@@ -1407,16 +1547,19 @@ $('#previewShuffle').onclick = () => {
 // Свернуть образец — без сохранения (см. разметка выше): просто класс, сбрасывается каждой
 // новой загрузкой страницы. Кнопка сама не двигается вместе с "Читать"/"⟳" — она в том же ряду,
 // но collapsed трогает только #previewFrame и отступ заголовка, не сам ряд кнопок.
-$('#previewCollapse').onclick = () => {
-  const collapsed = $('#preview').classList.toggle('collapsed');
+// The frame height itself folds in CSS (.preview.collapsed #previewFrame, animated).
+function setPreviewCollapsed(collapsed){
+  $('#preview').classList.toggle('collapsed', collapsed);
   const btn = $('#previewCollapse');
-  // Inline style="display:block" on the iframe outranks the stylesheet rule
-  // by specificity, so the CSS class alone can't hide it — toggle it directly too.
-  $('#previewFrame').style.display = collapsed ? 'none' : 'block';
   btn.setAttribute('aria-expanded', String(!collapsed));
   const t = STR[isRu?'ru':'en'];
   const label = collapsed ? t.previewExpand : t.previewCollapse;
   btn.title = label; btn.setAttribute('aria-label', label);
+}
+let autoCollapsed = false; // folded by scrolling, not by the button
+$('#previewCollapse').onclick = () => {
+  autoCollapsed = false;
+  setPreviewCollapsed(!$('#preview').classList.contains('collapsed'));
 };
 
 /* "Назад", не "домой" — переход в /settings/ обычно идёт с уже введённым в поиске словом или
@@ -1444,6 +1587,14 @@ function goBack(e){
 }
 $('#backLink').onclick = goBack;
 $('#backLinkPreview').onclick = goBack;
+// In the settings sheet this header is the only one (owner: no second "Settings" bar above it), so the
+// sheet's close button lives here — same message the back arrow already sends.
+if (window.parent !== window) {
+  const close = $('#sheetClose');
+  close.hidden = false;
+  close.title = isRu ? 'Закрыть' : 'Close'; close.setAttribute('aria-label', close.title);
+  close.onclick = () => window.parent.postMessage({ dgSettingsSheetClose: true }, location.origin);
+}
 
 /* "Читать" в образце — открыть тот же текст в настоящем ридере, если кому-то интересно
    почитать его целиком, а не только фрагмент. preview-frame.html сам не знает своего родителя
@@ -1483,24 +1634,37 @@ window.removeEventListener('message', window.__dgPreviewEarlyHandler);
 window.__dgPreviewMsgQueue = null;
 window.addEventListener('message', handlePreviewMessage);
 
-/* Липкость образца — только пока видны разделы Чтение/Словарь (между ними в разметке лежит
-   Поиск — они идут подряд, так что это один непрерывный диапазон скролла, а не переключение
-   туда-сюда). Дальше Словаря (Коренной текст и ниже) — снимаем sticky, там образцу уже нечего
-   показывать по делу. */
-(function stickyPreviewRange(){
-  const preview = $('#preview'), dict = $('#dict');
-  if (!preview || !dict) return;
+/* Owner: on phones the sticky sample folds away while scrolling down and comes back at the top; in
+   the two-column layout (>=880px) it sits beside the settings and never folds by itself.
+   Edge-triggered, and only past the frame's own height: folding shrinks the page, scroll anchoring
+   then lifts scrollY by about that much — a smaller threshold would land back at the top and unfold
+   it again in a loop. A manual expand while scrolled down is left alone until the next pass. */
+(function autoCollapsePreview(){
+  const wideLayout = window.matchMedia('(min-width:880px)');
+  let armed = true;
   function update(){
-    const pastDict = dict.getBoundingClientRect().bottom < 0;
-    preview.classList.toggle('not-sticky', pastDict);
+    if (wideLayout.matches) return;
+    const y = window.scrollY;
+    if (armed && y > $('#previewFrame').offsetHeight + 60) {
+      armed = false;
+      if (!$('#preview').classList.contains('collapsed')) { setPreviewCollapsed(true); autoCollapsed = true; }
+    } else if (y < 8) {
+      armed = true;
+      if (autoCollapsed) { autoCollapsed = false; setPreviewCollapsed(false); }
+    }
   }
   window.addEventListener('scroll', update, { passive: true });
-  window.addEventListener('resize', update);
-  update();
 })();
+
+// Settings side panel (search/js/home.js) with the live page visible beside it: that page already
+// shows every change, so the sample starts folded (one tap on ︾ brings it back, e.g. on the home
+// page where there is no text). Below 768px the panel is centered over a dimmed page (home.css), so
+// the sample stays open there.
+if (window.parent !== window && window.parent.matchMedia('(min-width: 768px)').matches) setPreviewCollapsed(true);
 
 setTheme(localStorage.getItem('theme') || 'auto');
 applyLang();
 </script>
+<script src="/offline/offline-library-settings.js" defer></script>
 </body>
 </html>

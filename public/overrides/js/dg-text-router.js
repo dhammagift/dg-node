@@ -90,10 +90,60 @@
     //   { type: 'search', query }      — not a recognized reference, run a keyword search.
     //   { type: 'quickmodal', tab }    — open the quick modal on this tab, no other navigation.
     //   { type: 'external', url }      — open this URL in a new tab, no navigation at all.
+    //   { type: 'page', url }          — leave the SPA for one of the site's own pages.
+    //   { type: 'reload' }             — the input changed a setting that only applies on the next
+    //                                     render (the secret force_local switch).
+    // Where the settings page actually lives in THIS build. Normally "/settings/" (the site
+    // resolves the directory), but the app build rewrites every settings link to
+    // "/settings/index.html" — Capacitor has no directory resolution, and a path it cannot resolve
+    // falls back to the root index.html, i.e. the search page. Reading the page's own link back is
+    // what keeps both builds correct without a second table here.
+    function settingsUrl() {
+        var link = document.getElementById('settingsButton');
+        var href = link && link.getAttribute('href');
+        return href || '/settings/';
+    }
+
     function classify(raw) {
         var original = String(raw == null ? '' : raw).trim();
         var q = normalize(raw);
         if (!q) return { type: 'search', query: '' };
+
+        // Bare words that mean "open this page", not "search for this word". Owner typed
+        // "settings" into the search box on the phone and got «ничего не найдено по запросу
+        // Settings» — a query string has no way to become a page without a rule like this one,
+        // and the settings page has no other obvious entry point on a phone (the gear lives in
+        // the burger menu). Same family as the "toc"/"4as" shortcuts below.
+        //
+        // The destination comes from the page's OWN settings link when it is there
+        // (#settingsButton): a native build rewrites it (/settings/ -> /settings/index.html,
+        // because Capacitor does not resolve directories, and a path it cannot resolve silently
+        // loads the search page instead — the "gear opens the search page" bug this project
+        // already fixed once). Reading it back keeps one source of truth for that URL.
+        if (q === 'settings' || q === 'setting' || q === 'настройки') {
+            return { type: 'page', url: settingsUrl() };
+        }
+        // Secret switch for the local-only links (bb, ai, the local TBW mirror). These used to show
+        // up for anyone whose host looked local, which in the Capacitor app is EVERYONE (its origin
+        // is https://localhost) — owner: "нужно изменить логику и сделать какой-то способ включать
+        // это секретно". The flag itself stays the single source of truth (?force_local=1 still
+        // works); this is the quiet way in: type the word in the search box. Nothing in the UI
+        // mentions it, and the words are not guessable search terms.
+        if (q === 'force_local' || q === 'forcelocal') {
+            try { localStorage.setItem('forceLocal', 'true'); } catch (e) { /* private mode */ }
+            return { type: 'reload' };
+        }
+        if (q === 'force_local_off' || q === 'forcelocal_off') {
+            try { localStorage.removeItem('forceLocal'); } catch (e) { /* private mode */ }
+            return { type: 'reload' };
+        }
+
+        // "fav" only — NOT "history"/"favorites": those are ordinary English words a reader may
+        // legitimately search the canon for, and a bare-word rule would hijack such a search
+        // instead of answering it. The quick modal's first tab is already reachable as "4as".
+        if (q === 'fav') {
+            return { type: 'quickmodal', tab: 'tab-fav' };
+        }
 
         // Bare-word shortcuts (owner: "в шорткатах чтобы было toc, pm, bipm, /4as, dict.dg,
         // aksharamukha, dharmamitra" — pm/bipm already existed below, this adds the rest).
@@ -131,8 +181,12 @@
         // Patimokkha, "bi/bipm" = whole Bhikkhuni Patimokkha, bare rule-category code
         // ("pj", "bi-pj", ...) = that category. Trailing "-" marks these as prefixes for the
         // server-side chapter-children lookup (see findChapterChildren in dg-light.js).
-        if (/^(bu|pm|bpm|bupm)$/.test(q)) return { type: 'chapter', id: 'pli-tv-bu-vb-' };
-        if (/^(bi|bipm)$/.test(q)) return { type: 'chapter', id: 'pli-tv-bi-vb-' };
+        // pm/bpm/bupm/bipm are the Pātimokkha itself (same ids as toc.js TOC_ALIASES), not the
+        // Vibhaṅga — they used to open /toc/pli-tv-bu-vb-.
+        if (/^(pm|bpm|bupm)$/.test(q)) return { type: 'chapter', id: 'pli-tv-bu-pm' };
+        if (q === 'bipm') return { type: 'chapter', id: 'pli-tv-bi-pm' };
+        if (q === 'bu') return { type: 'chapter', id: 'pli-tv-bu-vb-' };
+        if (q === 'bi') return { type: 'chapter', id: 'pli-tv-bi-vb-' };
         var bareCat = q.match(new RegExp('^(bi-)?(' + VINAYA_CATS.join('|') + ')$'));
         if (bareCat) {
             return { type: 'chapter', id: 'pli-tv-' + (bareCat[1] ? 'bi' : 'bu') + '-vb-' + bareCat[2] };
@@ -188,5 +242,16 @@
         return { type: 'search', query: original };
     }
 
-    global.DgTextRouter = { normalize: normalize, classify: classify, layoutFix: layoutFix };
+    global.DgTextRouter = {
+        normalize: normalize,
+        classify: classify,
+        layoutFix: layoutFix,
+        // One source of truth for "where is the settings page in this build": the app build
+        // rewrites /settings/ to /settings/index.html (Capacitor does not resolve directories),
+        // so anything that navigates or loads it must ask this instead of hardcoding the path —
+        // a hardcoded /settings/ in the app loads the SEARCH page, which is what "Settings" in the
+        // burger menu turned into (an iframe of the search page, searching for the word
+        // "settings"). Owner-reported.
+        settingsUrl: settingsUrl
+    };
 })(typeof window !== 'undefined' ? window : this);

@@ -1,9 +1,27 @@
-// dg-fastify.js — Fastify port of dg-light.js (see CLAUDE.md), built to A/B-benchmark the two
-// frameworks against IDENTICAL business logic. Everything below that is not framework wiring
-// (grep search engine, translation/TOC resolution, path helpers — the bulk of this file) is a
-// verbatim copy of dg-light.js, never require()'d between the two files (owner: dg-light.js, the
-// live server, must stay byte-identical and untouched — see project memory on mobile isolation,
-// same rule applied here). dg-light.js is NOT modified by this file's existence.
+// dg-fastify.js — the production server (SQLite/FTS5 via dg.db), run under pm2 as "dg-prod".
+// Started life as an A/B port of dg-light.js (the older Express + grep server, see CLAUDE.md)
+// to benchmark the two frameworks on identical business logic; that benchmark is over and this
+// file won. dg-light.js is now legacy/unused — nothing requires() it and nothing runs it in
+// prod — kept in the repo only as reference until it's archived. The two files still don't
+// require() each other (comments below compare behavior for historical/porting context).
+
+// Per-checkout settings (PORT, AI tokens) live in a gitignored .env next to this file, so prod
+// and test checkouts keep their own port no matter how pm2 was started. Real env vars still win.
+try { process.loadEnvFile(require('path').join(__dirname, '.env')); } catch {}
+
+// A git pull can add a dependency without anyone running npm install — then the first require()
+// below crashes the server in a restart loop. Install whatever package.json lists but is missing.
+{
+    const { existsSync } = require('fs');
+    const { join } = require('path');
+    const deps = Object.keys(require('./package.json').dependencies || {});
+    const missing = deps.filter(d => !existsSync(join(__dirname, 'node_modules', d, 'package.json')));
+    if (missing.length) {
+        console.log(`Missing dependencies (${missing.join(', ')}) — running npm install`);
+        require('child_process').execSync('npm install --no-audit --no-fund', { cwd: __dirname, stdio: 'inherit' });
+    }
+}
+
 const { DatabaseSync } = require('node:sqlite');
 const Fastify = require('fastify');
 const fastifyStatic = require('@fastify/static');
@@ -21,6 +39,13 @@ const { default: Aksharamukha, Scripts: AKSH_SCRIPTS } = require('aksharamukha')
 // reused here so a shared link like "an 10.72" (space instead of dot — Android share sheets do
 // this) resolves server-side too, not just when the client's own copy happens to be loaded yet.
 const { DgTextRouter } = require('./public/overrides/js/dg-text-router.js');
+// AI-search fallback (see docs/AI_SEARCH_BRIEF.md) — three independent, optional modules: the
+// route below degrades to "AI unavailable" if any of them throws (missing keys, provider down,
+// friend's MCP server unreachable), it never breaks plain exact search.
+const { normalizeQuery } = require('./core/ai-search.js');
+const { searchHybrid } = require('./core/tipitaka-mcp-client.js');
+const { verifyCandidates, lookupWord } = require('./core/dpd-lookup.js');
+const { mcpHandler } = require('./core/mcp-server.js');
 
 // The search/reader core lives in core/search-core.js — see that file for why. Destructured
 // here so the routes below read exactly as they did when the functions were declared in this
@@ -45,6 +70,8 @@ const {
     findVariantSegments,
     getFullTextData,
     getSuttaBaseData,
+    getSuttaMeta,
+    translatorLangsFallback,
     langFilterSql,
     matchesScope,
     navFor,
@@ -52,11 +79,50 @@ const {
     sortSuttaResults,
     sqlRowsIn,
     stripSearchPunctuation,
+    suggestWords,
+    inCorpusStem,
 } = searchCore;
 
 // bodyLimit mirrors the express.text({limit:'10mb'}) on /assets/lbl-save.php below — Fastify's
 // body limit is instance-wide, not per-route, so it's set here instead.
 const app = Fastify({ bodyLimit: 10 * 1024 * 1024 });
+
+// Legacy reader URLs -> the SPA reader. External sites still link to them (SuttaCentral:
+// "find.dhamma.gift/read/?q=MN1"), so they redirect rather than disappear. Only the pages
+// themselves: /read/js/voice.js and the other files under these prefixes are left alone.
+// /rev/ and /frev/ have no SPA equivalent yet and keep being served as they are. /ru/read/ is
+// turned into /read/?…&lang=ru by the not-found handler first and lands here on the next hop.
+const LEGACY_READERS = {
+    '/read': {}, '/r': { lang: 'ru' }, '/d': { mode: 'devanagari' }, '/memorize': { mode: 'memorize' },
+    '/ml': { mode: 'multi' }, '/mt': { mode: 'multi', lang: 'ru' }, '/multi': { mode: 'multi' },
+    '/th': { lang: 'th' }, '/th/read': { lang: 'th' }, '/mlth': { mode: 'multi', lang: 'th' },
+};
+function legacyReaderRedirect(url) {
+    const [pathPart, queryPart = ''] = url.split('?');
+    const page = pathPart.replace(/\/(index\.(html|php))?$/, '') || '/';
+    const params = new URLSearchParams(queryPart);
+    if (page === '/rv') return '/rev/' + (queryPart ? '?' + queryPart : '');
+    if (page === '/history.php') return '/4as';
+    if (page === '/read.php') return '/toc';
+    const target = LEGACY_READERS[page];
+    if (!target) return null;
+    const q = (params.get('q') || '').trim();
+    params.delete('q');
+    for (const [k, v] of Object.entries(target)) if (!params.has(k)) params.set(k, v);
+    const rest = params.toString();
+    if (!q) return '/' + (rest ? '?' + rest : '');
+    const [base, seg] = q.split(':');
+    const classified = DgTextRouter.classify(base.toLowerCase());
+    if (classified.type === 'text') {
+        return '/' + encodeURIComponent(classified.id) + (seg ? ':' + seg : '') + (rest ? '?' + rest : '');
+    }
+    return '/?q=' + encodeURIComponent(q) + (rest ? '&' + rest : '');
+}
+app.addHook('onRequest', (req, res, done) => {
+    const to = req.method === 'GET' ? legacyReaderRedirect(req.url) : null;
+    if (to) return res.redirect(to, 301);
+    done();
+});
 // 3000 is where production serves from (both dhamma.gift and test.dhamma.gift proxy here);
 // dg-light.js, the legacy Express server, defaults to 3001 so the two can run side by side.
 const PORT = Number(process.env.PORT) || 3000;
@@ -180,6 +246,7 @@ const CACHE_IMAGE = 'public, max-age=86400';
 const CACHE_LEGACY_CODE = 'public, max-age=86400';
 const CACHE_CONFIG_JSON = 'no-cache'; // @fastify/static uses @fastify/send under the hood — real ETag by default, same as Express's serve-static (cache.md)
 const CACHE_STATIC_SHORT = 'public, max-age=36000';
+const CACHE_DB = 'public, max-age=3600'; // 1 h — /mobile-data/*.db; keep in lockstep with dg-light.js's CACHE_DB (same rationale there)
 
 // Anything pulled in by lazy <script> injection (search/index.html's ensureSearchAssets/
 // ensureReaderAssets/ensureTocAssets, paliLookup.js) rather than a static HTML <script src="">
@@ -196,7 +263,9 @@ const UNVERSIONED_LAZY_PATHS = [
     ...['datatables', 'standalone-dpd'].map(dir => path.join(__dirname, 'public', 'overrides', 'js', dir) + path.sep),
     path.join(__dirname, 'public', 'spa') + path.sep,
     path.join(__dirname, 'reader', 'common.js'),
-    path.join(__dirname, 'reader', 'megareader.js')
+    path.join(__dirname, 'reader', 'megareader.js'),
+    // settings.js injects it on first use (History/Favorites): same lazy load, fixes sat cached for a year.
+    path.join(__dirname, 'public', 'overrides', 'js', 'quickModal.js')
 ];
 
 function staticCacheHeaders(reply, filePath) {
@@ -211,6 +280,8 @@ function staticCacheHeaders(reply, filePath) {
         reply.header('Cache-Control', CACHE_IMAGE);
     } else if (['.js', '.css'].includes(ext)) {
         reply.header('Cache-Control', CACHE_LEGACY_CODE);
+    } else if (ext === '.db') {
+        reply.header('Cache-Control', CACHE_DB);
     } else if (ext === '.json') {
         reply.header('Cache-Control', CACHE_CONFIG_JSON);
     } else {
@@ -235,6 +306,27 @@ function staticCacheHeaders(reply, filePath) {
 // потому, что перед ним Apache/nginx сжимают ответы по умолчанию; у этого сервера такого слоя
 // нет, и текстовые ответы уходили НЕСЖАТЫМИ. Регистрируем максимально рано — до всех
 // static-маунтов и роутов ниже, — чтобы сжатие покрывало вообще все ответы.
+// /mobile-data/*.db is served as application/octet-stream (mime-db has no `.db` entry, so
+// @fastify/static/send falls back to that default type) — and @fastify/compress's
+// defaultCompressibleTypes regex lists `octet-stream` explicitly, while its own shouldCompress()
+// ALSO falls back to mime-db, which marks application/octet-stream `compressible: true`. There
+// is no option that REMOVES a type from that set: `customTypes` only adds to it (a custom
+// function returning false still hits the mime-db fallback and returns true). So the
+// /mobile-data route opts out per-route with `compress: false` — documented @fastify/compress
+// behaviour ("Setting compress: false on any route will disable compression on the route even
+// if global compression is enabled"). Verified with curl before this: the 200 carried
+// `content-encoding: br` on the 170 MB-class .db.
+//
+// This onRoute hook MUST be registered BEFORE the compress plugin below: compress adds its OWN
+// onRoute hook, and that hook attaches the compression onSend to each route as it is declared —
+// a hook registered afterwards cannot undo it (verified empirically: with the same hook added
+// after app.register(fastifyCompress), /mobile-data still came back gzipped). dg-light.js gets
+// the same result with a content-type filter on compression(); keep the two in lockstep.
+app.addHook('onRoute', (routeOptions) => {
+    if (typeof routeOptions.url === 'string' && routeOptions.url.startsWith('/mobile-data')) {
+        routeOptions.compress = false;
+    }
+});
 await app.register(fastifyCompress);
 await app.register(fastifyCors, {
     origin: '*',
@@ -344,34 +436,89 @@ app.get('/open', (req, res) => {
 
 // Конвертация системы письма пали (настройка "selectedScript" в /settings/, приходит как
 // ?script= в адресе — тот же параметр, что уже слала кнопка Alt+L, раньше ничего не делавший).
-// Инициализация (~6-8с, поднимает Pyodide/Python-движок в самом Node, без браузера) стартует
-// сразу при загрузке модуля, НЕ блокируя старт сервера — запрос, которому конвертация нужна
-// раньше, чем инициализация закончится, просто дождётся этого же промиса. Один экземпляр на
-// всё время жизни процесса, конвертация после инициализации — единицы-десятки миллисекунд.
 //
-// Owner: "деванагари не работает" — Aksharamukha.new() with no options tries (in order):
-// getCurrentScriptPath() (browser-only, throws in Node) -> loadPyodide() with NO indexURL
-// (this is the one that should just work — the "pyodide" npm package is installed locally,
-// files and all) -> indexURL: <jsdelivr CDN>. In practice the middle branch was resolving to a
-// bogus path (node_modules/src/js/pyodide.asm.wasm — not a real path anywhere in this install,
-// some indexURL-detection quirk in pyodide 0.28.3 when it's reached via aksharamukha's own
-// indirect `new Function(...)("import(...)")` loader) and falling through to the CDN branch,
-// which then ALSO failed (dynamic import() of an https:// URL isn't network-fetched by this
-// Node runtime without --experimental-network-imports — it gets treated as a relative
-// filesystem path instead, hence the "no such file '.../https:/cdn.jsdelivr.net/...'" errors).
-// Loading pyodide ourselves with an explicit LOCAL indexURL sidesteps that whole fallback chain
-// — confirmed working standalone (Evaṁ me sutaṁ -> Devanagari) before wiring it in here.
-const akshReady = (async () => {
-    const { loadPyodide } = require('pyodide');
-    const pyodideDir = path.dirname(require.resolve('pyodide'));
-    // indexURL is used as a URL prefix internally (string-concatenated with filenames), not a
-    // filesystem path — always '/', not path.sep (this project also runs dev on Windows).
-    const pyodide = await loadPyodide({ indexURL: pyodideDir.replace(/\\/g, '/') + '/' });
-    return Aksharamukha.new({ pyodide });
-})().catch(err => {
-    console.error('Aksharamukha init failed (script conversion will be a no-op):', err.message);
-    return null;
-});
+// Aksharamukha runs as native Python (scripts/aksharamukha-convert.py), one short process per
+// request, not Pyodide inside this process. Measured on the server (2026-09-13): Pyodide kept
+// ~240MB of RSS for the life of the process and converted DN 16 in ~10s; the Python script does DN
+// 16 in ~0.7s with a 40MB peak that is gone when it exits (owner: "почему нельзя акшарамукху держать
+// как питон скрипт"). Every text one request needs is queued within the same tick and sent in a
+// single batch, so the call sites below keep converting segment by segment as before.
+//
+// The Python environment lives in a gitignored .venv-aksharamukha next to this file and installs
+// itself in the background the first time the server starts without it (same idea as the missing
+// npm packages above) — until it is ready, conversions return the text unchanged.
+const AKSH_VENV = path.join(__dirname, '.venv-aksharamukha');
+const AKSH_PYTHON = path.join(AKSH_VENV, 'bin', 'python');
+const AKSH_CONVERT = path.join(__dirname, 'scripts', 'aksharamukha-convert.py');
+let akshInstall = null;
+function akshReady() {
+    if (fsSync.existsSync(AKSH_PYTHON)) return true;
+    if (!akshInstall) {
+        console.log('Aksharamukha: installing Python environment in the background (.venv-aksharamukha)');
+        akshInstall = new Promise(resolve => {
+            const { exec } = require('child_process');
+            exec(`python3 -m venv "${AKSH_VENV}" && "${AKSH_VENV}/bin/pip" install -q aksharamukha==2.3`,
+                { timeout: 15 * 60 * 1000 }, err => {
+                    if (err) console.error('Aksharamukha: Python environment install failed:', err.message);
+                    else console.log('Aksharamukha: Python environment ready');
+                    akshInstall = null; // a failed install is retried on the next request that needs it
+                    resolve();
+                });
+        });
+    }
+    return false;
+}
+akshReady();
+
+function runAkshBatch(src, dst, texts) {
+    return new Promise(resolve => {
+        const { execFile } = require('child_process');
+        const child = execFile(AKSH_PYTHON, [AKSH_CONVERT], { timeout: 60000, maxBuffer: 256 * 1024 * 1024 }, (err, stdout) => {
+            if (err) {
+                console.warn(`Aksharamukha: ${src} -> ${dst} failed for ${texts.length} text(s):`, err.message.split('\n')[0]);
+                return resolve(texts);
+            }
+            try {
+                const out = JSON.parse(stdout);
+                resolve(Array.isArray(out) && out.length === texts.length ? out : texts);
+            } catch (e) {
+                console.warn('Aksharamukha: unreadable output:', e.message);
+                resolve(texts);
+            }
+        });
+        child.stdin.end(JSON.stringify({ src, dst, texts }));
+    });
+}
+
+// Queue per src->dst pair, flushed on the next turn of the event loop: all conversions started by
+// one request (Promise.all over its segments) land in the same batch.
+// ponytail: one Python process at a time (chain) — plenty for a handful of script requests a day;
+// allow 2 in parallel if script traffic ever makes requests wait on each other.
+const akshQueue = new Map(); // `${src}>${dst}` -> [{ text, resolve }]
+let akshFlushScheduled = false;
+let akshChain = Promise.resolve();
+function akshConvert(src, dst, text) {
+    if (!akshReady()) return Promise.resolve(text);
+    return new Promise(resolve => {
+        const key = src + '>' + dst;
+        if (!akshQueue.has(key)) akshQueue.set(key, []);
+        akshQueue.get(key).push({ text, resolve });
+        if (akshFlushScheduled) return;
+        akshFlushScheduled = true;
+        setImmediate(() => {
+            akshFlushScheduled = false;
+            const batches = [...akshQueue.entries()];
+            akshQueue.clear();
+            for (const [k, items] of batches) {
+                const [bSrc, bDst] = k.split('>');
+                akshChain = akshChain.then(async () => {
+                    const out = await runAkshBatch(bSrc, bDst, items.map(i => i.text));
+                    items.forEach((item, idx) => item.resolve(out[idx]));
+                });
+            }
+        });
+    });
+}
 // Раньше здесь была маленькая ручная таблица коротких кодов (deva/thai/sinh/mymr) на 4 системы
 // письма — владелец попросил показывать ВСЕ рабочие системы, которые реально умеет Aksharamukha
 // (проверено тестовым прогоном конвертации Pali IAST во все ключи Scripts — из ~163 не упал ни
@@ -386,17 +533,20 @@ for (const key of Object.keys(AKSH_SCRIPTS)) AKSH_SCRIPT_LOOKUP[key.toLowerCase(
 function resolveScriptKey(code) {
     return code ? (AKSH_SCRIPT_LOOKUP[code.toLowerCase()] || null) : null;
 }
+// The main Pali scripts are converted in-process by public/overrides/js/pali-script.js (pure JS,
+// same file the offline app can run on the device) — verified against Aksharamukha on the whole
+// vocab (89k word forms) + 3000 root segments with zero differences, except where Aksharamukha
+// itself is wrong for Pali: it reads ḷ as the Sanskrit vocalic l (ऌ) and a+i/a+u as diphthongs
+// (ै/ौ) because the source is IAST, not IASTPI. Everything else still goes to Python.
+const PaliScript = require('./public/overrides/js/pali-script.js');
 async function convertPaliScript(text, scriptCode) {
     const realKey = resolveScriptKey(scriptCode);
     if (!text || !realKey) return text;
-    const aksh = await akshReady;
-    if (!aksh) return text;
-    try {
-        return await aksh.processAsync(AKSH_SCRIPTS.IAST, AKSH_SCRIPTS[realKey], text);
-    } catch (err) {
-        console.warn(`Aksharamukha: conversion to ${scriptCode} failed:`, err.message);
-        return text;
-    }
+    if (PaliScript.scripts.includes(realKey)) return PaliScript.convert(text, realKey);
+    // ISOPali — the corpus is ISO 15919 Pali (SuttaCentral: ṁ, ḷ, long e/o), which is also why the site
+    // calls its unconverted script "ISOPali". Checked in native Aksharamukha 2.3: IAST reads ḷ as vocalic
+    // ऌ (daḷha -> दऌह), IASTPali leaves ṁ untouched (एवṁ), ISO makes e/o short; ISOPali gets all right.
+    return akshConvert(AKSH_SCRIPTS.ISOPI, AKSH_SCRIPTS[realKey], text);
 }
 
 // Та же конвертация, но для формы ответа /search и /search/enrich: data — по суттам, у каждой
@@ -434,15 +584,32 @@ async function convertScriptInSearchResult(result, scriptCode) {
 app.get('/api/transliterate', async (req, res) => {
     const text = (req.query.text || '').toString();
     if (!text) return res.send({ text: '', converted: false });
-    const aksh = await akshReady;
-    if (!aksh) return res.send({ text, converted: false });
-    try {
-        const converted = await aksh.processAsync(AKSH_SCRIPTS.AutoDetect, AKSH_SCRIPTS.IASTPI, text);
-        return res.send({ text: converted, converted: true });
-    } catch (err) {
-        console.warn('Transliterate to IAST failed:', err.message);
-        return res.send({ text, converted: false });
+    if (!akshReady()) return res.send({ text, converted: false });
+    // ?from= — the script the page shows (paliLookup.js). Autodetect guesses from the word alone and a
+    // short Lao Pali word (ນາປຣໍ) reads as modern Lao ("nāprṃ" instead of "nāparaṃ"). If the given
+    // script does not fit the word (letters left unconverted), autodetect still gets its chance.
+    const fromKey = resolveScriptKey((req.query.from || '').toString());
+    let converted = fromKey ? await akshConvert(AKSH_SCRIPTS[fromKey], AKSH_SCRIPTS.IASTPI, text) : text;
+    if (!fromKey || /[^\x00-\x7FĀ-ɏḀ-ỿ‐-―‘-‟…]/.test(converted)) {
+        converted = await akshConvert(AKSH_SCRIPTS.AutoDetect, AKSH_SCRIPTS.IASTPI, text);
     }
+    return res.send({ text: converted, converted: converted !== text });
+});
+
+// The settings sample in a script that demo-data.json does not carry (see SETTINGS_DEMO_SCRIPTS):
+// the same groups, converted now. preview-frame.html asks for it once per script.
+app.get('/api/settings-demo', async (req, res) => {
+    const realKey = resolveScriptKey((req.query.script || '').toString());
+    if (!realKey) return res.code(400).send({ error: 'unknown script' });
+    const groups = await Promise.all(settingsDemoBase.map(async group => ({
+        ...group,
+        segments: await Promise.all(group.segments.map(async seg => ({
+            ...seg,
+            root_text: await convertPaliScript(seg.root_text, realKey),
+            variant: await convertPaliScript(seg.variant, realKey),
+        }))),
+    })));
+    return res.send({ script: realKey, groups });
 });
 
 // Документация API — /api-docs. configs/openapi.json/openapi.en.json описывают /search,
@@ -495,6 +662,21 @@ window.onload = function () {
 `;
 // Relative asset URLs in the page (./swagger-ui.css) need the trailing slash — without the
 // redirect /api-docs would resolve them against the site root.
+// Android App Links verification for the native apps. A tap on a dhamma.gift link opens the app
+// instead of the browser only after Android fetches this file and finds the APK's signing
+// certificate in it; without it every link shows the "Open with" chooser, and links tapped inside
+// Chrome are not intercepted at all. The production host has a copy under .well-known in the legacy
+// tree that lists the TWA only — this one lists BOTH apps (configs/assetlinks.json), so it is the
+// file to serve if the domain is ever pointed here. Content-Type matters: Android rejects the file
+// when it arrives as text/plain, which is exactly what a generic static mount would do.
+app.get('/.well-known/assetlinks.json', (req, res) => {
+    // Read and send, not sendFile: this server registers its static plugin with decorateReply:false,
+    // so reply.sendFile is not guaranteed to exist here (it 500'd on the first attempt).
+    res.header('content-type', 'application/json; charset=utf-8');
+    res.header('cache-control', 'public, max-age=300');
+    return res.send(fsSync.readFileSync(path.join(__dirname, 'configs', 'assetlinks.json'), 'utf8'));
+});
+
 app.get('/api-docs', (req, res) => res.redirect('/api-docs/'));
 app.get('/api-docs/', (req, res) => {
     res.header('cache-control', 'public, max-age=0, must-revalidate');
@@ -602,12 +784,18 @@ const SETTINGS_DEMO_DEF = [
 // применяло — жалоба владельца). Формат файла — { "ISOPali": [...группы...], "Devanagari":
 // [...], ... }, тот же ключ (реальное имя Aksharamukha.Scripts), что и localStorage
 // selectedScript, preview-frame.html просто берёт groups[selectedScript] || groups.ISOPali.
+// Pre-converted only for the scripts the settings list shows first (settings/index.html
+// SCRIPT_MAIN_KEYS — keep the two lists in step); any other script is converted when someone picks
+// it, through /api/settings-demo (owner: "не делай все, а только основные").
+const SETTINGS_DEMO_SCRIPTS = ['Brahmi', 'Devanagari', 'Sinhala', 'Thai', 'BurmeseMyanmar'];
+let settingsDemoBase = [];
 async function buildSettingsDemoCache() {
     const cachePath = path.join(__dirname, 'settings', 'demo-data.json');
     const baseGroups = [];
+    settingsDemoBase = baseGroups;
     for (const def of SETTINGS_DEMO_DEF) {
         try {
-            const full = await getFullTextData(def.suttaId, ['all'], null, null);
+            const full = await getFullTextData(def.suttaId, ['all'], null);
             if (!full) continue;
             const segments = full.segments.filter(s => def.segments.includes(s.segment));
             if (segments.length) baseGroups.push({ sutta_id: full.sutta_id, title: full.title, segments });
@@ -616,8 +804,31 @@ async function buildSettingsDemoCache() {
         }
     }
 
+    // Reuse the file when the sample texts are unchanged: converting them into every script needs
+    // Aksharamukha (Pyodide, ~240MB of RSS), which otherwise loaded on every server start for a
+    // result identical to the one already on disk. A new database or sample list rebuilds it.
+    try {
+        const prev = JSON.parse(await fs.readFile(cachePath, 'utf8'));
+        const sameScripts = JSON.stringify(Object.keys(prev).sort()) === JSON.stringify(['ISOPali', ...SETTINGS_DEMO_SCRIPTS].sort());
+        if (JSON.stringify(prev.ISOPali) === JSON.stringify(baseGroups) && sameScripts) {
+            console.log('Settings demo cache: sample texts unchanged, reusing settings/demo-data.json');
+            return;
+        }
+    } catch { /* no file yet or unreadable — build it below */ }
+
+    // First start on a machine without the Python environment: wait for its background install,
+    // and never write a "converted" file full of Latin text — the reuse check above would keep it
+    // forever. Not ready even then: leave the file alone, the next start tries again.
+    if (!akshReady()) {
+        if (akshInstall) await akshInstall;
+        if (!akshReady()) {
+            console.warn('Settings demo cache: Aksharamukha not ready — not written, retried on next start');
+            return;
+        }
+    }
+
     const byScript = { ISOPali: baseGroups };
-    for (const scriptCode of Object.keys(AKSH_SCRIPTS)) {
+    for (const scriptCode of SETTINGS_DEMO_SCRIPTS) {
         byScript[scriptCode] = await Promise.all(baseGroups.map(async group => ({
             ...group,
             segments: await Promise.all(group.segments.map(async seg => ({
@@ -759,9 +970,10 @@ searchDb.exec('PRAGMA cache_size = -16000'); // 16MB page cache, per connection
 
 async function initServer() {
     try {
-        // The skeleton now comes out of dg.db like everything else — dg_db_light.json is only a
-        // build-time input to build-search-db.js, nothing reads it at runtime. No ORDER BY: rows
-        // come back in insertion order, which is the id ordering dblight.js produced, and
+        // The skeleton comes out of dg.db like everything else — build-search-db.js derives it
+        // straight from the corpus and does not read dg_db_light.json (that file is dg-light.js's
+        // own build artifact, unrelated to this pipeline). No ORDER BY: rows come back in
+        // insertion order, which happens to match the id ordering dblight.js used to produce, and
         // /api/nav and the TOC walk skeletonDB's key order to find the previous/next sutta.
         skeletonDB = {};
         for (const row of searchDb.prepare('SELECT id, category, dir_path, title, mr FROM suttas').all()) {
@@ -816,6 +1028,28 @@ app.post('/assets/lbl-save.php', (req, res) => {
     }
 });
 
+// /api/app-log — error reports from the Android app (dg-app-full src/platform.js): JS errors,
+// unhandled rejections, failed resources and console.error, batched and sent with sendBeacon.
+// Answers 204 at once and appends after the reply, so a report never slows anyone down. One JSON
+// line per report in logs/app-errors.log (*.log is gitignored), capped so a crash loop on some
+// phone cannot fill the disk.
+const APP_LOG = path.join(__dirname, 'logs', 'app-errors.log');
+const APP_LOG_MAX_BYTES = 20 * 1024 * 1024;
+app.post('/api/app-log', { bodyLimit: 32 * 1024 }, (req, res) => {
+    res.header('cache-control', 'no-store').code(204).send();
+    let items;
+    try { items = JSON.parse(req.body); } catch (e) { return; }
+    if (!Array.isArray(items) || !items.length) return;
+    const at = new Date().toISOString();
+    const lines = items.slice(0, 50)
+        .map(it => JSON.stringify({ at, ...(it && typeof it === 'object' ? it : { msg: String(it) }) }).slice(0, 4000))
+        .join('\n') + '\n';
+    fsSync.promises.stat(APP_LOG).then(s => s.size, () => 0)
+        .then(size => size < APP_LOG_MAX_BYTES && fsSync.promises.mkdir(path.dirname(APP_LOG), { recursive: true })
+            .then(() => fsSync.promises.appendFile(APP_LOG, lines)))
+        .catch(err => console.error('[app-log] write failed:', err.message));
+});
+
 // Static mounts below use @fastify/static's array `root` (tries each dir in order, first match
 // wins) — the direct equivalent of Express's "register override dir, then fallback dir on the
 // same prefix, static.js calls next() on miss" chain used throughout dg-light.js. A prefix can
@@ -830,6 +1064,32 @@ app.post('/assets/lbl-save.php', (req, res) => {
 // public URL stays put, served by hand from its new home, the same trick the reader configs use.
 // Same no-cache tier staticCacheHeaders gives any .json (cache.md — revalidated via the
 // ETag sendFile() now sets, not re-sent in full unless the file actually changed).
+// Old static help pages (/assets/common/*.html) now live in the docs (owner: "все документальные —
+// заменить на docs"). Permanent redirects keep old bookmarks and links from the legacy site working;
+// the tool/data pages next to them (history, lunar, multiTool, abbr, syrkin) are not help and stay.
+const LEGACY_HELP_REDIRECTS = {
+    'dictHelp.html': '/docs/dictionary', 'dictHelpRu.html': '/ru/docs/dictionary',
+    'keyFeatures.html': '/docs/key-features', 'keyFeaturesRu.html': '/ru/docs/key-features',
+    'privacy.html': '/docs/policies', 'privacy-ru.html': '/ru/docs/policies',
+    'rationale-en.html': '/docs/rationale', 'rationale.html': '/ru/docs/rationale',
+    'o-en.html': '/docs/principles', 'o.html': '/ru/docs/principles',
+    'ttsHelp.html': '/docs/tts',
+};
+for (const [file, target] of Object.entries(LEGACY_HELP_REDIRECTS)) {
+    app.get('/assets/common/' + file, (req, res) => res.redirect(target, 301));
+}
+// Project tools retired on this site (owner: "не нужен", "было под проект"). The legacy tree keeps the
+// files for the old site, so without these routes the static fallback would still serve them here.
+// One edition-abbreviations page, /assets/common/abbr.html (the current copy); old links keep working.
+app.get('/assets/texts/abbr.html', (req, res) => {
+    const q = req.url.indexOf('?');
+    res.redirect('/assets/common/abbr.html' + (q === -1 ? '' : req.url.slice(q)), 301);
+});
+for (const file of ['linebyline.html', 'readylinebyline.html']) {
+    for (const url of ['/assets/' + file, '/ru/assets/' + file]) {
+        app.get(url, (req, res) => res.code(404).type('text/plain').send('Not found'));
+    }
+}
 app.get('/assets/js/translators.json', (req, res) => {
     res.header('Cache-Control', CACHE_CONFIG_JSON);
     return sendFile(req, res, path.join(__dirname, 'configs', 'reader', 'translators.json'), 'application/json');
@@ -845,8 +1105,10 @@ app.register(fastifyStatic, {
 // с классами, которые реально рендерит megareader.js — rus-lang/eng-lang vs ru-lang/en-lang,
 // second-translation-row vs lang-2nd — переводы молча не находились на страницах ридера,
 // см. TODO.md) отдаётся ПЕРЕД siteroot/read/ (легаси-оригинал, второй элемент root-массива).
+// /read now serves only our own copies (voice player, ranges, icons): the legacy siteroot/read
+// tree is no longer a fallback — its reader pages redirect to the SPA (LEGACY_READERS above).
 app.register(fastifyStatic, {
-    root: [path.join(__dirname, 'public', 'overrides', 'read'), path.join(__dirname, 'siteroot', 'read')],
+    root: path.join(__dirname, 'public', 'overrides', 'read'),
     prefix: '/read',
     setHeaders: staticCacheHeaders,
     decorateReply: false,
@@ -911,6 +1173,16 @@ app.register(fastifyStatic, {
     setHeaders: staticCacheHeaders,
     decorateReply: false,
 });
+// /offline — the optional offline PWA layer (docs/OFFLINE_PWA_PLAN.md, "Этап 1"): fetch shim,
+// platform.js, data worker, bundled search core, sqlite-wasm vendor, status UI. Same no-cache
+// reasoning as dg-light.js's mount: app.js and db-worker.js must be the same vintage, and ETag
+// revalidation makes that free.
+app.register(fastifyStatic, {
+    root: path.join(__dirname, 'public', 'offline'),
+    prefix: '/offline',
+    setHeaders: (res) => res.header('Cache-Control', CACHE_CONFIG_JSON),
+    decorateReply: false,
+});
 
 // /pm.php, /bipm.php — Bhikkhu/Bhikkhuni Patimokkha, rendered inline (not the reader), with
 // rule links pointing at real dg-node routes. Static HTML generated once by
@@ -955,6 +1227,29 @@ app.get('/api/patimokkha-fragment/:side', (req, res) => {
 // обработки в самом цикле нет, всё ничем не отличается от 4nt/config/login/memo с точки
 // зрения этого кода.
 const SITEROOT = path.join(__dirname, 'siteroot');
+// /mobile-data — the optional offline PWA's ~170 MB SQLite database (public/offline/* fetches
+// /mobile-data/dg-mobile.db). Same explicit mount as dg-light.js (see there for the full
+// rationale); the two must stay behaviourally identical:
+//   * registered BEFORE the siteroot/ scan just below; 'mobile-data' is also pre-added to
+//     mountedPrefixes further down so the scan skips it instead of throwing a duplicate route;
+//   * missing directory = clean 404, no crash. suppressWarning silences @fastify/static's
+//     startup `"root" path ... must exist` warning for this known-optional build artifact
+//     (the route exists either way, the file just isn't there yet);
+//   * a miss never falls through to another route — @fastify/static answers 404 via the
+//     not-found handler, the same clean 404 dg-light.js produces with its explicit 404
+//     middleware (there the SPA catch-all would otherwise return 200 text/html);
+//   * @fastify/static goes through @fastify/send, which serves byte ranges out of the box
+//     (Accept-Ranges: bytes on 200, 206 + Content-Range on Range) — required for resumable
+//     170 MB downloads (docs/OFFLINE_PWA_PLAN.md). The hand-rolled sendFile() helper in this
+//     file reads the whole file into a Buffer and must NOT be used for this path.
+app.register(fastifyStatic, {
+    root: path.join(SITEROOT, 'mobile-data'),
+    prefix: '/mobile-data',
+    setHeaders: staticCacheHeaders,
+    decorateReply: false,
+    redirect: true, // bare /mobile-data -> 301 /mobile-data/, like every other siteroot mount
+    suppressWarning: true,
+});
 let siteRootEntries = new Set();
 try {
     siteRootEntries = new Set(
@@ -975,7 +1270,7 @@ try {
 // read.php, sitemap.xml — are symlinks to individual FILES, harmless dead weight for
 // express.static but a hard registration error for @fastify/static, which requires root to be a
 // directory).
-const mountedPrefixes = new Set(['assets', 'read', 'memorize', 'devanagari']);
+const mountedPrefixes = new Set(['assets', 'read', 'memorize', 'devanagari', 'mobile-data']); // 'mobile-data' is the explicit /mobile-data mount above — the scan must not re-register it (duplicate route = hard error)
 // Skips are reported, not silent. statSync() follows symlinks, so an entry whose target has gone
 // away (siteroot/mobile-data -> a dist/ directory that was never built, say) is indistinguishable
 // here from a broken one — it just never gets a route, and every request under that prefix falls
@@ -1088,12 +1383,11 @@ app.get('/', (req, res) => {
 app.get('/api/text/:suttaId', async (req, res) => {
     const suttaId = req.params.suttaId.toLowerCase();
 
-    // ?mode=multiTran — основной путь для ридера: сервер резолвит ПОВЕДЕНИЕ (multiFor/
-    // dualScript/mnemonic) из MODE_TABLE (reader/mode-table.json), клиенту не нужно знать эту
-    // логику вовсе. Язык режим больше не хранит — это отдельная ось, ?lang= (один язык) или
-    // ?langs= (список+порядок, для multiLang), см. CLAUDE.md/план: "не хардкодить языки".
-    // ?langs=/?multiFor=/?translators= остаются рабочими напрямую — ручной доступ, /api-docs,
-    // отладка через curl — но ридер ими больше не пользуется.
+    // ?mode=memorize — основной путь для ридера: сервер резолвит ПОВЕДЕНИЕ (dualScript/mnemonic)
+    // из MODE_TABLE (reader/mode-table.json), клиенту не нужно знать эту логику вовсе. Язык режим
+    // не хранит — это отдельная ось, ?lang= (один язык) или ?langs= (список+порядок, для multi),
+    // см. CLAUDE.md: "не хардкодить языки". ?langs=/?translators= работают и напрямую — ручной
+    // доступ, /api-docs, отладка через curl.
     const modeConfig = req.query.mode && MODE_TABLE[req.query.mode];
 
     const targetLangs = req.query.langs
@@ -1110,18 +1404,18 @@ app.get('/api/text/:suttaId', async (req, res) => {
                 ? ['ru']
                 // Ни mode, ни lang, ни langs — тот же фоллбэк, что и был здесь всегда для голого
                 // ручного доступа (curl/api-docs без единого языкового параметра), не новый хардкод.
-                : (req.query.langs || 'ru,en').split(',').map(l => l.trim());
-    // ?translators=ru_o,ru_sv — ручной оверрайд, для multiTran (два перевода ОДНОГО языка
-    // одновременно), в обход обычного "один переводчик на язык" (см. findTranslationFiles).
+                // Исключение — голый ?translators=ru_o,ru_sv: языки названы в самих ключах, и брать
+                // вместо них "ru,en" значит доложить в ответ английский, которого не просили (с тех
+                // пор как явный список переводчиков перестал вытеснять остальные языки, см.
+                // translatorsForSutta).
+                : translatorLangsFallback(req.query.translators) || ['ru', 'en'];
+    // ?translators=ru_o,ru_khantibalo — сколько переводчиков названо, столько и придёт, в обход
+    // обычного "один переводчик на язык" (см. translatorsForSutta). issue #6: это единственный
+    // способ получить несколько переводов одного языка — прежний автоподбор ?multiFor= убран
+    // вместе с режимом multiTran, ради которого он и существовал (владелец: "убери лишнее").
     const explicitTranslators = req.query.translators
         ? req.query.translators.split(',').map(t => t.trim())
         : null;
-    // Автоподбор ВТОРОГО переводчика для языка (см. filterPreferredTranslators): первый —
-    // как обычно по TRANSLATOR_PRIORITY, второй — кто реально нашёлся в {lang}_other для этой
-    // сутты. В отличие от explicitTranslators, ничьё конкретное имя не хардкодится.
-    const multiForLangs = (modeConfig && modeConfig.multiFor && req.query.lang)
-        ? [req.query.lang]
-        : (req.query.multiFor ? req.query.multiFor.split(',').map(l => l.trim()) : null);
 
     try {
         // Один раз читаем root/variant/html (не зависят от языка перевода) — основной вызов
@@ -1129,7 +1423,7 @@ app.get('/api/text/:suttaId', async (req, res) => {
         // с диска дважды ради одних и тех же данных (см. getSuttaBaseData).
         const base = await getSuttaBaseData(suttaId);
         if (!base) return res.code(404).send({ error: `Unknown sutta id: ${suttaId}` });
-        let data = await buildTextDataFromBase(base, suttaId, targetLangs, explicitTranslators, multiForLangs);
+        let data = await buildTextDataFromBase(base, suttaId, targetLangs, explicitTranslators);
         let effectiveLangs = targetLangs;
 
         // Явный ?langs= (не ?mode=) на редко покрытый язык (напр. de) часто не находит вообще
@@ -1139,7 +1433,7 @@ app.get('/api/text/:suttaId', async (req, res) => {
         // чтобы не менять поведение для существующих читателей без явного langs=.
         const hasAnyTranslation = data.segments.some(seg => Object.keys(seg.translations).length > 0);
         if (!modeConfig && !hasAnyTranslation && !targetLangs.includes('en') && !explicitTranslators) {
-            const fallbackData = await buildTextDataFromBase(base, suttaId, ['en'], null, multiForLangs);
+            const fallbackData = await buildTextDataFromBase(base, suttaId, ['en'], null);
             const fallbackHasTranslation = fallbackData &&
                 fallbackData.segments.some(seg => Object.keys(seg.translations).length > 0);
             if (fallbackHasTranslation) {
@@ -1155,14 +1449,20 @@ app.get('/api/text/:suttaId', async (req, res) => {
         // (mode-table.json), теперь режим языка не хранит вообще, так что явно возвращаем его
         // отдельным полем.
         data.lang = req.query.lang || effectiveLangs[0] || null;
-        // Languages THIS text has any translation in — whatever mode/langs were requested. The
-        // reader's language popover marks the rest "нет перевода" right at load time (owner)
-        // instead of discovering it one refetch at a time. One indexed read of the same table
-        // the root text came from.
-        data.availableLangs = searchDb.prepare("SELECT DISTINCT lang FROM texts WHERE sutta_id = ? AND kind = 'translation'").all(suttaId).map(r => r.lang);
+        // Who translated THIS text, whatever mode/langs were requested — the reader's language
+        // popover lists the translators of each language and marks languages with none "нет
+        // перевода" right at load time (owner) instead of discovering it one refetch at a time.
+        // One indexed read of the same table the root text came from; `translator <> 'ai'` for
+        // the reason spelled out in translatorsForSutta() — and it is what keeps a language whose
+        // ONLY translation is the AI draft (9 such (sutta, lang) pairs) out of availableLangs.
+        const roster = searchDb.prepare(
+            "SELECT DISTINCT lang, translator FROM texts WHERE sutta_id = ? AND kind = 'translation' AND translator <> 'ai'"
+        ).all(suttaId);
+        data.availableLangs = [...new Set(roster.map(r => r.lang))];
+        data.availableTranslators = roster.map(r => `${r.lang}_${r.translator}`);
 
         // Конвертация системы письма пали (?script=Devanagari/Thai/... — любой ключ
-        // Aksharamukha.Scripts, см. akshReady/resolveScriptKey выше). Только root_text/variant —
+        // Aksharamukha.Scripts, см. akshConvert/resolveScriptKey выше). Только root_text/variant —
         // сам пали, переводы не на пали и не трогаются. Параллельно по всем сегментам сразу
         // (Promise.all) — конвертация после инициализации быстрая (десятки мс), но
         // последовательно по сегментам целой сутты уже заметно набегало бы.
@@ -1216,7 +1516,266 @@ app.get('/api/nav/:suttaId', (req, res) => {
     res.send(nav);
 });
 
+// /api/ai-search — the fallback for "точный поиск дал 0 результатов" (and a direct button, see
+// docs/AI_SEARCH_BRIEF.md). Contract is provisional: built ahead of the UI design, so shapes here
+// may still need to change once the design is final — nothing else depends on this endpoint yet.
+//
+// The model in ai-search.js never writes text the user reads: `quotePali`/`quoteEnglish` below
+// are verbatim segments from search_hybrid, `titlePali` is the sutta's real skeleton title, and
+// `wordSuggestions` are DPD-verified real headwords. The model's own output (searchQuery,
+// paliCandidates) is only ever used as input to those two lookups, never shown directly.
+// Owner: "каждый раз ждать, пока перезагрузится страница" — going back to a query just made
+// (browser back, re-running the same search) shouldn't pay the full 6-8s pipeline again. Plain
+// in-memory Map, one process, no eviction beyond the TTL check on read — this endpoint's traffic
+// doesn't warrant an LRU cap. Keyed by exactly what changes the answer (query text + gloss lang).
+const AI_SEARCH_CACHE = new Map(); // `${lang}:${q}` -> { at, data }
+const AI_SEARCH_CACHE_TTL_MS = 10 * 60 * 1000;
+
+// search_hybrid hits -> DataTables-shaped rows, filtered to scope and sorted the site's own way.
+// Shared by the two callers below (a single DPD-confirmed word, and the full LLM+semantic path) —
+// same reasoning either way: relevance picks which suttas make the cut, sortSuttaResults() decides
+// the order they're shown in (dhamma -> khuddaka -> vinaya -> abhi), not raw rank (owner: "почему
+// сортировка не наша?"). Shaped as a plain /search row (CLAUDE.md's documented response), not a
+// bespoke object, so the frontend can feed these straight into window.DgSearchRender.
+// buildDataTable() — real DataTables triangles/child-row animation, not a hand-rolled imitation
+// (owner: "по-настоящему DataTable"). Fields the column renderers don't get from us (unique_words,
+// lb_context/la_context, variant/html) are left empty — cheap degradation, not required for a
+// single best-guess segment per sutta.
+function hitsToSuttaRows(hits, scope) {
+    // search_hybrid knows nothing about this site's scope filter (it searches the whole
+    // Tipitaka) — filter its hits the same way plain /search already does, otherwise a scope
+    // that excludes Abhidhamma/Vinaya can still surface them here (owner: "он выводит абхидхамму
+    // вместо того чтобы следовать фильтру. ответы для ии тоже нужно фильтровать").
+    const allowedPrefixes = resolveAllowedPrefixes(scope);
+    const inScope = hits.filter(hit => {
+        const meta = getSuttaMeta(hit.sutta_id);
+        return meta && matchesScope(meta, hit.sutta_id, allowedPrefixes);
+    });
+
+    // One row per sutta, not per segment — search_hybrid returns segment-level hits and the same
+    // sutta_id can appear several times; keep each sutta's single best-scoring segment as its quote.
+    const bySutta = new Map();
+    for (const hit of inScope) {
+        const existing = bySutta.get(hit.sutta_id);
+        if (!existing || hit.rrf_score > existing.rrf_score) bySutta.set(hit.sutta_id, hit);
+    }
+    const topHits = [...bySutta.values()].sort((a, b) => b.rrf_score - a.rrf_score).slice(0, 5);
+    const forSort = {};
+    for (const hit of topHits) {
+        const meta = getSuttaMeta(hit.sutta_id);
+        forSort[hit.sutta_id] = { category: meta ? meta.category : 'other', mr: meta ? meta.mr : 0, segments: [], hit, meta };
+    }
+    return Object.keys(sortSuttaResults(forSort)).map(suttaId => {
+        const { hit, meta } = forSort[suttaId];
+        return {
+            sutta_id: suttaId,
+            category: meta ? meta.category : 'other',
+            dir_path: meta ? meta.dir_path : '',
+            mr: meta ? meta.mr : 0,
+            count: 1,
+            unique_words: [],
+            titles: meta && meta.title ? { root: meta.title } : {},
+            __enriched: true,
+            segments: [{
+                segment: hit.segment_id,
+                root_text: hit.text_pali || '',
+                variant: '',
+                html: '',
+                translations: hit.text_english ? { en_sujato: hit.text_english } : {},
+                lb_context: [],
+                la_context: [],
+            }],
+        };
+    });
+}
+
+// Owner: "откуда берутся эти заглушки? кто их дорисовывает?" — the LLM's own pali_candidates are
+// a best-effort shot in the dark; when it isn't sure, it statistically reaches for the handful of
+// terms that appear constantly in its training data, so ~one of these tends to show up even in an
+// otherwise-good candidate list (e.g. "Buddho, nakhā, anta, paṭicca, DHAMMA" for the fingernail
+// simile — the first four are genuinely on-topic, the last is just noise). Filtered out before
+// candidates get blended into the actual search query below, so they don't dilute it query after
+// query. Not a blocklist of "bad Pali" — dhamma/sacca/etc. are perfectly real, central concepts;
+// they're excluded here only because they're too generic to ever narrow a search down.
+const GENERIC_PALI_TERMS = new Set(['dhamma', 'dhammā', 'sutta', 'sacca', 'anicca', 'dukkha', 'anatta', 'nibbāna', 'nibbana', 'kamma', 'magga', 'metta']);
+
+// Owner: "лучше сделай лог у себя где-то чтобы ты видел" — one line per request, visible in
+// `pm2 logs`/stdout, so what the dispatcher actually did can be checked directly instead of
+// relying on a screenshot of the (now deliberately compact) debug tooltip in the UI.
+function logAiSearch(q, body) {
+    const d = body.debug || {};
+    console.log(`[ai-search] query="${q}" ok=${body.ok}${body.ok === false ? ` reason=${body.reason} detail="${body.detail}"` : ''} provider=${d.provider || '-'} normalized="${d.normalizedQuery || '-'}" candidates=[${(d.paliCandidates || []).join(', ')}] suttas=${body.suttas ? body.suttas.length : '-'} words=${body.wordSuggestions ? body.wordSuggestions.length : '-'}`);
+}
+
+app.get('/api/ai-search', async (req, res) => {
+    const q = (req.query.q || '').trim();
+    if (!q) return res.code(400).send({ ok: false, reason: 'missing_query' });
+    const lang = req.query.lang === 'en' ? 'en' : 'ru'; // word gloss language; UI language, not content language
+    const scope = req.query.scope || 'default'; // same source as plain /search — passed through from the exact search that fell back here
+
+    const cacheKey = `${lang}:${scope}:${q.toLowerCase()}`;
+    const cached = AI_SEARCH_CACHE.get(cacheKey);
+    if (cached && Date.now() - cached.at < AI_SEARCH_CACHE_TTL_MS) {
+        return res.send(cached.data);
+    }
+
+    // Fast path for a single word (no spaces): figure out whether it's real Pali BEFORE ever
+    // asking the LLM to guess anything — owner: "сначала нужно понять, что сказал человек, если
+    // это вообще пали... нужно попробовать поискать его в DPD и уже потом от этих слов
+    // отталкиваться, потому что если он [LLM] будет отправлять в поиск сутт какое попало слово,
+    // не факт что найдётся то, что нужно". A description (multiple words) has no single headword
+    // to check this way — "если это описание, то смысла искать в дпд мало" — that case falls
+    // through untouched to the full LLM+semantic pipeline below.
+    if (!/\s/.test(q)) {
+        try {
+            const wordInfo = await lookupWord(q, lang);
+            if (wordInfo.exists) {
+                // A real, DPD-confirmed word — plain exact search already found 0 for it (that's
+                // why we're here at all), so search by MEANING instead, grounded in DPD's own
+                // gloss rather than an LLM's guess of what this word might mean.
+                // tripitaka-mcp holds Pāli + English only: the gloss sent there is always DPD's
+                // English one, whatever the UI language (`wordInfo.gloss` stays for the chip).
+                const enGloss = lang === 'en'
+                    ? wordInfo.gloss
+                    : await lookupWord(q, 'en').then(r => r.gloss).catch(() => null);
+                const mcp = {};
+                const hits = await searchHybrid(enGloss ? `${q} — ${enGloss}` : q, 15, mcp).catch(() => []);
+                const responseBody = {
+                    ok: true, query: q,
+                    suttas: hitsToSuttaRows(hits, scope),
+                    wordSuggestions: [{ word: q, gloss: wordInfo.gloss }],
+                    debug: { normalizedQuery: `(DPD-confirmed word, no LLM call) ${q}`, provider: 'dpd', paliCandidates: [q], mcp },
+                };
+                logAiSearch(q, responseBody);
+                AI_SEARCH_CACHE.set(cacheKey, { at: Date.now(), data: responseBody });
+                return res.send(responseBody);
+            }
+            if (wordInfo.closest.length) {
+                // Not a real word, but DPD's own fuzzy "did you mean" found near matches — show
+                // those instead of running the full pipeline at all (owner: "не нужно было искать
+                // в ии режиме, а нужно было предположить что это другое слово").
+                const typoSuggestions = await verifyCandidates(wordInfo.closest.slice(0, 5), lang);
+                const responseBody = {
+                    ok: true, query: q, suttas: [], wordSuggestions: typoSuggestions,
+                    debug: { normalizedQuery: `(DPD typo suggestions, no LLM call) ${q}`, provider: 'dpd', paliCandidates: wordInfo.closest.slice(0, 5) },
+                };
+                logAiSearch(q, responseBody);
+                AI_SEARCH_CACHE.set(cacheKey, { at: Date.now(), data: responseBody });
+                return res.send(responseBody);
+            }
+            // Owner: "кто придумал эту заглушку?.. убери её, не нужно отдавать такое на
+            // неподходящие вещи" — a single word that DPD couldn't verify AND had no fuzzy "did
+            // you mean" for either (real gibberish, or just not a Pali word at all) used to fall
+            // through to the full LLM pipeline like a multi-word description would. The model has
+            // no dictionary basis to search from at that point, so it reliably fell back to its
+            // own go-to Buddhist vocabulary ("dhamma, sacca, anicca, dukkha, nibbana" — seen live
+            // for "kachcapxyz") — a generic non-answer, not a real guess about THIS input. DPD
+            // already said there's nothing close; stop here instead of dressing that up.
+            const responseBody = {
+                ok: true, query: q, suttas: [], wordSuggestions: [],
+                debug: { normalizedQuery: `(DPD: no match, no close match, no LLM call) ${q}`, provider: 'dpd', paliCandidates: [] },
+            };
+            logAiSearch(q, responseBody);
+            AI_SEARCH_CACHE.set(cacheKey, { at: Date.now(), data: responseBody });
+            return res.send(responseBody);
+        } catch {
+            // DPD unreachable (even after dpd-lookup.js's own retry) — not fatal, fall through to
+            // the full pipeline rather than fail outright.
+        }
+    }
+
+    let dispatch;
+    try {
+        dispatch = await normalizeQuery(q);
+    } catch (err) {
+        // All three LLM providers failed/unconfigured — degrade to "try exact search",
+        // never a 500: this is an expected, handled state, not a server error.
+        const responseBody = { ok: false, reason: 'ai_unavailable', detail: err.message };
+        logAiSearch(q, responseBody);
+        return res.send(responseBody);
+    }
+
+    // debug: what the LLM actually turned the query into — owner asked to see this to sanity-check
+    // the dispatcher, not shown as a real UI feature (rendered as a small muted link, ai-search.js).
+    const debug = { normalizedQuery: dispatch.searchQuery, provider: dispatch.provider, paliCandidates: dispatch.paliCandidates };
+
+    // Owner: "я думаю что он дает ответы на белиберду - это нехороший знак... он должен отрезать
+    // такой поиск" — keyboard-mashed input ("лфадмлот") isn't a real query in any language, but
+    // the dispatcher was still forced to produce SOME english_query for it (the system prompt
+    // never lets it refuse outright) — that best-effort guess (seen live: literally "unknown
+    // query") is still just English TEXT, and searchHybrid happily finds semantic matches for it
+    // (e.g. "unknown query" matched a sutta literally about searching). dispatch.recognized (see
+    // core/ai-search.js) is a separate, explicit signal from the SAME tool call for exactly this
+    // — false means "not language at all", so there is nothing worth searching for.
+    if (!dispatch.recognized) {
+        const responseBody = { ok: true, query: q, suttas: [], wordSuggestions: [], debug };
+        logAiSearch(q, responseBody);
+        AI_SEARCH_CACHE.set(cacheKey, { at: Date.now(), data: responseBody });
+        return res.send(responseBody);
+    }
+
+    // Owner: "эти заглушки dhamma sutta даже обращаться в другой сервер не нужно" — the generic
+    // ones are still not worth a DPD round-trip or a "did you mean" chip: only the DPD-typo-
+    // correction branch above (real fuzzy matches for an actual misspelled headword, no LLM
+    // involved) earns word-suggestion chips.
+    //
+    // Owner: "мы можем ему [tripitaka-mcp] как-то помочь?" — search_hybrid RRF-blends keyword +
+    // semantic internally, but we were only ever giving it the English gloss, never the Pali
+    // terms the SAME tool call already produced (seen live: it correctly named "nakhā" for a
+    // fingernail-simile query, we just never used it — search_hybrid's keyword half had nothing
+    // Pali to latch onto, only whatever English words happened to be in the gloss). Same pattern
+    // as the DPD-confirmed-word branch above ("{q} — {gloss}"): append the SPECIFIC candidates
+    // (generic ones filtered above) to the query text itself, giving the keyword half something
+    // precise instead of only the semantic half having anything to go on.
+    //
+    // Measured on 10 queries with a known right sutta, same candidates for every variant
+    // (2026-09-13), right sutta in the top 5: phrase + all candidates 4, phrase + candidates found in
+    // the corpus 5, both queries pooled 5 (but ranked the right sutta lower, at twice the MCP calls).
+    // The model invents or misspells some candidates ("alagaddupáma") and those cost hits — so only
+    // candidates the corpus actually contains a form of go into the query.
+    const specificCandidates = (dispatch.paliCandidates || []).filter(w => !GENERIC_PALI_TERMS.has(w.toLowerCase()));
+    const verifiedCandidates = specificCandidates.filter(inCorpusStem);
+    debug.droppedCandidates = specificCandidates.filter(w => !verifiedCandidates.includes(w));
+    const searchInput = verifiedCandidates.length
+        ? `${dispatch.searchQuery} — ${verifiedCandidates.join(', ')}`
+        : dispatch.searchQuery;
+    debug.mcp = {};
+    const hits = await searchHybrid(searchInput, 15, debug.mcp).catch(() => []); // over-fetch; deduped/trimmed to ~5 suttas below
+
+    const responseBody = {
+        // Owner: the loading skeleton promised "похожие палийские слова" that never arrived — the
+        // corpus-checked candidates are exactly those, shown as chips above the table (glosses are
+        // filled on the page from the bundled DPD, see ai-search.js enrichWithLocalDpd).
+        ok: true, query: q, suttas: hitsToSuttaRows(hits, scope), wordSuggestions: verifiedCandidates.map(word => ({ word })), debug,
+    };
+    logAiSearch(q, responseBody);
+    AI_SEARCH_CACHE.set(cacheKey, { at: Date.now(), data: responseBody });
+    res.send(responseBody);
+});
+
+// /mcp — dg-node's own data (search, get_text) exposed as MCP tools, symmetric to how
+// core/tipitaka-mcp-client.js calls the friend's server (see docs/AI_SEARCH_BRIEF.md). Stateless,
+// POST-only per the SDK's own stateless example; GET/DELETE answer the same 405 that example does.
+app.post('/mcp', mcpHandler);
+app.get('/mcp', (req, res) => res.code(405).send({ jsonrpc: '2.0', error: { code: -32000, message: 'Method not allowed.' }, id: null }));
+app.delete('/mcp', (req, res) => res.code(405).send({ jsonrpc: '2.0', error: { code: -32000, message: 'Method not allowed.' }, id: null }));
+
 app.get('/search', searchHandler);
+
+/* Подсказки "может быть, вы искали" едут в САМОМ ответе поиска, а не вторым запросом.
+   Владелец: "зачем это давать в отдельном ответе когда мы можем вместо sutta words показывать сразу
+   грамотные подсказки" — на нуле результатов отчёты (сутты/слова/варианты) всё равно пусты и
+   прячутся (search/index.html, renderCurrentReport), так что именно туда и просится ответ на вопрос "тогда
+   что же искать". Один запрос вместо двух, и подсказки есть даже когда ИИ-режим недоступен.
+
+   Считаются только на нуле, так что успешный запрос за это не платит ничего. Одно место на все формы
+   ответа (?fast=1 и полный), чтобы не разошлись. */
+function withSuggestions(body, keyword) {
+    if (body.metadata && !body.metadata.tooShort && body.metadata.totalFiles === 0) {
+        body.metadata.suggestions = suggestWords(keyword);
+    }
+    return body;
+}
 
 async function searchHandler(req, res) {
     // req.params.keyword — заход через /search/:keyword (путь); req.query.q — через /search?q=.
@@ -1246,11 +1805,11 @@ async function searchHandler(req, res) {
         if (req.query.fast === '1') {
             // ?fast=1 не содержит текста сегментов вообще (только grep-счётчики) — конвертировать
             // тут нечего, полный текст приходит позже через /search/enrich.
-            return res.send(await buildFastResponse(keyword, scope, exact, targetLangs, lb, la));
+            return res.send(withSuggestions(await buildFastResponse(keyword, scope, exact, targetLangs, lb, la), keyword));
         }
         const result = await buildSearchResponse(keyword, scope, exact, targetLangs, lb, la);
         await convertScriptInSearchResult(result, req.query.script);
-        return res.send(result);
+        return res.send(withSuggestions(result, keyword));
     } catch (error) {
         // A malformed regex keyword is the caller's mistake, not ours.
         if (error.badRequest) return res.code(400).send({ error: error.message });
@@ -1903,6 +2462,13 @@ app.setNotFoundHandler((req, res) => {
         params.set('lang', 'ru');
         return res.redirect(rest + '?' + params.toString());
     }
+    // Dictionary clean-path words (/dict/dukkha, /dict/ru/dukkha), same as dict.dhamma.gift/dukkha
+    // behind Apache's .htaccess: no such file under siteroot/dict -> serve the dictionary page,
+    // which reads the word from the path itself.
+    const dictWord = req.url.split('?')[0].match(/^\/dict\/(ru\/)?[^/]+\/?$/);
+    if (dictWord) {
+        return sendFile(req, res, path.join(SITEROOT, 'dict', dictWord[1] ? 'ru' : '', 'index.html'));
+    }
     sendVersionedHtml(req, res, path.join(__dirname, 'public', '404.html'), 404);
 });
 
@@ -1921,8 +2487,7 @@ app.listen({ port: PORT, host: '0.0.0.0' }, (err) => {
     console.log(`API docs: http://localhost:${PORT}/api-docs`);
     console.log(`Legacy Reader: http://localhost:${PORT}/dn22`);
     console.log(`Reader (single, 1 язык):    http://localhost:${PORT}/dn22?mode=single&lang=ru`);
-    console.log(`Reader (multiLang):         http://localhost:${PORT}/dn22?mode=multiLang&langs=ru,en`);
-    console.log(`Reader (multiTran):         http://localhost:${PORT}/dn22?mode=multiTran&lang=ru`);
+    console.log(`Reader (multi):             http://localhost:${PORT}/dn22?mode=multi&langs=ru,en`);
     console.log(`Reader (произвольный язык): http://localhost:${PORT}/dn22?langs=de`);
     console.log(`  (?mode= — временный резолвер до маршрутизации по префиксу пути, см. reader-template.html)`);
     console.log(`\n`);

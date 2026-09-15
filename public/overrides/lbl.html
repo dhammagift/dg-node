@@ -2,6 +2,10 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
+<!-- Read the docs-demo flag before anything runs: the page may rewrite its own query string
+     (history.replaceState), and a save guard that looks for ?demo=1 only at click time can miss
+     it — that is how the English copy of this page wrote real files from the help-page demo. -->
+<script>window.DG_LBL_DEMO = new URLSearchParams(window.location.search).get('demo') === '1';</script>
 <link rel="stylesheet" type="text/css" href="/assets/css/bootstrap.5.3.1.min.css"/>
     <link href="/assets/css/styles.css" rel="stylesheet" />
     <link href="/assets/css/extrastyles.css" rel="stylesheet" />
@@ -416,8 +420,8 @@ function downloadJson() {
     // Docs "Редактор переводов" embeds this exact tool live (?demo=1) — sohranenie (local
     // download AND the server-side lbl-save.php write below) must not fire from there, or
     // anyone poking around in the help page could overwrite real translation files.
-    if (new URLSearchParams(window.location.search).get('demo') === '1') {
-        alert('Это справка — сохранение здесь отключено. Откройте инструмент по прямой ссылке /assets/lbl.html, чтобы сохранять.');
+    if (window.DG_LBL_DEMO) {
+        alert('Это демо — сохранение не работает.');
         return;
     }
     const language = document.getElementById('languageSelect').value;
@@ -427,7 +431,7 @@ function downloadJson() {
     const translationLines = translation.split('\n');
     const jsonData = {};
 
-    let lettersOnly = indexValue.match(/[a-z]+/)[0];
+    let lettersOnly = (indexValue.match(/[a-z]+/) || [])[0]; if (!lettersOnly) return; // no text id yet (?q= fills the field after load)
     let beforeDot = indexValue.split('.')[0];
     let firstNumberOnly = beforeDot.match(/[0-9]+/)?.[0] ?? null;
 
@@ -674,7 +678,7 @@ function loadText() {
   document.getElementById('lineBreakCheckbox').checked = false;
 
   const translationLines = cleanedTranslation.split('\n');
-  let lettersOnly = indexValue.match(/[a-z]+/)[0];
+  let lettersOnly = (indexValue.match(/[a-z]+/) || [])[0]; if (!lettersOnly) return; // no text id yet (?q= fills the field after load)
   let beforeDot = indexValue.split('.')[0];
   let firstNumberOnly = beforeDot.match(/[0-9]+/)?.[0] ?? null;
 
@@ -1345,67 +1349,36 @@ function ifKn(indexValue) {
   return valueForApi;
 }
 
-function loadPrev() {
-  const texttype = 'sutta';
-  const indexValue = document.getElementById('indexInput').value.trim().toLowerCase();
-  const textPart = indexValue.split('.')[0]; 
-  const book = indexValue.replace(/[^a-zA-Z]/g, ''); 
-  let  valueForApi = book + "/" + textPart + "/" + indexValue;
-
-  const url = "/read/php/api.php?fromjs=" + texttype + "/" + valueForApi + "&type=B";
+// DG node has no PHP backend — prev/next reuses the reader's own nav endpoint
+// (core/search-core.js navFor) instead of the legacy /read/php/api.php call.
+// scope=all: this is a translator tool, it must walk every text, not just the
+// default 4 nikayas + 6 Khuddaka books the reader restricts casual reading to.
+function navigateAdjacent(direction) {
+  const inputField = document.getElementById('indexInput');
+  const indexValue = inputField.value.trim().toLowerCase();
   const originalValue = indexValue;
+  const url = `/api/nav/${encodeURIComponent(indexValue)}?scope=all`;
 
-  console.log("Prev URL: ", url);
+  console.log(`${direction} URL: `, url);
   fetch(url)
-      .then(response => response.text()) 
-      .then(data => {
-          console.log("Prev Data: ", data);
-          const newIndexValue = extractIndexValue(data);
-          if (newIndexValue) {
-            const inputField = document.getElementById('indexInput');
-            inputField.value = newIndexValue; 
-            inputField.dispatchEvent(new Event('input')); 
+      .then(response => response.ok ? response.json() : Promise.reject(new Error(`HTTP ${response.status}`)))
+      .then(nav => {
+          console.log(`${direction} Data: `, nav);
+          const entry = direction === 'prev' ? nav.prev : nav.next;
+          if (entry && entry.slug) {
+            inputField.value = entry.slug;
+            inputField.dispatchEvent(new Event('input'));
           }
           loadText();
       })
       .catch(error => {
-          console.error('Error fetching prev data:', error);
-          document.getElementById('indexInput').value = originalValue;
+          console.error(`Error fetching ${direction} data:`, error);
+          inputField.value = originalValue;
       });
 }
 
-function loadNext() {
-  const texttype = 'sutta';
-  const indexValue = document.getElementById('indexInput').value.trim().toLowerCase();
-  const textPart = indexValue.split('.')[0]; 
-  const book = indexValue.replace(/[^a-zA-Z]/g, ''); 
-  const valueForApi = book + "/" + textPart + "/" + indexValue;
-  const url = "/read/php/api.php?fromjs=" + texttype + "/" + valueForApi + "&type=A";
-  const originalValue = indexValue;
-
-  console.log("Next URL: ", url);
-  fetch(url)
-      .then(response => response.text()) 
-      .then(data => {
-          console.log("Next Data: ", data);
-          const newIndexValue = extractIndexValue(data);
-          if (newIndexValue) {
-            const inputField = document.getElementById('indexInput');
-            inputField.value = newIndexValue; 
-            inputField.dispatchEvent(new Event('input')); 
-          }
-          loadText();
-      })
-      .catch(error => {
-          console.error('Error fetching next data:', error);
-          document.getElementById('indexInput').value = originalValue;
-          inputField.dispatchEvent(new Event('input')); 
-      });
-}
-
-function extractIndexValue(data) {
-    return data.split(' ')[0]; 
-}
+function loadPrev() { navigateAdjacent('prev'); }
+function loadNext() { navigateAdjacent('next'); }
 </script>
 
 <script>
@@ -1535,7 +1508,7 @@ function clearInputs() {
                 window.open('/4nt/?cols=pali%2Cpali_royal_iast%2Cpali_myanmar_iast%2Cpali_bjt_iast&q=' + indexValue, '_blank');
     });
 
-    document.getElementById('linkButton2').addEventListener('click', function() {
+    document.getElementById('linkButton2')?.addEventListener('click', function() { // this page has no #linkButton2
         var indexValue = document.getElementById('indexInput').value;
         var found = false;
 

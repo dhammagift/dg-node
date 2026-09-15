@@ -107,7 +107,10 @@ const ScrollManager = {
                 if (!suttaArea) return null;
 
                 try {
-                    const regex = new RegExp(searchText, 'gi');
+                    // Same rule as megareader.js's highlight: punctuation between the letters of a
+                    // plain search word is ignored ("evaṁ bhikkhave" finds "evaṁ, bhikkhave").
+                    const plain = !/[.*+?^${}()|[\]\\]/.test(searchText);
+                    const regex = new RegExp(plain ? Array.from(searchText).join('[,;:!"\'“”‘’«»]*') : searchText, 'gi');
                     const textNodes = document.evaluate(
                         ".//text()[normalize-space(parent::*) != '']",
                         suttaArea, null, XPathResult.UNORDERED_NODE_SNAPSHOT_TYPE, null
@@ -134,6 +137,9 @@ const ScrollManager = {
     },
 
  async handleInitialScroll(event) {
+        // Same text re-rendered in place (settings side panel, megareader.js buildSutta opts):
+        // the caller keeps the reading place itself — no hash jump, no "Continue reading".
+        if (event && event.detail && event.detail.inPlace) return;
         if (localStorage.getItem('dg_progressEnabled') === 'false') {
             window.isRestoringProgress = false;
             this.scrollToHash();
@@ -289,8 +295,11 @@ const ScrollManager = {
         this.hideProgressNotification(); 
         this.isWaitingForToast = true;
 
-        const textBtn = window.isRu ? "Продолжить чтение" : "Continue reading";
-        const textCheckbox = window.isRu ? "Больше не спрашивать" : "Don't ask again";
+        // The interface language right now. window.isRu is set by several scripts by different rules
+        // (URL path, a saved key, a regex match) and showed this toast in Russian on the English site.
+        const ru = String((window.DHAMMA_I18N && window.DHAMMA_I18N.language) || document.documentElement.lang || '').startsWith('ru');
+        const textBtn = ru ? "Продолжить чтение" : "Continue reading";
+        const textCheckbox = ru ? "Больше не спрашивать" : "Don't ask again";
 
         const toast = document.createElement('div');
         toast.id = 'progress-toast';

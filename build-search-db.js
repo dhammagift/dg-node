@@ -10,8 +10,16 @@
 const { DatabaseSync } = require('node:sqlite');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
+const { execFileSync } = require('child_process');
+const { paliSkel } = require('./public/overrides/js/pali-skeleton.js');
+// Только ради DEFAULT_SCOPE_PREFIXES/matchesScope для словаря подсказок (см. build()). Модуль при require
+// ничего не делает — читает свои json-конфиги и ждёт init(), которого здесь не будет.
+const { DEFAULT_SCOPE_PREFIXES, matchesScope, stripSearchPunctuation } = require('./core/search-core.js');
 
-const DATA_ROOT = path.join(__dirname, 'siteroot', 'data');
+// DG_DATA_ROOT / DG_TEXTINFO / DG_LEGACY_WORDS: set by .github/workflows/build-db.yml, where the
+// corpus is checked out next to the repo instead of symlinked into siteroot/ as on the server.
+const DATA_ROOT = process.env.DG_DATA_ROOT || path.join(__dirname, 'siteroot', 'data');
 const SC_BILARA = path.join(DATA_ROOT, 'suttacentral.net', 'sc-data', 'sc_bilara_data');
 const SC_TRANS = path.join(SC_BILARA, 'translation');
 const DG_OFFLINE = path.join(DATA_ROOT, 'dhammagift');
@@ -28,11 +36,11 @@ const OUT_PATH = path.join(__dirname, 'dg.db');
 // `mr` (legacy relevance rank) is the one piece of sutta metadata that is not in the corpus —
 // it comes from the legacy site's textinfo.json. Everything else below is derived from the
 // corpus itself, so this build does not depend on dg_db_light.json / dblight.js at all.
-const TEXTINFO_PATH = fs.existsSync('/data/data/com.termux/files/usr')
+const TEXTINFO_PATH = process.env.DG_TEXTINFO || (fs.existsSync('/data/data/com.termux/files/usr')
     ? '/data/data/com.termux/files/usr/share/apache2/default-site/htdocs/assets/js/textinfo.json'
     : (process.platform === 'win32'
         ? 'C:/soft/dg/assets/js/textinfo.json'
-        : '/var/www/html/assets/js/textinfo.json');
+        : '/var/www/html/assets/js/textinfo.json'));
 
 // Files that are not sutta texts (UI strings, blurbs, subject indexes, study guides), plus one
 // real duplicate. Same list dblight.js keeps for the Express server's skeleton — duplicated
@@ -185,6 +193,35 @@ function build() {
     }
     console.log(`metadata: ${meta.size} suttas (${Date.now() - t0}ms)`);
 
+    /* Словарь подсказок ("может быть, вы искали", core/search-core.js suggestWords) собирается
+       ПОПУТНО, в ingest() ниже: тот же текст, что и так проходит через руки при записи.
+
+       Область — четыре никаи + шесть книг КН + виная: DEFAULT_SCOPE_PREFIXES, тот же список и тот
+       же предикат matchesScope, по которым ищет сам поиск, а не второй список префиксов рядом.
+       Владелец: "только на четыре никая... и шесть книг КН максимум" и отдельно "и + виная".
+       Виная в поиске — scope по запросу, но это канон, а не комментарий.
+
+       Почему не весь pli/%: первая версия брала все пали-корни, и в подсказки лезли слова из
+       джатак и абхидхаммы (kacchapajātaka, монстр на 66 букв). По ним дефолтный поиск возвращает
+       ноль — подсказка вела в пустоту, что хуже, чем не подсказать. df по той же причине
+       считается только внутри этой области. */
+    const vocabScope = new Set();
+    for (const [id, m] of meta) {
+        if (m.dir_path && m.dir_path.startsWith('pli/') &&
+            matchesScope(m, id, DEFAULT_SCOPE_PREFIXES.concat('vinaya'))) vocabScope.add(id);
+    }
+    // Apostrophes and hyphens stay in the stored form (it is shown to the person and pasted into
+    // the search box, so it has to be the real form); paliSkel drops them on both sides anyway.
+    const VOCAB_WORD = /[\p{L}\u2019'-]+/gu;
+    const vocabDf = new Map();
+    function countVocabWords(txt) {
+        // Per segment, not per occurrence: df only ranks suggestions, and "appears in many places"
+        // is the useful signal, not "repeated inside one verse".
+        for (const w of new Set(txt.toLowerCase().match(VOCAB_WORD) || [])) {
+            vocabDf.set(w, (vocabDf.get(w) || 0) + 1);
+        }
+    }
+
     fs.rmSync(OUT_PATH, { force: true });
     fs.rmSync(`${OUT_PATH}-wal`, { force: true });
     fs.rmSync(`${OUT_PATH}-shm`, { force: true });
@@ -224,12 +261,17 @@ function build() {
         if (!suttaId || !meta.has(suttaId)) return 0;
         const segments = readSegments(file);
         if (!segments) return 0;
+        const countWords = kind === 'root' && vocabScope.has(suttaId);
         let ord = 0;
         for (const segmentId of Object.keys(segments)) {
             const txt = segments[segmentId];
             if (typeof txt !== 'string' || !txt) continue;
             if (kind === 'html') insHtml.run(suttaId, segmentId, ord++, txt);
             else insText.run(suttaId, segmentId, ord++, kind, lang, translator, source ?? null, txt);
+            // Словарь подсказок считается здесь же, пока сегмент в руках. Раньше buildVocab читал
+            // все 485 тысяч корневых строк обратно из texts — тот же текст, только что записанный,
+            // вторым проходом. Считать на месте дешевле ровно на это чтение.
+            if (countWords) countVocabWords(txt);
         }
         return ord;
     }
@@ -309,22 +351,29 @@ function build() {
             txt, content='texts', content_rowid='rowid',
             tokenize='trigram remove_diacritics 1');
     `);
-    // The indexed copy is ё-folded because the tokenizer will not do it: remove_diacritics folds
-    // the Pali marks (ā→a, ṁ→m, ñ→n, ṇ→n) but treats ё as its own Cyrillic letter, and the grep
-    // path this replaces folded е/ё by hand. The query side folds the same way. Storing a folded
-    // copy in the index is safe precisely because the index is external-content — the readable
-    // text lives in `texts` and is returned from there, never from here (so: never `rebuild`,
-    // which would repopulate the index from the unfolded content).
+    // The indexed copy is folded because the tokenizer will not do it: ё→е (remove_diacritics
+    // folds the Pali marks, ā→a, ṁ→m, but treats ё as its own Cyrillic letter), and the punctuation
+    // the query side strips at the door (search-core.js stripSearchPunctuation) is stripped here
+    // too — otherwise "evaṁ bhikkhave" never found "evaṁ, bhikkhave" (owner). The JS-side matchers
+    // allow those marks back between letters (search-core.js punctTolerantPattern). Storing a
+    // folded copy in the index is safe precisely because the index is external-content — the
+    // readable text lives in `texts` and is returned from there, never from here (so: never
+    // `rebuild`, which would repopulate the index from the unfolded content).
+    db.function('fts_fold', { deterministic: true },
+        s => stripSearchPunctuation(s || '').replace(/ё/g, 'е').replace(/Ё/g, 'Е'));
     const placeholders = [...UNINDEXED_TRANSLATORS].map(() => '?').join(',');
     db.prepare(
         `INSERT INTO fts(rowid, txt)
-         SELECT rowid, replace(replace(txt, 'ё', 'е'), 'Ё', 'Е') FROM texts
+         SELECT rowid, fts_fold(txt) FROM texts
          WHERE translator IS NULL OR translator NOT IN (${placeholders})`
     ).run(...UNINDEXED_TRANSLATORS);
     console.log(`fts index (${Date.now() - t}ms)`);
 
     db.exec('PRAGMA journal_mode = WAL');
+    const vocabWords = writeVocab(db, vocabDf);
+    writeSuttaWords(vocabDf, vocabWords);
     db.exec('ANALYZE');
+    const buildId = writeMeta(db);
     // Counted from `texts`, not from `fts`: on an external-content table `SELECT count(*) FROM
     // fts` reports the content table's row count, so it cannot show what is actually indexed.
     const unindexed = db.prepare(
@@ -332,10 +381,224 @@ function build() {
     ).get(...UNINDEXED_TRANSLATORS).c;
     db.close();
 
+    if (process.argv.includes('--publish')) publishArchive(buildId);
+
     const mb = (fs.statSync(OUT_PATH).size / 1048576).toFixed(1);
     console.log(`\n${OUT_PATH}: ${mb} MB, ${rows} text rows (${rows - unindexed} indexed, ` +
         `${unindexed} hidden from search), ${htmlRows} html rows`);
     console.log(`Total ${((Date.now() - started) / 1000).toFixed(1)}s`);
 }
 
-build();
+/* --publish: положить на раздачу ТУ ЖЕ базу, которую только что собрали, сжатой. Владелец:
+   "почему не один общий провод делает одну базу и не кладет ее же в виде архива на раздачу".
+
+   Раньше это был отдельный скрипт (publish-offline-db.js): он заново открывал базу, заново читал
+   из неё build_id и заново решал, ту ли базу публикует. Три вопроса, которых просто нет, когда
+   архив делается здесь же из файла, который эта функция и записала.
+
+   Публикация специально НЕ происходит сама по себе: она меняет то, что качают люди, и смена
+   build_id — это оповещение "доступна новая база" всем, у кого офлайн уже скачан. Поэтому флаг.
+
+   `--no-build` — выложить базу, которая уже лежит, не пересобирая. Сначала этого не было: мол,
+   сборка детерминированная, проще пересобрать. Аргумент оказался пустой. Во-первых, "а ту ли базу
+   я выложил" здесь взяться неоткуда — эта функция хэширует ровно те байты, которые кладёт, и
+   build_id читает из того же файла. Во-вторых, пересборка меняет built_at, а значит и sha256
+   файла, и уже выложенная на прод база перестала бы совпадать с базой внутри архива — ровно то
+   расхождение, ради устранения которого всё и затевалось. */
+function publishArchive(buildId) {
+    const outDir = (process.argv.find(a => a.startsWith('--out=')) || '').slice(6)
+        || path.join(__dirname, 'siteroot', 'mobile-data');
+    fs.mkdirSync(outDir, { recursive: true });
+    const outGz = path.join(outDir, 'dg.db.gz');
+    const t = Date.now();
+
+    const h = crypto.createHash('sha256');
+    const fd = fs.openSync(OUT_PATH, 'r');
+    const buf = Buffer.allocUnsafe(1 << 20);
+    let n;
+    while ((n = fs.readSync(fd, buf, 0, buf.length, null)) > 0) h.update(buf.subarray(0, n));
+    fs.closeSync(fd);
+
+    /* Во временный файл, потом rename. Прямая запись обрезала бы живой архив в первую же
+       миллисекунду, а gzip наполняет его минуты — всё это время посетители качали бы огрызок,
+       причём манифест ещё обещал бы старый sha256, так что проверка падала бы у них уже после
+       200 МБ. rename в пределах одной ФС атомарен: читатель видит либо старый архив целиком,
+       либо новый целиком. Манифест пишется последним. */
+    const tmpGz = `${outGz}.tmp-${process.pid}`;
+    let bytesGz;
+    try {
+        const out = fs.openSync(tmpGz, 'w');
+        try {
+            execFileSync('gzip', ['-6', '-c', OUT_PATH], { stdio: ['ignore', out, 'inherit'] });
+        } finally {
+            fs.closeSync(out);
+        }
+        bytesGz = fs.statSync(tmpGz).size;
+        fs.renameSync(tmpGz, outGz);
+    } catch (e) {
+        fs.rmSync(tmpGz, { force: true }); // не оставляем половину архива занимать место
+        throw e;
+    }
+
+    // Только file_gz, без file: клиент предпочитает несжатый файл, когда объявлены оба (его можно
+    // докачать после обрыва). Здесь выбран вес — 216 МБ против 595, ценой рестарта при обрыве.
+    const bytes = fs.statSync(OUT_PATH).size;
+    fs.writeFileSync(path.join(outDir, 'db-manifest.json'), JSON.stringify({
+        schema_version: 1,
+        build_id: buildId,
+        langs: 'all',
+        fts: 'trigram',
+        source: path.basename(OUT_PATH),
+        built_at: new Date().toISOString(),
+        file_gz: path.basename(outGz),
+        bytes_gz: bytesGz,
+        bytes,
+        sha256: h.digest('hex'),
+    }, null, 2) + '\n');
+    console.log(`published: ${(bytesGz / 1048576).toFixed(1)} МБ из ${(bytes / 1048576).toFixed(1)} ` +
+                `(${(bytes / bytesGz).toFixed(1)}x, ${((Date.now() - t) / 1000).toFixed(0)}с) → ${outDir}`);
+}
+
+/* sutta_words.txt — список для автоподсказок в самом поле поиска (autopali.js). Пишется здесь,
+   а не отдельным скриптом: данные те же самые и уже в руках, а отдельный скрипт означал бы второй
+   вход, чтение vocab обратно из базы и правило "запускать строго после сборки", которое однажды
+   забудут. Владелец: "что-то дописывается отдельно можно это все собрать централизовать".
+
+   Отдаётся как override-копия (public/overrides → /assets), легаси-файл в старом репо не трогаем:
+   его читает ещё и PHP-сайт. Из него же берутся первый и последний блоки — кураторские фразы
+   (37 факторов пробуждения, четыре истины) и id текстов с названиями. Они написаны руками и из
+   корпуса не выводятся; из корпуса выводится только средний, словарный блок. */
+const LEGACY_WORDS = process.env.DG_LEGACY_WORDS || '/var/www/html/assets/texts/sutta_words.txt';
+const OUT_WORDS = path.join(__dirname, 'public', 'overrides', 'texts', 'sutta_words.txt');
+const WORD_LINE = /^\S+ \d+$/;
+
+function writeSuttaWords(df, expected) {
+    const t = Date.now();
+    let legacy;
+    try {
+        legacy = fs.readFileSync(LEGACY_WORDS, 'utf8').split('\n');
+    } catch {
+        console.log(`sutta_words: пропущен, нет ${LEGACY_WORDS}`);
+        return;
+    }
+    const firstWord = legacy.findIndex(l => WORD_LINE.test(l));
+    const lastWord = legacy.length - 1 - [...legacy].reverse().findIndex(l => WORD_LINE.test(l));
+    if (firstWord < 0) throw new Error(`${LEGACY_WORDS}: не нашёл ни одной словарной строки "слово N"`);
+
+    /* Порядок строк = порядок подсказок: autopali.js отдаёт совпадения в порядке файла. Легаси-файл
+       был по алфавиту, и на большом списке это топит нужное — на "satipa" первым шёл satipaññañca
+       (1 вхождение), а satipaṭṭhānā уезжала вниз. Частота вперёд: то, что человек ищет, почти
+       всегда частотнее того, чего он не ищет. Внутри одинаковой частоты — по алфавиту без
+       диакритики, чтобы ā стояла рядом с a, а не после z, куда её отправила бы сортировка по кодам. */
+    const bare = w => w.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    const words = [];
+    for (const [word, n] of df) {
+        if (paliSkel(word).length < 3) continue; // тот же отсев, что и в vocab
+        words.push([word, n, bare(word)]);
+    }
+    words.sort((a, b) => (b[1] - a[1]) || (a[2] < b[2] ? -1 : a[2] > b[2] ? 1 : 0)
+        || (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
+    if (words.length !== expected) throw new Error(`sutta_words: ${words.length} слов против ${expected} в vocab`);
+
+    const out = legacy.slice(0, firstWord)
+        .concat(words.map(w => `${w[0]} ${w[1]}`), legacy.slice(lastWord + 1))
+        .join('\n');
+    fs.mkdirSync(path.dirname(OUT_WORDS), { recursive: true });
+    fs.writeFileSync(OUT_WORDS, out);
+    console.log(`sutta_words: ${words.length} форм, ${(Buffer.byteLength(out) / 1048576).toFixed(1)} МБ (${Date.now() - t}ms)`);
+}
+
+/* meta — часть базы, а не отдельная сборка. Офлайн-клиент (public/offline/db-worker.js) после
+   распаковки читает `SELECT key, value FROM meta` и сверяет build_id с именем, под которым
+   сохранил файл: база без этих строк отвергается как незавершённое скачивание. Раньше таблицу
+   дописывал сборщик урезанной копии (build-mobile-db.js), из-за чего баз было две. Теперь она
+   одна: dg.db и есть то, что раздаётся (в сжатом виде, publish-offline-db.js).
+
+   build_id считается по содержимому готовой базы ДО вставки самих строк — иначе он зависел бы
+   от себя. Одинаковый корпус даёт одинаковый id, и клиент не перекачивает то же самое. */
+function writeMeta(db) {
+    const h = crypto.createHash('sha256').update('v1|all|');
+    const fd = fs.openSync(OUT_PATH, 'r');
+    const buf = Buffer.allocUnsafe(1 << 20);
+    let n;
+    while ((n = fs.readSync(fd, buf, 0, buf.length, null)) > 0) h.update(buf.subarray(0, n));
+    fs.closeSync(fd);
+    const buildId = h.digest('hex').slice(0, 16);
+
+    db.exec('CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT) WITHOUT ROWID');
+    const ins = db.prepare('INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)');
+    for (const [k, v] of [
+        ['schema_version', '1'],
+        ['build_id', buildId],
+        ['langs', 'all'],
+        ['fts', 'trigram'],
+        ['source', path.basename(OUT_PATH)],
+        ['built_at', new Date().toISOString()],
+    ]) ins.run(k, v);
+    console.log(`meta: build ${buildId}`);
+    return buildId;
+}
+
+/* vocab — словарь словоформ пали из самого корпуса, для подсказки "может быть, вы искали"
+   (core/search-core.js → suggestWords). Смысл в том, что подсказки берутся не из словаря, а из
+   текстов: каждую предложенную форму гарантированно можно найти поиском, потому что она там есть.
+
+   Владелец: "нам же нужно это делать только на pali тексты... только на четыре никая... и шесть книг КН
+   максимум". Именно так и берётся — по DEFAULT_SCOPE_PREFIXES, тому же списку, по которому ищет
+   дефолтный поиск, и тем же предикатом matchesScope.
+
+   Почему не весь pli/%: сначала я взял все пали-корни — и в подсказки полезли слова из джатак,
+   винаи и абхидхаммы (владелец заметил живьём: kacchapajātaka, и монстр на 60 букв оттуда же).
+   Подсказать слово, по которому дефолтный поиск вернёт ноль — хуже, чем не подсказать ничего.
+   Счётчик df по той же причине считается только внутри этого же scope. lzh/san/pra исключены: это не пали. */
+function writeVocab(db, df) {
+    const t = Date.now();
+    db.exec(`
+        DROP INDEX IF EXISTS idx_vocab_skel; -- был в первой версии, никто им не пользовался
+        DROP TABLE IF EXISTS vocab;
+        -- Без индекса по skel: читатели берут либо всю таблицу сразу (loadVocab в search-core.js
+        -- строит свою Map в памяти), либо одну строку по word, а это и есть первичный ключ.
+        CREATE TABLE vocab (word TEXT PRIMARY KEY, skel TEXT, df INTEGER) WITHOUT ROWID;
+    `);
+    const ins = db.prepare('INSERT INTO vocab VALUES (?,?,?)');
+    db.exec('BEGIN');
+    let kept = 0;
+    for (const [word, n] of df) {
+        const skel = paliSkel(word);
+        if (skel.length < 3) continue; // nothing to fuzzy-match against, and huge useless buckets
+        ins.run(word, skel, n);
+        kept++;
+    }
+    db.exec('COMMIT');
+    console.log(`vocab: ${kept} pali word forms (${Date.now() - t}ms)`);
+    return kept;
+}
+
+if (process.argv.includes('--no-build')) {
+    // Публикуем то, что уже собрано. build_id берём из самой базы — единственного места, где он
+    // есть; никаких предположений о том, что это за файл.
+    const db = new DatabaseSync(`file:${OUT_PATH}?mode=ro`, { readOnly: true });
+    let buildId = null;
+    try {
+        buildId = db.prepare("SELECT value FROM meta WHERE key = 'build_id'").get()?.value || null;
+    } catch { /* база собрана сборщиком без meta */ }
+    db.close();
+    if (!buildId) {
+        console.error(`в ${OUT_PATH} нет meta.build_id — соберите базу: npm run build-search-db`);
+        process.exit(1);
+    }
+    console.log(`публикуем готовую базу, build ${buildId}`);
+    publishArchive(buildId);
+} else if (process.argv.includes('--finish')) {
+    // The last two steps of build() on a dg.db whose build was stopped after "sutta_words" (the
+    // server killed it for low memory, 2026-09-14): statistics and meta. Everything before them is
+    // already in the file — only valid for a build that got that far. Same order as build(): meta
+    // hashes the file after ANALYZE.
+    const db = new DatabaseSync(OUT_PATH);
+    db.exec('ANALYZE');
+    writeMeta(db);
+    db.close();
+    console.log(`${OUT_PATH}: ${(fs.statSync(OUT_PATH).size / 1048576).toFixed(1)} MB, finished`);
+} else {
+    build();
+}

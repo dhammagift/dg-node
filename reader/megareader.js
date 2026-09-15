@@ -44,7 +44,7 @@ const citation = document.getElementById("paliauto");
 const form = document.getElementById("form");
 
 // Режим — только ключ (window.READER_MODE.modeKey, см. reader-template.html: ?mode=). Что
-// означает ключ (multiFor/dualScript/mnemonic/label) знает ТОЛЬКО сервер: reader/mode-table.json
+// означает ключ (dualScript/mnemonic/label) знает ТОЛЬКО сервер: reader/mode-table.json
 // резолвится в dg-light.js по ?mode=, а здесь та же таблица подгружается один раз ИСКЛЮЧИТЕЛЬНО
 // для презентационных нужд (панель ссылок, определение "это смена языка интерфейса?") — сама
 // buildSutta() отправляет на сервер только ?mode=, columns в рендере берутся из ОТВЕТА API, не
@@ -61,7 +61,32 @@ const modeFromUrl = new URLSearchParams(window.location.search).get('mode');
 const langFromUrl = new URLSearchParams(window.location.search).get('lang');
 const READER_MODE_EXPLICIT = !!(window.READER_MODE && window.READER_MODE.modeKey) || !!modeFromUrl;
 let READER_MODE = window.READER_MODE || {};
+/* Режим, который выбрал сам пользователь (шторка/Alt+1..4) — чтобы следующий текст открывался
+   в нём, а не в том, куда ридер отклонился по дороге. Временный переход в multi (примерка
+   набора в «Читать») сюда не пишется: он не выбор, а способ показать вторую строку. */
+const MODE_KEY = 'dgReaderMode';
+function getSavedMode() {
+    try { return localStorage.getItem(MODE_KEY) || ''; } catch (e) { return ''; }
+}
+function saveMode(modeKey) {
+    try { localStorage.setItem(MODE_KEY, modeKey); } catch (e) { /* приватный режим */ }
+}
 if (!READER_MODE.modeKey && modeFromUrl) READER_MODE.modeKey = modeFromUrl;
+if (!READER_MODE.modeKey) READER_MODE.modeKey = getSavedMode() || READER_MODE.modeKey;
+// issue #6: multiTran и multiLang слились в один multi — какие языки и каких переводчиков
+// показывать, стало одним набором, а не двумя разными режимами. Самих ключей больше нет в
+// mode-table.json (владелец: "старые не нужны"), но ссылка с ними могла кому-то уйти — чтобы
+// она не открывалась пустым дефолтом, ключ здесь молча приводится к multi, а адрес переписывается
+// на новый (replaceState, без лишней записи в историю).
+const LEGACY_MODE_ALIASES = { multiTran: 'multi', multiLang: 'multi' };
+if (LEGACY_MODE_ALIASES[READER_MODE.modeKey]) {
+    READER_MODE.modeKey = LEGACY_MODE_ALIASES[READER_MODE.modeKey];
+    if (modeFromUrl) {
+        const legacyParams = new URLSearchParams(window.location.search);
+        legacyParams.set('mode', READER_MODE.modeKey);
+        history.replaceState(history.state, '', window.location.pathname + '?' + legacyParams.toString() + window.location.hash);
+    }
+}
 // Same deal for lang — without this, a fresh load of e.g. ?mode=single&lang=en had no
 // READER_MODE.lang yet on the FIRST buildSutta() call (nothing sets it before then), so that
 // first request went out with no lang= at all and fell through to the server's bare fallback.
@@ -71,6 +96,14 @@ if (!READER_MODE.lang && langFromUrl) READER_MODE.lang = langFromUrl;
 // (not a copy) window.READER_MODE points to; every later `READER_MODE.modeKey = ...` elsewhere
 // in this file mutates the object in place, so the reference below stays live automatically.
 window.READER_MODE = READER_MODE;
+// Который переводчик выигрывает по умолчанию для языка (configs/reader/translator-priority.json,
+// тот же файл, которым сервер делает автовыбор). Клиенту нужен только для ПОДПИСИ: в попапе
+// языков строка "кто переводит" должна называть того же, кого подставит сервер, даже для языка,
+// который сейчас выключен и потому ещё ни разу не приезжал в ответе (home.js trnBlock).
+window.translatorPriorityReady = fetch('/reader/translator-priority.json')
+    .then(r => r.ok ? r.json() : {})
+    .then(data => { window.translatorPriority = data; return data; })
+    .catch(() => { window.translatorPriority = {}; return {}; });
 window.modeTableReady = fetch('/reader/mode-table.json')
     .then(r => r.json())
     .then(data => { window.MODE_TABLE = data; return data; });
@@ -92,6 +125,113 @@ function setLangOrderFirst(lang, fallbackColumns) {
     const next = [lang, ...base.filter(l => l !== lang)];
     try { localStorage.setItem(LANG_ORDER_KEY, JSON.stringify(next)); } catch (e) { /* приватный режим */ }
 }
+// issue #6 этап 2: which translator(s) the user picked for a language — { "ru": ["ru_khantibalo",
+// "ru_syrkin"], "en": [] }. A language with no entry (or an empty one) keeps the server's own
+// priority pick (configs/reader/translator-priority.json) — the key stores CHOICES, never the
+// defaults, so a language the user never touched follows the project's priority forever.
+// Deliberately a second key rather than a richer dgReadingLangOrder: that one has six readers
+// already (home.js, toc.js, settings…), all of which expect a plain array of language codes.
+/* issue #6 этап 3: ONE ordered list of translation keys — ["ru_o","en_sujato","ru_sv"] — is
+   what the reader actually renders, in exactly that order. It replaces the pair "order of
+   languages" + "translators per language", which could not express the thing the owner asked
+   for: two languages interleaved ("о·рус, Sujato·англ, SV·рус"). LANG_ORDER_KEY is still
+   written (the pill reads it to decide whether the "···" button is warranted), but it is
+   derived from this list now, not a second source of truth. */
+/* Какие языки вообще участвуют в чтении — ОБЩАЯ настройка, та же, что на /settings/
+   (dhammaReaderLangs, csv). Никакого своего списка у ридера нет: включил язык там — он есть
+   здесь, включил здесь — он есть там. Дефолт тот же, что у страницы настроек: интерфейс
+   русский → ru+en, любой другой язык X → X+en; немецкий/сербский и прочие сами не включаются. */
+function getEnabledLangs() {
+    let raw = '';
+    try { raw = localStorage.getItem('dhammaReaderLangs') || localStorage.getItem('dhammaSearchLangs') || ''; } catch (e) { /* приватный режим */ }
+    const saved = raw.split(',').map(x => x.trim()).filter(Boolean);
+    if (saved.length) return [...new Set(saved)];
+    let site = 'en';
+    try { site = localStorage.getItem('dhammaLanguage') || localStorage.getItem('siteLanguage') || 'en'; } catch (e) { /* приватный режим */ }
+    return [...new Set([site, 'en'])];
+}
+window.getEnabledLangs = getEnabledLangs;
+
+/* Две области, которые не должны драться:
+   — ГЛОБАЛЬНО (dhammaReaderLangs + dgReadingStack): мои языки и мой порядок чтения вообще.
+     Языки здесь задаются на /settings/, окно их не переписывает.
+   — НА СЕССИЮ (sessionStorage): примерка — язык, которого нет в моих языках, или набор,
+     собранный в режиме «Читать». Живёт до конца сессии и переходит вместе с человеком из
+     текста в текст (владелец: "переход в другой текст — не повод сбрасывать настройки"), но в
+     глобальные настройки не просачивается и закрытием вкладки заканчивается.
+   Порядок и выбор переводчиков внутри МОИХ языков сохраняются всегда — это и есть "как я читаю". */
+const STACK_KEY = 'dgReadingStack';
+const LOCAL_STACK_KEY = 'dgReadingStackLocal';
+function readLocalStack() {
+    try {
+        const v = JSON.parse(sessionStorage.getItem(LOCAL_STACK_KEY));
+        return (v && typeof v === 'object' && Array.isArray(v.keys)) ? v : null;
+    } catch (e) { return null; }
+}
+// opts.ignoreTrial — results page: its set is the saved one (like multi); a one-off "Читать" trial
+// (owner: session-only applies to the single-translator reading mode only) must not leak into it.
+function getStack(opts) {
+    // Примерка этой сессии, если она есть, — она и есть рабочий набор, на любом тексте.
+    const local = readLocalStack();
+    if (local && !(opts && opts.ignoreTrial && local.trial)) return local.keys.slice();
+    try {
+        const v = JSON.parse(localStorage.getItem(STACK_KEY));
+        return Array.isArray(v) ? v.filter(k => typeof k === 'string' && k.includes('_')) : [];
+    } catch (e) { return []; }
+}
+// opts.local — «только для этого текста»: так пишет режим «Читать» (любая правка там
+// одноразовая) и язык, которого нет в моих языках. Глобального набора это не касается вовсе.
+function setStack(keys, opts) {
+    const mine = getEnabledLangs();
+    const global = (opts && opts.local) ? [] : keys.filter(k => mine.includes(k.slice(0, k.indexOf('_'))));
+    try {
+        if (global.length !== keys.length) {
+            sessionStorage.setItem(LOCAL_STACK_KEY, JSON.stringify({
+                keys: keys, trial: !!(opts && opts.local)
+            }));
+        } else {
+            sessionStorage.removeItem(LOCAL_STACK_KEY);
+        }
+    } catch (e) { /* приватный режим */ }
+    if (opts && opts.local) return;   // постоянное хранилище не трогаем вообще
+    keys = global;   // наружу, в постоянное хранилище, уходит только глобальная часть
+    try {
+        localStorage.setItem(STACK_KEY, JSON.stringify(keys));
+        // keep the "activated languages" record in step, it is what the pill's "···" reads
+        // Merge, never shrink: this key is the record of languages the user has ACTIVATED, and
+        // the pill reads it. Replacing it with just the stack's languages would quietly
+        // de-activate a language the moment the stack held one — taking the "···" button, and
+        // with it the only way back, off the screen.
+        const stackLangs = [...new Set(keys.map(k => k.slice(0, k.indexOf('_'))))];
+        localStorage.setItem(LANG_ORDER_KEY, JSON.stringify(
+            stackLangs.concat(getLangOrder().filter(l => !stackLangs.includes(l)))));
+        // ...and the per-language translator map, which the single-column modes still read
+        // (translatorsQueryFor). Derived, never edited by hand — the stack is the original.
+        const byLang = {};
+        for (const k of keys) (byLang[k.slice(0, k.indexOf('_'))] ||= []).push(k);
+        localStorage.setItem(TRANSLATORS_KEY, JSON.stringify(byLang));
+    } catch (e) { /* приватный режим */ }
+}
+window.getReadingStack = getStack;
+window.setReadingStack = setStack;
+
+const TRANSLATORS_KEY = 'dgReadingTranslators';
+function getTranslatorChoice() {
+    try { const v = JSON.parse(localStorage.getItem(TRANSLATORS_KEY)); return (v && typeof v === 'object') ? v : {}; }
+    catch (e) { return {}; }
+}
+// "&translators=..." — every translator the user has picked, for every language. Not narrowed to
+// the languages being fetched on purpose: the server drops keys outside the languages it resolved
+// anyway, and a language with no pick of its own keeps the priority default (translatorsForSutta),
+// so this composes with any langs= set without the client having to predict which language the
+// server will land on (it can't, on a cold load with no ?lang= yet).
+function translatorsQueryFor() {
+    const choice = getTranslatorChoice();
+    const keys = Object.keys(choice).reduce((acc, lang) =>
+        acc.concat(Array.isArray(choice[lang]) ? choice[lang] : []), []);
+    return keys.length ? `&translators=${encodeURIComponent(keys.join(','))}` : '';
+}
+window.getTranslatorChoice = getTranslatorChoice;
 // Языки, которых нет в сохранённом порядке (юзер ещё не переключал), остаются в порядке сервера
 // — так сохранённый порядок только переставляет "первый", а не переизобретает весь список.
 function reorderColumnsByLangOrder(cols) {
@@ -102,7 +242,7 @@ function reorderColumnsByLangOrder(cols) {
     return [...known, ...rest];
 }
 
-// Mode-table.json entries are pure behavior flags now (mnemonic/dualScript/multiFor) — no
+// Mode-table.json entries are pure behavior flags now (mnemonic/dualScript) — no
 // per-language duplicate keys (mem/mem_en etc. are gone, see 'memorize'/'devanagari'). Language
 // is a fully separate axis (?lang=/?langs=), so these checks work identically in any language.
 function isMnemonicMode(modeKey) {
@@ -517,7 +657,7 @@ window.generateThirdPartyLinks = function(slug, slugReady, texttype, translator)
     // links" (settings.js's PDF export) can find them by class instead of by parent container —
     // on desktop these get physically MOVED into #reader-toolbar (see buildSutta() below), so
     // #top-links-container alone no longer reliably contains them.
-    scLink += `<a data-slug="${texttype}/${slugReady}" href="javascript:void(0)" title="Text-to-Speech (Alt+R)" class="voice-link sc-ext-link">Voice</a>`;
+    scLink += `<a data-slug="${texttype}/${slugReady}" href="javascript:void(0)" title="Text-to-Speech (Alt+R)" class="voice-link sc-ext-link">${window.isRuPath ? 'Голос' : 'Voice'}</a>`;
 
     // 4nt (BJT/CST/Thai edition comparison) — get4ntUrl() (settings.js) always returns the
     // local /4nt/... path (siteroot/4nt); mirror-link.js falls back to the project's own
@@ -550,10 +690,14 @@ window.generateThirdPartyLinks = function(slug, slugReady, texttype, translator)
     // (assets/js/openBw-RealTBW.js/settings.js there) — NOT mirror-link.js's live-reachability
     // probe used just above for other mirrors (theirs is "is it actually here right now",
     // right for a mirror that may or may not be mounted; force_local is an explicit mode switch,
-    // wrong to derive from whether a fetch happens to succeed). localhost still counts as local
-    // too (matches legacy's isLocal, and is how this is tested without the URL flag).
-    const isForceLocal = localStorage.getItem('forceLocal') === 'true';
-    const isLocal = window.location.host.includes('localhost') || window.location.host.includes('127.0.0.1') || isForceLocal;
+    // wrong to derive from whether a fetch happens to succeed).
+    //
+    // Hostname is deliberately NOT part of this any more. It used to say "localhost counts as
+    // local too", which was written for the dev server — but the Capacitor app's own origin is
+    // https://localhost, so every reader in the app got the secret/local links: "bb" and "ai"
+    // showed up for people who never asked for them (owner, screenshot of dn1 in the app). The
+    // switch is the flag, and only the flag.
+    const isLocal = localStorage.getItem('forceLocal') === 'true';
 
     if (typeof tbwLinksData !== 'undefined') {
         const hasTbw = tbwLinksData.find(item => Array.isArray(item) ? item[0] === slug : item === slug);
@@ -783,6 +927,10 @@ function restoreReadingAnchor(anchor) {
 window.switchReaderMode = function(modeKey, event) {
     if (event) event.preventDefault();
     READER_MODE.modeKey = modeKey;
+    saveMode(modeKey);   // явный выбор — с ним и откроется следующий текст
+    // ...и он же заканчивает примерку: человек сказал, каким режимом читать, значит временный
+    // набор («Читать» или чужой язык) больше не нужен — дальше работает сохранённый.
+    try { sessionStorage.removeItem(LOCAL_STACK_KEY); } catch (e) { /* приватный режим */ }
 
     // Owner: memorize mode (first-letter mnemonic) and devanagari mode (dualScript — punctuation
     // is Latin-only, doesn't exist in the converted script) should default to punctuation
@@ -970,7 +1118,14 @@ function dgReaderReveal(animate) {
     pane.classList.add('reader-in');
 }
 
-window.buildSutta = async function(rawSlug) {
+// The translations window (home.js) rebuilds the sutta on every change; it needs the same
+// "keep the line you're reading on the same pixel" treatment mode/language switches get.
+window.captureReadingAnchor = captureReadingAnchor;
+window.restoreReadingAnchor = restoreReadingAnchor;
+
+// opts.inPlace — re-render of the text already on screen (a setting changed in the settings side
+// panel, search/js/home.js): passed on with 'suttaLoaded' so smoothScroll.js leaves scroll alone.
+window.buildSutta = async function(rawSlug, opts) {
     const slug = window.normalizeSlugToDbKey(rawSlug);
     window._currentSlug = slug;
     // Owner: the skeleton is only useful when the reader is opening cold (nothing on screen
@@ -984,7 +1139,7 @@ window.buildSutta = async function(rawSlug) {
 
     let suttaData;
     try {
-        // Клиент шлёт modeKey (поведение: multiFor/dualScript/mnemonic — решает сервер, см.
+        // Клиент шлёт modeKey (поведение: dualScript/mnemonic — решает сервер, см.
         // reader/mode-table.json/dg-light.js) + lang (какой язык). Явный ?langs= в URL —
         // ручной оверрайд набора языков, работает независимо от ?mode=/?lang= (см.
         // /api/text/:suttaId в dg-light.js).
@@ -1000,44 +1155,68 @@ window.buildSutta = async function(rawSlug) {
         // language from the translator key's own prefix (en_brahmali → en) so the two agree; a
         // same-language multi-translator link (?translators=ru_o,ru_sv) still resolves to one
         // language, `split(',')[0]` on the first key is enough.
-        const explicitTranslators = new URLSearchParams(document.location.search).get('translators');
+        const urlQuery = new URLSearchParams(document.location.search);
+        const explicitTranslators = urlQuery.get('translators');
+        // ...and only when the address carries NOTHING else about mode/language, which is what a
+        // TOC link looks like. Checking langs= alone wasn't enough: a mode switch or the EN/RU
+        // toggle pushes mode=/lang= while a TOC ?translators= is still sitting in the address, and
+        // this branch then forced mode=single&lang=<translator's language> straight back over it —
+        // the drawer highlighted "Мульти" while the reader stayed one English column, and the
+        // language toggle did nothing at all. A translator key says who translates a language, not
+        // which mode to be in: everywhere else below it is passed through as a per-language
+        // narrowing (the server keeps its default translator for languages the key doesn't name).
+        const drivenExplicitly = urlQuery.has('mode') || urlQuery.has('lang');
+        const trnQuery = explicitTranslators ? `&translators=${encodeURIComponent(explicitTranslators)}` : null;
         let langsQuery;
-        if (!explicitLangs && explicitTranslators) {
+        if (!explicitLangs && explicitTranslators && !drivenExplicitly) {
             const derivedLang = explicitTranslators.split(',')[0].split('_')[0];
             langsQuery = `mode=single&lang=${encodeURIComponent(derivedLang)}&translators=${encodeURIComponent(explicitTranslators)}`;
         } else if (explicitLangs) {
             // mode= still needed even with an explicit langs= override — the server resolves
-            // BEHAVIOR (dualScript/mnemonic/multiFor) from mode alone (dg-light.js modeConfig),
-            // langs= only overrides which languages/columns to fetch. Dropping mode= here broke
-            // devanagari (and memorize/multiTran) whenever the URL also carried an explicit
-            // langs= — e.g. after switching modes while langs= was still set from a prior mode.
-            langsQuery = `mode=${encodeURIComponent(READER_MODE.modeKey)}&langs=${encodeURIComponent(explicitLangs)}`;
-        } else if (READER_MODE.modeKey === 'multiLang') {
-            // Набор языков для multiLang — из уже сохранённого порядка пользователя
-            // (getLangOrder(), тот же, что реордерит колонки). Owner: "не хардкодить языки" —
-            // при первом заходе (порядок ещё не сохранён) единственный честный дефолт —
-            // текущий язык + следующий РЕАЛЬНО доступный на сайте (availableLangs, см.
-            // dg-light.js — сканируется из configs/reader/lang_*.json, не список в коде).
+            // BEHAVIOR (dualScript/mnemonic) from mode alone (dg-fastify.js modeConfig), langs=
+            // only overrides which languages/columns to fetch. Dropping mode= here broke
+            // devanagari (and memorize) whenever the URL also carried an explicit langs= — e.g.
+            // after switching modes while langs= was still set from a prior mode.
+            // issue #6: ?translators= рядом с ?langs= раньше просто терялся — ветка выше ловит
+            // его ТОЛЬКО когда языков в адресе нет, а здесь он не добавлялся к запросу. Из-за
+            // этого нельзя было попросить "два русских переводчика И английский" одной ссылкой:
+            // переводчики молча отбрасывались, приходил один на язык. Единственное место, где
+            // выбор переводчика вообще может сосуществовать с несколькими языками.
+            langsQuery = `mode=${encodeURIComponent(READER_MODE.modeKey)}&langs=${encodeURIComponent(explicitLangs)}` +
+                (trnQuery || '');
+        } else if (READER_MODE.modeKey === 'multi' && !trnQuery && getStack().length) {
+            // Сохранённый набор решает сразу и какие языки, и каких переводчиков. Явный
+            // ?translators= в адресе всё же главнее — поэтому он в условии ветки.
+            const stack = getStack();
+            const stackLangs = [...new Set(stack.map(k => k.split('_')[0]))];
+            langsQuery = `mode=${encodeURIComponent(READER_MODE.modeKey)}`
+                + `&langs=${encodeURIComponent(stackLangs.join(','))}`
+                + `&translators=${encodeURIComponent(stack.join(','))}`;
+        } else if (READER_MODE.modeKey === 'multi') {
             // Отправляем ТОЛЬКО langs= (её первый элемент и есть текущий/первый язык) — не
             // добавляем отдельный lang=, чтобы сервер не путался, какой из двух главнее.
+            // Первый заход в мульти (стека ещё нет): берём включённые языки — ту же общую
+            // настройку, что и /settings/. Одного dgReadingLangOrder мало: слушатель смены языка
+            // в home.js пишет туда ТЕКУЩИЙ язык на каждой загрузке, так что на чистом профиле там
+            // всегда ровно один язык, и мульти открывался одноколоночным. И наоборот — добирать
+            // "первый попавшийся из availableLangs всего сайта", как было раньше, нельзя: так в
+            // чтение сам собой приезжал немецкий или сербский.
             let langs = getLangOrder();
-            if (!langs.length) {
-                langs = READER_MODE.lang ? [READER_MODE.lang] : [];
-                const available = window.MODE_TABLE && window.MODE_TABLE.availableLangs;
-                const next = Array.isArray(available) && available.find(l => l !== READER_MODE.lang);
-                if (next) langs.push(next);
-            }
+            const enabled = getEnabledLangs();
+            langs = langs.concat(enabled.filter(l => !langs.includes(l)));
+            if (READER_MODE.lang) langs = [READER_MODE.lang].concat(langs.filter(l => l !== READER_MODE.lang));
             langsQuery = `mode=${encodeURIComponent(READER_MODE.modeKey)}` +
-                (langs.length ? `&langs=${encodeURIComponent(langs.join(','))}` : '');
-        } else if (READER_MODE.tempLangs && READER_MODE.tempLangs.length && READER_MODE.tempSlug === slug) {
-            // Single-column modes: the language popover's checkboxes are a per-TEXT trial (owner:
-            // "применялось, но не сохранялось") — sent as an explicit langs=, never written to
-            // dgReadingLangOrder. tempSlug pins it to this text, so the next one is back to just
-            // the main language. multiLang persists instead (branch above). Set by home.js.
-            langsQuery = `mode=${encodeURIComponent(READER_MODE.modeKey)}&langs=${encodeURIComponent(READER_MODE.tempLangs.join(','))}`;
+                (langs.length ? `&langs=${encodeURIComponent(langs.join(','))}` : '') +
+                (trnQuery || translatorsQueryFor());
         } else {
             const langParam = READER_MODE.lang ? `&lang=${encodeURIComponent(READER_MODE.lang)}` : '';
-            langsQuery = `mode=${encodeURIComponent(READER_MODE.modeKey)}${langParam}`;
+            // "Читать" is one language AND one translation — the first one in the stack that is
+            // in that language. Without this the derived per-language map would hand the server
+            // every translator the stack holds for it, and the single-column mode would quietly
+            // render two Russians (see setStack: the map is derived, the stack is the original).
+            const single = getStack().find(k => k.slice(0, k.indexOf('_')) === READER_MODE.lang);
+            langsQuery = `mode=${encodeURIComponent(READER_MODE.modeKey)}${langParam}` +
+                (trnQuery || (single ? `&translators=${encodeURIComponent(single)}` : translatorsQueryFor()));
         }
         // Система письма пали (Aksharamukha, см. dg-light.js) — явный ?script= в адресе
         // побеждает, иначе берём сохранённое в /settings/ значение по умолчанию
@@ -1082,15 +1261,16 @@ window.buildSutta = async function(rawSlug) {
     const columns = reorderColumnsByLangOrder(suttaData.columns || []);
     READER_MODE.columns = columns; // кэш последнего известного состояния — для switchReaderMode
     READER_MODE.availableLangs = Array.isArray(suttaData.availableLangs) ? suttaData.availableLangs : null; // languages THIS text has a translation in (dg-fastify.js) — the popover marks the rest "нет перевода"
+    READER_MODE.availableTranslators = Array.isArray(suttaData.availableTranslators) ? suttaData.availableTranslators : null; // every translator THIS text has, per language — the popover lists them (AI excluded server-side)
     // Owner: "показывать доп кнопку [языковой пилюли] во всех режимах... раз языки уже
     // активированы" — home.js's dgRenderLangPill reads LANG_ORDER_KEY to decide whether to show
-    // its "more languages" dots button outside multiLang too (single/results/etc, where only ONE
+    // its "more languages" dots button outside multi too (single/results/etc, where only ONE
     // language is ever actually rendered). Previously this key was written ONLY by
-    // switchReadingLanguage() (an explicit pill click) — a user who opened multiLang from the
-    // burger row and never touched the toggle got 2 real columns on screen but no persisted
-    // record of it, so the dots button never appeared anywhere else. Just landing on multiLang
-    // with 2+ columns now counts as "activated" too.
-    if (READER_MODE.modeKey === 'multiLang' && columns.length > 1) {
+    // switchReadingLanguage() (an explicit pill click) — a user who opened the multi-language
+    // mode from the burger row and never touched the toggle got 2 real columns on screen but no
+    // persisted record of it, so the dots button never appeared anywhere else. Just landing on
+    // multi with 2+ columns now counts as "activated" too.
+    if (READER_MODE.modeKey === 'multi' && columns.length > 1) {
         try { localStorage.setItem(LANG_ORDER_KEY, JSON.stringify(columns)); } catch (e) { /* приватный режим */ }
     }
     READER_MODE.lang = suttaData.lang || columns[0] || READER_MODE.lang; // сервер резолвил язык явно, см. dg-light.js
@@ -1102,8 +1282,8 @@ window.buildSutta = async function(rawSlug) {
 
     let htmlData = {}, paliData = {}, varData = {}, paliIsoData = {};
     // transEntriesByLang.ru = [{translatorId, data:{segmentId: text, ...}}, ...] — сервер сам
-    // решает сколько переводчиков вернуть на язык (обычно один, несколько для multiFor —
-    // mt/multi), клиент просто перечисляет реально пришедшие ключи "${lang}_*" по всем
+    // решает сколько переводчиков вернуть на язык (обычно один, несколько для multi),
+    // клиент просто перечисляет реально пришедшие ключи "${lang}_*" по всем
     // сегментам, не полагаясь на фиксированный список имён.
     const transEntriesByLang = {};
     const keysByLang = {};
@@ -1118,11 +1298,74 @@ window.buildSutta = async function(rawSlug) {
             }
         }
     }
+    // Several translators of one language arrive in the response's own (database) order — put
+    // them in the order the user picked instead, so "сделать основным" in the popover actually
+    // moves that translation to the top of the language's stack. Keys the choice doesn't mention
+    // (a language still on the server's priority default) keep the order they came in.
+    const trnChoice = getTranslatorChoice();
     columns.forEach(lang => {
-        transEntriesByLang[lang] = (keysByLang[lang] || []).map(key => ({
+        const picked = Array.isArray(trnChoice[lang]) ? trnChoice[lang] : [];
+        const keys = (keysByLang[lang] || []).slice().sort((a, b) => {
+            const ia = picked.indexOf(a), ib = picked.indexOf(b);
+            return (ia === -1 ? 1e9 : ia) - (ib === -1 ? 1e9 : ib); // finite: two unpicked keys must compare equal, not NaN
+        });
+        keysByLang[lang] = keys;
+        transEntriesByLang[lang] = keys.map(key => ({
             translatorId: key.slice(lang.length + 1), key, data: {}
         }));
     });
+    // Who is on screen right now, per language — the popover ticks these, so a language left on
+    // the server's priority default shows a real name instead of nothing (home.js).
+    READER_MODE.shownTranslators = keysByLang;
+
+    /* The flat, user-ordered list of everything that will be printed under each Pāḷi line.
+       Grouping by language ("all the Russians, then all the English") is what made
+       "о·рус, Sujato·англ, SV·рус" impossible to express; the saved stack owns the order now and
+       the two render loops below walk THIS, not columns × translators. Anything the server sent
+       that the stack doesn't mention (a fallback translator, a language just switched on) keeps
+       its server order at the end rather than disappearing. */
+    const stackOrder = getStack();
+    const orderedEntries = [];
+    for (const key of stackOrder) {
+        const lang = key.slice(0, key.indexOf('_'));
+        const pool = transEntriesByLang[lang] || [];
+        // Точное совпадение, а если этого переводчика у текста нет — место в порядке всё равно
+        // держит его язык (сервер подставил другого по приоритету). Иначе русская строка, чей
+        // переводчик не переводил эту сутту, уезжала в конец, за английскую.
+        const entry = pool.find(e => e.key === key)
+            || pool.find(e => !orderedEntries.some(o => o.entry === e));
+        if (entry && !orderedEntries.some(o => o.entry === entry)) orderedEntries.push({ lang, entry });
+    }
+    for (const lang of columns) {
+        for (const entry of (transEntriesByLang[lang] || [])) {
+            if (!orderedEntries.some(o => o.entry === entry)) orderedEntries.push({ lang, entry });
+        }
+    }
+    // First real render in "multi" with nothing saved yet seeds the stack from what the server
+    // actually chose — so the window opens on the true current state instead of empty.
+    if (READER_MODE.modeKey === 'multi' && !stackOrder.length && orderedEntries.length) {
+        setStack(orderedEntries.map(o => o.entry.key));
+    }
+    READER_MODE.stack = orderedEntries.map(o => o.entry.key);
+
+    /* Whose line is whose. The translator's name is NOT printed above every paragraph — the
+       language already says which line is which. It is only genuinely ambiguous when ONE
+       language has two translations on screen at once, and even then the first one stays clean:
+       the extra opinion is the thing that gets a thin coloured margin (.dg-cue-N, home.css) and
+       a hover title with the name. A plain ru+en reading gets no marks at all. */
+    // Owner: "полоски на все строки от 3-х, а то непонятно, почему у некоторых нет отметки".
+    // Два перевода читаются и так (это два разных языка либо очевидная пара), а с трёх строк
+    // помечаются ВСЕ — иначе метка выглядит как признак чего-то особенного у одной строки.
+    const cueAll = orderedEntries.length >= 3;
+    let cueIndex = 0;
+    for (const { lang, entry } of orderedEntries) {
+        entry.cueClass = '';
+        entry.cueTitle = '';
+        if (!cueAll) continue;
+        entry.cueClass = ' dg-cue dg-cue-' + (cueIndex++ % 6 + 1);
+        const raw = (window.siteTranslators && window.siteTranslators[lang] && window.siteTranslators[lang][entry.translatorId]) || entry.translatorId;
+        entry.cueTitle = String(raw).replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+    }
 
     for (const seg of suttaData.segments) {
         htmlData[seg.segment] = seg.html || "{}";
@@ -1229,7 +1472,11 @@ window.buildSutta = async function(rawSlug) {
 
         let finder = (params.get("s") || "").replace(/ṃ/g, "ṁ");
         if (finder && finder.trim() !== "") {
-            let regex = new RegExp(finder, 'gi');
+            // A plain search word is matched the way search matches it: punctuation between its
+            // letters in the text is ignored ("evaṁ bhikkhave" → "evaṁ, bhikkhave",
+            // core/search-core.js punctTolerantPattern). A regex keyword stays as typed.
+            const plainFinder = !/[.*+?^${}()|[\]\\]/.test(finder);
+            let regex = new RegExp(plainFinder ? Array.from(finder).join('[,;:!"\'“”‘’«»]*') : finder, 'gi');
             const highlight = match => `<b class='match finder'>${match}</b>`;
             try {
                 if (paliData[segment]) paliData[segment] = paliData[segment].replace(regex, highlight);
@@ -1301,15 +1548,16 @@ window.buildSutta = async function(rawSlug) {
             // .lang-2nd на второй и далее переводчик (позиционный маркер стиля, не языковой —
             // uiextra.css/rus-multi.css красят .lang-2nd приглушённым цветом).
             let transIndex = 0;
-            columns.forEach(lang => {
-                transEntriesByLang[lang].forEach(entry => {
-                    const val = entry.data[segment];
-                    if (val !== undefined) {
-                        const posClass = transIndex === 0 ? '' : ' lang-2nd';
-                        rightColumnHtml += `<span class="${lang}-lang${posClass} quote" lang="${lang}" data-translator="${entry.translatorId}">${linkToCopyStart}${val.trim()}${linkToCopy}</span>`;
-                        transIndex++;
-                    }
-                });
+            orderedEntries.forEach(({ lang, entry }) => {
+                const val = entry.data[segment];
+                if (val !== undefined) {
+                    const posClass = transIndex === 0 ? '' : ' lang-2nd';
+                    // A second translation of the SAME language is the only case the text itself
+                    // can't disambiguate — mark just those, and only the extra ones (see
+                    // dupLangs below). Everything else prints clean, no translator name per line.
+                    rightColumnHtml += `<span class="${lang}-lang${posClass}${entry.cueClass || ''} quote" lang="${lang}" data-translator="${entry.translatorId}"${entry.cueTitle ? ` title="${entry.cueTitle}"` : ''}>${linkToCopyStart}${val.trim()}${linkToCopy}</span>`;
+                    transIndex++;
+                }
             });
         }
         if (rightColumnHtml) inner += `<span class="right-column">${rightColumnHtml}</span>`;
@@ -1323,20 +1571,25 @@ window.buildSutta = async function(rawSlug) {
     // Класс — настоящий язык ("${lang}-lang", для hide-pali/hide-english/hide-russian, wildcard
     // [class*="-lang"] в uiextra.css) плюс .lang-2nd на второй и далее переводчик — позиционный
     // маркер стиля (приглушённый цвет), не языковой. См. тот же приём в тексте сегментов ниже.
-    const allEntries = columns.flatMap(lang => transEntriesByLang[lang].map(entry => ({ lang, entry })));
-    const firstLang = allEntries[0] ? allEntries[0].lang : columns[0];
+    const allEntries = orderedEntries;
+    // Номер второго и следующих переводов считается ВНУТРИ языка, а не по всему списку: с тех
+    // пор как языки можно чередовать, сквозной индекс врал — второй английский при наборе
+    // "Sujato·англ, o·рус, Thanissaro·англ" подписывался "Translation 3".
+    const nthInLang = new Map();
     const translatorSpans = allEntries.map(({ lang, entry }, i) => {
+        const nth = (nthInLang.get(lang) || 0) + 1;
+        nthInLang.set(lang, nth);
         let displayName = (window.siteTranslators && window.siteTranslators[lang] && window.siteTranslators[lang][entry.translatorId])
             || (entry.translatorId.charAt(0).toUpperCase() + entry.translatorId.slice(1));
         let label;
         if (i === 0) {
             label = lang === 'ru' ? 'Пер. ' : lang === 'en' ? 'Trn: ' : `${lang}: `;
-        } else if (lang === firstLang) {
-            label = lang === 'ru' ? `Перевод ${i + 1}: ` : lang === 'en' ? `Translation ${i + 1}: ` : `${lang} ${i + 1}: `;
+        } else if (nth > 1) {
+            label = lang === 'ru' ? `Перевод ${nth}: ` : lang === 'en' ? `Translation ${nth}: ` : `${lang} ${nth}: `;
         } else {
             label = lang === 'ru' ? 'Рус: ' : lang === 'en' ? 'Eng: ' : `${lang}: `;
         }
-        const rowClass = i === 0 ? `${lang}-lang` : `${lang}-lang lang-2nd`;
+        const rowClass = (i === 0 ? `${lang}-lang` : `${lang}-lang lang-2nd`) + (entry.cueClass || '');
         return `<span class="${rowClass}" lang="${lang}"> ${label}${displayName}</span>`;
     });
 
@@ -1349,7 +1602,7 @@ window.buildSutta = async function(rawSlug) {
         ? `${firstTranslator}<button type="button" class="dg-trn-star" aria-expanded="false" title="${window.isRuPath ? 'Другие переводчики' : 'Other translators'}">*</button><span class="dg-trn-rest" hidden>${moreTranslators.join('<br>')}</span>`
         : (firstTranslator || '');
     const translatorByline = `<div id="trn" class="byline">
-    <p><span class="pli-lang" lang="pi">Pāḷi <a class="text-decoration-none text-reset" href="/assets/texts/abbr.html?s=ms" title="Mahāsaṅgīti Pāḷi">MS</a></span>
+    <p><span class="pli-lang" lang="pi">Pāḷi <a class="text-decoration-none text-reset" href="/assets/common/abbr.html?s=ms" title="Mahāsaṅgīti Pāḷi">MS</a></span>
     <span class="right-column">${bylineTranslators}</span></p></div>`;
 
     let cleanSlugReady = slug;
@@ -1451,7 +1704,7 @@ window.buildSutta = async function(rawSlug) {
 
     window.renderNavigation(slug, suttaData.title);
 
-    window.dispatchEvent(new Event('suttaLoaded'));
+    window.dispatchEvent(new CustomEvent('suttaLoaded', { detail: { inPlace: !!(opts && opts.inPlace) } }));
     // 'suttaRenderedCentral' — same moment, but only in the main reader window, never inside
     // the search-results citation-preview iframe (this same megareader.js runs in both). Several
     // listeners across the codebase (reader/common.js, settings.js's dictionary preload,

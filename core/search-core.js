@@ -19,6 +19,7 @@
 
 const fsSync = require('fs');
 const path = require('path');
+const { paliSkel } = require('../public/overrides/js/pali-skeleton.js');
 
 // searchDb is the open dg.db handle; skeletonDB is the in-memory sutta index, which is rebuilt
 // after the database is (re)loaded, so it arrives through a setter rather than being captured
@@ -36,6 +37,13 @@ function init(deps) {
 
 function setSkeleton(skeleton) {
     skeletonDB = skeleton;
+}
+
+// Cheap in-memory lookup ({category, dir_path, title, mr} or null) — for callers that only need
+// the Pali title/category for a preview (e.g. AI-search result cards), not the full reader data
+// getSuttaBaseData() reads from disk/dg.db for.
+function getSuttaMeta(suttaId) {
+    return skeletonDB[suttaId] || null;
 }
 
 const TRANSLATOR_PRIORITY = require('../configs/reader/translator-priority.json');
@@ -75,8 +83,11 @@ const READER_LANGS = fsSync.readdirSync(path.join(__dirname, '..', 'configs', 'r
     .map(f => f.match(/^lang_([a-z]+)\.json$/)[1])
     .sort();
 
-function filterPreferredTranslators(results, multiForLangs) {
-    const multiSet = new Set(multiForLangs || []);
+// issue #6: второй параметр (multiForLangs) убран вместе с самим ?multiFor= — он существовал
+// только ради режима multiTran, который слился в multi. «Ещё один переводчик» теперь не
+// угадывается сервером, а называется явно: ?translators=ru_o,ru_khantibalo (ветка
+// explicitTranslators в translatorsForSutta ниже), и сколько названо, столько и приходит.
+function filterPreferredTranslators(results) {
     const byLang = {};
     for (const key of Object.keys(results)) {
         const lang = key.split('_')[0];
@@ -110,22 +121,6 @@ function filterPreferredTranslators(results, multiForLangs) {
 
         if (!chosen) chosen = keys[0];
         filtered[chosen] = results[chosen];
-
-        if (multiSet.has(lang)) {
-            // Режим mt/ee (два перевода одного языка) — второй переводчик берётся из
-            // {lang}_other ("второе мнение" проекта), КТО БЫ там реально ни лежал для этой
-            // конкретной сутты, а не хардкод конкретного имени (ru_o+ru_khantibalo были
-            // захардкожены раньше — неверно, если хантибало не переводил именно этот текст).
-            // Если в {lang}_other ничего нет — берём любого другого доступного переводчика,
-            // чтобы режим не схлопывался в одну колонку без необходимости.
-            const isFromOtherDir = k => {
-                const p = results[k];
-                return !!p && p.replace(/\\/g, '/').includes(`/${lang}_other/`);
-            };
-            const secondary = keys.find(k => k !== chosen && isFromOtherDir(k))
-                || keys.find(k => k !== chosen);
-            if (secondary) filtered[secondary] = results[secondary];
-        }
     }
     return filtered;
 }
@@ -241,6 +236,15 @@ const REGEX_METACHARS = /[.*+?^${}()|[\]\\]/;
 const SEARCH_PUNCTUATION = /[,;:!"'“”‘’«»]/g;
 function stripSearchPunctuation(keyword) {
     return keyword.replace(SEARCH_PUNCTUATION, '').trim();
+}
+
+// The FTS index is built with these same marks removed (build-search-db.js fts_fold), so a phrase
+// typed without them finds the text that has them: "evaṁ bhikkhave" → "evaṁ, bhikkhave",
+// "avisayasminti" → "avisayasmin”ti" (owner). The JS-side matchers (counts, word forms, exact
+// match) run over the real text, so they allow any of those marks between the keyword's letters.
+const PUNCT_GAP = SEARCH_PUNCTUATION.source + '*';
+function punctTolerantPattern(text) {
+    return [...text].map(escapeRegExp).join(PUNCT_GAP);
 }
 
 // Owner: е/ё (Russian) and m/ṁ/ṃ (Pali niggahita — same sound, written differently depending on
@@ -368,7 +372,7 @@ function sqlMatchRows(keyword, exactMatch) {
     if (lastExactRows.keyword === keyword) return lastExactRows.rows;
     // MATCH is a substring test; grep -w additionally demanded whole words. Cheaper to apply that
     // to the matched rows than to push word boundaries into a trigram index.
-    const bounded = new RegExp(`(?<![\\p{L}\\p{N}_])${escapeRegExp(foldText(keyword))}(?![\\p{L}\\p{N}_])`, 'u');
+    const bounded = new RegExp(`(?<![\\p{L}\\p{N}_])${punctTolerantPattern(foldText(keyword))}(?![\\p{L}\\p{N}_])`, 'u');
     const exact = rows.filter(r => bounded.test(foldText(r.txt)));
     lastExactRows = { keyword, rows: exact };
     return exact;
@@ -389,6 +393,108 @@ function sqlRowsIn(columns, table, column, values, extraSql = '', extraParams = 
         ).all(...chunk, ...extraParams));
     }
     return out;
+}
+
+/* suggestWords — "может быть, вы искали" по словоформам самого корпуса (таблица vocab,
+   build-search-db.js). Вызывается только когда точный поиск ничего не нашёл, так что обычный запрос этого не
+   платит вообще. Почему по корпусу, а не по словарю: любую предложенную форму гарантированно находит
+   поиск — она взята из текстов.
+
+   Две ступени в одном проходе: совпадение скелетов (pali-skeleton.js) ловит путаницу с диакритикой,
+   удвоением и аспирацией (самые частые ошибки в пали) за distance 0, а обычные опечатки —
+   пропущенная буква, лишняя, не та гласная — расстоянием Левенштейна ≤ 2 по тем же скелетам. */
+/* inCorpusStem — does the corpus contain a form of this Pali word? Used to drop the AI dispatcher's
+   invented or misspelled candidates ("alagaddupáma") before they go into the MCP query. Checked by
+   stem, not exact form: a dictionary headword ("kacchapa", "pahāna") often never occurs literally,
+   only inflected ("kacchapo", "pahānaṁ"). ponytail: prefix of the stem, so a real-but-short stem can
+   over-match (kila → kilesa); good enough to catch misspellings, not a meaning check. */
+function inCorpusStem(word) {
+    const w = String(word || '').trim().toLowerCase();
+    let stem = w.replace(/[ṁṃ]$/, '').replace(/[aāiīuūeo]+$/, '');
+    if (stem.length < 3) stem = w;
+    try {
+        return !!searchDb.prepare('SELECT 1 FROM vocab WHERE word >= ? AND word < ? LIMIT 1').get(stem, stem + '￿');
+    } catch {
+        return true; // no vocab table: don't filter at all rather than drop every candidate
+    }
+}
+
+let vocabIndex = null;
+
+function loadVocab() {
+    if (vocabIndex) return vocabIndex;
+    const bySkel = new Map();
+    try {
+        for (const r of searchDb.prepare('SELECT word, skel, df FROM vocab').all()) {
+            let forms = bySkel.get(r.skel);
+            if (!forms) bySkel.set(r.skel, forms = []);
+            forms.push({ word: r.word, df: r.df });
+        }
+    } catch {
+        // No vocab table — a database built before this existed. Suggestions stay empty; search
+        // itself is unaffected, so this is not worth failing a request over.
+    }
+    for (const forms of bySkel.values()) forms.sort((a, b) => b.df - a.df);
+    vocabIndex = { bySkel, skels: [...bySkel.keys()] };
+    return vocabIndex;
+}
+
+// Levenshtein with an early exit: the answer is only ever used as "≤ max or not", so a row whose
+// best cell already exceeds max can stop the whole comparison. Buffers are module-level because
+// this runs over every candidate skeleton of a similar length (tens of thousands) per query.
+const dpPrev = new Int32Array(128);
+const dpCur = new Int32Array(128);
+
+function editDistAtMost(a, b, max) {
+    const al = a.length, bl = b.length;
+    if (Math.abs(al - bl) > max) return max + 1;
+    if (al >= dpPrev.length || bl >= dpPrev.length) return max + 1;
+    for (let j = 0; j <= bl; j++) dpPrev[j] = j;
+    for (let i = 1; i <= al; i++) {
+        dpCur[0] = i;
+        let best = i;
+        const ca = a.charCodeAt(i - 1);
+        for (let j = 1; j <= bl; j++) {
+            const cost = ca === b.charCodeAt(j - 1) ? 0 : 1;
+            let v = dpPrev[j - 1] + cost;
+            if (dpPrev[j] + 1 < v) v = dpPrev[j] + 1;
+            if (dpCur[j - 1] + 1 < v) v = dpCur[j - 1] + 1;
+            dpCur[j] = v;
+            if (v < best) best = v;
+        }
+        if (best > max) return max + 1;
+        for (let j = 0; j <= bl; j++) dpPrev[j] = dpCur[j];
+    }
+    return dpPrev[bl];
+}
+
+function suggestWords(keyword, limit = 6) {
+    // One word only. A phrase that found nothing is not a misspelling we can repair form by form,
+    // and that case already has its own answer (the AI/semantic path in dg-fastify.js).
+    if (!keyword || /\s/.test(keyword)) return [];
+    const q = paliSkel(keyword);
+    // Under three letters the skeleton matches half the corpus; Cyrillic input reduces to '' here
+    // (paliSkel keeps only a-z), which is the right answer — the vocabulary is Pali.
+    if (q.length < 3) return [];
+    const { bySkel, skels } = loadVocab();
+    // One edit is plenty on a short word: at ≤ 5 letters, distance 2 stops being "a typo of this"
+    // and starts being "some other word of the same length".
+    const maxDist = q.length <= 5 ? 1 : 2;
+    const typed = foldText(keyword).toLowerCase();
+    const found = [];
+    for (const skel of skels) {
+        const d = skel === q ? 0 : editDistAtMost(skel, q, maxDist);
+        if (d > maxDist) continue;
+        for (const form of bySkel.get(skel)) {
+            // Never offer back what was typed: the exact search already reported zero for it, so
+            // repeating it as a suggestion is noise (it can still differ from `typed` only by
+            // diacritics — that one IS worth showing).
+            if (foldText(form.word).toLowerCase() === typed && form.word.toLowerCase() === typed) continue;
+            found.push({ word: form.word, df: form.df, dist: d });
+        }
+    }
+    found.sort((a, b) => a.dist - b.dist || b.df - a.df);
+    return found.slice(0, limit).map(f => ({ word: f.word, df: f.df }));
 }
 
 // "…AND (kind <> 'translation' OR lang IN (?,?))" for the requested languages, or nothing when
@@ -599,7 +705,7 @@ const WORD_BOUNDARY_CHARS = '\\s,.:;!?"\'\\u201C\\u201D\\u2018\\u2019\\u00AB\\u0
 // diacritics still finds the real form.
 function keywordMatchers(keyword) {
     const isRegexQuery = REGEX_METACHARS.test(keyword);
-    const pattern = isRegexQuery ? keyword : escapeRegExp(foldText(keyword));
+    const pattern = isRegexQuery ? keyword : punctTolerantPattern(foldText(keyword));
     return {
         prepare: isRegexQuery ? (text => text) : foldText,
         matchRegex: new RegExp(pattern, 'gi'),
@@ -943,7 +1049,17 @@ async function buildSearchResponse(keyword, searchScope, exactMatch, targetLangs
 // unchanged — the same filterPreferredTranslators/TRANSLATOR_PRIORITY logic decides who is shown,
 // and it inspects its values as file paths to spot a DG-main translation, so `source` is handed
 // to it shaped like the path it expects.
-function translatorsForSutta(suttaId, targetLangs, explicitTranslators, multiForLangs) {
+// A bare "?translators=ru_o,ru_sv" (no ?langs=/?lang=/?mode=) already names its languages — in
+// the keys themselves. Callers use this instead of their generic "ru,en" fallback, so an explicit
+// translator list doesn't drag an unasked-for language's default translation into the answer.
+function translatorLangsFallback(translators) {
+    if (!translators) return null;
+    const langs = [...new Set(String(translators).split(',')
+        .map(key => key.trim().split('_')[0]).filter(Boolean))];
+    return langs.length ? langs : null;
+}
+
+function translatorsForSutta(suttaId, targetLangs, explicitTranslators) {
     const rows = searchDb.prepare(
         `SELECT DISTINCT lang, translator, source FROM texts WHERE sutta_id = ? AND kind = 'translation'`
     ).all(suttaId);
@@ -951,26 +1067,33 @@ function translatorsForSutta(suttaId, targetLangs, explicitTranslators, multiFor
         ? null
         : new Set(targetLangs.map(l => l.split('_')[0]));
 
+    // "ai" (offline-data/dhammagift/ai/) is a working AI-assisted draft meant only for
+    // /assets/lbl.html's line-by-line tool, and that tool reads those files straight off disk
+    // (/assets/texts/ai/..._translation-ru-ai.json, see public/overrides/lbl.html) — never
+    // through this API. So it is out of the roster outright: neither auto-picked NOR reachable
+    // by an explicit ?translators=ru_ai (owner: "AI перевод нельзя показывать, нигде, это
+    // только для lbl"). Same exclusion the TOC badges and search matching already apply.
     const roster = {};
-    // autoRoster excludes "ai" (offline-data/dhammagift/ai/, a working AI-assisted draft meant
-    // only for /assets/lbl.html's line-by-line tool) — never eligible as a picked-automatically
-    // fallback translator (owner: "ru_ai не должен быть виден пользователю нигде на сайте, это
-    // только для lbl.html"). Kept IN the full roster below so an explicit ?translators=ru_ai
-    // (lbl.html's own access path, branch right below) still resolves — this only narrows what
-    // filterPreferredTranslators() is allowed to choose from on its own.
-    const autoRoster = {};
     for (const row of rows) {
         if (wanted && !wanted.has(row.lang)) continue;
-        const key = `${row.lang}_${row.translator}`;
-        const value = row.source === 'dgmain' ? path.join(DG_OFFLINE, row.lang, 'x.json') : '';
-        roster[key] = value;
-        if (row.translator !== 'ai') autoRoster[key] = value;
+        if (row.translator === 'ai') continue;
+        roster[`${row.lang}_${row.translator}`] =
+            row.source === 'dgmain' ? path.join(DG_OFFLINE, row.lang, 'x.json') : '';
     }
 
     if (explicitTranslators && explicitTranslators.length) {
-        return new Set(explicitTranslators.filter(key => key in roster));
+        const picked = explicitTranslators.filter(key => key in roster);
+        // Languages the caller did NOT name keep their normal priority pick, so ?translators=
+        // can narrow ONE language without silently dropping the others. issue #6: the reader's
+        // popover picks translators per language (one row at a time) while several languages are
+        // on screen — before this, choosing a Russian translator in a ru+en set answered with
+        // Russian alone, because an explicit list used to be the ENTIRE answer.
+        const named = new Set(picked.map(key => key.split('_')[0]));
+        const rest = {};
+        for (const key of Object.keys(roster)) if (!named.has(key.split('_')[0])) rest[key] = roster[key];
+        return new Set(picked.concat(Object.keys(filterPreferredTranslators(rest))));
     }
-    return new Set(Object.keys(filterPreferredTranslators(autoRoster, multiForLangs)));
+    return new Set(Object.keys(filterPreferredTranslators(roster)));
 }
 
 // Everything stored for one sutta, fetched once. Split out from the assembly below for the same
@@ -988,9 +1111,9 @@ async function getSuttaBaseData(suttaId) {
     return { suttaMeta, rows, htmlBySegment };
 }
 
-async function buildTextDataFromBase(base, suttaId, targetLangs, explicitTranslators, multiForLangs) {
+async function buildTextDataFromBase(base, suttaId, targetLangs, explicitTranslators) {
     const { suttaMeta, rows, htmlBySegment } = base;
-    const chosen = translatorsForSutta(suttaId, targetLangs, explicitTranslators, multiForLangs);
+    const chosen = translatorsForSutta(suttaId, targetLangs, explicitTranslators);
 
     // Segments come from the root text and keep its order (`ord`), exactly as iterating the root
     // JSON's keys used to — a translation segment with no root counterpart is not a segment.
@@ -1032,10 +1155,10 @@ async function buildTextDataFromBase(base, suttaId, targetLangs, explicitTransla
 
 // Полный текст одной сутты (все сегменты, не только совпадения) — для ридера.
 // Переиспользует те же хелперы, что и поиск, просто без grep-фильтра.
-async function getFullTextData(suttaId, targetLangs, explicitTranslators, multiForLangs) {
+async function getFullTextData(suttaId, targetLangs, explicitTranslators) {
     const base = await getSuttaBaseData(suttaId);
     if (!base) return null;
-    return buildTextDataFromBase(base, suttaId, targetLangs, explicitTranslators, multiForLangs);
+    return buildTextDataFromBase(base, suttaId, targetLangs, explicitTranslators);
 }
 
 // Previous/next sutta in corpus order, honouring the search scope. Lives here rather than in the
@@ -1048,7 +1171,13 @@ function navFor(suttaId, scope) {
     if (currentIndex === -1) return null;
 
     const allowedPrefixes = resolveAllowedPrefixes(scope);
-    const inScope = (i) => matchesScope(skeletonDB[dbKeys[i]], dbKeys[i], allowedPrefixes);
+    const current = skeletonDB[suttaId];
+    // A text outside the scope (e.g. Vinaya opened by a direct link under the default sutta scope)
+    // walks its own category: skipping to the nearest in-scope text gave pli-tv-bu-vb-pj1 the
+    // neighbours mn152 / sn1.1.
+    const inScope = matchesScope(current, suttaId, allowedPrefixes)
+        ? (i) => matchesScope(skeletonDB[dbKeys[i]], dbKeys[i], allowedPrefixes)
+        : (i) => skeletonDB[dbKeys[i]].category === current.category;
 
     let prevIndex = -1;
     for (let i = currentIndex - 1; i >= 0; i--) { if (inScope(i)) { prevIndex = i; break; } }
@@ -1084,10 +1213,15 @@ module.exports = {
     findVariantSegments,
     getFullTextData,
     getSuttaBaseData,
+    getSuttaMeta,
+    translatorLangsFallback,
     langFilterSql,
     matchesScope,
     resolveAllowedPrefixes,
     sortSuttaResults,
     sqlRowsIn,
     stripSearchPunctuation,
+    suggestWords,
+    inCorpusStem,
+    punctTolerantPattern,
 };

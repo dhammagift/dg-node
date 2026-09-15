@@ -5,10 +5,10 @@
 // с продом, мы его не трогаем, а dg-node отдаёт свою копию первым (app.use('/assets', ...) в
 // dg-light.js).
 //
-// ЕДИНСТВЕННОЕ отличие от оригинала: первая иконка (type="read") вела на легаси /read.php —
-// на dg-node это /toc, новый SPA-навигатор/оглавление (public/spa/toc.js), заменивший read.php
-// (см. CLAUDE.md, TODO.md). Больше в файле ничего не менялось; при обновлении легаси-версии этот
-// патч нужно перенести заново.
+// Отличия от оригинала: ракушка ведёт на настоящую главную (/), вторая иконка — оглавление /toc
+// (SPA-навигатор, заменивший легаси read.php) со значком table-list, как у кнопки «Оглавление» в
+// поле поиска сайта. Раньше ракушка вела на оглавление, а главная стояла второй с другим значком —
+// владелец: путанно. При обновлении легаси-версии этот патч нужно перенести заново.
 
 class TopNavIcons extends HTMLElement {
     connectedCallback() {
@@ -16,16 +16,14 @@ class TopNavIcons extends HTMLElement {
         const type = this.getAttribute('type') || 'home';
         const showDict = this.hasAttribute('show-dict');
 
-        const isRead = type === 'read';
-        const firstIconId = isRead ? 'nav_read_link' : 'nav_home_link';
-        const firstIconTitle = isRead ? 'Sutta and Vinaya reading' : 'Home';
-
+        // `type` no longer changes the links: the shell is always the home page, the second icon
+        // always the contents (read attribute kept so existing pages' markup stays valid).
         let html = `
-            <a href="/toc" id="${firstIconId}" title="${firstIconTitle}" rel="noreferrer" class="me-1 top-nav-icon-link">
-          <img class="common-size-icon sankha" alt="page for reading" src="/assets/img/dgsankhaonly.png">
+            <a href="/" id="nav_home_link" title="Home" rel="noreferrer" class="me-1 top-nav-icon-link">
+          <img class="common-size-icon sankha" alt="Dhamma.Gift" src="/assets/img/dgsankhaonly.png">
             </a>
-            <a href="/" id="nav_search_link" title="Sutta and Vinaya search" rel="noreferrer" class="me-1 top-nav-icon-link">
-                <img width="24px" alt="dhamma.gift icon" src="/assets/img/gray-white.png">
+            <a href="/toc" id="nav_read_link" title="Contents: suttas and Vinaya" rel="noreferrer" class="me-1 top-nav-icon-link">
+                <img class="top-nav-icon" alt="Contents" src="/assets/svg/table-list.svg">
             </a>
         `;
 

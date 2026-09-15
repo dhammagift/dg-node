@@ -1,0 +1,124 @@
+name: Build search database
+
+# Builds dg.db — the SQLite/FTS5 corpus behind /search, the reader and the offline app — on GitHub's
+# runner and publishes it as the rolling `db-latest` release: dg.db.gz, db-manifest.json (build_id,
+# sha256) and sutta_words.txt. The server does not build: the build needs more free memory than the
+# box has (killed three times on 2026-09-14). scripts/pull-db.sh downloads, verifies and swaps it in.
+#
+# Inputs are three public repos, only the parts the build reads: SuttaCentral's sc_bilara_data, the
+# project's own translations (offline-data/dhammagift, its ru/en folders are symlinks inside that
+# repo) and two files of the legacy site (textinfo.js for `mr`, sutta_words.txt's curated blocks).
+
+on:
+  workflow_dispatch:
+  # For a push in dhammagift/offline-data (new translations): that repo can fire
+  # POST /repos/dhammagift/dg-node/dispatches {"event_type":"offline-data"} with a token allowed to.
+  repository_dispatch:
+    types: [offline-data]
+  push:
+    branches: [pwa, main]
+    paths:
+      - build-search-db.js
+      - core/search-core.js
+      - public/overrides/js/pali-skeleton.js
+      - configs/reader/**
+      - .github/workflows/build-db.yml
+  schedule:
+    # Weekly, for new SuttaCentral texts and project translations: Sun 19:00 UTC = Mon 00:00 on the
+    # server (Asia/Almaty), so its cron (scripts/pull-db.sh, Mon 03:15) installs it overnight.
+    - cron: '0 19 * * 0'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-db
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Corpus — SuttaCentral (sc_bilara_data only)
+        uses: actions/checkout@v5
+        with:
+          repository: suttacentral/sc-data
+          path: _data/suttacentral.net/sc-data
+          sparse-checkout: sc_bilara_data
+          filter: blob:none
+          fetch-depth: 1
+
+      - name: Corpus — project translations
+        uses: actions/checkout@v5
+        with:
+          repository: dhammagift/offline-data
+          path: _src/offline-data
+          sparse-checkout: dhammagift
+          filter: blob:none
+          fetch-depth: 1
+
+      - name: Legacy site files (textinfo, sutta_words)
+        uses: actions/checkout@v5
+        with:
+          repository: dhammagift/dg
+          path: _src/dg
+          sparse-checkout: |
+            assets/js/textinfo.js
+            assets/texts/sutta_words.txt
+          sparse-checkout-cone-mode: false
+          filter: blob:none
+          fetch-depth: 1
+
+      - name: Lay out the corpus the way the build expects it
+        run: ln -s "$GITHUB_WORKSPACE/_src/offline-data/dhammagift" _data/dhammagift
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+
+      # The build itself needs no npm packages (node:sqlite is built in). build-offline, run by the
+      # tests below, copies sqlite-wasm out of node_modules — only that one package is installed, at
+      # the version package.json pins (there is no lockfile in the repo, so no `npm ci`/npm cache).
+      - name: Install
+        run: npm install --no-save --no-package-lock --no-audit --no-fund --loglevel=error "@sqlite.org/sqlite-wasm@$(node -p "require('./package.json').dependencies['@sqlite.org/sqlite-wasm']")"
+
+      - name: Build dg.db
+        env:
+          DG_DATA_ROOT: ${{ github.workspace }}/_data
+          DG_TEXTINFO: ${{ github.workspace }}/_src/dg/assets/js/textinfo.js
+          DG_LEGACY_WORDS: ${{ github.workspace }}/_src/dg/assets/texts/sutta_words.txt
+        run: node build-search-db.js
+
+      - name: Test
+        run: |
+          node test/punct-search.js
+          npm run build-offline
+          node test/offline-parity.js
+
+      - name: Package
+        id: pkg
+        run: |
+          node build-search-db.js --publish --no-build --out=dist
+          cp public/overrides/texts/sutta_words.txt dist/
+          echo "build_id=$(node -p "require('./dist/db-manifest.json').build_id")" >> "$GITHUB_OUTPUT"
+          ls -la dist
+
+      # Rolling release, same idea as dg-twa's prod-latest: a plain direct-download link the server
+      # (scripts/pull-db.sh) can fetch without an API token. Assets with the same name are replaced.
+      - name: Publish release db-latest
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: db-latest
+          name: Search database (latest build)
+          body: |
+            build ${{ steps.pkg.outputs.build_id }} from ${{ github.ref_name }} ${{ github.sha }}
+            Install on the server: scripts/pull-db.sh
+          files: |
+            dist/dg.db.gz
+            dist/db-manifest.json
+            dist/sutta_words.txt
+          make_latest: false
+          token: ${{ secrets.GITHUB_TOKEN }}

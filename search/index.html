@@ -65,6 +65,15 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
 <!DOCTYPE html>
 <html data-bs-theme="light" data-default-lang="en">
 <head>
+<!-- dg:app-scripts — the optional offline layer (docs/OFFLINE_PWA_PLAN.md, Stage 1). These three
+     are loaded before ANY other script on the page on purpose: app.js replaces window.fetch, and
+     it has to be in place before the first request is issued. platform.js must stay first — a
+     native build (dg-app-full) supplies its own window.dgPlatform, and app.js reads it there.
+     Do not move these below the page's own scripts, and keep this marker: the app's build
+     (dg-app-full/build-page.js) looks for it instead of guessing at <head>'s structure. -->
+<script src="/offline/platform.js"></script>
+<script src="/offline/app.js"></script>
+<script src="/offline/offline-status.js"></script>
 <script>
   // Тема — синхронно, ДО первой отрисовки: <html data-bs-theme> ниже был захардкожен на
   // "light" всегда, а реальную тёмную тему выставлял только themeswitch.js (грузится
@@ -124,7 +133,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
      tiles (menu-links.json localHref) also need window.resolveMirrorUrl/openMirrorLink, and that
      bundle is always present, even before the reader/search ever loads. -->
 <script src="/assets/js/mirror-link.js" defer></script>
-<title>Search Results - Dhamma.gift</title>
+<title>Dhamma.gift</title>
 <meta name="description" content="Search Results - Dhamma.gift">
 <link rel="manifest" href="/manifest.json">
 <!-- Home tiles (#home-tiles, "multitool") fetch this JSON last — after all deferred scripts run
@@ -135,20 +144,19 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
      Chrome never reuses it ("cross-world service worker resource mismatch") and the JSON was
      simply fetched twice on every load. home.js fetches it once, that's it. -->
 <meta name="theme-color" content="#243448">
-<meta property="og:type" content="article" />
-<meta property="og:title" content="Search Results - Dhamma.gift" />
-<meta property="og:url" content="https://dhamma.gift">
-<meta property="og:image" content="/assets/img/social_sharing_results.jpg" />
-<meta property="og:description" content="Search Results - Dhamma.gift" />
-<meta name="twitter:title" content="Dhamma.gift">
-<meta name="twitter:description" content="Search Results - Dhamma.gift">
-
-<meta name="twitter:card" content="/assets/img/social_sharing_results.jpg">
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="Dhamma.Gift" />
+<meta property="og:title" content="Dhamma.Gift — Find the Truth" />
+<meta property="og:url" content="https://dhamma.gift/">
+<meta property="og:image" content="https://dhamma.gift/assets/img/og-dhamma-gift.png" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:description" content="Read Buddha Dhamma, Teachings, Suttas and Vinaya in Pali, in various translations." />
+<meta name="twitter:card" content="summary_large_image">
 <meta property="twitter:domain" content="dhamma.gift">
-<meta property="twitter:url" content="">
-<meta name="twitter:title" content="Search Results - Dhamma.gift">
-<meta name="twitter:description" content="Search Results - Dhamma.gift">
-<meta name="twitter:image" content="/assets/img/social_sharing_results.jpg">
+<meta name="twitter:title" content="Dhamma.Gift — Find the Truth">
+<meta name="twitter:description" content="Read Buddha Dhamma, Teachings, Suttas and Vinaya in Pali, in various translations.">
+<meta name="twitter:image" content="https://dhamma.gift/assets/img/og-dhamma-gift.png">
 
 
 <link rel="icon" type="image/png" href="/assets/img/favico-noglass.png" />
@@ -614,7 +622,9 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
        позиционировалась от далёкого предка и уезжала за край строки. Отсюда и было "ссылки
        появляются только у пали". */
     #search-pane [class*="-lang"],
-    #search-pane .variant {
+    #search-pane .variant,
+    #ai-pane [class*="-lang"],
+    #ai-pane .variant {
         position: relative;
     }
     /* Без @media (hover: hover) and (pointer: fine): на гибридных устройствах (ноутбук с
@@ -623,7 +633,12 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
        машинах не работал ни один из двух путей. Простой :hover на тач-устройстве безвреден. */
     #search-pane [class*="-lang"]:hover > .quoteLink-start,
     #search-pane .variant:hover > .quoteLink-start,
-    #search-pane .dg-show-links > .quoteLink-start {
+    #search-pane .dg-show-links > .quoteLink-start,
+    /* ИИ-поиск (docs/AI_SEARCH_BRIEF.md) переиспользует тот же ✦-механизм — те же классы
+       (pli-lang/en-lang/quote), тот же reveal-on-hover, см. также JS-гейты ниже по файлу. */
+    #ai-pane [class*="-lang"]:hover > .quoteLink-start,
+    #ai-pane .variant:hover > .quoteLink-start,
+    #ai-pane .dg-show-links > .quoteLink-start {
         opacity: 0.9;
     }
     /* Отступ слева у цитаты был ДВОЙНОЙ: своё padding у ячейки развёрнутой строки и своё у
@@ -654,7 +669,8 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
         #pali tr.child .dtr-details li {
             padding-left: 13px;
         }
-        #search-pane .quoteLink-start {
+        #search-pane .quoteLink-start,
+        #ai-pane .quoteLink-start {
             left: -13px;
             font-size: 0.85em;
         }
@@ -973,7 +989,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     .resultheader .scope-info-star { margin-left: -8px; font-size: 1.1rem; align-self: center; }
     /* #variants-hint внутри заголовка — обычный инлайновый элемент строки, без своей
        1600px-колонки (её правило ниже рассчитано на отдельную строку под заголовком). */
-    .resultheader #variants-hint { display: inline; max-width: none; margin: 0; padding: 0; font-size: 1rem; font-weight: 400; align-self: center; }
+    .resultheader #variants-hint { display: inline; max-width: none; margin: 0; padding: 0; font-size: 1rem; font-weight: 400; align-self: baseline; }
     .resultheader #variants-hint svg { color: var(--bs-secondary-color, #6c757d); }
     /* Owner: multiple translations in a citation ran together into one clump. The shared
        br.styled (assets/css/table.css, 0.8em) is used elsewhere (reader) too — scoped here to
@@ -1083,6 +1099,10 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
      значит FontAwesome готов раньше, независимо от скорости сети. Загрузку это по-прежнему не
      блокирует: defer качается параллельно с разбором страницы. -->
 <script src="/assets/js/fontawesome-local.js" defer></script>
+<!-- ИИ-поиск (docs/AI_SEARCH_BRIEF.md) — маленький самостоятельный модуль, грузится всегда
+     (не через ensureSearchAssets(), там про тяжёлый DataTables-бандл), задействуется только
+     при реальном вызове window.dgRunAiSearch(). -->
+<script src="/assets/js/ai-search.js" defer></script>
 <!-- datatables.js (1.9МБ) / search-render.js / natural.js / strip-html.js больше НЕ грузятся
      здесь — см. ensureSearchAssets() ниже по файлу и её вызов из initSearchApp(). Ничего из этого
      не нужно домашнему экрану (initSearchApp возвращается сразу после dgSetState('home'), до
@@ -1266,6 +1286,18 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
       <a href="/" class="dg-shell-logo dg-go-home" title="Home" data-i18n-title="{{global.common.home}}">
         <img src="/assets/img/dgsankhaonly.png" alt="Dhamma.Gift">
       </a>
+      <!-- Same spot, reader only (see home.css): the logo there would still say "home", but in
+           the reader owner wants one tap to /toc instead — a deliberately DIFFERENT icon
+           (fa-table-list, not the logo) so it doesn't read as "the home button broke", just as a
+           different action in the same slot. Inlined SVG, not <i class="fa-solid …">: icons in
+           static markup on this page are never auto-expanded, only ones built at runtime by
+           home.js's faSvg() are (see fontawesome-local.js comment above) — same reason
+           .dg-shell-search-ic below is inlined rather than an <i>. -->
+      <a href="/toc" class="dg-shell-toc" title="Contents" data-i18n-title="{{toolbar.tocLinkTitle}}">
+        <svg viewBox="0 0 448 512" fill="currentColor" aria-hidden="true">
+          <path d="M0 96C0 60.7 28.7 32 64 32l320 0c35.3 0 64 28.7 64 64l0 320c0 35.3-28.7 64-64 64L64 480c-35.3 0-64-28.7-64-64L0 96zm64 0l0 64 64 0 0-64-64 0zm320 0l-192 0 0 64 192 0 0-64zM64 224l0 64 64 0 0-64-64 0zm320 0l-192 0 0 64 192 0 0-64zM64 352l0 64 64 0 0-64-64 0zm320 0l-192 0 0 64 192 0 0-64z"/>
+        </svg>
+      </a>
       <!-- Home only (see .dg-shell-search-ic in home.css): a plain magnifying glass at the left
            edge of the field, where the reference has one. Same FontAwesome path as the submit
            button's icon below, just not mirrored. -->
@@ -1441,8 +1473,14 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
   // и выставил dg-state-reader ДО этого load-хендлера) — иначе фокус в поле съедал хоткеи
   // ридера сразу после открытия (owner: "горячие клавиши не работают").
   window.addEventListener('load', function () {
-    if (document.body.classList.contains('dg-state-reader')) return;
     var el = document.getElementById('paliauto');
+    // Touch screens: no focus at all. The native autofocus attribute does fire there, and a field
+    // left focused brought the on-screen keyboard up over the next text opened from History (tablet).
+    if (window.matchMedia('(hover: none) and (pointer: coarse)').matches) {
+      if (el && document.activeElement === el) el.blur();
+      return;
+    }
+    if (document.body.classList.contains('dg-state-reader')) return;
     if (el) el.focus();
   });
 
@@ -1616,6 +1654,8 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
   document.addEventListener('DOMContentLoaded', dgUpdateDrawerHelpLink);
   new MutationObserver(dgUpdateDrawerHelpLink).observe(document.body, { attributes: true, attributeFilter: ['class'] });
   dgUpdateDrawerHelpLink();
+  // Alt+H (settings.js) opens the same context help as the drawer row.
+  window.dgDrawerHelpHref = dgDrawerHelpHref;
 
   /* Автоскрытие верхней панели на скролле — видимость переключается CSS-ом (см. <style>,
      body.dg-header-hidden), здесь: (1) направление скролла, (2) top каждого элемента стека —
@@ -1833,7 +1873,9 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
   (function revealQuoteLinkOnTap() {
     document.addEventListener('pointerup', function (e) {
       if (e.pointerType === 'mouse') return;
-      var pane = document.getElementById('search-pane');
+      // #ai-pane (docs/AI_SEARCH_BRIEF.md) reuses the same ✦-link mechanism as #search-pane —
+      // same lookup, just also accepting that container.
+      var pane = e.target.closest('#search-pane, #ai-pane');
       if (!pane) return;
       var line = e.target.closest('[class*="-lang"], .variant');
       var shown = pane.querySelector('.dg-show-links');
@@ -2026,7 +2068,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     document.addEventListener('click', function (e) {
       if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
       var link = e.target.closest && e.target.closest('a.fdgLink');
-      if (!link || !link.closest('.quote') || !link.closest('#search-pane')) return;
+      if (!link || !link.closest('.quote') || !link.closest('#search-pane, #ai-pane')) return;
       e.preventDefault();
       e.stopImmediatePropagation();
       close();
@@ -2036,8 +2078,8 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     /* Правый клик и долгое нажатие на тач-экране (браузер шлёт то же contextmenu) — контекстное
        меню. Достаточно попасть в саму СТРОКУ цитаты, целиться в ✦ не нужно. */
     document.addEventListener('contextmenu', function (e) {
-      var pane = document.getElementById('search-pane');
-      if (!pane || !pane.contains(e.target)) return;
+      var pane = e.target.closest('#search-pane, #ai-pane');
+      if (!pane) return;
       var line = e.target.closest('[class*="-lang"], .variant');
       if (!line) return;
       var link = line.querySelector('a.fdgLink');
@@ -2243,9 +2285,18 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
 </button>
 <button id="btn-show-all-children" class="btn btn-light mb-1" type="button">{{toolbar.expandCollapseLabel}}</button>
 
+<!-- Manual AI-search trigger (docs/AI_SEARCH_BRIEF.md, docs/AI_MODE_DESIGN.md) — the automatic
+     fallback only fires on 0 exact results; this lets someone re-run the CURRENT query through
+     the semantic pipeline on demand, e.g. when the exact matches found aren't what they meant.
+     Wired in public/overrides/js/ai-search.js (delegated click), not here — same reuse as
+     dgRunAiSearch itself. Persistent zero/always/off modes (docs/AI_MODE_DESIGN.md) are a bigger
+     feature, not built yet — this is the one-shot manual trigger only. -->
+<!-- Owner: hidden until AI search is mature enough to show even on test. Remove d-none to bring it back. -->
+<button id="btn-ai-mode" class="btn btn-light mb-1 d-none" type="button">{{toolbar.aiModeLabel}}</button>
+
 <button class="btn btn-light forshellscript mb-1" type="button"><a class="text-decoration-none " href="javascript:void(0)">{{toolbar.wordsToggleShow}}</a></button>
 
-<button class="btn btn-light mb-1  toggle-dict-btn" type="button" ><img class="" src="/assets/svg/comment.svg"></img></button>
+<button class="btn btn-light mb-1  toggle-dict-btn" type="button" title="{{toolbar.dictTitle}}" data-i18n-title="{{toolbar.dictTitle}}" aria-label="{{toolbar.dictTitle}}" data-i18n-aria-label="{{toolbar.dictTitle}}"><img class="" src="/assets/svg/comment.svg" alt=""></img></button>
 
 <!-- Multi-select — тот же переключатель, что в #reader-toolbar (id="toggle-multiselect"),
      свой id (тот же дубль-id-паттерн, что и у toggle-mode-btn чуть ниже — обе кнопки
@@ -2364,7 +2415,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
                            <div class="ms-auto d-inline-flex align-items-center">
    <a class="btn btn-sm btn-secondary btn-language rounded-pill text-decoration-none ms-1" href="#" data-lang="en">en</a>
                <a class="btn btn-sm btn-secondary btn-language rounded-pill text-decoration-none ms-1" href="#" data-lang="ru">ru</a>
-<span class="mx-1 text-muted">Ctrl+Shift+1</span>
+<span class="mx-1 text-muted">Alt+1</span>
             
      </div>        
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
@@ -2408,7 +2459,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
 <option value="dpdFull">Англ DPD Онлайн</option>
 <option value="newwindow">Англ DPD Онлайн новое окно </option>
 <option value="dpdCompact" >Англ DPD Онлайн мини </option>
-                    </select> <a href="/assets/common/dictHelpRu.html">?</a>   
+                    </select> <a href="/ru/docs/dictionary">?</a>   
                 </div>               
                 
                 
@@ -2443,7 +2494,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     <div class="row align-items-center mb-2">
         <div class="col-auto">
           <input class="form-check-input mt-2 border-secondary" name="reader" type="radio" id="stRadio" value="st"> &nbsp;
-   <a id="stDemo" href="/r/?q=sn56.11"><strong>Стандартный</strong></a>
+   <a id="stDemo" href="/sn56.11"><strong>Стандартный</strong></a>
        
         </div>
         <div class="col text-end">
@@ -2451,24 +2502,13 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
         </div>
     </div>
 
-    <!-- Мульти -->
-    <div class="row align-items-center mb-2">
-        <div class="col-auto">
-          <input class="form-check-input mt-2 border-secondary" name="reader" type="radio" id="mlRadio" value="ml"> &nbsp;
-         <a id="mlDemo" href="/ml/?q=dn22"> <strong>Мульти</strong></a>
-
-        </div>
-        <div class="col text-end">
-            Три языка: пали, русс, англ
-        </div>
-    </div>
 
     <!-- Деванагари -->
     <div class="row align-items-center mb-2">
         <div class="col-auto">
           <input class="form-check-input mt-2 border-secondary" name="reader" type="radio" id="dRadio" value="d"> 
           &nbsp;
-    <a id="dDemo" href="/d/?q=sn12.2"><strong>"Деванагари"</strong></a>
+    <a id="dDemo" href="/sn12.2?mode=devanagari"><strong>"Деванагари"</strong></a>
       
         </div>
         <div class="col text-end">
@@ -2483,7 +2523,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
             <div class="col-auto">
               <input class="form-check-input mt-2 border-secondary" name="reader" type="radio" id="memRadio" value="mem">
               &nbsp;
-              <a id="memDemo" href="/memorize/?q=an10.46">              <strong>Для запоминания</strong>
+              <a id="memDemo" href="/an10.46?mode=memorize">              <strong>Для запоминания</strong>
 </a>
             </div>
             <div class="col text-end">
@@ -2627,7 +2667,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
             <img src="/assets/svg/comment.svg" class="common-size-icon4">
         </div>
         <div class="col-auto"><strong>Alt+A</strong></div>
-        <div class="col">Вкл-выкл словарь. Клик по слову для активации <a href="/assets/common/dictHelpRu.html">DPD</a></div>
+        <div class="col">Вкл-выкл словарь. Клик по слову для активации <a href="/ru/docs/dictionary">DPD</a></div>
     </div>
         <div class="row align-items-center mb-2">
         <div class="col-auto">
@@ -2733,7 +2773,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
 
 
 </div>
-                    Аббревиатуры вариантов: <strong>ms, pts1ed, sya-all, mr</strong> и т.д. в <a href="/assets/texts/abbr.html">"Edition Abbreviations"</a> или <a href="https://suttacentral.net/abbreviations?lang=ru">здесь</a>.
+                    Аббревиатуры вариантов: <strong>ms, pts1ed, sya-all, mr</strong> и т.д. в <a href="/assets/common/abbr.html">"Edition Abbreviations"</a> или <a href="https://suttacentral.net/abbreviations?lang=ru">здесь</a>.
                 </div>
              
   Нужна помощь? <a href="/ru/#contacts">Написать</a>
@@ -2772,9 +2812,33 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
      каждая инициализируется один раз в search-render.js и живёт до конца сессии страницы;
      переключение между отчётами — просто show/hide (см. renderCurrentReport ниже), без
      destroy/rebuild. См. комментарий в начале public/overrides/js/search-render.js. -->
-<div id="search-message" class="alert alert-warning d-none" role="alert">
+<!-- Owner: "не надо показывать такие драматические ошибки жёлтым... как Google — там ничего
+     красного, ничего жёлтого нет, просто текст" — was Bootstrap .alert.alert-warning (bold yellow
+     box); plain muted text reads as information, not as something gone wrong. -->
+<!-- margin-top (home.css, desktop-only): same #search-pane -50px compensation as the ai-note/
+     ai-words wrapper below (see its comment) — the old .alert padding used to hide this overlap
+     by accident; plain text has no padding to hide behind. -->
+<div id="search-message" class="text-muted d-none" role="alert">
     <div id="search-message-ru"></div>
     <div id="search-message-en"></div>
+</div>
+
+<!-- ИИ-поиск (docs/AI_SEARCH_BRIEF.md): точных совпадений нет, но ИИ предположил слова/сутты.
+     Сутты идут в ту же #pali таблицу (buildDataTable — синглтон, второй не завести, см.
+     public/overrides/js/ai-search.js) — настоящие треугольники/анимация DataTables вместо
+     самодельных. Здесь — только пометка "это предположение" и слова-чипы. -->
+<!-- margin-top (home.css, desktop-only — see there) on the wrapper (not the children individually
+     — sibling margins would collapse against each other, not add) compensates #search-pane's own
+     -50px (tuned for the normal case where the first visible child is the table itself, right
+     after #search-message) — without it these render pulled up into .resultheader's space above
+     #search-pane (found live: 42px measured overlap). Either child can be the first VISIBLE one
+     (typo path shows only words). Owner: "в мобильной версии какой-то дикий разрыв" — the -50px
+     itself is @media (min-width:768px) only (home.css), so this compensation must match that
+     breakpoint exactly, or mobile gets BOTH #search-pane's normal +24px (mt-4, unaffected below
+     768px) AND this hack's +54px stacked on top of it — a ~54px gap with nothing pulling it back. -->
+<div id="ai-note-wrap">
+    <p id="ai-note" class="text-muted small d-none mb-2"></p>
+    <div id="ai-words" class="d-none mb-3"></div>
 </div>
 
 <!-- Расширенный фильтр (SearchBuilder). Живёт здесь как d-none заготовка — search-render.js
@@ -2849,6 +2913,10 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
          на мобильном получались вдвое более широкие поля, чем на референсе. -->
     <!-- TOC/navigator — lazy-loaded /spa/toc.js, same pattern as #reader-pane below. -->
     <div id="toc-pane" class="mt-4"></div>
+
+    <!-- ИИ-поиск (docs/AI_SEARCH_BRIEF.md) — фолбэк при 0 точных результатов, наполняется
+         public/overrides/js/ai-search.js тем же приёмом, что #toc-pane выше. -->
+    <div id="ai-pane" class="mt-4"></div>
 
     <div id="reader-pane" class="mt-4">
         <!-- Портировано из reader-template.html (#form-div) — там же живут иконки прода
@@ -2952,7 +3020,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
                 </svg>
             </a>
             <a href="/assets/diff" title="Compare"><img width="20px" alt="Compare" src="/assets/img/read/favicon-black.png"></a>
-            <a href="/history.php" title="History"><img width="20px" alt="History" src="/assets/svg/clock-rotate-left.svg"></a>
+            <a href="/4as" title="History"><img width="20px" alt="History" src="/assets/svg/clock-rotate-left.svg"></a>
             <a id="pdf-btn" href="javascript:void(0);" title="Export PDF"><img width="20px" alt="PDF" src="/assets/svg/pdf.svg"></a>
             <a href="/memo/" class="memo-button" title="Memo" target="_blank"><img width="25px" alt="Memo" src="/assets/svg/memo.svg"></a>
             <!-- Edit-translation icon (reader-template.html's .q-link) was skipped when this footer
@@ -3122,7 +3190,10 @@ $(document).ready(function() {
     function updatePagingLayoutClass() {
         var activeWrapper = document.querySelector('#pali_wrapper:not(.d-none), #pali-words_wrapper:not(.d-none)');
         var paging = activeWrapper && activeWrapper.querySelector('.dt-paging');
-        var hasPaging = !!paging && paging.style.display !== 'none';
+        var length = activeWrapper && activeWrapper.querySelector('.dt-length');
+        // A visible page-size selector (remembered size > 10 on a single page) sits on the left of
+        // the same control row — it would land on the header text, so it takes the paging layout too.
+        var hasPaging = (!!paging && paging.style.display !== 'none') || (!!length && length.style.display !== 'none');
         document.getElementById('search-pane').classList.toggle('dg-has-paging', hasPaging);
     }
 
@@ -3132,6 +3203,12 @@ $(document).ready(function() {
     // плюс обновление данных ТЕКУЩЕЙ через draw(false) внутри build*, без destroy/rebuild
     // (см. файловый комментарий в search-render.js) — попутно чинит и порчу sort order,
     // которая раньше возникала при частых пересборках одного и того же table-id.
+    // The Translations window on results (home.js tsApply) changed the shared reading set — redraw
+    // the listing with it (search-render.js orders each row's translations by that set).
+    document.addEventListener('dg:readingstackchange', function () {
+        if (lastSearchJson && reportMode !== 'words') renderCurrentReport();
+        if (window.dgRenderLangPill) window.dgRenderLangPill();
+    });
     function renderCurrentReport() {
         if (!lastSearchJson) return;
         var meta = lastSearchJson.metadata;
@@ -3223,15 +3300,21 @@ $(document).ready(function() {
     // always running comfortably apart in practice. One registry keyed by src, shared by both.
     window.__dgLoadScriptOnce = window.__dgLoadScriptOnce || {};
     function dgLoadScriptOnce(src) {
-        if (window.__dgLoadScriptOnce[src]) return window.__dgLoadScriptOnce[src];
-        window.__dgLoadScriptOnce[src] = new Promise(function (resolve, reject) {
+        // Keyed WITHOUT the query string: the same file is asked for both bare and as
+        // '/assets/js/linksru.js?v=<build>' (the versioned form comes from the shell markup), and with
+        // the query in the key those were two different entries — two <script> tags for one file, and
+        // those legacy files declare top-level consts, so the second execution threw
+        // "Identifier 'thsuLinksDataoffl' has already been declared" (also tbwLinksData).
+        var key = String(src).split('?')[0];
+        if (window.__dgLoadScriptOnce[key]) return window.__dgLoadScriptOnce[key];
+        window.__dgLoadScriptOnce[key] = new Promise(function (resolve, reject) {
             var script = document.createElement('script');
             script.src = src;
             script.onload = resolve;
             script.onerror = reject;
             document.head.appendChild(script);
         });
-        return window.__dgLoadScriptOnce[src];
+        return window.__dgLoadScriptOnce[key];
     }
 
     var piEnRuScriptsPromise = null;
@@ -3525,6 +3608,15 @@ $(document).ready(function() {
             // dict.dg / aksharamukha / dharmamitra — a plain external tool, not part of this
             // site at all. Opens in a new tab; the search box/page stay exactly as they were.
             window.open(route.url, '_blank', 'noopener');
+        } else if (route.type === 'reload') {
+            // A typed switch that changes what the next render shows (force_local: the local-only
+            // reader links). Reload, do not pushState: nothing else in the SPA re-reads it.
+            location.reload();
+        } else if (route.type === 'page') {
+            // A bare word that names one of the site's own pages ("settings"/"настройки" — see
+            // DgTextRouter's PAGE shortcut). A full navigation, not pushState: these pages are
+            // separate documents (settings/index.html), which the SPA does not render.
+            window.location.href = route.url;
         } else if (route.type === 'quickmodal') {
             // "4as"/"4as2".."4as4" typed in the search box — same destination as visiting
             // /4as, /4as/2../4as/4 directly, so just become that URL and let routeFromUrl()'s
@@ -3674,7 +3766,6 @@ $(document).ready(function() {
         let scope = buildScopeLabel(json.metadata.resolvedPrefixes);
 
         let qStr = json.metadata.query || "";
-        let capitalizedQuery = qStr ? qStr.charAt(0).toUpperCase() + qStr.slice(1) : "";
 
         // Owner (2026-09-05): the header used to be one sentence — "Kacchapa 7 texts and 8
         // matches in 4 Nikayas + 6 KN books *". Now three visual parts: the keyword on its own
@@ -3709,7 +3800,10 @@ $(document).ready(function() {
         st.className = 'rh-stats';
         st.textContent = stats;
         $head[0].appendChild(kw);
-        $head[0].appendChild(st);
+        // Owner: "убери 0 0 совпадений - это итак понятно если ничего не найдено" — the stats
+        // pill only adds noise once the plain "not found" message below already says the same
+        // thing.
+        if (json.metadata.totalFiles > 0) $head[0].appendChild(st);
         // The star is the ONLY place the search area is named now, so it is always present
         // (before: only when the full list differed from the short label).
         if (true) {
@@ -3760,25 +3854,30 @@ $(document).ready(function() {
             }
         }
 
+        // Owner: "не пиши запрос два раза... можно сразу рядом с заголовком, после звёздочки
+        // сразу пиши" — "not found"/"too short" used to live in a separate block below
+        // (#search-message) and repeated the query a second time ("kachcap ... Kachcap not
+        // found."). Now it's one more span on the SAME header line, right after the star/variants
+        // — the query itself (kw, above) appears exactly once, so the message text no longer
+        // includes {query} at all (see lang_ru/en.json). #search-message stays d-none here; it's
+        // still used by the real-network-error path further down (a different failure, not this).
         let msgDiv = document.getElementById('search-message');
-        if (msgDiv) {
-            // Показываем оба языка сразу, каждый своей строкой (а не только текущий UI-язык и
-            // не смешивая языки в одну строку через "/") — это статус ошибки/пустого результата,
-            // а не элемент интерфейса, который переключается вместе с остальным сайтом. Тексты —
-            // из lang_ru.json/lang_en.json (results.tooShortMessage/noResultsMessage), с {query}.
-            let messageKey = json.metadata.tooShort ? 'results.tooShortMessage'
-                : (json.metadata.totalFiles === 0 ? 'results.noResultsMessage' : null);
-            if (messageKey) {
-                Promise.all([fetchLangConfig('ru'), fetchLangConfig('en')]).then(function (configs) {
-                    document.getElementById('search-message-ru').textContent =
-                        tFrom(configs[0], messageKey, '').replace('{query}', capitalizedQuery);
-                    document.getElementById('search-message-en').textContent =
-                        tFrom(configs[1], messageKey, '').replace('{query}', capitalizedQuery);
-                });
-                msgDiv.classList.remove('d-none');
-            } else {
-                msgDiv.classList.add('d-none');
-            }
+        if (msgDiv) msgDiv.classList.add('d-none');
+        let messageKey = json.metadata.tooShort ? 'results.tooShortMessage'
+            : (json.metadata.totalFiles === 0 ? 'results.noResultsMessage' : null);
+        if (messageKey) {
+            // Guards against a slower-to-resolve PREVIOUS render's fetchLangConfig appending its
+            // (stale/wrong-language) span into a header that $head.empty() + a NEWER call have
+            // already repopulated — renderResultHeader can re-run on a live language switch.
+            renderResultHeader._callId = (renderResultHeader._callId || 0) + 1;
+            let headerRenderId = renderResultHeader._callId;
+            fetchLangConfig(window.siteLanguage).then(function (config) {
+                if (renderResultHeader._callId !== headerRenderId) return;
+                let msgSpan = document.createElement('span');
+                msgSpan.className = 'rh-stats';
+                msgSpan.textContent = tFrom(config, messageKey, '');
+                $head[0].appendChild(msgSpan);
+            });
         }
     }
 
@@ -3789,7 +3888,7 @@ $(document).ready(function() {
        <body>, вся вёрстка и анимации переключаются CSS-ом (search/css/home.css). Единственный
        источник правды — адрес: initSearchApp() читает его и зовёт это, в том числе после
        pushState на сабмите и после popstate. */
-    var DG_STATES = ['dg-state-home', 'dg-state-results', 'dg-state-reader', 'dg-state-toc'];
+    var DG_STATES = ['dg-state-home', 'dg-state-results', 'dg-state-reader', 'dg-state-toc', 'dg-state-ai'];
     function dgSetState(name) {
         var cls = 'dg-state-' + name;
         document.body.classList.remove('home-out', 'results-out'); // exit played, screen switches now
@@ -3826,6 +3925,10 @@ $(document).ready(function() {
         // coupling it directly to dgSetState().
         window.dispatchEvent(new CustomEvent('dgStateChanged', { detail: { name: name } }));
     }
+    // Exposed for ai-search.js: it needs to REQUEST a state change (home.js's dgStateChanged
+    // event above is one-way, for reacting AFTER a change, not triggering one) — same window.Dg*
+    // convention as DgHome/DgTextRouter elsewhere in this file.
+    window.dgSetState = dgSetState;
 
     /* Ожидание ответа. Состояние страницы при этом НЕ меняется: пока данных нет, человек
        остаётся там, где был (на главной или на прошлой выдаче), и видит спиннер, а не пустую
@@ -4180,6 +4283,8 @@ $(document).ready(function() {
     function routeFromUrl() {
         dgLeaveScreen(dgScreenFromUrl(), routeFromUrlNow);
     }
+    // home.js closeSettingsSheet(): re-route once after settings changed on results/home.
+    window.dgRouteFromUrl = routeFromUrl;
     function routeFromUrlNow() {
         normalizeRuPrefix();
         normalizeShareTargetQuery();
@@ -4367,10 +4472,39 @@ $(document).ready(function() {
                 && typeof window.addToSearchHistory === 'function') window.addToSearchHistory();
             renderResultHeader(fastJson);
             renderCurrentReport();
+            // Owner: "не должен продолжать показывать подсказки если это уже новый и тем более
+            // успешный поиск" — a previous query's AI-search note/word-chips/debug panel are only
+            // ever written by dgRunAiSearch(), never cleared on their own; a fresh search that
+            // this time actually finds something (or is simply too short) never calls it again,
+            // so those elements just kept showing whatever the LAST 0-result query had left in
+            // them. One choke point for every outcome here — the totalFiles===0 branch below
+            // still repopulates them itself moments later, this only matters for the other two.
+            if (typeof window.dgClearAiSearch === 'function') window.dgClearAiSearch();
 
             // Состояние переключаем ТОЛЬКО здесь, когда таблица уже наполнена быстрым ответом.
             // Раньше это делалось до fetch, и выдача успевала показаться пустой.
             dgSetState('results');
+
+            // Точный поиск реально выполнился (не tooShort) и ничего не нашёл — вместо пустой таблицы
+            // надо ответить на вопрос "тогда что же искать". Два источника ответа, и дешёвый идёт
+            // первым:
+            //   1. metadata.suggestions — уже пришли В ЭТОМ ЖЕ ответе (dg-fastify.js withSuggestions
+            //      → core/search-core.js suggestWords): неточное совпадение по словоформам самого
+            //      корпуса. Владелец: "зачем это давать в отдельном ответе когда мы можем вместо
+            //      sutta words показывать сразу грамотные подсказки" — никакого второго запроса,
+            //      показываем тем же кадром, и работает даже когда ИИ недоступен.
+            //   2. Ничего похожего в корпусе нет — тогда ИИ-поиск как и раньше
+            //      (docs/AI_SEARCH_BRIEF.md): словарь DPD или поиск по смыслу. dgSetState('ai') внутри
+            //      dgRunAiSearch() переключит состояние повторно — 'results' выше просто мгновенный
+            //      промежуточный кадр, не видимый глазом.
+            if (!fastJson.metadata.tooShort && fastJson.metadata.totalFiles === 0) {
+                var nearForms = fastJson.metadata.suggestions || [];
+                if (nearForms.length && typeof window.dgShowWordChips === 'function') {
+                    window.dgShowWordChips(nearForms);
+                } else if (typeof window.dgRunAiSearch === 'function') {
+                    window.dgRunAiSearch(keyword, scope);
+                }
+            }
 
             if (reportMode === 'suttas') ensureEnrichmentStarted();
         } catch (error) {
@@ -4438,7 +4572,8 @@ $(document).ready(function() {
     // шторка), отдельная развилка здесь не нужна.
     document.addEventListener('click', function (e) {
         if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.defaultPrevented) return;
-        var a = e.target.closest ? e.target.closest('a[href="/settings/"]') : null;
+        // starts-with, not equality: the app build rewrites the href to /settings/index.html
+        var a = e.target.closest ? e.target.closest('a[href^="/settings/"]') : null;
         if (!a || !window.DgHome) return;
         e.preventDefault();
         window.DgHome.closeDrawer();
@@ -4462,7 +4597,7 @@ $(document).ready(function() {
         // раньше строчки, которая его меняет (она вообще только для выдачи). Тот же текст,
         // что в <title> при чистой загрузке "/", иначе после поиска в вкладке так и остаётся
         // "Kacchapa ... - Dhamma.gift" даже дома.
-        document.title = 'Search Results - Dhamma.gift';
+        document.title = 'Dhamma.gift';
         // Поле поиска — та же логика: свежая загрузка "/" даёт пустое поле, а SPA-переход иначе
         // оставлял бы прошлый запрос висеть в поле над плитками главной.
         var input = document.getElementById('paliauto');
@@ -4483,6 +4618,15 @@ $(document).ready(function() {
     <!-- Шапка шторки ведёт на главную — пункт «Главная» ушёл вместе с «Навигацией», а домой
          из выдачи/ридера через бургер всё равно нужно уметь. -->
     <a class="dg-brand-link" href="/"><img class="dg-brand-logo" src="/assets/img/dgsanhkalogo.png" alt=""><span class="dg-brand-name">dhamma.gift</span></a>
+    <!-- issue #5: minimal-ui still shows Chrome's own share icon in its address bar, but that
+         disappears the moment this is installed/used as standalone (no browser chrome at all) —
+         needed our own share affordance regardless, not tied to changing the manifest display
+         mode itself (kept as minimal-ui for now, owner's call). navigator.share() opens the
+         native OS sheet where available (Android/iOS/most mobile browsers); desktop browsers
+         without it fall back to copying the link, same pattern as copyToClipboard.js elsewhere. -->
+    <button type="button" class="dg-icon-btn dg-drawer-share" aria-label="Share" data-i18n-aria-label="{{menu.share}}">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/></svg>
+    </button>
     <button type="button" class="dg-icon-btn dg-drawer-close" aria-label="Close" data-i18n-aria-label="{{global.common.close}}">
       <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
     </button>
@@ -4527,16 +4671,24 @@ $(document).ready(function() {
     </details>
 
     <p class="dg-group-title">{{menu.settings}}</p>
-    <!-- Язык/тема — переехали сюда, в «Настройки» (просьба владельца: часть настроек была вверху
-         шторки, часть внизу — всё в одном месте). Переключатели наполняет и обслуживает home.js,
-         контейнеры БЕЗ класса .dg-segmented (сам переключатель — <div class="dg-segmented">,
-         который создаёт segmented() и кладёт сюда). -->
-    <p class="dg-group-title" data-dg-icon="language">{{menu.language}}</p>
+    <!-- Язык/тема/размер шрифта — подпункты «Настроек» выше, не отдельные разделы того же уровня
+         (owner: "равнозначные, слишком большие") — .dg-drawer-subtitle заметно мельче
+         .dg-group-title (та — для MULTITOOL/SETTINGS и т.п.). Переключатели наполняет и
+         обслуживает home.js, контейнеры БЕЗ класса .dg-segmented (сам переключатель —
+         <div class="dg-segmented">, который создаёт segmented() и кладёт сюда). -->
+    <p class="dg-drawer-subtitle" data-dg-icon="language">{{menu.language}}</p>
     <div id="dg-lang-seg"></div>
     <!-- Значка у этого заголовка нет намеренно: солнце рядом со словом «Тема» читалось бы как
          «сейчас светлая». Значки тем — внутри самого переключателя, у своих вариантов. -->
-    <p class="dg-group-title">{{menu.theme}}</p>
+    <p class="dg-drawer-subtitle">{{menu.theme}}</p>
     <div id="dg-theme-seg"></div>
+    <!-- issue #5: font size lived only in the mostly-hidden /settings/ page (localStorage.uiScale,
+       #sizeMinus/#sizePlus there) and its saved value was never actually applied on this page or
+       the reader — settings.js's own #fontDec/#fontInc apply-on-click code targets ids that don't
+       exist here (legacy reader-template.html only). Same key, own stepper, right in the drawer,
+       same .dg-segmented look as the En/Ru and theme switches above (owner ask). -->
+    <p class="dg-drawer-subtitle">{{menu.fontSize}}</p>
+    <div id="dg-fontsize-ctrl" class="dg-segmented"></div>
     <!-- "Описания кнопок" (dgTileDesc) moved to /settings/ — owner: "очень неважная настройка",
          doesn't need to sit in the quick-access drawer next to language/theme. tileDescEnabled()
          in home.js still reads the same localStorage key when actually rendering tile rows. -->
@@ -4583,13 +4735,17 @@ $(document).ready(function() {
     <!-- linksdpr.js/openDpr.js, linksru.js/openRu.js, linksbw.js/openBw.js — теперь загружаются
          лениво, см. loadPiEnRuScripts() в wireResultLinks() выше: незачем парсить ~469 КБ
          ссылочных данных на каждой загрузке страницы, если в ней ещё нет результатов поиска. -->
+                <!-- mode+lang <-> localStorage.selectedDict string, shared with settings/index.html
+                     (see dict-mode-shared.js) — must come before home-bundle.js below, whose
+                     dictModePicker() (quick settings) calls into it. -->
+                <script src="/assets/js/dict-mode-shared.js" defer></script>
                 <!-- settings.js + dg-text-router.js concatenated at server startup (dg-light.js
                      buildScriptBundle(), same pattern as build-icons.js) into one request — both
                      are dg-node-owned files (public/overrides/js/), order preserved exactly, so
                      behavior is identical to the two separate deferred tags this replaces. -->
                 <script src="/assets/js/settings-bundle.js" defer></script>
 <script src="/assets/js/themeswitch.js" defer></script>
-<!-- openWithQuery/openWithQueryMulti/openDictionaries — легаси-функции подстановки {{q}}/{{theme}}
+<!-- openWithQuery — легаси-функции подстановки {{q}}/{{theme}}
      из горизонтального меню. Раньше на этой странице их не было (меню жило только в PHP-шапке),
      а плиткам домашнего экрана они нужны: часть ссылок в menu-links.json — шаблоны. -->
 <script src="/assets/js/openDicts.js" defer></script>

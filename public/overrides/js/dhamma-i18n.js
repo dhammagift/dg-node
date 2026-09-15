@@ -18,6 +18,8 @@ window.DHAMMA_I18N = (() => {
   const textTemplates = new WeakMap();
   let activeConfig = null;
   let activeLanguage = null;
+  // English, for keys a translation does not have yet (lang_th.json lacks 14 of them).
+  let fallbackConfig = null;
 
   function getValue(config, path) {
     return path.split(".").reduce((value, part) => {
@@ -28,7 +30,10 @@ window.DHAMMA_I18N = (() => {
 
   function render(template, config) {
     return template.replace(TOKEN_PATTERN, (token, path) => {
-      const value = getValue(config, path);
+      // A key missing from the translation used to throw and leave the whole subtree as raw
+      // {{tokens}} (Thai: "Missing localization key: toolbar.aiModeLabel"); English text is better.
+      let value = getValue(config, path);
+      if (value === undefined && fallbackConfig) value = getValue(fallbackConfig, path);
       if (value === undefined) {
         throw new Error(`Missing localization key: ${path}`);
       }
@@ -167,11 +172,12 @@ window.DHAMMA_I18N = (() => {
   }
 
   async function setSiteLanguage(language, explicitUrl) {
-    let config, globalConfig;
+    let config, globalConfig, englishConfig;
     try {
-      [config, globalConfig] = await Promise.all([
+      [config, globalConfig, englishConfig] = await Promise.all([
         fetchConfig(configUrl(language, explicitUrl)),
-        fetchGlobalConfig(language)
+        fetchGlobalConfig(language),
+        language !== "en" && !explicitUrl ? fetchConfig(configUrl("en")).catch(() => null) : null
       ]);
     } catch (error) {
       // Нет конфига для запрошенного языка (например ?lang=de, пока нет lang_de.json) — раньше
@@ -190,6 +196,7 @@ window.DHAMMA_I18N = (() => {
     }
 
     activeConfig = config;
+    fallbackConfig = englishConfig || null;
     activeLanguage = config.locale?.code || language;
 
     applySubtree(document, config);

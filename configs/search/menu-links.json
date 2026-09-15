@@ -15,7 +15,6 @@
     "  href     — обычная ссылка;",
     "  tpl      — шаблон, {{q}} подставляется из #paliauto, {{theme}} из темы; идёт в",
     "             openWithQuery() (/assets/js/openDicts.js) — он же копирует запрос в буфер;",
-    "  tplMulti — массив префиксов, открывается пачкой через openWithQueryMulti();",
     "  action   — вызов именованной функции легаси (readPlus);",
     "  modal:\"quick\" на самой плитке — открыть quickModal (компас) вместо своей шторки: у",
     "             истории отдельного списка нет, она и так живёт там;",
@@ -49,7 +48,7 @@
       "label": "History",
       "desc": "Favorites, History, “4NT” window",
       "icon": "clock",
-      "href": "/assets/common/history.html",
+      "href": "/4as",
       "modal": "quick",
       "drawerLabel": "Favorites, History",
       "drawerIcon": "star"
@@ -626,15 +625,15 @@
               "inline": [
                 {
                   "label": "sn56.11",
-                  "href": "/memorize/?q=sn56.11"
+                  "href": "/sn56.11?mode=memorize"
                 },
                 {
                   "label": "dn22",
-                  "href": "/memorize/?q=dn22"
+                  "href": "/dn22?mode=memorize"
                 },
                 {
                   "label": "sn12.2",
-                  "href": "/memorize/?q=sn12.2"
+                  "href": "/sn12.2?mode=memorize"
                 }
               ]
             },
@@ -698,7 +697,7 @@
             {
               "label": "DG (th)",
               "desc": "Dhamma.gift in Thai script",
-              "href": "/th/?q=",
+              "href": "/?lang=th",
               "setsLang": "th"
             },
             {
@@ -846,7 +845,7 @@
       "label": "История",
       "desc": "Избранное, История, Окно «4БИ»",
       "icon": "clock",
-      "href": "/ru/assets/common/history.html",
+      "href": "/4as",
       "modal": "quick",
       "drawerLabel": "Избранное, История",
       "drawerIcon": "star"
@@ -1520,15 +1519,15 @@
               "inline": [
                 {
                   "label": "sn56.11",
-                  "href": "/memorize/?q=sn56.11"
+                  "href": "/sn56.11?mode=memorize"
                 },
                 {
                   "label": "dn22",
-                  "href": "/memorize/?q=dn22"
+                  "href": "/dn22?mode=memorize"
                 },
                 {
                   "label": "sn12.2",
-                  "href": "/memorize/?q=sn12.2"
+                  "href": "/sn12.2?mode=memorize"
                 }
               ]
             },
@@ -1578,7 +1577,7 @@
             {
               "label": "DG (th)",
               "desc": "Dhamma.gift тайским письмом",
-              "href": "/th/?q=",
+              "href": "/?lang=th",
               "setsLang": "th"
             },
             {
