@@ -43,6 +43,8 @@
         en: { ru: 'английский', en: 'English' },
         pli: { ru: 'пали', en: 'Pali' },
         de: { ru: 'немецкий', en: 'German' },
+        // The published library now carries every language (manifest langs: "all"): it read "ALL".
+        all: { ru: 'Все языки', en: 'All languages' },
     };
     function languageList(langs, ru) {
         var names = String(langs || '').split(',').map(function (code) {
