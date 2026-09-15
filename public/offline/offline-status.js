@@ -52,7 +52,7 @@
             var entry = LANG_NAMES[key];
             return entry ? entry[ru ? 'ru' : 'en'] : key.toUpperCase();
         }).filter(Boolean);
-        if (!names.length) return ru ? 'русский и английский' : 'Russian and English';
+        if (!names.length) return ru ? 'все языки' : 'all languages';
         if (names.length === 1) return names[0];
         var last = names.pop();
         return names.join(', ') + (ru ? ' и ' : ' and ') + last;
@@ -328,12 +328,10 @@
     // rotation rather than a paragraph: it fills the wait with something true and useful instead of
     // a motionless percentage (owner: "чтобы не скучно было и информативно"). Kept strictly to what
     // the offline layer really serves — see docs/OFFLINE_PWA_PLAN.md: search, the reader with its
-    // ru+en translations and Pali editions, navigation between suttas. NOT listed, because they stay
-    // online: Google TTS, dictionaries, script conversion (?script=), other languages.
-    // Only claims the slice actually backs (checked against the built dg-mobile.db: kind=root,
-    // kind=translation for ru+en, kind=variant; nothing else). Deliberately absent: the bjt/vri/siam
-    // editions (file-based, not in dg.db), Google TTS, dictionaries, script conversion, other
-    // languages — all of those stay online.
+    // translations and Pali variants, navigation between suttas. The library is the site's own dg.db
+    // (manifest langs: "all"), so every translation language the site has is in it, not only ru+en.
+    // NOT listed, because they stay online: the bjt/vri/siam editions (file-based, not in dg.db),
+    // Google TTS, dictionaries, script conversion (?script=).
     var FACTS = {
         ru: [
             // First slide on purpose: backgrounding the tab (or letting the device sleep) is what
@@ -342,7 +340,7 @@
             'Не выключайте устройство и не сворачивайте браузер',
             'Поиск в Суттах и Винае — без интернета',
             'Чтение Сутт и Винаи офлайн, с переводами',
-            'Языки: пали, английский и русский',
+            'Пали и переводы на всех языках сайта, не только русский и английский',
             // Honest about what stays online: the reader should not discover it by hitting an error
             // offline. TTS uses Google's service and script conversion is done by the server.
             'Озвучка Google и конвертация системы письма работают только онлайн',
@@ -354,7 +352,7 @@
             'Keep the device on and leave this tab open',
             'Search the Suttas and Vinaya — no connection',
             'Read the Suttas and Vinaya offline, translations included',
-            'Languages: Pali, English and Russian',
+            'Pali plus translations in every language on the site, not just English and Russian',
             'Google TTS and script conversion work online only',
             'Sutta-to-sutta navigation, bookmarks and history offline too',
             'Download interrupted? It resumes where it stopped',
