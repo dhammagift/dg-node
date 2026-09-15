@@ -16,6 +16,7 @@ and how to repeat it on another server. Everything here was set up and checked o
 | SuttaCentral texts | `/var/www/suttacentral.net/sc-data` | suttacentral/sc-data `main`, **shallow mirror** | read by the site |
 | Our translations | `/var/www/offline-data` | dhammagift/offline-data `main` | translators commit here |
 | Legacy PHP site | `/var/www/html` | dhammagift/dg `main` | assets, 4nt, read, /old |
+| Issue bot (Telegram → GitHub issues) | `/var/www/issue_bot` | dhammagift/issue-bot `main` | pm2 `issue-bot`; setup from scratch in its README |
 | Android apps (TWA) | `/var/www/dg-twa` | dhammagift/dg-twa | built by GitHub Actions on push to `prod` |
 
 `pm2 restart dg-prod` after changing `search/js/home.js` or `settings.js` (bundles are built on start).
