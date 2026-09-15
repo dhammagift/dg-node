@@ -53,6 +53,17 @@ discarded by design — never edit files there. Log: `nodejs/logs/update-externa
 
 Listed now: sc-data, tipitaka.lk. Our own repos (commits happen in them) and AI tools are not listed.
 
+## Leftovers of killed Claude sessions
+
+`scripts/claude-reaper.sh` (report) / `--apply` (cron, every 30 min). Every process a session starts
+inherits `CLAUDE_PID` and `CLAUDE_CODE_SESSION_ID`; when that `claude` is gone, its headless browsers,
+playwright daemons, `http.server` previews and wrapper shells are killed. Two guards: only those known
+artifact types, and never anything under pm2 (dg-prod/test carry a dead session's `CLAUDE_PID` because
+pm2 was restarted from a Claude shell). Scratch dirs `/tmp/claude-*/<project>/<session>/` go when the
+session is not running and its transcript is older than 24 h. Log: `nodejs/logs/claude-reaper.log`.
+
+Run it without `--apply` to see every session, what it still holds and how much.
+
 ## Cron (root)
 
 ```cron
@@ -64,6 +75,8 @@ Listed now: sc-data, tipitaka.lk. Our own repos (commits happen in them) and AI 
 # search DB: sites every Monday, app/PWA archive on the 1st and 15th
 15 3 * * 1 mkdir -p /var/www/html/nodejs/logs && PATH=/root/.nvm/versions/node/v24.20.0/bin:/usr/local/bin:/usr/bin:/bin /var/www/html/nodejs/scripts/pull-db.sh >> /var/www/html/nodejs/logs/pull-db.log 2>&1
 45 3 1,15 * * mkdir -p /var/www/html/nodejs/logs && PATH=/root/.nvm/versions/node/v24.20.0/bin:/usr/local/bin:/usr/bin:/bin /var/www/html/nodejs/scripts/pull-db.sh --app >> /var/www/html/nodejs/logs/pull-db.log 2>&1
+# leftovers of killed Claude sessions (browsers, previews, scratch dirs)
+*/30 * * * * mkdir -p /var/www/html/nodejs/logs && /var/www/html/nodejs/scripts/claude-reaper.sh --apply | grep -v ' kept)$' >> /var/www/html/nodejs/logs/claude-reaper.log 2>&1
 # misc
 0 3 1-31/15 * * rm -rf /var/www/html/result/* /var/www/html/result/.??*
 */10 * * * * cd /var/www/html/dg-node-test && /usr/bin/node scripts/disk-guard.js >> /var/www/html/dg-node-test/test/.disk-guard.log 2>&1
