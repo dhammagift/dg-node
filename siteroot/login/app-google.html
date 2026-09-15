@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dhamma.Gift — Google sign-in</title>
+<link rel="icon" type="image/png" href="/assets/img/favico-noglass.png">
+<style>
+    :root { --bg: #f4f6f5; --card: #fff; --ink: #141a18; --muted: #5b6b66; --rule: #dde5e2; --accent: #136857; }
+    @media (prefers-color-scheme: dark) {
+        :root { --bg: #101816; --card: #171f1d; --ink: #e8efec; --muted: #9aaba6; --rule: #27332f; --accent: #3f9d86; }
+    }
+    body {
+        margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+        background: var(--bg); color: var(--ink); padding: 0 16px; box-sizing: border-box;
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    }
+    .card {
+        width: min(420px, 100%); background: var(--card); border: 1px solid var(--rule);
+        border-radius: 20px; padding: 28px 22px 24px; text-align: center; box-sizing: border-box;
+    }
+    .card img { width: 64px; height: 64px; }
+    h1 { font-size: 19px; margin: 12px 0 6px; }
+    p { font-size: 14px; line-height: 1.5; color: var(--muted); margin: 0 0 20px; }
+    .btn {
+        display: block; width: 100%; box-sizing: border-box; font: inherit; font-size: 15px; font-weight: 600;
+        padding: 12px 14px; border-radius: 13px; border: 1px solid var(--accent);
+        background: var(--accent); color: #fff; text-decoration: none; cursor: pointer;
+    }
+    .btn[disabled] { opacity: .6; cursor: default; }
+    [hidden] { display: none !important; }
+    .err { color: #c0392b; font-size: 13px; margin-top: 12px; min-height: 1em; }
+</style>
+</head>
+<body>
+<div class="card">
+    <img src="/assets/img/pwa-bold-monocolor-192.png" alt="">
+    <h1 id="title">Sign in with Google</h1>
+    <p id="desc"></p>
+    <button id="go" class="btn" type="button">Sign in with Google</button>
+    <a id="back" class="btn" hidden>Return to the app</a>
+    <div class="err" id="err" role="alert"></div>
+</div>
+<script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-auth-compat.js"></script>
+<script>
+// Google sign-in for the Dhamma.Gift Android app. Google refuses sign-in inside an app's WebView, so the
+// app opens this page in the system browser. After a normal popup sign-in the Google ID token goes back
+// to the app through an intent:// URL naming the app's package (no other app can receive it), together
+// with the one-time state the app generated; the app then signs in to the same Firebase account with it
+// (dg-app-full: MainActivity.handleIntent, native-bridge.js googleSignInViaBrowser).
+(function () {
+    var q = new URLSearchParams(location.search);
+    var state = q.get('state') || '';
+    var pkg = q.get('pkg') || '';
+    var ru = q.get('lang') === 'ru';
+    var t = function (r, e) { return ru ? r : e; };
+    var PACKAGES = ['gift.dhamma.mobile', 'gift.dhamma.twa'];
+    var el = function (id) { return document.getElementById(id); };
+
+    document.documentElement.lang = ru ? 'ru' : 'en';
+    el('title').textContent = t('Вход через Google', 'Sign in with Google');
+    el('desc').textContent = t('Войдите, и приложение Dhamma.Gift подключит ваше облако: историю, избранное и настройки.',
+                               'Sign in and the Dhamma.Gift app connects your cloud: history, favorites and settings.');
+    el('go').textContent = t('Войти через Google', 'Sign in with Google');
+    el('back').textContent = t('Вернуться в приложение', 'Return to the app');
+
+    if (!/^[a-f0-9]{16,64}$/.test(state) || PACKAGES.indexOf(pkg) === -1) {
+        el('go').hidden = true;
+        el('err').textContent = t('Откройте вход из приложения Dhamma.Gift.', 'Open sign-in from the Dhamma.Gift app.');
+        return;
+    }
+
+    var ready = fetch('/config/sync-config.json')
+        .then(function (r) { return r.json(); })
+        .then(function (cfg) {
+            if (!window.firebase) throw new Error('Firebase scripts did not load (gstatic.com unreachable?)');
+            if (!firebase.apps.length) firebase.initializeApp(cfg);
+        });
+    ready.catch(function () { /* reported on the button press */ });
+
+    el('go').addEventListener('click', function () {
+        el('err').textContent = '';
+        el('go').disabled = true;
+        ready.then(function () {
+            return firebase.auth().signInWithPopup(new firebase.auth.GoogleAuthProvider());
+        }).then(function (res) {
+            var token = res.credential && res.credential.idToken;
+            if (!token) throw new Error('no Google ID token in the sign-in result');
+            var href = 'intent://auth#Intent;scheme=dhammagift;package=' + pkg +
+                ';S.id_token=' + encodeURIComponent(token) + ';S.state=' + state +
+                ';S.lang=' + (ru ? 'ru' : 'en') + ';end';
+            el('go').hidden = true;
+            el('back').href = href;
+            el('back').hidden = false;
+            el('desc').textContent = t('Готово. Возвращаемся в приложение…', 'Done. Returning to the app…');
+            location.href = href;
+        }).catch(function (e) {
+            el('go').disabled = false;
+            if (e && /popup-closed-by-user|cancelled-popup-request/.test(e.code || '')) return;
+            console.error('[app-google] sign-in failed:', e);
+            el('err').textContent = t('Не получилось войти. Попробуйте ещё раз.', 'Sign-in failed. Please try again.');
+        });
+    });
+})();
+</script>
+</body>
+</html>
