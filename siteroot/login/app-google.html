@@ -79,28 +79,55 @@
         });
     ready.catch(function () { /* reported on the button press */ });
 
+    function backToApp(res) {
+        var token = res && res.credential && res.credential.idToken;
+        if (!token) return false;
+        var href = 'intent://auth#Intent;scheme=dhammagift;package=' + pkg +
+            ';S.id_token=' + encodeURIComponent(token) + ';S.state=' + state +
+            ';S.lang=' + (ru ? 'ru' : 'en') + ';end';
+        el('go').hidden = true;
+        el('back').href = href;
+        el('back').hidden = false; // Chrome may refuse to open an app without a tap: then this button does
+        el('desc').textContent = t('Готово. Возвращаемся в приложение…', 'Done. Returning to the app…');
+        location.href = href;
+        return true;
+    }
+    function failed(e) {
+        el('go').hidden = false;
+        el('go').disabled = false;
+        if (e && /popup-closed-by-user|cancelled-popup-request/.test(e.code || '')) return;
+        console.error('[app-google] sign-in failed:', e);
+        el('err').textContent = t('Не получилось войти. Попробуйте ещё раз.', 'Sign-in failed. Please try again.');
+    }
+
+    // Owner: as seamless as possible. The page goes straight to Google's account chooser (a redirect
+    // needs no tap) and comes back here with the result; the button is only the fallback (popup) for a
+    // browser where the redirect result does not come back.
+    var TRIED = 'dg.appGoogle.redirected.' + state;
+    el('go').hidden = true;
+    el('desc').textContent = t('Открываем вход Google…', 'Opening Google sign-in…');
+    ready.then(function () {
+        return firebase.auth().getRedirectResult();
+    }).then(function (res) {
+        if (backToApp(res)) return;
+        if (sessionStorage.getItem(TRIED)) throw { code: 'redirect-result-missing' };
+        sessionStorage.setItem(TRIED, '1');
+        return firebase.auth().signInWithRedirect(new firebase.auth.GoogleAuthProvider());
+    }).catch(function (e) {
+        el('desc').textContent = t('Войдите, и приложение Dhamma.Gift подключит ваше облако: историю, избранное и настройки.',
+                                   'Sign in and the Dhamma.Gift app connects your cloud: history, favorites and settings.');
+        if (e && e.code === 'redirect-result-missing') { el('go').hidden = false; return; }
+        failed(e);
+    });
+
     el('go').addEventListener('click', function () {
         el('err').textContent = '';
         el('go').disabled = true;
         ready.then(function () {
             return firebase.auth().signInWithPopup(new firebase.auth.GoogleAuthProvider());
         }).then(function (res) {
-            var token = res.credential && res.credential.idToken;
-            if (!token) throw new Error('no Google ID token in the sign-in result');
-            var href = 'intent://auth#Intent;scheme=dhammagift;package=' + pkg +
-                ';S.id_token=' + encodeURIComponent(token) + ';S.state=' + state +
-                ';S.lang=' + (ru ? 'ru' : 'en') + ';end';
-            el('go').hidden = true;
-            el('back').href = href;
-            el('back').hidden = false;
-            el('desc').textContent = t('Готово. Возвращаемся в приложение…', 'Done. Returning to the app…');
-            location.href = href;
-        }).catch(function (e) {
-            el('go').disabled = false;
-            if (e && /popup-closed-by-user|cancelled-popup-request/.test(e.code || '')) return;
-            console.error('[app-google] sign-in failed:', e);
-            el('err').textContent = t('Не получилось войти. Попробуйте ещё раз.', 'Sign-in failed. Please try again.');
-        });
+            if (!backToApp(res)) throw new Error('no Google ID token in the sign-in result');
+        }).catch(failed);
     });
 })();
 </script>
