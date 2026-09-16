@@ -51,7 +51,8 @@
       "href": "/4as",
       "modal": "quick",
       "drawerLabel": "Favorites, History",
-      "drawerIcon": "star"
+      "drawerIcon": "star",
+      "kbd": "Alt+Y"
     },
     "help": {
       "label": "Help",
@@ -843,7 +844,8 @@
       "href": "/4as",
       "modal": "quick",
       "drawerLabel": "Избранное, История",
-      "drawerIcon": "star"
+      "drawerIcon": "star",
+      "kbd": "Alt+Y"
     },
     "help": {
       "label": "Помощь",
