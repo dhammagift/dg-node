@@ -591,6 +591,8 @@ URL in → Router parses → State updates → Views re-render
 - **`/var/www/ddg-ui` — исключение: тестовой копии у него нет.** Одна папка обслуживает и
   `dict.dhamma.gift`, и `dhamma.gift/dict/`, поэтому правка там видна в проде сразу — говорить об
   этом владельцу до правки.
+- **Коммитить пачкой, не на каждый чих.** Мелкие правки одной темы — один коммит после того, как
+  они проверены вместе; не плодить по коммиту на каждую подсказку/строчку.
 - Бекап перед изменением: `~/claudeBak/filename.ext`
 - Тест API: `http://localhost:3000/search?q=kacchapa&scope=dhamma&langs=ru,en`
 - Тест UI:  `http://localhost:8080/nodejs/res/?q=kacchapa&lb=1&la=2&scope=dhamma`
