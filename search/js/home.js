@@ -3107,7 +3107,11 @@
             // out with a star in the drawer specifically, NOT as a second row and NOT on the home
             // tile grid ("на главной плитки не трогай").
             a.innerHTML = '<span class="dg-row-ic dg-drawer-tile-ic">' + iconHtml(tile.drawerIcon || tile.icon) + '</span>' +
-                '<span class="dg-row-label">' + esc(tile.drawerLabel || tile.label) + '</span>';
+                '<span class="dg-row-label">' + esc(tile.drawerLabel || tile.label) + '</span>' +
+                // Optional kbd hint (menu-links.json) — owner: hotkeys should be visible in the
+                // burger menu, as they already are on the reader-mode rows above. Only set it
+                // where a binding really exists; no invented shortcuts.
+                (tile.kbd ? '<span class="dg-drawer-hotkey">' + esc(tile.kbd) + '</span>' : '');
             a.addEventListener('click', function (e) {
                 e.preventDefault();
                 closeDrawer();

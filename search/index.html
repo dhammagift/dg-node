@@ -4645,7 +4645,7 @@ $(document).ready(function() {
          one (file-magnifying-glass/file-search is Pro-only, checked node_modules directly), so
          this stays the plain lens rather than a hand-drawn substitute breaking the icon system's
          "every drawer icon comes from ICONS/FontAwesome" convention. -->
-    <a class="dg-drawer-row dg-find-open" href="javascript:void(0)" data-dg-icon="magnifier">{{menu.findOnPage}}</a>
+    <a class="dg-drawer-row dg-find-open" href="javascript:void(0)" data-dg-icon="magnifier">{{menu.findOnPage}}<span class="dg-drawer-hotkey">Alt+F</span></a>
     <!-- Мультитул вместо «Навигации» (owner, 2026-09-05): список плиток главной, чтобы мультитул
          был под рукой в любом месте сайта — в выдаче, в ридере, в TOC. Нативный <details>, свёрнут
          по умолчанию в выдаче/ридере/TOC; на главной openDrawer() (home.js) раскрывает его при
@@ -4695,7 +4695,7 @@ $(document).ready(function() {
 
     <!-- Полные настройки (шестерёнка) — ниже язык/тему по просьбе владельца: сначала быстрые
          переключатели, потом ссылка на полную страницу настроек. -->
-    <a class="dg-drawer-row" href="/settings/" data-dg-icon="gear">{{global.common.settings}}</a>
+    <a class="dg-drawer-row" href="/settings/" data-dg-icon="gear">{{global.common.settings}}<span class="dg-drawer-hotkey">Alt+Shift+S</span></a>
     <!-- Своя кнопка на главную: подпись, адрес, значок. Форму рисует home.js в обычной шторке.
          Перенесено сюда из «Навигации» по просьбе владельца — это управление кнопками, то есть
          настройка, а не переход. -->

@@ -2491,6 +2491,17 @@ body.dg-drawer-open {
     color: var(--dg-text-muted);
 }
 .dg-drawer-row:hover .dg-row-ic { color: var(--dg-accent-ink); }
+/* Горячая клавиша строки бургера — тот же вид, что у .dg-mode-row-hotkey выше и у строк меню
+   словаря (ddg-ui): тихой моноширинной подписью справа. Ставится только там, где клавиша
+   действительно что-то делает (owner: "хоткеи видно в бургере"). */
+.dg-drawer-row .dg-drawer-hotkey {
+    margin-left: auto;
+    flex: none;
+    padding-left: 10px;
+    font-size: 0.7rem;
+    color: var(--dg-text-muted);
+    font-variant-numeric: tabular-nums;
+}
 /* Значок-картинка (ракушка у «Главной»). object-fit — иначе картинка растянется в квадрат и
    потеряет пропорции. Коробка РОВНО как у соседних svg (17px), иначе подпись «Главная» съезжает
    вправо относительно остальных строк (замерено: при коробке 22px — 1013px против 1008px у

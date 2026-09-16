@@ -57,7 +57,8 @@
       "label": "Help",
       "desc": "Dhamma Approach and How To",
       "icon": "help",
-      "modal": "help"
+      "modal": "help",
+      "kbd": "Alt+H"
     },
     "external": {
       "label": "External",
@@ -848,7 +849,8 @@
       "label": "Помощь",
       "desc": "Дхамма-подход и Справка",
       "icon": "help",
-      "modal": "help"
+      "modal": "help",
+      "kbd": "Alt+H"
     },
     "external": {
       "label": "Иностранные",
