@@ -21,6 +21,18 @@
 
     if (window.DgPageFindUI) return;
 
+    // Toolbar icons are root-relative (/assets/svg/...) but this script is loaded cross-origin
+    // on dict.dhamma.gift (SITE prefix in dg-site.js) — a bare root path there 404s against the
+    // dict subdomain instead of the main site that actually has /assets/svg/. Anchor icon src to
+    // this script's own origin instead.
+    var ASSET_ORIGIN = (function () {
+        var src = document.currentScript && document.currentScript.src;
+        if (!src) return '';
+        var a = document.createElement('a');
+        a.href = src;
+        return a.origin;
+    })();
+
     // ---------------------------------------------------------------
     // Brahmic-script transliteration (Devanagari/Thai/Sinhala/Myanmar/Khmer/...) — the engine
     // only knows plain-text normalization, it has no notion of scripts. Same Aksharamukha
@@ -55,7 +67,9 @@
         'border:1px solid var(--dg-border-strong,#d7d4c9);border-radius:var(--dg-radius,10px);' +
         'box-shadow:0 12px 32px rgba(27,29,25,.14);font-family:var(--dg-font,system-ui,sans-serif);' +
         'padding:8px;}' +
-        'body.dark .dg-find-panel,[data-theme="dark"] .dg-find-panel{box-shadow:0 12px 32px rgba(0,0,0,.55);}' +
+        // dict.dhamma.gift toggles dark mode via body.dark-mode, not body.dark/[data-theme] —
+        // covering both keeps this panel themed correctly on the main site and the dictionary.
+        'body.dark .dg-find-panel,body.dark-mode .dg-find-panel,[data-theme="dark"] .dg-find-panel{box-shadow:0 12px 32px rgba(0,0,0,.55);}' +
         '.dg-find-field{display:flex;align-items:center;gap:8px;height:52px;padding:0 12px;' +
         'border-radius:26px;background:var(--dg-surface-hover,#f5f4f1);' +
         'border:1px solid var(--dg-border-strong,#d7d4c9);}' +
@@ -80,7 +94,8 @@
         '.dg-find-panel .dg-icon-btn img{width:18px;height:18px;}' +
         '.dg-find-panel .dg-find-glyph-btn{font-size:18px;line-height:1;}' +
         '.dg-find-panel .dg-icon-btn.dg-find-next img{transform:rotate(180deg);}' +
-        'body.dark .dg-find-panel .dg-icon-btn img,[data-theme="dark"] .dg-find-panel .dg-icon-btn img{filter:invert(1);}' +
+        'body.dark .dg-find-panel .dg-icon-btn img,body.dark-mode .dg-find-panel .dg-icon-btn img,' +
+        '[data-theme="dark"] .dg-find-panel .dg-icon-btn img{filter:invert(1);}' +
         '.dg-find-clear{border:0;background:transparent;color:var(--dg-text-muted,#6e716a);' +
         'width:24px;height:24px;cursor:pointer;font-size:16px;line-height:1;flex:none;}' +
         '.dg-find-settings,.dg-find-list{display:none;margin-top:8px;border-top:1px solid var(--dg-border,#e7e5de);' +
@@ -124,7 +139,7 @@
         b.title = title;
         b.setAttribute('aria-label', title);
         var img = document.createElement('img');
-        img.src = svgSrc;
+        img.src = ASSET_ORIGIN + svgSrc;
         img.alt = '';
         b.appendChild(img);
         return b;
