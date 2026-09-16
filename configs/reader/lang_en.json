@@ -94,7 +94,7 @@
     "multiselectModeAlt": "Multi-select Mode",
     "multiselectTitle": "Toggle Multi-select (Alt+J)",
     "favoriteTitle": "Add to favorites (Alt+Q)",
-    "compassTitle": "Favorites / History (Alt+P)",
+    "compassTitle": "Favorites / History (Alt+Y)",
     "settingsTitle": "Settings (Alt+S)",
     "helpTitle": "Help (Alt+H)"
   },
@@ -110,7 +110,7 @@
     "columns": "Alt+C",
     "variants": "Alt+V",
     "multiselect": "Alt+J",
-    "compass": "Alt+P",
+    "compass": "Alt+Y",
     "settings": "Alt+S",
     "help": "Alt+H",
     "readerModes": "Alt+1 to 7",

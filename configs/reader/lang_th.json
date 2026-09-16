@@ -94,7 +94,7 @@
     "multiselectModeAlt": "โหมดเลือกหลายคำ",
     "multiselectTitle": "สลับการเลือกหลายคำ (Alt+J)",
     "favoriteTitle": "เพิ่มในรายการโปรด (Alt+Q)",
-    "compassTitle": "รายการโปรด / ประวัติ (Alt+P)",
+    "compassTitle": "รายการโปรด / ประวัติ (Alt+Y)",
     "settingsTitle": "การตั้งค่า (Alt+S)",
     "helpTitle": "ช่วยเหลือ (Alt+H)"
   },
@@ -110,7 +110,7 @@
     "columns": "Alt+C",
     "variants": "Alt+V",
     "multiselect": "Alt+J",
-    "compass": "Alt+P",
+    "compass": "Alt+Y",
     "settings": "Alt+S",
     "help": "Alt+H",
     "readerModes": "Alt+1 ถึง 7",

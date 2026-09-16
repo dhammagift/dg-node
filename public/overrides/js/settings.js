@@ -1283,7 +1283,14 @@ document.addEventListener("keydown", (event) => {
  
     // Обработчик для Alt+P в любой раскладке
   // Проверяем Alt и физическое расположение клавиши P (код KeyP)
-if (event.altKey && (event.code === "KeyP" || event.code === "KeyY")) { 
+  // Alt+Y — второй вариант той же команды. Матчим по тому, что событие реально принесло:
+  // code, сама буква (латиница/кириллица раскладки) или legacy keyCode — на части клавиатур и
+  // браузеров code для Alt-комбо приходит пустым, и комбинация молча не срабатывала
+  // (owner: «работает только Alt+Y, Alt+P больше видимо не работает»).
+if (event.altKey && !event.ctrlKey && !event.metaKey &&
+    (event.code === "KeyP" || event.code === "KeyY" ||
+     "pPзЗ".indexOf(event.key) !== -1 || "yYнН".indexOf(event.key) !== -1 ||
+     event.keyCode === 80 || event.keyCode === 89)) { 
   event.preventDefault();
     toggleQuickModal();
   }
