@@ -1232,7 +1232,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
          toolbar.themeTitle key in the global i18n config this page loads (data-i18n-title on it
          threw "Missing localization key" — measured live), so this one gets the same plain
          FOUC-script treatment as the headline/subtitle above instead of {{...}}. -->
-    <button type="button" class="dg-icon-btn dg-theme-btn-home" onclick="var b=document.getElementById('theme-button'); if (b) b.click();" aria-label="Переключить тему" title="Переключить тему">
+    <button type="button" class="dg-icon-btn dg-theme-btn-home" onclick="var b=document.getElementById('theme-button'); if (b) b.click();" aria-label="Переключить тему (Alt+T)" title="Переключить тему (Alt+T)">
       <img src="/assets/svg/circle-half-stroke.svg" alt="" class="dg-topbar-icon-img">
     </button>
     <button type="button" class="dg-icon-btn dg-menu-btn" aria-label="Menu" title="Menu" data-i18n-aria-label="{{toolbar.menuAriaLabel}}" data-i18n-title="{{toolbar.menuTitle}}">
@@ -1262,12 +1262,16 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
   // right after its own markup below — it doesn't exist yet at this point in the DOM.
   (function () {
     try {
-      var lang = localStorage.getItem('dhammaLanguage') || localStorage.getItem('siteLanguage') || 'en';
+      // /ru|/r|/ml|/mt clean URLs force Russian for this page view — same path check as
+      // window.siteLanguage below; without it a first visit to /ru/ flashed English strings
+      // (and left English titles, which nothing later corrects).
+      var lang = /^\/(ru|r|ml|mt)(\/|$)/.test(location.pathname) ? 'ru' :
+        (localStorage.getItem('dhammaLanguage') || localStorage.getItem('siteLanguage') || 'en');
       if (lang !== 'ru') {
         document.getElementById('home-motto').textContent = 'Find the Truth';
         document.getElementById('home-subtitle').textContent = 'In the Pāli Suttas and Vinaya';
         var themeBtn = document.querySelector('.dg-theme-btn-home');
-        if (themeBtn) { themeBtn.title = 'Switch theme'; themeBtn.setAttribute('aria-label', 'Switch theme'); }
+        if (themeBtn) { themeBtn.title = 'Switch theme (Alt+T)'; themeBtn.setAttribute('aria-label', 'Switch theme (Alt+T)'); }
       }
     } catch (e) {}
   })();
@@ -1348,7 +1352,11 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     // Same FOUC fix as the headline script above, for the button label added right before this.
     (function () {
       try {
-        var lang = localStorage.getItem('dhammaLanguage') || localStorage.getItem('siteLanguage') || 'en';
+        // /ru|/r|/ml|/mt clean URLs force Russian for this page view — same path check as
+      // window.siteLanguage below; without it a first visit to /ru/ flashed English strings
+      // (and left English titles, which nothing later corrects).
+      var lang = /^\/(ru|r|ml|mt)(\/|$)/.test(location.pathname) ? 'ru' :
+        (localStorage.getItem('dhammaLanguage') || localStorage.getItem('siteLanguage') || 'en');
         if (lang !== 'ru') {
           var goLabel = document.querySelector('.dg-shell-go-label');
           if (goLabel) goLabel.textContent = 'Search';
@@ -1369,7 +1377,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
      шестерёнка в поле (#dg-quick-btn) — своего способа открытия не заводим. -->
 <div id="home-scope-summary">
   <span class="dg-scope-summary-text"></span>
-  <button type="button" class="dg-scope-change" onclick="var b=document.getElementById('dg-quick-btn'); if (b) b.click();"><span class="dg-scope-change-label">изменить</span></button>
+  <button type="button" class="dg-scope-change" title="Быстрые настройки (Alt+S)" aria-label="Быстрые настройки (Alt+S)" onclick="var b=document.getElementById('dg-quick-btn'); if (b) b.click();"><span class="dg-scope-change-label">изменить</span></button>
 </div>
 <script>
   // Same FOUC fix as the headline/button-label scripts above, for "изменить" added right before
@@ -1377,10 +1385,16 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
   // (home.js) always fills it in from scratch, no hardcoded fallback to flash.
   (function () {
     try {
-      var lang = localStorage.getItem('dhammaLanguage') || localStorage.getItem('siteLanguage') || 'en';
+      // /ru|/r|/ml|/mt clean URLs force Russian for this page view — same path check as
+      // window.siteLanguage below; without it a first visit to /ru/ flashed English strings
+      // (and left English titles, which nothing later corrects).
+      var lang = /^\/(ru|r|ml|mt)(\/|$)/.test(location.pathname) ? 'ru' :
+        (localStorage.getItem('dhammaLanguage') || localStorage.getItem('siteLanguage') || 'en');
       if (lang !== 'ru') {
         var changeLabel = document.querySelector('.dg-scope-change-label');
         if (changeLabel) changeLabel.textContent = 'change';
+        var changeBtn = document.querySelector('.dg-scope-change');
+        if (changeBtn) { changeBtn.title = 'Quick settings (Alt+S)'; changeBtn.setAttribute('aria-label', 'Quick settings (Alt+S)'); }
       }
     } catch (e) {}
   })();
