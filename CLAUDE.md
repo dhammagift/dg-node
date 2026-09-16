@@ -584,6 +584,13 @@ URL in → Router parses → State updates → Views re-render
 
 ## Правила
 
+- **Тест → прод, и только так.** Правки живут в `dg-node-test` (test.dhamma.gift) и показываются
+  владельцу на проверку; `git pull` + `pm2 restart dg-prod` в `/var/www/html/nodejs` — ТОЛЬКО
+  после его «ок». Самому прод не выкатывать. Рестарт нужен не только ради нового кода: бандлы
+  (`home-bundle.js`, `settings-bundle.js`) пересобираются при старте сервера.
+- **`/var/www/ddg-ui` — исключение: тестовой копии у него нет.** Одна папка обслуживает и
+  `dict.dhamma.gift`, и `dhamma.gift/dict/`, поэтому правка там видна в проде сразу — говорить об
+  этом владельцу до правки.
 - Бекап перед изменением: `~/claudeBak/filename.ext`
 - Тест API: `http://localhost:3000/search?q=kacchapa&scope=dhamma&langs=ru,en`
 - Тест UI:  `http://localhost:8080/nodejs/res/?q=kacchapa&lb=1&la=2&scope=dhamma`
