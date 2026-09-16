@@ -265,7 +265,15 @@ const UNVERSIONED_LAZY_PATHS = [
     path.join(__dirname, 'reader', 'common.js'),
     path.join(__dirname, 'reader', 'megareader.js'),
     // settings.js injects it on first use (History/Favorites): same lazy load, fixes sat cached for a year.
-    path.join(__dirname, 'public', 'overrides', 'js', 'quickModal.js')
+    path.join(__dirname, 'public', 'overrides', 'js', 'quickModal.js'),
+    // Same story for the find-on-page pair: on dhamma.gift they sit in static <script> tags (so
+    // sendVersionedHtml stamps them), but the dictionary pages borrow them through dg-site.js's
+    // lazy cross-origin load, which no HTML rewriting can reach — a fix there stayed invisible in
+    // already-visited browsers for a year (owner, 2026-09-16: the panel's switches rendered as
+    // bare buttons on dict.dhamma.gift). dg-site.js now appends its own ?v= stamp; this 24h tier
+    // is what keeps them current afterwards without editing the other repo every time.
+    path.join(__dirname, 'public', 'overrides', 'js', 'dg-page-find.js'),
+    path.join(__dirname, 'public', 'overrides', 'js', 'dg-page-find-ui.js')
 ];
 
 function staticCacheHeaders(reply, filePath) {

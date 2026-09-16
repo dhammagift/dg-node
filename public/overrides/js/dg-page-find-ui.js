@@ -126,6 +126,66 @@
     document.head.appendChild(style);
 
     // ---------------------------------------------------------------
+    // Component fallback for host pages that do not ship the site's stylesheet.
+    // This panel deliberately speaks the site's own visual language: the .dg-toggle-row/.dg-tgl
+    // settings switch (home.js's own) and .toc-item for the match rows. On dhamma.gift both come
+    // from the site's CSS. The dictionary pages do not have them: dhamma.gift/dict/ and the
+    // dict.dhamma.gift subdomain are the SAME folder from another repo (ddg-ui/public), and the
+    // find UI reaches them only as a script loaded from the main site (see dg-site.js's SITE
+    // prefix) — the stylesheet does not come along. There the settings rows fall back to the host
+    // page's own bare <button> look: bordered pills with no switch at all.
+    //
+    // Detect it once, on the switch class itself, and only then hand the panel its own scoped copy
+    // of exactly those two rules. The main site keeps using its own stylesheet untouched — no
+    // double definition, no drift risk there. Tokens are deliberately NOT part of this: the
+    // dictionary defines the same --dg-* tokens itself, and every property in the base block above
+    // already has a literal fallback for hosts that define none.
+    // ---------------------------------------------------------------
+    function switchStylePresent() {
+        var host = document.body || document.documentElement;
+        if (!host || !window.getComputedStyle) return true;
+        var probe = document.createElement('span');
+        probe.className = 'dg-tgl';
+        host.appendChild(probe);
+        // The site's rule gives the switch a 10px corner radius; an unstyled span computes to 0.
+        // Measured on radius rather than width/height: the switch is only blockified (and so only
+        // gets a real box) as a flex child of its row, which a standalone probe is not.
+        var radius = getComputedStyle(probe).borderTopLeftRadius;
+        probe.remove();
+        return parseFloat(radius) > 0;
+    }
+    if (!switchStylePresent()) {
+        var fallback = document.createElement('style');
+        fallback.textContent =
+            // Settings row: reset the host page's own button styling first (the dictionary styles
+            // every bare <button> as a bordered pill), then lay it out like the site's row.
+            '.dg-find-panel .dg-toggle-row{display:flex;align-items:center;justify-content:space-between;' +
+            'gap:10px;width:100%;padding:9px 0;margin:0;border:0;border-bottom:1px solid var(--dg-border);' +
+            'border-radius:0;background:transparent;color:var(--dg-text);font:inherit;font-size:.85rem;' +
+            'line-height:1.3;text-align:left;cursor:pointer;appearance:none;}' +
+            '.dg-find-panel .dg-toggle-row:last-child{border-bottom:none;}' +
+            '.dg-find-panel .dg-toggle-label{flex:1;min-width:0;}' +
+            '.dg-find-panel .dg-tgl{position:relative;display:block;width:34px;height:20px;flex:none;' +
+            'border-radius:10px;background:var(--dg-surface-hover);border:1px solid var(--dg-border-strong);' +
+            'transition:background-color .18s ease,border-color .18s ease;}' +
+            '.dg-find-panel .dg-tgl::after{content:"";position:absolute;top:1px;left:1px;width:16px;' +
+            'height:16px;border-radius:50%;background:var(--dg-surface);border:1px solid var(--dg-border-strong);' +
+            'transition:transform .18s var(--dg-ease);}' +
+            '.dg-find-panel .dg-toggle-row[aria-pressed="true"] .dg-tgl{background:var(--dg-accent);' +
+            'border-color:var(--dg-accent);}' +
+            '.dg-find-panel .dg-toggle-row[aria-pressed="true"] .dg-tgl::after{transform:translateX(14px);' +
+            'border-color:transparent;}' +
+            // Match rows: .toc-item is the site's TOC row style, which only the reader stylesheet
+            // defines — the list would otherwise render as cramped unstyled rows.
+            '.dg-find-panel .toc-item{cursor:pointer;padding:6px 10px;border-radius:6px;' +
+            'color:var(--dg-text);transition:background .2s;word-break:break-word;line-height:1.2;}' +
+            '.dg-find-panel .toc-item:hover{background:var(--dg-surface-hover);}' +
+            '.dg-find-panel .toc-item.active{background:var(--dg-accent-bg);color:var(--dg-accent-ink);' +
+            'font-weight:700;}';
+        document.head.appendChild(fallback);
+    }
+
+    // ---------------------------------------------------------------
     // Panel DOM (built once)
     // ---------------------------------------------------------------
     var panel = document.createElement('div');
