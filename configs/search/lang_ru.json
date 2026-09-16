@@ -150,7 +150,7 @@
     "menuTitle": "Меню (Alt+M)",
     "filterLabel": "Filter+",
     "filterAriaLabel": "Расширенный фильтр",
-    "tocLinkTitle": "Оглавление"
+    "tocLinkTitle": "Оглавление (Alt+2)"
   },
   "table": {
     "suttaCol": "Sutta",

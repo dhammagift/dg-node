@@ -42,7 +42,8 @@
       "label": "Read Pāḷi",
       "desc": "Suttas & Vinaya on the site",
       "icon": "book",
-      "href": "/toc"
+      "href": "/toc",
+      "kbd": "Alt+2"
     },
     "history": {
       "label": "History",
@@ -835,7 +836,8 @@
       "label": "Читать Pāḷi",
       "desc": "Сутты-Виная на сайте",
       "icon": "book",
-      "href": "/toc"
+      "href": "/toc",
+      "kbd": "Alt+2"
     },
     "history": {
       "label": "История",
