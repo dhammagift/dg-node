@@ -82,9 +82,18 @@
     function backToApp(res) {
         var token = res && res.credential && res.credential.idToken;
         if (!token) return false;
-        var href = 'intent://auth#Intent;scheme=dhammagift;package=' + pkg +
-            ';S.id_token=' + encodeURIComponent(token) + ';S.state=' + state +
-            ';S.lang=' + (ru ? 'ru' : 'en') + ';end';
+        // Two platforms, two ways back into the same app. Android has intent:// (an explicit intent
+        // naming the package, which is why no other app can receive the token); iOS has no such
+        // thing, so the app's own registered scheme carries the same three values as a query string
+        // (dg-app-full docs/DEEP_LINKS.md maps it back to /login/index.html#dg_google=…&state=…,
+        // which is where the app finishes the Firebase sign-in). The app says which it is with
+        // &plat= — asked for, not sniffed from the user agent.
+        var href = q.get('plat') === 'ios'
+            ? 'dhammagift://auth?id_token=' + encodeURIComponent(token) + '&state=' + state +
+              '&lang=' + (ru ? 'ru' : 'en')
+            : 'intent://auth#Intent;scheme=dhammagift;package=' + pkg +
+              ';S.id_token=' + encodeURIComponent(token) + ';S.state=' + state +
+              ';S.lang=' + (ru ? 'ru' : 'en') + ';end';
         el('go').hidden = true;
         el('back').href = href;
         el('back').hidden = false; // Chrome may refuse to open an app without a tap: then this button does
