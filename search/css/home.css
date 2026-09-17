@@ -1772,7 +1772,9 @@ body:not(.dg-state-home) #dg-announce { display: none; }
     left: 0;
     right: 0;
     bottom: 0;
-    z-index: 1081;
+    /* Above the offline download card (1082, public/offline/offline-status.js): tiles < card <
+       sheet — owner: the tiles sit behind the card, the mega menu may go over it. */
+    z-index: 1083;
     display: flex;
     flex-direction: column;
     max-height: 82vh;
@@ -2368,7 +2370,7 @@ body:not(.dg-state-home) #dg-announce { display: none; }
 #dg-drawer-backdrop {
     position: fixed;
     inset: 0;
-    z-index: 1082;
+    z-index: 1084;
     background: rgba(20, 18, 10, 0.4);
     /* Bleeds the dimming color far past the actual viewport edges via box-shadow (paints extra
        area without touching layout/scroll at all) — a defensive backstop for mobile rubber-band
@@ -2388,7 +2390,7 @@ body:not(.dg-state-home) #dg-announce { display: none; }
     top: 0;
     bottom: 0;
     right: 0;
-    z-index: 1083;
+    z-index: 1085;
     display: flex;
     flex-direction: column;
     width: 82%;
@@ -2632,9 +2634,9 @@ body.dg-tiles-dragging { user-select: none; -webkit-user-select: none; }
 body:has(#dg-sheet-backdrop.show:not(.dg-transparent)) .dg-tile::after { opacity: 1; }
 @media (prefers-reduced-motion: reduce) { .dg-tile::after { transition: none; } }
 /* Полный стек z-index этой страницы (снизу вверх): 900 #dg-busy-indicator, 1080 #dg-sheet-
-   backdrop, 1081 .dg-sheet/.dg-tile, 1082 #dgDlCard (офлайн-карточка загрузки, public/offline/
-   offline-status.js — выше плиток, issue #25; под открытым меню она гаснет) и
-   #dg-drawer-backdrop, 1083 #dg-drawer, 1084 autocomplete,
+   backdrop, 1081 .dg-tile, 1082 #dgDlCard (офлайн-карточка загрузки, public/offline/
+   offline-status.js — плитки ЗА ней, issue #25), 1083 .dg-sheet (мега-меню/настройки — поверх
+   карточки), 1084 #dg-drawer-backdrop, 1085 #dg-drawer, 1086 autocomplete,
    1090 плитка во время drag. Bootstrap-модалка (#SearchResultHelp — "Помощь", вызывается через
    runTile()) была НИЖЕ всего этого — bootstrap 5 по умолчанию кладёт .modal-backdrop/.modal в
    районе 1050-1060, скроен под страницы БЕЗ своего конкурирующего оверлей-стека. Раньше не
@@ -3123,7 +3125,7 @@ body.dg-skin-minimal .ui-autocomplete {
     box-shadow: 0 16px 40px -12px rgba(0, 0, 0, 0.35);
     font-family: var(--dg-font);
     font-size: 0.95rem;
-    z-index: 1084;
+    z-index: 1086;
 }
 /* Строку подсказки autopali.js рисует своим шаблоном: <li><div class="autopali-dropdown-item">
    (см. _renderItem в /assets/js/autopali.js), а jQuery UI вешает подсветку через .ui-state-active
