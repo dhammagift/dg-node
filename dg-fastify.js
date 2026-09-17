@@ -281,6 +281,13 @@ const UNVERSIONED_LAZY_PATHS = [
 
 function staticCacheHeaders(reply, filePath) {
     const ext = path.extname(filePath).toLowerCase();
+    // The label editor pages are long-lived tools that must pick up a deploy immediately: they
+    // were cached for 10h, so a translator could keep a copy without the sign-in bar and see
+    // every save fail with a 401 and no explanation. Revalidate instead (etag keeps it cheap).
+    if (/\/lbl(-en)?\.html$/.test(filePath)) {
+        reply.header('cache-control', 'no-cache');
+        return;
+    }
     const inVersionedRoot = VERSIONED_STATIC_ROOTS.some(root => filePath.startsWith(root + path.sep))
         && !UNVERSIONED_LAZY_PATHS.some(p => filePath.startsWith(p));
     if (inVersionedRoot && ['.js', '.css', '.svg', '.png', '.ico'].includes(ext)) {
