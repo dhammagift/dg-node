@@ -108,7 +108,7 @@ function copyToClipboard(text = "") {
     text = text.includes('localhost') || text.includes('127.0.0.1')
       ? text.replace(/https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/gi, 'https://dhamma.gift')
       : text.includes('dhamma.gift')
-        ? text.replace('https://dhamma.gift', 'http://127.0.0.1:8080')
+        ? text
         : 'https://dhamma.gift' + text.substring(text.indexOf('/', 8));
   }
 
