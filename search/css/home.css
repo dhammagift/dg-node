@@ -261,17 +261,6 @@ body.dg-state-home #dg-hero-band {
        to just the navbar row, not the whole band (production-v4 redesign,
        docs/Home-standalone.html: a slim dark bar, headline/search on the plain page below it). */
 }
-/* In the app (Capacitor) the page is what paints the strips behind the Android system bars:
-   search/index.html opts into viewport-fit=cover, so the WebView runs edge to edge and Capacitor's
-   SystemBars plugin injects --safe-area-inset-*. Padding the band by that inset keeps its content
-   off the clock while the band's own colour becomes the status bar — one colour, in every state
-   and theme (owner: "чтобы был один цвет", Anki-style). env() covers iOS/PWA, 0px elsewhere. */
-body.dg-state-home #dg-hero-navbar,
-body.dg-state-results #dg-hero-band,
-body.dg-state-reader #dg-hero-band,
-body.dg-state-toc #dg-hero-band {
-    padding-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
-}
 /* Full-bleed dark navbar strip, home only — same 100vw/negative-margin trick as #dg-hero-band
    itself, just for the (much shorter) top row alone. */
 #dg-hero-navbar { display: none; }
