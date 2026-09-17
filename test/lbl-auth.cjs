@@ -65,10 +65,11 @@ const waitFor = async (port) => {
     });
     const testFile = 'self-check-' + Date.now() + '.json';
     const savedPath = path.join('/var/www/offline-data', 'lbl', testFile);
+    const stranger = 'stranger@example.com';
     const cases = [
         ['valid author', sign(claims()), 200],
         ['no token', null, 401],
-        ['unknown e-mail', sign(claims({ email: 'stranger@example.com' })), 403],
+        ['unknown e-mail', sign(claims({ email: stranger })), 403],
         ['unverified e-mail', sign(claims({ email_verified: false })), 403],
         ['expired', sign(claims({ exp: now - 10 })), 401],
         ['wrong aud', sign(claims({ aud: 'someone-else' })), 401],

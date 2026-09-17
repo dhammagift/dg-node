@@ -1094,9 +1094,9 @@ async function verifyLblToken(authHeader) {
     } catch { signatureOk = false; }
     if (!signatureOk) return { ok: false, status: 401, reason: 'signature' };
     const email = String(payload.email || '').toLowerCase();
-    if (!email || payload.email_verified !== true) return { ok: false, status: 403, reason: 'unverified' };
+    if (!email || payload.email_verified !== true) return { ok: false, status: 403, reason: 'unverified', email };
     const authors = (readJsonFile(LBL_AUTHORS_FILE, {}).authors || []).map(a => String(a).toLowerCase());
-    if (!authors.includes(email)) return { ok: false, status: 403, reason: 'not-author' };
+    if (!authors.includes(email)) return { ok: false, status: 403, reason: 'not-author', email };
     return { ok: true, email };
 }
 
@@ -1106,7 +1106,7 @@ app.post('/assets/lbl-save.php', { bodyLimit: 2 * 1024 * 1024 }, async (req, res
     // is a whole translation file — dn16 is 340KB — and the editor's own saves are ~12KB.
     const auth = await verifyLblToken(req.headers.authorization);
     if (!auth.ok) {
-        console.warn('[lbl-save] refused:', auth.reason, 'file=' + String(req.query.file || '').slice(0, 60));
+        console.warn('[lbl-save] refused:', auth.reason, auth.email ? 'as=' + auth.email : '', 'file=' + String(req.query.file || '').slice(0, 60));
         return res.code(auth.status).send(auth.reason);
     }
     const filename = path.basename(req.query.file || `backup_${Date.now()}.json`);

@@ -1981,7 +1981,7 @@ document.addEventListener("DOMContentLoaded", function() {
 // /config/sync-config.json the login and cloud-sync pages use, and the SDK loads on the first
 // press, not on page load.
 (function () {
-    var S = {"no-token": "Sign in with Google first.", "not-author": "Sorry, this account has no access. Ask to have your e-mail added to the translators list.", "unverified": "Google has not verified this account’s e-mail.", "expired": "Please sign in again.", "malformed": "Please sign in again.", "aud": "Please sign in again.", "iss": "Please sign in again.", "signature": "Please sign in again.", "kid": "Please sign in again.", "alg": "Please sign in again.", "no-project": "The server is not configured for sign-in — tell the administrator.", "jwks": "Could not verify the sign-in — try again.", "generic": "Could not save: "};
+    var S = {"no-token": "Sign in with Google first.", "not-author": "This account has no access. Ask to have your e-mail added to the translators list.", "unverified": "Google has not verified this account’s e-mail.", "expired": "Please sign in again.", "malformed": "Please sign in again.", "aud": "Please sign in again.", "iss": "Please sign in again.", "signature": "Please sign in again.", "kid": "Please sign in again.", "alg": "Please sign in again.", "no-project": "The server is not configured for sign-in — tell the administrator.", "jwks": "Could not verify the sign-in — try again.", "generic": "Could not save: "};
     var auth = null, token = null, booting = null;
 
     function loadScript(src) {
