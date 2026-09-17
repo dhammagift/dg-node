@@ -92,3 +92,5 @@ mobile-data
 # Docs live in github.com/dhammagift/dg-docs. Here dg-docs/ is a clone of its `dist` branch (built
 # HTML: build/ for /docs, build-ru/ for /ru/docs), refreshed periodically — not source.
 /dg-docs/
+# Редактор переводов: список допущенных e-mail (локальный файл, не в гите)
+configs/legacy/lbl-authors.json
