@@ -43,6 +43,9 @@ const { DgTextRouter } = require('./public/overrides/js/dg-text-router.js');
 // route below degrades to "AI unavailable" if any of them throws (missing keys, provider down,
 // friend's MCP server unreachable), it never breaks plain exact search.
 const { normalizeQuery } = require('./core/ai-search.js');
+// Cheap local "is this even a query" gate in front of the whole AI pipeline — see that file and
+// dg-node issue #29 (crawler noise like "lzh-mg-bi-pm_pc127" was reaching DPD and the LLM).
+const { nonQueryReason } = require('./core/query-guard.js');
 const { searchHybrid } = require('./core/tipitaka-mcp-client.js');
 const { verifyCandidates, lookupWord } = require('./core/dpd-lookup.js');
 const { mcpHandler } = require('./core/mcp-server.js');
@@ -1656,6 +1659,24 @@ app.get('/api/ai-search', async (req, res) => {
     const cached = AI_SEARCH_CACHE.get(cacheKey);
     if (cached && Date.now() - cached.at < AI_SEARCH_CACHE_TTL_MS) {
         return res.send(cached.data);
+    }
+
+    // Owner: "зачем-то битые запросы улетают в AI режим так крайлеры и роботы будут тратить
+    // токены... нужно это починить" (dg-node #29) — this endpoint is reached by every URL a
+    // crawler walks whose exact search finds nothing, so the FIRST thing to decide is whether the
+    // string is a query at all, before DPD and long before any paid model. Purely local: ids like
+    // "lzh-mg-bi-pm_pc127" and mangled URLs like "an10.76@1@   L烗      ," cost nothing here and
+    // never leave the process (core/query-guard.js has the rules and why each one is safe).
+    // Deliberately not cached — a local regex answer is free to recompute, and caching crawler
+    // noise would only fill the Map that real queries use.
+    const nonQuery = nonQueryReason(q);
+    if (nonQuery) {
+        const responseBody = {
+            ok: true, query: q, suttas: [], wordSuggestions: [],
+            debug: { normalizedQuery: `(not a search query: ${nonQuery}, no provider call) ${q}`, provider: 'guard', paliCandidates: [] },
+        };
+        logAiSearch(q, responseBody);
+        return res.send(responseBody);
     }
 
     // Fast path for a single word (no spaces): figure out whether it's real Pali BEFORE ever
