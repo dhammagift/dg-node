@@ -583,6 +583,23 @@
         return dictionaryRun;
     }
 
+    // A platform may be able to fetch the archive better than a Web Worker can. The iOS app does:
+    // a WebView's JavaScript is suspended the moment the app leaves the foreground, so the 216 MB
+    // transfer runs on a background URLSession and the worker later imports the file from the app's
+    // own storage (dg-app-full/src/platform.js). Asking here — after consent and before the
+    // transfer — is what keeps the consent sheet, the progress card and the update path exactly as
+    // they are: the platform only decides WHERE the bytes come from. Platforms that cannot do this
+    // define nothing, so Android, the PWA and the site keep the path they have always had.
+    function prepareArchive() {
+        if (!platform.prepareArchive) return Promise.resolve(false);
+        return Promise.resolve(platform.prepareArchive()).then(function (ok) {
+            // The platform may have moved its base (an archive already on disk is fetched through
+            // the app's own file handler, not the network), and DIST_BASE was captured at load.
+            if (ok && platform.distBase) DIST_BASE = platform.distBase;
+            return !!ok;
+        }).catch(function () { return false; });
+    }
+
     function download(kind) {
         var info = {};
         downloadInFlight = true;
@@ -591,6 +608,8 @@
         }).then(function (ok) {
             if (!ok) throw new Error('offline-data-download-declined');
             try { localStorage.setItem(STARTED_KEY, '1'); } catch (e) { /* private mode */ }
+            return prepareArchive();
+        }).then(function () {
             // 'update' replaces a copy that is already there; 'open' adopts an existing one or
             // downloads when there is none. Both leave a working copy in place until the new file
             // is proven (db-worker.js's fetchCurrent).
