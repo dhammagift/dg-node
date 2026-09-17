@@ -82,6 +82,8 @@
                     <button id="uploadButton" title="Open Saved File" class="btn btn-secondary me-1"><i class="fa-solid fa-upload"></i></button>
                     <button id="loadFromServerButton" class="btn btn-secondary me-1" title="Load translation from server (beta)"><i class="fa-regular fa-folder-open"></i></button>
                     <button class="btn btn-primary me-1" title="Save JSON" onclick="downloadJson()">Save <i class="fa-solid fa-download"></i></button>
+                    <span id="lblAuth" class="ms-2 small text-muted"></span>
+                    
                     
                     <div class="d-flex align-items-center">
                         <div class="form-check me-2">
@@ -527,28 +529,34 @@ loadAndCheckRanges();
             const toastEl = document.getElementById('toastMessage');
             const toastText = document.getElementById('toastText');
 
-            // --- Отправка копии на сервер ---
+            // --- Отправка копии на сервер (нужен вход через Google — см. lblAuth ниже) ---
             fetch('/assets/lbl-save.php?file=' + encodeURIComponent(fullFileName), {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: Object.assign({ 'Content-Type': 'application/json' },
+                    window.lblAuthHeader ? window.lblAuthHeader() : {}),
                 body: jsonString
             })
-            .then(res => {
+            .then(async res => {
                 if (res.ok) {
                     toastEl.classList.remove('bg-danger');
                     toastEl.classList.add('bg-success');
-                    toastText.textContent = 'File uploaded to server successfully.';
+                    toastText.textContent = 'File uploaded to the server.';
                     new bootstrap.Toast(toastEl, { autohide: true }).show();
                 } else {
-                    throw new Error('Upload failed');
+                    // The server answers with a reason code the toast translates — see the lblAuth
+                    // script at the end of this file (no-token / not-author / expired / …).
+                    throw new Error((await res.text()) || 'upload-failed');
                 }
             })
             .catch(err => {
                 console.error('Network error:', err);
+                var reason = String(err && err.message || '');
+                var msg = window.lblAuthMessage ? window.lblAuthMessage(reason) : 'Could not save: ' + reason;
                 toastEl.classList.remove('bg-success');
                 toastEl.classList.add('bg-danger');
-                toastText.textContent = 'Error: Failed to upload file to server.';
+                toastText.textContent = msg;
                 new bootstrap.Toast(toastEl, { autohide: false }).show();
+                if (window.lblAuthRefreshBar) window.lblAuthRefreshBar();
             });
 
             // --- Локальное скачивание ---
@@ -1962,5 +1970,76 @@ document.addEventListener("DOMContentLoaded", function() {
 </script>
 
 
+
+<script>
+// Google sign-in for saving (issue #18). POST /assets/lbl-save.php now requires a Firebase ID
+// token whose verified e-mail is on the translators list (server side, offline of this page:
+// configs/legacy/lbl-authors.json). Reading, editing and the local JSON download work without it.
+//
+// The Firebase web config is not a secret — it only identifies the project — and it is fetched
+// from the same endpoint the login and cloud-sync pages already use, so there is one source of
+// truth and nothing is committed to git. The SDK itself is loaded on the first click, not on load.
+(function () {
+    var S = {"signin": "Sign in with Google", "signed": "Signed in as", "signout": "Sign out", "need": "Saving to the server needs a Google sign-in (your address must be on the translators list).", "no-token": "Sign in first — click “Sign in with Google” and try again.", "not-author": "This account has no access. Ask to have your e-mail added to the translators list.", "unverified": "Google has not verified this account’s e-mail.", "expired": "Session expired — please sign in again.", "malformed": "The sign-in token was rejected — please sign in again.", "aud": "The sign-in token was rejected — please sign in again.", "iss": "The sign-in token was rejected — please sign in again.", "signature": "The sign-in token was rejected — please sign in again.", "kid": "The sign-in token was rejected — please sign in again.", "alg": "The sign-in token was rejected — please sign in again.", "no-project": "The server is not configured for sign-in — tell the administrator.", "jwks": "Could not verify the sign-in (no connection to Google) — try again.", "generic": "Could not save: "};
+    var bar = document.getElementById('lblAuth');
+    var auth = null, token = null, email = null, booting = null;
+
+    function loadScript(src) {
+        return new Promise(function (resolve, reject) {
+            var el = document.createElement('script');
+            el.src = src; el.onload = resolve; el.onerror = reject;
+            document.head.appendChild(el);
+        });
+    }
+    function ensureFirebase() {
+        if (booting) return booting;
+        booting = fetch('/config/sync-config.json', { cache: 'no-store' })
+            .then(function (r) { if (!r.ok) throw new Error('config ' + r.status); return r.json(); })
+            .then(function (cfg) {
+                return loadScript('https://www.gstatic.com/firebasejs/10.9.0/firebase-app-compat.js')
+                    .then(function () { return loadScript('https://www.gstatic.com/firebasejs/10.9.0/firebase-auth-compat.js'); })
+                    .then(function () {
+                        if (!firebase.apps.length) firebase.initializeApp(cfg);
+                        auth = firebase.auth();
+                        auth.onAuthStateChanged(function (u) {
+                            email = (u && u.email) || null;
+                            if (!u) { token = null; render(); return; }
+                            u.getIdToken().then(function (t) { token = t; render(); });
+                        });
+                    });
+            })
+            .catch(function (err) { booting = null; throw err; });
+        return booting;
+    }
+    function render() {
+        if (!bar) return;
+        bar.innerHTML = email
+            ? S.signed + ' <b>' + email + '</b> · <a href="#" id="lblSignOut">' + S.signout + '</a>'
+            : S.need + ' <button type="button" class="btn btn-sm btn-primary" id="lblSignIn">' + S.signin + '</button>';
+    }
+    if (bar) bar.addEventListener('click', function (e) {
+        if (e.target.id === 'lblSignIn') {
+            e.preventDefault();
+            render.call(null);
+            bar.textContent = '…';
+            ensureFirebase()
+                .then(function () { return auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()); })
+                .catch(function (err) { alert(err && err.message || err); render(); });
+        }
+        if (e.target.id === 'lblSignOut') { e.preventDefault(); if (auth) auth.signOut(); }
+    });
+    window.lblAuthHeader = function () {
+        // Opportunistic refresh for the NEXT save: the ID token lives an hour, and this page can
+        // stay open longer than that.
+        if (auth && auth.currentUser) auth.currentUser.getIdToken().then(function (t) { token = t; }).catch(function () {});
+        return token ? { Authorization: 'Bearer ' + token } : {};
+    };
+    window.lblAuthMessage = function (reason) {
+        return S[reason] || S.generic + reason;
+    };
+    window.lblAuthRefreshBar = render;
+    render();
+})();
+</script>
 </body>
 </html>

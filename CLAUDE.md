@@ -595,6 +595,9 @@ URL in → Router parses → State updates → Views re-render
   минуты — картинку «как будет» показывать до неё (владелец, 2026-09-16).
 - **Коммитить пачкой, не на каждый чих.** Мелкие правки одной темы — один коммит после того, как
   они проверены вместе; не плодить по коммиту на каждую подсказку/строчку.
+- **`configs/legacy/*.json` в гите нет** (ключ Google TTS, Firebase web-конфиг, список
+  допущенных к редактору переводов e-mail): их создают на машине руками, в репозиторий они не
+  попадают. На боевой машине файлы уже есть и `git pull` их не трогает (ignored).
 - Бекап перед изменением: `~/claudeBak/filename.ext`
 - Тест API: `http://localhost:3000/search?q=kacchapa&scope=dhamma&langs=ru,en`
 - Тест UI:  `http://localhost:8080/nodejs/res/?q=kacchapa&lb=1&la=2&scope=dhamma`

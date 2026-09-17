@@ -1026,13 +1026,92 @@ initServer();
 // PHP under Node (siteroot/assets/lbl-save.php would otherwise serve raw unexecuted PHP source,
 // same reason as /pm.php, /bipm.php below). Reimplements the legacy PHP: write the POST body to
 // offline-data/lbl/{file}, creating the dir if missing.
-app.post('/assets/lbl-save.php', (req, res) => {
+// --- Label editor: who may save (issue #18) ------------------------------------------------
+// This endpoint used to take any body from anyone (up to 10MB, any name under offline-data/lbl/),
+// so a stranger could overwrite a translator's draft or fill the disk. It now requires a Google
+// (Firebase) ID token whose verified e-mail is listed in configs/legacy/lbl-authors.json.
+// No new dependency: the RS256 signature is checked against Google's public JWKS for Firebase
+// projects with node:crypto, which imports a JWK directly.
+const LBL_AUTHORS_FILE = path.join(__dirname, 'configs', 'legacy', 'lbl-authors.json');
+const FIREBASE_CONFIG_FILE = path.join(__dirname, 'configs', 'legacy', 'sync-config.json');
+// Overridable so the self-check (test/lbl-auth.cjs) and a local end-to-end can serve their own keys.
+const FIREBASE_JWKS_URL = process.env.DG_FIREBASE_JWKS_URL
+    || 'https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com';
+let lblJwksCache = { at: 0, keys: [] };
+
+function readJsonFile(file, fallback) {
+    try { return JSON.parse(fsSync.readFileSync(file, 'utf8')); } catch { return fallback; }
+}
+function b64urlJson(part) { return JSON.parse(Buffer.from(part, 'base64url').toString('utf8')); }
+
+async function firebaseJwks(force) {
+    if (!force && lblJwksCache.keys.length && Date.now() - lblJwksCache.at < 6 * 3600 * 1000) {
+        return lblJwksCache.keys;
+    }
+    const r = await fetch(FIREBASE_JWKS_URL, { signal: AbortSignal.timeout(5000) });
+    if (!r.ok) throw new Error('JWKS ' + r.status);
+    const data = await r.json();
+    lblJwksCache = { at: Date.now(), keys: Array.isArray(data.keys) ? data.keys : [] };
+    return lblJwksCache.keys;
+}
+
+// {ok:true, email} or {ok:false, status, reason} — reason is a short code the editor translates.
+async function verifyLblToken(authHeader) {
+    const m = /^Bearer\s+(.+)$/i.exec(String(authHeader || ''));
+    const token = m && m[1].trim();
+    if (!token) return { ok: false, status: 401, reason: 'no-token' };
+    const parts = token.split('.');
+    if (parts.length !== 3) return { ok: false, status: 401, reason: 'malformed' };
+    let header, payload;
+    try { header = b64urlJson(parts[0]); payload = b64urlJson(parts[1]); }
+    catch { return { ok: false, status: 401, reason: 'malformed' }; }
+    if (header.alg !== 'RS256' || !header.kid) return { ok: false, status: 401, reason: 'alg' };
+    const projectId = readJsonFile(FIREBASE_CONFIG_FILE, {}).projectId;
+    if (!projectId) return { ok: false, status: 503, reason: 'no-project' };
+    const now = Math.floor(Date.now() / 1000);
+    if (payload.aud !== projectId) return { ok: false, status: 401, reason: 'aud' };
+    if (payload.iss !== 'https://securetoken.google.com/' + projectId) return { ok: false, status: 401, reason: 'iss' };
+    if (!(payload.exp > now)) return { ok: false, status: 401, reason: 'expired' };
+    let keys;
+    try { keys = await firebaseJwks(false); } catch { return { ok: false, status: 503, reason: 'jwks' }; }
+    let jwk = keys.find(k => k.kid === header.kid);
+    if (!jwk) {
+        // A key rotation between two requests: refetch once before giving up.
+        try { jwk = (await firebaseJwks(true)).find(k => k.kid === header.kid); } catch { /* keep undefined */ }
+    }
+    if (!jwk) return { ok: false, status: 401, reason: 'kid' };
+    let signatureOk = false;
+    try {
+        signatureOk = crypto.verify('RSA-SHA256', Buffer.from(parts[0] + '.' + parts[1]),
+            crypto.createPublicKey({ key: jwk, format: 'jwk' }), Buffer.from(parts[2], 'base64url'));
+    } catch { signatureOk = false; }
+    if (!signatureOk) return { ok: false, status: 401, reason: 'signature' };
+    const email = String(payload.email || '').toLowerCase();
+    if (!email || payload.email_verified !== true) return { ok: false, status: 403, reason: 'unverified' };
+    const authors = (readJsonFile(LBL_AUTHORS_FILE, {}).authors || []).map(a => String(a).toLowerCase());
+    if (!authors.includes(email)) return { ok: false, status: 403, reason: 'not-author' };
+    return { ok: true, email };
+}
+
+app.post('/assets/lbl-save.php', { bodyLimit: 2 * 1024 * 1024 }, async (req, res) => {
     res.header('cache-control', 'no-store'); // cache.md §5 — write endpoint
+    // 2MB per route (the instance-wide 10MB stays for everything else): the largest real payload
+    // is a whole translation file — dn16 is 340KB — and the editor's own saves are ~12KB.
+    const auth = await verifyLblToken(req.headers.authorization);
+    if (!auth.ok) {
+        console.warn('[lbl-save] refused:', auth.reason, 'file=' + String(req.query.file || '').slice(0, 60));
+        return res.code(auth.status).send(auth.reason);
+    }
     const filename = path.basename(req.query.file || `backup_${Date.now()}.json`);
     const saveDir = path.join(OFFLINE_MIRRORS_ROOT, 'lbl');
     try {
         fsSync.mkdirSync(saveDir, { recursive: true });
         fsSync.writeFileSync(path.join(saveDir, filename), req.body);
+        // One line per save — who wrote what, so a surprise in the folder can be traced.
+        fsSync.promises.mkdir(path.join(__dirname, 'logs'), { recursive: true })
+            .then(() => fsSync.promises.appendFile(path.join(__dirname, 'logs', 'lbl-saves.log'),
+                `${new Date().toISOString()}\t${auth.email}\t${filename}\t${Buffer.byteLength(req.body)}\n`))
+            .catch(() => {});
         res.code(200).send('OK');
     } catch (err) {
         res.code(500).send('Error writing file: ' + err.message);
