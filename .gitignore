@@ -92,7 +92,7 @@ mobile-data
 # Docs live in github.com/dhammagift/dg-docs. Here dg-docs/ is a clone of its `dist` branch (built
 # HTML: build/ for /docs, build-ru/ for /ru/docs), refreshed periodically — not source.
 /dg-docs/
-# configs/legacy/*.json — локальные конфиги с ключами (TTS, Firebase, список допущенных
-# к редактору e-mail). В гите их нет: ключ в публичном репозитории — утечка, а на новой
-# машине файлы создаются руками (см. CLAUDE.md).
-configs/legacy/*.json
+# configs/local/*.json — машинные конфиги с ключами (TTS, Firebase, список допущенных к
+# редактору переводов e-mail). Это обычные рабочие конфиги, просто не для гита: ключ в
+# публичном репозитории — утечка. На новой машине создаются руками (см. CLAUDE.md).
+configs/local/*.json

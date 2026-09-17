@@ -1036,11 +1036,11 @@ initServer();
 // --- Label editor: who may save (issue #18) ------------------------------------------------
 // This endpoint used to take any body from anyone (up to 10MB, any name under offline-data/lbl/),
 // so a stranger could overwrite a translator's draft or fill the disk. It now requires a Google
-// (Firebase) ID token whose verified e-mail is listed in configs/legacy/lbl-authors.json.
+// (Firebase) ID token whose verified e-mail is listed in configs/local/lbl-authors.json.
 // No new dependency: the RS256 signature is checked against Google's public JWKS for Firebase
 // projects with node:crypto, which imports a JWK directly.
-const LBL_AUTHORS_FILE = path.join(__dirname, 'configs', 'legacy', 'lbl-authors.json');
-const FIREBASE_CONFIG_FILE = path.join(__dirname, 'configs', 'legacy', 'sync-config.json');
+const LBL_AUTHORS_FILE = path.join(__dirname, 'configs', 'local', 'lbl-authors.json');
+const FIREBASE_CONFIG_FILE = path.join(__dirname, 'configs', 'local', 'sync-config.json');
 // Overridable so the self-check (test/lbl-auth.cjs) and a local end-to-end can serve their own keys.
 const FIREBASE_JWKS_URL = process.env.DG_FIREBASE_JWKS_URL
     || 'https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com';
@@ -1147,12 +1147,12 @@ app.post('/api/app-log', { bodyLimit: 32 * 1024 }, (req, res) => {
         .catch(err => console.error('[app-log] write failed:', err.message));
 });
 
-// Google Text-to-Speech through the site, for the Android app: the trial key (configs/legacy/
+// Google Text-to-Speech through the site, for the Android app: the trial key (configs/local/
 // tts-config.json) only accepts requests from dhamma.gift pages, and the app's pages are
 // https://localhost (Google answers 403). Only the two calls read/js/voice.js makes; the key stays
 // on the server and is read per request, so a new key needs no restart and no app release (owner).
 // The app posts text/plain (a simple CORS request, no preflight); the site keeps calling Google itself.
-const TTS_KEY_FILE = path.join(__dirname, 'configs', 'legacy', 'tts-config.json');
+const TTS_KEY_FILE = path.join(__dirname, 'configs', 'local', 'tts-config.json');
 async function googleTts(res, apiPath, init) {
     try {
         const key = JSON.parse(await fsSync.promises.readFile(TTS_KEY_FILE, 'utf8')).key;
@@ -1326,8 +1326,8 @@ app.get('/bipm.php', (req, res) => sendVersionedHtml(req, res, path.join(__dirna
 // dg-node code actually fetches (public/overrides/read/js/voice.js, settings.js/
 // settings-bundle.js). Vendored into configs/legacy/ so siteroot/config can be dropped
 // entirely instead of publishing the rest of that directory's unrelated legacy server files.
-app.get('/config/tts-config.json', (req, res) => sendFile(req, res, path.join(__dirname, 'configs', 'legacy', 'tts-config.json'), 'application/json'));
-app.get('/config/sync-config.json', (req, res) => sendFile(req, res, path.join(__dirname, 'configs', 'legacy', 'sync-config.json'), 'application/json'));
+app.get('/config/tts-config.json', (req, res) => sendFile(req, res, path.join(__dirname, 'configs', 'local', 'tts-config.json'), 'application/json'));
+app.get('/config/sync-config.json', (req, res) => sendFile(req, res, path.join(__dirname, 'configs', 'local', 'sync-config.json'), 'application/json'));
 
 // Bare fragment (no page shell) of the same content, for /toc's inline expand
 // (public/spa/toc.js renderBookRow) — fetched once on first click, not preloaded.

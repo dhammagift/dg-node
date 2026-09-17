@@ -12,8 +12,8 @@ const { spawn } = require('child_process');
 
 const APP_PORT = 3011, JWKS_PORT = 3012;
 const ROOT = path.join(__dirname, '..');
-const projectId = JSON.parse(fs.readFileSync(path.join(ROOT, 'configs/legacy/sync-config.json'), 'utf8')).projectId;
-const author = JSON.parse(fs.readFileSync(path.join(ROOT, 'configs/legacy/lbl-authors.json'), 'utf8')).authors[0];
+const projectId = JSON.parse(fs.readFileSync(path.join(ROOT, 'configs/local/sync-config.json'), 'utf8')).projectId;
+const author = JSON.parse(fs.readFileSync(path.join(ROOT, 'configs/local/lbl-authors.json'), 'utf8')).authors[0];
 
 const { publicKey, privateKey } = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 });
 const kid = 'self-check-key';
