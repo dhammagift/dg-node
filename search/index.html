@@ -143,7 +143,8 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
 <!-- No <link rel="preload"> for menu-links.json any more: with the service worker in front
      Chrome never reuses it ("cross-world service worker resource mismatch") and the JSON was
      simply fetched twice on every load. home.js fetches it once, that's it. -->
-<meta name="theme-color" content="#243448">
+<meta name="theme-color" content="#243448" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1b2836" media="(prefers-color-scheme: dark)">
 <meta property="og:type" content="website" />
 <meta property="og:site_name" content="Dhamma.Gift" />
 <meta property="og:title" content="Dhamma.Gift — Find the Truth" />
