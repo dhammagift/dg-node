@@ -160,9 +160,12 @@
            a tap meant for the page underneath. */
         #dgDlCard {
             position: fixed; left: 50%; bottom: 14px; transform: translate(-50%, 14px);
-            /* Below the burger drawer (1082/1083), the settings sheet (1080/1081) and modals (1095/1096,
-               search/css/home.css): the card covered the menu's last rows, so Log in could not be tapped (owner). */
-            width: min(420px, calc(100% - 28px)); z-index: 1070;
+            /* Above the tiles (1081, home.css) — issue #25: a tile painted over the card, "tiles should
+               be below". Still below the burger drawer (1083) and modals (1095/1096), which is what the
+               earlier 1070 was protecting (the card used to cover the menu's last rows, so Log in could
+               not be tapped — owner). It shares 1082 with the drawer backdrop; the card is appended later,
+               so it paints over the dim, which is right for an opaque floating panel. */
+            width: min(420px, calc(100% - 28px)); z-index: 1082;
             --dgc-surface: #fff; --dgc-sunk: #f1f5f4; --dgc-rule: #dde5e2;
             --dgc-ink: #141a18; --dgc-muted: #5b6b66; --dgc-faint: #8a9994; --dgc-accent: #136857;
             background: var(--dgc-surface); color: var(--dgc-ink);
@@ -174,6 +177,11 @@
             transition: opacity .18s ease, transform .2s cubic-bezier(.2,.8,.3,1);
         }
         #dgDlCard.show { opacity: 1; transform: translate(-50%, 0); }
+        /* The card is a status panel, not something to read over a menu: while a sheet or the burger
+           drawer is open it stands down (the old 1070 existed because it covered the menu's last rows).
+           Class-driven, so closing the menu brings it straight back — no JS involved. */
+        body:has(#dg-sheet-backdrop.show) #dgDlCard.show,
+        body:has(#dg-drawer-backdrop.show) #dgDlCard.show { opacity: 0; }
         [data-bs-theme="dark"] #dgDlCard {
             --dgc-surface: #171f1d; --dgc-sunk: #101816; --dgc-rule: #27332f;
             --dgc-ink: #e8efec; --dgc-muted: #9aaba6; --dgc-faint: #6d7f7a; --dgc-accent: #3f9d86;

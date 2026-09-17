@@ -2632,7 +2632,9 @@ body.dg-tiles-dragging { user-select: none; -webkit-user-select: none; }
 body:has(#dg-sheet-backdrop.show:not(.dg-transparent)) .dg-tile::after { opacity: 1; }
 @media (prefers-reduced-motion: reduce) { .dg-tile::after { transition: none; } }
 /* Полный стек z-index этой страницы (снизу вверх): 900 #dg-busy-indicator, 1080 #dg-sheet-
-   backdrop, 1081 .dg-sheet/.dg-tile, 1082 #dg-drawer-backdrop, 1083 #dg-drawer, 1084 autocomplete,
+   backdrop, 1081 .dg-sheet/.dg-tile, 1082 #dgDlCard (офлайн-карточка загрузки, public/offline/
+   offline-status.js — выше плиток, issue #25; под открытым меню она гаснет) и
+   #dg-drawer-backdrop, 1083 #dg-drawer, 1084 autocomplete,
    1090 плитка во время drag. Bootstrap-модалка (#SearchResultHelp — "Помощь", вызывается через
    runTile()) была НИЖЕ всего этого — bootstrap 5 по умолчанию кладёт .modal-backdrop/.modal в
    районе 1050-1060, скроен под страницы БЕЗ своего конкурирующего оверлей-стека. Раньше не
