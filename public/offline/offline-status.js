@@ -383,9 +383,62 @@
         factTimer = setInterval(show, 4200);
     }
 
+    // -----------------------------------------------------------------------------------------
+    // Screen Wake Lock: the screen must not fall asleep while bytes are crossing the network.
+    //
+    // Measured on an iPhone in the installed PWA (owner, 2026-09-17): with the screen locked the
+    // transfer simply stops — iOS suspends the page, and Safari is no different from the app's
+    // WebView. Screen Wake Lock (Safari 16.4+, Chrome 84+) is the web's own answer, and it is the
+    // PWA's and the browser's share of a job the native app does with an idle-timer plugin
+    // (dg-app-full's DgProgressPlugin) and a background URLSession (DgDownloadPlugin).
+    //
+    // Where the API is missing this does nothing at all, and a device in low-power mode may refuse
+    // the request: both are logged, neither is fatal — the download then just risks the screen
+    // sleeping, which is what happens today.
+    // -----------------------------------------------------------------------------------------
+    var wakeLock = null;
+    var wantWakeLock = false;
+
+    function acquireWakeLock() {
+        if (!wantWakeLock || wakeLock) return;
+        if (!navigator.wakeLock || typeof navigator.wakeLock.request !== 'function') return;
+        navigator.wakeLock.request('screen').then(function (lock) {
+            // The browser drops the lock by itself when the page is hidden; without this the stale
+            // reference would make the next acquire() think a lock is still held.
+            lock.addEventListener('release', function () { if (wakeLock === lock) wakeLock = null; });
+            wakeLock = lock;
+        }).catch(function (e) {
+            console.warn('[dg-offline] screen wake lock refused:', (e && e.message) || e);
+        });
+    }
+
+    function releaseWakeLock() {
+        wantWakeLock = false;
+        if (!wakeLock) return;
+        try { wakeLock.release(); } catch (e) { /* already released */ }
+        wakeLock = null;
+    }
+
+    // Coming back to a visible page mid-download: the lock was released when it was hidden.
+    document.addEventListener('visibilitychange', function () { if (!document.hidden) acquireWakeLock(); });
+
+    // The ways a download stops without a `done` progress event — the same four the native side
+    // clears its notification on (dg-app-full's native-bridge.js), so the two cannot drift.
+    ['dg:offline-cancelled', 'dg:offline-invalid', 'dg:offline-deleted', 'dg:download-declined']
+        .forEach(function (name) { window.addEventListener(name, releaseWakeLock); });
+    window.addEventListener('pagehide', releaseWakeLock);
+
     var dlHideTimer = null;
     var lastSubText = null;   // last "X of Y MB" actually worth showing (see the done event above)
     window.addEventListener('dg:dl-progress', function (e) {
+        // Held from the first byte to the last: the download is exactly the window in which a
+        // sleeping screen costs the reader everything that has been transferred so far.
+        if (e.detail && e.detail.done) {
+            releaseWakeLock();
+        } else {
+            wantWakeLock = true;
+            acquireWakeLock();
+        }
         var detail = e.detail || {};
         var loaded = detail.loaded || 0;
         var total = detail.total || 0;
