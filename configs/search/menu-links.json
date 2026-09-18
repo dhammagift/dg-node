@@ -125,7 +125,7 @@
               "label": "Paauksociety.org",
               "title": "Paauksociety.org",
               "desc": "AI translation of all texts",
-              "href": "https://apply.paauksociety.org/tipitaka/index.php",
+              "href": "https://tipitaka.paauksociety.org/index_initialization.php?s=1",
               "blank": true
             },
             {
@@ -919,7 +919,7 @@
               "label": "Paauksociety.org",
               "title": "Paauksociety.org",
               "desc": "ИИ-перевод всех текстов",
-              "href": "https://apply.paauksociety.org/tipitaka/index.php",
+              "href": "https://tipitaka.paauksociety.org/index_initialization.php?s=1",
               "blank": true
             },
             {
