@@ -695,6 +695,26 @@ app.get('/.well-known/assetlinks.json', (req, res) => {
     return res.send(fsSync.readFileSync(path.join(__dirname, 'configs', 'assetlinks.json'), 'utf8'));
 });
 
+// iOS's counterpart: Universal Links. A tap on a dhamma.gift link opens the iOS app instead of
+// Safari once iOS has fetched this file from the domain root — /.well-known/apple-app-site-association
+// or /apple-app-site-association, no redirect, application/json (Apple rejects a redirect and a
+// wrong Content-Type, which is exactly what a generic static mount would produce). Same reasoning as
+// the Android route above, and the same caveat: the app id carries the TEAM id, which only the
+// account holder has, so configs/apple-app-site-association is committed with a placeholder and must
+// be filled in before the first signed build.
+//
+// Every path is claimed ("/*"), deliberately: the app decides for itself which paths it serves and
+// which it hands to the browser (dg-app-full/src/native-bridge.js, NOT_BUNDLED_RE plus the site-only
+// list). Excluding the site-only paths here as well would be the same rule written twice, in two
+// languages, on two schedules — the drift this repository has already paid for once.
+for (const route of ['/.well-known/apple-app-site-association', '/apple-app-site-association']) {
+    app.get(route, (req, res) => {
+        res.header('content-type', 'application/json; charset=utf-8');
+        res.header('cache-control', 'public, max-age=300');
+        return res.send(fsSync.readFileSync(path.join(__dirname, 'configs', 'apple-app-site-association'), 'utf8'));
+    });
+}
+
 app.get('/api-docs', (req, res) => res.redirect('/api-docs/'));
 app.get('/api-docs/', (req, res) => {
     res.header('cache-control', 'public, max-age=0, must-revalidate');
