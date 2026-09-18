@@ -706,8 +706,8 @@ app.get('/.well-known/assetlinks.json', (req, res) => {
 // or /apple-app-site-association, no redirect, application/json (Apple rejects a redirect and a
 // wrong Content-Type, which is exactly what a generic static mount would produce). Same reasoning as
 // the Android route above, and the same caveat: the app id carries the TEAM id, which only the
-// account holder has, so configs/apple-app-site-association is committed with a placeholder and must
-// be filled in before the first signed build.
+// account holder has; it is filled in now (7MXRJU7C3, the app's team) and has to be the team that
+// signs the build, or iOS simply does not intercept the links.
 //
 // Every path is claimed ("/*"), deliberately: the app decides for itself which paths it serves and
 // which it hands to the browser (dg-app-full/src/native-bridge.js, NOT_BUNDLED_RE plus the site-only
