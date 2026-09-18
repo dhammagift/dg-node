@@ -132,7 +132,10 @@
     background: white;
     padding: 10px; 
     border: 1px solid #ddd;
-    z-index: 999;
+    /* Issue #32: above the home tiles (1081) — they painted over the player — but still under the
+       mega/settings sheet (1083) and the burger drawer (1084/1085), same as the download card.
+       Full stack documented at .dg-tile in search/css/home.css. */
+    z-index: 1082;
     min-width: 130px;
     max-width: 90vw;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
