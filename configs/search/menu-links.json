@@ -185,12 +185,6 @@
           "column": 4,
           "items": [
             {
-              "label": "Prātimokṣa",
-              "desc": "Sanskrit",
-              "href": "https://old.dhamma.gift/san/d/mg.php",
-              "blank": true
-            },
-            {
               "label": "Sarvāstivāda",
               "href": "https://old.dhamma.gift/san/sarv.php",
               "blank": true
@@ -979,12 +973,6 @@
           "name": "Prātimokṣa (санскрит)",
           "column": 4,
           "items": [
-            {
-              "label": "Prātimokṣa",
-              "desc": "Санскрит",
-              "href": "https://old.dhamma.gift/san/d/mg.php",
-              "blank": true
-            },
             {
               "label": "Sarvāstivāda",
               "href": "https://old.dhamma.gift/san/sarv.php",
