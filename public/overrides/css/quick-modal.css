@@ -166,3 +166,13 @@ body.dark .hist-icon img, body.dark-mode .hist-icon img { filter: invert(0.7); o
 /* =========================================
 end   QUICK MODAL STYLES (Оптимизировано) end Css for settings.js 
    ========================================= */
+
+/* Issue #4: only shown when this window runs on another origin (the dictionary subdomain), where
+   the site's history and favorites are not reachable. */
+.quick-storage-note {
+    margin: 6px 4px 8px;
+    font-size: 12px;
+    line-height: 1.35;
+    opacity: .72;
+    text-align: center;
+}

@@ -14,6 +14,14 @@ window.isRu = window.location.pathname.includes('/r/') ||
                      window.location.pathname.includes('/ml/') ||
                      window.location.pathname.includes('/mt/') ||
                      localStorage.getItem('dhammaLanguage') === 'ru';
+// The dictionary (ddg-ui) borrows this window cross-origin, so "/assets/..." there resolved
+// against ITS origin: the icons and the history link 404'd (issue #4). Everything that belongs to
+// the site is addressed through this base — empty on the site itself and under dhamma.gift/dict
+// (same origin), the site's real address on the dict.dhamma.gift subdomain. A host page can set
+// window.DG_SITE_BASE itself before loading this file.
+window.DG_SITE_BASE = window.DG_SITE_BASE ||
+    (location.hostname === 'dict.dhamma.gift' ? 'https://dhamma.gift' : '');
+
 // Делаем переменные глобальными для доступа из других скриптов
 window.isQuickModalRendered = false;
 window.quickModalIsOpen = false;
@@ -79,19 +87,20 @@ function buildQuickModalDOM() {
         
         <div class="quick-actions-right">
             <span class="action-btn" id="btn-sync-now" title="${window.isRu ? 'Синхронизировать' : 'Sync Now'}">
-               <img src="/assets/svg/rotate-solid-full.svg" width="20" height="20" alt="Login & Sync">
+               <img src="${window.DG_SITE_BASE}/assets/svg/rotate-solid-full.svg" width="20" height="20" alt="Login & Sync">
             </span>
 
             <span class="clear-all-btn action-btn" id="main-trash-icon" title="${titleClearAll}">
-               <img src="/assets/svg/trash-can-regular-full.svg" width="25" height="25" alt="Reset">
+               <img src="${window.DG_SITE_BASE}/assets/svg/trash-can-regular-full.svg" width="25" height="25" alt="Reset">
             </span>
             <span class="action-btn cursor-pointer" id="main-open-window-icon" title="${window.isRu ? 'Открыть в новом окне' : 'Open in new window'}" style="display: none;">
-               <img src="/assets/svg/open-link.svg" width="20" height="20" alt="Open">
+               <img src="${window.DG_SITE_BASE}/assets/svg/open-link.svg" width="20" height="20" alt="Open">
             </span>
         </div>
       </div>
 
   
+      <div id="dgQuickStorageNote" class="quick-storage-note" hidden></div>
       <div id="tab-fav" class="quick-tab-content active">
         <h6 id="fav-header" class="sortable-header">
           <span class="header-title" title="Сортировать">${favTitleText}</span>
@@ -111,7 +120,7 @@ function buildQuickModalDOM() {
         
         <!-- "Common history" link removed — that page no longer exists (owner). -->
         <div class="quick-all-history-wrapper" style="display: flex; justify-content: space-between; align-items: center;">
-            <a href="${window.isRu ? '/ru/assets/common/history.html' : '/assets/common/history.html'}" class="quick-all-history-link">
+            <a href="${window.DG_SITE_BASE}${window.isRu ? '/ru/assets/common/history.html' : '/assets/common/history.html'}" class="quick-all-history-link">
                 ${window.isRu ? "← Вся история" : "← All history"}
             </a>
         </div>
@@ -204,11 +213,32 @@ function buildQuickModalDOM() {
   // (home.js openQuick) — owner: identical to the main input, not a tab inside this window (the
   // earlier tab version was reverted, 7a3ffc4). Pages without home.js keep the window without it.
   const quickSettingsBtn = quickModal.querySelector('#quickSettingsBtn');
+  const hostQuickSettings = window.dgQuickSettings;
   if (window.DgHome && typeof window.DgHome.openQuick === 'function') {
       quickSettingsBtn.innerHTML = window.DgHome.quickButtonHtml();
       quickSettingsBtn.hidden = false;
       quickSearchInput.style.paddingRight = '48px'; // the gear sits inside the field's right end
       quickSettingsBtn.addEventListener('click', () => window.DgHome.openQuick(quickSettingsBtn));
+  } else if (hostQuickSettings && typeof hostQuickSettings.open === 'function') {
+      // No home.js here (the dictionary): the host page hands us its icon and its own settings
+      // panel — theme, font size and language live there, and the window stays one window
+      // (owner, ddg-ui #5: the site's quick window had settings, the dictionary's did not).
+      quickSettingsBtn.innerHTML = hostQuickSettings.icon || '';
+      quickSettingsBtn.hidden = false;
+      quickSearchInput.style.paddingRight = '48px';
+      quickSettingsBtn.addEventListener('click', () => hostQuickSettings.open(quickSettingsBtn));
+  }
+
+  // On the dictionary subdomain the browser gives this window a storage of its own (cross-origin),
+  // so the site's history and favorites are simply not here — say so instead of showing an empty
+  // list that reads as "everything is gone" (issue #4). Under dhamma.gift/dict the storage IS the
+  // site's, and nothing is shown.
+  const storageNote = quickModal.querySelector('#dgQuickStorageNote');
+  if (storageNote && window.DG_SITE_BASE) {
+      storageNote.textContent = window.isRu
+          ? 'История и избранное — с dhamma.gift; на этом адресе у словаря своё хранилище.'
+          : 'History and favorites belong to dhamma.gift; this dictionary address keeps its own.';
+      storageNote.hidden = false;
   }
 
   quickSearchBtn.addEventListener('contextmenu', (e) => {
@@ -526,7 +556,7 @@ function renderQuickLists(isRu, queryBase) {
         const isFav = favData.some(f => f.slug === realSlug);
         
 // Добавили hidden-delete-hist и data-slug
-histHtml += `<li><span class="hist-icon"><img src="/assets/svg/clock-rotate-left.svg" width="14" height="14"></span>
+histHtml += `<li><span class="hist-icon"><img src="${window.DG_SITE_BASE}/assets/svg/clock-rotate-left.svg" width="14" height="14"></span>
 <a href="${h[1]}">${h[0]}</a><span class="item-date hidden-delete-hist" data-slug="${realSlug}">${dateStr}</span>
 <span class="action-btn toggle-fav-btn-hist" data-slug="${realSlug}" data-display="${h[0]}" data-url="${h[1]}">${isFav ? "★" : "☆"}</span></li>`;
 
