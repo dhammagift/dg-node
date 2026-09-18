@@ -317,7 +317,7 @@
               "label": "Dict.Dhamma.Gift",
               "title": "open Dict.Dhamma.Gift in extra window (Alt + N)",
               "desc": "Multi-dictionary powered by DPD — opens with the word from the search box",
-              "tpl": "https://dict.dhamma.gift/?theme={{theme}}&source=pwa&q={{q}}",
+              "tpl": "https://dict.dhamma.gift/?theme={{theme}}&q={{q}}",
               "blank": true,
               "star": true
             },
@@ -1193,7 +1193,7 @@
               "label": "Dict.Dhamma.Gift",
               "title": "открыть Dict.Dhamma.Gift в новом окне (Alt + N)",
               "desc": "Мульти-словарь на основе DPD — открывается со словом из строки поиска",
-              "tpl": "https://dict.dhamma.gift/ru/?theme={{theme}}&source=pwa&q={{q}}",
+              "tpl": "https://dict.dhamma.gift/ru/?theme={{theme}}&q={{q}}",
               "blank": true,
               "star": true
             },

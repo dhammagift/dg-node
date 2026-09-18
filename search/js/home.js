@@ -667,12 +667,13 @@
               (item.desc ? '<small class="dg-row-desc">' + esc(item.desc) + '</small>' : '') +
               '</span>';
 
-        /* Долгое нажатие на пункт (звезду или саму ссылку) — свой личный тоггл звезды, поверх
-           редакционной. contextmenu — тот же приём, что и у долгого нажатия в компасе (мобильный
-           браузер сам шлёт это событие после долгого тапа, на десктопе это правый клик — второго
-           таймера/pointerdown не требуется). Пункт при этом может вести НА ЛЮБОЕ действие
-           (обычная ссылка, tpl-шаблон, action) — long-press его не заменяет, а только добавляется. */
-        a.addEventListener('contextmenu', function (e) {
+        /* Star toggling on long-press (mobile) / right-click (desktop) belongs to the leading ICON
+           only — the star when the row is starred, otherwise the item's own glyph. The link and its
+           label must keep the browser's own menu, or "copy link address"/"open in new tab" is gone
+           for good (owner, issue #22). contextmenu is the same trick the compass uses: a mobile
+           browser sends it after a long tap, so no extra timer is needed. */
+        var icon = a.querySelector('.dg-row-star, .dg-row-icon');
+        if (icon) icon.addEventListener('contextmenu', function (e) {
             e.preventDefault();
             toggleUserStar(item);
             if (currentSheetKey) openSheet(currentSheetKey);

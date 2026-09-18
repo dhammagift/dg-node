@@ -1393,7 +1393,9 @@ if (event.altKey && !event.ctrlKey && !event.metaKey &&
     const baseUrl = 'https://dict.dhamma.gift' + langPrefix;
 
     const url = q
-      ? baseUrl + '/?silent&source=pwa&q=' + encodeURIComponent(q)
+      // No source=pwa here: the dictionary treats it as "launched from the app icon" and
+      // starts forcing a language redirect on top of the word we are sending (issue #22).
+      ? baseUrl + '/?silent&q=' + encodeURIComponent(q)
       : baseUrl + '/';
 
     event.preventDefault();
