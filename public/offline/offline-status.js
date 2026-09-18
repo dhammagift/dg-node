@@ -296,6 +296,16 @@
             '<div class="dgdl-debug" hidden></div>';
         document.body.appendChild(dlCard);
 
+        // Issue #20: the player sits at the bottom centre too, so while this card is up it would
+        // land on top of it. Publish the card's real height (it grows and shrinks, and collapses to
+        // a bar) and let .voice-player read it — see read/css/voice.css.
+        if (window.ResizeObserver) {
+            new ResizeObserver(function () {
+                document.documentElement.style.setProperty(
+                    '--dg-dl-card-h', Math.round(dlCard.getBoundingClientRect().height) + 'px');
+            }).observe(dlCard);
+        }
+
         var toggle = dlCard.querySelector('.dgdl-toggle');
         function applyCollapsed(collapsed) {
             dlCard.classList.toggle('dgdl-collapsed', collapsed);

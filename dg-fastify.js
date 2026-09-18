@@ -276,7 +276,13 @@ const UNVERSIONED_LAZY_PATHS = [
     // bare buttons on dict.dhamma.gift). dg-site.js now appends its own ?v= stamp; this 24h tier
     // is what keeps them current afterwards without editing the other repo every time.
     path.join(__dirname, 'public', 'overrides', 'js', 'dg-page-find.js'),
-    path.join(__dirname, 'public', 'overrides', 'js', 'dg-page-find-ui.js')
+    path.join(__dirname, 'public', 'overrides', 'js', 'dg-page-find-ui.js'),
+    // The TTS player: settings.js injects voice.js and voice.js appends voice.css, both without a
+    // URL of their own that HTML rewriting could reach — a one-line CSS fix (issue #20) sat behind
+    // a year-long immutable cache and simply never arrived. They carry ?v= now; this tier keeps
+    // them current for anything that still asks for the bare path.
+    path.join(__dirname, 'public', 'overrides', 'read', 'js', 'voice.js'),
+    path.join(__dirname, 'public', 'overrides', 'read', 'css', 'voice.css')
 ];
 
 function staticCacheHeaders(reply, filePath) {

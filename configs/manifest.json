@@ -101,7 +101,8 @@
         {
           "src": "/assets/img/maniIcon.png",
           "type": "image/png",
-          "sizes": "192x192"
+          "sizes": "192x192",
+          "purpose": "any"
         }
       ],
       "short_name": "Table of Contents",
@@ -114,9 +115,10 @@
       "url": "/4as",
       "icons": [
         {
-          "src": "/assets/svg/star.svg",
-          "sizes": "any",
-          "type": "image/svg+xml"
+          "src": "/assets/img/shortcut-star.png",
+          "type": "image/png",
+          "sizes": "192x192",
+          "purpose": "any"
         }
       ]
     },
@@ -127,9 +129,10 @@
       "url": "/memo",
       "icons": [
         {
-          "src": "/assets/svg/memo.svg",
-          "sizes": "any",
-          "type": "image/svg+xml"
+          "src": "/assets/img/shortcut-memo.png",
+          "type": "image/png",
+          "sizes": "192x192",
+          "purpose": "any"
         }
       ]
     },
@@ -138,9 +141,10 @@
       "url": "/dict",
       "icons": [
         {
-          "src": "/assets/svg/book-letter.svg",
-          "sizes": "any",
-          "type": "image/svg+xml"
+          "src": "/assets/img/shortcut-dict.png",
+          "type": "image/png",
+          "sizes": "192x192",
+          "purpose": "any"
         }
       ],
       "short_name": "Dictionary",
@@ -153,7 +157,8 @@
         {
           "src": "/assets/img/monkIcon.png",
           "type": "image/png",
-          "sizes": "192x192"
+          "sizes": "192x192",
+          "purpose": "any"
         }
       ]
     },
@@ -164,7 +169,8 @@
         {
           "src": "/assets/img/nunIcon.png",
           "type": "image/png",
-          "sizes": "192x192"
+          "sizes": "192x192",
+          "purpose": "any"
         }
       ]
     },
@@ -173,9 +179,10 @@
       "url": "/open?url=https://www.aksharamukha.com/converter",
       "icons": [
         {
-          "src": "/assets/img/maniIcon.png",
+          "src": "/assets/img/shortcut-external.png",
           "type": "image/png",
-          "sizes": "192x192"
+          "sizes": "192x192",
+          "purpose": "any"
         }
       ]
     },
@@ -184,9 +191,10 @@
       "url": "/open?url=https://dharmamitra.org/",
       "icons": [
         {
-          "src": "/assets/img/maniIcon.png",
+          "src": "/assets/img/shortcut-external.png",
           "type": "image/png",
-          "sizes": "192x192"
+          "sizes": "192x192",
+          "purpose": "any"
         }
       ]
     }

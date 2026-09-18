@@ -757,3 +757,10 @@ body[data-theme="dark"] #sutta span[id]:has(.tts-active) {
     color: #ccc; 
     border: 1px solid #555;
 }
+
+/* Issue #20: the offline download card lives in the same bottom-centre spot, so while it is on
+   screen the player steps above it. The height comes from the card itself (offline-status.js), so
+   a collapsed bar and a full card both clear it. */
+body:has(#dgDlCard.show) .voice-player {
+    bottom: calc(50px + var(--dg-dl-card-h, 120px) + 10px);
+}
