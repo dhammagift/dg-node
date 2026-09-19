@@ -9,9 +9,9 @@ and how to repeat it on another server. Everything here was set up and checked o
 | What | Path | Repo / branch | Served as |
 |---|---|---|---|
 | Site, prod | `/var/www/html/nodejs` | dhammagift/dg-node `main` | pm2 `dg-prod`, port 3000 → dhamma.gift |
-| Site, test | `/var/www/html/dg-node-test` | dhammagift/dg-node `main` | pm2 `test`, port 3003 (env `PORT=3003`) → test.dhamma.gift |
+| Site, test | `/var/www/dg-node-test` | dhammagift/dg-node `main` | pm2 `test`, port 3003 (env `PORT=3003`) → test.dhamma.gift |
 | Search DB | `nodejs/dg.db` (test: symlink to it) | built on GitHub, see below | read by dg-fastify.js |
-| Docs | `nodejs/dg-docs`, `dg-node-test/dg-docs` | dhammagift/dg-docs `dist` / `dist-preview` | /docs, /ru/docs |
+| Docs | `nodejs/dg-docs`, `/var/www/dg-node-test/dg-docs` | dhammagift/dg-docs `dist` / `dist-preview` | /docs, /ru/docs |
 | Dictionary | `/var/www/ddg-ui` | dhammagift/ddg-ui `main` | dict.dhamma.gift, dhamma.gift/dict (served from the working tree) |
 | SuttaCentral texts | `/var/www/suttacentral.net/sc-data` | suttacentral/sc-data `main`, **shallow mirror** | read by the site |
 | Our translations | `/var/www/offline-data` | dhammagift/offline-data `main` | translators commit here |
@@ -70,7 +70,7 @@ Run it without `--apply` to see every session, what it still holds and how much.
 ```cron
 # docs: prod every 5 h, test every minute
 0 */5 * * * git -C /var/www/html/nodejs/dg-docs fetch -q --depth 1 origin dist && git -C /var/www/html/nodejs/dg-docs reset -q --hard origin/dist >/dev/null 2>&1
-* * * * * git -C /var/www/html/dg-node-test/dg-docs fetch -q --depth 1 origin dist-preview && git -C /var/www/html/dg-node-test/dg-docs reset -q --hard origin/dist-preview >/dev/null 2>&1
+* * * * * git -C /var/www/dg-node-test/dg-docs fetch -q --depth 1 origin dist-preview && git -C /var/www/dg-node-test/dg-docs reset -q --hard origin/dist-preview >/dev/null 2>&1
 # third-party mirrors, then cache/tmp cleanup (scripts/weekly-cleanup.sh): Sunday 17:00, before the GitHub DB build
 0 17 * * 0 mkdir -p /var/www/html/nodejs/logs && { /var/www/html/nodejs/scripts/update-external-repos.sh; /var/www/html/nodejs/scripts/weekly-cleanup.sh; } >> /var/www/html/nodejs/logs/update-external-repos.log 2>&1
 # search DB: sites every Monday, app/PWA archive on the 1st and 15th
@@ -80,7 +80,7 @@ Run it without `--apply` to see every session, what it still holds and how much.
 */30 * * * * mkdir -p /var/www/html/nodejs/logs && /var/www/html/nodejs/scripts/claude-reaper.sh --apply | grep -v ' kept)$' >> /var/www/html/nodejs/logs/claude-reaper.log 2>&1
 # misc
 0 3 1-31/15 * * rm -rf /var/www/html/result/* /var/www/html/result/.??*
-*/10 * * * * cd /var/www/html/dg-node-test && /usr/bin/node scripts/disk-guard.js >> /var/www/html/dg-node-test/test/.disk-guard.log 2>&1
+*/10 * * * * cd /var/www/dg-node-test && /usr/bin/node scripts/disk-guard.js >> /var/www/dg-node-test/test/.disk-guard.log 2>&1
 ```
 
 Adjust the paths and the node `PATH` (`which node`) on another server.
