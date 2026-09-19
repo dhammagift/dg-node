@@ -3971,7 +3971,7 @@
         // App Store id 6813706217 (owner, App Store Connect); the app itself is still
         // TestFlight-only, so this 404s on apps.apple.com until it actually goes live there —
         // matches the id, not a guess.
-        { img: 'appstore.png', href: 'https://apps.apple.com/app/id6813706217', title: 'Download on the App Store' },
+        { img: 'appstore-cta.png', href: 'https://apps.apple.com/app/id6813706217', title: 'Download on the App Store' },
         // APK = the offline app (dg-app-full), not the TWA wrapper: the Play button above already
         // covers the online one, and dg-twa's releases hold no user-facing download.
         { img: 'apk-cta.png', href: 'https://github.com/dhammagift/dg-app-full/releases/latest', title: 'Download APK' },
