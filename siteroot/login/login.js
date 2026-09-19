@@ -8,7 +8,7 @@ const translations = isRu ? {
     loginPhrase: "Анонимный вход",
     statusLabelGoogle: "Google аккаунт:", statusLabelPhrase: "Ваша фраза:",
     syncLabel: "Синхронизировано:", lblSync: "Синхр.",
-    logout: "Выйти", delete: "Удалить данные",
+    logout: "Выйти", delete: "Удалить аккаунт и данные",
     sessionsLabel: "Активные устройства:",
     mergeTitle: "Обнаружены локальные данные",
     mergeBody: "На этом устройстве есть сохраненная история и избранное. Как поступить при входе?<br><br><b>Объединить</b>: сохранить текущие данные и добавить к ним облачные.<br><b>Заменить</b>: удалить данные с этого устройства и скачать копию из облака.",
@@ -20,7 +20,7 @@ const translations = isRu ? {
     loginPhrase: "Anonymous Login",
     statusLabelGoogle: "Google Account:", statusLabelPhrase: "Your Phrase:",
     syncLabel: "Last synced:", lblSync: "Sync",
-    logout: "Logout", delete: "Delete Cloud Data",
+    logout: "Logout", delete: "Delete account & cloud data",
     sessionsLabel: "Active Devices:",
     mergeTitle: "Local Data Found",
     mergeBody: "History and favorites were found on this device. How would you like to proceed?<br><br><b>Merge</b>: keep local data and combine it with the cloud.<br><b>Overwrite</b>: delete data from this device and download cloud copy.",
@@ -165,8 +165,8 @@ window.copySyncPhrase = function() {
 
 async function uiDeleteAccount() {
     const confirmMsg = isRu 
-        ? "Вы уверены? Это удалит данные ТОЛЬКО из облака. \n\nВаша локальная история и избранное на этом устройстве останутся нетронутыми." 
-        : "Are you sure? This will delete data ONLY from the cloud. \n\nYour local history and favorites on this device will remain safe.";
+        ? "Вы уверены? Это удалит ваш аккаунт и все данные в облаке. \n\nВаша локальная история и избранное на этом устройстве останутся нетронутыми."
+        : "Are you sure? This deletes your account and all its data in the cloud. \n\nYour local history and favorites on this device will remain safe.";
 
     if (confirm(confirmMsg)) {
         const btnDelete = document.getElementById('lbl-delete');
