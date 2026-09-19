@@ -159,15 +159,12 @@
     var docsDescEl = document.getElementById('dgOfflineDocsDesc');
     // .badge text ("скоро"/"soon") is already relabeled by the page's own applyLang(), which runs
     // before this deferred script — only the plain text node in front of the badge is set here.
-    if (docsTitleEl && docsTitleEl.firstChild) docsTitleEl.firstChild.textContent = isRu ? 'Докс офлайн' : 'Offline docs';
+    // "Помощь", not "Докс": the reader is looking for help, not for a product name (owner, #30).
+    if (docsTitleEl && docsTitleEl.firstChild) docsTitleEl.firstChild.textContent = isRu ? 'Помощь офлайн' : 'Offline help';
     if (docsDescEl) docsDescEl.textContent = isRu
-        ? 'Пока справка открывается онлайн — чтобы офлайн-библиотека оставалась компактной.'
-        : 'Help currently opens online, to keep the offline library small.';
-    // The disabled button too: it has no t-* id (data-swapped states live in this file, not in the
-    // page's STR table), so applyLang() leaves it in the markup's language — which is how the
-    // English page ended up with a Russian "Скачать" next to an English "Download now".
-    var docsBtnEl = document.getElementById('dgOfflineDocsBtn');
-    if (docsBtnEl) docsBtnEl.textContent = isRu ? 'Скачать' : 'Download';
+        ? 'Пока справка открывается онлайн. Весит около 29 МБ — рядом с библиотекой текстов это немного.'
+        : 'Help opens online for now. It weighs about 29 MB — small next to the text library.';
+    // The row has no button while help is online-only (settings/index.html) — nothing to relabel.
 
     // The delete itself happens in the page around this iframe, which then records present:false in
     // localStorage. This frame kept showing "Downloaded … Re-download / Delete" until the sheet was
