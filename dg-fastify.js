@@ -2575,8 +2575,17 @@ app.get('/:slug', (req, res) => {
     // canonical id when it resolves to something DIFFERENT from the raw slug, same pattern as the
     // range/TOC redirects below — a clean URL also sidesteps the client re-deriving the wrong id.
     const classified = DgTextRouter.classify(rawBase);
-    if (classified.type === 'text' && classified.id !== rawBase) {
+    // Vinaya short aliases ("bu-pc1", "bi-pc3") stay in the address bar, as they did on the old
+    // site (owner, dg-node #34): the canonical id is four times longer, so everything that shows a
+    // URL or derives a label from it — launcher shortcuts, shared links, tabs — truncated it to
+    // "pli-tv-bi…". The client resolves the alias with this same classify(), so the reader opens
+    // the same text either way; only the redirect is skipped.
+    const isVinayaAlias = classified.type === 'text' && /^pli-tv-/.test(classified.id) && skeletonDB[classified.id];
+    if (classified.type === 'text' && classified.id !== rawBase && !isVinayaAlias) {
         return res.redirect('/' + encodeURIComponent(classified.id) + anchorSuffix + queryString(req), 301);
+    }
+    if (isVinayaAlias && classified.id !== rawBase) {
+        return sendVersionedHtml(req, res, searchIndexPath);
     }
     const suttaId = rawBase;
     if (skeletonDB[suttaId]) {

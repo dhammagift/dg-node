@@ -36,12 +36,14 @@ window.isRu = window.location.pathname.includes('/r/') ||
 })();
 
 /// --- Конфигурация путей ---
-const makeJsonUrl = (slug) => {
-  const basePath = '/assets/texts/devanagari/root/pli/ms/';
-  const suffix = '_rootd-pli-ms.json';
-  const fullPath = `${basePath}${slug}${suffix}`;
-  return fullPath;
-};
+// The canonical Pali for TTS comes from the site's own API, not from the DOM: in memorize mode the
+// page shows first letters only ("Kyspa"), and in Brahmi/Devanagari script settings it shows another
+// script — read aloud, both are gibberish (dg-node issue #21). The old path
+// (/assets/texts/devanagari/root/pli/ms/<slug>_rootd-pli-ms.json) is flat and 404s for every slug —
+// those files live under .../ms/sutta/<nikaya>/, so the DOM fallback was ALWAYS the one running.
+// /api/text is also what the offline app answers from its own SQLite (dg-app-full app.js fetch shim).
+// Slug can arrive as "khudakka/snp1.8" (category prefix from the reader) — /api/text wants the id.
+const makeJsonUrl = (slug) => `/api/text/${encodeURIComponent(String(slug).split('/').pop())}`;
 
 // --- Глобальное состояние и Константы ---
 let wakeLock = null; 
@@ -467,7 +469,14 @@ async function fetchSegmentsData(slug) {
   
   try {
     const response = await fetch(makeJsonUrl(slug));
-    return response.ok ? await response.json() : null;
+    if (!response.ok) return null;
+    const data = await response.json();
+    // { segments: [{segment, root_text, ...}] } -> { "sn1.8:1.1": "root text" }, the shape the
+    // caller already expects (segment id -> Pali string).
+    if (!data || !Array.isArray(data.segments)) return null;
+    const map = {};
+    data.segments.forEach(seg => { if (seg && seg.segment && seg.root_text) map[seg.segment] = seg.root_text; });
+    return Object.keys(map).length ? map : null;
   } catch (e) { 
     console.warn(`Не удалось загрузить JSON для ${slug}`, e);
     return null; 
@@ -999,8 +1008,11 @@ async function prepareTextData(slug) {
   if (paliJsonData) {
     Object.keys(paliJsonData).forEach(key => {
       const cleanKey = useFullKey ? key : key.split(':').pop();
-      const rawText = paliJsonData[key].replace(/<[^>]*>/g, '').trim(); 
-      cleanJsonMap[cleanKey] = cleanTextForTTS(rawText);
+      const rawText = paliJsonData[key].replace(/<[^>]*>/g, '').trim();
+      // Same order as the DOM branch below: Devanagari first, then cleanTextForTTS, whose Pali
+      // fixes are written against Devanagari and are no-ops on IAST.
+      const devText = window.convertPaliToDevanagari ? window.convertPaliToDevanagari(rawText) : rawText;
+      cleanJsonMap[cleanKey] = cleanTextForTTS(devText);
       jsonKeys.push(cleanKey); 
     });
   }
