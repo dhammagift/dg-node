@@ -956,6 +956,90 @@ function convertTextResult(data, key, mode) {
     return data;
 }
 
+// --- native SQLite (the iOS app) ---------------------------------------------------------------
+//
+// The iOS app keeps the library as one plain dg.db in its App Group container and runs SQL
+// natively (dg-app-full: DgSharedLibrary.swift), because its share extension is another process
+// and OPFS belongs to this one. The page passes `nativeSql` — the endpoint path on this origin —
+// with its ops; nothing below runs unless it does, so the site and Android are untouched.
+//
+// The core calls .all() synchronously, hence a synchronous XMLHttpRequest: allowed in a worker, and
+// the reason this lives here and not on the page. The handle has the oo1 surface the rest of this
+// file uses (selectObjects, selectObject, createFunction, close), so adopt() and the ops do not
+// know the difference; createFunction is a no-op because regexp_test is defined natively.
+function nativeRequest(endpoint, op, payload) {
+    const url = new URL(`${endpoint}/${op}`, self.location.href);
+    // encodeURIComponent, not searchParams: the latter writes a space as '+', which Foundation's
+    // URLComponents on the other side leaves as a literal plus in the SQL.
+    if (payload !== undefined) url.search = 's=' + encodeURIComponent(JSON.stringify(payload));
+    const xhr = new XMLHttpRequest();
+    xhr.open('GET', url.href, false);
+    xhr.send();
+    let body = null;
+    try { body = JSON.parse(xhr.responseText); } catch (_) { body = null; }
+    if (xhr.status !== 200) throw new Error((body && body.error) || `native sql: HTTP ${xhr.status}`);
+    return body;
+}
+
+function nativeDb(endpoint) {
+    // Column-major on the wire ({cols, rows}) — a search can carry tens of thousands of rows.
+    const rows = (sql, params) => {
+        const r = nativeRequest(endpoint, 'query', { sql, params: params || [] });
+        return r.rows.map(row => {
+            const o = {};
+            for (let i = 0; i < r.cols.length; i++) o[r.cols[i]] = row[i];
+            return o;
+        });
+    };
+    return {
+        selectObjects: rows,
+        selectObject: (sql, params) => rows(sql, params)[0],
+        createFunction() {},
+        close() {},
+    };
+}
+
+// open() for the native file: adopt dg.db when the shell reports one, with the checks a stored
+// OPFS copy gets. The download itself happened before this was called (the page's prepareArchive
+// runs the native downloader), so `allowDownload` only says what a missing file means: an error
+// for a download that did not finish, or simply "nothing stored" for the startup probe.
+async function openNative(endpoint, allowDownload) {
+    const status = nativeRequest(endpoint, 'status');
+    if (!status.present) {
+        if (allowDownload) throw new Error('the offline library was not downloaded');
+        return { suttas: 0, build_id: null, downloaded: false, present: false };
+    }
+    const handle = nativeDb(endpoint);
+    let meta = {};
+    try {
+        for (const row of handle.selectObjects('SELECT key, value FROM meta')) meta[row.key] = row.value;
+    } catch (e) { meta = {}; }
+    if (meta.schema_version && Number(meta.schema_version) !== SCHEMA_VERSION) {
+        throw new Error(`schema ${meta.schema_version} != ${SCHEMA_VERSION}`);
+    }
+    const problem = checkCheap(handle, null);
+    if (problem) throw new Error(`the offline library is incomplete (${problem})`);
+    if (db) { try { db.close(); } catch (_) {} db = null; }
+    const suttas = adopt({ handle, meta });
+    dropOpfsCopy();
+    if (allowDownload) post({ type: 'progress', loaded: 1, total: 1, phase: 'download', done: true });
+    return { suttas, build_id: meta.build_id || null, downloaded: allowDownload, present: true };
+}
+
+// A copy the OPFS pool still holds from a build before the native file: a second 584MB nothing
+// reads any more. Removed in the background; failing to is not a failure of the open.
+async function dropOpfsCopy() {
+    try {
+        if (!(await anyStoredFiles())) return;
+        const pool = await getPool();
+        for (const name of storedDatabases(pool)) { try { pool.unlink(name); } catch (_) {} }
+        await cleanScratchExcept(null);
+        console.log('[dg-offline] removed the OPFS copy an earlier build left behind');
+    } catch (e) {
+        console.log(`[dg-offline] could not remove the old OPFS copy: ${e.message}`);
+    }
+}
+
 // One operation per endpoint the shim intercepts. Each is the few lines dg-fastify.js's route
 // does around the core — parameter defaults and nothing else. Response building stays in the
 // core, which is the point.
@@ -1085,6 +1169,18 @@ self.onmessage = async (event) => {
     // whether a download is coming before it asks the reader about it.
     if (op === 'status') {
         try {
+            if (args && args.nativeSql) {
+                const present = !!nativeRequest(args.nativeSql, 'status').present;
+                const wantManifest = !args || args.wantManifest !== false;
+                const manifest = (present || !wantManifest) ? null : await fetchManifest(args.distBase);
+                post({ id, ok: true, result: {
+                    present, partialBytes: 0,
+                    bytes: manifest ? (manifest.bytes_gz || manifest.bytes) : null,
+                    build_id: manifest ? manifest.build_id : null,
+                    langs: manifest ? manifest.langs : null,
+                } });
+                return;
+            }
             // Cheap path first: nothing stored is the common case, and it must cost nothing.
             if (!(await anyStoredFiles())) {
                 const partialBytes = await partialBytesAny();
@@ -1139,6 +1235,12 @@ self.onmessage = async (event) => {
 
     if (op === 'update') {
         try {
+            if (args && args.nativeSql) {
+                // The native downloader has already replaced the file; this is the reopen.
+                ready = openNative(args.nativeSql, true);
+                post({ id, ok: true, result: await ready });
+                return;
+            }
             const pool = await getPool();
             post({ id, ok: true, result: await fetchCurrent(pool, args.distBase) });
         } catch (e) { post({ id, ok: false, error: e.message }); }
@@ -1147,6 +1249,7 @@ self.onmessage = async (event) => {
 
     if (op === 'open') {
         const distBase = args && args.distBase;
+        const opener = allow => (args && args.nativeSql ? openNative(args.nativeSql, allow) : open(distBase, allow, args || {}));
         // `download: false` (the site's startup probe) must never be memoised when it comes back
         // empty: the reader may press Download a second later, and that call needs a real attempt,
         // not this empty answer replayed from `ready`.
@@ -1158,13 +1261,13 @@ self.onmessage = async (event) => {
                 // "Working offline", and the site's own search said "check your query (invalid regular
                 // expression)". Direct fetches looked fine only because they happened in the page that
                 // had done the download (which does set `ready`). Owner's Opera, reproduced here.
-                const result = await (ready = ready || open(distBase, false, args || {}));
+                const result = await (ready = ready || opener(false));
                 if (result && result.present === false) ready = null;
                 post({ id, ok: true, result });
             } catch (e) { ready = null; post({ id, ok: false, error: e.message }); }
             return;
         }
-        ready = ready || open(distBase, true, args || {});
+        ready = ready || opener(true);
         try { post({ id, ok: true, result: await ready }); }
         catch (e) { ready = null; post({ id, ok: false, error: e.message }); }
         return;
@@ -1184,6 +1287,9 @@ self.onmessage = async (event) => {
     // partial (if any) goes too — it belongs to a build nobody is downloading any more.
     if (op === 'delete') {
         try {
+            // The native file first; the OPFS pool is then swept too, for a copy an earlier build
+            // may have left.
+            if (args && args.nativeSql) nativeRequest(args.nativeSql, 'delete');
             const pool = await getPool();
             if (db) { try { db.close(); } catch (_) {} db = null; }
             ready = null;

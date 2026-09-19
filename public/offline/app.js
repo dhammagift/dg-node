@@ -46,6 +46,14 @@
         askConsent: function () { return Promise.resolve(true); },
     };
     var DIST_BASE = platform.distBase || window.DG_DIST_BASE || '/mobile-data';
+    // The iOS app only (dg-app-full's platform.js): SQL runs natively on a shared dg.db, and the
+    // worker takes its native branch when this rides along with an op.
+    var NATIVE_SQL = platform.nativeSql || null;
+    function workerOpts(extra) {
+        var opts = { distBase: DIST_BASE };
+        if (NATIVE_SQL) opts.nativeSql = NATIVE_SQL;
+        return Object.assign(opts, extra || {});
+    }
 
     // The languages the published slice is cut with (build-app-db.js --langs=ru,en). Anything else
     // the language picker offers exists on the corpus but not in this copy, and there is no
@@ -590,9 +598,9 @@
     // transfer — is what keeps the consent sheet, the progress card and the update path exactly as
     // they are: the platform only decides WHERE the bytes come from. Platforms that cannot do this
     // define nothing, so Android, the PWA and the site keep the path they have always had.
-    function prepareArchive() {
+    function prepareArchive(kind) {
         if (!platform.prepareArchive) return Promise.resolve(false);
-        return Promise.resolve(platform.prepareArchive()).then(function (ok) {
+        return Promise.resolve(platform.prepareArchive({ update: kind === 'update' })).then(function (ok) {
             // The platform may have moved its base (an archive already on disk is fetched through
             // the app's own file handler, not the network), and DIST_BASE was captured at load.
             if (ok && platform.distBase) DIST_BASE = platform.distBase;
@@ -608,12 +616,12 @@
         }).then(function (ok) {
             if (!ok) throw new Error('offline-data-download-declined');
             try { localStorage.setItem(STARTED_KEY, '1'); } catch (e) { /* private mode */ }
-            return prepareArchive();
+            return prepareArchive(kind);
         }).then(function () {
             // 'update' replaces a copy that is already there; 'open' adopts an existing one or
             // downloads when there is none. Both leave a working copy in place until the new file
             // is proven (db-worker.js's fetchCurrent).
-            var opts = { distBase: DIST_BASE };
+            var opts = workerOpts();
             return kind === 'update'
                 ? call('update', opts)
                 : call('open', Object.assign({ download: true }, opts));
@@ -774,12 +782,12 @@
 
             // wantManifest:false — the site never shows the size before asking (its button in
             // Settings is the consent), so the startup probe stays one cheap request-free check.
-            return call('status', { distBase: DIST_BASE, wantManifest: false }).then(function (status) {
+            return call('status', workerOpts({ wantManifest: false })).then(function (status) {
                 if (status.present && !wantsUpdate) {
                     // `download: false` is load-bearing: a stored copy that turns out to be
                     // corrupt or half-imported must NOT silently turn into a fresh 170MB download
                     // the reader never asked for. It falls back to the server instead.
-                    return call('open', { distBase: DIST_BASE, download: false }).then(function (opened) {
+                    return call('open', workerOpts({ download: false })).then(function (opened) {
                         if (!opened || opened.present === false) {
                             log('stored database is unusable — staying server-backed');
                             rememberMode(true, owns ? 'unusable' : 'not-owner');
@@ -1201,7 +1209,7 @@
     // "Удалить библиотеку" — back to the pre-download site with no reinstall (see the coexistence
     // model in docs/OFFLINE_PWA_PLAN.md). Wired to a button separately; the worker does the work.
     window.dgDeleteOfflineData = function () {
-        return call('delete', {}).then(function (result) {
+        return call('delete', workerOpts()).then(function (result) {
             local = false;
             try { localStorage.removeItem(STARTED_KEY); } catch (e) { /* private mode */ }
             rememberState({ present: false, build_id: null, update: null });
