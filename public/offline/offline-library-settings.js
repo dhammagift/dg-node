@@ -22,10 +22,7 @@
 //   * The app's markup hardcodes English row text and this script relabels it. This page's own
 //     convention (see the neighbouring rows) is Russian defaults in the markup with applyLang()
 //     translating them, so the defaults in settings/index.html are Russian and the relabeling is
-//     done below, keeping the same ids (dgOfflineLib*, dgOfflineDocs*) the script looks up.
-//   * The .badge text ("скоро"/"soon") is NOT touched here: the page's applyLang() already
-//     relabels every .badge, and this script is loaded with `defer`, so it runs after it. Only the
-//     plain text node in front of the badge needs setting.
+//     done below, keeping the same ids (dgOfflineLib*) the script looks up.
 (function () {
     var isRu = (localStorage.getItem('dhammaLanguage') || localStorage.getItem('siteLanguage') || 'en') === 'ru';
     var STATE_KEY = 'dg.offline.state';            // read-only here, written by the main page
@@ -154,17 +151,6 @@
         if (deleteEl) deleteEl.style.display = '';
         btnEl.onclick = function () { goHomeWith(WANT_UPDATE_KEY); };
     }
-
-    var docsTitleEl = document.getElementById('dgOfflineDocsTitle');
-    var docsDescEl = document.getElementById('dgOfflineDocsDesc');
-    // .badge text ("скоро"/"soon") is already relabeled by the page's own applyLang(), which runs
-    // before this deferred script — only the plain text node in front of the badge is set here.
-    // "Помощь", not "Докс": the reader is looking for help, not for a product name (owner, #30).
-    if (docsTitleEl && docsTitleEl.firstChild) docsTitleEl.firstChild.textContent = isRu ? 'Помощь офлайн' : 'Offline help';
-    if (docsDescEl) docsDescEl.textContent = isRu
-        ? 'Пока справка открывается онлайн. Весит около 29 МБ — рядом с библиотекой текстов это немного.'
-        : 'Help opens online for now. It weighs about 29 MB — small next to the text library.';
-    // The row has no button while help is online-only (settings/index.html) — nothing to relabel.
 
     // The delete itself happens in the page around this iframe, which then records present:false in
     // localStorage. This frame kept showing "Downloaded … Re-download / Delete" until the sheet was
