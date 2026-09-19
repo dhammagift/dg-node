@@ -234,7 +234,7 @@ if (window.location.href.includes('/r/') || window.location.href.includes('/ru/'
 }
 dhammaGift += '/?q=';
 
-dgParams = '&p=-kn';
+dgParams = '';   // ?p=-kn was the legacy site's pitaka filter; dg-node never reads it
 
 ({ dictUrl, externalDict, inNewWindow } = resolveDictConfig(savedDict));
 
@@ -363,7 +363,7 @@ async function handleWordLookup(word, event) {
 
     if ((dictUrl === "standalone" || dictUrl === "standaloneru") && !translation) {
         const wordLink = `<strong>${createClickableLink(word)}</strong>`;
-        const fallbackUrl = `${currentHost}${window.isRu ? "/ru" : ""}/?p=-kn&q=${encodeURIComponent(word)}`;
+        const fallbackUrl = `${currentHost}${window.isRu ? "/ru" : ""}/?q=${encodeURIComponent(word)}`;
         // Owner: "давай не будем писать искать в интернете, а писать искать в полной версии
         // Dict.Dhamma.Gift" — the embedded standalone dict is a small offline subset; a miss there
         // doesn't mean the word isn't in DPD at all, the FULL site (dict.dhamma.gift, same data
