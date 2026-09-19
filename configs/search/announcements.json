@@ -29,6 +29,7 @@
     {
       "id": "beta-2026-08",
       "flag": "beta-2026-08",
+      "enabled": false,
       "tag": "Beta",
       "ru": "Новая версия ещё обкатывается. Старая — на <a href=\"https://old.dhamma.gift\">old.dhamma.gift</a>",
       "en": "The new version is still settling in. The old one is at <a href=\"https://old.dhamma.gift\">old.dhamma.gift</a>"
@@ -36,7 +37,6 @@
     {
       "id": "offline-2026",
       "flag": "offline-2026",
-      "enabled": false,
       "tag": "Offline",
       "delayMs": 4000,
       "ru": "Теперь можно читать и без интернета. <a href=\"#offline-download\">Скачать офлайн-библиотеку</a>",
