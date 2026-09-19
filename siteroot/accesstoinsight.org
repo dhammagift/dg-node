@@ -1,1 +1,1 @@
-../../accesstoinsight.org
+/var/www/html/accesstoinsight.org

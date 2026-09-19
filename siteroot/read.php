@@ -1,1 +1,1 @@
-../../read.php
+/var/www/html/read.php

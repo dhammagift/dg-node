@@ -1,1 +1,1 @@
-../../theravada.ru
+/var/www/html/theravada.ru
