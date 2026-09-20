@@ -2158,7 +2158,6 @@ function getPlayerHtml() {
                 🔧 Google Voice
             </button>
             
-            <a href="/tts.php${window.location.search}" class="tts-link tts-text-link">TTS</a>
             <a class="tts-link" title='sc-voice.net' href='https://www.sc-voice.net/?src=sc#/sutta/$fromjs'>VSC</a>
             
             <span id="audio-file-link-placeholder"></span>

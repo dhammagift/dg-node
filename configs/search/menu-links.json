@@ -698,13 +698,6 @@
               "blank": true
             },
             {
-              "label": "TTS",
-              "title": "TTS Text-to-speech",
-              "desc": "Text-to-speech playback of Pali/translation text",
-              "tpl": "https://old.dhamma.gift/tts.php?q={{q}}",
-              "blank": true
-            },
-            {
               "label": "Read+",
               "title": "Read by Books or Chapters",
               "desc": "Browse and read whole books or individual chapters",
@@ -1566,13 +1559,6 @@
               "label": "old",
               "desc": "Предыдущая версия сайта",
               "href": "https://old.dhamma.gift",
-              "blank": true
-            },
-            {
-              "label": "TTS",
-              "title": "TTS Текст-в-речь",
-              "desc": "Озвучка текста пали/перевода синтезом речи",
-              "tpl": "https://old.dhamma.gift/ru/tts.php?q={{q}}",
               "blank": true
             },
             {
