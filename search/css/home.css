@@ -858,15 +858,75 @@ body.dg-busy #search-pane,
 body.dg-busy:not(.dg-state-reader) #reader-pane {
     display: none;
 }
-/* Reader while loading (cold load: dg-busy; in-app: .reader-pending): the toolbar and prev/next
-   rows stay in place with shimmer rows where the links will land; only #sutta is hidden. */
+/* Reader while loading (cold load: dg-busy; in-app: .reader-pending): only #sutta is hidden, and
+   the header keeps its place.
+
+   The first version drew ONE 300px bar per row, and it fitted worse the narrower the screen got
+   (owner, 2026-09-20). The width was never the real fault. Looking at the loaded header at 1900,
+   820 and 390 shows what is actually there: at the two larger sizes the toolbar is a single centred
+   row — six text links, six icons, the title pill — and at 390 it wraps into two rows, with the
+   prev/next row under it either way.
+
+   Most of that is NOT waiting for anything. The icons are the same for every sutta and are ready
+   before the text is; a grey bar over them replaces finished content with a promise. Three things
+   do wait, and each now gets a placeholder of its OWN shape in its OWN place:
+
+     #smart-toc-btn (the title pill) → its own box, shimmering
+     #navigation    (prev/next)      → two bars at the two ends
+
+   And one that deliberately gets NOTHING: the per-sutta edition links (Voice/4nt/DPR/BJT/SC/TBW).
+   megareader.js builds them at render time (generateThirdPartyLinks), so on a cold load there are
+   no elements to shimmer — a placeholder for them would have to be invented out of guessed widths,
+   which is exactly the fixed-pixel mistake this replaces. They stay hidden, as before; the rule
+   that hides them matters for in-app navigation, where the PREVIOUS sutta's links are still in the
+   DOM.
+
+   Nothing here is a fixed pixel width that has to be retuned per screen: each placeholder inherits
+   the box of the element it stands for, so wrapping at 390 and the single row at 1900 come out
+   right for free, and there is not one media query in it. */
 body.dg-state-reader.dg-busy #sutta, #reader-pane.reader-pending #sutta { visibility: hidden; }
-#reader-pane.reader-pending #reader-toolbar .sc-ext-link { display: none; }
-body.dg-state-reader.dg-busy #reader-toolbar::before, #reader-pane.reader-pending #reader-toolbar::before,
-body.dg-state-reader.dg-busy #navigation::before, #reader-pane.reader-pending #navigation::before {
-    content: ''; display: block; height: 13px; width: 300px; max-width: 45%; border-radius: 999px;
+
+/* Shared look. Applied to backgrounds rather than to a bar element, so a placeholder can BE the
+   element it replaces instead of standing next to it — that is what went wrong before: the old
+   ::before joined the toolbar's centred flex row as one more item and shoved the icons aside. */
+body.dg-state-reader.dg-busy #smart-toc-btn, #reader-pane.reader-pending #smart-toc-btn,
+body.dg-state-reader.dg-busy #navigation::before, #reader-pane.reader-pending #navigation::before,
+body.dg-state-reader.dg-busy #navigation::after, #reader-pane.reader-pending #navigation::after {
+    border-radius: 999px;
     background: linear-gradient(90deg, var(--dg-surface-hover) 25%, var(--dg-border) 50%, var(--dg-surface-hover) 75%);
     background-size: 200% 100%; animation: dg-tiles-skeleton 1.4s ease-in-out infinite;
+}
+/* The per-sutta edition links, wherever they currently are.
+
+   Scoping this to #reader-toolbar was not enough (owner, 2026-09-20, landscape phone): until
+   megareader.js has rendered, the links sit in their MOBILE home (#top-links-container, a row of
+   their own) and only then does buildSutta move them up into the icon row — on desktop widths,
+   decided by window.innerWidth at render time. So a wide screen showed the mobile two-row header
+   for as long as the load took, and then the header rearranged itself under the reader's eyes.
+
+   Hiding them by class rather than by container means they are simply not seen in the wrong place:
+   they appear once, already where they belong. The header keeps its height either way — the icons
+   hold the toolbar row and #navigation has its min-height. */
+body.dg-state-reader.dg-busy .sc-ext-link, #reader-pane.reader-pending .sc-ext-link { display: none; }
+body.dg-state-reader.dg-busy #top-links-container, #reader-pane.reader-pending #top-links-container { display: none; }
+/* The title pill: its own box already knows how wide it may be at each size (160px, 280px, 96px on
+   phones), so the placeholder inherits all of that. min-width is in em, so it follows the same
+   responsive font-size the pill itself uses. */
+body.dg-state-reader.dg-busy #smart-toc-btn, #reader-pane.reader-pending #smart-toc-btn {
+    color: transparent; border-color: transparent; pointer-events: none; min-width: 7em;
+}
+body.dg-state-reader.dg-busy #smart-toc-btn *, #reader-pane.reader-pending #smart-toc-btn * {
+    visibility: hidden;
+}
+/* prev/next: two bars at the two ends, exactly where the two links sit. The row is laid out here
+   only while loading — the real links are display:none below, so this governs nothing but the
+   placeholders and leaves the loaded layout (legacy reader CSS) alone. */
+body.dg-state-reader.dg-busy #navigation, #reader-pane.reader-pending #navigation {
+    display: flex; align-items: center; justify-content: space-between;
+}
+body.dg-state-reader.dg-busy #navigation::before, #reader-pane.reader-pending #navigation::before,
+body.dg-state-reader.dg-busy #navigation::after, #reader-pane.reader-pending #navigation::after {
+    content: ''; display: block; flex: none; height: 13px; width: min(150px, 38%);
 }
 body.dg-state-reader #navigation { min-height: 34px; }
 body.dg-state-reader.dg-busy #navigation a, #reader-pane.reader-pending #navigation a { display: none; }
