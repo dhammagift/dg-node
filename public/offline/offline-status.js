@@ -689,8 +689,8 @@
         showNotice(
             ru ? 'Офлайн-библиотека' : 'Offline library',
             ru ? 'Загрузка отложена' : 'Download postponed',
-            ru ? 'Приложение работает и так — тексты открываются из интернета. Скачать библиотеку для чтения без сети можно в любой момент: Настройки → Офлайн-библиотека → Скачать.'
-               : 'The app works as it is — texts open over the network. You can download the library for reading without a connection whenever you like: Settings → Offline library → Download.',
+            ru ? 'Приложение работает через интернет. Чтобы скачать офлайн-библиотеку: Настройки → Офлайн-библиотека → Скачать.'
+               : 'The app works over the internet. To download the offline library: Settings → Offline library → Download.',
             ru ? 'Хорошо' : 'OK'
         );
     });
