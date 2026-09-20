@@ -688,10 +688,10 @@
         var ru = isRuLang();
         showNotice(
             ru ? 'Офлайн-библиотека' : 'Offline library',
-            ru ? 'Хорошо, не скачиваем' : 'Fine — not downloading',
-            ru ? 'Больше спрашивать не будем. Когда захотите читать без интернета, тексты можно скачать в любой момент: Настройки → Офлайн-библиотека → Скачать.'
-               : 'You will not be asked again. Whenever you do want to read without a connection, the texts can be downloaded at any time: Settings → Offline library → Download.',
-            ru ? 'Понятно' : 'Got it'
+            ru ? 'Загрузка отложена' : 'Download postponed',
+            ru ? 'Приложение работает и так — тексты открываются из интернета. Скачать библиотеку для чтения без сети можно в любой момент: Настройки → Офлайн-библиотека → Скачать.'
+               : 'The app works as it is — texts open over the network. You can download the library for reading without a connection whenever you like: Settings → Offline library → Download.',
+            ru ? 'Хорошо' : 'OK'
         );
     });
 
