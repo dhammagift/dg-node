@@ -42,16 +42,8 @@
         // (offline-status.js renders it on `dg:need-consent`, with the size from the published
         // manifest). Where the Network Information API is missing (iOS Safari), nothing is asked:
         // guessing "you are probably on cellular" would train the reader to dismiss dialogs.
-        // Always, not only on a metered connection (owner, 2026-09-20). The app side already asks
-        // every time (dg-app-full/src/platform.js); this was the half that still let half a
-        // gigabyte start on its own the moment the connection looked cheap. Wi-Fi is not consent:
-        // it says the bytes are affordable, not that the reader wanted them, and "affordable" is
-        // the browser's guess about a laptop tethered to a phone.
-        //
-        // Nor is this redundant with the Download button in Settings. The button is a request; the
-        // sheet is the first place the two real figures appear — the archive that crosses the
-        // connection and the database it unpacks into, both read from the published manifest.
         askConsent: function (info) {
+            if (!onMeteredConnection()) return Promise.resolve(true);
             return manifestSizes(info).then(function (sizes) {
                 return new Promise(function (resolve) {
                     window.dispatchEvent(new CustomEvent('dg:need-consent', {
@@ -61,6 +53,16 @@
             });
         },
     };
+
+    // navigator.connection (Network Information API): Chrome/Android implement `type`, which is the
+    // only honest signal here — `effectiveType: '4g'` is true of Wi-Fi as well, so keying on it
+    // would ask the wrong readers. saveData is a direct request from the reader, so it always asks.
+    function onMeteredConnection() {
+        var c = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+        if (!c) return false;
+        if (c.saveData) return true;
+        return c.type === 'cellular';
+    }
 
     // The real sizes from the published manifest (a few hundred bytes): bytes_gz is the archive
     // that crosses the connection, bytes the database it unpacks into. app.js calls askConsent({})
