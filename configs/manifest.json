@@ -95,20 +95,6 @@
   },
   "shortcuts": [
     {
-      "name": "Table of Contents",
-      "url": "/toc",
-      "icons": [
-        {
-          "src": "/assets/img/maniIcon.png",
-          "type": "image/png",
-          "sizes": "192x192",
-          "purpose": "any"
-        }
-      ],
-      "short_name": "Table of Contents",
-      "description": "Table of contents of the canon"
-    },
-    {
       "name": "Favorites & History",
       "short_name": "Favorites & History",
       "description": "Favorites and search history",
@@ -121,6 +107,20 @@
           "purpose": "any"
         }
       ]
+    },
+    {
+      "name": "Table of Contents",
+      "url": "/toc",
+      "icons": [
+        {
+          "src": "/assets/img/maniIcon.png",
+          "type": "image/png",
+          "sizes": "192x192",
+          "purpose": "any"
+        }
+      ],
+      "short_name": "Table of Contents",
+      "description": "Table of contents of the canon"
     },
     {
       "name": "Memo",
