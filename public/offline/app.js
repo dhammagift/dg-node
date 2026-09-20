@@ -638,8 +638,20 @@
                 return download(kind);
             }
             // "Not now" or ×: the reader's own choice — no automatic restart on the next visit.
+            //
+            // Announced from HERE, the one funnel every refusal passes through (the probe's
+            // auto-start, Settings' button, another tab's deferred request). The two used to
+            // disagree: "not now" was announced further up in probe() and the card's × was not
+            // announced at all — so the platform remembered one and not the other, the next launch
+            // re-armed the auto-download intent, and on Wi-Fi askConsent answers yes silently. The
+            // transfer simply started again, every single launch, without a question being asked
+            // (owner: "это же какой-то как вирус").
+            //
+            // Listeners: dg-app-full's platform.js (stops re-arming the intent) and
+            // offline-status.js (says once where the download lives from now on).
             if (e && /declined|cancelled/.test(e.message || '')) {
                 try { localStorage.removeItem(STARTED_KEY); } catch (err) { /* private mode */ }
+                try { window.dispatchEvent(new CustomEvent('dg:download-declined')); } catch (err) { /* ignore */ }
             }
             throw e;
         }).finally(function () {
@@ -840,16 +852,11 @@
             }
             // A reader pressing × — or saying "not now" to the platform's consent dialog (the
             // native app's askConsent) — is not a failure: it must not raise the "could not
-            // download" toast, and it must not reject `dgOfflineLibrary`. The cancel already
-            // answered with its own message; the decline is announced so the platform can
-            // remember it (dg-app-full's platform.js listens for dg:download-declined).
-            if (e && /cancelled/.test(e.message || '')) {
-                log('download cancelled by the reader');
-                return null;
-            }
-            if (e && /declined/.test(e.message || '')) {
-                log('download declined by the reader');
-                try { window.dispatchEvent(new CustomEvent('dg:download-declined')); } catch (err) { /* ignore */ }
+            // download" toast, and it must not reject `dgOfflineLibrary`. Both are already
+            // announced by download()'s own catch, which is the single place that sees every
+            // refusal; announcing again here would show the reader the same notice twice.
+            if (e && /declined|cancelled/.test(e.message || '')) {
+                log('download refused by the reader');
                 return null;
             }
             // A failed open of a copy that IS there is a real fault the reader should hear about

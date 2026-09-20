@@ -674,6 +674,69 @@
         });
     }
 
+    /* Отказ — это тоже ответ, и его надо подтвердить словами, а не молчанием.
+       Раньше после «Не сейчас» не происходило ничего: ни объяснения, ни следа. Человек делал
+       вывод, что кнопка не сработала, а на следующем запуске приложение спрашивало снова (а на
+       Wi-Fi — вообще не спрашивало, просто начинало качать: см. app.js, download()). Теперь
+       app.js гасит намерение на ЛЮБОМ отказе и сообщает сюда, а здесь остаётся сказать главное:
+       больше не спросим, и вот где это лежит, когда понадобится.
+
+       Тот же лист, что и у двух вопросов выше (та же разметка #dgConsent/.dgc-*, та же анимация),
+       но с одной кнопкой: здесь нечего выбирать, здесь надо кивнуть. Работает одинаково в PWA,
+       Android и iOS, потому что это общий офлайн-слой, а не оболочка. */
+    window.addEventListener('dg:download-declined', function () {
+        var ru = isRuLang();
+        showNotice(
+            ru ? 'Офлайн-библиотека' : 'Offline library',
+            ru ? 'Хорошо, не скачиваем' : 'Fine — not downloading',
+            ru ? 'Больше спрашивать не будем. Когда захотите читать без интернета, тексты можно скачать в любой момент: Настройки → Офлайн-библиотека → Скачать.'
+               : 'You will not be asked again. Whenever you do want to read without a connection, the texts can be downloaded at any time: Settings → Offline library → Download.',
+            ru ? 'Понятно' : 'Got it'
+        );
+    });
+
+    function showNotice(eyebrow, title, body, ok) {
+        // Второй лист поверх первого — это и есть «оно опять» глазами человека. Такого не бывает
+        // в нормальном потоке (лист согласия уже закрылся к этому моменту), но проверка дешевле,
+        // чем разбираться потом, почему экран залип под двумя оверлеями.
+        if (document.getElementById('dgConsent')) return;
+        var previouslyFocused = document.activeElement;
+        var overlay = document.createElement('div');
+        overlay.id = 'dgConsent';
+        overlay.innerHTML =
+            '<div id="dgConsentSheet" role="alertdialog" aria-modal="true"' +
+                 ' aria-labelledby="dgNoticeTitle" aria-describedby="dgNoticeBody">' +
+              '<div class="dgc-eyebrow">' + eyebrow + '</div>' +
+              '<p class="dgc-title" id="dgNoticeTitle">' + title + '</p>' +
+              '<p class="dgc-body" id="dgNoticeBody">' + body + '</p>' +
+              '<div class="dgc-actions">' +
+                '<button type="button" class="dgc-primary">' + ok + '</button>' +
+              '</div>' +
+            '</div>';
+        document.body.appendChild(overlay);
+        requestAnimationFrame(function () { overlay.classList.add('show'); });
+
+        var button = overlay.querySelector('button');
+        var settled = false;
+        function close() {
+            if (settled) return;
+            settled = true;
+            document.removeEventListener('keydown', onKey, true);
+            overlay.classList.remove('show');
+            setTimeout(function () { overlay.remove(); }, 200);
+            if (previouslyFocused && previouslyFocused.focus) previouslyFocused.focus();
+        }
+        function onKey(ev) {
+            if (ev.key === 'Escape') { ev.preventDefault(); close(); return; }
+            // Одна кнопка — фокусу некуда уходить, и он не должен выйти за лист.
+            if (ev.key === 'Tab') { ev.preventDefault(); button.focus(); }
+        }
+        button.addEventListener('click', close);
+        overlay.addEventListener('click', function (ev) { if (ev.target === overlay) close(); });
+        document.addEventListener('keydown', onKey, true);
+        button.focus();
+    }
+
     // Owner: "добавь спиннер даже на открытие текстов, чтобы юзер понимал что уже нажал" — a
     // small persistent dot in the corner, not a bubble/toast: text opens are usually fast (see
     // app.js's withLoadingEvent + the index fix in build-offline-db.js), so this should read as
