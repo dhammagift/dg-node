@@ -525,7 +525,11 @@
     });
 
     // app.js dispatches this (and awaits the resolve it carries) only when a download is
-    // actually needed AND the connection isn't Wi-Fi — never on a fully-cached return visit.
+    // actually needed — never on a fully-cached return visit. The site/PWA's own platform.js
+    // still skips it on Wi-Fi (askConsent there asks only on a metered connection); the native
+    // app's platform.js asks every time, Wi-Fi included — App Store guideline 4.2.3(ii) requires
+    // disclosing the size and prompting before a first-launch download regardless of connection.
+    // So this sheet's copy must not claim anything about which kind of connection is active.
     //
     // The figure comes from the published manifest, which app.js fetches before asking — so the
     // dialog states the file that is actually about to cross the connection, not a number compiled
@@ -564,10 +568,10 @@
                   '</p>' +
                   '<p class="dgc-body" id="dgConsentBody">' +
                     (gzMb
-                        ? (ru ? 'Скачивается сжатый архив, на устройстве он распаковывается в базу. Сейчас соединение не через Wi-Fi; загрузку можно отложить и запустить позже в Настройках.'
-                              : 'A compressed archive downloads and unpacks into the database on the device. You are not on Wi-Fi right now; you can postpone this and start it later from Settings.')
-                        : (ru ? 'Сейчас соединение не через Wi-Fi; загрузку можно отложить и запустить позже в Настройках.'
-                              : 'You are not on Wi-Fi right now; you can postpone this and start it later from Settings.')) +
+                        ? (ru ? 'Скачивается сжатый архив, на устройстве он распаковывается в базу. Загрузку можно отложить и запустить позже в Настройках.'
+                              : 'A compressed archive downloads and unpacks into the database on the device. You can postpone this and start it later from Settings.')
+                        : (ru ? 'Загрузку можно отложить и запустить позже в Настройках.'
+                              : 'You can postpone this and start it later from Settings.')) +
                   '</p>' +
                   '<dl class="dgc-figures">' +
                     (gzMb
