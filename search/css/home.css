@@ -3665,6 +3665,18 @@ body.dg-state-results #results-toolbar .btn img, body.dg-state-results #results-
 body.dg-state-results .resultheader { max-width: 880px; margin: 0 auto; padding: 24px 0 18px; column-gap: 10px; }
 body.dg-state-results .rh-keyword { font-size: 21px; font-weight: 600; letter-spacing: -0.01em; color: var(--dg-text); }
 body.dg-state-results .rh-stats { font-size: 13px; color: var(--dg-text-muted); }
+/* "truncated output" pill on the results header — a partial regex answer, not an error: muted
+   text in a dashed outline, so it is readable in both themes and does not shout next to the
+   keyword. Wraps instead of nowrap because the header is one line on desktop but narrow on phones. */
+body.dg-state-results .rh-regex-limited {
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--dg-text-muted);
+    border: 1px dashed var(--dg-border-strong);
+    border-radius: 999px;
+    padding: 1px 9px;
+    max-width: 100%;
+}
 body.dg-state-results .resultheader .scope-info-star { font-size: 13px; color: var(--dg-text-muted); }
 body.dg-state-results .resultheader #variants-hint { font-size: 13px; }
 body.dg-state-results .resultheader #variants-hint a { color: var(--dg-tblue); }

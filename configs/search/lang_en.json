@@ -227,7 +227,8 @@
     "scopeGroupNikayas": "4 Nikāyas",
     "scopeGroupKn": "Khuddaka Nikāya",
     "scopeGroupVinaya": "Vinaya",
-    "scopeGroupOther": "Other"
+    "scopeGroupOther": "Other",
+    "regexTruncated": "output truncated — not all matches are shown (first {n} rows scanned). Narrow the pattern or the scope."
   },
   "scopeNames": {
     "dn": "Dīgha Nikāya",

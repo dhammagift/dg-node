@@ -3394,16 +3394,47 @@ $(document).ready(function() {
     // параллельно, каждый обновляет таблицу по мере готовности — не хуже прежнего для
     // маленьких результатов (один чанк = ровно то же, что было), для больших — сутты
     // появляются волнами вместо одного зависания в конце.
-    var ENRICH_CHUNK_SIZE = 500;
+    var ENRICH_CHUNK_SIZE = 250;
+
+    // How many /search/enrich requests may be in flight at once while the REST of the result set
+    // is filled in. Used to be "all chunks at once": their arrival order was arbitrary, so the
+    // pages next to the visible one landed interleaved with the tail of the result set, and each
+    // arrival rebuilt the table. A few at a time keeps the wire busy while making the order mean
+    // something — chunk N+1 cannot land before chunk N was even asked for. Measured on "the"
+    // (3994 suttas, 8 chunks): 2 in flight finished the set noticeably later than the old
+    // all-at-once burst; 3 is the compromise this box handles.
+    var ENRICH_PARALLEL = 4;
+
+    // Redraw the table at most once per animation frame, and only when a landed batch touched a
+    // row that is currently on screen — several chunks can resolve in the same frame, and each
+    // draw re-renders every visible cell (that is the flicker the owner sees).
+    var enrichRenderHandle = null;
+    function scheduleEnrichRender() {
+        if (enrichRenderHandle !== null) return;
+        enrichRenderHandle = (window.requestAnimationFrame || function (fn) { return setTimeout(fn, 16); })(function () {
+            enrichRenderHandle = null;
+            if (reportMode !== 'suttas' || !currentTable) return;
+            if (window.DgSearchRender && window.DgSearchRender.refreshEnriched) window.DgSearchRender.refreshEnriched();
+            else renderCurrentReport();
+        });
+    }
 
     function enrichChunk(chunkIds) {
         return fetch(buildUrl('/search/enrich', '&ids=' + chunkIds.map(encodeURIComponent).join(',')))
             .then(function (r) { return r.json(); })
             .then(function (json) {
                 chunkIds.forEach(function (id) { pendingIds.delete(id); });
+                var visible = visiblePageIds();
+                var touchedVisible = false;
                 Object.keys(json.data).forEach(function (id) {
                     Object.assign(lastSearchJson.data[id], json.data[id]);
+                    // The flag the column render()s read (search-render.js): true = "this row has
+                    // real quotes", so ANY page it is paged onto renders them instead of the
+                    // "Loading…" stub. It has to be set on the shared row object and not only at
+                    // rebuild time — that is what makes off-screen pages correct.
+                    lastSearchJson.data[id].__enriched = true;
                     enrichedIds.add(id);
+                    if (visible.indexOf(id) !== -1) touchedVisible = true;
                 });
                 // /search/enrich's own metadata/wordReport/variantSegments are scoped to just
                 // THIS chunk's ids (dg-light.js's buildMatchSkeleton with restrictToIds filters
@@ -3413,7 +3444,17 @@ $(document).ready(function() {
                 // fast=1 response already has the complete, final totalFiles/totalMatches/
                 // wordReport/variantSegments for the WHOLE result set (built straight from the
                 // grep pass, not per-file enrichment) — nothing here needs to touch them again.
-                if (reportMode === 'suttas') renderCurrentReport();
+                //
+                // Every batch has to reach DataTables' search cache (quotes are what the Filter
+                // box searches, and a quote that only exists off-screen has to be findable too),
+                // but only a batch that changed a VISIBLE row needs the table redrawn. So:
+                // off-screen → invalidate only (no draw, no flicker, Filter still correct);
+                // on-screen → invalidate + one coalesced draw.
+                if (touchedVisible) {
+                    scheduleEnrichRender();
+                } else if (window.DgSearchRender && window.DgSearchRender.invalidateEnriched) {
+                    window.DgSearchRender.invalidateEnriched();
+                }
             })
             .catch(function (error) {
                 chunkIds.forEach(function (id) { pendingIds.delete(id); });
@@ -3431,6 +3472,55 @@ $(document).ready(function() {
             chunkPromises.push(enrichChunk(toFetch.slice(i, i + ENRICH_CHUNK_SIZE)));
         }
         return Promise.all(chunkPromises);
+    }
+
+    // The ids still to enrich, ordered by how far their page is from the visible one: the visible
+    // page first, then one page forward, one page back, two forward, two back… The order the rows
+    // are DISPLAYED in comes from DataTables' own sort (rows({order:'current'})), which is not the
+    // order the server sent them in (sortSuttaResults: category, then mr) — "next id in the JSON"
+    // is not "next row on screen".
+    function remainingIdsByPageDistance() {
+        if (!currentTable) return Object.keys(lastSearchJson.data);
+        var all = currentTable.rows({ order: 'current' }).data().toArray().map(function (r) { return r.sutta_id; });
+        var info = currentTable.page.info();
+        var size = info.length || 10;
+        var seen = {};
+        var out = [];
+        function pushPage(p) {
+            var from = p * size;
+            var to = Math.min(from + size, all.length);
+            for (var i = from; i < to; i++) {
+                if (all[i] && !seen[all[i]]) { seen[all[i]] = 1; out.push(all[i]); }
+            }
+        }
+        pushPage(info.page);
+        for (var d = 1; d < info.pages; d++) {
+            if (info.page + d < info.pages) pushPage(info.page + d);
+            if (info.page - d >= 0) pushPage(info.page - d);
+        }
+        // Anything the table is not showing (filtered out by the Filter box, or a row the sort
+        // cannot see) still has to be enriched — appended, in server order.
+        Object.keys(lastSearchJson.data).forEach(function (id) { if (!seen[id]) { seen[id] = 1; out.push(id); } });
+        return out;
+    }
+
+    // Chunks of the ordered list, ENRICH_PARALLEL requests in flight. enrichChunk filters ids that
+    // are already enriched or in flight itself, so an overlap with the visible-page request is a
+    // no-op rather than a duplicate fetch.
+    function enrichOrderedIds(ids) {
+        var toFetch = ids.filter(function (id) { return !enrichedIds.has(id) && !pendingIds.has(id); });
+        var chunks = [];
+        for (var i = 0; i < toFetch.length; i += ENRICH_CHUNK_SIZE) chunks.push(toFetch.slice(i, i + ENRICH_CHUNK_SIZE));
+        var next = 0;
+        function worker() {
+            if (next >= chunks.length) return Promise.resolve();
+            var chunk = chunks[next++];
+            chunk.forEach(function (id) { pendingIds.add(id); });
+            return enrichChunk(chunk).then(worker);
+        }
+        var running = [];
+        for (var w = 0; w < Math.min(ENRICH_PARALLEL, chunks.length); w++) running.push(worker());
+        return Promise.all(running);
     }
 
     // TODO.md поиск п.5: запускается ровно один раз — либо сразу после фазы 1, если открыт
@@ -3454,7 +3544,7 @@ $(document).ready(function() {
         enrichmentStarted = true;
 
         backgroundLoadPromise = enrichIds(visiblePageIds())
-            .then(function () { return enrichIds(Object.keys(lastSearchJson.data)); })
+            .then(function () { return enrichOrderedIds(remainingIdsByPageDistance()); })
             .catch(function (error) { console.error('Ошибка догрузки:', error); });
 
         // Таблица, отрисованная до этого момента, ещё не получила слушатель draw (см. коммент
@@ -3880,7 +3970,7 @@ $(document).ready(function() {
         if (msgDiv) msgDiv.classList.add('d-none');
         let messageKey = json.metadata.tooShort ? 'results.tooShortMessage'
             : (json.metadata.totalFiles === 0 ? 'results.noResultsMessage' : null);
-        if (messageKey) {
+        if (messageKey || (json.metadata.regex && json.metadata.regex.truncated)) {
             // Guards against a slower-to-resolve PREVIOUS render's fetchLangConfig appending its
             // (stale/wrong-language) span into a header that $head.empty() + a NEWER call have
             // already repopulated — renderResultHeader can re-run on a live language switch.
@@ -3888,10 +3978,26 @@ $(document).ready(function() {
             let headerRenderId = renderResultHeader._callId;
             fetchLangConfig(window.siteLanguage).then(function (config) {
                 if (renderResultHeader._callId !== headerRenderId) return;
-                let msgSpan = document.createElement('span');
-                msgSpan.className = 'rh-stats';
-                msgSpan.textContent = tFrom(config, messageKey, '');
-                $head[0].appendChild(msgSpan);
+                if (messageKey) {
+                    let msgSpan = document.createElement('span');
+                    msgSpan.className = 'rh-stats';
+                    msgSpan.textContent = tFrom(config, messageKey, '');
+                    $head[0].appendChild(msgSpan);
+                }
+                // A regex answer can be partial: the server caps the scan (maxRows in
+                // configs/search/regex-limits.json) and flags it as metadata.regex.truncated.
+                // Without this pill the reader sees "2175 texts" and never learns that more
+                // matches exist — the silent half-answer these limits exist to avoid. Goes through
+                // fetchLangConfig and not dgT() on purpose: the fast search answer can land before
+                // dhamma-i18n.js has its config, and the notice would then sit in English on a
+                // Russian page.
+                if (json.metadata.regex && json.metadata.regex.truncated) {
+                    let lim = document.createElement('span');
+                    lim.className = 'rh-regex-limited';
+                    lim.textContent = tFrom(config, 'results.regexTruncated', 'output truncated — not all matches are shown (first {n} rows scanned). Narrow the pattern or the scope.')
+                        .replace('{n}', Number(json.metadata.regex.scanned || 0).toLocaleString(window.siteLanguage === 'ru' ? 'ru-RU' : 'en-US'));
+                    $head[0].appendChild(lim);
+                }
             });
         }
     }

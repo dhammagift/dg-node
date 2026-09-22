@@ -1366,11 +1366,35 @@ window.DgSearchRender = (function () {
         if (wordTableApi) wordTableApi.draw(false);
     }
 
+    // Called after /search/enrich lands a batch of rows. Two different problems, two calls — see
+    // enrichChunk in search/index.html for which one is used when:
+    //
+    // invalidateEnriched(): the row OBJECTS now hold real quotes, but DataTables still has the
+    // search cache it built from the phase-1 stubs, so without this the Filter box cannot find a
+    // word that only occurs in a quote. invalidate() drops that cache for every row so the next
+    // filter/paging re-reads the real text. Deliberately WITHOUT draw(): nothing on screen has to
+    // change for an off-screen batch, and drawing on every chunk is the flicker.
+    //
+    // refreshEnriched(): same, plus draw(false) — for a batch that touched a row which is ON
+    // SCREEN right now, i.e. the one case where something visible actually changed.
+    function invalidateEnriched() {
+        if (!suttaTableApi) return;
+        suttaTableApi.rows().invalidate();
+    }
+
+    function refreshEnriched() {
+        if (!suttaTableApi) return;
+        suttaTableApi.rows().invalidate();
+        suttaTableApi.draw(false);
+    }
+
     return {
         buildDataTable: buildDataTable,
         buildWordDataTable: buildWordDataTable,
         buildVariantsReport: buildVariantsReport,
         availableTranslators: availableTranslators,
+        invalidateEnriched: invalidateEnriched,
+        refreshEnriched: refreshEnriched,
         resetTablesForLanguageChange: resetTablesForLanguageChange,
         redraw: redraw
     };

@@ -273,7 +273,8 @@
     "scopeGroupNikayas": "4 Никаи",
     "scopeGroupKn": "Кхуддака Никая",
     "scopeGroupVinaya": "Виная",
-    "scopeGroupOther": "Прочее"
+    "scopeGroupOther": "Прочее",
+    "regexTruncated": "вывод обрезан — показаны не все совпадения (просмотрено первых {n} строк). Сузьте шаблон или область поиска."
   },
   "scopeNames": {
     "dn": "Дигха Никая",
