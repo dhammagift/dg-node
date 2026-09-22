@@ -141,42 +141,9 @@ img[data-size="large"] {
   height: 48px;
 }
 
-/* Скроллбары для WebKit (Chrome, Safari, Edge) */
-        ::-webkit-scrollbar {
-          width: 6px;
-          height: 6px;
-          background: transparent;
-        }
+/* Scrollbar styling moved to public/overrides/css/extrastyles.css — one rule for the whole
+   site instead of every page picking whichever of these competing blocks loaded last. */
 
-        ::-webkit-scrollbar-track {
-          background: transparent;
-        }
-
-        ::-webkit-scrollbar-thumb {
-          background: rgba(136, 136, 136, 0.5);
-          border-radius: 10px;
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-          background: rgba(136, 136, 136, 0.8);
-        }
-
-        /* Темная тема */
-        [data-theme="dark"] ::-webkit-scrollbar-thumb,
-        .dark ::-webkit-scrollbar-thumb {
-          background: rgba(150, 150, 150, 0.4);
-        }
-
-        [data-theme="dark"] ::-webkit-scrollbar-thumb:hover,
-        .dark ::-webkit-scrollbar-thumb:hover {
-          background: rgba(150, 150, 150, 0.7);
-        }
-
-        /* Тонкий скроллбар для Firefox */
-        html {
-          scrollbar-width: thin;
-        }   
-        
                 .resize-handle {
             position: absolute;
             right: 0;
