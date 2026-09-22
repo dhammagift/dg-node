@@ -13,7 +13,20 @@
 const { McpServer } = require('@modelcontextprotocol/sdk/server/mcp.js');
 const { StreamableHTTPServerTransport } = require('@modelcontextprotocol/sdk/server/streamableHttp.js');
 const { z } = require('zod');
-const { buildFastResponse, getSuttaBaseData, buildTextDataFromBase } = require('./search-core');
+const { buildFastResponse, getSuttaBaseData, buildTextDataFromBase, isRegexKeyword } = require('./search-core');
+// Regex queries need the worker too — see core/regex-runner.js. The MCP route has no per-IP
+// budget (no client address reaches here); the worker's single slot and deadline are what bound it.
+const regexRunner = require('./regex-runner.js');
+
+async function fastAnswer(query, scope, exact, langs) {
+    if (!isRegexKeyword(query)) return { result: await buildFastResponse(query, scope, exact, langs, 0, 0) };
+    const outcome = await regexRunner.runJob('fast', { keyword: query, scope, exact, langs, lb: 0, la: 0 });
+    if (outcome.ok) return { result: outcome.result };
+    if (outcome.unavailable) return { result: await buildFastResponse(query, scope, exact, langs, 0, 0) }; // bounded fallback
+    if (outcome.timedOut) return { error: 'Regex search did not finish in time — narrow the pattern or the scope.' };
+    if (outcome.busy) return { error: 'Another regex search is still running, try again in a moment.' };
+    return { error: outcome.message || 'Regex search failed.' };
+}
 
 function getServer() {
     const server = new McpServer({ name: 'dg-node', version: '1.0.0' });
@@ -27,8 +40,9 @@ function getServer() {
             exact: z.boolean().optional().describe('Whole-word match only. Default: false.'),
         },
     }, async ({ query, scope, langs, exact }) => {
-        const result = await buildFastResponse(query, scope || 'default', !!exact, langs && langs.length ? langs : ['en'], 0, 0);
-        return { content: [{ type: 'text', text: JSON.stringify(result) }] };
+        const answer = await fastAnswer(query, scope || 'default', !!exact, langs && langs.length ? langs : ['en']);
+        const body = JSON.stringify(answer.error ? { error: answer.error } : answer.result);
+        return { content: [{ type: 'text', text: body }], isError: !!answer.error };
     });
 
     server.registerTool('get_text', {

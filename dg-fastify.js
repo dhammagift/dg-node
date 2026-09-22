@@ -49,6 +49,21 @@ const { nonQueryReason } = require('./core/query-guard.js');
 const { searchHybrid } = require('./core/tipitaka-mcp-client.js');
 const { verifyCandidates, lookupWord } = require('./core/dpd-lookup.js');
 const { mcpHandler } = require('./core/mcp-server.js');
+// Regex-keyword searches run in a worker thread with a hard deadline — see core/regex-runner.js
+// and core/regex-worker.js for why (one pattern used to block the whole HTTP process).
+const regexRunner = require('./core/regex-runner.js');
+// Limits for that: configs/search/regex-limits.json, read once at startup (a live worker keeps the
+// values it was spawned with, so a change needs a restart).
+const REGEX_LIMITS = (() => {
+    try {
+        const cfg = JSON.parse(fsSync.readFileSync(path.join(__dirname, 'configs', 'search', 'regex-limits.json'), 'utf8'));
+        delete cfg._comment;
+        return { ...regexRunner.DEFAULTS, ...cfg };
+    } catch (err) {
+        console.warn('regex-limits.json is unreadable, using defaults:', err.message);
+        return { ...regexRunner.DEFAULTS };
+    }
+})();
 
 // The search/reader core lives in core/search-core.js — see that file for why. Destructured
 // here so the routes below read exactly as they did when the functions were declared in this
@@ -63,14 +78,9 @@ const {
     TOC_CODES,
     TRANSLATOR_PRIORITY,
     buildFastResponse,
-    buildMatchSkeleton,
     buildSearchResponse,
     buildTextDataFromBase,
-    buildWordReport,
-    buildWordReportFast,
-    enrichSuttaBatch,
     filterPreferredTranslators,
-    findVariantSegments,
     getFullTextData,
     getSuttaBaseData,
     getSuttaMeta,
@@ -88,7 +98,15 @@ const {
 
 // bodyLimit mirrors the express.text({limit:'10mb'}) on /assets/lbl-save.php below — Fastify's
 // body limit is instance-wide, not per-route, so it's set here instead.
-const app = Fastify({ bodyLimit: 10 * 1024 * 1024 });
+// trustProxy: this process sits behind apache (127.0.0.1) behind nginx (see the IP list in
+// configs/search/regex-limits.json → rateLimit.trustProxy). Without it req.ip is apache's address
+// for every visitor and the per-IP regex budget becomes one shared budget. An explicit list of the
+// proxy addresses, never `true`/a hop count: with those a client could rotate X-Forwarded-For to
+// escape the limit, because the leftmost entry is taken on faith.
+const app = Fastify({
+    bodyLimit: 10 * 1024 * 1024,
+    trustProxy: REGEX_LIMITS.rateLimit ? REGEX_LIMITS.rateLimit.trustProxy || false : false,
+});
 
 // Legacy reader URLs -> the SPA reader. External sites still link to them (SuttaCentral:
 // "find.dhamma.gift/read/?q=MN1"), so they redirect rather than disappear. Only the pages
@@ -1006,7 +1024,9 @@ if (!fsSync.existsSync(SEARCH_DB_PATH)) {
 }
 const searchDb = new DatabaseSync(SEARCH_DB_PATH, { readOnly: true });
 // Hand the core the two things it cannot reach on its own now that it lives in a module.
-searchCore.init({ searchDb, DG_OFFLINE });
+searchCore.init({ searchDb, DG_OFFLINE, limits: REGEX_LIMITS });
+// The worker gets its own handle on the same file plus the same limits (workerData, at spawn).
+regexRunner.configure({ dbPath: SEARCH_DB_PATH, dgOffline: DG_OFFLINE, limits: REGEX_LIMITS });
 // mmap is deliberately left off (SQLite's default). Mapping the file makes every page the query
 // touches count towards this process's RSS, which measured ~500MB higher for no useful speed —
 // the pages are in the OS page cache either way, and read() reaches them just as fast.
@@ -1949,6 +1969,68 @@ function withSuggestions(body, keyword) {
     return body;
 }
 
+/* ---------------------------------------------------------------------------
+   Regex-keyword searches (q contains a regex metacharacter) — see
+   configs/search/regex-limits.json for every number used here.
+
+   Why they are not answered like every other search: such a keyword cannot use the FTS index, so
+   it scans rows of dg.db with a compiled RegExp, and a pattern like "(.+)+#" backtracks
+   exponentially inside a single row — nothing in-process can interrupt that. Measured before this
+   change: "d.*" blocked the whole HTTP process for 11s and took ~1GB of RSS, "(.+)+#" never
+   returned. So the job runs in a worker (core/regex-runner.js) that the parent can terminate, the
+   pattern must carry a real literal ("duk") which also prefilters rows through FTS, and each IP
+   gets a small budget.
+
+   Answers: 400 bad/too-short-pattern, 429 over budget or both slots busy, 503 over the deadline.
+   Never a silent empty answer, and never a blocked event loop. */
+
+const regexRate = new Map(); // ip -> { count, resetAt } — only for the /search entry points
+
+function regexRateLimited(ip) {
+    const cfg = REGEX_LIMITS.rateLimit || {};
+    if (cfg.enabled === false) return false;
+    const windowMs = Math.max(1000, Number(cfg.windowMs) || 60000);
+    const max = Math.max(1, Number(cfg.max) || 10);
+    const maxIps = Math.max(1, Number(cfg.maxTrackedIps) || 10000);
+    const key = String(ip || 'unknown');
+    const now = Date.now();
+    const entry = regexRate.get(key);
+    if (!entry || entry.resetAt <= now) {
+        if (regexRate.size >= maxIps) {
+            for (const [k, v] of regexRate) if (v.resetAt <= now) regexRate.delete(k);
+            // ponytail: a full map stops limiting instead of growing — the worker deadline is the
+            // real protection, this counter is only there to stop a loop of patterns.
+            if (regexRate.size >= maxIps) return false;
+        }
+        regexRate.set(key, { count: 1, resetAt: now + windowMs });
+        return false;
+    }
+    entry.count++;
+    if (entry.count > max) {
+        // One line per over-budget address: the only way to see WHO hits the limit, since the
+        // app never logs request addresses anywhere else.
+        if (entry.count === max + 1) console.warn(`[regex] rate limit hit by ${key}`);
+        return true;
+    }
+    return false;
+}
+
+// Runs one regex job in the worker. Returns { result }, or { status, error } to answer with, or
+// null when the worker is unavailable — the caller then runs the same builder in-process, which
+// is still bounded by the literal prefilter, the row cap and the scan deadline.
+async function regexSearch(kind, keyword, params) {
+    const outcome = await regexRunner.runJob(kind, { keyword, ...params });
+    if (outcome.ok) return { result: outcome.result };
+    if (outcome.unavailable) {
+        console.warn('[regex] worker unavailable, falling back to in-process:', outcome.message);
+        return null;
+    }
+    if (outcome.badRequest) return { status: 400, error: outcome.message };
+    if (outcome.busy) return { status: 429, error: 'Another regex search is still running, try again in a moment.' };
+    if (outcome.timedOut) return { status: 503, error: `Regex search did not finish within ${REGEX_LIMITS.timeoutMs}ms — narrow the pattern or the scope.` };
+    return { status: 500, error: 'Regex search failed.' };
+}
+
 async function searchHandler(req, res) {
     // req.params.keyword — заход через /search/:keyword (путь); req.query.q — через /search?q=.
     // Express 5 отдаёт req.query геттером без сохранённого состояния (заново парсит на каждое
@@ -1971,15 +2053,30 @@ async function searchHandler(req, res) {
         });
     }
 
+    // A regex keyword is a different animal: check the pattern (400) and the per-IP budget (429)
+    // before any work happens.
+    const isRegex = searchCore.isRegexKeyword(keyword);
+    if (isRegex) {
+        const problem = searchCore.regexProblem(keyword);
+        if (problem) return res.code(400).send({ error: problem });
+        if (regexRateLimited(req.ip)) return res.code(429).send({ error: 'Too many regex searches from this address — try again shortly.' });
+    }
+    const jobParams = { scope, exact, langs: targetLangs, lb, la };
+
     try {
         // TODO.md поиск п.5: ?fast=1 skips per-sutta file reads entirely — grep-only skeleton
         // + full wordReport, quotes/context arrive later via /search/enrich.
         if (req.query.fast === '1') {
             // ?fast=1 не содержит текста сегментов вообще (только grep-счётчики) — конвертировать
             // тут нечего, полный текст приходит позже через /search/enrich.
-            return res.send(withSuggestions(await buildFastResponse(keyword, scope, exact, targetLangs, lb, la), keyword));
+            const routed = isRegex ? await regexSearch('fast', keyword, jobParams) : null;
+            if (routed && routed.status) return res.code(routed.status).send({ error: routed.error });
+            const result = routed ? routed.result : await buildFastResponse(keyword, scope, exact, targetLangs, lb, la);
+            return res.send(withSuggestions(result, keyword));
         }
-        const result = await buildSearchResponse(keyword, scope, exact, targetLangs, lb, la);
+        const routed = isRegex ? await regexSearch('full', keyword, jobParams) : null;
+        if (routed && routed.status) return res.code(routed.status).send({ error: routed.error });
+        const result = routed ? routed.result : await buildSearchResponse(keyword, scope, exact, targetLangs, lb, la);
         await convertScriptInSearchResult(result, req.query.script);
         return res.send(withSuggestions(result, keyword));
     } catch (error) {
@@ -2012,24 +2109,20 @@ app.get('/search/enrich', async (req, res) => {
         return res.send({ data: {}, variantSegments: [] });
     }
 
-    try {
-        const { searchResults, empty } = await buildMatchSkeleton(keyword, scope, exact, targetLangs, lb, la, requestedIds);
-        const suttaIds = Object.keys(searchResults);
-        if (empty || suttaIds.length === 0) return res.send({ data: {}, variantSegments: [] });
+    // Regex patterns go through the worker here too — but NOT through the per-IP counter: this
+    // route only ever asks for text of suttas the client already got from a counted /search call,
+    // and the client calls it once per page.
+    const isRegex = searchCore.isRegexKeyword(keyword);
+    if (isRegex) {
+        const problem = searchCore.regexProblem(keyword);
+        if (problem) return res.code(400).send({ error: problem });
+    }
 
-        await enrichSuttaBatch(searchResults, suttaIds, targetLangs, keyword, scope, lb, la);
-        const sortedData = sortSuttaResults(searchResults);
-        let totalMatches = 0;
-        for (const id of suttaIds) {
-            totalMatches += sortedData[id].count;
-        }
-        const variantSegments = await findVariantSegments(keyword, exact);
-        const enrichResult = {
-            data: sortedData,
-            wordReport: buildWordReport(searchResults), // не buildWordReportFast — та же семантика wordReport, что и полный /search (buildSearchResponse), т.к. unique_words уже посчитаны enrichSuttaBatch
-            metadata: { query: keyword, scope: scope || 'default', resolvedPrefixes: resolveAllowedPrefixes(scope), langs: targetLangs, lb, la, exactMatch: exact, totalFiles: suttaIds.length, totalMatches, hasVariantMatch: variantSegments.length > 0 },
-            variantSegments
-        };
+    try {
+        const jobParams = { scope, exact, langs: targetLangs, lb, la, ids: requestedIds };
+        const routed = isRegex ? await regexSearch('enrich', keyword, jobParams) : null;
+        if (routed && routed.status) return res.code(routed.status).send({ error: routed.error });
+        const enrichResult = routed ? routed.result : await searchCore.enrichResponse(keyword, scope, exact, targetLangs, lb, la, requestedIds);
         await convertScriptInSearchResult(enrichResult, req.query.script);
         return res.send(enrichResult);
     } catch (error) {

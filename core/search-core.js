@@ -32,11 +32,107 @@ let DG_OFFLINE = '';
 function init(deps) {
     searchDb = deps.searchDb;
     DG_OFFLINE = deps.DG_OFFLINE;
+    setRegexLimits(deps.limits);
     registerRegexpTest();
 }
 
 function setSkeleton(skeleton) {
     skeletonDB = skeleton;
+}
+
+// ---------------------------------------------------------------------------
+// Regex keywords: the policy file (configs/search/regex-limits.json), the pattern guard and the
+// literal prefilter. A keyword containing a regex metacharacter is a power-user pattern: it cannot
+// use the FTS index, so it used to scan all 1.31M rows of dg.db inside the HTTP process — measured
+// 11s and ~1GB of RSS for "d.*", and "(.+)+#" never returned at all. Three configurable things
+// keep it bounded: the pattern must carry a real literal ("duk"), that literal prefilters rows
+// through FTS, and the whole job runs in a worker with a deadline (core/regex-runner.js).
+//
+// ponytail: the literal must sit at the START of its alternative to count as mandatory ("duk.*",
+// "dukkha|kacchapa"); anything else ("\\d{3}duk", "(duk)?x") skips the prefilter and is simply
+// scanned in the worker — safe, just slower. Teach it full regex analysis only if that shows up.
+const REGEX_LIMIT_DEFAULTS = { enabled: true, minLiteralChars: 3, maxPatternLength: 128, timeoutMs: 2000, maxConcurrent: 1, maxRows: 200000, prefilter: true };
+let regexLimits = { ...REGEX_LIMIT_DEFAULTS };
+
+function setRegexLimits(limits) { regexLimits = { ...REGEX_LIMIT_DEFAULTS, ...(limits || {}) }; }
+function getRegexLimits() { return regexLimits; }
+function isRegexKeyword(keyword) { return REGEX_METACHARS.test(String(keyword || '')); }
+
+const LITERAL_SAFE = /^[\p{L}\p{N}]+$/u;
+
+// Every run of plain characters (not quantified, outside escapes and character classes), in order.
+function literalRuns(pattern) {
+    const p = String(pattern || '');
+    const runs = [];
+    let run = '';
+    const flush = () => { if (run) { runs.push(run); run = ''; } };
+    for (let i = 0; i < p.length; i++) {
+        const ch = p[i];
+        if (ch === '\\') { flush(); i++; continue; }
+        if (ch === '[') { flush(); const end = p.indexOf(']', i + 1); i = end === -1 ? p.length - 1 : end; continue; }
+        if (REGEX_METACHARS.test(ch)) { if (/[*+?{]/.test(ch)) run = run.slice(0, -1); flush(); continue; }
+        if (i + 1 < p.length && /[*+?{]/.test(p[i + 1])) { flush(); continue; } // the char is quantified
+        run += ch;
+    }
+    flush();
+    return runs;
+}
+
+// The runs long enough to count as "real letters" — what the guard below demands.
+function regexLiterals(pattern) {
+    const min = Math.max(1, Number(regexLimits.minLiteralChars) || 1);
+    return literalRuns(pattern).filter(r => r.length >= min);
+}
+
+// One mandatory literal per top-level alternative ("duk.*" -> duk, "a|duk" -> nothing, since "a" is
+// too short), or null when that cannot be proven — then the job scans in the worker instead.
+function regexPrefilterLiterals(pattern) {
+    const p = String(pattern || '');
+    const min = Math.max(1, Number(regexLimits.minLiteralChars) || 1);
+    const alternatives = [];
+    let depth = 0;
+    let current = '';
+    for (let i = 0; i < p.length; i++) {
+        const ch = p[i];
+        if (ch === '\\') { current += ch + (p[i + 1] || ''); i++; continue; }
+        if (ch === '[') {
+            const end = p.indexOf(']', i + 1);
+            current += p.slice(i, end === -1 ? p.length : end + 1);
+            i = end === -1 ? p.length : end;
+            continue;
+        }
+        if (ch === '(') depth++;
+        else if (ch === ')') depth = Math.max(0, depth - 1);
+        else if (ch === '|' && depth === 0) { alternatives.push(current); current = ''; continue; }
+        current += ch;
+    }
+    alternatives.push(current);
+
+    const out = [];
+    for (const alt of alternatives) {
+        const stripped = alt.replace(/^\^/, '');
+        const first = literalRuns(stripped)[0];
+        if (!first || first.length < min || !LITERAL_SAFE.test(first) || !stripped.startsWith(first)) return null;
+        if (!out.includes(first)) out.push(first);
+    }
+    return out;
+}
+
+// Non-null when the pattern cannot be run at all: disabled, too long, unparseable, or carrying no
+// real letters (a.*, d.*, .*) — those match a large part of the canon and are not an answer.
+function regexProblem(keyword) {
+    const q = String(keyword || '');
+    if (!regexLimits.enabled) return 'Regex search is disabled.';
+    if (q.length > regexLimits.maxPatternLength) return `Regex pattern is longer than ${regexLimits.maxPatternLength} characters.`;
+    if (!regexLiterals(q).length) {
+        return `A regex search needs an ordinary run of at least ${regexLimits.minLiteralChars} letters or digits (like "duk") — a pattern matching half the canon is not an answer.`;
+    }
+    try {
+        new RegExp(q);
+    } catch (e) {
+        return e.message; // already reads "Invalid regular expression: ..."
+    }
+    return null;
 }
 
 // Cheap in-memory lookup ({category, dir_path, title, mr} or null) — for callers that only need
@@ -278,12 +374,17 @@ const SEARCH_FOLD_GROUPS = [['е', 'ё'], ['m', 'ṁ', 'ṃ']];
 
 const SQL_MATCH = `SELECT t.sutta_id, t.segment_id, t.ord, t.kind, t.lang, t.translator, t.txt
     FROM fts JOIN texts t ON t.rowid = fts.rowid WHERE fts MATCH ?`;
-// The regex path cannot use the index, so it scans — but the matching happens inside SQLite via
-// the function registered below, not by materialising all 1.4M rows as JS objects and filtering
-// them. Measured on `kacchapa|migala`: 167s materialising, 5.1s this way. The cheap translator
-// check comes first so hidden rows never reach the regex.
-const SQL_SCAN = `SELECT sutta_id, segment_id, ord, kind, lang, translator, txt FROM texts
-    WHERE (translator IS NULL OR translator <> 'ai') AND regexp_test(?, txt)`;
+// The regex path cannot use the index for the pattern itself, so it scans — but the matching
+// happens inside SQLite via the function registered below, not by materialising all 1.4M rows as
+// JS objects and filtering them. The cheap translator check comes first so hidden rows never reach
+// the regex. When the pattern proves a mandatory literal ("duk" in "duk.*"), that literal narrows
+// the scan through the trigram index first ("kacchapa|migala" -> 16k candidate rows instead of
+// 1.31M). See regexKeywordRows().
+const SQL_SCAN_BASE = `SELECT sutta_id, segment_id, ord, kind, lang, translator, txt FROM texts
+    WHERE (translator IS NULL OR translator <> 'ai')`;
+const SQL_SCAN_FTS = `${SQL_SCAN_BASE}
+    AND rowid IN (SELECT rowid FROM fts WHERE fts MATCH ?) AND regexp_test(?, txt)`;
+const SQL_SCAN_PLAIN = `${SQL_SCAN_BASE} AND regexp_test(?, txt)`;
 
 // Called once per row, so the compiled RegExp is memoised on its source instead of being rebuilt
 // a million times.
@@ -337,31 +438,55 @@ function foldText(text) {
 let lastKeywordRows = { keyword: null, rows: null };
 let lastExactRows = { keyword: null, rows: null };
 
+// What the last regex scan actually did, for the "answer is partial / limited" flag the routes
+// attach to metadata.regex. Reset per scan, so a plain search after a regex one reports nothing.
+let lastRegexScan = { pattern: null, literals: null, scanned: 0, truncated: false, timedOut: false };
+function regexScanInfo() { return { ...lastRegexScan }; }
+
+// Rows whose text matches the pattern (before the whole-word filter). Bounded three ways, all from
+// configs/search/regex-limits.json: the literal prefilter cuts the row set, maxRows caps memory,
+// and the deadline stops a scan that is only slow — the parent's worker.terminate() (see
+// core/regex-runner.js) is the backstop for a pattern stuck INSIDE one row, which no JS-side check
+// can interrupt.
+function regexKeywordRows(keyword) {
+    const problem = regexProblem(keyword);
+    if (problem) {
+        const err = new Error(problem);
+        err.badRequest = true;
+        throw err;
+    }
+    const literals = regexLimits.prefilter ? regexPrefilterLiterals(keyword) : null;
+    const maxRows = Math.max(1, Number(regexLimits.maxRows) || REGEX_LIMIT_DEFAULTS.maxRows);
+    const budget = Math.max(100, (Number(regexLimits.timeoutMs) || REGEX_LIMIT_DEFAULTS.timeoutMs) - 400);
+    const deadline = Date.now() + budget;
+    const rows = [];
+    let scanned = 0;
+    let truncated = false;
+    let timedOut = false;
+
+    const useFts = !!(literals && literals.length);
+    const stmt = searchDb.prepare(useFts ? SQL_SCAN_FTS : SQL_SCAN_PLAIN);
+    const params = useFts ? [literals.map(ftsPhrase).join(' OR '), keyword] : [keyword];
+    for (const row of stmt.iterate(...params)) {
+        rows.push(row);
+        scanned++;
+        if (scanned >= maxRows) { truncated = true; break; }
+        if ((scanned & 1023) === 0 && Date.now() > deadline) { timedOut = true; break; }
+    }
+
+    lastRegexScan = { pattern: keyword, literals: useFts ? literals : null, scanned, truncated, timedOut };
+    return rows;
+}
+
 // Every row that contains the keyword anywhere, BEFORE the whole-word filter. Two paths, one
 // output shape:
 //   plain keyword -> FTS5 MATCH (the fast case);
-//   regex keyword -> full scan filtered by the same RegExp that grep -E used to be handed.
-// ponytail: the regex branch still scans the whole corpus — a few seconds, not milliseconds —
-// because FTS5 cannot express alternation or anchors. Upgrade path if it ever matters: pull the
-// literal substrings out of the pattern, use them as an FTS pre-filter, and run the regex only
-// over what survives.
+//   regex keyword -> bounded scan (see regexKeywordRows), run in a worker by the routes.
 function sqlKeywordRows(keyword) {
     if (lastKeywordRows.keyword === keyword) return lastKeywordRows.rows;
-    let rows;
-    if (REGEX_METACHARS.test(keyword)) {
-        // Validate here rather than a million rows deep inside the scan, and report it as bad
-        // input rather than a server fault — the pattern came from the query string.
-        try {
-            new RegExp(keyword);
-        } catch (e) {
-            const err = new Error(e.message); // already reads "Invalid regular expression: ..."
-            err.badRequest = true;
-            throw err;
-        }
-        rows = searchDb.prepare(SQL_SCAN).all(keyword);
-    } else {
-        rows = searchDb.prepare(SQL_MATCH).all(ftsPhrase(keyword));
-    }
+    const rows = REGEX_METACHARS.test(keyword)
+        ? regexKeywordRows(keyword)
+        : searchDb.prepare(SQL_MATCH).all(ftsPhrase(keyword));
     lastKeywordRows = { keyword, rows };
     return rows;
 }
@@ -1191,6 +1316,56 @@ function navFor(suttaId, scope) {
     };
 }
 
+// Phase 2 of /search: full segment/quote/word-report data for a known set of sutta ids. Lived in
+// the /search/enrich route until the regex path had to move into a worker — the worker runs the
+// same composition, so it belongs here with the other builders rather than in the HTTP file.
+async function enrichResponse(keyword, searchScope, exactMatch, targetLangs, lb, la, requestedIds) {
+    const { searchResults, empty } = await buildMatchSkeleton(keyword, searchScope, exactMatch, targetLangs, lb, la, requestedIds);
+    const suttaIds = Object.keys(searchResults);
+    if (empty || suttaIds.length === 0) return { data: {}, variantSegments: [] };
+
+    await enrichSuttaBatch(searchResults, suttaIds, targetLangs, keyword, searchScope, lb, la);
+    const sortedData = sortSuttaResults(searchResults);
+    let totalMatches = 0;
+    for (const id of suttaIds) totalMatches += sortedData[id].count;
+    const variantSegments = await findVariantSegments(keyword, exactMatch);
+
+    return {
+        data: sortedData,
+        wordReport: buildWordReport(searchResults), // not buildWordReportFast — same semantics as the full /search
+        metadata: {
+            query: keyword, scope: searchScope || 'default', resolvedPrefixes: resolveAllowedPrefixes(searchScope),
+            langs: targetLangs, lb, la, exactMatch, totalFiles: suttaIds.length, totalMatches,
+            hasVariantMatch: variantSegments.length > 0,
+        },
+        variantSegments,
+    };
+}
+
+// The regex-keyword counterpart of the three route bodies, run inside the worker (see
+// core/regex-worker.js). The pattern guard runs here, in the worker, so a rejected pattern never
+// reaches the database at all; metadata.regex tells the client the answer was limited.
+async function runRegexJob(job) {
+    const problem = regexProblem(job.keyword);
+    if (problem) {
+        const err = new Error(problem);
+        err.badRequest = true;
+        throw err;
+    }
+    let result;
+    if (job.kind === 'fast') {
+        result = await buildFastResponse(job.keyword, job.scope, job.exact, job.langs, job.lb, job.la);
+    } else if (job.kind === 'full') {
+        result = await buildSearchResponse(job.keyword, job.scope, job.exact, job.langs, job.lb, job.la);
+    } else if (job.kind === 'enrich') {
+        result = await enrichResponse(job.keyword, job.scope, job.exact, job.langs, job.lb, job.la, job.ids);
+    } else {
+        throw new Error(`Unknown regex job kind: ${job.kind}`);
+    }
+    if (result && result.metadata) result.metadata.regex = regexScanInfo();
+    return result;
+}
+
 module.exports = {
     init,
     setSkeleton,
@@ -1208,12 +1383,21 @@ module.exports = {
     buildTextDataFromBase,
     buildWordReport,
     buildWordReportFast,
+    enrichResponse,
     enrichSuttaBatch,
     filterPreferredTranslators,
     findVariantSegments,
     getFullTextData,
     getSuttaBaseData,
     getSuttaMeta,
+    getRegexLimits,
+    isRegexKeyword,
+    regexLiterals,
+    regexPrefilterLiterals,
+    regexProblem,
+    regexScanInfo,
+    runRegexJob,
+    setRegexLimits,
     translatorLangsFallback,
     langFilterSql,
     matchesScope,
