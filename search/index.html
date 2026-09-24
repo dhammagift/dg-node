@@ -1835,12 +1835,35 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
       [band, document.getElementById('results-toolbar'), document.getElementById('reader-toolbar'), document.getElementById('navigation')]
         .filter(Boolean)
         .forEach(function (el) { ro.observe(el); });
+
+      // #top-links-container is rebuilt on every sutta render (megareader.js replaces #sutta's
+      // innerHTML), so the one-off observe() list above can never cover it — it would watch a node
+      // the next render detaches, and the comment below says exactly that ("перевешивать некому").
+      // Re-attached on the events megareader dispatches right after each render instead. Without
+      // it nobody measured that row's display:none -> full-height transition: the space reserved
+      // for the fixed tail stayed 34px instead of 67px (measured live on the 390px layout,
+      // 2026-09-24), so the pinned rows sat on top of the text and the missing 32px showed up as an
+      // extra gap only when something else forced a recompute (owner: "лишние отступы появляются").
+      var observedTopLinks = null;
+      window.dgObserveTopLinks = function () {
+        var el = document.getElementById('top-links-container');
+        if (!el || el === observedTopLinks) return;
+        if (observedTopLinks) ro.unobserve(observedTopLinks);
+        observedTopLinks = el;
+        ro.observe(el);
+      };
     }
     // #top-links-container — новый элемент на КАЖДЫЙ рендер сутты (megareader.js пересоздаёт
-    // его innerHTML'ом #sutta целиком), ResizeObserver на старый инстанс тут бесполезен —
-    // перевешивать некому. Те же кастомные события, на которые уже подписан reader/common.js.
-    window.addEventListener('suttaLoaded', applyPadding);
-    window.addEventListener('suttaRenderedCentral', applyPadding);
+    // его innerHTML'ом #sutta целиком), поэтому наблюдатель перевешивается здесь, на те же
+    // кастомные события, на которые уже подписан reader/common.js.
+    window.addEventListener('suttaLoaded', function () {
+      if (window.dgObserveTopLinks) window.dgObserveTopLinks();
+      applyPadding();
+    });
+    window.addEventListener('suttaRenderedCentral', function () {
+      if (window.dgObserveTopLinks) window.dgObserveTopLinks();
+      applyPadding();
+    });
 
     window.addEventListener('scroll', function () {
       var cfg = stackConfig();
@@ -4068,7 +4091,17 @@ $(document).ready(function() {
         // после того, как результаты пришли и тулбар показался в полный рост (замерено вживую:
         // 58px вместо нужных 159px, результаты заезжали под тулбар). ResizeObserver там же не
         // всегда ловит этот конкретный переход display:none → контент, пересчитываем явно здесь.
-        if (!on && window.dgApplyHeaderPadding) window.dgApplyHeaderPadding();
+        // Twice on purpose: the synchronous call covers the results table (its toolbar is already
+        // in the DOM when the answer lands), while the reader's #top-links-container is hidden by
+        // dg-busy itself — a recompute in the same tick still measures that row at 0, so the
+        // reserved padding came out 34px instead of 67px (measured live 2026-09-24). The rAF pass
+        // runs after the un-hidden rows have been laid out.
+        if (!on) {
+            if (window.dgApplyHeaderPadding) window.dgApplyHeaderPadding();
+            requestAnimationFrame(function () {
+                if (window.dgApplyHeaderPadding) window.dgApplyHeaderPadding();
+            });
+        }
     }
 
     /* ---------------- Ридер в ЭТОМ ЖЕ документе ----------------

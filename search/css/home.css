@@ -906,9 +906,25 @@ body.dg-state-reader.dg-busy #navigation::after, #reader-pane.reader-pending #na
 
    Hiding them by class rather than by container means they are simply not seen in the wrong place:
    they appear once, already where they belong. The header keeps its height either way — the icons
-   hold the toolbar row and #navigation has its min-height. */
+   hold the toolbar row and #navigation has its min-height.
+
+   The container's BOX is also what applyPadding() measures for the fixed tail, so taking it out
+   with display:none took its 32px out of the reserved padding too (measured live on the 390px
+   layout, 2026-09-24: #sutta's padding-top came out 34px instead of 67px, the pinned rows sat on
+   the text, and the missing 32px then appeared as an extra gap the moment something recomputed).
+   visibility:hidden keeps the box, and the min-height below holds the same height the loaded row
+   occupies on a phone, so the skeleton is measured exactly like the loaded page and nothing moves
+   when loading ends. Scoped out above 768px: that is the width at which megareader.js moves these
+   links into the reader toolbar and hides the container for good (see its merge comment there),
+   where reserving a row would only double-count the toolbar's own growth. Ceiling, named: under
+   ~360px the row may wrap to a second line and this 32px is one line short — the ResizeObserver in
+   search/index.html corrects it the moment the row is shown, so the text still never sits under
+   the pinned rows. */
 body.dg-state-reader.dg-busy .sc-ext-link, #reader-pane.reader-pending .sc-ext-link { display: none; }
-body.dg-state-reader.dg-busy #top-links-container, #reader-pane.reader-pending #top-links-container { display: none; }
+body.dg-state-reader.dg-busy #top-links-container, #reader-pane.reader-pending #top-links-container { visibility: hidden; }
+@media (max-width: 768px) {
+  body.dg-state-reader.dg-busy #top-links-container, #reader-pane.reader-pending #top-links-container { display: block; min-height: 32px; }
+}
 /* The title pill: its own box already knows how wide it may be at each size (160px, 280px, 96px on
    phones), so the placeholder inherits all of that. min-width is in em, so it follows the same
    responsive font-size the pill itself uses. */

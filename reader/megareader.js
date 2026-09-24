@@ -1004,7 +1004,21 @@ window.switchReadingLanguage = async function (lang) {
 // ==========================================
 // ЛОГИКА НАВИГАЦИИ (Без PHP и сети, из ОЗУ)
 // ==========================================
-window.renderNavigation = async function(slug, suttaTitle) {
+// One place that knows the nav contract: the path, the search-scope key, and the shape to fall
+// back to when the answer is not ok. Called from the TOP of buildSutta so the request runs
+// alongside /api/text/… and awaited by renderNavigation at the end of the render. It used to be
+// started in renderNavigation itself, i.e. after the text was already on screen: the row is
+// reserved from the first paint (#navigation's min-height), so the fetch started then left it
+// visibly empty and then filling under the reader's eyes (owner, 2026-09-24: "на первой загрузке
+// прев/некст отсутствуют").
+window.dgFetchNav = function (slug) {
+    const navScope = localStorage.getItem('dhammaSearchScope') || 'default';
+    return fetch(`/api/nav/${encodeURIComponent(slug)}?scope=${encodeURIComponent(navScope)}`)
+        .then((response) => (response.ok ? response.json() : { prev: null, next: null }))
+        .catch(() => ({ prev: null, next: null }));
+};
+
+window.renderNavigation = async function(slug, suttaTitle, navPromise) {
     let params = new URLSearchParams(document.location.search);
     // Тот же набор параметров, что navigateSutta сохраняет при пуше в history — раньше здесь
     // была только s= (mode/lang терялись в статичном href, хотя JS-путь через onclick их уже
@@ -1035,11 +1049,9 @@ window.renderNavigation = async function(slug, suttaTitle) {
     // пользователем, или по умолчанию 4 никаи + 6 книг Кхуддаки" — same localStorage key and
     // fallback chain /search already uses (search/index.html), so a user's saved search scope
     // (settings/index.html) governs BOTH search and reader navigation from one setting, not two.
-    const navScope = localStorage.getItem('dhammaSearchScope') || 'default';
     let nav;
     try {
-        const response = await fetch(`/api/nav/${encodeURIComponent(slug)}?scope=${encodeURIComponent(navScope)}`);
-        nav = response.ok ? await response.json() : { prev: null, next: null };
+        nav = await (navPromise || window.dgFetchNav(slug));
     } catch (error) {
         nav = { prev: null, next: null };
     }
@@ -1128,6 +1140,9 @@ window.restoreReadingAnchor = restoreReadingAnchor;
 window.buildSutta = async function(rawSlug, opts) {
     const slug = window.normalizeSlugToDbKey(rawSlug);
     window._currentSlug = slug;
+    // Started here, awaited at the end of this same render — see dgFetchNav above. Never awaited
+    // twice: navPromise is passed on, so one request per render.
+    const navPromise = window.dgFetchNav(slug);
     // Owner: the skeleton is only useful when the reader is opening cold (nothing on screen
     // yet) — swapping an ALREADY-rendered sutta out for a skeleton while the next one loads
     // (prev/next navigation, mode switch) reads as losing the text that was just there, not as
@@ -1702,7 +1717,7 @@ window.buildSutta = async function(rawSlug, opts) {
         topContainer.style.display = '';
     }
 
-    window.renderNavigation(slug, suttaData.title);
+    window.renderNavigation(slug, suttaData.title, navPromise);
 
     window.dispatchEvent(new CustomEvent('suttaLoaded', { detail: { inPlace: !!(opts && opts.inPlace) } }));
     // 'suttaRenderedCentral' — same moment, but only in the main reader window, never inside
