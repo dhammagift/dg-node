@@ -150,6 +150,17 @@ a#previewRead:hover{color:var(--accent)}
    "Offline library" squeezed into a word-per-line column next to two buttons). */
 .row:not(.row-stack) > :not(.row-control){flex:1 1 10em;min-width:0}
 .row-control{flex:0 1 auto;flex-wrap:wrap;display:flex;align-items:center;gap:8px}
+/* Offline library carries TWO actions, so it needs a rule of its own: the generic one above lets
+   the whole control drop to a line of its own, which left "Re-download"/"Delete" stranded under
+   the description, left-aligned, looking like nothing else in the sheet (owner, 2026-09-24:
+   "эти два пункта как-то странно расположены… должны быть как остальные кнопки").
+   The control now stays in the row's action column and wraps INSIDE itself: with room for both,
+   they sit side by side at the right; without it, the second drops under the first — вариант Б
+   и вариант А — while the description keeps a stable column and never has buttons in its flow.
+   52% is what makes that choice: the control can never take more than half the row, so the text
+   keeps the other half, and the buttons decide between one line and two by themselves. */
+#dgOfflineLibRow > div:first-child{flex:1 1 0;min-width:0}
+#dgOfflineLibRow .row-control{flex:0 1 52%;min-width:0;flex-wrap:wrap;justify-content:flex-end}
 .nested{background:color-mix(in srgb,var(--canvas) 60%,var(--surface));border-top:1px solid var(--line);padding:0 18px}
 .nested .row{padding-left:0;padding-right:0;min-height:56px}
 .nested[hidden]{display:none}
