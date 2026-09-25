@@ -6,6 +6,8 @@
 <title>Uposatha days — Dhamma.gift</title>
 <meta name="description" content="The Uposatha days of the suttas (the 14th, 15th and 8th lunar days of each half-month) and every lunar day, with exact start and end times in your time zone.">
 <link rel="icon" type="image/png" href="/assets/img/favico-noglass.png">
+<link rel="manifest" href="/uposatha-calendar.webmanifest">
+<meta name="theme-color" content="#1f8f6f">
 <meta property="og:image" content="https://dhamma.gift/assets/img/og-dhamma-gift-v3.png">
 <style>
   :root { --bg: #fff; --fg: #1c1e21; --muted: #6b7280; --border: #d8dce1; --soft: #eef1f4; --accent: #1f8f6f; --accent-soft: rgba(31,143,111,.14); }
@@ -24,6 +26,9 @@
   .muted { color: var(--muted); }
   .badge { margin-left: 8px; padding: 1px 8px; border-radius: 10px; background: var(--accent); color: #fff; font-size: .85em; white-space: nowrap; }
   .controls { display: flex; flex-wrap: wrap; gap: 8px 20px; margin-bottom: 12px; }
+  .loc { display: inline-flex; align-items: center; gap: 8px; }
+  .loc button { font: inherit; padding: 2px 10px; border: 1px solid var(--border); border-radius: 12px; background: transparent; color: var(--fg); cursor: pointer; }
+  .loc a { color: var(--accent); }
   .sw { display: inline-flex; align-items: center; gap: 6px; }
   select { max-width: 100%; background: var(--bg); color: var(--fg); border: 1px solid var(--border); border-radius: 4px; padding: 2px 4px; }
   .tabs { display: flex; gap: 6px; margin: 4px 0 8px; }

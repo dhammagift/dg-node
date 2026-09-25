@@ -1,0 +1,16 @@
+{
+  "id": "uposatha-calendar",
+  "name": "Uposatha days — Dhamma.gift",
+  "short_name": "Uposatha",
+  "description": "The Uposatha days of the suttas, and the four moon-phase days, with exact times for your time zone and place.",
+  "start_url": "/uposatha-calendar?source=pwa",
+  "scope": "/uposatha-calendar",
+  "display": "standalone",
+  "background_color": "#1b1b1d",
+  "theme_color": "#1f8f6f",
+  "categories": ["education", "spirituality"],
+  "icons": [
+    { "src": "/assets/img/pwa-bold-monocolor-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/assets/img/pwa-bold-monocolor-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}

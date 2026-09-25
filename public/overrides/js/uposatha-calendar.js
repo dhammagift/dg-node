@@ -55,6 +55,8 @@
       keptWith: function (nth) { return 'the ' + nth + ' day is skipped and kept with this date'; },
       phases: ['New moon', 'Waxing crescent', 'First quarter', 'Waxing gibbous', 'Full moon', 'Waning gibbous', 'Last quarter', 'Waning crescent'],
       foot: 'Which lunar day a date is, is read from the real Moon at the chosen time of that date. A lunar day lasts 19–26 hours and changes when the Moon has gained another 12° on the Sun, not at midnight, so a day number sometimes jumps or repeats. The Uposatha is kept on the date when the 8th, 14th or 15th lunar day is in force; if such a day begins and ends between two of those moments, it is kept with the following date. A day in the suttas is counted from the evening, so the observance begins on the evening before. Thai, Sri Lankan and Burmese communities calculate their calendars by tradition and can differ by a day — follow your community\'s calendar. To cross-check: <a href="https://www.timeanddate.com/moon/phases/" target="_blank" rel="noopener">Time and Date: Moon Phases</a>.',
+      locate: 'Use my location', locating: 'Locating…', located: 'Location', forget: 'forget', denied: 'The location was not shared — the fixed times are used.',
+      sunrise: 'sunrise', sunset: 'sunset', sunsetBefore: 'sunset the evening before',
       docs: 'The suttas on Uposatha', docsUrl: '/docs/uposatha',
     },
     ru: {
@@ -76,6 +78,8 @@
       keptWith: function (nth) { return nth + ' день пропущен и соблюдается в эту дату'; },
       phases: ['Новолуние', 'Растущий серп', 'Первая четверть', 'Растущая Луна', 'Полнолуние', 'Убывающая Луна', 'Последняя четверть', 'Убывающий серп'],
       foot: 'Какой лунный день у даты, определяется по реальной Луне в выбранное время этой даты. Лунный день длится 19–26 часов и меняется, когда Луна уходит от Солнца ещё на 12°, а не в полночь, поэтому номер дня иногда перескакивает или повторяется. Упосатха соблюдается в дату, когда действует 8-й, 14-й или 15-й лунный день; если такой день начинается и кончается между двумя такими моментами, он соблюдается в следующую дату. День в суттах считается с вечера, поэтому соблюдение начинается вечером накануне. Тайские, шри-ланкийские и бирманские общины считают календари по традиции и могут отличаться на день — ориентируйтесь на календарь своей общины. Для сверки: <a href="https://www.timeanddate.com/moon/phases/" target="_blank" rel="noopener">Time and Date: Moon Phases</a>.',
+      locate: 'Определить моё место', locating: 'Определяю…', located: 'Место', forget: 'забыть', denied: 'Место не передано — используется фиксированное время.',
+      sunrise: 'восход', sunset: 'закат', sunsetBefore: 'закат накануне вечером',
       docs: 'Сутты об упосатхе', docsUrl: '/ru/docs/uposatha',
     },
   };
@@ -101,6 +105,8 @@
     ref: store('dgUposathaSutta') === '0' ? 6 : -6, // by the suttas (on by default): 18:00 on the evening before the date; the modern scheme: 06:00
     view: params.get('view') === 'all' ? 'all' : (store('dgUposathaView') || 'uposatha'),
     selected: null,
+    loc: (function () { try { return JSON.parse(store('dgUposathaLoc')); } catch (e) { return null; } })(), // {lat, lon} or null
+    locMsg: '',
   };
   var hemi = store('dgUposathaHemisphere');
   state.south = hemi ? hemi === 'south' : SOUTHERN_ZONE.test(state.tz);
@@ -122,21 +128,34 @@
     for (var i = 0; i < 2; i++) utc = wall - offsetMs(utc, tz);
     return new Date(utc);
   }
+  // The Sun's rise / set on the calendar date y-m-d at the observer's place, or null (no place, or the polar day/night).
+  function sunEvent(kind, y, m, d, tz, obs) {
+    if (!obs) return null;
+    var found = A.SearchRiseSet('Sun', obs, kind === 'rise' ? 1 : -1, zonedToUtc(y, m, d, 0, tz), 1);
+    return found ? found.date : null;
+  }
   function tithiAt(date) { return Math.floor(A.MoonPhase(date) / 12) + 1; } // 1..30
 
   // One row per calendar date from `from` to `to` (y-m-d, inclusive), with the lunar day in force at `ref` o'clock
   // of that date: what it is, until when it lasts, whether days before it were skipped or it repeats the day
   // before, and the full / new moon falling within the 24 hours from that moment.
-  function civilDays(from, to, tz, ref) {
+  function civilDays(from, to, tz, ref, obs) {
     var f = from.split('-').map(Number), rows = [], prev = null;
     for (var i = -1; ; i++) { // i = -1: the day before, only to tell whether the first date's number jumped
       var c = new Date(Date.UTC(f[0], f[1] - 1, f[2] + i));
       var y = c.getUTCFullYear(), m = c.getUTCMonth() + 1, d = c.getUTCDate();
       var ymd = y + '-' + pad(m) + '-' + pad(d);
       if (ymd > to) break;
-      var at = zonedToUtc(y, m, d, ref, tz);
+      // the moment the lunar day of this date is read at: the real sunset the evening before (by the suttas, ref < 0)
+      // or the real sunrise (the modern scheme) where the place is known, the fixed 18:00 / 06:00 otherwise
+      var refKind = ref < 0 ? 'evening' : 'morning', at = null;
+      if (obs) {
+        if (ref < 0) { var pd = new Date(Date.UTC(y, m - 1, d - 1)); at = sunEvent('set', pd.getUTCFullYear(), pd.getUTCMonth() + 1, pd.getUTCDate(), tz, obs); refKind = 'sunset'; }
+        else { at = sunEvent('rise', y, m, d, tz, obs); refKind = 'sunrise'; }
+      }
+      if (!at) { at = zonedToUtc(y, m, d, ref, tz); refKind = ref < 0 ? 'evening' : 'morning'; }
       var tithi = tithiAt(at), waxing = tithi <= 15;
-      var row = { ymd: ymd, y: y, m: m, d: d, dow: c.getUTCDay(), at: at, tithi: tithi, waxing: waxing, day: waxing ? tithi : tithi - 15,
+      var row = { ymd: ymd, y: y, m: m, d: d, dow: c.getUTCDay(), at: at, refKind: refKind, tithi: tithi, waxing: waxing, day: waxing ? tithi : tithi - 15,
         ends: A.SearchMoonPhase((tithi * 12) % 360, at, 3), skipped: [], repeats: false };
       if (prev) {
         var gap = (tithi - prev.tithi + 30) % 30;
@@ -209,13 +228,20 @@
     var last = new Date(Date.UTC(tp[0], tp[1] + 2, 0)); // day 0 of the month after the third = its last day
     var to = last.getUTCFullYear() + '-' + pad(last.getUTCMonth() + 1) + '-' + pad(last.getUTCDate());
     var sutta = state.ref < 0;
-    var rows = civilDays(from, to, tz, state.ref);
+    var obs = state.loc ? new A.Observer(state.loc.lat, state.loc.lon, 0) : null;
+    var rows = civilDays(from, to, tz, state.ref, obs);
     var byYmd = {};
     rows.forEach(function (r) { byYmd[r.ymd] = r; });
     if (!sutta) markPhases(rows, byYmd, tz, from, to);
     var isUposatha = !!(byYmd[todayYmd] && byYmd[todayYmd].uposatha);
     var tomorrowRow = byYmd[new Date(Date.parse(todayYmd) + DAY).toISOString().slice(0, 10)];
     var tonight = sutta && tomorrowRow && tomorrowRow.uposatha;
+    var sunLine = '';
+    if (obs) {
+      var tp2 = todayYmd.split('-').map(Number);
+      var sr = sunEvent('rise', tp2[0], tp2[1], tp2[2], tz, obs), ss = sunEvent('set', tp2[0], tp2[1], tp2[2], tz, obs);
+      sunLine = (sr ? t.sunrise + ' ' + timeFmt.format(sr) : '') + (sr && ss ? ' · ' : '') + (ss ? t.sunset + ' ' + timeFmt.format(ss) : '');
+    }
     var refLabel = state.ref < 0 ? t.refNight : pad(state.ref) + ':00';
 
     function notesOf(r) {
@@ -229,8 +255,13 @@
       return n;
     }
     // the grey line: the lunar day that is really in force, for information and checking
+    function refText(r) { // what the lunar day was read at
+      if (r.refKind === 'sunset') return t.sunsetBefore + ' ' + timeFmt.format(r.at);
+      if (r.refKind === 'sunrise') return t.sunrise + ' ' + timeFmt.format(r.at);
+      return refLabel;
+    }
     function actualLine(r) {
-      var line = t.actual(r.day, halfName(r.tithi), refLabel) + ' · ' + t.until + ' ' + endFmt.format(r.ends.date);
+      var line = t.actual(r.day, halfName(r.tithi), refText(r)) + ' · ' + t.until + ' ' + endFmt.format(r.ends.date);
       if (state.ref < 0) line = t.night + ' ' + eveFmt.format(Date.parse(r.ymd) - DAY) + ' · ' + line;
       return line;
     }
@@ -247,13 +278,15 @@
       '<strong>' + t.lunarDay + ' ' + lunarDay + '</strong> ' + t.of15 + ', ' + halfName(tithi) +
       (dayEnds ? ' <span class="muted">· ' + t.until + ' ' + esc(endFmt.format(dayEnds.date)) + '</span>' : '') +
       (isUposatha ? '<span class="badge">' + t.uposatha + '</span>' : '') +
+      (sunLine ? '<br><span class="muted">' + esc(sunLine) + '</span>' : '') +
       (tonight ? '<br><strong class="accent">' + t.tonight + '</strong>' : '') + '</div></div>';
     html += '<div class="controls"><label>' + t.tz + ': <select id="tz">' +
       zones.map(function (z) { return '<option' + (z === tz ? ' selected' : '') + '>' + esc(z) + '</option>'; }).join('') +
       '</select></label><label>' + t.hemisphere + ': <select id="hemi"><option value="north"' + (state.south ? '' : ' selected') + '>' + t.hemispheres[0] +
       '</option><option value="south"' + (state.south ? ' selected' : '') + '>' + t.hemispheres[1] + '</option></select></label>' +
+      '<span class="loc">' + (state.loc ? esc(t.located + ': ' + state.loc.lat + ', ' + state.loc.lon) + ' <a href="#" id="unloc">' + t.forget + '</a>' : '<button type="button" id="loc">📍 ' + t.locate + '</button>') + '</span>' +
       '<label class="sw"><input type="checkbox" id="sutta"' + (sutta ? ' checked' : '') + '> <strong>' + esc(t.sutta) + '</strong></label></div>' +
-      '<p class="legend">' + esc(sutta ? t.hintSutta : t.hintModern) + '</p>';
+      '<p class="legend">' + esc(sutta ? t.hintSutta : t.hintModern) + '</p>' + (state.locMsg ? '<p class="legend">' + esc(state.locMsg) + '</p>' : '');
     html += '<div class="tabs"><button data-view="uposatha" aria-pressed="' + (!all) + '">' + t.viewUposatha + '</button>' +
       '<button data-view="all" aria-pressed="' + all + '">' + t.viewAll + '</button></div>';
 
@@ -323,6 +356,16 @@
 
     el('tz').onchange = function (e) { state.tz = e.target.value; store('dgUposathaTz', state.tz); render(); };
     el('hemi').onchange = function (e) { state.south = e.target.value === 'south'; store('dgUposathaHemisphere', e.target.value); render(); };
+    if (el('loc')) el('loc').onclick = function () {
+      if (!navigator.geolocation) { state.locMsg = t.denied; render(); return; }
+      el('loc').textContent = t.locating;
+      navigator.geolocation.getCurrentPosition(function (pos) {
+        // about a kilometre is plenty for a sunrise, and less to keep
+        state.loc = { lat: Math.round(pos.coords.latitude * 100) / 100, lon: Math.round(pos.coords.longitude * 100) / 100 };
+        state.locMsg = ''; store('dgUposathaLoc', JSON.stringify(state.loc)); render();
+      }, function () { state.locMsg = t.denied; render(); }, { timeout: 15000, maximumAge: 3600000 });
+    };
+    if (el('unloc')) el('unloc').onclick = function (e) { e.preventDefault(); state.loc = null; state.locMsg = ''; store('dgUposathaLoc', ''); render(); };
     el('sutta').onchange = function (e) { state.ref = e.target.checked ? -6 : 6; store('dgUposathaSutta', e.target.checked ? '1' : '0'); render(); };
     Array.prototype.forEach.call(document.querySelectorAll('.tabs button'), function (b) {
       b.onclick = function () { state.view = b.getAttribute('data-view'); store('dgUposathaView', state.view); render(); };
@@ -342,3 +385,9 @@
   render();
   window.addEventListener('resize', reportHeight);
 })();
+
+// Installable as an app of its own (its own manifest, start_url and scope). The site's service worker at
+// /sw.js controls the page; it is registered here too, so visiting the calendar first is enough to install it.
+if (new URLSearchParams(location.search).get('embed') !== '1' && 'serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(function () { /* not fatal: the page works without it */ });
+}

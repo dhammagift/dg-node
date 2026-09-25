@@ -1434,6 +1434,7 @@ app.get('/config/sync-config.json', (req, res) => sendFile(req, res, path.join(_
 // The Uposatha calendar as a page of its own (also embedded in the docs); the hyphenated path cannot be
 // mistaken for a Pali search word the way /uposatha could.
 app.get('/uposatha-calendar', (req, res) => sendVersionedHtml(req, res, path.join(__dirname, 'public', 'uposatha-calendar.html')));
+app.get('/uposatha-calendar.webmanifest', (req, res) => sendFile(req, res, path.join(__dirname, 'public', 'uposatha-calendar.webmanifest'), 'application/manifest+json'));
 app.get('/cse', (req, res) => sendVersionedHtml(req, res, path.join(__dirname, 'public', 'cse.html')));
 app.get('/api/patimokkha-fragment/:side', (req, res) => {
     if (req.params.side !== 'bu' && req.params.side !== 'bi') return res.code(404).send();
