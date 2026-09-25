@@ -512,7 +512,7 @@
             },
             {
               "label": "Google Custom Search",
-              "tpl": "https://dhamma.gift/cse?q={{q}}",
+              "tpl": "/cse?q={{q}}",
               "blank": true
             }
           ]
@@ -1384,7 +1384,7 @@
             },
             {
               "label": "Google Custom Search",
-              "tpl": "https://dhamma.gift/cse?q={{q}}",
+              "tpl": "/cse?q={{q}}",
               "blank": true
             }
           ]
