@@ -57,6 +57,11 @@
       foot: 'Which lunar day a date is, is read from the real Moon at the chosen time of that date. A lunar day lasts 19–26 hours and changes when the Moon has gained another 12° on the Sun, not at midnight, so a day number sometimes jumps or repeats. The Uposatha is kept on the date when the 8th, 14th or 15th lunar day is in force; if such a day begins and ends between two of those moments, it is kept with the following date. A day in the suttas is counted from the evening, so the observance begins on the evening before. Thai, Sri Lankan and Burmese communities calculate their calendars by tradition and can differ by a day — follow your community\'s calendar. To cross-check: <a href="https://www.timeanddate.com/moon/phases/" target="_blank" rel="noopener">Time and Date: Moon Phases</a>.',
       locate: 'Use my location', locating: 'Locating…', located: 'Location', forget: 'forget', denied: 'The location was not shared — the fixed times are used.',
       sunrise: 'sunrise', sunset: 'sunset', sunsetBefore: 'sunset the evening before',
+      remind: 'Reminders', remindOn: 'Remind me', remindLead: 'in advance', leads: [[1, '1 hour'], [3, '3 hours'], [12, '12 hours'], [24, '1 day'], [48, '2 days']],
+      remindDays: 'Days', remindNext: function (when, what) { return 'Next reminder: ' + when + ' — ' + what; }, remindNone: 'No reminder is due in the coming weeks.',
+      remindDenied: 'Notifications are blocked for this site — allow them in the browser settings.', remindUnsupported: 'This browser cannot show notifications.',
+      remindNote: 'Notifications appear while this app is open or running in the background on your device. For reminders that arrive when it is fully closed, add the days to your phone\'s calendar.',
+      ics: 'Add to my calendar (.ics)', remindBody: function (when) { return 'begins ' + when; },
       docs: 'The suttas on Uposatha', docsUrl: '/docs/uposatha',
     },
     ru: {
@@ -80,6 +85,11 @@
       foot: 'Какой лунный день у даты, определяется по реальной Луне в выбранное время этой даты. Лунный день длится 19–26 часов и меняется, когда Луна уходит от Солнца ещё на 12°, а не в полночь, поэтому номер дня иногда перескакивает или повторяется. Упосатха соблюдается в дату, когда действует 8-й, 14-й или 15-й лунный день; если такой день начинается и кончается между двумя такими моментами, он соблюдается в следующую дату. День в суттах считается с вечера, поэтому соблюдение начинается вечером накануне. Тайские, шри-ланкийские и бирманские общины считают календари по традиции и могут отличаться на день — ориентируйтесь на календарь своей общины. Для сверки: <a href="https://www.timeanddate.com/moon/phases/" target="_blank" rel="noopener">Time and Date: Moon Phases</a>.',
       locate: 'Определить моё место', locating: 'Определяю…', located: 'Место', forget: 'забыть', denied: 'Место не передано — используется фиксированное время.',
       sunrise: 'восход', sunset: 'закат', sunsetBefore: 'закат накануне вечером',
+      remind: 'Напоминания', remindOn: 'Напоминать', remindLead: 'заранее', leads: [[1, 'за 1 час'], [3, 'за 3 часа'], [12, 'за 12 часов'], [24, 'за сутки'], [48, 'за 2 суток']],
+      remindDays: 'Дни', remindNext: function (when, what) { return 'Ближайшее напоминание: ' + when + ' — ' + what; }, remindNone: 'В ближайшие недели напоминаний нет.',
+      remindDenied: 'Уведомления для сайта запрещены — разрешите их в настройках браузера.', remindUnsupported: 'Этот браузер не умеет показывать уведомления.',
+      remindNote: 'Уведомления приходят, пока приложение открыто или работает в фоне на вашем устройстве. Чтобы напоминание пришло и при полностью закрытом приложении, добавьте дни в календарь телефона.',
+      ics: 'Добавить в мой календарь (.ics)', remindBody: function (when) { return 'начинается ' + when; },
       docs: 'Сутты об упосатхе', docsUrl: '/ru/docs/uposatha',
     },
   };
@@ -107,6 +117,9 @@
     selected: null,
     loc: (function () { try { return JSON.parse(store('dgUposathaLoc')); } catch (e) { return null; } })(), // {lat, lon} or null
     locMsg: '',
+    // reminders: kept on the device; by default a day ahead of the 8th and the 14th day
+    rem: (function () { var d = { on: false, lead: 24, d8: true, d14: true, d15: false }; try { var v = JSON.parse(store('dgUposathaRemind')); if (v) for (var k in d) if (k in v) d[k] = v[k]; } catch (e) { /* defaults */ } return d; })(),
+    remMsg: '',
   };
   var hemi = store('dgUposathaHemisphere');
   state.south = hemi ? hemi === 'south' : SOUTHERN_ZONE.test(state.tz);
@@ -190,6 +203,57 @@
     }
   }
 
+  // ---- reminders ----
+  var timer = null;
+  function wantDay(r) { // by the suttas the days are chosen; in the modern scheme every listed day counts
+    if (state.ref >= 0) return true;
+    return r.names.some(function (x) { var n = dayNo(x); return (n === 8 && state.rem.d8) || (n === 14 && state.rem.d14) || (n === 15 && state.rem.d15); });
+  }
+  function dueList(rows, nameOf) {
+    var now = Date.now(), lead = state.rem.lead * 3600000;
+    return rows.filter(function (r) { return r.uposatha && r.at.getTime() > now && wantDay(r); }).map(function (r) {
+      return { key: r.ymd + (state.ref < 0 ? 's' : 'm'), when: r.at.getTime() - lead, start: r.at, title: nameOf(r) };
+    });
+  }
+  function notify(item) {
+    var timeFmt = new Intl.DateTimeFormat(lang, { timeZone: state.tz, weekday: 'short', hour: '2-digit', minute: '2-digit' });
+    var opts = { body: t.remindBody(timeFmt.format(item.start)), tag: 'uposatha-' + item.key, icon: '/assets/img/pwa-bold-monocolor-192.png', data: { url: '/uposatha-calendar' } };
+    var seen = []; try { seen = JSON.parse(store('dgUposathaNotified') || '[]'); } catch (e) { seen = []; }
+    if (seen.indexOf(item.key) !== -1) return;
+    seen.push(item.key); store('dgUposathaNotified', JSON.stringify(seen.slice(-40)));
+    if ('serviceWorker' in navigator) navigator.serviceWorker.getRegistration('/').then(function (reg) {
+      if (reg && reg.showNotification) reg.showNotification(item.title, opts); else new Notification(item.title, opts);
+    }).catch(function () { new Notification(item.title, opts); });
+    else new Notification(item.title, opts);
+  }
+  // Show what is due now (a reminder time that passed while the app was closed, before the day begins) and set a
+  // timer for the next one; a timer can hold only ~24 days, so the schedule is rebuilt on every render and on focus.
+  function scheduleReminders(rows, nameOf) {
+    clearTimeout(timer);
+    if (!state.rem.on || !('Notification' in window) || Notification.permission !== 'granted') return null;
+    var now = Date.now(), list = dueList(rows, nameOf), next = null;
+    list.forEach(function (i) { if (i.when <= now) notify(i); else if (!next || i.when < next.when) next = i; });
+    if (next) timer = setTimeout(function () { notify(next); render(); }, Math.min(next.when - now, 2147000000));
+    return next;
+  }
+  function icsEscape(x) { return String(x).replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n'); }
+  function icsStamp(d) { return d.toISOString().replace(/[-:]/g, '').replace(/\.\d+/, ''); }
+  // A calendar file: one event per Uposatha day, from the start of the observance for a day, with an alarm `lead` ahead.
+  function downloadIcs(rows, nameOf) {
+    var lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Dhamma.gift//Uposatha//EN', 'CALSCALE:GREGORIAN', 'X-WR-CALNAME:' + icsEscape(t.title)];
+    rows.filter(function (r) { return r.uposatha && r.at.getTime() > Date.now() && wantDay(r); }).forEach(function (r) {
+      lines.push('BEGIN:VEVENT', 'UID:uposatha-' + r.ymd + (state.ref < 0 ? '-s' : '-m') + '@dhamma.gift', 'DTSTAMP:' + icsStamp(new Date()),
+        'DTSTART:' + icsStamp(r.at), 'DTEND:' + icsStamp(new Date(r.at.getTime() + DAY)), 'SUMMARY:' + icsEscape(t.uposatha + ' — ' + nameOf(r)),
+        'DESCRIPTION:' + icsEscape('https://dhamma.gift/uposatha-calendar'),
+        'BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:' + icsEscape(nameOf(r)), 'TRIGGER:-PT' + state.rem.lead + 'H', 'END:VALARM', 'END:VEVENT');
+    });
+    lines.push('END:VCALENDAR');
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([lines.join('\r\n')], { type: 'text/calendar' }));
+    a.download = 'uposatha.ics';
+    document.body.appendChild(a); a.click(); a.remove();
+  }
+
   function el(id) { return document.getElementById(id); }
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
 
@@ -271,6 +335,8 @@
     }
 
     var all = state.view === 'all';
+    var nextReminder = scheduleReminders(rows, nameOf);
+    var permission = 'Notification' in window ? Notification.permission : 'unsupported';
     var html = '';
     html += '<div class="today"><span class="moon" aria-hidden="true">' + emoji[phaseIndex] + '</span><div>' +
       '<strong>' + t.today + ':</strong> ' + esc(dateFmt.format(now)) + '<br>' +
@@ -287,6 +353,13 @@
       '<span class="loc">' + (state.loc ? esc(t.located + ': ' + state.loc.lat + ', ' + state.loc.lon) + ' <a href="#" id="unloc">' + t.forget + '</a>' : '<button type="button" id="loc">📍 ' + t.locate + '</button>') + '</span>' +
       '<label class="sw"><input type="checkbox" id="sutta"' + (sutta ? ' checked' : '') + '> <strong>' + esc(t.sutta) + '</strong></label></div>' +
       '<p class="legend">' + esc(sutta ? t.hintSutta : t.hintModern) + '</p>' + (state.locMsg ? '<p class="legend">' + esc(state.locMsg) + '</p>' : '');
+    var leadOpts = t.leads.map(function (l) { return '<option value="' + l[0] + '"' + (l[0] === state.rem.lead ? ' selected' : '') + '>' + esc(l[1]) + '</option>'; }).join('');
+    var dayChecks = sutta ? '<span class="remdays">' + t.remindDays + ': ' + [8, 14, 15].map(function (n) { return '<label class="sw"><input type="checkbox" class="remday" data-day="' + n + '"' + (state.rem['d' + n] ? ' checked' : '') + '> ' + t.nth(n) + '</label>'; }).join(' ') + '</span>' : '';
+    html += '<details class="rem"' + (state.rem.on ? ' open' : '') + '><summary>🔔 ' + t.remind + '</summary>' +
+      '<div class="controls"><label class="sw"><input type="checkbox" id="remOn"' + (state.rem.on ? ' checked' : '') + '> <strong>' + t.remindOn + '</strong></label>' +
+      '<label>' + t.remindLead + ': <select id="remLead">' + leadOpts + '</select></label>' + dayChecks + '</div>' +
+      '<p class="legend">' + esc(state.remMsg || (permission === 'denied' ? t.remindDenied : permission === 'unsupported' ? t.remindUnsupported : (state.rem.on && nextReminder ? t.remindNext(new Intl.DateTimeFormat(lang, { timeZone: tz, weekday: 'short', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }).format(nextReminder.when), nextReminder.title) : (state.rem.on ? t.remindNone : '')))) + '</p>' +
+      '<p class="legend">' + esc(t.remindNote) + '</p><button type="button" id="ics" class="pill">📅 ' + t.ics + '</button></details>';
     html += '<div class="tabs"><button data-view="uposatha" aria-pressed="' + (!all) + '">' + t.viewUposatha + '</button>' +
       '<button data-view="all" aria-pressed="' + all + '">' + t.viewAll + '</button></div>';
 
@@ -366,6 +439,22 @@
       }, function () { state.locMsg = t.denied; render(); }, { timeout: 15000, maximumAge: 3600000 });
     };
     if (el('unloc')) el('unloc').onclick = function (e) { e.preventDefault(); state.loc = null; state.locMsg = ''; store('dgUposathaLoc', ''); render(); };
+    function saveRem() { store('dgUposathaRemind', JSON.stringify(state.rem)); }
+    el('remOn').onchange = function (e) {
+      state.remMsg = '';
+      if (!e.target.checked) { state.rem.on = false; saveRem(); render(); return; }
+      if (!('Notification' in window)) { state.remMsg = t.remindUnsupported; e.target.checked = false; render(); return; }
+      Notification.requestPermission().then(function (perm) {
+        state.rem.on = perm === 'granted';
+        if (perm !== 'granted') state.remMsg = t.remindDenied;
+        saveRem(); render();
+      });
+    };
+    el('remLead').onchange = function (e) { state.rem.lead = parseInt(e.target.value, 10); saveRem(); render(); };
+    Array.prototype.forEach.call(document.querySelectorAll('.remday'), function (c) {
+      c.onchange = function () { state.rem['d' + c.getAttribute('data-day')] = c.checked; saveRem(); render(); };
+    });
+    el('ics').onclick = function () { downloadIcs(rows, nameOf); };
     el('sutta').onchange = function (e) { state.ref = e.target.checked ? -6 : 6; store('dgUposathaSutta', e.target.checked ? '1' : '0'); render(); };
     Array.prototype.forEach.call(document.querySelectorAll('.tabs button'), function (b) {
       b.onclick = function () { state.view = b.getAttribute('data-view'); store('dgUposathaView', state.view); render(); };
@@ -384,6 +473,7 @@
   if (embed) { el('head').style.display = 'none'; el('foot').style.display = 'none'; }
   render();
   window.addEventListener('resize', reportHeight);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) render(); });
 })();
 
 // Installable as an app of its own (its own manifest, start_url and scope). The site's service worker at
