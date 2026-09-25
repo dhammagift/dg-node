@@ -1,13 +1,15 @@
 // The Uposatha calendar as a page of its own (/uposatha-calendar), also embedded in the docs page.
 //
 // Uposatha days as the suttas count them (MN 83, AN 3.37): the 14th, 15th and 8th lunar days of each
-// half-month, six a month. A lunar day is the tithi: the Moon gains 12 degrees on the Sun per lunar
-// day, 30 to a month; days 1-15 are the waxing half, 1-15 again the waning half (the 15th of the
-// waning half is the new moon day). A lunar day begins and ends at the exact moment the angle crosses
-// a multiple of 12 - not at midnight - so it usually spans two civil dates and lasts 19-26 hours.
-// The moments come from astronomy-engine (a real ephemeris, minute accuracy, vendored in
-// vendor/astronomy.browser.min.js) and are shown in the reader's own time zone: only the zone matters
-// for a date, not the place, so there is no geolocation prompt. The old lunar.html counted from one
+// half-month, six a month; a month has 30 lunar days (AN 3.70), 15 to a half, the 15th of the waning half
+// being the new moon day. A lunar day is the tithi: the Moon gains 12 degrees on the Sun per lunar day. It
+// begins and ends at the exact moment the angle crosses a multiple of 12 - not at midnight - and lasts
+// 19-26 hours, so against the calendar dates the number sometimes jumps (a lunar day begins and ends
+// between two mornings: it is skipped) or stays (it spans two mornings: it repeats). Which lunar day a
+// date is, is therefore read from the real Moon at a fixed time of that date (06:00 by default), never
+// assumed. The moments come from astronomy-engine (a real ephemeris, minute accuracy, vendored in
+// vendor/astronomy.browser.min.js) and are shown in the reader's own time zone: only the zone matters for
+// a date, not the place, so there is no geolocation prompt. The old lunar.html counted from one
 // remembered new moon with a mean month and was off by up to ~17 hours.
 //
 // URL: ?lang=ru|en  ?theme=dark|light  ?view=all  ?embed=1 (no header, reports its height to the parent)
@@ -26,33 +28,48 @@
   document.documentElement.lang = lang;
   if (embed) document.body.classList.add('embed');
 
+  var EN_ORD = { 1: '1st', 2: '2nd', 3: '3rd' };
   var TEXT = {
     en: {
       title: 'Uposatha days',
       sub: 'The 14th, 15th and 8th lunar days of each half-month, as the suttas count them — six a month.',
       tz: 'Time zone', hemisphere: 'Hemisphere', hemispheres: ['Northern', 'Southern'],
-      today: 'Today', illuminated: 'illuminated', lunarDay: 'Lunar day', of15: 'of 15',
+      ref: 'Day counted at', today: 'Today', illuminated: 'illuminated', lunarDay: 'Lunar day', of15: 'of 15',
       halves: ['waxing half', 'waning half'], until: 'until', uposatha: 'Uposatha day',
-      viewUposatha: 'Uposatha days', viewAll: 'All lunar days',
-      dayOf: function (n, half) { return n + 'th day of the ' + half; },
-      dayAll: function (n, half) { return 'Day ' + n + ' · ' + half; },
-      fullMoon: 'full moon', newMoon: 'new moon', now: 'now',
+      viewUposatha: 'Uposatha days', viewAll: 'Calendar',
+      nth: function (n) { return EN_ORD[n] || n + 'th'; },
+      and: ' & ',
+      dayOf: function (nth, half) { return nth + ' day of the ' + half; },
+      actual: function (n, half, ref) { return 'lunar day ' + n + ', ' + half + ', at ' + ref; },
+      legend: 'Uposatha day (the 8th, 14th, 15th). The grey figure is the lunar day in force at the chosen time; tap a date for details.',
+      pickDate: 'Tap a date',
+      fullMoon: 'full moon', newMoon: 'new moon', now: 'today',
+      skipped: function (nth) { return nth + ' lunar day is skipped — it begins and ends between two mornings'; },
+      repeats: 'the same lunar day as the day before',
+      keptWith: function (nth) { return 'the ' + nth + ' day is skipped and kept with this date'; },
       phases: ['New moon', 'Waxing crescent', 'First quarter', 'Waxing gibbous', 'Full moon', 'Waning gibbous', 'Last quarter', 'Waning crescent'],
-      foot: 'Moments are computed astronomically, accurate to about a minute. A lunar day changes when the Moon has gained another 12° on the Sun, not at midnight. A day in the suttas is counted from the evening, so the observance begins on the evening before. Thai, Sri Lankan and Burmese communities calculate their calendars by tradition and can differ by a day — follow your community\'s calendar. To cross-check: <a href="https://www.timeanddate.com/moon/phases/" target="_blank" rel="noopener">Time and Date: Moon Phases</a>.',
+      foot: 'Which lunar day a date is, is read from the real Moon at the chosen time of that date. A lunar day lasts 19–26 hours and changes when the Moon has gained another 12° on the Sun, not at midnight, so a day number sometimes jumps or repeats. The Uposatha is kept on the date when the 8th, 14th or 15th lunar day is in force; if such a day begins and ends between two of those moments, it is kept with the following date. A day in the suttas is counted from the evening, so the observance begins on the evening before. Thai, Sri Lankan and Burmese communities calculate their calendars by tradition and can differ by a day — follow your community\'s calendar. To cross-check: <a href="https://www.timeanddate.com/moon/phases/" target="_blank" rel="noopener">Time and Date: Moon Phases</a>.',
       docs: 'The suttas on Uposatha', docsUrl: '/docs/uposatha',
     },
     ru: {
       title: 'Дни упосатхи',
       sub: '14-й, 15-й и 8-й лунные дни каждой половины месяца, как их считают сутты, — шесть в месяц.',
       tz: 'Часовой пояс', hemisphere: 'Полушарие', hemispheres: ['Северное', 'Южное'],
-      today: 'Сегодня', illuminated: 'освещено', lunarDay: 'Лунный день', of15: 'из 15',
+      ref: 'День считается в', today: 'Сегодня', illuminated: 'освещено', lunarDay: 'Лунный день', of15: 'из 15',
       halves: ['растущая половина', 'убывающая половина'], until: 'до', uposatha: 'День упосатхи',
-      viewUposatha: 'Дни упосатхи', viewAll: 'Все лунные дни',
-      dayOf: function (n, half) { return n + '-й день · ' + half; },
-      dayAll: function (n, half) { return n + '-й день · ' + half; },
-      fullMoon: 'полнолуние', newMoon: 'новолуние', now: 'сейчас',
+      viewUposatha: 'Дни упосатхи', viewAll: 'Календарь',
+      nth: function (n) { return n + '-й'; },
+      and: ' и ',
+      dayOf: function (nth, half) { return nth + ' день · ' + half; },
+      actual: function (n, half, ref) { return 'лунный день ' + n + ', ' + half + ', в ' + ref; },
+      legend: 'День упосатхи (8-й, 14-й, 15-й). Серая цифра — лунный день, действующий в выбранное время; нажмите на дату, чтобы увидеть подробности.',
+      pickDate: 'Нажмите на дату',
+      fullMoon: 'полнолуние', newMoon: 'новолуние', now: 'сегодня',
+      skipped: function (nth) { return nth + ' лунный день пропущен — он начинается и кончается между двумя утрами'; },
+      repeats: 'тот же лунный день, что и накануне',
+      keptWith: function (nth) { return nth + ' день пропущен и соблюдается в эту дату'; },
       phases: ['Новолуние', 'Растущий серп', 'Первая четверть', 'Растущая Луна', 'Полнолуние', 'Убывающая Луна', 'Последняя четверть', 'Убывающий серп'],
-      foot: 'Моменты рассчитаны астрономически, с точностью около минуты. Лунный день меняется, когда Луна уходит от Солнца ещё на 12°, а не в полночь. День в суттах считается с вечера, поэтому соблюдение начинается вечером накануне. Тайские, шри-ланкийские и бирманские общины считают календари по традиции и могут отличаться на день — ориентируйтесь на календарь своей общины. Для сверки: <a href="https://www.timeanddate.com/moon/phases/" target="_blank" rel="noopener">Time and Date: Moon Phases</a>.',
+      foot: 'Какой лунный день у даты, определяется по реальной Луне в выбранное время этой даты. Лунный день длится 19–26 часов и меняется, когда Луна уходит от Солнца ещё на 12°, а не в полночь, поэтому номер дня иногда перескакивает или повторяется. Упосатха соблюдается в дату, когда действует 8-й, 14-й или 15-й лунный день; если такой день начинается и кончается между двумя такими моментами, он соблюдается в следующую дату. День в суттах считается с вечера, поэтому соблюдение начинается вечером накануне. Тайские, шри-ланкийские и бирманские общины считают календари по традиции и могут отличаться на день — ориентируйтесь на календарь своей общины. Для сверки: <a href="https://www.timeanddate.com/moon/phases/" target="_blank" rel="noopener">Time and Date: Moon Phases</a>.',
       docs: 'Сутты об упосатхе', docsUrl: '/ru/docs/uposatha',
     },
   };
@@ -75,7 +92,9 @@
   var state = {
     tz: store('dgUposathaTz') || detected,
     south: null,
+    ref: parseInt(store('dgUposathaRef') || '6', 10),
     view: params.get('view') === 'all' ? 'all' : (store('dgUposathaView') || 'uposatha'),
+    selected: null,
   };
   var hemi = store('dgUposathaHemisphere');
   state.south = hemi ? hemi === 'south' : SOUTHERN_ZONE.test(state.tz);
@@ -85,30 +104,60 @@
 
   function localDay(date, tz) { return date.toLocaleDateString('en-CA', { timeZone: tz }); } // yyyy-mm-dd, sortable
 
-  // The lunar days that have not ended yet, up to the end of the shown months, with the exact moments each
-  // starts and ends. One pass over the boundaries: lunar day n runs from crossing (n-1)*12 to n*12 degrees.
-  function lunarDays(now, tz, all) {
-    var out = [], months = {}, monthCount = 0, limit = all ? 2 : 3;
-    var boundary = A.SearchMoonPhase(0, new Date(now.getTime() - 32 * DAY), 34).date; // a new moon, before now
-    for (var guard = 0; guard < 8; guard++) {
-      for (var tithi = 1; tithi <= 30; tithi++) {
-        var start = boundary;
-        var end = A.SearchMoonPhase((tithi * 12) % 360, start, 3).date;
-        boundary = end;
-        if (end < now) continue;
-        if (!all && UPOSATHA.indexOf(tithi) === -1) continue;
-        var month = localDay(start < now ? now : start, tz).slice(0, 7);
-        if (!months[month]) { months[month] = true; monthCount++; }
-        if (monthCount > limit) return out;
-        var waxing = tithi <= 15;
-        out.push({ day: waxing ? tithi : tithi - 15, waxing: waxing, start: start, end: end, month: month, uposatha: UPOSATHA.indexOf(tithi) !== -1 });
+  // The UTC moment of hour `h` on the calendar date y-m-d in `tz`.
+  function offsetMs(utcMs, tz) {
+    var v = {};
+    new Intl.DateTimeFormat('en-US', { timeZone: tz, hourCycle: 'h23', year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' })
+      .formatToParts(new Date(utcMs)).forEach(function (p) { v[p.type] = +p.value; });
+    return Date.UTC(v.year, v.month - 1, v.day, v.hour, v.minute, v.second) - utcMs;
+  }
+  function zonedToUtc(y, m, d, h, tz) {
+    var wall = Date.UTC(y, m - 1, d, h, 0, 0), utc = wall;
+    for (var i = 0; i < 2; i++) utc = wall - offsetMs(utc, tz);
+    return new Date(utc);
+  }
+  function tithiAt(date) { return Math.floor(A.MoonPhase(date) / 12) + 1; } // 1..30
+
+  // One row per calendar date from `from` to `to` (y-m-d, inclusive), with the lunar day in force at `ref` o'clock
+  // of that date: what it is, until when it lasts, whether days before it were skipped or it repeats the day
+  // before, and the full / new moon falling within the 24 hours from that moment.
+  function civilDays(from, to, tz, ref) {
+    var f = from.split('-').map(Number), rows = [], prev = null;
+    for (var i = -1; ; i++) { // i = -1: the day before, only to tell whether the first date's number jumped
+      var c = new Date(Date.UTC(f[0], f[1] - 1, f[2] + i));
+      var y = c.getUTCFullYear(), m = c.getUTCMonth() + 1, d = c.getUTCDate();
+      var ymd = y + '-' + pad(m) + '-' + pad(d);
+      if (ymd > to) break;
+      var at = zonedToUtc(y, m, d, ref, tz);
+      var tithi = tithiAt(at), waxing = tithi <= 15;
+      var row = { ymd: ymd, y: y, m: m, d: d, dow: c.getUTCDay(), at: at, tithi: tithi, waxing: waxing, day: waxing ? tithi : tithi - 15,
+        ends: A.SearchMoonPhase((tithi * 12) % 360, at, 3), skipped: [], repeats: false };
+      if (prev) {
+        var gap = (tithi - prev.tithi + 30) % 30;
+        row.repeats = gap === 0;
+        for (var k = 1; k < gap; k++) row.skipped.push((prev.tithi + k - 1) % 30 + 1);
       }
+      var next = new Date(at.getTime() + DAY);
+      var fm = A.SearchMoonPhase(180, at, 1.1), nm = A.SearchMoonPhase(0, at, 1.1);
+      row.fullMoon = fm && fm.date < next ? fm.date : null;
+      row.newMoon = nm && nm.date < next ? nm.date : null;
+      // the Uposatha is kept on the date its lunar day is in force; a skipped one is kept with this date
+      row.keptWith = row.skipped.filter(function (x) { return UPOSATHA.indexOf(x) !== -1; });
+      row.names = row.keptWith.concat(UPOSATHA.indexOf(tithi) !== -1 ? [tithi] : []); // tithi numbers of the Uposatha days kept on this date
+      row.uposatha = row.names.length > 0;
+      if (i >= 0) rows.push(row);
+      prev = row;
     }
-    return out;
+    return rows;
   }
 
+  function pad(n) { return ('0' + n).slice(-2); }
   function el(id) { return document.getElementById(id); }
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+
+  var FIRST_DAY = lang === 'ru' ? 1 : 0; // weeks start on Monday for ru, Sunday for en
+  function halfName(tithi) { return t.halves[tithi <= 15 ? 0 : 1]; }
+  function dayNo(tithi) { return tithi <= 15 ? tithi : tithi - 15; }
 
   function render() {
     var now = new Date();
@@ -116,60 +165,135 @@
     var emoji = state.south ? PHASES_SOUTH : PHASES_NORTH;
     var angle = A.MoonPhase(now);
     var phaseIndex = Math.floor(((angle + 22.5) % 360) / 45);
-    var tithi = Math.floor(angle / 12) + 1;
-    var waxingNow = tithi <= 15;
-    var lunarDay = waxingNow ? tithi : tithi - 15;
+    var tithi = tithiAt(now);
+    var lunarDay = dayNo(tithi);
     var dayEnds = A.SearchMoonPhase((tithi * 12) % 360, now, 3);
     var isUposatha = lunarDay === 8 || lunarDay === 14 || lunarDay === 15;
     var percent = Math.round(A.Illumination('Moon', now).phase_fraction * 100);
+    var todayYmd = localDay(now, tz);
 
     var dateFmt = new Intl.DateTimeFormat(lang, { timeZone: tz, weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-    var stampFmt = new Intl.DateTimeFormat(lang, { timeZone: tz, weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    var longUtc = new Intl.DateTimeFormat(lang, { timeZone: 'UTC', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    var rowDateFmt = new Intl.DateTimeFormat(lang, { timeZone: 'UTC', weekday: 'short', day: 'numeric', month: 'long' });
+    var weekFmt = new Intl.DateTimeFormat(lang, { timeZone: 'UTC', day: 'numeric', month: 'short' });
+    var wdFmt = new Intl.DateTimeFormat(lang, { timeZone: 'UTC', weekday: 'short' });
+    var timeFmt = new Intl.DateTimeFormat(lang, { timeZone: tz, hour: '2-digit', minute: '2-digit' });
     var endFmt = new Intl.DateTimeFormat(lang, { timeZone: tz, weekday: 'short', hour: '2-digit', minute: '2-digit', timeZoneName: 'short' });
-    var zoneParts = new Intl.DateTimeFormat(lang, { timeZone: tz, timeZoneName: 'short' }).formatToParts(now);
-    var zoneName = (zoneParts.filter(function (p) { return p.type === 'timeZoneName'; })[0] || {}).value || '';
-    var monthFmt = new Intl.DateTimeFormat(lang, { timeZone: tz, month: 'long', year: 'numeric' });
+    var monthFmt = new Intl.DateTimeFormat(lang, { timeZone: 'UTC', month: 'long', year: 'numeric' });
+    function monthName(ms) { var n = monthFmt.format(ms); return n.charAt(0).toUpperCase() + n.slice(1); }
     var relFmt = new Intl.RelativeTimeFormat(lang, { numeric: 'auto' });
-    var todayMs = Date.parse(localDay(now, tz));
+    var todayMs = Date.parse(todayYmd);
+
+    // this month and the next two, whole months, so the calendar can show its past days too
+    var tp = todayYmd.split('-').map(Number);
+    var from = tp[0] + '-' + pad(tp[1]) + '-01';
+    var last = new Date(Date.UTC(tp[0], tp[1] + 2, 0)); // day 0 of the month after the third = its last day
+    var to = last.getUTCFullYear() + '-' + pad(last.getUTCMonth() + 1) + '-' + pad(last.getUTCDate());
+    var rows = civilDays(from, to, tz, state.ref);
+    var byYmd = {};
+    rows.forEach(function (r) { byYmd[r.ymd] = r; });
+    var refLabel = pad(state.ref) + ':00';
+
+    function notesOf(r) {
+      var n = [];
+      if (r.fullMoon) n.push(t.fullMoon + ' ' + timeFmt.format(r.fullMoon));
+      if (r.newMoon) n.push(t.newMoon + ' ' + timeFmt.format(r.newMoon));
+      r.keptWith.forEach(function (x) { n.push(t.keptWith(t.nth(dayNo(x)))); });
+      r.skipped.forEach(function (x) { if (r.keptWith.indexOf(x) === -1) n.push(t.skipped(t.nth(dayNo(x)))); });
+      if (r.repeats) n.push(t.repeats);
+      return n;
+    }
+    // the grey line: the lunar day that is really in force, for information and checking
+    function actualLine(r) {
+      return t.actual(r.day, halfName(r.tithi), refLabel) + ' · ' + t.until + ' ' + endFmt.format(r.ends.date);
+    }
+    function nameOf(r) { // "the 8th day of the waning half", "the 14th & 15th day of the waxing half"
+      return t.dayOf(r.names.map(function (x) { return t.nth(dayNo(x)); }).join(t.and), halfName(r.names[0]));
+    }
 
     var all = state.view === 'all';
-    var days = lunarDays(now, tz, all);
     var html = '';
     html += '<div class="today"><span class="moon" aria-hidden="true">' + emoji[phaseIndex] + '</span><div>' +
       '<strong>' + t.today + ':</strong> ' + esc(dateFmt.format(now)) + '<br>' +
       '<span class="muted">' + t.phases[phaseIndex] + ', ' + percent + '% ' + t.illuminated + '</span><br>' +
-      '<strong>' + t.lunarDay + ' ' + lunarDay + '</strong> ' + t.of15 + ', ' + t.halves[waxingNow ? 0 : 1] +
+      '<strong>' + t.lunarDay + ' ' + lunarDay + '</strong> ' + t.of15 + ', ' + halfName(tithi) +
       (dayEnds ? ' <span class="muted">· ' + t.until + ' ' + esc(endFmt.format(dayEnds.date)) + '</span>' : '') +
       (isUposatha ? '<span class="badge">' + t.uposatha + '</span>' : '') + '</div></div>';
     html += '<div class="controls"><label>' + t.tz + ': <select id="tz">' +
       zones.map(function (z) { return '<option' + (z === tz ? ' selected' : '') + '>' + esc(z) + '</option>'; }).join('') +
       '</select></label><label>' + t.hemisphere + ': <select id="hemi"><option value="north"' + (state.south ? '' : ' selected') + '>' + t.hemispheres[0] +
-      '</option><option value="south"' + (state.south ? ' selected' : '') + '>' + t.hemispheres[1] + '</option></select></label></div>';
+      '</option><option value="south"' + (state.south ? ' selected' : '') + '>' + t.hemispheres[1] + '</option></select></label>' +
+      '<label>' + t.ref + ': <select id="ref">' + [6, 12, 18].map(function (h) { return '<option value="' + h + '"' + (h === state.ref ? ' selected' : '') + '>' + pad(h) + ':00</option>'; }).join('') + '</select></label></div>';
     html += '<div class="tabs"><button data-view="uposatha" aria-pressed="' + (!all) + '">' + t.viewUposatha + '</button>' +
       '<button data-view="all" aria-pressed="' + all + '">' + t.viewAll + '</button></div>';
 
-    var lastMonth = '';
-    days.forEach(function (d, i) {
-      if (d.month !== lastMonth) {
-        if (lastMonth) html += '</ul>';
-        html += '<h2>' + esc(monthFmt.format(d.start < now ? now : d.start)) + '</h2><ul class="' + (all ? 'all' : '') + '">';
-        lastMonth = d.month;
-      }
-      var ongoing = d.start <= now;
-      var away = Math.round((Date.parse(localDay(d.start, tz)) - todayMs) / DAY);
-      var note = d.day === 15 ? (d.waxing ? t.fullMoon : t.newMoon) : '';
-      var title = (all ? t.dayAll : t.dayOf)(d.day, t.halves[d.waxing ? 0 : 1]);
-      html += '<li class="row' + (d.uposatha ? ' upo' : '') + (ongoing ? ' now' : '') + '"><span class="e" aria-hidden="true">' + emoji[dayPhase(d.waxing, d.day)] + '</span>' +
-        '<span class="t"><span class="ttl"><strong>' + esc(title) + '</strong>' + (note ? '<span class="muted">· ' + note + '</span>' : '') +
-        (all && d.uposatha ? '<span class="badge">' + t.uposatha + '</span>' : '') + '</span>' +
-        '<span class="when">' + esc(stampFmt.format(d.start)) + ' – ' + esc(stampFmt.format(d.end)) + ' ' + esc(zoneName) + '</span></span>' +
-        '<span class="away">' + (ongoing ? t.now : esc(relFmt.format(away, 'day'))) + '</span></li>';
-    });
-    if (lastMonth) html += '</ul>';
+    if (!all) {
+      // Uposatha days only: month, then week, then the days
+      var list = rows.filter(function (r) { return r.uposatha && r.ymd >= todayYmd; });
+      var lastMonth = '', lastWeek = '';
+      list.forEach(function (r) {
+        var month = r.ymd.slice(0, 7);
+        var startOffset = (r.dow - FIRST_DAY + 7) % 7;
+        var weekStart = new Date(Date.UTC(r.y, r.m - 1, r.d - startOffset));
+        var weekKey = weekStart.toISOString().slice(0, 10);
+        if (month !== lastMonth) {
+          if (lastMonth) html += '</ul>';
+          html += '<h2>' + esc(monthName(Date.parse(r.ymd))) + '</h2>';
+          lastMonth = month; lastWeek = '';
+        }
+        if (weekKey !== lastWeek) {
+          if (lastWeek) html += '</ul>';
+          html += '<h3 class="week">' + esc(weekFmt.format(weekStart) + ' – ' + weekFmt.format(new Date(weekStart.getTime() + 6 * DAY))) + '</h3><ul>';
+          lastWeek = weekKey;
+        }
+        var isToday = r.ymd === todayYmd;
+        var away = Math.round((Date.parse(r.ymd) - todayMs) / DAY);
+        var first = r.names[0];
+        html += '<li class="row upo' + (isToday ? ' now' : '') + '"><span class="e" aria-hidden="true">' + emoji[dayPhase(first <= 15, dayNo(first))] + '</span>' +
+          '<span class="t"><span class="ttl"><strong>' + esc(rowDateFmt.format(Date.parse(r.ymd))) + '</strong><span>' + esc(nameOf(r)) + '</span></span>' +
+          '<span class="when">' + esc([actualLine(r)].concat(notesOf(r)).join(' · ')) + '</span></span>' +
+          '<span class="away">' + (isToday ? t.now : esc(relFmt.format(away, 'day'))) + '</span></li>';
+      });
+      if (lastWeek) html += '</ul>';
+    } else {
+      // the ordinary calendar: whole months, uneven lengths and all, with the Uposatha days marked
+      html += '<p class="legend"><span class="key"></span>' + esc(t.legend) + '</p><div class="detail" id="detail"></div>';
+      var months = [];
+      rows.forEach(function (r) {
+        var key = r.ymd.slice(0, 7);
+        if (!months.length || months[months.length - 1].key !== key) months.push({ key: key, rows: [] });
+        months[months.length - 1].rows.push(r);
+      });
+      months.forEach(function (mo) {
+        html += '<h2>' + esc(monthName(Date.parse(mo.rows[0].ymd))) + '</h2><div class="cal">';
+        for (var w = 0; w < 7; w++) html += '<div class="wd">' + esc(wdFmt.format(Date.UTC(2024, 0, 7 + FIRST_DAY + w))) + '</div>'; // 2024-01-07 is a Sunday
+        for (var blank = (mo.rows[0].dow - FIRST_DAY + 7) % 7; blank > 0; blank--) html += '<div></div>';
+        mo.rows.forEach(function (r) {
+          html += '<button type="button" class="cell' + (r.uposatha ? ' upo' : '') + (r.ymd === todayYmd ? ' today' : '') + (r.ymd < todayYmd ? ' past' : '') + '" data-ymd="' + r.ymd + '">' +
+            '<span class="n">' + r.d + '</span><span class="l">' + r.day + '</span>' +
+            (r.uposatha ? '<span class="ce" aria-hidden="true">' + emoji[dayPhase(r.names[0] <= 15, dayNo(r.names[0]))] + '</span>' : '') + '</button>';
+        });
+        html += '</div>';
+      });
+    }
     el('app').innerHTML = html;
+
+    function showDetail(ymd) {
+      var r = byYmd[ymd], box = el('detail');
+      if (!r || !box) return;
+      Array.prototype.forEach.call(document.querySelectorAll('.cell'), function (c) { c.classList.toggle('sel', c.getAttribute('data-ymd') === ymd); });
+      box.innerHTML = '<strong>' + esc(longUtc.format(Date.parse(ymd))) + '</strong>' +
+        (r.uposatha ? '<span class="badge">' + t.uposatha + '</span><br><strong class="accent">' + esc(nameOf(r)) + '</strong>' : '') +
+        '<br><span class="when">' + esc([actualLine(r)].concat(notesOf(r)).join(' · ')) + '</span>';
+    }
+    if (all) {
+      Array.prototype.forEach.call(document.querySelectorAll('.cell'), function (c) { c.onclick = function () { showDetail(c.getAttribute('data-ymd')); reportHeight(); }; });
+      showDetail(byYmd[state.selected] ? state.selected : todayYmd);
+    }
 
     el('tz').onchange = function (e) { state.tz = e.target.value; store('dgUposathaTz', state.tz); render(); };
     el('hemi').onchange = function (e) { state.south = e.target.value === 'south'; store('dgUposathaHemisphere', e.target.value); render(); };
+    el('ref').onchange = function (e) { state.ref = parseInt(e.target.value, 10); store('dgUposathaRef', String(state.ref)); render(); };
     Array.prototype.forEach.call(document.querySelectorAll('.tabs button'), function (b) {
       b.onclick = function () { state.view = b.getAttribute('data-view'); store('dgUposathaView', state.view); render(); };
     });

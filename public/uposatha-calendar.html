@@ -28,7 +28,7 @@
   .tabs { display: flex; gap: 6px; margin: 4px 0 8px; }
   .tabs button { flex: 1; padding: 7px 10px; border: 1px solid var(--border); border-radius: 6px; background: transparent; color: var(--fg); font: inherit; cursor: pointer; }
   .tabs button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
-  h2 { font-size: 1.05rem; margin: 16px 0 4px; text-transform: capitalize; }
+  h2 { font-size: 1.05rem; margin: 16px 0 4px; }
   ul { list-style: none; margin: 0; padding: 0; }
   li.row { display: flex; align-items: center; gap: 14px; padding: 8px 10px; border-radius: 6px; }
   li.row .e { font-size: 2.2rem; line-height: 1; }
@@ -38,12 +38,24 @@
   li.row .when { display: block; font-size: .9em; color: var(--muted); }
   li.row .away { color: var(--muted); white-space: nowrap; }
   li.row.now { background: var(--soft); }
-  /* the "all lunar days" view: quiet rows, and the Uposatha days stand out with the accent */
-  ul.all li.row.upo, ul.all li.row.now.upo { background: var(--accent-soft); box-shadow: inset 4px 0 0 var(--accent); }
-  ul.all li.row { padding: 4px 10px; gap: 10px; }
-  ul.all li.row .e { font-size: 1.4rem; }
-  ul.all li.row:not(.upo) { color: var(--muted); }
-  ul.all li.row.upo { color: var(--fg); font-weight: 600; }
+  h3.week { font-size: .85rem; font-weight: 600; color: var(--muted); margin: 10px 0 2px; }
+  .legend { font-size: .9em; color: var(--muted); margin: 6px 0; }
+  .legend .key { display: inline-block; width: 12px; height: 12px; margin-right: 6px; border-radius: 3px; background: var(--accent); vertical-align: -1px; }
+  .detail { border: 1px solid var(--border); border-radius: 6px; padding: 8px 12px; margin: 6px 0 4px; min-height: 3.4em; }
+  .detail .accent { color: var(--accent); }
+  /* the ordinary calendar: whole months, weeks in rows */
+  .cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+  .cal .wd { text-align: center; font-size: .8em; color: var(--muted); padding: 2px 0; }
+  .cell { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 58px; padding: 2px; font: inherit; color: var(--fg);
+    background: var(--soft); border: 1px solid transparent; border-radius: 6px; cursor: pointer; }
+  .cell .n { font-weight: 600; line-height: 1.1; }
+  .cell .l { font-size: .72em; color: var(--muted); line-height: 1.1; }
+  .cell .ce { font-size: .95rem; line-height: 1; }
+  .cell.past { opacity: .45; }
+  .cell.upo { background: var(--accent-soft); border-color: var(--accent); }
+  .cell.upo .l { color: var(--fg); }
+  .cell.today { outline: 2px solid var(--fg); outline-offset: -2px; }
+  .cell.sel { box-shadow: 0 0 0 2px var(--accent); }
   .foot { margin-top: 14px; font-size: .9em; color: var(--muted); }
 </style>
 </head>
