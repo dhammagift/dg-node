@@ -730,8 +730,37 @@
           ]
         },
         {
-          "name": "Converters",
+          "name": "Text tools",
           "column": 2,
+          "items": [
+            {
+              "label": "Line-by-line Translation Tool",
+              "desc": "Aligns Pali and translation line by line",
+              "tpl": "/assets/lbl-en.html?q={{q}}",
+              "blank": true
+            },
+            {
+              "label": "Sutta Difference",
+              "desc": "Find the difference between two suttas",
+              "tpl": "/assets/diff/?lang=pl&one={{q}}&two={{q}}",
+              "blank": true
+            },
+            {
+              "label": "List Difference",
+              "desc": "Compare two plain-text lists line by line",
+              "href": "/assets/listdiff.html"
+            },
+            {
+              "label": "Line to List",
+              "desc": "Create lists from lines of text",
+              "href": "/assets/makelist.html",
+              "star": true
+            }
+          ]
+        },
+        {
+          "name": "Converters",
+          "column": 3,
           "items": [
             {
               "label": "Aksharamukha script converter",
@@ -793,35 +822,6 @@
               "desc": "25/5-minute Pomodoro study timer, reverse mode included",
               "href": "/assets/pomodoro-timer/",
               "blank": true
-            }
-          ]
-        },
-        {
-          "name": "Text tools",
-          "column": 3,
-          "items": [
-            {
-              "label": "Line-by-line Translation Tool",
-              "desc": "Aligns Pali and translation line by line",
-              "tpl": "/assets/lbl-en.html?q={{q}}",
-              "blank": true
-            },
-            {
-              "label": "Sutta Difference",
-              "desc": "Find the difference between two suttas",
-              "tpl": "/assets/diff/?lang=pl&one={{q}}&two={{q}}",
-              "blank": true
-            },
-            {
-              "label": "List Difference",
-              "desc": "Compare two plain-text lists line by line",
-              "href": "/assets/listdiff.html"
-            },
-            {
-              "label": "Line to List",
-              "desc": "Create lists from lines of text",
-              "href": "/assets/makelist.html",
-              "star": true
             }
           ]
         }
@@ -1608,8 +1608,37 @@
           ]
         },
         {
-          "name": "Конвертеры",
+          "name": "Работа с текстом",
           "column": 2,
+          "items": [
+            {
+              "label": "Редактировать Перевод",
+              "desc": "Построчное сопоставление пали и перевода",
+              "tpl": "/assets/lbl.html?q={{q}}",
+              "blank": true
+            },
+            {
+              "label": "Сравнить Две Сутты",
+              "desc": "Найти различия между двумя суттами",
+              "tpl": "/assets/diff/?lang=pl&one={{q}}&two={{q}}",
+              "blank": true
+            },
+            {
+              "label": "Сравнить Два Списка",
+              "desc": "Построчное сравнение двух текстовых списков",
+              "href": "/assets/listdiff.html"
+            },
+            {
+              "label": "Сделать список из строки",
+              "desc": "Составить список из строк текста",
+              "href": "/assets/makelist.html",
+              "star": true
+            }
+          ]
+        },
+        {
+          "name": "Конвертеры",
+          "column": 3,
           "items": [
             {
               "label": "Aksharamukha текстовый конвертер",
@@ -1669,35 +1698,6 @@
               "desc": "Таймер Помодоро 25/5 минут, есть обратный режим",
               "href": "/assets/pomodoro-timer/",
               "blank": true
-            }
-          ]
-        },
-        {
-          "name": "Работа с текстом",
-          "column": 3,
-          "items": [
-            {
-              "label": "Редактировать Перевод",
-              "desc": "Построчное сопоставление пали и перевода",
-              "tpl": "/assets/lbl.html?q={{q}}",
-              "blank": true
-            },
-            {
-              "label": "Сравнить Две Сутты",
-              "desc": "Найти различия между двумя суттами",
-              "tpl": "/assets/diff/?lang=pl&one={{q}}&two={{q}}",
-              "blank": true
-            },
-            {
-              "label": "Сравнить Два Списка",
-              "desc": "Построчное сравнение двух текстовых списков",
-              "href": "/assets/listdiff.html"
-            },
-            {
-              "label": "Сделать список из строки",
-              "desc": "Составить список из строк текста",
-              "href": "/assets/makelist.html",
-              "star": true
             }
           ]
         }
