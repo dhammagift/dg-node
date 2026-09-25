@@ -345,8 +345,8 @@
               "blank": true
             },
             {
-              "label": "ChatGPT",
-              "href": "https://chatgpt.com",
+              "label": "Notebook LM",
+              "href": "https://notebooklm.google.com/",
               "blank": true
             },
             {
@@ -357,6 +357,11 @@
             {
               "label": "DeepSeek",
               "href": "https://chat.deepseek.com",
+              "blank": true
+            },
+            {
+              "label": "ChatGPT",
+              "href": "https://chatgpt.com",
               "blank": true
             },
             {
@@ -378,8 +383,18 @@
               "star": true
             },
             {
-              "label": "Nexus",
+              "label": "Mitra Nexus",
               "href": "https://dharmamitra.org/nexus/db/pa",
+              "blank": true
+            },
+            {
+              "label": "Pali Translator | Polytranslator",
+              "href": "https://www.polytranslator.com/pali/#src=pli_Deva&tgt=eng_Latn",
+              "blank": true
+            },
+            {
+              "label": "Glosbe",
+              "tpl": "https://glosbe.com/pi/en/{{q}}",
               "blank": true
             }
           ]
@@ -407,6 +422,12 @@
               "label": "R. Davids, W. Stede dictionary PTS",
               "desc": "The classic Pali-English dictionary",
               "tpl": "https://dsal.uchicago.edu/cgi-bin/app/pali_query.py?matchtype=default&qs={{q}}",
+              "blank": true
+            },
+            {
+              "label": "Sutta.org",
+              "desc": "General Pali-English dictionary",
+              "href": "https://dictionary.sutta.org/",
               "blank": true
             }
           ]
@@ -436,7 +457,7 @@
               "blank": true
             },
             {
-              "label": "Skrdict",
+              "label": "SkrDict",
               "tpl": "https://sanskritdictionary.com/?iencoding=iast&q={{q}}&lang=sans&action=Search",
               "blank": true
             },
@@ -451,12 +472,6 @@
           "name": "Pali-Skr",
           "column": 4,
           "items": [
-            {
-              "label": "Glosbe",
-              "desc": "Community-built bilingual dictionary",
-              "tpl": "https://glosbe.com/pi/sa/{{q}}",
-              "blank": true
-            },
             {
               "label": "Sambhasha",
               "href": "https://sambhasha.ksu.ac.in/CompLing/pcl_1/html/Application%20home.html",
@@ -473,12 +488,6 @@
           "name": "Other dictionaries",
           "column": 5,
           "items": [
-            {
-              "label": "Sutta.org",
-              "desc": "General Pali-English dictionary",
-              "href": "https://dictionary.sutta.org/",
-              "blank": true
-            },
             {
               "label": "Buddhist University",
               "href": "https://buddhistuniversity.net/content/reference/pali-thai-english-sanskrit-dictionary",
@@ -503,7 +512,7 @@
             },
             {
               "label": "Google Custom Search",
-              "tpl": "https://old.dhamma.gift/cse.php?q={{q}}",
+              "tpl": "https://dhamma.gift/cse?q={{q}}",
               "blank": true
             }
           ]
@@ -531,6 +540,46 @@
               "desc": "Verb endings by tense, person and number",
               "href": "https://drive.google.com/file/d/1HzPCYsVBEkWErAk6TqSWRYKseM1hqMCb/view?usp=sharing",
               "star": true
+            }
+          ]
+        },
+        {
+          "name": "Memorization",
+          "column": 2,
+          "blocks": [
+            {
+              "rows": [
+                {
+                  "label": "Memorizer",
+                  "desc": "Tool for memorizing suttas line by line",
+                  "href": "/memo/",
+                  "star": true
+                }
+              ]
+            },
+            {
+              "inline": [
+                {
+                  "label": "sn56.11",
+                  "href": "/sn56.11?mode=memorize"
+                },
+                {
+                  "label": "dn22",
+                  "href": "/dn22?mode=memorize"
+                },
+                {
+                  "label": "sn12.2",
+                  "href": "/sn12.2?mode=memorize"
+                }
+              ]
+            },
+            {
+              "rows": [
+                {
+                  "label": "Memorisation Tips & Tricks",
+                  "href": "https://docs.google.com/document/d/1JWHEFqcaNhYwYneWBnTp9rkgWecDB4IIHX1l3AxSiWM/edit?usp=drivesdk"
+                }
+              ]
             }
           ]
         },
@@ -601,46 +650,6 @@
               "label": "YT Channel",
               "href": "https://www.youtube.com/@jameswhelan2381",
               "blank": true
-            }
-          ]
-        },
-        {
-          "name": "Memorization",
-          "column": 1,
-          "blocks": [
-            {
-              "rows": [
-                {
-                  "label": "Memorizer",
-                  "desc": "Tool for memorizing suttas line by line",
-                  "href": "/memo/",
-                  "star": true
-                }
-              ]
-            },
-            {
-              "inline": [
-                {
-                  "label": "sn56.11",
-                  "href": "/sn56.11?mode=memorize"
-                },
-                {
-                  "label": "dn22",
-                  "href": "/dn22?mode=memorize"
-                },
-                {
-                  "label": "sn12.2",
-                  "href": "/sn12.2?mode=memorize"
-                }
-              ]
-            },
-            {
-              "rows": [
-                {
-                  "label": "Memorisation Tips & Tricks",
-                  "href": "https://docs.google.com/document/d/1JWHEFqcaNhYwYneWBnTp9rkgWecDB4IIHX1l3AxSiWM/edit?usp=drivesdk"
-                }
-              ]
             }
           ]
         },
@@ -1246,8 +1255,18 @@
               "star": true
             },
             {
-              "label": "Nexus",
+              "label": "Mitra Nexus",
               "href": "https://dharmamitra.org/nexus/db/pa",
+              "blank": true
+            },
+            {
+              "label": "Переводчик Пали | Polytranslator",
+              "href": "https://www.polytranslator.com/ru/pali/#src=pli_Deva&tgt=rus_Cyrl",
+              "blank": true
+            },
+            {
+              "label": "Glosbe",
+              "tpl": "https://glosbe.com/pi/ru/{{q}}",
               "blank": true
             }
           ]
@@ -1262,7 +1281,7 @@
               "blank": true
             },
             {
-              "label": "Cловарь M. Cone Gandhari.org",
+              "label": "Словарь M. Cone Gandhari.org",
               "tpl": "https://gandhari.org/dictionary?section=dop&search={{q}}",
               "blank": true
             },
@@ -1272,9 +1291,15 @@
               "blank": true
             },
             {
-              "label": "Cловарь R. Davids, W. Stede PTS",
+              "label": "Словарь R. Davids, W. Stede PTS",
               "desc": "Классический словарь пали-английский",
               "tpl": "https://dsal.uchicago.edu/cgi-bin/app/pali_query.py?matchtype=default&qs={{q}}",
+              "blank": true
+            },
+            {
+              "label": "Sutta.org",
+              "desc": "Общий словарь пали-английский",
+              "href": "https://dictionary.sutta.org/",
               "blank": true
             }
           ]
@@ -1293,7 +1318,7 @@
             {
               "label": "Shabda-Sagara",
               "title": "Sanskrit-English Dictionary",
-              "desc": "Cанскритско-английский словарь",
+              "desc": "Санскритско-английский словарь",
               "tpl": "https://www.sanskrit-lexicon.uni-koeln.de/scans/SHSScan/2020/web/webtc/indexcaller.php?transLit=roman&key={{q}}",
               "blank": true
             },
@@ -1320,12 +1345,6 @@
           "column": 4,
           "items": [
             {
-              "label": "Glosbe",
-              "desc": "Многоязычный словарь от сообщества",
-              "tpl": "https://glosbe.com/pi/sa/{{q}}",
-              "blank": true
-            },
-            {
               "label": "Sambhasha",
               "href": "https://sambhasha.ksu.ac.in/CompLing/pcl_1/html/Application%20home.html",
               "blank": true
@@ -1341,12 +1360,6 @@
           "name": "Другие словари",
           "column": 5,
           "items": [
-            {
-              "label": "Sutta.org",
-              "desc": "Общий словарь пали-английский",
-              "href": "https://dictionary.sutta.org/",
-              "blank": true
-            },
             {
               "label": "Buddhist University",
               "href": "https://buddhistuniversity.net/content/reference/pali-thai-english-sanskrit-dictionary",
@@ -1371,7 +1384,7 @@
             },
             {
               "label": "Google Custom Search",
-              "tpl": "https://old.dhamma.gift/cse.php?q={{q}}",
+              "tpl": "https://dhamma.gift/cse?q={{q}}",
               "blank": true
             }
           ]
@@ -1407,6 +1420,47 @@
             {
               "label": "Спряжения (англ)",
               "href": "https://drive.google.com/file/d/1HzPCYsVBEkWErAk6TqSWRYKseM1hqMCb/view?usp=sharing"
+            }
+          ]
+        },
+        {
+          "name": "Запоминание",
+          "column": 2,
+          "blocks": [
+            {
+              "rows": [
+                {
+                  "label": "Мнемотехника",
+                  "desc": "Инструмент для заучивания сутт строка за строкой",
+                  "href": "/ru/memo/",
+                  "star": true
+                }
+              ]
+            },
+            {
+              "inline": [
+                {
+                  "label": "sn56.11",
+                  "href": "/sn56.11?mode=memorize"
+                },
+                {
+                  "label": "dn22",
+                  "href": "/dn22?mode=memorize"
+                },
+                {
+                  "label": "sn12.2",
+                  "href": "/sn12.2?mode=memorize"
+                }
+              ]
+            },
+            {
+              "rows": [
+                {
+                  "label": "Советы-секреты «Как запоминать легче»",
+                  "href": "https://docs.google.com/document/d/12A4jNFrSQywZubM7bL2pgQK0fOtr6LEBJMjGb7nTNlw/edit?usp=drivesdk",
+                  "blank": true
+                }
+              ]
             }
           ]
         },
@@ -1479,47 +1533,6 @@
               "label": "Канал на YT",
               "href": "https://www.youtube.com/@jameswhelan2381",
               "blank": true
-            }
-          ]
-        },
-        {
-          "name": "Запоминание",
-          "column": 1,
-          "blocks": [
-            {
-              "rows": [
-                {
-                  "label": "Мнемотехника",
-                  "desc": "Инструмент для заучивания сутт строка за строкой",
-                  "href": "/ru/memo/",
-                  "star": true
-                }
-              ]
-            },
-            {
-              "inline": [
-                {
-                  "label": "sn56.11",
-                  "href": "/sn56.11?mode=memorize"
-                },
-                {
-                  "label": "dn22",
-                  "href": "/dn22?mode=memorize"
-                },
-                {
-                  "label": "sn12.2",
-                  "href": "/sn12.2?mode=memorize"
-                }
-              ]
-            },
-            {
-              "rows": [
-                {
-                  "label": "Советы-секреты «Как запоминать легче»",
-                  "href": "https://docs.google.com/document/d/12A4jNFrSQywZubM7bL2pgQK0fOtr6LEBJMjGb7nTNlw/edit?usp=drivesdk",
-                  "blank": true
-                }
-              ]
             }
           ]
         },

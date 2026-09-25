@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Custom Google Search — Dhamma.gift</title>
+<meta name="description" content="A Google search engine limited to Dhamma sites.">
+<link rel="icon" type="image/png" href="/assets/img/favico-noglass.png">
+<style>
+  body { display: flex; justify-content: center; margin: 0; }
+  .content { max-width: 1400px; width: 100%; text-align: left; }
+</style>
+</head>
+<body>
+  <div class="content">
+    <!-- Google Programmable Search Engine; ?q=... is read by the results element itself -->
+    <script async src="https://cse.google.com/cse.js?cx=c184c71e0fe5d4c93"></script>
+    <div style="z-index: 99;" class="gcse-search"></div>
+    <div class="gcse-searchresults-only"></div>
+  </div>
+</body>
+</html>

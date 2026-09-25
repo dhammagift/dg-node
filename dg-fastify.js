@@ -125,6 +125,7 @@ function legacyReaderRedirect(url) {
     if (page === '/rv') return '/rev/' + (queryPart ? '?' + queryPart : '');
     if (page === '/history.php') return '/4as';
     if (page === '/read.php') return '/toc';
+    if (page === '/cse.php') return '/cse' + (queryPart ? '?' + queryPart : ''); // the Google Custom Search page, now served here
     if (page === '/pm.php' || page === '/bipm.php') return '/toc/vinaya'; // the standalone pages are gone, the TOC shows the Patimokkha
     const target = LEGACY_READERS[page];
     if (!target) return null;
@@ -1428,6 +1429,8 @@ app.get('/config/sync-config.json', (req, res) => sendFile(req, res, path.join(_
 
 // Bare fragment (no page shell) of the same content, for /toc's inline expand
 // (public/spa/toc.js renderBookRow) — fetched once on first click, not preloaded.
+// Custom Google Search (Programmable Search Engine) — the one-page replacement for legacy cse.php
+app.get('/cse', (req, res) => sendVersionedHtml(req, res, path.join(__dirname, 'public', 'cse.html')));
 app.get('/api/patimokkha-fragment/:side', (req, res) => {
     if (req.params.side !== 'bu' && req.params.side !== 'bi') return res.code(404).send();
     sendVersionedHtml(req, res, path.join(__dirname, 'reader', `${req.params.side}-pm-fragment.html`));
