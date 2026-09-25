@@ -35,6 +35,23 @@
     }
     function mb(bytes) { return Math.round(bytes / 1048576); }
 
+    // "Build d0789015510b324e" told a reader nothing (owner). What they want to know is how fresh
+    // the data is: the day the database was BUILT, not the day it was downloaded. The hash stays as
+    // the fallback for a library opened before built_at was remembered.
+    function fmtDate(iso) {
+        var d = iso ? new Date(iso) : null;
+        if (!d || isNaN(d)) return '';
+        // "14 сентября 2026 года", not the browser's "… 2026 г.": that one ends in a full stop that
+        // collides with the sentence's own.
+        if (isRu) return d.toLocaleDateString('ru', { day: 'numeric', month: 'long' }) + ' ' + d.getFullYear() + ' года';
+        return d.toLocaleDateString('en', { day: 'numeric', month: 'long', year: 'numeric' });
+    }
+    function baseLabel(st) {
+        var day = fmtDate(st.built_at);
+        if (day) return (isRu ? 'база от ' : 'database of ') + day;
+        return (isRu ? 'сборка ' : 'build ') + (st.build_id || '?');
+    }
+
     // The installed library's size, for the row. The database itself cannot be measured from here
     // (single-writer OPFS pool — see the header), but the published manifest states it, and asking
     // for it costs a few hundred bytes on a page the reader had to open on purpose. TODO.js listed
@@ -103,9 +120,11 @@
         btnEl.onclick = function () { goHomeWith(WANT_DATA_KEY); };
     } else if (update) {
         descEl.textContent = isRu
-            ? ('Скачано (сборка ' + (state.build_id || '?') + '). Доступно обновление' +
+            ? ('Скачано (' + baseLabel(state) + '). Доступно обновление' +
+               (fmtDate(update.built_at) ? ' от ' + fmtDate(update.built_at) : '') +
                (update.bytes ? ', ' + mb(update.bytes) + ' МБ.' : '.'))
-            : ('Downloaded (build ' + (state.build_id || '?') + '). An update is available' +
+            : ('Downloaded (' + baseLabel(state) + '). An update is available' +
+               (fmtDate(update.built_at) ? ' from ' + fmtDate(update.built_at) : '') +
                (update.bytes ? ', ' + mb(update.bytes) + ' MB.' : '.'));
         btnEl.textContent = isRu ? 'Обновить' : 'Update';
         // Deleting must not require installing the update first (owner): the library is on disk here too.
@@ -135,8 +154,8 @@
                 : bytesGz ? (isRu ? ' Архив ' + mb(bytesGz) + ' МБ, на устройстве ' + mb(bytes) + ' МБ.'
                                   : ' Archive ' + mb(bytesGz) + ' MB, on device ' + mb(bytes) + ' MB.')
                 : ' ' + mb(bytes) + (isRu ? ' МБ.' : ' MB.');
-            var build = isRu ? ('Скачано, сборка ' + (state.build_id || '?') + '.')
-                             : ('Downloaded, build ' + (state.build_id || '?') + '.');
+            var build = isRu ? ('Скачано, ' + baseLabel(state) + '.')
+                             : ('Downloaded, ' + baseLabel(state) + '.');
             descEl.textContent = build + size + note;
         }
         showDownloaded(state.bytes || null);

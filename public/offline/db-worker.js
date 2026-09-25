@@ -823,7 +823,7 @@ async function fetchCurrent(pool, distBase, args) {
         // Now it is true.
         post({ type: 'progress', loaded: 1, total: 1, phase: 'download', done: true });
         scheduleFullCheck(pool, target);
-        return { suttas, build_id: candidate.meta.build_id, downloaded: true, present: true };
+        return { suttas, build_id: candidate.meta.build_id, built_at: candidate.meta.built_at || null, downloaded: true, present: true };
     };
 
     return runAttempt();
@@ -915,7 +915,7 @@ async function open(distBase, allowDownload, args) {
             await dropScratchAfterCancel(scratchName);
         }
         const suttas = adopt(candidate);
-        return { suttas, build_id: candidate.meta.build_id, downloaded: false, present: true };
+        return { suttas, build_id: candidate.meta.build_id, built_at: candidate.meta.built_at || null, downloaded: false, present: true };
     }
     if (!allowDownload) return { suttas: 0, build_id: null, downloaded: false, present: false };
     return fetchCurrent(pool, distBase, args);
@@ -1023,7 +1023,7 @@ async function openNative(endpoint, allowDownload) {
     const suttas = adopt({ handle, meta });
     dropOpfsCopy();
     if (allowDownload) post({ type: 'progress', loaded: 1, total: 1, phase: 'download', done: true });
-    return { suttas, build_id: meta.build_id || null, downloaded: allowDownload, present: true };
+    return { suttas, build_id: meta.build_id || null, built_at: meta.built_at || null, downloaded: allowDownload, present: true };
 }
 
 // A copy the OPFS pool still holds from a build before the native file: a second 584MB nothing

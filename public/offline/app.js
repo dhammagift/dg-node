@@ -505,7 +505,8 @@
         // The call is idempotent and cheap on a visit where the files are already cached (a match per
         // file and nothing else).
         cacheDictionary();
-        rememberState({ present: true, build_id: (opened && opened.build_id) || null, update: null,
+        rememberState({ present: true, build_id: (opened && opened.build_id) || null,
+                        built_at: (opened && opened.built_at) || null, update: null,
                         local: true, reason: 'local' });
     }
 
