@@ -699,10 +699,11 @@
       "groups": [
         {
           "name": "On site",
+          "layout": "chips",
           "column": 1,
           "items": [
             {
-              "label": "old",
+              "label": "Old.Dhamma.Gift",
               "desc": "The previous version of the site",
               "href": "https://old.dhamma.gift",
               "blank": true
@@ -1567,10 +1568,11 @@
       "groups": [
         {
           "name": "На сайте",
+          "layout": "chips",
           "column": 1,
           "items": [
             {
-              "label": "old",
+              "label": "Old.Dhamma.Gift",
               "desc": "Предыдущая версия сайта",
               "href": "https://old.dhamma.gift",
               "blank": true
