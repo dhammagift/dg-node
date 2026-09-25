@@ -584,6 +584,22 @@
           ]
         },
         {
+          "name": "Principles",
+          "items": [
+            {
+              "label": "Principles",
+              "desc": "Our approach and principles for translating texts",
+              "href": "/docs/principles"
+            },
+            {
+              "label": "Rationale",
+              "desc": "Why consistent terminology matters in Pali-English translation",
+              "href": "/docs/rationale"
+            }
+          ],
+          "column": 2
+        },
+        {
           "name": "Textbooks",
           "column": 1,
           "items": [
@@ -628,7 +644,7 @@
         },
         {
           "name": "Guides",
-          "column": 2,
+          "column": 1,
           "items": [
             {
               "label": "Learn Pali Guides",
@@ -670,21 +686,6 @@
               "desc": "Interactive drills for grammar and vocabulary",
               "href": "https://www.dhammabytes.org/pali-practice/",
               "blank": true
-            }
-          ]
-        },
-        {
-          "name": "Principles",
-          "items": [
-            {
-              "label": "Principles",
-              "desc": "Our approach and principles for translating texts",
-              "href": "/docs/principles"
-            },
-            {
-              "label": "Rationale",
-              "desc": "Why consistent terminology matters in Pali-English translation",
-              "href": "/docs/rationale"
             }
           ]
         }
