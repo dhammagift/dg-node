@@ -1981,7 +1981,7 @@ function withSuggestions(body, keyword) {
    pattern must carry a real literal ("duk") which also prefilters rows through FTS, and each IP
    gets a small budget.
 
-   Answers: 400 bad/too-short-pattern, 429 over budget or both slots busy, 503 over the deadline.
+   Answers: 400 bad/too-short-pattern, 429 over budget or the queue is full, 503 over the deadline.
    Never a silent empty answer, and never a blocked event loop. */
 
 const regexRate = new Map(); // ip -> { count, resetAt } — only for the /search entry points
@@ -2026,7 +2026,7 @@ async function regexSearch(kind, keyword, params) {
         return { status: 503, error: 'Regex search is temporarily unavailable, try again in a moment.' };
     }
     if (outcome.badRequest) return { status: 400, error: outcome.message };
-    if (outcome.busy) return { status: 429, error: 'Another regex search is still running, try again in a moment.' };
+    if (outcome.busy) return { status: 429, error: 'Too many regex searches are waiting, try again in a moment.' };
     if (outcome.timedOut) return { status: 503, error: `Regex search did not finish within ${REGEX_LIMITS.timeoutMs}ms — narrow the pattern or the scope.` };
     return { status: 500, error: 'Regex search failed.' };
 }
@@ -2059,7 +2059,7 @@ async function searchHandler(req, res) {
     if (isRegex) {
         const problem = searchCore.regexProblem(keyword);
         if (problem) return res.code(400).send({ error: problem });
-        if (regexRunner.isBusy()) return res.code(429).send({ error: 'Another regex search is still running, try again in a moment.' });
+        if (regexRunner.isBusy()) return res.code(429).send({ error: 'Too many regex searches are waiting, try again in a moment.' });
         if (regexRateLimited(req.ip)) return res.code(429).send({ error: 'Too many regex searches from this address — try again shortly.' });
     }
     const jobParams = { scope, exact, langs: targetLangs, lb, la };

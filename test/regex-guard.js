@@ -6,7 +6,8 @@
 //   * a pattern that is only slow-inside-one-row ("duk(.+)+#", catastrophic backtracking) is
 //     killed by the deadline instead of blocking the process;
 //   * the HTTP process stays responsive while that doomed job runs;
-//   * the worker is usable again after it was terminated.
+//   * the worker is usable again after it was terminated;
+//   * a second and third search wait in the queue and are answered, a fourth is turned away (busy).
 //
 // Run: node test/regex-guard.js
 'use strict';
@@ -70,6 +71,12 @@ function check(name, ok, detail) {
     // 5. The terminated worker is replaced, not left dead.
     const again = await regexRunner.runJob('fast', { keyword: 'kacchap.*', scope: 'default', exact: false, langs: ['en'], lb: 0, la: 0 });
     check('worker works again after termination', again.ok === true);
+
+    // 6. Queue: one running + maxQueue waiting are all answered; the next one is refused at once.
+    const job = () => regexRunner.runJob('fast', { keyword: 'kacchap.*', scope: 'default', exact: false, langs: ['en'], lb: 0, la: 0 });
+    const burst = await Promise.all(Array.from({ length: 1 + limits.maxQueue + 1 }, job));
+    check('queued searches are answered', burst.slice(0, 1 + limits.maxQueue).every(r => r.ok === true));
+    check('search past the queue is busy', burst[burst.length - 1].busy === true);
 
     regexRunner.shutdown();
     console.log(failed ? `\n${failed} check(s) FAILED` : '\nall checks passed');

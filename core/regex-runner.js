@@ -1,6 +1,7 @@
 // core/regex-runner.js — the HTTP-process side of the regex-keyword worker (core/regex-worker.js).
 //
-// One long-lived worker, one job at a time (a second caller gets `busy`).
+// One long-lived worker, one job at a time; the others wait in a short queue (limits.maxQueue) and
+// only a full queue answers `busy`. A job's deadline starts when it starts RUNNING, not when queued.
 // Every call gets a hard deadline: when it passes, the worker is terminated — not asked to stop —
 // because the thing it is stuck in (catastrophic regex backtracking) cannot be interrupted from
 // inside. The next call spawns a fresh worker; terminate() itself takes ~5ms even mid-backtrack.
@@ -21,6 +22,7 @@ const DEFAULTS = {
     minLiteralChars: 3,
     maxPatternLength: 128,
     timeoutMs: 2000,
+    maxQueue: 2,
     maxRows: 200000,
     prefilter: true,
 };
@@ -31,6 +33,7 @@ let dgOffline = '';
 let worker = null;
 let seq = 0;
 let inFlight = 0;
+const queue = []; // jobs waiting for the single worker
 
 function configure(opts) {
     limits = { ...DEFAULTS, ...((opts && opts.limits) || {}) };
@@ -45,7 +48,7 @@ function getLimits() {
 }
 
 function isBusy() {
-    return inFlight >= 1;
+    return inFlight >= 1 && queue.length >= Math.max(0, Number(limits.maxQueue) || 0);
 }
 
 function dropWorker() {
@@ -67,8 +70,13 @@ function spawn() {
 }
 
 function runJob(kind, args) {
-    if (isBusy()) return Promise.resolve({ ok: false, busy: true });
     if (!dbPath) return Promise.resolve({ ok: false, unavailable: true, message: 'regex runner is not configured' });
+    if (inFlight === 0) return execute(kind, args);
+    if (isBusy()) return Promise.resolve({ ok: false, busy: true });
+    return new Promise(resolve => queue.push(() => execute(kind, args).then(resolve)));
+}
+
+function execute(kind, args) {
 
     let w;
     try {
@@ -91,6 +99,8 @@ function runJob(kind, args) {
             w.off('error', onError);
             inFlight--;
             resolve(outcome);
+            const next = queue.shift();
+            if (next) next();
         };
         const onMessage = msg => {
             if (!msg || msg.id !== id) return;

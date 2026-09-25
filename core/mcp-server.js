@@ -24,7 +24,7 @@ async function fastAnswer(query, scope, exact, langs) {
     if (outcome.ok) return { result: outcome.result };
     if (outcome.unavailable) return { error: 'Regex search is temporarily unavailable, try again in a moment.' };
     if (outcome.timedOut) return { error: 'Regex search did not finish in time — narrow the pattern or the scope.' };
-    if (outcome.busy) return { error: 'Another regex search is still running, try again in a moment.' };
+    if (outcome.busy) return { error: 'Too many regex searches are waiting, try again in a moment.' };
     return { error: outcome.message || 'Regex search failed.' };
 }
 
