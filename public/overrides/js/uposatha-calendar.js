@@ -57,7 +57,7 @@
       foot: 'Which lunar day a date is, is read from the real Moon at the chosen time of that date. A lunar day lasts 19–26 hours and changes when the Moon has gained another 12° on the Sun, not at midnight, so a day number sometimes jumps or repeats. The Uposatha is kept on the date when the 8th, 14th or 15th lunar day is in force; if such a day begins and ends between two of those moments, it is kept with the following date. A day in the suttas is counted from the evening, so the observance begins on the evening before. Thai, Sri Lankan and Burmese communities calculate their calendars by tradition and can differ by a day — follow your community\'s calendar. To cross-check: <a href="https://www.timeanddate.com/moon/phases/" target="_blank" rel="noopener">Time and Date: Moon Phases</a>.',
       city: 'or a city', cityHint: 'Almaty…',
       locate: 'Use my location', locating: 'Locating…', located: 'Location', forget: 'forget', denied: 'The location was not shared — the fixed times are used.',
-      sunrise: 'sunrise', sunset: 'sunset', sunsetBefore: 'sunset the evening before',
+      sunrise: 'sunrise', sunset: 'sunset', sunriseFrom: 'sunrise', sunsetBefore: 'sunset the evening before',
       remind: 'Reminders', remindOn: 'Remind me', remindLead: 'in advance', leads: [[1, '1 hour'], [3, '3 hours'], [12, '12 hours'], [24, '1 day'], [48, '2 days']],
       remindDays: 'Days', remindNext: function (when, what) { return 'Next reminder: ' + when + ' — ' + what; }, remindNone: 'No reminder is due in the coming weeks.',
       remindDenied: 'Notifications are blocked for this site — allow them in the browser settings.', remindUnsupported: 'This browser cannot show notifications.',
@@ -88,7 +88,7 @@
       foot: 'Какой лунный день у даты, определяется по реальной Луне в выбранное время этой даты. Лунный день длится 19–26 часов и меняется, когда Луна уходит от Солнца ещё на 12°, а не в полночь, поэтому номер дня иногда перескакивает или повторяется. Упосатха соблюдается в дату, когда действует 8-й, 14-й или 15-й лунный день; если такой день начинается и кончается между двумя такими моментами, он соблюдается в следующую дату. День в суттах считается с вечера, поэтому соблюдение начинается вечером накануне. Тайские, шри-ланкийские и бирманские общины считают календари по традиции и могут отличаться на день — ориентируйтесь на календарь своей общины. Для сверки: <a href="https://www.timeanddate.com/moon/phases/" target="_blank" rel="noopener">Time and Date: Moon Phases</a>.',
       city: 'или город', cityHint: 'Almaty…',
       locate: 'Определить моё место', locating: 'Определяю…', located: 'Место', forget: 'забыть', denied: 'Место не передано — используется фиксированное время.',
-      sunrise: 'восход', sunset: 'закат', sunsetBefore: 'закат накануне вечером',
+      sunrise: 'восход', sunset: 'закат', sunriseFrom: 'восхода', sunsetBefore: 'заката накануне вечером',
       remind: 'Напоминания', remindOn: 'Напоминать', remindLead: 'заранее', leads: [[1, 'за 1 час'], [3, 'за 3 часа'], [12, 'за 12 часов'], [24, 'за сутки'], [48, 'за 2 суток']],
       remindDays: 'Дни', remindNext: function (when, what) { return 'Ближайшее напоминание: ' + when + ' — ' + what; }, remindNone: 'В ближайшие недели напоминаний нет.',
       remindDenied: 'Уведомления для сайта запрещены — разрешите их в настройках браузера.', remindUnsupported: 'Этот браузер не умеет показывать уведомления.',
@@ -358,7 +358,7 @@
 
     function notesOf(r) {
       var n = [];
-      if (!sutta) { if (r.phaseAt) n.push(t.events[r.phase] + ' ' + timeFmt.format(r.phaseAt)); return n; }
+      if (!sutta) { if (r.phaseAt) n.push(t.events[r.phase].toLowerCase() + ' ' + timeFmt.format(r.phaseAt)); return n; }
       if (r.fullMoon) n.push(t.fullMoon + ' ' + timeFmt.format(r.fullMoon));
       if (r.newMoon) n.push(t.newMoon + ' ' + timeFmt.format(r.newMoon));
       r.keptWith.forEach(function (x) { n.push(t.keptWith(t.nth(dayNo(x)))); });
@@ -369,7 +369,7 @@
     // the grey line: the lunar day that is really in force, for information and checking
     function refText(r) { // what the lunar day was read at
       if (r.refKind === 'sunset') return t.sunsetBefore + ' ' + timeFmt.format(r.at);
-      if (r.refKind === 'sunrise') return t.sunrise + ' ' + timeFmt.format(r.at);
+      if (r.refKind === 'sunrise') return t.sunriseFrom + ' ' + timeFmt.format(r.at);
       return refLabel;
     }
     function actualLine(r) {
