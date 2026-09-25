@@ -1986,13 +1986,13 @@ function withSuggestions(body, keyword) {
 
 const regexRate = new Map(); // ip -> { count, resetAt } — only for the /search entry points
 
-function regexRateLimited(ip) {
+function regexRateLimited(ip, enrich = false) {
     const cfg = REGEX_LIMITS.rateLimit || {};
     if (cfg.enabled === false) return false;
     const windowMs = Math.max(1000, Number(cfg.windowMs) || 60000);
-    const max = Math.max(1, Number(cfg.max) || 10);
+    const max = enrich ? Math.max(1, Number(cfg.enrichMax) || 60) : Math.max(1, Number(cfg.max) || 10);
     const maxIps = Math.max(1, Number(cfg.maxTrackedIps) || 10000);
-    const key = String(ip || 'unknown');
+    const key = (enrich ? 'enrich:' : '') + String(ip || 'unknown');
     const now = Date.now();
     const entry = regexRate.get(key);
     if (!entry || entry.resetAt <= now) {
@@ -2015,15 +2015,15 @@ function regexRateLimited(ip) {
     return false;
 }
 
-// Runs one regex job in the worker. Returns { result }, or { status, error } to answer with, or
-// null when the worker is unavailable — the caller then runs the same builder in-process, which
-// is still bounded by the literal prefilter, the row cap and the scan deadline.
+// Runs one regex job in the worker. Returns { result } or { status, error } to answer with. When
+// the worker is unavailable the answer is 503, never an in-process run: that would put back the
+// blocked event loop (and uninterruptible backtracking) the worker exists to prevent.
 async function regexSearch(kind, keyword, params) {
     const outcome = await regexRunner.runJob(kind, { keyword, ...params });
     if (outcome.ok) return { result: outcome.result };
     if (outcome.unavailable) {
-        console.warn('[regex] worker unavailable, falling back to in-process:', outcome.message);
-        return null;
+        console.warn('[regex] worker unavailable:', outcome.message);
+        return { status: 503, error: 'Regex search is temporarily unavailable, try again in a moment.' };
     }
     if (outcome.badRequest) return { status: 400, error: outcome.message };
     if (outcome.busy) return { status: 429, error: 'Another regex search is still running, try again in a moment.' };
@@ -2059,6 +2059,7 @@ async function searchHandler(req, res) {
     if (isRegex) {
         const problem = searchCore.regexProblem(keyword);
         if (problem) return res.code(400).send({ error: problem });
+        if (regexRunner.isBusy()) return res.code(429).send({ error: 'Another regex search is still running, try again in a moment.' });
         if (regexRateLimited(req.ip)) return res.code(429).send({ error: 'Too many regex searches from this address — try again shortly.' });
     }
     const jobParams = { scope, exact, langs: targetLangs, lb, la };
@@ -2109,13 +2110,14 @@ app.get('/search/enrich', async (req, res) => {
         return res.send({ data: {}, variantSegments: [] });
     }
 
-    // Regex patterns go through the worker here too — but NOT through the per-IP counter: this
-    // route only ever asks for text of suttas the client already got from a counted /search call,
-    // and the client calls it once per page.
+    // Regex patterns go through the worker here too, with their own softer per-IP budget
+    // (rateLimit.enrichMax): the client calls this once per result page, but nothing stops a
+    // direct caller from looping it, and it takes the same single worker slot.
     const isRegex = searchCore.isRegexKeyword(keyword);
     if (isRegex) {
         const problem = searchCore.regexProblem(keyword);
         if (problem) return res.code(400).send({ error: problem });
+        if (regexRateLimited(req.ip, true)) return res.code(429).send({ error: 'Too many regex searches from this address — try again shortly.' });
     }
 
     try {

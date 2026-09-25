@@ -51,7 +51,7 @@ function setSkeleton(skeleton) {
 // ponytail: the literal must sit at the START of its alternative to count as mandatory ("duk.*",
 // "dukkha|kacchapa"); anything else ("\\d{3}duk", "(duk)?x") skips the prefilter and is simply
 // scanned in the worker — safe, just slower. Teach it full regex analysis only if that shows up.
-const REGEX_LIMIT_DEFAULTS = { enabled: true, minLiteralChars: 3, maxPatternLength: 128, timeoutMs: 2000, maxConcurrent: 1, maxRows: 200000, prefilter: true };
+const REGEX_LIMIT_DEFAULTS = { enabled: true, minLiteralChars: 3, maxPatternLength: 128, timeoutMs: 2000, maxRows: 200000, prefilter: true };
 let regexLimits = { ...REGEX_LIMIT_DEFAULTS };
 
 function setRegexLimits(limits) { regexLimits = { ...REGEX_LIMIT_DEFAULTS, ...(limits || {}) }; }

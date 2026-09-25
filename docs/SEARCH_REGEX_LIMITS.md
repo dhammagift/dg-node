@@ -37,7 +37,6 @@ test.dhamma.gift) работает; прод-копия `/var/www/html/nodejs` (
   "minLiteralChars": 3,      // в шаблоне обязана быть обычная цепочка букв/цифр, как "duk"
   "maxPatternLength": 128,
   "timeoutMs": 20000,        // 20 с: dhamm.* считается 4-8 с, запас ~2.4x
-  "maxConcurrent": 1,        // 3.8 ГБ RAM, prod уже ~0.9 ГБ, пик одного широкого поиска ~0.5 ГБ
   "maxRows": 80000,          // dhamm.* = 55k строк; шире — ответ частичный + truncated: true
   "prefilter": true,         // литералы шаблона -> FTS-отбор вместо скана всего корпуса
   "rateLimit": { "trustProxy": ["127.0.0.1", "192.168.1.18"], "windowMs": 60000, "max": 10,

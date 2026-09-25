@@ -22,7 +22,7 @@ async function fastAnswer(query, scope, exact, langs) {
     if (!isRegexKeyword(query)) return { result: await buildFastResponse(query, scope, exact, langs, 0, 0) };
     const outcome = await regexRunner.runJob('fast', { keyword: query, scope, exact, langs, lb: 0, la: 0 });
     if (outcome.ok) return { result: outcome.result };
-    if (outcome.unavailable) return { result: await buildFastResponse(query, scope, exact, langs, 0, 0) }; // bounded fallback
+    if (outcome.unavailable) return { error: 'Regex search is temporarily unavailable, try again in a moment.' };
     if (outcome.timedOut) return { error: 'Regex search did not finish in time — narrow the pattern or the scope.' };
     if (outcome.busy) return { error: 'Another regex search is still running, try again in a moment.' };
     return { error: outcome.message || 'Regex search failed.' };

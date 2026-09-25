@@ -1,6 +1,6 @@
 // core/regex-runner.js — the HTTP-process side of the regex-keyword worker (core/regex-worker.js).
 //
-// One long-lived worker, one job at a time (configs/search/regex-limits.json: maxConcurrent).
+// One long-lived worker, one job at a time (a second caller gets `busy`).
 // Every call gets a hard deadline: when it passes, the worker is terminated — not asked to stop —
 // because the thing it is stuck in (catastrophic regex backtracking) cannot be interrupted from
 // inside. The next call spawns a fresh worker; terminate() itself takes ~5ms even mid-backtrack.
@@ -21,7 +21,6 @@ const DEFAULTS = {
     minLiteralChars: 3,
     maxPatternLength: 128,
     timeoutMs: 2000,
-    maxConcurrent: 1,
     maxRows: 200000,
     prefilter: true,
 };
@@ -46,7 +45,7 @@ function getLimits() {
 }
 
 function isBusy() {
-    return inFlight >= Math.max(1, Number(limits.maxConcurrent) || 1);
+    return inFlight >= 1;
 }
 
 function dropWorker() {
@@ -59,6 +58,10 @@ function spawn() {
         worker = new Worker(path.join(__dirname, 'regex-worker.js'), {
             workerData: { dbPath, dgOffline, limits },
         });
+        // Also between jobs: a worker that died while idle must not be reused (its answer would
+        // never come and the caller would wait out the whole deadline).
+        const w = worker;
+        w.once('exit', () => { if (worker === w) worker = null; });
     }
     return worker;
 }
