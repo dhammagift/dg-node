@@ -138,12 +138,15 @@ window.initPaliAutocomplete = function(selector) {
     // 2. Логика отложенной загрузки
     let isLoaded = false;
     let isLoading = false;
+    // Первый тап по пустому полю приходит как focus (он и запускает загрузку), а следующий за ним
+    // click уже глушится проверкой isLoading ниже — из-за этого история показывалась только со
+    // ВТОРОГО тапа. Запоминаем намерение до гейта и воспроизводим его после загрузки.
+    let pendingEmptyOpen = false;
 
     const lazyLoadAndInit = async (e) => {
         if (isLoaded) return;
-        
-        // Запоминаем, был ли это клик по пустому полю (чтобы показать историю)
-        const triggerEmptySearch = (e.type === 'click' && inputEl.value === '');
+
+        if (e.type === 'click' && inputEl.value === '') pendingEmptyOpen = true;
 
         if (isLoading) return;
         isLoading = true;
@@ -195,7 +198,7 @@ window.initPaliAutocomplete = function(selector) {
             });
 
             // Восстанавливаем действие пользователя, которое инициировало загрузку
-            if (triggerEmptySearch) {
+            if (pendingEmptyOpen && inputEl.value === '') {
                 $(inputEl).autocomplete("search", "");
             } else if (inputEl.value !== "") {
                 $(inputEl).autocomplete("search", inputEl.value);

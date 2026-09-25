@@ -60,6 +60,10 @@ const RATE_TRN_KEY = 'tts_rate_trn';
 const LAST_SLUG_KEY = 'dg_tts_last_slug';   
 const LAST_INDEX_KEY = 'dg_tts_last_index'; 
 const PALI_ALERT_KEY = 'dg_tts_pali_alert_shown';
+// Shared tail of both Pali hints (a function: window.isRu can change at runtime): own line, bold label, so it is clear what "offline" refers to.
+const offlineHint = () => window.isRu
+  ? '<br><b>Для офлайн:</b> поставьте системный голос индийского языка (хинди, лучше санскрит) — без сети плеер переключится на него сам.'
+  : '<br><b>For offline:</b> install a system voice for an Indian language (Hindi, ideally Sanskrit) — the player switches to it by itself when there is no network.';
 
 // --- Google TTS Config ---
 const GOOGLE_KEY_STORAGE = 'tts_google_key';
@@ -1467,9 +1471,12 @@ function playBrowserTTS(text, langKey, rate, isPali) {
             const helpUrl = window.isRu ? '/ru/docs/tts' : '/docs/tts';
             const title = window.isRu ? 'TTS:' : 'TTS Hint:';
             const helpLink = `<a href="${helpUrl}" target="_blank" style="color: #4da6ff;">(?)</a>`;
-            const message = window.isRu 
-              ? `Не найдено модулей близких к Пали. Установлен Английский. См. помощь ${helpLink}.`
-              : `No Pāḷi-friendly voices found. Using English. See help ${helpLink}.`;
+            // Issue #37: «почему не проигрывается пали» — в подсказке теперь сказано, чем пали
+            // читается: в сети — голоса Google (ключ берётся бесплатно, если хочется), офлайн —
+            // системный голос индийского языка; иначе остаётся английский.
+            const message = window.isRu
+              ? `Пали читать нечем — включён Английский. В сети: голоса Google, ключ бесплатный, если хотите ${helpLink}.${offlineHint()}`
+              : `Nothing reads Pāḷi — English is used. Online: Google voices work, a free key if you want ${helpLink}.${offlineHint()}`;
             showVoiceHint(title, message, PALI_ALERT_KEY);
           }
         }, 1);
@@ -1966,26 +1973,20 @@ async function startPlayback(container, mode, slug, startIndex = 0) {
   setButtonIcon('pause');
   
   // --- НОВОЕ: Показываем Hint при первом воспроизведении (с ссылкой) ---
-  if (window.TRIAL_KEY && !localStorage.getItem(GOOGLE_KEY_STORAGE)) {
-      if (!localStorage.getItem('tts_trial_play_hint_shown')) {
-          
-          const title = window.isRu ? "Демо-режим:" : "Demo Mode:";
-          
-          // Ссылки на поиск Google
-          const searchUrlRu = "https://www.google.com/search?q=%D0%BA%D0%B0%D0%BA+%D0%BF%D0%BE%D0%BB%D1%83%D1%87%D0%B8%D1%82%D1%8C+%D0%B0%D0%BF%D0%B8+%D0%BA%D0%BB%D1%8E%D1%87+%D0%B3%D1%83%D0%B3%D0%BB+tts";
-          const searchUrlEn = "https://www.google.com/search?q=how+to+get+google+cloud+text+to+speech+api+key";
-          
-          // Стиль для ссылки (светло-голубой, чтобы видно на темном)
-          const linkStyle = "color: #4da6ff; text-decoration: underline; font-weight: bold;";
+  // Shown to everyone on the first play (online or offline, own key or demo); PALI_ALERT_KEY is
+  // shared with the Pali-fallback hint, so closing either one silences both.
+  if (!localStorage.getItem(PALI_ALERT_KEY)) {
+      const searchUrlRu = "https://www.google.com/search?q=%D0%BA%D0%B0%D0%BA+%D0%BF%D0%BE%D0%BB%D1%83%D1%87%D0%B8%D1%82%D1%8C+%D0%B0%D0%BF%D0%B8+%D0%BA%D0%BB%D1%8E%D1%87+%D0%B3%D1%83%D0%B3%D0%BB+tts";
+      const searchUrlEn = "https://www.google.com/search?q=how+to+get+google+cloud+text+to+speech+api+key";
+      const linkStyle = "color: #4da6ff; text-decoration: underline; font-weight: bold;";
 
-          const message = window.isRu 
-              ? `Включены <b>голоса от Google</b>. Если понравится, вы можете <a href="${searchUrlRu}" target="_blank" style="${linkStyle}">получить свой ключ</a> бесплатно.` 
-              : `<b>Google voices</b> active. If you like it, you can <a href="${searchUrlEn}" target="_blank" style="${linkStyle}">get your own key</a> for free.`;
+      // Issue #37: one single hint must cover both paths at once - Google voices online
+      // (free key, optional) and the system-voice setup needed offline.
+      const message = window.isRu 
+          ? `<b>Голоса Google:</b> так пали читается в сети; если понравится, можно <a href="${searchUrlRu}" target="_blank" style="${linkStyle}">получить свой ключ</a> бесплатно.${offlineHint()}` 
+          : `<b>Google voices:</b> this is how Pāḷi is read online; if you like it, you can <a href="${searchUrlEn}" target="_blank" style="${linkStyle}">get your own key</a> for free.${offlineHint()}`;
 
-          if (typeof showVoiceHint === 'function') {
-              showVoiceHint(title, message, 'tts_trial_play_hint_shown');
-          }
-      }
+      showVoiceHint("TTS:", message, PALI_ALERT_KEY);
   }
   
   ensureVoicesReady().then(() => {
@@ -2026,12 +2027,16 @@ function showVoiceHint(title, message, storageKey) {
           @keyframes fadeInUp { from { opacity: 0; transform: translate(-50%, 10px); } to { opacity: 1; transform: translate(-50%, 0); } }
           @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
           #closeVoiceHintBtn:hover { color: #ccc; }
+          #active-voice-hint b { color: inherit; } /* page CSS paints <b> red: unreadable on this dark card */
       `;
       document.head.appendChild(style);
   }
 
   const closeBtn = notification.querySelector('#closeVoiceHintBtn');
+  const onEsc = e => { if (e.key === 'Escape') closeBtn.click(); };
+  document.addEventListener('keydown', onEsc);
   closeBtn.addEventListener('click', function() {
+      document.removeEventListener('keydown', onEsc);
       notification.style.animation = 'fadeOut 0.3s ease-in';
       setTimeout(() => {
           notification.remove();

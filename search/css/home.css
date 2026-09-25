@@ -3748,7 +3748,7 @@ body.dg-state-results #search-pane b.match, body.dg-state-results #search-pane b
 body.dg-state-results #search-pane a.mirror-link { font-size: 12.5px; padding: 1px 3px; border-radius: 4px; color: var(--dg-tblue); }
 body.dg-state-results #search-pane a.mirror-link:hover { background: var(--dg-accent-bg); text-decoration: underline; }
 /* раскрытая цитата (reference .cseg) */
-body.dg-state-results #search-pane ul.dtr-details { max-width: 76ch; }
+body.dg-state-results #search-pane ul.dtr-details { max-width: calc(76ch + 20px); } /* + the 20px ✦ gutter, see the overflow rule below */
 body.dg-state-results #search-pane ul.dtr-details > li { border: 0; padding: 0; }
 body.dg-state-results #search-pane .quote-segment .pli-lang { font-size: 14.5px; line-height: 1.6; color: var(--dg-text); }
 body.dg-state-results #search-pane .quote-segment .right-column .quote { font-size: 13.5px; line-height: 1.6; color: var(--dg-text-2) !important; font-weight: 400; }
@@ -4040,6 +4040,10 @@ body.dg-state-results #search-pane tbody { overflow-anchor: none; }
 /* overflow:hidden stays on permanently: with it switched off at the end child margins would
    collapse and the height would snap by a few px (owner: "последние миллиметры дёргается"). */
 body.dg-state-results #search-pane td.child > .dtr-details { overflow-anchor: none; overflow: hidden; }
+/* overflow:hidden above clips the quote's ✦ link (.quoteLink-start sits 13-17px LEFT of the text) —
+   it was invisible and unclickable (elementFromPoint at its centre returned the TD). The list gets
+   20px of left padding to hold it and the same negative margin, so the text does not move. */
+body.dg-state-results #search-pane td.child > .dtr-details { padding-left: 20px; margin-left: -20px; }
 
 /* Toasts (showBubbleNotification, extrastyles.css): the "info" flavour was Solarized blue —
    owner: "зелёного делать классического", one green for every toast in the skin. */
