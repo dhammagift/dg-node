@@ -321,31 +321,48 @@ function getRateForLang(lang) {
 }
 
 let isWakeLockActive = false; // Добавляем флаг состояния
+// wakeLock.request() is async. Two calls made before the first one settles (the play click asks,
+// then playCurrentSegment() asks again) used to acquire TWO locks and keep only the last one, so the
+// first stayed held with nobody to release it — the screen never went off after playback ended
+// (dg-app-full issue #18). One request at a time, and a release that arrives while a request is
+// still pending cancels it.
+let wakeLockPending = false;
+let wantWakeLock = false;
 
 async function requestWakeLock() {
-  if ('wakeLock' in navigator && !isWakeLockActive) {
-    try {
-      wakeLock = await navigator.wakeLock.request('screen');
-      isWakeLockActive = true;
-      
-      wakeLock.addEventListener('release', () => {
-        isWakeLockActive = false;
-        console.log('Wake Lock released by system');
-      });
-      
-      console.log('Wake Lock acquired successfully');
-    } catch (err) {
-      console.warn(`Wake Lock error: ${err.name}, ${err.message}`);
-      isWakeLockActive = false;
+  wantWakeLock = true;
+  if (!('wakeLock' in navigator) || isWakeLockActive || wakeLockPending) return;
+  wakeLockPending = true;
+  try {
+    const lock = await navigator.wakeLock.request('screen');
+    if (!wantWakeLock) {
+      // Playback ended (or was paused) while the request was in flight: give it straight back.
+      try { await lock.release(); } catch (e) { /* already gone */ }
+      return;
     }
+    wakeLock = lock;
+    isWakeLockActive = true;
+    lock.addEventListener('release', () => {
+      if (wakeLock === lock) isWakeLockActive = false;
+      console.log('Wake Lock released by system');
+    });
+    console.log('Wake Lock acquired successfully');
+  } catch (err) {
+    console.warn(`Wake Lock error: ${err.name}, ${err.message}`);
+    isWakeLockActive = false;
+  } finally {
+    wakeLockPending = false;
   }
 }
 
 
 async function releaseWakeLock() {
+  wantWakeLock = false;
   if (wakeLock !== null) {
-    await wakeLock.release();
+    const lock = wakeLock;
     wakeLock = null;
+    isWakeLockActive = false;
+    try { await lock.release(); } catch (e) { /* already gone */ }
   }
 }
 
@@ -2786,7 +2803,7 @@ if (document.readyState === 'loading') {
 
 
 document.addEventListener('visibilitychange', async () => {
-  if (wakeLock !== null && document.visibilityState === 'visible') {
+  if (wantWakeLock && document.visibilityState === 'visible') {
     requestWakeLock();
   }
 });
