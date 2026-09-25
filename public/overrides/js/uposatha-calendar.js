@@ -331,7 +331,7 @@
   }
 
   function reportHeight() {
-    if (embed && parent !== window) parent.postMessage({ dgUposathaHeight: document.documentElement.scrollHeight }, '*');
+    if (embed && parent !== window) parent.postMessage({ dgFrameHeight: document.documentElement.scrollHeight, dgUposathaHeight: document.documentElement.scrollHeight }, '*');
   }
 
   el('title').textContent = t.title;
