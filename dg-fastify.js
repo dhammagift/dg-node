@@ -472,8 +472,21 @@ app.get('/manifest.json', (req, res) => {
 // sites (Aksharamukha, Dharmamitra): PWA manifest shortcuts must resolve to an in-scope URL or
 // some platforms won't show them, but the destination itself can be anywhere — same trick legacy
 // assets/openDDG.html used (client-side), just a one-line server redirect instead of a page.
+// Only the external targets the manifest shortcuts themselves name (read from the manifest, so a new
+// shortcut just works) or a same-site path are followed: anything else was an open redirect, i.e. a
+// dhamma.gift link that lands on any site (phishing).
+const OPEN_ORIGINS = new Set();
+try {
+    const manifestText = fsSync.readFileSync(path.join(__dirname, 'configs', 'manifest.json'), 'utf8');
+    for (const m of manifestText.matchAll(/\/open\?url=([^"]+)/g)) OPEN_ORIGINS.add(new URL(decodeURIComponent(m[1])).origin);
+} catch (err) {
+    console.warn('/open: manifest shortcuts unreadable, only same-site paths are followed:', err.message);
+}
 app.get('/open', (req, res) => {
-    res.redirect(typeof req.query.url === 'string' && req.query.url ? req.query.url : '/');
+    const u = typeof req.query.url === 'string' ? req.query.url : '';
+    let ok = /^\/(?![\/\\])[^\x00-\x1f]*$/.test(u); // "/path", but not "//host" or "/\host"
+    if (!ok) { try { ok = OPEN_ORIGINS.has(new URL(u).origin); } catch { /* not a URL */ } }
+    res.redirect(ok ? u : '/');
 });
 
 // Конвертация системы письма пали (настройка "selectedScript" в /settings/, приходит как
