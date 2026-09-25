@@ -1309,7 +1309,7 @@ const LEGACY_HELP_REDIRECTS = {
     'rationale-en.html': '/docs/rationale', 'rationale.html': '/ru/docs/rationale',
     'o-en.html': '/docs/principles', 'o.html': '/ru/docs/principles',
     'ttsHelp.html': '/docs/tts',
-    'lunar.html': '/docs/uposatha', 'lunarRu.html': '/ru/docs/uposatha', // the calendar moved into the docs
+    'lunar.html': '/uposatha-calendar', 'lunarRu.html': '/uposatha-calendar?lang=ru', // the calendar is a page of its own now
 };
 for (const [file, target] of Object.entries(LEGACY_HELP_REDIRECTS)) {
     app.get('/assets/common/' + file, (req, res) => res.redirect(target, 301));
@@ -1431,6 +1431,9 @@ app.get('/config/sync-config.json', (req, res) => sendFile(req, res, path.join(_
 // Bare fragment (no page shell) of the same content, for /toc's inline expand
 // (public/spa/toc.js renderBookRow) — fetched once on first click, not preloaded.
 // Custom Google Search (Programmable Search Engine) — the one-page replacement for legacy cse.php
+// The Uposatha calendar as a page of its own (also embedded in the docs); the hyphenated path cannot be
+// mistaken for a Pali search word the way /uposatha could.
+app.get('/uposatha-calendar', (req, res) => sendVersionedHtml(req, res, path.join(__dirname, 'public', 'uposatha-calendar.html')));
 app.get('/cse', (req, res) => sendVersionedHtml(req, res, path.join(__dirname, 'public', 'cse.html')));
 app.get('/api/patimokkha-fragment/:side', (req, res) => {
     if (req.params.side !== 'bu' && req.params.side !== 'bi') return res.code(404).send();

@@ -725,7 +725,7 @@
             {
               "label": "Sutta based Uposattha days",
               "desc": "Observance-day calendar based on the lunar cycle",
-              "href": "/docs/uposatha",
+              "href": "/uposatha-calendar",
               "star": true
             }
           ]
@@ -1604,7 +1604,7 @@
             {
               "label": "Дни Упосаттхи по Суттам",
               "desc": "Календарь дней упосаттхи по лунному циклу",
-              "href": "/ru/docs/uposatha",
+              "href": "/uposatha-calendar",
               "star": true
             }
           ]

@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Uposatha days — Dhamma.gift</title>
+<meta name="description" content="The Uposatha days of the suttas (the 14th, 15th and 8th lunar days of each half-month) and every lunar day, with exact start and end times in your time zone.">
+<link rel="icon" type="image/png" href="/assets/img/favico-noglass.png">
+<meta property="og:image" content="https://dhamma.gift/assets/img/og-dhamma-gift-v3.png">
+<style>
+  :root { --bg: #fff; --fg: #1c1e21; --muted: #6b7280; --border: #d8dce1; --soft: #eef1f4; --accent: #1f8f6f; --accent-soft: rgba(31,143,111,.14); }
+  :root[data-theme="dark"] { --bg: #1b1b1d; --fg: #e4e6eb; --muted: #9aa0a6; --border: #3a3b3e; --soft: #2a2b2e; --accent: #3fc79f; --accent-soft: rgba(63,199,159,.16); }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  body.embed { background: transparent; }
+  main { max-width: 760px; margin: 0 auto; padding: 16px; }
+  body.embed main { padding: 0; }
+  h1 { font-size: 1.6rem; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin: 0 0 14px; }
+  .sub a, .foot a { color: var(--accent); }
+  .card { border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; }
+  .today { display: flex; align-items: center; gap: 14px; margin-bottom: 12px; }
+  .today .moon { font-size: 3rem; line-height: 1; }
+  .muted { color: var(--muted); }
+  .badge { margin-left: 8px; padding: 1px 8px; border-radius: 10px; background: var(--accent); color: #fff; font-size: .85em; white-space: nowrap; }
+  .controls { display: flex; flex-wrap: wrap; gap: 8px 20px; margin-bottom: 12px; }
+  select { max-width: 100%; background: var(--bg); color: var(--fg); border: 1px solid var(--border); border-radius: 4px; padding: 2px 4px; }
+  .tabs { display: flex; gap: 6px; margin: 4px 0 8px; }
+  .tabs button { flex: 1; padding: 7px 10px; border: 1px solid var(--border); border-radius: 6px; background: transparent; color: var(--fg); font: inherit; cursor: pointer; }
+  .tabs button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+  h2 { font-size: 1.05rem; margin: 16px 0 4px; text-transform: capitalize; }
+  ul { list-style: none; margin: 0; padding: 0; }
+  li.row { display: flex; align-items: center; gap: 14px; padding: 8px 10px; border-radius: 6px; }
+  li.row .e { font-size: 2.2rem; line-height: 1; }
+  li.row .t { flex: 1; min-width: 0; }
+  li.row .ttl { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; }
+  li.row .ttl .badge { margin-left: 0; }
+  li.row .when { display: block; font-size: .9em; color: var(--muted); }
+  li.row .away { color: var(--muted); white-space: nowrap; }
+  li.row.now { background: var(--soft); }
+  /* the "all lunar days" view: quiet rows, and the Uposatha days stand out with the accent */
+  ul.all li.row.upo, ul.all li.row.now.upo { background: var(--accent-soft); box-shadow: inset 4px 0 0 var(--accent); }
+  ul.all li.row { padding: 4px 10px; gap: 10px; }
+  ul.all li.row .e { font-size: 1.4rem; }
+  ul.all li.row:not(.upo) { color: var(--muted); }
+  ul.all li.row.upo { color: var(--fg); font-weight: 600; }
+  .foot { margin-top: 14px; font-size: .9em; color: var(--muted); }
+</style>
+</head>
+<body>
+<main>
+  <header id="head">
+    <h1 id="title"></h1>
+    <p class="sub" id="sub"></p>
+  </header>
+  <div class="card" id="app">…</div>
+  <p class="foot" id="foot"></p>
+</main>
+<script src="/assets/js/vendor/astronomy.browser.min.js"></script>
+<script src="/assets/js/uposatha-calendar.js"></script>
+</body>
+</html>
