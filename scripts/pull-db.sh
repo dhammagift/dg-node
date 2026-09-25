@@ -23,7 +23,7 @@ for a in "$@"; do
     esac
 done
 
-PROD="${DG_PROD_DIR:-/var/www/html/nodejs}"
+PROD="${DG_PROD_DIR:-/var/www/dg-node-prod}"
 URL="https://github.com/dhammagift/dg-node/releases/download/db-latest"
 cd "$PROD"
 

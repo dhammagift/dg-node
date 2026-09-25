@@ -8,7 +8,7 @@ and how to repeat it on another server. Everything here was set up and checked o
 
 | What | Path | Repo / branch | Served as |
 |---|---|---|---|
-| Site, prod | `/var/www/html/nodejs` | dhammagift/dg-node `main` | pm2 `dg-prod`, port 3000 → dhamma.gift |
+| Site, prod | `/var/www/dg-node-prod` | dhammagift/dg-node `main` | pm2 `dg-prod`, port 3000 → dhamma.gift |
 | Site, test | `/var/www/dg-node-test` | dhammagift/dg-node `main` | pm2 `test`, port 3003 (env `PORT=3003`) → test.dhamma.gift |
 | Search DB | `nodejs/dg.db` (test: symlink to it) | built on GitHub, see below | read by dg-fastify.js |
 | Docs | `nodejs/dg-docs`, `/var/www/dg-node-test/dg-docs` | dhammagift/dg-docs `dist` / `dist-preview` | /docs, /ru/docs |
@@ -69,15 +69,15 @@ Run it without `--apply` to see every session, what it still holds and how much.
 
 ```cron
 # docs: prod every 5 h, test every minute
-0 */5 * * * git -C /var/www/html/nodejs/dg-docs fetch -q --depth 1 origin dist && git -C /var/www/html/nodejs/dg-docs reset -q --hard origin/dist >/dev/null 2>&1
+0 */5 * * * git -C /var/www/dg-node-prod/dg-docs fetch -q --depth 1 origin dist && git -C /var/www/dg-node-prod/dg-docs reset -q --hard origin/dist >/dev/null 2>&1
 * * * * * git -C /var/www/dg-node-test/dg-docs fetch -q --depth 1 origin dist-preview && git -C /var/www/dg-node-test/dg-docs reset -q --hard origin/dist-preview >/dev/null 2>&1
 # third-party mirrors, then cache/tmp cleanup (scripts/weekly-cleanup.sh): Sunday 17:00, before the GitHub DB build
-0 17 * * 0 mkdir -p /var/www/html/nodejs/logs && { /var/www/html/nodejs/scripts/update-external-repos.sh; /var/www/html/nodejs/scripts/weekly-cleanup.sh; } >> /var/www/html/nodejs/logs/update-external-repos.log 2>&1
+0 17 * * 0 mkdir -p /var/www/dg-node-prod/logs && { /var/www/dg-node-prod/scripts/update-external-repos.sh; /var/www/dg-node-prod/scripts/weekly-cleanup.sh; } >> /var/www/dg-node-prod/logs/update-external-repos.log 2>&1
 # search DB: sites every Monday, app/PWA archive on the 1st and 15th
-15 3 * * 1 mkdir -p /var/www/html/nodejs/logs && PATH=/root/.nvm/versions/node/v24.20.0/bin:/usr/local/bin:/usr/bin:/bin /var/www/html/nodejs/scripts/pull-db.sh >> /var/www/html/nodejs/logs/pull-db.log 2>&1
-45 3 1,15 * * mkdir -p /var/www/html/nodejs/logs && PATH=/root/.nvm/versions/node/v24.20.0/bin:/usr/local/bin:/usr/bin:/bin /var/www/html/nodejs/scripts/pull-db.sh --app >> /var/www/html/nodejs/logs/pull-db.log 2>&1
+15 3 * * 1 mkdir -p /var/www/dg-node-prod/logs && PATH=/root/.nvm/versions/node/v24.20.0/bin:/usr/local/bin:/usr/bin:/bin /var/www/dg-node-prod/scripts/pull-db.sh >> /var/www/dg-node-prod/logs/pull-db.log 2>&1
+45 3 1,15 * * mkdir -p /var/www/dg-node-prod/logs && PATH=/root/.nvm/versions/node/v24.20.0/bin:/usr/local/bin:/usr/bin:/bin /var/www/dg-node-prod/scripts/pull-db.sh --app >> /var/www/dg-node-prod/logs/pull-db.log 2>&1
 # leftovers of killed Claude sessions (browsers, previews, scratch dirs)
-*/30 * * * * mkdir -p /var/www/html/nodejs/logs && /var/www/html/nodejs/scripts/claude-reaper.sh --apply | grep -v ' kept)$' >> /var/www/html/nodejs/logs/claude-reaper.log 2>&1
+*/30 * * * * mkdir -p /var/www/dg-node-prod/logs && /var/www/dg-node-prod/scripts/claude-reaper.sh --apply | grep -v ' kept)$' >> /var/www/dg-node-prod/logs/claude-reaper.log 2>&1
 # misc
 0 3 1-31/15 * * rm -rf /var/www/html/result/* /var/www/html/result/.??*
 */10 * * * * cd /var/www/dg-node-test && /usr/bin/node scripts/disk-guard.js >> /var/www/dg-node-test/test/.disk-guard.log 2>&1
@@ -90,7 +90,7 @@ Adjust the paths and the node `PATH` (`which node`) on another server.
 1. `git clone git@github.com:dhammagift/dg-node.git <dir>`; data: `scripts/setup.sh` makes shallow
    sparse clones of sc-data / offline-data / dg and wires `siteroot/` (skip its DB build step, use step 3).
 2. `npm install`, `pm2 start dg-fastify.js --name dg-prod`, `pm2 save`.
-3. `scripts/pull-db.sh --force` (set `PROD=` inside the script if the site is not in `/var/www/html/nodejs`).
+3. `scripts/pull-db.sh --force` (set `PROD=` inside the script if the site is not in `/var/www/dg-node-prod`).
 4. Copy `scripts/external-repos.conf` with this server's paths, point `EXTERNAL_REPOS_CONF` at it.
 5. Install the cron lines above with the paths changed.
 6. Check: `curl -s 'localhost:3000/search?q=kacchapa' | head -c 300`, then open `/mn1` in a browser.
