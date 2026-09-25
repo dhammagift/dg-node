@@ -125,6 +125,7 @@ function legacyReaderRedirect(url) {
     if (page === '/rv') return '/rev/' + (queryPart ? '?' + queryPart : '');
     if (page === '/history.php') return '/4as';
     if (page === '/read.php') return '/toc';
+    if (page === '/pm.php' || page === '/bipm.php') return '/toc/vinaya'; // the standalone pages are gone, the TOC shows the Patimokkha
     const target = LEGACY_READERS[page];
     if (!target) return null;
     const q = (params.get('q') || '').trim();
@@ -236,7 +237,9 @@ function sendVersionedHtml(req, reply, absHtmlPath, statusCode = 200) {
         // Also stamps the lazy loadScript('/reader/megareader.js') / ('/spa/toc.js') calls in
         // search/index.html — otherwise a 24h-cached copy could outlive the HTML that expects a
         // newer one (e.g. .reader-pending needs buildSutta() to clear it).
-        /((?:src|href)="|loadScript\(')(\/(?:assets|spa|nodejs\/res|reader|settings)\/[^"'?#]+\.(?:js|css|svg|png|ico))("|')/g,
+        // `s.src = '/spa/toc.js'` (ensureTocAssets) is stamped too: it was the one lazy script left
+        // bare, so a toc.js fix stayed invisible in an already-visited browser for up to 24h.
+        /((?:src|href)="|loadScript\('|\.src = ')(\/(?:assets|spa|nodejs\/res|reader|settings)\/[^"'?#]+\.(?:js|css|svg|png|ico))("|')/g,
         (m, pre, url, post) => {
             const prefix = Object.keys(HTML_ASSET_URL_ROOTS).find(p => url.startsWith(p + '/'));
             if (!prefix) return m;
@@ -1090,7 +1093,7 @@ initServer();
 // again within a minute, still long enough to cut the round-trip tax for normal browsing.
 // /assets/lbl-save.php — Label Tool save endpoint (assets/lbl.html, assets/lbl-en.html), dead
 // PHP under Node (siteroot/assets/lbl-save.php would otherwise serve raw unexecuted PHP source,
-// same reason as /pm.php, /bipm.php below). Reimplements the legacy PHP: write the POST body to
+// same reason as the other retired PHP pages). Reimplements the legacy PHP: write the POST body to
 // offline-data/lbl/{file}, creating the dir if missing.
 // --- Label editor: who may save (issue #18) ------------------------------------------------
 // This endpoint used to take any body from anyone (up to 10MB, any name under offline-data/lbl/),
@@ -1415,15 +1418,6 @@ app.register(fastifyStatic, {
     decorateReply: false,
 });
 
-// /pm.php, /bipm.php — Bhikkhu/Bhikkhuni Patimokkha, rendered inline (not the reader), with
-// rule links pointing at real dg-node routes. Static HTML generated once by
-// convert-patimokkha.js from the legacy assets/texts/{bupm,bipm}.php (PHP, dead under Node —
-// siteroot/pm.php and siteroot/bipm.php below would otherwise serve raw unexecuted PHP source,
-// which is why the old menu links were broken). Registered before the siteroot scan loop so
-// these routes win over those dead symlinks (same override-precedence pattern as /assets, /read).
-app.get('/pm.php', (req, res) => sendVersionedHtml(req, res, path.join(__dirname, 'reader', 'bu-pm.html')));
-app.get('/bipm.php', (req, res) => sendVersionedHtml(req, res, path.join(__dirname, 'reader', 'bi-pm.html')));
-
 // /config/tts-config.json, /config/sync-config.json — the only 2 files out of the legacy
 // siteroot/config/ (67 tracked files: apache/systemd/AndroidManifest, AWS creds, config.zip)
 // dg-node code actually fetches (public/overrides/read/js/voice.js, settings.js/
@@ -1497,8 +1491,8 @@ try {
 }
 // 'assets' and 'read' are already folded into the override root-arrays registered above (they'd
 // otherwise be duplicate registrations on the same prefix, which Fastify rejects outright). Also
-// skip anything whose real target isn't a directory (a few siteroot entries — bipm.php, pm.php,
-// read.php, sitemap.xml — are symlinks to individual FILES, harmless dead weight for
+// skip anything whose real target isn't a directory (a siteroot entry such as sitemap.xml
+// is a symlink to an individual FILE, harmless dead weight for
 // express.static but a hard registration error for @fastify/static, which requires root to be a
 // directory).
 const mountedPrefixes = new Set(['assets', 'read', 'memorize', 'devanagari', 'mobile-data']); // 'mobile-data' is the explicit /mobile-data mount above — the scan must not re-register it (duplicate route = hard error)

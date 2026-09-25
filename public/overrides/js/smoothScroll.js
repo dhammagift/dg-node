@@ -1,5 +1,40 @@
 // === Файл: /assets/js/smoothScroll.js ===
 
+// One scroll to an element, done properly. The target position used to be measured ONCE, when the
+// element first appeared, and several smooth scrolls (this file twice, megareader.js once) raced
+// each other — but the layout above the target keeps changing after that (web font swap, late
+// rendering: measured ~1900px on bu-pm, 33k px down the page), so the scroll ended pages short and
+// differently on every load. Now: a newer request cancels the older one, the first measurement waits
+// for the fonts, and after the animation the target is measured again and corrected until it holds.
+// offset: px from the viewport top, or 'center'. done(): called once the position has settled.
+let dgScrollToken = 0;
+window.dgScrollToElement = function (el, offset, instant, done) {
+    const token = ++dgScrollToken;
+    const targetY = () => {
+        const r = el.getBoundingClientRect();
+        return Math.max(0, window.pageYOffset + r.top - (offset === 'center' ? (window.innerHeight - r.height) / 2 : offset));
+    };
+    const go = behavior => window.scrollTo({ top: targetY(), behavior });
+    let tries = 0;
+    const settle = () => {
+        if (token !== dgScrollToken) return;
+        if (Math.abs(targetY() - window.pageYOffset) > 40 && tries++ < 5) { go('instant'); setTimeout(settle, 350); }
+        else if (done) done();
+    };
+    // The reader takes over: any manual scroll input cancels the pending corrections.
+    const cancel = () => { if (token === dgScrollToken) dgScrollToken++; };
+    ['wheel', 'touchstart', 'keydown'].forEach(ev => window.addEventListener(ev, cancel, { once: true, passive: true }));
+    (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(() => {
+        if (token !== dgScrollToken) return;
+        go(instant ? 'instant' : 'smooth');
+        let called = false;
+        const next = () => { if (!called) { called = true; settle(); } };
+        if (instant) return setTimeout(next, 350);
+        window.addEventListener('scrollend', next, { once: true }); // Chrome/Safari 18; the timer covers the rest
+        setTimeout(next, 1500);
+    });
+};
+
 const ScrollManager = {
     config: {
         eyeLevel: 120, // Линия глаз для сохранения прогресса
@@ -383,26 +418,8 @@ const ScrollManager = {
     },
 
     executeScroll(element, offsetData, isInstant) {
-        const absoluteY = window.pageYOffset + element.getBoundingClientRect().top;
-        const targetY = absoluteY - offsetData;
-
-        if (isInstant || window.isRestoringProgress) {
-            const html = document.documentElement;
-            const prevBehavior = getComputedStyle(html).scrollBehavior;
-            html.style.scrollBehavior = 'auto'; 
-            
-            window.scrollTo({ top: targetY, behavior: 'auto' });
-            
-            requestAnimationFrame(() => {
-                const correctedY = window.pageYOffset + element.getBoundingClientRect().top - offsetData;
-                window.scrollTo(0, correctedY);
-                html.style.scrollBehavior = prevBehavior;
-                setTimeout(() => window.isRestoringProgress = false, 150);
-            });
-        } else {
-            window.scrollTo({ top: targetY, behavior: 'smooth' });
-            setTimeout(() => window.isRestoringProgress = false, 800);
-        }
+        const restoring = window.isRestoringProgress;
+        window.dgScrollToElement(element, offsetData, isInstant || restoring, () => { window.isRestoringProgress = false; });
     },
 
     saveReadingProgress() {

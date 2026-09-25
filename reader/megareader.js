@@ -1832,7 +1832,11 @@ async function initReader() {
                 // 'auto' defers to the CSS `scroll-behavior` of the scrolling box (:root has
                 // `scroll-behavior: smooth` via Bootstrap + reader/css/index.css), so it still
                 // animates instead of snapping — the literal 'instant' value bypasses that CSS.
-                target.scrollIntoView({ block: 'center', behavior: instant ? 'instant' : 'smooth' });
+                // A #hash target is scrolled to by smoothScroll.js (ScrollManager.scrollToHash) — two
+                // scrollers racing on the same page was why the landing spot was different every time.
+                if (window.location.hash && typeof ScrollManager !== 'undefined') { /* smoothScroll.js owns it */ }
+                else if (window.dgScrollToElement) window.dgScrollToElement(target, 'center', instant);
+                else target.scrollIntoView({ block: 'center', behavior: instant ? 'instant' : 'smooth' });
                 // Same fallback pattern as smoothScroll.js's highlightById/highlightAllById —
                 // this initial-load scroll used to jump to the segment without ever marking it
                 // active-word, unlike every other scroll-to-segment path in the reader.

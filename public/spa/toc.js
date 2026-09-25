@@ -143,6 +143,41 @@
         return patimokkhaFragmentCache[side];
     }
 
+    // Which of the fragment's own Bootstrap sections (Suddhapācittiyā, 4. Bhojanavaggo, …) are open.
+    // The fragment is inserted as fresh HTML every time the TOC is rebuilt (coming Back from the
+    // reader included), so without this every section came back closed.
+    var pmOpen = {};
+    function trackPmCollapse(e) {
+        if (!e.target.id) return;
+        if (e.type.indexOf('shown') === 0) pmOpen[e.target.id] = true; else delete pmOpen[e.target.id];
+    }
+    function insertFragment(bodyEl, html) {
+        bodyEl.innerHTML = html;
+        bodyEl.querySelectorAll('.collapse').forEach(function (c) {
+            if (!pmOpen[c.id]) return;
+            c.classList.add('show'); // no animation: the page height must be final before the scroll is restored
+            bodyEl.querySelectorAll('[data-bs-target="#' + c.id + '"]').forEach(function (b) {
+                b.classList.remove('collapsed');
+                b.setAttribute('aria-expanded', 'true');
+            });
+        });
+    }
+
+    // Leaving the TOC through a link remembers the scroll position; the browser's Back then puts
+    // it back once the tree (and the open fragment) is rebuilt — see restoreScrollY.
+    var tocLeaveY = null, tocBackY = null, tocBackAt = 0;
+    window.addEventListener('popstate', function () { tocBackY = tocLeaveY; tocBackAt = Date.now(); });
+    function restoreScrollY(y) {
+        var tries = 0, stop = false;
+        var cancel = function () { stop = true; };
+        ['wheel', 'touchstart', 'keydown'].forEach(function (ev) { window.addEventListener(ev, cancel, { once: true, passive: true }); });
+        (function step() {
+            if (stop || tries++ > 20) return;
+            window.scrollTo({ top: y, behavior: 'instant' });
+            if (Math.abs(window.pageYOffset - y) > 4) setTimeout(step, 100); // the content above is still loading
+        })();
+    }
+
     function ensureTranslatorNames() {
         if (translatorNames) return Promise.resolve(translatorNames);
         return fetch('/assets/js/translators.json')
@@ -913,7 +948,7 @@
                     if (patimokkhaSide) {
                         bodyEl.dataset.loaded = 'fragment';
                         fetchPatimokkhaFragment(patimokkhaSide).then(function (html) {
-                            bodyEl.innerHTML = html;
+                            insertFragment(bodyEl, html);
                         }).catch(function () {
                             delete bodyEl.dataset.loaded;
                             bodyEl.textContent = uiIsRu() ? 'Не удалось загрузить текст.' : 'Failed to load text.';
@@ -958,7 +993,7 @@
                 if (patimokkhaSide) {
                     bodyEl.dataset.loaded = 'fragment';
                     fetchPatimokkhaFragment(patimokkhaSide[1]).then(function (html) {
-                        bodyEl.innerHTML = html;
+                        insertFragment(bodyEl, html);
                     }).catch(function () { delete bodyEl.dataset.loaded; });
                     return;
                 }
@@ -1098,7 +1133,8 @@
             // even when there's no filter at all, or a previously OFF toggle would stay ignored
             // until the user touches something that happens to call refreshFilterEffects().
             else applyPatimokkhaVisibility();
-            if (target) revealTarget(target, bookEntries, groupEntries, langs, filter);
+            if (tocBackY != null && Date.now() - tocBackAt < 3000) { restoreScrollY(tocBackY); tocBackY = null; }
+            else if (target) revealTarget(target, bookEntries, groupEntries, langs, filter);
         }).catch(function (e) {
             container.innerHTML = '';
             container.appendChild(el('div', 'toc-error', (uiIsRu() ? 'Не удалось загрузить оглавление: ' : 'Failed to load TOC: ') + e.message));
@@ -1122,6 +1158,7 @@
         try { u = new URL(href, window.location.origin); } catch (err) { return; }
         if (u.origin !== window.location.origin) return;
         e.preventDefault();
+        tocLeaveY = Math.round(window.pageYOffset);
 
         // Owner: "toc и фильтр переводчиков разлетались в свои стороны, в центре — сутта в
         // ридер-режиме". #reader-pane's own "grow from center" entrance lives in home.css
@@ -1136,6 +1173,8 @@
         container = document.getElementById('toc-pane');
         if (!container) return;
         container.addEventListener('click', onContainerClick);
+        container.addEventListener('shown.bs.collapse', trackPmCollapse);
+        container.addEventListener('hidden.bs.collapse', trackPmCollapse);
         renderTopLevel();
     };
 
