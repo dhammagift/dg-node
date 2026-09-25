@@ -526,7 +526,12 @@
   }
 
   function reportHeight() {
-    if (embed && parent !== window) parent.postMessage({ dgFrameHeight: document.documentElement.scrollHeight, dgUposathaHeight: document.documentElement.scrollHeight }, '*');
+    // The height of the content itself, not of the document: documentElement.scrollHeight is never smaller than the
+    // frame it sits in, so after a tall view the frame could not shrink back and left a blank space below.
+    if (embed && parent !== window) {
+      var h = Math.ceil(document.querySelector('main').getBoundingClientRect().height) + 2;
+      parent.postMessage({ dgFrameHeight: h, dgUposathaHeight: h }, '*');
+    }
   }
 
   el('title').textContent = t.title;
@@ -535,6 +540,10 @@
   el('foot').innerHTML = t.foot;
   if (embed) { el('head').style.display = 'none'; el('foot').style.display = 'none'; }
   render();
+  // The docs page may not be listening yet when the first height goes out (the frame can load before the page
+  // hydrates), so it is repeated for a few seconds and whenever the parent asks.
+  [300, 1000, 2500].forEach(function (ms) { setTimeout(reportHeight, ms); });
+  window.addEventListener('message', function (e) { if (e.data && e.data.dgFrameHeightRequest) reportHeight(); });
   window.addEventListener('resize', reportHeight);
   document.addEventListener('visibilitychange', function () { if (!document.hidden) render(); });
 })();
