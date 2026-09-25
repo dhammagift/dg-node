@@ -63,6 +63,8 @@
       remindDenied: 'Notifications are blocked for this site — allow them in the browser settings.', remindUnsupported: 'This browser cannot show notifications.',
       remindNote: 'Notifications appear while this app is open or running in the background on your device. For reminders that arrive when it is fully closed, add the days to your phone\'s calendar.',
       ics: 'Add to my calendar (.ics)', remindBody: function (when) { return 'begins ' + when; },
+      remindTwo: function (when) { return 'Two Uposatha days: the 14th and the 15th. The first begins ' + when; },
+      remindAppNote: 'Reminders are scheduled on this device and arrive even when the app is closed.',
       docs: 'The suttas on Uposatha', docsUrl: '/docs/uposatha',
     },
     ru: {
@@ -92,6 +94,8 @@
       remindDenied: 'Уведомления для сайта запрещены — разрешите их в настройках браузера.', remindUnsupported: 'Этот браузер не умеет показывать уведомления.',
       remindNote: 'Уведомления приходят, пока приложение открыто или работает в фоне на вашем устройстве. Чтобы напоминание пришло и при полностью закрытом приложении, добавьте дни в календарь телефона.',
       ics: 'Добавить в мой календарь (.ics)', remindBody: function (when) { return 'начинается ' + when; },
+      remindTwo: function (when) { return 'Две упосатхи: 14-й и 15-й дни. Первая начинается ' + when; },
+      remindAppNote: 'Напоминания ставятся на этом устройстве и приходят даже при закрытом приложении.',
       docs: 'Сутты об упосатхе', docsUrl: '/ru/docs/uposatha',
     },
   };
@@ -120,7 +124,7 @@
     loc: (function () { try { return JSON.parse(store('dgUposathaLoc')); } catch (e) { return null; } })(), // {lat, lon} or null
     locMsg: '',
     // reminders: kept on the device; by default a day ahead of the 8th and the 14th day
-    rem: (function () { var d = { on: false, lead: 24, d8: true, d14: true, d15: false }; try { var v = JSON.parse(store('dgUposathaRemind')); if (v) for (var k in d) if (k in v) d[k] = v[k]; } catch (e) { /* defaults */ } return d; })(),
+    rem: (function () { var d = { on: false, lead: 24, d8: true, d14: true }; try { var v = JSON.parse(store('dgUposathaRemind')); if (v) for (var k in d) if (k in v) d[k] = v[k]; } catch (e) { /* defaults */ } return d; })(),
     remMsg: '',
   };
   var hemi = store('dgUposathaHemisphere');
@@ -216,17 +220,24 @@
   var timer = null;
   function wantDay(r) { // by the suttas the days are chosen; in the modern scheme every listed day counts
     if (state.ref >= 0) return true;
-    return r.names.some(function (x) { var n = dayNo(x); return (n === 8 && state.rem.d8) || (n === 14 && state.rem.d14) || (n === 15 && state.rem.d15); });
+    return r.names.some(function (x) { var n = dayNo(x); return (n === 8 && state.rem.d8) || (n === 14 && state.rem.d14); });
   }
-  function dueList(rows, nameOf) {
+  // The 14th day is followed by the 15th: its reminder says that there are two Uposathas (the 15th has none of its own).
+  function twoUposathas(r, byYmd) {
+    if (state.ref >= 0 || !r.names.some(function (x) { return dayNo(x) === 14; })) return false;
+    if (r.names.some(function (x) { return dayNo(x) === 15; })) return true;
+    var next = byYmd[new Date(Date.parse(r.ymd) + DAY).toISOString().slice(0, 10)];
+    return !!(next && next.names.some(function (x) { return dayNo(x) === 15; }));
+  }
+  function dueList(rows, nameOf, byYmd) {
     var now = Date.now(), lead = state.rem.lead * 3600000;
     return rows.filter(function (r) { return r.uposatha && r.at.getTime() > now && wantDay(r); }).map(function (r) {
-      return { key: r.ymd + (state.ref < 0 ? 's' : 'm'), when: r.at.getTime() - lead, start: r.at, title: nameOf(r) };
+      return { key: r.ymd + (state.ref < 0 ? 's' : 'm'), when: r.at.getTime() - lead, start: r.at, title: nameOf(r), two: twoUposathas(r, byYmd) };
     });
   }
   function notify(item) {
     var timeFmt = new Intl.DateTimeFormat(lang, { timeZone: state.tz, weekday: 'short', hour: '2-digit', minute: '2-digit' });
-    var opts = { body: t.remindBody(timeFmt.format(item.start)), tag: 'uposatha-' + item.key, icon: '/assets/img/pwa-bold-monocolor-192.png', data: { url: '/uposatha-calendar' } };
+    var opts = { body: (item.two ? t.remindTwo : t.remindBody)(timeFmt.format(item.start)), tag: 'uposatha-' + item.key, icon: '/assets/img/pwa-bold-monocolor-192.png', data: { url: '/uposatha-calendar' } };
     var seen = []; try { seen = JSON.parse(store('dgUposathaNotified') || '[]'); } catch (e) { seen = []; }
     if (seen.indexOf(item.key) !== -1) return;
     seen.push(item.key); store('dgUposathaNotified', JSON.stringify(seen.slice(-40)));
@@ -237,10 +248,37 @@
   }
   // Show what is due now (a reminder time that passed while the app was closed, before the day begins) and set a
   // timer for the next one; a timer can hold only ~24 days, so the schedule is rebuilt on every render and on focus.
-  function scheduleReminders(rows, nameOf) {
+  // In the Android / iOS app the reminders are local notifications scheduled on the device itself: they arrive with the
+  // app closed and nothing is kept on our side. (iOS holds 64 pending notifications, hence at most 60 here.)
+  var NATIVE_ID_BASE = 7000, nativeSig = '';
+  function nativePlugin() {
+    var C = window.Capacitor;
+    return C && C.isNativePlatform && C.isNativePlatform() && C.Plugins && C.Plugins.LocalNotifications ? C.Plugins.LocalNotifications : null;
+  }
+  function scheduleNative(LN, rows, nameOf, byYmd) {
+    var now = Date.now();
+    var list = state.rem.on ? dueList(rows, nameOf, byYmd).sort(function (a, b) { return a.when - b.when; }).slice(0, 60) : [];
+    var timeFmt = new Intl.DateTimeFormat(lang, { timeZone: state.tz, weekday: 'short', hour: '2-digit', minute: '2-digit' });
+    var items = list.map(function (item, i) {
+      return { id: NATIVE_ID_BASE + i, title: item.title, body: (item.two ? t.remindTwo : t.remindBody)(timeFmt.format(item.start)),
+        schedule: { at: new Date(Math.max(item.when, now + 3000)), allowWhileIdle: true }, extra: { url: '/uposatha-calendar' } };
+    });
+    var sig = JSON.stringify(items.map(function (i) { return [i.id, i.title, i.schedule.at.getTime() > now + 10000 ? i.schedule.at.getTime() : 0]; }));
+    if (sig !== nativeSig) { // only when something changed: render() runs on every touch
+      nativeSig = sig;
+      LN.getPending().then(function (p) {
+        var ours = ((p && p.notifications) || []).filter(function (n) { return n.id >= NATIVE_ID_BASE && n.id < NATIVE_ID_BASE + 100; }).map(function (n) { return { id: n.id }; });
+        return ours.length ? LN.cancel({ notifications: ours }) : null;
+      }).then(function () { return items.length ? LN.schedule({ notifications: items }) : null; }).catch(function () { nativeSig = ''; });
+    }
+    return list.filter(function (i) { return i.when > now; })[0] || null;
+  }
+  function scheduleReminders(rows, nameOf, byYmd) {
+    var LN = nativePlugin();
+    if (LN) return scheduleNative(LN, rows, nameOf, byYmd);
     clearTimeout(timer);
     if (!state.rem.on || !('Notification' in window) || Notification.permission !== 'granted') return null;
-    var now = Date.now(), list = dueList(rows, nameOf), next = null;
+    var now = Date.now(), list = dueList(rows, nameOf, byYmd), next = null;
     list.forEach(function (i) { if (i.when <= now) notify(i); else if (!next || i.when < next.when) next = i; });
     if (next) timer = setTimeout(function () { notify(next); render(); }, Math.min(next.when - now, 2147000000));
     return next;
@@ -250,11 +288,12 @@
   // A calendar file: one event per Uposatha day, from the start of the observance for a day, with an alarm `lead` ahead.
   function downloadIcs(rows, nameOf) {
     var lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Dhamma.gift//Uposatha//EN', 'CALSCALE:GREGORIAN', 'X-WR-CALNAME:' + icsEscape(t.title)];
-    rows.filter(function (r) { return r.uposatha && r.at.getTime() > Date.now() && wantDay(r); }).forEach(function (r) {
+    rows.filter(function (r) { return r.uposatha && r.at.getTime() > Date.now(); }).forEach(function (r) {
       lines.push('BEGIN:VEVENT', 'UID:uposatha-' + r.ymd + (state.ref < 0 ? '-s' : '-m') + '@dhamma.gift', 'DTSTAMP:' + icsStamp(new Date()),
         'DTSTART:' + icsStamp(r.at), 'DTEND:' + icsStamp(new Date(r.at.getTime() + DAY)), 'SUMMARY:' + icsEscape(t.uposatha + ' — ' + nameOf(r)),
-        'DESCRIPTION:' + icsEscape('https://dhamma.gift/uposatha-calendar'),
-        'BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:' + icsEscape(nameOf(r)), 'TRIGGER:-PT' + state.rem.lead + 'H', 'END:VALARM', 'END:VEVENT');
+        'DESCRIPTION:' + icsEscape('https://dhamma.gift/uposatha-calendar'));
+      if (wantDay(r)) lines.push('BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:' + icsEscape(nameOf(r)), 'TRIGGER:-PT' + state.rem.lead + 'H', 'END:VALARM');
+      lines.push('END:VEVENT');
     });
     lines.push('END:VCALENDAR');
     var a = document.createElement('a');
@@ -344,8 +383,9 @@
     }
 
     var all = state.view === 'all';
-    var nextReminder = scheduleReminders(rows, nameOf);
-    var permission = 'Notification' in window ? Notification.permission : 'unsupported';
+    var nextReminder = scheduleReminders(rows, nameOf, byYmd);
+    var inApp = !!nativePlugin();
+    var permission = inApp ? 'granted' : 'Notification' in window ? Notification.permission : 'unsupported';
     var html = '';
     html += '<div class="today"><span class="moon" aria-hidden="true">' + emoji[phaseIndex] + '</span><div>' +
       '<strong>' + t.today + ':</strong> ' + esc(dateFmt.format(now)) + '<br>' +
@@ -363,12 +403,12 @@
       '<label class="sw"><input type="checkbox" id="sutta"' + (sutta ? ' checked' : '') + '> <strong>' + esc(t.sutta) + '</strong></label></div>' +
       '<p class="legend">' + esc(sutta ? t.hintSutta : t.hintModern) + '</p>' + (state.locMsg ? '<p class="legend">' + esc(state.locMsg) + '</p>' : '');
     var leadOpts = t.leads.map(function (l) { return '<option value="' + l[0] + '"' + (l[0] === state.rem.lead ? ' selected' : '') + '>' + esc(l[1]) + '</option>'; }).join('');
-    var dayChecks = sutta ? '<span class="remdays">' + t.remindDays + ': ' + [8, 14, 15].map(function (n) { return '<label class="sw"><input type="checkbox" class="remday" data-day="' + n + '"' + (state.rem['d' + n] ? ' checked' : '') + '> ' + t.nth(n) + '</label>'; }).join(' ') + '</span>' : '';
+    var dayChecks = sutta ? '<span class="remdays">' + t.remindDays + ': ' + [8, 14].map(function (n) { return '<label class="sw"><input type="checkbox" class="remday" data-day="' + n + '"' + (state.rem['d' + n] ? ' checked' : '') + '> ' + t.nth(n) + '</label>'; }).join(' ') + '</span>' : '';
     html += '<details class="rem"' + (state.rem.on ? ' open' : '') + '><summary>🔔 ' + t.remind + '</summary>' +
       '<div class="controls"><label class="sw"><input type="checkbox" id="remOn"' + (state.rem.on ? ' checked' : '') + '> <strong>' + t.remindOn + '</strong></label>' +
       '<label>' + t.remindLead + ': <select id="remLead">' + leadOpts + '</select></label>' + dayChecks + '</div>' +
       '<p class="legend">' + esc(state.remMsg || (permission === 'denied' ? t.remindDenied : permission === 'unsupported' ? t.remindUnsupported : (state.rem.on && nextReminder ? t.remindNext(new Intl.DateTimeFormat(lang, { timeZone: tz, weekday: 'short', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }).format(nextReminder.when), nextReminder.title) : (state.rem.on ? t.remindNone : '')))) + '</p>' +
-      '<p class="legend">' + esc(t.remindNote) + '</p><button type="button" id="ics" class="pill">📅 ' + t.ics + '</button></details>';
+      '<p class="legend">' + esc(inApp ? t.remindAppNote : t.remindNote) + '</p>' + (inApp ? '' : '<button type="button" id="ics" class="pill">📅 ' + t.ics + '</button>') + '</details>';
     html += '<div class="tabs"><button data-view="uposatha" aria-pressed="' + (!all) + '">' + t.viewUposatha + '</button>' +
       '<button data-view="all" aria-pressed="' + all + '">' + t.viewAll + '</button></div>';
 
@@ -457,6 +497,15 @@
     el('remOn').onchange = function (e) {
       state.remMsg = '';
       if (!e.target.checked) { state.rem.on = false; saveRem(); render(); return; }
+      var LN = nativePlugin();
+      if (LN) {
+        LN.requestPermissions().then(function (r) {
+          state.rem.on = r && r.display === 'granted';
+          if (!state.rem.on) state.remMsg = t.remindDenied;
+          saveRem(); render();
+        }).catch(function () { state.remMsg = t.remindUnsupported; render(); });
+        return;
+      }
       if (!('Notification' in window)) { state.remMsg = t.remindUnsupported; e.target.checked = false; render(); return; }
       Notification.requestPermission().then(function (perm) {
         state.rem.on = perm === 'granted';
@@ -468,7 +517,7 @@
     Array.prototype.forEach.call(document.querySelectorAll('.remday'), function (c) {
       c.onchange = function () { state.rem['d' + c.getAttribute('data-day')] = c.checked; saveRem(); render(); };
     });
-    el('ics').onclick = function () { downloadIcs(rows, nameOf); };
+    if (el('ics')) el('ics').onclick = function () { downloadIcs(rows, nameOf); };
     el('sutta').onchange = function (e) { state.ref = e.target.checked ? -6 : 6; store('dgUposathaSutta', e.target.checked ? '1' : '0'); render(); };
     Array.prototype.forEach.call(document.querySelectorAll('.tabs button'), function (b) {
       b.onclick = function () { state.view = b.getAttribute('data-view'); store('dgUposathaView', state.view); render(); };
