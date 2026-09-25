@@ -55,6 +55,7 @@
       keptWith: function (nth) { return 'the ' + nth + ' day is skipped and kept with this date'; },
       phases: ['New moon', 'Waxing crescent', 'First quarter', 'Waxing gibbous', 'Full moon', 'Waning gibbous', 'Last quarter', 'Waning crescent'],
       foot: 'Which lunar day a date is, is read from the real Moon at the chosen time of that date. A lunar day lasts 19–26 hours and changes when the Moon has gained another 12° on the Sun, not at midnight, so a day number sometimes jumps or repeats. The Uposatha is kept on the date when the 8th, 14th or 15th lunar day is in force; if such a day begins and ends between two of those moments, it is kept with the following date. A day in the suttas is counted from the evening, so the observance begins on the evening before. Thai, Sri Lankan and Burmese communities calculate their calendars by tradition and can differ by a day — follow your community\'s calendar. To cross-check: <a href="https://www.timeanddate.com/moon/phases/" target="_blank" rel="noopener">Time and Date: Moon Phases</a>.',
+      city: 'or a city', cityHint: 'Almaty…',
       locate: 'Use my location', locating: 'Locating…', located: 'Location', forget: 'forget', denied: 'The location was not shared — the fixed times are used.',
       sunrise: 'sunrise', sunset: 'sunset', sunsetBefore: 'sunset the evening before',
       remind: 'Reminders', remindOn: 'Remind me', remindLead: 'in advance', leads: [[1, '1 hour'], [3, '3 hours'], [12, '12 hours'], [24, '1 day'], [48, '2 days']],
@@ -83,6 +84,7 @@
       keptWith: function (nth) { return nth + ' день пропущен и соблюдается в эту дату'; },
       phases: ['Новолуние', 'Растущий серп', 'Первая четверть', 'Растущая Луна', 'Полнолуние', 'Убывающая Луна', 'Последняя четверть', 'Убывающий серп'],
       foot: 'Какой лунный день у даты, определяется по реальной Луне в выбранное время этой даты. Лунный день длится 19–26 часов и меняется, когда Луна уходит от Солнца ещё на 12°, а не в полночь, поэтому номер дня иногда перескакивает или повторяется. Упосатха соблюдается в дату, когда действует 8-й, 14-й или 15-й лунный день; если такой день начинается и кончается между двумя такими моментами, он соблюдается в следующую дату. День в суттах считается с вечера, поэтому соблюдение начинается вечером накануне. Тайские, шри-ланкийские и бирманские общины считают календари по традиции и могут отличаться на день — ориентируйтесь на календарь своей общины. Для сверки: <a href="https://www.timeanddate.com/moon/phases/" target="_blank" rel="noopener">Time and Date: Moon Phases</a>.',
+      city: 'или город', cityHint: 'Almaty…',
       locate: 'Определить моё место', locating: 'Определяю…', located: 'Место', forget: 'забыть', denied: 'Место не передано — используется фиксированное время.',
       sunrise: 'восход', sunset: 'закат', sunsetBefore: 'закат накануне вечером',
       remind: 'Напоминания', remindOn: 'Напоминать', remindLead: 'заранее', leads: [[1, 'за 1 час'], [3, 'за 3 часа'], [12, 'за 12 часов'], [24, 'за сутки'], [48, 'за 2 суток']],
@@ -127,6 +129,13 @@
   if (zones.indexOf(detected) === -1) zones = [detected].concat(zones);
   if (zones.indexOf(state.tz) === -1) zones = [state.tz].concat(zones);
 
+  var ZONE_COORDS = window.DG_ZONE_COORDS || {};
+  function cityName(zone) { return zone.split('/').pop().replace(/_/g, ' '); }
+  function cityOptions() { return Object.keys(ZONE_COORDS).sort(function (a, b) { return cityName(a) < cityName(b) ? -1 : 1; }).map(function (z) { return '<option value="' + esc(cityName(z) + ' · ' + z) + '">'; }).join(''); }
+  function setPlace(lat, lon) { // the place fixes the Sun; south of the equator flips the moon's shape
+    state.loc = { lat: lat, lon: lon }; store('dgUposathaLoc', JSON.stringify(state.loc));
+    state.south = lat < 0; store('dgUposathaHemisphere', state.south ? 'south' : 'north');
+  }
   function localDay(date, tz) { return date.toLocaleDateString('en-CA', { timeZone: tz }); } // yyyy-mm-dd, sortable
 
   // The UTC moment of hour `h` on the calendar date y-m-d in `tz`.
@@ -350,7 +359,7 @@
       zones.map(function (z) { return '<option' + (z === tz ? ' selected' : '') + '>' + esc(z) + '</option>'; }).join('') +
       '</select></label><label>' + t.hemisphere + ': <select id="hemi"><option value="north"' + (state.south ? '' : ' selected') + '>' + t.hemispheres[0] +
       '</option><option value="south"' + (state.south ? ' selected' : '') + '>' + t.hemispheres[1] + '</option></select></label>' +
-      '<span class="loc">' + (state.loc ? esc(t.located + ': ' + state.loc.lat + ', ' + state.loc.lon) + ' <a href="#" id="unloc">' + t.forget + '</a>' : '<button type="button" id="loc">📍 ' + t.locate + '</button>') + '</span>' +
+      '<span class="loc">' + (state.loc ? esc(t.located + ': ' + state.loc.lat + ', ' + state.loc.lon) + ' <a href="#" id="unloc">' + t.forget + '</a>' : '<button type="button" id="loc">📍 ' + t.locate + '</button> ' + t.city + ' <input id="city" list="cities" placeholder="' + t.cityHint + '" size="16"><datalist id="cities">' + cityOptions() + '</datalist>') + '</span>' +
       '<label class="sw"><input type="checkbox" id="sutta"' + (sutta ? ' checked' : '') + '> <strong>' + esc(t.sutta) + '</strong></label></div>' +
       '<p class="legend">' + esc(sutta ? t.hintSutta : t.hintModern) + '</p>' + (state.locMsg ? '<p class="legend">' + esc(state.locMsg) + '</p>' : '');
     var leadOpts = t.leads.map(function (l) { return '<option value="' + l[0] + '"' + (l[0] === state.rem.lead ? ' selected' : '') + '>' + esc(l[1]) + '</option>'; }).join('');
@@ -434,9 +443,14 @@
       el('loc').textContent = t.locating;
       navigator.geolocation.getCurrentPosition(function (pos) {
         // about a kilometre is plenty for a sunrise, and less to keep
-        state.loc = { lat: Math.round(pos.coords.latitude * 100) / 100, lon: Math.round(pos.coords.longitude * 100) / 100 };
-        state.locMsg = ''; store('dgUposathaLoc', JSON.stringify(state.loc)); render();
+        setPlace(Math.round(pos.coords.latitude * 100) / 100, Math.round(pos.coords.longitude * 100) / 100);
+        state.locMsg = ''; render();
       }, function () { state.locMsg = t.denied; render(); }, { timeout: 15000, maximumAge: 3600000 });
+    };
+    if (el('city')) el('city').onchange = function (e) {
+      var zone = String(e.target.value).split('·').pop().trim(), c = ZONE_COORDS[zone];
+      if (!c) return;
+      state.tz = zone; store('dgUposathaTz', zone); setPlace(c[0], c[1]); state.locMsg = ''; render();
     };
     if (el('unloc')) el('unloc').onclick = function (e) { e.preventDefault(); state.loc = null; state.locMsg = ''; store('dgUposathaLoc', ''); render(); };
     function saveRem() { store('dgUposathaRemind', JSON.stringify(state.rem)); }
