@@ -1301,7 +1301,7 @@ app.post('/api/tts/synthesize', { bodyLimit: 64 * 1024 }, (req, res) => {
 // ETag sendFile() now sets, not re-sent in full unless the file actually changed).
 // Old static help pages (/assets/common/*.html) now live in the docs (owner: "все документальные —
 // заменить на docs"). Permanent redirects keep old bookmarks and links from the legacy site working;
-// the tool/data pages next to them (history, lunar, multiTool, abbr, syrkin) are not help and stay.
+// the tool/data pages next to them (history, multiTool, abbr, syrkin) are not help and stay.
 const LEGACY_HELP_REDIRECTS = {
     'dictHelp.html': '/docs/dictionary', 'dictHelpRu.html': '/ru/docs/dictionary',
     'keyFeatures.html': '/docs/key-features', 'keyFeaturesRu.html': '/ru/docs/key-features',
@@ -1309,6 +1309,7 @@ const LEGACY_HELP_REDIRECTS = {
     'rationale-en.html': '/docs/rationale', 'rationale.html': '/ru/docs/rationale',
     'o-en.html': '/docs/principles', 'o.html': '/ru/docs/principles',
     'ttsHelp.html': '/docs/tts',
+    'lunar.html': '/docs/uposatha', 'lunarRu.html': '/ru/docs/uposatha', // the calendar moved into the docs
 };
 for (const [file, target] of Object.entries(LEGACY_HELP_REDIRECTS)) {
     app.get('/assets/common/' + file, (req, res) => res.redirect(target, 301));
