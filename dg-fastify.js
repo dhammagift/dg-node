@@ -1212,6 +1212,46 @@ app.post('/api/app-log', { bodyLimit: 32 * 1024 }, (req, res) => {
 // on the server and is read per request, so a new key needs no restart and no app release (owner).
 // The app posts text/plain (a simple CORS request, no preflight); the site keeps calling Google itself.
 const TTS_KEY_FILE = path.join(__dirname, 'configs', 'local', 'tts-config.json');
+
+// Abuse limits for the two paid endpoints (TTS proxy, AI search). Per address it is a request
+// budget per window, not a connection count; the numbers are deliberately loose because one address
+// can be many people behind a NAT. The real cost ceiling is the global cap under each one.
+// ponytail: fixed window, in memory (a restart resets it), same idea as regexRateLimited above;
+// fold the two together if a third caller appears.
+function makeRateLimiter(max, windowMs, maxIps = 10000) {
+    const hits = new Map(); // ip -> { count, resetAt }
+    return ip => {
+        const now = Date.now();
+        const key = String(ip || 'unknown');
+        let e = hits.get(key);
+        if (!e || e.resetAt <= now) {
+            if (hits.size >= maxIps) {
+                for (const [k, v] of hits) if (v.resetAt <= now) hits.delete(k);
+                if (hits.size >= maxIps) return false; // full: stop limiting, the global cap still holds
+            }
+            e = { count: 0, resetAt: now + windowMs };
+            hits.set(key, e);
+        }
+        return ++e.count > max;
+    };
+}
+const ttsRateLimited = makeRateLimiter(60, 60 * 1000); // ~20 segments/min per listener, so 3 people behind one NAT fit
+// Monthly ceiling on characters sent to Google through the proxy (the Chirp 3 HD default voice has a
+// free tier of about 1M characters a month, shared with the site's own direct calls) — over it the
+// app gets 429 and its player falls back to the system voice. Persisted so a restart keeps the count.
+const TTS_MONTHLY_CHARS = 500000;
+const TTS_USAGE_FILE = path.join(__dirname, 'logs', 'tts-usage.log');
+let ttsUsage = { month: '', chars: 0 };
+try { ttsUsage = JSON.parse(fsSync.readFileSync(TTS_USAGE_FILE, 'utf8')); } catch { /* first run */ }
+function ttsCharsOverCap(chars) {
+    const month = new Date().toISOString().slice(0, 7);
+    if (ttsUsage.month !== month) ttsUsage = { month, chars: 0 };
+    if (ttsUsage.chars + chars > TTS_MONTHLY_CHARS) return true;
+    ttsUsage.chars += chars;
+    fsSync.promises.mkdir(path.dirname(TTS_USAGE_FILE), { recursive: true })
+        .then(() => fsSync.promises.writeFile(TTS_USAGE_FILE, JSON.stringify(ttsUsage))).catch(() => {});
+    return false;
+}
 async function googleTts(res, apiPath, init) {
     try {
         const key = JSON.parse(await fsSync.promises.readFile(TTS_KEY_FILE, 'utf8')).key;
@@ -1228,14 +1268,18 @@ async function googleTts(res, apiPath, init) {
         return res.code(502).send({ error: { message: 'Text-to-Speech is unavailable' } });
     }
 }
-app.get('/api/tts/voices', (req, res) =>
-    googleTts(res, 'voices' + (req.query.languageCode ? '?languageCode=' + encodeURIComponent(req.query.languageCode) : '')));
-app.post('/api/tts/synthesize', { bodyLimit: 64 * 1024 }, (req, res) =>
-    googleTts(res, 'text:synthesize', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: typeof req.body === 'string' ? req.body : JSON.stringify(req.body),
-    }));
+app.get('/api/tts/voices', (req, res) => {
+    if (ttsRateLimited(req.ip)) return res.code(429).send({ error: { message: 'Too many requests, try again shortly' } });
+    return googleTts(res, 'voices' + (req.query.languageCode ? '?languageCode=' + encodeURIComponent(req.query.languageCode) : ''));
+});
+app.post('/api/tts/synthesize', { bodyLimit: 64 * 1024 }, (req, res) => {
+    if (ttsRateLimited(req.ip)) return res.code(429).send({ error: { message: 'Too many requests, try again shortly' } });
+    const body = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
+    let chars = body.length; // unreadable body: charge its size
+    try { const input = JSON.parse(body).input || {}; chars = String(input.text || input.ssml || '').length || chars; } catch { /* keep body.length */ }
+    if (ttsCharsOverCap(chars)) return res.code(429).send({ error: { message: 'Monthly text-to-speech limit reached' } });
+    return googleTts(res, 'text:synthesize', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body });
+});
 
 // Static mounts below use @fastify/static's array `root` (tries each dir in order, first match
 // wins) — the direct equivalent of Express's "register override dir, then fallback dir on the
@@ -1716,6 +1760,15 @@ app.get('/api/nav/:suttaId', (req, res) => {
 // in-memory Map, one process, no eviction beyond the TTL check on read — this endpoint's traffic
 // doesn't warrant an LRU cap. Keyed by exactly what changes the answer (query text + gloss lang).
 const AI_SEARCH_CACHE = new Map(); // `${lang}:${q}` -> { at, data }
+const AI_SEARCH_CACHE_MAX = 500;
+const aiCacheSet = (key, data) => { // bounded: the oldest entry goes first (Map keeps insertion order)
+    if (AI_SEARCH_CACHE.size >= AI_SEARCH_CACHE_MAX) AI_SEARCH_CACHE.delete(AI_SEARCH_CACHE.keys().next().value);
+    AI_SEARCH_CACHE.set(key, { at: Date.now(), data });
+};
+const aiRateLimited = makeRateLimiter(10, 60 * 1000);
+// Daily ceiling on searches that reach the paid pipeline, whoever asks (in memory: a restart resets it).
+const AI_SEARCH_DAILY_MAX = 500;
+let aiDaily = { day: '', count: 0 };
 const AI_SEARCH_CACHE_TTL_MS = 10 * 60 * 1000;
 
 // search_hybrid hits -> DataTables-shaped rows, filtered to scope and sorted the site's own way.
@@ -1824,6 +1877,12 @@ app.get('/api/ai-search', async (req, res) => {
         return res.send(responseBody);
     }
 
+    // Everything below can reach a paid model: per-address budget first, then the daily ceiling.
+    if (aiRateLimited(req.ip)) return res.code(429).send({ ok: false, reason: 'rate_limited', detail: 'too many AI searches from this address, try again shortly' });
+    const today = new Date().toISOString().slice(0, 10);
+    if (aiDaily.day !== today) aiDaily = { day: today, count: 0 };
+    if (++aiDaily.count > AI_SEARCH_DAILY_MAX) return res.code(429).send({ ok: false, reason: 'daily_limit', detail: 'the daily AI search limit is reached, exact search still works' });
+
     // Fast path for a single word (no spaces): figure out whether it's real Pali BEFORE ever
     // asking the LLM to guess anything — owner: "сначала нужно понять, что сказал человек, если
     // это вообще пали... нужно попробовать поискать его в DPD и уже потом от этих слов
@@ -1852,7 +1911,7 @@ app.get('/api/ai-search', async (req, res) => {
                     debug: { normalizedQuery: `(DPD-confirmed word, no LLM call) ${q}`, provider: 'dpd', paliCandidates: [q], mcp },
                 };
                 logAiSearch(q, responseBody);
-                AI_SEARCH_CACHE.set(cacheKey, { at: Date.now(), data: responseBody });
+                aiCacheSet(cacheKey, responseBody);
                 return res.send(responseBody);
             }
             if (wordInfo.closest.length) {
@@ -1865,7 +1924,7 @@ app.get('/api/ai-search', async (req, res) => {
                     debug: { normalizedQuery: `(DPD typo suggestions, no LLM call) ${q}`, provider: 'dpd', paliCandidates: wordInfo.closest.slice(0, 5) },
                 };
                 logAiSearch(q, responseBody);
-                AI_SEARCH_CACHE.set(cacheKey, { at: Date.now(), data: responseBody });
+                aiCacheSet(cacheKey, responseBody);
                 return res.send(responseBody);
             }
             // Owner: "кто придумал эту заглушку?.. убери её, не нужно отдавать такое на
@@ -1881,7 +1940,7 @@ app.get('/api/ai-search', async (req, res) => {
                 debug: { normalizedQuery: `(DPD: no match, no close match, no LLM call) ${q}`, provider: 'dpd', paliCandidates: [] },
             };
             logAiSearch(q, responseBody);
-            AI_SEARCH_CACHE.set(cacheKey, { at: Date.now(), data: responseBody });
+            aiCacheSet(cacheKey, responseBody);
             return res.send(responseBody);
         } catch {
             // DPD unreachable (even after dpd-lookup.js's own retry) — not fatal, fall through to
@@ -1915,7 +1974,7 @@ app.get('/api/ai-search', async (req, res) => {
     if (!dispatch.recognized) {
         const responseBody = { ok: true, query: q, suttas: [], wordSuggestions: [], debug };
         logAiSearch(q, responseBody);
-        AI_SEARCH_CACHE.set(cacheKey, { at: Date.now(), data: responseBody });
+        aiCacheSet(cacheKey, responseBody);
         return res.send(responseBody);
     }
 
@@ -1954,7 +2013,7 @@ app.get('/api/ai-search', async (req, res) => {
         ok: true, query: q, suttas: hitsToSuttaRows(hits, scope), wordSuggestions: verifiedCandidates.map(word => ({ word })), debug,
     };
     logAiSearch(q, responseBody);
-    AI_SEARCH_CACHE.set(cacheKey, { at: Date.now(), data: responseBody });
+    aiCacheSet(cacheKey, responseBody);
     res.send(responseBody);
 });
 
