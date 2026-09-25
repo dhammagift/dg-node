@@ -461,6 +461,7 @@
             '<div class="dg-sheet-tabs" id="dg-sheet-tabs"></div>' +
             '<div class="dg-sheet-body" id="dg-sheet-body"></div>';
         sheet.querySelector('.dg-sheet-close').addEventListener('click', closeSheet);
+        enableSwipeDown(sheet, closeSheet);
 
         document.body.appendChild(sheet);
 
@@ -479,6 +480,58 @@
         document.body.classList.remove('dg-mega-compact');
         // hidden ставим после анимации ухода, иначе шторка пропадёт рывком
         setTimeout(function () { if (!currentSheetKey) sheet.hidden = true; }, 320);
+    }
+
+    /* Swipe down closes a bottom sheet — the first thing anyone tries on a phone (issue #27: the
+       sheets only closed through the X, the backdrop and Back). Touch only, so a mouse drag never
+       moves a sheet. A drag that starts on a list which is not scrolled to its top is a scroll and
+       is left alone; once the list reaches its top mid-gesture the drag starts from that point. A
+       mostly-sideways move (the tabs row scrolls sideways) is never a sheet drag. */
+    function enableSwipeDown(sheet, close) {
+        var startX = 0, startY = 0, startT = 0, baseX = 0, dy = 0;
+        var tracking = false, dragging = false, scroller = null;
+        function release(shouldClose) {
+            dragging = false;
+            tracking = false;
+            // Transition back on and the inline offset gone in one go: the sheet either eases back to
+            // its own resting transform or, with .show removed by close(), on down out of sight.
+            sheet.style.transition = '';
+            sheet.style.transform = '';
+            if (shouldClose) close();
+        }
+        sheet.addEventListener('touchstart', function (e) {
+            tracking = e.touches.length === 1;
+            dragging = false;
+            if (!tracking) return;
+            startX = e.touches[0].clientX;
+            startY = e.touches[0].clientY;
+            startT = Date.now();
+            dy = 0;
+            scroller = null;
+            for (var n = e.target; n && n !== sheet; n = n.parentElement) {
+                if (n.scrollHeight > n.clientHeight + 1 && /(auto|scroll)/.test(getComputedStyle(n).overflowY)) { scroller = n; break; }
+            }
+        }, { passive: true });
+        sheet.addEventListener('touchmove', function (e) {
+            if (!tracking) return;
+            var x = e.touches[0].clientX, y = e.touches[0].clientY;
+            dy = y - startY;
+            if (!dragging) {
+                if (Math.abs(x - startX) > 8 && Math.abs(x - startX) > Math.abs(dy)) { tracking = false; return; }
+                if (dy < 0 || (scroller && scroller.scrollTop > 0)) { startY = y; startT = Date.now(); dy = 0; return; }
+                if (dy < 8) return;
+                dragging = true;
+                baseX = new DOMMatrix(getComputedStyle(sheet).transform).m41;   // -50% of the width on wide screens
+                sheet.style.transition = 'none';
+            }
+            e.preventDefault();
+            sheet.style.transform = 'translate(' + baseX + 'px,' + Math.max(0, dy) + 'px)';
+        }, { passive: false });
+        sheet.addEventListener('touchend', function () {
+            if (!dragging) { tracking = false; return; }
+            release(dy > 90 || (dy > 30 && dy / Math.max(1, Date.now() - startT) > 0.5));
+        });
+        sheet.addEventListener('touchcancel', function () { if (dragging) release(false); });
     }
 
     function ensureSettingsSheet() {
