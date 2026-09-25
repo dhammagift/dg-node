@@ -24,6 +24,7 @@
   .muted { color: var(--muted); }
   .badge { margin-left: 8px; padding: 1px 8px; border-radius: 10px; background: var(--accent); color: #fff; font-size: .85em; white-space: nowrap; }
   .controls { display: flex; flex-wrap: wrap; gap: 8px 20px; margin-bottom: 12px; }
+  .sw { display: inline-flex; align-items: center; gap: 6px; }
   select { max-width: 100%; background: var(--bg); color: var(--fg); border: 1px solid var(--border); border-radius: 4px; padding: 2px 4px; }
   .tabs { display: flex; gap: 6px; margin: 4px 0 8px; }
   .tabs button { flex: 1; padding: 7px 10px; border: 1px solid var(--border); border-radius: 6px; background: transparent; color: var(--fg); font: inherit; cursor: pointer; }
@@ -42,7 +43,7 @@
   .legend { font-size: .9em; color: var(--muted); margin: 6px 0; }
   .legend .key { display: inline-block; width: 12px; height: 12px; margin-right: 6px; border-radius: 3px; background: var(--accent); vertical-align: -1px; }
   .detail { border: 1px solid var(--border); border-radius: 6px; padding: 8px 12px; margin: 6px 0 4px; min-height: 3.4em; }
-  .detail .accent { color: var(--accent); }
+  .detail .accent, .today .accent { color: var(--accent); }
   /* the ordinary calendar: whole months, weeks in rows */
   .cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
   .cal .wd { text-align: center; font-size: .8em; color: var(--muted); padding: 2px 0; }
