@@ -469,7 +469,7 @@
     $('rem-days-row').style.display = sutta() ? '' : 'none';
     $('rem-msg').textContent = state.remMsg || (permission === 'denied' ? t.remDenied : permission === 'unsupported' ? t.remUnsupported : (state.rem.on ? (next ? t.remNext(F.remWhen.format(next.when), next.title) : t.remNone) : ''));
     $('rem-note').textContent = inApp ? t.remAppNote : t.remNote;
-    $('b-cal').style.display = inApp ? 'none' : ''; // in the app the reminders are the device's own
+    $('b-cal').style.display = $('d-cal').style.display = inApp ? 'none' : ''; // in the app the reminders are the device's own
     $('sub-apple').href = feedUrl('webcal');
     $('sub-google').href = 'https://calendar.google.com/calendar/r?cid=' + encodeURIComponent(feedUrl('webcal'));
   }
@@ -687,13 +687,15 @@
     new MutationObserver(function () { var v = document.documentElement.getAttribute('data-bs-theme'); if (v && v !== document.documentElement.getAttribute('data-theme')) { document.documentElement.setAttribute('data-theme', v); document.body.classList.toggle('dark', v === 'dark'); } }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-bs-theme'] });
     window.dgAnnounceLanguage = window.dgAnnounceLanguage || function (l) { toast(l === 'ru' ? 'Русский' : 'English'); };
     window.dgDrawerHelpHref = function () { return t.docs; };
-    $('b-cal').onclick = function () { openPanel('cal-modal'); };
-    $('b-share').onclick = function () { // the native share sheet where there is one, else the link is copied
+    function share() { // the native share sheet where there is one, else the link is copied
       var url = location.origin + '/uposatha-calendar' + (lang === 'ru' ? '?lang=ru' : '');
       if (navigator.share) navigator.share({ title: t.shareTitle, url: url }).catch(function () { /* cancelled */ });
       else if (navigator.clipboard) navigator.clipboard.writeText(url).then(function () { toast(t.linkCopied); });
       else window.prompt(t.shareTitle, url);
-    };
+    }
+    function openCal() { var c = document.querySelector('#dg-drawer .dg-drawer-close'); if (c && !$('dg-drawer').hidden) c.click(); openPanel('cal-modal'); }
+    $('b-share').onclick = $('d-share').onclick = share;
+    $('b-cal').onclick = $('d-cal').onclick = openCal;
     $('p-ics').onclick = downloadIcs;
     $('sub-copy').onclick = function () { var u = feedUrl('https'); if (navigator.clipboard) navigator.clipboard.writeText(u).then(function () { toast(t.linkCopied); }); else window.prompt(t.copyLink, u); };
     $('tz').onchange = function (e) { state.tz = e.target.value; store('dgUposathaTz', state.tz); paint(); };
