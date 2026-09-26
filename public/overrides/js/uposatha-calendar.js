@@ -33,6 +33,7 @@
     en: {
       pH: 'Parts of the day and night', pSub: 'Sunrise to sunset is cut into three parts, and sunset to sunrise likewise — for your place and the season.', pDay: 'Day', pNight: 'Night',
       dayParts: [['Pubbaṇhasamaya', 'morning'], ['Majjhanhikasamaya', 'midday'], ['Sāyanhasamaya', 'evening']], nightParts: [['Paṭhama yāma', 'first watch'], ['Majjhima yāma', 'middle watch'], ['Pacchima yāma', 'last watch']],
+      fSpecial: 'special', fGeneral: 'general', fRandom: 'random', dayTag: function (d) { return d.map(function (n) { return n + (n === 8 ? 'th' : 'th'); }).join(' & ') + ' day'; },
       age: 'age', of30: 'of 30', from: 'from', left: 'left', dU: 'd', hU: 'h', mU: 'min',
       tag: 'observance days', compass: 'Favorites / History', menu: 'Menu', theme: 'Theme', prev: 'Previous', next: 'Next', close: 'Close',
       h1: 'Uposatha days', lead: 'The 14th, 15th and 8th lunar days of each half-month, as the suttas count them — six a month.', suttas: 'The suttas on Uposatha →',
@@ -68,6 +69,7 @@
     ru: {
       pH: 'Части дня и ночи', pSub: 'Время от восхода до заката делится на три части, и от заката до восхода тоже — для вашего места и сезона.', pDay: 'День', pNight: 'Ночь',
       dayParts: [['Pubbaṇhasamaya', 'утро'], ['Majjhanhikasamaya', 'полдень'], ['Sāyanhasamaya', 'вечер']], nightParts: [['Paṭhama yāma', 'первая стража'], ['Majjhima yāma', 'средняя стража'], ['Pacchima yāma', 'последняя стража']],
+      fSpecial: 'особое', fGeneral: 'общее', fRandom: 'случайное', dayTag: function (d) { return d.map(function (n) { return n + '-й'; }).join(' и ') + ' день'; },
       age: 'возраст', of30: 'из 30', from: 'с', left: 'осталось', dU: 'д', hU: 'ч', mU: 'мин',
       tag: 'дни соблюдения', compass: 'Избранное / История', menu: 'Меню', theme: 'Тема', prev: 'Назад', next: 'Вперёд', close: 'Закрыть',
       h1: 'Дни упосатхи', lead: '14-й, 15-й и 8-й лунные дни каждой половины месяца, как их считают сутты, — шесть в месяц.', suttas: 'Сутты об упосатхе →',
@@ -301,6 +303,14 @@
       (dayEnds ? dot + '<span>' + (dayBegan ? esc(t.from) + ' ' + esc(F.stamp.format(dayBegan.date)) + ' ' : '') + esc(t.until) + ' ' + esc(F.stamp.format(dayEnds.date)) + '</span>' + dot + '<span>' + esc(t.left) + ' <span id="left"></span></span>' : '');
     liveTick();
     paintParts(F, now, todayYmd);
+    // which of the 8th / 14th / 15th are now or begin within a day (yesterday's while its evening-to-evening span still runs)
+    var relDays = [];
+    [now < evToday ? ymdAdd(todayYmd, -1) : null, todayYmd, ymdAdd(todayYmd, 1)].forEach(function (k) {
+      var r = k && L.byYmd[k];
+      if (r && r.uposatha) (su ? r.names.map(dayNo) : [r.phase === 0 || r.phase === 2 ? 15 : 8]).forEach(function (d) { if (relDays.indexOf(d) === -1) relDays.push(d); });
+    });
+    relDays.sort(function (a, b) { return a - b; });
+    slidesFor(relDays);
     var nextRow = L.rows.filter(function (r) { return r.uposatha && r.ymd > todayYmd; })[0];
     if (isUposatha) $('t-status').innerHTML = '<span class="badge">' + esc(t.uday) + '</span>' + (tonight ? '' : '');
     else if (tonight) $('t-status').innerHTML = '<span class="badge">' + esc(t.tonight) + '</span>';
@@ -535,6 +545,47 @@
   }
   function markReader() { var open = !$('reader').hidden; Array.prototype.forEach.call(document.querySelectorAll('.rd'), function (b) { b.setAttribute('aria-current', String(open && +b.getAttribute('data-i') === rdCur)); }); }
 
+  // ---------- slideshow: sutta lines for the day, for keeping the Uposatha, and at random ----------
+  var quotes = null, quotesLoading = false, slides = [], slIdx = 0, slSig = '', slTimer = null, slHold = false;
+  function shuffle(a) { for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)), x = a[i]; a[i] = a[j]; a[j] = x; } return a; }
+  // The first wave is for the 8th, 14th and 15th day when one is now or begins within a day; then the general lines, then a few at random.
+  function buildSlides(days) {
+    var all = quotes.filter(function (q) { return q[lang]; }); // a line with no translation into the page's language is left out
+    var sp = all.filter(function (q) { return q.kind === 'special' && q.days.some(function (d) { return days.indexOf(d) !== -1; }); })
+      .sort(function (a, b) { return a.days[0] - b.days[0]; });
+    slides = sp.concat(shuffle(all.filter(function (q) { return q.kind === 'general'; })), shuffle(all.filter(function (q) { return q.kind === 'random'; })).slice(0, 8));
+    slIdx = 0;
+  }
+  function showSlide(i, quick) {
+    if (!slides.length) return;
+    slIdx = (i + slides.length) % slides.length;
+    var q = slides[slIdx], box = $('slides');
+    function fill() {
+      $('sl-pli').textContent = q.pli; $('sl-tr').textContent = q[lang] || q.en;
+      $('sl-cite').textContent = q.cite[lang] + (q.kind === 'special' ? ' · ' + t.dayTag(q.days) : '') + ' →';
+      $('sl-cite').href = '/' + q.ref + '?lang=' + lang;
+      $('sl-count').textContent = (slIdx + 1) + ' / ' + slides.length;
+      Array.prototype.forEach.call($('sl-flags').children, function (b) {
+        b.setAttribute('aria-pressed', String(b.getAttribute('data-k') === q.kind));
+        b.disabled = !slides.some(function (s) { return s.kind === b.getAttribute('data-k'); });
+      });
+      box.classList.remove('fade'); reportHeight();
+    }
+    if (quick) fill(); else { box.classList.add('fade'); setTimeout(fill, 220); }
+  }
+  function slidesFor(days) {
+    var box = $('slides');
+    if (!quotes) {
+      if (!quotesLoading) { quotesLoading = true; fetch('/assets/js/uposatha-quotes.json').then(function (r) { return r.json(); }).then(function (d) { quotes = d; slSig = ''; paint(); }).catch(function () { quotesLoading = false; }); }
+      return;
+    }
+    var sig = days.join(',') + lang;
+    box.hidden = false;
+    if (sig !== slSig) { slSig = sig; buildSlides(days); showSlide(0, true); }
+    else showSlide(slIdx, true); // the same show: only the words may need repainting
+    if (!slTimer && !(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)) slTimer = setInterval(function () { if (!slHold && !document.hidden) showSlide(slIdx + 1); }, 14000);
+  }
+
   // ---------- height for the docs frame ----------
   function reportHeight() {
     // The height of the content itself, not of the document: documentElement.scrollHeight is never smaller than the frame it
@@ -614,6 +665,13 @@
     $('rd8').onclick = function () { state.rem.d8 = !state.rem.d8; saveRem(); paint(); };
     $('rd14').onclick = function () { state.rem.d14 = !state.rem.d14; saveRem(); paint(); };
     $('rd15').onclick = function () { state.rem.d15 = !state.rem.d15; saveRem(); paint(); };
+    $('sl-prev').onclick = function () { showSlide(slIdx - 1); };
+    $('sl-next').onclick = function () { showSlide(slIdx + 1); };
+    Array.prototype.forEach.call($('sl-flags').children, function (b) { b.onclick = function () { var k = b.getAttribute('data-k'); for (var i = 0; i < slides.length; i++) if (slides[i].kind === k) { showSlide(i); return; } }; });
+    $('slides').addEventListener('mouseenter', function () { slHold = true; });
+    $('slides').addEventListener('mouseleave', function () { slHold = false; });
+    $('slides').addEventListener('focusin', function () { slHold = true; });
+    $('slides').addEventListener('focusout', function () { slHold = false; });
     $('rd-sel').onchange = function (e) { readSutta(+e.target.value); };
     $('rd-close').onclick = function () { $('reader').hidden = true; markReader(); };
     document.addEventListener('visibilitychange', function () { if (!document.hidden) paint(); });

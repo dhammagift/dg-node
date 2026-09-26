@@ -118,6 +118,21 @@ body[data-screen=list] #s-list, body[data-screen=cal] #s-cal { display: block; }
 body[data-mode=lite] .ln.grey, body[data-mode=lite] .grid .c .ld, body[data-mode=lite] .detail, body[data-mode=lite] .today .sun { display: none; }
 body[data-mode=lite] .mon li .t .info .ln:not(.grey) + .ln:not(.grey) { display: none; }
 /* key suttas and the reader */
+.slides { margin: 14px 0 0; background: var(--dg-surface); border: 1px solid var(--dg-border); border-radius: var(--dg-radius); padding: 14px 18px 12px; }
+.slides[hidden] { display: none; }
+.sl-flags { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+.sl-flags button { border: 1px solid var(--dg-border-strong); background: none; color: var(--dg-text-muted); font: inherit; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; padding: 2px 10px; border-radius: 999px; cursor: pointer; }
+.sl-flags button[aria-pressed=true] { background: var(--dg-accent-bg); border-color: transparent; color: var(--dg-on-accent-bg); }
+.sl-flags button:disabled { opacity: .4; cursor: default; }
+.sl-pli { margin: 0 0 6px; font-size: 12.5px; font-style: italic; line-height: 1.55; color: var(--dg-text-muted); }
+.sl-tr { margin: 0; font-size: 15px; line-height: 1.6; color: var(--dg-text); text-wrap: pretty; }
+.sl-pli, .sl-tr { transition: opacity .25s; }
+.slides.fade .sl-pli, .slides.fade .sl-tr { opacity: 0; }
+.sl-foot { display: flex; align-items: center; gap: 10px; margin-top: 10px; font-size: 12.5px; }
+.sl-foot a { color: var(--dg-accent-ink); }
+.sl-nav { margin-left: auto; display: flex; align-items: center; gap: 6px; color: var(--dg-text-muted); font-variant-numeric: tabular-nums; }
+.sl-nav button { border: 0; background: none; color: var(--dg-text-muted); cursor: pointer; padding: 4px; border-radius: 6px; display: inline-flex; }
+.sl-nav button:hover { background: var(--dg-surface-hover); color: var(--dg-text); }
 .parts { margin: 34px 0 0; }
 .parts h2 { font-size: 17px; margin: 0 0 4px; }
 .parts .sub { margin: 0 0 14px; font-size: 13px; color: var(--dg-text-muted); }
@@ -219,7 +234,7 @@ body[data-remind=off] .rem-dep { opacity: .45; pointer-events: none; }
   .pagefoot { padding-left: 15px; padding-right: 15px; }
 }
 /* embedded in the docs: only the calendar itself */
-body.embed .tbar, body.embed .intro, body.embed .keys, body.embed .parts, body.embed .pagefoot { display: none; }
+body.embed .tbar, body.embed .slides, body.embed .intro, body.embed .keys, body.embed .parts, body.embed .pagefoot { display: none; }
 body.embed { background: transparent; }
 body.embed .page { padding: 0; max-width: none; }
 body.embed .today { margin-top: 0; }
