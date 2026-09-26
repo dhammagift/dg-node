@@ -49,34 +49,19 @@
   ],
   "lines": [
    {
-    "pli": "‘Cātuddasiṁ pañcadasiṁ,",
-    "ru": "“Четырнадцатый, пятнадцатый день,",
-    "en": "‘Whoever wants to be like me"
+    "pli": "‘Cātuddasiṁ pañcadasiṁ, yā ca pakkhassa aṭṭhamī;",
+    "ru": "“Четырнадцатый, пятнадцатый день, на день, что в половине месяца восьмой;",
+    "en": "‘Whoever wants to be like me would observe the sabbath"
    },
    {
-    "pli": "yā ca pakkhassa aṭṭhamī;",
-    "ru": "На день, что в половине месяца восьмой;",
-    "en": "would observe the sabbath"
+    "pli": "Pāṭihāriyapakkhañca, aṭṭhaṅgasusamāgataṁ;",
+    "ru": "А также и в особенные дни, что аспектами восемью полна,",
+    "en": "complete in all eight factors, on the fourteenth and the fifteenth days,"
    },
    {
-    "pli": "Pāṭihāriyapakkhañca,",
-    "ru": "А также и в особенные дни,",
-    "en": "complete in all eight factors,"
-   },
-   {
-    "pli": "aṭṭhaṅgasusamāgataṁ;",
-    "ru": "Что аспектами восемью полна,",
-    "en": "on the fourteenth and the fifteenth days,"
-   },
-   {
-    "pli": "Uposathaṁ upavaseyya,",
-    "ru": "Упосатху должен соблюдать,",
-    "en": "and the eighth day of the fortnight,"
-   },
-   {
-    "pli": "yopissa mādiso naro’ti.",
-    "ru": "Человек, который хочет быть таким, как я”.",
-    "en": "as well as on the fortnightly special displays.’"
+    "pli": "Uposathaṁ upavaseyya, yopissa mādiso naro’ti.",
+    "ru": "Упосатху должен соблюдать, человек, который хочет быть таким, как я”.",
+    "en": "and the eighth day of the fortnight, as well as on the fortnightly special displays.’"
    }
   ],
   "title": {
@@ -451,24 +436,14 @@
   "days": null,
   "lines": [
    {
-    "pli": "Mālaṁ na dhāre na ca gandhamācare,",
-    "ru": "И не носи гирлянд, духов не применяй,",
-    "en": "Not wearing garlands or applying fragrance,"
+    "pli": "Mālaṁ na dhāre na ca gandhamācare, mañce chamāyaṁ va sayetha santhate;",
+    "ru": "И не носи гирлянд, духов не применяй, спи на циновке на земле или [такой] постели.",
+    "en": "Not wearing garlands or applying fragrance, you should sleep on a low bed, or a mat on the ground."
    },
    {
-    "pli": "Mañce chamāyaṁ va sayetha santhate;",
-    "ru": "Спи на циновке на земле или [такой] постели.",
-    "en": "you should sleep on a low bed, or a mat on the ground."
-   },
-   {
-    "pli": "Etañhi aṭṭhaṅgikamāhuposathaṁ,",
-    "ru": "Ведь восьмиаспектной Упосатхи такому соблюдению",
-    "en": "This is the eight-factored sabbath, they say,"
-   },
-   {
-    "pli": "Buddhena dukkhantagunā pakāsitaṁ.",
-    "ru": "[Сам] Будда научил, положивший конец боли.",
-    "en": "revealed by the Buddha, who has gone to suffering’s end."
+    "pli": "Etañhi aṭṭhaṅgikamāhuposathaṁ, buddhena dukkhantagunā pakāsitaṁ.",
+    "ru": "Ведь восьмиаспектной Упосатхи такому соблюдению [Сам] Будда научил, положивший конец боли.",
+    "en": "This is the eight-factored sabbath, they say, revealed by the Buddha, who has gone to suffering’s end."
    }
   ],
   "title": {
@@ -491,24 +466,14 @@
   "days": null,
   "lines": [
    {
-    "pli": "Tato ca pakkhassupavassuposathaṁ,",
-    "ru": "Уверенный в уме, когда её провёл –",
-    "en": "Then having rightly undertaken the sabbath"
+    "pli": "Tato ca pakkhassupavassuposathaṁ, cātuddasiṁ pañcadasiñca aṭṭhamiṁ;",
+    "ru": "Уверенный в уме, когда её провёл – упосатху, что в аспектах восьми была полна",
+    "en": "Then having rightly undertaken the sabbath complete in all its eight factors"
    },
    {
-    "pli": "Cātuddasiṁ pañcadasiñca aṭṭhamiṁ;",
-    "ru": "Упосатху, что в аспектах восьми была полна",
-    "en": "complete in all its eight factors"
-   },
-   {
-    "pli": "Pāṭihāriyapakkhañca pasannamānaso,",
-    "ru": "На день четырнадцатый, на пятнадцатый,",
-    "en": "on the fourteenth, fifteenth, and eighth of the fortnight,"
-   },
-   {
-    "pli": "Aṭṭhaṅgupetaṁ susamattarūpaṁ.",
-    "ru": "А также на восьмой, и по особым дням –",
-    "en": "as well as on the fortnightly special displays,"
+    "pli": "Pāṭihāriyapakkhañca pasannamānaso, aṭṭhaṅgupetaṁ susamattarūpaṁ.",
+    "ru": "На день четырнадцатый, на пятнадцатый, а также на восьмой, и по особым дням –",
+    "en": "on the fourteenth, fifteenth, and eighth of the fortnight, as well as on the fortnightly special displays,"
    }
   ],
   "title": {
@@ -531,24 +496,14 @@
   "days": null,
   "lines": [
    {
-    "pli": "Tato ca pāto upavutthuposatho,",
-    "ru": "То утром мудрый [этот] человек,",
-    "en": "at daybreak after the sabbath"
+    "pli": "Tato ca pāto upavutthuposatho, annena pānena ca bhikkhusaṅghaṁ;",
+    "ru": "То утром мудрый [этот] человек, который [всю эту] Упосатху провёл,",
+    "en": "at daybreak after the sabbath a clever person, rejoicing with confident heart,"
    },
    {
-    "pli": "Annena pānena ca bhikkhusaṅghaṁ;",
-    "ru": "Который [всю эту] Упосатху провёл,",
-    "en": "a clever person, rejoicing with confident heart,"
-   },
-   {
-    "pli": "Pasannacitto anumodamāno,",
-    "ru": "С умом уверенным, довольный, он разделит,",
-    "en": "would distribute food and drink"
-   },
-   {
-    "pli": "Yathārahaṁ saṁvibhajetha viññū.",
-    "ru": "Как подобает, с Сангхой пищу и напитки.",
-    "en": "to the mendicant Saṅgha as is fitting."
+    "pli": "Pasannacitto anumodamāno, yathārahaṁ saṁvibhajetha viññū.",
+    "ru": "С умом уверенным, довольный, он разделит, как подобает, с Сангхой пищу и напитки.",
+    "en": "would distribute food and drink to the mendicant Saṅgha as is fitting."
    }
   ],
   "title": {

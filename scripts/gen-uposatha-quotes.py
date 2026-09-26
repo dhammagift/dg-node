@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Builds public/overrides/js/uposatha-quotes.json (the slideshow on /uposatha-calendar) from the Bilara data:
 # root Pali (ms), Russian and English translations of the chosen segments. Run again after changing SLIDES.
-import glob, json, os
+import glob, json, os, re
 BASE = '/var/www/html/suttacentral.net/sc-data/sc_bilara_data'
 # id, days it is exclusive to (None = general pool), sutta file dir, sutta id, segments, russian translator, label en/ru
 SLIDES = [
@@ -37,6 +37,19 @@ SLIDES = [
 # verses keep their line breaks
 POEMS = {'an3.37-verse', 'snp2.14-factors', 'snp2.14-days', 'snp2.14-dawn'}
 RANDOM_IDS = {'mn118-15', 'kd2-two', 'bu-pm-15', 'snp2.14-factors', 'snp2.14-dawn', 'kd2-gather', 'kd2-teach', 'kd2-once', 'kd2-differ', 'snp2.14-days'}
+def low(t):
+    # the reader's toLower (mergeGathas): the second half of a merged verse line starts in lower case, except "I ..." / "O ..." / "Я..."
+    if not t or re.match(r'^["“\'‘]?(I\b|I\'|O\b|О\b)', t): return t
+    return t[0].lower() + t[1:]
+def merge_pairs(lines):
+    # the reader merges verse segments two by two into one line (reader/megareader.js mergeGathas); the verse is shown
+    # the same way here, not cut line by line as SuttaCentral does
+    out = []
+    for i in range(0, len(lines), 2):
+        a = lines[i]
+        b = lines[i + 1] if i + 1 < len(lines) else None
+        out.append({k: (a[k] + ' ' + low(b[k])).strip() if b and b[k] else a[k] for k in ('pli', 'ru', 'en')})
+    return out
 def load(p):
     return json.load(open(os.path.join(BASE, p)))
 OFFLINE = '/var/www/offline-data/dhammagift/translation'
@@ -68,6 +81,7 @@ for sid, days, nik, sutta, segs, ru_tr, en_label, ru_label in SLIDES:
     # "special" slides belong to the 8th / 14th / 15th day; "general" ones say that the Uposatha is to be kept
     if sid in RANDOM_IDS: days = None
     lines = [{'pli': pli[key(g)].strip().replace('<j>', ''), 'ru': ru.get(key(g), '').strip(), 'en': en.get(key(g), '').strip().replace('<j>', '')} for g in segs if key(g) in pli] if sid in POEMS else None
+    if lines: lines = merge_pairs(lines)
     out.append({'id': sid, 'kind': 'random' if sid in RANDOM_IDS else 'special' if days else 'general', 'days': days, **({'lines': lines} if lines else {}), 'title': titles(sutta, pli, ru, en), 'ref': key(segs[0]), 'cite': {'en': en_label, 'ru': ru_label}, 'pli': join(pli), 'ru': join(ru), 'en': join(en).replace(' Then—', '')})
 # "random": every place in the four Nikayas and the Khuddaka books where the Uposatha is named (any form of "uposath"),
 # with both translations - like the hits of a search for "uposath"; all of them, not one per sutta.
