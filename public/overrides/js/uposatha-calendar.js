@@ -323,14 +323,15 @@
       var third = (to - from) / 3;
       return '<div class="pblk"><h3>' + esc(title) + '<span>' + esc(sub) + '</span></h3>' + names.map(function (n, i) {
         var a = from.getTime() + i * third, b = a + third;
-        return '<div class="prow"' + (now >= a && now < b ? ' data-now="true"' : '') + '><span><b>' + esc(n[0]) + '</b><small>' + esc(n[1]) + '</small><em>' + esc(n[2]) + ' · ' + n[3].split(',').map(function (r) { return '<a class="pref" href="/' + esc(r) + '?lang=' + lang + '" target="_blank" rel="noopener">' + esc(r.split(':')[0]) + '</a>'; }).join(' · ') + '</em></span><span class="tm">' + F.hm.format(a) + ' – ' + F.hm.format(b) + '</span></div>';
+        return '<div class="prow"' + (now >= a && now < b ? ' data-now="true"' : '') + '><span><b class="pli-lang" lang="pi">' + esc(n[0]) + '</b><small>' + esc(n[1]) + '</small><em>' + esc(n[2]) + ' · ' + n[3].split(',').map(function (r) { return '<a class="pref" href="/' + esc(r) + '?lang=' + lang + '" target="_blank" rel="noopener">' + esc(r.split(':')[0]) + '</a>'; }).join(' · ') + '</em></span><span class="tm">' + F.hm.format(a) + ' – ' + F.hm.format(b) + '</span></div>';
       }).join('') + '</div>';
     }
     $('pgrid').innerHTML = block(t.pDay, F.week.format(Date.parse(ymd)), rise, set, t.dayParts) +
       block(t.pNight, F.week.format(Date.parse(nightFrom)) + ' → ' + F.week.format(Date.parse(ymdAdd(nightFrom, 1))), nStart, nEnd, t.nightParts);
     $('pnote').textContent = (obs ? t.pPlace : t.pFixed) + '\n' + t.pMid; // one footnote for the conventional parts and the activities, then the one about the word
+    markPali($('pnote'));
     // the place is the important, interactive part of this block: a link by the heading, to the settings
-    $('p-place').innerHTML = obs ? icon('pin') + esc((state.loc.name || state.loc.lat + ', ' + state.loc.lon) + ' · ' + t.change) : icon('pin') + esc(t.setPlace);
+    $('p-place').innerHTML = obs ? icon('pin') + esc((state.loc.name || t.locHere) + ' · ' + t.change) : icon('pin') + esc(t.setPlace);
     document.querySelector('#parts h2').textContent = t.pH + '*'; // the asterisk of the footnote
     paintMeal(F, now, ymd, obs, rise);
   }
@@ -342,6 +343,18 @@
     if (m === 'sun') { var h = A.SearchHourAngle('Sun', obs, 0, rise); noon = h && h.time ? h.time.date : null; }
     if (m === 'mid') noon = new Date((rise.getTime() + set.getTime()) / 2);
     return noon || zonedToUtc(p[0], p[1], p[2], 12, tz);
+  }
+  // Every Pali word of the page opens the dictionary, not only the quotes: the site's handler takes any [lang="pi"]. The terms of this page:
+  var PALI_RX = /(?<![\p{L}])(vikāla|kāla|majjhanhikasamaya|pubbaṇhasamaya|sāyanhasamaya|paṭhama|majjhima|pacchima|yāma|aṭṭhaṅgasamannāgata|uposatha)(?![\p{L}])/giu;
+  function markPali(root) {
+    if (!root) return;
+    var w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null), nodes = [], n;
+    while ((n = w.nextNode())) { if (!PALI_RX.test(n.nodeValue)) continue; PALI_RX.lastIndex = 0; if (n.parentNode.closest('[lang="pi"], .pli-lang, a, button, select, option')) continue; nodes.push(n); }
+    PALI_RX.lastIndex = 0;
+    nodes.forEach(function (t) {
+      var span = document.createElement('span'); span.innerHTML = esc(t.nodeValue).replace(PALI_RX, '<span class="pli-lang" lang="pi">$1</span>');
+      while (span.firstChild) t.parentNode.insertBefore(span.firstChild, t); t.remove();
+    });
   }
   function paintMeal(F, now, ymd, obs, rise) {
     var p = ymd.split('-').map(Number), tz = state.tz, m = obs ? state.noon : 'clock';
@@ -357,6 +370,7 @@
     var by = '<p class="sub">' + esc(t.noonBy) + ': ' + esc(how) + ' · <a href="#" class="noonlink">' + esc(t.noonChange) + '</a></p>';
     $('meal').innerHTML = '<h3>' + esc(t.mealH) + '</h3><p class="mstat" data-k="' + kind + '">' + html + '</p><p class="sub">' + t.mealSub + ref('pli-tv-bu-vb-pc37:2.1.6', 'Pc 37') + ' · ' + ref('an3.70:24.2', 'AN 3.70') + '</p>' + by;
     $('meal-sum').innerHTML = '<h3>' + esc(t.mealH) + '</h3><p class="mstat" data-k="' + kind + '">' + html + '</p>';
+    markPali($('meal')); markPali($('meal-sum'));
   }
   function paint() {
     var now = new Date(), tz = state.tz, F = formats(), su = sutta();
@@ -647,6 +661,7 @@
     }).join('');
     $('rd-sel').innerHTML = PASSAGES.map(function (p, i) { return '<option value="' + i + '">' + esc(readerLabel(i)) + '</option>'; }).join('');
     Array.prototype.forEach.call(document.querySelectorAll('.rd'), function (b) { b.onclick = function () { readSutta(+b.getAttribute('data-i')); }; });
+    markPali($('keylist'));
     markReader();
   }
   function readerUrl(i) { return '/' + PASSAGES[i][0] + '?lang=' + lang; }
