@@ -2,8 +2,8 @@
 //
 // Two schemes, kept apart, one switch ("By the suttas", on by default).
 // By the suttas: six days a month, the 14th, 15th and 8th lunar days of each half. A day begins in the evening, so an
-// Uposatha is dated by the EVENING it begins - the night of that date, then the day after - and its lunar day is read at
-// that evening's sunset (18:00 without a place).
+// Uposatha is dated by the EVENING it begins - the night of that date, then the day after - and its lunar day is the one in
+// force at the dawn that follows (06:00 without a place), because its daytime lies there.
 // Modern scheme: four days a month, the calendar dates of the new moon, first quarter, full moon and last quarter, each
 // dated by the day it falls on; the lunar day is only a note, read at sunrise (06:00 without a place).
 //

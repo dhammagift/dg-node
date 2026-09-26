@@ -44,7 +44,7 @@
   function dayNo(tithi) { return tithi <= 15 ? tithi : tithi - 15; }
   function ymdAdd(ymd, n) { return new Date(Date.parse(ymd) + n * DAY).toISOString().slice(0, 10); }
 
-  // One row per calendar date from..to (y-m-d, inclusive): the lunar day in force at the reading moment of that date, until
+  // One row per calendar date from..to (y-m-d, inclusive): the lunar day in force at the reading moment of that date (by the suttas: the dawn after it), until
   // when it lasts, whether days before it were skipped or it repeats, and the full / new moon falling within the next 24 hours.
   function civilDays(from, to, tz, ref, obs) {
     var f = from.split('-').map(Number), rows = [], prev = null;
@@ -59,18 +59,21 @@
         if (at) refKind = ref === 18 ? 'sunset' : 'sunrise';
       }
       if (!at) at = zonedToUtc(y, m, d, ref, tz);
-      var tithi = tithiAt(at);
+      // By the suttas the observance begins in the evening and its daytime falls in the next morning, so its lunar day is the one
+      // in force at that dawn (the night before it belongs to the same day); the modern scheme reads at its own morning.
+      var readAt = at;
+      if (ref === 18) readAt = sunEvent('rise', y, m, d + 1, tz, obs) || zonedToUtc(y, m, d + 1, 6, tz);
+      var tithi = tithiAt(readAt);
       var row = { ymd: ymd, y: y, m: m, d: d, dow: c.getUTCDay(), at: at, refKind: refKind, tithi: tithi, waxing: tithi <= 15, day: dayNo(tithi),
-        ends: A.SearchMoonPhase((tithi * 12) % 360, at, 3), skipped: [], repeats: false };
+        ends: A.SearchMoonPhase((tithi * 12) % 360, readAt, 3), skipped: [], repeats: false };
       if (prev) {
         var gap = (tithi - prev.tithi + 30) % 30;
         row.repeats = gap === 0;
         for (var k = 1; k < gap; k++) row.skipped.push((prev.tithi + k - 1) % 30 + 1);
       }
-      var next = new Date(at.getTime() + DAY);
-      var fm = A.SearchMoonPhase(180, at, 1.1), nm = A.SearchMoonPhase(0, at, 1.1);
-      row.fullMoon = fm && fm.date < next ? fm.date : null;
-      row.newMoon = nm && nm.date < next ? nm.date : null;
+      // the 15th lunar day of the waxing half ends at the full moon, that of the waning half at the new moon
+      row.fullMoon = tithi === 15 ? row.ends.date : null;
+      row.newMoon = tithi === 30 ? row.ends.date : null;
       // the Uposatha is kept on the date its lunar day is in force; a skipped one is kept with this date
       row.keptWith = row.skipped.filter(function (x) { return UPOSATHA.indexOf(x) !== -1; });
       row.names = row.keptWith.concat(UPOSATHA.indexOf(tithi) !== -1 ? [tithi] : []);
