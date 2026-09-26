@@ -54,7 +54,8 @@
       mealVik: function (dawn, left) { return '<i>Vikāla</i> — until dawn at ' + dawn + ': ' + left; },
       noonBy: 'Count midday by', noonSunS: 'Sun', noonMidS: 'Middle of day', noonClockS: '12:00', noonWhat: 'Middle of the day: halfway between sunrise and sunset, the centre of the middle third.', noonChange: 'change', noonSun: 'the Sun (highest point)', noonMid: 'the middle of the day', noonClock: '12:00 by the clock', noonFixed: 'Without a place midday is 12:00 by the clock.',
       noonNote: 'The Vinaya says only “when midday has passed”, not how to find it. The Sun’s highest point is astronomical midday; the middle of the day is halfway between sunrise and sunset (almost the same); 12:00 by the clock can differ by an hour or more. Dawn here is taken as sunrise.',
- mealSet: 'Food (vikāla)', mealSumL: 'In the summary', mealRemL: 'Remind before vikāla', mealLead: 'In advance', mealLeads: [[15, '15 min'], [30, '30 min'], [45, '45 min'], [60, '1 hour'], [90, '1.5 hours'], [120, '2 hours']], mealDays: 'Days', mealDaysU: 'Uposatha days', mealDaysA: 'Every day', mealSnd: 'Sound of this reminder',
+ mealSet: 'Food (vikāla)', mealSumL: 'In the summary', mealRemL: 'Remind before vikāla', mealLead: 'In advance', mealLeads: [[0, 'when vikāla begins'], [15, '15 min'], [30, '30 min'], [45, '45 min'], [60, '1 hour'], [90, '1.5 hours'], [120, '2 hours']], mealDays: 'Days', mealDaysU: 'Uposatha days', mealDaysA: 'Every day', mealSnd: 'Sound of this reminder',
+      mealRemNow: 'Vikāla begins', mealRemZero: function (noon) { return 'Midday at ' + noon + ' — the time for food has ended.'; },
       mealRemTitle: 'Vikāla soon', mealRemBody: function (noon, lead) { return 'Midday at ' + noon + ' — the time for food ends in ' + (lead >= 60 ? (lead / 60) + ' h' : lead + ' min') + '.'; },
       logoTip: 'Home · change the language: long press or right click', navHome: 'Summary', navList: 'Uposathas', navCal: 'Calendar', navParts: 'Night–day', navSet: 'Settings',
       sound: 'Sound', soundNone: 'Silent', soundOwn: 'My own sound…', soundOwnNamed: 'My own: %', soundFail: 'The sound was not set.', sounds: { gong: 'Gong', gong2: 'Gong 2', gong3: 'Gong 3', gong4: 'Gong 4', gong5: 'Gong 5', bell: 'Bell' },
@@ -99,7 +100,8 @@
       mealVik: function (dawn, left) { return '<i>Vikāla</i> — до рассвета в ' + dawn + ': ' + left; },
       noonBy: 'Полдень считать по', noonSunS: 'Солнце', noonMidS: 'Середина дня', noonClockS: '12:00', noonWhat: 'Середина дня — ровно между восходом и закатом, центр средней трети дня.', noonChange: 'изменить', noonSun: 'Солнцу (высшая точка)', noonMid: 'середине дня', noonClock: '12:00 по часам', noonFixed: 'Без места полдень — 12:00 по часам.',
       noonNote: 'В Винае сказано лишь «когда полдень миновал», а как его определить — нет. Высшая точка Солнца — астрономический полдень; середина дня — ровно между восходом и закатом (почти то же самое); 12:00 по часам может отличаться на час и больше. Рассвет здесь принят за восход.',
- mealSet: 'Еда (vikāla)', mealSumL: 'В сводке', mealRemL: 'Напоминать до vikāla', mealLead: 'Заранее', mealLeads: [[15, '15 мин'], [30, '30 мин'], [45, '45 мин'], [60, '1 час'], [90, '1,5 часа'], [120, '2 часа']], mealDays: 'Дни', mealDaysU: 'Дни упосатхи', mealDaysA: 'Каждый день', mealSnd: 'Звук этого напоминания',
+ mealSet: 'Еда (vikāla)', mealSumL: 'В сводке', mealRemL: 'Напоминать до vikāla', mealLead: 'Заранее', mealLeads: [[0, 'когда наступит vikāla'], [15, '15 мин'], [30, '30 мин'], [45, '45 мин'], [60, '1 час'], [90, '1,5 часа'], [120, '2 часа']], mealDays: 'Дни', mealDaysU: 'Дни упосатхи', mealDaysA: 'Каждый день', mealSnd: 'Звук этого напоминания',
+      mealRemNow: 'Наступает vikāla', mealRemZero: function (noon) { return 'Полдень в ' + noon + ' — время еды закончилось.'; },
       mealRemTitle: 'Скоро vikāla', mealRemBody: function (noon, lead) { return 'Полдень в ' + noon + ' — время еды закончится через ' + (lead >= 60 ? (lead / 60 + '').replace('.', ',') + ' ч' : lead + ' мин') + '.'; },
       logoTip: 'Домой · сменить язык: долгое нажатие или правая кнопка', navHome: 'Сводка', navList: 'Упосатхи', navCal: 'Календарь', navParts: 'Ночь–день', navSet: 'Настройки',
       sound: 'Звук', soundNone: 'Без звука', soundOwn: 'Свой звук…', soundOwnNamed: 'Свой: %', soundFail: 'Звук не задан.', sounds: { gong: 'Гонг', gong2: 'Гонг 2', gong3: 'Гонг 3', gong4: 'Гонг 4', gong5: 'Гонг 5', bell: 'Колокол' },
@@ -519,10 +521,10 @@
     var now = Date.now(), lead = state.meal.lead * 60000, obs = state.loc ? new A.Observer(state.loc.lat, state.loc.lon, 0) : null, days = [], out = [];
     if (state.meal.days === 'all') { var today = localDay(new Date(), state.tz); for (var i = 0; i < 30; i++) days.push(ymdAdd(today, i)); }
     else rows.filter(function (r) { return r.uposatha && wantDay(r); }).forEach(function (r) { days.push(sutta() ? ymdAdd(r.ymd, 1) : r.ymd); }); // by the suttas the day of the Uposatha is the one after its evening
-    days.forEach(function (ymd) { var noon = noonFor(ymd, obs); if (noon.getTime() > now) out.push({ key: 'm' + ymd, meal: true, when: noon.getTime() - lead, start: noon, title: t.mealRemTitle }); });
+    days.forEach(function (ymd) { var noon = noonFor(ymd, obs); if (noon.getTime() > now) out.push({ key: 'm' + ymd, meal: true, when: noon.getTime() - lead, start: noon, title: state.meal.lead ? t.mealRemTitle : t.mealRemNow }); });
     return out;
   }
-  function itemBody(item, F) { return item.meal ? t.mealRemBody(F.hm.format(item.start), state.meal.lead) : (item.two ? t.remTwo : t.remBody)(F.stamp.format(item.start)); }
+  function itemBody(item, F) { return item.meal ? (state.meal.lead ? t.mealRemBody(F.hm.format(item.start), state.meal.lead) : t.mealRemZero(F.hm.format(item.start))) : (item.two ? t.remTwo : t.remBody)(F.stamp.format(item.start)); }
   function notify(item, F) {
     var opts = { body: itemBody(item, F), tag: 'uposatha-' + item.key, icon: '/assets/img/pwa-bold-monocolor-192.png', data: { url: '/uposatha-calendar' } };
     var seen = []; try { seen = JSON.parse(store('dgUposathaNotified') || '[]'); } catch (e) { seen = []; }
