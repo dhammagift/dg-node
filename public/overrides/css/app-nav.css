@@ -56,3 +56,13 @@ body.app #reader { display: none !important; }
 
 /* the drawer's header already has the share button */
 body.app #dg-drawer #d-share { display: none; }
+
+/* narrow screens (a 360 px phone): the bar with the label of the current item must fit in the capsule, or the last item is cut */
+@media (max-width: 380px) {
+  body.app .appnav { left: 8px; right: 8px; padding: 5px; }
+  body.app .appnav button { padding: 0 9px; min-width: 40px; gap: 6px; font-size: 13px; }
+  body.app .appnav button span { overflow: hidden; text-overflow: ellipsis; }
+}
+@media (max-width: 340px) {
+  body.app .appnav button { padding: 0 5px; min-width: 34px; gap: 5px; font-size: 12.5px; }
+}

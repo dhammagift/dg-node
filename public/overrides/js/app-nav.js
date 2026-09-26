@@ -32,7 +32,7 @@
         if (Math.abs(dx) > 1) b.animate([{ transform: 'translateX(' + dx + 'px)' }, { transform: 'none' }], { duration: D, easing: MOVE });
       });
       var lab = now.cur && now.cur.querySelector('span');
-      if (lab) lab.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 150, delay: 130, easing: OUT, fill: 'backwards' });
+      if (lab) lab.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 130, delay: 170, easing: OUT, fill: 'backwards' });
       if (last.label) { // the label of the item that has just been left: it does not vanish, it fades where it was
         var g = document.createElement('span'); g.className = 'up-ghost'; g.textContent = last.label.text;
         g.style.left = last.label.x + 'px'; g.style.top = '6px'; nav.appendChild(g);
