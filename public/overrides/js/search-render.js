@@ -74,6 +74,23 @@ window.DgSearchRender = (function () {
         return keys;
     }
 
+    // Quote cell markup depends on the row plus this handful of settings. DataTables asks for the
+    // cell once per data type (filter/sort/display) and again on every invalidate(), and the markup
+    // costs a few ms per row, so it is kept on the row and rebuilt only when this signature (or the
+    // row's segments) changes. Computed once per task: a whole table pass shares one localStorage read.
+    var quoteSigCache = null;
+    function quoteSignature() {
+        if (quoteSigCache === null) {
+            quoteSigCache = [
+                activeState.highlightWord, (activeState.requestedLangs || []).join(','), activeState.langsFromUrl,
+                window.siteLanguage, localStorage.getItem('removePunct'), readingStack().join(','),
+                Object.keys(translatorPriority).length
+            ].join('|');
+            setTimeout(function () { quoteSigCache = null; }, 0);
+        }
+        return quoteSigCache;
+    }
+
     function translatorRank(lang, transKey) {
         var order = translatorPriority[lang];
         if (!order) return -1;
@@ -991,6 +1008,9 @@ window.DgSearchRender = (function () {
                             return '<span class="text-muted small">' + t('buttons.loading', 'Loading...') + '</span>';
                         }
                         if (!data || data.length === 0) return '';
+                        var quoteSig = quoteSignature();
+                        var cached = row.__quoteCache;
+                        if (cached && cached.sig === quoteSig && cached.segs === data) return cached.html;
                         var quoteHtml = '';
                         var highlightWord = activeState.highlightWord;
 
@@ -1156,6 +1176,7 @@ window.DgSearchRender = (function () {
                             }
                         });
 
+                        row.__quoteCache = { sig: quoteSig, segs: data, html: quoteHtml };
                         return quoteHtml;
                     }
                 }
@@ -1377,14 +1398,26 @@ window.DgSearchRender = (function () {
     //
     // refreshEnriched(): same, plus draw(false) — for a batch that touched a row which is ON
     // SCREEN right now, i.e. the one case where something visible actually changed.
-    function invalidateEnriched() {
-        if (!suttaTableApi) return;
-        suttaTableApi.rows().invalidate();
+    // ids: the sutta_ids the batch touched. invalidate() re-reads a row's data and drops its cached
+    // filter/sort text, so doing it for the whole table on every batch made total work grow with
+    // chunks x rows (seconds of frozen UI on a big result set) — only the touched rows need it.
+    function rowsFor(ids) {
+        if (!ids) return suttaTableApi.rows();
+        var set = {};
+        ids.forEach(function (id) { set[id] = true; });
+        return suttaTableApi.rows(function (idx, data) { return set[data.sutta_id] === true; });
     }
 
-    function refreshEnriched() {
+    function invalidateEnriched(ids) {
         if (!suttaTableApi) return;
-        suttaTableApi.rows().invalidate();
+        quoteSigCache = null;
+        rowsFor(ids).invalidate();
+    }
+
+    function refreshEnriched(ids) {
+        if (!suttaTableApi) return;
+        quoteSigCache = null;
+        rowsFor(ids).invalidate();
         suttaTableApi.draw(false);
     }
 
