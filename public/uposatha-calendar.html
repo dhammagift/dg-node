@@ -177,10 +177,11 @@
     <button class="btn" type="button" id="p-ics" style="width:100%"><svg class="ic"><use href="#i-calplus"/></svg><span data-t="ics"></span></button>
   </div>
 </aside>
-<aside class="drawer wide" id="p-all" data-open="false">
-  <div class="dhead"><b data-t="slTitle"></b><button class="x" type="button" data-close style="margin-left:auto" data-tt="close"><svg class="ic"><use href="#i-x"/></svg></button></div>
-  <div id="sl-all-list"></div>
-</aside>
+<div class="sheet" id="sl-modal" data-open="false" role="dialog" aria-modal="true">
+  <div class="sheet-head"><b id="sl-modal-title"></b><button class="x" type="button" data-close data-tt="close"><svg class="ic"><use href="#i-x"/></svg></button></div>
+  <div class="sheet-sort" id="sl-sort"><button type="button" data-s="kind" data-t="sortKind"></button><button type="button" data-s="sutta" data-t="sortSutta"></button></div>
+  <div class="sheet-body" id="sl-all-list"></div>
+</div>
 <div class="toast" id="toast"></div>
 <script src="/assets/js/jquery-3.7.0.min.js"></script>
 <script src="/assets/js/vendor/astronomy.browser.min.js"></script>

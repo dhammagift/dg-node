@@ -33,7 +33,7 @@
     en: {
       pH: 'Parts of the day and night', pSub: 'Sunrise to sunset is cut into three parts, and sunset to sunrise likewise — for your place and the season.', pDay: 'Day', pNight: 'Night',
       dayParts: [['Pubbaṇhasamaya', 'morning'], ['Majjhanhikasamaya', 'midday'], ['Sāyanhasamaya', 'evening']], nightParts: [['Paṭhama yāma', 'first watch'], ['Majjhima yāma', 'middle watch'], ['Pacchima yāma', 'last watch']],
-      fSpecial: 'special', fGeneral: 'general', fRandom: 'random', slTitle: 'From the suttas', showAll: 'Show all', readIt: 'Read', dayTag: function (d) { return d.map(function (n) { return n + 'th'; }).join(', ') + ' day'; },
+      fSpecial: 'special', fGeneral: 'general', fRandom: 'random', slTitle: 'From the suttas', sortKind: 'By kind', sortSutta: 'By sutta', showAll: 'Show all', readIt: 'Read', dayTag: function (d) { return d.map(function (n) { return n + 'th'; }).join(', ') + ' day'; },
       age: 'age', of30: 'of 30', from: 'from', left: 'left', dU: 'd', hU: 'h', mU: 'min',
       searchPh: 'Search: kacchapa, dn22…', searchGo: 'Search', tag: 'observance days', compass: 'Favorites / History', menu: 'Menu', theme: 'Theme', prev: 'Previous', next: 'Next', close: 'Close',
       h1: 'Uposatha days', lead: 'The 14th, 15th and 8th lunar days of each half-month, as the suttas count them — six a month.', suttas: 'The suttas on Uposatha →',
@@ -69,7 +69,7 @@
     ru: {
       pH: 'Части дня и ночи', pSub: 'Время от восхода до заката делится на три части, и от заката до восхода тоже — для вашего места и сезона.', pDay: 'День', pNight: 'Ночь',
       dayParts: [['Pubbaṇhasamaya', 'утро'], ['Majjhanhikasamaya', 'полдень'], ['Sāyanhasamaya', 'вечер']], nightParts: [['Paṭhama yāma', 'первая стража'], ['Majjhima yāma', 'средняя стража'], ['Pacchima yāma', 'последняя стража']],
-      fSpecial: 'особое', fGeneral: 'общее', fRandom: 'случайное', slTitle: 'Из сутт', showAll: 'Показать все', readIt: 'Читать', dayTag: function (d) { return d.map(function (n) { return n + '-й'; }).join(', ') + ' день'; },
+      fSpecial: 'особое', fGeneral: 'общее', fRandom: 'случайное', slTitle: 'Из сутт', sortKind: 'По видам', sortSutta: 'По суттам', showAll: 'Показать все', readIt: 'Читать', dayTag: function (d) { return d.map(function (n) { return n + '-й'; }).join(', ') + ' день'; },
       age: 'возраст', of30: 'из 30', from: 'с', left: 'осталось', dU: 'д', hU: 'ч', mU: 'мин',
       searchPh: 'Поиск: kacchapa, dn22…', searchGo: 'Найти', tag: 'дни соблюдения', compass: 'Избранное / История', menu: 'Меню', theme: 'Тема', prev: 'Назад', next: 'Вперёд', close: 'Закрыть',
       h1: 'Дни упосатхи', lead: '14-й, 15-й и 8-й лунные дни каждой половины месяца, как их считают сутты, — шесть в месяц.', suttas: 'Сутты об упосатхе →',
@@ -236,7 +236,7 @@
   }
   function toast(msg) { var e = $('toast'); e.textContent = msg; e.classList.add('on'); setTimeout(function () { e.classList.remove('on'); }, 2000); }
   function openPanel(id) { closeAll(); $(id).setAttribute('data-open', 'true'); $('scrim').setAttribute('data-open', 'true'); }
-  function closeAll() { ['drawer', 'p-all', 'scrim'].forEach(function (i) { $(i).setAttribute('data-open', 'false'); }); }
+  function closeAll() { ['drawer', 'sl-modal', 'scrim'].forEach(function (i) { $(i).setAttribute('data-open', 'false'); }); }
 
   // Lit part of the Moon to a hundredth of a percent: near the full moon a whole percent stays the same for half a day.
   function illumPercent(d) { var v = (A.Illumination('Moon', d).phase_fraction * 100).toFixed(2); return lang === 'ru' ? v.replace('.', ',') : v; }
@@ -581,12 +581,32 @@
     }
     if (quick) fill(); else { box.classList.add('fade'); setTimeout(fill, 220); }
   }
-  // Every slide of the current show, each with its plate: the button "show all".
+  // The whole library of lines in a sheet like the home page's "all queries": sorted by kind or by sutta, each with its kind marker.
+  var slSort = 'kind';
+  var NIK = { dn: 0, mn: 1, sn: 2, an: 3, snp: 4, ud: 5, iti: 6, 'pli-tv': 7 };
+  function suttaKey(ref) {
+    var m = ref.match(/^([a-z]+(?:-tv)?)[-a-z]*?(\d+)(?:\.(\d+))?/) || [];
+    return [NIK[m[1]] === undefined ? 9 : NIK[m[1]], +(m[2] || 0), +(m[3] || 0)];
+  }
+  function rowHtml(q) {
+    var first = q.pli.split('\n')[0];
+    return '<a class="sr" href="/' + esc(q.ref) + '?lang=' + lang + '" target="_blank" rel="noopener"><span class="sr-t"><b class="sr-p">' + esc(first) + '</b><span class="sr-e">' + esc(slideText(q).replace(/\n/g, ' ')) + '</span><small>' + esc(q.cite[lang] + (q[lang] ? '' : ' · EN')) + '</small></span>' + plate(q) + '<svg class="chev"><use href="#i-right"/></svg></a>';
+  }
   function showAllSlides() {
-    $('sl-all-list').innerHTML = slides.map(function (q) {
-      return '<div class="sl-row">' + plate(q) + '<p class="sl-pli pli-lang" lang="pi">' + hl(q.pli, KW.pli) + '</p><p class="sl-tr">' + trHtml(q) + '</p><a href="/' + esc(q.ref) + '?lang=' + lang + '" target="_blank" rel="noopener">' + esc(citeText(q)) + '</a></div>';
-    }).join('');
-    openPanel('p-all');
+    var all = (quotes || []).filter(function (q) { return q[lang] || q.kind !== 'random'; });
+    $('sl-modal-title').textContent = t.slTitle + ' · ' + all.length;
+    Array.prototype.forEach.call($('sl-sort').children, function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-s') === slSort)); });
+    var html = '';
+    if (slSort === 'kind') {
+      ['special', 'general', 'random'].forEach(function (k) {
+        var part = all.filter(function (q) { return q.kind === k; });
+        if (part.length) html += '<h4>' + esc(t['f' + k.charAt(0).toUpperCase() + k.slice(1)]) + ' · ' + part.length + '</h4>' + part.map(rowHtml).join('');
+      });
+    } else {
+      html = all.slice().sort(function (a, b) { var x = suttaKey(a.ref), y = suttaKey(b.ref); return x[0] - y[0] || x[1] - y[1] || x[2] - y[2]; }).map(rowHtml).join('');
+    }
+    $('sl-all-list').innerHTML = html;
+    if ($('sl-modal').getAttribute('data-open') !== 'true') openPanel('sl-modal');
   }
   function slidesFor(days) {
     var box = $('slides');
@@ -692,6 +712,7 @@
     $('sl-next').onclick = function () { showSlide(slIdx + 1); };
     $('sl-dots').onclick = function (e) { var n = e.target.getAttribute && e.target.getAttribute('data-i'); if (n !== null && n !== undefined) showSlide(+n); };
     $('sl-all-btn').onclick = showAllSlides;
+    $('sl-sort').onclick = function (e) { var v = e.target.getAttribute && e.target.getAttribute('data-s'); if (v) { slSort = v; showAllSlides(); } };
     $('slides').addEventListener('mouseenter', function () { slHold = true; });
     $('slides').addEventListener('mouseleave', function () { slHold = false; });
     $('slides').addEventListener('focusin', function () { slHold = true; });
