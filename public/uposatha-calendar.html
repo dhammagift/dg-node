@@ -66,6 +66,7 @@
   </div>
 </div></header>
 
+<nav class="toc" id="toc" aria-label="Contents"></nav>
 <main class="page">
   <div class="intro">
     <div class="intro-text">
@@ -78,7 +79,7 @@
     </div>
   </div>
 
-  <section class="today" aria-live="polite">
+  <section class="today" id="s-summary" aria-live="polite">
     <span id="t-moon"></span>
     <div>
       <p class="k" data-t="today"></p>
@@ -97,7 +98,7 @@
     </div>
   </section>
 
-  <div class="segrow vtabs" role="tablist">
+  <div class="segrow vtabs" id="s-calendar" role="tablist">
     <button type="button" aria-pressed="true" id="tab-list"><svg class="ic"><use href="#i-list"/></svg><span data-t="tList"></span></button>
     <button type="button" aria-pressed="false" id="tab-cal"><svg class="ic"><use href="#i-cal"/></svg><span data-t="tCal"></span></button>
   </div>
@@ -126,7 +127,7 @@
     <h2 data-t="kH"></h2>
     <p class="sub" data-t="kSub"></p>
     <ol id="keylist"></ol>
-    <div class="reader" id="reader" hidden>
+    <div class="reader" id="reader">
       <div class="rh"><span><span data-t="kNow"></span>: <b id="rd-now"></b></span><span class="sp"></span><a href="#" id="rd-new" target="_blank" rel="noopener"><svg class="ic"><use href="#i-ext"/></svg><span data-t="kNew"></span></a><select class="sel" id="rd-sel"></select><button class="rb" type="button" id="rd-close" data-tt="close"><svg class="ic"><use href="#i-x"/></svg></button></div>
       <iframe id="rd-frame" title="Sutta" loading="lazy"></iframe>
     </div>

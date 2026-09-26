@@ -342,3 +342,15 @@ body[data-remind=off] #rem-more { opacity: .45; pointer-events: none; }
 .tbar .hbtns { margin-left: 6px; }
 @media (max-width: 900px) { .tbar .wordmark b { display: none; } }
 @media (max-width: 760px) { .tbar .wordmark { display: none; } .tbar .hsearch { flex: 1 1 auto; } }
+
+/* contents of the page: a quiet column to the right of the content, on wide screens only */
+.toc { display: none; }
+@media (min-width: 1260px) {
+  .toc { display: flex; flex-direction: column; gap: 2px; position: fixed; top: 118px; left: calc(50% + 480px); width: 190px; font-size: 13px; }
+  .toc b { font-size: 10.5px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--dg-text-muted); margin-bottom: 6px; }
+  .toc a { color: var(--dg-text-muted); padding: 5px 0 5px 12px; border-left: 2px solid var(--dg-border); }
+  .toc a:hover { color: var(--dg-text); }
+  .toc a[aria-current=true] { color: var(--dg-accent-ink); border-left-color: var(--dg-accent); font-weight: 600; }
+}
+#s-summary, #slides, #s-calendar, #parts, #keys { scroll-margin-top: 90px; }
+body.embed .toc { display: none; }

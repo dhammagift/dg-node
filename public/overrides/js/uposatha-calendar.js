@@ -31,7 +31,7 @@
   // ---------- words ----------
   var T = {
     en: {
-      pH: 'Parts of the day and night', pSub: 'Sunrise to sunset is cut into three parts, and sunset to sunrise likewise — for your place and the season.', pDay: 'Day', pNight: 'Night',
+      pH: 'Structure of the night and day', tocH: 'On this page', tSummary: 'Summary', tSuttas: 'Suttas on the topic', tCalendar: 'Calendar', tParts: 'Structure of the night and day', tKeys: 'Key suttas', pSub: 'Sunrise to sunset is cut into three parts, and sunset to sunrise likewise — for your place and the season.', pDay: 'Day', pNight: 'Night',
       dayParts: [['Pubbaṇhasamaya', 'morning'], ['Majjhanhikasamaya', 'midday'], ['Sāyanhasamaya', 'evening']], nightParts: [['Paṭhama yāma', 'first watch'], ['Majjhima yāma', 'middle watch'], ['Pacchima yāma', 'last watch']],
       fSpecial: 'special', fGeneral: 'general', fRandom: 'random', slTitle: 'From the suttas', addCal: 'Add to calendar', subH: 'Subscribe', fileH: 'Or a file', calRemind: 'The reminder time and the days are taken from the reminder settings in the menu.', gUposatha: 'Uposatha', on: 'On', off: 'Off', fAll: 'All', sortKind: 'By kind', sortSutta: 'By sutta', showAll: 'Show all', readIt: 'Read', dayTag: function (d) { return d.map(function (n) { return n + 'th'; }).join(', ') + ' day'; },
       age: 'age', of30: 'of 30', from: 'from', left: 'left', dU: 'd', hU: 'h', mU: 'min',
@@ -67,7 +67,7 @@
       wds: ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'], docs: '/docs/uposatha', linkCopied: 'Link copied', shareTitle: 'Uposatha days', locale: 'en-GB',
     },
     ru: {
-      pH: 'Части дня и ночи', pSub: 'Время от восхода до заката делится на три части, и от заката до восхода тоже — для вашего места и сезона.', pDay: 'День', pNight: 'Ночь',
+      pH: 'Структура ночи-дня', tocH: 'На странице', tSummary: 'Сводка', tSuttas: 'Сутты по теме', tCalendar: 'Календарь', tParts: 'Структура ночи-дня', tKeys: 'Ключевые сутты', pSub: 'Время от восхода до заката делится на три части, и от заката до восхода тоже — для вашего места и сезона.', pDay: 'День', pNight: 'Ночь',
       dayParts: [['Pubbaṇhasamaya', 'утро'], ['Majjhanhikasamaya', 'полдень'], ['Sāyanhasamaya', 'вечер']], nightParts: [['Paṭhama yāma', 'первая часть'], ['Majjhima yāma', 'средняя часть'], ['Pacchima yāma', 'последняя часть']],
       fSpecial: 'особое', fGeneral: 'общее', fRandom: 'случайное', slTitle: 'Из сутт', addCal: 'В календарь', subH: 'Подписаться', fileH: 'Или файл', calRemind: 'Время напоминания и дни берутся из настроек напоминаний в меню.', gUposatha: 'Упосатха', on: 'Вкл', off: 'Выкл', fAll: 'Все', sortKind: 'По видам', sortSutta: 'По суттам', showAll: 'Показать все', readIt: 'Читать', dayTag: function (d) { return d.map(function (n) { return n + '-й'; }).join(', ') + ' день'; },
       age: 'возраст', of30: 'из 30', from: 'с', left: 'осталось', dU: 'д', hU: 'ч', mU: 'мин',
@@ -222,6 +222,7 @@
     Array.prototype.forEach.call(document.querySelectorAll('[data-tt]'), function (e) { var v = t[e.getAttribute('data-tt')]; if (typeof v === 'string') { e.title = v; e.setAttribute('aria-label', v); } });
     Array.prototype.forEach.call(document.querySelectorAll('[data-tp]'), function (e) { e.placeholder = t[e.getAttribute('data-tp')] || ''; });
     document.title = t.h1 + ' — Dhamma.gift';
+    paintToc();
     $('rem-lead').innerHTML = t.leads.map(function (l) { return '<option value="' + l[0] + '">' + esc(l[1]) + '</option>'; }).join('');
   }
   function setTheme(mode) { // light | dark | auto, stored under the site's own key
@@ -503,10 +504,17 @@
     markReader();
   }
   function readerUrl(i) { return '/' + PASSAGES[i][0] + '?lang=' + lang; }
-  function readSutta(i) {
+  function readSutta(i, quiet) {
     rdCur = i; $('reader').hidden = false; $('rd-now').textContent = readerLabel(i); $('rd-sel').value = String(i);
     $('rd-new').href = readerUrl(i); $('rd-frame').src = readerUrl(i); markReader();
-    $('reader').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    if (!quiet) $('reader').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+  // any passage of the slideshow opens in the same reader at the bottom (a middle click or ctrl-click still opens a tab)
+  function readRef(ref, label) {
+    var url = '/' + ref + '?lang=' + lang;
+    rdCur = -1; $('reader').hidden = false; $('rd-now').textContent = label; $('rd-sel').selectedIndex = -1;
+    $('rd-new').href = url; $('rd-frame').src = url; markReader();
+    $('reader').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
   function markReader() { var open = !$('reader').hidden; Array.prototype.forEach.call(document.querySelectorAll('.rd'), function (b) { b.setAttribute('aria-current', String(open && +b.getAttribute('data-i') === rdCur)); }); }
 
@@ -654,6 +662,24 @@
     }
   }
 
+  // ---------- contents of the page (a column on the right of wide screens) ----------
+  var TOC = [['s-summary', 'tSummary'], ['slides', 'tSuttas'], ['s-calendar', 'tCalendar'], ['parts', 'tParts'], ['keys', 'tKeys']];
+  function paintToc() {
+    $('toc').innerHTML = '<b>' + esc(t.tocH) + '</b>' + TOC.map(function (r) { return '<a href="#' + r[0] + '" data-to="' + r[0] + '">' + esc(t[r[1]]) + '</a>'; }).join('');
+    Array.prototype.forEach.call($('toc').querySelectorAll('a'), function (a) {
+      a.onclick = function (e) {
+        e.preventDefault(); var id = a.getAttribute('data-to');
+        $(id).scrollIntoView({ behavior: 'smooth', block: 'start' });
+      };
+    });
+    markToc();
+  }
+  function markToc() { // the section in view is the current one
+    var cur = TOC[0][0], line = window.innerHeight * 0.35;
+    TOC.forEach(function (r) { var e = $(r[0]); if (e && !e.hidden && e.getBoundingClientRect().top <= line) cur = r[0]; });
+    Array.prototype.forEach.call($('toc').querySelectorAll('a'), function (a) { a.setAttribute('aria-current', String(a.getAttribute('data-to') === cur)); });
+  }
+
   // ---------- events ----------
   function wire() {
     $('ctx-change').onclick = openSettings;
@@ -664,7 +690,7 @@
     var lastY = window.scrollY;
     window.addEventListener('scroll', function () {
       var y = window.scrollY, dy = y - lastY;
-      document.body.classList.toggle('scrolled', y > 4);
+      document.body.classList.toggle('scrolled', y > 4); markToc();
       if (dy > 8 && y > 80) { document.querySelector('.tbar').classList.add('away'); lastY = y; }
       else if (dy < -4 || y <= 80) { document.querySelector('.tbar').classList.remove('away'); lastY = y; }
     }, { passive: true });
@@ -739,6 +765,15 @@
     $('sl-all-btn').onclick = showAllSlides;
     $('sl-filter').onclick = function (e) { var v = e.target.getAttribute && e.target.getAttribute('data-f'); if (v) { slFilter = v; showAllSlides(); } };
     $('sl-sort').onclick = function (e) { var v = e.target.getAttribute && e.target.getAttribute('data-s'); if (v) { slSort = v; showAllSlides(); } };
+    document.addEventListener('click', function (e) {
+      if (e.button || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+      var a = e.target.closest && e.target.closest('#dg-carousel .carousel-item a, #sl-all-list .sr');
+      if (!a) return;
+      e.preventDefault();
+      var href = a.getAttribute('href') || '', ref = href.replace(/^\//, '').split('?')[0];
+      closeAll(); readRef(ref, ref.split(':')[0]);
+    });
+    if ('IntersectionObserver' in window) new IntersectionObserver(function (es, ob) { if (es[0].isIntersecting) { ob.disconnect(); if (!$('rd-frame').getAttribute('src')) readSutta(0, true); } }, { rootMargin: '300px' }).observe($('reader'));
     $('rd-sel').onchange = function (e) { readSutta(+e.target.value); };
     $('rd-close').onclick = function () { $('reader').hidden = true; markReader(); };
     document.addEventListener('visibilitychange', function () { if (!document.hidden) paint(); });
