@@ -487,12 +487,8 @@
  },
  {
   "id": "snp2.14-days",
-  "kind": "special",
-  "days": [
-   8,
-   14,
-   15
-  ],
+  "kind": "general",
+  "days": null,
   "lines": [
    {
     "pli": "Tato ca pakkhassupavassuposathaṁ,",
