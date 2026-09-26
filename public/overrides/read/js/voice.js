@@ -62,7 +62,7 @@ const LAST_INDEX_KEY = 'dg_tts_last_index';
 const PALI_ALERT_KEY = 'dg_tts_pali_alert_shown';
 // Shared tail of both Pali hints (a function: window.isRu can change at runtime): own line, bold label, so it is clear what "offline" refers to.
 const offlineHint = () => window.isRu
-  ? '<br><b>Для офлайн:</b> поставьте системный голос индийского языка (хинди, лучше санскрит)).'
+  ? '<br><b>Для офлайн:</b> поставьте системный голос индийского языка (хинди, лучше санскрит).'
   : '<br><b>For offline:</b> install a system voice for an Indian language (Hindi, ideally Sanskrit).';
 
 // --- Google TTS Config ---
