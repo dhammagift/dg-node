@@ -123,10 +123,10 @@
         ['AN 3.37', 'the 14th {4}, the 15th {5} and the 8th {6}: on these days the guardians of the world look who keeps the Uposatha.'],
         ['MN 83', 'the 14th, 15th and 8th of the half-month. {1}']]],
       ['When to begin?', [
-        ['MN 146', 'how to tell the day by the moon: on the 14th it is not full {2}, on the 15th it is full {3}.'],
-        ['AN 3.70', 'night and day: “this night and day” {11}.'],
-        ['MN 53', 'the parts of the night — <i>paṭhama</i>, <i>majjhima</i>, <i>pacchima yāma</i> — and what a disciple does in each. {13}'],
-        ['SN 28.1', 'the parts of the day: a monk\'s day — alms in the morning, seclusion at midday, coming out in the evening. {12}']]]],
+        ['AN 3.70', 'begin at night: night and day, “this night and day” {11}.'],
+        ['MN 53', 'what is the night? The parts of the night — <i>paṭhama</i>, <i>majjhima</i>, <i>pacchima yāma</i> — and what a disciple does in each. {13}'],
+        ['SN 28.1', 'what is the day? The parts of the day: a monk\'s day — alms in the morning, seclusion at midday, coming out in the evening. {12}'],
+        ['MN 146', 'not by the phases of the moon alone: on the 14th it is not full {2}, on the 15th it is full {3}.', 'gap']]]],
     ru: [['Как соблюдать?', [
         ['АН 3.70', 'упосатха Благородных {10} — так, как это делают араханты.'],
         ['АН 10.46', 'пропускать нельзя: «это ваша потеря и неудача». {0}']]],
@@ -134,10 +134,10 @@
         ['АН 3.37', '14-й {4}, 15-й {5} и 8-й {6}: в эти дни стражи мира смотрят, кто соблюдает упосатху.'],
         ['МН 83', '14-й, 15-й и 8-й дни половины месяца. {1}']]],
       ['Когда начинать?', [
-        ['МН 146', 'как узнать день по луне: на 14-й она неполная {2}, на 15-й — полная {3}.'],
-        ['АН 3.70', 'ночь и день: «эту ночь и этот день» {11}.'],
-        ['МН 53', 'части ночи — <i>paṭhama</i>, <i>majjhima</i>, <i>pacchima yāma</i> — и что делает в каждой ученик. {13}'],
-        ['СН 28.1', 'части дня: день монаха — подаяние утром, уединение в середине дня, выход вечером. {12}']]]],
+        ['АН 3.70', 'начинать ночью: ночь и день, «эту ночь и этот день» {11}.'],
+        ['МН 53', 'что такое ночь? Части ночи — <i>paṭhama</i>, <i>majjhima</i>, <i>pacchima yāma</i> — и что делает в каждой ученик. {13}'],
+        ['СН 28.1', 'что такое день? Части дня: день монаха — подаяние утром, уединение в середине дня, выход вечером. {12}'],
+        ['МН 146', 'не только по фазам луны: на 14-й она неполная {2}, на 15-й — полная {3}.', 'gap']]]],
   };
 
   // ---------- state ----------
@@ -512,7 +512,7 @@
   function paintKeys() {
     $('keylist').innerHTML = KEYS[lang].map(function (g) {
       return '<li class="kq"><h3>' + esc(g[0]) + '</h3><ul>' + g[1].map(function (k) {
-        return '<li><b>' + k[0] + '</b> — ' + k[1].replace(/\{(\d+)\}/g, function (_, n) { return '<button class="rd" type="button" data-i="' + n + '">' + (lang === 'ru' ? 'Читать →' : 'Read →') + '</button>'; }) + '</li>';
+        return '<li' + (k[2] === 'gap' ? ' class="gap"' : '') + '><b>' + k[0] + '</b> — ' + k[1].replace(/\{(\d+)\}/g, function (_, n) { return '<button class="rd" type="button" data-i="' + n + '">' + (lang === 'ru' ? 'Читать →' : 'Read →') + '</button>'; }) + '</li>';
       }).join('') + '</ul></li>';
     }).join('');
     $('rd-sel').innerHTML = PASSAGES.map(function (p, i) { return '<option value="' + i + '">' + esc(readerLabel(i)) + '</option>'; }).join('');
