@@ -3768,8 +3768,9 @@ $(document).ready(function() {
         } else if (route.type === 'text') {
             // Раньше здесь была настоящая навигация — ридер был другой страницей. Теперь текст
             // открывается на месте, тем же способом, что и клик по сутте в выдаче.
+            if (route.find) currentParams.set('s', route.find);
             var qs2 = currentParams.toString();
-            history.pushState({ dgReader: true }, '', '/' + encodeURIComponent(route.id) + (qs2 ? '?' + qs2 : ''));
+            history.pushState({ dgReader: true }, '', '/' + encodeURIComponent(route.id) + (route.segment ? ':' + route.segment : '') + (qs2 ? '?' + qs2 : ''));
             dgLeaveScreen('reader', function () { openReaderInPlace(route.id); });
         } else if (route.type === 'external') {
             // dict.dg / aksharamukha / dharmamitra — a plain external tool, not part of this

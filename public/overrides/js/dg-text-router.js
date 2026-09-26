@@ -83,7 +83,8 @@
     }
 
     // Classify normalized input. Returns:
-    //   { type: 'text', id }           — a specific text/rule, navigate straight to it.
+    //   { type: 'text', id[, segment][, find] } — a specific text/rule, navigate straight to it (to the
+    //                                     segment, or to the first place `find` occurs).
     //   { type: 'chapter', id }        — a whole nikaya/samyutta/rule-category, no single
     //                                     text — navigate to it too, dg-light.js renders a
     //                                     stub listing (or falls back to search if empty).
@@ -167,8 +168,17 @@
         };
         if (EXTERNAL_SHORTCUTS[q]) return { type: 'external', url: EXTERNAL_SHORTCUTS[q] };
 
+        // "id:segment" — a pasted citation ("pli-tv-kd2:1.4.4", "dn22:2.2", "sn56.11:1.1"): when the part
+        // before the colon is a text, open that text and scroll to the segment. Text ids only —
+        // "sn56:11" (chapter:sutta shorthand, handled below) has a chapter before the colon.
+        var segMatch = q.match(/^([^:\s]+):(\d+(?:\.\d+)*(?:-\d+(?:\.\d+)*)?)$/);
+        if (segMatch) {
+            var base = classify(segMatch[1]);
+            if (base.type === 'text') return { type: 'text', id: base.id, segment: segMatch[2].split('-')[0] }; // a range opens at its start
+        }
+
         // Fully-qualified Vinaya id, already in skeleton-key form — pass through.
-        if (/^pli-tv-/.test(q)) return { type: 'text', id: q };
+        if (/^pli-tv-\S+$/.test(q)) return { type: 'text', id: q };
 
         // mn/dn/dhp/iti + number (no vagga.sutta sub-numbering), or snp/sn/an/ud/thig/thag +
         // chapter.subnumber (with optional range) — all specific texts.
@@ -229,6 +239,19 @@
         var otherMatch = q.match(otherBookRe);
         if (otherMatch) {
             return otherMatch[2] ? { type: 'text', id: q } : { type: 'chapter', id: otherMatch[1] };
+        }
+
+        // "sn56.11 dukkha", "dn22:2.2 kacchapa" — a text followed by words: open the text and find the
+        // words in it (the reader's ?s=), instead of searching the whole canon for the whole line.
+        // Shortest head first, so "sn 56 11 dukkha" reads as sn56.11 + "dukkha". Split on the ORIGINAL
+        // input: normalize() would run the layout fix over the words too.
+        var gap = /\s+/g, gapMatch;
+        while ((gapMatch = gap.exec(original)) !== null) {
+            var head = original.slice(0, gapMatch.index);
+            var find = original.slice(gapMatch.index + gapMatch[0].length).trim();
+            if (!head || !find) continue;
+            var headRoute = classify(head);
+            if (headRoute.type === 'text') { headRoute.find = find; return headRoute; }
         }
 
         // Nothing matched a text/chapter pattern — plain keyword search. Use the ORIGINAL

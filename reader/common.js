@@ -357,8 +357,7 @@ onReady(() => {
             if (baseUrl.searchParams.has('q')) {
                 baseUrl.searchParams.set('q', baseUrl.searchParams.get('q').toLowerCase());
             }
-            baseUrl.hash = currentContext.hash;
-            link = baseUrl.href;
+            link = window.dgSegmentUrl(baseUrl.href, currentContext.hash);
         } catch (err) {
             console.error('URL parse error', err);
         }
@@ -396,8 +395,7 @@ onReady(() => {
             if (baseUrl.searchParams.has('q')) {
                 baseUrl.searchParams.set('q', baseUrl.searchParams.get('q').toLowerCase());
             }
-            baseUrl.hash = currentContext.hash;
-            let finalUrl = baseUrl.href;
+            let finalUrl = window.dgSegmentUrl(baseUrl.href, currentContext.hash);
 
             if (window.isLocalHost) {
                 finalUrl = finalUrl.replace(/https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/gi, 'https://dhamma.gift');

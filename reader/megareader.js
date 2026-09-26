@@ -1474,7 +1474,9 @@ window.buildSutta = async function(rawSlug, opts) {
             anchor = segment;
         }
 
-        var fullUrlWithAnchor = window.location.href.split('#')[0] + '#' + anchor;
+        var fullUrlWithAnchor = window.dgSegmentUrl
+            ? window.dgSegmentUrl(window.location.href, anchor)
+            : window.location.href.split('#')[0] + '#' + anchor;
 
         window.applyRemovePunct(paliData, segment);
         // Matches prod's devanagari.js (applyRemovePunct called on BOTH lines) — the ISO/Latin
