@@ -113,19 +113,23 @@
     ['an3.37:1.3', 'AN 3.37 · 14th|14-й'], ['an3.37:1.5', 'AN 3.37 · 15th|15-й'], ['an3.37:1.1', 'AN 3.37 · 8th|8-й'],
     ['an3.70:2.3', 'AN 3.70 · three kinds|три вида'], ['an3.70:2.4', 'AN 3.70 · cowherd|пастух'], ['an3.70:3.1', 'AN 3.70 · Nigaṇṭha|ниганты'],
     ['an3.70:4.1', 'AN 3.70 · Noble One|Благородный'], ['an3.70:19.3', 'AN 3.70 · nights and days|ночь и день'],
-    ['sn20.4:1.2', 'SN 20.4 · parts of the day|части дня'], ['mn53:10.3', 'MN 53 · night watches|части ночи'], ['ud1.1:1.4', 'Ud 1.1 · first watch|первая часть ночи'],
+    ['sn28.1:1.2', 'SN 28.1 · a monk\'s day|день монаха'], ['mn53:10.3', 'MN 53 · parts of the night|части ночи'],
   ];
-  var KEYS = {
-    en: [['AN 10.46', 'skipping the uposathas is not allowed (“it is your loss and failure”). {0}'], ['MN 83', 'one should observe the 14th, 15th, and 8th days. {1}'],
-      ['MN 146', 'the 14th of the waxing moon {2} and the 15th, the full moon {3}.'], ['AN 3.37', 'the 14th {4}, 15th {5} and 8th {6} days compared with the visits of deities of different ranks.'],
-      ['AN 3.70', 'the three kinds of Uposatha {7}: how it should <b>not</b> be observed — the “cowherd\'s Uposatha” {8} and the “Nigaṇṭha\'s Uposatha” {9} — and how the Noble One\'s Uposatha should be observed {10}. The sutta says “nights and days” rather than “days and nights” {11}; the Pali has the fixed expression <i>ahoratta</i> (“day-night”) in other contexts.'],
-      ['SN 20.4', 'the three parts of the day: <i>pubbaṇhasamaya</i>, <i>majjhanhikasamaya</i>, <i>sāyanhasamaya</i>. {12}'],
-      ['MN 53', 'the three watches of the night: <i>paṭhama</i>, <i>majjhima</i>, <i>pacchima yāma</i> {13}; the same in AN 8.9, and in Ud 1.1 the Buddha spends the first watch on dependent origination. {14}']],
-    ru: [['АН 10.46', 'пропускать упосатху нельзя («это ваша потеря и неудача»). {0}'], ['МН 83', 'нужно соблюдать 14-й, 15-й и 8-й дни. {1}'],
-      ['МН 146', '14-й день растущей Луны {2} и 15-й, полнолуние {3}.'], ['АН 3.37', '14-й {4}, 15-й {5} и 8-й {6} дни в сравнении с посещениями божеств разных рангов.'],
-      ['АН 3.70', 'три вида упосатхи {7}: как её <b>не</b> нужно соблюдать — «упосатха пастуха» {8} и «упосатха ниганты» {9} — и как соблюдать упосатху Благородного {10}. В сутте «ночь и день», а не «день и ночь» {11}; в пали в других контекстах стоит устойчивое выражение <i>ahoratta</i> («день-ночь»).'],
-      ['СН 20.4', 'три части дня: <i>pubbaṇhasamaya</i>, <i>majjhanhikasamaya</i>, <i>sāyanhasamaya</i>. {12}'],
-      ['МН 53', 'три части ночи: <i>paṭhama</i>, <i>majjhima</i>, <i>pacchima yāma</i> {13}; то же в АН 8.9, а в Уд 1.1 Будда проводит первую часть ночи над зависимым возникновением. {14}']],
+  var KEYS = { // the same suttas as the special and general ones of the slideshow, in the same order
+    en: [['AN 3.37', '<b>On which days:</b> the 14th {4}, the 15th {5} and the 8th {6} — on these days the guardians of the world look who keeps the Uposatha.'],
+      ['MN 83', '<b>On which days:</b> the 14th, 15th and 8th of the half-month. {1}'],
+      ['MN 146', 'the 14th day the moon is not full {2}, the 15th it is full {3}.'],
+      ['AN 3.70', '<b>At what time:</b> night and day — “this night and day” {11}. <b>How:</b> as the arahants do {10}. The three kinds of Uposatha {7}; how it should <b>not</b> be kept — the cowherd\'s {8} and the Nigaṇṭha\'s {9}.'],
+      ['AN 10.46', 'not to be skipped: “it is your loss and misfortune”. {0}'],
+      ['MN 53', '<b>Parts of the night:</b> <i>paṭhama</i>, <i>majjhima</i>, <i>pacchima yāma</i>, and what a disciple does in each. {13}'],
+      ['SN 28.1', '<b>Parts of the day:</b> a monk\'s day — alms in the morning, seclusion at midday, coming out in the evening. {12}']],
+    ru: [['АН 3.37', '<b>В какие дни:</b> 14-й {4}, 15-й {5} и 8-й {6} — в эти дни стражи мира смотрят, кто соблюдает упосатху.'],
+      ['МН 83', '<b>В какие дни:</b> 14-й, 15-й и 8-й дни половины месяца. {1}'],
+      ['МН 146', 'на 14-й день луна неполная {2}, на 15-й — полная {3}.'],
+      ['АН 3.70', '<b>В какое время:</b> ночь и день — «эту ночь и этот день» {11}. <b>Как:</b> как это делают араханты {10}. Три вида упосатхи {7}; как её <b>не</b> нужно соблюдать — «пастуха» {8} и «ниганты» {9}.'],
+      ['АН 10.46', 'пропускать нельзя: «это ваша потеря и неудача». {0}'],
+      ['МН 53', '<b>Части ночи:</b> <i>paṭhama</i>, <i>majjhima</i>, <i>pacchima yāma</i> и что делает в каждой ученик. {13}'],
+      ['СН 28.1', '<b>Части дня:</b> день монаха — подаяние утром, уединение в середине дня, выход вечером. {12}']],
   };
 
   // ---------- state ----------
