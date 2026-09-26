@@ -134,13 +134,35 @@ body.app .sheet-head{border-bottom:0;padding:10px 20px 6px;font-size:20px}
 /* заставка: луна выходит из облака */
 #up-splash{position:fixed;inset:0;z-index:200;background:var(--dg-page);display:grid;place-items:center;align-content:center;gap:18px}
 #up-splash svg{width:132px;height:106px;overflow:visible}
-#up-splash .mn{animation:up-rise 1s var(--up-dec) .1s both}
-#up-splash .cl{stroke-dasharray:1;stroke-dashoffset:1;animation:up-draw .6s var(--up-dec) both}
-#up-splash .cl.a{animation-delay:.05s}#up-splash .cl.b{animation-delay:.18s}#up-splash .cl.c{animation-delay:.3s}
-#up-splash b{font:600 22px/1 var(--dg-font);letter-spacing:-.015em;color:var(--dg-text);animation:up-word .5s var(--up-dec) .55s both}
+#up-splash .mn{transform-box:fill-box;transform-origin:center;animation:up-pulse .89s cubic-bezier(.4,0,.2,1) both}
+#up-splash .mvl{animation:up-mvl .89s cubic-bezier(.4,0,.2,1) both}
+#up-splash .mvr{animation:up-mvr .89s cubic-bezier(.4,0,.2,1) both}
+#up-splash .mvd{animation:up-mvd .89s cubic-bezier(.4,0,.2,1) both}
+#up-splash b{font:600 22px/1 var(--dg-font);letter-spacing:-.015em;color:var(--dg-text);animation:up-word .5s var(--up-dec) .1s both}
 #up-splash.out{animation:up-out .32s var(--up-acc) forwards}
-@keyframes up-rise{from{transform:translateY(16px);opacity:0}to{transform:none;opacity:1}}
-@keyframes up-draw{to{stroke-dashoffset:0}}
+@keyframes up-mvl{0%,28.1%{transform:none;opacity:1}73%,100%{transform:translateX(-16px);opacity:0}}
+@keyframes up-mvr{0%,28.1%{transform:none;opacity:1}73%,100%{transform:translateX(16px);opacity:0}}
+@keyframes up-mvd{0%,28.1%{transform:none;opacity:1}73%,100%{transform:translateX(22px);opacity:0}}
+@keyframes up-pulse{0%,73%{transform:none}87.6%{transform:scale(1.08)}100%{transform:none}}
 @keyframes up-word{from{transform:translateY(8px);opacity:0}to{transform:none;opacity:1}}
 @keyframes up-out{to{opacity:0;transform:scale(1.04)}}
 @media (prefers-reduced-motion:reduce){#up-splash,#up-splash *{animation:none!important}body.app *{transition:none!important}.up-rip{display:none}}
+body:has(#up-splash) .appnav { visibility: hidden; } /* the bar does not show through the launch mark */
+
+/* the logo of the bar: the launch mark once in 3-4 minutes (clouds part and return, the moon pulses) */
+.up-lg .mn { transform-box: fill-box; transform-origin: center; }
+.up-lg.play .mn { animation: lg-pulse 1.8s cubic-bezier(.4,0,.2,1) both; }
+.up-lg.play .mvl { animation: lg-l 1.8s cubic-bezier(.4,0,.2,1) both; }
+.up-lg.play .mvr { animation: lg-r 1.8s cubic-bezier(.4,0,.2,1) both; }
+.up-lg.play .mvd { animation: lg-d 1.8s cubic-bezier(.4,0,.2,1) both; }
+@keyframes lg-l { 0%,12% { transform: none; opacity: 1 } 38%,58% { transform: translateX(-16px); opacity: 0 } 88%,100% { transform: none; opacity: 1 } }
+@keyframes lg-r { 0%,12% { transform: none; opacity: 1 } 38%,58% { transform: translateX(16px); opacity: 0 } 88%,100% { transform: none; opacity: 1 } }
+@keyframes lg-d { 0%,12% { transform: none; opacity: 1 } 38%,58% { transform: translateX(22px); opacity: 0 } 88%,100% { transform: none; opacity: 1 } }
+@keyframes lg-pulse { 0%,38% { transform: none } 48% { transform: scale(1.08) } 58%,100% { transform: none } }
+@media (prefers-reduced-motion: reduce) { .up-lg.play * { animation: none !important; } }
+.up-lg { overflow: visible; }
+
+/* the reveal after the page has built itself: a short fade (opacity only) */
+html.up-in .tbar, html.up-in main.page, html.up-in .appnav { animation: up-fade .22s cubic-bezier(.23, 1, .32, 1) backwards; } /* not the scrim and the drawer: their opacity is their own */
+@keyframes up-fade { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { html.up-in .tbar, html.up-in main.page, html.up-in .appnav { animation: none; } }

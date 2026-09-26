@@ -44,12 +44,12 @@
       ics: 'Download .ics file', suttasL: 'The suttas on Uposatha', help: 'Help', share: 'Share', settingsL: 'Uposatha settings', settings: 'Settings',
       gPlace: 'Place & time', weekH: 'Week starts on', mon: 'Monday', sun: 'Sunday', tz: 'Time zone', hemi: 'Hemisphere', hemiD: 'how the moon is drawn', north: 'Northern', south: 'Southern',
       loc: 'Set a place or pick a city', locD: 'for the real sunrise and sunset; otherwise 18:00 and 06:00', myLoc: 'Use my location', city: 'or a city: Almaty…',
-      locNone: 'The location is not shared — the fixed times are used.', locFinding: 'Locating…', locOk: 'Location', locForget: 'forget', locDenied: 'The location was not shared — the fixed times are used.',
+      locNone: 'Place not set: the fixed times are used.', locFinding: 'Locating…', locOk: 'Location', locForget: 'forget', locDenied: 'The location was not shared — the fixed times are used.',
       gCount: 'Counting', bySuttas: 'By the suttas', notBySuttas: 'NOT BY THE SUTTAS', bySuttasD: 'Off — the four moon-phase days',
       detail: 'Details', detailD: 'Off — the short form',
       gRem: 'Reminders', remind: 'Remind me', adv: 'In advance', leads: [[0, 'when it begins'], [1, '1 hour'], [3, '3 hours'], [12, '12 hours'], [24, '1 day'], [48, '2 days']], days: 'Days',
       remNote: 'Notifications appear while this app is open or running in the background on your device. For reminders that arrive when it is fully closed, add the days to your phone\'s calendar.',
-      gGen: 'General settings', gDg: 'DG Settings', bellLbl: 'Remind', bellOn: 'Reminders are on', partsG: 'Parts of the night and day', partsRemL: 'Remind at the start of each part', partsWhichL: 'Which parts', pDayS: 'Day', pNightS: 'Night', pBothS: 'Both', partsSnd: 'Sound of this reminder', partsVoice: 'Spoken name (Pali)', partsBody: function (m, d) { return m + ': ' + d; }, mealG: 'Meals', mealH: 'Meals', mealSub: 'Monks, and those who keep the Uposatha, eat in one part of the day: from dawn until midday. After midday and until dawn is <i>vikāla</i>, “the wrong time”. ',
+      themeBtn: 'Theme', gGen: 'General settings', gDg: 'DG Settings', bellLbl: 'Remind', bellOn: 'Reminders are on', partsG: 'Parts of the night and day', partsRemL: 'Remind at the start of each part', partsWhichL: 'Which parts', pDayS: 'Day', pNightS: 'Night', pBothS: 'Both', partsSnd: 'Sound of this reminder', partsVoice: 'Spoken name (Pali)', partsBody: function (m, d) { return m + ': ' + d; }, mealG: 'Meals', mealH: 'Meals', mealSub: 'Monks, and those who keep the Uposatha, eat in one part of the day: from dawn until midday. After midday and until dawn is <i>vikāla</i>, “the wrong time”. ',
       mealEat: function (noon, left) { return '<i>Kāla</i> — food is allowed. Midday at ' + noon + ' · until <i>vikāla</i>: ' + left; },
       mealVik: function (dawn, left) { return '<i>Vikāla</i> — until dawn at ' + dawn + ': ' + left; },
       noonBy: 'Count midday by', noonSunS: 'Sun', noonMidS: 'Middle of day', noonClockS: '12:00', noonWhat: 'Middle of the day: halfway between sunrise and sunset, the centre of the middle third.', noonChange: 'change', noonSun: 'the Sun (highest point)', noonMid: 'the middle of the day', noonClock: '12:00 by the clock', noonFixed: 'Without a place midday is 12:00 by the clock.',
@@ -58,13 +58,13 @@
       twiFixed: 'Without a place the dawn is 06:00 and the dusk 18:00.', twiL: 'Dawn and dusk', twiNote: 'Twilight: the Sun 6, 12 or 18° below the horizon. Sets the borders of the day and the night and the dawn in the meals card.', twiO: { sun: 'Sunrise and sunset', civil: 'Civil (−6°)', nautical: 'Nautical (−12°)', astro: 'Astronomical (−18°)' },
       tstL: 'Test a reminder', tstKinds: { upo: 'Uposatha day', beg: 'The time for food begins', end: 'The time for food ends', parts: 'All 6 parts of the night and day, one by one' }, tst0: 'now', tst1: 'in 1 min', tstBlocked: 'The browser blocks notifications for this site: click the lock in the address bar, set Notifications to Allow, and try again.', tstNow: 'Sent now.', tst2: 'in 2 min', tstGo: 'Schedule the test',
       tstTitle: function (k) { return { upo: 'Uposatha (test)', beg: 'Time for food (test)', end: 'Vikāla soon (test)', parts: 'Parts (test)' }[k]; }, tstBody: 'A test reminder with the sound of this kind.', tstSet: function (at) { return 'It will come at ' + at + '.'; }, tstDenied: 'Notifications are not allowed.',
-      testL: 'Test: show the state', testReal: 'as is', testTag: 'test',
+      testsOn: 'Tests are shown in the menu', testsOff: 'Tests are hidden', testsG: 'Tests', testL: 'Test: show the state', testReal: 'as is', testTag: 'test',
       mealRemNow: 'Vikāla begins', mealRemZero: function (noon) { return 'Midday at ' + noon + ' — the time for food has ended.'; },
       mealBegL: 'Remind when the time for food begins', mealBegLeads: [[0, 'at dawn'], [15, '15 min before'], [30, '30 min before'], [60, '1 hour before']],
       mealBegNow: 'Time for food', mealBegZero: function (dawn) { return 'Dawn at ' + dawn + ' — the time for food has begun.'; },
       mealBegTitle: 'Time for food soon', mealBegBody: function (dawn, lead) { return 'Dawn at ' + dawn + ' — the time for food begins in ' + (lead >= 60 ? (lead / 60) + ' h' : lead + ' min') + '.'; },
       mealRemTitle: 'Vikāla soon', mealRemBody: function (noon, lead) { return 'Midday at ' + noon + ' — the time for food ends in ' + (lead >= 60 ? (lead / 60) + ' h' : lead + ' min') + '.'; },
-      logoTip: 'Home · change the language: long press or right click', rateUs: 'Rate Us', appVer: 'App version', timeL: 'Time', ofMode: function (n, m, su) { return n + ' of ' + m + (su ? ' by the suttas' : ' modern'); }, locRefresh: 'Update my location', locHere: 'by geo', locNone: 'manual', navHome: 'Summary', navList: 'Uposathas', navCal: 'Calendar', navParts: 'Night–day', navSet: 'Settings',
+      logoTip: 'Home · change the language: long press or right click', rateUs: 'Rate Us', appVer: 'App version', timeL: 'Time', ofMode: function (n, m, su) { return n + ' of ' + m + (su ? ' by the suttas' : ' modern'); }, placeQ: 'For exact moon phases and sun times we need your location.', placeYes: 'Find my place', placeLater: 'Later', advL: 'Advanced: time zone, hemisphere, twilight', ctxNoPlace: 'Place not set', ctxPlace: 'Your place', locRefresh: 'Update my location', locHere: 'by geo', navKeys: 'Suttas', navHome: 'Summary', navList: 'Uposathas', navCal: 'Calendar', navParts: 'Night–day', navSet: 'Settings',
       sound: 'Sound', soundNone: 'Silent', soundOwn: 'My own sound…', soundOwnNamed: 'My own: %', soundFail: 'The sound was not set.', sounds: { vikala: 'Vinaya: what is vikāla (Pali)', gong: 'Gong', gong3: 'Gong 2', gong4: 'Gong 3', gong5: 'Gong 4', gong2: 'Gong 5', bell: 'Bell' },
       remAppNote: 'Reminders are scheduled on this device and arrive even when the app is closed.',
       remNext: function (when, what) { return 'Next reminder: ' + when + ' — ' + what; }, remNone: 'No reminder is due in the coming weeks.',
@@ -97,12 +97,12 @@
       ics: 'Скачать файл .ics', suttasL: 'Сутты об упосатхе', help: 'Помощь', share: 'Поделиться', settingsL: 'Настройки упосатхи', settings: 'Настройки',
       gPlace: 'Место и время', weekH: 'Неделя начинается с', mon: 'Понедельника', sun: 'Воскресенья', tz: 'Часовой пояс', hemi: 'Полушарие', hemiD: 'как рисовать луну', north: 'Северное', south: 'Южное',
       loc: 'Задать место или выбрать город', locD: 'для настоящих восхода и заката; без него — 18:00 и 06:00', myLoc: 'Определить моё место', city: 'или город: Алматы…',
-      locNone: 'Место не передано — используется фиксированное время.', locFinding: 'Определяю…', locOk: 'Место', locForget: 'забыть', locDenied: 'Место не передано — используется фиксированное время.',
+      locNone: 'Место не задано: используется фиксированное время.', locFinding: 'Определяю…', locOk: 'Место', locForget: 'забыть', locDenied: 'Место не передано — используется фиксированное время.',
       gCount: 'Счёт', bySuttas: 'По суттам', notBySuttas: 'НЕ ПО СУТТАМ', bySuttasD: 'Выкл — четыре дня лунных фаз',
       detail: 'Подробно', detailD: 'Выкл — короткая форма',
       gRem: 'Напоминания', remind: 'Напоминать', adv: 'Заранее', leads: [[0, 'в момент начала'], [1, 'за 1 час'], [3, 'за 3 часа'], [12, 'за 12 часов'], [24, 'за сутки'], [48, 'за 2 суток']], days: 'Дни',
       remNote: 'Уведомления приходят, пока приложение открыто или работает в фоне на вашем устройстве. Чтобы напоминание пришло и при полностью закрытом приложении, добавьте дни в календарь телефона.',
-      gGen: 'Общие настройки', gDg: 'Настройки DG', bellLbl: 'Напоминать', bellOn: 'Напоминания включены', partsG: 'Части ночи и дня', partsRemL: 'Напоминать о начале каждой части', partsWhichL: 'Какие части', pDayS: 'День', pNightS: 'Ночь', pBothS: 'Обе', partsSnd: 'Звук этого напоминания', partsVoice: 'Произнесённое название (пали)', partsBody: function (m, d) { return m + ': ' + d; }, mealG: 'Приём пищи', mealH: 'Приём пищи', mealSub: 'Монахи и те, кто соблюдает упосатху, едят в одну часть дня: от рассвета до полудня. После полудня и до рассвета — <i>vikāla</i>, «неподходящее время». ',
+      themeBtn: 'Тема', gGen: 'Общие настройки', gDg: 'Настройки DG', bellLbl: 'Напоминать', bellOn: 'Напоминания включены', partsG: 'Части ночи и дня', partsRemL: 'Напоминать о начале каждой части', partsWhichL: 'Какие части', pDayS: 'День', pNightS: 'Ночь', pBothS: 'Обе', partsSnd: 'Звук этого напоминания', partsVoice: 'Произнесённое название (пали)', partsBody: function (m, d) { return m + ': ' + d; }, mealG: 'Приём пищи', mealH: 'Приём пищи', mealSub: 'Монахи и те, кто соблюдает упосатху, едят в одну часть дня: от рассвета до полудня. После полудня и до рассвета — <i>vikāla</i>, «неподходящее время». ',
       mealEat: function (noon, left) { return '<i>Kāla</i> — есть можно. Полдень в ' + noon + ' · до <i>vikāla</i>: ' + left; },
       mealVik: function (dawn, left) { return '<i>Vikāla</i> — до рассвета в ' + dawn + ': ' + left; },
       noonBy: 'Полдень считать по', noonSunS: 'Солнце', noonMidS: 'Середина дня', noonClockS: '12:00', noonWhat: 'Середина дня — ровно между восходом и закатом, центр средней трети дня.', noonChange: 'изменить', noonSun: 'Солнцу (высшая точка)', noonMid: 'середине дня', noonClock: '12:00 по часам', noonFixed: 'Без места полдень — 12:00 по часам.',
@@ -111,13 +111,13 @@
       twiFixed: 'Без места рассвет 06:00, закат 18:00.', twiL: 'Рассвет и закат', twiNote: 'Сумерки: Солнце на 6, 12 или 18° под горизонтом. Задаёт границы дня и ночи и рассвет в карточке приёма пищи.', twiO: { sun: 'Восход и закат', civil: 'Гражданские (−6°)', nautical: 'Навигационные (−12°)', astro: 'Астрономические (−18°)' },
       tstL: 'Проверить напоминание', tstKinds: { upo: 'День упосатхи', beg: 'Начало времени еды', end: 'Конец времени еды', parts: 'Все 6 частей ночи и дня по очереди' }, tst0: 'сейчас', tst1: 'через 1 мин', tstBlocked: 'Браузер блокирует уведомления для этого сайта: нажмите на замок в адресной строке, поставьте «Уведомления: Разрешить» и попробуйте снова.', tstNow: 'Отправлено сейчас.', tst2: 'через 2 мин', tstGo: 'Поставить проверку',
       tstTitle: function (k) { return { upo: 'Упосатха (проверка)', beg: 'Время еды (проверка)', end: 'Скоро vikāla (проверка)', parts: 'Части (проверка)' }[k]; }, tstBody: 'Проверочное напоминание со звуком этого вида.', tstSet: function (at) { return 'Придёт в ' + at + '.'; }, tstDenied: 'Уведомления не разрешены.',
-      testL: 'Проверка: показать состояние', testReal: 'как есть', testTag: 'тест',
+      testsOn: 'Проверка показана в меню', testsOff: 'Проверка скрыта', testsG: 'Проверка', testL: 'Проверка: показать состояние', testReal: 'как есть', testTag: 'тест',
       mealRemNow: 'Наступает vikāla', mealRemZero: function (noon) { return 'Полдень в ' + noon + ' — время еды закончилось.'; },
       mealBegL: 'Напоминать о начале времени еды', mealBegLeads: [[0, 'на рассвете'], [15, 'за 15 мин'], [30, 'за 30 мин'], [60, 'за 1 час']],
       mealBegNow: 'Время еды', mealBegZero: function (dawn) { return 'Рассвет в ' + dawn + ' — время еды началось.'; },
       mealBegTitle: 'Скоро время еды', mealBegBody: function (dawn, lead) { return 'Рассвет в ' + dawn + ' — время еды начнётся через ' + (lead >= 60 ? (lead / 60 + '').replace('.', ',') + ' ч' : lead + ' мин') + '.'; },
       mealRemTitle: 'Скоро vikāla', mealRemBody: function (noon, lead) { return 'Полдень в ' + noon + ' — время еды закончится через ' + (lead >= 60 ? (lead / 60 + '').replace('.', ',') + ' ч' : lead + ' мин') + '.'; },
-      logoTip: 'Домой · сменить язык: долгое нажатие или правая кнопка', rateUs: 'Оценить приложение', appVer: 'Версия приложения', timeL: 'Время', ofMode: function (n, m, su) { return n + ' из ' + m + (su ? ' по суттам' : ' по современной'); }, locRefresh: 'Обновить моё место', locHere: 'по гео', locNone: 'вручную', navHome: 'Сводка', navList: 'Упосатхи', navCal: 'Календарь', navParts: 'Ночь–день', navSet: 'Настройки',
+      logoTip: 'Домой · сменить язык: долгое нажатие или правая кнопка', rateUs: 'Оценить приложение', appVer: 'Версия приложения', timeL: 'Время', ofMode: function (n, m, su) { return n + ' из ' + m + (su ? ' по суттам' : ' по современной'); }, placeQ: 'Для точных лунных фаз и времени солнца нужно ваше местоположение.', placeYes: 'Определить место', placeLater: 'Позже', advL: 'Дополнительно: часовой пояс, полушарие, сумерки', ctxNoPlace: 'Место не задано', ctxPlace: 'Ваше место', locRefresh: 'Обновить моё место', locHere: 'по гео',  navKeys: 'Сутты', navHome: 'Сводка', navList: 'Упосатхи', navCal: 'Календарь', navParts: 'Ночь–день', navSet: 'Настройки',
       sound: 'Звук', soundNone: 'Без звука', soundOwn: 'Свой звук…', soundOwnNamed: 'Свой: %', soundFail: 'Звук не задан.', sounds: { vikala: 'Виная: что такое vikāla (пали)', gong: 'Гонг', gong3: 'Гонг 2', gong4: 'Гонг 3', gong5: 'Гонг 4', gong2: 'Гонг 5', bell: 'Колокол' },
       remAppNote: 'Напоминания ставятся на этом устройстве и приходят даже при закрытом приложении.',
       remNext: function (when, what) { return 'Ближайшее напоминание: ' + when + ' — ' + what; }, remNone: 'В ближайшие недели напоминаний нет.',
@@ -200,6 +200,7 @@
     screen: params.get('view') === 'all' ? 'cal' : (function () { var v = store('dgUposathaView'); return v === 'cal' || v === 'list' ? v : 'dates'; })(), // the first view is the table by dates
     months: 3, calOff: 0, selected: null,
     twi: (function () { var v = store('dgUposathaTwi'); return v && v in TWI ? v : 'sun'; })(),
+    tests: (function () { var q = params.get('tests'); if (q === '1' || q === '0') store('dgUposathaTests', q); return store('dgUposathaTests') === '1'; })(), // the tests of the settings are hidden: ?tests=1 shows them, ?tests=0 hides, seven taps on the app version too
     fake: (function () { var v = store('dgUposathaFake'); return v === 'kala' || v === 'vikala' ? v : ''; })(),
     meal: (function () { var d = { sum: true, rem: false, lead: 30, days: 'upo', snd: 'vikala', beg: false, begLead: 0, begSnd: 'gong2' }; try { var v = JSON.parse(store('dgUposathaMeal')); if (v) for (var k in d) if (k in v) d[k] = v[k]; } catch (e) { /* defaults */ } return d; })(),
     parts: (function () { var d = { rem: false, which: 'day', days: 'upo', snd: 'voice' }; try { var v = JSON.parse(store('dgUposathaParts')); if (v) for (var k in d) if (k in v) d[k] = v[k]; } catch (e) { /* defaults */ } return d; })(),
@@ -336,12 +337,17 @@
   var htmlLast = {};
   function setHtml(id, html) { if (htmlLast[id] === html) return; htmlLast[id] = html; $(id).innerHTML = html; } // a repaint on every tap must not rebuild a table that did not change
   function setSeg(id, v) { Array.prototype.forEach.call($(id).children, function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-v') === String(v))); }); }
-  function onSeg(id, fn) { $(id).onclick = function (e) { var b = e.target.closest && e.target.closest('button'), v = b && b.getAttribute('data-v'); if (v !== null && v !== undefined) fn(v); }; }
+  // A light tick under the finger in the app (the Capacitor Haptics plugin, when the shell has it; nothing on the site). Never the only feedback.
+  function haptic(kind) {
+    var H = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Haptics; if (!H) return;
+    try { if (kind === 'ok') H.notification({ type: 'SUCCESS' }); else H.impact({ style: 'LIGHT' }); } catch (e) { /* no haptics here */ }
+  }
+  function onSeg(id, fn) { $(id).onclick = function (e) { var b = e.target.closest && e.target.closest('button'), v = b && b.getAttribute('data-v'); if (v !== null && v !== undefined) { haptic(); fn(v); } }; }
   // the drawer is the site's own (home.js): opening it is a click on its burger
   // The settings groups fold like the multitool; what is open is remembered
   (function () {
     var saved = {}; try { saved = JSON.parse(store('dgUposathaGroups') || '{}'); } catch (e) { saved = {}; }
-    ['g-gen', 'g-uset', 'g-meal', 'g-parts'].forEach(function (id) {
+    ['g-gen', 'g-uset', 'g-meal', 'g-parts', 'g-tests'].forEach(function (id) {
       var d = $(id); if (!d) return;
       if (id in saved) d.open = !!saved[id];
       d.addEventListener('toggle', function () { saved[id] = d.open; store('dgUposathaGroups', JSON.stringify(saved)); });
@@ -397,7 +403,7 @@
     markPali($('pnote'));
     // the place is the important, interactive part of this block: a link by the heading, to the settings
     var noonV = { sun: t.noonSunS, mid: t.noonMidS, clock: t.noonClockS }[obs ? state.noon : 'clock'];
-    $('p-place').innerHTML = icon('pin') + esc(t.timeL + ': ' + (obs ? (state.loc.name || t.locHere) : t.locNone) + ' · ') + '<span class="noonlink">' + esc(t.noonL.toLowerCase() + ': ' + noonV.toLowerCase()) + '</span>' + esc(' · ' + (obs ? t.change : t.setPlace)); // one line: the time, the midday, the way to change
+    $('p-place').innerHTML = icon('pin') + esc((obs ? (state.loc.name || t.ctxPlace) : t.ctxNoPlace) + ' · ') + '<span class="noonlink">' + esc(t.noonL.toLowerCase() + ': ' + noonV.toLowerCase()) + '</span>' + esc(' · ' + (obs ? t.change : t.setPlace)); // one line: the time, the midday, the way to change
     document.querySelector('#parts h2').textContent = t.pH + '*'; // the asterisk of the footnote
     paintMeal(F, now, ymd, obs, rise);
   }
@@ -426,7 +432,7 @@
     var p = ymd.split('-').map(Number), tz = state.tz, m = obs ? state.noon : 'clock';
     var noon = noonFor(ymd, obs);
     var nowMs = now.getTime(), to, html, kind;
-    var fake = state.fake || params.get('meal'); // test only: the switch in the settings (or ?meal=kala / ?meal=vikala) shows that state whatever the time is
+    var fake = (state.tests && state.fake) || params.get('meal'); // test only: the switch in the settings (or ?meal=kala / ?meal=vikala) shows that state whatever the time is
     if (fake === 'kala') nowMs = (rise.getTime() + noon.getTime()) / 2; else if (fake === 'vikala') nowMs = noon.getTime() + 3600000;
     if (nowMs < noon.getTime() && nowMs >= rise.getTime()) { kind = 'kala'; to = noon.getTime(); html = t.mealEat(F.hm.format(noon), '<b class="meal-left" data-to="' + to + '">' + span(to - nowMs) + '</b>'); }
     else { kind = 'vikala'; var dawn = nowMs < rise.getTime() ? rise : (edge('rise', p[0], p[1], p[2] + 1, tz, obs) || zonedToUtc(p[0], p[1], p[2] + 1, 6, tz)); to = dawn.getTime(); html = t.mealVik(F.hm.format(dawn), '<b class="meal-left" data-to="' + to + '">' + span(to - nowMs) + '</b>'); }
@@ -434,7 +440,7 @@
     $('twi').disabled = !obs; $('twi').closest('#twi-block').querySelector('.dg-uset-note').textContent = obs ? t.twiNote : t.twiFixed; // the twilight needs the Sun of a place
     setSeg('noonseg', obs ? state.noon : 'clock'); $('noon-note').textContent = obs ? t.noonWhat : t.noonFixed; $('noonseg').setAttribute('data-fixed', String(!obs)); // without a place only the clock is possible
     var by = '';
-    var tag = state.fake ? ' <b class="testtag">' + esc(t.testTag) + '</b>' : '';
+    var tag = state.tests && state.fake ? ' <b class="testtag">' + esc(t.testTag) + '</b>' : '';
     $('meal').innerHTML = '<div class="cardh"><h3>' + esc(t.mealH) + tag + '</h3>' + bell('meal-bell', state.meal.rem || state.meal.beg) + '</div><p class="mstat" data-k="' + kind + '">' + html + '</p>' + by; // the card is short: what vikāla is stands in the key suttas (Pc 37)
     $('meal-sum').innerHTML = '<h3>' + esc(t.mealH) + tag + '</h3><p class="mstat" data-k="' + kind + '">' + html + '</p>';
     markPali($('meal')); markPali($('meal-sum'));
@@ -460,10 +466,14 @@
     // for the app's hero (app-refresh.js): the Uposatha that runs now and the next one to begin, by name, not parsed back from the list
     var curUp = isUposatha ? ((su && yRow && yRow.uposatha && now < evToday) ? yRow : todayRow) : null, nextUp = L.rows.filter(function (r) { return r.uposatha && r.at.getTime() > now.getTime(); })[0];
     window.__upoHero = { cur: curUp ? nameOf(curUp) : '', next: nextUp ? { at: nextUp.at.getTime(), name: nameOf(nextUp) } : null };
-    // the moon of the running (or the next) Uposatha for the app's icon in the bar (and later the shortcuts, the launcher icon): the 8th a quarter, the 14th nearly full or a thin crescent, the 15th full or new
-    var mRow = curUp || nextUp, mk = mRow ? parseInt(nameOf(mRow), 10) : NaN;
-    window.__upoMoon = mRow && mk ? { f: mRow.waxing ? mk / 15 : 1 - mk / 15, right: mRow.waxing !== state.south, day: mk, waxing: !!mRow.waxing } : null;
+    // the moon of the Uposatha for the app's icon in the bar: the running one; after it ends, the same one until the end of that day (the moon is still full); then the next one.
+    // The icons are plain, not the real phase: the 8th a half, the 14th a crescent, the 15th full (waxing) or new (waning).
+    var prevUp = L.rows.filter(function (r) { return r.uposatha && r.at.getTime() <= now.getTime(); }).pop();
+    var endedToday = prevUp && (su ? ymdAdd(prevUp.ymd, 1) : prevUp.ymd) === todayYmd ? prevUp : null;
+    var mRow = curUp || endedToday || nextUp, mk = mRow ? parseInt(nameOf(mRow), 10) : NaN;
+    window.__upoMoon = mRow && mk ? { f: mk === 8 ? 0.5 : mk === 14 ? 0.27 : (mRow.waxing ? 1 : 0), right: mRow.waxing !== state.south, day: mk, waxing: !!mRow.waxing } : null;
     if (typeof window.__upoNavMoon === 'function') window.__upoNavMoon();
+    if (typeof window.__upoPlaceAsk === 'function') window.__upoPlaceAsk();
 
     // ----- today
     var angle = A.MoonPhase(now), tithi = tithiAt(now), pIndex = Math.floor(((angle + 22.5) % 360) / 45);
@@ -500,9 +510,10 @@
     }
     $('t-sun').textContent = sunLine;
     var off = new Intl.DateTimeFormat('en-US', { timeZone: tz, timeZoneName: 'shortOffset' }).formatToParts(now).filter(function (p) { return p.type === 'timeZoneName'; })[0];
-    $('ctx-place').textContent = t.timeL + ': ' + (state.loc ? (state.loc.name || t.locHere) : t.locNone); // a city by its name, the geolocation 'by geo', no place 'manual' // neither the coordinates nor the time zone: the person knows both
+    $('ctx-place').innerHTML = icon('pin') + esc(state.loc ? (state.loc.name || t.ctxPlace) : t.ctxNoPlace); // a city by its name, the geolocation 'by geo', no place 'manual' // neither the coordinates nor the time zone: the person knows both
     var mm = todayYmd.slice(0, 7), inMonth = L.rows.filter(function (r) { return r.uposatha && r.ymd.slice(0, 7) === mm; }); // how far this month's Uposathas have come
     $('ctx-mode').textContent = t.ofMode(inMonth.filter(function (r) { return r.ymd <= todayYmd; }).length, inMonth.length, su);
+    $('ctx-mode').className = su ? '' : 'modern'; // the modern scheme is marked, so it is not taken for the Uposatha of the suttas
 
     // ----- the list
     var list = L.rows.filter(function (r) { return r.uposatha && r.ymd >= monthStart; });
@@ -573,6 +584,7 @@
     })();
 
     // ----- the calendar: one ordinary month, weeks in rows
+    $('cal-today').style.visibility = state.calOff === 0 && !state.selected ? 'hidden' : ''; // the way back is shown only when we have left the current month
     var cm = new Date(Date.UTC(tp[0], tp[1] - 1 + state.calOff, 1)), cy = cm.getUTCFullYear(), mo = cm.getUTCMonth();
     var lead = (new Date(Date.UTC(cy, mo, 1)).getUTCDay() - firstDay() + 7) % 7;
     var cells = Math.ceil((lead + new Date(Date.UTC(cy, mo + 1, 0)).getUTCDate()) / 7) * 7;
@@ -802,7 +814,7 @@
     if (showSnd) { $('psnd').innerHTML = [['voice', t.partsVoice]].concat(soundKeys().map(function (k) { return [k, t.sounds[k]]; }), [['none', t.soundNone]]).map(function (o) { return '<option value="' + o[0] + '">' + esc(o[1]) + '</option>'; }).join(''); $('psnd').value = state.parts.snd; }
     $('parts-bell').setAttribute('aria-pressed', String(state.parts.rem));
     var mb = $('meal-bell'); if (mb) mb.setAttribute('aria-pressed', String(state.meal.rem || state.meal.beg));
-    setSeg('testseg', state.fake);
+    setSeg('testseg', state.fake); $('g-tests').hidden = !state.tests;
     $('rem-sound-row').style.display = showSnd ? '' : 'none'; // the sound is a notification channel: only the app has them
     if (showSnd) {
       var opts = soundKeys().map(function (k) { return [k, t.sounds[k]]; }).concat([['none', t.soundNone]]);
@@ -816,6 +828,10 @@
     $('rem-days-row').style.display = sutta() ? '' : 'none';
     $('rem-msg').textContent = state.remMsg || (permission === 'denied' ? t.remDenied : permission === 'unsupported' ? t.remUnsupported : (state.rem.on ? (next ? t.remNext(F.remWhen.format(next.when), next.title) : t.remNone) : ''));
     $('rem-note').textContent = inApp ? t.remAppNote : t.remNote;
+    var due = reminderList(L.rows, L.byYmd).filter(function (i) { return i.when > Date.now(); }); // the proof that the reminders are set: when the next one comes
+    function nx(pred, on) { if (!on) return ''; var i = due.filter(pred)[0]; return i ? t.remNext(F.remWhen.format(i.when), i.title) : t.remNone; }
+    $('mnext').textContent = nx(function (i) { return i.meal; }, state.meal.rem || state.meal.beg);
+    $('pnext').textContent = nx(function (i) { return i.kind === 'part'; }, state.parts.rem);
     $('b-cal').style.display = $('d-cal').style.display = inApp ? 'none' : ''; // in the app the reminders are the device's own
     $('sub-apple').href = feedUrl('webcal');
     $('sub-google').href = 'https://calendar.google.com/calendar/r?cid=' + encodeURIComponent(feedUrl('webcal'));
@@ -908,7 +924,7 @@
     if (end < text.length) { var sp2 = text.lastIndexOf(' ', end); if (sp2 > start + max * 0.6) end = sp2; }
     return (start > 0 ? '… ' : '') + text.slice(start, end) + (end < text.length ? ' …' : '');
   }
-  function limits() { return window.innerWidth >= 700 ? { pli: 180, tr: 170, pairs: 3 } : { pli: 100, tr: 100, pairs: 2 }; }
+  function limits() { return window.innerWidth >= 700 ? { pli: 180, tr: 170, pairs: 3 } : window.innerWidth >= 400 ? { pli: 90, tr: 90, pairs: 2 } : { pli: 70, tr: 70, pairs: 2 }; } // the long ones are cut to the key words: the narrower the screen, the shorter
   // a verse: at most `n` lines, the window that holds the most key words
   function verseWindow(lines, n) {
     if (lines.length <= n) return lines;
@@ -924,7 +940,7 @@
   function slideHtml(q, i) {
     var L = limits(), trKw = q[lang] ? KW[lang] : KW.en, body;
     if (q.lines) { // a verse: each line of the Pali with its translation under it, as the reader shows gathas
-      var per = window.innerWidth >= 700 ? { p: 58, t: 62 } : { p: 34, t: 40 }; // a day told in three parts: each part is cut to a line
+      var per = window.innerWidth >= 700 ? { p: 58, t: 62 } : window.innerWidth >= 400 ? { p: 34, t: 40 } : { p: 24, t: 28 }; // a day told in three parts: each part is cut to a line
       body = '<div class="sl-g">' + (q.grouped ? q.lines : verseWindow(q.lines, L.pairs)).map(function (l) {
         var pl = q.grouped ? excerpt(l.pli, KW.pli, per.p) : l.pli, tr = q.grouped ? excerpt(l[lang] || l.en, trKw, per.t) : (l[lang] || l.en);
         return '<b class="sl-gp pli-lang" lang="pi">' + hl(pl, KW.pli) + '</b><span class="sl-gt">' + esc(tr) + '</span>';
@@ -934,6 +950,22 @@
   }
   // The slideshow itself is the home page's (Bootstrap carousel, home.css); this fills it and does what home.js does around it:
   // the dots taper with the distance from the active one, and the card keeps one height.
+  // One fixed height: the tallest slide (all are cut to a bounded size), so the card never changes size. It cannot be measured while the card is
+  // hidden (another tab of the app), so it is measured again when the card shows and when the width changes.
+  function fitSlides() {
+    var el = $('dg-carousel'), inner = el && el.querySelector('.carousel-inner'); if (!inner || !el.getClientRects().length) return;
+    inner.style.height = ''; var tallest = 0;
+    Array.prototype.forEach.call(inner.querySelectorAll('.carousel-item'), function (item) {
+      var was = item.classList.contains('active');
+      if (!was) { item.style.display = 'block'; item.style.position = 'absolute'; item.style.visibility = 'hidden'; item.style.width = '100%'; }
+      tallest = Math.max(tallest, item.getBoundingClientRect().height);
+      if (!was) { item.style.display = ''; item.style.position = ''; item.style.visibility = ''; item.style.width = ''; }
+    });
+    if (tallest) inner.style.height = Math.ceil(tallest) + 'px';
+  }
+  var fitTimer = 0;
+  window.addEventListener('resize', function () { clearTimeout(fitTimer); fitTimer = setTimeout(fitSlides, 150); });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { fitSlides(); });
   function renderCarousel() {
     var el = $('dg-carousel'), still = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (carousel) { carousel.dispose(); carousel = null; }
@@ -945,15 +977,7 @@
     taper(0);
     el.addEventListener('slide.bs.carousel', function (e) { taper(e.to); });
     carousel = new bootstrap.Carousel(el, { interval: still ? false : 12000, ride: still ? false : 'carousel', pause: 'hover' });
-    // one fixed height: the tallest slide (all are cut to a bounded size), so the card never changes size
-    var inner = el.querySelector('.carousel-inner'), tallest = 0;
-    Array.prototype.forEach.call(inner.querySelectorAll('.carousel-item'), function (item) {
-      var was = item.classList.contains('active');
-      if (!was) { item.style.display = 'block'; item.style.position = 'absolute'; item.style.visibility = 'hidden'; }
-      tallest = Math.max(tallest, item.getBoundingClientRect().height);
-      if (!was) { item.style.display = ''; item.style.position = ''; item.style.visibility = ''; }
-    });
-    if (tallest) inner.style.height = Math.ceil(tallest) + 'px';
+    fitSlides();
     el.addEventListener('slid.bs.carousel', reportHeight);
     reportHeight();
   }
@@ -1070,17 +1094,18 @@
       }, true);
       var brand = document.querySelector('#dg-drawer .dg-brand-link'); // the drawer's header stays the site's: the conch and dhamma.gift lead out to the site (or to its app)
       if (brand) { brand.setAttribute('href', 'https://dhamma.gift/'); brand.setAttribute('target', '_blank'); brand.setAttribute('rel', 'noopener'); }
-      function barTitle(k) { var w = document.querySelector('.tbar .wordmark b'); if (w) w.textContent = { home: t.h1, list: t.navList, cal: t.navCal, parts: t.navParts }[k] || t.h1; }
+      function barTitle(k) { var w = document.querySelector('.tbar .wordmark b'); if (w) w.textContent = { home: 'Ariyuposatho', list: t.navList, cal: t.navCal, parts: t.navParts, keys: t.navKeys }[k] || 'Ariyuposatho'; }
       window.__upoBarTitle = function () { barTitle(document.body.getAttribute('data-app-tab') || 'home'); };
       function openTab(k) {
         barTitle(k); // the app bar names the screen
         if (k === 'list') { state.screen = state.screen === 'dates' ? 'dates' : 'list'; store('dgUposathaView', state.screen); } // the list tab keeps the view chosen in it
         else if (k === 'cal') { state.screen = 'cal'; store('dgUposathaView', 'cal'); }
         document.body.setAttribute('data-app-tab', k); store('dgUposathaTab', k);
-        Array.prototype.forEach.call(tabs, function (b) { b.setAttribute('aria-current', String(b.getAttribute('data-tab') === k)); });
+        setTimeout(fitSlides, 0); // the slideshow is measured when its tab shows
+        Array.prototype.forEach.call(tabs, function (b) { var v = String(b.getAttribute('data-tab') === k); if (b.getAttribute('aria-current') !== v) b.setAttribute('aria-current', v); }); // unchanged is left alone: the pill is already gliding
         paint(); window.scrollTo(0, 0);
       }
-      Array.prototype.forEach.call(tabs, function (b) { b.onclick = function () { var k = b.getAttribute('data-tab'); if (k === 'settings') document.querySelector('.dg-menu-btn').click(); else openTab(k); }; }); // the gear opens the settings; the key suttas live in the summary
+      Array.prototype.forEach.call(tabs, function (b) { b.onclick = function () { var k = b.getAttribute('data-tab'); haptic(); openTab(k); }; }); // the key suttas live in the summary
       // the drawer is under the bar: while it is open the pill sits on the gear; a tap on a tab closes the drawer and goes to that tab
       // the first item of the bar shows the moon of the Uposatha (see __upoMoon in paint)
       function moonSvg(m) {
@@ -1089,20 +1114,52 @@
       }
       window.__upoNavMoon = function () { var i = nav.querySelector('[data-tab=home] i'), m = window.__upoMoon; if (i && m) { var h = moonSvg(m), cur = i.firstElementChild, key = Math.round(Math.max(0, Math.min(1, m.f)) * 100) + (m.right ? 'r' : 'l'); if (!cur || cur.getAttribute('data-moon') !== key) i.innerHTML = h; } }; // compared with what is there: the designer's script writes its own icon at load
       window.addEventListener('load', function () { setTimeout(window.__upoNavMoon, 100); setTimeout(window.__upoNavMoon, 700); });
+      // the first time in the app, one friendly question about the place (the times are for it); "Later" is remembered
+      (function () {
+        var ask = document.createElement('section'); ask.className = 'placeask'; ask.id = 'place-ask'; ask.hidden = true;
+        ask.innerHTML = '<p></p><div><button type="button" class="pa-yes"></button><button type="button" class="pa-no"></button></div>';
+        var ctx = document.querySelector('main.page .ctx'); if (!ctx) return; ctx.parentNode.insertBefore(ask, ctx);
+        ask.querySelector('p').textContent = t.placeQ; ask.querySelector('.pa-yes').textContent = t.placeYes; ask.querySelector('.pa-no').textContent = t.placeLater;
+        ask.querySelector('.pa-yes').onclick = function () { haptic(); store('dgUposathaPlaceAsk', '1'); ask.hidden = true; if (window.__upoDetect) window.__upoDetect(true); };
+        ask.querySelector('.pa-no').onclick = function () { store('dgUposathaPlaceAsk', '1'); ask.hidden = true; };
+        window.__upoPlaceAsk = function () { ask.hidden = !!state.loc || store('dgUposathaPlaceAsk') === '1'; ask.querySelector('p').textContent = t.placeQ; ask.querySelector('.pa-yes').textContent = t.placeYes; ask.querySelector('.pa-no').textContent = t.placeLater; };
+        window.__upoPlaceAsk();
+      })();
+      // the gear and the theme in the corner of the app bar
+      // while the drawer opens, the two buttons of the bar go to where the drawer's own share and close buttons are (its final place, not where it is now)
+      function dock() {
+        var dr = $('dg-drawer'), cl = dr.querySelector('.dg-drawer-close'), sh = dr.querySelector('.dg-drawer-share'); if (!cl || !sh) return;
+        var m = new DOMMatrix(getComputedStyle(dr).transform), pairs = [[$('app-gear'), cl], [$('app-theme'), sh]];
+        pairs.forEach(function (p) {
+          var a = p[0].getBoundingClientRect(), b = p[1].getBoundingClientRect();
+          p[0].style.setProperty('--tx', (b.x - m.m41 + b.width / 2 - (a.x + a.width / 2)) + 'px'); p[0].style.setProperty('--ty', (b.y - m.m42 + b.height / 2 - (a.y + a.height / 2)) + 'px');
+        });
+        document.querySelector('.tbar').classList.remove('away');
+      }
+      $('dg-drawer').addEventListener('scroll', function (e) { document.body.classList.toggle('up-dscroll', e.target.scrollTop > 4); }, true); // scrolled: the two buttons get a round backing so they do not float over the text
+      var docked = false;
+      new MutationObserver(function () { var open = document.body.classList.contains('dg-drawer-open'); if (open && !docked) dock(); docked = open; }).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+      $('app-gear').onclick = function () { if (document.body.classList.contains('dg-drawer-open')) document.querySelector('#dg-drawer .dg-drawer-close').click(); else document.querySelector('.dg-menu-btn').click(); };
+      function syncDark() { document.body.setAttribute('data-dark', String(document.body.classList.contains('dark'))); }
+      $('app-theme').onclick = function () { // dark <-> light: the drawer's own switch does it (dark, light, auto)
+        if (document.body.classList.contains('dg-drawer-open')) { document.querySelector('#dg-drawer .dg-drawer-share').click(); return; } // in the open drawer this button is the share button
+        var seg = document.querySelectorAll('#dg-theme-seg button'); if (seg.length < 2) return;
+        seg[document.body.getAttribute('data-dark') === 'true' ? 1 : 0].click(); setTimeout(syncDark, 50);
+      };
+      syncDark(); setTimeout(syncDark, 600); new MutationObserver(syncDark).observe(document.body, { attributes: true, attributeFilter: ['class', 'data-theme'] });
       var closeBtn = document.querySelector('#dg-drawer .dg-drawer-close'), wasOpen = false, goTo = null;
       function setCurrent(k) { Array.prototype.forEach.call(tabs, function (b) { b.setAttribute('aria-current', String(b.getAttribute('data-tab') === k)); }); }
       new MutationObserver(function () {
         var open = document.body.classList.contains('dg-drawer-open'); if (open === wasOpen) return; wasOpen = open;
-        if (open) setCurrent('settings'); else setCurrent(goTo || document.body.getAttribute('data-app-tab') || 'home'); // a tab was tapped: the pill goes straight to it (it may be the tab we came from)
+        if (!open) setCurrent(goTo || document.body.getAttribute('data-app-tab') || 'home'); // a tab was tapped: the pill goes straight to it (it may be the tab we came from)
         goTo = null;
       }).observe(document.body, { attributes: true, attributeFilter: ['class'] });
       nav.addEventListener('click', function (e) {
         var b = e.target.closest && e.target.closest('button'); if (!b || !wasOpen || !closeBtn) return;
-        if (b.getAttribute('data-tab') === 'settings') { e.stopPropagation(); closeBtn.click(); return; } // the gear again: close
         goTo = b.getAttribute('data-tab'); closeBtn.click(); // a tab: the drawer goes, the tab's own handler follows
       }, true);
       if ($('up-ver')) $('up-ver').textContent = window.__DG_APP_VERSION__ || 'preview'; // the native shell sets the real one
-      var last = store('dgUposathaTab'); openTab(/^(home|list|cal|parts)$/.test(last || '') ? last : 'home');
+      var last = store('dgUposathaTab'); openTab(/^(home|list|cal|parts|keys)$/.test(last || '') ? last : 'home');
     })();
     onSeg('noonseg', function (v) { state.noon = v; store('dgUposathaNoon', v); paint(); });
     $('meal').onclick = function (e) { if (e.target.closest && e.target.closest('.noonlink')) { e.preventDefault(); openSettings('noon-block'); } };
@@ -1113,6 +1170,14 @@
     $('more').onclick = function () { state.months += 3; paint(); };
     $('cal-prev').onclick = function () { state.calOff--; paint(); };
     $('cal-next').onclick = function () { state.calOff++; paint(); };
+    (function () { // a swipe over the month turns it (a finger, not only the arrows)
+      var box = $('s-cal'), x0 = 0, y0 = 0, on = false;
+      box.addEventListener('touchstart', function (e) { var t0 = e.touches[0]; x0 = t0.clientX; y0 = t0.clientY; on = e.touches.length === 1; }, { passive: true });
+      box.addEventListener('touchend', function (e) {
+        if (!on) return; on = false; var t1 = e.changedTouches[0], dx = t1.clientX - x0, dy = t1.clientY - y0;
+        if (Math.abs(dx) > 60 && Math.abs(dx) > 1.6 * Math.abs(dy)) $(dx < 0 ? 'cal-next' : 'cal-prev').click();
+      }, { passive: true });
+    })();
     $('cal-today').onclick = function () { state.calOff = 0; state.selected = null; paint(); };
     function setLang(l) { lang = l; t = T[lang]; store('dhammaLanguage', lang); applyLang(); paintKeys(); paint(); if (window.__upoBarTitle) window.__upoBarTitle(); }
     // as in the dictionary: the logo and the name switch the language by a right click or a long press (a short click still goes home)
@@ -1240,6 +1305,13 @@
         if (tstMin) setTimeout(fire, tstMin * 60000); else fire();
         shown(); });
     };
+    (function () { // seven quick taps on the app version show or hide the tests
+      var taps = 0, timer2 = 0, v = $('up-ver'); if (!v) return;
+      v.parentNode.addEventListener('click', function () {
+        taps++; clearTimeout(timer2); timer2 = setTimeout(function () { taps = 0; }, 1500);
+        if (taps >= 7) { taps = 0; state.tests = !state.tests; store('dgUposathaTests', state.tests ? '1' : '0'); paint(); toast(state.tests ? t.testsOn : t.testsOff); }
+      });
+    })();
     onSeg('testseg', function (v) { state.fake = v; store('dgUposathaFake', v); paint(); });
     onSeg('sw-msum', function (v) { state.meal.sum = v === '1'; saveMeal(); paint(); });
     function mealSwitch(key) { // a meal reminder on: the permission first (the same flow as the Uposatha reminders)
@@ -1264,7 +1336,7 @@
     function partsSwitch(v) {
       state.remMsg = '';
       if (v === '0' || v === false) { state.parts.rem = false; saveParts(); paint(); return; }
-      askPermission(function (ok) { state.parts.rem = ok; if (!ok) state.remMsg = t.remDenied; saveParts(); paint(); });
+      askPermission(function (ok) { state.parts.rem = ok; if (!ok) state.remMsg = t.remDenied; else haptic('ok'); saveParts(); paint(); });
     }
     onSeg('sw-prem', function (v) { partsSwitch(v === '1'); });
     onSeg('pwhich', function (v) { state.parts.which = v; saveParts(); paint(); });

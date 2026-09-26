@@ -31,6 +31,10 @@
     // where everything looks NOW (possibly in the middle of the previous move): that is where the next move starts from, so a quick
     // second tap (settings <-> night-day) continues from the visible place instead of jumping
     var from = state(), prevLabel = last && last.label;
+    // the pill starts from where it is (it is not the new item: its layout has already changed by now); the items from where they were before the change
+    var pr = pill.getBoundingClientRect(), nr = nav.getBoundingClientRect(), moving = pill.getAnimations().length > 0;
+    if (pr.width) from.pill = { x: pr.left - nr.left, w: pr.width };
+    if (!moving && last) from.b = last.b;
     cancelAll();
     var now = state();
     if (animate && !reduce && now.pill && from.pill && pill.animate) {
@@ -41,16 +45,17 @@
       });
       var lab = now.cur && now.cur.querySelector('span');
       if (lab) lab.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 130, delay: 170, easing: OUT, fill: 'backwards' });
-      if (prevLabel && from.label) { // the label of the item that has just been left: it does not vanish, it fades where it was
+      if (prevLabel && prevLabel.text !== (now.label && now.label.text)) { // the label of the item that has just been left: it does not vanish, it fades where it was
         var g = document.createElement('span'); g.className = 'up-ghost'; g.textContent = prevLabel.text;
-        g.style.left = from.label.x + 'px'; g.style.top = '6px'; nav.appendChild(g);
+        g.style.left = prevLabel.x + 'px'; g.style.top = '6px'; nav.appendChild(g);
         g.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 110, easing: OUT }).onfinish = function () { g.remove(); };
       }
     }
     paint(now); last = now;
   }
   new MutationObserver(function () { sync(true); }).observe(nav, { attributes: true, attributeFilter: ['aria-current'], subtree: true });
-  window.addEventListener('resize', function () { sync(false); });
+  var lastW = window.innerWidth; // a phone fires resize when its bars slide in and out on a scroll: only a change of the width moves the items, or a running glide would be cut to a jump
+  window.addEventListener('resize', function () { if (window.innerWidth === lastW) return; lastW = window.innerWidth; sync(false); });
   document.addEventListener('dhamma:languagechange', function () { setTimeout(function () { sync(false); }, 50); });
   window.addEventListener('load', function () { setTimeout(function () { sync(false); }, 60); setTimeout(function () { sync(false); }, 600); });
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { sync(false); });

@@ -534,6 +534,49 @@
         sheet.addEventListener('touchcancel', function () { if (dragging) release(false); });
     }
 
+    /* Swipe right closes the side drawer (the burger menu) — the same first thing anyone tries on a phone (issue #27; the bottom
+       sheets got theirs above). Touch only. A mostly-vertical move is the drawer's own scroll and is left alone; the drawer follows
+       the finger only to the right. On release the inline offset goes and .show goes with close(), so the CSS transition carries it
+       from where it is on out of sight (or back to its place). */
+    function enableSwipeRight(panel, close) {
+        var startX = 0, startY = 0, startT = 0, dx = 0, tracking = false, dragging = false;
+        function release(shouldClose) {
+            dragging = false;
+            tracking = false;
+            panel.style.transition = '';
+            panel.style.transform = '';
+            if (shouldClose) close();
+        }
+        panel.addEventListener('touchstart', function (e) {
+            tracking = e.touches.length === 1;
+            dragging = false;
+            if (!tracking) return;
+            startX = e.touches[0].clientX;
+            startY = e.touches[0].clientY;
+            startT = Date.now();
+            dx = 0;
+        }, { passive: true });
+        panel.addEventListener('touchmove', function (e) {
+            if (!tracking) return;
+            var x = e.touches[0].clientX, y = e.touches[0].clientY;
+            dx = x - startX;
+            if (!dragging) {
+                if (Math.abs(y - startY) > 8 && Math.abs(y - startY) > Math.abs(dx)) { tracking = false; return; }
+                if (dx < 0) { startX = x; startT = Date.now(); dx = 0; return; }
+                if (dx < 8) return;
+                dragging = true;
+                panel.style.transition = 'none';
+            }
+            e.preventDefault();
+            panel.style.transform = 'translateX(' + Math.max(0, dx) + 'px)';
+        }, { passive: false });
+        panel.addEventListener('touchend', function () {
+            if (!dragging) { tracking = false; return; }
+            release(dx > 80 || (dx > 30 && dx / Math.max(1, Date.now() - startT) > 0.5));
+        });
+        panel.addEventListener('touchcancel', function () { if (dragging) release(false); });
+    }
+
     function ensureSettingsSheet() {
         if (document.getElementById('dg-settings-sheet')) return;
         ensureBackdrop();
@@ -1243,6 +1286,7 @@
             '<button type="button" class="dg-sheet-close" aria-label="' + esc(t('global.common.close', 'Close')) + '">&times;</button></div>' +
             '<div class="dg-sheet-body" id="dg-quick-body"></div>';
         sheet.querySelector('.dg-sheet-close').addEventListener('click', closeQuick);
+        enableSwipeDown(sheet, closeQuick);
         document.body.appendChild(sheet);
 
         document.addEventListener('keydown', function (e) {
@@ -3047,6 +3091,8 @@
         if (back) back.addEventListener('click', closeDrawer);
         var close = document.querySelector('#dg-drawer .dg-drawer-close');
         if (close) close.addEventListener('click', closeDrawer);
+        var drawerEl = document.getElementById('dg-drawer');
+        if (drawerEl) enableSwipeRight(drawerEl, closeDrawer);
         // issue #5: navigator.share() opens the native OS sheet (Android/iOS/most mobile
         // browsers); desktop browsers that lack it fall back to copying the current URL, same
         // idea as copyToClipboard.js's "Copy Link" elsewhere on the page (kept independent here —

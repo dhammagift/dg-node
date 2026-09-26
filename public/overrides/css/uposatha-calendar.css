@@ -421,9 +421,9 @@ body.app main.page { padding-bottom: 84px; }
 body.app #dg-footer, body.app #soft, body.app .toc, body.app #s-calendar, body.app .intro-actions { display: none !important; }
 /* one tab at a time */
 body.app main.page > * { display: none; }
-body.app[data-app-tab=home] .intro, body.app[data-app-tab=home] #s-summary, body.app[data-app-tab=home] .ctx, body.app[data-app-tab=home] #meal-sum, body.app[data-app-tab=home] #slides:not([hidden]) { display: block; }
+body.app[data-app-tab=home] .intro, body.app[data-app-tab=home] #s-summary, body.app[data-app-tab=home] .ctx, body.app[data-app-tab=home] #meal-sum, body.app[data-app-tab=home] #slides:not([hidden]), body.app[data-app-tab=home] .placeask:not([hidden]) { display: block; }
 body.app[data-app-tab=home] .intro { display: block; }
-body.app[data-app-tab=list] #s-list, body.app[data-app-tab=cal] #s-cal, body.app[data-app-tab=parts] #parts, body.app[data-app-tab=home] #keys { display: block; }
+body.app[data-app-tab=list] #s-list, body.app[data-app-tab=cal] #s-cal, body.app[data-app-tab=parts] #parts, body.app[data-app-tab=keys] #keys { display: block; }
 body.app:not([data-app-tab=list]) #s-list, body.app:not([data-app-tab=cal]) #s-cal { display: none !important; } /* the screen rules above name ids and would win */
 
 /* food and vikala */
@@ -603,3 +603,39 @@ body[data-mode=lite] .dtab .s .ln.grey { display: block; }
 .bellsw[aria-pressed=true] .ic { fill: currentColor; }
 .bellsw:active { transform: scale(.97); }
 .bellsw:focus-visible { outline: 2px solid var(--dg-accent-ink); outline-offset: 2px; }
+
+.keys-art { display: none; }
+body.app[data-app-tab=keys] .keys-art { display: block; margin: 28px auto 12px; width: min(300px, 72%); height: auto; }
+
+/* Tap targets: the look stays, the area under a finger grows to about 44 px (invisible, so the pieces of the page do not change) */
+@media (pointer: coarse), (max-width: 700px) {
+  #ctx-change, #sl-all-btn, .rd, .bellsw, #cal-prev, #cal-next, #lv-seg button, a.pref, .carousel-control-prev, .carousel-control-next { position: relative; }
+  .carousel-control-prev, .carousel-control-next { position: absolute; }
+  #ctx-change::after, #sl-all-btn::after, .rd::after, .bellsw::after, #cal-prev::after, #cal-next::after, #lv-seg button::after, .carousel-control-prev::after, .carousel-control-next::after { content: ""; position: absolute; inset: -10px -8px; }
+  a.pref::after { content: ""; position: absolute; inset: -8px -5px; }
+}
+/* the bottom of the app page fades under the floating bar, so text does not run into it */
+body.app::after { content: ""; position: fixed; left: 0; right: 0; bottom: 0; height: 96px; background: linear-gradient(to bottom, transparent, var(--dg-page) 70%); pointer-events: none; z-index: 29; }
+body.app:has(#up-splash)::after { display: none; }
+/* the table of contents of the wide page wraps instead of being cut */
+.toc a { white-space: normal; }
+.ctx #ctx-place .ic { width: 13px; height: 13px; margin-right: 4px; vertical-align: -2px; }
+
+/* the rarely needed settings fold into one line: time zone, hemisphere, twilight */
+.up-adv { margin: 10px 0 0; }
+.up-adv > summary { list-style: none; cursor: pointer; font-size: 13px; color: var(--dg-text-muted); padding: 8px 0; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.up-adv > summary::-webkit-details-marker { display: none; }
+.up-adv > summary::after { content: ""; width: 8px; height: 8px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(-45deg); transition: transform .2s cubic-bezier(.23, 1, .32, 1); flex: none; }
+.up-adv[open] > summary::after { transform: rotate(45deg); }
+@media (prefers-reduced-motion: reduce) { .up-adv > summary::after { transition: none; } }
+
+/* the one question about the place, on the summary of the app, until it is answered */
+.placeask { margin: 12px 0 0; padding: 14px 16px; border-radius: 20px; background: var(--dg-accent-bg); color: var(--dg-text); }
+.placeask p { margin: 0 0 10px; font-size: 14.5px; line-height: 1.4; }
+.placeask div { display: flex; gap: 8px; flex-wrap: wrap; }
+.placeask button { border: 0; border-radius: 999px; min-height: 40px; padding: 0 16px; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+.placeask .pa-yes { background: var(--dg-accent); color: var(--dg-on-accent, #fff); }
+.placeask .pa-no { background: transparent; color: var(--dg-accent-ink); }
+.ctx .dot { margin: 0 2px; }
+.ctx .modern { color: #9b1c31; font-weight: 600; }
+[data-theme="dark"] .ctx .modern { color: #d8546b; }

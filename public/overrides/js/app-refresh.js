@@ -4,25 +4,28 @@
 (function () {
   var P = new URLSearchParams(location.search), reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   var EMPH_DEC = 'cubic-bezier(.05,.7,.1,1)', EMPH_ACC = 'cubic-bezier(.3,0,.8,.15)';
-  var ORDER = ['home', 'list', 'cal', 'parts']; // the key suttas moved into the summary; the gear (settings) is not a tab
+  var ORDER = ['home', 'list', 'cal', 'parts', 'keys']; // the settings are the gear of the app bar, not a tab
   // Пары «контур / заливка»: активная вкладка заливает .up-fill, как filled-иконки Material
   var S = 'viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"';
   var ICONS = {
     home: '<svg class="ic" ' + S + '><path class="up-fill" d="M19.5 14.6A8 8 0 1 1 9.4 4.5a6.4 6.4 0 0 0 10.1 10.1z"/></svg>',
     list: '<svg class="ic" ' + S + '><circle class="up-fill" cx="4.6" cy="6" r="1.9"/><circle class="up-fill" cx="4.6" cy="12" r="1.9"/><circle class="up-fill" cx="4.6" cy="18" r="1.9"/><path d="M9.5 6h11M9.5 12h11M9.5 18h7"/></svg>',
     cal: '<svg class="ic" ' + S + '><rect x="3" y="4.5" width="18" height="16.5" rx="3.5"/><path class="up-fill" d="M3 8a3.5 3.5 0 0 1 3.5-3.5h11A3.5 3.5 0 0 1 21 8v2H3z"/><path d="M8 2.5v4M16 2.5v4M3 10h18"/><circle cx="12" cy="15.5" r="1.7" fill="currentColor" stroke="none"/></svg>',
-    parts: '<svg class="ic" ' + S + '><circle class="up-soft" cx="12" cy="12" r="8.5"/><path d="M12 3.5a8.5 8.5 0 0 0 0 17z" fill="currentColor"/></svg>',
+    parts: '<svg class="ic" ' + S + '><path class="up-fill" d="M5 17a7 7 0 0 1 14 0z"/><path d="M2.5 17h19M12 4.5v2.5M5 9l1.8 1.8M19 9l-1.8 1.8M8 21h8"/></svg>',
     keys: '<svg class="ic" ' + S + '><path class="up-fill" d="M12 6.6C10 5 7 4.4 3.5 4.9v13.2c3.5-.5 6.5.1 8.5 1.7 2-1.6 5-2.2 8.5-1.7V4.9C17 4.4 14 5 12 6.6z"/><path class="up-cut" d="M12 6.6v13"/></svg>'
   };
   function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
   function visible(el) { return el && el.getClientRects().length > 0; }
 
-  // Заставка — повторяет знак #up-mark, но луна и облако раздельно: луна поднимается из-под маски облака
+  // The splash is the app's own launch mark (the native one, 890 ms): the whole mark stands still, the clouds part with their cuts
+  // and fade, the clean moon pulses once. The clouds cut the moon through a mask; the cuts travel and fade with the clouds.
   function splash(loop) {
     var d = document.createElement('div'); d.id = 'up-splash';
-    d.innerHTML = '<svg viewBox="2 7.5 54.5 43.5" aria-hidden="true"><mask id="up-sp-cut" maskUnits="userSpaceOnUse" x="0" y="0" width="64" height="64"><rect width="64" height="64" fill="#fff"/><path d="M6,37 H31 M15,47 H43" stroke="#000" stroke-width="13" stroke-linecap="round"/></mask>' +
+    var K = 'stroke-width="7" stroke-linecap="round" fill="none"', C = 'stroke-width="13" stroke-linecap="round" fill="none" stroke="#000"';
+    d.innerHTML = '<svg viewBox="2 7.5 54.5 43.5" aria-hidden="true"><mask id="up-sp-cut" maskUnits="userSpaceOnUse" x="-20" y="0" width="100" height="64"><rect x="-20" width="100" height="64" fill="#fff"/>' +
+      '<g class="mvl"><path d="M6,37 H31" ' + C + '/></g><g class="mvr"><path d="M15,47 H43" ' + C + '/></g></mask>' +
       '<g mask="url(#up-sp-cut)"><circle class="mn" cx="39" cy="25" r="17" fill="var(--dg-navy-ink)"/></g>' +
-      '<g stroke="var(--dg-text-muted)" stroke-width="7" stroke-linecap="round" fill="none"><path class="cl a" pathLength="1" d="M6,37 H31"/><path class="cl b" pathLength="1" d="M15,47 H43"/><path class="cl c" pathLength="1" d="M50,47 H53"/></g></svg><b>Uposatha</b>';
+      '<g stroke="var(--dg-text-muted)"><g class="mvl"><path d="M6,37 H31" ' + K + '/></g><g class="mvr"><path d="M15,47 H43" ' + K + '/></g><g class="mvd"><path d="M50,47 H53" ' + K + '/></g></g></svg><b>Uposatha</b>';
     document.body.appendChild(d);
     setTimeout(function () {
       d.classList.add('out');
@@ -86,7 +89,7 @@
     // the page knows which Uposatha runs now and which is next (the list is not parsed when it says so)
     var curName = H && H.cur ? H.cur.split(' · ')[0].split(' of the ')[0] : '';
     h.querySelector('.hk').textContent = curName ? (ru ? 'Сегодня упосатха · ' : 'Uposatha today · ') + curName : '';
-    h.querySelector('.hc').textContent = ru ? 'До неё' : 'Until then';
+    h.querySelector('.hc').textContent = ru ? (curName ? 'До следующей' : 'До начала') : (curName ? 'Until the next one' : 'Until it begins');
     var left = n ? Math.max(0, n.at - Date.now()) : 0, v = [Math.floor(left / 864e5), Math.floor(left / 36e5) % 24, Math.floor(left / 6e4) % 60];
     $$('.cd > span', h).forEach(function (s, i) {
       var b = s.querySelector('b'), val = String(v[i]).padStart(i ? 2 : 1, '0');
@@ -96,11 +99,32 @@
     h.querySelector('.hn').textContent = n ? ((ru ? (curName ? 'Следующая: ' : 'Ближайшая: ') : 'Next: ') + n.name + ' · ' + n.at.toLocaleString(ru ? 'ru-RU' : 'en-GB', { weekday: 'short', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })) : '';
   }
 
+  // The logo in the corner of the bar plays the launch mark again every 3-4 minutes: the clouds part and come back, the moon pulses once
+  function logoLoop() {
+    var old = document.querySelector('.tbar .wordmark .up-mark'); if (!old || reduce) return;
+    var K = 'stroke-width="7" stroke-linecap="round" fill="none"', C = 'stroke-width="13" stroke-linecap="round" fill="none" stroke="#000"';
+    var lg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    lg.setAttribute('class', 'up-mark up-lg'); lg.setAttribute('viewBox', '2 7.5 54.5 43.5'); lg.setAttribute('aria-hidden', 'true');
+    lg.innerHTML = '<mask id="up-lg-cut" maskUnits="userSpaceOnUse" x="-20" y="0" width="100" height="64"><rect x="-20" width="100" height="64" fill="#fff"/><g class="mvl"><path d="M6,37 H31" ' + C + '/></g><g class="mvr"><path d="M15,47 H43" ' + C + '/></g></mask>' +
+      '<g mask="url(#up-lg-cut)"><circle class="mn" cx="39" cy="25" r="17" fill="var(--dg-navy-ink)"/></g>' +
+      '<g stroke="var(--dg-text-muted)"><g class="mvl"><path d="M6,37 H31" ' + K + '/></g><g class="mvr"><path d="M15,47 H43" ' + K + '/></g><g class="mvd"><path d="M50,47 H53" ' + K + '/></g></g>';
+    old.replaceWith(lg);
+    (function next() {
+      setTimeout(function () {
+        if (!document.hidden && !document.body.classList.contains('dg-drawer-open')) { lg.classList.add('play'); setTimeout(function () { lg.classList.remove('play'); }, 1900); }
+        next();
+      }, 180000 + Math.random() * 60000);
+    })();
+    var wm = lg.closest('.wordmark'); if (wm) wm.addEventListener('click', function (e) { e.preventDefault(); window.__upoLogoPlay(); }); // a tap on the logo plays it too: the page is already open, the link would only reload it
+    window.__upoLogoPlay = function () { lg.classList.remove('play'); void lg.getBoundingClientRect(); lg.classList.add('play'); setTimeout(function () { lg.classList.remove('play'); }, 1900); }; // for a check by hand
+  }
+
   function init() {
     var body = document.body, nav = document.getElementById('appnav');
     if (!body.classList.contains('app') || !nav) return;
     body.setAttribute('data-look', P.get('look') || localStorage.getItem('upLook') || 'm3');
     hero(); setInterval(hero, 15000);
+    logoLoop();
     new MutationObserver(function () { hero(); }).observe(document.getElementById('list'), { childList: true });
     var tm = document.getElementById('t-moon'); if (tm) new MutationObserver(function () { hero(); }).observe(tm, { childList: true, subtree: true });
     var main = document.querySelector('main.page'), busy = false;
@@ -113,6 +137,7 @@
         var from = body.getAttribute('data-app-tab'), ic = b.querySelector('.ic');
         if (ic) { ic.classList.remove('pop'); void ic.offsetWidth; ic.classList.add('pop'); }
         if (from === k) { window.scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' }); return; }
+        if (!reduce && !busy) $$('button', nav).forEach(function (x) { x.setAttribute('aria-current', String(x === b)); }); // the pill leaves at the tap, not after the page has slid out
         if (reduce || busy) { orig.call(b); return; }
         var dir = ORDER.indexOf(k) > ORDER.indexOf(from) ? 1 : -1; busy = true;
         // Выход короче входа (animations.md): 150 мс против 400
@@ -148,5 +173,9 @@
   if (P.get('splash') === 'loop') document.addEventListener('DOMContentLoaded', function () { if (inApp()) splash(true); });
   else if (!P.get('embed')) document.addEventListener('DOMContentLoaded', function () { if (inApp() && !sessionStorage.getItem('upSplash')) { sessionStorage.setItem('upSplash', '1'); splash(false); } });
 
-  window.addEventListener('load', function () { theme(); init(); setTimeout(theme, 400); });
+  window.addEventListener('load', function () {
+    theme(); init(); setTimeout(theme, 400);
+    // the page was hidden while it built itself (see the head): show it when the fonts are in and the bar has taken its place
+    (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(function () { setTimeout(function () { requestAnimationFrame(function () { if (window.__upoReveal) window.__upoReveal(); }); }, 130); });
+  });
 })();

@@ -94,3 +94,36 @@ body.app .grid .c[data-sel=true] { box-shadow: none; background: color-mix(in sr
 body.app .keys li.kq { padding: 0 16px; margin: 0 0 6px; border-radius: 18px; }
 body.app .keys li.kq summary { padding: 12px 0; }
 body.app .keys li.kq details[open] > ul { padding-bottom: 10px; }
+
+/* the theme and the settings sit in the corner of the app bar; the bottom bar keeps the screens only */
+.apptop { display: none; }
+body.app .apptop { display: flex; align-items: center; gap: 2px; margin-left: auto; }
+body.app .apptop .rb { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; }
+body.app .apptop .ic { width: 22px; height: 22px; }
+body.app .apptop .th-sun { display: none; }
+body.app[data-dark=true] .apptop .th-sun { display: block; }
+body.app[data-dark=true] .apptop .th-moon { display: none; }
+
+/* Settings drawer: the theme and the gear of the bar slide onto the places of the drawer's own share and close buttons, and the gear turns into the cross.
+   The bar rises over the drawer (its own background and the title give way); the drawer's two buttons stay under, unseen. */
+body.app .apptop .rb { position: relative; transition: transform .28s cubic-bezier(.23, 1, .32, 1); }
+body.app .apptop .g-gear, body.app .apptop .g-x { transition: transform .28s cubic-bezier(.23, 1, .32, 1), opacity .2s ease-out; }
+body.app .apptop .g-x { position: absolute; opacity: 0; transform: rotate(-90deg) scale(.6); }
+body.app.dg-drawer-open .apptop .g-gear { opacity: 0; transform: rotate(90deg) scale(.6); }
+body.app.dg-drawer-open .apptop .g-x { opacity: 1; transform: none; }
+body.app .tbar .wordmark { transition: opacity .2s ease-out; }
+body.app.dg-drawer-open .tbar { z-index: 1100; background: transparent !important; box-shadow: none !important; border-bottom-color: transparent !important; pointer-events: none; transform: none; }
+body.app.dg-drawer-open .tbar .wordmark { opacity: 0; }
+body.app.dg-drawer-open .apptop { pointer-events: auto; }
+body.app.dg-drawer-open .apptop .rb { transform: translate(var(--tx, 0px), var(--ty, 0px)) scale(.773); }
+body.app #dg-drawer .dg-drawer-share, body.app #dg-drawer .dg-drawer-close { visibility: hidden; }
+@media (prefers-reduced-motion: reduce) { body.app .apptop .rb, body.app .apptop .g-gear, body.app .apptop .g-x { transition: none; } }
+
+/* the theme button turns into the share button when the drawer opens (the same way the gear turns into the cross) */
+body.app .apptop .th-moon, body.app .apptop .th-sun, body.app .apptop .g-share { transition: transform .28s cubic-bezier(.23, 1, .32, 1), opacity .2s ease-out; }
+body.app .apptop .g-share { position: absolute; opacity: 0; transform: rotate(-90deg) scale(.6); }
+body.app.dg-drawer-open .apptop .th-moon, body.app.dg-drawer-open .apptop .th-sun { opacity: 0; transform: rotate(90deg) scale(.6); }
+body.app.dg-drawer-open .apptop .g-share { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) { body.app .apptop .th-moon, body.app .apptop .th-sun, body.app .apptop .g-share { transition: none; } }
+body.app .apptop .rb { transition: transform .28s cubic-bezier(.23, 1, .32, 1), background-color .2s ease-out, box-shadow .2s ease-out; }
+body.app.dg-drawer-open.up-dscroll .apptop .rb { background: var(--dg-surface); box-shadow: 0 2px 10px rgba(0, 0, 0, .2); }
