@@ -1073,7 +1073,16 @@
                               : 'The library is downloaded, but this tab is not using it — close the site’s other tabs and the installed app, then reload')
                         : (ru ? 'Нет сети, и офлайн-библиотека не скачана: Настройки → Офлайн-библиотека → Скачать'
                               : 'No connection, and the offline library is not downloaded: Settings → Offline library → Download');
-                    notify(why);
+                    // The apps' launch layer (src/launch-screens.js in dg-apps) turns "no library and
+                    // no answer" into a full-screen "no connection" with a Try again button; the
+                    // site, which has no such layer, keeps its toast. With a library on disk the
+                    // failure is about the tab, not the connection, so it stays a message.
+                    if (window.dgLaunch && !(st && st.present)) {
+                        window.dgLaunch.error('dg', navigator.onLine === false ? 'none' : 'down',
+                            { retry: function () { location.reload(); return new Promise(function () {}); } });
+                    } else {
+                        notify(why);
+                    }
                     throw e;
                 });
             }
