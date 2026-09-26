@@ -19,13 +19,15 @@ SLIDES = [
     ('bu-pm-15',  [15], 'vinaya', 'pli-tv-bu-pm', ['5.2'], 'sv', 'Bu Pm', 'Бху Пм'),
     ('an3.37-few',  None, 'an/an3', 'an3.37', ['2.3', '2.4', '2.5'], 'sv', 'AN 3.37', 'АН 3.37'),
     ('an3.37-many', None, 'an/an3', 'an3.37', ['3.3', '3.4', '3.5'], 'sv', 'AN 3.37', 'АН 3.37'),
-    ('mn83',      None, 'mn',      'mn83',   ['3.3'],         'sv', 'MN 83', 'МН 83'),
+    ('mn83',      [8, 14, 15], 'mn',      'mn83',   ['3.3'],         'sv', 'MN 83', 'МН 83'),
     ('sn20.4',    None, 'sn/sn20', 'sn20.4',  ['1.2'],         'sv', 'SN 20.4', 'СН 20.4'),
     ('mn53-night', None, 'mn',     'mn53',   ['10.3', '10.4', '10.5'], 'sv', 'MN 53', 'МН 53'),
     ('ud1.1-watch', None, 'kn/ud/vagga1', 'ud1.1', ['1.4'],  'sv', 'Ud 1.1', 'Уд 1.1'),
     ('an3.70-three', None, 'an/an3', 'an3.70', ['2.1', '2.2', '2.3'], 'sv', 'AN 3.70', 'АН 3.70'),
     ('an3.70-noble', None, 'an/an3', 'an3.70', ['4.1', '4.2', '4.3'], 'sv', 'AN 3.70', 'АН 3.70'),
     ('an3.70-vow',   None, 'an/an3', 'an3.70', ['19.1', '19.2', '19.3', '19.4'], 'sv', 'AN 3.70', 'АН 3.70'),
+    ('snp2.14',   [8, 14, 15], 'kn/snp', 'snp2.14', ['26.1', '26.2', '26.3', '26.4', '27.1', '27.2', '27.3', '28.3', '28.4'], 'sv', 'Snp 2.14', 'Снп 2.14'),
+    ('an8.41',    None, 'an/an8', 'an8.41', ['2.1', '2.2', '2.3', '2.5'], 'sv', 'AN 8.41', 'АН 8.41'),
     ('an10.46',   None, 'an/an10', 'an10.46', ['1.5'],        'o',  'AN 10.46', 'АН 10.46'),
 ]
 # lines that are about an Uposatha day but do not teach it: they go to the random pool
@@ -43,7 +45,7 @@ for sid, days, nik, sutta, segs, ru_tr, en_label, ru_label in SLIDES:
     ru = find('', sutta, 'ru', ru_tr)
     en = find('', sutta, 'en', 'sujato')
     key = lambda s: f'{sutta}:{s}'
-    join = lambda d: ' '.join(d[key(s)].strip() for s in segs if key(s) in d)
+    join = lambda d: ' '.join(d[key(s)].strip() for s in segs if key(s) in d).replace('<j>', '')
     # "special" slides belong to the 8th / 14th / 15th day; "general" ones say that the Uposatha is to be kept
     if sid in RANDOM_IDS: days = None
     out.append({'id': sid, 'kind': 'random' if sid in RANDOM_IDS else 'special' if days else 'general', 'days': days, 'ref': key(segs[0]), 'cite': {'en': en_label, 'ru': ru_label}, 'pli': join(pli), 'ru': join(ru), 'en': join(en).replace(' Then—', '')})

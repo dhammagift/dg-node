@@ -204,8 +204,12 @@
  },
  {
   "id": "mn83",
-  "kind": "general",
-  "days": null,
+  "kind": "special",
+  "days": [
+   8,
+   14,
+   15
+  ],
   "ref": "mn83:3.3",
   "cite": {
    "en": "MN 83",
@@ -292,6 +296,36 @@
   "pli": "Sa kho so, visākhe, ariyasāvako iti paṭisañcikkhati: ‘yāvajīvaṁ arahanto pāṇātipātaṁ pahāya pāṇātipātā paṭiviratā nihitadaṇḍā nihitasatthā lajjī dayāpannā sabbapāṇabhūtahitānukampī viharanti; ahampajja imañca rattiṁ imañca divasaṁ pāṇātipātaṁ pahāya pāṇātipātā paṭivirato nihitadaṇḍo nihitasattho lajjī dayāpanno sabbapāṇabhūtahitānukampī viharāmi. Imināpi aṅgena arahataṁ anukaromi, uposatho ca me upavuttho bhavissati.",
   "ru": "",
   "en": "Then that noble disciple reflects: ‘As long as they live, the perfected ones give up killing living creatures, renouncing the rod and the sword. They are scrupulous and kind, and live full of sympathy for all living beings. I, too, for this day and night will give up killing living creatures, renouncing the rod and the sword. I’ll be scrupulous and kind, and live full of sympathy for all living beings. I will observe the sabbath by doing as the perfected ones do in this respect."
+ },
+ {
+  "id": "snp2.14",
+  "kind": "special",
+  "days": [
+   8,
+   14,
+   15
+  ],
+  "ref": "snp2.14:26.1",
+  "cite": {
+   "en": "Snp 2.14",
+   "ru": "Снп 2.14"
+  },
+  "pli": "Pāṇaṁ na hane na cādinnamādiye, Musā na bhāse na ca majjapo siyā; Abrahmacariyā virameyya methunā, Rattiṁ na bhuñjeyya vikālabhojanaṁ. Mālaṁ na dhāre na ca gandhamācare, Mañce chamāyaṁ va sayetha santhate; Etañhi aṭṭhaṅgikamāhuposathaṁ, Pāṭihāriyapakkhañca pasannamānaso, Aṭṭhaṅgupetaṁ susamattarūpaṁ.",
+  "ru": "",
+  "en": "You shouldn’t kill living creatures, or steal, or lie, or drink liquor. Be chaste, refraining from sex, and don’t eat at night, the wrong time. Not wearing garlands or applying fragrance, you should sleep on a low bed, or a mat on the ground. This is the eight-factored sabbath, they say, on the fourteenth, fifteenth, and eighth of the fortnight, as well as on the fortnightly special displays,"
+ },
+ {
+  "id": "an8.41",
+  "kind": "general",
+  "days": null,
+  "ref": "an8.41:2.1",
+  "cite": {
+   "en": "AN 8.41",
+   "ru": "АН 8.41"
+  },
+  "pli": "“Aṭṭhaṅgasamannāgato, bhikkhave, uposatho upavuttho mahapphalo hoti mahānisaṁso mahājutiko mahāvipphāro. Kathaṁ upavuttho ca, bhikkhave, aṭṭhaṅgasamannāgato uposatho mahapphalo hoti mahānisaṁso mahājutiko mahāvipphāro? Idha, bhikkhave, ariyasāvako iti paṭisañcikkhati: Ahampajja imañca rattiṁ imañca divasaṁ pāṇātipātaṁ pahāya pāṇātipātā paṭivirato nihitadaṇḍo nihitasattho lajjī dayāpanno, sabbapāṇabhūtahitānukampī viharāmi.",
+  "ru": "«Монахи, соблюдаемая в полных восьми факторах Упосатха приносит великий плод и пользу, она истинно сверкающая и всепроникающая. И каким образом Упосатха соблюдается в полных восьми факторах, так что приносит великий плод и пользу, и что она неимоверно сверкающая и всепроникающая? Вот, монахи, благородный ученик рассуждает так: Сегодня, в течение этой ночи и дня, я также отброшу и буду воздерживаться от уничтожения жизни. Я также буду пребывать в сострадании ко всем живым существам, отбросив дубину и оружие, добросовестным и милосердным.",
+  "en": "“Mendicants, the observance of the sabbath with its eight factors is very fruitful and beneficial and brilliant and bountiful. And how should it be observed? It’s when a noble disciple reflects: I, too, for this day and night will give up killing living creatures, renouncing the rod and the sword. I’ll be scrupulous and kind, and live full of sympathy for all living beings."
  },
  {
   "id": "an10.46",
