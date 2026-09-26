@@ -154,6 +154,22 @@ var PRECACHE_URLS = [
 
     // webfonts @font-face'd by the stylesheets above; without them text reflows to a fallback
     // face online-offline.
+    '/assets/fonts/lato-400-latin.woff2',
+    '/assets/fonts/lato-400-pali.woff2',
+    '/assets/fonts/lato-400-ext.woff2',
+    '/assets/fonts/lato-400-cyrillic.woff2',
+    '/assets/fonts/lato-400-italic-latin.woff2',
+    '/assets/fonts/lato-400-italic-pali.woff2',
+    '/assets/fonts/lato-400-italic-ext.woff2',
+    '/assets/fonts/lato-400-italic-cyrillic.woff2',
+    '/assets/fonts/lato-600-latin.woff2',
+    '/assets/fonts/lato-600-pali.woff2',
+    '/assets/fonts/lato-600-ext.woff2',
+    '/assets/fonts/lato-600-cyrillic.woff2',
+    '/assets/fonts/lato-700-latin.woff2',
+    '/assets/fonts/lato-700-pali.woff2',
+    '/assets/fonts/lato-700-ext.woff2',
+    '/assets/fonts/lato-700-cyrillic.woff2',
     '/assets/fonts/lato-400.woff2',
     '/assets/fonts/lato-400-italic.woff2',
     '/assets/fonts/lato-600.woff2',

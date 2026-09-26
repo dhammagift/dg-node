@@ -488,6 +488,52 @@ window.mergeGathas = function(htmlData, dataObjects) {
     return processedSegments;
 };
 
+// Highlighting of the ?s= words, blind to diacritics the way the search is: the index folds ā->a, ṁ->m,
+// ñ->n, ṭ->t ... and ё->е, so "satipatthana" finds and marks "satipaṭṭhāna". The fold keeps the text
+// length (one character in, one out), so the offsets found in the folded copy address the real text.
+const FIND_FOLD_CACHE = {};
+function foldFindChar(ch) {
+    let folded = FIND_FOLD_CACHE[ch];
+    if (folded === undefined) {
+        const stripped = ch.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
+        folded = stripped.length === 1 ? stripped : ch.toLowerCase();
+        if (folded.length !== 1) folded = ch;
+        if (folded === 'ё') folded = 'е';
+        FIND_FOLD_CACHE[ch] = folded;
+    }
+    return folded;
+}
+function foldForFind(text) { return text.replace(/[A-Z\u0080-\uFFFF]/g, foldFindChar); }
+
+let finderCache = { finder: null, fn: null };
+function finderHighlighter(finder) {
+    if (finderCache.finder === finder) return finderCache.fn;
+    const wrap = match => `<b class='match finder'>${match}</b>`;
+    let fn;
+    if (/[.*+?^${}()|[\]\\]/.test(finder)) {
+        // A regex keyword stays as typed, matched against the raw text (exactly as before).
+        const regex = new RegExp(finder, 'gi');
+        fn = text => text.replace(regex, wrap);
+    } else {
+        // A plain word is matched the way search matches it: punctuation between its letters in the
+        // text is ignored ("evaṁ bhikkhave" → "evaṁ, bhikkhave", core/search-core.js punctTolerantPattern).
+        const regex = new RegExp(Array.from(foldForFind(finder)).join('[,;:!"\'“”‘’«»]*'), 'gi');
+        fn = text => {
+            const haystack = foldForFind(text);
+            let out = '', last = 0, hit;
+            regex.lastIndex = 0;
+            while ((hit = regex.exec(haystack)) !== null) {
+                if (hit[0].length === 0) { regex.lastIndex++; continue; }
+                out += text.slice(last, hit.index) + wrap(text.slice(hit.index, hit.index + hit[0].length));
+                last = hit.index + hit[0].length;
+            }
+            return last === 0 ? text : out + text.slice(last);
+        };
+    }
+    finderCache = { finder, fn };
+    return fn;
+}
+
 window.applyRemovePunct = function(dataObj, segment) {
     if (localStorage.getItem("removePunct") === "true" && dataObj && dataObj[segment] !== undefined) {
         dataObj[segment] = dataObj[segment].replace(/[-—–]/g, ' ')
@@ -1495,14 +1541,12 @@ window.buildSutta = async function(rawSlug, opts) {
             // A plain search word is matched the way search matches it: punctuation between its
             // letters in the text is ignored ("evaṁ bhikkhave" → "evaṁ, bhikkhave",
             // core/search-core.js punctTolerantPattern). A regex keyword stays as typed.
-            const plainFinder = !/[.*+?^${}()|[\]\\]/.test(finder);
-            let regex = new RegExp(plainFinder ? Array.from(finder).join('[,;:!"\'“”‘’«»]*') : finder, 'gi');
-            const highlight = match => `<b class='match finder'>${match}</b>`;
+            const highlightFinder = finderHighlighter(finder);
             try {
-                if (paliData[segment]) paliData[segment] = paliData[segment].replace(regex, highlight);
-                if (varData[segment]) varData[segment] = varData[segment].replace(regex, highlight);
+                if (paliData[segment]) paliData[segment] = highlightFinder(paliData[segment]);
+                if (varData[segment]) varData[segment] = highlightFinder(varData[segment]);
                 allTransData.forEach(data => {
-                    if (data[segment]) data[segment] = data[segment].replace(regex, highlight);
+                    if (data[segment]) data[segment] = highlightFinder(data[segment]);
                 });
             } catch (error) {}
         }

@@ -145,14 +145,17 @@ const ScrollManager = {
                     // Same rule as megareader.js's highlight: punctuation between the letters of a
                     // plain search word is ignored ("evaṁ bhikkhave" finds "evaṁ, bhikkhave").
                     const plain = !/[.*+?^${}()|[\]\\]/.test(searchText);
-                    const regex = new RegExp(plain ? Array.from(searchText).join('[,;:!"\'“”‘’«»]*') : searchText, 'gi');
+                    // ...and blind to diacritics like the highlight (megareader.js foldForFind), so the
+                    // node the highlight marked is the node found here.
+                    const fold = plain && typeof foldForFind === 'function' ? foldForFind : (t => t);
+                    const regex = new RegExp(plain ? Array.from(fold(searchText)).join('[,;:!"\'“”‘’«»]*') : searchText, 'gi');
                     const textNodes = document.evaluate(
                         ".//text()[normalize-space(parent::*) != '']",
                         suttaArea, null, XPathResult.UNORDERED_NODE_SNAPSHOT_TYPE, null
                     );
                     for (let i = 0; i < textNodes.snapshotLength; i++) {
                         const currentNode = textNodes.snapshotItem(i);
-                        if (regex.test(currentNode.nodeValue)) return currentNode.parentNode;
+                        if (regex.test(fold(currentNode.nodeValue))) return currentNode.parentNode;
                     }
                 } catch (e) {}
                 return null;

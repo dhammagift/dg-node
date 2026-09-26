@@ -2215,7 +2215,19 @@ function saveExactScrollPosition() {
 let textInfoData = null;
 
 // 1. Асинхронная подгрузка карты диапазонов
-fetchTextInfo().then(data => textInfoData = data);
+// The range map (~510 KB) is only read by the click handler below, so it is kept off the page's critical
+// path: fetched once the page has loaded and is idle, or earlier when the pointer reaches one of the
+// buttons that use it. Sharing fetchTextInfo() means the reader's history titles reuse the same download.
+function loadRoutingMap() { return fetchTextInfo().then(data => { textInfoData = data; }); }
+document.addEventListener('pointerover', e => {
+    if (!textInfoData && e.target.closest && e.target.closest('#MenuRead, #home-button a')) loadRoutingMap();
+}, { passive: true });
+function loadRoutingMapWhenIdle() {
+    // The SPA page (home, results, reader) has none of these controls — nothing to fetch there at all.
+    const run = () => { if (document.querySelector('#MenuRead, #home-button, #searchForm')) (window.requestIdleCallback || setTimeout)(loadRoutingMap, { timeout: 8000 }); };
+    if (document.readyState === 'complete') run(); else window.addEventListener('load', run, { once: true });
+}
+loadRoutingMapWhenIdle();
 
 // 2. Транслитерация
 function cyrillicToLatin(str) {
