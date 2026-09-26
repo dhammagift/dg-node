@@ -395,8 +395,7 @@ body.embed .soft { display: none; }
 #help { scroll-margin-top: 90px; }
 body.embed .help { display: none; }
 
-/* the place block of the settings: softly lit while no place is set (it is what the page asks for), and it blinks with the reader's .dg-temp-blink when a link leads there */
-body[data-loc=off] #dg-drawer #loc-block { background: var(--dg-accent-bg); border-radius: 8px; }
+/* the place block of the settings blinks with the reader's .dg-temp-blink when a link leads there; no permanent tint */
 
 /* same blink as the reader (extrastyles.css .dg-temp-blink): three soft pulses */
 @keyframes dgTempBlink { 0%, 100% { box-shadow: 0 0 0 2px grey; } 50% { box-shadow: 0 0 0 5px rgba(128,128,128, 0.5); } }
