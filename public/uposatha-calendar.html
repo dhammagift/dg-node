@@ -68,8 +68,14 @@
 
 <main class="page">
   <div class="intro">
-    <h1 data-t="h1"></h1>
-    <p><span data-t="lead"></span> <a href="#keys" id="to-keys" data-t="suttas"></a></p>
+    <div class="intro-text">
+      <h1 data-t="h1"></h1>
+      <p><span data-t="lead"></span> <a href="#keys" id="to-keys" data-t="suttas"></a></p>
+    </div>
+    <div class="intro-actions">
+      <button type="button" class="pillbtn" id="b-share"><svg class="ic"><use href="#i-share"/></svg><span data-t="share"></span></button>
+      <button type="button" class="pillbtn accent" id="b-cal"><svg class="ic"><use href="#i-calplus"/></svg><span data-t="addCal"></span></button>
+    </div>
   </div>
 
   <section class="today" aria-live="polite">
@@ -230,13 +236,6 @@
       <p class="dg-uset-note" id="rem-msg"></p>
       <p class="dg-uset-note" id="rem-note"></p>
     </div>
-    <div id="d-cal">
-      <p class="dg-drawer-subtitle" data-t="gCal"></p>
-      <p class="dg-uset-note" data-t="subNote"></p>
-      <div class="dg-segmented dg-uset-links"><a class="dg-seg-link" id="sub-apple" href="#">Apple</a><a class="dg-seg-link" id="sub-google" href="#" target="_blank" rel="noopener">Google</a><button type="button" id="sub-copy" data-t="copyLink"></button></div>
-      <p class="dg-uset-note" data-t="icsNote"></p>
-      <button class="dg-field-btn" type="button" id="p-ics"><span data-t="ics"></span></button>
-    </div>
     <a class="dg-drawer-row" href="/settings/" data-dg-icon="gear">{{global.common.settings}}</a>
     <!-- Своя кнопка на главную: подпись, адрес, значок. Форму рисует home.js в обычной шторке.
          Перенесено сюда из «Навигации» по просьбе владельца — это управление кнопками, то есть
@@ -249,6 +248,18 @@
     <a class="dg-drawer-row" href="/login" data-dg-icon="login">{{global.common.login}}</a>
   </nav>
 </aside>
+<div class="sheet" id="cal-modal" data-open="false" role="dialog" aria-modal="true">
+  <div class="sheet-head"><b data-t="addCal"></b><button class="x" type="button" data-close data-tt="close"><svg class="ic"><use href="#i-x"/></svg></button></div>
+  <div class="sheet-body cal-body" id="d-cal">
+    <h4 data-t="subH"></h4>
+    <p class="cal-note" data-t="subNote"></p>
+    <div class="cal-links"><a class="pillbtn" id="sub-apple" href="#"><svg class="ic"><use href="#i-calplus"/></svg>Apple</a><a class="pillbtn" id="sub-google" href="#" target="_blank" rel="noopener"><svg class="ic"><use href="#i-calplus"/></svg>Google</a><button type="button" class="pillbtn" id="sub-copy" data-t="copyLink"></button></div>
+    <h4 data-t="fileH"></h4>
+    <p class="cal-note" data-t="icsNote"></p>
+    <button type="button" class="pillbtn" id="p-ics"><svg class="ic"><use href="#i-calplus"/></svg><span data-t="ics"></span></button>
+    <p class="cal-note" data-t="calRemind"></p>
+  </div>
+</div>
 <div class="sheet" id="sl-modal" data-open="false" role="dialog" aria-modal="true">
   <div class="sheet-head"><b id="sl-modal-title"></b><button class="x" type="button" data-close data-tt="close"><svg class="ic"><use href="#i-x"/></svg></button></div>
   <div class="sheet-sort" id="sl-sort"><button type="button" data-s="kind" data-t="sortKind"></button><button type="button" data-s="sutta" data-t="sortSutta"></button></div>

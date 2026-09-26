@@ -33,14 +33,14 @@
     en: {
       pH: 'Parts of the day and night', pSub: 'Sunrise to sunset is cut into three parts, and sunset to sunrise likewise — for your place and the season.', pDay: 'Day', pNight: 'Night',
       dayParts: [['Pubbaṇhasamaya', 'morning'], ['Majjhanhikasamaya', 'midday'], ['Sāyanhasamaya', 'evening']], nightParts: [['Paṭhama yāma', 'first watch'], ['Majjhima yāma', 'middle watch'], ['Pacchima yāma', 'last watch']],
-      fSpecial: 'special', fGeneral: 'general', fRandom: 'random', slTitle: 'From the suttas', gUposatha: 'Uposatha', on: 'On', off: 'Off', fAll: 'All', sortKind: 'By kind', sortSutta: 'By sutta', showAll: 'Show all', readIt: 'Read', dayTag: function (d) { return d.map(function (n) { return n + 'th'; }).join(', ') + ' day'; },
+      fSpecial: 'special', fGeneral: 'general', fRandom: 'random', slTitle: 'From the suttas', addCal: 'Add to calendar', subH: 'Subscribe', fileH: 'Or a file', calRemind: 'The reminder time and the days are taken from the reminder settings in the menu.', gUposatha: 'Uposatha', on: 'On', off: 'Off', fAll: 'All', sortKind: 'By kind', sortSutta: 'By sutta', showAll: 'Show all', readIt: 'Read', dayTag: function (d) { return d.map(function (n) { return n + 'th'; }).join(', ') + ' day'; },
       age: 'age', of30: 'of 30', from: 'from', left: 'left', dU: 'd', hU: 'h', mU: 'min',
       searchPh: 'Search: kacchapa, dn22…', searchGo: 'Search', tocTitle: 'Contents (Alt+2)', clear: 'Clear', tag: 'observance days', compass: 'Favorites / History', menu: 'Menu', theme: 'Theme', prev: 'Previous', next: 'Next', close: 'Close',
       h1: 'Uposatha days', lead: 'The 14th, 15th and 8th lunar days of each half-month, as the suttas count them — six a month.', suttas: 'The suttas on Uposatha →',
       today: 'Today', change: 'change', tList: 'Uposatha days', tCal: 'Calendar', more: 'Three more months', todayBtn: 'Today',
       kH: 'Key suttas to start with', kSub: 'Each “Read →” opens the sutta at the passage in question and highlights it.', kNow: 'Now open', kNew: 'Open in a new window',
       lic: 'Licences', mt: 'Multitool', lHome: 'Home', lToc: 'Contents', lDict: 'Dictionary', lMemo: 'Memorizer', lang: 'Language', themeH: 'Theme', dark: 'Dark', light: 'Light', auto: 'Auto',
-      gCal: 'Calendar', subNote: 'Subscribe: the days for a year ahead, kept up to date by itself.', icsNote: 'Or a file, once: the next 12 months.', copyLink: 'Copy link',
+      gCal: 'Calendar', subNote: 'The days for a year ahead, kept up to date by itself.', icsNote: 'Or a file, once: the next 12 months.', copyLink: 'Copy link',
       ics: 'Download .ics file', suttasL: 'The suttas on Uposatha', help: 'Help', share: 'Share', settingsL: 'Uposatha settings', settings: 'Settings',
       gPlace: 'Place & time', tz: 'Time zone', hemi: 'Hemisphere', hemiD: 'how the moon is drawn', north: 'Northern', south: 'Southern',
       loc: 'Location', locD: 'for the real sunrise and sunset; otherwise 18:00 and 06:00', myLoc: 'Use my location', city: 'or a city: Almaty…',
@@ -69,14 +69,14 @@
     ru: {
       pH: 'Части дня и ночи', pSub: 'Время от восхода до заката делится на три части, и от заката до восхода тоже — для вашего места и сезона.', pDay: 'День', pNight: 'Ночь',
       dayParts: [['Pubbaṇhasamaya', 'утро'], ['Majjhanhikasamaya', 'полдень'], ['Sāyanhasamaya', 'вечер']], nightParts: [['Paṭhama yāma', 'первая часть'], ['Majjhima yāma', 'средняя часть'], ['Pacchima yāma', 'последняя часть']],
-      fSpecial: 'особое', fGeneral: 'общее', fRandom: 'случайное', slTitle: 'Из сутт', gUposatha: 'Упосатха', on: 'Вкл', off: 'Выкл', fAll: 'Все', sortKind: 'По видам', sortSutta: 'По суттам', showAll: 'Показать все', readIt: 'Читать', dayTag: function (d) { return d.map(function (n) { return n + '-й'; }).join(', ') + ' день'; },
+      fSpecial: 'особое', fGeneral: 'общее', fRandom: 'случайное', slTitle: 'Из сутт', addCal: 'В календарь', subH: 'Подписаться', fileH: 'Или файл', calRemind: 'Время напоминания и дни берутся из настроек напоминаний в меню.', gUposatha: 'Упосатха', on: 'Вкл', off: 'Выкл', fAll: 'Все', sortKind: 'По видам', sortSutta: 'По суттам', showAll: 'Показать все', readIt: 'Читать', dayTag: function (d) { return d.map(function (n) { return n + '-й'; }).join(', ') + ' день'; },
       age: 'возраст', of30: 'из 30', from: 'с', left: 'осталось', dU: 'д', hU: 'ч', mU: 'мин',
       searchPh: 'Поиск: kacchapa, dn22…', searchGo: 'Найти', tocTitle: 'Оглавление (Alt+2)', clear: 'Очистить', tag: 'дни соблюдения', compass: 'Избранное / История', menu: 'Меню', theme: 'Тема', prev: 'Назад', next: 'Вперёд', close: 'Закрыть',
       h1: 'Дни упосатхи', lead: '14-й, 15-й и 8-й лунные дни каждой половины месяца, как их считают сутты, — шесть в месяц.', suttas: 'Сутты об упосатхе →',
       today: 'Сегодня', change: 'изменить', tList: 'Упосатхи', tCal: 'Календарь', more: 'Ещё три месяца', todayBtn: 'Сегодня',
       kH: 'Ключевые сутты для начала', kSub: 'Каждое «Читать →» открывает сутту на нужном месте и подсвечивает его.', kNow: 'Сейчас открыта', kNew: 'Открыть в новом окне',
       lic: 'Лицензии', mt: 'Мультитул', lHome: 'Главная', lToc: 'Оглавление', lDict: 'Словарь', lMemo: 'Меморайзер', lang: 'Язык', themeH: 'Тема', dark: 'Тёмная', light: 'Светлая', auto: 'Авто',
-      gCal: 'Календарь', subNote: 'Подписка: дни на год вперёд, обновляется сама.', icsNote: 'Или файлом, один раз: на 12 месяцев вперёд.', copyLink: 'Копировать ссылку',
+      gCal: 'Календарь', subNote: 'Дни на год вперёд, обновляется сама.', icsNote: 'Или файлом, один раз: на 12 месяцев вперёд.', copyLink: 'Копировать ссылку',
       ics: 'Скачать файл .ics', suttasL: 'Сутты об упосатхе', help: 'Помощь', share: 'Поделиться', settingsL: 'Настройки упосатхи', settings: 'Настройки',
       gPlace: 'Место и время', tz: 'Часовой пояс', hemi: 'Полушарие', hemiD: 'как рисовать луну', north: 'Северное', south: 'Южное',
       loc: 'Место', locD: 'для настоящих восхода и заката; без него — 18:00 и 06:00', myLoc: 'Определить моё место', city: 'или город: Алматы…',
@@ -238,7 +238,7 @@
   function openSettings() { document.querySelector('.dg-menu-btn').click(); setTimeout(function () { $('d-uset').scrollIntoView(); }, 350); }
   function toast(msg) { var e = $('toast'); e.textContent = msg; e.classList.add('on'); setTimeout(function () { e.classList.remove('on'); }, 2000); }
   function openPanel(id) { closeAll(); $(id).setAttribute('data-open', 'true'); $('scrim').setAttribute('data-open', 'true'); }
-  function closeAll() { ['sl-modal', 'scrim'].forEach(function (i) { $(i).setAttribute('data-open', 'false'); }); }
+  function closeAll() { ['sl-modal', 'cal-modal', 'scrim'].forEach(function (i) { $(i).setAttribute('data-open', 'false'); }); }
 
   // Lit part of the Moon to a hundredth of a percent: near the full moon a whole percent stays the same for half a day.
   function illumPercent(d) { var v = (A.Illumination('Moon', d).phase_fraction * 100).toFixed(2); return lang === 'ru' ? v.replace('.', ',') : v; }
@@ -469,7 +469,7 @@
     $('rem-days-row').style.display = sutta() ? '' : 'none';
     $('rem-msg').textContent = state.remMsg || (permission === 'denied' ? t.remDenied : permission === 'unsupported' ? t.remUnsupported : (state.rem.on ? (next ? t.remNext(F.remWhen.format(next.when), next.title) : t.remNone) : ''));
     $('rem-note').textContent = inApp ? t.remAppNote : t.remNote;
-    $('d-cal').style.display = inApp ? 'none' : '';
+    $('b-cal').style.display = inApp ? 'none' : ''; // in the app the reminders are the device's own
     $('sub-apple').href = feedUrl('webcal');
     $('sub-google').href = 'https://calendar.google.com/calendar/r?cid=' + encodeURIComponent(feedUrl('webcal'));
   }
@@ -687,6 +687,13 @@
     new MutationObserver(function () { var v = document.documentElement.getAttribute('data-bs-theme'); if (v && v !== document.documentElement.getAttribute('data-theme')) { document.documentElement.setAttribute('data-theme', v); document.body.classList.toggle('dark', v === 'dark'); } }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-bs-theme'] });
     window.dgAnnounceLanguage = window.dgAnnounceLanguage || function (l) { toast(l === 'ru' ? 'Русский' : 'English'); };
     window.dgDrawerHelpHref = function () { return t.docs; };
+    $('b-cal').onclick = function () { openPanel('cal-modal'); };
+    $('b-share').onclick = function () { // the native share sheet where there is one, else the link is copied
+      var url = location.origin + '/uposatha-calendar' + (lang === 'ru' ? '?lang=ru' : '');
+      if (navigator.share) navigator.share({ title: t.shareTitle, url: url }).catch(function () { /* cancelled */ });
+      else if (navigator.clipboard) navigator.clipboard.writeText(url).then(function () { toast(t.linkCopied); });
+      else window.prompt(t.shareTitle, url);
+    };
     $('p-ics').onclick = downloadIcs;
     $('sub-copy').onclick = function () { var u = feedUrl('https'); if (navigator.clipboard) navigator.clipboard.writeText(u).then(function () { toast(t.linkCopied); }); else window.prompt(t.copyLink, u); };
     $('tz').onchange = function (e) { state.tz = e.target.value; store('dgUposathaTz', state.tz); paint(); };

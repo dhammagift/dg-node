@@ -50,6 +50,18 @@ body.scrolled .tbar { border-bottom-color: var(--dg-border); box-shadow: 0 4px 1
 @media (max-width: 560px) { .wordmark b { display: none; } .tbar .in { gap: 6px; } }
 /* page */
 .page { max-width: 760px; margin: 0 auto; padding: 18px 20px 0; }
+.intro { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.intro-actions { display: flex; gap: 8px; flex: none; margin-top: 16px; }
+.pillbtn { display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--dg-border-strong); background: var(--dg-surface); color: var(--dg-text); font: inherit; font-size: 13px; padding: 7px 14px; border-radius: 999px; cursor: pointer; white-space: nowrap; }
+.pillbtn .ic { width: 15px; height: 15px; color: var(--dg-text-muted); }
+.pillbtn:hover { border-color: var(--dg-accent); color: var(--dg-accent-ink); }
+.pillbtn.accent { background: var(--dg-accent-bg); border-color: transparent; color: var(--dg-on-accent-bg); }
+.pillbtn.accent .ic { color: inherit; }
+.cal-body { padding: 8px 20px 20px; }
+.cal-body h4 { margin: 14px 0 4px; }
+.cal-note { margin: 0 0 10px; font-size: 13px; line-height: 1.55; color: var(--dg-text-muted); }
+.cal-links { display: flex; flex-wrap: wrap; gap: 8px; }
+@media (max-width: 640px) { .intro { flex-direction: column; gap: 0; } .intro-actions { margin-top: 12px; } }
 .intro h1 { font-size: 26px; margin: 14px 0 6px; }
 .intro p { margin: 0; color: var(--dg-text-2); font-size: 14px; line-height: 1.6; max-width: 60ch; text-wrap: pretty; }
 .today { margin: 20px 0 0; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 18px; align-items: center; background: var(--dg-surface); border: 1px solid var(--dg-border); border-radius: var(--dg-radius); padding: 18px 20px; animation: up-in .3s var(--dg-ease) both; }
