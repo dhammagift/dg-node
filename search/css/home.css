@@ -4261,3 +4261,18 @@ body.dg-state-results #search-pane:not(.dg-has-paging) .dt-search { pointer-even
    theme every row and the brand link came out lilac (owner). Same colour as the rest of the menu, accent on hover, never underlined. */
 body #dg-drawer a.dg-drawer-row, body #dg-drawer a.dg-drawer-row:visited, body #dg-drawer a.dg-brand-link, body #dg-drawer a.dg-brand-link:visited { color: var(--dg-text); text-decoration: none; }
 body #dg-drawer a.dg-drawer-row:hover, body #dg-drawer a.dg-drawer-row:focus-visible { color: var(--dg-accent-ink); }
+
+/* The logo plays (home.js, "The logo plays when it is clicked"): the mark is revealed by a circle growing from the book upwards
+   and settles from a little smaller, the motion of the app's launch screen. Nothing is hidden until the class is put on. */
+@property --dgr { syntax: "<percentage>"; inherits: false; initial-value: 0%; }
+.dg-logo-play {
+    -webkit-mask: radial-gradient(circle at 50% 100%, #000 var(--dgr), transparent calc(var(--dgr) + 28%));
+    mask: radial-gradient(circle at 50% 100%, #000 var(--dgr), transparent calc(var(--dgr) + 28%));
+    animation: dg-logo-rise 1.4s cubic-bezier(.4, .2, .4, 1) 1 both;
+}
+@keyframes dg-logo-rise {
+    0%   { --dgr: 0%;   opacity: 0; transform: translateY(5px) scale(.9); }
+    12%  { opacity: 1; }
+    100% { --dgr: 130%; opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) { .dg-logo-play { animation: none; -webkit-mask: none; mask: none; } }

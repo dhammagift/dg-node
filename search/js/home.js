@@ -4712,3 +4712,47 @@
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
     else init();
 })();
+
+/* The logo plays when it is clicked: the mark rises out of the book, like on the app's launch screen (home.css, .dg-logo-play).
+ * Each logo is its own: the home brand, the shell in the search field and the drawer's mark play only when they are the one clicked.
+ * A click on a logo goes home, and that may reload the page, so the click leaves a note (sessionStorage) and the page it lands on
+ * plays its main logo once; a page that did not reload takes the note back after a moment. */
+(function () {
+    'use strict';
+    var KEY = 'dgLogoPlay';
+    var SEL = '#dg-brand, .dg-shell-logo, .dg-drawer-head .dg-brand-link';
+
+    function play(img) {
+        if (!img) return;
+        img.classList.remove('dg-logo-play');
+        void img.getBoundingClientRect();   // the class must be seen gone, or adding it back does not restart the animation
+        img.classList.add('dg-logo-play');
+    }
+    function imgOf(link) { return link && link.querySelector('img'); }
+
+    document.addEventListener('animationend', function (e) {
+        if (e.animationName === 'dg-logo-rise') e.target.classList.remove('dg-logo-play');
+    });
+
+    document.addEventListener('click', function (e) {
+        if (e.button !== 0 || !e.target.closest) return;
+        var link = e.target.closest(SEL);
+        if (!link) return;
+        play(imgOf(link));
+        try {
+            sessionStorage.setItem(KEY, '1');
+            setTimeout(function () { try { sessionStorage.removeItem(KEY); } catch (err) { /* nothing to take back */ } }, 1500);
+        } catch (err) { /* the logo just stays still after the reload */ }
+    }, true);
+
+    function landed() {
+        var note = null;
+        try { note = sessionStorage.getItem(KEY); sessionStorage.removeItem(KEY); } catch (err) { /* no storage */ }
+        if (!note) return;
+        // the logo this page shows: the home brand, or the shell in the search field (results, reader)
+        var shown = [document.querySelector('#dg-brand'), document.querySelector('.dg-shell-logo')].filter(function (a) { return a && a.getClientRects().length; })[0];
+        play(imgOf(shown));
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', landed);
+    else landed();
+})();
