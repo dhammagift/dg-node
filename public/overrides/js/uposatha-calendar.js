@@ -49,15 +49,15 @@
       detail: 'Details', detailD: 'Off — the short form',
       gRem: 'Reminders', remind: 'Remind me', adv: 'In advance', leads: [[0, 'when it begins'], [1, '1 hour'], [3, '3 hours'], [12, '12 hours'], [24, '1 day'], [48, '2 days']], days: 'Days',
       remNote: 'Notifications appear while this app is open or running in the background on your device. For reminders that arrive when it is fully closed, add the days to your phone\'s calendar.',
-      mealH: 'Food and vikāla', mealSub: 'Monks, and those who keep the Uposatha, eat in one part of the day: from dawn until midday. After midday and until dawn is <i>vikāla</i>, “the wrong time”. ',
+      mealG: 'Meals', mealH: 'Meals', mealSub: 'Monks, and those who keep the Uposatha, eat in one part of the day: from dawn until midday. After midday and until dawn is <i>vikāla</i>, “the wrong time”. ',
       mealEat: function (noon, left) { return '<i>Kāla</i> — food is allowed. Midday at ' + noon + ' · until <i>vikāla</i>: ' + left; },
       mealVik: function (dawn, left) { return '<i>Vikāla</i> — until dawn at ' + dawn + ': ' + left; },
       noonBy: 'Count midday by', noonSunS: 'Sun', noonMidS: 'Middle of day', noonClockS: '12:00', noonWhat: 'Middle of the day: halfway between sunrise and sunset, the centre of the middle third.', noonChange: 'change', noonSun: 'the Sun (highest point)', noonMid: 'the middle of the day', noonClock: '12:00 by the clock', noonFixed: 'Without a place midday is 12:00 by the clock.',
       noonNote: 'The Vinaya says only “when midday has passed”, not how to find it. The Sun’s highest point is astronomical midday; the middle of the day is halfway between sunrise and sunset (almost the same); 12:00 by the clock can differ by an hour or more. Dawn here is taken as sunrise.',
- mealSet: 'Food (vikāla)', mealSumL: 'In the summary', mealRemL: 'Remind before vikāla', mealLead: 'In advance', mealLeads: [[0, 'when vikāla begins'], [15, '15 min'], [30, '30 min'], [45, '45 min'], [60, '1 hour'], [90, '1.5 hours'], [120, '2 hours']], mealDays: 'Days', mealDaysU: 'Uposatha days', mealDaysA: 'Every day', mealSnd: 'Sound of this reminder',
+ mealSet: 'Food (vikāla)', mealSumL: 'Show in the summary', mealRemL: 'Remind before the time for food ends', mealLead: 'In advance', mealLeads: [[0, 'when the time for food ends'], [15, '15 min'], [30, '30 min'], [45, '45 min'], [60, '1 hour'], [90, '1.5 hours'], [120, '2 hours']], mealDays: 'Days', mealDaysU: 'Uposatha days', mealDaysA: 'Every day', mealSnd: 'Sound of this reminder',
       mealRemNow: 'Vikāla begins', mealRemZero: function (noon) { return 'Midday at ' + noon + ' — the time for food has ended.'; },
       mealRemTitle: 'Vikāla soon', mealRemBody: function (noon, lead) { return 'Midday at ' + noon + ' — the time for food ends in ' + (lead >= 60 ? (lead / 60) + ' h' : lead + ' min') + '.'; },
-      logoTip: 'Home · change the language: long press or right click', rateUs: 'Rate Us', appVer: 'App version', navHome: 'Summary', navList: 'Uposathas', navCal: 'Calendar', navParts: 'Night–day', navSet: 'Settings',
+      logoTip: 'Home · change the language: long press or right click', rateUs: 'Rate Us', appVer: 'App version', modeS1: 'by the suttas', modeM1: 'modern', ofMonth: function (n, m) { return n + ' of ' + m + ' this month'; }, locHere: 'Your location', locNone: 'place not set', navHome: 'Summary', navList: 'Uposathas', navCal: 'Calendar', navParts: 'Night–day', navSet: 'Settings',
       sound: 'Sound', soundNone: 'Silent', soundOwn: 'My own sound…', soundOwnNamed: 'My own: %', soundFail: 'The sound was not set.', sounds: { gong: 'Gong', gong2: 'Gong 2', gong3: 'Gong 3', gong4: 'Gong 4', gong5: 'Gong 5', bell: 'Bell' },
       remAppNote: 'Reminders are scheduled on this device and arrive even when the app is closed.',
       remNext: function (when, what) { return 'Next reminder: ' + when + ' — ' + what; }, remNone: 'No reminder is due in the coming weeks.',
@@ -95,15 +95,15 @@
       detail: 'Подробно', detailD: 'Выкл — короткая форма',
       gRem: 'Напоминания', remind: 'Напоминать', adv: 'Заранее', leads: [[0, 'в момент начала'], [1, 'за 1 час'], [3, 'за 3 часа'], [12, 'за 12 часов'], [24, 'за сутки'], [48, 'за 2 суток']], days: 'Дни',
       remNote: 'Уведомления приходят, пока приложение открыто или работает в фоне на вашем устройстве. Чтобы напоминание пришло и при полностью закрытом приложении, добавьте дни в календарь телефона.',
-      mealH: 'Еда и vikāla', mealSub: 'Монахи и те, кто соблюдает упосатху, едят в одну часть дня: от рассвета до полудня. После полудня и до рассвета — <i>vikāla</i>, «неподходящее время». ',
+      mealG: 'Приём пищи', mealH: 'Приём пищи', mealSub: 'Монахи и те, кто соблюдает упосатху, едят в одну часть дня: от рассвета до полудня. После полудня и до рассвета — <i>vikāla</i>, «неподходящее время». ',
       mealEat: function (noon, left) { return '<i>Kāla</i> — есть можно. Полдень в ' + noon + ' · до <i>vikāla</i>: ' + left; },
       mealVik: function (dawn, left) { return '<i>Vikāla</i> — до рассвета в ' + dawn + ': ' + left; },
       noonBy: 'Полдень считать по', noonSunS: 'Солнце', noonMidS: 'Середина дня', noonClockS: '12:00', noonWhat: 'Середина дня — ровно между восходом и закатом, центр средней трети дня.', noonChange: 'изменить', noonSun: 'Солнцу (высшая точка)', noonMid: 'середине дня', noonClock: '12:00 по часам', noonFixed: 'Без места полдень — 12:00 по часам.',
       noonNote: 'В Винае сказано лишь «когда полдень миновал», а как его определить — нет. Высшая точка Солнца — астрономический полдень; середина дня — ровно между восходом и закатом (почти то же самое); 12:00 по часам может отличаться на час и больше. Рассвет здесь принят за восход.',
- mealSet: 'Еда (vikāla)', mealSumL: 'В сводке', mealRemL: 'Напоминать до vikāla', mealLead: 'Заранее', mealLeads: [[0, 'когда наступит vikāla'], [15, '15 мин'], [30, '30 мин'], [45, '45 мин'], [60, '1 час'], [90, '1,5 часа'], [120, '2 часа']], mealDays: 'Дни', mealDaysU: 'Дни упосатхи', mealDaysA: 'Каждый день', mealSnd: 'Звук этого напоминания',
+ mealSet: 'Еда (vikāla)', mealSumL: 'Показывать в сводке', mealRemL: 'Напоминать до конца времени еды', mealLead: 'Заранее', mealLeads: [[0, 'когда время еды закончится'], [15, '15 мин'], [30, '30 мин'], [45, '45 мин'], [60, '1 час'], [90, '1,5 часа'], [120, '2 часа']], mealDays: 'Дни', mealDaysU: 'Дни упосатхи', mealDaysA: 'Каждый день', mealSnd: 'Звук этого напоминания',
       mealRemNow: 'Наступает vikāla', mealRemZero: function (noon) { return 'Полдень в ' + noon + ' — время еды закончилось.'; },
       mealRemTitle: 'Скоро vikāla', mealRemBody: function (noon, lead) { return 'Полдень в ' + noon + ' — время еды закончится через ' + (lead >= 60 ? (lead / 60 + '').replace('.', ',') + ' ч' : lead + ' мин') + '.'; },
-      logoTip: 'Домой · сменить язык: долгое нажатие или правая кнопка', rateUs: 'Оценить приложение', appVer: 'Версия приложения', navHome: 'Сводка', navList: 'Упосатхи', navCal: 'Календарь', navParts: 'Ночь–день', navSet: 'Настройки',
+      logoTip: 'Домой · сменить язык: долгое нажатие или правая кнопка', rateUs: 'Оценить приложение', appVer: 'Версия приложения', modeS1: 'по суттам', modeM1: 'современная', ofMonth: function (n, m) { return n + ' из ' + m + ' в месяце'; }, locHere: 'Ваше место', locNone: 'место не задано', navHome: 'Сводка', navList: 'Упосатхи', navCal: 'Календарь', navParts: 'Ночь–день', navSet: 'Настройки',
       sound: 'Звук', soundNone: 'Без звука', soundOwn: 'Свой звук…', soundOwnNamed: 'Свой: %', soundFail: 'Звук не задан.', sounds: { gong: 'Гонг', gong2: 'Гонг 2', gong3: 'Гонг 3', gong4: 'Гонг 4', gong5: 'Гонг 5', bell: 'Колокол' },
       remAppNote: 'Напоминания ставятся на этом устройстве и приходят даже при закрытом приложении.',
       remNext: function (when, what) { return 'Ближайшее напоминание: ' + when + ' — ' + what; }, remNone: 'В ближайшие недели напоминаний нет.',
@@ -375,6 +375,9 @@
     // Is it an Uposatha now? By the suttas one runs from the evening it begins to the next evening (night first, then day).
     var isUposatha = su ? !!((yRow && yRow.uposatha && now < evToday) || (todayRow && todayRow.uposatha && now >= evToday)) : !!(todayRow && todayRow.uposatha);
     var tonight = su && !!(todayRow && todayRow.uposatha && now < evToday);
+    // for the app's hero (app-refresh.js): the Uposatha that runs now and the next one to begin, by name, not parsed back from the list
+    var curUp = isUposatha ? ((su && yRow && yRow.uposatha && now < evToday) ? yRow : todayRow) : null, nextUp = L.rows.filter(function (r) { return r.uposatha && r.at.getTime() > now.getTime(); })[0];
+    window.__upoHero = { cur: curUp ? nameOf(curUp) : '', next: nextUp ? { at: nextUp.at.getTime(), name: nameOf(nextUp) } : null };
 
     // ----- today
     var angle = A.MoonPhase(now), tithi = tithiAt(now), pIndex = Math.floor(((angle + 22.5) % 360) / 45);
@@ -411,9 +414,9 @@
     }
     $('t-sun').textContent = sunLine;
     var off = new Intl.DateTimeFormat('en-US', { timeZone: tz, timeZoneName: 'shortOffset' }).formatToParts(now).filter(function (p) { return p.type === 'timeZoneName'; })[0];
-    var place = state.loc ? (state.loc.name || state.loc.lat + ', ' + state.loc.lon) : (off ? off.value : tz);
-    $('ctx-place').textContent = place + ' · ' + tz.split('/').pop().replace(/_/g, ' ');
-    $('ctx-mode').textContent = su ? t.modeS : t.modeM;
+    $('ctx-place').textContent = state.loc ? (state.loc.name || t.locHere) : t.locNone; // neither the coordinates nor the time zone: the person knows both
+    var mm = todayYmd.slice(0, 7), inMonth = L.rows.filter(function (r) { return r.uposatha && r.ymd.slice(0, 7) === mm; }); // how far this month's Uposathas have come
+    $('ctx-mode').textContent = (su ? t.modeS1 : t.modeM1) + ' · ' + t.ofMonth(inMonth.filter(function (r) { return r.ymd <= todayYmd; }).length, inMonth.length);
 
     // ----- the list
     var list = L.rows.filter(function (r) { return r.uposatha && r.ymd >= monthStart; });
@@ -918,6 +921,12 @@
     onSeg('weekseg', function (v) { weekPref = v; store('dgUposathaWeek', v); paint(); });
     onSeg('sw-sut', function (v) { state.ref = v === '1' ? 18 : 6; store('dgUposathaSutta', v); paint(); });
     onSeg('sw-det', function (v) { state.lite = v === '0'; store('dgUposathaLite', state.lite ? '1' : '0'); paint(); });
+    function km(a, b, c, d) { var r = Math.PI / 180, x = Math.sin((c - a) * r / 2), y = Math.sin((d - b) * r / 2), h = x * x + Math.cos(a * r) * Math.cos(c * r) * y * y; return 12742 * Math.asin(Math.sqrt(h)); }
+    function zoneNear(lat, lon, keep) { // the time zone by the place: the browser's own when it is close enough, else the nearest zone we know
+      var k = ZONE_COORDS[keep]; if (k && km(lat, lon, k[0], k[1]) < 300) return keep;
+      var best = keep, bd = 1e9; Object.keys(ZONE_COORDS).forEach(function (z) { var d = km(lat, lon, ZONE_COORDS[z][0], ZONE_COORDS[z][1]); if (d < bd) { bd = d; best = z; } });
+      return best;
+    }
     function setPlace(lat, lon, name) { // the place fixes the Sun; south of the equator flips the moon's shape
       state.loc = { lat: lat, lon: lon }; if (name) state.loc.name = name; store('dgUposathaLoc', JSON.stringify(state.loc));
       state.south = lat < 0; store('dgUposathaHemisphere', state.south ? 'south' : 'north');
@@ -927,7 +936,8 @@
       $('locnote').textContent = t.locFinding;
       navigator.geolocation.getCurrentPosition(function (pos) {
         // about a kilometre is plenty for a sunrise, and less to keep
-        setPlace(Math.round(pos.coords.latitude * 100) / 100, Math.round(pos.coords.longitude * 100) / 100); state.locMsg = ''; paint();
+        var la = Math.round(pos.coords.latitude * 100) / 100, lo = Math.round(pos.coords.longitude * 100) / 100;
+        setPlace(la, lo); state.tz = zoneNear(la, lo, state.tz); store('dgUposathaTz', state.tz); state.locMsg = ''; paint(); // the place gives the zone; the picker is for a person without a place
       }, function () { state.locMsg = t.locDenied; paint(); }, { timeout: 15000, maximumAge: 3600000 });
     };
     // The place by a city: our own suggestions (a native datalist has no list in the Android WebView and shows nothing on an empty field)

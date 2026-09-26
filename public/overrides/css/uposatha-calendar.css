@@ -464,4 +464,3 @@ body.app .mealsum h3 { color: var(--dg-accent-ink); }
 .citylist small { color: var(--dg-text-muted); font-size: 11.5px; white-space: nowrap; }
 
 .mealsum[hidden] { display: none !important; }
-#meal-block .dg-drawer-subtitle:first-child { margin-top: 14px; font-weight: 700; }

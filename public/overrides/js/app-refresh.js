@@ -80,15 +80,17 @@
     }
     var src = document.getElementById('t-moon'), mv = h.querySelector('.mv');
     if (src && mv.innerHTML !== src.innerHTML) mv.innerHTML = src.innerHTML;
-    var ru = RU(), n = nextStart(), U = ru ? ['дн', 'ч', 'мин'] : ['d', 'h', 'min'];
-    h.querySelector('.hk').textContent = n && n.now ? (ru ? 'Сегодня упосатха · до следующей' : 'Uposatha today · next one in') : (ru ? 'До упосатхи' : 'Uposatha in');
+    var ru = RU(), H = window.__upoHero, n = H ? (H.next && { at: new Date(H.next.at), name: H.next.name, cur: H.cur }) : nextStart(), U = ru ? ['дн', 'ч', 'мин'] : ['d', 'h', 'min'];
+    // the page knows which Uposatha runs now and which is next (the list is not parsed when it says so)
+    var curName = H && H.cur ? H.cur.split(' · ')[0].split(' of the ')[0] : '';
+    h.querySelector('.hk').textContent = curName ? (ru ? 'Сегодня упосатха · ' : 'Uposatha today · ') + curName : n && n.now ? (ru ? 'Сегодня упосатха · до следующей' : 'Uposatha today · next one in') : (ru ? 'До упосатхи' : 'Uposatha in');
     var left = n ? Math.max(0, n.at - Date.now()) : 0, v = [Math.floor(left / 864e5), Math.floor(left / 36e5) % 24, Math.floor(left / 6e4) % 60];
     $$('.cd > span', h).forEach(function (s, i) {
       var b = s.querySelector('b'), val = String(v[i]).padStart(i ? 2 : 1, '0');
       s.querySelector('i').textContent = U[i];
       if (b.textContent !== val) { var first = !b.textContent; b.textContent = val; if (!first && !reduce) b.animate([{ transform: 'translateY(-60%)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 420, easing: EMPH_DEC }); }
     });
-    h.querySelector('.hn').textContent = n ? (n.name + ' · ' + n.at.toLocaleString(ru ? 'ru-RU' : 'en-GB', { weekday: 'short', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })) : '';
+    h.querySelector('.hn').textContent = n ? ((curName ? (ru ? 'Следующая: ' : 'Next: ') : '') + n.name + ' · ' + n.at.toLocaleString(ru ? 'ru-RU' : 'en-GB', { weekday: 'short', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })) : '';
   }
 
   function init() {
