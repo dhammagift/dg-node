@@ -230,11 +230,10 @@ const HTML_ASSET_URL_ROOTS = {
 // cache can only be re-validated with a full download". This keeps must-revalidate's
 // guarantee (client always asks the server first) while letting an unchanged page answer
 // with a 304 instead of re-sending the whole document.
-function sendVersionedHtml(req, reply, absHtmlPath, statusCode = 200, transform) {
+function sendVersionedHtml(req, reply, absHtmlPath, statusCode = 200) {
     let html;
     try { html = fsSync.readFileSync(absHtmlPath, 'utf8'); }
     catch { return reply.code(404).send(); }
-    if (transform) html = transform(html);
     const rewritten = html.replace(
         // Also stamps the lazy loadScript('/reader/megareader.js') / ('/spa/toc.js') calls in
         // search/index.html — otherwise a 24h-cached copy could outlive the HTML that expects a
@@ -1434,39 +1433,7 @@ app.get('/config/sync-config.json', (req, res) => sendFile(req, res, path.join(_
 // Custom Google Search (Programmable Search Engine) — the one-page replacement for legacy cse.php
 // The Uposatha calendar as a page of its own (also embedded in the docs); the hyphenated path cannot be
 // mistaken for a Pali search word the way /uposatha could.
-// Link previews (Open Graph / Twitter): the crawlers read the HTML as served, so the Russian card is chosen here by ?lang=ru
-// (the page's own share button adds it for the Russian version).
-const UPOSATHA_RU_META = [
-    ['Uposatha Days by Suttas. Dhamma.Gift', 'Дни упосатхи по суттам. Dhamma.Gift'],
-    ['Which days, when to begin, how to keep the Uposatha, from the suttas: with exact times for your place.', 'В какие дни, когда начинать, как соблюдать упосатху, по суттам: с точным временем для вашего места.'],
-    ['og-uposatha-en.png', 'og-uposatha-ru.png'],
-    ['Calendar and key information, and the four points of Ariyo Uposatha: 14, 15, 8 of the fortnight, night and day. Dhamma.Gift, Uposatha Days', 'Календарь и важная информация, и четыре пункта Ariyo Uposatha: 14, 15, 8 половины месяца, ночь и день. Dhamma.Gift, дни упосатхи'],
-];
-app.get('/uposatha-calendar', (req, res) => sendVersionedHtml(req, res, path.join(__dirname, 'public', 'uposatha-calendar.html'), 200,
-    (req.query && req.query.lang === 'ru') ? (html) => UPOSATHA_RU_META.reduce((h, [a, b]) => h.split(a).join(b), html) : undefined));
-app.get('/uposatha-calendar.webmanifest', (req, res) => sendFile(req, res, path.join(__dirname, 'public', 'uposatha-calendar.webmanifest'), 'application/manifest+json'));
-// Subscription feed for Google / Apple calendars. Stateless: everything the feed needs is in the query string, nothing is stored.
-const uposathaCore = require('./public/overrides/js/uposatha-core.js');
-const uposathaFeedCache = new Map();
-app.get('/uposatha.ics', (req, reply) => {
-    const q = req.query || {};
-    const num = (v, lo, hi) => { const n = Number(v); return Number.isFinite(n) && n >= lo && n <= hi ? n : null; };
-    let tz = String(q.tz || 'UTC');
-    try { new Intl.DateTimeFormat('en', { timeZone: tz }); } catch { return reply.code(400).type('text/plain').send('bad tz'); }
-    const lat = num(q.lat, -90, 90), lon = num(q.lon, -180, 180);
-    const opts = {
-        lang: q.lang === 'ru' ? 'ru' : 'en', tz, sutta: q.scheme !== 'modern', loc: lat !== null && lon !== null ? { lat: Math.round(lat * 100) / 100, lon: Math.round(lon * 100) / 100 } : null,
-        rem: { lead: num(q.lead, 1, 72) || 24, d8: q.d8 !== '0', d14: q.d14 !== '0', d15: q.d15 === '1' }, days: 400, feed: true,
-    };
-    const key = JSON.stringify(opts) + new Date().toISOString().slice(0, 13); // a computed feed is reused for an hour
-    let body = uposathaFeedCache.get(key);
-    if (!body) {
-        body = uposathaCore.buildIcs(opts);
-        if (uposathaFeedCache.size > 300) uposathaFeedCache.clear();
-        uposathaFeedCache.set(key, body);
-    }
-    return reply.type('text/calendar; charset=utf-8').header('cache-control', 'public, max-age=3600').send(body);
-});
+app.get('/uposatha-calendar', (req, res) => sendVersionedHtml(req, res, path.join(__dirname, 'public', 'uposatha-calendar.html')));
 app.get('/cse', (req, res) => sendVersionedHtml(req, res, path.join(__dirname, 'public', 'cse.html')));
 app.get('/api/patimokkha-fragment/:side', (req, res) => {
     if (req.params.side !== 'bu' && req.params.side !== 'bi') return res.code(404).send();
