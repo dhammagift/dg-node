@@ -144,7 +144,7 @@ body[data-screen=list] #s-list, body[data-screen=cal] #s-cal { display: block; }
 .detail { margin: 12px 0 0; border: 1px solid var(--dg-border); border-radius: var(--dg-radius); background: var(--dg-surface); padding: 12px 14px; font-size: 14px; min-height: 4.4em; }
 .detail .badge { margin-left: 8px; }
 .detail .ttl { display: block; font-weight: 600; margin-top: 4px; color: var(--dg-accent-ink); }
-body[data-mode=lite] .ln.grey, body[data-mode=lite] .grid .c .ld, body[data-mode=lite] .detail, body[data-mode=lite] .today .sun { display: none; }
+body[data-mode=lite] .today .dt, body[data-mode=lite] .ln.grey, body[data-mode=lite] .grid .c .ld, body[data-mode=lite] .detail, body[data-mode=lite] .today .sun { display: none; }
 body[data-mode=lite] .mon li .t .info .ln:not(.grey) + .ln:not(.grey) { display: none; }
 /* key suttas and the reader */
 .slides { margin: 22px 0 0; }
@@ -449,3 +449,19 @@ body.app .meal h3 { color: var(--dg-accent-ink); }
 .mealsum .mstat b { color: var(--dg-accent-ink); font-variant-numeric: tabular-nums; }
 body.app .mealsum { border: 0; border-radius: 24px; background: var(--up-surf, var(--dg-surface)); padding: 14px 18px; }
 body.app .mealsum h3 { color: var(--dg-accent-ink); }
+
+/* the right time for food is green, the wrong one (vikala) burgundy, as the "not by the suttas" label */
+.mstat[data-k=kala] i, .mstat[data-k=kala] b { color: var(--dg-accent-ink); }
+.mstat[data-k=vikala] i, .mstat[data-k=vikala] b { color: #9b1c31; }
+[data-theme="dark"] .mstat[data-k=vikala] i, [data-theme="dark"] .mstat[data-k=vikala] b { color: #d8546b; }
+.mstat > i:first-child { font-weight: 700; }
+
+/* the city suggestions of the place block */
+.citylist { list-style: none; margin: 6px 0 0; padding: 4px; max-height: 220px; overflow: auto; border: 1px solid var(--dg-border); border-radius: 10px; background: var(--dg-surface); }
+.citylist[hidden] { display: none; }
+.citylist li { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 8px 10px; border-radius: 8px; font-size: 14px; cursor: pointer; }
+.citylist li:hover, .citylist li:active { background: var(--dg-surface-hover); }
+.citylist small { color: var(--dg-text-muted); font-size: 11.5px; white-space: nowrap; }
+
+.mealsum[hidden] { display: none !important; }
+#meal-block .dg-drawer-subtitle:first-child { margin-top: 14px; font-weight: 700; }
