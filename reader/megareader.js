@@ -1809,7 +1809,10 @@ async function initReader() {
     if (query) {
         // Заполняем инпут для удобства
         const citation = document.getElementById("paliauto");
-        if (citation) citation.value = query;
+        // Show the address the way it is typed: id, :segment and the words to find (?s=) — the
+        // field used to be cut down to the bare id, dropping what the user had just entered.
+        const findWords = new URLSearchParams(window.location.search).get('s');
+        if (citation) citation.value = query + (!searchParam && segmentId ? ':' + segmentId : '') + (!searchParam && findWords ? ' ' + findWords : '');
 
         // Существование слага решает сам /api/text/:slug (200 → рендерим, 404 → поиск,
         // см. window.buildSutta) — без предзагрузки индекса всех сутт на клиенте.
