@@ -11,6 +11,10 @@ SLIDES = [
     ('an3.37-15', [15], 'an/an3',  'an3.37', ['1.5', '1.6'],  'sv', 'AN 3.37', 'АН 3.37'),
     ('mn146-15',  [15], 'mn',      'mn146',  ['27.2', '27.3'], 'sv', 'MN 146', 'МН 146'),
     ('mn118-15', [15], 'mn',      'mn118',  ['3.1'],         'sv', 'MN 118', 'МН 118'),
+    ('kd2-gather', [8, 14, 15], 'vinaya', 'pli-tv-kd2', ['1.1.2', '1.4.4'], 'sv', 'Vin Mv 2.1', 'Вин Мв 2.1'),
+    ('kd2-teach',  [8, 14, 15], 'vinaya', 'pli-tv-kd2', ['2.1.11'], 'sv', 'Vin Mv 2.2', 'Вин Мв 2.2'),
+    ('kd2-once',   [14, 15], 'vinaya', 'pli-tv-kd2', ['4.2.5', '4.2.7'], 'sv', 'Vin Mv 2.4', 'Вин Мв 2.4'),
+    ('kd2-differ', None, 'vinaya', 'pli-tv-kd2', ['34.1.1', '34.2.1'], 'sv', 'Vin Mv 2.34', 'Вин Мв 2.34'),
     ('kd2-two',   [14, 15], 'vinaya', 'pli-tv-kd2', ['14.1.4'], 'sv', 'Vin Mv 2', 'Вин Мв 2'),
     ('bu-pm-15',  [15], 'vinaya', 'pli-tv-bu-pm', ['5.2'], 'sv', 'Bu Pm', 'Бху Пм'),
     ('an3.37-few',  None, 'an/an3', 'an3.37', ['2.3', '2.4', '2.5'], 'sv', 'AN 3.37', 'АН 3.37'),
@@ -42,7 +46,7 @@ for sid, days, nik, sutta, segs, ru_tr, en_label, ru_label in SLIDES:
     join = lambda d: ' '.join(d[key(s)].strip() for s in segs if key(s) in d)
     # "special" slides belong to the 8th / 14th / 15th day; "general" ones say that the Uposatha is to be kept
     if sid in RANDOM_IDS: days = None
-    out.append({'id': sid, 'kind': 'random' if sid in RANDOM_IDS else 'special' if days else 'general', 'days': days, 'ref': key(segs[0]), 'cite': {'en': en_label, 'ru': ru_label}, 'pli': join(pli), 'ru': join(ru), 'en': join(en)})
+    out.append({'id': sid, 'kind': 'random' if sid in RANDOM_IDS else 'special' if days else 'general', 'days': days, 'ref': key(segs[0]), 'cite': {'en': en_label, 'ru': ru_label}, 'pli': join(pli), 'ru': join(ru), 'en': join(en).replace(' Then—', '')})
 # "random": every place in the canon where an Uposatha day is named in passing ("tadahuposathe"), with both translations
 used = {o['ref'] for o in out}
 for f in sorted(glob.glob(f'{BASE}/root/pli/ms/sutta/**/*_root-pli-ms.json', recursive=True)):

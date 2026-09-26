@@ -88,6 +88,69 @@
   "en": "Now, at that time it was the sabbath—the full moon on the fifteenth day—and the Buddha was sitting surrounded by the Saṅgha of monks for the invitation to admonish."
  },
  {
+  "id": "kd2-gather",
+  "kind": "special",
+  "days": [
+   8,
+   14,
+   15
+  ],
+  "ref": "pli-tv-kd2:1.1.2",
+  "cite": {
+   "en": "Vin Mv 2.1",
+   "ru": "Вин Мв 2.1"
+  },
+  "pli": "Tena kho pana samayena aññatitthiyā paribbājakā cātuddase pannarase aṭṭhamiyā ca pakkhassa sannipatitvā dhammaṁ bhāsanti. “anujānāmi, bhikkhave, cātuddase pannarase aṭṭhamiyā ca pakkhassa sannipatitun”ti.",
+  "ru": "",
+  "en": "At that time, on the fourteenth, fifteenth, and eighth day of the lunar half-month, the wanderers of other religions gathered and gave teachings. “You should gather together on the fourteenth, the fifteenth, and the eighth day of the lunar half-month.”"
+ },
+ {
+  "id": "kd2-teach",
+  "kind": "special",
+  "days": [
+   8,
+   14,
+   15
+  ],
+  "ref": "pli-tv-kd2:2.1.11",
+  "cite": {
+   "en": "Vin Mv 2.2",
+   "ru": "Вин Мв 2.2"
+  },
+  "pli": "“anujānāmi, bhikkhave, cātuddase pannarase aṭṭhamiyā ca pakkhassa sannipatitvā dhammaṁ bhāsitun”ti.",
+  "ru": "",
+  "en": "“When you gather together on the fourteenth, the fifteenth, and the eighth day of the lunar half-month, you should give a teaching.”"
+ },
+ {
+  "id": "kd2-once",
+  "kind": "special",
+  "days": [
+   14,
+   15
+  ],
+  "ref": "pli-tv-kd2:4.2.5",
+  "cite": {
+   "en": "Vin Mv 2.4",
+   "ru": "Вин Мв 2.4"
+  },
+  "pli": "“Na, bhikkhave, pakkhassa tikkhattuṁ pātimokkhaṁ uddisitabbaṁ. Anujānāmi, bhikkhave, sakiṁ pakkhassa cātuddase vā pannarase vā pātimokkhaṁ uddisitun”ti.",
+  "ru": "",
+  "en": "“You shouldn’t recite the Monastic Code three times per lunar half-month. You should recite the Monastic Code once every lunar half-month: on the fourteenth or the fifteenth day.”"
+ },
+ {
+  "id": "kd2-differ",
+  "kind": "general",
+  "days": null,
+  "ref": "pli-tv-kd2:34.1.1",
+  "cite": {
+   "en": "Vin Mv 2.34",
+   "ru": "Вин Мв 2.34"
+  },
+  "pli": "Idha pana, bhikkhave, āvāsikānaṁ bhikkhūnaṁ cātuddaso hoti, āgantukānaṁ pannaraso. Idha pana, bhikkhave, āvāsikānaṁ bhikkhūnaṁ pannaraso hoti, āgantukānaṁ cātuddaso.",
+  "ru": "",
+  "en": "“It may be, monks, that for the resident monks it’s the fourteenth day of the lunar half-month, but for the newly-arrived monks it’s the fifteenth. It may be that for the resident monks it’s the fifteenth day of the lunar half-month, but for the newly-arrived monks it’s the fourteenth."
+ },
+ {
   "id": "kd2-two",
   "kind": "random",
   "days": null,
