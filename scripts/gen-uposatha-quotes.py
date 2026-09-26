@@ -45,8 +45,8 @@ NOTES = {  # **bold** is the question the sutta answers
     'mn146': {'en': '14th - the moon is not full, 15th - full', 'ru': '14-й - луна неполная, 15-й - полная'},
     'an3.70': {'en': '**At what time:** night and day · **How:** as the arahants do', 'ru': '**В какое время:** ночь и день · **Как:** как араханты'},
     'an10.46': {'en': 'Not to be skipped', 'ru': 'Пропускать нельзя'},
-    'mn53': {'en': 'Three parts of the night', 'ru': 'Три части ночи'},
-    'sn28.1': {'en': 'A monk\'s day: morning, midday, evening', 'ru': 'День монаха: утро, середина дня, вечер'},
+    'mn53': {'en': '**Parts of the night and day:** night', 'ru': '**Части ночи-дня:** ночь'},
+    'sn28.1': {'en': '**Parts of the night and day:** day', 'ru': '**Части ночи-дня:** день'},
 }
 def low(t):
     # the reader's toLower (mergeGathas): the second half of a merged verse line starts in lower case, except "I ..." / "O ..." / "Я..."
