@@ -31,7 +31,7 @@
   // ---------- words ----------
   var T = {
     en: {
-      tag: 'observance days', menu: 'Menu', theme: 'Theme', prev: 'Previous', next: 'Next', close: 'Close',
+      tag: 'observance days', compass: 'Favorites / History', menu: 'Menu', theme: 'Theme', prev: 'Previous', next: 'Next', close: 'Close',
       h1: 'Uposatha days', lead: 'The 14th, 15th and 8th lunar days of each half-month, as the suttas count them — six a month.', suttas: 'The suttas on Uposatha →',
       today: 'Today', change: 'change', tList: 'Uposatha days', tCal: 'Calendar', more: 'Three more months', todayBtn: 'Today',
       kH: 'Key suttas to start with', kSub: 'Each “Read →” opens the sutta at the passage in question and highlights it.', kNow: 'Now open', kNew: 'Open in a new window',
@@ -63,7 +63,7 @@
       wds: ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'], docs: '/docs/uposatha', linkCopied: 'Link copied', shareTitle: 'Uposatha days', locale: 'en-GB',
     },
     ru: {
-      tag: 'дни соблюдения', menu: 'Меню', theme: 'Тема', prev: 'Назад', next: 'Вперёд', close: 'Закрыть',
+      tag: 'дни соблюдения', compass: 'Избранное / История', menu: 'Меню', theme: 'Тема', prev: 'Назад', next: 'Вперёд', close: 'Закрыть',
       h1: 'Дни упосатхи', lead: '14-й, 15-й и 8-й лунные дни каждой половины месяца, как их считают сутты, — шесть в месяц.', suttas: 'Сутты об упосатхе →',
       today: 'Сегодня', change: 'изменить', tList: 'Упосатхи', tCal: 'Календарь', more: 'Ещё три месяца', todayBtn: 'Сегодня',
       kH: 'Ключевые сутты для начала', kSub: 'Каждое «Читать →» открывает сутту на нужном месте и подсвечивает его.', kNow: 'Сейчас открыта', kNew: 'Открыть в новом окне',
@@ -217,6 +217,8 @@
     store('theme', mode);
     var eff = mode === 'auto' ? (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : mode;
     document.documentElement.setAttribute('data-theme', eff);
+    document.documentElement.setAttribute('data-bs-theme', eff); // the shared scripts (quick window, settings.js) read these
+    document.body.classList.toggle('dark', eff === 'dark');
     Array.prototype.forEach.call($('themeseg').children, function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-theme-set') === mode)); });
   }
   function toast(msg) { var e = $('toast'); e.textContent = msg; e.classList.add('on'); setTimeout(function () { e.classList.remove('on'); }, 2000); }
@@ -510,7 +512,12 @@
     $('cal-next').onclick = function () { state.calOff++; paint(); };
     $('cal-today').onclick = function () { state.calOff = 0; state.selected = null; paint(); };
     $('to-keys').onclick = function (e) { e.preventDefault(); $('keys').scrollIntoView({ behavior: 'smooth' }); };
-    Array.prototype.forEach.call($('langseg').children, function (b) { b.onclick = function () { lang = b.getAttribute('data-lang'); t = T[lang]; store('dhammaLanguage', lang); FIRST_DAY = lang === 'ru' ? 1 : 0; applyLang(); paintKeys(); paint(); }; });
+    function setLang(l) { lang = l; t = T[lang]; store('dhammaLanguage', lang); FIRST_DAY = lang === 'ru' ? 1 : 0; applyLang(); paintKeys(); paint(); }
+    Array.prototype.forEach.call($('langseg').children, function (b) { b.onclick = function () { setLang(b.getAttribute('data-lang')); }; });
+    // The site-wide shortcuts (settings.js: Alt+1 language, Alt+H help, Alt+Y compass ...) find their hooks here.
+    window.DHAMMA_I18N = { get language() { return lang; }, setLanguage: setLang };
+    window.dgAnnounceLanguage = function (l) { toast(l === 'ru' ? 'Русский' : 'English'); };
+    window.dgDrawerHelpHref = function () { return t.docs; };
     Array.prototype.forEach.call($('themeseg').children, function (b) { b.onclick = function () { setTheme(b.getAttribute('data-theme-set')); }; });
     $('p-ics').onclick = downloadIcs;
     $('sub-copy').onclick = function () { var u = feedUrl('https'); if (navigator.clipboard) navigator.clipboard.writeText(u).then(function () { toast(t.linkCopied); }); else window.prompt(t.copyLink, u); };

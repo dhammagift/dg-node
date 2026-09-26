@@ -10,6 +10,7 @@
 <meta name="theme-color" content="#1f8f6f">
 <meta property="og:image" content="https://dhamma.gift/assets/img/og-dhamma-gift-v3.png">
 <link rel="stylesheet" href="/assets/css/uposatha-calendar.css">
+<link rel="stylesheet" href="/assets/css/quick-modal.css">
 </head>
 <body data-screen="list" data-mode="detailed" data-remind="off">
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
@@ -36,11 +37,13 @@
   <symbol id="i-wrench" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2.4-.6-.6-2.4z"/></symbol>
   <symbol id="i-star" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.2 6.4 20.2l1.1-6.2L3 9.6l6.2-.9z"/></symbol>
   <symbol id="i-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></symbol>
+  <symbol id="i-compass" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></symbol>
 </defs></svg>
 
 <header class="tbar"><div class="in">
   <a class="wordmark" href="/" id="wordmark"><img src="/assets/img/dgsankhaonly.png" alt=""><b>Uposatha</b><span data-t="tag"></span></a>
   <div class="hbtns">
+    <button class="rb" type="button" id="b-compass" data-tt="compass" onclick="if (window.toggleQuickModal) window.toggleQuickModal();"><svg class="ic"><use href="#i-compass"/></svg></button>
     <button class="rb" type="button" id="b-theme" data-tt="theme"><svg class="ic"><use href="#i-theme"/></svg></button>
     <button class="rb" type="button" id="b-menu" data-tt="menu"><svg class="ic"><use href="#i-menu"/></svg></button>
   </div>
@@ -149,9 +152,12 @@
   </div>
 </aside>
 <div class="toast" id="toast"></div>
+<script src="/assets/js/jquery-3.7.0.min.js"></script>
 <script src="/assets/js/vendor/astronomy.browser.min.js"></script>
 <script src="/assets/js/vendor/zone-coords.js"></script>
 <script src="/assets/js/uposatha-core.js"></script>
 <script src="/assets/js/uposatha-calendar.js"></script>
+<script defer src="/assets/js/quickModal.js"></script>
+<script defer src="/assets/js/settings.js"></script>
 </body>
 </html>
