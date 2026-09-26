@@ -292,7 +292,7 @@ body[data-remind=off] .rem-dep { opacity: .45; pointer-events: none; }
   .pagefoot { padding-left: 15px; padding-right: 15px; }
 }
 /* embedded in the docs: only the calendar itself */
-body.embed .tbar, body.embed .slides, body.embed .intro, body.embed .keys, body.embed .parts, body.embed .pagefoot { display: none; }
+body.embed .tbar, body.embed .slides, body.embed .intro, body.embed .keys, body.embed .parts, body.embed #dg-footer { display: none; }
 body.embed { background: transparent; }
 body.embed .page { padding: 0; max-width: none; }
 body.embed .today { margin-top: 0; }

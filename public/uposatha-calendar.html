@@ -133,14 +133,13 @@
   </section>
 </main>
 
-<footer class="pagefoot">
-  <span>Uposatha · Dhamma.Gift</span><span class="dot">·</span><a href="/docs/policies" data-t="lic"></a>
-  <div class="sp">
-    <a href="https://github.com/dhammagift" title="GitHub" target="_blank" rel="noopener">GH</a>
-    <a href="mailto:dhamma@dhamma.gift" title="Mail"><svg class="ic"><use href="#i-mail"/></svg></a>
-    <a href="https://t.me/dhammagift" title="Telegram" target="_blank" rel="noopener"><svg class="ic"><use href="#i-send"/></svg></a>
-  </div>
-</footer>
+<footer id="dg-footer">
+    <div class="dg-footer-main">
+      <p class="dg-footer-nav" id="dg-footer-nav"></p>
+      <p id="dg-copyright"></p>
+    </div>
+    <div class="dg-contacts dg-footer-contacts" id="dg-footer-contacts"></div>
+  </footer>
 
 <div class="scrim" id="scrim" data-open="false"></div>
 
@@ -151,6 +150,11 @@
     <!-- Шапка шторки ведёт на главную — пункт «Главная» ушёл вместе с «Навигацией», а домой
          из выдачи/ридера через бургер всё равно нужно уметь. -->
     <a class="dg-brand-link" href="/"><img class="dg-brand-logo" src="/assets/img/dgsanhkalogo.png" alt=""><span class="dg-brand-name">dhamma.gift</span></a>
+    <!-- issue #5: needed our own share affordance. The manifest is standalone now, so there is no
+         browser chrome and no Chrome share icon to borrow at all — but the button predates that and
+         the app's WebView has no such chrome either. navigator.share() opens the native OS sheet
+         where available (Android/iOS/most mobile browsers); desktop browsers without it fall back
+         to copying the link, same pattern as copyToClipboard.js elsewhere. -->
     <button type="button" class="dg-icon-btn dg-drawer-share" aria-label="Share" data-i18n-aria-label="{{menu.share}}">
       <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/></svg>
     </button>
@@ -172,7 +176,7 @@
          one (file-magnifying-glass/file-search is Pro-only, checked node_modules directly), so
          this stays the plain lens rather than a hand-drawn substitute breaking the icon system's
          "every drawer icon comes from ICONS/FontAwesome" convention. -->
-    <a class="dg-drawer-row dg-find-open" href="javascript:void(0)" data-dg-icon="magnifier">{{menu.findOnPage}}</a>
+    <a class="dg-drawer-row dg-find-open" href="javascript:void(0)" data-dg-icon="magnifier">{{menu.findOnPage}}<span class="dg-drawer-hotkey">Alt+F</span></a>
     <!-- Мультитул вместо «Навигации» (owner, 2026-09-05): список плиток главной, чтобы мультитул
          был под рукой в любом месте сайта — в выдаче, в ридере, в TOC. Нативный <details>, свёрнут
          по умолчанию в выдаче/ридере/TOC; на главной openDrawer() (home.js) раскрывает его при
@@ -192,22 +196,30 @@
          свёрнуто", тем же native-элементом, что уже здесь для «Мультитул» ниже. Открыт/закрыт
          запоминается в localStorage (paintReaderModes/wireReaderModesToggle, home.js) — читается
          только при показе секции, а не при каждой перерисовке списка внутри неё. -->
-    <details id="dg-drawer-modes" hidden>
+    <details class="dg-drawer-group" id="dg-drawer-modes" hidden>
       <summary class="dg-group-title">{{menu.readingModes}}</summary>
       <div id="dg-drawer-modes-list"></div>
     </details>
 
     <p class="dg-group-title">{{menu.settings}}</p>
-    <!-- Язык/тема — переехали сюда, в «Настройки» (просьба владельца: часть настроек была вверху
-         шторки, часть внизу — всё в одном месте). Переключатели наполняет и обслуживает home.js,
-         контейнеры БЕЗ класса .dg-segmented (сам переключатель — <div class="dg-segmented">,
-         который создаёт segmented() и кладёт сюда). -->
-    <p class="dg-group-title" data-dg-icon="language">{{menu.language}}</p>
+    <!-- Язык/тема/размер шрифта — подпункты «Настроек» выше, не отдельные разделы того же уровня
+         (owner: "равнозначные, слишком большие") — .dg-drawer-subtitle заметно мельче
+         .dg-group-title (та — для MULTITOOL/SETTINGS и т.п.). Переключатели наполняет и
+         обслуживает home.js, контейнеры БЕЗ класса .dg-segmented (сам переключатель —
+         <div class="dg-segmented">, который создаёт segmented() и кладёт сюда). -->
+    <p class="dg-drawer-subtitle" data-dg-icon="language">{{menu.language}}</p>
     <div id="dg-lang-seg"></div>
     <!-- Значка у этого заголовка нет намеренно: солнце рядом со словом «Тема» читалось бы как
          «сейчас светлая». Значки тем — внутри самого переключателя, у своих вариантов. -->
-    <p class="dg-group-title">{{menu.theme}}</p>
+    <p class="dg-drawer-subtitle">{{menu.theme}}</p>
     <div id="dg-theme-seg"></div>
+    <!-- issue #5: font size lived only in the mostly-hidden /settings/ page (localStorage.uiScale,
+       #sizeMinus/#sizePlus there) and its saved value was never actually applied on this page or
+       the reader — settings.js's own #fontDec/#fontInc apply-on-click code targets ids that don't
+       exist here (legacy reader-template.html only). Same key, own stepper, right in the drawer,
+       same .dg-segmented look as the En/Ru and theme switches above (owner ask). -->
+    <p class="dg-drawer-subtitle">{{menu.fontSize}}</p>
+    <div id="dg-fontsize-ctrl" class="dg-segmented"></div>
     <!-- "Описания кнопок" (dgTileDesc) moved to /settings/ — owner: "очень неважная настройка",
          doesn't need to sit in the quick-access drawer next to language/theme. tileDescEnabled()
          in home.js still reads the same localStorage key when actually rendering tile rows. -->
@@ -241,13 +253,16 @@
     </div>
     <a class="dg-drawer-row" href="javascript:void(0)" id="d-share"><svg class="dg-row-ic" aria-hidden="true"><use href="#i-share"/></svg><span data-t="share"></span></a>
     <a class="dg-drawer-row" href="javascript:void(0)" id="d-cal"><svg class="dg-row-ic" aria-hidden="true"><use href="#i-calplus"/></svg><span data-t="addCal"></span></a>
-    <a class="dg-drawer-row" href="/settings/" data-dg-icon="gear">{{global.common.settings}}</a>
+    <a class="dg-drawer-row" href="/settings/" data-dg-icon="gear">{{global.common.settings}}<span class="dg-drawer-hotkey">Alt+Shift+S</span></a>
     <!-- Своя кнопка на главную: подпись, адрес, значок. Форму рисует home.js в обычной шторке.
          Перенесено сюда из «Навигации» по просьбе владельца — это управление кнопками, то есть
          настройка, а не переход. -->
+    <a class="dg-drawer-row" href="javascript:void(0)" id="dg-add-tile" data-dg-icon="plus">{{menu.addTile}}</a>
     <!-- Правка любой кнопки: сперва список, потом та же форма. Выбирать плитку на самой главной
          негде — крестик там уже занят удалением. -->
+    <a class="dg-drawer-row" href="javascript:void(0)" id="dg-edit-tiles" data-dg-icon="wrench">{{menu.editTiles}}</a>
     <!-- Появляется, только если есть что возвращать: убрана кнопка ИЛИ переставлен порядок. -->
+    <a class="dg-drawer-row" href="javascript:void(0)" id="dg-restore-tiles" data-dg-icon="star" hidden>{{menu.restoreTiles}}</a>
     <!-- Owner (2026-09-05): «Логин в самый низ блока настроек» — переехал сюда из «Навигации»,
          которую заменил мультитул. -->
     <a class="dg-drawer-row" href="/login" data-dg-icon="login">{{global.common.login}}</a>
