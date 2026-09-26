@@ -92,7 +92,7 @@ body.scrolled .tbar { border-bottom-color: var(--dg-border); box-shadow: 0 4px 1
 .vtabs { margin: 26px 0 0; max-width: 320px; }
 .vtabs button { font-size: 13.5px; padding: 8px 6px; }
 .screen { display: none; }
-body[data-screen=list] #s-list, body[data-screen=cal] #s-cal { display: block; }
+body[data-screen=list] #s-list, body[data-screen=dates] #s-dates, body[data-screen=cal] #s-cal { display: block; }
 /* the list: months, weeks, days */
 .mon { margin: 22px 0 0; animation: up-in .28s var(--dg-ease) both; }
 .mon h2 { font-size: 10.5px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--dg-text-muted); margin: 0 0 8px; padding: 0 2px; }
@@ -111,7 +111,6 @@ body[data-screen=list] #s-list, body[data-screen=cal] #s-cal { display: block; }
 .ln .k { color: var(--dg-text-2); font-weight: 600; }
 .ln.grey { color: var(--dg-text-muted); }
 .mon li[data-past=true] { color: var(--dg-text-muted); }
-.mon li[data-now=true] { background: var(--dg-accent-bg); }
 .mon li[data-now=true] .w { color: var(--dg-on-accent-bg); font-weight: 600; }
 .more { margin: 14px 0 0; display: flex; justify-content: center; }
 .more button, .td { border: 1px solid var(--dg-border-strong); background: var(--dg-surface); color: var(--dg-text-2); border-radius: 999px; font: inherit; font-size: 13px; padding: 7px 16px; cursor: pointer; }
@@ -125,22 +124,19 @@ body[data-screen=list] #s-list, body[data-screen=cal] #s-cal { display: block; }
 .grid .c { position: relative; background: var(--dg-surface); min-height: 66px; padding: 7px 8px; display: flex; flex-direction: column; gap: 4px; font-size: 13.5px; font-variant-numeric: tabular-nums; border: 0; font: inherit; color: var(--dg-text); text-align: left; cursor: pointer; }
 .grid .c.o { background: var(--dg-page); color: var(--dg-text-muted); opacity: .55; }
 .grid .c .n { display: grid; place-items: center; width: 27px; height: 27px; border-radius: 50%; margin: -3px 0 0 -4px; }
-.grid .c[data-today=true] .n { box-shadow: inset 0 0 0 1.5px var(--dg-text); font-weight: 600; }
+.grid .c[data-today=true] { background: color-mix(in srgb, var(--dg-navy-ink) 22%, var(--dg-surface)); }
+.grid .c[data-today=true] .n { font-weight: 700; } /* today: a plaque */
 .grid .c[data-u] .n { font-weight: 600; }
-.grid .c[data-u="15"] .n { background: var(--dg-accent); color: #fff; }
-.grid .c[data-c] .n { outline: 1.5px dashed var(--dg-accent); outline-offset: -1.5px; color: var(--dg-accent-ink); font-weight: 600; }
-.legend i.c { outline: 1.5px dashed var(--dg-accent); outline-offset: -1.5px; }
-.grid .c[data-u="14"] .n, .grid .c[data-u="8"] .n { box-shadow: inset 0 0 0 1.5px var(--dg-accent); color: var(--dg-accent-ink); }
 .grid .c .lb { font-size: 11px; color: var(--dg-text-muted); display: flex; align-items: center; gap: 4px; line-height: 1.2; }
 .grid .c .lb .mi { font-size: 12px; }
 .grid .c .ld { position: absolute; top: 6px; right: 7px; font-size: 10.5px; color: var(--dg-text-muted); }
-.grid .c[data-sel=true] { outline: 2px solid var(--dg-accent); outline-offset: -2px; }
+.grid .c[data-sel=true] { outline: 0; background: color-mix(in srgb, #d9a441 26%, var(--dg-surface)); } /* the chosen day: an amber plaque (today is the grey one) */
 .legend { margin: 10px 2px 0; display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12px; color: var(--dg-text-muted); }
 .legend span { display: inline-flex; align-items: center; gap: 6px; }
 .legend i { width: 13px; height: 13px; border-radius: 50%; display: inline-block; }
 .legend i.f { background: var(--dg-accent); }
 .legend i.r { box-shadow: inset 0 0 0 1.5px var(--dg-accent); }
-.legend i.t { box-shadow: inset 0 0 0 1.5px var(--dg-text); }
+.legend i.t { border-radius: 4px; background: color-mix(in srgb, var(--dg-navy-ink) 40%, var(--dg-surface)); } /* today is a plaque */
 .detail { margin: 12px 0 0; border: 1px solid var(--dg-border); border-radius: var(--dg-radius); background: var(--dg-surface); padding: 12px 14px; font-size: 14px; min-height: 4.4em; }
 .detail .badge { margin-left: 8px; }
 .detail .ttl { display: block; font-weight: 600; margin-top: 4px; color: var(--dg-accent-ink); }
@@ -210,7 +206,7 @@ b.match { color: var(--dg-match); font-weight: 600; } /* a found word, as in the
 .prow b { font-weight: 600; font-style: italic; }
 .prow small { display: block; font-size: 11.5px; color: var(--dg-text-muted); }
 .prow .tm { margin-left: auto; white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--dg-text-2); }
-.prow[data-now=true] { margin: 4px 6px; padding: 6px 8px; border-radius: 10px; background: color-mix(in srgb, var(--dg-navy-ink) 16%, transparent); box-shadow: inset 0 0 0 2px var(--dg-navy-ink); } /* a rounded frame inside the block: the corners of the block do not cut it */
+.prow[data-now=true] { margin: 4px 6px; padding: 6px 8px; border-radius: 12px; background: color-mix(in srgb, var(--dg-navy-ink) 22%, var(--dg-surface)); } /* the current part: a plaque (a tonal fill), not an outline; not green (green is for kala) */
 .prow[data-now=true] + .prow, .prow:has(+ .prow[data-now=true]) { border-top-color: transparent; } /* the current part: a frame and a denser fill, not green (green is for kala) */
 .prow[data-now=true] small { color: var(--dg-text-2); }
 @media (max-width: 640px) { .pgrid { grid-template-columns: 1fr; } }
@@ -495,7 +491,6 @@ body.app .mealsum h3 { color: var(--dg-accent-ink); }
 body[data-mode=lite] .ln.endl { display: block; }
 .ln.endl { display: block; }
 .ln.dayl { display: none !important; }
-.mon li[data-now=true] { background: color-mix(in srgb, var(--dg-navy-ink) 12%, transparent); box-shadow: inset 0 0 0 2px var(--dg-navy-ink); border-radius: 12px; margin: 4px 6px; }
 
 /* two cells, the beginning and the end (the dates); the moon is one cell of the second column, common to both days */
 .mon li .cap { display: grid; grid-template-columns: 60px 32px; align-self: start; border: 1.5px solid var(--dg-border-strong); border-radius: 14px; overflow: hidden; background: var(--dg-surface); }
@@ -526,13 +521,85 @@ body[data-mode=lite] .ln.endl { display: block; }
 .utab tr.det { display: table-row; }
 body[data-mode=lite] .utab tr.det { display: none; }
 .utab tr[data-past=true] td { opacity: .62; }
-.utab tr[data-now=true] td { background: color-mix(in srgb, var(--dg-navy-ink) 12%, transparent); }
-/* the running Uposatha: a frame round its row (and the line under it in the long view) */
-.utab tr.row[data-now=true] td { box-shadow: inset 0 2px 0 var(--dg-navy-ink); }
-.utab tr.row[data-now=true] td:first-child { box-shadow: inset 2px 0 0 var(--dg-navy-ink), inset 0 2px 0 var(--dg-navy-ink); }
-.utab tr.row[data-now=true] td:last-child { box-shadow: inset -2px 0 0 var(--dg-navy-ink), inset 0 2px 0 var(--dg-navy-ink); }
-.utab tr.det[data-now=true] td { box-shadow: inset 2px 0 0 var(--dg-navy-ink), inset -2px 0 0 var(--dg-navy-ink), inset 0 -2px 0 var(--dg-navy-ink); }
-body[data-mode=lite] .utab tr.row[data-now=true] td { box-shadow: inset 0 2px 0 var(--dg-navy-ink), inset 0 -2px 0 var(--dg-navy-ink); }
-body[data-mode=lite] .utab tr.row[data-now=true] td:first-child { box-shadow: inset 2px 0 0 var(--dg-navy-ink), inset 0 2px 0 var(--dg-navy-ink), inset 0 -2px 0 var(--dg-navy-ink); }
-body[data-mode=lite] .utab tr.row[data-now=true] td:last-child { box-shadow: inset -2px 0 0 var(--dg-navy-ink), inset 0 2px 0 var(--dg-navy-ink), inset 0 -2px 0 var(--dg-navy-ink); }
 .utab { table-layout: fixed; } .utab th:nth-child(1) { width: 42%; } .utab th:nth-child(2), .utab th:nth-child(3) { width: 29%; } .utab td { overflow-wrap: anywhere; }
+
+
+/* the table by dates */
+.lvseg { display: none; }
+.dtab .d { width: 56px; text-align: center; }
+.dtab .d b { display: block; font-size: 19px; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums; }
+.dtab .d small { display: block; font-size: 10.5px; color: var(--dg-text-muted); text-transform: lowercase; margin-top: 3px; }
+.dtab .m { width: 44px; text-align: center; font-size: 24px; line-height: 1; padding-left: 0; padding-right: 0; }
+.dtab td { vertical-align: middle; }
+.dtab .s span { display: block; }
+.dtab .s span + span { margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--dg-border); }
+.dtab .s em { font-style: normal; font-weight: 600; font-size: 11px; letter-spacing: .05em; text-transform: uppercase; }
+.dtab .s .beg em { color: var(--dg-text-2); }
+.dtab .s .end em { color: var(--dg-accent-ink); }
+.dtab .s small { display: block; font-size: 11.5px; color: var(--dg-text-muted); margin-top: 1px; }
+.dtab .s .tdy { margin-top: 4px; font-size: 11px; font-weight: 600; color: var(--dg-accent-ink); }
+.dtab tr.det { display: none; }
+
+
+/* today in the tables is a plaque (a tonal fill with rounded corners, no outline): the cell of the date in the table of the Uposathas, the row in the table by dates */
+.utab td.tdcell { background: color-mix(in srgb, var(--dg-navy-ink) 22%, var(--dg-surface)); border-radius: 14px; box-shadow: inset 0 0 0 4px var(--dg-surface); }
+.dtab td.m[rowspan] { border-left: 0; }
+.dtab tr .s { width: auto; }
+
+/* today in the table by dates: the plaque is on the date cell only (the moon cell of the row may be joined with the row above) */
+.dtab tr[data-today=true] td.d { background: color-mix(in srgb, var(--dg-navy-ink) 22%, var(--dg-surface)); border-radius: 14px; box-shadow: inset 0 0 0 4px var(--dg-surface); }
+.legend, #legend { display: none !important; } /* the moon icons in the cells say it: no legend */
+
+/* the Uposatha in the calendar: its beginning (the evening) is a solid green date, its day a light green one; side by side they are joined into one band */
+.grid .c { --nx: 17.5px; --ny: 4px; --uband: color-mix(in srgb, var(--dg-accent) 30%, var(--dg-surface)); }
+@media (max-width: 640px) { .grid .c { --nx: 50%; --ny: 5px; } .grid .c .lb span:not(.mi) { display: none; } }
+.grid .c .n { position: relative; z-index: 1; }
+.grid .c[data-u] .n { background: var(--dg-accent); color: #fff; font-weight: 600; box-shadow: none; }
+.grid .c[data-c] .n { background: var(--uband); color: var(--dg-accent-ink); font-weight: 600; outline: 0; }
+.grid .c[data-jr]::after { content: ""; position: absolute; z-index: 0; top: var(--ny); height: 27px; left: var(--nx); right: 0; background: var(--uband); }
+.grid .c[data-jl]::before { content: ""; position: absolute; z-index: 0; top: var(--ny); height: 27px; left: 0; right: calc(100% - var(--nx)); background: var(--uband); }
+@media (max-width: 640px) { .grid .c .lb span.mi { display: inline; font-size: 13px; } .grid .c { min-height: 58px; } } /* the moon icon stays in a cell of a phone: it tells the phase */
+
+/* the small round arrow that asks for the position again */
+.loc-refresh { display: inline-grid; place-items: center; width: 24px; height: 24px; margin-left: 4px; padding: 0; vertical-align: middle; border: 1px solid var(--dg-border-strong); border-radius: 50%; background: var(--dg-surface); color: var(--dg-accent-ink); cursor: pointer; }
+.loc-refresh:active { background: var(--dg-surface-hover); }
+.loc-refresh.spin svg { animation: locspin .9s linear infinite; }
+@keyframes locspin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .loc-refresh.spin svg { animation: none; opacity: .5; } }
+
+.dtab .m { width: 78px; }
+.dtab .m .mi { display: block; }
+.dtab .m small { display: block; margin-top: 4px; font-size: 11px; line-height: 1.2; color: var(--dg-text-2); }
+
+/* the table by dates: a bigger moon, the day above it, the lunar day of the 30 under the beginning */
+.dtab .m .mi { font-size: 36px; line-height: 1.1; }
+.dtab .m small { margin: 0 0 6px; }
+.dtab .s .ln { display: block; font-size: 12px; line-height: 1.4; color: var(--dg-text-muted); margin-top: 3px; }
+.dtab .s .ln.grey { display: block; }
+body[data-mode=lite] .dtab .s .ln.grey { display: block; }
+#twi:disabled { opacity: .45; }
+/* the name of the day over the moon as big as the dates and the words of the row */
+.dtab .m { width: 96px; }
+.dtab .m small { font-size: 16px; font-weight: 600; line-height: 1.15; margin: 0 0 6px; color: var(--dg-text); }
+
+/* The key suttas accordion opens and closes with a short height and opacity transition (Chrome 131+ and current WebViews animate ::details-content;
+   older engines just switch). Ease-out 220 ms: it is opened a few times a visit, never a hot path. */
+.keys li.kq details { interpolate-size: allow-keywords; }
+.keys li.kq details::details-content { block-size: 0; opacity: 0; overflow: clip; transition: block-size .22s cubic-bezier(0.23, 1, 0.32, 1), opacity .18s ease-out, content-visibility .22s allow-discrete; }
+.keys li.kq details[open]::details-content { block-size: auto; opacity: 1; }
+.keys li.kq summary:focus-visible { outline: 2px solid var(--dg-accent); outline-offset: -2px; border-radius: 12px; }
+.keys li.kq summary:focus:not(:focus-visible) { outline: none; }
+@media (prefers-reduced-motion: reduce) { .keys li.kq details::details-content { transition: opacity .12s linear; } }
+/* the switch of the views: a soft green ring for the keyboard, none after a click (the browser's white ring was loud) */
+.segrow button:focus-visible { outline: 2px solid var(--dg-accent); outline-offset: -2px; border-radius: 12px; }
+.segrow button:focus:not(:focus-visible) { outline: none; }
+
+/* remind switches in the corner of a card (parts heading, meal card): a small pill, filled when on */
+.parts-h, .cardh { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.cardh h3 { margin-bottom: 6px; }
+.bellsw { display: inline-flex; align-items: center; gap: 5px; flex: none; padding: 4px 10px 4px 8px; border: 0; border-radius: 999px; font: inherit; font-size: 12px; cursor: pointer; color: var(--dg-text-2); background: color-mix(in srgb, var(--dg-text-muted) 14%, transparent); transition: background-color .15s ease, color .15s ease; }
+.bellsw .ic { width: 14px; height: 14px; }
+.bellsw[aria-pressed=true] { color: var(--dg-accent-ink); background: color-mix(in srgb, var(--dg-accent-ink) 18%, transparent); }
+.bellsw[aria-pressed=true] .ic { fill: currentColor; }
+.bellsw:active { transform: scale(.97); }
+.bellsw:focus-visible { outline: 2px solid var(--dg-accent-ink); outline-offset: 2px; }

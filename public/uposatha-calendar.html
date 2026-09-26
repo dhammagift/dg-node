@@ -3,6 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<script>
+// The theme before the first paint: a dark page must not start white (the theme script runs later). ?theme=, then the stored choice, then the system.
+(function () { try { var q = new URLSearchParams(location.search).get('theme'), t = q || localStorage.theme || 'auto', d = t === 'dark' || (t === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches);
+  if (d) { var r = document.documentElement; r.setAttribute('data-theme', 'dark'); r.style.background = '#111'; r.style.colorScheme = 'dark'; } } catch (e) { /* the light page */ } })();
+</script>
 <title>Uposatha days — Dhamma.gift</title>
 <meta name="description" content="The Uposatha days of the suttas (the 14th, 15th and 8th lunar days of each half-month) and the four moon-phase days, with exact times for your time zone and place.">
 <link rel="icon" type="image/png" href="/assets/img/favico-noglass.png">
@@ -39,6 +44,7 @@
   <symbol id="i-sliders" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h9M19 7h1M4 17h1M11 17h9"/><circle cx="16" cy="7" r="2.4"/><circle cx="8" cy="17" r="2.4"/></symbol>
   <symbol id="i-share" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M8 7l4-4 4 4"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></symbol>
   <symbol id="i-help" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.6 2.2c-.8.4-1.2 1-1.2 1.8"/><path d="M12 17h.01"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></symbol>
   <symbol id="i-pin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="8"/><path d="M12 1v3M12 20v3M1 12h3M20 12h3"/></symbol>
   <symbol id="i-calplus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18M12 13v5M9.5 15.5h5"/></symbol>
   <symbol id="i-list" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></symbol>
@@ -114,12 +120,17 @@
     </div>
   </section>
 
+  <div class="segrow lvseg" id="lv-seg"><button type="button" data-v="dates" data-t="tDates"></button><button type="button" data-v="list" data-t="tList"></button></div>
+
   <div class="segrow vtabs" id="s-calendar" role="tablist">
+    <button type="button" aria-pressed="false" id="tab-dates"><svg class="ic"><use href="#i-cal"/></svg><span data-t="tDates"></span></button>
     <button type="button" aria-pressed="true" id="tab-list"><svg class="ic"><use href="#i-list"/></svg><span data-t="tList"></span></button>
     <button type="button" aria-pressed="false" id="tab-cal"><svg class="ic"><use href="#i-cal"/></svg><span data-t="tCal"></span></button>
   </div>
 
   <section class="screen" id="s-list"><div id="list"></div><div class="more"><button type="button" id="more" data-t="more"></button></div></section>
+
+  <section class="screen" id="s-dates"><div id="dates"></div></section>
 
   <section class="screen" id="s-cal">
     <div class="calh">
@@ -134,7 +145,7 @@
   </section>
 
   <section class="parts" id="parts">
-    <div class="parts-h"><h2 data-t="pH"></h2></div>
+    <div class="parts-h"><h2 data-t="pH"></h2><button type="button" class="bellsw" id="parts-bell" aria-pressed="false"><svg class="ic"><use href="#i-bell"/></svg><span data-t="bellLbl"></span></button></div>
     <p class="sub" id="pwho" style="margin:0 0 10px"></p>
     <div class="pgrid" id="pgrid"></div>
     <div class="meal" id="meal"></div>
@@ -240,7 +251,8 @@
       <div id="dg-drawer-modes-list"></div>
     </details>
 
-    <p class="dg-group-title">{{menu.settings}}</p>
+    <details class="dg-drawer-group" id="g-gen" open>
+    <summary class="dg-group-title" data-t="gGen"></summary>
     <!-- Язык/тема/размер шрифта — подпункты «Настроек» выше, не отдельные разделы того же уровня
          (owner: "равнозначные, слишком большие") — .dg-drawer-subtitle заметно мельче
          .dg-group-title (та — для MULTITOOL/SETTINGS и т.п.). Переключатели наполняет и
@@ -263,9 +275,11 @@
          doesn't need to sit in the quick-access drawer next to language/theme. tileDescEnabled()
          in home.js still reads the same localStorage key when actually rendering tile rows. -->
 
+    </details>
     <!-- Полные настройки (шестерёнка) — ниже язык/тему по просьбе владельца: сначала быстрые
          переключатели, потом ссылка на полную страницу настроек. -->
-    <p class="dg-group-title" id="d-uset" data-t="gUposatha"></p>
+    <details class="dg-drawer-group" id="g-uset" open>
+      <summary class="dg-group-title" id="d-uset" data-t="gUposatha"></summary>
     <p class="dg-drawer-subtitle" id="bysuttas-lb" data-t="bySuttas"></p>
     <div class="dg-segmented" id="sw-sut"><button type="button" data-v="1" data-t="on"></button><button type="button" data-v="0" data-t="off"></button></div>
     <p class="dg-drawer-subtitle" data-t="detail"></p>
@@ -300,7 +314,9 @@
       <p class="dg-uset-note" id="rem-msg"></p>
       <p class="dg-uset-note" id="rem-note"></p>
     </div>
-    <p class="dg-group-title" id="d-meal" data-t="mealG"></p>
+    </details>
+    <details class="dg-drawer-group" id="g-meal">
+      <summary class="dg-group-title" id="d-meal" data-t="mealG"></summary>
     <div id="noon-block">
       <p class="dg-drawer-subtitle" data-t="noonBy"></p>
       <div class="dg-segmented" id="noonseg"><button type="button" data-v="sun" data-t="noonSunS"></button><button type="button" data-v="mid" data-t="noonMidS"></button><button type="button" data-v="clock" data-t="noonClockS"></button></div>
@@ -328,17 +344,32 @@
       <p class="dg-drawer-subtitle" data-t="testL"></p>
       <div class="dg-segmented" id="testseg"><button type="button" data-v="" data-t="testReal"></button><button type="button" data-v="kala">Kāla</button><button type="button" data-v="vikala">Vikāla</button></div>
     </div>
+    </details>
+    <details class="dg-drawer-group" id="g-parts">
+      <summary class="dg-group-title" id="d-parts" data-t="partsG"></summary>
+    <div id="parts-block">
+      <p class="dg-drawer-subtitle" data-t="partsRemL"></p>
+      <div class="dg-segmented" id="sw-prem"><button type="button" data-v="1" data-t="on"></button><button type="button" data-v="0" data-t="off"></button></div>
+      <div id="prem-more">
+        <p class="dg-drawer-subtitle" data-t="partsWhichL"></p>
+        <div class="dg-segmented" id="pwhich"><button type="button" data-v="day" data-t="pDayS"></button><button type="button" data-v="night" data-t="pNightS"></button><button type="button" data-v="both" data-t="pBothS"></button></div>
+        <p class="dg-drawer-subtitle" data-t="mealDays"></p>
+        <div class="dg-segmented" id="pdays"><button type="button" data-v="upo" data-t="mealDaysU"></button><button type="button" data-v="all" data-t="mealDaysA"></button></div>
+        <div id="psnd-row" style="display:none"><p class="dg-drawer-subtitle" data-t="partsSnd"></p><select class="dg-field-input" id="psnd"></select></div>
+      </div>
+    </div>
+    </details>
     <div id="tst-block">
       <p class="dg-drawer-subtitle" data-t="tstL"></p>
       <select class="dg-field-input" id="tst-kind"></select>
-      <div class="dg-segmented" id="tst-min"><button type="button" data-v="1" data-t="tst1"></button><button type="button" data-v="2" data-t="tst2"></button></div>
+      <div class="dg-segmented" id="tst-min"><button type="button" data-v="0" data-t="tst0"></button><button type="button" data-v="1" data-t="tst1"></button><button type="button" data-v="2" data-t="tst2"></button></div>
       <button type="button" class="dg-field-btn" id="tst-go" data-t="tstGo"></button>
       <p class="dg-uset-note" id="tst-msg"></p>
     </div>
     <a class="dg-drawer-row" href="javascript:void(0)" id="d-share"><svg class="dg-row-ic" aria-hidden="true"><use href="#i-share"/></svg><span data-t="share"></span></a>
     <a class="dg-drawer-row" href="javascript:void(0)" id="d-cal"><svg class="dg-row-ic" aria-hidden="true"><use href="#i-calplus"/></svg><span data-t="addCal"></span></a>
     <a class="dg-drawer-row" href="/docs/uposatha/" target="_blank" rel="noopener" id="d-help" data-dg-icon="help"><span data-t="help"></span></a>
-    <a class="dg-drawer-row" href="/settings/" data-dg-icon="gear">{{global.common.settings}}<span class="dg-drawer-hotkey">Alt+Shift+S</span></a>
+    <a class="dg-drawer-row" href="/settings/" data-dg-icon="gear"><span data-t="gDg"></span><span class="dg-drawer-hotkey">Alt+Shift+S</span></a>
     <!-- Своя кнопка на главную: подпись, адрес, значок. Форму рисует home.js в обычной шторке.
          Перенесено сюда из «Навигации» по просьбе владельца — это управление кнопками, то есть
          настройка, а не переход. -->
@@ -394,6 +425,8 @@
 <script defer src="/assets/js/themeswitch.js"></script>
 <script defer src="/assets/js/quickModal.js"></script>
 <script defer src="/assets/js/settings.js"></script>
+<script src="/assets/js/dg-page-find.js" defer></script>
+<script src="/assets/js/dg-page-find-ui.js" defer></script> <!-- find on the page: the row of the drawer and Alt+F; the engine first -->
 <script src="/assets/js/dict-mode-shared.js" defer></script>
 <script defer src="/nodejs/res/js/home.js"></script>
 </body>

@@ -79,3 +79,18 @@ body.app main.page { padding-top: 2px; }
 /* nothing here is a link to click with a mouse: no hover, no browser focus ring on tap, no rubber band of the page */
 body.app { overscroll-behavior-y: none; }
 body.app :focus:not(:focus-visible) { outline: none; }
+
+/* the app: the list tab holds two views with their own small switch; only the chosen one shows */
+body.app[data-app-tab=list] .lvseg { display: flex; }
+body.app[data-app-tab=list] #s-list, body.app[data-app-tab=list] #s-dates { display: none; }
+body.app[data-app-tab=list][data-screen=list] #s-list, body.app[data-app-tab=list][data-screen=dates] #s-dates { display: block; }
+body.app:not([data-app-tab=list]) #s-dates { display: none !important; }
+
+/* in the app: today is a grey plaque, the chosen day an amber one, no outline */
+body.app .grid .c[data-today=true] { box-shadow: none; background: color-mix(in srgb, var(--dg-navy-ink) 22%, var(--dg-surface)); }
+body.app .grid .c[data-sel=true] { box-shadow: none; background: color-mix(in srgb, #d9a441 26%, var(--dg-surface)); }
+
+/* the key suttas in the app: the questions stand close, each a slim card (the designer's layer made every one 60 px tall with a big gap) */
+body.app .keys li.kq { padding: 0 16px; margin: 0 0 6px; border-radius: 18px; }
+body.app .keys li.kq summary { padding: 12px 0; }
+body.app .keys li.kq details[open] > ul { padding-bottom: 10px; }

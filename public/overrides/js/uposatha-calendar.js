@@ -37,7 +37,7 @@
       age: 'age', of30: 'of 30', from: 'from', left: 'left', dU: 'd', hU: 'h', mU: 'min',
       searchPh: 'Search: kacchapa, dn22…', searchGo: 'Search', tocTitle: 'Contents (Alt+2)', clear: 'Clear', tag: 'observance days', compass: 'Favorites / History', menu: 'Menu', theme: 'Theme', prev: 'Previous', next: 'Next', close: 'Close',
       h1: 'Uposatha days', lead: 'The 14th, 15th and 8th lunar days of each half-month, as the suttas count them — six a month.', suttas: 'The suttas on Uposatha →',
-      today: 'Today', change: 'change', tList: 'Uposatha days', tCal: 'Calendar', more: 'Three more months', todayBtn: 'Today',
+      today: 'Today', change: 'change', tDates: 'By dates', tList: 'Uposatha days', tCal: 'Calendar', more: 'Three more months', todayBtn: 'Today',
       kH: 'Key suttas', kSub: 'Each “Read →” opens the sutta at the passage in question and highlights it.', kNow: 'Now open', kNew: 'Open in a new window',
       lic: 'Licences', mt: 'Multitool', lHome: 'Home', lToc: 'Contents', lDict: 'Dictionary', lMemo: 'Memorizer', lang: 'Language', themeH: 'Theme', dark: 'Dark', light: 'Light', auto: 'Auto',
       gCal: 'Calendar', subNote: 'The days for a year ahead, kept up to date by itself.', icsNote: 'Or a file, once: the next 12 months.', copyLink: 'Copy link',
@@ -49,23 +49,23 @@
       detail: 'Details', detailD: 'Off — the short form',
       gRem: 'Reminders', remind: 'Remind me', adv: 'In advance', leads: [[0, 'when it begins'], [1, '1 hour'], [3, '3 hours'], [12, '12 hours'], [24, '1 day'], [48, '2 days']], days: 'Days',
       remNote: 'Notifications appear while this app is open or running in the background on your device. For reminders that arrive when it is fully closed, add the days to your phone\'s calendar.',
-      mealG: 'Meals', mealH: 'Meals', mealSub: 'Monks, and those who keep the Uposatha, eat in one part of the day: from dawn until midday. After midday and until dawn is <i>vikāla</i>, “the wrong time”. ',
+      gGen: 'General settings', gDg: 'DG Settings', bellLbl: 'Remind', bellOn: 'Reminders are on', partsG: 'Parts of the night and day', partsRemL: 'Remind at the start of each part', partsWhichL: 'Which parts', pDayS: 'Day', pNightS: 'Night', pBothS: 'Both', partsSnd: 'Sound of this reminder', partsVoice: 'Spoken name (Pali)', partsBody: function (m, d) { return m + ': ' + d; }, mealG: 'Meals', mealH: 'Meals', mealSub: 'Monks, and those who keep the Uposatha, eat in one part of the day: from dawn until midday. After midday and until dawn is <i>vikāla</i>, “the wrong time”. ',
       mealEat: function (noon, left) { return '<i>Kāla</i> — food is allowed. Midday at ' + noon + ' · until <i>vikāla</i>: ' + left; },
       mealVik: function (dawn, left) { return '<i>Vikāla</i> — until dawn at ' + dawn + ': ' + left; },
       noonBy: 'Count midday by', noonSunS: 'Sun', noonMidS: 'Middle of day', noonClockS: '12:00', noonWhat: 'Middle of the day: halfway between sunrise and sunset, the centre of the middle third.', noonChange: 'change', noonSun: 'the Sun (highest point)', noonMid: 'the middle of the day', noonClock: '12:00 by the clock', noonFixed: 'Without a place midday is 12:00 by the clock.',
       noonNote: 'The Vinaya says only “when midday has passed”, not how to find it. The Sun’s highest point is astronomical midday; the middle of the day is halfway between sunrise and sunset (almost the same); 12:00 by the clock can differ by an hour or more. Dawn here is taken as sunrise.',
  mealSet: 'Food (vikāla)', mealSumL: 'Show in the summary', mealRemL: 'Remind when the time for food ends', mealLead: 'In advance', mealLeads: [[0, 'when the time for food ends'], [15, '15 min before'], [30, '30 min before'], [45, '45 min before'], [60, '1 hour before'], [90, '1.5 hours before'], [120, '2 hours before']], mealDays: 'Days', mealDaysU: 'Uposatha days', mealDaysA: 'Every day', mealSnd: 'Sound of this reminder',
-      twiL: 'Dawn and dusk', twiNote: 'Twilight: the Sun 6, 12 or 18° below the horizon. Sets the borders of the day and the night and the dawn in the meals card.', twiO: { sun: 'Sunrise and sunset', civil: 'Civil (−6°)', nautical: 'Nautical (−12°)', astro: 'Astronomical (−18°)' },
-      tstL: 'Test a reminder', tstKinds: { upo: 'Uposatha day', beg: 'The time for food begins', end: 'The time for food ends' }, tst1: 'in 1 min', tst2: 'in 2 min', tstGo: 'Schedule the test',
-      tstTitle: function (k) { return { upo: 'Uposatha (test)', beg: 'Time for food (test)', end: 'Vikāla soon (test)' }[k]; }, tstBody: 'A test reminder with the sound of this kind.', tstSet: function (at) { return 'It will come at ' + at + '.'; }, tstDenied: 'Notifications are not allowed.',
+      twiFixed: 'Without a place the dawn is 06:00 and the dusk 18:00.', twiL: 'Dawn and dusk', twiNote: 'Twilight: the Sun 6, 12 or 18° below the horizon. Sets the borders of the day and the night and the dawn in the meals card.', twiO: { sun: 'Sunrise and sunset', civil: 'Civil (−6°)', nautical: 'Nautical (−12°)', astro: 'Astronomical (−18°)' },
+      tstL: 'Test a reminder', tstKinds: { upo: 'Uposatha day', beg: 'The time for food begins', end: 'The time for food ends', parts: 'All 6 parts of the night and day, one by one' }, tst0: 'now', tst1: 'in 1 min', tstBlocked: 'The browser blocks notifications for this site: click the lock in the address bar, set Notifications to Allow, and try again.', tstNow: 'Sent now.', tst2: 'in 2 min', tstGo: 'Schedule the test',
+      tstTitle: function (k) { return { upo: 'Uposatha (test)', beg: 'Time for food (test)', end: 'Vikāla soon (test)', parts: 'Parts (test)' }[k]; }, tstBody: 'A test reminder with the sound of this kind.', tstSet: function (at) { return 'It will come at ' + at + '.'; }, tstDenied: 'Notifications are not allowed.',
       testL: 'Test: show the state', testReal: 'as is', testTag: 'test',
       mealRemNow: 'Vikāla begins', mealRemZero: function (noon) { return 'Midday at ' + noon + ' — the time for food has ended.'; },
       mealBegL: 'Remind when the time for food begins', mealBegLeads: [[0, 'at dawn'], [15, '15 min before'], [30, '30 min before'], [60, '1 hour before']],
       mealBegNow: 'Time for food', mealBegZero: function (dawn) { return 'Dawn at ' + dawn + ' — the time for food has begun.'; },
       mealBegTitle: 'Time for food soon', mealBegBody: function (dawn, lead) { return 'Dawn at ' + dawn + ' — the time for food begins in ' + (lead >= 60 ? (lead / 60) + ' h' : lead + ' min') + '.'; },
       mealRemTitle: 'Vikāla soon', mealRemBody: function (noon, lead) { return 'Midday at ' + noon + ' — the time for food ends in ' + (lead >= 60 ? (lead / 60) + ' h' : lead + ' min') + '.'; },
-      logoTip: 'Home · change the language: long press or right click', rateUs: 'Rate Us', appVer: 'App version', timeL: 'Time', ofMode: function (n, m, su) { return n + ' of ' + m + (su ? ' by the suttas' : ' modern'); }, locHere: 'by geo', locNone: 'manual', navHome: 'Summary', navList: 'Uposathas', navCal: 'Calendar', navParts: 'Night–day', navSet: 'Settings',
-      sound: 'Sound', soundNone: 'Silent', soundOwn: 'My own sound…', soundOwnNamed: 'My own: %', soundFail: 'The sound was not set.', sounds: { gong: 'Gong', gong2: 'Gong 2', gong3: 'Gong 3', gong4: 'Gong 4', gong5: 'Gong 5', bell: 'Bell' },
+      logoTip: 'Home · change the language: long press or right click', rateUs: 'Rate Us', appVer: 'App version', timeL: 'Time', ofMode: function (n, m, su) { return n + ' of ' + m + (su ? ' by the suttas' : ' modern'); }, locRefresh: 'Update my location', locHere: 'by geo', locNone: 'manual', navHome: 'Summary', navList: 'Uposathas', navCal: 'Calendar', navParts: 'Night–day', navSet: 'Settings',
+      sound: 'Sound', soundNone: 'Silent', soundOwn: 'My own sound…', soundOwnNamed: 'My own: %', soundFail: 'The sound was not set.', sounds: { vikala: 'Vinaya: what is vikāla (Pali)', gong: 'Gong', gong3: 'Gong 2', gong4: 'Gong 3', gong5: 'Gong 4', gong2: 'Gong 5', bell: 'Bell' },
       remAppNote: 'Reminders are scheduled on this device and arrive even when the app is closed.',
       remNext: function (when, what) { return 'Next reminder: ' + when + ' — ' + what; }, remNone: 'No reminder is due in the coming weeks.',
       remDenied: 'Notifications are blocked for this site — allow them in the browser settings.', remUnsupported: 'This browser cannot show notifications.',
@@ -90,7 +90,7 @@
       age: 'возраст', of30: 'из 30', from: 'с', left: 'осталось', dU: 'д', hU: 'ч', mU: 'мин',
       searchPh: 'Поиск: kacchapa, dn22…', searchGo: 'Найти', tocTitle: 'Оглавление (Alt+2)', clear: 'Очистить', tag: 'дни соблюдения', compass: 'Избранное / История', menu: 'Меню', theme: 'Тема', prev: 'Назад', next: 'Вперёд', close: 'Закрыть',
       h1: 'Дни упосатхи', lead: '14-й, 15-й и 8-й лунные дни каждой половины месяца, как их считают сутты, — шесть в месяц.', suttas: 'Сутты об упосатхе →',
-      today: 'Сегодня', change: 'изменить', tList: 'Упосатхи', tCal: 'Календарь', more: 'Ещё три месяца', todayBtn: 'Сегодня',
+      today: 'Сегодня', change: 'изменить', tDates: 'По датам', tList: 'Упосатхи', tCal: 'Календарь', more: 'Ещё три месяца', todayBtn: 'Сегодня',
       kH: 'Ключевые сутты', kSub: 'Каждое «Читать →» открывает сутту на нужном месте и подсвечивает его.', kNow: 'Сейчас открыта', kNew: 'Открыть в новом окне',
       lic: 'Лицензии', mt: 'Мультитул', lHome: 'Главная', lToc: 'Оглавление', lDict: 'Словарь', lMemo: 'Меморайзер', lang: 'Язык', themeH: 'Тема', dark: 'Тёмная', light: 'Светлая', auto: 'Авто',
       gCal: 'Календарь', subNote: 'Дни на год вперёд, обновляется сама.', icsNote: 'Или файлом, один раз: на 12 месяцев вперёд.', copyLink: 'Копировать ссылку',
@@ -102,23 +102,23 @@
       detail: 'Подробно', detailD: 'Выкл — короткая форма',
       gRem: 'Напоминания', remind: 'Напоминать', adv: 'Заранее', leads: [[0, 'в момент начала'], [1, 'за 1 час'], [3, 'за 3 часа'], [12, 'за 12 часов'], [24, 'за сутки'], [48, 'за 2 суток']], days: 'Дни',
       remNote: 'Уведомления приходят, пока приложение открыто или работает в фоне на вашем устройстве. Чтобы напоминание пришло и при полностью закрытом приложении, добавьте дни в календарь телефона.',
-      mealG: 'Приём пищи', mealH: 'Приём пищи', mealSub: 'Монахи и те, кто соблюдает упосатху, едят в одну часть дня: от рассвета до полудня. После полудня и до рассвета — <i>vikāla</i>, «неподходящее время». ',
+      gGen: 'Общие настройки', gDg: 'Настройки DG', bellLbl: 'Напоминать', bellOn: 'Напоминания включены', partsG: 'Части ночи и дня', partsRemL: 'Напоминать о начале каждой части', partsWhichL: 'Какие части', pDayS: 'День', pNightS: 'Ночь', pBothS: 'Обе', partsSnd: 'Звук этого напоминания', partsVoice: 'Произнесённое название (пали)', partsBody: function (m, d) { return m + ': ' + d; }, mealG: 'Приём пищи', mealH: 'Приём пищи', mealSub: 'Монахи и те, кто соблюдает упосатху, едят в одну часть дня: от рассвета до полудня. После полудня и до рассвета — <i>vikāla</i>, «неподходящее время». ',
       mealEat: function (noon, left) { return '<i>Kāla</i> — есть можно. Полдень в ' + noon + ' · до <i>vikāla</i>: ' + left; },
       mealVik: function (dawn, left) { return '<i>Vikāla</i> — до рассвета в ' + dawn + ': ' + left; },
       noonBy: 'Полдень считать по', noonSunS: 'Солнце', noonMidS: 'Середина дня', noonClockS: '12:00', noonWhat: 'Середина дня — ровно между восходом и закатом, центр средней трети дня.', noonChange: 'изменить', noonSun: 'Солнцу (высшая точка)', noonMid: 'середине дня', noonClock: '12:00 по часам', noonFixed: 'Без места полдень — 12:00 по часам.',
       noonNote: 'В Винае сказано лишь «когда полдень миновал», а как его определить — нет. Высшая точка Солнца — астрономический полдень; середина дня — ровно между восходом и закатом (почти то же самое); 12:00 по часам может отличаться на час и больше. Рассвет здесь принят за восход.',
  mealSet: 'Еда (vikāla)', mealSumL: 'Показывать в сводке', mealRemL: 'Напоминать об окончании времени еды', mealLead: 'Заранее', mealLeads: [[0, 'когда время еды закончится'], [15, 'за 15 мин'], [30, 'за 30 мин'], [45, 'за 45 мин'], [60, 'за 1 час'], [90, 'за 1,5 часа'], [120, 'за 2 часа']], mealDays: 'Дни', mealDaysU: 'Дни упосатхи', mealDaysA: 'Каждый день', mealSnd: 'Звук этого напоминания',
-      twiL: 'Рассвет и закат', twiNote: 'Сумерки: Солнце на 6, 12 или 18° под горизонтом. Задаёт границы дня и ночи и рассвет в карточке приёма пищи.', twiO: { sun: 'Восход и закат', civil: 'Гражданские (−6°)', nautical: 'Навигационные (−12°)', astro: 'Астрономические (−18°)' },
-      tstL: 'Проверить напоминание', tstKinds: { upo: 'День упосатхи', beg: 'Начало времени еды', end: 'Конец времени еды' }, tst1: 'через 1 мин', tst2: 'через 2 мин', tstGo: 'Поставить проверку',
-      tstTitle: function (k) { return { upo: 'Упосатха (проверка)', beg: 'Время еды (проверка)', end: 'Скоро vikāla (проверка)' }[k]; }, tstBody: 'Проверочное напоминание со звуком этого вида.', tstSet: function (at) { return 'Придёт в ' + at + '.'; }, tstDenied: 'Уведомления не разрешены.',
+      twiFixed: 'Без места рассвет 06:00, закат 18:00.', twiL: 'Рассвет и закат', twiNote: 'Сумерки: Солнце на 6, 12 или 18° под горизонтом. Задаёт границы дня и ночи и рассвет в карточке приёма пищи.', twiO: { sun: 'Восход и закат', civil: 'Гражданские (−6°)', nautical: 'Навигационные (−12°)', astro: 'Астрономические (−18°)' },
+      tstL: 'Проверить напоминание', tstKinds: { upo: 'День упосатхи', beg: 'Начало времени еды', end: 'Конец времени еды', parts: 'Все 6 частей ночи и дня по очереди' }, tst0: 'сейчас', tst1: 'через 1 мин', tstBlocked: 'Браузер блокирует уведомления для этого сайта: нажмите на замок в адресной строке, поставьте «Уведомления: Разрешить» и попробуйте снова.', tstNow: 'Отправлено сейчас.', tst2: 'через 2 мин', tstGo: 'Поставить проверку',
+      tstTitle: function (k) { return { upo: 'Упосатха (проверка)', beg: 'Время еды (проверка)', end: 'Скоро vikāla (проверка)', parts: 'Части (проверка)' }[k]; }, tstBody: 'Проверочное напоминание со звуком этого вида.', tstSet: function (at) { return 'Придёт в ' + at + '.'; }, tstDenied: 'Уведомления не разрешены.',
       testL: 'Проверка: показать состояние', testReal: 'как есть', testTag: 'тест',
       mealRemNow: 'Наступает vikāla', mealRemZero: function (noon) { return 'Полдень в ' + noon + ' — время еды закончилось.'; },
       mealBegL: 'Напоминать о начале времени еды', mealBegLeads: [[0, 'на рассвете'], [15, 'за 15 мин'], [30, 'за 30 мин'], [60, 'за 1 час']],
       mealBegNow: 'Время еды', mealBegZero: function (dawn) { return 'Рассвет в ' + dawn + ' — время еды началось.'; },
       mealBegTitle: 'Скоро время еды', mealBegBody: function (dawn, lead) { return 'Рассвет в ' + dawn + ' — время еды начнётся через ' + (lead >= 60 ? (lead / 60 + '').replace('.', ',') + ' ч' : lead + ' мин') + '.'; },
       mealRemTitle: 'Скоро vikāla', mealRemBody: function (noon, lead) { return 'Полдень в ' + noon + ' — время еды закончится через ' + (lead >= 60 ? (lead / 60 + '').replace('.', ',') + ' ч' : lead + ' мин') + '.'; },
-      logoTip: 'Домой · сменить язык: долгое нажатие или правая кнопка', rateUs: 'Оценить приложение', appVer: 'Версия приложения', timeL: 'Время', ofMode: function (n, m, su) { return n + ' из ' + m + (su ? ' по суттам' : ' по современной'); }, locHere: 'по гео', locNone: 'вручную', navHome: 'Сводка', navList: 'Упосатхи', navCal: 'Календарь', navParts: 'Ночь–день', navSet: 'Настройки',
-      sound: 'Звук', soundNone: 'Без звука', soundOwn: 'Свой звук…', soundOwnNamed: 'Свой: %', soundFail: 'Звук не задан.', sounds: { gong: 'Гонг', gong2: 'Гонг 2', gong3: 'Гонг 3', gong4: 'Гонг 4', gong5: 'Гонг 5', bell: 'Колокол' },
+      logoTip: 'Домой · сменить язык: долгое нажатие или правая кнопка', rateUs: 'Оценить приложение', appVer: 'Версия приложения', timeL: 'Время', ofMode: function (n, m, su) { return n + ' из ' + m + (su ? ' по суттам' : ' по современной'); }, locRefresh: 'Обновить моё место', locHere: 'по гео', locNone: 'вручную', navHome: 'Сводка', navList: 'Упосатхи', navCal: 'Календарь', navParts: 'Ночь–день', navSet: 'Настройки',
+      sound: 'Звук', soundNone: 'Без звука', soundOwn: 'Свой звук…', soundOwnNamed: 'Свой: %', soundFail: 'Звук не задан.', sounds: { vikala: 'Виная: что такое vikāla (пали)', gong: 'Гонг', gong3: 'Гонг 2', gong4: 'Гонг 3', gong5: 'Гонг 4', gong2: 'Гонг 5', bell: 'Колокол' },
       remAppNote: 'Напоминания ставятся на этом устройстве и приходят даже при закрытом приложении.',
       remNext: function (when, what) { return 'Ближайшее напоминание: ' + when + ' — ' + what; }, remNone: 'В ближайшие недели напоминаний нет.',
       remDenied: 'Уведомления для сайта запрещены — разрешите их в настройках браузера.', remUnsupported: 'Этот браузер не умеет показывать уведомления.',
@@ -197,11 +197,12 @@
     south: null,
     ref: store('dgUposathaSutta') === '0' ? 6 : 18, // by the suttas (default): the evening of the date itself (sunset, or 18:00); the modern scheme: the morning (sunrise, or 06:00)
     lite: store('dgUposathaLite') !== '0', // the short view is the default
-    screen: params.get('view') === 'all' ? 'cal' : (store('dgUposathaView') === 'cal' ? 'cal' : 'list'),
+    screen: params.get('view') === 'all' ? 'cal' : (function () { var v = store('dgUposathaView'); return v === 'cal' || v === 'list' ? v : 'dates'; })(), // the first view is the table by dates
     months: 3, calOff: 0, selected: null,
     twi: (function () { var v = store('dgUposathaTwi'); return v && v in TWI ? v : 'sun'; })(),
     fake: (function () { var v = store('dgUposathaFake'); return v === 'kala' || v === 'vikala' ? v : ''; })(),
-    meal: (function () { var d = { sum: true, rem: false, lead: 30, days: 'upo', snd: 'bell', beg: false, begLead: 0, begSnd: 'gong2' }; try { var v = JSON.parse(store('dgUposathaMeal')); if (v) for (var k in d) if (k in v) d[k] = v[k]; } catch (e) { /* defaults */ } return d; })(),
+    meal: (function () { var d = { sum: true, rem: false, lead: 30, days: 'upo', snd: 'vikala', beg: false, begLead: 0, begSnd: 'gong2' }; try { var v = JSON.parse(store('dgUposathaMeal')); if (v) for (var k in d) if (k in v) d[k] = v[k]; } catch (e) { /* defaults */ } return d; })(),
+    parts: (function () { var d = { rem: false, which: 'day', days: 'upo', snd: 'voice' }; try { var v = JSON.parse(store('dgUposathaParts')); if (v) for (var k in d) if (k in v) d[k] = v[k]; } catch (e) { /* defaults */ } return d; })(),
     noon: (function () { var v = store('dgUposathaNoon'); return /^(sun|mid|clock)$/.test(v || '') ? v : 'sun'; })(),
     loc: (function () { try { return JSON.parse(store('dgUposathaLoc')); } catch (e) { return null; } })(),
     locMsg: '',
@@ -332,13 +333,25 @@
     document.body.classList.toggle('dark', eff === 'dark');
   }
   // the site's segmented control (.dg-segmented): the pressed button is the value
+  var htmlLast = {};
+  function setHtml(id, html) { if (htmlLast[id] === html) return; htmlLast[id] = html; $(id).innerHTML = html; } // a repaint on every tap must not rebuild a table that did not change
   function setSeg(id, v) { Array.prototype.forEach.call($(id).children, function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-v') === String(v))); }); }
   function onSeg(id, fn) { $(id).onclick = function (e) { var b = e.target.closest && e.target.closest('button'), v = b && b.getAttribute('data-v'); if (v !== null && v !== undefined) fn(v); }; }
   // the drawer is the site's own (home.js): opening it is a click on its burger
+  // The settings groups fold like the multitool; what is open is remembered
+  (function () {
+    var saved = {}; try { saved = JSON.parse(store('dgUposathaGroups') || '{}'); } catch (e) { saved = {}; }
+    ['g-gen', 'g-uset', 'g-meal', 'g-parts'].forEach(function (id) {
+      var d = $(id); if (!d) return;
+      if (id in saved) d.open = !!saved[id];
+      d.addEventListener('toggle', function () { saved[id] = d.open; store('dgUposathaGroups', JSON.stringify(saved)); });
+    });
+  })();
   function openSettings(id) { // open the drawer at a part of the settings and light that part up, so it is clear what to do there
     document.querySelector('.dg-menu-btn').click();
     setTimeout(function () {
       var el = $(id || 'loc-block'); if (!el) return;
+      var grp = el.closest('details'); if (grp) grp.open = true; // the block may be in a folded group
       el.scrollIntoView({ block: 'center' }); el.classList.remove('dg-temp-blink'); void el.offsetWidth; el.classList.add('dg-temp-blink'); // the reader's own blink: three soft pulses
       setTimeout(function () { el.classList.remove('dg-temp-blink'); }, 2500);
     }, 400);
@@ -374,7 +387,7 @@
       var third = (to - from) / 3;
       return '<div class="pblk"><h3>' + esc(title) + '<span>' + esc(sub) + '</span></h3>' + names.map(function (n, i) {
         var a = from.getTime() + i * third, b = a + third;
-        return '<div class="prow"' + (now >= a && now < b ? ' data-now="true"' : '') + '><span><b class="pli-lang" lang="pi">' + esc(n[0]) + '</b><small>' + esc(n[1]) + '</small><em>' + esc(n[2]) + ' · ' + n[3].split(',').map(function (r) { return '<a class="pref" href="/' + esc(r) + '?lang=' + lang + '" target="_blank" rel="noopener">' + esc(r.split(':')[0]) + '</a>'; }).join(' · ') + '</em></span><span class="tm">' + F.hm.format(a) + ' – ' + F.hm.format(b) + '</span></div>';
+        return '<div class="prow"' + (now >= a && now < b ? ' data-now="true"' : '') + '><span><b class="pli-lang" lang="pi">' + esc(n[0]) + '</b><small>' + esc(n[1]) + '</small><em>' + esc(n[2]) + ' · ' + n[3].split(',').map(function (r) { return '<a class="pref selectable" href="/' + esc(r) + '?lang=' + lang + '" target="_blank" rel="noopener">' + esc(r.split(':')[0]) + '</a>'; }).join(' · ') + '</em></span><span class="tm">' + F.hm.format(a) + ' – ' + F.hm.format(b) + '</span></div>';
       }).join('') + '</div>';
     }
     $('pgrid').innerHTML = block(t.pDay, F.week.format(Date.parse(ymd)), rise, set, t.dayParts) +
@@ -417,11 +430,12 @@
     if (fake === 'kala') nowMs = (rise.getTime() + noon.getTime()) / 2; else if (fake === 'vikala') nowMs = noon.getTime() + 3600000;
     if (nowMs < noon.getTime() && nowMs >= rise.getTime()) { kind = 'kala'; to = noon.getTime(); html = t.mealEat(F.hm.format(noon), '<b class="meal-left" data-to="' + to + '">' + span(to - nowMs) + '</b>'); }
     else { kind = 'vikala'; var dawn = nowMs < rise.getTime() ? rise : (edge('rise', p[0], p[1], p[2] + 1, tz, obs) || zonedToUtc(p[0], p[1], p[2] + 1, 6, tz)); to = dawn.getTime(); html = t.mealVik(F.hm.format(dawn), '<b class="meal-left" data-to="' + to + '">' + span(to - nowMs) + '</b>'); }
-    function ref(id, label) { return '<a class="pref" href="/' + id + '?lang=' + lang + '" target="_blank" rel="noopener">' + label + '</a>'; }
+    function ref(id, label) { return '<a class="pref selectable" href="/' + id + '?lang=' + lang + '" target="_blank" rel="noopener">' + label + '</a>'; }
+    $('twi').disabled = !obs; $('twi').closest('#twi-block').querySelector('.dg-uset-note').textContent = obs ? t.twiNote : t.twiFixed; // the twilight needs the Sun of a place
     setSeg('noonseg', obs ? state.noon : 'clock'); $('noon-note').textContent = obs ? t.noonWhat : t.noonFixed; $('noonseg').setAttribute('data-fixed', String(!obs)); // without a place only the clock is possible
     var by = '';
     var tag = state.fake ? ' <b class="testtag">' + esc(t.testTag) + '</b>' : '';
-    $('meal').innerHTML = '<h3>' + esc(t.mealH) + tag + '</h3><p class="mstat" data-k="' + kind + '">' + html + '</p>' + by; // the card is short: what vikāla is stands in the key suttas (Pc 37)
+    $('meal').innerHTML = '<div class="cardh"><h3>' + esc(t.mealH) + tag + '</h3>' + bell('meal-bell', state.meal.rem || state.meal.beg) + '</div><p class="mstat" data-k="' + kind + '">' + html + '</p>' + by; // the card is short: what vikāla is stands in the key suttas (Pc 37)
     $('meal-sum').innerHTML = '<h3>' + esc(t.mealH) + tag + '</h3><p class="mstat" data-k="' + kind + '">' + html + '</p>';
     markPali($('meal')); markPali($('meal-sum'));
   }
@@ -494,7 +508,8 @@
     var list = L.rows.filter(function (r) { return r.uposatha && r.ymd >= monthStart; });
     // A table of the Uposathas: the day (with the moon), the beginning, the end. The long view adds a line under a row.
     function nameParts(r) { var n = nameOf(r), m = /^(.*?)(?: · | of the )(.*)$/.exec(n); return m ? [m[1], m[2]] : [n, '']; }
-    function listDetail(r) { var h = ''; if (su) h += line(t.kSpan, t.spanVal(F.eve.format(Date.parse(r.ymd)), F.eve.format(Date.parse(r.ymd) + DAY))); else if (r.phaseAt) h += line(t.kTime, F.stamp.format(r.phaseAt)); h += line(t.kLunar, t.lunarVal(r.tithi, t.nth(r.day), t.halvesOf[r.tithi <= 15 ? 0 : 1], F.stamp.format(r.ends.date)), true); notesOf(r, F).forEach(function (n) { h += line('', n, true); }); return h; }
+    // the extra line of a row: the real lunar day (the beginning and the end are the columns of the table, not repeated)
+    function listDetail(r) { var h = ''; if (!su && r.phaseAt) h += line(t.kTime, F.stamp.format(r.phaseAt)); h += line(t.kLunar, t.lunarVal(r.tithi, t.nth(r.day), t.halvesOf[r.tithi <= 15 ? 0 : 1], F.stamp.format(r.ends.date)), true); notesOf(r, F).forEach(function (n) { h += line('', n, true); }); return h; }
     var html = '', lastMonth = '';
     list.forEach(function (r) {
       var month = r.ymd.slice(0, 7);
@@ -510,11 +525,52 @@
       else { var srise = eo && sunEvent('rise', r.y, r.m, r.d, state.tz, eo); b = t.mornVal('', srise ? F.hm.format(srise) : ''); e = t.nightVal(''); }
       html += '<tr class="row" data-ymd="' + r.ymd + '"' + (dd < 0 && !running ? ' data-past="true"' : '') + (running ? ' data-now="true"' : '') + '>' +
         '<td class="ud">' + moon(rowI(r), 'moon mi') + '<span class="un"><b>' + esc(np[0]) + '</b>' + (np[1] ? '<small>' + esc(np[1]) + '</small>' : '') + (w ? '<em>' + esc(w) + '</em>' : '') + '</span></td>' +
-        '<td class="ub"><b>' + esc(d1) + '</b><small>' + esc(b) + '</small></td><td class="ue"><b>' + esc(d2) + '</b><small>' + esc(e) + '</small></td></tr>' +
+        '<td class="ub' + (r.ymd === todayYmd ? ' tdcell' : '') + '"><b>' + esc(d1) + '</b><small>' + esc(b) + '</small></td><td class="ue' + ((su ? ymdAdd(r.ymd, 1) : r.ymd) === todayYmd ? ' tdcell' : '') + '"><b>' + esc(d2) + '</b><small>' + esc(e) + '</small></td></tr>' +
         '<tr class="det"' + (running ? ' data-now="true"' : '') + '><td colspan="3"><span class="info">' + listDetail(r) + '</span></td></tr>';
     });
     if (lastMonth) html += '</tbody></table></div>';
-    $('list').innerHTML = html;
+    setHtml('list', html);
+    // The same days by dates: the date, the moon, and what happens that day — the beginning and / or the end of an Uposatha. By the suttas an Uposatha
+    // begins on one date and ends on the next, so two Uposathas one after another share a date: it ends the first and begins the second.
+    (function () {
+      var byDate = {}, dates = [], eo = state.loc ? new A.Observer(state.loc.lat, state.loc.lon, 0) : null;
+      function put(ymd, item) { if (!byDate[ymd]) { byDate[ymd] = []; dates.push(ymd); } byDate[ymd].push(item); }
+      function nameShort(r) { var m = /^(.*?)(?: · | of the )(.*)$/.exec(nameOf(r)); return m ? m[1] : nameOf(r); }
+      list.forEach(function (r) {
+        if (su) {
+          var sset = eo && sunEvent('set', r.y, r.m, r.d + 1, state.tz, eo);
+          put(r.ymd, { kind: 'beg', r: r, tm: t.eveT((r.refKind === 'sunset' ? t.sunset + ' ' : '') + F.hm.format(r.at)) });
+          put(ymdAdd(r.ymd, 1), { kind: 'end', r: r, tm: t.eveT((sset ? t.sunset + ' ' : '') + F.hm.format(endOf(r, eo))) });
+        } else {
+          var srise = eo && sunEvent('rise', r.y, r.m, r.d, state.tz, eo);
+          put(r.ymd, { kind: 'beg', r: r, tm: t.mornVal('', srise ? F.hm.format(srise) : '') });
+          put(r.ymd, { kind: 'end', r: r, tm: t.nightVal('') });
+        }
+      });
+      dates.sort();
+      // By the suttas every event is a row of its own (a date with two events, the end of one Uposatha and the beginning of the next, has two rows and
+      // one date cell over them). One moon serves one Uposatha: from the row of its beginning to the row of its end. The moon scheme keeps one row a day.
+      var out = '', lastM = '', flat = [];
+      dates.forEach(function (ymd) {
+        var items = byDate[ymd].slice().sort(function (a, b) { return su ? (a.kind === 'end' ? 0 : 1) - (b.kind === 'end' ? 0 : 1) : (a.kind === 'beg' ? 0 : 1) - (b.kind === 'beg' ? 0 : 1); }); // by the suttas the end of one Uposatha comes before the beginning of the next; a day of the moon scheme begins and then ends
+        if (su) items.forEach(function (x, k) { flat.push({ ymd: ymd, x: x, first: k === 0, span: items.length, last: k === items.length - 1 }); });
+        else flat.push({ ymd: ymd, items: items, first: true, span: 1, last: true });
+      });
+      var join = {}, absorbed = {};
+      flat.forEach(function (f, i) { var n = flat[i + 1]; if (su && f.x.kind === 'beg' && n && n.x.kind === 'end' && n.x.r === f.x.r && n.ymd.slice(0, 7) === f.ymd.slice(0, 7)) { join[i] = true; absorbed[i + 1] = true; } });
+      flat.forEach(function (f, i) {
+        var ymd = f.ymd, month = ymd.slice(0, 7), isToday = ymd === todayYmd, its = f.items || [f.x], r0 = (its.filter(function (x) { return x.kind === 'beg'; })[0] || its[0]).r;
+        if (month !== lastM) { if (lastM) out += '</tbody></table></div>'; out += '<div class="mon"><h2>' + esc(F.month.format(Date.parse(ymd))) + '</h2><table class="utab dtab"><tbody>'; lastM = month; }
+        var running = its.some(function (x) { return su ? (now >= x.r.at && now < endOf(x.r, L.obs)) : x.r.ymd === todayYmd; });
+        out += '<tr class="row' + (f.first ? ' first' : '') + '" data-ymd="' + ymd + '"' + (ymd < todayYmd && !running ? ' data-past="true"' : '') + (isToday && f.first ? ' data-today="true"' : '') + (running ? ' data-now="true"' : '') + '>' +
+          (f.first ? '<td class="d"' + (f.span > 1 ? ' rowspan="' + f.span + '"' : '') + '><b>' + esc(F.day.format(Date.parse(ymd))) + '</b><small>' + esc(F.wd.format(Date.parse(ymd))) + '</small></td>' : '') +
+          (absorbed[i] ? '' : '<td class="m"' + (join[i] ? ' rowspan="2"' : '') + '>' + ((join[i] || !su) ? '<small>' + esc(nameShort(r0)) + '</small>' : '') + moon(rowI(r0), 'moon mi') + '</td>') + '<td class="s">' +
+          its.map(function (x) { return '<span class="' + x.kind + '"><em>' + esc(x.kind === 'end' ? t.kEnds : t.kBegins) + '</em>' + (absorbed[i] || join[i] || !su ? '' : ' ' + esc(nameShort(x.r))) + '<small>' + esc(x.tm) + '</small>' + (x.kind === 'beg' && su ? '<span class="ln grey">' + esc(t.kLunar + ': ' + t.lunarVal(x.r.tithi, t.nth(x.r.day), t.halvesOf[x.r.tithi <= 15 ? 0 : 1], F.stamp.format(x.r.ends.date))) + '</span>' + notesOf(x.r, F).map(function (n) { return '<span class="ln grey">' + esc(n) + '</span>'; }).join('') : '') + '</span>'; }).join('') + // the end of a joined Uposatha has no name: the moon over both rows is its day
+          (isToday && f.last ? '<span class="tdy">' + esc(t.isToday) + '</span>' : '') + '</td></tr>';
+      });
+      if (lastM) out += '</tbody></table></div>';
+      setHtml('dates', out);
+    })();
 
     // ----- the calendar: one ordinary month, weeks in rows
     var cm = new Date(Date.UTC(tp[0], tp[1] - 1 + state.calOff, 1)), cy = cm.getUTCFullYear(), mo = cm.getUTCMonth();
@@ -541,16 +597,20 @@
         if (nums.length) {
           var src = sd.length ? r2 : C.byYmd[ymdAdd(k, -1)];
           u = sd.length ? String(sd.indexOf(15) !== -1 ? 15 : sd[0]) : ''; cont = !sd.length;
-          lb = '<span class="lb">' + moon(rowI(src), 'moon mi') + '<span>' + esc(nums.length > 1 ? nums.join('–') : t.nth(nums[0])) + '</span></span>';
+          lb = '<span class="lb">' + moon(rowI(src), 'moon mi') + (nums.length > 1 ? '' : '<span>' + esc(cont ? t.endS : t.startS) + '</span>') + '</span>'; // the beginning and the end are named; the day where one Uposatha ends and the next begins says nothing
         }
       } else if (r2 && r2.uposatha) {
         u = (r2.phase === 0 || r2.phase === 2) ? '15' : '8'; lb = '<span class="lb">' + moon(rowI(r2), 'moon mi') + '<span>' + esc(t.events[r2.phase].toLowerCase()) + '</span></span>';
       }
       if (moonDay[k]) lb += '<span class="lb">' + (lb ? '' : moon(moonDay[k].full ? 4 : 0, 'moon mi')) + '<span>' + esc((moonDay[k].full ? t.fullL : t.newL) + ' ' + F.hm.format(moonDay[k].at)) + '</span></span>'; // one moon per day: the label above already has it
       g += '<button type="button" class="c' + (d.getUTCMonth() !== mo ? ' o' : '') + '"' + (u ? ' data-u="' + u + '"' : '') + (cont ? ' data-c="true"' : '') + (k === todayYmd ? ' data-today="true"' : '') + ' data-ymd="' + k + '">' +
-        '<span class="n">' + d.getUTCDate() + '</span>' + lb + (r2 ? '<span class="ld">' + r2.day + '</span>' : '') + '</button>';
+        '<span class="n">' + d.getUTCDate() + '</span>' + lb + (r2 ? '<span class="ld">' + r2.tithi + '</span>' : '') + '</button>';
     }
-    $('grid').innerHTML = g;
+    setHtml('grid', g);
+    (function () { // the beginning and the day of an Uposatha side by side in one row are one green band; over a row break each is just a green date
+      var cs = document.querySelectorAll('#grid .c');
+      Array.prototype.forEach.call(cs, function (c, i) { var n = cs[i + 1]; if (c.hasAttribute('data-u') && n && n.hasAttribute('data-c') && i % 7 !== 6) { c.setAttribute('data-jr', ''); n.setAttribute('data-jl', ''); } });
+    })();
     $('legend').innerHTML = su ? '<span><i class="f"></i>' + esc(t.lgS15) + '</span><span><i class="r"></i>' + esc(t.lgS814) + '</span><span><i class="c"></i>' + esc(t.lgC) + '</span><span><i class="t"></i>' + esc(t.lgT) + '</span>'
       : '<span><i class="f"></i>' + esc(t.lgM15) + '</span><span><i class="r"></i>' + esc(t.lgM8) + '</span><span><i class="t"></i>' + esc(t.lgT) + '</span>';
     function showDetail(ymd) {
@@ -577,8 +637,10 @@
     setSeg('weekseg', firstDay());
     setSeg('sw-sut', su ? 1 : 0); setSeg('sw-det', state.lite ? 0 : 1);
     $('city').value = state.loc && state.loc.name ? state.loc.name : '';
-    $('locnote').innerHTML = state.loc ? esc(t.locOk + ': ' + (state.loc.name ? state.loc.name + ' · ' : '') + state.loc.lat + ', ' + state.loc.lon) + ' · <a href="#" id="unloc">' + esc(t.locForget) + '</a>' : esc(state.locMsg || t.locNone);
+    $('locnote').innerHTML = state.loc ? esc(t.locOk + ': ' + (state.loc.name ? state.loc.name + ' · ' : '') + state.loc.lat + ', ' + state.loc.lon) + ' <button type="button" id="loc-refresh" class="loc-refresh" aria-label="' + esc(t.locRefresh) + '" title="' + esc(t.locRefresh) + '"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 4v5h-5"/></svg></button> · <a href="#" id="unloc">' + esc(t.locForget) + '</a>' : esc(state.locMsg || t.locNone);
+    if ($('loc-refresh')) $('loc-refresh').onclick = function () { if (window.__upoDetect) window.__upoDetect(true); }; // the place stays until the new one comes: no forgetting and asking again
     if ($('unloc')) $('unloc').onclick = function (e) { e.preventDefault(); state.loc = null; state.locMsg = ''; store('dgUposathaLoc', ''); paint(); };
+    $('tab-dates').setAttribute('aria-pressed', String(state.screen === 'dates')); setSeg('lv-seg', state.screen === 'dates' ? 'dates' : 'list');
     $('tab-list').setAttribute('aria-pressed', String(state.screen === 'list'));
     $('tab-cal').setAttribute('aria-pressed', String(state.screen === 'cal'));
     $('more').parentNode.style.display = list.length ? '' : 'none';
@@ -596,6 +658,29 @@
       return { key: r.ymd + (sutta() ? 's' : 'm'), when: r.at.getTime() - lead, start: r.at, title: nameOf(r), two: twoUposathas(r, byYmd) };
     });
   }
+  function bell(id, on) { // the small remind switch in the corner of a card
+    return '<button type="button" class="bellsw" id="' + id + '" aria-pressed="' + on + '" title="' + esc(t.bellLbl) + '">' + icon('bell') + '<span>' + esc(t.bellLbl) + '</span></button>';
+  }
+  // The start of each part of the day and of the night, by the same thirds as the table. The night of a day begins the evening before it.
+  var PART_KEYS = ['pubbanha', 'majjhanhika', 'sayanha', 'pathama', 'majjhima', 'pacchima'];
+  function partsDue(rows) {
+    var now = Date.now(), obs = state.loc ? new A.Observer(state.loc.lat, state.loc.lon, 0) : null, tz = state.tz, days = [], out = [];
+    function sun(kind, d) { var p = d.split('-').map(Number); return edge(kind, p[0], p[1], p[2], tz, obs) || zonedToUtc(p[0], p[1], p[2], kind === 'rise' ? 6 : 18, tz); }
+    if (state.parts.days === 'all') { var today = localDay(new Date(), tz); for (var i = 0; i < 4; i++) days.push(ymdAdd(today, i)); }
+    else rows.filter(function (r) { return r.uposatha && wantDay(r); }).forEach(function (r) { days.push(sutta() ? ymdAdd(r.ymd, 1) : r.ymd); });
+    var todayYmd = localDay(new Date(), tz);
+    days.filter(function (ymd) { return ymd >= todayYmd; }).slice(0, 4).forEach(function (ymd) {
+      [['night', sun('set', ymdAdd(ymd, -1)), sun('rise', ymd), t.nightParts, 3], ['day', sun('rise', ymd), sun('set', ymd), t.dayParts, 0]].forEach(function (g) {
+        if (state.parts.which !== 'both' && state.parts.which !== g[0]) return;
+        var third = (g[2] - g[1]) / 3;
+        g[3].forEach(function (n, i) {
+          var at = g[1].getTime() + i * third;
+          if (at > now) out.push({ key: 'p' + ymd + PART_KEYS[g[4] + i], kind: 'part', partKey: PART_KEYS[g[4] + i], when: at, start: new Date(at), title: n[0], body: t.partsBody(n[1], n[2].replace(/\*+$/, '')) });
+        });
+      });
+    });
+    return out;
+  }
   // Reminders before vikala: (midday - the lead) of the Uposatha days or of every day, for the next month
   function mealDue(rows) {
     var now = Date.now(), lead = state.meal.lead * 60000, obs = state.loc ? new A.Observer(state.loc.lat, state.loc.lon, 0) : null, days = [], out = [];
@@ -610,6 +695,7 @@
     return out;
   }
   function itemBody(item, F) {
+    if (item.kind === 'part') return item.body;
     if (item.kind === 'beg') return state.meal.begLead ? t.mealBegBody(F.hm.format(item.start), state.meal.begLead) : t.mealBegZero(F.hm.format(item.start));
     return item.meal ? (state.meal.lead ? t.mealRemBody(F.hm.format(item.start), state.meal.lead) : t.mealRemZero(F.hm.format(item.start))) : (item.two ? t.remTwo : t.remBody)(F.stamp.format(item.start));
   }
@@ -618,10 +704,20 @@
     var seen = []; try { seen = JSON.parse(store('dgUposathaNotified') || '[]'); } catch (e) { seen = []; }
     if (seen.indexOf(item.key) !== -1) return;
     seen.push(item.key); store('dgUposathaNotified', JSON.stringify(seen.slice(-40)));
-    if ('serviceWorker' in navigator) navigator.serviceWorker.getRegistration('/').then(function (reg) {
-      if (reg && reg.showNotification) reg.showNotification(item.title, opts); else new Notification(item.title, opts);
-    }).catch(function () { new Notification(item.title, opts); });
-    else new Notification(item.title, opts);
+    showWeb(item.title, opts).catch(function () { /* the browser or the system refused: nothing more to do here */ });
+    playSound(soundOf(item));
+  }
+  // The web notification goes through the service worker when there is one (the only way on Android Chrome), else the page's own.
+  // The sound is the page's: it plays while the page is open (a notification of the browser has the system sound only).
+  function showWeb(title, opts) {
+    function own() { try { new Notification(title, opts); return Promise.resolve(); } catch (e) { return Promise.reject(e); } }
+    if (!('serviceWorker' in navigator)) return own();
+    return navigator.serviceWorker.getRegistration('/').then(function (reg) { return reg && reg.showNotification ? reg.showNotification(title, opts) : own(); }).catch(own);
+  }
+  function soundOf(item) { return item.kind === 'part' ? (state.parts.snd === 'voice' ? 'part-' + item.partKey : state.parts.snd) : item.kind === 'beg' ? state.meal.begSnd : item.meal ? state.meal.snd : state.rem.sound; }
+  function playSound(k) {
+    var src = /^part-/.test(k) ? '/assets/audio/parts/' + k.slice(5) + '.mp3' : SOUND_FILES[k] && SOUND_FILES[k][1];
+    if (src) { try { var p = new Audio(src).play(); if (p && p.catch) p.catch(function () { /* the browser did not allow the sound before a tap */ }); } catch (e) { /* a bonus */ } }
   }
   // In the Android / iOS app the reminders are local notifications scheduled on the device itself: they arrive with the app
   // closed and nothing is kept on our side. (iOS holds 64 pending notifications, hence at most 60 here.)
@@ -632,32 +728,35 @@
   }
   // The sound of a reminder is the notification channel's (Android fixes it per channel), so every choice is a channel of its own;
   // the built-in ones are files in the app's res/raw, the "own" one is picked by the person (DgSound, native) and has its own channel.
-  var SOUND_FILES = { gong: ['gong', '/assets/sounds/gong.mp3'], gong2: ['gong2', '/assets/repeat-timer/sound/gong2.mp3'], gong3: ['gong3', '/assets/repeat-timer/sound/gong3.mp3'], gong4: ['gong4', '/assets/repeat-timer/sound/gong4.mp3'], gong5: ['gong5', '/assets/repeat-timer/sound/gong5.mp3'], bell: ['church', '/assets/repeat-timer/sound/church.mp3'] };
+  var SOUND_FILES = { vikala: ['vikala', '/assets/audio/parts/vikala.mp3'], gong: ['gong', '/assets/sounds/gong.mp3'], gong3: ['gong3', '/assets/repeat-timer/sound/gong3.mp3'], gong4: ['gong4', '/assets/repeat-timer/sound/gong4.mp3'], gong5: ['gong5', '/assets/repeat-timer/sound/gong5.mp3'], gong2: ['gong2', '/assets/repeat-timer/sound/gong2.mp3'], bell: ['church', '/assets/repeat-timer/sound/church.mp3'] }; // the order of the keys is the order in the lists; gong2 (the old "Gong 2") is the last of the gongs and is called "Gong 5".
+  function soundKeys(withVikala) { return Object.keys(SOUND_FILES).filter(function (k) { return withVikala || k !== 'vikala'; }); } // the Vinaya definition of vikala is a sound of the meal-end reminder only
   function ownPlugin() { var C = window.Capacitor; return C && C.Plugins && C.Plugins.DgSound ? C.Plugins.DgSound : null; }
   function channelFor(LN, k, own) { // returns the channel id for a sound, creating the channel when it is a built-in one
     var id = 'uposatha-' + k + '-v1';
     if (k === 'own' && own) return Promise.resolve(own);
-    var f = SOUND_FILES[k], ch = { id: id, name: k === 'none' ? t.soundNone : (t.sounds[k] || k), importance: k === 'none' ? 2 : 4, visibility: 1, vibration: k !== 'none' };
+    var f = SOUND_FILES[k] || (/^part-/.test(k) ? [k.slice(5)] : null), ch = { id: id, name: k === 'none' ? t.soundNone : (t.sounds[k] || (f && f[0]) || k), importance: k === 'none' ? 2 : 4, visibility: 1, vibration: k !== 'none' };
     if (f) ch.sound = f[0] + '.mp3';
     return LN.createChannel(ch).then(function () { return id; }, function () { return id; });
   }
   var remCache = { key: '', at: 0, list: [] };
   function reminderList(rows, byYmd) { // the Uposatha and the meal reminders together, oldest first; a repaint happens at every tap, this is not worked out each time
-    var key = JSON.stringify([state.rem, state.meal, state.tz, state.loc, state.noon, state.twi, sutta(), rows.length, rows[0] && rows[0].ymd, localDay(new Date(), state.tz)]);
+    var key = JSON.stringify([state.rem, state.meal, state.parts.rem, state.parts.which, state.parts.days, state.tz, state.loc, state.noon, state.twi, sutta(), rows.length, rows[0] && rows[0].ymd, localDay(new Date(), state.tz)]);
     if (remCache.key !== key || Date.now() - remCache.at > 300000) {
-      remCache = { key: key, at: Date.now(), list: (state.rem.on ? dueList(rows, byYmd) : []).concat((state.meal.rem || state.meal.beg) ? mealDue(rows) : []).sort(function (a, b) { return a.when - b.when; }) };
+      remCache = { key: key, at: Date.now(), list: (state.rem.on ? dueList(rows, byYmd) : []).concat((state.meal.rem || state.meal.beg) ? mealDue(rows) : []).concat(state.parts.rem ? partsDue(rows) : []).sort(function (a, b) { return a.when - b.when; }) };
     }
     return remCache.list;
   }
   function scheduleNative(LN, rows, byYmd, F) {
     var now = Date.now();
     var list = reminderList(rows, byYmd).slice(0, 60);
-    var sig = JSON.stringify([state.rem.sound, state.rem.ownChannel, state.meal.snd, state.meal.begSnd, list.map(function (i) { return [i.key, i.title, i.when > now + 10000 ? i.when : 0]; })]);
+    var sig = JSON.stringify([state.rem.sound, state.rem.ownChannel, state.meal.snd, state.meal.begSnd, state.parts.snd, list.map(function (i) { return [i.key, i.title, i.when > now + 10000 ? i.when : 0]; })]);
     if (sig !== nativeSig) { // only when something changed: paint() runs on every touch
       nativeSig = sig;
-      Promise.all([channelFor(LN, state.rem.sound, state.rem.ownChannel), channelFor(LN, state.meal.snd), channelFor(LN, state.meal.begSnd)]).then(function (ch) { // the Uposatha, the end and the beginning of the time for food sound differently
+      var sounds = []; // every kind of reminder sounds by its own choice: the Uposatha, the end and the beginning of the time for food, the parts
+      list.forEach(function (i) { var k = soundOf(i); if (sounds.indexOf(k) === -1) sounds.push(k); });
+      Promise.all(sounds.map(function (k) { return channelFor(LN, k, k === state.rem.sound ? state.rem.ownChannel : ''); })).then(function (ch) {
         var items = list.map(function (item, i) {
-          return { id: NATIVE_ID_BASE + i, title: item.title, body: itemBody(item, F), channelId: item.kind === 'beg' ? ch[2] : item.meal ? ch[1] : ch[0],
+          return { id: NATIVE_ID_BASE + i, title: item.title, body: itemBody(item, F), channelId: ch[sounds.indexOf(soundOf(item))],
             schedule: { at: new Date(Math.max(item.when, now + 3000)), allowWhileIdle: true }, extra: { url: '/uposatha-calendar' } };
         });
         return LN.getPending().then(function (p) {
@@ -674,7 +773,7 @@
     var LN = nativePlugin();
     if (LN) return scheduleNative(LN, rows, byYmd, F);
     clearTimeout(timer);
-    if (!(state.rem.on || state.meal.rem || state.meal.beg) || !('Notification' in window) || Notification.permission !== 'granted') return null;
+    if (!(state.rem.on || state.meal.rem || state.meal.beg || state.parts.rem) || !('Notification' in window) || Notification.permission !== 'granted') return null;
     var now = Date.now(), list = reminderList(rows, byYmd), next = null;
     list.forEach(function (i) { if (i.when <= now) notify(i, F); else if (!next || i.when < next.when) next = i; });
     if (next) timer = setTimeout(function () { notify(next, F); paint(); }, Math.min(next.when - now, 2147000000));
@@ -691,16 +790,22 @@
     $('mrem-lead').value = String(state.meal.lead);
     setSeg('sw-mbeg', state.meal.beg ? 1 : 0); $('mbeg-more').style.display = state.meal.beg ? '' : 'none'; $('mbeg-lead').value = String(state.meal.begLead);
     $('mdays-row').style.display = state.meal.rem || state.meal.beg ? '' : 'none'; // the days are common to both reminders
-    var showSnd = inApp || document.body.classList.contains('app'); // the sounds are the app's (also shown in the ?app=1 preview)
+    var showSnd = true; // in the app the sound is the channel's; on the site it plays while the page is open
     $('mrem-sound-row').style.display = showSnd ? '' : 'none';
-    if (showSnd) { $('mrem-sound').innerHTML = Object.keys(SOUND_FILES).map(function (k) { return '<option value="' + k + '">' + esc(t.sounds[k]) + '</option>'; }).concat(['<option value="none">' + esc(t.soundNone) + '</option>']).join(''); $('mrem-sound').value = state.meal.snd; }
+    if (showSnd) { $('mrem-sound').innerHTML = soundKeys(true).map(function (k) { return '<option value="' + k + '">' + esc(t.sounds[k]) + '</option>'; }).concat(['<option value="none">' + esc(t.soundNone) + '</option>']).join(''); $('mrem-sound').value = state.meal.snd; }
     $('mbeg-sound-row').style.display = showSnd ? '' : 'none';
-    if (showSnd) { $('mbeg-sound').innerHTML = $('mrem-sound').innerHTML; $('mbeg-sound').value = state.meal.begSnd; }
+    if (showSnd) { $('mbeg-sound').innerHTML = soundKeys().map(function (k) { return '<option value="' + k + '">' + esc(t.sounds[k]) + '</option>'; }).concat(['<option value="none">' + esc(t.soundNone) + '</option>']).join(''); $('mbeg-sound').value = state.meal.begSnd; }
     $('meal-sum').hidden = !state.meal.sum;
+    setSeg('sw-prem', state.parts.rem ? 1 : 0); setSeg('pwhich', state.parts.which); setSeg('pdays', state.parts.days);
+    $('prem-more').style.display = state.parts.rem ? '' : 'none';
+    $('psnd-row').style.display = showSnd ? '' : 'none';
+    if (showSnd) { $('psnd').innerHTML = [['voice', t.partsVoice]].concat(soundKeys().map(function (k) { return [k, t.sounds[k]]; }), [['none', t.soundNone]]).map(function (o) { return '<option value="' + o[0] + '">' + esc(o[1]) + '</option>'; }).join(''); $('psnd').value = state.parts.snd; }
+    $('parts-bell').setAttribute('aria-pressed', String(state.parts.rem));
+    var mb = $('meal-bell'); if (mb) mb.setAttribute('aria-pressed', String(state.meal.rem || state.meal.beg));
     setSeg('testseg', state.fake);
     $('rem-sound-row').style.display = showSnd ? '' : 'none'; // the sound is a notification channel: only the app has them
     if (showSnd) {
-      var opts = Object.keys(SOUND_FILES).map(function (k) { return [k, t.sounds[k]]; }).concat([['none', t.soundNone]]);
+      var opts = soundKeys().map(function (k) { return [k, t.sounds[k]]; }).concat([['none', t.soundNone]]);
       if (ownPlugin()) opts.push(['own', state.rem.sound === 'own' && state.rem.ownName ? t.soundOwnNamed.replace('%', state.rem.ownName) : t.soundOwn]);
       $('rem-sound').innerHTML = opts.map(function (o) { return '<option value="' + o[0] + '">' + esc(o[1]) + '</option>'; }).join('');
       $('rem-sound').value = state.rem.sound;
@@ -739,7 +844,7 @@
   function paintKeys() {
     $('keylist').innerHTML = KEYS[lang].map(function (g) {
       return '<li class="kq"><details name="keyq"><summary>' + esc(g[0]) + '</summary><ul>' + g[1].map(function (k) {
-        return '<li' + (k[2] === 'gap' ? ' class="gap"' : '') + '><b>' + k[0] + '</b> — ' + k[1].replace(/\{(\d+)\}/g, function (_, n) { return '<button class="rd" type="button" data-i="' + n + '">' + (lang === 'ru' ? 'Читать →' : 'Read →') + '</button>'; }) + '</li>';
+        return '<li' + (k[2] === 'gap' ? ' class="gap"' : '') + '><b class="selectable">' + k[0] + '</b> — ' + k[1].replace(/\{(\d+)\}/g, function (_, n) { return '<button class="rd" type="button" data-i="' + n + '">' + (lang === 'ru' ? 'Читать →' : 'Read →') + '</button>'; }) + '</li>';
       }).join('') + '</ul></details></li>'; // each question is a drawer: the list is not long any more
     }).join('');
     $('rd-sel').innerHTML = PASSAGES.map(function (p, i) { return '<option value="' + i + '">' + esc(readerLabel(i)) + '</option>'; }).join('');
@@ -874,7 +979,7 @@
   }
   function suttaRow(u) {
     var name = u.title[lang] || u.title.en || '';
-    return '<a class="sr" href="/' + esc(u.ref) + '?lang=' + lang + '" target="_blank" rel="noopener"><b class="sid">' + esc(u.id) + '</b><span class="sr-t"><span class="sg-t">' + esc(u.title.pli || '') + (name && name !== u.title.pli ? ' <i>' + esc(name) + '</i>' : '') + '</span>' + (u.note && u.kind !== 'random' ? '<span class="sr-note">' + esc(u.note[lang] || u.note.en).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>') + '</span>' : '') + '</span>' + plate(u) + '<svg class="chev"><use href="#i-right"/></svg></a>';
+    return '<a class="sr" href="/' + esc(u.ref) + '?lang=' + lang + '" target="_blank" rel="noopener"><b class="sid selectable">' + esc(u.id) + '</b><span class="sr-t"><span class="sg-t selectable">' + esc(u.title.pli || '') + (name && name !== u.title.pli ? ' <i>' + esc(name) + '</i>' : '') + '</span>' + (u.note && u.kind !== 'random' ? '<span class="sr-note">' + esc(u.note[lang] || u.note.en).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>') + '</span>' : '') + '</span>' + plate(u) + '<svg class="chev"><use href="#i-right"/></svg></a>';
   }
   function showAllSlides() {
     var all = suttaList(), counts = { all: all.length, special: 0, general: 0, random: 0 };
@@ -969,7 +1074,8 @@
       window.__upoBarTitle = function () { barTitle(document.body.getAttribute('data-app-tab') || 'home'); };
       function openTab(k) {
         barTitle(k); // the app bar names the screen
-        if (k === 'list' || k === 'cal') { state.screen = k; store('dgUposathaView', k); }
+        if (k === 'list') { state.screen = state.screen === 'dates' ? 'dates' : 'list'; store('dgUposathaView', state.screen); } // the list tab keeps the view chosen in it
+        else if (k === 'cal') { state.screen = 'cal'; store('dgUposathaView', 'cal'); }
         document.body.setAttribute('data-app-tab', k); store('dgUposathaTab', k);
         Array.prototype.forEach.call(tabs, function (b) { b.setAttribute('aria-current', String(b.getAttribute('data-tab') === k)); });
         paint(); window.scrollTo(0, 0);
@@ -1000,6 +1106,8 @@
     })();
     onSeg('noonseg', function (v) { state.noon = v; store('dgUposathaNoon', v); paint(); });
     $('meal').onclick = function (e) { if (e.target.closest && e.target.closest('.noonlink')) { e.preventDefault(); openSettings('noon-block'); } };
+    $('tab-dates').onclick = function () { state.screen = 'dates'; store('dgUposathaView', 'dates'); paint(); };
+    onSeg('lv-seg', function (v) { state.screen = v; store('dgUposathaView', v); paint(); });
     $('tab-list').onclick = function () { state.screen = 'list'; store('dgUposathaView', 'list'); paint(); };
     $('tab-cal').onclick = function () { state.screen = 'cal'; store('dgUposathaView', 'cal'); paint(); };
     $('more').onclick = function () { state.months += 3; paint(); };
@@ -1047,15 +1155,17 @@
       state.loc = { lat: lat, lon: lon }; if (name) state.loc.name = name; store('dgUposathaLoc', JSON.stringify(state.loc));
       state.south = lat < 0; store('dgUposathaHemisphere', state.south ? 'south' : 'north');
     }
-    $('loc-btn').onclick = function () {
+    function detectLocation(fresh) { // fresh: the position now, not the one the phone remembers; a failed try leaves the place as it was
       if (!navigator.geolocation) { state.locMsg = t.locDenied; paint(); return; }
-      $('locnote').textContent = t.locFinding;
+      var btn = $('loc-refresh'); if (btn) btn.classList.add('spin'); else $('locnote').textContent = t.locFinding;
       navigator.geolocation.getCurrentPosition(function (pos) {
         // about a kilometre is plenty for a sunrise, and less to keep
         var la = Math.round(pos.coords.latitude * 100) / 100, lo = Math.round(pos.coords.longitude * 100) / 100;
         setPlace(la, lo); state.tz = zoneNear(la, lo, state.tz); store('dgUposathaTz', state.tz); state.locMsg = ''; paint(); // the place gives the zone; the picker is for a person without a place
-      }, function () { state.locMsg = t.locDenied; paint(); }, { timeout: 15000, maximumAge: 3600000 });
-    };
+      }, function () { if (state.loc) { if (btn) btn.classList.remove('spin'); var n = $('locnote'); if (n) n.textContent = t.locDenied; setTimeout(paint, 2500); return; } state.locMsg = t.locDenied; paint(); }, { timeout: 15000, maximumAge: fresh ? 0 : 3600000, enableHighAccuracy: !!fresh });
+    }
+    window.__upoDetect = detectLocation;
+    $('loc-btn').onclick = function () { detectLocation(false); };
     // The place by a city: our own suggestions (a native datalist has no list in the Android WebView and shows nothing on an empty field)
     var CITIES = Object.keys(ZONE_COORDS).map(function (z) { return { zone: z, name: z.split('/').pop().replace(/_/g, ' ') }; }).sort(function (a, b) { return a.name < b.name ? -1 : 1; });
     var POPULAR = ['Asia/Almaty', 'Asia/Bangkok', 'Asia/Colombo', 'Asia/Kolkata', 'Asia/Kathmandu', 'Asia/Yangon', 'Asia/Tokyo', 'Europe/Moscow', 'Europe/London', 'America/New_York', 'Australia/Sydney'];
@@ -1093,10 +1203,31 @@
     });
     function saveMeal() { store('dgUposathaMeal', JSON.stringify(state.meal)); }
     $('twi').onchange = function (e) { state.twi = e.target.value; store('dgUposathaTwi', state.twi); paint(); };
-    var tstMin = 1; setSeg('tst-min', 1); onSeg('tst-min', function (v) { tstMin = +v; setSeg('tst-min', v); });
+    // The test of the parts: all six, 12 seconds apart, each with its own sound (the spoken name by default), through the same channels as the real ones
+    function testParts(LN, at, msg, shown) {
+      var all = t.dayParts.concat(t.nightParts), keys = PART_KEYS; // the order of PART_KEYS: three day parts, then three night parts
+      var items = all.map(function (n, i) { var k = keys[i]; return { title: n[0], body: t.partsBody(n[1], n[2].replace(/\*+$/, '')), partKey: k, at: at.getTime() + i * 12000 }; });
+      function sndOf(it) { return state.parts.snd === 'voice' ? 'part-' + it.partKey : state.parts.snd; }
+      if (LN) {
+        LN.requestPermissions().then(function (r) { if (!(r && r.display === 'granted')) { msg.textContent = t.tstDenied; return; }
+          return Promise.all(items.map(function (it) { return channelFor(LN, sndOf(it)); })).then(function (ch) {
+            return LN.schedule({ notifications: items.map(function (it, i) { return { id: 7993 + i, title: it.title, body: it.body, channelId: ch[i], schedule: { at: new Date(Math.max(it.at, Date.now() + 3000)), allowWhileIdle: true }, extra: { url: '/uposatha-calendar' } }; }) });
+          }).then(shown); }).catch(function () { msg.textContent = t.remUnsupported; });
+        return;
+      }
+      if (!('Notification' in window)) { msg.textContent = t.remUnsupported; return; }
+      Notification.requestPermission().then(function (perm) { if (perm !== 'granted') { msg.textContent = perm === 'denied' ? t.tstBlocked : t.tstDenied; return; }
+        items.forEach(function (it) { setTimeout(function () {
+          showWeb(it.title, { body: it.body, icon: '/assets/img/pwa-bold-monocolor-192.png' }).catch(function () { msg.textContent = t.tstBlocked; });
+          playSound(sndOf(it));
+        }, Math.max(0, it.at - Date.now())); });
+        shown(); });
+    }
+    var tstMin = 0; setSeg('tst-min', 0); onSeg('tst-min', function (v) { tstMin = +v; setSeg('tst-min', v); });
     $('tst-go').onclick = function () { // a test reminder in 1-2 minutes, through the same channels and sounds as the real ones
       var kind = $('tst-kind').value, at = new Date(Date.now() + tstMin * 60000), F = formats(), msg = $('tst-msg'), title = t.tstTitle(kind), LN = nativePlugin();
-      function shown() { msg.textContent = t.tstSet(F.hm.format(at)); }
+      function shown() { msg.textContent = tstMin ? t.tstSet(F.hm.format(at)) : t.tstNow; }
+      if (kind === 'parts') { testParts(LN, at, msg, shown); return; }
       if (LN) {
         var snd = kind === 'upo' ? [state.rem.sound, state.rem.ownChannel] : kind === 'beg' ? [state.meal.begSnd] : [state.meal.snd];
         LN.requestPermissions().then(function (r) { if (!(r && r.display === 'granted')) { msg.textContent = t.tstDenied; return; }
@@ -1104,8 +1235,10 @@
         return;
       }
       if (!('Notification' in window)) { msg.textContent = t.remUnsupported; return; }
-      Notification.requestPermission().then(function (perm) { if (perm !== 'granted') { msg.textContent = t.tstDenied; return; }
-        setTimeout(function () { try { new Notification(title, { body: t.tstBody, icon: '/assets/img/pwa-bold-monocolor-192.png' }); } catch (e) { /* the page must stay open on the site */ } }, tstMin * 60000); shown(); });
+      Notification.requestPermission().then(function (perm) { if (perm !== 'granted') { msg.textContent = perm === 'denied' ? t.tstBlocked : t.tstDenied; return; }
+        function fire() { showWeb(title, { body: t.tstBody, icon: '/assets/img/pwa-bold-monocolor-192.png' }).catch(function () { msg.textContent = t.tstBlocked; }); playSound(kind === 'upo' ? state.rem.sound : kind === 'beg' ? state.meal.begSnd : state.meal.snd); } // the page must stay open on the site
+        if (tstMin) setTimeout(fire, tstMin * 60000); else fire();
+        shown(); });
     };
     onSeg('testseg', function (v) { state.fake = v; store('dgUposathaFake', v); paint(); });
     onSeg('sw-msum', function (v) { state.meal.sum = v === '1'; saveMeal(); paint(); });
@@ -1121,6 +1254,33 @@
       };
     }
     onSeg('sw-mrem', mealSwitch('rem')); onSeg('sw-mbeg', mealSwitch('beg'));
+    function saveParts() { store('dgUposathaParts', JSON.stringify(state.parts)); }
+    function askPermission(done) { // the same permission flow for every reminder switch
+      var LN = nativePlugin();
+      if (LN) { LN.requestPermissions().then(function (r) { done(!!(r && r.display === 'granted')); }).catch(function () { state.remMsg = t.remUnsupported; paint(); }); return; }
+      if (!('Notification' in window)) { state.remMsg = t.remUnsupported; paint(); return; }
+      Notification.requestPermission().then(function (perm) { done(perm === 'granted'); });
+    }
+    function partsSwitch(v) {
+      state.remMsg = '';
+      if (v === '0' || v === false) { state.parts.rem = false; saveParts(); paint(); return; }
+      askPermission(function (ok) { state.parts.rem = ok; if (!ok) state.remMsg = t.remDenied; saveParts(); paint(); });
+    }
+    onSeg('sw-prem', function (v) { partsSwitch(v === '1'); });
+    onSeg('pwhich', function (v) { state.parts.which = v; saveParts(); paint(); });
+    onSeg('pdays', function (v) { state.parts.days = v; saveParts(); paint(); });
+    $('psnd').onchange = function (e) {
+      var v = e.target.value; state.parts.snd = v; saveParts(); paint();
+      var src = v === 'voice' ? '/assets/audio/parts/pubbanha.mp3' : SOUND_FILES[v] && SOUND_FILES[v][1];
+      if (src) { try { new Audio(src).play(); } catch (err) { /* a preview only */ } }
+    };
+    $('parts-bell').onclick = function () { partsSwitch(!state.parts.rem); };
+    $('meal').addEventListener('click', function (e) { // the switch in the meal card turns both meal reminders together
+      if (!e.target.closest('#meal-bell')) return;
+      var on = !(state.meal.rem || state.meal.beg); state.remMsg = '';
+      function set(ok) { state.meal.rem = state.meal.beg = ok; if (on && !ok) state.remMsg = t.remDenied; saveMeal(); paint(); }
+      if (!on) set(false); else askPermission(set);
+    });
     $('mbeg-lead').onchange = function (e) { state.meal.begLead = parseInt(e.target.value, 10); saveMeal(); paint(); };
     $('mbeg-sound').onchange = function (e) { state.meal.begSnd = e.target.value; saveMeal(); paint(); if (SOUND_FILES[e.target.value]) { try { new Audio(SOUND_FILES[e.target.value][1]).play(); } catch (err) { /* a preview only */ } } };
     onSeg('mrem-days', function (v) { state.meal.days = v; saveMeal(); paint(); });
