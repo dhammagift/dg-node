@@ -706,7 +706,6 @@
     $('cal-prev').onclick = function () { state.calOff--; paint(); };
     $('cal-next').onclick = function () { state.calOff++; paint(); };
     $('cal-today').onclick = function () { state.calOff = 0; state.selected = null; paint(); };
-    $('to-keys').onclick = function (e) { e.preventDefault(); $('keys').scrollIntoView({ behavior: 'smooth' }); };
     function setLang(l) { lang = l; t = T[lang]; store('dhammaLanguage', lang); FIRST_DAY = lang === 'ru' ? 1 : 0; applyLang(); paintKeys(); paint(); }
     // Language and theme are the site's own (dhamma-i18n.js, themeswitch.js): this page follows them
     document.addEventListener('dhamma:languagechange', function (e) { var l = ((e.detail && e.detail.language) || '').slice(0, 2) === 'ru' ? 'ru' : 'en'; if (l !== lang) setLang(l); });

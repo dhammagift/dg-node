@@ -63,6 +63,7 @@ body.scrolled .tbar { border-bottom-color: var(--dg-border); box-shadow: 0 4px 1
 .cal-links { display: flex; flex-wrap: wrap; gap: 8px; }
 @media (max-width: 640px) { .intro { flex-direction: column; gap: 0; } .intro-actions { margin-top: 12px; } }
 .intro h1 { font-size: 26px; margin: 14px 0 6px; }
+.intro-actions { margin-top: 12px; }
 .intro p { margin: 0; color: var(--dg-text-2); font-size: 14px; line-height: 1.6; max-width: 60ch; text-wrap: pretty; }
 .today { margin: 20px 0 0; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 18px; align-items: center; background: var(--dg-surface); border: 1px solid var(--dg-border); border-radius: var(--dg-radius); padding: 18px 20px; animation: up-in .3s var(--dg-ease) both; }
 .moon { line-height: 1; font-family: "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", sans-serif; }
