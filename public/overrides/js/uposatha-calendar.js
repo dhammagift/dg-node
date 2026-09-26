@@ -593,11 +593,12 @@
     setSeg('sw-msum', state.meal.sum ? 1 : 0); setSeg('sw-mrem', state.meal.rem ? 1 : 0); setSeg('mrem-days', state.meal.days);
     $('mrem-more').style.display = state.meal.rem ? '' : 'none';
     $('mrem-lead').value = String(state.meal.lead);
-    $('mrem-sound-row').style.display = inApp ? '' : 'none';
-    if (inApp) { $('mrem-sound').innerHTML = Object.keys(SOUND_FILES).map(function (k) { return '<option value="' + k + '">' + esc(t.sounds[k]) + '</option>'; }).concat(['<option value="none">' + esc(t.soundNone) + '</option>']).join(''); $('mrem-sound').value = state.meal.snd; }
+    var showSnd = inApp || document.body.classList.contains('app'); // the sounds are the app's (also shown in the ?app=1 preview)
+    $('mrem-sound-row').style.display = showSnd ? '' : 'none';
+    if (showSnd) { $('mrem-sound').innerHTML = Object.keys(SOUND_FILES).map(function (k) { return '<option value="' + k + '">' + esc(t.sounds[k]) + '</option>'; }).concat(['<option value="none">' + esc(t.soundNone) + '</option>']).join(''); $('mrem-sound').value = state.meal.snd; }
     $('meal-sum').hidden = !state.meal.sum;
-    $('rem-sound-row').style.display = inApp ? '' : 'none'; // the sound is a notification channel: only the app has them
-    if (inApp) {
+    $('rem-sound-row').style.display = showSnd ? '' : 'none'; // the sound is a notification channel: only the app has them
+    if (showSnd) {
       var opts = Object.keys(SOUND_FILES).map(function (k) { return [k, t.sounds[k]]; }).concat([['none', t.soundNone]]);
       if (ownPlugin()) opts.push(['own', state.rem.sound === 'own' && state.rem.ownName ? t.soundOwnNamed.replace('%', state.rem.ownName) : t.soundOwn]);
       $('rem-sound').innerHTML = opts.map(function (o) { return '<option value="' + o[0] + '">' + esc(o[1]) + '</option>'; }).join('');
@@ -853,8 +854,8 @@
       if (!isApp) return;
       var nav = $('appnav'), tabs = nav.querySelectorAll('button');
       document.body.classList.add('app'); nav.hidden = false;
-      var brand = document.querySelector('#dg-drawer .dg-brand-link'); // the drawer's header is the app's own, not the site's
-      if (brand) { brand.setAttribute('href', '/uposatha-calendar'); brand.innerHTML = '<svg class="up-mark" width="30" height="24" aria-hidden="true"><use href="#up-mark"/></svg><span class="dg-brand-name">Uposatha</span>'; }
+      var brand = document.querySelector('#dg-drawer .dg-brand-link'); // the drawer's header stays the site's: the conch and dhamma.gift lead out to the site (or to its app)
+      if (brand) { brand.setAttribute('href', 'https://dhamma.gift/'); brand.setAttribute('target', '_blank'); brand.setAttribute('rel', 'noopener'); }
       function openTab(k) {
         if (k === 'list' || k === 'cal') { state.screen = k; store('dgUposathaView', k); }
         document.body.setAttribute('data-app-tab', k); store('dgUposathaTab', k);
@@ -863,17 +864,17 @@
       }
       Array.prototype.forEach.call(tabs, function (b) { b.onclick = function () { var k = b.getAttribute('data-tab'); if (k === 'settings') document.querySelector('.dg-menu-btn').click(); else openTab(k); }; }); // the gear opens the settings; the key suttas live in the summary
       // the drawer is under the bar: while it is open the pill sits on the gear; a tap on a tab closes the drawer and goes to that tab
-      var closeBtn = document.querySelector('#dg-drawer .dg-drawer-close'), wasOpen = false, swallow = false;
+      var closeBtn = document.querySelector('#dg-drawer .dg-drawer-close'), wasOpen = false, goTo = null;
       function setCurrent(k) { Array.prototype.forEach.call(tabs, function (b) { b.setAttribute('aria-current', String(b.getAttribute('data-tab') === k)); }); }
       new MutationObserver(function () {
         var open = document.body.classList.contains('dg-drawer-open'); if (open === wasOpen) return; wasOpen = open;
-        if (open) setCurrent('settings'); else if (!swallow) setCurrent(document.body.getAttribute('data-app-tab') || 'home');
-        swallow = false;
+        if (open) setCurrent('settings'); else setCurrent(goTo || document.body.getAttribute('data-app-tab') || 'home'); // a tab was tapped: the pill goes straight to it (it may be the tab we came from)
+        goTo = null;
       }).observe(document.body, { attributes: true, attributeFilter: ['class'] });
       nav.addEventListener('click', function (e) {
         var b = e.target.closest && e.target.closest('button'); if (!b || !wasOpen || !closeBtn) return;
         if (b.getAttribute('data-tab') === 'settings') { e.stopPropagation(); closeBtn.click(); return; } // the gear again: close
-        swallow = true; closeBtn.click(); // a tab: the drawer goes, the tab's own handler follows
+        goTo = b.getAttribute('data-tab'); closeBtn.click(); // a tab: the drawer goes, the tab's own handler follows
       }, true);
       if ($('up-ver')) $('up-ver').textContent = window.__DG_APP_VERSION__ || 'preview'; // the native shell sets the real one
       var last = store('dgUposathaTab'); openTab(/^(home|list|cal|parts)$/.test(last || '') ? last : 'home');
