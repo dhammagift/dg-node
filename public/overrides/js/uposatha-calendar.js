@@ -148,7 +148,7 @@
     ['an3.70:2.3', 'AN 3.70 · three kinds|три вида'], ['an3.70:2.4', 'AN 3.70 · cowherd|пастух'], ['an3.70:3.1', 'AN 3.70 · Nigaṇṭha|ниганты'],
     ['an3.70:4.1', 'AN 3.70 · Noble One|Благородный'], ['an3.70:19.3', 'AN 3.70 · nights and days|ночь и день'],
     ['sn28.1:1.2', 'SN 28.1 · a monk\'s day|день монаха'], ['mn53:10.3', 'MN 53 · parts of the night|части ночи'], ['an3.70:19.1', 'AN 3.70 · like the arahants|подобно арахантам'], ['mn79:17.2', 'MN 79 · midday|полдень'],
-    ['pli-tv-bu-vb-pc37:2.1.6', 'Pc 37 · vikāla|Пч 37 · викала'], ['mn70:2.1', 'MN 70 · not at night|не ночью'], ['mn66:6.6', 'MN 66 · the wrong time|неподходящее время'], ['mn65:4.1', 'MN 65 · Bhaddāli'],
+    ['pli-tv-bu-vb-pc37:2.1.6', 'Pc 37 · vikāla|Пч 37 · викала'], ['mn70:2.1', 'MN 70 · not at night|не ночью'], ['mn66:6.6', 'MN 66 · the wrong time|неподходящее время'], ['mn65:4.1', 'MN 65 · Bhaddāli'], ['pli-tv-kd2:1.4.4', 'Kd 2 · the days|дни'],
   ];
   var KEYS = { // three questions; the suttas are the special and general ones of the slideshow
     en: [['How to keep it?', [
@@ -156,7 +156,8 @@
         ['AN 10.46', 'do not skip: “it is your loss and misfortune”. {0}']]],
       ['On which days?', [
         ['AN 3.37', 'the 14th {4}, the 15th {5} and the 8th {6}: on these days the guardians of the world look who keeps the Uposatha.'],
-        ['MN 83', 'the 14th, 15th and 8th of the half-month. {1}']]],
+        ['MN 83', 'the 14th, 15th and 8th of the half-month. {1}'],
+        ['Kd 2', 'the Uposatha chapter of the Vinaya: the Buddha lets the monks gather on the 14th, 15th and 8th days of the half-month, as the other wanderers did. {20}']]],
       ['When to begin?', [
         ['AN 3.70', 'begin at night: night and day, “this night and day” {11}.'],
         ['MN 53', 'what is the night? The parts of the night — <i>paṭhama</i>, <i>majjhima</i>, <i>pacchima yāma</i> — and what a disciple does in each. {13}'],
@@ -173,7 +174,8 @@
         ['АН 10.46', 'не пропускать: «это ваша потеря и неудача». {0}']]],
       ['В какие дни?', [
         ['АН 3.37', '14-й {4}, 15-й {5} и 8-й {6}: в эти дни стражи мира смотрят, кто соблюдает упосатху.'],
-        ['МН 83', '14-й, 15-й и 8-й дни половины месяца. {1}']]],
+        ['МН 83', '14-й, 15-й и 8-й дни половины месяца. {1}'],
+        ['Кхандхака 2', 'глава об упосатхе в Винае: Будда позволяет монахам собираться в 14-й, 15-й и 8-й дни половины месяца, как собирались и другие странники. {20}']]],
       ['Когда начинать?', [
         ['АН 3.70', 'начинать ночью: ночь и день, «эту ночь и этот день» {11}.'],
         ['МН 53', 'что такое ночь? Части ночи — <i>paṭhama</i>, <i>majjhima</i>, <i>pacchima yāma</i> — и что делает в каждой ученик. {13}'],
