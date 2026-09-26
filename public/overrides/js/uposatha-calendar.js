@@ -328,7 +328,8 @@
     }
     $('pgrid').innerHTML = block(t.pDay, F.week.format(Date.parse(ymd)), rise, set, t.dayParts) +
       block(t.pNight, F.week.format(Date.parse(nightFrom)) + ' → ' + F.week.format(Date.parse(ymdAdd(nightFrom, 1))), nStart, nEnd, t.nightParts);
-    $('pnote').textContent = t.pWho + '\n' + (obs ? t.pPlace : t.pFixed) + '\n' + t.pMid; // under the table, with the footnotes: who spends the parts this way, then what is conventional, then the word
+    $('pwho').textContent = t.pWho; // the lead line before the table: who spends the parts this way
+    $('pnote').textContent = (obs ? t.pPlace : t.pFixed) + '\n' + t.pMid; // the footnotes: what is conventional, then the word
     markPali($('pnote'));
     // the place is the important, interactive part of this block: a link by the heading, to the settings
     $('p-place').innerHTML = obs ? icon('pin') + esc(t.timeL + ': ' + (state.loc.name || t.locHere) + ' · ' + t.change) : icon('pin') + esc(t.setPlace);
