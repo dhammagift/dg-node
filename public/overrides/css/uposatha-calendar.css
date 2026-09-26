@@ -406,3 +406,6 @@ body[data-loc=off] #dg-drawer #loc-block { background: var(--dg-accent-bg); bord
 #dg-drawer .fb { opacity: .75; }
 #dg-drawer .fb .dg-drawer-subtitle { font-size: 12px; margin: 8px 0 4px; }
 #dg-drawer .fb .dg-field-input, #dg-drawer .fb .dg-segmented button { font-size: 12px; padding-top: 5px; padding-bottom: 5px; min-height: 0; }
+
+/* the clear cross shows only when the input has text: .dg-shell-btn's display would otherwise beat the hidden attribute */
+.dg-input-shell .dg-shell-btn[hidden] { display: none; }

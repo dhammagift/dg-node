@@ -237,6 +237,12 @@
     Array.prototype.forEach.call(document.querySelectorAll('[data-t]'), function (e) { var v = t[e.getAttribute('data-t')]; if (typeof v === 'string') e.innerHTML = v; });
     Array.prototype.forEach.call(document.querySelectorAll('[data-tt]'), function (e) { var v = t[e.getAttribute('data-tt')]; if (typeof v === 'string') { e.title = v; e.setAttribute('aria-label', v); } });
     Array.prototype.forEach.call(document.querySelectorAll('[data-tp]'), function (e) { e.placeholder = t[e.getAttribute('data-tp')] || ''; });
+    (function () { // the hint of the input: Uposatha key words and suttas, two words and a reference at random (all of them find something)
+      var words = ['uposatha', 'uposathaṃ', 'cātuddasī', 'pannarasī', 'aṭṭhamī', 'aṭṭhaṅgasamannāgataṃ', 'pāṭimokkha', 'cowherd', lang === 'ru' ? 'упосатха' : 'Uposatha'];
+      var refs = ['an3.70', 'an3.37', 'an10.46', 'mn83', 'mn146', 'sn28.1', 'mn53', 'mn79'];
+      function pick(a, n) { var b = a.slice(), o = []; while (n-- > 0) o.push(b.splice(Math.floor(Math.random() * b.length), 1)[0]); return o; }
+      var inp = $('paliauto'); if (inp) inp.placeholder = pick(words, 2).concat(pick(refs, 1)).join(', ') + '…';
+    })();
     document.title = t.h1 + ' — Dhamma.gift';
     paintToc();
     $('b-help').href = $('d-help').href = t.helpUrl; // the help is the docs page: a link, opened in a new window
