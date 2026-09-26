@@ -145,7 +145,9 @@ body[data-screen=list] #s-list, body[data-screen=cal] #s-cal { display: block; }
 .detail .badge { margin-left: 8px; }
 .detail .ttl { display: block; font-weight: 600; margin-top: 4px; color: var(--dg-accent-ink); }
 body[data-mode=lite] .today .dt, body[data-mode=lite] .ln.grey, body[data-mode=lite] .grid .c .ld, body[data-mode=lite] .detail, body[data-mode=lite] .today .sun { display: none; }
-body[data-mode=lite] .mon li .t .info .ln:not(.grey) + .ln:not(.grey) { display: none; }
+body[data-mode=lite] .ln.spanl { display: none; }
+.ln.dayl { display: none; }
+body[data-mode=lite] .ln.dayl { display: block; }
 /* key suttas and the reader */
 .slides { margin: 22px 0 0; }
 .slides[hidden] { display: none; }
