@@ -38,10 +38,13 @@ body.app .up-appfoot { display: block; margin-top: 18px; }
 body.app .appnav .up-rip { display: none; }
 body.app .appnav button i { isolation: isolate; }
 
-/* Summary in the app: the hero and the "today" card are one surface — the moon, the label and the countdown on top, the date and the phase right under them.
-   The small "today" caption and the badge repeat what the hero already says, so they go. */
-body.app[data-app-tab=home] #up-hero { margin-bottom: 0; padding-bottom: 6px; border-radius: 32px 32px 0 0; }
-body.app[data-app-tab=home] #up-hero ~ #s-summary { margin-top: 0; padding: 4px 20px 22px; border-radius: 0 0 32px 32px; text-align: center; }
-body.app #up-hero ~ #s-summary .k, body.app #up-hero ~ #s-summary #t-status { display: none; }
-body.app #up-hero ~ #s-summary .d { font-size: 19px; }
-body.app #up-hero ~ #s-summary .ph { margin-top: 4px; }
+/* Summary in the app: one card. The moon, the state of today (the Uposatha of which day), the date and the phase, and below them the countdown to the next one.
+   The page's own "today" card is not shown (its date and phase are copied into the hero by app-refresh.js). */
+body.app #s-summary, body.app[data-app-tab=home] #s-summary { display: none !important; }
+#up-hero .hk:empty { display: none; }
+#up-hero .hd { margin: 6px 0 0; font-size: 19px; font-weight: 600; }
+#up-hero .hp { margin: 4px 0 0; font-size: 13.5px; color: var(--dg-text-2); }
+body[data-mode=lite] #up-hero .dt { display: none; } /* the short view of the page keeps only the phase, the percent and the lunar day */
+#up-hero .hc { margin: 18px 0 8px; font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--dg-accent-ink); }
+body.app[data-app-tab=home] #up-hero { margin-bottom: 0; }
+#up-hero .hp .dot { margin: 0 6px; }

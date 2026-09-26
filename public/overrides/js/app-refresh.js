@@ -75,15 +75,18 @@
     var h = document.getElementById('up-hero');
     if (!h) {
       h = document.createElement('section'); h.id = 'up-hero';
-      h.innerHTML = '<div class="hm"><span class="halo"></span><span class="mv"></span></div><p class="hk"></p><div class="cd"><span data-u="d"><b></b><i></i></span><span data-u="h"><b></b><i></i></span><span data-u="m"><b></b><i></i></span></div><p class="hn"></p>';
+      h.innerHTML = '<div class="hm"><span class="halo"></span><span class="mv"></span></div><p class="hk"></p><div class="ht"></div><p class="hc"></p><div class="cd"><span data-u="d"><b></b><i></i></span><span data-u="h"><b></b><i></i></span><span data-u="m"><b></b><i></i></span></div><p class="hn"></p>';
       sum.parentNode.insertBefore(h, sum);
     }
     var src = document.getElementById('t-moon'), mv = h.querySelector('.mv');
     if (src && mv.innerHTML !== src.innerHTML) mv.innerHTML = src.innerHTML;
+    var dd = document.getElementById('t-date'), ph = document.getElementById('t-phase');
+    if (dd && ph) { var ht = '<p class="hd">' + dd.textContent + '</p><p class="hp">' + ph.innerHTML.replace(/ id="[^"]*"/g, '') + '</p>'; var hEl = h.querySelector('.ht'); if (hEl.innerHTML !== ht) hEl.innerHTML = ht; }
     var ru = RU(), H = window.__upoHero, n = H ? (H.next && { at: new Date(H.next.at), name: H.next.name, cur: H.cur }) : nextStart(), U = ru ? ['дн', 'ч', 'мин'] : ['d', 'h', 'min'];
     // the page knows which Uposatha runs now and which is next (the list is not parsed when it says so)
     var curName = H && H.cur ? H.cur.split(' · ')[0].split(' of the ')[0] : '';
-    h.querySelector('.hk').textContent = curName ? (ru ? 'Сегодня упосатха · ' : 'Uposatha today · ') + curName : n && n.now ? (ru ? 'Сегодня упосатха · до следующей' : 'Uposatha today · next one in') : (ru ? 'До упосатхи' : 'Uposatha in');
+    h.querySelector('.hk').textContent = curName ? (ru ? 'Сегодня упосатха · ' : 'Uposatha today · ') + curName : '';
+    h.querySelector('.hc').textContent = curName ? (ru ? 'До следующей' : 'Until the next one') : (ru ? 'До упосатхи' : 'Until the Uposatha');
     var left = n ? Math.max(0, n.at - Date.now()) : 0, v = [Math.floor(left / 864e5), Math.floor(left / 36e5) % 24, Math.floor(left / 6e4) % 60];
     $$('.cd > span', h).forEach(function (s, i) {
       var b = s.querySelector('b'), val = String(v[i]).padStart(i ? 2 : 1, '0');
