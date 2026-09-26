@@ -127,3 +127,8 @@ body.app.dg-drawer-open .apptop .g-share { opacity: 1; transform: none; }
 @media (prefers-reduced-motion: reduce) { body.app .apptop .th-moon, body.app .apptop .th-sun, body.app .apptop .g-share { transition: none; } }
 body.app .apptop .rb { transition: transform .28s cubic-bezier(.23, 1, .32, 1), background-color .2s ease-out, box-shadow .2s ease-out; }
 body.app.dg-drawer-open.up-dscroll .apptop .rb { background: var(--dg-surface); box-shadow: 0 2px 10px rgba(0, 0, 0, .2); }
+
+/* the bar when it does not fit (a big size setting): less air, then icons only under the pill */
+body.app .appnav.tight button { padding: 0 8px; min-width: 38px; gap: 5px; font-size: 12.5px; }
+body.app .appnav.tighter button { padding: 0 6px; min-width: 34px; }
+body.app .appnav.tighter button span { display: none !important; }

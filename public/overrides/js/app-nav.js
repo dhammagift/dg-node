@@ -9,13 +9,15 @@
   var MOVE = 'cubic-bezier(0.77, 0, 0.175, 1)', OUT = 'cubic-bezier(0.23, 1, 0.32, 1)', D = 260;
   var last = null; // rects of the previous state: { at: navLeft, b: [left of each button], pill: {x, w}, label: {x, y, w, text} }
 
+  // Everything is measured in the bar's own layout pixels (offset*), not by getBoundingClientRect: the site scales the whole page with CSS zoom
+  // ("Font size" of the settings, 70-150%), and a rect is in zoomed screen pixels while a transform or a width set on the pill is in local ones.
   function state() {
-    var n = nav.getBoundingClientRect(), cur = nav.querySelector('button[aria-current=true]');
-    var st = { b: btns.map(function (b) { return b.getBoundingClientRect().left - n.left; }), cur: cur, pill: null, label: null };
+    var cur = nav.querySelector('button[aria-current=true]');
+    var st = { b: btns.map(function (b) { return b.offsetLeft; }), cur: cur, pill: null, label: null };
     if (cur) {
-      var r = cur.getBoundingClientRect(), lab = cur.querySelector('span'), lr = lab && lab.getBoundingClientRect();
-      st.pill = { x: r.left - n.left, w: r.width };
-      if (lr && lr.width) st.label = { x: lr.left - n.left, w: lr.width, text: lab.textContent };
+      var lab = cur.querySelector('span');
+      st.pill = { x: cur.offsetLeft, w: cur.offsetWidth };
+      if (lab && lab.offsetWidth) st.label = { x: cur.offsetLeft + lab.offsetLeft, w: lab.offsetWidth, text: lab.textContent };
     }
     return st;
   }
@@ -27,13 +29,22 @@
     pill.getAnimations().forEach(function (a) { a.cancel(); });
     btns.forEach(function (b) { b.getAnimations().forEach(function (a) { a.cancel(); }); var l = b.querySelector('span'); if (l) l.getAnimations().forEach(function (a) { a.cancel(); }); });
   }
+  // A narrow screen or a big size setting (the page is zoomed): the bar loses its air step by step, then the label, until the five items fit.
+  function fit() {
+    nav.classList.remove('tight', 'tighter');
+    if (nav.scrollWidth <= nav.clientWidth + 1) return;
+    nav.classList.add('tight');
+    if (nav.scrollWidth <= nav.clientWidth + 1) return;
+    nav.classList.add('tighter');
+  }
   function sync(animate) {
     // where everything looks NOW (possibly in the middle of the previous move): that is where the next move starts from, so a quick
     // second tap (settings <-> night-day) continues from the visible place instead of jumping
+    var wasTight = nav.className; if (!nav.getAnimations({ subtree: true }).length) fit(); // not in the middle of a glide
     var from = state(), prevLabel = last && last.label;
     // the pill starts from where it is (it is not the new item: its layout has already changed by now); the items from where they were before the change
-    var pr = pill.getBoundingClientRect(), nr = nav.getBoundingClientRect(), moving = pill.getAnimations().length > 0;
-    if (pr.width) from.pill = { x: pr.left - nr.left, w: pr.width };
+    var cs = getComputedStyle(pill), moving = pill.getAnimations().length > 0; // where the pill is now, in local pixels (a running glide is included)
+    if (parseFloat(cs.width)) from.pill = { x: new DOMMatrix(cs.transform).m41, w: parseFloat(cs.width) };
     if (!moving && last) from.b = last.b;
     cancelAll();
     var now = state();

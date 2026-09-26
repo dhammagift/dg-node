@@ -37,8 +37,9 @@
     var el = e.target.closest('body.app :is(.pillbtn,.td,.more button,.rb,.grid .c,.segrow button,.appnav button)');
     if (!el || reduce) return;
     if (el.matches('.appnav button')) el = el.querySelector('i');
-    var r = el.getBoundingClientRect(), s = Math.max(r.width, r.height) * 2.2, sp = document.createElement('span');
-    sp.className = 'up-rip'; sp.style.cssText = 'width:' + s + 'px;height:' + s + 'px;left:' + (e.clientX - r.left - s / 2) + 'px;top:' + (e.clientY - r.top - s / 2) + 'px';
+    var z = parseFloat(getComputedStyle(document.documentElement).zoom) || 1; // the size setting zooms the page: a rect is in screen pixels, the ripple in local ones
+    var r = el.getBoundingClientRect(), s = Math.max(r.width, r.height) / z * 2.2, sp = document.createElement('span');
+    sp.className = 'up-rip'; sp.style.cssText = 'width:' + s + 'px;height:' + s + 'px;left:' + ((e.clientX - r.left) / z - s / 2) + 'px;top:' + ((e.clientY - r.top) / z - s / 2) + 'px';
     el.appendChild(sp); setTimeout(function () { sp.remove(); }, 520);
   }
 
