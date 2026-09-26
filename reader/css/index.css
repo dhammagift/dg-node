@@ -449,4 +449,7 @@ a:hover {
 #sutta p {
   content-visibility: auto;
   contain-intrinsic-size: auto 120px;
+  /* content-visibility implies paint containment, which would clip the copy marker that sits in the
+     left margin outside the paragraph box (a.copyLink-start ::before, left:-1em). */
+  overflow-clip-margin: 4em;
 }
