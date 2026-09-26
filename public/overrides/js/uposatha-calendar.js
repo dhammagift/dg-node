@@ -295,7 +295,7 @@
     }
     $('pgrid').innerHTML = block(t.pDay, F.week.format(Date.parse(ymd)), rise, set, t.dayParts) +
       block(t.pNight, F.week.format(Date.parse(nightFrom)) + ' → ' + F.week.format(Date.parse(ymdAdd(nightFrom, 1))), nStart, nEnd, t.nightParts);
-    $('pnote').textContent = (obs ? '' : t.pFixed + '\n') + t.pMid + '\n' + t.pWho;
+    $('pnote').textContent = t.pWho + '\n' + (obs ? '' : t.pFixed + '\n') + t.pMid; // the caption of the table first, then the footnotes
     // the place is the important, interactive part of this block: a link by the heading, to the settings
     $('p-place').innerHTML = obs ? icon('pin') + esc((state.loc.name || state.loc.lat + ', ' + state.loc.lon) + ' · ' + t.change) : icon('pin') + esc(t.setPlace);
     $('psub').textContent = t.pSub.replace('%', obs ? '' : '*'); // the asterisk stands by the word 'time' when the borders are conventional
