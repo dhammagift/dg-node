@@ -34,11 +34,16 @@ SLIDES = [
 RANDOM_IDS = {'mn118-15', 'kd2-two', 'bu-pm-15'}
 def load(p):
     return json.load(open(os.path.join(BASE, p)))
+OFFLINE = '/var/www/offline-data/dhammagift/translation'
 def find(kind, sutta, lang, prefer):
-    # the file of a translation of the sutta: the preferred translator first, any other after it
-    files = sorted(glob.glob(f'{BASE}/translation/{lang}/*/**/{sutta}_translation-{lang}-*.json', recursive=True))
-    files.sort(key=lambda f: 0 if f.endswith(f'-{prefer}.json') else 1)
-    return json.load(open(files[0])) if files else {}
+    # The project's own translation first (offline-data: the best one, then the second one), then SuttaCentral's;
+    # within a folder the preferred translator first.
+    for root in ([f'{OFFLINE}/{lang}', f'{OFFLINE}/{lang}_other'] if lang == 'ru' else []) + [f'{BASE}/translation/{lang}']:
+        files = sorted(glob.glob(f'{root}/**/{sutta}_translation-{lang}-*.json', recursive=True))
+        if files:
+            files.sort(key=lambda f: 0 if f.endswith(f'-{prefer}.json') else 1)
+            return json.load(open(files[0]))
+    return {}
 out = []
 for sid, days, nik, sutta, segs, ru_tr, en_label, ru_label in SLIDES:
     pli = json.load(open(glob.glob(f'{BASE}/root/pli/ms/**/{sutta}_root-pli-ms.json', recursive=True)[0]))

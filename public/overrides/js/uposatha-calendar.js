@@ -33,7 +33,7 @@
     en: {
       pH: 'Parts of the day and night', pSub: 'Sunrise to sunset is cut into three parts, and sunset to sunrise likewise — for your place and the season.', pDay: 'Day', pNight: 'Night',
       dayParts: [['Pubbaṇhasamaya', 'morning'], ['Majjhanhikasamaya', 'midday'], ['Sāyanhasamaya', 'evening']], nightParts: [['Paṭhama yāma', 'first watch'], ['Majjhima yāma', 'middle watch'], ['Pacchima yāma', 'last watch']],
-      fSpecial: 'special', fGeneral: 'general', fRandom: 'random', dayTag: function (d) { return d.map(function (n) { return n + (n === 8 ? 'th' : 'th'); }).join(' & ') + ' day'; },
+      fSpecial: 'special', fGeneral: 'general', fRandom: 'random', slTitle: 'From the suttas', showAll: 'Show all', readIt: 'Read', dayTag: function (d) { return d.map(function (n) { return n + 'th'; }).join(', ') + ' day'; },
       age: 'age', of30: 'of 30', from: 'from', left: 'left', dU: 'd', hU: 'h', mU: 'min',
       tag: 'observance days', compass: 'Favorites / History', menu: 'Menu', theme: 'Theme', prev: 'Previous', next: 'Next', close: 'Close',
       h1: 'Uposatha days', lead: 'The 14th, 15th and 8th lunar days of each half-month, as the suttas count them — six a month.', suttas: 'The suttas on Uposatha →',
@@ -69,7 +69,7 @@
     ru: {
       pH: 'Части дня и ночи', pSub: 'Время от восхода до заката делится на три части, и от заката до восхода тоже — для вашего места и сезона.', pDay: 'День', pNight: 'Ночь',
       dayParts: [['Pubbaṇhasamaya', 'утро'], ['Majjhanhikasamaya', 'полдень'], ['Sāyanhasamaya', 'вечер']], nightParts: [['Paṭhama yāma', 'первая стража'], ['Majjhima yāma', 'средняя стража'], ['Pacchima yāma', 'последняя стража']],
-      fSpecial: 'особое', fGeneral: 'общее', fRandom: 'случайное', dayTag: function (d) { return d.map(function (n) { return n + '-й'; }).join(' и ') + ' день'; },
+      fSpecial: 'особое', fGeneral: 'общее', fRandom: 'случайное', slTitle: 'Из сутт', showAll: 'Показать все', readIt: 'Читать', dayTag: function (d) { return d.map(function (n) { return n + '-й'; }).join(', ') + ' день'; },
       age: 'возраст', of30: 'из 30', from: 'с', left: 'осталось', dU: 'д', hU: 'ч', mU: 'мин',
       tag: 'дни соблюдения', compass: 'Избранное / История', menu: 'Меню', theme: 'Тема', prev: 'Назад', next: 'Вперёд', close: 'Закрыть',
       h1: 'Дни упосатхи', lead: '14-й, 15-й и 8-й лунные дни каждой половины месяца, как их считают сутты, — шесть в месяц.', suttas: 'Сутты об упосатхе →',
@@ -236,7 +236,7 @@
   }
   function toast(msg) { var e = $('toast'); e.textContent = msg; e.classList.add('on'); setTimeout(function () { e.classList.remove('on'); }, 2000); }
   function openPanel(id) { closeAll(); $(id).setAttribute('data-open', 'true'); $('scrim').setAttribute('data-open', 'true'); }
-  function closeAll() { ['drawer', 'scrim'].forEach(function (i) { $(i).setAttribute('data-open', 'false'); }); }
+  function closeAll() { ['drawer', 'p-all', 'scrim'].forEach(function (i) { $(i).setAttribute('data-open', 'false'); }); }
 
   // Lit part of the Moon to a hundredth of a percent: near the full moon a whole percent stays the same for half a day.
   function illumPercent(d) { var v = (A.Illumination('Moon', d).phase_fraction * 100).toFixed(2); return lang === 'ru' ? v.replace('.', ',') : v; }
@@ -552,27 +552,33 @@
   function buildSlides(days) {
     var all = quotes.filter(function (q) { return q[lang] || q.kind !== 'random'; }); // a random line with no translation into the page's language is left out; the key ones are shown in English
     var sp = all.filter(function (q) { return q.kind === 'special' && q.days.some(function (d) { return days.indexOf(d) !== -1; }); })
-      .sort(function (a, b) { return a.days[0] - b.days[0]; });
+      .sort(function (a, b) { return a.days.length - b.days.length || a.days[0] - b.days[0]; }); // the lines for one day first, those for several after
     slides = sp.concat(shuffle(all.filter(function (q) { return q.kind === 'general'; })), shuffle(all.filter(function (q) { return q.kind === 'random'; })).slice(0, 8));
     slIdx = 0;
   }
+  function slideText(q) { return q[lang] || q.en; }
+  function plate(q) { return '<span class="plate" data-k="' + q.kind + '">' + esc(t['f' + q.kind.charAt(0).toUpperCase() + q.kind.slice(1)]) + (q.kind === 'special' ? ' · ' + esc(t.dayTag(q.days)) : '') + '</span>'; }
+  function citeText(q) { return q.cite[lang] + (q[lang] ? '' : ' · EN') + ' — ' + t.readIt; }
   function showSlide(i, quick) {
     if (!slides.length) return;
     slIdx = (i + slides.length) % slides.length;
     var q = slides[slIdx], box = $('slides');
     function fill() {
-      $('sl-pli').textContent = q.pli; $('sl-tr').textContent = q[lang] || q.en;
-      var plain = q[lang] ? '' : ' · EN';
-      $('sl-cite').textContent = q.cite[lang] + (q.kind === 'special' ? ' · ' + t.dayTag(q.days) : '') + plain + ' →';
+      $('sl-plate').outerHTML = plate(q).replace('<span ', '<span id="sl-plate" ');
+      $('sl-pli').textContent = q.pli; $('sl-tr').textContent = slideText(q);
+      $('sl-cite').textContent = citeText(q);
       $('sl-cite').href = '/' + q.ref + '?lang=' + lang;
-      $('sl-count').textContent = (slIdx + 1) + ' / ' + slides.length;
-      Array.prototype.forEach.call($('sl-flags').children, function (b) {
-        b.setAttribute('aria-pressed', String(b.getAttribute('data-k') === q.kind));
-        b.disabled = !slides.some(function (s) { return s.kind === b.getAttribute('data-k'); });
-      });
+      $('sl-dots').innerHTML = slides.map(function (_, n) { return '<button type="button" data-i="' + n + '" aria-label="' + (n + 1) + '"' + (n === slIdx ? ' aria-current="true"' : '') + '></button>'; }).join('');
       box.classList.remove('fade'); reportHeight();
     }
     if (quick) fill(); else { box.classList.add('fade'); setTimeout(fill, 220); }
+  }
+  // Every slide of the current show, each with its plate: the button "show all".
+  function showAllSlides() {
+    $('sl-all-list').innerHTML = slides.map(function (q) {
+      return '<div class="sl-row">' + plate(q) + '<p class="sl-pli">' + esc(q.pli) + '</p><p class="sl-tr">' + esc(slideText(q)) + '</p><a href="/' + esc(q.ref) + '?lang=' + lang + '" target="_blank" rel="noopener">' + esc(citeText(q)) + '</a></div>';
+    }).join('');
+    openPanel('p-all');
   }
   function slidesFor(days) {
     var box = $('slides');
@@ -668,7 +674,8 @@
     $('rd15').onclick = function () { state.rem.d15 = !state.rem.d15; saveRem(); paint(); };
     $('sl-prev').onclick = function () { showSlide(slIdx - 1); };
     $('sl-next').onclick = function () { showSlide(slIdx + 1); };
-    Array.prototype.forEach.call($('sl-flags').children, function (b) { b.onclick = function () { var k = b.getAttribute('data-k'); for (var i = 0; i < slides.length; i++) if (slides[i].kind === k) { showSlide(i); return; } }; });
+    $('sl-dots').onclick = function (e) { var n = e.target.getAttribute && e.target.getAttribute('data-i'); if (n !== null && n !== undefined) showSlide(+n); };
+    $('sl-all-btn').onclick = showAllSlides;
     $('slides').addEventListener('mouseenter', function () { slHold = true; });
     $('slides').addEventListener('mouseleave', function () { slHold = false; });
     $('slides').addEventListener('focusin', function () { slHold = true; });

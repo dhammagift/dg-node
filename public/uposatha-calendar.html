@@ -68,10 +68,18 @@
   <p class="ctx"><span id="ctx-place"></span><span class="dot">·</span><span id="ctx-mode"></span><span class="dot">·</span><button type="button" id="ctx-change" data-t="change"></button></p>
 
   <section class="slides" id="slides" hidden>
-    <div class="sl-flags" id="sl-flags"><button type="button" data-k="special" data-t="fSpecial"></button><button type="button" data-k="general" data-t="fGeneral"></button><button type="button" data-k="random" data-t="fRandom"></button></div>
-    <p class="sl-pli" id="sl-pli"></p>
-    <p class="sl-tr" id="sl-tr"></p>
-    <div class="sl-foot"><a id="sl-cite" target="_blank" rel="noopener"></a><span class="sl-nav"><button type="button" id="sl-prev" data-tt="prev"><svg class="ic"><use href="#i-left"/></svg></button><span id="sl-count"></span><button type="button" id="sl-next" data-tt="next"><svg class="ic"><use href="#i-right"/></svg></button></span></div>
+    <div class="sl-head"><h2 class="eyebrow" data-t="slTitle"></h2><button type="button" class="sl-all" id="sl-all-btn" data-t="showAll"></button></div>
+    <div class="sl-box">
+      <button class="sl-arw" type="button" id="sl-prev" data-tt="prev"><svg class="ic"><use href="#i-left"/></svg></button>
+      <div class="sl-item" id="sl-item">
+        <span class="plate" id="sl-plate"></span>
+        <p class="sl-pli" id="sl-pli"></p>
+        <p class="sl-tr" id="sl-tr"></p>
+        <a class="sl-cite" id="sl-cite" target="_blank" rel="noopener"></a>
+      </div>
+      <button class="sl-arw next" type="button" id="sl-next" data-tt="next"><svg class="ic"><use href="#i-right"/></svg></button>
+    </div>
+    <div class="sl-dots" id="sl-dots"></div>
   </section>
 
   <div class="segrow vtabs" role="tablist">
@@ -163,6 +171,10 @@
     <p class="note" data-t="icsNote" style="margin:12px 0 8px"></p>
     <button class="btn" type="button" id="p-ics" style="width:100%"><svg class="ic"><use href="#i-calplus"/></svg><span data-t="ics"></span></button>
   </div>
+</aside>
+<aside class="drawer wide" id="p-all" data-open="false">
+  <div class="dhead"><b data-t="slTitle"></b><button class="x" type="button" data-close style="margin-left:auto" data-tt="close"><svg class="ic"><use href="#i-x"/></svg></button></div>
+  <div id="sl-all-list"></div>
 </aside>
 <div class="toast" id="toast"></div>
 <script src="/assets/js/jquery-3.7.0.min.js"></script>
