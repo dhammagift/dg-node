@@ -240,7 +240,7 @@ function sendVersionedHtml(req, reply, absHtmlPath, statusCode = 200) {
         // newer one (e.g. .reader-pending needs buildSutta() to clear it).
         // `s.src = '/spa/toc.js'` (ensureTocAssets) is stamped too: it was the one lazy script left
         // bare, so a toc.js fix stayed invisible in an already-visited browser for up to 24h.
-        /((?:src|href)="|loadScript\('|\.src = ')(\/(?:assets|spa|nodejs\/res|reader|settings)\/[^"'?#]+\.(?:js|css|svg|png|ico))("|')/g,
+        /((?:src|href)="|loadScript\('|dgPreload\('|\.src = ')(\/(?:assets|spa|nodejs\/res|reader|settings)\/[^"'?#]+\.(?:js|css|svg|png|ico))("|')/g,
         (m, pre, url, post) => {
             const prefix = Object.keys(HTML_ASSET_URL_ROOTS).find(p => url.startsWith(p + '/'));
             if (!prefix) return m;
@@ -288,6 +288,8 @@ const UNVERSIONED_LAZY_PATHS = [
     ...['datatables', 'standalone-dpd'].map(dir => path.join(__dirname, 'public', 'overrides', 'js', dir) + path.sep),
     path.join(__dirname, 'public', 'spa') + path.sep,
     path.join(__dirname, 'reader', 'common.js'),
+    // Fetched bare (no ?v=) by settings.js fetchTextInfo(); a year-long immutable copy would never see an edit.
+    path.join(__dirname, 'public', 'overrides', 'js', 'textinfo.js'),
     path.join(__dirname, 'reader', 'megareader.js'),
     // settings.js injects it on first use (History/Favorites): same lazy load, fixes sat cached for a year.
     path.join(__dirname, 'public', 'overrides', 'js', 'quickModal.js'),

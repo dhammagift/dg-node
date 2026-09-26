@@ -491,21 +491,34 @@ const ScrollManager = {
         }
     },
 
+    // A segment id may not exist as an element: verse lines are merged in the reader (mergeGathas
+    // keeps the first id, so "18.6" lives inside "18.5"), and range files name segments "an1.9:1.1".
+    // Order: exact id, id prefix, then the nearest PREVIOUS segment (the one that swallowed it),
+    // then the nearest NEXT one.
     findFallbackElement(baseId) {
         if (!baseId) return null;
         const idStr = String(baseId);
-        
+
         let el = document.getElementById(idStr);
         if (el) return el;
-        
+
+        el = document.querySelector('[id^="' + idStr.replace(/["\\]/g, '\\$&') + ':"]');
+        if (el) return el;
+
         const match = idStr.match(/(.*?)(\d+)$/);
         if (!match) return null;
-        
-        let prefix = match[1];
-        let num = parseInt(match[2], 10);
-        
-        if (num - 1 >= 0) {
-            return document.getElementById(prefix + (num - 1));
+
+        const prefix = match[1];
+        const num = parseInt(match[2], 10);
+        const MAX_STEPS = 10;
+
+        for (let k = 1; k <= MAX_STEPS && num - k >= 0; k++) {
+            el = document.getElementById(prefix + (num - k));
+            if (el) return el;
+        }
+        for (let k = 1; k <= MAX_STEPS; k++) {
+            el = document.getElementById(prefix + (num + k));
+            if (el) return el;
         }
         return null;
     },

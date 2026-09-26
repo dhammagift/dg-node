@@ -443,3 +443,10 @@ a:hover {
   background-color: var(--blue);
   color: var(--off-white);
 }
+
+/* Skip layout/paint of off-screen paragraphs: cuts first render of long suttas by ~1s.
+   The height estimate is remembered by the browser once a paragraph has been rendered. */
+#sutta p {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 120px;
+}

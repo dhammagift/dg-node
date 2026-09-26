@@ -697,40 +697,23 @@ async function tryEnhanceKey(key) {
     return suttaName ? `${suttaId} ${suttaName}` : key;
 }
 
+// One download of the sutta title map (/assets/js/textinfo.js, ~510 KB of plain JSON) shared by
+// everything on the page. It used to be fetched three times per page (the routing map below, plus an
+// import() that can never work on JSON and a raw-text fetch, both with Date.now() in the URL — so
+// never cacheable), on every text open.
+function fetchTextInfo() {
+    if (!window.__dgTextInfoPromise) {
+        window.__dgTextInfoPromise = fetch('/assets/js/textinfo.js')
+            .then(res => res.ok ? res.json() : null)
+            .catch(err => { console.error("Failed to load textinfo.js", err); return null; });
+    }
+    return window.__dgTextInfoPromise;
+}
+
 async function loadTextData() {
     if (textinfoCache) return textinfoCache;
-    
-    // 1. Проверяем глобальную переменную
-    if (typeof textinfo !== 'undefined') {
-        textinfoCache = textinfo;
-        return textinfo;
-    }
-
-    // 2. Пробуем загрузить как модуль
-    try {
-        const module = await import('/assets/js/textinfo.js?update=' + Date.now());
-        if (module.textinfo) {
-            textinfoCache = module.textinfo;
-            return module.textinfo;
-        }
-    } catch {}
-
-    // 3. Пробуем загрузить как сырой текст
-    try {
-        const response = await fetch('/assets/js/textinfo.js?update=' + Date.now());
-        const text = await response.text();
-        
-        // Пытаемся разобрать разными способами
-        const data = parseTextInfo(text);
-        if (data) {
-            textinfoCache = data;
-            return data;
-        }
-    } catch (e) {
-        console.error("Ошибка загрузки textinfo:", e);
-    }
-
-    return {};
+    textinfoCache = await fetchTextInfo();
+    return textinfoCache || {};
 }
 
 function parseTextInfo(text) {
@@ -2232,10 +2215,7 @@ function saveExactScrollPosition() {
 let textInfoData = null;
 
 // 1. Асинхронная подгрузка карты диапазонов
-fetch('/assets/js/textinfo.js')
-    .then(res => res.ok ? res.json() : null)
-    .then(data => textInfoData = data)
-    .catch(err => console.error("Ошибка загрузки textinfo.js", err));
+fetchTextInfo().then(data => textInfoData = data);
 
 // 2. Транслитерация
 function cyrillicToLatin(str) {

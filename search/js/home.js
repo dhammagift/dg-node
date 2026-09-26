@@ -3589,8 +3589,12 @@
         // distances must move in the same frame — repainting at the end left the dots stepping
         // twice, 0.32s apart (owner: "дёргается"). The reference repaints everything at once.
         carousel.addEventListener('slide.bs.carousel', function (e) { paintSlideDots(e.to); });
-        lockCarouselHeight();
+        // Measuring forces a layout of the whole page — pointless (and in the way of the first
+        // render) while the reader/results screen covers the carousel; done when home is shown.
+        if (document.body.classList.contains('dg-state-home')) lockCarouselHeight();
+        else carouselLockPending = true;
     }
+    var carouselLockPending = false;
 
     /* Высота карусели по САМОМУ ВЫСОКОМУ слайду. Слайды разной длины, и страница на каждом
        переключении то вырастала, то оседала — всё, что ниже, прыгало. Фиксируем минимальную
@@ -4613,7 +4617,13 @@
         // jQuery .val() событие input не шлёт — крестик «очистить» иначе бы не появился.
         syncInput: syncInputChrome,
         // Зовётся из dgSetState() в index.html: классы состояния переключаются там.
-        onStateChanged: applyRandomPlaceholder,
+        onStateChanged: function () {
+            applyRandomPlaceholder();
+            if (carouselLockPending && document.body.classList.contains('dg-state-home')) {
+                carouselLockPending = false;
+                lockCarouselHeight();
+            }
+        },
         closeAutocomplete: closeAutocomplete,
         openQuick: openQuick,
         closeQuick: closeQuick,

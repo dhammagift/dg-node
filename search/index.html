@@ -96,6 +96,41 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
   })();
 </script>
 <script>
+  // Cold load of a sutta URL (/dn22, /dn22:2.2/word): the reader code and its text used to start
+  // loading only after the page scripts had run (~1.4 s in), and the text request only after all of
+  // them (~2.1 s). Preloading them from here overlaps that wait with the page's own startup; the
+  // reader's later fetch()/<script> for the same URL is served from the preload. The API query is the
+  // one the reader built last time (megareader.js saves it) — if the settings changed since, the
+  // preloaded response is simply unused. Skipped when the address carries reader params of its own.
+  (function () {
+    try {
+      if (window.Capacitor || /[?&](mode|lang|langs|script|translators|q)=/.test(location.search)) return;
+      var m = location.pathname.match(/^\/((?:dn|mn|sn|an|ud|iti|snp|dhp|thag|thig)\d[\w.-]*)(?::|\/|$)/i);
+      var q = localStorage.getItem('dgReaderApiQuery');
+      if (!m || !q) return;
+      // dgPreload(' calls are stamped with ?v=<hash> by the server (sendVersionedHtml), exactly like
+      // the loadScript(' calls that will ask for the same files later — the URLs must match.
+      var dgPreload = function (href, as, cors) {
+        var l = document.createElement('link');
+        l.rel = 'preload'; l.href = href; l.as = as;
+        if (cors) l.crossOrigin = 'anonymous';
+        document.head.appendChild(l);
+      };
+      dgPreload('/api/text/' + encodeURIComponent(m[1].toLowerCase()) + '?' + q, 'fetch', true);
+      dgPreload('/reader/mode-table.json', 'fetch', true);
+      dgPreload('/reader/translator-priority.json', 'fetch', true);
+      dgPreload('/assets/js/translators.json', 'fetch', true);
+      dgPreload('/assets/js/copyToClipboard.js', 'script');
+      dgPreload('/assets/js/linksdpr.js', 'script');
+      dgPreload('/assets/js/linksbjt.js', 'script');
+      dgPreload('/assets/js/linksbw.js', 'script');
+      dgPreload('/assets/js/linksru.js', 'script');
+      dgPreload('/reader/common.js', 'script');
+      dgPreload('/reader/megareader.js', 'script');
+    } catch (e) {}
+  })();
+</script>
+<script>
   // Абсолютные пути: эта страница отдаётся с двух путей (/ и /nodejs/res/, см. dg-light.js),
   // относительный "lang_{lang}.json" резолвился бы по-разному в зависимости от того, откуда
   // открыли страницу. DHAMMA_GLOBAL_LANG_CONFIG_PATTERN — общие для всех страниц строки
@@ -3432,12 +3467,16 @@ $(document).ready(function() {
     // row that is currently on screen — several chunks can resolve in the same frame, and each
     // draw re-renders every visible cell (that is the flicker the owner sees).
     var enrichRenderHandle = null;
-    function scheduleEnrichRender() {
+    var enrichRenderIds = {};
+    function scheduleEnrichRender(ids) {
+        (ids || []).forEach(function (id) { enrichRenderIds[id] = true; });
         if (enrichRenderHandle !== null) return;
         enrichRenderHandle = (window.requestAnimationFrame || function (fn) { return setTimeout(fn, 16); })(function () {
             enrichRenderHandle = null;
+            var ids = Object.keys(enrichRenderIds);
+            enrichRenderIds = {};
             if (reportMode !== 'suttas' || !currentTable) return;
-            if (window.DgSearchRender && window.DgSearchRender.refreshEnriched) window.DgSearchRender.refreshEnriched();
+            if (window.DgSearchRender && window.DgSearchRender.refreshEnriched) window.DgSearchRender.refreshEnriched(ids);
             else renderCurrentReport();
         });
     }
@@ -3474,9 +3513,9 @@ $(document).ready(function() {
                 // off-screen → invalidate only (no draw, no flicker, Filter still correct);
                 // on-screen → invalidate + one coalesced draw.
                 if (touchedVisible) {
-                    scheduleEnrichRender();
+                    scheduleEnrichRender(Object.keys(json.data));
                 } else if (window.DgSearchRender && window.DgSearchRender.invalidateEnriched) {
-                    window.DgSearchRender.invalidateEnriched();
+                    window.DgSearchRender.invalidateEnriched(Object.keys(json.data));
                 }
             })
             .catch(function (error) {
