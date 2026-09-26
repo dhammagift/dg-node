@@ -44,7 +44,7 @@ NOTES = {  # **bold** is the question the sutta answers
     'mn83': {'en': '**On which days:** 14, 15, 8', 'ru': '**В какие дни:** 14, 15, 8'},
     'mn146': {'en': '14th - the moon is not full, 15th - full', 'ru': '14-й - луна неполная, 15-й - полная'},
     'an3.70': {'en': '**At what time:** night and day · **How:** as the arahants do', 'ru': '**В какое время:** ночь и день · **Как:** как араханты'},
-    'an10.46': {'en': 'Not to be skipped', 'ru': 'Пропускать нельзя'},
+    'an10.46': {'en': 'Do not skip', 'ru': 'Не пропускать'},
     'mn53': {'en': '**Parts of the night and day:** night', 'ru': '**Части ночи-дня:** ночь'},
     'sn28.1': {'en': '**Parts of the night and day:** day', 'ru': '**Части ночи-дня:** день'},
 }

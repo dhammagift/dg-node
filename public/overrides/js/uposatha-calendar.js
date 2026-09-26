@@ -118,7 +118,7 @@
   var KEYS = { // three questions; the suttas are the special and general ones of the slideshow
     en: [['How to keep it?', [
         ['AN 3.70', 'the Noble One\'s Uposatha {10} — as the arahants do.'],
-        ['AN 10.46', 'not to be skipped: “it is your loss and misfortune”. {0}']]],
+        ['AN 10.46', 'do not skip: “it is your loss and misfortune”. {0}']]],
       ['On which days?', [
         ['AN 3.37', 'the 14th {4}, the 15th {5} and the 8th {6}: on these days the guardians of the world look who keeps the Uposatha.'],
         ['MN 83', 'the 14th, 15th and 8th of the half-month. {1}']]],
@@ -129,7 +129,7 @@
         ['MN 146', 'not by the phases of the moon alone: on the 14th it is not full {2}, on the 15th it is full {3}.', 'gap']]]],
     ru: [['Как соблюдать?', [
         ['АН 3.70', 'упосатха Благородных {10} — так, как это делают араханты.'],
-        ['АН 10.46', 'пропускать нельзя: «это ваша потеря и неудача». {0}']]],
+        ['АН 10.46', 'не пропускать: «это ваша потеря и неудача». {0}']]],
       ['В какие дни?', [
         ['АН 3.37', '14-й {4}, 15-й {5} и 8-й {6}: в эти дни стражи мира смотрят, кто соблюдает упосатху.'],
         ['МН 83', '14-й, 15-й и 8-й дни половины месяца. {1}']]],
