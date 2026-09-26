@@ -853,6 +853,8 @@
       if (!isApp) return;
       var nav = $('appnav'), tabs = nav.querySelectorAll('button');
       document.body.classList.add('app'); nav.hidden = false;
+      var brand = document.querySelector('#dg-drawer .dg-brand-link'); // the drawer's header is the app's own, not the site's
+      if (brand) { brand.setAttribute('href', '/uposatha-calendar'); brand.innerHTML = '<svg class="up-mark" width="30" height="24" aria-hidden="true"><use href="#up-mark"/></svg><span class="dg-brand-name">Uposatha</span>'; }
       function openTab(k) {
         if (k === 'list' || k === 'cal') { state.screen = k; store('dgUposathaView', k); }
         document.body.setAttribute('data-app-tab', k); store('dgUposathaTab', k);

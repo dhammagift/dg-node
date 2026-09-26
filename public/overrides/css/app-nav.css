@@ -12,3 +12,17 @@ body.app .appnav button[aria-current=true] .ic { color: var(--dg-accent-ink); }
 body.app .appnav .up-pill { position: absolute; z-index: 0; top: 6px; bottom: 6px; left: 0; width: 0; border-radius: 23px; background: var(--dg-accent-bg); pointer-events: none; contain: layout paint; }
 body.app .appnav .up-ghost { position: absolute; z-index: 1; pointer-events: none; white-space: nowrap; font-size: 13.5px; font-weight: 600; color: var(--dg-accent-ink); line-height: 46px; }
 body.app main.page { padding-bottom: 110px; }
+
+/* The app's drawer holds only what belongs to the Uposatha calendar: language, theme, font size, its own settings, share, help.
+   The site's rows (find on the page, the multitool, the reading modes, the site settings, the buttons of the home page, login) are hidden. */
+body.app #dg-drawer .dg-find-open,
+body.app #dg-drawer #dg-drawer-multitool,
+body.app #dg-drawer #dg-drawer-modes,
+body.app #dg-drawer #dg-add-tile,
+body.app #dg-drawer #dg-edit-tiles,
+body.app #dg-drawer #dg-restore-tiles,
+body.app #dg-drawer a[href="/settings/"],
+body.app #dg-drawer a[href="/login"] { display: none !important; }
+
+#dg-drawer .up-site { display: none; }
+body.app #dg-drawer .up-site { display: flex; } /* the only way out to the site from the app */
