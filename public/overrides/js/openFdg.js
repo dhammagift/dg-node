@@ -215,15 +215,73 @@ fdgIframe.addEventListener('mouseover', () => {
     window.focus();
 })
 
+// Warm-up: once a quote has been expanded in the results, its citation is loaded into the popup's
+// iframe in advance — the popup is laid out at its real size but invisible (visibility:hidden), so the
+// reader inside scrolls to the right place; opening it later only reveals it. Only the exact URL the
+// popup would load is reused, anything else loads as before.
+let fdgWarmUrl = null;
+const isFdgPopupOpen = () => fdgPopup.style.display === 'block' && fdgPopup.style.visibility !== 'hidden';
+window.isFdgPopupOpen = isFdgPopupOpen;
+
 const closeFdgPopup = () => {
     fdgPopup.style.display = 'none';
+    fdgPopup.style.visibility = '';
+    fdgWarmUrl = null;
     fdgIframe.src = 'about:blank';
 };
+
+function fdgInstantUrl(href) {
+    const urlObj = new URL(href, window.location.origin);
+    urlObj.searchParams.set('scroll', 'instant');
+    return urlObj.toString();
+}
+
+// Show the popup for `originalUrl` (the clean link); reuses the warmed frame when it holds this very URL.
+function showFdgPopup(originalUrl) {
+    const instantUrl = fdgInstantUrl(originalUrl);
+    if (fdgWarmUrl !== instantUrl) fdgIframe.src = instantUrl;
+    fdgWarmUrl = null;
+    fdgOpenNewWindowBtn.href = originalUrl;
+    fdgPopup.style.visibility = '';
+    fdgPopup.style.display = 'block';
+}
+window.dgShowFdgPopup = showFdgPopup;
+
+function warmFdgPopup(link) {
+    if (typeof window.dgOfflineReady !== 'undefined') return; // the app answers from its own SQLite, no second copy of it
+    if (localStorage.getItem('quotePopupEnabled') === 'false' || isFdgPopupOpen()) return;
+    const url = fdgInstantUrl(link.href);
+    if (url === fdgWarmUrl) return;
+    fdgWarmUrl = url;
+    fdgPopup.style.visibility = 'hidden';
+    fdgPopup.style.display = 'block';
+    fdgIframe.src = url;
+}
+
+// The results table expands a quote by inserting its <tr class="child">. A burst of them (the
+// "expand all" button) warms nothing after the first, a later single expansion re-warms for its own quote.
+document.addEventListener('DOMContentLoaded', function () {
+    const table = document.getElementById('pali');
+    if (!table) return;
+    let lastWarm = 0;
+    new MutationObserver(function (mutations) {
+        for (const m of mutations) {
+            for (const node of m.addedNodes) {
+                if (node.nodeType !== 1 || !node.classList.contains('child')) continue;
+                const link = node.querySelector('.quote a.fdgLink');
+                if (!link || Date.now() - lastWarm < 1500) continue;
+                lastWarm = Date.now();
+                warmFdgPopup(link);
+                return;
+            }
+        }
+    }).observe(table, { childList: true, subtree: true });
+});
 fdgCloseBtn.addEventListener('click', closeFdgPopup);
 fdgOpenNewWindowBtn.addEventListener('click', () => { setTimeout(closeFdgPopup, 100); });
 
 document.addEventListener('click', function(event) {
-    if (fdgPopup.style.display === 'block') {
+    if (isFdgPopupOpen()) {
         const isClickInside = fdgPopup.contains(event.target);
         const isMobile = window.innerWidth <= 768;
         if (!isClickInside) { //&& isMobile
@@ -317,20 +375,9 @@ document.addEventListener('click', function(event) {
         // 1. Берем оригинальную ссылку (без параметров) для полного окна
         const originalUrl = link.href;
         
-        // 2. Создаем отдельную ссылку с параметром для резкого прыжка в попапе
-        const urlObj = new URL(originalUrl);
-        urlObj.searchParams.set('scroll', 'instant');
-        const instantUrl = urlObj.toString();
-
-        if (fdgIframe && fdgPopup) {
-            // Попапу отдаем ссылку для резкого прыжка
-            fdgIframe.src = instantUrl;               
-            
-            // А кнопке "открыть в новом окне" отдаем чистую ссылку для плавной прокрутки
-            fdgOpenNewWindowBtn.href = originalUrl;   
-            
-            fdgPopup.style.display = 'block';
-        }
+        // 2. Попапу уходит ссылка с scroll=instant (резкий прыжок), кнопке "открыть в новом окне" —
+        // чистая (плавная прокрутка); см. showFdgPopup()
+        if (fdgIframe && fdgPopup) showFdgPopup(originalUrl);
     }
 }, true);
 

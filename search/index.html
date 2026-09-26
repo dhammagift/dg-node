@@ -96,6 +96,41 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
   })();
 </script>
 <script>
+  // Cold load of a sutta URL (/dn22, /dn22:2.2/word): the reader code and its text used to start
+  // loading only after the page scripts had run (~1.4 s in), and the text request only after all of
+  // them (~2.1 s). Preloading them from here overlaps that wait with the page's own startup; the
+  // reader's later fetch()/<script> for the same URL is served from the preload. The API query is the
+  // one the reader built last time (megareader.js saves it) — if the settings changed since, the
+  // preloaded response is simply unused. Skipped when the address carries reader params of its own.
+  (function () {
+    try {
+      if (window.Capacitor || /[?&](mode|lang|langs|script|translators|q)=/.test(location.search)) return;
+      var m = location.pathname.match(/^\/((?:dn|mn|sn|an|ud|iti|snp|dhp|thag|thig)\d[\w.-]*)(?::|\/|$)/i);
+      var q = localStorage.getItem('dgReaderApiQuery');
+      if (!m || !q) return;
+      // dgPreload(' calls are stamped with ?v=<hash> by the server (sendVersionedHtml), exactly like
+      // the loadScript(' calls that will ask for the same files later — the URLs must match.
+      var dgPreload = function (href, as, cors) {
+        var l = document.createElement('link');
+        l.rel = 'preload'; l.href = href; l.as = as;
+        if (cors) l.crossOrigin = 'anonymous';
+        document.head.appendChild(l);
+      };
+      dgPreload('/api/text/' + encodeURIComponent(m[1].toLowerCase()) + '?' + q, 'fetch', true);
+      dgPreload('/reader/mode-table.json', 'fetch', true);
+      dgPreload('/reader/translator-priority.json', 'fetch', true);
+      dgPreload('/assets/js/translators.json', 'fetch', true);
+      dgPreload('/assets/js/copyToClipboard.js', 'script');
+      dgPreload('/assets/js/linksdpr.js', 'script');
+      dgPreload('/assets/js/linksbjt.js', 'script');
+      dgPreload('/assets/js/linksbw.js', 'script');
+      dgPreload('/assets/js/linksru.js', 'script');
+      dgPreload('/reader/common.js', 'script');
+      dgPreload('/reader/megareader.js', 'script');
+    } catch (e) {}
+  })();
+</script>
+<script>
   // Абсолютные пути: эта страница отдаётся с двух путей (/ и /nodejs/res/, см. dg-light.js),
   // относительный "lang_{lang}.json" резолвился бы по-разному в зависимости от того, откуда
   // открыли страницу. DHAMMA_GLOBAL_LANG_CONFIG_PATTERN — общие для всех страниц строки
@@ -2016,24 +2051,11 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
       setTimeout(function () {
         var popupEl = document.querySelector('.fdg-popup');
         var frameEl = document.querySelector('.fdg-iframe');
-        if (popupEl && frameEl) {
-          var u = new URL(url, location.origin);
-          u.searchParams.set('scroll', 'instant');
-
-          // Was: two "warm" shortcuts avoiding a full iframe reload (same-slug DOM reuse,
-          // dgNavigateInternal SPA-routing) added for speed (~2s full reload measured on first
-          // show) — owner: "iframe jump doesn't work at all, but it works on prod dg". Prod's
-          // openFdg.js (assets/js/openFdg.js, still loaded here too, see comment above) never
-          // had either shortcut — it always does exactly the plain `iframe.src = ...` reload
-          // below. Matching that proven behavior over keeping an unreproducible-in-testing but
-          // real-on-device bug in the shortcuts; the ~2s cost returns, but a working popup that
-          // reloads beats a fast one that doesn't reliably land on the right segment.
-          frameEl.src = u.toString();
-          // .fdg-open-new-window-btn — <a target="_blank"> из createFdgPopup(); href на нём
-          // появляется только в момент открытия попапа, поэтому по a[href] он не находится.
-          var newWinBtn = popupEl.querySelector('.fdg-open-new-window-btn');
-          if (newWinBtn) newWinBtn.href = url;
-          popupEl.style.display = 'block';
+        if (popupEl && frameEl && window.dgShowFdgPopup) {
+          // Same plain full load as prod (the "warm" SPA-routing shortcuts were dropped on purpose, see
+          // the owner's note in git history) — except when the frame was already warmed for this
+          // exact URL by openFdg.js after a quote was expanded: then it is just revealed.
+          window.dgShowFdgPopup(new URL(url, location.origin).href);
         } else {
           window.open(url, '_blank', 'noopener'); // попапа на странице нет — не молчим
         }
@@ -3432,12 +3454,16 @@ $(document).ready(function() {
     // row that is currently on screen — several chunks can resolve in the same frame, and each
     // draw re-renders every visible cell (that is the flicker the owner sees).
     var enrichRenderHandle = null;
-    function scheduleEnrichRender() {
+    var enrichRenderIds = {};
+    function scheduleEnrichRender(ids) {
+        (ids || []).forEach(function (id) { enrichRenderIds[id] = true; });
         if (enrichRenderHandle !== null) return;
         enrichRenderHandle = (window.requestAnimationFrame || function (fn) { return setTimeout(fn, 16); })(function () {
             enrichRenderHandle = null;
+            var ids = Object.keys(enrichRenderIds);
+            enrichRenderIds = {};
             if (reportMode !== 'suttas' || !currentTable) return;
-            if (window.DgSearchRender && window.DgSearchRender.refreshEnriched) window.DgSearchRender.refreshEnriched();
+            if (window.DgSearchRender && window.DgSearchRender.refreshEnriched) window.DgSearchRender.refreshEnriched(ids);
             else renderCurrentReport();
         });
     }
@@ -3474,9 +3500,9 @@ $(document).ready(function() {
                 // off-screen → invalidate only (no draw, no flicker, Filter still correct);
                 // on-screen → invalidate + one coalesced draw.
                 if (touchedVisible) {
-                    scheduleEnrichRender();
+                    scheduleEnrichRender(Object.keys(json.data));
                 } else if (window.DgSearchRender && window.DgSearchRender.invalidateEnriched) {
-                    window.DgSearchRender.invalidateEnriched();
+                    window.DgSearchRender.invalidateEnriched(Object.keys(json.data));
                 }
             })
             .catch(function (error) {
@@ -3729,8 +3755,9 @@ $(document).ready(function() {
         } else if (route.type === 'text') {
             // Раньше здесь была настоящая навигация — ридер был другой страницей. Теперь текст
             // открывается на месте, тем же способом, что и клик по сутте в выдаче.
+            if (route.find) currentParams.set('s', route.find);
             var qs2 = currentParams.toString();
-            history.pushState({ dgReader: true }, '', '/' + encodeURIComponent(route.id) + (qs2 ? '?' + qs2 : ''));
+            history.pushState({ dgReader: true }, '', '/' + encodeURIComponent(route.id) + (route.segment ? ':' + route.segment : '') + (qs2 ? '?' + qs2 : ''));
             dgLeaveScreen('reader', function () { openReaderInPlace(route.id); });
         } else if (route.type === 'external') {
             // dict.dg / aksharamukha / dharmamitra — a plain external tool, not part of this

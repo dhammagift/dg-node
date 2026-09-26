@@ -443,3 +443,15 @@ a:hover {
   background-color: var(--blue);
   color: var(--off-white);
 }
+
+/* Skip layout/paint of off-screen paragraphs: cuts first render of long suttas by ~1s.
+   The height estimate is remembered by the browser once a paragraph has been rendered.
+   content-visibility implies paint containment, which clips whatever sticks out of the box — and the
+   copy marker (a.copyLink-start, left:-1em) sits in the margin left of the text. So the box itself is
+   made wider on the left (padding) and pulled back (negative margin): the text does not move. */
+#sutta article p {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 120px;
+  padding-left: 2em;
+  margin-left: -2em;
+}

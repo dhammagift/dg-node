@@ -96,6 +96,23 @@ function getSegmentTextParts(parentSpan, clickedLang, clickedElement) {
 }
 window.getSegmentTextParts = getSegmentTextParts;
 
+// Link to a segment of a text in the clean form /sn56.11:1.1 (no #hash: the colon reads the same in
+// every project of the site). `url` is any URL of the current text, with or without a segment or
+// hash; its query (?s=, ?mode=) is kept. The old ?q= address format keeps the #hash form.
+window.dgSegmentUrl = function (url, segment) {
+  const u = new URL(url);
+  const seg = String(segment || '').toLowerCase();
+  u.hash = '';
+  if (!seg) return u.href;
+  if (u.searchParams.has('q')) { u.hash = seg; return u.href; }
+  const path = u.pathname.replace(/\/+$/, '');
+  const cut = path.lastIndexOf('/') + 1;
+  const slug = path.slice(cut).split(':')[0];
+  if (!slug) { u.hash = seg; return u.href; }
+  u.pathname = path.slice(0, cut) + slug + ':' + seg;
+  return u.href;
+};
+
 // Основная функция копирования
 function copyToClipboard(text = "") {
 
@@ -231,8 +248,7 @@ document.addEventListener('DOMContentLoaded', function() {
       baseUrl.searchParams.set('q', baseUrl.searchParams.get('q').toLowerCase());
     }
 
-    baseUrl.hash = hash;
-    let finalUrl = baseUrl.href;
+    let finalUrl = window.dgSegmentUrl(baseUrl.href, hash);
 
     if (finalUrl.includes('localhost') || finalUrl.includes('127.0.0.1')) {
       finalUrl = finalUrl.replace(/https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/gi, 'https://dhamma.gift');

@@ -1252,6 +1252,9 @@ window.buildSutta = async function(rawSlug, opts) {
             || (dualScriptModeActive ? 'devanagari' : '')).toLowerCase();
         const scriptQuery = (scriptParam && scriptParam !== 'isopali') ? `&script=${encodeURIComponent(scriptParam)}` : '';
         const apiUrl = `/api/text/${encodeURIComponent(slug)}?${langsQuery}${scriptQuery}`;
+        // Remembered for the next cold load: the <head> script in search/index.html preloads this
+        // very URL before any reader code has run (the query only depends on the user's settings).
+        try { localStorage.setItem('dgReaderApiQuery', apiUrl.slice(apiUrl.indexOf('?') + 1)); } catch (e) { /* private mode */ }
         const response = await fetch(apiUrl);
         if (!response.ok) {
             if (response.status === 404 && typeof window.executeGlobalSearch === 'function') {
@@ -1471,7 +1474,9 @@ window.buildSutta = async function(rawSlug, opts) {
             anchor = segment;
         }
 
-        var fullUrlWithAnchor = window.location.href.split('#')[0] + '#' + anchor;
+        var fullUrlWithAnchor = window.dgSegmentUrl
+            ? window.dgSegmentUrl(window.location.href, anchor)
+            : window.location.href.split('#')[0] + '#' + anchor;
 
         window.applyRemovePunct(paliData, segment);
         // Matches prod's devanagari.js (applyRemovePunct called on BOTH lines) — the ISO/Latin
@@ -1804,7 +1809,10 @@ async function initReader() {
     if (query) {
         // Заполняем инпут для удобства
         const citation = document.getElementById("paliauto");
-        if (citation) citation.value = query;
+        // Show the address the way it is typed: id, :segment and the words to find (?s=) — the
+        // field used to be cut down to the bare id, dropping what the user had just entered.
+        const findWords = new URLSearchParams(window.location.search).get('s');
+        if (citation) citation.value = query + (!searchParam && segmentId ? ':' + segmentId : '') + (!searchParam && findWords ? ' ' + findWords : '');
 
         // Существование слага решает сам /api/text/:slug (200 → рендерим, 404 → поиск,
         // см. window.buildSutta) — без предзагрузки индекса всех сутт на клиенте.
@@ -1819,8 +1827,10 @@ async function initReader() {
             // для текстов-диапазонов: сервер, не найдя отдельной сутты an1.9, уводит на
             // "/an1.1-10:an1.9" (см. findRangeContaining в dg-light.js), а элементов с id
             // ровно "an1.9" там нет — сегменты внутри диапазона называются "an1.9:1.1" и т.д.
-            const target = document.getElementById(segmentId)
-                || document.querySelector('[id^="' + segmentId.replace(/"/g, '\\"') + ':"]');
+            const target = (typeof ScrollManager !== 'undefined' && ScrollManager.findFallbackElement)
+                ? ScrollManager.findFallbackElement(segmentId)
+                : document.getElementById(segmentId)
+                    || document.querySelector('[id^="' + segmentId.replace(/"/g, '\\"') + ':"]');
             if (target) {
                 // ?scroll=instant — тот же флаг, что уже понимает smoothScroll.js, и тот же, что
                 // openFdg.js дописывает, открывая цитату из поиска во встроенном попапе-iframe:
