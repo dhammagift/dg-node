@@ -55,6 +55,7 @@
       noonBy: 'Count midday by', noonSunS: 'Sun', noonMidS: 'Middle of day', noonClockS: '12:00', noonWhat: 'Middle of the day: halfway between sunrise and sunset, the centre of the middle third.', noonChange: 'change', noonSun: 'the Sun (highest point)', noonMid: 'the middle of the day', noonClock: '12:00 by the clock', noonFixed: 'Without a place midday is 12:00 by the clock.',
       noonNote: 'The Vinaya says only “when midday has passed”, not how to find it. The Sun’s highest point is astronomical midday; the middle of the day is halfway between sunrise and sunset (almost the same); 12:00 by the clock can differ by an hour or more. Dawn here is taken as sunrise.',
  mealSet: 'Food (vikāla)', mealSumL: 'Show in the summary', mealRemL: 'Remind when the time for food ends', mealLead: 'In advance', mealLeads: [[0, 'when the time for food ends'], [15, '15 min before'], [30, '30 min before'], [45, '45 min before'], [60, '1 hour before'], [90, '1.5 hours before'], [120, '2 hours before']], mealDays: 'Days', mealDaysU: 'Uposatha days', mealDaysA: 'Every day', mealSnd: 'Sound of this reminder',
+      twiL: 'Dawn and dusk', twiNote: 'Twilight: the Sun 6, 12 or 18° below the horizon. Sets the borders of the day and the night and the dawn in the meals card.', twiO: { sun: 'Sunrise and sunset', civil: 'Civil (−6°)', nautical: 'Nautical (−12°)', astro: 'Astronomical (−18°)' },
       testL: 'Test: show the state', testReal: 'as is', testTag: 'test',
       mealRemNow: 'Vikāla begins', mealRemZero: function (noon) { return 'Midday at ' + noon + ' — the time for food has ended.'; },
       mealBegL: 'Remind when the time for food begins', mealBegLeads: [[0, 'at dawn'], [15, '15 min before'], [30, '30 min before'], [60, '1 hour before']],
@@ -105,6 +106,7 @@
       noonBy: 'Полдень считать по', noonSunS: 'Солнце', noonMidS: 'Середина дня', noonClockS: '12:00', noonWhat: 'Середина дня — ровно между восходом и закатом, центр средней трети дня.', noonChange: 'изменить', noonSun: 'Солнцу (высшая точка)', noonMid: 'середине дня', noonClock: '12:00 по часам', noonFixed: 'Без места полдень — 12:00 по часам.',
       noonNote: 'В Винае сказано лишь «когда полдень миновал», а как его определить — нет. Высшая точка Солнца — астрономический полдень; середина дня — ровно между восходом и закатом (почти то же самое); 12:00 по часам может отличаться на час и больше. Рассвет здесь принят за восход.',
  mealSet: 'Еда (vikāla)', mealSumL: 'Показывать в сводке', mealRemL: 'Напоминать об окончании времени еды', mealLead: 'Заранее', mealLeads: [[0, 'когда время еды закончится'], [15, 'за 15 мин'], [30, 'за 30 мин'], [45, 'за 45 мин'], [60, 'за 1 час'], [90, 'за 1,5 часа'], [120, 'за 2 часа']], mealDays: 'Дни', mealDaysU: 'Дни упосатхи', mealDaysA: 'Каждый день', mealSnd: 'Звук этого напоминания',
+      twiL: 'Рассвет и закат', twiNote: 'Сумерки: Солнце на 6, 12 или 18° под горизонтом. Задаёт границы дня и ночи и рассвет в карточке приёма пищи.', twiO: { sun: 'Восход и закат', civil: 'Гражданские (−6°)', nautical: 'Навигационные (−12°)', astro: 'Астрономические (−18°)' },
       testL: 'Проверка: показать состояние', testReal: 'как есть', testTag: 'тест',
       mealRemNow: 'Наступает vikāla', mealRemZero: function (noon) { return 'Полдень в ' + noon + ' — время еды закончилось.'; },
       mealBegL: 'Напоминать о начале времени еды', mealBegLeads: [[0, 'на рассвете'], [15, 'за 15 мин'], [30, 'за 30 мин'], [60, 'за 1 час']],
@@ -191,6 +193,7 @@
     lite: store('dgUposathaLite') !== '0', // the short view is the default
     screen: params.get('view') === 'all' ? 'cal' : (store('dgUposathaView') === 'cal' ? 'cal' : 'list'),
     months: 3, calOff: 0, selected: null,
+    twi: (function () { var v = store('dgUposathaTwi'); return v && v in TWI ? v : 'sun'; })(),
     fake: (function () { var v = store('dgUposathaFake'); return v === 'kala' || v === 'vikala' ? v : ''; })(),
     meal: (function () { var d = { sum: true, rem: false, lead: 30, days: 'upo', snd: 'bell', beg: false, begLead: 0, begSnd: 'gong2' }; try { var v = JSON.parse(store('dgUposathaMeal')); if (v) for (var k in d) if (k in v) d[k] = v[k]; } catch (e) { /* defaults */ } return d; })(),
     noon: (function () { var v = store('dgUposathaNoon'); return /^(sun|mid|clock)$/.test(v || '') ? v : 'sun'; })(),
@@ -213,7 +216,14 @@
 
   // ---------- the Moon and the Sun (the calculation lives in uposatha-core.js, shared with the calendar feed) ----------
   var C = window.UposathaCore;
+  // Dawn and dusk by a chosen definition: the Sun's upper limb at the horizon (sunrise / sunset), or the Sun 6 / 12 / 18 degrees below it (civil, nautical, astronomical twilight)
+  var TWI = { sun: null, civil: -6, nautical: -12, astro: -18 };
   var localDay = C.localDay, zonedToUtc = C.zonedToUtc, sunEvent = C.sunEvent, tithiAt = C.tithiAt, dayNo = C.dayNo, ymdAdd = C.ymdAdd;
+  function edge(kind, y, m, d, tz, obs) { // the dawn / dusk of the day by the chosen definition; the sunrise / sunset where the Sun does not reach that depth
+    var alt = TWI[state.twi];
+    if (obs && alt != null) { var r = A.SearchAltitude('Sun', obs, kind === 'rise' ? 1 : -1, zonedToUtc(y, m, d, 0, tz), 1, alt); if (r) return r.date; }
+    return sunEvent(kind, y, m, d, tz, obs);
+  }
   function dataset(from, to) { return C.dataset(from, to, { tz: state.tz, sutta: sutta(), loc: state.loc }); }
 
   // ---------- drawing ----------
@@ -290,6 +300,7 @@
     document.title = t.h1 + ' — Dhamma.gift';
     paintToc();
     $('b-help').href = $('d-help').href = t.helpUrl; // the help is the docs page: a link, opened in a new window
+    $('twi').innerHTML = Object.keys(TWI).map(function (k) { return '<option value="' + k + '">' + esc(t.twiO[k]) + '</option>'; }).join(''); $('twi').value = state.twi;
     $('mbeg-lead').innerHTML = t.mealBegLeads.map(function (l) { return '<option value="' + l[0] + '">' + esc(l[1]) + '</option>'; }).join('');
     $('mrem-lead').innerHTML = t.mealLeads.map(function (l) { return '<option value="' + l[0] + '">' + esc(l[1]) + '</option>'; }).join('');
     $('rem-lead').innerHTML = t.leads.map(function (l) { return '<option value="' + l[0] + '">' + esc(l[1]) + '</option>'; }).join('');
@@ -337,7 +348,7 @@
   // The parts of the day: sunrise to sunset in three, sunset to sunrise in three (fixed 06:00 / 18:00 without a place).
   function paintParts(F, now, ymd) {
     var obs = state.loc ? new A.Observer(state.loc.lat, state.loc.lon, 0) : null, tz = state.tz;
-    function sun(kind, d) { var p = d.split('-').map(Number); return sunEvent(kind, p[0], p[1], p[2], tz, obs) || zonedToUtc(p[0], p[1], p[2], kind === 'rise' ? 6 : 18, tz); }
+    function sun(kind, d) { var p = d.split('-').map(Number); return edge(kind, p[0], p[1], p[2], tz, obs) || zonedToUtc(p[0], p[1], p[2], kind === 'rise' ? 6 : 18, tz); }
     var rise = sun('rise', ymd), set = sun('set', ymd);
     var nightFrom = now < rise ? ymdAdd(ymd, -1) : ymd, nStart = sun('set', nightFrom), nEnd = sun('rise', ymdAdd(nightFrom, 1));
     function block(title, sub, from, to, names) {
@@ -361,7 +372,7 @@
   // Food and the "wrong time": from dawn to midday it is allowed, from midday to the next dawn it is vikala (Pc 37: "when midday has passed, until dawn").
   function noonFor(ymd, obs) { // the midday of a civil day by the chosen method (the clock without a place)
     var p = ymd.split('-').map(Number), tz = state.tz, m = obs ? state.noon : 'clock', noon = null;
-    function sun(kind) { return sunEvent(kind, p[0], p[1], p[2], tz, obs) || zonedToUtc(p[0], p[1], p[2], kind === 'rise' ? 6 : 18, tz); }
+    function sun(kind) { return edge(kind, p[0], p[1], p[2], tz, obs) || zonedToUtc(p[0], p[1], p[2], kind === 'rise' ? 6 : 18, tz); }
     var rise = sun('rise'), set = sun('set');
     if (m === 'sun') { var h = A.SearchHourAngle('Sun', obs, 0, rise); noon = h && h.time ? h.time.date : null; }
     if (m === 'mid') noon = new Date((rise.getTime() + set.getTime()) / 2);
@@ -386,7 +397,7 @@
     var fake = state.fake || params.get('meal'); // test only: the switch in the settings (or ?meal=kala / ?meal=vikala) shows that state whatever the time is
     if (fake === 'kala') nowMs = (rise.getTime() + noon.getTime()) / 2; else if (fake === 'vikala') nowMs = noon.getTime() + 3600000;
     if (nowMs < noon.getTime() && nowMs >= rise.getTime()) { kind = 'kala'; to = noon.getTime(); html = t.mealEat(F.hm.format(noon), '<b class="meal-left" data-to="' + to + '">' + span(to - nowMs) + '</b>'); }
-    else { kind = 'vikala'; var dawn = nowMs < rise.getTime() ? rise : (sunEvent('rise', p[0], p[1], p[2] + 1, tz, obs) || zonedToUtc(p[0], p[1], p[2] + 1, 6, tz)); to = dawn.getTime(); html = t.mealVik(F.hm.format(dawn), '<b class="meal-left" data-to="' + to + '">' + span(to - nowMs) + '</b>'); }
+    else { kind = 'vikala'; var dawn = nowMs < rise.getTime() ? rise : (edge('rise', p[0], p[1], p[2] + 1, tz, obs) || zonedToUtc(p[0], p[1], p[2] + 1, 6, tz)); to = dawn.getTime(); html = t.mealVik(F.hm.format(dawn), '<b class="meal-left" data-to="' + to + '">' + span(to - nowMs) + '</b>'); }
     function ref(id, label) { return '<a class="pref" href="/' + id + '?lang=' + lang + '" target="_blank" rel="noopener">' + label + '</a>'; }
     setSeg('noonseg', obs ? state.noon : 'clock'); $('noon-note').textContent = obs ? t.noonWhat : t.noonFixed; $('noonseg').setAttribute('data-fixed', String(!obs)); // without a place only the clock is possible
     var by = '';
@@ -569,7 +580,7 @@
     days.forEach(function (ymd) {
       var noon = noonFor(ymd, obs);
       if (state.meal.rem && noon.getTime() > now) out.push({ key: 'm' + ymd, meal: true, kind: 'end', when: noon.getTime() - lead, start: noon, title: state.meal.lead ? t.mealRemTitle : t.mealRemNow });
-      if (state.meal.beg) { var p = ymd.split('-').map(Number), rise = sunEvent('rise', p[0], p[1], p[2], state.tz, obs) || zonedToUtc(p[0], p[1], p[2], 6, state.tz); // dawn is taken as sunrise
+      if (state.meal.beg) { var p = ymd.split('-').map(Number), rise = edge('rise', p[0], p[1], p[2], state.tz, obs) || zonedToUtc(p[0], p[1], p[2], 6, state.tz); // the dawn by the chosen definition
         if (rise.getTime() > now) out.push({ key: 'b' + ymd, meal: true, kind: 'beg', when: rise.getTime() - state.meal.begLead * 60000, start: rise, title: state.meal.begLead ? t.mealBegTitle : t.mealBegNow }); }
     });
     return out;
@@ -1046,6 +1057,7 @@
       Notification.requestPermission().then(function (perm) { state.rem.on = perm === 'granted'; if (perm !== 'granted') state.remMsg = t.remDenied; saveRem(); paint(); });
     });
     function saveMeal() { store('dgUposathaMeal', JSON.stringify(state.meal)); }
+    $('twi').onchange = function (e) { state.twi = e.target.value; store('dgUposathaTwi', state.twi); paint(); };
     onSeg('testseg', function (v) { state.fake = v; store('dgUposathaFake', v); paint(); });
     onSeg('sw-msum', function (v) { state.meal.sum = v === '1'; saveMeal(); paint(); });
     function mealSwitch(key) { // a meal reminder on: the permission first (the same flow as the Uposatha reminders)
