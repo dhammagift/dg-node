@@ -54,9 +54,12 @@
       mealVik: function (dawn, left) { return '<i>Vikāla</i> — until dawn at ' + dawn + ': ' + left; },
       noonBy: 'Count midday by', noonSunS: 'Sun', noonMidS: 'Middle of day', noonClockS: '12:00', noonWhat: 'Middle of the day: halfway between sunrise and sunset, the centre of the middle third.', noonChange: 'change', noonSun: 'the Sun (highest point)', noonMid: 'the middle of the day', noonClock: '12:00 by the clock', noonFixed: 'Without a place midday is 12:00 by the clock.',
       noonNote: 'The Vinaya says only “when midday has passed”, not how to find it. The Sun’s highest point is astronomical midday; the middle of the day is halfway between sunrise and sunset (almost the same); 12:00 by the clock can differ by an hour or more. Dawn here is taken as sunrise.',
- mealSet: 'Food (vikāla)', mealSumL: 'Show in the summary', mealRemL: 'Remind before the time for food ends', mealLead: 'In advance', mealLeads: [[0, 'when the time for food ends'], [15, '15 min'], [30, '30 min'], [45, '45 min'], [60, '1 hour'], [90, '1.5 hours'], [120, '2 hours']], mealDays: 'Days', mealDaysU: 'Uposatha days', mealDaysA: 'Every day', mealSnd: 'Sound of this reminder',
+ mealSet: 'Food (vikāla)', mealSumL: 'Show in the summary', mealRemL: 'Remind when the time for food ends', mealLead: 'In advance', mealLeads: [[0, 'when the time for food ends'], [15, '15 min before'], [30, '30 min before'], [45, '45 min before'], [60, '1 hour before'], [90, '1.5 hours before'], [120, '2 hours before']], mealDays: 'Days', mealDaysU: 'Uposatha days', mealDaysA: 'Every day', mealSnd: 'Sound of this reminder',
       testL: 'Test: show the state', testReal: 'as is', testTag: 'test',
       mealRemNow: 'Vikāla begins', mealRemZero: function (noon) { return 'Midday at ' + noon + ' — the time for food has ended.'; },
+      mealBegL: 'Remind when the time for food begins', mealBegLeads: [[0, 'at dawn'], [15, '15 min before'], [30, '30 min before'], [60, '1 hour before']],
+      mealBegNow: 'Time for food', mealBegZero: function (dawn) { return 'Dawn at ' + dawn + ' — the time for food has begun.'; },
+      mealBegTitle: 'Time for food soon', mealBegBody: function (dawn, lead) { return 'Dawn at ' + dawn + ' — the time for food begins in ' + (lead >= 60 ? (lead / 60) + ' h' : lead + ' min') + '.'; },
       mealRemTitle: 'Vikāla soon', mealRemBody: function (noon, lead) { return 'Midday at ' + noon + ' — the time for food ends in ' + (lead >= 60 ? (lead / 60) + ' h' : lead + ' min') + '.'; },
       logoTip: 'Home · change the language: long press or right click', rateUs: 'Rate Us', appVer: 'App version', timeL: 'Time', ofMode: function (n, m, su) { return n + ' of ' + m + (su ? ' by the suttas' : ' modern'); }, locHere: 'by geo', locNone: 'manual', navHome: 'Summary', navList: 'Uposathas', navCal: 'Calendar', navParts: 'Night–day', navSet: 'Settings',
       sound: 'Sound', soundNone: 'Silent', soundOwn: 'My own sound…', soundOwnNamed: 'My own: %', soundFail: 'The sound was not set.', sounds: { gong: 'Gong', gong2: 'Gong 2', gong3: 'Gong 3', gong4: 'Gong 4', gong5: 'Gong 5', bell: 'Bell' },
@@ -101,9 +104,12 @@
       mealVik: function (dawn, left) { return '<i>Vikāla</i> — до рассвета в ' + dawn + ': ' + left; },
       noonBy: 'Полдень считать по', noonSunS: 'Солнце', noonMidS: 'Середина дня', noonClockS: '12:00', noonWhat: 'Середина дня — ровно между восходом и закатом, центр средней трети дня.', noonChange: 'изменить', noonSun: 'Солнцу (высшая точка)', noonMid: 'середине дня', noonClock: '12:00 по часам', noonFixed: 'Без места полдень — 12:00 по часам.',
       noonNote: 'В Винае сказано лишь «когда полдень миновал», а как его определить — нет. Высшая точка Солнца — астрономический полдень; середина дня — ровно между восходом и закатом (почти то же самое); 12:00 по часам может отличаться на час и больше. Рассвет здесь принят за восход.',
- mealSet: 'Еда (vikāla)', mealSumL: 'Показывать в сводке', mealRemL: 'Напоминать до конца времени еды', mealLead: 'Заранее', mealLeads: [[0, 'когда время еды закончится'], [15, '15 мин'], [30, '30 мин'], [45, '45 мин'], [60, '1 час'], [90, '1,5 часа'], [120, '2 часа']], mealDays: 'Дни', mealDaysU: 'Дни упосатхи', mealDaysA: 'Каждый день', mealSnd: 'Звук этого напоминания',
+ mealSet: 'Еда (vikāla)', mealSumL: 'Показывать в сводке', mealRemL: 'Напоминать об окончании времени еды', mealLead: 'Заранее', mealLeads: [[0, 'когда время еды закончится'], [15, 'за 15 мин'], [30, 'за 30 мин'], [45, 'за 45 мин'], [60, 'за 1 час'], [90, 'за 1,5 часа'], [120, 'за 2 часа']], mealDays: 'Дни', mealDaysU: 'Дни упосатхи', mealDaysA: 'Каждый день', mealSnd: 'Звук этого напоминания',
       testL: 'Проверка: показать состояние', testReal: 'как есть', testTag: 'тест',
       mealRemNow: 'Наступает vikāla', mealRemZero: function (noon) { return 'Полдень в ' + noon + ' — время еды закончилось.'; },
+      mealBegL: 'Напоминать о начале времени еды', mealBegLeads: [[0, 'на рассвете'], [15, 'за 15 мин'], [30, 'за 30 мин'], [60, 'за 1 час']],
+      mealBegNow: 'Время еды', mealBegZero: function (dawn) { return 'Рассвет в ' + dawn + ' — время еды началось.'; },
+      mealBegTitle: 'Скоро время еды', mealBegBody: function (dawn, lead) { return 'Рассвет в ' + dawn + ' — время еды начнётся через ' + (lead >= 60 ? (lead / 60 + '').replace('.', ',') + ' ч' : lead + ' мин') + '.'; },
       mealRemTitle: 'Скоро vikāla', mealRemBody: function (noon, lead) { return 'Полдень в ' + noon + ' — время еды закончится через ' + (lead >= 60 ? (lead / 60 + '').replace('.', ',') + ' ч' : lead + ' мин') + '.'; },
       logoTip: 'Домой · сменить язык: долгое нажатие или правая кнопка', rateUs: 'Оценить приложение', appVer: 'Версия приложения', timeL: 'Время', ofMode: function (n, m, su) { return n + ' из ' + m + (su ? ' по суттам' : ' по современной'); }, locHere: 'по гео', locNone: 'вручную', navHome: 'Сводка', navList: 'Упосатхи', navCal: 'Календарь', navParts: 'Ночь–день', navSet: 'Настройки',
       sound: 'Звук', soundNone: 'Без звука', soundOwn: 'Свой звук…', soundOwnNamed: 'Свой: %', soundFail: 'Звук не задан.', sounds: { gong: 'Гонг', gong2: 'Гонг 2', gong3: 'Гонг 3', gong4: 'Гонг 4', gong5: 'Гонг 5', bell: 'Колокол' },
@@ -186,7 +192,7 @@
     screen: params.get('view') === 'all' ? 'cal' : (store('dgUposathaView') === 'cal' ? 'cal' : 'list'),
     months: 3, calOff: 0, selected: null,
     fake: (function () { var v = store('dgUposathaFake'); return v === 'kala' || v === 'vikala' ? v : ''; })(),
-    meal: (function () { var d = { sum: true, rem: false, lead: 30, days: 'upo', snd: 'bell' }; try { var v = JSON.parse(store('dgUposathaMeal')); if (v) for (var k in d) if (k in v) d[k] = v[k]; } catch (e) { /* defaults */ } return d; })(),
+    meal: (function () { var d = { sum: true, rem: false, lead: 30, days: 'upo', snd: 'bell', beg: false, begLead: 0, begSnd: 'gong2' }; try { var v = JSON.parse(store('dgUposathaMeal')); if (v) for (var k in d) if (k in v) d[k] = v[k]; } catch (e) { /* defaults */ } return d; })(),
     noon: (function () { var v = store('dgUposathaNoon'); return /^(sun|mid|clock)$/.test(v || '') ? v : 'sun'; })(),
     loc: (function () { try { return JSON.parse(store('dgUposathaLoc')); } catch (e) { return null; } })(),
     locMsg: '',
@@ -284,6 +290,7 @@
     document.title = t.h1 + ' — Dhamma.gift';
     paintToc();
     $('b-help').href = $('d-help').href = t.helpUrl; // the help is the docs page: a link, opened in a new window
+    $('mbeg-lead').innerHTML = t.mealBegLeads.map(function (l) { return '<option value="' + l[0] + '">' + esc(l[1]) + '</option>'; }).join('');
     $('mrem-lead').innerHTML = t.mealLeads.map(function (l) { return '<option value="' + l[0] + '">' + esc(l[1]) + '</option>'; }).join('');
     $('rem-lead').innerHTML = t.leads.map(function (l) { return '<option value="' + l[0] + '">' + esc(l[1]) + '</option>'; }).join('');
   }
@@ -555,10 +562,18 @@
     var now = Date.now(), lead = state.meal.lead * 60000, obs = state.loc ? new A.Observer(state.loc.lat, state.loc.lon, 0) : null, days = [], out = [];
     if (state.meal.days === 'all') { var today = localDay(new Date(), state.tz); for (var i = 0; i < 30; i++) days.push(ymdAdd(today, i)); }
     else rows.filter(function (r) { return r.uposatha && wantDay(r); }).forEach(function (r) { days.push(sutta() ? ymdAdd(r.ymd, 1) : r.ymd); }); // by the suttas the day of the Uposatha is the one after its evening
-    days.forEach(function (ymd) { var noon = noonFor(ymd, obs); if (noon.getTime() > now) out.push({ key: 'm' + ymd, meal: true, when: noon.getTime() - lead, start: noon, title: state.meal.lead ? t.mealRemTitle : t.mealRemNow }); });
+    days.forEach(function (ymd) {
+      var noon = noonFor(ymd, obs);
+      if (state.meal.rem && noon.getTime() > now) out.push({ key: 'm' + ymd, meal: true, kind: 'end', when: noon.getTime() - lead, start: noon, title: state.meal.lead ? t.mealRemTitle : t.mealRemNow });
+      if (state.meal.beg) { var p = ymd.split('-').map(Number), rise = sunEvent('rise', p[0], p[1], p[2], state.tz, obs) || zonedToUtc(p[0], p[1], p[2], 6, state.tz); // dawn is taken as sunrise
+        if (rise.getTime() > now) out.push({ key: 'b' + ymd, meal: true, kind: 'beg', when: rise.getTime() - state.meal.begLead * 60000, start: rise, title: state.meal.begLead ? t.mealBegTitle : t.mealBegNow }); }
+    });
     return out;
   }
-  function itemBody(item, F) { return item.meal ? (state.meal.lead ? t.mealRemBody(F.hm.format(item.start), state.meal.lead) : t.mealRemZero(F.hm.format(item.start))) : (item.two ? t.remTwo : t.remBody)(F.stamp.format(item.start)); }
+  function itemBody(item, F) {
+    if (item.kind === 'beg') return state.meal.begLead ? t.mealBegBody(F.hm.format(item.start), state.meal.begLead) : t.mealBegZero(F.hm.format(item.start));
+    return item.meal ? (state.meal.lead ? t.mealRemBody(F.hm.format(item.start), state.meal.lead) : t.mealRemZero(F.hm.format(item.start))) : (item.two ? t.remTwo : t.remBody)(F.stamp.format(item.start));
+  }
   function notify(item, F) {
     var opts = { body: itemBody(item, F), tag: 'uposatha-' + item.key, icon: '/assets/img/pwa-bold-monocolor-192.png', data: { url: '/uposatha-calendar' } };
     var seen = []; try { seen = JSON.parse(store('dgUposathaNotified') || '[]'); } catch (e) { seen = []; }
@@ -589,13 +604,13 @@
   }
   function scheduleNative(LN, rows, byYmd, F) {
     var now = Date.now();
-    var list = (state.rem.on ? dueList(rows, byYmd) : []).concat(state.meal.rem ? mealDue(rows) : []).sort(function (a, b) { return a.when - b.when; }).slice(0, 60);
-    var sig = JSON.stringify([state.rem.sound, state.rem.ownChannel, state.meal.snd, list.map(function (i) { return [i.key, i.title, i.when > now + 10000 ? i.when : 0]; })]);
+    var list = (state.rem.on ? dueList(rows, byYmd) : []).concat((state.meal.rem || state.meal.beg) ? mealDue(rows) : []).sort(function (a, b) { return a.when - b.when; }).slice(0, 60);
+    var sig = JSON.stringify([state.rem.sound, state.rem.ownChannel, state.meal.snd, state.meal.begSnd, list.map(function (i) { return [i.key, i.title, i.when > now + 10000 ? i.when : 0]; })]);
     if (sig !== nativeSig) { // only when something changed: paint() runs on every touch
       nativeSig = sig;
-      Promise.all([channelFor(LN, state.rem.sound, state.rem.ownChannel), channelFor(LN, state.meal.snd)]).then(function (ch) { // the Uposatha and the vikala reminders sound differently
+      Promise.all([channelFor(LN, state.rem.sound, state.rem.ownChannel), channelFor(LN, state.meal.snd), channelFor(LN, state.meal.begSnd)]).then(function (ch) { // the Uposatha, the end and the beginning of the time for food sound differently
         var items = list.map(function (item, i) {
-          return { id: NATIVE_ID_BASE + i, title: item.title, body: itemBody(item, F), channelId: item.meal ? ch[1] : ch[0],
+          return { id: NATIVE_ID_BASE + i, title: item.title, body: itemBody(item, F), channelId: item.kind === 'beg' ? ch[2] : item.meal ? ch[1] : ch[0],
             schedule: { at: new Date(Math.max(item.when, now + 3000)), allowWhileIdle: true }, extra: { url: '/uposatha-calendar' } };
         });
         return LN.getPending().then(function (p) {
@@ -612,8 +627,8 @@
     var LN = nativePlugin();
     if (LN) return scheduleNative(LN, rows, byYmd, F);
     clearTimeout(timer);
-    if (!(state.rem.on || state.meal.rem) || !('Notification' in window) || Notification.permission !== 'granted') return null;
-    var now = Date.now(), list = (state.rem.on ? dueList(rows, byYmd) : []).concat(state.meal.rem ? mealDue(rows) : []), next = null;
+    if (!(state.rem.on || state.meal.rem || state.meal.beg) || !('Notification' in window) || Notification.permission !== 'granted') return null;
+    var now = Date.now(), list = (state.rem.on ? dueList(rows, byYmd) : []).concat((state.meal.rem || state.meal.beg) ? mealDue(rows) : []), next = null;
     list.forEach(function (i) { if (i.when <= now) notify(i, F); else if (!next || i.when < next.when) next = i; });
     if (next) timer = setTimeout(function () { notify(next, F); paint(); }, Math.min(next.when - now, 2147000000));
     return next;
@@ -627,9 +642,13 @@
     setSeg('sw-msum', state.meal.sum ? 1 : 0); setSeg('sw-mrem', state.meal.rem ? 1 : 0); setSeg('mrem-days', state.meal.days);
     $('mrem-more').style.display = state.meal.rem ? '' : 'none';
     $('mrem-lead').value = String(state.meal.lead);
+    setSeg('sw-mbeg', state.meal.beg ? 1 : 0); $('mbeg-more').style.display = state.meal.beg ? '' : 'none'; $('mbeg-lead').value = String(state.meal.begLead);
+    $('mdays-row').style.display = state.meal.rem || state.meal.beg ? '' : 'none'; // the days are common to both reminders
     var showSnd = inApp || document.body.classList.contains('app'); // the sounds are the app's (also shown in the ?app=1 preview)
     $('mrem-sound-row').style.display = showSnd ? '' : 'none';
     if (showSnd) { $('mrem-sound').innerHTML = Object.keys(SOUND_FILES).map(function (k) { return '<option value="' + k + '">' + esc(t.sounds[k]) + '</option>'; }).concat(['<option value="none">' + esc(t.soundNone) + '</option>']).join(''); $('mrem-sound').value = state.meal.snd; }
+    $('mbeg-sound-row').style.display = showSnd ? '' : 'none';
+    if (showSnd) { $('mbeg-sound').innerHTML = $('mrem-sound').innerHTML; $('mbeg-sound').value = state.meal.begSnd; }
     $('meal-sum').hidden = !state.meal.sum;
     setSeg('testseg', state.fake);
     $('rem-sound-row').style.display = showSnd ? '' : 'none'; // the sound is a notification channel: only the app has them
@@ -1018,15 +1037,20 @@
     function saveMeal() { store('dgUposathaMeal', JSON.stringify(state.meal)); }
     onSeg('testseg', function (v) { state.fake = v; store('dgUposathaFake', v); paint(); });
     onSeg('sw-msum', function (v) { state.meal.sum = v === '1'; saveMeal(); paint(); });
-    onSeg('sw-mrem', function (v) {
-      state.remMsg = '';
-      if (v === '0' || state.meal.rem) { state.meal.rem = false; saveMeal(); paint(); return; }
-      var LN = nativePlugin();
-      function done(ok) { state.meal.rem = ok; if (!ok) state.remMsg = t.remDenied; saveMeal(); paint(); }
-      if (LN) { LN.requestPermissions().then(function (r) { done(!!(r && r.display === 'granted')); }).catch(function () { state.remMsg = t.remUnsupported; paint(); }); return; }
-      if (!('Notification' in window)) { state.remMsg = t.remUnsupported; paint(); return; }
-      Notification.requestPermission().then(function (perm) { done(perm === 'granted'); });
-    });
+    function mealSwitch(key) { // a meal reminder on: the permission first (the same flow as the Uposatha reminders)
+      return function (v) {
+        state.remMsg = '';
+        if (v === '0' || state.meal[key]) { state.meal[key] = false; saveMeal(); paint(); return; }
+        var LN = nativePlugin();
+        function done(ok) { state.meal[key] = ok; if (!ok) state.remMsg = t.remDenied; saveMeal(); paint(); }
+        if (LN) { LN.requestPermissions().then(function (r) { done(!!(r && r.display === 'granted')); }).catch(function () { state.remMsg = t.remUnsupported; paint(); }); return; }
+        if (!('Notification' in window)) { state.remMsg = t.remUnsupported; paint(); return; }
+        Notification.requestPermission().then(function (perm) { done(perm === 'granted'); });
+      };
+    }
+    onSeg('sw-mrem', mealSwitch('rem')); onSeg('sw-mbeg', mealSwitch('beg'));
+    $('mbeg-lead').onchange = function (e) { state.meal.begLead = parseInt(e.target.value, 10); saveMeal(); paint(); };
+    $('mbeg-sound').onchange = function (e) { state.meal.begSnd = e.target.value; saveMeal(); paint(); if (SOUND_FILES[e.target.value]) { try { new Audio(SOUND_FILES[e.target.value][1]).play(); } catch (err) { /* a preview only */ } } };
     onSeg('mrem-days', function (v) { state.meal.days = v; saveMeal(); paint(); });
     $('mrem-lead').onchange = function (e) { state.meal.lead = parseInt(e.target.value, 10); saveMeal(); paint(); };
     $('mrem-sound').onchange = function (e) { state.meal.snd = e.target.value; saveMeal(); paint(); if (SOUND_FILES[e.target.value]) { try { new Audio(SOUND_FILES[e.target.value][1]).play(); } catch (err) { /* a preview only */ } } };
