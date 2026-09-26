@@ -230,10 +230,11 @@ const HTML_ASSET_URL_ROOTS = {
 // cache can only be re-validated with a full download". This keeps must-revalidate's
 // guarantee (client always asks the server first) while letting an unchanged page answer
 // with a 304 instead of re-sending the whole document.
-function sendVersionedHtml(req, reply, absHtmlPath, statusCode = 200) {
+function sendVersionedHtml(req, reply, absHtmlPath, statusCode = 200, transform) {
     let html;
     try { html = fsSync.readFileSync(absHtmlPath, 'utf8'); }
     catch { return reply.code(404).send(); }
+    if (transform) html = transform(html);
     const rewritten = html.replace(
         // Also stamps the lazy loadScript('/reader/megareader.js') / ('/spa/toc.js') calls in
         // search/index.html — otherwise a 24h-cached copy could outlive the HTML that expects a
@@ -1433,7 +1434,16 @@ app.get('/config/sync-config.json', (req, res) => sendFile(req, res, path.join(_
 // Custom Google Search (Programmable Search Engine) — the one-page replacement for legacy cse.php
 // The Uposatha calendar as a page of its own (also embedded in the docs); the hyphenated path cannot be
 // mistaken for a Pali search word the way /uposatha could.
-app.get('/uposatha-calendar', (req, res) => sendVersionedHtml(req, res, path.join(__dirname, 'public', 'uposatha-calendar.html')));
+// Link previews (Open Graph / Twitter): the crawlers read the HTML as served, so the Russian card is chosen here by ?lang=ru
+// (the page's own share button adds it for the Russian version).
+const UPOSATHA_RU_META = [
+    ['Uposatha Days by Suttas. Dhamma.Gift', 'Дни упосатхи по суттам. Dhamma.Gift'],
+    ['Which days, when to begin, how to keep the Uposatha, from the suttas: with exact times for your place.', 'В какие дни, когда начинать, как соблюдать упосатху, по суттам: с точным временем для вашего места.'],
+    ['og-uposatha-en.png', 'og-uposatha-ru.png'],
+    ['Calendar and key information, and the four points of Ariyo Uposatha: 14, 15, 8 of the fortnight, night and day. Dhamma.Gift, Uposatha Days', 'Календарь и важная информация, и четыре пункта Ariyo Uposatha: 14, 15, 8 половины месяца, ночь и день. Dhamma.Gift, дни упосатхи'],
+];
+app.get('/uposatha-calendar', (req, res) => sendVersionedHtml(req, res, path.join(__dirname, 'public', 'uposatha-calendar.html'), 200,
+    (req.query && req.query.lang === 'ru') ? (html) => UPOSATHA_RU_META.reduce((h, [a, b]) => h.split(a).join(b), html) : undefined));
 app.get('/uposatha-calendar.webmanifest', (req, res) => sendFile(req, res, path.join(__dirname, 'public', 'uposatha-calendar.webmanifest'), 'application/manifest+json'));
 // Subscription feed for Google / Apple calendars. Stateless: everything the feed needs is in the query string, nothing is stored.
 const uposathaCore = require('./public/overrides/js/uposatha-core.js');
