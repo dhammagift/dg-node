@@ -423,7 +423,7 @@ body.app main.page { padding-bottom: 84px; }
 body.app #dg-footer, body.app #soft, body.app .toc, body.app #s-calendar, body.app .intro-actions { display: none !important; }
 /* one tab at a time */
 body.app main.page > * { display: none; }
-body.app[data-app-tab=home] .intro, body.app[data-app-tab=home] #s-summary, body.app[data-app-tab=home] .ctx, body.app[data-app-tab=home] #slides:not([hidden]) { display: block; }
+body.app[data-app-tab=home] .intro, body.app[data-app-tab=home] #s-summary, body.app[data-app-tab=home] .ctx, body.app[data-app-tab=home] #meal-sum, body.app[data-app-tab=home] #slides:not([hidden]) { display: block; }
 body.app[data-app-tab=home] .intro { display: block; }
 body.app[data-app-tab=list] #s-list, body.app[data-app-tab=cal] #s-cal, body.app[data-app-tab=parts] #parts, body.app[data-app-tab=keys] #keys { display: block; }
 body.app:not([data-app-tab=list]) #s-list, body.app:not([data-app-tab=cal]) #s-cal { display: none !important; } /* the screen rules above name ids and would win */
@@ -441,3 +441,12 @@ body.app:not([data-app-tab=list]) #s-list, body.app:not([data-app-tab=cal]) #s-c
 /* the meal block in the app layer: as the .pblk cards of app-refresh.css */
 body.app .meal { border: 0; border-radius: 24px; background: var(--up-surf, var(--dg-surface)); padding: 14px 18px; }
 body.app .meal h3 { color: var(--dg-accent-ink); }
+
+/* midday method in the settings: without a place only "12:00" is possible */
+#noonseg[data-fixed=true] button:not([data-v=clock]) { opacity: .4; pointer-events: none; }
+.mealsum { margin-top: 12px; border: 1px solid var(--dg-border); border-radius: var(--dg-radius); background: var(--dg-surface); padding: 12px 14px; }
+.mealsum h3 { margin: 0 0 4px; font-size: 10.5px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--dg-text-muted); }
+.mealsum .mstat { margin: 0; font-size: 15px; font-weight: 500; }
+.mealsum .mstat b { color: var(--dg-accent-ink); font-variant-numeric: tabular-nums; }
+body.app .mealsum { border: 0; border-radius: 24px; background: var(--up-surf, var(--dg-surface)); padding: 14px 18px; }
+body.app .mealsum h3 { color: var(--dg-accent-ink); }

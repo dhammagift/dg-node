@@ -52,7 +52,7 @@
       mealH: 'Food and vikāla', mealSub: 'Monks, and those who keep the Uposatha, eat in one part of the day: from dawn until midday. After midday and until dawn is <i>vikāla</i>, “the wrong time”. ',
       mealEat: function (noon, left) { return 'Food is allowed. Midday at ' + noon + ' · until <i>vikāla</i>: ' + left; },
       mealVik: function (dawn, left) { return '<i>Vikāla</i> — until dawn at ' + dawn + ': ' + left; },
-      noonBy: 'Midday is counted by', noonSun: 'the Sun (highest point)', noonMid: 'the middle of the day', noonClock: '12:00 by the clock', noonFixed: 'Without a place midday is 12:00 by the clock.',
+      noonBy: 'Count midday by', noonSunS: 'Sun', noonMidS: 'Middle of day', noonClockS: '12:00', noonWhat: 'Middle of the day: halfway between sunrise and sunset, the centre of the middle third.', noonChange: 'change', noonSun: 'the Sun (highest point)', noonMid: 'the middle of the day', noonClock: '12:00 by the clock', noonFixed: 'Without a place midday is 12:00 by the clock.',
       noonNote: 'The Vinaya says only “when midday has passed”, not how to find it. The Sun’s highest point is astronomical midday; the middle of the day is halfway between sunrise and sunset (almost the same); 12:00 by the clock can differ by an hour or more. Dawn here is taken as sunrise.',
       logoTip: 'Home · change the language: long press or right click', navHome: 'Summary', navList: 'Uposathas', navCal: 'Calendar', navParts: 'Night–day', navKeys: 'Suttas',
       sound: 'Sound', soundNone: 'Silent', soundOwn: 'My own sound…', soundOwnNamed: 'My own: %', soundFail: 'The sound was not set.', sounds: { gong: 'Gong', gong2: 'Gong 2', gong3: 'Gong 3', bell: 'Bell' },
@@ -95,7 +95,7 @@
       mealH: 'Еда и vikāla', mealSub: 'Монахи и те, кто соблюдает упосатху, едят в одну часть дня: от рассвета до полудня. После полудня и до рассвета — <i>vikāla</i>, «неподходящее время». ',
       mealEat: function (noon, left) { return 'Есть можно. Полдень в ' + noon + ' · до <i>vikāla</i>: ' + left; },
       mealVik: function (dawn, left) { return '<i>Vikāla</i> — до рассвета в ' + dawn + ': ' + left; },
-      noonBy: 'Полдень считать по', noonSun: 'Солнцу (высшая точка)', noonMid: 'середине дня', noonClock: '12:00 по часам', noonFixed: 'Без места полдень — 12:00 по часам.',
+      noonBy: 'Полдень считать по', noonSunS: 'Солнце', noonMidS: 'Середина дня', noonClockS: '12:00', noonWhat: 'Середина дня — ровно между восходом и закатом, центр средней трети дня.', noonChange: 'изменить', noonSun: 'Солнцу (высшая точка)', noonMid: 'середине дня', noonClock: '12:00 по часам', noonFixed: 'Без места полдень — 12:00 по часам.',
       noonNote: 'В Винае сказано лишь «когда полдень миновал», а как его определить — нет. Высшая точка Солнца — астрономический полдень; середина дня — ровно между восходом и закатом (почти то же самое); 12:00 по часам может отличаться на час и больше. Рассвет здесь принят за восход.',
       logoTip: 'Домой · сменить язык: долгое нажатие или правая кнопка', navHome: 'Сводка', navList: 'Упосатхи', navCal: 'Календарь', navParts: 'Ночь–день', navKeys: 'Сутты',
       sound: 'Звук', soundNone: 'Без звука', soundOwn: 'Свой звук…', soundOwnNamed: 'Свой: %', soundFail: 'Звук не задан.', sounds: { gong: 'Гонг', gong2: 'Гонг 2', gong3: 'Гонг 3', bell: 'Колокол' },
@@ -301,7 +301,7 @@
     if ((e = $('pct'))) e.textContent = illumPercent(now);
     if ((e = $('age')) && live.born) e.textContent = span(now - live.born);
     if ((e = $('left')) && live.ends) e.textContent = span(live.ends - now);
-    if ((e = $('meal-left'))) { var to = +e.getAttribute('data-to'); if (to <= now.getTime()) paint(); else e.textContent = span(to - now); } // the moment of midday or dawn passed: the block changes its state
+    Array.prototype.forEach.call(document.querySelectorAll('.meal-left'), function (b) { var to = +b.getAttribute('data-to'); if (to <= now.getTime()) paint(); else b.textContent = span(to - now); }); // the moment of midday or dawn passed: the block changes its state
   }
   // The parts of the day: sunrise to sunset in three, sunset to sunrise in three (fixed 06:00 / 18:00 without a place).
   function paintParts(F, now, ymd) {
@@ -333,11 +333,14 @@
     if (m === 'mid') noon = new Date((rise.getTime() + set.getTime()) / 2);
     if (!noon) noon = zonedToUtc(p[0], p[1], p[2], 12, tz);
     var nowMs = now.getTime(), to, html;
-    if (nowMs < noon.getTime() && nowMs >= rise.getTime()) { to = noon.getTime(); html = t.mealEat(F.hm.format(noon), '<b id="meal-left" data-to="' + to + '">' + span(to - nowMs) + '</b>'); }
-    else { var dawn = nowMs < rise.getTime() ? rise : (sunEvent('rise', p[0], p[1], p[2] + 1, tz, obs) || zonedToUtc(p[0], p[1], p[2] + 1, 6, tz)); to = dawn.getTime(); html = t.mealVik(F.hm.format(dawn), '<b id="meal-left" data-to="' + to + '">' + span(to - nowMs) + '</b>'); }
+    if (nowMs < noon.getTime() && nowMs >= rise.getTime()) { to = noon.getTime(); html = t.mealEat(F.hm.format(noon), '<b class="meal-left" data-to="' + to + '">' + span(to - nowMs) + '</b>'); }
+    else { var dawn = nowMs < rise.getTime() ? rise : (sunEvent('rise', p[0], p[1], p[2] + 1, tz, obs) || zonedToUtc(p[0], p[1], p[2] + 1, 6, tz)); to = dawn.getTime(); html = t.mealVik(F.hm.format(dawn), '<b class="meal-left" data-to="' + to + '">' + span(to - nowMs) + '</b>'); }
     function ref(id, label) { return '<a class="pref" href="/' + id + '?lang=' + lang + '" target="_blank" rel="noopener">' + label + '</a>'; }
-    var by = obs ? '<div class="noonby"><span>' + esc(t.noonBy) + ':</span><div class="segrow">' + [['sun', t.noonSun], ['mid', t.noonMid], ['clock', t.noonClock]].map(function (o) { return '<button type="button" data-noon="' + o[0] + '" aria-pressed="' + (m === o[0]) + '">' + esc(o[1]) + '</button>'; }).join('') + '</div></div>' : '<p class="sub">' + esc(t.noonFixed) + '</p>';
-    $('meal').innerHTML = '<h3>' + esc(t.mealH) + '</h3><p class="mstat">' + html + '</p><p class="sub">' + t.mealSub + ref('pli-tv-bu-vb-pc37:2.1.6', 'Pc 37') + ' · ' + ref('an3.70:24.2', 'AN 3.70') + '</p>' + by + '<p class="sub">' + esc(t.noonNote) + '</p>';
+    setSeg('noonseg', obs ? state.noon : 'clock'); $('noon-note').textContent = obs ? t.noonWhat : t.noonFixed; $('noonseg').setAttribute('data-fixed', String(!obs)); // without a place only the clock is possible
+    var how = { sun: t.noonSun, mid: t.noonMid, clock: t.noonClock }[m];
+    var by = '<p class="sub">' + esc(t.noonBy) + ': ' + esc(how) + ' · <a href="#" class="noonlink">' + esc(t.noonChange) + '</a></p>';
+    $('meal').innerHTML = '<h3>' + esc(t.mealH) + '</h3><p class="mstat">' + html + '</p><p class="sub">' + t.mealSub + ref('pli-tv-bu-vb-pc37:2.1.6', 'Pc 37') + ' · ' + ref('an3.70:24.2', 'AN 3.70') + '</p>' + by;
+    $('meal-sum').innerHTML = '<h3>' + esc(t.mealH) + '</h3><p class="mstat">' + html + '</p>';
   }
   function paint() {
     var now = new Date(), tz = state.tz, F = formats(), su = sutta();
@@ -829,7 +832,8 @@
       Array.prototype.forEach.call(tabs, function (b) { b.onclick = function () { openTab(b.getAttribute('data-tab')); }; });
       var last = store('dgUposathaTab'); openTab(/^(home|list|cal|parts|keys)$/.test(last || '') ? last : 'home');
     })();
-    $('meal').onclick = function (e) { var b = e.target.closest && e.target.closest('[data-noon]'); if (b) { state.noon = b.getAttribute('data-noon'); store('dgUposathaNoon', state.noon); paint(); } };
+    onSeg('noonseg', function (v) { state.noon = v; store('dgUposathaNoon', v); paint(); });
+    $('meal').onclick = function (e) { if (e.target.closest && e.target.closest('.noonlink')) { e.preventDefault(); openSettings('noon-block'); } };
     $('tab-list').onclick = function () { state.screen = 'list'; store('dgUposathaView', 'list'); paint(); };
     $('tab-cal').onclick = function () { state.screen = 'cal'; store('dgUposathaView', 'cal'); paint(); };
     $('more').onclick = function () { state.months += 3; paint(); };
