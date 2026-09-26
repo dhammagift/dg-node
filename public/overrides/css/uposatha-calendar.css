@@ -466,3 +466,12 @@ body.app .mealsum h3 { color: var(--dg-accent-ink); }
 .citylist small { color: var(--dg-text-muted); font-size: 11.5px; white-space: nowrap; }
 
 .mealsum[hidden] { display: none !important; }
+
+/* the key suttas: three drawers, one per question */
+.keys li.kq { padding: 0; }
+.keys li.kq summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 2px; font-size: 15px; font-weight: 600; color: var(--dg-text); cursor: pointer; list-style: none; -webkit-tap-highlight-color: transparent; }
+.keys li.kq summary::-webkit-details-marker { display: none; }
+.keys li.kq summary::after { content: ""; flex: none; width: 8px; height: 8px; border-right: 2px solid var(--dg-text-muted); border-bottom: 2px solid var(--dg-text-muted); transform: rotate(45deg); transition: transform .2s cubic-bezier(0.23, 1, 0.32, 1); }
+.keys li.kq details[open] summary::after { transform: rotate(225deg); }
+.keys li.kq details[open] > ul { padding-bottom: 12px; }
+@media (prefers-reduced-motion: reduce) { .keys li.kq summary::after { transition: none; } }

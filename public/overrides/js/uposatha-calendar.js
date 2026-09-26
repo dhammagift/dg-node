@@ -57,7 +57,7 @@
  mealSet: 'Food (vikāla)', mealSumL: 'Show in the summary', mealRemL: 'Remind before the time for food ends', mealLead: 'In advance', mealLeads: [[0, 'when the time for food ends'], [15, '15 min'], [30, '30 min'], [45, '45 min'], [60, '1 hour'], [90, '1.5 hours'], [120, '2 hours']], mealDays: 'Days', mealDaysU: 'Uposatha days', mealDaysA: 'Every day', mealSnd: 'Sound of this reminder',
       mealRemNow: 'Vikāla begins', mealRemZero: function (noon) { return 'Midday at ' + noon + ' — the time for food has ended.'; },
       mealRemTitle: 'Vikāla soon', mealRemBody: function (noon, lead) { return 'Midday at ' + noon + ' — the time for food ends in ' + (lead >= 60 ? (lead / 60) + ' h' : lead + ' min') + '.'; },
-      logoTip: 'Home · change the language: long press or right click', rateUs: 'Rate Us', appVer: 'App version', modeS1: 'by the suttas', modeM1: 'modern', ofMonth: function (n, m) { return n + ' of ' + m + ' this month'; }, locHere: 'by geo', locNone: 'manual', navHome: 'Summary', navList: 'Uposathas', navCal: 'Calendar', navParts: 'Night–day', navSet: 'Settings',
+      logoTip: 'Home · change the language: long press or right click', rateUs: 'Rate Us', appVer: 'App version', timeL: 'Time', ofMode: function (n, m, su) { return n + ' of ' + m + (su ? ' by the suttas' : ' modern'); }, locHere: 'by geo', locNone: 'manual', navHome: 'Summary', navList: 'Uposathas', navCal: 'Calendar', navParts: 'Night–day', navSet: 'Settings',
       sound: 'Sound', soundNone: 'Silent', soundOwn: 'My own sound…', soundOwnNamed: 'My own: %', soundFail: 'The sound was not set.', sounds: { gong: 'Gong', gong2: 'Gong 2', gong3: 'Gong 3', gong4: 'Gong 4', gong5: 'Gong 5', bell: 'Bell' },
       remAppNote: 'Reminders are scheduled on this device and arrive even when the app is closed.',
       remNext: function (when, what) { return 'Next reminder: ' + when + ' — ' + what; }, remNone: 'No reminder is due in the coming weeks.',
@@ -103,7 +103,7 @@
  mealSet: 'Еда (vikāla)', mealSumL: 'Показывать в сводке', mealRemL: 'Напоминать до конца времени еды', mealLead: 'Заранее', mealLeads: [[0, 'когда время еды закончится'], [15, '15 мин'], [30, '30 мин'], [45, '45 мин'], [60, '1 час'], [90, '1,5 часа'], [120, '2 часа']], mealDays: 'Дни', mealDaysU: 'Дни упосатхи', mealDaysA: 'Каждый день', mealSnd: 'Звук этого напоминания',
       mealRemNow: 'Наступает vikāla', mealRemZero: function (noon) { return 'Полдень в ' + noon + ' — время еды закончилось.'; },
       mealRemTitle: 'Скоро vikāla', mealRemBody: function (noon, lead) { return 'Полдень в ' + noon + ' — время еды закончится через ' + (lead >= 60 ? (lead / 60 + '').replace('.', ',') + ' ч' : lead + ' мин') + '.'; },
-      logoTip: 'Домой · сменить язык: долгое нажатие или правая кнопка', rateUs: 'Оценить приложение', appVer: 'Версия приложения', modeS1: 'по суттам', modeM1: 'современная', ofMonth: function (n, m) { return n + ' из ' + m + ' в месяце'; }, locHere: 'по гео', locNone: 'вручную', navHome: 'Сводка', navList: 'Упосатхи', navCal: 'Календарь', navParts: 'Ночь–день', navSet: 'Настройки',
+      logoTip: 'Домой · сменить язык: долгое нажатие или правая кнопка', rateUs: 'Оценить приложение', appVer: 'Версия приложения', timeL: 'Время', ofMode: function (n, m, su) { return n + ' из ' + m + (su ? ' по суттам' : ' по современной'); }, locHere: 'по гео', locNone: 'вручную', navHome: 'Сводка', navList: 'Упосатхи', navCal: 'Календарь', navParts: 'Ночь–день', navSet: 'Настройки',
       sound: 'Звук', soundNone: 'Без звука', soundOwn: 'Свой звук…', soundOwnNamed: 'Свой: %', soundFail: 'Звук не задан.', sounds: { gong: 'Гонг', gong2: 'Гонг 2', gong3: 'Гонг 3', gong4: 'Гонг 4', gong5: 'Гонг 5', bell: 'Колокол' },
       remAppNote: 'Напоминания ставятся на этом устройстве и приходят даже при закрытом приложении.',
       remNext: function (when, what) { return 'Ближайшее напоминание: ' + when + ' — ' + what; }, remNone: 'В ближайшие недели напоминаний нет.',
@@ -415,9 +415,9 @@
     }
     $('t-sun').textContent = sunLine;
     var off = new Intl.DateTimeFormat('en-US', { timeZone: tz, timeZoneName: 'shortOffset' }).formatToParts(now).filter(function (p) { return p.type === 'timeZoneName'; })[0];
-    $('ctx-place').textContent = state.loc ? (state.loc.name || t.locHere) : t.locNone; // a city by its name, the geolocation 'by geo', no place 'manual' // neither the coordinates nor the time zone: the person knows both
+    $('ctx-place').textContent = t.timeL + ': ' + (state.loc ? (state.loc.name || t.locHere) : t.locNone); // a city by its name, the geolocation 'by geo', no place 'manual' // neither the coordinates nor the time zone: the person knows both
     var mm = todayYmd.slice(0, 7), inMonth = L.rows.filter(function (r) { return r.uposatha && r.ymd.slice(0, 7) === mm; }); // how far this month's Uposathas have come
-    $('ctx-mode').textContent = (su ? t.modeS1 : t.modeM1) + ' · ' + t.ofMonth(inMonth.filter(function (r) { return r.ymd <= todayYmd; }).length, inMonth.length);
+    $('ctx-mode').textContent = t.ofMode(inMonth.filter(function (r) { return r.ymd <= todayYmd; }).length, inMonth.length, su);
 
     // ----- the list
     var list = L.rows.filter(function (r) { return r.uposatha && r.ymd >= monthStart; });
@@ -641,9 +641,9 @@
   function readerLabel(i) { var l = passageLabel(i); return lang === 'ru' ? l.replace(/^AN /, 'АН ').replace(/^MN /, 'МН ') : l; }
   function paintKeys() {
     $('keylist').innerHTML = KEYS[lang].map(function (g) {
-      return '<li class="kq"><h3>' + esc(g[0]) + '</h3><ul>' + g[1].map(function (k) {
+      return '<li class="kq"><details name="keyq"><summary>' + esc(g[0]) + '</summary><ul>' + g[1].map(function (k) {
         return '<li' + (k[2] === 'gap' ? ' class="gap"' : '') + '><b>' + k[0] + '</b> — ' + k[1].replace(/\{(\d+)\}/g, function (_, n) { return '<button class="rd" type="button" data-i="' + n + '">' + (lang === 'ru' ? 'Читать →' : 'Read →') + '</button>'; }) + '</li>';
-      }).join('') + '</ul></li>';
+      }).join('') + '</ul></details></li>'; // each question is a drawer: the list is not long any more
     }).join('');
     $('rd-sel').innerHTML = PASSAGES.map(function (p, i) { return '<option value="' + i + '">' + esc(readerLabel(i)) + '</option>'; }).join('');
     Array.prototype.forEach.call(document.querySelectorAll('.rd'), function (b) { b.onclick = function () { readSutta(+b.getAttribute('data-i')); }; });
