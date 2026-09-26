@@ -86,6 +86,7 @@
       <h1 data-t="h1"></h1>
     </div>
     <div class="intro-actions">
+      <button type="button" class="pillbtn qbtn" id="b-help" data-tt="help">?</button>
       <button type="button" class="pillbtn" id="b-share"><svg class="ic"><use href="#i-share"/></svg><span data-t="share"></span></button>
       <button type="button" class="pillbtn accent" id="b-cal"><svg class="ic"><use href="#i-calplus"/></svg><span data-t="addCal"></span></button>
     </div>
@@ -145,6 +146,13 @@
       <div class="dgframe" id="dgframe"><a href="#" id="rd-new" class="dgframe__open" target="_blank" rel="noopener"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg><span data-t="kNew"></span></a><iframe id="rd-frame" title="Sutta" loading="lazy"></iframe></div>
     </div>
   </section>
+  <section class="help" id="help">
+    <h2 data-t="hH"></h2>
+    <div class="reader helpframe">
+      <div class="dgframe"><a href="/docs/uposatha/" id="help-new" class="dgframe__open" target="_blank" rel="noopener"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg><span data-t="kNew"></span></a><iframe id="help-frame" title="Help" loading="lazy"></iframe></div>
+    </div>
+  </section>
+
   <section class="soft" id="soft">
     <h2 data-t="sH"></h2>
     <p class="sub" data-t="sSub"></p>
@@ -277,6 +285,7 @@
     </div>
     <a class="dg-drawer-row" href="javascript:void(0)" id="d-share"><svg class="dg-row-ic" aria-hidden="true"><use href="#i-share"/></svg><span data-t="share"></span></a>
     <a class="dg-drawer-row" href="javascript:void(0)" id="d-cal"><svg class="dg-row-ic" aria-hidden="true"><use href="#i-calplus"/></svg><span data-t="addCal"></span></a>
+    <a class="dg-drawer-row" href="#help" id="d-help" data-dg-icon="help"><span data-t="help"></span></a>
     <a class="dg-drawer-row" href="/settings/" data-dg-icon="gear">{{global.common.settings}}<span class="dg-drawer-hotkey">Alt+Shift+S</span></a>
     <!-- Своя кнопка на главную: подпись, адрес, значок. Форму рисует home.js в обычной шторке.
          Перенесено сюда из «Навигации» по просьбе владельца — это управление кнопками, то есть
@@ -327,6 +336,7 @@
 <script defer src="/assets/js/themeswitch.js"></script>
 <script defer src="/assets/js/quickModal.js"></script>
 <script defer src="/assets/js/settings.js"></script>
+<script src="/assets/js/dict-mode-shared.js" defer></script>
 <script defer src="/nodejs/res/js/home.js"></script>
 </body>
 </html>
