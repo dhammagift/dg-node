@@ -36,7 +36,7 @@ SLIDES = [
 # lines that are about an Uposatha day but do not teach it: they go to the random pool
 # verses keep their line breaks
 POEMS = {'an3.37-verse', 'snp2.14-factors', 'snp2.14-days', 'snp2.14-dawn'}
-RANDOM_IDS = {'mn118-15', 'kd2-two', 'bu-pm-15', 'snp2.14-factors', 'snp2.14-dawn', 'kd2-gather', 'kd2-teach', 'kd2-once', 'kd2-differ'}
+RANDOM_IDS = {'mn118-15', 'kd2-two', 'bu-pm-15', 'snp2.14-factors', 'snp2.14-dawn', 'kd2-gather', 'kd2-teach', 'kd2-once', 'kd2-differ', 'snp2.14-days'}
 def load(p):
     return json.load(open(os.path.join(BASE, p)))
 OFFLINE = '/var/www/offline-data/dhammagift/translation'

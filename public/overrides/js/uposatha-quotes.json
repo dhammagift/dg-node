@@ -487,7 +487,7 @@
  },
  {
   "id": "snp2.14-days",
-  "kind": "general",
+  "kind": "random",
   "days": null,
   "lines": [
    {
