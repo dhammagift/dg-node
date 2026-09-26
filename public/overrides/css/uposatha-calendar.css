@@ -427,3 +427,14 @@ body.app[data-app-tab=home] .intro, body.app[data-app-tab=home] #s-summary, body
 body.app[data-app-tab=home] .intro { display: block; }
 body.app[data-app-tab=list] #s-list, body.app[data-app-tab=cal] #s-cal, body.app[data-app-tab=parts] #parts, body.app[data-app-tab=keys] #keys { display: block; }
 body.app:not([data-app-tab=list]) #s-list, body.app:not([data-app-tab=cal]) #s-cal { display: none !important; } /* the screen rules above name ids and would win */
+
+/* food and vikala */
+.meal { margin-top: 12px; border: 1px solid var(--dg-border); border-radius: var(--dg-radius); background: var(--dg-surface); padding: 12px 14px; }
+.meal h3 { margin: 0 0 6px; font-size: 10.5px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--dg-text-muted); }
+.meal .mstat { margin: 0 0 6px; font-size: 15px; font-weight: 500; }
+.meal .mstat b { color: var(--dg-accent-ink); font-variant-numeric: tabular-nums; }
+.meal .sub { margin: 6px 0 0; }
+.noonby { margin-top: 10px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: 12.5px; color: var(--dg-text-2); }
+.noonby .segrow button { font-size: 12.5px; padding: 5px 10px; }
+.noonby .segrow { display: flex; flex-wrap: wrap; gap: 4px; width: 100%; }
+.noonby .segrow button { flex: 1 1 auto; white-space: nowrap; }
