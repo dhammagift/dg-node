@@ -99,7 +99,7 @@ body[data-screen=list] #s-list, body[data-screen=cal] #s-cal { display: block; }
 .mon ul { list-style: none; margin: 0; padding: 0; border: 1px solid var(--dg-border); border-radius: var(--dg-radius); overflow: hidden; }
 .mon li + li { border-top: 1px solid var(--dg-border); }
 .mon li.wk { padding: 6px 14px; font-size: 11px; font-weight: 600; color: var(--dg-text-muted); background: var(--dg-surface-hover); letter-spacing: .04em; }
-.mon li.row { display: grid; grid-template-columns: 62px 22px minmax(0, 1fr) auto; align-items: start; gap: 12px; padding: 11px 14px; font-size: 14px; }
+.mon li.row { display: grid; grid-template-columns: 46px 22px minmax(0, 1fr) auto; align-items: start; gap: 12px; padding: 11px 14px; font-size: 14px; }
 .mon li .n { font-size: 20px; font-weight: 600; letter-spacing: -.02em; font-variant-numeric: tabular-nums; line-height: 1; }
 .mon li .n small { display: block; font-size: 11px; font-weight: 500; color: var(--dg-text-muted); letter-spacing: .02em; margin-top: 3px; text-transform: lowercase; }
 .mon li .mi { font-size: 22px; margin-top: 1px; }
@@ -290,7 +290,7 @@ body[data-remind=off] .rem-dep { opacity: .45; pointer-events: none; }
   .today .moon { font-size: 50px; }
   .today .d { font-size: 17px; }
   .vtabs { max-width: none; }
-  .mon li.row { grid-template-columns: 58px 20px minmax(0, 1fr); gap: 10px; padding: 10px 12px; }
+  .mon li.row { grid-template-columns: 38px 20px minmax(0, 1fr); gap: 10px; padding: 10px 12px; }
   .mon li .w { grid-column: 3; margin-top: -2px; }
   .grid .c { min-height: 52px; padding: 5px 4px; align-items: center; }
   .grid .c .n { margin: 0; }
@@ -490,7 +490,8 @@ body.app .mealsum h3 { color: var(--dg-accent-ink); }
 .mon li .n2 small { color: var(--dg-accent-ink); opacity: .8; }
 .ln.dayl { display: none !important; }
 
-/* today in the list: its date (the evening or the day of the Uposatha) is framed, as the current part of the day is */
-.mon li .n.now, .mon li .n2.now { box-shadow: 0 0 0 2px var(--dg-navy-ink); background: color-mix(in srgb, var(--dg-navy-ink) 16%, transparent); border-radius: 10px; padding: 4px 6px; margin: -4px -6px; }
-.mon li .n .n2.now { margin-top: 5px; }
-.mon li[data-now=true] { background: transparent; }
+/* the list: the short view says the beginning and the end (the long one has the span and the lunar day); the Uposatha going on now is framed */
+.ln.endl { display: none; }
+body[data-mode=lite] .ln.endl { display: block; }
+.ln.dayl { display: none !important; }
+.mon li[data-now=true] { background: color-mix(in srgb, var(--dg-navy-ink) 12%, transparent); box-shadow: inset 0 0 0 2px var(--dg-navy-ink); border-radius: 12px; margin: 4px 6px; }

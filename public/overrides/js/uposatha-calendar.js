@@ -73,7 +73,7 @@
       full: 'Full moon', newm: 'New moon', fullL: 'full moon', newL: 'new moon', illum: 'illuminated', ld: 'lunar day', of15: 'of 15', until: 'until',
       phases: ['New moon', 'Waxing crescent', 'First quarter', 'Waxing gibbous', 'Full moon', 'Waning gibbous', 'Last quarter', 'Waning crescent'],
       tonight: 'The Uposatha begins this evening', next2: 'Next', inN: function (n) { return 'in ' + n + ' day' + (n > 1 ? 's' : ''); }, tomorrow: 'tomorrow', isToday: 'today',
-      kDay: 'Day', eveS: 'evening', dayS: 'day', kBegins: 'Begins', kSpan: 'Observed', kLunar: 'Lunar day', kTime: 'Exact time',
+      kEnds: 'Ends', kBegins: 'Begins', kSpan: 'Observed', kLunar: 'Lunar day', kTime: 'Exact time',
       beginsVal: function (eve, sun) { return 'evening ' + eve + (sun ? ' (' + sun + ')' : ''); }, spanVal: function (night, day) { return 'night of ' + night + ' → day of ' + day; },
       sunrise: 'sunrise', sunset: 'sunset',
       lunarVal: function (tithi, nth, half, change) { return tithi + ' of 30 (' + nth + ' of the ' + half + ') · until ' + change; },
@@ -126,7 +126,7 @@
       full: 'Полнолуние', newm: 'Новолуние', fullL: 'полнолуние', newL: 'новолуние', illum: 'освещено', ld: 'лунный день', of15: 'из 15', until: 'до',
       phases: ['Новолуние', 'Растущий серп', 'Первая четверть', 'Растущая Луна', 'Полнолуние', 'Убывающая Луна', 'Последняя четверть', 'Убывающий серп'],
       tonight: 'Упосатха начинается сегодня вечером', next2: 'Следующая', inN: function (n) { var m = n % 10, h = n % 100; return 'через ' + n + ' ' + (m === 1 && h !== 11 ? 'день' : m >= 2 && m <= 4 && (h < 12 || h > 14) ? 'дня' : 'дней'); }, tomorrow: 'завтра', isToday: 'сегодня',
-      kDay: 'День', eveS: 'вечер', dayS: 'день', kBegins: 'Начало', kSpan: 'Упосатха', kLunar: 'Лунный день', kTime: 'Точное время',
+      kEnds: 'Конец', kBegins: 'Начало', kSpan: 'Упосатха', kLunar: 'Лунный день', kTime: 'Точное время',
       beginsVal: function (eve, sun) { return 'вечер ' + eve + (sun ? ' (' + sun + ')' : ''); }, spanVal: function (night, day) { return 'ночь ' + night + ' → день ' + day; },
       sunrise: 'восход', sunset: 'закат',
       lunarVal: function (tithi, nth, half, change) { return tithi + ' из 30 (' + nth + ' ' + half + ') · до ' + change; },
@@ -278,12 +278,15 @@
   }
   // The lines under a date: when it begins and how long it is observed (by the suttas) or the exact moment (modern), and in grey
   // the lunar day that is really in force, for information and checking.
+  function endOf(r, obs) { return (obs && sunEvent('set', r.y, r.m, r.d + 1, state.tz, obs)) || zonedToUtc(r.y, r.m, r.d + 1, 18, state.tz); } // when the Uposatha of the suttas ends
   function infoHtml(r, F) {
     var h = '';
     if (sutta()) {
       var eve = F.eve.format(Date.parse(r.ymd)), after = F.eve.format(Date.parse(r.ymd) + DAY);
       h += line(t.kBegins, t.beginsVal(eve, (r.refKind === 'sunset' ? t.sunset + ' ' : '') + F.hm.format(r.at)));
-      // the day of the Uposatha is a date of its own in the row (see the list), so no separate "Day:" line
+      // the end: the evening after the day of the Uposatha (the sunset, or 18:00); the short view of the list says only the beginning and the end
+      var eo = state.loc ? new A.Observer(state.loc.lat, state.loc.lon, 0) : null, endAt = endOf(r, eo);
+      h += line(t.kEnds, t.beginsVal(after, (eo && sunEvent('set', r.y, r.m, r.d + 1, state.tz, eo) ? t.sunset + ' ' : '') + F.hm.format(endAt))).replace('class="ln"', 'class="ln endl"');
       h += line(t.kSpan, t.spanVal(eve, after)).replace('class="ln"', 'class="ln spanl"');
     } else if (r.phaseAt) {
       h += line(t.kTime, F.stamp.format(r.phaseAt));
@@ -495,13 +498,11 @@
         html += '<li class="wk">' + esc(F.week.format(weekStart) + ' – ' + F.week.format(new Date(weekStart.getTime() + 6 * DAY))) + '</li>'; lastWeek = weekKey;
       }
       var dd = Math.round((Date.parse(r.ymd) - Date.parse(todayYmd)) / DAY);
-      var dayYmd = su ? ymdAdd(r.ymd, 1) : r.ymd, evNow = r.ymd === todayYmd, dayNow = su && dayYmd === todayYmd; // the date of today is framed: the evening or the day of the Uposatha
-      var running = evNow || dayNow || (!su && dd === 0);
+      var running = su ? (now >= r.at && now < endOf(r, L.obs)) : dd === 0; // the Uposatha that is going on now is framed
       var w = running ? t.isToday : dd === 1 ? t.tomorrow : dd > 1 ? t.inN(dd) : '';
       var note = '';
       html += '<li class="row" data-ymd="' + r.ymd + '"' + (dd < 0 && !running ? ' data-past="true"' : '') + (running ? ' data-now="true"' : '') + '>' +
-        '<span class="n' + (evNow ? ' now' : '') + '">' + esc(F.day.format(Date.parse(r.ymd))) + '<small>' + esc(F.wd.format(Date.parse(r.ymd)) + (su ? ' · ' + t.eveS : '')) + '</small>' +
-          (su ? '<span class="n2' + (dayNow ? ' now' : '') + '">' + esc(F.day.format(Date.parse(r.ymd) + DAY)) + '<small>' + esc(F.wd.format(Date.parse(r.ymd) + DAY) + ' · ' + t.dayS) + '</small></span>' : '') + '</span>' + moon(rowI(r), 'moon mi') +
+        '<span class="n">' + esc(F.day.format(Date.parse(r.ymd))) + '<small>' + esc(F.wd.format(Date.parse(r.ymd))) + '</small></span>' + moon(rowI(r), 'moon mi') +
         '<span class="t"><b>' + esc(nameOf(r)) + '</b>' + (note ? '<span class="nt">· ' + esc(note) + '</span>' : '') + '<span class="info">' + infoHtml(r, F) + '</span></span>' +
         '<span class="w">' + esc(w) + '</span></li>';
     });
