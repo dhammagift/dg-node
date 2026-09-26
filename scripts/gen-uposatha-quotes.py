@@ -27,7 +27,7 @@ SLIDES = [
     ('an3.70-three', None, 'an/an3', 'an3.70', ['2.1', '2.2', '2.3'], 'sv', 'AN 3.70', 'АН 3.70'),
     ('an3.70-noble', None, 'an/an3', 'an3.70', ['4.1', '4.2', '4.3'], 'sv', 'AN 3.70', 'АН 3.70'),
     ('an3.70-vow',   None, 'an/an3', 'an3.70', ['19.1', '19.2', '19.3', '19.4'], 'sv', 'AN 3.70', 'АН 3.70'),
-    ('snp2.14-factors', [8, 14, 15], 'kn/snp', 'snp2.14', ['26.1', '26.2', '26.3', '26.4', '27.1', '27.2', '27.3', '27.4'], 'sv', 'Snp 2.14', 'Снп 2.14'),
+    ('snp2.14-factors', None, 'kn/snp', 'snp2.14', ['27.1', '27.2', '27.3', '27.4'], 'sv', 'Snp 2.14', 'Снп 2.14'),
     ('snp2.14-days',    [8, 14, 15], 'kn/snp', 'snp2.14', ['28.1', '28.2', '28.3', '28.4'], 'sv', 'Snp 2.14', 'Снп 2.14'),
     ('snp2.14-dawn',    [8, 14, 15], 'kn/snp', 'snp2.14', ['29.1', '29.2', '29.3', '29.4'], 'sv', 'Snp 2.14', 'Снп 2.14'),
     ('an8.41',    None, 'an/an8', 'an8.41', ['2.1', '2.2', '2.3', '2.5'], 'sv', 'AN 8.41', 'АН 8.41'),
@@ -36,7 +36,7 @@ SLIDES = [
 # lines that are about an Uposatha day but do not teach it: they go to the random pool
 # verses keep their line breaks
 POEMS = {'an3.37-verse', 'snp2.14-factors', 'snp2.14-days', 'snp2.14-dawn'}
-RANDOM_IDS = {'mn118-15', 'kd2-two', 'bu-pm-15'}
+RANDOM_IDS = {'mn118-15', 'kd2-two', 'bu-pm-15', 'snp2.14-factors'}
 def load(p):
     return json.load(open(os.path.join(BASE, p)))
 OFFLINE = '/var/www/offline-data/dhammagift/translation'
@@ -67,12 +67,13 @@ for sid, days, nik, sutta, segs, ru_tr, en_label, ru_label in SLIDES:
     join = lambda d: sep.join(d[key(s)].strip() for s in segs if key(s) in d).replace('<j>', '')
     # "special" slides belong to the 8th / 14th / 15th day; "general" ones say that the Uposatha is to be kept
     if sid in RANDOM_IDS: days = None
-    out.append({'id': sid, 'kind': 'random' if sid in RANDOM_IDS else 'special' if days else 'general', 'days': days, 'title': titles(sutta, pli, ru, en), 'ref': key(segs[0]), 'cite': {'en': en_label, 'ru': ru_label}, 'pli': join(pli), 'ru': join(ru), 'en': join(en).replace(' Then—', '')})
+    lines = [{'pli': pli[key(g)].strip().replace('<j>', ''), 'ru': ru.get(key(g), '').strip(), 'en': en.get(key(g), '').strip().replace('<j>', '')} for g in segs if key(g) in pli] if sid in POEMS else None
+    out.append({'id': sid, 'kind': 'random' if sid in RANDOM_IDS else 'special' if days else 'general', 'days': days, **({'lines': lines} if lines else {}), 'title': titles(sutta, pli, ru, en), 'ref': key(segs[0]), 'cite': {'en': en_label, 'ru': ru_label}, 'pli': join(pli), 'ru': join(ru), 'en': join(en).replace(' Then—', '')})
 # "random": every place in the four Nikayas and the Khuddaka books where the Uposatha is named (any form of "uposath"),
 # with both translations - like the hits of a search for "uposath"; all of them, not one per sutta.
 import re
 UPO = re.compile(r'uposath', re.I)
-used = {o['ref'] for o in out}
+used = {o['ref'] for o in out} | {f"{sutta_id}:{seg}" for (_, _, _, sutta_id, segs, *_r) in SLIDES for seg in segs}
 for f in sorted(glob.glob(f'{BASE}/root/pli/ms/sutta/**/*_root-pli-ms.json', recursive=True)):
     sutta = os.path.basename(f).split('_')[0]
     if not re.match(r'(dn|mn|sn|an|snp|ud|iti|dhp|thag|thig)', sutta): continue

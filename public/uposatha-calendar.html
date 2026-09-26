@@ -9,6 +9,8 @@
 <link rel="manifest" href="/uposatha-calendar.webmanifest">
 <meta name="theme-color" content="#1f8f6f">
 <meta property="og:image" content="https://dhamma.gift/assets/img/og-dhamma-gift-v3.png">
+<link rel="stylesheet" href="/nodejs/res/css/home.css">
+<link rel="stylesheet" href="/assets/css/carousel-core.css">
 <link rel="stylesheet" href="/assets/css/uposatha-calendar.css">
 <link rel="stylesheet" href="/assets/css/quick-modal.css">
 </head>
@@ -73,18 +75,10 @@
   <p class="ctx"><span id="ctx-place"></span><span class="dot">·</span><span id="ctx-mode"></span><span class="dot">·</span><button type="button" id="ctx-change" data-t="change"></button></p>
 
   <section class="slides" id="slides" hidden>
-    <div class="sl-head"><h2 class="eyebrow" data-t="slTitle"></h2><button type="button" class="sl-all" id="sl-all-btn" data-t="showAll"></button></div>
-    <div class="sl-box">
-      <button class="sl-arw" type="button" id="sl-prev" data-tt="prev"><svg class="ic"><use href="#i-left"/></svg></button>
-      <div class="sl-item" id="sl-item">
-        <span class="plate" id="sl-plate"></span>
-        <p class="sl-pli pli-lang" id="sl-pli" lang="pi"></p>
-        <p class="sl-tr" id="sl-tr"></p>
-        <a class="sl-cite" id="sl-cite" target="_blank" rel="noopener"></a>
-      </div>
-      <button class="sl-arw next" type="button" id="sl-next" data-tt="next"><svg class="ic"><use href="#i-right"/></svg></button>
+    <div class="dg-slides">
+      <div class="dg-slides-head"><h2 class="dg-eyebrow dg-slides-title" data-t="slTitle"></h2><button type="button" class="dg-slides-all" id="sl-all-btn" data-t="showAll"></button></div>
+      <div id="dg-carousel" class="carousel slide"></div>
     </div>
-    <div class="sl-dots" id="sl-dots"></div>
   </section>
 
   <div class="segrow vtabs" role="tablist">
@@ -180,10 +174,12 @@
 <div class="sheet" id="sl-modal" data-open="false" role="dialog" aria-modal="true">
   <div class="sheet-head"><b id="sl-modal-title"></b><button class="x" type="button" data-close data-tt="close"><svg class="ic"><use href="#i-x"/></svg></button></div>
   <div class="sheet-sort" id="sl-sort"><button type="button" data-s="kind" data-t="sortKind"></button><button type="button" data-s="sutta" data-t="sortSutta"></button></div>
+  <div class="sheet-sort" id="sl-filter"></div>
   <div class="sheet-body" id="sl-all-list"></div>
 </div>
 <div class="toast" id="toast"></div>
 <script src="/assets/js/jquery-3.7.0.min.js"></script>
+<script src="/assets/js/bootstrap.bundle.5.3.1.min.js"></script>
 <script src="/assets/js/vendor/astronomy.browser.min.js"></script>
 <script src="/assets/js/vendor/zone-coords.js"></script>
 <script src="/assets/js/uposatha-core.js"></script>

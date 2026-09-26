@@ -33,7 +33,7 @@
     en: {
       pH: 'Parts of the day and night', pSub: 'Sunrise to sunset is cut into three parts, and sunset to sunrise likewise — for your place and the season.', pDay: 'Day', pNight: 'Night',
       dayParts: [['Pubbaṇhasamaya', 'morning'], ['Majjhanhikasamaya', 'midday'], ['Sāyanhasamaya', 'evening']], nightParts: [['Paṭhama yāma', 'first watch'], ['Majjhima yāma', 'middle watch'], ['Pacchima yāma', 'last watch']],
-      fSpecial: 'special', fGeneral: 'general', fRandom: 'random', slTitle: 'From the suttas', sortKind: 'By kind', sortSutta: 'By sutta', showAll: 'Show all', readIt: 'Read', dayTag: function (d) { return d.map(function (n) { return n + 'th'; }).join(', ') + ' day'; },
+      fSpecial: 'special', fGeneral: 'general', fRandom: 'random', slTitle: 'From the suttas', fAll: 'All', sortKind: 'By kind', sortSutta: 'By sutta', showAll: 'Show all', readIt: 'Read', dayTag: function (d) { return d.map(function (n) { return n + 'th'; }).join(', ') + ' day'; },
       age: 'age', of30: 'of 30', from: 'from', left: 'left', dU: 'd', hU: 'h', mU: 'min',
       searchPh: 'Search: kacchapa, dn22…', searchGo: 'Search', tag: 'observance days', compass: 'Favorites / History', menu: 'Menu', theme: 'Theme', prev: 'Previous', next: 'Next', close: 'Close',
       h1: 'Uposatha days', lead: 'The 14th, 15th and 8th lunar days of each half-month, as the suttas count them — six a month.', suttas: 'The suttas on Uposatha →',
@@ -69,7 +69,7 @@
     ru: {
       pH: 'Части дня и ночи', pSub: 'Время от восхода до заката делится на три части, и от заката до восхода тоже — для вашего места и сезона.', pDay: 'День', pNight: 'Ночь',
       dayParts: [['Pubbaṇhasamaya', 'утро'], ['Majjhanhikasamaya', 'полдень'], ['Sāyanhasamaya', 'вечер']], nightParts: [['Paṭhama yāma', 'первая стража'], ['Majjhima yāma', 'средняя стража'], ['Pacchima yāma', 'последняя стража']],
-      fSpecial: 'особое', fGeneral: 'общее', fRandom: 'случайное', slTitle: 'Из сутт', sortKind: 'По видам', sortSutta: 'По суттам', showAll: 'Показать все', readIt: 'Читать', dayTag: function (d) { return d.map(function (n) { return n + '-й'; }).join(', ') + ' день'; },
+      fSpecial: 'особое', fGeneral: 'общее', fRandom: 'случайное', slTitle: 'Из сутт', fAll: 'Все', sortKind: 'По видам', sortSutta: 'По суттам', showAll: 'Показать все', readIt: 'Читать', dayTag: function (d) { return d.map(function (n) { return n + '-й'; }).join(', ') + ' день'; },
       age: 'возраст', of30: 'из 30', from: 'с', left: 'осталось', dU: 'д', hU: 'ч', mU: 'мин',
       searchPh: 'Поиск: kacchapa, dn22…', searchGo: 'Найти', tag: 'дни соблюдения', compass: 'Избранное / История', menu: 'Меню', theme: 'Тема', prev: 'Назад', next: 'Вперёд', close: 'Закрыть',
       h1: 'Дни упосатхи', lead: '14-й, 15-й и 8-й лунные дни каждой половины месяца, как их считают сутты, — шесть в месяц.', suttas: 'Сутты об упосатхе →',
@@ -546,7 +546,7 @@
   function markReader() { var open = !$('reader').hidden; Array.prototype.forEach.call(document.querySelectorAll('.rd'), function (b) { b.setAttribute('aria-current', String(open && +b.getAttribute('data-i') === rdCur)); }); }
 
   // ---------- slideshow: sutta lines for the day, for keeping the Uposatha, and at random ----------
-  var quotes = null, quotesLoading = false, slides = [], slIdx = 0, slSig = '', slTimer = null, slHold = false;
+  var quotes = null, quotesLoading = false, slides = [], slSig = '', carousel = null;
   function shuffle(a) { for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)), x = a[i]; a[i] = a[j]; a[j] = x; } return a; }
   // The first wave is for the 8th, 14th and 15th day when one is now or begins within a day; then the general lines, then a few at random.
   function buildSlides(days) {
@@ -554,7 +554,6 @@
     var sp = all.filter(function (q) { return q.kind === 'special' && q.days.some(function (d) { return days.indexOf(d) !== -1; }); })
       .sort(function (a, b) { return a.days.length - b.days.length || a.days[0] - b.days[0]; }); // the lines for one day first, those for several after
     slides = sp.concat(shuffle(all.filter(function (q) { return q.kind === 'general'; })), shuffle(all.filter(function (q) { return q.kind === 'random'; })).slice(0, 8));
-    slIdx = 0;
   }
   function slideText(q) { return q[lang] || q.en; }
   // The key words of the Uposatha (the day, its number, the parts of the day) are picked out in the Pali and in the translations.
@@ -564,26 +563,69 @@
     en: /(uposatha|sabbath|observance|eighth|fourteenth|fifteenth|watch)[\p{L}]*/giu,
   };
   function hl(text, re) { return esc(text).replace(re, '<b class="match finder">$&</b>'); } // the same look as a found word in the search results
-  function trHtml(q) { return hl(slideText(q), q[lang] ? KW[lang] : KW.en); }
-  function plate(q) { return '<span class="plate" data-k="' + q.kind + '">' + esc(t['f' + q.kind.charAt(0).toUpperCase() + q.kind.slice(1)]) + '</span>'; }
+  function trHtml(q) { return esc(slideText(q)); } // only the Pali is picked out; the translation stays plain
+  function plate(q) { return '<i class="plate" data-k="' + q.kind + '">' + esc(t['f' + q.kind.charAt(0).toUpperCase() + q.kind.slice(1)]) + '</i>'; }
   function citeId(q) { return q.ref.split(':')[0]; } // dn1, an3.37 ... as everywhere on the site
   function citeText(q) { return citeId(q) + (q[lang] ? '' : ' · EN') + ' — ' + t.readIt; }
-  function showSlide(i, quick) {
-    if (!slides.length) return;
-    slIdx = (i + slides.length) % slides.length;
-    var q = slides[slIdx], box = $('slides');
-    function fill() {
-      $('sl-plate').outerHTML = plate(q).replace('<span ', '<span id="sl-plate" ');
-      $('sl-pli').innerHTML = hl(q.pli, KW.pli); $('sl-tr').innerHTML = trHtml(q);
-      $('sl-cite').textContent = citeText(q);
-      $('sl-cite').href = '/' + q.ref + '?lang=' + lang;
-      $('sl-dots').innerHTML = slides.map(function (_, n) { return '<button type="button" data-i="' + n + '" aria-label="' + (n + 1) + '"' + (n === slIdx ? ' aria-current="true"' : '') + '></button>'; }).join('');
-      box.classList.remove('fade'); reportHeight();
-    }
-    if (quick) fill(); else { box.classList.add('fade'); setTimeout(fill, 220); }
+  // A slide has a fixed size, so a long text is cut down to the part that speaks of the Uposatha: from a little before the first key
+  // word, as many characters as fit (fewer on a phone), with "..." where it was cut.
+  function excerpt(text, re, max) {
+    text = String(text).replace(/\s+/g, ' ').trim();
+    if (text.length <= max) return text;
+    var m = new RegExp(re.source, 'iu').exec(text), pos = m ? m.index : 0, start = Math.max(0, pos - Math.floor(max * 0.25));
+    if (start > 0) { var sp = text.indexOf(' ', start); if (sp !== -1 && sp < pos) start = sp + 1; }
+    var end = Math.min(text.length, start + max);
+    if (end < text.length) { var sp2 = text.lastIndexOf(' ', end); if (sp2 > start + max * 0.6) end = sp2; }
+    return (start > 0 ? '… ' : '') + text.slice(start, end) + (end < text.length ? ' …' : '');
   }
-  // The whole library of lines in a sheet like the home page's "all queries": sorted by kind or by sutta, each with its kind marker.
-  var slSort = 'kind';
+  function limits() { return window.innerWidth >= 700 ? { pli: 180, tr: 170, pairs: 3 } : { pli: 100, tr: 100, pairs: 2 }; }
+  // a verse: at most `n` lines, the window that holds the most key words
+  function verseWindow(lines, n) {
+    if (lines.length <= n) return lines;
+    var best = 0, bestN = -1;
+    for (var i = 0; i + n <= lines.length; i++) {
+      var c = 0; lines.slice(i, i + n).forEach(function (l) { if (new RegExp(KW.pli.source, 'iu').test(l.pli)) c++; });
+      if (c > bestN) { bestN = c; best = i; }
+    }
+    return lines.slice(best, best + n);
+  }
+  var CHEV = '<svg class="dg-slides-chev" viewBox="0 0 320 512" width="10" height="10" fill="currentColor" aria-hidden="true"><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg>';
+  var ARW = ['M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z', 'M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z'];
+  function slideHtml(q, i) {
+    var L = limits(), trKw = q[lang] ? KW[lang] : KW.en, body;
+    if (q.lines) { // a verse: each line of the Pali with its translation under it, as the reader shows gathas
+      body = '<div class="sl-g">' + verseWindow(q.lines, L.pairs).map(function (l) { return '<b class="sl-gp pli-lang" lang="pi">' + hl(l.pli, KW.pli) + '</b><span class="sl-gt">' + esc(l[lang] || l.en) + '</span>'; }).join('') + '</div>';
+    } else body = '<h5 class="pli-lang" lang="pi">' + hl(excerpt(q.pli, KW.pli, L.pli), KW.pli) + '</h5><span>' + esc(excerpt(slideText(q), trKw, L.tr)) + '</span>';
+    return '<div class="carousel-item' + (i === 0 ? ' active' : '') + '">' + plate(q) + body + '<br><a href="/' + esc(q.ref) + '?lang=' + lang + '" target="_blank" rel="noopener" class="text-start">' + esc(citeText(q)) + CHEV + '</a></div>';
+  }
+  // The slideshow itself is the home page's (Bootstrap carousel, home.css); this fills it and does what home.js does around it:
+  // the dots taper with the distance from the active one, and the card keeps one height.
+  function renderCarousel() {
+    var el = $('dg-carousel'), still = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (carousel) { carousel.dispose(); carousel = null; }
+    el.innerHTML = '<div class="dg-slides-box"><div class="carousel-inner">' + slides.map(slideHtml).join('') + '</div>' +
+      ['prev', 'next'].map(function (d, n) { return '<button class="carousel-control-' + d + '" type="button" data-bs-target="#dg-carousel" data-bs-slide="' + d + '"><svg class="dg-slides-arw" viewBox="0 0 320 512" fill="currentColor" aria-hidden="true"><path d="' + ARW[n] + '"/></svg><span class="visually-hidden">' + d + '</span></button>'; }).join('') + '</div>' +
+      '<div class="carousel-indicators">' + slides.map(function (_, i) { return '<button type="button" data-bs-target="#dg-carousel" data-bs-slide-to="' + i + '"' + (i === 0 ? ' class="active" aria-current="true"' : '') + ' aria-label="' + (i + 1) + '"></button>'; }).join('') + '</div>';
+    var dots = el.querySelectorAll('.carousel-indicators [data-bs-slide-to]');
+    function taper(active) { Array.prototype.forEach.call(dots, function (d, i) { d.setAttribute('data-d', Math.min(4, Math.abs(i - active))); }); }
+    taper(0);
+    el.addEventListener('slide.bs.carousel', function (e) { taper(e.to); });
+    carousel = new bootstrap.Carousel(el, { interval: still ? false : 12000, ride: still ? false : 'carousel', pause: 'hover' });
+    // one fixed height: the tallest slide (all are cut to a bounded size), so the card never changes size
+    var inner = el.querySelector('.carousel-inner'), tallest = 0;
+    Array.prototype.forEach.call(inner.querySelectorAll('.carousel-item'), function (item) {
+      var was = item.classList.contains('active');
+      if (!was) { item.style.display = 'block'; item.style.position = 'absolute'; item.style.visibility = 'hidden'; }
+      tallest = Math.max(tallest, item.getBoundingClientRect().height);
+      if (!was) { item.style.display = ''; item.style.position = ''; item.style.visibility = ''; }
+    });
+    if (tallest) inner.style.height = Math.ceil(tallest) + 'px';
+    el.addEventListener('slid.bs.carousel', reportHeight);
+    reportHeight();
+  }
+  // The whole library in a sheet like the home page's "all queries": one row per sutta (a sutta is one sutta, however many pieces of it
+  // the slideshow shows), with its kind - the highest of its pieces - filterable and sortable.
+  var slSort = 'kind', slFilter = 'all';
   var NIK = { dn: 0, mn: 1, sn: 2, an: 3 };
   // As in the search results: the four Nikayas by number, then the Khuddaka books alphabetically, then the Vinaya.
   function suttaKey(ref) {
@@ -591,47 +633,46 @@
     var grp = NIK[pre] !== undefined ? NIK[pre] : /^pli-tv/.test(ref) ? 5 : 4;
     return [grp, grp === 4 ? pre : grp === 5 ? ref.split(':')[0] : '', +(m[2] || 0), +(m[3] || 0)];
   }
-  function rowHtml(q, noCite) {
-    var trKw = q[lang] ? KW[lang] : KW.en;
-    return '<a class="sr" href="/' + esc(q.ref) + '?lang=' + lang + '" target="_blank" rel="noopener"><span class="sr-t"><b class="sr-p">' + hl(q.pli.replace(/\n/g, ' '), KW.pli) + '</b><span class="sr-e">' + hl(slideText(q).replace(/\n/g, ' '), trKw) + '</span>' +
-      (noCite ? '' : '<small>' + esc(citeId(q) + (q[lang] ? '' : ' · EN')) + '</small>') + '</span>' + plate(q) + '<svg class="chev"><use href="#i-right"/></svg></a>';
-  }
-  // By sutta, as in the search results: one line per sutta (id, name, how many lines), opening to its lines.
-  function suttaGroups(all) {
-    var order = [], by = {};
-    all.slice().sort(function (a, b) { var x = suttaKey(a.ref), y = suttaKey(b.ref); return x[0] - y[0] || (x[1] < y[1] ? -1 : x[1] > y[1] ? 1 : 0) || x[2] - y[2] || x[3] - y[3]; }).forEach(function (q) {
-      var id = citeId(q); if (!by[id]) { by[id] = []; order.push(id); } by[id].push(q);
+  function cmpSutta(a, b) { var x = suttaKey(a.ref), y = suttaKey(b.ref); return x[0] - y[0] || (x[1] < y[1] ? -1 : x[1] > y[1] ? 1 : 0) || x[2] - y[2] || x[3] - y[3]; }
+  function suttaList() {
+    var rank = { special: 0, general: 1, random: 2 }, by = {}, order = [];
+    (quotes || []).filter(function (q) { return q[lang] || q.kind !== 'random'; }).forEach(function (q) {
+      var id = citeId(q);
+      if (!by[id]) { by[id] = { id: id, title: q.title || {}, kind: q.kind, ref: q.ref, kinds: {} }; order.push(id); }
+      else if (rank[q.kind] < rank[by[id].kind]) { by[id].kind = q.kind; by[id].ref = q.ref; }
     });
-    return order.map(function (id) {
-      var g = by[id], ti = g[0].title || {}, name = ti[lang] || ti.en || '';
-      return '<details class="sg"><summary><b>' + esc(id) + '</b><span class="sg-t">' + esc(ti.pli || '') + (name && name !== ti.pli ? ' <i>' + esc(name) + '</i>' : '') + '</span><span class="sg-n">' + g.length + '</span></summary>' + g.map(function (q) { return rowHtml(q, true); }).join('') + '</details>';
-    }).join('');
+    return order.map(function (id) { return by[id]; });
+  }
+  function suttaRow(u) {
+    var name = u.title[lang] || u.title.en || '';
+    return '<a class="sr" href="/' + esc(u.ref) + '?lang=' + lang + '" target="_blank" rel="noopener"><b class="sid">' + esc(u.id) + '</b><span class="sr-t"><span class="sg-t">' + esc(u.title.pli || '') + (name && name !== u.title.pli ? ' <i>' + esc(name) + '</i>' : '') + '</span></span>' + plate(u) + '<svg class="chev"><use href="#i-right"/></svg></a>';
   }
   function showAllSlides() {
-    var all = (quotes || []).filter(function (q) { return q[lang] || q.kind !== 'random'; });
+    var all = suttaList(), counts = { all: all.length, special: 0, general: 0, random: 0 };
+    all.forEach(function (u) { counts[u.kind]++; });
     $('sl-modal-title').textContent = t.slTitle + ' · ' + all.length;
     Array.prototype.forEach.call($('sl-sort').children, function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-s') === slSort)); });
-    var html = '';
+    $('sl-filter').innerHTML = ['all', 'special', 'general', 'random'].map(function (k) {
+      return '<button type="button" data-f="' + k + '" aria-pressed="' + (k === slFilter) + '">' + esc(k === 'all' ? t.fAll : t['f' + k.charAt(0).toUpperCase() + k.slice(1)]) + ' · ' + counts[k] + '</button>';
+    }).join('');
+    var list = all.filter(function (u) { return slFilter === 'all' || u.kind === slFilter; }), html = '';
     if (slSort === 'kind') {
       ['special', 'general', 'random'].forEach(function (k) {
-        var part = all.filter(function (q) { return q.kind === k; });
-        if (part.length) html += '<h4>' + esc(t['f' + k.charAt(0).toUpperCase() + k.slice(1)]) + ' · ' + part.length + '</h4>' + part.map(function (q) { return rowHtml(q); }).join('');
+        var part = list.filter(function (u) { return u.kind === k; }).sort(cmpSutta);
+        if (part.length) html += '<h4>' + esc(t['f' + k.charAt(0).toUpperCase() + k.slice(1)]) + ' · ' + part.length + '</h4>' + part.map(suttaRow).join('');
       });
-    } else html = suttaGroups(all);
+    } else html = list.sort(cmpSutta).map(suttaRow).join('');
     $('sl-all-list').innerHTML = html;
     if ($('sl-modal').getAttribute('data-open') !== 'true') openPanel('sl-modal');
   }
   function slidesFor(days) {
-    var box = $('slides');
     if (!quotes) {
       if (!quotesLoading) { quotesLoading = true; fetch('/assets/js/uposatha-quotes.json').then(function (r) { return r.json(); }).then(function (d) { quotes = d; slSig = ''; paint(); }).catch(function () { quotesLoading = false; }); }
       return;
     }
     var sig = days.join(',') + lang;
-    box.hidden = false;
-    if (sig !== slSig) { slSig = sig; buildSlides(days); showSlide(0, true); }
-    else showSlide(slIdx, true); // the same show: only the words may need repainting
-    if (!slTimer && !(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)) slTimer = setInterval(function () { if (!slHold && !document.hidden) showSlide(slIdx + 1); }, 14000);
+    $('slides').hidden = false;
+    if (sig !== slSig) { slSig = sig; buildSlides(days); renderCarousel(); } // a new show only when the day or the language changes: a repaint must not restart it
   }
 
   // ---------- height for the docs frame ----------
@@ -721,19 +762,14 @@
     $('rd8').onclick = function () { state.rem.d8 = !state.rem.d8; saveRem(); paint(); };
     $('rd14').onclick = function () { state.rem.d14 = !state.rem.d14; saveRem(); paint(); };
     $('rd15').onclick = function () { state.rem.d15 = !state.rem.d15; saveRem(); paint(); };
-    $('sl-prev').onclick = function () { showSlide(slIdx - 1); };
-    $('sl-next').onclick = function () { showSlide(slIdx + 1); };
-    $('sl-dots').onclick = function (e) { var n = e.target.getAttribute && e.target.getAttribute('data-i'); if (n !== null && n !== undefined) showSlide(+n); };
     $('sl-all-btn').onclick = showAllSlides;
+    $('sl-filter').onclick = function (e) { var v = e.target.getAttribute && e.target.getAttribute('data-f'); if (v) { slFilter = v; showAllSlides(); } };
     $('sl-sort').onclick = function (e) { var v = e.target.getAttribute && e.target.getAttribute('data-s'); if (v) { slSort = v; showAllSlides(); } };
-    $('slides').addEventListener('mouseenter', function () { slHold = true; });
-    $('slides').addEventListener('mouseleave', function () { slHold = false; });
-    $('slides').addEventListener('focusin', function () { slHold = true; });
-    $('slides').addEventListener('focusout', function () { slHold = false; });
     $('rd-sel').onchange = function (e) { readSutta(+e.target.value); };
     $('rd-close').onclick = function () { $('reader').hidden = true; markReader(); };
     document.addEventListener('visibilitychange', function () { if (!document.hidden) paint(); });
-    window.addEventListener('resize', reportHeight);
+    var wide = window.innerWidth >= 700;
+    window.addEventListener('resize', function () { reportHeight(); var w = window.innerWidth >= 700; if (w !== wide) { wide = w; if (slides.length) renderCarousel(); } });
     window.addEventListener('message', function (e) { if (e.data && e.data.dgFrameHeightRequest) reportHeight(); });
   }
 

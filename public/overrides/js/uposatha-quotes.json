@@ -47,6 +47,38 @@
    14,
    15
   ],
+  "lines": [
+   {
+    "pli": "‘Cātuddasiṁ pañcadasiṁ,",
+    "ru": "“Четырнадцатый, пятнадцатый день,",
+    "en": "‘Whoever wants to be like me"
+   },
+   {
+    "pli": "yā ca pakkhassa aṭṭhamī;",
+    "ru": "На день, что в половине месяца восьмой;",
+    "en": "would observe the sabbath"
+   },
+   {
+    "pli": "Pāṭihāriyapakkhañca,",
+    "ru": "А также и в особенные дни,",
+    "en": "complete in all eight factors,"
+   },
+   {
+    "pli": "aṭṭhaṅgasusamāgataṁ;",
+    "ru": "Что аспектами восемью полна,",
+    "en": "on the fourteenth and the fifteenth days,"
+   },
+   {
+    "pli": "Uposathaṁ upavaseyya,",
+    "ru": "Упосатху должен соблюдать,",
+    "en": "and the eighth day of the fortnight,"
+   },
+   {
+    "pli": "yopissa mādiso naro’ti.",
+    "ru": "Человек, который хочет быть таким, как я”.",
+    "en": "as well as on the fortnightly special displays.’"
+   }
+  ],
   "title": {
    "pli": "Catumahārājasutta",
    "ru": "Сутта Четыре Великих Царя",
@@ -426,25 +458,43 @@
  },
  {
   "id": "snp2.14-factors",
-  "kind": "special",
-  "days": [
-   8,
-   14,
-   15
+  "kind": "random",
+  "days": null,
+  "lines": [
+   {
+    "pli": "Mālaṁ na dhāre na ca gandhamācare,",
+    "ru": "И не носи гирлянд, духов не применяй,",
+    "en": "Not wearing garlands or applying fragrance,"
+   },
+   {
+    "pli": "Mañce chamāyaṁ va sayetha santhate;",
+    "ru": "Спи на циновке на земле или [такой] постели.",
+    "en": "you should sleep on a low bed, or a mat on the ground."
+   },
+   {
+    "pli": "Etañhi aṭṭhaṅgikamāhuposathaṁ,",
+    "ru": "Ведь восьмиаспектной Упосатхи такому соблюдению",
+    "en": "This is the eight-factored sabbath, they say,"
+   },
+   {
+    "pli": "Buddhena dukkhantagunā pakāsitaṁ.",
+    "ru": "[Сам] Будда научил, положивший конец боли.",
+    "en": "revealed by the Buddha, who has gone to suffering’s end."
+   }
   ],
   "title": {
    "pli": "Dhammikasutta",
    "ru": "Сутта Дхаммика",
    "en": "With Dhammika"
   },
-  "ref": "snp2.14:26.1",
+  "ref": "snp2.14:27.1",
   "cite": {
    "en": "Snp 2.14",
    "ru": "Снп 2.14"
   },
-  "pli": "Pāṇaṁ na hane na cādinnamādiye,\nMusā na bhāse na ca majjapo siyā;\nAbrahmacariyā virameyya methunā,\nRattiṁ na bhuñjeyya vikālabhojanaṁ.\nMālaṁ na dhāre na ca gandhamācare,\nMañce chamāyaṁ va sayetha santhate;\nEtañhi aṭṭhaṅgikamāhuposathaṁ,\nBuddhena dukkhantagunā pakāsitaṁ.",
-  "ru": "Не убивай живых, и что не дали – не бери;\nНе говори неправды и не пей спиртного.\nСношений сторонись, дурного поведения;\nНочью не ешь, вне правильного срока.\nИ не носи гирлянд, духов не применяй,\nСпи на циновке на земле или [такой] постели.\nВедь восьмиаспектной Упосатхи такому соблюдению\n[Сам] Будда научил, положивший конец боли.",
-  "en": "You shouldn’t kill living creatures, or steal,\nor lie, or drink liquor.\nBe chaste, refraining from sex,\nand don’t eat at night, the wrong time.\nNot wearing garlands or applying fragrance,\nyou should sleep on a low bed, or a mat on the ground.\nThis is the eight-factored sabbath, they say,\nrevealed by the Buddha, who has gone to suffering’s end."
+  "pli": "Mālaṁ na dhāre na ca gandhamācare,\nMañce chamāyaṁ va sayetha santhate;\nEtañhi aṭṭhaṅgikamāhuposathaṁ,\nBuddhena dukkhantagunā pakāsitaṁ.",
+  "ru": "И не носи гирлянд, духов не применяй,\nСпи на циновке на земле или [такой] постели.\nВедь восьмиаспектной Упосатхи такому соблюдению\n[Сам] Будда научил, положивший конец боли.",
+  "en": "Not wearing garlands or applying fragrance,\nyou should sleep on a low bed, or a mat on the ground.\nThis is the eight-factored sabbath, they say,\nrevealed by the Buddha, who has gone to suffering’s end."
  },
  {
   "id": "snp2.14-days",
@@ -453,6 +503,28 @@
    8,
    14,
    15
+  ],
+  "lines": [
+   {
+    "pli": "Tato ca pakkhassupavassuposathaṁ,",
+    "ru": "Уверенный в уме, когда её провёл –",
+    "en": "Then having rightly undertaken the sabbath"
+   },
+   {
+    "pli": "Cātuddasiṁ pañcadasiñca aṭṭhamiṁ;",
+    "ru": "Упосатху, что в аспектах восьми была полна",
+    "en": "complete in all its eight factors"
+   },
+   {
+    "pli": "Pāṭihāriyapakkhañca pasannamānaso,",
+    "ru": "На день четырнадцатый, на пятнадцатый,",
+    "en": "on the fourteenth, fifteenth, and eighth of the fortnight,"
+   },
+   {
+    "pli": "Aṭṭhaṅgupetaṁ susamattarūpaṁ.",
+    "ru": "А также на восьмой, и по особым дням –",
+    "en": "as well as on the fortnightly special displays,"
+   }
   ],
   "title": {
    "pli": "Dhammikasutta",
@@ -475,6 +547,28 @@
    8,
    14,
    15
+  ],
+  "lines": [
+   {
+    "pli": "Tato ca pāto upavutthuposatho,",
+    "ru": "То утром мудрый [этот] человек,",
+    "en": "at daybreak after the sabbath"
+   },
+   {
+    "pli": "Annena pānena ca bhikkhusaṅghaṁ;",
+    "ru": "Который [всю эту] Упосатху провёл,",
+    "en": "a clever person, rejoicing with confident heart,"
+   },
+   {
+    "pli": "Pasannacitto anumodamāno,",
+    "ru": "С умом уверенным, довольный, он разделит,",
+    "en": "would distribute food and drink"
+   },
+   {
+    "pli": "Yathārahaṁ saṁvibhajetha viññū.",
+    "ru": "Как подобает, с Сангхой пищу и напитки.",
+    "en": "to the mendicant Saṅgha as is fitting."
+   }
   ],
   "title": {
    "pli": "Dhammikasutta",
@@ -761,60 +855,6 @@
   "en": "Now, at that time it was the sabbath, and the Buddha was sitting surrounded by the Saṅgha of monks."
  },
  {
-  "id": "an3.37:1.2",
-  "kind": "random",
-  "days": null,
-  "title": {
-   "pli": "Catumahārājasutta",
-   "ru": "Сутта Четыре Великих Царя",
-   "en": "The Four Great Kings (1st)"
-  },
-  "ref": "an3.37:1.2",
-  "cite": {
-   "en": "an3.37",
-   "ru": "an3.37"
-  },
-  "pli": "‘kacci bahū manussā manussesu matteyyā petteyyā sāmaññā brahmaññā kule jeṭṭhāpacāyino uposathaṁ upavasanti paṭijāgaronti puññāni karontī’ti.",
-  "ru": "“Надеемся, что многие люди, которые ведут себя подобающе со своей матерью и отцом, ведут себя подобающе со шраманами и брахманами, чтят старейшин семьи, соблюдают Упосатху, соблюдают дополнительные дни, совершают накопления заслуг”.",
-  "en": "‘Hopefully most humans are paying due respect to their parents, ascetics and brahmins, honoring the elders in their families, observing and keeping vigil on the sabbath, and making merit.’"
- },
- {
-  "id": "an3.37:1.4",
-  "kind": "random",
-  "days": null,
-  "title": {
-   "pli": "Catumahārājasutta",
-   "ru": "Сутта Четыре Великих Царя",
-   "en": "The Four Great Kings (1st)"
-  },
-  "ref": "an3.37:1.4",
-  "cite": {
-   "en": "an3.37",
-   "ru": "an3.37"
-  },
-  "pli": "‘kacci bahū manussā manussesu matteyyā petteyyā sāmaññā brahmaññā kule jeṭṭhāpacāyino uposathaṁ upavasanti paṭijāgaronti puññāni karontī’ti.",
-  "ru": "“Надеемся, что многие люди, которые ведут себя подобающе…”",
-  "en": "‘Hopefully most humans are paying due respect to their parents … and making merit.’"
- },
- {
-  "id": "an3.37:1.6",
-  "kind": "random",
-  "days": null,
-  "title": {
-   "pli": "Catumahārājasutta",
-   "ru": "Сутта Четыре Великих Царя",
-   "en": "The Four Great Kings (1st)"
-  },
-  "ref": "an3.37:1.6",
-  "cite": {
-   "en": "an3.37",
-   "ru": "an3.37"
-  },
-  "pli": "‘kacci bahū manussā manussesu matteyyā petteyyā sāmaññā brahmaññā kule jeṭṭhāpacāyino uposathaṁ upavasanti paṭijāgaronti puññāni karontī’ti.",
-  "ru": "“Надеемся, что многие люди, которые ведут себя подобающе…”",
-  "en": "‘Hopefully most humans are paying due respect to their parents … and making merit.’"
- },
- {
   "id": "an3.37:2.1",
   "kind": "random",
   "days": null,
@@ -885,24 +925,6 @@
   "pli": "“Uposathāhaṁ, bhante, ajja upavasāmī”ti.",
   "ru": "“Сегодня, почтенный, я соблюдаю Упосатху”.",
   "en": "“Today, sir, I’m observing the sabbath.”"
- },
- {
-  "id": "an3.70:2.3",
-  "kind": "random",
-  "days": null,
-  "title": {
-   "pli": "Uposathasutta",
-   "ru": "Сутта Упосатха",
-   "en": "Sabbath"
-  },
-  "ref": "an3.70:2.3",
-  "cite": {
-   "en": "an3.70",
-   "ru": "an3.70"
-  },
-  "pli": "Gopālakuposatho, nigaṇṭhuposatho, ariyuposatho.",
-  "ru": "Пастушья Упосатха. Упосатха Нигантхов. Упосатха Благородных.",
-  "en": "The sabbath of the cowherds, the sabbath of the Jains, and the sabbath of the noble ones."
  },
  {
   "id": "an3.70:2.4",
@@ -1137,24 +1159,6 @@
   "pli": "Ayaṁ vuccati, visākhe, ‘ariyasāvako devatuposathaṁ upavasati, devatāhi saddhiṁ saṁvasati, devatā ārabbha cittaṁ pasīdati, pāmojjaṁ uppajjati, ye cittassa upakkilesā te pahīyanti’.",
   "ru": "Такой человек зовётся учеником Благородных, который соблюдает Упосатху божеств, который пребывает с божествами, и размышляя о божествах, его ум становится безмятежным, возникает радость, и загрязнения ума отбрасываются.",
   "en": "This is called: ‘A noble disciple who observes the sabbath of the deities, living together with the deities. And because they think of the deities their mind becomes clear, joy arises, and mental corruptions are given up.’"
- },
- {
-  "id": "an3.70:19.4",
-  "kind": "random",
-  "days": null,
-  "title": {
-   "pli": "Uposathasutta",
-   "ru": "Сутта Упосатха",
-   "en": "Sabbath"
-  },
-  "ref": "an3.70:19.4",
-  "cite": {
-   "en": "an3.70",
-   "ru": "an3.70"
-  },
-  "pli": "Imināpi aṅgena arahataṁ anukaromi, uposatho ca me upavuttho bhavissati.",
-  "ru": "Так, в этом отношении, я буду подражать арахантам и буду соблюдать Упосатху.",
-  "en": "I will observe the sabbath by doing as the perfected ones do in this respect."
  },
  {
   "id": "an3.70:20.3",
@@ -1605,24 +1609,6 @@
   "pli": "Na dānāhaṁ, bhikkhave, ajjatagge uposathaṁ karissāmi, pātimokkhaṁ uddisissāmi.",
   "ru": "Вы сами, монахи, будете проводить Упосатху и декламировать Патимоккху.",
   "en": "From this day forth, I will not perform the sabbath or recite the monastic code."
- },
- {
-  "id": "an8.41:2.2",
-  "kind": "random",
-  "days": null,
-  "title": {
-   "pli": "Saṅkhittūposathasutta",
-   "ru": "Сутта Упосатха Сжато",
-   "en": "The Sabbath With Eight Factors, In Brief"
-  },
-  "ref": "an8.41:2.2",
-  "cite": {
-   "en": "an8.41",
-   "ru": "an8.41"
-  },
-  "pli": "Kathaṁ upavuttho ca, bhikkhave, aṭṭhaṅgasamannāgato uposatho mahapphalo hoti mahānisaṁso mahājutiko mahāvipphāro?",
-  "ru": "И каким образом Упосатха соблюдается в полных восьми аспектах, так что приносит великий плод и пользу, [и что она] неимоверно сверкающая и всепроникающая?",
-  "en": "And how should it be observed?"
  },
  {
   "id": "an8.41:2.6",
@@ -2901,24 +2887,6 @@
   "pli": "bahujanapubbaṅgamo ahosi kusalesu dhammesu bahujanapāmokkho kāyasucarite vacīsucarite manosucarite dānasaṁvibhāge sīlasamādāne uposathupavāse matteyyatāya petteyyatāya sāmaññatāya brahmaññatāya kule jeṭṭhāpacāyitāya aññataraññataresu ca adhikusalesu dhammesu.",
   "ru": "был первым среди многих людей в хороших свойствах, лучшим среди многих людей в добром поведении тела, добром поведении в речи, добром поведении разума, в раздаче подаяний, в приверженности нравственному поведению, в соблюдении упосатхи, в уважении к матери, уважении к отцу, уважении к отшельникам, в уважении к брахманам, почитании старших в роду и во всевозможных других весьма добрых свойствах.",
   "en": "He was the leader and forerunner of people in skillful behaviors such as good conduct by way of body, speech, and mind, giving and sharing, taking precepts, observing the sabbath, paying due respect to mother and father, ascetics and brahmins, honoring the elders in the family, and various other things pertaining to skillful behaviors."
- },
- {
-  "id": "snp2.14:27.3",
-  "kind": "random",
-  "days": null,
-  "title": {
-   "pli": "Dhammikasutta",
-   "ru": "Сутта Дхаммика",
-   "en": "With Dhammika"
-  },
-  "ref": "snp2.14:27.3",
-  "cite": {
-   "en": "snp2.14",
-   "ru": "snp2.14"
-  },
-  "pli": "Etañhi aṭṭhaṅgikamāhuposathaṁ,",
-  "ru": "Ведь восьмиаспектной Упосатхи такому соблюдению",
-  "en": "This is the eight-factored sabbath, they say,"
  },
  {
   "id": "snp3.12:1.3",
