@@ -49,6 +49,7 @@
       detail: 'Details', detailD: 'Off — the short form',
       gRem: 'Reminders', remind: 'Remind me', adv: 'In advance', leads: [[0, 'when it begins'], [1, '1 hour'], [3, '3 hours'], [12, '12 hours'], [24, '1 day'], [48, '2 days']], days: 'Days',
       remNote: 'Notifications appear while this app is open or running in the background on your device. For reminders that arrive when it is fully closed, add the days to your phone\'s calendar.',
+      sound: 'Sound', soundNone: 'Silent', soundOwn: 'My own sound…', soundOwnNamed: 'My own: %', soundFail: 'The sound was not set.', sounds: { gong: 'Gong', gong2: 'Gong 2', gong3: 'Gong 3', bell: 'Bell' },
       remAppNote: 'Reminders are scheduled on this device and arrive even when the app is closed.',
       remNext: function (when, what) { return 'Next reminder: ' + when + ' — ' + what; }, remNone: 'No reminder is due in the coming weeks.',
       remDenied: 'Notifications are blocked for this site — allow them in the browser settings.', remUnsupported: 'This browser cannot show notifications.',
@@ -85,6 +86,7 @@
       detail: 'Подробно', detailD: 'Выкл — короткая форма',
       gRem: 'Напоминания', remind: 'Напоминать', adv: 'Заранее', leads: [[0, 'в момент начала'], [1, 'за 1 час'], [3, 'за 3 часа'], [12, 'за 12 часов'], [24, 'за сутки'], [48, 'за 2 суток']], days: 'Дни',
       remNote: 'Уведомления приходят, пока приложение открыто или работает в фоне на вашем устройстве. Чтобы напоминание пришло и при полностью закрытом приложении, добавьте дни в календарь телефона.',
+      sound: 'Звук', soundNone: 'Без звука', soundOwn: 'Свой звук…', soundOwnNamed: 'Свой: %', soundFail: 'Звук не задан.', sounds: { gong: 'Гонг', gong2: 'Гонг 2', gong3: 'Гонг 3', bell: 'Колокол' },
       remAppNote: 'Напоминания ставятся на этом устройстве и приходят даже при закрытом приложении.',
       remNext: function (when, what) { return 'Ближайшее напоминание: ' + when + ' — ' + what; }, remNone: 'В ближайшие недели напоминаний нет.',
       remDenied: 'Уведомления для сайта запрещены — разрешите их в настройках браузера.', remUnsupported: 'Этот браузер не умеет показывать уведомления.',
@@ -154,7 +156,7 @@
     months: 3, calOff: 0, selected: null,
     loc: (function () { try { return JSON.parse(store('dgUposathaLoc')); } catch (e) { return null; } })(),
     locMsg: '',
-    rem: (function () { var d = { on: false, lead: 24, d8: true, d14: true, d15: false }; try { var v = JSON.parse(store('dgUposathaRemind')); if (v) for (var k in d) if (k in v) d[k] = v[k]; } catch (e) { /* defaults */ } return d; })(),
+    rem: (function () { var d = { on: false, lead: 24, d8: true, d14: true, d15: false, sound: 'gong', ownChannel: '', ownName: '' }; try { var v = JSON.parse(store('dgUposathaRemind')); if (v) for (var k in d) if (k in v) d[k] = v[k]; } catch (e) { /* defaults */ } return d; })(),
     remMsg: '',
   };
   var hemi = store('dgUposathaHemisphere');
@@ -482,20 +484,33 @@
     var C = window.Capacitor;
     return C && C.isNativePlatform && C.isNativePlatform() && C.Plugins && C.Plugins.LocalNotifications ? C.Plugins.LocalNotifications : null;
   }
+  // The sound of a reminder is the notification channel's (Android fixes it per channel), so every choice is a channel of its own;
+  // the built-in ones are files in the app's res/raw, the "own" one is picked by the person (DgSound, native) and has its own channel.
+  var SOUND_FILES = { gong: ['gong', '/assets/sounds/gong.mp3'], gong2: ['gong2', '/assets/repeat-timer/sound/gong2.mp3'], gong3: ['gong3', '/assets/repeat-timer/sound/gong3.mp3'], bell: ['church', '/assets/repeat-timer/sound/church.mp3'] };
+  function ownPlugin() { var C = window.Capacitor; return C && C.Plugins && C.Plugins.DgSound ? C.Plugins.DgSound : null; }
+  function channelFor(LN) { // returns the channel id for the chosen sound, creating the channel when it is a built-in one
+    var k = state.rem.sound, id = 'uposatha-' + k + '-v1';
+    if (k === 'own' && state.rem.ownChannel) return Promise.resolve(state.rem.ownChannel);
+    var f = SOUND_FILES[k], ch = { id: id, name: k === 'none' ? t.soundNone : (t.sounds[k] || k), importance: k === 'none' ? 2 : 4, visibility: 1, vibration: k !== 'none' };
+    if (f) ch.sound = f[0] + '.mp3';
+    return LN.createChannel(ch).then(function () { return id; }, function () { return id; });
+  }
   function scheduleNative(LN, rows, byYmd, F) {
     var now = Date.now();
     var list = state.rem.on ? dueList(rows, byYmd).sort(function (a, b) { return a.when - b.when; }).slice(0, 60) : [];
-    var items = list.map(function (item, i) {
-      return { id: NATIVE_ID_BASE + i, title: item.title, body: (item.two ? t.remTwo : t.remBody)(F.stamp.format(item.start)),
-        schedule: { at: new Date(Math.max(item.when, now + 3000)), allowWhileIdle: true }, extra: { url: '/uposatha-calendar' } };
-    });
-    var sig = JSON.stringify(items.map(function (i) { return [i.id, i.title, i.schedule.at.getTime() > now + 10000 ? i.schedule.at.getTime() : 0]; }));
+    var sig = JSON.stringify([state.rem.sound, state.rem.ownChannel, list.map(function (i) { return [i.key, i.title, i.when > now + 10000 ? i.when : 0]; })]);
     if (sig !== nativeSig) { // only when something changed: paint() runs on every touch
       nativeSig = sig;
-      LN.getPending().then(function (p) {
-        var ours = ((p && p.notifications) || []).filter(function (n) { return n.id >= NATIVE_ID_BASE && n.id < NATIVE_ID_BASE + 100; }).map(function (n) { return { id: n.id }; });
-        return ours.length ? LN.cancel({ notifications: ours }) : null;
-      }).then(function () { return items.length ? LN.schedule({ notifications: items }) : null; }).catch(function () { nativeSig = ''; });
+      channelFor(LN).then(function (channelId) {
+        var items = list.map(function (item, i) {
+          return { id: NATIVE_ID_BASE + i, title: item.title, body: (item.two ? t.remTwo : t.remBody)(F.stamp.format(item.start)), channelId: channelId,
+            schedule: { at: new Date(Math.max(item.when, now + 3000)), allowWhileIdle: true }, extra: { url: '/uposatha-calendar' } };
+        });
+        return LN.getPending().then(function (p) {
+          var ours = ((p && p.notifications) || []).filter(function (n) { return n.id >= NATIVE_ID_BASE && n.id < NATIVE_ID_BASE + 100; }).map(function (n) { return { id: n.id }; });
+          return ours.length ? LN.cancel({ notifications: ours }) : null;
+        }).then(function () { return items.length ? LN.schedule({ notifications: items }) : null; });
+      }).catch(function () { nativeSig = ''; });
     }
     return list.filter(function (i) { return i.when > now; })[0] || null;
   }
@@ -517,6 +532,13 @@
     var permission = inApp ? 'granted' : 'Notification' in window ? Notification.permission : 'unsupported';
     setSeg('sw-rem', state.rem.on ? 1 : 0);
     $('rem-lead').value = String(state.rem.lead);
+    $('rem-sound-row').style.display = inApp ? '' : 'none'; // the sound is a notification channel: only the app has them
+    if (inApp) {
+      var opts = Object.keys(SOUND_FILES).map(function (k) { return [k, t.sounds[k]]; }).concat([['none', t.soundNone]]);
+      if (ownPlugin()) opts.push(['own', state.rem.sound === 'own' && state.rem.ownName ? t.soundOwnNamed.replace('%', state.rem.ownName) : t.soundOwn]);
+      $('rem-sound').innerHTML = opts.map(function (o) { return '<option value="' + o[0] + '">' + esc(o[1]) + '</option>'; }).join('');
+      $('rem-sound').value = state.rem.sound;
+    }
     $('rd8').setAttribute('aria-pressed', String(state.rem.d8));
     $('rd14').setAttribute('aria-pressed', String(state.rem.d14));
     $('rd15').setAttribute('aria-pressed', String(state.rem.d15));
@@ -820,6 +842,16 @@
       Notification.requestPermission().then(function (perm) { state.rem.on = perm === 'granted'; if (perm !== 'granted') state.remMsg = t.remDenied; saveRem(); paint(); });
     });
     $('rem-lead').onchange = function (e) { state.rem.lead = parseInt(e.target.value, 10); saveRem(); paint(); };
+    $('rem-sound').onchange = function (e) {
+      var v = e.target.value; state.remMsg = '';
+      function done() { saveRem(); paint(); }
+      if (v === 'own') { // the person picks a file; the app makes a channel of it. Cancelled -> the choice stays as it was
+        ownPlugin().pick().then(function (r) { if (r && r.channelId) { state.rem.sound = 'own'; state.rem.ownChannel = r.channelId; state.rem.ownName = r.name || ''; } done(); }).catch(function () { state.remMsg = t.soundFail; done(); });
+        return;
+      }
+      state.rem.sound = v; done();
+      if (SOUND_FILES[v]) { try { new Audio(SOUND_FILES[v][1]).play(); } catch (err) { /* a preview only */ } } // hear it at once
+    };
     $('rd8').onclick = function () { state.rem.d8 = !state.rem.d8; saveRem(); paint(); };
     $('rd14').onclick = function () { state.rem.d14 = !state.rem.d14; saveRem(); paint(); };
     $('rd15').onclick = function () { state.rem.d15 = !state.rem.d15; saveRem(); paint(); };
