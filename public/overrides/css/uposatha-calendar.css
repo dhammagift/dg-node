@@ -319,3 +319,6 @@ body[data-loc=on] .loc-off { display: none; }
 #dg-drawer .dg-seg-link { flex: 1; text-align: center; padding: 8px 3px; font-size: .85rem; color: var(--dg-text); }
 #dg-drawer .dg-seg-link:hover { background: var(--dg-surface-hover); color: var(--dg-accent-ink); }
 body[data-remind=off] #rem-more { opacity: .45; pointer-events: none; }
+
+#dg-drawer .dg-drawer-subtitle.troll { color: #9b1c31; font-weight: 700; letter-spacing: .04em; }
+[data-theme="dark"] #dg-drawer .dg-drawer-subtitle.troll { color: #d8546b; }

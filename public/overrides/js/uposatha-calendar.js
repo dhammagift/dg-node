@@ -45,7 +45,7 @@
       gPlace: 'Place & time', tz: 'Time zone', hemi: 'Hemisphere', hemiD: 'how the moon is drawn', north: 'Northern', south: 'Southern',
       loc: 'Location', locD: 'for the real sunrise and sunset; otherwise 18:00 and 06:00', myLoc: 'Use my location', city: 'or a city: Almaty…',
       locNone: 'The location is not shared — the fixed times are used.', locFinding: 'Locating…', locOk: 'Location', locForget: 'forget', locDenied: 'The location was not shared — the fixed times are used.',
-      gCount: 'Counting', bySuttas: 'By the suttas', bySuttasD: 'Off — the four moon-phase days',
+      gCount: 'Counting', bySuttas: 'By the suttas', notBySuttas: 'NOT BY THE SUTTAS', bySuttasD: 'Off — the four moon-phase days',
       detail: 'Details', detailD: 'Off — the short form',
       gRem: 'Reminders', remind: 'Remind me', adv: 'In advance', leads: [[1, '1 hour'], [3, '3 hours'], [12, '12 hours'], [24, '1 day'], [48, '2 days']], days: 'Days',
       remNote: 'Notifications appear while this app is open or running in the background on your device. For reminders that arrive when it is fully closed, add the days to your phone\'s calendar.',
@@ -81,7 +81,7 @@
       gPlace: 'Место и время', tz: 'Часовой пояс', hemi: 'Полушарие', hemiD: 'как рисовать луну', north: 'Северное', south: 'Южное',
       loc: 'Место', locD: 'для настоящих восхода и заката; без него — 18:00 и 06:00', myLoc: 'Определить моё место', city: 'или город: Алматы…',
       locNone: 'Место не передано — используется фиксированное время.', locFinding: 'Определяю…', locOk: 'Место', locForget: 'забыть', locDenied: 'Место не передано — используется фиксированное время.',
-      gCount: 'Счёт', bySuttas: 'По суттам', bySuttasD: 'Выкл — четыре дня лунных фаз',
+      gCount: 'Счёт', bySuttas: 'По суттам', notBySuttas: 'НЕ ПО СУТТАМ', bySuttasD: 'Выкл — четыре дня лунных фаз',
       detail: 'Подробно', detailD: 'Выкл — короткая форма',
       gRem: 'Напоминания', remind: 'Напоминать', adv: 'Заранее', leads: [[1, 'за 1 час'], [3, 'за 3 часа'], [12, 'за 12 часов'], [24, 'за сутки'], [48, 'за 2 суток']], days: 'Дни',
       remNote: 'Уведомления приходят, пока приложение открыто или работает в фоне на вашем устройстве. Чтобы напоминание пришло и при полностью закрытом приложении, добавьте дни в календарь телефона.',
@@ -389,6 +389,7 @@
     // ----- the settings panel mirrors the state
     $('tz').innerHTML = zones.map(function (z) { return '<option' + (z === tz ? ' selected' : '') + '>' + esc(z) + '</option>'; }).join('');
     Array.prototype.forEach.call($('hemiseg').children, function (b) { b.setAttribute('aria-pressed', String((b.getAttribute('data-hemi') === 'south') === state.south)); });
+    $('bysuttas-lb').textContent = su ? t.bySuttas : t.notBySuttas; $('bysuttas-lb').classList.toggle('troll', !su); // a small joke: the label turns burgundy when the suttas are switched off
     setSeg('sw-sut', su ? 1 : 0); setSeg('sw-det', state.lite ? 0 : 1);
     $('city').value = state.loc && state.loc.name ? state.loc.name : '';
     $('locnote').innerHTML = state.loc ? esc(t.locOk + ': ' + (state.loc.name ? state.loc.name + ' · ' : '') + state.loc.lat + ', ' + state.loc.lon) + ' · <a href="#" id="unloc">' + esc(t.locForget) + '</a>' : esc(state.locMsg || t.locNone);
