@@ -49,7 +49,7 @@
       detail: 'Details', detailD: 'Off — the short form',
       gRem: 'Reminders', remind: 'Remind me', adv: 'In advance', leads: [[0, 'when it begins'], [1, '1 hour'], [3, '3 hours'], [12, '12 hours'], [24, '1 day'], [48, '2 days']], days: 'Days',
       remNote: 'Notifications appear while this app is open or running in the background on your device. For reminders that arrive when it is fully closed, add the days to your phone\'s calendar.',
-      navHome: 'Summary', navList: 'Uposathas', navCal: 'Calendar', navParts: 'Night–day', navKeys: 'Suttas',
+      logoTip: 'Home · change the language: long press or right click', navHome: 'Summary', navList: 'Uposathas', navCal: 'Calendar', navParts: 'Night–day', navKeys: 'Suttas',
       sound: 'Sound', soundNone: 'Silent', soundOwn: 'My own sound…', soundOwnNamed: 'My own: %', soundFail: 'The sound was not set.', sounds: { gong: 'Gong', gong2: 'Gong 2', gong3: 'Gong 3', bell: 'Bell' },
       remAppNote: 'Reminders are scheduled on this device and arrive even when the app is closed.',
       remNext: function (when, what) { return 'Next reminder: ' + when + ' — ' + what; }, remNone: 'No reminder is due in the coming weeks.',
@@ -87,7 +87,7 @@
       detail: 'Подробно', detailD: 'Выкл — короткая форма',
       gRem: 'Напоминания', remind: 'Напоминать', adv: 'Заранее', leads: [[0, 'в момент начала'], [1, 'за 1 час'], [3, 'за 3 часа'], [12, 'за 12 часов'], [24, 'за сутки'], [48, 'за 2 суток']], days: 'Дни',
       remNote: 'Уведомления приходят, пока приложение открыто или работает в фоне на вашем устройстве. Чтобы напоминание пришло и при полностью закрытом приложении, добавьте дни в календарь телефона.',
-      navHome: 'Сводка', navList: 'Упосатхи', navCal: 'Календарь', navParts: 'Ночь–день', navKeys: 'Сутты',
+      logoTip: 'Домой · сменить язык: долгое нажатие или правая кнопка', navHome: 'Сводка', navList: 'Упосатхи', navCal: 'Календарь', navParts: 'Ночь–день', navKeys: 'Сутты',
       sound: 'Звук', soundNone: 'Без звука', soundOwn: 'Свой звук…', soundOwnNamed: 'Свой: %', soundFail: 'Звук не задан.', sounds: { gong: 'Гонг', gong2: 'Гонг 2', gong3: 'Гонг 3', bell: 'Колокол' },
       remAppNote: 'Напоминания ставятся на этом устройстве и приходят даже при закрытом приложении.',
       remNext: function (when, what) { return 'Ближайшее напоминание: ' + when + ' — ' + what; }, remNone: 'В ближайшие недели напоминаний нет.',
@@ -239,6 +239,7 @@
   function applyLang() {
     document.documentElement.lang = lang;
     Array.prototype.forEach.call(document.querySelectorAll('[data-t]'), function (e) { var v = t[e.getAttribute('data-t')]; if (typeof v === 'string') e.innerHTML = v; });
+    Array.prototype.forEach.call(document.querySelectorAll('#wordmark, .up-shell-logo'), function (e) { e.title = t.logoTip; });
     Array.prototype.forEach.call(document.querySelectorAll('[data-tt]'), function (e) { var v = t[e.getAttribute('data-tt')]; if (typeof v === 'string') { e.title = v; e.setAttribute('aria-label', v); } });
     Array.prototype.forEach.call(document.querySelectorAll('[data-tp]'), function (e) { e.placeholder = t[e.getAttribute('data-tp')] || ''; });
     (function () { // the hint of the input: Uposatha key words and suttas, two words and a reference at random (all of them find something)
@@ -807,6 +808,15 @@
     $('cal-next').onclick = function () { state.calOff++; paint(); };
     $('cal-today').onclick = function () { state.calOff = 0; state.selected = null; paint(); };
     function setLang(l) { lang = l; t = T[lang]; store('dhammaLanguage', lang); applyLang(); paintKeys(); paint(); }
+    // as in the dictionary: the logo and the name switch the language by a right click or a long press (a short click still goes home)
+    Array.prototype.forEach.call(document.querySelectorAll('#wordmark, .up-shell-logo'), function (el) {
+      var press = null, fired = false;
+      function toggle() { setLang(lang === 'ru' ? 'en' : 'ru'); }
+      el.addEventListener('contextmenu', function (e) { e.preventDefault(); toggle(); });
+      el.addEventListener('pointerdown', function (e) { if (e.pointerType === 'mouse' && e.button !== 0) return; fired = false; press = setTimeout(function () { fired = true; toggle(); }, 600); });
+      ['pointerup', 'pointerleave', 'pointercancel'].forEach(function (n) { el.addEventListener(n, function () { clearTimeout(press); }); });
+      el.addEventListener('click', function (e) { if (fired) { e.preventDefault(); fired = false; } });
+    });
     // Language and theme are the site's own (dhamma-i18n.js, themeswitch.js): this page follows them
     document.addEventListener('dhamma:languagechange', function (e) { var l = ((e.detail && e.detail.language) || '').slice(0, 2) === 'ru' ? 'ru' : 'en'; if (l !== lang) setLang(l); });
     new MutationObserver(function () { var v = document.documentElement.getAttribute('data-bs-theme'); if (v && v !== document.documentElement.getAttribute('data-theme')) { document.documentElement.setAttribute('data-theme', v); document.body.classList.toggle('dark', v === 'dark'); } }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-bs-theme'] });
