@@ -8,7 +8,7 @@
   "title": {
    "pli": "Catumahārājasutta",
    "ru": "Сутта Четыре Великих Царя",
-   "en": "The Four Great Kings (1st)"
+   "en": "The Kings"
   },
   "note": {
    "en": "**On which days:** 14, 15, 8",
@@ -21,7 +21,7 @@
   },
   "pli": "“Aṭṭhamiyaṁ, bhikkhave, pakkhassa catunnaṁ mahārājānaṁ amaccā pārisajjā imaṁ lokaṁ anuvicaranti: ‘kacci bahū manussā manussesu matteyyā petteyyā sāmaññā brahmaññā kule jeṭṭhāpacāyino uposathaṁ upavasanti paṭijāgaronti puññāni karontī’ti.",
   "ru": "“Монахи, на восьмой день половины месяца министры и члены собрания [небесных] Четырёх Великих Царей странствуют по этому миру [с такой мыслью]: “Надеемся, что многие люди, которые ведут себя подобающе со своей матерью и отцом, ведут себя подобающе со шраманами и брахманами, чтят старейшин семьи, соблюдают Упосатху, соблюдают дополнительные дни, совершают накопления заслуг”.",
-  "en": "“On the eighth day of the fortnight, mendicants, the ministers and councillors of the four great kings wander about the world, thinking: ‘Hopefully most humans are paying due respect to their parents, ascetics and brahmins, honoring the elders in their families, observing and keeping vigil on the sabbath, and making merit.’"
+  "en": "“Bhikkhus, on the eighth of the fortnight, the ministers and assembly members of the four great kings wander over this world, [thinking]: ‘We hope there are many people who behave properly toward their mother and father, behave properly toward ascetics and brahmins, honor the elders of the family, observe the uposatha, keep the extra observance days, and do meritorious deeds.’"
  },
  {
   "id": "an3.37-14",
@@ -32,7 +32,7 @@
   "title": {
    "pli": "Catumahārājasutta",
    "ru": "Сутта Четыре Великих Царя",
-   "en": "The Four Great Kings (1st)"
+   "en": "The Kings"
   },
   "note": {
    "en": "**On which days:** 14, 15, 8",
@@ -45,7 +45,7 @@
   },
   "pli": "Cātuddasiṁ, bhikkhave, pakkhassa catunnaṁ mahārājānaṁ puttā imaṁ lokaṁ anuvicaranti: ‘kacci bahū manussā manussesu matteyyā petteyyā sāmaññā brahmaññā kule jeṭṭhāpacāyino uposathaṁ upavasanti paṭijāgaronti puññāni karontī’ti.",
   "ru": "На четырнадцатый день половины месяца сыновья Четырёх Великих Царей странствуют по этому миру [с такой мыслью]: “Надеемся, что многие люди, которые ведут себя подобающе…”",
-  "en": "And on the fourteenth day of the fortnight, the sons of the four great kings wander about the world, thinking: ‘Hopefully most humans are paying due respect to their parents … and making merit.’"
+  "en": "On the fourteenth of the fortnight, the sons of the four great kings wander over this world, [thinking]: ‘We hope there are many people who behave properly toward their mother and father … and do meritorious deeds.’"
  },
  {
   "id": "an3.37-verse",
@@ -59,23 +59,23 @@
    {
     "pli": "‘Cātuddasiṁ pañcadasiṁ, yā ca pakkhassa aṭṭhamī;",
     "ru": "“Четырнадцатый, пятнадцатый день, на день, что в половине месяца восьмой;",
-    "en": "‘Whoever wants to be like me would observe the sabbath"
+    "en": "“‘The person who would be like me should observe the uposatha"
    },
    {
     "pli": "Pāṭihāriyapakkhañca, aṭṭhaṅgasusamāgataṁ;",
     "ru": "А также и в особенные дни, что аспектами восемью полна,",
-    "en": "complete in all eight factors, on the fourteenth and the fifteenth days,"
+    "en": "complete in the eight factors, on the fourteenth, fifteenth,"
    },
    {
     "pli": "Uposathaṁ upavaseyya, yopissa mādiso naro’ti.",
     "ru": "Упосатху должен соблюдать, человек, который хочет быть таким, как я”.",
-    "en": "and the eighth day of the fortnight, as well as on the fortnightly special displays.’"
+    "en": "and eighth of the fortnight, and during special fortnights.’"
    }
   ],
   "title": {
    "pli": "Catumahārājasutta",
    "ru": "Сутта Четыре Великих Царя",
-   "en": "The Four Great Kings (1st)"
+   "en": "The Kings"
   },
   "note": {
    "en": "**On which days:** 14, 15, 8",
@@ -88,7 +88,7 @@
   },
   "pli": "‘Cātuddasiṁ pañcadasiṁ,\nyā ca pakkhassa aṭṭhamī;\nPāṭihāriyapakkhañca,\naṭṭhaṅgasusamāgataṁ;\nUposathaṁ upavaseyya,\nyopissa mādiso naro’ti.",
   "ru": "“Четырнадцатый, пятнадцатый день,\nНа день, что в половине месяца восьмой;\nА также и в особенные дни,\nЧто аспектами восемью полна,\nУпосатху должен соблюдать,\nЧеловек, который хочет быть таким, как я”.",
-  "en": "‘Whoever wants to be like me\nwould observe the sabbath\ncomplete in all eight factors,\non the fourteenth and the fifteenth days,\nand the eighth day of the fortnight,\nas well as on the fortnightly special displays.’"
+  "en": "“‘The person who would be like me\nshould observe the uposatha\ncomplete in the eight factors,\non the fourteenth, fifteenth,\nand eighth of the fortnight,\nand during special fortnights.’"
  },
  {
   "id": "mn146-14",
@@ -99,7 +99,7 @@
   "title": {
    "pli": "Nandakovādasutta",
    "ru": "Совет от Нандаки",
-   "en": "Advice from Nandaka"
+   "en": "Sutta Nandaka’s Exhortation"
   },
   "note": {
    "en": "14th - the moon is not full, 15th - full",
@@ -112,7 +112,7 @@
   },
   "pli": "“seyyathāpi, bhikkhave, tadahuposathe cātuddase na hoti bahuno janassa kaṅkhā vā vimati vā: ‘ūno nu kho cando, puṇṇo nu kho cando’ti, atha kho ūno cando tveva hoti.",
   "ru": "“Монахи, это как на четырнадцатый день, на Упосатху,  найдется не много людей, которые находятся в сомнениях и замешательстве в отношении того полная ли луна или же неполная, поскольку в это время луна абсолютно точно неполная,",
-  "en": "“Suppose, mendicants, it was the sabbath of the fourteenth day. You wouldn’t get lots of people wondering whether the moon is full or not, since it is obviously not full."
+  "en": "“Monks, just as on the uposatha day of the fourteenth, people at large are not doubtful or perplexed as to whether the moon is lacking or full, for it is clearly lacking;"
  },
  {
   "id": "an3.37-15",
@@ -123,7 +123,7 @@
   "title": {
    "pli": "Catumahārājasutta",
    "ru": "Сутта Четыре Великих Царя",
-   "en": "The Four Great Kings (1st)"
+   "en": "The Kings"
   },
   "note": {
    "en": "**On which days:** 14, 15, 8",
@@ -136,7 +136,7 @@
   },
   "pli": "Tadahu, bhikkhave, uposathe pannarase cattāro mahārājāno sāmaññeva imaṁ lokaṁ anuvicaranti: ‘kacci bahū manussā manussesu matteyyā petteyyā sāmaññā brahmaññā kule jeṭṭhāpacāyino uposathaṁ upavasanti paṭijāgaronti puññāni karontī’ti.",
   "ru": "На пятнадцатый день половины месяца сами Четыре Великих Царя странствуют по этому миру [с такой мыслью]: “Надеемся, что многие люди, которые ведут себя подобающе…”",
-  "en": "And on the fifteenth day sabbath, the four great kings themselves wander about the world, thinking: ‘Hopefully most humans are paying due respect to their parents … and making merit.’"
+  "en": "On the fifteenth, the uposatha day, the four great kings themselves wander over this world, [thinking]: ‘We hope there are many people who behave properly toward their mother and father … and do meritorious deeds.’"
  },
  {
   "id": "mn146-15",
@@ -147,7 +147,7 @@
   "title": {
    "pli": "Nandakovādasutta",
    "ru": "Совет от Нандаки",
-   "en": "Advice from Nandaka"
+   "en": "Sutta Nandaka’s Exhortation"
   },
   "note": {
    "en": "14th - the moon is not full, 15th - full",
@@ -160,7 +160,7 @@
   },
   "pli": "“seyyathāpi, bhikkhave, tadahuposathe pannarase na hoti bahuno janassa kaṅkhā vā vimati vā: ‘ūno nu kho cando, puṇṇo nu kho cando’ti, atha kho puṇṇo cando tveva hoti;",
   "ru": "“Монахи, это как на пятнадцатый день, на Упосатху,  найдется не много людей, которые находятся в сомнениях и замешательстве в отношении того полная ли луна или же неполная, поскольку в это время луна абсолютно точно полная,",
-  "en": "“Suppose, mendicants, it was the sabbath of the fifteenth day. You wouldn’t get lots of people wondering whether the moon is full or not, since it is obviously full."
+  "en": "“Monks, just as on the uposatha day of the fifteenth, people at large are not doubtful or perplexed as to whether the moon is lacking or full, for it is clearly full;"
  },
  {
   "id": "mn118-15",
@@ -169,7 +169,7 @@
   "title": {
    "pli": "Ānāpānassatisutta",
    "ru": "Сутта памятования дыхания",
-   "en": "Mindfulness of Breathing"
+   "en": "Sutta Mindfulness of Breathing"
   },
   "note": null,
   "ref": "mn118:3.1",
@@ -179,7 +179,7 @@
   },
   "pli": "Tena kho pana samayena bhagavā tadahuposathe pannarase pavāraṇāya puṇṇāya puṇṇamāya rattiyā bhikkhusaṅghaparivuto abbhokāse nisinno hoti.",
   "ru": "Тем же временем Благословенный в ту упосатху пятнадцатого дня, в паварану, в полнолуние, в ночь полнолуния, монахов-Сангхой (сообществом) окружённый, на открытом месте (пространстве) сидел (сидящим был).",
-  "en": "Now, at that time it was the sabbath—the full moon on the fifteenth day—and the Buddha was sitting surrounded by the Saṅgha of monks for the invitation to admonish."
+  "en": "Now on that occasion—the uposatha day of the fifteenth, the full-moon night of the Pavāraṇā ceremony—the Blessed One was seated in the open air surrounded by the Saṅgha of monks."
  },
  {
   "id": "kd2-gather",
@@ -302,7 +302,7 @@
   "title": {
    "pli": "Catumahārājasutta",
    "ru": "Сутта Четыре Великих Царя",
-   "en": "The Four Great Kings (1st)"
+   "en": "The Kings"
   },
   "note": {
    "en": "**On which days:** 14, 15, 8",
@@ -315,7 +315,7 @@
   },
   "pli": "‘appakā kho, mārisā, manussā manussesu matteyyā petteyyā sāmaññā brahmaññā kule jeṭṭhāpacāyino uposathaṁ upavasanti paṭijāgaronti puññāni karontī’ti. Tena kho, bhikkhave, devā tāvatiṁsā anattamanā honti: ‘dibbā vata, bho, kāyā parihāyissanti, paripūrissanti asurakāyā’ti.",
   "ru": "“Многоуважаемые, мало тех людей, которые ведут себя подобающе… совершают накопления заслуг”. И тогда из-за этого дэвы Таватимсы становятся недовольными, [говоря]: “Увы, небесная свита будет приходить в упадок, а свита асуров будет процветать!”",
-  "en": "‘Only a few humans are paying due respect to their parents … and making merit.’ Then the gods of the thirty-three are disappointed, thinking, ‘The heavenly hosts will dwindle, while the titan hosts will swell!’"
+  "en": "‘Revered sirs, there are few people who behave properly toward their mother and father … and do meritorious deeds.’ Then, because of this, the Tāvatiṃsa devas become displeased, [saying]: ‘Alas, the celestial company will decline and the company of asuras will flourish!’"
  },
  {
   "id": "an3.37-many",
@@ -324,7 +324,7 @@
   "title": {
    "pli": "Catumahārājasutta",
    "ru": "Сутта Четыре Великих Царя",
-   "en": "The Four Great Kings (1st)"
+   "en": "The Kings"
   },
   "note": {
    "en": "**On which days:** 14, 15, 8",
@@ -337,7 +337,7 @@
   },
   "pli": "‘bahū kho, mārisā, manussā manussesu matteyyā petteyyā sāmaññā brahmaññā kule jeṭṭhāpacāyino uposathaṁ upavasanti paṭijāgaronti puññāni karontī’ti. Tena, bhikkhave, devā tāvatiṁsā attamanā honti: ‘dibbā vata bho kāyā paripūrissanti, parihāyissanti asurakāyā’ti.",
   "ru": "“Многоуважаемые, много тех людей, которые ведут себя подобающе… совершают накопления заслуг”. И тогда из-за этого дэвы Таватимсы становятся радостными, [говоря]: “Воистину, небесная свита будет процветать, а свита асуров будет приходит в упадок!”",
-  "en": "‘Many humans are paying due respect to their parents … and making merit.’ Then the gods of the thirty-three are pleased, thinking, ‘The heavenly hosts will swell, while the titan hosts will dwindle!’"
+  "en": "‘Revered sirs, there are many people who behave properly toward their mother and father, behave properly toward ascetics and brahmins, honor the elders of the family, observe the uposatha, keep the extra observance days, and do meritorious deeds.’ Then, because of this, the Tāvatiṃsa devas become elated, [saying]: ‘Indeed, the celestial company will flourish and the company of asuras will decline!’”"
  },
  {
   "id": "mn83",
@@ -372,7 +372,7 @@
   "title": {
    "pli": "Okkhāsutta",
    "ru": "Сутта Котлы",
-   "en": "Cauldrons"
+   "en": "Serving Dishes"
   },
   "note": null,
   "ref": "sn20.4:1.2",
@@ -382,7 +382,7 @@
   },
   "pli": "“Yo, bhikkhave, pubbaṇhasamayaṁ okkhāsataṁ dānaṁ dadeyya, yo majjhanhikasamayaṁ okkhāsataṁ dānaṁ dadeyya, yo sāyanhasamayaṁ okkhāsataṁ dānaṁ dadeyya, yo vā pubbaṇhasamayaṁ antamaso gadduhanamattampi mettacittaṁ bhāveyya, yo vā majjhanhikasamayaṁ antamaso gadduhanamattampi mettacittaṁ bhāveyya, yo vā sāyanhasamayaṁ antamaso gadduhanamattampi mettacittaṁ bhāveyya, idaṁ tato mahapphalataraṁ.",
   "ru": "“Монахи, если бы кто-либо давал бы сотню котлов с едой в качестве подаяния утром, сотню котлов с едой в качестве подаяния днём, сотню котлов с едой в качестве подаяния вечером – и если кто-нибудь другой развивал бы доброжелательный ум даже в течение мгновения, за которое можно было бы дёрнуть корову за вымя, либо утром, либо днём, либо вечером – то последнее было бы более плодотворным, нежели первое.",
-  "en": "“Mendicants, suppose one person was to give a gift of a hundred cauldrons of rice in the morning, at midday, and in the evening. And someone else was to develop a heart of love, even just as long as it takes to pull a cow’s udder. The latter would be more fruitful."
+  "en": "“Monks, if someone were to give a gift of one hundred serving dishes (of food) in the morning, one hundred at mid-day, and one hundred in the evening; and another person were to develop a mind of good-will—even for the time it takes to pull on a cow’s udder—in the morning, again at mid-day, and again in the evening, this [the second action] would be more fruitful than that (the first)."
  },
  {
   "id": "mn53-night",
@@ -391,7 +391,7 @@
   "title": {
    "pli": "Sekhasutta",
    "ru": "Ученик",
-   "en": "A Trainee"
+   "en": "The Practice for One in Training"
   },
   "note": {
    "en": "Three parts of the night",
@@ -404,7 +404,7 @@
   },
   "pli": "rattiyā paṭhamaṁ yāmaṁ caṅkamena nisajjāya āvaraṇīyehi dhammehi cittaṁ parisodheti, rattiyā majjhimaṁ yāmaṁ dakkhiṇena passena sīhaseyyaṁ kappeti, pāde pādaṁ accādhāya, sato sampajāno, uṭṭhānasaññaṁ manasi karitvā, rattiyā pacchimaṁ yāmaṁ paccuṭṭhāya caṅkamena nisajjāya āvaraṇīyehi dhammehi cittaṁ parisodheti.",
   "ru": "В первую стражу ночи, во время хождения вперёд и назад, [а также во время] сидения, он очищает ум от тех состояний, что создают препятствия. В среднюю стражу ночи он ложится на правый бок в позе льва, положив одну ступню на другую, памятующий и сознательный, стояния-сознавание представив. После подъёма, в третью стражу ночи, во время хождения вперёд и назад, [а также во время] сидения, он очищает ум от тех состояний, что создают препятствия.",
-  "en": "In the first watch of the night, they continue to practice walking and sitting meditation. In the middle watch, they lie down in the lion’s posture—on the right side, placing one foot on top of the other—mindful and aware, and focused on the time of getting up. In the last watch, they get up and continue to practice walking and sitting meditation, purifying their mind from obstacles."
+  "en": "During the first watch of the night [dusk to 10 p.m.], sitting & pacing back & forth, he cleanses his mind of any qualities that would hold the mind in check. During the second watch of the night [10 p.m. to 2 a.m.], reclining on his right side, he takes up the lion’s posture, one foot placed on top of the other, mindful, alert, with his mind set on getting up [either as soon as he awakens or at a particular time]. During the last watch of the night [2 a.m. to dawn], sitting & pacing back & forth, he cleanses his mind of any qualities that would hold the mind in check."
  },
  {
   "id": "ud1.1-watch",
@@ -413,7 +413,7 @@
   "title": {
    "pli": "Paṭhamabodhisutta",
    "ru": "Сутта Пробуждение Первая",
-   "en": "Upon Awakening (1st)"
+   "en": ""
   },
   "note": null,
   "ref": "ud1.1:1.4",
@@ -423,7 +423,7 @@
   },
   "pli": "Atha kho bhagavā tassa sattāhassa accayena tamhā samādhimhā vuṭṭhahitvā rattiyā paṭhamaṁ yāmaṁ paṭiccasamuppādaṁ anulomaṁ sādhukaṁ manasākāsi:",
   "ru": "Тогда по окончании этих семи дней Благословенный, оставив это сосредоточение, в течении первой трети ночи, направил основательное представление на осмысление причины возникновения (перерождений) так:",
-  "en": "When seven days had passed, the Buddha emerged from that state of immersion. In the first part of the night, he carefully applied the mind to dependent origination, going with the grain:"
+  "en": "Then, with the passing of seven days, after emerging from that concentration,\nin the first watch of the night, he gave close attention to dependent co-arising in forward order, thus:"
  },
  {
   "id": "an3.70-three",
@@ -436,7 +436,7 @@
   "title": {
    "pli": "Uposathasutta",
    "ru": "Сутта Упосатха",
-   "en": "Sabbath"
+   "en": "The Roots of the Uposatha"
   },
   "note": {
    "en": "**At what time:** night and day · **How:** as the arahants do",
@@ -449,7 +449,7 @@
   },
   "pli": "“Tayo khome, visākhe, uposathā. Katame tayo? Gopālakuposatho, nigaṇṭhuposatho, ariyuposatho.",
   "ru": "“Висакха, есть три вида Упосатхи. Какие три? Пастушья Упосатха. Упосатха Нигантхов. Упосатха Благородных.",
-  "en": "“There are, Visākhā, these three sabbaths. What three? The sabbath of the cowherds, the sabbath of the Jains, and the sabbath of the noble ones."
+  "en": "“Visākhā, there are these three uposathas. Which three? The uposatha of a cowherd, the uposatha of the Jains, and the uposatha of the noble ones."
  },
  {
   "id": "an3.70-noble",
@@ -462,7 +462,7 @@
   "title": {
    "pli": "Uposathasutta",
    "ru": "Сутта Упосатха",
-   "en": "Sabbath"
+   "en": "The Roots of the Uposatha"
   },
   "note": {
    "en": "**At what time:** night and day · **How:** as the arahants do",
@@ -475,7 +475,7 @@
   },
   "pli": "Kathañca, visākhe, ariyuposatho hoti? Upakkiliṭṭhassa, visākhe, cittassa upakkamena pariyodapanā hoti. Kathañca, visākhe, upakkiliṭṭhassa cittassa upakkamena pariyodapanā hoti?",
   "ru": "И как, Висакха, соблюдается Упосатха Благородных? Загрязнённый ум очищается приложением старания. И как загрязнённый ум очищается приложением старания?",
-  "en": "And what is the sabbath of the noble ones? A corrupt mind is cleaned by exertion. And how is a corrupt mind cleaned by exertion?"
+  "en": "“And what is the uposatha of the noble ones? It is the cleansing of the defiled mind through the proper technique. And how is the defiled mind cleansed through the proper technique?"
  },
  {
   "id": "an3.70-vow",
@@ -488,7 +488,7 @@
   "title": {
    "pli": "Uposathasutta",
    "ru": "Сутта Упосатха",
-   "en": "Sabbath"
+   "en": "The Roots of the Uposatha"
   },
   "note": {
    "en": "**At what time:** night and day · **How:** as the arahants do",
@@ -501,7 +501,7 @@
   },
   "pli": "Sa kho so, visākhe, ariyasāvako iti paṭisañcikkhati: ‘yāvajīvaṁ arahanto pāṇātipātaṁ pahāya pāṇātipātā paṭiviratā nihitadaṇḍā nihitasatthā lajjī dayāpannā sabbapāṇabhūtahitānukampī viharanti; ahampajja imañca rattiṁ imañca divasaṁ pāṇātipātaṁ pahāya pāṇātipātā paṭivirato nihitadaṇḍo nihitasattho lajjī dayāpanno sabbapāṇabhūtahitānukampī viharāmi. Imināpi aṅgena arahataṁ anukaromi, uposatho ca me upavuttho bhavissati.",
   "ru": "Этот ученик Благородных, Висакха, рассуждает так: “Покуда они живы, араханты, отбросив уничтожение жизни, отказались от уничтожения жизни. Они пребывают в сострадании ко всем живым существам, отбросив дубину и оружие, добросовестные и милосердные. Сегодня, в течение этой ночи и дня, я также, отбросив уничтожения жизни я откажусь от уничтожения жизни. Я также буду пребывать в сострадании ко всем живым существам, отбросив дубину и оружие, добросовестным и милосердным. Так, в этом отношении, я буду подражать арахантам и буду соблюдать Упосатху.",
-  "en": "Then that noble disciple reflects: ‘As long as they live, the perfected ones give up killing living creatures, renouncing the rod and the sword. They are scrupulous and kind, and live full of sympathy for all living beings. I, too, for this day and night will give up killing living creatures, renouncing the rod and the sword. I’ll be scrupulous and kind, and live full of sympathy for all living beings. I will observe the sabbath by doing as the perfected ones do in this respect."
+  "en": "“And further, the disciple of the noble ones reflects thus: ‘As long as they live, the arahants—abandoning the taking of life—abstain from the taking of life. They dwell with their rod laid down, their knife laid down, scrupulous, merciful, compassionate for the welfare of all living beings. Today I too, for this day & night—abandoning the taking of life—abstain from the taking of life. I dwell with my rod laid down, my knife laid down, scrupulous, merciful, compassionate for the welfare of all living beings. By means of this factor I emulate the arahants, and my uposatha will be observed."
  },
  {
   "id": "snp2.14-factors",
@@ -511,18 +511,18 @@
    {
     "pli": "Mālaṁ na dhāre na ca gandhamācare, mañce chamāyaṁ va sayetha santhate;",
     "ru": "И не носи гирлянд, духов не применяй, спи на циновке на земле или [такой] постели.",
-    "en": "Not wearing garlands or applying fragrance, you should sleep on a low bed, or a mat on the ground."
+    "en": "should not wear a garland or use scents, should sleep on a bed, on the ground, or on a mat,"
    },
    {
     "pli": "Etañhi aṭṭhaṅgikamāhuposathaṁ, buddhena dukkhantagunā pakāsitaṁ.",
     "ru": "Ведь восьмиаспектной Упосатхи такому соблюдению [Сам] Будда научил, положивший конец боли.",
-    "en": "This is the eight-factored sabbath, they say, revealed by the Buddha, who has gone to suffering’s end."
+    "en": "For this, they say, is the eightfold uposatha, proclaimed by the Awakened One who has gone to the end of suffering & stress."
    }
   ],
   "title": {
    "pli": "Dhammikasutta",
    "ru": "Сутта Дхаммика",
-   "en": "With Dhammika"
+   "en": ""
   },
   "note": null,
   "ref": "snp2.14:27.1",
@@ -532,7 +532,7 @@
   },
   "pli": "Mālaṁ na dhāre na ca gandhamācare,\nMañce chamāyaṁ va sayetha santhate;\nEtañhi aṭṭhaṅgikamāhuposathaṁ,\nBuddhena dukkhantagunā pakāsitaṁ.",
   "ru": "И не носи гирлянд, духов не применяй,\nСпи на циновке на земле или [такой] постели.\nВедь восьмиаспектной Упосатхи такому соблюдению\n[Сам] Будда научил, положивший конец боли.",
-  "en": "Not wearing garlands or applying fragrance,\nyou should sleep on a low bed, or a mat on the ground.\nThis is the eight-factored sabbath, they say,\nrevealed by the Buddha, who has gone to suffering’s end."
+  "en": "should not wear a garland or use scents,\nshould sleep on a bed, on the ground, or on a mat,\nFor this, they say, is the eightfold uposatha,\nproclaimed by the Awakened One who has gone to the end of suffering & stress."
  },
  {
   "id": "snp2.14-days",
@@ -542,18 +542,18 @@
    {
     "pli": "Tato ca pakkhassupavassuposathaṁ, cātuddasiṁ pañcadasiñca aṭṭhamiṁ;",
     "ru": "Уверенный в уме, когда её провёл – упосатху, что в аспектах восьми была полна",
-    "en": "Then having rightly undertaken the sabbath complete in all its eight factors"
+    "en": "Then, having kept, well-accomplished, the eightfold uposatha on the fourteenth, fifteenth, & eighth of the fortnight,"
    },
    {
     "pli": "Pāṭihāriyapakkhañca pasannamānaso, aṭṭhaṅgupetaṁ susamattarūpaṁ.",
     "ru": "На день четырнадцатый, на пятнадцатый, а также на восьмой, и по особым дням –",
-    "en": "on the fourteenth, fifteenth, and eighth of the fortnight, as well as on the fortnightly special displays,"
+    "en": "and on special days of the fortnight, with clear & confident mind, the observant person"
    }
   ],
   "title": {
    "pli": "Dhammikasutta",
    "ru": "Сутта Дхаммика",
-   "en": "With Dhammika"
+   "en": ""
   },
   "note": null,
   "ref": "snp2.14:28.1",
@@ -563,7 +563,7 @@
   },
   "pli": "Tato ca pakkhassupavassuposathaṁ,\nCātuddasiṁ pañcadasiñca aṭṭhamiṁ;\nPāṭihāriyapakkhañca pasannamānaso,\nAṭṭhaṅgupetaṁ susamattarūpaṁ.",
   "ru": "Уверенный в уме, когда её провёл –\nУпосатху, что в аспектах восьми была полна\nНа день четырнадцатый, на пятнадцатый,\nА также на восьмой, и по особым дням –",
-  "en": "Then having rightly undertaken the sabbath\ncomplete in all its eight factors\non the fourteenth, fifteenth, and eighth of the fortnight,\nas well as on the fortnightly special displays,"
+  "en": "Then, having kept, well-accomplished, the eightfold uposatha\non the fourteenth, fifteenth, & eighth of the fortnight,\nand on special days of the fortnight, with clear & confident mind, the observant person"
  },
  {
   "id": "snp2.14-dawn",
@@ -573,18 +573,18 @@
    {
     "pli": "Tato ca pāto upavutthuposatho, annena pānena ca bhikkhusaṅghaṁ;",
     "ru": "То утром мудрый [этот] человек, который [всю эту] Упосатху провёл,",
-    "en": "at daybreak after the sabbath a clever person, rejoicing with confident heart,"
+    "en": "at dawn after the uposatha,"
    },
    {
     "pli": "Pasannacitto anumodamāno, yathārahaṁ saṁvibhajetha viññū.",
     "ru": "С умом уверенным, довольный, он разделит, как подобает, с Сангхой пищу и напитки.",
-    "en": "would distribute food and drink to the mendicant Saṅgha as is fitting."
+    "en": "confident, rejoicing, should share food & drink, as is proper, with the Saṅgha of monks."
    }
   ],
   "title": {
    "pli": "Dhammikasutta",
    "ru": "Сутта Дхаммика",
-   "en": "With Dhammika"
+   "en": ""
   },
   "note": null,
   "ref": "snp2.14:29.1",
@@ -594,7 +594,7 @@
   },
   "pli": "Tato ca pāto upavutthuposatho,\nAnnena pānena ca bhikkhusaṅghaṁ;\nPasannacitto anumodamāno,\nYathārahaṁ saṁvibhajetha viññū.",
   "ru": "То утром мудрый [этот] человек,\nКоторый [всю эту] Упосатху провёл,\nС умом уверенным, довольный, он разделит,\nКак подобает, с Сангхой пищу и напитки.",
-  "en": "at daybreak after the sabbath\na clever person, rejoicing with confident heart,\nwould distribute food and drink\nto the mendicant Saṅgha as is fitting."
+  "en": "at dawn after the uposatha,\nconfident, rejoicing,\nshould share food & drink, as is proper, with the Saṅgha of monks."
  },
  {
   "id": "an8.41",
@@ -662,7 +662,7 @@
   "title": {
    "pli": "Sakkasutta",
    "ru": "Сакка Сутта",
-   "en": "With the Sakyans"
+   "en": "To the Sakyans"
   },
   "note": {
    "en": "Not to be skipped",
@@ -675,7 +675,7 @@
   },
   "pli": "“Tesaṁ vo, sakkā, alābhā tesaṁ dulladdhaṁ, ye tumhe evaṁ sokasabhaye jīvite maraṇasabhaye jīvite appekadā aṭṭhaṅgasamannāgataṁ uposathaṁ upavasatha, appekadā na upavasatha.",
   "ru": "“Это ваша, Сакьи, потеря, это ваша неудача, что вы так в жизни с опасностью страдания, в жизни с опасностью смерти иногда соблюдаете восьмичастную упосатху, иногда не соблюдаете.",
-  "en": "“That’s your loss, Sakyans, it’s your misfortune. In this life with its fear of sorrow and death, you sometimes keep the sabbath and you sometimes don’t."
+  "en": "“It’s no gain for you, Sakyans. It’s ill-gotten, that in this life so endangered by grief, in this life so endangered by death, you sometimes observe the eight-factored uposatha and sometimes don’t."
  },
  {
   "id": "an10.119:1.1",
@@ -792,7 +792,7 @@
   "title": {
    "pli": "Sakkasutta",
    "ru": "Сакка Сутта",
-   "en": "With the Sakyans"
+   "en": "To the Sakyans"
   },
   "ref": "an10.46:1.2",
   "cite": {
@@ -801,7 +801,7 @@
   },
   "pli": "Atha kho sambahulā sakkā upāsakā tadahuposathe yena bhagavā tenupasaṅkamiṁsu; upasaṅkamitvā bhagavantaṁ abhivādetvā ekamantaṁ nisīdiṁsu. Ekamantaṁ nisinne kho sakke upāsake bhagavā etadavoca:",
   "ru": "Тогда же множество Сакьев мирских последователей, в ту упосатху подошли к Благословенному; подойдя, Благословенного поприветствовав, с одной стороны сели. С одной стороны севшим же Сакьям мирским последователям Благословенный так сказал:",
-  "en": "Then on the sabbath several Sakyan lay followers went up to the Buddha, bowed, and sat down to one side. The Buddha said to them:"
+  "en": "Then many Sakyan lay followers, it being the uposatha day, went to the Blessed One. On arrival, having bowed down to him, they sat to one side. As they were sitting there, the Blessed One said to them,"
  },
  {
   "id": "an10.46:1.3",
@@ -810,7 +810,7 @@
   "title": {
    "pli": "Sakkasutta",
    "ru": "Сакка Сутта",
-   "en": "With the Sakyans"
+   "en": "To the Sakyans"
   },
   "ref": "an10.46:1.3",
   "cite": {
@@ -819,7 +819,7 @@
   },
   "pli": "“api nu tumhe, sakkā, aṭṭhaṅgasamannāgataṁ uposathaṁ upavasathā”ti?",
   "ru": "“Вы, Сакьи, восьмичастную (восьми-аспекто-наделённую) упосатху соблюдаете ли?”",
-  "en": "“Sakyans, do you observe the sabbath with its eight factors?”"
+  "en": "“Sakyans, do you observe the eight-factored uposatha?”"
  },
  {
   "id": "an10.46:1.4",
@@ -828,7 +828,7 @@
   "title": {
    "pli": "Sakkasutta",
    "ru": "Сакка Сутта",
-   "en": "With the Sakyans"
+   "en": "To the Sakyans"
   },
   "ref": "an10.46:1.4",
   "cite": {
@@ -837,7 +837,7 @@
   },
   "pli": "“Appekadā mayaṁ, bhante, aṭṭhaṅgasamannāgataṁ uposathaṁ upavasāma, appekadā na upavasāmā”ti.",
   "ru": "“Иногда мы, почтенный, восьмичастную упосатху соблюдаем, иногда не соблюдаем”.",
-  "en": "“Sir, sometimes we do, sometimes we don’t.”"
+  "en": "“Sometimes we do, lord, and sometimes we don’t.”"
  },
  {
   "id": "an10.46:12.10",
@@ -846,7 +846,7 @@
   "title": {
    "pli": "Sakkasutta",
    "ru": "Сакка Сутта",
-   "en": "With the Sakyans"
+   "en": "To the Sakyans"
   },
   "ref": "an10.46:12.10",
   "cite": {
@@ -855,7 +855,7 @@
   },
   "pli": "Tesaṁ vo, sakkā, alābhā tesaṁ dulladdhaṁ, ye tumhe evaṁ sokasabhaye jīvite maraṇasabhaye jīvite appekadā aṭṭhaṅgasamannāgataṁ uposathaṁ upavasatha, appekadā na upavasathā”ti.",
   "ru": "Это ваша, Сакьи, потеря, это ваша неудача, что вы так в жизни с опасностью страдания, в жизни с опасностью смерти иногда соблюдаете восьмичастную упосатху, иногда не соблюдаете”.",
-  "en": "It’s your loss, Sakyans, it’s your misfortune. In this life with its fear of sorrow and death, you sometimes keep the sabbath and you sometimes don’t.”"
+  "en": "“It’s no gain for you, Sakyans. It’s ill-gotten, that in this life so endangered by grief, in this life so endangered by death, you sometimes observe the eight-factored uposatha and sometimes don’t.”"
  },
  {
   "id": "an10.46:12.11",
@@ -864,7 +864,7 @@
   "title": {
    "pli": "Sakkasutta",
    "ru": "Сакка Сутта",
-   "en": "With the Sakyans"
+   "en": "To the Sakyans"
   },
   "ref": "an10.46:12.11",
   "cite": {
@@ -873,7 +873,7 @@
   },
   "pli": "“Ete mayaṁ, bhante, ajjatagge aṭṭhaṅgasamannāgataṁ uposathaṁ upavasissāmā”ti.",
   "ru": "“Мы, почтенный, отныне восьмичастную упосатху соблюдать будем”.",
-  "en": "“Well, sir, from this day forth we will observe the sabbath with its eight factors.”"
+  "en": "“Then from this day forward, lord, we will observe the eight-factored uposatha.”"
  },
  {
   "id": "an10.67:1.3",
@@ -918,7 +918,7 @@
   "title": {
    "pli": "Catumahārājasutta",
    "ru": "Сутта Четыре Великих Царя",
-   "en": "The Four Great Kings (1st)"
+   "en": "The Kings"
   },
   "ref": "an3.37:2.1",
   "cite": {
@@ -927,7 +927,7 @@
   },
   "pli": "Sace, bhikkhave, appakā honti manussā manussesu matteyyā petteyyā sāmaññā brahmaññā kule jeṭṭhāpacāyino uposathaṁ upavasanti paṭijāgaronti puññāni karonti.",
   "ru": "Если, монахи, мало людей [в мире], которые ведут себя подобающе…",
-  "en": "If only a few humans are paying due respect to their parents … and making merit,"
+  "en": "“If, bhikkhus, there are few people who behave properly toward their mother and father … and do meritorious deeds,"
  },
  {
   "id": "an3.37:3.1",
@@ -936,7 +936,7 @@
   "title": {
    "pli": "Catumahārājasutta",
    "ru": "Сутта Четыре Великих Царя",
-   "en": "The Four Great Kings (1st)"
+   "en": "The Kings"
   },
   "ref": "an3.37:3.1",
   "cite": {
@@ -945,7 +945,7 @@
   },
   "pli": "Sace pana, bhikkhave, bahū honti manussā manussesu matteyyā petteyyā sāmaññā brahmaññā kule jeṭṭhāpacāyino uposathaṁ upavasanti paṭijāgaronti puññāni karonti.",
   "ru": "Но если много людей [в мире], которые ведут себя подобающе…",
-  "en": "But if many humans are paying due respect to their parents … and making merit,"
+  "en": "“But if there are many people who behave properly toward their mother and father …"
  },
  {
   "id": "an3.70:1.3",
@@ -954,7 +954,7 @@
   "title": {
    "pli": "Uposathasutta",
    "ru": "Сутта Упосатха",
-   "en": "Sabbath"
+   "en": "The Roots of the Uposatha"
   },
   "ref": "an3.70:1.3",
   "cite": {
@@ -963,7 +963,7 @@
   },
   "pli": "Atha kho visākhā migāramātā tadahuposathe yena bhagavā tenupasaṅkami; upasaṅkamitvā bhagavantaṁ abhivādetvā ekamantaṁ nisīdi. Ekamantaṁ nisinnaṁ kho visākhaṁ migāramātaraṁ bhagavā etadavoca:",
   "ru": "И тогда на день Упосатхи Висакха Мигарамата подошла к Благословенному, поклонилась ему и села рядом. Тогда Благословенный сказал ей:",
-  "en": "Then Visākhā, Migāra’s mother, went up to the Buddha, bowed, and sat down to one side. The Buddha said to her,"
+  "en": "Now at that time—it being the uposatha day—Visākhā, Migāra’s mother, went to the Blessed One in the middle of the day and, on arrival, having bowed down to him, sat to one side."
  },
  {
   "id": "an3.70:1.5",
@@ -972,7 +972,7 @@
   "title": {
    "pli": "Uposathasutta",
    "ru": "Сутта Упосатха",
-   "en": "Sabbath"
+   "en": "The Roots of the Uposatha"
   },
   "ref": "an3.70:1.5",
   "cite": {
@@ -981,7 +981,7 @@
   },
   "pli": "“Uposathāhaṁ, bhante, ajja upavasāmī”ti.",
   "ru": "“Сегодня, почтенный, я соблюдаю Упосатху”.",
-  "en": "“Today, sir, I’m observing the sabbath.”"
+  "en": "“Today I am observing the uposatha, lord.”"
  },
  {
   "id": "an3.70:2.4",
@@ -990,7 +990,7 @@
   "title": {
    "pli": "Uposathasutta",
    "ru": "Сутта Упосатха",
-   "en": "Sabbath"
+   "en": "The Roots of the Uposatha"
   },
   "ref": "an3.70:2.4",
   "cite": {
@@ -999,7 +999,7 @@
   },
   "pli": "Kathañca, visākhe, gopālakuposatho hoti?",
   "ru": "И как, Висакха, соблюдается пастушья Упосатха?",
-  "en": "And what is the sabbath of the cowherds?"
+  "en": "“And what is the uposatha of a cowherd?"
  },
  {
   "id": "an3.70:2.8",
@@ -1008,7 +1008,7 @@
   "title": {
    "pli": "Uposathasutta",
    "ru": "Сутта Упосатха",
-   "en": "Sabbath"
+   "en": "The Roots of the Uposatha"
   },
   "ref": "an3.70:2.8",
   "cite": {
@@ -1017,7 +1017,7 @@
   },
   "pli": "evamevaṁ kho, visākhe, idhekacco uposathiko iti paṭisañcikkhati:",
   "ru": "Точно так же, бывает так, когда некий человек, соблюдая Упосатху, рассуждает так:",
-  "en": "In the same way, someone keeping the sabbath reflects:"
+  "en": "in the same way, there is the case where a certain person observing the uposatha reflects,"
  },
  {
   "id": "an3.70:2.12",
@@ -1026,7 +1026,7 @@
   "title": {
    "pli": "Uposathasutta",
    "ru": "Сутта Упосатха",
-   "en": "Sabbath"
+   "en": "The Roots of the Uposatha"
   },
   "ref": "an3.70:2.12",
   "cite": {
@@ -1035,7 +1035,7 @@
   },
   "pli": "Evaṁ kho, visākhe, gopālakuposatho hoti.",
   "ru": "Вот каким образом соблюдается пастушья Упосатха.",
-  "en": "That’s the sabbath of the cowherds."
+  "en": "Such is the uposatha of a cowherd, Visākhā."
  },
  {
   "id": "an3.70:2.13",
@@ -1044,7 +1044,7 @@
   "title": {
    "pli": "Uposathasutta",
    "ru": "Сутта Упосатха",
-   "en": "Sabbath"
+   "en": "The Roots of the Uposatha"
   },
   "ref": "an3.70:2.13",
   "cite": {
@@ -1053,7 +1053,7 @@
   },
   "pli": "Evaṁ upavuttho kho, visākhe, gopālakuposatho na mahapphalo hoti na mahānisaṁso na mahājutiko na mahāvipphāro.",
   "ru": "Подобным образом соблюдаемая пастушья Упосатха не приносит большого плода и результата, как и не является неимоверно сверкающей и всепроникающей.",
-  "en": "When the cowherd’s sabbath is observed like this it’s not very fruitful or beneficial or brilliant or bountiful."
+  "en": "When this uposatha of a cowherd is undertaken, it is not of great fruit or great benefit, not of great glory or great radiance."
  },
  {
   "id": "an3.70:3.1",
@@ -1062,7 +1062,7 @@
   "title": {
    "pli": "Uposathasutta",
    "ru": "Сутта Упосатха",
-   "en": "Sabbath"
+   "en": "The Roots of the Uposatha"
   },
   "ref": "an3.70:3.1",
   "cite": {
@@ -1071,7 +1071,7 @@
   },
   "pli": "Kathañca, visākhe, nigaṇṭhuposatho hoti?",
   "ru": "И как, Висакха, соблюдается Упосатха Нигантхов?",
-  "en": "And what is the sabbath of the Jains?"
+  "en": "“And what is the uposatha of the Jains?"
  },
  {
   "id": "an3.70:3.9",
@@ -1080,7 +1080,7 @@
   "title": {
    "pli": "Uposathasutta",
    "ru": "Сутта Упосатха",
-   "en": "Sabbath"
+   "en": "The Roots of the Uposatha"
   },
   "ref": "an3.70:3.9",
   "cite": {
@@ -1089,7 +1089,7 @@
   },
   "pli": "Te tadahuposathe sāvakaṁ evaṁ samādapenti:",
   "ru": "На день Упосатхи они предписывают своим последователям следующее:",
-  "en": "On the sabbath, they encourage their disciple:"
+  "en": "“On the uposatha day, they get their disciple to undertake the following practice:"
  },
  {
   "id": "an3.70:3.28",
@@ -1098,7 +1098,7 @@
   "title": {
    "pli": "Uposathasutta",
    "ru": "Сутта Упосатха",
-   "en": "Sabbath"
+   "en": "The Roots of the Uposatha"
   },
   "ref": "an3.70:3.28",
   "cite": {
@@ -1107,7 +1107,7 @@
   },
   "pli": "Evaṁ kho, visākhe, nigaṇṭhuposatho hoti.",
   "ru": "Вот каким образом соблюдается Упосатха Нигантхов.",
-  "en": "That’s the sabbath of the Jains."
+  "en": "Such is the uposatha of the Jains, Visākhā."
  },
  {
   "id": "an3.70:3.29",
@@ -1116,7 +1116,7 @@
   "title": {
    "pli": "Uposathasutta",
    "ru": "Сутта Упосатха",
-   "en": "Sabbath"
+   "en": "The Roots of the Uposatha"
   },
   "ref": "an3.70:3.29",
   "cite": {
@@ -1125,7 +1125,7 @@
   },
   "pli": "Evaṁ upavuttho kho, visākhe, nigaṇṭhuposatho na mahapphalo hoti na mahānisaṁso na mahājutiko na mahāvipphāro.",
   "ru": "Подобным образом соблюдаемая Упосатха Нигантхов не приносит большого плода и результата, как и не является неимоверно сверкающей и всепроникающей.",
-  "en": "When the Jain’s sabbath is observed like this it’s not very fruitful or beneficial or brilliant or bountiful."
+  "en": "When this uposatha of the Jains is undertaken, it is not of great fruit or great benefit, not of great glory or great radiance."
  },
  {
   "id": "an3.70:6.6",
@@ -1134,7 +1134,7 @@
   "title": {
    "pli": "Uposathasutta",
    "ru": "Сутта Упосатха",
-   "en": "Sabbath"
+   "en": "The Roots of the Uposatha"
   },
   "ref": "an3.70:6.6",
   "cite": {
@@ -1143,7 +1143,7 @@
   },
   "pli": "‘ariyasāvako brahmuposathaṁ upavasati, brahmunā saddhiṁ saṁvasati, brahmañcassa ārabbha cittaṁ pasīdati, pāmojjaṁ uppajjati, ye cittassa upakkilesā te pahīyanti’.",
   "ru": "учеником Благородных, который соблюдает Упосатху Брахмы, который пребывает с Брахмой, и размышляя о Брахме, его ум становится безмятежным, возникает радость, и загрязнения ума отбрасываются.",
-  "en": "‘A noble disciple who observes the sabbath of the divinity, living together with the divinity. And because they think of the divinity their mind becomes clear, joy arises, and mental corruptions are given up.’"
+  "en": "He lives with Brahmā [= the Buddha]. It is owing to Brahmā that his mind is calmed, that joy arises, and that whatever defilements there are in his mind are abandoned."
  },
  {
   "id": "an3.70:9.5",
@@ -1152,7 +1152,7 @@
   "title": {
    "pli": "Uposathasutta",
    "ru": "Сутта Упосатха",
-   "en": "Sabbath"
+   "en": "The Roots of the Uposatha"
   },
   "ref": "an3.70:9.5",
   "cite": {
@@ -1161,7 +1161,7 @@
   },
   "pli": "Ayaṁ vuccati, visākhe, ‘ariyasāvako dhammuposathaṁ upavasati, dhammena saddhiṁ saṁvasati, dhammañcassa ārabbha cittaṁ pasīdati, pāmojjaṁ uppajjati, ye cittassa upakkilesā te pahīyanti’.",
   "ru": "Такой человек зовётся учеником Благородных, который соблюдает Упосатху Дхаммы, который пребывает с Дхаммой, и размышляя о Дхамме, его ум становится безмятежным, возникает радость, и загрязнения ума отбрасываются.",
-  "en": "This is called: ‘A noble disciple who observes the sabbath of Dhamma, living together with Dhamma. And because they think of the Dhamma their mind becomes clear, joy arises, and mental corruptions are given up.’"
+  "en": "He is thus called a disciple of the noble ones undertaking the Dhamma-uposatha. He lives with Dhamma. It is owing to Dhamma that his mind is calmed, that joy arises, and that whatever defilements there are in his mind are abandoned."
  },
  {
   "id": "an3.70:12.5",
@@ -1170,7 +1170,7 @@
   "title": {
    "pli": "Uposathasutta",
    "ru": "Сутта Упосатха",
-   "en": "Sabbath"
+   "en": "The Roots of the Uposatha"
   },
   "ref": "an3.70:12.5",
   "cite": {
@@ -1179,7 +1179,7 @@
   },
   "pli": "Ayaṁ vuccati, visākhe, ‘ariyasāvako saṅghuposathaṁ upavasati, saṅghena saddhiṁ saṁvasati, saṅghañcassa ārabbha cittaṁ pasīdati, pāmojjaṁ uppajjati, ye cittassa upakkilesā te pahīyanti’.",
   "ru": "Такой человек зовётся учеником Благородных, который соблюдает Упосатху Сангхи, который пребывает с Сангхой, и размышляя о Сангхе, его ум становится безмятежным, возникает радость, и загрязнения ума отбрасываются.",
-  "en": "This is called: ‘A noble disciple who observes the sabbath of the Saṅgha, living together with the Saṅgha. And because they think of the Saṅgha their mind becomes clear, joy arises, and mental corruptions are given up.’"
+  "en": "He is thus called a disciple of the noble ones undertaking the Saṅgha-uposatha. He lives with the Saṅgha. It is owing to the Saṅgha that his mind is calmed, that joy arises, and that whatever defilements there are in his mind are abandoned."
  },
  {
   "id": "an3.70:15.4",
@@ -1188,7 +1188,7 @@
   "title": {
    "pli": "Uposathasutta",
    "ru": "Сутта Упосатха",
-   "en": "Sabbath"
+   "en": "The Roots of the Uposatha"
   },
   "ref": "an3.70:15.4",
   "cite": {
@@ -1197,7 +1197,7 @@
   },
   "pli": "Ayaṁ vuccati, visākhe, ‘ariyasāvako sīluposathaṁ upavasati, sīlena saddhiṁ saṁvasati, sīlañcassa ārabbha cittaṁ pasīdati, pāmojjaṁ uppajjati, ye cittassa upakkilesā te pahīyanti’.",
   "ru": "Такой человек зовётся учеником Благородных, который соблюдает Упосатху нравственного поведения, который пребывает с нравственным поведением, и размышляя о нравственном поведении, его ум становится безмятежным, возникает радость, и загрязнения ума отбрасываются.",
-  "en": "This is called: ‘A noble disciple who observes the sabbath of ethical conduct, living together with ethics. And because they think of their ethical conduct their mind becomes clear, joy arises, and mental corruptions are given up.’"
+  "en": "He is thus called a disciple of the noble ones undertaking the virtue-uposatha. He lives with virtue. It is owing to virtue that his mind is calmed, that joy arises, and that whatever defilements there are in his mind are abandoned."
  },
  {
   "id": "an3.70:18.10",
@@ -1206,7 +1206,7 @@
   "title": {
    "pli": "Uposathasutta",
    "ru": "Сутта Упосатха",
-   "en": "Sabbath"
+   "en": "The Roots of the Uposatha"
   },
   "ref": "an3.70:18.10",
   "cite": {
@@ -1215,7 +1215,7 @@
   },
   "pli": "Ayaṁ vuccati, visākhe, ‘ariyasāvako devatuposathaṁ upavasati, devatāhi saddhiṁ saṁvasati, devatā ārabbha cittaṁ pasīdati, pāmojjaṁ uppajjati, ye cittassa upakkilesā te pahīyanti’.",
   "ru": "Такой человек зовётся учеником Благородных, который соблюдает Упосатху божеств, который пребывает с божествами, и размышляя о божествах, его ум становится безмятежным, возникает радость, и загрязнения ума отбрасываются.",
-  "en": "This is called: ‘A noble disciple who observes the sabbath of the deities, living together with the deities. And because they think of the deities their mind becomes clear, joy arises, and mental corruptions are given up.’"
+  "en": "He is thus called a disciple of the noble ones undertaking the Deva-uposatha. He lives with the devas. It is owing to the devas that his mind is calmed, that joy arises, and that whatever defilements there are in his mind are abandoned."
  },
  {
   "id": "an3.70:20.3",
@@ -1224,7 +1224,7 @@
   "title": {
    "pli": "Uposathasutta",
    "ru": "Сутта Упосатха",
-   "en": "Sabbath"
+   "en": "The Roots of the Uposatha"
   },
   "ref": "an3.70:20.3",
   "cite": {
@@ -1233,7 +1233,7 @@
   },
   "pli": "Imināpi aṅgena arahataṁ anukaromi, uposatho ca me upavuttho bhavissati.",
   "ru": "Так, в этом отношении, я буду подражать арахантам и буду соблюдать Упосатху.",
-  "en": "I will observe the sabbath by doing as the perfected ones do in this respect."
+  "en": "By means of this factor I emulate the arahants, and my uposatha will be observed."
  },
  {
   "id": "an3.70:21.3",
@@ -1242,7 +1242,7 @@
   "title": {
    "pli": "Uposathasutta",
    "ru": "Сутта Упосатха",
-   "en": "Sabbath"
+   "en": "The Roots of the Uposatha"
   },
   "ref": "an3.70:21.3",
   "cite": {
@@ -1251,7 +1251,7 @@
   },
   "pli": "Imināpi aṅgena arahataṁ anukaromi, uposatho ca me upavuttho bhavissati.",
   "ru": "Так, в этом отношении, я буду подражать арахантам и буду соблюдать Упосатху.",
-  "en": "I will observe the sabbath by doing as the perfected ones do in this respect."
+  "en": "By means of this factor I emulate the arahants, and my uposatha will be observed."
  },
  {
   "id": "an3.70:22.3",
@@ -1260,7 +1260,7 @@
   "title": {
    "pli": "Uposathasutta",
    "ru": "Сутта Упосатха",
-   "en": "Sabbath"
+   "en": "The Roots of the Uposatha"
   },
   "ref": "an3.70:22.3",
   "cite": {
@@ -1269,7 +1269,7 @@
   },
   "pli": "Imināpi aṅgena arahataṁ anukaromi, uposatho ca me upavuttho bhavissati.",
   "ru": "Так, в этом отношении, я буду подражать арахантам и буду соблюдать Упосатху.",
-  "en": "I will observe the sabbath by doing as the perfected ones do in this respect."
+  "en": "By means of this factor I emulate the arahants, and my uposatha will be observed."
  },
  {
   "id": "an3.70:23.3",
@@ -1278,7 +1278,7 @@
   "title": {
    "pli": "Uposathasutta",
    "ru": "Сутта Упосатха",
-   "en": "Sabbath"
+   "en": "The Roots of the Uposatha"
   },
   "ref": "an3.70:23.3",
   "cite": {
@@ -1287,7 +1287,7 @@
   },
   "pli": "Imināpi aṅgena arahataṁ anukaromi, uposatho ca me upavuttho bhavissati.",
   "ru": "Так, в этом отношении, я буду подражать арахантам и буду соблюдать Упосатху.",
-  "en": "I will observe the sabbath by doing as the perfected ones do in this respect."
+  "en": "By means of this factor I emulate the arahants, and my uposatha will be observed."
  },
  {
   "id": "an3.70:24.3",
@@ -1296,7 +1296,7 @@
   "title": {
    "pli": "Uposathasutta",
    "ru": "Сутта Упосатха",
-   "en": "Sabbath"
+   "en": "The Roots of the Uposatha"
   },
   "ref": "an3.70:24.3",
   "cite": {
@@ -1305,7 +1305,7 @@
   },
   "pli": "Imināpi aṅgena arahataṁ anukaromi, uposatho ca me upavuttho bhavissati.",
   "ru": "Так, в этом отношении, я буду подражать арахантам и буду соблюдать Упосатху.",
-  "en": "I will observe the sabbath by doing as the perfected ones do in this respect."
+  "en": "By means of this factor I emulate the arahants, and my uposatha will be observed."
  },
  {
   "id": "an3.70:25.3",
@@ -1314,7 +1314,7 @@
   "title": {
    "pli": "Uposathasutta",
    "ru": "Сутта Упосатха",
-   "en": "Sabbath"
+   "en": "The Roots of the Uposatha"
   },
   "ref": "an3.70:25.3",
   "cite": {
@@ -1323,25 +1323,7 @@
   },
   "pli": "Imināpi aṅgena arahataṁ anukaromi, uposatho ca me upavuttho bhavissati.",
   "ru": "Так, в этом отношении, я буду подражать арахантам и буду соблюдать Упосатху.",
-  "en": "I will observe the sabbath by doing as the perfected ones do in this respect."
- },
- {
-  "id": "an3.70:26.3",
-  "kind": "random",
-  "days": null,
-  "title": {
-   "pli": "Uposathasutta",
-   "ru": "Сутта Упосатха",
-   "en": "Sabbath"
-  },
-  "ref": "an3.70:26.3",
-  "cite": {
-   "en": "an3.70",
-   "ru": "an3.70"
-  },
-  "pli": "Imināpi aṅgena arahataṁ anukaromi, uposatho ca me upavuttho bhavissatī’ti.",
-  "ru": "Сегодня, в течение этой ночи и дня, я также, отбросив [роскошные постели] я откажусь от использования высоких и роскошных постелей. Я лягу на постель низкую, либо на небольшую кровать, либо на соломенную циновку. Так, в этом отношении, я буду подражать арахантам и буду соблюдать Упосатху”.",
-  "en": "I will observe the sabbath by doing as the perfected ones do in this respect.’"
+  "en": "By means of this factor I emulate the arahants, and my uposatha will be observed."
  },
  {
   "id": "an3.70:27.1",
@@ -1350,7 +1332,7 @@
   "title": {
    "pli": "Uposathasutta",
    "ru": "Сутта Упосатха",
-   "en": "Sabbath"
+   "en": "The Roots of the Uposatha"
   },
   "ref": "an3.70:27.1",
   "cite": {
@@ -1359,7 +1341,7 @@
   },
   "pli": "Evaṁ kho, visākhe, ariyuposatho hoti.",
   "ru": "Вот каким образом, Висакха, соблюдается Упосатха Благородных.",
-  "en": "That’s the sabbath of the noble ones."
+  "en": "“Such is the uposatha of the noble ones, Visākhā."
  },
  {
   "id": "an3.70:27.2",
@@ -1368,7 +1350,7 @@
   "title": {
    "pli": "Uposathasutta",
    "ru": "Сутта Упосатха",
-   "en": "Sabbath"
+   "en": "The Roots of the Uposatha"
   },
   "ref": "an3.70:27.2",
   "cite": {
@@ -1377,7 +1359,7 @@
   },
   "pli": "Evaṁ upavuttho kho, visākhe, ariyuposatho mahapphalo hoti mahānisaṁso mahājutiko mahāvipphāro.",
   "ru": "Когда кто-либо соблюдал Упосатху так, как это делают Благородные, то это приносит великий плод и пользу, она неимоверно сверкающая и всепроникающая.",
-  "en": "When the sabbath of the noble ones is observed like this it’s very fruitful and beneficial and brilliant and bountiful."
+  "en": "When this uposatha of the noble ones is undertaken, it is of great fruit & great benefit, of great glory & great radiance."
  },
  {
   "id": "an3.70:28.3",
@@ -1386,7 +1368,7 @@
   "title": {
    "pli": "Uposathasutta",
    "ru": "Сутта Упосатха",
-   "en": "Sabbath"
+   "en": "The Roots of the Uposatha"
   },
   "ref": "an3.70:28.3",
   "cite": {
@@ -1395,7 +1377,7 @@
   },
   "pli": "aṅgānaṁ, magadhānaṁ, kāsīnaṁ, kosalānaṁ, vajjīnaṁ, mallānaṁ, cetīnaṁ, vaṅgānaṁ, kurūnaṁ, pañcālānaṁ, macchānaṁ, sūrasenānaṁ, assakānaṁ, avantīnaṁ, gandhārānaṁ, kambojānaṁ, aṭṭhaṅgasamannāgatassa uposathassa etaṁ kalaṁ nāgghati soḷasiṁ.",
   "ru": "[страны] Ангов, Магадхов, Касиев, Косал, Вадджей, Маллов, Четиев, Вангов, Куру, Панчал, Маччхов, Сурасенов, Ассаков, Авантиев, Гандхарцев, Камбоджиев. Это не стоило бы и одной шестнадцатой соблюдения Упосатхи, полной в восьми аспектах.",
-  "en": "This wouldn’t be worth a sixteenth part of the sabbath with its eight factors."
+  "en": "over the Aṅgas, Magadhans, Kasis, Kosalans, Vajjians, Mallans, Cetis, Vaṁsās, Kurus, Pañcālas, Macchas, Surasenas, Assakas, Avantis, Gandhārans, & Kambojans: It would not be worth one-sixteenth of this uposatha endowed with eight factors."
  },
  {
   "id": "an3.70:29.5",
@@ -1404,7 +1386,7 @@
   "title": {
    "pli": "Uposathasutta",
    "ru": "Сутта Упосатха",
-   "en": "Sabbath"
+   "en": "The Roots of the Uposatha"
   },
   "ref": "an3.70:29.5",
   "cite": {
@@ -1413,7 +1395,7 @@
   },
   "pli": "Ṭhānaṁ kho panetaṁ, visākhe, vijjati yaṁ idhekacco itthī vā puriso vā aṭṭhaṅgasamannāgataṁ uposathaṁ upavasitvā kāyassa bhedā paraṁ maraṇā cātumahārājikānaṁ devānaṁ sahabyataṁ upapajjeyya.",
   "ru": "И есть возможность, Висакха, что женщина или мужчина, соблюдающая Упосатху в восьми полных аспектах, с распадом тела, после смерти, переродится среди дэвов, [управляемых] четырьмя великими [божественными] царями.",
-  "en": "It’s possible that some woman or man who has observed the eight-factored sabbath will—when their body breaks up, after death—be reborn in the company of the gods of the four great kings."
+  "en": "Now, it is possible that a certain man or woman—from having observed this uposatha endowed with eight factors—on the break-up of the body, after death, might be reborn among the Devas of the Four Great Kings."
  },
  {
   "id": "an3.70:30.5",
@@ -1422,7 +1404,7 @@
   "title": {
    "pli": "Uposathasutta",
    "ru": "Сутта Упосатха",
-   "en": "Sabbath"
+   "en": "The Roots of the Uposatha"
   },
   "ref": "an3.70:30.5",
   "cite": {
@@ -1431,61 +1413,7 @@
   },
   "pli": "Ṭhānaṁ kho panetaṁ, visākhe, vijjati yaṁ idhekacco itthī vā puriso vā aṭṭhaṅgasamannāgataṁ uposathaṁ upavasitvā kāyassa bhedā paraṁ maraṇā tāvatiṁsānaṁ devānaṁ sahabyataṁ upapajjeyya.",
   "ru": "И есть возможность, Висакха, что женщина или мужчина, соблюдающая Упосатху в восьми полных аспектах, с распадом тела, после смерти, переродится среди дэвов Таватимсы.",
-  "en": "It’s possible that some woman or man who has observed the eight-factored sabbath will—when their body breaks up, after death—be reborn in the company of the gods of the thirty-three."
- },
- {
-  "id": "an3.70:31.5",
-  "kind": "random",
-  "days": null,
-  "title": {
-   "pli": "Uposathasutta",
-   "ru": "Сутта Упосатха",
-   "en": "Sabbath"
-  },
-  "ref": "an3.70:31.5",
-  "cite": {
-   "en": "an3.70",
-   "ru": "an3.70"
-  },
-  "pli": "Ṭhānaṁ kho panetaṁ, visākhe, vijjati yaṁ idhekacco itthī vā puriso vā aṭṭhaṅgasamannāgataṁ uposathaṁ upavasitvā kāyassa bhedā paraṁ maraṇā yāmānaṁ devānaṁ sahabyataṁ upapajjeyya.",
-  "ru": "И есть возможность… переродится среди дэвов Ямы…",
-  "en": "It’s possible that some woman or man who has observed the eight-factored sabbath will—when their body breaks up, after death—be reborn in the company of the gods of Yama."
- },
- {
-  "id": "an3.70:32.5",
-  "kind": "random",
-  "days": null,
-  "title": {
-   "pli": "Uposathasutta",
-   "ru": "Сутта Упосатха",
-   "en": "Sabbath"
-  },
-  "ref": "an3.70:32.5",
-  "cite": {
-   "en": "an3.70",
-   "ru": "an3.70"
-  },
-  "pli": "Ṭhānaṁ kho panetaṁ, visākhe, vijjati yaṁ idhekacco itthī vā puriso vā aṭṭhaṅgasamannāgataṁ uposathaṁ upavasitvā kāyassa bhedā paraṁ maraṇā tusitānaṁ devānaṁ sahabyataṁ upapajjeyya.",
-  "ru": "И есть возможность… переродится среди дэвов Туситы…",
-  "en": "It’s possible that some woman or man who has observed the eight-factored sabbath will—when their body breaks up, after death—be reborn in the company of the joyful gods."
- },
- {
-  "id": "an3.70:33.5",
-  "kind": "random",
-  "days": null,
-  "title": {
-   "pli": "Uposathasutta",
-   "ru": "Сутта Упосатха",
-   "en": "Sabbath"
-  },
-  "ref": "an3.70:33.5",
-  "cite": {
-   "en": "an3.70",
-   "ru": "an3.70"
-  },
-  "pli": "Ṭhānaṁ kho panetaṁ, visākhe, vijjati yaṁ idhekacco itthī vā puriso vā aṭṭhaṅgasamannāgataṁ uposathaṁ upavasitvā kāyassa bhedā paraṁ maraṇā nimmānaratīnaṁ devānaṁ sahabyataṁ upapajjeyya.",
-  "ru": "И есть возможность… переродится среди дэвов, наслаждающихся творениями…",
-  "en": "It’s possible that some woman or man who has observed the eight-factored sabbath will—when their body breaks up, after death—be reborn in the company of the gods who love to create."
+  "en": "Now, it is possible that a certain man or woman—from having observed this uposatha endowed with eight factors—on the break-up of the body, after death, might be reborn among the Devas of the Thirty-three."
  },
  {
   "id": "an3.70:34.5",
@@ -1494,7 +1422,7 @@
   "title": {
    "pli": "Uposathasutta",
    "ru": "Сутта Упосатха",
-   "en": "Sabbath"
+   "en": "The Roots of the Uposatha"
   },
   "ref": "an3.70:34.5",
   "cite": {
@@ -1503,7 +1431,7 @@
   },
   "pli": "Ṭhānaṁ kho panetaṁ, visākhe, vijjati yaṁ idhekacco itthī vā puriso vā aṭṭhaṅgasamannāgataṁ uposathaṁ upavasitvā kāyassa bhedā paraṁ maraṇā paranimmitavasavattīnaṁ devānaṁ sahabyataṁ upapajjeyya.",
   "ru": "И есть возможность, Висакха, что женщина или мужчина, соблюдающая Упосатху в восьми полных аспектах, с распадом тела, после смерти, переродится среди дэвов, управляющих творениями других.",
-  "en": "It’s possible that some woman or man who has observed the eight-factored sabbath will—when their body breaks up, after death—be reborn in the company of the gods who control what is created by others."
+  "en": "Now, it is possible that a certain man or woman—from having observed this uposatha endowed with eight factors—on the break-up of the body, after death, might be reborn among the Devas Wielding Power over the Creations of Others."
  },
  {
   "id": "an3.70:36.3",
@@ -1512,7 +1440,7 @@
   "title": {
    "pli": "Uposathasutta",
    "ru": "Сутта Упосатха",
-   "en": "Sabbath"
+   "en": "The Roots of the Uposatha"
   },
   "ref": "an3.70:36.3",
   "cite": {
@@ -1521,7 +1449,7 @@
   },
   "pli": "Etañhi aṭṭhaṅgikamāhuposathaṁ,",
   "ru": "Вот какова, как говорят, Упосатха восьми –",
-  "en": "This is the eight-factored sabbath, they say,"
+  "en": "for this eight-factored uposatha"
  },
  {
   "id": "an3.70:40.2",
@@ -1530,7 +1458,7 @@
   "title": {
    "pli": "Uposathasutta",
    "ru": "Сутта Упосатха",
-   "en": "Sabbath"
+   "en": "The Roots of the Uposatha"
   },
   "ref": "an3.70:40.2",
   "cite": {
@@ -1539,7 +1467,7 @@
   },
   "pli": "Aṭṭhaṅgupetaṁ upavassuposathaṁ;",
   "ru": "Кто соблюдал Упосатху из аспектов восьми",
-  "en": "who has observed the eight-factored sabbath,"
+  "en": "of the eight-factored uposatha,"
  },
  {
   "id": "an4.190:1.2",
@@ -1566,7 +1494,7 @@
   "title": {
    "pli": "Dānamahapphalasutta",
    "ru": "Сутта Даяние",
-   "en": "A Very Fruitful Gift"
+   "en": "Giving"
   },
   "ref": "an7.52:1.5",
   "cite": {
@@ -1575,7 +1503,7 @@
   },
   "pli": "“Tenahāvuso, tadahuposathe āgaccheyyātha,",
   "ru": "“В таком случае, друзья, приходите в следующий день Упосатхи,",
-  "en": "“Well then, reverends, come on the next sabbath day."
+  "en": "“Then in that case, my friends, come again on the next uposatha day,"
  },
  {
   "id": "an7.52:2.1",
@@ -1584,7 +1512,7 @@
   "title": {
    "pli": "Dānamahapphalasutta",
    "ru": "Сутта Даяние",
-   "en": "A Very Fruitful Gift"
+   "en": "Giving"
   },
   "ref": "an7.52:2.1",
   "cite": {
@@ -1593,7 +1521,7 @@
   },
   "pli": "Atha kho campeyyakā upāsakā tadahuposathe yenāyasmā sāriputto tenupasaṅkamiṁsu; upasaṅkamitvā āyasmantaṁ sāriputtaṁ abhivādetvā ekamantaṁ aṭṭhaṁsu.",
   "ru": "Поднявшись с сидений, поклонившись ему и обойдя его с правой стороны, они ушли.",
-  "en": "Then on the next sabbath the lay followers of Campā went to Venerable Sāriputta, bowed, and stood to one side."
+  "en": "Then, on the following uposatha day, the lay followers from Campā went to Ven. Sāriputta and, on arrival, having bowed down to him, stood to one side."
  },
  {
   "id": "an7.74:11.1",
@@ -1602,7 +1530,7 @@
   "title": {
    "pli": "Arakasutta",
    "ru": "Сутта Арака",
-   "en": "About Araka"
+   "en": "Araka’s Instructions"
   },
   "ref": "an7.74:11.1",
   "cite": {
@@ -1611,7 +1539,7 @@
   },
   "pli": "Tatrime bhattantarāyā kapimiddhopi bhattaṁ na bhuñjati, dukkhitopi bhattaṁ na bhuñjati, byādhitopi bhattaṁ na bhuñjati, uposathikopi bhattaṁ na bhuñjati, alābhakenapi bhattaṁ na bhuñjati.",
   "ru": "злой человек не ест обед, когда человек охвачен болью, он не ест обед, больной человек не ест обед, соблюдающий Упосатху не ест обед, когда человек не получает [еду], он не ест обед.",
-  "en": "Things that prevent you from eating include anger, pain, sickness, sabbath, or being unable to get food."
+  "en": "These are the obstacles to eating: when one doesn’t eat while angered, when one doesn’t eat while suffering or stressed, when one doesn’t eat while sick, when one doesn’t eat on the observance [uposatha] day, when one doesn’t eat while poor."
  },
  {
   "id": "an8.20:1.2",
@@ -2574,7 +2502,7 @@
   "title": {
    "pli": "Gotamīsutta",
    "ru": "Сутта Готами",
-   "en": "With Gotamī"
+   "en": "To Gotamī"
   },
   "ref": "an8.51:13.2",
   "cite": {
@@ -2583,7 +2511,7 @@
   },
   "pli": "uposathapucchakañca, ovādūpasaṅkamanañca.",
   "ru": "о [дне проведения] Упосатхи и о [том, когда какой-либо монах] придёт давать наставления [монахиням]4.",
-  "en": "the date of the sabbath, and visiting for advice."
+  "en": "(permission to) ask for the date of the uposatha and (permission to) approach for an exhortation.…"
  },
  {
   "id": "an9.18:1.1",
@@ -2820,67 +2748,13 @@
   "en": "“Sir, it was more than a few days ago—on the fifteenth day sabbath on the full moon day at the invitation to admonish held at the end of the rainy season—when all the gods of the thirty-three were sitting together in the Hall of Clear Right."
  },
  {
-  "id": "dn26:4.9",
-  "kind": "random",
-  "days": null,
-  "title": {
-   "pli": "Cakkavattisutta",
-   "ru": "Чаккавати Сутта",
-   "en": "The Wheel-Turning Monarch"
-  },
-  "ref": "dn26:4.9",
-  "cite": {
-   "en": "dn26",
-   "ru": "dn26"
-  },
-  "pli": "Ṭhānaṁ kho panetaṁ vijjati, yaṁ te ariye cakkavattivatte vattamānassa tadahuposathe pannarase sīsaṁnhātassa uposathikassa uparipāsādavaragatassa dibbaṁ cakkaratanaṁ pātubhavissati sahassāraṁ sanemikaṁ sanābhikaṁ sabbākāraparipūran’ti.",
-  "ru": "И может случиться так, что когда, приведя в движение колесо праведности, ты в день упосатхи в полнолуние омоешь голову и, прибывая на превосходной верхней террасе дворца, будешь соблюдать упосатху, тебе явится божественное колесо-сокровище с тысячью спиц, с ободом, со ступицей, исполненное всех достоинств“.",
-  "en": "If you do so, it’s possible that—on a fifteenth day sabbath, having bathed your head and gone upstairs in the royal longhouse to observe the sabbath—the heavenly wheel-treasure will appear to you, with a thousand spokes, with rim and hub, complete in every detail.’"
- },
- {
-  "id": "dn26:5.11",
-  "kind": "random",
-  "days": null,
-  "title": {
-   "pli": "Cakkavattisutta",
-   "ru": "Чаккавати Сутта",
-   "en": "The Wheel-Turning Monarch"
-  },
-  "ref": "dn26:5.11",
-  "cite": {
-   "en": "dn26",
-   "ru": "dn26"
-  },
-  "pli": "Tassa ariye cakkavattivatte vattamānassa tadahuposathe pannarase sīsaṁnhātassa uposathikassa uparipāsādavaragatassa",
-  "ru": "И когда, приведя в движение колесо праведности, он в день упосатхи, в полнолуние, омыв голову, пребывал, соблюдая упосатху, на превосходной верхней террасе дворца,",
-  "en": "While he was proceeding in that duty, on a fifteenth day sabbath, he had bathed his head and gone upstairs in the royal longhouse to observe the sabbath."
- },
- {
-  "id": "dn26:5.14",
-  "kind": "random",
-  "days": null,
-  "title": {
-   "pli": "Cakkavattisutta",
-   "ru": "Чаккавати Сутта",
-   "en": "The Wheel-Turning Monarch"
-  },
-  "ref": "dn26:5.14",
-  "cite": {
-   "en": "dn26",
-   "ru": "dn26"
-  },
-  "pli": "‘sutaṁ kho pana metaṁ—yassa rañño khattiyassa muddhābhisittassa tadahuposathe pannarase sīsaṁnhātassa uposathikassa uparipāsādavaragatassa dibbaṁ cakkaratanaṁ pātubhavati sahassāraṁ sanemikaṁ sanābhikaṁ sabbākāraparipūraṁ, so hoti rājā cakkavattīti.",
-  "ru": "‘Ведь я слышал об этом: 'Когда царю, помазанному на царство, в день упосатхи, в полнолуние, омывшему голову и пребывающему, соблюдая упосатху, на превосходной верхней террасе дворца, является божественное колесо-сокровище с тысячью спиц, с ободом, со ступицей, исполненное всех достоинств, то он становится повелителем мира'.",
-  "en": "‘I have heard that when the heavenly wheel-treasure appears to a king in this way, he becomes a wheel-turning monarch."
- },
- {
   "id": "dn2:1.3",
   "kind": "random",
   "days": null,
   "title": {
    "pli": "Sāmaññaphalasutta",
    "ru": "Самана Пхала Сутта",
-   "en": "The Fruits of the Ascetic Life"
+   "en": "The Fruits of the Contemplative Life"
   },
   "ref": "dn2:1.3",
   "cite": {
@@ -2889,7 +2763,7 @@
   },
   "pli": "Tena kho pana samayena rājā māgadho ajātasattu vedehiputto tadahuposathe pannarase komudiyā cātumāsiniyā puṇṇāya puṇṇamāya rattiyā rājāmaccaparivuto uparipāsādavaragato nisinno hoti.",
   "ru": "И в это самое время в тот день упосатхи [что перед] пятнадцатым [днем] комуди, завершающим четырехмесячный цикл, в ночь полнолуния царь Магадхи Аджатасатту Ведехипутта сидел окруженный царскими приближенными на превосходной верхней террасе дворца.",
-  "en": "Now, at that time it was the sabbath—the Komudī full moon on the fifteenth day of the fourth month—and King Ajātasattu of Magadha, son of the princess of Videha, was sitting upstairs in the royal longhouse surrounded by his ministers."
+  "en": "Now at that time—it being the uposatha day, the full-moon night of the water-lily season, the fourth month of the rains—King Ajātasattu of Magadha, the son of Queen Vedehi, was sitting on the roof terrace of his palace surrounded by his ministers."
  },
  {
   "id": "dn2:1.4",
@@ -2898,7 +2772,7 @@
   "title": {
    "pli": "Sāmaññaphalasutta",
    "ru": "Самана Пхала Сутта",
-   "en": "The Fruits of the Ascetic Life"
+   "en": "The Fruits of the Contemplative Life"
   },
   "ref": "dn2:1.4",
   "cite": {
@@ -2907,7 +2781,7 @@
   },
   "pli": "Atha kho rājā māgadho ajātasattu vedehiputto tadahuposathe udānaṁ udānesi:",
   "ru": "И вот в тот день упосатхи царь Магадхи Аджатасатту Ведехипутта взволнованно воскликнул:",
-  "en": "Then Ajātasattu of Magadha, son of the princess of Videha, expressed this heartfelt sentiment,"
+  "en": "Then he felt inspired to exclaim:"
  },
  {
   "id": "dn30:1.4.1",
@@ -2952,7 +2826,7 @@
   "title": {
    "pli": "Dvayatānupassanāsutta",
    "ru": "Сутта Рассмотрение пар",
-   "en": "Contemplating Pairs"
+   "en": ""
   },
   "ref": "snp3.12:1.3",
   "cite": {
@@ -2961,7 +2835,7 @@
   },
   "pli": "Tena kho pana samayena bhagavā tadahuposathe pannarase puṇṇāya puṇṇamāya rattiyā bhikkhusaṅghaparivuto abbhokāse nisinno hoti.",
   "ru": "В то время, в Упосатху пятнадцатого дня, в ночь полнолуния, Благословенный сидел на открытой местности в окружении Сангхи монахов.",
-  "en": "Now, at that time it was the sabbath—the full moon on the fifteenth day—and the Buddha was sitting in the open surrounded by the Saṅgha of monks."
+  "en": "Now on that occasion—the uposatha day of the fifteenth, a perfect full-moon night—\nthe Blessed One was sitting in the open air surrounded by the Saṅgha of monks."
  },
  {
   "id": "ud5.5:1.3",
@@ -2970,7 +2844,7 @@
   "title": {
    "pli": "Uposathasutta",
    "ru": "Сутта Упосатха",
-   "en": "Sabbath"
+   "en": ""
   },
   "ref": "ud5.5:1.3",
   "cite": {
@@ -2979,7 +2853,7 @@
   },
   "pli": "Tena kho pana samayena bhagavā tadahuposathe bhikkhusaṅghaparivuto nisinno hoti.",
   "ru": "И в то время, в день Упосатхи, Благословенный сидел в окружении собрания монахов.",
-  "en": "Now, at that time it was the sabbath, and the Buddha was sitting surrounded by the Saṅgha of monks."
+  "en": "And on that occasion, the Blessed One–it being the observance day–was sitting surrounded by the community of monks."
  },
  {
   "id": "ud5.5:8.2",
@@ -2988,7 +2862,7 @@
   "title": {
    "pli": "Uposathasutta",
    "ru": "Сутта Упосатха",
-   "en": "Sabbath"
+   "en": ""
   },
   "ref": "ud5.5:8.2",
   "cite": {
@@ -2997,7 +2871,7 @@
   },
   "pli": "“na dānāhaṁ, bhikkhave, ito paraṁ uposathaṁ karissāmi, pātimokkhaṁ uddisissāmi.",
   "ru": "“Отныне я более не буду проводить Упосатху или декламировать Патимоккху.",
-  "en": "“From this day forth, monks, I will not perform the sabbath or recite the monastic code."
+  "en": "“From now on I will no longer perform the observance or recite the Pāṭimokkha."
  },
  {
   "id": "ud5.5:8.3",
@@ -3006,7 +2880,7 @@
   "title": {
    "pli": "Uposathasutta",
    "ru": "Сутта Упосатха",
-   "en": "Sabbath"
+   "en": ""
   },
   "ref": "ud5.5:8.3",
   "cite": {
@@ -3015,7 +2889,7 @@
   },
   "pli": "Tumheva dāni, bhikkhave, ito paraṁ uposathaṁ kareyyātha, pātimokkhaṁ uddiseyyātha.",
   "ru": "Вы сами, монахи, будете проводить Упосатху и декламировать Патимоккху.",
-  "en": "Now you should perform the sabbath and recite the monastic code."
+  "en": "From now on, you alone, monks, will perform the observance and recite the Pāṭimokkha."
  },
  {
   "id": "ud5.5:8.4",
@@ -3024,7 +2898,7 @@
   "title": {
    "pli": "Uposathasutta",
    "ru": "Сутта Упосатха",
-   "en": "Sabbath"
+   "en": ""
   },
   "ref": "ud5.5:8.4",
   "cite": {
@@ -3033,7 +2907,7 @@
   },
   "pli": "Aṭṭhānametaṁ, bhikkhave, anavakāso yaṁ tathāgato aparisuddhāya parisāya uposathaṁ kareyya, pātimokkhaṁ uddiseyya.",
   "ru": "Невозможно, не может такого случиться, чтобы Татхагата провёл Упосатху или продекламировал Патимоккху с нечистым собранием монахов.",
-  "en": "It’s impossible, monks, it can’t happen that a Realized One could recite the monastic code in an impure assembly."
+  "en": "It is impossible, it cannot happen,\nthat a Tathāgata would perform the observance or recite the Pāṭimokkha with an impure gathering."
  },
  {
   "id": "ud5.8:1.3",
@@ -3042,7 +2916,7 @@
   "title": {
    "pli": "Saṅghabhedasutta",
    "ru": "Сутта Раскол Собрания",
-   "en": "Schism in the Saṅgha"
+   "en": ""
   },
   "ref": "ud5.8:1.3",
   "cite": {
@@ -3051,7 +2925,7 @@
   },
   "pli": "Tena kho pana samayena āyasmā ānando tadahuposathe pubbaṇhasamayaṁ nivāsetvā pattacīvaramādāya rājagahaṁ piṇḍāya pāvisi.",
   "ru": "Тогда в день Упосатхи, в утреннее время, уважаемый Ананда, одевшись, взяв чашу и верхнее одеяние, отправился в Раджагаху за подаянием.",
-  "en": "Now at that time Venerable Ānanda robed up in the morning and, taking his bowl and robe, entered Rājagaha for alms."
+  "en": "And on that occasion, early in the morning of the uposatha, Ven.\nĀnanda adjusted his under robe and–carrying his bowl & robes–went into Rājagaha for alms."
  },
  {
   "id": "ud5.8:2.3",
@@ -3060,7 +2934,7 @@
   "title": {
    "pli": "Saṅghabhedasutta",
    "ru": "Сутта Раскол Собрания",
-   "en": "Schism in the Saṅgha"
+   "en": ""
   },
   "ref": "ud5.8:2.3",
   "cite": {
@@ -3069,7 +2943,25 @@
   },
   "pli": "“ajjatagge dānāhaṁ, āvuso ānanda, aññatreva bhagavatā aññatra bhikkhusaṅghā uposathaṁ karissāmi saṅghakammāni cā”ti.",
   "ru": "“С сегодняшнего дня, друг Ананда, я буду проводить Упосатху и вводить новые правила в собственной сангхе, отдельно от Благословенного, отдельно от его сангхи”.",
-  "en": "“From this day forth, Reverend Ānanda, I shall perform the sabbath and legal proceedings of the Saṅgha apart from the Buddha and the Saṅgha of mendicants.”"
+  "en": "“From this day forward, friend Ānanda,\nI will conduct the uposatha & community transactions apart from the Blessed One, apart from the community of monks.”"
+ },
+ {
+  "id": "ud5.8:4.4",
+  "kind": "random",
+  "days": null,
+  "title": {
+   "pli": "Saṅghabhedasutta",
+   "ru": "Сутта Раскол Собрания",
+   "en": ""
+  },
+  "ref": "ud5.8:4.4",
+  "cite": {
+   "en": "ud5.8",
+   "ru": "ud5.8"
+  },
+  "pli": "‘ajjatagge dānāhaṁ, āvuso ānanda, aññatreva bhagavatā aññatra bhikkhusaṅghā uposathaṁ karissāmi saṅghakammāni cā’ti.",
+  "ru": "“С сегодняшнего дня, друг Ананда, я буду проводить Упосатху и вводить новые правила в собственной сангхе, отдельно от Благословенного, отдельно от его сангхи””.",
+  "en": "‘From this day forward, friend Ānanda,\nI will conduct the uposatha & community transactions apart from the Blessed One, apart from the community of monks.’"
  },
  {
   "id": "ud5.8:4.5",
@@ -3078,7 +2970,7 @@
   "title": {
    "pli": "Saṅghabhedasutta",
    "ru": "Сутта Раскол Собрания",
-   "en": "Schism in the Saṅgha"
+   "en": ""
   },
   "ref": "ud5.8:4.5",
   "cite": {
@@ -3087,7 +2979,7 @@
   },
   "pli": "Ajja, bhante, devadatto saṅghaṁ bhindissati, uposathañca karissati saṅghakammāni cā”ti.",
   "ru": "Сегодня, почтенный, Дэвадатта расколоть Сангху, и будет проводить Упосатху, и вводить новые правила в сангхе”.",
-  "en": "“Today, sir, Devadatta will split the Saṅgha. He will perform the sabbath and legal proceedings of the Saṅgha.”"
+  "en": "Lord, today Devadatta will split the community.\nHe will conduct the uposatha & community transactions [apart from the community].”"
  },
  {
   "id": "mn108:10.15",
@@ -3096,7 +2988,7 @@
   "title": {
    "pli": "Gopakamoggallānasutta",
    "ru": "К Гопака Моггаллане",
-   "en": "With Moggallāna the Guardian"
+   "en": "Moggallāna the Guardsman"
   },
   "ref": "mn108:10.15",
   "cite": {
@@ -3105,7 +2997,7 @@
   },
   "pli": "Te mayaṁ tadahuposathe yāvatikā ekaṁ gāmakhettaṁ upanissāya viharāma te sabbe ekajjhaṁ sannipatāma;",
   "ru": "В день Упосатхи все те из нас, кто живёт в зависимости от одного деревенского округа, собираются вместе в согласии, и когда мы собрались,",
-  "en": "On the day of the sabbath all of us who live in dependence on one village district gather together as one."
+  "en": "On the uposatha day, all of us who live dependent on a single township gather together in one place."
  },
  {
   "id": "mn109:2.1",
@@ -3114,7 +3006,7 @@
   "title": {
    "pli": "Mahāpuṇṇamasutta",
    "ru": "Большое наставление в ночь полнолуния",
-   "en": "The Longer Discourse on the Full-Moon Night"
+   "en": "The Great Full-Moon Night Discourse"
   },
   "ref": "mn109:2.1",
   "cite": {
@@ -3123,7 +3015,7 @@
   },
   "pli": "Tena kho pana samayena bhagavā tadahuposathe pannarase puṇṇāya puṇṇamāya rattiyā bhikkhusaṅghaparivuto abbhokāse nisinno hoti.",
   "ru": "И тогда, на пятнадцатый день, в ночь полной луны, в Упосатху, Благословенный сидел под открытым небом в окружении общины монахов.",
-  "en": "Now, at that time it was the sabbath—the full moon on the fifteenth day—and the Buddha was sitting in the open surrounded by the Saṅgha of monks."
+  "en": "And on that occasion—the uposatha of the fifteenth, the night of a very full moon—he was sitting out in the open with the Saṅgha of monks."
  },
  {
   "id": "mn110:2.1",
@@ -3132,7 +3024,7 @@
   "title": {
    "pli": "Cūḷapuṇṇamasutta",
    "ru": "Малое наставление в ночь полной луны",
-   "en": "The Shorter Discourse on the Full-Moon Night"
+   "en": "The Shorter Full-Moon Night Discourse"
   },
   "ref": "mn110:2.1",
   "cite": {
@@ -3141,7 +3033,7 @@
   },
   "pli": "Tena kho pana samayena bhagavā tadahuposathe pannarase puṇṇāya puṇṇamāya rattiyā bhikkhusaṅghaparivuto abbhokāse nisinno hoti.",
   "ru": "И тогда, на пятнадцатый день, в ночь полной луны, в Упосатху, Благословенный сидел под открытым небом в окружении общины монахов.",
-  "en": "Now, at that time it was the sabbath—the full moon on the fifteenth day—and the Buddha was sitting in the open surrounded by the Saṅgha of monks."
+  "en": "And on that occasion—the uposatha of the fifteenth, the night of a very full moon—he was sitting out in the open with the Saṅgha of monks."
  },
  {
   "id": "mn118:7.1",
@@ -3150,7 +3042,7 @@
   "title": {
    "pli": "Ānāpānassatisutta",
    "ru": "Сутта памятования дыхания",
-   "en": "Mindfulness of Breathing"
+   "en": "Sutta Mindfulness of Breathing"
   },
   "ref": "mn118:7.1",
   "cite": {
@@ -3159,7 +3051,7 @@
   },
   "pli": "Tena kho pana samayena bhagavā tadahuposathe pannarase komudiyā cātumāsiniyā puṇṇāya puṇṇamāya rattiyā bhikkhusaṅghaparivuto abbhokāse nisinno hoti.",
   "ru": "Тем же временем Благословенный в ту упосатху пятнадцатого дня, в [ночь] комуди четвёртого-месяца, в полнолуние, в ночь полнолуния, монахов-Сангхой окружённый, на открытом месте сидел.",
-  "en": "Now, at that time it was the sabbath—the Komudī full moon on the fifteenth day of the fourth month—and the Buddha was sitting in the open surrounded by the Saṅgha of monks."
+  "en": "Now on that occasion—the uposatha day of the fifteenth, the full-moon night of the White Water-lily Month, the fourth month of the rains—the Blessed One was seated in the open air surrounded by the Saṅgha of monks."
  },
  {
   "id": "mn129:34.2",
@@ -3420,7 +3312,7 @@
   "title": {
    "pli": "Jantusutta",
    "ru": "Джанту",
-   "en": "With Jantu"
+   "en": "Jantu the Deva’s Son"
   },
   "ref": "sn2.25:2.1",
   "cite": {
@@ -3429,7 +3321,7 @@
   },
   "pli": "Atha kho jantu devaputto tadahuposathe pannarase yena te bhikkhū tenupasaṅkami; upasaṅkamitvā te bhikkhū gāthāhi ajjhabhāsi:",
   "ru": "И тогда, на Упосатху пятнадцатого дня, молодое божество Джанту подошло к этим монахам и обратилось к ним строфами:",
-  "en": "Then on the fifteenth day sabbath the godling Jantu went up to those mendicants and addressed them in verse:"
+  "en": "Then Jantu the deva’s son, on the uposatha of the fifteenth, went to those monks and, on arrival, addressed them in verses."
  },
  {
   "id": "sn22.82:1.2",
@@ -3438,7 +3330,7 @@
   "title": {
    "pli": "Puṇṇamasutta",
    "ru": "Сутта Ночь в полнолуние",
-   "en": "A Full Moon Night"
+   "en": "The Full-moon Night"
   },
   "ref": "sn22.82:1.2",
   "cite": {
@@ -3447,7 +3339,7 @@
   },
   "pli": "Tena kho pana samayena bhagavā tadahuposathe pannarase puṇṇāya puṇṇamāya rattiyā bhikkhusaṅghaparivuto ajjhokāse nisinno hoti.",
   "ru": "И тогда, в пятнадцатый день, в Упосатху, ночью в полнолуние, Благословенный сидел на открытой местности в окружении Сангхи монахов.",
-  "en": "Now, at that time it was the sabbath—the full moon on the fifteenth day—and the Buddha was sitting in the open surrounded by the Saṅgha of monks."
+  "en": "And on that occasion—the uposatha of the fifteenth, the night of a very full moon—he was sitting out in the open with the Saṅgha of monks."
  },
  {
   "id": "sn22.96:3.6",
@@ -3456,7 +3348,7 @@
   "title": {
    "pli": "Gomayapiṇḍasutta",
    "ru": "Сутта Комок навоза",
-   "en": "A Lump of Cow Dung"
+   "en": "Cow Dung"
   },
   "ref": "sn22.96:3.6",
   "cite": {
@@ -3465,7 +3357,7 @@
   },
   "pli": "Tassa mayhaṁ, bhikkhu, rañño sato khattiyassa muddhāvasittassa caturāsītināgasahassāni ahesuṁ sovaṇṇālaṅkārāni sovaṇṇaddhajāni hemajālapaṭicchannāni uposathanāgarājappamukhāni.",
   "ru": "У меня было восемьдесят четыре тысячи крупных слонов с золотыми украшениями и золотыми знамёнами, покрытых сетями из золотых нитей, главным из которых был царский слон Упосатха.",
-  "en": "I had 84,000 bull elephants with gold adornments and banners, covered with snow gold netting, with the royal bull elephant named Sabbath the foremost."
+  "en": "“I had 84,000 bull elephants with golden ornaments, golden banners, covered with nets of golden thread, the chief of which was the royal bull elephant Uposatha."
  },
  {
   "id": "sn22.96:4.5",
@@ -3474,7 +3366,7 @@
   "title": {
    "pli": "Gomayapiṇḍasutta",
    "ru": "Сутта Комок навоза",
-   "en": "A Lump of Cow Dung"
+   "en": "Cow Dung"
   },
   "ref": "sn22.96:4.5",
   "cite": {
@@ -3483,7 +3375,7 @@
   },
   "pli": "Tesaṁ kho pana, bhikkhu, caturāsītiyā nāgasahassānaṁ ekoyeva so nāgo hoti yamahaṁ tena samayena abhiruhāmi—uposatho nāgarājā.",
   "ru": "Из тех восьмидесяти четырёх тысяч слонов был только один слон, на котором я ездил в то время – царский слон Упосатха.",
-  "en": "Of those 84,000 bull elephants, I only rode one, the royal bull elephant named Sabbath."
+  "en": "“Of those 84,000 bull elephants, there was only one that I rode at any one time: the royal bull elephant Uposatha."
  },
  {
   "id": "sn29.3:1.3",

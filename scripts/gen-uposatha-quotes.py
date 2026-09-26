@@ -73,12 +73,15 @@ def titles(sutta, pli, ru, en):
         return d.get(f'{sutta}:0.3', '').strip()
     return {'pli': one(pli), 'ru': one(ru), 'en': one(en)}
 def find(kind, sutta, lang, prefer):
-    # The project's own translation first (offline-data: the best one, then the second one), then SuttaCentral's;
-    # within a folder the preferred translator first.
-    for root in ([f'{OFFLINE}/{lang}', f'{OFFLINE}/{lang}_other'] if lang == 'ru' else []) + [f'{BASE}/translation/{lang}']:
+    # The project's own translation first, then SuttaCentral's. English: Thanissaro first (he keeps "Uposatha"; Sujato's "sabbath"
+    # is misleading), then Sujato. Russian: the project's best, its second one, then SC's.
+    roots = ([(f'{OFFLINE}/en_other', 'thanissaro'), (f'{OFFLINE}/en', prefer), (f'{BASE}/translation/en', 'sujato')] if lang == 'en'
+             else [(f'{OFFLINE}/ru', prefer), (f'{OFFLINE}/ru_other', prefer), (f'{BASE}/translation/ru', prefer)])
+    for root, who in roots:
         files = sorted(glob.glob(f'{root}/**/{sutta}_translation-{lang}-*.json', recursive=True))
+        if lang == 'en' and root.endswith('en_other'): files = [f for f in files if f.endswith('-thanissaro.json')]
         if files:
-            files.sort(key=lambda f: 0 if f.endswith(f'-{prefer}.json') else 1)
+            files.sort(key=lambda f: 0 if f.endswith(f'-{who}.json') else 1)
             return json.load(open(files[0]))
     return {}
 out = []
