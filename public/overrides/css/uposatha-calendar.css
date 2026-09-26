@@ -210,7 +210,8 @@ b.match { color: var(--dg-match); font-weight: 600; } /* a found word, as in the
 .prow b { font-weight: 600; font-style: italic; }
 .prow small { display: block; font-size: 11.5px; color: var(--dg-text-muted); }
 .prow .tm { margin-left: auto; white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--dg-text-2); }
-.prow[data-now=true] { background: color-mix(in srgb, var(--dg-navy-ink) 16%, transparent); box-shadow: inset 0 0 0 2px var(--dg-navy-ink); } /* the current part: a frame and a denser fill, not green (green is for kala) */
+.prow[data-now=true] { margin: 4px 6px; padding: 6px 8px; border-radius: 10px; background: color-mix(in srgb, var(--dg-navy-ink) 16%, transparent); box-shadow: inset 0 0 0 2px var(--dg-navy-ink); } /* a rounded frame inside the block: the corners of the block do not cut it */
+.prow[data-now=true] + .prow, .prow:has(+ .prow[data-now=true]) { border-top-color: transparent; } /* the current part: a frame and a denser fill, not green (green is for kala) */
 .prow[data-now=true] small { color: var(--dg-text-2); }
 @media (max-width: 640px) { .pgrid { grid-template-columns: 1fr; } }
 .keys { margin: 34px 0 0; }
@@ -477,3 +478,7 @@ body.app .mealsum h3 { color: var(--dg-accent-ink); }
 @media (prefers-reduced-motion: reduce) { .keys li.kq summary::after { transition: none; } }
 
 .testtag { margin-left: 6px; padding: 1px 6px; border-radius: 6px; background: #9b1c31; color: #fff; font-size: 10px; letter-spacing: .06em; text-transform: uppercase; vertical-align: 1px; }
+.setplace .noonlink { text-decoration: underline dotted; text-underline-offset: 3px; }
+.setplace-row { margin: 12px 0 0; }
+.setplace-row .setplace { font-size: 13px; white-space: nowrap; }
+.setplace-row .setplace svg { width: 14px; height: 14px; }

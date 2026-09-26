@@ -31,7 +31,7 @@
   // ---------- words ----------
   var T = {
     en: {
-      pH: 'Structure of the night and day', sH: 'Other moon tools', sSub: 'The beginning and the end of a lunar day and the phases of the Moon are astronomical data. To check them or to see them another way, use astronomical apps and sites.', sSite: 'Website', sApps: 'Apps', sDev: 'For developers', tSoft: 'Other tools', helpUrl: '/docs/uposatha/', tocH: 'On this page', tSummary: 'Summary', tSuttas: 'Suttas on the topic', tCalendar: 'Calendar', tParts: 'Structure of the night and day', tKeys: 'Key suttas', pSub: 'Time% from sunrise to sunset is cut into three equal parts, and from sunset to sunrise likewise — conventionally, for illustration, for your place and the season.', pWho: 'This is how the arahants and other monks of the suttas spend these parts.', pDay: 'Day', pNight: 'Night', setPlace: 'Set a place for more exact times', pMid: '** SN 28.1 has no word majjhanhikasamaya, but describes this part of the day; the word itself: MN 79.', pFixed: '* The times are conventional: sunrise 06:00, sunset 18:00, roughly as in the Buddha\'s lands.', pPlace: '* Conventional: three equal parts from sunrise to sunset and from sunset to sunrise.',
+      pH: 'Structure of the night and day', sH: 'Other moon tools', sSub: 'The beginning and the end of a lunar day and the phases of the Moon are astronomical data. To check them or to see them another way, use astronomical apps and sites.', sSite: 'Website', sApps: 'Apps', sDev: 'For developers', tSoft: 'Other tools', helpUrl: '/docs/uposatha/', tocH: 'On this page', tSummary: 'Summary', tSuttas: 'Suttas on the topic', tCalendar: 'Calendar', tParts: 'Structure of the night and day', tKeys: 'Key suttas', pSub: 'Time% from sunrise to sunset is cut into three equal parts, and from sunset to sunrise likewise — conventionally, for illustration, for your place and the season.', pWho: 'This is how the arahants and other monks of the suttas spend these parts.', pDay: 'Day', pNight: 'Night', setPlace: 'set a place', noonL: 'Midday', pMid: '** SN 28.1 has no word majjhanhikasamaya, but describes this part of the day; the word itself: MN 79.', pFixed: '* The times are conventional: sunrise 06:00, sunset 18:00, roughly as in the Buddha\'s lands.', pPlace: '* Conventional: three equal parts from sunrise to sunset and from sunset to sunrise.',
       dayParts: [['Pubbaṇhasamaya', 'morning', 'The monks put on robes and go for alms (piṇḍapāta)', 'sn28.1:1.2'], ['Majjhanhikasamaya', 'midday', 'Seclusion and practice, the day\'s meditation.**', 'sn28.1:1.4,mn79:17.2'], ['Sāyanhasamaya', 'evening', 'Coming out of seclusion: meeting and talking with the Teacher and the monks', 'sn28.1:2.1']], nightParts: [['Paṭhama yāma', 'first watch', 'Practice: walking and sitting, cleansing the mind', 'mn53:10.3'], ['Majjhima yāma', 'middle watch', 'The lion\'s posture: lying on the right side, mindful and aware', 'mn53:10.4'], ['Pacchima yāma', 'last watch', 'Rising: walking and sitting practice again', 'mn53:10.5']],
       fSpecial: 'special', fGeneral: 'general', fRandom: 'random', slTitle: 'From the suttas', addCal: 'Add to calendar', subH: 'Subscribe', fileH: 'Or a file', calRemind: 'The reminder time and the days are taken from the reminder settings in the menu.', gUposatha: 'Uposatha settings', on: 'On', off: 'Off', fAll: 'All', sortKind: 'By kind', sortSutta: 'By sutta', showAll: 'Show all', readIt: 'Read', dayTag: function (d) { return d.map(function (n) { return n + 'th'; }).join(', ') + ' day'; },
       age: 'age', of30: 'of 30', from: 'from', left: 'left', dU: 'd', hU: 'h', mU: 'min',
@@ -78,7 +78,7 @@
       wds: ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'], docs: '/docs/uposatha', linkCopied: 'Link copied', shareTitle: 'Uposatha days', locale: 'en-GB',
     },
     ru: {
-      pH: 'Структура ночи-дня', sH: 'Другие лунные инструменты', sSub: 'Начало и конец лунного дня и фазы Луны — это астрономические данные. Чтобы проверить их или увидеть по-другому, пользуйтесь астрономическими приложениями и сайтами.', sSite: 'Сайт', sApps: 'Приложения', sDev: 'Разработчикам', tSoft: 'Другие инструменты', helpUrl: '/ru/docs/uposatha/', tocH: 'На странице', tSummary: 'Сводка', tSuttas: 'Сутты по теме', tCalendar: 'Календарь', tParts: 'Структура ночи-дня', tKeys: 'Ключевые сутты', pSub: 'Время% от восхода до заката делится на три равные части, и от заката до восхода тоже — условно, для наглядности, для вашего места и сезона.', pWho: 'Так проводят эти части араханты и другие монахи в суттах.', pDay: 'День', pNight: 'Ночь', setPlace: 'Для более точного времени задать место', pMid: '** В СН 28.1 слова majjhanhikasamaya нет, но описана эта часть дня; само слово — МН 79.', pFixed: '* Время условное: восход 06:00, закат 18:00, примерно как там, где жил Будда.', pPlace: '* Условно: три равные части от восхода до заката и от заката до восхода.',
+      pH: 'Структура ночи-дня', sH: 'Другие лунные инструменты', sSub: 'Начало и конец лунного дня и фазы Луны — это астрономические данные. Чтобы проверить их или увидеть по-другому, пользуйтесь астрономическими приложениями и сайтами.', sSite: 'Сайт', sApps: 'Приложения', sDev: 'Разработчикам', tSoft: 'Другие инструменты', helpUrl: '/ru/docs/uposatha/', tocH: 'На странице', tSummary: 'Сводка', tSuttas: 'Сутты по теме', tCalendar: 'Календарь', tParts: 'Структура ночи-дня', tKeys: 'Ключевые сутты', pSub: 'Время% от восхода до заката делится на три равные части, и от заката до восхода тоже — условно, для наглядности, для вашего места и сезона.', pWho: 'Так проводят эти части араханты и другие монахи в суттах.', pDay: 'День', pNight: 'Ночь', setPlace: 'задать место', noonL: 'Полдень', pMid: '** В СН 28.1 слова majjhanhikasamaya нет, но описана эта часть дня; само слово — МН 79.', pFixed: '* Время условное: восход 06:00, закат 18:00, примерно как там, где жил Будда.', pPlace: '* Условно: три равные части от восхода до заката и от заката до восхода.',
       dayParts: [['Pubbaṇhasamaya', 'утро', 'Монахи одеваются и идут за подаянием (пиндапата)', 'sn28.1:1.2'], ['Majjhanhikasamaya', 'полдень', 'Уединение и практика, дневное пребывание.**', 'sn28.1:1.4,mn79:17.2'], ['Sāyanhasamaya', 'вечер', 'Выход из уединения: встреча и беседа с Учителем и монахами', 'sn28.1:2.1']], nightParts: [['Paṭhama yāma', 'первая часть', 'Практика: ходьба и сидение, очищение ума', 'mn53:10.3'], ['Majjhima yāma', 'средняя часть', 'Поза льва: лёжа на правом боку, осознанно', 'mn53:10.4'], ['Pacchima yāma', 'последняя часть', 'Вставание: снова ходьба и сидение', 'mn53:10.5']],
       fSpecial: 'особое', fGeneral: 'общее', fRandom: 'случайное', slTitle: 'Из сутт', addCal: 'В календарь', subH: 'Подписаться', fileH: 'Или файл', calRemind: 'Время напоминания и дни берутся из настроек напоминаний в меню.', gUposatha: 'Настройки упосатхи', on: 'Вкл', off: 'Выкл', fAll: 'Все', sortKind: 'По видам', sortSutta: 'По суттам', showAll: 'Показать все', readIt: 'Читать', dayTag: function (d) { return d.map(function (n) { return n + '-й'; }).join(', ') + ' день'; },
       age: 'возраст', of30: 'из 30', from: 'с', left: 'осталось', dU: 'д', hU: 'ч', mU: 'мин',
@@ -136,7 +136,7 @@
     ['an3.70:2.3', 'AN 3.70 · three kinds|три вида'], ['an3.70:2.4', 'AN 3.70 · cowherd|пастух'], ['an3.70:3.1', 'AN 3.70 · Nigaṇṭha|ниганты'],
     ['an3.70:4.1', 'AN 3.70 · Noble One|Благородный'], ['an3.70:19.3', 'AN 3.70 · nights and days|ночь и день'],
     ['sn28.1:1.2', 'SN 28.1 · a monk\'s day|день монаха'], ['mn53:10.3', 'MN 53 · parts of the night|части ночи'], ['an3.70:19.1', 'AN 3.70 · like the arahants|подобно арахантам'], ['mn79:17.2', 'MN 79 · midday|полдень'],
-    ['mn21:7.4', 'MN 21 · one sitting|один приём'], ['mn70:2.1', 'MN 70 · not at night|не ночью'], ['mn66:6.6', 'MN 66 · the wrong time|неподходящее время'], ['mn65:4.1', 'MN 65 · Bhaddāli'],
+    ['pli-tv-bu-vb-pc37:2.1.6', 'Pc 37 · vikāla|Пч 37 · викала'], ['mn70:2.1', 'MN 70 · not at night|не ночью'], ['mn66:6.6', 'MN 66 · the wrong time|неподходящее время'], ['mn65:4.1', 'MN 65 · Bhaddāli'],
   ];
   var KEYS = { // three questions; the suttas are the special and general ones of the slideshow
     en: [['How to keep it?', [
@@ -151,11 +151,11 @@
         ['SN 28.1', 'what is the day? The parts of the day: a monk\'s day — alms in the morning, seclusion at midday, coming out in the evening. {12} The word majjhanhikasamaya is not there, but this is that part of the day.'],
         ['MN 79', 'midday itself: “the sun at midday” (<i>majjhanhikasamaya</i>) in a clear autumn sky. {15}'],
         ['MN 146', 'not by the phases of the moon alone: on the 14th it is not full {2}, on the 15th it is full {3}.', 'gap']]],
-      ['What about food?', [
-        ['MN 21', 'the Buddha eats in one sitting per day and invites the monks to do the same. {16}'],
-        ['MN 70', 'abstaining from eating at night. {17}'],
+      ['Bonus: food', [
+        ['MN 65', 'the Buddha to the monk Bhaddāli: “eat one part of the meal in the place where you’re invited, and bring the rest back to eat” — later, but still before midday. {19}'],
+        ['Pc 37', '<i>vikāla</i> is “when the middle of the day has passed, until dawn” — a rule for monks. {16}'],
         ['MN 66', 'the monks give up the meal at the wrong time of day, and of night. {18}'],
-        ['MN 65', 'the monk Bhaddāli cannot keep even one sitting: eat a part where invited and bring the rest. {19}']]]],
+        ['MN 70', 'abstaining from eating at night. {17}']]]],
     ru: [['Как соблюдать?', [
         ['АН 3.70', 'упосатха Благородных {10} — подобно арахантам {14}; избегать упосатхи пастуха и ниганты {7}.'],
         ['АН 10.46', 'не пропускать: «это ваша потеря и неудача». {0}']]],
@@ -168,11 +168,11 @@
         ['СН 28.1', 'что такое день? Части дня: день монаха — подаяние утром, уединение в середине дня, выход вечером. {12} Слова majjhanhikasamaya там нет, но это именно эта часть дня.'],
         ['МН 79', 'сам полдень: «солнце в полдень» (<i>majjhanhikasamaya</i>) в ясном осеннем небе. {15}'],
         ['МН 146', 'не только по фазам луны: на 14-й она неполная {2}, на 15-й — полная {3}.', 'gap']]],
-      ['Что с едой?', [
-        ['МН 21', 'Будда ест один раз в день и зовёт монахов делать так же. {16}'],
-        ['МН 70', 'воздерживаться от еды ночью. {17}'],
+      ['Бонус: про еду', [
+        ['МН 65', 'Будда монаху Бхаддали: «съешь часть там, куда тебя пригласили, и часть [еды] забери с собой, чтобы поесть [после, но до полудня]». {19}'],
+        ['Пч 37', '<i>vikāla</i> — «когда полдень миновал, до рассвета»; правило для монахов. {16}'],
         ['МН 66', 'монахи отказываются от еды в неподходящее время дня и ночи. {18}'],
-        ['МН 65', 'монах Бхаддали не может соблюдать и один приём: есть часть там, где пригласили, и принести остальное. {19}']]]],
+        ['МН 70', 'воздерживаться от еды ночью. {17}']]]],
   };
 
   // ---------- state ----------
@@ -346,7 +346,8 @@
     $('pnote').textContent = (obs ? t.pPlace : t.pFixed) + '\n' + t.pMid; // the footnotes: what is conventional, then the word
     markPali($('pnote'));
     // the place is the important, interactive part of this block: a link by the heading, to the settings
-    $('p-place').innerHTML = obs ? icon('pin') + esc(t.timeL + ': ' + (state.loc.name || t.locHere) + ' · ' + t.change) : icon('pin') + esc(t.setPlace);
+    var noonV = { sun: t.noonSunS, mid: t.noonMidS, clock: t.noonClockS }[obs ? state.noon : 'clock'];
+    $('p-place').innerHTML = icon('pin') + esc(t.timeL + ': ' + (obs ? (state.loc.name || t.locHere) : t.locNone) + ' · ') + '<span class="noonlink">' + esc(t.noonL.toLowerCase() + ': ' + noonV.toLowerCase()) + '</span>' + esc(' · ' + (obs ? t.change : t.setPlace)); // one line: the time, the midday, the way to change
     document.querySelector('#parts h2').textContent = t.pH + '*'; // the asterisk of the footnote
     paintMeal(F, now, ymd, obs, rise);
   }
@@ -381,10 +382,9 @@
     else { kind = 'vikala'; var dawn = nowMs < rise.getTime() ? rise : (sunEvent('rise', p[0], p[1], p[2] + 1, tz, obs) || zonedToUtc(p[0], p[1], p[2] + 1, 6, tz)); to = dawn.getTime(); html = t.mealVik(F.hm.format(dawn), '<b class="meal-left" data-to="' + to + '">' + span(to - nowMs) + '</b>'); }
     function ref(id, label) { return '<a class="pref" href="/' + id + '?lang=' + lang + '" target="_blank" rel="noopener">' + label + '</a>'; }
     setSeg('noonseg', obs ? state.noon : 'clock'); $('noon-note').textContent = obs ? t.noonWhat : t.noonFixed; $('noonseg').setAttribute('data-fixed', String(!obs)); // without a place only the clock is possible
-    var how = { sun: t.noonSun, mid: t.noonMid, clock: t.noonClock }[m];
-    var by = '<p class="sub">' + esc(t.noonBy) + ': ' + esc(how) + ' · <a href="#" class="noonlink">' + esc(t.noonChange) + '</a></p>';
+    var by = '';
     var tag = state.fake ? ' <b class="testtag">' + esc(t.testTag) + '</b>' : '';
-    $('meal').innerHTML = '<h3>' + esc(t.mealH) + tag + '</h3><p class="mstat" data-k="' + kind + '">' + html + '</p><p class="sub">' + t.mealSub + ref('pli-tv-bu-vb-pc37:2.1.6', 'Pc 37') + ' · ' + ref('an3.70:24.2', 'AN 3.70') + '</p>' + by;
+    $('meal').innerHTML = '<h3>' + esc(t.mealH) + tag + '</h3><p class="mstat" data-k="' + kind + '">' + html + '</p>' + by; // the card is short: what vikāla is stands in the key suttas (Pc 37)
     $('meal-sum').innerHTML = '<h3>' + esc(t.mealH) + tag + '</h3><p class="mstat" data-k="' + kind + '">' + html + '</p>';
     markPali($('meal')); markPali($('meal-sum'));
   }
@@ -869,7 +869,7 @@
   // ---------- events ----------
   function wire() {
     $('ctx-change').onclick = function () { openSettings('loc-block'); };
-    document.addEventListener('click', function (e) { var a = e.target.closest && e.target.closest('a.setplace'); if (a) { e.preventDefault(); openSettings('loc-block'); } });
+    document.addEventListener('click', function (e) { var a = e.target.closest && e.target.closest('a.setplace'); if (a) { e.preventDefault(); openSettings(e.target.closest('.noonlink') ? 'noon-block' : 'loc-block'); } });
     $('scrim').onclick = closeAll;
     Array.prototype.forEach.call(document.querySelectorAll('[data-close]'), function (b) { b.onclick = closeAll; });
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeAll(); });
