@@ -431,7 +431,10 @@
     showDetail(state.selected && (C.byYmd[state.selected] || L.byYmd[state.selected]) ? state.selected : todayYmd);
 
     // ----- the settings panel mirrors the state
-    $('tz').innerHTML = zones.map(function (z) { return '<option' + (z === tz ? ' selected' : '') + '>' + esc(z) + '</option>'; }).join('');
+    // the zones are IANA names (one country has several); label them with today's UTC offset and sort by it, so "+5" can be found at once
+    var offs = {}; zones.forEach(function (z) { try { var m = /GMT([+-]\d\d):(\d\d)/.exec(new Intl.DateTimeFormat('en', { timeZone: z, timeZoneName: 'longOffset' }).format(new Date())); offs[z] = m ? +m[1] * 60 + (m[1][0] === '-' ? -1 : 1) * +m[2] : 0; } catch (e) { offs[z] = 0; } });
+    function offLabel(z) { var o = offs[z], a = Math.abs(o); return 'UTC ' + (o === 0 ? '' : o < 0 ? '−' : '+') + Math.floor(a / 60) + (a % 60 ? ':' + ('0' + a % 60).slice(-2) : ''); }
+    $('tz').innerHTML = zones.slice().sort(function (x, y) { return offs[x] - offs[y] || (x < y ? -1 : 1); }).map(function (z) { return '<option value="' + esc(z) + '"' + (z === tz ? ' selected' : '') + '>' + offLabel(z) + ' · ' + esc(z.replace(/_/g, ' ')) + '</option>'; }).join('');
     Array.prototype.forEach.call($('hemiseg').children, function (b) { b.setAttribute('aria-pressed', String((b.getAttribute('data-hemi') === 'south') === state.south)); });
     $('bysuttas-lb').textContent = su ? t.bySuttas : t.notBySuttas; $('bysuttas-lb').classList.toggle('troll', !su); // a small joke: the label turns burgundy when the suttas are switched off
     setSeg('weekseg', firstDay());
