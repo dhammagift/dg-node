@@ -23,10 +23,12 @@
     },
   };
   function pad(n) { return ('0' + n).slice(-2); }
-  function localDay(date, tz) { return date.toLocaleDateString('en-CA', { timeZone: tz }); } // yyyy-mm-dd, sortable
+  // Intl formatters are slow to make (the page asked for a new one at every call: most of a repaint on a phone), so one per zone is kept
+  var ldFmt = {}, offFmt = {};
+  function localDay(date, tz) { return (ldFmt[tz] || (ldFmt[tz] = new Intl.DateTimeFormat('en-CA', { timeZone: tz }))).format(date); } // yyyy-mm-dd, sortable
   function offsetMs(utcMs, tz) {
     var v = {};
-    new Intl.DateTimeFormat('en-US', { timeZone: tz, hourCycle: 'h23', year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' })
+    (offFmt[tz] || (offFmt[tz] = new Intl.DateTimeFormat('en-US', { timeZone: tz, hourCycle: 'h23', year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' })))
       .formatToParts(new Date(utcMs)).forEach(function (p) { v[p.type] = +p.value; });
     return Date.UTC(v.year, v.month - 1, v.day, v.hour, v.minute, v.second) - utcMs;
   }

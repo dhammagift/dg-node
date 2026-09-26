@@ -228,7 +228,12 @@
     if (obs && alt != null) { var r = A.SearchAltitude('Sun', obs, kind === 'rise' ? 1 : -1, zonedToUtc(y, m, d, 0, tz), 1, alt); if (r) return r.date; }
     return sunEvent(kind, y, m, d, tz, obs);
   }
-  function dataset(from, to) { return C.dataset(from, to, { tz: state.tz, sutta: sutta(), loc: state.loc }); }
+  var dsCache = {}; // the same days for the same settings are worked out once (every tap repaints the page)
+  function dataset(from, to) {
+    var key = [from, to, state.tz, sutta(), state.loc && state.loc.lat, state.loc && state.loc.lon].join('|');
+    if (!dsCache[key]) { var ks = Object.keys(dsCache); if (ks.length > 8) delete dsCache[ks[0]]; dsCache[key] = C.dataset(from, to, { tz: state.tz, sutta: sutta(), loc: state.loc }); }
+    return dsCache[key];
+  }
 
   // ---------- drawing ----------
   // The moon as an emoji (index 0..7 = new, waxing crescent, first quarter, waxing gibbous, full, waning gibbous, last quarter,
@@ -550,9 +555,12 @@
 
     // ----- the settings panel mirrors the state
     // the zones are IANA names (one country has several); label them with today's UTC offset and sort by it, so "+5" can be found at once
-    var offs = {}; zones.forEach(function (z) { try { var m = /GMT([+-]\d\d):(\d\d)/.exec(new Intl.DateTimeFormat('en', { timeZone: z, timeZoneName: 'longOffset' }).format(new Date())); offs[z] = m ? +m[1] * 60 + (m[1][0] === '-' ? -1 : 1) * +m[2] : 0; } catch (e) { offs[z] = 0; } });
+    if (!$('tz').options.length) { // 418 zones: their offsets are worked out and the list is written once, not at every repaint
+      var offs = {}; zones.forEach(function (z) { try { var m = /GMT([+-]\d\d):(\d\d)/.exec(new Intl.DateTimeFormat('en', { timeZone: z, timeZoneName: 'longOffset' }).format(new Date())); offs[z] = m ? +m[1] * 60 + (m[1][0] === '-' ? -1 : 1) * +m[2] : 0; } catch (e) { offs[z] = 0; } });
     function offLabel(z) { var o = offs[z], a = Math.abs(o); return 'UTC ' + (o === 0 ? '' : o < 0 ? '−' : '+') + Math.floor(a / 60) + (a % 60 ? ':' + ('0' + a % 60).slice(-2) : ''); }
     $('tz').innerHTML = zones.slice().sort(function (x, y) { return offs[x] - offs[y] || (x < y ? -1 : 1); }).map(function (z) { return '<option value="' + esc(z) + '"' + (z === tz ? ' selected' : '') + '>' + offLabel(z) + ' · ' + esc(z.replace(/_/g, ' ')) + '</option>'; }).join('');
+    }
+    $('tz').value = tz;
     Array.prototype.forEach.call($('hemiseg').children, function (b) { b.setAttribute('aria-pressed', String((b.getAttribute('data-hemi') === 'south') === state.south)); });
     $('bysuttas-lb').textContent = su ? t.bySuttas : t.notBySuttas; $('bysuttas-lb').classList.toggle('troll', !su); // a small joke: the label turns burgundy when the suttas are switched off
     setSeg('weekseg', firstDay());
@@ -622,9 +630,17 @@
     if (f) ch.sound = f[0] + '.mp3';
     return LN.createChannel(ch).then(function () { return id; }, function () { return id; });
   }
+  var remCache = { key: '', at: 0, list: [] };
+  function reminderList(rows, byYmd) { // the Uposatha and the meal reminders together, oldest first; a repaint happens at every tap, this is not worked out each time
+    var key = JSON.stringify([state.rem, state.meal, state.tz, state.loc, state.noon, state.twi, sutta(), rows.length, rows[0] && rows[0].ymd, localDay(new Date(), state.tz)]);
+    if (remCache.key !== key || Date.now() - remCache.at > 300000) {
+      remCache = { key: key, at: Date.now(), list: (state.rem.on ? dueList(rows, byYmd) : []).concat((state.meal.rem || state.meal.beg) ? mealDue(rows) : []).sort(function (a, b) { return a.when - b.when; }) };
+    }
+    return remCache.list;
+  }
   function scheduleNative(LN, rows, byYmd, F) {
     var now = Date.now();
-    var list = (state.rem.on ? dueList(rows, byYmd) : []).concat((state.meal.rem || state.meal.beg) ? mealDue(rows) : []).sort(function (a, b) { return a.when - b.when; }).slice(0, 60);
+    var list = reminderList(rows, byYmd).slice(0, 60);
     var sig = JSON.stringify([state.rem.sound, state.rem.ownChannel, state.meal.snd, state.meal.begSnd, list.map(function (i) { return [i.key, i.title, i.when > now + 10000 ? i.when : 0]; })]);
     if (sig !== nativeSig) { // only when something changed: paint() runs on every touch
       nativeSig = sig;
@@ -648,7 +664,7 @@
     if (LN) return scheduleNative(LN, rows, byYmd, F);
     clearTimeout(timer);
     if (!(state.rem.on || state.meal.rem || state.meal.beg) || !('Notification' in window) || Notification.permission !== 'granted') return null;
-    var now = Date.now(), list = (state.rem.on ? dueList(rows, byYmd) : []).concat((state.meal.rem || state.meal.beg) ? mealDue(rows) : []), next = null;
+    var now = Date.now(), list = reminderList(rows, byYmd), next = null;
     list.forEach(function (i) { if (i.when <= now) notify(i, F); else if (!next || i.when < next.when) next = i; });
     if (next) timer = setTimeout(function () { notify(next, F); paint(); }, Math.min(next.when - now, 2147000000));
     return next;
