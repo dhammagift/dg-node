@@ -438,3 +438,6 @@ body.app:not([data-app-tab=list]) #s-list, body.app:not([data-app-tab=cal]) #s-c
 .noonby .segrow button { font-size: 12.5px; padding: 5px 10px; }
 .noonby .segrow { display: flex; flex-wrap: wrap; gap: 4px; width: 100%; }
 .noonby .segrow button { flex: 1 1 auto; white-space: nowrap; }
+/* the meal block in the app layer: as the .pblk cards of app-refresh.css */
+body.app .meal { border: 0; border-radius: 24px; background: var(--up-surf, var(--dg-surface)); padding: 14px 18px; }
+body.app .meal h3 { color: var(--dg-accent-ink); }

@@ -1,0 +1,146 @@
+/* Слой «приложение» поверх прод-стилей uposatha-calendar.css. Работает только под body.app (?app=1 или Capacitor),
+   сайт не трогает. Контент прежний — меняются поверхности, навигация, иконки и движение. */
+body.app{--up-surf:color-mix(in oklab,var(--dg-accent) 5%,var(--dg-page));--up-surf-2:color-mix(in oklab,var(--dg-accent) 10%,var(--dg-page));--up-line:color-mix(in oklab,var(--dg-border) 70%,transparent);--up-emph:cubic-bezier(.2,0,0,1);--up-dec:cubic-bezier(.05,.7,.1,1);--up-acc:cubic-bezier(.3,0,.8,.15);background:var(--dg-page);-webkit-tap-highlight-color:transparent}
+/* шапка: без рамки, тональная подложка появляется при прокрутке — как top app bar в M3 */
+body.app .tbar{padding:10px 12px 8px;border-bottom:0;box-shadow:none;transition:background .3s var(--up-emph),transform .25s var(--dg-ease)}
+body.app.scrolled .tbar{background:var(--up-surf-2);border-bottom-color:transparent;box-shadow:none}
+body.app .tbar .dg-input-shell{min-height:48px;border-radius:999px;border-color:transparent;background:var(--up-surf-2);box-shadow:none;transition:background .3s var(--up-emph)}
+body.app.scrolled .tbar .dg-input-shell{background:var(--dg-surface)}
+body.app .tbar .dg-input-shell:focus-within{background:var(--dg-surface);box-shadow:0 0 0 2px var(--dg-accent)}
+body.app .tbar .rb{width:44px;height:44px;border-radius:50%}
+/* страница */
+body.app main.page{padding:4px 16px 120px}
+body.app .intro h1{font-size:30px;line-height:1.15;letter-spacing:-.02em;margin:18px 4px 4px;font-weight:600}
+body.app .parts{margin-top:18px}body.app .keys{margin-top:18px}
+body.app .parts h2,body.app .keys h2,body.app .calh h2{font-size:24px;line-height:1.2;letter-spacing:-.015em;margin-left:4px}
+body.app .parts .sub,body.app .keys .sub{margin-left:4px;margin-right:4px}
+/* «сегодня»: крупная луна, тональная карточка без рамки */
+body.app .today{margin-top:14px;border:0;border-radius:28px;background:var(--up-surf);padding:20px 20px 18px;gap:16px;animation:none}
+body.app .today .moon{font-size:78px;display:block;filter:drop-shadow(0 0 22px color-mix(in oklab,var(--dg-accent) 28%,transparent))}
+body.app .today .d{font-size:21px}
+body.app .today .k{color:var(--dg-accent-ink)}
+body.app .badge{padding:5px 12px;font-size:12.5px}
+body.app .ctx{margin:12px 8px 0}
+body.app #slides .dg-slides{background:var(--up-surf);border-radius:28px;padding:14px 6px 10px}
+/* упосатхи: месяцы — тональные карточки, строки на тонких разделителях */
+body.app .mon{margin-top:20px;animation:none}
+body.app .mon h2{margin-left:8px;color:var(--dg-accent-ink)}
+body.app .mon ul{border:0;border-radius:24px;background:var(--up-surf)}
+body.app .mon li+li{border-top-color:var(--up-line)}
+body.app .mon li.wk{background:transparent;padding:12px 18px 2px;letter-spacing:.06em}
+body.app .mon li.wk+li.row{border-top:0}
+body.app .mon li.row{padding:14px 18px;gap:12px}
+body.app .mon li[data-now=true]{background:var(--dg-accent-bg);border-radius:20px;margin:0 6px;border-top-color:transparent}
+body.app .mon li[data-now=true]+li{border-top-color:transparent}
+/* календарь: ячейки-плитки с зазором вместо сетки линий */
+body.app .calh{margin:18px 0 12px;gap:4px}
+body.app .grid{border:0;background:transparent;gap:4px;border-radius:0;overflow:visible;animation:none}
+body.app .grid .wd{background:transparent;padding:4px 0 6px}
+body.app .grid .c{border-radius:14px;background:var(--up-surf);min-height:58px;padding:6px 6px;transition:background .2s var(--up-emph),transform .2s var(--up-emph)}
+body.app .grid .c:active{transform:scale(.94)}
+body.app .grid .c.o{background:transparent;opacity:.5}
+body.app .grid .c[data-sel=true]{outline:0;box-shadow:inset 0 0 0 2px var(--dg-accent);background:var(--dg-accent-bg)}
+body.app .grid .c[data-sel=true] .n{animation:up-sel .42s var(--up-dec)}
+body.app .legend{margin:12px 6px 0}
+body.app .detail{border:0;border-radius:24px;background:var(--up-surf);padding:16px 18px}
+/* ночь-день */
+body.app .pgrid{gap:12px}
+body.app .pblk{border:0;border-radius:24px;background:var(--up-surf)}
+body.app .pblk h3{background:transparent;border-bottom-color:var(--up-line);padding:14px 18px 10px;color:var(--dg-accent-ink)}
+/* ключевые сутты: каждый вопрос — своя карточка */
+body.app .keys li.kq{border:0;background:var(--up-surf);border-radius:24px;padding:16px 18px 10px;margin:0 0 10px}
+body.app .keys li.kq h3{font-size:16px}
+body.app .rd{padding:3px 8px;border-radius:999px;background:var(--dg-accent-bg);color:var(--dg-on-accent-bg);font-size:12.5px;font-weight:600}
+body.app .reader{border:0;border-radius:24px;overflow:hidden;background:var(--up-surf)}
+body.app .reader .rh{border-bottom-color:var(--up-line)}
+/* кнопки: тональные, 40px, без рамки */
+body.app :is(.pillbtn,.td,.more button){border:0;min-height:40px;padding:0 18px;background:var(--up-surf-2);color:var(--dg-text);font-weight:600;display:inline-flex;align-items:center;gap:8px}
+body.app .td{min-height:36px;padding:0 14px}
+body.app :is(.pillbtn,.td,.more button,.rb,.grid .c,.segrow button,.appnav button i){position:relative;overflow:hidden}
+body.app .segrow{border-radius:999px;background:var(--up-surf-2)}body.app .segrow button{border-radius:999px}
+.up-rip{position:absolute;border-radius:50%;pointer-events:none;background:currentColor;opacity:.14;transform:scale(0);animation:up-rip .5s var(--up-emph) forwards}
+@keyframes up-rip{to{transform:scale(1);opacity:0}}
+@keyframes up-sel{0%{transform:scale(.7)}100%{transform:none}}
+/* нижняя навигация M3: индикатор-пилюля растёт из центра, иконка заливается */
+body.app .appnav{padding:12px 4px calc(14px + env(safe-area-inset-bottom));background:var(--up-surf-2);border-top:0;box-shadow:none}
+body.app .appnav button{gap:4px;padding:0;font-size:12px;font-weight:500;letter-spacing:.01em;color:var(--dg-text-2);cursor:pointer}
+body.app .appnav button i{width:64px;height:32px;border-radius:16px;background:none!important}
+body.app .appnav button i::before{content:"";position:absolute;inset:0;border-radius:inherit;background:var(--dg-accent-bg);transform:scaleX(.35);opacity:0;transition:transform .4s var(--up-dec),opacity .2s var(--up-emph)}
+body.app .appnav button i::after{content:"";position:absolute;inset:0;border-radius:inherit;background:currentColor;opacity:0;transition:opacity .15s}
+body.app .appnav button:hover i::after{opacity:.06}
+body.app .appnav button[aria-current=true]{color:var(--dg-text);font-weight:700}
+body.app .appnav button[aria-current=true] i::before{transform:none;opacity:1}
+body.app .appnav button .ic{position:relative;z-index:1;width:24px;height:24px}
+body.app .appnav button[aria-current=true] .ic{color:var(--dg-on-accent-bg)}
+body.app .appnav .ic.pop{animation:up-pop .45s var(--up-dec)}
+.up-fill{fill:currentColor;fill-opacity:0;transition:fill-opacity .3s var(--up-emph)}
+.up-soft{fill:currentColor;fill-opacity:0;transition:fill-opacity .3s var(--up-emph)}
+.up-cut{transition:stroke .3s var(--up-emph)}
+[aria-current=true] .up-fill{fill-opacity:1}[aria-current=true] .up-soft{fill-opacity:.32}
+[aria-current=true] .up-cut{stroke:var(--dg-accent-bg)}
+@keyframes up-pop{0%{transform:scale(.8)}55%{transform:scale(1.12)}100%{transform:none}}
+/* герой сводки: луна + отсчёт; луна в карточке «сегодня» уходит в героя, чтобы не дублировалась */
+#up-hero{display:none}
+body.app[data-app-tab=home] #up-hero{display:flex;flex-direction:column;align-items:center;text-align:center;margin:18px 0 0;padding:26px 16px 22px;border-radius:32px;background:var(--up-surf)}
+body.app #up-hero ~ #s-summary{grid-template-columns:minmax(0,1fr)}
+body.app #up-hero ~ #s-summary #t-moon{display:none}
+#up-hero .hm{position:relative;display:grid;place-items:center;width:150px;height:150px}
+#up-hero .halo{position:absolute;inset:-10px;border-radius:50%;background:radial-gradient(closest-side,color-mix(in oklab,var(--dg-accent) 30%,transparent),transparent);animation:up-breath 5s ease-in-out infinite}
+#up-hero .mv{position:relative;animation:up-float 7s ease-in-out infinite}
+#up-hero .mv .moon{font-size:118px;display:block}
+#up-hero .hk{margin:12px 0 6px;font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--dg-accent-ink)}
+#up-hero .cd{display:flex;gap:10px;justify-content:center}
+#up-hero .cd>span{display:flex;align-items:baseline;gap:3px;padding:8px 14px;border-radius:18px;background:var(--dg-surface);overflow:hidden}
+#up-hero .cd b{display:inline-block;font-size:34px;font-weight:600;letter-spacing:-.03em;font-variant-numeric:tabular-nums;line-height:1.05}
+#up-hero .cd i{font-style:normal;font-size:13px;color:var(--dg-text-muted)}
+#up-hero .hn{margin:10px 0 0;font-size:13.5px;color:var(--dg-text-2);text-wrap:balance}
+@keyframes up-float{50%{transform:translateY(-6px) rotate(2deg)}}
+@keyframes up-breath{50%{transform:scale(1.08);opacity:.7}}
+
+/* ===== 1b · Спокойный минимализм: белые поверхности, волосяные линии, акцент только в тексте ===== */
+body.app[data-look=calm]{--up-surf:var(--dg-surface);--up-surf-2:var(--dg-surface-hover)}
+body.app[data-look=calm] :is(.today,.mon ul,.detail,.pblk,.keys li.kq,.reader,#up-hero,#slides .dg-slides){box-shadow:inset 0 0 0 1px var(--dg-border)}
+body.app[data-look=calm] :is(.today,.mon ul,.detail,.pblk,.keys li.kq,.reader,#slides .dg-slides){border-radius:18px}
+body.app[data-look=calm] #up-hero{border-radius:22px;background:var(--dg-surface)}
+body.app[data-look=calm] #up-hero .halo{display:none}
+body.app[data-look=calm] #up-hero .cd>span{background:none;padding:4px 8px}
+body.app[data-look=calm] #up-hero .cd b{font-weight:400;font-size:40px}
+body.app[data-look=calm] .grid .c{background:transparent;box-shadow:inset 0 0 0 1px var(--dg-border)}
+body.app[data-look=calm] .appnav{background:var(--dg-page);box-shadow:0 -1px 0 var(--dg-border)}
+body.app[data-look=calm] .appnav button i::before{background:var(--dg-surface-hover)}
+body.app[data-look=calm] .appnav button[aria-current=true] .ic{color:var(--dg-accent-ink)}
+body.app[data-look=calm].scrolled .tbar{background:var(--dg-page);box-shadow:0 1px 0 var(--dg-border)}
+body.app[data-look=calm] .intro h1{font-weight:400;font-size:32px}
+
+/* ===== 1c · Лунный: глубокий ночной фон из --dg-navy, луна-герой на весь экран ===== */
+body.app[data-look=lunar]{color-scheme:dark;--dg-page:color-mix(in oklab,var(--dg-navy) 70%,black);--dg-surface:color-mix(in oklab,var(--dg-navy) 88%,white 6%);--dg-surface-hover:color-mix(in oklab,var(--dg-navy) 80%,white 10%);--dg-border:color-mix(in oklab,var(--dg-navy) 70%,white 16%);--dg-border-strong:color-mix(in oklab,var(--dg-navy) 60%,white 24%);--dg-text:#eef1f4;--dg-text-2:color-mix(in oklab,#eef1f4 78%,var(--dg-navy));--dg-text-muted:color-mix(in oklab,#eef1f4 58%,var(--dg-navy));--dg-accent-bg:color-mix(in oklab,var(--dg-accent) 30%,var(--dg-navy));--dg-on-accent-bg:color-mix(in oklab,var(--dg-accent) 40%,white);--dg-accent-ink:color-mix(in oklab,var(--dg-accent) 55%,white);--dg-navy-ink:#dfe8f0;--up-surf:color-mix(in oklab,var(--dg-navy) 90%,white 5%);--up-surf-2:color-mix(in oklab,var(--dg-navy) 84%,white 9%);background:var(--dg-page);color:var(--dg-text)}
+body.app[data-look=lunar] .tbar{background:transparent}
+body.app[data-look=lunar][data-app-tab=home] #up-hero{background:radial-gradient(120% 90% at 50% 0%,color-mix(in oklab,var(--dg-navy) 70%,white 14%),transparent 70%);padding:40px 12px 28px;margin-top:4px}
+body.app[data-look=lunar] #up-hero .hm{width:220px;height:220px}
+body.app[data-look=lunar] #up-hero .mv .moon{font-size:176px}
+body.app[data-look=lunar] #up-hero .halo{inset:-30px;background:radial-gradient(closest-side,color-mix(in oklab,#fff 26%,transparent),transparent)}
+body.app[data-look=lunar] #up-hero .cd>span{background:color-mix(in oklab,#fff 8%,transparent);backdrop-filter:blur(6px)}
+body.app[data-look=lunar] #up-hero .cd b{font-size:40px;font-weight:300}
+body.app[data-look=lunar] #up-hero .hk{color:var(--dg-text-2)}
+body.app[data-look=lunar] .intro h1{text-align:center;font-weight:300}
+body.app[data-look=lunar] .grid .c[data-u="15"] .n{background:#eef1f4;color:var(--dg-navy)}
+body.app[data-look=lunar] .appnav{background:color-mix(in oklab,var(--dg-page) 80%,transparent);backdrop-filter:blur(16px)}
+
+/* «добавить в календарь» — нижняя шторка вместо модалки по центру */
+body.app .sheet{display:flex;left:0;right:0;top:auto;bottom:0;width:auto;max-height:88vh;border:0;border-radius:28px 28px 0 0;background:var(--up-surf);transform:translateY(105%);visibility:hidden;transition:transform .32s var(--up-acc),visibility 0s .32s}
+body.app .sheet[data-open=true]{transform:none;visibility:visible;transition:transform .45s var(--up-dec)}
+body.app .sheet::before{content:"";width:32px;height:4px;border-radius:2px;background:var(--dg-border-strong);margin:10px auto 0;flex:none}
+body.app .sheet-head{border-bottom:0;padding:10px 20px 6px;font-size:20px}
+/* заставка: луна выходит из облака */
+#up-splash{position:fixed;inset:0;z-index:200;background:var(--dg-page);display:grid;place-items:center;align-content:center;gap:18px}
+#up-splash svg{width:132px;height:106px;overflow:visible}
+#up-splash .mn{animation:up-rise 1s var(--up-dec) .1s both}
+#up-splash .cl{stroke-dasharray:1;stroke-dashoffset:1;animation:up-draw .6s var(--up-dec) both}
+#up-splash .cl.a{animation-delay:.05s}#up-splash .cl.b{animation-delay:.18s}#up-splash .cl.c{animation-delay:.3s}
+#up-splash b{font:600 22px/1 var(--dg-font);letter-spacing:-.015em;color:var(--dg-text);animation:up-word .5s var(--up-dec) .55s both}
+#up-splash.out{animation:up-out .32s var(--up-acc) forwards}
+@keyframes up-rise{from{transform:translateY(16px);opacity:0}to{transform:none;opacity:1}}
+@keyframes up-draw{to{stroke-dashoffset:0}}
+@keyframes up-word{from{transform:translateY(8px);opacity:0}to{transform:none;opacity:1}}
+@keyframes up-out{to{opacity:0;transform:scale(1.04)}}
+@media (prefers-reduced-motion:reduce){#up-splash,#up-splash *{animation:none!important}body.app *{transition:none!important}.up-rip{display:none}}
