@@ -62,7 +62,7 @@
       lunarVal: function (tithi, nth, half, change) { return tithi + ' of 30 (' + nth + ' of the ' + half + ') · until ' + change; },
       keptWith: function (nth) { return 'the ' + nth + ' day is skipped and kept with this date'; }, skipped: function (nth) { return nth + ' lunar day is skipped — it begins and ends between two readings'; },
       repeats: 'the same lunar day as the day before',
-      modeS: 'by the suttas · 6 a month', modeM: 'modern · 4 a month', lgS: 'the evening an Uposatha begins', lgS15: '15th — full / new moon', lgS814: '8th and 14th', lgM15: 'new / full moon', lgM8: 'quarters', lgT: 'today',
+      modeS: 'by the suttas · 6 a month', modeM: 'modern · 4 a month', lgS: 'the evening an Uposatha begins', lgC: 'the day of the Uposatha, until the evening', lgS15: '15th (begins in the evening)', lgS814: '8th and 14th', lgM15: 'new / full moon', lgM8: 'quarters', lgT: 'today',
       cellHint: 'Tap a date for details.', pickDate: 'Tap a date',
       wds: ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'], docs: '/docs/uposatha', linkCopied: 'Link copied', shareTitle: 'Uposatha days', locale: 'en-GB',
     },
@@ -98,7 +98,7 @@
       lunarVal: function (tithi, nth, half, change) { return tithi + ' из 30 (' + nth + ' ' + half + ') · до ' + change; },
       keptWith: function (nth) { return nth + ' день пропущен и соблюдается в эту дату'; }, skipped: function (nth) { return nth + ' лунный день пропущен — он начинается и кончается между двумя замерами'; },
       repeats: 'тот же лунный день, что и накануне',
-      modeS: 'по суттам · 6 в месяц', modeM: 'современная · 4 в месяц', lgS: 'вечер, с которого начинается упосатха', lgS15: '15-й — полнолуние / новолуние', lgS814: '8-й и 14-й', lgM15: 'новолуние / полнолуние', lgM8: 'четверти', lgT: 'сегодня',
+      modeS: 'по суттам · 6 в месяц', modeM: 'современная · 4 в месяц', lgS: 'вечер, с которого начинается упосатха', lgC: 'день упосатхи, до вечера', lgS15: '15-й (начало вечером)', lgS814: '8-й и 14-й', lgM15: 'новолуние / полнолуние', lgM8: 'четверти', lgT: 'сегодня',
       cellHint: 'Нажмите на дату, чтобы увидеть подробности.', pickDate: 'Нажмите на дату',
       wds: ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'], docs: '/ru/docs/uposatha', linkCopied: 'Ссылка скопирована', shareTitle: 'Дни упосатхи', locale: 'ru-RU',
     },
@@ -382,24 +382,35 @@
     // it is marked on the date it really falls on
     var moonDay = {};
     if (su) C.rows.forEach(function (r) { var at = r.fullMoon || r.newMoon; if (at) moonDay[localDay(at, tz)] = { full: !!r.fullMoon, at: at }; });
+    // An Uposatha begins in the evening of its date and lasts through the night and the next day: that next date carries it too, so 14th
+    // and 15th on consecutive evenings read 14 / 14-15 / 15 across three dates instead of a third, unexplained day.
+    var startBy = {}, dayBy = {};
+    if (su) C.rows.forEach(function (r) { if (r.uposatha) { var ns = r.names.map(dayNo); startBy[r.ymd] = ns; dayBy[ymdAdd(r.ymd, 1)] = ns; } });
     var g = '';
     for (var w2 = 0; w2 < 7; w2++) g += '<div class="wd">' + esc(t.wds[(firstDay() + w2) % 7]) + '</div>';
     for (var i = 0; i < cells; i++) {
       var d = new Date(g0.getTime() + i * DAY), k = d.toISOString().slice(0, 10), r2 = C.byYmd[k];
-      var u = '', lb = '';
-      if (r2 && r2.uposatha) {
-        if (su) { var dn = dayNo(r2.names[0]); u = String(dn); lb = '<span class="lb">' + moon(rowI(r2), 'moon mi') + '<span>' + esc(t.nth(dn)) + '</span></span>'; }
-        else { u = (r2.phase === 0 || r2.phase === 2) ? '15' : '8'; lb = '<span class="lb">' + moon(rowI(r2), 'moon mi') + '<span>' + esc(t.events[r2.phase].toLowerCase()) + '</span></span>'; }
+      var u = '', lb = '', cont = false;
+      if (su) {
+        var sd = startBy[k] || [], dd = dayBy[k] || [], nums = dd.concat(sd.filter(function (x) { return dd.indexOf(x) === -1; }));
+        if (nums.length) {
+          var src = sd.length ? r2 : C.byYmd[ymdAdd(k, -1)];
+          u = sd.length ? String(sd.indexOf(15) !== -1 ? 15 : sd[0]) : ''; cont = !sd.length;
+          lb = '<span class="lb">' + moon(rowI(src), 'moon mi') + '<span>' + esc(nums.length > 1 ? nums.join('–') : t.nth(nums[0])) + '</span></span>';
+        }
+      } else if (r2 && r2.uposatha) {
+        u = (r2.phase === 0 || r2.phase === 2) ? '15' : '8'; lb = '<span class="lb">' + moon(rowI(r2), 'moon mi') + '<span>' + esc(t.events[r2.phase].toLowerCase()) + '</span></span>';
       }
       if (moonDay[k]) lb += '<span class="lb">' + moon(moonDay[k].full ? 4 : 0, 'moon mi') + '<span>' + esc((moonDay[k].full ? t.fullL : t.newL) + ' ' + F.hm.format(moonDay[k].at)) + '</span></span>';
-      g += '<button type="button" class="c' + (d.getUTCMonth() !== mo ? ' o' : '') + '"' + (u ? ' data-u="' + u + '"' : '') + (k === todayYmd ? ' data-today="true"' : '') + ' data-ymd="' + k + '">' +
+      g += '<button type="button" class="c' + (d.getUTCMonth() !== mo ? ' o' : '') + '"' + (u ? ' data-u="' + u + '"' : '') + (cont ? ' data-c="true"' : '') + (k === todayYmd ? ' data-today="true"' : '') + ' data-ymd="' + k + '">' +
         '<span class="n">' + d.getUTCDate() + '</span>' + lb + (r2 ? '<span class="ld">' + r2.day + '</span>' : '') + '</button>';
     }
     $('grid').innerHTML = g;
-    $('legend').innerHTML = su ? '<span><i class="f"></i>' + esc(t.lgS15) + '</span><span><i class="r"></i>' + esc(t.lgS814) + '</span><span><i class="t"></i>' + esc(t.lgT) + '</span>'
+    $('legend').innerHTML = su ? '<span><i class="f"></i>' + esc(t.lgS15) + '</span><span><i class="r"></i>' + esc(t.lgS814) + '</span><span><i class="c"></i>' + esc(t.lgC) + '</span><span><i class="t"></i>' + esc(t.lgT) + '</span>'
       : '<span><i class="f"></i>' + esc(t.lgM15) + '</span><span><i class="r"></i>' + esc(t.lgM8) + '</span><span><i class="t"></i>' + esc(t.lgT) + '</span>';
     function showDetail(ymd) {
-      var r = C.byYmd[ymd] || L.byYmd[ymd], box = $('detail');
+      var own = C.byYmd[ymd] || L.byYmd[ymd], box = $('detail');
+      var r = (su && dayBy[ymd] && !(own && own.uposatha)) ? (C.byYmd[ymdAdd(ymd, -1)] || own) : own; // the day after an evening: the Uposatha that is still on
       Array.prototype.forEach.call(document.querySelectorAll('#grid .c'), function (c) { c.setAttribute('data-sel', String(c.getAttribute('data-ymd') === ymd)); });
       if (!r) { box.innerHTML = esc(t.cellHint); return; }
       box.innerHTML = '<strong>' + esc(cap(F.longUtc.format(Date.parse(ymd)))) + '</strong>' + (r.uposatha ? '<span class="badge">' + esc(t.uday) + '</span><span class="ttl">' + esc(nameOf(r)) + '</span>' : '') +

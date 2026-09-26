@@ -126,6 +126,8 @@ body[data-screen=list] #s-list, body[data-screen=cal] #s-cal { display: block; }
 .grid .c[data-today=true] .n { box-shadow: inset 0 0 0 1.5px var(--dg-text); font-weight: 600; }
 .grid .c[data-u] .n { font-weight: 600; }
 .grid .c[data-u="15"] .n { background: var(--dg-accent); color: #fff; }
+.grid .c[data-c] .n { outline: 1.5px dashed var(--dg-accent); outline-offset: -1.5px; color: var(--dg-accent-ink); font-weight: 600; }
+.legend i.c { outline: 1.5px dashed var(--dg-accent); outline-offset: -1.5px; }
 .grid .c[data-u="14"] .n, .grid .c[data-u="8"] .n { box-shadow: inset 0 0 0 1.5px var(--dg-accent); color: var(--dg-accent-ink); }
 .grid .c .lb { font-size: 11px; color: var(--dg-text-muted); display: flex; align-items: center; gap: 4px; line-height: 1.2; }
 .grid .c .lb .mi { font-size: 12px; }
