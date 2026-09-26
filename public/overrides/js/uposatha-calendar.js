@@ -73,7 +73,7 @@
       full: 'Full moon', newm: 'New moon', fullL: 'full moon', newL: 'new moon', illum: 'illuminated', ld: 'lunar day', of15: 'of 15', until: 'until',
       phases: ['New moon', 'Waxing crescent', 'First quarter', 'Waxing gibbous', 'Full moon', 'Waning gibbous', 'Last quarter', 'Waning crescent'],
       tonight: 'The Uposatha begins this evening', next2: 'Next', inN: function (n) { return 'in ' + n + ' day' + (n > 1 ? 's' : ''); }, tomorrow: 'tomorrow', isToday: 'today',
-      mornVal: function (d, tm) { return 'morning' + (tm ? ' (' + tm + ')' : ''); }, nightVal: function (d) { return 'night'; }, startS: 'begins', endS: 'ends', eveT: function (tm) { return 'evening (' + tm + ')'; }, goingNow: 'in progress', kEnds: 'Ends', kBegins: 'Begins', kSpan: 'Observed', kLunar: 'Lunar day', kTime: 'Exact time',
+      mornVal: function (d, tm) { return 'morning' + (tm ? ' (' + tm + ')' : ''); }, nightVal: function (d) { return 'night'; }, thDay: 'Day', startS: 'begins', endS: 'ends', eveT: function (tm) { return 'evening (' + tm + ')'; }, goingNow: 'in progress', kEnds: 'Ends', kBegins: 'Begins', kSpan: 'Observed', kLunar: 'Lunar day', kTime: 'Exact time',
       beginsVal: function (eve, sun) { return 'evening ' + eve + (sun ? ' (' + sun + ')' : ''); }, spanVal: function (night, day) { return 'night of ' + night + ' → day of ' + day; },
       sunrise: 'sunrise', sunset: 'sunset',
       lunarVal: function (tithi, nth, half, change) { return tithi + ' of 30 (' + nth + ' of the ' + half + ') · until ' + change; },
@@ -126,7 +126,7 @@
       full: 'Полнолуние', newm: 'Новолуние', fullL: 'полнолуние', newL: 'новолуние', illum: 'освещено', ld: 'лунный день', of15: 'из 15', until: 'до',
       phases: ['Новолуние', 'Растущий серп', 'Первая четверть', 'Растущая Луна', 'Полнолуние', 'Убывающая Луна', 'Последняя четверть', 'Убывающий серп'],
       tonight: 'Упосатха начинается сегодня вечером', next2: 'Следующая', inN: function (n) { var m = n % 10, h = n % 100; return 'через ' + n + ' ' + (m === 1 && h !== 11 ? 'день' : m >= 2 && m <= 4 && (h < 12 || h > 14) ? 'дня' : 'дней'); }, tomorrow: 'завтра', isToday: 'сегодня',
-      mornVal: function (d, tm) { return 'утро' + (tm ? ' (' + tm + ')' : ''); }, nightVal: function (d) { return 'ночь'; }, startS: 'начало', endS: 'конец', eveT: function (tm) { return 'вечер (' + tm + ')'; }, goingNow: 'идёт сейчас', kEnds: 'Конец', kBegins: 'Начало', kSpan: 'Упосатха', kLunar: 'Лунный день', kTime: 'Точное время',
+      mornVal: function (d, tm) { return 'утро' + (tm ? ' (' + tm + ')' : ''); }, nightVal: function (d) { return 'ночь'; }, thDay: 'День', startS: 'начало', endS: 'конец', eveT: function (tm) { return 'вечер (' + tm + ')'; }, goingNow: 'идёт сейчас', kEnds: 'Конец', kBegins: 'Начало', kSpan: 'Упосатха', kLunar: 'Лунный день', kTime: 'Точное время',
       beginsVal: function (eve, sun) { return 'вечер ' + eve + (sun ? ' (' + sun + ')' : ''); }, spanVal: function (night, day) { return 'ночь ' + night + ' → день ' + day; },
       sunrise: 'восход', sunset: 'закат',
       lunarVal: function (tithi, nth, half, change) { return tithi + ' из 30 (' + nth + ' ' + half + ') · до ' + change; },
@@ -254,6 +254,7 @@
   function formats() {
     var tz = state.tz, L = t.locale;
     return {
+      dm: new Intl.DateTimeFormat(L, { timeZone: 'UTC', weekday: 'short', day: 'numeric', month: 'short' }),
       dateLong: new Intl.DateTimeFormat(L, { timeZone: tz, weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }),
       longUtc: new Intl.DateTimeFormat(L, { timeZone: 'UTC', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }),
       eve: new Intl.DateTimeFormat(L, { timeZone: 'UTC', weekday: 'short', day: 'numeric', month: 'long' }),
@@ -491,29 +492,28 @@
 
     // ----- the list
     var list = L.rows.filter(function (r) { return r.uposatha && r.ymd >= monthStart; });
-    var html = '', lastMonth = '', lastWeek = '';
+    // A table of the Uposathas: the day (with the moon), the beginning, the end. The long view adds a line under a row.
+    function nameParts(r) { var n = nameOf(r), m = /^(.*?)(?: · | of the )(.*)$/.exec(n); return m ? [m[1], m[2]] : [n, '']; }
+    function listDetail(r) { var h = ''; if (su) h += line(t.kSpan, t.spanVal(F.eve.format(Date.parse(r.ymd)), F.eve.format(Date.parse(r.ymd) + DAY))); else if (r.phaseAt) h += line(t.kTime, F.stamp.format(r.phaseAt)); h += line(t.kLunar, t.lunarVal(r.tithi, t.nth(r.day), t.halvesOf[r.tithi <= 15 ? 0 : 1], F.stamp.format(r.ends.date)), true); notesOf(r, F).forEach(function (n) { h += line('', n, true); }); return h; }
+    var html = '', lastMonth = '';
     list.forEach(function (r) {
-      var month = r.ymd.slice(0, 7), startOffset = (r.dow - firstDay() + 7) % 7;
-      var weekStart = new Date(Date.UTC(r.y, r.m - 1, r.d - startOffset)), weekKey = weekStart.toISOString().slice(0, 10);
+      var month = r.ymd.slice(0, 7);
       if (month !== lastMonth) {
-        if (lastMonth) html += '</ul></div>';
-        html += '<div class="mon"><h2>' + esc(F.month.format(Date.parse(r.ymd))) + '</h2><ul>'; lastMonth = month; lastWeek = '';
-      }
-      if (weekKey !== lastWeek) {
-        html += '<li class="wk">' + esc(F.week.format(weekStart) + ' – ' + F.week.format(new Date(weekStart.getTime() + 6 * DAY))) + '</li>'; lastWeek = weekKey;
+        if (lastMonth) html += '</tbody></table></div>';
+        html += '<div class="mon"><h2>' + esc(F.month.format(Date.parse(r.ymd))) + '</h2><table class="utab"><thead><tr><th>' + esc(t.thDay) + '</th><th>' + esc(t.kBegins) + '</th><th>' + esc(t.kEnds) + '</th></tr></thead><tbody>'; lastMonth = month;
       }
       var dd = Math.round((Date.parse(r.ymd) - Date.parse(todayYmd)) / DAY);
       var running = su ? (now >= r.at && now < endOf(r, L.obs)) : dd === 0; // the Uposatha that is going on now is framed
-      var w = running ? (su ? t.goingNow : t.isToday) : dd === 1 // by the suttas the running Uposatha began on another date than today: it is 'going on', not 'today'
-         ? t.tomorrow : dd > 1 ? t.inN(dd) : '';
-      var note = '';
-      html += '<li class="row" data-ymd="' + r.ymd + '"' + (dd < 0 && !running ? ' data-past="true"' : '') + (running ? ' data-now="true"' : '') + '>' +
-        '<span class="cap' + (su ? '' : ' one') + '"><span class="c1"><b>' + esc(F.day.format(Date.parse(r.ymd))) + '</b><small>' + esc(F.wd.format(Date.parse(r.ymd)) + (su ? ' · ' + t.startS : '')) + '</small></span>' +
-          (su ? '<span class="c2"><b>' + esc(F.day.format(Date.parse(r.ymd) + DAY)) + '</b><small>' + esc(F.wd.format(Date.parse(r.ymd) + DAY) + ' · ' + t.endS) + '</small></span>' : '') + moon(rowI(r), 'moon mi cm') + '</span>' +
-        '<span class="t"><b>' + esc(nameOf(r)) + '</b>' + (note ? '<span class="nt">· ' + esc(note) + '</span>' : '') + '<span class="info">' + infoHtml(r, F) + '</span></span>' +
-        '<span class="w">' + esc(w) + '</span></li>';
+      var w = running ? (su ? t.goingNow : t.isToday) : dd === 1 ? t.tomorrow : dd > 1 ? t.inN(dd) : ''; // by the suttas a running Uposatha began on another date than today: 'going on', not 'today'
+      var np = nameParts(r), d1 = F.dm.format(Date.parse(r.ymd)), d2 = su ? F.dm.format(Date.parse(r.ymd) + DAY) : d1, eo = state.loc ? new A.Observer(state.loc.lat, state.loc.lon, 0) : null, b, e;
+      if (su) { var sset = eo && sunEvent('set', r.y, r.m, r.d + 1, state.tz, eo); b = t.eveT((r.refKind === 'sunset' ? t.sunset + ' ' : '') + F.hm.format(r.at)); e = t.eveT((sset ? t.sunset + ' ' : '') + F.hm.format(endOf(r, eo))); }
+      else { var srise = eo && sunEvent('rise', r.y, r.m, r.d, state.tz, eo); b = t.mornVal('', srise ? F.hm.format(srise) : ''); e = t.nightVal(''); }
+      html += '<tr class="row" data-ymd="' + r.ymd + '"' + (dd < 0 && !running ? ' data-past="true"' : '') + (running ? ' data-now="true"' : '') + '>' +
+        '<td class="ud">' + moon(rowI(r), 'moon mi') + '<span class="un"><b>' + esc(np[0]) + '</b>' + (np[1] ? '<small>' + esc(np[1]) + '</small>' : '') + (w ? '<em>' + esc(w) + '</em>' : '') + '</span></td>' +
+        '<td class="ub"><b>' + esc(d1) + '</b><small>' + esc(b) + '</small></td><td class="ue"><b>' + esc(d2) + '</b><small>' + esc(e) + '</small></td></tr>' +
+        '<tr class="det"' + (running ? ' data-now="true"' : '') + '><td colspan="3"><span class="info">' + listDetail(r) + '</span></td></tr>';
     });
-    if (lastMonth) html += '</ul></div>';
+    if (lastMonth) html += '</tbody></table></div>';
     $('list').innerHTML = html;
 
     // ----- the calendar: one ordinary month, weeks in rows

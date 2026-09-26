@@ -508,3 +508,31 @@ body[data-mode=lite] .ln.endl { display: block; }
 
 .mon li[data-past=true] .cap { opacity: .7; }
 @media (max-width: 640px) { .mon li.row .w { grid-column: 2; margin-top: 0; } } /* on a phone 'in 7 days' goes under the text, not beside it */
+
+/* the table of the Uposathas: the day with its moon, the beginning, the end */
+.utab { width: 100%; border-collapse: separate; border-spacing: 0; border: 1px solid var(--dg-border); border-radius: var(--dg-radius); overflow: hidden; background: var(--dg-surface); font-size: 13.5px; }
+.utab th { padding: 8px 10px; text-align: left; font-size: 10.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--dg-text-muted); background: var(--dg-surface-hover); }
+.utab td { padding: 10px; vertical-align: top; border-top: 1px solid var(--dg-border); }
+.utab tr.det td { padding: 0 10px 10px; border-top: 0; }
+.utab tr.row + tr.det td { border-top: 0; }
+.utab tr.row td { border-top: 1px solid var(--dg-border); }
+.utab .ud { display: flex; gap: 8px; align-items: flex-start; min-width: 0; }
+.utab .ud .mi { font-size: 22px; line-height: 1; flex: none; }
+.utab .un b { display: block; font-weight: 600; }
+.utab .un small, .utab .ub small, .utab .ue small { display: block; font-size: 11.5px; color: var(--dg-text-muted); margin-top: 2px; }
+.utab .un em { display: block; font-style: normal; font-size: 11.5px; color: var(--dg-accent-ink); margin-top: 3px; }
+.utab .ub b, .utab .ue b { font-weight: 600; white-space: nowrap; }
+.utab .ue b { color: var(--dg-accent-ink); }
+.utab tr.det { display: table-row; }
+body[data-mode=lite] .utab tr.det { display: none; }
+.utab tr[data-past=true] td { opacity: .62; }
+.utab tr[data-now=true] td { background: color-mix(in srgb, var(--dg-navy-ink) 12%, transparent); }
+/* the running Uposatha: a frame round its row (and the line under it in the long view) */
+.utab tr.row[data-now=true] td { box-shadow: inset 0 2px 0 var(--dg-navy-ink); }
+.utab tr.row[data-now=true] td:first-child { box-shadow: inset 2px 0 0 var(--dg-navy-ink), inset 0 2px 0 var(--dg-navy-ink); }
+.utab tr.row[data-now=true] td:last-child { box-shadow: inset -2px 0 0 var(--dg-navy-ink), inset 0 2px 0 var(--dg-navy-ink); }
+.utab tr.det[data-now=true] td { box-shadow: inset 2px 0 0 var(--dg-navy-ink), inset -2px 0 0 var(--dg-navy-ink), inset 0 -2px 0 var(--dg-navy-ink); }
+body[data-mode=lite] .utab tr.row[data-now=true] td { box-shadow: inset 0 2px 0 var(--dg-navy-ink), inset 0 -2px 0 var(--dg-navy-ink); }
+body[data-mode=lite] .utab tr.row[data-now=true] td:first-child { box-shadow: inset 2px 0 0 var(--dg-navy-ink), inset 0 2px 0 var(--dg-navy-ink), inset 0 -2px 0 var(--dg-navy-ink); }
+body[data-mode=lite] .utab tr.row[data-now=true] td:last-child { box-shadow: inset -2px 0 0 var(--dg-navy-ink), inset 0 2px 0 var(--dg-navy-ink), inset 0 -2px 0 var(--dg-navy-ink); }
+.utab { table-layout: fixed; } .utab th:nth-child(1) { width: 42%; } .utab th:nth-child(2), .utab th:nth-child(3) { width: 29%; } .utab td { overflow-wrap: anywhere; }
