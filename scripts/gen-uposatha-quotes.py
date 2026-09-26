@@ -11,6 +11,8 @@ SLIDES = [
     ('an3.37-15', [15], 'an/an3',  'an3.37', ['1.5', '1.6'],  'sv', 'AN 3.37', 'АН 3.37'),
     ('mn146-15',  [15], 'mn',      'mn146',  ['27.2', '27.3'], 'sv', 'MN 146', 'МН 146'),
     ('mn118-15', [15], 'mn',      'mn118',  ['3.1'],         'sv', 'MN 118', 'МН 118'),
+    ('kd2-two',   [14, 15], 'vinaya', 'pli-tv-kd2', ['14.1.4'], 'sv', 'Vin Mv 2', 'Вин Мв 2'),
+    ('bu-pm-15',  [15], 'vinaya', 'pli-tv-bu-pm', ['5.2'], 'sv', 'Bu Pm', 'Бху Пм'),
     ('an3.37-few',  None, 'an/an3', 'an3.37', ['2.3', '2.4', '2.5'], 'sv', 'AN 3.37', 'АН 3.37'),
     ('an3.37-many', None, 'an/an3', 'an3.37', ['3.3', '3.4', '3.5'], 'sv', 'AN 3.37', 'АН 3.37'),
     ('mn83',      None, 'mn',      'mn83',   ['3.3'],         'sv', 'MN 83', 'МН 83'),
@@ -23,12 +25,12 @@ def load(p):
     return json.load(open(os.path.join(BASE, p)))
 def find(kind, sutta, lang, prefer):
     # the file of a translation of the sutta: the preferred translator first, any other after it
-    files = sorted(glob.glob(f'{BASE}/translation/{lang}/*/sutta/**/{sutta}_translation-{lang}-*.json', recursive=True))
+    files = sorted(glob.glob(f'{BASE}/translation/{lang}/*/**/{sutta}_translation-{lang}-*.json', recursive=True))
     files.sort(key=lambda f: 0 if f.endswith(f'-{prefer}.json') else 1)
     return json.load(open(files[0])) if files else {}
 out = []
 for sid, days, nik, sutta, segs, ru_tr, en_label, ru_label in SLIDES:
-    pli = load(f'root/pli/ms/sutta/{nik}/{sutta}_root-pli-ms.json')
+    pli = json.load(open(glob.glob(f'{BASE}/root/pli/ms/**/{sutta}_root-pli-ms.json', recursive=True)[0]))
     ru = find('', sutta, 'ru', ru_tr)
     en = find('', sutta, 'en', 'sujato')
     key = lambda s: f'{sutta}:{s}'

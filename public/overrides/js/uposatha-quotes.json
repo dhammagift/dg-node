@@ -90,6 +90,37 @@
   "en": "Now, at that time it was the sabbath—the full moon on the fifteenth day—and the Buddha was sitting surrounded by the Saṅgha of monks for the invitation to admonish."
  },
  {
+  "id": "kd2-two",
+  "kind": "special",
+  "days": [
+   14,
+   15
+  ],
+  "ref": "pli-tv-kd2:14.1.4",
+  "cite": {
+   "en": "Vin Mv 2",
+   "ru": "Вин Мв 2"
+  },
+  "pli": "“Dveme, bhikkhave, uposathā— cātuddasiko ca pannarasiko ca. Ime kho, bhikkhave, dve uposathā”ti.",
+  "ru": "",
+  "en": "“There are two observance days: the fourteenth and the fifteenth day of the lunar half-month.”"
+ },
+ {
+  "id": "bu-pm-15",
+  "kind": "special",
+  "days": [
+   15
+  ],
+  "ref": "pli-tv-bu-pm:5.2",
+  "cite": {
+   "en": "Bu Pm",
+   "ru": "Бху Пм"
+  },
+  "pli": "Ajjuposatho pannaraso,",
+  "ru": "",
+  "en": "Today is the observance day, the fifteenth."
+ },
+ {
   "id": "an3.37-few",
   "kind": "general",
   "days": null,
