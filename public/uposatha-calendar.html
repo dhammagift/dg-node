@@ -38,10 +38,15 @@
   <symbol id="i-star" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.2 6.4 20.2l1.1-6.2L3 9.6l6.2-.9z"/></symbol>
   <symbol id="i-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></symbol>
   <symbol id="i-compass" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></symbol>
 </defs></svg>
 
 <header class="tbar"><div class="in">
   <a class="wordmark" href="/" id="wordmark"><img src="/assets/img/dgsankhaonly.png" alt=""><b>Uposatha</b><span data-t="tag"></span></a>
+  <form class="hsearch" id="hsearch" action="/" autocomplete="off" role="search">
+    <input id="paliauto" name="q" type="search" data-tp="searchPh" enterkeyhint="search" spellcheck="false" autocapitalize="off">
+    <button type="submit" data-tt="searchGo"><svg class="ic"><use href="#i-search"/></svg></button>
+  </form>
   <div class="hbtns">
     <button class="rb" type="button" id="b-compass" data-tt="compass" onclick="if (window.toggleQuickModal) window.toggleQuickModal();"><svg class="ic"><use href="#i-compass"/></svg></button>
     <button class="rb" type="button" id="b-theme" data-tt="theme"><svg class="ic"><use href="#i-theme"/></svg></button>

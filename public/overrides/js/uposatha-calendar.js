@@ -35,7 +35,7 @@
       dayParts: [['Pubbaṇhasamaya', 'morning'], ['Majjhanhikasamaya', 'midday'], ['Sāyanhasamaya', 'evening']], nightParts: [['Paṭhama yāma', 'first watch'], ['Majjhima yāma', 'middle watch'], ['Pacchima yāma', 'last watch']],
       fSpecial: 'special', fGeneral: 'general', fRandom: 'random', slTitle: 'From the suttas', showAll: 'Show all', readIt: 'Read', dayTag: function (d) { return d.map(function (n) { return n + 'th'; }).join(', ') + ' day'; },
       age: 'age', of30: 'of 30', from: 'from', left: 'left', dU: 'd', hU: 'h', mU: 'min',
-      tag: 'observance days', compass: 'Favorites / History', menu: 'Menu', theme: 'Theme', prev: 'Previous', next: 'Next', close: 'Close',
+      searchPh: 'Search: kacchapa, dn22…', searchGo: 'Search', tag: 'observance days', compass: 'Favorites / History', menu: 'Menu', theme: 'Theme', prev: 'Previous', next: 'Next', close: 'Close',
       h1: 'Uposatha days', lead: 'The 14th, 15th and 8th lunar days of each half-month, as the suttas count them — six a month.', suttas: 'The suttas on Uposatha →',
       today: 'Today', change: 'change', tList: 'Uposatha days', tCal: 'Calendar', more: 'Three more months', todayBtn: 'Today',
       kH: 'Key suttas to start with', kSub: 'Each “Read →” opens the sutta at the passage in question and highlights it.', kNow: 'Now open', kNew: 'Open in a new window',
@@ -71,7 +71,7 @@
       dayParts: [['Pubbaṇhasamaya', 'утро'], ['Majjhanhikasamaya', 'полдень'], ['Sāyanhasamaya', 'вечер']], nightParts: [['Paṭhama yāma', 'первая стража'], ['Majjhima yāma', 'средняя стража'], ['Pacchima yāma', 'последняя стража']],
       fSpecial: 'особое', fGeneral: 'общее', fRandom: 'случайное', slTitle: 'Из сутт', showAll: 'Показать все', readIt: 'Читать', dayTag: function (d) { return d.map(function (n) { return n + '-й'; }).join(', ') + ' день'; },
       age: 'возраст', of30: 'из 30', from: 'с', left: 'осталось', dU: 'д', hU: 'ч', mU: 'мин',
-      tag: 'дни соблюдения', compass: 'Избранное / История', menu: 'Меню', theme: 'Тема', prev: 'Назад', next: 'Вперёд', close: 'Закрыть',
+      searchPh: 'Поиск: kacchapa, dn22…', searchGo: 'Найти', tag: 'дни соблюдения', compass: 'Избранное / История', menu: 'Меню', theme: 'Тема', prev: 'Назад', next: 'Вперёд', close: 'Закрыть',
       h1: 'Дни упосатхи', lead: '14-й, 15-й и 8-й лунные дни каждой половины месяца, как их считают сутты, — шесть в месяц.', suttas: 'Сутты об упосатхе →',
       today: 'Сегодня', change: 'изменить', tList: 'Упосатхи', tCal: 'Календарь', more: 'Ещё три месяца', todayBtn: 'Сегодня',
       kH: 'Ключевые сутты для начала', kSub: 'Каждое «Читать →» открывает сутту на нужном месте и подсвечивает его.', kNow: 'Сейчас открыта', kNew: 'Открыть в новом окне',
@@ -563,9 +563,9 @@
     ru: /(упосатх|восьм|четырнадцат|пятнадцат|страж)[\p{L}]*/giu,
     en: /(uposatha|sabbath|observance|eighth|fourteenth|fifteenth|watch)[\p{L}]*/giu,
   };
-  function hl(text, re) { return esc(text).replace(re, '<mark class="kw">$&</mark>'); }
+  function hl(text, re) { return esc(text).replace(re, '<b class="match finder">$&</b>'); } // the same look as a found word in the search results
   function trHtml(q) { return hl(slideText(q), q[lang] ? KW[lang] : KW.en); }
-  function plate(q) { return '<span class="plate" data-k="' + q.kind + '">' + esc(t['f' + q.kind.charAt(0).toUpperCase() + q.kind.slice(1)]) + (q.kind === 'special' ? ' · ' + esc(t.dayTag(q.days)) : '') + '</span>'; }
+  function plate(q) { return '<span class="plate" data-k="' + q.kind + '">' + esc(t['f' + q.kind.charAt(0).toUpperCase() + q.kind.slice(1)]) + '</span>'; }
   function citeText(q) { return q.cite[lang] + (q[lang] ? '' : ' · EN') + ' — ' + t.readIt; }
   function showSlide(i, quick) {
     if (!slides.length) return;
@@ -619,7 +619,15 @@
     $('scrim').onclick = closeAll;
     Array.prototype.forEach.call(document.querySelectorAll('[data-close]'), function (b) { b.onclick = closeAll; });
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeAll(); });
-    window.addEventListener('scroll', function () { document.body.classList.toggle('scrolled', window.scrollY > 4); }, { passive: true });
+    // The header hides on scrolling down and returns on a short scroll up, as on the rest of the site.
+    var lastY = window.scrollY;
+    window.addEventListener('scroll', function () {
+      var y = window.scrollY, dy = y - lastY;
+      document.body.classList.toggle('scrolled', y > 4);
+      if (dy > 8 && y > 80) { document.querySelector('.tbar').classList.add('away'); lastY = y; }
+      else if (dy < -4 || y <= 80) { document.querySelector('.tbar').classList.remove('away'); lastY = y; }
+    }, { passive: true });
+    $('hsearch').onsubmit = function (e) { e.preventDefault(); var q = $('paliauto').value.trim(); if (q) location.href = '/' + encodeURIComponent(q) + (lang === 'ru' ? '?lang=ru' : ''); };
     $('tab-list').onclick = function () { state.screen = 'list'; store('dgUposathaView', 'list'); paint(); };
     $('tab-cal').onclick = function () { state.screen = 'cal'; store('dgUposathaView', 'cal'); paint(); };
     $('more').onclick = function () { state.months += 3; paint(); };
