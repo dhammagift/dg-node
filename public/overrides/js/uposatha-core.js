@@ -133,7 +133,7 @@
       lines.push('BEGIN:VEVENT', 'UID:uposatha-' + r.ymd + (o.sutta ? '-s' : '-m') + '@dhamma.gift', 'DTSTAMP:' + icsStamp(now),
         'DTSTART:' + icsStamp(r.at), 'DTEND:' + icsStamp(new Date(r.at.getTime() + DAY)), 'SUMMARY:' + icsEscape(t.uday + ' — ' + name),
         'DESCRIPTION:' + icsEscape((two ? t.two + '\n' : '') + 'https://dhamma.gift/uposatha-calendar'));
-      if (wantDay(r, o.sutta, o.rem)) lines.push('BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:' + icsEscape(name), 'TRIGGER:-PT' + o.rem.lead + 'H', 'END:VALARM');
+      if (wantDay(r, o.sutta, o.rem)) lines.push('BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:' + icsEscape(name), 'TRIGGER:' + (o.rem.lead ? '-PT' + o.rem.lead + 'H' : 'PT0S'), 'END:VALARM');
       lines.push('END:VEVENT');
     });
     lines.push('END:VCALENDAR');
