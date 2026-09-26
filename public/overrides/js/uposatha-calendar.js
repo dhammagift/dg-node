@@ -117,7 +117,7 @@
   ];
   var KEYS = { // three questions; the suttas are the special and general ones of the slideshow
     en: [['How to keep it?', [
-        ['AN 3.70', 'as the arahants do {10}. The three kinds of Uposatha {7}; how it should <b>not</b> be kept — the cowherd\'s {8} and the Nigaṇṭha\'s {9}.'],
+        ['AN 3.70', 'the three kinds of Uposatha {7}: the cowherd\'s {8} and the Nigaṇṭha\'s {9} — how it should <b>not</b> be kept; the Noble One\'s {10} — as the arahants do.'],
         ['AN 10.46', 'not to be skipped: “it is your loss and misfortune”. {0}']]],
       ['On which days?', [
         ['AN 3.37', 'the 14th {4}, the 15th {5} and the 8th {6}: on these days the guardians of the world look who keeps the Uposatha.'],
@@ -128,7 +128,7 @@
         ['MN 53', 'the parts of the night — <i>paṭhama</i>, <i>majjhima</i>, <i>pacchima yāma</i> — and what a disciple does in each. {13}'],
         ['SN 28.1', 'the parts of the day: a monk\'s day — alms in the morning, seclusion at midday, coming out in the evening. {12}']]]],
     ru: [['Как соблюдать?', [
-        ['АН 3.70', 'как это делают араханты {10}. Три вида упосатхи {7}; как её <b>не</b> нужно соблюдать — «пастуха» {8} и «ниганты» {9}.'],
+        ['АН 3.70', 'три вида упосатхи {7}: «пастуха» {8} и «ниганты» {9} — как её <b>не</b> нужно соблюдать; упосатха Благородных {10} — как это делают араханты.'],
         ['АН 10.46', 'пропускать нельзя: «это ваша потеря и неудача». {0}']]],
       ['В какие дни?', [
         ['АН 3.37', '14-й {4}, 15-й {5} и 8-й {6}: в эти дни стражи мира смотрят, кто соблюдает упосатху.'],
