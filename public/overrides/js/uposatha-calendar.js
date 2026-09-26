@@ -543,7 +543,12 @@
     var all = quotes.filter(function (q) { return q[lang] || q.kind !== 'random'; }); // a random line with no translation into the page's language is left out; the key ones are shown in English
     var sp = all.filter(function (q) { return q.kind === 'special' && q.days.some(function (d) { return days.indexOf(d) !== -1; }); })
       .sort(function (a, b) { return a.days.length - b.days.length || a.days[0] - b.days[0]; }); // the lines for one day first, those for several after
-    slides = sp.concat(shuffle(all.filter(function (q) { return q.kind === 'general'; })), shuffle(all.filter(function (q) { return q.kind === 'random'; })).slice(0, 8));
+    // The show is short (at most 10, fewer is better): the special lines that fit the day (at most 5), three of the general ones,
+    // and two at random - those that name the days (14, 15, 8) first.
+    var named = /cātuddas|pannaras|aṭṭham/i;
+    var rnd = shuffle(all.filter(function (q) { return q.kind === 'random'; }));
+    rnd = rnd.filter(function (q) { return named.test(q.pli); }).concat(rnd.filter(function (q) { return !named.test(q.pli); }));
+    slides = sp.slice(0, 5).concat(shuffle(all.filter(function (q) { return q.kind === 'general'; })).slice(0, 3), rnd.slice(0, 2));
   }
   function slideText(q) { return q[lang] || q.en; }
   // The key words of the Uposatha (the day, its number, the parts of the day) are picked out in the Pali and in the translations.
