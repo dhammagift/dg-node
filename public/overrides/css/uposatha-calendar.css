@@ -34,11 +34,10 @@ body.scrolled .tbar { border-bottom-color: var(--dg-border); box-shadow: 0 4px 1
 .tbar.away { transform: translateY(-110%); }
 .tbar .in { max-width: 860px; margin: 0 auto; display: flex; align-items: center; gap: 10px; }
 .wordmark { display: flex; align-items: center; gap: 8px; color: inherit; flex: none; }
-.hsearch { flex: 1 1 auto; min-width: 0; max-width: 34rem; margin: 0 auto; position: relative; }
-.hsearch input { width: 100%; height: 38px; border: 1px solid var(--dg-border-strong); border-radius: 999px; background: var(--dg-surface); color: var(--dg-text); font: inherit; font-size: 14px; padding: 0 44px 0 16px; outline: 0; -webkit-appearance: none; appearance: none; }
-.hsearch input:focus { border-color: var(--dg-accent); box-shadow: 0 0 0 3px var(--dg-accent-bg); }
-.hsearch button { position: absolute; right: 3px; top: 3px; width: 32px; height: 32px; border: 0; border-radius: 50%; background: none; color: var(--dg-text-2); cursor: pointer; display: grid; place-items: center; }
-.hsearch button:hover { background: var(--dg-surface-hover); color: var(--dg-text); }
+.hsearch { flex: 1 1 auto; min-width: 0; max-width: 34rem; margin: 0 auto; }
+.hsearch .dg-input-shell { width: 100%; }
+.hsearch .dg-qs-btn .ic { width: 17px; height: 17px; }
+.hsearch .dg-shell-toc { display: inline-flex; align-items: center; justify-content: center; }
 .ui-autocomplete { z-index: 60; max-height: 60vh; overflow-y: auto; }
 .wordmark:hover { color: inherit; text-decoration: none; }
 .wordmark img { width: 24px; height: 24px; display: block; }

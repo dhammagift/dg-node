@@ -14,7 +14,7 @@
 <link rel="stylesheet" href="/assets/css/uposatha-calendar.css">
 <link rel="stylesheet" href="/assets/css/quick-modal.css">
 </head>
-<body data-screen="list" data-mode="detailed" data-remind="off">
+<body class="dg-state-toc" data-screen="list" data-mode="detailed" data-remind="off">
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
   <symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M3 12h18M3 18h18"/></symbol>
   <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"/></symbol>
@@ -45,9 +45,21 @@
 
 <header class="tbar"><div class="in">
   <a class="wordmark" href="/" id="wordmark"><img src="/assets/img/dgsankhaonly.png" alt=""><b>Uposatha</b><span data-t="tag"></span></a>
-  <form class="hsearch" id="hsearch" action="/" autocomplete="off" role="search">
-    <input id="paliauto" name="q" type="search" data-tp="searchPh" enterkeyhint="search" spellcheck="false" autocapitalize="off">
-    <button type="submit" data-tt="searchGo"><svg class="ic"><use href="#i-search"/></svg></button>
+  <form id="form" class="dg-hero-form hsearch" action="/" autocomplete="off" role="search">
+    <div class="dg-input-shell">
+      <a href="/toc" class="dg-shell-toc" data-tt="tocTitle">
+        <svg viewBox="0 0 448 512" fill="currentColor" aria-hidden="true"><path d="M0 96C0 60.7 28.7 32 64 32l320 0c35.3 0 64 28.7 64 64l0 320c0 35.3-28.7 64-64 64L64 480c-35.3 0-64-28.7-64-64L0 96zm64 0l0 64 64 0 0-64-64 0zm320 0l-192 0 0 64 192 0 0-64zM64 224l0 64 64 0 0-64-64 0zm320 0l-192 0 0 64 192 0 0-64zM64 352l0 64 64 0 0-64-64 0zm320 0l-192 0 0 64 192 0 0-64z"/></svg>
+      </a>
+      <input class="form-control searchinput" id="paliauto" name="q" type="search" data-tp="searchPh" enterkeyhint="search" autocomplete="off" spellcheck="false" autocapitalize="off">
+      <button type="button" id="dg-clear-btn" class="dg-shell-btn" hidden data-tt="clear">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+      <span class="dg-shell-sep" aria-hidden="true"></span>
+      <button type="button" id="dg-quick-btn" class="dg-qs-btn" data-tt="settingsL"><svg class="ic"><use href="#i-sliders"/></svg></button>
+      <button type="submit" id="searchbtn" class="dg-shell-btn dg-shell-go" data-tt="searchGo">
+        <svg class="dg-search-icon" viewBox="0 0 512 512" width="17" height="17" fill="currentColor" aria-hidden="true" style="transform: scaleX(-1)"><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352a144 144 0 1 0 0-288 144 144 0 1 0 0 288z"/></svg>
+      </button>
+    </div>
   </form>
   <div class="hbtns">
     <button class="rb" type="button" id="b-compass" data-tt="compass" onclick="if (window.toggleQuickModal) window.toggleQuickModal();"><svg class="ic"><use href="#i-compass"/></svg></button>
