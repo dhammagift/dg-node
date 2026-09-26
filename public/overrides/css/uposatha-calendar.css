@@ -210,8 +210,8 @@ b.match { color: var(--dg-match); font-weight: 600; } /* a found word, as in the
 .prow b { font-weight: 600; font-style: italic; }
 .prow small { display: block; font-size: 11.5px; color: var(--dg-text-muted); }
 .prow .tm { margin-left: auto; white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--dg-text-2); }
-.prow[data-now=true] { background: var(--dg-accent-bg); color: var(--dg-on-accent-bg); }
-.prow[data-now=true] .tm, .prow[data-now=true] small { color: inherit; }
+.prow[data-now=true] { background: color-mix(in srgb, var(--dg-navy-ink) 16%, transparent); box-shadow: inset 0 0 0 2px var(--dg-navy-ink); } /* the current part: a frame and a denser fill, not green (green is for kala) */
+.prow[data-now=true] small { color: var(--dg-text-2); }
 @media (max-width: 640px) { .pgrid { grid-template-columns: 1fr; } }
 .keys { margin: 34px 0 0; }
 .keys h2 { font-size: 17px; margin: 0 0 4px; }
@@ -475,3 +475,5 @@ body.app .mealsum h3 { color: var(--dg-accent-ink); }
 .keys li.kq details[open] summary::after { transform: rotate(225deg); }
 .keys li.kq details[open] > ul { padding-bottom: 12px; }
 @media (prefers-reduced-motion: reduce) { .keys li.kq summary::after { transition: none; } }
+
+.testtag { margin-left: 6px; padding: 1px 6px; border-radius: 6px; background: #9b1c31; color: #fff; font-size: 10px; letter-spacing: .06em; text-transform: uppercase; vertical-align: 1px; }

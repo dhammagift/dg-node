@@ -55,6 +55,7 @@
       noonBy: 'Count midday by', noonSunS: 'Sun', noonMidS: 'Middle of day', noonClockS: '12:00', noonWhat: 'Middle of the day: halfway between sunrise and sunset, the centre of the middle third.', noonChange: 'change', noonSun: 'the Sun (highest point)', noonMid: 'the middle of the day', noonClock: '12:00 by the clock', noonFixed: 'Without a place midday is 12:00 by the clock.',
       noonNote: 'The Vinaya says only “when midday has passed”, not how to find it. The Sun’s highest point is astronomical midday; the middle of the day is halfway between sunrise and sunset (almost the same); 12:00 by the clock can differ by an hour or more. Dawn here is taken as sunrise.',
  mealSet: 'Food (vikāla)', mealSumL: 'Show in the summary', mealRemL: 'Remind before the time for food ends', mealLead: 'In advance', mealLeads: [[0, 'when the time for food ends'], [15, '15 min'], [30, '30 min'], [45, '45 min'], [60, '1 hour'], [90, '1.5 hours'], [120, '2 hours']], mealDays: 'Days', mealDaysU: 'Uposatha days', mealDaysA: 'Every day', mealSnd: 'Sound of this reminder',
+      testL: 'Test: show the state', testReal: 'as is', testTag: 'test',
       mealRemNow: 'Vikāla begins', mealRemZero: function (noon) { return 'Midday at ' + noon + ' — the time for food has ended.'; },
       mealRemTitle: 'Vikāla soon', mealRemBody: function (noon, lead) { return 'Midday at ' + noon + ' — the time for food ends in ' + (lead >= 60 ? (lead / 60) + ' h' : lead + ' min') + '.'; },
       logoTip: 'Home · change the language: long press or right click', rateUs: 'Rate Us', appVer: 'App version', timeL: 'Time', ofMode: function (n, m, su) { return n + ' of ' + m + (su ? ' by the suttas' : ' modern'); }, locHere: 'by geo', locNone: 'manual', navHome: 'Summary', navList: 'Uposathas', navCal: 'Calendar', navParts: 'Night–day', navSet: 'Settings',
@@ -101,6 +102,7 @@
       noonBy: 'Полдень считать по', noonSunS: 'Солнце', noonMidS: 'Середина дня', noonClockS: '12:00', noonWhat: 'Середина дня — ровно между восходом и закатом, центр средней трети дня.', noonChange: 'изменить', noonSun: 'Солнцу (высшая точка)', noonMid: 'середине дня', noonClock: '12:00 по часам', noonFixed: 'Без места полдень — 12:00 по часам.',
       noonNote: 'В Винае сказано лишь «когда полдень миновал», а как его определить — нет. Высшая точка Солнца — астрономический полдень; середина дня — ровно между восходом и закатом (почти то же самое); 12:00 по часам может отличаться на час и больше. Рассвет здесь принят за восход.',
  mealSet: 'Еда (vikāla)', mealSumL: 'Показывать в сводке', mealRemL: 'Напоминать до конца времени еды', mealLead: 'Заранее', mealLeads: [[0, 'когда время еды закончится'], [15, '15 мин'], [30, '30 мин'], [45, '45 мин'], [60, '1 час'], [90, '1,5 часа'], [120, '2 часа']], mealDays: 'Дни', mealDaysU: 'Дни упосатхи', mealDaysA: 'Каждый день', mealSnd: 'Звук этого напоминания',
+      testL: 'Проверка: показать состояние', testReal: 'как есть', testTag: 'тест',
       mealRemNow: 'Наступает vikāla', mealRemZero: function (noon) { return 'Полдень в ' + noon + ' — время еды закончилось.'; },
       mealRemTitle: 'Скоро vikāla', mealRemBody: function (noon, lead) { return 'Полдень в ' + noon + ' — время еды закончится через ' + (lead >= 60 ? (lead / 60 + '').replace('.', ',') + ' ч' : lead + ' мин') + '.'; },
       logoTip: 'Домой · сменить язык: долгое нажатие или правая кнопка', rateUs: 'Оценить приложение', appVer: 'Версия приложения', timeL: 'Время', ofMode: function (n, m, su) { return n + ' из ' + m + (su ? ' по суттам' : ' по современной'); }, locHere: 'по гео', locNone: 'вручную', navHome: 'Сводка', navList: 'Упосатхи', navCal: 'Календарь', navParts: 'Ночь–день', navSet: 'Настройки',
@@ -134,6 +136,7 @@
     ['an3.70:2.3', 'AN 3.70 · three kinds|три вида'], ['an3.70:2.4', 'AN 3.70 · cowherd|пастух'], ['an3.70:3.1', 'AN 3.70 · Nigaṇṭha|ниганты'],
     ['an3.70:4.1', 'AN 3.70 · Noble One|Благородный'], ['an3.70:19.3', 'AN 3.70 · nights and days|ночь и день'],
     ['sn28.1:1.2', 'SN 28.1 · a monk\'s day|день монаха'], ['mn53:10.3', 'MN 53 · parts of the night|части ночи'], ['an3.70:19.1', 'AN 3.70 · like the arahants|подобно арахантам'], ['mn79:17.2', 'MN 79 · midday|полдень'],
+    ['mn21:7.4', 'MN 21 · one sitting|один приём'], ['mn70:2.1', 'MN 70 · not at night|не ночью'], ['mn66:6.6', 'MN 66 · the wrong time|неподходящее время'], ['mn65:4.1', 'MN 65 · Bhaddāli'],
   ];
   var KEYS = { // three questions; the suttas are the special and general ones of the slideshow
     en: [['How to keep it?', [
@@ -147,7 +150,12 @@
         ['MN 53', 'what is the night? The parts of the night — <i>paṭhama</i>, <i>majjhima</i>, <i>pacchima yāma</i> — and what a disciple does in each. {13}'],
         ['SN 28.1', 'what is the day? The parts of the day: a monk\'s day — alms in the morning, seclusion at midday, coming out in the evening. {12} The word majjhanhikasamaya is not there, but this is that part of the day.'],
         ['MN 79', 'midday itself: “the sun at midday” (<i>majjhanhikasamaya</i>) in a clear autumn sky. {15}'],
-        ['MN 146', 'not by the phases of the moon alone: on the 14th it is not full {2}, on the 15th it is full {3}.', 'gap']]]],
+        ['MN 146', 'not by the phases of the moon alone: on the 14th it is not full {2}, on the 15th it is full {3}.', 'gap']]],
+      ['What about food?', [
+        ['MN 21', 'the Buddha eats in one sitting per day and invites the monks to do the same. {16}'],
+        ['MN 70', 'abstaining from eating at night. {17}'],
+        ['MN 66', 'the monks give up the meal at the wrong time of day, and of night. {18}'],
+        ['MN 65', 'the monk Bhaddāli cannot keep even one sitting: eat a part where invited and bring the rest. {19}']]]],
     ru: [['Как соблюдать?', [
         ['АН 3.70', 'упосатха Благородных {10} — подобно арахантам {14}; избегать упосатхи пастуха и ниганты {7}.'],
         ['АН 10.46', 'не пропускать: «это ваша потеря и неудача». {0}']]],
@@ -159,7 +167,12 @@
         ['МН 53', 'что такое ночь? Части ночи — <i>paṭhama</i>, <i>majjhima</i>, <i>pacchima yāma</i> — и что делает в каждой ученик. {13}'],
         ['СН 28.1', 'что такое день? Части дня: день монаха — подаяние утром, уединение в середине дня, выход вечером. {12} Слова majjhanhikasamaya там нет, но это именно эта часть дня.'],
         ['МН 79', 'сам полдень: «солнце в полдень» (<i>majjhanhikasamaya</i>) в ясном осеннем небе. {15}'],
-        ['МН 146', 'не только по фазам луны: на 14-й она неполная {2}, на 15-й — полная {3}.', 'gap']]]],
+        ['МН 146', 'не только по фазам луны: на 14-й она неполная {2}, на 15-й — полная {3}.', 'gap']]],
+      ['Что с едой?', [
+        ['МН 21', 'Будда ест один раз в день и зовёт монахов делать так же. {16}'],
+        ['МН 70', 'воздерживаться от еды ночью. {17}'],
+        ['МН 66', 'монахи отказываются от еды в неподходящее время дня и ночи. {18}'],
+        ['МН 65', 'монах Бхаддали не может соблюдать и один приём: есть часть там, где пригласили, и принести остальное. {19}']]]],
   };
 
   // ---------- state ----------
@@ -172,6 +185,7 @@
     lite: store('dgUposathaLite') !== '0', // the short view is the default
     screen: params.get('view') === 'all' ? 'cal' : (store('dgUposathaView') === 'cal' ? 'cal' : 'list'),
     months: 3, calOff: 0, selected: null,
+    fake: (function () { var v = store('dgUposathaFake'); return v === 'kala' || v === 'vikala' ? v : ''; })(),
     meal: (function () { var d = { sum: true, rem: false, lead: 30, days: 'upo', snd: 'bell' }; try { var v = JSON.parse(store('dgUposathaMeal')); if (v) for (var k in d) if (k in v) d[k] = v[k]; } catch (e) { /* defaults */ } return d; })(),
     noon: (function () { var v = store('dgUposathaNoon'); return /^(sun|mid|clock)$/.test(v || '') ? v : 'sun'; })(),
     loc: (function () { try { return JSON.parse(store('dgUposathaLoc')); } catch (e) { return null; } })(),
@@ -361,7 +375,7 @@
     var p = ymd.split('-').map(Number), tz = state.tz, m = obs ? state.noon : 'clock';
     var noon = noonFor(ymd, obs);
     var nowMs = now.getTime(), to, html, kind;
-    var fake = params.get('meal'); // test only: ?meal=kala or ?meal=vikala shows that state whatever the time is
+    var fake = state.fake || params.get('meal'); // test only: the switch in the settings (or ?meal=kala / ?meal=vikala) shows that state whatever the time is
     if (fake === 'kala') nowMs = (rise.getTime() + noon.getTime()) / 2; else if (fake === 'vikala') nowMs = noon.getTime() + 3600000;
     if (nowMs < noon.getTime() && nowMs >= rise.getTime()) { kind = 'kala'; to = noon.getTime(); html = t.mealEat(F.hm.format(noon), '<b class="meal-left" data-to="' + to + '">' + span(to - nowMs) + '</b>'); }
     else { kind = 'vikala'; var dawn = nowMs < rise.getTime() ? rise : (sunEvent('rise', p[0], p[1], p[2] + 1, tz, obs) || zonedToUtc(p[0], p[1], p[2] + 1, 6, tz)); to = dawn.getTime(); html = t.mealVik(F.hm.format(dawn), '<b class="meal-left" data-to="' + to + '">' + span(to - nowMs) + '</b>'); }
@@ -369,8 +383,9 @@
     setSeg('noonseg', obs ? state.noon : 'clock'); $('noon-note').textContent = obs ? t.noonWhat : t.noonFixed; $('noonseg').setAttribute('data-fixed', String(!obs)); // without a place only the clock is possible
     var how = { sun: t.noonSun, mid: t.noonMid, clock: t.noonClock }[m];
     var by = '<p class="sub">' + esc(t.noonBy) + ': ' + esc(how) + ' · <a href="#" class="noonlink">' + esc(t.noonChange) + '</a></p>';
-    $('meal').innerHTML = '<h3>' + esc(t.mealH) + '</h3><p class="mstat" data-k="' + kind + '">' + html + '</p><p class="sub">' + t.mealSub + ref('pli-tv-bu-vb-pc37:2.1.6', 'Pc 37') + ' · ' + ref('an3.70:24.2', 'AN 3.70') + '</p>' + by;
-    $('meal-sum').innerHTML = '<h3>' + esc(t.mealH) + '</h3><p class="mstat" data-k="' + kind + '">' + html + '</p>';
+    var tag = state.fake ? ' <b class="testtag">' + esc(t.testTag) + '</b>' : '';
+    $('meal').innerHTML = '<h3>' + esc(t.mealH) + tag + '</h3><p class="mstat" data-k="' + kind + '">' + html + '</p><p class="sub">' + t.mealSub + ref('pli-tv-bu-vb-pc37:2.1.6', 'Pc 37') + ' · ' + ref('an3.70:24.2', 'AN 3.70') + '</p>' + by;
+    $('meal-sum').innerHTML = '<h3>' + esc(t.mealH) + tag + '</h3><p class="mstat" data-k="' + kind + '">' + html + '</p>';
     markPali($('meal')); markPali($('meal-sum'));
   }
   function paint() {
@@ -616,6 +631,7 @@
     $('mrem-sound-row').style.display = showSnd ? '' : 'none';
     if (showSnd) { $('mrem-sound').innerHTML = Object.keys(SOUND_FILES).map(function (k) { return '<option value="' + k + '">' + esc(t.sounds[k]) + '</option>'; }).concat(['<option value="none">' + esc(t.soundNone) + '</option>']).join(''); $('mrem-sound').value = state.meal.snd; }
     $('meal-sum').hidden = !state.meal.sum;
+    setSeg('testseg', state.fake);
     $('rem-sound-row').style.display = showSnd ? '' : 'none'; // the sound is a notification channel: only the app has them
     if (showSnd) {
       var opts = Object.keys(SOUND_FILES).map(function (k) { return [k, t.sounds[k]]; }).concat([['none', t.soundNone]]);
@@ -1000,6 +1016,7 @@
       Notification.requestPermission().then(function (perm) { state.rem.on = perm === 'granted'; if (perm !== 'granted') state.remMsg = t.remDenied; saveRem(); paint(); });
     });
     function saveMeal() { store('dgUposathaMeal', JSON.stringify(state.meal)); }
+    onSeg('testseg', function (v) { state.fake = v; store('dgUposathaFake', v); paint(); });
     onSeg('sw-msum', function (v) { state.meal.sum = v === '1'; saveMeal(); paint(); });
     onSeg('sw-mrem', function (v) {
       state.remMsg = '';
