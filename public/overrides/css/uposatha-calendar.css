@@ -424,7 +424,7 @@ body.app #dg-footer, body.app #soft, body.app .toc, body.app #s-calendar, body.a
 body.app main.page > * { display: none; }
 body.app[data-app-tab=home] .intro, body.app[data-app-tab=home] #s-summary, body.app[data-app-tab=home] .ctx, body.app[data-app-tab=home] #meal-sum, body.app[data-app-tab=home] #slides:not([hidden]) { display: block; }
 body.app[data-app-tab=home] .intro { display: block; }
-body.app[data-app-tab=list] #s-list, body.app[data-app-tab=cal] #s-cal, body.app[data-app-tab=parts] #parts, body.app[data-app-tab=keys] #keys { display: block; }
+body.app[data-app-tab=list] #s-list, body.app[data-app-tab=cal] #s-cal, body.app[data-app-tab=parts] #parts, body.app[data-app-tab=home] #keys { display: block; }
 body.app:not([data-app-tab=list]) #s-list, body.app:not([data-app-tab=cal]) #s-cal { display: none !important; } /* the screen rules above name ids and would win */
 
 /* food and vikala */

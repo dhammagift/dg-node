@@ -1,0 +1,14 @@
+/* The app's bottom bar: a floating pill; the current item shows its label inside a moving pill (app-nav.js), the others are icons.
+   Loaded after app-refresh.css, which styles the same bar in another way: this file wins by order. */
+body.app .appnav { left: 12px; right: 12px; bottom: calc(10px + env(safe-area-inset-bottom, 0px)); padding: 6px; border: 1px solid var(--dg-border); border-radius: 30px; background: var(--dg-surface); box-shadow: 0 8px 24px rgba(0, 0, 0, .16); justify-content: space-between; gap: 0; }
+body.app .appnav button { position: relative; z-index: 1; flex: 0 0 auto; flex-direction: row; align-items: center; gap: 8px; height: 46px; min-width: 46px; padding: 0 12px; border-radius: 23px; font-size: 13.5px; font-weight: 600; letter-spacing: 0; color: var(--dg-text-muted); justify-content: center; }
+body.app .appnav button i { width: 24px; height: 24px; border-radius: 0; overflow: visible; background: none !important; }
+body.app .appnav button i::before, body.app .appnav button i::after { display: none; }
+body.app .appnav button .ic { width: 24px; height: 24px; }
+body.app .appnav button span { display: none; white-space: nowrap; }
+body.app .appnav button[aria-current=true] { color: var(--dg-accent-ink); }
+body.app .appnav button[aria-current=true] span { display: inline; }
+body.app .appnav button[aria-current=true] .ic { color: var(--dg-accent-ink); }
+body.app .appnav .up-pill { position: absolute; z-index: 0; top: 6px; bottom: 6px; left: 0; width: 0; border-radius: 23px; background: var(--dg-accent-bg); pointer-events: none; contain: layout paint; }
+body.app .appnav .up-ghost { position: absolute; z-index: 1; pointer-events: none; white-space: nowrap; font-size: 13.5px; font-weight: 600; color: var(--dg-accent-ink); line-height: 46px; }
+body.app main.page { padding-bottom: 110px; }

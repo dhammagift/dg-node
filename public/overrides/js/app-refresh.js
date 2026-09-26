@@ -4,7 +4,7 @@
 (function () {
   var P = new URLSearchParams(location.search), reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   var EMPH_DEC = 'cubic-bezier(.05,.7,.1,1)', EMPH_ACC = 'cubic-bezier(.3,0,.8,.15)';
-  var ORDER = ['home', 'list', 'cal', 'parts', 'keys'];
+  var ORDER = ['home', 'list', 'cal', 'parts']; // the key suttas moved into the summary; the gear (settings) is not a tab
   // Пары «контур / заливка»: активная вкладка заливает .up-fill, как filled-иконки Material
   var S = 'viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"';
   var ICONS = {
@@ -101,6 +101,7 @@
     var main = document.querySelector('main.page'), busy = false;
     $$('button', nav).forEach(function (b) {
       var k = b.getAttribute('data-tab'), i = b.querySelector('i');
+      if (k === 'settings') return; // opens the drawer, keeps its own handler and never becomes the current tab
       if (ICONS[k] && i) i.innerHTML = ICONS[k];
       var orig = b.onclick;
       b.onclick = function () {

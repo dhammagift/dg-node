@@ -26,6 +26,7 @@
 <link rel="stylesheet" href="/assets/css/carousel-core.css">
 <link rel="stylesheet" href="/assets/css/uposatha-calendar.css">
 <link rel="stylesheet" href="/assets/css/app-refresh.css">
+<link rel="stylesheet" href="/assets/css/app-nav.css">
 <link rel="stylesheet" href="/assets/css/quick-modal.css">
 </head>
 <body class="dg-state-toc" data-screen="list" data-mode="detailed" data-remind="off">
@@ -161,11 +162,12 @@
 </main>
 
 <nav class="appnav" id="appnav" aria-label="Sections" hidden>
+  <span class="up-pill" aria-hidden="true"></span>
   <button type="button" data-tab="home"><i><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg></i><span data-t="navHome"></span></button>
   <button type="button" data-tab="list"><i><svg class="ic"><use href="#i-list"/></svg></i><span data-t="navList"></span></button>
   <button type="button" data-tab="cal"><i><svg class="ic"><use href="#i-cal"/></svg></i><span data-t="navCal"></span></button>
   <button type="button" data-tab="parts"><i><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 0 0 16z" fill="currentColor"/></svg></i><span data-t="navParts"></span></button>
-  <button type="button" data-tab="keys"><i><svg class="ic"><use href="#i-book"/></svg></i><span data-t="navKeys"></span></button>
+  <button type="button" data-tab="settings" data-tt="navSet"><i><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.3"/><path d="M19.4 13.5a7.5 7.5 0 0 0 0-3l1.9-1.5-2-3.4-2.3.9a7.6 7.6 0 0 0-2.6-1.5L14 2.5h-4l-.4 2.5a7.6 7.6 0 0 0-2.6 1.5l-2.3-.9-2 3.4 1.9 1.5a7.5 7.5 0 0 0 0 3l-1.9 1.5 2 3.4 2.3-.9a7.6 7.6 0 0 0 2.6 1.5l.4 2.5h4l.4-2.5a7.6 7.6 0 0 0 2.6-1.5l2.3.9 2-3.4z"/></svg></i></button>
 </nav>
 
 <footer id="dg-footer">
@@ -354,6 +356,7 @@
 <script src="/assets/js/uposatha-core.js"></script>
 <script src="/assets/js/uposatha-calendar.js"></script>
 <script src="/assets/js/app-refresh.js"></script>
+<script src="/assets/js/app-nav.js"></script>
 <script>
   // the same localization config as on the site's other pages: the {{tokens}} of the drawer
   window.DHAMMA_LANG_CONFIG_PATTERN = "/nodejs/res/lang_{lang}.json";
