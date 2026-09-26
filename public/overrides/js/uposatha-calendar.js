@@ -113,11 +113,11 @@
     ['an3.37:1.3', 'AN 3.37 · 14th|14-й'], ['an3.37:1.5', 'AN 3.37 · 15th|15-й'], ['an3.37:1.1', 'AN 3.37 · 8th|8-й'],
     ['an3.70:2.3', 'AN 3.70 · three kinds|три вида'], ['an3.70:2.4', 'AN 3.70 · cowherd|пастух'], ['an3.70:3.1', 'AN 3.70 · Nigaṇṭha|ниганты'],
     ['an3.70:4.1', 'AN 3.70 · Noble One|Благородный'], ['an3.70:19.3', 'AN 3.70 · nights and days|ночь и день'],
-    ['sn28.1:1.2', 'SN 28.1 · a monk\'s day|день монаха'], ['mn53:10.3', 'MN 53 · parts of the night|части ночи'],
+    ['sn28.1:1.2', 'SN 28.1 · a monk\'s day|день монаха'], ['mn53:10.3', 'MN 53 · parts of the night|части ночи'], ['an3.70:19.1', 'AN 3.70 · like the arahants|подобно арахантам'],
   ];
   var KEYS = { // three questions; the suttas are the special and general ones of the slideshow
     en: [['How to keep it?', [
-        ['AN 3.70', 'the Noble One\'s Uposatha {10} — as the arahants do.'],
+        ['AN 3.70', 'the Noble One\'s Uposatha {10} — like the arahants {14}; avoid the cowherd\'s and the Nigaṇṭha\'s Uposatha {7}.'],
         ['AN 10.46', 'do not skip: “it is your loss and misfortune”. {0}']]],
       ['On which days?', [
         ['AN 3.37', 'the 14th {4}, the 15th {5} and the 8th {6}: on these days the guardians of the world look who keeps the Uposatha.'],
@@ -128,7 +128,7 @@
         ['SN 28.1', 'what is the day? The parts of the day: a monk\'s day — alms in the morning, seclusion at midday, coming out in the evening. {12}'],
         ['MN 146', 'not by the phases of the moon alone: on the 14th it is not full {2}, on the 15th it is full {3}.', 'gap']]]],
     ru: [['Как соблюдать?', [
-        ['АН 3.70', 'упосатха Благородных {10} — так, как это делают араханты.'],
+        ['АН 3.70', 'упосатха Благородных {10} — подобно арахантам {14}; избегать упосатхи пастуха и ниганты {7}.'],
         ['АН 10.46', 'не пропускать: «это ваша потеря и неудача». {0}']]],
       ['В какие дни?', [
         ['АН 3.37', '14-й {4}, 15-й {5} и 8-й {6}: в эти дни стражи мира смотрят, кто соблюдает упосатху.'],
