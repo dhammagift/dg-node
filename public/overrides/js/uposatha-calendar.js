@@ -31,14 +31,14 @@
   // ---------- words ----------
   var T = {
     en: {
-      pH: 'Structure of the night and day', sH: 'Other moon tools', sSub: 'The beginning and the end of a lunar day and the phases of the Moon are astronomical data. To check them or to see them another way, use astronomical apps and sites, not Buddhist calendars.', sSite: 'Website', sApps: 'Apps', sDev: 'For developers', tSoft: 'Other tools', tocH: 'On this page', tSummary: 'Summary', tSuttas: 'Suttas on the topic', tCalendar: 'Calendar', tParts: 'Structure of the night and day', tKeys: 'Key suttas', pSub: 'Sunrise to sunset is cut into three parts, and sunset to sunrise likewise — for your place and the season.', pDay: 'Day', pNight: 'Night',
-      dayParts: [['Pubbaṇhasamaya', 'morning'], ['Majjhanhikasamaya', 'midday'], ['Sāyanhasamaya', 'evening']], nightParts: [['Paṭhama yāma', 'first watch'], ['Majjhima yāma', 'middle watch'], ['Pacchima yāma', 'last watch']],
+      pH: 'Structure of the night and day', sH: 'Other moon tools', sSub: 'The beginning and the end of a lunar day and the phases of the Moon are astronomical data. To check them or to see them another way, use astronomical apps and sites, not Buddhist calendars.', sSite: 'Website', sApps: 'Apps', sDev: 'For developers', tSoft: 'Other tools', tocH: 'On this page', tSummary: 'Summary', tSuttas: 'Suttas on the topic', tCalendar: 'Calendar', tParts: 'Structure of the night and day', tKeys: 'Key suttas', pSub: 'Sunrise to sunset is cut into three parts, and sunset to sunrise likewise — for your place and the season.', pDay: 'Day', pNight: 'Night', pFixed: '* Without your place the times are conventional: sunrise 06:00 and sunset 18:00, about as in the lands where the Buddha lived (the day there is nearly equal to the night). Set a place in the menu and the borders become real.',
+      dayParts: [['Pubbaṇhasamaya', 'morning', 'The monks put on robes and go for alms (piṇḍapāta)', 'sn28.1:1.2'], ['Majjhanhikasamaya', 'midday', 'Seclusion and practice, the day\'s meditation', 'sn28.1:1.4'], ['Sāyanhasamaya', 'evening', 'Coming out of seclusion: meeting and talking with the Teacher and the monks', 'sn28.1:2.1']], nightParts: [['Paṭhama yāma', 'first watch', 'Practice: walking and sitting, cleansing the mind', 'mn53:10.3'], ['Majjhima yāma', 'middle watch', 'The lion\'s posture: lying on the right side, mindful and aware', 'mn53:10.4'], ['Pacchima yāma', 'last watch', 'Rising: walking and sitting practice again', 'mn53:10.5']],
       fSpecial: 'special', fGeneral: 'general', fRandom: 'random', slTitle: 'From the suttas', addCal: 'Add to calendar', subH: 'Subscribe', fileH: 'Or a file', calRemind: 'The reminder time and the days are taken from the reminder settings in the menu.', gUposatha: 'Uposatha', on: 'On', off: 'Off', fAll: 'All', sortKind: 'By kind', sortSutta: 'By sutta', showAll: 'Show all', readIt: 'Read', dayTag: function (d) { return d.map(function (n) { return n + 'th'; }).join(', ') + ' day'; },
       age: 'age', of30: 'of 30', from: 'from', left: 'left', dU: 'd', hU: 'h', mU: 'min',
       searchPh: 'Search: kacchapa, dn22…', searchGo: 'Search', tocTitle: 'Contents (Alt+2)', clear: 'Clear', tag: 'observance days', compass: 'Favorites / History', menu: 'Menu', theme: 'Theme', prev: 'Previous', next: 'Next', close: 'Close',
       h1: 'Uposatha days', lead: 'The 14th, 15th and 8th lunar days of each half-month, as the suttas count them — six a month.', suttas: 'The suttas on Uposatha →',
       today: 'Today', change: 'change', tList: 'Uposatha days', tCal: 'Calendar', more: 'Three more months', todayBtn: 'Today',
-      kH: 'Key suttas to start with', kSub: 'Each “Read →” opens the sutta at the passage in question and highlights it.', kNow: 'Now open', kNew: 'Open in a new window',
+      kH: 'Key suttas', kSub: 'Each “Read →” opens the sutta at the passage in question and highlights it.', kNow: 'Now open', kNew: 'Open in a new window',
       lic: 'Licences', mt: 'Multitool', lHome: 'Home', lToc: 'Contents', lDict: 'Dictionary', lMemo: 'Memorizer', lang: 'Language', themeH: 'Theme', dark: 'Dark', light: 'Light', auto: 'Auto',
       gCal: 'Calendar', subNote: 'The days for a year ahead, kept up to date by itself.', icsNote: 'Or a file, once: the next 12 months.', copyLink: 'Copy link',
       ics: 'Download .ics file', suttasL: 'The suttas on Uposatha', help: 'Help', share: 'Share', settingsL: 'Uposatha settings', settings: 'Settings',
@@ -67,14 +67,14 @@
       wds: ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'], docs: '/docs/uposatha', linkCopied: 'Link copied', shareTitle: 'Uposatha days', locale: 'en-GB',
     },
     ru: {
-      pH: 'Структура ночи-дня', sH: 'Другие лунные инструменты', sSub: 'Начало и конец лунного дня и фазы Луны — это астрономические данные. Чтобы проверить их или увидеть по-другому, пользуйтесь астрономическими приложениями и сайтами, а не буддийскими календарями.', sSite: 'Сайт', sApps: 'Приложения', sDev: 'Разработчикам', tSoft: 'Другие инструменты', tocH: 'На странице', tSummary: 'Сводка', tSuttas: 'Сутты по теме', tCalendar: 'Календарь', tParts: 'Структура ночи-дня', tKeys: 'Ключевые сутты', pSub: 'Время от восхода до заката делится на три части, и от заката до восхода тоже — для вашего места и сезона.', pDay: 'День', pNight: 'Ночь',
-      dayParts: [['Pubbaṇhasamaya', 'утро'], ['Majjhanhikasamaya', 'полдень'], ['Sāyanhasamaya', 'вечер']], nightParts: [['Paṭhama yāma', 'первая часть'], ['Majjhima yāma', 'средняя часть'], ['Pacchima yāma', 'последняя часть']],
+      pH: 'Структура ночи-дня', sH: 'Другие лунные инструменты', sSub: 'Начало и конец лунного дня и фазы Луны — это астрономические данные. Чтобы проверить их или увидеть по-другому, пользуйтесь астрономическими приложениями и сайтами, а не буддийскими календарями.', sSite: 'Сайт', sApps: 'Приложения', sDev: 'Разработчикам', tSoft: 'Другие инструменты', tocH: 'На странице', tSummary: 'Сводка', tSuttas: 'Сутты по теме', tCalendar: 'Календарь', tParts: 'Структура ночи-дня', tKeys: 'Ключевые сутты', pSub: 'Время от восхода до заката делится на три части, и от заката до восхода тоже — для вашего места и сезона.', pDay: 'День', pNight: 'Ночь', pFixed: '* Без вашего места время условное: восход 06:00 и закат 18:00, примерно как в краях, где жил Будда (день там почти равен ночи). Задайте место в меню — и границы станут настоящими.',
+      dayParts: [['Pubbaṇhasamaya', 'утро', 'Монахи одеваются и идут за подаянием (пиндапата)', 'sn28.1:1.2'], ['Majjhanhikasamaya', 'полдень', 'Уединение и практика, дневное пребывание', 'sn28.1:1.4'], ['Sāyanhasamaya', 'вечер', 'Выход из уединения: встреча и беседа с Учителем и монахами', 'sn28.1:2.1']], nightParts: [['Paṭhama yāma', 'первая часть', 'Практика: ходьба и сидение, очищение ума', 'mn53:10.3'], ['Majjhima yāma', 'средняя часть', 'Поза льва: лёжа на правом боку, осознанно', 'mn53:10.4'], ['Pacchima yāma', 'последняя часть', 'Вставание: снова ходьба и сидение', 'mn53:10.5']],
       fSpecial: 'особое', fGeneral: 'общее', fRandom: 'случайное', slTitle: 'Из сутт', addCal: 'В календарь', subH: 'Подписаться', fileH: 'Или файл', calRemind: 'Время напоминания и дни берутся из настроек напоминаний в меню.', gUposatha: 'Упосатха', on: 'Вкл', off: 'Выкл', fAll: 'Все', sortKind: 'По видам', sortSutta: 'По суттам', showAll: 'Показать все', readIt: 'Читать', dayTag: function (d) { return d.map(function (n) { return n + '-й'; }).join(', ') + ' день'; },
       age: 'возраст', of30: 'из 30', from: 'с', left: 'осталось', dU: 'д', hU: 'ч', mU: 'мин',
       searchPh: 'Поиск: kacchapa, dn22…', searchGo: 'Найти', tocTitle: 'Оглавление (Alt+2)', clear: 'Очистить', tag: 'дни соблюдения', compass: 'Избранное / История', menu: 'Меню', theme: 'Тема', prev: 'Назад', next: 'Вперёд', close: 'Закрыть',
       h1: 'Дни упосатхи', lead: '14-й, 15-й и 8-й лунные дни каждой половины месяца, как их считают сутты, — шесть в месяц.', suttas: 'Сутты об упосатхе →',
       today: 'Сегодня', change: 'изменить', tList: 'Упосатхи', tCal: 'Календарь', more: 'Ещё три месяца', todayBtn: 'Сегодня',
-      kH: 'Ключевые сутты для начала', kSub: 'Каждое «Читать →» открывает сутту на нужном месте и подсвечивает его.', kNow: 'Сейчас открыта', kNew: 'Открыть в новом окне',
+      kH: 'Ключевые сутты', kSub: 'Каждое «Читать →» открывает сутту на нужном месте и подсвечивает его.', kNow: 'Сейчас открыта', kNew: 'Открыть в новом окне',
       lic: 'Лицензии', mt: 'Мультитул', lHome: 'Главная', lToc: 'Оглавление', lDict: 'Словарь', lMemo: 'Меморайзер', lang: 'Язык', themeH: 'Тема', dark: 'Тёмная', light: 'Светлая', auto: 'Авто',
       gCal: 'Календарь', subNote: 'Дни на год вперёд, обновляется сама.', icsNote: 'Или файлом, один раз: на 12 месяцев вперёд.', copyLink: 'Копировать ссылку',
       ics: 'Скачать файл .ics', suttasL: 'Сутты об упосатхе', help: 'Помощь', share: 'Поделиться', settingsL: 'Настройки упосатхи', settings: 'Настройки',
@@ -266,11 +266,12 @@
       var third = (to - from) / 3;
       return '<div class="pblk"><h3>' + esc(title) + '<span>' + esc(sub) + '</span></h3>' + names.map(function (n, i) {
         var a = from.getTime() + i * third, b = a + third;
-        return '<div class="prow"' + (now >= a && now < b ? ' data-now="true"' : '') + '><span><b>' + esc(n[0]) + '</b><small>' + esc(n[1]) + '</small></span><span class="tm">' + F.hm.format(a) + ' – ' + F.hm.format(b) + '</span></div>';
+        return '<div class="prow"' + (now >= a && now < b ? ' data-now="true"' : '') + '><span><b>' + esc(n[0]) + '</b><small>' + esc(n[1]) + '</small><em>' + esc(n[2]) + ' · <a class="pref" href="/' + esc(n[3]) + '?lang=' + lang + '" target="_blank" rel="noopener">' + esc(n[3].split(':')[0]) + '</a></em></span><span class="tm">' + F.hm.format(a) + ' – ' + F.hm.format(b) + (obs ? '' : '*') + '</span></div>';
       }).join('') + '</div>';
     }
     $('pgrid').innerHTML = block(t.pDay, F.week.format(Date.parse(ymd)), rise, set, t.dayParts) +
       block(t.pNight, F.week.format(Date.parse(nightFrom)) + ' → ' + F.week.format(Date.parse(ymdAdd(nightFrom, 1))), nStart, nEnd, t.nightParts);
+    $('pnote').textContent = obs ? '' : t.pFixed;
   }
   function paint() {
     var now = new Date(), tz = state.tz, F = formats(), su = sutta();
@@ -766,7 +767,7 @@
     $('sl-sort').onclick = function (e) { var v = e.target.getAttribute && e.target.getAttribute('data-s'); if (v) { slSort = v; showAllSlides(); } };
     document.addEventListener('click', function (e) {
       if (e.button || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
-      var a = e.target.closest && e.target.closest('#dg-carousel .carousel-item a, #sl-all-list .sr');
+      var a = e.target.closest && e.target.closest('#dg-carousel .carousel-item a, #sl-all-list .sr, .pref');
       if (!a) return;
       e.preventDefault();
       var href = a.getAttribute('href') || '', ref = href.replace(/^\//, '').split('?')[0];

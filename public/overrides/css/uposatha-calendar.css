@@ -362,3 +362,7 @@ body.embed .toc { display: none; }
 .soft ul { margin: 0; padding: 0 0 0 18px; font-size: 14px; line-height: 1.9; color: var(--dg-text-2); }
 #soft { scroll-margin-top: 90px; }
 body.embed .soft { display: none; }
+
+.prow small + em { display: block; font-style: normal; font-size: 12px; line-height: 1.45; color: var(--dg-text-2); margin-top: 3px; max-width: 34ch; }
+.prow em a { color: var(--dg-accent-ink); }
+.prow[data-now=true] em a { color: inherit; text-decoration: underline; }
