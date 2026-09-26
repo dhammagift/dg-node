@@ -57,7 +57,7 @@
  mealSet: 'Food (vikāla)', mealSumL: 'In the summary', mealRemL: 'Remind before vikāla', mealLead: 'In advance', mealLeads: [[0, 'when vikāla begins'], [15, '15 min'], [30, '30 min'], [45, '45 min'], [60, '1 hour'], [90, '1.5 hours'], [120, '2 hours']], mealDays: 'Days', mealDaysU: 'Uposatha days', mealDaysA: 'Every day', mealSnd: 'Sound of this reminder',
       mealRemNow: 'Vikāla begins', mealRemZero: function (noon) { return 'Midday at ' + noon + ' — the time for food has ended.'; },
       mealRemTitle: 'Vikāla soon', mealRemBody: function (noon, lead) { return 'Midday at ' + noon + ' — the time for food ends in ' + (lead >= 60 ? (lead / 60) + ' h' : lead + ' min') + '.'; },
-      logoTip: 'Home · change the language: long press or right click', navHome: 'Summary', navList: 'Uposathas', navCal: 'Calendar', navParts: 'Night–day', navSet: 'Settings',
+      logoTip: 'Home · change the language: long press or right click', rateUs: 'Rate Us', appVer: 'App version', navHome: 'Summary', navList: 'Uposathas', navCal: 'Calendar', navParts: 'Night–day', navSet: 'Settings',
       sound: 'Sound', soundNone: 'Silent', soundOwn: 'My own sound…', soundOwnNamed: 'My own: %', soundFail: 'The sound was not set.', sounds: { gong: 'Gong', gong2: 'Gong 2', gong3: 'Gong 3', gong4: 'Gong 4', gong5: 'Gong 5', bell: 'Bell' },
       remAppNote: 'Reminders are scheduled on this device and arrive even when the app is closed.',
       remNext: function (when, what) { return 'Next reminder: ' + when + ' — ' + what; }, remNone: 'No reminder is due in the coming weeks.',
@@ -103,7 +103,7 @@
  mealSet: 'Еда (vikāla)', mealSumL: 'В сводке', mealRemL: 'Напоминать до vikāla', mealLead: 'Заранее', mealLeads: [[0, 'когда наступит vikāla'], [15, '15 мин'], [30, '30 мин'], [45, '45 мин'], [60, '1 час'], [90, '1,5 часа'], [120, '2 часа']], mealDays: 'Дни', mealDaysU: 'Дни упосатхи', mealDaysA: 'Каждый день', mealSnd: 'Звук этого напоминания',
       mealRemNow: 'Наступает vikāla', mealRemZero: function (noon) { return 'Полдень в ' + noon + ' — время еды закончилось.'; },
       mealRemTitle: 'Скоро vikāla', mealRemBody: function (noon, lead) { return 'Полдень в ' + noon + ' — время еды закончится через ' + (lead >= 60 ? (lead / 60 + '').replace('.', ',') + ' ч' : lead + ' мин') + '.'; },
-      logoTip: 'Домой · сменить язык: долгое нажатие или правая кнопка', navHome: 'Сводка', navList: 'Упосатхи', navCal: 'Календарь', navParts: 'Ночь–день', navSet: 'Настройки',
+      logoTip: 'Домой · сменить язык: долгое нажатие или правая кнопка', rateUs: 'Оценить приложение', appVer: 'Версия приложения', navHome: 'Сводка', navList: 'Упосатхи', navCal: 'Календарь', navParts: 'Ночь–день', navSet: 'Настройки',
       sound: 'Звук', soundNone: 'Без звука', soundOwn: 'Свой звук…', soundOwnNamed: 'Свой: %', soundFail: 'Звук не задан.', sounds: { gong: 'Гонг', gong2: 'Гонг 2', gong3: 'Гонг 3', gong4: 'Гонг 4', gong5: 'Гонг 5', bell: 'Колокол' },
       remAppNote: 'Напоминания ставятся на этом устройстве и приходят даже при закрытом приложении.',
       remNext: function (when, what) { return 'Ближайшее напоминание: ' + when + ' — ' + what; }, remNone: 'В ближайшие недели напоминаний нет.',
@@ -862,6 +862,20 @@
         paint(); window.scrollTo(0, 0);
       }
       Array.prototype.forEach.call(tabs, function (b) { b.onclick = function () { var k = b.getAttribute('data-tab'); if (k === 'settings') document.querySelector('.dg-menu-btn').click(); else openTab(k); }; }); // the gear opens the settings; the key suttas live in the summary
+      // the drawer is under the bar: while it is open the pill sits on the gear; a tap on a tab closes the drawer and goes to that tab
+      var closeBtn = document.querySelector('#dg-drawer .dg-drawer-close'), wasOpen = false, swallow = false;
+      function setCurrent(k) { Array.prototype.forEach.call(tabs, function (b) { b.setAttribute('aria-current', String(b.getAttribute('data-tab') === k)); }); }
+      new MutationObserver(function () {
+        var open = document.body.classList.contains('dg-drawer-open'); if (open === wasOpen) return; wasOpen = open;
+        if (open) setCurrent('settings'); else if (!swallow) setCurrent(document.body.getAttribute('data-app-tab') || 'home');
+        swallow = false;
+      }).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+      nav.addEventListener('click', function (e) {
+        var b = e.target.closest && e.target.closest('button'); if (!b || !wasOpen || !closeBtn) return;
+        if (b.getAttribute('data-tab') === 'settings') { e.stopPropagation(); closeBtn.click(); return; } // the gear again: close
+        swallow = true; closeBtn.click(); // a tab: the drawer goes, the tab's own handler follows
+      }, true);
+      if ($('up-ver')) $('up-ver').textContent = window.__DG_APP_VERSION__ || 'preview'; // the native shell sets the real one
       var last = store('dgUposathaTab'); openTab(/^(home|list|cal|parts)$/.test(last || '') ? last : 'home');
     })();
     onSeg('noonseg', function (v) { state.noon = v; store('dgUposathaNoon', v); paint(); });

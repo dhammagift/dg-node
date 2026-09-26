@@ -26,3 +26,12 @@ body.app #dg-drawer a[href="/login"] { display: none !important; }
 
 #dg-drawer .up-site { display: none; }
 body.app #dg-drawer .up-site { display: flex; } /* the only way out to the site from the app */
+
+/* the drawer goes under the bar; its end keeps a free place for the bar, and the rating and the version stand at the very bottom */
+body.app .appnav { z-index: 1090; }
+body.app #dg-drawer .dg-drawer-body { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
+.up-appfoot { display: none; }
+body.app .up-appfoot { display: block; margin-top: 18px; }
+.up-appfoot .up-rate { display: flex; justify-content: space-between; align-items: center; }
+.up-appfoot .up-rate-em { font-size: 16px; font-weight: 400; letter-spacing: 2px; }
+.up-appfoot .up-ver { display: flex; justify-content: space-between; padding: 8px 4px 0; font-size: 12px; color: var(--dg-text-muted); }
