@@ -393,7 +393,14 @@ body.embed .soft { display: none; }
 #help { scroll-margin-top: 90px; }
 body.embed .help { display: none; }
 
-/* the place block of the settings: softly lit while no place is set (it is what the page asks for), and it blinks when a link leads there */
-body[data-loc=off] #dg-drawer #loc-block { background: var(--dg-accent-bg); box-shadow: 0 0 0 6px var(--dg-accent-bg); border-radius: 8px; }
-@keyframes dgblink { 0%, 100% { background: var(--dg-accent-bg); box-shadow: 0 0 0 6px var(--dg-accent-bg); } 50% { background: color-mix(in srgb, var(--dg-accent) 40%, transparent); box-shadow: 0 0 0 6px color-mix(in srgb, var(--dg-accent) 40%, transparent), 0 0 0 8px var(--dg-accent); } }
-#dg-drawer #loc-block.flash { animation: dgblink .7s ease-in-out 4; border-radius: 8px; }
+/* the place block of the settings: softly lit while no place is set (it is what the page asks for), and it blinks with the reader's .dg-temp-blink when a link leads there */
+body[data-loc=off] #dg-drawer #loc-block { background: var(--dg-accent-bg); border-radius: 8px; }
+
+/* same blink as the reader (extrastyles.css .dg-temp-blink): three soft pulses */
+@keyframes dgTempBlink { 0%, 100% { box-shadow: 0 0 0 2px grey; } 50% { box-shadow: 0 0 0 5px rgba(128,128,128, 0.5); } }
+.dg-temp-blink { animation: dgTempBlink 0.8s ease-in-out 3; border-radius: 6px; }
+
+/* time zone and hemisphere: only a fallback while no place is set, so smaller and quieter, below the place block */
+#dg-drawer .fb { opacity: .75; }
+#dg-drawer .fb .dg-drawer-subtitle { font-size: 12px; margin: 8px 0 4px; }
+#dg-drawer .fb .dg-field-input, #dg-drawer .fb .dg-segmented button { font-size: 12px; padding-top: 5px; padding-bottom: 5px; min-height: 0; }
