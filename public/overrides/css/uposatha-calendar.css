@@ -393,6 +393,7 @@ body.embed .soft { display: none; }
 #help { scroll-margin-top: 90px; }
 body.embed .help { display: none; }
 
-/* the part of the settings a link leads to lights up for a moment */
-@keyframes dgflash { 0%, 55% { background: var(--dg-accent-bg); box-shadow: 0 0 0 6px var(--dg-accent-bg); } 100% { background: transparent; box-shadow: 0 0 0 6px transparent; } }
-#dg-drawer .flash { animation: dgflash 2.6s ease; border-radius: 8px; }
+/* the place block of the settings: softly lit while no place is set (it is what the page asks for), and it blinks when a link leads there */
+body[data-loc=off] #dg-drawer #loc-block { background: var(--dg-accent-bg); box-shadow: 0 0 0 6px var(--dg-accent-bg); border-radius: 8px; }
+@keyframes dgblink { 0%, 100% { background: var(--dg-accent-bg); box-shadow: 0 0 0 6px var(--dg-accent-bg); } 50% { background: color-mix(in srgb, var(--dg-accent) 40%, transparent); box-shadow: 0 0 0 6px color-mix(in srgb, var(--dg-accent) 40%, transparent), 0 0 0 8px var(--dg-accent); } }
+#dg-drawer #loc-block.flash { animation: dgblink .7s ease-in-out 4; border-radius: 8px; }
