@@ -1435,6 +1435,28 @@ app.get('/config/sync-config.json', (req, res) => sendFile(req, res, path.join(_
 // mistaken for a Pali search word the way /uposatha could.
 app.get('/uposatha-calendar', (req, res) => sendVersionedHtml(req, res, path.join(__dirname, 'public', 'uposatha-calendar.html')));
 app.get('/uposatha-calendar.webmanifest', (req, res) => sendFile(req, res, path.join(__dirname, 'public', 'uposatha-calendar.webmanifest'), 'application/manifest+json'));
+// Subscription feed for Google / Apple calendars. Stateless: everything the feed needs is in the query string, nothing is stored.
+const uposathaCore = require('./public/overrides/js/uposatha-core.js');
+const uposathaFeedCache = new Map();
+app.get('/uposatha.ics', (req, reply) => {
+    const q = req.query || {};
+    const num = (v, lo, hi) => { const n = Number(v); return Number.isFinite(n) && n >= lo && n <= hi ? n : null; };
+    let tz = String(q.tz || 'UTC');
+    try { new Intl.DateTimeFormat('en', { timeZone: tz }); } catch { return reply.code(400).type('text/plain').send('bad tz'); }
+    const lat = num(q.lat, -90, 90), lon = num(q.lon, -180, 180);
+    const opts = {
+        lang: q.lang === 'ru' ? 'ru' : 'en', tz, sutta: q.scheme !== 'modern', loc: lat !== null && lon !== null ? { lat: Math.round(lat * 100) / 100, lon: Math.round(lon * 100) / 100 } : null,
+        rem: { lead: num(q.lead, 1, 72) || 24, d8: q.d8 !== '0', d14: q.d14 !== '0', d15: q.d15 === '1' }, days: 400, feed: true,
+    };
+    const key = JSON.stringify(opts) + new Date().toISOString().slice(0, 13); // a computed feed is reused for an hour
+    let body = uposathaFeedCache.get(key);
+    if (!body) {
+        body = uposathaCore.buildIcs(opts);
+        if (uposathaFeedCache.size > 300) uposathaFeedCache.clear();
+        uposathaFeedCache.set(key, body);
+    }
+    return reply.type('text/calendar; charset=utf-8').header('cache-control', 'public, max-age=3600').send(body);
+});
 app.get('/cse', (req, res) => sendVersionedHtml(req, res, path.join(__dirname, 'public', 'cse.html')));
 app.get('/api/patimokkha-fragment/:side', (req, res) => {
     if (req.params.side !== 'bu' && req.params.side !== 'bi') return res.code(404).send();

@@ -30,13 +30,18 @@
   <symbol id="i-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8M5 10v10h5v-6h4v6h5V10"/></symbol>
   <symbol id="i-mail" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></symbol>
   <symbol id="i-send" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 4L3 11l6 2 2 6 3-4 5 4z"/></symbol>
+  <symbol id="i-globe" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.5 3 14.5 0 18M12 3c-3 3.5-3 14.5 0 18"/></symbol>
+  <symbol id="i-dict" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M9 8h6M9 12h4"/></symbol>
+  <symbol id="i-cap" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9l10-5 10 5-10 5z"/><path d="M6 11v5c3 2.5 9 2.5 12 0v-5"/></symbol>
+  <symbol id="i-wrench" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2.4-.6-.6-2.4z"/></symbol>
+  <symbol id="i-star" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.2 6.4 20.2l1.1-6.2L3 9.6l6.2-.9z"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></symbol>
 </defs></svg>
 
 <header class="tbar"><div class="in">
-  <a class="wordmark" href="/uposatha-calendar" id="wordmark"><img src="/assets/img/dgsankhaonly.png" alt=""><b>Uposatha</b><span data-t="tag"></span></a>
+  <a class="wordmark" href="/" id="wordmark"><img src="/assets/img/dgsankhaonly.png" alt=""><b>Uposatha</b><span data-t="tag"></span></a>
   <div class="hbtns">
     <button class="rb" type="button" id="b-theme" data-tt="theme"><svg class="ic"><use href="#i-theme"/></svg></button>
-    <button class="rb" type="button" id="b-set" data-tt="settingsL"><svg class="ic"><use href="#i-sliders"/></svg></button>
     <button class="rb" type="button" id="b-menu" data-tt="menu"><svg class="ic"><use href="#i-menu"/></svg></button>
   </div>
 </div></header>
@@ -101,37 +106,24 @@
 <div class="scrim" id="scrim" data-open="false"></div>
 
 <aside class="drawer" id="drawer" data-open="false">
-  <div class="dhead"><a class="dbrand" href="/"><img src="/assets/img/dgsankhaonly.png" alt=""><b>Dhamma.Gift</b></a><button class="x" type="button" data-close data-tt="close"><svg class="ic"><use href="#i-x"/></svg></button></div>
+  <div class="dhead"><a class="dbrand" href="/"><img src="/assets/img/dgsankhaonly.png" alt=""><b>Dhamma.Gift</b></a>
+    <button class="x" type="button" id="d-share" data-tt="share" style="margin-left:auto"><svg class="ic"><use href="#i-share"/></svg></button>
+    <button class="x" type="button" data-close data-tt="close"><svg class="ic"><use href="#i-x"/></svg></button></div>
   <div class="dgroup">
     <h3 data-t="mt"></h3>
-    <a class="dlink" href="/"><svg class="ic"><use href="#i-home"/></svg><span data-t="lHome"></span></a>
-    <a class="dlink" href="/toc"><svg class="ic"><use href="#i-book"/></svg><span data-t="lToc"></span></a>
-    <a class="dlink" href="/dict/"><svg class="ic"><use href="#i-book"/></svg><span data-t="lDict"></span></a>
-    <a class="dlink" href="/memo/"><svg class="ic"><use href="#i-book"/></svg><span data-t="lMemo"></span></a>
+    <div id="mtlist"></div>
   </div>
-  <div class="dgroup">
-    <h3 data-t="lang"></h3>
-    <div class="segrow" id="langseg"><button type="button" data-lang="en">EN</button><button type="button" data-lang="ru">RU</button></div>
-    <h3 data-t="themeH"></h3>
-    <div class="segrow" id="themeseg"><button type="button" data-theme-set="dark" data-t="dark"></button><button type="button" data-theme-set="light" data-t="light"></button><button type="button" data-theme-set="auto" data-t="auto"></button></div>
+  <div class="dgroup" id="d-settings">
+    <h3 data-t="settings"></h3>
+    <div class="set"><span class="lb" data-t="lang"></span><div class="segrow" style="flex:none" id="langseg"><button type="button" data-lang="en">EN</button><button type="button" data-lang="ru">RU</button></div></div>
+    <div class="set"><span class="lb" data-t="themeH"></span><div class="segrow" style="flex:none" id="themeseg"><button type="button" data-theme-set="dark" data-t="dark"></button><button type="button" data-theme-set="light" data-t="light"></button><button type="button" data-theme-set="auto" data-t="auto"></button></div></div>
   </div>
-  <div class="dgroup">
-    <button class="dlink" type="button" id="d-set"><svg class="ic"><use href="#i-sliders"/></svg><span data-t="settingsL"></span></button>
-    <button class="dlink" type="button" id="d-ics"><svg class="ic"><use href="#i-calplus"/></svg><span data-t="ics"></span></button>
-    <a class="dlink" href="#keys" id="d-keys"><svg class="ic"><use href="#i-book"/></svg><span data-t="suttasL"></span></a>
-    <a class="dlink" id="d-help" href="/docs/uposatha"><svg class="ic"><use href="#i-help"/></svg><span data-t="help"></span></a>
-    <button class="dlink" type="button" id="d-share"><svg class="ic"><use href="#i-share"/></svg><span data-t="share"></span></button>
-  </div>
-</aside>
-
-<aside class="panel" id="p-set" data-open="false">
-  <div class="dhead"><b data-t="settings"></b><button class="x" type="button" data-close style="margin-left:auto" data-tt="close"><svg class="ic"><use href="#i-x"/></svg></button></div>
-  <div class="dgroup">
+  <div class="dgroup" id="d-uset">
     <h3 data-t="gPlace"></h3>
-    <div class="set col"><span class="lb" data-t="tz"></span><select class="sel" id="tz"></select></div>
-    <div class="set"><span class="lb"><span data-t="hemi"></span><em data-t="hemiD"></em></span><div class="segrow" style="flex:none" id="hemiseg"><button type="button" data-hemi="north" data-t="north"></button><button type="button" data-hemi="south" data-t="south"></button></div></div>
+    <div class="set col loc-off"><span class="lb" data-t="tz"></span><select class="sel" id="tz"></select></div>
+    <div class="set loc-off"><span class="lb"><span data-t="hemi"></span></span><div class="segrow" style="flex:none" id="hemiseg"><button type="button" data-hemi="north" data-t="north"></button><button type="button" data-hemi="south" data-t="south"></button></div></div>
     <div class="set col"><span class="lb"><span data-t="loc"></span><em data-t="locD"></em></span>
-      <div class="row2"><button class="btn" type="button" id="loc-btn"><svg class="ic"><use href="#i-pin"/></svg><span data-t="myLoc"></span></button><input class="inp" id="city" list="cities" data-tp="city"></div>
+      <div class="row2 loc-off"><button class="btn" type="button" id="loc-btn"><svg class="ic"><use href="#i-pin"/></svg><span data-t="myLoc"></span></button><input class="inp" id="city" list="cities" data-tp="city"></div>
       <datalist id="cities"></datalist>
       <p class="note" id="locnote" style="margin:0"></p></div>
   </div>
@@ -144,15 +136,22 @@
     <h3 data-t="gRem"></h3>
     <div class="set"><span class="lb" data-t="remind"></span><button class="sw" id="sw-rem" type="button" aria-pressed="false"></button></div>
     <div class="set rem-dep"><span class="lb" data-t="adv"></span><select class="sel" id="rem-lead" style="width:auto"></select></div>
-    <div class="set rem-dep" id="rem-days-row"><span class="lb" data-t="days"></span><div class="chips"><button type="button" id="rd8" aria-pressed="true">8</button><button type="button" id="rd14" aria-pressed="true">14</button></div></div>
+    <div class="set rem-dep" id="rem-days-row"><span class="lb" data-t="days"></span><div class="chips"><button type="button" id="rd8" aria-pressed="true">8</button><button type="button" id="rd14" aria-pressed="true">14</button><button type="button" id="rd15" aria-pressed="false">15</button></div></div>
     <p class="note" id="rem-msg"></p>
     <p class="note" id="rem-note"></p>
-    <button class="btn" type="button" id="p-ics" style="margin-top:10px;width:100%"><svg class="ic"><use href="#i-calplus"/></svg><span data-t="ics"></span></button>
+  </div>
+  <div class="dgroup" id="d-cal">
+    <h3 data-t="gCal"></h3>
+    <p class="note" data-t="subNote" style="margin:0 0 8px"></p>
+    <div class="subrow"><a class="btn" id="sub-apple" href="#"><svg class="ic"><use href="#i-calplus"/></svg><span>Apple</span></a><a class="btn" id="sub-google" href="#" target="_blank" rel="noopener"><svg class="ic"><use href="#i-calplus"/></svg><span>Google</span></a><button class="btn" type="button" id="sub-copy"><span data-t="copyLink"></span></button></div>
+    <p class="note" data-t="icsNote" style="margin:12px 0 8px"></p>
+    <button class="btn" type="button" id="p-ics" style="width:100%"><svg class="ic"><use href="#i-calplus"/></svg><span data-t="ics"></span></button>
   </div>
 </aside>
 <div class="toast" id="toast"></div>
 <script src="/assets/js/vendor/astronomy.browser.min.js"></script>
 <script src="/assets/js/vendor/zone-coords.js"></script>
+<script src="/assets/js/uposatha-core.js"></script>
 <script src="/assets/js/uposatha-calendar.js"></script>
 </body>
 </html>

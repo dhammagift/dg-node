@@ -4235,3 +4235,8 @@ body.dg-state-results #search-pane:not(.dg-has-paging) .dt-search { pointer-even
 .dg-ts-mode { margin-left: auto; font-size: 10.5px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--dg-accent-ink); background: var(--dg-accent-bg); border-radius: 6px; padding: 2px 7px; }
 .dg-ts-mode.is-trial { color: var(--dg-text-muted); background: none; border: 1px dashed var(--dg-border-strong); }
 .dg-ts-keep { border: 0; background: none; font: inherit; font-size: 11.5px; color: var(--dg-accent-ink); text-decoration: underline; padding: 0; cursor: pointer; }
+
+/* Menu links are never underlined, on hover and focus either (owner, 2026-09-26): drawer, sheet, mega panel, chips, quick modal. */
+#dg-drawer a, #dg-drawer a:hover, #dg-drawer a:focus, #dg-drawer a:visited,
+#dg-sheet a, #dg-sheet a:hover, #dg-sheet a:focus, #dg-mega a, #dg-mega a:hover, #dg-mega a:focus,
+#dg-quick a, #dg-quick a:hover, .dg-drawer-row, .dg-drawer-row:hover, .dg-sheet-row, .dg-sheet-row:hover, .dg-chip, .dg-chip:hover { text-decoration: none; }
