@@ -36,7 +36,24 @@ SLIDES = [
 # lines that are about an Uposatha day but do not teach it: they go to the random pool
 # verses keep their line breaks
 POEMS = {'an3.37-verse', 'snp2.14-factors', 'snp2.14-days', 'snp2.14-dawn'}
-RANDOM_IDS = {'mn118-15', 'kd2-two', 'bu-pm-15', 'snp2.14-factors', 'snp2.14-dawn', 'kd2-gather', 'kd2-teach', 'kd2-once', 'kd2-differ', 'snp2.14-days'}
+RANDOM_IDS = {'mn118-15', 'kd2-two', 'bu-pm-15', 'snp2.14-factors', 'snp2.14-dawn', 'kd2-gather', 'kd2-teach', 'kd2-once', 'kd2-differ', 'snp2.14-days', 'ud1.1-watch', 'an8.41'}
+# One line about what the key sutta gives (shown under its name in the list of all suttas; only the special and general ones have it)
+NOTES = {
+    'an3.37': {'en': 'On the 8th, 14th and 15th days the guardians of the world look who keeps the Uposatha; Sakka\'s verse.',
+               'ru': 'В 8-й, 14-й и 15-й дни стражи мира смотрят, кто соблюдает упосатху; строфа Сакки.'},
+    'mn83':   {'en': 'King Makhādeva kept the Uposatha on the 14th, 15th and 8th days.',
+               'ru': 'Царь Макхадэва соблюдал упосатху в 14-й, 15-й и 8-й дни.'},
+    'mn146':  {'en': 'On the 14th the moon is not full, on the 15th it is full.',
+               'ru': 'На 14-й день луна неполная, на 15-й — полная.'},
+    'an3.70': {'en': 'Three kinds of Uposatha and how the noble ones keep it (to Visākhā).',
+               'ru': 'Три вида упосатхи и как её соблюдают Благородные (Висакхе).'},
+    'an10.46': {'en': 'Skipping the Uposatha is your loss.',
+                'ru': 'Пропускать упосатху нельзя: это ваша потеря.'},
+    'mn53':   {'en': 'The three watches of the night and how a disciple spends them.',
+               'ru': 'Три стражи ночи и как проводит их ученик.'},
+    'sn20.4': {'en': 'The three parts of the day: morning, midday, evening.',
+               'ru': 'Три части дня: утро, полдень, вечер.'},
+}
 def low(t):
     # the reader's toLower (mergeGathas): the second half of a merged verse line starts in lower case, except "I ..." / "O ..." / "Я..."
     if not t or re.match(r'^["“\'‘]?(I\b|I\'|O\b|О\b)', t): return t
@@ -82,7 +99,7 @@ for sid, days, nik, sutta, segs, ru_tr, en_label, ru_label in SLIDES:
     if sid in RANDOM_IDS: days = None
     lines = [{'pli': pli[key(g)].strip().replace('<j>', ''), 'ru': ru.get(key(g), '').strip(), 'en': en.get(key(g), '').strip().replace('<j>', '')} for g in segs if key(g) in pli] if sid in POEMS else None
     if lines: lines = merge_pairs(lines)
-    out.append({'id': sid, 'kind': 'random' if sid in RANDOM_IDS else 'special' if days else 'general', 'days': days, **({'lines': lines} if lines else {}), 'title': titles(sutta, pli, ru, en), 'ref': key(segs[0]), 'cite': {'en': en_label, 'ru': ru_label}, 'pli': join(pli), 'ru': join(ru), 'en': join(en).replace(' Then—', '')})
+    out.append({'id': sid, 'kind': 'random' if sid in RANDOM_IDS else 'special' if days else 'general', 'days': days, **({'lines': lines} if lines else {}), 'title': titles(sutta, pli, ru, en), 'note': NOTES.get(sutta) if sid not in RANDOM_IDS else None, 'ref': key(segs[0]), 'cite': {'en': en_label, 'ru': ru_label}, 'pli': join(pli), 'ru': join(ru), 'en': join(en).replace(' Then—', '')})
 # "random": every place in the four Nikayas and the Khuddaka books where the Uposatha is named (any form of "uposath"),
 # with both translations - like the hits of a search for "uposath"; all of them, not one per sutta.
 import re

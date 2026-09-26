@@ -173,6 +173,7 @@ b.match { color: var(--dg-match); font-weight: 600; } /* a found word, as in the
 .sg-t i { color: var(--dg-text-muted); font-style: normal; }
 .sg-n { flex: none; font-variant-numeric: tabular-nums; color: var(--dg-text-muted); font-size: 12.5px; }
 .sg .sr { padding-left: 34px; }
+.sr-note { display: block; margin-top: 2px; font-size: 12.5px; line-height: 1.4; color: var(--dg-text-muted); white-space: normal; }
 .sr .sid { color: var(--dg-accent-ink); font-weight: 600; min-width: 4.6em; }
 .sr .plate { position: static; flex: none; }
 .sr .chev { width: 14px; height: 14px; color: var(--dg-text-muted); flex: none; }

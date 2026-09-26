@@ -638,14 +638,14 @@
     var rank = { special: 0, general: 1, random: 2 }, by = {}, order = [];
     (quotes || []).filter(function (q) { return q[lang] || q.kind !== 'random'; }).forEach(function (q) {
       var id = citeId(q);
-      if (!by[id]) { by[id] = { id: id, title: q.title || {}, kind: q.kind, ref: q.ref, kinds: {} }; order.push(id); }
-      else if (rank[q.kind] < rank[by[id].kind]) { by[id].kind = q.kind; by[id].ref = q.ref; }
+      if (!by[id]) { by[id] = { id: id, title: q.title || {}, kind: q.kind, ref: q.ref, note: q.note }; order.push(id); }
+      else if (rank[q.kind] < rank[by[id].kind]) { by[id].kind = q.kind; by[id].ref = q.ref; by[id].note = q.note || by[id].note; }
     });
     return order.map(function (id) { return by[id]; });
   }
   function suttaRow(u) {
     var name = u.title[lang] || u.title.en || '';
-    return '<a class="sr" href="/' + esc(u.ref) + '?lang=' + lang + '" target="_blank" rel="noopener"><b class="sid">' + esc(u.id) + '</b><span class="sr-t"><span class="sg-t">' + esc(u.title.pli || '') + (name && name !== u.title.pli ? ' <i>' + esc(name) + '</i>' : '') + '</span></span>' + plate(u) + '<svg class="chev"><use href="#i-right"/></svg></a>';
+    return '<a class="sr" href="/' + esc(u.ref) + '?lang=' + lang + '" target="_blank" rel="noopener"><b class="sid">' + esc(u.id) + '</b><span class="sr-t"><span class="sg-t">' + esc(u.title.pli || '') + (name && name !== u.title.pli ? ' <i>' + esc(name) + '</i>' : '') + '</span>' + (u.note && u.kind !== 'random' ? '<span class="sr-note">' + esc(u.note[lang] || u.note.en) + '</span>' : '') + '</span>' + plate(u) + '<svg class="chev"><use href="#i-right"/></svg></a>';
   }
   function showAllSlides() {
     var all = suttaList(), counts = { all: all.length, special: 0, general: 0, random: 0 };
