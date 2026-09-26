@@ -76,10 +76,8 @@
  },
  {
   "id": "mn118-15",
-  "kind": "special",
-  "days": [
-   15
-  ],
+  "kind": "random",
+  "days": null,
   "ref": "mn118:3.1",
   "cite": {
    "en": "MN 118",
@@ -91,11 +89,8 @@
  },
  {
   "id": "kd2-two",
-  "kind": "special",
-  "days": [
-   14,
-   15
-  ],
+  "kind": "random",
+  "days": null,
   "ref": "pli-tv-kd2:14.1.4",
   "cite": {
    "en": "Vin Mv 2",
@@ -107,10 +102,8 @@
  },
  {
   "id": "bu-pm-15",
-  "kind": "special",
-  "days": [
-   15
-  ],
+  "kind": "random",
+  "days": null,
   "ref": "pli-tv-bu-pm:5.2",
   "cite": {
    "en": "Bu Pm",

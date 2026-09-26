@@ -21,6 +21,8 @@ SLIDES = [
     ('ud1.1-watch', None, 'kn/ud/vagga1', 'ud1.1', ['1.4'],  'sv', 'Ud 1.1', 'Уд 1.1'),
     ('an10.46',   None, 'an/an10', 'an10.46', ['1.5'],        'o',  'AN 10.46', 'АН 10.46'),
 ]
+# lines that are about an Uposatha day but do not teach it: they go to the random pool
+RANDOM_IDS = {'mn118-15', 'kd2-two', 'bu-pm-15'}
 def load(p):
     return json.load(open(os.path.join(BASE, p)))
 def find(kind, sutta, lang, prefer):
@@ -36,7 +38,8 @@ for sid, days, nik, sutta, segs, ru_tr, en_label, ru_label in SLIDES:
     key = lambda s: f'{sutta}:{s}'
     join = lambda d: ' '.join(d[key(s)].strip() for s in segs if key(s) in d)
     # "special" slides belong to the 8th / 14th / 15th day; "general" ones say that the Uposatha is to be kept
-    out.append({'id': sid, 'kind': 'special' if days else 'general', 'days': days, 'ref': key(segs[0]), 'cite': {'en': en_label, 'ru': ru_label}, 'pli': join(pli), 'ru': join(ru), 'en': join(en)})
+    if sid in RANDOM_IDS: days = None
+    out.append({'id': sid, 'kind': 'random' if sid in RANDOM_IDS else 'special' if days else 'general', 'days': days, 'ref': key(segs[0]), 'cite': {'en': en_label, 'ru': ru_label}, 'pli': join(pli), 'ru': join(ru), 'en': join(en)})
 # "random": every place in the canon where an Uposatha day is named in passing ("tadahuposathe"), with both translations
 used = {o['ref'] for o in out}
 for f in sorted(glob.glob(f'{BASE}/root/pli/ms/sutta/**/*_root-pli-ms.json', recursive=True)):
