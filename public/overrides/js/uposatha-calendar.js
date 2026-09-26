@@ -557,6 +557,14 @@
     slIdx = 0;
   }
   function slideText(q) { return q[lang] || q.en; }
+  // The key words of the Uposatha (the day, its number, the parts of the day) are picked out in the Pali and in the translations.
+  var KW = {
+    pli: /(uposath|aṭṭham|cātuddas|pannaras|pāṭihāriy|pubbaṇhasamay|majjhanhikasamay|sāyanhasamay|yāma)[\p{L}]*/giu,
+    ru: /(упосатх|восьм|четырнадцат|пятнадцат|страж)[\p{L}]*/giu,
+    en: /(uposatha|sabbath|observance|eighth|fourteenth|fifteenth|watch)[\p{L}]*/giu,
+  };
+  function hl(text, re) { return esc(text).replace(re, '<mark class="kw">$&</mark>'); }
+  function trHtml(q) { return hl(slideText(q), q[lang] ? KW[lang] : KW.en); }
   function plate(q) { return '<span class="plate" data-k="' + q.kind + '">' + esc(t['f' + q.kind.charAt(0).toUpperCase() + q.kind.slice(1)]) + (q.kind === 'special' ? ' · ' + esc(t.dayTag(q.days)) : '') + '</span>'; }
   function citeText(q) { return q.cite[lang] + (q[lang] ? '' : ' · EN') + ' — ' + t.readIt; }
   function showSlide(i, quick) {
@@ -565,7 +573,7 @@
     var q = slides[slIdx], box = $('slides');
     function fill() {
       $('sl-plate').outerHTML = plate(q).replace('<span ', '<span id="sl-plate" ');
-      $('sl-pli').textContent = q.pli; $('sl-tr').textContent = slideText(q);
+      $('sl-pli').innerHTML = hl(q.pli, KW.pli); $('sl-tr').innerHTML = trHtml(q);
       $('sl-cite').textContent = citeText(q);
       $('sl-cite').href = '/' + q.ref + '?lang=' + lang;
       $('sl-dots').innerHTML = slides.map(function (_, n) { return '<button type="button" data-i="' + n + '" aria-label="' + (n + 1) + '"' + (n === slIdx ? ' aria-current="true"' : '') + '></button>'; }).join('');
@@ -576,7 +584,7 @@
   // Every slide of the current show, each with its plate: the button "show all".
   function showAllSlides() {
     $('sl-all-list').innerHTML = slides.map(function (q) {
-      return '<div class="sl-row">' + plate(q) + '<p class="sl-pli">' + esc(q.pli) + '</p><p class="sl-tr">' + esc(slideText(q)) + '</p><a href="/' + esc(q.ref) + '?lang=' + lang + '" target="_blank" rel="noopener">' + esc(citeText(q)) + '</a></div>';
+      return '<div class="sl-row">' + plate(q) + '<p class="sl-pli pli-lang" lang="pi">' + hl(q.pli, KW.pli) + '</p><p class="sl-tr">' + trHtml(q) + '</p><a href="/' + esc(q.ref) + '?lang=' + lang + '" target="_blank" rel="noopener">' + esc(citeText(q)) + '</a></div>';
     }).join('');
     openPanel('p-all');
   }

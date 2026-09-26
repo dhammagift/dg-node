@@ -135,6 +135,7 @@ body[data-mode=lite] .mon li .t .info .ln:not(.grey) + .ln:not(.grey) { display:
 .plate[data-k=random] { background: var(--dg-surface-hover); color: var(--dg-text-muted); border: 1px solid var(--dg-border); }
 .sl-pli { margin: 0 0 6px; font-size: 15px; line-height: 1.55; color: var(--dg-text); }
 .sl-tr { margin: 0; font-size: 13.5px; line-height: 1.6; color: var(--dg-text-muted); text-wrap: pretty; }
+mark.kw { background: var(--dg-accent-bg); color: var(--dg-on-accent-bg); border-radius: 3px; padding: 0 2px; }
 .sl-cite { display: inline-block; margin-top: 10px; font-size: 13px; font-weight: 500; color: var(--dg-accent-ink); }
 .sl-cite:hover { text-decoration: underline; }
 .sl-arw { position: absolute; top: 50%; left: 10px; transform: translateY(-50%); width: 28px; height: 28px; border: 0; border-radius: 50%; background: none; color: var(--dg-text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; }
