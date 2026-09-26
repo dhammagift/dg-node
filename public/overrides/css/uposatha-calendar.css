@@ -37,9 +37,9 @@ body.scrolled .tbar { border-bottom-color: var(--dg-border); box-shadow: 0 4px 1
 .hsearch { flex: 1 1 auto; min-width: 0; max-width: 34rem; margin: 0 auto; }
 .hsearch .dg-input-shell { width: 100%; }
 .hsearch .dg-qs-btn .ic { width: 17px; height: 17px; }
-.hsearch .up-shell-logo { display: none; align-items: center; justify-content: center; flex: none; line-height: 0; }
+.hsearch .up-shell-logo { display: inline-flex; align-items: center; justify-content: center; flex: none; line-height: 0; padding: 0 2px 0 4px; } /* the logo sits in the input, as the shell does on the search page */
 .up-mark { display: block; }
-@media (max-width: 760px) { .hsearch .up-shell-logo { display: inline-flex; padding: 0 2px 0 4px; } } /* where the wordmark is hidden, the logo sits in the input, as the shell does on the search page */
+.wordmark .up-mark { display: none; } /* the wordmark is the text only: the logo is already in the input */
 .ui-autocomplete { z-index: 60; max-height: 60vh; overflow-y: auto; }
 .wordmark:hover { color: inherit; text-decoration: none; }
 .wordmark img { width: 24px; height: 24px; display: block; }
