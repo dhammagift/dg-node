@@ -386,6 +386,7 @@ body.embed .soft { display: none; }
 .help { margin: 34px 0 0; }
 .help h2 { font-size: 17px; margin: 0 0 10px; }
 .helpframe iframe { height: 560px; }
-.pillbtn.qbtn { width: 34px; padding: 7px 0; justify-content: center; font-weight: 600; }
+.pillbtn.qbtn { width: 34px; padding: 7px 0; justify-content: center; font-weight: 600; color: var(--dg-text); }
+.pillbtn.qbtn:hover { color: var(--dg-accent-ink); }
 #help { scroll-margin-top: 90px; }
 body.embed .help { display: none; }
