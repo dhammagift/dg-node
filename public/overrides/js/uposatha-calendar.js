@@ -68,7 +68,7 @@
     },
     ru: {
       pH: 'Части дня и ночи', pSub: 'Время от восхода до заката делится на три части, и от заката до восхода тоже — для вашего места и сезона.', pDay: 'День', pNight: 'Ночь',
-      dayParts: [['Pubbaṇhasamaya', 'утро'], ['Majjhanhikasamaya', 'полдень'], ['Sāyanhasamaya', 'вечер']], nightParts: [['Paṭhama yāma', 'первая стража'], ['Majjhima yāma', 'средняя стража'], ['Pacchima yāma', 'последняя стража']],
+      dayParts: [['Pubbaṇhasamaya', 'утро'], ['Majjhanhikasamaya', 'полдень'], ['Sāyanhasamaya', 'вечер']], nightParts: [['Paṭhama yāma', 'первая часть'], ['Majjhima yāma', 'средняя часть'], ['Pacchima yāma', 'последняя часть']],
       fSpecial: 'особое', fGeneral: 'общее', fRandom: 'случайное', slTitle: 'Из сутт', fAll: 'Все', sortKind: 'По видам', sortSutta: 'По суттам', showAll: 'Показать все', readIt: 'Читать', dayTag: function (d) { return d.map(function (n) { return n + '-й'; }).join(', ') + ' день'; },
       age: 'возраст', of30: 'из 30', from: 'с', left: 'осталось', dU: 'д', hU: 'ч', mU: 'мин',
       searchPh: 'Поиск: kacchapa, dn22…', searchGo: 'Найти', tocTitle: 'Оглавление (Alt+2)', clear: 'Очистить', tag: 'дни соблюдения', compass: 'Избранное / История', menu: 'Меню', theme: 'Тема', prev: 'Назад', next: 'Вперёд', close: 'Закрыть',
@@ -113,7 +113,7 @@
     ['an3.37:1.3', 'AN 3.37 · 14th|14-й'], ['an3.37:1.5', 'AN 3.37 · 15th|15-й'], ['an3.37:1.1', 'AN 3.37 · 8th|8-й'],
     ['an3.70:2.3', 'AN 3.70 · three kinds|три вида'], ['an3.70:2.4', 'AN 3.70 · cowherd|пастух'], ['an3.70:3.1', 'AN 3.70 · Nigaṇṭha|ниганты'],
     ['an3.70:4.1', 'AN 3.70 · Noble One|Благородный'], ['an3.70:19.3', 'AN 3.70 · nights and days|ночь и день'],
-    ['sn20.4:1.2', 'SN 20.4 · parts of the day|части дня'], ['mn53:10.3', 'MN 53 · night watches|стражи ночи'], ['ud1.1:1.4', 'Ud 1.1 · first watch|первая стража'],
+    ['sn20.4:1.2', 'SN 20.4 · parts of the day|части дня'], ['mn53:10.3', 'MN 53 · night watches|части ночи'], ['ud1.1:1.4', 'Ud 1.1 · first watch|первая часть ночи'],
   ];
   var KEYS = {
     en: [['AN 10.46', 'skipping the uposathas is not allowed (“it is your loss and failure”). {0}'], ['MN 83', 'one should observe the 14th, 15th, and 8th days. {1}'],
@@ -125,7 +125,7 @@
       ['МН 146', '14-й день растущей Луны {2} и 15-й, полнолуние {3}.'], ['АН 3.37', '14-й {4}, 15-й {5} и 8-й {6} дни в сравнении с посещениями божеств разных рангов.'],
       ['АН 3.70', 'три вида упосатхи {7}: как её <b>не</b> нужно соблюдать — «упосатха пастуха» {8} и «упосатха ниганты» {9} — и как соблюдать упосатху Благородного {10}. В сутте «ночь и день», а не «день и ночь» {11}; в пали в других контекстах стоит устойчивое выражение <i>ahoratta</i> («день-ночь»).'],
       ['СН 20.4', 'три части дня: <i>pubbaṇhasamaya</i>, <i>majjhanhikasamaya</i>, <i>sāyanhasamaya</i>. {12}'],
-      ['МН 53', 'три стражи ночи: <i>paṭhama</i>, <i>majjhima</i>, <i>pacchima yāma</i> {13}; то же в АН 8.9, а в Уд 1.1 Будда проводит первую стражу над зависимым возникновением. {14}']],
+      ['МН 53', 'три части ночи: <i>paṭhama</i>, <i>majjhima</i>, <i>pacchima yāma</i> {13}; то же в АН 8.9, а в Уд 1.1 Будда проводит первую часть ночи над зависимым возникновением. {14}']],
   };
 
   // ---------- state ----------
@@ -559,7 +559,7 @@
   // The key words of the Uposatha (the day, its number, the parts of the day) are picked out in the Pali and in the translations.
   var KW = {
     pli: /(uposath|aṭṭham|cātuddas|pannaras|pāṭihāriy|pubbaṇhasamay|majjhanhikasamay|sāyanhasamay|yāma)[\p{L}]*/giu,
-    ru: /(упосатх|восьм|четырнадцат|пятнадцат|страж)[\p{L}]*/giu,
+    ru: /(упосатх|восьм|четырнадцат|пятнадцат)[\p{L}]*/giu,
     en: /(uposatha|sabbath|observance|eighth|fourteenth|fifteenth|watch)[\p{L}]*/giu,
   };
   function hl(text, re) { return esc(text).replace(re, '<b class="match finder">$&</b>'); } // the same look as a found word in the search results

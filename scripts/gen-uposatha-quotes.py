@@ -44,7 +44,7 @@ NOTES = {
     'mn146': {'en': '14th - the moon is not full, 15th - full', 'ru': '14-й - луна неполная, 15-й - полная'},
     'an3.70': {'en': 'How to keep it: three kinds of Uposatha', 'ru': 'Как соблюдать: три вида упосатхи'},
     'an10.46': {'en': 'Not to be skipped', 'ru': 'Пропускать нельзя'},
-    'mn53': {'en': 'Three watches of the night', 'ru': 'Три стражи ночи'},
+    'mn53': {'en': 'Three watches of the night', 'ru': 'Три части ночи'},
     'sn20.4': {'en': 'Three parts of the day', 'ru': 'Три части дня'},
 }
 def low(t):
