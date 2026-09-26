@@ -164,7 +164,7 @@
         ['SN 28.1', 'what is the day? The parts of the day: a monk\'s day — alms in the morning, seclusion at midday, coming out in the evening. {12} The word majjhanhikasamaya is not there, but this is that part of the day.'],
         ['MN 79', 'midday itself: “the sun at midday” (<i>majjhanhikasamaya</i>) in a clear autumn sky. {15}'],
         ['MN 146', 'not by the phases of the moon alone: on the 14th it is not full {2}, on the 15th it is full {3}.', 'gap']]],
-      ['Bonus: food', [
+      ['More: about food', [
         ['MN 65', 'the Buddha to the monk Bhaddāli: “eat one part of the meal in the place where you’re invited, and bring the rest back to eat” — later, but still before midday. {19}'],
         ['Pc 37', '<i>vikāla</i> is “when the middle of the day has passed, until dawn” — a rule for monks. {16}'],
         ['MN 66', 'the monks give up the meal at the wrong time of day, and of night. {18}'],
@@ -182,7 +182,7 @@
         ['СН 28.1', 'что такое день? Части дня: день монаха — подаяние утром, уединение в середине дня, выход вечером. {12} Слова majjhanhikasamaya там нет, но это именно эта часть дня.'],
         ['МН 79', 'сам полдень: «солнце в полдень» (<i>majjhanhikasamaya</i>) в ясном осеннем небе. {15}'],
         ['МН 146', 'не только по фазам луны: на 14-й она неполная {2}, на 15-й — полная {3}.', 'gap']]],
-      ['Бонус: про еду', [
+      ['Дополнительно: про еду', [
         ['МН 65', 'Будда монаху Бхаддали: «съешь часть там, куда тебя пригласили, и часть [еды] забери с собой, чтобы поесть [после, но до полудня]». {19}'],
         ['Пч 37', '<i>vikāla</i> — «когда полдень миновал, до рассвета»; правило для монахов. {16}'],
         ['МН 66', 'монахи отказываются от еды в неподходящее время дня и ночи. {18}'],
