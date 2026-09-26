@@ -542,12 +542,8 @@
  },
  {
   "id": "snp2.14-dawn",
-  "kind": "special",
-  "days": [
-   8,
-   14,
-   15
-  ],
+  "kind": "random",
+  "days": null,
   "lines": [
    {
     "pli": "Tato ca pāto upavutthuposatho,",
