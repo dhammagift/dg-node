@@ -416,6 +416,10 @@
     // for the app's hero (app-refresh.js): the Uposatha that runs now and the next one to begin, by name, not parsed back from the list
     var curUp = isUposatha ? ((su && yRow && yRow.uposatha && now < evToday) ? yRow : todayRow) : null, nextUp = L.rows.filter(function (r) { return r.uposatha && r.at.getTime() > now.getTime(); })[0];
     window.__upoHero = { cur: curUp ? nameOf(curUp) : '', next: nextUp ? { at: nextUp.at.getTime(), name: nameOf(nextUp) } : null };
+    // the moon of the running (or the next) Uposatha for the app's icon in the bar (and later the shortcuts, the launcher icon): the 8th a quarter, the 14th nearly full or a thin crescent, the 15th full or new
+    var mRow = curUp || nextUp, mk = mRow ? parseInt(nameOf(mRow), 10) : NaN;
+    window.__upoMoon = mRow && mk ? { f: mRow.waxing ? mk / 15 : 1 - mk / 15, right: mRow.waxing !== state.south, day: mk, waxing: !!mRow.waxing } : null;
+    if (typeof window.__upoNavMoon === 'function') window.__upoNavMoon();
 
     // ----- today
     var angle = A.MoonPhase(now), tithi = tithiAt(now), pIndex = Math.floor(((angle + 22.5) % 360) / 45);
@@ -926,6 +930,13 @@
       }
       Array.prototype.forEach.call(tabs, function (b) { b.onclick = function () { var k = b.getAttribute('data-tab'); if (k === 'settings') document.querySelector('.dg-menu-btn').click(); else openTab(k); }; }); // the gear opens the settings; the key suttas live in the summary
       // the drawer is under the bar: while it is open the pill sits on the gear; a tap on a tab closes the drawer and goes to that tab
+      // the first item of the bar shows the moon of the Uposatha (see __upoMoon in paint)
+      function moonSvg(m) {
+        var f = Math.max(0, Math.min(1, m.f)), R = 9, rx = R * Math.abs(1 - 2 * f), d = f <= 0.02 ? '' : f >= 0.98 ? 'M12 3a9 9 0 1 1 0 18a9 9 0 1 1 0-18z' : 'M12 3A9 9 0 0 1 12 21A' + rx.toFixed(2) + ' 9 0 0 ' + (f < 0.5 ? 0 : 1) + ' 12 3z';
+        return '<svg class="ic" data-moon="' + Math.round(f * 100) + (m.right ? 'r' : 'l') + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9" fill="currentColor" fill-opacity=".14"/><g' + (m.right ? '' : ' transform="translate(24 0) scale(-1 1)"') + '>' + (d ? '<path d="' + d + '" fill="currentColor" stroke="none"/>' : '') + '</g></svg>';
+      }
+      window.__upoNavMoon = function () { var i = nav.querySelector('[data-tab=home] i'), m = window.__upoMoon; if (i && m) { var h = moonSvg(m), cur = i.firstElementChild, key = Math.round(Math.max(0, Math.min(1, m.f)) * 100) + (m.right ? 'r' : 'l'); if (!cur || cur.getAttribute('data-moon') !== key) i.innerHTML = h; } }; // compared with what is there: the designer's script writes its own icon at load
+      window.addEventListener('load', function () { setTimeout(window.__upoNavMoon, 100); setTimeout(window.__upoNavMoon, 700); });
       var closeBtn = document.querySelector('#dg-drawer .dg-drawer-close'), wasOpen = false, goTo = null;
       function setCurrent(k) { Array.prototype.forEach.call(tabs, function (b) { b.setAttribute('aria-current', String(b.getAttribute('data-tab') === k)); }); }
       new MutationObserver(function () {
