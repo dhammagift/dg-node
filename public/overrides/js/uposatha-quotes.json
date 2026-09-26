@@ -173,12 +173,8 @@
  },
  {
   "id": "kd2-gather",
-  "kind": "special",
-  "days": [
-   8,
-   14,
-   15
-  ],
+  "kind": "random",
+  "days": null,
   "title": {
    "pli": "Mahāvagga",
    "ru": "",
@@ -195,12 +191,8 @@
  },
  {
   "id": "kd2-teach",
-  "kind": "special",
-  "days": [
-   8,
-   14,
-   15
-  ],
+  "kind": "random",
+  "days": null,
   "title": {
    "pli": "Mahāvagga",
    "ru": "",
@@ -217,11 +209,8 @@
  },
  {
   "id": "kd2-once",
-  "kind": "special",
-  "days": [
-   14,
-   15
-  ],
+  "kind": "random",
+  "days": null,
   "title": {
    "pli": "Mahāvagga",
    "ru": "",
@@ -238,7 +227,7 @@
  },
  {
   "id": "kd2-differ",
-  "kind": "general",
+  "kind": "random",
   "days": null,
   "title": {
    "pli": "Mahāvagga",
