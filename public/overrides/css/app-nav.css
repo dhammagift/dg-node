@@ -37,3 +37,11 @@ body.app .up-appfoot { display: block; margin-top: 18px; }
 /* the moving pill is the feedback of the bar: the designer's ripple inside the icons is off here (it was drawn outside the shrunken icon box) */
 body.app .appnav .up-rip { display: none; }
 body.app .appnav button i { isolation: isolate; }
+
+/* Summary in the app: the hero and the "today" card are one surface — the moon, the label and the countdown on top, the date and the phase right under them.
+   The small "today" caption and the badge repeat what the hero already says, so they go. */
+body.app[data-app-tab=home] #up-hero { margin-bottom: 0; padding-bottom: 6px; border-radius: 32px 32px 0 0; }
+body.app[data-app-tab=home] #up-hero ~ #s-summary { margin-top: 0; padding: 4px 20px 22px; border-radius: 0 0 32px 32px; text-align: center; }
+body.app #up-hero ~ #s-summary .k, body.app #up-hero ~ #s-summary #t-status { display: none; }
+body.app #up-hero ~ #s-summary .d { font-size: 19px; }
+body.app #up-hero ~ #s-summary .ph { margin-top: 4px; }
