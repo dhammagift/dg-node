@@ -32,7 +32,7 @@
   var T = {
     en: {
       pH: 'Structure of the night and day', sH: 'Other moon tools', sSub: 'The beginning and the end of a lunar day and the phases of the Moon are astronomical data. To check them or to see them another way, use astronomical apps and sites.', sSite: 'Website', sApps: 'Apps', sDev: 'For developers', tSoft: 'Other tools', helpUrl: '/docs/uposatha/', tocH: 'On this page', tSummary: 'Summary', tSuttas: 'Suttas on the topic', tCalendar: 'Calendar', tParts: 'Structure of the night and day', tKeys: 'Key suttas', pSub: 'Time% from sunrise to sunset is cut into three equal parts, and from sunset to sunrise likewise — conventionally, for illustration, for your place and the season.', pWho: 'This is how the monks and arahants of the suttas spend these parts of the day and night — a picture from the suttas, not a rule: a layperson is not required to do so.', pDay: 'Day', pNight: 'Night', pFixed: '* Without your place the times are conventional: sunrise 06:00 and sunset 18:00, about as in the lands where the Buddha lived (the day there is nearly equal to the night). Set a place in the menu and the borders become real.',
-      dayParts: [['Pubbaṇhasamaya', 'morning', 'The monks put on robes and go for alms (piṇḍapāta)', 'sn28.1:1.2'], ['Majjhanhikasamaya', 'midday', 'Seclusion and practice, the day\'s meditation', 'sn28.1:1.4'], ['Sāyanhasamaya', 'evening', 'Coming out of seclusion: meeting and talking with the Teacher and the monks', 'sn28.1:2.1']], nightParts: [['Paṭhama yāma', 'first watch', 'Practice: walking and sitting, cleansing the mind', 'mn53:10.3'], ['Majjhima yāma', 'middle watch', 'The lion\'s posture: lying on the right side, mindful and aware', 'mn53:10.4'], ['Pacchima yāma', 'last watch', 'Rising: walking and sitting practice again', 'mn53:10.5']],
+      dayParts: [['Pubbaṇhasamaya', 'morning', 'The monks put on robes and go for alms (piṇḍapāta)', 'sn28.1:1.2'], ['Majjhanhikasamaya', 'midday', 'Seclusion and practice, the day\'s meditation. SN 28.1 does not use the word majjhanhikasamaya, but describes this part of the day; the word itself: the sun at midday, MN 79', 'sn28.1:1.4,mn79:17.2'], ['Sāyanhasamaya', 'evening', 'Coming out of seclusion: meeting and talking with the Teacher and the monks', 'sn28.1:2.1']], nightParts: [['Paṭhama yāma', 'first watch', 'Practice: walking and sitting, cleansing the mind', 'mn53:10.3'], ['Majjhima yāma', 'middle watch', 'The lion\'s posture: lying on the right side, mindful and aware', 'mn53:10.4'], ['Pacchima yāma', 'last watch', 'Rising: walking and sitting practice again', 'mn53:10.5']],
       fSpecial: 'special', fGeneral: 'general', fRandom: 'random', slTitle: 'From the suttas', addCal: 'Add to calendar', subH: 'Subscribe', fileH: 'Or a file', calRemind: 'The reminder time and the days are taken from the reminder settings in the menu.', gUposatha: 'Uposatha', on: 'On', off: 'Off', fAll: 'All', sortKind: 'By kind', sortSutta: 'By sutta', showAll: 'Show all', readIt: 'Read', dayTag: function (d) { return d.map(function (n) { return n + 'th'; }).join(', ') + ' day'; },
       age: 'age', of30: 'of 30', from: 'from', left: 'left', dU: 'd', hU: 'h', mU: 'min',
       searchPh: 'Search: kacchapa, dn22…', searchGo: 'Search', tocTitle: 'Contents (Alt+2)', clear: 'Clear', tag: 'observance days', compass: 'Favorites / History', menu: 'Menu', theme: 'Theme', prev: 'Previous', next: 'Next', close: 'Close',
@@ -68,7 +68,7 @@
     },
     ru: {
       pH: 'Структура ночи-дня', sH: 'Другие лунные инструменты', sSub: 'Начало и конец лунного дня и фазы Луны — это астрономические данные. Чтобы проверить их или увидеть по-другому, пользуйтесь астрономическими приложениями и сайтами.', sSite: 'Сайт', sApps: 'Приложения', sDev: 'Разработчикам', tSoft: 'Другие инструменты', helpUrl: '/ru/docs/uposatha/', tocH: 'На странице', tSummary: 'Сводка', tSuttas: 'Сутты по теме', tCalendar: 'Календарь', tParts: 'Структура ночи-дня', tKeys: 'Ключевые сутты', pSub: 'Время% от восхода до заката делится на три равные части, и от заката до восхода тоже — условно, для наглядности, для вашего места и сезона.', pWho: 'Так проводят эти части дня и ночи монахи и араханты в суттах — это картина из сутт, а не предписание: мирянин так поступать не обязан.', pDay: 'День', pNight: 'Ночь', pFixed: '* Без вашего места время условное: восход 06:00 и закат 18:00, примерно как в краях, где жил Будда (день там почти равен ночи). Задайте место в меню — и границы станут настоящими.',
-      dayParts: [['Pubbaṇhasamaya', 'утро', 'Монахи одеваются и идут за подаянием (пиндапата)', 'sn28.1:1.2'], ['Majjhanhikasamaya', 'полдень', 'Уединение и практика, дневное пребывание', 'sn28.1:1.4'], ['Sāyanhasamaya', 'вечер', 'Выход из уединения: встреча и беседа с Учителем и монахами', 'sn28.1:2.1']], nightParts: [['Paṭhama yāma', 'первая часть', 'Практика: ходьба и сидение, очищение ума', 'mn53:10.3'], ['Majjhima yāma', 'средняя часть', 'Поза льва: лёжа на правом боку, осознанно', 'mn53:10.4'], ['Pacchima yāma', 'последняя часть', 'Вставание: снова ходьба и сидение', 'mn53:10.5']],
+      dayParts: [['Pubbaṇhasamaya', 'утро', 'Монахи одеваются и идут за подаянием (пиндапата)', 'sn28.1:1.2'], ['Majjhanhikasamaya', 'полдень', 'Уединение и практика, дневное пребывание. В СН 28.1 слова majjhanhikasamaya нет, но описана именно эта часть дня; само слово: солнце в полдень, МН 79', 'sn28.1:1.4,mn79:17.2'], ['Sāyanhasamaya', 'вечер', 'Выход из уединения: встреча и беседа с Учителем и монахами', 'sn28.1:2.1']], nightParts: [['Paṭhama yāma', 'первая часть', 'Практика: ходьба и сидение, очищение ума', 'mn53:10.3'], ['Majjhima yāma', 'средняя часть', 'Поза льва: лёжа на правом боку, осознанно', 'mn53:10.4'], ['Pacchima yāma', 'последняя часть', 'Вставание: снова ходьба и сидение', 'mn53:10.5']],
       fSpecial: 'особое', fGeneral: 'общее', fRandom: 'случайное', slTitle: 'Из сутт', addCal: 'В календарь', subH: 'Подписаться', fileH: 'Или файл', calRemind: 'Время напоминания и дни берутся из настроек напоминаний в меню.', gUposatha: 'Упосатха', on: 'Вкл', off: 'Выкл', fAll: 'Все', sortKind: 'По видам', sortSutta: 'По суттам', showAll: 'Показать все', readIt: 'Читать', dayTag: function (d) { return d.map(function (n) { return n + '-й'; }).join(', ') + ' день'; },
       age: 'возраст', of30: 'из 30', from: 'с', left: 'осталось', dU: 'д', hU: 'ч', mU: 'мин',
       searchPh: 'Поиск: kacchapa, dn22…', searchGo: 'Найти', tocTitle: 'Оглавление (Alt+2)', clear: 'Очистить', tag: 'дни соблюдения', compass: 'Избранное / История', menu: 'Меню', theme: 'Тема', prev: 'Назад', next: 'Вперёд', close: 'Закрыть',
@@ -113,7 +113,7 @@
     ['an3.37:1.3', 'AN 3.37 · 14th|14-й'], ['an3.37:1.5', 'AN 3.37 · 15th|15-й'], ['an3.37:1.1', 'AN 3.37 · 8th|8-й'],
     ['an3.70:2.3', 'AN 3.70 · three kinds|три вида'], ['an3.70:2.4', 'AN 3.70 · cowherd|пастух'], ['an3.70:3.1', 'AN 3.70 · Nigaṇṭha|ниганты'],
     ['an3.70:4.1', 'AN 3.70 · Noble One|Благородный'], ['an3.70:19.3', 'AN 3.70 · nights and days|ночь и день'],
-    ['sn28.1:1.2', 'SN 28.1 · a monk\'s day|день монаха'], ['mn53:10.3', 'MN 53 · parts of the night|части ночи'], ['an3.70:19.1', 'AN 3.70 · like the arahants|подобно арахантам'],
+    ['sn28.1:1.2', 'SN 28.1 · a monk\'s day|день монаха'], ['mn53:10.3', 'MN 53 · parts of the night|части ночи'], ['an3.70:19.1', 'AN 3.70 · like the arahants|подобно арахантам'], ['mn79:17.2', 'MN 79 · midday|полдень'],
   ];
   var KEYS = { // three questions; the suttas are the special and general ones of the slideshow
     en: [['How to keep it?', [
@@ -125,7 +125,8 @@
       ['When to begin?', [
         ['AN 3.70', 'begin at night: night and day, “this night and day” {11}.'],
         ['MN 53', 'what is the night? The parts of the night — <i>paṭhama</i>, <i>majjhima</i>, <i>pacchima yāma</i> — and what a disciple does in each. {13}'],
-        ['SN 28.1', 'what is the day? The parts of the day: a monk\'s day — alms in the morning, seclusion at midday, coming out in the evening. {12}'],
+        ['SN 28.1', 'what is the day? The parts of the day: a monk\'s day — alms in the morning, seclusion at midday, coming out in the evening. {12} The word majjhanhikasamaya is not there, but this is that part of the day.'],
+        ['MN 79', 'midday itself: “the sun at midday” (<i>majjhanhikasamaya</i>) in a clear autumn sky. {15}'],
         ['MN 146', 'not by the phases of the moon alone: on the 14th it is not full {2}, on the 15th it is full {3}.', 'gap']]]],
     ru: [['Как соблюдать?', [
         ['АН 3.70', 'упосатха Благородных {10} — подобно арахантам {14}; избегать упосатхи пастуха и ниганты {7}.'],
@@ -136,7 +137,8 @@
       ['Когда начинать?', [
         ['АН 3.70', 'начинать ночью: ночь и день, «эту ночь и этот день» {11}.'],
         ['МН 53', 'что такое ночь? Части ночи — <i>paṭhama</i>, <i>majjhima</i>, <i>pacchima yāma</i> — и что делает в каждой ученик. {13}'],
-        ['СН 28.1', 'что такое день? Части дня: день монаха — подаяние утром, уединение в середине дня, выход вечером. {12}'],
+        ['СН 28.1', 'что такое день? Части дня: день монаха — подаяние утром, уединение в середине дня, выход вечером. {12} Слова majjhanhikasamaya там нет, но это именно эта часть дня.'],
+        ['МН 79', 'сам полдень: «солнце в полдень» (<i>majjhanhikasamaya</i>) в ясном осеннем небе. {15}'],
         ['МН 146', 'не только по фазам луны: на 14-й она неполная {2}, на 15-й — полная {3}.', 'gap']]]],
   };
 
@@ -281,7 +283,7 @@
       var third = (to - from) / 3;
       return '<div class="pblk"><h3>' + esc(title) + '<span>' + esc(sub) + '</span></h3>' + names.map(function (n, i) {
         var a = from.getTime() + i * third, b = a + third;
-        return '<div class="prow"' + (now >= a && now < b ? ' data-now="true"' : '') + '><span><b>' + esc(n[0]) + '</b><small>' + esc(n[1]) + '</small><em>' + esc(n[2]) + ' · <a class="pref" href="/' + esc(n[3]) + '?lang=' + lang + '" target="_blank" rel="noopener">' + esc(n[3].split(':')[0]) + '</a></em></span><span class="tm">' + F.hm.format(a) + ' – ' + F.hm.format(b) + '</span></div>';
+        return '<div class="prow"' + (now >= a && now < b ? ' data-now="true"' : '') + '><span><b>' + esc(n[0]) + '</b><small>' + esc(n[1]) + '</small><em>' + esc(n[2]) + ' · ' + n[3].split(',').map(function (r) { return '<a class="pref" href="/' + esc(r) + '?lang=' + lang + '" target="_blank" rel="noopener">' + esc(r.split(':')[0]) + '</a>'; }).join(' · ') + '</em></span><span class="tm">' + F.hm.format(a) + ' – ' + F.hm.format(b) + '</span></div>';
       }).join('') + '</div>';
     }
     $('pgrid').innerHTML = block(t.pDay, F.week.format(Date.parse(ymd)), rise, set, t.dayParts) +
