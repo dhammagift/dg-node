@@ -217,7 +217,7 @@ b.match { color: var(--dg-match); font-weight: 600; } /* a found word, as in the
 .rd { border: 0; background: none; font: inherit; font-size: 13px; color: var(--dg-accent-ink); cursor: pointer; padding: 1px 3px; border-radius: 6px; white-space: nowrap; }
 .rd:hover { background: var(--dg-accent-bg); }
 .rd[aria-current=true] { background: var(--dg-accent-bg); color: var(--dg-on-accent-bg); font-weight: 600; }
-.reader { margin: 16px 0 0; border: 1px solid var(--dg-border); border-radius: var(--dg-radius); overflow: hidden; background: var(--dg-surface); }
+.reader { margin: 16px 0 0; border: 1px solid var(--dg-border); border-radius: var(--dg-radius); background: var(--dg-surface); }
 .reader[hidden] { display: none; }
 .reader .rh { display: flex; align-items: center; gap: 10px; padding: 9px 10px 9px 14px; border-bottom: 1px solid var(--dg-border); font-size: 13px; color: var(--dg-text-2); flex-wrap: wrap; }
 .reader .rh b { color: var(--dg-text); font-weight: 600; }
@@ -366,3 +366,17 @@ body.embed .soft { display: none; }
 .prow small + em { display: block; font-style: normal; font-size: 12px; line-height: 1.45; color: var(--dg-text-2); margin-top: 3px; max-width: 34ch; }
 .prow em a { color: var(--dg-accent-ink); }
 .prow[data-now=true] em a { color: inherit; text-decoration: underline; }
+
+.keys li.kq { padding: 14px 0 4px; border-top: 1px solid var(--dg-border); }
+.keys li.kq h3 { margin: 0 0 4px; font-size: 15px; font-weight: 600; color: var(--dg-text); }
+.keys li.kq ul { list-style: none; margin: 0; padding: 0; }
+.keys li.kq ul li { border-top: 0; padding: 5px 0; }
+
+/* the docs' pill: "open in a new window" on the frame's top border, shown while the frame is touched; always on touch screens */
+.dgframe { position: relative; }
+.dgframe iframe { border-radius: 0 0 var(--dg-radius) var(--dg-radius); }
+.dgframe__open { position: absolute; top: 0; right: 12px; z-index: 1; display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; font-size: .78rem; line-height: 1.4; color: var(--dg-text-2); background: var(--dg-surface); border: 1px solid var(--dg-border-strong); border-radius: 999px; box-shadow: 0 2px 8px rgb(0 0 0 / .12); opacity: 0; transform: translateY(-50%) scale(.95); pointer-events: none; transition: opacity 180ms cubic-bezier(.23,1,.32,1), transform 180ms cubic-bezier(.23,1,.32,1); }
+.dgframe:hover .dgframe__open, .dgframe:focus-within .dgframe__open, .dgframe.is-active .dgframe__open { opacity: 1; transform: translateY(-50%) scale(1); pointer-events: auto; }
+@media (hover: none) { .dgframe__open { opacity: 1; transform: translateY(-50%) scale(1); pointer-events: auto; } }
+.dgframe__open:hover { color: var(--dg-accent-ink); }
+@media (prefers-reduced-motion: reduce) { .dgframe__open, .dgframe:hover .dgframe__open { transform: translateY(-50%); } }

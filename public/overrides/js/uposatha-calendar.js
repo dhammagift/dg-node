@@ -115,21 +115,29 @@
     ['an3.70:4.1', 'AN 3.70 · Noble One|Благородный'], ['an3.70:19.3', 'AN 3.70 · nights and days|ночь и день'],
     ['sn28.1:1.2', 'SN 28.1 · a monk\'s day|день монаха'], ['mn53:10.3', 'MN 53 · parts of the night|части ночи'],
   ];
-  var KEYS = { // the same suttas as the special and general ones of the slideshow, in the same order
-    en: [['AN 3.37', '<b>On which days:</b> the 14th {4}, the 15th {5} and the 8th {6} — on these days the guardians of the world look who keeps the Uposatha.'],
-      ['MN 83', '<b>On which days:</b> the 14th, 15th and 8th of the half-month. {1}'],
-      ['MN 146', 'the 14th day the moon is not full {2}, the 15th it is full {3}.'],
-      ['AN 3.70', '<b>At what time:</b> night and day — “this night and day” {11}. <b>How:</b> as the arahants do {10}. The three kinds of Uposatha {7}; how it should <b>not</b> be kept — the cowherd\'s {8} and the Nigaṇṭha\'s {9}.'],
-      ['AN 10.46', 'not to be skipped: “it is your loss and misfortune”. {0}'],
-      ['MN 53', '<b>Parts of the night:</b> <i>paṭhama</i>, <i>majjhima</i>, <i>pacchima yāma</i>, and what a disciple does in each. {13}'],
-      ['SN 28.1', '<b>Parts of the day:</b> a monk\'s day — alms in the morning, seclusion at midday, coming out in the evening. {12}']],
-    ru: [['АН 3.37', '<b>В какие дни:</b> 14-й {4}, 15-й {5} и 8-й {6} — в эти дни стражи мира смотрят, кто соблюдает упосатху.'],
-      ['МН 83', '<b>В какие дни:</b> 14-й, 15-й и 8-й дни половины месяца. {1}'],
-      ['МН 146', 'на 14-й день луна неполная {2}, на 15-й — полная {3}.'],
-      ['АН 3.70', '<b>В какое время:</b> ночь и день — «эту ночь и этот день» {11}. <b>Как:</b> как это делают араханты {10}. Три вида упосатхи {7}; как её <b>не</b> нужно соблюдать — «пастуха» {8} и «ниганты» {9}.'],
-      ['АН 10.46', 'пропускать нельзя: «это ваша потеря и неудача». {0}'],
-      ['МН 53', '<b>Части ночи:</b> <i>paṭhama</i>, <i>majjhima</i>, <i>pacchima yāma</i> и что делает в каждой ученик. {13}'],
-      ['СН 28.1', '<b>Части дня:</b> день монаха — подаяние утром, уединение в середине дня, выход вечером. {12}']],
+  var KEYS = { // three questions; the suttas are the special and general ones of the slideshow
+    en: [['How to keep it?', [
+        ['AN 3.70', 'as the arahants do {10}. The three kinds of Uposatha {7}; how it should <b>not</b> be kept — the cowherd\'s {8} and the Nigaṇṭha\'s {9}.'],
+        ['AN 10.46', 'not to be skipped: “it is your loss and misfortune”. {0}']]],
+      ['On which days?', [
+        ['AN 3.37', 'the 14th {4}, the 15th {5} and the 8th {6}: on these days the guardians of the world look who keeps the Uposatha.'],
+        ['MN 83', 'the 14th, 15th and 8th of the half-month. {1}'],
+        ['MN 146', 'the 14th day the moon is not full {2}, the 15th it is full {3}.']]],
+      ['When to begin?', [
+        ['AN 3.70', 'night and day: “this night and day” {11}.'],
+        ['MN 53', 'the parts of the night — <i>paṭhama</i>, <i>majjhima</i>, <i>pacchima yāma</i> — and what a disciple does in each. {13}'],
+        ['SN 28.1', 'the parts of the day: a monk\'s day — alms in the morning, seclusion at midday, coming out in the evening. {12}']]]],
+    ru: [['Как соблюдать?', [
+        ['АН 3.70', 'как это делают араханты {10}. Три вида упосатхи {7}; как её <b>не</b> нужно соблюдать — «пастуха» {8} и «ниганты» {9}.'],
+        ['АН 10.46', 'пропускать нельзя: «это ваша потеря и неудача». {0}']]],
+      ['В какие дни?', [
+        ['АН 3.37', '14-й {4}, 15-й {5} и 8-й {6}: в эти дни стражи мира смотрят, кто соблюдает упосатху.'],
+        ['МН 83', '14-й, 15-й и 8-й дни половины месяца. {1}'],
+        ['МН 146', 'на 14-й день луна неполная {2}, на 15-й — полная {3}.']]],
+      ['Когда начинать?', [
+        ['АН 3.70', 'ночь и день: «эту ночь и этот день» {11}.'],
+        ['МН 53', 'части ночи — <i>paṭhama</i>, <i>majjhima</i>, <i>pacchima yāma</i> — и что делает в каждой ученик. {13}'],
+        ['СН 28.1', 'части дня: день монаха — подаяние утром, уединение в середине дня, выход вечером. {12}']]]],
   };
 
   // ---------- state ----------
@@ -502,8 +510,10 @@
   function passageLabel(i) { var p = PASSAGES[i][1].split(' · '); return p.length > 1 ? p[0] + ' · ' + p[1].split('|')[lang === 'ru' ? 1 : 0] : p[0]; }
   function readerLabel(i) { var l = passageLabel(i); return lang === 'ru' ? l.replace(/^AN /, 'АН ').replace(/^MN /, 'МН ') : l; }
   function paintKeys() {
-    $('keylist').innerHTML = KEYS[lang].map(function (k) {
-      return '<li><b>' + k[0] + '</b> — ' + k[1].replace(/\{(\d+)\}/g, function (_, n) { return '<button class="rd" type="button" data-i="' + n + '">' + (lang === 'ru' ? 'Читать →' : 'Read →') + '</button>'; }) + '</li>';
+    $('keylist').innerHTML = KEYS[lang].map(function (g) {
+      return '<li class="kq"><h3>' + esc(g[0]) + '</h3><ul>' + g[1].map(function (k) {
+        return '<li><b>' + k[0] + '</b> — ' + k[1].replace(/\{(\d+)\}/g, function (_, n) { return '<button class="rd" type="button" data-i="' + n + '">' + (lang === 'ru' ? 'Читать →' : 'Read →') + '</button>'; }) + '</li>';
+      }).join('') + '</ul></li>';
     }).join('');
     $('rd-sel').innerHTML = PASSAGES.map(function (p, i) { return '<option value="' + i + '">' + esc(readerLabel(i)) + '</option>'; }).join('');
     Array.prototype.forEach.call(document.querySelectorAll('.rd'), function (b) { b.onclick = function () { readSutta(+b.getAttribute('data-i')); }; });
@@ -770,6 +780,11 @@
     $('sl-all-btn').onclick = showAllSlides;
     $('sl-filter').onclick = function (e) { var v = e.target.getAttribute && e.target.getAttribute('data-f'); if (v) { slFilter = v; showAllSlides(); } };
     $('sl-sort').onclick = function (e) { var v = e.target.getAttribute && e.target.getAttribute('data-s'); if (v) { slSort = v; showAllSlides(); } };
+    // the "open in a new window" pill sits on the frame's top border and shows on hover or after a tap inside the frame, as in the docs
+    var frame = $('rd-frame'), box = $('dgframe');
+    function attachFrame() { try { frame.contentWindow.addEventListener('pointerdown', function () { box.classList.add('is-active'); }); } catch (e) { /* cross-origin: hover only */ } }
+    frame.addEventListener('load', attachFrame);
+    document.addEventListener('pointerdown', function (e) { if (!box.contains(e.target)) box.classList.remove('is-active'); });
     document.addEventListener('click', function (e) {
       if (e.button || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
       var a = e.target.closest && e.target.closest('#dg-carousel .carousel-item a, #sl-all-list .sr, .pref');
