@@ -30,6 +30,23 @@
   "en": "And on the fourteenth day of the fortnight, the sons of the four great kings wander about the world, thinking: ‘Hopefully most humans are paying due respect to their parents … and making merit.’"
  },
  {
+  "id": "an3.37-verse",
+  "kind": "special",
+  "days": [
+   8,
+   14,
+   15
+  ],
+  "ref": "an3.37:5.1",
+  "cite": {
+   "en": "AN 3.37",
+   "ru": "АН 3.37"
+  },
+  "pli": "‘Cātuddasiṁ pañcadasiṁ,\nyā ca pakkhassa aṭṭhamī;\nPāṭihāriyapakkhañca,\naṭṭhaṅgasusamāgataṁ;\nUposathaṁ upavaseyya,\nyopissa mādiso naro’ti.",
+  "ru": "“Четырнадцатый, пятнадцатый день,\nНа день, что в половине месяца восьмой;\nА также и в особенные дни,\nЧто аспектами восемью полна,\nУпосатху должен соблюдать,\nЧеловек, который хочет быть таким, как я”.",
+  "en": "‘Whoever wants to be like me\nwould observe the sabbath\ncomplete in all eight factors,\non the fourteenth and the fifteenth days,\nand the eighth day of the fortnight,\nas well as on the fortnightly special displays.’"
+ },
+ {
   "id": "mn146-14",
   "kind": "special",
   "days": [
@@ -298,7 +315,7 @@
   "en": "Then that noble disciple reflects: ‘As long as they live, the perfected ones give up killing living creatures, renouncing the rod and the sword. They are scrupulous and kind, and live full of sympathy for all living beings. I, too, for this day and night will give up killing living creatures, renouncing the rod and the sword. I’ll be scrupulous and kind, and live full of sympathy for all living beings. I will observe the sabbath by doing as the perfected ones do in this respect."
  },
  {
-  "id": "snp2.14",
+  "id": "snp2.14-factors",
   "kind": "special",
   "days": [
    8,
@@ -310,9 +327,43 @@
    "en": "Snp 2.14",
    "ru": "Снп 2.14"
   },
-  "pli": "Pāṇaṁ na hane na cādinnamādiye, Musā na bhāse na ca majjapo siyā; Abrahmacariyā virameyya methunā, Rattiṁ na bhuñjeyya vikālabhojanaṁ. Mālaṁ na dhāre na ca gandhamācare, Mañce chamāyaṁ va sayetha santhate; Etañhi aṭṭhaṅgikamāhuposathaṁ, Pāṭihāriyapakkhañca pasannamānaso, Aṭṭhaṅgupetaṁ susamattarūpaṁ.",
-  "ru": "Не убивай живых, и что не дали – не бери; Не говори неправды и не пей спиртного. Сношений сторонись, дурного поведения; Ночью не ешь, вне правильного срока. И не носи гирлянд, духов не применяй, Спи на циновке на земле или [такой] постели. Ведь восьмиаспектной Упосатхи такому соблюдению На день четырнадцатый, на пятнадцатый, А также на восьмой, и по особым дням –",
-  "en": "You shouldn’t kill living creatures, or steal, or lie, or drink liquor. Be chaste, refraining from sex, and don’t eat at night, the wrong time. Not wearing garlands or applying fragrance, you should sleep on a low bed, or a mat on the ground. This is the eight-factored sabbath, they say, on the fourteenth, fifteenth, and eighth of the fortnight, as well as on the fortnightly special displays,"
+  "pli": "Pāṇaṁ na hane na cādinnamādiye,\nMusā na bhāse na ca majjapo siyā;\nAbrahmacariyā virameyya methunā,\nRattiṁ na bhuñjeyya vikālabhojanaṁ.\nMālaṁ na dhāre na ca gandhamācare,\nMañce chamāyaṁ va sayetha santhate;\nEtañhi aṭṭhaṅgikamāhuposathaṁ,\nBuddhena dukkhantagunā pakāsitaṁ.",
+  "ru": "Не убивай живых, и что не дали – не бери;\nНе говори неправды и не пей спиртного.\nСношений сторонись, дурного поведения;\nНочью не ешь, вне правильного срока.\nИ не носи гирлянд, духов не применяй,\nСпи на циновке на земле или [такой] постели.\nВедь восьмиаспектной Упосатхи такому соблюдению\n[Сам] Будда научил, положивший конец боли.",
+  "en": "You shouldn’t kill living creatures, or steal,\nor lie, or drink liquor.\nBe chaste, refraining from sex,\nand don’t eat at night, the wrong time.\nNot wearing garlands or applying fragrance,\nyou should sleep on a low bed, or a mat on the ground.\nThis is the eight-factored sabbath, they say,\nrevealed by the Buddha, who has gone to suffering’s end."
+ },
+ {
+  "id": "snp2.14-days",
+  "kind": "special",
+  "days": [
+   8,
+   14,
+   15
+  ],
+  "ref": "snp2.14:28.1",
+  "cite": {
+   "en": "Snp 2.14",
+   "ru": "Снп 2.14"
+  },
+  "pli": "Tato ca pakkhassupavassuposathaṁ,\nCātuddasiṁ pañcadasiñca aṭṭhamiṁ;\nPāṭihāriyapakkhañca pasannamānaso,\nAṭṭhaṅgupetaṁ susamattarūpaṁ.",
+  "ru": "Уверенный в уме, когда её провёл –\nУпосатху, что в аспектах восьми была полна\nНа день четырнадцатый, на пятнадцатый,\nА также на восьмой, и по особым дням –",
+  "en": "Then having rightly undertaken the sabbath\ncomplete in all its eight factors\non the fourteenth, fifteenth, and eighth of the fortnight,\nas well as on the fortnightly special displays,"
+ },
+ {
+  "id": "snp2.14-dawn",
+  "kind": "special",
+  "days": [
+   8,
+   14,
+   15
+  ],
+  "ref": "snp2.14:29.1",
+  "cite": {
+   "en": "Snp 2.14",
+   "ru": "Снп 2.14"
+  },
+  "pli": "Tato ca pāto upavutthuposatho,\nAnnena pānena ca bhikkhusaṅghaṁ;\nPasannacitto anumodamāno,\nYathārahaṁ saṁvibhajetha viññū.",
+  "ru": "То утром мудрый [этот] человек,\nКоторый [всю эту] Упосатху провёл,\nС умом уверенным, довольный, он разделит,\nКак подобает, с Сангхой пищу и напитки.",
+  "en": "at daybreak after the sabbath\na clever person, rejoicing with confident heart,\nwould distribute food and drink\nto the mendicant Saṅgha as is fitting."
  },
  {
   "id": "an8.41",

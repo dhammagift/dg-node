@@ -144,6 +144,7 @@ body[data-mode=lite] .mon li .t .info .ln:not(.grey) + .ln:not(.grey) { display:
 .plate[data-k=special] { background: var(--dg-slate-bg); }
 .plate[data-k=random] { border-color: var(--dg-border); color: var(--dg-text-muted); }
 .sl-row .plate { top: 10px; right: 0; }
+.sl-pli, .sl-tr { white-space: pre-line; }
 .sl-pli { margin: 0 0 6px; font-size: 15px; line-height: 1.55; color: var(--dg-text); }
 .sl-tr { margin: 0; font-size: 13.5px; line-height: 1.6; color: var(--dg-text-muted); text-wrap: pretty; }
 b.match { color: var(--dg-match); font-weight: 600; }

@@ -7,6 +7,7 @@ BASE = '/var/www/html/suttacentral.net/sc-data/sc_bilara_data'
 SLIDES = [
     ('an3.37-8',  [8],  'an/an3',  'an3.37', ['1.1', '1.2'],  'sv', 'AN 3.37', 'АН 3.37'),
     ('an3.37-14', [14], 'an/an3',  'an3.37', ['1.3', '1.4'],  'sv', 'AN 3.37', 'АН 3.37'),
+    ('an3.37-verse', [8, 14, 15], 'an/an3', 'an3.37', ['5.1', '5.2', '5.3', '5.4', '5.5', '5.6'], 'sv', 'AN 3.37', 'АН 3.37'),
     ('mn146-14',  [14], 'mn',      'mn146',  ['15.2', '15.3'], 'sv', 'MN 146', 'МН 146'),
     ('an3.37-15', [15], 'an/an3',  'an3.37', ['1.5', '1.6'],  'sv', 'AN 3.37', 'АН 3.37'),
     ('mn146-15',  [15], 'mn',      'mn146',  ['27.2', '27.3'], 'sv', 'MN 146', 'МН 146'),
@@ -26,11 +27,15 @@ SLIDES = [
     ('an3.70-three', None, 'an/an3', 'an3.70', ['2.1', '2.2', '2.3'], 'sv', 'AN 3.70', 'АН 3.70'),
     ('an3.70-noble', None, 'an/an3', 'an3.70', ['4.1', '4.2', '4.3'], 'sv', 'AN 3.70', 'АН 3.70'),
     ('an3.70-vow',   None, 'an/an3', 'an3.70', ['19.1', '19.2', '19.3', '19.4'], 'sv', 'AN 3.70', 'АН 3.70'),
-    ('snp2.14',   [8, 14, 15], 'kn/snp', 'snp2.14', ['26.1', '26.2', '26.3', '26.4', '27.1', '27.2', '27.3', '28.3', '28.4'], 'sv', 'Snp 2.14', 'Снп 2.14'),
+    ('snp2.14-factors', [8, 14, 15], 'kn/snp', 'snp2.14', ['26.1', '26.2', '26.3', '26.4', '27.1', '27.2', '27.3', '27.4'], 'sv', 'Snp 2.14', 'Снп 2.14'),
+    ('snp2.14-days',    [8, 14, 15], 'kn/snp', 'snp2.14', ['28.1', '28.2', '28.3', '28.4'], 'sv', 'Snp 2.14', 'Снп 2.14'),
+    ('snp2.14-dawn',    [8, 14, 15], 'kn/snp', 'snp2.14', ['29.1', '29.2', '29.3', '29.4'], 'sv', 'Snp 2.14', 'Снп 2.14'),
     ('an8.41',    None, 'an/an8', 'an8.41', ['2.1', '2.2', '2.3', '2.5'], 'sv', 'AN 8.41', 'АН 8.41'),
     ('an10.46',   None, 'an/an10', 'an10.46', ['1.5'],        'o',  'AN 10.46', 'АН 10.46'),
 ]
 # lines that are about an Uposatha day but do not teach it: they go to the random pool
+# verses keep their line breaks
+POEMS = {'an3.37-verse', 'snp2.14-factors', 'snp2.14-days', 'snp2.14-dawn'}
 RANDOM_IDS = {'mn118-15', 'kd2-two', 'bu-pm-15'}
 def load(p):
     return json.load(open(os.path.join(BASE, p)))
@@ -50,7 +55,8 @@ for sid, days, nik, sutta, segs, ru_tr, en_label, ru_label in SLIDES:
     ru = find('', sutta, 'ru', ru_tr)
     en = find('', sutta, 'en', 'sujato')
     key = lambda s: f'{sutta}:{s}'
-    join = lambda d: ' '.join(d[key(s)].strip() for s in segs if key(s) in d).replace('<j>', '')
+    sep = '\n' if sid in POEMS else ' '
+    join = lambda d: sep.join(d[key(s)].strip() for s in segs if key(s) in d).replace('<j>', '')
     # "special" slides belong to the 8th / 14th / 15th day; "general" ones say that the Uposatha is to be kept
     if sid in RANDOM_IDS: days = None
     out.append({'id': sid, 'kind': 'random' if sid in RANDOM_IDS else 'special' if days else 'general', 'days': days, 'ref': key(segs[0]), 'cite': {'en': en_label, 'ru': ru_label}, 'pli': join(pli), 'ru': join(ru), 'en': join(en).replace(' Then—', '')})
