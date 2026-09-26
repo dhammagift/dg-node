@@ -73,7 +73,7 @@
       full: 'Full moon', newm: 'New moon', fullL: 'full moon', newL: 'new moon', illum: 'illuminated', ld: 'lunar day', of15: 'of 15', until: 'until',
       phases: ['New moon', 'Waxing crescent', 'First quarter', 'Waxing gibbous', 'Full moon', 'Waning gibbous', 'Last quarter', 'Waning crescent'],
       tonight: 'The Uposatha begins this evening', next2: 'Next', inN: function (n) { return 'in ' + n + ' day' + (n > 1 ? 's' : ''); }, tomorrow: 'tomorrow', isToday: 'today',
-      kEnds: 'Ends', kBegins: 'Begins', kSpan: 'Observed', kLunar: 'Lunar day', kTime: 'Exact time',
+      mornVal: function (d, tm) { return 'morning ' + d + (tm ? ' (' + tm + ')' : ''); }, nightVal: function (d) { return 'night ' + d; }, goingNow: 'in progress', kEnds: 'Ends', kBegins: 'Begins', kSpan: 'Observed', kLunar: 'Lunar day', kTime: 'Exact time',
       beginsVal: function (eve, sun) { return 'evening ' + eve + (sun ? ' (' + sun + ')' : ''); }, spanVal: function (night, day) { return 'night of ' + night + ' → day of ' + day; },
       sunrise: 'sunrise', sunset: 'sunset',
       lunarVal: function (tithi, nth, half, change) { return tithi + ' of 30 (' + nth + ' of the ' + half + ') · until ' + change; },
@@ -126,7 +126,7 @@
       full: 'Полнолуние', newm: 'Новолуние', fullL: 'полнолуние', newL: 'новолуние', illum: 'освещено', ld: 'лунный день', of15: 'из 15', until: 'до',
       phases: ['Новолуние', 'Растущий серп', 'Первая четверть', 'Растущая Луна', 'Полнолуние', 'Убывающая Луна', 'Последняя четверть', 'Убывающий серп'],
       tonight: 'Упосатха начинается сегодня вечером', next2: 'Следующая', inN: function (n) { var m = n % 10, h = n % 100; return 'через ' + n + ' ' + (m === 1 && h !== 11 ? 'день' : m >= 2 && m <= 4 && (h < 12 || h > 14) ? 'дня' : 'дней'); }, tomorrow: 'завтра', isToday: 'сегодня',
-      kEnds: 'Конец', kBegins: 'Начало', kSpan: 'Упосатха', kLunar: 'Лунный день', kTime: 'Точное время',
+      mornVal: function (d, tm) { return 'утро ' + d + (tm ? ' (' + tm + ')' : ''); }, nightVal: function (d) { return 'ночь ' + d; }, goingNow: 'идёт сейчас', kEnds: 'Конец', kBegins: 'Начало', kSpan: 'Упосатха', kLunar: 'Лунный день', kTime: 'Точное время',
       beginsVal: function (eve, sun) { return 'вечер ' + eve + (sun ? ' (' + sun + ')' : ''); }, spanVal: function (night, day) { return 'ночь ' + night + ' → день ' + day; },
       sunrise: 'восход', sunset: 'закат',
       lunarVal: function (tithi, nth, half, change) { return tithi + ' из 30 (' + nth + ' ' + half + ') · до ' + change; },
@@ -288,8 +288,11 @@
       var eo = state.loc ? new A.Observer(state.loc.lat, state.loc.lon, 0) : null, endAt = endOf(r, eo);
       h += line(t.kEnds, t.beginsVal(after, (eo && sunEvent('set', r.y, r.m, r.d + 1, state.tz, eo) ? t.sunset + ' ' : '') + F.hm.format(endAt))).replace('class="ln"', 'class="ln endl"');
       h += line(t.kSpan, t.spanVal(eve, after)).replace('class="ln"', 'class="ln spanl"');
-    } else if (r.phaseAt) {
-      h += line(t.kTime, F.stamp.format(r.phaseAt));
+    } else {
+      var dd = F.eve.format(Date.parse(r.ymd)), mo = state.loc ? new A.Observer(state.loc.lat, state.loc.lon, 0) : null, sr = mo && sunEvent('rise', r.y, r.m, r.d, state.tz, mo);
+      h += line(t.kBegins, t.mornVal(dd, sr ? F.hm.format(sr) : ''));
+      h += line(t.kEnds, t.nightVal(dd));
+      if (r.phaseAt) h += line(t.kTime, F.stamp.format(r.phaseAt), true);
     }
     h += line(t.kLunar, t.lunarVal(r.tithi, t.nth(r.day), t.halvesOf[r.tithi <= 15 ? 0 : 1], F.stamp.format(r.ends.date)), true);
     notesOf(r, F).forEach(function (n) { h += line('', n, true); });
@@ -499,10 +502,12 @@
       }
       var dd = Math.round((Date.parse(r.ymd) - Date.parse(todayYmd)) / DAY);
       var running = su ? (now >= r.at && now < endOf(r, L.obs)) : dd === 0; // the Uposatha that is going on now is framed
-      var w = running ? t.isToday : dd === 1 ? t.tomorrow : dd > 1 ? t.inN(dd) : '';
+      var w = running ? (su ? t.goingNow : t.isToday) : dd === 1 // by the suttas the running Uposatha began on another date than today: it is 'going on', not 'today'
+         ? t.tomorrow : dd > 1 ? t.inN(dd) : '';
       var note = '';
       html += '<li class="row" data-ymd="' + r.ymd + '"' + (dd < 0 && !running ? ' data-past="true"' : '') + (running ? ' data-now="true"' : '') + '>' +
-        '<span class="n">' + esc(F.day.format(Date.parse(r.ymd))) + '<small>' + esc(F.wd.format(Date.parse(r.ymd))) + '</small></span>' + moon(rowI(r), 'moon mi') +
+        '<span class="cap' + (su ? '' : ' one') + '"><span class="c1"><b>' + esc(F.day.format(Date.parse(r.ymd))) + '</b><small>' + esc(F.wd.format(Date.parse(r.ymd))) + '</small></span>' + moon(rowI(r), 'moon mi') +
+          (su ? '<span class="c2"><b>' + esc(F.day.format(Date.parse(r.ymd) + DAY)) + '</b><small>' + esc(F.wd.format(Date.parse(r.ymd) + DAY)) + '</small></span>' : '') + '</span>' +
         '<span class="t"><b>' + esc(nameOf(r)) + '</b>' + (note ? '<span class="nt">· ' + esc(note) + '</span>' : '') + '<span class="info">' + infoHtml(r, F) + '</span></span>' +
         '<span class="w">' + esc(w) + '</span></li>';
     });
