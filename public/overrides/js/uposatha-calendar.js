@@ -31,6 +31,7 @@
   // ---------- words ----------
   var T = {
     en: {
+      age: 'age', of30: 'of 30', from: 'from', left: 'left', dU: 'd', hU: 'h', mU: 'min',
       tag: 'observance days', compass: 'Favorites / History', menu: 'Menu', theme: 'Theme', prev: 'Previous', next: 'Next', close: 'Close',
       h1: 'Uposatha days', lead: 'The 14th, 15th and 8th lunar days of each half-month, as the suttas count them — six a month.', suttas: 'The suttas on Uposatha →',
       today: 'Today', change: 'change', tList: 'Uposatha days', tCal: 'Calendar', more: 'Three more months', todayBtn: 'Today',
@@ -63,6 +64,7 @@
       wds: ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'], docs: '/docs/uposatha', linkCopied: 'Link copied', shareTitle: 'Uposatha days', locale: 'en-GB',
     },
     ru: {
+      age: 'возраст', of30: 'из 30', from: 'с', left: 'осталось', dU: 'д', hU: 'ч', mU: 'мин',
       tag: 'дни соблюдения', compass: 'Избранное / История', menu: 'Меню', theme: 'Тема', prev: 'Назад', next: 'Вперёд', close: 'Закрыть',
       h1: 'Дни упосатхи', lead: '14-й, 15-й и 8-й лунные дни каждой половины месяца, как их считают сутты, — шесть в месяц.', suttas: 'Сутты об упосатхе →',
       today: 'Сегодня', change: 'изменить', tList: 'Упосатхи', tCal: 'Календарь', more: 'Ещё три месяца', todayBtn: 'Сегодня',
@@ -227,6 +229,19 @@
 
   // Lit part of the Moon to a thousandth of a percent: near the full moon a whole percent stays the same for half a day.
   function illumPercent(d) { var v = (A.Illumination('Moon', d).phase_fraction * 100).toFixed(3); return lang === 'ru' ? v.replace('.', ',') : v; }
+  // What changes while the page is open: the lit part, the Moon's age since the new moon and the time left of the lunar day.
+  var live = { ends: null, born: null };
+  function span(ms) {
+    var m = Math.max(0, Math.floor(ms / 60000)), d = Math.floor(m / 1440), h = Math.floor(m % 1440 / 60);
+    return (d ? d + ' ' + t.dU + ' ' : '') + h + ' ' + t.hU + ' ' + (m % 60) + ' ' + t.mU;
+  }
+  function liveTick() {
+    if (document.hidden) return;
+    var now = new Date(), e;
+    if ((e = $('pct'))) e.textContent = illumPercent(now);
+    if ((e = $('age')) && live.born) e.textContent = span(now - live.born);
+    if ((e = $('left')) && live.ends) e.textContent = span(live.ends - now);
+  }
   function paint() {
     var now = new Date(), tz = state.tz, F = formats(), su = sutta();
     var todayYmd = localDay(now, tz), tp = todayYmd.split('-').map(Number);
@@ -250,10 +265,16 @@
     var angle = A.MoonPhase(now), tithi = tithiAt(now), pIndex = Math.floor(((angle + 22.5) % 360) / 45);
     var percent = illumPercent(now);
     var dayEnds = A.SearchMoonPhase((tithi * 12) % 360, now, 3);
+    var dayBegan = A.SearchMoonPhase(((tithi - 1) * 12) % 360, new Date(now.getTime() - 2 * DAY), 3); // the lunar day in force began within the last ~26 hours
+    var lastNew = A.SearchMoonPhase(0, new Date(now.getTime() - 30 * DAY), 40);
+    live = { ends: dayEnds && dayEnds.date, born: lastNew && lastNew.date };
     $('t-moon').innerHTML = moon(pIndex, 'moon');
     $('t-date').textContent = cap(F.dateLong.format(now));
-    $('t-phase').innerHTML = '<span>' + esc(t.phases[pIndex]) + '</span><span class="dot">·</span><span><span id="pct">' + percent + '</span>% ' + esc(t.illum) + '</span><span class="dot">·</span><span><b style="font-weight:600;color:var(--dg-text)">' + dayNo(tithi) + '</b> ' + esc(t.ld) + ' ' + esc(t.of15) + ', ' + esc(halfName(tithi)) + '</span>' +
-      (dayEnds ? '<span class="dot">·</span><span>' + esc(t.until) + ' ' + esc(F.stamp.format(dayEnds.date)) + '</span>' : '');
+    var dot = '<span class="dot">·</span>';
+    $('t-phase').innerHTML = '<span>' + esc(t.phases[pIndex]) + '</span>' + dot + '<span><span id="pct">' + percent + '</span>% ' + esc(t.illum) + '</span>' + dot + '<span>' + esc(t.age) + ' <span id="age"></span></span><br>' +
+      '<span><b style="font-weight:600;color:var(--dg-text)">' + esc(t.ld) + ' ' + tithi + '</b> ' + esc(t.of30) + ' (' + esc(t.nth(dayNo(tithi))) + ' ' + esc(t.halvesOf[tithi <= 15 ? 0 : 1]) + ')</span>' +
+      (dayEnds ? dot + '<span>' + (dayBegan ? esc(t.from) + ' ' + esc(F.stamp.format(dayBegan.date)) + ' ' : '') + esc(t.until) + ' ' + esc(F.stamp.format(dayEnds.date)) + '</span>' + dot + '<span>' + esc(t.left) + ' <span id="left"></span></span>' : '');
+    liveTick();
     var nextRow = L.rows.filter(function (r) { return r.uposatha && r.ymd > todayYmd; })[0];
     if (isUposatha) $('t-status').innerHTML = '<span class="badge">' + esc(t.uday) + '</span>' + (tonight ? '' : '');
     else if (tonight) $('t-status').innerHTML = '<span class="badge">' + esc(t.tonight) + '</span>';
@@ -583,7 +604,7 @@
   // The docs page may not be listening yet when the first height goes out (the frame can load before the page hydrates), so it
   // is repeated for a few seconds and whenever the parent asks.
   [300, 1000, 2500].forEach(function (ms) { setTimeout(reportHeight, ms); });
-  setInterval(function () { var e = $('pct'); if (e && !document.hidden) e.textContent = illumPercent(new Date()); }, 15000); // the Moon moves while the page is open
+  setInterval(liveTick, 15000); // the Moon moves while the page is open
 
   // Installable as an app of its own (its own manifest, start_url and scope). The site's service worker at /sw.js controls the
   // page; it is registered here too, so visiting the calendar first is enough to install it.
