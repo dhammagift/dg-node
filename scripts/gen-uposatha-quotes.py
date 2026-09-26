@@ -40,6 +40,14 @@ RANDOM_IDS = {'mn118-15', 'kd2-two', 'bu-pm-15'}
 def load(p):
     return json.load(open(os.path.join(BASE, p)))
 OFFLINE = '/var/www/offline-data/dhammagift/translation'
+def titles(sutta, pli, ru, en):
+    # the sutta's name in Pali and in the translations (segment 0.2 or 0.3 holds it)
+    def one(d):
+        for k in (f'{sutta}:0.3', f'{sutta}:0.2'):
+            v = d.get(k, '').strip()
+            if v and not v[0].isdigit(): return v
+        return d.get(f'{sutta}:0.3', '').strip()
+    return {'pli': one(pli), 'ru': one(ru), 'en': one(en)}
 def find(kind, sutta, lang, prefer):
     # The project's own translation first (offline-data: the best one, then the second one), then SuttaCentral's;
     # within a folder the preferred translator first.
@@ -59,20 +67,24 @@ for sid, days, nik, sutta, segs, ru_tr, en_label, ru_label in SLIDES:
     join = lambda d: sep.join(d[key(s)].strip() for s in segs if key(s) in d).replace('<j>', '')
     # "special" slides belong to the 8th / 14th / 15th day; "general" ones say that the Uposatha is to be kept
     if sid in RANDOM_IDS: days = None
-    out.append({'id': sid, 'kind': 'random' if sid in RANDOM_IDS else 'special' if days else 'general', 'days': days, 'ref': key(segs[0]), 'cite': {'en': en_label, 'ru': ru_label}, 'pli': join(pli), 'ru': join(ru), 'en': join(en).replace(' Then—', '')})
-# "random": every place in the canon where an Uposatha day is named in passing ("tadahuposathe"), with both translations
+    out.append({'id': sid, 'kind': 'random' if sid in RANDOM_IDS else 'special' if days else 'general', 'days': days, 'title': titles(sutta, pli, ru, en), 'ref': key(segs[0]), 'cite': {'en': en_label, 'ru': ru_label}, 'pli': join(pli), 'ru': join(ru), 'en': join(en).replace(' Then—', '')})
+# "random": every place in the four Nikayas and the Khuddaka books where the Uposatha is named (any form of "uposath"),
+# with both translations - like the hits of a search for "uposath"; all of them, not one per sutta.
+import re
+UPO = re.compile(r'uposath', re.I)
 used = {o['ref'] for o in out}
 for f in sorted(glob.glob(f'{BASE}/root/pli/ms/sutta/**/*_root-pli-ms.json', recursive=True)):
     sutta = os.path.basename(f).split('_')[0]
+    if not re.match(r'(dn|mn|sn|an|snp|ud|iti|dhp|thag|thig)', sutta): continue
     pli = json.load(open(f))
-    hits = [k for k, v in pli.items() if 'tadahuposathe' in v.lower() and k not in used]
+    hits = [k for k, v in pli.items() if UPO.search(v) and k not in used and ':0.' not in k]
     if not hits: continue
     ru, en = find('', sutta, 'ru', 'o'), find('', sutta, 'en', 'sujato')
+    ttl = titles(sutta, pli, ru, en)
     for k in hits:
-        if k in ru and k in en and len(ru[k].strip()) >= 50 and len(en[k].strip()) >= 30:
-            n = sutta.upper().replace('SNP', 'Snp').replace('UD', 'Ud')
-            nr = sutta.upper().replace('AN', 'АН').replace('MN', 'МН').replace('SN', 'СН').replace('DN', 'ДН').replace('SNP', 'Снп').replace('UD', 'Уд')
-            out.append({'id': k, 'kind': 'random', 'days': None, 'ref': k, 'cite': {'en': n, 'ru': nr}, 'pli': pli[k].strip(), 'ru': ru[k].strip(), 'en': en[k].strip()})
+        if k in en and len(en[k].strip()) >= 30 and len(pli[k].strip()) >= 30:
+            n = sutta
+            out.append({'id': k, 'kind': 'random', 'days': None, 'title': ttl, 'ref': k, 'cite': {'en': n, 'ru': n}, 'pli': pli[k].strip().replace('<j>', ''), 'ru': ru.get(k, '').strip().replace('<j>', ''), 'en': en[k].strip().replace('<j>', '')})
 path = os.path.join(os.path.dirname(__file__), '..', 'public', 'overrides', 'js', 'uposatha-quotes.json')
 json.dump(out, open(path, 'w'), ensure_ascii=False, indent=1)
 print(len(out), 'slides ->', os.path.normpath(path))

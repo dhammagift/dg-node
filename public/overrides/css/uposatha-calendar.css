@@ -168,9 +168,21 @@ b.match { color: var(--dg-match); font-weight: 600; }
 .sr { display: flex; align-items: center; gap: 12px; padding: 12px; border-bottom: 1px solid var(--dg-border); color: inherit; }
 .sr:hover { background: var(--dg-surface-hover); }
 .sr-t { flex: 1; min-width: 0; }
-.sr-p { display: block; font-size: 14.5px; font-weight: 500; color: var(--dg-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sr-p { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 14.5px; font-weight: 400; line-height: 1.45; color: var(--dg-text); }
+.sr-p b.match, .sr-e b.match { font-weight: 600; }
 .sr-e { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-top: 2px; font-size: 13px; line-height: 1.45; color: var(--dg-text-muted); }
 .sr small { display: block; margin-top: 3px; font-size: 11.5px; color: var(--dg-accent-ink); }
+.sg { border-bottom: 1px solid var(--dg-border); }
+.sg > summary { display: flex; align-items: center; gap: 10px; padding: 11px 12px; cursor: pointer; list-style: none; font-size: 14px; }
+.sg > summary::-webkit-details-marker { display: none; }
+.sg > summary::before { content: "\25B8"; color: var(--dg-text-muted); font-size: 12px; transition: transform .15s; }
+.sg[open] > summary::before { transform: rotate(90deg); }
+.sg > summary:hover { background: var(--dg-surface-hover); }
+.sg > summary b { color: var(--dg-accent-ink); font-weight: 600; min-width: 4.2em; }
+.sg-t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--dg-text-2); }
+.sg-t i { color: var(--dg-text-muted); font-style: normal; }
+.sg-n { flex: none; font-variant-numeric: tabular-nums; color: var(--dg-text-muted); font-size: 12.5px; }
+.sg .sr { padding-left: 34px; }
 .sr .plate { position: static; flex: none; }
 .sr .chev { width: 14px; height: 14px; color: var(--dg-text-muted); flex: none; }
 @media (max-width: 640px) { .sl-box { padding: 16px 42px 14px; } .sl-arw { left: 6px; } .sl-arw.next { right: 6px; left: auto; } }

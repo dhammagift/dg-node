@@ -591,9 +591,21 @@
     var grp = NIK[pre] !== undefined ? NIK[pre] : /^pli-tv/.test(ref) ? 5 : 4;
     return [grp, grp === 4 ? pre : grp === 5 ? ref.split(':')[0] : '', +(m[2] || 0), +(m[3] || 0)];
   }
-  function rowHtml(q) {
-    var first = q.pli.split('\n')[0];
-    return '<a class="sr" href="/' + esc(q.ref) + '?lang=' + lang + '" target="_blank" rel="noopener"><span class="sr-t"><b class="sr-p">' + esc(first) + '</b><span class="sr-e">' + esc(slideText(q).replace(/\n/g, ' ')) + '</span><small>' + esc(citeId(q) + (q[lang] ? '' : ' · EN')) + '</small></span>' + plate(q) + '<svg class="chev"><use href="#i-right"/></svg></a>';
+  function rowHtml(q, noCite) {
+    var trKw = q[lang] ? KW[lang] : KW.en;
+    return '<a class="sr" href="/' + esc(q.ref) + '?lang=' + lang + '" target="_blank" rel="noopener"><span class="sr-t"><b class="sr-p">' + hl(q.pli.replace(/\n/g, ' '), KW.pli) + '</b><span class="sr-e">' + hl(slideText(q).replace(/\n/g, ' '), trKw) + '</span>' +
+      (noCite ? '' : '<small>' + esc(citeId(q) + (q[lang] ? '' : ' · EN')) + '</small>') + '</span>' + plate(q) + '<svg class="chev"><use href="#i-right"/></svg></a>';
+  }
+  // By sutta, as in the search results: one line per sutta (id, name, how many lines), opening to its lines.
+  function suttaGroups(all) {
+    var order = [], by = {};
+    all.slice().sort(function (a, b) { var x = suttaKey(a.ref), y = suttaKey(b.ref); return x[0] - y[0] || (x[1] < y[1] ? -1 : x[1] > y[1] ? 1 : 0) || x[2] - y[2] || x[3] - y[3]; }).forEach(function (q) {
+      var id = citeId(q); if (!by[id]) { by[id] = []; order.push(id); } by[id].push(q);
+    });
+    return order.map(function (id) {
+      var g = by[id], ti = g[0].title || {}, name = ti[lang] || ti.en || '';
+      return '<details class="sg"><summary><b>' + esc(id) + '</b><span class="sg-t">' + esc(ti.pli || '') + (name && name !== ti.pli ? ' <i>' + esc(name) + '</i>' : '') + '</span><span class="sg-n">' + g.length + '</span></summary>' + g.map(function (q) { return rowHtml(q, true); }).join('') + '</details>';
+    }).join('');
   }
   function showAllSlides() {
     var all = (quotes || []).filter(function (q) { return q[lang] || q.kind !== 'random'; });
@@ -603,11 +615,9 @@
     if (slSort === 'kind') {
       ['special', 'general', 'random'].forEach(function (k) {
         var part = all.filter(function (q) { return q.kind === k; });
-        if (part.length) html += '<h4>' + esc(t['f' + k.charAt(0).toUpperCase() + k.slice(1)]) + ' · ' + part.length + '</h4>' + part.map(rowHtml).join('');
+        if (part.length) html += '<h4>' + esc(t['f' + k.charAt(0).toUpperCase() + k.slice(1)]) + ' · ' + part.length + '</h4>' + part.map(function (q) { return rowHtml(q); }).join('');
       });
-    } else {
-      html = all.slice().sort(function (a, b) { var x = suttaKey(a.ref), y = suttaKey(b.ref); return x[0] - y[0] || (x[1] < y[1] ? -1 : x[1] > y[1] ? 1 : 0) || x[2] - y[2] || x[3] - y[3]; }).map(rowHtml).join('');
-    }
+    } else html = suttaGroups(all);
     $('sl-all-list').innerHTML = html;
     if ($('sl-modal').getAttribute('data-open') !== 'true') openPanel('sl-modal');
   }
