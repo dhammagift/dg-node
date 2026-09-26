@@ -31,6 +31,8 @@
   // ---------- words ----------
   var T = {
     en: {
+      pH: 'Parts of the day and night', pSub: 'Sunrise to sunset is cut into three parts, and sunset to sunrise likewise — for your place and the season.', pDay: 'Day', pNight: 'Night',
+      dayParts: [['Pubbaṇhasamaya', 'morning'], ['Majjhanhikasamaya', 'midday'], ['Sāyanhasamaya', 'evening']], nightParts: [['Paṭhama yāma', 'first watch'], ['Majjhima yāma', 'middle watch'], ['Pacchima yāma', 'last watch']],
       age: 'age', of30: 'of 30', from: 'from', left: 'left', dU: 'd', hU: 'h', mU: 'min',
       tag: 'observance days', compass: 'Favorites / History', menu: 'Menu', theme: 'Theme', prev: 'Previous', next: 'Next', close: 'Close',
       h1: 'Uposatha days', lead: 'The 14th, 15th and 8th lunar days of each half-month, as the suttas count them — six a month.', suttas: 'The suttas on Uposatha →',
@@ -64,6 +66,8 @@
       wds: ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'], docs: '/docs/uposatha', linkCopied: 'Link copied', shareTitle: 'Uposatha days', locale: 'en-GB',
     },
     ru: {
+      pH: 'Части дня и ночи', pSub: 'Время от восхода до заката делится на три части, и от заката до восхода тоже — для вашего места и сезона.', pDay: 'День', pNight: 'Ночь',
+      dayParts: [['Pubbaṇhasamaya', 'утро'], ['Majjhanhikasamaya', 'полдень'], ['Sāyanhasamaya', 'вечер']], nightParts: [['Paṭhama yāma', 'первая стража'], ['Majjhima yāma', 'средняя стража'], ['Pacchima yāma', 'последняя стража']],
       age: 'возраст', of30: 'из 30', from: 'с', left: 'осталось', dU: 'д', hU: 'ч', mU: 'мин',
       tag: 'дни соблюдения', compass: 'Избранное / История', menu: 'Меню', theme: 'Тема', prev: 'Назад', next: 'Вперёд', close: 'Закрыть',
       h1: 'Дни упосатхи', lead: '14-й, 15-й и 8-й лунные дни каждой половины месяца, как их считают сутты, — шесть в месяц.', suttas: 'Сутты об упосатхе →',
@@ -107,14 +111,19 @@
     ['an3.37:1.3', 'AN 3.37 · 14th|14-й'], ['an3.37:1.5', 'AN 3.37 · 15th|15-й'], ['an3.37:1.1', 'AN 3.37 · 8th|8-й'],
     ['an3.70:2.3', 'AN 3.70 · three kinds|три вида'], ['an3.70:2.4', 'AN 3.70 · cowherd|пастух'], ['an3.70:3.1', 'AN 3.70 · Nigaṇṭha|ниганты'],
     ['an3.70:4.1', 'AN 3.70 · Noble One|Благородный'], ['an3.70:19.3', 'AN 3.70 · nights and days|ночь и день'],
+    ['sn20.4:1.2', 'SN 20.4 · parts of the day|части дня'], ['mn53:10.3', 'MN 53 · night watches|стражи ночи'], ['ud1.1:1.4', 'Ud 1.1 · first watch|первая стража'],
   ];
   var KEYS = {
     en: [['AN 10.46', 'skipping the uposathas is not allowed (“it is your loss and failure”). {0}'], ['MN 83', 'one should observe the 14th, 15th, and 8th days. {1}'],
       ['MN 146', 'the 14th of the waxing moon {2} and the 15th, the full moon {3}.'], ['AN 3.37', 'the 14th {4}, 15th {5} and 8th {6} days compared with the visits of deities of different ranks.'],
-      ['AN 3.70', 'the three kinds of Uposatha {7}: how it should <b>not</b> be observed — the “cowherd\'s Uposatha” {8} and the “Nigaṇṭha\'s Uposatha” {9} — and how the Noble One\'s Uposatha should be observed {10}. The sutta says “nights and days” rather than “days and nights” {11}; the Pali has the fixed expression <i>ahoratta</i> (“day-night”) in other contexts.']],
+      ['AN 3.70', 'the three kinds of Uposatha {7}: how it should <b>not</b> be observed — the “cowherd\'s Uposatha” {8} and the “Nigaṇṭha\'s Uposatha” {9} — and how the Noble One\'s Uposatha should be observed {10}. The sutta says “nights and days” rather than “days and nights” {11}; the Pali has the fixed expression <i>ahoratta</i> (“day-night”) in other contexts.'],
+      ['SN 20.4', 'the three parts of the day: <i>pubbaṇhasamaya</i>, <i>majjhanhikasamaya</i>, <i>sāyanhasamaya</i>. {12}'],
+      ['MN 53', 'the three watches of the night: <i>paṭhama</i>, <i>majjhima</i>, <i>pacchima yāma</i> {13}; the same in AN 8.9, and in Ud 1.1 the Buddha spends the first watch on dependent origination. {14}']],
     ru: [['АН 10.46', 'пропускать упосатху нельзя («это ваша потеря и неудача»). {0}'], ['МН 83', 'нужно соблюдать 14-й, 15-й и 8-й дни. {1}'],
       ['МН 146', '14-й день растущей Луны {2} и 15-й, полнолуние {3}.'], ['АН 3.37', '14-й {4}, 15-й {5} и 8-й {6} дни в сравнении с посещениями божеств разных рангов.'],
-      ['АН 3.70', 'три вида упосатхи {7}: как её <b>не</b> нужно соблюдать — «упосатха пастуха» {8} и «упосатха ниганты» {9} — и как соблюдать упосатху Благородного {10}. В сутте «ночь и день», а не «день и ночь» {11}; в пали в других контекстах стоит устойчивое выражение <i>ahoratta</i> («день-ночь»).']],
+      ['АН 3.70', 'три вида упосатхи {7}: как её <b>не</b> нужно соблюдать — «упосатха пастуха» {8} и «упосатха ниганты» {9} — и как соблюдать упосатху Благородного {10}. В сутте «ночь и день», а не «день и ночь» {11}; в пали в других контекстах стоит устойчивое выражение <i>ahoratta</i> («день-ночь»).'],
+      ['СН 20.4', 'три части дня: <i>pubbaṇhasamaya</i>, <i>majjhanhikasamaya</i>, <i>sāyanhasamaya</i>. {12}'],
+      ['МН 53', 'три стражи ночи: <i>paṭhama</i>, <i>majjhima</i>, <i>pacchima yāma</i> {13}; то же в АН 8.9, а в Уд 1.1 Будда проводит первую стражу над зависимым возникновением. {14}']],
   };
 
   // ---------- state ----------
@@ -227,8 +236,8 @@
   function openPanel(id) { closeAll(); $(id).setAttribute('data-open', 'true'); $('scrim').setAttribute('data-open', 'true'); }
   function closeAll() { ['drawer', 'scrim'].forEach(function (i) { $(i).setAttribute('data-open', 'false'); }); }
 
-  // Lit part of the Moon to a thousandth of a percent: near the full moon a whole percent stays the same for half a day.
-  function illumPercent(d) { var v = (A.Illumination('Moon', d).phase_fraction * 100).toFixed(3); return lang === 'ru' ? v.replace('.', ',') : v; }
+  // Lit part of the Moon to a hundredth of a percent: near the full moon a whole percent stays the same for half a day.
+  function illumPercent(d) { var v = (A.Illumination('Moon', d).phase_fraction * 100).toFixed(2); return lang === 'ru' ? v.replace('.', ',') : v; }
   // What changes while the page is open: the lit part, the Moon's age since the new moon and the time left of the lunar day.
   var live = { ends: null, born: null };
   function span(ms) {
@@ -241,6 +250,22 @@
     if ((e = $('pct'))) e.textContent = illumPercent(now);
     if ((e = $('age')) && live.born) e.textContent = span(now - live.born);
     if ((e = $('left')) && live.ends) e.textContent = span(live.ends - now);
+  }
+  // The parts of the day: sunrise to sunset in three, sunset to sunrise in three (fixed 06:00 / 18:00 without a place).
+  function paintParts(F, now, ymd) {
+    var obs = state.loc ? new A.Observer(state.loc.lat, state.loc.lon, 0) : null, tz = state.tz;
+    function sun(kind, d) { var p = d.split('-').map(Number); return sunEvent(kind, p[0], p[1], p[2], tz, obs) || zonedToUtc(p[0], p[1], p[2], kind === 'rise' ? 6 : 18, tz); }
+    var rise = sun('rise', ymd), set = sun('set', ymd);
+    var nightFrom = now < rise ? ymdAdd(ymd, -1) : ymd, nStart = sun('set', nightFrom), nEnd = sun('rise', ymdAdd(nightFrom, 1));
+    function block(title, sub, from, to, names) {
+      var third = (to - from) / 3;
+      return '<div class="pblk"><h3>' + esc(title) + '<span>' + esc(sub) + '</span></h3>' + names.map(function (n, i) {
+        var a = from.getTime() + i * third, b = a + third;
+        return '<div class="prow"' + (now >= a && now < b ? ' data-now="true"' : '') + '><span><b>' + esc(n[0]) + '</b><small>' + esc(n[1]) + '</small></span><span class="tm">' + F.hm.format(a) + ' – ' + F.hm.format(b) + '</span></div>';
+      }).join('') + '</div>';
+    }
+    $('pgrid').innerHTML = block(t.pDay, F.week.format(Date.parse(ymd)), rise, set, t.dayParts) +
+      block(t.pNight, F.week.format(Date.parse(nightFrom)) + ' → ' + F.week.format(Date.parse(ymdAdd(nightFrom, 1))), nStart, nEnd, t.nightParts);
   }
   function paint() {
     var now = new Date(), tz = state.tz, F = formats(), su = sutta();
@@ -275,6 +300,7 @@
       '<span><b style="font-weight:600;color:var(--dg-text)">' + esc(t.ld) + ' ' + tithi + '</b> ' + esc(t.of30) + ' (' + esc(t.nth(dayNo(tithi))) + ' ' + esc(t.halvesOf[tithi <= 15 ? 0 : 1]) + ')</span>' +
       (dayEnds ? dot + '<span>' + (dayBegan ? esc(t.from) + ' ' + esc(F.stamp.format(dayBegan.date)) + ' ' : '') + esc(t.until) + ' ' + esc(F.stamp.format(dayEnds.date)) + '</span>' + dot + '<span>' + esc(t.left) + ' <span id="left"></span></span>' : '');
     liveTick();
+    paintParts(F, now, todayYmd);
     var nextRow = L.rows.filter(function (r) { return r.uposatha && r.ymd > todayYmd; })[0];
     if (isUposatha) $('t-status').innerHTML = '<span class="badge">' + esc(t.uday) + '</span>' + (tonight ? '' : '');
     else if (tonight) $('t-status').innerHTML = '<span class="badge">' + esc(t.tonight) + '</span>';
