@@ -626,8 +626,8 @@
   // The whole library in a sheet like the home page's "all queries": one row per sutta (a sutta is one sutta, however many pieces of it
   // the slideshow shows), with its kind - the highest of its pieces - filterable and sortable.
   var slSort = 'kind', slFilter = 'all';
-  var NIK = { dn: 0, mn: 1, sn: 2, an: 3 };
-  // As in the search results: the four Nikayas by number, then the Khuddaka books alphabetically, then the Vinaya.
+  var NIK = { an: 0, dn: 1, mn: 2, sn: 3 };
+  // The four Nikayas alphabetically (an, dn, mn, sn), each by number, then the Khuddaka books alphabetically, then the Vinaya.
   function suttaKey(ref) {
     var m = ref.match(/^([a-z]+(?:-[a-z]+)*?)(\d+)(?:\.(\d+))?/) || [], pre = m[1] || ref;
     var grp = NIK[pre] !== undefined ? NIK[pre] : /^pli-tv/.test(ref) ? 5 : 4;
