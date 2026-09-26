@@ -489,3 +489,8 @@ body.app .mealsum h3 { color: var(--dg-accent-ink); }
 .mon li .n2 { display: block; margin-top: 9px; color: var(--dg-accent-ink); }
 .mon li .n2 small { color: var(--dg-accent-ink); opacity: .8; }
 .ln.dayl { display: none !important; }
+
+/* today in the list: its date (the evening or the day of the Uposatha) is framed, as the current part of the day is */
+.mon li .n.now, .mon li .n2.now { box-shadow: 0 0 0 2px var(--dg-navy-ink); background: color-mix(in srgb, var(--dg-navy-ink) 16%, transparent); border-radius: 10px; padding: 4px 6px; margin: -4px -6px; }
+.mon li .n .n2.now { margin-top: 5px; }
+.mon li[data-now=true] { background: transparent; }

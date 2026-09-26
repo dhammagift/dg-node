@@ -495,11 +495,13 @@
         html += '<li class="wk">' + esc(F.week.format(weekStart) + ' – ' + F.week.format(new Date(weekStart.getTime() + 6 * DAY))) + '</li>'; lastWeek = weekKey;
       }
       var dd = Math.round((Date.parse(r.ymd) - Date.parse(todayYmd)) / DAY);
-      var w = dd === 0 ? t.isToday : dd === 1 ? t.tomorrow : dd > 1 ? t.inN(dd) : '';
+      var dayYmd = su ? ymdAdd(r.ymd, 1) : r.ymd, evNow = r.ymd === todayYmd, dayNow = su && dayYmd === todayYmd; // the date of today is framed: the evening or the day of the Uposatha
+      var running = evNow || dayNow || (!su && dd === 0);
+      var w = running ? t.isToday : dd === 1 ? t.tomorrow : dd > 1 ? t.inN(dd) : '';
       var note = '';
-      html += '<li class="row" data-ymd="' + r.ymd + '"' + (dd < 0 ? ' data-past="true"' : '') + (dd === 0 ? ' data-now="true"' : '') + '>' +
-        '<span class="n">' + esc(F.day.format(Date.parse(r.ymd))) + '<small>' + esc(F.wd.format(Date.parse(r.ymd)) + (su ? ' · ' + t.eveS : '')) + '</small>' +
-          (su ? '<span class="n2">' + esc(F.day.format(Date.parse(r.ymd) + DAY)) + '<small>' + esc(F.wd.format(Date.parse(r.ymd) + DAY) + ' · ' + t.dayS) + '</small></span>' : '') + '</span>' + moon(rowI(r), 'moon mi') +
+      html += '<li class="row" data-ymd="' + r.ymd + '"' + (dd < 0 && !running ? ' data-past="true"' : '') + (running ? ' data-now="true"' : '') + '>' +
+        '<span class="n' + (evNow ? ' now' : '') + '">' + esc(F.day.format(Date.parse(r.ymd))) + '<small>' + esc(F.wd.format(Date.parse(r.ymd)) + (su ? ' · ' + t.eveS : '')) + '</small>' +
+          (su ? '<span class="n2' + (dayNow ? ' now' : '') + '">' + esc(F.day.format(Date.parse(r.ymd) + DAY)) + '<small>' + esc(F.wd.format(Date.parse(r.ymd) + DAY) + ' · ' + t.dayS) + '</small></span>' : '') + '</span>' + moon(rowI(r), 'moon mi') +
         '<span class="t"><b>' + esc(nameOf(r)) + '</b>' + (note ? '<span class="nt">· ' + esc(note) + '</span>' : '') + '<span class="info">' + infoHtml(r, F) + '</span></span>' +
         '<span class="w">' + esc(w) + '</span></li>';
     });
