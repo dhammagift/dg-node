@@ -958,7 +958,7 @@
     Array.prototype.forEach.call(inner.querySelectorAll('.carousel-item'), function (item) {
       var was = item.classList.contains('active');
       if (!was) { item.style.display = 'block'; item.style.position = 'absolute'; item.style.visibility = 'hidden'; item.style.width = '100%'; }
-      tallest = Math.max(tallest, item.getBoundingClientRect().height);
+      tallest = Math.max(tallest, item.offsetHeight); // in layout pixels: the page may be zoomed by the size setting
       if (!was) { item.style.display = ''; item.style.position = ''; item.style.visibility = ''; item.style.width = ''; }
     });
     if (tallest) inner.style.height = Math.ceil(tallest) + 'px';
@@ -1066,6 +1066,34 @@
     $('ctx-change').onclick = function () { openSettings('loc-block'); };
     document.addEventListener('click', function (e) { var a = e.target.closest && e.target.closest('a.setplace'); if (a) { e.preventDefault(); openSettings(e.target.closest('.noonlink') ? 'noon-block' : 'loc-block'); } });
     $('scrim').onclick = closeAll;
+    // A finger pulls a sheet (the calendar, the whole library) down to close it, as the home page's sheets do (home.js enableSwipeDown). Touch
+    // only; a drag that starts on a list not scrolled to its top is a scroll and is left alone, a mostly-sideways move is never a sheet drag.
+    Array.prototype.forEach.call(document.querySelectorAll('.sheet'), function (sheet) {
+      var startX = 0, startY = 0, startT = 0, dy = 0, base = null, tracking = false, dragging = false, scroller = null;
+      function release(close) { dragging = tracking = false; sheet.style.transition = ''; sheet.style.transform = ''; if (close) closeAll(); }
+      sheet.addEventListener('touchstart', function (e) {
+        tracking = e.touches.length === 1; dragging = false; if (!tracking) return;
+        startX = e.touches[0].clientX; startY = e.touches[0].clientY; startT = Date.now(); dy = 0; scroller = null;
+        for (var n = e.target; n && n !== sheet; n = n.parentElement) if (n.scrollHeight > n.clientHeight + 1 && /(auto|scroll)/.test(getComputedStyle(n).overflowY)) { scroller = n; break; }
+      }, { passive: true });
+      sheet.addEventListener('touchmove', function (e) {
+        if (!tracking) return;
+        var x = e.touches[0].clientX, y = e.touches[0].clientY; dy = y - startY;
+        if (!dragging) {
+          if (Math.abs(x - startX) > 8 && Math.abs(x - startX) > Math.abs(dy)) { tracking = false; return; }
+          if (dy < 0 || (scroller && scroller.scrollTop > 0)) { startY = y; startT = Date.now(); dy = 0; return; }
+          if (dy < 8) return;
+          dragging = true; base = new DOMMatrix(getComputedStyle(sheet).transform); sheet.style.transition = 'none'; // the resting place: centred on the site, the bottom of the screen in the app
+        }
+        e.preventDefault();
+        sheet.style.transform = 'translate(' + base.m41 + 'px,' + (base.m42 + Math.max(0, dy)) + 'px)';
+      }, { passive: false });
+      sheet.addEventListener('touchend', function () {
+        if (!dragging) { tracking = false; return; }
+        release(dy > 90 || (dy > 30 && dy / Math.max(1, Date.now() - startT) > 0.5));
+      });
+      sheet.addEventListener('touchcancel', function () { if (dragging) release(false); });
+    });
     Array.prototype.forEach.call(document.querySelectorAll('[data-close]'), function (b) { b.onclick = closeAll; });
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeAll(); });
     // The header hides on scrolling down and returns on a short scroll up, as on the rest of the site.
@@ -1129,10 +1157,10 @@
       // while the drawer opens, the two buttons of the bar go to where the drawer's own share and close buttons are (its final place, not where it is now)
       function dock() {
         var dr = $('dg-drawer'), cl = dr.querySelector('.dg-drawer-close'), sh = dr.querySelector('.dg-drawer-share'); if (!cl || !sh) return;
-        var m = new DOMMatrix(getComputedStyle(dr).transform), pairs = [[$('app-gear'), cl], [$('app-theme'), sh]];
+        var z = parseFloat(getComputedStyle(document.documentElement).zoom) || 1, m = new DOMMatrix(getComputedStyle(dr).transform), pairs = [[$('app-gear'), cl], [$('app-theme'), sh]];
         pairs.forEach(function (p) {
           var a = p[0].getBoundingClientRect(), b = p[1].getBoundingClientRect();
-          p[0].style.setProperty('--tx', (b.x - m.m41 + b.width / 2 - (a.x + a.width / 2)) + 'px'); p[0].style.setProperty('--ty', (b.y - m.m42 + b.height / 2 - (a.y + a.height / 2)) + 'px');
+          p[0].style.setProperty('--tx', ((b.x - m.m41 * z + b.width / 2 - (a.x + a.width / 2)) / z) + 'px'); p[0].style.setProperty('--ty', ((b.y - m.m42 * z + b.height / 2 - (a.y + a.height / 2)) / z) + 'px'); // the rects are screen pixels, the transform is local: the page zoom lies between
         });
         document.querySelector('.tbar').classList.remove('away');
       }
