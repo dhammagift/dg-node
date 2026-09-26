@@ -392,3 +392,7 @@ body.embed .soft { display: none; }
 .pillbtn.qbtn:hover { color: var(--dg-accent-ink); }
 #help { scroll-margin-top: 90px; }
 body.embed .help { display: none; }
+
+/* the part of the settings a link leads to lights up for a moment */
+@keyframes dgflash { 0%, 55% { background: var(--dg-accent-bg); box-shadow: 0 0 0 6px var(--dg-accent-bg); } 100% { background: transparent; box-shadow: 0 0 0 6px transparent; } }
+#dg-drawer .flash { animation: dgflash 2.6s ease; border-radius: 8px; }
