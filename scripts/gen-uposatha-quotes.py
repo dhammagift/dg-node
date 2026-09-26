@@ -19,6 +19,9 @@ SLIDES = [
     ('sn20.4',    None, 'sn/sn20', 'sn20.4',  ['1.2'],         'sv', 'SN 20.4', 'СН 20.4'),
     ('mn53-night', None, 'mn',     'mn53',   ['10.3', '10.4', '10.5'], 'sv', 'MN 53', 'МН 53'),
     ('ud1.1-watch', None, 'kn/ud/vagga1', 'ud1.1', ['1.4'],  'sv', 'Ud 1.1', 'Уд 1.1'),
+    ('an3.70-three', None, 'an/an3', 'an3.70', ['2.1', '2.2', '2.3'], 'sv', 'AN 3.70', 'АН 3.70'),
+    ('an3.70-noble', None, 'an/an3', 'an3.70', ['4.1', '4.2', '4.3'], 'sv', 'AN 3.70', 'АН 3.70'),
+    ('an3.70-vow',   None, 'an/an3', 'an3.70', ['19.1', '19.2', '19.3', '19.4'], 'sv', 'AN 3.70', 'АН 3.70'),
     ('an10.46',   None, 'an/an10', 'an10.46', ['1.5'],        'o',  'AN 10.46', 'АН 10.46'),
 ]
 # lines that are about an Uposatha day but do not teach it: they go to the random pool

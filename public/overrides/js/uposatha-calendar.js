@@ -550,7 +550,7 @@
   function shuffle(a) { for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)), x = a[i]; a[i] = a[j]; a[j] = x; } return a; }
   // The first wave is for the 8th, 14th and 15th day when one is now or begins within a day; then the general lines, then a few at random.
   function buildSlides(days) {
-    var all = quotes.filter(function (q) { return q[lang] || q.kind === 'special'; }); // a general or random line with no translation into the page's language is left out; a special one is shown in English
+    var all = quotes.filter(function (q) { return q[lang] || q.kind !== 'random'; }); // a random line with no translation into the page's language is left out; the key ones are shown in English
     var sp = all.filter(function (q) { return q.kind === 'special' && q.days.some(function (d) { return days.indexOf(d) !== -1; }); })
       .sort(function (a, b) { return a.days[0] - b.days[0]; });
     slides = sp.concat(shuffle(all.filter(function (q) { return q.kind === 'general'; })), shuffle(all.filter(function (q) { return q.kind === 'random'; })).slice(0, 8));
