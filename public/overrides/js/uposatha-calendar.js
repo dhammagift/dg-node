@@ -506,7 +506,7 @@
     var cells = Math.ceil((lead + new Date(Date.UTC(cy, mo + 1, 0)).getUTCDate()) / 7) * 7;
     var g0 = new Date(Date.UTC(cy, mo, 1 - lead)), gEnd = new Date(Date.UTC(cy, mo, 1 - lead + cells - 1));
     var C = dataset(new Date(g0.getTime() - DAY).toISOString().slice(0, 10), gEnd.toISOString().slice(0, 10));
-    $('cal-title').textContent = cap(F.month.format(cm.getTime()));
+    $('cal-title').textContent = cap(F.month.format(cm.getTime())).replace(/\s?г\.$/, ''); // 'September 2026', not 'Сентябрь 2026 г.'
     // by the suttas the 15th is the day the Uposatha BEGINS in the evening; the full / new moon itself is a moment, often the next date:
     // it is marked on the date it really falls on
     var moonDay = {};
@@ -938,7 +938,10 @@
       }, true);
       var brand = document.querySelector('#dg-drawer .dg-brand-link'); // the drawer's header stays the site's: the conch and dhamma.gift lead out to the site (or to its app)
       if (brand) { brand.setAttribute('href', 'https://dhamma.gift/'); brand.setAttribute('target', '_blank'); brand.setAttribute('rel', 'noopener'); }
+      function barTitle(k) { var w = document.querySelector('.tbar .wordmark b'); if (w) w.textContent = { home: t.h1, list: t.navList, cal: t.navCal, parts: t.navParts }[k] || t.h1; }
+      window.__upoBarTitle = function () { barTitle(document.body.getAttribute('data-app-tab') || 'home'); };
       function openTab(k) {
+        barTitle(k); // the app bar names the screen
         if (k === 'list' || k === 'cal') { state.screen = k; store('dgUposathaView', k); }
         document.body.setAttribute('data-app-tab', k); store('dgUposathaTab', k);
         Array.prototype.forEach.call(tabs, function (b) { b.setAttribute('aria-current', String(b.getAttribute('data-tab') === k)); });
@@ -976,7 +979,7 @@
     $('cal-prev').onclick = function () { state.calOff--; paint(); };
     $('cal-next').onclick = function () { state.calOff++; paint(); };
     $('cal-today').onclick = function () { state.calOff = 0; state.selected = null; paint(); };
-    function setLang(l) { lang = l; t = T[lang]; store('dhammaLanguage', lang); applyLang(); paintKeys(); paint(); }
+    function setLang(l) { lang = l; t = T[lang]; store('dhammaLanguage', lang); applyLang(); paintKeys(); paint(); if (window.__upoBarTitle) window.__upoBarTitle(); }
     // as in the dictionary: the logo and the name switch the language by a right click or a long press (a short click still goes home)
     Array.prototype.forEach.call(document.querySelectorAll('#wordmark, .up-shell-logo'), function (el) {
       var press = null, fired = false;

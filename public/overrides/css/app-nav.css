@@ -66,3 +66,16 @@ body.app #reader { display: none !important; }
 @media (max-width: 340px) {
   body.app .appnav button { padding: 0 5px; min-width: 34px; gap: 5px; font-size: 12.5px; }
 }
+
+/* An app bar instead of the site's header: the logo and the name of the screen. No search field, no burger (the gear of the bar opens the settings),
+   no big page title (the bar says it). */
+body.app .tbar .hsearch, body.app .tbar .hbtns, body.app .intro { display: none !important; }
+body.app .tbar { padding: 10px 16px 6px; }
+body.app .tbar .in { max-width: none; justify-content: flex-start; min-height: 44px; }
+body.app .tbar .wordmark { position: static; transform: none; display: flex; align-items: center; gap: 10px; }
+body.app .tbar .wordmark .up-mark { display: block; width: 32px; height: 26px; }
+body.app .tbar .wordmark b { display: inline; font-size: 22px; font-weight: 700; letter-spacing: -.02em; }
+body.app main.page { padding-top: 2px; }
+/* nothing here is a link to click with a mouse: no hover, no browser focus ring on tap, no rubber band of the page */
+body.app { overscroll-behavior-y: none; }
+body.app :focus:not(:focus-visible) { outline: none; }
