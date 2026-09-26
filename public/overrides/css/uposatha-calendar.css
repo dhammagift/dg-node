@@ -12,6 +12,7 @@
   --dg-radius: 10px; --dg-font: "Lato", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; --dg-ease: cubic-bezier(0.22, 0.68, 0, 1);
 }
 [data-theme="dark"] {
+  color-scheme: dark;
   --dg-page: #111111; --dg-surface: #191919; --dg-surface-hover: #202020; --dg-border: #2c2c2c; --dg-border-strong: #3b3b3b;
   --dg-text: #dddddd; --dg-text-2: #a8a8a8; --dg-text-muted: #7c7c7c; --dg-accent: #136857; --dg-accent-ink: #09967a;
   --dg-slate: #8a9bb3; --dg-slate-line: #37445a; --dg-slate-bg: #1d2733; --dg-match: #ff6b45;

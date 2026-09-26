@@ -566,7 +566,8 @@
   function hl(text, re) { return esc(text).replace(re, '<b class="match finder">$&</b>'); } // the same look as a found word in the search results
   function trHtml(q) { return hl(slideText(q), q[lang] ? KW[lang] : KW.en); }
   function plate(q) { return '<span class="plate" data-k="' + q.kind + '">' + esc(t['f' + q.kind.charAt(0).toUpperCase() + q.kind.slice(1)]) + '</span>'; }
-  function citeText(q) { return q.cite[lang] + (q[lang] ? '' : ' · EN') + ' — ' + t.readIt; }
+  function citeId(q) { return q.ref.split(':')[0]; } // dn1, an3.37 ... as everywhere on the site
+  function citeText(q) { return citeId(q) + (q[lang] ? '' : ' · EN') + ' — ' + t.readIt; }
   function showSlide(i, quick) {
     if (!slides.length) return;
     slIdx = (i + slides.length) % slides.length;
@@ -583,14 +584,16 @@
   }
   // The whole library of lines in a sheet like the home page's "all queries": sorted by kind or by sutta, each with its kind marker.
   var slSort = 'kind';
-  var NIK = { dn: 0, mn: 1, sn: 2, an: 3, snp: 4, ud: 5, iti: 6, 'pli-tv': 7 };
+  var NIK = { dn: 0, mn: 1, sn: 2, an: 3 };
+  // As in the search results: the four Nikayas by number, then the Khuddaka books alphabetically, then the Vinaya.
   function suttaKey(ref) {
-    var m = ref.match(/^([a-z]+(?:-tv)?)[-a-z]*?(\d+)(?:\.(\d+))?/) || [];
-    return [NIK[m[1]] === undefined ? 9 : NIK[m[1]], +(m[2] || 0), +(m[3] || 0)];
+    var m = ref.match(/^([a-z]+(?:-[a-z]+)*?)(\d+)(?:\.(\d+))?/) || [], pre = m[1] || ref;
+    var grp = NIK[pre] !== undefined ? NIK[pre] : /^pli-tv/.test(ref) ? 5 : 4;
+    return [grp, grp === 4 ? pre : grp === 5 ? ref.split(':')[0] : '', +(m[2] || 0), +(m[3] || 0)];
   }
   function rowHtml(q) {
     var first = q.pli.split('\n')[0];
-    return '<a class="sr" href="/' + esc(q.ref) + '?lang=' + lang + '" target="_blank" rel="noopener"><span class="sr-t"><b class="sr-p">' + esc(first) + '</b><span class="sr-e">' + esc(slideText(q).replace(/\n/g, ' ')) + '</span><small>' + esc(q.cite[lang] + (q[lang] ? '' : ' · EN')) + '</small></span>' + plate(q) + '<svg class="chev"><use href="#i-right"/></svg></a>';
+    return '<a class="sr" href="/' + esc(q.ref) + '?lang=' + lang + '" target="_blank" rel="noopener"><span class="sr-t"><b class="sr-p">' + esc(first) + '</b><span class="sr-e">' + esc(slideText(q).replace(/\n/g, ' ')) + '</span><small>' + esc(citeId(q) + (q[lang] ? '' : ' · EN')) + '</small></span>' + plate(q) + '<svg class="chev"><use href="#i-right"/></svg></a>';
   }
   function showAllSlides() {
     var all = (quotes || []).filter(function (q) { return q[lang] || q.kind !== 'random'; });
@@ -603,7 +606,7 @@
         if (part.length) html += '<h4>' + esc(t['f' + k.charAt(0).toUpperCase() + k.slice(1)]) + ' · ' + part.length + '</h4>' + part.map(rowHtml).join('');
       });
     } else {
-      html = all.slice().sort(function (a, b) { var x = suttaKey(a.ref), y = suttaKey(b.ref); return x[0] - y[0] || x[1] - y[1] || x[2] - y[2]; }).map(rowHtml).join('');
+      html = all.slice().sort(function (a, b) { var x = suttaKey(a.ref), y = suttaKey(b.ref); return x[0] - y[0] || (x[1] < y[1] ? -1 : x[1] > y[1] ? 1 : 0) || x[2] - y[2] || x[3] - y[3]; }).map(rowHtml).join('');
     }
     $('sl-all-list').innerHTML = html;
     if ($('sl-modal').getAttribute('data-open') !== 'true') openPanel('sl-modal');
