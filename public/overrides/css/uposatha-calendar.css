@@ -139,7 +139,8 @@ body[data-mode=lite] .mon li .t .info .ln:not(.grey) + .ln:not(.grey) { display:
 .sl-item { transition: opacity .25s; }
 .slides.fade .sl-item { opacity: 0; }
 /* a small marker of the kind of line, like the "ad" mark on a promo: special / general / random, in the reader's grey-blue */
-.sl-box, .plate { position: absolute; top: 8px; right: 12px; font-size: 9.5px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; padding: 1px 6px; border-radius: 4px; border: 1px solid var(--dg-slate-line); color: var(--dg-slate); background: none; }
+.sl-box { position: relative; }
+.plate { position: absolute; top: 8px; right: 12px; font-size: 9.5px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; padding: 1px 6px; border-radius: 4px; border: 1px solid var(--dg-slate-line); color: var(--dg-slate); background: none; }
 .plate[data-k=special] { background: var(--dg-slate-bg); }
 .plate[data-k=random] { border-color: var(--dg-border); color: var(--dg-text-muted); }
 .sl-pli, .sl-tr { white-space: pre-line; }
