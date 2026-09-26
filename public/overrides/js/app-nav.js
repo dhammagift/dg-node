@@ -23,19 +23,27 @@
     if (!st.pill) { pill.style.opacity = '0'; return; }
     pill.style.opacity = '1'; pill.style.width = st.pill.w + 'px'; pill.style.transform = 'translateX(' + st.pill.x + 'px)';
   }
+  function cancelAll() { // running animations off: the layout is measured as it is, not as it looks in the middle of a move
+    pill.getAnimations().forEach(function (a) { a.cancel(); });
+    btns.forEach(function (b) { b.getAnimations().forEach(function (a) { a.cancel(); }); var l = b.querySelector('span'); if (l) l.getAnimations().forEach(function (a) { a.cancel(); }); });
+  }
   function sync(animate) {
+    // where everything looks NOW (possibly in the middle of the previous move): that is where the next move starts from, so a quick
+    // second tap (settings <-> night-day) continues from the visible place instead of jumping
+    var from = state(), prevLabel = last && last.label;
+    cancelAll();
     var now = state();
-    if (animate && last && !reduce && now.pill && last.pill && pill.animate) {
-      pill.animate([{ transform: 'translateX(' + last.pill.x + 'px)', width: last.pill.w + 'px' }, { transform: 'translateX(' + now.pill.x + 'px)', width: now.pill.w + 'px' }], { duration: D, easing: MOVE });
+    if (animate && !reduce && now.pill && from.pill && pill.animate) {
+      pill.animate([{ transform: 'translateX(' + from.pill.x + 'px)', width: from.pill.w + 'px' }, { transform: 'translateX(' + now.pill.x + 'px)', width: now.pill.w + 'px' }], { duration: D, easing: MOVE });
       btns.forEach(function (b, i) { // FLIP: the items were somewhere else a moment ago
-        var dx = last.b[i] - now.b[i];
+        var dx = from.b[i] - now.b[i];
         if (Math.abs(dx) > 1) b.animate([{ transform: 'translateX(' + dx + 'px)' }, { transform: 'none' }], { duration: D, easing: MOVE });
       });
       var lab = now.cur && now.cur.querySelector('span');
       if (lab) lab.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 130, delay: 170, easing: OUT, fill: 'backwards' });
-      if (last.label) { // the label of the item that has just been left: it does not vanish, it fades where it was
-        var g = document.createElement('span'); g.className = 'up-ghost'; g.textContent = last.label.text;
-        g.style.left = last.label.x + 'px'; g.style.top = '6px'; nav.appendChild(g);
+      if (prevLabel && from.label) { // the label of the item that has just been left: it does not vanish, it fades where it was
+        var g = document.createElement('span'); g.className = 'up-ghost'; g.textContent = prevLabel.text;
+        g.style.left = from.label.x + 'px'; g.style.top = '6px'; nav.appendChild(g);
         g.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 110, easing: OUT }).onfinish = function () { g.remove(); };
       }
     }
