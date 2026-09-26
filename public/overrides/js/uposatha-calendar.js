@@ -42,7 +42,7 @@
       lic: 'Licences', mt: 'Multitool', lHome: 'Home', lToc: 'Contents', lDict: 'Dictionary', lMemo: 'Memorizer', lang: 'Language', themeH: 'Theme', dark: 'Dark', light: 'Light', auto: 'Auto',
       gCal: 'Calendar', subNote: 'The days for a year ahead, kept up to date by itself.', icsNote: 'Or a file, once: the next 12 months.', copyLink: 'Copy link',
       ics: 'Download .ics file', suttasL: 'The suttas on Uposatha', help: 'Help', share: 'Share', settingsL: 'Uposatha settings', settings: 'Settings',
-      gPlace: 'Place & time', tz: 'Time zone', hemi: 'Hemisphere', hemiD: 'how the moon is drawn', north: 'Northern', south: 'Southern',
+      gPlace: 'Place & time', weekH: 'Week starts on', mon: 'Monday', sun: 'Sunday', tz: 'Time zone', hemi: 'Hemisphere', hemiD: 'how the moon is drawn', north: 'Northern', south: 'Southern',
       loc: 'Location', locD: 'for the real sunrise and sunset; otherwise 18:00 and 06:00', myLoc: 'Use my location', city: 'or a city: Almaty…',
       locNone: 'The location is not shared — the fixed times are used.', locFinding: 'Locating…', locOk: 'Location', locForget: 'forget', locDenied: 'The location was not shared — the fixed times are used.',
       gCount: 'Counting', bySuttas: 'By the suttas', notBySuttas: 'NOT BY THE SUTTAS', bySuttasD: 'Off — the four moon-phase days',
@@ -78,7 +78,7 @@
       lic: 'Лицензии', mt: 'Мультитул', lHome: 'Главная', lToc: 'Оглавление', lDict: 'Словарь', lMemo: 'Меморайзер', lang: 'Язык', themeH: 'Тема', dark: 'Тёмная', light: 'Светлая', auto: 'Авто',
       gCal: 'Календарь', subNote: 'Дни на год вперёд, обновляется сама.', icsNote: 'Или файлом, один раз: на 12 месяцев вперёд.', copyLink: 'Копировать ссылку',
       ics: 'Скачать файл .ics', suttasL: 'Сутты об упосатхе', help: 'Помощь', share: 'Поделиться', settingsL: 'Настройки упосатхи', settings: 'Настройки',
-      gPlace: 'Место и время', tz: 'Часовой пояс', hemi: 'Полушарие', hemiD: 'как рисовать луну', north: 'Северное', south: 'Южное',
+      gPlace: 'Место и время', weekH: 'Неделя начинается с', mon: 'Понедельника', sun: 'Воскресенья', tz: 'Часовой пояс', hemi: 'Полушарие', hemiD: 'как рисовать луну', north: 'Северное', south: 'Южное',
       loc: 'Место', locD: 'для настоящих восхода и заката; без него — 18:00 и 06:00', myLoc: 'Определить моё место', city: 'или город: Алматы…',
       locNone: 'Место не передано — используется фиксированное время.', locFinding: 'Определяю…', locOk: 'Место', locForget: 'забыть', locDenied: 'Место не передано — используется фиксированное время.',
       gCount: 'Счёт', bySuttas: 'По суттам', notBySuttas: 'НЕ ПО СУТТАМ', bySuttasD: 'Выкл — четыре дня лунных фаз',
@@ -162,7 +162,9 @@
   var zones = typeof Intl.supportedValuesOf === 'function' ? Intl.supportedValuesOf('timeZone') : Object.keys(ZONE_COORDS);
   if (zones.indexOf(detected) === -1) zones = [detected].concat(zones);
   if (zones.indexOf(state.tz) === -1) zones = [state.tz].concat(zones);
-  var FIRST_DAY = lang === 'ru' ? 1 : 0; // weeks start on Monday for ru, Sunday for en
+  // the first day of the week: chosen in the menu; until then Monday for Russian, Sunday for English
+  var weekPref = store('dgUposathaWeek');
+  function firstDay() { return weekPref === '0' || weekPref === '1' ? +weekPref : (lang === 'ru' ? 1 : 0); }
   var UPOSATHA = [8, 14, 15, 23, 29, 30]; // tithi numbers of the 8th, 14th, 15th of the waxing half, then of the waning half
 
   // ---------- the Moon and the Sun (the calculation lives in uposatha-core.js, shared with the calendar feed) ----------
@@ -204,8 +206,8 @@
   function notesOf(r, F) {
     var n = [];
     if (!sutta()) return n; // the modern scheme's line is the exact time of the phase
-    if (r.fullMoon) n.push(t.fullL + ' ' + F.hm.format(r.fullMoon));
-    if (r.newMoon) n.push(t.newL + ' ' + F.hm.format(r.newMoon));
+    if (r.fullMoon) n.push(t.fullL + ' ' + F.stamp.format(r.fullMoon)); // the moment itself, with its weekday: it is often the next date
+    if (r.newMoon) n.push(t.newL + ' ' + F.stamp.format(r.newMoon));
     r.keptWith.forEach(function (x) { n.push(t.keptWith(t.nth(dayNo(x)))); });
     r.skipped.forEach(function (x) { if (r.keptWith.indexOf(x) === -1) n.push(t.skipped(t.nth(dayNo(x)))); });
     if (r.repeats) n.push(t.repeats);
@@ -349,7 +351,7 @@
     var list = L.rows.filter(function (r) { return r.uposatha && r.ymd >= monthStart; });
     var html = '', lastMonth = '', lastWeek = '';
     list.forEach(function (r) {
-      var month = r.ymd.slice(0, 7), startOffset = (r.dow - FIRST_DAY + 7) % 7;
+      var month = r.ymd.slice(0, 7), startOffset = (r.dow - firstDay() + 7) % 7;
       var weekStart = new Date(Date.UTC(r.y, r.m - 1, r.d - startOffset)), weekKey = weekStart.toISOString().slice(0, 10);
       if (month !== lastMonth) {
         if (lastMonth) html += '</ul></div>';
@@ -361,7 +363,6 @@
       var dd = Math.round((Date.parse(r.ymd) - Date.parse(todayYmd)) / DAY);
       var w = dd === 0 ? t.isToday : dd === 1 ? t.tomorrow : dd > 1 ? t.inN(dd) : '';
       var note = '';
-      if (su && r.names.indexOf(15) !== -1 || su && r.names.indexOf(30) !== -1) note = r.names.indexOf(15) !== -1 ? t.fullL : t.newL;
       html += '<li class="row" data-ymd="' + r.ymd + '"' + (dd < 0 ? ' data-past="true"' : '') + (dd === 0 ? ' data-now="true"' : '') + '>' +
         '<span class="n">' + esc(F.day.format(Date.parse(r.ymd))) + '<small>' + esc(F.wd.format(Date.parse(r.ymd))) + '</small></span>' + moon(rowI(r), 'moon mi') +
         '<span class="t"><b>' + esc(nameOf(r)) + '</b>' + (note ? '<span class="nt">· ' + esc(note) + '</span>' : '') + '<span class="info">' + infoHtml(r, F) + '</span></span>' +
@@ -372,20 +373,25 @@
 
     // ----- the calendar: one ordinary month, weeks in rows
     var cm = new Date(Date.UTC(tp[0], tp[1] - 1 + state.calOff, 1)), cy = cm.getUTCFullYear(), mo = cm.getUTCMonth();
-    var lead = (new Date(Date.UTC(cy, mo, 1)).getUTCDay() - FIRST_DAY + 7) % 7;
+    var lead = (new Date(Date.UTC(cy, mo, 1)).getUTCDay() - firstDay() + 7) % 7;
     var cells = Math.ceil((lead + new Date(Date.UTC(cy, mo + 1, 0)).getUTCDate()) / 7) * 7;
     var g0 = new Date(Date.UTC(cy, mo, 1 - lead)), gEnd = new Date(Date.UTC(cy, mo, 1 - lead + cells - 1));
     var C = dataset(new Date(g0.getTime() - DAY).toISOString().slice(0, 10), gEnd.toISOString().slice(0, 10));
     $('cal-title').textContent = cap(F.month.format(cm.getTime()));
+    // by the suttas the 15th is the day the Uposatha BEGINS in the evening; the full / new moon itself is a moment, often the next date:
+    // it is marked on the date it really falls on
+    var moonDay = {};
+    if (su) C.rows.forEach(function (r) { var at = r.fullMoon || r.newMoon; if (at) moonDay[localDay(at, tz)] = { full: !!r.fullMoon, at: at }; });
     var g = '';
-    for (var w2 = 0; w2 < 7; w2++) g += '<div class="wd">' + esc(t.wds[(FIRST_DAY + w2) % 7]) + '</div>';
+    for (var w2 = 0; w2 < 7; w2++) g += '<div class="wd">' + esc(t.wds[(firstDay() + w2) % 7]) + '</div>';
     for (var i = 0; i < cells; i++) {
       var d = new Date(g0.getTime() + i * DAY), k = d.toISOString().slice(0, 10), r2 = C.byYmd[k];
       var u = '', lb = '';
       if (r2 && r2.uposatha) {
-        if (su) { var dn = dayNo(r2.names[0]); u = String(dn); lb = '<span class="lb">' + moon(rowI(r2), 'moon mi') + '<span>' + esc(dn === 15 ? (r2.names[0] === 15 ? t.fullL : t.newL) : t.nth(dn)) + '</span></span>'; }
+        if (su) { var dn = dayNo(r2.names[0]); u = String(dn); lb = '<span class="lb">' + moon(rowI(r2), 'moon mi') + '<span>' + esc(t.nth(dn)) + '</span></span>'; }
         else { u = (r2.phase === 0 || r2.phase === 2) ? '15' : '8'; lb = '<span class="lb">' + moon(rowI(r2), 'moon mi') + '<span>' + esc(t.events[r2.phase].toLowerCase()) + '</span></span>'; }
       }
+      if (moonDay[k]) lb += '<span class="lb">' + moon(moonDay[k].full ? 4 : 0, 'moon mi') + '<span>' + esc((moonDay[k].full ? t.fullL : t.newL) + ' ' + F.hm.format(moonDay[k].at)) + '</span></span>';
       g += '<button type="button" class="c' + (d.getUTCMonth() !== mo ? ' o' : '') + '"' + (u ? ' data-u="' + u + '"' : '') + (k === todayYmd ? ' data-today="true"' : '') + ' data-ymd="' + k + '">' +
         '<span class="n">' + d.getUTCDate() + '</span>' + lb + (r2 ? '<span class="ld">' + r2.day + '</span>' : '') + '</button>';
     }
@@ -406,6 +412,7 @@
     $('tz').innerHTML = zones.map(function (z) { return '<option' + (z === tz ? ' selected' : '') + '>' + esc(z) + '</option>'; }).join('');
     Array.prototype.forEach.call($('hemiseg').children, function (b) { b.setAttribute('aria-pressed', String((b.getAttribute('data-hemi') === 'south') === state.south)); });
     $('bysuttas-lb').textContent = su ? t.bySuttas : t.notBySuttas; $('bysuttas-lb').classList.toggle('troll', !su); // a small joke: the label turns burgundy when the suttas are switched off
+    setSeg('weekseg', firstDay());
     setSeg('sw-sut', su ? 1 : 0); setSeg('sw-det', state.lite ? 0 : 1);
     $('city').value = state.loc && state.loc.name ? state.loc.name : '';
     $('locnote').innerHTML = state.loc ? esc(t.locOk + ': ' + (state.loc.name ? state.loc.name + ' · ' : '') + state.loc.lat + ', ' + state.loc.lon) + ' · <a href="#" id="unloc">' + esc(t.locForget) + '</a>' : esc(state.locMsg || t.locNone);
@@ -728,7 +735,7 @@
     $('cal-prev').onclick = function () { state.calOff--; paint(); };
     $('cal-next').onclick = function () { state.calOff++; paint(); };
     $('cal-today').onclick = function () { state.calOff = 0; state.selected = null; paint(); };
-    function setLang(l) { lang = l; t = T[lang]; store('dhammaLanguage', lang); FIRST_DAY = lang === 'ru' ? 1 : 0; applyLang(); paintKeys(); paint(); }
+    function setLang(l) { lang = l; t = T[lang]; store('dhammaLanguage', lang); applyLang(); paintKeys(); paint(); }
     // Language and theme are the site's own (dhamma-i18n.js, themeswitch.js): this page follows them
     document.addEventListener('dhamma:languagechange', function (e) { var l = ((e.detail && e.detail.language) || '').slice(0, 2) === 'ru' ? 'ru' : 'en'; if (l !== lang) setLang(l); });
     new MutationObserver(function () { var v = document.documentElement.getAttribute('data-bs-theme'); if (v && v !== document.documentElement.getAttribute('data-theme')) { document.documentElement.setAttribute('data-theme', v); document.body.classList.toggle('dark', v === 'dark'); } }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-bs-theme'] });
@@ -747,6 +754,7 @@
     $('sub-copy').onclick = function () { var u = feedUrl('https'); if (navigator.clipboard) navigator.clipboard.writeText(u).then(function () { toast(t.linkCopied); }); else window.prompt(t.copyLink, u); };
     $('tz').onchange = function (e) { state.tz = e.target.value; store('dgUposathaTz', state.tz); paint(); };
     Array.prototype.forEach.call($('hemiseg').children, function (b) { b.onclick = function () { state.south = b.getAttribute('data-hemi') === 'south'; store('dgUposathaHemisphere', state.south ? 'south' : 'north'); paint(); }; });
+    onSeg('weekseg', function (v) { weekPref = v; store('dgUposathaWeek', v); paint(); });
     onSeg('sw-sut', function (v) { state.ref = v === '1' ? 18 : 6; store('dgUposathaSutta', v); paint(); });
     onSeg('sw-det', function (v) { state.lite = v === '0'; store('dgUposathaLite', state.lite ? '1' : '0'); paint(); });
     function setPlace(lat, lon, name) { // the place fixes the Sun; south of the equator flips the moon's shape
