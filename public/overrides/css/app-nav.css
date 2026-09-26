@@ -48,3 +48,8 @@ body[data-mode=lite] #up-hero .dt { display: none; } /* the short view of the pa
 #up-hero .hc { margin: 18px 0 8px; font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--dg-accent-ink); }
 body.app[data-app-tab=home] #up-hero { margin-bottom: 0; }
 #up-hero .hp .dot { margin: 0 6px; }
+
+/* no reader frame in the app: the suttas open on the site */
+body.app #reader { display: none !important; }
+#up-hero .hn { margin: 18px 0 0; }
+#up-hero .hc { margin: 8px 0 8px; }

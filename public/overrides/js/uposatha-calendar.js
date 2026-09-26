@@ -650,7 +650,9 @@
     markReader();
   }
   function readerUrl(i) { return '/' + PASSAGES[i][0] + '?lang=' + lang; }
+  function outside(url) { window.open('https://dhamma.gift' + url, '_blank', 'noopener'); } // in the app the sutta is read on the site (or in its app), not in a frame here
   function readSutta(i, quiet) {
+    if (document.body.classList.contains('app')) { outside(readerUrl(i)); return; }
     rdCur = i; $('reader').hidden = false; $('rd-now').textContent = readerLabel(i); $('rd-sel').value = String(i);
     $('rd-new').href = readerUrl(i); $('rd-frame').src = readerUrl(i); markReader();
     if (!quiet) $('reader').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -658,6 +660,7 @@
   // any passage of the slideshow opens in the same reader at the bottom (a middle click or ctrl-click still opens a tab)
   function readRef(ref, label) {
     var url = '/' + ref + '?lang=' + lang;
+    if (document.body.classList.contains('app')) { outside(url); return; }
     rdCur = -1; $('reader').hidden = false; $('rd-now').textContent = label; $('rd-sel').selectedIndex = -1;
     $('rd-new').href = url; $('rd-frame').src = url; markReader();
     $('reader').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -858,6 +861,10 @@
       if (!isApp) return;
       var nav = $('appnav'), tabs = nav.querySelectorAll('button');
       document.body.classList.add('app'); nav.hidden = false;
+      document.addEventListener('click', function (e) { // every link to a page of the site leaves the app (a link to this page stays)
+        var a = e.target.closest && e.target.closest('a[href^="/"]'); if (!a || /^\/uposatha-calendar/.test(a.getAttribute('href'))) return;
+        e.preventDefault(); e.stopPropagation(); outside(a.getAttribute('href')); // once: the page's own handlers do not see this click
+      }, true);
       var brand = document.querySelector('#dg-drawer .dg-brand-link'); // the drawer's header stays the site's: the conch and dhamma.gift lead out to the site (or to its app)
       if (brand) { brand.setAttribute('href', 'https://dhamma.gift/'); brand.setAttribute('target', '_blank'); brand.setAttribute('rel', 'noopener'); }
       function openTab(k) {
