@@ -656,7 +656,6 @@
 
   // ---------- events ----------
   function wire() {
-    $('b-theme').onclick = function () { var b = $('theme-button'); if (b && window.dgThemeReady !== false) b.click(); else setTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'); };
     $('ctx-change').onclick = openSettings;
     $('scrim').onclick = closeAll;
     Array.prototype.forEach.call(document.querySelectorAll('[data-close]'), function (b) { b.onclick = closeAll; });
