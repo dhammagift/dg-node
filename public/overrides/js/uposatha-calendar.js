@@ -56,6 +56,8 @@
       noonNote: 'The Vinaya says only “when midday has passed”, not how to find it. The Sun’s highest point is astronomical midday; the middle of the day is halfway between sunrise and sunset (almost the same); 12:00 by the clock can differ by an hour or more. Dawn here is taken as sunrise.',
  mealSet: 'Food (vikāla)', mealSumL: 'Show in the summary', mealRemL: 'Remind when the time for food ends', mealLead: 'In advance', mealLeads: [[0, 'when the time for food ends'], [15, '15 min before'], [30, '30 min before'], [45, '45 min before'], [60, '1 hour before'], [90, '1.5 hours before'], [120, '2 hours before']], mealDays: 'Days', mealDaysU: 'Uposatha days', mealDaysA: 'Every day', mealSnd: 'Sound of this reminder',
       twiL: 'Dawn and dusk', twiNote: 'Twilight: the Sun 6, 12 or 18° below the horizon. Sets the borders of the day and the night and the dawn in the meals card.', twiO: { sun: 'Sunrise and sunset', civil: 'Civil (−6°)', nautical: 'Nautical (−12°)', astro: 'Astronomical (−18°)' },
+      tstL: 'Test a reminder', tstKinds: { upo: 'Uposatha day', beg: 'The time for food begins', end: 'The time for food ends' }, tst1: 'in 1 min', tst2: 'in 2 min', tstGo: 'Schedule the test',
+      tstTitle: function (k) { return { upo: 'Uposatha (test)', beg: 'Time for food (test)', end: 'Vikāla soon (test)' }[k]; }, tstBody: 'A test reminder with the sound of this kind.', tstSet: function (at) { return 'It will come at ' + at + '.'; }, tstDenied: 'Notifications are not allowed.',
       testL: 'Test: show the state', testReal: 'as is', testTag: 'test',
       mealRemNow: 'Vikāla begins', mealRemZero: function (noon) { return 'Midday at ' + noon + ' — the time for food has ended.'; },
       mealBegL: 'Remind when the time for food begins', mealBegLeads: [[0, 'at dawn'], [15, '15 min before'], [30, '30 min before'], [60, '1 hour before']],
@@ -107,6 +109,8 @@
       noonNote: 'В Винае сказано лишь «когда полдень миновал», а как его определить — нет. Высшая точка Солнца — астрономический полдень; середина дня — ровно между восходом и закатом (почти то же самое); 12:00 по часам может отличаться на час и больше. Рассвет здесь принят за восход.',
  mealSet: 'Еда (vikāla)', mealSumL: 'Показывать в сводке', mealRemL: 'Напоминать об окончании времени еды', mealLead: 'Заранее', mealLeads: [[0, 'когда время еды закончится'], [15, 'за 15 мин'], [30, 'за 30 мин'], [45, 'за 45 мин'], [60, 'за 1 час'], [90, 'за 1,5 часа'], [120, 'за 2 часа']], mealDays: 'Дни', mealDaysU: 'Дни упосатхи', mealDaysA: 'Каждый день', mealSnd: 'Звук этого напоминания',
       twiL: 'Рассвет и закат', twiNote: 'Сумерки: Солнце на 6, 12 или 18° под горизонтом. Задаёт границы дня и ночи и рассвет в карточке приёма пищи.', twiO: { sun: 'Восход и закат', civil: 'Гражданские (−6°)', nautical: 'Навигационные (−12°)', astro: 'Астрономические (−18°)' },
+      tstL: 'Проверить напоминание', tstKinds: { upo: 'День упосатхи', beg: 'Начало времени еды', end: 'Конец времени еды' }, tst1: 'через 1 мин', tst2: 'через 2 мин', tstGo: 'Поставить проверку',
+      tstTitle: function (k) { return { upo: 'Упосатха (проверка)', beg: 'Время еды (проверка)', end: 'Скоро vikāla (проверка)' }[k]; }, tstBody: 'Проверочное напоминание со звуком этого вида.', tstSet: function (at) { return 'Придёт в ' + at + '.'; }, tstDenied: 'Уведомления не разрешены.',
       testL: 'Проверка: показать состояние', testReal: 'как есть', testTag: 'тест',
       mealRemNow: 'Наступает vikāla', mealRemZero: function (noon) { return 'Полдень в ' + noon + ' — время еды закончилось.'; },
       mealBegL: 'Напоминать о начале времени еды', mealBegLeads: [[0, 'на рассвете'], [15, 'за 15 мин'], [30, 'за 30 мин'], [60, 'за 1 час']],
@@ -301,6 +305,7 @@
     paintToc();
     $('b-help').href = $('d-help').href = t.helpUrl; // the help is the docs page: a link, opened in a new window
     $('twi').innerHTML = Object.keys(TWI).map(function (k) { return '<option value="' + k + '">' + esc(t.twiO[k]) + '</option>'; }).join(''); $('twi').value = state.twi;
+    $('tst-kind').innerHTML = Object.keys(t.tstKinds).map(function (k) { return '<option value="' + k + '">' + esc(t.tstKinds[k]) + '</option>'; }).join('');
     $('mbeg-lead').innerHTML = t.mealBegLeads.map(function (l) { return '<option value="' + l[0] + '">' + esc(l[1]) + '</option>'; }).join('');
     $('mrem-lead').innerHTML = t.mealLeads.map(function (l) { return '<option value="' + l[0] + '">' + esc(l[1]) + '</option>'; }).join('');
     $('rem-lead').innerHTML = t.leads.map(function (l) { return '<option value="' + l[0] + '">' + esc(l[1]) + '</option>'; }).join('');
@@ -1058,6 +1063,20 @@
     });
     function saveMeal() { store('dgUposathaMeal', JSON.stringify(state.meal)); }
     $('twi').onchange = function (e) { state.twi = e.target.value; store('dgUposathaTwi', state.twi); paint(); };
+    var tstMin = 1; setSeg('tst-min', 1); onSeg('tst-min', function (v) { tstMin = +v; setSeg('tst-min', v); });
+    $('tst-go').onclick = function () { // a test reminder in 1-2 minutes, through the same channels and sounds as the real ones
+      var kind = $('tst-kind').value, at = new Date(Date.now() + tstMin * 60000), F = formats(), msg = $('tst-msg'), title = t.tstTitle(kind), LN = nativePlugin();
+      function shown() { msg.textContent = t.tstSet(F.hm.format(at)); }
+      if (LN) {
+        var snd = kind === 'upo' ? [state.rem.sound, state.rem.ownChannel] : kind === 'beg' ? [state.meal.begSnd] : [state.meal.snd];
+        LN.requestPermissions().then(function (r) { if (!(r && r.display === 'granted')) { msg.textContent = t.tstDenied; return; }
+          return channelFor(LN, snd[0], snd[1]).then(function (channelId) { return LN.schedule({ notifications: [{ id: 7990 + (+(kind === 'beg') * 1) + (+(kind === 'end') * 2), title: title, body: t.tstBody, channelId: channelId, schedule: { at: at, allowWhileIdle: true }, extra: { url: '/uposatha-calendar' } }] }); }).then(shown); }).catch(function () { msg.textContent = t.remUnsupported; });
+        return;
+      }
+      if (!('Notification' in window)) { msg.textContent = t.remUnsupported; return; }
+      Notification.requestPermission().then(function (perm) { if (perm !== 'granted') { msg.textContent = t.tstDenied; return; }
+        setTimeout(function () { try { new Notification(title, { body: t.tstBody, icon: '/assets/img/pwa-bold-monocolor-192.png' }); } catch (e) { /* the page must stay open on the site */ } }, tstMin * 60000); shown(); });
+    };
     onSeg('testseg', function (v) { state.fake = v; store('dgUposathaFake', v); paint(); });
     onSeg('sw-msum', function (v) { state.meal.sum = v === '1'; saveMeal(); paint(); });
     function mealSwitch(key) { // a meal reminder on: the permission first (the same flow as the Uposatha reminders)

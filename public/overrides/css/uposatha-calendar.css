@@ -482,3 +482,6 @@ body.app .mealsum h3 { color: var(--dg-accent-ink); }
 .setplace-row { margin: 12px 0 0; }
 .setplace-row .setplace { font-size: 13px; white-space: nowrap; }
 .setplace-row .setplace svg { width: 14px; height: 14px; }
+#tst-block { margin-top: 6px; }
+#tst-block .dg-field-input, #tst-block .dg-segmented, #tst-block .dg-field-btn { margin-top: 6px; }
+#tst-block .dg-field-btn { width: 100%; }
