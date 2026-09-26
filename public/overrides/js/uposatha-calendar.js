@@ -49,6 +49,7 @@
       detail: 'Details', detailD: 'Off — the short form',
       gRem: 'Reminders', remind: 'Remind me', adv: 'In advance', leads: [[0, 'when it begins'], [1, '1 hour'], [3, '3 hours'], [12, '12 hours'], [24, '1 day'], [48, '2 days']], days: 'Days',
       remNote: 'Notifications appear while this app is open or running in the background on your device. For reminders that arrive when it is fully closed, add the days to your phone\'s calendar.',
+      navHome: 'Summary', navList: 'Uposathas', navCal: 'Calendar', navParts: 'Night–day', navKeys: 'Suttas',
       sound: 'Sound', soundNone: 'Silent', soundOwn: 'My own sound…', soundOwnNamed: 'My own: %', soundFail: 'The sound was not set.', sounds: { gong: 'Gong', gong2: 'Gong 2', gong3: 'Gong 3', bell: 'Bell' },
       remAppNote: 'Reminders are scheduled on this device and arrive even when the app is closed.',
       remNext: function (when, what) { return 'Next reminder: ' + when + ' — ' + what; }, remNone: 'No reminder is due in the coming weeks.',
@@ -86,6 +87,7 @@
       detail: 'Подробно', detailD: 'Выкл — короткая форма',
       gRem: 'Напоминания', remind: 'Напоминать', adv: 'Заранее', leads: [[0, 'в момент начала'], [1, 'за 1 час'], [3, 'за 3 часа'], [12, 'за 12 часов'], [24, 'за сутки'], [48, 'за 2 суток']], days: 'Дни',
       remNote: 'Уведомления приходят, пока приложение открыто или работает в фоне на вашем устройстве. Чтобы напоминание пришло и при полностью закрытом приложении, добавьте дни в календарь телефона.',
+      navHome: 'Сводка', navList: 'Упосатхи', navCal: 'Календарь', navParts: 'Ночь–день', navKeys: 'Сутты',
       sound: 'Звук', soundNone: 'Без звука', soundOwn: 'Свой звук…', soundOwnNamed: 'Свой: %', soundFail: 'Звук не задан.', sounds: { gong: 'Гонг', gong2: 'Гонг 2', gong3: 'Гонг 3', bell: 'Колокол' },
       remAppNote: 'Напоминания ставятся на этом устройстве и приходят даже при закрытом приложении.',
       remNext: function (when, what) { return 'Ближайшее напоминание: ' + when + ' — ' + what; }, remNone: 'В ближайшие недели напоминаний нет.',
@@ -783,6 +785,21 @@
     setInterval(syncClear, 400);
     clr.onclick = function () { pa.value = ''; syncClear(); pa.focus(); };
     $('form').onsubmit = function (e) { e.preventDefault(); var q = $('paliauto').value.trim(); if (q) location.href = '/' + encodeURIComponent(q) + (lang === 'ru' ? '?lang=ru' : ''); };
+    // ----- the app (Capacitor) or ?app=1: five tabs at the bottom, one section at a time
+    (function () {
+      var C = window.Capacitor, isApp = params.get('app') === '1' || !!(C && C.isNativePlatform && C.isNativePlatform());
+      if (!isApp) return;
+      var nav = $('appnav'), tabs = nav.querySelectorAll('button');
+      document.body.classList.add('app'); nav.hidden = false;
+      function openTab(k) {
+        if (k === 'list' || k === 'cal') { state.screen = k; store('dgUposathaView', k); }
+        document.body.setAttribute('data-app-tab', k); store('dgUposathaTab', k);
+        Array.prototype.forEach.call(tabs, function (b) { b.setAttribute('aria-current', String(b.getAttribute('data-tab') === k)); });
+        paint(); window.scrollTo(0, 0);
+      }
+      Array.prototype.forEach.call(tabs, function (b) { b.onclick = function () { openTab(b.getAttribute('data-tab')); }; });
+      var last = store('dgUposathaTab'); openTab(/^(home|list|cal|parts|keys)$/.test(last || '') ? last : 'home');
+    })();
     $('tab-list').onclick = function () { state.screen = 'list'; store('dgUposathaView', 'list'); paint(); };
     $('tab-cal').onclick = function () { state.screen = 'cal'; store('dgUposathaView', 'cal'); paint(); };
     $('more').onclick = function () { state.months += 3; paint(); };

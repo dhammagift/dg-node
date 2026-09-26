@@ -409,3 +409,21 @@ body[data-loc=off] #dg-drawer #loc-block { background: var(--dg-accent-bg); bord
 
 /* the clear cross shows only when the input has text: .dg-shell-btn's display would otherwise beat the hidden attribute */
 .dg-input-shell .dg-shell-btn[hidden] { display: none; }
+
+/* ---- the app: five tabs at the bottom instead of one long page (the drawer stays for the settings) ---- */
+.appnav { display: none; }
+body.app .appnav { display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; background: var(--dg-surface, var(--dg-bg)); border-top: 1px solid var(--dg-border, rgba(128,128,128,.25)); padding-bottom: env(safe-area-inset-bottom, 0px); }
+.appnav[hidden] { display: none !important; }
+.appnav button { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 7px 2px 8px; background: none; border: 0; color: var(--dg-text-muted); font: inherit; font-size: 10.5px; line-height: 1.15; text-align: center; }
+.appnav button i { width: 46px; height: 26px; border-radius: 13px; display: flex; align-items: center; justify-content: center; transition: background .18s; }
+.appnav button .ic { width: 20px; height: 20px; }
+.appnav button[aria-current=true] { color: var(--dg-accent-ink); font-weight: 600; }
+.appnav button[aria-current=true] i { background: var(--dg-accent-bg); }
+body.app main.page { padding-bottom: 84px; }
+body.app #dg-footer, body.app #soft, body.app .toc, body.app #s-calendar, body.app .intro-actions { display: none !important; }
+/* one tab at a time */
+body.app main.page > * { display: none; }
+body.app[data-app-tab=home] .intro, body.app[data-app-tab=home] #s-summary, body.app[data-app-tab=home] .ctx, body.app[data-app-tab=home] #slides:not([hidden]) { display: block; }
+body.app[data-app-tab=home] .intro { display: block; }
+body.app[data-app-tab=list] #s-list, body.app[data-app-tab=cal] #s-cal, body.app[data-app-tab=parts] #parts, body.app[data-app-tab=keys] #keys { display: block; }
+body.app:not([data-app-tab=list]) #s-list, body.app:not([data-app-tab=cal]) #s-cal { display: none !important; } /* the screen rules above name ids and would win */
