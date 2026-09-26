@@ -33,3 +33,7 @@ body.app .up-appfoot { display: block; margin-top: 18px; }
 .up-appfoot .up-rate { display: flex; justify-content: space-between; align-items: center; }
 .up-appfoot .up-rate-em { font-size: 16px; font-weight: 400; letter-spacing: 2px; }
 .up-appfoot .up-ver { display: flex; justify-content: space-between; padding: 8px 4px 0; font-size: 12px; color: var(--dg-text-muted); }
+
+/* the moving pill is the feedback of the bar: the designer's ripple inside the icons is off here (it was drawn outside the shrunken icon box) */
+body.app .appnav .up-rip { display: none; }
+body.app .appnav button i { isolation: isolate; }
