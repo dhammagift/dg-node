@@ -2051,24 +2051,11 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
       setTimeout(function () {
         var popupEl = document.querySelector('.fdg-popup');
         var frameEl = document.querySelector('.fdg-iframe');
-        if (popupEl && frameEl) {
-          var u = new URL(url, location.origin);
-          u.searchParams.set('scroll', 'instant');
-
-          // Was: two "warm" shortcuts avoiding a full iframe reload (same-slug DOM reuse,
-          // dgNavigateInternal SPA-routing) added for speed (~2s full reload measured on first
-          // show) — owner: "iframe jump doesn't work at all, but it works on prod dg". Prod's
-          // openFdg.js (assets/js/openFdg.js, still loaded here too, see comment above) never
-          // had either shortcut — it always does exactly the plain `iframe.src = ...` reload
-          // below. Matching that proven behavior over keeping an unreproducible-in-testing but
-          // real-on-device bug in the shortcuts; the ~2s cost returns, but a working popup that
-          // reloads beats a fast one that doesn't reliably land on the right segment.
-          frameEl.src = u.toString();
-          // .fdg-open-new-window-btn — <a target="_blank"> из createFdgPopup(); href на нём
-          // появляется только в момент открытия попапа, поэтому по a[href] он не находится.
-          var newWinBtn = popupEl.querySelector('.fdg-open-new-window-btn');
-          if (newWinBtn) newWinBtn.href = url;
-          popupEl.style.display = 'block';
+        if (popupEl && frameEl && window.dgShowFdgPopup) {
+          // Same plain full load as prod (the "warm" SPA-routing shortcuts were dropped on purpose, see
+          // the owner's note in git history) — except when the frame was already warmed for this
+          // exact URL by openFdg.js after a quote was expanded: then it is just revealed.
+          window.dgShowFdgPopup(new URL(url, location.origin).href);
         } else {
           window.open(url, '_blank', 'noopener'); // попапа на странице нет — не молчим
         }

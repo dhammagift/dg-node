@@ -1118,7 +1118,7 @@ window.addEventListener("keydown", (event) => {
 
         // --- 2.1. FDG Popup ---
         const fdgPopupElement = document.querySelector('.fdg-popup');
-        if (fdgPopupElement && fdgPopupElement.style.display === 'block') {
+        if (fdgPopupElement && fdgPopupElement.style.display === 'block' && fdgPopupElement.style.visibility !== 'hidden') { // hidden = warmed, not open
             const fdgCloseButton = fdgPopupElement.querySelector('.fdg-close-btn');
             if (fdgCloseButton) {
                 fdgCloseButton.click();
