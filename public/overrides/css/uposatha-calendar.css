@@ -99,7 +99,7 @@ body[data-screen=list] #s-list, body[data-screen=cal] #s-cal { display: block; }
 .mon ul { list-style: none; margin: 0; padding: 0; border: 1px solid var(--dg-border); border-radius: var(--dg-radius); overflow: hidden; }
 .mon li + li { border-top: 1px solid var(--dg-border); }
 .mon li.wk { padding: 6px 14px; font-size: 11px; font-weight: 600; color: var(--dg-text-muted); background: var(--dg-surface-hover); letter-spacing: .04em; }
-.mon li.row { display: grid; grid-template-columns: 58px minmax(0, 1fr) auto; align-items: start; gap: 12px; padding: 11px 14px; font-size: 14px; }
+.mon li.row { display: grid; grid-template-columns: 96px minmax(0, 1fr) auto; align-items: start; gap: 12px; padding: 11px 14px; font-size: 14px; }
 .mon li .n { font-size: 20px; font-weight: 600; letter-spacing: -.02em; font-variant-numeric: tabular-nums; line-height: 1; }
 .mon li .n small { display: block; font-size: 11px; font-weight: 500; color: var(--dg-text-muted); letter-spacing: .02em; margin-top: 3px; text-transform: lowercase; }
 .mon li .mi { font-size: 22px; margin-top: 1px; }
@@ -290,7 +290,7 @@ body[data-remind=off] .rem-dep { opacity: .45; pointer-events: none; }
   .today .moon { font-size: 50px; }
   .today .d { font-size: 17px; }
   .vtabs { max-width: none; }
-  .mon li.row { grid-template-columns: 54px minmax(0, 1fr); gap: 10px; padding: 10px 12px; }
+  .mon li.row { grid-template-columns: 96px minmax(0, 1fr); gap: 10px; padding: 10px 12px; }
   .mon li .w { grid-column: 3; margin-top: -2px; }
   .grid .c { min-height: 52px; padding: 5px 4px; align-items: center; }
   .grid .c .n { margin: 0; }
@@ -493,14 +493,18 @@ body.app .mealsum h3 { color: var(--dg-accent-ink); }
 /* the list: the short view says the beginning and the end (the long one has the span and the lunar day); the Uposatha going on now is framed */
 .ln.endl { display: none; }
 body[data-mode=lite] .ln.endl { display: block; }
+.ln.endl { display: block; }
 .ln.dayl { display: none !important; }
 .mon li[data-now=true] { background: color-mix(in srgb, var(--dg-navy-ink) 12%, transparent); box-shadow: inset 0 0 0 2px var(--dg-navy-ink); border-radius: 12px; margin: 4px 6px; }
 
-/* the two days of the Uposatha are one cell with the moon between them (the evening it begins above, the day below); a day of the moon scheme is one cell */
-.mon li .cap { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 7px 4px; border: 1.5px solid var(--dg-border-strong); border-radius: 18px; background: var(--dg-surface); align-self: start; }
-.mon li .cap b { font-size: 19px; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums; }
-.mon li .cap small { display: block; text-align: center; font-size: 10.5px; color: var(--dg-text-muted); text-transform: lowercase; margin-top: 2px; }
+/* two cells, the beginning and the end (the dates); the moon is one cell of the second column, common to both days */
+.mon li .cap { display: grid; grid-template-columns: 60px 32px; align-self: start; border: 1.5px solid var(--dg-border-strong); border-radius: 14px; overflow: hidden; background: var(--dg-surface); }
+.mon li .cap .c1, .mon li .cap .c2 { grid-column: 1; padding: 6px 4px 5px; text-align: center; }
+.mon li .cap .c2 { border-top: 1.5px solid var(--dg-border-strong); }
+.mon li .cap b { display: block; font-size: 19px; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums; }
+.mon li .cap small { display: block; font-size: 10px; color: var(--dg-text-muted); text-transform: lowercase; margin-top: 3px; white-space: nowrap; }
 .mon li .cap .c2 b, .mon li .cap .c2 small { color: var(--dg-accent-ink); }
-.mon li .cap .mi { font-size: 22px; margin: 2px 0; }
+.mon li .cap .cm { grid-column: 2; grid-row: 1 / span 2; display: flex; align-items: center; justify-content: center; border-left: 1.5px solid var(--dg-border-strong); font-size: 22px; margin: 0; background: color-mix(in srgb, var(--dg-navy-ink) 8%, transparent); }
+
 .mon li[data-past=true] .cap { opacity: .7; }
 @media (max-width: 640px) { .mon li.row .w { grid-column: 2; margin-top: 0; } } /* on a phone 'in 7 days' goes under the text, not beside it */
