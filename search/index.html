@@ -4717,22 +4717,8 @@ $(document).ready(function() {
         routeFromUrl();
     });
 
-    // Полные настройки (шестерёнка) — выезжающая шторка поверх текущей страницы вместо перехода
-    // на отдельную /settings/ (owner: "сделай чтобы настройки выезжали как меню тайлов в
-    // мобильном", позже — "и на десктопе тоже, так красивее и функциональнее"). Делегированный
-    // обработчик ловит и видимую строку бургера, и скрытую #settingsButton (см. комментарий выше
-    // неё) — Alt+Shift+S (settings.js) кликает именно её. Одно и то же поведение на любой ширине —
-    // .dg-sheet сам рисует себя иначе на десктопе (центрированная широкая карточка, не нижняя
-    // шторка), отдельная развилка здесь не нужна.
-    document.addEventListener('click', function (e) {
-        if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.defaultPrevented) return;
-        // starts-with, not equality: the app build rewrites the href to /settings/index.html
-        var a = e.target.closest ? e.target.closest('a[href^="/settings/"]') : null;
-        if (!a || !window.DgHome) return;
-        e.preventDefault();
-        window.DgHome.closeDrawer();
-        window.DgHome.openSettingsSheet();
-    });
+    // The click on the full-settings link (a[href^="/settings/"]) that opens the settings sheet instead of navigating away now lives
+    // in home.js, so every page with the burger (this one, the 404 page, the Uposatha calendar) does it the same way.
 
     /* Ракушка / лого / "Main" в бургере — все ведут на "/", но раньше были обычными <a href="/">
        и делали полную перезагрузку страницы: SPA это не спасало, потому что переход домой никогда

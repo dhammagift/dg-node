@@ -382,3 +382,10 @@ body.embed .soft { display: none; }
 @media (prefers-reduced-motion: reduce) { .dgframe__open, .dgframe:hover .dgframe__open { transform: translateY(-50%); } }
 
 .keys li.kq ul li.gap { margin-top: 12px; }
+
+.help { margin: 34px 0 0; }
+.help h2 { font-size: 17px; margin: 0 0 10px; }
+.helpframe iframe { height: 560px; }
+.pillbtn.qbtn { width: 34px; padding: 7px 0; justify-content: center; font-weight: 600; }
+#help { scroll-margin-top: 90px; }
+body.embed .help { display: none; }

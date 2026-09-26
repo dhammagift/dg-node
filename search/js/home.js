@@ -4638,6 +4638,21 @@
         isSettingsSheetOpen: function () { return settingsSheetOpen || settingsBackPending; }
     };
 
+    // Полные настройки (шестерёнка) — выезжающая шторка поверх текущей страницы вместо перехода на отдельную /settings/
+    // (owner: "сделай чтобы настройки выезжали как меню тайлов", на любой ширине; .dg-sheet сам рисует себя иначе на десктопе).
+    // Делегированный обработчик ловит и видимую строку бургера, и скрытую #settingsButton (Alt+Shift+S из settings.js кликает именно её).
+    // Раньше жил в inline-скрипте index.html — на страницах с тем же бургером, но без него (404, календарь упосатх), настройки
+    // открывались отдельной страницей. Здесь — один раз для всех страниц, где подключён home.js.
+    document.addEventListener('click', function (e) {
+        if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.defaultPrevented) return;
+        // starts-with, not equality: the app build rewrites the href to /settings/index.html
+        var a = e.target.closest ? e.target.closest('a[href^="/settings/"]') : null;
+        if (!a || !window.DgHome) return;
+        e.preventDefault();
+        window.DgHome.closeDrawer();
+        window.DgHome.openSettingsSheet();
+    });
+
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
     else init();
 })();
