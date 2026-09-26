@@ -225,6 +225,8 @@
   function openPanel(id) { closeAll(); $(id).setAttribute('data-open', 'true'); $('scrim').setAttribute('data-open', 'true'); }
   function closeAll() { ['drawer', 'scrim'].forEach(function (i) { $(i).setAttribute('data-open', 'false'); }); }
 
+  // Lit part of the Moon to a thousandth of a percent: near the full moon a whole percent stays the same for half a day.
+  function illumPercent(d) { var v = (A.Illumination('Moon', d).phase_fraction * 100).toFixed(3); return lang === 'ru' ? v.replace('.', ',') : v; }
   function paint() {
     var now = new Date(), tz = state.tz, F = formats(), su = sutta();
     var todayYmd = localDay(now, tz), tp = todayYmd.split('-').map(Number);
@@ -246,11 +248,11 @@
 
     // ----- today
     var angle = A.MoonPhase(now), tithi = tithiAt(now), pIndex = Math.floor(((angle + 22.5) % 360) / 45);
-    var percent = Math.round(A.Illumination('Moon', now).phase_fraction * 100);
+    var percent = illumPercent(now);
     var dayEnds = A.SearchMoonPhase((tithi * 12) % 360, now, 3);
     $('t-moon').innerHTML = moon(pIndex, 'moon');
     $('t-date').textContent = cap(F.dateLong.format(now));
-    $('t-phase').innerHTML = '<span>' + esc(t.phases[pIndex]) + '</span><span class="dot">·</span><span>' + percent + '% ' + esc(t.illum) + '</span><span class="dot">·</span><span><b style="font-weight:600;color:var(--dg-text)">' + dayNo(tithi) + '</b> ' + esc(t.ld) + ' ' + esc(t.of15) + ', ' + esc(halfName(tithi)) + '</span>' +
+    $('t-phase').innerHTML = '<span>' + esc(t.phases[pIndex]) + '</span><span class="dot">·</span><span><span id="pct">' + percent + '</span>% ' + esc(t.illum) + '</span><span class="dot">·</span><span><b style="font-weight:600;color:var(--dg-text)">' + dayNo(tithi) + '</b> ' + esc(t.ld) + ' ' + esc(t.of15) + ', ' + esc(halfName(tithi)) + '</span>' +
       (dayEnds ? '<span class="dot">·</span><span>' + esc(t.until) + ' ' + esc(F.stamp.format(dayEnds.date)) + '</span>' : '');
     var nextRow = L.rows.filter(function (r) { return r.uposatha && r.ymd > todayYmd; })[0];
     if (isUposatha) $('t-status').innerHTML = '<span class="badge">' + esc(t.uday) + '</span>' + (tonight ? '' : '');
@@ -581,6 +583,7 @@
   // The docs page may not be listening yet when the first height goes out (the frame can load before the page hydrates), so it
   // is repeated for a few seconds and whenever the parent asks.
   [300, 1000, 2500].forEach(function (ms) { setTimeout(reportHeight, ms); });
+  setInterval(function () { var e = $('pct'); if (e && !document.hidden) e.textContent = illumPercent(new Date()); }, 15000); // the Moon moves while the page is open
 
   // Installable as an app of its own (its own manifest, start_url and scope). The site's service worker at /sw.js controls the
   // page; it is registered here too, so visiting the calendar first is enough to install it.
