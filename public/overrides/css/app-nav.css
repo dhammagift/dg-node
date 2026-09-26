@@ -53,3 +53,6 @@ body.app[data-app-tab=home] #up-hero { margin-bottom: 0; }
 body.app #reader { display: none !important; }
 #up-hero .hn { margin: 18px 0 0; }
 #up-hero .hc { margin: 8px 0 8px; }
+
+/* the drawer's header already has the share button */
+body.app #dg-drawer #d-share { display: none; }
