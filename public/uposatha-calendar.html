@@ -55,7 +55,7 @@
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
       </button>
       <span class="dg-shell-sep" aria-hidden="true"></span>
-      <button type="button" id="dg-quick-btn" class="dg-qs-btn" data-tt="settingsL"><svg class="ic"><use href="#i-sliders"/></svg></button>
+      <button type="button" id="dg-quick-btn" class="dg-qs-btn" aria-label="Quick settings (Alt+S)" title="Quick settings (Alt+S)" aria-expanded="false"></button>
       <button type="submit" id="searchbtn" class="dg-shell-btn dg-shell-go" data-tt="searchGo">
         <svg class="dg-search-icon" viewBox="0 0 512 512" width="17" height="17" fill="currentColor" aria-hidden="true" style="transform: scaleX(-1)"><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352a144 144 0 1 0 0-288 144 144 0 1 0 0 288z"/></svg>
       </button>
@@ -64,7 +64,7 @@
   <div class="hbtns">
     <button class="rb" type="button" id="b-compass" data-tt="compass" onclick="if (window.toggleQuickModal) window.toggleQuickModal();"><svg class="ic"><use href="#i-compass"/></svg></button>
     <button class="rb" type="button" id="b-theme" data-tt="theme"><svg class="ic"><use href="#i-theme"/></svg></button>
-    <button class="rb" type="button" id="b-menu" data-tt="menu"><svg class="ic"><use href="#i-menu"/></svg></button>
+    <button class="rb dg-icon-btn dg-menu-btn" type="button" id="b-menu" data-tt="menu"><svg class="ic"><use href="#i-menu"/></svg></button>
   </div>
 </div></header>
 
@@ -140,48 +140,116 @@
 
 <div class="scrim" id="scrim" data-open="false"></div>
 
-<aside class="drawer" id="drawer" data-open="false">
-  <div class="dhead"><a class="dbrand" href="/"><img src="/assets/img/dgsankhaonly.png" alt=""><b>Dhamma.Gift</b></a>
-    <button class="x" type="button" id="d-share" data-tt="share" style="margin-left:auto"><svg class="ic"><use href="#i-share"/></svg></button>
-    <button class="x" type="button" data-close data-tt="close"><svg class="ic"><use href="#i-x"/></svg></button></div>
-  <div class="dgroup">
-    <h3 data-t="mt"></h3>
-    <div id="mtlist"></div>
+<button id="theme-button" hidden></button>
+<div id="dg-drawer-backdrop" hidden></div>
+<aside id="dg-drawer" hidden aria-label="Menu" data-i18n-aria-label="{{toolbar.menuAriaLabel}}">
+  <div class="dg-drawer-head">
+    <!-- Шапка шторки ведёт на главную — пункт «Главная» ушёл вместе с «Навигацией», а домой
+         из выдачи/ридера через бургер всё равно нужно уметь. -->
+    <a class="dg-brand-link" href="/"><img class="dg-brand-logo" src="/assets/img/dgsanhkalogo.png" alt=""><span class="dg-brand-name">dhamma.gift</span></a>
+    <button type="button" class="dg-icon-btn dg-drawer-close" aria-label="Close" data-i18n-aria-label="{{global.common.close}}">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
   </div>
-  <div class="dgroup" id="d-settings">
-    <h3 data-t="settings"></h3>
-    <div class="set"><span class="lb" data-t="lang"></span><div class="segrow" style="flex:none" id="langseg"><button type="button" data-lang="en">EN</button><button type="button" data-lang="ru">RU</button></div></div>
-    <div class="set"><span class="lb" data-t="themeH"></span><div class="segrow" style="flex:none" id="themeseg"><button type="button" data-theme-set="dark" data-t="dark"></button><button type="button" data-theme-set="light" data-t="light"></button><button type="button" data-theme-set="auto" data-t="auto"></button></div></div>
-  </div>
-  <div class="dgroup" id="d-uset">
-    <h3 data-t="gPlace"></h3>
-    <div class="set col loc-off"><span class="lb" data-t="tz"></span><select class="sel" id="tz"></select></div>
-    <div class="set loc-off"><span class="lb"><span data-t="hemi"></span></span><div class="segrow" style="flex:none" id="hemiseg"><button type="button" data-hemi="north" data-t="north"></button><button type="button" data-hemi="south" data-t="south"></button></div></div>
-    <div class="set col"><span class="lb"><span data-t="loc"></span><em data-t="locD"></em></span>
-      <div class="row2 loc-off"><button class="btn" type="button" id="loc-btn"><svg class="ic"><use href="#i-pin"/></svg><span data-t="myLoc"></span></button><input class="inp" id="city" list="cities" data-tp="city"></div>
-      <datalist id="cities"></datalist>
-      <p class="note" id="locnote" style="margin:0"></p></div>
-  </div>
-  <div class="dgroup">
-    <h3 data-t="gCount"></h3>
-    <div class="set"><span class="lb"><span data-t="bySuttas"></span><em data-t="bySuttasD"></em></span><button class="sw" id="sw-sut" type="button" aria-pressed="true"></button></div>
-    <div class="set"><span class="lb"><span data-t="detail"></span><em data-t="detailD"></em></span><button class="sw" id="sw-det" type="button" aria-pressed="true"></button></div>
-  </div>
-  <div class="dgroup">
-    <h3 data-t="gRem"></h3>
-    <div class="set"><span class="lb" data-t="remind"></span><button class="sw" id="sw-rem" type="button" aria-pressed="false"></button></div>
-    <div class="set rem-dep"><span class="lb" data-t="adv"></span><select class="sel" id="rem-lead" style="width:auto"></select></div>
-    <div class="set rem-dep" id="rem-days-row"><span class="lb" data-t="days"></span><div class="chips"><button type="button" id="rd8" aria-pressed="true">8</button><button type="button" id="rd14" aria-pressed="true">14</button><button type="button" id="rd15" aria-pressed="false">15</button></div></div>
-    <p class="note" id="rem-msg"></p>
-    <p class="note" id="rem-note"></p>
-  </div>
-  <div class="dgroup" id="d-cal">
-    <h3 data-t="gCal"></h3>
-    <p class="note" data-t="subNote" style="margin:0 0 8px"></p>
-    <div class="subrow"><a class="btn" id="sub-apple" href="#"><svg class="ic"><use href="#i-calplus"/></svg><span>Apple</span></a><a class="btn" id="sub-google" href="#" target="_blank" rel="noopener"><svg class="ic"><use href="#i-calplus"/></svg><span>Google</span></a><button class="btn" type="button" id="sub-copy"><span data-t="copyLink"></span></button></div>
-    <p class="note" data-t="icsNote" style="margin:12px 0 8px"></p>
-    <button class="btn" type="button" id="p-ics" style="width:100%"><svg class="ic"><use href="#i-calplus"/></svg><span data-t="ics"></span></button>
-  </div>
+  <nav class="dg-drawer-body">
+    <!-- Значки у пунктов проставляет home.js (data-dg-icon → FontAwesome.icon), чтобы набор был
+         тот же, что у плиток и в боевом меню, и не разъезжался при правках. -->
+    <!-- «Найти на странице» — первой строкой, одно место на весь сайт (бургер один и тот же на
+         главной/в выдаче/в ридере/в оглавлении). Открывает dg-page-find-ui.js (клик слушает сам
+         этот файл, closeDrawer перед открытием — см. там же). Ctrl/Cmd+Shift+F делает то же
+         самое (Shift обязателен — голый Ctrl/Cmd+F в реальном Chrome уходит в системный поиск
+         браузера раньше, чем страница успевает его перехватить). data-dg-icon="magnifier" — тот
+         же ключ ICONS в home.js, что уже даёт fas/magnifying-glass; "magnifying-glass" здесь не
+         матчился ни с одним ключом и молча падал на ICONS.external (стрелка). Owner asked for a
+         page+magnifying-glass icon specifically ("листик с лупой") — FA6 Free doesn't ship that
+         one (file-magnifying-glass/file-search is Pro-only, checked node_modules directly), so
+         this stays the plain lens rather than a hand-drawn substitute breaking the icon system's
+         "every drawer icon comes from ICONS/FontAwesome" convention. -->
+    <a class="dg-drawer-row dg-find-open" href="javascript:void(0)" data-dg-icon="magnifier">{{menu.findOnPage}}</a>
+    <!-- Мультитул вместо «Навигации» (owner, 2026-09-05): список плиток главной, чтобы мультитул
+         был под рукой в любом месте сайта — в выдаче, в ридере, в TOC. Нативный <details>, свёрнут
+         по умолчанию в выдаче/ридере/TOC; на главной openDrawer() (home.js) раскрывает его при
+         каждом открытии бургера (owner, 2026-09-06, как в макете). Список строит
+         home.js renderDrawerTiles() из тех же menu-links.json / tileOrder() / hiddenTiles(), что и
+         плитки; клик по строке = клик по плитке (мегаменю на десктопе, шторка на телефоне). -->
+    <details class="dg-drawer-group" id="dg-drawer-multitool">
+      <summary class="dg-group-title">{{menu.multitool}}</summary>
+      <div id="dg-drawer-tiles"></div>
+    </details>
+    <!-- Режимы чтения — только в состоянии ридера (owner: "выводи первым делом режимы ридера" —
+         протестировать/переключить их иначе можно было только руками через ?mode= в адресе).
+         Список строит home.js (paintReaderModes) из reader/mode-table.json — тот же источник
+         правды, что уже питает панель переключения режимов внутри самого текста (scLink,
+         megareader.js), никакой второй копии режимов здесь не заводится.
+         <details>, не голый <div> — owner: "сделай режимы чтения сворачиваемыми... запомнить что
+         свёрнуто", тем же native-элементом, что уже здесь для «Мультитул» ниже. Открыт/закрыт
+         запоминается в localStorage (paintReaderModes/wireReaderModesToggle, home.js) — читается
+         только при показе секции, а не при каждой перерисовке списка внутри неё. -->
+    <details id="dg-drawer-modes" hidden>
+      <summary class="dg-group-title">{{menu.readingModes}}</summary>
+      <div id="dg-drawer-modes-list"></div>
+    </details>
+
+    <p class="dg-group-title">{{menu.settings}}</p>
+    <!-- Язык/тема — переехали сюда, в «Настройки» (просьба владельца: часть настроек была вверху
+         шторки, часть внизу — всё в одном месте). Переключатели наполняет и обслуживает home.js,
+         контейнеры БЕЗ класса .dg-segmented (сам переключатель — <div class="dg-segmented">,
+         который создаёт segmented() и кладёт сюда). -->
+    <p class="dg-group-title" data-dg-icon="language">{{menu.language}}</p>
+    <div id="dg-lang-seg"></div>
+    <!-- Значка у этого заголовка нет намеренно: солнце рядом со словом «Тема» читалось бы как
+         «сейчас светлая». Значки тем — внутри самого переключателя, у своих вариантов. -->
+    <p class="dg-group-title">{{menu.theme}}</p>
+    <div id="dg-theme-seg"></div>
+    <!-- "Описания кнопок" (dgTileDesc) moved to /settings/ — owner: "очень неважная настройка",
+         doesn't need to sit in the quick-access drawer next to language/theme. tileDescEnabled()
+         in home.js still reads the same localStorage key when actually rendering tile rows. -->
+
+    <!-- Полные настройки (шестерёнка) — ниже язык/тему по просьбе владельца: сначала быстрые
+         переключатели, потом ссылка на полную страницу настроек. -->
+    <p class="dg-group-title" id="d-uset" data-t="gUposatha"></p>
+    <div class="loc-off"><p class="dg-drawer-subtitle" data-t="tz"></p>
+    <select class="dg-field-input" id="tz"></select></div>
+    <div class="loc-off">
+      <p class="dg-drawer-subtitle" data-t="hemi"></p>
+      <div class="dg-segmented" id="hemiseg"><button type="button" data-hemi="north" data-t="north"></button><button type="button" data-hemi="south" data-t="south"></button></div>
+    </div>
+    <p class="dg-drawer-subtitle" data-t="loc"></p>
+    <div class="dg-uset-row loc-off"><button class="dg-field-btn" type="button" id="loc-btn"><span data-t="myLoc"></span></button><input class="dg-field-input" id="city" list="cities" data-tp="city"></div>
+    <datalist id="cities"></datalist>
+    <p class="dg-uset-note" id="locnote"></p>
+    <p class="dg-drawer-subtitle" data-t="bySuttas"></p>
+    <div class="dg-segmented" id="sw-sut"><button type="button" data-v="1" data-t="on"></button><button type="button" data-v="0" data-t="off"></button></div>
+    <p class="dg-drawer-subtitle" data-t="detail"></p>
+    <div class="dg-segmented" id="sw-det"><button type="button" data-v="1" data-t="on"></button><button type="button" data-v="0" data-t="off"></button></div>
+    <p class="dg-drawer-subtitle" data-t="remind"></p>
+    <div class="dg-segmented" id="sw-rem"><button type="button" data-v="1" data-t="on"></button><button type="button" data-v="0" data-t="off"></button></div>
+    <div id="rem-more">
+      <p class="dg-drawer-subtitle" data-t="adv"></p>
+      <select class="dg-field-input" id="rem-lead"></select>
+      <div id="rem-days-row"><p class="dg-drawer-subtitle" data-t="days"></p>
+        <div class="dg-segmented"><button type="button" id="rd8" aria-pressed="true">8</button><button type="button" id="rd14" aria-pressed="true">14</button><button type="button" id="rd15" aria-pressed="false">15</button></div></div>
+      <p class="dg-uset-note" id="rem-msg"></p>
+      <p class="dg-uset-note" id="rem-note"></p>
+    </div>
+    <div id="d-cal">
+      <p class="dg-drawer-subtitle" data-t="gCal"></p>
+      <p class="dg-uset-note" data-t="subNote"></p>
+      <div class="dg-segmented dg-uset-links"><a class="dg-seg-link" id="sub-apple" href="#">Apple</a><a class="dg-seg-link" id="sub-google" href="#" target="_blank" rel="noopener">Google</a><button type="button" id="sub-copy" data-t="copyLink"></button></div>
+      <p class="dg-uset-note" data-t="icsNote"></p>
+      <button class="dg-field-btn" type="button" id="p-ics"><span data-t="ics"></span></button>
+    </div>
+    <a class="dg-drawer-row" href="/settings/" data-dg-icon="gear">{{global.common.settings}}</a>
+    <!-- Своя кнопка на главную: подпись, адрес, значок. Форму рисует home.js в обычной шторке.
+         Перенесено сюда из «Навигации» по просьбе владельца — это управление кнопками, то есть
+         настройка, а не переход. -->
+    <!-- Правка любой кнопки: сперва список, потом та же форма. Выбирать плитку на самой главной
+         негде — крестик там уже занят удалением. -->
+    <!-- Появляется, только если есть что возвращать: убрана кнопка ИЛИ переставлен порядок. -->
+    <!-- Owner (2026-09-05): «Логин в самый низ блока настроек» — переехал сюда из «Навигации»,
+         которую заменил мультитул. -->
+    <a class="dg-drawer-row" href="/login" data-dg-icon="login">{{global.common.login}}</a>
+  </nav>
 </aside>
 <div class="sheet" id="sl-modal" data-open="false" role="dialog" aria-modal="true">
   <div class="sheet-head"><b id="sl-modal-title"></b><button class="x" type="button" data-close data-tt="close"><svg class="ic"><use href="#i-x"/></svg></button></div>
@@ -196,7 +264,16 @@
 <script src="/assets/js/vendor/zone-coords.js"></script>
 <script src="/assets/js/uposatha-core.js"></script>
 <script src="/assets/js/uposatha-calendar.js"></script>
+<script>
+  // the same localization config as on the site's other pages: the {{tokens}} of the drawer
+  window.DHAMMA_LANG_CONFIG_PATTERN = "/nodejs/res/lang_{lang}.json";
+  window.DHAMMA_GLOBAL_LANG_CONFIG_PATTERN = "/assets/i18n/lang_global_{lang}.json";
+</script>
+<script src="/assets/js/dhamma-i18n.js" defer></script>
+<script defer src="/assets/js/fontawesome-local.js"></script>
+<script defer src="/assets/js/themeswitch.js"></script>
 <script defer src="/assets/js/quickModal.js"></script>
 <script defer src="/assets/js/settings.js"></script>
+<script defer src="/nodejs/res/js/home.js"></script>
 </body>
 </html>

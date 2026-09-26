@@ -33,7 +33,7 @@
     en: {
       pH: 'Parts of the day and night', pSub: 'Sunrise to sunset is cut into three parts, and sunset to sunrise likewise — for your place and the season.', pDay: 'Day', pNight: 'Night',
       dayParts: [['Pubbaṇhasamaya', 'morning'], ['Majjhanhikasamaya', 'midday'], ['Sāyanhasamaya', 'evening']], nightParts: [['Paṭhama yāma', 'first watch'], ['Majjhima yāma', 'middle watch'], ['Pacchima yāma', 'last watch']],
-      fSpecial: 'special', fGeneral: 'general', fRandom: 'random', slTitle: 'From the suttas', fAll: 'All', sortKind: 'By kind', sortSutta: 'By sutta', showAll: 'Show all', readIt: 'Read', dayTag: function (d) { return d.map(function (n) { return n + 'th'; }).join(', ') + ' day'; },
+      fSpecial: 'special', fGeneral: 'general', fRandom: 'random', slTitle: 'From the suttas', gUposatha: 'Uposatha', on: 'On', off: 'Off', fAll: 'All', sortKind: 'By kind', sortSutta: 'By sutta', showAll: 'Show all', readIt: 'Read', dayTag: function (d) { return d.map(function (n) { return n + 'th'; }).join(', ') + ' day'; },
       age: 'age', of30: 'of 30', from: 'from', left: 'left', dU: 'd', hU: 'h', mU: 'min',
       searchPh: 'Search: kacchapa, dn22…', searchGo: 'Search', tocTitle: 'Contents (Alt+2)', clear: 'Clear', tag: 'observance days', compass: 'Favorites / History', menu: 'Menu', theme: 'Theme', prev: 'Previous', next: 'Next', close: 'Close',
       h1: 'Uposatha days', lead: 'The 14th, 15th and 8th lunar days of each half-month, as the suttas count them — six a month.', suttas: 'The suttas on Uposatha →',
@@ -69,7 +69,7 @@
     ru: {
       pH: 'Части дня и ночи', pSub: 'Время от восхода до заката делится на три части, и от заката до восхода тоже — для вашего места и сезона.', pDay: 'День', pNight: 'Ночь',
       dayParts: [['Pubbaṇhasamaya', 'утро'], ['Majjhanhikasamaya', 'полдень'], ['Sāyanhasamaya', 'вечер']], nightParts: [['Paṭhama yāma', 'первая часть'], ['Majjhima yāma', 'средняя часть'], ['Pacchima yāma', 'последняя часть']],
-      fSpecial: 'особое', fGeneral: 'общее', fRandom: 'случайное', slTitle: 'Из сутт', fAll: 'Все', sortKind: 'По видам', sortSutta: 'По суттам', showAll: 'Показать все', readIt: 'Читать', dayTag: function (d) { return d.map(function (n) { return n + '-й'; }).join(', ') + ' день'; },
+      fSpecial: 'особое', fGeneral: 'общее', fRandom: 'случайное', slTitle: 'Из сутт', gUposatha: 'Упосатха', on: 'Вкл', off: 'Выкл', fAll: 'Все', sortKind: 'По видам', sortSutta: 'По суттам', showAll: 'Показать все', readIt: 'Читать', dayTag: function (d) { return d.map(function (n) { return n + '-й'; }).join(', ') + ' день'; },
       age: 'возраст', of30: 'из 30', from: 'с', left: 'осталось', dU: 'д', hU: 'ч', mU: 'мин',
       searchPh: 'Поиск: kacchapa, dn22…', searchGo: 'Найти', tocTitle: 'Оглавление (Alt+2)', clear: 'Очистить', tag: 'дни соблюдения', compass: 'Избранное / История', menu: 'Меню', theme: 'Тема', prev: 'Назад', next: 'Вперёд', close: 'Закрыть',
       h1: 'Дни упосатхи', lead: '14-й, 15-й и 8-й лунные дни каждой половины месяца, как их считают сутты, — шесть в месяц.', suttas: 'Сутты об упосатхе →',
@@ -222,8 +222,6 @@
     Array.prototype.forEach.call(document.querySelectorAll('[data-tt]'), function (e) { var v = t[e.getAttribute('data-tt')]; if (typeof v === 'string') { e.title = v; e.setAttribute('aria-label', v); } });
     Array.prototype.forEach.call(document.querySelectorAll('[data-tp]'), function (e) { e.placeholder = t[e.getAttribute('data-tp')] || ''; });
     document.title = t.h1 + ' — Dhamma.gift';
-    renderMultitool();
-    Array.prototype.forEach.call($('langseg').children, function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-lang') === lang)); });
     $('rem-lead').innerHTML = t.leads.map(function (l) { return '<option value="' + l[0] + '">' + esc(l[1]) + '</option>'; }).join('');
   }
   function setTheme(mode) { // light | dark | auto, stored under the site's own key
@@ -232,11 +230,15 @@
     document.documentElement.setAttribute('data-theme', eff);
     document.documentElement.setAttribute('data-bs-theme', eff); // the shared scripts (quick window, settings.js) read these
     document.body.classList.toggle('dark', eff === 'dark');
-    Array.prototype.forEach.call($('themeseg').children, function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-theme-set') === mode)); });
   }
+  // the site's segmented control (.dg-segmented): the pressed button is the value
+  function setSeg(id, v) { Array.prototype.forEach.call($(id).children, function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-v') === String(v))); }); }
+  function onSeg(id, fn) { $(id).onclick = function (e) { var b = e.target.closest && e.target.closest('button'), v = b && b.getAttribute('data-v'); if (v !== null && v !== undefined) fn(v); }; }
+  // the drawer is the site's own (home.js): opening it is a click on its burger
+  function openSettings() { document.querySelector('.dg-menu-btn').click(); setTimeout(function () { $('d-uset').scrollIntoView(); }, 350); }
   function toast(msg) { var e = $('toast'); e.textContent = msg; e.classList.add('on'); setTimeout(function () { e.classList.remove('on'); }, 2000); }
   function openPanel(id) { closeAll(); $(id).setAttribute('data-open', 'true'); $('scrim').setAttribute('data-open', 'true'); }
-  function closeAll() { ['drawer', 'sl-modal', 'scrim'].forEach(function (i) { $(i).setAttribute('data-open', 'false'); }); }
+  function closeAll() { ['sl-modal', 'scrim'].forEach(function (i) { $(i).setAttribute('data-open', 'false'); }); }
 
   // Lit part of the Moon to a hundredth of a percent: near the full moon a whole percent stays the same for half a day.
   function illumPercent(d) { var v = (A.Illumination('Moon', d).phase_fraction * 100).toFixed(2); return lang === 'ru' ? v.replace('.', ',') : v; }
@@ -387,12 +389,10 @@
     // ----- the settings panel mirrors the state
     $('tz').innerHTML = zones.map(function (z) { return '<option' + (z === tz ? ' selected' : '') + '>' + esc(z) + '</option>'; }).join('');
     Array.prototype.forEach.call($('hemiseg').children, function (b) { b.setAttribute('aria-pressed', String((b.getAttribute('data-hemi') === 'south') === state.south)); });
-    $('sw-sut').setAttribute('aria-pressed', String(su));
-    $('sw-det').setAttribute('aria-pressed', String(!state.lite));
+    setSeg('sw-sut', su ? 1 : 0); setSeg('sw-det', state.lite ? 0 : 1);
     $('city').value = state.loc && state.loc.name ? state.loc.name : '';
     $('locnote').innerHTML = state.loc ? esc(t.locOk + ': ' + (state.loc.name ? state.loc.name + ' · ' : '') + state.loc.lat + ', ' + state.loc.lon) + ' · <a href="#" id="unloc">' + esc(t.locForget) + '</a>' : esc(state.locMsg || t.locNone);
     if ($('unloc')) $('unloc').onclick = function (e) { e.preventDefault(); state.loc = null; state.locMsg = ''; store('dgUposathaLoc', ''); paint(); };
-    Array.prototype.forEach.call(document.querySelectorAll('.tabs button, #langseg button'), function () { /* wired once */ });
     $('tab-list').setAttribute('aria-pressed', String(state.screen === 'list'));
     $('tab-cal').setAttribute('aria-pressed', String(state.screen === 'cal'));
     $('more').parentNode.style.display = list.length ? '' : 'none';
@@ -460,7 +460,7 @@
     var inApp = !!nativePlugin();
     var next = scheduleReminders(L.rows, L.byYmd, F);
     var permission = inApp ? 'granted' : 'Notification' in window ? Notification.permission : 'unsupported';
-    $('sw-rem').setAttribute('aria-pressed', String(state.rem.on));
+    setSeg('sw-rem', state.rem.on ? 1 : 0);
     $('rem-lead').value = String(state.rem.lead);
     $('rd8').setAttribute('aria-pressed', String(state.rem.d8));
     $('rd14').setAttribute('aria-pressed', String(state.rem.d14));
@@ -487,42 +487,6 @@
     a.href = URL.createObjectURL(new Blob([C.buildIcs({ lang: lang, tz: state.tz, sutta: sutta(), loc: state.loc, rem: state.rem, days: 366 })], { type: 'text/calendar' }));
     a.download = 'uposatha.ics';
     document.body.appendChild(a); a.click(); a.remove();
-  }
-
-  // ---------- multitool: the same tiles as the home page's menu, from the same menu-links.json ----------
-  var menuData = null, menuLoading = false;
-  var TILE_ORDER = { en: ['read', 'external', 'dicts', 'materials', 'tools', 'history', 'help'], ru: ['read', 'external', 'russian', 'dicts', 'materials', 'tools', 'history', 'help'] };
-  var TILE_ICON = { read: 'book', external: 'globe', russian: 'book', dicts: 'dict', materials: 'cap', tools: 'wrench', history: 'star', help: 'help' };
-  function linkAttrs(href) { return 'href="' + esc(href) + '"' + (/^https?:/.test(href) ? ' target="_blank" rel="noopener"' : ''); }
-  function itemHtml(it, chip) {
-    if (!it.href) return ''; // items that need a search word on the home page have no place here
-    return chip ? '<a ' + linkAttrs(it.href) + '>' + esc(it.label) + '</a>'
-      : '<a class="row" ' + linkAttrs(it.href) + '>' + esc(it.label) + (it.desc ? '<small>' + esc(it.desc) + '</small>' : '') + '</a>';
-  }
-  function groupHtml(g) {
-    var h = g.name ? '<h4>' + esc(g.name) + '</h4>' : '';
-    if (g.blocks) return h + g.blocks.map(function (b) { return (b.rows || b.inline || []).map(function (it) { return itemHtml(it, false); }).join(''); }).join('');
-    var items = (g.items || []).map(function (it) { return itemHtml(it, g.layout === 'chips'); }).join('');
-    return items ? h + (g.layout === 'chips' ? '<div class="chipline">' + items + '</div>' : items) : '';
-  }
-  function renderMultitool() {
-    var host = $('mtlist');
-    if (!menuData) {
-      if (!menuLoading) {
-        menuLoading = true;
-        fetch('/nodejs/res/menu-links.json').then(function (r) { return r.json(); }).then(function (d) { menuData = d; renderMultitool(); }).catch(function () { menuLoading = false; });
-      }
-      return;
-    }
-    var data = menuData[lang] || menuData.en, open = {};
-    Array.prototype.forEach.call(host.querySelectorAll('details[open]'), function (d) { open[d.getAttribute('data-k')] = true; });
-    host.innerHTML = TILE_ORDER[lang].filter(function (k) { return data[k]; }).map(function (k) {
-      var tile = data[k], label = esc(tile.drawerLabel || tile.label), ic = '<svg class="ic"><use href="#i-' + TILE_ICON[k] + '"/></svg>';
-      if (k === 'help') return '<div class="mt-tile"><a href="' + t.docs + '">' + ic + '<span>' + label + '</span></a></div>';
-      if (!tile.groups) return '<div class="mt-tile"><a href="' + esc(tile.href || '/') + '">' + ic + '<span>' + label + '</span></a></div>';
-      return '<details class="mt-tile" data-k="' + k + '"' + (open[k] ? ' open' : '') + '><summary>' + ic + '<span>' + label + '</span><svg class="ic chev"><use href="#i-chev"/></svg></summary><div class="mt-body">' +
-        tile.groups.map(groupHtml).join('') + '</div></details>';
-    }).join('');
   }
 
   // ---------- key suttas and the reader ----------
@@ -558,7 +522,7 @@
   function slideText(q) { return q[lang] || q.en; }
   // The key words of the Uposatha (the day, its number, the parts of the day) are picked out in the Pali and in the translations.
   var KW = {
-    pli: /(uposath|aṭṭham|cātuddas|pannaras|pāṭihāriy|pubbaṇhasamay|majjhanhikasamay|sāyanhasamay|yāma)[\p{L}]*/giu,
+    pli: /(uposath|aṭṭham|cātuddas|pannaras|pāṭihāriy|pubbaṇhasamay|majjhanhikasamay|sāyanhasamay|yāma|divāvihār|paṭisallān)[\p{L}]*/giu,
     ru: /(упосатх|восьм|четырнадцат|пятнадцат)[\p{L}]*/giu,
     en: /(uposatha|sabbath|observance|eighth|fourteenth|fifteenth|watch)[\p{L}]*/giu,
   };
@@ -594,7 +558,11 @@
   function slideHtml(q, i) {
     var L = limits(), trKw = q[lang] ? KW[lang] : KW.en, body;
     if (q.lines) { // a verse: each line of the Pali with its translation under it, as the reader shows gathas
-      body = '<div class="sl-g">' + verseWindow(q.lines, L.pairs).map(function (l) { return '<b class="sl-gp pli-lang" lang="pi">' + hl(l.pli, KW.pli) + '</b><span class="sl-gt">' + esc(l[lang] || l.en) + '</span>'; }).join('') + '</div>';
+      var per = window.innerWidth >= 700 ? { p: 58, t: 62 } : { p: 34, t: 40 }; // a day told in three parts: each part is cut to a line
+      body = '<div class="sl-g">' + (q.grouped ? q.lines : verseWindow(q.lines, L.pairs)).map(function (l) {
+        var pl = q.grouped ? excerpt(l.pli, KW.pli, per.p) : l.pli, tr = q.grouped ? excerpt(l[lang] || l.en, trKw, per.t) : (l[lang] || l.en);
+        return '<b class="sl-gp pli-lang" lang="pi">' + hl(pl, KW.pli) + '</b><span class="sl-gt">' + esc(tr) + '</span>';
+      }).join('') + '</div>';
     } else body = '<h5 class="pli-lang" lang="pi">' + hl(excerpt(q.pli, KW.pli, L.pli), KW.pli) + '</h5><span>' + esc(excerpt(slideText(q), trKw, L.tr)) + '</span>';
     return '<div class="carousel-item' + (i === 0 ? ' active' : '') + '">' + plate(q) + body + '<br><a href="/' + esc(q.ref) + '?lang=' + lang + '" target="_blank" rel="noopener" class="text-start">' + esc(citeText(q)) + CHEV + '</a></div>';
   }
@@ -645,7 +613,7 @@
   }
   function suttaRow(u) {
     var name = u.title[lang] || u.title.en || '';
-    return '<a class="sr" href="/' + esc(u.ref) + '?lang=' + lang + '" target="_blank" rel="noopener"><b class="sid">' + esc(u.id) + '</b><span class="sr-t"><span class="sg-t">' + esc(u.title.pli || '') + (name && name !== u.title.pli ? ' <i>' + esc(name) + '</i>' : '') + '</span>' + (u.note && u.kind !== 'random' ? '<span class="sr-note">' + esc(u.note[lang] || u.note.en) + '</span>' : '') + '</span>' + plate(u) + '<svg class="chev"><use href="#i-right"/></svg></a>';
+    return '<a class="sr" href="/' + esc(u.ref) + '?lang=' + lang + '" target="_blank" rel="noopener"><b class="sid">' + esc(u.id) + '</b><span class="sr-t"><span class="sg-t">' + esc(u.title.pli || '') + (name && name !== u.title.pli ? ' <i>' + esc(name) + '</i>' : '') + '</span>' + (u.note && u.kind !== 'random' ? '<span class="sr-note">' + esc(u.note[lang] || u.note.en).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>') + '</span>' : '') + '</span>' + plate(u) + '<svg class="chev"><use href="#i-right"/></svg></a>';
   }
   function showAllSlides() {
     var all = suttaList(), counts = { all: all.length, special: 0, general: 0, random: 0 };
@@ -687,10 +655,8 @@
 
   // ---------- events ----------
   function wire() {
-    $('b-theme').onclick = function () { setTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'); };
-    $('dg-quick-btn').onclick = function () { openPanel('drawer'); $('d-uset').scrollIntoView(); }; // the settings of this page, in the same spot as the site's quick settings
-    $('b-menu').onclick = function () { openPanel('drawer'); };
-    $('ctx-change').onclick = function () { openPanel('drawer'); $('d-uset').scrollIntoView(); };
+    $('b-theme').onclick = function () { var b = $('theme-button'); if (b && window.dgThemeReady !== false) b.click(); else setTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'); };
+    $('ctx-change').onclick = openSettings;
     $('scrim').onclick = closeAll;
     Array.prototype.forEach.call(document.querySelectorAll('[data-close]'), function (b) { b.onclick = closeAll; });
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeAll(); });
@@ -716,24 +682,17 @@
     $('cal-today').onclick = function () { state.calOff = 0; state.selected = null; paint(); };
     $('to-keys').onclick = function (e) { e.preventDefault(); $('keys').scrollIntoView({ behavior: 'smooth' }); };
     function setLang(l) { lang = l; t = T[lang]; store('dhammaLanguage', lang); FIRST_DAY = lang === 'ru' ? 1 : 0; applyLang(); paintKeys(); paint(); }
-    Array.prototype.forEach.call($('langseg').children, function (b) { b.onclick = function () { setLang(b.getAttribute('data-lang')); }; });
-    // The site-wide shortcuts (settings.js: Alt+1 language, Alt+H help, Alt+Y compass ...) find their hooks here.
-    window.DHAMMA_I18N = { get language() { return lang; }, setLanguage: setLang };
-    window.dgAnnounceLanguage = function (l) { toast(l === 'ru' ? 'Русский' : 'English'); };
+    // Language and theme are the site's own (dhamma-i18n.js, themeswitch.js): this page follows them
+    document.addEventListener('dhamma:languagechange', function (e) { var l = ((e.detail && e.detail.language) || '').slice(0, 2) === 'ru' ? 'ru' : 'en'; if (l !== lang) setLang(l); });
+    new MutationObserver(function () { var v = document.documentElement.getAttribute('data-bs-theme'); if (v && v !== document.documentElement.getAttribute('data-theme')) { document.documentElement.setAttribute('data-theme', v); document.body.classList.toggle('dark', v === 'dark'); } }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-bs-theme'] });
+    window.dgAnnounceLanguage = window.dgAnnounceLanguage || function (l) { toast(l === 'ru' ? 'Русский' : 'English'); };
     window.dgDrawerHelpHref = function () { return t.docs; };
-    Array.prototype.forEach.call($('themeseg').children, function (b) { b.onclick = function () { setTheme(b.getAttribute('data-theme-set')); }; });
     $('p-ics').onclick = downloadIcs;
     $('sub-copy').onclick = function () { var u = feedUrl('https'); if (navigator.clipboard) navigator.clipboard.writeText(u).then(function () { toast(t.linkCopied); }); else window.prompt(t.copyLink, u); };
-    $('d-share').onclick = function () {
-      var url = location.origin + '/uposatha-calendar' + (lang === 'ru' ? '?lang=ru' : '');
-      if (navigator.share) navigator.share({ title: t.shareTitle, url: url }).catch(function () { /* cancelled */ });
-      else if (navigator.clipboard) navigator.clipboard.writeText(url).then(function () { toast(t.linkCopied); });
-      else window.prompt(t.shareTitle, url);
-    };
     $('tz').onchange = function (e) { state.tz = e.target.value; store('dgUposathaTz', state.tz); paint(); };
     Array.prototype.forEach.call($('hemiseg').children, function (b) { b.onclick = function () { state.south = b.getAttribute('data-hemi') === 'south'; store('dgUposathaHemisphere', state.south ? 'south' : 'north'); paint(); }; });
-    $('sw-sut').onclick = function () { state.ref = state.ref === 18 ? 6 : 18; store('dgUposathaSutta', state.ref === 18 ? '1' : '0'); paint(); };
-    $('sw-det').onclick = function () { state.lite = !state.lite; store('dgUposathaLite', state.lite ? '1' : '0'); paint(); };
+    onSeg('sw-sut', function (v) { state.ref = v === '1' ? 18 : 6; store('dgUposathaSutta', v); paint(); });
+    onSeg('sw-det', function (v) { state.lite = v === '0'; store('dgUposathaLite', state.lite ? '1' : '0'); paint(); });
     function setPlace(lat, lon, name) { // the place fixes the Sun; south of the equator flips the moon's shape
       state.loc = { lat: lat, lon: lon }; if (name) state.loc.name = name; store('dgUposathaLoc', JSON.stringify(state.loc));
       state.south = lat < 0; store('dgUposathaHemisphere', state.south ? 'south' : 'north');
@@ -753,9 +712,9 @@
       state.tz = zone; store('dgUposathaTz', zone); setPlace(c[0], c[1], String(e.target.value).split('·')[0].trim()); state.locMsg = ''; paint();
     };
     function saveRem() { store('dgUposathaRemind', JSON.stringify(state.rem)); }
-    $('sw-rem').onclick = function () {
+    onSeg('sw-rem', function (v) {
       state.remMsg = '';
-      if (state.rem.on) { state.rem.on = false; saveRem(); paint(); return; }
+      if (v === '0' || state.rem.on) { state.rem.on = false; saveRem(); paint(); return; }
       var LN = nativePlugin();
       if (LN) {
         LN.requestPermissions().then(function (r) { state.rem.on = !!(r && r.display === 'granted'); if (!state.rem.on) state.remMsg = t.remDenied; saveRem(); paint(); }).catch(function () { state.remMsg = t.remUnsupported; paint(); });
@@ -763,7 +722,7 @@
       }
       if (!('Notification' in window)) { state.remMsg = t.remUnsupported; paint(); return; }
       Notification.requestPermission().then(function (perm) { state.rem.on = perm === 'granted'; if (perm !== 'granted') state.remMsg = t.remDenied; saveRem(); paint(); });
-    };
+    });
     $('rem-lead').onchange = function (e) { state.rem.lead = parseInt(e.target.value, 10); saveRem(); paint(); };
     $('rd8').onclick = function () { state.rem.d8 = !state.rem.d8; saveRem(); paint(); };
     $('rd14').onclick = function () { state.rem.d14 = !state.rem.d14; saveRem(); paint(); };

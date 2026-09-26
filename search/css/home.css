@@ -4240,3 +4240,8 @@ body.dg-state-results #search-pane:not(.dg-has-paging) .dt-search { pointer-even
 #dg-drawer a, #dg-drawer a:hover, #dg-drawer a:focus, #dg-drawer a:visited,
 #dg-sheet a, #dg-sheet a:hover, #dg-sheet a:focus, #dg-mega a, #dg-mega a:hover, #dg-mega a:focus,
 #dg-quick a, #dg-quick a:hover, .dg-drawer-row, .dg-drawer-row:hover, .dg-sheet-row, .dg-sheet-row:hover, .dg-chip, .dg-chip:hover { text-decoration: none; }
+
+/* The burger's links are not lilac: legacy `.dark a { color: rgb(122,122,249) }` (0,1,1) beat the row's own colour, so in the dark
+   theme every row and the brand link came out lilac (owner). Same colour as the rest of the menu, accent on hover, never underlined. */
+body #dg-drawer a.dg-drawer-row, body #dg-drawer a.dg-drawer-row:visited, body #dg-drawer a.dg-brand-link, body #dg-drawer a.dg-brand-link:visited { color: var(--dg-text); text-decoration: none; }
+body #dg-drawer a.dg-drawer-row:hover, body #dg-drawer a.dg-drawer-row:focus-visible { color: var(--dg-accent-ink); }

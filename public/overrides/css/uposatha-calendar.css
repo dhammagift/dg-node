@@ -173,6 +173,7 @@ b.match { color: var(--dg-match); font-weight: 600; } /* a found word, as in the
 .sg-t i { color: var(--dg-text-muted); font-style: normal; }
 .sg-n { flex: none; font-variant-numeric: tabular-nums; color: var(--dg-text-muted); font-size: 12.5px; }
 .sg .sr { padding-left: 34px; }
+.sr-note b { color: var(--dg-text); font-weight: 600; }
 .sr-note { display: block; margin-top: 2px; font-size: 12.5px; line-height: 1.4; color: var(--dg-text-muted); white-space: normal; }
 .sr .sid { color: var(--dg-accent-ink); font-weight: 600; min-width: 4.6em; }
 .sr .plate { position: static; flex: none; }
@@ -306,3 +307,15 @@ a, a:hover, a:focus { text-decoration: none; }
 body[data-loc=on] .loc-off { display: none; }
 .subrow { display: flex; flex-wrap: wrap; gap: 6px; }
 .subrow .btn { flex: 1 1 auto; text-decoration: none; }
+
+/* Uposatha settings inside the site's own drawer (#dg-drawer): the site's classes, these few own ones for what it has no class for */
+#dg-drawer .dg-uset-note { margin: 6px 0 0; font-size: 12px; line-height: 1.5; color: var(--dg-text-muted); }
+#dg-drawer .dg-uset-row { display: flex; gap: 6px; margin-top: 6px; }
+#dg-drawer .dg-uset-row .dg-field-input { flex: 1; min-width: 0; }
+#dg-drawer select.dg-field-input, #dg-drawer input.dg-field-input { width: 100%; }
+#dg-drawer .dg-field-btn { border: 1px solid var(--dg-border-strong); background: var(--dg-surface); color: var(--dg-text); font: inherit; font-size: .85rem; padding: 8px 12px; border-radius: 8px; cursor: pointer; width: 100%; margin-top: 6px; }
+#dg-drawer .dg-uset-row .dg-field-btn { width: auto; margin-top: 0; white-space: nowrap; }
+#dg-drawer .dg-field-btn:hover { border-color: var(--dg-accent); color: var(--dg-accent-ink); }
+#dg-drawer .dg-seg-link { flex: 1; text-align: center; padding: 8px 3px; font-size: .85rem; color: var(--dg-text); }
+#dg-drawer .dg-seg-link:hover { background: var(--dg-surface-hover); color: var(--dg-accent-ink); }
+body[data-remind=off] #rem-more { opacity: .45; pointer-events: none; }

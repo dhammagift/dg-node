@@ -24,28 +24,29 @@ SLIDES = [
     ('sn20.4',    None, 'sn/sn20', 'sn20.4',  ['1.2'],         'sv', 'SN 20.4', 'СН 20.4'),
     ('mn53-night', None, 'mn',     'mn53',   ['10.3', '10.4', '10.5'], 'sv', 'MN 53', 'МН 53'),
     ('ud1.1-watch', None, 'kn/ud/vagga1', 'ud1.1', ['1.4'],  'sv', 'Ud 1.1', 'Уд 1.1'),
-    ('an3.70-three', None, 'an/an3', 'an3.70', ['2.1', '2.2', '2.3'], 'sv', 'AN 3.70', 'АН 3.70'),
-    ('an3.70-noble', None, 'an/an3', 'an3.70', ['4.1', '4.2', '4.3'], 'sv', 'AN 3.70', 'АН 3.70'),
-    ('an3.70-vow',   None, 'an/an3', 'an3.70', ['19.1', '19.2', '19.3', '19.4'], 'sv', 'AN 3.70', 'АН 3.70'),
+    ('an3.70-three', [8, 14, 15], 'an/an3', 'an3.70', ['2.1', '2.2', '2.3'], 'sv', 'AN 3.70', 'АН 3.70'),
+    ('an3.70-noble', [8, 14, 15], 'an/an3', 'an3.70', ['4.1', '4.2', '4.3'], 'sv', 'AN 3.70', 'АН 3.70'),
+    ('an3.70-vow', [8, 14, 15], 'an/an3', 'an3.70', ['19.1', '19.2', '19.3', '19.4'], 'sv', 'AN 3.70', 'АН 3.70'),
     ('snp2.14-factors', None, 'kn/snp', 'snp2.14', ['27.1', '27.2', '27.3', '27.4'], 'sv', 'Snp 2.14', 'Снп 2.14'),
     ('snp2.14-days',    None, 'kn/snp', 'snp2.14', ['28.1', '28.2', '28.3', '28.4'], 'sv', 'Snp 2.14', 'Снп 2.14'),
     ('snp2.14-dawn',    [8, 14, 15], 'kn/snp', 'snp2.14', ['29.1', '29.2', '29.3', '29.4'], 'sv', 'Snp 2.14', 'Снп 2.14'),
     ('an8.41',    None, 'an/an8', 'an8.41', ['2.1', '2.2', '2.3', '2.5'], 'sv', 'AN 8.41', 'АН 8.41'),
+    ('sn28.1-day', None, 'sn/sn28', 'sn28.1', [['1.2'], ['1.3', '1.4'], ['2.1']], 'o', 'SN 28.1', 'СН 28.1'),
     ('an10.46',   None, 'an/an10', 'an10.46', ['1.5'],        'o',  'AN 10.46', 'АН 10.46'),
 ]
 # lines that are about an Uposatha day but do not teach it: they go to the random pool
 # verses keep their line breaks
 POEMS = {'an3.37-verse', 'snp2.14-factors', 'snp2.14-days', 'snp2.14-dawn'}
-RANDOM_IDS = {'mn118-15', 'kd2-two', 'bu-pm-15', 'snp2.14-factors', 'snp2.14-dawn', 'kd2-gather', 'kd2-teach', 'kd2-once', 'kd2-differ', 'snp2.14-days', 'ud1.1-watch', 'an8.41'}
+RANDOM_IDS = {'mn118-15', 'kd2-two', 'bu-pm-15', 'snp2.14-factors', 'snp2.14-dawn', 'kd2-gather', 'kd2-teach', 'kd2-once', 'kd2-differ', 'snp2.14-days', 'ud1.1-watch', 'an8.41', 'sn20.4'}
 # One line about what the key sutta gives (a few words, shown under its name in the list of all suttas; only the special and general ones have it)
-NOTES = {
-    'an3.37': {'en': 'On which days', 'ru': 'В какие дни'},
-    'mn83': {'en': 'On which days: 14th, 15th, 8th', 'ru': 'В какие дни: 14-й, 15-й, 8-й'},
+NOTES = {  # **bold** is the question the sutta answers
+    'an3.37': {'en': '**On which days:** 14, 15, 8', 'ru': '**В какие дни:** 14, 15, 8'},
+    'mn83': {'en': '**On which days:** 14, 15, 8', 'ru': '**В какие дни:** 14, 15, 8'},
     'mn146': {'en': '14th - the moon is not full, 15th - full', 'ru': '14-й - луна неполная, 15-й - полная'},
-    'an3.70': {'en': 'How to keep it: three kinds of Uposatha', 'ru': 'Как соблюдать: три вида упосатхи'},
+    'an3.70': {'en': '**At what time:** night and day · **How:** as the arahants do', 'ru': '**В какое время:** ночь и день · **Как:** как араханты'},
     'an10.46': {'en': 'Not to be skipped', 'ru': 'Пропускать нельзя'},
-    'mn53': {'en': 'Three watches of the night', 'ru': 'Три части ночи'},
-    'sn20.4': {'en': 'Three parts of the day', 'ru': 'Три части дня'},
+    'mn53': {'en': 'Three parts of the night', 'ru': 'Три части ночи'},
+    'sn28.1': {'en': 'A monk\'s day: morning, midday, evening', 'ru': 'День монаха: утро, середина дня, вечер'},
 }
 def low(t):
     # the reader's toLower (mergeGathas): the second half of a merged verse line starts in lower case, except "I ..." / "O ..." / "Я..."
@@ -86,13 +87,16 @@ for sid, days, nik, sutta, segs, ru_tr, en_label, ru_label in SLIDES:
     ru = find('', sutta, 'ru', ru_tr)
     en = find('', sutta, 'en', 'sujato')
     key = lambda s: f'{sutta}:{s}'
+    groups = [g for g in segs if isinstance(g, list)]
+    segs_flat = [x for g in segs for x in (g if isinstance(g, list) else [g])]
     sep = '\n' if sid in POEMS else ' '
-    join = lambda d: sep.join(d[key(s)].strip() for s in segs if key(s) in d).replace('<j>', '')
+    join = lambda d: sep.join(d[key(s)].strip() for s in segs_flat if key(s) in d).replace('<j>', '')
     # "special" slides belong to the 8th / 14th / 15th day; "general" ones say that the Uposatha is to be kept
     if sid in RANDOM_IDS: days = None
     lines = [{'pli': pli[key(g)].strip().replace('<j>', ''), 'ru': ru.get(key(g), '').strip(), 'en': en.get(key(g), '').strip().replace('<j>', '')} for g in segs if key(g) in pli] if sid in POEMS else None
     if lines: lines = merge_pairs(lines)
-    out.append({'id': sid, 'kind': 'random' if sid in RANDOM_IDS else 'special' if days else 'general', 'days': days, **({'lines': lines} if lines else {}), 'title': titles(sutta, pli, ru, en), 'note': NOTES.get(sutta) if sid not in RANDOM_IDS else None, 'ref': key(segs[0]), 'cite': {'en': en_label, 'ru': ru_label}, 'pli': join(pli), 'ru': join(ru), 'en': join(en).replace(' Then—', '')})
+    if groups: lines = [{k: ' '.join(d[key(x)].strip() for x in g if key(x) in d) for k, d in (('pli', pli), ('ru', ru), ('en', en))} for g in groups]
+    out.append({'id': sid, 'kind': 'random' if sid in RANDOM_IDS else 'special' if days else 'general', 'days': days, **({'lines': lines} if lines else {}), **({'grouped': True} if groups else {}), 'title': titles(sutta, pli, ru, en), 'note': NOTES.get(sutta) if sid not in RANDOM_IDS else None, 'ref': key(segs_flat[0]), 'cite': {'en': en_label, 'ru': ru_label}, 'pli': join(pli), 'ru': join(ru), 'en': join(en).replace(' Then—', '')})
 # "random": every place in the four Nikayas and the Khuddaka books where the Uposatha is named (any form of "uposath"),
 # with both translations - like the hits of a search for "uposath"; all of them, not one per sutta.
 import re

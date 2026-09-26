@@ -11,8 +11,8 @@
    "en": "The Four Great Kings (1st)"
   },
   "note": {
-   "en": "On which days",
-   "ru": "В какие дни"
+   "en": "**On which days:** 14, 15, 8",
+   "ru": "**В какие дни:** 14, 15, 8"
   },
   "ref": "an3.37:1.1",
   "cite": {
@@ -35,8 +35,8 @@
    "en": "The Four Great Kings (1st)"
   },
   "note": {
-   "en": "On which days",
-   "ru": "В какие дни"
+   "en": "**On which days:** 14, 15, 8",
+   "ru": "**В какие дни:** 14, 15, 8"
   },
   "ref": "an3.37:1.3",
   "cite": {
@@ -78,8 +78,8 @@
    "en": "The Four Great Kings (1st)"
   },
   "note": {
-   "en": "On which days",
-   "ru": "В какие дни"
+   "en": "**On which days:** 14, 15, 8",
+   "ru": "**В какие дни:** 14, 15, 8"
   },
   "ref": "an3.37:5.1",
   "cite": {
@@ -126,8 +126,8 @@
    "en": "The Four Great Kings (1st)"
   },
   "note": {
-   "en": "On which days",
-   "ru": "В какие дни"
+   "en": "**On which days:** 14, 15, 8",
+   "ru": "**В какие дни:** 14, 15, 8"
   },
   "ref": "an3.37:1.5",
   "cite": {
@@ -305,8 +305,8 @@
    "en": "The Four Great Kings (1st)"
   },
   "note": {
-   "en": "On which days",
-   "ru": "В какие дни"
+   "en": "**On which days:** 14, 15, 8",
+   "ru": "**В какие дни:** 14, 15, 8"
   },
   "ref": "an3.37:2.3",
   "cite": {
@@ -327,8 +327,8 @@
    "en": "The Four Great Kings (1st)"
   },
   "note": {
-   "en": "On which days",
-   "ru": "В какие дни"
+   "en": "**On which days:** 14, 15, 8",
+   "ru": "**В какие дни:** 14, 15, 8"
   },
   "ref": "an3.37:3.3",
   "cite": {
@@ -353,8 +353,8 @@
    "en": "About King Maghadeva"
   },
   "note": {
-   "en": "On which days: 14th, 15th, 8th",
-   "ru": "В какие дни: 14-й, 15-й, 8-й"
+   "en": "**On which days:** 14, 15, 8",
+   "ru": "**В какие дни:** 14, 15, 8"
   },
   "ref": "mn83:3.3",
   "cite": {
@@ -367,17 +367,14 @@
  },
  {
   "id": "sn20.4",
-  "kind": "general",
+  "kind": "random",
   "days": null,
   "title": {
    "pli": "Okkhāsutta",
    "ru": "Сутта Котлы",
    "en": "Cauldrons"
   },
-  "note": {
-   "en": "Three parts of the day",
-   "ru": "Три части дня"
-  },
+  "note": null,
   "ref": "sn20.4:1.2",
   "cite": {
    "en": "SN 20.4",
@@ -397,7 +394,7 @@
    "en": "A Trainee"
   },
   "note": {
-   "en": "Three watches of the night",
+   "en": "Three parts of the night",
    "ru": "Три части ночи"
   },
   "ref": "mn53:10.3",
@@ -430,16 +427,20 @@
  },
  {
   "id": "an3.70-three",
-  "kind": "general",
-  "days": null,
+  "kind": "special",
+  "days": [
+   8,
+   14,
+   15
+  ],
   "title": {
    "pli": "Uposathasutta",
    "ru": "Сутта Упосатха",
    "en": "Sabbath"
   },
   "note": {
-   "en": "How to keep it: three kinds of Uposatha",
-   "ru": "Как соблюдать: три вида упосатхи"
+   "en": "**At what time:** night and day · **How:** as the arahants do",
+   "ru": "**В какое время:** ночь и день · **Как:** как араханты"
   },
   "ref": "an3.70:2.1",
   "cite": {
@@ -452,16 +453,20 @@
  },
  {
   "id": "an3.70-noble",
-  "kind": "general",
-  "days": null,
+  "kind": "special",
+  "days": [
+   8,
+   14,
+   15
+  ],
   "title": {
    "pli": "Uposathasutta",
    "ru": "Сутта Упосатха",
    "en": "Sabbath"
   },
   "note": {
-   "en": "How to keep it: three kinds of Uposatha",
-   "ru": "Как соблюдать: три вида упосатхи"
+   "en": "**At what time:** night and day · **How:** as the arahants do",
+   "ru": "**В какое время:** ночь и день · **Как:** как араханты"
   },
   "ref": "an3.70:4.1",
   "cite": {
@@ -474,16 +479,20 @@
  },
  {
   "id": "an3.70-vow",
-  "kind": "general",
-  "days": null,
+  "kind": "special",
+  "days": [
+   8,
+   14,
+   15
+  ],
   "title": {
    "pli": "Uposathasutta",
    "ru": "Сутта Упосатха",
    "en": "Sabbath"
   },
   "note": {
-   "en": "How to keep it: three kinds of Uposatha",
-   "ru": "Как соблюдать: три вида упосатхи"
+   "en": "**At what time:** night and day · **How:** as the arahants do",
+   "ru": "**В какое время:** ночь и день · **Как:** как араханты"
   },
   "ref": "an3.70:19.1",
   "cite": {
@@ -605,6 +614,46 @@
   "pli": "“Aṭṭhaṅgasamannāgato, bhikkhave, uposatho upavuttho mahapphalo hoti mahānisaṁso mahājutiko mahāvipphāro. Kathaṁ upavuttho ca, bhikkhave, aṭṭhaṅgasamannāgato uposatho mahapphalo hoti mahānisaṁso mahājutiko mahāvipphāro? Idha, bhikkhave, ariyasāvako iti paṭisañcikkhati: Ahampajja imañca rattiṁ imañca divasaṁ pāṇātipātaṁ pahāya pāṇātipātā paṭivirato nihitadaṇḍo nihitasattho lajjī dayāpanno, sabbapāṇabhūtahitānukampī viharāmi.",
   "ru": "“Монахи, соблюдаемая в полных восьми аспектах Упосатха приносит великий плод и пользу, она истинно сверкающая и всепроникающая… И каким образом Упосатха соблюдается в полных восьми аспектах, так что приносит великий плод и пользу, [и что она] неимоверно сверкающая и всепроникающая? Вот, монахи, ученик Благородных рассуждает так: Сегодня, в течение этой ночи и дня, я также отброшу и буду отказавшимся от уничтожения жизни. Я также буду пребывать в сострадании ко всем живым существам, отбросив дубину и оружие, добросовестным и милосердным.",
   "en": "“Mendicants, the observance of the sabbath with its eight factors is very fruitful and beneficial and brilliant and bountiful. And how should it be observed? It’s when a noble disciple reflects: I, too, for this day and night will give up killing living creatures, renouncing the rod and the sword. I’ll be scrupulous and kind, and live full of sympathy for all living beings."
+ },
+ {
+  "id": "sn28.1-day",
+  "kind": "general",
+  "days": null,
+  "lines": [
+   {
+    "pli": "Atha kho āyasmā sāriputto pubbaṇhasamayaṁ nivāsetvā pattacīvaramādāya sāvatthiṁ piṇḍāya pāvisi.",
+    "ru": "И тогда уважаемый Сарипутта в первую треть дня, одевшись чашу-чивару-взяв в Саваттхи за подаянием отправился.",
+    "en": "Then Venerable Sāriputta robed up in the morning and, taking his bowl and robe, entered Sāvatthī for alms."
+   },
+   {
+    "pli": "Sāvatthiyaṁ piṇḍāya caritvā pacchābhattaṁ piṇḍapātapaṭikkanto yena andhavanaṁ tenupasaṅkami divāvihārāya. Andhavanaṁ ajjhogāhetvā aññatarasmiṁ rukkhamūle divāvihāraṁ nisīdi.",
+    "ru": "По Саваттхи за подаянием походив, после еды, вернувшийся со сбора подаяния подошёл к роще Анда (тёмный, слепой) для дневного пребывания. В рощу Анда войдя, на корни некоего дерева для дневного пребывания сел.",
+    "en": "He wandered for alms in Sāvatthī. After the meal, on his return from almsround, he went to the Dark Forest for the day’s meditation, plunged deep into it, and sat at the root of a tree to meditate."
+   },
+   {
+    "pli": "Atha kho āyasmā sāriputto sāyanhasamayaṁ paṭisallānā vuṭṭhito yena jetavanaṁ anāthapiṇḍikassa ārāmo tenupasaṅkami.",
+    "ru": "И тогда уважаемый Сарипутта вечерним временем из уединения вышедший, где роща Джеты, парк Анатхапиндики, туда подошёл.",
+    "en": "Then in the late afternoon, Sāriputta came out of retreat and went to Jeta’s Grove, Anāthapiṇḍika’s monastery."
+   }
+  ],
+  "grouped": true,
+  "title": {
+   "pli": "Vivekajasutta",
+   "ru": "Сутта Разъединение",
+   "en": "Born of Seclusion"
+  },
+  "note": {
+   "en": "A monk's day: morning, midday, evening",
+   "ru": "День монаха: утро, середина дня, вечер"
+  },
+  "ref": "sn28.1:1.2",
+  "cite": {
+   "en": "SN 28.1",
+   "ru": "СН 28.1"
+  },
+  "pli": "Atha kho āyasmā sāriputto pubbaṇhasamayaṁ nivāsetvā pattacīvaramādāya sāvatthiṁ piṇḍāya pāvisi. Sāvatthiyaṁ piṇḍāya caritvā pacchābhattaṁ piṇḍapātapaṭikkanto yena andhavanaṁ tenupasaṅkami divāvihārāya. Andhavanaṁ ajjhogāhetvā aññatarasmiṁ rukkhamūle divāvihāraṁ nisīdi. Atha kho āyasmā sāriputto sāyanhasamayaṁ paṭisallānā vuṭṭhito yena jetavanaṁ anāthapiṇḍikassa ārāmo tenupasaṅkami.",
+  "ru": "И тогда уважаемый Сарипутта в первую треть дня, одевшись чашу-чивару-взяв в Саваттхи за подаянием отправился. По Саваттхи за подаянием походив, после еды, вернувшийся со сбора подаяния подошёл к роще Анда (тёмный, слепой) для дневного пребывания. В рощу Анда войдя, на корни некоего дерева для дневного пребывания сел. И тогда уважаемый Сарипутта вечерним временем из уединения вышедший, где роща Джеты, парк Анатхапиндики, туда подошёл.",
+  "en": "Then Venerable Sāriputta robed up in the morning and, taking his bowl and robe, entered Sāvatthī for alms. He wandered for alms in Sāvatthī. After the meal, on his return from almsround, he went to the Dark Forest for the day’s meditation, plunged deep into it, and sat at the root of a tree to meditate. Then in the late afternoon, Sāriputta came out of retreat and went to Jeta’s Grove, Anāthapiṇḍika’s monastery."
  },
  {
   "id": "an10.46",
