@@ -3,7 +3,7 @@
   "name": "Uposatha — Dhamma.gift",
   "short_name": "Uposatha",
   "description": "The Uposatha days of the suttas, and the four moon-phase days, with exact times for your time zone and place.",
-  "start_url": "/uposatha-calendar?source=pwa",
+  "start_url": "/uposatha-calendar?app=1&source=pwa",
   "scope": "/uposatha-calendar",
   "display": "standalone",
   "background_color": "#1b1b1d",

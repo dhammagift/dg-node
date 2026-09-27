@@ -1171,7 +1171,13 @@
     $('form').onsubmit = function (e) { e.preventDefault(); var q = $('paliauto').value.trim(); if (q) location.href = '/' + encodeURIComponent(q) + (lang === 'ru' ? '?lang=ru' : ''); };
     // ----- the app (Capacitor) or ?app=1: five tabs at the bottom, one section at a time
     (function () {
-      var C = window.Capacitor, isApp = params.get('app') === '1' || !!(C && C.isNativePlatform && C.isNativePlatform());
+      var C = window.Capacitor;
+      // Installed (PWA "Add to home screen" or the native app): the manifest's start_url carries ?app=1 for a
+      // fresh install, but an already-installed icon keeps launching whatever start_url it had at install time
+      // (dg-node #52 - the PWA opened as the plain site page). display-mode:standalone / navigator.standalone
+      // (older iOS) is the durable signal - true whenever the page runs as an installed app, any URL, no param needed.
+      var standalone = (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+      var isApp = params.get('app') === '1' || standalone || !!(C && C.isNativePlatform && C.isNativePlatform());
       if (!isApp) return;
       var nav = $('appnav'), tabs = nav.querySelectorAll('button');
       document.body.classList.add('app'); nav.hidden = false;
