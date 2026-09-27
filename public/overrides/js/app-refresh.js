@@ -125,7 +125,6 @@
     if (!body.classList.contains('app') || !nav) return;
     body.setAttribute('data-look', P.get('look') || localStorage.getItem('upLook') || 'm3');
     hero(); setInterval(hero, 15000);
-    logoLoop();
     new MutationObserver(function () { hero(); }).observe(document.getElementById('list'), { childList: true });
     var tm = document.getElementById('t-moon'); if (tm) new MutationObserver(function () { hero(); }).observe(tm, { childList: true, subtree: true });
     var main = document.querySelector('main.page'), busy = false;
@@ -203,6 +202,7 @@
 
   window.addEventListener('load', function () {
     theme(); init(); setTimeout(theme, 400);
+    logoLoop(); // the moon-and-cloud mark animates on tap (and replays itself every few minutes) on the plain site too, not just in the app
     // the page was hidden while it built itself (see the head): show it when the fonts are in and the bar has taken its place
     (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(function () { setTimeout(function () { requestAnimationFrame(function () { if (window.__upoReveal) window.__upoReveal(); }); }, 130); });
   });
