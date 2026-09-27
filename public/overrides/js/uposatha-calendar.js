@@ -36,7 +36,7 @@
       fSpecial: 'special', fGeneral: 'general', fRandom: 'random', slTitle: 'From the suttas', addCal: 'Add to calendar', subH: 'Subscribe', fileH: 'Or a file', calRemind: 'The reminder time and the days are taken from the reminder settings in the menu.', gUposatha: 'Uposatha settings', on: 'On', off: 'Off', fAll: 'All', sortKind: 'By kind', sortSutta: 'By sutta', showAll: 'Show all', readIt: 'Read', dayTag: function (d) { return d.map(function (n) { return n + 'th'; }).join(', ') + ' day'; },
       age: 'age', of30: 'of 30', from: 'from', left: 'left', dU: 'd', hU: 'h', mU: 'min',
       searchPh: 'Search: kacchapa, dn22…', searchGo: 'Search', tocTitle: 'Contents (Alt+2)', clear: 'Clear', tag: 'observance days', compass: 'Favorites / History', menu: 'Menu', theme: 'Theme', prev: 'Previous', next: 'Next', close: 'Close',
-      h1: 'Ariyuposatha', lead: 'The 14th, 15th and 8th lunar days of each half-month, as the suttas count them — six a month.', suttas: 'The suttas on Uposatha →',
+      h1: 'Uposatha', lead: 'The 14th, 15th and 8th lunar days of each half-month, as the suttas count them — six a month.', suttas: 'The suttas on Uposatha →',
       today: 'Today', change: 'change', tDates: 'By dates', tList: 'Uposatha days', tCal: 'Calendar', more: 'Three more months', todayBtn: 'Today',
       kH: 'Key suttas', kSub: 'Each “Read →” opens the sutta at the passage in question and highlights it.', kNow: 'Now open', kNew: 'Open in a new window',
       lic: 'Licences', mt: 'Multitool', lHome: 'Home', lToc: 'Contents', lDict: 'Dictionary', lMemo: 'Memorizer', lang: 'Language', themeH: 'Theme', dark: 'Dark', light: 'Light', auto: 'Auto',
@@ -81,7 +81,7 @@
       repeats: 'the same lunar day as the day before',
       modeS: 'by the suttas · 6 a month', modeM: 'modern · 4 a month', lgS: 'the evening an Uposatha begins', lgC: 'the day of the Uposatha, until the evening', lgS15: '15th (begins in the evening)', lgS814: '8th and 14th', lgM15: 'new / full moon', lgM8: 'quarters', lgT: 'today',
       cellHint: 'Tap a date for details.', pickDate: 'Tap a date',
-      wds: ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'], docs: '/docs/uposatha', linkCopied: 'Link copied', shareTitle: 'Ariyuposatha', locale: 'en-GB',
+      wds: ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'], docs: '/docs/uposatha', linkCopied: 'Link copied', shareTitle: 'Uposatha', locale: 'en-GB',
     },
     ru: {
       pH: 'Структура ночи-дня', sH: 'Другие лунные инструменты', sSub: 'Начало и конец лунного дня и фазы Луны — это астрономические данные. Чтобы проверить их или увидеть по-другому, пользуйтесь астрономическими приложениями и сайтами.', sSite: 'Сайт', sApps: 'Приложения', sDev: 'Разработчикам', tSoft: 'Другие инструменты', helpUrl: '/ru/docs/uposatha/', tocH: 'На странице', tSummary: 'Сводка', tSuttas: 'Сутты по теме', tCalendar: 'Календарь', tParts: 'Структура ночи-дня', tKeys: 'Ключевые сутты', pSub: 'Время% от восхода до заката делится на три равные части, и от заката до восхода тоже — условно, для наглядности, для вашего места и сезона.', pWho: 'Так проводят эти части араханты и другие монахи в суттах.', pDay: 'День', pNight: 'Ночь', setPlace: 'задать место', noonL: 'Полдень', pMid: '** В СН 28.1 слова majjhanhikasamaya нет, но описана эта часть дня; само слово — МН 79.', pFixed: '* Время условное: восход 06:00, закат 18:00, примерно как там, где жил Будда.', pPlace: '* Условно: три равные части от восхода до заката и от заката до восхода.',
@@ -89,7 +89,7 @@
       fSpecial: 'особое', fGeneral: 'общее', fRandom: 'случайное', slTitle: 'Из сутт', addCal: 'В календарь', subH: 'Подписаться', fileH: 'Или файл', calRemind: 'Время напоминания и дни берутся из настроек напоминаний в меню.', gUposatha: 'Настройки упосатхи', on: 'Вкл', off: 'Выкл', fAll: 'Все', sortKind: 'По видам', sortSutta: 'По суттам', showAll: 'Показать все', readIt: 'Читать', dayTag: function (d) { return d.map(function (n) { return n + '-й'; }).join(', ') + ' день'; },
       age: 'возраст', of30: 'из 30', from: 'с', left: 'осталось', dU: 'д', hU: 'ч', mU: 'мин',
       searchPh: 'Поиск: kacchapa, dn22…', searchGo: 'Найти', tocTitle: 'Оглавление (Alt+2)', clear: 'Очистить', tag: 'дни соблюдения', compass: 'Избранное / История', menu: 'Меню', theme: 'Тема', prev: 'Назад', next: 'Вперёд', close: 'Закрыть',
-      h1: 'Ariyuposatha', lead: '14-й, 15-й и 8-й лунные дни каждой половины месяца, как их считают сутты, — шесть в месяц.', suttas: 'Сутты об упосатхе →',
+      h1: 'Uposatha', lead: '14-й, 15-й и 8-й лунные дни каждой половины месяца, как их считают сутты, — шесть в месяц.', suttas: 'Сутты об упосатхе →',
       today: 'Сегодня', change: 'изменить', tDates: 'По датам', tList: 'Упосатхи', tCal: 'Календарь', more: 'Ещё три месяца', todayBtn: 'Сегодня',
       kH: 'Ключевые сутты', kSub: 'Каждое «Читать →» открывает сутту на нужном месте и подсвечивает его.', kNow: 'Сейчас открыта', kNew: 'Открыть в новом окне',
       lic: 'Лицензии', mt: 'Мультитул', lHome: 'Главная', lToc: 'Оглавление', lDict: 'Словарь', lMemo: 'Меморайзер', lang: 'Язык', themeH: 'Тема', dark: 'Тёмная', light: 'Светлая', auto: 'Авто',
@@ -134,7 +134,7 @@
       repeats: 'тот же лунный день, что и накануне',
       modeS: 'по суттам · 6 в месяц', modeM: 'современная · 4 в месяц', lgS: 'вечер, с которого начинается упосатха', lgC: 'день упосатхи, до вечера', lgS15: '15-й (начало вечером)', lgS814: '8-й и 14-й', lgM15: 'новолуние / полнолуние', lgM8: 'четверти', lgT: 'сегодня',
       cellHint: 'Нажмите на дату, чтобы увидеть подробности.', pickDate: 'Нажмите на дату',
-      wds: ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'], docs: '/ru/docs/uposatha', linkCopied: 'Ссылка скопирована', shareTitle: 'Ariyuposatha', locale: 'ru-RU',
+      wds: ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'], docs: '/ru/docs/uposatha', linkCopied: 'Ссылка скопирована', shareTitle: 'Uposatha', locale: 'ru-RU',
     },
   };
   ['en', 'ru'].forEach(function (l) { Object.assign(T[l], window.UposathaCore.NAMES[l]); });
@@ -1181,7 +1181,7 @@
       }, true);
       var brand = document.querySelector('#dg-drawer .dg-brand-link'); // the drawer's header stays the site's: the conch and dhamma.gift lead out to the site (or to its app)
       if (brand) { brand.setAttribute('href', 'https://dhamma.gift/'); brand.setAttribute('target', '_blank'); brand.setAttribute('rel', 'noopener'); }
-      function barTitle(k) { var w = document.querySelector('.tbar .wordmark b'); if (w) w.textContent = { home: 'Ariyuposatha', list: t.navList, cal: t.navCal, parts: t.navParts, keys: t.navKeys }[k] || 'Ariyuposatha'; }
+      function barTitle(k) { var w = document.querySelector('.tbar .wordmark b'); if (!w) return; if (k === 'home') w.innerHTML = '<i class="up-ariy">Ariy</i>uposatha'; else w.textContent = { list: t.navList, cal: t.navCal, parts: t.navParts, keys: t.navKeys }[k] || 'Uposatha'; }
       window.__upoBarTitle = function () { barTitle(document.body.getAttribute('data-app-tab') || 'home'); };
       function openTab(k) {
         barTitle(k); // the app bar names the screen

@@ -136,3 +136,7 @@ body.app .appnav.tighter button span { display: none !important; }
 /* a phone does not blur what is behind the menu while it slides (the blur over a moving page is what makes it jerk): a plain fill */
 body.app #dg-drawer { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; background: var(--dg-surface) !important; }
 body.app #dg-drawer { box-shadow: none !important; } /* a wide blurred shadow of a moving panel is repainted on every frame of the slide */
+
+/* the concept name in the header: "Ariy" stays, muted, so the visible name reads plainly (an <i>, not a <span>, so the
+   page's general ".wordmark span" rule for a subtitle - hidden under 900px - never catches it) */
+.up-ariy { color: var(--dg-text-muted); font-weight: 500; font-style: normal; }
