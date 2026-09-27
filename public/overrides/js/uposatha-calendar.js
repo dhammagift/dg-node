@@ -36,7 +36,7 @@
       fSpecial: 'special', fGeneral: 'general', fRandom: 'random', slTitle: 'From the suttas', addCal: 'Add to calendar', subH: 'Subscribe', fileH: 'Or a file', calRemind: 'The reminder time and the days are taken from the reminder settings in the menu.', gUposatha: 'Uposatha settings', on: 'On', off: 'Off', fAll: 'All', sortKind: 'By kind', sortSutta: 'By sutta', showAll: 'Show all', readIt: 'Read', dayTag: function (d) { return d.map(function (n) { return n + 'th'; }).join(', ') + ' day'; },
       age: 'age', of30: 'of 30', from: 'from', left: 'left', dU: 'd', hU: 'h', mU: 'min',
       searchPh: 'Search: kacchapa, dn22…', searchGo: 'Search', tocTitle: 'Contents (Alt+2)', clear: 'Clear', tag: 'observance days', compass: 'Favorites / History', menu: 'Menu', theme: 'Theme', prev: 'Previous', next: 'Next', close: 'Close',
-      h1: 'Uposatha', lead: 'The 14th, 15th and 8th lunar days of each half-month, as the suttas count them — six a month.', suttas: 'The suttas on Uposatha →',
+      h1: 'Uposatha', titleTag: 'Uposatha by the suttas', lead: 'The 14th, 15th and 8th lunar days of each half-month, as the suttas count them — six a month.', suttas: 'The suttas on Uposatha →',
       today: 'Today', change: 'change', tDates: 'By dates', tList: 'Uposatha days', tCal: 'Calendar', more: 'Three more months', todayBtn: 'Today',
       kH: 'Key suttas', kSub: 'Each “Read →” opens the sutta at the passage in question and highlights it.', kNow: 'Now open', kNew: 'Open in a new window',
       lic: 'Licences', mt: 'Multitool', lHome: 'Home', lToc: 'Contents', lDict: 'Dictionary', lMemo: 'Memorizer', lang: 'Language', themeH: 'Theme', dark: 'Dark', light: 'Light', auto: 'Auto',
@@ -89,7 +89,7 @@
       fSpecial: 'особое', fGeneral: 'общее', fRandom: 'случайное', slTitle: 'Из сутт', addCal: 'В календарь', subH: 'Подписаться', fileH: 'Или файл', calRemind: 'Время напоминания и дни берутся из настроек напоминаний в меню.', gUposatha: 'Настройки упосатхи', on: 'Вкл', off: 'Выкл', fAll: 'Все', sortKind: 'По видам', sortSutta: 'По суттам', showAll: 'Показать все', readIt: 'Читать', dayTag: function (d) { return d.map(function (n) { return n + '-й'; }).join(', ') + ' день'; },
       age: 'возраст', of30: 'из 30', from: 'с', left: 'осталось', dU: 'д', hU: 'ч', mU: 'мин',
       searchPh: 'Поиск: kacchapa, dn22…', searchGo: 'Найти', tocTitle: 'Оглавление (Alt+2)', clear: 'Очистить', tag: 'дни соблюдения', compass: 'Избранное / История', menu: 'Меню', theme: 'Тема', prev: 'Назад', next: 'Вперёд', close: 'Закрыть',
-      h1: 'Uposatha', lead: '14-й, 15-й и 8-й лунные дни каждой половины месяца, как их считают сутты, — шесть в месяц.', suttas: 'Сутты об упосатхе →',
+      h1: 'Uposatha', titleTag: 'Упосатха по суттам', lead: '14-й, 15-й и 8-й лунные дни каждой половины месяца, как их считают сутты, — шесть в месяц.', suttas: 'Сутты об упосатхе →',
       today: 'Сегодня', change: 'изменить', tDates: 'По датам', tList: 'Упосатхи', tCal: 'Календарь', more: 'Ещё три месяца', todayBtn: 'Сегодня',
       kH: 'Ключевые сутты', kSub: 'Каждое «Читать →» открывает сутту на нужном месте и подсвечивает его.', kNow: 'Сейчас открыта', kNew: 'Открыть в новом окне',
       lic: 'Лицензии', mt: 'Мультитул', lHome: 'Главная', lToc: 'Оглавление', lDict: 'Словарь', lMemo: 'Меморайзер', lang: 'Язык', themeH: 'Тема', dark: 'Тёмная', light: 'Светлая', auto: 'Авто',
@@ -339,7 +339,7 @@
       function pick(a, n) { var b = a.slice(), o = []; while (n-- > 0) o.push(b.splice(Math.floor(Math.random() * b.length), 1)[0]); return o; }
       var inp = $('paliauto'); if (inp) inp.placeholder = pick(words, 2).concat(pick(refs, 1)).join(', ') + '…';
     })();
-    document.title = t.h1 + ' — Dhamma.gift';
+    document.title = t.titleTag + ' — Dhamma.gift';
     paintToc();
     $('d-help-top').onclick = function () { window.open(t.helpUrl, '_blank', 'noopener'); }; // the help is in the header of the menu (as in the dictionary); the row at the bottom is gone
     $('b-help').href = $('d-help').href = t.helpUrl; // the help is the docs page: a link, opened in a new window
@@ -1181,7 +1181,7 @@
       }, true);
       var brand = document.querySelector('#dg-drawer .dg-brand-link'); // the drawer's header stays the site's: the conch and dhamma.gift lead out to the site (or to its app)
       if (brand) { brand.setAttribute('href', 'https://dhamma.gift/'); brand.setAttribute('target', '_blank'); brand.setAttribute('rel', 'noopener'); }
-      function barTitle(k) { var w = document.querySelector('.tbar .wordmark b'); if (!w) return; if (k === 'home') w.innerHTML = '<i class="up-ariy">Ariy</i>uposatha'; else w.textContent = { list: t.navList, cal: t.navCal, parts: t.navParts, keys: t.navKeys }[k] || 'Uposatha'; }
+      function barTitle(k) { var w = document.querySelector('.tbar .wordmark b'); if (!w) return; if (k === 'home') w.innerHTML = '<i class="up-ariy">Ariy</i><b class="pli-lang" lang="pi">uposatha</b>'; else w.textContent = { list: t.navList, cal: t.navCal, parts: t.navParts, keys: t.navKeys }[k] || 'Uposatha'; }
       window.__upoBarTitle = function () { barTitle(document.body.getAttribute('data-app-tab') || 'home'); };
       function openTab(k) {
         barTitle(k); // the app bar names the screen
@@ -1275,7 +1275,7 @@
       el.addEventListener('contextmenu', function (e) { e.preventDefault(); toggle(); });
       el.addEventListener('pointerdown', function (e) { if (e.pointerType === 'mouse' && e.button !== 0) return; fired = false; press = setTimeout(function () { fired = true; toggle(); }, 600); });
       ['pointerup', 'pointerleave', 'pointercancel'].forEach(function (n) { el.addEventListener(n, function () { clearTimeout(press); }); });
-      el.addEventListener('click', function (e) { if (fired) { e.preventDefault(); fired = false; } });
+      el.addEventListener('click', function (e) { if (fired) { e.preventDefault(); e.stopPropagation(); fired = false; } }); // a long press already acted (switched the language); the trailing click must not also open the dictionary on the name
     });
     // Language and theme are the site's own (dhamma-i18n.js, themeswitch.js): this page follows them
     document.addEventListener('dhamma:languagechange', function (e) { var l = ((e.detail && e.detail.language) || '').slice(0, 2) === 'ru' ? 'ru' : 'en'; if (l !== lang) setLang(l); });
