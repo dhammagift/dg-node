@@ -132,3 +132,7 @@ body.app.dg-drawer-open.up-dscroll .apptop .rb { background: var(--dg-surface); 
 body.app .appnav.tight button { padding: 0 8px; min-width: 38px; gap: 5px; font-size: 12.5px; }
 body.app .appnav.tighter button { padding: 0 6px; min-width: 34px; }
 body.app .appnav.tighter button span { display: none !important; }
+
+/* a phone does not blur what is behind the menu while it slides (the blur over a moving page is what makes it jerk): a plain fill */
+body.app #dg-drawer { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; background: var(--dg-surface) !important; }
+body.app #dg-drawer { box-shadow: none !important; } /* a wide blurred shadow of a moving panel is repainted on every frame of the slide */

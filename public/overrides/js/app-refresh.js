@@ -55,7 +55,7 @@
     var els = [];
     (ENTER[tab] || []).forEach(function (s) { $$(s).forEach(function (el) { if (visible(el) && el.getBoundingClientRect().top < innerHeight) els.push(el); }); });
     els.forEach(function (el, i) {
-      el.animate([{ opacity: 0, transform: 'translateX(' + dir * 32 + 'px)' }, { opacity: 1, transform: 'none' }], { duration: 400, delay: Math.min(i, 7) * 38, easing: EMPH_DEC, fill: 'backwards' });
+      el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 180, delay: Math.min(i, 3) * 25, easing: EMPH_DEC, fill: 'backwards' });
     });
     var moon = document.querySelector('#up-hero .hm');
     if (tab === 'home' && moon) moon.animate([{ transform: 'translateY(24px) rotate(-24deg) scale(.6)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 900, easing: EMPH_DEC, fill: 'backwards' });
@@ -139,11 +139,9 @@
         if (ic) { ic.classList.remove('pop'); void ic.offsetWidth; ic.classList.add('pop'); }
         if (from === k) { window.scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' }); return; }
         if (!reduce && !busy) $$('button', nav).forEach(function (x) { x.setAttribute('aria-current', String(x === b)); }); // the pill leaves at the tap, not after the page has slid out
-        if (reduce || busy) { orig.call(b); return; }
-        var dir = ORDER.indexOf(k) > ORDER.indexOf(from) ? 1 : -1; busy = true;
-        // Выход короче входа (animations.md): 150 мс против 400
-        var out = main.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateX(' + -dir * 24 + 'px)' }], { duration: 150, easing: EMPH_ACC, fill: 'forwards' });
-        out.onfinish = function () { orig.call(b); out.cancel(); enter(k, dir); busy = false; };
+        // Tabs are peers of one another and are switched dozens of times a day: no slide of the whole page out and in (a big layer moved
+        // twice, and the page waiting 150 ms for it); the pill glides at once, the new screen comes with a short fade of its top blocks.
+        orig.call(b); if (!reduce) enter(k, 1);
       };
     });
     // Месяц календаря листается в сторону нажатой стрелки

@@ -493,7 +493,17 @@
     $('meal-sum').innerHTML = '<h3>' + esc(t.mealH) + tag + '</h3><p class="mstat" data-k="' + kind + '">' + html + '</p>';
     markPali($('meal')); markPali($('meal-sum'));
   }
+  // A switch between the tabs of the app changes only what is shown: the data were worked out by the last paint, so the whole page is not
+  // built again in the middle of the glide (it took 50 ms here and 200+ ms on a phone, the reason of the jerks); only after a while (the clock moved on).
+  var paintedAt = 0;
+  function syncScreen() {
+    document.body.setAttribute('data-screen', state.screen);
+    $('tab-dates').setAttribute('aria-pressed', String(state.screen === 'dates')); setSeg('lv-seg', state.screen === 'dates' ? 'dates' : 'list');
+    $('tab-list').setAttribute('aria-pressed', String(state.screen === 'list'));
+    $('tab-cal').setAttribute('aria-pressed', String(state.screen === 'cal'));
+  }
   function paint() {
+    paintedAt = Date.now();
     var now = new Date(), tz = state.tz, F = formats(), su = sutta();
     var todayYmd = localDay(now, tz), tp = todayYmd.split('-').map(Number);
     var monthStart = tp[0] + '-' + pad(tp[1]) + '-01';
@@ -1149,7 +1159,7 @@
     var lastY = window.scrollY;
     window.addEventListener('scroll', function () {
       var y = window.scrollY, dy = y - lastY;
-      document.body.classList.toggle('scrolled', y > 4); markToc();
+      document.body.classList.toggle('scrolled', y > 4); if (!document.body.classList.contains('app')) markToc(); // the contents list is not in the app: no layout read on every scroll frame
       if (dy > 8 && y > 80) { document.querySelector('.tbar').classList.add('away'); lastY = y; }
       else if (dy < -4 || y <= 80) { document.querySelector('.tbar').classList.remove('away'); lastY = y; }
     }, { passive: true });
@@ -1178,9 +1188,10 @@
         if (k === 'list') { state.screen = state.screen === 'dates' ? 'dates' : 'list'; store('dgUposathaView', state.screen); } // the list tab keeps the view chosen in it
         else if (k === 'cal') { state.screen = 'cal'; store('dgUposathaView', 'cal'); }
         document.body.setAttribute('data-app-tab', k); store('dgUposathaTab', k);
-        setTimeout(fitSlides, 0); // the slideshow is measured when its tab shows
+        if (k === 'home') setTimeout(fitSlides, 0); // the slideshow is measured when its tab shows (each measure lays the slides out: not on the other tabs)
         Array.prototype.forEach.call(tabs, function (b) { var v = String(b.getAttribute('data-tab') === k); if (b.getAttribute('aria-current') !== v) b.setAttribute('aria-current', v); }); // unchanged is left alone: the pill is already gliding
-        paint(); window.scrollTo(0, 0);
+        if (Date.now() - paintedAt > 30000) paint(); else syncScreen();
+        window.scrollTo(0, 0);
       }
       Array.prototype.forEach.call(tabs, function (b) { b.onclick = function () { var k = b.getAttribute('data-tab'); haptic(); openTab(k); }; }); // the key suttas live in the summary
       // the drawer is under the bar: while it is open the pill sits on the gear; a tap on a tab closes the drawer and goes to that tab
