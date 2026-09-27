@@ -2874,19 +2874,4 @@ app.listen({ port: PORT, host: '0.0.0.0' }, (err) => {
     console.log(`\n`);
 });
 
-// Event loop delay probe: logs p50/p99/max (ms) once a minute, then resets the histogram.
-// Set ELD_INTERVAL_MS=0 to disable.
-const eldInterval = Number(process.env.ELD_INTERVAL_MS ?? 60000);
-if (eldInterval > 0) {
-    const ELD_RES = 10;
-    const eld = require('perf_hooks').monitorEventLoopDelay({ resolution: ELD_RES });
-    eld.enable();
-    setInterval(() => {
-        // Histogram values include the sampling timer's own period, subtract it to get pure lag.
-        const ms = (ns) => Math.max(0, ns / 1e6 - ELD_RES).toFixed(1);
-        console.log(`[eld] p50=${ms(eld.percentile(50))} p99=${ms(eld.percentile(99))} max=${ms(eld.max)} ms`);
-        eld.reset();
-    }, eldInterval).unref();
-}
-
 })(); // end of the async IIFE started above the compress/cors registration
