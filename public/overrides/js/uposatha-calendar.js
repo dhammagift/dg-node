@@ -1181,7 +1181,7 @@
       }, true);
       var brand = document.querySelector('#dg-drawer .dg-brand-link'); // the drawer's header stays the site's: the conch and dhamma.gift lead out to the site (or to its app)
       if (brand) { brand.setAttribute('href', 'https://dhamma.gift/'); brand.setAttribute('target', '_blank'); brand.setAttribute('rel', 'noopener'); }
-      function barTitle(k) { var w = document.querySelector('.tbar .wordmark b'); if (!w) return; if (k === 'home') w.innerHTML = '<i class="up-ariy">Ariy</i><b class="pli-lang" lang="pi">uposatha</b>'; else w.textContent = { list: t.navList, cal: t.navCal, parts: t.navParts, keys: t.navKeys }[k] || 'Uposatha'; }
+      function barTitle(k) { var w = document.querySelector('.tbar .wordmark b'); if (!w) return; if (k === 'home') { w.classList.add('pli-lang'); w.setAttribute('lang', 'pi'); w.innerHTML = '<i class="up-ariy">Ariy</i>uposatha'; } else { w.classList.remove('pli-lang'); w.removeAttribute('lang'); w.textContent = { list: t.navList, cal: t.navCal, parts: t.navParts, keys: t.navKeys }[k] || 'Uposatha'; } }
       window.__upoBarTitle = function () { barTitle(document.body.getAttribute('data-app-tab') || 'home'); };
       function openTab(k) {
         barTitle(k); // the app bar names the screen

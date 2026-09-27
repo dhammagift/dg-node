@@ -397,7 +397,7 @@ await app.register(fastifyCors, {
 const CACHE_PREFIXES = [
     '/search', '/api/text/', '/api/nav/',
     '/api/toc', '/api/transliterate', '/openapi.json', '/openapi.en.json',
-    '/reader/mode-table.json', '/manifest.json',
+    '/reader/mode-table.json', '/manifest.json', '/uposatha-calendar.webmanifest',
     '/config/tts-config.json', '/config/sync-config.json',
 ];
 app.addHook('onSend', (req, reply, payload, done) => {
@@ -472,6 +472,14 @@ app.get('/sw.js', (req, res) => {
 // language without hardcoding a list.
 app.get('/manifest.json', (req, res) => {
     sendFile(req, res, path.join(__dirname, 'configs', 'manifest.json'), 'application/manifest+json');
+});
+
+// /uposatha-calendar.webmanifest — the calendar's OWN manifest (a single-segment path, no slash),
+// so without an exact route it fell to the generic /:slug keyword-search catch-all below (any path
+// find-my-way can't match exactly is treated as a search term/sutta id) - Chrome then fetched the
+// search page's HTML instead of JSON and refused to offer installing the calendar as its own PWA.
+app.get('/uposatha-calendar.webmanifest', (req, res) => {
+    sendFile(req, res, path.join(__dirname, 'public', 'uposatha-calendar.webmanifest'), 'application/manifest+json');
 });
 
 // /open?url=... — in-scope redirector for manifest shortcuts that point at external, cross-origin

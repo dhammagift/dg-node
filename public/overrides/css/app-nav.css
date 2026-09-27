@@ -25,8 +25,8 @@ body.app #dg-drawer a[href="/settings/"],
 body.app #dg-drawer a[href="/login"] { display: none !important; }
 
 
-/* the drawer goes under the bar; its end keeps a free place for the bar, and the rating and the version stand at the very bottom */
-body.app .appnav { z-index: 1090; }
+/* the drawer goes under the bar only while it is open; the rest of the time the bar stays at its normal 30, below every ordinary sheet/toast (z-index 50-60) - a modal like "Add to calendar" must not hide behind it */
+body.app.dg-drawer-open .appnav { z-index: 1090; }
 body.app #dg-drawer .dg-drawer-body { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
 .up-appfoot { display: none; }
 body.app .up-appfoot { display: block; margin-top: 18px; }
