@@ -648,7 +648,14 @@
         // Wide screens: no dimming, the page beside the panel shows setting changes live; a click
         // on it still closes the panel (shared backdrop handler). Below 768px the panel is centered
         // over a dimmed page (home.css).
-        showLater(sheet, backdrop, window.matchMedia('(min-width: 768px)').matches);
+        var wide = window.matchMedia('(min-width: 768px)').matches;
+        // Narrow screens only: the reader page keeps scrolling underneath a "centered over a dimmed
+        // page" panel otherwise, and on iOS WKWebView a fixed/centered layer visibly drifts sideways
+        // while the page behind it scrolls (dg-node #51, "settings floats around the screen") - the
+        // same body-scroll lock the side drawer already uses (home.css: body.dg-drawer-open) fixes it
+        // here too. Wide screens keep scrolling on purpose (comment above), so this is narrow-only.
+        if (!wide) document.body.classList.add('dg-drawer-open');
+        showLater(sheet, backdrop, wide);
     }
 
     /* The settings sheet is an iframe of /settings/ that saves every change to localStorage at
@@ -687,6 +694,7 @@
         }
         if (!settingsSheetOpen) return;
         settingsSheetOpen = false;
+        document.body.classList.remove('dg-drawer-open'); // pairs with the narrow-screen lock in openSettingsSheet(); harmless if never added
         var sheet = document.getElementById('dg-settings-sheet');
         var backdrop = document.getElementById('dg-sheet-backdrop');
         sheet.classList.remove('show');
