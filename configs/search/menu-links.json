@@ -249,12 +249,6 @@
                   "label": "Voice",
                   "href": "https://www.sc-voice.net/",
                   "blank": true
-                },
-                {
-                  "label": "Legacy",
-                  "href": "/legacy.suttacentral.net/",
-                  "hideIfUnavailable": true,
-                  "blank": true
                 }
               ]
             },
@@ -1040,12 +1034,6 @@
                 {
                   "label": "Voice",
                   "href": "https://www.sc-voice.net/",
-                  "blank": true
-                },
-                {
-                  "label": "Legacy",
-                  "href": "/legacy.suttacentral.net/",
-                  "hideIfUnavailable": true,
                   "blank": true
                 }
               ]
