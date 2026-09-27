@@ -144,6 +144,35 @@
         orig.call(b); if (!reduce) enter(k, 1);
       };
     });
+    // Swipe between the app's five screens: a horizontal drag on the content clicks the next/previous tab button, so the
+    // pill glide, haptic and fade all follow the exact same path as a real tap - nothing is duplicated here. Skipped where the
+    // content already owns a horizontal gesture (the calendar grid pages its own month; the quote carousel pages its own
+    // slide; the drawer closes on its own swipe), and near the screen edge, which the browser reserves for its own back
+    // gesture. A mostly-vertical move is a scroll and is left alone, exactly like the drawer/sheet swipes elsewhere on the site.
+    (function () {
+      var x0 = 0, y0 = 0, on = false, drag = false;
+      main.addEventListener('touchstart', function (e) {
+        on = e.touches.length === 1 && !e.target.closest('#s-cal, #dg-carousel, #dg-drawer');
+        drag = false; if (!on) return;
+        var x = e.touches[0].clientX;
+        if (x < 24 || x > innerWidth - 24) { on = false; return; }
+        x0 = x; y0 = e.touches[0].clientY;
+      }, { passive: true });
+      main.addEventListener('touchmove', function (e) {
+        if (!on || drag) return;
+        var dx = e.touches[0].clientX - x0, dy = e.touches[0].clientY - y0;
+        if (Math.abs(dy) > 8 && Math.abs(dy) > Math.abs(dx)) { on = false; return; }
+        if (Math.abs(dx) > 8) drag = true;
+      }, { passive: true });
+      main.addEventListener('touchend', function (e) {
+        if (!on || !drag) { on = false; return; }
+        on = false;
+        var dx = e.changedTouches[0].clientX - x0; if (Math.abs(dx) < 60) return;
+        var i = ORDER.indexOf(body.getAttribute('data-app-tab')) + (dx < 0 ? 1 : -1);
+        if (i < 0 || i >= ORDER.length) return;
+        var btn = nav.querySelector('[data-tab="' + ORDER[i] + '"]'); if (btn) btn.click();
+      });
+    })();
     // Месяц календаря листается в сторону нажатой стрелки
     [['cal-prev', -1], ['cal-next', 1], ['cal-today', 0]].forEach(function (p) {
       var el = document.getElementById(p[0]); if (!el || !el.onclick) return; var orig = el.onclick;
