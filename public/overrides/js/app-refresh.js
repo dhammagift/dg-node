@@ -25,7 +25,7 @@
     d.innerHTML = '<svg viewBox="2 7.5 54.5 43.5" aria-hidden="true"><mask id="up-sp-cut" maskUnits="userSpaceOnUse" x="-20" y="0" width="100" height="64"><rect x="-20" width="100" height="64" fill="#fff"/>' +
       '<g class="mvl"><path d="M6,37 H31" ' + C + '/></g><g class="mvr"><path d="M15,47 H43" ' + C + '/></g></mask>' +
       '<g mask="url(#up-sp-cut)"><circle class="mn" cx="39" cy="25" r="17" fill="var(--dg-navy-ink)"/></g>' +
-      '<g stroke="var(--dg-text-muted)"><g class="mvl"><path d="M6,37 H31" ' + K + '/></g><g class="mvr"><path d="M15,47 H43" ' + K + '/></g><g class="mvd"><path d="M50,47 H53" ' + K + '/></g></g></svg><b>Uposatha</b>';
+      '<g stroke="var(--dg-text-muted)"><g class="mvl"><path d="M6,37 H31" ' + K + '/></g><g class="mvr"><path d="M15,47 H43" ' + K + '/></g><g class="mvd"><path d="M50,47 H53" ' + K + '/></g></g></svg><b>Ariyuposatha</b>';
     document.body.appendChild(d);
     setTimeout(function () {
       d.classList.add('out');

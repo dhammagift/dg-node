@@ -2536,7 +2536,7 @@ body.dg-drawer-open {
    was never a growing child of .dg-drawer-head, so it (and everything after it) just sat at its
    natural content width, leaving share/close stranded mid-row with empty space after them. */
 .dg-drawer-head .dg-brand-link { flex: 1; min-width: 0; }
-.dg-drawer-head .dg-brand-name { flex: 1; min-width: 0; }
+.dg-drawer-head .dg-brand-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } /* a big size setting: the name gives way to the buttons instead of running under them */
 .dg-drawer-body { padding: 8px 18px 24px; }
 .dg-drawer-body .dg-group-title {
     /* Owner: main menu items must read bigger than their sub-items, not smaller — was 0.66rem

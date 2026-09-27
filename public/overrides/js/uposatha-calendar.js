@@ -36,7 +36,7 @@
       fSpecial: 'special', fGeneral: 'general', fRandom: 'random', slTitle: 'From the suttas', addCal: 'Add to calendar', subH: 'Subscribe', fileH: 'Or a file', calRemind: 'The reminder time and the days are taken from the reminder settings in the menu.', gUposatha: 'Uposatha settings', on: 'On', off: 'Off', fAll: 'All', sortKind: 'By kind', sortSutta: 'By sutta', showAll: 'Show all', readIt: 'Read', dayTag: function (d) { return d.map(function (n) { return n + 'th'; }).join(', ') + ' day'; },
       age: 'age', of30: 'of 30', from: 'from', left: 'left', dU: 'd', hU: 'h', mU: 'min',
       searchPh: 'Search: kacchapa, dn22…', searchGo: 'Search', tocTitle: 'Contents (Alt+2)', clear: 'Clear', tag: 'observance days', compass: 'Favorites / History', menu: 'Menu', theme: 'Theme', prev: 'Previous', next: 'Next', close: 'Close',
-      h1: 'Uposatha days', lead: 'The 14th, 15th and 8th lunar days of each half-month, as the suttas count them — six a month.', suttas: 'The suttas on Uposatha →',
+      h1: 'Ariyuposatha', lead: 'The 14th, 15th and 8th lunar days of each half-month, as the suttas count them — six a month.', suttas: 'The suttas on Uposatha →',
       today: 'Today', change: 'change', tDates: 'By dates', tList: 'Uposatha days', tCal: 'Calendar', more: 'Three more months', todayBtn: 'Today',
       kH: 'Key suttas', kSub: 'Each “Read →” opens the sutta at the passage in question and highlights it.', kNow: 'Now open', kNew: 'Open in a new window',
       lic: 'Licences', mt: 'Multitool', lHome: 'Home', lToc: 'Contents', lDict: 'Dictionary', lMemo: 'Memorizer', lang: 'Language', themeH: 'Theme', dark: 'Dark', light: 'Light', auto: 'Auto',
@@ -76,12 +76,12 @@
       mornVal: function (d, tm) { return 'morning' + (tm ? ' (' + tm + ')' : ''); }, nightVal: function (d) { return 'night'; }, thDay: 'Day', startS: 'begins', endS: 'ends', eveT: function (tm) { return 'evening (' + tm + ')'; }, goingNow: 'in progress', kEnds: 'Ends', kBegins: 'Begins', kSpan: 'Observed', kLunar: 'Lunar day', kTime: 'Exact time',
       beginsVal: function (eve, sun) { return 'evening ' + eve + (sun ? ' (' + sun + ')' : ''); }, spanVal: function (night, day) { return 'night of ' + night + ' → day of ' + day; },
       sunrise: 'sunrise', sunset: 'sunset',
-      lunarVal: function (tithi, nth, half, change) { return tithi + ' of 30 (' + nth + ' of the ' + half + ') · until ' + change; },
+      lunarVal: function (tithi, age, nth, half, change) { return tithi + (age ? ' · ' + age : '') + ' (' + nth + ' · ' + half + ') · until ' + change; }, wax: 'waxing', wan: 'waning', nthHalf: function (n, h) { return n + ' · ' + h; },
       keptWith: function (nth) { return 'the ' + nth + ' day is skipped and kept with this date'; }, skipped: function (nth) { return nth + ' lunar day is skipped — it begins and ends between two readings'; },
       repeats: 'the same lunar day as the day before',
       modeS: 'by the suttas · 6 a month', modeM: 'modern · 4 a month', lgS: 'the evening an Uposatha begins', lgC: 'the day of the Uposatha, until the evening', lgS15: '15th (begins in the evening)', lgS814: '8th and 14th', lgM15: 'new / full moon', lgM8: 'quarters', lgT: 'today',
       cellHint: 'Tap a date for details.', pickDate: 'Tap a date',
-      wds: ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'], docs: '/docs/uposatha', linkCopied: 'Link copied', shareTitle: 'Uposatha days', locale: 'en-GB',
+      wds: ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'], docs: '/docs/uposatha', linkCopied: 'Link copied', shareTitle: 'Ariyuposatha', locale: 'en-GB',
     },
     ru: {
       pH: 'Структура ночи-дня', sH: 'Другие лунные инструменты', sSub: 'Начало и конец лунного дня и фазы Луны — это астрономические данные. Чтобы проверить их или увидеть по-другому, пользуйтесь астрономическими приложениями и сайтами.', sSite: 'Сайт', sApps: 'Приложения', sDev: 'Разработчикам', tSoft: 'Другие инструменты', helpUrl: '/ru/docs/uposatha/', tocH: 'На странице', tSummary: 'Сводка', tSuttas: 'Сутты по теме', tCalendar: 'Календарь', tParts: 'Структура ночи-дня', tKeys: 'Ключевые сутты', pSub: 'Время% от восхода до заката делится на три равные части, и от заката до восхода тоже — условно, для наглядности, для вашего места и сезона.', pWho: 'Так проводят эти части араханты и другие монахи в суттах.', pDay: 'День', pNight: 'Ночь', setPlace: 'задать место', noonL: 'Полдень', pMid: '** В СН 28.1 слова majjhanhikasamaya нет, но описана эта часть дня; само слово — МН 79.', pFixed: '* Время условное: восход 06:00, закат 18:00, примерно как там, где жил Будда.', pPlace: '* Условно: три равные части от восхода до заката и от заката до восхода.',
@@ -89,7 +89,7 @@
       fSpecial: 'особое', fGeneral: 'общее', fRandom: 'случайное', slTitle: 'Из сутт', addCal: 'В календарь', subH: 'Подписаться', fileH: 'Или файл', calRemind: 'Время напоминания и дни берутся из настроек напоминаний в меню.', gUposatha: 'Настройки упосатхи', on: 'Вкл', off: 'Выкл', fAll: 'Все', sortKind: 'По видам', sortSutta: 'По суттам', showAll: 'Показать все', readIt: 'Читать', dayTag: function (d) { return d.map(function (n) { return n + '-й'; }).join(', ') + ' день'; },
       age: 'возраст', of30: 'из 30', from: 'с', left: 'осталось', dU: 'д', hU: 'ч', mU: 'мин',
       searchPh: 'Поиск: kacchapa, dn22…', searchGo: 'Найти', tocTitle: 'Оглавление (Alt+2)', clear: 'Очистить', tag: 'дни соблюдения', compass: 'Избранное / История', menu: 'Меню', theme: 'Тема', prev: 'Назад', next: 'Вперёд', close: 'Закрыть',
-      h1: 'Дни упосатхи', lead: '14-й, 15-й и 8-й лунные дни каждой половины месяца, как их считают сутты, — шесть в месяц.', suttas: 'Сутты об упосатхе →',
+      h1: 'Ariyuposatha', lead: '14-й, 15-й и 8-й лунные дни каждой половины месяца, как их считают сутты, — шесть в месяц.', suttas: 'Сутты об упосатхе →',
       today: 'Сегодня', change: 'изменить', tDates: 'По датам', tList: 'Упосатхи', tCal: 'Календарь', more: 'Ещё три месяца', todayBtn: 'Сегодня',
       kH: 'Ключевые сутты', kSub: 'Каждое «Читать →» открывает сутту на нужном месте и подсвечивает его.', kNow: 'Сейчас открыта', kNew: 'Открыть в новом окне',
       lic: 'Лицензии', mt: 'Мультитул', lHome: 'Главная', lToc: 'Оглавление', lDict: 'Словарь', lMemo: 'Меморайзер', lang: 'Язык', themeH: 'Тема', dark: 'Тёмная', light: 'Светлая', auto: 'Авто',
@@ -129,12 +129,12 @@
       mornVal: function (d, tm) { return 'утро' + (tm ? ' (' + tm + ')' : ''); }, nightVal: function (d) { return 'ночь'; }, thDay: 'День', startS: 'начало', endS: 'конец', eveT: function (tm) { return 'вечер (' + tm + ')'; }, goingNow: 'идёт сейчас', kEnds: 'Конец', kBegins: 'Начало', kSpan: 'Упосатха', kLunar: 'Лунный день', kTime: 'Точное время',
       beginsVal: function (eve, sun) { return 'вечер ' + eve + (sun ? ' (' + sun + ')' : ''); }, spanVal: function (night, day) { return 'ночь ' + night + ' → день ' + day; },
       sunrise: 'восход', sunset: 'закат',
-      lunarVal: function (tithi, nth, half, change) { return tithi + ' из 30 (' + nth + ' ' + half + ') · до ' + change; },
+      lunarVal: function (tithi, age, nth, half, change) { return tithi + (age ? ' · ' + age : '') + ' (' + nth + ' ' + half + ') · до ' + change; }, wax: 'растущая', wan: 'убывающая', nthHalf: function (n, h) { return n + ' ' + h; },
       keptWith: function (nth) { return nth + ' день пропущен и соблюдается в эту дату'; }, skipped: function (nth) { return nth + ' лунный день пропущен — он начинается и кончается между двумя замерами'; },
       repeats: 'тот же лунный день, что и накануне',
       modeS: 'по суттам · 6 в месяц', modeM: 'современная · 4 в месяц', lgS: 'вечер, с которого начинается упосатха', lgC: 'день упосатхи, до вечера', lgS15: '15-й (начало вечером)', lgS814: '8-й и 14-й', lgM15: 'новолуние / полнолуние', lgM8: 'четверти', lgT: 'сегодня',
       cellHint: 'Нажмите на дату, чтобы увидеть подробности.', pickDate: 'Нажмите на дату',
-      wds: ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'], docs: '/ru/docs/uposatha', linkCopied: 'Ссылка скопирована', shareTitle: 'Дни упосатхи', locale: 'ru-RU',
+      wds: ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'], docs: '/ru/docs/uposatha', linkCopied: 'Ссылка скопирована', shareTitle: 'Ariyuposatha', locale: 'ru-RU',
     },
   };
   ['en', 'ru'].forEach(function (l) { Object.assign(T[l], window.UposathaCore.NAMES[l]); });
@@ -270,17 +270,39 @@
     };
   }
   function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
-  function line(k, v, grey) { return '<span class="ln' + (grey ? ' grey' : '') + '">' + (k ? '<span class="k">' + esc(k) + ':</span> ' : '') + esc(v) + '</span>'; }
+  function line(k, v, grey) { return '<span class="ln' + (grey === 'soft' ? ' soft' : grey ? ' grey' : '') + '">' + (k ? '<span class="k">' + esc(k) + ':</span> ' : '') + esc(v) + '</span>'; }
   function notesOf(r, F) {
     var n = [];
     if (!sutta()) return n; // the modern scheme's line is the exact time of the phase
-    if (r.fullMoon) n.push(t.fullL + ' ' + F.stamp.format(r.fullMoon)); // the moment itself, with its weekday: it is often the next date
-    if (r.newMoon) n.push(t.newL + ' ' + F.stamp.format(r.newMoon));
+    function at(label, pct, d) { return label + ' ' + pct + '% · ' + F.stamp.format(d); } // the moment when the Moon is that lit, with its weekday: it is often the next date
+    if (r.fullMoon) n.push(at(t.fullL, 100, r.fullMoon));
+    if (r.newMoon) n.push(at(t.newL, 0, r.newMoon));
+    n.nPhase = n.length; // the lines up to here are the moments of the phases: they are the point of the line, not a grey note
+    r.names.forEach(function (x) { // the 8th day: half of the Moon is lit at the quarter
+      if (dayNo(x) !== 8) return;
+      var w = x <= 15 ? 90 : 270, q = A.SearchMoonPhase(w, new Date(r.at.getTime() - 3 * DAY), 8);
+      if (q) n.splice(n.nPhase++, 0, at(t.events[w === 90 ? 1 : 3].toLowerCase(), 50, q.date));
+    });
     r.keptWith.forEach(function (x) { n.push(t.keptWith(t.nth(dayNo(x)))); });
     r.skipped.forEach(function (x) { if (r.keptWith.indexOf(x) === -1) n.push(t.skipped(t.nth(dayNo(x)))); });
     if (r.repeats) n.push(t.repeats);
     return n;
   }
+  // The age of the Moon (the time since the new moon) at a moment: "15 d 22 h". Memoised by the minute: a list asks for it for every row.
+  var ageMemo = {};
+  function ageAt(d) {
+    var k = Math.floor(d.getTime() / 60000); if (k in ageMemo) return ageMemo[k];
+    var n = A.SearchMoonPhase(0, new Date(d.getTime() - 30 * DAY), 40), ms = n ? d - n.date : null;
+    return (ageMemo[k] = ms == null || ms < 0 ? '' : Math.floor(ms / 864e5) + ' ' + t.dU + ' ' + Math.floor(ms % 864e5 / 36e5) + ' ' + t.hU);
+  }
+  // The lunar day of a row: short (the number and the half) when the details are off; with the age of the Moon at that moment, the place in the half and the end of the day when they are on.
+  function lunarLine(r, F) {
+    var half = r.tithi <= 15 ? 0 : 1;
+    if (state.lite) return String(r.tithi); // the real lunar day is always shown: the name of the day (8th, 14th, 15th) is the Uposatha's, this one is the Moon's
+    return t.lunarVal(r.tithi, ageAt(r.phaseAt || r.at), t.nth(r.day), t.halvesOf[half], F.stamp.format(r.ends.date));
+  }
+  // The notes as lines: the moments of the phases in the normal colour, the rest grey.
+  function noteLines(r, F) { var n = notesOf(r, F), h = ''; n.forEach(function (x, i) { h += line('', x, i >= (n.nPhase || 0)); }); return h; }
   // The lines under a date: when it begins and how long it is observed (by the suttas) or the exact moment (modern), and in grey
   // the lunar day that is really in force, for information and checking.
   function endOf(r, obs) { return (obs && sunEvent('set', r.y, r.m, r.d + 1, state.tz, obs)) || zonedToUtc(r.y, r.m, r.d + 1, 18, state.tz); } // when the Uposatha of the suttas ends
@@ -299,8 +321,8 @@
       h += line(t.kEnds, t.nightVal(dd));
       if (r.phaseAt) h += line(t.kTime, F.stamp.format(r.phaseAt), true);
     }
-    h += line(t.kLunar, t.lunarVal(r.tithi, t.nth(r.day), t.halvesOf[r.tithi <= 15 ? 0 : 1], F.stamp.format(r.ends.date)), true);
-    notesOf(r, F).forEach(function (n) { h += line('', n, true); });
+    h += line(t.kLunar, lunarLine(r, F), state.lite ? 'soft' : true);
+    h += noteLines(r, F);
     return h;
   }
 
@@ -319,6 +341,7 @@
     })();
     document.title = t.h1 + ' — Dhamma.gift';
     paintToc();
+    $('d-help-top').onclick = function () { window.open(t.helpUrl, '_blank', 'noopener'); }; // the help is in the header of the menu (as in the dictionary); the row at the bottom is gone
     $('b-help').href = $('d-help').href = t.helpUrl; // the help is the docs page: a link, opened in a new window
     $('twi').innerHTML = Object.keys(TWI).map(function (k) { return '<option value="' + k + '">' + esc(t.twiO[k]) + '</option>'; }).join(''); $('twi').value = state.twi;
     $('tst-kind').innerHTML = Object.keys(t.tstKinds).map(function (k) { return '<option value="' + k + '">' + esc(t.tstKinds[k]) + '</option>'; }).join('');
@@ -379,12 +402,37 @@
     if (document.hidden) return;
     var now = new Date(), e;
     if ((e = $('pct'))) e.textContent = illumPercent(now);
-    if ((e = $('age')) && live.born) e.textContent = span(now - live.born);
+    if ((e = $('age')) && live.born) { var ms = now - live.born; e.textContent = Math.floor(ms / 864e5) + ' ' + t.dU + ' ' + Math.floor(ms % 864e5 / 36e5) + ' ' + t.hU; }
     if ((e = $('left')) && live.ends) e.textContent = span(live.ends - now);
     Array.prototype.forEach.call(document.querySelectorAll('.meal-left'), function (b) { var to = +b.getAttribute('data-to'); if (to <= now.getTime()) { if (!params.get('meal') && !repainting) { repainting = true; try { paint(); } finally { repainting = false; } } } else b.textContent = span(to - now); }); // the moment of midday or dawn passed: the block changes its state
   }
   // The parts of the day: sunrise to sunset in three, sunset to sunrise in three (fixed 06:00 / 18:00 without a place).
+  // What a person did in the morning, at midday, in the evening: one text of the pool of the suttas for each part, drawn anew on every opening of the page.
+  // Until the pool is there (or without it) the fixed lines of the strings stand. The night keeps its fixed lines.
+  var partsPool = null, partsPoolLoading = false, partPick = {};
+  function ensurePartsPool() {
+    if (partsPool || partsPoolLoading) return; partsPoolLoading = true;
+    fetch('/assets/js/uposatha-parts-pool.json').then(function (r) { return r.json(); }).then(function (d) {
+      partsPool = d; ['morning', 'midday', 'evening', 'night'].forEach(function (k) { var l = d[k] || []; partPick[k] = l.length ? l[Math.floor(Math.random() * l.length)] : null; }); paint(); // the night: one sutta with the three watches, all three rows from it
+    }).catch(function () { partsPoolLoading = false; });
+  }
+  function dayPartsNow() {
+    return t.dayParts.map(function (n, i) {
+      var e = partPick[['morning', 'midday', 'evening'][i]]; if (!e) return n;
+      var txt = (lang === 'ru' && e.ru) || e.en, cut = txt.length > 240 ? txt.slice(0, txt.lastIndexOf(' ', 240)) + ' …' : txt;
+      return [n[0], n[1], cut + (lang === 'ru' && !e.ru ? ' · EN' : '') + (/majjhanhik/.test(e.pli) || i !== 1 ? '' : '**'), e.ref];
+    });
+  }
+  function nightPartsNow() {
+    var set = partPick.night; if (!set) return t.nightParts;
+    return t.nightParts.map(function (n, i) {
+      var w = set.watches[i]; if (!w) return n;
+      var txt = (lang === 'ru' && w.ru) || w.en, cut = txt.length > 240 ? txt.slice(0, txt.lastIndexOf(' ', 240)) + ' …' : txt;
+      return [n[0], n[1], cut + (lang === 'ru' && !w.ru ? ' · EN' : ''), w.ref];
+    });
+  }
   function paintParts(F, now, ymd) {
+    ensurePartsPool();
     var obs = state.loc ? new A.Observer(state.loc.lat, state.loc.lon, 0) : null, tz = state.tz;
     function sun(kind, d) { var p = d.split('-').map(Number); return edge(kind, p[0], p[1], p[2], tz, obs) || zonedToUtc(p[0], p[1], p[2], kind === 'rise' ? 6 : 18, tz); }
     var rise = sun('rise', ymd), set = sun('set', ymd);
@@ -396,8 +444,8 @@
         return '<div class="prow"' + (now >= a && now < b ? ' data-now="true"' : '') + '><span><b class="pli-lang" lang="pi">' + esc(n[0]) + '</b><small>' + esc(n[1]) + '</small><em>' + esc(n[2]) + ' · ' + n[3].split(',').map(function (r) { return '<a class="pref selectable" href="/' + esc(r) + '?lang=' + lang + '" target="_blank" rel="noopener">' + esc(r.split(':')[0]) + '</a>'; }).join(' · ') + '</em></span><span class="tm">' + F.hm.format(a) + ' – ' + F.hm.format(b) + '</span></div>';
       }).join('') + '</div>';
     }
-    $('pgrid').innerHTML = block(t.pDay, F.week.format(Date.parse(ymd)), rise, set, t.dayParts) +
-      block(t.pNight, F.week.format(Date.parse(nightFrom)) + ' → ' + F.week.format(Date.parse(ymdAdd(nightFrom, 1))), nStart, nEnd, t.nightParts);
+    $('pgrid').innerHTML = block(t.pDay, F.week.format(Date.parse(ymd)), rise, set, dayPartsNow()) +
+      block(t.pNight, F.week.format(Date.parse(nightFrom)) + ' → ' + F.week.format(Date.parse(ymdAdd(nightFrom, 1))), nStart, nEnd, nightPartsNow());
     $('pwho').textContent = t.pWho; // the lead line before the table: who spends the parts this way
     $('pnote').textContent = (obs ? t.pPlace : t.pFixed) + '\n' + t.pMid; // the footnotes: what is conventional, then the word
     markPali($('pnote'));
@@ -485,8 +533,9 @@
     $('t-moon').innerHTML = moon(pIndex, 'moon');
     $('t-date').textContent = cap(F.dateLong.format(now));
     var dot = '<span class="dot">·</span>';
-    $('t-phase').innerHTML = '<span>' + esc(t.phases[pIndex]) + '</span>' + dot + '<span><span id="pct">' + percent + '</span>% ' + esc(t.illum) + '</span>' + '<span class="dt">' + dot + '<span>' + esc(t.age) + ' <span id="age"></span></span></span><br>' +
-      '<span><b style="font-weight:600;color:var(--dg-text)">' + esc(t.ld) + ' ' + tithi + '</b> ' + esc(t.of30) + ' (' + esc(t.nth(dayNo(tithi))) + ' ' + esc(t.halvesOf[tithi <= 15 ? 0 : 1]) + ')</span>' +
+    $('t-phase').innerHTML = '<span>' + esc(t.phases[pIndex]) + '</span>' + dot + '<span><span id="pct">' + percent + '</span>% ' + esc(t.illum) + '</span>' + '<br>' +
+      '<span><b style="font-weight:600;color:var(--dg-text)">' + esc(t.ld) + ' ' + tithi + '</b>' + (state.lite ? dot + esc(tithi <= 15 ? t.wax : t.wan)
+        : '<span class="dt">' + dot + '<span id="age"></span> (' + esc(t.nthHalf(t.nth(dayNo(tithi)), t.halvesOf[tithi <= 15 ? 0 : 1])) + ')</span>') + '</span>' +
       (dayEnds ? '<span class="dt">' + dot + '<span>' + (dayBegan ? esc(t.from) + ' ' + esc(F.stamp.format(dayBegan.date)) + ' ' : '') + esc(t.until) + ' ' + esc(F.stamp.format(dayEnds.date)) + '</span>' + dot + '<span>' + esc(t.left) + ' <span id="left"></span></span></span>' : '');
     liveTick();
     paintParts(F, now, todayYmd);
@@ -520,7 +569,7 @@
     // A table of the Uposathas: the day (with the moon), the beginning, the end. The long view adds a line under a row.
     function nameParts(r) { var n = nameOf(r), m = /^(.*?)(?: · | of the )(.*)$/.exec(n); return m ? [m[1], m[2]] : [n, '']; }
     // the extra line of a row: the real lunar day (the beginning and the end are the columns of the table, not repeated)
-    function listDetail(r) { var h = ''; if (!su && r.phaseAt) h += line(t.kTime, F.stamp.format(r.phaseAt)); h += line(t.kLunar, t.lunarVal(r.tithi, t.nth(r.day), t.halvesOf[r.tithi <= 15 ? 0 : 1], F.stamp.format(r.ends.date)), true); notesOf(r, F).forEach(function (n) { h += line('', n, true); }); return h; }
+    function listDetail(r) { var h = ''; if (!su && r.phaseAt) h += line(t.kTime, F.stamp.format(r.phaseAt)); h += line(t.kLunar, lunarLine(r, F), state.lite ? 'soft' : true); h += noteLines(r, F); return h; }
     var html = '', lastMonth = '';
     list.forEach(function (r) {
       var month = r.ymd.slice(0, 7);
@@ -576,7 +625,7 @@
         out += '<tr class="row' + (f.first ? ' first' : '') + '" data-ymd="' + ymd + '"' + (ymd < todayYmd && !running ? ' data-past="true"' : '') + (isToday && f.first ? ' data-today="true"' : '') + (running ? ' data-now="true"' : '') + '>' +
           (f.first ? '<td class="d"' + (f.span > 1 ? ' rowspan="' + f.span + '"' : '') + '><b>' + esc(F.day.format(Date.parse(ymd))) + '</b><small>' + esc(F.wd.format(Date.parse(ymd))) + '</small></td>' : '') +
           (absorbed[i] ? '' : '<td class="m"' + (join[i] ? ' rowspan="2"' : '') + '>' + ((join[i] || !su) ? '<small>' + esc(nameShort(r0)) + '</small>' : '') + moon(rowI(r0), 'moon mi') + '</td>') + '<td class="s">' +
-          its.map(function (x) { return '<span class="' + x.kind + '"><em>' + esc(x.kind === 'end' ? t.kEnds : t.kBegins) + '</em>' + (absorbed[i] || join[i] || !su ? '' : ' ' + esc(nameShort(x.r))) + '<small>' + esc(x.tm) + '</small>' + (x.kind === 'beg' && su ? '<span class="ln grey">' + esc(t.kLunar + ': ' + t.lunarVal(x.r.tithi, t.nth(x.r.day), t.halvesOf[x.r.tithi <= 15 ? 0 : 1], F.stamp.format(x.r.ends.date))) + '</span>' + notesOf(x.r, F).map(function (n) { return '<span class="ln grey">' + esc(n) + '</span>'; }).join('') : '') + '</span>'; }).join('') + // the end of a joined Uposatha has no name: the moon over both rows is its day
+          its.map(function (x) { return '<span class="' + x.kind + '"><em>' + esc(x.kind === 'end' ? t.kEnds : t.kBegins) + '</em>' + (absorbed[i] || join[i] || !su ? '' : ' ' + esc(nameShort(x.r))) + '<small>' + esc(x.tm) + '</small>' + (x.kind === 'beg' && su ? '<span class="ln ' + (state.lite ? 'soft' : 'grey') + '">' + esc(t.kLunar + ': ' + lunarLine(x.r, F)) + '</span>' + noteLines(x.r, F) : '') + '</span>'; }).join('') + // the end of a joined Uposatha has no name: the moon over both rows is its day
           (isToday && f.last ? '<span class="tdy">' + esc(t.isToday) + '</span>' : '') + '</td></tr>';
       });
       if (lastM) out += '</tbody></table></div>';
@@ -1122,7 +1171,7 @@
       }, true);
       var brand = document.querySelector('#dg-drawer .dg-brand-link'); // the drawer's header stays the site's: the conch and dhamma.gift lead out to the site (or to its app)
       if (brand) { brand.setAttribute('href', 'https://dhamma.gift/'); brand.setAttribute('target', '_blank'); brand.setAttribute('rel', 'noopener'); }
-      function barTitle(k) { var w = document.querySelector('.tbar .wordmark b'); if (w) w.textContent = { home: 'Ariyuposatho', list: t.navList, cal: t.navCal, parts: t.navParts, keys: t.navKeys }[k] || 'Ariyuposatho'; }
+      function barTitle(k) { var w = document.querySelector('.tbar .wordmark b'); if (w) w.textContent = { home: 'Ariyuposatha', list: t.navList, cal: t.navCal, parts: t.navParts, keys: t.navKeys }[k] || 'Ariyuposatha'; }
       window.__upoBarTitle = function () { barTitle(document.body.getAttribute('data-app-tab') || 'home'); };
       function openTab(k) {
         barTitle(k); // the app bar names the screen

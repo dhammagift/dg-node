@@ -13,7 +13,7 @@
   var NAMES = {
     en: {
       halves: ['waxing half', 'waning half'], halvesOf: ['waxing half', 'waning half'], events: ['New moon', 'First quarter', 'Full moon', 'Last quarter'], uday: 'Uposatha day', and: ' & ',
-      nth: function (n) { return EN_ORD[n] || n + 'th'; }, dayOf: function (nth, half) { return nth + ' day of the ' + half; },
+      nth: function (n) { return EN_ORD[n] || n + 'th'; }, dayOf: function (nth, half) { return nth + ' day · ' + half; },
       two: 'Two Uposatha days: the 14th and the 15th.', begins: 'Begins', tzName: 'Uposatha days',
     },
     ru: {

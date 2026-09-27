@@ -110,6 +110,7 @@ body[data-screen=list] #s-list, body[data-screen=dates] #s-dates, body[data-scre
 .ln { display: block; font-size: 12.5px; line-height: 1.5; }
 .ln .k { color: var(--dg-text-2); font-weight: 600; }
 .ln.grey { color: var(--dg-text-muted); }
+.ln.soft { color: var(--dg-text-muted); } /* like grey, but stays in the short view */
 .mon li[data-past=true] { color: var(--dg-text-muted); }
 .mon li[data-now=true] .w { color: var(--dg-on-accent-bg); font-weight: 600; }
 .more { margin: 14px 0 0; display: flex; justify-content: center; }
@@ -140,7 +141,7 @@ body[data-screen=list] #s-list, body[data-screen=dates] #s-dates, body[data-scre
 .detail { margin: 12px 0 0; border: 1px solid var(--dg-border); border-radius: var(--dg-radius); background: var(--dg-surface); padding: 12px 14px; font-size: 14px; min-height: 4.4em; }
 .detail .badge { margin-left: 8px; }
 .detail .ttl { display: block; font-weight: 600; margin-top: 4px; color: var(--dg-accent-ink); }
-body[data-mode=lite] .today .dt, body[data-mode=lite] .ln.grey, body[data-mode=lite] .grid .c .ld, body[data-mode=lite] .detail, body[data-mode=lite] .today .sun { display: none; }
+body[data-mode=lite] .today .dt, body[data-mode=lite] .ln.grey, body[data-mode=lite] .grid .c .ld, body[data-mode=lite] .today .sun { display: none; } /* the box of a tapped day stays in the short view: the phase and its time are the point */
 body[data-mode=lite] .ln.spanl { display: none; }
 .ln.dayl { display: none; }
 body[data-mode=lite] .ln.dayl { display: block; }
@@ -204,7 +205,7 @@ b.match { color: var(--dg-match); font-weight: 600; } /* a found word, as in the
 .prow { display: flex; align-items: baseline; gap: 10px; padding: 9px 14px; font-size: 13.5px; }
 .prow + .prow { border-top: 1px solid var(--dg-border); }
 .prow b { font-weight: 600; font-style: italic; }
-.prow small { display: block; font-size: 11.5px; color: var(--dg-text-muted); }
+.prow small { display: inline; margin-left: 6px; font-size: inherit; color: var(--dg-text-muted); } /* the name of the part and its meaning: one line, one size, two colours (two lines only when there is no room) */
 .prow .tm { margin-left: auto; white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--dg-text-2); }
 .prow[data-now=true] { margin: 4px 6px; padding: 6px 8px; border-radius: 12px; background: color-mix(in srgb, var(--dg-navy-ink) 22%, var(--dg-surface)); } /* the current part: a plaque (a tonal fill), not an outline; not green (green is for kala) */
 .prow[data-now=true] + .prow, .prow:has(+ .prow[data-now=true]) { border-top-color: transparent; } /* the current part: a frame and a denser fill, not green (green is for kala) */
@@ -359,7 +360,7 @@ body[data-remind=off] #rem-more { opacity: .45; pointer-events: none; }
 #s-summary, #slides, #s-calendar, #parts, #keys { scroll-margin-top: 90px; }
 body.embed .toc { display: none; }
 
-.soft { margin: 34px 0 0; }
+section.soft { margin: 34px 0 0; }
 .soft h2 { font-size: 17px; margin: 0 0 4px; }
 .soft .sub { margin: 0 0 12px; font-size: 13px; line-height: 1.55; color: var(--dg-text-muted); max-width: 70ch; }
 .soft ul { margin: 0; padding: 0 0 0 18px; font-size: 14px; line-height: 1.9; color: var(--dg-text-2); }
@@ -519,7 +520,6 @@ body[data-mode=lite] .ln.endl { display: block; }
 .utab .ub b, .utab .ue b { font-weight: 600; white-space: nowrap; }
 .utab .ue b { color: var(--dg-accent-ink); }
 .utab tr.det { display: table-row; }
-body[data-mode=lite] .utab tr.det { display: none; }
 .utab tr[data-past=true] td { opacity: .62; }
 .utab { table-layout: fixed; } .utab th:nth-child(1) { width: 42%; } .utab th:nth-child(2), .utab th:nth-child(3) { width: 29%; } .utab td { overflow-wrap: anywhere; }
 
@@ -639,3 +639,4 @@ body.app:has(#up-splash)::after { display: none; }
 .ctx .dot { margin: 0 2px; }
 .ctx .modern { color: #9b1c31; font-weight: 600; }
 [data-theme="dark"] .ctx .modern { color: #d8546b; }
+#d-help[hidden] { display: none !important; } /* the help is the ? in the header of the menu */
