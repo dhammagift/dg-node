@@ -2546,8 +2546,9 @@ let googleProvider = null;
 let unsubSettings = null;
 let unsubFavs = null;
 let unsubHist = null;
-let unsubProgress = null; 
-let unsubSessionList = null; 
+let unsubProgress = null;
+let unsubSessionList = null;
+let unsubSubs = null; // "Ежедневное чтение" — подписки на поиск/место/случайную сутту, owner 2026-09-28: "это все должно ходить в облако" 
 let unsubMySession = null;   
 
 // АНОНИМНЫЙ ПАРСЕР УСТРОЙСТВА (С ПОЛНЫМ «ПАСПОРТОМ»)
@@ -2754,6 +2755,7 @@ window.setupCloudListeners = function(uid) {
     if (unsubFavs) unsubFavs();
     if (unsubHist) unsubHist();
     if (unsubProgress) unsubProgress(); 
+    if (unsubSubs) unsubSubs();
 
     const userRef = db.collection("users").doc(uid);
 
@@ -2862,6 +2864,31 @@ window.setupCloudListeners = function(uid) {
         if (hasChanges) localStorage.setItem('dg_cloudProgress', JSON.stringify(cloudProgressData));
     });
 
+    // "Ежедневное чтение" — подписки (поиск/место/случайная) и отметки прочитанного.
+    // Тот же merge-в-localStorage паттерн, что у favorites/history выше: облако — источник
+    // истины между устройствами, dg_subscriptions — локальный кэш, который реально читает UI
+    // (subGetAll() и т.п., dg-subs.js). readIds живёт ПОЛЕМ на самом документе подписки
+    // (firebase.firestore.FieldValue.arrayUnion/arrayRemove, см. subMarkRead ниже) — не отдельной
+    // коллекцией: "отметить прочитанное" это апдейт одного поля одного документа, не то же самое
+    // по объёму, что history/favorites (там что ни строка — то свой документ).
+    unsubSubs = userRef.collection("subscriptions").onSnapshot((snapshot) => {
+        if (snapshot.metadata.hasPendingWrites) return;
+        let subsMap = new Map();
+        (JSON.parse(localStorage.getItem('dg_subscriptions')) || []).forEach(s => subsMap.set(s.id, s));
+        snapshot.docChanges().forEach((change) => {
+            const cloudSub = change.doc.data();
+            if (change.type === "added" || change.type === "modified") {
+                subsMap.set(change.doc.id, { ...cloudSub, id: change.doc.id });
+            }
+            if (change.type === "removed") {
+                subsMap.delete(change.doc.id);
+            }
+        });
+        const finalSubs = Array.from(subsMap.values()).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+        localStorage.setItem('dg_subscriptions', JSON.stringify(finalSubs));
+        if (typeof window.refreshSubscriptionsUI === 'function') window.refreshSubscriptionsUI();
+    });
+
     // Сессии
     let localSessionId = localStorage.getItem('dg_session_id');
     if (!localSessionId) {
@@ -2915,6 +2942,7 @@ window.triggerSelfDestruct = async function(reason = "terminated") {
     if (typeof unsubFavs !== 'undefined' && unsubFavs) unsubFavs();
     if (typeof unsubHist !== 'undefined' && unsubHist) unsubHist();
     if (typeof unsubProgress !== 'undefined' && unsubProgress) unsubProgress(); 
+    if (typeof unsubSubs !== 'undefined' && unsubSubs) unsubSubs();
     if (window.unsubSessionList) window.unsubSessionList();
     if (typeof unsubMySession !== 'undefined' && unsubMySession) unsubMySession();
 
@@ -3041,6 +3069,101 @@ window.syncHistoryItemToCloud = async function(key, url, timestamp, isDeleted = 
     } catch (e) { console.error("History Sync Error:", e); }
 };
 
+// === "ЕЖЕДНЕВНОЕ ЧТЕНИЕ" — подписки (поиск / место в каноне / случайная сутта) + отметки
+// прочитанного. Данные — configs/reader/../ТЗ п.9. localStorage (dg_subscriptions) читает вся
+// остальная UI (бар/попап в выдаче, попап в ридере, Быстрое окно) — эти функции держат его в
+// консистентном состоянии И, если есть облако (getUid() — Google-логин или анонимная
+// syncPhraseId, см. выше), зеркалят туда же тем же способом, что favorites/history. Без
+// логина/фразы всё это по-прежнему работает чисто локально — subSync() ниже просто не пишет
+// в облако (тот же ранний return, что у всех sync*ToCloud выше).
+function subGetAll() {
+    try { return JSON.parse(localStorage.getItem('dg_subscriptions')) || []; } catch (e) { return []; }
+}
+function subSaveAll(subs) {
+    try { localStorage.setItem('dg_subscriptions', JSON.stringify(subs)); } catch (e) { /* private mode */ }
+    if (typeof window.refreshSubscriptionsUI === 'function') window.refreshSubscriptionsUI();
+}
+function subGet(id) { return subGetAll().find(s => s.id === id) || null; }
+
+// Создаёт/обновляет одну подписку локально (оптимистично, сразу) и запускает облачный апсерт.
+// sub без id — новая подписка (id генерируется здесь); с id — правка существующей.
+window.subUpsert = function (sub) {
+    var subs = subGetAll();
+    if (!sub.id) sub.id = 'sub_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    if (!sub.createdAt) sub.createdAt = Date.now();
+    if (!sub.readIds) sub.readIds = [];
+    var i = subs.findIndex(s => s.id === sub.id);
+    if (i === -1) subs.unshift(sub); else subs[i] = sub;
+    subSaveAll(subs);
+    window.syncSubscriptionToCloud(sub);
+    return sub;
+};
+
+window.subRemove = function (id) {
+    subSaveAll(subGetAll().filter(s => s.id !== id));
+    window.syncSubscriptionToCloud({ id: id }, true);
+};
+
+window.subSetPaused = function (id, paused) {
+    var sub = subGet(id);
+    if (!sub) return;
+    sub.paused = paused;
+    window.subUpsert(sub);
+};
+
+// textId входит/не входит в readIds этой ОДНОЙ подписки (ТЗ §6: отметка — per-subscription,
+// "отметил в «dukkha» — в «sukha» текст ещё придёт"). on=true отмечает, on=false снимает отметку.
+window.subMarkRead = function (id, textId, on) {
+    var sub = subGet(id);
+    if (!sub) return;
+    var set = new Set(sub.readIds || []);
+    if (on) set.add(textId); else set.delete(textId);
+    sub.readIds = Array.from(set);
+    var subs = subGetAll();
+    var i = subs.findIndex(s => s.id === id);
+    if (i !== -1) { subs[i] = sub; subSaveAll(subs); }
+    if (!db || !getUid()) return;
+    var docRef = db.collection("users").doc(getUid()).collection("subscriptions").doc(id);
+    docRef.set({
+        readIds: firebase.firestore.FieldValue[on ? 'arrayUnion' : 'arrayRemove'](textId),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true }).catch(e => console.error("Subscription read-mark sync error:", e));
+};
+
+// "Отметить во всех" (ТЗ §6) — textId отмечается в КАЖДОЙ активной подписке, чьи suttaIds его
+// содержат, не только в текущей.
+window.subMarkReadEverywhere = function (textId, on) {
+    subGetAll().forEach(function (s) {
+        if ((s.suttaIds || []).indexOf(textId) !== -1) window.subMarkRead(s.id, textId, on);
+    });
+};
+
+// {read, total, percent, nextId} — nextId первый непрочитанный по порядку subscription.suttaIds
+// (order:'canon'/'matches' уже решило, в каком порядке они там лежат — здесь просто идём по
+// списку). random-подписки (без suttaIds) возвращают total:0 — прогресс для них не проценты, а
+// серия дней, это уже дело UI (см. ТЗ: "12 дней подряд" вместо "N из M").
+window.subProgress = function (sub) {
+    var ids = sub.suttaIds || [];
+    var read = new Set(sub.readIds || []);
+    var readCount = ids.filter(function (id) { return read.has(id); }).length;
+    var nextId = ids.find(function (id) { return !read.has(id); }) || null;
+    return { read: readCount, total: ids.length, percent: ids.length ? Math.round(100 * readCount / ids.length) : 0, nextId: nextId };
+};
+
+window.syncSubscriptionToCloud = async function (sub, isDeleted = false) {
+    if (!(await verifySessionActive())) return;
+    if (!db || !getUid()) return;
+    var docRef = db.collection("users").doc(getUid()).collection("subscriptions").doc(sub.id);
+    try {
+        if (isDeleted) {
+            await docRef.delete();
+        } else {
+            await docRef.set({ ...sub, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: false });
+        }
+        if (typeof refreshSyncTimeUI === 'function') refreshSyncTimeUI();
+    } catch (e) { console.error("Subscription Sync Error:", e); }
+};
+
 // Функция отправки Прогресса чтения
 window.syncProgressItemToCloud = async function(slug) {
     // ПРОПУСКНОЙ ПУНКТ:
@@ -3148,6 +3271,7 @@ window.syncLogout = async function() {
     if (typeof unsubFavs !== 'undefined' && unsubFavs) unsubFavs();
     if (typeof unsubHist !== 'undefined' && unsubHist) unsubHist();
     if (typeof unsubProgress !== 'undefined' && unsubProgress) unsubProgress(); 
+    if (typeof unsubSubs !== 'undefined' && unsubSubs) unsubSubs();
     if (window.unsubSessionList) window.unsubSessionList();
     if (typeof unsubMySession !== 'undefined' && unsubMySession) unsubMySession();
 
