@@ -3197,12 +3197,168 @@
         renderDrawerTiles();
     }
 
+    // ======================================================================
+    // "Ежедневное чтение" — колокольчик выдачи (#subbtn/#subp, search/index.html). Данные и
+    // облачный синк — settings.js (subUpsert/subMarkRead/subProgress и т.д., см. там же). Дизайн
+    // и все состояния — эталонный прототип owner'а, docs/D-refresh.html ("Результаты" экран),
+    // ТЗ §3-4. Быстрое окно (§7-8, вкладка «Подписки», форма создания) — отдельная фаза, ещё не
+    // построена: «Настроить →» пока просто открывает её заглушкой (window.subsOpen, если/когда
+    // появится) — не ошибка, если пока никуда не ведёт.
+    function currentSearchSub(query) {
+        var subs = (typeof window.subGetAll === 'function') ? window.subGetAll() : [];
+        var q = (query || '').toLowerCase();
+        return subs.find(function (s) { return s.type === 'search' && (s.query || '').toLowerCase() === q; }) || null;
+    }
+
+    function closeBellPopup() {
+        var p = document.getElementById('subp');
+        if (p) { p.hidden = true; p.innerHTML = ''; }
+        var btn = document.getElementById('subbtn');
+        if (btn) btn.setAttribute('aria-expanded', 'false');
+    }
+
+    function renderBellPopup(query, rows) {
+        var p = document.getElementById('subp');
+        if (!p) return;
+        var sub = currentSearchSub(query);
+        p.innerHTML = '';
+
+        var head = document.createElement('div');
+        head.className = 'dg-subp-head';
+        var title = document.createElement('div');
+        title.className = 'dg-subp-title';
+        title.textContent = '«' + query + '»';
+        var close = document.createElement('button');
+        close.type = 'button';
+        close.className = 'dg-subp-close';
+        close.setAttribute('aria-label', t('global.common.close', 'Close'));
+        close.innerHTML = '&times;';
+        close.addEventListener('click', closeBellPopup);
+        head.appendChild(title); head.appendChild(close);
+        p.appendChild(head);
+
+        if (!sub) {
+            var lead = document.createElement('p');
+            lead.className = 'dg-subp-lead';
+            lead.textContent = t('menu.daily.subscribeLead', 'Присылать найденные тексты по одному');
+            p.appendChild(lead);
+
+            var go = document.createElement('button');
+            go.type = 'button';
+            go.className = 'dg-subp-go';
+            go.textContent = t('menu.daily.subscribe', 'Подписаться');
+            go.addEventListener('click', function (e) {
+                // Re-renders p's content below, replacing THIS button while its own click event
+                // is still bubbling — without this the document-level click-away listener sees a
+                // target no longer inside p (already replaced) and closes the popup it just drew.
+                e.stopPropagation();
+                var ids = rows.map(function (r) { return r.sutta_id; });
+                window.subUpsert({ type: 'search', query: query, order: 'canon', suttaIds: ids, remind: { web: 'open' } });
+                if (typeof window.dgRenderBell === 'function') window.dgRenderBell(query, rows); // also flips the bell's data-on
+                renderBellPopup(query, rows);
+            });
+            p.appendChild(go);
+        } else {
+            var prog = window.subProgress(sub);
+            var card = document.createElement('div');
+            card.className = 'dg-subp-card';
+
+            var freq = document.createElement('div');
+            freq.className = 'dg-subp-freq';
+            freq.textContent = t('menu.daily.onceOrder', 'Раз в день · по порядку');
+            card.appendChild(freq);
+
+            var pr = document.createElement('div');
+            pr.className = 'dg-subp-progress';
+            pr.innerHTML = '<span>' + prog.read + ' ' + t('menu.daily.of', 'из') + ' ' + prog.total + ' ' + t('menu.daily.readWord', 'прочитано') + '</span><b>' + prog.percent + '%</b>';
+            card.appendChild(pr);
+
+            var bar = document.createElement('div');
+            bar.className = 'dg-subp-bar';
+            bar.innerHTML = '<div style="width:' + prog.percent + '%"></div>';
+            card.appendChild(bar);
+
+            if (prog.nextId) {
+                var next = document.createElement('div');
+                next.className = 'dg-subp-next';
+                next.textContent = t('menu.daily.next', 'Следующий:') + ' ' + prog.nextId;
+                card.appendChild(next);
+            }
+            p.appendChild(card);
+
+            var mark = document.createElement('button');
+            mark.type = 'button';
+            mark.className = 'dg-subp-mark';
+            mark.innerHTML = '<span class="dg-subp-check">&#10003;</span> ' + t('menu.daily.markRead', 'Отметить прочитанное') + ' &rarr;';
+            mark.addEventListener('click', function () {
+                closeBellPopup();
+                var readBtn = document.getElementById('btn-read-marks');
+                if (readBtn && readBtn.getAttribute('aria-pressed') !== 'true') readBtn.click();
+            });
+            p.appendChild(mark);
+
+            var stop = document.createElement('button');
+            stop.type = 'button';
+            stop.className = 'dg-subp-stop';
+            stop.textContent = t('menu.daily.stop', 'Отписаться');
+            stop.addEventListener('click', function (e) {
+                e.stopPropagation(); // same reasoning as .dg-subp-go above
+                window.subRemove(sub.id);
+                if (typeof window.dgRenderBell === 'function') window.dgRenderBell(query, rows);
+                renderBellPopup(query, rows);
+            });
+            p.appendChild(stop);
+        }
+
+        var cfg = document.createElement('a');
+        cfg.href = 'javascript:void(0)';
+        cfg.className = 'dg-subp-cfg';
+        cfg.textContent = t('menu.daily.configure', 'Настроить') + ' →';
+        cfg.addEventListener('click', function () {
+            closeBellPopup();
+            if (typeof window.subsOpen === 'function') window.subsOpen({ src: 'search', q: query });
+        });
+        p.appendChild(cfg);
+    }
+
+    // Called from index.html's renderCurrentReport(), every time the sutta report (re)draws.
+    // rows: same array fed to DgSearchRender.buildDataTable (sutta_id + titles.root per row).
+    window.dgRenderBell = function (query, rows) {
+        var btn = document.getElementById('subbtn');
+        if (!btn || !query || !rows) return;
+        var sub = currentSearchSub(query);
+        btn.setAttribute('data-on', sub ? 'true' : 'false');
+        if (!btn.dataset.wired) {
+            btn.dataset.wired = '1';
+            btn.addEventListener('click', function () {
+                var p = document.getElementById('subp');
+                if (!p) return;
+                if (!p.hidden) { closeBellPopup(); return; }
+                renderBellPopup(btn.dataset.query, btn.__rows);
+                p.hidden = false;
+                btn.setAttribute('aria-expanded', 'true');
+            });
+            document.addEventListener('click', function (e) {
+                var p = document.getElementById('subp');
+                if (p && !p.hidden && !p.contains(e.target) && e.target !== btn && !btn.contains(e.target)) closeBellPopup();
+            });
+            document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeBellPopup(); });
+        }
+        btn.dataset.query = query;
+        btn.__rows = rows;
+        // A different search ran while the popup from the PREVIOUS one was open — refresh it in
+        // place rather than leave it showing a now-stale query/progress.
+        var p = document.getElementById('subp');
+        if (p && !p.hidden) renderBellPopup(query, rows);
+    };
+
     /* Мультитул в бургере (search/index.html #dg-drawer-tiles) — просто список плиток, в том же
        порядке и с теми же скрытиями, что на главной (owner: «меню компактнее, только из тайлов»).
        Клик делает ровно то же, что клик по плитке на главной — runTile(): на десктопе мегаменю
        (у плиток с mega:true) или нижняя шторка, на телефоне — шторка; плитки-действия (Читать
        Pāḷi, История, Помощь) — своё действие. Якорь для мегаменю — сама плитка главной, если она
        на экране, иначе кнопка бургера (мегаменю встаёт под ней и центрируется по полю поиска). */
+
     function renderDrawerTiles() {
         var host = document.getElementById('dg-drawer-tiles');
         if (!host || !menuData) return;

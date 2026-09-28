@@ -2595,6 +2595,81 @@ body.dg-drawer-open {
 /* Горячая клавиша строки бургера — тот же вид, что у .dg-mode-row-hotkey выше и у строк меню
    словаря (ddg-ui): тихой моноширинной подписью справа. Ставится только там, где клавиша
    действительно что-то делает (owner: "хоткеи видно в бургере"). */
+/* "Ежедневное чтение" — колокольчик выдачи (#subbtn) + его попап (#subp), search/index.html.
+   Эталон вида — docs/D-refresh.html ("Результаты"), ТЗ §3-4; токены — только --dg-*, свои цвета
+   не изобретаем. Колокольчик стоит absolute внутри #results-toolbar (см. index.html) — своя
+   позиция, а не часть центрированного #dg-toolbar-buttons (owner ТЗ: "отдельно от строки
+   действий"). */
+.dg-bell {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    border: none;
+    border-radius: 50%;
+    background: none;
+    color: var(--dg-text-muted);
+    cursor: pointer;
+}
+.dg-bell:hover { background: var(--dg-surface-hover); color: var(--dg-text); }
+.dg-bell[data-on="true"] { width: 34px; height: 34px; background: var(--dg-surface-hover); color: var(--dg-accent-ink); }
+
+.dg-subp {
+    position: absolute;
+    top: 40px;
+    right: 6px;
+    z-index: 20;
+    width: 280px;
+    max-width: calc(100vw - 24px);
+    background: var(--dg-surface);
+    border: 1px solid var(--dg-border);
+    border-radius: 14px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.16);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    font-size: 0.87rem;
+}
+.dg-subp-head { display: flex; align-items: center; gap: 8px; }
+.dg-subp-title { font-weight: 700; font-size: 0.95rem; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dg-subp-close { background: none; border: none; padding: 0; font-size: 1.2rem; line-height: 1; color: var(--dg-text-muted); cursor: pointer; }
+.dg-subp-close:hover { color: var(--dg-text); }
+.dg-subp-lead { margin: 0; color: var(--dg-text-2); }
+.dg-subp-go {
+    background: var(--dg-accent);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 9px 0;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+}
+.dg-subp-go:hover { background: var(--dg-accent-dark); }
+.dg-subp-card { background: var(--dg-surface-hover); border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 6px; }
+.dg-subp-freq { color: var(--dg-text-2); font-size: 0.8rem; }
+.dg-subp-progress { display: flex; justify-content: space-between; align-items: baseline; }
+.dg-subp-progress b { color: var(--dg-accent-ink); }
+.dg-subp-bar { height: 4px; border-radius: 2px; background: var(--dg-border); overflow: hidden; }
+.dg-subp-bar div { height: 100%; background: var(--dg-accent); }
+.dg-subp-next { color: var(--dg-text-muted); font-size: 0.8rem; }
+.dg-subp-mark, .dg-subp-stop {
+    background: none;
+    border: 1px solid var(--dg-border-strong);
+    border-radius: 8px;
+    padding: 8px 0;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    color: var(--dg-text);
+}
+.dg-subp-mark { color: var(--dg-accent-ink); border-color: var(--dg-accent-bg); }
+.dg-subp-mark:hover { background: var(--dg-accent-bg); }
+.dg-subp-stop:hover { background: var(--dg-surface-hover); }
+.dg-subp-check { font-size: 0.8em; }
+.dg-subp-cfg { text-align: center; font-size: 0.82rem; padding-top: 2px; }
+
 .dg-drawer-row .dg-drawer-hotkey {
     margin-left: auto;
     flex: none;

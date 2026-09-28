@@ -730,9 +730,31 @@ window.DgSearchRender = (function () {
         } catch (e) { return []; }
     }
 
-    function isRead(suttaId) { return loadReadMarks().indexOf(suttaId) !== -1; }
+    // If a "daily reading" subscription (settings.js, subUpsert/subMarkRead — ТЗ «подписка на
+    // поиск») exists for the CURRENT query, the checkbox is that subscription's progress, not a
+    // second, disconnected tracker: read state comes from subscription.readIds (synced to the
+    // cloud), and a check/uncheck writes through subMarkRead — the per-search dgReadMarks: key
+    // below stays the fallback for a plain search nobody has subscribed to.
+    function activeSub() {
+        // activeState has no .query field (that was readMarksKey()'s own pre-existing dead
+        // fallback, copied by mistake here first) — the real current keyword, once buildDataTable
+        // has run, is activeState.highlightWord (set from the same `keyword` this page searched
+        // for); ?q= is only ever present for the legacy /?q= URL shape, not these clean /kacchapa
+        // ones dg-node actually uses.
+        var q = ((activeState && activeState.highlightWord) || new URLSearchParams(window.location.search).get('q') || '').toLowerCase();
+        if (!q || typeof window.subGetAll !== 'function') return null;
+        return window.subGetAll().find(function (s) { return s.type === 'search' && !s.paused && (s.query || '').toLowerCase() === q; }) || null;
+    }
+
+    function isRead(suttaId) {
+        var sub = activeSub();
+        if (sub) return (sub.readIds || []).indexOf(suttaId) !== -1;
+        return loadReadMarks().indexOf(suttaId) !== -1;
+    }
 
     function setRead(suttaId, on) {
+        var sub = activeSub();
+        if (sub) { window.subMarkRead(sub.id, suttaId, on); return; }
         var marks = loadReadMarks();
         var i = marks.indexOf(suttaId);
         if (on && i === -1) marks.push(suttaId);

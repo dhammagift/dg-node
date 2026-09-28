@@ -2334,7 +2334,20 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
      внутри как были инлайновыми, так и остались) — нужна ровно затем, чтобы одним селектором
      убирать весь ряд на домашнем экране: там ни «Saṁvaṭṭo», ни отметок, ни словаря ещё не к чему
      применить. -->
-<div id="results-toolbar">
+<div id="results-toolbar" style="position: relative;">
+    <!-- "Ежедневное чтение" — колокольчик подписки на ТЕКУЩИЙ поиск. Своей позицией (absolute,
+         top-right этого wrapper) сознательно НЕ внутри #dg-toolbar-buttons — тот ряд центрирован
+         (see <style> above) и это отдельный элемент "под бургером, отдельно от строки действий"
+         (owner ТЗ + эталонный прототип D-refresh.html, §3). #subp — попап, который он открывает,
+         тот же общий #dg-sheet-backdrop не использует (свой, лёгкий, без затемнения фона —
+         прототип его тоже не затемняет). Рендерит/наполняет home.js (dgRenderBell()). -->
+    <button id="subbtn" type="button" class="dg-bell" aria-label="{{menu.daily.subscribe}}" title="{{menu.daily.subscribe}}" data-on="false" style="position: absolute; top: 6px; right: 6px; z-index: 3;">
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 3a5 5 0 0 0-5 5v3.2c0 .5-.18 1-.5 1.4L5 14.5c-.7.9-.1 2.5 1.2 2.5h11.6c1.3 0 1.9-1.6 1.2-2.5l-1.5-2c-.32-.4-.5-.9-.5-1.4V8a5 5 0 0 0-5-5z"/>
+            <path d="M9.5 19a2.5 2.5 0 0 0 5 0"/>
+        </svg>
+    </button>
+    <div id="subp" class="dg-subp" hidden></div>
     <!-- Ряд кнопок — по центру, под полем ввода (просьба владельца), заголовок теперь идёт ПОСЛЕ
          этого ряда и после разделительной линии (#dg-toolbar-buttons границей снизу), а не над
          ним слева. См. #dg-toolbar-buttons в <style> для центрирования/ширины. -->
@@ -3313,6 +3326,7 @@ $(document).ready(function() {
             // и раньше — расходились именно запрос и отрисовка.
             table = window.DgSearchRender.buildDataTable('#pali', rows, lastHighlightWord, langsRequested ? langs : '', langsExplicit);
             $('.forshellscript a').text(dgT('toolbar.wordsToggleShow', 'Слова'));
+            if (window.dgRenderBell) window.dgRenderBell(keyword, rows);
             // Именованное событие (.enrich) — таблица больше не пересоздаётся, так что "draw"
             // может сработать много раз за сессию; .off+.on тем же неймспейсом не даёт слушателям
             // накапливаться при повторных renderCurrentReport(). До старта обогащения
@@ -4858,6 +4872,13 @@ $(document).ready(function() {
     <!-- "Описания кнопок" (dgTileDesc) moved to /settings/ — owner: "очень неважная настройка",
          doesn't need to sit in the quick-access drawer next to language/theme. tileDescEnabled()
          in home.js still reads the same localStorage key when actually rendering tile rows. -->
+
+    <!-- "Get one sutta a day" subscriptions — list, not a single toggle (owner: "там должно быть
+         список подписок"), each row its own topic/progress/stop. renderDailySubs() (home.js)
+         fills this and hides both the subtitle and host when there are none — no empty section
+         for someone who never subscribed to anything. -->
+    <p class="dg-drawer-subtitle" id="dg-daily-subs-title" hidden>{{menu.daily.sectionTitle}}</p>
+    <div id="dg-daily-subs"></div>
 
     <!-- Полные настройки (шестерёнка) — ниже язык/тему по просьбе владельца: сначала быстрые
          переключатели, потом ссылка на полную страницу настроек. -->
