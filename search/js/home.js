@@ -3326,6 +3326,44 @@
         p.appendChild(cfg);
     }
 
+    // Bell hint animation (ТЗ §3): the FIRST 4 visits to a results page (not to a specific
+    // search — any of them), one of 4 variants (звон/ring, вздох/sigh, кивок/nod, подскок/hop),
+    // shown once each in a random order, then never again. Never for a bell already subscribed
+    // (data-on="true") — nothing to nudge there. Queue lives in localStorage so it survives
+    // across page loads/searches; scheduled once per page load via bellHintScheduled, ~1.4s
+    // after the table appears (matches the reference prototype's own timing).
+    var BELL_HINT_KEY = 'dg-bell-hint';
+    var bellHintScheduled = false;
+    function bellHintQueue() {
+        try {
+            var s = JSON.parse(localStorage.getItem(BELL_HINT_KEY));
+            if (s && Array.isArray(s.order) && typeof s.i === 'number') return s;
+        } catch (e) { /* private mode / corrupt */ }
+        var order = ['ring', 'sigh', 'nod', 'hop'];
+        for (var i = order.length - 1; i > 0; i--) {
+            var j = Math.floor(Math.random() * (i + 1)), t = order[i]; order[i] = order[j]; order[j] = t;
+        }
+        return { order: order, i: 0 };
+    }
+    function scheduleBellHint(btn) {
+        if (bellHintScheduled) return;
+        bellHintScheduled = true;
+        if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+        if (btn.getAttribute('data-on') === 'true') return; // уже подписан — подсказка не нужна
+        var q = bellHintQueue();
+        if (q.i >= q.order.length) return; // все 4 варианта уже когда-то показаны
+        setTimeout(function () {
+            if (btn.getAttribute('data-on') === 'true') return; // подписался за эти 1.4с — тоже не надо
+            var hint = q.order[q.i];
+            btn.setAttribute('data-hint', hint);
+            var clear = function () { btn.removeAttribute('data-hint'); };
+            btn.addEventListener('animationend', clear, { once: true });
+            setTimeout(clear, 2200); // safety net if animationend doesn't fire (e.g. tab backgrounded)
+            q.i++;
+            try { localStorage.setItem(BELL_HINT_KEY, JSON.stringify(q)); } catch (e) {}
+        }, 1400);
+    }
+
     // Called from index.html's renderCurrentReport(), every time the sutta report (re)draws.
     // rows: same array fed to DgSearchRender.buildDataTable (sutta_id + titles.root per row).
     window.dgRenderBell = function (query, rows) {
@@ -3333,6 +3371,7 @@
         if (!btn || !query || !rows) return;
         var sub = currentSearchSub(query);
         btn.setAttribute('data-on', sub ? 'true' : 'false');
+        scheduleBellHint(btn);
         if (!btn.dataset.wired) {
             btn.dataset.wired = '1';
             btn.addEventListener('click', function () {

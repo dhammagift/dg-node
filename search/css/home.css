@@ -2614,6 +2614,40 @@ body.dg-drawer-open {
 .dg-bell:hover { background: var(--dg-surface-hover); color: var(--dg-text); }
 .dg-bell[data-on="true"] { width: 34px; height: 34px; background: var(--dg-surface-hover); color: var(--dg-accent-ink); }
 
+/* Bell hint animations (ТЗ §3: "подпишись" — звон/ring, вздох/sigh, кивок/nod, подскок/hop),
+   scheduled by scheduleBellHint() (home.js). Timings/easings/iteration counts match the
+   reference prototype exactly (captured live from docs/D-refresh.html). Glyph only —
+   transform, no width/height/position — so it never nudges layout. */
+.dg-bell[data-hint] svg { transform-origin: 12px 13px; }
+.dg-bell[data-hint="ring"] svg { animation: dgBellRing .9s cubic-bezier(.36,.07,.19,.97) 2; }
+.dg-bell[data-hint="sigh"] svg { animation: dgBellSigh 1.6s cubic-bezier(.45,0,.55,1) 1; }
+.dg-bell[data-hint="nod"] svg { animation: dgBellNod .9s var(--dg-ease) 1; }
+.dg-bell[data-hint="hop"] svg { animation: dgBellHop .8s cubic-bezier(.3,1.6,.5,1) 1; }
+@keyframes dgBellRing {
+    0%, 100% { transform: rotate(0); }
+    20% { transform: rotate(-14deg); }
+    40% { transform: rotate(11deg); }
+    60% { transform: rotate(-7deg); }
+    80% { transform: rotate(4deg); }
+}
+@keyframes dgBellSigh {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.14); }
+}
+@keyframes dgBellNod {
+    0%, 100% { transform: rotate(0); }
+    30% { transform: rotate(9deg); }
+    60% { transform: rotate(-5deg); }
+}
+@keyframes dgBellHop {
+    0%, 100% { transform: translateY(0); }
+    40% { transform: translateY(-4px); }
+    65% { transform: translateY(1px); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .dg-bell[data-hint] svg { animation: none; }
+}
+
 .dg-subp {
     position: absolute;
     top: 38px;
