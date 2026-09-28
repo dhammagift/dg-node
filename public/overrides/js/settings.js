@@ -2495,7 +2495,7 @@ function toggleFavoriteGlobal(itemData) {
 
         // 2. Скачиваем скрипт модального окна
         const script = document.createElement('script');
-        script.src = "/assets/js/quickModal.js?v=20260928q"; // query drops copies a browser pinned for a year // Проверьте правильность пути!
+        script.src = "/assets/js/quickModal.js?v=20260928r"; // query drops copies a browser pinned for a year // Проверьте правильность пути!
         
         script.onload = () => {
             window.isQuickModalScriptLoaded = true;
@@ -3174,13 +3174,14 @@ window.subMarkReadEverywhere = function (textId, on) {
 // (order:'canon'/'matches' уже решило, в каком порядке они там лежат — здесь просто идём по
 // списку). random-подписки (без suttaIds) возвращают total:0 — прогресс для них не проценты, а
 // серия дней, это уже дело UI (см. ТЗ: "12 дней подряд" вместо "N из M").
-window.subProgress = function (sub) {
+// when (optional): the moment to answer for — the app schedules a week of random texts ahead.
+window.subProgress = function (sub, when) {
     var ids = sub.suttaIds || [];
     // Random: no progress and no marks (owner) — just the day's text, one per calendar day since
     // subscribing. ponytail: the 365 shuffled ids cycle after a year; reshuffle if that matters.
     if (sub.type === 'random') {
         var day = function (t) { var d = new Date(t); return Math.floor(new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime() / 86400000); };
-        var n = Math.max(0, day(Date.now()) - day(sub.createdAt || Date.now()));
+        var n = Math.max(0, day(when || Date.now()) - day(sub.createdAt || Date.now()));
         return { read: 0, total: 0, percent: 0, nextId: ids.length ? ids[n % ids.length] : null };
     }
     // Subscriptions saved before subCanonSort existed hold ids in /search's match-rank order.

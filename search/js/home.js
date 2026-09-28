@@ -3300,7 +3300,8 @@
                 // prompt steals focus; interleaving it with the popup's own re-render above was
                 // what caused that. A real user gesture already happened (this click), so the
                 // permission prompt still counts as gesture-triggered a tick later.
-                if (window.Notification && Notification.permission === 'default') {
+                if (nativeLN()) setTimeout(function () { nativeLN().requestPermissions().catch(function () {}); }, 0);
+                else if (window.Notification && Notification.permission === 'default') {
                     setTimeout(function () { Notification.requestPermission(); }, 0);
                 }
             });
@@ -3456,11 +3457,17 @@
     // Owner: title = which subscription + the text ("«kacchapa» * dn1 Brahmajālasutta"; several
     // arrive a day with several subs); body = translation only — the matched line for a search,
     // from its start, as much as fits; the translated title for a place/random subscription.
-    function fireDailyNotification(sub, prog) {
+    function fireDailyNotification(sub, prog, idx) {
         var id = prog.nextId;
         var clip = function (v) { v = String(v || '').trim(); return v.length > 160 ? v.slice(0, 160).trim() + '…' : v; };
         var firstTr = function (tr) { return tr ? tr[Object.keys(tr).filter(function (k) { return k.indexOf(uiLang() + '_') === 0; })[0] || Object.keys(tr)[0]] : ''; };
         function show(paliTitle, body, href) {
+            var LN = nativeLN();
+            if (LN) { // the app: a local notification (WebView has no Notification API)
+                LN.schedule({ notifications: [{ id: SUB_NOTIF_OPEN + (idx % 90), title: subLabel(sub) + ' * ' + id + (paliTitle ? ' ' + String(paliTitle).trim() : ''),
+                    body: clip(body) || ' ', schedule: { at: new Date(Date.now() + 1500) }, extra: { url: href || '/' + id } }] }).catch(function () {});
+                return;
+            }
             var n = new Notification(subLabel(sub) + ' * ' + id + (paliTitle ? ' ' + String(paliTitle).trim() : ''), {
                 body: clip(body),
                 icon: '/assets/img/albumart512.png', // conch-on-book album art (owner: "используй albumart с раковиной")
@@ -3490,18 +3497,130 @@
             .catch(function () { show('', ''); });
     }
     function checkDailySubscriptionNotification() {
-        if (!window.Notification || Notification.permission !== 'granted') return;
+        var LN = nativeLN();
+        if (!LN && (!window.Notification || Notification.permission !== 'granted')) return;
         var today = localDay();
         try { if (localStorage.getItem(DG_NOTIF_KEY) === today) return; } catch (e) { return; }
         var subs = (typeof window.subGetAll === 'function') ? window.subGetAll() : [];
-        subs.forEach(function (sub) {
-            if (sub.paused || (sub.remind && sub.remind.web !== 'open')) return;
+        subs.forEach(function (sub, i) {
+            if (sub.paused) return;
+            // The app follows the subscription's "in the app" choice (once a day on opening, unless
+            // it is on a schedule — see scheduleAppReminders); the browser its "reminder" one.
+            var app = sub.remind && sub.remind.app;
+            if (LN ? (app && app.when === 'schedule') : (sub.remind && sub.remind.web !== 'open')) return;
             var prog = window.subProgress(sub);
             if (!prog.nextId) return; // fully read — nothing to notify about
-            fireDailyNotification(sub, prog);
+            fireDailyNotification(sub, prog, i);
         });
         try { localStorage.setItem(DG_NOTIF_KEY, today); } catch (e) {}
     }
+
+    // ======================================================================
+    // App reminders (dg-apps, Capacitor LocalNotifications): notifications scheduled on the device
+    // itself, so they arrive with the app closed. The browser has no such thing — there "on a
+    // schedule" only points to the app (quickModal.js).
+    var SUB_NOTIF_OPEN = 8000;    // 8000..8089: once-a-day-on-opening ones, shown right away
+    var SUB_NOTIF_SCHED = 8100;   // 8100..8159: the scheduled ones (iOS keeps 64 pending per app)
+    function nativeLN() {
+        var C = window.Capacitor;
+        return C && C.isNativePlatform && C.isNativePlatform() && C.Plugins && C.Plugins.LocalNotifications ? C.Plugins.LocalNotifications : null;
+    }
+    window.dgNativeLN = nativeLN;
+    // Uposatha windows (evening to evening, by the suttas) for the next days, with the place and
+    // time zone of the uposatha calendar — the same engine and rule as the form (quickModal.js).
+    var upoLib = null;
+    function uposathaWindows(days) {
+        var load = function (src) { return new Promise(function (ok, no) { var el = document.createElement('script'); el.src = src; el.onload = ok; el.onerror = no; document.head.appendChild(el); }); };
+        if (!upoLib) upoLib = (window.Astronomy ? Promise.resolve() : load('/assets/js/vendor/astronomy.browser.min.js'))
+            .then(function () { return window.UposathaCore ? null : load('/assets/js/uposatha-core.js'); });
+        return upoLib.then(function () {
+            var loc = null;
+            try { loc = JSON.parse(localStorage.getItem('dgUposathaLoc')) || null; } catch (e) {}
+            var tz = localStorage.getItem('dgUposathaTz') || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+            var ymd = function (d) { return new Intl.DateTimeFormat('en-CA', { timeZone: tz }).format(d); };
+            var rows = window.UposathaCore.dataset(ymd(new Date(Date.now() - 86400000)), ymd(new Date(Date.now() + (days + 2) * 86400000)), { tz: tz, sutta: true, loc: loc }).rows;
+            var out = [];
+            for (var i = 0; i < rows.length - 1; i++) if (rows[i].uposatha) out.push([+new Date(rows[i].at), +new Date(rows[i + 1].at)]);
+            return out;
+        }).catch(function () { return []; });
+    }
+    // days: 'every' | 'week' (Mon-Fri) | 'upo' | [1..7] (Mon=1 … Sun=7, the form's own numbering).
+    function remindOnDay(days, at, upo) {
+        if (!days || days === 'every') return true;
+        if (days === 'week') return at.getDay() >= 1 && at.getDay() <= 5;
+        if (days === 'upo') return (upo || []).some(function (w) { return +at >= w[0] && +at < w[1]; });
+        return Array.isArray(days) && days.indexOf(((at.getDay() + 6) % 7) + 1) !== -1;
+    }
+    function scheduleAppReminders() {
+        var LN = nativeLN();
+        if (!LN || typeof window.subGetAll !== 'function') return;
+        var subs = window.subGetAll().filter(function (s) { return !s.paused && s.remind && s.remind.app && s.remind.app.when === 'schedule'; });
+        var HORIZON = 8; // days ahead; rebuilt on every opening and on every change of a subscription
+        (subs.some(function (s) { return s.remind.app.days === 'upo'; }) ? uposathaWindows(HORIZON) : Promise.resolve([])).then(function (upo) {
+            var now = Date.now(), items = [];
+            subs.forEach(function (sub) {
+                var app = sub.remind.app;
+                for (var d = 0; d <= HORIZON; d++) {
+                    (app.times || ['09:00']).slice(0, 5).forEach(function (tm) {
+                        var hm = String(tm).split(':'), at = new Date();
+                        at.setHours(0, 0, 0, 0); at.setDate(at.getDate() + d); at.setHours(+hm[0] || 0, +hm[1] || 0, 0, 0);
+                        if (+at <= now || !remindOnDay(app.days, at, upo)) return;
+                        // Random: the text of THAT day; in order: the next unread (it moves only when marked).
+                        var prog = window.subProgress(sub, +at);
+                        if (prog.nextId) items.push({ when: +at, sub: sub, id: prog.nextId });
+                    });
+                }
+            });
+            items.sort(function (a, b) { return a.when - b.when; });
+            items = items.slice(0, 60);
+            // Names looked up now, once per text (the app answers /api/text from its own database,
+            // offline): title "«kacchapa» * dn1 Brahmajālasutta", body the translated name.
+            var ids = items.map(function (it) { return it.id; }).filter(function (v, i, a) { return a.indexOf(v) === i; });
+            return Promise.all(ids.map(function (id) {
+                return fetch('/api/text/' + encodeURIComponent(id) + '?lang=' + uiLang()).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; });
+            })).then(function (texts) {
+                var names = {};
+                texts.forEach(function (data, i) {
+                    var head = data && data.segments && data.segments.filter(function (sg) { return /sutta-title/.test(sg.html || ''); })[0];
+                    var tr = head && head.translations, trKey = tr && (Object.keys(tr).filter(function (k) { return k.indexOf(uiLang() + '_') === 0; })[0] || Object.keys(tr)[0]);
+                    names[ids[i]] = { pali: data ? String(data.title || '').trim() : '', tr: trKey ? String(tr[trKey] || '').trim() : '' };
+                });
+                return items.map(function (it, i) {
+                    var n = names[it.id] || {};
+                    return { id: SUB_NOTIF_SCHED + i, title: subLabel(it.sub) + ' * ' + it.id + (n.pali ? ' ' + n.pali : ''), body: n.tr || t('menu.daily.notifTitle', 'Текст дня'),
+                        schedule: { at: new Date(it.when), allowWhileIdle: true }, extra: { url: '/' + it.id } };
+                });
+            });
+        }).then(function (list) {
+            if (!list) return;
+            return LN.getPending().then(function (p) {
+                var ours = ((p && p.notifications) || []).filter(function (n) { return n.id >= SUB_NOTIF_SCHED && n.id < SUB_NOTIF_SCHED + 100; }).map(function (n) { return { id: n.id }; });
+                return ours.length ? LN.cancel({ notifications: ours }) : null;
+            }).then(function () { return list.length ? LN.schedule({ notifications: list }) : null; });
+        }).catch(function () {});
+    }
+    window.dgScheduleAppReminders = scheduleAppReminders;
+    (function wireAppReminders() {
+        var LN = nativeLN();
+        if (!LN) return;
+        // A tap opens the text: through the app's own deep-link mapping, like dhammagift://route/…
+        LN.addListener('localNotificationActionPerformed', function (e) {
+            var url = e && e.notification && e.notification.extra && e.notification.extra.url;
+            if (!url) return;
+            var target = window.dgDeepLinkToLocalUrl ? window.dgDeepLinkToLocalUrl('dhammagift://route' + url) : null;
+            location.href = target || url;
+        });
+        // Every change of a subscription (settings.js subSaveAll) reschedules, debounced.
+        var prev = window.refreshSubscriptionsUI, tmr;
+        window.refreshSubscriptionsUI = function () {
+            if (typeof prev === 'function') prev.apply(this, arguments);
+            clearTimeout(tmr); tmr = setTimeout(scheduleAppReminders, 400);
+        };
+        // Back to the app: the once-a-day check and a fresh week of reminders.
+        document.addEventListener('visibilitychange', function () {
+            if (document.visibilityState === 'visible') { checkDailySubscriptionNotification(); scheduleAppReminders(); }
+        });
+    })();
 
     // Called from index.html's renderCurrentReport(), every time the sutta report (re)draws.
     // rows: same array fed to DgSearchRender.buildDataTable (sutta_id + titles.root per row).
@@ -5089,6 +5208,7 @@
     function init() {
         document.body.classList.add('dg-skin-minimal');
         checkDailySubscriptionNotification();
+        scheduleAppReminders();
 
         var input = document.getElementById('paliauto');
         if (input) {

@@ -1027,6 +1027,7 @@ function openQuickSubForm(sub, q) {
     job.then(s2 => {
       if (!s2.suttaIds || !s2.suttaIds.length) return fail(QS_T('Ничего не найдено — подписываться не на что.', 'Nothing found to subscribe to.'));
       window.subUpsert(JSON.parse(JSON.stringify(s2))); // drops the undefined keys
+      if (typeof window.dgNativeLN === 'function' && window.dgNativeLN()) window.dgNativeLN().requestPermissions().catch(() => {});
       closeQuickSubForm();
       renderQuickSubs();
     }).catch(() => fail(QS_T('Не удалось загрузить тексты. Проверьте соединение.', 'Could not load the texts. Check the connection.')));
