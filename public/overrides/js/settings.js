@@ -2541,6 +2541,7 @@ function toggleFavoriteGlobal(itemData) {
 let db = null;
 let auth = null;
 let googleProvider = null;
+let appleProvider = null;
 
 // Переменные для отписки от слушателей Firebase
 let unsubSettings = null;
@@ -2692,6 +2693,7 @@ window.initFirebase = async function() {
 
         auth = firebase.auth();
         googleProvider = new firebase.auth.GoogleAuthProvider();
+        appleProvider = new firebase.auth.OAuthProvider('apple.com');
 
         auth.onAuthStateChanged((user) => {
             const phraseId = localStorage.getItem('syncPhraseId'); 
@@ -3242,11 +3244,21 @@ window.forceSyncNow = async function() {
 window.syncLoginGoogle = async function() {
     if (!window.firebase) await window.initFirebase(); // Подгружаем на лету, если еще нет
     if (!auth) return;
-    try { 
+    try {
         await auth.signInWithPopup(googleProvider);
         localStorage.setItem('dg_cloud_session', 'true'); // Ставим флаг сессии
-    } 
+    }
     catch (error) { console.error("Login Error:", error); }
+};
+
+window.syncLoginApple = async function() {
+    if (!window.firebase) await window.initFirebase();
+    if (!auth) return;
+    try {
+        await auth.signInWithPopup(appleProvider);
+        localStorage.setItem('dg_cloud_session', 'true');
+    }
+    catch (error) { console.error("Login Error (Apple):", error); }
 };
 
 window.syncEnablePhrase = async function(rawPhrase, hashedId) {

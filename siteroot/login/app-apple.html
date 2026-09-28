@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dhamma.Gift — Apple sign-in</title>
+<link rel="icon" type="image/png" href="/assets/img/favico-noglass.png">
+<style>
+    :root { --bg: #f4f6f5; --card: #fff; --ink: #141a18; --muted: #5b6b66; --rule: #dde5e2; --accent: #000; }
+    @media (prefers-color-scheme: dark) {
+        :root { --bg: #101816; --card: #171f1d; --ink: #e8efec; --muted: #9aaba6; --rule: #27332f; --accent: #fff; }
+    }
+    body {
+        margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+        background: var(--bg); color: var(--ink); padding: 0 16px; box-sizing: border-box;
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    }
+    .card {
+        width: min(420px, 100%); background: var(--card); border: 1px solid var(--rule);
+        border-radius: 20px; padding: 28px 22px 24px; text-align: center; box-sizing: border-box;
+    }
+    .card img { width: 64px; height: 64px; }
+    h1 { font-size: 19px; margin: 12px 0 6px; }
+    p { font-size: 14px; line-height: 1.5; color: var(--muted); margin: 0 0 20px; }
+    .btn {
+        display: block; width: 100%; box-sizing: border-box; font: inherit; font-size: 15px; font-weight: 600;
+        padding: 12px 14px; border-radius: 13px; border: 1px solid var(--accent);
+        background: var(--accent); color: var(--bg); text-decoration: none; cursor: pointer;
+    }
+    .btn[disabled] { opacity: .6; cursor: default; }
+    [hidden] { display: none !important; }
+    .err { color: #c0392b; font-size: 13px; margin-top: 12px; min-height: 1em; }
+</style>
+</head>
+<body>
+<div class="card">
+    <img src="/assets/img/pwa-bold-monocolor-192.png" alt="">
+    <h1 id="title">Sign in with Apple</h1>
+    <p id="desc"></p>
+    <button id="go" class="btn" type="button">Sign in with Apple</button>
+    <a id="back" class="btn" hidden>Return to the app</a>
+    <div class="err" id="err" role="alert"></div>
+</div>
+<script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-auth-compat.js"></script>
+<script>
+// Apple sign-in for the Dhamma.Gift apps — the exact counterpart of app-google.html (see that file's
+// own header for the full mechanism: this page only differs in the provider and the return keys
+// (dg_apple, not dg_google, so the app can tell which credential it is signing in with). Required
+// alongside Google by App Review guideline 4.8 (a third-party sign-in option demands Apple as an
+// equally-presented one) — dg-app-full's native-bridge.js used to just HIDE the Google button on iOS
+// instead; this page is what lets it show both again.
+//
+// Firebase's own OAuthProvider('apple.com') + signInWithPopup does the whole Apple OAuth exchange
+// (Services ID, nonce, JWT validation) — nothing here reimplements it. It works because the Apple
+// provider is configured in the Firebase console itself (Services ID gift.dhamma.web, the Team's Key
+// ID, the private key) — same shape as Google's provider, just a different console panel.
+(function () {
+    var q = new URLSearchParams(location.search);
+    var state = q.get('state') || '';
+    var pkg = q.get('pkg') || '';
+    var ru = q.get('lang') === 'ru';
+    var t = function (r, e) { return ru ? r : e; };
+    var PACKAGES = ['gift.dhamma.mobile', 'gift.dhamma.twa'];
+    var el = function (id) { return document.getElementById(id); };
+
+    document.documentElement.lang = ru ? 'ru' : 'en';
+    el('title').textContent = t('Вход через Apple', 'Sign in with Apple');
+    el('desc').textContent = t('Войдите, и приложение Dhamma.Gift подключит ваше облако: историю, избранное и настройки.',
+                               'Sign in and the Dhamma.Gift app connects your cloud: history, favorites and settings.');
+    el('go').textContent = t('Войти через Apple', 'Sign in with Apple');
+    el('back').textContent = t('Вернуться в приложение', 'Return to the app');
+
+    if (!/^[a-f0-9]{16,64}$/.test(state) || PACKAGES.indexOf(pkg) === -1) {
+        el('go').hidden = true;
+        el('err').textContent = t('Откройте вход из приложения Dhamma.Gift.', 'Open sign-in from the Dhamma.Gift app.');
+        return;
+    }
+
+    var ready = fetch('/config/sync-config.json')
+        .then(function (r) { return r.json(); })
+        .then(function (cfg) {
+            if (!window.firebase) throw new Error('Firebase scripts did not load (gstatic.com unreachable?)');
+            if (!firebase.apps.length) firebase.initializeApp(cfg);
+        });
+    ready.catch(function () { /* reported on the button press */ });
+
+    function backToApp(res) {
+        var token = res && res.credential && res.credential.idToken;
+        if (!token) return false;
+        // Same two-platform handoff as app-google.html — dg_apple, not dg_google, is the only
+        // difference: dg-app-full/src/deep-link.js and MainActivity.handleIntent both read it to
+        // build the right OAuthProvider credential on the way back in.
+        var href = q.get('plat') === 'ios'
+            ? 'dhammagift://auth?provider=apple&id_token=' + encodeURIComponent(token) + '&state=' + state +
+              '&lang=' + (ru ? 'ru' : 'en')
+            : 'intent://auth#Intent;scheme=dhammagift;package=' + pkg +
+              ';S.provider=apple;S.id_token=' + encodeURIComponent(token) + ';S.state=' + state +
+              ';S.lang=' + (ru ? 'ru' : 'en') + ';end';
+        el('go').hidden = true;
+        el('back').href = href;
+        el('back').hidden = false; // Chrome may refuse to open an app without a tap: then this button does
+        el('desc').textContent = t('Готово. Возвращаемся в приложение…', 'Done. Returning to the app…');
+        location.href = href;
+        return true;
+    }
+    function failed(e) {
+        el('go').hidden = false;
+        el('go').disabled = false;
+        if (e && /popup-closed-by-user|cancelled-popup-request/.test(e.code || '')) return;
+        console.error('[app-apple] sign-in failed:', e);
+        el('err').textContent = t('Не получилось войти. Попробуйте ещё раз.', 'Sign-in failed. Please try again.');
+    }
+
+    // A popup, not a redirect — same reasoning as app-google.html: a redirect lands back on
+    // dhamma.gift in this tab, and the app's own verified-link handling would swallow it before the
+    // sign-in could finish.
+    ready.catch(failed);
+    el('go').addEventListener('click', function () {
+        el('err').textContent = '';
+        el('go').disabled = true;
+        ready.then(function () {
+            return firebase.auth().signInWithPopup(new firebase.auth.OAuthProvider('apple.com'));
+        }).then(function (res) {
+            if (!backToApp(res)) throw new Error('no Apple ID token in the sign-in result');
+        }).catch(failed);
+    });
+})();
+</script>
+</body>
+</html>
