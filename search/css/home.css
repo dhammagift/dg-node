@@ -2600,6 +2600,16 @@ body.dg-drawer-open {
    не изобретаем. Колокольчик — обычный inline-flex элемент верхнего ряда, сразу перед бургером
    (.dg-bell-wrap в разметке) — owner: "перенеси в район бургер меню" (первая версия была
    absolute внутри #results-toolbar и на широких экранах отрывалась от остального интерфейса). */
+/* Fixed spot, pure CSS (issue #55): desktop — under the burger, which sits 264px right of the
+   centred hero row; narrow screens — 28px in from the toolbar's right edge, where the burger ends
+   up. Was JS measuring the burger, which raced the hero form's width transition on cold load. */
+.dg-bell-wrap { position: absolute; top: 6px; left: min(calc(50% + 249px), calc(100% - 43px)); }
+/* Mobile: no spare room beside the centred icon row (bell landed on top of "?"), so it just
+   joins the end of that row. */
+@media (max-width: 767.98px) {
+    body.dg-state-results #results-toolbar { display: flex; justify-content: center; align-items: center; }
+    .dg-bell-wrap { position: relative; top: auto; left: auto; }
+}
 .dg-bell {
     display: grid;
     place-items: center;
@@ -2782,6 +2792,11 @@ body.dg-drawer-open {
     cursor: pointer;
 }
 .dg-read-mark:hover { color: var(--dg-text); }
+/* Owner: clicking a checked mark left the browser's default square focus outline sitting on
+   top of the round green fill — "выглядит дёшево" (looks cheap/inconsistent). Same ring recipe
+   already used site-wide for focus (.dt-search input, .dg-input-shell — box-shadow, not
+   outline), just circular here to actually follow the button's own shape. */
+.dg-read-mark:focus-visible { outline: 0; box-shadow: 0 0 0 3px var(--dg-accent-bg); border-radius: 50%; }
 .dg-read-mark svg circle, .dg-read-mark svg path {
     transition: fill 150ms var(--dg-ease), stroke 150ms var(--dg-ease);
 }
@@ -4372,12 +4387,13 @@ body.dg-state-results #search-pane:not(.dg-has-paging) .dt-search { pointer-even
    short (owner: "на больших экранах просторнее … ссылки внизу к нижнему краю"). */
 @media (min-width: 992px) {
     body.dg-state-results #pali_wrapper > table, body.dg-state-results #pali-words_wrapper > table { margin-top: 26px; }
-    /* Capped at 700px — owner: "не уходили за пределы видимости без надобности". Uncapped
-       calc(100vh - 112px) on a tall monitor (1300px+) pushed .footerlike almost exactly to the
-       viewport's bottom edge, cut off/barely visible without scrolling — the ORIGINAL owner ask
-       here ("ссылки внизу к нижнему краю") wanted spacious breathing room on typical screens, not
-       the links pinned outside the fold on very tall ones. */
-    body.dg-state-results #search-pane { display: flex; flex-direction: column; min-height: min(calc(100vh - 112px), 700px); }
+    /* The pane's real top is ~158px (200px with paging, negative margin-top tricks), not the
+       112px header — calc(100vh - 112px) overshot the viewport by 46-88px and cut .footerlike off
+       (owner: "не уходили за пределы видимости"). A 700px cap fixed that but left the links
+       floating mid-screen on tall monitors (issue #55). 200 = the tallest real top, so the links
+       sit at/just above the viewport bottom on any height.
+       ponytail: magic offset, measure the pane top in JS if the header stack changes again. */
+    body.dg-state-results #search-pane { display: flex; flex-direction: column; min-height: calc(100vh - 200px); }
     body.dg-state-results #pali_wrapper, body.dg-state-results #pali-words_wrapper { display: flex; flex-direction: column; flex: 1 0 auto; }
     /* Links line centred on the corner pill (bottom 30px, 38px tall -> centre 49px up). */
     body.dg-state-results #pali_wrapper > .footerlike, body.dg-state-results #pali-words_wrapper > .footerlike { margin-top: auto; padding: 28px 0 30px; }

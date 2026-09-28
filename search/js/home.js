@@ -3464,7 +3464,6 @@
         var sub = currentSearchSub(query);
         btn.setAttribute('data-on', sub ? 'true' : 'false');
         scheduleBellHint(btn);
-        if (typeof window.dgPlaceBellUnderBurger === 'function') window.dgPlaceBellUnderBurger();
         if (!btn.dataset.wired) {
             btn.dataset.wired = '1';
             btn.addEventListener('click', function () {

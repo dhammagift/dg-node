@@ -2401,11 +2401,11 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
          ряд иконок. Горизонталь — НЕ right:Npx от края экрана (owner: "не чёрте где", это и
          было "слишком далеко" на широких экранах) и НЕ внутри центрированного ряда (owner: "по
          центру ты не вернул кнопки" — там ломало центрирование), а координата настоящего бургера
-         (.dg-menu-btn-hero) в верхнем поле поиска — positionBellUnderBurger() ниже, JS, не CSS:
-         эти два блока не делят общий узкий контейнер, которым можно было бы выровнять чисто CSS.
+         (.dg-menu-btn-hero) в верхнем поле поиска — чистым CSS (.dg-bell-wrap в home.css). Раньше это
+         мерил JS по бургеру, и он ловил бургер посреди анимации ширины поля (issue #55).
          #subp — попап под ним, свой позиционный контекст. .dg-bell-arc — дуги «звона», видны
          только у подписанных (ТЗ §3). Рендерит/наполняет home.js (dgRenderBell()). -->
-    <span class="dg-bell-wrap" style="position: absolute; top: 6px;">
+    <span class="dg-bell-wrap">
         <button id="subbtn" type="button" class="dg-bell" aria-label="{{menu.daily.subscribe}}" title="{{menu.daily.subscribe}}" data-on="false">
             <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
                 <g class="dg-bell-body">
@@ -2420,29 +2420,6 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
              state so [data-open=true] can transition instead of snapping (mockup's own approach). -->
         <div id="subp" class="dg-subp"></div>
     </span>
-    <script>
-      // Real coordinates, not CSS guesswork — #results-toolbar and the search-field row (hero-row,
-      // where .dg-menu-btn-hero actually lives) don't share a narrow common ancestor to align
-      // against with plain CSS. Reruns on resize (debounced) since the burger's X moves with the
-      // viewport/content width.
-      (function () {
-        var wrap = document.querySelector('.dg-bell-wrap');
-        var toolbar = document.getElementById('results-toolbar');
-        if (!wrap || !toolbar) return;
-        function place() {
-          var burger = document.querySelector('.dg-menu-btn-hero');
-          if (!burger || !burger.offsetParent) return;
-          var br = burger.getBoundingClientRect(), tr = toolbar.getBoundingClientRect();
-          // Center-to-center, not edge-to-edge — the bell (30px) and burger aren't the same
-          // width, left-aligning their boxes left the bell visibly off-center under it.
-          wrap.style.left = (br.left + br.width / 2 - tr.left - wrap.offsetWidth / 2) + 'px';
-        }
-        window.dgPlaceBellUnderBurger = place;
-        place();
-        var t;
-        window.addEventListener('resize', function () { clearTimeout(t); t = setTimeout(place, 120); });
-      })();
-    </script>
     <!-- /#dg-toolbar-buttons -->
 </div>
 <!-- /#results-toolbar -->
@@ -3344,7 +3321,11 @@ $(document).ready(function() {
             // и раньше — расходились именно запрос и отрисовка.
             table = window.DgSearchRender.buildDataTable('#pali', rows, lastHighlightWord, langsRequested ? langs : '', langsExplicit);
             $('.forshellscript a').text(dgT('toolbar.wordsToggleShow', 'Слова'));
-            if (window.dgRenderBell) window.dgRenderBell(keyword, rows);
+            // Cold load: /search can resolve before the deferred home-bundle.js has run, so
+            // dgRenderBell/dgRenderLangPill don't exist yet — defer scripts finish before
+            // DOMContentLoaded, so retry then instead of silently skipping (issue #55).
+            var bellKeyword = keyword;
+            dgWhenHomeReady(function () { if (window.dgRenderBell) window.dgRenderBell(bellKeyword, rows); });
             // Именованное событие (.enrich) — таблица больше не пересоздаётся, так что "draw"
             // может сработать много раз за сессию; .off+.on тем же неймспейсом не даёт слушателям
             // накапливаться при повторных renderCurrentReport(). До старта обогащения
@@ -3373,7 +3354,11 @@ $(document).ready(function() {
         // rendered <span lang="xx">s (see dgRenderLangPill) — needs a repaint after every render,
         // not just on body.dg-state-results first appearing (typing a new query while already on
         // the results page changes which languages are on screen without any body-class change).
-        if (typeof window.dgRenderLangPill === 'function') window.dgRenderLangPill();
+        dgWhenHomeReady(function () { if (typeof window.dgRenderLangPill === 'function') window.dgRenderLangPill(); });
+    }
+    function dgWhenHomeReady(fn) {
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fn, { once: true });
+        else fn();
     }
 
     // Pi/En/Ru колонка ссылок (.dprLink/.bwLink/.ruLink) — данные и логика (linksdpr.js/openDpr.js,
