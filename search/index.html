@@ -86,6 +86,20 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
   // скрипта. themeswitch.js как был, так и остаётся единственным местом, которое СЛУШАЕТ клик
   // по кнопке переключения — не трогаем его, просто не даём странице стартовать в неверной
   // теме, пока он не загрузился.
+  // App mode (owner: "?app=1 может введём"): html.dg-app inside the Capacitor app, or in any
+  // browser with ?app=1 (kept for the tab's session; ?app=0 turns it off) — to see and tune the
+  // app's differences on the site. Set this early so nothing app-hidden flashes in first.
+  (function () {
+    var app = false;
+    try {
+      var q = new URLSearchParams(location.search).get('app');
+      if (q === '1') sessionStorage.setItem('dgApp', '1');
+      if (q === '0') sessionStorage.removeItem('dgApp');
+      app = sessionStorage.getItem('dgApp') === '1';
+    } catch (e) {}
+    var C = window.Capacitor;
+    if (app || (C && C.isNativePlatform && C.isNativePlatform())) document.documentElement.classList.add('dg-app');
+  })();
   (function () {
     try {
       var t = localStorage.getItem('theme') || 'auto';

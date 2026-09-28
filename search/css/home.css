@@ -4594,3 +4594,7 @@ body #dg-drawer a.dg-drawer-row:hover, body #dg-drawer a.dg-drawer-row:focus-vis
     100% { --dgr: 130%; opacity: 1; transform: none; }
 }
 @media (prefers-reduced-motion: reduce) { .dg-logo-play { animation: none; -webkit-mask: none; mask: none; } }
+
+/* App mode (html.dg-app — the Capacitor app, or ?app=1 in a browser, see index.html <head>):
+   what the app does not need. Start: the site footer (how-to/apps/contacts, socials, copyright). */
+html.dg-app #dg-footer { display: none; }
