@@ -2604,6 +2604,12 @@ body.dg-drawer-open {
    centred hero row; narrow screens — 28px in from the toolbar's right edge, where the burger ends
    up. Was JS measuring the burger, which raced the hero form's width transition on cold load. */
 .dg-bell-wrap { position: absolute; top: 6px; left: min(calc(50% + 249px), calc(100% - 43px)); }
+/* Expand/collapse-all: text pill on desktop, just an icon on mobile where the row is tight. */
+#btn-show-all-children .dg-btn-ic { display: none; }
+@media (max-width: 767.98px) {
+    #btn-show-all-children .dg-btn-ic { display: block; }
+    #btn-show-all-children .dg-btn-label { display: none; }
+}
 /* Mobile: no spare room beside the centred icon row (bell landed on top of "?"), so it just
    joins the end of that row. */
 @media (max-width: 767.98px) {
