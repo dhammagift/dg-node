@@ -2612,7 +2612,12 @@ body.dg-drawer-open {
     cursor: pointer;
 }
 .dg-bell:hover { background: var(--dg-surface-hover); color: var(--dg-text); }
-.dg-bell[data-on="true"] { width: 34px; height: 34px; background: var(--dg-surface-hover); color: var(--dg-accent-ink); }
+/* Подписан: серый круг 34px + дуги звона — НЕ акцентный/зелёный цвет самого колокольчика
+   (owner: "колокольчик когда подписались не так выглядит" — сверился с прототипом живьём,
+   там глиф остаётся тёмным, меняется только круг-подложка и появляются дуги). */
+.dg-bell[data-on="true"] { width: 34px; height: 34px; background: var(--dg-surface-hover); color: var(--dg-text); }
+.dg-bell-arc { opacity: 0; transition: opacity 0.15s ease; }
+.dg-bell[data-on="true"] .dg-bell-arc { opacity: 1; }
 
 /* Bell hint animations (ТЗ §3: "подпишись" — звон/ring, вздох/sigh, кивок/nod, подскок/hop),
    scheduled by scheduleBellHint() (home.js). Timings/easings/iteration counts match the
