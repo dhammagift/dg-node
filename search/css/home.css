@@ -2678,10 +2678,12 @@ body.dg-drawer-open {
     border: none;
     padding: 0;
     display: inline-flex;
-    color: var(--dg-border-strong);
+    /* owner: default grey was too pale to read as clickable ("чтобы её хотелось нажать") —
+       --dg-text-muted, not the near-invisible --dg-border-strong. */
+    color: var(--dg-text-muted);
     cursor: pointer;
 }
-.dg-read-mark:hover { color: var(--dg-text-muted); }
+.dg-read-mark:hover { color: var(--dg-text); }
 .dg-read-mark.on { color: var(--dg-accent); }
 .dg-read-mark.on:hover { color: var(--dg-accent-dark); }
 
