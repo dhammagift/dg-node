@@ -172,6 +172,36 @@ app.addHook('onRequest', (req, res, done) => {
 // fallback) answers instead, so crawlers got a 200 HTML search page with zero Disallow rules
 // (confirmed live, 2026-09-28: dhamma.gift/robots.txt returned the SPA shell, not text/plain).
 app.get('/robots.txt', (req, reply) => sendFile(req, reply, path.join(__dirname, 'configs', 'robots.txt'), 'text/plain; charset=utf-8'));
+
+// /ai and /b are legacy reader pages whose JS pulls its actual sutta text through PHP endpoints
+// (read/js/common.js: `/read/php/translator-lookup.php?...`), and PHP is not executed by this
+// Node process — a plain static mount (like the siteroot/ loop below gives every other legacy
+// tool) would serve the page shell only, blank where the text belongs. Apache already runs that
+// PHP correctly for the legacy site under the /old alias (same box, same files), so proxy these
+// two prefixes there instead of serving them ourselves — same behavior as old.dhamma.gift,
+// restrictedAuth above still gates them first. (/bw has no PHP dependency, stays a plain static
+// mount via the siteroot/ loop.)
+const http = require('http');
+function proxyToOld(req, reply) {
+    const target = http.request({
+        // Host stays whatever the client actually browsed (test.dhamma.gift / dhamma.gift) —
+        // that's the vhost with the working `Alias /old /var/www/html`, unlike old.dhamma.gift
+        // itself, which has NO /old prefix (its DocumentRoot already IS /var/www/html).
+        host: '127.0.0.1', port: 80, method: req.method, path: '/old' + req.url,
+        headers: req.headers,
+    }, (upstream) => {
+        reply.code(upstream.statusCode);
+        for (const [k, v] of Object.entries(upstream.headers)) if (v !== undefined) reply.header(k, v);
+        reply.send(upstream);
+    });
+    target.on('error', (e) => reply.code(502).send('Proxy to /old failed: ' + e.message));
+    req.raw.pipe(target);
+}
+for (const prefix of ['ai', 'b']) {
+    app.all(`/${prefix}`, proxyToOld);
+    app.all(`/${prefix}/*`, proxyToOld);
+}
+
 // 3000 is where production serves from (both dhamma.gift and test.dhamma.gift proxy here);
 // dg-light.js, the legacy Express server, defaults to 3001 so the two can run side by side.
 const PORT = Number(process.env.PORT) || 3000;
@@ -1376,15 +1406,22 @@ app.register(fastifyStatic, {
 // voice.js (public/overrides/read/js/, чинит рассинхрон detectTranslationLang/prepareTextData
 // с классами, которые реально рендерит megareader.js — rus-lang/eng-lang vs ru-lang/en-lang,
 // second-translation-row vs lang-2nd — переводы молча не находились на страницах ридера,
-// см. TODO.md) отдаётся ПЕРЕД siteroot/read/ (легаси-оригинал, второй элемент root-массива).
-// /read now serves only our own copies (voice player, ranges, icons): the legacy siteroot/read
-// tree is no longer a fallback — its reader pages redirect to the SPA (LEGACY_READERS above).
-app.register(fastifyStatic, {
-    root: path.join(__dirname, 'public', 'overrides', 'read'),
-    prefix: '/read',
-    setHeaders: staticCacheHeaders,
-    decorateReply: false,
-});
+// см. TODO.md). The bare reader PAGES (/read, /r, /d, /memorize...) still redirect to the SPA —
+// untouched, see LEGACY_READERS above, an exact-path match that never sees a /read/js/... subpath.
+// Anything this small override set doesn't have (js/php/images the /b and /ai legacy wrapper
+// pages hardcode as absolute `/read/...` paths, now Basic-Auth-gated, see restrictedAuth above)
+// falls through to the SAME /old proxy those two use, prefix-scoped 404 handler, same pattern
+// as /spa below — not a blanket static fallback onto the whole legacy siteroot/read tree, just
+// the specific files a miss actually asks for, fetched from Apache on demand.
+app.register(async (read) => {
+    read.register(fastifyStatic, {
+        root: path.join(__dirname, 'public', 'overrides', 'read'),
+        prefix: '/',
+        setHeaders: staticCacheHeaders,
+        decorateReply: false,
+    });
+    read.setNotFoundHandler((req, res) => proxyToOld(req, res));
+}, { prefix: '/read' });
 // /spa — static assets PLUS a client-routing fallback (any /spa/* path the static plugin can't
 // find a file for serves index.html instead — router.js parses the real route client-side). In
 // Express this was two separate app.use()/app.get() registrations on the same prefix, relying on
@@ -1560,7 +1597,7 @@ try {
 // is a symlink to an individual FILE, harmless dead weight for
 // express.static but a hard registration error for @fastify/static, which requires root to be a
 // directory).
-const mountedPrefixes = new Set(['assets', 'read', 'memorize', 'devanagari', 'mobile-data']); // 'mobile-data' is the explicit /mobile-data mount above — the scan must not re-register it (duplicate route = hard error)
+const mountedPrefixes = new Set(['assets', 'read', 'memorize', 'devanagari', 'mobile-data', 'ai', 'b']); // 'mobile-data' is the explicit /mobile-data mount above — the scan must not re-register it (duplicate route = hard error); 'ai'/'b' are proxied to /old below instead of statically mounted, see there
 // Skips are reported, not silent. statSync() follows symlinks, so an entry whose target has gone
 // away (siteroot/mobile-data -> a dist/ directory that was never built, say) is indistinguishable
 // here from a broken one — it just never gets a route, and every request under that prefix falls
