@@ -20,8 +20,17 @@
   --dg-accent-bg: #12241f; --dg-on-accent-bg: #16b394; --dg-navy: #1b2836;
 }
 * { box-sizing: border-box; }
-html { width: 100%; -webkit-text-size-adjust: 100%; }
-body { margin: 0; background: var(--dg-page); color: var(--dg-text); font-family: var(--dg-font); -webkit-font-smoothing: antialiased; font-size: 15px; }
+html { width: 100%; -webkit-text-size-adjust: 100%; background: var(--dg-page); }
+/* min-height, not height: a tall page (e.g. long Calendar view) must still be able to grow past
+   the viewport, just never end up SHORTER than it. Without this, a short tab (Calendar with few
+   rows, say) leaves a gap below body's own content — and what shows through there is the OS/
+   browser's own canvas colour, which for an installed PWA is the manifest's fixed
+   background_color (#1b1b1d, dark) regardless of the CURRENT theme setting: light theme, with a
+   dark strip under the bottom nav on a short screen (owner screenshot, 2026-09-28 — looked like
+   "the theme changed partway down the page", but it's this gap, not a real partial theme switch).
+   100dvh over the plain 100vh fallback: on mobile, 100vh includes space the browser's own address
+   bar can cover/uncover, which would leave the same gap while that chrome is showing. */
+body { margin: 0; min-height: 100vh; min-height: 100dvh; background: var(--dg-page); color: var(--dg-text); font-family: var(--dg-font); -webkit-font-smoothing: antialiased; font-size: 15px; }
 a { color: var(--dg-accent-ink); text-decoration: none; }
 a:hover { text-decoration: underline; text-underline-offset: 2px; }
 h1, h2, h3 { font-family: var(--dg-font); font-weight: 600; letter-spacing: -.01em; }
