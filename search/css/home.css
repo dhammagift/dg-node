@@ -2764,9 +2764,13 @@ body.dg-drawer-open {
 .dg-subp-check { display: inline-flex; vertical-align: -3px; color: var(--dg-text-muted); }
 .dg-subp-cfg { text-align: center; font-size: 0.82rem; padding-top: 2px; }
 
-/* Per-row read-mark button (search-render.js READ_MARK_SVG) — circle-check glyph, grey outline
-   off / filled accent green on, same colors as #btn-read-marks .active in the toolbar so the two
-   read as one idea (owner: "сама кнопка должна её повторять"). */
+/* Per-row read-mark button (search-render.js READ_MARK_SVG) — owner: unchecked stays a grey
+   outline ring, checked becomes a FILLED green circle with a white check (not just a green
+   ring) — "может быть не видно отмечена она или лет" — the two states need to read apart at a
+   glance, not just by a tint change. Same SVG markup both states (circle + check path); the
+   fill/stroke swap is done per child element, not by swapping markup. State toggle driven by a
+   class → CSS transition (cheap, correct tool per animate skill step 3), not a keyframe: this
+   fires on every checkbox click, potentially tens of times a session — near-imperceptible tier. */
 .dg-read-mark {
     background: none;
     border: none;
@@ -2778,22 +2782,29 @@ body.dg-drawer-open {
     cursor: pointer;
 }
 .dg-read-mark:hover { color: var(--dg-text); }
-.dg-read-mark.on { color: var(--dg-accent); }
-.dg-read-mark.on:hover { color: var(--dg-accent-dark); }
+.dg-read-mark svg circle, .dg-read-mark svg path {
+    transition: fill 150ms var(--dg-ease), stroke 150ms var(--dg-ease);
+}
+.dg-read-mark.on svg circle { fill: var(--dg-accent); stroke: var(--dg-accent); }
+.dg-read-mark.on svg path { stroke: #fff; }
+.dg-read-mark.on:hover svg circle { fill: var(--dg-accent-dark); stroke: var(--dg-accent-dark); }
 
-/* Wave-in for the ✓ column when it goes from hidden to shown (search-render.js bindReadMarks) —
+/* Reveal for the ✓ column when it goes from hidden to shown (search-render.js bindReadMarks) —
    state indication + explanation: makes it legible that these buttons are what "Mark as read"
    just turned on. Only ever played on a genuine hidden→visible transition (JS-gated) — replaying
-   it when the column was already open would just be motion for its own sake on an unchanged
-   page. Entrance: scale+opacity, ease-out (--dg-ease, already the codebase's token), 220ms,
-   per-row stagger set inline (animation-delay) by the JS that triggers it. */
-.dg-read-wave { animation: dgReadWaveIn 220ms var(--dg-ease) both; }
+   it when the column was already open would just be motion for its own sake. owner: the previous
+   scale(0.9→1) pop "looks like elements reloading" on ~7-12 icons firing at once — switched to
+   the codebase's stagger-entrance recipe (fade + rise, no scale) which reads as one deliberate
+   sweep instead of a flicker. transform+opacity, --dg-ease (existing token), 300ms — the
+   recipe's own duration for a stagger group entrance, not the generic control-tier number; JS
+   still sets the per-row delay (animation-delay). */
+.dg-read-wave { animation: dgReadWaveIn 300ms var(--dg-ease) both; }
 @keyframes dgReadWaveIn {
-    from { opacity: 0; transform: scale(0.9); }
-    to { opacity: 1; transform: scale(1); }
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 @media (prefers-reduced-motion: reduce) {
-    .dg-read-wave { animation: dgReadWaveInReduced 220ms var(--dg-ease) both; }
+    .dg-read-wave { animation: dgReadWaveInReduced 200ms var(--dg-ease) both; }
     @keyframes dgReadWaveInReduced { from { opacity: 0; } to { opacity: 1; } }
 }
 
