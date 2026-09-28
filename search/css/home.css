@@ -2504,9 +2504,16 @@ body:not(.dg-state-home) #dg-announce { display: none; }
 }
 /* Locked while the drawer is open (openDrawer()/closeDrawer(), home.js) — the other half of the
    white-edge fix: with body itself unable to scroll/bounce, there's nothing left for the fixed
-   backdrop/drawer to visually lag behind during a drag. */
+   backdrop/drawer to visually lag behind during a drag. overscroll-behavior-x is a second,
+   separate bug this same class now also guards: on Android Chrome, a left-edge swipe (to swipe
+   DOWN and close a sheet, say — the finger doesn't always start dead-center) is the browser's
+   own "swipe from edge to go back" gesture, which just exits the page while any sheet, drawer or
+   settings panel is open. contain tells Chrome not to treat that edge overscroll as navigation,
+   same value already used above for the drawer's own vertical scroll (owner, dg-node #51: "если
+   я в этой вкладке на главной с открытой шторкой свайпну влево — просто выходит со страницы"). */
 body.dg-drawer-open {
     overflow: hidden;
+    overscroll-behavior-x: contain;
 }
 /* apple-design audit: menu drawer was a flat opaque fill — no depth/material feel over the
    dimmed content behind it. Falls back to the solid fill above where backdrop-filter is
