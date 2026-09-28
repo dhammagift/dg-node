@@ -4353,7 +4353,12 @@ body.dg-state-results #search-pane:not(.dg-has-paging) .dt-search { pointer-even
    short (owner: "на больших экранах просторнее … ссылки внизу к нижнему краю"). */
 @media (min-width: 992px) {
     body.dg-state-results #pali_wrapper > table, body.dg-state-results #pali-words_wrapper > table { margin-top: 26px; }
-    body.dg-state-results #search-pane { display: flex; flex-direction: column; min-height: calc(100vh - 112px); } /* 112 = fixed header stack; the pane ends at the viewport bottom */
+    /* Capped at 700px — owner: "не уходили за пределы видимости без надобности". Uncapped
+       calc(100vh - 112px) on a tall monitor (1300px+) pushed .footerlike almost exactly to the
+       viewport's bottom edge, cut off/barely visible without scrolling — the ORIGINAL owner ask
+       here ("ссылки внизу к нижнему краю") wanted spacious breathing room on typical screens, not
+       the links pinned outside the fold on very tall ones. */
+    body.dg-state-results #search-pane { display: flex; flex-direction: column; min-height: min(calc(100vh - 112px), 700px); }
     body.dg-state-results #pali_wrapper, body.dg-state-results #pali-words_wrapper { display: flex; flex-direction: column; flex: 1 0 auto; }
     /* Links line centred on the corner pill (bottom 30px, 38px tall -> centre 49px up). */
     body.dg-state-results #pali_wrapper > .footerlike, body.dg-state-results #pali-words_wrapper > .footerlike { margin-top: auto; padding: 28px 0 30px; }
