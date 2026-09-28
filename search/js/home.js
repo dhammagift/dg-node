@@ -3258,10 +3258,6 @@
                 var ids = rows.map(function (r) { return r.sutta_id; });
                 window.subUpsert({ type: 'search', query: query, order: 'canon', suttaIds: ids, remind: { web: 'open' } });
                 if (typeof window.dgRenderBell === 'function') window.dgRenderBell(query, rows); // also flips the bell's data-on
-                // Ask for the OS notification permission right here — a real user gesture (the
-                // click itself), not an unprompted popup on page load. remind.web:'open' above is
-                // what checkDailySubscriptionNotification() (below) reads on every future page load.
-                if (window.Notification && Notification.permission === 'default') Notification.requestPermission();
                 // Confirm animation (ТЗ §3, home.css .dg-bell-confirm) — one-shot, cleared after
                 // it plays so it doesn't replay on the next unrelated dgRenderBell() call.
                 var bellBtn = document.getElementById('subbtn');
@@ -3272,9 +3268,19 @@
                 // ТЗ §5: "включается ... автоматически при подписке" — same button, same click,
                 // as if the person had pressed it themselves.
                 var readBtn = document.getElementById('btn-read-marks');
-                if (readBtn && readBtn.getAttribute('aria-pressed') !== 'true') readBtn.click();
-                else if (typeof window.dgPulseReadWave === 'function') window.dgPulseReadWave(); // already open — still give feedback
+                if (readBtn && readBtn.getAttribute('aria-pressed') !== 'true') {
+                    if (typeof window.dgOpenReadColumn === 'function') window.dgOpenReadColumn(); else readBtn.click();
+                } else if (typeof window.dgPulseReadWave === 'function') window.dgPulseReadWave(); // already open — still give feedback
                 renderBellPopup(query, rows);
+                // Ask for the OS notification permission LAST, and off the synchronous click
+                // handler entirely (setTimeout 0) — owner: "из-за браузерного подтверждения
+                // нотификаций почему-то закрывается окошко подписаться". The native permission
+                // prompt steals focus; interleaving it with the popup's own re-render above was
+                // what caused that. A real user gesture already happened (this click), so the
+                // permission prompt still counts as gesture-triggered a tick later.
+                if (window.Notification && Notification.permission === 'default') {
+                    setTimeout(function () { Notification.requestPermission(); }, 0);
+                }
             });
             p.appendChild(go);
         } else {
@@ -3316,8 +3322,9 @@
             mark.addEventListener('click', function () {
                 closeBellPopup();
                 var readBtn = document.getElementById('btn-read-marks');
-                if (readBtn && readBtn.getAttribute('aria-pressed') !== 'true') readBtn.click();
-                else if (typeof window.dgPulseReadWave === 'function') window.dgPulseReadWave(); // already open — still give feedback
+                if (readBtn && readBtn.getAttribute('aria-pressed') !== 'true') {
+                    if (typeof window.dgOpenReadColumn === 'function') window.dgOpenReadColumn(); else readBtn.click();
+                } else if (typeof window.dgPulseReadWave === 'function') window.dgPulseReadWave(); // already open — still give feedback
             });
             p.appendChild(mark);
 
@@ -3391,6 +3398,43 @@
     // reason for a separate cooldown per subscription. Native OS notifications for the app
     // (album-art icon, translated text) are a separate, already-parked task — dg-apps#37.
     var DG_NOTIF_KEY = 'dg-daily-notif-date';
+    // UI language, same source/logic as the langs-array builder above (line ~2232) — the
+    // subscription itself doesn't store a language, so the notification quote uses whatever
+    // language the person currently reads the SITE in (owner: "строки на языке на котором юзер
+    // искал"), not the sutta's own root language.
+    function uiLang() {
+        return (localStorage.getItem('dhammaLanguage') || localStorage.getItem('siteLanguage') || 'en') === 'ru' ? 'ru' : 'en';
+    }
+    // First segment with an actual translated line — skips 0.x header/title segments (division,
+    // sutta title), same shape /api/text/:id already returns (segments[].translations, one key
+    // per requested ?lang=).
+    function firstQuoteLine(segments, lang) {
+        for (var i = 0; i < segments.length; i++) {
+            var seg = segments[i];
+            if (/:0\.\d/.test(seg.segment)) continue; // title/division lines (e.g. "dn2:0.1"), not real content
+            var keys = Object.keys(seg.translations || {});
+            if (!keys.length) continue;
+            var text = seg.translations[keys[0]].trim();
+            if (text) return text.length > 140 ? text.slice(0, 140).trim() + '…' : text;
+        }
+        return null;
+    }
+    function fireDailyNotification(sub, prog) {
+        var fallbackBody = sub.query ? ('«' + sub.query + '» · ' + prog.read + '/' + prog.total) : '';
+        function show(body) {
+            var n = new Notification(t('menu.daily.notifTitle', 'Текст дня') + ': ' + prog.nextId, {
+                body: body || fallbackBody,
+                icon: '/assets/img/albumart512.png', // conch-on-book album art (owner: "используй albumart с раковиной")
+                badge: '/assets/img/dgsanhkalogo_sqare.png', // site's own mark — monochrome silhouette, what `badge` needs
+                tag: 'dg-daily-' + sub.id // replaces yesterday's notification for the same sub, doesn't stack
+            });
+            n.onclick = function () { window.focus(); location.href = '/' + prog.nextId; n.close(); };
+        }
+        fetch('/api/text/' + encodeURIComponent(prog.nextId) + '?lang=' + uiLang())
+            .then(function (r) { return r.ok ? r.json() : null; })
+            .then(function (data) { show(data && data.segments ? firstQuoteLine(data.segments, uiLang()) : null); })
+            .catch(function () { show(null); }); // offline/network hiccup — still notify, just with the plain fallback
+    }
     function checkDailySubscriptionNotification() {
         if (!window.Notification || Notification.permission !== 'granted') return;
         var today = new Date().toISOString().slice(0, 10);
@@ -3400,13 +3444,7 @@
             if (sub.paused || (sub.remind && sub.remind.web !== 'open')) return;
             var prog = window.subProgress(sub);
             if (!prog.nextId) return; // fully read — nothing to notify about
-            var n = new Notification(t('menu.daily.notifTitle', 'Текст дня') + ': ' + prog.nextId, {
-                body: sub.query ? ('«' + sub.query + '» · ' + (prog.read) + '/' + prog.total) : '',
-                icon: '/assets/img/albumart512.png', // conch-on-book album art (owner: "используй albumart с раковиной")
-                badge: '/assets/img/dgsanhkalogo_sqare.png', // site's own mark — monochrome silhouette, what `badge` needs
-                tag: 'dg-daily-' + sub.id // replaces yesterday's notification for the same sub, doesn't stack
-            });
-            n.onclick = function () { window.focus(); location.href = '/' + prog.nextId; n.close(); };
+            fireDailyNotification(sub, prog);
         });
         try { localStorage.setItem(DG_NOTIF_KEY, today); } catch (e) {}
     }

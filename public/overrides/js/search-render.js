@@ -1303,6 +1303,13 @@ window.DgSearchRender = (function () {
             sync(!col.visible());
         });
 
+        // Exposed so the bell popup (home.js) can open the column WITHOUT a synthetic
+        // btn.click() — a real dispatched click bubbles to `document`, where the popup's own
+        // click-away listener lives, and closes the popup that just triggered it (owner:
+        // "из-за браузерного подтверждения нотификаций почему-то закрывается окошко подписаться"
+        // — the actual cause was this bubbling click, not the permission prompt).
+        window.dgOpenReadColumn = function () { sync(true); };
+
         // Делегирование: строки перерисовываются на каждой догрузке цитат, вешать обработчик на
         // сами кнопки бессмысленно — их узлы живут только до следующей перерисовки.
         $table.off('click.dgread').on('click.dgread', 'button.dg-read-mark', function () {
