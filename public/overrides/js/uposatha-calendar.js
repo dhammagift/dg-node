@@ -406,33 +406,15 @@
     if ((e = $('left')) && live.ends) e.textContent = span(live.ends - now);
     Array.prototype.forEach.call(document.querySelectorAll('.meal-left'), function (b) { var to = +b.getAttribute('data-to'); if (to <= now.getTime()) { if (!params.get('meal') && !repainting) { repainting = true; try { paint(); } finally { repainting = false; } } } else b.textContent = span(to - now); }); // the moment of midday or dawn passed: the block changes its state
   }
-  // The parts of the day: sunrise to sunset in three, sunset to sunrise in three (fixed 06:00 / 18:00 without a place).
-  // What a person did in the morning, at midday, in the evening: one text of the pool of the suttas for each part, drawn anew on every opening of the page.
-  // Until the pool is there (or without it) the fixed lines of the strings stand. The night keeps its fixed lines.
-  var partsPool = null, partsPoolLoading = false, partPick = {};
-  function ensurePartsPool() {
-    if (partsPool || partsPoolLoading) return; partsPoolLoading = true;
-    fetch('/assets/js/uposatha-parts-pool.json').then(function (r) { return r.json(); }).then(function (d) {
-      partsPool = d; ['morning', 'midday', 'evening', 'night'].forEach(function (k) { var l = d[k] || []; partPick[k] = l.length ? l[Math.floor(Math.random() * l.length)] : null; }); paint(); // the night: one sutta with the three watches, all three rows from it
-    }).catch(function () { partsPoolLoading = false; });
-  }
-  function dayPartsNow() {
-    return t.dayParts.map(function (n, i) {
-      var e = partPick[['morning', 'midday', 'evening'][i]]; if (!e) return n;
-      var txt = (lang === 'ru' && e.ru) || e.en, cut = txt.length > 240 ? txt.slice(0, txt.lastIndexOf(' ', 240)) + ' …' : txt;
-      return [n[0], n[1], cut + (lang === 'ru' && !e.ru ? ' · EN' : '') + (/majjhanhik/.test(e.pli) || i !== 1 ? '' : '**'), e.ref];
-    });
-  }
-  function nightPartsNow() {
-    var set = partPick.night; if (!set) return t.nightParts;
-    return t.nightParts.map(function (n, i) {
-      var w = set.watches[i]; if (!w) return n;
-      var txt = (lang === 'ru' && w.ru) || w.en, cut = txt.length > 240 ? txt.slice(0, txt.lastIndexOf(' ', 240)) + ' …' : txt;
-      return [n[0], n[1], cut + (lang === 'ru' && !w.ru ? ' · EN' : ''), w.ref];
-    });
-  }
+  // The parts of the day: sunrise to sunset in three, sunset to sunrise in three (fixed 06:00 / 18:00
+  // without a place). Owner, 2026-09-28: descriptions are STATIC everywhere, day and night alike —
+  // t.dayParts/t.nightParts' own short plain-language line, always, never a rotating verbatim sutta
+  // excerpt (that was this file's brief "pool of the suttas, drawn anew on every opening" experiment;
+  // removed — a real per-part pool of ALTERNATE CITATIONS for the same fixed description is a
+  // possible later addition, but that needs actual curated data, not fabricated on the spot).
+  function dayPartsNow() { return t.dayParts; }
+  function nightPartsNow() { return t.nightParts; }
   function paintParts(F, now, ymd) {
-    ensurePartsPool();
     var obs = state.loc ? new A.Observer(state.loc.lat, state.loc.lon, 0) : null, tz = state.tz;
     function sun(kind, d) { var p = d.split('-').map(Number); return edge(kind, p[0], p[1], p[2], tz, obs) || zonedToUtc(p[0], p[1], p[2], kind === 'rise' ? 6 : 18, tz); }
     var rise = sun('rise', ymd), set = sun('set', ymd);
