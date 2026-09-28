@@ -3294,7 +3294,11 @@
             var mark = document.createElement('button');
             mark.type = 'button';
             mark.className = 'dg-subp-mark';
-            mark.innerHTML = '<span class="dg-subp-check">&#10003;</span> ' + t('menu.daily.markRead', 'Отметить прочитанное') + ' &rarr;';
+            // Same glyph as the row buttons/toolbar icon (search-render.js READ_MARK_SVG) — owner:
+            // "галка в окошке должна быть такая же как галки в результатах... серой", not a green
+            // text "✓". Grey here always (this button isn't itself a toggled state, just opens
+            // the column), matches the row buttons' own default/off color.
+            mark.innerHTML = '<span class="dg-subp-check"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12.3l2.6 2.6L16 9.5"/></svg></span> ' + t('menu.daily.markRead', 'Отметить прочитанное') + ' &rarr;';
             mark.addEventListener('click', function () {
                 closeBellPopup();
                 var readBtn = document.getElementById('btn-read-marks');
@@ -3372,6 +3376,7 @@
         var sub = currentSearchSub(query);
         btn.setAttribute('data-on', sub ? 'true' : 'false');
         scheduleBellHint(btn);
+        if (typeof window.dgPlaceBellUnderBurger === 'function') window.dgPlaceBellUnderBurger();
         if (!btn.dataset.wired) {
             btn.dataset.wired = '1';
             btn.addEventListener('click', function () {

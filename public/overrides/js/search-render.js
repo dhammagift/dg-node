@@ -885,7 +885,12 @@ window.DgSearchRender = (function () {
                 {
                     title: headerTitles[1],
                     data: 'sutta_id',
-                    orderable: false,
+                    // Sortable now (owner: "галочка в хедере должна сортировать строки на
+                    // отмеченные и неотмеченные"): 'sort'/'type' get a plain 0/1 so DataTables'
+                    // default numeric comparator groups read/unread; 'display' gets the real
+                    // button. orderDataType isn't needed — render()'s own `type` arg already
+                    // covers this per-cell, no separate column config.
+                    orderable: true,
                     searchable: false,
                     className: 'dg-read-cell text-center',
                     visible: false,
@@ -893,7 +898,8 @@ window.DgSearchRender = (function () {
                     // #btn-read-marks in the toolbar (owner: "галочка должна быть как на
                     // мокапах... сама кнопка должна её повторять"), just per-row: grey outline
                     // off, filled accent-green on. bindReadMarks() below delegates its click.
-                    render: function (data) {
+                    render: function (data, type) {
+                        if (type === 'sort' || type === 'type') return isRead(data) ? 1 : 0;
                         return '<button type="button" class="dg-read-mark' + (isRead(data) ? ' on' : '') + '" data-sutta="' + data + '" aria-pressed="' + (isRead(data) ? 'true' : 'false') + '" aria-label="' + t('table.readColAria', 'Read') + '">' + READ_MARK_SVG + '</button>';
                     }
                 },

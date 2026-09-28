@@ -2616,6 +2616,18 @@ body.dg-drawer-open {
    (owner: "колокольчик когда подписались не так выглядит" — сверился с прототипом живьём,
    там глиф остаётся тёмным, меняется только круг-подложка и появляются дуги). */
 .dg-bell[data-on="true"] { width: 34px; height: 34px; background: var(--dg-surface-hover); color: var(--dg-text); }
+
+/* #btn-read-marks active: some upstream Bootstrap .btn.active/[aria-pressed] rule resolves its
+   border to the theme accent (measured live: rgb(20,156,124) — the accent green) rather than the
+   neutral --dg-border the site-local rule right above it asks for; couldn't pin down which rule
+   wins without a broader Bootstrap-override audit, so this forces the intended look directly —
+   owner: "не должна быть обведена зелёным... делай её залитой серым", no border at all, just the
+   same grey fill every other active toolbar icon gets. */
+#btn-read-marks.active, #btn-read-marks[aria-pressed="true"] {
+    border-color: transparent !important;
+    background: var(--dg-surface-hover) !important;
+    color: var(--dg-text) !important;
+}
 .dg-bell-arc { opacity: 0; transition: opacity 0.15s ease; }
 .dg-bell[data-on="true"] .dg-bell-arc { opacity: 1; }
 
@@ -2703,10 +2715,9 @@ body.dg-drawer-open {
     cursor: pointer;
     color: var(--dg-text);
 }
-.dg-subp-mark { color: var(--dg-accent-ink); border-color: var(--dg-accent-bg); }
-.dg-subp-mark:hover { background: var(--dg-accent-bg); }
+.dg-subp-mark:hover { background: var(--dg-surface-hover); }
 .dg-subp-stop:hover { background: var(--dg-surface-hover); }
-.dg-subp-check { font-size: 0.8em; }
+.dg-subp-check { display: inline-flex; vertical-align: -3px; color: var(--dg-text-muted); }
 .dg-subp-cfg { text-align: center; font-size: 0.82rem; padding-top: 2px; }
 
 /* Per-row read-mark button (search-render.js READ_MARK_SVG) — circle-check glyph, grey outline
