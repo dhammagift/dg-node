@@ -1310,6 +1310,20 @@ window.DgSearchRender = (function () {
         // — the actual cause was this bubbling click, not the permission prompt).
         window.dgOpenReadColumn = function () { sync(true); };
 
+        // Owner: marked texts as read BEFORE subscribing to this same search — the subscription
+        // then showed "0 of X read" because those marks live under the plain-search fallback key
+        // (dgReadMarks:<query>|<scope>, loadReadMarks() above), not in the new sub's readIds —
+        // isRead()/setRead() only start reading from sub.readIds once activeSub() finds a sub,
+        // they never migrate what was already there. Exposed for home.js's Subscribe handler to
+        // seed the new subscription's readIds with whatever was already marked for this query,
+        // so progress reflects reality instead of resetting to 0.
+        window.dgLegacyReadMarks = function () { return loadReadMarks(); };
+        // Cells for already-rendered rows keep the HTML isRead() computed at their LAST draw —
+        // toggling column visibility or updating sub.readIds doesn't recompute them on its own.
+        // Called once right after subUpsert seeds readIds, so the grid matches the new state
+        // instead of coincidentally still showing the pre-subscription marks.
+        window.dgRefreshReadMarks = function () { if (suttaTableApi) suttaTableApi.rows().invalidate('data').draw(false); };
+
         // Делегирование: строки перерисовываются на каждой догрузке цитат, вешать обработчик на
         // сами кнопки бессмысленно — их узлы живут только до следующей перерисовки.
         $table.off('click.dgread').on('click.dgread', 'button.dg-read-mark', function () {

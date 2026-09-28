@@ -3256,8 +3256,15 @@
                 // target no longer inside p (already replaced) and closes the popup it just drew.
                 e.stopPropagation();
                 var ids = rows.map(function (r) { return r.sutta_id; });
-                window.subUpsert({ type: 'search', query: query, order: 'canon', suttaIds: ids, remind: { web: 'open' } });
+                // Owner: marked texts as read BEFORE subscribing — the new subscription must
+                // start from that reality, not from 0. Legacy marks live under the plain-search
+                // fallback key (search-render.js loadReadMarks); seed them in as this sub's own
+                // readIds — this counts a real prior read, not creates a phantom one.
+                var priorReads = (typeof window.dgLegacyReadMarks === 'function' ? window.dgLegacyReadMarks() : [])
+                    .filter(function (id) { return ids.indexOf(id) !== -1; });
+                window.subUpsert({ type: 'search', query: query, order: 'canon', suttaIds: ids, remind: { web: 'open' }, readIds: priorReads });
                 if (typeof window.dgRenderBell === 'function') window.dgRenderBell(query, rows); // also flips the bell's data-on
+                if (typeof window.dgRefreshReadMarks === 'function') window.dgRefreshReadMarks(); // rows may have stale pre-subscription cell HTML
                 // Confirm animation (ТЗ §3, home.css .dg-bell-confirm) — one-shot, cleared after
                 // it plays so it doesn't replay on the next unrelated dgRenderBell() call.
                 var bellBtn = document.getElementById('subbtn');
