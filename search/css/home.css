@@ -2618,6 +2618,16 @@ body.dg-drawer-open {
     body.dg-state-results #dg-toolbar-buttons { margin-left: 0; margin-right: 0; } /* auto margins ate the free space and pushed the bell to the edge */
     /* Set apart from the row, but still with it: ~2.3x the 18px visual gap between icons (owner). */
     .dg-bell-wrap { position: relative; top: auto; left: auto; margin-left: 28px; }
+    /* Phones run at the 1.1 base scale (home.js uiBase): the row lost room and wrapped "✓ ?"
+       onto a second line. Tighter here (html prefix: outranks the chip rules further down). */
+    html body.dg-state-results #results-toolbar #dg-toolbar-buttons { gap: 2px; }
+    html body.dg-state-results #results-toolbar .btn { padding-left: 7px; padding-right: 7px; }
+    .dg-bell-wrap { margin-left: 14px; }
+}
+@media (max-width: 339.98px) { /* 320px phones */
+    html body.dg-state-results #results-toolbar #dg-toolbar-buttons { gap: 0; }
+    html body.dg-state-results #results-toolbar .btn { padding-left: 5px; padding-right: 5px; }
+    .dg-bell-wrap { margin-left: 6px; }
 }
 .dg-bell {
     display: grid;

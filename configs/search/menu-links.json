@@ -46,13 +46,13 @@
       "kbd": "Alt+2"
     },
     "history": {
-      "label": "History",
-      "desc": "Favorites, History, “4NT” window",
-      "icon": "clock",
+      "label": "Favorites, history, subscriptions",
+      "desc": "The “4NT” window",
+      "icon": "compass",
       "href": "/4as",
       "modal": "quick",
-      "drawerLabel": "Favorites, History",
-      "drawerIcon": "star",
+      "drawerLabel": "Favorites, history, subscriptions",
+      "drawerIcon": "compass",
       "kbd": "Alt+Y"
     },
     "help": {
@@ -832,13 +832,13 @@
       "kbd": "Alt+2"
     },
     "history": {
-      "label": "История",
-      "desc": "Избранное, История, Окно «4БИ»",
-      "icon": "clock",
+      "label": "Избранное, история, подписки",
+      "desc": "Окно «4БИ»",
+      "icon": "compass",
       "href": "/4as",
       "modal": "quick",
-      "drawerLabel": "Избранное, История",
-      "drawerIcon": "star",
+      "drawerLabel": "Избранное, история, подписки",
+      "drawerIcon": "compass",
       "kbd": "Alt+Y"
     },
     "help": {

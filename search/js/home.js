@@ -5181,13 +5181,19 @@
     // без запасного пути контрол размера на старом iPhone не делал бы РОВНО ничего (хуже, чем
     // было). Фолбэк — прежний html{font-size}: двигает только rem, но это лучше пустой кнопки.
     var CAN_ZOOM = !!(window.CSS && CSS.supports && CSS.supports('zoom', '1.5'));
+    // Owner (2026-09-29): on phones and in the app the old 110% is the new 100% — the base size
+    // there read too small. The control still shows 70–150%, relative to that base; the same rule
+    // runs early in index.html <head> so the page does not jump from small to big on load.
+    var BIG_BASE = window.matchMedia('(max-width: 767.98px)');
+    function uiBase() { return (BIG_BASE.matches || document.documentElement.classList.contains('dg-app')) ? 1.1 : 1; } // owner: 1.2 read big and wrapped the phone toolbar; 1.1
     function applyUiScale(scale) {
-        var root = document.documentElement;
-        if (!CAN_ZOOM) { root.style.fontSize = scale + '%'; return; }
+        var root = document.documentElement, z = scale / 100 * uiBase();
+        if (!CAN_ZOOM) { root.style.fontSize = (z * 100) + '%'; return; }
         root.style.fontSize = '';
-        root.style.setProperty('--dg-zoom', scale / 100);
-        root.style.zoom = scale / 100;
+        root.style.setProperty('--dg-zoom', z);
+        root.style.zoom = z;
     }
+    BIG_BASE.addEventListener('change', function () { applyUiScale(currentFontScale()); });
     // Size changed in the settings sheet (an iframe, same tab) — apply it to this page right away.
     window.addEventListener('storage', function (e) { if (e.key === FONT_SCALE_KEY) renderFontSizeControl(); });
     function renderFontSizeControl() {
