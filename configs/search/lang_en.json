@@ -75,7 +75,8 @@
       "markRead": "Mark as read",
       "stop": "Unsubscribe",
       "configure": "Configure",
-      "timeLabel": "Not before"
+      "timeLabel": "Not before",
+      "notifTitle": "Text of the day"
     }
   },
   "slides": {

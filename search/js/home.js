@@ -3258,6 +3258,10 @@
                 var ids = rows.map(function (r) { return r.sutta_id; });
                 window.subUpsert({ type: 'search', query: query, order: 'canon', suttaIds: ids, remind: { web: 'open' } });
                 if (typeof window.dgRenderBell === 'function') window.dgRenderBell(query, rows); // also flips the bell's data-on
+                // Ask for the OS notification permission right here — a real user gesture (the
+                // click itself), not an unprompted popup on page load. remind.web:'open' above is
+                // what checkDailySubscriptionNotification() (below) reads on every future page load.
+                if (window.Notification && Notification.permission === 'default') Notification.requestPermission();
                 // Confirm animation (ТЗ §3, home.css .dg-bell-confirm) — one-shot, cleared after
                 // it plays so it doesn't replay on the next unrelated dgRenderBell() call.
                 var bellBtn = document.getElementById('subbtn');
@@ -3377,6 +3381,34 @@
             q.i++;
             try { localStorage.setItem(BELL_HINT_KEY, JSON.stringify(q)); } catch (e) {}
         }, 1400);
+    }
+
+    // Web notification, owner: "можешь же пока только веб сделать — запрос разрешения на
+    // нотификации, и просто раз в день при открытии вкладки показывать нотификацию с очередным
+    // текстом". Permission itself is asked at the actual Subscribe click above (real user
+    // gesture) — this only fires the daily notification, gated once/day across ALL subscriptions
+    // together (DG_NOTIF_KEY), not per-subscription: simplest thing that matches the ask, no
+    // reason for a separate cooldown per subscription. Native OS notifications for the app
+    // (album-art icon, translated text) are a separate, already-parked task — dg-apps#37.
+    var DG_NOTIF_KEY = 'dg-daily-notif-date';
+    function checkDailySubscriptionNotification() {
+        if (!window.Notification || Notification.permission !== 'granted') return;
+        var today = new Date().toISOString().slice(0, 10);
+        try { if (localStorage.getItem(DG_NOTIF_KEY) === today) return; } catch (e) { return; }
+        var subs = (typeof window.subGetAll === 'function') ? window.subGetAll() : [];
+        subs.forEach(function (sub) {
+            if (sub.paused || (sub.remind && sub.remind.web !== 'open')) return;
+            var prog = window.subProgress(sub);
+            if (!prog.nextId) return; // fully read — nothing to notify about
+            var n = new Notification(t('menu.daily.notifTitle', 'Текст дня') + ': ' + prog.nextId, {
+                body: sub.query ? ('«' + sub.query + '» · ' + (prog.read) + '/' + prog.total) : '',
+                icon: '/assets/img/albumart512.png', // conch-on-book album art (owner: "используй albumart с раковиной")
+                badge: '/assets/img/dgsanhkalogo_sqare.png', // site's own mark — monochrome silhouette, what `badge` needs
+                tag: 'dg-daily-' + sub.id // replaces yesterday's notification for the same sub, doesn't stack
+            });
+            n.onclick = function () { window.focus(); location.href = '/' + prog.nextId; n.close(); };
+        });
+        try { localStorage.setItem(DG_NOTIF_KEY, today); } catch (e) {}
     }
 
     // Called from index.html's renderCurrentReport(), every time the sutta report (re)draws.
@@ -4764,6 +4796,7 @@
 
     function init() {
         document.body.classList.add('dg-skin-minimal');
+        checkDailySubscriptionNotification();
 
         var input = document.getElementById('paliauto');
         if (input) {

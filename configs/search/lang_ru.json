@@ -75,7 +75,8 @@
       "markRead": "Отметить прочитанное",
       "stop": "Отписаться",
       "configure": "Настроить",
-      "timeLabel": "Не раньше"
+      "timeLabel": "Не раньше",
+      "notifTitle": "Текст дня"
     }
   },
   "slides": {
