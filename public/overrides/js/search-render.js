@@ -1299,7 +1299,8 @@ window.DgSearchRender = (function () {
                 el.style.animationDelay = Math.min(i, 12) * 30 + 'ms';
                 el.classList.add('dg-read-pulse');
             });
-            setTimeout(function () { marks.removeClass('dg-read-pulse').css('animation-delay', ''); }, 500);
+            // 3 × 340ms pulses + up to 12 × 30ms stagger (owner: one pulse is easy to miss).
+            setTimeout(function () { marks.removeClass('dg-read-pulse').css('animation-delay', ''); }, 1500);
         }
         window.dgPulseReadWave = pulseReadConfirm;
 
@@ -1311,7 +1312,10 @@ window.DgSearchRender = (function () {
             if (visible) pulseReadReveal();
         }
 
-        sync(loadReadMarks().length > 0);
+        var fromSub = false;
+        try { fromSub = sessionStorage.getItem('dg-open-read-col') === '1'; sessionStorage.removeItem('dg-open-read-col'); } catch (e) {}
+        var sub0 = activeSub();
+        sync(loadReadMarks().length > 0 || fromSub || !!(sub0 && (sub0.readIds || []).length));
 
         $btn.off('click.dgread').on('click.dgread', function () {
             sync(!col.visible());
@@ -1322,7 +1326,9 @@ window.DgSearchRender = (function () {
         // click-away listener lives, and closes the popup that just triggered it (owner:
         // "из-за браузерного подтверждения нотификаций почему-то закрывается окошко подписаться"
         // — the actual cause was this bubbling click, not the permission prompt).
-        window.dgOpenReadColumn = function () { sync(true); };
+        // Opened from the bell popup: reveal, then the same triple pulse as the already-open case,
+        // so both paths end on an unmissable "these are the marks".
+        window.dgOpenReadColumn = function () { sync(true); setTimeout(pulseReadConfirm, 350); };
 
         // Owner: marked texts as read BEFORE subscribing to this same search — the subscription
         // then showed "0 of X read" because those marks live under the plain-search fallback key
@@ -1344,7 +1350,18 @@ window.DgSearchRender = (function () {
             var on = !this.classList.contains('on');
             this.classList.toggle('on', on);
             this.setAttribute('aria-pressed', on ? 'true' : 'false');
+            // Check-draw only on a real click — .on also comes from every redraw's HTML, which
+            // must not replay it.
+            var btn = this;
+            btn.classList.toggle('dg-just-on', on);
+            if (on) setTimeout(function () { btn.classList.remove('dg-just-on'); }, 400);
             setRead(this.dataset.sutta, on);
+            // ТЗ §6: counted in the current subscription; if the text is in other ones too, offer
+            // to mark it there as well (same #rsubp popover as the reader, home.js).
+            var sub = activeSub(), id = this.dataset.sutta;
+            if (on && sub && typeof window.dgOpenRsubp === 'function' && window.subGetAll().some(function (s) {
+                return s.id !== sub.id && s.type !== 'random' && (s.suttaIds || []).indexOf(id) !== -1;
+            })) window.dgOpenRsubp(id, this, sub.id);
         });
     }
 

@@ -362,7 +362,10 @@ const UNVERSIONED_LAZY_PATHS = [
     // a year-long immutable cache and simply never arrived. They carry ?v= now; this tier keeps
     // them current for anything that still asks for the bare path.
     path.join(__dirname, 'public', 'overrides', 'read', 'js', 'voice.js'),
-    path.join(__dirname, 'public', 'overrides', 'read', 'css', 'voice.css')
+    path.join(__dirname, 'public', 'overrides', 'read', 'css', 'voice.css'),
+    // @import-ed by extrastyles.css and loaded bare by the dictionary: a redesign sat behind the
+    // year-long cache — new quick window JS over the old CSS (owner, 2026-09-28).
+    path.join(__dirname, 'public', 'overrides', 'css', 'quick-modal.css')
 ];
 
 function staticCacheHeaders(reply, filePath) {

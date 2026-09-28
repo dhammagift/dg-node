@@ -2469,9 +2469,14 @@ function toggleFavoriteGlobal(itemData) {
     let isQuickModalInitializing = false;
 
     // Создаем функцию-прокси (заглушку)
-    window.toggleQuickModal = function() {
+    // Remembers what the first call asked for (a tab, or subsOpen's options) and replays it on
+    // the real functions once the script has loaded.
+    let pendingQuickTab, pendingSubsOpen;
+    window.subsOpen = function (opts) { pendingSubsOpen = opts || {}; window.toggleQuickModal('tab-subs'); };
+    window.toggleQuickModal = function(tabKey) {
         // Если скрипт уже загружен, выходим (хотя заглушка перезапишется)
         if (window.isQuickModalScriptLoaded) return;
+        if (tabKey) pendingQuickTab = tabKey;
 
         if (isQuickModalInitializing) return;
         isQuickModalInitializing = true;
@@ -2490,7 +2495,7 @@ function toggleFavoriteGlobal(itemData) {
 
         // 2. Скачиваем скрипт модального окна
         const script = document.createElement('script');
-        script.src = "/assets/js/quickModal.js?v=20260914"; // query drops copies a browser pinned for a year // Проверьте правильность пути!
+        script.src = "/assets/js/quickModal.js?v=20260928q"; // query drops copies a browser pinned for a year // Проверьте правильность пути!
         
         script.onload = () => {
             window.isQuickModalScriptLoaded = true;
@@ -2503,9 +2508,8 @@ function toggleFavoriteGlobal(itemData) {
             }
 
             // Вызываем РЕАЛЬНУЮ функцию, которая только что перезаписала эту заглушку
-            if (typeof window.toggleQuickModal === 'function') {
-                window.toggleQuickModal();
-            }
+            if (pendingSubsOpen) window.subsOpen(pendingSubsOpen);
+            else if (typeof window.toggleQuickModal === 'function') window.toggleQuickModal(pendingQuickTab);
         };
         
         script.onerror = () => {
@@ -3089,7 +3093,33 @@ function subGet(id) { return subGetAll().find(s => s.id === id) || null; }
 
 // Создаёт/обновляет одну подписку локально (оптимистично, сразу) и запускает облачный апсерт.
 // sub без id — новая подписка (id генерируется здесь); с id — правка существующей.
+// "In order" for search subscriptions = the results table's own order (owner: an dn mn sn / kn /
+// vin): the 4 Nikāyas, then Khuddaka, then Vinaya, then Abhidhamma; inside a group books
+// alphabetically, numbers naturally (an4.146 before an4.1460, sn2.9 before sn2.10).
+// /search itself returns rows by match rank, not in this order.
+var SUB_NIKAYAS = ['an', 'dn', 'mn', 'sn'];
+var SUB_ABHI = ['ds', 'vb', 'dt', 'pp', 'kv', 'ya', 'patthana'];
+window.subCanonSort = function (ids) {
+    function key(id) {
+        var m = /^([a-z]+(?:-[a-z]+)*)(.*)$/i.exec(id) || [id, id, ''];
+        var book = m[1].toLowerCase();
+        var group = SUB_NIKAYAS.indexOf(book) !== -1 ? 0 : book.indexOf('pli-tv') === 0 ? 2 : SUB_ABHI.indexOf(book) !== -1 ? 3 : 1;
+        return { group: group, book: book, nums: (m[2].match(/\d+/g) || []).map(Number) };
+    }
+    return ids.slice().sort(function (a, b) {
+        var ka = key(a), kb = key(b);
+        if (ka.group !== kb.group) return ka.group - kb.group;
+        if (ka.book !== kb.book) return ka.book < kb.book ? -1 : 1;
+        for (var i = 0; i < Math.max(ka.nums.length, kb.nums.length); i++) {
+            var d = (ka.nums[i] || 0) - (kb.nums[i] || 0);
+            if (d) return d;
+        }
+        return 0;
+    });
+};
+
 window.subUpsert = function (sub) {
+    if (sub.type === 'search' && sub.order !== 'matches' && sub.suttaIds) sub.suttaIds = window.subCanonSort(sub.suttaIds);
     var subs = subGetAll();
     if (!sub.id) sub.id = 'sub_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
     if (!sub.createdAt) sub.createdAt = Date.now();
@@ -3136,7 +3166,7 @@ window.subMarkRead = function (id, textId, on) {
 // содержат, не только в текущей.
 window.subMarkReadEverywhere = function (textId, on) {
     subGetAll().forEach(function (s) {
-        if ((s.suttaIds || []).indexOf(textId) !== -1) window.subMarkRead(s.id, textId, on);
+        if (s.type !== 'random' && (s.suttaIds || []).indexOf(textId) !== -1) window.subMarkRead(s.id, textId, on);
     });
 };
 
@@ -3146,6 +3176,15 @@ window.subMarkReadEverywhere = function (textId, on) {
 // серия дней, это уже дело UI (см. ТЗ: "12 дней подряд" вместо "N из M").
 window.subProgress = function (sub) {
     var ids = sub.suttaIds || [];
+    // Random: no progress and no marks (owner) — just the day's text, one per calendar day since
+    // subscribing. ponytail: the 365 shuffled ids cycle after a year; reshuffle if that matters.
+    if (sub.type === 'random') {
+        var day = function (t) { var d = new Date(t); return Math.floor(new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime() / 86400000); };
+        var n = Math.max(0, day(Date.now()) - day(sub.createdAt || Date.now()));
+        return { read: 0, total: 0, percent: 0, nextId: ids.length ? ids[n % ids.length] : null };
+    }
+    // Subscriptions saved before subCanonSort existed hold ids in /search's match-rank order.
+    if (sub.type === 'search' && sub.order !== 'matches') ids = window.subCanonSort(ids);
     var read = new Set(sub.readIds || []);
     var readCount = ids.filter(function (id) { return read.has(id); }).length;
     var nextId = ids.find(function (id) { return !read.has(id); }) || null;

@@ -2604,17 +2604,20 @@ body.dg-drawer-open {
    centred hero row; narrow screens — 28px in from the toolbar's right edge, where the burger ends
    up. Was JS measuring the burger, which raced the hero form's width transition on cold load. */
 .dg-bell-wrap { position: absolute; top: 6px; left: min(calc(50% + 249px), calc(100% - 43px)); }
-/* Expand/collapse-all: text pill on desktop, just an icon on mobile where the row is tight. */
+/* Expand/collapse-all: text pill, icons only on narrow phones where the row really is tight
+   (text pill + Words + 5 icons + bell need ~430px). */
 #btn-show-all-children .dg-btn-ic { display: none; }
-@media (max-width: 767.98px) {
-    #btn-show-all-children .dg-btn-ic { display: block; }
+@media (max-width: 479.98px) {
+    body.dg-state-results #results-toolbar #btn-show-all-children .dg-btn-ic { display: block; width: 38px; height: 18px; }
     #btn-show-all-children .dg-btn-label { display: none; }
 }
 /* Mobile: no spare room beside the centred icon row (bell landed on top of "?"), so it just
    joins the end of that row. */
-@media (max-width: 767.98px) {
+@media (max-width: 479.98px) {
     body.dg-state-results #results-toolbar { display: flex; justify-content: center; align-items: center; }
-    .dg-bell-wrap { position: relative; top: auto; left: auto; }
+    body.dg-state-results #dg-toolbar-buttons { margin-left: 0; margin-right: 0; } /* auto margins ate the free space and pushed the bell to the edge */
+    /* Set apart from the row, but still with it: ~2.3x the 18px visual gap between icons (owner). */
+    .dg-bell-wrap { position: relative; top: auto; left: auto; margin-left: 28px; }
 }
 .dg-bell {
     display: grid;
@@ -2682,6 +2685,7 @@ body.dg-drawer-open {
 .dg-bell[data-hint="ring"] .dg-bell-body { animation: dgBellRing .9s cubic-bezier(.36, .07, .19, .97) 2; }
 .dg-bell[data-hint="sigh"] .dg-bell-body { animation: dgBellSigh 1.6s cubic-bezier(.45, 0, .55, 1) 1; transform-origin: 12px 13px; }
 .dg-bell[data-hint="nod"] .dg-bell-body { animation: dgBellNod .9s var(--dg-ease) 1; transform-origin: 12px 13px; }
+.dg-bell[data-hint="tap"] .dg-bell-body { animation: dgBellSigh 600ms cubic-bezier(.45, 0, .55, 1) 1; transform-origin: 12px 13px; } /* click on the unsubscribed bell */
 .dg-bell[data-hint="hop"] .dg-bell-body { animation: dgBellHop .8s cubic-bezier(.3, 1.6, .5, 1) 1; transform-origin: 12px 13px; }
 @keyframes dgBellRing {
     0%, 100% { transform: rotate(0); }
@@ -2761,10 +2765,16 @@ body.dg-drawer-open {
 .dg-subp-card { background: var(--dg-surface-hover); border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 6px; }
 .dg-subp-freq { color: var(--dg-text-2); font-size: 0.8rem; }
 .dg-subp-progress { display: flex; justify-content: space-between; align-items: baseline; }
-.dg-subp-progress b { color: var(--dg-accent-ink); }
+#subp .dg-subp-progress b { color: var(--dg-text); }
+.dg-subp-progress span { color: var(--dg-text-muted); font-size: 0.8rem; }
 .dg-subp-bar { height: 4px; border-radius: 2px; background: var(--dg-border); overflow: hidden; }
 .dg-subp-bar div { height: 100%; background: var(--dg-accent); }
-.dg-subp-next { color: var(--dg-text-muted); font-size: 0.8rem; }
+.dg-subp-next { color: var(--dg-text-muted); font-size: 0.8rem; display: flex; justify-content: space-between; gap: 8px; }
+.dg-subp-next span { white-space: nowrap; }
+.dg-subp-next span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+#subp .dg-subp-next a, #subp .dg-subp-q, #subp a.dg-subp-cfg { color: var(--dg-accent-ink); }
+.dg-subp-next a { text-decoration: none; }
+.dg-subp-next a:hover { text-decoration: underline; }
 .dg-subp-mark, .dg-subp-stop {
     background: none;
     border: 1px solid var(--dg-border-strong);
@@ -2779,6 +2789,34 @@ body.dg-drawer-open {
 .dg-subp-stop:hover { background: var(--dg-surface-hover); }
 .dg-subp-check { display: inline-flex; vertical-align: -3px; color: var(--dg-text-muted); }
 .dg-subp-cfg { text-align: center; font-size: 0.82rem; padding-top: 2px; }
+
+/* Reader subscriptions (ТЗ §6): toolbar bell, #rsubp popover/sheet, line under the text. */
+#reader-toolbar .dg-rbell { width: 30px; height: 30px; }
+#reader-toolbar .dg-rbell[hidden] { display: none; }
+.dg-bell:focus { outline: 0; }
+.dg-bell:focus-visible { outline: 0; box-shadow: 0 0 0 3px var(--dg-accent-bg); }
+#reader-toolbar .dg-rbell svg { width: 17px; height: 17px; }
+.dg-rsubp { position: absolute; top: 0; left: 0; right: auto; z-index: 1100; width: 300px; max-height: calc(100vh - 24px); overflow-y: auto; transform-origin: top center; }
+.dg-rsubp.dg-rsubp-sheet { position: fixed; top: auto; left: 12px; right: 12px; bottom: 12px; width: auto; max-width: none; transform-origin: bottom center; transform: translateY(8px); }
+.dg-rsubp.dg-rsubp-sheet[data-open="true"] { transform: none; }
+.dg-rsub-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+#rsubp .dg-rsub-top b { color: var(--dg-text); }
+.dg-rsub-top b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dg-rsub-mark, .dg-rsub-open {
+    display: inline-flex; align-items: center; gap: 6px; flex: none;
+    background: var(--dg-surface); color: var(--dg-text-2);
+    border: 1px solid var(--dg-border-strong); border-radius: 999px;
+    padding: 3px 10px; font: inherit; font-size: 0.8rem; cursor: pointer;
+    transition: background-color 150ms var(--dg-ease), color 150ms var(--dg-ease), border-color 150ms var(--dg-ease);
+}
+.dg-rsub-mark:hover, .dg-rsub-open:hover { color: var(--dg-text); }
+.dg-rsub-mark.on { background: none; border-color: transparent; color: var(--dg-text-2); }
+.dg-rsub-mark.on svg { color: var(--dg-accent); }
+.dg-rsub-all.on, .dg-rsub-all.on:hover { background: var(--dg-surface); color: var(--dg-text); border: 1px solid var(--dg-border-strong); }
+.dg-rsub-all { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+#rsubp .dg-subp-next a { color: var(--dg-accent-ink); text-decoration: none; }
+.dg-rsub-line { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px; margin: 28px auto 8px; color: var(--dg-text-muted); font-size: 0.88rem; }
+.dg-rsub-line[hidden] { display: none; }
 
 /* Per-row read-mark button (search-render.js READ_MARK_SVG) — owner: unchecked stays a grey
    outline ring, checked becomes a FILLED green circle with a white check (not just a green
@@ -2809,6 +2847,19 @@ body.dg-drawer-open {
 .dg-read-mark.on svg circle { fill: var(--dg-accent); stroke: var(--dg-accent); }
 .dg-read-mark.on svg path { stroke: #fff; }
 .dg-read-mark.on:hover svg circle { fill: var(--dg-accent-dark); stroke: var(--dg-accent-dark); }
+/* Toggle feedback (tens of clicks per session — kept short): press squeezes the icon, and on
+   check the tick draws itself in while the circle settles from 0.9. Transform on the svg (not
+   the button) so the focus ring doesn't scale with it. */
+.dg-read-mark svg { transition: transform 160ms var(--dg-ease); }
+.dg-read-mark:active svg { transform: scale(0.88); }
+.dg-read-mark.dg-just-on svg { animation: dgReadMarkPop 260ms var(--dg-ease); }
+.dg-read-mark.dg-just-on svg path { stroke-dasharray: 12; animation: dgReadMarkDraw 240ms var(--dg-ease) 60ms both; }
+@keyframes dgReadMarkPop { from { transform: scale(0.9); } to { transform: scale(1); } }
+@keyframes dgReadMarkDraw { from { stroke-dashoffset: 12; } to { stroke-dashoffset: 0; } }
+@media (prefers-reduced-motion: reduce) {
+    .dg-read-mark:active svg { transform: none; }
+    .dg-read-mark.dg-just-on svg { animation: none; }
+}
 
 /* Reveal for the ✓ column when it goes from hidden to shown (search-render.js pulseReadReveal) —
    state indication + explanation: makes it legible that these buttons are what "Mark as read"
@@ -2831,7 +2882,8 @@ body.dg-drawer-open {
    анимация — это баг". Feedback only: nothing entered or left, so opacity is never touched here,
    at no point in this animation. transform-only scale pulse, --dg-ease, 260ms (button-press-
    feedback tier — this is momentary confirmation, not an entrance). */
-.dg-read-pulse { animation: dgReadPulse 260ms var(--dg-ease) both; }
+/* Three pulses, not one — owner: a single pulse is easy to miss. */
+.dg-read-pulse { animation: dgReadPulse 340ms var(--dg-ease) 3 both; }
 @keyframes dgReadPulse {
     0% { transform: scale(1); }
     40% { transform: scale(1.18); }
@@ -2840,7 +2892,7 @@ body.dg-drawer-open {
 @media (prefers-reduced-motion: reduce) {
     /* No opacity/position change to drop here (the whole point is that it never had one) — swap
        the scale for a brightness flash so there's still SOME feedback, just no movement. */
-    .dg-read-pulse { animation: dgReadPulseReduced 260ms var(--dg-ease) both; }
+    .dg-read-pulse { animation: dgReadPulseReduced 340ms var(--dg-ease) 3 both; }
     @keyframes dgReadPulseReduced {
         0% { filter: brightness(1); }
         40% { filter: brightness(1.6); }

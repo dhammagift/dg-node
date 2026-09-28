@@ -1777,6 +1777,7 @@ window.buildSutta = async function(rawSlug, opts) {
     // standalone-dictionary preload-after-text-load never ran). Scoped to the central window
     // specifically so a quick citation popup doesn't eagerly pull down a multi-MB dictionary
     // database just to preview one segment.
+    window.dgReaderSlug = slug; // home.js reader subscriptions (#rsubbtn) read the open text's id
     if (window.self === window.top) window.dispatchEvent(new Event('suttaRenderedCentral'));
 
     window.setupVariantVisibility();

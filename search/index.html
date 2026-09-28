@@ -2320,7 +2320,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
 
 <img src="/assets/svg/circle-half-stroke.svg" onclick="switchIcon(this)" class="changesvg table-theme-icon gray-icon"></img>
 </button>
-<button id="btn-show-all-children" class="btn btn-light mb-1" type="button" title="{{toolbar.expandCollapseLabel}}" aria-label="{{toolbar.expandCollapseLabel}}"><svg class="dg-btn-ic" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg><span class="dg-btn-label">{{toolbar.expandCollapseLabel}}</span></button>
+<button id="btn-show-all-children" class="btn btn-light mb-1" type="button" title="{{toolbar.expandCollapseLabel}}" aria-label="{{toolbar.expandCollapseLabel}}"><svg class="dg-btn-ic" viewBox="0 0 50 24" width="38" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m7 20 5-5 5 5M7 4l5 5 5-5"/><path d="M28 5l-6 14" opacity=".45"/><path d="m33 15 5 5 5-5M33 9l5-5 5 5"/></svg><span class="dg-btn-label">{{toolbar.expandCollapseLabel}}</span></button>
 
 <!-- Manual AI-search trigger (docs/AI_SEARCH_BRIEF.md, docs/AI_MODE_DESIGN.md) — the automatic
      fallback only fires on 0 exact results; this lets someone re-run the CURRENT query through
@@ -2407,13 +2407,14 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
          только у подписанных (ТЗ §3). Рендерит/наполняет home.js (dgRenderBell()). -->
     <span class="dg-bell-wrap">
         <button id="subbtn" type="button" class="dg-bell" aria-label="{{menu.daily.subscribe}}" title="{{menu.daily.subscribe}}" data-on="false">
-            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+            <!-- Glyph copied verbatim from the reference mockup (docs/D-refresh.html .bring). -->
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="overflow: visible">
                 <g class="dg-bell-body">
-                    <path d="M12 3a5 5 0 0 0-5 5v3.2c0 .5-.18 1-.5 1.4L5 14.5c-.7.9-.1 2.5 1.2 2.5h11.6c1.3 0 1.9-1.6 1.2-2.5l-1.5-2c-.32-.4-.5-.9-.5-1.4V8a5 5 0 0 0-5-5z"/>
-                    <path d="M9.5 19a2.5 2.5 0 0 0 5 0"/>
+                    <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/>
+                    <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>
                 </g>
-                <path class="dg-bell-arc" d="M2.5 8.5a8 8 0 0 0 0 7"/>
-                <path class="dg-bell-arc" d="M21.5 8.5a8 8 0 0 1 0 7"/>
+                <path class="dg-bell-arc" d="M4 2C2.8 3.7 2 5.7 2 8"/>
+                <path class="dg-bell-arc" d="M22 8c0-2.3-.8-4.3-2-6"/>
             </svg>
         </button>
         <!-- No `hidden` — .dg-subp's own opacity/pointer-events (home.css) handle the closed
@@ -3031,6 +3032,14 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
             <a href="/docs/read" target="_blank" title="Help" data-href-en="/docs/read" data-href-ru="/ru/docs/read">
                 <img src="/assets/svg/question.svg" alt="Help">
             </a>
+            <!-- Subscriptions bell (ТЗ §6) — shown by home.js dgRenderReaderSubs() only when the
+                 open text is in at least one subscription; opens #rsubp. Glyph = results bell. -->
+            <button type="button" id="rsubbtn" class="dg-bell dg-rbell" data-on="true" hidden>
+                <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="overflow: visible">
+                    <g class="dg-bell-body"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></g>
+                    <path class="dg-bell-arc" d="M4 2C2.8 3.7 2 5.7 2 8"/><path class="dg-bell-arc" d="M22 8c0-2.3-.8-4.3-2-6"/>
+                </svg>
+            </button>
             <!-- TOC (оглавление) — портировано из siteroot/read/js/common.js (легаси, общий с
                  прод-сайтом, JS туда не трогаем — своя копия в reader/common.js). Раньше жила
                  отдельной плавающей пилюлей, которая сама показывалась/пряталась на скролле —
@@ -3051,6 +3060,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
             <div id="next"></div>
         </div>
         <div id="sutta" class="sutta"></div>
+        <div id="dg-rsub-line" class="dg-rsub-line" hidden></div>
         <!-- Bottom prev/next — portированный аналог #navigation выше, тот же паттерн, что и на
              проде (reader-template.html: #sutta, hr, #navigation#previous2/next2, .links-area).
              megareader.js (renderNavigation) уже заполняет #previous2/#next2 сам — не хватало
@@ -3347,6 +3357,9 @@ $(document).ready(function() {
         // 'draw' (not just called once here), on BOTH tables — typing in the Filter box can drop
         // the match count below one page's worth without a full rebuild, DataTables just re-draws.
         table.off('draw.paging-layout').on('draw.paging-layout', updatePagingLayoutClass);
+        // Language pill reads the quotes off the rendered rows; they can land in a later draw than
+        // this call (SPA search from home, a second search) — repaint on every draw (issue #55).
+        table.off('draw.langpill').on('draw.langpill', function () { if (window.dgRenderLangPill) window.dgRenderLangPill(); });
         updatePagingLayoutClass();
         currentTable = table;
         applyFilterValue(table);

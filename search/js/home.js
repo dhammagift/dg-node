@@ -2625,6 +2625,16 @@
         var left = Math.min(Math.max(margin, r.right - width), window.innerWidth - width - margin);
         sheet.style.width = width + 'px';
         sheet.style.left = left + 'px';
+        // From the quick window: same width as everywhere (owner), but under its search field and
+        // no lower than the window's own bottom — scrolls inside past that ("слишком длинные").
+        var qm = btn.closest && btn.closest('.quick-modal-content-wrapper');
+        var field = qm && qm.querySelector('.quick-search-form');
+        if (field) {
+            var fr = field.getBoundingClientRect(), mr = qm.getBoundingClientRect();
+            sheet.style.top = (fr.bottom + 6) + 'px';
+            sheet.style.maxHeight = Math.max(220, mr.bottom - fr.bottom - 6 - margin) + 'px';
+            return;
+        }
         // Owner: "должны открываться вниз без прокрутки по максимуму... сейчас багово на главной"
         // — strictly "below the button" left too little room when the anchor (the sliders button,
         // OR the home screen's ".dg-scope-change" — "change" — link under the search field when
@@ -3230,7 +3240,12 @@
         head.className = 'dg-subp-head';
         var title = document.createElement('div');
         title.className = 'dg-subp-title';
-        title.textContent = '«' + query + '»';
+        title.appendChild(document.createTextNode('«'));
+        var titleQ = document.createElement('span');
+        titleQ.className = 'dg-subp-q';
+        titleQ.textContent = query;
+        title.appendChild(titleQ);
+        title.appendChild(document.createTextNode('»'));
         var close = document.createElement('button');
         close.type = 'button';
         close.className = 'dg-subp-close';
@@ -3292,17 +3307,18 @@
             p.appendChild(go);
         } else {
             var prog = window.subProgress(sub);
-            var card = document.createElement('div');
-            card.className = 'dg-subp-card';
-
+            // Mockup (docs/D-refresh.html #subp): frequency is a caption ABOVE the card.
             var freq = document.createElement('div');
             freq.className = 'dg-subp-freq';
             freq.textContent = t('menu.daily.onceOrder', 'Раз в день · по порядку');
-            card.appendChild(freq);
+            p.appendChild(freq);
+
+            var card = document.createElement('div');
+            card.className = 'dg-subp-card';
 
             var pr = document.createElement('div');
             pr.className = 'dg-subp-progress';
-            pr.innerHTML = '<span>' + prog.read + ' ' + t('menu.daily.of', 'из') + ' ' + prog.total + ' ' + t('menu.daily.readWord', 'прочитано') + '</span><b>' + prog.percent + '%</b>';
+            pr.innerHTML = '<b>' + prog.read + ' ' + t('menu.daily.of', 'из') + ' ' + prog.total + ' ' + t('menu.daily.readWord', 'прочитано') + '</b><span>' + prog.percent + '%</span>';
             card.appendChild(pr);
 
             var bar = document.createElement('div');
@@ -3310,12 +3326,34 @@
             bar.innerHTML = '<div style="width:' + prog.percent + '%"></div>';
             card.appendChild(bar);
 
+            // "Следующий: mn38 · завтра 09:00" + "с 12.09" on the right. Web reminders fire on the
+            // first page open of the day (checkDailySubscriptionNotification), so "when" is today
+            // until today's has fired, then tomorrow; a clock time only exists for app reminders.
+            var meta = document.createElement('div');
+            meta.className = 'dg-subp-next';
+            var nextSpan = document.createElement('span');
             if (prog.nextId) {
-                var next = document.createElement('div');
-                next.className = 'dg-subp-next';
-                next.textContent = t('menu.daily.next', 'Следующий:') + ' ' + prog.nextId;
-                card.appendChild(next);
+                nextSpan.appendChild(document.createTextNode(t('menu.daily.next', 'Следующий:') + ' '));
+                var nextLink = document.createElement('a');
+                nextLink.href = '/' + prog.nextId;
+                nextLink.textContent = prog.nextId;
+                nextLink.addEventListener('click', closeBellPopup);
+                nextSpan.appendChild(nextLink);
+                var firedToday = false;
+                try { firedToday = localStorage.getItem(DG_NOTIF_KEY) === localDay(); } catch (e) {}
+                // Created today: today's once-a-day check already ran when the page opened.
+                if (sub.createdAt && localDay(new Date(sub.createdAt)) === localDay()) firedToday = true;
+                var when = firedToday ? t('menu.daily.tomorrow', 'завтра') : t('menu.daily.today', 'сегодня');
+                var appTime = sub.remind && sub.remind.app && sub.remind.app.times && sub.remind.app.times[0];
+                nextSpan.appendChild(document.createTextNode(' · ' + when + (appTime ? ' ' + appTime : '')));
             }
+            meta.appendChild(nextSpan);
+            if (sub.createdAt) {
+                var since = document.createElement('span');
+                since.textContent = t('menu.daily.since', 'с') + ' ' + new Date(sub.createdAt).toLocaleDateString(uiLang() === 'ru' ? 'ru-RU' : 'en-GB', { day: '2-digit', month: '2-digit' });
+                meta.appendChild(since);
+            }
+            card.appendChild(meta);
             p.appendChild(card);
 
             var mark = document.createElement('button');
@@ -3405,46 +3443,55 @@
     // reason for a separate cooldown per subscription. Native OS notifications for the app
     // (album-art icon, translated text) are a separate, already-parked task — dg-apps#37.
     var DG_NOTIF_KEY = 'dg-daily-notif-date';
+    // The reader's own calendar day (was toISOString = UTC: at +5 the "day" turned over at 05:00).
+    function localDay(d) { d = d || new Date(); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
     // UI language, same source/logic as the langs-array builder above (line ~2232) — the
     // subscription itself doesn't store a language, so the notification quote uses whatever
     // language the person currently reads the SITE in (owner: "строки на языке на котором юзер
     // искал"), not the sutta's own root language.
     function uiLang() {
-        return (localStorage.getItem('dhammaLanguage') || localStorage.getItem('siteLanguage') || 'en') === 'ru' ? 'ru' : 'en';
+        // ?lang= first: the notification fires at startup, before the i18n layer has read it.
+        return (new URLSearchParams(location.search).get('lang') || (window.DHAMMA_I18N && window.DHAMMA_I18N.language) || localStorage.getItem('dhammaLanguage') || localStorage.getItem('siteLanguage') || 'en') === 'ru' ? 'ru' : 'en';
     }
-    // First segment with an actual translated line — skips 0.x header/title segments (division,
-    // sutta title), same shape /api/text/:id already returns (segments[].translations, one key
-    // per requested ?lang=).
-    function firstQuoteLine(segments, lang) {
-        for (var i = 0; i < segments.length; i++) {
-            var seg = segments[i];
-            if (/:0\.\d/.test(seg.segment)) continue; // title/division lines (e.g. "dn2:0.1"), not real content
-            var keys = Object.keys(seg.translations || {});
-            if (!keys.length) continue;
-            var text = seg.translations[keys[0]].trim();
-            if (text) return text.length > 140 ? text.slice(0, 140).trim() + '…' : text;
-        }
-        return null;
-    }
+    // Owner: title = which subscription + the text ("«kacchapa» * dn1 Brahmajālasutta"; several
+    // arrive a day with several subs); body = translation only — the matched line for a search,
+    // from its start, as much as fits; the translated title for a place/random subscription.
     function fireDailyNotification(sub, prog) {
-        var fallbackBody = sub.query ? ('«' + sub.query + '» · ' + prog.read + '/' + prog.total) : '';
-        function show(body) {
-            var n = new Notification(t('menu.daily.notifTitle', 'Текст дня') + ': ' + prog.nextId, {
-                body: body || fallbackBody,
+        var id = prog.nextId;
+        var clip = function (v) { v = String(v || '').trim(); return v.length > 160 ? v.slice(0, 160).trim() + '…' : v; };
+        var firstTr = function (tr) { return tr ? tr[Object.keys(tr).filter(function (k) { return k.indexOf(uiLang() + '_') === 0; })[0] || Object.keys(tr)[0]] : ''; };
+        function show(paliTitle, body, href) {
+            var n = new Notification(subLabel(sub) + ' * ' + id + (paliTitle ? ' ' + String(paliTitle).trim() : ''), {
+                body: clip(body),
                 icon: '/assets/img/albumart512.png', // conch-on-book album art (owner: "используй albumart с раковиной")
                 badge: '/assets/img/dgsanhkalogo_sqare.png', // site's own mark — monochrome silhouette, what `badge` needs
                 tag: 'dg-daily-' + sub.id // replaces yesterday's notification for the same sub, doesn't stack
             });
-            n.onclick = function () { window.focus(); location.href = '/' + prog.nextId; n.close(); };
+            n.onclick = function () { window.focus(); location.href = href || '/' + id; n.close(); };
         }
-        fetch('/api/text/' + encodeURIComponent(prog.nextId) + '?lang=' + uiLang())
+        if (sub.type === 'search' && sub.query) {
+            fetch('/search?q=' + encodeURIComponent(sub.query) + '&langs=' + uiLang())
+                .then(function (r) { return r.ok ? r.json() : null; })
+                .then(function (json) {
+                    var row = json && json.data && json.data[id];
+                    var seg = row && row.segments && row.segments[0];
+                    show(row && row.titles && row.titles.root, seg && firstTr(seg.translations),
+                        seg ? '/' + seg.segment + '?s=' + encodeURIComponent(sub.query) : null);
+                })
+                .catch(function () { show('', ''); }); // offline — still notify, the title says enough
+            return;
+        }
+        fetch('/api/text/' + encodeURIComponent(id) + '?lang=' + uiLang())
             .then(function (r) { return r.ok ? r.json() : null; })
-            .then(function (data) { show(data && data.segments ? firstQuoteLine(data.segments, uiLang()) : null); })
-            .catch(function () { show(null); }); // offline/network hiccup — still notify, just with the plain fallback
+            .then(function (data) {
+                var head = data && data.segments && data.segments.filter(function (sg) { return /sutta-title/.test(sg.html || ''); })[0];
+                show(data && data.title, head && firstTr(head.translations));
+            })
+            .catch(function () { show('', ''); });
     }
     function checkDailySubscriptionNotification() {
         if (!window.Notification || Notification.permission !== 'granted') return;
-        var today = new Date().toISOString().slice(0, 10);
+        var today = localDay();
         try { if (localStorage.getItem(DG_NOTIF_KEY) === today) return; } catch (e) { return; }
         var subs = (typeof window.subGetAll === 'function') ? window.subGetAll() : [];
         subs.forEach(function (sub) {
@@ -3470,6 +3517,14 @@
                 var p = document.getElementById('subp');
                 if (!p) return;
                 if (p.getAttribute('data-open') === 'true') { closeBellPopup(); return; }
+                // Owner: the unsubscribed bell "sighs" when its menu opens — same glyph motion as
+                // the sigh hint, shorter (it's click feedback). Restarted on every click.
+                if (btn.getAttribute('data-on') !== 'true') {
+                    btn.removeAttribute('data-hint');
+                    void btn.offsetWidth;
+                    btn.setAttribute('data-hint', 'tap');
+                    btn.addEventListener('animationend', function () { btn.removeAttribute('data-hint'); }, { once: true });
+                }
                 renderBellPopup(btn.dataset.query, btn.__rows);
                 p.setAttribute('data-open', 'true');
                 btn.setAttribute('aria-expanded', 'true');
@@ -3487,6 +3542,199 @@
         var p = document.getElementById('subp');
         if (p && p.getAttribute('data-open') === 'true') renderBellPopup(query, rows);
     };
+
+    // ======================================================================
+    // Reader (ТЗ §6): #rsubbtn in #reader-toolbar + a line under the text, both shown only when
+    // the open text belongs to at least one subscription. Both open #rsubp — one card per such
+    // subscription with its own Mark toggle, plus "Mark in all". The same popup opens from a ✓
+    // click in the results when the text is in other subscriptions too (dgOpenRsubp).
+    function subLabel(sub) {
+        if (sub.type === 'search') return '«' + (sub.query || '') + '»';
+        if (sub.type === 'place') return sub.placeLabel ? sub.placeLabel + ' · ' + sub.place : t('menu.daily.inOrderFrom', 'По порядку:') + ' ' + (sub.place || '');
+        return t('menu.daily.random', 'Случайная') + (sub.scopeLabel ? ' · ' + sub.scopeLabel : '');
+    }
+    function subsWithText(id) {
+        var subs = (typeof window.subGetAll === 'function') ? window.subGetAll() : [];
+        // Random subscriptions have no marks (owner) — they never ask "mark where you read it".
+        return subs.filter(function (s) { return s.type !== 'random' && (s.suttaIds || []).indexOf(id) !== -1; });
+    }
+    function isReadIn(sub, id) { return (sub.readIds || []).indexOf(id) !== -1; }
+    var rsubState = null; // { id, anchor, currentSubId }
+    function closeRsubp() {
+        var p = document.getElementById('rsubp');
+        if (p) p.removeAttribute('data-open');
+        rsubState = null;
+    }
+    // The ✓ a popover hangs on can be re-rendered by a table redraw (the old node is gone, its
+    // rect is 0,0 — the popover jumped to the top-left corner): always use the live one.
+    function liveAnchor(a) {
+        if (a && a.isConnected) return a;
+        return (rsubState && document.querySelector('#pali button.dg-read-mark[data-sutta="' + rsubState.id + '"]')) || document.getElementById('rsubbtn');
+    }
+    function placeRsubp(p, anchor) {
+        p.style.left = p.style.top = p.style.right = p.style.bottom = ''; // ТЗ §10: reset first
+        anchor = liveAnchor(anchor);
+        if (window.matchMedia('(max-width: 767.98px)').matches || !anchor || !anchor.offsetParent) { p.classList.add('dg-rsubp-sheet'); return; }
+        p.classList.remove('dg-rsubp-sheet');
+        var r = anchor.getBoundingClientRect(), w = p.offsetWidth, h = p.offsetHeight;
+        var left = Math.min(Math.max(12, r.left + r.width / 2 - w / 2), window.innerWidth - w - 12);
+        var top = r.bottom + 8;
+        if (top + h > window.innerHeight - 12 && r.top - h - 8 > 12) top = r.top - h - 8; // no room below: above
+        // Page coordinates (position:absolute): it scrolls away with the ✓ it belongs to instead
+        // of staying pinned to the screen while the row moves.
+        p.style.left = (left + window.scrollX) + 'px';
+        p.style.top = (top + window.scrollY) + 'px';
+    }
+    function renderRsubp() {
+        var p = document.getElementById('rsubp');
+        if (!p || !rsubState) return;
+        var id = rsubState.id;
+        var subs = subsWithText(id);
+        if (!subs.length) { closeRsubp(); return; }
+        p.innerHTML = '';
+        var head = document.createElement('div');
+        head.className = 'dg-subp-head';
+        var title = document.createElement('div');
+        title.className = 'dg-subp-title';
+        var cur = rsubState.currentSubId && subs.find(function (s) { return s.id === rsubState.currentSubId; });
+        var others = cur ? subs.filter(function (s) { return s !== cur; }) : subs;
+        title.textContent = cur
+            ? t('menu.daily.markedIn', 'Отмечено в') + ' ' + subLabel(cur)
+            : t('menu.daily.inSubs', '{id} в ваших подписках').replace('{id}', id);
+        var close = document.createElement('button');
+        close.type = 'button';
+        close.className = 'dg-subp-close';
+        close.setAttribute('aria-label', t('global.common.close', 'Close'));
+        close.innerHTML = '&times;';
+        close.addEventListener('click', closeRsubp);
+        head.appendChild(title); head.appendChild(close);
+        p.appendChild(head);
+        var lead = document.createElement('p');
+        lead.className = 'dg-subp-lead';
+        lead.textContent = cur ? t('menu.daily.alsoIn', '{id} есть ещё в:').replace('{id}', id) : t('menu.daily.markWhere', 'Отметьте, где текст уже прочитан');
+        p.appendChild(lead);
+        others.forEach(function (sub) {
+            var prog = window.subProgress(sub);
+            var read = isReadIn(sub, id);
+            var card = document.createElement('div');
+            card.className = 'dg-subp-card';
+            var top = document.createElement('div');
+            top.className = 'dg-rsub-top';
+            var name = document.createElement('b');
+            name.textContent = subLabel(sub);
+            var mark = document.createElement('button');
+            mark.type = 'button';
+            mark.className = 'dg-rsub-mark' + (read ? ' on' : '');
+            mark.setAttribute('aria-pressed', read ? 'true' : 'false');
+            mark.innerHTML = (read ? READ_ICON_ON : READ_ICON) + '<span>' + (read ? t('menu.daily.done', 'Прочитано') : t('menu.daily.mark', 'Отметить')) + '</span>';
+            mark.addEventListener('click', function (e) {
+                e.stopPropagation();
+                window.subMarkRead(sub.id, id, !read);
+                afterRsubChange();
+            });
+            top.appendChild(name); top.appendChild(mark);
+            card.appendChild(top);
+            var bar = document.createElement('div');
+            bar.className = 'dg-subp-bar';
+            bar.innerHTML = '<div style="width:' + prog.percent + '%"></div>';
+            card.appendChild(bar);
+            var meta = document.createElement('div');
+            meta.className = 'dg-subp-next';
+            meta.innerHTML = '<span>' + prog.read + ' ' + t('menu.daily.of', 'из') + ' ' + prog.total + '</span>';
+            var cfg = document.createElement('a');
+            cfg.href = 'javascript:void(0)';
+            cfg.textContent = t('menu.daily.configure', 'Настроить') + ' →';
+            cfg.addEventListener('click', function () {
+                closeRsubp();
+                if (typeof window.subsOpen === 'function') window.subsOpen({ id: sub.id });
+            });
+            meta.appendChild(cfg);
+            card.appendChild(meta);
+            p.appendChild(card);
+        });
+        if (subs.length > 1) {
+            var allRead = subs.every(function (s) { return isReadIn(s, id); });
+            var all = document.createElement('button');
+            all.type = 'button';
+            all.className = 'dg-subp-go dg-rsub-all' + (allRead ? ' on' : '');
+            all.innerHTML = (allRead ? READ_ICON_ON : READ_ICON) + '<span>' + (allRead ? t('menu.daily.doneAll', 'Прочитано во всех') : t('menu.daily.markAll', 'Отметить во всех')) + '</span>';
+            all.addEventListener('click', function (e) {
+                e.stopPropagation();
+                window.subMarkReadEverywhere(id, !allRead);
+                afterRsubChange();
+            });
+            p.appendChild(all);
+        }
+    }
+    // Marked state (mockup #rsubp): a filled circle with a white tick, no button chrome.
+    var READ_ICON_ON = '<svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="currentColor"/><path d="M8 12.3l2.6 2.6L16 9.5" fill="none" style="stroke: var(--dg-surface, #fff)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    var READ_ICON = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12.3l2.6 2.6L16 9.5"/></svg>';
+    function afterRsubChange() {
+        renderRsubp();
+        dgRenderReaderSubs();
+        if (typeof window.dgRefreshReadMarks === 'function' && currentState() === 'results') window.dgRefreshReadMarks();
+    }
+    window.dgOpenRsubp = function (id, anchor, currentSubId) {
+        var p = document.getElementById('rsubp');
+        if (!p) {
+            p = document.createElement('div');
+            p.id = 'rsubp';
+            p.className = 'dg-subp dg-rsubp';
+            p.setAttribute('role', 'dialog');
+            document.body.appendChild(p);
+            document.addEventListener('click', function (e) {
+                var a = rsubState && liveAnchor(rsubState.anchor);
+                if (!rsubState || p.contains(e.target) || (a && a.contains(e.target))) return;
+                closeRsubp();
+            });
+            document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeRsubp(); });
+            window.addEventListener('resize', function () { if (rsubState) placeRsubp(p, rsubState.anchor); });
+        }
+        rsubState = { id: id, anchor: anchor, currentSubId: currentSubId };
+        renderRsubp();
+        placeRsubp(p, anchor);
+        p.setAttribute('data-open', 'true');
+    };
+    function dgRenderReaderSubs() {
+        var btn = document.getElementById('rsubbtn');
+        var line = document.getElementById('dg-rsub-line');
+        var id = currentState() === 'reader' ? window.dgReaderSlug : null;
+        var subs = id ? subsWithText(id) : [];
+        if (btn) {
+            btn.hidden = !subs.length;
+            // Set here, not as a {{key}} in the markup: the reader toolbar's title attributes are
+            // not run through the i18n pass, the raw key showed as the tooltip.
+            btn.title = t('menu.daily.inYourSubs', 'Текст из ваших подписок — отметить');
+            btn.setAttribute('aria-label', btn.title);
+        }
+        if (!line) return;
+        line.hidden = !subs.length;
+        if (!subs.length) return;
+        var readN = subs.filter(function (s) { return isReadIn(s, id); }).length;
+        line.innerHTML = '';
+        var txt = document.createElement('span');
+        txt.textContent = t('menu.daily.textInSubs', 'Текст есть в ваших подписках: {n}').replace('{n}', subs.length) +
+            (readN ? ' · ' + t('menu.daily.readIn', 'прочитан в {n}').replace('{n}', readN) : '');
+        var a = document.createElement('button');
+        a.type = 'button';
+        a.className = 'dg-rsub-open';
+        a.innerHTML = READ_ICON + '<span>' + t('menu.daily.markRead', 'Отметить прочитанное') + '</span>';
+        a.addEventListener('click', function (e) { e.stopPropagation(); window.dgOpenRsubp(id, a); });
+        line.appendChild(txt); line.appendChild(a);
+    }
+    window.addEventListener('suttaRenderedCentral', function () { closeRsubp(); dgRenderReaderSubs(); });
+    new MutationObserver(function () { if (currentState() !== 'reader') { var b = document.getElementById('rsubbtn'); if (b) b.hidden = true; } })
+        .observe(document.body, { attributes: true, attributeFilter: ['class'] });
+    (function () {
+        var btn = document.getElementById('rsubbtn');
+        if (btn) btn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            if (rsubState) { closeRsubp(); return; }
+            if (window.dgReaderSlug) window.dgOpenRsubp(window.dgReaderSlug, btn);
+        });
+    })();
+    window.dgRenderReaderSubs = dgRenderReaderSubs;
+    dgRenderReaderSubs(); // cold load: the reader may have rendered before this deferred bundle ran
 
     /* Мультитул в бургере (search/index.html #dg-drawer-tiles) — просто список плиток, в том же
        порядке и с теми же скрытиями, что на главной (owner: «меню компактнее, только из тайлов»).
