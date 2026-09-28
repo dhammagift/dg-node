@@ -3853,6 +3853,30 @@
         });
     })();
     window.dgRenderReaderSubs = dgRenderReaderSubs;
+
+    // Android back (dg-apps native-bridge.js; the swipe-back gesture is the same event) closes the
+    // topmost overlay first — popovers, sheets, the drawer, the quick window's subscription form —
+    // instead of leaving the page or the app (owner: "шторки не сворачиваются по свайпу назад").
+    // Top of the stack first; returns true when it closed something.
+    window.dgCloseTopOverlay = function () {
+        var shown = function (id) { var e = document.getElementById(id); return !!(e && !e.hidden); };
+        var subp = document.getElementById('subp');
+        if (rsubState) { closeRsubp(); return true; }
+        if (subp && subp.getAttribute('data-open') === 'true') { closeBellPopup(); return true; }
+        if (shown('dg-lpmenu')) { document.getElementById('dg-lpmenu').hidden = true; return true; }
+        if (shown('dg-ts')) { tsClose(); return true; }
+        if (isQuickOpen()) { closeQuick(); return true; }
+        if (isMegaOpen()) { closeMega(); return true; }
+        if (settingsSheetOpen) { closeSettingsSheet(false); return true; }
+        if (currentSheetKey) { closeSheet(); return true; }
+        if (shown('dg-drawer') && document.getElementById('dg-drawer').classList.contains('show')) { closeDrawer(); return true; }
+        if (window.quickModalIsOpen && typeof window.toggleQuickModal === 'function') {
+            if (shown('quick-subform') && typeof window.closeQuickSubForm === 'function') window.closeQuickSubForm(); // form: back to the list
+            else window.toggleQuickModal();
+            return true;
+        }
+        return false;
+    };
     dgRenderReaderSubs(); // cold load: the reader may have rendered before this deferred bundle ran
 
     /* Мультитул в бургере (search/index.html #dg-drawer-tiles) — просто список плиток, в том же
