@@ -3877,6 +3877,60 @@
         }
         return false;
     };
+
+    // iOS swipe-back is WebKit's own history gesture: nothing reaches the page before it navigates.
+    // So in the app an open overlay owns a history entry — back (iOS swipe, Android back button or
+    // swipe) pops that entry and closes the overlay instead of leaving the page (owner: "свайп назад
+    // … на iOS тоже нужно"). Closed any other way (×, backdrop, a link), the entry is taken back
+    // out, so the next back is not wasted. The settings sheet keeps its own entry (openSettingsSheet).
+    (function overlayHistory() {
+        var C = window.Capacitor;
+        if (!(C && C.isNativePlatform && C.isNativePlatform())) return;
+        function anyOpen() { // "is showing" state — classes flip at once, `hidden` only after the fade
+            var subp = document.getElementById('subp'), lp = document.getElementById('dg-lpmenu'), ts = document.getElementById('dg-ts');
+            return !!(rsubState || (subp && subp.getAttribute('data-open') === 'true') || (lp && !lp.hidden) || (ts && !ts.hidden) ||
+                isQuickOpen() || isMegaOpen() || (currentSheetKey && !settingsSheetOpen) || document.querySelector('#dg-drawer.show') ||
+                document.querySelector('.quick-modal-container.open'));
+        }
+        var ours = false, swallow = false, wasOpen = false, tmr;
+        // Back arrived on a leftover overlay entry by a full page load (a link inside the overlay
+        // loaded its page; coming back reloads this one): the overlay is gone, the entry is the
+        // same page as the one below it — step over it.
+        if (history.state && history.state.dgOverlay) { history.back(); return; }
+        function push() { history.pushState(Object.assign({}, history.state, { dgOverlay: true }), ''); ours = true; }
+        function sync() {
+            var open = anyOpen();
+            if (open && !wasOpen && !ours) push();
+            else if (!open && wasOpen && ours) {
+                ours = false;
+                // Only while our entry is still the current one, and after a beat: a link inside the
+                // overlay closes it first and navigates (pushState) a moment later — taking our
+                // entry back at once undid that navigation.
+                var href = location.href;
+                setTimeout(function () {
+                    if (!ours && !anyOpen() && location.href === href && history.state && history.state.dgOverlay) { swallow = true; history.back(); }
+                }, 500);
+            }
+            wasOpen = open;
+        }
+        new MutationObserver(function () { clearTimeout(tmr); tmr = setTimeout(sync, 0); })
+            .observe(document.body, { subtree: true, attributes: true, attributeFilter: ['class', 'hidden', 'data-open'] });
+        // Capture: runs before the router's popstate (search/index.html), which must not re-route
+        // for a pop that only closed an overlay.
+        window.addEventListener('popstate', function (e) {
+            if (swallow) { swallow = false; e.stopImmediatePropagation(); return; }
+            // Landed on a leftover overlay entry (its overlay was closed by a link that navigated):
+            // it is the same page as the one below it — step over it rather than spend a back on it.
+            if (!ours && e.state && e.state.dgOverlay && !anyOpen()) { e.stopImmediatePropagation(); history.back(); return; }
+            if (!ours) return;
+            ours = false;
+            if (!anyOpen()) return; // already closed some other way: an ordinary back
+            e.stopImmediatePropagation();
+            window.dgCloseTopOverlay();
+            wasOpen = anyOpen();
+            if (wasOpen) push(); // one closed, another still open under it: it gets the next back
+        }, true);
+    })();
     dgRenderReaderSubs(); // cold load: the reader may have rendered before this deferred bundle ran
 
     /* Мультитул в бургере (search/index.html #dg-drawer-tiles) — просто список плиток, в том же
