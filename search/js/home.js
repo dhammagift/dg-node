@@ -5476,7 +5476,7 @@
 (function () {
     'use strict';
     var KEY = 'dgLogoPlay';
-    var SEL = '#dg-brand, .dg-shell-logo, .dg-drawer-head .dg-brand-link';
+    var SEL = '#dg-brand, .dg-shell-logo'; // the drawer's header is a caption, not a link (it no longer goes home)
 
     function play(img) {
         if (!img) return;

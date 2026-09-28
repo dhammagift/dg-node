@@ -4826,9 +4826,9 @@ $(document).ready(function() {
 <div id="dg-drawer-backdrop" hidden></div>
 <aside id="dg-drawer" hidden aria-label="Menu" data-i18n-aria-label="{{toolbar.menuAriaLabel}}">
   <div class="dg-drawer-head">
-    <!-- Шапка шторки ведёт на главную — пункт «Главная» ушёл вместе с «Навигацией», а домой
-         из выдачи/ридера через бургер всё равно нужно уметь. -->
-    <a class="dg-brand-link" href="/"><img class="dg-brand-logo" src="/assets/img/dgsanhkalogo-sm.webp" alt=""><span class="dg-brand-name">dhamma.gift</span></a>
+    <!-- Шапка шторки — только подпись, не ссылка (owner, 2026-09-28: тап по ней уводил на главную
+         с перезагрузкой, «экран дёргается»). Домой — логотип в шапке страницы и ракушка в поле. -->
+    <span class="dg-brand-link"><img class="dg-brand-logo" src="/assets/img/dgsanhkalogo-sm.webp" alt=""><span class="dg-brand-name">dhamma.gift</span></span>
     <!-- issue #5: needed our own share affordance. The manifest is standalone now, so there is no
          browser chrome and no Chrome share icon to borrow at all — but the button predates that and
          the app's WebView has no such chrome either. navigator.share() opens the native OS sheet
