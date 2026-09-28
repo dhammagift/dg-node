@@ -146,6 +146,30 @@ app.addHook('onRequest', (req, res, done) => {
     if (to) return res.redirect(to, 301);
     done();
 });
+
+// /bw (The Buddha's Words mirror) and /ai (offline-data/dhammagift/ai/, the AI-assisted draft
+// translation) must be unreachable for ordinary visitors and crawlers, full stop — not just
+// hidden from search/menu UI and robots.txt (owner: "ru_ai не должен быть виден пользователю
+// нигде на сайте"; "/bw и ai переводы должны быть недоступны для обычных пользователей в
+// принципе"). The client-side "force_local" flag (dg-text-router.js/settings.js) only changes
+// which URL a link on OUR OWN page points to — it was never real access control, so it changes
+// nothing here. Gate both prefixes with HTTP Basic Auth, checked before any static mount below.
+let restrictedAuth = null;
+try { restrictedAuth = require('./configs/local/restricted-auth.json'); }
+catch (e) { console.warn('configs/local/restricted-auth.json missing — /bw and /ai are UNPROTECTED:', e.message); }
+app.addHook('onRequest', (req, res, done) => {
+    const p = req.url.split('?')[0];
+    if (!restrictedAuth || !/^\/(bw|ai)(\/|$)/.test(p)) return done();
+    const [, b64] = (req.headers.authorization || '').split(' ');
+    const [user, pass] = b64 ? Buffer.from(b64, 'base64').toString().split(':') : [];
+    if (user === restrictedAuth.user && pass === restrictedAuth.pass) return done();
+    res.header('WWW-Authenticate', 'Basic realm="restricted"').code(401).send('Authentication required');
+});
+
+// Real /robots.txt — without this exact route the parametric /:slug catch-all (keyword search
+// fallback) answers instead, so crawlers got a 200 HTML search page with zero Disallow rules
+// (confirmed live, 2026-09-28: dhamma.gift/robots.txt returned the SPA shell, not text/plain).
+app.get('/robots.txt', (req, reply) => sendFile(req, reply, path.join(__dirname, 'configs', 'robots.txt'), 'text/plain; charset=utf-8'));
 // 3000 is where production serves from (both dhamma.gift and test.dhamma.gift proxy here);
 // dg-light.js, the legacy Express server, defaults to 3001 so the two can run side by side.
 const PORT = Number(process.env.PORT) || 3000;

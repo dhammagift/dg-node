@@ -1,0 +1,20 @@
+Sitemap: https://dhamma.gift/sitemap.xml
+
+User-agent: *
+Disallow: /bw/
+Disallow: /ai/
+Disallow: /suttacentral.net/
+Disallow: /accesstoinsight.org/
+Disallow: /en.dhammadana.org/
+Disallow: /buddhadust.net/
+Disallow: /theravada.ru/
+Disallow: /theravada.rf/
+Disallow: /tipitaka.theravada.su/
+Disallow: /metta.lk/
+Disallow: /assets/js/
+Disallow: /assets/html/
+Disallow: /assets/lunar/
+Disallow: /assets/br/
+Disallow: /assets/materials/
+Disallow: /assets/apk/
+Disallow: /assets/diff/
