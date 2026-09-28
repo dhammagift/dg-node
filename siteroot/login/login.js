@@ -126,8 +126,10 @@ function executePendingLogin(mode) {
     
     if (window.pendingLoginType === 'google') {
         if (typeof syncLoginGoogle === 'function') syncLoginGoogle();
+    } else if (window.pendingLoginType === 'apple') {
+        if (typeof syncLoginApple === 'function') syncLoginApple();
     } else if (window.pendingLoginType === 'phrase') {
-        uiLoginPhrase(true); 
+        uiLoginPhrase(true);
     }
 }
 
@@ -137,6 +139,15 @@ window.syncLoginGoogleWrapper = function() {
         showMergeModal();
     } else {
         if (typeof syncLoginGoogle === 'function') syncLoginGoogle();
+    }
+};
+
+window.syncLoginAppleWrapper = function() {
+    if (hasLocalData()) {
+        window.pendingLoginType = 'apple';
+        showMergeModal();
+    } else {
+        if (typeof syncLoginApple === 'function') syncLoginApple();
     }
 };
 
