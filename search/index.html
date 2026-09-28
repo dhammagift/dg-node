@@ -2408,13 +2408,17 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     <span class="dg-bell-wrap" style="position: absolute; top: 6px;">
         <button id="subbtn" type="button" class="dg-bell" aria-label="{{menu.daily.subscribe}}" title="{{menu.daily.subscribe}}" data-on="false">
             <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 3a5 5 0 0 0-5 5v3.2c0 .5-.18 1-.5 1.4L5 14.5c-.7.9-.1 2.5 1.2 2.5h11.6c1.3 0 1.9-1.6 1.2-2.5l-1.5-2c-.32-.4-.5-.9-.5-1.4V8a5 5 0 0 0-5-5z"/>
-                <path d="M9.5 19a2.5 2.5 0 0 0 5 0"/>
+                <g class="dg-bell-body">
+                    <path d="M12 3a5 5 0 0 0-5 5v3.2c0 .5-.18 1-.5 1.4L5 14.5c-.7.9-.1 2.5 1.2 2.5h11.6c1.3 0 1.9-1.6 1.2-2.5l-1.5-2c-.32-.4-.5-.9-.5-1.4V8a5 5 0 0 0-5-5z"/>
+                    <path d="M9.5 19a2.5 2.5 0 0 0 5 0"/>
+                </g>
                 <path class="dg-bell-arc" d="M2.5 8.5a8 8 0 0 0 0 7"/>
                 <path class="dg-bell-arc" d="M21.5 8.5a8 8 0 0 1 0 7"/>
             </svg>
         </button>
-        <div id="subp" class="dg-subp" hidden></div>
+        <!-- No `hidden` — .dg-subp's own opacity/pointer-events (home.css) handle the closed
+             state so [data-open=true] can transition instead of snapping (mockup's own approach). -->
+        <div id="subp" class="dg-subp"></div>
     </span>
     <script>
       // Real coordinates, not CSS guesswork — #results-toolbar and the search-field row (hero-row,

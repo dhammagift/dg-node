@@ -1274,25 +1274,27 @@ window.DgSearchRender = (function () {
         var col = suttaTableApi.column(1);
         var $btn = $('#btn-read-marks');
 
+        // /animate, owner correction: "волна должна проходить всегда при нажатии заполнить, а
+        // не только 1 раз" — plays every time the column is filled visible (toolbar toggle, or
+        // the bell popup's "Mark as read →"), not gated to a first-ever reveal. State indication:
+        // makes each fill action legible even if the column was already open. Exposed on window
+        // so the bell popup (home.js, different file/closure) can pulse it too.
+        function pulseReadWave() {
+            var marks = $table.find('td.dg-read-cell .dg-read-mark');
+            marks.each(function (i, el) {
+                el.style.animationDelay = Math.min(i, 12) * 40 + 'ms';
+                el.classList.add('dg-read-wave');
+            });
+            setTimeout(function () { marks.removeClass('dg-read-wave').css('animation-delay', ''); }, 700);
+        }
+        window.dgPulseReadWave = pulseReadWave;
+
         function sync(visible) {
-            // /animate: a wave over the ✓ icons ONLY on a real hidden→visible reveal (state
-            // indication — "these are what you can now click"), never on an already-open column:
-            // replaying it there would just be motion on an unchanged page (owner: "если они
-            // были уже включены то без этой анимации будет просто страница как была" — that IS
-            // correct there, no wave needed; the wave is what makes the OTHER case legible).
-            var wasHidden = !col.visible();
             col.visible(visible, false);
             suttaTableApi.columns.adjust();
             $btn.attr('aria-pressed', visible ? 'true' : 'false');
             $btn.toggleClass('active', visible);
-            if (visible && wasHidden) {
-                var marks = $table.find('td.dg-read-cell .dg-read-mark');
-                marks.each(function (i, el) {
-                    el.style.animationDelay = Math.min(i, 12) * 40 + 'ms';
-                    el.classList.add('dg-read-wave');
-                });
-                setTimeout(function () { marks.removeClass('dg-read-wave').css('animation-delay', ''); }, 700);
-            }
+            if (visible) pulseReadWave();
         }
 
         sync(loadReadMarks().length > 0);

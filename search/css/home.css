@@ -2628,24 +2628,52 @@ body.dg-drawer-open {
     background: var(--dg-surface-hover) !important;
     color: var(--dg-text) !important;
 }
-.dg-bell-arc { opacity: 0; transition: opacity 0.15s ease; }
-.dg-bell[data-on="true"] .dg-bell-arc { opacity: 1; }
+/* Glyph split for independent transforms: .dg-bell-body (bell shape + clapper, swings from the
+   hook) vs .dg-bell-arc × 2 (ring arcs, scale in from the bell). Values below are lifted verbatim
+   from the reference prototype's own CSS (docs/D-refresh.html, grepped: .bring/.bring .body/
+   .bring .w/[data-sub=go]/[data-hint=*] rules) per owner request — "можно просто взять оттуда" —
+   not re-approximated. */
+.dg-bell-body { transform-box: view-box; transform-origin: 12px 2px; }
+.dg-bell-arc {
+    transform-box: view-box;
+    transform-origin: 12px 8px;
+    opacity: 0;
+    transform: scale(.6);
+    transition: opacity .25s var(--dg-ease), transform .35s cubic-bezier(.3, 1.5, .5, 1);
+}
+.dg-bell[data-on="true"] .dg-bell-arc { opacity: 1; transform: none; }
+
+/* Subscribe confirmation (ТЗ §3: "колокол качается, дуги «выстреливают» с отскоком") — always
+   plays (not random/budget-limited), fires once on the actual subscribe click (home.js toggles
+   .dg-bell-confirm). Feedback + state indication. Keyframes, not a transition: one-shot on a
+   real action, not something fired twice a second (button becomes "Unsubscribe" right after). */
+.dg-bell-confirm .dg-bell-body { animation: dgBellRing .8s cubic-bezier(.36, .07, .19, .97) 1; }
+.dg-bell-confirm .dg-bell-arc { animation: dgBellWave .6s cubic-bezier(.3, 1.5, .5, 1) .15s both; }
+@keyframes dgBellWave {
+    0% { opacity: 0; transform: scale(.6); }
+    60% { opacity: 1; transform: scale(1.12); }
+    100% { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .dg-bell-confirm .dg-bell-body, .dg-bell-confirm .dg-bell-arc { animation: none; }
+}
 
 /* Bell hint animations (ТЗ §3: "подпишись" — звон/ring, вздох/sigh, кивок/nod, подскок/hop),
-   scheduled by scheduleBellHint() (home.js). Timings/easings/iteration counts match the
-   reference prototype exactly (captured live from docs/D-refresh.html). Glyph only —
-   transform, no width/height/position — so it never nudges layout. */
-.dg-bell[data-hint] svg { transform-origin: 12px 13px; }
-.dg-bell[data-hint="ring"] svg { animation: dgBellRing .9s cubic-bezier(.36,.07,.19,.97) 2; }
-.dg-bell[data-hint="sigh"] svg { animation: dgBellSigh 1.6s cubic-bezier(.45,0,.55,1) 1; }
-.dg-bell[data-hint="nod"] svg { animation: dgBellNod .9s var(--dg-ease) 1; }
-.dg-bell[data-hint="hop"] svg { animation: dgBellHop .8s cubic-bezier(.3,1.6,.5,1) 1; }
+   scheduled by scheduleBellHint() (home.js). Same source as above: values lifted verbatim from
+   the prototype, not re-approximated — ring swings from the hook (.dg-bell-body's own
+   transform-origin, no override, matching [data-hint=ring] there); sigh/nod/hop recenter to
+   12px 13px, same as the prototype's [data-hint=pulse/nod/hop] overrides. */
+.dg-bell[data-hint="ring"] .dg-bell-body { animation: dgBellRing .9s cubic-bezier(.36, .07, .19, .97) 2; }
+.dg-bell[data-hint="sigh"] .dg-bell-body { animation: dgBellSigh 1.6s cubic-bezier(.45, 0, .55, 1) 1; transform-origin: 12px 13px; }
+.dg-bell[data-hint="nod"] .dg-bell-body { animation: dgBellNod .9s var(--dg-ease) 1; transform-origin: 12px 13px; }
+.dg-bell[data-hint="hop"] .dg-bell-body { animation: dgBellHop .8s cubic-bezier(.3, 1.6, .5, 1) 1; transform-origin: 12px 13px; }
 @keyframes dgBellRing {
     0%, 100% { transform: rotate(0); }
-    20% { transform: rotate(-14deg); }
-    40% { transform: rotate(11deg); }
-    60% { transform: rotate(-7deg); }
-    80% { transform: rotate(4deg); }
+    15% { transform: rotate(16deg); }
+    30% { transform: rotate(-14deg); }
+    45% { transform: rotate(10deg); }
+    60% { transform: rotate(-6deg); }
+    75% { transform: rotate(3deg); }
 }
 @keyframes dgBellSigh {
     0%, 100% { transform: scale(1); }
@@ -2653,16 +2681,16 @@ body.dg-drawer-open {
 }
 @keyframes dgBellNod {
     0%, 100% { transform: rotate(0); }
-    30% { transform: rotate(9deg); }
-    60% { transform: rotate(-5deg); }
+    30% { transform: rotate(-12deg); }
+    60% { transform: rotate(6deg); }
 }
 @keyframes dgBellHop {
-    0%, 100% { transform: translateY(0); }
-    40% { transform: translateY(-4px); }
-    65% { transform: translateY(1px); }
+    0%, 100% { transform: translateY(0) scale(1); }
+    35% { transform: translateY(-4px) scale(1.04, .96); }
+    65% { transform: translateY(0) scale(1.06, .94); }
 }
 @media (prefers-reduced-motion: reduce) {
-    .dg-bell[data-hint] svg { animation: none; }
+    .dg-bell[data-hint] .dg-bell-body { animation: none; }
 }
 
 .dg-subp {
@@ -2681,6 +2709,19 @@ body.dg-drawer-open {
     flex-direction: column;
     gap: 10px;
     font-size: 0.87rem;
+    /* Open/close transition, values lifted verbatim from the prototype's own .subp/
+       .subp[data-open=true] rules (docs/D-refresh.html) — not re-approximated. Anchored at the
+       bell (transform-origin: top right — .dg-subp sits top:38px;right:0 under it). home.js
+       toggles [data-open] instead of `hidden` now, so this can actually transition. */
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-4px) scale(.98);
+    transform-origin: top right;
+    transition: opacity .18s var(--dg-ease), transform .18s var(--dg-ease);
+}
+.dg-subp[data-open="true"] { opacity: 1; pointer-events: auto; transform: none; }
+@media (prefers-reduced-motion: reduce) {
+    .dg-subp { transition: opacity .18s var(--dg-ease); transform: none; }
 }
 .dg-subp-head { display: flex; align-items: center; gap: 8px; }
 .dg-subp-title { font-weight: 700; font-size: 0.95rem; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -2698,6 +2739,9 @@ body.dg-drawer-open {
     cursor: pointer;
 }
 .dg-subp-go:hover { background: var(--dg-accent-dark); }
+/* Press feedback — same recipe the prototype uses on every one of its own buttons (.go:active,
+   .rb:active): translateY(1px), not invented. */
+.dg-subp-go:active, .dg-subp-mark:active, .dg-subp-stop:active { transform: translateY(1px); }
 .dg-subp-card { background: var(--dg-surface-hover); border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 6px; }
 .dg-subp-freq { color: var(--dg-text-2); font-size: 0.8rem; }
 .dg-subp-progress { display: flex; justify-content: space-between; align-items: baseline; }

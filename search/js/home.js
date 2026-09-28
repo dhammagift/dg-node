@@ -3212,7 +3212,10 @@
 
     function closeBellPopup() {
         var p = document.getElementById('subp');
-        if (p) { p.hidden = true; p.innerHTML = ''; }
+        // data-open drives the CSS transition (home.css) — content is left in place and
+        // overwritten by the next renderBellPopup() call, not wiped here (wiping now would
+        // make the popup fade out empty instead of fading out its actual content).
+        if (p) p.removeAttribute('data-open');
         var btn = document.getElementById('subbtn');
         if (btn) btn.setAttribute('aria-expanded', 'false');
     }
@@ -3255,11 +3258,18 @@
                 var ids = rows.map(function (r) { return r.sutta_id; });
                 window.subUpsert({ type: 'search', query: query, order: 'canon', suttaIds: ids, remind: { web: 'open' } });
                 if (typeof window.dgRenderBell === 'function') window.dgRenderBell(query, rows); // also flips the bell's data-on
+                // Confirm animation (ТЗ §3, home.css .dg-bell-confirm) — one-shot, cleared after
+                // it plays so it doesn't replay on the next unrelated dgRenderBell() call.
+                var bellBtn = document.getElementById('subbtn');
+                if (bellBtn) {
+                    bellBtn.classList.add('dg-bell-confirm');
+                    setTimeout(function () { bellBtn.classList.remove('dg-bell-confirm'); }, 800);
+                }
                 // ТЗ §5: "включается ... автоматически при подписке" — same button, same click,
-                // as if the person had pressed it themselves (the wave animation there already
-                // only plays on a genuine hidden→visible reveal, search-render.js bindReadMarks).
+                // as if the person had pressed it themselves.
                 var readBtn = document.getElementById('btn-read-marks');
                 if (readBtn && readBtn.getAttribute('aria-pressed') !== 'true') readBtn.click();
+                else if (typeof window.dgPulseReadWave === 'function') window.dgPulseReadWave(); // already open — still give feedback
                 renderBellPopup(query, rows);
             });
             p.appendChild(go);
@@ -3303,6 +3313,7 @@
                 closeBellPopup();
                 var readBtn = document.getElementById('btn-read-marks');
                 if (readBtn && readBtn.getAttribute('aria-pressed') !== 'true') readBtn.click();
+                else if (typeof window.dgPulseReadWave === 'function') window.dgPulseReadWave(); // already open — still give feedback
             });
             p.appendChild(mark);
 
@@ -3382,14 +3393,14 @@
             btn.addEventListener('click', function () {
                 var p = document.getElementById('subp');
                 if (!p) return;
-                if (!p.hidden) { closeBellPopup(); return; }
+                if (p.getAttribute('data-open') === 'true') { closeBellPopup(); return; }
                 renderBellPopup(btn.dataset.query, btn.__rows);
-                p.hidden = false;
+                p.setAttribute('data-open', 'true');
                 btn.setAttribute('aria-expanded', 'true');
             });
             document.addEventListener('click', function (e) {
                 var p = document.getElementById('subp');
-                if (p && !p.hidden && !p.contains(e.target) && e.target !== btn && !btn.contains(e.target)) closeBellPopup();
+                if (p && p.getAttribute('data-open') === 'true' && !p.contains(e.target) && e.target !== btn && !btn.contains(e.target)) closeBellPopup();
             });
             document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeBellPopup(); });
         }
@@ -3398,7 +3409,7 @@
         // A different search ran while the popup from the PREVIOUS one was open — refresh it in
         // place rather than leave it showing a now-stale query/progress.
         var p = document.getElementById('subp');
-        if (p && !p.hidden) renderBellPopup(query, rows);
+        if (p && p.getAttribute('data-open') === 'true') renderBellPopup(query, rows);
     };
 
     /* Мультитул в бургере (search/index.html #dg-drawer-tiles) — просто список плиток, в том же
