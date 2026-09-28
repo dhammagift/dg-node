@@ -147,19 +147,21 @@ app.addHook('onRequest', (req, res, done) => {
     done();
 });
 
-// /bw (The Buddha's Words mirror) and /ai (offline-data/dhammagift/ai/, the AI-assisted draft
-// translation) must be unreachable for ordinary visitors and crawlers, full stop — not just
-// hidden from search/menu UI and robots.txt (owner: "ru_ai не должен быть виден пользователю
-// нигде на сайте"; "/bw и ai переводы должны быть недоступны для обычных пользователей в
-// принципе"). The client-side "force_local" flag (dg-text-router.js/settings.js) only changes
-// which URL a link on OUR OWN page points to — it was never real access control, so it changes
-// nothing here. Gate both prefixes with HTTP Basic Auth, checked before any static mount below.
+// /bw (The Buddha's Words mirror), /ai (offline-data/dhammagift/ai/, the AI-assisted draft
+// translation) and /b (legacy PHP reader shell — PHP is not executed under this vhost any more,
+// so it only ever serves a blank shell now, but still a stray legacy page, owner: lock it down
+// too) must be unreachable for ordinary visitors and crawlers, full stop — not just hidden from
+// search/menu UI and robots.txt (owner: "ru_ai не должен быть виден пользователю нигде на
+// сайте"; "/bw и ai переводы должны быть недоступны для обычных пользователей в принципе").
+// The client-side "force_local" flag (dg-text-router.js/settings.js) only changes which URL a
+// link on OUR OWN page points to — it was never real access control, so it changes nothing
+// here. Gate all three prefixes with HTTP Basic Auth, checked before any static mount below.
 let restrictedAuth = null;
 try { restrictedAuth = require('./configs/local/restricted-auth.json'); }
-catch (e) { console.warn('configs/local/restricted-auth.json missing — /bw and /ai are UNPROTECTED:', e.message); }
+catch (e) { console.warn('configs/local/restricted-auth.json missing — /bw, /ai and /b are UNPROTECTED:', e.message); }
 app.addHook('onRequest', (req, res, done) => {
     const p = req.url.split('?')[0];
-    if (!restrictedAuth || !/^\/(bw|ai)(\/|$)/.test(p)) return done();
+    if (!restrictedAuth || !/^\/(bw|ai|b)(\/|$)/.test(p)) return done();
     const [, b64] = (req.headers.authorization || '').split(' ');
     const [user, pass] = b64 ? Buffer.from(b64, 'base64').toString().split(':') : [];
     if (user === restrictedAuth.user && pass === restrictedAuth.pass) return done();

@@ -3,6 +3,7 @@ Sitemap: https://dhamma.gift/sitemap.xml
 User-agent: *
 Disallow: /bw/
 Disallow: /ai/
+Disallow: /b/
 Disallow: /suttacentral.net/
 Disallow: /accesstoinsight.org/
 Disallow: /en.dhammadana.org/
