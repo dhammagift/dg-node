@@ -1274,27 +1274,41 @@ window.DgSearchRender = (function () {
         var col = suttaTableApi.column(1);
         var $btn = $('#btn-read-marks');
 
-        // /animate, owner correction: "волна должна проходить всегда при нажатии заполнить, а
-        // не только 1 раз" — plays every time the column is filled visible (toolbar toggle, or
-        // the bell popup's "Mark as read →"), not gated to a first-ever reveal. State indication:
-        // makes each fill action legible even if the column was already open. Exposed on window
-        // so the bell popup (home.js, different file/closure) can pulse it too.
-        function pulseReadWave() {
+        // Genuine hidden→visible reveal (the column WAS off-screen/display:none, sync() below
+        // only calls this the instant col.visible flips to true) — a real entrance, opacity+rise
+        // is legitimate here because the marks truly weren't there a moment ago.
+        function pulseReadReveal() {
             var marks = $table.find('td.dg-read-cell .dg-read-mark');
             marks.each(function (i, el) {
                 el.style.animationDelay = Math.min(i, 12) * 40 + 'ms';
-                el.classList.add('dg-read-wave');
+                el.classList.add('dg-read-reveal');
             });
-            setTimeout(function () { marks.removeClass('dg-read-wave').css('animation-delay', ''); }, 700);
+            setTimeout(function () { marks.removeClass('dg-read-reveal').css('animation-delay', ''); }, 700);
         }
-        window.dgPulseReadWave = pulseReadWave;
+
+        // /animate, owner: the shared opacity-based wave, when fired on an ALREADY-visible column
+        // (bell popup's Subscribe / "Mark as read →", column never actually toggled), dipped every
+        // already-on-screen ✓ through opacity:0 for a frame — indistinguishable from the DOM
+        // having been torn down and rebuilt ("как будто дом пересчитался... это баг, не анимация").
+        // This is the confirm-only case: nothing entered or left, so nothing may touch opacity —
+        // transform-only scale pulse in place, GPU-cheap, never invisible at any point. Exposed on
+        // window so the bell popup (home.js, different file/closure) can trigger it.
+        function pulseReadConfirm() {
+            var marks = $table.find('td.dg-read-cell .dg-read-mark');
+            marks.each(function (i, el) {
+                el.style.animationDelay = Math.min(i, 12) * 30 + 'ms';
+                el.classList.add('dg-read-pulse');
+            });
+            setTimeout(function () { marks.removeClass('dg-read-pulse').css('animation-delay', ''); }, 500);
+        }
+        window.dgPulseReadWave = pulseReadConfirm;
 
         function sync(visible) {
             col.visible(visible, false);
             suttaTableApi.columns.adjust();
             $btn.attr('aria-pressed', visible ? 'true' : 'false');
             $btn.toggleClass('active', visible);
-            if (visible) pulseReadWave();
+            if (visible) pulseReadReveal();
         }
 
         sync(loadReadMarks().length > 0);

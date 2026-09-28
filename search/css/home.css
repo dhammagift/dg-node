@@ -2789,23 +2789,42 @@ body.dg-drawer-open {
 .dg-read-mark.on svg path { stroke: #fff; }
 .dg-read-mark.on:hover svg circle { fill: var(--dg-accent-dark); stroke: var(--dg-accent-dark); }
 
-/* Reveal for the ✓ column when it goes from hidden to shown (search-render.js bindReadMarks) —
+/* Reveal for the ✓ column when it goes from hidden to shown (search-render.js pulseReadReveal) —
    state indication + explanation: makes it legible that these buttons are what "Mark as read"
    just turned on. Only ever played on a genuine hidden→visible transition (JS-gated) — replaying
-   it when the column was already open would just be motion for its own sake. owner: the previous
-   scale(0.9→1) pop "looks like elements reloading" on ~7-12 icons firing at once — switched to
-   the codebase's stagger-entrance recipe (fade + rise, no scale) which reads as one deliberate
-   sweep instead of a flicker. transform+opacity, --dg-ease (existing token), 300ms — the
-   recipe's own duration for a stagger group entrance, not the generic control-tier number; JS
-   still sets the per-row delay (animation-delay). */
-.dg-read-wave { animation: dgReadWaveIn 300ms var(--dg-ease) both; }
-@keyframes dgReadWaveIn {
+   it when the column was already open would just be motion for its own sake. transform+opacity,
+   --dg-ease (existing token), 300ms — the codebase's stagger-entrance recipe. */
+.dg-read-reveal { animation: dgReadRevealIn 300ms var(--dg-ease) both; }
+@keyframes dgReadRevealIn {
     from { opacity: 0; transform: translateY(8px); }
     to { opacity: 1; transform: translateY(0); }
 }
 @media (prefers-reduced-motion: reduce) {
-    .dg-read-wave { animation: dgReadWaveInReduced 200ms var(--dg-ease) both; }
-    @keyframes dgReadWaveInReduced { from { opacity: 0; } to { opacity: 1; } }
+    .dg-read-reveal { animation: dgReadRevealInReduced 200ms var(--dg-ease) both; }
+    @keyframes dgReadRevealInReduced { from { opacity: 0; } to { opacity: 1; } }
+}
+
+/* Confirm pulse for the ✓ column when it's ALREADY visible (search-render.js pulseReadConfirm) —
+   owner: the opacity-based reveal above, replayed on an already-open column, dipped every
+   already-on-screen icon through invisible for a frame — "как будто дом пересчитался... это не
+   анимация — это баг". Feedback only: nothing entered or left, so opacity is never touched here,
+   at no point in this animation. transform-only scale pulse, --dg-ease, 260ms (button-press-
+   feedback tier — this is momentary confirmation, not an entrance). */
+.dg-read-pulse { animation: dgReadPulse 260ms var(--dg-ease) both; }
+@keyframes dgReadPulse {
+    0% { transform: scale(1); }
+    40% { transform: scale(1.18); }
+    100% { transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+    /* No opacity/position change to drop here (the whole point is that it never had one) — swap
+       the scale for a brightness flash so there's still SOME feedback, just no movement. */
+    .dg-read-pulse { animation: dgReadPulseReduced 260ms var(--dg-ease) both; }
+    @keyframes dgReadPulseReduced {
+        0% { filter: brightness(1); }
+        40% { filter: brightness(1.6); }
+        100% { filter: brightness(1); }
+    }
 }
 
 .dg-drawer-row .dg-drawer-hotkey {
