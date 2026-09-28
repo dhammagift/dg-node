@@ -714,6 +714,13 @@ window.DgSearchRender = (function () {
        проход по конкретной выдаче. Колонка по умолчанию скрыта и включается кнопкой на панели;
        если по этому поиску отметки уже есть, она показывается сама. */
     var READ_MARKS_PREFIX = 'dgReadMarks:';
+    // Same glyph as the toolbar's #btn-read-marks (search/index.html) — one icon, two places,
+    // owner: "сама кнопка должна её повторять". Circle-check, not the old square-check: matches
+    // the reference prototype's row icon (docs/D-refresh.html, "Результаты").
+    // Thin outline, not a solid/filled glyph — owner: "галочки такие [outline], а не чёрные такие
+    // [solid] а не страшные" (the solid FA circle-check read as heavy/ugly). Same stroke style as
+    // the bell (#subbtn, home.js) and the toolbar's own thin-line icons, not a filled FA shape.
+    var READ_MARK_SVG = '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12.3l2.6 2.6L16 9.5"/></svg>';
 
     function readMarksKey() {
         var params = new URLSearchParams(window.location.search);
@@ -882,9 +889,12 @@ window.DgSearchRender = (function () {
                     searchable: false,
                     className: 'dg-read-cell text-center',
                     visible: false,
+                    // A round check-circle button, not a native checkbox — same glyph as
+                    // #btn-read-marks in the toolbar (owner: "галочка должна быть как на
+                    // мокапах... сама кнопка должна её повторять"), just per-row: grey outline
+                    // off, filled accent-green on. bindReadMarks() below delegates its click.
                     render: function (data) {
-                        return '<input type="checkbox" class="dg-read-mark" data-sutta="' + data + '"' +
-                            (isRead(data) ? ' checked' : '') + ' aria-label="' + t('table.readColAria', 'Read') + '">';
+                        return '<button type="button" class="dg-read-mark' + (isRead(data) ? ' on' : '') + '" data-sutta="' + data + '" aria-pressed="' + (isRead(data) ? 'true' : 'false') + '" aria-label="' + t('table.readColAria', 'Read') + '">' + READ_MARK_SVG + '</button>';
                     }
                 },
                 // 2: Title
@@ -1259,10 +1269,24 @@ window.DgSearchRender = (function () {
         var $btn = $('#btn-read-marks');
 
         function sync(visible) {
+            // /animate: a wave over the ✓ icons ONLY on a real hidden→visible reveal (state
+            // indication — "these are what you can now click"), never on an already-open column:
+            // replaying it there would just be motion on an unchanged page (owner: "если они
+            // были уже включены то без этой анимации будет просто страница как была" — that IS
+            // correct there, no wave needed; the wave is what makes the OTHER case legible).
+            var wasHidden = !col.visible();
             col.visible(visible, false);
             suttaTableApi.columns.adjust();
             $btn.attr('aria-pressed', visible ? 'true' : 'false');
             $btn.toggleClass('active', visible);
+            if (visible && wasHidden) {
+                var marks = $table.find('td.dg-read-cell .dg-read-mark');
+                marks.each(function (i, el) {
+                    el.style.animationDelay = Math.min(i, 12) * 40 + 'ms';
+                    el.classList.add('dg-read-wave');
+                });
+                setTimeout(function () { marks.removeClass('dg-read-wave').css('animation-delay', ''); }, 700);
+            }
         }
 
         sync(loadReadMarks().length > 0);
@@ -1272,9 +1296,12 @@ window.DgSearchRender = (function () {
         });
 
         // Делегирование: строки перерисовываются на каждой догрузке цитат, вешать обработчик на
-        // сами чекбоксы бессмысленно — их узлы живут только до следующей перерисовки.
-        $table.off('change.dgread').on('change.dgread', 'input.dg-read-mark', function () {
-            setRead(this.dataset.sutta, this.checked);
+        // сами кнопки бессмысленно — их узлы живут только до следующей перерисовки.
+        $table.off('click.dgread').on('click.dgread', 'button.dg-read-mark', function () {
+            var on = !this.classList.contains('on');
+            this.classList.toggle('on', on);
+            this.setAttribute('aria-pressed', on ? 'true' : 'false');
+            setRead(this.dataset.sutta, on);
         });
     }
 

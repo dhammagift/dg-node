@@ -2597,9 +2597,9 @@ body.dg-drawer-open {
    действительно что-то делает (owner: "хоткеи видно в бургере"). */
 /* "Ежедневное чтение" — колокольчик выдачи (#subbtn) + его попап (#subp), search/index.html.
    Эталон вида — docs/D-refresh.html ("Результаты"), ТЗ §3-4; токены — только --dg-*, свои цвета
-   не изобретаем. Колокольчик стоит absolute внутри #results-toolbar (см. index.html) — своя
-   позиция, а не часть центрированного #dg-toolbar-buttons (owner ТЗ: "отдельно от строки
-   действий"). */
+   не изобретаем. Колокольчик — обычный inline-flex элемент верхнего ряда, сразу перед бургером
+   (.dg-bell-wrap в разметке) — owner: "перенеси в район бургер меню" (первая версия была
+   absolute внутри #results-toolbar и на широких экранах отрывалась от остального интерфейса). */
 .dg-bell {
     display: grid;
     place-items: center;
@@ -2616,8 +2616,8 @@ body.dg-drawer-open {
 
 .dg-subp {
     position: absolute;
-    top: 40px;
-    right: 6px;
+    top: 38px;
+    right: 0;
     z-index: 20;
     width: 280px;
     max-width: calc(100vw - 24px);
@@ -2669,6 +2669,37 @@ body.dg-drawer-open {
 .dg-subp-stop:hover { background: var(--dg-surface-hover); }
 .dg-subp-check { font-size: 0.8em; }
 .dg-subp-cfg { text-align: center; font-size: 0.82rem; padding-top: 2px; }
+
+/* Per-row read-mark button (search-render.js READ_MARK_SVG) — circle-check glyph, grey outline
+   off / filled accent green on, same colors as #btn-read-marks .active in the toolbar so the two
+   read as one idea (owner: "сама кнопка должна её повторять"). */
+.dg-read-mark {
+    background: none;
+    border: none;
+    padding: 0;
+    display: inline-flex;
+    color: var(--dg-border-strong);
+    cursor: pointer;
+}
+.dg-read-mark:hover { color: var(--dg-text-muted); }
+.dg-read-mark.on { color: var(--dg-accent); }
+.dg-read-mark.on:hover { color: var(--dg-accent-dark); }
+
+/* Wave-in for the ✓ column when it goes from hidden to shown (search-render.js bindReadMarks) —
+   state indication + explanation: makes it legible that these buttons are what "Mark as read"
+   just turned on. Only ever played on a genuine hidden→visible transition (JS-gated) — replaying
+   it when the column was already open would just be motion for its own sake on an unchanged
+   page. Entrance: scale+opacity, ease-out (--dg-ease, already the codebase's token), 220ms,
+   per-row stagger set inline (animation-delay) by the JS that triggers it. */
+.dg-read-wave { animation: dgReadWaveIn 220ms var(--dg-ease) both; }
+@keyframes dgReadWaveIn {
+    from { opacity: 0; transform: scale(0.9); }
+    to { opacity: 1; transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .dg-read-wave { animation: dgReadWaveInReduced 220ms var(--dg-ease) both; }
+    @keyframes dgReadWaveInReduced { from { opacity: 0; } to { opacity: 1; } }
+}
 
 .dg-drawer-row .dg-drawer-hotkey {
     margin-left: auto;

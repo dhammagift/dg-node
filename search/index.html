@@ -2334,20 +2334,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
      внутри как были инлайновыми, так и остались) — нужна ровно затем, чтобы одним селектором
      убирать весь ряд на домашнем экране: там ни «Saṁvaṭṭo», ни отметок, ни словаря ещё не к чему
      применить. -->
-<div id="results-toolbar" style="position: relative;">
-    <!-- "Ежедневное чтение" — колокольчик подписки на ТЕКУЩИЙ поиск. Своей позицией (absolute,
-         top-right этого wrapper) сознательно НЕ внутри #dg-toolbar-buttons — тот ряд центрирован
-         (see <style> above) и это отдельный элемент "под бургером, отдельно от строки действий"
-         (owner ТЗ + эталонный прототип D-refresh.html, §3). #subp — попап, который он открывает,
-         тот же общий #dg-sheet-backdrop не использует (свой, лёгкий, без затемнения фона —
-         прототип его тоже не затемняет). Рендерит/наполняет home.js (dgRenderBell()). -->
-    <button id="subbtn" type="button" class="dg-bell" aria-label="{{menu.daily.subscribe}}" title="{{menu.daily.subscribe}}" data-on="false" style="position: absolute; top: 6px; right: 6px; z-index: 3;">
-        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 3a5 5 0 0 0-5 5v3.2c0 .5-.18 1-.5 1.4L5 14.5c-.7.9-.1 2.5 1.2 2.5h11.6c1.3 0 1.9-1.6 1.2-2.5l-1.5-2c-.32-.4-.5-.9-.5-1.4V8a5 5 0 0 0-5-5z"/>
-            <path d="M9.5 19a2.5 2.5 0 0 0 5 0"/>
-        </svg>
-    </button>
-    <div id="subp" class="dg-subp" hidden></div>
+<div id="results-toolbar">
     <!-- Ряд кнопок — по центру, под полем ввода (просьба владельца), заголовок теперь идёт ПОСЛЕ
          этого ряда и после разделительной линии (#dg-toolbar-buttons границей снизу), а не над
          ним слева. См. #dg-toolbar-buttons в <style> для центрирования/ширины. -->
@@ -2394,8 +2381,12 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
 <button id="btn-read-marks" class="btn btn-light mb-1" type="button" aria-pressed="false"
         title="{{toolbar.readMarksLabel}}" data-i18n-title="{{toolbar.readMarksLabel}}"
         aria-label="{{toolbar.readMarksLabel}}" data-i18n-aria-label="{{toolbar.readMarksLabel}}">
-  <svg viewBox="0 0 448 512" width="16" height="16" fill="currentColor" aria-hidden="true">
-    <path d="M211.8 339.8C200.9 350.7 183.1 350.7 172.2 339.8L108.2 275.8C97.27 264.9 97.27 247.1 108.2 236.2C119.1 225.3 136.9 225.3 147.8 236.2L192 280.4L300.2 172.2C311.1 161.3 328.9 161.3 339.8 172.2C350.7 183.1 350.7 200.9 339.8 211.8L211.8 339.8zM0 96C0 60.65 28.65 32 64 32H384C419.3 32 448 60.65 448 96V416C448 451.3 419.3 480 384 480H64C28.65 480 0 451.3 0 416V96zM48 96V416C48 424.8 55.16 432 64 432H384C392.8 432 400 424.8 400 416V96C400 87.16 392.8 80 384 80H64C55.16 80 48 87.16 48 96z"/>
+  <!-- Тот же глиф, что у кнопки ✓ в каждой строке таблицы (search-render.js, READ_MARK_SVG) —
+       owner: "сама кнопка должна её повторять", не два разных значка на одну идею. Тонкий
+       контур, не заливка (owner: "галочки такие, а не чёрные такие а не страшные"). -->
+  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <circle cx="12" cy="12" r="9"/>
+    <path d="M8 12.3l2.6 2.6L16 9.5"/>
   </svg>
 </button>
 
@@ -2424,6 +2415,22 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     <a class="btn btn-light mb-1 form-check-inline mb-1 toggle-icon" alt="Help" data-i18n-alt="{{global.common.help}}" id="helpMessage" data-href-en="/docs/search-guide" data-href-ru="/ru/docs/search-guide" href="/docs/search-guide" target="_blank">
         <img id="helpResult" class="table-home-icon" src="/assets/svg/question.svg"></img>
         </a>
+
+    <!-- "Ежедневное чтение" — колокольчик подписки на ТЕКУЩИЙ поиск. Обычный flex-элемент ЭТОГО
+         же центрированного ряда (owner: "в ряду кнопок, под бургером" — не отдельно позиционируем
+         координатами, margin-left:auto просто прижимает его к правому краю ряда, вплотную к
+         остальным иконкам, не к краю экрана). #subp — попап под ним, свой позиционный контекст
+         (span.dg-bell-wrap), общий #dg-sheet-backdrop не использует (не затемняет фон — как и в
+         прототипе docs/D-refresh.html, "Результаты"). Рендерит/наполняет home.js (dgRenderBell()). -->
+    <span class="dg-bell-wrap" style="position: relative; display: inline-flex; margin-left: auto;">
+        <button id="subbtn" type="button" class="dg-bell" aria-label="{{menu.daily.subscribe}}" title="{{menu.daily.subscribe}}" data-on="false">
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 3a5 5 0 0 0-5 5v3.2c0 .5-.18 1-.5 1.4L5 14.5c-.7.9-.1 2.5 1.2 2.5h11.6c1.3 0 1.9-1.6 1.2-2.5l-1.5-2c-.32-.4-.5-.9-.5-1.4V8a5 5 0 0 0-5-5z"/>
+                <path d="M9.5 19a2.5 2.5 0 0 0 5 0"/>
+            </svg>
+        </button>
+        <div id="subp" class="dg-subp" hidden></div>
+    </span>
     </div>
     <!-- /#dg-toolbar-buttons -->
 </div>

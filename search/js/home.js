@@ -3255,6 +3255,11 @@
                 var ids = rows.map(function (r) { return r.sutta_id; });
                 window.subUpsert({ type: 'search', query: query, order: 'canon', suttaIds: ids, remind: { web: 'open' } });
                 if (typeof window.dgRenderBell === 'function') window.dgRenderBell(query, rows); // also flips the bell's data-on
+                // ТЗ §5: "включается ... автоматически при подписке" — same button, same click,
+                // as if the person had pressed it themselves (the wave animation there already
+                // only plays on a genuine hidden→visible reveal, search-render.js bindReadMarks).
+                var readBtn = document.getElementById('btn-read-marks');
+                if (readBtn && readBtn.getAttribute('aria-pressed') !== 'true') readBtn.click();
                 renderBellPopup(query, rows);
             });
             p.appendChild(go);
