@@ -478,6 +478,7 @@
         if (backdrop && !isQuickOpen()) backdrop.classList.remove('show');
         currentSheetKey = null;
         document.body.classList.remove('dg-mega-compact');
+        document.body.classList.remove('dg-drawer-open'); // pairs with the narrow-screen lock in openSheet(); harmless if never added
         // hidden ставим после анимации ухода, иначе шторка пропадёт рывком
         setTimeout(function () { if (!currentSheetKey) sheet.hidden = true; }, 320);
     }
@@ -1024,6 +1025,10 @@
         // над рядом плиток, scrollForMega() подкручивает страницу до поля ввода) — CSS не завязан
         // на ширину экрана, только JS-вызов раньше был только в openMega().
         document.body.classList.add('dg-mega-compact');
+        // Same narrow-screen scroll lock as openSettingsSheet() (dg-node #51/#52 follow-up): this
+        // generic tile sheet is centered/fixed the same way, so without it the page behind keeps
+        // scrolling and the sheet visibly drifts on iOS, close button included.
+        if (!window.matchMedia('(min-width: 768px)').matches) document.body.classList.add('dg-drawer-open');
         showLater(sheet, backdrop);
         scrollForMega();
     }
@@ -4293,6 +4298,9 @@
         body.appendChild(foot);
 
         currentSheetKey = '__about__';
+        // Same narrow-screen scroll lock as openSettingsSheet()/openSheet() (dg-node #51 class of
+        // bug): this bottom sheet is fixed/centered the same way, close button included.
+        if (!window.matchMedia('(min-width: 768px)').matches) document.body.classList.add('dg-drawer-open');
         showLater(sheet, backdrop);
         if (section && section !== 'howto') {
             var target = document.getElementById(section);
@@ -4338,6 +4346,7 @@
         body.appendChild(p);
 
         currentSheetKey = '__terms__';
+        if (!window.matchMedia('(min-width: 768px)').matches) document.body.classList.add('dg-drawer-open');
         showLater(sheet, backdrop);
     }
 
