@@ -18,7 +18,7 @@
     transform: translate(-50%, -50%) scale(0.95);
     z-index: 10000; opacity: 0; visibility: hidden;
     transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s ease;
-    width: 95%; max-width: 600px; max-height: 90vh;
+    width: 95%; max-width: 600px; max-height: calc(90 * var(--dg-vh, 1vh));
     display: flex; flex-direction: column;
 }
 .quick-modal-container.open {
@@ -75,7 +75,7 @@ body.dark .quick-tabs-wrapper, body.dark-mode .quick-tabs-wrapper { border-botto
 .quick-tab-btn.active { opacity: 1; border-bottom: 3px solid #859900; font-weight: bold; }
 
 /* ИЗМЕНЕНО: Добавлены гибкие ограничители высоты (max-height и min), чтобы в пейзаже окно ужималось, а в портрете оставалось 55vh */
-.quick-tab-content { display: none; height: 55vh; min-height: min(420px, calc(90vh - 170px)); max-height: calc(90vh - 170px); overflow-y: auto; box-sizing: border-box; }
+.quick-tab-content { display: none; height: calc(55 * var(--dg-vh, 1vh)); min-height: min(420px, calc(calc(90 * var(--dg-vh, 1vh)) - 170px)); max-height: calc(calc(90 * var(--dg-vh, 1vh)) - 170px); overflow-y: auto; box-sizing: border-box; }
 .quick-tab-content.active { display: block; animation: fadeIn 0.3s ease; }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
@@ -83,7 +83,7 @@ body.dark .quick-tabs-wrapper, body.dark-mode .quick-tabs-wrapper { border-botto
 #tab-fav, #tab-4as { padding-left: 1.5rem; padding-right: 1.5rem; }
 
 /* ИЗМЕНЕНО: Те же гибкие ограничители для iframe, вместо жестких 450px */
-#tab-dpd, #tab-memo { padding-left: 0; padding-right: 0; height: 60vh; min-height: min(450px, calc(90vh - 170px)); max-height: calc(90vh - 170px); }
+#tab-dpd, #tab-memo { padding-left: 0; padding-right: 0; height: calc(60 * var(--dg-vh, 1vh)); min-height: min(450px, calc(calc(90 * var(--dg-vh, 1vh)) - 170px)); max-height: calc(calc(90 * var(--dg-vh, 1vh)) - 170px); }
 .quick-iframe { width: 100%; height: 100%; border: none; border-radius: 8px; background: transparent; }
 
 /* Списки Истории и Избранного */
@@ -181,7 +181,7 @@ end   QUICK MODAL STYLES (Оптимизировано) end Css for settings.js
    Redesign (ТЗ §7-8, reference docs/D-refresh.html #multi). Site tokens (--dg-*) with fallbacks:
    the dictionary loads this file without home.css, so every var() carries its light value.
    ========================================= */
-.quick-modal-container { max-width: 640px; height: min(640px, calc(100vh - 48px)); max-height: none; }
+.quick-modal-container { max-width: 640px; height: min(640px, calc(calc(100 * var(--dg-vh, 1vh)) - 48px)); max-height: none; }
 .quick-modal-content-wrapper {
     height: 100%; display: flex; flex-direction: column; padding: 16px 0 0; overflow: hidden;
     background: var(--dg-surface, #fff); color: var(--dg-text, #1b1d19);
@@ -331,7 +331,7 @@ body.dark .compact-list li, body.dark-mode .compact-list li { border-bottom-colo
 .quick-suberr[hidden] { display: none; }
 
 @media (max-width: 500px) {
-  .quick-modal-container { height: calc(100vh - 24px) !important; }
+  .quick-modal-container { height: calc(calc(100 * var(--dg-vh, 1vh)) - 24px) !important; }
   .quick-search-form { margin: 0 52px 10px 12px !important; padding: 4px 4px 4px 12px !important; }
   #tab-fav, #tab-4as, #tab-subs { padding-left: 14px !important; padding-right: 14px !important; }
   .quick-tab-btn { padding: 10px 8px; }

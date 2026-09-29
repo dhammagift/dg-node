@@ -1,6 +1,6 @@
 /* Quick window ("compass", quickModal.js) styles live in their own file so pages without this
    stylesheet — dict.dhamma.gift — can load just them. */
-@import url("quick-modal.css?v=20260928f"); /* bump on every quick-modal.css edit: @import is not stamped by sendVersionedHtml */
+@import url("quick-modal.css?v=20260929a"); /* bump on every quick-modal.css edit: @import is not stamped by sendVersionedHtml */
 
 /* From Freelancer bootstrap*/
 

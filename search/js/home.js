@@ -3885,7 +3885,9 @@
     // out, so the next back is not wasted. The settings sheet keeps its own entry (openSettingsSheet).
     (function overlayHistory() {
         var C = window.Capacitor;
-        if (!(C && C.isNativePlatform && C.isNativePlatform())) return;
+        // The app, and touch screens in a browser too: a phone's back swipe left the site instead
+        // of closing the open window (owner, 2026-09-29, on dhamma.gift in Chrome).
+        if (!((C && C.isNativePlatform && C.isNativePlatform()) || window.matchMedia('(pointer: coarse)').matches)) return;
         function anyOpen() { // "is showing" state — classes flip at once, `hidden` only after the fade
             var subp = document.getElementById('subp'), lp = document.getElementById('dg-lpmenu'), ts = document.getElementById('dg-ts');
             return !!(rsubState || (subp && subp.getAttribute('data-open') === 'true') || (lp && !lp.hidden) || (ts && !ts.hidden) ||

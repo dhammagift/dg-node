@@ -68,8 +68,13 @@ html { scrollbar-gutter: stable; }
    sets font-size on later at their normal spot, same specificity — same-specificity CSS is decided
    by source order, so the override has to come after, not before (this exact trap bit an earlier
    round of this file too, see the #dg-mega comment further down). */
+/* 1vh that ignores the interface zoom (home.js applyUiScale zooms <html>): viewport units are
+   zoomed with everything else, so 100vh under zoom 1.1 was 110% of the screen — sheets and the
+   quick window ran off it, the close button above the top edge (owner, 2026-09-29, on phones at
+   the new 1.1 base). Same fix the 100vw bands already use (/ var(--dg-zoom)). */
+:root { --dg-vh: calc(1vh / var(--dg-zoom, 1)); }
 @media (max-width: 767.98px) {
-    :root { --dg-mobile-scale: 1; }
+:root { --dg-mobile-scale: 1; }
     html { font-size: calc(100% * var(--dg-mobile-scale)); }
 }
 
@@ -1869,7 +1874,7 @@ body:not(.dg-state-home) #dg-announce { display: none; }
     z-index: 1083;
     display: flex;
     flex-direction: column;
-    max-height: 82vh;
+    max-height: calc(82 * var(--dg-vh, 1vh));
     background: var(--dg-surface);
     color: var(--dg-text);
     font-family: var(--dg-font);
@@ -1885,7 +1890,7 @@ body:not(.dg-state-home) #dg-announce { display: none; }
         right: auto;
         bottom: 20px;
         width: 560px;
-        max-height: 74vh;
+        max-height: calc(74 * var(--dg-vh, 1vh));
         border: 1px solid var(--dg-border-strong);
         border-radius: 16px;
         transform: translate(-50%, calc(100% + 20px));
@@ -1901,7 +1906,7 @@ body:not(.dg-state-home) #dg-announce { display: none; }
        content fits inside it (giving margin-top:auto real room to push the footer down to the
        bottom of THAT box), and content taller than 74vh simply overflows/scrolls exactly like
        today — min-height can't force it shorter than its own content. */
-    .dg-sheet.dg-wide { min-height: 74vh; }
+    .dg-sheet.dg-wide { min-height: calc(74 * var(--dg-vh, 1vh)); }
     .dg-sheet.dg-wide .dg-sheet-body { padding: 8px 44px 40px; }
 }
 
@@ -1913,7 +1918,7 @@ body:not(.dg-state-home) #dg-announce { display: none; }
     left: auto;
     right: auto;
     bottom: auto;
-    max-height: 70vh;
+    max-height: calc(70 * var(--dg-vh, 1vh));
     border: 1px solid var(--dg-border-strong);
     border-radius: 14px;
     box-shadow: 0 16px 40px -12px rgba(0, 0, 0, 0.35);
@@ -2806,7 +2811,7 @@ body.dg-drawer-open {
 .dg-bell:focus { outline: 0; }
 .dg-bell:focus-visible { outline: 0; box-shadow: 0 0 0 3px var(--dg-accent-bg); }
 #reader-toolbar .dg-rbell svg { width: 17px; height: 17px; }
-.dg-rsubp { position: absolute; top: 0; left: 0; right: auto; z-index: 1100; width: 300px; max-height: calc(100vh - 24px); overflow-y: auto; transform-origin: top center; }
+.dg-rsubp { position: absolute; top: 0; left: 0; right: auto; z-index: 1100; width: 300px; max-height: calc(calc(100 * var(--dg-vh, 1vh)) - 24px); overflow-y: auto; transform-origin: top center; }
 .dg-rsubp.dg-rsubp-sheet { position: fixed; top: auto; left: 12px; right: 12px; bottom: 12px; width: auto; max-width: none; transform-origin: bottom center; transform: translateY(8px); }
 .dg-rsubp.dg-rsubp-sheet[data-open="true"] { transform: none; }
 .dg-rsub-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
@@ -3531,7 +3536,7 @@ body.dg-skin-minimal .ui-autocomplete {
     /* Легаси-стили (extrastyles.css) зажимали список в 220px — ровно пять строк, сколько бы
        экрана под полем ни оставалось. Точную высоту ставит autopali.js в open: по реальному
        месту под полем; здесь — вменяемый потолок на случай, если тот ещё не отработал. */
-    max-height: min(64vh, 560px);
+    max-height: min(calc(64 * var(--dg-vh, 1vh)), 560px);
     padding: 6px;
     border: 1px solid var(--dg-border-strong);
     border-radius: var(--dg-radius);
@@ -3859,7 +3864,7 @@ body.dg-skin-minimal .dg-contact-btn:hover {
     bottom: 0;
     width: auto;
     min-height: 0;
-    max-height: 84vh;
+    max-height: calc(84 * var(--dg-vh, 1vh));
     border: 0;
     border-radius: 16px 16px 0 0;
     box-shadow: 0 -10px 44px rgba(27, 29, 25, 0.16);
@@ -4274,7 +4279,7 @@ body.dark .dg-lpill button[aria-pressed="true"]:hover { background: #5050f0; }
     min-width: 210px; max-width: 290px; padding: 6px;
     /* Translator lists can make this tall (26 Russian translators exist for some texts) — scroll
        inside the popover instead of growing past the viewport. */
-    max-height: min(70vh, 460px); overflow-y: auto;
+    max-height: min(calc(70 * var(--dg-vh, 1vh)), 460px); overflow-y: auto;
     background: var(--dg-surface); border: 1px solid var(--dg-border); border-radius: 12px;
     box-shadow: 0 6px 24px rgba(0, 0, 0, .18); font-family: var(--dg-font);
 }
@@ -4461,7 +4466,7 @@ body.dg-state-results #search-pane:not(.dg-has-paging) .dt-search { pointer-even
        floating mid-screen on tall monitors (issue #55). 200 = the tallest real top, so the links
        sit at/just above the viewport bottom on any height.
        ponytail: magic offset, measure the pane top in JS if the header stack changes again. */
-    body.dg-state-results #search-pane { display: flex; flex-direction: column; min-height: calc(100vh - 200px); }
+    body.dg-state-results #search-pane { display: flex; flex-direction: column; min-height: calc(calc(100 * var(--dg-vh, 1vh)) - 200px); }
     body.dg-state-results #pali_wrapper, body.dg-state-results #pali-words_wrapper { display: flex; flex-direction: column; flex: 1 0 auto; }
     /* Links line centred on the corner pill (bottom 30px, 38px tall -> centre 49px up). */
     body.dg-state-results #pali_wrapper > .footerlike, body.dg-state-results #pali-words_wrapper > .footerlike { margin-top: auto; padding: 28px 0 30px; }
@@ -4488,7 +4493,7 @@ body.dg-state-results #search-pane:not(.dg-has-paging) .dt-search { pointer-even
    кнопкой «···», на телефоне — шторка снизу: одна разметка, разная посадка. */
 .dg-ts {
     position: fixed; right: 20px; bottom: 76px; z-index: 101;
-    width: 360px; max-height: min(72vh, 620px);
+    width: 360px; max-height: min(calc(72 * var(--dg-vh, 1vh)), 620px);
     display: flex; flex-direction: column;
     background: var(--dg-surface); border: 1px solid var(--dg-border); border-radius: 14px;
     box-shadow: 0 8px 34px rgba(0, 0, 0, .22); font-family: var(--dg-font);
@@ -4542,7 +4547,7 @@ body.dg-state-results #search-pane:not(.dg-has-paging) .dt-search { pointer-even
 /* Телефон: шторка снизу во всю ширину — на 360px окно у кнопки просто не помещается. */
 @media (max-width: 767.98px) {
     .dg-ts { left: 0; right: 0; bottom: 0; width: auto; border-radius: 16px 16px 0 0; border-bottom: 0;
-        max-height: 82vh; padding-bottom: env(safe-area-inset-bottom);
+        max-height: calc(82 * var(--dg-vh, 1vh)); padding-bottom: env(safe-area-inset-bottom);
         animation: dg-ts-up .3s var(--dg-ease); }
     @keyframes dg-ts-up { from { transform: translateY(100%); } }
 }
