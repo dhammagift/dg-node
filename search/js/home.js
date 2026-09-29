@@ -902,7 +902,10 @@
             /* История своей шторки не имеет: она и так есть в quickModal (компас,
                Cattāri Ariyasaccāni) — там же живут недавние запросы. */
             if (tile.tab === 'subs' && typeof window.subsOpen === 'function') { window.subsOpen({}); return; } // the Subscriptions tile
-            if (typeof window.toggleQuickModal === 'function') { window.toggleQuickModal(); return; }
+            // Its own tab, not the window's last one: after the Subscriptions tile the History tile
+            // opened on Subscriptions too (owner).
+            if (typeof window.closeQuickSubForm === 'function') window.closeQuickSubForm();
+            if (typeof window.toggleQuickModal === 'function') { window.toggleQuickModal('tab-fav'); return; }
         }
         if (tile.modal === 'help') {
             // Помощь мультитула (эта плитка сама и есть мультитул) — ведёт на его собственную
