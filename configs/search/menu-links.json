@@ -51,7 +51,7 @@
       "icon": "compass",
       "href": "/4as",
       "modal": "quick",
-      "drawerLabel": "Favorites, history, subscriptions",
+      "drawerLabel": "Favorites, History",
       "drawerIcon": "compass",
       "kbd": "Alt+Y"
     },
@@ -837,7 +837,7 @@
       "icon": "compass",
       "href": "/4as",
       "modal": "quick",
-      "drawerLabel": "Избранное, история, подписки",
+      "drawerLabel": "Избранное, История",
       "drawerIcon": "compass",
       "kbd": "Alt+Y"
     },
