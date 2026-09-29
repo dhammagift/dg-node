@@ -27,7 +27,8 @@
        порядке нет (новая плитка в menu-links.json), дописываются в конец, а исчезнувшие
        отбрасываются. Поэтому добавление плитки не ломает уже настроенный порядок. */
     var DEFAULT_TILE_ORDER = {
-        en: ['read', 'external', 'dicts', 'materials', 'tools', 'history', 'help'],
+        // "subs": English has no "Russian" tile — Subscriptions makes it eight, same grid as ru (owner).
+        en: ['read', 'external', 'dicts', 'materials', 'tools', 'subs', 'history', 'help'],
         ru: ['read', 'external', 'russian', 'dicts', 'materials', 'tools', 'history', 'help']
     };
     var TILE_ORDER_KEY = 'dgTileOrder';
@@ -65,6 +66,7 @@
         language: ['fas', 'language'],
         plus: ['fas', 'plus'],
         compass: ['fas', 'compass'],
+        bell: ['fas', 'bell'],
         info: ['fas', 'circle-info'],
         at: ['fas', 'at'],
         sliders: ['fas', 'sliders']
@@ -899,6 +901,7 @@
         if (tile.modal === 'quick') {
             /* История своей шторки не имеет: она и так есть в quickModal (компас,
                Cattāri Ariyasaccāni) — там же живут недавние запросы. */
+            if (tile.tab === 'subs' && typeof window.subsOpen === 'function') { window.subsOpen({}); return; } // the Subscriptions tile
             if (typeof window.toggleQuickModal === 'function') { window.toggleQuickModal(); return; }
         }
         if (tile.modal === 'help') {
@@ -3910,11 +3913,22 @@
                 // entry back at once undid that navigation.
                 var href = location.href;
                 setTimeout(function () {
-                    if (!ours && !anyOpen() && location.href === href && history.state && history.state.dgOverlay) { swallow = true; history.back(); }
+                    if (!ours && !navigating && !anyOpen() && location.href === href && history.state && history.state.dgOverlay) { swallow = true; history.back(); }
                 }, 500);
             }
             wasOpen = open;
         }
+        // A tap on a link inside an open window: it closes the window and loads a page, which can
+        // take longer than the beat above — taking our entry back then cancelled the load ("Вся
+        // история" did nothing on /ru/, owner). Such a close is a navigation, not a dismissal.
+        var navigating = false;
+        document.addEventListener('click', function (e) {
+            var a = e.target.closest && e.target.closest('a[href]');
+            var h = a && a.getAttribute('href');
+            if (!h || h.charAt(0) === '#' || /^javascript:/i.test(h) || a.target === '_blank' || !anyOpen()) return;
+            navigating = true;
+            setTimeout(function () { navigating = false; }, 4000);
+        }, true);
         new MutationObserver(function () { clearTimeout(tmr); tmr = setTimeout(sync, 0); })
             .observe(document.body, { subtree: true, attributes: true, attributeFilter: ['class', 'hidden', 'data-open'] });
         // Capture: runs before the router's popstate (search/index.html), which must not re-route

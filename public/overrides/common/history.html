@@ -166,15 +166,12 @@
     }
   };
 
-  let currentLang = localStorage.getItem('ui-lang') || 'en';
-
-  // Определяем язык из URL
-  const path = window.location.pathname;
-  if (/\/(ru|r)\//i.test(path)) {
-    currentLang = 'ru';
-  } else {
-    currentLang = 'en';
-  }
+  // Language: ?lang= first (the site moved off /ru/ paths — owner; the app has no /ru/ copy of
+  // this page at all), then the legacy /ru/ path, then the site's own language setting.
+  const langParam = new URLSearchParams(window.location.search).get('lang');
+  let currentLang = langParam === 'ru' || langParam === 'en' ? langParam
+    : /\/(ru|r)\//i.test(window.location.pathname) ? 'ru'
+    : (localStorage.getItem('dhammaLanguage') || localStorage.getItem('siteLanguage')) === 'ru' ? 'ru' : 'en';
 
   // Функция для навешивания событий на кнопки, так как они создаются динамически
   function addSwitcherListeners() {

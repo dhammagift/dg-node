@@ -136,7 +136,7 @@ function buildQuickModalDOM() {
         
         <!-- "Common history" link removed — that page no longer exists (owner). -->
         <div class="quick-all-history-wrapper">
-            <a href="${window.DG_SITE_BASE}${window.isRu ? '/ru/assets/common/history.html' : '/assets/common/history.html'}" class="quick-all-history-link">
+            <a href="${window.DG_SITE_BASE}/assets/common/history.html${window.isRu ? '?lang=ru' : ''}" class="quick-all-history-link">
                 ${window.isRu ? "Вся история →" : "All history →"}
             </a>
         </div>

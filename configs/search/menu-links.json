@@ -45,6 +45,14 @@
       "href": "/toc",
       "kbd": "Alt+2"
     },
+    "subs": {
+      "label": "Subscriptions",
+      "desc": "A text a day, reminders",
+      "icon": "bell",
+      "href": "/4as",
+      "modal": "quick",
+      "tab": "subs"
+    },
     "history": {
       "label": "Favorites, history, subscriptions",
       "desc": "The “4NT” window",
