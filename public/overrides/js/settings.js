@@ -735,9 +735,16 @@ function parseTextInfo(text) {
 }
 
 // === ЦЕНТРАЛИЗОВАННОЕ ФОРМАТИРОВАНИЕ КЛЮЧЕЙ ===
+// A text inside a range file comes as "an1.11-20:an1.17:1.1" (range : text : segment). History,
+// favorites and the field's suggestions keep just the text, "an1.17" (owner) — /an1.17 opens the
+// same place, the router resolves it back to its range file.
+const RANGE_TEXT_SLUG = /^[a-z]+[\d.]*\d+-\d+:([a-z]+[\d.]*\d)(?::\S*)?$/i;
 function formatSlug(str) {
     if (!str) return '';
-    const trimmed = String(str).trim();
+    let trimmed = String(str).trim();
+    const sp = trimmed.search(/\s/), head = sp === -1 ? trimmed : trimmed.slice(0, sp);
+    const inRange = head.match(RANGE_TEXT_SLUG);
+    if (inRange) trimmed = inRange[1] + (sp === -1 ? '' : trimmed.slice(sp));
 
     // 1. МЕМО (цитаты): оставляем как есть, сохраняем оригинальный регистр
     if (trimmed.startsWith('memo_')) {
@@ -825,7 +832,7 @@ async function saveToHistory(key, url) {
         if (k === key) return false;
 
         if (isSutta) {
-            const kRoot = k.split(/\s+/)[0].split(':')[0];
+            const kRoot = formatSlug(k).split(/\s+/)[0].split(':')[0]; // an old "range:text:seg" row too
             if (kRoot === rootKey) {
                 if (k.length > bestKey.length) {
                     bestKey = k;
@@ -2495,7 +2502,7 @@ function toggleFavoriteGlobal(itemData) {
 
         // 2. Скачиваем скрипт модального окна
         const script = document.createElement('script');
-        script.src = "/assets/js/quickModal.js?v=20260929b"; // query drops copies a browser pinned for a year // Проверьте правильность пути!
+        script.src = "/assets/js/quickModal.js?v=20260929c"; // query drops copies a browser pinned for a year // Проверьте правильность пути!
         
         script.onload = () => {
             window.isQuickModalScriptLoaded = true;

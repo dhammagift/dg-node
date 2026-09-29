@@ -507,7 +507,10 @@ function renderQuickLists(isRu, queryBase) {
 
       let favHtml = '<ul class="compact-list">';
       dataToRender.forEach(fav => {
-        let url = (fav.path && fav.search) ? `${fav.path}${fav.search}` : `${queryBase}${fav.slug}`;
+        // A text path (/an1.11-20:an1.17:1.1) opens as saved even with no query string; only a bare
+        // search page (/, /ru/) needs the slug as ?q=.
+        const textPath = fav.path && !/^\/(ru\/)?(index\.php)?$/.test(fav.path);
+        let url = (fav.path && (fav.search || textPath)) ? `${fav.path}${fav.search || ''}` : `${queryBase}${fav.slug}`;
         if (fav.id && fav.id !== fav.slug) url += `#${fav.id}`;
         // Добавили кнопку rename-fav-btn (карандаш) перед кнопкой удаления
         // ТЗ §2: bell in the row — not subscribed: subscribe form for this query; subscribed: its settings.
