@@ -684,6 +684,41 @@ document.addEventListener('click', (event) => {
 });
 document.addEventListener('scroll', () => window.removeBubbles(), true);
 
+// Wide screens: the third-party links share the icon row (#reader-toolbar); narrow ones: their own
+// row (#top-links-container). The real <a> elements move, see the long note in buildSutta. Placed
+// on every render AND whenever the width crosses the breakpoint: rotating a phone after the text
+// had opened left the links on a row of their own under a desktop-wide icon row (owner, landscape
+// screenshot: "если есть место — использовать его"). Rebuilt from the last render's markup each
+// time, so neither direction can leave a stale or doubled set behind.
+let dgLastScLink = '';
+function dgPlaceReaderLinks() {
+    const top = document.getElementById('top-links-container');
+    const bar = document.getElementById('reader-toolbar');
+    const first = document.getElementById('toggle-variants');
+    if (!top || !bar || !first) return;
+    Array.from(bar.querySelectorAll('.sc-ext-link')).forEach(function (stale) { stale.remove(); });
+    top.innerHTML = dgLastScLink;
+    if (dgWideReader.matches) {
+        Array.from(top.querySelectorAll('a')).forEach(function (link) { bar.insertBefore(link, first); });
+        top.style.display = 'none';
+        // Only if the one row really holds them all (a phone on its side is just past the breakpoint,
+        // Russian has a seventh link): otherwise back to their own row, never clipped at the edge.
+        if (bar.scrollWidth > bar.clientWidth + 1) {
+            Array.from(bar.querySelectorAll('.sc-ext-link')).forEach(function (stale) { stale.remove(); });
+            top.innerHTML = dgLastScLink;
+            top.style.display = '';
+        }
+    } else {
+        top.style.display = '';
+    }
+}
+const dgWideReader = window.matchMedia('(min-width: 768px)');   // the CSS breakpoint of the one-row toolbar
+dgWideReader.addEventListener('change', function () {
+    if (!dgLastScLink) return;
+    dgPlaceReaderLinks();
+    if (typeof window.dgApplyHeaderPadding === 'function') window.dgApplyHeaderPadding();
+});
+
 window.generateThirdPartyLinks = function(slug, slugReady, texttype, translator) {
     let scLink = "";
 
@@ -1763,24 +1798,8 @@ window.buildSutta = async function(rawSlug, opts) {
     // Decided fresh on every render, not on resize — a mid-read window resize across 768px won't
     // re-flow until the next sutta/mode render (stackConfig(), search/index.html, has the same
     // trade-off, keeps them consistent with each other).
-    const readerToolbar = document.getElementById('reader-toolbar');
-    const firstToolbarIcon = document.getElementById('toggle-variants');
-    if (topContainer && readerToolbar && firstToolbarIcon && window.innerWidth >= 768) {
-        // Bug (owner, live): "каждый раз когда я меняю язык — строчка со ссылками удваивается".
-        // Every render moves the CURRENT topContainer.innerHTML's links into readerToolbar, but
-        // topContainer.innerHTML = scLink above only replaces topContainer's OWN children — the
-        // links moved out on the PREVIOUS render are still sitting in readerToolbar, orphaned,
-        // and this loop just added a second set next to them. Remove any leftover .sc-ext-link
-        // from readerToolbar first, every render (not just when re-rendering after a language
-        // switch — any repeat call, e.g. switching reading mode, hits the same bug).
-        Array.from(readerToolbar.querySelectorAll('.sc-ext-link')).forEach(function (stale) { stale.remove(); });
-        Array.from(topContainer.querySelectorAll('a')).forEach(function (link) {
-            readerToolbar.insertBefore(link, firstToolbarIcon);
-        });
-        topContainer.style.display = 'none';
-    } else if (topContainer) {
-        topContainer.style.display = '';
-    }
+    dgLastScLink = scLink;
+    dgPlaceReaderLinks();
 
     window.renderNavigation(slug, suttaData.title, navPromise);
 
