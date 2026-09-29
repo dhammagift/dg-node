@@ -360,6 +360,12 @@
   var htmlLast = {};
   function setHtml(id, html) { if (htmlLast[id] === html) return; htmlLast[id] = html; $(id).innerHTML = html; } // a repaint on every tap must not rebuild a table that did not change
   function setSeg(id, v) { Array.prototype.forEach.call($(id).children, function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-v') === String(v))); }); }
+  // Toggling a setting used to jump the rows below it instantly (style.display none<->''), which is
+  // what a tap right after felt like it landed on the wrong control — the layout had already moved
+  // under the finger (dg-apps#38: "интерфейс меняется прямо под пальцами... должно максимум
+  // открывать новые опции", not silently move the ones already there). The .dg-collapsible CSS class
+  // (uposatha-calendar.css) animates max-height/opacity instead of snapping; this just toggles it.
+  function reveal(id, open) { var el = $(id); if (el) el.classList.toggle('dg-collapsed', !open); }
   // A light tick under the finger in the app (the Capacitor Haptics plugin, when the shell has it; nothing on the site). Never the only feedback.
   function haptic(kind) {
     var H = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Haptics; if (!H) return;
@@ -839,24 +845,24 @@
     setSeg('sw-rem', state.rem.on ? 1 : 0);
     $('rem-lead').value = String(state.rem.lead);
     setSeg('sw-msum', state.meal.sum ? 1 : 0); setSeg('sw-mrem', state.meal.rem ? 1 : 0); setSeg('mrem-days', state.meal.days);
-    $('mrem-more').style.display = state.meal.rem ? '' : 'none';
+    reveal('mrem-more', state.meal.rem);
     $('mrem-lead').value = String(state.meal.lead);
-    setSeg('sw-mbeg', state.meal.beg ? 1 : 0); $('mbeg-more').style.display = state.meal.beg ? '' : 'none'; $('mbeg-lead').value = String(state.meal.begLead);
-    $('mdays-row').style.display = state.meal.rem || state.meal.beg ? '' : 'none'; // the days are common to both reminders
+    setSeg('sw-mbeg', state.meal.beg ? 1 : 0); reveal('mbeg-more', state.meal.beg); $('mbeg-lead').value = String(state.meal.begLead);
+    reveal('mdays-row', state.meal.rem || state.meal.beg); // the days are common to both reminders
     var showSnd = true; // in the app the sound is the channel's; on the site it plays while the page is open
-    $('mrem-sound-row').style.display = showSnd ? '' : 'none';
+    reveal('mrem-sound-row', showSnd);
     if (showSnd) { $('mrem-sound').innerHTML = soundKeys(true).map(function (k) { return '<option value="' + k + '">' + esc(t.sounds[k]) + '</option>'; }).concat(['<option value="none">' + esc(t.soundNone) + '</option>']).join(''); $('mrem-sound').value = state.meal.snd; }
-    $('mbeg-sound-row').style.display = showSnd ? '' : 'none';
+    reveal('mbeg-sound-row', showSnd);
     if (showSnd) { $('mbeg-sound').innerHTML = soundKeys().map(function (k) { return '<option value="' + k + '">' + esc(t.sounds[k]) + '</option>'; }).concat(['<option value="none">' + esc(t.soundNone) + '</option>']).join(''); $('mbeg-sound').value = state.meal.begSnd; }
     $('meal-sum').hidden = !state.meal.sum;
     setSeg('sw-prem', state.parts.rem ? 1 : 0); setSeg('pwhich', state.parts.which); setSeg('pdays', state.parts.days);
-    $('prem-more').style.display = state.parts.rem ? '' : 'none';
-    $('psnd-row').style.display = showSnd ? '' : 'none';
+    reveal('prem-more', state.parts.rem);
+    reveal('psnd-row', showSnd);
     if (showSnd) { $('psnd').innerHTML = [['voice', t.partsVoice]].concat(soundKeys().map(function (k) { return [k, t.sounds[k]]; }), [['none', t.soundNone]]).map(function (o) { return '<option value="' + o[0] + '">' + esc(o[1]) + '</option>'; }).join(''); $('psnd').value = state.parts.snd; }
     $('parts-bell').setAttribute('aria-pressed', String(state.parts.rem));
     var mb = $('meal-bell'); if (mb) mb.setAttribute('aria-pressed', String(state.meal.rem || state.meal.beg));
     setSeg('testseg', state.fake); $('g-tests').hidden = !state.tests;
-    $('rem-sound-row').style.display = showSnd ? '' : 'none'; // the sound is a notification channel: only the app has them
+    reveal('rem-sound-row', showSnd); // the sound is a notification channel: only the app has them
     if (showSnd) {
       var opts = soundKeys().map(function (k) { return [k, t.sounds[k]]; }).concat([['none', t.soundNone]]);
       if (ownPlugin()) opts.push(['own', state.rem.sound === 'own' && state.rem.ownName ? t.soundOwnNamed.replace('%', state.rem.ownName) : t.soundOwn]);
@@ -866,7 +872,7 @@
     $('rd8').setAttribute('aria-pressed', String(state.rem.d8));
     $('rd14').setAttribute('aria-pressed', String(state.rem.d14));
     $('rd15').setAttribute('aria-pressed', String(state.rem.d15));
-    $('rem-days-row').style.display = sutta() ? '' : 'none';
+    reveal('rem-days-row', sutta());
     $('rem-msg').textContent = state.remMsg || (permission === 'denied' ? t.remDenied : permission === 'unsupported' ? t.remUnsupported : (state.rem.on ? (next ? t.remNext(F.remWhen.format(next.when), next.title) : t.remNone) : ''));
     $('rem-note').textContent = inApp ? t.remAppNote : t.remNote;
     var due = reminderList(L.rows, L.byYmd).filter(function (i) { return i.when > Date.now(); }); // the proof that the reminders are set: when the next one comes

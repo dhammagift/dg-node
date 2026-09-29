@@ -322,8 +322,8 @@
     <div id="rem-more">
       <p class="dg-drawer-subtitle" data-t="adv"></p>
       <select class="dg-field-input" id="rem-lead"></select>
-      <div id="rem-sound-row" style="display:none"><p class="dg-drawer-subtitle" data-t="sound"></p><select class="dg-field-input" id="rem-sound"></select></div>
-      <div id="rem-days-row"><p class="dg-drawer-subtitle" data-t="days"></p>
+      <div id="rem-sound-row" class="dg-collapsible dg-collapsed"><p class="dg-drawer-subtitle" data-t="sound"></p><select class="dg-field-input" id="rem-sound"></select></div>
+      <div id="rem-days-row" class="dg-collapsible"><p class="dg-drawer-subtitle" data-t="days"></p>
         <div class="dg-segmented"><button type="button" id="rd8" aria-pressed="true">8</button><button type="button" id="rd14" aria-pressed="true">14</button><button type="button" id="rd15" aria-pressed="false">15</button></div></div>
       <p class="dg-uset-note" id="rem-msg"></p>
       <p class="dg-uset-note" id="rem-note"></p>
@@ -339,21 +339,21 @@
     <div id="meal-block">
       <p class="dg-drawer-subtitle" data-t="mealSumL"></p>
       <div class="dg-segmented" id="sw-msum"><button type="button" data-v="1" data-t="on"></button><button type="button" data-v="0" data-t="off"></button></div>
-      <div id="mdays-row">
+      <div id="mdays-row" class="dg-collapsible">
         <p class="dg-drawer-subtitle" data-t="mealDays"></p>
         <div class="dg-segmented" id="mrem-days"><button type="button" data-v="upo" data-t="mealDaysU"></button><button type="button" data-v="all" data-t="mealDaysA"></button></div>
       </div>
       <p class="dg-drawer-subtitle" data-t="mealBegL"></p>
       <div class="dg-segmented" id="sw-mbeg"><button type="button" data-v="1" data-t="on"></button><button type="button" data-v="0" data-t="off"></button></div>
-      <div id="mbeg-more">
+      <div id="mbeg-more" class="dg-collapsible">
         <select class="dg-field-input" id="mbeg-lead"></select>
-        <div id="mbeg-sound-row" style="display:none"><p class="dg-drawer-subtitle" data-t="mealSnd"></p><select class="dg-field-input" id="mbeg-sound"></select></div>
+        <div id="mbeg-sound-row" class="dg-collapsible dg-collapsed"><p class="dg-drawer-subtitle" data-t="mealSnd"></p><select class="dg-field-input" id="mbeg-sound"></select></div>
       </div>
       <p class="dg-drawer-subtitle" data-t="mealRemL"></p>
       <div class="dg-segmented" id="sw-mrem"><button type="button" data-v="1" data-t="on"></button><button type="button" data-v="0" data-t="off"></button></div>
-      <div id="mrem-more">
+      <div id="mrem-more" class="dg-collapsible">
         <select class="dg-field-input" id="mrem-lead"></select>
-        <div id="mrem-sound-row" style="display:none"><p class="dg-drawer-subtitle" data-t="mealSnd"></p><select class="dg-field-input" id="mrem-sound"></select></div>
+        <div id="mrem-sound-row" class="dg-collapsible dg-collapsed"><p class="dg-drawer-subtitle" data-t="mealSnd"></p><select class="dg-field-input" id="mrem-sound"></select></div>
       </div>
       <p class="dg-uset-note" id="mnext"></p>
     </div>
@@ -363,12 +363,12 @@
     <div id="parts-block">
       <p class="dg-drawer-subtitle" data-t="partsRemL"></p>
       <div class="dg-segmented" id="sw-prem"><button type="button" data-v="1" data-t="on"></button><button type="button" data-v="0" data-t="off"></button></div>
-      <div id="prem-more">
+      <div id="prem-more" class="dg-collapsible">
         <p class="dg-drawer-subtitle" data-t="partsWhichL"></p>
         <div class="dg-segmented" id="pwhich"><button type="button" data-v="day" data-t="pDayS"></button><button type="button" data-v="night" data-t="pNightS"></button><button type="button" data-v="both" data-t="pBothS"></button></div>
         <p class="dg-drawer-subtitle" data-t="mealDays"></p>
         <div class="dg-segmented" id="pdays"><button type="button" data-v="upo" data-t="mealDaysU"></button><button type="button" data-v="all" data-t="mealDaysA"></button></div>
-        <div id="psnd-row" style="display:none"><p class="dg-drawer-subtitle" data-t="partsSnd"></p><select class="dg-field-input" id="psnd"></select></div>
+        <div id="psnd-row" class="dg-collapsible dg-collapsed"><p class="dg-drawer-subtitle" data-t="partsSnd"></p><select class="dg-field-input" id="psnd"></select></div>
       </div>
       <p class="dg-uset-note" id="pnext"></p>
     </div>

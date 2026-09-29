@@ -649,3 +649,12 @@ body.app:has(#up-splash)::after { display: none; }
 .ctx .modern { color: #9b1c31; font-weight: 600; }
 [data-theme="dark"] .ctx .modern { color: #d8546b; }
 #d-help[hidden] { display: none !important; } /* the help is the ? in the header of the menu */
+
+/* Settings rows that a segmented switch reveals (mbeg-more, mrem-sound-row, ...) used to snap in/out
+   with style.display none<->'' — instant, so a tap right after landed wherever the now-shifted layout
+   put it instead (dg-apps#38: "интерфейс меняется прямо под пальцами... должно максимум открывать
+   новые опции", not silently move the ones already on screen). max-height + opacity, not display:
+   height:auto content cannot be animated directly, and a generous cap (well past anything these rows
+   ever hold) is what lets it participate in the transition instead of jumping. */
+.dg-collapsible { overflow: hidden; max-height: 600px; opacity: 1; transition: max-height .24s var(--dg-ease, cubic-bezier(.23, 1, .32, 1)), opacity .18s ease; }
+.dg-collapsible.dg-collapsed { max-height: 0; opacity: 0; }
