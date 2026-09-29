@@ -473,6 +473,11 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
         padding-top: 8px;
         padding-bottom: 8px;
     }
+    /* Even rhythm between the pinned rows when the links sit on their own row (owner: "в ряде
+       ссылок неравномерное", measured 34px icons→links vs 10px links→prev/next). */
+    html body.dg-state-reader:has(#top-links-container:not([style*="none"])) #reader-toolbar { padding-bottom: 0; }
+    html body.dg-state-reader #top-links-container p.sc-link { margin-top: 0 !important; } /* beats rus-multi/index/langswitch 0.3rem !important */
+    html body.dg-state-reader #navigation { padding-top: 8px !important; }
     /* Bottom prev/next copy (#navigation-bottom, after #sutta) — same base row/gap/width as
        uiextra.css's #navigation above, just static (no position:fixed/hide-on-scroll — that's
        only for the top sticky copy, see #navigation rules around this block).
