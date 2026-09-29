@@ -10,7 +10,7 @@
     <link href="/assets/css/styles.css" rel="stylesheet" />
     <link href="/assets/css/jquery-ui.min.css" rel="stylesheet" />
     <link href="/assets/css/extrastyles.css" rel="stylesheet" />
-    <link href="/login/login.css" rel="stylesheet" />
+    <link href="/login/login.css?v=20260929" rel="stylesheet" />
 
     <script src="/assets/js/fontawesome.6.1.all.js"></script>
     <script src="/assets/js/nav-component.js" defer></script>
@@ -41,12 +41,13 @@
             <p id="sync-page-desc" class="text-center opacity-75 mb-4 sync-desc">Sync your history, favorites, and settings.</p>
 
             <div id="sync-logged-out">
-                <button id="btn-google-login" class="btn btn-outline-primary w-100 mb-2 fw-medium" onclick="syncLoginGoogleWrapper()">
-                    <i class="fa-brands fa-google me-2"></i> Sign in with Google
+                <!-- Apple, then Google: alphabetical (owner, dg-apps#42) -->
+                <button id="btn-apple-login" class="btn btn-outline-dark w-100 mb-2 fw-medium" onclick="syncLoginAppleWrapper()">
+                    <i class="fa-brands fa-apple me-2"></i> Sign in with Apple
                 </button>
 
-                <button id="btn-apple-login" class="btn btn-outline-dark w-100 mb-3 fw-medium" onclick="syncLoginAppleWrapper()">
-                    <i class="fa-brands fa-apple me-2"></i> Sign in with Apple
+                <button id="btn-google-login" class="btn btn-outline-primary w-100 mb-3 fw-medium" onclick="syncLoginGoogleWrapper()">
+                    <i class="fa-brands fa-google me-2"></i> Sign in with Google
                 </button>
 
                 <div class="d-flex align-items-center mb-3">

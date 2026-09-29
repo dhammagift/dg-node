@@ -52,6 +52,18 @@ body.dark .modal-content,
     box-shadow: 0 8px 24px rgba(0,0,0,0.6) !important;
 }
 
+/* Apple button: btn-outline-dark is a dark border and dark text — on the dark card it vanished and
+   showed only on hover/tap (dg-apps#42). In the dark theme it is an outline-light button instead. */
+body.dark #btn-apple-login, [data-bs-theme="dark"] #btn-apple-login, [data-theme="dark"] #btn-apple-login {
+    color: #f8f9fa;
+    border-color: #f8f9fa;
+}
+body.dark #btn-apple-login:hover, [data-bs-theme="dark"] #btn-apple-login:hover, [data-theme="dark"] #btn-apple-login:hover,
+body.dark #btn-apple-login:active, [data-bs-theme="dark"] #btn-apple-login:active, [data-theme="dark"] #btn-apple-login:active {
+    color: #212529;
+    background-color: #f8f9fa;
+}
+
 /* Улучшение читаемости серого текста в темной теме */
 body.dark .text-muted, [data-bs-theme="dark"] .text-muted, [data-theme="dark"] .text-muted,
 body.dark .opacity-75, [data-bs-theme="dark"] .opacity-75, [data-theme="dark"] .opacity-75 {
