@@ -197,8 +197,15 @@
 
   document.addEventListener('DOMContentLoaded', theme);
   var inApp = function () { return document.body.classList.contains('app'); }; // set by uposatha-calendar.js: ?app=1 or the Capacitor app
+  // The Capacitor app has its own native launch splash (MainActivity.java: SplashScreen API, held
+  // for its animation's own 890ms) on every cold start — this one drew on top of it right after,
+  // same mark plus the "Uposatha" wordmark, so a fresh launch showed two splashes back to back
+  // (owner: "веб сплеш не нужен в упосатхе"). sessionStorage.upSplash used to gate it to "once per
+  // session", but sessionStorage is empty on every cold start too, so that never stopped the
+  // double-splash — only a second view of the SAME still-running session (rare here) would have
+  // skipped it. Dropped the auto-fire entirely; ?splash=loop below still previews the animation on
+  // demand (design/QA), it just no longer plays itself on a real launch.
   if (P.get('splash') === 'loop') document.addEventListener('DOMContentLoaded', function () { if (inApp()) splash(true); });
-  else if (!P.get('embed')) document.addEventListener('DOMContentLoaded', function () { if (inApp() && !sessionStorage.getItem('upSplash')) { sessionStorage.setItem('upSplash', '1'); splash(false); } });
 
   window.addEventListener('load', function () {
     theme(); init(); setTimeout(theme, 400);
