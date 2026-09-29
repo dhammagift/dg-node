@@ -16,6 +16,18 @@
 (function () {
     'use strict';
 
+    /* Page zoom (the size setting; 110% base on phones and in the app, index.html <head>).
+       getBoundingClientRect/innerWidth/innerHeight/clientX/scrollY are screen px, while a px
+       written into a style gets multiplied by the zoom once more — so a measured value goes into
+       a style only through these (dg-apps#40: the pinned header and popups drifted by 10%). */
+    function dgZ() { return window.dgZoom ? window.dgZoom() : (parseFloat(document.documentElement.style.zoom) || 1); }
+    function cssRect(el) {
+        var r = el.getBoundingClientRect(), z = dgZ();
+        return { left: r.left / z, right: r.right / z, top: r.top / z, bottom: r.bottom / z, width: r.width / z, height: r.height / z };
+    }
+    function cssVW() { return window.innerWidth / dgZ(); }
+    function cssVH() { return window.innerHeight / dgZ(); }
+
     var MENU_URL = '/nodejs/res/menu-links.json';
     var DICT_MODES_URL = '/nodejs/res/dict-modes.json';
     // Same endpoint settings/index.html's "Система письма пали" picker already reads — one
@@ -1747,9 +1759,9 @@
         // corner buttons — right edge flush with the pill's right edge, sitting just above it.
         var pillHost = document.getElementById('dg-langpill');
         if (pillHost) {
-            var hostRect = pillHost.getBoundingClientRect();
-            menu.style.right = Math.round(window.innerWidth - hostRect.right) + 'px';
-            menu.style.bottom = Math.round(window.innerHeight - hostRect.top + 8) + 'px';
+            var hostRect = cssRect(pillHost);
+            menu.style.right = Math.round(cssVW() - hostRect.right) + 'px';
+            menu.style.bottom = Math.round(cssVH() - hostRect.top + 8) + 'px';
         }
         menu.hidden = false;
     }
@@ -2016,9 +2028,9 @@
             return;
         }
         if (!pillHost) return;
-        var r = pillHost.getBoundingClientRect();
-        host.style.right = Math.round(window.innerWidth - r.right) + 'px';
-        host.style.bottom = Math.round(window.innerHeight - r.top + 8) + 'px';
+        var r = cssRect(pillHost);
+        host.style.right = Math.round(cssVW() - r.right) + 'px';
+        host.style.bottom = Math.round(cssVH() - r.top + 8) + 'px';
     }
 
     function tsOpen() {
@@ -2624,11 +2636,11 @@
        настройки относятся; выпадашка остаётся рядом с кнопкой. Ширину и положение считаем по
        фактическому месту кнопки — она переезжает вместе с полем при смене состояния. */
     function placeAnchored(sheet, btn) {
-        var r = btn.getBoundingClientRect();
+        var r = cssRect(btn);
         var margin = 8;
         // На узком экране выпадашка занимает всю доступную ширину, на широком — фиксированные 340.
-        var width = Math.min(340, window.innerWidth - margin * 2);
-        var left = Math.min(Math.max(margin, r.right - width), window.innerWidth - width - margin);
+        var width = Math.min(340, cssVW() - margin * 2);
+        var left = Math.min(Math.max(margin, r.right - width), cssVW() - width - margin);
         sheet.style.width = width + 'px';
         sheet.style.left = left + 'px';
         // From the quick window: same width as everywhere (owner), but under its search field and
@@ -2636,7 +2648,7 @@
         var qm = btn.closest && btn.closest('.quick-modal-content-wrapper');
         var field = qm && qm.querySelector('.quick-search-form');
         if (field) {
-            var fr = field.getBoundingClientRect(), mr = qm.getBoundingClientRect();
+            var fr = cssRect(field), mr = cssRect(qm);
             sheet.style.top = (fr.bottom + 6) + 'px';
             sheet.style.maxHeight = Math.max(220, mr.bottom - fr.bottom - 6 - margin) + 'px';
             return;
@@ -2654,10 +2666,10 @@
         // clamp set below — the sheet is already visible (openQuick sets hidden=false) and
         // populated (buildQuickBody already ran) by the time this runs.
         var naturalHeight = sheet.scrollHeight;
-        var maxTop = window.innerHeight - margin - naturalHeight;
+        var maxTop = cssVH() - margin - naturalHeight;
         var top = Math.min(r.bottom + 8, Math.max(margin, maxTop));
         sheet.style.top = top + 'px';
-        sheet.style.maxHeight = Math.max(220, window.innerHeight - top - margin) + 'px';
+        sheet.style.maxHeight = Math.max(220, cssVH() - top - margin) + 'px';
     }
 
     /* External hotkeys (Alt+V/Alt+C/Alt+. in megareader.js/settings.js) change the underlying
@@ -2757,23 +2769,23 @@
     function placeMegaAnchored(sheet, btn) {
         var margin = 8;
         var input = document.getElementById('paliauto');
-        var fr = input ? input.getBoundingClientRect() : btn.getBoundingClientRect();
+        var fr = input ? cssRect(input) : cssRect(btn);
         var centerX = fr.left + fr.width / 2;
         // 5 columns × 190px minmax + 4×28px gaps + 36px body padding ≈ 1098px minimum
         // (owner: "5 колонок"), rounded up a bit for breathing room.
-        var width = Math.min(1120, window.innerWidth - margin * 2);
-        var left = Math.min(Math.max(margin, centerX - width / 2), window.innerWidth - width - margin);
+        var width = Math.min(1120, cssVW() - margin * 2);
+        var left = Math.min(Math.max(margin, centerX - width / 2), cssVW() - width - margin);
         // .dg-mega is position:absolute (document-relative), not fixed — see home.css. getBoundingClientRect()
         // returns VIEWPORT-relative coordinates, so scrollX/scrollY are added to land in document coordinates.
         // Owner: "не должно быть скролла... за счёт общего сдвига экрана его нужно прокручивать, а не за счёт
         // какого-то своего отдельного скроллбара" — no maxHeight/overflow here on purpose: if the panel is
         // taller than the viewport, the PAGE scrolls to reveal the rest (scrollForMega() below gives it room
         // first), instead of a nested scrollbar.
-        sheet.style.left = (left + window.scrollX) + 'px';
+        sheet.style.left = (left + window.scrollX / dgZ()) + 'px';
         sheet.style.width = width + 'px';
 
-        var r = btn.getBoundingClientRect();
-        sheet.style.top = (r.bottom + window.scrollY + 10) + 'px';
+        var r = cssRect(btn);
+        sheet.style.top = (r.bottom + window.scrollY / dgZ() + 10) + 'px';
 
         // "мегаменю расширяется/растягивается из соответствующей кнопки" — scale-in anchored at the
         // button's X (home.css .dg-mega.show scales from transform-origin instead of just fading).
@@ -3701,14 +3713,14 @@
         anchor = liveAnchor(anchor);
         if (window.matchMedia('(max-width: 767.98px)').matches || !anchor || !anchor.offsetParent) { p.classList.add('dg-rsubp-sheet'); return; }
         p.classList.remove('dg-rsubp-sheet');
-        var r = anchor.getBoundingClientRect(), w = p.offsetWidth, h = p.offsetHeight;
-        var left = Math.min(Math.max(12, r.left + r.width / 2 - w / 2), window.innerWidth - w - 12);
+        var r = cssRect(anchor), w = p.offsetWidth, h = p.offsetHeight;
+        var left = Math.min(Math.max(12, r.left + r.width / 2 - w / 2), cssVW() - w - 12);
         var top = r.bottom + 8;
-        if (top + h > window.innerHeight - 12 && r.top - h - 8 > 12) top = r.top - h - 8; // no room below: above
+        if (top + h > cssVH() - 12 && r.top - h - 8 > 12) top = r.top - h - 8; // no room below: above
         // Page coordinates (position:absolute): it scrolls away with the ✓ it belongs to instead
         // of staying pinned to the screen while the row moves.
-        p.style.left = (left + window.scrollX) + 'px';
-        p.style.top = (top + window.scrollY) + 'px';
+        p.style.left = (left + window.scrollX / dgZ()) + 'px';
+        p.style.top = (top + window.scrollY / dgZ()) + 'px';
     }
     function renderRsubp() {
         var p = document.getElementById('rsubp');
@@ -4033,7 +4045,7 @@
             var r = el.getBoundingClientRect();
             var ph = document.createElement('div');
             ph.className = 'dg-tile-placeholder';
-            ph.style.height = r.height + 'px';
+            ph.style.height = r.height / dgZ() + 'px';
             el.parentNode.insertBefore(ph, el);
 
             drag.placeholder = ph;
@@ -4044,15 +4056,15 @@
 
             document.body.classList.add('dg-tiles-dragging');
             el.classList.add('dg-dragging');
-            el.style.width = r.width + 'px';
-            el.style.height = r.height + 'px';
+            el.style.width = r.width / dgZ() + 'px';
+            el.style.height = r.height / dgZ() + 'px';
             move(e);
         }
 
         function move(e) {
             var el = drag.el;
-            el.style.left = (e.clientX - drag.offX) + 'px';
-            el.style.top = (e.clientY - drag.offY) + 'px';
+            el.style.left = (e.clientX - drag.offX) / dgZ() + 'px';
+            el.style.top = (e.clientY - drag.offY) / dgZ() + 'px';
 
             var over = tileUnder(e.clientX, e.clientY);
             if (!over) return;
@@ -4430,7 +4442,7 @@
         Array.prototype.forEach.call(items, function (item) {
             var wasActive = item.classList.contains('active');
             if (!wasActive) { item.style.display = 'block'; item.style.position = 'absolute'; item.style.visibility = 'hidden'; }
-            tallest = Math.max(tallest, item.getBoundingClientRect().height);
+            tallest = Math.max(tallest, item.getBoundingClientRect().height / dgZ());
             if (!wasActive) { item.style.display = ''; item.style.position = ''; item.style.visibility = ''; }
         });
         // Capped at the reference card's stage height (~108px inside its 144px card at 1280):
@@ -5209,6 +5221,8 @@
     // there read too small. The control still shows 70–150%, relative to that base; the same rule
     // runs early in index.html <head> so the page does not jump from small to big on load.
     var BIG_BASE = window.matchMedia('(max-width: 767.98px)');
+    // After a size change the pinned header must be re-measured (zoom fires no resize).
+    var reMeasure = function () { window.dispatchEvent(new Event('resize')); };
     function uiBase() { return (BIG_BASE.matches || document.documentElement.classList.contains('dg-app')) ? 1.1 : 1; } // owner: 1.2 read big and wrapped the phone toolbar; 1.1
     function applyUiScale(scale) {
         var root = document.documentElement, z = scale / 100 * uiBase();
@@ -5216,6 +5230,7 @@
         root.style.fontSize = '';
         root.style.setProperty('--dg-zoom', z);
         root.style.zoom = z;
+        reMeasure();
     }
     BIG_BASE.addEventListener('change', function () { applyUiScale(currentFontScale()); });
     // Size changed in the settings sheet (an iframe, same tab) — apply it to this page right away.

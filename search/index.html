@@ -97,6 +97,10 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
       if (q === '0') sessionStorage.removeItem('dgApp');
       app = sessionStorage.getItem('dgApp') === '1';
     } catch (e) {}
+    // Page zoom (the size setting, 110% base on phones/app). Rects, innerWidth/innerHeight,
+    // clientX/Y and scrollY are in screen px; a px written into a style is multiplied by the zoom
+    // again — divide by this before writing a measured value into style.top/left/height/padding.
+    window.dgZoom = function () { return parseFloat(document.documentElement.style.zoom) || 1; };
     var C = window.Capacitor;
     if (app || (C && C.isNativePlatform && C.isNativePlatform())) document.documentElement.classList.add('dg-app');
     // Interface scale before the first paint (home.js applyUiScale is the full version): phones and
@@ -1653,7 +1657,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
       var lang = document.getElementById('dg-langpill') || document.getElementById('language-button');
       var top = document.getElementById('scrollToTopBtn');
       if (!lang || !top) return;
-      top.style.right = Math.round(window.innerWidth - lang.getBoundingClientRect().left + CORNER_BUTTON_GAP) + 'px';
+      top.style.right = Math.round((window.innerWidth - lang.getBoundingClientRect().left) / window.dgZoom() + CORNER_BUTTON_GAP) + 'px';
     }
     window.addEventListener('load', place);
     window.addEventListener('resize', place);
@@ -1802,10 +1806,10 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
       // 10px сверху (было 5, владелец попросил ещё +5 — первая правка оказалась мало заметна).
       // Начинаем стек с этого отступа, а не с нуля — сдвигает весь стек разом (band → следующий
       // элемент → ...), паддинг контенту ниже пересчитается сам той же формулой, что и раньше.
-      var offset = 10;
+      var offset = 10, Z = window.dgZoom();
       cfg.stack.forEach(function (el) {
         el.style.top = Math.round(offset) + 'px';
-        offset += el.getBoundingClientRect().height;
+        offset += el.getBoundingClientRect().height / Z;
       });
       if (cfg.content) {
         // mt-4 (Bootstrap) суммировался бы с паддингом (реальный баг, замерено: 24px margin +
@@ -1824,11 +1828,11 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
       var tailOffset = 0;
       if (cfg.extra) {
         cfg.extra.style.top = Math.round(offset + tailOffset) + 'px';
-        tailOffset += cfg.extra.getBoundingClientRect().height;
+        tailOffset += cfg.extra.getBoundingClientRect().height / Z;
       }
       if (cfg.tail) {
         cfg.tail.style.top = Math.round(offset + tailOffset) + 'px';
-        tailOffset += cfg.tail.getBoundingClientRect().height;
+        tailOffset += cfg.tail.getBoundingClientRect().height / Z;
       }
       if (cfg.extraContent) {
         cfg.extraContent.style.paddingTop = Math.ceil(tailOffset) + 'px';
@@ -2120,8 +2124,8 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
       var r = menu.getBoundingClientRect();
       var left = Math.min(x, window.innerWidth - r.width - 8);
       var top = y + r.height + 8 > window.innerHeight ? y - r.height - 8 : y + 8;
-      menu.style.left = Math.max(8, left) + 'px';
-      menu.style.top = Math.max(8, top) + 'px';
+      menu.style.left = Math.max(8, left) / window.dgZoom() + 'px';
+      menu.style.top = Math.max(8, top) / window.dgZoom() + 'px';
     }
 
     /* Обычный левый клик (и быстрый тап) по ✦-ссылке — сразу попап с текстом. Это основной
@@ -2336,7 +2340,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
      внутри как были инлайновыми, так и остались) — нужна ровно затем, чтобы одним селектором
      убирать весь ряд на домашнем экране: там ни «Saṁvaṭṭo», ни отметок, ни словаря ещё не к чему
      применить. -->
-<div id="results-toolbar" style="position: relative;">
+<div id="results-toolbar"><!-- no inline position: it beat the pinned-stack rule (position:fixed) and left a double gap, dg-apps#40 -->
     <!-- Ряд кнопок — по центру, под полем ввода (просьба владельца), заголовок теперь идёт ПОСЛЕ
          этого ряда и после разделительной линии (#dg-toolbar-buttons границей снизу), а не над
          ним слева. См. #dg-toolbar-buttons в <style> для центрирования/ширины. -->
@@ -4259,13 +4263,18 @@ $(document).ready(function() {
         // Те же три таблицы стилей, что подключает reader/reader-template.html, и в том же
         // порядке. Подключаются последними, уже после home.css — правила ридера должны
         // выигрывать внутри #reader-pane.
-        ['/reader/css/index.css', '/reader/css/rus-multi.css', '/reader/css/uiextra.css'].forEach(function (href) {
+        // One call per file, not an array: sendVersionedHtml (dg-fastify.js) stamps ?v= only onto
+        // addReaderCss('...') — a bare array entry kept a year-long immutable copy of uiextra.css.
+        function addReaderCss(href) {
             var link = document.createElement('link');
             link.rel = 'stylesheet';
             link.href = href;
             link.className = 'dg-reader-css';
             document.head.appendChild(link);
-        });
+        }
+        addReaderCss('/reader/css/index.css');
+        addReaderCss('/reader/css/rus-multi.css');
+        addReaderCss('/reader/css/uiextra.css');
 
         // reader-template.html (отдельная старая страница, теперь референс) грузило вместе с
         // megareader.js ещё пачку скриптов — здесь их не было вообще, поэтому в SPA-ридере молчком

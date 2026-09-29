@@ -641,9 +641,11 @@ window.showBubble = function (element, event, isHover = false) {
     if (leftPos < padding) leftPos = padding;
     if (leftPos + bubbleRect.width > window.innerWidth - padding) leftPos = window.innerWidth - bubbleRect.width - padding;
 
-    bubble.style.left = (leftPos + scrollX) + 'px';
-    bubble.style.top = (rect.top + scrollY) + 'px';
-    bubble.style.setProperty('--arrow-x', (triggerCenter - leftPos) + 'px');
+    // Rects/scroll are screen px; style px get multiplied by the page zoom again (dg-apps#40).
+    const z = (window.dgZoom ? window.dgZoom() : 1);
+    bubble.style.left = (leftPos + scrollX) / z + 'px';
+    bubble.style.top = (rect.top + scrollY) / z + 'px';
+    bubble.style.setProperty('--arrow-x', (triggerCenter - leftPos) / z + 'px');
 
     requestAnimationFrame(() => bubble.classList.add('visible'));
 };

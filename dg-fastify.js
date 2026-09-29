@@ -296,7 +296,7 @@ function sendVersionedHtml(req, reply, absHtmlPath, statusCode = 200) {
         // newer one (e.g. .reader-pending needs buildSutta() to clear it).
         // `s.src = '/spa/toc.js'` (ensureTocAssets) is stamped too: it was the one lazy script left
         // bare, so a toc.js fix stayed invisible in an already-visited browser for up to 24h.
-        /((?:src|href)="|loadScript\('|dgPreload\('|\.src = ')(\/(?:assets|spa|nodejs\/res|reader|settings)\/[^"'?#]+\.(?:js|css|svg|png|ico))("|')/g,
+        /((?:src|href)="|loadScript\('|dgPreload\('|addReaderCss\('|\.src = ')(\/(?:assets|spa|nodejs\/res|reader|settings)\/[^"'?#]+\.(?:js|css|svg|png|ico))("|')/g,
         (m, pre, url, post) => {
             const prefix = Object.keys(HTML_ASSET_URL_ROOTS).find(p => url.startsWith(p + '/'));
             if (!prefix) return m;

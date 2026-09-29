@@ -909,9 +909,10 @@ onReady(() => {
             if (window.innerWidth > 767.98) {
                 var br = btn.getBoundingClientRect();
                 var pw = panel.getBoundingClientRect().width || 320;
-                panel.style.left = Math.max(6, Math.min(br.left, window.innerWidth - pw - 12)) + 'px';
+                var z = (window.dgZoom ? window.dgZoom() : 1); // rects are screen px, style px get zoomed again (dg-apps#40)
+                panel.style.left = Math.max(6, Math.min(br.left, window.innerWidth - pw - 12)) / z + 'px';
                 panel.style.right = 'auto';
-                panel.style.top = Math.round(br.bottom + 8) + 'px';
+                panel.style.top = Math.round((br.bottom + 8) / z) + 'px';
             } else { panel.style.left = ''; panel.style.right = ''; panel.style.top = ''; }
             if (isOpening) {
                 syncTOC();

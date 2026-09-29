@@ -806,7 +806,7 @@
     box-shadow: 0 4px 12px rgba(0,0,0,0.2);
     border: 1px solid #ccc;
     
-    max-height: calc(100vh - 80px); 
+    max-height: calc(100 * var(--dg-vh, 1vh) - 80px); /* --dg-vh: vh without the page zoom (home.css) */ 
     overflow-y: auto;               
     -webkit-overflow-scrolling: touch; 
     
@@ -905,7 +905,7 @@
     position: fixed;
     top: 52px;
     right: max(20px, env(safe-area-inset-right, 0px));
-    max-height: calc(100vh - 64px);
+    max-height: calc(100 * var(--dg-vh, 1vh) - 64px);
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     transform-origin: top right;
@@ -1328,7 +1328,7 @@ smart TOC
     box-shadow: 0 4px 12px rgba(0,0,0,0.2);
     border: 1px solid #ccc;
     
-    max-height: calc(100vh - 80px);
+    max-height: calc(100 * var(--dg-vh, 1vh) - 80px); /* --dg-vh: vh without the page zoom (home.css) */
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
 
@@ -1415,7 +1415,7 @@ smart TOC
         position: fixed;
         top: 52px;
         right: max(20px, env(safe-area-inset-right, 0px));
-        max-height: calc(100vh - 64px);
+        max-height: calc(100 * var(--dg-vh, 1vh) - 64px);
     }
 }
 

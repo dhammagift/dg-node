@@ -209,7 +209,7 @@ img[data-size="large"] {
   background-color: var(--light);
   border-radius: 7px;
   min-width: 240px;
-  max-height: 70vh;
+  max-height: calc(70 * var(--dg-vh, 1vh));
   overflow-y: auto;
   z-index: 1001;
   padding: 8px 0;

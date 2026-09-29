@@ -431,7 +431,7 @@ function cornerButtonRight() {
         .filter(function (r) { return r.width > 0; });
     if (!rightCornerNeighbors.length) return '';
     const leftmost = Math.min.apply(null, rightCornerNeighbors.map(function (r) { return r.left; }));
-    return Math.round(window.innerWidth - leftmost + CORNER_BUTTON_GAP) + 'px';
+    return Math.round((window.innerWidth - leftmost) / (window.dgZoom ? window.dgZoom() : 1) + CORNER_BUTTON_GAP) + 'px'; // screen px -> style px under page zoom
 }
 function repositionTtsButton() {
     const btn = document.querySelector('.dynamic-tts-btn');

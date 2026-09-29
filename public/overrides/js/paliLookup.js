@@ -5,6 +5,9 @@ const isMobileLike = (
 // The Android app's pages are https://localhost too, but it is not a dev machine: its dictionary links open
 // the dictionary site, as online (owner) — the DPD app or DictTango may not be installed at all.
 const isNativeApp = !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform());
+// Page zoom (size setting, 110% base on phones/app): clientX/innerHeight/rects are screen px, style
+// px get zoomed again — divide measured values by this before writing them into a style (dg-apps#40).
+const pz = () => (window.dgZoom ? window.dgZoom() : 1);
 const isLocalhost = !isNativeApp && (window.location.href.includes('localhost') || window.location.href.includes('127.0.0.1'));
 
 
@@ -407,12 +410,12 @@ async function handleWordLookup(word, event) {
         document.body.removeChild(tempDiv);
 
         let minHeight = 100;
-        const maxHeight = window.innerHeight * 0.95;
+        const maxHeight = window.innerHeight / pz() * 0.95;
 
         if (dictUrl === "standalone" || dictUrl === "standaloneru") {
             minHeight = 100;
         } else {
-            const screenHeight = window.innerHeight;
+            const screenHeight = window.innerHeight / pz();
             minHeight = (screenHeight * 0.8 < 600) ? screenHeight * 0.8 : 600;
         }
 
@@ -477,8 +480,8 @@ async function handleWordLookup(word, event) {
         searchBtn.href = `${dhammaGift}${encodeURIComponent(wordForSearchBtn)}${dgParams}`;
         searchBtn.className = 'quick-search-float-btn';
         searchBtn.target = '_blank';
-        searchBtn.style.top = `${event.clientY - 10}px`;
-        searchBtn.style.left = `${event.clientX - 10}px`;
+        searchBtn.style.top = `${event.clientY / pz() - 10}px`;
+        searchBtn.style.left = `${event.clientX / pz() - 10}px`;
         searchBtn.innerHTML = `
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="16" height="16" fill="white" style="transform: scaleX(-1);">
                 <path d="M505 442.7l-99.7-99.7c28.4-35.3 45.7-79.8 45.7-128C451 98.8 352.2 0 224 0S-3 98.8-3 224s98.8 224 224 224c48.2 0 92.7-17.3 128-45.7l99.7 99.7c6.2 6.2 14.4 9.4 22.6 9.4s16.4-3.1 22.6-9.4c12.5-12.5 12.5-32.8 0-45.3zM224 384c-88.4 0-160-71.6-160-160S135.6 64 224 64s160 71.6 160 160-71.6 160-160 160z"/>
@@ -750,7 +753,7 @@ function applyPopupSizeForMode(popup) {
     } else {
         popup.style.width = '500px';
         popup.style.height = '500px';
-        popup.style.top = `${window.innerHeight - 510}px`;
+        popup.style.top = `${window.innerHeight / pz() - 510}px`;
         popup.style.right = `${isMobileLike ? 0 : 15}px`;
         popup.style.left = '';
         popup.style.transform = 'none';
@@ -900,7 +903,8 @@ function createPopup() {
         // || 0) silently read an empty string as 0 — the first drag then jumped initialLeft from
         // "wherever right put it" to 0, teleporting the window out from under the cursor (owner:
         // "первое перемещение... окно улетает из-под пальца или курсора").
-        const rect = popup.getBoundingClientRect();
+        const r = popup.getBoundingClientRect(), z = pz();
+        const rect = { left: r.left / z, top: r.top / z };
         popup.style.transform = 'none';
         popup.style.top = rect.top + 'px';
         popup.style.left = rect.left + 'px';
@@ -917,8 +921,8 @@ function createPopup() {
         if (isDragging) {
             const deltaX = (e.clientX || e.touches[0].clientX) - startX;
             const deltaY = (e.clientY || e.touches[0].clientY) - startY;
-            popup.style.left = `${initialLeft + deltaX}px`;
-            popup.style.top = `${initialTop + deltaY}px`;
+            popup.style.left = `${initialLeft + deltaX / pz()}px`;
+            popup.style.top = `${initialTop + deltaY / pz()}px`;
         }
     }
 
@@ -958,16 +962,16 @@ function createPopup() {
         let newHeight = startHeight;
 
         if (currentResizeType === 'corner' || currentResizeType === 'right') {
-            newWidth = startWidth + (currentX - startResizeX);
+            newWidth = startWidth + (currentX - startResizeX) / pz();
         }
         if (currentResizeType === 'corner' || currentResizeType === 'bottom') {
-            newHeight = startHeight + (currentY - startResizeY);
+            newHeight = startHeight + (currentY - startResizeY) / pz();
         }
         
         const minWidth = 200;
         const minHeight = 150;
-        const maxWidth = window.innerWidth * 0.9;
-        const maxHeight = window.innerHeight * 0.9;
+        const maxWidth = window.innerWidth / pz() * 0.9;
+        const maxHeight = window.innerHeight / pz() * 0.9;
 
         popup.style.width = Math.max(minWidth, Math.min(newWidth, maxWidth)) + 'px';
         popup.style.height = Math.max(minHeight, Math.min(newHeight, maxHeight)) + 'px';
