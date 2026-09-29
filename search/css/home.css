@@ -4213,6 +4213,12 @@ body.dg-state-reader #bottom-links-container .sc-link a { font-size: 14px; paddi
 body.dg-state-reader #reader-pane .links-area { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; padding: 18px 0 6px; }
 body.dg-state-reader #reader-pane .links-area a { width: 36px; height: 36px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; }
 body.dg-state-reader #reader-pane .links-area a:hover { background: var(--dg-surface-hover); }
+/* The reader's end (owner: "дикие отступы", "половина иконок за кнопкой"): text -> sources -> prev/next
+   -> tools were 40/32+18px apart, and the tools row was the last thing on the page, so the language
+   pill and the up arrow (fixed, bottom 30px) sat on top of it with no way to scroll it clear. Tighter
+   gaps, and room under the tools for that corner cluster (+ the gesture bar in the app). */
+html body.dg-state-reader #sutta { padding-bottom: 8px; }
+html body.dg-state-reader #reader-pane .links-area { margin-top: 12px; padding-top: 6px; margin-bottom: calc(96px + var(--dg-sab, 0px)); }
 body.dg-state-reader #reader-pane > hr { display: none; }
 
 /* --- corner: TTS · up · language pill. Pill colors = the old #language-button (owner). --- */

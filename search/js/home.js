@@ -39,8 +39,8 @@
        порядке нет (новая плитка в menu-links.json), дописываются в конец, а исчезнувшие
        отбрасываются. Поэтому добавление плитки не ломает уже настроенный порядок. */
     var DEFAULT_TILE_ORDER = {
-        // "subs": English has no "Russian" tile — Subscriptions makes it eight, same grid as ru (owner).
-        en: ['read', 'external', 'dicts', 'materials', 'tools', 'subs', 'history', 'help'],
+        // "subs" in the place of ru's "russian" (owner): English has no Russian tile, so both menus line up item for item.
+        en: ['read', 'external', 'subs', 'dicts', 'materials', 'tools', 'history', 'help'],
         ru: ['read', 'external', 'russian', 'dicts', 'materials', 'tools', 'history', 'help']
     };
     var TILE_ORDER_KEY = 'dgTileOrder';
@@ -3838,10 +3838,13 @@
         var id = currentState() === 'reader' ? window.dgReaderSlug : null;
         var subs = id ? subsWithText(id) : [];
         if (btn) {
-            btn.hidden = !subs.length;
+            // Always there in the reader (owner: "колокольчика нет"): rung when the text is in a
+            // subscription (opens the marks, #rsubp), plain otherwise (subscribes to its collection).
+            btn.hidden = !id;
+            btn.setAttribute('data-on', subs.length ? 'true' : 'false');
             // Set here, not as a {{key}} in the markup: the reader toolbar's title attributes are
             // not run through the i18n pass, the raw key showed as the tooltip.
-            btn.title = t('menu.daily.inYourSubs', 'Текст из ваших подписок — отметить');
+            btn.title = subs.length ? t('menu.daily.inYourSubs', 'Текст из ваших подписок — отметить') : t('menu.daily.subscribe', 'Подписаться');
             btn.setAttribute('aria-label', btn.title);
         }
         if (!line) return;
@@ -3867,7 +3870,14 @@
         if (btn) btn.addEventListener('click', function (e) {
             e.stopPropagation();
             if (rsubState) { closeRsubp(); return; }
-            if (window.dgReaderSlug) window.dgOpenRsubp(window.dgReaderSlug, btn);
+            var id = window.dgReaderSlug;
+            if (!id) return;
+            if (subsWithText(id).length) { window.dgOpenRsubp(id, btn); return; }
+            // Not in any subscription yet: the form, with the text's collection filled in (mn8 -> mn,
+            // sn12.3 -> sn12, an4.146 -> an4) — the quick window reads a canon code as a place.
+            var place = id.indexOf('.') !== -1 ? id.slice(0, id.lastIndexOf('.')) : id.replace(/[\d-]+$/, '');
+            if (typeof window.subsOpen === 'function') window.subsOpen({ q: place || id });
+            else if (typeof window.toggleQuickModal === 'function') window.toggleQuickModal('tab-subs');
         });
     })();
     window.dgRenderReaderSubs = dgRenderReaderSubs;
