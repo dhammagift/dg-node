@@ -1713,6 +1713,11 @@ window.buildSutta = async function(rawSlug, opts) {
         </div>
     `;
 
+    // The pinned links row lives next to #sutta, not in it (see below) — take the previous text's
+    // copy out first, or getElementById would find that one instead of the new one.
+    const prevTop = document.querySelector('#reader-pane > #top-links-container');
+    const prevTopY = prevTop ? prevTop.style.top : '';
+    if (prevTop) prevTop.remove();
     suttaArea.innerHTML =
         `<div id="top-links-container" class="min-h-24"></div>` +
         (!isWarningClosed ? warning : '') +
@@ -1725,6 +1730,15 @@ window.buildSutta = async function(rawSlug, opts) {
     const topContainer = document.getElementById('top-links-container');
     const bottomContainer = document.getElementById('bottom-links-container');
     if (topContainer) topContainer.innerHTML = scLink;
+    // On phones this row is pinned (position:fixed, search/index.html). Inside #sutta it rode the
+    // text's enter animation — a transform makes #sutta the containing block of fixed children —
+    // and until applyPadding() gave it a top it sat in the flow: on every next text the row jumped
+    // down into the page and back (owner, GIF: "строка ссылок дёргает экран"). Beside #sutta, at
+    // the previous text's top, it stays where it was.
+    if (topContainer && suttaArea.parentNode && suttaArea.parentNode.id === 'reader-pane') {
+        suttaArea.parentNode.insertBefore(topContainer, suttaArea);
+        if (prevTopY) topContainer.style.top = prevTopY;
+    }
     if (bottomContainer) bottomContainer.innerHTML = scLink;
 
     // Owner: "десктоп нужно менять как на моём мокапе... на мобильных так не получится, пусть
