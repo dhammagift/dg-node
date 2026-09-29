@@ -73,6 +73,11 @@ html { scrollbar-gutter: stable; }
    quick window ran off it, the close button above the top edge (owner, 2026-09-29, on phones at
    the new 1.1 base). Same fix the 100vw bands already use (/ var(--dg-zoom)). */
 :root { --dg-vh: calc(1vh / var(--dg-zoom, 1)); }
+/* svh, not vh, where it exists: in a phone browser vh is the viewport with the address bar hidden,
+   so a window sized to 100vh-24px ran above the top while the bar was showing (owner, Chrome:
+   "быстрое окно куда-то убегает"). svh is the height with the bar showing — fits either way, and
+   unlike dvh does not change (re-lay out) while the page scrolls. The app has no bar: same value. */
+@supports (height: 1svh) { :root { --dg-vh: calc(1svh / var(--dg-zoom, 1)); } }
 @media (max-width: 767.98px) {
 :root { --dg-mobile-scale: 1; }
     html { font-size: calc(100% * var(--dg-mobile-scale)); }
