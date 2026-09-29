@@ -1811,7 +1811,16 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
       // 10px сверху (было 5, владелец попросил ещё +5 — первая правка оказалась мало заметна).
       // Начинаем стек с этого отступа, а не с нуля — сдвигает весь стек разом (band → следующий
       // элемент → ...), паддинг контенту ниже пересчитается сам той же формулой, что и раньше.
-      var offset = 10, Z = window.dgZoom();
+      // + the status bar's height in the app, edge to edge (--dg-sat, home.css app mode): the
+      // stack starts under it. A probe, because a custom property holding env() has no px value.
+      var probe = document.getElementById('dg-sat-probe');
+      if (!probe) {
+        probe = document.createElement('div');
+        probe.id = 'dg-sat-probe';
+        probe.style.cssText = 'position:absolute;top:0;left:0;width:0;visibility:hidden;pointer-events:none;height:var(--dg-sat,0px)';
+        document.body.appendChild(probe);
+      }
+      var offset = 10 + probe.offsetHeight, Z = window.dgZoom();
       cfg.stack.forEach(function (el) {
         el.style.top = Math.round(offset) + 'px';
         offset += el.getBoundingClientRect().height / Z;

@@ -4616,3 +4616,39 @@ body #dg-drawer a.dg-drawer-row:hover, body #dg-drawer a.dg-drawer-row:focus-vis
 /* App mode (html.dg-app — the Capacitor app, or ?app=1 in a browser, see index.html <head>):
    what the app does not need. Start: the site footer (how-to/apps/contacts, socials, copyright). */
 html.dg-app #dg-footer { display: none; }
+
+/* App mode, edge to edge (owner, dg-apps#40: "борода" — no painted frame round the page, set
+   once, not repainted by script). The app shows the page under transparent system bars
+   (viewport-fit=cover, dg-apps build-page.js); these are how far the bars and a landscape camera
+   cutout reach into it. env() is 0 outside the app and in a WebView too old to pass the insets
+   through (there the native side keeps its own padding). Divided by the page zoom: a px of CSS
+   is zoomed with <html>, the inset is not. */
+html.dg-app {
+    --dg-sat: calc(env(safe-area-inset-top, 0px) / var(--dg-zoom, 1));
+    --dg-sab: calc(env(safe-area-inset-bottom, 0px) / var(--dg-zoom, 1));
+    --dg-sal: calc(env(safe-area-inset-left, 0px) / var(--dg-zoom, 1));
+    --dg-sar: calc(env(safe-area-inset-right, 0px) / var(--dg-zoom, 1));
+}
+/* The status-bar strip itself (on body: the colour tokens live on body.dg-skin-minimal): always the colour of what is under it at the top (the pinned
+   header's surface; the navy navbar on home), so text scrolling up never runs under the clock. */
+html.dg-app body::before {
+    content: '';
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: var(--dg-sat);
+    background: var(--dg-surface);
+    z-index: 1084;   /* over the pinned header (850) and sheet scrims (1080/1083), under the drawer (1085) */
+    pointer-events: none;
+}
+html.dg-app body.dg-state-home::before { background: var(--dg-navy); }
+html.dg-app body.dg-state-home #dg-hero-navbar { padding-top: var(--dg-sat); }
+html.dg-app #dg-drawer { padding-top: var(--dg-sat); padding-bottom: var(--dg-sab); }
+/* Landscape: the page keeps clear of the camera cutout; full-bleed bands still run under it. */
+html.dg-app body { padding-left: var(--dg-sal); padding-right: var(--dg-sar); }
+/* Floating corner controls and bottom sheets sit above the gesture bar. translate, not bottom:
+   their bottoms come from several stylesheets; this adds to whatever they are. (The language and
+   translations menus are placed from the pill's real box by home.js, so they follow it as is.) */
+html.dg-app .dg-lpill, html.dg-app #scrollToTopBtn, html.dg-app #language-button,
+html.dg-app .dynamic-tts-btn, html.dg-app .bubble-notification, html.dg-app .dg-rsubp.dg-rsubp-sheet {
+    translate: calc(-1 * var(--dg-sar)) calc(-1 * var(--dg-sab));
+}
