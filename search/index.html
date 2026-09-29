@@ -556,7 +556,10 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
         width: 19px;
         height: 19px;
         margin: 0;
-        opacity: 0.75;
+        /* No opacity (was 0.75): in the Android app every half-transparent icon of this row was
+           drawn as the field's table-list icon until tapped (tap -> :hover -> opacity 1 -> the
+           right icon), owner's screenshots from 380 on. A WebView rendering fault we cannot fix
+           from here, so the row simply does without the fade — the icons are grey already. */
     }
     .dg-reader-toolbar a:hover img { opacity: 1; }
     /* TOC-пилюля (#smart-toc-btn) внутри тулбара — базовые правила (reader/css/uiextra.css)
