@@ -493,7 +493,7 @@ function renderQuickLists(isRu, queryBase) {
 
     // Рендер Избранного
     if (favData.length === 0) {
-      favContainer.innerHTML = `<p class="quick-empty-msg">${window.isRu ? "Избранного пока нет." : "No favorites yet."}</p>`;
+      favContainer.innerHTML = `<div class="quick-empty-state">${QS_ICON.starOutline}<p>${window.isRu ? "Избранного пока нет." : "No favorites yet."}</p></div>`;
       favHeader.style.display = 'none';
       favContainer.style.display = 'block';
     } else {
@@ -525,7 +525,7 @@ function renderQuickLists(isRu, queryBase) {
 
     // Рендер Истории
     if (histData.length === 0) {
-      histContainer.innerHTML = `<p class="quick-empty-msg">${window.isRu ? "История пуста." : "History is empty."}</p>`;
+      histContainer.innerHTML = `<div class="quick-empty-state">${QS_ICON.history}<p>${window.isRu ? "История пуста." : "History is empty."}</p></div>`;
       histHeader.style.display = 'none';
       histContainer.style.display = 'block';
     } else {
@@ -593,6 +593,9 @@ window.toggleQuickModal = function(tabKey) {
     buildQuickModalDOM();
     window.isQuickModalRendered = true;
   }
+  // Opening with no tab asked for (every compass button, Alt+Y): Favorites & History, not whatever
+  // tab was open last — after Subscriptions the compass kept opening on Subscriptions (owner).
+  if (!window.quickModalIsOpen && !tabKey) { tabKey = 'tab-fav'; closeQuickSubForm(); }
 
   if (tabKey && window.quickModalIsOpen) {
     var tabBtn = quickModal.querySelector('.quick-tab-btn[data-tab="' + tabKey + '"]');
@@ -821,7 +824,9 @@ const QS_ICON = {
   pause: '<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>',
   play: '<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M7 5v14l12-7z"/></svg>',
   edit: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg>',
-  check: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12.3l2.6 2.6L16 9.5"/></svg>'
+  check: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12.3l2.6 2.6L16 9.5"/></svg>',
+  starOutline: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.2 1 5.9-5.2-2.8-5.2 2.8 1-5.9-4.3-4.2 5.9-.8z"/></svg>',
+  history: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v4.5h4.5"/><path d="M12 8v4.5l3 2"/></svg>'
 };
 
 function renderQuickSubs() {
@@ -833,7 +838,7 @@ function renderQuickSubs() {
   let html = `<h6 class="sortable-header quick-subs-head"><span class="header-title">${QS_T('Активные', 'Active')}</span>
     <button type="button" class="quick-subs-new">+ ${QS_T('Новая', 'New')}</button></h6>`;
   if (!subs.length) {
-    html += `<p class="quick-empty-msg">${QS_T('Подписок пока нет. Подпишитесь на поиск колокольчиком в выдаче или создайте здесь.', 'No subscriptions yet. Subscribe to a search with the bell on the results page, or create one here.')}</p>`;
+    html += `<div class="quick-empty-state full">${QS_ICON.bell}<p>${QS_T('Подписок пока нет. Подпишитесь на поиск колокольчиком в выдаче или создайте здесь.', 'No subscriptions yet. Subscribe to a search with the bell on the results page, or create one here.')}</p></div>`;
   } else {
     html += '<ul class="compact-list quick-subs-list">';
     subs.forEach(sub => {
