@@ -3,10 +3,10 @@ const isRu = window.location.pathname.match(/\/(ru|r|ml)(\/|$)/) ; //|| localSto
 // Выносим тексты в отдельный объект для глобального доступа
 const translations = isRu ? {
     title: "Облачная синхронизация", desc: "История, избранное и настройки.",
-    google: "Войти через Google", or: "или", phraseLabel: "Секретная фраза",
+    apple: "Войти через Apple", google: "Войти через Google", or: "или", phraseLabel: "Секретная фраза",
     hint: "Минимум 8 символов. Полная анонимность.", 
     loginPhrase: "Анонимный вход",
-    statusLabelGoogle: "Google аккаунт:", statusLabelPhrase: "Ваша фраза:",
+    statusLabelGoogle: "Google аккаунт:", statusLabelApple: "Apple ID:", statusLabelPhrase: "Ваша фраза:",
     syncLabel: "Синхронизировано:", lblSync: "Синхр.",
     logout: "Выйти", delete: "Удалить аккаунт и данные",
     sessionsLabel: "Активные устройства:",
@@ -15,10 +15,10 @@ const translations = isRu ? {
     btnMerge: "Объединить (Merge)", btnOverwrite: "Заменить из облака (Overwrite)", btnCancel: "Отмена"
 } : {
     title: "Cloud Sync", desc: "History, favorites, and settings.",
-    google: "Sign in with Google", or: "or", phraseLabel: "Secret Passphrase",
+    apple: "Sign in with Apple", google: "Sign in with Google", or: "or", phraseLabel: "Secret Passphrase",
     hint: "Min 8 chars. Completely anonymous.", 
     loginPhrase: "Anonymous Login",
-    statusLabelGoogle: "Google Account:", statusLabelPhrase: "Your Phrase:",
+    statusLabelGoogle: "Google Account:", statusLabelApple: "Apple ID:", statusLabelPhrase: "Your Phrase:",
     syncLabel: "Last synced:", lblSync: "Sync",
     logout: "Logout", delete: "Delete account & cloud data",
     sessionsLabel: "Active Devices:",
@@ -37,6 +37,8 @@ function applyLocalization() {
     if (el('sync-phrase-label')) el('sync-phrase-label').textContent = translations.phraseLabel;
     if (el('sync-hint')) el('sync-hint').textContent = translations.hint;
     
+    const btnApple = el('btn-apple-login');
+    if (btnApple) btnApple.innerHTML = `<i class="fa-brands fa-apple me-2"></i> ${translations.apple}`;
     const btnGoogle = el('btn-google-login');
     if (btnGoogle) btnGoogle.innerHTML = `<i class="fa-brands fa-google me-2"></i> ${translations.google}`;
     
@@ -279,7 +281,9 @@ window.renderLoginPageUI = function(user, phraseId) {
         el('sync-logged-in').classList.remove('d-none');
 
         if (user) {
-            el('sync-status-label').textContent = translations.statusLabelGoogle;
+            // Signed in with Apple: the label named Google for every account (dg-apps#42)
+            const viaApple = (user.providerData || []).some(function (p) { return p && p.providerId === 'apple.com'; });
+            el('sync-status-label').textContent = viaApple ? translations.statusLabelApple : translations.statusLabelGoogle;
             el('sync-user-info').textContent = user.email;
         } else {
             el('sync-status-label').textContent = translations.statusLabelPhrase;
