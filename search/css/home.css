@@ -2819,7 +2819,7 @@ body.dg-drawer-open {
 .dg-bell:focus { outline: 0; }
 .dg-bell:focus-visible { outline: 0; box-shadow: 0 0 0 3px var(--dg-accent-bg); }
 #reader-toolbar .dg-rbell svg { width: 17px; height: 17px; }
-.dg-rsubp { position: absolute; top: 0; left: 0; right: auto; z-index: 1100; width: 300px; max-height: calc(calc(100 * var(--dg-vh, 1vh)) - 24px); overflow-y: auto; transform-origin: top center; }
+.dg-rsubp { position: absolute; top: 0; left: 0; right: auto; z-index: 1100; width: 300px; max-width: calc(100vw / var(--dg-zoom, 1) - 24px); max-height: calc(calc(100 * var(--dg-vh, 1vh)) - 24px); overflow-y: auto; transform-origin: top center; }
 .dg-rsubp.dg-rsubp-sheet { position: fixed; top: auto; left: 12px; right: 12px; bottom: 12px; width: auto; max-width: none; transform-origin: bottom center; transform: translateY(8px); }
 .dg-rsubp.dg-rsubp-sheet[data-open="true"] { transform: none; }
 .dg-rsub-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }

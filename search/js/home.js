@@ -3711,7 +3711,9 @@
     function placeRsubp(p, anchor) {
         p.style.left = p.style.top = p.style.right = p.style.bottom = ''; // ТЗ §10: reset first
         anchor = liveAnchor(anchor);
-        if (window.matchMedia('(max-width: 767.98px)').matches || !anchor || !anchor.offsetParent) { p.classList.add('dg-rsubp-sheet'); return; }
+        // Under the button that opened it, on phones too (owner: "под колокольчиком... под галочкой");
+        // the bottom sheet only when there is no visible button to hang it on.
+        if (!anchor || !anchor.offsetParent) { p.classList.add('dg-rsubp-sheet'); return; }
         p.classList.remove('dg-rsubp-sheet');
         var r = cssRect(anchor), w = p.offsetWidth, h = p.offsetHeight;
         var left = Math.min(Math.max(12, r.left + r.width / 2 - w / 2), cssVW() - w - 12);
