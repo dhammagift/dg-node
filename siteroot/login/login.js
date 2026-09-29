@@ -2,7 +2,7 @@ const isRu = window.location.pathname.match(/\/(ru|r|ml)(\/|$)/) ; //|| localSto
 
 // Выносим тексты в отдельный объект для глобального доступа
 const translations = isRu ? {
-    title: "Облачная синхронизация", desc: "История, избранное и настройки.",
+    title: "Облачная синхронизация", desc: "История, избранное, подписки и настройки.",
     apple: "Войти через Apple", google: "Войти через Google", or: "или", phraseLabel: "Секретная фраза",
     hint: "Минимум 8 символов. Полная анонимность.", 
     loginPhrase: "Анонимный вход",
@@ -14,7 +14,7 @@ const translations = isRu ? {
     mergeBody: "На этом устройстве есть сохраненная история и избранное. Как поступить при входе?<br><br><b>Объединить</b>: сохранить текущие данные и добавить к ним облачные.<br><b>Заменить</b>: удалить данные с этого устройства и скачать копию из облака.",
     btnMerge: "Объединить (Merge)", btnOverwrite: "Заменить из облака (Overwrite)", btnCancel: "Отмена"
 } : {
-    title: "Cloud Sync", desc: "History, favorites, and settings.",
+    title: "Cloud Sync", desc: "History, favorites, subscriptions and settings.",
     apple: "Sign in with Apple", google: "Sign in with Google", or: "or", phraseLabel: "Secret Passphrase",
     hint: "Min 8 chars. Completely anonymous.", 
     loginPhrase: "Anonymous Login",
