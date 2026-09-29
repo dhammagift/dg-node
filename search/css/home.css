@@ -2733,8 +2733,11 @@ body.dg-drawer-open {
     top: 38px;
     right: 0;
     z-index: 20;
-    width: 280px;
-    max-width: calc(100vw - 24px);
+    width: 300px;
+    max-width: calc(100vw / var(--dg-zoom, 1) - 24px); /* vw is zoomed with the page */
+    /* Pinned under the bell: a short landscape screen cut the lower buttons off (#40) — scroll inside. */
+    max-height: calc(100 * var(--dg-vh, 1vh) - 140px);
+    overflow-y: auto;
     background: var(--dg-surface);
     border: 1px solid var(--dg-border);
     border-radius: 14px;
@@ -2784,9 +2787,9 @@ body.dg-drawer-open {
 .dg-subp-progress span { color: var(--dg-text-muted); font-size: 0.8rem; }
 .dg-subp-bar { height: 4px; border-radius: 2px; background: var(--dg-border); overflow: hidden; }
 .dg-subp-bar div { height: 100%; background: var(--dg-accent); }
-.dg-subp-next { color: var(--dg-text-muted); font-size: 0.8rem; display: flex; justify-content: space-between; gap: 8px; }
+.dg-subp-next { color: var(--dg-text-muted); font-size: 0.8rem; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 8px; }
+/* Never cut ("за…", owner #40): too long for one line, "с dd.mm" drops to the next one. */
 .dg-subp-next span { white-space: nowrap; }
-.dg-subp-next span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 #subp .dg-subp-next a, #subp .dg-subp-q, #subp a.dg-subp-cfg { color: var(--dg-accent-ink); }
 .dg-subp-next a { text-decoration: none; }
 .dg-subp-next a:hover { text-decoration: underline; }
