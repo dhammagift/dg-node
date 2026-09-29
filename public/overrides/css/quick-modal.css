@@ -147,10 +147,19 @@ body.dark .hist-icon img, body.dark-mode .hist-icon img { filter: invert(0.7); o
   .quick-search-form { padding-left: 1.2rem !important; padding-right: 3.5rem !important; }
 }
 
-/* Сообщения о пустых списках */
-.quick-empty-msg {
-    font-size: 0.9rem; color: #888; font-style: italic; margin: 0;
+/* Сообщения о пустых списках: иконка + текст вместо голой курсивной строки */
+.quick-empty-state {
+    display: flex; align-items: center; gap: 10px; padding: 14px 2px; color: #999;
 }
+.quick-empty-state svg { flex: none; opacity: 0.55; }
+.quick-empty-state p { font-size: 0.9rem; margin: 0; line-height: 1.4; }
+/* Вариант на всю вкладку (подписки — единственный контент вкладки) — центрируем по высоте */
+.quick-empty-state.full {
+    flex-direction: column; justify-content: center; text-align: center; gap: 14px;
+    height: 100%; min-height: 220px;
+}
+.quick-empty-state.full svg { width: 40px; height: 40px; }
+body.dark .quick-empty-state, body.dark-mode .quick-empty-state { color: #777; }
 
 /* Блок ссылки "Вся история" */
 .quick-all-history-wrapper {
@@ -357,3 +366,4 @@ body.dark .compact-list li, body.dark-mode .compact-list li { border-bottom-colo
 .quick-modal-content-wrapper .compact-list a, .quick-modal-content-wrapper .quick-4as-card li a { color: var(--dg-tblue, #3434be); }
 .quick-modal-content-wrapper .quick-subhint a { color: var(--dg-accent-ink, #0f7c63); text-decoration: none; }
 .quick-seg button .quick-seg-ic { vertical-align: -3px; margin-right: 6px; }
+.quick-modal-content-wrapper a.quick-all-history-link { color: var(--dg-accent-ink, #0f7c63); } /* dark theme: the site link colour won over it */
