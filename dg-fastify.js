@@ -498,7 +498,10 @@ try {
     if (missing.length) {
         console.warn('[fontawesome-local] ' + (fsSync.existsSync(iconBundlePath) ? 'stale subset, missing: ' + missing.join(', ') : 'not built yet') + ' — building now (build-icons.js)');
         try {
-            require('child_process').execFileSync(process.execPath, [path.join(__dirname, 'build-icons.js')], { stdio: 'inherit' });
+            // --dict=none: a server start must not rewrite the dictionary's icons (/var/www/ddg-ui has
+            // no test copy — a restart turned its outline trash can solid on dict.dhamma.gift,
+            // 2026-09-29). The dictionary's set is built on purpose: `npm run build-icons`.
+            require('child_process').execFileSync(process.execPath, [path.join(__dirname, 'build-icons.js'), '--dict=none'], { stdio: 'inherit' });
         } catch (buildErr) {
             console.warn('[fontawesome-local] build failed — run `npm install` (devDependency @fortawesome/fontawesome-free) and `npm run build-icons`:', buildErr.message);
         }
