@@ -3930,7 +3930,12 @@
             e.stopImmediatePropagation();
             window.dgCloseTopOverlay();
             wasOpen = anyOpen();
-            if (wasOpen) push(); // one closed, another still open under it: it gets the next back
+            if (wasOpen) { push(); return; } // one closed, another still open under it: it gets the next back
+            // Nothing open any more, yet we stand on a leftover entry (the drawer's, when the
+            // window was opened from the burger) or on the window's own address (/4as): one more
+            // step, so this back really ends on the page that was there before.
+            if (e.state && e.state.dgOverlay) { swallow = true; history.back(); }
+            else if (/^\/(ru\/)?4as(\/\d)?\/?$/.test(location.pathname)) history.back();
         }, true);
     })();
     dgRenderReaderSubs(); // cold load: the reader may have rendered before this deferred bundle ran
