@@ -2504,13 +2504,7 @@ body:not(.dg-state-home) #dg-announce { display: none; }
     box-shadow: -8px 0 30px rgba(0, 0, 0, 0.14);
     transform: translateX(100%);
     transition: transform 0.3s var(--dg-ease);
-    overflow-y: auto;
-    /* Real fix for the mobile "white edge" bug (see #dg-drawer-backdrop above): scrolling the
-       drawer's own list to its end used to chain into scrolling the page BODY behind it (body
-       scroll wasn't locked either — see body.dg-drawer-open below), and that body-level
-       rubber-band bounce is what briefly shifted the fixed backdrop/drawer and revealed page
-       background at an edge. contain stops the drawer's scroll from ever handing off to body. */
-    overscroll-behavior: contain;
+    overflow: hidden;
 }
 /* Locked while the drawer is open (openDrawer()/closeDrawer(), home.js) — the other half of the
    white-edge fix: with body itself unable to scroll/bounce, there's nothing left for the fixed
@@ -2547,6 +2541,7 @@ body.dg-drawer-open {
     gap: 0.5rem;
     padding: 14px 12px 10px 16px;
     border-bottom: 1px solid var(--dg-border);
+    flex: none;
 }
 /* issue #5: owner ask — share/close must hug the drawer's right edge. .dg-brand-name's own
    flex:1 only grows within .dg-brand-link's OWN flex row (logo + name); .dg-brand-link itself
@@ -2554,7 +2549,14 @@ body.dg-drawer-open {
    natural content width, leaving share/close stranded mid-row with empty space after them. */
 .dg-drawer-head .dg-brand-link { flex: 1; min-width: 0; }
 .dg-drawer-head .dg-brand-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } /* a big size setting: the name gives way to the buttons instead of running under them */
-.dg-drawer-body { padding: 8px 18px 24px; }
+/* dg-apps#42: help/share/close "stuck" mid-content while scrolling — #dg-drawer carried BOTH
+   the scroll (overflow-y:auto) and the backdrop-filter blur on the very same element, and
+   Chromium/WebKit don't always repaint a blurred region correctly under that combination,
+   leaving a stale frame of .dg-drawer-head visible over newly-scrolled content (its real
+   boundingClientRect had already moved far off-screen — this was a paint ghost, not a real
+   position:sticky). .dg-drawer-head now stays a plain non-scrolling flex sibling (like Dict's
+   own .panel .ph/.pb split, which never had this bug) and only .dg-drawer-body scrolls. */
+.dg-drawer-body { padding: 8px 18px 24px; flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
 .dg-drawer-body .dg-group-title {
     /* Owner: main menu items must read bigger than their sub-items, not smaller — was 0.66rem
        against .dg-drawer-row's 0.95rem (below), backwards from the intended hierarchy. */
