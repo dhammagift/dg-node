@@ -1218,7 +1218,6 @@
         });
         document.querySelector('.tbar').classList.remove('away');
       }
-      $('dg-drawer').addEventListener('scroll', function (e) { document.body.classList.toggle('up-dscroll', e.target.scrollTop > 4); }, true); // scrolled: the two buttons get a round backing so they do not float over the text
       var docked = false;
       new MutationObserver(function () { var open = document.body.classList.contains('dg-drawer-open'); if (open && !docked) dock(); docked = open; }).observe(document.body, { attributes: true, attributeFilter: ['class'] });
       $('app-gear').onclick = function () { if (document.body.classList.contains('dg-drawer-open')) document.querySelector('#dg-drawer .dg-drawer-close').click(); else document.querySelector('.dg-menu-btn').click(); };
