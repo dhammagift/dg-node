@@ -53,7 +53,7 @@
       mealEat: function (noon, left) { return '<i>Kāla</i> — food is allowed. Midday at ' + noon + ' · until <i>vikāla</i>: ' + left; },
       mealVik: function (dawn, left) { return '<i>Vikāla</i> — until dawn at ' + dawn + ': ' + left; },
       noonBy: 'Count midday by', noonSunS: 'Sun', noonMidS: 'Middle of day', noonClockS: '12:00', noonWhat: 'Middle of the day: halfway between sunrise and sunset, the centre of the middle third.', noonChange: 'change', noonSun: 'the Sun (highest point)', noonMid: 'the middle of the day', noonClock: '12:00 by the clock', noonFixed: 'Without a place midday is 12:00 by the clock.',
-      noonNote: 'The Vinaya says only “when the middle of the day has passed”, not how to find it. The Sun’s highest point is astronomical midday; the middle of the day is halfway between sunrise and sunset (almost the same); 12:00 by the clock can differ by an hour or more. Dawn here is taken as sunrise.',
+      noonNote: 'The Vinaya says only “when midday has passed”, not how to find it. The Sun’s highest point is astronomical midday; the middle of the day is halfway between sunrise and sunset (almost the same); 12:00 by the clock can differ by an hour or more. Dawn here is taken as sunrise.',
  mealSet: 'Food (vikāla)', mealSumL: 'Show in the summary', mealRemL: 'Remind when the time for food ends', mealLead: 'In advance', mealLeads: [[0, 'when the time for food ends'], [15, '15 min before'], [30, '30 min before'], [45, '45 min before'], [60, '1 hour before'], [90, '1.5 hours before'], [120, '2 hours before']], mealDays: 'Days', mealDaysU: 'Uposatha days', mealDaysA: 'Every day', mealSnd: 'Sound of this reminder',
       twiFixed: 'Without a place the dawn is 06:00 and the dusk 18:00.', twiL: 'Dawn and dusk', twiNote: 'Twilight: the Sun 6, 12 or 18° below the horizon. Sets the borders of the day and the night and the dawn in the meals card.', twiO: { sun: 'Sunrise and sunset', civil: 'Civil (−6°)', nautical: 'Nautical (−12°)', astro: 'Astronomical (−18°)' },
       tstL: 'Test a reminder', tstKinds: { upo: 'Uposatha day', beg: 'The time for food begins', end: 'The time for food ends', parts: 'All 6 parts of the night and day, one by one' }, tst0: 'now', tst1: 'in 1 min', tstBlocked: 'The browser blocks notifications for this site: click the lock in the address bar, set Notifications to Allow, and try again.', tstNow: 'Sent now.', tst2: 'in 2 min', tstGo: 'Schedule the test',
@@ -106,7 +106,7 @@
       mealEat: function (noon, left) { return '<i>Kāla</i> — есть можно. Полдень в ' + noon + ' · до <i>vikāla</i>: ' + left; },
       mealVik: function (dawn, left) { return '<i>Vikāla</i> — до рассвета в ' + dawn + ': ' + left; },
       noonBy: 'Полдень считать по', noonSunS: 'Солнце', noonMidS: 'Середина дня', noonClockS: '12:00', noonWhat: 'Середина дня — ровно между восходом и закатом, центр средней трети дня.', noonChange: 'изменить', noonSun: 'Солнцу (высшая точка)', noonMid: 'середине дня', noonClock: '12:00 по часам', noonFixed: 'Без места полдень — 12:00 по часам.',
-      noonNote: 'В Винае сказано лишь «когда середина дня миновала», а как его определить — нет. Высшая точка Солнца — астрономический полдень; середина дня — ровно между восходом и закатом (почти то же самое); 12:00 по часам может отличаться на час и больше. Рассвет здесь принят за восход.',
+      noonNote: 'В Винае сказано лишь «когда полдень миновал», а как его определить — нет. Высшая точка Солнца — астрономический полдень; середина дня — ровно между восходом и закатом (почти то же самое); 12:00 по часам может отличаться на час и больше. Рассвет здесь принят за восход.',
  mealSet: 'Еда (vikāla)', mealSumL: 'Показывать в сводке', mealRemL: 'Напоминать об окончании времени еды', mealLead: 'Заранее', mealLeads: [[0, 'когда время еды закончится'], [15, 'за 15 мин'], [30, 'за 30 мин'], [45, 'за 45 мин'], [60, 'за 1 час'], [90, 'за 1,5 часа'], [120, 'за 2 часа']], mealDays: 'Дни', mealDaysU: 'Дни упосатхи', mealDaysA: 'Каждый день', mealSnd: 'Звук этого напоминания',
       twiFixed: 'Без места рассвет 06:00, закат 18:00.', twiL: 'Рассвет и закат', twiNote: 'Сумерки: Солнце на 6, 12 или 18° под горизонтом. Задаёт границы дня и ночи и рассвет в карточке приёма пищи.', twiO: { sun: 'Восход и закат', civil: 'Гражданские (−6°)', nautical: 'Навигационные (−12°)', astro: 'Астрономические (−18°)' },
       tstL: 'Проверить напоминание', tstKinds: { upo: 'День упосатхи', beg: 'Начало времени еды', end: 'Конец времени еды', parts: 'Все 6 частей ночи и дня по очереди' }, tst0: 'сейчас', tst1: 'через 1 мин', tstBlocked: 'Браузер блокирует уведомления для этого сайта: нажмите на замок в адресной строке, поставьте «Уведомления: Разрешить» и попробуйте снова.', tstNow: 'Отправлено сейчас.', tst2: 'через 2 мин', tstGo: 'Поставить проверку',
@@ -166,7 +166,7 @@
         ['MN 146', 'not by the phases of the moon alone: on the 14th it is not full {2}, on the 15th it is full {3}.', 'gap']]],
       ['More: about food', [
         ['MN 65', 'the Buddha to the monk Bhaddāli: “eat one part of the meal in the place where you’re invited, and bring the rest back to eat” — later, but still before midday. {19}'],
-        ['Pc 37', '<i>vikāla</i> is “when the middle of the day has passed, until dawn” — a rule for monks. {16}'],
+        ['Pc 37', '<i>vikāla</i> is “when midday has passed, until dawn” — a rule for monks. {16}'],
         ['MN 66', 'the monks give up the meal at the wrong time of day, and of night. {18}'],
         ['MN 70', 'abstaining from eating at night. {17}']]]],
     ru: [['Как соблюдать?', [
@@ -184,7 +184,7 @@
         ['МН 146', 'не только по фазам луны: на 14-й она неполная {2}, на 15-й — полная {3}.', 'gap']]],
       ['Дополнительно: про еду', [
         ['МН 65', 'Будда монаху Бхаддали: «съешь часть там, куда тебя пригласили, и часть [еды] забери с собой, чтобы поесть [после, но до полудня]». {19}'],
-        ['Пч 37', '<i>vikāla</i> — «когда середина дня миновала, до рассвета»; правило для монахов. {16}'],
+        ['Пч 37', '<i>vikāla</i> — «когда полдень миновал, до рассвета»; правило для монахов. {16}'],
         ['МН 66', 'монахи отказываются от еды в неподходящее время дня и ночи. {18}'],
         ['МН 70', 'воздерживаться от еды ночью. {17}']]]],
   };
