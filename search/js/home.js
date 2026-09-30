@@ -4874,8 +4874,7 @@
         // covers the online one, and dg-twa's releases hold no user-facing download.
         { img: 'apk-cta.png', href: 'https://github.com/dhammagift/dg-app-full/releases/latest', title: 'Download APK' },
         { img: 'chrome-cta.png', href: 'https://chromewebstore.google.com/detail/dhammagift-search-and-wor/dnnogjdcmhbiobpnkhdbfnfjnjlikabd', title: 'Chrome Web Store' },
-        // Firefox Add-ons hidden (owner, 2026-09-30): the listing is blocked, may come back. Entry was
-        // { img: 'firefox-cta.png', href: 'https://addons.mozilla.org/en-US/firefox/addon/dhamma-gift/', title: 'Firefox Add-ons' },
+        { img: 'firefox-cta.png', href: 'https://addons.mozilla.org/en-US/firefox/addon/dhamma-gift/', title: 'Firefox Add-ons' },
         { img: 'edge-cta.png', href: 'https://microsoftedge.microsoft.com/addons/detail/dhammagift-search-and-wo/aokegkhdaijkikbdocanadeghllhfmhj', title: 'Microsoft Edge Add-ons' }
         // Opera Add-ons hidden (owner, 2026-09-19): entry was
         // { img: 'opera-cta.png', href: 'https://addons.opera.com/en/extensions/details/dhammagift/', title: 'Opera Add-ons' }
