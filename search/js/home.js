@@ -4939,22 +4939,20 @@
     function buildCta(cta) {
         cta.innerHTML = '';
         CTA_BUTTONS.forEach(function (b) {
-            /* Кнопка установки PWA — единственная без готовой ссылки: её показывает и включает
-               перехват window.beforeinstallprompt (см. <head> index.html), который создаёт
-               плейсхолдер #installPWA и сохраняет отложенное событие в window.__dgInstallPrompt.
-               Если событие не пришло (браузер не предлагает установку, уже установлено и т.п.) —
-               плейсхолдера нет, тайл просто не рисуется: нерабочая «Установить» хуже отсутствующей. */
-            if (b.id && !document.getElementById(b.id)) return;
             var el = document.createElement('a');
             el.className = 'dg-cta-btn';
             el.title = b.title;
             el.innerHTML = '<img src="/assets/img/buttons/' + b.img + '" alt="' + esc(b.title) + '" loading="lazy">';
             if (b.id === 'installPWA') {
-                el.href = 'javascript:void(0)';
+                /* The PWA tile is always there (owner: "она всегда должна быть"): where the browser offers
+                   the install (window.beforeinstallprompt, kept in window.__dgInstallPrompt by <head> of
+                   index.html) a tap opens its dialog; everywhere else (Firefox, Safari, already installed)
+                   it is a link to the docs page that shows how to install by hand. */
+                el.href = menuLang() === 'ru' ? '/ru/docs/pwa' : '/docs/pwa';
                 el.addEventListener('click', function (ev) {
-                    ev.preventDefault();
                     var prompt = window.__dgInstallPrompt;
                     if (!prompt) return;
+                    ev.preventDefault();
                     prompt.prompt();
                     prompt.userChoice.finally(function () { window.__dgInstallPrompt = null; });
                 });
