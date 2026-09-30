@@ -3504,9 +3504,9 @@ window.dg_settingsChanged = false;
 window.dg_ignoreNextStorageEvent = false;
 window.dg_deletedKeys = new Set(); // Очередь ключей на удаление из облака
 window.dg_pendingSettingsUpdates = {}; // Очередь атомарных изменений (дифф)
-// Keys that never go to the cloud (and are not taken from it). dgUposathaLoc is the Uposatha calendar's place:
-// it stays on this device (owner, 2026-09-30); a prefix match, and the name the shipped apps read is unchanged.
-const DG_SYNC_IGNORE = ['DataTables_', 'localSearchHistory', 'lastSyncTime', 'syncPhrase', 'dg_', 'firebase_', 'firestore_', 'dgUposathaLoc'];
+// Keys that never go to the cloud (and are not taken from it). The Uposatha calendar's place, time zone and hemisphere
+// stay on this device (owner, 2026-09-30); a prefix match, and the names the shipped apps read are unchanged.
+const DG_SYNC_IGNORE = ['DataTables_', 'localSearchHistory', 'lastSyncTime', 'syncPhrase', 'dg_', 'firebase_', 'firestore_', 'dgUposathaLoc', 'dgUposathaTz', 'dgUposathaHemisphere'];
 let isObserverInitialized = false;
 
 window.initSettingsObserver = function() {
