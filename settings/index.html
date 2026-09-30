@@ -940,11 +940,22 @@ function applyUiScale(v){
   document.documentElement.style.setProperty('--dg-zoom', z);
   document.documentElement.style.zoom = z;
 }
-// Product of the ancestor documents' own zoom (same-origin frames; a foreign parent counts as 1).
-// ponytail: assumes zoom propagates into iframes (Chromium/WebView — the Android targets).
+// Product of the ancestor documents' zoom that actually reaches this frame (same-origin frames; a foreign
+// parent counts as 1). Chromium carries a parent's zoom into an iframe — the frame's own viewport is its box
+// divided by that zoom (411px box, 374px inside at 1.1) — WebKit does not: the viewport is as wide as the box
+// on screen (356px box, 392px inside). Dividing by a zoom WebKit never applied made the settings sheet wider
+// than the screen on iOS (the 110% phone scale; measured in Playwright WebKit, dg-apps webkit-probe).
 function inheritedZoom(){
   let z = 1, w = window;
-  try { while (w !== w.parent) { w = w.parent; z *= parseFloat(w.document.documentElement.style.zoom) || 1; } } catch (_) {}
+  try {
+    while (w !== w.parent) {
+      const fe = w.frameElement;
+      const pz = parseFloat(w.parent.document.documentElement.style.zoom) || 1;
+      const carried = !fe || w.innerWidth <= fe.getBoundingClientRect().width + 1;
+      if (carried) z *= pz;
+      w = w.parent;
+    }
+  } catch (_) {}
   return z;
 }
 // The parent re-zooms after a change made here (its 'storage' event) — this frame then sees a resize.
