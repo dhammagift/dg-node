@@ -3358,10 +3358,62 @@ window.syncLogout = async function() {
     if (typeof updateGlobalSyncButtons === 'function') updateGlobalSyncButtons(null, null);
 };
 
+// Account deletion needs two things from a Google/Apple account before anything is wiped
+// (dg-apps#43, App Review 5.1.1(v)):
+//  - a recent sign-in: Firebase refuses user.delete() otherwise, and that error used to be swallowed,
+//    so an account signed in long ago lost its data but the account itself stayed;
+//  - for Apple, revoking the app's Apple tokens (Sign in with Apple REST API, through Firebase's
+//    accounts:revokeToken), which Apple requires on account deletion.
+// The apps re-authenticate natively (native-bridge.js window.dgNativeSignIn), the site with a popup.
+// Throws when the reader cancels or signs in with another account: then nothing is deleted.
+async function reauthForDeletion(user) {
+    const has = (id) => (user.providerData || []).some(p => p && p.providerId === id);
+    const isApple = has('apple.com'), isGoogle = has('google.com');
+    if (!isApple && !isGoogle) return;
+    let revoke = null;
+    const inApp = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+    const native = typeof window.dgNativeSignIn === 'function' ? window.dgNativeSignIn(isApple ? 'apple' : 'google') : null;
+    if (native) {
+        const r = await native;
+        const credential = isApple
+            ? new firebase.auth.OAuthProvider('apple.com').credential({ idToken: r.idToken, rawNonce: r.rawNonce })
+            : firebase.auth.GoogleAuthProvider.credential(r.idToken);
+        await user.reauthenticateWithCredential(credential);
+        if (isApple && r.authorizationCode) revoke = { tokenType: 'CODE', token: r.authorizationCode };
+    } else if (!inApp) {
+        const res = await user.reauthenticateWithPopup(isApple ? appleProvider : googleProvider);
+        if (isApple && res && res.credential && res.credential.accessToken) revoke = { tokenType: 'ACCESS_TOKEN', token: res.credential.accessToken };
+    } else {
+        return; // an app with no native path for this provider (Android + Apple): nothing to re-authenticate with here
+    }
+    if (!revoke) return;
+    try {
+        const resp = await fetch('https://identitytoolkit.googleapis.com/v2/accounts:revokeToken?key=' + encodeURIComponent(firebase.app().options.apiKey), {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ providerId: 'apple.com', tokenType: revoke.tokenType, token: revoke.token, idToken: await user.getIdToken() })
+        });
+        if (!resp.ok) console.error('Apple token revocation failed:', resp.status, await resp.text());
+    } catch (e) { console.error('Apple token revocation failed:', e); }
+}
+
 window.syncDeleteData = async function() {
     const uid = typeof getUid === 'function' ? getUid() : null;
     const currentDb = typeof db !== 'undefined' ? db : window.db;
-    
+
+    const signedInUser = typeof auth !== 'undefined' && auth ? auth.currentUser : null;
+    if (signedInUser) {
+        try {
+            await reauthForDeletion(signedInUser);
+        } catch (e) {
+            console.error('Delete: re-authentication failed or cancelled:', e);
+            if (typeof showBubbleNotification === 'function') {
+                showBubbleNotification(window.notEn
+                    ? 'Удаление отменено: нужно подтвердить вход тем же аккаунтом.'
+                    : 'Deletion cancelled: please confirm sign-in with the same account.', 6000, 'error');
+            }
+            return;
+        }
+    }
 
     if (uid && currentDb) {
         try {
