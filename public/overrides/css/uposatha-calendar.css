@@ -665,9 +665,9 @@ body.app:has(#up-splash)::after { display: none; }
 .up-switch { position: relative; display: inline-flex; align-items: center; flex: none; }
 .up-switch input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; margin: 0; cursor: pointer; }
 .up-track, .up-thumb { pointer-events: none; }
-.up-track { width: 46px; height: 28px; border-radius: 999px; background: var(--dg-border-strong); transition: background .18s; display: block; }
-.up-thumb { position: absolute; left: 3px; top: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.3); transition: transform .18s; }
+.up-track { width: 39px; height: 24px; border-radius: 999px; background: var(--dg-border-strong); transition: background .18s; display: block; }
+.up-thumb { position: absolute; left: 3px; top: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.3); transition: transform .18s; }
 .up-switch input:checked ~ .up-track { background: var(--dg-accent); }
-.up-switch input:checked ~ .up-thumb { transform: translateX(18px); }
+.up-switch input:checked ~ .up-thumb { transform: translateX(15px); }
 .up-switch input:focus-visible ~ .up-track { outline: 3px solid var(--dg-accent); outline-offset: 3px; }
 @media (prefers-reduced-motion: reduce) { .up-track, .up-thumb { transition: none; } }
