@@ -66,7 +66,7 @@
       mealBegSun: function (rise) { return 'Sunrise at ' + rise + ' — time for food.'; },
       mealBegTitle: 'Time for food soon', mealBegBody: function (dawn, lead) { return 'Dawn at ' + dawn + ' — the time for food begins in ' + (lead >= 60 ? (lead / 60) + ' h' : lead + ' min') + '.'; },
       mealRemTitle: 'Vikāla soon', mealRemBody: function (noon, lead) { return 'Midday at ' + noon + ' — the time for food ends in ' + (lead >= 60 ? (lead / 60) + ' h' : lead + ' min') + '.'; },
-      logoTip: 'Home · change the language: long press or right click', rateUs: 'Rate Us', privacy: 'Privacy Policy', appVer: 'App version', timeL: 'Time', ofMode: function (n, m, su) { return n + ' of ' + m + (su ? ' by the suttas' : ' modern'); }, placeQ: 'For exact moon phases and sun times, please share your location.', remQ: 'Remind you of the Uposatha days a day before?', remYes: 'Turn on', remNo: 'Not now', remSet: 'Settings', placeYes: 'Find my place', placeCity: 'Manually', placeLater: 'Later', advL: 'Advanced: twilight, place updates, time zone, hemisphere', ctxNoPlace: 'Place not set', ctxPlace: 'Your place', locRefresh: 'Update my location', locHere: 'by geo', navKeys: 'Suttas', navHome: 'Summary', navList: 'Uposathas', navCal: 'Calendar', navParts: 'Night–day', navSet: 'Settings',
+      logoTip: 'Home · change the language: long press or right click', rateUs: 'Rate Us', privacy: 'Privacy Policy', appVer: 'App version', timeL: 'Time', ofMode: function (n, m, su) { return n + ' of ' + m + (su ? ' by the suttas' : ' modern'); }, placeQ: 'For exact moon phases and sun times, please share your location.', pastShow: 'Past', pastHide: 'Hide the past', remQ: 'Remind you of the Uposatha days a day before?', remYes: 'Turn on', remNo: 'Not now', remSet: 'Settings', placeYes: 'Find my place', placeCity: 'Manually', placeLater: 'Later', advL: 'Advanced: twilight, place updates, time zone, hemisphere', ctxNoPlace: 'Place not set', ctxPlace: 'Your place', locRefresh: 'Update my location', locHere: 'by geo', navKeys: 'Suttas', navHome: 'Summary', navList: 'Uposathas', navCal: 'Calendar', navParts: 'Night–day', navSet: 'Settings',
       sound: 'Sound', soundNone: 'Silent', soundOwn: 'My own sound…', soundOwnNamed: 'My own: %', soundFail: 'The sound was not set.', sounds: { vikala: 'Vinaya: what is vikāla (Pali)', gong: 'Gong', gong3: 'Gong 2', gong4: 'Gong 3', gong5: 'Gong 4', gong2: 'Gong 5', bell: 'Bell' },
       remAppNote: 'Reminders are scheduled on this device and arrive even when the app is closed.',
       remNext: function (when, what) { return 'Next reminder: ' + when + ' — ' + what; }, remNone: 'No reminder is due in the coming weeks.',
@@ -121,7 +121,7 @@
       mealBegSun: function (rise) { return 'Рассвет в ' + rise + ' — время еды.'; },
       mealBegTitle: 'Скоро время еды', mealBegBody: function (dawn, lead) { return 'Заря в ' + dawn + ' — время еды начнётся через ' + (lead >= 60 ? (lead / 60 + '').replace('.', ',') + ' ч' : lead + ' мин') + '.'; },
       mealRemTitle: 'Скоро vikāla', mealRemBody: function (noon, lead) { return 'Полдень в ' + noon + ' — время еды закончится через ' + (lead >= 60 ? (lead / 60 + '').replace('.', ',') + ' ч' : lead + ' мин') + '.'; },
-      logoTip: 'Домой · сменить язык: долгое нажатие или правая кнопка', rateUs: 'Оценить приложение', privacy: 'Политика конфиденциальности', appVer: 'Версия приложения', timeL: 'Время', ofMode: function (n, m, su) { return n + ' из ' + m + (su ? ' по суттам' : ' по современной'); }, placeQ: 'Для точных лунных фаз и времени солнца нужно ваше местоположение.', remQ: 'Напоминать о днях упосатхи за сутки?', remYes: 'Включить', remNo: 'Не сейчас', remSet: 'Настроить', placeYes: 'Вкл. место', placeCity: 'Вручную', placeLater: 'Позже', advL: 'Дополнительно: сумерки, обновление места, часовой пояс, полушарие', ctxNoPlace: 'Место не задано', ctxPlace: 'Ваше место', locRefresh: 'Обновить моё место', locHere: 'по гео',  navKeys: 'Сутты', navHome: 'Сводка', navList: 'Упосатхи', navCal: 'Календарь', navParts: 'Ночь–день', navSet: 'Настройки',
+      logoTip: 'Домой · сменить язык: долгое нажатие или правая кнопка', rateUs: 'Оценить приложение', privacy: 'Политика конфиденциальности', appVer: 'Версия приложения', timeL: 'Время', ofMode: function (n, m, su) { return n + ' из ' + m + (su ? ' по суттам' : ' по современной'); }, placeQ: 'Для точных лунных фаз и времени солнца нужно ваше местоположение.', pastShow: 'Прошедшие', pastHide: 'Скрыть прошедшие', remQ: 'Напоминать о днях упосатхи за сутки?', remYes: 'Включить', remNo: 'Не сейчас', remSet: 'Настроить', placeYes: 'Вкл. место', placeCity: 'Вручную', placeLater: 'Позже', advL: 'Дополнительно: сумерки, обновление места, часовой пояс, полушарие', ctxNoPlace: 'Место не задано', ctxPlace: 'Ваше место', locRefresh: 'Обновить моё место', locHere: 'по гео',  navKeys: 'Сутты', navHome: 'Сводка', navList: 'Упосатхи', navCal: 'Календарь', navParts: 'Ночь–день', navSet: 'Настройки',
       sound: 'Звук', soundNone: 'Без звука', soundOwn: 'Свой звук…', soundOwnNamed: 'Свой: %', soundFail: 'Звук не задан.', sounds: { vikala: 'Виная: что такое vikāla (пали)', gong: 'Гонг', gong3: 'Гонг 2', gong4: 'Гонг 3', gong5: 'Гонг 4', gong2: 'Гонг 5', bell: 'Колокол' },
       remAppNote: 'Напоминания ставятся на этом устройстве и приходят даже при закрытом приложении.',
       remNext: function (when, what) { return 'Ближайшее напоминание: ' + when + ' — ' + what; }, remNone: 'В ближайшие недели напоминаний нет.',
@@ -370,6 +370,36 @@
   // the site's segmented control (.dg-segmented): the pressed button is the value
   var htmlLast = {};
   function setHtml(id, html) { if (htmlLast[id] === html) return; htmlLast[id] = html; $(id).innerHTML = html; } // a repaint on every tap must not rebuild a table that did not change
+  // The past of the current month folded into one line, the last past Uposatha still shown: the next one is on the first screen
+  // (owner: at the end of the month the whole month had to be scrolled past). The site only for now; the app layer later, if it reads well.
+  var pastOpen = {};
+  function collapsePast(id, F) {
+    var box = $(id), tb = box && box.querySelector('.mon tbody');
+    if (!tb || document.body.classList.contains('app') || tb.querySelector('.pastbar')) return;
+    var rows = [].slice.call(tb.rows), past = rows.filter(function (x) { return x.classList.contains('row') && x.getAttribute('data-past') === 'true'; });
+    var keep = past.length ? past[past.length - 1].getAttribute('data-ymd') : '', hid = [];
+    rows.forEach(function (x, i) {
+      var own = x.classList.contains('det') ? rows[i - 1] : x; // the detail line goes with its row
+      if (own && own.getAttribute('data-past') === 'true' && own.getAttribute('data-ymd') !== keep) { x.classList.add('pasthid'); hid.push(x); }
+    });
+    for (var i = rows.length - 1; i >= 0; i--) { // a cell that spans into a shown row keeps its own row shown
+      var x = rows[i]; if (!x.classList.contains('pasthid')) continue;
+      var spans = [].some.call(x.cells, function (c) { for (var k = 1; k < c.rowSpan; k++) if (rows[i + k] && !rows[i + k].classList.contains('pasthid')) return true; return false; });
+      if (spans) x.classList.remove('pasthid');
+    }
+    var gone = rows.filter(function (x) { return x.classList.contains('pasthid') && x.classList.contains('row'); });
+    if (!gone.length) return;
+    var a = gone[0].getAttribute('data-ymd'), z = gone[gone.length - 1].getAttribute('data-ymd');
+    function dm(ymd) { return F.dm.format(Date.parse(ymd)).replace(/^[^\s\d]+,?\s/, ''); } // the date without its weekday
+    var range = dm(a) + (a === z ? '' : ' – ' + dm(z));
+    var bar = document.createElement('tr'); bar.className = 'pastbar';
+    bar.innerHTML = '<td colspan="3"><button type="button" aria-expanded="false"></button></td>';
+    tb.insertBefore(bar, tb.firstChild);
+    var btn = bar.querySelector('button');
+    function show() { box.classList.toggle('pastopen', !!pastOpen[id]); btn.setAttribute('aria-expanded', String(!!pastOpen[id])); btn.textContent = (pastOpen[id] ? '▾ ' + t.pastHide : '▸ ' + t.pastShow + ' · ' + range); }
+    btn.onclick = function () { pastOpen[id] = !pastOpen[id]; show(); };
+    show();
+  }
   function setSeg(id, v) { Array.prototype.forEach.call($(id).children, function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-v') === String(v))); }); }
   // Toggling a setting used to jump the rows below it instantly (style.display none<->''), which is
   // what a tap right after felt like it landed on the wrong control — the layout had already moved
@@ -601,7 +631,7 @@
         '<tr class="det"' + (running ? ' data-now="true"' : '') + '><td colspan="3"><span class="info">' + listDetail(r) + '</span></td></tr>';
     });
     if (lastMonth) html += '</tbody></table></div>';
-    setHtml('list', html);
+    setHtml('list', html); collapsePast('list', F);
     // The same days by dates: the date, the moon, and what happens that day — the beginning and / or the end of an Uposatha. By the suttas an Uposatha
     // begins on one date and ends on the next, so two Uposathas one after another share a date: it ends the first and begins the second.
     (function () {
@@ -641,7 +671,7 @@
           (isToday && f.last ? '<span class="tdy">' + esc(t.isToday) + '</span>' : '') + '</td></tr>';
       });
       if (lastM) out += '</tbody></table></div>';
-      setHtml('dates', out);
+      setHtml('dates', out); collapsePast('dates', F);
     })();
 
     // ----- the calendar: one ordinary month, weeks in rows
