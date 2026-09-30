@@ -56,7 +56,7 @@
       noonNote: 'The Vinaya says only “when midday has passed”, not how to find it. The Sun’s highest point is astronomical midday; the middle of the day is halfway between sunrise and sunset (almost the same); 12:00 by the clock can differ by an hour or more. Dawn here is taken as sunrise.',
  mealSet: 'Food (vikāla)', mealSumL: 'Show in the summary', mealRemL: 'Remind when the time for food ends', mealLead: 'In advance', mealLeads: [[0, 'when the time for food ends'], [15, '15 min before'], [30, '30 min before'], [45, '45 min before'], [60, '1 hour before'], [90, '1.5 hours before'], [120, '2 hours before']], mealDays: 'Days', mealDaysU: 'Uposatha days', mealDaysA: 'Every day', mealSnd: 'Sound of this reminder',
       twiFixed: 'Without a place the dawn is 06:00 and the dusk 18:00.', twiL: 'Dawn and dusk', twiNote: 'Twilight: the Sun 6, 12 or 18° below the horizon. Sets the borders of the day and the night.',
-      locAutoL: 'Update my place', locAutoDay: 'Once a day', locAutoNote: 'Off by default. On: once a day, when the app opens, the place is found again, so the times follow you when you travel. It stays on this device.', twiO: { sun: 'Sunrise and sunset', civil: 'Civil (−6°)', nautical: 'Nautical (−12°)', astro: 'Astronomical (−18°)' },
+      locAutoL: 'Update my place automatically on opening', locAutoDay: 'Once a day', locAutoNote: 'Once a day, when the app opens, the place is found again, so the times follow you when you travel. It stays on this device.', twiO: { sun: 'Sunrise and sunset', civil: 'Civil (−6°)', nautical: 'Nautical (−12°)', astro: 'Astronomical (−18°)' },
       tstL: 'Test a reminder', tstKinds: { upo: 'Uposatha day', beg: 'The time for food begins', end: 'The time for food ends', parts: 'All 6 parts of the night and day, one by one' }, tst0: 'now', tst1: 'in 1 min', tstBlocked: 'The browser blocks notifications for this site: click the lock in the address bar, set Notifications to Allow, and try again.', tstNow: 'Sent now.', tst2: 'in 2 min', tstGo: 'Schedule the test',
       tstTitle: function (k) { return { upo: 'Uposatha (test)', beg: 'Time for food (test)', end: 'Vikāla soon (test)', parts: 'Parts (test)' }[k]; }, tstBody: 'A test reminder with the sound of this kind.', tstSet: function (at) { return 'It will come at ' + at + '.'; }, tstDenied: 'Notifications are not allowed.',
       testsOn: 'Tests are shown in the menu', testsOff: 'Tests are hidden', testsG: 'Tests', testL: 'Test: show the state', testReal: 'as is', testTag: 'test',
@@ -111,7 +111,7 @@
       noonNote: 'В Винае сказано лишь «когда полдень миновал», а как его определить — нет. Высшая точка Солнца — астрономический полдень; середина дня — ровно между восходом и закатом (почти то же самое); 12:00 по часам может отличаться на час и больше. Рассвет здесь принят за восход.',
  mealSet: 'Еда (vikāla)', mealSumL: 'Показывать в сводке', mealRemL: 'Напоминать об окончании времени еды', mealLead: 'Заранее', mealLeads: [[0, 'когда время еды закончится'], [15, 'за 15 мин'], [30, 'за 30 мин'], [45, 'за 45 мин'], [60, 'за 1 час'], [90, 'за 1,5 часа'], [120, 'за 2 часа']], mealDays: 'Дни', mealDaysU: 'Дни упосатхи', mealDaysA: 'Каждый день', mealSnd: 'Звук этого напоминания',
       twiFixed: 'Без места рассвет 06:00, закат 18:00.', twiL: 'Рассвет и закат', twiNote: 'Сумерки: Солнце на 6, 12 или 18° под горизонтом. Задаёт границы дня и ночи.',
-      locAutoL: 'Обновлять место', locAutoDay: 'Раз в день', locAutoNote: 'По умолчанию выключено. Если включить, раз в сутки при открытии место определяется заново, и время пересчитывается, когда вы переезжаете. Место остаётся только на этом устройстве.', twiO: { sun: 'Восход и закат', civil: 'Гражданские (−6°)', nautical: 'Навигационные (−12°)', astro: 'Астрономические (−18°)' },
+      locAutoL: 'Обновлять место автоматически при входе', locAutoDay: 'Раз в день', locAutoNote: 'Раз в сутки при открытии место определяется заново, и время пересчитывается, когда вы переезжаете. Место остаётся только на этом устройстве.', twiO: { sun: 'Восход и закат', civil: 'Гражданские (−6°)', nautical: 'Навигационные (−12°)', astro: 'Астрономические (−18°)' },
       tstL: 'Проверить напоминание', tstKinds: { upo: 'День упосатхи', beg: 'Начало времени еды', end: 'Конец времени еды', parts: 'Все 6 частей ночи и дня по очереди' }, tst0: 'сейчас', tst1: 'через 1 мин', tstBlocked: 'Браузер блокирует уведомления для этого сайта: нажмите на замок в адресной строке, поставьте «Уведомления: Разрешить» и попробуйте снова.', tstNow: 'Отправлено сейчас.', tst2: 'через 2 мин', tstGo: 'Поставить проверку',
       tstTitle: function (k) { return { upo: 'Упосатха (проверка)', beg: 'Время еды (проверка)', end: 'Скоро vikāla (проверка)', parts: 'Части (проверка)' }[k]; }, tstBody: 'Проверочное напоминание со звуком этого вида.', tstSet: function (at) { return 'Придёт в ' + at + '.'; }, tstDenied: 'Уведомления не разрешены.',
       testsOn: 'Проверка показана в меню', testsOff: 'Проверка скрыта', testsG: 'Проверка', testL: 'Проверка: показать состояние', testReal: 'как есть', testTag: 'тест',
@@ -1341,6 +1341,20 @@
       if (state.locAuto) { store('dgUposathaLocAt', String(Date.now())); detectLocation(false); } else paint(); // turned on: now, and the permission is asked here
     });
     autoLocate();
+    // The on/off settings as switches (owner: a switch reads as on/off; two buttons read like a choice, of a language or a
+    // theme). The two-button group stays, hidden, as the state: setSeg/onSeg work as before, the switch mirrors it and presses it.
+    ['sw-sut', 'sw-det', 'locautoseg', 'sw-rem', 'sw-msum', 'sw-mbeg', 'sw-mrem', 'sw-prem'].forEach(function (id) {
+      var seg = $(id), label = seg && seg.previousElementSibling; if (!seg || !label) return;
+      var row = document.createElement('label'); row.className = 'up-swrow';
+      label.parentNode.insertBefore(row, label); row.appendChild(label);
+      var sw = document.createElement('span'); sw.className = 'up-switch';
+      sw.innerHTML = '<input type="checkbox" role="switch"><span class="up-track"></span><span class="up-thumb"></span>';
+      row.appendChild(sw); seg.hidden = true;
+      var input = sw.firstChild;
+      function sync() { var on = seg.querySelector('[data-v="1"]'); input.checked = !!on && on.getAttribute('aria-pressed') === 'true'; }
+      input.onchange = function () { var b = seg.querySelector('[data-v="' + (input.checked ? 1 : 0) + '"]'); if (b) b.click(); sync(); };
+      new MutationObserver(sync).observe(seg, { subtree: true, attributes: true, attributeFilter: ['aria-pressed'] }); sync();
+    });
     document.addEventListener('visibilitychange', function () { if (!document.hidden) autoLocate(); });
     $('loc-btn').onclick = function () { detectLocation(false); };
     // The place by a city: our own suggestions (a native datalist has no list in the Android WebView and shows nothing on an empty field)
