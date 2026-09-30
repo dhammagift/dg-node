@@ -66,7 +66,7 @@
       mealBegSun: function (rise) { return 'Sunrise at ' + rise + ' — time for food.'; },
       mealBegTitle: 'Time for food soon', mealBegBody: function (dawn, lead) { return 'Dawn at ' + dawn + ' — the time for food begins in ' + (lead >= 60 ? (lead / 60) + ' h' : lead + ' min') + '.'; },
       mealRemTitle: 'Vikāla soon', mealRemBody: function (noon, lead) { return 'Midday at ' + noon + ' — the time for food ends in ' + (lead >= 60 ? (lead / 60) + ' h' : lead + ' min') + '.'; },
-      logoTip: 'Home · change the language: long press or right click', rateUs: 'Rate Us', privacy: 'Privacy Policy', appVer: 'App version', timeL: 'Time', ofMode: function (n, m, su) { return n + ' of ' + m + (su ? ' by the suttas' : ' modern'); }, placeQ: 'For exact moon phases and sun times we need your location.', placeYes: 'Find my place', placeLater: 'Later', advL: 'Advanced: twilight, place updates, time zone, hemisphere', ctxNoPlace: 'Place not set', ctxPlace: 'Your place', locRefresh: 'Update my location', locHere: 'by geo', navKeys: 'Suttas', navHome: 'Summary', navList: 'Uposathas', navCal: 'Calendar', navParts: 'Night–day', navSet: 'Settings',
+      logoTip: 'Home · change the language: long press or right click', rateUs: 'Rate Us', privacy: 'Privacy Policy', appVer: 'App version', timeL: 'Time', ofMode: function (n, m, su) { return n + ' of ' + m + (su ? ' by the suttas' : ' modern'); }, placeQ: 'For exact moon phases and sun times we need your location.', remQ: 'Remind you of the Uposatha days a day before?', remYes: 'Turn on', remNo: 'Not now', remSet: 'Settings', placeYes: 'Find my place', placeLater: 'Later', advL: 'Advanced: twilight, place updates, time zone, hemisphere', ctxNoPlace: 'Place not set', ctxPlace: 'Your place', locRefresh: 'Update my location', locHere: 'by geo', navKeys: 'Suttas', navHome: 'Summary', navList: 'Uposathas', navCal: 'Calendar', navParts: 'Night–day', navSet: 'Settings',
       sound: 'Sound', soundNone: 'Silent', soundOwn: 'My own sound…', soundOwnNamed: 'My own: %', soundFail: 'The sound was not set.', sounds: { vikala: 'Vinaya: what is vikāla (Pali)', gong: 'Gong', gong3: 'Gong 2', gong4: 'Gong 3', gong5: 'Gong 4', gong2: 'Gong 5', bell: 'Bell' },
       remAppNote: 'Reminders are scheduled on this device and arrive even when the app is closed.',
       remNext: function (when, what) { return 'Next reminder: ' + when + ' — ' + what; }, remNone: 'No reminder is due in the coming weeks.',
@@ -121,7 +121,7 @@
       mealBegSun: function (rise) { return 'Рассвет в ' + rise + ' — время еды.'; },
       mealBegTitle: 'Скоро время еды', mealBegBody: function (dawn, lead) { return 'Заря в ' + dawn + ' — время еды начнётся через ' + (lead >= 60 ? (lead / 60 + '').replace('.', ',') + ' ч' : lead + ' мин') + '.'; },
       mealRemTitle: 'Скоро vikāla', mealRemBody: function (noon, lead) { return 'Полдень в ' + noon + ' — время еды закончится через ' + (lead >= 60 ? (lead / 60 + '').replace('.', ',') + ' ч' : lead + ' мин') + '.'; },
-      logoTip: 'Домой · сменить язык: долгое нажатие или правая кнопка', rateUs: 'Оценить приложение', privacy: 'Политика конфиденциальности', appVer: 'Версия приложения', timeL: 'Время', ofMode: function (n, m, su) { return n + ' из ' + m + (su ? ' по суттам' : ' по современной'); }, placeQ: 'Для точных лунных фаз и времени солнца нужно ваше местоположение.', placeYes: 'Определить место', placeLater: 'Позже', advL: 'Дополнительно: сумерки, обновление места, часовой пояс, полушарие', ctxNoPlace: 'Место не задано', ctxPlace: 'Ваше место', locRefresh: 'Обновить моё место', locHere: 'по гео',  navKeys: 'Сутты', navHome: 'Сводка', navList: 'Упосатхи', navCal: 'Календарь', navParts: 'Ночь–день', navSet: 'Настройки',
+      logoTip: 'Домой · сменить язык: долгое нажатие или правая кнопка', rateUs: 'Оценить приложение', privacy: 'Политика конфиденциальности', appVer: 'Версия приложения', timeL: 'Время', ofMode: function (n, m, su) { return n + ' из ' + m + (su ? ' по суттам' : ' по современной'); }, placeQ: 'Для точных лунных фаз и времени солнца нужно ваше местоположение.', remQ: 'Напоминать о днях упосатхи за сутки?', remYes: 'Включить', remNo: 'Не сейчас', remSet: 'Настроить', placeYes: 'Определить место', placeLater: 'Позже', advL: 'Дополнительно: сумерки, обновление места, часовой пояс, полушарие', ctxNoPlace: 'Место не задано', ctxPlace: 'Ваше место', locRefresh: 'Обновить моё место', locHere: 'по гео',  navKeys: 'Сутты', navHome: 'Сводка', navList: 'Упосатхи', navCal: 'Календарь', navParts: 'Ночь–день', navSet: 'Настройки',
       sound: 'Звук', soundNone: 'Без звука', soundOwn: 'Свой звук…', soundOwnNamed: 'Свой: %', soundFail: 'Звук не задан.', sounds: { vikala: 'Виная: что такое vikāla (пали)', gong: 'Гонг', gong3: 'Гонг 2', gong4: 'Гонг 3', gong5: 'Гонг 4', gong2: 'Гонг 5', bell: 'Колокол' },
       remAppNote: 'Напоминания ставятся на этом устройстве и приходят даже при закрытом приложении.',
       remNext: function (when, what) { return 'Ближайшее напоминание: ' + when + ' — ' + what; }, remNone: 'В ближайшие недели напоминаний нет.',
@@ -533,6 +533,7 @@
     window.__upoMoon = mRow && mk ? { f: mk === 8 ? 0.5 : mk === 14 ? 0.27 : (mRow.waxing ? 1 : 0), right: mRow.waxing !== state.south, day: mk, waxing: !!mRow.waxing } : null;
     if (typeof window.__upoNavMoon === 'function') window.__upoNavMoon();
     if (typeof window.__upoPlaceAsk === 'function') window.__upoPlaceAsk();
+    if (typeof window.__upoRemAsk === 'function') window.__upoRemAsk();
 
     // ----- today
     var angle = A.MoonPhase(now), tithi = tithiAt(now), pIndex = Math.floor(((angle + 22.5) % 360) / 45);
@@ -1216,9 +1217,26 @@
         var ctx = document.querySelector('main.page .ctx'); if (!ctx) return; ctx.parentNode.insertBefore(ask, ctx);
         ask.querySelector('p').textContent = t.placeQ; ask.querySelector('.pa-yes').textContent = t.placeYes; ask.querySelector('.pa-no').textContent = t.placeLater;
         ask.querySelector('.pa-yes').onclick = function () { haptic(); store('dgUposathaPlaceAsk', '1'); ask.hidden = true; if (window.__upoDetect) window.__upoDetect(true); };
-        ask.querySelector('.pa-no').onclick = function () { store('dgUposathaPlaceAsk', '1'); ask.hidden = true; };
+        ask.querySelector('.pa-no').onclick = function () { store('dgUposathaPlaceAsk', '1'); ask.hidden = true; if (window.__upoRemAsk) window.__upoRemAsk(); };
         window.__upoPlaceAsk = function () { ask.hidden = !!state.loc || store('dgUposathaPlaceAsk') === '1'; ask.querySelector('p').textContent = t.placeQ; ask.querySelector('.pa-yes').textContent = t.placeYes; ask.querySelector('.pa-no').textContent = t.placeLater; };
         window.__upoPlaceAsk();
+      })();
+      // Then, once, the reminders (owner: the reader should not have to find the settings to get them). Only after the place
+      // question is out of the way, one card at a time; the permission is asked by "Turn on" alone; any answer is remembered.
+      (function () {
+        var ask = document.createElement('section'); ask.className = 'placeask'; ask.id = 'rem-ask'; ask.hidden = true;
+        ask.innerHTML = '<p></p><div><button type="button" class="pa-yes"></button><button type="button" class="pa-no"></button><button type="button" class="pa-no pa-set"></button></div>';
+        var place = $('place-ask'), ctx = document.querySelector('main.page .ctx'); if (!ctx) return; ctx.parentNode.insertBefore(ask, ctx);
+        function done() { store('dgUposathaRemAsk', '1'); ask.hidden = true; }
+        ask.querySelector('.pa-yes').onclick = function () { haptic(); done(); var b = $('sw-rem').querySelector('[data-v="1"]'); if (b) b.click(); };
+        ask.querySelector('.pa-no').onclick = done;
+        ask.querySelector('.pa-set').onclick = function () { done(); openSettings('sw-rem-row'); };
+        window.__upoRemAsk = function () {
+          ask.hidden = state.rem.on || store('dgUposathaRemAsk') === '1' || !!(place && !place.hidden);
+          ask.querySelector('p').textContent = t.remQ; ask.querySelector('.pa-yes').textContent = t.remYes;
+          ask.querySelector('.pa-no').textContent = t.remNo; ask.querySelector('.pa-set').textContent = t.remSet;
+        };
+        window.__upoRemAsk();
       })();
       // the gear and the theme in the corner of the app bar
       // while the drawer opens, the two buttons of the bar go to where the drawer's own share and close buttons are (its final place, not where it is now)
@@ -1345,7 +1363,7 @@
     // theme). The two-button group stays, hidden, as the state: setSeg/onSeg work as before, the switch mirrors it and presses it.
     ['sw-sut', 'sw-det', 'locautoseg', 'sw-rem', 'sw-msum', 'sw-mbeg', 'sw-mrem', 'sw-prem'].forEach(function (id) {
       var seg = $(id), label = seg && seg.previousElementSibling; if (!seg || !label) return;
-      var row = document.createElement('label'); row.className = 'up-swrow';
+      var row = document.createElement('label'); row.className = 'up-swrow'; row.id = id + '-row'; // openSettings() lights it up
       label.parentNode.insertBefore(row, label); row.appendChild(label);
       var sw = document.createElement('span'); sw.className = 'up-switch';
       sw.innerHTML = '<input type="checkbox" role="switch"><span class="up-track"></span><span class="up-thumb"></span>';
