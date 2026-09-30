@@ -1,6 +1,8 @@
 /* Слой «приложение» поверх прод-стилей uposatha-calendar.css. Работает только под body.app (?app=1 или Capacitor),
    сайт не трогает. Контент прежний — меняются поверхности, навигация, иконки и движение. */
 body.app{--up-surf:color-mix(in oklab,var(--dg-accent) 5%,var(--dg-page));--up-surf-2:color-mix(in oklab,var(--dg-accent) 10%,var(--dg-page));--up-line:color-mix(in oklab,var(--dg-border) 70%,transparent);--up-emph:cubic-bezier(.2,0,0,1);--up-dec:cubic-bezier(.05,.7,.1,1);--up-acc:cubic-bezier(.3,0,.8,.15);background:var(--dg-page);-webkit-tap-highlight-color:transparent}
+/* dark: 5% of the accent over #111 was all but black (owner: "плашки почти не видны") — the cards are lifted off the page instead */
+[data-theme="dark"] body.app{--up-surf:color-mix(in oklab,var(--dg-accent) 8%,#1f1f1f);--up-surf-2:color-mix(in oklab,var(--dg-accent) 12%,#272727)}
 /* шапка: без рамки, тональная подложка появляется при прокрутке — как top app bar в M3 */
 body.app .tbar{padding:10px 12px 8px;border-bottom:0;box-shadow:none;transition:background .3s var(--up-emph),transform .25s var(--dg-ease)}
 body.app.scrolled .tbar{background:var(--up-surf-2);border-bottom-color:transparent;box-shadow:none}
