@@ -3394,7 +3394,10 @@ window.syncDeleteData = async function() {
                 deleteCollection("history"),
                 deleteCollection("favorites"),
                 deleteCollection("progress"),
-                deleteCollection("sessions")
+                deleteCollection("sessions"),
+                // Reading subscriptions are synced too: "Delete account & cloud data" left them in
+                // Firestore (found by the owner, 2026-09-30). Every subcollection of users/{uid} goes.
+                deleteCollection("subscriptions")
             ]);
 
             // 2. Уничтожаем сам корневой документ (с настройками)
