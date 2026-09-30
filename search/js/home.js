@@ -4866,10 +4866,10 @@
        перенесены как есть из config/translate.php ($ctaButtons) и index.php (#contacts);
        картинки кнопок берём оттуда же — /assets/img/buttons/*.png лежат на месте. */
     var CTA_BUTTONS = [
-        { img: 'pwa-cta.png', href: null, id: 'installPWA', title: 'Install Dhamma.gift as progressive web app' },
-        { img: 'telegram-cta.png', href: 'https://t.me/dgift_bot', title: 'Open DGift_bot' },
-        { img: 'google-play-cta.png', href: 'https://play.google.com/store/apps/details?id=gift.dhamma.twa', title: 'Download from Google Play' },
         { img: 'appstore-cta.png', href: 'https://apps.apple.com/app/id6813706217', title: 'Download on the App Store' },
+        { img: 'google-play-cta.png', href: 'https://play.google.com/store/apps/details?id=gift.dhamma.twa', title: 'Download from Google Play' },
+        { img: 'telegram-cta.png', href: 'https://t.me/dgift_bot', title: 'Open DGift_bot' },
+        { img: 'pwa-cta.png', href: null, id: 'installPWA', title: 'Install Dhamma.gift as progressive web app' },
         // APK = the offline app (dg-app-full), not the TWA wrapper: the Play button above already
         // covers the online one, and dg-twa's releases hold no user-facing download.
         { img: 'apk-cta.png', href: 'https://github.com/dhammagift/dg-app-full/releases/latest', title: 'Download APK' },
