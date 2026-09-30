@@ -1386,6 +1386,10 @@ const LEGACY_HELP_REDIRECTS = {
 for (const [file, target] of Object.entries(LEGACY_HELP_REDIRECTS)) {
     app.get('/assets/common/' + file, (req, res) => res.redirect(target, 301));
 }
+// The app's help page was /dhamma-gift-full while an online and a full app existed; one app now.
+for (const p of ['/docs', '/ru/docs']) {
+    app.get(p + '/dhamma-gift-full', (req, res) => res.redirect(p + '/dhamma-gift-app', 301));
+}
 // Project tools retired on this site (owner: "не нужен", "было под проект"). The legacy tree keeps the
 // files for the old site, so without these routes the static fallback would still serve them here.
 // One edition-abbreviations page, /assets/common/abbr.html (the current copy); old links keep working.
