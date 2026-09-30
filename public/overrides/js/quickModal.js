@@ -938,7 +938,7 @@ function openQuickSubForm(sub, q) {
         ${inApp ? '' : `<label class="quick-sublabel">${QS_T('Напоминание', 'Reminder')}</label>
         ${seg('web', [['open', QS_T('Раз в день, при открытии браузера', 'Once a day, when the browser opens')], ['schedule', QS_T('По расписанию', 'On schedule')]], st.web)}
         ${st.web === 'schedule' ? `<div class="quick-subnote">${QS_T('Расписание — в приложении: браузер не гарантирует уведомление при закрытой вкладке.', 'Schedules live in the app: a browser cannot promise a notification with the tab closed.')}
-          <div><a href="https://play.google.com/store/apps/details?id=gift.dhamma.twa" target="_blank" rel="noopener">Google Play</a> · <a href="https://testflight.apple.com/join/xWPmmbtQ" target="_blank" rel="noopener">iOS (TestFlight)</a></div></div>` : ''}`}
+          <div><a href="https://play.google.com/store/apps/details?id=gift.dhamma.twa" target="_blank" rel="noopener">Google Play</a> · <a href="https://apps.apple.com/app/id6813706217" target="_blank" rel="noopener">App Store</a></div></div>` : ''}`}
         <label class="quick-sublabel">${inApp ? QS_T('Напоминание', 'Reminder') : QS_T('В приложении', 'In the app')}</label>
         ${seg('appWhen', [['open', QS_T('Раз в день, при открытии приложения', 'Once a day, when the app opens')], ['schedule', QS_T('По расписанию', 'On schedule')]], st.appWhen)}
         ${st.appWhen !== 'schedule' ? '' : `
