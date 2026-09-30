@@ -55,7 +55,8 @@
       noonBy: 'Count midday by', noonSunS: 'Sun', noonMidS: 'Middle of day', noonClockS: '12:00', noonWhat: 'Middle of the day: halfway between sunrise and sunset, the centre of the middle third.', noonChange: 'change', noonSun: 'the Sun (highest point)', noonMid: 'the middle of the day', noonClock: '12:00 by the clock', noonFixed: 'Without a place midday is 12:00 by the clock.',
       noonNote: 'The Vinaya says only “when midday has passed”, not how to find it. The Sun’s highest point is astronomical midday; the middle of the day is halfway between sunrise and sunset (almost the same); 12:00 by the clock can differ by an hour or more. Dawn here is taken as sunrise.',
  mealSet: 'Food (vikāla)', mealSumL: 'Show in the summary', mealRemL: 'Remind when the time for food ends', mealLead: 'In advance', mealLeads: [[0, 'when the time for food ends'], [15, '15 min before'], [30, '30 min before'], [45, '45 min before'], [60, '1 hour before'], [90, '1.5 hours before'], [120, '2 hours before']], mealDays: 'Days', mealDaysU: 'Uposatha days', mealDaysA: 'Every day', mealSnd: 'Sound of this reminder',
-      twiFixed: 'Without a place the dawn is 06:00 and the dusk 18:00.', twiL: 'Dawn and dusk', twiNote: 'Twilight: the Sun 6, 12 or 18° below the horizon. Sets the borders of the day and the night.', twiO: { sun: 'Sunrise and sunset', civil: 'Civil (−6°)', nautical: 'Nautical (−12°)', astro: 'Astronomical (−18°)' },
+      twiFixed: 'Without a place the dawn is 06:00 and the dusk 18:00.', twiL: 'Dawn and dusk', twiNote: 'Twilight: the Sun 6, 12 or 18° below the horizon. Sets the borders of the day and the night.',
+      locAutoL: 'Update my place', locAutoDay: 'Once a day', locAutoNote: 'Off by default. On: once a day, when the app opens, the place is found again, so the times follow you when you travel. It stays on this device.', twiO: { sun: 'Sunrise and sunset', civil: 'Civil (−6°)', nautical: 'Nautical (−12°)', astro: 'Astronomical (−18°)' },
       tstL: 'Test a reminder', tstKinds: { upo: 'Uposatha day', beg: 'The time for food begins', end: 'The time for food ends', parts: 'All 6 parts of the night and day, one by one' }, tst0: 'now', tst1: 'in 1 min', tstBlocked: 'The browser blocks notifications for this site: click the lock in the address bar, set Notifications to Allow, and try again.', tstNow: 'Sent now.', tst2: 'in 2 min', tstGo: 'Schedule the test',
       tstTitle: function (k) { return { upo: 'Uposatha (test)', beg: 'Time for food (test)', end: 'Vikāla soon (test)', parts: 'Parts (test)' }[k]; }, tstBody: 'A test reminder with the sound of this kind.', tstSet: function (at) { return 'It will come at ' + at + '.'; }, tstDenied: 'Notifications are not allowed.',
       testsOn: 'Tests are shown in the menu', testsOff: 'Tests are hidden', testsG: 'Tests', testL: 'Test: show the state', testReal: 'as is', testTag: 'test',
@@ -65,7 +66,7 @@
       mealBegSun: function (rise) { return 'Sunrise at ' + rise + ' — time for food.'; },
       mealBegTitle: 'Time for food soon', mealBegBody: function (dawn, lead) { return 'Dawn at ' + dawn + ' — the time for food begins in ' + (lead >= 60 ? (lead / 60) + ' h' : lead + ' min') + '.'; },
       mealRemTitle: 'Vikāla soon', mealRemBody: function (noon, lead) { return 'Midday at ' + noon + ' — the time for food ends in ' + (lead >= 60 ? (lead / 60) + ' h' : lead + ' min') + '.'; },
-      logoTip: 'Home · change the language: long press or right click', rateUs: 'Rate Us', privacy: 'Privacy Policy', appVer: 'App version', timeL: 'Time', ofMode: function (n, m, su) { return n + ' of ' + m + (su ? ' by the suttas' : ' modern'); }, placeQ: 'For exact moon phases and sun times we need your location.', placeYes: 'Find my place', placeLater: 'Later', advL: 'Advanced: twilight, time zone, hemisphere', ctxNoPlace: 'Place not set', ctxPlace: 'Your place', locRefresh: 'Update my location', locHere: 'by geo', navKeys: 'Suttas', navHome: 'Summary', navList: 'Uposathas', navCal: 'Calendar', navParts: 'Night–day', navSet: 'Settings',
+      logoTip: 'Home · change the language: long press or right click', rateUs: 'Rate Us', privacy: 'Privacy Policy', appVer: 'App version', timeL: 'Time', ofMode: function (n, m, su) { return n + ' of ' + m + (su ? ' by the suttas' : ' modern'); }, placeQ: 'For exact moon phases and sun times we need your location.', placeYes: 'Find my place', placeLater: 'Later', advL: 'Advanced: twilight, place updates, time zone, hemisphere', ctxNoPlace: 'Place not set', ctxPlace: 'Your place', locRefresh: 'Update my location', locHere: 'by geo', navKeys: 'Suttas', navHome: 'Summary', navList: 'Uposathas', navCal: 'Calendar', navParts: 'Night–day', navSet: 'Settings',
       sound: 'Sound', soundNone: 'Silent', soundOwn: 'My own sound…', soundOwnNamed: 'My own: %', soundFail: 'The sound was not set.', sounds: { vikala: 'Vinaya: what is vikāla (Pali)', gong: 'Gong', gong3: 'Gong 2', gong4: 'Gong 3', gong5: 'Gong 4', gong2: 'Gong 5', bell: 'Bell' },
       remAppNote: 'Reminders are scheduled on this device and arrive even when the app is closed.',
       remNext: function (when, what) { return 'Next reminder: ' + when + ' — ' + what; }, remNone: 'No reminder is due in the coming weeks.',
@@ -109,7 +110,8 @@
       noonBy: 'Полдень считать по', noonSunS: 'Солнце', noonMidS: 'Середина дня', noonClockS: '12:00', noonWhat: 'Середина дня — ровно между восходом и закатом, центр средней трети дня.', noonChange: 'изменить', noonSun: 'Солнцу (высшая точка)', noonMid: 'середине дня', noonClock: '12:00 по часам', noonFixed: 'Без места полдень — 12:00 по часам.',
       noonNote: 'В Винае сказано лишь «когда полдень миновал», а как его определить — нет. Высшая точка Солнца — астрономический полдень; середина дня — ровно между восходом и закатом (почти то же самое); 12:00 по часам может отличаться на час и больше. Рассвет здесь принят за восход.',
  mealSet: 'Еда (vikāla)', mealSumL: 'Показывать в сводке', mealRemL: 'Напоминать об окончании времени еды', mealLead: 'Заранее', mealLeads: [[0, 'когда время еды закончится'], [15, 'за 15 мин'], [30, 'за 30 мин'], [45, 'за 45 мин'], [60, 'за 1 час'], [90, 'за 1,5 часа'], [120, 'за 2 часа']], mealDays: 'Дни', mealDaysU: 'Дни упосатхи', mealDaysA: 'Каждый день', mealSnd: 'Звук этого напоминания',
-      twiFixed: 'Без места рассвет 06:00, закат 18:00.', twiL: 'Рассвет и закат', twiNote: 'Сумерки: Солнце на 6, 12 или 18° под горизонтом. Задаёт границы дня и ночи.', twiO: { sun: 'Восход и закат', civil: 'Гражданские (−6°)', nautical: 'Навигационные (−12°)', astro: 'Астрономические (−18°)' },
+      twiFixed: 'Без места рассвет 06:00, закат 18:00.', twiL: 'Рассвет и закат', twiNote: 'Сумерки: Солнце на 6, 12 или 18° под горизонтом. Задаёт границы дня и ночи.',
+      locAutoL: 'Обновлять место', locAutoDay: 'Раз в день', locAutoNote: 'По умолчанию выключено. Если включить, раз в сутки при открытии место определяется заново, и время пересчитывается, когда вы переезжаете. Место остаётся только на этом устройстве.', twiO: { sun: 'Восход и закат', civil: 'Гражданские (−6°)', nautical: 'Навигационные (−12°)', astro: 'Астрономические (−18°)' },
       tstL: 'Проверить напоминание', tstKinds: { upo: 'День упосатхи', beg: 'Начало времени еды', end: 'Конец времени еды', parts: 'Все 6 частей ночи и дня по очереди' }, tst0: 'сейчас', tst1: 'через 1 мин', tstBlocked: 'Браузер блокирует уведомления для этого сайта: нажмите на замок в адресной строке, поставьте «Уведомления: Разрешить» и попробуйте снова.', tstNow: 'Отправлено сейчас.', tst2: 'через 2 мин', tstGo: 'Поставить проверку',
       tstTitle: function (k) { return { upo: 'Упосатха (проверка)', beg: 'Время еды (проверка)', end: 'Скоро vikāla (проверка)', parts: 'Части (проверка)' }[k]; }, tstBody: 'Проверочное напоминание со звуком этого вида.', tstSet: function (at) { return 'Придёт в ' + at + '.'; }, tstDenied: 'Уведомления не разрешены.',
       testsOn: 'Проверка показана в меню', testsOff: 'Проверка скрыта', testsG: 'Проверка', testL: 'Проверка: показать состояние', testReal: 'как есть', testTag: 'тест',
@@ -119,7 +121,7 @@
       mealBegSun: function (rise) { return 'Рассвет в ' + rise + ' — время еды.'; },
       mealBegTitle: 'Скоро время еды', mealBegBody: function (dawn, lead) { return 'Заря в ' + dawn + ' — время еды начнётся через ' + (lead >= 60 ? (lead / 60 + '').replace('.', ',') + ' ч' : lead + ' мин') + '.'; },
       mealRemTitle: 'Скоро vikāla', mealRemBody: function (noon, lead) { return 'Полдень в ' + noon + ' — время еды закончится через ' + (lead >= 60 ? (lead / 60 + '').replace('.', ',') + ' ч' : lead + ' мин') + '.'; },
-      logoTip: 'Домой · сменить язык: долгое нажатие или правая кнопка', rateUs: 'Оценить приложение', privacy: 'Политика конфиденциальности', appVer: 'Версия приложения', timeL: 'Время', ofMode: function (n, m, su) { return n + ' из ' + m + (su ? ' по суттам' : ' по современной'); }, placeQ: 'Для точных лунных фаз и времени солнца нужно ваше местоположение.', placeYes: 'Определить место', placeLater: 'Позже', advL: 'Дополнительно: сумерки, часовой пояс, полушарие', ctxNoPlace: 'Место не задано', ctxPlace: 'Ваше место', locRefresh: 'Обновить моё место', locHere: 'по гео',  navKeys: 'Сутты', navHome: 'Сводка', navList: 'Упосатхи', navCal: 'Календарь', navParts: 'Ночь–день', navSet: 'Настройки',
+      logoTip: 'Домой · сменить язык: долгое нажатие или правая кнопка', rateUs: 'Оценить приложение', privacy: 'Политика конфиденциальности', appVer: 'Версия приложения', timeL: 'Время', ofMode: function (n, m, su) { return n + ' из ' + m + (su ? ' по суттам' : ' по современной'); }, placeQ: 'Для точных лунных фаз и времени солнца нужно ваше местоположение.', placeYes: 'Определить место', placeLater: 'Позже', advL: 'Дополнительно: сумерки, обновление места, часовой пояс, полушарие', ctxNoPlace: 'Место не задано', ctxPlace: 'Ваше место', locRefresh: 'Обновить моё место', locHere: 'по гео',  navKeys: 'Сутты', navHome: 'Сводка', navList: 'Упосатхи', navCal: 'Календарь', navParts: 'Ночь–день', navSet: 'Настройки',
       sound: 'Звук', soundNone: 'Без звука', soundOwn: 'Свой звук…', soundOwnNamed: 'Свой: %', soundFail: 'Звук не задан.', sounds: { vikala: 'Виная: что такое vikāla (пали)', gong: 'Гонг', gong3: 'Гонг 2', gong4: 'Гонг 3', gong5: 'Гонг 4', gong2: 'Гонг 5', bell: 'Колокол' },
       remAppNote: 'Напоминания ставятся на этом устройстве и приходят даже при закрытом приложении.',
       remNext: function (when, what) { return 'Ближайшее напоминание: ' + when + ' — ' + what; }, remNone: 'В ближайшие недели напоминаний нет.',
@@ -208,6 +210,7 @@
     parts: (function () { var d = { rem: false, which: 'day', days: 'upo', snd: 'voice' }; try { var v = JSON.parse(store('dgUposathaParts')); if (v) for (var k in d) if (k in v) d[k] = v[k]; } catch (e) { /* defaults */ } return d; })(),
     noon: (function () { var v = store('dgUposathaNoon'); return /^(sun|mid|clock)$/.test(v || '') ? v : 'sun'; })(),
     loc: (function () { try { return JSON.parse(store('dgUposathaLoc')); } catch (e) { return null; } })(),
+    locAuto: store('dgUposathaLocAuto') === '1', // find the place again once a day; only when the reader turns it on (device-only, like the place)
     locMsg: '',
     rem: (function () { var d = { on: false, lead: 24, d8: true, d14: true, d15: false, sound: 'gong', ownChannel: '', ownName: '' }; try { var v = JSON.parse(store('dgUposathaRemind')); if (v) for (var k in d) if (k in v) d[k] = v[k]; } catch (e) { /* defaults */ } return d; })(),
     remMsg: '',
@@ -483,6 +486,7 @@
     else { kind = 'vikala'; var dawn = nowMs < rise.getTime() ? rise : aruna(p[0], p[1], p[2] + 1, tz, obs); to = dawn.getTime(); html = t.mealVik(F.hm.format(dawn), '<b class="meal-left" data-to="' + to + '">' + span(to - nowMs) + '</b>'); }
     function ref(id, label) { return '<a class="pref selectable" href="/' + id + '?lang=' + lang + '" target="_blank" rel="noopener">' + label + '</a>'; }
     $('twi').disabled = !obs; $('twi').closest('#twi-block').querySelector('.dg-uset-note').textContent = obs ? t.twiNote : t.twiFixed; // the twilight needs the Sun of a place
+    setSeg('locautoseg', state.locAuto ? 1 : 0);
     setSeg('noonseg', obs ? state.noon : 'clock'); $('noon-note').textContent = obs ? t.noonWhat : t.noonFixed; $('noonseg').setAttribute('data-fixed', String(!obs)); // without a place only the clock is possible
     var by = '';
     var tag = state.tests && state.fake ? ' <b class="testtag">' + esc(t.testTag) + '</b>' : '';
@@ -1321,6 +1325,23 @@
       }, function () { if (state.loc) { if (btn) btn.classList.remove('spin'); var n = $('locnote'); if (n) n.textContent = t.locDenied; setTimeout(paint, 2500); return; } state.locMsg = t.locDenied; paint(); }, { timeout: 15000, maximumAge: fresh ? 0 : 3600000, enableHighAccuracy: !!fresh });
     }
     window.__upoDetect = detectLocation;
+    // "Update my place: once a day": on opening (and on coming back to the app), when the last try is a day old, the place is
+    // found again without a word — a failure keeps the old one. Tried at most once a day, so a refused permission is not asked again and again.
+    function autoLocate() {
+      if (!state.locAuto || !navigator.geolocation || Date.now() - (parseInt(store('dgUposathaLocAt'), 10) || 0) < 86400000) return;
+      store('dgUposathaLocAt', String(Date.now()));
+      navigator.geolocation.getCurrentPosition(function (pos) {
+        var la = Math.round(pos.coords.latitude * 100) / 100, lo = Math.round(pos.coords.longitude * 100) / 100;
+        if (state.loc && state.loc.lat === la && state.loc.lon === lo) return;
+        setPlace(la, lo); state.tz = zoneNear(la, lo, state.tz); store('dgUposathaTz', state.tz); paint();
+      }, function () { /* no answer: the place stays as it was */ }, { timeout: 15000, maximumAge: 3600000 });
+    }
+    onSeg('locautoseg', function (v) {
+      state.locAuto = v === '1'; store('dgUposathaLocAuto', state.locAuto ? '1' : '0');
+      if (state.locAuto) { store('dgUposathaLocAt', String(Date.now())); detectLocation(false); } else paint(); // turned on: now, and the permission is asked here
+    });
+    autoLocate();
+    document.addEventListener('visibilitychange', function () { if (!document.hidden) autoLocate(); });
     $('loc-btn').onclick = function () { detectLocation(false); };
     // The place by a city: our own suggestions (a native datalist has no list in the Android WebView and shows nothing on an empty field)
     var CITIES = Object.keys(ZONE_COORDS).map(function (z) { return { zone: z, name: z.split('/').pop().replace(/_/g, ' ') }; }).sort(function (a, b) { return a.name < b.name ? -1 : 1; });
