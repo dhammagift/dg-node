@@ -677,10 +677,3 @@ body.app:has(#up-splash)::after { display: none; }
 .up-switch input:checked ~ .up-thumb { transform: translateX(15px); }
 .up-switch input:focus-visible ~ .up-track { outline: 3px solid var(--dg-accent); outline-offset: 3px; }
 @media (prefers-reduced-motion: reduce) { .up-track, .up-thumb { transition: none; } }
-
-/* the past of the current month folded (collapsePast in uposatha-calendar.js) */
-.utab tr.pasthid { display: none; } /* beats .utab tr.det { display: table-row } */
-.pastopen .utab tr.pasthid { display: table-row; }
-.utab tr.pastbar td { padding: 0; border-bottom: 1px solid var(--dg-border); }
-.pastbar button { display: block; width: 100%; text-align: left; padding: 9px 14px; border: 0; background: transparent; color: var(--dg-text-muted); font: inherit; font-size: 13px; cursor: pointer; }
-.pastbar button:hover { background: var(--dg-surface-hover); color: var(--dg-text); }
