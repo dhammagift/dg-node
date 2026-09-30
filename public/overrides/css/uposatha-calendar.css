@@ -645,6 +645,11 @@ body.app:has(#up-splash)::after { display: none; }
 .placeask button { border: 0; border-radius: 999px; min-height: 40px; padding: 0 16px; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
 .placeask .pa-yes { background: var(--dg-accent); color: var(--dg-on-accent, #fff); }
 .placeask .pa-no { background: transparent; color: var(--dg-accent-ink); }
+/* three answers in one row, as compact as the first two were ("Определить место · Позже · Вручную" on a 360px phone) */
+.placeask { padding-left: 14px; padding-right: 14px; }
+.placeask .pa-yes { padding: 0 12px; }
+.placeask .pa-no { padding: 0 6px; font-size: 13.5px; }
+.placeask div { gap: 2px; }
 .ctx .dot { margin: 0 2px; }
 .ctx .modern { color: #9b1c31; font-weight: 600; }
 [data-theme="dark"] .ctx .modern { color: #d8546b; }
