@@ -2785,6 +2785,7 @@ window.setupCloudListeners = function(uid) {
 
             let uiNeedsRefresh = false;
             for (const k in cloudSettings) {
+                if (DG_SYNC_IGNORE.some(prefix => k.startsWith(prefix))) continue; // a copy uploaded before it was device-only
                 if (localStorage.getItem(k) !== cloudSettings[k]) {
                     window.dg_ignoreNextStorageEvent = true; 
                     localStorage.setItem(k, cloudSettings[k]);
@@ -3503,6 +3504,9 @@ window.dg_settingsChanged = false;
 window.dg_ignoreNextStorageEvent = false;
 window.dg_deletedKeys = new Set(); // Очередь ключей на удаление из облака
 window.dg_pendingSettingsUpdates = {}; // Очередь атомарных изменений (дифф)
+// Keys that never go to the cloud (and are not taken from it). dgUposathaLoc is the Uposatha calendar's place:
+// it stays on this device (owner, 2026-09-30); a prefix match, and the name the shipped apps read is unchanged.
+const DG_SYNC_IGNORE = ['DataTables_', 'localSearchHistory', 'lastSyncTime', 'syncPhrase', 'dg_', 'firebase_', 'firestore_', 'dgUposathaLoc'];
 let isObserverInitialized = false;
 
 window.initSettingsObserver = function() {
@@ -3513,8 +3517,7 @@ window.initSettingsObserver = function() {
     const originalRemoveItem = localStorage.removeItem;
     const originalClear = localStorage.clear;
     
-    // Добавлены firestore_ и firebase_ в исключения
-    const ignoreList = ['DataTables_', 'localSearchHistory', 'lastSyncTime', 'syncPhrase', 'dg_', 'firebase_', 'firestore_'];
+    const ignoreList = DG_SYNC_IGNORE;
 
     localStorage.setItem = function(key, value) {
         // Если данные пришли из облака (стоит флаг), просто пишем и снимаем флаг
