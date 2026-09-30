@@ -370,10 +370,12 @@ const UNVERSIONED_LAZY_PATHS = [
 
 function staticCacheHeaders(reply, filePath) {
     const ext = path.extname(filePath).toLowerCase();
-    // The label editor pages are long-lived tools that must pick up a deploy immediately: they
-    // were cached for 10h, so a translator could keep a copy without the sign-in bar and see
-    // every save fail with a 401 and no explanation. Revalidate instead (etag keeps it cheap).
-    if (/\/lbl(-en)?\.html$/.test(filePath)) {
+    // Static HTML (siteroot pages — /login/, the label editors, ...) is always revalidated, never
+    // served from a 10h cache: its bare <script>/<link> tags are how a JS fix reaches a reader, and a
+    // cached page kept the old ones for up to 10 hours (the account-deletion fix on /login/,
+    // 2026-09-30; before that the label editors, whose saves failed with a 401 from a stale copy).
+    // no-cache still lets the browser keep the file — the etag makes the check cheap.
+    if (ext === '.html' || ext === '.htm') {
         reply.header('cache-control', 'no-cache');
         return;
     }
