@@ -1,13 +1,4 @@
 # Dhamma.gift — Node.js SPA Project
-- Be extremely concise.
-- Do not explain obvious things.
-- Do not repeat the user's request.
-- Prefer commands over explanations.
-- After completing a task, give only a short summary.
-- Do not provide long plans unless explicitly requested.
-- Do not narrate every action or tool call.
-- If the task is clear, act immediately.
-- Keep responses to the minimum necessary.
 
 ## Два проекта
 
@@ -56,7 +47,6 @@ Apache по `Alias /old` отдавал `.env`, `configs/local/*`, `dg.db` и `.
 
 ---
 
-Если ты пишешь код, то комментарии обязательно делай на англйском.
 
 по текущим задачам проверяй TODO и там отмечай сделанное перед пунктов добавляй done. в конец можешь дописывать нюансы и комменты через --- туду ведем по русски.
 
@@ -233,301 +223,14 @@ HOME/offline-data/dhammagift/
 
 ---
 
-## Структура проекта
-
-Карта репозитория — где что лежит и за что отвечает. Конфиги проекта (JSON, не
-исполняемый код) собраны в одном месте — `configs/` — а не разбросаны по `search/`/`reader/`/
-корню; документация не для разработки на каждый день — в `docs/`; всё подтверждённо
-неиспользуемое — в `unused/` (см. примечание под деревом про его состав).
-
-```
-nodejs/
-├── dg-fastify.js             — Fastify сервер поиска, порт 3000 (главный файл, точка входа,
-│                                прод под pm2 как `dg-prod`); данные — `dg.db` (SQLite/FTS5,
-│                                `npm run build-search-db`)
-├── cat_server.js              — CAT-сервер для переводов (production, отдельный процесс, не трогать)
-├── package.json               — зависимости: fastify, express (legacy), cors, swagger-ui-express
-│
-├── configs/                   — ВСЕ json-конфиги проекта в одном месте (не легаси-config/, см. ниже)
-│   ├── openapi.json, openapi.en.json   — спека /api-docs (require в dg-light.js; URL /openapi*.json без /configs)
-│   ├── reader/
-│   │   ├── mode-table.json             — режимы ридера (st/mt/ml/read/ee), единственный источник истины
-│   │   ├── translator-priority.json    — приоритет переводчиков по языку ("ru": ["ru_o", ...])
-│   │   ├── translators.json            — подписи переводчиков ("sv+edited+o" → "SV theravada.ru
-│   │   │                                 с Англ, ред. o"); клиент фетчит по СТАРОМУ URL
-│   │   │                                 /assets/js/translators.json (явный роут перед маунтом
-│   │   │                                 /assets в обоих серверах). Авторский текст, поэтому
-│   │   │                                 НЕ таблица в dg.db: та пересобирается из корпуса и
-│   │   │                                 стёрла бы всё написанное руками
-│   │   └── lang_ru.json, lang_en.json  — локализация UI ридера
-│   └── search/
-│       └── lang_ru.json, lang_en.json  — локализация UI поиска (datatables/results/buttons и т.п.)
-│   (URL этих файлов НЕ поменялся при переносе — /reader/*.json и /nodejs/res/lang_*.json
-│   по-прежнему работают, dg-light.js отдаёт их вторым static-маунтом на тот же префикс;
-│   поменялся только физический путь на диске/в require())
-│
-├── docs/                      — документация по проекту (не код), читать по необходимости, не при каждой сессии
-│   ├── BACKWARD_COMPAT.md     — требования обратной совместимости URL при миграции на SPA
-│   ├── SPA_INTEGRATION.md     — план интеграции SPA-фреймворка
-│   └── SPA_PLAN.md            — план разработки SPA поэтапно
-│
-├── search/                    — UI поиска (папка называется search/, публичный URL — по-прежнему
-│   │                             /nodejs/res/... — обратная совместимость, см. dg-light.js)
-│   └── index.html            — главная страница поиска (DataTables, Bootstrap 5)
-│
-├── reader/                   — UI ридера
-│   ├── reader-template.html  — шаблон ридера (i18n система)
-│   ├── reader.html           — рабочий вариант ридера
-│   ├── common.js             — общие утилиты ридера
-│   └── megareader.js         — логика мегаридера
-│
-├── public/                   — статические файлы, которые мы реально правим
-│   ├── overrides/js/         — search-render.js, settings.js, dg-text-router.js, dhamma-i18n.js —
-│   │                            отдаются раньше легаси-assets (см. siteroot/assets/ ниже)
-│   ├── overrides/read/js/voice.js — патч поверх легаси TTS-плеера (siteroot/read/), тот же
-│   │                            override-приоритет паттерн под /read (см. dg-light.js)
-│   └── spa/                   — SPA фреймворк (Phase 1+)
-│       ├── router.js          — умная маршрутизация URL (dn22, keyword распознавание)
-│       ├── state.js           — глобальное состояние (search + reader + UI)
-│       ├── app.js              — инициализация SPA и обработка навигации
-│       ├── views.js            — рендеринг представлений (landing, search, reader)
-│       └── modal.js            — единое модальное окно с вкладками (Settings, Compass, Help)
-│
-├── unused/                    — подтверждённо неиспользуемые файлы (не удалять без проверки)
-│   ├── dg-light.js            — legacy Express+grep сервер (не прод, см. "С чего начинать
-│   │                              сессию"); запускается через `npm run start:express` — для
-│   │                              этого __dirname внутри файла сдвинут на уровень вверх, к
-│   │                              корню репо, а не переписаны 40+ мест с path.join(__dirname,…);
-│   │                              require() своих json-конфигов исправлены на `../configs/...`
-│   ├── dblight.js              — билд-скрипт dg-light.js → dg_db_light.json (`npm run build-db`);
-│   │                              та же поправка __dirname; build-search-db.js (пайплайн
-│   │                              dg-fastify.js) от него не зависит
-│   ├── dg_db_light.json        — скелет БД dg-light.js (генерируется в корень репо, в git не
-│   │                              попадает, см. .gitignore)
-│   ├── script.js, demo.html, result.json  — прототипы страницы поиска до search-render.js
-│   └── translators_config.js               — не используется продовым кодом (реальные имена
-│                                                переводчиков берутся из /assets/js/translators.json,
-│                                                см. комментарий в reader/megareader.js)
-│
-└── siteroot/                   — публикация от корня сайта, см. отдельный раздел ниже
-    ├── assets/                    — symlink на легаси-репо целиком (единый источник ассетов) —
-    │                                 второй маунт под /assets, ПОСЛЕ public/overrides/ (см. выше)
-    ├── 4nt, config, login, memo   — symlink'и на легаси-репо (были раньше прямо в корне nodejs/,
-    │                                 см. "Прод: пути и symlinks" выше) — НЕ путать с configs/
-    │                                 (множественное число) выше, это разные папки: config/ (легаси,
-    │                                 чужой) живёт ВНУТРИ siteroot/, configs/ — наши json-конфиги.
-    ├── read/                       — legacy TTS voice-player (symlink на легаси-репо, НЕ путать с
-    │                                 reader/ выше — разные фичи с похожими именами, см. TODO.md)
-    └── (новые тулзы/зеркала/учебники добавляются сюда же — см. раздел ниже)
-```
-
-**Про `unused/` в этом чекауте**: CLAUDE.md исторически описывал более полный `unused/`
-(`dg-heavy.js`, `cat_server_heavy_db.js`, `dbmake.js`, `dg_db.json`/`dg_dbNEW.json` — 117 МБ ×
-2, "под удаление") — но по факту эти файлы никогда не коммитились в этот git-репозиторий,
-они существуют только на реальной дев/прод-машине вне git. Подтверждено (grep по всему
-коду): ничего из них не используется, но физически перенести/удалить их отсюда нельзя — это
-нужно делать на той машине, где они реально лежат.
-
-`dg-light.js`/`dblight.js` (2026-09-12) — первые файлы, реально перенесённые в `unused/` в
-этом репо: подтверждено, что ничего их не require()'ит, npm-скрипт `start` уже смотрел не
-туда (см. "С чего начинать сессию"), pm2 в проде их не запускает. Перенесены с `git mv`
-(история сохранена), а не удалены — на случай если понадобится сравнить со старой
-grep-логикой.
-
----
-
 ## Публикация от корня сайта (`siteroot/`)
 
-Отвечает на вопрос из TODO.md (общие п.3): как публиковать легаси-тулзы, зеркала сторонних
-сайтов, учебники и прочий контент от корня (`dhamma.gift/{имя}/...`), не хардкодя каждую
-новую единицу в `dg-light.js` и не превращая корень репозитория в свалку, как в легаси. Не
-`mirrors/` — там не только зеркала: это ещё и активно используемые легаси-тулзы (4nt, TTS
-voice-player) и их конфиги, а в будущем — учебники и другой контент, никак не "зеркала" по
-смыслу. `siteroot/` описывает МЕХАНИЗМ (публикуется от корня сайта), а не тип содержимого.
-
-**Как работает**: `dg-light.js` при старте сканирует `siteroot/` (`fsSync.readdirSync`) и для
-КАЖДОЙ найденной записи — папки или symlink'а — автоматически регистрирует
-`app.use('/{имя}', express.static(...))`. Значит, чтобы опубликовать новую тулзу/зеркало/учебник:
-
-1. Положить в `siteroot/` symlink на реальные файлы (где бы они ни лежали — рядом с проектом,
-   как `4nt`/`config`/`login`/`memo`/`read`/`assets` сейчас: `siteroot/4nt -> ../../4nt`) ИЛИ
-   прямо реальные файлы/папку, если контент небольшой и должен жить прямо в git-репозитории.
-2. Перезапустить сервер.
-3. Готово — `dhamma.gift/{имя}/...` работает, в `dg-light.js` ничего править не нужно.
-
-**Важные нюансы**:
-- Список папок сканируется ОДИН РАЗ при старте процесса, не на каждый запрос — новое имя в
-  `siteroot/` требует рестарта сервера. Правки ВНУТРИ уже примонтированной записи (файлы
-  изменились, но имя папки то же) видны сразу, рестарт не нужен — `express.static` читает с
-  диска на лету.
-- Имя папки в `siteroot/` = URL-префикс один в один (`siteroot/dict` → `/dict/...`). Не
-  занимайте для НОВОЙ тулзы имена, уже жёстко замаунченные явно ВЫШЕ по файлу до цикла
-  сканирования `siteroot/`: `spa`, `search` (алиас `/nodejs/res`), `nodejs`, `reader`. Если
-  совпадёт — явный маунт (он регистрируется раньше) победит, запись в `siteroot/` будет
-  молча проигнорирована. `assets` — единственное НАМЕРЕННОЕ исключение: `/assets` явно
-  замаунчен на `public/overrides/` (файлы, которые мы реально правим) РАНЬШЕ цикла
-  сканирования, а `siteroot/assets` (легаси-репо целиком) подхватывается тем же циклом как
-  обычная запись и становится ВТОРЫМ, запасным маунтом на тот же префикс — override побеждает
-  автоматически чисто порядком регистрации, ничего специально синхронизировать не нужно.
-- `/ru/login`, `/ru/memo` — единственное исключение из правила "никакого хардкода": это не
-  отдельные тулзы, а второй URL-алиас для уже смонтированных `login`/`memo` (легаси-наследие),
-  прописаны явно двумя строчками сразу после цикла сканирования `siteroot/`.
-- `read/` (TTS voice-player) переехал сюда же (`siteroot/read/`) — раньше был отдельной
-  явно замаунченной папкой в корне nodejs/, теперь просто ещё одна запись в `siteroot/`,
-  ничем не отличается от 4nt/config/login/memo. Вложенные symlink'и `siteroot/read/css/
-  voice.css`, `siteroot/read/js/voice.js`, `siteroot/read/js/voice-mem.js` смотрят на
-  легаси-репо на один уровень глубже, чем раньше (`../../../../read/...`, было `../../../
-  read/...`) — пересчитано при переносе.
-- Технический нюанс, который стоит знать при отладке (если новая запись вдруг "не находится"):
-  `fs.Dirent.isDirectory()` для SYMLINK'а на директорию возвращает `false` (тип записи — сама
-  ссылка, не её цель) — проверено эмпирически. Поэтому фильтр в коде — `d.isDirectory() ||
-  d.isSymbolicLink()`, а не только `isDirectory()`. Тот же баг был и в независимом, отдельном
-  механизме `OFFLINE_MIRRORS_ROOT` (см. ниже) — тоже исправлен заодно.
-
-**Не то же самое, что `OFFLINE_MIRRORS_ROOT`** (`dg-light.js`, платформо-зависимый путь —
-`~/offline-data` на Linux/Termux, `C:/soft/offline-data` на Windows) — тот механизм для
-ТЯЖЁЛЫХ офлайн-зеркал сторонних сайтов (accesstoinsight.org, buddhadust.net и т.п. из TODO.md),
-которые сознательно живут ВНЕ git-репозитория (не наши, большие, не нужно их коммитить) —
-работает по тому же принципу (скан папки → авто-маунт), но `siteroot/` — специально ВНУТРИ
-репозитория, для того, что должно быть частью проекта хотя бы как symlink (даже если сама
-цель — легаси-код снаружи).
-
----
-
-## SPA Фреймворк (Single-Page Application)
-
-### Архитектура
-
-```
-URL in → Router parses → State updates → Views re-render
-                ↓
-         (dn22/keyword recognition)
-                ↓
-         /keyword → search view
-         /dn22:2.2 → reader view
-         /dn22:2.2/kacchapa → reader + highlight
-```
-
-### Файлы SPA (public/spa/)
-
-**router.js** — Умная маршрутизация
-- Распознает sutta IDs: `dn22`, `mn1`, `sn56:11`, `sn56.11` по шаблону
-- Обрабатывает оба формата: `/sutta/keyword` и `/keyword/sutta`
-- Редиректит legacy `/?q=...` на чистые URLs
-- Управляет History API (browser back/forward)
-
-**state.js** — Глобальное состояние (изолировано)
-- `search`: query, scope, langs, lb, la, results
-- `reader`: suttaId, currentSegment, highlightKeyword, editions, translations
-- `ui`: currentView, modalOpen, modalTab, language
-- Паттерн listener для реагирования на изменения
-
-**app.js** — Инициализация и управление
-- Инициализирует router + state
-- Обнаруживает и редиректит legacy URLs
-- Слушает изменения маршрута (popstate)
-- Публичный API: goToSearch(), goToReader(), goToLanding()
-
-**views.js** — Рендеринг представлений
-- landing: показывает search input + help/about разделы
-- search: выполняет API запрос, показывает результаты в DataTable
-- reader: загружает текст сутты, применяет highlight
-- Интегрируется с существующим search API и megareader.js
-
-**modal.js** — Единое модальное окно
-- 3 вкладки: Settings (🔧), Compass (☸), Help (❓)
-- Settings: скрипт система, размер шрифта, тема, режим отображения
-- Compass: навигация по Four Noble Truths
-- Help: сочетания клавиш, форматы URL
-
-### Управление состоянием
-
-**Изоляция**: Состояние поиска и ридера полностью отделены.
-- При переходе на search: reader.suttaId = null
-- При открытии reader: search.query может остаться (для highlight)
-- UI изменения (modal, язык) не влияют на search/reader состояние
-
-**Жизненный цикл представления**:
-1. URL меняется → Router парсит
-2. State обновляется → Listeners уведомляются
-3. Views перестраивают DOM
-4. Пользователь видит новое представление
-
----
-
-## Скелет (dg_db_light.json)
-
-Хранит полезную metadata — не пути к файлам, а данные для UI:
-```json
-{
-  "dn22": {
-    "category": "dhamma",
-    "dir_path": "pli/ms/sutta/dn",
-    "title": "Mahāsatipaṭṭhānasutta",
-    "mr": 12,
-    "html": { "dn22:1.1": "<p>", ... }
-  }
-}
-```
-
-`dir_path` → детерминированный путь к файлам:
-- root:    `SC_BILARA/root/{dir_path}/{id}_root-pli-ms.json`
-- variant: `SC_BILARA/variant/{dir_path}/{id}_variant-pli-ms.json`
-
----
-
-## Express API
-
-**GET /search**
-```
-?q=kacchapa       обязателен
-&scope=default    default|all|dhamma|vinaya|abhi|khudakka|dn,mn,...
-&langs=ru,en      языки переводов (all = все доступные)
-&lb=0             строк контекста до совпадения
-&la=0             строк контекста после
-&exact=false      точное слово (-w у grep)
-```
-
-Формат ответа:
-```json
-{
-  "metadata": { "query", "scope", "langs", "lb", "la", "totalFiles", "totalMatches", "hasVariantMatch" },
-  "data": {
-    "dn22": {
-      "sutta_id": "dn22",
-      "category": "dhamma",
-      "dir_path": "pli/ms/sutta/dn",
-      "titles": { "root": "Mahāsati...", "ru_o": "Великое...", "en_sujato": "The Great..." },
-      "mr": 12,
-      "count": 3,
-      "unique_words": ["kacchapa", "kacchapānaṁ"],
-      "segments": [
-        {
-          "segment": "dn22:1.1",
-          "root_text": "...",
-          "variant": "...",
-          "html": "<p>",
-          "translations": { "ru_o": "...", "en_sujato": "..." },
-          "lb_context": [...],
-          "la_context": [...]
-        }
-      ]
-    }
-  }
-}
-```
-
-Ключ перевода: `{langCode}_{author}` → `ru_o`, `en_sujato`, `ru_ai`
-
----
-
-## Текущие баги в search/index.html (приоритет)
-
-1. **lb/la контекст** — данные приходят с сервера, но не рендерятся
-2. **Сортировка категорий** — `category-pre` зарегистрирован, но не применяется в `order`
-3. **Переключение языков в Title** — классы `.eng-lang`/`.ru-lang` есть, toggle не работает
-4. **Якорные ссылки** — нужно `sn56.11#1.1` (segmentId уже есть в данных)
-5. **`s=` параметр** — добавлять `&s={keyword}` ко всем ссылкам на ридер
+Каждая запись (папка или symlink) в `siteroot/` автоматически монтируется как `/{имя}` при старте
+сервера — новое имя требует рестарта, правки внутри уже смонтированной записи видны сразу. Явные
+маунты выше по файлу (`spa`, `search`, `nodejs`, `reader`) побеждают одноимённую запись; `assets` —
+намеренно: `public/overrides/` первый, `siteroot/assets` (легаси) запасной. Фильтр сканирования —
+`d.isDirectory() || d.isSymbolicLink()` (`Dirent.isDirectory()` для symlink'а даёт false).
+Не путать `configs/` (наши json) с `siteroot/config` (легаси symlink).
 
 ---
 
@@ -608,3 +311,42 @@ URL in → Router parses → State updates → Views re-render
 - Не трогать: `dg-heavy.js`, `cat_server*.js` — устаревшие
 - Не трогать: `dg_db.json`, `dg_dbNEW.json` — тяжёлые версии под удаление
 - `svEtc/` и `backups/` в offline-data — исключать из обхода
+
+---
+
+## Тест-ссылки (из глобальных правил)
+
+6. в конце работы над задачей после твоих успешных тестов и пруфов в виде ответов сервера или скриншотлв если это UI. давай ссылки на проверку. на test.dhamma.gift/ чтобы я мог повторить что делал ты.  
+
+## GitHub API из этого сервера (DSH и Claude Code)
+
+- Токен: `/root/.secrets/github-token` (права 600). Fine-grained PAT `kv-server`, owner `dhammagift`,
+  право **Issues: Read and write**, истекает **10.12.2026** — после ротации перезаписать файл.
+- `gh` CLI не установлен (диск `/` бывал переполнен) — ходить через `curl`.
+- Право на создание issue есть в репозиториях: `dg-node`, `dg-twa`, `dg-app-full`, `notApp`, `otrn`,
+  `dgift_bot`, `dg-docs`, `ddg-ui`, `dictPlugin`. В остальных — только чтение.
+- `git push/pull` идёт по SSH-ключу, токен для этого не нужен.
+
+```bash
+TOKEN=$(tr -d '\n\r' < /root/.secrets/github-token)
+curl -sS -X POST -H "Authorization: Bearer $TOKEN" \
+  -H "Accept: application/vnd.github+json" -H "User-Agent: agent" \
+  -d "$(python3 -c 'import json;print(json.dumps({"title":"Заголовок","body":open("docs/PLAN.md").read()}))')" \
+  https://api.github.com/repos/dhammagift/dg-node/issues
+```
+
+- Токен также запускает GitHub Actions (`workflow_dispatch`) — все боты с этого сервера так собирают
+  приложения. Тестовая сборка `dg-apps` без выкладки в сторы:
+  `POST https://api.github.com/repos/dhammagift/dg-apps/actions/workflows/build-app.yml/dispatches`
+  с `{"ref":"main","inputs":{"release":"none"}}` (для сайта с теста добавить
+  `"online_origin":"https://test.dhamma.gift"`). Статус: `GET .../actions/runs?per_page=5`, APK —
+  в артефактах прогона (`dg-app-full-apk-release-N`).
+- Выкладка в сторы — поле `release`, по одному приложению: `dg` (Dhamma.Gift → Play beta, открытое тестирование; словарь и Uposatha → alpha, закрытое),
+  `dg-ios` (→ TestFlight), `dg-both` (оба, одним прогоном), `dict`/`dict-ios`, `uposatha`/`uposatha-ios`.
+  Выкладка в сторы — только по явному «да» владельца. В production не продвигать — это делает владелец. Сборка ~15 мин (не час).
+- **Тег в `dg-apps` — это релиз**, а не просто сборка: Play (beta/alpha) + TestFlight, сжигает versionCode.
+  Для теста тег не ставить.
+- Ошибка `Resource not accessible by personal access token` = у токена нет `issues=write`.
+- Проверка права без создания мусора: `POST /issues` с `{"title":""}` → `422` (право есть), `403` (нет).
+- Токен не печатать, не коммитить, в чат не вставлять.
+
