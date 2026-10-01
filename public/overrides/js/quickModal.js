@@ -517,7 +517,10 @@ function renderQuickLists(isRu, queryBase) {
         // Добавили кнопку rename-fav-btn (карандаш) перед кнопкой удаления
         // ТЗ §2: bell in the row — not subscribed: subscribe form for this query; subscribed: its settings.
         const favSub = typeof window.subGetAll === 'function' ? window.subGetAll().find(x => x.type === 'search' && (x.query || '').toLowerCase() === String(fav.slug).toLowerCase()) : null;
-        const bellBtn = typeof window.subUpsert === 'function'
+        // Subscriptions are to searches only (owner, 2026-10-01): no bell for a text (mn9, sn56.11,
+        // pli-tv-bu-vb-pj1 — letters then a digit) or a memo note.
+        const isSearchFav = !/^[a-z][a-z-]*\d/i.test(String(fav.slug)) && !/\/memo\//.test(fav.path || '');
+        const bellBtn = isSearchFav && typeof window.subUpsert === 'function'
           ? `<span class="action-btn fav-bell-btn${favSub ? ' on' : ''}" data-slug="${fav.slug}" title="${favSub ? QS_T('Вы подписаны — настроить', 'Subscribed — settings') : QS_T('Подписаться', 'Subscribe')}">${QS_ICON.bellFa}</span>` : '';
         favHtml += `<li><span class="fav-star-icon">${QS_ICON.star}</span><a href="${url}">${fav.title || fav.slug}</a>
         ${bellBtn}<span class="action-btn rename-fav-btn" data-slug="${fav.slug}" title="${window.isRu ? 'Переименовать' : 'Rename'}">✎</span>
