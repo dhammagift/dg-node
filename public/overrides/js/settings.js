@@ -2655,7 +2655,7 @@ function sanitizeId(str) {
 }
 
 function loadFirebaseScripts() {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
         if (window.firebase) { resolve(); return; }
         const scripts = [
             "https://www.gstatic.com/firebasejs/10.9.0/firebase-app-compat.js",
@@ -2673,6 +2673,11 @@ function loadFirebaseScripts() {
                 loadedCount++;
                 if (loadedCount === scripts.length) resolve();
             };
+            // Without this a script that never loads left the promise pending FOREVER: every caller
+            // (initFirebase, syncLogin*) awaits it, so nothing was logged and the page just sat there
+            // — the sheet came up, the reader signed in, and the app hung in silence. An error here
+            // takes the same path as any other init failure: "Firebase Init Error: …" in the report.
+            script.onerror = () => reject(new Error('could not load ' + src));
             document.head.appendChild(script);
         });
     });
