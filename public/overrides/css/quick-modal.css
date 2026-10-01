@@ -15,7 +15,11 @@
 
 .quick-modal-container {
     position: fixed; top: 50%; left: 50%;
-    transform: translate(-50%, -50%) scale(0.95);
+    /* No scale() in the open transition: Android WebView re-rasterises the window when the 0.95 -> 1
+       scale ends (~0.3 s) and painted the row icons with other icons on screen — the subscribe bell
+       turned into the clear-all trash can or the rename pencil, the empty-history clock into a pencil
+       (owner's screen recording, 2026-10-01, app build 427). Slide + fade instead. */
+    transform: translate(-50%, calc(-50% + 12px));
     z-index: 10000; opacity: 0; visibility: hidden;
     transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s ease;
     width: 95%; max-width: 600px; max-height: calc(90 * var(--dg-vh, 1vh));
@@ -23,7 +27,7 @@
 }
 .quick-modal-container.open {
     opacity: 1; visibility: visible;
-    transform: translate(-50%, -50%) scale(1);
+    transform: translate(-50%, -50%);
 }
 
 /* Автоматическая адаптация под тему сайта */
@@ -367,3 +371,42 @@ body.dark .compact-list li, body.dark-mode .compact-list li { border-bottom-colo
 .quick-modal-content-wrapper .quick-subhint a { color: var(--dg-accent-ink, #0f7c63); text-decoration: none; }
 .quick-seg button .quick-seg-ic { vertical-align: -3px; margin-right: 6px; }
 .quick-modal-content-wrapper a.quick-all-history-link { color: var(--dg-accent-ink, #0f7c63); } /* dark theme: the site link colour won over it */
+
+/* The window's own palette, the same on every page and project that loads this file (search, reader,
+   memo, settings, dict.dhamma.gift, the apps). Its rules above read --dg-* tokens, which the site
+   defines only under body.dg-skin-minimal (search/css/home.css): on any page without that skin the
+   fallbacks — the old design's navy and light-theme values — showed instead (memo, owner 2026-10-01:
+   "быстрое окно везде одинаковое"). Same values as body.dg-skin-minimal / .dark — keep in sync. */
+.quick-modal-container {
+    --dg-surface: #ffffff;
+    --dg-surface-hover: #f5f4f1;
+    --dg-surface-active: #eae8e2;
+    --dg-border: #e7e5de;
+    --dg-border-strong: #d7d4c9;
+    --dg-text: #1b1d19;
+    --dg-text-2: #5c6058;
+    --dg-text-muted: #6e716a;
+    --dg-accent: #149c7c;
+    --dg-accent-ink: #0f7c63;
+    --dg-accent-dark: #0f7c63;
+    --dg-accent-bg: #dff3ec;
+    --dg-tblue: #3434be;
+    --dg-link: #3434be;
+}
+/* body.dark — dhamma.gift; body.dark-mode — the dictionary. */
+body.dark .quick-modal-container, body.dark-mode .quick-modal-container {
+    --dg-surface: #191919;
+    --dg-surface-hover: #202020;
+    --dg-surface-active: #2a2a2a;
+    --dg-border: #2c2c2c;
+    --dg-border-strong: #3b3b3b;
+    --dg-text: rgb(221, 221, 221);
+    --dg-text-2: #a8a8a8;
+    --dg-text-muted: #7c7c7c;
+    --dg-accent: #136857;
+    --dg-accent-ink: #09967a;
+    --dg-accent-dark: #025242;
+    --dg-accent-bg: #12241f;
+    --dg-tblue: #8f8fe8;
+    --dg-link: #8f8fe8;
+}

@@ -1,6 +1,6 @@
 /* Quick window ("compass", quickModal.js) styles live in their own file so pages without this
    stylesheet — dict.dhamma.gift — can load just them. */
-@import url("quick-modal.css?v=20260929b"); /* bump on every quick-modal.css edit: @import is not stamped by sendVersionedHtml */
+@import url("quick-modal.css?v=20261001a"); /* bump on every quick-modal.css edit: @import is not stamped by sendVersionedHtml */
 
 /* From Freelancer bootstrap*/
 
@@ -1667,3 +1667,17 @@ body.dg-state-results .bubble-notification {
     transform: translate(-50%, -20px);
 }
 body.dg-state-results .bubble-notification.show { transform: translate(-50%, 0); }
+
+/* Last clicked word / where playback resumes — the same Bootstrap-primary tint as reader/css/uiextra.css
+   and lbl.css. Here so pages that do not link uiextra.css (memo) get it too, instead of their own colour
+   (memo had an amber one; owner, 2026-10-01: .tts-active and .active-word use these colours everywhere). */
+.active-word {
+  background-color: rgba(var(--bs-primary-rgb), 0.35);
+  border-radius: 0.25rem;
+  box-shadow: 0 0 0 1px rgba(var(--bs-secondary-rgb), 0.15);
+}
+
+.dark .active-word {
+  background-color: rgba(var(--bs-primary-rgb), 0.25);
+  box-shadow: 0 0 0 1px rgba(var(--bs-secondary-rgb), 0.15);
+}
