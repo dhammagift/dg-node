@@ -495,7 +495,7 @@ function renderQuickLists(isRu, queryBase) {
 
     // Рендер Избранного
     if (favData.length === 0) {
-      favContainer.innerHTML = `<div class="quick-empty-state">${QS_ICON.starOutline}<p>${window.isRu ? "Избранного пока нет." : "No favorites yet."}</p></div>`;
+      favContainer.innerHTML = `<div class="quick-empty-state">${QS_ICON.starO}<p>${window.isRu ? "Избранного пока нет." : "No favorites yet."}</p></div>`;
       favHeader.style.display = 'none';
       favContainer.style.display = 'block';
     } else {
@@ -518,7 +518,7 @@ function renderQuickLists(isRu, queryBase) {
         // ТЗ §2: bell in the row — not subscribed: subscribe form for this query; subscribed: its settings.
         const favSub = typeof window.subGetAll === 'function' ? window.subGetAll().find(x => x.type === 'search' && (x.query || '').toLowerCase() === String(fav.slug).toLowerCase()) : null;
         const bellBtn = typeof window.subUpsert === 'function'
-          ? `<span class="action-btn fav-bell-btn${favSub ? ' on' : ''}" data-slug="${fav.slug}" title="${favSub ? QS_T('Вы подписаны — настроить', 'Subscribed — settings') : QS_T('Подписаться', 'Subscribe')}">${QS_ICON.bell}</span>` : '';
+          ? `<span class="action-btn fav-bell-btn${favSub ? ' on' : ''}" data-slug="${fav.slug}" title="${favSub ? QS_T('Вы подписаны — настроить', 'Subscribed — settings') : QS_T('Подписаться', 'Subscribe')}">${QS_ICON.bellFa}</span>` : '';
         favHtml += `<li><span class="fav-star-icon">${QS_ICON.star}</span><a href="${url}">${fav.title || fav.slug}</a>
         ${bellBtn}<span class="action-btn rename-fav-btn" data-slug="${fav.slug}" title="${window.isRu ? 'Переименовать' : 'Rename'}">✎</span>
         <span class="action-btn remove-fav-btn" data-slug="${fav.slug}">×</span></li>`;
@@ -530,7 +530,7 @@ function renderQuickLists(isRu, queryBase) {
 
     // Рендер Истории
     if (histData.length === 0) {
-      histContainer.innerHTML = `<div class="quick-empty-state">${QS_ICON.history}<p>${window.isRu ? "История пуста." : "History is empty."}</p></div>`;
+      histContainer.innerHTML = `<div class="quick-empty-state"><img src="${window.DG_SITE_BASE}/assets/svg/clock-rotate-left.svg" width="18" height="18" alt=""><p>${window.isRu ? "История пуста." : "History is empty."}</p></div>`;
       histHeader.style.display = 'none';
       histContainer.style.display = 'block';
     } else {
@@ -822,6 +822,11 @@ function qsRemindText(sub) {
   return sub.remind && sub.remind.web === 'schedule' ? QS_T('по расписанию', 'on schedule') : QS_T('раз в день, при открытии браузера', 'once a day, when the browser opens');
 }
 const QS_ICON = {
+  // Font Awesome 6 Free bell (regular, CC BY 4.0) for icons inside the scrolling lists. The stroked
+  // line-icon SVGs there were repainted by the app's Android WebView with other icons on screen —
+  // bell -> trash can / pencil, the empty-history clock -> pencil — while filled FA paths (the stars)
+  // never were (owner's recordings, builds 427 and 430, 2026-10-01). Filled paths only in the lists.
+  bellFa: '<svg class="qs-fa" viewBox="0 0 448 512" width="15" height="15" aria-hidden="true"><path fill="currentColor" d="M224 0c-17.7 0-32 14.3-32 32l0 19.2C119 66 64 130.6 64 208l0 25.4c0 45.4-15.5 89.5-43.8 124.9L5.3 377c-5.8 7.2-6.9 17.1-2.9 25.4S14.8 416 24 416l400 0c9.2 0 17.6-5.3 21.6-13.6s2.9-18.2-2.9-25.4l-14.9-18.6C399.5 322.9 384 278.8 384 233.4l0-25.4c0-77.4-55-142-128-156.8L256 32c0-17.7-14.3-32-32-32zm0 96c61.9 0 112 50.1 112 112l0 25.4c0 47.9 13.9 94.6 39.7 134.6L72.3 368C98.1 328 112 281.3 112 233.4l0-25.4c0-61.9 50.1-112 112-112zm64 352l-64 0-64 0c0 17 6.7 33.3 18.7 45.3s28.3 18.7 45.3 18.7s33.3-6.7 45.3-18.7s18.7-28.3 18.7-45.3z"/></svg>',
   // Font Awesome 6 Free star, solid / regular (CC BY 4.0): favorites and the history toggle (owner, 2026-10-01).
   star: '<svg class="qs-star" viewBox="0 0 576 512" aria-hidden="true"><path fill="currentColor" d="M316.9 18C311.6 7 300.4 0 288.1 0s-23.4 7-28.8 18L195 150.3 51.4 171.5c-12 1.8-22 10.2-25.7 21.7s-.7 24.2 7.9 32.7L137.8 329 113.2 474.7c-2 12 3 24.2 12.9 31.3s23 8 33.8 2.3l128.3-68.5 128.3 68.5c10.8 5.7 23.9 4.9 33.8-2.3s14.9-19.3 12.9-31.3L438.5 329 542.7 225.9c8.6-8.5 11.7-21.2 7.9-32.7s-13.7-19.9-25.7-21.7L381.2 150.3 316.9 18z"/></svg>',
   starO: '<svg class="qs-star" viewBox="0 0 576 512" aria-hidden="true"><path fill="currentColor" d="M287.9 0c9.2 0 17.6 5.2 21.6 13.5l68.6 141.3 153.2 22.6c9 1.3 16.5 7.6 19.3 16.3s.5 18.1-5.9 24.5L433.6 328.4l26.2 155.6c1.5 9-2.2 18.1-9.7 23.5s-17.3 6-25.3 1.7l-137-73.2L151 509.1c-8.1 4.3-17.9 3.7-25.3-1.7s-11.2-14.5-9.7-23.5l26.2-155.6L31.1 218.2c-6.5-6.4-8.7-15.9-5.9-24.5s10.3-14.9 19.3-16.3l153.2-22.6L266.3 13.5C270.4 5.2 278.7 0 287.9 0zm0 79L235.4 187.2c-3.5 7.1-10.2 12.1-18.1 13.3L99 217.9 184.9 303c5.5 5.5 8.1 13.3 6.8 21L171.4 443.7l105.2-56.2c7.1-3.8 15.6-3.8 22.6 0l105.2 56.2L384.2 324.1c-1.3-7.7 1.2-15.5 6.8-21l85.9-85.1L358.6 200.5c-7.8-1.2-14.6-6.1-18.1-13.3L287.9 79z"/></svg>',
@@ -846,7 +851,7 @@ function renderQuickSubs() {
   let html = `<h6 class="sortable-header quick-subs-head"><span class="header-title">${QS_T('Активные', 'Active')}</span>
     <button type="button" class="quick-subs-new">+ ${QS_T('Новая', 'New')}</button></h6>`;
   if (!subs.length) {
-    html += `<div class="quick-empty-state full">${QS_ICON.bell}<p>${QS_T('Подписок пока нет. Подпишитесь на поиск колокольчиком в выдаче или создайте здесь.', 'No subscriptions yet. Subscribe to a search with the bell on the results page, or create one here.')}</p></div>`;
+    html += `<div class="quick-empty-state full">${QS_ICON.bellFa}<p>${QS_T('Подписок пока нет. Подпишитесь на поиск колокольчиком в выдаче или создайте здесь.', 'No subscriptions yet. Subscribe to a search with the bell on the results page, or create one here.')}</p></div>`;
   } else {
     html += '<ul class="compact-list quick-subs-list">';
     subs.forEach(sub => {
@@ -857,7 +862,7 @@ function renderQuickSubs() {
         : (sub.type === 'place' && prog.nextId ? prog.nextId + ' ' + QS_T('из', 'of') + ' ' + prog.total : prog.read + ' ' + QS_T('из', 'of') + ' ' + prog.total);
       const href = sub.type === 'search' ? `${window.DG_SITE_BASE}/${encodeURIComponent(sub.query || '')}` : (prog.nextId ? `${window.DG_SITE_BASE}/${prog.nextId}` : '#');
       html += `<li class="quick-sub${sub.paused ? ' paused' : ''}" data-id="${qsEsc(sub.id)}">
-        <span class="quick-sub-ic">${QS_ICON.bell}</span>
+        <span class="quick-sub-ic">${QS_ICON.bellFa}</span>
         <div class="quick-sub-main">
           <a href="${href}">${qsEsc(qsName(sub))}</a>
           ${sub.type === 'random' ? '' : `<span class="quick-sub-bar"><i style="width:${prog.percent}%"></i></span>`}
