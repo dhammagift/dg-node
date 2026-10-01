@@ -3292,12 +3292,27 @@ window.forceSyncNow = async function() {
     }
 };
 
+// Safari — iOS Safari above all — refuses signInWithPopup outright; Firebase's own guidance for
+// those browsers is a full-page redirect. Without this fallback the Apple/Google button simply did
+// nothing on an iPhone while working on Android, which is how it was reported (error-report.js
+// caught the real code: auth/popup-blocked). The session that comes back from the redirect is
+// picked up by auth.onAuthStateChanged, so only the error path needs anything here.
+async function signInWithPopupOrRedirect(provider, label) {
+    try {
+        return await auth.signInWithPopup(provider);
+    } catch (error) {
+        if (!error || error.code !== 'auth/popup-blocked') throw error;
+        if (window.dgReport) window.dgReport('[dg-login] ' + label + ': popup blocked, redirecting instead');
+        return auth.signInWithRedirect(provider);
+    }
+}
+
 window.syncLoginGoogle = async function() {
     if (!window.firebase) await window.initFirebase(); // Подгружаем на лету, если еще нет
     // A bare `return` here used to be the most silent failure of all: report it (error-report.js).
     if (!auth) { if (window.dgReport) window.dgReport('[dg-login] google: firebase auth not ready'); return; }
     try {
-        await auth.signInWithPopup(googleProvider);
+        await signInWithPopupOrRedirect(googleProvider, 'google');
         localStorage.setItem('dg_cloud_session', 'true'); // Ставим флаг сессии
         if (window.dgReport) window.dgReport('[dg-login] google: signed in');
     }
@@ -3311,7 +3326,7 @@ window.syncLoginApple = async function() {
     if (!window.firebase) await window.initFirebase();
     if (!auth) { if (window.dgReport) window.dgReport('[dg-login] apple: firebase auth not ready'); return; }
     try {
-        await auth.signInWithPopup(appleProvider);
+        await signInWithPopupOrRedirect(appleProvider, 'apple');
         localStorage.setItem('dg_cloud_session', 'true');
         if (window.dgReport) window.dgReport('[dg-login] apple: signed in');
     }
