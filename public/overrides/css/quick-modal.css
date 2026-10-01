@@ -267,9 +267,13 @@ body.dark .quick-actions-right img, body.dark-mode .quick-actions-right img { fi
 body.dark .compact-list li, body.dark-mode .compact-list li { border-bottom-color: var(--dg-border, #444); }
 .compact-list a { color: var(--dg-link, #3434be); margin: 0 8px; }
 .compact-list a:hover { color: var(--dg-accent-ink, #0f7c63); }
-.fav-star-icon { color: var(--dg-text-muted, #9a9c95); font-size: 1.05rem; }
-.toggle-fav-btn-hist { color: var(--dg-text-muted, #9a9c95); font-size: 1.15rem; }
+/* Stars: Font Awesome solid/regular (QS_ICON.star / starO), about the size of the history clock beside
+   them. A favorite's star is filled and coloured; in the history a filled grey star = already in
+   favorites, an outline = not (owner, 2026-10-01). */
+.fav-star-icon { display: inline-flex; color: #f39c12; }
+.toggle-fav-btn-hist { display: inline-flex; color: var(--dg-text-muted, #9a9c95); }
 .toggle-fav-btn-hist:hover { color: var(--dg-text, #1b1d19); }
+.qs-star { width: 18px; height: 16px; display: block; }
 .quick-all-history-wrapper { text-align: right; margin: 12px 0 4px; }
 .quick-all-history-link { color: var(--dg-accent-ink, #0f7c63); }
 
@@ -393,6 +397,11 @@ body.dark .compact-list li, body.dark-mode .compact-list li { border-bottom-colo
     --dg-tblue: #3434be;
     --dg-link: #3434be;
 }
+/* The window's height unit, as search/css/home.css defines it on :root (svh: the visible height with
+   the phone browser's address bar showing; / --dg-zoom undoes the interface zoom). Pages without
+   home.css (memo) fell back to 1vh — taller than the visible area, the window's top ran under the bar. */
+.quick-modal-container, .quick-overlay-element { --dg-vh: calc(1vh / var(--dg-zoom, 1)); }
+@supports (height: 1svh) { .quick-modal-container, .quick-overlay-element { --dg-vh: calc(1svh / var(--dg-zoom, 1)); } }
 /* body.dark — dhamma.gift; body.dark-mode — the dictionary. */
 body.dark .quick-modal-container, body.dark-mode .quick-modal-container {
     --dg-surface: #191919;
