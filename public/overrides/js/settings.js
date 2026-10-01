@@ -2665,7 +2665,10 @@ function loadFirebaseScripts() {
         let loadedCount = 0;
         scripts.forEach(src => {
             const script = document.createElement('script');
-            script.src = src; script.async = true; 
+            // async=false: dynamically inserted scripts must execute in insertion order —
+            // compat libs crash (firebase.firestore is not a function) if auth/firestore
+            // run before firebase-app; with async=true warm cache makes that race win.
+            script.src = src; script.async = false;
             script.onload = () => {
                 loadedCount++;
                 if (loadedCount === scripts.length) resolve();
@@ -3291,22 +3294,31 @@ window.forceSyncNow = async function() {
 
 window.syncLoginGoogle = async function() {
     if (!window.firebase) await window.initFirebase(); // Подгружаем на лету, если еще нет
-    if (!auth) return;
+    // A bare `return` here used to be the most silent failure of all: report it (error-report.js).
+    if (!auth) { if (window.dgReport) window.dgReport('[dg-login] google: firebase auth not ready'); return; }
     try {
         await auth.signInWithPopup(googleProvider);
         localStorage.setItem('dg_cloud_session', 'true'); // Ставим флаг сессии
+        if (window.dgReport) window.dgReport('[dg-login] google: signed in');
     }
-    catch (error) { console.error("Login Error:", error); }
+    catch (error) {
+        if (window.dgReport) window.dgReport('[dg-login] google: ' + ((error && (error.code || error.message)) || error));
+        console.error("Login Error:", error);
+    }
 };
 
 window.syncLoginApple = async function() {
     if (!window.firebase) await window.initFirebase();
-    if (!auth) return;
+    if (!auth) { if (window.dgReport) window.dgReport('[dg-login] apple: firebase auth not ready'); return; }
     try {
         await auth.signInWithPopup(appleProvider);
         localStorage.setItem('dg_cloud_session', 'true');
+        if (window.dgReport) window.dgReport('[dg-login] apple: signed in');
     }
-    catch (error) { console.error("Login Error (Apple):", error); }
+    catch (error) {
+        if (window.dgReport) window.dgReport('[dg-login] apple: ' + ((error && (error.code || error.message)) || error));
+        console.error("Login Error (Apple):", error);
+    }
 };
 
 window.syncEnablePhrase = async function(rawPhrase, hashedId) {

@@ -135,6 +135,9 @@
     <script src="/assets/js/jquery-3.7.0.min.js"></script>
     <script src="/assets/js/bootstrap.bundle.5.3.1.min.js"></script>
     <script defer src="/assets/js/themeswitch.js"></script>
-    <script src="/assets/js/settings.js?v=20260930b"></script>
-    <script src="/login/login.js?v=20260929b"></script> </body>
+    <!-- Site-side error reports (the apps have their own in native-bridge.js): without this a
+         failed sign-in in a browser left no trace in logs/app-errors.log. -->
+    <script src="/assets/js/error-report.js"></script>
+    <script src="/assets/js/settings.js"></script>
+    <script src="/login/login.js"></script> </body>
 </html>

@@ -1445,7 +1445,12 @@ window.DgSearchRender = (function () {
             ],
             columnDefs: [
                 { type: 'natural', targets: 0 },
-                { targets: [1, 2], className: 'text-nowrap' },
+                // Numbers keep a pinned, narrow width and sit under their (right-aligned) headers.
+                // Left to auto-width they absorbed the table's spare space — the Texts column grew
+                // to two thirds of the screen with the count stranded at its far left, and the sort
+                // caret floated in the middle of it, far from the label (owner: "какая-то жуть").
+                // The Word column takes whatever is left, which is the only column that benefits.
+                { targets: [1, 2], className: 'text-nowrap text-end', width: '6.5rem' },
                 { type: 'html', targets: [0, 1, 3] }
             ],
             order: [[1, 'desc'], [0, 'asc']]

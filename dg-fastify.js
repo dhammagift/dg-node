@@ -266,14 +266,34 @@ const VERSIONED_STATIC_ROOTS = [
     path.join(__dirname, 'search'),
     path.join(__dirname, 'reader'),
     path.join(__dirname, 'settings'),
+    path.join(__dirname, 'siteroot', 'login'), // /login/login.js|login.css — not under /assets
 ];
+// Every value is a LIST of roots, tried in order, because that is how these prefixes are mounted:
+// '/assets' is [public/overrides, siteroot/assets] (see its fastifyStatic registration) and a file
+// that only exists in the legacy tree — /assets/js/datatables/datatables.min.css, loaded from JS by
+// search/index.html — was invisible to the rewriter while only the first root was listed here. It
+// stayed a bare URL, and a bare URL is exactly what a browser that cached it under the old
+// immutable tier never revalidates (owner, 2026-10-01: the broken table header that only an
+// incognito window fixed).
 const HTML_ASSET_URL_ROOTS = {
-    '/assets': VERSIONED_STATIC_ROOTS[0],
-    '/spa': VERSIONED_STATIC_ROOTS[1],
-    '/nodejs/res': VERSIONED_STATIC_ROOTS[2],
-    '/reader': VERSIONED_STATIC_ROOTS[3],
-    '/settings': VERSIONED_STATIC_ROOTS[4],
+    '/assets': [VERSIONED_STATIC_ROOTS[0], path.join(__dirname, 'siteroot', 'assets')],
+    '/spa': [VERSIONED_STATIC_ROOTS[1]],
+    '/nodejs/res': [VERSIONED_STATIC_ROOTS[2]],
+    '/reader': [VERSIONED_STATIC_ROOTS[3]],
+    '/settings': [VERSIONED_STATIC_ROOTS[4]],
+    '/login': [VERSIONED_STATIC_ROOTS[5]],
 };
+
+// Built from HTML_ASSET_URL_ROOTS so a versioned root cannot be half-added: that map resolves a
+// URL to its file, this pattern is what finds the URL inside the HTML. The optional ?v= is matched
+// and dropped, so a version written by hand is replaced by the current hash rather than blocking
+// the rewrite — /login/login.css carried a literal ?v=20260929 that no stamper could ever update.
+const ASSET_URL_PATTERN = new RegExp(
+    '((?:src|href)="|loadScript\\(\'|dgPreload\\(\'|addReaderCss\\(\'|\\.src = \'|\\.href = \')(\\/(?:' +
+    Object.keys(HTML_ASSET_URL_ROOTS).map(p => p.slice(1).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') +
+    ')\\/[^"\'?#]+\\.(?:js|css|svg|png|ico))(?:\\?v=[^"\'&]*)?("|\')',
+    'g'
+);
 
 // New function alongside sendFile, not a mode flag on it — sendFile stays a generic
 // "read a file, send with optional content-type" helper (used for non-HTML cases too:
@@ -292,17 +312,17 @@ function sendVersionedHtml(req, reply, absHtmlPath, statusCode = 200) {
     catch { return reply.code(404).send(); }
     const rewritten = html.replace(
         // Also stamps the lazy loadScript('/reader/megareader.js') / ('/spa/toc.js') calls in
-        // search/index.html — otherwise a 24h-cached copy could outlive the HTML that expects a
-        // newer one (e.g. .reader-pending needs buildSutta() to clear it).
-        // `s.src = '/spa/toc.js'` (ensureTocAssets) is stamped too: it was the one lazy script left
-        // bare, so a toc.js fix stayed invisible in an already-visited browser for up to 24h.
-        /((?:src|href)="|loadScript\('|dgPreload\('|addReaderCss\('|\.src = ')(\/(?:assets|spa|nodejs\/res|reader|settings)\/[^"'?#]+\.(?:js|css|svg|png|ico))("|')/g,
+        // search/index.html, `s.src = '/spa/toc.js'` (ensureTocAssets) and `css.href = '/assets/...'`
+        // (ensureSearchAssets' DataTables stylesheet) — a bare lazy path has no other way to carry a
+        // version. Each prefix is tried against every root it is mounted from, first hit wins.
+        ASSET_URL_PATTERN,
         (m, pre, url, post) => {
             const prefix = Object.keys(HTML_ASSET_URL_ROOTS).find(p => url.startsWith(p + '/'));
             if (!prefix) return m;
             const relPath = url.slice(prefix.length + 1);
-            const absAssetPath = path.join(HTML_ASSET_URL_ROOTS[prefix], relPath);
-            const v = getAssetVersion(absAssetPath);
+            const v = HTML_ASSET_URL_ROOTS[prefix]
+                .map(root => getAssetVersion(path.join(root, relPath)))
+                .find(Boolean);
             return v ? `${pre}${url}?v=${v}${post}` : m;
         }
     );
@@ -322,6 +342,11 @@ function sendVersionedHtml(req, reply, absHtmlPath, statusCode = 200) {
 // uses `reply.header(...)` instead of dg-light.js's `res.setHeader(...)` — same dispatch
 // logic, Fastify reply API.
 const CACHE_IMMUTABLE_YEAR = 'public, max-age=31536000, immutable';
+// A URL we cannot tie to a content version (bare legacy <script src>, a path a script builds at
+// runtime, a ?v= from an older copy of the file): keep the copy but always revalidate it. Cheap —
+// ETag is already there, so an unchanged file answers 304 with no body. Replaces the old
+// UNVERSIONED_LAZY_PATHS list, where every new case needed a hand-added entry.
+const CACHE_REVALIDATE = 'public, max-age=0, must-revalidate';
 const CACHE_FONT = 'public, max-age=604800';
 const CACHE_IMAGE = 'public, max-age=86400';
 const CACHE_LEGACY_CODE = 'public, max-age=86400';
@@ -329,44 +354,11 @@ const CACHE_CONFIG_JSON = 'no-cache'; // @fastify/static uses @fastify/send unde
 const CACHE_STATIC_SHORT = 'public, max-age=36000';
 const CACHE_DB = 'public, max-age=3600'; // 1 h — /mobile-data/*.db; keep in lockstep with dg-light.js's CACHE_DB (same rationale there)
 
-// Anything pulled in by lazy <script> injection (search/index.html's ensureSearchAssets/
-// ensureReaderAssets/ensureTocAssets, paliLookup.js) rather than a static HTML <script src="">
-// tag never gets the ?v=<hash> sendVersionedHtml() stamps onto real tags — so the immutable
-// one-year tier above would pin whatever copy a browser got first until it expires. Two flavors
-// share the problem: third-party bundles vendored into public/overrides/js (DataTables, the DPD
-// dictionary data) so dg-node no longer depends on the legacy repo's assets/ for them, AND our
-// own app code that happens to load the same lazy way — public/spa/ (toc.js today; the rest of
-// that directory is unused Phase-1 scaffold, see CLAUDE.md, but harmless to cover too) and the
-// reader's own common.js/megareader.js. All get the same 24h tier the legacy copies had under
-// siteroot/assets — confirmed live: a toc.js fix sat cached for a year in an already-visited
-// browser until this was added (owner, 2026-09-06).
-const UNVERSIONED_LAZY_PATHS = [
-    ...['datatables', 'standalone-dpd'].map(dir => path.join(__dirname, 'public', 'overrides', 'js', dir) + path.sep),
-    path.join(__dirname, 'public', 'spa') + path.sep,
-    path.join(__dirname, 'reader', 'common.js'),
-    // Fetched bare (no ?v=) by settings.js fetchTextInfo(); a year-long immutable copy would never see an edit.
-    path.join(__dirname, 'public', 'overrides', 'js', 'textinfo.js'),
-    path.join(__dirname, 'reader', 'megareader.js'),
-    // settings.js injects it on first use (History/Favorites): same lazy load, fixes sat cached for a year.
-    path.join(__dirname, 'public', 'overrides', 'js', 'quickModal.js'),
-    // Same story for the find-on-page pair: on dhamma.gift they sit in static <script> tags (so
-    // sendVersionedHtml stamps them), but the dictionary pages borrow them through dg-site.js's
-    // lazy cross-origin load, which no HTML rewriting can reach — a fix there stayed invisible in
-    // already-visited browsers for a year (owner, 2026-09-16: the panel's switches rendered as
-    // bare buttons on dict.dhamma.gift). dg-site.js now appends its own ?v= stamp; this 24h tier
-    // is what keeps them current afterwards without editing the other repo every time.
-    path.join(__dirname, 'public', 'overrides', 'js', 'dg-page-find.js'),
-    path.join(__dirname, 'public', 'overrides', 'js', 'dg-page-find-ui.js'),
-    // The TTS player: settings.js injects voice.js and voice.js appends voice.css, both without a
-    // URL of their own that HTML rewriting could reach — a one-line CSS fix (issue #20) sat behind
-    // a year-long immutable cache and simply never arrived. They carry ?v= now; this tier keeps
-    // them current for anything that still asks for the bare path.
-    path.join(__dirname, 'public', 'overrides', 'read', 'js', 'voice.js'),
-    path.join(__dirname, 'public', 'overrides', 'read', 'css', 'voice.css'),
-    // @import-ed by extrastyles.css and loaded bare by the dictionary: a redesign sat behind the
-    // year-long cache — new quick window JS over the old CSS (owner, 2026-09-28).
-    path.join(__dirname, 'public', 'overrides', 'css', 'quick-modal.css')
-];
+// UNVERSIONED_LAZY_PATHS used to live here: a hand-kept list of assets that lazy <script>
+// injection (ensureSearchAssets, paliLookup.js, voice.js, dg-site.js on the dictionary) pulls in
+// without a ?v=, each entry added after a fix sat behind the year-long immutable tier. The list is
+// gone because the rule is now the same for every asset and needs no maintenance: immutable only
+// when the ?v= matches the file's current md5, otherwise revalidate. See staticCacheHeaders below.
 
 function staticCacheHeaders(reply, filePath) {
     const ext = path.extname(filePath).toLowerCase();
@@ -379,10 +371,15 @@ function staticCacheHeaders(reply, filePath) {
         reply.header('cache-control', 'no-cache');
         return;
     }
-    const inVersionedRoot = VERSIONED_STATIC_ROOTS.some(root => filePath.startsWith(root + path.sep))
-        && !UNVERSIONED_LAZY_PATHS.some(p => filePath.startsWith(p));
+    const inVersionedRoot = VERSIONED_STATIC_ROOTS.some(root => filePath.startsWith(root + path.sep));
     if (inVersionedRoot && ['.js', '.css', '.svg', '.png', '.ico'].includes(ext)) {
-        reply.header('Cache-Control', CACHE_IMMUTABLE_YEAR);
+        // Immutable ONLY for a version that matches the file on disk right now — getAssetVersion()
+        // is the same md5 sendVersionedHtml() stamps into HTML, cached by mtime, so this is one
+        // stat per request and no hashing unless a ?v= is actually present. Everything else (bare
+        // URL, stale ?v=, a path built in JS at runtime) revalidates: 304, always current bytes.
+        const asked = /[?&]v=([^&]*)/.exec((reply.request && reply.request.url) || '');
+        const fresh = asked && asked[1] === getAssetVersion(filePath);
+        reply.header('Cache-Control', fresh ? CACHE_IMMUTABLE_YEAR : CACHE_REVALIDATE);
     } else if (['.woff', '.woff2', '.ttf', '.eot', '.otf'].includes(ext)) {
         reply.header('Cache-Control', CACHE_FONT);
     } else if (['.png', '.jpg', '.jpeg', '.gif', '.webp', '.ico', '.svg'].includes(ext)) {
@@ -1672,6 +1669,58 @@ for (const [urlPrefix, modeKey] of [['memorize', 'memorize'], ['devanagari', 'de
 // Это не отдельная тулза в siteroot/, а второй URL для уже примонтированной — оставлены явно.
 app.register(fastifyStatic, { root: path.join(SITEROOT, 'memo'), prefix: '/ru/memo', setHeaders: staticCacheHeaders, decorateReply: false, redirect: true });
 app.register(fastifyStatic, { root: path.join(SITEROOT, 'login'), prefix: '/ru/login', setHeaders: staticCacheHeaders, decorateReply: false, redirect: true });
+
+// --- Our own HTML goes through the rewriter, so no ?v= is ever written by hand ----------------
+// sendVersionedHtml() stamps ?v=<md5 of the file on disk> onto every /assets|/spa|/reader|/settings
+// link in the page, so a fix reaches readers as soon as the HTML is revalidated (HTML is always
+// revalidated) and nothing has to be bumped by hand when an asset changes. Only these roots are
+// routed per file: the legacy mirror trees under siteroot/ hold tens of thousands of .html each
+// (suttacentral.net alone: 70k), where one route per file is not worth its startup cost — those
+// are covered by the cache rule instead (unversioned asset = revalidate), which needs no per-file
+// work at all. A new small tool in siteroot/ gets its routes on the next restart if it is added
+// to this list; anything not listed stays correct, just without the immune-to-revalidation URLs.
+const VERSIONED_HTML_ROOTS = [
+    [path.join(__dirname, 'public', 'overrides'), '/assets'], // lbl, multiTool, makelist, grammar/*, ...
+    [path.join(SITEROOT, 'assets'), '/assets'],               // legacy fallback of the same URL space
+    [path.join(SITEROOT, 'login'), '/login'],
+    [path.join(SITEROOT, 'login'), '/ru/login'],
+    [path.join(SITEROOT, 'memo'), '/memo'],
+    [path.join(SITEROOT, 'memo'), '/ru/memo'],
+    [path.join(SITEROOT, 'help'), '/help'],
+    [path.join(SITEROOT, 'app-tests'), '/app-tests']
+];
+// URLs that already have an explicit route (redirects, 404 stubs) must not be registered twice.
+const versionedHtmlUrls = new Set([
+    ...Object.keys(LEGACY_HELP_REDIRECTS).map(f => '/assets/common/' + f),
+    '/assets/texts/abbr.html', '/assets/linebyline.html', '/assets/readylinebyline.html',
+    '/ru/assets/linebyline.html', '/ru/assets/readylinebyline.html'
+]);
+for (const [rootDir, urlPrefix] of VERSIONED_HTML_ROOTS) {
+    const stack = [rootDir];
+    while (stack.length) {
+        const dir = stack.pop();
+        let entries;
+        try { entries = fsSync.readdirSync(dir, { withFileTypes: true }); } catch { continue; }
+        for (const entry of entries) {
+            const abs = path.join(dir, entry.name);
+            // Dirent.isDirectory() is false for a symlink to a directory — the same trap the
+            // siteroot scan above documents, so stat the link instead of trusting the dirent.
+            let isDir = entry.isDirectory();
+            if (entry.isSymbolicLink()) { try { isDir = fsSync.statSync(abs).isDirectory(); } catch { continue; } }
+            if (isDir) { stack.push(abs); continue; }
+            if (!entry.name.endsWith('.html')) continue;
+            const rel = path.relative(rootDir, abs).split(path.sep).join('/');
+            // /login/index.html and /login/ are one page; links on the site use the directory form.
+            const urls = [`${urlPrefix}/${rel}`];
+            if (rel.endsWith('index.html')) urls.push(`${urlPrefix}/${rel.slice(0, -'index.html'.length)}`);
+            for (const url of urls) {
+                if (versionedHtmlUrls.has(url)) continue;
+                versionedHtmlUrls.add(url);
+                app.get(url, (req, reply) => sendVersionedHtml(req, reply, abs));
+            }
+        }
+    }
+}
 
 // /ru/docs — real RU-locale docs build, baseUrl:'/ru/docs/' baked in at build time
 // (dg-docs/docusaurus.config.js, DOCS_BUILD_LOCALE=ru), so this is a genuine static mount,
