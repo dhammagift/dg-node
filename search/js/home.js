@@ -3501,7 +3501,7 @@
                     var row = json && json.data && json.data[id];
                     var seg = row && row.segments && row.segments[0];
                     show(row && row.titles && row.titles.root, seg && firstTr(seg.translations),
-                        seg ? '/' + seg.segment + '?s=' + encodeURIComponent(sub.query) : null);
+                        seg ? '/' + seg.segment + '?s=' + encodeURIComponent(sub.query) + '&hide=id' : null);
                 })
                 .catch(function () { show('', ''); }); // offline — still notify, the title says enough
             return;

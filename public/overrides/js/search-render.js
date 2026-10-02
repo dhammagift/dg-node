@@ -605,6 +605,10 @@ window.DgSearchRender = (function () {
         var lang = (localStorage.dhammaLanguage || localStorage.siteLanguage || 'en') === 'ru' ? 'ru' : 'en';
         var url = '/' + suttaId + (segmentHash ? ':' + segmentHash : '');
         var params = [];
+        // A link of ours into a matched line: the anchor belongs in the path, but the reader's
+        // search field should read as a plain "id + word" search, not "id:segment + word"
+        // (?hide=id — reader/megareader.js). Same marker is available for any hand-made link.
+        if (segmentHash) params.push('hide=id');
         if (highlightWord) params.push('s=' + encodeURIComponent(highlightWord));
         params.push('lang=' + lang);
         if (SPA_MODE_FOR_READER[localStorage.defaultReader]) params.push('mode=' + SPA_MODE_FOR_READER[localStorage.defaultReader]);

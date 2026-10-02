@@ -333,6 +333,9 @@ document.addEventListener('DOMContentLoaded', function() {
             const params = new URLSearchParams();
             if (filter || searchValue) params.set('s', filter || searchValue);
             if (spaMode) params.set('mode', spaMode);
+            // A link to a matched line carries its anchor in the path; the reader's search field
+            // should still read as "id + word" rather than "id:segment + word" (?hide=id).
+            if (slug.indexOf(':') !== -1) params.set('hide', 'id');
             textUrl = '/' + slug + '?' + params.toString();
         }
         
