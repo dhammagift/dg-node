@@ -1,25 +1,13 @@
-<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<svg
-   width="500"
-   height="500"
-   viewBox="0 0 132.29167 132.29167"
-   version="1.1"
-   id="svg-dg-logo"
-   xmlns="http://www.w3.org/2000/svg">
-  <g id="layer1">
-    <!-- Оригинальный круглый фон -->
-    <circle
-       style="fill:#e5f7ff;fill-opacity:1"
-       cx="66.145836"
-       cy="66.145836"
-       r="66.145836" />
-    
-    <!-- Заглавные буквы DG -->
-    <text
-       x="66.145836"
-       y="88"
-       text-anchor="middle"
-       style="font-style:normal;font-weight:bold;font-size:62px;font-family:Inter, Arial, sans-serif;fill:#00121a;fill-opacity:1">DG</text>
-  </g>
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Dict.Dhamma.Gift logo: the Brahmi pali mark over its green ground rule (the vector from ddg-ui). -->
+<svg xmlns="http://www.w3.org/2000/svg" width="500" height="500" viewBox="0 0 132.29167 132.29167">
+  <circle cx="66.145836" cy="66.145836" r="66.145836" fill="#e5f7ff"/>
+  <svg x="14" y="19" width="104" height="95" viewBox="258 292 621 549">
+    <g fill="none" stroke="#00121a" stroke-width="48" stroke-linejoin="miter">
+      <path d="M410 381H282V600C282 690 330 721 372 721C420 721 462 690 462 612"/>
+      <path d="M608 690V545H738V380H855V292"/>
+    </g>
+    <circle cx="608" cy="712" r="38" fill="#00121a"/>
+    <path d="M258 826H879" stroke="#16b394" stroke-width="22"/>
+  </svg>
 </svg>
-

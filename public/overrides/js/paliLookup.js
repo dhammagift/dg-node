@@ -813,7 +813,11 @@ function createPopup() {
     dictBtn.className = 'dict-btn popup-action-btn popup-dict-btn';
     dictBtn.target = '_blank';
     dictBtn.title = 'Open in dict.dhamma.gift (Right-click or Long-tap for Grammar)';
-    dictBtn.innerHTML = `<img src="/assets/svg/dg-logo-dark.svg" width="18" height="18" alt="DG">`;
+    // Same Brahmi mark the extension's popup uses. At this size the ground rule only muddies the
+    // button, so the mark stands alone, with the stroke weight of the magnifier and the cross
+    // beside it. /assets/svg/dg-logo-dark.svg stays as the disc variant for the docs page and the
+    // PWA shortcut icon.
+    dictBtn.innerHTML = `<svg width="21" height="17" viewBox="252 262 633 518" style="display:block" aria-hidden="true"><g fill="none" stroke="#fff" stroke-width="60" stroke-linejoin="miter"><path d="M410 381H282V600C282 690 330 721 372 721C420 721 462 690 462 612"/><path d="M608 690V545H738V380H855V292"/></g><circle cx="608" cy="712" r="38" fill="#fff"/></svg>`;
 
     // Обработчик правого клика
     dictBtn.addEventListener('contextmenu', (e) => {
