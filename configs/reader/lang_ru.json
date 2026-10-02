@@ -116,7 +116,7 @@
     "readerModes": "Alt+1 до 7",
     "previousNext": "Ctrl + ← →",
     "script": "Alt + L",
-    "punctuationHelp": "Alt + . или ,",
+    "punctuationHelp": "Alt + G",
     "dictionaryMode": "Alt + B",
     "dictionaryNewWindow": "Alt + N",
     "search": "/",
@@ -124,7 +124,7 @@
     "scriptCompact": "Alt+L",
     "dictionaryCompact": "Alt+A",
     "fontSize": "Alt \"+-\"",
-    "punctuationSettings": "Alt+.",
+    "punctuationSettings": "Alt+G",
     "languageSettings": "Ctrl+1"
   },
   "help": {

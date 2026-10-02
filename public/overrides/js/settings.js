@@ -1492,7 +1492,7 @@ if (event.altKey && event.code === "KeyJ") {
  
  //Language Alt + L
   // Cycles the Pali script in place (owner: it used to reload the page) — same selectedScript key
-  // and the same re-render path as Alt+. below.
+  // and the same re-render path as Alt+G below.
   if (event.altKey && event.code === "KeyL") {
     event.preventDefault();
     const scriptOptions = ['ISOPali', 'Devanagari', 'Thai'];
@@ -1515,10 +1515,14 @@ if (event.altKey && event.code === "KeyJ") {
  
   // Для отладки: смотри, что нажимается
 //  console.log('Pressed:', event.code);
+ // Alt+G toggles Pali punctuation. It replaced Alt+. / Alt+, — those never fired: with Alt
+ // held, some keyboards/browsers deliver an empty `event.code` for the Period/Comma keys, the
+ // same reason Alt+P/Alt+Y above also fall back to key/keyCode. G is otherwise unbound.
  if (
-    event.altKey && // любой Alt
-    (event.code === 'Period' ||
-     event.code === 'Comma')  // Alt+M is the burger menu now (search/js/home.js)
+    event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey &&
+    (event.code === 'KeyG' ||
+     'gGпП'.indexOf(event.key) !== -1 ||
+     event.keyCode === 71)
   ) {
     event.preventDefault();
 

@@ -1186,7 +1186,7 @@
         b.setAttribute('aria-pressed', on ? 'true' : 'false');
         // Owner: "нужно чтобы это было видимо пользователю что есть горячие клавиши" — the
         // actual Alt+key each of these three already responds to (megareader.js's Alt+V for
-        // variants, settings.js's Alt+C for columns and Alt+. for punctuation), just never shown.
+        // variants, settings.js's Alt+C for columns and Alt+G for punctuation), just never shown.
         b.innerHTML = '<span class="dg-toggle-label">' + esc(label) +
             (hotkey ? ' <span class="dg-toggle-hotkey">' + esc(hotkey) + '</span>' : '') + '</span>' +
             '<span class="dg-tgl" aria-hidden="true"></span>';
@@ -2507,7 +2507,7 @@
                 } else if (window.DgSearchRender && typeof window.DgSearchRender.redraw === 'function') {
                     window.DgSearchRender.redraw();
                 }
-            }, 'Alt+.'));
+            }, 'Alt+G'));
         }
 
         // Devanagari mode's script — body.dg-mode-dev is set by megareader.js only while that
@@ -2672,7 +2672,7 @@
         sheet.style.maxHeight = Math.max(220, cssVH() - top - margin) + 'px';
     }
 
-    /* External hotkeys (Alt+V/Alt+C/Alt+. in megareader.js/settings.js) change the underlying
+    /* External hotkeys (Alt+V/Alt+C/Alt+G in megareader.js/settings.js) change the underlying
        localStorage/button state directly, outside this panel — if the panel happens to be open
        when that fires, its toggle rows would otherwise show stale state until next open/close.
        Called from those hotkey handlers after they apply the change. */
@@ -3166,7 +3166,7 @@
         document.addEventListener('keydown', function (e) {
             if (e.key === 'Escape') closeDrawer();
             // Alt+M opens/closes the burger menu (owner). By code, not key: Option+M on macOS
-            // produces "µ", and a non-Latin layout another letter. Punctuation stays on Alt+. / Alt+,.
+            // produces "µ", and a non-Latin layout another letter. Punctuation stays on Alt+G.
             if (e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey && e.code === 'KeyM') {
                 e.preventDefault();
                 var d = document.getElementById('dg-drawer');
