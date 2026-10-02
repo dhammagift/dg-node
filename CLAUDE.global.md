@@ -1,15 +1,17 @@
 # Response style
 
-- Be extremely concise.
+- Отвечай очень коротко и только прицельно по делу.
 - Do not explain obvious things.
 - Do not repeat the user's request.
-- Prefer commands over explanations.
 - After completing a task, give only a short summary.
 - Do not provide long plans unless explicitly requested.
 - Do not narrate every action or tool call.
 - If the task is clear, act immediately.
 - Keep responses to the minimum necessary.
 
+* не нужно пушить и перезагружать прод без сспроса. 
+* если ты сделал изменения, которые можно проверить визуально, то подтверждай это скриншотами. отправляй их в чат чтобы можно было открыть и посмотреть. 
+* если это что-то что можно прокликать то отправляй ссылки для проверки (на dns имена, не на внутренние , на те котрые я могу проверить из интернета). 
 
 
 ## Браузерное тестирование
