@@ -138,10 +138,12 @@ body.dg-skin-minimal {
     --dg-navy: #243448;
     --dg-navy-2: #1b2836;
     --dg-accent: #149c7c;
-    /* Акцент для ТЕКСТА. В светлой теме совпадает с основным, в тёмной берёт более светлый тон:
-       прод-зелёный для значков в подписи не читается. */
+    /* Акцент для ТЕКСТА. В светлой теме темнее основного (на белом мелкий текст/значок
+       основным зелёным не читается), в тёмной совпадает с ним. */
     --dg-accent-ink: #0f7c63;
-    --dg-accent-dark: #0f7c63;
+    /* Кнопки-действия (Искать, Подписаться, Войти) — ТЕМ ЖЕ зелёным, что тогглы и чекбоксы:
+       раньше здесь стоял более тёмный тон, и на одном экране жили два зелёных (owner, 2026-10-02). */
+    --dg-accent-dark: #149c7c;
     --dg-accent-bg: #dff3ec;
     /* Glyph on the accent-bg disc (tile icons, announcement close) — reference .disc color. */
     --dg-icon-ink: #0c6a55;
@@ -184,16 +186,13 @@ body.dg-skin-minimal.dark {
     --dg-text-muted: #7c7c7c;
     --dg-navy: #1b2836;
     --dg-navy-2: #131c26;
-    /* Зелёный в тёмной теме — БОЕВОЙ, приглушённый, а не яркий из светлой: #136857 у прода стоит
-       на .bg-primary и .menu-icon, #025242 на .btn-primary, #09967a на ссылках
-       ([data-theme="dark"] в assets/css/extrastyles.css). Яркий #3fe3bc из макета на тёмном фоне
-       бил в глаза и не совпадал ни с одной соседней страницей.
-       Для значков берём ровно прод-цвет, для текста — прод-цвет ссылок: #136857 в подписи на
-       тёмном фоне уже нечитаем (контраст ниже 3:1), а у прода для текста и заведён отдельный,
-       более светлый тон. */
-    --dg-accent: #136857;
+    /* Один зелёный на тёмную тему — прод-цвет ссылок #09967a: он же у чекбоксов, тогглов,
+       выбранных пунктов, кнопок-действий и текста (owner, 2026-10-02: «в тёмной — как Log in»).
+       Прежние #136857 (заливки) и #025242 (действия) на тёмном фоне читались как три разных
+       зелёных на одном экране. */
+    --dg-accent: #09967a;
     --dg-accent-ink: #09967a;
-    --dg-accent-dark: #025242;
+    --dg-accent-dark: #09967a;
     --dg-accent-bg: #12241f;
     --dg-icon-ink: #16b394;
 }
@@ -830,9 +829,9 @@ body #form #paliauto.searchinput::-webkit-search-cancel-button { display: none; 
 .dg-shell-go-label { display: none; }
 body.dg-state-home .dg-shell-go,
 body:not(.dg-state-home) .dg-shell-go { transition: none; }
-/* Reference button.go: text only, 13.5px/500, 8px/16px padding, 8px corners, accent fill
-   (--dg-accent-dark: #0f7c63 light / #025242 dark — both measured off the reference). The
-   magnifying glass stays in the markup for results/reader (icon-only button there) and for the
+/* Reference button.go: text only, 13.5px/500, 8px/16px padding, 8px corners, accent fill —
+   the same --dg-accent as every other "on" state (owner, 2026-10-02: one green per theme).
+   The magnifying glass stays in the markup for results/reader (icon-only button there) and for the
    busy spinner that swaps in for it; on home the label is the whole button. */
 body.dg-state-home .dg-shell-go {
     background: var(--dg-accent-dark);
@@ -844,7 +843,7 @@ body.dg-state-home .dg-shell-go {
     gap: 0;
 }
 body.dg-state-home .dg-shell-go:hover,
-body.dg-state-home .dg-shell-go:focus-visible { background: var(--dg-accent); color: #fff; }
+body.dg-state-home .dg-shell-go:focus-visible { background: color-mix(in srgb, var(--dg-accent) 86%, #000); color: #fff; }
 body.dg-state-home .dg-shell-go .dg-search-icon { display: none; }
 body.dg-state-home .dg-shell-go-label {
     display: inline;
@@ -1158,7 +1157,7 @@ body.dg-state-toc #toc-pane.toc-out .toc-aside { animation: dg-toc-out-right 240
     border: none; border-radius: 6px; background: var(--dg-accent); color: #fff;
     font-size: 1.2rem; font-weight: 700; line-height: 1; cursor: pointer;
 }
-.toc-expand-all-btn:hover { background: var(--dg-accent-dark, var(--dg-accent-ink, var(--dg-accent))); }
+.toc-expand-all-btn:hover { background: color-mix(in srgb, var(--dg-accent) 86%, #000); }
 .toc-books { display: flex; flex-direction: column; }
 .toc-book { border-top: 1px solid var(--dg-border); padding: .5rem 0; }
 .toc-book:first-child { border-top: none; }
@@ -2252,15 +2251,19 @@ body:not(.dg-state-home) #dg-announce { display: none; }
     color: var(--dg-text-muted);
 }
 /* Переключатель — свой, а не .form-switch Bootstrap: тот тянет за собой свою палитру и
-   размеры, которые в шторке смотрятся крупнее всего остального. */
+   размеры, которые в шторке смотрятся крупнее всего остального.
+   Выключенный: дорожка и кружок были --dg-surface-hover/--dg-border-strong — в тёмной теме
+   (#202020 и #3B3B3B на поверхности #191919) тоггл сливался с фоном, было не понять, выключен он
+   или это пустое место (owner, 2026-10-02). Берём серый из --dg-text-muted: он читается в обеих
+   темах, а кружок — белый, как у тоггла быстрого окна. */
 .dg-tgl {
     position: relative;
     width: 34px;
     height: 20px;
     flex: none;
     border-radius: 10px;
-    background: var(--dg-surface-hover);
-    border: 1px solid var(--dg-border-strong);
+    background: color-mix(in srgb, var(--dg-text-muted) 40%, var(--dg-surface));
+    border: 1px solid color-mix(in srgb, var(--dg-text-muted) 70%, transparent);
     transition: background-color 0.18s ease, border-color 0.18s ease;
 }
 .dg-tgl::after {
@@ -2271,8 +2274,8 @@ body:not(.dg-state-home) #dg-announce { display: none; }
     width: 16px;
     height: 16px;
     border-radius: 50%;
-    background: var(--dg-surface);
-    border: 1px solid var(--dg-border-strong);
+    background: #fff;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
     transition: transform 0.18s var(--dg-ease);
 }
 .dg-toggle-row[aria-pressed="true"] .dg-tgl {
@@ -2285,8 +2288,9 @@ body:not(.dg-state-home) #dg-announce { display: none; }
 }
 
 /* Переключатель «одно из нескольких». Размеры по макету: кнопки крупнее прежних — в них
-   попадают пальцем, а не курсором. Выбранное — нейтральной заливкой, не акцентной: акцент в
-   этом экране закреплён за действиями, а выбранный пункт действием не является. */
+   попадают пальцем, а не курсором. Выбранное — тем же зелёным, что и включённый тоггл: прежняя
+   нейтральная заливка (--dg-surface-active на --dg-surface) в тёмной теме не отличалась от
+   соседних кнопок, и какой пункт включён, приходилось угадывать (owner, 2026-10-02). */
 /* Same gotcha as the other [hidden] patches in this file (#dg-loading, .dg-scope-list, ...):
    `display:flex` below beats the browser's own `[hidden]{display:none}` on a specificity tie
    (author origin wins over user-agent) — dictModePicker()'s language seg staying .hidden did
@@ -2325,16 +2329,18 @@ body:not(.dg-state-home) #dg-announce { display: none; }
     white-space: nowrap;
 }
 .dg-seg-ic { width: 14px; height: 14px; flex: none; }
-.dg-segmented button[aria-pressed="true"] .dg-seg-ic { color: var(--dg-accent-ink); }
+.dg-segmented button[aria-pressed="true"] .dg-seg-ic { color: #fff; }
 /* На узком экране трети переключателя не хватало на «Light» рядом со значком — подпись
    обрезалась многоточием (замерено на 375px). Ужимаем отступы и кегль, а не значок. */
 @media (max-width: 420px) {
     .dg-segmented button { gap: 5px; padding: 10px 3px; font-size: 0.76rem; }
 }
-.dg-segmented button:hover { background: var(--dg-surface-hover); }
+/* Hover — только у невыбранных: раньше он красил и активную кнопку в серый, и наведённый курсор
+   на включённом пункте читался как «выключилось». */
+.dg-segmented button:not([aria-pressed="true"]):hover { background: var(--dg-surface-hover); }
 .dg-segmented button[aria-pressed="true"] {
-    background: var(--dg-surface-active);
-    color: var(--dg-text);
+    background: var(--dg-accent);
+    color: #fff;
 }
 
 /* issue #5: font-size stepper in the drawer, right under the theme switch — owner ask: same
@@ -2783,7 +2789,7 @@ body.dg-drawer-open {
     font-weight: 600;
     cursor: pointer;
 }
-.dg-subp-go:hover { background: var(--dg-accent-dark); }
+.dg-subp-go:hover { background: color-mix(in srgb, var(--dg-accent) 86%, #000); }
 /* Press feedback — same recipe the prototype uses on every one of its own buttons (.go:active,
    .rb:active): translateY(1px), not invented. */
 .dg-subp-go:active, .dg-subp-mark:active, .dg-subp-stop:active { transform: translateY(1px); }
@@ -2871,7 +2877,7 @@ body.dg-drawer-open {
 }
 .dg-read-mark.on svg circle { fill: var(--dg-accent); stroke: var(--dg-accent); }
 .dg-read-mark.on svg path { stroke: #fff; }
-.dg-read-mark.on:hover svg circle { fill: var(--dg-accent-dark); stroke: var(--dg-accent-dark); }
+.dg-read-mark.on:hover svg circle { fill: color-mix(in srgb, var(--dg-accent) 86%, #000); stroke: color-mix(in srgb, var(--dg-accent) 86%, #000); }
 /* Toggle feedback (tens of clicks per session — kept short): press squeezes the icon, and on
    check the tick draws itself in while the circle settles from 0.9. Transform on the svg (not
    the button) so the focus ring doesn't scale with it. */
@@ -3461,7 +3467,7 @@ body.dark .dg-field-error { color: #ff8a80; }
     font-weight: 600;
     cursor: pointer;
 }
-.dg-add-submit:hover { background: var(--dg-accent-dark); }
+.dg-add-submit:hover { background: color-mix(in srgb, var(--dg-accent) 86%, #000); }
 .dg-add-reset {
     width: 100%;
     margin-top: 10px;
@@ -4013,7 +4019,7 @@ body.dg-state-results #results-toolbar .btn {
 }
 body.dg-state-results #results-toolbar .btn:hover { border-color: var(--dg-border-strong); color: var(--dg-text); background: var(--dg-surface-hover); }
 body.dg-state-results #results-toolbar .btn.active,
-body.dg-state-results #results-toolbar .btn[aria-pressed="true"] { background: var(--dg-accent-bg); border-color: var(--dg-accent); color: var(--dg-icon-ink); }
+body.dg-state-results #results-toolbar .btn[aria-pressed="true"] { background: var(--dg-accent); border-color: var(--dg-accent); color: #fff; }
 /* кнопки-значки: круглые, без заливки (reference .qs .ic) */
 body.dg-state-results #results-toolbar .toggle-dict-btn,
 body.dg-state-results #results-toolbar .toggle-multiselect-btn,
@@ -4066,7 +4072,7 @@ body.dg-state-results #pali_wrapper .dt-search input:focus, body.dg-state-result
 body.dg-state-results #pali_wrapper .dt-search label, body.dg-state-results #pali-words_wrapper .dt-search label { margin: 0; color: var(--dg-text-2); }
 body.dg-state-results #pali_wrapper .dt-search .dg-filter-plus-btn, body.dg-state-results #pali-words_wrapper .dt-search .dg-filter-plus-btn { border: 0; border-radius: 7px; background: none; color: var(--dg-text-muted); }
 body.dg-state-results #pali_wrapper .dt-search .dg-filter-plus-btn:hover, body.dg-state-results #pali-words_wrapper .dt-search .dg-filter-plus-btn:hover { background: var(--dg-surface-hover); color: var(--dg-text); }
-body.dg-state-results #pali_wrapper .dt-search .dg-filter-plus-btn[aria-pressed="true"], body.dg-state-results #pali-words_wrapper .dt-search .dg-filter-plus-btn[aria-pressed="true"] { background: var(--dg-accent-bg); color: var(--dg-icon-ink); }
+body.dg-state-results #pali_wrapper .dt-search .dg-filter-plus-btn[aria-pressed="true"], body.dg-state-results #pali-words_wrapper .dt-search .dg-filter-plus-btn[aria-pressed="true"] { background: var(--dg-accent); color: #fff; }
 body.dg-state-results #pali_wrapper .dt-info, body.dg-state-results #pali-words_wrapper .dt-info { font-size: 12.5px; color: var(--dg-text-muted); padding: 0; }
 body.dg-state-results #pali_wrapper .dt-paging .pagination, body.dg-state-results #pali-words_wrapper .dt-paging .pagination { gap: 2px; margin: 0; }
 body.dg-state-results #pali_wrapper .dt-paging .page-link, body.dg-state-results #pali-words_wrapper .dt-paging .page-link {
@@ -4527,13 +4533,13 @@ body.dg-state-results #search-pane:not(.dg-has-paging) .dt-search { pointer-even
 
 .dg-ts-seg { display: flex; gap: 2px; margin: 0 14px; padding: 3px; background: var(--dg-surface-hover); border-radius: 10px; }
 .dg-ts-seg button { flex: 1; border: 0; background: none; font: inherit; font-size: 12px; color: var(--dg-text-muted); padding: 5px 4px; border-radius: 7px; cursor: pointer; white-space: nowrap; transition: transform .1s ease-out, background .18s, color .18s; }
-.dg-ts-seg button[aria-pressed="true"] { background: var(--dg-surface); color: var(--dg-text); font-weight: 600; box-shadow: 0 1px 3px rgba(0, 0, 0, .14); }
+.dg-ts-seg button[aria-pressed="true"] { background: var(--dg-accent); color: #fff; font-weight: 600; }
 .dg-ts-seg button:active { transform: scale(.97); }
 
 .dg-ts-chips { display: flex; gap: 5px; overflow-x: auto; padding: 9px 14px 2px; scrollbar-width: none; }
 .dg-ts-chips::-webkit-scrollbar { display: none; }
 .dg-ts-chip { flex: none; border: 1px solid transparent; background: var(--dg-surface-hover); color: var(--dg-text-muted); font: inherit; font-size: 11.5px; padding: 4px 10px; border-radius: 999px; cursor: pointer; transition: transform .1s ease-out, background .18s, color .18s, border-color .18s; }
-.dg-ts-chip[aria-pressed="true"] { background: var(--dg-accent-bg); color: var(--dg-text); border-color: var(--dg-accent); }
+.dg-ts-chip[aria-pressed="true"] { background: var(--dg-accent); color: #fff; border-color: var(--dg-accent); }
 .dg-ts-chip:active { transform: scale(.95); }
 
 .dg-ts-body { overflow-y: auto; overscroll-behavior: contain; padding: 6px 8px 0; }

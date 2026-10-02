@@ -44,6 +44,10 @@
      выглядела деталью из чужого набора. */
   --accent:#149C7C; --accent-soft:#DFF3EC;
   --danger:#B3261E;
+  /* Дорожка ВЫКЛЮЧЕННОГО переключателя. Отдельным токеном, а не --line-strong: в тёмной теме
+     #3B3B3B лежит на поверхности #191919 и переключатель было не видно вовсе — не понять,
+     выключен он или это пустое место (owner, 2026-10-02). */
+  --track-off:#CFD8E0;
   --r-sm:8px; --r-lg:16px;
   --ui:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
 }
@@ -53,6 +57,10 @@ body.dark{
   --ink:#DDDDDD; --ink-2:#A8A8A8; --ink-3:#8A8A8A;
   --line:#2C2C2C; --line-strong:#3B3B3B; --surface:#191919; --canvas:#141414;
   --page-bg:#111111;
+  /* #3B3B3B (--line-strong) на поверхности #191919 не читается: дорожка выключенного
+     переключателя сливалась с фоном. Серый заметно светлее поверхности, но темнее дорожки
+     включённого (--accent) — состояние видно и без белого кружка. */
+  --track-off:#5C5C5C;
   /* В тёмной теме — прод-зелёный ссылок #09967a ([data-theme="dark"] в assets/css/extrastyles.css),
      как и на главной: #149C7C на тёмном фоне уже теряет контраст. */
   --accent:#09967A; --accent-soft:#12241F;
@@ -188,14 +196,17 @@ button{font:inherit;cursor:pointer}
 .switch input{position:absolute;inset:0;width:100%;height:100%;opacity:0;margin:0;cursor:pointer}
 .track,.thumb{pointer-events:none}
 /* 25% smaller than the first cut (owner: "слишком крупные") */
-.track{width:39px;height:24px;border-radius:999px;background:var(--line-strong);transition:background .18s;display:block}
+.track{width:39px;height:24px;border-radius:999px;background:var(--track-off);transition:background .18s;display:block}
 .thumb{position:absolute;left:3px;top:12px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3);transition:transform .18s}
 .switch input:checked ~ .track{background:var(--accent)}
 .switch input:checked ~ .thumb{transform:translateX(15px)}
 .switch input:focus-visible ~ .track{outline:3px solid var(--accent);outline-offset:3px}
 .seg{display:inline-flex;background:color-mix(in srgb,var(--canvas) 75%,var(--surface));border-radius:10px;padding:3px;gap:3px;flex-wrap:wrap}
 .seg button{min-height:38px;padding:0 13px;border:0;background:transparent;border-radius:8px;color:var(--ink-2);font-size:14.5px;font-weight:500}
-.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.14)}
+/* Выбранный пункт — тем же зелёным, что и включённый переключатель: нейтральная заливка
+   (--surface на дорожке .seg) в тёмной теме не отличалась от соседних кнопок вовсе, и какая
+   из них включена, приходилось угадывать (owner, 2026-10-02). */
+.seg button[aria-pressed="true"]{background:var(--accent);color:#fff;font-weight:600}
 .seg button[disabled]{opacity:.55;cursor:not-allowed}
 .badge{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-3);background:var(--line);border-radius:5px;padding:2px 6px;margin-left:6px}
 .stub{font-size:12.5px;color:var(--ink-3);font-style:italic}

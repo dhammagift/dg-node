@@ -238,7 +238,7 @@ body.dark .quick-modal-content-wrapper, body.dark-mode .quick-modal-content-wrap
 }
 .quick-tab-btn:hover { color: var(--dg-text, #1b1d19); }
 .quick-tab-btn.active { color: var(--dg-text, #1b1d19); font-weight: 600; border-bottom: 2px solid var(--dg-accent, #149c7c); }
-.quick-tab-btn.active .quick-tab-ic { color: var(--dg-accent-ink, #0f7c63); }
+.quick-tab-btn.active .quick-tab-ic { color: var(--dg-accent, #149c7c); }
 .quick-tab-count { font-size: 0.72rem; font-weight: 600; min-width: 18px; padding: 1px 5px; border-radius: 9px; background: var(--dg-accent-bg, #dff3ec); color: var(--dg-accent-ink, #0f7c63); text-align: center; }
 .quick-tab-count[hidden] { display: none; }
 .quick-actions-right { flex: none; border-left: 1px solid var(--dg-border, #e7e5de); padding-left: 6px; }
@@ -317,7 +317,7 @@ body.dark .compact-list li, body.dark-mode .compact-list li { border-bottom-colo
 .quick-sublabel { margin: 8px 0 -2px; font-size: 0.72rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--dg-text-2, #5c6058); }
 .quick-seg { display: flex; gap: 4px; padding: 4px; border-radius: 10px; background: var(--dg-surface-hover, #f5f4f1); }
 .quick-seg button { flex: 1; border: 0; background: none; padding: 8px 10px; border-radius: 7px; font: inherit; font-size: 0.88rem; color: var(--dg-text-2, #5c6058); cursor: pointer; transition: background-color .15s ease, color .15s ease; }
-.quick-seg button.on { background: var(--dg-surface, #fff); color: var(--dg-text, #1b1d19); box-shadow: 0 1px 3px rgba(0, 0, 0, .12); }
+.quick-seg button.on { background: var(--dg-accent, #149c7c); color: #fff; }
 .quick-seg-grid { display: grid; grid-template-columns: repeat(4, 1fr); }
 @media (max-width: 560px) { .quick-seg-grid { grid-template-columns: 1fr 1fr; } }
 .quick-subfield { display: flex; align-items: center; border: 1px solid var(--dg-border-strong, #d7d4c9); border-radius: 10px; background: var(--dg-surface, #fff); padding-right: 4px; }
@@ -341,8 +341,8 @@ body.dark .compact-list li, body.dark-mode .compact-list li { border-bottom-colo
 .quick-subcount button, .quick-subwd button { border: 1px solid var(--dg-border-strong, #d7d4c9); background: var(--dg-surface, #fff); color: inherit; border-radius: 8px; min-width: 32px; height: 32px; cursor: pointer; font: inherit; }
 .quick-subwd { display: flex; gap: 6px; flex-wrap: wrap; }
 .quick-subwd button.on { background: var(--dg-accent, #149c7c); border-color: var(--dg-accent, #149c7c); color: #fff; }
-.quick-subsave { align-self: flex-start; margin-top: 8px; border: 0; border-radius: 10px; padding: 11px 22px; background: var(--dg-accent-dark, #0f7c63); color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
-.quick-subsave:hover { background: var(--dg-accent, #149c7c); }
+.quick-subsave { align-self: flex-start; margin-top: 8px; border: 0; border-radius: 10px; padding: 11px 22px; background: var(--dg-accent, #149c7c); color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
+.quick-subsave:hover { background: color-mix(in srgb, var(--dg-accent, #149c7c) 86%, #000); }
 .quick-subsave:disabled { opacity: .6; cursor: progress; }
 .quick-suberr { margin: 0; color: #c0392b; font-size: 0.85rem; }
 .quick-suberr[hidden] { display: none; }
@@ -360,7 +360,9 @@ body.dark .compact-list li, body.dark-mode .compact-list li { border-bottom-colo
 .quick-subrow { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 4px; }
 .quick-subrow .quick-sublabel { margin: 0; }
 .quick-switch { display: inline-flex; align-items: center; gap: 8px; border: 0; background: none; padding: 2px 0; font: inherit; font-size: 0.88rem; color: var(--dg-text-2, #5c6058); cursor: pointer; }
-.quick-switch-track { position: relative; width: 34px; height: 20px; border-radius: 10px; background: var(--dg-border-strong, #d7d4c9); transition: background-color 180ms cubic-bezier(0.23, 1, 0.32, 1); }
+/* Выключенная дорожка — не --dg-border-strong: в тёмной теме #3B3B3B на поверхности #191919
+   не видно вовсе (owner, 2026-10-02). Серый берём от --dg-text-muted, он читается в обеих темах. */
+.quick-switch-track { position: relative; width: 34px; height: 20px; border-radius: 10px; background: color-mix(in srgb, var(--dg-text-muted, #6e716a) 40%, var(--dg-surface, #fff)); transition: background-color 180ms cubic-bezier(0.23, 1, 0.32, 1); }
 .quick-switch-track i { position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0, 0, 0, .25); transition: transform 180ms cubic-bezier(0.23, 1, 0.32, 1); }
 .quick-switch[aria-checked="true"] { color: var(--dg-text, #1b1d19); }
 .quick-switch[aria-checked="true"] .quick-switch-track { background: var(--dg-accent, #149c7c); }
@@ -392,7 +394,8 @@ body.dark .compact-list li, body.dark-mode .compact-list li { border-bottom-colo
     --dg-text-muted: #6e716a;
     --dg-accent: #149c7c;
     --dg-accent-ink: #0f7c63;
-    --dg-accent-dark: #0f7c63;
+    /* Действия — тем же зелёным, что тогглы и выбранные пункты: один зелёный на тему. */
+    --dg-accent-dark: #149c7c;
     --dg-accent-bg: #dff3ec;
     --dg-tblue: #3434be;
     --dg-link: #3434be;
@@ -412,9 +415,9 @@ body.dark .quick-modal-container, body.dark-mode .quick-modal-container {
     --dg-text: rgb(221, 221, 221);
     --dg-text-2: #a8a8a8;
     --dg-text-muted: #7c7c7c;
-    --dg-accent: #136857;
+    --dg-accent: #09967a;
     --dg-accent-ink: #09967a;
-    --dg-accent-dark: #025242;
+    --dg-accent-dark: #09967a;
     --dg-accent-bg: #12241f;
     --dg-tblue: #8f8fe8;
     --dg-link: #8f8fe8;

@@ -166,13 +166,17 @@
             '.dg-find-panel .dg-toggle-row:last-child{border-bottom:none;}' +
             '.dg-find-panel .dg-toggle-label{flex:1;min-width:0;}' +
             '.dg-find-panel .dg-tgl{position:relative;display:block;width:34px;height:20px;flex:none;' +
-            'border-radius:10px;background:var(--dg-surface-hover);border:1px solid var(--dg-border-strong);' +
+            'border-radius:10px;background:color-mix(in srgb,var(--dg-text-muted,#6e716a) 40%,var(--dg-surface,#fff));' +
+            'border:1px solid color-mix(in srgb,var(--dg-text-muted,#6e716a) 70%,transparent);' +
             'transition:background-color .18s ease,border-color .18s ease;}' +
             '.dg-find-panel .dg-tgl::after{content:"";position:absolute;top:1px;left:1px;width:16px;' +
-            'height:16px;border-radius:50%;background:var(--dg-surface);border:1px solid var(--dg-border-strong);' +
+            'height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.25);' +
             'transition:transform .18s var(--dg-ease);}' +
-            '.dg-find-panel .dg-toggle-row[aria-pressed="true"] .dg-tgl{background:var(--dg-accent);' +
-            'border-color:var(--dg-accent);}' +
+            // Same fix as home.css's .dg-tgl: the old --dg-border-strong track disappeared on the
+            // dictionary's dark theme, and the on-state green is the brighter link green there.
+            '.dg-find-panel .dg-toggle-row[aria-pressed="true"] .dg-tgl{' +
+            'background:var(--dg-accent,#149c7c);' +
+            'border-color:var(--dg-accent,#149c7c);}' +
             '.dg-find-panel .dg-toggle-row[aria-pressed="true"] .dg-tgl::after{transform:translateX(14px);' +
             'border-color:transparent;}' +
             // Match rows: .toc-item is the site's TOC row style, which only the reader stylesheet
