@@ -28,7 +28,17 @@ const FA_SVGS = path.join(ROOT, 'node_modules', '@fortawesome', 'fontawesome-fre
 // Path is a CLI argument (--dict=/path/to/ddg-ui) or this default.
 const DICT_DEFAULT = '/var/www/ddg-ui';
 const STYLE_DIR = { fas: 'solid', far: 'regular', fab: 'brands' };
+const STYLE_CLASS = { 'fa-solid': 'fas', 'fa-regular': 'far', 'fa-brands': 'fab' };
+// Class names that look like icons but are modifiers, not icons.
+const HELPERS = new Set(['spin', 'pulse', 'fw', 'border', 'lg', 'xs', 'sm', 'ul', 'li']);
 const SKIP_DIRS = new Set(['node_modules', '.git', 'unused', 'siteroot']);
+// siteroot/ is not walked: its assets/ tree is the legacy repo and holds thousands of icons this
+// build never needs. The sign-in page is the one page there that draws icons with raw <i> tags, so
+// it is scanned explicitly (login.js renders them — see uiRenderIcons there).
+const EXTRA_SOURCES = [
+    path.join(ROOT, 'siteroot', 'login', 'index.html'),
+    path.join(ROOT, 'siteroot', 'login', 'login.js'),
+].filter((file) => fs.existsSync(file));
 // This file documents the exact patterns it scans for, and the generated output embeds every
 // icon name in a MANIFEST comment — both would otherwise match their own scan regexes.
 const SKIP_FILES = new Set([path.basename(__filename), path.basename(OUT_FILE)]);
@@ -49,13 +59,25 @@ function walk(dir, out) {
 
 function collectIcons() {
     const icons = new Set(); // "fas/book-bookmark"
-    for (const file of walk(ROOT, [])) {
+    for (const file of walk(ROOT, []).concat(EXTRA_SOURCES)) {
         const src = fs.readFileSync(file, 'utf8');
         for (const m of src.matchAll(/\[\s*'(fa[srb])'\s*,\s*'([a-z0-9-]+)'\s*\]/g)) {
             icons.add(m[1] + '/' + m[2]);
         }
         for (const m of src.matchAll(/fa-(solid|regular|brands)\s+fa-([a-z0-9-]+)/g)) {
             icons.add({ solid: 'fas', regular: 'far', brands: 'fab' }[m[1]] + '/' + m[2]);
+        }
+        // Not always adjacent: "fa-solid text-muted fa-eye-slash" is a common shape, so read every
+        // name out of the whole class attribute once the attribute carries a style prefix.
+        for (const m of src.matchAll(/class\s*=\s*(["'])([^"']*)\1/g)) {
+            const classes = m[2].split(/\s+/);
+            const style = classes.find((c) => STYLE_CLASS[c]);
+            if (!style) continue;
+            for (const c of classes) {
+                if (!/^fa-[a-z0-9-]+$/.test(c) || STYLE_CLASS[c] || HELPERS.has(c.slice(3))) continue;
+                if (/^(?:\d+x|rotate-\d+|flip-[a-z]+|pull-[a-z]+)$/.test(c.slice(3))) continue;
+                icons.add(STYLE_CLASS[style] + '/' + c.slice(3));
+            }
         }
         // faIcon('name') — settings.js's helper, always prefix 'fas' (see there).
         for (const m of src.matchAll(/\bfaIcon\('([a-z0-9-]+)'\)/g)) {

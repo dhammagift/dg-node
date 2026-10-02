@@ -12,7 +12,13 @@ const translations = isRu ? {
     sessionsLabel: "Активные устройства:",
     mergeTitle: "Обнаружены локальные данные",
     mergeBody: "На этом устройстве есть сохраненная история и избранное. Как поступить при входе?<br><br><b>Объединить</b>: сохранить текущие данные и добавить к ним облачные.<br><b>Заменить</b>: удалить данные с этого устройства и скачать копию из облака.",
-    btnMerge: "Объединить (Merge)", btnOverwrite: "Заменить из облака (Overwrite)", btnCancel: "Отмена"
+    btnMerge: "Объединить (Merge)", btnOverwrite: "Заменить из облака (Overwrite)", btnCancel: "Отмена",
+    lblBackup: "Сохранить", lblRestore: "Восстановить",
+    backupTitle: "Сохранить данные этого устройства в файл JSON",
+    restoreTitle: "Восстановить данные из файла JSON",
+    backupDone: "💾 Резервная копия сохранена", restoreDone: "✅ Данные восстановлены",
+    restoreBadFile: "❌ Неверный файл резервной копии",
+    restoreConfirm: "Восстановить данные из файла?\n\nЗаписи из копии перезапишут совпадающие данные этого устройства."
 } : {
     title: "Cloud Sync", desc: "History, favorites, subscriptions and settings.",
     apple: "Sign in with Apple", google: "Sign in with Google", or: "or", phraseLabel: "Secret Passphrase",
@@ -24,7 +30,13 @@ const translations = isRu ? {
     sessionsLabel: "Active Devices:",
     mergeTitle: "Local Data Found",
     mergeBody: "History and favorites were found on this device. How would you like to proceed?<br><br><b>Merge</b>: keep local data and combine it with the cloud.<br><b>Overwrite</b>: delete data from this device and download cloud copy.",
-    btnMerge: "Merge Data", btnOverwrite: "Overwrite from Cloud", btnCancel: "Cancel"
+    btnMerge: "Merge Data", btnOverwrite: "Overwrite from Cloud", btnCancel: "Cancel",
+    lblBackup: "Backup", lblRestore: "Restore",
+    backupTitle: "Save this device's data as a JSON file",
+    restoreTitle: "Restore data from a JSON file",
+    backupDone: "💾 Backup saved", restoreDone: "✅ Data restored",
+    restoreBadFile: "❌ Invalid backup file",
+    restoreConfirm: "Restore data from this file?\n\nRecords from the backup will overwrite matching data on this device."
 };
 
 // Функция принудительной локализации статических элементов
@@ -56,11 +68,75 @@ function applyLocalization() {
     if (el('btn-modal-merge')) el('btn-modal-merge').textContent = translations.btnMerge;
     if (el('btn-modal-overwrite')) el('btn-modal-overwrite').textContent = translations.btnOverwrite;
     if (el('btn-modal-cancel')) el('btn-modal-cancel').textContent = translations.btnCancel;
+    if (el('lbl-backup')) el('lbl-backup').textContent = translations.lblBackup;
+    if (el('lbl-restore')) el('lbl-restore').textContent = translations.lblRestore;
+    if (el('btn-backup')) el('btn-backup').title = translations.backupTitle;
+    if (el('btn-restore')) el('btn-restore').title = translations.restoreTitle;
+}
+
+// Backup/restore stays a website feature: the apps bundle this page, but a WebView cannot save or
+// pick a JSON file yet (both the Android and the iOS WebView drop blob downloads). Capacitor injects
+// window.Capacitor into every page it serves; the protocol is the fallback for iOS before that.
+function uiHideBackupInApp() {
+    const cap = window.Capacitor;
+    const inApp = (cap && typeof cap.isNativePlatform === 'function' && cap.isNativePlatform())
+        || location.protocol === 'capacitor:';
+    const box = document.getElementById('backup-restore');
+    if (inApp && box) box.classList.add('d-none');
+}
+
+window.addEventListener('deviceready', uiHideBackupInApp);
+
+// The site ships a generated icon subset (fontawesome-local.js, build-icons.js), not the webfont
+// library: it only answers FontAwesome.icon(), so a bare <i class="fa-solid fa-x"> stays an empty
+// 0x0 tag (same reason home-bundle.js draws icons through faSvg()). The page therefore renders its
+// own tags — once on load, then for everything it builds later (session rows, button spinners).
+const FA_PREFIXES = { 'fa-solid': 'fas', 'fa-regular': 'far', 'fa-brands': 'fab' };
+
+function uiRenderIcons(root) {
+    const FA = window.FontAwesome;
+    if (!FA || typeof FA.icon !== 'function' || !root) return;
+
+    const tags = [];
+    if (root.nodeType === 1 && root.matches && root.matches('i[class*="fa-"]')) tags.push(root);
+    if (root.querySelectorAll) tags.push(...root.querySelectorAll('i[class*="fa-"]'));
+
+    for (const tag of tags) {
+        const classes = String(tag.className).split(/\s+/);
+        const prefix = FA_PREFIXES[classes.find((c) => FA_PREFIXES[c])];
+        if (!prefix) continue;
+        // The first class FontAwesome knows is the icon; modifiers like fa-spin simply don't resolve.
+        for (const cls of classes) {
+            if (!cls.startsWith('fa-') || FA_PREFIXES[cls]) continue;
+            const made = FA.icon({ prefix: prefix, iconName: cls.slice(3) });
+            const svg = made && made.html && made.html[0];
+            if (!svg) continue;
+            tag.innerHTML = svg.replace('<svg ', '<svg width="1em" height="1em" fill="currentColor" aria-hidden="true" style="vertical-align:-.125em" ');
+            break;
+        }
+    }
+}
+
+function uiWatchIcons() {
+    uiRenderIcons(document.body);
+    new MutationObserver((records) => {
+        for (const record of records) {
+            for (const node of record.addedNodes) {
+                if (node.nodeType === 1) uiRenderIcons(node);
+            }
+        }
+    }).observe(document.body, { childList: true, subtree: true });
 }
 
 document.addEventListener("DOMContentLoaded", () => {
     // 1. Применяем локализацию сразу при загрузке DOM
     applyLocalization();
+
+    // 1b. Оставляем бекап только на сайте
+    uiHideBackupInApp();
+
+    // 1c. Рисуем иконки из локального набора FontAwesome
+    uiWatchIcons();
 
     // 2. Адаптация ссылок "Домик" и "Лупа"
     if (isRu) {
@@ -230,6 +306,87 @@ async function uiLoginPhrase(skipCheck = false) {
         }
     }
 }
+
+// One format for both cases: a dump of this device's localStorage. The browser
+// copy already holds whatever the cloud synced down, so no account is needed.
+// ponytail: no Firestore round-trip; when signed in, forceSyncNow pushes the
+// restored settings back up through the normal sync path.
+const BACKUP_SKIP_KEYS = ['syncPhraseId', 'syncPhraseRaw', 'dg_cloud_session', 'dg_session_id', 'lastSyncTime', 'dg_localSettingsTimestamp'];
+
+// History is the bulk of the file (the site itself keeps up to 8400 entries,
+// newest first), so the backup carries only the newest ones.
+const BACKUP_HISTORY_MAX = 84;
+
+// firebase_/firestore_ hold this device's auth and offline cache, never user data.
+function backupSkipKey(key) {
+    return key.startsWith('firebase_') || key.startsWith('firestore_') || BACKUP_SKIP_KEYS.indexOf(key) !== -1;
+}
+
+function backupFilename() {
+    return 'dhamma-gift-backup-' + new Date().toISOString().slice(0, 10).replace(/-/g, '') + '.json';
+}
+
+window.uiBackupData = function() {
+    const local = {};
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (!backupSkipKey(key)) local[key] = localStorage.getItem(key);
+    }
+
+    if (local.localSearchHistory) {
+        try {
+            const hist = JSON.parse(local.localSearchHistory);
+            if (Array.isArray(hist) && hist.length > BACKUP_HISTORY_MAX) {
+                local.localSearchHistory = JSON.stringify(hist.slice(0, BACKUP_HISTORY_MAX));
+            }
+        } catch (e) {
+            delete local.localSearchHistory;
+        }
+    }
+
+    const blob = new Blob(
+        [JSON.stringify({ app: 'dhamma.gift', version: 1, exportedAt: new Date().toISOString(), localStorage: local })],
+        { type: 'application/json' }
+    );
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = backupFilename();
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(a.href);
+
+    if (typeof showBubbleNotification === 'function') showBubbleNotification(translations.backupDone);
+};
+
+window.uiRestoreFilePicked = async function(input) {
+    const file = input.files && input.files[0];
+    input.value = '';
+    if (!file) return;
+
+    let parsed = null;
+    try { parsed = JSON.parse(await file.text()); } catch (e) {}
+    const local = parsed && parsed.localStorage;
+
+    if (!local || typeof local !== 'object') {
+        if (typeof showBubbleNotification === 'function') showBubbleNotification(translations.restoreBadFile, 4000, 'error');
+        return;
+    }
+    if (!confirm(translations.restoreConfirm)) return;
+
+    for (const key in local) {
+        if (!backupSkipKey(key) && typeof local[key] === 'string') {
+            localStorage.setItem(key, local[key]);
+        }
+    }
+
+    // Signed in: push the restored settings up now, while the change is still
+    // queued; a page reload would drop the queue. No-op when logged out.
+    if (typeof forceSyncNow === 'function') await forceSyncNow();
+
+    if (typeof showBubbleNotification === 'function') showBubbleNotification(translations.restoreDone);
+    setTimeout(() => location.reload(), 1000);
+};
 
 function uiToggleEyeInput() {
     const input = document.getElementById('sync-phrase-input');

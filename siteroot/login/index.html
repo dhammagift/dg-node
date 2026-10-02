@@ -12,7 +12,9 @@
     <link href="/assets/css/extrastyles.css" rel="stylesheet" />
     <link href="/login/login.css?v=20260929" rel="stylesheet" />
 
-    <script src="/assets/js/fontawesome.6.1.all.js"></script>
+    <!-- The site's generated subset (build-icons.js scans this page), not the 1.5MB full bundle.
+         It is a JS icon lookup with no DOM auto-replace, so login.js renders the <i> tags itself. -->
+    <script src="/assets/js/fontawesome-local.js"></script>
     <script src="/assets/js/nav-component.js" defer></script>
 	<link rel="preconnect" href="https://www.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://www.googleapis.com" crossorigin>
@@ -26,7 +28,21 @@
             <top-nav-icons type="home"></top-nav-icons>
             
         </div>
-        <div id="lang-switcher" class="d-flex align-items-center"></div>
+        <div class="d-flex align-items-center gap-2">
+            <!-- Backup/restore work with or without a cloud account: a plain localStorage JSON file.
+                 Muted text like the nav icons: btn-outline-secondary is unreadable in the dark theme.
+                 Hidden in the apps (login.js): their WebView cannot save or pick a file yet. -->
+            <div id="backup-restore" class="d-flex align-items-center gap-2">
+                <button id="btn-backup" class="btn btn-sm border-0 text-muted py-0 px-1" onclick="uiBackupData()">
+                    <span id="lbl-backup">Backup</span>
+                </button>
+                <button id="btn-restore" class="btn btn-sm border-0 text-muted py-0 px-1" onclick="document.getElementById('restore-file-input').click()">
+                    <span id="lbl-restore">Restore</span>
+                </button>
+                <input type="file" id="restore-file-input" accept=".json,application/json" class="d-none" onchange="uiRestoreFilePicked(this)">
+            </div>
+            <div id="lang-switcher" class="d-flex align-items-center"></div>
+        </div>
     </div>
 
 
@@ -96,7 +112,7 @@
                     <div id="sync-sessions-list" class="d-flex flex-column gap-2">
                     </div>
                 </div>
-                
+
                 <div class="d-flex justify-content-between pt-2 px-1 align-items-center">
                     <a class="logout-link opacity-75" onclick="syncLogout()">
                         <i class="fa-solid fa-arrow-right-from-bracket me-1"></i> <span id="lbl-logout">Logout</span>

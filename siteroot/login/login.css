@@ -223,3 +223,13 @@ body.dark .form-control::placeholder,
 .session-terminate-btn {
     border: none;
 }
+
+/* The generated icon subset is a JS lookup with no stylesheet of its own: keep the spinners
+   spinning (the sync button and the "logging in..." button both rely on fa-spin). */
+.fa-spin {
+    animation: dg-fa-spin 1.5s linear infinite;
+}
+
+@keyframes dg-fa-spin {
+    to { transform: rotate(360deg); }
+}

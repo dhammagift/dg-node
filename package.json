@@ -14,6 +14,7 @@
     "test-offline-outage": "node test/offline-outage.js",
     "test-app-ui": "node test/app-ui/run-all.js",
     "test-app-progress": "node test/app-ui/check-progress.js",
+    "test-login-backup": "node test/login-backup.js",
     "disk-guard": "node scripts/disk-guard.js",
     "test-suggest": "node test/suggest-words.js",
     "test-query-guard": "node test/query-guard.js"
