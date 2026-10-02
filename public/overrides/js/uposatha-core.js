@@ -46,6 +46,48 @@
   function dayNo(tithi) { return tithi <= 15 ? tithi : tithi - 15; }
   function ymdAdd(ymd, n) { return new Date(Date.parse(ymd) + n * DAY).toISOString().slice(0, 10); }
 
+  // ---- the key days are the phase moments -------------------------------------------------------
+  //
+  // The 15th day is the one the full moon (waxing half) or the new moon (waning half) falls in, the 8th the one the first or
+  // the last quarter falls in, and the 14th is the day before the 15th. A lunar day read at the dawn after a day (the
+  // tradition's own way of naming it) can end a few hours past the end of the evening-to-evening day it named — the new moon
+  // of 10 Oct 2026 at 20:50, for one, with the day it named ending at 17:16 — so the days are pinned to the moments here.
+  // Nothing else about a row moves: the lunar day the card prints (r.tithi, its end, the skips) stays the Moon's own.
+  var PHASE_TITHI = [30, 8, 15, 23]; // new moon, first quarter, full moon, last quarter — the tithi each one ends
+  function pinPhases(rows) {
+    if (!rows.length) return;
+    var firstAt = rows[0].at.getTime(), lastAt = rows[rows.length - 1].at.getTime();
+    rows.forEach(function (r) { r.names = []; r.keptWith = []; r.uposatha = false; r.fullMoon = null; r.newMoon = null; });
+    function rowAt(ms) { // the day a moment falls in: the last one that begins at or before it (a day runs evening to evening)
+      var lo = 0, hi = rows.length - 1, found = -1;
+      while (lo <= hi) { var mid = (lo + hi) >> 1; if (rows[mid].at.getTime() <= ms) { found = mid; lo = mid + 1; } else hi = mid - 1; }
+      return found < 0 ? null : rows[found];
+    }
+    // A phase a day past the last row still names the row before it (a 14th whose 15th falls just outside the asked range).
+    var q = A.SearchMoonQuarter(new Date(firstAt - 2 * DAY));
+    for (var guard = 0; guard < 600; guard++) {
+      var at = q.time.date, ms = at.getTime(), quarter = q.quarter;
+      if (ms >= lastAt + 2 * DAY) break;
+      var inside = ms < lastAt + DAY;   // within the last row's own evening-to-evening window
+      var r = inside ? rowAt(ms) : null;
+      if (r) {
+        var tithi = PHASE_TITHI[quarter];
+        r.names = [tithi];
+        r.uposatha = true;
+        if (quarter === 0) r.newMoon = at;
+        if (quarter === 2) r.fullMoon = at;
+        // The card says "the Nth day is skipped and kept with this date" when the Moon's own day of that number was.
+        r.keptWith = r.skipped.indexOf(tithi) !== -1 ? [tithi] : [];
+        r.skipped = r.skipped.filter(function (x) { return UPOSATHA.indexOf(x) === -1; }); // the key days are pinned: no note about a skipped 8th, 14th or 15th
+      }
+      if (quarter === 0 || quarter === 2) { // the day before a 15th is a 14th
+        var before = r ? rows[rows.indexOf(r) - 1] : rows[rows.length - 1];
+        if (before && !before.uposatha) { before.names = [quarter === 0 ? 29 : 14]; before.uposatha = true; }
+      }
+      q = A.NextMoonQuarter(q);
+    }
+  }
+
   // One row per calendar date from..to (y-m-d, inclusive): the lunar day in force at the reading moment of that date (by the suttas: the dawn after it), until
   // when it lasts, whether days before it were skipped or it repeats, and the full / new moon falling within the next 24 hours.
   function civilDays(from, to, tz, ref, obs) {
@@ -83,6 +125,7 @@
       if (i >= 0) rows.push(row);
       prev = row;
     }
+    if (ref === 18) pinPhases(rows);   // by the suttas the days are the phases' own (see pinPhases); the modern scheme names them in markPhases
     return rows;
   }
   function markPhases(rows, byYmd, tz, from, to) { // the modern scheme: the date on which each of the four principal phases falls
