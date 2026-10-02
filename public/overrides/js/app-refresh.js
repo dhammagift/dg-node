@@ -45,7 +45,7 @@
 
   // Что каскадом въезжает на каждой вкладке (в пределах экрана — дальше смысла нет)
   var ENTER = {
-    home: ['.intro', '#up-hero .hk', '#up-hero .cd > span', '#up-hero .hn', '#s-summary', '.ctx', '#slides'],
+    home: ['.intro', '#up-hero .hk', '#up-hero .cd > span', '#up-hero .hn', '#up-hero .hph', '#s-summary', '.ctx', '#slides'],
     list: ['#list > *', '#s-list .more'],
     cal: ['.calh', '#grid', '#legend', '#detail'],
     parts: ['.parts-h', '#pgrid > *', '#pnote'],
@@ -79,25 +79,31 @@
     var h = document.getElementById('up-hero');
     if (!h) {
       h = document.createElement('section'); h.id = 'up-hero';
-      h.innerHTML = '<div class="hm"><span class="halo"></span><span class="mv"></span></div><p class="hk"></p><div class="ht"></div><p class="hn"></p><p class="hc"></p><div class="cd"><span data-u="d"><b></b><i></i></span><span data-u="h"><b></b><i></i></span><span data-u="m"><b></b><i></i></span></div>';
+      h.innerHTML = '<div class="hm"><span class="halo"></span><span class="mv"></span></div><p class="hk"></p><div class="ht"></div><p class="hn"></p><p class="hph"></p><p class="hc"></p><div class="cd"><span data-u="d"><b></b><i></i></span><span data-u="h"><b></b><i></i></span><span data-u="m"><b></b><i></i></span></div>';
       sum.parentNode.insertBefore(h, sum);
     }
     var src = document.getElementById('t-moon'), mv = h.querySelector('.mv');
     if (src && mv.innerHTML !== src.innerHTML) mv.innerHTML = src.innerHTML;
     var dd = document.getElementById('t-date'), ph = document.getElementById('t-phase');
     if (dd && ph) { var ht = '<p class="hd">' + dd.textContent + '</p><p class="hp">' + ph.innerHTML.replace(/ id="[^"]*"/g, '') + '</p>'; var hEl = h.querySelector('.ht'); if (hEl.innerHTML !== ht) hEl.innerHTML = ht; }
-    var ru = RU(), H = window.__upoHero, n = H ? (H.next && { at: new Date(H.next.at), name: H.next.name, cur: H.cur }) : nextStart(), U = ru ? ['дн', 'ч', 'мин'] : ['d', 'h', 'min'];
+    var ru = RU(), H = window.__upoHero, n = H ? (H.next && { at: new Date(H.next.at), name: H.next.name, cur: H.cur, phase: H.next.phase }) : nextStart(), U = ru ? ['дн', 'ч', 'мин'] : ['d', 'h', 'min'];
     // the page knows which Uposatha runs now and which is next (the list is not parsed when it says so)
     var curName = H && H.cur ? H.cur.split(' · ')[0].split(' of the ')[0] : '';
     h.querySelector('.hk').textContent = curName ? (ru ? 'Сегодня упосатха · ' : 'Uposatha today · ') + curName : '';
-    h.querySelector('.hc').textContent = ru ? (curName ? 'До следующей' : 'До начала') : (curName ? 'Until the next one' : 'Until it begins');
+    // the green line names the day the countdown runs to, not "it begins": "Until 8th day" / "До 8-го дня"
+    var tName = n && n.name ? n.name.split(' · ')[0].split(' of the ')[0] : '', tNum = /(\d+)/.exec(tName);
+    h.querySelector('.hc').textContent = tNum ? (ru ? 'До ' + tNum[1] + '-го дня' : 'Until ' + tName) : (ru ? 'До начала' : 'Until it begins');
+    function when(d) { return d.toLocaleString(ru ? 'ru-RU' : 'en-GB', { weekday: 'short', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }); }
+    // the exact moment of the phase of that same day (100, 50 or 0 % lit) when the details are on: the row's own line, brought up here
+    var p = n && n.phase, hph = h.querySelector('.hph');
+    hph.textContent = p ? p.label.charAt(0).toUpperCase() + p.label.slice(1) + ' ' + p.pct + '% · ' + when(p.at) : '';
     var left = n ? Math.max(0, n.at - Date.now()) : 0, v = [Math.floor(left / 864e5), Math.floor(left / 36e5) % 24, Math.floor(left / 6e4) % 60];
     $$('.cd > span', h).forEach(function (s, i) {
       var b = s.querySelector('b'), val = String(v[i]).padStart(i ? 2 : 1, '0');
       s.querySelector('i').textContent = U[i];
       if (b.textContent !== val) { var first = !b.textContent; b.textContent = val; if (!first && !reduce) b.animate([{ transform: 'translateY(-60%)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 420, easing: EMPH_DEC }); }
     });
-    h.querySelector('.hn').textContent = n ? ((ru ? (curName ? 'Следующая: ' : 'Ближайшая: ') : 'Next: ') + n.name + ' · ' + n.at.toLocaleString(ru ? 'ru-RU' : 'en-GB', { weekday: 'short', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })) : '';
+    h.querySelector('.hn').textContent = n ? ((ru ? (curName ? 'Следующая: ' : 'Ближайшая: ') : 'Next: ') + n.name + ' · ' + when(n.at)) : '';
   }
 
   // The logo in the corner of the bar plays the launch mark again every 3-4 minutes: the clouds part and come back, the moon pulses once

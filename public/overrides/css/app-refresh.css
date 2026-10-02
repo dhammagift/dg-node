@@ -96,6 +96,8 @@ body.app #up-hero ~ #s-summary #t-moon{display:none}
 #up-hero .cd b{display:inline-block;font-size:34px;font-weight:600;letter-spacing:-.03em;font-variant-numeric:tabular-nums;line-height:1.05}
 #up-hero .cd i{font-style:normal;font-size:13px;color:var(--dg-text-muted)}
 #up-hero .hn{margin:10px 0 0;font-size:13.5px;color:var(--dg-text-2);text-wrap:balance}
+#up-hero .hph{margin:8px 0 0;font-size:13.5px;color:var(--dg-text);text-wrap:balance}
+body[data-mode=lite] #up-hero .hph{display:none} /* the short view keeps only the day, the countdown and the moon */
 @keyframes up-float{50%{transform:translateY(-6px) rotate(2deg)}}
 @keyframes up-breath{50%{transform:scale(1.08);opacity:.7}}
 

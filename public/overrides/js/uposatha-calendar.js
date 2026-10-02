@@ -72,7 +72,7 @@
       remNext: function (when, what) { return 'Next reminder: ' + when + ' — ' + what; }, remNone: 'No reminder is due in the coming weeks.',
       remDenied: 'Notifications are blocked for this site — allow them in the browser settings.', remUnsupported: 'This browser cannot show notifications.',
       remBody: function (when) { return 'begins ' + when; }, remTwo: function (when) { return 'Two Uposatha days: the 14th and the 15th. The first begins ' + when; },
-      full: 'Full moon', newm: 'New moon', fullL: 'full moon', newL: 'new moon', illum: 'illuminated', ld: 'lunar day', of15: 'of 15', until: 'until',
+      full: 'Full moon', newm: 'New moon', fullL: 'full moon', newL: 'new moon', illum: 'illuminated', ld: 'lunar day', of15: 'of 15', until: 'until', qn: ['1st', '2nd'],
       phases: ['New moon', 'Waxing crescent', 'First quarter', 'Waxing gibbous', 'Full moon', 'Waning gibbous', 'Last quarter', 'Waning crescent'],
       tonight: 'The Uposatha begins this evening', next2: 'Next', inN: function (n) { return 'in ' + n + ' day' + (n > 1 ? 's' : ''); }, tomorrow: 'tomorrow', isToday: 'today',
       mornVal: function (d, tm) { return 'morning' + (tm ? ' (' + tm + ')' : ''); }, nightVal: function (d) { return 'night'; }, thDay: 'Day', startS: 'begins', endS: 'ends', eveT: function (tm) { return 'evening (' + tm + ')'; }, goingNow: 'in progress', kEnds: 'Ends', kBegins: 'Begins', kSpan: 'Observed', kLunar: 'Lunar day', kTime: 'Exact time',
@@ -127,7 +127,7 @@
       remNext: function (when, what) { return 'Ближайшее напоминание: ' + when + ' — ' + what; }, remNone: 'В ближайшие недели напоминаний нет.',
       remDenied: 'Уведомления для сайта запрещены — разрешите их в настройках браузера.', remUnsupported: 'Этот браузер не умеет показывать уведомления.',
       remBody: function (when) { return 'начинается ' + when; }, remTwo: function (when) { return 'Две упосатхи: 14-й и 15-й дни. Первая начинается ' + when; },
-      full: 'Полнолуние', newm: 'Новолуние', fullL: 'полнолуние', newL: 'новолуние', illum: 'освещено', ld: 'лунный день', of15: 'из 15', until: 'до',
+      full: 'Полнолуние', newm: 'Новолуние', fullL: 'полнолуние', newL: 'новолуние', illum: 'освещено', ld: 'лунный день', of15: 'из 15', until: 'до', qn: ['1-я', '2-я'],
       phases: ['Новолуние', 'Растущий серп', 'Первая четверть', 'Растущая Луна', 'Полнолуние', 'Убывающая Луна', 'Последняя четверть', 'Убывающий серп'],
       tonight: 'Упосатха начинается сегодня вечером', next2: 'Следующая', inN: function (n) { var m = n % 10, h = n % 100; return 'через ' + n + ' ' + (m === 1 && h !== 11 ? 'день' : m >= 2 && m <= 4 && (h < 12 || h > 14) ? 'дня' : 'дней'); }, tomorrow: 'завтра', isToday: 'сегодня',
       mornVal: function (d, tm) { return 'утро' + (tm ? ' (' + tm + ')' : ''); }, nightVal: function (d) { return 'ночь'; }, thDay: 'День', startS: 'начало', endS: 'конец', eveT: function (tm) { return 'вечер (' + tm + ')'; }, goingNow: 'идёт сейчас', kEnds: 'Конец', kBegins: 'Начало', kSpan: 'Упосатха', kLunar: 'Лунный день', kTime: 'Точное время',
@@ -282,18 +282,24 @@
   }
   function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
   function line(k, v, grey) { return '<span class="ln' + (grey === 'soft' ? ' soft' : grey ? ' grey' : '') + '">' + (k ? '<span class="k">' + esc(k) + ':</span> ' : '') + esc(v) + '</span>'; }
+  // The moment that marks an Uposatha day: the 15th is the full moon (waxing half) or the new moon (waning half), the 8th the
+  // quarter (half lit). The 14th has none. The hero shows it under the same name the list's detail lines use.
+  function phaseOf(r) {
+    if (!r || !sutta()) return null;
+    if (r.fullMoon) return { label: t.fullL, pct: 100, at: r.fullMoon };
+    if (r.newMoon) return { label: t.newL, pct: 0, at: r.newMoon };
+    var i = r.names.map(dayNo).indexOf(8);
+    if (i < 0) return null;
+    var w = r.names[i] <= 15 ? 90 : 270, q = A.SearchMoonPhase(w, new Date(r.at.getTime() - 3 * DAY), 8);
+    return q ? { label: t.events[w === 90 ? 1 : 3], pct: 50, at: q.date } : null;
+  }
   function notesOf(r, F) {
     var n = [];
     if (!sutta()) return n; // the modern scheme's line is the exact time of the phase
     function at(label, pct, d) { return label + ' ' + pct + '% · ' + F.stamp.format(d); } // the moment when the Moon is that lit, with its weekday: it is often the next date
-    if (r.fullMoon) n.push(at(t.fullL, 100, r.fullMoon));
-    if (r.newMoon) n.push(at(t.newL, 0, r.newMoon));
-    n.nPhase = n.length; // the lines up to here are the moments of the phases: they are the point of the line, not a grey note
-    r.names.forEach(function (x) { // the 8th day: half of the Moon is lit at the quarter
-      if (dayNo(x) !== 8) return;
-      var w = x <= 15 ? 90 : 270, q = A.SearchMoonPhase(w, new Date(r.at.getTime() - 3 * DAY), 8);
-      if (q) n.splice(n.nPhase++, 0, at(t.events[w === 90 ? 1 : 3].toLowerCase(), 50, q.date));
-    });
+    var p = phaseOf(r); // the lines up to here are the moments of the phases: they are the point of the line, not a grey note
+    if (p) n.push(at(p.label.toLowerCase(), p.pct, p.at));
+    n.nPhase = n.length;
     r.keptWith.forEach(function (x) { n.push(t.keptWith(t.nth(dayNo(x)))); });
     r.skipped.forEach(function (x) { if (r.keptWith.indexOf(x) === -1) n.push(t.skipped(t.nth(dayNo(x)))); });
     if (r.repeats) n.push(t.repeats);
@@ -524,7 +530,7 @@
     var tonight = su && !!(todayRow && todayRow.uposatha && now < evToday);
     // for the app's hero (app-refresh.js): the Uposatha that runs now and the next one to begin, by name, not parsed back from the list
     var curUp = isUposatha ? ((su && yRow && yRow.uposatha && now < evToday) ? yRow : todayRow) : null, nextUp = L.rows.filter(function (r) { return r.uposatha && r.at.getTime() > now.getTime(); })[0];
-    window.__upoHero = { cur: curUp ? nameOf(curUp) : '', next: nextUp ? { at: nextUp.at.getTime(), name: nameOf(nextUp) } : null };
+    window.__upoHero = { cur: curUp ? nameOf(curUp) : '', next: nextUp ? { at: nextUp.at.getTime(), name: nameOf(nextUp), phase: phaseOf(nextUp) } : null };
     // the moon of the Uposatha for the app's icon in the bar: the running one; after it ends, the same one until the end of that day (the moon is still full); then the next one.
     // The icons are plain, not the real phase: the 8th a half, the 14th a crescent, the 15th full (waxing) or new (waning).
     var prevUp = L.rows.filter(function (r) { return r.uposatha && r.at.getTime() <= now.getTime(); }).pop();
@@ -564,6 +570,8 @@
     else if (tonight) $('t-status').innerHTML = '<span class="badge">' + esc(t.tonight) + '</span>';
     else $('t-status').innerHTML = nextRow ? '<span class="badge soft">' + esc(t.next2) + ': ' + esc(F.eve.format(Date.parse(nextRow.ymd))) + '</span><em>' + esc(t.inN(Math.round((Date.parse(nextRow.ymd) - Date.parse(todayYmd)) / DAY))) + '</em>' : '';
     if (isUposatha && tonight) $('t-status').innerHTML += '<span class="badge">' + esc(t.tonight) + '</span>';
+    // The ordinary (non-app) mode has no countdown, but with the details on it names the Moon of the next Uposatha as well: which phase and its exact moment.
+    if (nextRow && !isUposatha && !tonight && !state.lite) { var nph = phaseOf(nextRow); if (nph) $('t-status').innerHTML += '<span class="phn">' + esc(cap(nph.label) + ' ' + nph.pct + '% · ' + F.remWhen.format(nph.at)) + '</span>'; }
     var sunLine = '';
     if (L.obs) {
       var sr = sunEvent('rise', tp[0], tp[1], tp[2], tz, L.obs), ss = sunEvent('set', tp[0], tp[1], tp[2], tz, L.obs);
@@ -652,10 +660,12 @@
     var g0 = new Date(Date.UTC(cy, mo, 1 - lead)), gEnd = new Date(Date.UTC(cy, mo, 1 - lead + cells - 1));
     var C = dataset(new Date(g0.getTime() - DAY).toISOString().slice(0, 10), gEnd.toISOString().slice(0, 10));
     $('cal-title').textContent = cap(F.month.format(cm.getTime())).replace(/\s?г\.$/, ''); // 'September 2026', not 'Сентябрь 2026 г.'
-    // by the suttas the 15th is the day the Uposatha BEGINS in the evening; the full / new moon itself is a moment, often the next date:
-    // it is marked on the date it really falls on
+    // by the suttas the 15th is the day the Uposatha BEGINS in the evening; a phase itself is a moment, often the next date: it is
+    // marked on the date it really falls on. All four principal phases, not only the full and the new moon: the 50 % quarters too.
     var moonDay = {};
-    if (su) C.rows.forEach(function (r) { var at = r.fullMoon || r.newMoon; if (at) moonDay[localDay(at, tz)] = { full: !!r.fullMoon, at: at }; });
+    if (su) for (var mq = A.SearchMoonQuarter(new Date(g0.getTime() - 2 * DAY)); mq.time.date < gEnd; mq = A.NextMoonQuarter(mq)) moonDay[localDay(mq.time.date, tz)] = { phase: mq.quarter, at: mq.time.date };
+    // A cell is narrow: the quarters' full names wrap to two lines, so they read "1st 50%" / "2nd 50%"; the new and the full moon keep their names
+    function phaseName(q) { return q === 1 || q === 3 ? t.qn[q === 1 ? 0 : 1] + ' 50%' : t.events[q].toLowerCase(); }
     // An Uposatha begins in the evening of its date and lasts through the night and the next day: that next date carries it too, so 14th
     // and 15th on consecutive evenings read 14 / 14-15 / 15 across three dates instead of a third, unexplained day.
     var startBy = {}, dayBy = {};
@@ -673,9 +683,9 @@
           lb = '<span class="lb">' + moon(rowI(src), 'moon mi') + (nums.length > 1 ? '' : '<span>' + esc(cont ? t.endS : t.startS) + '</span>') + '</span>'; // the beginning and the end are named; the day where one Uposatha ends and the next begins says nothing
         }
       } else if (r2 && r2.uposatha) {
-        u = (r2.phase === 0 || r2.phase === 2) ? '15' : '8'; lb = '<span class="lb">' + moon(rowI(r2), 'moon mi') + '<span>' + esc(t.events[r2.phase].toLowerCase()) + '</span></span>';
+        u = (r2.phase === 0 || r2.phase === 2) ? '15' : '8'; lb = '<span class="lb">' + moon(rowI(r2), 'moon mi') + '<span>' + esc(phaseName(r2.phase)) + '</span></span>';
       }
-      if (moonDay[k]) lb += '<span class="lb">' + (lb ? '' : moon(moonDay[k].full ? 4 : 0, 'moon mi')) + '<span>' + esc((moonDay[k].full ? t.fullL : t.newL) + ' ' + F.hm.format(moonDay[k].at)) + '</span></span>'; // one moon per day: the label above already has it
+      if (moonDay[k]) lb += '<span class="lb">' + (lb ? '' : moon([0, 2, 4, 6][moonDay[k].phase], 'moon mi')) + '<span>' + esc(phaseName(moonDay[k].phase) + ' ' + F.hm.format(moonDay[k].at)) + '</span></span>'; // one moon per day: the label above already has it
       g += '<button type="button" class="c' + (d.getUTCMonth() !== mo ? ' o' : '') + '"' + (u ? ' data-u="' + u + '"' : '') + (cont ? ' data-c="true"' : '') + (k === todayYmd ? ' data-today="true"' : '') + ' data-ymd="' + k + '">' +
         '<span class="n">' + d.getUTCDate() + '</span>' + lb + (r2 ? '<span class="ld">' + r2.tithi + '</span>' : '') + '</button>';
     }
@@ -780,6 +790,19 @@
     showWeb(item.title, opts).catch(function () { /* the browser or the system refused: nothing more to do here */ });
     playSound(soundOf(item));
   }
+  // What has already been dealt with, by reminder key: the browser path writes a reminder here when it shows it (notify()
+  // above), the app's path writes what it has handed to the device (scheduleNative below). The app needs it because the list
+  // keeps a reminder until its Uposatha begins: without it, every rebuild of the schedule — a launch, a launcher shortcut, a
+  // change of a setting — set a reminder whose time had passed all over again, and it rang again. Same store, same keys, so
+  // the browser path and the app cannot disagree.
+  function shownKeys() { try { return JSON.parse(store('dgUposathaNotified') || '[]'); } catch (e) { return []; } }
+  // What the app keeps is not "heard" but "handed over", and it hands over the whole list at once (up to 60): a window of 40
+  // would drop keys that are still armed, and a dropped key would let the same reminder through twice.
+  var SHOWN_KEEP = 120;
+  function markShown(keys) {
+    if (!keys.length) return;
+    try { var seen = shownKeys(); keys.forEach(function (k) { if (seen.indexOf(k) === -1) seen.push(k); }); store('dgUposathaNotified', JSON.stringify(seen.slice(-SHOWN_KEEP))); } catch (e) { /* no storage: a reminder may come again */ }
+  }
   // The web notification goes through the service worker when there is one (the only way on Android Chrome), else the page's own.
   // The sound is the page's: it plays while the page is open (a notification of the browser has the system sound only).
   function showWeb(title, opts) {
@@ -825,17 +848,23 @@
     var sig = JSON.stringify([state.rem.sound, state.rem.ownChannel, state.meal.snd, state.meal.begSnd, state.parts.snd, list.map(function (i) { return [i.key, i.title, i.when > now + 10000 ? i.when : 0]; })]);
     if (sig !== nativeSig) { // only when something changed: paint() runs on every touch
       nativeSig = sig;
+      // Everything ahead is set, and a reminder whose time has passed while it was in no schedule at all (the app had never
+      // been open before that time, or it fell outside the 60) is shown now — once. A reminder whose time has passed and WAS
+      // set is left alone: the device has had it, and re-setting it is what made it ring on every opening. What was handed
+      // over is remembered below, after the device has taken it.
+      var seen = shownKeys();
+      var due = list.filter(function (i) { return i.when > now || seen.indexOf(i.key) === -1; });
       var sounds = []; // every kind of reminder sounds by its own choice: the Uposatha, the end and the beginning of the time for food, the parts
-      list.forEach(function (i) { var k = soundOf(i); if (sounds.indexOf(k) === -1) sounds.push(k); });
+      due.forEach(function (i) { var k = soundOf(i); if (sounds.indexOf(k) === -1) sounds.push(k); });
       Promise.all(sounds.map(function (k) { return channelFor(LN, k, k === state.rem.sound ? state.rem.ownChannel : ''); })).then(function (ch) {
-        var items = list.map(function (item, i) {
+        var items = due.map(function (item, i) {
           return { id: NATIVE_ID_BASE + i, title: item.title, body: itemBody(item, F), channelId: ch[sounds.indexOf(soundOf(item))],
             schedule: { at: new Date(Math.max(item.when, now + 3000)), allowWhileIdle: true }, extra: { url: '/uposatha-calendar' } };
         });
         return LN.getPending().then(function (p) {
           var ours = ((p && p.notifications) || []).filter(function (n) { return n.id >= NATIVE_ID_BASE && n.id < NATIVE_ID_BASE + 100; }).map(function (n) { return { id: n.id }; });
           return ours.length ? LN.cancel({ notifications: ours }) : null;
-        }).then(function () { return items.length ? LN.schedule({ notifications: items }) : null; });
+        }).then(function () { return items.length ? LN.schedule({ notifications: items }) : null; }).then(function (r) { markShown(due.map(function (i) { return i.key; })); return r; });
       }).catch(function () { nativeSig = ''; });
     }
     return list.filter(function (i) { return i.when > now; })[0] || null;
