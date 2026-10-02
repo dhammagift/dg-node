@@ -899,7 +899,10 @@ try {
             // false, даже если цель реально директория (проверено эмпирически) — офлайн-зеркала
             // почти наверняка symlink'и на реальные данные, а не сами данные — без
             // isSymbolicLink() они бы молча не подхватывались этим циклом.
-            .filter(d => d.isDirectory() || d.isSymbolicLink())
+            // Only git metadata is skipped (offline-data is a git checkout, and `.git` would
+            // otherwise be mounted as a static prefix, publishing the whole repository at
+            // /.git/...). Not every dotfile: `.well-known` and friends are real content.
+            .filter(d => (d.isDirectory() || d.isSymbolicLink()) && !d.name.startsWith('.git'))
             .map(d => d.name)
     );
 } catch (e) {
@@ -1597,7 +1600,8 @@ try {
             // директорию возвращает false, даже если цель — директория (проверено эмпирически,
             // node -e с реальным symlink) — нужно явно включать isSymbolicLink() тоже, иначе
             // все реальные записи в siteroot/ (это же и есть symlink'и) молча отфильтруются.
-            .filter(d => d.isDirectory() || d.isSymbolicLink())
+            // Git metadata only, same reason as the offline mirrors above.
+            .filter(d => (d.isDirectory() || d.isSymbolicLink()) && !d.name.startsWith('.git'))
             .map(d => d.name)
     );
 } catch (e) {
