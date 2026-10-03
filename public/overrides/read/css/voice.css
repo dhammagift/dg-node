@@ -878,29 +878,13 @@ body:has(#dgDlCard.show) .voice-player {
     color: #fff;
 }
 
-/* Voice engine dropdown (footer): the settings panel shows only what the chosen engine uses */
-#tts-engine-select {
-    margin-bottom: 0;
-}
-.tts-dg-info {
-    display: none;
-    font-size: 13px;
-    color: #888;
-    margin: 4px 0 8px;
-    line-height: 1.35;
-}
-#tts-advanced-settings[data-engine="dg"] .tts-dg-info {
-    display: block;
-}
-#tts-advanced-settings[data-engine="dg"] .api-key-row,
-#tts-advanced-settings[data-engine="dg"] .tts-pali-voice-group,
-#tts-advanced-settings[data-engine="native"] .api-key-row,
-#tts-advanced-settings .tts-native-label {
+/* Voice settings: each language picks engine -> language -> voice; the Google key shows only when
+   Google is chosen for Pali or for the translation */
+#tts-advanced-settings:not([data-pali-engine="google"]):not([data-trn-engine="google"]) .api-key-row {
     display: none;
 }
-.tts-engine-row {
-    text-align: center;
-    margin: 2px 0 8px;
+.tts-engine-dropdown {
+    font-weight: 600;
 }
 /* The settings area never sets the player's width (width:0 + min-width:100% = take the width the
    player already has from its button row, as before): the DG note wraps, voice lists stack */

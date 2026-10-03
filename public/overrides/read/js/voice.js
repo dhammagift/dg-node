@@ -379,7 +379,8 @@ function placeRatePop(pop, btn) {
   const p0 = pop.getBoundingClientRect();
   const scale = p0.width / pop.offsetWidth || 1;
   const w = p0.width, h = p0.height, b = btn.getBoundingClientRect();
-  const left = Math.max(margin, Math.min(b.left + b.width / 2 - w / 2, window.innerWidth - w - margin));
+  const player = (btn.closest('.voice-player') || btn).getBoundingClientRect();  // centred on the player
+  const left = Math.max(margin, Math.min(player.left + player.width / 2 - w / 2, window.innerWidth - w - margin));
   let top = b.top - h - gap;                       // above the button: the player sits at the bottom
   if (top < margin) top = Math.min(b.bottom + gap, window.innerHeight - h - margin);
   pop.style.left = (left - p0.left) / scale + 'px';
@@ -830,7 +831,7 @@ async function populateVoiceSelectors(apiKey, forceRefresh = false) {
         googleVoicesList = []; 
     }
 
-    const allSelects = document.querySelectorAll('.google-voice-select-group select');
+    const allSelects = document.querySelectorAll('.google-voice-select-group select:not(.tts-engine-dropdown)');
     if (googleVoicesList.length === 0) {
         allSelects.forEach(s => s.innerHTML = '<option>Loading...</option>');
     }
@@ -902,19 +903,26 @@ async function populateVoiceSelectors(apiKey, forceRefresh = false) {
 // --- ПОЛУЧЕНИЕ АУДИО (УЧИТЫВАЕТ КОНТЕКСТ) ---
 const PALI_VOICE_KEY = 'tts_pali_voice';
 
-// Voice engine (footer dropdown): 'dg' = our self-hosted Pali voice (translations: Google, else OS),
-// 'google' = Google Cloud TTS for both, 'native' = the OS voices for both. Stored in the existing
-// keys, so it syncs like the rest of the settings and the old per-language toggles keep working.
-function getTtsEngine() {
-  if (localStorage.getItem(NATIVE_PALI_KEY) === 'true' && localStorage.getItem(NATIVE_TRN_KEY) === 'true') return 'native';
+// Voice engines, chosen separately for Pali and for the translation in the voice settings
+// (engine -> language -> voice). Pali: 'dg' = our self-hosted voice, 'google', 'native' (OS).
+// Translation: 'google' or 'native' (Piper translation voices come later). Stored in the existing
+// keys (tts_pali_voice + the native toggles), so they sync like the other settings.
+function getTtsEngine() {  // the Pali engine
+  if (localStorage.getItem(NATIVE_PALI_KEY) === 'true') return 'native';
   return localStorage.getItem(PALI_VOICE_KEY) === 'off' ? 'google' : 'dg';
 }
 
-function setTtsEngine(engine) {
+function getTrnEngine() {
+  return localStorage.getItem(NATIVE_TRN_KEY) === 'true' ? 'native' : 'google';
+}
+
+function setPaliEngine(engine) {
   localStorage.setItem(PALI_VOICE_KEY, engine === 'dg' ? 'on' : 'off');
   localStorage.setItem(NATIVE_PALI_KEY, engine === 'native');
-  localStorage.setItem(NATIVE_TRN_KEY, engine === 'native');
 }
+
+// DG voices on offer for Pali (one for now; the trained voices join this list).
+const DG_PALI_VOICES = [{ id: 'pratham', label: 'pratham ♂ · Piper' }];
 
 // Raw IAST for the self-hosted voice: drop variant readings in {…} and (…), like cleanTextForTTS does.
 function stripForPaliVoice(text) {
@@ -2207,6 +2215,7 @@ function getPlayerHtml() {
   const isNativePali = localStorage.getItem(NATIVE_PALI_KEY) === 'true'; 
   const isNativeTrn = localStorage.getItem(NATIVE_TRN_KEY) === 'true'; 
   const engine = getTtsEngine();
+  const trnEngine = getTrnEngine();
 
 
   // Points at the new Docs/Help portal (both RU and EN use the clean /tts slug now),
@@ -2237,8 +2246,7 @@ function getPlayerHtml() {
     engineDg: window.isRu ? "Голос DG" : "DG voice",
     engineNative: window.isRu ? "Голос ОС" : "OS voice",
     engineSettings: window.isRu ? "Настройки голоса" : "Voice settings",
-    dgInfo: window.isRu ? "Пали: голос Dhamma.Gift (бесплатно, без ключа). Перевод: Google или голос ОС."
-                        : "Pāḷi: the Dhamma.Gift voice (free, no key). Translation: Google or the OS voice.",
+
     help: window.isRu ? "Помощь" : "Help"
   };
 
@@ -2307,15 +2315,7 @@ function getPlayerHtml() {
             <a href="${helpUrl}" target="_blank" class="tts-link tts-help-link" title="${t.help}">?</a>
           </div>
 
-          <div id="tts-advanced-settings" data-engine="${engine}">
-              <div class="tts-engine-row">
-                <select id="tts-engine-select" class="tts-mode-select" title="${t.engine}">
-                  <option value="dg" ${engine === 'dg' ? 'selected' : ''}>${t.engineDg}</option>
-                  <option value="google" ${engine === 'google' ? 'selected' : ''}>Google</option>
-                  <option value="native" ${engine === 'native' ? 'selected' : ''}>${t.engineNative}</option>
-                </select>
-              </div>
-              <div class="tts-dg-info">${t.dgInfo}</div>
+          <div id="tts-advanced-settings" data-pali-engine="${engine}" data-trn-engine="${trnEngine}">
               <div class="api-key-row">
                 <input type="password" id="google-api-key-input" 
                        value="${savedKey}" 
@@ -2331,26 +2331,25 @@ function getPlayerHtml() {
 
               <div id="google-voice-settings-container">
                   <div class="google-voice-select-group tts-pali-voice-group">
-                       <div class="google-voice-label">${t.paliVoice} 
-                           <label class="tts-checkbox-custom tts-native-label">
-                              <input type="checkbox" id="native-pali-toggle" ${isNativePali ? 'checked' : ''}>
-                              ${t.native}
-                           </label>
-                       </div>
+                       <div class="google-voice-label">${t.paliVoice}</div>
                       <div id="pali-google-dropdowns">
+                           <select id="tts-engine-pali" class="google-voice-dropdown tts-engine-dropdown" title="${t.engine}">
+                             <option value="dg" ${engine === 'dg' ? 'selected' : ''}>${t.engineDg}</option>
+                             <option value="google" ${engine === 'google' ? 'selected' : ''}>Google</option>
+                             <option value="native" ${engine === 'native' ? 'selected' : ''}>${t.engineNative}</option>
+                           </select>
                            <select id="google-lang-select-pali" class="google-voice-dropdown"></select>
                            <select id="google-voice-select-pali" class="google-voice-dropdown"></select>
                       </div>
                   </div>
 
                   <div class="google-voice-select-group">
-                      <div class="google-voice-label">${t.trnVoice}
-                          <label class="tts-checkbox-custom tts-native-label">
-                              <input type="checkbox" id="native-trn-toggle" ${isNativeTrn ? 'checked' : ''}>
-                              ${t.native}
-                          </label>
-                      </div>
+                      <div class="google-voice-label">${t.trnVoice}</div>
                       <div id="trn-google-dropdowns">
+                          <select id="tts-engine-trn" class="google-voice-dropdown tts-engine-dropdown" title="${t.engine}">
+                            <option value="google" ${trnEngine === 'google' ? 'selected' : ''}>Google</option>
+                            <option value="native" ${trnEngine === 'native' ? 'selected' : ''}>${t.engineNative}</option>
+                          </select>
                           <select id="google-lang-select-trn" class="google-voice-dropdown"></select>
                           <select id="google-voice-select-trn" class="google-voice-dropdown"></select>
                       </div>
@@ -2371,7 +2370,7 @@ function getOrBuildPlayer() {
         // The ?v= stamp matters: /read/css/voice.css is served immutable for a year, so without it a
         // CSS fix would never reach anyone who had already opened the player (issue #20's rule was
         // invisible in the browser because of exactly that). Bump the stamp with the next edit.
-        document.head.insertAdjacentHTML('beforeend', '<link id="voice-css-lazy" rel="stylesheet" href="/read/css/voice.css?v=2026-10-03g">');
+        document.head.insertAdjacentHTML('beforeend', '<link id="voice-css-lazy" rel="stylesheet" href="/read/css/voice.css?v=2026-10-03h">');
     }
 
     if (!playerContainer) {
@@ -2497,14 +2496,12 @@ async function handleTTSSettingChange(e) {
       return;
   }
 
-  // 0. Voice engine dropdown: switches the mode and which settings the panel shows
-  if (e.target.id === 'tts-engine-select') {
-      setTtsEngine(e.target.value);
-      document.getElementById('tts-advanced-settings')?.setAttribute('data-engine', e.target.value);
-      const nativePali = document.getElementById('native-pali-toggle');
-      const nativeTrn = document.getElementById('native-trn-toggle');
-      if (nativePali) nativePali.checked = e.target.value === 'native';
-      if (nativeTrn) nativeTrn.checked = e.target.value === 'native';
+  // 0. Engine of a language (first level of engine -> language -> voice)
+  if (e.target.id === 'tts-engine-pali' || e.target.id === 'tts-engine-trn') {
+      const isPaliRow = e.target.id === 'tts-engine-pali';
+      if (isPaliRow) setPaliEngine(e.target.value);
+      else localStorage.setItem(NATIVE_TRN_KEY, e.target.value === 'native');
+      document.getElementById('tts-advanced-settings')?.setAttribute(isPaliRow ? 'data-pali-engine' : 'data-trn-engine', e.target.value);
       refreshVoiceDropdowns();
       markActiveRate(activeRateKind() === 'pali');  // an unchanged Pali speed follows the engine's default
       if (ttsState.speaking && !ttsState.paused) {
@@ -2743,7 +2740,7 @@ async function refreshVoiceDropdowns(forceRefresh = false) {
     let googleVoices = [];
     if (hasGoogleKey) {
         if (googleVoicesList.length === 0) {
-            const allSelects = document.querySelectorAll('.google-voice-select-group select');
+            const allSelects = document.querySelectorAll('.google-voice-select-group select:not(.tts-engine-dropdown)');
             allSelects.forEach(s => s.innerHTML = '<option>Loading...</option>');
             googleVoicesList = await loadGoogleVoices(apiKey);
         }
@@ -2780,7 +2777,12 @@ async function refreshVoiceDropdowns(forceRefresh = false) {
     };
 
 
-    if (paliLangSelect && paliVoiceSelect) {
+    if (paliLangSelect && paliVoiceSelect && getTtsEngine() === 'dg') {
+        // DG voice: no languages to pick, just the voice
+        paliLangSelect.style.display = 'none';
+        paliVoiceSelect.style.display = '';
+        paliVoiceSelect.innerHTML = DG_PALI_VOICES.map(v => `<option value="${v.id}">${v.label}</option>`).join('');
+    } else if (paliLangSelect && paliVoiceSelect) {
         if (isNativePali) {
             // Теперь включаем сюда и индийские, и китайские для Пали
             let paliNativeVoices = nativeVoices.filter(v => isIndianLang(v.languageCodes[0]) || isChineseLang(v.languageCodes[0]));
