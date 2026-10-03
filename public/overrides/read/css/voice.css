@@ -902,13 +902,11 @@ body:has(#dgDlCard.show) .voice-player {
     text-align: center;
     margin: 2px 0 8px;
 }
-/* One fixed width for the whole settings area, so the player keeps its size in every engine mode
-   and in basic/advanced view: the DG note wraps, voice lists stack */
+/* The settings area never sets the player's width (width:0 + min-width:100% = take the width the
+   player already has from its button row, as before): the DG note wraps, voice lists stack */
 #tts-settings-panel {
-    width: 260px;
-    max-width: calc(100vw - 60px);
-    margin-left: auto;
-    margin-right: auto;
+    width: 0;
+    min-width: 100%;
 }
 #tts-advanced-settings .google-voice-dropdown {
     display: block;
