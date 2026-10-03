@@ -74,7 +74,7 @@
       remBody: function (when) { return 'begins ' + when; }, remTwo: function (when) { return 'Two Uposatha days: the 14th and the 15th. The first begins ' + when; },
       full: 'Full moon', newm: 'New moon', fullL: 'full moon', newL: 'new moon', illum: 'illuminated', ld: 'lunar day', of15: 'of 15', until: 'until', qn: ['1st', '2nd'],
       phases: ['New moon', 'Waxing crescent', 'First quarter', 'Waxing gibbous', 'Full moon', 'Waning gibbous', 'Last quarter', 'Waning crescent'],
-      tonight: 'The Uposatha begins this evening', next2: 'Next', inN: function (n) { return 'in ' + n + ' day' + (n > 1 ? 's' : ''); }, tomorrow: 'tomorrow', isToday: 'today',
+      tonight: 'The Uposatha begins this evening', tonightN: function (n) { return 'The ' + n + ' Uposatha begins this evening'; }, inL: 'in', next2: 'Next', inN: function (n) { return 'in ' + n + ' day' + (n > 1 ? 's' : ''); }, tomorrow: 'tomorrow', isToday: 'today',
       mornVal: function (d, tm) { return 'morning' + (tm ? ' (' + tm + ')' : ''); }, nightVal: function (d) { return 'night'; }, thDay: 'Day', startS: 'begins', endS: 'ends', eveT: function (tm) { return 'evening (' + tm + ')'; }, goingNow: 'in progress', kEnds: 'Ends', kBegins: 'Begins', kSpan: 'Observed', kLunar: 'Lunar day', kTime: 'Exact time',
       beginsVal: function (eve, sun) { return 'evening ' + eve + (sun ? ' (' + sun + ')' : ''); }, spanVal: function (night, day) { return 'night of ' + night + ' → day of ' + day; },
       sunrise: 'sunrise', sunset: 'sunset',
@@ -129,7 +129,7 @@
       remBody: function (when) { return 'начинается ' + when; }, remTwo: function (when) { return 'Две упосатхи: 14-й и 15-й дни. Первая начинается ' + when; },
       full: 'Полнолуние', newm: 'Новолуние', fullL: 'полнолуние', newL: 'новолуние', illum: 'освещено', ld: 'лунный день', of15: 'из 15', until: 'до', qn: ['1-я', '2-я'],
       phases: ['Новолуние', 'Растущий серп', 'Первая четверть', 'Растущая Луна', 'Полнолуние', 'Убывающая Луна', 'Последняя четверть', 'Убывающий серп'],
-      tonight: 'Упосатха начинается сегодня вечером', next2: 'Следующая', inN: function (n) { var m = n % 10, h = n % 100; return 'через ' + n + ' ' + (m === 1 && h !== 11 ? 'день' : m >= 2 && m <= 4 && (h < 12 || h > 14) ? 'дня' : 'дней'); }, tomorrow: 'завтра', isToday: 'сегодня',
+      tonight: 'Упосатха начинается сегодня вечером', tonightN: function (n) { return 'Упосатха (' + n + ') начинается сегодня вечером'; }, inL: 'через', next2: 'Следующая', inN: function (n) { var m = n % 10, h = n % 100; return 'через ' + n + ' ' + (m === 1 && h !== 11 ? 'день' : m >= 2 && m <= 4 && (h < 12 || h > 14) ? 'дня' : 'дней'); }, tomorrow: 'завтра', isToday: 'сегодня',
       mornVal: function (d, tm) { return 'утро' + (tm ? ' (' + tm + ')' : ''); }, nightVal: function (d) { return 'ночь'; }, thDay: 'День', startS: 'начало', endS: 'конец', eveT: function (tm) { return 'вечер (' + tm + ')'; }, goingNow: 'идёт сейчас', kEnds: 'Конец', kBegins: 'Начало', kSpan: 'Упосатха', kLunar: 'Лунный день', kTime: 'Точное время',
       beginsVal: function (eve, sun) { return 'вечер ' + eve + (sun ? ' (' + sun + ')' : ''); }, spanVal: function (night, day) { return 'ночь ' + night + ' → день ' + day; },
       sunrise: 'восход', sunset: 'закат',
@@ -567,9 +567,11 @@
     slidesFor(relDays);
     var nextRow = L.rows.filter(function (r) { return r.uposatha && r.ymd > todayYmd; })[0];
     if (isUposatha) $('t-status').innerHTML = '<span class="badge">' + esc(t.uday) + '</span>' + (tonight ? '' : '');
-    else if (tonight) $('t-status').innerHTML = '<span class="badge">' + esc(t.tonight) + '</span>';
-    else $('t-status').innerHTML = nextRow ? '<span class="badge soft">' + esc(t.next2) + ': ' + esc(F.eve.format(Date.parse(nextRow.ymd))) + '</span><em>' + esc(t.inN(Math.round((Date.parse(nextRow.ymd) - Date.parse(todayYmd)) / DAY))) + '</em>' : '';
-    if (isUposatha && tonight) $('t-status').innerHTML += '<span class="badge">' + esc(t.tonight) + '</span>';
+    // A quiet countdown to the beginning: not the big blocks of the app, one line, kept up to date by liveTick (the .meal-left blocks).
+    function countdown(to) { return to > Date.now() ? '<span class="cdn">' + esc(t.inL) + ' <b class="meal-left" data-to="' + to + '">' + esc(span(to - Date.now())) + '</b></span>' : ''; }
+    var tonightText = t.tonightN(todayRow ? nameParts(todayRow)[0] : '');   // "The 8th day Uposatha begins this evening", not just "The Uposatha ..."
+    if (tonight) { var tb = '<span class="badge">' + esc(tonightText) + '</span>' + countdown(todayRow.at.getTime()); if (isUposatha) $('t-status').innerHTML += tb; else $('t-status').innerHTML = tb; }
+    else if (!isUposatha) $('t-status').innerHTML = nextRow ? '<span class="badge soft">' + esc(t.next2) + ': ' + esc(F.eve.format(Date.parse(nextRow.ymd))) + '</span><em>' + esc(t.inN(Math.round((Date.parse(nextRow.ymd) - Date.parse(todayYmd)) / DAY))) + '</em>' + countdown(nextRow.at.getTime()) : '';
     // The ordinary (non-app) mode has no countdown, but with the details on it names the Moon of the next Uposatha as well: which phase and its exact moment.
     // The same for the Uposatha that is on or begins tonight: its Moon's exact moment (the 50% of the 8th and 14th, the new / full moon) was
     // missing exactly then, when it is the thing asked about.
