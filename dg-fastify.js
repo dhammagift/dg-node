@@ -172,6 +172,9 @@ app.addHook('onRequest', (req, res, done) => {
 // fallback) answers instead, so crawlers got a 200 HTML search page with zero Disallow rules
 // (confirmed live, 2026-09-28: dhamma.gift/robots.txt returned the SPA shell, not text/plain).
 app.get('/robots.txt', (req, reply) => sendFile(req, reply, path.join(__dirname, 'configs', 'robots.txt'), 'text/plain; charset=utf-8'));
+// Same for /sitemap.xml (named in robots.txt): siteroot/sitemap.xml is a symlink to a FILE
+// (/var/www/html/sitemap.xml), and the siteroot scan below mounts only directories, so it 404ed.
+app.get('/sitemap.xml', (req, reply) => sendFile(req, reply, path.join(__dirname, 'siteroot', 'sitemap.xml'), 'application/xml; charset=utf-8'));
 
 // /ai and /b are legacy reader pages whose JS pulls its actual sutta text through PHP endpoints
 // (read/js/common.js: `/read/php/translator-lookup.php?...`), and PHP is not executed by this
