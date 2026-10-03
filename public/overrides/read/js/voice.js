@@ -335,9 +335,48 @@ function markActiveRate(isPali) {
   const presets = document.getElementById('tts-rate-presets');
   if (presets && presets.dataset.kind !== kind) {
     presets.dataset.kind = kind;
-    presets.innerHTML = r.presets.map(p => `<button type="button" class="tts-rate-preset" data-rate="${p}">${p}</button>`).join('');
+    const normal = window.isRu ? 'обычная' : 'normal';
+    presets.innerHTML = r.presets.map(p => `<span class="tts-rate-chip">
+        <button type="button" class="tts-rate-preset" data-rate="${p}">${p}</button>
+        ${p === r.def ? `<span class="tts-rate-normal">${normal}</span>` : ''}
+      </span>`).join('');
   }
   presets?.querySelectorAll('.tts-rate-preset').forEach(b => b.classList.toggle('active', Math.abs(+b.dataset.rate - v) < 0.001));
+}
+
+// The speed popup lives on <body>, floating above the speed button: inside the player it was
+// clipped, and growing the bottom-anchored player moved the button away from the cursor.
+function ensureRatePop() {
+  let pop = document.getElementById('tts-rate-pop');
+  if (pop) return pop;
+  document.body.insertAdjacentHTML('beforeend', `
+    <div id="tts-rate-pop" class="tts-rate-pop tts-rate-select" role="dialog" hidden>
+      <span id="tts-rate-title" class="tts-rate-title"></span>
+      <span id="tts-rate-kind" class="tts-rate-kind"></span>
+      <span class="tts-rate-line">
+        <button type="button" class="tts-rate-step" data-step="-1" aria-label="slower">−</button>
+        <input type="range" id="tts-rate-slider" class="tts-rate-slider" aria-label="speed">
+        <button type="button" class="tts-rate-step" data-step="1" aria-label="faster">+</button>
+      </span>
+      <span id="tts-rate-presets" class="tts-rate-presets"></span>
+    </div>`);
+  return document.getElementById('tts-rate-pop');
+}
+
+function placeRatePop(pop, btn) {
+  const gap = 8, margin = 12;
+  // An ancestor may scale (page zoom / font-size setting) or transform (dark theme) the page, so
+  // position:fixed coordinates are not viewport pixels: probe where (0,0) lands and at what scale.
+  pop.style.left = '0px';
+  pop.style.top = '0px';
+  const p0 = pop.getBoundingClientRect();
+  const scale = p0.width / pop.offsetWidth || 1;
+  const w = p0.width, h = p0.height, b = btn.getBoundingClientRect();
+  const left = Math.max(margin, Math.min(b.left + b.width / 2 - w / 2, window.innerWidth - w - margin));
+  let top = b.top - h - gap;                       // above the button: the player sits at the bottom
+  if (top < margin) top = Math.min(b.bottom + gap, window.innerHeight - h - margin);
+  pop.style.left = (left - p0.left) / scale + 'px';
+  pop.style.top = (top - p0.top) / scale + 'px';
 }
 
 function showRatePopValue(v) {
@@ -855,6 +894,20 @@ async function populateVoiceSelectors(apiKey, forceRefresh = false) {
 
 // --- ПОЛУЧЕНИЕ АУДИО (УЧИТЫВАЕТ КОНТЕКСТ) ---
 const PALI_VOICE_KEY = 'tts_pali_voice';
+
+// Voice engine (footer dropdown): 'dg' = our self-hosted Pali voice (translations: Google, else OS),
+// 'google' = Google Cloud TTS for both, 'native' = the OS voices for both. Stored in the existing
+// keys, so it syncs like the rest of the settings and the old per-language toggles keep working.
+function getTtsEngine() {
+  if (localStorage.getItem(NATIVE_PALI_KEY) === 'true' && localStorage.getItem(NATIVE_TRN_KEY) === 'true') return 'native';
+  return localStorage.getItem(PALI_VOICE_KEY) === 'off' ? 'google' : 'dg';
+}
+
+function setTtsEngine(engine) {
+  localStorage.setItem(PALI_VOICE_KEY, engine === 'dg' ? 'on' : 'off');
+  localStorage.setItem(NATIVE_PALI_KEY, engine === 'native');
+  localStorage.setItem(NATIVE_TRN_KEY, engine === 'native');
+}
 
 // Raw IAST for the self-hosted voice: drop variant readings in {…} and (…), like cleanTextForTTS does.
 function stripForPaliVoice(text) {
@@ -2146,6 +2199,7 @@ function getPlayerHtml() {
   const savedKey = saved ?? window.TRIAL_KEY ?? '';
   const isNativePali = localStorage.getItem(NATIVE_PALI_KEY) === 'true'; 
   const isNativeTrn = localStorage.getItem(NATIVE_TRN_KEY) === 'true'; 
+  const engine = getTtsEngine();
 
 
   // Points at the new Docs/Help portal (both RU and EN use the clean /tts slug now),
@@ -2172,6 +2226,12 @@ function getPlayerHtml() {
     apiKeyTitle: window.isRu ? "Введите API-ключ Google Cloud TTS" : "Enter Google Cloud TTS API Key for premium voices",
     refreshVoices: window.isRu ? "Обновить список" : "Refresh Voice List",
     resetTts: window.isRu ? "Полный сброс (очистить данные)" : "Full Reset (Clear Data)",
+    engine: window.isRu ? "Голос" : "Voice",
+    engineDg: window.isRu ? "Голос DG" : "DG voice",
+    engineNative: window.isRu ? "Голос ОС" : "OS voice",
+    engineSettings: window.isRu ? "Настройки голоса" : "Voice settings",
+    dgInfo: window.isRu ? "Пали: голос Dhamma.Gift (бесплатно, без ключа). Перевод: Google или голос ОС."
+                        : "Pāḷi: the Dhamma.Gift voice (free, no key). Translation: Google or the OS voice.",
     help: window.isRu ? "Помощь" : "Help"
   };
 
@@ -2208,16 +2268,6 @@ function getPlayerHtml() {
               </select>
 
               <button type="button" id="tts-rate-btn" class="tts-rate-select"${savedMode === 'pi' ? '' : ' style="border-style:dashed"'}>${formatRate(savedRate(savedMode === 'pi' ? 'pali' : 'trn'))}</button>
-              <span id="tts-rate-pop" class="tts-rate-pop tts-rate-select" hidden>
-                <span id="tts-rate-title" class="tts-rate-title"></span>
-                <span id="tts-rate-kind" class="tts-rate-kind"></span>
-                <span class="tts-rate-line">
-                  <button type="button" class="tts-rate-step" data-step="-1" aria-label="slower">−</button>
-                  <input type="range" id="tts-rate-slider" class="tts-rate-slider" aria-label="${t.speedPali} / ${t.speedTrn}">
-                  <button type="button" class="tts-rate-step" data-step="1" aria-label="faster">+</button>
-                </span>
-                <span id="tts-rate-presets" class="tts-rate-presets"></span>
-              </span>
               
               <br>
 
@@ -2243,16 +2293,20 @@ function getPlayerHtml() {
           </div>
 
           <div class="tts-links-row">
-            <button id="tts-advanced-toggle-btn" class="extra-settings-toggle advanced-btn">
-                🔧 Google Voice
-            </button>
+            <select id="tts-engine-select" class="tts-mode-select" title="${t.engine}">
+              <option value="dg" ${engine === 'dg' ? 'selected' : ''}>${t.engineDg}</option>
+              <option value="google" ${engine === 'google' ? 'selected' : ''}>Google</option>
+              <option value="native" ${engine === 'native' ? 'selected' : ''}>${t.engineNative}</option>
+            </select>
+            <button id="tts-advanced-toggle-btn" class="extra-settings-toggle advanced-btn" title="${t.engineSettings}">🔧</button>
 
             <span id="audio-file-link-placeholder"></span>
             
             <a href="${helpUrl}" target="_blank" class="tts-link tts-help-link" title="${t.help}">?</a>
           </div>
 
-          <div id="tts-advanced-settings">
+          <div id="tts-advanced-settings" data-engine="${engine}">
+              <div class="tts-dg-info">${t.dgInfo}</div>
               <div class="api-key-row">
                 <input type="password" id="google-api-key-input" 
                        value="${savedKey}" 
@@ -2267,7 +2321,7 @@ function getPlayerHtml() {
               </div>
 
               <div id="google-voice-settings-container">
-                  <div class="google-voice-select-group">
+                  <div class="google-voice-select-group tts-pali-voice-group">
                        <div class="google-voice-label">${t.paliVoice} 
                            <label class="tts-checkbox-custom tts-native-label">
                               <input type="checkbox" id="native-pali-toggle" ${isNativePali ? 'checked' : ''}>
@@ -2308,7 +2362,7 @@ function getOrBuildPlayer() {
         // The ?v= stamp matters: /read/css/voice.css is served immutable for a year, so without it a
         // CSS fix would never reach anyone who had already opened the player (issue #20's rule was
         // invisible in the browser because of exactly that). Bump the stamp with the next edit.
-        document.head.insertAdjacentHTML('beforeend', '<link id="voice-css-lazy" rel="stylesheet" href="/read/css/voice.css?v=2026-10-03">');
+        document.head.insertAdjacentHTML('beforeend', '<link id="voice-css-lazy" rel="stylesheet" href="/read/css/voice.css?v=2026-10-03c">');
     }
 
     if (!playerContainer) {
@@ -2434,6 +2488,23 @@ async function handleTTSSettingChange(e) {
       return;
   }
 
+  // 0. Voice engine dropdown: switches the mode and which settings the panel shows
+  if (e.target.id === 'tts-engine-select') {
+      setTtsEngine(e.target.value);
+      document.getElementById('tts-advanced-settings')?.setAttribute('data-engine', e.target.value);
+      const nativePali = document.getElementById('native-pali-toggle');
+      const nativeTrn = document.getElementById('native-trn-toggle');
+      if (nativePali) nativePali.checked = e.target.value === 'native';
+      if (nativeTrn) nativeTrn.checked = e.target.value === 'native';
+      refreshVoiceDropdowns();
+      if (ttsState.speaking && !ttsState.paused) {
+          synth.cancel();
+          if (ttsState.googleAudio) { ttsState.googleAudio.pause(); ttsState.googleAudio = null; }
+          playCurrentSegment();
+      }
+      return;
+  }
+
   // 0. Toggle Native Pali
   if (e.target.id === 'native-pali-toggle') {
       const isChecked = e.target.checked;
@@ -2529,14 +2600,19 @@ document.addEventListener('input', e => {
 });
 // Speed button: opens the slider for the language being read; a click elsewhere closes it.
 document.addEventListener('click', e => {
-  const pop = document.getElementById('tts-rate-pop');
-  if (!pop) return;
-  const step = e.target.closest('.tts-rate-step');
-  const preset = e.target.closest('.tts-rate-preset');
-  if (e.target.closest('#tts-rate-btn')) {
+  const btn = e.target.closest('#tts-rate-btn');
+  if (btn) {
+    const pop = ensureRatePop();
     markActiveRate(activeRateKind() === 'pali');
     pop.hidden = !pop.hidden;
-  } else if (step) {
+    if (!pop.hidden) placeRatePop(pop, btn);
+    return;
+  }
+  const pop = document.getElementById('tts-rate-pop');
+  if (!pop || pop.hidden) return;
+  const step = e.target.closest('.tts-rate-step');
+  const preset = e.target.closest('.tts-rate-preset');
+  if (step) {
     const slider = document.getElementById('tts-rate-slider');
     setSliderRate(parseFloat(slider.value) + parseFloat(slider.step) * +step.dataset.step);
   } else if (preset) {
@@ -2544,6 +2620,14 @@ document.addEventListener('click', e => {
   } else if (!e.target.closest('#tts-rate-pop')) {
     pop.hidden = true;
   }
+});
+document.addEventListener('keydown', e => {
+  const pop = document.getElementById('tts-rate-pop');
+  if (e.key === 'Escape' && pop && !pop.hidden) pop.hidden = true;
+});
+window.addEventListener('resize', () => {
+  const pop = document.getElementById('tts-rate-pop');
+  if (pop) pop.hidden = true;
 });
 document.addEventListener('click', (e) => {
     // Добавили проверку e.target.id === 'tts-advanced-toggle-btn'

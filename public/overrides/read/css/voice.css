@@ -771,21 +771,26 @@ body:has(#dgDlCard.show) .voice-player {
     height: 30px;
     line-height: 1;
 }
-/* Opens in place inside the player panel (the panel clips anything positioned outside it) */
+/* Floating speed window (on <body>, above the speed button), like YouTube's */
 .tts-rate-pop {
+    position: fixed;
+    z-index: 100000;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 6px;
-    width: 100%;
+    gap: 8px;
+    width: 260px;
+    max-width: calc(100vw - 24px);
     box-sizing: border-box;
-    padding: 8px 10px 10px;
-    margin: 2px 0 6px;
-    background: rgba(0, 0, 0, .035);
+    padding: 12px 14px 10px;
+    margin: 0;
+    background: #fff;
     border: 0;
-    border-radius: 10px;
+    border-radius: 14px;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, .22);
     cursor: default;
     color: #444;
+    font-size: 14px;
 }
 .tts-rate-pop[hidden] {
     display: none;
@@ -831,10 +836,23 @@ body:has(#dgDlCard.show) .voice-player {
     gap: 4px;
     width: 100%;
     justify-content: space-between;
+    align-items: flex-start;
+}
+.tts-rate-chip {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 2px;
+}
+.tts-rate-normal {
+    font-size: 11px;
+    color: #888;
+    text-align: center;
+    white-space: nowrap;
 }
 .tts-rate-preset {
-    flex: 1;
-    padding: 4px 0;
+    padding: 5px 0;
     border: 0;
     border-radius: 999px;
     background: rgba(0, 0, 0, .06);
@@ -847,8 +865,9 @@ body:has(#dgDlCard.show) .voice-player {
     color: #fff;
 }
 .dark .tts-rate-pop {
-    background: rgba(255, 255, 255, .06);
+    background: #2b2b2b;
     color: #ddd;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, .6);
 }
 .dark .tts-rate-step,
 .dark .tts-rate-preset {
@@ -858,7 +877,24 @@ body:has(#dgDlCard.show) .voice-player {
     background: var(--bs-primary, #0d6efd);
     color: #fff;
 }
-/* The open speed block needs room: #tts-basic-settings is capped at 200px for its collapse animation */
-#tts-basic-settings:has(#tts-rate-pop:not([hidden])) {
-    max-height: 400px;
+
+/* Voice engine dropdown (footer): the settings panel shows only what the chosen engine uses */
+#tts-engine-select {
+    margin-bottom: 0;
+}
+.tts-dg-info {
+    display: none;
+    font-size: 13px;
+    color: #888;
+    margin: 4px 0 8px;
+    line-height: 1.35;
+}
+#tts-advanced-settings[data-engine="dg"] .tts-dg-info {
+    display: block;
+}
+#tts-advanced-settings[data-engine="dg"] .api-key-row,
+#tts-advanced-settings[data-engine="dg"] .tts-pali-voice-group,
+#tts-advanced-settings[data-engine="native"] .api-key-row,
+#tts-advanced-settings .tts-native-label {
+    display: none;
 }
