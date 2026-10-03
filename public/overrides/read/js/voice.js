@@ -905,7 +905,7 @@ const PALI_VOICE_KEY = 'tts_pali_voice';
 
 // Voice engines, chosen separately for Pali and for the translation in the voice settings
 // (engine -> language -> voice). Pali: 'dg' = our self-hosted voice, 'google', 'native' (OS).
-// Translation: 'google' or 'native' (Piper translation voices come later). Stored in the existing
+// Translation: 'dg' (Piper voice of the translation language; default), 'google', 'native'. Stored in the existing
 // keys (tts_pali_voice + the native toggles), so they sync like the other settings.
 function getTtsEngine() {  // the Pali engine
   if (localStorage.getItem(NATIVE_PALI_KEY) === 'true') return 'native';
@@ -916,7 +916,7 @@ const TRN_ENGINE_KEY = 'tts_trn_engine';
 
 function getTrnEngine() {
   if (localStorage.getItem(NATIVE_TRN_KEY) === 'true') return 'native';
-  return localStorage.getItem(TRN_ENGINE_KEY) === 'dg' ? 'dg' : 'google';
+  return localStorage.getItem(TRN_ENGINE_KEY) === 'google' ? 'google' : 'dg';  // DG by default (owner)
 }
 
 function setTrnEngine(engine) {
