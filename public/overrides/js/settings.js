@@ -28,6 +28,15 @@ window.isRu = window.notEn;
 // normal mode now (service worker + the offline library), not a redirect to a Termux/Apache
 // copy of the site. The secret force_local switch above is unrelated and stays.
 
+// Loading toasts (dictionary, audio) share one corner: stack them instead of drawing one over the other.
+window.dg_restackLoaders = function() {
+    let bottom = 20;
+    document.querySelectorAll('.dict-loading-indicator').forEach(el => {
+        el.style.bottom = bottom + 'px';
+        bottom += el.offsetHeight + 8;
+    });
+};
+
 // === ЗАГРУЗКА СЛОВАРЯ (УМНАЯ ФОНОВАЯ ИЛИ ПО КЛИКУ) ===
 (function() {
     window.isDictScriptLoaded = false;
@@ -46,12 +55,13 @@ window.isRu = window.notEn;
             }
             
             loadingEl.textContent = customText || (window.notEn ? 'Словарь загружается...' : 'Dictionary is loading...');
+            window.dg_restackLoaders();
             
             setTimeout(() => loadingEl.classList.add('show'), 10);
         } else {
             if (loadingEl) {
                 loadingEl.classList.remove('show');
-                setTimeout(() => loadingEl.remove(), 300);
+                setTimeout(() => { loadingEl.remove(); window.dg_restackLoaders(); }, 300);
             }
         }
     };
@@ -255,6 +265,7 @@ window.addEventListener('suttaRenderedCentral', () => {
             
             loadingEl.textContent = window.notEn ? 'Инициализация аудио...' : 'Initializing audio...';
             document.body.appendChild(loadingEl);
+            window.dg_restackLoaders();
             setTimeout(() => loadingEl.classList.add('show'), 10);
         }
 
@@ -275,7 +286,7 @@ window.addEventListener('suttaRenderedCentral', () => {
                 
                 if (loadingEl) {
                     loadingEl.classList.remove('show');
-                    setTimeout(() => loadingEl.remove(), 300);
+                    setTimeout(() => { loadingEl.remove(); window.dg_restackLoaders(); }, 300);
                 }
                 if (callback) callback();
                 return; // Прерываем цепочку, не загружая voice-mem.js
@@ -291,7 +302,7 @@ window.addEventListener('suttaRenderedCentral', () => {
                 
                 if (loadingEl) {
                     loadingEl.classList.remove('show');
-                    setTimeout(() => loadingEl.remove(), 300);
+                    setTimeout(() => { loadingEl.remove(); window.dg_restackLoaders(); }, 300);
                 }
                 if (callback) callback();
             };
