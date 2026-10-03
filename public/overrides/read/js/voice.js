@@ -962,15 +962,25 @@ function stripForPaliVoice(text) {
 // DG voice: Piper behind /api/tts/pali (dg-fastify.js): Pali with the pali-tts listening-test rules,
 // or a translation voice (voice id, e.g. 'ruslan').
 // Answers like Google ({audioContent}: base64 mp3). Speed 0.8 = the voice's tuned pace (the default 0.7 is a bit slower).
+// The browser calls the voice server directly, like Google's API (public, CORS): f2 has the faster CPU.
+// This site's own /api/tts/pali (same service on the main server) is the spare if f2 doesn't answer.
+const DG_TTS_URLS = [window.DG_TTS_URL || 'https://f2.dhamma.gift/api/tts/pali', '/api/tts/pali'];
+
 async function fetchPaliVoiceAudio(text, uiRate, voice) {
-  const r = await fetch('/api/tts/pali', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    // Pali: menu 0.8 = the voice's tuned pace; translation voices: 1.0 = their own pace
-    body: JSON.stringify({ text, rate: voice ? uiRate : uiRate / 0.8, voice: voice || 'pratham' })
-  });
-  if (!r.ok) throw new Error('HTTP ' + r.status);
-  return (await r.json()).audioContent;
+  // Pali: menu 0.8 = the voice's tuned pace; translation voices: 1.0 = their own pace
+  const body = JSON.stringify({ text, rate: voice ? uiRate : uiRate / 0.8, voice: voice || 'pratham' });
+  let lastError;
+  for (const url of DG_TTS_URLS) {
+    try {
+      const r = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body,
+                                   signal: AbortSignal.timeout(20000) });
+      if (r.ok) return (await r.json()).audioContent;
+      lastError = new Error(url + ' HTTP ' + r.status);
+    } catch (e) {
+      lastError = e;
+    }
+  }
+  throw lastError;
 }
 
 async function fetchGoogleAudio(text, lang, rate, apiKey) {
