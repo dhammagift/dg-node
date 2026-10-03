@@ -813,6 +813,25 @@ async function populateVoiceSelectors(apiKey, forceRefresh = false) {
 
 
 // --- ПОЛУЧЕНИЕ АУДИО (УЧИТЫВАЕТ КОНТЕКСТ) ---
+const PALI_VOICE_KEY = 'tts_pali_voice';
+
+// Raw IAST for the self-hosted voice: drop variant readings in {…} and (…), like cleanTextForTTS does.
+function stripForPaliVoice(text) {
+  return (text || '').replace(/\{.*?\}/g, '').replace(/\(.*?\)/g, '').replace(/[ \t]+/g, ' ').trim();
+}
+
+// Self-hosted Pali voice: Piper + the pali-tts listening-test rules behind /api/tts/pali (dg-fastify.js).
+// Answers like Google ({audioContent}: base64 mp3). The Pali speed menu defaults to 0.8, the voice's tuned pace.
+async function fetchPaliVoiceAudio(iast, uiRate) {
+  const r = await fetch('/api/tts/pali', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ text: iast, rate: uiRate / 0.8 })
+  });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return (await r.json()).audioContent;
+}
+
 async function fetchGoogleAudio(text, lang, rate, apiKey) {
   let targetConfig = null;
 
@@ -1031,6 +1050,7 @@ async function prepareTextData(slug) {
   }
 
   const cleanJsonMap = {};
+  const iastJsonMap = {}; // raw IAST for the self-hosted Pali voice, which phonemizes IAST itself
   const jsonKeys = []; 
 
   if (paliJsonData) {
@@ -1041,6 +1061,7 @@ async function prepareTextData(slug) {
       // fixes are written against Devanagari and are no-ops on IAST.
       const devText = window.convertPaliToDevanagari ? window.convertPaliToDevanagari(rawText) : rawText;
       cleanJsonMap[cleanKey] = cleanTextForTTS(devText);
+      iastJsonMap[cleanKey] = stripForPaliVoice(rawText);
       jsonKeys.push(cleanKey); 
     });
   }
@@ -1054,11 +1075,13 @@ async function prepareTextData(slug) {
     const trnEl2 = segTranslations.length > 1 ? segTranslations[segTranslations.length - 1] : null;
     
     let paliDev = '';
+    let paliIast = '';
     let translation1 = '';
     let translation2 = '';
     
     if (cleanJsonMap[id]) {
       paliDev = cleanJsonMap[id];
+      paliIast = iastJsonMap[id];
       const currentIndex = jsonKeys.indexOf(id);
       if (currentIndex !== -1) {
         let lookAheadIndex = currentIndex + 1;
@@ -1069,6 +1092,7 @@ async function prepareTextData(slug) {
           if (nextVal) {
              const lowerNext = nextVal.charAt(0).toLowerCase() + nextVal.slice(1);
              paliDev += " " + lowerNext;
+             paliIast += " " + iastJsonMap[nextKey];
           }
           lookAheadIndex++;
         }
@@ -1088,6 +1112,7 @@ async function prepareTextData(slug) {
       // are written against Devanagari script and are no-ops on raw IAST Latin text.
       let paliSource = window.convertPaliToDevanagari ? window.convertPaliToDevanagari(rawDomText) : rawDomText;
       paliDev = cleanTextForTTS(paliSource);
+      paliIast = stripForPaliVoice(rawDomText);
     }
     
     if (trnEl1) {
@@ -1106,6 +1131,7 @@ async function prepareTextData(slug) {
       textData.push({
         id: id,
         paliDev: paliDev,
+        paliIast: paliIast,
         translation: translation1,
         translation2: translation2,
         paliElement: paliElement || null,
@@ -1137,7 +1163,7 @@ function createPlaylistFromData(textData, mode) {
         if (item.paliDev) {
             let lang = detectDynamicLang(item.paliDev, 'pi-dev', true);
             playlist.push({
-              text: item.paliDev, lang: lang, element: item.paliElement, id: item.id
+              text: item.paliDev, iast: item.paliIast, lang: lang, element: item.paliElement, id: item.id
             });
         }
     };
@@ -1287,6 +1313,8 @@ async function playCurrentSegment() {
   const useNativeTrn  = localStorage.getItem(NATIVE_TRN_KEY) === 'true'; 
   
   let tryGoogle = false;
+  // Self-hosted Pali voice first (free, no key); Google stays the fallback. Off switch: localStorage PALI_VOICE_KEY = 'off'.
+  const usePaliVoice = isPali && !useNativePali && !!item.iast && localStorage.getItem(PALI_VOICE_KEY) !== 'off';
 
   if (googleKey && googleKey.length > 10) {
       if (isPali) {
@@ -1300,11 +1328,21 @@ async function playCurrentSegment() {
       }
   }
 
-  if (tryGoogle) {
+  if (tryGoogle || usePaliVoice) {
       try {
           const targetIndex = ttsState.currentIndex; 
 
-          const audioContent = await fetchGoogleAudio(item.text, targetLang, audioRateGoogle, googleKey);
+          let audioContent = null;
+          if (usePaliVoice) {
+              try {
+                  audioContent = await fetchPaliVoiceAudio(item.iast, audioRateGoogle);
+              } catch (e) {
+                  console.warn("Pali voice failed, falling back to Google", e);
+              }
+          }
+          if (!audioContent && tryGoogle) {
+              audioContent = await fetchGoogleAudio(item.text, targetLang, audioRateGoogle, googleKey);
+          }
           
           if (targetIndex !== ttsState.currentIndex || !ttsState.speaking) {
               return; 

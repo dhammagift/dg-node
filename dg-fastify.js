@@ -1362,6 +1362,23 @@ app.post('/api/tts/synthesize', { bodyLimit: 64 * 1024 }, (req, res) => {
     return googleTts(res, 'text:synthesize', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body });
 });
 
+// Self-hosted Pali voice: Piper + IAST->IPA rules from the pali-tts listening tests
+// (/var/www/pali-tts/tts_server.py, systemd pali-tts, localhost only). Same answer shape as
+// Google's text:synthesize ({audioContent}), so read/js/voice.js plays both the same way. No monthly
+// cap: it costs only our CPU, and the service caches every mp3 it makes.
+const PALI_TTS_URL = process.env.PALI_TTS_URL || 'http://127.0.0.1:3011/synthesize';
+app.post('/api/tts/pali', { bodyLimit: 16 * 1024 }, async (req, res) => {
+    if (ttsRateLimited(req.ip)) return res.code(429).send({ error: { message: 'Too many requests, try again shortly' } });
+    const body = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
+    try {
+        const r = await fetch(PALI_TTS_URL, { method: 'POST', body, signal: AbortSignal.timeout(60000) });
+        return res.code(r.status).header('content-type', 'application/json').header('cache-control', 'no-store').send(await r.text());
+    } catch (err) {
+        console.error('[pali-tts]', err.message);
+        return res.code(502).send({ error: { message: 'Pali voice is unavailable' } });
+    }
+});
+
 // Static mounts below use @fastify/static's array `root` (tries each dir in order, first match
 // wins) — the direct equivalent of Express's "register override dir, then fallback dir on the
 // same prefix, static.js calls next() on miss" chain used throughout dg-light.js. A prefix can
