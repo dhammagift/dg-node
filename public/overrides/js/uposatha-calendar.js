@@ -206,7 +206,7 @@
     twi: (function () { var v = store('dgUposathaTwi'); return v && v in TWI ? v : 'sun'; })(),
     tests: (function () { var q = params.get('tests'); if (q === '1' || q === '0') store('dgUposathaTests', q); return store('dgUposathaTests') === '1'; })(), // the tests of the settings are hidden: ?tests=1 shows them, ?tests=0 hides, seven taps on the app version too
     fake: (function () { var v = store('dgUposathaFake'); return v === 'kala' || v === 'vikala' ? v : ''; })(),
-    meal: (function () { var d = { sum: true, rem: false, lead: 30, days: 'upo', snd: 'vikala', beg: false, begLead: 0, begSnd: 'gong2' }; try { var v = JSON.parse(store('dgUposathaMeal')); if (v) for (var k in d) if (k in v) d[k] = v[k]; } catch (e) { /* defaults */ } return d; })(),
+    meal: (function () { var d = { sum: true, rem: false, lead: 30, days: 'upo', snd: 'vikala', beg: false, begLead: 0, begSnd: 'gong3' }; try { var v = JSON.parse(store('dgUposathaMeal')); if (v) for (var k in d) if (k in v) d[k] = v[k]; } catch (e) { /* defaults */ } return d; })(),
     parts: (function () { var d = { rem: false, which: 'day', days: 'upo', snd: 'voice' }; try { var v = JSON.parse(store('dgUposathaParts')); if (v) for (var k in d) if (k in v) d[k] = v[k]; } catch (e) { /* defaults */ } return d; })(),
     noon: (function () { var v = store('dgUposathaNoon'); return /^(sun|mid|clock)$/.test(v || '') ? v : 'sun'; })(),
     loc: (function () { try { return JSON.parse(store('dgUposathaLoc')); } catch (e) { return null; } })(),
