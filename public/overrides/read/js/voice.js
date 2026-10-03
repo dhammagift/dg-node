@@ -2293,12 +2293,7 @@ function getPlayerHtml() {
           </div>
 
           <div class="tts-links-row">
-            <select id="tts-engine-select" class="tts-mode-select" title="${t.engine}">
-              <option value="dg" ${engine === 'dg' ? 'selected' : ''}>${t.engineDg}</option>
-              <option value="google" ${engine === 'google' ? 'selected' : ''}>Google</option>
-              <option value="native" ${engine === 'native' ? 'selected' : ''}>${t.engineNative}</option>
-            </select>
-            <button id="tts-advanced-toggle-btn" class="extra-settings-toggle advanced-btn" title="${t.engineSettings}">🔧</button>
+            <button id="tts-advanced-toggle-btn" class="extra-settings-toggle advanced-btn">🔧 ${t.engineSettings}</button>
 
             <span id="audio-file-link-placeholder"></span>
             
@@ -2306,6 +2301,13 @@ function getPlayerHtml() {
           </div>
 
           <div id="tts-advanced-settings" data-engine="${engine}">
+              <div class="tts-engine-row">
+                <select id="tts-engine-select" class="tts-mode-select" title="${t.engine}">
+                  <option value="dg" ${engine === 'dg' ? 'selected' : ''}>${t.engineDg}</option>
+                  <option value="google" ${engine === 'google' ? 'selected' : ''}>Google</option>
+                  <option value="native" ${engine === 'native' ? 'selected' : ''}>${t.engineNative}</option>
+                </select>
+              </div>
               <div class="tts-dg-info">${t.dgInfo}</div>
               <div class="api-key-row">
                 <input type="password" id="google-api-key-input" 
@@ -2362,7 +2364,7 @@ function getOrBuildPlayer() {
         // The ?v= stamp matters: /read/css/voice.css is served immutable for a year, so without it a
         // CSS fix would never reach anyone who had already opened the player (issue #20's rule was
         // invisible in the browser because of exactly that). Bump the stamp with the next edit.
-        document.head.insertAdjacentHTML('beforeend', '<link id="voice-css-lazy" rel="stylesheet" href="/read/css/voice.css?v=2026-10-03c">');
+        document.head.insertAdjacentHTML('beforeend', '<link id="voice-css-lazy" rel="stylesheet" href="/read/css/voice.css?v=2026-10-03f">');
     }
 
     if (!playerContainer) {

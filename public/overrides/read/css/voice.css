@@ -898,3 +898,20 @@ body:has(#dgDlCard.show) .voice-player {
 #tts-advanced-settings .tts-native-label {
     display: none;
 }
+.tts-engine-row {
+    text-align: center;
+    margin: 2px 0 8px;
+}
+/* One fixed width for the whole settings area, so the player keeps its size in every engine mode
+   and in basic/advanced view: the DG note wraps, voice lists stack */
+#tts-settings-panel {
+    width: 260px;
+    max-width: calc(100vw - 60px);
+    margin-left: auto;
+    margin-right: auto;
+}
+#tts-advanced-settings .google-voice-dropdown {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+}
