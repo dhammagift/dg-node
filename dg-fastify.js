@@ -172,9 +172,10 @@ app.addHook('onRequest', (req, res, done) => {
 // fallback) answers instead, so crawlers got a 200 HTML search page with zero Disallow rules
 // (confirmed live, 2026-09-28: dhamma.gift/robots.txt returned the SPA shell, not text/plain).
 app.get('/robots.txt', (req, reply) => sendFile(req, reply, path.join(__dirname, 'configs', 'robots.txt'), 'text/plain; charset=utf-8'));
-// Same for /sitemap.xml (named in robots.txt): siteroot/sitemap.xml is a symlink to a FILE
-// (/var/www/html/sitemap.xml), and the siteroot scan below mounts only directories, so it 404ed.
-app.get('/sitemap.xml', (req, reply) => sendFile(req, reply, path.join(__dirname, 'siteroot', 'sitemap.xml'), 'application/xml; charset=utf-8'));
+// Same for /sitemap.xml (named in robots.txt). Built at startup by buildSitemapCache() from dg.db
+// and the docs builds; it no longer comes from the legacy site's hand-kept file.
+const SITEMAP_PATH = path.join(__dirname, 'settings', 'sitemap.xml');
+app.get('/sitemap.xml', (req, reply) => sendFile(req, reply, SITEMAP_PATH, 'application/xml; charset=utf-8'));
 
 // /ai and /b are legacy reader pages whose JS pulls its actual sutta text through PHP endpoints
 // (read/js/common.js: `/read/php/translator-lookup.php?...`), and PHP is not executed by this
@@ -1129,6 +1130,48 @@ regexRunner.configure({ dbPath: SEARCH_DB_PATH, dgOffline: DG_OFFLINE, limits: R
 // the pages are in the OS page cache either way, and read() reaches them just as fast.
 searchDb.exec('PRAGMA cache_size = -16000'); // 16MB page cache, per connection
 
+// sitemap.xml for search engines: the home page, every text page in its final address (the one
+// the reader serves without a redirect, same normalization as the /:slug route), and every docs
+// page of both docs builds. Rebuilt on each start, like the other caches here, so it follows dg.db.
+async function buildSitemapCache() {
+    const base = 'https://dhamma.gift';
+    const dbDate = (await fs.stat(SEARCH_DB_PATH)).mtime.toISOString().slice(0, 10);
+    const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+    const entries = [[base + '/', dbDate, '1.0'], [base + '/dict/', dbDate, '0.6']];
+    const seen = new Set();
+    for (const id of Object.keys(skeletonDB)) {
+        const classified = DgTextRouter.classify(id.toLowerCase());
+        const isVinayaAlias = classified.type === 'text' && /^pli-tv-/.test(classified.id) && skeletonDB[classified.id];
+        const finalId = classified.type === 'text' && !isVinayaAlias ? classified.id : id;
+        if (seen.has(finalId)) continue;
+        seen.add(finalId);
+        entries.push([base + '/' + encodeURIComponent(finalId), dbDate, '0.8']);
+    }
+    // Docs: each build has its own sitemap.xml. /docs/* is served with a trailing-slash redirect,
+    // /ru/docs/* without one, so list each page the way it answers 200.
+    for (const [dir, slash] of [['build', true], ['build-ru', false]]) {
+        try {
+            const xml = await fs.readFile(path.join(__dirname, 'dg-docs', dir, 'sitemap.xml'), 'utf8');
+            for (const m of xml.matchAll(/<loc>([^<]+)<\/loc>/g)) {
+                let loc = m[1];
+                if (slash && !loc.endsWith('/') && !/\.[a-z0-9]+$/i.test(loc)) loc += '/';
+                entries.push([loc, dbDate, '0.5']);
+            }
+        } catch (e) {
+            console.warn(`Sitemap: no docs sitemap in dg-docs/${dir} (${e.code || e.message})`);
+        }
+    }
+    const xml = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
+        entries.map(([loc, lastmod, prio]) => `  <url><loc>${esc(loc)}</loc><lastmod>${lastmod}</lastmod><priority>${prio}</priority></url>`).join('\n') +
+        '\n</urlset>\n';
+    try {
+        await fs.writeFile(SITEMAP_PATH, xml, 'utf8');
+        console.log(`Sitemap built: ${entries.length} URLs -> settings/sitemap.xml`);
+    } catch (e) {
+        console.warn('Sitemap: could not write file:', e.message);
+    }
+}
+
 async function initServer() {
     try {
         // The skeleton comes out of dg.db like everything else — build-search-db.js derives it
@@ -1151,6 +1194,7 @@ async function initServer() {
         await buildScriptListCache();
         await buildLangCountsCache();
         await buildTranslatorCatalogCache();
+        await buildSitemapCache();
         await buildScriptBundle();
     } catch (err) {
         console.error('Startup error:', err);
