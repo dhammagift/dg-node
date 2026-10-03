@@ -1523,7 +1523,7 @@ function clearInputs() {
         for (var i = 0; i < thruLinksData.length; i++) {
             if (thruLinksData[i][0] === indexValue) {
                 var path = thruLinksData[i][1];
-                window.open('/theravada.ru/Teaching/Canon/Suttanta/Texts/' + path, '_blank');
+                window.openMirrorLink('/theravada.ru/Teaching/Canon/Suttanta/Texts/' + path, 'https://theravada.ru/Teaching/Canon/Suttanta/Texts/' + path);
                 found = true;
                 break;
             }
@@ -1540,7 +1540,7 @@ function clearInputs() {
                 } else if (prefix === 'SN') {
                     var url = '/theravada.ru/Teaching/Canon/Suttanta/SN/samyutta-' + bookNumber + '.htm';
                 }
-                window.open(url, '_blank');
+                window.openMirrorLink(url, 'https:/' + url);  // local copy if here, else theravada.ru itself
             } else {
                 var url = '/ru/sc?q=' + indexValue;
                 window.open(url, '_blank');
@@ -2409,5 +2409,6 @@ Rewrite translations to match reference style/word-order/terms. Keep any abbrevi
     window.lblAuthMessage = function (reason) { return S[reason] || S.generic + reason; };
 })();
 </script>
+<script src="/assets/js/mirror-link.js"></script>
 </body>
 </html>

@@ -9,10 +9,14 @@ document.addEventListener("DOMContentLoaded", function() {
         if (!textUrl) {
             link.style.display = 'none';
         } else {
-            // Установка значения в атрибут href
-            link.href = textUrl;
+            // A local mirror path goes through mirror-link.js like every other mirror: href is the real
+            // site, data-local the copy this server may have (used only if it answers).
+            link.href = onlineRuUrl(textUrl);
             link.target = "_blank";
-
+            if (textUrl.startsWith('/')) {
+                link.classList.add('mirror-link');
+                link.dataset.local = textUrl;
+            }
         }
     });
 });
@@ -21,10 +25,24 @@ function openRu(slug) {
  //  console.log("Открывается Ru для:", slug);
     let textUrl = findRuTextUrl(slug);
     if (textUrl) {
-     //   console.log("Ссылка найдена:", textUrl);
-        window.open(textUrl, "_blank");
+        openRuMirror(textUrl);
     } else {
             console.log("Ссылка не найдена", slug, textUrl);
+    }
+}
+
+// "/theravada.ru/x" -> "https://theravada.ru/x" (the local mirrors keep the original sites' paths).
+function onlineRuUrl(url) {
+    return url.startsWith('/') ? 'https://' + url.slice(1) : url;
+}
+
+// Local mirror when this server has it, the real site otherwise (mirror-link.js); f2, the app and
+// dev boxes don't carry the theravada.ru copy, and a bare local link 404ed there.
+function openRuMirror(url) {
+    if (url.startsWith('/') && typeof window.openMirrorLink === 'function') {
+        window.openMirrorLink(url, onlineRuUrl(url));
+    } else {
+        window.open(url.startsWith('/') ? onlineRuUrl(url) : url, '_blank');
     }
 }
 
@@ -55,7 +73,7 @@ function findRuTextUrl(slug) {
         // === ВОТ ЗДЕСЬ ИЗМЕНЕНИЕ ДЛЯ THERAVADA.RU ===
         // Мы попадаем сюда для ВСЕХ ссылок theravada.ru (MN, SN, AN и т.д.)
         
-        // Принудительно ставим слэш, делая ссылку локальной в любом случае
+ // Локальный путь; если копии на этом сервере нет, openRuMirror() уводит на сам theravada.ru
         base = "/"; 
         
         datasetRu = thruLinksData;
