@@ -67,7 +67,7 @@
       mealBegTitle: 'Time for food soon', mealBegBody: function (dawn, lead) { return 'Dawn at ' + dawn + ' — the time for food begins in ' + (lead >= 60 ? (lead / 60) + ' h' : lead + ' min') + '.'; },
       mealRemTitle: 'Vikāla soon', mealRemBody: function (noon, lead) { return 'Midday at ' + noon + ' — the time for food ends in ' + (lead >= 60 ? (lead / 60) + ' h' : lead + ' min') + '.'; },
       logoTip: 'Home · change the language: long press or right click', rateUs: 'Rate Us', privacy: 'Privacy Policy', appVer: 'App version', timeL: 'Time', ofMode: function (n, m, su) { return n + ' of ' + m + (su ? ' by the suttas' : ' modern'); }, placeQ: 'For exact moon phases and sun times, please share your location.', remQ: 'Remind you of the Uposatha days a day before?', remYes: 'Turn on', remNo: 'Not now', remSet: 'Settings', placeYes: 'Find my place', placeCity: 'Manually', placeLater: 'Later', advL: 'Advanced: twilight, place updates, time zone, hemisphere', ctxNoPlace: 'Place not set', ctxPlace: 'Your place', locRefresh: 'Update my location', locHere: 'by geo', navKeys: 'Suttas', navHome: 'Summary', navList: 'Uposathas', navCal: 'Calendar', navParts: 'Night–day', navSet: 'Settings',
-      sound: 'Sound', soundNone: 'Silent', soundOwn: 'My own sound…', soundOwnNamed: 'My own: %', soundOwnChange: 'Change my sound…', missed: 'Missed: %', soundFail: 'The sound was not set.', sounds: { vikala: 'Vinaya: what is vikāla (Pali)', gong: 'Gong', gong3: 'Gong 2', gong4: 'Gong 3', gong5: 'Gong 4', gong2: 'Gong 5', bell: 'Bell' },
+      sound: 'Sound', soundNone: 'Silent', soundOwn: 'My own sound…', soundOwnNamed: 'My own: %', soundOwnChange: 'Change my sound…', missed: 'Missed reminder', soundFail: 'The sound was not set.', sounds: { vikala: 'Vinaya: what is vikāla (Pali)', gong: 'Gong', gong3: 'Gong 2', gong4: 'Gong 3', gong5: 'Gong 4', gong2: 'Gong 5', bell: 'Bell' },
       remAppNote: 'Reminders are scheduled on this device and arrive even when the app is closed.',
       remNext: function (when, what) { return 'Next reminder: ' + when + ' — ' + what; }, remNone: 'No reminder is due in the coming weeks.',
       remDenied: 'Notifications are blocked for this site — allow them in the browser settings.', remUnsupported: 'This browser cannot show notifications.',
@@ -122,7 +122,7 @@
       mealBegTitle: 'Скоро время еды', mealBegBody: function (dawn, lead) { return 'Заря в ' + dawn + ' — время еды начнётся через ' + (lead >= 60 ? (lead / 60 + '').replace('.', ',') + ' ч' : lead + ' мин') + '.'; },
       mealRemTitle: 'Скоро vikāla', mealRemBody: function (noon, lead) { return 'Полдень в ' + noon + ' — время еды закончится через ' + (lead >= 60 ? (lead / 60 + '').replace('.', ',') + ' ч' : lead + ' мин') + '.'; },
       logoTip: 'Домой · сменить язык: долгое нажатие или правая кнопка', rateUs: 'Оценить приложение', privacy: 'Политика конфиденциальности', appVer: 'Версия приложения', timeL: 'Время', ofMode: function (n, m, su) { return n + ' из ' + m + (su ? ' по суттам' : ' по современной'); }, placeQ: 'Для точных лунных фаз и времени солнца нужно ваше местоположение.', remQ: 'Напоминать о днях упосатхи за сутки?', remYes: 'Включить', remNo: 'Не сейчас', remSet: 'Настроить', placeYes: 'Вкл. место', placeCity: 'Вручную', placeLater: 'Позже', advL: 'Дополнительно: сумерки, обновление места, часовой пояс, полушарие', ctxNoPlace: 'Место не задано', ctxPlace: 'Ваше место', locRefresh: 'Обновить моё место', locHere: 'по гео',  navKeys: 'Сутты', navHome: 'Сводка', navList: 'Упосатхи', navCal: 'Календарь', navParts: 'Ночь–день', navSet: 'Настройки',
-      sound: 'Звук', soundNone: 'Без звука', soundOwn: 'Свой звук…', soundOwnNamed: 'Свой: %', soundOwnChange: 'Заменить мой звук…', missed: 'Пропущено: %', soundFail: 'Звук не задан.', sounds: { vikala: 'Виная: что такое vikāla (пали)', gong: 'Гонг', gong3: 'Гонг 2', gong4: 'Гонг 3', gong5: 'Гонг 4', gong2: 'Гонг 5', bell: 'Колокол' },
+      sound: 'Звук', soundNone: 'Без звука', soundOwn: 'Свой звук…', soundOwnNamed: 'Свой: %', soundOwnChange: 'Заменить мой звук…', missed: 'Пропущенное напоминание', soundFail: 'Звук не задан.', sounds: { vikala: 'Виная: что такое vikāla (пали)', gong: 'Гонг', gong3: 'Гонг 2', gong4: 'Гонг 3', gong5: 'Гонг 4', gong2: 'Гонг 5', bell: 'Колокол' },
       remAppNote: 'Напоминания ставятся на этом устройстве и приходят даже при закрытом приложении.',
       remNext: function (when, what) { return 'Ближайшее напоминание: ' + when + ' — ' + what; }, remNone: 'В ближайшие недели напоминаний нет.',
       remDenied: 'Уведомления для сайта запрещены — разрешите их в настройках браузера.', remUnsupported: 'Этот браузер не умеет показывать уведомления.',
@@ -867,15 +867,21 @@
       // over is remembered below, after the device has taken it.
       var seen = shownKeys();
       var due = list.filter(function (i) { return i.when > now || seen.indexOf(i.key) === -1; });
-      // A reminder whose time has passed is caught up QUIETLY and says so ("Missed: ..."): it is news, not an alarm, and it arrives late.
+      // A reminder whose time has passed is caught up QUIETLY and says so ("Missed reminder"): it is news, not an alarm, and it arrives late.
       var missed = function (i) { return i.when <= now; };
+      // What it says: that the NOTIFICATION was missed, not the Uposatha (it is still ahead, or it would not be here): the reminder's own title, then
+      // what it said. The food reminders say "in 30 min", which is no longer true when it arrives late: they give the time instead.
+      var missedBody = function (item, F) {
+        var what = item.kind === 'part' || !(item.meal || item.kind === 'beg') ? itemBody(item, F) : F.hm.format(item.start);
+        return item.title + ': ' + what;
+      };
       var sounds = []; // every kind of reminder sounds by its own choice: the Uposatha, the end and the beginning of the time for food, the parts
       due.forEach(function (i) { if (missed(i)) return; var k = soundOf(i); if (sounds.indexOf(k) === -1) sounds.push(k); });
       var anyMissed = due.some(missed);
       Promise.all(sounds.map(function (k) { return channelFor(LN, k, k === state.rem.sound ? state.rem.ownChannel : ''); }).concat(anyMissed ? [channelFor(LN, 'none')] : [])).then(function (ch) {
         var items = due.map(function (item, i) {
           var late = missed(item);
-          return { id: NATIVE_ID_BASE + i, title: late ? t.missed.replace('%', item.title) : item.title, body: itemBody(item, F), channelId: late ? ch[sounds.length] : ch[sounds.indexOf(soundOf(item))],
+          return { id: NATIVE_ID_BASE + i, title: late ? t.missed : item.title, body: late ? missedBody(item, F) : itemBody(item, F), channelId: late ? ch[sounds.length] : ch[sounds.indexOf(soundOf(item))],
             schedule: { at: new Date(Math.max(item.when, now + 3000)), allowWhileIdle: true }, extra: { url: '/uposatha-calendar' } };
         });
         return LN.getPending().then(function (p) {
