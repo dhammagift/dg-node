@@ -28,14 +28,27 @@ window.isRu = window.notEn;
 // normal mode now (service worker + the offline library), not a redirect to a Termux/Apache
 // copy of the site. The secret force_local switch above is unrelated and stays.
 
-// Loading toasts (dictionary, audio) share one corner: stack them instead of drawing one over the other.
+// Loading toasts share one corner and come from several modules (settings.js and paliLookup.js both
+// load the dictionary): stack them, and show a message only once if two modules announce the same thing.
 window.dg_restackLoaders = function() {
     let bottom = 20;
+    const seen = new Set();
     document.querySelectorAll('.dict-loading-indicator').forEach(el => {
+        const dup = seen.has(el.textContent);
+        seen.add(el.textContent);
+        el.style.display = dup ? 'none' : '';
+        if (dup) return;
         el.style.bottom = bottom + 'px';
         bottom += el.offsetHeight + 8;
     });
 };
+(function watchLoaders() {
+    if (!document.body) return document.addEventListener('DOMContentLoaded', watchLoaders);
+    const isLoader = n => n.classList && n.classList.contains('dict-loading-indicator');
+    new MutationObserver(muts => {
+        if (muts.some(m => [...m.addedNodes, ...m.removedNodes].some(isLoader))) window.dg_restackLoaders();
+    }).observe(document.body, { childList: true });
+})();
 
 // === ЗАГРУЗКА СЛОВАРЯ (УМНАЯ ФОНОВАЯ ИЛИ ПО КЛИКУ) ===
 (function() {
@@ -55,13 +68,12 @@ window.dg_restackLoaders = function() {
             }
             
             loadingEl.textContent = customText || (window.notEn ? 'Словарь загружается...' : 'Dictionary is loading...');
-            window.dg_restackLoaders();
             
             setTimeout(() => loadingEl.classList.add('show'), 10);
         } else {
             if (loadingEl) {
                 loadingEl.classList.remove('show');
-                setTimeout(() => { loadingEl.remove(); window.dg_restackLoaders(); }, 300);
+                setTimeout(() => loadingEl.remove(), 300);
             }
         }
     };
@@ -265,7 +277,6 @@ window.addEventListener('suttaRenderedCentral', () => {
             
             loadingEl.textContent = window.notEn ? 'Инициализация аудио...' : 'Initializing audio...';
             document.body.appendChild(loadingEl);
-            window.dg_restackLoaders();
             setTimeout(() => loadingEl.classList.add('show'), 10);
         }
 
@@ -286,7 +297,7 @@ window.addEventListener('suttaRenderedCentral', () => {
                 
                 if (loadingEl) {
                     loadingEl.classList.remove('show');
-                    setTimeout(() => { loadingEl.remove(); window.dg_restackLoaders(); }, 300);
+                    setTimeout(() => loadingEl.remove(), 300);
                 }
                 if (callback) callback();
                 return; // Прерываем цепочку, не загружая voice-mem.js
@@ -302,7 +313,7 @@ window.addEventListener('suttaRenderedCentral', () => {
                 
                 if (loadingEl) {
                     loadingEl.classList.remove('show');
-                    setTimeout(() => { loadingEl.remove(); window.dg_restackLoaders(); }, 300);
+                    setTimeout(() => loadingEl.remove(), 300);
                 }
                 if (callback) callback();
             };
