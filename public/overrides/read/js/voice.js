@@ -2089,6 +2089,23 @@ document.addEventListener('dhamma:languagechange', function (e) {
     }
 });
 
+function ttsModeLabels() {
+  return window.isRu
+    ? { 'pi': 'Пали', 'pi-trn': 'Пали + Рус', 'trn': 'Перевод', 'trn-pi': 'Рус + Пали' }
+    : { 'pi': 'Pāḷi', 'pi-trn': 'Pāḷi + Trn', 'trn': 'Trn', 'trn-pi': 'Trn + Pāḷi' };
+}
+
+// The player is built once, but the reading language can change in place (SPA): relabel the mode
+// list and refill the voice lists (translation voices follow the translation language). Called by
+// megareader.js once the sutta is re-rendered in the new language.
+window.refreshTtsLanguage = function () {
+  const modeSelect = document.getElementById('tts-mode-select');
+  if (!modeSelect) return;
+  const labels = ttsModeLabels();
+  for (const o of modeSelect.options) if (labels[o.value]) o.textContent = labels[o.value];
+  refreshVoiceDropdowns();
+};
+
 async function startPlayback(container, mode, slug, startIndex = 0) {
   const textData = await prepareTextData(slug);
   if (!textData.length) {
@@ -2257,9 +2274,7 @@ function getPlayerHtml() {
   // not the legacy static ttsHelp.html page.
   const helpUrl = window.isRu ? '/ru/docs/tts' : '/docs/tts';
 
-  const modeLabels = window.isRu
-    ? { 'pi': 'Пали', 'pi-trn': 'Пали + Рус', 'trn': 'Перевод', 'trn-pi': 'Рус + Пали' }
-    : { 'pi': 'Pāḷi', 'pi-trn': 'Pāḷi + Trn', 'trn': 'Trn', 'trn-pi': 'Trn + Pāḷi' };
+  const modeLabels = ttsModeLabels();
 
   // Объект с переводами интерфейса
   const t = {

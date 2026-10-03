@@ -1081,6 +1081,8 @@ window.switchReadingLanguage = async function (lang) {
         // text/voice immediately and resumes from the same segment. No-op if TTS isn't loaded or
         // nothing is playing/paused (rebuildActivePlaylist checks that itself).
         if (typeof window.rebuildActivePlaylist === 'function') window.rebuildActivePlaylist();
+        // ...and the player's own language-dependent lists (mode labels, translation voices).
+        if (typeof window.refreshTtsLanguage === 'function') window.refreshTtsLanguage();
     }
 };
 
