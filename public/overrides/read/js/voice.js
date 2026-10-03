@@ -136,10 +136,16 @@ function getContextInfo(langCode) {
 const PALI_RATIO = 0.6; 
 
 // Speed sliders: one for Pali, one for translations; every engine (Google, the self-hosted Pali voice,
-// the native/system voice) reads the same two keys. Pali default 0.7 (owner: 0.8 suited Google, 0.7 our voice).
+// the native/system voice) reads the same two keys. Until the user moves it, the Pali speed is the
+// engine's own normal pace (owner): DG voice 0.7, Google 0.8, OS voice 0.8.
+const PALI_ENGINE_DEFAULT_RATE = { dg: 0.7, google: 0.8, native: 0.8 };
 const RATE_RANGE = {
-  pali: { key: RATE_PALI_KEY, min: 0.25, max: 2.0, step: 0.05, def: 0.7, presets: [0.5, 0.7, 1.0, 1.5, 2.0] },
-  trn:  { key: RATE_TRN_KEY,  min: 0.5,  max: 2.5, step: 0.05, def: 1.0, presets: [0.75, 1.0, 1.25, 1.5, 2.0] }
+  pali: {
+    key: RATE_PALI_KEY, min: 0.25, max: 2.0, step: 0.05,
+    get def() { return PALI_ENGINE_DEFAULT_RATE[getTtsEngine()] || 0.8; },
+    get presets() { return [0.5, this.def, 1.0, 1.5, 2.0]; }
+  },
+  trn: { key: RATE_TRN_KEY, min: 0.5, max: 2.5, step: 0.05, def: 1.0, presets: [0.75, 1.0, 1.25, 1.5, 2.0] }
 };
 
 function savedRate(kind) {
@@ -333,8 +339,9 @@ function markActiveRate(isPali) {
   const kindLabel = document.getElementById('tts-rate-kind');
   if (kindLabel) kindLabel.textContent = isPali ? (window.isRu ? 'Пали' : 'Pāḷi') : (window.isRu ? 'Перевод' : 'Translation');
   const presets = document.getElementById('tts-rate-presets');
-  if (presets && presets.dataset.kind !== kind) {
-    presets.dataset.kind = kind;
+  const presetsId = kind + ':' + r.def;  // the Pali set depends on the engine's default
+  if (presets && presets.dataset.kind !== presetsId) {
+    presets.dataset.kind = presetsId;
     const normal = window.isRu ? 'обычная' : 'normal';
     presets.innerHTML = r.presets.map(p => `<span class="tts-rate-chip">
         <button type="button" class="tts-rate-preset" data-rate="${p}">${p}</button>
@@ -2499,6 +2506,7 @@ async function handleTTSSettingChange(e) {
       if (nativePali) nativePali.checked = e.target.value === 'native';
       if (nativeTrn) nativeTrn.checked = e.target.value === 'native';
       refreshVoiceDropdowns();
+      markActiveRate(activeRateKind() === 'pali');  // an unchanged Pali speed follows the engine's default
       if (ttsState.speaking && !ttsState.paused) {
           synth.cancel();
           if (ttsState.googleAudio) { ttsState.googleAudio.pause(); ttsState.googleAudio = null; }
