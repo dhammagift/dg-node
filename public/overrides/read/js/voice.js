@@ -2316,18 +2316,6 @@ function getPlayerHtml() {
           </div>
 
           <div id="tts-advanced-settings" data-pali-engine="${engine}" data-trn-engine="${trnEngine}">
-              <div class="api-key-row">
-                <input type="password" id="google-api-key-input" 
-                       value="${savedKey}" 
-                       placeholder="Google API Key" 
-                       title="${t.apiKeyTitle}">
-                <button id="refresh-voices-btn" class="refresh-api-btn" title="${t.refreshVoices}">
-                    <img src="/assets/svg/rotate-right-solid-full.svg" width="16" height="16" alt="Refresh">     
-                </button>
-                <button id="reset-tts-btn" class="reset-tts-btn" title="${t.resetTts}">
-                    <img src="/assets/svg/trash-can-regular-full.svg" width="16" height="16" alt="Reset">
-                </button>
-              </div>
 
               <div id="google-voice-settings-container">
                   <div class="google-voice-select-group tts-pali-voice-group">
@@ -2355,6 +2343,21 @@ function getPlayerHtml() {
                       </div>
                   </div>
               </div>
+              <div class="api-key-block">
+                <div class="google-voice-label">Google API Key</div>
+                <div class="api-key-row">
+                  <input type="password" id="google-api-key-input" 
+                         value="${savedKey}" 
+                         placeholder="Google API Key" 
+                         title="${t.apiKeyTitle}">
+                  <button id="refresh-voices-btn" class="refresh-api-btn" title="${t.refreshVoices}">
+                      <img src="/assets/svg/rotate-right-solid-full.svg" width="16" height="16" alt="Refresh">     
+                  </button>
+                  <button id="reset-tts-btn" class="reset-tts-btn" title="${t.resetTts}">
+                      <img src="/assets/svg/trash-can-regular-full.svg" width="16" height="16" alt="Reset">
+                  </button>
+                </div>
+              </div>
           </div>
       </div>
     </div>
@@ -2370,7 +2373,7 @@ function getOrBuildPlayer() {
         // The ?v= stamp matters: /read/css/voice.css is served immutable for a year, so without it a
         // CSS fix would never reach anyone who had already opened the player (issue #20's rule was
         // invisible in the browser because of exactly that). Bump the stamp with the next edit.
-        document.head.insertAdjacentHTML('beforeend', '<link id="voice-css-lazy" rel="stylesheet" href="/read/css/voice.css?v=2026-10-03h">');
+        document.head.insertAdjacentHTML('beforeend', '<link id="voice-css-lazy" rel="stylesheet" href="/read/css/voice.css?v=2026-10-03i">');
     }
 
     if (!playerContainer) {

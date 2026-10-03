@@ -880,7 +880,7 @@ body:has(#dgDlCard.show) .voice-player {
 
 /* Voice settings: each language picks engine -> language -> voice; the Google key shows only when
    Google is chosen for Pali or for the translation */
-#tts-advanced-settings:not([data-pali-engine="google"]):not([data-trn-engine="google"]) .api-key-row {
+#tts-advanced-settings:not([data-pali-engine="google"]):not([data-trn-engine="google"]) .api-key-block {
     display: none;
 }
 .tts-engine-dropdown {
@@ -896,4 +896,7 @@ body:has(#dgDlCard.show) .voice-player {
     display: block;
     width: 100%;
     max-width: 100%;
+}
+.api-key-block {
+    margin-top: 10px;
 }
