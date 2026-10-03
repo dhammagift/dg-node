@@ -912,8 +912,38 @@ function getTtsEngine() {  // the Pali engine
   return localStorage.getItem(PALI_VOICE_KEY) === 'off' ? 'google' : 'dg';
 }
 
+const TRN_ENGINE_KEY = 'tts_trn_engine';
+
 function getTrnEngine() {
-  return localStorage.getItem(NATIVE_TRN_KEY) === 'true' ? 'native' : 'google';
+  if (localStorage.getItem(NATIVE_TRN_KEY) === 'true') return 'native';
+  return localStorage.getItem(TRN_ENGINE_KEY) === 'dg' ? 'dg' : 'google';
+}
+
+function setTrnEngine(engine) {
+  localStorage.setItem(NATIVE_TRN_KEY, engine === 'native');
+  localStorage.setItem(TRN_ENGINE_KEY, engine === 'dg' ? 'dg' : 'google');
+}
+
+// DG (Piper) translation voices per language; a language without one is read by Google.
+const DG_TRN_VOICES = {
+  en: [{ id: 'alan', label: 'alan ♂ · UK' }, { id: 'norman', label: 'norman ♂ · US' }, { id: 'kathleen', label: 'kathleen ♀ · US (low)' }],
+  ru: [{ id: 'ruslan', label: 'ruslan ♂' }, { id: 'irina', label: 'irina ♀' }]
+};
+
+function dgTrnVoice(lang) {
+  const list = DG_TRN_VOICES[lang];
+  if (!list) return null;
+  const saved = localStorage.getItem('tts_dg_voice_' + lang);
+  return list.some(v => v.id === saved) ? saved : list[0].id;
+}
+
+// Fresh copy of a select: drops change handlers another engine's list attached to it.
+function freshSelect(id) {
+  const old = document.getElementById(id);
+  if (!old) return null;
+  const copy = old.cloneNode(false);
+  old.parentNode.replaceChild(copy, old);
+  return copy;
 }
 
 function setPaliEngine(engine) {
@@ -929,13 +959,15 @@ function stripForPaliVoice(text) {
   return (text || '').replace(/\{.*?\}/g, '').replace(/\(.*?\)/g, '').replace(/[ \t]+/g, ' ').trim();
 }
 
-// Self-hosted Pali voice: Piper + the pali-tts listening-test rules behind /api/tts/pali (dg-fastify.js).
+// DG voice: Piper behind /api/tts/pali (dg-fastify.js): Pali with the pali-tts listening-test rules,
+// or a translation voice (voice id, e.g. 'ruslan').
 // Answers like Google ({audioContent}: base64 mp3). Speed 0.8 = the voice's tuned pace (the default 0.7 is a bit slower).
-async function fetchPaliVoiceAudio(iast, uiRate) {
+async function fetchPaliVoiceAudio(text, uiRate, voice) {
   const r = await fetch('/api/tts/pali', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ text: iast, rate: uiRate / 0.8 })
+    // Pali: menu 0.8 = the voice's tuned pace; translation voices: 1.0 = their own pace
+    body: JSON.stringify({ text, rate: voice ? uiRate : uiRate / 0.8, voice: voice || 'pratham' })
   });
   if (!r.ok) throw new Error('HTTP ' + r.status);
   return (await r.json()).audioContent;
@@ -1411,8 +1443,10 @@ async function playCurrentSegment() {
   const useNativeTrn  = localStorage.getItem(NATIVE_TRN_KEY) === 'true'; 
   
   let tryGoogle = false;
-  // Self-hosted Pali voice first (free, no key); Google stays the fallback. Off switch: localStorage PALI_VOICE_KEY = 'off'.
-  const usePaliVoice = isPali && !useNativePali && !!item.iast && localStorage.getItem(PALI_VOICE_KEY) !== 'off';
+  // DG (self-hosted Piper) voice first when chosen: Pali via our IAST rules, translations via a Piper
+  // voice of that language. Google stays the fallback.
+  const dgTrnId = !isPali && getTrnEngine() === 'dg' ? dgTrnVoice(item.lang) : null;
+  const usePaliVoice = (isPali && !useNativePali && !!item.iast && localStorage.getItem(PALI_VOICE_KEY) !== 'off') || !!dgTrnId;
 
   if (googleKey && googleKey.length > 10) {
       if (isPali) {
@@ -1433,7 +1467,8 @@ async function playCurrentSegment() {
           let audioContent = null;
           if (usePaliVoice) {
               try {
-                  audioContent = await fetchPaliVoiceAudio(item.iast, audioRateGoogle);
+                  audioContent = isPali ? await fetchPaliVoiceAudio(item.iast, audioRateGoogle)
+                                        : await fetchPaliVoiceAudio(item.text, audioRateGoogle, dgTrnId);
               } catch (e) {
                   console.warn("Pali voice failed, falling back to Google", e);
               }
@@ -2335,6 +2370,7 @@ function getPlayerHtml() {
                       <div class="google-voice-label">${t.trnVoice}</div>
                       <div id="trn-google-dropdowns">
                           <select id="tts-engine-trn" class="google-voice-dropdown tts-engine-dropdown" title="${t.engine}">
+                            <option value="dg" ${trnEngine === 'dg' ? 'selected' : ''}>${t.engineDg}</option>
                             <option value="google" ${trnEngine === 'google' ? 'selected' : ''}>Google</option>
                             <option value="native" ${trnEngine === 'native' ? 'selected' : ''}>${t.engineNative}</option>
                           </select>
@@ -2503,7 +2539,7 @@ async function handleTTSSettingChange(e) {
   if (e.target.id === 'tts-engine-pali' || e.target.id === 'tts-engine-trn') {
       const isPaliRow = e.target.id === 'tts-engine-pali';
       if (isPaliRow) setPaliEngine(e.target.value);
-      else localStorage.setItem(NATIVE_TRN_KEY, e.target.value === 'native');
+      else setTrnEngine(e.target.value);
       document.getElementById('tts-advanced-settings')?.setAttribute(isPaliRow ? 'data-pali-engine' : 'data-trn-engine', e.target.value);
       refreshVoiceDropdowns();
       markActiveRate(activeRateKind() === 'pali');  // an unchanged Pali speed follows the engine's default
@@ -2783,8 +2819,9 @@ async function refreshVoiceDropdowns(forceRefresh = false) {
     if (paliLangSelect && paliVoiceSelect && getTtsEngine() === 'dg') {
         // DG voice: no languages to pick, just the voice
         paliLangSelect.style.display = 'none';
-        paliVoiceSelect.style.display = '';
-        paliVoiceSelect.innerHTML = DG_PALI_VOICES.map(v => `<option value="${v.id}">${v.label}</option>`).join('');
+        const sel = freshSelect('google-voice-select-pali');
+        sel.style.display = '';
+        sel.innerHTML = DG_PALI_VOICES.map(v => `<option value="${v.id}">${v.label}</option>`).join('');
     } else if (paliLangSelect && paliVoiceSelect) {
         if (isNativePali) {
             // Теперь включаем сюда и индийские, и китайские для Пали
@@ -2809,7 +2846,20 @@ async function refreshVoiceDropdowns(forceRefresh = false) {
     const trnLangSelect = document.getElementById('google-lang-select-trn');
     const trnVoiceSelect = document.getElementById('google-voice-select-trn');
     
-    if (trnLangSelect && trnVoiceSelect) {
+    if (trnLangSelect && trnVoiceSelect && getTrnEngine() === 'dg') {
+        // DG voice for the page's translation language; none -> Google reads it (see playCurrentSegment)
+        const lang = detectTranslationLang();
+        trnLangSelect.style.display = 'none';
+        const sel = freshSelect('google-voice-select-trn');
+        sel.style.display = '';
+        const list = DG_TRN_VOICES[lang];
+        sel.innerHTML = list
+          ? list.map(v => `<option value="${v.id}" ${v.id === dgTrnVoice(lang) ? 'selected' : ''}>${v.label}</option>`).join('')
+          : `<option>${window.isRu ? 'нет голоса DG, читает Google' : 'no DG voice, Google reads it'}</option>`;
+        sel.disabled = !list;
+        if (list) sel.addEventListener('change', () => localStorage.setItem('tts_dg_voice_' + lang, sel.value));
+    } else if (trnLangSelect && trnVoiceSelect) {
+        trnVoiceSelect.disabled = false;
         const context = getContextInfo(detectTranslationLang());
         if (isNativeTrn) {
             let trnNativeVoices = [];
