@@ -571,6 +571,14 @@
     else $('t-status').innerHTML = nextRow ? '<span class="badge soft">' + esc(t.next2) + ': ' + esc(F.eve.format(Date.parse(nextRow.ymd))) + '</span><em>' + esc(t.inN(Math.round((Date.parse(nextRow.ymd) - Date.parse(todayYmd)) / DAY))) + '</em>' : '';
     if (isUposatha && tonight) $('t-status').innerHTML += '<span class="badge">' + esc(t.tonight) + '</span>';
     // The ordinary (non-app) mode has no countdown, but with the details on it names the Moon of the next Uposatha as well: which phase and its exact moment.
+    // The same for the Uposatha that is on or begins tonight: its Moon's exact moment (the 50% of the 8th and 14th, the new / full moon) was
+    // missing exactly then, when it is the thing asked about.
+    if ((isUposatha || tonight) && !state.lite) {
+      var yRow = L.byYmd[ymdAdd(todayYmd, -1)], tRow = L.byYmd[todayYmd];
+      var curRow = now < evToday && yRow && yRow.uposatha ? yRow : tRow && tRow.uposatha ? tRow : null;
+      var cph = curRow && phaseOf(curRow);
+      if (cph) $('t-status').innerHTML += '<span class="phn">' + esc(cap(cph.label) + ' ' + cph.pct + '% · ' + F.remWhen.format(cph.at)) + '</span>';
+    }
     if (nextRow && !isUposatha && !tonight && !state.lite) { var nph = phaseOf(nextRow); if (nph) $('t-status').innerHTML += '<span class="phn">' + esc(cap(nph.label) + ' ' + nph.pct + '% · ' + F.remWhen.format(nph.at)) + '</span>'; }
     var sunLine = '';
     if (L.obs) {
