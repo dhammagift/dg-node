@@ -1,5 +1,6 @@
 # Response style
 
+git token /root/.secrets/
 - Отвечай очень коротко и только прицельно по делу.
 - Do not explain obvious things.
 - Do not repeat the user's request.
