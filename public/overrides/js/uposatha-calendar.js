@@ -67,7 +67,7 @@
       mealBegTitle: 'Time for food soon', mealBegBody: function (dawn, lead) { return 'Dawn at ' + dawn + ' — the time for food begins in ' + (lead >= 60 ? (lead / 60) + ' h' : lead + ' min') + '.'; },
       mealRemTitle: 'Vikāla soon', mealRemBody: function (noon, lead) { return 'Midday at ' + noon + ' — the time for food ends in ' + (lead >= 60 ? (lead / 60) + ' h' : lead + ' min') + '.'; },
       logoTip: 'Home · change the language: long press or right click', rateUs: 'Rate Us', privacy: 'Privacy Policy', appVer: 'App version', timeL: 'Time', ofMode: function (n, m, su) { return n + ' of ' + m + (su ? ' by the suttas' : ' modern'); }, placeQ: 'For exact moon phases and sun times, please share your location.', remQ: 'Remind you of the Uposatha days a day before?', remYes: 'Turn on', remNo: 'Not now', remSet: 'Settings', placeYes: 'Find my place', placeCity: 'Manually', placeLater: 'Later', advL: 'Advanced: twilight, place updates, time zone, hemisphere', ctxNoPlace: 'Place not set', ctxPlace: 'Your place', locRefresh: 'Update my location', locHere: 'by geo', navKeys: 'Suttas', navHome: 'Summary', navList: 'Uposathas', navCal: 'Calendar', navParts: 'Night–day', navSet: 'Settings',
-      sound: 'Sound', soundNone: 'Silent', soundOwn: 'My own sound…', soundOwnNamed: 'My own: %', soundFail: 'The sound was not set.', sounds: { vikala: 'Vinaya: what is vikāla (Pali)', gong: 'Gong', gong3: 'Gong 2', gong4: 'Gong 3', gong5: 'Gong 4', gong2: 'Gong 5', bell: 'Bell' },
+      sound: 'Sound', soundNone: 'Silent', soundOwn: 'My own sound…', soundOwnNamed: 'My own: %', soundOwnChange: 'Change my sound…', soundFail: 'The sound was not set.', sounds: { vikala: 'Vinaya: what is vikāla (Pali)', gong: 'Gong', gong3: 'Gong 2', gong4: 'Gong 3', gong5: 'Gong 4', gong2: 'Gong 5', bell: 'Bell' },
       remAppNote: 'Reminders are scheduled on this device and arrive even when the app is closed.',
       remNext: function (when, what) { return 'Next reminder: ' + when + ' — ' + what; }, remNone: 'No reminder is due in the coming weeks.',
       remDenied: 'Notifications are blocked for this site — allow them in the browser settings.', remUnsupported: 'This browser cannot show notifications.',
@@ -122,7 +122,7 @@
       mealBegTitle: 'Скоро время еды', mealBegBody: function (dawn, lead) { return 'Заря в ' + dawn + ' — время еды начнётся через ' + (lead >= 60 ? (lead / 60 + '').replace('.', ',') + ' ч' : lead + ' мин') + '.'; },
       mealRemTitle: 'Скоро vikāla', mealRemBody: function (noon, lead) { return 'Полдень в ' + noon + ' — время еды закончится через ' + (lead >= 60 ? (lead / 60 + '').replace('.', ',') + ' ч' : lead + ' мин') + '.'; },
       logoTip: 'Домой · сменить язык: долгое нажатие или правая кнопка', rateUs: 'Оценить приложение', privacy: 'Политика конфиденциальности', appVer: 'Версия приложения', timeL: 'Время', ofMode: function (n, m, su) { return n + ' из ' + m + (su ? ' по суттам' : ' по современной'); }, placeQ: 'Для точных лунных фаз и времени солнца нужно ваше местоположение.', remQ: 'Напоминать о днях упосатхи за сутки?', remYes: 'Включить', remNo: 'Не сейчас', remSet: 'Настроить', placeYes: 'Вкл. место', placeCity: 'Вручную', placeLater: 'Позже', advL: 'Дополнительно: сумерки, обновление места, часовой пояс, полушарие', ctxNoPlace: 'Место не задано', ctxPlace: 'Ваше место', locRefresh: 'Обновить моё место', locHere: 'по гео',  navKeys: 'Сутты', navHome: 'Сводка', navList: 'Упосатхи', navCal: 'Календарь', navParts: 'Ночь–день', navSet: 'Настройки',
-      sound: 'Звук', soundNone: 'Без звука', soundOwn: 'Свой звук…', soundOwnNamed: 'Свой: %', soundFail: 'Звук не задан.', sounds: { vikala: 'Виная: что такое vikāla (пали)', gong: 'Гонг', gong3: 'Гонг 2', gong4: 'Гонг 3', gong5: 'Гонг 4', gong2: 'Гонг 5', bell: 'Колокол' },
+      sound: 'Звук', soundNone: 'Без звука', soundOwn: 'Свой звук…', soundOwnNamed: 'Свой: %', soundOwnChange: 'Заменить мой звук…', soundFail: 'Звук не задан.', sounds: { vikala: 'Виная: что такое vikāla (пали)', gong: 'Гонг', gong3: 'Гонг 2', gong4: 'Гонг 3', gong5: 'Гонг 4', gong2: 'Гонг 5', bell: 'Колокол' },
       remAppNote: 'Напоминания ставятся на этом устройстве и приходят даже при закрытом приложении.',
       remNext: function (when, what) { return 'Ближайшее напоминание: ' + when + ' — ' + what; }, remNone: 'В ближайшие недели напоминаний нет.',
       remDenied: 'Уведомления для сайта запрещены — разрешите их в настройках браузера.', remUnsupported: 'Этот браузер не умеет показывать уведомления.',
@@ -827,9 +827,22 @@
   var SOUND_FILES = { vikala: ['vikala', '/assets/audio/parts/vikala.mp3'], gong: ['gong', '/assets/sounds/gong.mp3'], gong3: ['gong3', '/assets/repeat-timer/sound/gong3.mp3'], gong4: ['gong4', '/assets/repeat-timer/sound/gong4.mp3'], gong5: ['gong5', '/assets/repeat-timer/sound/gong5.mp3'], gong2: ['gong2', '/assets/repeat-timer/sound/gong2.mp3'], bell: ['church', '/assets/repeat-timer/sound/church.mp3'] }; // the order of the keys is the order in the lists; gong2 (the old "Gong 2") is the last of the gongs and is called "Gong 5".
   function soundKeys(withVikala) { return Object.keys(SOUND_FILES).filter(function (k) { return withVikala || k !== 'vikala'; }); } // the Vinaya definition of vikala is a sound of the meal-end reminder only
   function ownPlugin() { var C = window.Capacitor; return C && C.Plugins && C.Plugins.DgSound ? C.Plugins.DgSound : null; }
+  // The person's own sound is ONE (the native side keeps one) and is offered in every list of sounds: picked from any of them, it is
+  // the same sound everywhere. 'own' is the choice (the picker opens when there is none yet), 'own-pick' replaces the file.
+  function ownOpts() {
+    if (!ownPlugin()) return [];
+    var o = [['own', state.rem.ownName ? t.soundOwnNamed.replace('%', state.rem.ownName) : t.soundOwn]];
+    if (state.rem.ownChannel) o.push(['own-pick', t.soundOwnChange]);
+    return o;
+  }
+  function chooseOwn(v, apply, done) { // apply() sets this list's choice; done() saves (the own sound lives in state.rem) and repaints
+    if (v === 'own' && state.rem.ownChannel) { apply(); done(); return; }
+    ownPlugin().pick().then(function (r) { if (r && r.channelId) { state.rem.ownChannel = r.channelId; state.rem.ownName = r.name || ''; apply(); } done(); })
+      .catch(function () { state.remMsg = t.soundFail; done(); }); // cancelled or failed: the choice stays as it was
+  }
   function channelFor(LN, k, own) { // returns the channel id for a sound, creating the channel when it is a built-in one
     var id = 'uposatha-' + k + '-v1';
-    if (k === 'own' && own) return Promise.resolve(own);
+    if (k === 'own' && (own || state.rem.ownChannel)) return Promise.resolve(own || state.rem.ownChannel); // one own sound, shared by every reminder
     var f = SOUND_FILES[k] || (/^part-/.test(k) ? [k.slice(5)] : null), ch = { id: id, name: k === 'none' ? t.soundNone : (t.sounds[k] || (f && f[0]) || k), importance: k === 'none' ? 2 : 4, visibility: 1, vibration: k !== 'none' };
     if (f) ch.sound = f[0] + '.mp3';
     return LN.createChannel(ch).then(function () { return id; }, function () { return id; });
@@ -894,21 +907,21 @@
     reveal('mdays-row', state.meal.rem || state.meal.beg); // the days are common to both reminders
     var showSnd = true; // in the app the sound is the channel's; on the site it plays while the page is open
     reveal('mrem-sound-row', showSnd);
-    if (showSnd) { $('mrem-sound').innerHTML = soundKeys(true).map(function (k) { return '<option value="' + k + '">' + esc(t.sounds[k]) + '</option>'; }).concat(['<option value="none">' + esc(t.soundNone) + '</option>']).join(''); $('mrem-sound').value = state.meal.snd; }
+    if (showSnd) { $('mrem-sound').innerHTML = soundKeys(true).map(function (k) { return '<option value="' + k + '">' + esc(t.sounds[k]) + '</option>'; }).concat(['<option value="none">' + esc(t.soundNone) + '</option>'], ownOpts().map(function (o) { return '<option value="' + o[0] + '">' + esc(o[1]) + '</option>'; })).join(''); $('mrem-sound').value = state.meal.snd; }
     reveal('mbeg-sound-row', showSnd);
-    if (showSnd) { $('mbeg-sound').innerHTML = soundKeys().map(function (k) { return '<option value="' + k + '">' + esc(t.sounds[k]) + '</option>'; }).concat(['<option value="none">' + esc(t.soundNone) + '</option>']).join(''); $('mbeg-sound').value = state.meal.begSnd; }
+    if (showSnd) { $('mbeg-sound').innerHTML = soundKeys().map(function (k) { return '<option value="' + k + '">' + esc(t.sounds[k]) + '</option>'; }).concat(['<option value="none">' + esc(t.soundNone) + '</option>'], ownOpts().map(function (o) { return '<option value="' + o[0] + '">' + esc(o[1]) + '</option>'; })).join(''); $('mbeg-sound').value = state.meal.begSnd; }
     $('meal-sum').hidden = !state.meal.sum;
     setSeg('sw-prem', state.parts.rem ? 1 : 0); setSeg('pwhich', state.parts.which); setSeg('pdays', state.parts.days);
     reveal('prem-more', state.parts.rem);
     reveal('psnd-row', showSnd);
-    if (showSnd) { $('psnd').innerHTML = [['voice', t.partsVoice]].concat(soundKeys().map(function (k) { return [k, t.sounds[k]]; }), [['none', t.soundNone]]).map(function (o) { return '<option value="' + o[0] + '">' + esc(o[1]) + '</option>'; }).join(''); $('psnd').value = state.parts.snd; }
+    if (showSnd) { $('psnd').innerHTML = [['voice', t.partsVoice]].concat(soundKeys().map(function (k) { return [k, t.sounds[k]]; }), [['none', t.soundNone]], ownOpts()).map(function (o) { return '<option value="' + o[0] + '">' + esc(o[1]) + '</option>'; }).join(''); $('psnd').value = state.parts.snd; }
     $('parts-bell').setAttribute('aria-pressed', String(state.parts.rem));
     var mb = $('meal-bell'); if (mb) mb.setAttribute('aria-pressed', String(state.meal.rem || state.meal.beg));
     setSeg('testseg', state.fake); $('g-tests').hidden = !state.tests;
     reveal('rem-sound-row', showSnd); // the sound is a notification channel: only the app has them
     if (showSnd) {
       var opts = soundKeys().map(function (k) { return [k, t.sounds[k]]; }).concat([['none', t.soundNone]]);
-      if (ownPlugin()) opts.push(['own', state.rem.sound === 'own' && state.rem.ownName ? t.soundOwnNamed.replace('%', state.rem.ownName) : t.soundOwn]);
+      opts = opts.concat(ownOpts());
       $('rem-sound').innerHTML = opts.map(function (o) { return '<option value="' + o[0] + '">' + esc(o[1]) + '</option>'; }).join('');
       $('rem-sound').value = state.rem.sound;
     }
@@ -1517,7 +1530,9 @@
     onSeg('pwhich', function (v) { state.parts.which = v; saveParts(); paint(); });
     onSeg('pdays', function (v) { state.parts.days = v; saveParts(); paint(); });
     $('psnd').onchange = function (e) {
-      var v = e.target.value; state.parts.snd = v; saveParts(); paint();
+      var v = e.target.value;
+      if (v === 'own' || v === 'own-pick') { chooseOwn(v, function () { state.parts.snd = 'own'; }, function () { saveRem(); saveParts(); paint(); }); return; }
+      state.parts.snd = v; saveParts(); paint();
       var src = v === 'voice' ? '/assets/audio/parts/pubbanha.mp3' : SOUND_FILES[v] && SOUND_FILES[v][1];
       if (src) { try { new Audio(src).play(); } catch (err) { /* a preview only */ } }
     };
@@ -1529,18 +1544,15 @@
       if (!on) set(false); else askPermission(set);
     });
     $('mbeg-lead').onchange = function (e) { state.meal.begLead = parseInt(e.target.value, 10); saveMeal(); paint(); };
-    $('mbeg-sound').onchange = function (e) { state.meal.begSnd = e.target.value; saveMeal(); paint(); if (SOUND_FILES[e.target.value]) { try { new Audio(SOUND_FILES[e.target.value][1]).play(); } catch (err) { /* a preview only */ } } };
+    $('mbeg-sound').onchange = function (e) { if (/^own(-pick)?$/.test(e.target.value)) { chooseOwn(e.target.value, function () { state.meal.begSnd = 'own'; }, function () { saveRem(); saveMeal(); paint(); }); return; } state.meal.begSnd = e.target.value; saveMeal(); paint(); if (SOUND_FILES[e.target.value]) { try { new Audio(SOUND_FILES[e.target.value][1]).play(); } catch (err) { /* a preview only */ } } };
     onSeg('mrem-days', function (v) { state.meal.days = v; saveMeal(); paint(); });
     $('mrem-lead').onchange = function (e) { state.meal.lead = parseInt(e.target.value, 10); saveMeal(); paint(); };
-    $('mrem-sound').onchange = function (e) { state.meal.snd = e.target.value; saveMeal(); paint(); if (SOUND_FILES[e.target.value]) { try { new Audio(SOUND_FILES[e.target.value][1]).play(); } catch (err) { /* a preview only */ } } };
+    $('mrem-sound').onchange = function (e) { if (/^own(-pick)?$/.test(e.target.value)) { chooseOwn(e.target.value, function () { state.meal.snd = 'own'; }, function () { saveRem(); saveMeal(); paint(); }); return; } state.meal.snd = e.target.value; saveMeal(); paint(); if (SOUND_FILES[e.target.value]) { try { new Audio(SOUND_FILES[e.target.value][1]).play(); } catch (err) { /* a preview only */ } } };
     $('rem-lead').onchange = function (e) { state.rem.lead = parseInt(e.target.value, 10); saveRem(); paint(); };
     $('rem-sound').onchange = function (e) {
       var v = e.target.value; state.remMsg = '';
       function done() { saveRem(); paint(); }
-      if (v === 'own') { // the person picks a file; the app makes a channel of it. Cancelled -> the choice stays as it was
-        ownPlugin().pick().then(function (r) { if (r && r.channelId) { state.rem.sound = 'own'; state.rem.ownChannel = r.channelId; state.rem.ownName = r.name || ''; } done(); }).catch(function () { state.remMsg = t.soundFail; done(); });
-        return;
-      }
+      if (v === 'own' || v === 'own-pick') { chooseOwn(v, function () { state.rem.sound = 'own'; }, done); return; }
       state.rem.sound = v; done();
       if (SOUND_FILES[v]) { try { new Audio(SOUND_FILES[v][1]).play(); } catch (err) { /* a preview only */ } } // hear it at once
     };
