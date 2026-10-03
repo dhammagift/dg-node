@@ -838,7 +838,14 @@ async function fetchGoogleAudio(text, lang, rate, apiKey) {
           text = text.replace(/ो$/g, 'ोो');
           
           // Фикс для окончания ṃ (ниггахита) -> заменяем на ṅ (нг) в конце слов
-          text = text.replace(/ं(?=\s|[।,:;.?!\"]|$)/g, 'ङ्');
+          // Listening tests (pali-tts round 3): a bare ङ् at word end gets dropped ("sutaṁ" -> "suta"),
+          // ङ्ग् keeps an audible -ng.
+          text = text.replace(new RegExp(`(?:ं|ङ्)${B}`, 'g'), 'ङ्ग्');
+          // ZWNJ stops प्ह from being read as "f" (phasso).
+          text = text.replace(/प्ह/g, 'प्‌ह');
+          // Word-final e as a separate ए: a final े gets dropped (sattanikāye -> "sattanikāy").
+          // Only after another letter: monosyllables like "me" were not tested and stay as they are.
+          text = text.replace(new RegExp(`(?<=[\\u0900-\\u097F])(${C})े${B}`, 'g'), (m, c) => c === 'य' ? 'यए' : c + '्ए');
       }
       // ========================================================
 
