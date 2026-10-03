@@ -764,3 +764,59 @@ body[data-theme="dark"] #sutta span[id]:has(.tts-active) {
 body:has(#dgDlCard.show) .voice-player {
     bottom: calc(50px + var(--dg-dl-card-h, 120px) + 10px);
 }
+
+/* Speed sliders: Pali and translation, the row of the language being read is highlighted */
+.tts-rates {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 2px 0 6px;
+    width: 100%;
+    box-sizing: border-box;
+}
+.tts-rate-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin: 0;
+    padding: 1px 2px;
+    border-radius: 4px;
+    font-size: 14px;
+    color: #888;
+    cursor: pointer;
+}
+.tts-rate-row.active {
+    color: #444;
+    background: rgba(var(--bs-primary-rgb, 13, 110, 253), .08);
+}
+.tts-rate-name {
+    flex: none;
+    min-width: 2.6em;
+    text-align: left;
+}
+input[type="range"].tts-rate-select {
+    flex: 1;
+    min-width: 50px;
+    height: 22px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    accent-color: var(--bs-primary, #0d6efd);
+    cursor: pointer;
+}
+.tts-rate-val {
+    width: 3.1em;
+    flex: none;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+.dark .tts-rate-row { color: #999; }
+.dark .tts-rate-row.active {
+    color: #ddd;
+    background: rgba(255, 255, 255, .07);
+}
+.dark input[type="range"].tts-rate-select {
+    background: transparent;
+    border: 0;
+}

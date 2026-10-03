@@ -135,8 +135,18 @@ function getContextInfo(langCode) {
 
 const PALI_RATIO = 0.6; 
 
-const RATES_PALI = [0.25, 0.5, 0.6, 0.8, 1.0, 1.25, 1.5];
-const RATES_TRN = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 2.5];
+// Speed sliders: one for Pali, one for translations; every engine (Google, the self-hosted Pali voice,
+// the native/system voice) reads the same two keys. The Pali default 0.8 is the self-hosted voice's tuned pace.
+const RATE_RANGE = {
+  pali: { key: RATE_PALI_KEY, min: 0.25, max: 1.5, step: 0.05, def: 0.8 },
+  trn:  { key: RATE_TRN_KEY,  min: 0.5,  max: 2.5, step: 0.05, def: 1.0 }
+};
+
+function savedRate(kind) {
+  const r = RATE_RANGE[kind];
+  const v = parseFloat(localStorage.getItem(r.key));
+  return isNaN(v) ? r.def : Math.min(r.max, Math.max(r.min, v));
+}
 
 const ttsState = {
   playlist: [],
@@ -289,35 +299,25 @@ function toggleSilence(enable) {
     }
 }
 
-function updateRateOptions(isPali, activeRate) {
-  const rateSelect = document.getElementById('tts-rate-select');
-  if (!rateSelect) return;
-
-  const ratesToUse = isPali ? RATES_PALI : RATES_TRN;
-  
-  let displayRates = [...ratesToUse];
-  if (!displayRates.includes(activeRate)) {
-    displayRates.push(activeRate);
-    displayRates.sort((a, b) => a - b);
+// Highlights the slider of the language being read and syncs both sliders with storage
+// (another tab or the cloud sync may have changed them).
+function markActiveRate(isPali) {
+  for (const kind of ['pali', 'trn']) {
+    const slider = document.getElementById('tts-rate-' + kind);
+    if (!slider) continue;
+    slider.value = savedRate(kind);
+    showRateValue(slider);
+    slider.closest('.tts-rate-row')?.classList.toggle('active', (kind === 'pali') === isPali);
   }
+}
 
-  const optionsHtml = displayRates.map(r => 
-    `<option value="${r}" ${r === activeRate ? 'selected' : ''}>${r}x</option>`
-  ).join('');
-
-  if (rateSelect.innerHTML !== optionsHtml) {
-    rateSelect.innerHTML = optionsHtml;
-  }
-  
-  rateSelect.value = activeRate;
+function showRateValue(slider) {
+  const out = document.getElementById(slider.id + '-val');
+  if (out) out.textContent = parseFloat(slider.value).toFixed(2) + '×';
 }
 
 function getRateForLang(lang) {
-  if (lang === 'pi-dev') {
-    return parseFloat(localStorage.getItem(RATE_PALI_KEY)) || 1.0; 
-  } else {
-    return parseFloat(localStorage.getItem(RATE_TRN_KEY)) || 1.0; 
-  }
+  return savedRate(lang === 'pi-dev' ? 'pali' : 'trn');
 }
 
 let isWakeLockActive = false; // Добавляем флаг состояния
@@ -1289,24 +1289,13 @@ async function playCurrentSegment() {
   } else if (item.lang === 'pi-dev') {
     isPali = true;
     targetLang = 'pi-dev';
-    const savedPaliRate = localStorage.getItem(RATE_PALI_KEY);
-    uiRate = savedPaliRate !== null ? parseFloat(savedPaliRate) : 0.8;
+    uiRate = savedRate('pali');
     
     audioRateBrowser = uiRate * PALI_RATIO; 
     audioRateGoogle  = uiRate;              
   }
 
-  const rateSelect = document.getElementById('tts-rate-select');
-  if (rateSelect) {
-      updateRateOptions(isPali, uiRate);
-      if (isPali) {
-          rateSelect.style.borderStyle = '';
-          rateSelect.title = "Скорость Пали (нормализована: 1.0 = медленно)";
-      } else {
-          rateSelect.style.borderStyle = 'dashed';
-          rateSelect.title = "Скорость Перевода";
-      }
-  }
+  markActiveRate(isPali);
 
   const googleKey = (localStorage.getItem(GOOGLE_KEY_STORAGE) || window.TRIAL_KEY); 
   const useNativePali = localStorage.getItem(NATIVE_PALI_KEY) === 'true';
@@ -2116,20 +2105,6 @@ function getPlayerHtml() {
   const savedKey = saved ?? window.TRIAL_KEY ?? '';
   const isNativePali = localStorage.getItem(NATIVE_PALI_KEY) === 'true'; 
   const isNativeTrn = localStorage.getItem(NATIVE_TRN_KEY) === 'true'; 
-  let initialRate;
-  let currentRatesList; 
-  
-  if (savedMode === 'pi') {
-      initialRate = parseFloat(localStorage.getItem(RATE_PALI_KEY)) || 1.0;
-      currentRatesList = RATES_PALI; 
-  } else {
-      initialRate = parseFloat(localStorage.getItem(RATE_TRN_KEY)) || 1.0;
-      currentRatesList = RATES_TRN;  
-  }
-
-  if (!currentRatesList.includes(initialRate)) {
-      currentRatesList = [...currentRatesList, initialRate].sort((a,b) => a - b);
-  }
 
 
   // Points at the new Docs/Help portal (both RU and EN use the clean /tts slug now),
@@ -2152,6 +2127,9 @@ function getPlayerHtml() {
     native: window.isRu ? "Нативный" : "Native",
     speedPali: window.isRu ? "Скорость (Пали)" : "Speed (Pali)",
     speedTrn: window.isRu ? "Скорость (Перевод)" : "Speed (Translation)",
+    rateKeys: window.isRu ? "Клавиши: − / = / R" : "Keys: − / = / R",
+    paliShort: window.isRu ? "Пали" : "Pāḷi",
+    trnShort: window.isRu ? "Перевод" : "Trn",
     delayTitle: window.isRu ? "Пауза между фразами (секунды)" : "Pause between phrases (seconds)",
     apiKeyTitle: window.isRu ? "Введите API-ключ Google Cloud TTS" : "Enter Google Cloud TTS API Key for premium voices",
     refreshVoices: window.isRu ? "Обновить список" : "Refresh Voice List",
@@ -2191,11 +2169,17 @@ function getPlayerHtml() {
                 ).join('')}
               </select>
 
-              <select id="tts-rate-select" class="tts-rate-select" title="${savedMode === 'pi' ? t.speedPali : t.speedTrn}">
-                ${currentRatesList.map(r =>
-                  `<option value="${r}" ${initialRate == r ? 'selected' : ''}>${r}x</option>`
-                ).join('')}
-              </select>
+              <div class="tts-rates">
+                ${[['pali', t.paliShort, t.speedPali], ['trn', t.trnShort, t.speedTrn]].map(([kind, label, title]) => {
+                  const r = RATE_RANGE[kind], v = savedRate(kind);
+                  return `<label class="tts-rate-row${(kind === 'pali') === (savedMode === 'pi') ? ' active' : ''}" title="${title} · ${t.rateKeys}">
+                    <span class="tts-rate-name">${label}</span>
+                    <input type="range" id="tts-rate-${kind}" class="tts-rate-select tts-rate-slider"
+                           min="${r.min}" max="${r.max}" step="${r.step}" value="${v}">
+                    <output id="tts-rate-${kind}-val" class="tts-rate-val">${v.toFixed(2)}×</output>
+                  </label>`;
+                }).join('')}
+              </div>
               
               <br>
 
@@ -2456,26 +2440,15 @@ async function handleTTSSettingChange(e) {
     await rebuildActivePlaylist(newMode);
   }
   
-  // 4. Rate
-  if (e.target.id === 'tts-rate-select') {
-    const newRate = parseFloat(e.target.value);
-    
-    let targetKey = RATE_TRN_KEY; 
-    if (ttsState.speaking && !ttsState.paused && ttsState.playlist[ttsState.currentIndex]) {
-        const currentItem = ttsState.playlist[ttsState.currentIndex];
-        if (currentItem.lang === 'pi-dev') {
-            targetKey = RATE_PALI_KEY;
-        }
-    } else {
-        const currentMode = localStorage.getItem(MODE_STORAGE_KEY);
-        if (currentMode === 'pi') {
-            targetKey = RATE_PALI_KEY;
-        }
-    }
+  // 4. Rate (sliders): each writes its own key; restart only if the segment playing now uses it
+  if (e.target.id === 'tts-rate-pali' || e.target.id === 'tts-rate-trn') {
+    const kind = e.target.id === 'tts-rate-pali' ? 'pali' : 'trn';
+    localStorage.setItem(RATE_RANGE[kind].key, parseFloat(e.target.value));
+    showRateValue(e.target);
+    const currentItem = ttsState.playlist[ttsState.currentIndex];
+    const playingKind = currentItem && (currentItem.lang === 'pi-dev' ? 'pali' : 'trn');
 
-    localStorage.setItem(targetKey, newRate);
-    
-    if (ttsState.speaking && !ttsState.paused) {
+    if (ttsState.speaking && !ttsState.paused && playingKind === kind) {
       synth.cancel();
       if (ttsState.googleAudio) {
           ttsState.googleAudio.pause();
@@ -2512,6 +2485,9 @@ async function handleTTSSettingChange(e) {
 
 
 document.addEventListener('change', handleTTSSettingChange);
+document.addEventListener('input', e => {
+  if (e.target.classList?.contains('tts-rate-slider')) showRateValue(e.target);
+});
 document.addEventListener('click', (e) => {
     // Добавили проверку e.target.id === 'tts-advanced-toggle-btn'
     if (e.target.id === 'refresh-voices-btn' || 
@@ -3281,30 +3257,26 @@ document.addEventListener('keydown', (e) => {
         return;
     }
 
-    // 3. Горячие клавиши: -, + (Скорость) и R (Сброс скорости) + Numpad
+    // 3. Горячие клавиши: -, + (Скорость) и R (сброс к умолчанию) + Numpad — для языка, который звучит сейчас
     if (['Minus', 'Equal', 'KeyR', 'NumpadSubtract', 'NumpadAdd'].includes(e.code)) {
         e.preventDefault();
-        const rateSelect = document.getElementById('tts-rate-select');
-        if (rateSelect) {
-            const options = Array.from(rateSelect.options).map(o => parseFloat(o.value));
-            const currentIndex = options.indexOf(parseFloat(rateSelect.value));
-            
-            let nextIndex = currentIndex;
-            
-            if (e.code === 'Minus' || e.code === 'NumpadSubtract') nextIndex = Math.max(0, currentIndex - 1);
-            else if (e.code === 'Equal' || e.code === 'NumpadAdd') nextIndex = Math.min(options.length - 1, currentIndex + 1);
-            else if (e.code === 'KeyR') {
-                // Ищем индекс для 1.0, если его нет — берем средний или первый
-                const defaultIdx = options.indexOf(1.0);
-                nextIndex = defaultIdx !== -1 ? defaultIdx : 0;
-            }
-            
-            if (nextIndex !== currentIndex) {
-                rateSelect.value = options[nextIndex];
-                rateSelect.dispatchEvent(new Event('change', { bubbles: true }));
-                
+        const currentItem = ttsState.playlist[ttsState.currentIndex];
+        const kind = currentItem ? (currentItem.lang === 'pi-dev' ? 'pali' : 'trn')
+                                 : (localStorage.getItem(MODE_STORAGE_KEY) === 'pi' ? 'pali' : 'trn');
+        const slider = document.getElementById('tts-rate-' + kind);
+        if (slider) {
+            const r = RATE_RANGE[kind];
+            const step = 0.1;  // keys move in bigger steps than the slider
+            let next = parseFloat(slider.value);
+            if (e.code === 'Minus' || e.code === 'NumpadSubtract') next -= step;
+            else if (e.code === 'Equal' || e.code === 'NumpadAdd') next += step;
+            else next = r.def;
+            next = Math.round(Math.min(r.max, Math.max(r.min, next)) * 100) / 100;
+            if (next !== parseFloat(slider.value)) {
+                slider.value = next;
+                slider.dispatchEvent(new Event('change', { bubbles: true }));
                 if (typeof showBubbleNotification === 'function') {
-                    showBubbleNotification((window.isRu ? 'Скорость: ' : 'Speed: ') + rateSelect.value + 'x');
+                    showBubbleNotification((window.isRu ? 'Скорость: ' : 'Speed: ') + next.toFixed(2) + '×');
                 }
             }
         }
