@@ -136,10 +136,10 @@ function getContextInfo(langCode) {
 const PALI_RATIO = 0.6; 
 
 // Speed sliders: one for Pali, one for translations; every engine (Google, the self-hosted Pali voice,
-// the native/system voice) reads the same two keys. The Pali default 0.8 is the self-hosted voice's tuned pace.
+// the native/system voice) reads the same two keys. Pali default 0.7 (owner: 0.8 suited Google, 0.7 our voice).
 const RATE_RANGE = {
-  pali: { key: RATE_PALI_KEY, min: 0.25, max: 1.5, step: 0.05, def: 0.8 },
-  trn:  { key: RATE_TRN_KEY,  min: 0.5,  max: 2.5, step: 0.05, def: 1.0 }
+  pali: { key: RATE_PALI_KEY, min: 0.25, max: 2.0, step: 0.05, def: 0.7, presets: [0.5, 0.7, 1.0, 1.5, 2.0] },
+  trn:  { key: RATE_TRN_KEY,  min: 0.5,  max: 2.5, step: 0.05, def: 1.0, presets: [0.75, 1.0, 1.25, 1.5, 2.0] }
 };
 
 function savedRate(kind) {
@@ -299,21 +299,62 @@ function toggleSilence(enable) {
     }
 }
 
-// Highlights the slider of the language being read and syncs both sliders with storage
-// (another tab or the cloud sync may have changed them).
-function markActiveRate(isPali) {
-  for (const kind of ['pali', 'trn']) {
-    const slider = document.getElementById('tts-rate-' + kind);
-    if (!slider) continue;
-    slider.value = savedRate(kind);
-    showRateValue(slider);
-    slider.closest('.tts-rate-row')?.classList.toggle('active', (kind === 'pali') === isPali);
-  }
+// The speed button + its slider act on the language being read now (in mixed modes they switch
+// with every segment, like the old dropdown did); idle, on the one the mode starts with.
+function activeRateKind() {
+  const item = ttsState.playlist[ttsState.currentIndex];
+  if (ttsState.speaking && item) return item.lang === 'pi-dev' ? 'pali' : 'trn';
+  return localStorage.getItem(MODE_STORAGE_KEY) === 'pi' ? 'pali' : 'trn';
 }
 
-function showRateValue(slider) {
-  const out = document.getElementById(slider.id + '-val');
-  if (out) out.textContent = parseFloat(slider.value).toFixed(2) + '×';
+function formatRate(v, digits) {
+  return (digits ? v.toFixed(digits) : String(Math.round(v * 100) / 100)) + 'x';
+}
+
+// Points the speed button and slider at one language; storage may also have changed from another
+// tab or the cloud sync, so the value is re-read every time.
+function markActiveRate(isPali) {
+  const kind = isPali ? 'pali' : 'trn';
+  const r = RATE_RANGE[kind], v = savedRate(kind);
+  const btn = document.getElementById('tts-rate-btn');
+  const slider = document.getElementById('tts-rate-slider');
+  if (btn) {
+    btn.textContent = formatRate(v);
+    btn.style.borderStyle = isPali ? '' : 'dashed';
+    btn.title = (isPali ? (window.isRu ? 'Скорость Пали' : 'Pāḷi speed') : (window.isRu ? 'Скорость перевода' : 'Translation speed'))
+      + ' · − / = / R';
+  }
+  if (slider) {
+    slider.dataset.kind = kind;
+    slider.min = r.min; slider.max = r.max; slider.step = r.step;
+    slider.value = v;
+  }
+  showRatePopValue(v);
+  const kindLabel = document.getElementById('tts-rate-kind');
+  if (kindLabel) kindLabel.textContent = isPali ? (window.isRu ? 'Пали' : 'Pāḷi') : (window.isRu ? 'Перевод' : 'Translation');
+  const presets = document.getElementById('tts-rate-presets');
+  if (presets && presets.dataset.kind !== kind) {
+    presets.dataset.kind = kind;
+    presets.innerHTML = r.presets.map(p => `<button type="button" class="tts-rate-preset" data-rate="${p}">${p}</button>`).join('');
+  }
+  presets?.querySelectorAll('.tts-rate-preset').forEach(b => b.classList.toggle('active', Math.abs(+b.dataset.rate - v) < 0.001));
+}
+
+function showRatePopValue(v) {
+  const title = document.getElementById('tts-rate-title');
+  if (title) title.textContent = formatRate(v, 2);
+}
+
+// Every speed control (-/+, presets, keys) just moves the slider and fires its change event,
+// so saving and restarting playback stay in one place (handleTTSSettingChange).
+function setSliderRate(value) {
+  const slider = document.getElementById('tts-rate-slider');
+  if (!slider) return;
+  const r = RATE_RANGE[slider.dataset.kind || activeRateKind()];
+  const next = Math.round(Math.min(r.max, Math.max(r.min, value)) * 100) / 100;
+  if (next === parseFloat(slider.value)) return;
+  slider.value = next;
+  slider.dispatchEvent(new Event('change', { bubbles: true }));
 }
 
 function getRateForLang(lang) {
@@ -821,7 +862,7 @@ function stripForPaliVoice(text) {
 }
 
 // Self-hosted Pali voice: Piper + the pali-tts listening-test rules behind /api/tts/pali (dg-fastify.js).
-// Answers like Google ({audioContent}: base64 mp3). The Pali speed menu defaults to 0.8, the voice's tuned pace.
+// Answers like Google ({audioContent}: base64 mp3). Speed 0.8 = the voice's tuned pace (the default 0.7 is a bit slower).
 async function fetchPaliVoiceAudio(iast, uiRate) {
   const r = await fetch('/api/tts/pali', {
     method: 'POST',
@@ -2127,9 +2168,6 @@ function getPlayerHtml() {
     native: window.isRu ? "Нативный" : "Native",
     speedPali: window.isRu ? "Скорость (Пали)" : "Speed (Pali)",
     speedTrn: window.isRu ? "Скорость (Перевод)" : "Speed (Translation)",
-    rateKeys: window.isRu ? "Клавиши: − / = / R" : "Keys: − / = / R",
-    paliShort: window.isRu ? "Пали" : "Pāḷi",
-    trnShort: window.isRu ? "Перевод" : "Trn",
     delayTitle: window.isRu ? "Пауза между фразами (секунды)" : "Pause between phrases (seconds)",
     apiKeyTitle: window.isRu ? "Введите API-ключ Google Cloud TTS" : "Enter Google Cloud TTS API Key for premium voices",
     refreshVoices: window.isRu ? "Обновить список" : "Refresh Voice List",
@@ -2169,17 +2207,17 @@ function getPlayerHtml() {
                 ).join('')}
               </select>
 
-              <div class="tts-rates">
-                ${[['pali', t.paliShort, t.speedPali], ['trn', t.trnShort, t.speedTrn]].map(([kind, label, title]) => {
-                  const r = RATE_RANGE[kind], v = savedRate(kind);
-                  return `<label class="tts-rate-row${(kind === 'pali') === (savedMode === 'pi') ? ' active' : ''}" title="${title} · ${t.rateKeys}">
-                    <span class="tts-rate-name">${label}</span>
-                    <input type="range" id="tts-rate-${kind}" class="tts-rate-select tts-rate-slider"
-                           min="${r.min}" max="${r.max}" step="${r.step}" value="${v}">
-                    <output id="tts-rate-${kind}-val" class="tts-rate-val">${v.toFixed(2)}×</output>
-                  </label>`;
-                }).join('')}
-              </div>
+              <button type="button" id="tts-rate-btn" class="tts-rate-select"${savedMode === 'pi' ? '' : ' style="border-style:dashed"'}>${formatRate(savedRate(savedMode === 'pi' ? 'pali' : 'trn'))}</button>
+              <span id="tts-rate-pop" class="tts-rate-pop tts-rate-select" hidden>
+                <span id="tts-rate-title" class="tts-rate-title"></span>
+                <span id="tts-rate-kind" class="tts-rate-kind"></span>
+                <span class="tts-rate-line">
+                  <button type="button" class="tts-rate-step" data-step="-1" aria-label="slower">−</button>
+                  <input type="range" id="tts-rate-slider" class="tts-rate-slider" aria-label="${t.speedPali} / ${t.speedTrn}">
+                  <button type="button" class="tts-rate-step" data-step="1" aria-label="faster">+</button>
+                </span>
+                <span id="tts-rate-presets" class="tts-rate-presets"></span>
+              </span>
               
               <br>
 
@@ -2208,9 +2246,7 @@ function getPlayerHtml() {
             <button id="tts-advanced-toggle-btn" class="extra-settings-toggle advanced-btn">
                 🔧 Google Voice
             </button>
-            
-            <a class="tts-link" title='sc-voice.net' href='https://www.sc-voice.net/?src=sc#/sutta/$fromjs'>VSC</a>
-            
+
             <span id="audio-file-link-placeholder"></span>
             
             <a href="${helpUrl}" target="_blank" class="tts-link tts-help-link" title="${t.help}">?</a>
@@ -2272,7 +2308,7 @@ function getOrBuildPlayer() {
         // The ?v= stamp matters: /read/css/voice.css is served immutable for a year, so without it a
         // CSS fix would never reach anyone who had already opened the player (issue #20's rule was
         // invisible in the browser because of exactly that). Bump the stamp with the next edit.
-        document.head.insertAdjacentHTML('beforeend', '<link id="voice-css-lazy" rel="stylesheet" href="/read/css/voice.css?v=2026-09-18">');
+        document.head.insertAdjacentHTML('beforeend', '<link id="voice-css-lazy" rel="stylesheet" href="/read/css/voice.css?v=2026-10-03">');
     }
 
     if (!playerContainer) {
@@ -2440,15 +2476,13 @@ async function handleTTSSettingChange(e) {
     await rebuildActivePlaylist(newMode);
   }
   
-  // 4. Rate (sliders): each writes its own key; restart only if the segment playing now uses it
-  if (e.target.id === 'tts-rate-pali' || e.target.id === 'tts-rate-trn') {
-    const kind = e.target.id === 'tts-rate-pali' ? 'pali' : 'trn';
+  // 4. Rate (slider): writes the key of the language it was opened for; restart if that one is playing
+  if (e.target.id === 'tts-rate-slider') {
+    const kind = e.target.dataset.kind || activeRateKind();
     localStorage.setItem(RATE_RANGE[kind].key, parseFloat(e.target.value));
-    showRateValue(e.target);
-    const currentItem = ttsState.playlist[ttsState.currentIndex];
-    const playingKind = currentItem && (currentItem.lang === 'pi-dev' ? 'pali' : 'trn');
+    markActiveRate(kind === 'pali');
 
-    if (ttsState.speaking && !ttsState.paused && playingKind === kind) {
+    if (ttsState.speaking && !ttsState.paused && activeRateKind() === kind) {
       synth.cancel();
       if (ttsState.googleAudio) {
           ttsState.googleAudio.pause();
@@ -2486,7 +2520,30 @@ async function handleTTSSettingChange(e) {
 
 document.addEventListener('change', handleTTSSettingChange);
 document.addEventListener('input', e => {
-  if (e.target.classList?.contains('tts-rate-slider')) showRateValue(e.target);
+  if (e.target.id === 'tts-rate-slider') {
+    const v = parseFloat(e.target.value);
+    const btn = document.getElementById('tts-rate-btn');
+    if (btn) btn.textContent = formatRate(v);
+    showRatePopValue(v);
+  }
+});
+// Speed button: opens the slider for the language being read; a click elsewhere closes it.
+document.addEventListener('click', e => {
+  const pop = document.getElementById('tts-rate-pop');
+  if (!pop) return;
+  const step = e.target.closest('.tts-rate-step');
+  const preset = e.target.closest('.tts-rate-preset');
+  if (e.target.closest('#tts-rate-btn')) {
+    markActiveRate(activeRateKind() === 'pali');
+    pop.hidden = !pop.hidden;
+  } else if (step) {
+    const slider = document.getElementById('tts-rate-slider');
+    setSliderRate(parseFloat(slider.value) + parseFloat(slider.step) * +step.dataset.step);
+  } else if (preset) {
+    setSliderRate(+preset.dataset.rate);
+  } else if (!e.target.closest('#tts-rate-pop')) {
+    pop.hidden = true;
+  }
 });
 document.addEventListener('click', (e) => {
     // Добавили проверку e.target.id === 'tts-advanced-toggle-btn'
@@ -3260,24 +3317,17 @@ document.addEventListener('keydown', (e) => {
     // 3. Горячие клавиши: -, + (Скорость) и R (сброс к умолчанию) + Numpad — для языка, который звучит сейчас
     if (['Minus', 'Equal', 'KeyR', 'NumpadSubtract', 'NumpadAdd'].includes(e.code)) {
         e.preventDefault();
-        const currentItem = ttsState.playlist[ttsState.currentIndex];
-        const kind = currentItem ? (currentItem.lang === 'pi-dev' ? 'pali' : 'trn')
-                                 : (localStorage.getItem(MODE_STORAGE_KEY) === 'pi' ? 'pali' : 'trn');
-        const slider = document.getElementById('tts-rate-' + kind);
+        const kind = activeRateKind();
+        markActiveRate(kind === 'pali');
+        const slider = document.getElementById('tts-rate-slider');
         if (slider) {
             const r = RATE_RANGE[kind];
-            const step = 0.1;  // keys move in bigger steps than the slider
-            let next = parseFloat(slider.value);
-            if (e.code === 'Minus' || e.code === 'NumpadSubtract') next -= step;
-            else if (e.code === 'Equal' || e.code === 'NumpadAdd') next += step;
-            else next = r.def;
-            next = Math.round(Math.min(r.max, Math.max(r.min, next)) * 100) / 100;
-            if (next !== parseFloat(slider.value)) {
-                slider.value = next;
-                slider.dispatchEvent(new Event('change', { bubbles: true }));
-                if (typeof showBubbleNotification === 'function') {
-                    showBubbleNotification((window.isRu ? 'Скорость: ' : 'Speed: ') + next.toFixed(2) + '×');
-                }
+            const cur = parseFloat(slider.value);
+            // keys move in bigger steps than the slider; R = the default speed
+            const next = e.code === 'KeyR' ? r.def : cur + (e.code === 'Minus' || e.code === 'NumpadSubtract' ? -0.1 : 0.1);
+            setSliderRate(next);
+            if (parseFloat(slider.value) !== cur && typeof showBubbleNotification === 'function') {
+                showBubbleNotification((window.isRu ? 'Скорость: ' : 'Speed: ') + formatRate(parseFloat(slider.value)));
             }
         }
         return;

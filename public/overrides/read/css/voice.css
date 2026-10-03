@@ -765,58 +765,100 @@ body:has(#dgDlCard.show) .voice-player {
     bottom: calc(50px + var(--dg-dl-card-h, 120px) + 10px);
 }
 
-/* Speed sliders: Pali and translation, the row of the language being read is highlighted */
-.tts-rates {
+/* Speed: a button like the old dropdown; it opens one slider for the language being read */
+#tts-rate-btn {
+    min-width: 3.6em;
+    height: 30px;
+    line-height: 1;
+}
+/* Opens in place inside the player panel (the panel clips anything positioned outside it) */
+.tts-rate-pop {
     display: flex;
     flex-direction: column;
-    gap: 2px;
-    margin: 2px 0 6px;
+    align-items: center;
+    gap: 6px;
     width: 100%;
     box-sizing: border-box;
+    padding: 8px 10px 10px;
+    margin: 2px 0 6px;
+    background: rgba(0, 0, 0, .035);
+    border: 0;
+    border-radius: 10px;
+    cursor: default;
+    color: #444;
 }
-.tts-rate-row {
+.tts-rate-pop[hidden] {
+    display: none;
+}
+.tts-rate-title {
+    font-size: 20px;
+    font-weight: 600;
+    line-height: 1.1;
+    font-variant-numeric: tabular-nums;
+}
+.tts-rate-kind {
+    font-size: 12px;
+    color: #888;
+    margin-top: -4px;
+}
+.tts-rate-line {
     display: flex;
     align-items: center;
-    gap: 4px;
-    margin: 0;
-    padding: 1px 2px;
-    border-radius: 4px;
-    font-size: 14px;
-    color: #888;
-    cursor: pointer;
+    gap: 8px;
+    width: 100%;
 }
-.tts-rate-row.active {
-    color: #444;
-    background: rgba(var(--bs-primary-rgb, 13, 110, 253), .08);
-}
-.tts-rate-name {
-    flex: none;
-    min-width: 2.6em;
-    text-align: left;
-}
-input[type="range"].tts-rate-select {
+.tts-rate-slider {
     flex: 1;
-    min-width: 50px;
-    height: 22px;
+    min-width: 0;
     margin: 0;
-    padding: 0;
-    border: 0;
-    background: transparent;
     accent-color: var(--bs-primary, #0d6efd);
     cursor: pointer;
 }
-.tts-rate-val {
-    width: 3.1em;
+.tts-rate-step {
     flex: none;
-    text-align: right;
-    font-variant-numeric: tabular-nums;
-}
-.dark .tts-rate-row { color: #999; }
-.dark .tts-rate-row.active {
-    color: #ddd;
-    background: rgba(255, 255, 255, .07);
-}
-.dark input[type="range"].tts-rate-select {
-    background: transparent;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
     border: 0;
+    background: rgba(0, 0, 0, .07);
+    color: inherit;
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+}
+.tts-rate-presets {
+    display: flex;
+    gap: 4px;
+    width: 100%;
+    justify-content: space-between;
+}
+.tts-rate-preset {
+    flex: 1;
+    padding: 4px 0;
+    border: 0;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, .06);
+    color: inherit;
+    font-size: 13px;
+    cursor: pointer;
+}
+.tts-rate-preset.active {
+    background: var(--bs-primary, #0d6efd);
+    color: #fff;
+}
+.dark .tts-rate-pop {
+    background: rgba(255, 255, 255, .06);
+    color: #ddd;
+}
+.dark .tts-rate-step,
+.dark .tts-rate-preset {
+    background: rgba(255, 255, 255, .1);
+}
+.dark .tts-rate-preset.active {
+    background: var(--bs-primary, #0d6efd);
+    color: #fff;
+}
+/* The open speed block needs room: #tts-basic-settings is capped at 200px for its collapse animation */
+#tts-basic-settings:has(#tts-rate-pop:not([hidden])) {
+    max-height: 400px;
 }
