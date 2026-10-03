@@ -2697,6 +2697,15 @@ window.initFirebase = async function() {
         if (!response.ok) throw new Error('Config not found');
         
         const firebaseConfig = await response.json();
+        // Auth handler from our own site, not dg-sync-data.firebaseapp.com (dg-apps#43): Safari
+        // partitions a third-party handler's storage, and Apple/Google sign-in never came back.
+        // Apache proxies /__/auth/ to firebaseapp.com. test.dhamma.gift has its own handler; every
+        // other *.dhamma.gift (www, f, find) is the same site as dhamma.gift for Safari, so it uses
+        // that one. The app (capacitor://) and localhost keep the config's own authDomain.
+        const host = location.hostname;
+        if (location.protocol === 'https:' && /(^|\.)dhamma\.gift$/.test(host)) {
+            firebaseConfig.authDomain = /(^|\.)test\.dhamma\.gift$/.test(host) ? 'test.dhamma.gift' : 'dhamma.gift';
+        }
         firebase.initializeApp(firebaseConfig);
         
         db = firebase.firestore();
