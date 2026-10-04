@@ -983,7 +983,7 @@ function setPaliEngine(engine) {
 
 // DG voices on offer for Pali (one for now; the trained voices join this list).
 const DG_PALI_VOICES = [{ id: 'pratham', label: 'pratham ♂ · Piper' },
-                        { id: 'dg', label: 'Dhamma.Gift ♂ · beta' }];  // the owner's own fine-tuned voice
+                        { id: 'dg', label: 'o Dhamma.Gift ♂ · beta' }];  // the owner's own fine-tuned voice
 
 // For the Memo page's mp3 download: which DG voice and pace would read this text now (null when the
 // chosen engine for it is not DG), and where the service's /memo is.
