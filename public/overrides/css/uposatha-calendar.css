@@ -30,7 +30,7 @@ html { width: 100%; -webkit-text-size-adjust: 100%; background: var(--dg-page); 
    "the theme changed partway down the page", but it's this gap, not a real partial theme switch).
    100dvh over the plain 100vh fallback: on mobile, 100vh includes space the browser's own address
    bar can cover/uncover, which would leave the same gap while that chrome is showing. */
-body { margin: 0; min-height: 100vh; min-height: 100dvh; background: var(--dg-page); color: var(--dg-text); font-family: var(--dg-font); -webkit-font-smoothing: antialiased; font-size: 15px; }
+body { margin: 0; min-height: 100vh; min-height: calc(100dvh / var(--dg-zoom, 1)); /* the font size zooms <html>: an unzoomed 100dvh made every short tab scroll by 10% */ background: var(--dg-page); color: var(--dg-text); font-family: var(--dg-font); -webkit-font-smoothing: antialiased; font-size: 15px; }
 a { color: var(--dg-accent-ink); text-decoration: none; }
 a:hover { text-decoration: underline; text-underline-offset: 2px; }
 h1, h2, h3 { font-family: var(--dg-font); font-weight: 600; letter-spacing: -.01em; }
@@ -608,6 +608,9 @@ body[data-mode=lite] .dtab .s .ln.grey { display: block; }
 
 /* remind switches in the corner of a card (parts heading, meal card): a small pill, filled when on */
 .parts-h, .cardh { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.pblk h3:has(.bellsw) { display: flex; align-items: center; } /* the parts' Remind in the first card's header, like the meal card's (dg-apps#52) */
+.pblk h3 .bellsw { margin-left: auto; text-transform: none; letter-spacing: 0; }
+.pblk h3 .bellsw span { margin-left: 0; }
 .cardh h3 { margin-bottom: 6px; }
 .bellsw { display: inline-flex; align-items: center; gap: 5px; flex: none; padding: 4px 10px 4px 8px; border: 0; border-radius: 999px; font: inherit; font-size: 12px; cursor: pointer; color: var(--dg-text-2); background: color-mix(in srgb, var(--dg-text-muted) 14%, transparent); transition: background-color .15s ease, color .15s ease; }
 .bellsw .ic { width: 14px; height: 14px; }

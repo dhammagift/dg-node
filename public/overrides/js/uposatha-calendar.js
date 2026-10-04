@@ -449,8 +449,11 @@
         return '<div class="prow"' + (now >= a && now < b ? ' data-now="true"' : '') + '><span><b class="pli-lang" lang="pi">' + esc(n[0]) + '</b><small>' + esc(n[1]) + '</small><em>' + esc(n[2]) + ' · ' + n[3].split(',').map(function (r) { return '<a class="pref selectable" href="/' + esc(r) + '?lang=' + lang + '" target="_blank" rel="noopener">' + esc(r.split(':')[0]) + '</a>'; }).join(' · ') + '</em></span><span class="tm">' + F.hm.format(a) + ' – ' + F.hm.format(b) + '</span></div>';
       }).join('') + '</div>';
     }
+    var partsBell = $('parts-bell'); // kept across the rebuild: it moves into the first card's header (below)
     $('pgrid').innerHTML = block(t.pDay, F.week.format(Date.parse(ymd)), rise, set, dayPartsNow()) +
       block(t.pNight, F.week.format(Date.parse(nightFrom)) + ' → ' + F.week.format(Date.parse(ymdAdd(nightFrom, 1))), nStart, nEnd, nightPartsNow());
+    // The parts' Remind sits in the header of the first card, as the meal's does in its card (dg-apps#52: both at one level, one look).
+    var firstH = $('pgrid').querySelector('.pblk h3'); if (firstH && partsBell) firstH.appendChild(partsBell);
     $('pwho').textContent = t.pWho; // the lead line before the table: who spends the parts this way
     $('pnote').textContent = (obs ? t.pPlace : t.pFixed) + '\n' + t.pMid; // the footnotes: what is conventional, then the word
     markPali($('pnote'));
@@ -1015,14 +1018,14 @@
   // The first wave is for the 8th, 14th and 15th day when one is now or begins within a day; then the general lines, then a few at random.
   function buildSlides(days) {
     var all = quotes.filter(function (q) { return q[lang] || q.kind !== 'random'; }); // a random line with no translation into the page's language is left out; the key ones are shown in English
-    var sp = all.filter(function (q) { return q.kind === 'special' && q.days.some(function (d) { return days.indexOf(d) !== -1; }); })
-      .sort(function (a, b) { return a.days.length - b.days.length || a.days[0] - b.days[0]; }); // the lines for one day first, those for several after
-    // The show is short (at most 10, fewer is better): the special lines that fit the day (at most 5), three of the general ones,
-    // and two at random - those that name the days (14, 15, 8) first.
+    var sp = all.filter(function (q) { return q.kind === 'special' && q.days.some(function (d) { return days.indexOf(d) !== -1; }); });
+    // The show is short (at most 6, owner): two of each - the special lines that fit the day, the general ones, and the random
+    // ones (those that name the days 14, 15, 8 first). The special pair is picked at random from those that fit, so the show changes.
     var named = /cātuddas|pannaras|aṭṭham/i;
     var rnd = shuffle(all.filter(function (q) { return q.kind === 'random'; }));
     rnd = rnd.filter(function (q) { return named.test(q.pli); }).concat(rnd.filter(function (q) { return !named.test(q.pli); }));
-    slides = sp.slice(0, 5).concat(shuffle(all.filter(function (q) { return q.kind === 'general'; })).slice(0, 3), rnd.slice(0, 2));
+    sp = shuffle(sp).slice(0, 2).sort(function (a, b) { return a.days.length - b.days.length; }); // of the two, a line for this very day first
+    slides = sp.concat(shuffle(all.filter(function (q) { return q.kind === 'general'; })).slice(0, 2), rnd.slice(0, 2));
   }
   function slideText(q) { return q[lang] || q.en; }
   // The key words of the Uposatha (the day, its number, the parts of the day) are picked out in the Pali and in the translations.
