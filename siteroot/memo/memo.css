@@ -444,3 +444,15 @@ NEW CLASSES EXTRACTED FROM INLINE STYLES
     padding-bottom: 120px;
 }
 
+
+/* --- Player design v4: both timers are chips in the chip row (no Memo / A-B chips on this page) --- */
+.tts-chips{display:flex;justify-content:space-between;align-items:center}
+.tts-chips{padding-left:6px;padding-right:6px}
+/* memo.js switches the session timer between display:block and none, so it is centred with line-height */
+.tts-chips #global-session-timer,
+.tts-chips .dummy-ab-timer-container{position:static;top:auto;left:auto;right:auto;height:32px;line-height:30px;min-width:44px;box-sizing:border-box;border:1px solid var(--dg-border-strong,#ccc);border-radius:999px;padding:0 5px;text-align:center;justify-content:center;align-items:center;gap:3px;font:600 11px/30px Lato,system-ui,sans-serif;color:var(--dg-text-muted,#777);background:transparent;font-variant-numeric:tabular-nums}
+/* the countdown keeps its place while hidden, so the row does not jump when a pause starts */
+.tts-chips .dummy-ab-timer-container{visibility:hidden}
+.tts-chips .dummy-ab-timer-container.active{visibility:visible}
+.tts-chips .dummy-ab-timer-container .memo-timer-icon{width:11px;height:11px;margin:0}
+.dark .tts-chips #global-session-timer,.dark .tts-chips .dummy-ab-timer-container{color:var(--dg-text-muted,#aaa)}

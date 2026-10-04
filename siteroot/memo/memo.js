@@ -1781,26 +1781,28 @@ window.resetTTSSettings = function() {
 
         // Инъекция таймеров в плеер через MutationObserver (оптимизированный подход)
         const playerObserver = new MutationObserver((mutations) => {
-            const mainRow = document.querySelector('.tts-main-row');
-            if (mainRow) {
-                if (mainRow.style.position !== 'relative') {
-                    mainRow.style.position = 'relative'; 
+            // Player design v4: the timers sit in the chip row, where this page has no Memo and A-B
+            // chips - session time first (in Memo's place), the pause countdown last (in A-B's place).
+            // The old top-row spots ended up on top of the prev/close buttons.
+            const row = document.querySelector('.tts-chips') || document.querySelector('.tts-main-row');
+            if (row) {
+                if (!row.classList.contains('tts-chips') && row.style.position !== 'relative') {
+                    row.style.position = 'relative';
                 }
 
-                // 1. Вставляем локальный таймер (справа)
-                if (!document.getElementById('dummy-ab-timer-container')) {
-                    const timerContainer = document.createElement('div');
+                // 1. Pause countdown (last)
+                let timerContainer = document.getElementById('dummy-ab-timer-container');
+                if (!timerContainer) {
+                    timerContainer = document.createElement('div');
                     timerContainer.id = 'dummy-ab-timer-container';
                     timerContainer.className = 'dummy-ab-timer-container';
                     timerContainer.innerHTML = `<span id="ab-btn-timer" class="tabular-nums"></span>`;
-                    mainRow.appendChild(timerContainer);
                 }
+                if (timerContainer.parentNode !== row || row.lastElementChild !== timerContainer) row.appendChild(timerContainer);
 
-                // 2. Вставляем глобальный таймер (слева)
+                // 2. Session time (first)
                 const globalTimer = getOrCreateGlobalTimer();
-                if (globalTimer.parentNode !== mainRow) {
-                    mainRow.appendChild(globalTimer);
-                }
+                if (globalTimer.parentNode !== row || row.firstElementChild !== globalTimer) row.prepend(globalTimer);
             }
         });
 
