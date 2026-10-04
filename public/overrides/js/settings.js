@@ -286,7 +286,7 @@ window.addEventListener('suttaRenderedCentral', () => {
         const scriptVoice = document.createElement('script');
         // ?v= matters: /read/js is served immutable for a year, so an unstamped URL meant a fix in the
         // player (or in the CSS it lazily appends) stayed invisible in already-visited browsers.
-        scriptVoice.src = "/read/js/voice.js?v=2026-10-04p";
+        scriptVoice.src = "/read/js/voice.js?v=2026-10-04q";
         
         scriptVoice.onload = () => {
             // ---> ИСПРАВЛЕНИЕ: Блокируем загрузку A-B цикла для приложения Memo <---

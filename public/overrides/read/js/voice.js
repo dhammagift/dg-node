@@ -1406,6 +1406,38 @@ function shouldRequestWakeLockForItem(item) {
 }
 
 // --- Ядро TTS ---
+// --- DG voice prefetch: while a line plays, the next two lines read by the DG voice are fetched, so
+// there is no gap for synthesis between lines. Google is fast enough and every request costs, so only DG.
+// The same request as playCurrentSegment makes (text, rate, voice), or null if DG doesn't read this line.
+function dgVoiceRequest(item) {
+  if (!item) return null;
+  if (item.lang === 'pi-dev') {
+    const off = localStorage.getItem(NATIVE_PALI_KEY) === 'true' || !item.iast || localStorage.getItem(PALI_VOICE_KEY) === 'off';
+    return off ? null : { text: item.iast, rate: savedRate('pali') };
+  }
+  const voice = getTrnEngine() === 'dg' ? dgTrnVoice(item.lang) : null;
+  if (!voice) return null;
+  return { text: item.text, rate: ['ru', 'th', 'zh', 'en'].includes(item.lang) ? getRateForLang(item.lang) : 1.0, voice };
+}
+const dgAudioPending = new Map();  // request key -> Promise of base64 mp3, newest last
+function dgAudio(req) {
+  const key = `${req.voice || dgPaliVoice()}|${req.rate.toFixed(2)}|${req.text}`;
+  let p = dgAudioPending.get(key);
+  if (!p) {
+    p = fetchPaliVoiceAudio(req.text, req.rate, req.voice);
+    p.catch(() => dgAudioPending.delete(key));  // a failed fetch is retried next time, not cached
+    dgAudioPending.set(key, p);
+    while (dgAudioPending.size > 8) dgAudioPending.delete(dgAudioPending.keys().next().value);
+  }
+  return p;
+}
+function dgPrefetchAhead(index) {
+  for (let k = 1; k <= 2; k++) {
+    const req = dgVoiceRequest(ttsState.playlist[index + k]);
+    if (req) dgAudio(req).catch(() => {});
+  }
+}
+
 async function playCurrentSegment() {
  
  if (window.ttsDelayTimeout) clearTimeout(window.ttsDelayTimeout);
@@ -1516,8 +1548,8 @@ async function playCurrentSegment() {
           let audioContent = null;
           if (usePaliVoice) {
               try {
-                  audioContent = isPali ? await fetchPaliVoiceAudio(item.iast, audioRateGoogle)
-                                        : await fetchPaliVoiceAudio(item.text, audioRateGoogle, dgTrnId);
+                  audioContent = await dgAudio(dgVoiceRequest(item));
+                  dgPrefetchAhead(targetIndex);
               } catch (e) {
                   console.warn("Pali voice failed, falling back to Google", e);
               }
