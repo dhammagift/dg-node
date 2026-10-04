@@ -265,6 +265,9 @@ label.tts-row{cursor:pointer}
 @keyframes ttsPulse{0%{box-shadow:0 0 0 0 color-mix(in oklch,var(--dg-tblue) 40%,transparent)}70%{box-shadow:0 0 0 6px transparent}100%{box-shadow:0 0 0 0 transparent}}
 .mem-status{padding:4px 16px 0;font-size:11px;color:var(--dg-text-muted);min-height:0}
 
+/* Phones: the language pill, the scroll-to-top arrow and the like sit in the bottom ~75px; the player
+   stands above that row instead of covering it (owner) */
+@media (max-width:600px){.voice-player{bottom:84px}}
 @media (max-width:768px){
   .tts-chips{gap:3px;padding:6px 8px 12px}
   .tts-chip{padding:0 7px;font-size:11px;height:30px}
