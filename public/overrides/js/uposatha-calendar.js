@@ -449,8 +449,11 @@
         return '<div class="prow"' + (now >= a && now < b ? ' data-now="true"' : '') + '><span><b class="pli-lang" lang="pi">' + esc(n[0]) + '</b><small>' + esc(n[1]) + '</small><em>' + esc(n[2]) + ' · ' + n[3].split(',').map(function (r) { return '<a class="pref selectable" href="/' + esc(r) + '?lang=' + lang + '" target="_blank" rel="noopener">' + esc(r.split(':')[0]) + '</a>'; }).join(' · ') + '</em></span><span class="tm">' + F.hm.format(a) + ' – ' + F.hm.format(b) + '</span></div>';
       }).join('') + '</div>';
     }
+    var partsBell = $('parts-bell'); // kept across the rebuild: it moves into the first card's header (below)
     $('pgrid').innerHTML = block(t.pDay, F.week.format(Date.parse(ymd)), rise, set, dayPartsNow()) +
       block(t.pNight, F.week.format(Date.parse(nightFrom)) + ' → ' + F.week.format(Date.parse(ymdAdd(nightFrom, 1))), nStart, nEnd, nightPartsNow());
+    // The parts' Remind sits in the header of the first card, as the meal's does in its card (dg-apps#52: both at one level, one look).
+    var firstH = $('pgrid').querySelector('.pblk h3'); if (firstH && partsBell) firstH.appendChild(partsBell);
     $('pwho').textContent = t.pWho; // the lead line before the table: who spends the parts this way
     $('pnote').textContent = (obs ? t.pPlace : t.pFixed) + '\n' + t.pMid; // the footnotes: what is conventional, then the word
     markPali($('pnote'));
