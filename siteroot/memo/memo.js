@@ -1798,10 +1798,12 @@ window.resetTTSSettings = function() {
                     timerContainer.className = 'dummy-ab-timer-container';
                     timerContainer.innerHTML = `<span id="ab-btn-timer" class="tabular-nums"></span>`;
                 }
+                if (row.classList.contains('tts-chips')) timerContainer.classList.add('tts-chip');  // same look as the chips
                 if (timerContainer.parentNode !== row || row.lastElementChild !== timerContainer) row.appendChild(timerContainer);
 
                 // 2. Session time (first)
                 const globalTimer = getOrCreateGlobalTimer();
+                if (row.classList.contains('tts-chips')) globalTimer.classList.add('tts-chip');
                 if (globalTimer.parentNode !== row || row.firstElementChild !== globalTimer) row.prepend(globalTimer);
             }
         });
