@@ -1,8 +1,10 @@
 
 
 
+// ?lang= first: /ru/sn56.11 redirects to /sn56.11?lang=ru, and on that first visit siteLanguage is not
+// stored yet, so the player and other scripts came up in English on the Russian page.
 window.notEn= /^\/(ru|r|ml|mt)(\/|$)/.test(window.location.pathname)
-    || (localStorage.getItem('siteLanguage') || 'en') !== 'en';
+    || (new URLSearchParams(window.location.search).get('lang') || localStorage.getItem('siteLanguage') || 'en') !== 'en';
 
 // Портировано из легаси settings.js — openBw.js (загружается через junction на легаси-репо) ожидает
 // эту функцию глобально, а этот override её не содержал (скопирован раньше, чем она появилась в легаси).
@@ -284,7 +286,7 @@ window.addEventListener('suttaRenderedCentral', () => {
         const scriptVoice = document.createElement('script');
         // ?v= matters: /read/js is served immutable for a year, so an unstamped URL meant a fix in the
         // player (or in the CSS it lazily appends) stayed invisible in already-visited browsers.
-        scriptVoice.src = "/read/js/voice.js?v=2026-10-04api";
+        scriptVoice.src = "/read/js/voice.js?v=2026-10-04p";
         
         scriptVoice.onload = () => {
             // ---> ИСПРАВЛЕНИЕ: Блокируем загрузку A-B цикла для приложения Memo <---

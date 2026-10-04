@@ -779,9 +779,9 @@ function setupVoiceSelectors(voices, langSelectId, voiceSelectId, storageKey, de
         `<option value="${code}" ${code === currentConfig.languageCode ? 'selected' : ''}>${code}</option>`
     ).join('');
 
-    const isPremium = (name) => {
-        return name.includes('Wavenet') || name.includes('Neural2') || name.includes('Chirp') || name.includes('Polyglot');
-    };
+    // Only Standard voices are billed at the cheap rate; WaveNet, Neural2, News, Studio, Journey,
+    // Chirp, Polyglot... all at premium rates
+    const isPremium = (name) => !name.includes('Standard');
 
     const renderVoices = (langCode, selectedVoiceName) => {
         const currentVoices = voicesByLang[langCode] || [];
@@ -803,7 +803,10 @@ function setupVoiceSelectors(voices, langSelectId, voiceSelectId, storageKey, de
         let activeVoiceName = selectedVoiceName;
         if (!currentVoices.find(v => v.name === activeVoiceName)) {
             if (currentVoices.length > 0) {
-                activeVoiceName = currentVoices[0].name;
+                // The list puts premium voices first; for translations the fallback is a cheap one
+                // (owner: premium is for Pāḷi only) - switching the language picked a premium voice.
+                const cheap = storageKey !== GOOGLE_PALI_SETTINGS_KEY && currentVoices.find(v => !isPremium(v.name));
+                activeVoiceName = (cheap || currentVoices[0]).name;
             }
         }
 
@@ -2412,7 +2415,7 @@ function getOrBuildPlayer() {
         // The ?v= stamp matters: /read/css/voice.css is served immutable for a year, so without it a
         // CSS fix would never reach anyone who had already opened the player (issue #20's rule was
         // invisible in the browser because of exactly that). Bump the stamp with the next edit.
-        document.head.insertAdjacentHTML('beforeend', '<link id="voice-css-lazy" rel="stylesheet" href="/read/css/voice.css?v=2026-10-04v4">');
+        document.head.insertAdjacentHTML('beforeend', '<link id="voice-css-lazy" rel="stylesheet" href="/read/css/voice.css?v=2026-10-04n">');
     }
 
     if (!playerContainer) {
@@ -2657,7 +2660,15 @@ document.addEventListener('keydown', e => {
     e.stopImmediatePropagation();  // Esc closes the window first, the player on the next press
   }
 }, true);
-window.addEventListener('resize', closeTtsWins);
+// Only a real change of width closes the windows: the language pill dispatches a synthetic 'resize'
+// whenever <body> classes change, i.e. on every line read aloud, and a phone's address bar changes
+// the height while the text scrolls - both closed the voice picker mid-playback.
+let ttsWinWidth = window.innerWidth;
+window.addEventListener('resize', () => {
+  if (window.innerWidth === ttsWinWidth) return;
+  ttsWinWidth = window.innerWidth;
+  closeTtsWins();
+});
 
 // Smooth change of the player's height when a panel opens or closes (design v4: height .32s on the
 // shared easing, the panel that appears fades in .26s). fn does the DOM change.
