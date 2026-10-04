@@ -185,6 +185,8 @@ body:has(#dgDlCard.show) .voice-player{bottom:calc(24px + var(--dg-dl-card-h, 12
 .tts-chip.loop-active{border-color:var(--dg-tblue);color:var(--dg-tblue)}
 #tts-mode-chip{justify-content:space-between}
 #tts-mode-label{overflow:hidden;text-overflow:ellipsis;text-align:left}
+/* speed chip: one width for "1×" and "0.7×" (it shows the Pāḷi or the translation speed by mode) */
+#tts-rate-btn{min-width:40px}
 .tts-chip .dd{font-size:9px;color:var(--dg-text-muted)}
 .tts-chip:focus{outline:none}
 .tts-chip:focus-visible,.tts-ib:focus-visible,.tts-play:focus-visible,.tts-vbtn:focus-visible{outline:2px solid var(--dg-accent-ink);outline-offset:2px}

@@ -2252,11 +2252,13 @@ async function startPlayback(container, mode, slug, startIndex = 0) {
       // (free key, optional) and the system-voice setup needed offline.
       // DG voice (our own Piper voices) reads by default and needs no key; Google and the device's
       // voices are the alternatives in ⚙ → Voice settings.
-      const message = window.isRu 
-          ? `<b>Голос DG:</b> пали и перевод читают наши бесплатные голоса. Другие — Google (<a href="${searchUrlRu}" target="_blank" style="${linkStyle}">свой ключ</a>) или голоса устройства — в ⚙ → Voice settings.${offlineHint()}` 
-          : `<b>DG voice:</b> Pāḷi and the translation are read by our own free voices. Others — Google (<a href="${searchUrlEn}" target="_blank" style="${linkStyle}">your own key</a>) or your device's — in ⚙ → Voice settings.${offlineHint()}`;
+      // Owner: short, just the three kinds of voices (the "for offline" line is what Built-in says).
+      const li = 'display:block;text-align:left;margin-top:4px';
+      const message = window.isRu
+          ? `(⚙ → Voice settings):<span style="${li}">• <b>DG Voice</b> — бесплатные нейроголоса</span><span style="${li}">• <b>Google</b> — бесплатный лимит, нужен <a href="${searchUrlRu}" target="_blank" style="${linkStyle}">свой API-ключ</a></span><span style="${li}">• <b>Встроенные</b> — голоса вашего устройства, работают без интернета</span>`
+          : `(⚙ → Voice settings):<span style="${li}">• <b>DG Voice</b> — free neural voices</span><span style="${li}">• <b>Google</b> — free quota, needs <a href="${searchUrlEn}" target="_blank" style="${linkStyle}">your own API key</a></span><span style="${li}">• <b>Built-in</b> — your device's voices, work offline</span>`;
 
-      showVoiceHint("TTS:", message, PALI_ALERT_KEY);
+      showVoiceHint(window.isRu ? 'Попробуйте разные голоса' : 'Try different voices', message, PALI_ALERT_KEY);
   }
   
   ensureVoicesReady().then(() => {
@@ -2285,7 +2287,9 @@ function showVoiceHint(title, message, storageKey) {
       backgroundColor: 'rgba(66, 66, 106, 1)', color: 'white',
       padding: '12px 20px', borderRadius: '8px', fontSize: '14px', zIndex: '9999',
       boxShadow: '0 4px 12px rgba(0,0,0,0.3)', animation: 'fadeInUp 0.5s ease-out',
-      maxWidth: '600px', minWidth: '200px', textAlign: 'center', border: '1px solid rgba(255,255,255,0.1)'
+      // left:50% alone limits a fixed box to half the screen: on a phone the text stood in a narrow column
+      width: 'max-content', maxWidth: 'min(600px, calc(100vw - 32px))', boxSizing: 'border-box',
+      minWidth: '200px', textAlign: 'center', border: '1px solid rgba(255,255,255,0.1)'
   });
 
   document.body.appendChild(notification);
@@ -2447,7 +2451,7 @@ function getOrBuildPlayer() {
         // The ?v= stamp matters: /read/css/voice.css is served immutable for a year, so without it a
         // CSS fix would never reach anyone who had already opened the player (issue #20's rule was
         // invisible in the browser because of exactly that). Bump the stamp with the next edit.
-        document.head.insertAdjacentHTML('beforeend', '<link id="voice-css-lazy" rel="stylesheet" href="/read/css/voice.css?v=2026-10-04fit">');
+        document.head.insertAdjacentHTML('beforeend', '<link id="voice-css-lazy" rel="stylesheet" href="/read/css/voice.css?v=2026-10-04fit2">');
     }
 
     if (!playerContainer) {
@@ -2777,10 +2781,12 @@ function paintModeChip() {
   if (!sel || !lb) return;
   // One width for every mode of this language (the widest label): the chip has no slack, and the
   // player does not change width when the mode changes ("Pāḷi" <-> "Trn + Pāḷi")
-  lb.style.minWidth = '';
-  let widest = 0;
-  for (const o of sel.options) { lb.textContent = o.textContent; widest = Math.max(widest, lb.scrollWidth); }
-  if (widest) lb.style.minWidth = widest + 'px';
+  // measured with the font, not the layout: the player is still hidden when it is first painted
+  const c = paintModeChip.c || (paintModeChip.c = document.createElement('canvas').getContext('2d'));
+  const cs = getComputedStyle(lb);
+  c.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;  // the 'font' shorthand reads back empty
+  const widest = Math.max(0, ...[...sel.options].map(o => c.measureText(o.textContent).width));
+  if (widest) lb.style.minWidth = Math.ceil(widest) + 'px';
   lb.textContent = sel.options[sel.selectedIndex]?.textContent || '';
 }
 document.addEventListener('change', e => { if (e.target.id === 'tts-mode-select') paintModeChip(); });
