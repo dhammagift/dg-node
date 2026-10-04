@@ -31,17 +31,13 @@ window.isRu = window.notEn;
 // copy of the site. The secret force_local switch above is unrelated and stays.
 
 // Loading toasts share one corner and come from several modules (settings.js and paliLookup.js both
-// load the dictionary): stack them, and show a message only once if two modules announce the same thing.
+// load the dictionary). Only the newest one shows, always in the same place: stacked, "loaded" appeared
+// above a still-visible "loading" and then dropped down when that one went (owner: it jumps up and down).
 window.dg_restackLoaders = function() {
-    let bottom = 20;
-    const seen = new Set();
-    document.querySelectorAll('.dict-loading-indicator').forEach(el => {
-        const dup = seen.has(el.textContent);
-        seen.add(el.textContent);
-        el.style.display = dup ? 'none' : '';
-        if (dup) return;
-        el.style.bottom = bottom + 'px';
-        bottom += el.offsetHeight + 8;
+    const all = [...document.querySelectorAll('.dict-loading-indicator')];
+    all.forEach((el, i) => {
+        el.style.display = i === all.length - 1 ? '' : 'none';
+        el.style.bottom = '20px';
     });
 };
 (function watchLoaders() {
