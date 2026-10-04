@@ -31,6 +31,9 @@
   }
   // A narrow screen or a big size setting (the page is zoomed): the bar loses its air step by step, then the label, until the five items fit.
   function fit() {
+    // The pill is put back to the start first: left where the previous layout had it (a rotation to portrait: x 800 in a 350 px bar), it
+    // overflowed the bar and read as "the items do not fit", and the label was hidden for good. paint() puts it in place afterwards.
+    pill.style.transform = 'none';
     nav.classList.remove('tight', 'tighter');
     if (nav.scrollWidth <= nav.clientWidth + 1) return;
     nav.classList.add('tight');
@@ -65,8 +68,17 @@
     paint(now); last = now;
   }
   new MutationObserver(function () { sync(true); }).observe(nav, { attributes: true, attributeFilter: ['aria-current'], subtree: true });
-  var lastW = window.innerWidth; // a phone fires resize when its bars slide in and out on a scroll: only a change of the width moves the items, or a running glide would be cut to a jump
-  window.addEventListener('resize', function () { if (window.innerWidth === lastW) return; lastW = window.innerWidth; sync(false); });
+  // A phone fires resize when its bars slide in and out on a scroll: only a change of the width or of the orientation moves the items, or a
+  // running glide would be cut to a jump. A rotation arrives in steps (the width, then the height, then the insets): the pill was measured
+  // on a step in between and stayed off its tab, with the label gone (owner, RAZR): it is measured again once the rotation has settled.
+  var lastW = window.innerWidth, lastO = window.innerWidth > window.innerHeight, settle = 0;
+  window.addEventListener('resize', function () {
+    var o = window.innerWidth > window.innerHeight;
+    if (window.innerWidth === lastW && o === lastO) return;
+    lastW = window.innerWidth; lastO = o;
+    sync(false);
+    clearTimeout(settle); settle = setTimeout(function () { sync(false); }, 250);
+  });
   document.addEventListener('dhamma:languagechange', function () { setTimeout(function () { sync(false); }, 50); });
   window.addEventListener('load', function () { setTimeout(function () { sync(false); }, 60); setTimeout(function () { sync(false); }, 600); });
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { sync(false); });
