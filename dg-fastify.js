@@ -1425,6 +1425,20 @@ app.post('/api/tts/pali', { bodyLimit: 16 * 1024 }, async (req, res) => {
         return res.code(502).send({ error: { message: 'Pali voice is unavailable' } });
     }
 });
+// The Memo page's mp3 download with the DG voice: all lines with silences of any length between them
+// (Google's SSML stops at 10 s). Binary answer (audio/mpeg), passed through as is; limits are the service's.
+app.post('/api/tts/memo', { bodyLimit: 256 * 1024 }, async (req, res) => {
+    if (ttsRateLimited(req.ip)) return res.code(429).send({ error: { message: 'Too many requests, try again shortly' } });
+    const body = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
+    try {
+        const r = await fetch(PALI_TTS_URL.replace(/\/synthesize$/, '/memo'), { method: 'POST', body, signal: AbortSignal.timeout(300000) });
+        return res.code(r.status).header('content-type', r.headers.get('content-type') || 'application/octet-stream')
+            .header('cache-control', 'no-store').send(Buffer.from(await r.arrayBuffer()));
+    } catch (err) {
+        console.error('[pali-tts memo]', err.message);
+        return res.code(502).send({ error: { message: 'Pali voice is unavailable' } });
+    }
+});
 
 // Static mounts below use @fastify/static's array `root` (tries each dir in order, first match
 // wins) — the direct equivalent of Express's "register override dir, then fallback dir on the

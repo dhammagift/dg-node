@@ -1841,16 +1841,23 @@ window.addEventListener('load', () => {
 });
 
 
-async function downloadMemoAudio() {
-    const apiKey = localStorage.getItem('tts_google_key') || window.TRIAL_KEY;
-    if (!apiKey || apiKey.length < 10) {
-        const msg = window.memoLang === 'ru' 
-            ? "Для скачивания аудиофайла требуется активный API-ключ Google TTS." 
-            : "An active Google TTS API key is required to download the audio file.";
-        alert(msg);
-        return;
+function saveMemoMp3(blob, text) {
+    const downloadUrl = URL.createObjectURL(blob);
+    let fileName = "meditation";
+    const cleanText = text.trim().replace(/[\/\\?%*:|"<>.,;!—]/g, '');
+    if (cleanText) {
+        fileName = cleanText.split(/\s+/).slice(0, 4).join('_');
     }
+    const a = document.createElement('a');
+    a.href = downloadUrl;
+    a.download = `${fileName}.mp3`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(downloadUrl);
+}
 
+async function downloadMemoAudio() {
     const btn = document.getElementById('btn_download_audio');
     const originalContent = btn.innerHTML;
     btn.innerHTML = '...';
@@ -1863,15 +1870,6 @@ async function downloadMemoAudio() {
         const endDelay = parseFloat(document.getElementById('ttsEndDelay').value) || 10;
         const soundChoice = document.getElementById('ttsSound').value;
         
-        // Одноразовое сообщение о лимите пауз Google TTS (сохраняется в памяти браузера)
-        if (!localStorage.getItem('googleTTSAlertShown')) {
-            const limitMsg = window.memoLang === 'ru' 
-                ? "Обратите внимание: При сохранении в файл Google TTS не пропускает паузы длительностью более 10 секунд." 
-                : "Please note: When exporting to audiofile Google TTS does not allow pauses longer than 10 seconds.";
-            alert(limitMsg);
-            localStorage.setItem('googleTTSAlertShown', 'true');
-        }
-
         // 1. АВТООПРЕДЕЛЕНИЕ ЯЗЫКА
         let detectedLang = 'en'; 
         if (/[а-яА-ЯёЁ]/.test(text)) detectedLang = 'ru'; 
@@ -1921,6 +1919,43 @@ async function downloadMemoAudio() {
         const segments = text.split(regex).map(s => s.trim()).filter(s => s.length > 0);
         
         if (segments.length === 0) throw new Error(window.memoLang === 'ru' ? "Нет текста для озвучивания." : "No text to synthesize.");
+
+        // The DG voice when it is the one chosen for this text (player settings): one mp3 from the voice
+        // service with pauses of any length; Google below is limited to 10 s pauses and needs a key.
+        const dg = typeof window.dgVoiceFor === 'function' ? window.dgVoiceFor(!isTranslation, detectedLang) : null;
+        if (dg) {
+            const body = JSON.stringify({ segments, voice: dg.voice, rate: dg.rate, delay, end_delay: endDelay,
+                                          sound: soundChoice === 'none' ? '' : soundChoice });
+            let blob = null, lastErr = '';
+            for (const u of dg.urls) {
+                try {
+                    const r = await fetch(u, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body });
+                    if (r.ok) { blob = await r.blob(); break; }
+                    lastErr = ((await r.json().catch(() => ({}))).error || {}).message || ('HTTP ' + r.status);
+                    if (r.status === 413 || r.status === 400) break;  // the text itself is the problem: no point retrying
+                } catch (e) { lastErr = e.message; }
+            }
+            if (!blob) throw new Error(lastErr || 'DG voice is unavailable');
+            saveMemoMp3(blob, text);
+            return;
+        }
+
+        const apiKey = localStorage.getItem('tts_google_key') || window.TRIAL_KEY;
+        if (!apiKey || apiKey.length < 10) {
+            throw new Error(window.memoLang === 'ru'
+                ? "для скачивания голосом Google нужен API-ключ Google TTS (или выберите голос DG в настройках плеера)."
+                : "a Google TTS API key is needed to download with a Google voice (or choose the DG voice in the player settings).");
+        }
+
+        // Одноразовое сообщение о лимите пауз Google TTS (сохраняется в памяти браузера)
+        if (!localStorage.getItem('googleTTSAlertShown')) {
+            const limitMsg = window.memoLang === 'ru' 
+                ? "Обратите внимание: При сохранении в файл Google TTS не пропускает паузы длительностью более 10 секунд." 
+                : "Please note: When exporting to audiofile Google TTS does not allow pauses longer than 10 seconds.";
+            alert(limitMsg);
+            localStorage.setItem('googleTTSAlertShown', 'true');
+        }
+
 
         const url = `https://texttospeech.googleapis.com/v1/text:synthesize?key=${apiKey}`;
         let mp3Chunks = [];
@@ -2006,22 +2041,7 @@ async function downloadMemoAudio() {
         }
 
         // 5. ФОРМИРОВАНИЕ ИМЕНИ ФАЙЛА И СКАЧИВАНИЕ
-        const blob = new Blob(mp3Chunks, { type: 'audio/mp3' });
-        const downloadUrl = URL.createObjectURL(blob);
-        
-        let fileName = "meditation";
-        const cleanText = text.trim().replace(/[\/\\?%*:|"<>.,;!—]/g, ''); 
-        if (cleanText) {
-            fileName = cleanText.split(/\s+/).slice(0, 4).join('_');
-        }
-        
-        const a = document.createElement('a');
-        a.href = downloadUrl;
-        a.download = `${fileName}.mp3`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(downloadUrl);
+        saveMemoMp3(new Blob(mp3Chunks, { type: 'audio/mp3' }), text);
 
     } catch (e) {
         console.error(e);

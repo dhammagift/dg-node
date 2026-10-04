@@ -985,6 +985,18 @@ function setPaliEngine(engine) {
 const DG_PALI_VOICES = [{ id: 'pratham', label: 'pratham ♂ · Piper' },
                         { id: 'dg', label: 'Dhamma.Gift ♂ · beta' }];  // the owner's own fine-tuned voice
 
+// For the Memo page's mp3 download: which DG voice and pace would read this text now (null when the
+// chosen engine for it is not DG), and where the service's /memo is.
+window.dgVoiceFor = function (isPali, lang) {
+  if (isPali) {
+    if (getTtsEngine() !== 'dg') return null;
+    return { voice: dgPaliVoice(), rate: savedRate('pali') / 0.8, urls: DG_TTS_URLS.map(u => u.replace(/\/pali$/, '/memo')) };
+  }
+  const voice = getTrnEngine() === 'dg' ? dgTrnVoice(lang) : null;
+  if (!voice) return null;
+  return { voice, rate: getRateForLang(lang), urls: DG_TTS_URLS.map(u => u.replace(/\/pali$/, '/memo')) };
+};
+
 function dgPaliVoice() {
   const saved = localStorage.getItem('tts_dg_voice_pi');
   return DG_PALI_VOICES.some(v => v.id === saved) ? saved : DG_PALI_VOICES[0].id;
