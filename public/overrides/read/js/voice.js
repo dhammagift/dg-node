@@ -2451,7 +2451,7 @@ function getOrBuildPlayer() {
         // The ?v= stamp matters: /read/css/voice.css is served immutable for a year, so without it a
         // CSS fix would never reach anyone who had already opened the player (issue #20's rule was
         // invisible in the browser because of exactly that). Bump the stamp with the next edit.
-        document.head.insertAdjacentHTML('beforeend', '<link id="voice-css-lazy" rel="stylesheet" href="/read/css/voice.css?v=2026-10-04fit2">');
+        document.head.insertAdjacentHTML('beforeend', '<link id="voice-css-lazy" rel="stylesheet" href="/read/css/voice.css?v=2026-10-04fix2">');
     }
 
     if (!playerContainer) {
@@ -2778,16 +2778,7 @@ document.addEventListener('click', e => {
 // --- Mode chip: a small menu right above it; the hidden select keeps driving playback ---
 function paintModeChip() {
   const sel = document.getElementById('tts-mode-select'), lb = document.getElementById('tts-mode-label');
-  if (!sel || !lb) return;
-  // One width for every mode of this language (the widest label): the chip has no slack, and the
-  // player does not change width when the mode changes ("Pāḷi" <-> "Trn + Pāḷi")
-  // measured with the font, not the layout: the player is still hidden when it is first painted
-  const c = paintModeChip.c || (paintModeChip.c = document.createElement('canvas').getContext('2d'));
-  const cs = getComputedStyle(lb);
-  c.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;  // the 'font' shorthand reads back empty
-  const widest = Math.max(0, ...[...sel.options].map(o => c.measureText(o.textContent).width));
-  if (widest) lb.style.minWidth = Math.ceil(widest) + 'px';
-  lb.textContent = sel.options[sel.selectedIndex]?.textContent || '';
+  if (sel && lb) lb.textContent = sel.options[sel.selectedIndex]?.textContent || '';
 }
 document.addEventListener('change', e => { if (e.target.id === 'tts-mode-select') paintModeChip(); });
 document.addEventListener('click', e => {
