@@ -952,7 +952,13 @@ function setPaliEngine(engine) {
 }
 
 // DG voices on offer for Pali (one for now; the trained voices join this list).
-const DG_PALI_VOICES = [{ id: 'pratham', label: 'pratham ♂ · Piper' }];
+const DG_PALI_VOICES = [{ id: 'pratham', label: 'pratham ♂ · Piper' },
+                        { id: 'dg', label: 'Dhamma.Gift ♂ · beta' }];  // the owner's own fine-tuned voice
+
+function dgPaliVoice() {
+  const saved = localStorage.getItem('tts_dg_voice_pi');
+  return DG_PALI_VOICES.some(v => v.id === saved) ? saved : DG_PALI_VOICES[0].id;
+}
 
 // Raw IAST for the self-hosted voice: drop variant readings in {…} and (…), like cleanTextForTTS does.
 function stripForPaliVoice(text) {
@@ -968,7 +974,9 @@ const DG_TTS_URLS = [window.DG_TTS_URL || 'https://f2.dhamma.gift/api/tts/pali',
 
 async function fetchPaliVoiceAudio(text, uiRate, voice) {
   // Pali: menu 0.8 = the voice's tuned pace; translation voices: 1.0 = their own pace
-  const body = JSON.stringify({ text, rate: voice ? uiRate : uiRate / 0.8, voice: voice || 'pratham' });
+  voice = voice || dgPaliVoice();
+  const isPaliVoice = DG_PALI_VOICES.some(v => v.id === voice);
+  const body = JSON.stringify({ text, rate: isPaliVoice ? uiRate / 0.8 : uiRate, voice });
   let lastError;
   for (const url of DG_TTS_URLS) {
     try {
@@ -2846,7 +2854,8 @@ async function refreshVoiceDropdowns(forceRefresh = false) {
         paliLangSelect.style.display = 'none';
         const sel = freshSelect('google-voice-select-pali');
         sel.style.display = '';
-        sel.innerHTML = DG_PALI_VOICES.map(v => `<option value="${v.id}">${v.label}</option>`).join('');
+        sel.innerHTML = DG_PALI_VOICES.map(v => `<option value="${v.id}" ${v.id === dgPaliVoice() ? 'selected' : ''}>${v.label}</option>`).join('');
+        sel.addEventListener('change', () => localStorage.setItem('tts_dg_voice_pi', sel.value));
     } else if (paliLangSelect && paliVoiceSelect) {
         if (isNativePali) {
             // Теперь включаем сюда и индийские, и китайские для Пали
