@@ -452,7 +452,7 @@ NEW CLASSES EXTRACTED FROM INLINE STYLES
    only what the page's old timer styles set differently. memo.js switches the session timer between
    display:block and none, hence the line-height centring. */
 .voice-player .tts-chips #global-session-timer,
-.voice-player .tts-chips .dummy-ab-timer-container{position:static;top:auto;left:auto;right:auto;width:48px;padding:0 3px;line-height:30px;font-weight:600;text-align:center;border-color:var(--dg-border-strong);color:var(--dg-text);cursor:default;font-variant-numeric:tabular-nums}
+.voice-player .tts-chips .dummy-ab-timer-container{position:static;top:auto;left:auto;right:auto;width:48px;padding:0 3px;border-radius:999px;line-height:30px;font-weight:600;text-align:center;border-color:var(--dg-border-strong);color:var(--dg-text);cursor:default;font-variant-numeric:tabular-nums}
 .tts-chips .dummy-ab-timer-container{visibility:hidden}
 .tts-chips .dummy-ab-timer-container.active{visibility:visible}
 .tts-chips .dummy-ab-timer-container .memo-timer-icon{width:12px;height:12px;margin:0}
