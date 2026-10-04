@@ -2447,7 +2447,7 @@ function getOrBuildPlayer() {
         // The ?v= stamp matters: /read/css/voice.css is served immutable for a year, so without it a
         // CSS fix would never reach anyone who had already opened the player (issue #20's rule was
         // invisible in the browser because of exactly that). Bump the stamp with the next edit.
-        document.head.insertAdjacentHTML('beforeend', '<link id="voice-css-lazy" rel="stylesheet" href="/read/css/voice.css?v=2026-10-04n">');
+        document.head.insertAdjacentHTML('beforeend', '<link id="voice-css-lazy" rel="stylesheet" href="/read/css/voice.css?v=2026-10-04fit">');
     }
 
     if (!playerContainer) {
@@ -2774,7 +2774,14 @@ document.addEventListener('click', e => {
 // --- Mode chip: a small menu right above it; the hidden select keeps driving playback ---
 function paintModeChip() {
   const sel = document.getElementById('tts-mode-select'), lb = document.getElementById('tts-mode-label');
-  if (sel && lb) lb.textContent = sel.options[sel.selectedIndex]?.textContent || '';
+  if (!sel || !lb) return;
+  // One width for every mode of this language (the widest label): the chip has no slack, and the
+  // player does not change width when the mode changes ("Pāḷi" <-> "Trn + Pāḷi")
+  lb.style.minWidth = '';
+  let widest = 0;
+  for (const o of sel.options) { lb.textContent = o.textContent; widest = Math.max(widest, lb.scrollWidth); }
+  if (widest) lb.style.minWidth = widest + 'px';
+  lb.textContent = sel.options[sel.selectedIndex]?.textContent || '';
 }
 document.addEventListener('change', e => { if (e.target.id === 'tts-mode-select') paintModeChip(); });
 document.addEventListener('click', e => {
