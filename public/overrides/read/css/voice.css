@@ -15,99 +15,9 @@
   }
 }
 
-
-/* Универсальный класс для кнопок-иконок в меню Voice */
-.tts-icon-btn {
-    text-decoration: none !important;
-    display: inline-flex !important;
-    align-items: center;
-    justify-content: center;
-    vertical-align: middle;
-    line-height: 0 !important;
-    outline: none;
-    border: none;
-    padding: 2px;
-    transition: opacity 0.2s;
-}
-
-.tts-icon-btn:hover {
-    opacity: 0.7;
-    text-decoration: none !important;
-}
-
-/* Точечное увеличение иконок (шестеренка и т.д.) на 20% */
-.tts-icon-btn img {
-    display: block;
-    margin: 0;
-    transform: scale(1.2); 
-}
-
-/* Убираем стандартные подчеркивания ссылок внутри плеера */
-.voice-player a {
-    text-decoration: none !important;
-}
-
-/* Объединенный стиль для селекторов режима и скорости */
-.tts-mode-select, 
-.tts-rate-select {
-    background: transparent;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    font-size: 14px; 
-    padding: 2px;
-    color: #666;
-    cursor: pointer;
-    margin-bottom: 5px; 
-}
-
-/* Стилизация темной темы для обоих селекторов */
-.dark .tts-mode-select,
-.dark .tts-rate-select {
-    border-color: #555;
-    color: #ccc;
-    background-color: #333;
-}
-
-/* Контейнер для подписи "Speed" */
-.tts-speed-label {
-    font-size: 14px; 
-    color: #888;
-    margin-right: 3px;
-}
-
-.tts-controls {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 15px;
-    margin-bottom: 10px;
-}
-
-.tts-icon-btn.large .tts-main-img {
-    width: 32px;
-    height: 32px;
-}
-
-.tts-footer {
-    margin-top: 8px;
-    font-size: 0.9em;
-}
-
-/* Убираем подчеркивание в любой ситуации */
-.tts-icon-btn, .tts-icon-btn img {
-    text-decoration: none !important;
-    border: none !important;
-}
-
 .voice-dropdown {
     position: relative;
     display: inline-block;
-}
-
-.next-main-button {
-  position: relative; 
-  top: -2px;
-  right: 6px;
 }
 
 .voice-link {
@@ -115,206 +25,6 @@
     display: inline-block;
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
-}
-
-.voice-player {
-    display: block; 
-    visibility: hidden;
-    opacity: 0;
-    position: fixed;
-
-    bottom: 50px; 
-    left: 50%;
-    
-    /* Состояние "Скрыто": смещаем вниз на 120% высоты элемента */
-    transform: translate(-50%, 120%);
-    
-    background: white;
-    padding: 10px; 
-    border: 1px solid #ddd;
-    /* Issue #32: above the home tiles (1081) — they painted over the player — but still under the
-       mega/settings sheet (1083) and the burger drawer (1084/1085), same as the download card.
-       Full stack documented at .dg-tile in search/css/home.css. */
-    z-index: 1082;
-    min-width: 130px;
-    max-width: 90vw;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    border-radius: 24px;
-
-    /* Плавная анимация выезда */
-    transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.4s ease, visibility 0s 0.4s;
-}
-
-.voice-dropdown.active .voice-player {
-    /* Состояние "Показано" */
-    visibility: visible;
-    opacity: 1;
-    
-    /* Поднимаем чуть выше края экрана */
-    transform: translate(-50%, -30px);
-    
-    /* Убираем задержку видимости при появлении */
-    transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.4s ease, visibility 0s;
-}
-
-/* Темная тема */
-.dark .voice-player {
-    background: #333;
-    border-color: #555;
-    color: #fff;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.5);
-}
-
-.player-links {
-    margin-top: 15px;
-}
-
-/* Мобильная адаптация */
-@media (max-width: 768px) {
-    .voice-player {
-        width: 95%;  
-        max-width: 210px; 
-        max-height: 95vh; 
-        overflow-y: auto;
-    }
-    
-    .tts-link {
-        font-size: 0.85em; 
-        position: relative;
-        top: -2px;
-    }
-    .voice-dropdown.active .voice-player {
-         transform: translate(-50%, -20px);
-    }
-}
-
-.close-tts-btn {
-  position: relative; 
-  top: -3px;    
-  cursor: pointer;
-  color: #999;
-  text-decoration: none !important;
-  z-index: 10;
-  font-size: 1.3em; 
-}
-
-.close-tts-btn:hover {
-  opacity: 0.7;
-  color: #333;        
-}
-
-.dark .close-tts-btn {
-  color: #bbb;
-}
-.dark .close-tts-btn:hover {
-  color: #fff;
-}
-
-.tts-icon {
-  display: inline-block;
-}
-
-.tts-icon.backward, .tts-icon.forward {
-  width: 24px; 
-  transform: none; 
-}
-
-.tts-icon.play {
-  width: 45px; 
-  transform: none; 
-}
-
-.tts-icon.forward {
-  position: relative;
-  right:5px;
-}
-
-.tts-mode-select,
-.tts-rate-select {
-  font-size: 16px; 
-}
-
-/* Лейбл точь-в-точь как Scroll и Autoplay */
-.tts-delay-label { 
-    font-size: 16px; 
-    color: #666; 
-    margin: 0; 
-    display: inline-flex; 
-    align-items: center; 
-    justify-content: center;
-    gap: 3px; /* СУЗИЛИ: было 6px, теперь песочные часы ближе к тексту/инпуту */
-    line-height: 1;
-    padding: 2px 4px; /* Немного уменьшили боковые отступы */
-}
-
-.dark .tts-delay-label {
-    color: #ccc;
-}
-
-/* Инпут прозрачный, с цветами как у остального текста */
-.tts-delay-input { 
-    width: 40px; /* СУЗИЛИ: было 44px, чтобы сэкономить место для корзины */
-    height: 26px; 
-    box-sizing: border-box;
-    background: transparent; 
-    border: 1px solid #ccc; 
-    color: #666; 
-    border-radius: 4px; 
-    padding: 0; 
-    margin: 0;
-    font-size: 16px; 
-    text-align: center; 
-    outline: none;
-    -webkit-appearance: none; 
-    appearance: none;
-    box-shadow: none;
-}
-
-.dark .tts-delay-input { 
-    background: #333; 
-    border-color: #555; 
-    color: #ccc; 
-}
-
-/* Контейнер лейбла */
-.tts-checkbox-custom {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
-  font-size: 14px;
-  padding: 2px 6px;
-  color: #666;
-  cursor: pointer;
-  margin-top: 5px;
-  width: auto;
-}
-
-.tts-checkbox-custom input {
-  appearance: checkbox !important;
-  -webkit-appearance: checkbox !important;
-  display: inline-block !important;
-  width: 13px !important;
-  height: 13px !important;
-  margin: 0 6px 0 0 !important;
-  cursor: pointer;
-  vertical-align: middle;
-  border-radius: 4px;
-  color-scheme: light; 
-}
-
-.dark .tts-checkbox-custom {
-  border-color: #555;
-  color: #ccc;
-  background-color: #333;
-}
-
-.dark .tts-checkbox-custom input {
-    color-scheme: dark;
-}
-
-.tts-checkbox-custom input[type="checkbox"] {
-  accent-color: #5a5a5a; 
 }
 
 /* ГРУППОВАЯ ПОДСВЕТКА БЛОКА */
@@ -346,173 +56,6 @@ body[data-theme="dark"] #sutta span[id]:has(.tts-active) {
     display: flow-root;
 }
 
-@media (min-width: 475px) {
-    .voice-dropdown.active .voice-player {
-        transform: translate(-50%, 25px);
-    }
-}
-
-/* Универсальный класс для полей ввода (A-B таймеры) */
-.tts-editable-span { 
-    display: inline-block;
-    box-sizing: border-box;
-    min-width: 46px; /* СУЗИЛИ: было 50px (изначально 42px). Золотая середина для вместимости */
-    background: #eee; 
-    border: 1px solid #ccc; 
-    color: #333; 
-    border-radius: 4px; 
-    padding: 0 2px; 
-    font-size: 13px; 
-    text-align: center; 
-    outline: none;
-    line-height: 21px; 
-    cursor: text;
-    transition: background 0.3s, color 0.3s; 
-}
-
-.dark .tts-editable-span { 
-    background: #333; 
-    border: 1px solid #555; 
-    color: #ccc; 
-}
-
-.refresh-api-btn img, 
-.reset-tts-btn img {
-    pointer-events: none;
-}
-
-
-/* --- ОБНОВЛЕНИЕ СУЩЕСТВУЮЩИХ СЕЛЕКТОРОВ --- */
-
-.tts-main-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    width: 100%;
-    gap: 15px;
-    height: 40px;
-    position: relative; /* Добавлено из JS */
-}
-
-/* =========================================
-   A-B Loop / Voice Memory Styles (Из voice-mem.js)
-   ========================================= */
-
-.memo-app-btn {
-    position: absolute;
-    left: 20px;
-    top: 34px;
-    background: transparent;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    color: #777;
-    font-size: 9px;
-    font-family: sans-serif;
-    font-weight: 700;
-    padding: 2px 4px;
-    cursor: pointer;
-    transition: all 0.3s;
-    display: inline-flex;
-    align-items: center;
-    text-decoration: none;
-    z-index: 10;
-    line-height: 1;
-}
-.memo-app-btn:hover { background: #eee; color: #333; border-color: #bbb; }
-.dark .memo-app-btn { border-color: #555; color: #aaa; }
-.dark .memo-app-btn:hover { background: #444; color: #fff; border-color: #777; }
-
-.ab-loop-toggle-btn {
-    position: absolute;
-    right: 20px; 
-    top: 34px;   
-    background: transparent;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    color: #777;
-    font-size: 9px;
-    font-family: sans-serif;
-    font-weight: 700;
-    padding: 2px 4px;
-    cursor: pointer;
-    transition: all 0.3s;
-    display: inline-flex;
-    align-items: center;
-    gap: 2px;
-    z-index: 10;
-    line-height: 1;
-}
-.ab-loop-toggle-btn:hover { background: #eee; color: #333; border-color: #bbb; }
-.dark .ab-loop-toggle-btn { border-color: #555; color: #aaa; }
-.dark .ab-loop-toggle-btn:hover { background: #444; color: #fff; border-color: #777; }
-
-.ab-loop-toggle-btn.loop-active {
-    color: var(--blue, #3434be);
-    border-color: var(--blue, #3434be);
-    background: rgba(52, 52, 190, 0.05);
-}
-.dark .ab-loop-toggle-btn.loop-active {
-    color: rgb(122, 122, 249);
-    border-color: rgb(122, 122, 249);
-    background: rgba(122, 122, 249, 0.1);
-}
-
-#memorize-panel {
-    width: 100%;
-    box-sizing: border-box;
-    max-height: 0; opacity: 0; overflow: hidden;
-    transition: max-height 0.3s ease, opacity 0.3s ease, margin-top 0.3s ease;
-    border-top: 1px dashed #555;
-    background: transparent;
-    padding: 0 5px;
-}
-#memorize-panel.visible {
-    max-height: 400px; opacity: 1; margin-top: 10px; padding-top: 8px;
-}
-.mem-row { 
-    width: 100%; box-sizing: border-box; 
-    display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; gap: 8px; 
-}
-
-.mem-row-actions {
-    justify-content: space-around; 
-    gap: 5px;
-}
-
-.mem-btn-wrapper { 
-    display: flex; align-items: center; gap: 4px; 
-    flex: 1; min-width: 0; width: 50%;
-}
-.mem-btn-label { color: #aaa; font-size: 11px; flex-shrink: 0; font-weight: 600; }
-
-.mem-pick-btn {
-    flex: 1; min-width: 0; width: 100%; 
-    background: #eee; border: 1px dashed #ccc; color: #555;
-    padding: 4px; border-radius: 4px; font-size: 11px; cursor: pointer;
-    transition: all 0.2s; text-align: left; 
-    overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
-    user-select: none; -webkit-user-select: none; 
-    display: block; 
-}
-
-.mem-pick-btn span {
-    display: block;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    width: 58px;
-}
-
-.dark .mem-pick-btn { background: #333; border-color: #555; color: #aaa; }
-
-.mem-pick-btn.picking { border-color: var(--blue, #3434be); background: rgba(52, 52, 190, 0.1); animation: memPulseLight 1.5s infinite; color: #333; }
-.mem-pick-btn.set { border-color: var(--blue, #3434be); border-style: solid; color: #000; }
-.mem-status { font-size: 11px; color: var(--blue, #3434be); text-align: center; margin-top: 2px; min-height: 14px; }
-
-.dark .mem-pick-btn.picking { border-color: rgb(122, 122, 249); background: rgba(122, 122, 249, 0.15); animation: memPulseDark 1.5s infinite; color: #fff; }
-.dark .mem-pick-btn.set { border-color: rgb(122, 122, 249); color: #fff; }
-.dark .mem-status { color: rgb(122, 122, 249); }
-
 .memorize-highlight { 
     border-left: 3px solid var(--blue, #3434be) !important; 
     padding-left: 5px !important; 
@@ -535,368 +78,230 @@ body[data-theme="dark"] #sutta span[id]:has(.tts-active) {
     border-left: 3px solid rgb(122, 122, 249) !important;
 }
 
-.mem-label { font-size: 11px; color: #aaa; margin: 0; display: flex; align-items: center; gap: 5px; }
-
-.mem-clear-btn {
-    background: transparent; border: none; font-size: 14px; cursor: pointer; padding: 2px;
-    display: flex; align-items: center; justify-content: center; opacity: 0.7; transition: 0.2s;
+/* =========================================================================================
+   TTS player v4 (owner's design "TTS-плеер v4"). Colours, motion and sizes are the design's,
+   scoped to the player and its floating windows (.tts-win live on <body>), so they do not depend
+   on the page having home.css tokens. Class names carry a tts- prefix: the design's .row/.chip/
+   .play/.pan would collide with Bootstrap and page styles.
+   ========================================================================================= */
+#voice-player-container,
+.tts-win {
+  --dg-surface: #ffffff;
+  --dg-surface-hover: #f5f4f1;
+  --dg-surface-active: #eae8e2;
+  --dg-border: #e7e5de;
+  --dg-border-strong: #d7d4c9;
+  --dg-text: #1b1d19;
+  --dg-text-2: #5c6058;
+  --dg-text-muted: #6e716a;
+  --dg-accent: #149c7c;
+  --dg-accent-ink: #0f7c63;
+  --dg-accent-bg: #dff3ec;
+  --dg-match: #a8341c;
+  --dg-tblue: #3434be;
+  --dg-ease: cubic-bezier(0.22, 0.68, 0, 1);
 }
-.mem-clear-btn:hover { opacity: 1; transform: scale(1.1); }
-
-@keyframes memPulseLight { 0% { box-shadow: 0 0 0 0 rgba(52, 52, 190, 0.4); } 70% { box-shadow: 0 0 0 4px rgba(52, 52, 190, 0); } 100% { box-shadow: 0 0 0 0 rgba(52, 52, 190, 0); } }
-@keyframes memPulseDark { 0% { box-shadow: 0 0 0 0 rgba(122, 122, 249, 0.4); } 70% { box-shadow: 0 0 0 4px rgba(122, 122, 249, 0); } 100% { box-shadow: 0 0 0 0 rgba(122, 122, 249, 0); } }
-
-.ab-btn-timer-text {
-    display: none; 
-    margin-left: 2px; 
-    font-variant-numeric: tabular-nums;
-}
-.mem-timer-icon {
-    margin-right: 4px; 
-    vertical-align: text-bottom;
-}
-
-
-/* =========================================
-   ИЗВЛЕЧЕННЫЕ СТИЛИ (Из JS функции getPlayerHtml)
-   ========================================= */
-
-.tts-container-inner { text-align: center; }
-
-.tts-settings-btn { left: 15px; }
-.close-tts-btn { right: 15px; }
-
-.tts-top-btn {
-    position: static !important;
-    color: #555;
-    font-size: 24px;
-    text-decoration: none !important;
-    line-height: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: color 0.2s;
-}
-
-.tts-top-btn:hover { color: #000; }
-.dark .tts-top-btn { color: #bbb; }
-.dark .tts-top-btn:hover { color: #fff; }
-
-.tts-controls-row {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 10px;
-    margin-top: 5px;
-    margin-bottom: 5px;
+.dark #voice-player-container,
+.dark .tts-win,
+[data-theme="dark"] #voice-player-container,
+[data-theme="dark"] .tts-win {
+  --dg-surface: #191919;
+  --dg-surface-hover: #202020;
+  --dg-surface-active: #2a2a2a;
+  --dg-border: #2c2c2c;
+  --dg-border-strong: #3b3b3b;
+  --dg-text: rgb(221, 221, 221);
+  --dg-text-2: #a8a8a8;
+  --dg-text-muted: #7c7c7c;
+  --dg-accent: #136857;
+  --dg-accent-ink: #09967a;
+  --dg-accent-bg: #12241f;
+  --dg-match: #ff6b45;
+  --dg-tblue: #8f8fe8;
 }
 
-#tts-settings-panel {
-    max-height: 0;
-    opacity: 0;
-    overflow: hidden;
-    transition: max-height 0.4s ease, opacity 0.4s ease, margin-top 0.4s ease;
-    margin-top: 0;
+/* Icons: the site's own Font Awesome svgs through a mask, so they take the text colour */
+.tts-gi{display:inline-block;width:16px;height:16px;background:currentColor;-webkit-mask:var(--u) center/contain no-repeat;mask:var(--u) center/contain no-repeat;flex-shrink:0}
+
+/* ── Player ── */
+.voice-player{position:fixed;left:50%;bottom:24px;transform:translate(-50%,140%);opacity:0;visibility:hidden;pointer-events:none;width:272px;max-width:calc(100vw - 16px);box-sizing:border-box;overflow-x:hidden;background:var(--dg-surface);color:var(--dg-text);border:1px solid var(--dg-border-strong);border-radius:22px;box-shadow:0 18px 48px rgba(0,0,0,.28),0 2px 6px rgba(0,0,0,.12);font:14px/1.3 Lato,system-ui,sans-serif;text-align:left;
+  /* Issue #32: above the home tiles (1081), under the mega/settings sheet (1083) and the burger drawer */
+  z-index:1082;transition:transform .4s var(--dg-ease),opacity .3s,visibility 0s .4s;max-height:calc(100vh - 32px);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none}
+.voice-player::-webkit-scrollbar{display:none}
+.voice-player *,.tts-win *{box-sizing:border-box;font-family:inherit}  /* the page sets a font on * */
+.voice-player label{font-size:inherit;margin:0}
+.voice-dropdown.active .voice-player{transform:translate(-50%,0);opacity:1;visibility:visible;pointer-events:auto;transition:transform .4s var(--dg-ease),opacity .3s,visibility 0s}
+.dark .voice-player,[data-theme="dark"] .voice-player{background:#1f1f1f}
+.voice-player a{text-decoration:none!important}
+/* page link colours (.dark a is purple) must not reach the player's anchors */
+#voice-player-container a.tts-ib,#voice-player-container a.tts-play{color:var(--dg-text-2)}
+#voice-player-container a.tts-ib:hover,#voice-player-container a.tts-play:hover{color:var(--dg-text)}
+#voice-player-container .tts-top>a.tts-ib{color:var(--dg-text-muted)}
+#voice-player-container a.tts-chip{color:var(--dg-text)}
+#voice-player-container .tts-links a{color:var(--dg-text-muted)}
+#voice-player-container .tts-links a:hover,#voice-player-container .tts-links a#tts-advanced-toggle-btn{color:var(--dg-text)}
+/* Issue #20: the offline download card sits in the same bottom-centre spot; the player steps above it */
+body:has(#dgDlCard.show) .voice-player{bottom:calc(24px + var(--dg-dl-card-h, 120px) + 10px)}
+
+.tts-top{position:relative;display:flex;justify-content:center;padding:14px 40px 2px}
+.tts-top>#tts-settings-toggle,.tts-top>.close-tts-btn{position:absolute;top:8px;width:32px;height:32px;color:var(--dg-text-muted)}
+.tts-top>#tts-settings-toggle{left:8px}
+.tts-top>.close-tts-btn{right:8px;font-size:22px}
+.tts-top>#tts-settings-toggle .tts-gi{width:15px;height:15px}
+/* gear turns while the settings are open; × spins on hover and press */
+#tts-settings-toggle .tts-gi{transition:transform .4s var(--dg-ease)}
+#tts-settings-toggle:hover .tts-gi{transform:rotate(60deg)}
+#tts-settings-toggle[aria-expanded="true"] .tts-gi{transform:rotate(90deg)}
+#tts-settings-toggle[aria-expanded="true"]:hover .tts-gi{transform:rotate(150deg)}
+#tts-settings-toggle:active .tts-gi{transform:rotate(45deg)}
+.tts-ib.close-tts-btn{transition:transform .3s var(--dg-ease),background .15s,color .15s}
+.tts-ib.close-tts-btn:hover{transform:rotate(90deg)}
+.tts-ib.close-tts-btn:active{transform:rotate(180deg) scale(.9)}
+.tts-ib{width:40px;height:40px;border:none;background:none;border-radius:50%;display:grid;place-items:center;color:var(--dg-text-2);cursor:pointer;padding:0;transition:background .15s,color .15s}
+.tts-ib:hover{background:var(--dg-surface-hover);color:var(--dg-text)}
+.tts-ib[aria-expanded="true"]{color:var(--dg-accent-ink);background:var(--dg-accent-bg)}
+.tts-ib .tts-gi{width:18px;height:18px}
+.tts-ib.close-tts-btn{font-size:24px;line-height:1;font-weight:300}
+/* Transport: grey glyphs, no fill */
+.tts-tr{display:flex;align-items:center;justify-content:center;gap:4px}
+.tts-tr .tts-ib .tts-gi{width:22px;height:22px}
+.tts-play{width:60px;height:60px;border:none;background:none;border-radius:50%;color:var(--dg-text-2);display:grid;place-items:center;cursor:pointer;padding:0;transition:color .15s,transform .15s}
+.tts-play:hover{color:var(--dg-text)}
+.tts-play:active{transform:scale(.94)}
+/* Play ⇄ Pause: a real outline morph. The triangle is cut into two halves with as many points as
+   the two pause bars, and CSS moves one shape into the other (.on = playing). */
+.tts-play .pp{width:40px;height:40px;overflow:visible}
+.tts-play .pp path{fill:currentColor;stroke:currentColor;stroke-width:1.6;stroke-linejoin:round;transition:d .34s var(--dg-ease)}
+.tts-play.on .pp-l{d:path("M6 4L10 4L10 20L6 20Z")}
+.tts-play.on .pp-r{d:path("M14 4L18 4L18 20L14 20Z")}
+
+/* Quick chips: memo, mode, speed, A-B */
+.tts-chips{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;gap:4px;padding:6px 10px 14px}
+.tts-chip{height:32px;border:1px solid var(--dg-border-strong);background:var(--dg-surface);color:var(--dg-text);border-radius:999px;padding:0 7px;white-space:nowrap;flex-shrink:0;font:600 12px/1 Lato,system-ui,sans-serif;display:inline-flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;text-decoration:none;transition:background .15s,border-color .15s}
+.tts-chip:hover{background:var(--dg-surface-hover);color:var(--dg-text)}
+.tts-chip[aria-pressed="true"],.tts-chip[aria-expanded="true"]{border-color:var(--dg-accent);color:var(--dg-accent-ink);background:var(--dg-accent-bg)}
+.tts-chip.loop-active{border-color:var(--dg-tblue);color:var(--dg-tblue)}
+#tts-mode-chip{justify-content:space-between;min-width:0}
+#tts-mode-label{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.tts-chip .dd{font-size:9px;color:var(--dg-text-muted)}
+.tts-chip:focus{outline:none}
+.tts-chip:focus-visible,.tts-ib:focus-visible,.tts-play:focus-visible,.tts-vbtn:focus-visible{outline:2px solid var(--dg-accent-ink);outline-offset:2px}
+.ab-btn-timer-text{display:none;font-variant-numeric:tabular-nums}
+
+/* Panels: one open at a time */
+.tts-pan{display:none;border-top:1px solid var(--dg-border);padding:6px 0 10px}
+.tts-pan.visible{display:block}
+.tts-grp{padding:8px 16px 2px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--dg-text-muted)}
+.tts-row{display:flex;align-items:center;gap:10px;min-height:44px;padding:4px 14px;margin:0;cursor:default}
+label.tts-row{cursor:pointer}
+.tts-row .lb{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tts-row .lb small{display:block;font-size:11px;color:var(--dg-text-muted);white-space:normal}
+.tts-kbd{font:11px monospace;color:var(--dg-text-muted);border:1px solid var(--dg-border-strong);border-radius:4px;padding:0 4px;margin-left:4px}
+/* Switch */
+.tts-sw{position:relative;width:38px;height:22px;flex-shrink:0}
+.tts-sw input{position:absolute;inset:0;width:100%;height:100%;opacity:0;margin:0;cursor:pointer;z-index:1}
+.tts-sw span{position:absolute;inset:0;border-radius:999px;background:var(--dg-surface-active);border:1px solid var(--dg-border-strong);transition:background .2s}
+.tts-sw span::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.3);transition:transform .2s var(--dg-ease)}
+.tts-sw input:checked+span{background:var(--dg-accent);border-color:var(--dg-accent)}
+.tts-sw input:checked+span::after{transform:translateX(16px)}
+.tts-sw input:focus-visible+span{outline:2px solid var(--dg-accent);outline-offset:2px}
+/* Stepper; the value can also be typed (the buttons will not reach a 180 s meditation pause) */
+.tts-stp{position:relative;flex-shrink:0;display:inline-flex;align-items:center;border:1px solid var(--dg-border-strong);border-radius:999px;overflow:hidden}
+.tts-stp button{width:26px;height:28px;border:none;background:none;color:var(--dg-text-2);font-size:16px;cursor:pointer;padding:0;transition:transform .12s,background .15s,color .15s}
+.tts-stp button:active{transform:scale(.85)}
+.tts-stp button:hover{background:var(--dg-surface-hover);color:var(--dg-text)}
+.tts-stp .stp-v{display:inline-block;min-width:30px;height:28px;border:none;background:none;color:var(--dg-text);text-align:right;font:13px/28px Lato,system-ui,sans-serif;font-variant-numeric:tabular-nums;padding:0;outline:none;cursor:text;white-space:nowrap}
+.tts-stp .stp-v:focus{background:var(--dg-surface-hover)}
+.tts-stp .stp-v.solo{text-align:center}
+.tts-stp .u{font-size:12px;color:var(--dg-text-muted);padding:0 2px 0 1px}
+/* Voices */
+.tts-vrow{display:grid;grid-template-columns:1fr 32px;align-items:center;gap:2px 4px;padding:4px 14px}
+.tts-vrow .vk{grid-column:1/-1;color:var(--dg-text-muted);font-size:11px}
+.tts-vsel{display:none!important}
+.tts-vbtn{flex:1;min-width:0;height:38px;border:1px solid var(--dg-border-strong);background:var(--dg-surface);color:var(--dg-text);border-radius:10px;display:flex;align-items:center;gap:6px;padding:0 10px;cursor:pointer;font:14px Lato,system-ui,sans-serif;text-align:left}
+.tts-vbtn:hover{background:var(--dg-surface-hover)}
+.tts-vtag{flex-shrink:0;font:700 10px/1 system-ui,sans-serif;padding:3px 5px;border-radius:4px;background:var(--dg-surface-active);color:var(--dg-text-2)}
+.tts-vtag.dg{background:var(--dg-accent-bg);color:var(--dg-accent-ink)}
+.tts-vnm{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tts-vch{color:var(--dg-text-muted);font-size:16px}
+.tts-vtry{width:32px;height:32px}
+.tts-vtry .tts-gi{width:12px;height:12px}
+.tts-vtry.on{color:var(--dg-accent-ink);background:var(--dg-accent-bg)}
+.tts-vtry:disabled{opacity:.35;cursor:default;background:none}
+/* Google key: shown only when Google reads Pāḷi or the translation */
+.tts-key{display:flex;align-items:center;gap:4px;padding:6px 16px 2px}
+#tts-advanced-settings:not([data-pali-engine="google"]):not([data-trn-engine="google"]) .tts-key{display:none}
+.tts-key input{flex:1;min-width:0;height:34px;border:1px solid var(--dg-border-strong);background:var(--dg-surface);color:var(--dg-text);border-radius:10px;padding:0 10px;font:12px system-ui,sans-serif}
+.tts-key .tts-ib{width:34px;height:34px}
+.tts-key .tts-ib .tts-gi{width:14px;height:14px}
+/* ↻ turns a little on hover and a full turn on click; the bin wobbles */
+.tts-ib.spin .tts-gi,.tts-ib.danger .tts-gi{transition:transform .35s var(--dg-ease)}
+.tts-ib.spin:hover .tts-gi{transform:rotate(60deg)}
+.tts-ib.danger:hover{color:var(--dg-match)}
+.tts-ib.danger:hover .tts-gi{transform:rotate(-12deg) translateY(-1px)}
+.tts-ib.spin:active,.tts-ib.danger:active{transform:scale(.9)}
+.tts-sub-h{display:flex;align-items:center;gap:4px;padding:2px 10px 6px;font-weight:700}
+.tts-sub-h .tts-ib{width:34px;height:34px;font-size:20px}
+.tts-links{display:flex;gap:2px;justify-content:center;align-items:center;flex-wrap:nowrap;padding:10px 16px 4px;border-top:1px solid var(--dg-border);margin-top:8px}
+.tts-links a{font-size:12px;color:var(--dg-text-muted);white-space:nowrap;padding:4px 6px;border-radius:6px}
+.tts-links a#tts-advanced-toggle-btn{display:inline-flex;align-items:center;gap:5px;color:var(--dg-text);font-weight:700;border:1px solid var(--dg-border-strong);border-radius:999px;padding:4px 10px;margin-right:auto}
+.tts-links a#tts-advanced-toggle-btn .tts-gi{width:11px;height:11px;color:var(--dg-accent-ink)}
+.tts-links a#tts-advanced-toggle-btn:hover{border-color:var(--dg-accent-ink)}
+.tts-links a:hover{color:var(--dg-text);background:var(--dg-surface-hover)}
+#audio-file-link-placeholder{display:none}
+/* A-B */
+.tts-abp{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:10px 16px 4px}
+.mem-pick-btn{height:52px;min-width:0;border:1px dashed var(--dg-border-strong);border-radius:12px;background:none;color:var(--dg-text-muted);cursor:pointer;text-align:left;padding:6px 10px;font:13px Lato,system-ui,sans-serif;display:flex;flex-direction:column;justify-content:center;gap:2px;user-select:none;-webkit-user-select:none}
+.mem-pick-btn b{font-size:11px;color:var(--dg-text-2)}
+.mem-pick-btn span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.mem-pick-btn.set{border-style:solid;border-color:var(--dg-tblue);color:var(--dg-text)}
+.mem-pick-btn.picking{border-color:var(--dg-tblue);color:var(--dg-tblue);animation:ttsPulse 1.4s infinite}
+@keyframes ttsPulse{0%{box-shadow:0 0 0 0 color-mix(in oklch,var(--dg-tblue) 40%,transparent)}70%{box-shadow:0 0 0 6px transparent}100%{box-shadow:0 0 0 0 transparent}}
+.mem-status{padding:4px 16px 0;font-size:11px;color:var(--dg-text-muted);min-height:0}
+
+@media (max-width:768px){
+  .voice-player{width:236px}
+  .tts-chips{gap:3px;padding:6px 8px 12px}
+  .tts-chip{padding:0 7px;font-size:11px;height:30px}
+  .tts-tr{gap:2px}
+  .tts-row{padding:4px 10px}
+  .tts-vrow{padding:4px 10px}
 }
 
-#tts-settings-panel.visible {
-    max-height: 800px;
-    opacity: 1;
-    margin-top: 10px;
-    padding-top: 10px;
-    border-top: 1px solid #444;
-}
-
-#tts-basic-settings {
-    overflow: hidden;
-    transition: max-height 0.4s ease, opacity 0.4s ease;
-    max-height: 200px;
-    opacity: 1;
-}
-
-#tts-settings-icon { transition: transform 0.3s ease; }
-
-.tts-toggles-row {
-    display: flex;
-    justify-content: center;
-    gap: 12px;
-    margin-bottom: 5px;
-}
-
-.tts-delay-row {
-    display: flex;
-    justify-content: center;
-    margin-bottom: 8px;
-}
-
-.tts-delay-label img { vertical-align: text-bottom; }
-
-.tts-links-row {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 5px;
-    margin-top: 8px;
-    flex-wrap: wrap;
-}
-
-#audio-file-link-placeholder { display: none; }
-.tts-help-link { text-decoration: none; }
-
-/* --- Advanced Settings Styles --- */
-#tts-advanced-settings {
-    max-height: 0;
-    opacity: 0;
-    overflow: hidden;
-    transition: max-height 0.4s ease, opacity 0.4s ease;
-    margin-top: 0;
-    border-top: 1px solid #555;
-    padding-top: 0;
-}
-
-#tts-advanced-settings.visible {
-    max-height: 500px;
-    opacity: 1;
-    margin-top: 8px;
-    padding-top: 8px;
-}
-
-.extra-settings-toggle {
-    background: none;
-    border: none;
-    color: #777;
-    font-size: 11px;
-    width: 100%;
-    cursor: pointer;
-    margin-top: 8px;
-    padding: 4px 0;
-    transition: color 0.2s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 5px;
-}
-
-.extra-settings-toggle:hover { color: #ccc; }
-
-.extra-settings-toggle.advanced-btn {
-    width: auto;
-    margin: 0;
-    padding: 0;
-    display: inline-flex;
-}
-
-.tts-icon { filter: invert(0.5); }
-.close-tts-btn { transform: translate(-5px, 0px); }
-
-#google-api-key-input {
-    width: 100px;
-    background: #eee;
-    border: 1px solid #ccc;
-    color: #333;
-    border-radius: 4px;
-    padding: 2px 4px;
-    font-size: 11px;
-    transition: background 0.3s, color 0.3s;
-}
-
-.dark #google-api-key-input {
-    background: #333;
-    border: 1px solid #555;
-    color: #ccc;
-}
-
-.refresh-api-btn, .reset-tts-btn {
-    background: none;
-    border: none;
-    cursor: pointer;
-    font-size: 14px;
-    padding: 0 4px;
-    transition: color 0.2s;
-    display: inline-flex;
-    align-items: center;
-}
-.refresh-api-btn { color: #999; }
-.refresh-api-btn:hover { color: #fff; }
-.reset-tts-btn { color: #777; }
-.reset-tts-btn:hover { color: #ff5555; }
-
-.api-key-row {
-    display: flex; 
-    align-items: center; 
-    justify-content: center;
-    gap: 5px;
-    margin-top: 5px;
-}
-
-#google-voice-settings-container {
-    display: none;
-    margin-top: 8px;
-}
-
-.google-voice-select-group { margin-bottom: 8px; }
-
-.google-voice-label { font-size: 11px; color: #aaa; margin-bottom: 0; }
-.tts-native-label { margin: 0; font-size: 10px; }
-
-.google-voice-dropdown {
-    width: 100%; 
-    max-width: 150px; 
-    margin-bottom: 4px; 
-    font-size: 11px; 
-    border: 1px solid #ccc;
-    background: #eee; 
-    color: #333; 
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    overflow: hidden;
-}
-
-.dark .google-voice-dropdown {
-    background: #333; 
-    color: #ccc; 
-    border: 1px solid #555;
-}
-
-/* Issue #20: the offline download card lives in the same bottom-centre spot, so while it is on
-   screen the player steps above it. The height comes from the card itself (offline-status.js), so
-   a collapsed bar and a full card both clear it. */
-body:has(#dgDlCard.show) .voice-player {
-    bottom: calc(50px + var(--dg-dl-card-h, 120px) + 10px);
-}
-
-/* Speed: a button like the old dropdown; it opens one slider for the language being read */
-#tts-rate-btn {
-    min-width: 3.6em;
-    height: 30px;
-    line-height: 1;
-}
-/* Floating speed window (on <body>, above the speed button), like YouTube's */
-.tts-rate-pop {
-    position: fixed;
-    z-index: 100000;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-    width: 260px;
-    max-width: calc(100vw - 24px);
-    box-sizing: border-box;
-    padding: 12px 14px 10px;
-    margin: 0;
-    background: #fff;
-    border: 0;
-    border-radius: 14px;
-    box-shadow: 0 6px 24px rgba(0, 0, 0, .22);
-    cursor: default;
-    color: #444;
-    font-size: 14px;
-}
-.tts-rate-pop[hidden] {
-    display: none;
-}
-.tts-rate-title {
-    font-size: 20px;
-    font-weight: 600;
-    line-height: 1.1;
-    font-variant-numeric: tabular-nums;
-}
-.tts-rate-kind {
-    font-size: 12px;
-    color: #888;
-    margin-top: -4px;
-}
-.tts-rate-line {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    width: 100%;
-}
-.tts-rate-slider {
-    flex: 1;
-    min-width: 0;
-    margin: 0;
-    accent-color: var(--bs-primary, #0d6efd);
-    cursor: pointer;
-}
-.tts-rate-step {
-    flex: none;
-    width: 30px;
-    height: 30px;
-    border-radius: 50%;
-    border: 0;
-    background: rgba(0, 0, 0, .07);
-    color: inherit;
-    font-size: 18px;
-    line-height: 1;
-    cursor: pointer;
-}
-.tts-rate-presets {
-    display: flex;
-    gap: 4px;
-    width: 100%;
-    justify-content: space-between;
-    align-items: flex-start;
-}
-.tts-rate-chip {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 2px;
-}
-.tts-rate-normal {
-    font-size: 11px;
-    color: #888;
-    text-align: center;
-    white-space: nowrap;
-}
-.tts-rate-preset {
-    padding: 5px 0;
-    border: 0;
-    border-radius: 999px;
-    background: rgba(0, 0, 0, .06);
-    color: inherit;
-    font-size: 13px;
-    cursor: pointer;
-}
-.tts-rate-preset.active {
-    background: var(--bs-primary, #0d6efd);
-    color: #fff;
-}
-.dark .tts-rate-pop {
-    background: #2b2b2b;
-    color: #ddd;
-    box-shadow: 0 6px 24px rgba(0, 0, 0, .6);
-}
-.dark .tts-rate-step,
-.dark .tts-rate-preset {
-    background: rgba(255, 255, 255, .1);
-}
-.dark .tts-rate-preset.active {
-    background: var(--bs-primary, #0d6efd);
-    color: #fff;
-}
-
-/* Voice settings: each language picks engine -> language -> voice; the Google key shows only when
-   Google is chosen for Pali or for the translation */
-#tts-advanced-settings:not([data-pali-engine="google"]):not([data-trn-engine="google"]) .api-key-block {
-    display: none;
-}
-.tts-engine-dropdown {
-    font-weight: 600;
-}
-/* The settings area never sets the player's width (width:0 + min-width:100% = take the width the
-   player already has from its button row, as before): the DG note wraps, voice lists stack */
-#tts-settings-panel {
-    width: 0;
-    min-width: 100%;
-}
-#tts-advanced-settings .google-voice-dropdown {
-    display: block;
-    width: 100%;
-    max-width: 100%;
-}
-.api-key-block {
-    margin-top: 10px;
-}
+/* ── Floating windows (speed, mode menu, voice picker): on <body>, above the player ── */
+.tts-win{position:fixed;left:0;top:0;z-index:100000;width:300px;max-width:calc(100vw - 16px);background:var(--dg-surface);color:var(--dg-text);border:1px solid var(--dg-border-strong);border-radius:20px;box-shadow:0 18px 48px rgba(0,0,0,.35);padding:10px;transform:translateY(10px) scale(.96);transform-origin:50% 100%;opacity:0;visibility:hidden;pointer-events:none;transition:opacity .2s ease,transform .28s var(--dg-ease),visibility 0s .28s;overflow-y:auto;font:14px Lato,system-ui,sans-serif;text-align:left}
+.dark .tts-win,[data-theme="dark"] .tts-win{background:#242424}
+.tts-win.on{opacity:1;visibility:visible;pointer-events:auto;transform:none;transition:opacity .2s ease,transform .32s var(--dg-ease),visibility 0s}
+.tts-win.menu{width:180px;padding:4px;transform-origin:20% 100%}
+.tts-wh{display:flex;align-items:center;gap:4px;padding:2px 2px 8px;border-bottom:1px solid var(--dg-border);margin-bottom:6px}
+.tts-wh .t{flex:1;font-weight:700;font-size:14px;padding-left:6px}
+.tts-wh .t small{font-weight:400;color:var(--dg-text-muted)}
+.tts-wh .tts-ib{width:32px;height:32px}
+.tts-wh [data-vback]{font-size:20px}
+.tts-ib.close-tts-win{font-size:24px;line-height:1;font-weight:300;transition:transform .3s var(--dg-ease),background .15s,color .15s}
+.tts-ib.close-tts-win:hover{transform:rotate(90deg)}
+.tts-ib.close-tts-win:active{transform:rotate(180deg) scale(.9)}
+/* speed */
+.tts-rv{text-align:center;font:700 30px/1.1 Lato,system-ui,sans-serif;font-variant-numeric:tabular-nums;margin-top:6px;transition:color .2s}
+.tts-rm{text-align:center;font-size:12px;color:var(--dg-text-muted);margin:2px 0 12px}
+.tts-rl{display:flex;align-items:center;gap:10px;padding:0 4px}
+.tts-rl input{flex:1;min-width:0;-webkit-appearance:none;appearance:none;height:6px;border-radius:999px;background:linear-gradient(to right,var(--dg-accent) 0 var(--p,20%),var(--dg-surface-active) var(--p,20%) 100%);cursor:pointer;outline:none;margin:0}
+.tts-rl input::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:#fff;border:2px solid var(--dg-accent);box-shadow:0 1px 4px rgba(0,0,0,.3);transition:transform .15s}
+.tts-rl input::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:#fff;border:2px solid var(--dg-accent);box-shadow:0 1px 4px rgba(0,0,0,.3)}
+.tts-rl input:active::-webkit-slider-thumb{transform:scale(1.15)}
+.tts-rl .tts-ib:active,.tts-rc button:active{transform:scale(.92)}
+.tts-rl .tts-ib{width:36px;height:36px;border:1px solid var(--dg-border-strong);font-size:18px}
+.tts-rc{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;padding:12px 4px 18px}
+.tts-rc button{transition:background .2s,border-color .2s,color .2s,transform .12s;position:relative;height:34px;border:1px solid var(--dg-border-strong);border-radius:999px;background:none;color:var(--dg-text);font:13px Lato,system-ui,sans-serif;cursor:pointer;padding:0}
+.tts-rc button:hover{background:var(--dg-surface-hover)}
+.tts-rc button[aria-pressed="true"]{background:var(--dg-accent);border-color:var(--dg-accent);color:#fff}
+.tts-rc small{position:absolute;left:0;right:0;top:calc(100% + 3px);font-size:10px;color:var(--dg-text-muted);white-space:nowrap}
+/* menus */
+.tts-mi{display:flex;align-items:center;gap:8px;width:100%;min-height:42px;background:none;border:none;border-radius:10px;padding:6px 10px;color:inherit;font:inherit;text-align:left;cursor:pointer}
+.tts-mi:hover{background:var(--dg-surface-hover)}
+.tts-mi .ck{width:14px;flex-shrink:0;color:var(--dg-accent-ink);font-weight:700}
+.tts-mi .ml{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tts-mi .mm{font-size:11px;color:var(--dg-text-muted)}
+.tts-mi .ar{color:var(--dg-text-muted)}
+.tts-mi .eg{display:block;font-size:11px;color:var(--dg-text-muted);white-space:normal}
+.tts-mi .kb{font:11px monospace;color:var(--dg-text-muted)}

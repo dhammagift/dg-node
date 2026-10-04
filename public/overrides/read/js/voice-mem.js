@@ -2,10 +2,14 @@
  * A-B Loop Repeat Module (Универсальный цикл)
  * Работает поверх window.ttsAPI из voice.js
  */
-window.isRu = window.location.pathname.includes('/r/') || 
+// The site sets window.isRu from the chosen UI language (siteLanguage, SPA switches); the URL guess is
+// only for old pages that have no such setting, and must not overwrite it (it turned the RU player English).
+if (typeof window.isRu === 'undefined') {
+    window.isRu = window.location.pathname.includes('/r/') || 
                      window.location.pathname.includes('/ru/') || 
                      window.location.pathname.includes('/ml/') || 
                      window.location.pathname.includes('/mt/');
+}
 (function() {
     // --- Локализация ---
     const L = {
@@ -16,7 +20,23 @@ window.isRu = window.location.pathname.includes('/r/') ||
         interval: window.isRu ? 'сек' : 'sec', 
         playing: window.isRu ? 'Проигрывание... (осталось: ' : 'Playing... (left: ',
         paused: window.isRu ? 'Пауза... Старт через ' : 'Paused... Next in ',
-        abLoopTitle: 'AB'
+        abLoopTitle: 'AB',
+        startA: window.isRu ? 'Начало A' : 'Start A',
+        endB: window.isRu ? 'Конец B' : 'End B',
+        pick: window.isRu ? 'выберите строку…' : 'pick a line…',
+        hintA: window.isRu ? 'Нажмите строку в тексте — она станет точкой A' : 'Tap a line in the text to set point A',
+        hintB: window.isRu ? 'Теперь строку для конца — точки B' : 'Now a line for the end — point B',
+        abPause: window.isRu ? 'Пауза м-у повторами' : 'Pause between loops',
+        repeats: window.isRu ? 'Повторов' : 'Repeats',
+        clear: window.isRu ? 'Сбросить A-B' : 'Clear A-B'
+    };
+    // 'pause' look while playing: voice.js morphs the play triangle (.on on the button)
+    const setPlayIcon = (on) => document.querySelectorAll('.play-main-button').forEach(b => b.classList.toggle('on', on));
+    // Panels of the player open one at a time with a smooth height change (voice.js); plain toggle as fallback
+    const showPanel = (open) => {
+        const panel = document.getElementById('memorize-panel');
+        if (window.ttsMorph && window.showTtsPanel) window.ttsMorph(() => window.showTtsPanel(open ? 'memorize-panel' : null));
+        else if (panel) panel.classList.toggle('visible', open);
     };
 
     // --- Состояние модуля ---
@@ -58,66 +78,45 @@ window.isRu = window.location.pathname.includes('/r/') ||
 
     function injectUI() {
         setInterval(() => {
-            const mainRow = document.querySelector('.tts-main-row');
-            if (mainRow && !document.getElementById('ab-loop-toggle-btn')) {
+            const chips = document.querySelector('#voice-player-container .tts-chips');
+            if (chips && !document.getElementById('ab-loop-toggle-btn')) {
                 
                 const memoBtn = document.createElement('a');
                 memoBtn.id = 'memo-app-btn';
                 // Добавляем класс memo-button, чтобы common.js её поймал!
-                memoBtn.className = 'memo-app-btn memo-button'; 
-                memoBtn.title = 'Открыть в Memo';
-                memoBtn.innerHTML = 'memo';
+                memoBtn.className = 'tts-chip memo-app-btn memo-button'; 
+                memoBtn.title = window.isRu ? 'Memo — заучивание' : 'Memo — memorize';
+                memoBtn.innerHTML = 'Memo';
                 
                 memoBtn.href = window.isRu ? '/ru/memo/' : '/memo/';
                 
-                mainRow.appendChild(memoBtn);
+                chips.prepend(memoBtn);
  
 
                 const abBtn = document.createElement('button');
+                abBtn.type = 'button';
                 abBtn.id = 'ab-loop-toggle-btn';
-                abBtn.className = `ab-loop-toggle-btn ${memState.lineA ? 'loop-active' : ''}`;
-                abBtn.title = 'A-B Loop Menu';
-                abBtn.innerHTML = `
-                    ${L.abLoopTitle} 
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 2.1l4 4-4 4"/><path d="M3 12.2v-2a4 4 0 0 1 4-4h12.8M7 21.9l-4-4 4-4"/><path d="M21 11.8v2a4 4 0 0 1-4 4H4.2"/></svg>
-                    <span id="ab-btn-timer" class="ab-btn-timer-text"></span>
-                `;
-                mainRow.appendChild(abBtn);
+                abBtn.className = `tts-chip ab-loop-toggle-btn ${memState.lineA ? 'loop-active' : ''}`;
+                abBtn.title = window.isRu ? 'Повтор отрывка A-B' : 'A-B loop';
+                abBtn.setAttribute('aria-expanded', String(memState.isPanelOpen));
+                abBtn.innerHTML = `${L.abLoopTitle}<span id="ab-btn-timer" class="ab-btn-timer-text"></span>`;
+                chips.appendChild(abBtn);
 
                 const panel = document.createElement('div');
                 panel.id = 'memorize-panel';
+                panel.className = 'tts-pan';
                 if (memState.isPanelOpen) panel.classList.add('visible');
                 
                 panel.innerHTML = `
-                    <div class="mem-row">
-                        <div class="mem-btn-wrapper">
-                            <span class="mem-btn-label">${L.a}</span>
-                            <button id="mem-btn-a" class="mem-pick-btn" title="${L.titlePick}"><span>${L.notSet}</span></button>
-                        </div>
-                        <div class="mem-btn-wrapper">
-                            <span class="mem-btn-label">${L.b}</span>
-                            <button id="mem-btn-b" class="mem-pick-btn" title="${L.titlePick}"><span>${L.notSet}</span></button>
-                        </div>
-                    </div>
-                    
-                    <div class="mem-row mem-row-actions">
-                        <label class="mem-label">
-                            <img src="/assets/svg/hourglass-regular-full.svg" width="14" height="14" alt="timer" class="mem-timer-icon">
-                            <span id="mem-interval" class="tts-editable-span" contenteditable="true" inputmode="decimal" spellcheck="false">${memState.intervalSeconds}</span>
-                            ${L.interval}
-                        </label>
-
-                        <label class="mem-label" title="0 = Бесконечно">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 2.1l4 4-4 4"/><path d="M3 12.2v-2a4 4 0 0 1 4-4h12.8M7 21.9l-4-4 4-4"/><path d="M21 11.8v2a4 4 0 0 1-4 4H4.2"/></svg> 
-                            <span id="mem-repeat-times" class="tts-editable-span" contenteditable="true" inputmode="numeric" spellcheck="false">${memState.repsInput}</span>
-                        </label>
-                        <button id="mem-clear-btn" class="mem-clear-btn" title="Сбросить цикл">️
-                            <img src="/assets/svg/trash-can-regular-full.svg" width="16" height="16" alt="Reset">
-                        </button>
+                    <div class="tts-abp">
+                        <button type="button" id="mem-btn-a" class="mem-pick-btn" title="${L.titlePick}"></button>
+                        <button type="button" id="mem-btn-b" class="mem-pick-btn" title="${L.titlePick}"></button>
                     </div>
                     <div id="mem-status" class="mem-status"></div>
+                    <div class="tts-row"><span class="lb">${L.abPause}</span><span class="tts-stp"><button type="button" data-stp="mem-interval" data-d="-1" aria-label="−">−</button><span id="mem-interval" class="stp-v" contenteditable="true" inputmode="decimal" spellcheck="false">${memState.intervalSeconds}</span><span class="u">${L.interval}</span><button type="button" data-stp="mem-interval" data-d="1" aria-label="+">+</button></span></div>
+                    <div class="tts-row"><span class="lb">${L.repeats}</span><span class="tts-stp" title="0 = ∞"><button type="button" data-stp="mem-repeat-times" data-d="-1" aria-label="−">−</button><span id="mem-repeat-times" class="stp-v solo" data-inf data-max="999" contenteditable="true" inputmode="numeric" spellcheck="false">${memState.repsInput}</span><button type="button" data-stp="mem-repeat-times" data-d="1" aria-label="+">+</button></span><button type="button" id="mem-clear-btn" class="tts-ib danger mem-clear-btn" title="${L.clear}"><i class="tts-gi" style="--u:url('/assets/svg/trash-can-regular-full.svg')"></i></button></div>
                 `;
-                mainRow.parentNode.insertBefore(panel, mainRow.nextSibling);
+                chips.parentNode.appendChild(panel);
 
                 updateUI();
                 updateABTimerDisplay();
@@ -334,8 +333,7 @@ for (let i = state.playlist.length - 1; i >= 0; i--) {
                         state.speaking = true;
                         state.paused = false;
                         
-                        const imgs = document.querySelectorAll('.play-main-button img');
-                        imgs.forEach(img => img.src = '/assets/svg/pause-grey.svg');
+                        setPlayIcon(true);
 
                         const statusEl = document.getElementById('mem-status');
                         if (statusEl) statusEl.innerText = `${L.playing}${memState.repsLeft === Infinity ? '∞' : memState.repsLeft})`;
@@ -362,6 +360,7 @@ for (let i = state.playlist.length - 1; i >= 0; i--) {
 
             if (e.target.closest('#mem-clear-btn')) {
                 e.preventDefault();
+                if (window.ttsShakeIcon) window.ttsShakeIcon(e.target.closest('#mem-clear-btn'));
                 clearLineAction('ALL', true);
                 return;
             }
@@ -376,23 +375,7 @@ for (let i = state.playlist.length - 1; i >= 0; i--) {
                 const panel = document.getElementById('memorize-panel');
                 if (!panel) return;
                 
-                const settingsPanel = document.getElementById('tts-settings-panel');
-                if (settingsPanel && settingsPanel.classList.contains('visible')) {
-                    settingsPanel.classList.remove('visible');
-                    const icon = document.getElementById('tts-settings-icon');
-                    if (icon) icon.style.transform = 'rotate(0deg)';
-                    
-                    const advSettings = document.getElementById('tts-advanced-settings');
-                    if (advSettings) advSettings.classList.remove('visible');
-                    
-                    const basicPanel = document.getElementById('tts-basic-settings');
-                    if (basicPanel) {
-                        basicPanel.style.maxHeight = '200px';
-                        basicPanel.style.opacity = '1';
-                    }
-                }
-
-                panel.classList.toggle('visible');
+                showPanel(!panel.classList.contains('visible'));
                 memState.isPanelOpen = panel.classList.contains('visible'); 
                 
                 updateABTimerDisplay(); 
@@ -510,7 +493,7 @@ for (let i = state.playlist.length - 1; i >= 0; i--) {
             
             memState.isPanelOpen = false;
             const panel = document.getElementById('memorize-panel');
-            if (panel) panel.classList.remove('visible');
+            if (panel && panel.classList.contains('visible')) showPanel(false);
             
         } else {
             setLine(line, null, null);
@@ -604,11 +587,11 @@ for (let i = state.playlist.length - 1; i >= 0; i--) {
         const btnB = document.getElementById('mem-btn-b');
         if (!btnA || !btnB) return;
 
-        const dispA = memState.lineA ? (memState.snippetA || memState.lineA.split(':').pop()) : L.notSet;
-        const dispB = memState.lineB ? (memState.snippetB || memState.lineB.split(':').pop()) : L.notSet;
+        const dispA = memState.lineA ? (memState.snippetA || memState.lineA.split(':').pop()) : (memState.pickMode === 'A' ? L.pick : L.notSet);
+        const dispB = memState.lineB ? (memState.snippetB || memState.lineB.split(':').pop()) : (memState.pickMode === 'B' ? L.pick : L.notSet);
 
-        btnA.innerHTML = `<span>${dispA}</span>`;
-        btnB.innerHTML = `<span>${dispB}</span>`;
+        btnA.innerHTML = `<b>${L.startA}</b><span>${dispA}</span>`;
+        btnB.innerHTML = `<b>${L.endB}</b><span>${dispB}</span>`;
 
         btnA.className = `mem-pick-btn ${memState.pickMode === 'A' ? 'picking' : ''} ${memState.lineA ? 'set' : ''}`;
         btnB.className = `mem-pick-btn ${memState.pickMode === 'B' ? 'picking' : ''} ${memState.lineB ? 'set' : ''}`;
@@ -621,7 +604,7 @@ for (let i = state.playlist.length - 1; i >= 0; i--) {
 
         if (!memState.isActive) {
             const statusEl = document.getElementById('mem-status');
-            if (statusEl) statusEl.innerText = '';
+            if (statusEl) statusEl.innerText = memState.pickMode === 'A' ? L.hintA : memState.pickMode === 'B' ? L.hintB : '';
         }
         highlightRange();
     }
@@ -645,8 +628,7 @@ for (let i = state.playlist.length - 1; i >= 0; i--) {
                 const playBtn = document.querySelector('.play-main-button');
                 if (playBtn) playBtn.click();
             } else {
-                const imgs = document.querySelectorAll('.play-main-button img');
-                imgs.forEach(img => img.src = '/assets/svg/play-grey.svg');
+                setPlayIcon(false);
             }
         }
         
@@ -666,8 +648,7 @@ for (let i = state.playlist.length - 1; i >= 0; i--) {
         const statusEl = document.getElementById('mem-status');
         if (statusEl) statusEl.innerText = `${L.playing}${memState.repsLeft === Infinity ? '∞' : memState.repsLeft})`;
         
-        const imgs = document.querySelectorAll('.play-main-button img');
-        imgs.forEach(img => img.src = '/assets/svg/pause-grey.svg');
+        setPlayIcon(true);
             
         window.ttsAPI.playRange(memState.lineA, targetB);
     }
@@ -725,8 +706,7 @@ for (let i = state.playlist.length - 1; i >= 0; i--) {
             if (statusEl) statusEl.innerText = `${L.paused}${timeStr}`;
             updateABTimerDisplay();
             
-            const imgs = document.querySelectorAll('.play-main-button img');
-            imgs.forEach(img => img.src = '/assets/svg/pause-grey.svg');
+            setPlayIcon(true);
         };
 
         tick(); 

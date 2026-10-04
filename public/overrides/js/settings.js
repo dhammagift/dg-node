@@ -284,7 +284,7 @@ window.addEventListener('suttaRenderedCentral', () => {
         const scriptVoice = document.createElement('script');
         // ?v= matters: /read/js is served immutable for a year, so an unstamped URL meant a fix in the
         // player (or in the CSS it lazily appends) stayed invisible in already-visited browsers.
-        scriptVoice.src = "/read/js/voice.js?v=2026-10-04a";
+        scriptVoice.src = "/read/js/voice.js?v=2026-10-04v4";
         
         scriptVoice.onload = () => {
             // ---> ИСПРАВЛЕНИЕ: Блокируем загрузку A-B цикла для приложения Memo <---
@@ -305,7 +305,7 @@ window.addEventListener('suttaRenderedCentral', () => {
 
             // 3. Затем voice-mem.js (он зависит от window.ttsAPI из voice.js)
             const scriptMem = document.createElement('script');
-            scriptMem.src = "/read/js/voice-mem.js";
+            scriptMem.src = "/read/js/voice-mem.js?v=2026-10-04v4";
             
             scriptMem.onload = () => {
                 window.isVoiceScriptLoaded = true;
@@ -574,6 +574,7 @@ document.addEventListener("click", function (e) {
         !e.target.closest(".voice-player") &&
         !e.target.closest(".tts-mode-select") &&
         !e.target.closest(".tts-rate-select") &&
+        !e.target.closest(".tts-win") &&                   // floating windows of the TTS player (on <body>)
         !e.target.closest("#tts-scroll-toggle") && 
         !e.target.closest(".dynamic-tts-btn") &&
         // ДОБАВЛЕННЫЕ ИСКЛЮЧЕНИЯ: сохраняем активный TTS для меню и модалок
@@ -1098,6 +1099,8 @@ function shouldIgnoreKeyEvent() {
 
 window.addEventListener("keydown", (event) => {
     if (event.key === 'Escape' || event.code === 'Escape') {
+        // A floating window of the TTS player (speed, mode, voice) takes the first Esc itself (voice.js)
+        if (document.querySelector('.tts-win.on')) return;
 
         // ==========================================
         // ПРИОРИТЕТ 1: ПОДСКАЗКИ (Hints)

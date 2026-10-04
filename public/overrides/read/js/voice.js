@@ -4,10 +4,15 @@ const TRIAL_BLOCK_KEY = 'tts_block_trial_key';
 
 // --- Утилиты ---
 
-window.isRu = window.location.pathname.includes('/r/') || 
+// The site sets window.isRu from the chosen UI language (settings.js, SPA switches); the URL guess is
+// only for pages without it, and must not overwrite it: the SPA serves Russian at /mn1?lang=ru, so the
+// path said "English" and the player came up in English on the Russian site.
+if (typeof window.isRu === 'undefined') {
+  window.isRu = window.location.pathname.includes('/r/') || 
                      window.location.pathname.includes('/ru/') || 
                      window.location.pathname.includes('/ml/') || 
                      window.location.pathname.includes('/mt/');
+}
 (async function loadTrialKey() {
     // 0. LEGACY CHECK: Если это старая страница, мы просто не грузим ключ.
     // Функция isLegacyPage() "поднимется" (hoisting), поэтому её можно вызвать здесь.
@@ -314,7 +319,7 @@ function activeRateKind() {
 }
 
 function formatRate(v, digits) {
-  return (digits ? v.toFixed(digits) : String(Math.round(v * 100) / 100)) + 'x';
+  return (digits ? v.toFixed(digits) : String(Math.round(v * 100) / 100)) + '×';
 }
 
 // Points the speed button and slider at one language; storage may also have changed from another
@@ -326,7 +331,6 @@ function markActiveRate(isPali) {
   const slider = document.getElementById('tts-rate-slider');
   if (btn) {
     btn.textContent = formatRate(v);
-    btn.style.borderStyle = isPali ? '' : 'dashed';
     btn.title = (isPali ? (window.isRu ? 'Скорость Пали' : 'Pāḷi speed') : (window.isRu ? 'Скорость перевода' : 'Translation speed'))
       + ' · − / = / R';
   }
@@ -337,18 +341,17 @@ function markActiveRate(isPali) {
   }
   showRatePopValue(v);
   const kindLabel = document.getElementById('tts-rate-kind');
-  if (kindLabel) kindLabel.textContent = isPali ? (window.isRu ? 'Пали' : 'Pāḷi') : (window.isRu ? 'Перевод' : 'Translation');
+  if (kindLabel) kindLabel.textContent = '· ' + (isPali ? (window.isRu ? 'Пали' : 'Pāḷi') : (window.isRu ? 'Перевод' : 'Translation'));
   const presets = document.getElementById('tts-rate-presets');
-  const presetsId = kind + ':' + r.def;  // the Pali set depends on the engine's default
+  const presetsId = kind + ':' + r.def + ':' + window.isRu;  // the Pali set depends on the engine's default
   if (presets && presets.dataset.kind !== presetsId) {
     presets.dataset.kind = presetsId;
     const normal = window.isRu ? 'обычная' : 'normal';
-    presets.innerHTML = r.presets.map(p => `<span class="tts-rate-chip">
-        <button type="button" class="tts-rate-preset" data-rate="${p}">${p}</button>
-        ${p === r.def ? `<span class="tts-rate-normal">${normal}</span>` : ''}
-      </span>`).join('');
+    presets.style.gridTemplateColumns = `repeat(${r.presets.length},1fr)`;
+    presets.innerHTML = r.presets.map(p =>
+      `<button type="button" class="tts-rate-preset" data-rate="${p}">${p}${p === r.def ? `<small>${normal}</small>` : ''}</button>`).join('');
   }
-  presets?.querySelectorAll('.tts-rate-preset').forEach(b => b.classList.toggle('active', Math.abs(+b.dataset.rate - v) < 0.001));
+  presets?.querySelectorAll('.tts-rate-preset').forEach(b => b.setAttribute('aria-pressed', String(Math.abs(+b.dataset.rate - v) < 0.001)));
 }
 
 // The speed popup lives on <body>, floating above the speed button: inside the player it was
@@ -356,40 +359,66 @@ function markActiveRate(isPali) {
 function ensureRatePop() {
   let pop = document.getElementById('tts-rate-pop');
   if (pop) return pop;
+  const t = ttsUiText();
   document.body.insertAdjacentHTML('beforeend', `
-    <div id="tts-rate-pop" class="tts-rate-pop tts-rate-select" role="dialog" hidden>
-      <span id="tts-rate-title" class="tts-rate-title"></span>
-      <span id="tts-rate-kind" class="tts-rate-kind"></span>
-      <span class="tts-rate-line">
-        <button type="button" class="tts-rate-step" data-step="-1" aria-label="slower">−</button>
+    <div id="tts-rate-pop" class="tts-win tts-rate-select" role="dialog" aria-label="${t.speed}">
+      <div class="tts-wh"><span class="t"><span data-t="speed">${t.speed}</span> <small id="tts-rate-kind"></small></span><button type="button" class="tts-ib close-tts-win" title="Esc">×</button></div>
+      <div id="tts-rate-title" class="tts-rv"></div>
+      <div class="tts-rm" data-t="speedSep">${t.speedSep}</div>
+      <div class="tts-rl">
+        <button type="button" class="tts-ib tts-rate-step" data-step="-1" title="− (−)">−</button>
         <input type="range" id="tts-rate-slider" class="tts-rate-slider" aria-label="speed">
-        <button type="button" class="tts-rate-step" data-step="1" aria-label="faster">+</button>
-      </span>
-      <span id="tts-rate-presets" class="tts-rate-presets"></span>
+        <button type="button" class="tts-ib tts-rate-step" data-step="1" title="+ (=)">+</button>
+      </div>
+      <div id="tts-rate-presets" class="tts-rc"></div>
     </div>`);
   return document.getElementById('tts-rate-pop');
 }
 
-function placeRatePop(pop, btn) {
-  const gap = 8, margin = 12;
-  // An ancestor may scale (page zoom / font-size setting) or transform (dark theme) the page, so
-  // position:fixed coordinates are not viewport pixels: probe where (0,0) lands and at what scale.
-  pop.style.left = '0px';
-  pop.style.top = '0px';
-  const p0 = pop.getBoundingClientRect();
-  const scale = p0.width / pop.offsetWidth || 1;
-  const w = p0.width, h = p0.height, b = btn.getBoundingClientRect();
-  const player = (btn.closest('.voice-player') || btn).getBoundingClientRect();  // centred on the player
-  const left = Math.max(margin, Math.min(player.left + player.width / 2 - w / 2, window.innerWidth - w - margin));
-  let top = b.top - h - gap;                       // above the button: the player sits at the bottom
-  if (top < margin) top = Math.min(b.bottom + gap, window.innerHeight - h - margin);
-  pop.style.left = (left - p0.left) / scale + 'px';
-  pop.style.top = (top - p0.top) / scale + 'px';
+// --- Floating windows (speed, mode menu, voice picker), design v4: they fade and rise in, one at a time ---
+function closeTtsWins() {
+  // closing the voice picker without choosing (×, Esc, a click outside, another window) puts it back
+  if (ttsVoiceWin.lang && !ttsVoiceWin.picked) restoreVoiceWin();
+  document.querySelectorAll('.tts-win.on').forEach(w => w.classList.remove('on'));
+  document.querySelectorAll('#tts-rate-btn, #tts-mode-chip').forEach(b => b.setAttribute('aria-expanded', 'false'));
+  ttsVoiceWin.lang = null;
+}
+
+// An ancestor may scale (page zoom / font-size setting) or transform (dark theme) the page, so
+// position:fixed coordinates are not viewport pixels: probe where (0,0) lands and at what scale
+// (with the opening transform off, or the probe is 4% short). where(w, h) -> viewport {left, top}.
+function placeTtsWin(win, where) {
+  win.style.maxHeight = Math.min(440, window.innerHeight - 16) + 'px';
+  const transition = win.style.transition;
+  win.style.transition = 'none';
+  win.style.transform = 'none';
+  win.style.left = '0px';
+  win.style.top = '0px';
+  const p0 = win.getBoundingClientRect();
+  const scale = p0.width / win.offsetWidth || 1;
+  const { left, top } = where(p0.width, p0.height);
+  win.style.left = (left - p0.left) / scale + 'px';
+  win.style.top = (top - p0.top) / scale + 'px';
+  win.style.transform = '';
+  win.offsetHeight;  // commit the closed pose before the transition comes back
+  win.style.transition = transition;
+}
+
+// Over the player, centred on it and covering its top edge, never off screen
+function overPlayer(w, h) {
+  const p = document.querySelector('#voice-player-container .voice-player')?.getBoundingClientRect()
+    || { left: window.innerWidth / 2, width: 0, top: window.innerHeight };
+  return {
+    left: Math.max(8, Math.min(window.innerWidth - 8 - w, p.left + p.width / 2 - w / 2)),
+    top: Math.max(8, Math.min(window.innerHeight - h - 8, p.top - h + 80))
+  };
 }
 
 function showRatePopValue(v) {
   const title = document.getElementById('tts-rate-title');
   if (title) title.textContent = formatRate(v, 2);
+  const slider = document.getElementById('tts-rate-slider');
+  if (slider) slider.style.setProperty('--p', ((v - slider.min) / (slider.max - slider.min) * 100) + '%');
 }
 
 // Every speed control (-/+, presets, keys) just moves the slider and fires its change event,
@@ -504,11 +533,9 @@ function cleanTextForTTS(text) {
 }
 
 
+// 'pause' = playing: the play triangle morphs into the pause bars (CSS on .tts-play.on)
 function setButtonIcon(type) {
-  const allImgs = document.querySelectorAll('.play-main-button img');
-  allImgs.forEach(img => {
-    img.src = (type === 'pause') ? '/assets/svg/pause-grey.svg' : '/assets/svg/play-grey.svg';
-  });
+  document.querySelectorAll('.play-main-button').forEach(b => b.classList.toggle('on', type === 'pause'));
 }
 
 function resetUI() {
@@ -1810,38 +1837,9 @@ async function handleSuttaClick(e) {
 
   if (e.target.closest('#tts-settings-toggle')) {
     e.preventDefault();
-    const panel = document.getElementById('tts-settings-panel');
-    const icon = document.getElementById('tts-settings-icon');
-    const abPanel = document.getElementById('memorize-panel');
-    
-    let wasAbPanelOpen = false;
-    if (abPanel && abPanel.classList.contains('visible')) {
-        wasAbPanelOpen = true;
-        abPanel.classList.remove('visible'); 
-    }
-
-    if (panel) {
-        panel.classList.toggle('visible');
-        if (panel.classList.contains('visible')) {
-            if (icon) icon.style.transform = 'rotate(90deg)';
-        } else {
-            if (icon) icon.style.transform = 'rotate(0deg)';
-            
-            const advSettings = document.getElementById('tts-advanced-settings');
-            if (advSettings) advSettings.classList.remove('visible');
-            
-            const basicPanel = document.getElementById('tts-basic-settings');
-            if (basicPanel) {
-                basicPanel.style.maxHeight = '200px';
-                basicPanel.style.opacity = '1';
-            }
-            
-            const delayLabel = document.querySelector('.tts-delay-label')?.parentElement;
-            if (delayLabel) {
-                delayLabel.style.display = 'flex';
-            }
-        }
-    }
+    // the gear closes whichever settings level is open (settings or voice settings), else opens settings
+    const open = ['tts-settings-panel', 'tts-advanced-settings'].some(id => document.getElementById(id)?.classList.contains('visible'));
+    ttsMorph(() => showTtsPanel(open ? null : 'tts-settings-panel'));
     return;
   }
 
@@ -2121,6 +2119,10 @@ window.refreshTtsLanguage = function () {
   if (!modeSelect) return;
   const labels = ttsModeLabels();
   for (const o of modeSelect.options) if (labels[o.value]) o.textContent = labels[o.value];
+  paintModeChip();
+  const t = ttsUiText();
+  document.querySelectorAll('#voice-player-container [data-t], .tts-win [data-t]').forEach(el => { if (t[el.dataset.t]) el.textContent = t[el.dataset.t]; });
+  closeTtsWins();
   refreshVoiceDropdowns();
 };
 
@@ -2212,9 +2214,11 @@ async function startPlayback(container, mode, slug, startIndex = 0) {
 
       // Issue #37: one single hint must cover both paths at once - Google voices online
       // (free key, optional) and the system-voice setup needed offline.
+      // DG voice (our own Piper voices) reads by default and needs no key; Google and the device's
+      // voices are the alternatives in ⚙ → Voice settings.
       const message = window.isRu 
-          ? `<b>Голоса Google:</b> так пали читается в сети; если понравится, можно <a href="${searchUrlRu}" target="_blank" style="${linkStyle}">получить свой ключ</a> бесплатно.${offlineHint()}` 
-          : `<b>Google voices:</b> this is how Pāḷi is read online; if you like it, you can <a href="${searchUrlEn}" target="_blank" style="${linkStyle}">get your own key</a> for free.${offlineHint()}`;
+          ? `<b>Голос DG:</b> пали и перевод читают наши бесплатные голоса. Другие — Google (<a href="${searchUrlRu}" target="_blank" style="${linkStyle}">свой ключ</a>) или голоса устройства — в ⚙ → Voice settings.${offlineHint()}` 
+          : `<b>DG voice:</b> Pāḷi and the translation are read by our own free voices. Others — Google (<a href="${searchUrlEn}" target="_blank" style="${linkStyle}">your own key</a>) or your device's — in ⚙ → Voice settings.${offlineHint()}`;
 
       showVoiceHint("TTS:", message, PALI_ALERT_KEY);
   }
@@ -2294,143 +2298,108 @@ function getPlayerHtml() {
 
   const modeLabels = ttsModeLabels();
 
-  // Объект с переводами интерфейса
-  const t = {
-    settings: window.isRu ? "Настройки" : "Settings",
-    scroll: window.isRu ? "Скролл" : "Scroll",
-    autoplay: window.isRu ? "Автостарт" : "Autoplay",
-    delay: window.isRu ? "Задержка" : "Delay",
-    sec: window.isRu ? "сек" : "sec",
-    paliVoice: window.isRu ? "Голос Пали:" : "Pāḷi Voice:",
-    trnVoice: window.isRu ? "Голос Перевода:" : "Trn Voice:",
-    native: window.isRu ? "Нативный" : "Native",
-    speedPali: window.isRu ? "Скорость (Пали)" : "Speed (Pali)",
-    speedTrn: window.isRu ? "Скорость (Перевод)" : "Speed (Translation)",
-    delayTitle: window.isRu ? "Пауза между фразами (секунды)" : "Pause between phrases (seconds)",
-    apiKeyTitle: window.isRu ? "Введите API-ключ Google Cloud TTS" : "Enter Google Cloud TTS API Key for premium voices",
-    refreshVoices: window.isRu ? "Обновить список" : "Refresh Voice List",
-    resetTts: window.isRu ? "Полный сброс (очистить данные)" : "Full Reset (Clear Data)",
-    engine: window.isRu ? "Голос" : "Voice",
-    engineDg: window.isRu ? "Голос DG" : "DG voice",
-    engineNative: window.isRu ? "Голос ОС" : "OS voice",
-    engineSettings: window.isRu ? "Настройки голоса" : "Voice settings",
-
-    help: window.isRu ? "Помощь" : "Help"
-  };
+  const t = ttsUiText();
+  const gi = (icon) => `<i class="tts-gi" style="--u:url('/assets/svg/${icon}')"></i>`;
+  const voiceRow = (l, label) => `
+          <div class="google-voice-select-group tts-vrow${l === 'pi' ? ' tts-pali-voice-group' : ''}" data-l="${l}">
+              <span class="vk" data-t="${l === 'pi' ? 'pali' : 'trn'}">${label}</span>
+              <button type="button" class="tts-vbtn" title="${t.engine}"></button>
+              <button type="button" class="tts-ib tts-vtry" title="${t.tryVoice}">${gi('play.svg')}</button>
+              <div id="${l === 'pi' ? 'pali' : 'trn'}-google-dropdowns" class="tts-vsel">
+                  <select id="tts-engine-${l === 'pi' ? 'pali' : 'trn'}" class="google-voice-dropdown tts-engine-dropdown">
+                    <option value="dg" ${(l === 'pi' ? engine : trnEngine) === 'dg' ? 'selected' : ''}>${t.engineDg}</option>
+                    <option value="google" ${(l === 'pi' ? engine : trnEngine) === 'google' ? 'selected' : ''}>Google Cloud</option>
+                    <option value="native" ${(l === 'pi' ? engine : trnEngine) === 'native' ? 'selected' : ''}>${t.engineNative}</option>
+                  </select>
+                  <select id="google-lang-select-${l === 'pi' ? 'pali' : 'trn'}" class="google-voice-dropdown"></select>
+                  <select id="google-voice-select-${l === 'pi' ? 'pali' : 'trn'}" class="google-voice-dropdown"></select>
+              </div>
+          </div>`;
 
   return `
     <div class="tts-container-inner">
-       <div class="tts-main-row">
-        <a href="javascript:void(0)" id="tts-settings-toggle" class="tts-top-btn tts-settings-btn" title="${t.settings}">
-            <svg id="tts-settings-icon" viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-                <path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.07,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.43-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/>
-            </svg>
-        </a>
-
-        <div class="tts-controls-row">
-            <a href="javascript:void(0)" title="← ↑" class="prev-main-button tts-icon-btn">
-                <img src="/assets/svg/backward-step.svg" class="tts-icon backward" width="20">
-            </a>
-            <a href="javascript:void(0)" title="Space" class="play-main-button tts-icon-btn large">
-                <img src="/assets/svg/play-grey.svg" class="tts-icon play" width="34">
-            </a>
-            <a href="javascript:void(0)" title="→ ↓" class="next-main-button tts-icon-btn">
-                <img src="/assets/svg/forward-step.svg" class="tts-icon forward" width="20">
-            </a>
+      <div class="tts-main-row tts-top">
+        <a href="javascript:void(0)" id="tts-settings-toggle" class="tts-ib" aria-expanded="false" title="${t.settings}">${gi('gear.svg')}</a>
+        <div class="tts-controls-row tts-tr">
+          <a href="javascript:void(0)" title="← ↑" class="prev-main-button tts-ib">${gi('backward-step.svg')}</a>
+          <a href="javascript:void(0)" title="Space" class="play-main-button tts-play"><svg class="pp" viewBox="0 0 24 24" aria-hidden="true"><path class="pp-l" d="M6 4L13 7.9L13 16.1L6 20Z"/><path class="pp-r" d="M13 7.9L20 12L20 12L13 16.1Z"/></svg></a>
+          <a href="javascript:void(0)" title="→ ↓" class="next-main-button tts-ib">${gi('forward-step.svg')}</a>
         </div>
+        <a href="javascript:void(0)" title="Esc" class="tts-ib close-tts-btn">&times;</a>
+      </div>
 
-        <a href="javascript:void(0)" title="Esc" class="tts-top-btn close-tts-btn">&times;</a>
-    </div>
-    
-    <div id="tts-settings-panel">
-          <div id="tts-basic-settings">
-              <select title="Num Key (1-4)" id="tts-mode-select" class="tts-mode-select">
-                ${Object.entries(modeLabels).map(([val, label]) =>
-                  `<option value="${val}" ${savedMode === val ? 'selected' : ''}>${label}</option>`
-                ).join('')}
-              </select>
+      <div class="tts-chips">
+        <select id="tts-mode-select" class="tts-mode-select" hidden>
+          ${Object.entries(modeLabels).map(([val, label]) =>
+            `<option value="${val}" ${savedMode === val ? 'selected' : ''}>${label}</option>`
+          ).join('')}
+        </select>
+        <button type="button" class="tts-chip" id="tts-mode-chip" aria-expanded="false" title="${t.modeTitle}"><span id="tts-mode-label">${modeLabels[savedMode] || ''}</span><span class="dd">▾</span></button>
+        <button type="button" id="tts-rate-btn" class="tts-chip tts-rate-select" aria-expanded="false">${formatRate(savedRate(savedMode === 'pi' ? 'pali' : 'trn'))}</button>
+      </div>
 
-              <button type="button" id="tts-rate-btn" class="tts-rate-select"${savedMode === 'pi' ? '' : ' style="border-style:dashed"'}>${formatRate(savedRate(savedMode === 'pi' ? 'pali' : 'trn'))}</button>
-              
-              <br>
-
-              <div class="tts-toggles-row">
-                <label class="tts-checkbox-custom">
-                  <input title="on/off (S)" type="checkbox" id="tts-scroll-toggle" ${ttsState.autoScroll ? 'checked' : ''}>
-                  ${t.scroll}
-                </label>
-                <label class="tts-checkbox-custom">
-                  <input type="checkbox" id="tts-autoplay-toggle" ${localStorage.getItem('ttsMode') === 'true' ? 'checked' : ''}>
-                  ${t.autoplay}
-                </label>
-              </div>
-          </div>
-
-          <div class="tts-delay-row">
-              <label class="tts-delay-label" title="${t.delayTitle}">
-                  <img src="/assets/svg/hourglass-regular-full.svg" width="14" height="14" alt="timer">
-                  ${t.delay}
-                  <span id="tts-segment-delay-input" class="tts-editable-span" contenteditable="true" inputmode="decimal" spellcheck="false">${localStorage.getItem('dg_tts_segment_delay') || 0}</span>
-                  ${t.sec}
-              </label>
-          </div>
-
-          <div class="tts-links-row">
-            <button id="tts-advanced-toggle-btn" class="extra-settings-toggle advanced-btn">🔧 ${t.engineSettings}</button>
-
+      <div id="tts-settings-panel" class="tts-pan">
+          <div class="tts-grp" data-t="playback">${t.playback}</div>
+          <label class="tts-row"><span class="lb"><span data-t="scroll">${t.scroll}</span> <span class="tts-kbd">S</span><small data-t="scrollSub">${t.scrollSub}</small></span><span class="tts-sw"><input type="checkbox" id="tts-scroll-toggle" ${ttsState.autoScroll ? 'checked' : ''}><span></span></span></label>
+          <label class="tts-row"><span class="lb"><span data-t="autoplay">${t.autoplay}</span><small data-t="autoplaySub">${t.autoplaySub}</small></span><span class="tts-sw"><input type="checkbox" id="tts-autoplay-toggle" ${localStorage.getItem('ttsMode') === 'true' ? 'checked' : ''}><span></span></span></label>
+          <div class="tts-row tts-delay-row"><span class="lb" title="${t.delayTitle}" data-t="delay">${t.delay}</span><span class="tts-stp"><button type="button" data-stp="tts-segment-delay-input" data-d="-0.5" aria-label="−">−</button><span id="tts-segment-delay-input" class="stp-v" contenteditable="true" inputmode="decimal" spellcheck="false">${localStorage.getItem('dg_tts_segment_delay') || 0}</span><span class="u" data-t="sec">${t.sec}</span><button type="button" data-stp="tts-segment-delay-input" data-d="0.5" aria-label="+">+</button></span></div>
+          <div class="tts-links tts-links-row">
+            <a href="javascript:void(0)" id="tts-advanced-toggle-btn" title="${t.engineSettingsTitle}">${gi('wrench-solid-full.svg')}${t.engineSettings}</a>
             <span id="audio-file-link-placeholder"></span>
-            
-            <a href="${helpUrl}" target="_blank" class="tts-link tts-help-link" title="${t.help}">?</a>
+            <a href="${helpUrl}" target="_blank" class="tts-link tts-help-link" data-t="help">${t.help}</a>
           </div>
+      </div>
 
-          <div id="tts-advanced-settings" data-pali-engine="${engine}" data-trn-engine="${trnEngine}">
-
-              <div id="google-voice-settings-container">
-                  <div class="google-voice-select-group tts-pali-voice-group">
-                       <div class="google-voice-label">${t.paliVoice}</div>
-                      <div id="pali-google-dropdowns">
-                           <select id="tts-engine-pali" class="google-voice-dropdown tts-engine-dropdown" title="${t.engine}">
-                             <option value="dg" ${engine === 'dg' ? 'selected' : ''}>${t.engineDg}</option>
-                             <option value="google" ${engine === 'google' ? 'selected' : ''}>Google</option>
-                             <option value="native" ${engine === 'native' ? 'selected' : ''}>${t.engineNative}</option>
-                           </select>
-                           <select id="google-lang-select-pali" class="google-voice-dropdown"></select>
-                           <select id="google-voice-select-pali" class="google-voice-dropdown"></select>
-                      </div>
-                  </div>
-
-                  <div class="google-voice-select-group">
-                      <div class="google-voice-label">${t.trnVoice}</div>
-                      <div id="trn-google-dropdowns">
-                          <select id="tts-engine-trn" class="google-voice-dropdown tts-engine-dropdown" title="${t.engine}">
-                            <option value="dg" ${trnEngine === 'dg' ? 'selected' : ''}>${t.engineDg}</option>
-                            <option value="google" ${trnEngine === 'google' ? 'selected' : ''}>Google</option>
-                            <option value="native" ${trnEngine === 'native' ? 'selected' : ''}>${t.engineNative}</option>
-                          </select>
-                          <select id="google-lang-select-trn" class="google-voice-dropdown"></select>
-                          <select id="google-voice-select-trn" class="google-voice-dropdown"></select>
-                      </div>
-                  </div>
-              </div>
-              <div class="api-key-block">
-                <div class="google-voice-label">Google API Key</div>
-                <div class="api-key-row">
-                  <input type="password" id="google-api-key-input" 
-                         value="${savedKey}" 
-                         placeholder="Google API Key" 
-                         title="${t.apiKeyTitle}">
-                  <button id="refresh-voices-btn" class="refresh-api-btn" title="${t.refreshVoices}">
-                      <img src="/assets/svg/rotate-right-solid-full.svg" width="16" height="16" alt="Refresh">     
-                  </button>
-                  <button id="reset-tts-btn" class="reset-tts-btn" title="${t.resetTts}">
-                      <img src="/assets/svg/trash-can-regular-full.svg" width="16" height="16" alt="Reset">
-                  </button>
-                </div>
-              </div>
+      <div id="tts-advanced-settings" class="tts-pan" data-pali-engine="${engine}" data-trn-engine="${trnEngine}">
+          <div class="tts-sub-h"><button type="button" class="tts-ib" id="tts-voice-back" title="${t.back}">‹</button><span>${t.engineSettings}</span></div>
+          <div id="google-voice-settings-container">${voiceRow('pi', t.pali)}${voiceRow('trn', t.trn)}</div>
+          <div class="api-key-block tts-key">
+              <input type="password" id="google-api-key-input" value="${savedKey}" placeholder="Google Cloud API key" title="${t.apiKeyTitle}">
+              <button type="button" id="refresh-voices-btn" class="tts-ib spin refresh-api-btn" title="${t.refreshVoices}">${gi('rotate-right-solid-full.svg')}</button>
+              <button type="button" id="reset-tts-btn" class="tts-ib danger reset-tts-btn" title="${t.resetTts}">${gi('trash-can-regular-full.svg')}</button>
           </div>
       </div>
     </div>
     `;
+}
+
+// Player labels, in the page's language (window.isRu is re-read on every build and SPA switch).
+function ttsUiText() {
+  const ru = window.isRu;
+  return {
+    settings: ru ? "Настройки" : "Settings",
+    playback: ru ? "Воспроизведение" : "Playback",
+    scroll: ru ? "Автоскролл" : "Scroll",
+    scrollSub: ru ? "Текст едет за голосом" : "Text follows the voice",
+    autoplay: ru ? "Автостарт" : "Autoplay",
+    autoplaySub: ru ? "Читать сразу при открытии текста" : "Start reading when a text opens",
+    delay: ru ? "Пауза м-у фразами" : "Delay",
+    sec: ru ? "с" : "sec",
+    delayTitle: ru ? "Пауза между фразами (секунды)" : "Pause between phrases (seconds)",
+    modeTitle: ru ? "Что читать (клавиши 1–4)" : "What to read (keys 1–4)",
+    pali: ru ? "Пали" : "Pāḷi",
+    trn: ru ? "Перевод" : "Translation",
+    apiKeyTitle: ru ? "Ключ Google Cloud Text-to-Speech" : "Google Cloud Text-to-Speech API key",
+    refreshVoices: ru ? "Обновить список голосов" : "Refresh the voice list",
+    resetTts: ru ? "Полный сброс: убрать ключ, вернуть системные голоса" : "Full reset: remove the key, back to system voices",
+    engine: ru ? "Голос" : "Voice",
+    engineDg: "DG Voice",
+    engineNative: ru ? "Системные" : "System",
+    engineSettings: "Voice settings",
+    engineSettingsTitle: ru ? "Голоса: движок и голос для пали и перевода" : "Voices: engine and voice for Pāḷi and translation",
+    tryVoice: ru ? "Прослушать" : "Listen",
+    back: ru ? "Назад" : "Back",
+    speed: ru ? "Скорость" : "Speed",
+    speedSep: ru ? "отдельно для пали и для перевода" : "separate for Pāḷi and translation",
+    voice: ru ? "Голос" : "Voice",
+    noVoices: ru ? "Голосов нет на этом устройстве" : "No voices on this device",
+    dgE: ru ? "Свои голоса Piper, без ключа" : "Own Piper voices, no key",
+    gE: ru ? "Нужен ключ API" : "API key required",
+    osE: ru ? "Голоса устройства" : "Device voices",
+    help: ru ? "Справка ?" : "Help ?",
+    startA: ru ? "Начало A" : "Start A",
+    endB: ru ? "Конец B" : "End B"
+  };
 }
 
 
@@ -2442,7 +2411,7 @@ function getOrBuildPlayer() {
         // The ?v= stamp matters: /read/css/voice.css is served immutable for a year, so without it a
         // CSS fix would never reach anyone who had already opened the player (issue #20's rule was
         // invisible in the browser because of exactly that). Bump the stamp with the next edit.
-        document.head.insertAdjacentHTML('beforeend', '<link id="voice-css-lazy" rel="stylesheet" href="/read/css/voice.css?v=2026-10-03i">');
+        document.head.insertAdjacentHTML('beforeend', '<link id="voice-css-lazy" rel="stylesheet" href="/read/css/voice.css?v=2026-10-04v4">');
     }
 
     if (!playerContainer) {
@@ -2491,40 +2460,16 @@ function getTTSInterfaceHTML(texttype, slugReady, slug) {
 async function handleTTSSettingChange(e) {
 
 // --- Toggle Advanced Settings ---
-  if (e.target.id === 'tts-advanced-toggle-btn') {
+  if (e.target.closest('#tts-advanced-toggle-btn')) {
       e.preventDefault();
-      const advancedPanel = document.getElementById('tts-advanced-settings');
-      const basicPanel = document.getElementById('tts-basic-settings'); 
-      
-      // Находим контейнер задержки (он идет сразу после basicPanel в HTML)
-      const delayLabel = document.querySelector('.tts-delay-label')?.parentElement;
-
-      if (advancedPanel) {
-          const isOpening = !advancedPanel.classList.contains('visible');
-          advancedPanel.classList.toggle('visible');
-          
-          if (isOpening) {
-              // Скрываем основные настройки
-              if (basicPanel) {
-                  basicPanel.style.maxHeight = '0px';
-                  basicPanel.style.opacity = '0';
-              }
-              // Скрываем блок Delay
-              if (delayLabel) {
-                  delayLabel.style.display = 'none';
-              }
-          } else {
-              // Возвращаем основные настройки
-              if (basicPanel) {
-                  basicPanel.style.maxHeight = '200px';
-                  basicPanel.style.opacity = '1';
-              }
-              // Возвращаем блок Delay
-              if (delayLabel) {
-                  delayLabel.style.display = 'flex';
-              }
-          }
-      }
+      paintVoiceButtons();
+      ttsMorph(() => showTtsPanel('tts-advanced-settings'));
+      return;
+  }
+  if (e.target.closest('#tts-voice-back')) {
+      e.preventDefault();
+      closeTtsWins();
+      ttsMorph(() => showTtsPanel('tts-settings-panel'));
       return;
   }
   
@@ -2682,38 +2627,341 @@ document.addEventListener('click', e => {
   const btn = e.target.closest('#tts-rate-btn');
   if (btn) {
     const pop = ensureRatePop();
+    const wasOpen = pop.classList.contains('on');
+    closeTtsWins();
+    if (wasOpen) return;
     markActiveRate(activeRateKind() === 'pali');
-    pop.hidden = !pop.hidden;
-    if (!pop.hidden) placeRatePop(pop, btn);
+    placeTtsWin(pop, overPlayer);
+    pop.classList.add('on');
+    btn.setAttribute('aria-expanded', 'true');
     return;
   }
-  const pop = document.getElementById('tts-rate-pop');
-  if (!pop || pop.hidden) return;
+  if (e.target.closest('.close-tts-win')) { closeTtsWins(); return; }
   const step = e.target.closest('.tts-rate-step');
   const preset = e.target.closest('.tts-rate-preset');
-  if (step) {
+  if (step || preset) {
     const slider = document.getElementById('tts-rate-slider');
-    setSliderRate(parseFloat(slider.value) + parseFloat(slider.step) * +step.dataset.step);
-  } else if (preset) {
-    setSliderRate(+preset.dataset.rate);
-  } else if (!e.target.closest('#tts-rate-pop')) {
-    pop.hidden = true;
+    const was = slider.value;
+    setSliderRate(step ? parseFloat(slider.value) + parseFloat(slider.step) * +step.dataset.step : +preset.dataset.rate);
+    // the big number gives a small bump when a button moved it
+    if (slider.value !== was) document.getElementById('tts-rate-title')?.animate([{ transform: 'scale(1.12)' }, { transform: 'scale(1)' }], { duration: 220, easing: 'ease-out' });
+    return;
   }
+  // a target that re-rendered itself away (voice picker levels) is no click outside
+  if (e.target.isConnected && !e.target.closest('.tts-win, #tts-mode-chip, .tts-vbtn')) closeTtsWins();
 });
 document.addEventListener('keydown', e => {
-  const pop = document.getElementById('tts-rate-pop');
-  if (e.key === 'Escape' && pop && !pop.hidden) pop.hidden = true;
+  if (e.key === 'Escape' && document.querySelector('.tts-win.on')) {
+    closeTtsWins();
+    e.stopImmediatePropagation();  // Esc closes the window first, the player on the next press
+  }
+}, true);
+window.addEventListener('resize', closeTtsWins);
+
+// Smooth change of the player's height when a panel opens or closes (design v4: height .32s on the
+// shared easing, the panel that appears fades in .26s). fn does the DOM change.
+function ttsMorph(fn) {
+  const p = document.querySelector('#voice-player-container .voice-player');
+  if (!p) { fn(); return; }
+  const from = p.offsetHeight;
+  fn();
+  const to = p.offsetHeight;
+  if (from === to) return;
+  p.style.height = from + 'px';
+  p.style.overflowY = 'hidden';
+  p.offsetHeight;
+  p.style.transition = 'height .32s var(--dg-ease)';
+  p.style.height = to + 'px';
+  p.querySelectorAll('.tts-pan.visible').forEach(x => x.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 260, easing: 'ease-out' }));
+  clearTimeout(p._morph);
+  p._morph = setTimeout(() => { p.style.height = ''; p.style.transition = ''; p.style.overflowY = ''; }, 340);
+}
+window.ttsMorph = ttsMorph;
+
+// One panel open at a time: settings, voice settings (a sub-level of settings) or A-B (voice-mem.js)
+function showTtsPanel(id) {
+  ['tts-settings-panel', 'tts-advanced-settings', 'memorize-panel'].forEach(pid =>
+    document.getElementById(pid)?.classList.toggle('visible', pid === id));
+  document.getElementById('tts-settings-toggle')?.setAttribute('aria-expanded', String(id === 'tts-settings-panel' || id === 'tts-advanced-settings'));
+  document.getElementById('ab-loop-toggle-btn')?.setAttribute('aria-expanded', String(id === 'memorize-panel'));
+  if (id !== 'tts-advanced-settings') closeTtsWins();
+}
+window.showTtsPanel = showTtsPanel;
+
+// Click feedback of the design: ↻ makes a full turn, the bin shakes
+function spinIcon(btn) {
+  btn.querySelector('.tts-gi')?.animate([{ transform: 'rotate(0)' }, { transform: 'rotate(360deg)' }], { duration: 600, easing: 'cubic-bezier(.22,.68,0,1)' });
+}
+function shakeIcon(btn) {
+  btn.querySelector('.tts-gi')?.animate([{ transform: 'rotate(0)' }, { transform: 'rotate(-18deg)' }, { transform: 'rotate(14deg)' }, { transform: 'rotate(-8deg)' }, { transform: 'rotate(0)' }], { duration: 420, easing: 'ease-out' });
+}
+window.ttsShakeIcon = shakeIcon;
+
+// Stepper counter, a "drum": the old number slides out while the new one slides in. The old value is
+// drawn as a ghost over the field (a field cannot hold two values); .tts-stp clips the edges.
+function stepTick(el, dir, old) {
+  const st = el.closest('.tts-stp'), g = document.createElement('span');
+  const r = el.getBoundingClientRect(), sr = st.getBoundingClientRect(), cs = getComputedStyle(el);
+  g.textContent = old;
+  Object.assign(g.style, { position: 'absolute', left: (r.left - sr.left) + 'px', top: (r.top - sr.top) + 'px', width: r.width + 'px',
+    height: r.height + 'px', lineHeight: r.height + 'px', textAlign: cs.textAlign, font: cs.font, color: cs.color, pointerEvents: 'none' });
+  st.appendChild(g);
+  const d = dir > 0 ? 1 : -1, o = { duration: 300, easing: 'cubic-bezier(.22,.68,0,1)' };
+  g.animate([{ transform: 'none', opacity: 1 }, { transform: 'translateY(' + (-d * 100) + '%)', opacity: 0 }], o).onfinish = () => g.remove();
+  el.animate([{ transform: 'translateY(' + (d * 100) + '%)', opacity: 0 }, { transform: 'none', opacity: 1 }], o);
+}
+// −/+ of a stepper: writes the editable value and fires its input event, so the field's own handler
+// (delay here, A-B pause/repeats in voice-mem.js) saves it exactly as when typed. data-inf: 0 shows ∞.
+document.addEventListener('click', e => {
+  const b = e.target.closest('.tts-stp button[data-stp]');
+  if (!b) return;
+  const el = document.getElementById(b.dataset.stp);
+  if (!el) return;
+  const inf = 'inf' in el.dataset, old = el.innerText.trim();
+  const v = inf && old === '∞' ? 0 : (parseFloat(old.replace(',', '.')) || 0);
+  const nv = Math.max(0, Math.min(+(el.dataset.max || 600), Math.round((v + +b.dataset.d) * 100) / 100));
+  if (nv === v) return;
+  el.innerText = inf && nv === 0 ? '∞' : String(nv);
+  el.dispatchEvent(new Event('input', { bubbles: true }));
+  el.dispatchEvent(new Event('focusout', { bubbles: true }));
+  stepTick(el, +b.dataset.d, old);
 });
-window.addEventListener('resize', () => {
-  const pop = document.getElementById('tts-rate-pop');
-  if (pop) pop.hidden = true;
+
+// --- Mode chip: a small menu right above it; the hidden select keeps driving playback ---
+function paintModeChip() {
+  const sel = document.getElementById('tts-mode-select'), lb = document.getElementById('tts-mode-label');
+  if (sel && lb) lb.textContent = sel.options[sel.selectedIndex]?.textContent || '';
+}
+document.addEventListener('change', e => { if (e.target.id === 'tts-mode-select') paintModeChip(); });
+document.addEventListener('click', e => {
+  const chip = e.target.closest('#tts-mode-chip');
+  const item = e.target.closest('#tts-mode-menu [data-m]');
+  if (!chip && !item) return;
+  const sel = document.getElementById('tts-mode-select');
+  if (item) {
+    if (sel && sel.value !== item.dataset.m) {
+      sel.value = item.dataset.m;
+      sel.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    closeTtsWins();
+    return;
+  }
+  let menu = document.getElementById('tts-mode-menu');
+  const wasOpen = menu?.classList.contains('on');
+  closeTtsWins();
+  if (wasOpen || !sel) return;
+  if (!menu) {
+    document.body.insertAdjacentHTML('beforeend', '<div id="tts-mode-menu" class="tts-win menu" role="menu"></div>');
+    menu = document.getElementById('tts-mode-menu');
+  }
+  menu.innerHTML = [...sel.options].map((o, i) => `<button type="button" class="tts-mi" data-m="${o.value}"><span class="ck">${o.value === sel.value ? '✓' : ''}</span><span class="ml">${o.textContent}</span><span class="kb">${i + 1}</span></button>`).join('');
+  const r = chip.getBoundingClientRect();
+  placeTtsWin(menu, (w, h) => ({ left: Math.max(8, Math.min(window.innerWidth - w - 8, r.left)), top: Math.max(8, r.top - h - 6) }));
+  menu.classList.add('on');
+  chip.setAttribute('aria-expanded', 'true');
 });
+
+// --- Voice picker: engine › (language) › voice, in a window over the player (design v4) ---
+// The tree walks the real selects of the Voice settings row (engine, then whichever of the language
+// and voice lists that engine shows), so every engine keeps its own loading and saving code.
+// Browsing an engine or a language changes those selects; closing without picking a voice puts
+// them back.
+const ttsVoiceWin = { lang: null, depth: 0, saved: null, picked: false };
+const ttsVoiceSel = l => {
+  const k = l === 'pi' ? 'pali' : 'trn';
+  return { eng: document.getElementById('tts-engine-' + k), lists: ['google-lang-select-' + k, 'google-voice-select-' + k].map(id => document.getElementById(id)) };
+};
+const ttsShownLists = l => ttsVoiceSel(l).lists.filter(s => s && s.style.display !== 'none' && s.options.length);
+const TTS_ENGINE_TAG = { dg: 'DG', google: 'Google' };
+
+function paintVoiceButtons() {
+  const t = ttsUiText();
+  document.querySelectorAll('#tts-advanced-settings .tts-vrow').forEach(row => {
+    const l = row.dataset.l, { eng } = ttsVoiceSel(l), lists = ttsShownLists(l), last = lists[lists.length - 1];
+    if (!eng) return;
+    const e = eng.value, name = last ? (last.options[last.selectedIndex]?.textContent || '') : '';
+    const tag = TTS_ENGINE_TAG[e] || (window.isRu ? 'ОС' : 'OS');
+    const btn = row.querySelector('.tts-vbtn');
+    btn.innerHTML = `<span class="tts-vtag ${e}">${tag}</span><span class="tts-vnm">${name}</span><span class="tts-vch">›</span>`;
+    btn.title = eng.options[eng.selectedIndex]?.textContent + ' · ' + name;
+    const tryBtn = row.querySelector('.tts-vtry');
+    if (tryBtn) {
+      tryBtn.disabled = e !== 'dg';  // previews go through the DG voice service
+      tryBtn.title = e === 'dg' ? t.tryVoice : (window.isRu ? 'Прослушать можно голоса DG' : 'Preview is for DG voices');
+    }
+  });
+}
+document.addEventListener('change', e => { if (e.target.closest('.tts-vsel')) setTimeout(paintVoiceButtons, 0); });
+
+// Lists refill asynchronously after an engine or language change (Google loads its voices)
+function ttsListsSettled(l) {
+  return new Promise(res => {
+    const t0 = Date.now();
+    const check = () => {
+      const busy = ttsShownLists(l).some(s => [...s.options].some(o => /Loading/.test(o.textContent)));
+      if ((!busy && Date.now() - t0 > 120) || Date.now() - t0 > 4000) res(); else setTimeout(check, 60);
+    };
+    check();
+  });
+}
+
+function renderVoiceWin() {
+  const win = document.getElementById('tts-voice-win'), l = ttsVoiceWin.lang, t = ttsUiText();
+  if (!win || !l) return;
+  const { eng } = ttsVoiceSel(l), x = '<button type="button" class="tts-ib close-tts-win" title="Esc">×</button>';
+  const kind = l === 'pi' ? t.pali : t.trn;
+  let html;
+  if (ttsVoiceWin.depth === 0) {
+    const sub = { dg: t.dgE, google: t.gE, native: t.osE };
+    html = `<div class="tts-wh"><span class="t">${t.voice} <small>· ${kind}</small></span>${x}</div>` +
+      [...eng.options].map(o => `<button type="button" class="tts-mi" data-eng="${o.value}"><span class="ck">${o.value === eng.value ? '•' : ''}</span><span class="ml">${o.textContent}<span class="eg">${sub[o.value] || ''}</span></span><span class="ar">›</span></button>`).join('');
+  } else {
+    const lists = ttsShownLists(l), list = lists[ttsVoiceWin.depth - 1];
+    const crumb = eng.options[eng.selectedIndex]?.textContent + (ttsVoiceWin.depth > 1 ? ` <small>· ${lists[0].value}</small>` : '');
+    const leaf = ttsVoiceWin.depth === lists.length;
+    html = `<div class="tts-wh"><button type="button" class="tts-ib" data-vback="1" title="${t.back}">‹</button><span class="t">${crumb}</span>${x}</div>` +
+      (!list ? `<div class="tts-mi" aria-disabled="true"><span class="ck"></span><span class="ml">${t.noVoices}</span></div>` : '') +
+      (list ? [...list.options].map(o => `<button type="button" class="tts-mi" data-opt="${o.value.replace(/"/g, '&quot;')}" ${list.disabled ? 'disabled' : ''}><span class="ck">${o.value === list.value ? (leaf ? '✓' : '•') : ''}</span><span class="ml">${o.textContent}</span>${leaf ? '' : '<span class="ar">›</span>'}</button>`).join('') : '');
+  }
+  win.innerHTML = html;
+  win.scrollTop = 0;
+  placeTtsWin(win, overPlayer);
+}
+
+// Back to what was selected when the picker opened (closed without choosing a voice)
+async function restoreVoiceWin() {
+  const { lang, saved, picked } = ttsVoiceWin;
+  if (!lang || !saved || picked) return;
+  const { eng, lists } = ttsVoiceSel(lang);
+  if (eng.value !== saved.eng) {
+    eng.value = saved.eng;
+    eng.dispatchEvent(new Event('change', { bubbles: true }));
+    await ttsListsSettled(lang);
+  }
+  lists.forEach((s, i) => {
+    if (s && saved.lists[i] != null && s.value !== saved.lists[i] && [...s.options].some(o => o.value === saved.lists[i])) {
+      s.value = saved.lists[i];
+      s.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+  });
+  paintVoiceButtons();
+}
+
+document.addEventListener('click', async e => {
+  const vbtn = e.target.closest('.tts-vbtn');
+  const win = document.getElementById('tts-voice-win');
+  if (vbtn) {
+    const l = vbtn.closest('.tts-vrow').dataset.l, same = ttsVoiceWin.lang === l && win?.classList.contains('on');
+    if (ttsVoiceWin.lang) await restoreVoiceWin();
+    closeTtsWins();
+    if (same) return;
+    if (!win) document.body.insertAdjacentHTML('beforeend', '<div id="tts-voice-win" class="tts-win" role="dialog"></div>');
+    const { eng, lists } = ttsVoiceSel(l);
+    Object.assign(ttsVoiceWin, { lang: l, depth: 0, picked: false, saved: { eng: eng.value, lists: lists.map(s => s?.value) } });
+    renderVoiceWin();
+    document.getElementById('tts-voice-win').classList.add('on');
+    return;
+  }
+  const b = e.target.closest('#tts-voice-win button');
+  if (!b || !ttsVoiceWin.lang) return;
+  const l = ttsVoiceWin.lang, { eng } = ttsVoiceSel(l);
+  if (b.classList.contains('close-tts-win')) return;  // handled by the shared window closer (restores)
+  if (b.dataset.vback) { ttsVoiceWin.depth--; renderVoiceWin(); return; }
+  if (b.dataset.eng) {
+    if (eng.value !== b.dataset.eng) {
+      eng.value = b.dataset.eng;
+      eng.dispatchEvent(new Event('change', { bubbles: true }));
+      await ttsListsSettled(l);
+    }
+    ttsVoiceWin.depth = 1;
+    renderVoiceWin();
+    return;
+  }
+  if (b.dataset.opt != null) {
+    const lists = ttsShownLists(l), list = lists[ttsVoiceWin.depth - 1];
+    const leaf = ttsVoiceWin.depth >= lists.length;
+    if (leaf) ttsVoiceWin.picked = true;  // before the change event: nothing may restore it meanwhile
+    if (list && list.value !== b.dataset.opt) {
+      list.value = b.dataset.opt;
+      list.dispatchEvent(new Event('change', { bubbles: true }));
+      if (!leaf) await ttsListsSettled(l);
+    }
+    if (leaf) {
+      paintVoiceButtons();
+      closeTtsWins();
+    } else {
+      ttsVoiceWin.depth++;
+      renderVoiceWin();
+    }
+  }
+});
+
+// --- Voice previews (▶ next to each voice): fixed demo lines through the DG voice service ---
+const TTS_DEMO = {
+  pi: ['Katamañca bhikkhave dukkhaṁ', 'Yaṁ kho bhikkhave kāyikaṁ dukkhaṁ kāyikaṁ asātaṁ kāyasamphassajaṁ dukkhaṁ asātaṁ vedayitaṁ', 'idaṁ vuccati bhikkhave dukkhaṁ'],
+  ru: ['И что такое, монахи, боль?', 'Та которая, монахи, телесная боль, телесный дискомфорт, тела-соприкосновением-рождённая боль, дискомфорт почувствованный,', 'это называется, монахи, боль.'],
+  en: ['“And what is pain?', 'Whatever is experienced as bodily pain, bodily discomfort, pain or discomfort born of bodily contact,', 'that is called pain.']
+};
+const TTS_SILENCE = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=';
+let ttsDemo = null;  // { btn, audio, stop }
+
+function stopTtsDemo() {
+  if (!ttsDemo) return;
+  ttsDemo.stopped = true;
+  ttsDemo.audio.pause();
+  ttsDemo.btn.classList.remove('on');
+  ttsDemo = null;
+}
+
+document.addEventListener('click', async e => {
+  const btn = e.target.closest('.tts-vtry');
+  if (!btn || btn.disabled) return;
+  const again = ttsDemo?.btn === btn;
+  stopTtsDemo();
+  if (again) return;
+  if (ttsState.speaking && !ttsState.paused) document.querySelector('.play-main-button')?.click();  // pause the reading
+  const l = btn.closest('.tts-vrow').dataset.l;
+  let lines, voice, rate;
+  if (l === 'pi') {
+    const sel = document.getElementById('google-voice-select-pali');
+    lines = TTS_DEMO.pi;
+    voice = DG_PALI_VOICES.some(v => v.id === sel?.value) ? sel.value : dgPaliVoice();
+    rate = savedRate('pali');
+  } else {
+    const lang = detectTranslationLang() === 'ru' ? 'ru' : 'en', sel = document.getElementById('google-voice-select-trn');
+    lines = TTS_DEMO[lang];
+    voice = DG_TRN_VOICES[lang].some(v => v.id === sel?.value) ? sel.value : dgTrnVoice(lang);
+    rate = savedRate('trn');
+  }
+  // created inside the tap so iOS lets it play once the first clip arrives
+  const audio = new Audio(TTS_SILENCE);
+  audio.play().catch(() => {});
+  const run = ttsDemo = { btn, audio, stopped: false };
+  btn.classList.add('on');
+  const clips = lines.map(text => fetchPaliVoiceAudio(text, rate, voice));  // all requested at once, played in order
+  clips.forEach(c => c.catch(() => {}));
+  try {
+    for (const clip of clips) {
+      const b64 = await clip;
+      if (run.stopped) return;
+      audio.src = 'data:audio/mpeg;base64,' + b64;
+      await audio.play();
+      await new Promise(res => { audio.onended = res; audio.onpause = res; });
+      if (run.stopped) return;
+    }
+  } catch (err) {
+    console.warn('Voice preview failed', err);
+  }
+  if (ttsDemo === run) stopTtsDemo();
+});
+
 document.addEventListener('click', (e) => {
     // Добавили проверку e.target.id === 'tts-advanced-toggle-btn'
-    if (e.target.id === 'refresh-voices-btn' || 
-        e.target.id === 'reset-tts-btn' || 
-        e.target.id === 'tts-advanced-toggle-btn') {
-        handleTTSSettingChange(e);
+    const ctl = e.target.closest('#refresh-voices-btn, #reset-tts-btn, #tts-advanced-toggle-btn, #tts-voice-back');
+    if (ctl) {
+        if (ctl.id === 'refresh-voices-btn') spinIcon(ctl);
+        if (ctl.id === 'reset-tts-btn') shakeIcon(ctl);
+        handleTTSSettingChange({ target: ctl, preventDefault: () => e.preventDefault() });
     } else {
         handleSuttaClick(e);
     }
@@ -2795,7 +3043,13 @@ function setupNativeDropdown(voices, selectId, hideSelectId, storageKey, default
 }
 
 // --- ОСНОВНАЯ ФУНКЦИЯ ПОПУЛЯЦИИ СПИСКОВ (ГИБРИДНАЯ: GOOGLE + NATIVE) ---
+// The voice buttons of Voice settings show what the lists hold, so they repaint after every refill
 async function refreshVoiceDropdowns(forceRefresh = false) {
+    await fillVoiceDropdowns(forceRefresh);
+    paintVoiceButtons();
+}
+
+async function fillVoiceDropdowns(forceRefresh = false) {
     const container = document.getElementById('google-voice-settings-container');
     if (container) container.style.display = 'block';
 
@@ -3501,6 +3755,7 @@ document.addEventListener('keydown', (e) => {
     if (['Minus', 'Equal', 'KeyR', 'NumpadSubtract', 'NumpadAdd'].includes(e.code)) {
         e.preventDefault();
         const kind = activeRateKind();
+        ensureRatePop();  // the slider lives in the speed window, which may not have been opened yet
         markActiveRate(kind === 'pali');
         const slider = document.getElementById('tts-rate-slider');
         if (slider) {
@@ -3545,32 +3800,12 @@ document.addEventListener('keydown', (e) => {
 
 // --- Закрытие настроек плеера при клике в пустое место ---
 document.addEventListener('click', (e) => {
-    // 1. Настройки основного плеера
-    const panel = document.getElementById('tts-settings-panel');
-    
-    if (panel && panel.classList.contains('visible')) {
-        if (!e.target.closest('#tts-settings-panel') && !e.target.closest('#tts-settings-toggle')) {
-            
-            panel.classList.remove('visible');
-            
-            const icon = document.getElementById('tts-settings-icon');
-            if (icon) icon.style.transform = 'rotate(0deg)';
-            
-            const advSettings = document.getElementById('tts-advanced-settings');
-            if (advSettings) advSettings.classList.remove('visible');
-            
-            const basicPanel = document.getElementById('tts-basic-settings');
-            if (basicPanel) {
-                basicPanel.style.maxHeight = '200px';
-                basicPanel.style.opacity = '1';
-            }
-            
-            const delayLabel = document.querySelector('.tts-delay-label')?.parentElement;
-            if (delayLabel) {
-                delayLabel.style.display = 'flex';
-            }
-        }
-    } 
+    if (!e.target.isConnected) return;  // re-rendered away by its own handler (voice picker), not outside
+    // 1. Settings / voice settings: a click outside the player and its windows folds them
+    const open = ['tts-settings-panel', 'tts-advanced-settings'].some(id => document.getElementById(id)?.classList.contains('visible'));
+    if (open && !e.target.closest('.voice-player, .tts-win')) {
+        ttsMorph(() => showTtsPanel(null));
+    }
 
     // 2. Настройки A-B цикла (Memo)
     const abPanel = document.getElementById('memorize-panel');
@@ -3578,7 +3813,7 @@ document.addEventListener('click', (e) => {
     if (abPanel && abPanel.classList.contains('visible')) {
         if (!e.target.closest('#memorize-panel') && !e.target.closest('#ab-loop-toggle-btn')) {
             
-            abPanel.classList.remove('visible');
+            ttsMorph(() => showTtsPanel(null));
             
             // Сбрасываем визуальный статус кнопок выбора (если был активен pickMode)
             const pickingBtns = abPanel.querySelectorAll('.mem-pick-btn.picking');
