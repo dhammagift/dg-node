@@ -1101,10 +1101,23 @@
                     // reader URL the app cannot serve, is what the owner got back to (2026-10-04).
                     var hidden = document.visibilityState === 'hidden';
                     if (window.dgLaunch && !(st && st.present) && !networkAnswered && !hidden) {
+                        // What failed and what the request answered: the screen states facts, the
+                        // report (error-report.js) gets the same line for the log.
+                        var what = decodeURIComponent(where.pathname.replace(/^\/(api\/(text|nav|search)\/?)?/, '')) || '';
+                        var detail = (e && e.message) || String(e);
+                        if (window.dgReport) window.dgReport('[dg-offline] request failed: ' + where.pathname + ' — ' + detail);
                         window.dgLaunch.error('dg', navigator.onLine === false ? 'none' : 'down',
-                            { retry: function () { reloadHere(); return new Promise(function () {}); } });
+                            { what: what, detail: detail,
+                              retry: function () { reloadHere(); return new Promise(function () {}); } });
                     } else if (!hidden) {
-                        notify(why);
+                        // In the apps the same fact as the full screen, not a guessed cause (the network
+                        // may be fine: owner, 2026-10-04); the site keeps its advice.
+                        if (window.dgLaunch && !(st && st.present)) {
+                            var whatShort = decodeURIComponent(where.pathname.replace(/^\/(api\/(text|nav|search)\/?)?/, '')) || '';
+                            notify((ru ? 'Не удалось загрузить' : 'Couldn’t load') + (whatShort ? ' ' + whatShort : '') + ': ' + ((e && e.message) || e));
+                        } else {
+                            notify(why);
+                        }
                     }
                     throw e;
                 });
