@@ -282,7 +282,7 @@ window.addEventListener('suttaRenderedCentral', () => {
         const scriptVoice = document.createElement('script');
         // ?v= matters: /read/js is served immutable for a year, so an unstamped URL meant a fix in the
         // player (or in the CSS it lazily appends) stayed invisible in already-visited browsers.
-        scriptVoice.src = "/read/js/voice.js?v=2026-10-04pill";
+        scriptVoice.src = "/read/js/voice.js?v=2026-10-04app";
         
         scriptVoice.onload = () => {
             // ---> ИСПРАВЛЕНИЕ: Блокируем загрузку A-B цикла для приложения Memo <---
@@ -1518,7 +1518,7 @@ if (event.altKey && event.code === "KeyJ") {
   // and the same re-render path as Alt+G below.
   if (event.altKey && event.code === "KeyL") {
     event.preventDefault();
-    const scriptOptions = ['ISOPali', 'Devanagari', 'Thai'];
+    const scriptOptions = ['ISOPali', 'Brahmi', 'Devanagari', 'Thai']; // Latin is slot 0; Alt+L from it starts with Brahmi
     const url = new URL(window.location.href);
     const current = (url.searchParams.get('script') || localStorage.getItem('selectedScript') || 'ISOPali').toLowerCase();
     const idx = scriptOptions.findIndex((k) => k.toLowerCase() === current);

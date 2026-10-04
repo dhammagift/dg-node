@@ -268,6 +268,9 @@ label.tts-row{cursor:pointer}
 /* Phones: the language pill, the scroll-to-top arrow and the like sit in the bottom ~75px; the player
    stands above that row instead of covering it (owner) */
 @media (max-width:600px){.voice-player{bottom:84px}}
+/* App: the pill and the arrow are lifted over the gesture bar by the safe-area inset (home.css,
+   html.dg-app ... translate); the player takes the same lift, or it ends up under them again */
+html.dg-app .voice-player{translate:0 calc(-1 * var(--dg-sab, 0px))}
 @media (max-width:768px){
   .tts-chips{gap:3px;padding:6px 8px 12px}
   .tts-chip{padding:0 7px;font-size:11px;height:30px}
