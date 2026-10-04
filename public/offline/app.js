@@ -897,6 +897,20 @@
 
     function installFetchShim() {
         var realFetch = window.fetch.bind(window);
+        // Set by the first answer from the network in this page: after it, a failed request is a
+        // message, never the apps' full-screen "no connection" (see shimFetch below).
+        var networkAnswered = false;
+        // Reload where the reader is. In the apps a reader URL (/sn35.117) is not a file: the dot
+        // reads as an extension and the WebView answers ERR_INVALID_RESPONSE. The root with the
+        // _nativeRoute handoff (dg-apps native-bridge.js) opens the same place; elsewhere a plain reload.
+        function reloadHere() {
+            var last = location.pathname.split('/').pop();
+            if (window.dgOfflineReady && last.indexOf('.') !== -1 && !/\.html?$/.test(last)) {
+                location.replace('/?_nativeRoute=' + encodeURIComponent(location.pathname + location.search + location.hash));
+            } else {
+                location.reload();
+            }
+        }
 
         function langNeedsOnline(qs) {
             var langs = (qs.get('langs') || '').split(',').map(function (s) { return s.trim(); })
@@ -1064,7 +1078,10 @@
                 // Not installed yet (or not open here): the request goes to the network. In the
                 // native app that means the REAL host — the page's own origin has no server — so
                 // the same prefix the online branches use applies here too.
-                return realFetch(withOnlineBase(input, init), init).catch(function (e) {
+                return realFetch(withOnlineBase(input, init), init).then(function (r) {
+                    networkAnswered = true;
+                    return r;
+                }, function (e) {
                     var ru = (localStorage.getItem('dhammaLanguage') || localStorage.getItem('siteLanguage') || 'en') === 'ru';
                     var st = null;
                     try { st = JSON.parse(localStorage.getItem(STATE_KEY) || 'null'); } catch (err) { /* ignore */ }
@@ -1077,10 +1094,16 @@
                     // no answer" into a full-screen "no connection" with a Try again button; the
                     // site, which has no such layer, keeps its toast. With a library on disk the
                     // failure is about the tab, not the connection, so it stays a message.
-                    if (window.dgLaunch && !(st && st.present)) {
+                    // Only while the page has nothing yet and is on screen. A request that fails once
+                    // the reader is already reading — above all in the background, where Android cuts
+                    // an app's network while the voice keeps going and prefetches the next lines — is
+                    // not "no connection": covering a working page with it, and then reloading a
+                    // reader URL the app cannot serve, is what the owner got back to (2026-10-04).
+                    var hidden = document.visibilityState === 'hidden';
+                    if (window.dgLaunch && !(st && st.present) && !networkAnswered && !hidden) {
                         window.dgLaunch.error('dg', navigator.onLine === false ? 'none' : 'down',
-                            { retry: function () { location.reload(); return new Promise(function () {}); } });
-                    } else {
+                            { retry: function () { reloadHere(); return new Promise(function () {}); } });
+                    } else if (!hidden) {
                         notify(why);
                     }
                     throw e;
