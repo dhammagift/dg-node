@@ -1110,7 +1110,14 @@
                             { what: what, detail: detail,
                               retry: function () { reloadHere(); return new Promise(function () {}); } });
                     } else if (!hidden) {
-                        notify(why);
+                        // In the apps the same fact as the full screen, not a guessed cause (the network
+                        // may be fine: owner, 2026-10-04); the site keeps its advice.
+                        if (window.dgLaunch && !(st && st.present)) {
+                            var whatShort = decodeURIComponent(where.pathname.replace(/^\/(api\/(text|nav|search)\/?)?/, '')) || '';
+                            notify((ru ? 'Не удалось загрузить' : 'Couldn’t load') + (whatShort ? ' ' + whatShort : '') + ': ' + ((e && e.message) || e));
+                        } else {
+                            notify(why);
+                        }
                     }
                     throw e;
                 });
