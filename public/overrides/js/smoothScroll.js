@@ -633,8 +633,14 @@ const ScrollManager = {
         
         document.body.appendChild(scrollToTopBtn);
 
+        // Written only when it changes: every write on every scroll event invalidated the style of
+        // the page, and on 1000 result rows the next layout cost about a second (2026-10-06).
+        let shown = null;
         window.addEventListener('scroll', () => {
-            scrollToTopBtn.style.display = window.scrollY > 600 ? 'block' : 'none';
+            const show = window.scrollY > 600;
+            if (show === shown) return;
+            shown = show;
+            scrollToTopBtn.style.display = show ? 'block' : 'none';
         }, { passive: true });
 
         scrollToTopBtn.addEventListener('click', (event) => {
