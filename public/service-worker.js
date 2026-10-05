@@ -86,7 +86,7 @@ var PRECACHE_URLS = [
     // so offline the toolbar showed broken icons and quickModal.js failed to load (owner's screenshots).
     '/assets/js/quickModal.js',
     '/assets/css/paliLookup.css',   // the dictionary panel's own stylesheet — without it the panel opens unstyled/invisible
-    '/assets/js/translators.js',
+    '/assets/js/translators.json',   // the translators' names (megareader.js, toc.js): the reader shows them offline too
     '/assets/svg/clock-rotate-left.svg',
     '/assets/svg/eye.svg',
     '/assets/svg/rotate-solid-full.svg',

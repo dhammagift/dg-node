@@ -547,7 +547,7 @@
         '/assets/js/standalone-dpd/ru/dpd_ebts.js',
         '/assets/css/paliLookup.css',
         '/assets/js/quickModal.js',
-        '/assets/js/translators.js',
+        '/assets/js/translators.json',
         '/assets/js/linksdpr.js', '/assets/js/openDpr.js',
         '/assets/js/linksru.js', '/assets/js/openRu.js',
         '/assets/js/linksbw.js', '/assets/js/openBw.js',
