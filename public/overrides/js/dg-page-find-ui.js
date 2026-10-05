@@ -62,7 +62,11 @@
     style.textContent =
         'mark.dg-find-mark{background:rgba(255,214,0,.55);color:inherit;padding:0;}' +
         'mark.dg-find-mark.is-active{background:rgba(255,122,0,.9);color:#111;}' +
-        '.dg-find-panel{position:fixed;z-index:1097;top:8px;left:8px;right:8px;' +
+        // The same two colours for the CSS Custom Highlight API (dg-page-find.js paints with it).
+        '::highlight(dg-find){background-color:rgba(255,214,0,.55);}' +
+        '::highlight(dg-find-active){background-color:rgba(255,122,0,.9);color:#111;}' +
+        // Below the status bar in the app (--dg-sat: the top inset, home.css html.dg-app); 0 on the site.
+        '.dg-find-panel{position:fixed;z-index:1097;top:calc(var(--dg-sat, 0px) + 8px);left:8px;right:8px;' +
         'background:var(--dg-surface,#fff);color:var(--dg-text,#1b1d19);' +
         'border:1px solid var(--dg-border-strong,#d7d4c9);border-radius:var(--dg-radius,10px);' +
         'box-shadow:0 12px 32px rgba(27,29,25,.14);font-family:var(--dg-font,system-ui,sans-serif);' +
@@ -119,7 +123,7 @@
         // match into view (dg-page-find.js's own _applyActive, not something this file controls),
         // and an absolute-positioned panel scrolls away with that content — the panel a find-next
         // tool needs to stay reachable disappears the moment you jump to a match below the fold.
-        '.dg-find-panel{position:fixed;top:24px;right:60px;left:auto;width:520px;}' +
+        '.dg-find-panel{position:fixed;top:calc(var(--dg-sat, 0px) + 24px);right:60px;left:auto;width:520px;}' +
         '.dg-find-field{height:44px;}' +
         '.dg-find-panel .dg-icon-btn{width:40px;height:40px;}' +
         '}';
@@ -368,7 +372,11 @@
     // ---------------------------------------------------------------
     var find = null;
 
+    // Drawn only while the list is open, and only its first LIST_MAX rows: building a row per match
+    // on every keystroke (thousands for one letter) was part of what froze the page.
+    var LIST_MAX = 200;
     function renderList() {
+        if (!listPanel.classList.contains('show')) return;
         listPanel.innerHTML = '';
         if (!find || !find.matches.length) {
             listPanel.appendChild(Object.assign(document.createElement('p'), {
@@ -379,13 +387,13 @@
         var head = document.createElement('div');
         head.className = 'dg-find-list-head';
         var hiddenCount = find.matches.filter(function (m) { return m.hidden; }).length;
-        head.textContent = find.matches.length + ' matches' + (hiddenCount ? ' · ' + hiddenCount + ' in hidden areas' : '');
+        head.textContent = totalLabel() + ' matches' + (hiddenCount ? ' · ' + hiddenCount + ' in hidden areas' : '');
         listPanel.appendChild(head);
         var ul = document.createElement('ul');
         ul.style.listStyle = 'none';
         ul.style.margin = '0';
         ul.style.padding = '0';
-        find.matches.forEach(function (m, i) {
+        find.matches.slice(0, LIST_MAX).forEach(function (m, i) {
             var li = document.createElement('li');
             var row = document.createElement('div');
             row.className = 'toc-item' + (i === find.active ? ' active' : '');
@@ -419,6 +427,14 @@
             ul.appendChild(li);
         });
         listPanel.appendChild(ul);
+        if (find.matches.length > LIST_MAX) {
+            listPanel.appendChild(Object.assign(document.createElement('p'), {
+                className: 'dg-find-empty', textContent: '… ' + (find.total - LIST_MAX) + ' more — refine the query'
+            }));
+        }
+    }
+    function totalLabel() {
+        return find.total > find.matches.length ? find.matches.length + '+' : String(find.matches.length);
     }
     function escapeHtml(s) {
         return String(s || '').replace(/[&<>]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]; });
@@ -429,7 +445,7 @@
             count.textContent = input.value.trim() ? '0/0' : '';
             return;
         }
-        count.textContent = (find.active + 1) + '/' + find.matches.length;
+        count.textContent = (find.active + 1) + '/' + totalLabel();
     }
 
     function runQuery(rawQuery) {
@@ -477,6 +493,7 @@
         listBtn.setAttribute('aria-pressed', show ? 'true' : 'false');
         settingsPanel.classList.remove('show');
         settingsBtn.setAttribute('aria-pressed', 'false');
+        renderList();
     });
 
     function openPanel() {
@@ -500,14 +517,21 @@
         // otherwise empty — likely the same word they'd have searched for, just on this page
         // instead of site-wide. Never overwrites a query already sitting in the find field
         // (e.g. reopening after Esc mid-search).
+        // The sutta address in it ("dn33 lābh" on a reader page) is not text on the page: only
+        // the words are taken (owner, 2026-10-05: the field opened with "dn33 lābh" and 0/0).
         if (!input.value) {
             var siteSearch = document.getElementById('paliauto');
-            if (siteSearch && siteSearch.value) input.value = siteSearch.value;
+            var seed = siteSearch && siteSearch.value ? siteSearch.value.split(/\s+/).filter(function (w) {
+                return w && !/^[a-z]{1,6}\d[\d.:\-–]*$/i.test(w);
+            }).join(' ') : '';
+            if (seed) input.value = seed;
         }
         panel.hidden = false;
         input.focus();
         input.select();
-        if (input.value) runQuery(input.value);
+        // Open first, search after the panel has painted: the panel shows at once, and the first
+        // search (which indexes the page) never delays it.
+        if (input.value) setTimeout(function () { if (!panel.hidden) runQuery(input.value); }, 0);
     }
     function closePanel() {
         panel.hidden = true;
