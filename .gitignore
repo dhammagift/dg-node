@@ -97,3 +97,5 @@ mobile-data
 # публичном репозитории — утечка. На новой машине создаются руками (см. CLAUDE.md).
 configs/local/*.json
 settings/sitemap.xml
+# the previous database kept while a new one is swapped in (dg.db.prev, -shm, -wal)
+dg.db.prev*
