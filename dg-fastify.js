@@ -165,6 +165,9 @@ app.addHook('onRequest', (req, res, done) => {
     const [, b64] = (req.headers.authorization || '').split(' ');
     const [user, pass] = b64 ? Buffer.from(b64, 'base64').toString().split(':') : [];
     if (user === restrictedAuth.user && pass === restrictedAuth.pass) return done();
+    // Search engines get 410 Gone, not 401: with 401 (and, earlier, a robots.txt Disallow they could not read past) the
+    // old /bw, /ai and /b pages stayed in the index. People (and the owner's login) still get the password prompt.
+    if (/bot|crawl|spider|slurp|yandex|bingpreview|duckduck|facebookexternalhit/i.test(req.headers['user-agent'] || '')) return res.code(410).send('Gone');
     res.header('WWW-Authenticate', 'Basic realm="restricted"').code(401).send('Authentication required');
 });
 

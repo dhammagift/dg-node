@@ -1,9 +1,7 @@
 Sitemap: https://dhamma.gift/sitemap.xml
 
+# TEMPORARY (2026-10-05): Disallow for /bw/ /ai/ /b/ is lifted so Google can see the 410 and drop them; put it back after ~2 months (see the dg-node issue)
 User-agent: *
-Disallow: /bw/
-Disallow: /ai/
-Disallow: /b/
 Disallow: /suttacentral.net/
 Disallow: /accesstoinsight.org/
 Disallow: /en.dhammadana.org/
