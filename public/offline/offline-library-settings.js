@@ -41,10 +41,8 @@
     function fmtDate(iso) {
         var d = iso ? new Date(iso) : null;
         if (!d || isNaN(d)) return '';
-        // "14 сентября 2026 года", not the browser's "… 2026 г.": that one ends in a full stop that
-        // collides with the sentence's own.
-        if (isRu) return d.toLocaleDateString('ru', { day: 'numeric', month: 'long' }) + ' ' + d.getFullYear() + ' года';
-        return d.toLocaleDateString('en', { day: 'numeric', month: 'long', year: 'numeric' });
+        // dd-mm-yyyy: the day is only approximate (the build date may be a rebuild's), so a numeric form fits.
+        return ('0' + d.getDate()).slice(-2) + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + d.getFullYear();
     }
     function baseLabel(st) {
         var day = fmtDate(st.built_at);
