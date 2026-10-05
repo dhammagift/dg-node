@@ -1596,11 +1596,8 @@
         var lang = key.split('_')[0], id = key.slice(lang.length + 1);
         var raw = (window.siteTranslators && window.siteTranslators[lang] && window.siteTranslators[lang][id]) || '';
         var name = String(raw)
-            // An EXTERNAL link is a "source" pointer appended to the name ("Thanissaro Bhikkhu
-            // <a href=https://dhammatalks.org/…>source</a>") — drop it whole. Internal ones ARE
-            // the name ("<a href=/assets/texts/syrkin.html>А.Я. Сыркин</a> с Пали, ред. <a>o</a>")
-            // — keep their text.
-            .replace(/<a[^>]*href=["']?https?:[^>]*>[\s\S]*?<\/a>/gi, '')
+            // A link IS the name, internal or external ("<a href=https://dhammatalks.org/suttas/>Thanissaro
+            // Bhikkhu</a>", "<a href=/assets/texts/syrkin.html>А.Я. Сыркин</a> с Пали") — keep its text.
             .replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
         return name || (id.charAt(0).toUpperCase() + id.slice(1));
     }

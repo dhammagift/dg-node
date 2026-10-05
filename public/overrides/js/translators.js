@@ -34,7 +34,7 @@ window.siteTranslators = {
     "brahmali": "Bhikkhu Brahmali",
     "o": "<a href=/docs/principles>o</a>",
     "anandajoti": "Anandajoti Bhikkhu",
-    "thanissaro": "Thanissaro Bhikkhu <a href=https://dhammatalks.org/suttas/>source</a>",    
+    "thanissaro": "<a href=https://dhammatalks.org/suttas/>Thanissaro Bhikkhu</a>",    
     "kelly": "John Kelly",
     "kovilo": "Bhikkhu Kovilo",
     "patton": "Charles Patton",
@@ -45,7 +45,7 @@ window.siteTranslators = {
   },
   "bb": {
     "bodhi": "Bhikkhu Bodhi",
-    "thanissaro": "Thanissaro Bhikkhu <a href=https://dhammatalks.org/suttas/>source</a>",
+    "thanissaro": "<a href=https://dhammatalks.org/suttas/>Thanissaro Bhikkhu</a>",
     "anandajoti": "Anandajoti Bhikkhu",
     "sujato+walton": "Sujato & Walton",
     "buddharakkhita": "Acharya Buddharakkhita",
