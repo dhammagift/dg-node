@@ -2201,6 +2201,7 @@
 
     function dgRenderLangPill() {
         var host = document.getElementById('dg-langpill');
+        var pillBefore = host ? host.innerHTML + '|' + host.hidden : '';
         var sutta = document.getElementById('sutta');
         var st = currentState();
         // Results too (owner: "в результатах старая кнопка"): there the pill drives langswitch.js
@@ -2344,7 +2345,13 @@
                     : '');
         }
         dgSyncLangPill();
-        window.dispatchEvent(new Event('resize')); // #scrollToTopBtn re-measures its right offset
+        // #scrollToTopBtn re-measures its right offset. Directly, not by a synthetic window resize:
+        // this runs on every class change of <body> (scrolling flips some), and a resize woke every
+        // listener on the page — on 1000 result rows DataTables' recalculation took most of a
+        // second each time (2026-10-06).
+        // And only when the pill actually changed: place() lays the page out to measure it.
+        if (host && host.innerHTML + '|' + host.hidden === pillBefore) return;
+        if (typeof window.dgPlaceScrollTop === 'function') window.dgPlaceScrollTop();
     }
     /* Current {pli, trn} of the screen: reader — localStorage.paliToggle (pli-2nd/pli/2nd),
        results — #search-pane.hide-pali + resultsHiddenLangs (dgSetResultsLangVisibility; trn

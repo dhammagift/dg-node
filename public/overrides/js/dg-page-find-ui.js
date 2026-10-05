@@ -275,6 +275,25 @@
     panel.appendChild(settingsPanel);
     panel.appendChild(listPanel);
     function mount() { if (!panel.isConnected && document.body) document.body.appendChild(panel); }
+    // The panel's taps and keystrokes are the panel's own. Bubbling up, every one of them also ran
+    // the page's document-wide handlers: on the results page with 1000 rows a tap on "next" took
+    // ~570 ms of which the jump itself was 3 ms (measured at a phone's CPU speed, 2026-10-06).
+    ['pointerdown', 'mousedown', 'touchstart', 'keydown', 'keyup', 'input'].forEach(function (type) {
+        panel.addEventListener(type, function (e) { e.stopPropagation(); });
+    });
+    // Clicks are taken earlier still, at the window in the capture phase, and handled here: the
+    // page's own capture-phase click handlers (Bootstrap's delegated data-api: a querySelectorAll
+    // over the whole document per click) run before any listener on the panel, and on the results
+    // page with 1000 rows that was ~0.46 s per tap at a phone's CPU speed. tap() registers a
+    // panel element's action; the innermost one under the click runs.
+    function tap(el, fn) { el._dgTap = fn; }
+    window.addEventListener('click', function (e) {
+        if (!panel.isConnected || !panel.contains(e.target)) return;
+        e.stopPropagation();
+        for (var el = e.target; el && el !== panel; el = el.parentElement) {
+            if (el._dgTap) { el._dgTap.call(el, e); return; }
+        }
+    }, true);
     if (document.body) mount(); else document.addEventListener('DOMContentLoaded', mount);
 
     // ---------------------------------------------------------------
@@ -306,7 +325,7 @@
         b.setAttribute('aria-pressed', on ? 'true' : 'false');
         b.innerHTML = '<span class="dg-toggle-label">' + (OPTION_LABELS[key] || key) + '</span>' +
             '<span class="dg-tgl" aria-hidden="true"></span>';
-        b.addEventListener('click', function () {
+        tap(b, function () {
             var next = b.getAttribute('aria-pressed') !== 'true';
             b.setAttribute('aria-pressed', next ? 'true' : 'false');
             onChange(next);
@@ -412,7 +431,7 @@
                 chip.className = 'dg-find-chip';
                 chip.textContent = m.id;
                 chip.title = 'Copy link';
-                chip.addEventListener('click', function (e) {
+                tap(chip, function (e) {
                     e.stopPropagation();
                     var url = find.linkTo(i);
                     if (navigator.clipboard) navigator.clipboard.writeText(url).catch(function () {});
@@ -422,7 +441,7 @@
                 });
                 row.appendChild(chip);
             }
-            row.addEventListener('click', function () { find.goTo(i); });
+            tap(row, function () { find.goTo(i); });
             li.appendChild(row);
             ul.appendChild(li);
         });
@@ -472,22 +491,22 @@
             closePanel();
         }
     });
-    clearBtn.addEventListener('click', function () {
+    tap(clearBtn, function () {
         input.value = '';
         input.focus();
         runQuery('');
     });
-    prevBtn.addEventListener('click', function () { if (find) find.prev(); });
-    nextBtn.addEventListener('click', function () { if (find) find.next(); });
-    closeBtn.addEventListener('click', closePanel);
-    settingsBtn.addEventListener('click', function () {
+    tap(prevBtn, function () { if (find) find.prev(); });
+    tap(nextBtn, function () { if (find) find.next(); });
+    tap(closeBtn, closePanel);
+    tap(settingsBtn, function () {
         var show = !settingsPanel.classList.contains('show');
         settingsPanel.classList.toggle('show', show);
         settingsBtn.setAttribute('aria-pressed', show ? 'true' : 'false');
         listPanel.classList.remove('show');
         listBtn.setAttribute('aria-pressed', 'false');
     });
-    listBtn.addEventListener('click', function () {
+    tap(listBtn, function () {
         var show = !listPanel.classList.contains('show');
         listPanel.classList.toggle('show', show);
         listBtn.setAttribute('aria-pressed', show ? 'true' : 'false');

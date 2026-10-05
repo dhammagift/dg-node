@@ -1668,3 +1668,27 @@ window.DgSearchRender = (function () {
         });
     }, true);
 })();
+
+/* DataTables Responsive recalculates every table on each window resize. On a phone the browser fires
+   resize whenever the address bar slides in or out — a height-only change that cannot change which
+   columns fit — and with 1000 rows each recalculation took about a second at a phone's CPU speed:
+   scrolling the results and jumping between find-on-page matches stalled on it (2026-10-06,
+   profiled: setupButtons / getClientRects). Its own window listener is replaced, as each table is
+   initialised, by one that recalculates only when the width changed (rotation, a resized window). */
+(function () {
+    if (!window.jQuery) return;
+    var $ = window.jQuery, lastWidth = window.innerWidth, timer = null, bound = false;
+    $(document).on('init.dt', function () {
+        $(window).off('resize.dtr orientationchange.dtr');
+        if (bound) return;
+        bound = true;
+        $(window).on('resize.dgdtr', function () {
+            if (window.innerWidth === lastWidth) return;
+            lastWidth = window.innerWidth;
+            clearTimeout(timer);
+            timer = setTimeout(function () {
+                $.fn.dataTable.tables({ visible: true, api: true }).responsive.recalc();
+            }, 120);
+        });
+    });
+})();

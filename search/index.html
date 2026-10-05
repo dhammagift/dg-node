@@ -1665,7 +1665,15 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
       top.style.right = Math.round((window.innerWidth - lang.getBoundingClientRect().left) / window.dgZoom() + CORNER_BUTTON_GAP) + 'px';
     }
     window.addEventListener('load', place);
-    window.addEventListener('resize', place);
+    window.dgPlaceScrollTop = place; // home.js calls it after re-rendering the language pill
+    // Width only: a phone fires resize each time the address bar slides in or out, and place()
+    // lays out the whole page to measure one button (1000 result rows: most of a second per scroll).
+    var placedWidth = window.innerWidth;
+    window.addEventListener('resize', function () {
+      if (window.innerWidth === placedWidth) return;
+      placedWidth = window.innerWidth;
+      place();
+    });
     // megareader.js updates #language-button's OWN label text on every render (buildSutta) —
     // "Pāḷi Eng" vs "Pāḷi Рус" have different widths, so a render that changes the label
     // (opening a sutta, switching mode, prev/next) leaves this stale until the next resize,
@@ -1926,12 +1934,16 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
       var y = window.scrollY;
       var delta = y - lastY;
       var bandHeight = band.getBoundingClientRect().height;
-      if (y < bandHeight) {
-        document.body.classList.remove('dg-header-hidden');
-      } else if (delta > DOWN_THRESHOLD) {
-        document.body.classList.add('dg-header-hidden');
-      } else if (delta < -UP_THRESHOLD) {
-        document.body.classList.remove('dg-header-hidden');
+      // Written only when it changes: classList.add/remove rewrite the attribute even when the
+      // class is already there (or already gone), and every rewrite restyled the page and re-ran
+      // the language pill's observer — on every scroll event. With 1000 result rows that was most
+      // of a second per jump between find-on-page matches (2026-10-06).
+      var hide = document.body.classList.contains('dg-header-hidden');
+      if (y < bandHeight) hide = false;
+      else if (delta > DOWN_THRESHOLD) hide = true;
+      else if (delta < -UP_THRESHOLD) hide = false;
+      if (hide !== document.body.classList.contains('dg-header-hidden')) {
+        document.body.classList.toggle('dg-header-hidden', hide);
       }
       lastY = y;
     }, { passive: true });

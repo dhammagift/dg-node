@@ -126,15 +126,20 @@
      Так совпадение может пересекать границы узлов (<span>, <b>, переводы внутри строки). */
   DGPageFind.prototype._collect = function (el) {
     var parts = [], starts = [], nodes = [], len = 0;
-    var walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, {
+    // Elements are visited too, so a whole subtree that is never searched is skipped at its root
+    // (FILTER_REJECT on an element skips its children) instead of asking closest() of every text
+    // node inside it: the results page's hidden DataTables cells (td.dtr-hidden) alone hold 2.3M
+    // characters on 1000 rows, against 41k on screen, and a match there cannot be shown anyway.
+    var walker = document.createTreeWalker(el, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, {
       acceptNode: function (n) {
-        if (!n.nodeValue || !n.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
-        var p = n.parentElement;
-        if (!p) return NodeFilter.FILTER_REJECT;
-        var tag = p.tagName;
-        if (tag === 'SCRIPT' || tag === 'STYLE' || tag === 'TEXTAREA') return NodeFilter.FILTER_REJECT;
-        if (p.closest('.' + 'dg-find-panel')) return NodeFilter.FILTER_REJECT; // сама панель поиска
-        return NodeFilter.FILTER_ACCEPT;
+        if (n.nodeType === 1) {
+          var tag = n.tagName;
+          if (tag === 'SCRIPT' || tag === 'STYLE' || tag === 'TEXTAREA' || tag === 'TEMPLATE') return NodeFilter.FILTER_REJECT;
+          var cl = n.classList;
+          if (cl && (cl.contains('dg-find-panel') || cl.contains('dtr-hidden'))) return NodeFilter.FILTER_REJECT; // сама панель поиска; скрытые колонки
+          return NodeFilter.FILTER_SKIP;
+        }
+        return n.nodeValue && n.nodeValue.trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
       }
     });
     var n;
