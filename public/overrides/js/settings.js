@@ -282,7 +282,7 @@ window.addEventListener('suttaRenderedCentral', () => {
         const scriptVoice = document.createElement('script');
         // ?v= matters: /read/js is served immutable for a year, so an unstamped URL meant a fix in the
         // player (or in the CSS it lazily appends) stayed invisible in already-visited browsers.
-        scriptVoice.src = "/read/js/voice.js?v=2026-10-04app";
+        scriptVoice.src = "/read/js/voice.js?v=2026-10-05spa";
         
         scriptVoice.onload = () => {
             // ---> ИСПРАВЛЕНИЕ: Блокируем загрузку A-B цикла для приложения Memo <---
@@ -1218,6 +1218,20 @@ window.addEventListener("keydown", (event) => {
             }
         }
 
+        // --- 3.4. In-page find panel (dg-page-find-ui.js) ---
+        // Owner: Esc closes it like any other window, also when its field is not focused (with the
+        // field focused its own keydown handler already does it). Pressing its own close button
+        // keeps the panel's cleanup (highlights, list) in one place.
+        const findPanel = document.querySelector('.dg-find-panel:not([hidden])');
+        if (findPanel) {
+            const findClose = [...findPanel.querySelectorAll('button')].find(b => /^close/i.test(b.title || ''));
+            if (findClose) {
+                findClose.click();
+                event.preventDefault();
+                return;
+            }
+        }
+
         // ==========================================
         // ПРИОРИТЕТ 4: TTS И ВЫДЕЛЕНИЯ (Active Word)
         // ==========================================
@@ -1433,10 +1447,14 @@ if (event.altKey && event.code === "KeyR") {
     event.preventDefault();
 
     // Если скрипты еще не загружены — грузим и запускаем
+    // Owner: the first Alt+R ignored a selected word and read from the start. The selection UI
+    // (.active-word + the floating .dynamic-tts-btn) works before voice.js is loaded, so once it is
+    // loaded press that button when it exists (reads from that place, in that language) and only
+    // fall back to the whole-page start when nothing is selected.
     if (!window.isVoiceScriptLoaded) {
         window.loadVoiceScripts(() => {
-            const voiceLink = document.querySelector('.voice-link');
-            if (voiceLink) voiceLink.click();
+            const target = document.querySelector('.dynamic-tts-btn') || document.querySelector('.voice-link');
+            if (target) target.click();
         });
         return;
     }

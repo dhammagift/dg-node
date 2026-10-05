@@ -2031,6 +2031,23 @@ async function handleSuttaClick(e) {
   }
 }
 
+// SPA: another sutta opened in place (prev/next, a link) while the player was reading - the old
+// playlist kept going (owner: an6.63 on screen, sn12.2 still playing). Stop it and forget it; the
+// player stays open, and Play starts the sutta now on screen. A re-render of the same text
+// (mode or language switch) is not a change of sutta: rebuildActivePlaylist handles that.
+window.addEventListener('suttaLoaded', e => {
+  if ((e.detail && e.detail.inPlace) || !ttsState.speaking) return;
+  const now = String(window._currentSlug || '').toLowerCase();
+  const was = String(ttsState.currentSlug || '').split('/').pop().toLowerCase();
+  if (!now || !was || now === was) return;
+  const player = document.getElementById('voice-player-container');
+  const open = player && player.classList.contains('active');
+  stopPlayback();
+  ttsState.playlist = [];
+  ttsState.currentSlug = '';
+  if (open) player.classList.add('active');
+});
+
 function stopPlayback() {
   if (window.ttsDelayTimeout) clearTimeout(window.ttsDelayTimeout); // УБИВАЕМ ПРИЗРАКА
   if (ttsState.utterance) ttsState.utterance.onend = null;
@@ -3821,8 +3838,9 @@ document.addEventListener('keydown', (e) => {
         if (slider) {
             const r = RATE_RANGE[kind];
             const cur = parseFloat(slider.value);
-            // keys move in bigger steps than the slider; R = the default speed
-            const next = e.code === 'KeyR' ? r.def : cur + (e.code === 'Minus' || e.code === 'NumpadSubtract' ? -0.1 : 0.1);
+            // keys move in bigger steps than the slider (owner: 0.05, it was 0.1); R = the default speed
+            const KEY_RATE_STEP = 0.05;
+            const next = e.code === 'KeyR' ? r.def : cur + (e.code === 'Minus' || e.code === 'NumpadSubtract' ? -KEY_RATE_STEP : KEY_RATE_STEP);
             setSliderRate(next);
             if (parseFloat(slider.value) !== cur && typeof showBubbleNotification === 'function') {
                 showBubbleNotification((window.isRu ? 'Скорость: ' : 'Speed: ') + formatRate(parseFloat(slider.value)));
