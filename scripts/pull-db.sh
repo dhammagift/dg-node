@@ -87,7 +87,8 @@ if [ "$NEW" != "$CUR" ] || [ "$FORCE" = 1 ]; then
     [ -f dg.db-wal ] && mv -f dg.db-wal dg.db.prev-wal
     [ -f dg.db-shm ] && mv -f dg.db-shm dg.db.prev-shm
     mv "$TMP/dg.db" dg.db
-    pm2 restart dg-prod test >/dev/null
+    # only the sites this box runs: a reserve may have dg-prod alone (f3), and pm2 restart fails on a missing name
+    for p in dg-prod test; do pm2 describe "$p" >/dev/null 2>&1 && pm2 restart "$p" >/dev/null; done
     echo "sites: installed build $NEW (previous $CUR kept as dg.db.prev)"
 fi
 
