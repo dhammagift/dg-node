@@ -660,7 +660,7 @@ body.dg-state-home .dg-shell-spinner { width: 16px; height: 16px; margin: 2px 0;
 #dg-busy-indicator {
     display: none;
     position: fixed;
-    top: 10px;
+    top: calc(10px + var(--dg-sat, 0px));   /* below the status strip in the app */
     left: 50%;
     transform: translateX(-50%);
     z-index: 900;
