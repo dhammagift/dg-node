@@ -1868,8 +1868,10 @@ async function downloadMemoAudio() {
     try {
         const text = document.getElementById('inputText').value;
         const delimiterInput = document.getElementById('ttsDelimiter').value || '\n';
-        const delay = parseFloat(document.getElementById('ttsDelay').value) || 2;
-        const endDelay = parseFloat(document.getElementById('ttsEndDelay').value) || 10;
+        // empty or invalid field = 0 (no pause); the prefilled values live in index.html
+        const numOr = (id, dflt) => { const v = parseFloat(document.getElementById(id).value); return isNaN(v) ? dflt : Math.max(0, v); };
+        const delay = numOr('ttsDelay', 0);
+        const endDelay = numOr('ttsEndDelay', 0);
         const soundChoice = document.getElementById('ttsSound').value;
         
         // 1. АВТООПРЕДЕЛЕНИЕ ЯЗЫКА
@@ -1987,7 +1989,7 @@ async function downloadMemoAudio() {
         };
 
         // 3. РАЗБИВКА НА ЧАНКИ (Обход лимита 5000 байт)
-        let currentSsmlInner = "";
+        let currentSsmlInner = "<break time=\"1s\"/>";  // lead-in silence: fade-in players swallow the first syllables
         
         for (let i = 0; i < segments.length; i++) {
             let textToSpeak = segments[i];
