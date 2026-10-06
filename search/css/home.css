@@ -4657,7 +4657,7 @@ html.dg-app body::before {
     top: 0; left: 0; right: 0;
     height: var(--dg-sat);
     background: var(--dg-surface);
-    z-index: 1084;   /* over the pinned header (850) and sheet scrims (1080/1083), under the drawer (1085) */
+    z-index: 2147483000;   /* over EVERY layer: pinned header (850), sheet scrims (1080/1083), drawer (1085), quick window (10000), toasts - the clock and notification icons are never under a panel */
     pointer-events: none;
 }
 html.dg-app body.dg-state-home::before { background: var(--dg-navy); }
