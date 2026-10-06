@@ -612,8 +612,13 @@
     function download(kind) {
         var info = {};
         downloadInFlight = true;
+        // The reader already agreed to a transfer that has not finished (STARTED_KEY: set after consent, cleared on
+        // install, delete, cancel or "not now"). A page opened while it runs - another screen of the app, a reload -
+        // resumes it without asking again.
+        var agreedEarlier = false;
+        try { agreedEarlier = localStorage.getItem(STARTED_KEY) === '1'; } catch (e) { /* private mode */ }
         return requestPersistence().then(function () {
-            return platform.askConsent(info);
+            return agreedEarlier ? true : platform.askConsent(info);
         }).then(function (ok) {
             if (!ok) throw new Error('offline-data-download-declined');
             try { localStorage.setItem(STARTED_KEY, '1'); } catch (e) { /* private mode */ }
