@@ -277,9 +277,13 @@ async function downloadArchiveThenImport(pool, url, name, expectedWireBytes, exp
         let reader = null;
         try {
             console.log(`[dg-offline] attempt ${attempt}: ${have} of ${expectedWireBytes || '?'} archive bytes already on disk`);
+            // The app's own copy of the archive (native download, a Capacitor file URL) is not asked for a range: Capacitor's
+            // file server answers every Range with the whole file as a 206, which would be glued on at the wrong offset. Without
+            // it the answer is a 200 and the start-over branch below takes it - a local file costs nothing to read again.
+            const localCopy = url.indexOf('/_capacitor_file_/') !== -1;
             const response = await fetch(url, {
                 signal: controller.signal,
-                headers: have > 0 ? { Range: `bytes=${have}-` } : undefined,
+                headers: have > 0 && !localCopy ? { Range: `bytes=${have}-` } : undefined,
             });
             if (!response.ok) throw new Error(`dg.db.gz: HTTP ${response.status}`);
             // 200 to a Range request: the server ignored it or the file changed — start over.
