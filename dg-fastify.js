@@ -165,6 +165,9 @@ app.addHook('onRequest', (req, res, done) => {
     const [, b64] = (req.headers.authorization || '').split(' ');
     const [user, pass] = b64 ? Buffer.from(b64, 'base64').toString().split(':') : [];
     if (user === restrictedAuth.user && pass === restrictedAuth.pass) return done();
+    // Search engines get 410 Gone, not 401: with 401 (and, earlier, a robots.txt Disallow they could not read past) the
+    // old /bw, /ai and /b pages stayed in the index. People (and the owner's login) still get the password prompt.
+    if (/bot|crawl|spider|slurp|yandex|bingpreview|duckduck|facebookexternalhit/i.test(req.headers['user-agent'] || '')) return res.code(410).send('Gone');
     res.header('WWW-Authenticate', 'Basic realm="restricted"').code(401).send('Authentication required');
 });
 
@@ -310,10 +313,19 @@ const ASSET_URL_PATTERN = new RegExp(
 // cache can only be re-validated with a full download". This keeps must-revalidate's
 // guarantee (client always asks the server first) while letting an unchanged page answer
 // with a 304 instead of re-sending the whole document.
+// Developer notes live in HTML comments in the page sources (they stay there, for the people who work on
+// the code); the visitor gets the page without them. <script>/<style> blocks are copied as they are (a
+// "<!--" inside a script is code, not a comment), IE conditional comments (<!--[if ...]>) are kept.
+const HTML_COMMENT_OR_BLOCK = /(<script\b[\s\S]*?<\/script>|<style\b[\s\S]*?<\/style>)|<!--(?!\s*\[if|\s*<!\[endif)[\s\S]*?-->/gi;
+function stripHtmlComments(html) {
+    return html.replace(HTML_COMMENT_OR_BLOCK, (m, block) => block || '');
+}
+
 function sendVersionedHtml(req, reply, absHtmlPath, statusCode = 200) {
     let html;
     try { html = fsSync.readFileSync(absHtmlPath, 'utf8'); }
     catch { return reply.code(404).send(); }
+    html = stripHtmlComments(html);
     const rewritten = html.replace(
         // Also stamps the lazy loadScript('/reader/megareader.js') / ('/spa/toc.js') calls in
         // search/index.html, `s.src = '/spa/toc.js'` (ensureTocAssets) and `css.href = '/assets/...'`
