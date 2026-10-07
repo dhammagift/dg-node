@@ -1,3 +1,9 @@
+// The hourglass of the timers, drawn inline: no file to request (in the app the <img> of it came up as a broken picture) and it takes
+// the colour of the text around it, which is how the dark theme gets its own shade.
+function timerIcon(extra) {
+    return '<svg class="memo-timer-icon' + (extra ? ' ' + extra : '') + '" viewBox="0 0 640 640" fill="currentColor" role="img" aria-label="timer"><path d="M152 64C138.7 64 128 74.7 128 88C128 101.3 138.7 112 152 112L160 112L160 131C160 171.3 176 210 204.5 238.5L286 320L204.5 401.5C176 430 160 468.7 160 509L160 528L152 528C138.7 528 128 538.7 128 552C128 565.3 138.7 576 152 576L488 576C501.3 576 512 565.3 512 552C512 538.7 501.3 528 488 528L480 528L480 509C480 468.7 464 430 435.5 401.5L354 320L435.5 238.5C464 210 480 171.3 480 131L480 112L488 112C501.3 112 512 101.3 512 88C512 74.7 501.3 64 488 64L152 64zM320 353.9L401.5 435.4C421 455 432 481.4 432 509L432 528L208 528L208 509C208 481.4 219 455 238.5 435.5L320 353.9zM320 286L238.5 204.5C219 185 208 158.6 208 131L208 112L432 112L432 131C432 158.6 421 185 401.5 204.5L320 286.1z"/></svg>';
+}
+
 
  window.activeMemoSavedSlug = null; // Якорь для отслеживания редактируемого документа
 
@@ -752,7 +758,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
         // --- ПЕРЕХВАТЧИК АУДИО (СТРОГИЙ КОНТРОЛЬ ТАЙМЕРА) ---
         (function interceptAudioForTimer() {
-            const iconSVG = `<img src="/assets/svg/hourglass-regular-full.svg" class="memo-timer-icon" alt="timer">`;
+            const iconSVG = timerIcon();
             const originalPlay = Audio.prototype.play;
             
             Audio.prototype.play = function() {
@@ -836,13 +842,13 @@ window.startMemoVisualTimer = function(durationMs, textPrefix) {
     window.memoNextAllowedTime = endTime; 
     window.memoLockId++;
     
-    const iconSVG = `<img src="/assets/svg/hourglass-regular-full.svg" class="memo-timer-icon spaced" alt="timer">`;
+    const iconSVG = timerIcon('spaced');
     
     const tick = () => {
         const left = endTime - Date.now();
         if (left <= 0) {
             clearInterval(window.memoCountdownInterval);
-            if (span) span.innerHTML = `<img src="/assets/svg/hourglass-regular-full.svg" class="memo-timer-icon" alt="timer">`; 
+            if (span) span.innerHTML = timerIcon(); 
             
             const bigCountdown = document.getElementById('large-countdown-timer');
             if (bigCountdown) bigCountdown.innerText = '00:00';
@@ -1928,6 +1934,14 @@ async function downloadMemoAudio() {
         // service with pauses of any length; Google below is limited to 10 s pauses and needs a key.
         const dg = typeof window.dgVoiceFor === 'function' ? window.dgVoiceFor(!isTranslation, detectedLang) : null;
         if (dg) {
+            // The voice service takes at most 3 hours in all (30 minutes of speech; the pauses count only here): said at once,
+            // not after minutes of synthesis. Same sum as the service's own check.
+            const pausesMin = (1 + endDelay + delay * Math.max(0, segments.length - 1)) / 60;
+            if (pausesMin > 180) {
+                throw new Error(window.memoLang === 'ru'
+                    ? `одни паузы дают ${Math.round(pausesMin)} мин, а в файле может быть не больше 180 мин (речи до 30 мин). Уменьшите паузу или число строк.`
+                    : `the pauses alone come to ${Math.round(pausesMin)} min, a file can be 180 min at most (speech up to 30 min). Shorten the pause or the number of lines.`);
+            }
             const body = JSON.stringify({ segments, voice: dg.voice, rate: dg.rate, delay, end_delay: endDelay,
                                           sound: soundChoice === 'none' ? '' : soundChoice });
             let blob = null, lastErr = '';

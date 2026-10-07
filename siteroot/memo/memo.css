@@ -41,6 +41,7 @@
 
 /* --- Иконка песочных часов для таймера --- */
 .memo-timer-icon {
+    color: #989898;
     width: 12px;
     height: 12px;
     opacity: 0.6;
@@ -456,4 +457,4 @@ NEW CLASSES EXTRACTED FROM INLINE STYLES
 .tts-chips .dummy-ab-timer-container{visibility:hidden}
 .tts-chips .dummy-ab-timer-container.active{visibility:visible}
 .tts-chips .dummy-ab-timer-container .memo-timer-icon{width:12px;height:12px;margin:0}
-.dark .tts-chips .memo-timer-icon{filter:invert(1)}
+.dark .tts-chips .memo-timer-icon{color:#b5b5b5}
