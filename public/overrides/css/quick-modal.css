@@ -348,8 +348,7 @@ body.dark .compact-list li, body.dark-mode .compact-list li { border-bottom-colo
 .quick-suberr[hidden] { display: none; }
 
 @media (max-width: 500px) {
-  /* Clear of the status and gesture bars (the app sets --dg-sat / --dg-sab): the white card used to cover the clock. */
-  .quick-modal-container { height: calc(calc(100 * var(--dg-vh, 1vh)) - 24px - var(--dg-sat, 0px) - var(--dg-sab, 0px)) !important; top: calc(50% + (var(--dg-sat, 0px) - var(--dg-sab, 0px)) / 2); }
+  .quick-modal-container { height: calc(calc(100 * var(--dg-vh, 1vh)) - 24px) !important; }
   .quick-search-form { margin: 0 52px 10px 12px !important; padding: 4px 4px 4px 12px !important; }
   #tab-fav, #tab-4as, #tab-subs { padding-left: 14px !important; padding-right: 14px !important; }
   .quick-tab-btn { padding: 10px 8px; }
