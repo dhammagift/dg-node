@@ -168,7 +168,17 @@ app.addHook('onRequest', (req, res, done) => {
     // Search engines get 410 Gone, not 401: with 401 (and, earlier, a robots.txt Disallow they could not read past) the
     // old /bw, /ai and /b pages stayed in the index. People (and the owner's login) still get the password prompt.
     if (/bot|crawl|spider|slurp|yandex|bingpreview|duckduck|facebookexternalhit/i.test(req.headers['user-agent'] || '')) return res.code(410).send('Gone');
-    res.header('WWW-Authenticate', 'Basic realm="restricted"').code(401).send('Authentication required');
+    // Realm text is shown by some browsers in the login box; the body is shown when the visitor presses Cancel.
+    res.header('WWW-Authenticate', 'Basic realm="Access restricted by rights holders"')
+        .code(401).type('text/html; charset=utf-8')
+        .send('<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Restricted</title>'
+            + '<body style="font:18px/1.5 sans-serif;max-width:32em;margin:15vh auto;padding:0 1em;color:#222">'
+            + '<p style="text-align:center"><img src="/assets/img/dgsanhkalogo-sm.webp" alt="Dhamma.Gift" width="120"></p>'
+            + '<p>Access to this section is restricted by the rights holders.</p>'
+            + '<p>Questions: <a href="mailto:agiftofdhamma@gmail.com">agiftofdhamma@gmail.com</a></p>'
+            + '<p>Доступ к этому разделу ограничен правообладателями.</p>'
+            + '<p>По вопросам: <a href="mailto:agiftofdhamma@gmail.com">agiftofdhamma@gmail.com</a></p>'
+            + '<p><a href="/">Dhamma.Gift</a></p></body>');
 });
 
 // Real /robots.txt — without this exact route the parametric /:slug catch-all (keyword search
