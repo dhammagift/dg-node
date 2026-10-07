@@ -454,7 +454,7 @@ NEW CLASSES EXTRACTED FROM INLINE STYLES
    display:block and none, hence the line-height centring. */
 .voice-player .tts-chips #global-session-timer,
 .voice-player .tts-chips .dummy-ab-timer-container{position:static;top:auto;left:auto;right:auto;width:48px;padding:0 3px;border-radius:999px;line-height:30px;font-weight:600;text-align:center;border-color:var(--dg-border-strong);color:var(--dg-text);cursor:default;font-variant-numeric:tabular-nums}
-.tts-chips .dummy-ab-timer-container{visibility:hidden}
-.tts-chips .dummy-ab-timer-container.active{visibility:visible}
+/* shown from the start (the hourglass, then the countdown): the chip used to be invisible until the first pause, leaving an empty place */
+.tts-chips .dummy-ab-timer-container{visibility:visible;display:inline-flex;align-items:center;justify-content:center}
 .tts-chips .dummy-ab-timer-container .memo-timer-icon{width:12px;height:12px;margin:0}
 .dark .tts-chips .memo-timer-icon{color:#b5b5b5}

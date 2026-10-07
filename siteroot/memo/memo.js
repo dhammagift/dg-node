@@ -1802,7 +1802,7 @@ window.resetTTSSettings = function() {
                     timerContainer = document.createElement('div');
                     timerContainer.id = 'dummy-ab-timer-container';
                     timerContainer.className = 'dummy-ab-timer-container';
-                    timerContainer.innerHTML = `<span id="ab-btn-timer" class="tabular-nums"></span>`;
+                    timerContainer.innerHTML = `<span id="ab-btn-timer" class="tabular-nums">${timerIcon()}</span>`;   // the hourglass is there from the start: no empty place before the first pause
                 }
                 if (row.classList.contains('tts-chips')) timerContainer.classList.add('tts-chip');  // same look as the chips
                 if (timerContainer.parentNode !== row || row.lastElementChild !== timerContainer) row.appendChild(timerContainer);
