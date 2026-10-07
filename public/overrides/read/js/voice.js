@@ -957,7 +957,8 @@ function setTrnEngine(engine) {
 // DG (Piper) translation voices per language; a language without one is read by Google.
 const DG_TRN_VOICES = {
   en: [{ id: 'alan', label: 'alan ♂ · UK' }, { id: 'norman', label: 'norman ♂ · US' }, { id: 'kathleen', label: 'kathleen ♀ · US (low)' }],
-  ru: [{ id: 'ruslan', label: 'ruslan ♂' }, { id: 'irina', label: 'irina ♀' }]
+  // first = default; dgru: the owner's timbre (Piper fine-tuned from ruslan on a Chatterbox clone of his voice)
+  ru: [{ id: 'dgru', label: 'o Dhamma.Gift ♂ · beta' }, { id: 'ruslan', label: 'ruslan ♂' }, { id: 'irina', label: 'irina ♀' }]
 };
 
 function dgTrnVoice(lang) {
