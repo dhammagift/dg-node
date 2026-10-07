@@ -1934,13 +1934,27 @@ async function downloadMemoAudio() {
         // service with pauses of any length; Google below is limited to 10 s pauses and needs a key.
         const dg = typeof window.dgVoiceFor === 'function' ? window.dgVoiceFor(!isTranslation, detectedLang) : null;
         if (dg) {
-            // The voice service takes at most 3 hours in all (30 minutes of speech; the pauses count only here): said at once,
-            // not after minutes of synthesis. Same sum as the service's own check.
-            const pausesMin = (1 + endDelay + delay * Math.max(0, segments.length - 1)) / 60;
-            if (pausesMin > 180) {
-                throw new Error(window.memoLang === 'ru'
-                    ? `одни паузы дают ${Math.round(pausesMin)} мин, а в файле может быть не больше 180 мин (речи до 30 мин). Уменьшите паузу или число строк.`
-                    : `the pauses alone come to ${Math.round(pausesMin)} min, a file can be 180 min at most (speech up to 30 min). Shorten the pause or the number of lines.`);
+            // The voice service's limits, said at once (not after minutes of synthesis): a pause up to 1 hour each (the interval and the
+            // end wait), the whole recording up to 3 hours, the speech in it up to 30 minutes. Same numbers as the service's own check.
+            const ru = window.memoLang === 'ru';
+            const human = (sec) => {
+                const m = Math.round(sec / 60), h = Math.floor(m / 60), r = m % 60;
+                return h ? (ru ? `${h} ч${r ? ' ' + r + ' мин' : ''}` : `${h} h${r ? ' ' + r + ' min' : ''}`) : (ru ? `${m} мин` : `${m} min`);
+            };
+            const MAX_PAUSE = 3600, MAX_TOTAL = 180 * 60;
+            if (delay > MAX_PAUSE) {
+                throw new Error(ru ? `интервал между строками не больше 1 часа (3600 сек); у вас ${human(delay)}.`
+                                   : `the interval between lines can be 1 hour at most (3600 sec); yours is ${human(delay)}.`);
+            }
+            if (endDelay > MAX_PAUSE) {
+                throw new Error(ru ? `ожидание в конце не больше 1 часа (3600 сек); у вас ${human(endDelay)}.`
+                                   : `the end wait can be 1 hour at most (3600 sec); yours is ${human(endDelay)}.`);
+            }
+            const pausesSec = 1 + endDelay + delay * Math.max(0, segments.length - 1);
+            if (pausesSec > MAX_TOTAL) {
+                throw new Error(ru
+                    ? `вся запись не может быть длиннее 3 часов, а ваши паузы дают ${human(pausesSec)} (${segments.length} строк по ${human(delay)} и ${human(endDelay)} в конце). Сократите интервал, ожидание в конце или число строк.`
+                    : `the whole recording can be 3 hours at most, and your pauses come to ${human(pausesSec)} (${segments.length} lines, ${human(delay)} between them and ${human(endDelay)} at the end). Shorten the interval, the end wait or the number of lines.`);
             }
             const body = JSON.stringify({ segments, voice: dg.voice, rate: dg.rate, delay, end_delay: endDelay,
                                           sound: soundChoice === 'none' ? '' : soundChoice });
