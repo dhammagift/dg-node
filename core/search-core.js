@@ -385,6 +385,12 @@ const SQL_SCAN_BASE = `SELECT sutta_id, segment_id, ord, kind, lang, translator,
 const SQL_SCAN_FTS = `${SQL_SCAN_BASE}
     AND rowid IN (SELECT rowid FROM fts WHERE fts MATCH ?) AND regexp_test(?, txt)`;
 const SQL_SCAN_PLAIN = `${SQL_SCAN_BASE} AND regexp_test(?, txt)`;
+// For a host whose SQL cannot call our JS function (the iOS app runs SQL natively: searchDb.jsRegexp): the same candidate
+// rows, the pattern tested here with the same RegExp as everywhere else. `rid` lets the host fetch them page by page.
+const SQL_SCAN_FTS_ROWS = `SELECT rowid AS rid, sutta_id, segment_id, ord, kind, lang, translator, txt FROM texts
+    WHERE (translator IS NULL OR translator <> 'ai') AND rowid IN (SELECT rowid FROM fts WHERE fts MATCH ?)`;
+const SQL_SCAN_PLAIN_ROWS = `SELECT rowid AS rid, sutta_id, segment_id, ord, kind, lang, translator, txt FROM texts
+    WHERE (translator IS NULL OR translator <> 'ai')`;
 
 // Called once per row, so the compiled RegExp is memoised on its source instead of being rebuilt
 // a million times.
@@ -465,13 +471,20 @@ function regexKeywordRows(keyword) {
     let timedOut = false;
 
     const useFts = !!(literals && literals.length);
-    const stmt = searchDb.prepare(useFts ? SQL_SCAN_FTS : SQL_SCAN_PLAIN);
-    const params = useFts ? [literals.map(ftsPhrase).join(' OR '), keyword] : [keyword];
+    const jsFilter = !!searchDb.jsRegexp;
+    const stmt = searchDb.prepare(jsFilter ? (useFts ? SQL_SCAN_FTS_ROWS : SQL_SCAN_PLAIN_ROWS) : (useFts ? SQL_SCAN_FTS : SQL_SCAN_PLAIN));
+    const params = useFts ? (jsFilter ? [literals.map(ftsPhrase).join(' OR ')] : [literals.map(ftsPhrase).join(' OR '), keyword]) : (jsFilter ? [] : [keyword]);
+    const re = jsFilter ? new RegExp(keyword, 'i') : null;
+    let examined = 0;
     for (const row of stmt.iterate(...params)) {
+        if (re) {
+            if ((++examined & 1023) === 0 && Date.now() > deadline) { timedOut = true; break; }
+            if (!re.test(row.txt)) continue;
+        }
         rows.push(row);
         scanned++;
         if (scanned >= maxRows) { truncated = true; break; }
-        if ((scanned & 1023) === 0 && Date.now() > deadline) { timedOut = true; break; }
+        if (!re && (scanned & 1023) === 0 && Date.now() > deadline) { timedOut = true; break; }
     }
 
     lastRegexScan = { pattern: keyword, literals: useFts ? literals : null, scanned, truncated, timedOut };

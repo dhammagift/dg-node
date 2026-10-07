@@ -105,10 +105,29 @@ function post(msg) {
 // noticing rather than smoothing over.
 function nodeSqliteShim(oo1db) {
     return {
+        jsRegexp: !!oo1db.jsRegexp,
         prepare(sql) {
             return {
                 all: (...params) => oo1db.selectObjects(sql, params),
                 get: (...params) => oo1db.selectObject(sql, params),
+                // node:sqlite's stmt.iterate(): the regex scan (core regexKeywordRows) walks its rows one by one and stops at a
+                // deadline. Its absence made every regex search fail with the generic "check your query".
+                iterate: function* (...params) {
+                    if (typeof oo1db.prepare === 'function') {                    // sqlite-wasm: step the statement
+                        const st = oo1db.prepare(sql);
+                        try {
+                            if (params.length) st.bind(params);
+                            while (st.step()) yield st.get({});
+                        } finally { st.finalize(); }
+                        return;
+                    }
+                    // The native handle (iOS) only answers whole queries: pages of 20000 rows by the rid the core's query carries.
+                    let last = -1, page;
+                    do {
+                        page = oo1db.selectObjects(`SELECT * FROM (${sql}) WHERE rid > ? ORDER BY rid LIMIT 20000`, [...params, last]);
+                        for (const row of page) { last = row.rid; yield row; }
+                    } while (page.length === 20000);
+                },
             };
         },
         function(name, opts, fn) {
@@ -998,6 +1017,8 @@ function nativeDb(endpoint) {
     return {
         selectObjects: rows,
         selectObject: (sql, params) => rows(sql, params)[0],
+        // The SQL runs natively (its own regex flavour): the core is told to test patterns itself, with the same RegExp as the site.
+        jsRegexp: true,
         createFunction() {},
         close() {},
     };
