@@ -1,3 +1,19 @@
+// The limits of the audio file, in the reader's language (the voice service answers with a code; the page checks the same numbers
+// before sending). Short on purpose: the numbers themselves are in the docs (/docs/memo, "Limits of the audio file").
+function memoLimitText(code, totalSec) {
+    const ru = window.memoLang === 'ru';
+    const m = Math.round((totalSec || 0) / 60), h = Math.floor(m / 60), r = m % 60;
+    const human = h ? (ru ? `${h} ч${r ? ' ' + r + ' мин' : ''}` : `${h} h${r ? ' ' + r + ' min' : ''}`) : (ru ? `${m} мин` : `${m} min`);
+    const t = {
+        interval: ru ? 'Интервал слишком большой: не больше 1 часа.' : 'Interval is too long: 1 hour at most.',
+        end: ru ? 'Пауза в конце слишком большая: не больше 1 часа.' : 'End pause is too long: 1 hour at most.',
+        total: ru ? `Запись длиннее 3 часов (с паузами выходит ${human}). Сократите паузы или строки.` : `The recording is over 3 hours (pauses make it ${human}). Shorten the pauses or lines.`,
+        speech: ru ? 'Сам текст слишком длинный: речи не больше 30 минут.' : 'The text itself is too long: 30 minutes of speech at most.',
+        size: ru ? 'Слишком много текста: не больше 200 строк и 20 000 знаков.' : 'Too much text: 200 lines and 20,000 characters at most.',
+    };
+    return t[code] || '';
+}
+
 // The hourglass of the timers, drawn inline: no file to request (in the app the <img> of it came up as a broken picture) and it takes
 // the colour of the text around it, which is how the dark theme gets its own shade.
 function timerIcon(extra) {
@@ -622,28 +638,14 @@ window.addEventListener('DOMContentLoaded', () => {
 
         if (document.getElementById('clear_input_btn')) document.getElementById('clear_input_btn').title = 'Очистить';
 
-        // Локализация ссылок (Пали остается без изменений)
-        const linkPmOther = document.getElementById('link_pm_other');
-        if (linkPmOther) {
-            linkPmOther.childNodes[0].nodeValue = 'Pātimokkha на других сайтах: ';
-        }
-
-        const linkSelfcheck = document.getElementById('link_selfcheck');
-        if (linkSelfcheck) {
-            linkSelfcheck.childNodes[0].nodeValue = 'Самопроверка: ';
-        }
-
         if (document.getElementById('copy_input_btn')) document.getElementById('copy_input_btn').title = 'Скопировать';
         document.getElementById('btn_settings').title = 'Настройки';
         document.getElementById('btn_reset_tts').title = 'Сбросить настройки';
-        document.getElementById('link_tips').childNodes[0].nodeValue = 'Советы и хитрости заучивания ';
-        document.getElementById('link_open_any').innerText = 'Открыть любую Сутту в этом режиме';
         document.getElementById('lbl_result').innerText = 'Результат:';
 
         document.getElementById('edit_mode_label').innerText = 'Авто-курсор';
         document.getElementById('edit_mode_label').title = 'Ставит курсор в конец текущей строки при остановке плеера';
 
-        document.getElementById('help_text_1').innerHTML = 'Сокращайте текст до первых букв для быстрого заучивания (напр. "Sabbaṁ taṁ" → "S t").<br><b>AI Expand</b> попросить ИИ заполнить сокращенный текст (peyyāla)<br><b>TTS:</b> <b>Разделитель</b> режет текст на части. <b>Пауза</b> добавляет задержку между ними. <b>Звук</b> играет в конце. <b>Цикл</b> повторяет.';
     }
 
     if ('mediaSession' in navigator) {
@@ -1934,28 +1936,11 @@ async function downloadMemoAudio() {
         // service with pauses of any length; Google below is limited to 10 s pauses and needs a key.
         const dg = typeof window.dgVoiceFor === 'function' ? window.dgVoiceFor(!isTranslation, detectedLang) : null;
         if (dg) {
-            // The voice service's limits, said at once (not after minutes of synthesis): a pause up to 1 hour each (the interval and the
-            // end wait), the whole recording up to 3 hours, the speech in it up to 30 minutes. Same numbers as the service's own check.
-            const ru = window.memoLang === 'ru';
-            const human = (sec) => {
-                const m = Math.round(sec / 60), h = Math.floor(m / 60), r = m % 60;
-                return h ? (ru ? `${h} ч${r ? ' ' + r + ' мин' : ''}` : `${h} h${r ? ' ' + r + ' min' : ''}`) : (ru ? `${m} мин` : `${m} min`);
-            };
-            const MAX_PAUSE = 3600, MAX_TOTAL = 180 * 60;
-            if (delay > MAX_PAUSE) {
-                throw new Error(ru ? `интервал между строками не больше 1 часа (3600 сек); у вас ${human(delay)}.`
-                                   : `the interval between lines can be 1 hour at most (3600 sec); yours is ${human(delay)}.`);
-            }
-            if (endDelay > MAX_PAUSE) {
-                throw new Error(ru ? `ожидание в конце не больше 1 часа (3600 сек); у вас ${human(endDelay)}.`
-                                   : `the end wait can be 1 hour at most (3600 sec); yours is ${human(endDelay)}.`);
-            }
+            // The voice service's limits, said at once (not after minutes of synthesis); the same numbers as its own check.
             const pausesSec = 1 + endDelay + delay * Math.max(0, segments.length - 1);
-            if (pausesSec > MAX_TOTAL) {
-                throw new Error(ru
-                    ? `вся запись не может быть длиннее 3 часов, а ваши паузы дают ${human(pausesSec)} (${segments.length} строк по ${human(delay)} и ${human(endDelay)} в конце). Сократите интервал, ожидание в конце или число строк.`
-                    : `the whole recording can be 3 hours at most, and your pauses come to ${human(pausesSec)} (${segments.length} lines, ${human(delay)} between them and ${human(endDelay)} at the end). Shorten the interval, the end wait or the number of lines.`);
-            }
+            if (delay > 3600) throw new Error(memoLimitText('interval'));
+            if (endDelay > 3600) throw new Error(memoLimitText('end'));
+            if (pausesSec > 180 * 60) throw new Error(memoLimitText('total', pausesSec));
             const body = JSON.stringify({ segments, voice: dg.voice, rate: dg.rate, delay, end_delay: endDelay,
                                           sound: soundChoice === 'none' ? '' : soundChoice });
             let blob = null, lastErr = '';
@@ -1963,7 +1948,8 @@ async function downloadMemoAudio() {
                 try {
                     const r = await fetch(u, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body });
                     if (r.ok) { blob = await r.blob(); break; }
-                    lastErr = ((await r.json().catch(() => ({}))).error || {}).message || ('HTTP ' + r.status);
+                    const er = (await r.json().catch(() => ({}))).error || {};
+                    lastErr = memoLimitText(er.code, er.total_sec) || er.message || ('HTTP ' + r.status);
                     if (r.status === 413 || r.status === 400) break;  // the text itself is the problem: no point retrying
                 } catch (e) { lastErr = e.message; }
             }
