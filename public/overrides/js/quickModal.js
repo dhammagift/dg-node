@@ -49,7 +49,7 @@ function buildQuickModalDOM() {
   const currentPath = window.location.pathname;
   let currentUrl = window.location.href;
   let urlWithoutParams = currentUrl.split('?')[0];
-  let queryBase = "/?q="; // the SPA searches or opens the text itself; legacy /read/ and /r/ are gone
+  let queryBase = (window.DG_SITE_BASE || "") + "/?q="; // the SPA searches or opens the text itself; legacy /read/ and /r/ are gone. On dict.dhamma.gift (the Dictionary app) the base is the main site: a bare /?q= opened the dictionary's own home
   
   const formAction = currentPath.match(/\/(ru|r)\//) ? '/ru/' : '/';
 
