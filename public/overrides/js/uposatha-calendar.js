@@ -795,13 +795,22 @@
     if (item.kind === 'beg') return state.meal.begLead === -1 ? t.mealBegSun(F.hm.format(item.start)) : state.meal.begLead ? t.mealBegBody(F.hm.format(item.start), state.meal.begLead) : t.mealBegZero(F.hm.format(item.start));
     return item.meal ? (state.meal.lead ? t.mealRemBody(F.hm.format(item.start), state.meal.lead) : t.mealRemZero(F.hm.format(item.start))) : (item.two ? t.remTwo : t.remBody)(F.stamp.format(item.start));
   }
-  function notify(item, F) {
-    var opts = { body: itemBody(item, F), tag: 'uposatha-' + item.key, icon: '/assets/img/pwa-bold-monocolor-192.png', data: { url: '/uposatha-calendar' } };
+  // What a reminder that arrives late says: that the NOTIFICATION was missed, not the Uposatha (it is still ahead, or it would
+  // not be here): the reminder's own title, then what it said. The food reminders say "in 30 min", which is no longer true when
+  // it arrives late: they give the time instead.
+  function missedBody(item, F) {
+    var what = item.kind === 'part' || !(item.meal || item.kind === 'beg') ? itemBody(item, F) : F.hm.format(item.start);
+    return item.title + ': ' + what;
+  }
+  // late: the page was opened after the reminder's time. It comes quietly and says it was missed, as in the app.
+  function notify(item, F, late) {
+    var opts = { body: late ? missedBody(item, F) : itemBody(item, F), tag: 'uposatha-' + item.key, icon: '/assets/img/pwa-bold-monocolor-192.png', data: { url: '/uposatha-calendar' } };
+    if (late) opts.silent = true;
     var seen = []; try { seen = JSON.parse(store('dgUposathaNotified') || '[]'); } catch (e) { seen = []; }
     if (seen.indexOf(item.key) !== -1) return;
     seen.push(item.key); store('dgUposathaNotified', JSON.stringify(seen.slice(-40)));
-    showWeb(item.title, opts).catch(function () { /* the browser or the system refused: nothing more to do here */ });
-    playSound(soundOf(item));
+    showWeb(late ? t.missed : item.title, opts).catch(function () { /* the browser or the system refused: nothing more to do here */ });
+    if (!late) playSound(soundOf(item));
   }
   // What has already been dealt with, by reminder key: the browser path writes a reminder here when it shows it (notify()
   // above), the app's path writes what it has handed to the device (scheduleNative below). The app needs it because the list
@@ -882,12 +891,6 @@
       var due = list.filter(function (i) { return i.when > now || seen.indexOf(i.key) === -1; });
       // A reminder whose time has passed is caught up QUIETLY and says so ("Missed reminder"): it is news, not an alarm, and it arrives late.
       var missed = function (i) { return i.when <= now; };
-      // What it says: that the NOTIFICATION was missed, not the Uposatha (it is still ahead, or it would not be here): the reminder's own title, then
-      // what it said. The food reminders say "in 30 min", which is no longer true when it arrives late: they give the time instead.
-      var missedBody = function (item, F) {
-        var what = item.kind === 'part' || !(item.meal || item.kind === 'beg') ? itemBody(item, F) : F.hm.format(item.start);
-        return item.title + ': ' + what;
-      };
       var sounds = []; // every kind of reminder sounds by its own choice: the Uposatha, the end and the beginning of the time for food, the parts
       due.forEach(function (i) { if (missed(i)) return; var k = soundOf(i); if (sounds.indexOf(k) === -1) sounds.push(k); });
       var anyMissed = due.some(missed);
@@ -913,7 +916,9 @@
     clearTimeout(timer);
     if (!(state.rem.on || state.meal.rem || state.meal.beg || state.parts.rem) || !('Notification' in window) || Notification.permission !== 'granted') return null;
     var now = Date.now(), list = reminderList(rows, byYmd), next = null;
-    list.forEach(function (i) { if (i.when <= now) notify(i, F); else if (!next || i.when < next.when) next = i; });
+    // A time that passed while the page was closed is caught up quietly ("Missed reminder"); a background tab's timer may wake
+    // a minute or so late, and that is not missed.
+    list.forEach(function (i) { if (i.when <= now) notify(i, F, now - i.when > 120000); else if (!next || i.when < next.when) next = i; });
     if (next) timer = setTimeout(function () { notify(next, F); paint(); }, Math.min(next.when - now, 2147000000));
     return next;
   }
