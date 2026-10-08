@@ -267,15 +267,6 @@ function readerShareUrl(href) {
     return u.href.replace(/%2C/gi, ',');   // a comma is legal in a query and reads better
 }
 window.dgReaderShareUrl = readerShareUrl;
-// The address bar says the same as a shared link, so copying it from the browser works too.
-// Rewritten from scratch on every render: the previous ?translators= is dropped first, so a
-// changed choice or a return to the default never leaves a stale name behind.
-function syncReaderAddress() {
-    const u = new URL(location.href);
-    u.searchParams.delete('translators');
-    const next = readerShareUrl(u.href);
-    if (next !== location.href) history.replaceState(history.state, '', next);
-}
 // Языки, которых нет в сохранённом порядке (юзер ещё не переключал), остаются в порядке сервера
 // — так сохранённый порядок только переставляет "первый", а не переизобретает весь список.
 function reorderColumnsByLangOrder(cols) {
@@ -931,9 +922,7 @@ window.navigateSutta = function(event, slug) {
         params.has("s") ? `s=${params.get("s")}` : "",
         params.has("mode") ? `mode=${params.get("mode")}` : "",
         params.has("lang") ? `lang=${params.get("lang")}` : "",
-        // ...except a langs= that came with ?translators= (syncReaderAddress, a shared link): that
-        // pair describes THIS text's translators; alone on the next text it would drop the saved choice
-        params.has("langs") && !params.has("translators") ? `langs=${params.get("langs")}` : "",
+        params.has("langs") ? `langs=${params.get("langs")}` : "",
     ];
 
     // Меняем URL без перезагрузки — на чистый /{slug}, не ?q={slug} поверх текущего пути.
@@ -1075,9 +1064,6 @@ window.switchReaderMode = function(modeKey, event) {
     // switchReadingLanguage() below is the only thing that changes it.
     let params = new URLSearchParams(document.location.search);
     params.set('mode', modeKey);
-    // written by syncReaderAddress from the current render — the saved choice decides the next one
-    params.delete('translators');
-    params.delete('langs');
     history.pushState({ page: window._currentSlug, mode: modeKey }, "", `?${params.toString()}`);
 
     const anchor = captureReadingAnchor();
@@ -1102,7 +1088,6 @@ window.switchReadingLanguage = async function (lang) {
     setLangOrderFirst(lang, cols);
     let params = new URLSearchParams(document.location.search);
     params.set('lang', lang);
-    params.delete('translators');   // see switchReaderMode
     if (cols.length > 1) params.delete('langs'); // let it re-derive from the fresh column order below, not a stale explicit langs=
     history.pushState({ page: window._currentSlug, mode: READER_MODE.modeKey }, "", `?${params.toString()}`);
     // Owner: "ссылки чтобы увидеть русские нужно перезагрузить страницу, но они должны
@@ -1162,9 +1147,7 @@ window.renderNavigation = async function(slug, suttaTitle, navPromise) {
         params.has("s") ? `s=${params.get("s").replace(/ṃ/g, "ṁ")}` : "",
         params.has("mode") ? `mode=${params.get("mode")}` : "",
         params.has("lang") ? `lang=${params.get("lang")}` : "",
-        // ...except a langs= that came with ?translators= (syncReaderAddress, a shared link): that
-        // pair describes THIS text's translators; alone on the next text it would drop the saved choice
-        params.has("langs") && !params.has("translators") ? `langs=${params.get("langs")}` : "",
+        params.has("langs") ? `langs=${params.get("langs")}` : "",
     ];
 
     let cleanSlug = slug.replace(/pli-tv-|b[ui]-vb-/g, "");
@@ -1504,7 +1487,6 @@ window.buildSutta = async function(rawSlug, opts) {
         setStack(orderedEntries.map(o => o.entry.key));
     }
     READER_MODE.stack = orderedEntries.map(o => o.entry.key);
-    syncReaderAddress();
 
     /* Whose line is whose. The translator's name is NOT printed above every paragraph — the
        language already says which line is which. It is only genuinely ambiguous when ONE
