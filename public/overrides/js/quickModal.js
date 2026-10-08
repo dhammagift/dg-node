@@ -207,12 +207,16 @@ function buildQuickModalDOM() {
       quickModal.classList.add('quick-dict');   // the rules in quick-modal.css hide the site's own lists and the sync / clear buttons
       const words = (() => { try { return JSON.parse(localStorage.getItem('history-list')) || []; } catch (e) { return []; } })()
           .filter((w) => typeof w === 'string' && w).slice(0, 30);
+      const favs = (() => { try { return JSON.parse(localStorage.getItem('fav-list')) || []; } catch (e) { return []; } })()
+          .filter((w) => typeof w === 'string' && w).slice(0, 30);
       const wordUrl = (w) => (typeof window.dictUrl === 'function' ? window.dictUrl(w) : '/' + encodeURIComponent(w));
       const esc = (t) => t.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
       const dg = window.DG_SITE_BASE + '/4as/';
       const box = document.createElement('div');
       box.className = 'quick-dict-hist';
       box.innerHTML = `<a class="quick-dict-hist-link quick-all-history-link" href="${dg}" target="_blank" rel="noopener">${window.isRu ? 'Избранное и история Dhamma.Gift' : 'Dhamma.Gift Favorites and History'} <span aria-hidden="true">→</span></a>
+        ${favs.length ? `<h6 class="quick-dict-hist-head">${window.isRu ? 'Избранные слова' : 'Favorite words'}</h6>
+        <ul class="quick-dict-hist-list">${favs.map((w) => `<li><a href="${esc(wordUrl(w))}">${esc(w)}</a></li>`).join('')}</ul>` : ''}
         <h6 class="quick-dict-hist-head">${window.isRu ? 'Недавние слова словаря' : 'Recent dictionary words'}</h6>
         ${words.length
           ? '<ul class="quick-dict-hist-list">' + words.map((w) => `<li><a href="${esc(wordUrl(w))}">${esc(w)}</a></li>`).join('') + '</ul>'
