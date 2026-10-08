@@ -212,10 +212,7 @@ function buildQuickModalDOM() {
       const dg = window.DG_SITE_BASE + '/4as/';
       const box = document.createElement('div');
       box.className = 'quick-dict-hist';
-      box.innerHTML = `<p class="quick-dict-hist-note">${window.isRu
-          ? 'Прочитанные тексты, поиски, избранное и подписки хранятся в Dhamma.Gift.'
-          : 'The texts you read, your searches, favorites and subscriptions are kept in Dhamma.Gift.'}</p>
-        <a class="quick-dict-hist-link quick-all-history-link" href="${dg}" target="_blank" rel="noopener">${window.isRu ? 'Открыть историю в Dhamma.Gift' : 'Open your history in Dhamma.Gift'} <span aria-hidden="true">→</span></a>
+      box.innerHTML = `<a class="quick-dict-hist-link quick-all-history-link" href="${dg}" target="_blank" rel="noopener">${window.isRu ? 'Избранное и история Dhamma.Gift' : 'Dhamma.Gift Favorites and History'} <span aria-hidden="true">→</span></a>
         <h6 class="quick-dict-hist-head">${window.isRu ? 'Недавние слова словаря' : 'Recent dictionary words'}</h6>
         ${words.length
           ? '<ul class="quick-dict-hist-list">' + words.map((w) => `<li><a href="${esc(wordUrl(w))}">${esc(w)}</a></li>`).join('') + '</ul>'
