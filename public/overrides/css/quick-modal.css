@@ -434,7 +434,8 @@ body.dark .quick-modal-container, body.dark-mode .quick-modal-container {
 /* The Dictionary's History tab: where the site's history lives, and the dictionary's own recent words. */
 .quick-dict-hist{padding:6px 2px 14px}
 .quick-dict-hist-note{margin:4px 0 10px;font-size:14px;line-height:1.45;opacity:.85}
-.quick-dict-hist-link{display:inline-flex;align-items:center;gap:6px;padding:10px 14px;border-radius:12px;background:#139b7b;color:#fff!important;font-weight:600;font-size:14px;text-decoration:none!important}
+/* The link is the window's own "All history →" link (.quick-all-history-link), not a button of its own. */
+.quick-dict-hist-link{display:inline-block;margin:2px 0 4px}
 .quick-dict-hist-head{margin:20px 0 8px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;opacity:.65}
 .quick-dict-hist-list{list-style:none;margin:0;padding:0}
 .quick-dict-hist-list li a{display:block;padding:9px 4px;border-bottom:1px solid var(--dg-border,rgba(128,128,128,.25));font-size:15px;text-decoration:none}
