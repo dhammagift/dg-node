@@ -1,13 +1,19 @@
-/* Desktop mode of the one interface: body.wide on a desktop (1024px+ with a mouse), the screen in the address (#list, #cal, #parts, #keys),
+/* Wide mode of the one interface: body.wide on a desktop (1024px+ with a mouse) or the app on a wide screen (body.wide-app), the screen in the address (#list, #cal, #parts, #keys),
    keys 1-5 for the screens, the name in the bar leads to the summary. Loaded after app-nav.js. */
 (function () {
-  // A desktop is a wide screen with a mouse: a tablet in landscape is as wide but has a touch screen as its main pointer,
-  // and it keeps the phone layout in both orientations. The native app never goes wide.
-  var mq = matchMedia('(min-width: 1024px) and (hover: hover) and (pointer: fine)'), ORDER = ['home', 'list', 'cal', 'parts', 'keys'];
-  function native() { var C = window.Capacitor; return !!(C && C.isNativePlatform && C.isNativePlatform()); }
-  function wide() { document.body.classList.toggle('wide', mq.matches && !native()); }
+  // Wide: the desktop web page (a wide screen with a mouse), or the app on a wide screen (the native app, an installed PWA,
+  // ?app=1: a tablet in landscape), which keeps the app's bar, bottom capsule and drawer (body.wide-app, app-wide.css).
+  // A tablet's browser page has a touch screen as its main pointer and keeps the phone layout in both orientations.
+  var desk = matchMedia('(min-width: 1024px) and (hover: hover) and (pointer: fine)'), mq = matchMedia('(min-width: 1024px)'), ORDER = ['home', 'list', 'cal', 'parts', 'keys'];
+  var C = window.Capacitor, appLike = !!(C && C.isNativePlatform && C.isNativePlatform()) || new URLSearchParams(location.search).get('app') === '1'
+    || matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  function wide() {
+    var w = mq.matches && (appLike || desk.matches);
+    document.body.classList.toggle('wide', w);
+    document.body.classList.toggle('wide-app', w && appLike);
+  }
   wide();
-  mq.addEventListener('change', function () { wide(); window.dispatchEvent(new Event('resize')); });
+  [mq, desk].forEach(function (m) { m.addEventListener('change', function () { wide(); window.dispatchEvent(new Event('resize')); }); });
   function go(k) { var b = document.querySelector('#appnav [data-tab="' + k + '"]'); if (b && document.body.getAttribute('data-app-tab') !== k) b.click(); }
   window.addEventListener('load', function () {
     var nav = document.getElementById('appnav'); if (!nav) return;
@@ -17,7 +23,7 @@
     // support can send a link straight to a screen; the summary keeps the bare address
     // the reader beside the questions: the prod observer was bound while it was hidden, so the first passage is loaded here
     function reader() {
-      if (!document.body.classList.contains('wide') || document.body.getAttribute('data-app-tab') !== 'keys') return;
+      if (!document.body.classList.contains('wide') || document.body.classList.contains('wide-app') || document.body.getAttribute('data-app-tab') !== 'keys') return;
       var f = document.getElementById('rd-frame'), s = document.getElementById('rd-sel');
       if (f && !f.getAttribute('src') && s && s.onchange && s.options.length) { s.value = '0'; s.onchange({ target: s }); }
     }

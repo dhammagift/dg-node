@@ -16,15 +16,19 @@ body.app main.page { padding-bottom: 110px; }
 /* The drawer holds what belongs to the Uposatha calendar: language, theme, font size, its own settings, share, help.
    The reader's modes and the home page's tile buttons mean nothing here and are hidden everywhere; the site's own rows
    (find on the page, the multitool, the site settings, login) are shown only in the desktop mode of the web page
-   (body.wide, app-wide.js): a phone or a tablet shows what the app has, and the native app never goes wide. */
+   (body.wide without .wide-app, app-wide.js): a phone, a tablet and the app show what the app has. */
 body.app #dg-drawer #dg-drawer-modes,
 body.app #dg-drawer #dg-add-tile,
 body.app #dg-drawer #dg-edit-tiles,
 body.app #dg-drawer #dg-restore-tiles,
 body.app:not(.wide) #dg-drawer .dg-find-open,
+body.app.wide-app #dg-drawer .dg-find-open,
 body.app:not(.wide) #dg-drawer #dg-drawer-multitool,
+body.app.wide-app #dg-drawer #dg-drawer-multitool,
 body.app:not(.wide) #dg-drawer a[href="/settings/"],
-body.app:not(.wide) #dg-drawer a[href="/login"] { display: none !important; }
+body.app.wide-app #dg-drawer a[href="/settings/"],
+body.app:not(.wide) #dg-drawer a[href="/login"],
+body.app.wide-app #dg-drawer a[href="/login"] { display: none !important; }
 
 
 /* the drawer goes under the bar only while it is open; the rest of the time the bar stays at its normal 30, below every ordinary sheet/toast (z-index 50-60) - a modal like "Add to calendar" must not hide behind it */

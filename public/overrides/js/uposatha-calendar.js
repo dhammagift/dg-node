@@ -1002,7 +1002,7 @@
   function readerUrl(i) { return '/' + PASSAGES[i][0] + '?lang=' + lang + '&hide=id'; } // the suttas open without the segment ids
   function outside(url) { if (/^\/[a-z-]+\d[\w.:-]*(\?|$)/i.test(url) && !/[?&]hide=/.test(url)) url += (url.indexOf('?') < 0 ? '?' : '&') + 'hide=id'; window.open('https://dhamma.gift' + url, '_blank', 'noopener'); } // in the app the sutta is read on the site (or in its app), not in a frame here
   function readSutta(i, quiet) {
-    if (document.body.classList.contains('app') && !document.body.classList.contains('wide')) { outside(readerUrl(i)); return; } // a wide screen reads beside the questions
+    if (document.body.classList.contains('app') && (!document.body.classList.contains('wide') || document.body.classList.contains('wide-app'))) { outside(readerUrl(i)); return; } // a wide screen reads beside the questions
     rdCur = i; $('reader').hidden = false; $('rd-now').textContent = readerLabel(i); $('rd-sel').value = String(i);
     $('rd-new').href = readerUrl(i); $('rd-frame').src = readerUrl(i); markReader();
     if (!quiet && !document.body.classList.contains('wide')) $('reader').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -1010,7 +1010,7 @@
   // any passage of the slideshow opens in the same reader at the bottom (a middle click or ctrl-click still opens a tab)
   function readRef(ref, label) {
     var url = '/' + ref + '?lang=' + lang + '&hide=id';
-    if (document.body.classList.contains('app') && !document.body.classList.contains('wide')) { outside(url); return; }
+    if (document.body.classList.contains('app') && (!document.body.classList.contains('wide') || document.body.classList.contains('wide-app'))) { outside(url); return; }
     rdCur = -1; $('reader').hidden = false; $('rd-now').textContent = label; $('rd-sel').selectedIndex = -1;
     $('rd-new').href = url; $('rd-frame').src = url; markReader();
     $('reader').scrollIntoView({ behavior: 'smooth', block: 'start' });

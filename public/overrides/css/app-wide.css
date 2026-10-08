@@ -1,28 +1,33 @@
-/* Desktop mode of the one Uposatha interface. Same bar, same five screens, same settings drawer as the phone;
-   on a desktop (body.wide, app-wide.js) the bottom capsule docks into the app bar with every label shown, and each
-   screen uses the width. A tablet keeps the phone layout in both orientations, and so does the native app. */
+/* The wide mode of the one Uposatha interface (body.wide, app-wide.js): each screen uses the width.
+   - The desktop web page: the bottom capsule docks into the app bar with every label shown, the reader sits beside the
+     questions, the site's footer.
+   - The app on a wide screen (body.wide-app: the native app, an installed PWA or ?app=1, e.g. a tablet in landscape):
+     the screens side by side only. The bar, the capsule at the bottom, the drawer and the suttas screen stay as in the
+     app, so landscape and portrait do not move things around.
+   A tablet's browser page keeps the phone layout in both orientations. */
 @media (min-width:1024px){
-body.app.wide .tbar .in{gap:16px}
-body.app.wide .tbar{padding:12px 24px}
-body.app.wide .tbar .in{max-width:1180px;margin:0 auto;min-height:48px}
-body.app.wide .tbar.away{transform:none}
-body.app.wide .tbar .wordmark{cursor:pointer}
+body.app.wide:not(.wide-app) .tbar .in{gap:16px}
+body.app.wide:not(.wide-app) .tbar{padding:12px 24px}
+body.app.wide:not(.wide-app) .tbar .in{max-width:1180px;margin:0 auto;min-height:48px}
+body.app.wide:not(.wide-app) .tbar.away{transform:none}
+body.app.wide:not(.wide-app) .tbar .wordmark{cursor:pointer}
 /* the bar keeps the name of the app: the capsule beside it already names the screen */
-body.app.wide .tbar .wordmark b{font-size:0}
-body.app.wide .tbar .wordmark b::before{content:"Ariy";font-size:22px;font-weight:500;color:var(--dg-text-muted)}
-body.app.wide .tbar .wordmark b::after{content:"uposatha";font-size:22px}
-body.app.wide .appnav{top:12px;bottom:auto;left:max(calc(50% - 590px + 24px + 200px),224px);right:auto;transform:none;z-index:45;padding:5px;box-shadow:none;background:var(--dg-surface);border:1px solid var(--dg-border)}
-body.app.wide.scrolled .appnav{border-color:var(--dg-border-strong)}
-body.app.wide.dg-drawer-open .appnav{z-index:45}
-body.app.wide .appnav button{height:38px;padding:0 clamp(10px,1.1vw,16px);font-size:14px;color:var(--dg-text-2);cursor:pointer}
-body.app.wide .appnav button span{display:inline}
-body.app.wide .appnav button:not([aria-current=true]):hover{color:var(--dg-text);background:var(--dg-surface-hover)}
-body.app.wide .appnav .up-pill{top:5px;bottom:5px}
-body.app.wide .appnav .up-ghost{display:none}
-body.app.wide .appnav button .ic,body.app.wide .appnav button i{width:20px;height:20px}
-body.app.wide main.page{max-width:1180px;padding:8px 24px 64px}
+body.app.wide:not(.wide-app) .tbar .wordmark b{font-size:0}
+body.app.wide:not(.wide-app) .tbar .wordmark b::before{content:"Ariy";font-size:22px;font-weight:500;color:var(--dg-text-muted)}
+body.app.wide:not(.wide-app) .tbar .wordmark b::after{content:"uposatha";font-size:22px}
+body.app.wide:not(.wide-app) .appnav{top:12px;bottom:auto;left:max(calc(50% - 590px + 24px + 200px),224px);right:auto;transform:none;z-index:45;padding:5px;box-shadow:none;background:var(--dg-surface);border:1px solid var(--dg-border)}
+body.app.wide:not(.wide-app).scrolled .appnav{border-color:var(--dg-border-strong)}
+body.app.wide:not(.wide-app).dg-drawer-open .appnav{z-index:45}
+body.app.wide:not(.wide-app) .appnav button{height:38px;padding:0 clamp(10px,1.1vw,16px);font-size:14px;color:var(--dg-text-2);cursor:pointer}
+body.app.wide:not(.wide-app) .appnav button span{display:inline}
+body.app.wide:not(.wide-app) .appnav button:not([aria-current=true]):hover{color:var(--dg-text);background:var(--dg-surface-hover)}
+body.app.wide:not(.wide-app) .appnav .up-pill{top:5px;bottom:5px}
+body.app.wide:not(.wide-app) .appnav .up-ghost{display:none}
+body.app.wide:not(.wide-app) .appnav button .ic,body.app.wide:not(.wide-app) .appnav button i{width:20px;height:20px}
+body.app.wide main.page{max-width:1180px;padding-left:24px;padding-right:24px}
+body.app.wide:not(.wide-app) main.page{padding-top:8px;padding-bottom:64px}
 /* the veil under the phone's bottom bar: the bar is in the header here, nothing to veil */
-body.app.wide::after{display:none}
+body.app.wide:not(.wide-app)::after{display:none}
 
 /* summary: the moon and the countdown stay in view on the left, the rest of the day on the right */
 body.app.wide[data-app-tab=home] main.page{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);grid-template-rows:repeat(10,auto) 1fr;column-gap:24px;align-items:start}
@@ -53,12 +58,12 @@ body.app.wide[data-app-tab=parts] #pgrid{grid-column:2;grid-row:3/-1;margin-top:
 body.app.wide[data-app-tab=parts] #meal:empty{display:none}
 
 /* suttas: the questions on the left, the text itself on the right (on the phone it opens on the site) */
-body.app.wide[data-app-tab=keys] #keys{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);grid-template-rows:auto auto auto 1fr;column-gap:24px;align-items:start}
-body.app.wide[data-app-tab=keys] #keys>*{grid-column:1;min-width:0}
-body.app.wide.wide[data-app-tab=keys] #reader:not([hidden]){display:block!important;grid-column:2;grid-row:1/-1;position:sticky;top:96px;margin-top:18px}
-body.app.wide[data-app-tab=keys] #reader iframe{height:calc(100vh - 190px)}
-body.app.wide[data-app-tab=keys] #keys>.keys-art{display:block;grid-column:1;margin:28px auto 12px;width:min(300px,72%);height:auto}
+body.app.wide:not(.wide-app)[data-app-tab=keys] #keys{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);grid-template-rows:auto auto auto 1fr;column-gap:24px;align-items:start}
+body.app.wide:not(.wide-app)[data-app-tab=keys] #keys>*{grid-column:1;min-width:0}
+body.app.wide:not(.wide-app)[data-app-tab=keys] #reader:not([hidden]){display:block!important;grid-column:2;grid-row:1/-1;position:sticky;top:96px;margin-top:18px}
+body.app.wide:not(.wide-app)[data-app-tab=keys] #reader iframe{height:calc(100vh - 190px)}
+body.app.wide:not(.wide-app)[data-app-tab=keys] #keys>.keys-art{display:block;grid-column:1;margin:28px auto 12px;width:min(300px,72%);height:auto}
 
-/* the site's footer belongs to the web page, not to the native app */
-body.app.wide:not(.native) #dg-footer{display:flex!important;max-width:1132px;margin:40px auto 0;padding:20px 0 32px}
+/* the site's footer belongs to the desktop web page, not to the app */
+body.app.wide:not(.wide-app) #dg-footer{display:flex!important;max-width:1132px;margin:40px auto 0;padding:20px 0 32px}
 }
