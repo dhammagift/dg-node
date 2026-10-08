@@ -431,14 +431,5 @@ body.dark .quick-modal-container, body.dark-mode .quick-modal-container {
 .quick-search-form .dg-qs-btn .dg-qs-gear{width:17px;height:17px;display:block;transform:rotate(90deg)}
 .quick-search-form .dg-qs-btn[hidden]{display:none}
 
-/* The Dictionary's History tab: where the site's history lives, and the dictionary's own recent words. */
-.quick-dict-hist{padding:6px 2px 14px}
-.quick-dict-hist-note{margin:4px 0 10px;font-size:14px;line-height:1.45;opacity:.85}
-/* The link is the window's own "All history →" link (.quick-all-history-link), not a button of its own. */
-.quick-dict-hist-link{display:inline-block;margin:2px 0 4px}
-.quick-dict-hist-head{margin:20px 0 8px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;opacity:.65}
-.quick-dict-hist-list{list-style:none;margin:0;padding:0}
-.quick-dict-hist-list li a{display:block;padding:9px 4px;border-bottom:1px solid var(--dg-border,rgba(128,128,128,.25));font-size:15px;text-decoration:none}
-.quick-dict-hist-empty{margin:0;font-size:14px;opacity:.6}
-.quick-dict #fav-header,.quick-dict #quick-favorites-container,.quick-dict #hist-header,.quick-dict #quick-history-container,
-.quick-dict .quick-all-history-wrapper,.quick-dict #btn-sync-now,.quick-dict #main-trash-icon{display:none!important}
+/* The Dictionary: the site's own lists with the dictionary's words. No cloud sync button; the dates stay empty (the dictionary keeps none). */
+.quick-dict #btn-sync-now{display:none!important}

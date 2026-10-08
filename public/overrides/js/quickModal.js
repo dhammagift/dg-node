@@ -200,29 +200,17 @@ function buildQuickModalDOM() {
   // site's, and nothing is shown.
   const storageNote = quickModal.querySelector('#dgQuickStorageNote');
   if (window.DG_SITE_BASE) {
-      // The Dictionary (its site and its app): the site's reading history, favorites and subscriptions are not here - they live in
-      // Dhamma.Gift (another address, another storage) - so the tab says so, links to them, and shows what this address really has:
-      // the dictionary's own recent words. No empty "No favorites yet" lists that read as lost data.
+      // The Dictionary (its site and its app): the lists are the site's own lists, filled with the dictionary's words (dictSyncIn below);
+      // the site's reading history and subscriptions live in Dhamma.Gift, and the window's bottom link says so and goes there.
       if (storageNote) storageNote.hidden = true;
-      quickModal.classList.add('quick-dict');   // the rules in quick-modal.css hide the site's own lists and the sync / clear buttons
-      const words = (() => { try { return JSON.parse(localStorage.getItem('history-list')) || []; } catch (e) { return []; } })()
-          .filter((w) => typeof w === 'string' && w).slice(0, 30);
-      const favs = (() => { try { return JSON.parse(localStorage.getItem('fav-list')) || []; } catch (e) { return []; } })()
-          .filter((w) => typeof w === 'string' && w).slice(0, 30);
-      const wordUrl = (w) => (typeof window.dictUrl === 'function' ? window.dictUrl(w) : '/' + encodeURIComponent(w));
-      const esc = (t) => t.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-      const dg = window.DG_SITE_BASE + '/4as/';
-      const box = document.createElement('div');
-      box.className = 'quick-dict-hist';
-      box.innerHTML = `<a class="quick-dict-hist-link quick-all-history-link" href="${dg}" target="_blank" rel="noopener">${window.isRu ? 'Избранное и история Dhamma.Gift' : 'Dhamma.Gift Favorites and History'} <span aria-hidden="true">→</span></a>
-        ${favs.length ? `<h6 class="quick-dict-hist-head">${window.isRu ? 'Избранные слова' : 'Favorite words'}</h6>
-        <ul class="quick-dict-hist-list">${favs.map((w) => `<li><a href="${esc(wordUrl(w))}">${esc(w)}</a></li>`).join('')}</ul>` : ''}
-        <h6 class="quick-dict-hist-head">${window.isRu ? 'Недавние слова словаря' : 'Recent dictionary words'}</h6>
-        ${words.length
-          ? '<ul class="quick-dict-hist-list">' + words.map((w) => `<li><a href="${esc(wordUrl(w))}">${esc(w)}</a></li>`).join('') + '</ul>'
-          : '<p class="quick-dict-hist-empty">' + (window.isRu ? 'Пока нет слов.' : 'No words yet.') + '</p>'}`;
-      const tabFav = quickModal.querySelector('#tab-fav');
-      if (tabFav) tabFav.prepend(box);
+      quickModal.classList.add('quick-dict');   // quick-modal.css: no cloud sync button
+      const all = quickModal.querySelector('.quick-all-history-link');
+      if (all) {
+          all.href = window.DG_SITE_BASE + '/4as/';
+          all.target = '_blank';
+          all.rel = 'noopener';
+          all.textContent = (window.isRu ? 'Избранное и история Dhamma.Gift' : 'Dhamma.Gift Favorites and History') + ' \u2192';
+      }
   }
 
   quickSearchBtn.addEventListener('contextmenu', (e) => {
@@ -498,7 +486,36 @@ function buildQuickModalDOM() {
 }
 
 
+// ---- The Dictionary's own words in the site's own lists --------------------------------------------------------------------------
+// The compass lists read dg_favorites ({slug, title, path, ...}) and localSearchHistory ([title, url, time]); the dictionary keeps plain
+// word lists (fav-list, history-list). On the dictionary the first are rebuilt from the second whenever the lists are drawn, and every
+// write the window makes to them (star, remove, rename, clear) is carried back - so one window serves both, with no second set of lists.
+let dictCarrying = false;
+function dictSyncIn() {
+  const read = (k) => { try { return JSON.parse(localStorage.getItem(k)) || []; } catch (e) { return []; } };
+  const words = (k) => read(k).filter((w) => typeof w === 'string' && w);
+  const url = (w) => (typeof window.dictUrl === 'function' ? window.dictUrl(w) : '/' + encodeURIComponent(w));
+  const oldHist = read('localSearchHistory'), oldFavs = read('dg_favorites');
+  const hist = words('history-list').map((w) => oldHist.find((h) => h[0] === w) || [w, url(w), 0]);
+  const favs = words('fav-list').map((w) => oldFavs.find((f) => f.slug === w) || { slug: w, title: w, path: url(w), search: '', id: w });
+  dictCarrying = true;
+  try { localStorage.setItem('localSearchHistory', JSON.stringify(hist)); localStorage.setItem('dg_favorites', JSON.stringify(favs)); } finally { dictCarrying = false; }
+}
+if (window.DG_SITE_BASE && !Storage.prototype.__dgDictCarry) {
+  const setItem = Storage.prototype.setItem;
+  Storage.prototype.__dgDictCarry = true;
+  Storage.prototype.setItem = function (k, v) {
+    setItem.call(this, k, v);
+    if (this !== window.localStorage || dictCarrying) return;
+    try {
+      if (k === 'dg_favorites') setItem.call(this, 'fav-list', JSON.stringify(JSON.parse(v).map((f) => f.slug)));
+      if (k === 'localSearchHistory') setItem.call(this, 'history-list', JSON.stringify(JSON.parse(v).map((h) => h[0])));
+    } catch (e) { /* not a list: leave it */ }
+  };
+}
+
 function renderQuickLists(isRu, queryBase) {
+    if (window.DG_SITE_BASE) dictSyncIn();
     const favData = JSON.parse(localStorage.getItem('dg_favorites')) || [];
     const histData = JSON.parse(localStorage.getItem('localSearchHistory')) || [];
     
