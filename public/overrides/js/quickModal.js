@@ -201,8 +201,8 @@ function buildQuickModalDOM() {
   const storageNote = quickModal.querySelector('#dgQuickStorageNote');
   if (storageNote && window.DG_SITE_BASE) {
       storageNote.textContent = window.isRu
-          ? 'История и избранное — с dhamma.gift; на этом адресе у словаря своё хранилище.'
-          : 'History and favorites belong to dhamma.gift; this dictionary address keeps its own.';
+          ? 'Это история и избранное Dhamma.Gift. Войдите, чтобы пользоваться ими.'
+          : 'This is the history and favorites of Dhamma.Gift. Log in to use them.';
       storageNote.hidden = false;
   }
 
