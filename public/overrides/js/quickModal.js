@@ -204,8 +204,7 @@ function buildQuickModalDOM() {
       // Dhamma.Gift (another address, another storage) - so the tab says so, links to them, and shows what this address really has:
       // the dictionary's own recent words. No empty "No favorites yet" lists that read as lost data.
       if (storageNote) storageNote.hidden = true;
-      ['#fav-header', '#quick-favorites-container', '#hist-header', '#quick-history-container', '.quick-all-history-wrapper', '#btn-sync-now', '#main-trash-icon']
-          .forEach((sel) => { const el = quickModal.querySelector(sel); if (el) el.style.display = 'none'; });
+      quickModal.classList.add('quick-dict');   // the rules in quick-modal.css hide the site's own lists and the sync / clear buttons
       const words = (() => { try { return JSON.parse(localStorage.getItem('history-list')) || []; } catch (e) { return []; } })()
           .filter((w) => typeof w === 'string' && w).slice(0, 30);
       const wordUrl = (w) => (typeof window.dictUrl === 'function' ? window.dictUrl(w) : '/' + encodeURIComponent(w));
