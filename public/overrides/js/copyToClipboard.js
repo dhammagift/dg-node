@@ -123,7 +123,8 @@ function copyToClipboard(text = "") {
   if (text === 127) {
     text = window.location.href.replace('localhost', '127.0.0.1');
   } else if (text === "") {
-    text = window.location.href;
+    // footer "Copy link": the same translators as Share and the context menu (megareader.js)
+    text = typeof window.dgReaderShareUrl === 'function' ? window.dgReaderShareUrl(window.location.href) : window.location.href;
     text = text.includes('localhost') || text.includes('127.0.0.1')
       ? text.replace(/https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/gi, 'https://dhamma.gift')
       : text.includes('dhamma.gift')
