@@ -9,6 +9,16 @@
   if (C && C.isNativePlatform && C.isNativePlatform()) return;
   var BUTTONS = '#app-theme, #dg-theme-seg button, .dg-theme-btn-home, #theme-button';
   var replaying = false, running = false;
+  // in order: the logos, then the reader's contents button, which stands in the field where the logo is elsewhere
+  var LOGOS = '.dg-brand-logo, .dg-shell-logo img, .wordmark .up-mark, .up-shell-logo .up-mark, .dg-shell-toc';
+  function origin() {
+    var list = document.querySelectorAll(LOGOS);
+    for (var i = 0; i < list.length; i++) {
+      var r = list[i].getBoundingClientRect();
+      if (r.width && r.bottom > 0 && r.top < innerHeight && r.right > 0 && r.left < innerWidth) return r;
+    }
+    return { left: innerWidth / 2, top: innerHeight / 2, width: 0, height: 0 };
+  }
   var st = document.createElement('style');
   // the new theme is clipped in over the old one; the page's own colour transitions would show mid-way in the circle
   st.textContent = '::view-transition-old(root),::view-transition-new(root){animation:none;mix-blend-mode:normal}'
@@ -25,7 +35,11 @@
     e.stopImmediatePropagation();
     // From the button's centre, in fractions of the screen: the font size zooms <html>, and a probe spanning the viewport is
     // read the same way as the button, so the zoom cancels out. 150% of the layer's reference radius passes the farthest corner.
+    // Alt+T clicks the hidden #theme-button, which has no place on the screen: the circle then comes from the logo in view
+    // (the header's on the home page, the one in the search field elsewhere, the Uposatha mark; in the reader the contents
+    // button in its place), else from the middle.
     var r = btn.getBoundingClientRect();
+    if (!r.width) r = origin();
     var probe = document.createElement('div');
     probe.style.cssText = 'position:fixed;left:0;top:0;right:0;bottom:0;visibility:hidden;pointer-events:none';
     document.body.appendChild(probe);
