@@ -199,11 +199,30 @@ function buildQuickModalDOM() {
   // list that reads as "everything is gone" (issue #4). Under dhamma.gift/dict the storage IS the
   // site's, and nothing is shown.
   const storageNote = quickModal.querySelector('#dgQuickStorageNote');
-  if (storageNote && window.DG_SITE_BASE) {
-      storageNote.textContent = window.isRu
-          ? 'Это история и избранное Dhamma.Gift. Войдите, чтобы пользоваться ими.'
-          : 'This is the history and favorites of Dhamma.Gift. Log in to use them.';
-      storageNote.hidden = false;
+  if (window.DG_SITE_BASE) {
+      // The Dictionary (its site and its app): the site's reading history, favorites and subscriptions are not here - they live in
+      // Dhamma.Gift (another address, another storage) - so the tab says so, links to them, and shows what this address really has:
+      // the dictionary's own recent words. No empty "No favorites yet" lists that read as lost data.
+      if (storageNote) storageNote.hidden = true;
+      ['#fav-header', '#quick-favorites-container', '#hist-header', '#quick-history-container', '.quick-all-history-wrapper', '#btn-sync-now', '#main-trash-icon']
+          .forEach((sel) => { const el = quickModal.querySelector(sel); if (el) el.style.display = 'none'; });
+      const words = (() => { try { return JSON.parse(localStorage.getItem('history-list')) || []; } catch (e) { return []; } })()
+          .filter((w) => typeof w === 'string' && w).slice(0, 30);
+      const wordUrl = (w) => (typeof window.dictUrl === 'function' ? window.dictUrl(w) : '/' + encodeURIComponent(w));
+      const esc = (t) => t.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+      const dg = window.DG_SITE_BASE + '/4as/';
+      const box = document.createElement('div');
+      box.className = 'quick-dict-hist';
+      box.innerHTML = `<p class="quick-dict-hist-note">${window.isRu
+          ? 'Прочитанные тексты, поиски, избранное и подписки хранятся в Dhamma.Gift.'
+          : 'The texts you read, your searches, favorites and subscriptions are kept in Dhamma.Gift.'}</p>
+        <a class="quick-dict-hist-link" href="${dg}" target="_blank" rel="noopener">${window.isRu ? 'Открыть историю в Dhamma.Gift' : 'Open your history in Dhamma.Gift'} <span aria-hidden="true">→</span></a>
+        <h6 class="quick-dict-hist-head">${window.isRu ? 'Недавние слова словаря' : 'Recent dictionary words'}</h6>
+        ${words.length
+          ? '<ul class="quick-dict-hist-list">' + words.map((w) => `<li><a href="${esc(wordUrl(w))}">${esc(w)}</a></li>`).join('') + '</ul>'
+          : '<p class="quick-dict-hist-empty">' + (window.isRu ? 'Пока нет слов.' : 'No words yet.') + '</p>'}`;
+      const tabFav = quickModal.querySelector('#tab-fav');
+      if (tabFav) tabFav.prepend(box);
   }
 
   quickSearchBtn.addEventListener('contextmenu', (e) => {

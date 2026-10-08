@@ -423,3 +423,19 @@ body.dark .quick-modal-container, body.dark-mode .quick-modal-container {
     --dg-tblue: #8f8fe8;
     --dg-link: #8f8fe8;
 }
+
+/* The quick-settings button (the sliders). On the site home.css styles it; the Dictionary has no home.css, and there it was a grey square
+   with another gear. Same look, same size, scoped to the window's own field. */
+.quick-search-form .dg-qs-btn{--dg-qs-bg:transparent;--dg-qs-fg:var(--dg-text-2,#5b6670);position:relative;display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;flex:none;padding:0;border:0;border-radius:50%;background:var(--dg-qs-bg);color:var(--dg-qs-fg);cursor:pointer;transition:background-color .15s ease,color .15s ease}
+.quick-search-form .dg-qs-btn:hover,.quick-search-form .dg-qs-btn:focus-visible{--dg-qs-bg:var(--dg-border,#e2e6ea);--dg-qs-fg:var(--dg-text,#1b2430)}
+.quick-search-form .dg-qs-btn .dg-qs-gear{width:17px;height:17px;display:block;transform:rotate(90deg)}
+.quick-search-form .dg-qs-btn[hidden]{display:none}
+
+/* The Dictionary's History tab: where the site's history lives, and the dictionary's own recent words. */
+.quick-dict-hist{padding:6px 2px 14px}
+.quick-dict-hist-note{margin:4px 0 10px;font-size:14px;line-height:1.45;opacity:.85}
+.quick-dict-hist-link{display:inline-flex;align-items:center;gap:6px;padding:10px 14px;border-radius:12px;background:#139b7b;color:#fff!important;font-weight:600;font-size:14px;text-decoration:none!important}
+.quick-dict-hist-head{margin:20px 0 8px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;opacity:.65}
+.quick-dict-hist-list{list-style:none;margin:0;padding:0}
+.quick-dict-hist-list li a{display:block;padding:9px 4px;border-bottom:1px solid var(--dg-border,rgba(128,128,128,.25));font-size:15px;text-decoration:none}
+.quick-dict-hist-empty{margin:0;font-size:14px;opacity:.6}
