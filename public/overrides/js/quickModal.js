@@ -65,7 +65,8 @@ function buildQuickModalDOM() {
   const tabMemoText = QI('<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13.5 6.5 4 4"/>') + "Memo";
   // The file, not the folder: the app has no directory resolution and answered /memo/ with its home
   // page — the Memo tab ran a search for "memo" (tablet test). The site serves both the same way.
-  const memoPath = window.isRu ? "/ru/memo/index.html" : "/memo/index.html";
+  // On the Dictionary (its site and its app) the base is the main site: dict.dhamma.gift has no Memo and answered Not Found.
+  const memoPath = (window.DG_SITE_BASE || "") + (window.isRu ? "/ru/memo/index.html" : "/memo/index.html");
   const tabDpdText = QI('<path d="M5 4h11a2 2 0 0 1 2 2v14H7a2 2 0 0 1-2-2z"/><path d="M5 18a2 2 0 0 1 2-2h11"/><path d="M9 8h5"/>') + (window.isRu ? "Словарь" : "Dict");
   const histTitleText = window.isRu ? "История поиска" : "Search History";
   const titleClearAll = window.isRu ? "Очистить историю" : "Clear history";
