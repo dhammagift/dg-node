@@ -1256,6 +1256,8 @@
       document.body.classList.add('app'); nav.hidden = false;
       document.addEventListener('click', function (e) { // every link to a page of the site leaves the app (a link to this page stays)
         var a = e.target.closest && e.target.closest('a[href^="/"]'); if (!a || /^\/uposatha-calendar/.test(a.getAttribute('href'))) return;
+        // /4as is the quick window (Favorites and History, Subscriptions): it opens over this page, as on the search and the reader
+        if (/^\/4as(\/|$)/.test(a.getAttribute('href')) && typeof window.toggleQuickModal === 'function') return;
         e.preventDefault(); e.stopPropagation(); outside(a.getAttribute('href')); // once: the page's own handlers do not see this click
       }, true);
       var brand = document.querySelector('#dg-drawer .dg-brand-link'); // the drawer's header stays the site's: the conch and dhamma.gift lead out to the site (or to its app)
