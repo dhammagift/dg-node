@@ -232,6 +232,41 @@ function translatorsQueryFor() {
     return keys.length ? `&translators=${encodeURIComponent(keys.join(','))}` : '';
 }
 window.getTranslatorChoice = getTranslatorChoice;
+
+// A shared reader link must open on the translators the sender sees. The address bar does not
+// carry the user's own picks (they live in the saved set), so the recipient would get the
+// project's default instead. Only languages whose translation on screen is NOT the default go
+// into ?translators= (same default rule as core/search-core.js filterPreferredTranslators); the
+// address bar itself stays untouched, so the sender's own mode/language switching is unaffected.
+function readerShareUrl(href) {
+    const stack = READER_MODE.stack, avail = READER_MODE.availableTranslators;
+    if (!stack || !stack.length || !window._currentSlug) return href;
+    let u;
+    try { u = new URL(href, location.origin); } catch (e) { return href; }
+    const slug = decodeURIComponent(u.pathname).replace(/\/+$/, '').split('/').pop().split(':')[0];
+    if (slug.toLowerCase() !== String(window._currentSlug).toLowerCase()) return href;
+    const langOf = k => k.slice(0, k.indexOf('_'));
+    const langs = [...new Set(stack.map(langOf))];
+    const prio = window.translatorPriority || {};
+    const keys = [];   // languages to name
+    for (const lang of langs) {
+        const shown = stack.filter(k => langOf(k) === lang);
+        const pool = (avail || []).filter(k => langOf(k) === lang);
+        let def = (prio[lang] || []).find(k => pool.includes(k));
+        if (!def && lang === 'en') def = pool.find(k => k !== 'en_sujato');
+        if (!def && pool.length === 1) def = pool[0];
+        // ponytail: a language without a priority entry has no client-known default — always named
+        if (shown.length === 1 && shown[0] === def) continue;
+        keys.push(lang);
+    }
+    if (!keys.length) return u.href;
+    // stack order, so interleaved lines (ru_o, en_sujato, ru_sv) come out the same way
+    u.searchParams.set('translators', stack.filter(k => keys.includes(langOf(k))).join(','));
+    // multi: the recipient's own languages would otherwise decide the columns
+    if (READER_MODE.modeKey === 'multi' || u.searchParams.has('langs')) u.searchParams.set('langs', langs.join(','));
+    return u.href.replace(/%2C/gi, ',');   // a comma is legal in a query and reads better
+}
+window.dgReaderShareUrl = readerShareUrl;
 // Языки, которых нет в сохранённом порядке (юзер ещё не переключал), остаются в порядке сервера
 // — так сохранённый порядок только переставляет "первый", а не переизобретает весь список.
 function reorderColumnsByLangOrder(cols) {
@@ -1427,7 +1462,9 @@ window.buildSutta = async function(rawSlug, opts) {
        the two render loops below walk THIS, not columns × translators. Anything the server sent
        that the stack doesn't mention (a fallback translator, a language just switched on) keeps
        its server order at the end rather than disappearing. */
-    const stackOrder = getStack();
+    // A shared link (?translators=, readerShareUrl) also carries the sender's line order.
+    const urlTrn = new URLSearchParams(location.search).get('translators');
+    const stackOrder = urlTrn ? urlTrn.split(',').filter(k => k.includes('_')) : getStack();
     const orderedEntries = [];
     for (const key of stackOrder) {
         const lang = key.slice(0, key.indexOf('_'));

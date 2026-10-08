@@ -103,6 +103,8 @@ window.dgSegmentUrl = function (url, segment) {
   const u = new URL(url);
   const seg = String(segment || '').toLowerCase();
   u.hash = '';
+  // reader: name the translators on screen when they are not the default (megareader.js)
+  if (typeof window.dgReaderShareUrl === 'function') u.href = window.dgReaderShareUrl(u.href);
   if (!seg) return u.href;
   if (u.searchParams.has('q')) { u.hash = seg; return u.href; }
   const path = u.pathname.replace(/\/+$/, '');

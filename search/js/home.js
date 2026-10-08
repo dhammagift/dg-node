@@ -3145,7 +3145,8 @@
         var shareBtn = document.querySelector('#dg-drawer .dg-drawer-share');
         if (shareBtn) {
             shareBtn.addEventListener('click', function () {
-                var url = window.location.href;
+                var url = typeof window.dgReaderShareUrl === 'function'
+                    ? window.dgReaderShareUrl(window.location.href) : window.location.href;
                 var title = document.title;
                 if (navigator.share) {
                     navigator.share({ title: title, url: url }).catch(function () { /* user cancelled — not an error */ });
