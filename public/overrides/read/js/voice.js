@@ -2392,7 +2392,7 @@ function getPlayerHtml() {
         <a href="javascript:void(0)" id="tts-settings-toggle" class="tts-ib" aria-expanded="false" title="${t.settings}">${gi('gear.svg')}</a>
         <div class="tts-controls-row tts-tr">
           <a href="javascript:void(0)" title="← ↑" class="prev-main-button tts-ib">${gi('backward-step.svg')}</a>
-          <a href="javascript:void(0)" title="Space" class="play-main-button tts-play"><svg class="pp" viewBox="0 0 24 24" aria-hidden="true"><path class="pp-l" d="M6 4L13 7.9L13 16.1L6 20Z"/><path class="pp-r" d="M13 7.9L20 12L20 12L13 16.1Z"/></svg></a>
+          <a href="javascript:void(0)" title="Space" class="play-main-button tts-play"><svg class="pp" viewBox="0 0 24 24" aria-hidden="true"><path class="pp-l" d="M7.7 4.5L14.2 8.25L14.2 15.75L7.7 19.5Z"/><path class="pp-r" d="M14.2 8.25L20.7 12L20.7 12L14.2 15.75Z"/></svg></a>
           <a href="javascript:void(0)" title="→ ↓" class="next-main-button tts-ib">${gi('forward-step.svg')}</a>
         </div>
         <a href="javascript:void(0)" title="Esc" class="tts-ib close-tts-btn">&times;</a>
@@ -2481,7 +2481,7 @@ function getOrBuildPlayer() {
         // The ?v= stamp matters: /read/css/voice.css is served immutable for a year, so without it a
         // CSS fix would never reach anyone who had already opened the player (issue #20's rule was
         // invisible in the browser because of exactly that). Bump the stamp with the next edit.
-        document.head.insertAdjacentHTML('beforeend', '<link id="voice-css-lazy" rel="stylesheet" href="/read/css/voice.css?v=2026-10-04app">');
+        document.head.insertAdjacentHTML('beforeend', '<link id="voice-css-lazy" rel="stylesheet" href="/read/css/voice.css?v=2026-10-08prose">');
     }
 
     if (!playerContainer) {
@@ -3405,10 +3405,14 @@ document.addEventListener('visibilitychange', async () => {
 
 function isLegacyPage() {
     // Если есть блок с классом "a" ИЛИ специфичная для старого дизайна ячейка таблицы
-    return document.querySelectorAll('.a').length > 0 || document.querySelector('td[style*="justify"]') !== null;
+    // ...or a prose page that asks to be read as one (the docs mark their article data-dg-tts-prose)
+    return !!document.querySelector('[data-dg-tts-prose]') ||
+           document.querySelectorAll('.a').length > 0 || document.querySelector('td[style*="justify"]') !== null;
 }
 
 function prepareLegacyData() {
+    const prose = document.querySelector('[data-dg-tts-prose]');
+    if (prose) return prepareGeneralArticleData(prose);
     const textData = [];
     let segmentCounter = 0;
     let contentCell = null;
@@ -3567,12 +3571,16 @@ function prepareLegacyData() {
 }
 
 
-function prepareGeneralArticleData() {
+// root: a prose page's article (docs, data-dg-tts-prose) instead of the whole page. There a block that
+// holds other text blocks (blockquote > p, li > p) is read through them, not a second time as a whole.
+function prepareGeneralArticleData(root) {
     const textData = [];
     let segmentCounter = 0;
+    const BLOCKS = 'h1, h2, h3, h4, h5, h6, p, li, blockquote';
 
     // Ищем все потенциально текстовые элементы на странице
-    const elements = document.querySelectorAll('h1, h2, h3, h4, h5, h6, p, li, blockquote');
+    let elements = Array.from((root || document).querySelectorAll(BLOCKS));
+    if (root) elements = elements.filter(el => !el.querySelector(BLOCKS));
 
     elements.forEach(el => {
         // Пропускаем элементы навигации, футера или скрытые блоки (чтобы не читать меню)
@@ -3851,27 +3859,33 @@ document.addEventListener('keydown', (e) => {
     }
 
     // 4. Стандартное управление плеером
+    // A key shows the same press as the mouse (.key mirrors :active in voice.css); held keys keep it on
+    const pressKey = (b) => {
+        b.classList.add('key');
+        clearTimeout(b._keyTimer);
+        b._keyTimer = setTimeout(() => b.classList.remove('key'), 140);
+    };
     if (!ttsState.autoScroll) return;
 
     switch(e.code) {
         case 'Space':
             e.preventDefault();
             const playBtn = document.querySelector('.play-main-button');
-            if (playBtn) playBtn.click();
+            if (playBtn) { pressKey(playBtn); playBtn.click(); }
             break;
 
         case 'ArrowLeft':
         case 'ArrowUp':
             e.preventDefault();
             const prevBtn = document.querySelector('.prev-main-button');
-            if (prevBtn) prevBtn.click();
+            if (prevBtn) { pressKey(prevBtn); prevBtn.click(); }
             break;
 
         case 'ArrowRight':
         case 'ArrowDown':
             e.preventDefault();
             const nextBtn = document.querySelector('.next-main-button');
-            if (nextBtn) nextBtn.click();
+            if (nextBtn) { pressKey(nextBtn); nextBtn.click(); }
             break;
     }
 });

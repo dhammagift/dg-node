@@ -1,7 +1,8 @@
+/* --bs-*-rgb fall back to the site's values (home.css) on pages without Bootstrap, e.g. the docs */
 .tts-active {
-    background-color: rgba(var(--bs-primary-rgb), 0.2); /* Чуть прозрачнее, чем слово */
+    background-color: rgba(var(--bs-primary-rgb, 26, 188, 156), 0.2); /* Чуть прозрачнее, чем слово */
     border-radius: 0.25rem;
-    box-shadow: 0 0 0 1px rgba(var(--bs-secondary-rgb), 0.2);
+    box-shadow: 0 0 0 1px rgba(var(--bs-secondary-rgb, 108, 117, 125), 0.2);
     transition: background-color 260ms ease-in-out;
     scroll-margin-top: 20vh;
     /* Чтобы подсветка красиво переносилась на новые строки */
@@ -31,7 +32,7 @@
 #sutta span[id]:has(.tts-active) {
     display: block; 
     scroll-margin-top: 15vh;
-    background-color: rgba(var(--bs-primary-rgb), 0.25);
+    background-color: rgba(var(--bs-primary-rgb, 26, 188, 156), 0.25);
     border-radius: 6px;
     transition: background-color 0.2s ease;
     -webkit-box-decoration-break: clone;
@@ -40,7 +41,7 @@
 
 .dark #sutta span[id]:has(.tts-active),
 body[data-theme="dark"] #sutta span[id]:has(.tts-active) {
-    background-color: rgba(var(--bs-primary-rgb), 0.30); 
+    background-color: rgba(var(--bs-primary-rgb, 26, 188, 156), 0.30); 
 }
 
 #sutta span[id]:has(.tts-active) .tts-active,
@@ -165,13 +166,50 @@ body:has(#dgDlCard.show) .voice-player{bottom:calc(24px + var(--dg-dl-card-h, 12
 /* Transport: grey glyphs, no fill */
 .tts-tr{display:flex;align-items:center;justify-content:center;gap:4px}
 .tts-tr .tts-ib .tts-gi{width:22px;height:22px}
-.tts-play{width:60px;height:60px;border:none;background:none;border-radius:50%;color:var(--dg-text-2);display:grid;place-items:center;cursor:pointer;padding:0;transition:color .15s,transform .15s}
+.tts-play{position:relative;width:60px;height:60px;margin:4px 6px;border:none;background:none;border-radius:50%;color:var(--dg-text-2);display:grid;place-items:center;cursor:pointer;padding:0;transition:color .4s ease,transform .3s cubic-bezier(.33,1,.68,1)}
 .tts-play:hover{color:var(--dg-text)}
-.tts-play:active{transform:scale(.94)}
+.tts-play:active,.tts-play.key{transform:scale(.94)}
+/* Green rings (design v4), toned down to the reader's phrase highlight (rgba(--bs-primary-rgb) like
+   #sutta span:has(.tts-active)) so the player does not pull the eye. The outer ring breathes once on
+   play/pause (owner: animation on the switch only, not all the time). */
+.tts-play{--ring:rgba(var(--bs-primary-rgb,26,188,156),.4);--ring-hi:rgba(var(--bs-primary-rgb,26,188,156),.6)}
+/* Smooth = compositor only: the rings move by transform/opacity (animating inset re-laid out the
+   button every frame and stuttered); slow, soft curves for hover and the breath. */
+.tts-play::before,.tts-play::after{content:"";position:absolute;border-radius:50%;pointer-events:none;will-change:transform,opacity;transition:border-color .5s ease,transform .7s cubic-bezier(.33,1,.68,1),opacity .5s ease}
+.tts-play::before{inset:0;border:1.5px solid var(--ring)}
+.tts-play::after{inset:-5px;border:1px solid var(--ring);opacity:.5;animation:tts-play-breathe-b 2.4s cubic-bezier(.37,0,.63,1)}
+.tts-play:hover::before{border-color:var(--ring-hi)}
+.tts-play:hover::after{transform:scale(1.06);opacity:.8}
+/* two names so the animation restarts on every switch; a fresh player breathes once as it opens */
+.tts-play.on::after{animation-name:tts-play-breathe-a}
+@keyframes tts-play-breathe-a{50%{transform:scale(1.12);opacity:.12}}
+@keyframes tts-play-breathe-b{50%{transform:scale(1.12);opacity:.12}}
+@media (prefers-reduced-motion:reduce){.tts-play::after{animation:none}}
+.tts-play:focus-visible{outline:none}
+.tts-play:focus-visible::before{border-color:var(--ring-hi);border-width:2px}
+.tts-play:focus-visible::after{opacity:1}
+/* prev/next: one thin ring, the background stays */
+.tts-tr>.tts-ib{box-shadow:inset 0 0 0 1px rgba(var(--bs-primary-rgb,26,188,156),.3);transition:box-shadow .5s ease,color .4s ease,transform .3s cubic-bezier(.33,1,.68,1)}
+.tts-tr>.tts-ib:hover{background:none;box-shadow:inset 0 0 0 1px rgba(var(--bs-primary-rgb,26,188,156),.55)}
+.tts-tr>.tts-ib:hover{transform:scale(1.02)}
+.tts-tr>.tts-ib:active,.tts-tr>.tts-ib.key{transform:scale(.97)}
+/* prev/next answer the play button, quietly and in mirror: the glyph leans outward on hover and steps
+   further on press; on every play/pause switch their rings glow once with the play ring's breath */
+.tts-tr>.tts-ib .tts-gi{transition:transform .55s cubic-bezier(.33,1,.68,1)}
+.tts-tr>.prev-main-button:hover .tts-gi{transform:translateX(-1px)}
+.tts-tr>.next-main-button:hover .tts-gi{transform:translateX(1px)}
+.tts-tr>.tts-ib:active .tts-gi,.tts-tr>.tts-ib.key .tts-gi{transition-duration:.12s}
+.tts-tr>.prev-main-button:active .tts-gi,.tts-tr>.prev-main-button.key .tts-gi{transform:translateX(-2px)}
+.tts-tr>.next-main-button:active .tts-gi,.tts-tr>.next-main-button.key .tts-gi{transform:translateX(2px)}
+.tts-tr>.tts-ib{animation:tts-side-glow-b 2.4s cubic-bezier(.37,0,.63,1)}
+.tts-tr:has(.tts-play.on)>.tts-ib{animation-name:tts-side-glow-a}
+@keyframes tts-side-glow-a{50%{box-shadow:inset 0 0 0 1px rgba(var(--bs-primary-rgb,26,188,156),.6)}}
+@keyframes tts-side-glow-b{50%{box-shadow:inset 0 0 0 1px rgba(var(--bs-primary-rgb,26,188,156),.6)}}
+@media (prefers-reduced-motion:reduce){.tts-tr>.tts-ib{animation:none}.tts-tr>.tts-ib .tts-gi{transition:none}}
 /* Play ⇄ Pause: a real outline morph. The triangle is cut into two halves with as many points as
    the two pause bars, and CSS moves one shape into the other (.on = playing). */
 .tts-play .pp{width:40px;height:40px;overflow:visible}
-.tts-play .pp path{fill:currentColor;stroke:currentColor;stroke-width:1.6;stroke-linejoin:round;transition:d .34s var(--dg-ease)}
+.tts-play .pp path{fill:currentColor;stroke:currentColor;stroke-width:1.6;stroke-linejoin:round;transition:d .45s cubic-bezier(.65,0,.35,1)}
 .tts-play.on .pp-l{d:path("M6 4L10 4L10 20L6 20Z")}
 .tts-play.on .pp-r{d:path("M14 4L18 4L18 20L14 20Z")}
 
@@ -190,7 +228,7 @@ body:has(#dgDlCard.show) .voice-player{bottom:calc(24px + var(--dg-dl-card-h, 12
 #tts-rate-btn{width:42px;overflow:hidden}
 .tts-chip .dd{font-size:9px;color:var(--dg-text-muted)}
 .tts-chip:focus{outline:none}
-.tts-chip:focus-visible,.tts-ib:focus-visible,.tts-play:focus-visible,.tts-vbtn:focus-visible{outline:2px solid var(--dg-accent-ink);outline-offset:2px}
+.tts-chip:focus-visible,.tts-ib:focus-visible,.tts-vbtn:focus-visible{outline:2px solid var(--dg-accent-ink);outline-offset:2px}
 .ab-btn-timer-text{display:none;font-variant-numeric:tabular-nums}
 
 /* Panels: one open at a time */
