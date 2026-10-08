@@ -1,0 +1,64 @@
+/* Desktop mode of the one Uposatha interface. Same bar, same five screens, same settings drawer as the phone;
+   on a desktop (body.wide, app-wide.js) the bottom capsule docks into the app bar with every label shown, and each
+   screen uses the width. A tablet keeps the phone layout in both orientations, and so does the native app. */
+@media (min-width:1024px){
+body.app.wide .tbar .in{gap:16px}
+body.app.wide .tbar{padding:12px 24px}
+body.app.wide .tbar .in{max-width:1180px;margin:0 auto;min-height:48px}
+body.app.wide .tbar.away{transform:none}
+body.app.wide .tbar .wordmark{cursor:pointer}
+/* the bar keeps the name of the app: the capsule beside it already names the screen */
+body.app.wide .tbar .wordmark b{font-size:0}
+body.app.wide .tbar .wordmark b::before{content:"Ariy";font-size:22px;font-weight:500;color:var(--dg-text-muted)}
+body.app.wide .tbar .wordmark b::after{content:"uposatha";font-size:22px}
+body.app.wide .appnav{top:12px;bottom:auto;left:max(calc(50% - 590px + 24px + 200px),224px);right:auto;transform:none;z-index:45;padding:5px;box-shadow:none;background:var(--dg-surface);border:1px solid var(--dg-border)}
+body.app.wide.scrolled .appnav{border-color:var(--dg-border-strong)}
+body.app.wide.dg-drawer-open .appnav{z-index:45}
+body.app.wide .appnav button{height:38px;padding:0 clamp(10px,1.1vw,16px);font-size:14px;color:var(--dg-text-2);cursor:pointer}
+body.app.wide .appnav button span{display:inline}
+body.app.wide .appnav button:not([aria-current=true]):hover{color:var(--dg-text);background:var(--dg-surface-hover)}
+body.app.wide .appnav .up-pill{top:5px;bottom:5px}
+body.app.wide .appnav .up-ghost{display:none}
+body.app.wide .appnav button .ic,body.app.wide .appnav button i{width:20px;height:20px}
+body.app.wide main.page{max-width:1180px;padding:8px 24px 64px}
+/* the veil under the phone's bottom bar: the bar is in the header here, nothing to veil */
+body.app.wide::after{display:none}
+
+/* summary: the moon and the countdown stay in view on the left, the rest of the day on the right */
+body.app.wide[data-app-tab=home] main.page{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);grid-template-rows:repeat(10,auto) 1fr;column-gap:24px;align-items:start}
+body.app.wide[data-app-tab=home] main.page>*{grid-column:2;min-width:0}
+body.app.wide[data-app-tab=home] #up-hero{grid-column:1;grid-row:1/-1;position:sticky;top:96px;margin-top:12px;padding:40px 24px 32px}
+body.app.wide[data-app-tab=home] #up-hero .hm{width:190px;height:190px}
+body.app.wide[data-app-tab=home] #up-hero .mv .moon{font-size:150px}
+body.app.wide[data-app-tab=home] main.page>:is(#meal-sum,.placeask,.ctx,#slides){margin-top:12px}
+body.app.wide[data-app-tab=home] #slides .dg-slides{padding:18px 12px 14px}
+
+/* list: the months side by side */
+body.app.wide[data-app-tab=list] .lvseg{max-width:420px;margin:12px 0 0}
+body.app.wide[data-app-tab=list] #list{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));column-gap:20px;align-items:start}
+body.app.wide[data-app-tab=list] #s-dates{max-width:900px}
+
+/* calendar: the month and the chosen day beside it */
+body.app.wide[data-app-tab=cal] #s-cal{display:grid;grid-template-columns:minmax(0,1fr) 340px;grid-template-rows:auto auto auto 1fr;column-gap:24px;align-items:start}
+body.app.wide[data-app-tab=cal] #s-cal>:is(.calh,.grid,.legend){grid-column:1}
+body.app.wide[data-app-tab=cal] #detail{grid-column:2;grid-row:1/-1;position:sticky;top:96px;margin-top:18px;min-height:12em}
+body.app.wide[data-app-tab=cal] .grid .c{min-height:92px;cursor:pointer}
+body.app.wide[data-app-tab=cal] .grid .c:hover{background:var(--up-surf-2)}
+
+/* night and day: the meal on the left, the watches on the right */
+body.app.wide[data-app-tab=parts] #parts{display:grid;grid-template-columns:minmax(300px,4fr) minmax(0,8fr);grid-template-rows:auto auto auto auto 1fr;column-gap:24px;align-items:start}
+body.app.wide[data-app-tab=parts] #parts>*{grid-column:1;min-width:0}
+body.app.wide[data-app-tab=parts] #parts>:is(.parts-h,#pwho){grid-column:1/-1}
+body.app.wide[data-app-tab=parts] #pgrid{grid-column:2;grid-row:3/-1;margin-top:12px}
+body.app.wide[data-app-tab=parts] #meal:empty{display:none}
+
+/* suttas: the questions on the left, the text itself on the right (on the phone it opens on the site) */
+body.app.wide[data-app-tab=keys] #keys{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);grid-template-rows:auto auto auto 1fr;column-gap:24px;align-items:start}
+body.app.wide[data-app-tab=keys] #keys>*{grid-column:1;min-width:0}
+body.app.wide.wide[data-app-tab=keys] #reader:not([hidden]){display:block!important;grid-column:2;grid-row:1/-1;position:sticky;top:96px;margin-top:18px}
+body.app.wide[data-app-tab=keys] #reader iframe{height:calc(100vh - 190px)}
+body.app.wide[data-app-tab=keys] #keys>.keys-art{display:block;grid-column:1;margin:28px auto 12px;width:min(300px,72%);height:auto}
+
+/* the site's footer belongs to the web page, not to the native app */
+body.app.wide:not(.native) #dg-footer{display:flex!important;max-width:1132px;margin:40px auto 0;padding:20px 0 32px}
+}

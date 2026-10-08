@@ -11,7 +11,7 @@
 <style>html.up-boot body > *:not(#up-splash) { visibility: hidden; } html.up-boot { background: var(--dg-page, #fff); }</style>
 <script>
 // The app must not show the site's page while it builds itself: in the app (or ?app=1) the page stays hidden until app-refresh.js reveals it (a safety timer too).
-(function () { try { var C = window.Capacitor, app = new URLSearchParams(location.search).get('app') === '1' || !!(C && C.isNativePlatform && C.isNativePlatform());
+(function () { try { var C = window.Capacitor, app = true; // one UX: the app layout is the page on every screen (?app=1 stays a harmless alias)
   if (app) { var r = document.documentElement; r.classList.add('up-boot'); var done = false, safety = setTimeout(function () { window.__upoReveal(); }, 3500); window.__upoReveal = function () { if (done) return; done = true; clearTimeout(safety); r.classList.remove('up-boot'); r.classList.add('up-in'); setTimeout(function () { r.classList.remove('up-in'); }, 400); }; } } catch (e) { /* the page shows itself */ } })();
 </script>
 <title>Uposatha by the suttas | Dhamma.gift</title>
@@ -38,6 +38,7 @@
 <link rel="stylesheet" href="/assets/css/uposatha-calendar.css">
 <link rel="stylesheet" href="/assets/css/app-refresh.css">
 <link rel="stylesheet" href="/assets/css/app-nav.css">
+<link rel="stylesheet" href="/assets/css/app-wide.css">
 <link rel="stylesheet" href="/assets/css/quick-modal.css">
 </head>
 <body class="dg-state-toc" data-screen="list" data-mode="detailed" data-remind="off">
@@ -443,6 +444,7 @@
 <script src="/assets/js/uposatha-calendar.js"></script>
 <script src="/assets/js/app-refresh.js"></script>
 <script src="/assets/js/app-nav.js"></script>
+<script src="/assets/js/app-wide.js"></script>
 <script>
   // the same localization config as on the site's other pages: the {{tokens}} of the drawer
   window.DHAMMA_LANG_CONFIG_PATTERN = "/nodejs/res/lang_{lang}.json";

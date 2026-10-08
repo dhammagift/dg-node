@@ -13,16 +13,17 @@ body.app .appnav .up-pill { position: absolute; z-index: 0; top: 6px; bottom: 6p
 body.app .appnav .up-ghost { position: absolute; z-index: 1; pointer-events: none; white-space: nowrap; font-size: 13.5px; font-weight: 600; color: var(--dg-accent-ink); line-height: 46px; }
 body.app main.page { padding-bottom: 110px; }
 
-/* The app's drawer holds only what belongs to the Uposatha calendar: language, theme, font size, its own settings, share, help.
-   The site's rows (find on the page, the multitool, the reading modes, the site settings, the buttons of the home page, login) are hidden. */
-body.app #dg-drawer .dg-find-open,
-body.app #dg-drawer #dg-drawer-multitool,
+/* The drawer holds what belongs to the Uposatha calendar: language, theme, font size, its own settings, share, help.
+   The reader's modes and the home page's tile buttons mean nothing here and are hidden everywhere; the site's own rows
+   (find on the page, the multitool, the site settings, login) stay on the web page and are hidden only in the native app. */
 body.app #dg-drawer #dg-drawer-modes,
 body.app #dg-drawer #dg-add-tile,
 body.app #dg-drawer #dg-edit-tiles,
 body.app #dg-drawer #dg-restore-tiles,
-body.app #dg-drawer a[href="/settings/"],
-body.app #dg-drawer a[href="/login"] { display: none !important; }
+body.app.native #dg-drawer .dg-find-open,
+body.app.native #dg-drawer #dg-drawer-multitool,
+body.app.native #dg-drawer a[href="/settings/"],
+body.app.native #dg-drawer a[href="/login"] { display: none !important; }
 
 
 /* the drawer goes under the bar only while it is open; the rest of the time the bar stays at its normal 30, below every ordinary sheet/toast (z-index 50-60) - a modal like "Add to calendar" must not hide behind it */
