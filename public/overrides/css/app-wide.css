@@ -66,4 +66,6 @@ body.app.wide:not(.wide-app)[data-app-tab=keys] #keys>.keys-art{display:block;gr
 
 /* the site's footer belongs to the desktop web page, not to the app */
 body.app.wide:not(.wide-app) #dg-footer{display:flex!important;max-width:1132px;margin:40px auto 0;padding:20px 0 32px}
+body.app.wide:not(.wide-app) .up-stores{display:flex;gap:10px;align-items:center}
+body.app.wide:not(.wide-app) .up-stores img{display:block;width:auto;height:40px}
 }
