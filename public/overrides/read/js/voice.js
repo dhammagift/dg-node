@@ -1014,9 +1014,10 @@ function stripForPaliVoice(text) {
 // or a translation voice (voice id, e.g. 'ruslan').
 // Answers like Google ({audioContent}: base64 mp3). Speed 0.8 = the voice's tuned pace (the default 0.7 is a bit slower).
 // The browser calls the voice servers directly, like Google's API (public, CORS), in this order:
-// api.dhamma.gift (f3), f2.dhamma.gift (the reserve, TTS only), then this site's own /api/tts/pali.
+// api.dhamma.gift, api2.dhamma.gift (the reserve, TTS only), then this site's own /api/tts/pali. Server names,
+// not machines: which server answers is set in DNS (never hardcode f1/f2/f3 here).
 // Then Google (see playCurrentSegment).
-const DG_TTS_URLS = [window.DG_TTS_URL || 'https://api.dhamma.gift/api/tts/pali', 'https://f2.dhamma.gift/api/tts/pali',
+const DG_TTS_URLS = [window.DG_TTS_URL || 'https://api.dhamma.gift/api/tts/pali', 'https://api2.dhamma.gift/api/tts/pali',
                      '/api/tts/pali'];
 
 async function fetchPaliVoiceAudio(text, uiRate, voice) {
