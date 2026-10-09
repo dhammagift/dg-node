@@ -203,7 +203,12 @@ window.addEventListener('suttaRenderedCentral', () => {
             // этой базы фоном (баг замечен владельцем при переключении на "Попап Dict.DG").
             // Грузим её только когда реально выбран режим standalone/standaloneru.
             const isStandaloneMode = typeof savedDict !== 'undefined' && savedDict.includes('standalone');
-            if (isStandaloneMode && typeof lazyLoadStandaloneScripts === 'function') {
+            // Owner, 2026-10-09: the first time it loads lazily, on the first word click (~3 MB a new
+            // visitor may never need); once loaded it sits in the browser cache, so later visits
+            // preload it here at the cost of a revalidation. The app keeps its own offline copy.
+            let usedBefore = typeof window.dgDictScript === 'function';
+            try { usedBefore = usedBefore || !!localStorage.getItem('dgDpdLoaded'); } catch (e) {}
+            if (isStandaloneMode && usedBefore && typeof lazyLoadStandaloneScripts === 'function') {
                 const lang = savedDict.includes('ru') ? 'ru' : 'en';
 
                 lazyLoadStandaloneScripts(lang).then((dbWasSlow) => {
@@ -2875,13 +2880,13 @@ window.setupCloudListeners = function(uid) {
         let localHist = JSON.parse(localStorage.getItem('localSearchHistory')) || [];
         let histMap = new Map();
         localHist.forEach(h => {
-            const baseKey = /\d/.test(h[0]) ? h[0].split(/\s+/)[0] : h[0];
+            const baseKey = /\d/.test(h[0]) ? h[0].split(/\s+/)[0].split(':')[0] : h[0]; // same root as saveToHistory (issue #5)
             histMap.set(baseKey, { key: h[0], url: h[1], timestamp: new Date(h[2]).getTime() });
         });
 
         snapshot.docChanges().forEach((change) => {
             const cloudHist = change.doc.data();
-            const baseKey = /\d/.test(cloudHist.key) ? cloudHist.key.split(/\s+/)[0] : cloudHist.key;
+            const baseKey = /\d/.test(cloudHist.key) ? cloudHist.key.split(/\s+/)[0].split(':')[0] : cloudHist.key;
             if (change.type === "added" || change.type === "modified") {
                 const cloudTime = cloudHist.updatedAt && cloudHist.updatedAt.toDate 
                     ? cloudHist.updatedAt.toDate().getTime() 
@@ -3107,7 +3112,8 @@ window.syncHistoryItemToCloud = async function(key, url, timestamp, isDeleted = 
 
     if (!db || !getUid()) return;
     const uid = getUid();
-    const baseKey = /\d/.test(key) ? key.split(/\s+/)[0] : key;
+    // ':segment' dropped like the local history does: "sn56.48:1.4" and "sn56.48 …" are one document
+    const baseKey = /\d/.test(key) ? key.split(/\s+/)[0].split(':')[0] : key;
     const docId = sanitizeId(baseKey);
     const docRef = db.collection("users").doc(uid).collection("history").doc(docId);
 

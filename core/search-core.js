@@ -38,6 +38,7 @@ function init(deps) {
 
 function setSkeleton(skeleton) {
     skeletonDB = skeleton;
+    navKeys = null;
 }
 
 // ---------------------------------------------------------------------------
@@ -1303,8 +1304,20 @@ async function getFullTextData(suttaId, targetLangs, explicitTranslators) {
 // route because the app needs the same answer and the walk depends on skeletonDB's key order,
 // which is this module's own state — reproducing it outside would be a second implementation of
 // the one thing that must not drift: what "the next sutta" means.
+// The database lists the books alphabetically (dn34 -> iti1, an -> dhp, nothing after ud8.10), so
+// they are put in canon order once; texts within a book keep the database order. A book not named
+// here (Vinaya, Abhidhamma) keeps its place after them.
+const CANON_BOOK_ORDER = ['dn', 'mn', 'sn', 'an', 'kp', 'dhp', 'ud', 'iti', 'snp', 'vv', 'pv', 'thag', 'thig',
+    'tha-ap', 'thi-ap', 'bv', 'cp', 'ja', 'mnd', 'cnd', 'ps', 'ne', 'pe', 'mil'];
+let navKeys = null;
+function canonKeys() {
+    if (navKeys) return navKeys;
+    const rank = id => { const i = CANON_BOOK_ORDER.indexOf((id.match(/^[a-z-]+?(?=\d)/) || [id])[0]); return i === -1 ? CANON_BOOK_ORDER.length : i; };
+    return (navKeys = Object.keys(skeletonDB).sort((a, b) => rank(a) - rank(b))); // stable sort
+}
+
 function navFor(suttaId, scope) {
-    const dbKeys = Object.keys(skeletonDB);
+    const dbKeys = canonKeys();
     const currentIndex = dbKeys.indexOf(suttaId);
     if (currentIndex === -1) return null;
 
@@ -1358,8 +1371,10 @@ async function enrichResponse(keyword, searchScope, exactMatch, targetLangs, lb,
 // The regex-keyword counterpart of the three route bodies, run inside the worker (see
 // core/regex-worker.js). The pattern guard runs here, in the worker, so a rejected pattern never
 // reaches the database at all; metadata.regex tells the client the answer was limited.
+// job.plain: an ordinary keyword sent to the worker only so the HTTP process stays free
+// (dg-fastify.js searchPool) — no pattern checks, no regex metadata, the same answer as in-process.
 async function runRegexJob(job) {
-    const problem = regexProblem(job.keyword);
+    const problem = job.plain ? null : regexProblem(job.keyword);
     if (problem) {
         const err = new Error(problem);
         err.badRequest = true;
@@ -1375,7 +1390,7 @@ async function runRegexJob(job) {
     } else {
         throw new Error(`Unknown regex job kind: ${job.kind}`);
     }
-    if (result && result.metadata) result.metadata.regex = regexScanInfo();
+    if (!job.plain && result && result.metadata) result.metadata.regex = regexScanInfo();
     return result;
 }
 

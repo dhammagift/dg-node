@@ -1,9 +1,8 @@
 /* The Uposatha calendar page (/uposatha-calendar). Layout and look follow the design template (owner's
    "Uposatha-standalone"): a top bar, the today card with a drawn moon, tabs, a list by month and a month
    calendar, the key suttas with an inline reader, a burger drawer and a settings panel. Tokens are the site's. */
-@font-face { font-family: "Lato"; font-weight: 400; font-style: normal; font-display: swap; src: url(/assets/fonts/lato-400.woff2) format("woff2"); }
-@font-face { font-family: "Lato"; font-weight: 600; font-style: normal; font-display: swap; src: url(/assets/fonts/lato-600.woff2) format("woff2"); }
-@font-face { font-family: "Lato"; font-weight: 700; font-style: normal; font-display: swap; src: url(/assets/fonts/lato-700.woff2) format("woff2"); }
+/* Lato comes from home.css: the same faces split by script (latin / pali / cyrillic, ~30-40 KB each, only the
+   ones a page uses get loaded). Full copies declared here used to be fetched on top of them (~380 KB). */
 :root, [data-theme="light"] {
   --bs-body-font-family: "Lato", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; /* home.css builds its --dg-font on it */
   --dg-page: #ffffff; --dg-surface: #ffffff; --dg-surface-hover: #f5f4f1; --dg-border: #e7e5de; --dg-border-strong: #d7d4c9;

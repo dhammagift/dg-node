@@ -290,6 +290,9 @@ function bindAutocomplete(selector, allWords) {
         return ret;
     };
 
+    // ~94k words: normalized once, not on every keystroke (that loop froze the page 1-2 s per letter)
+    var normWords = null;
+
     var autocompleteInstance = $(selector).autocomplete({
         // Owner: suggestions should always open downward, never up — "left bottom"/"at: left
         // top" was jQuery UI's "prefer above, flip below only when out of room" config, which
@@ -378,10 +381,12 @@ function bindAutocomplete(selector, allWords) {
             var strictAllList = [];
             var looseAllList = [];
 
-            // Один проход по словарю с распределением по приоритетам
-            $.each(allWords, function(i, value) {
-                var valStr = value.label || value.value || value;
-                var normVal = normalize(valStr);
+            var maxRecord = 100;
+            // shared by every input bound to the same list
+            if (!normWords) normWords = allWords._norm || (allWords._norm = allWords.map(function (value) { return normalize(String(value.label || value.value || value)); }));
+            // Один проход по словарю с распределением по приоритетам; enough best matches = stop early
+            for (var i = 0; i < allWords.length && strictBeginList.length < maxRecord; i++) {
+                var value = allWords[i], normVal = normWords[i];
 
                 if (strictMatchBegin.test(normVal)) {
                     strictBeginList.push(value);
@@ -392,9 +397,8 @@ function bindAutocomplete(selector, allWords) {
                 } else if (looseMatchAll.test(normVal)) {
                     looseAllList.push(value);
                 }
-            });
+            }
 
-            var maxRecord = 1000;
             // Склейка результатов по убыванию приоритета
             var resultList = strictBeginList
                 .concat(looseBeginList)

@@ -36,7 +36,11 @@
       if (m === 'mid') noon = new Date((rise.getTime() + set.getTime()) / 2);
       return noon || zonedToUtc(p[0], p[1], p[2], 12, tz);
     }
-    function endOf(r) { return (obs && sunEvent('set', r.y, r.m, r.d + 1, tz, obs)) || zonedToUtc(r.y, r.m, r.d + 1, 18, tz); } // when the Uposatha ends
+    function endOf(r) { // when the Uposatha ends
+      // the modern scheme keeps the calendar day, dawn to dawn (the page: "today" only): it ends where the next day starts
+      if (!su) { var nx = rowByYmd[ymdAdd(r.ymd, 1)]; return (nx && nx.at) || sun('rise', ymdAdd(r.ymd, 1)); }
+      return (obs && sunEvent('set', r.y, r.m, r.d + 1, tz, obs)) || zonedToUtc(r.y, r.m, r.d + 1, 18, tz); // by the suttas: to the next sunset
+    }
     function sun(kind, ymd) { var p = ymd.split('-').map(Number); return edge(kind, p[0], p[1], p[2]) || zonedToUtc(p[0], p[1], p[2], kind === 'rise' ? 6 : 18, tz); }
     var hmFmt = new Intl.DateTimeFormat('en-GB', { timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: false });
     function hm(d) { return d ? hmFmt.format(d) : ''; }
@@ -45,6 +49,7 @@
     var todayYmd = localDay(now, tz);
     // the Uposathas: from 2 days ago through ~11 weeks (the month grid and "next three" need them); the days with the sun: 14 from today
     var L = C.dataset(ymdAdd(todayYmd, -2), ymdAdd(todayYmd, 75), { tz: tz, sutta: su, loc: env.loc });
+    var rowByYmd = {}; L.rows.forEach(function (r) { rowByYmd[r.ymd] = r; });
     var upos = L.rows.filter(function (r) { return r.uposatha && r.ymd >= ymdAdd(todayYmd, -2); }).map(function (r) {
       var day = su ? dayNo(r.names[0]) : (r.phase === 0 || r.phase === 2 ? 15 : 8);
       var f = A.MoonPhase(zonedToUtc(r.y, r.m, r.d, 12, tz)) / 360;

@@ -80,6 +80,8 @@ async function lookupWord(word, lang = 'en') {
         cache.delete(key); // don't cache a network failure — only cache real answers
         throw err;
     });
+    // keys come from user input: past the cap the oldest entry goes (Map keeps insertion order)
+    if (cache.size >= 20000) cache.delete(cache.keys().next().value);
     cache.set(key, promise);
     return promise;
 }

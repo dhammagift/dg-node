@@ -1672,8 +1672,16 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
       if (!lang || !top) return;
       top.style.right = Math.round((window.innerWidth - lang.getBoundingClientRect().left) / window.dgZoom() + CORNER_BUTTON_GAP) + 'px';
     }
-    window.addEventListener('load', place);
-    window.dgPlaceScrollTop = place; // home.js calls it after re-rendering the language pill
+    // Coalesced into the next frame: called right after a long text is rendered (suttaLoaded), a
+    // synchronous measure forced a layout of the whole new text on its own (~0.8 s on a phone).
+    var placeQueued = false;
+    function placeSoon() {
+      if (placeQueued) return;
+      placeQueued = true;
+      requestAnimationFrame(function () { placeQueued = false; place(); });
+    }
+    window.addEventListener('load', placeSoon);
+    window.dgPlaceScrollTop = placeSoon; // home.js calls it after re-rendering the language pill
     // Width only: a phone fires resize each time the address bar slides in or out, and place()
     // lays out the whole page to measure one button (1000 result rows: most of a second per scroll).
     var placedWidth = window.innerWidth;
@@ -1688,7 +1696,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     // and the arrow can end up sitting under the wider label (owner, screenshot: overlapping
     // right after opening/scrolling). 'suttaLoaded' already fires right after that label
     // update (see megareader.js), reusing it here instead of a new bespoke signal.
-    window.addEventListener('suttaLoaded', place);
+    window.addEventListener('suttaLoaded', placeSoon);
     // Кнопку создаёт smoothScroll.js уже после нашего скрипта — дожидаемся её появления.
     var tries = 0;
     var timer = setInterval(function () {
@@ -2058,7 +2066,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
 
     var ctx = null;
 
-    function close() { menu.hidden = true; ctx = null; }
+    function close() { if (menu.hidden) return; menu.hidden = true; ctx = null; } // runs on every scroll event: an unchanged write still restyled the page
 
     /* Открыть цитату во встроенном попапе openFdg.js. Общая точка для пункта меню и для правого
        клика по строке.
@@ -3532,7 +3540,8 @@ $(document).ready(function() {
     // параллельно, каждый обновляет таблицу по мере готовности — не хуже прежнего для
     // маленьких результатов (один чанк = ровно то же, что было), для больших — сутты
     // появляются волнами вместо одного зависания в конце.
-    var ENRICH_CHUNK_SIZE = 250;
+    // 100: a chunk is one job in the server's enrich workers; smaller ones let other people's pages in between
+    var ENRICH_CHUNK_SIZE = 100;
 
     // How many /search/enrich requests may be in flight at once while the REST of the result set
     // is filled in. Used to be "all chunks at once": their arrival order was arbitrary, so the
@@ -3541,7 +3550,8 @@ $(document).ready(function() {
     // something — chunk N+1 cannot land before chunk N was even asked for. Measured on "the"
     // (3994 suttas, 8 chunks): 2 in flight finished the set noticeably later than the old
     // all-at-once burst; 3 is the compromise this box handles.
-    var ENRICH_PARALLEL = 4;
+    // 2 = the server's enrich worker count: more in flight only queues there
+    var ENRICH_PARALLEL = 2;
 
     // Redraw the table at most once per animation frame, and only when a landed batch touched a
     // row that is currently on screen — several chunks can resolve in the same frame, and each
@@ -4722,7 +4732,7 @@ $(document).ready(function() {
                             fastJson = retryJson;
                             searchResultCache.set(retryUrl, retryJson);
                             highlightWord = layoutFixed;
-                            history.replaceState({ dgSearch: true }, '', '/' + encodeURIComponent(layoutFixed));
+                            history.replaceState({ dgSearch: true }, '', '/' + encodeURIComponent(layoutFixed) + location.search); // keep scope=/langs=/…
                             // Поле уже показывало исходный (кириллический) ввод — строка 2998,
                             // до того как стало известно про раскладку. Обновляем на реально
                             // найденное слово, иначе поле и результаты расходились бы.

@@ -629,6 +629,9 @@ function lazyLoadStandaloneScripts(lang = 'en') {
             if (anyFailed) {
                 dbLoadPromise = null;
                 showDictError(window.isRu ? 'Не удалось загрузить словарь. Попробуйте ещё раз.' : "Couldn't load the dictionary. Try again.");
+            } else {
+                // the browser now holds it: from here on settings.js may preload it with the text
+                try { localStorage.setItem('dgDpdLoaded', '1'); } catch (e) {}
             }
             // Передаем статус "медленности" наружу
             resolve(slowLoadTriggered);
@@ -692,9 +695,9 @@ function lookupWordInStandaloneDict(word) {
         }
         out += "</ul>";
     }
-    else {
+    else if (word in dpd_ebts) { // checked once: without it every miss walked all ~93k keys for nothing
         for (const key in dpd_i2h) {
-            if (dpd_i2h[key].includes(word) && word in dpd_ebts) {
+            if (dpd_i2h[key].includes(word)) {
                 if (!out.includes(`<strong>`)) { 
                      out += `<strong>${createClickableLink(word)}</strong><br><ul>`;
                 }

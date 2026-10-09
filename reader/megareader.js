@@ -1375,18 +1375,36 @@ window.buildSutta = async function(rawSlug, opts) {
         try { localStorage.setItem('dgReaderApiQuery', apiUrl.slice(apiUrl.indexOf('?') + 1)); } catch (e) { /* private mode */ }
         const response = await fetch(apiUrl);
         if (!response.ok) {
-            if (response.status === 404 && typeof window.executeGlobalSearch === 'function') {
-                dgReaderReveal(false);
-                window.executeGlobalSearch(rawSlug);
-                return false;
+            if (response.status === 404) {
+                // an1.9, dhp5: no text of their own, they sit inside a range (an1.1-10). The server
+                // names it; open it there, the way a cold load of /an1.9 is redirected.
+                const body = await response.json().catch(() => ({}));
+                if (body.range && body.range !== slug && typeof window.initReader === 'function') {
+                    const seg = decodeURIComponent(location.pathname.split('/').pop()).split(':').slice(1).join(':');
+                    history.replaceState(history.state, '', '/' + body.range + ':' + slug + (seg ? ':' + seg : '') + location.search + location.hash);
+                    await window.initReader();
+                    return false;
+                }
+                if (typeof window.executeGlobalSearch === 'function') {
+                    dgReaderReveal(false);
+                    window.executeGlobalSearch(rawSlug);
+                    return false;
+                }
             }
             throw new Error(`HTTP ${response.status}`);
         }
         suttaData = await response.json();
         if (window.siteTranslatorsReady) await window.siteTranslatorsReady;
     } catch (error) {
-        console.error('Ошибка загрузки текста:', error);
-        if (typeof window.handleFetchError === 'function') window.handleFetchError(rawSlug, true);
+        console.error('Text load failed:', error);
+        // A 5xx or no network is not "no such text": keep the address (segment, ?s=) and offer a
+        // retry. Only a 404 above turns into a search; this used to run a search for "dn22" too.
+        if (suttaArea) {
+            suttaArea.innerHTML = '<div class="dg-load-error" style="text-align:center;padding:3em 1em">'
+                + '<p>' + (window.isRu ? 'Не удалось загрузить текст. Проверьте связь.' : "Couldn't load the text. Check the connection.") + '</p>'
+                + '<button type="button" class="btn btn-outline-secondary">' + (window.isRu ? 'Повторить' : 'Try again') + '</button></div>';
+            suttaArea.querySelector('.dg-load-error button').addEventListener('click', () => window.initReader());
+        }
         dgReaderReveal(false);
         return false;
     }
@@ -1590,7 +1608,9 @@ window.buildSutta = async function(rawSlug, opts) {
 
         let startIndex = segment.indexOf(':') + 1;
         let anchor = segment.substring(startIndex);
-        if (slug.includes('-') && (slug.includes('an') || slug.includes('sn') || slug.includes('dhp'))) {
+        // a range text (an1.1-10, dhp1-20, pli-tv-bu-vb-as1-7): local numbers repeat across the
+        // texts merged into it, so the anchor is the full segment id. Same test in search-render.js.
+        if (/\d-\d/.test(slug)) {
             anchor = segment;
         }
 

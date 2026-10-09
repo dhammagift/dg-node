@@ -347,10 +347,28 @@ function stripHtmlComments(html) {
     return html.replace(HTML_COMMENT_OR_BLOCK, (m, block) => block || '');
 }
 
+// The stamped page is kept for a few seconds: building it reads the file, stats every asset it
+// links and hashes the result (~10 ms per hit on the home page). An edit shows up within VERSIONED_HTML_TTL.
+const VERSIONED_HTML_TTL = 3000;
+const versionedHtmlCache = new Map(); // absPath -> { at, rewritten, etag }
 function sendVersionedHtml(req, reply, absHtmlPath, statusCode = 200) {
+    let entry = versionedHtmlCache.get(absHtmlPath);
+    if (!entry || Date.now() - entry.at > VERSIONED_HTML_TTL) {
+        entry = buildVersionedHtml(absHtmlPath);
+        if (!entry) return reply.code(404).send();
+        versionedHtmlCache.set(absHtmlPath, entry);
+    }
+    const { rewritten, etag } = entry;
+    reply.header('cache-control', 'public, max-age=0, must-revalidate').header('etag', etag);
+    if (statusCode === 200 && req.headers['if-none-match'] === etag) {
+        return reply.code(304).send();
+    }
+    reply.code(statusCode).type('text/html; charset=utf-8').send(rewritten);
+}
+function buildVersionedHtml(absHtmlPath) {
     let html;
     try { html = fsSync.readFileSync(absHtmlPath, 'utf8'); }
-    catch { return reply.code(404).send(); }
+    catch { return null; }
     html = stripHtmlComments(html);
     const rewritten = html.replace(
         // Also stamps the lazy loadScript('/reader/megareader.js') / ('/spa/toc.js') calls in
@@ -369,11 +387,7 @@ function sendVersionedHtml(req, reply, absHtmlPath, statusCode = 200) {
         }
     );
     const etag = '"' + crypto.createHash('md5').update(rewritten).digest('hex') + '"';
-    reply.header('cache-control', 'public, max-age=0, must-revalidate').header('etag', etag);
-    if (statusCode === 200 && req.headers['if-none-match'] === etag) {
-        return reply.code(304).send();
-    }
-    reply.code(statusCode).type('text/html; charset=utf-8').send(rewritten);
+    return { at: Date.now(), rewritten, etag };
 }
 
 // §3: same dispatch as dg-light.js's staticCacheHeaders — @fastify/static's `setHeaders`
@@ -1167,6 +1181,14 @@ const searchDb = new DatabaseSync(SEARCH_DB_PATH, { readOnly: true });
 searchCore.init({ searchDb, DG_OFFLINE, limits: REGEX_LIMITS });
 // The worker gets its own handle on the same file plus the same limits (workerData, at spawn).
 regexRunner.configure({ dbPath: SEARCH_DB_PATH, dgOffline: DG_OFFLINE, limits: REGEX_LIMITS });
+// Ordinary searches run in worker threads too: node:sqlite is synchronous, and one wide query
+// ("ana": 3226 texts, 14 enrich chunks of ~4 s) used to hold the event loop, so everyone else's
+// "kacchapa" took 8 s instead of 0.01 s. One worker for the first answer (?fast=1 / full), two for
+// enrich chunks, so a long enrich never stands in front of someone's first page. A dead or
+// unconfigured worker falls back to the old in-process run (searchJob below).
+const plainLimits = { ...REGEX_LIMITS, timeoutMs: 60000, maxQueue: 50, idleMs: 20000 };
+const searchPool = { first: regexRunner.create(), enrich: [regexRunner.create(), regexRunner.create()] };
+for (const r of [searchPool.first, ...searchPool.enrich]) r.configure({ dbPath: SEARCH_DB_PATH, dgOffline: DG_OFFLINE, limits: plainLimits });
 // mmap is deliberately left off (SQLite's default). Mapping the file makes every page the query
 // touches count towards this process's RSS, which measured ~500MB higher for no useful speed —
 // the pages are in the OS page cache either way, and read() reaches them just as fast.
@@ -2017,7 +2039,9 @@ app.get('/api/text/:suttaId', async (req, res) => {
         // и en-fallback ниже переиспользуют один и тот же base, а не перечитывают эти 3 файла
         // с диска дважды ради одних и тех же данных (см. getSuttaBaseData).
         const base = await getSuttaBaseData(suttaId);
-        if (!base) return res.code(404).send({ error: `Unknown sutta id: ${suttaId}` });
+        // an1.9 / dhp5 live inside a range text: say which, so the SPA opens it there (a cold
+        // load of /an1.9 gets the same answer as a redirect from the /:slug route)
+        if (!base) return res.code(404).send({ error: `Unknown sutta id: ${suttaId}`, range: findRangeContaining(suttaId) || undefined });
         let data = await buildTextDataFromBase(base, suttaId, targetLangs, explicitTranslators);
         let effectiveLangs = targetLangs;
 
@@ -2467,6 +2491,19 @@ async function regexSearch(kind, keyword, params) {
     return { status: 500, error: 'Regex search failed.' };
 }
 
+// A non-regex job in the pool; null = run it in-process instead (worker unavailable or queue full).
+async function searchJob(kind, keyword, params) {
+    const runner = kind === 'enrich'
+        ? searchPool.enrich.reduce((a, b) => (b.load() < a.load() ? b : a))
+        : searchPool.first;
+    const outcome = await runner.runJob(kind, { keyword, plain: true, ...params });
+    if (outcome.ok) return { result: outcome.result };
+    if (outcome.timedOut) return { status: 503, error: 'Search did not finish in time — narrow the query or the scope.' };
+    if (outcome.badRequest) { const err = new Error(outcome.message); err.badRequest = true; throw err; }
+    if (outcome.unavailable) console.warn('[search] worker unavailable, running in-process:', outcome.message);
+    return null;
+}
+
 async function searchHandler(req, res) {
     // req.params.keyword — заход через /search/:keyword (путь); req.query.q — через /search?q=.
     // Express 5 отдаёт req.query геттером без сохранённого состояния (заново парсит на каждое
@@ -2506,12 +2543,12 @@ async function searchHandler(req, res) {
         if (req.query.fast === '1') {
             // ?fast=1 не содержит текста сегментов вообще (только grep-счётчики) — конвертировать
             // тут нечего, полный текст приходит позже через /search/enrich.
-            const routed = isRegex ? await regexSearch('fast', keyword, jobParams) : null;
+            const routed = isRegex ? await regexSearch('fast', keyword, jobParams) : await searchJob('fast', keyword, jobParams);
             if (routed && routed.status) return res.code(routed.status).send({ error: routed.error });
             const result = routed ? routed.result : await buildFastResponse(keyword, scope, exact, targetLangs, lb, la);
             return res.send(withSuggestions(result, keyword));
         }
-        const routed = isRegex ? await regexSearch('full', keyword, jobParams) : null;
+        const routed = isRegex ? await regexSearch('full', keyword, jobParams) : await searchJob('full', keyword, jobParams);
         if (routed && routed.status) return res.code(routed.status).send({ error: routed.error });
         const result = routed ? routed.result : await buildSearchResponse(keyword, scope, exact, targetLangs, lb, la);
         await convertScriptInSearchResult(result, req.query.script);
@@ -2558,7 +2595,7 @@ app.get('/search/enrich', async (req, res) => {
 
     try {
         const jobParams = { scope, exact, langs: targetLangs, lb, la, ids: requestedIds };
-        const routed = isRegex ? await regexSearch('enrich', keyword, jobParams) : null;
+        const routed = isRegex ? await regexSearch('enrich', keyword, jobParams) : await searchJob('enrich', keyword, jobParams);
         if (routed && routed.status) return res.code(routed.status).send({ error: routed.error });
         const enrichResult = routed ? routed.result : await searchCore.enrichResponse(keyword, scope, exact, targetLangs, lb, la, requestedIds);
         await convertScriptInSearchResult(enrichResult, req.query.script);
@@ -3079,6 +3116,18 @@ function findRangeContaining(id) {
     return null;
 }
 
+// /dn22:2.2/kacchapa — a text with the word to find as the last path part, the same as
+// /dn22:2.2?s=kacchapa. Only for a real text (or one inside a range); any other two-part path
+// ("/ru/dn22", "/dict/dukkha") goes on to the not-found handler that owns it.
+app.get('/:slug/:word', (req, res) => {
+    const { slug, word } = req.params;
+    const base = slug.split(':')[0].toLowerCase();
+    if (!skeletonDB[base] && !findRangeContaining(base)) return res.callNotFound();
+    const params = new URLSearchParams(queryString(req).slice(1));
+    params.set('s', word);
+    return res.redirect('/' + slug.split(':').map(encodeURIComponent).join(':') + '?' + params.toString(), 301);
+});
+
 app.get('/:slug', (req, res) => {
     const rawSlug = req.params.slug;
     // A mounted directory asked for WITHOUT its trailing slash — "/4nt", "/dict", "/b" — is
@@ -3135,7 +3184,8 @@ app.get('/:slug', (req, res) => {
     const range = findRangeContaining(suttaId);
     if (range) {
         const query = queryString(req); // сохраняем ?s=, ?lang= и т.п.
-        return res.redirect('/' + encodeURIComponent(range) + ':' + encodeURIComponent(suttaId) + query);
+        // the line anchor too: /an1.9:1.1 -> /an1.1-10:an1.9:1.1 (the reader reads range:id:segment)
+        return res.redirect('/' + encodeURIComponent(range) + ':' + encodeURIComponent(suttaId) + anchorSuffix + query);
     }
     // "Оглавленческий" id ("mn", "sn25", "pli-tv-bu-vb-") — не текст, а узел оглавления. Раньше
     // здесь отдавалась самодельная HTML-заглушка со списком детей; теперь есть настоящий TOC —

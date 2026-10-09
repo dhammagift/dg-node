@@ -110,6 +110,9 @@ var PRECACHE_URLS = [
     // server down). Both are small.
     '/settings/',
     '/api/toc',
+    // the Uposatha PWA's start page: offline its navigation used to fall back to '/' (Dhamma.Gift's
+    // home), whose router then tried to read "uposatha-calendar" as a sutta
+    '/uposatha-calendar',
 
     // Stylesheets in the shell's <head>.
     '/assets/css/bootstrap.5.3.1.min.css',
@@ -302,7 +305,7 @@ self.addEventListener('activate', function (event) {
                         names
                             .filter(function (name) { return name !== cacheName; })
                             .map(function (name) { return caches.delete(name); })
-                    );
+                    ).then(function () { return cacheName; }); // the next step needs the name, not the delete results
                 });
             })
             .then(function (cacheName) {
@@ -333,6 +336,22 @@ self.addEventListener('activate', function (event) {
 // stylesheet would fail offline. Never do this for /search or /api: a query string there
 // selects the response, and ignoring it would serve another query's cached data as if it were
 // this one's.
+// An offline (or 5xx) navigation: the page itself when it was precached (/settings/,
+// /uposatha-calendar — ignoreSearch for ?app=1 and the like), else the SPA shell.
+function offlinePage(request) {
+    return caches.match(request, { ignoreSearch: true }).then(function (c) { return c || caches.match(SHELL_URL); });
+}
+
+// Texts read before stay readable offline, but only the latest MAX_TEXTS of them (oldest go first:
+// keys() is in insertion order). ponytail: counts entries, not bytes; one text is 10-300 KB.
+var MAX_TEXTS = 200;
+function trimTexts(cache) {
+    return cache.keys().then(function (keys) {
+        var texts = keys.filter(function (k) { return new URL(k.url).pathname.indexOf('/api/text/') === 0; });
+        return Promise.all(texts.slice(0, Math.max(0, texts.length - MAX_TEXTS)).map(function (k) { return cache.delete(k); }));
+    });
+}
+
 function matchCached(request, url) {
     return caches.match(request).then(function (cached) {
         if (cached) return cached;
@@ -384,11 +403,11 @@ self.addEventListener('fetch', function (event) {
                     // nginx answers 502 and the reader saw that page instead of the cached shell —
                     // the fetch only *rejects* when the connection itself fails (airplane mode,
                     // DevTools offline), which is why this looked like it worked.
-                    if (response.status >= 500) return matchCached(SHELL_URL).then(function (c) { return c || response; });
+                    if (response.status >= 500) return offlinePage(request).then(function (c) { return c || response; });
                     return response;
                 })
                 .catch(function () {
-                    return caches.match(SHELL_URL);
+                    return offlinePage(request);
                 })
         );
         return;
@@ -403,16 +422,20 @@ self.addEventListener('fetch', function (event) {
                     // matchCached(), not caches.match(): the page asks for '/assets/js/search-render.js?v=<hash>'
                     // and the precache holds the bare path — without ignoreSearch the 503 came straight
                     // through, which is exactly what a real outage looked like (pm2 stopped).
-                    return matchCached(request).then(function (c) { if (c) return c; throw new Error('HTTP ' + response.status); });
+                    return matchCached(request, url).then(function (c) { if (c) return c; throw new Error('HTTP ' + response.status); });
                 }
                 // Only cache real, same-origin, successful responses — an opaque/cross-origin
                 // or error response cached here would just serve that error offline forever.
-                if (response.ok && response.type === 'basic') {
+                // Search results are not kept: one wide query is up to 10 MB per /search/enrich chunk, a
+                // stale result list is no use offline, and the cache grew by tens of MB per search.
+                if (response.ok && response.type === 'basic' && !/^\/search(\/enrich)?$/.test(url.pathname)) {
                     var copy = response.clone();
                     getCacheName()
                         .then(function (cacheName) {
                             return caches.open(cacheName).then(function (cache) {
-                                return cache.put(request, copy);
+                                return cache.put(request, copy).then(function () {
+                                    if (url.pathname.indexOf('/api/text/') === 0) return trimTexts(cache);
+                                });
                             });
                         })
                         .catch(function () {

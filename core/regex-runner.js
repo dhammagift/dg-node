@@ -27,99 +27,115 @@ const DEFAULTS = {
     prefilter: true,
 };
 
-let limits = { ...DEFAULTS };
-let dbPath = '';
-let dgOffline = '';
-let worker = null;
-let seq = 0;
-let inFlight = 0;
-const queue = []; // jobs waiting for the single worker
+// One runner = one worker with its own queue. The module itself is the regex runner (as before);
+// create() makes more, for the plain-search pool in dg-fastify.js (same worker file, same code).
+function createRunner() {
+    let limits = { ...DEFAULTS };
+    let dbPath = '';
+    let dgOffline = '';
+    let worker = null;
+    let seq = 0;
+    let inFlight = 0;
+    const queue = []; // jobs waiting for the single worker
 
-function configure(opts) {
-    limits = { ...DEFAULTS, ...((opts && opts.limits) || {}) };
-    if (opts && opts.dbPath) dbPath = opts.dbPath;
-    if (opts && opts.dgOffline) dgOffline = opts.dgOffline;
-    // Limits are handed to the worker at spawn, so a live worker keeps the old ones.
-    dropWorker();
-}
+    function configure(opts) {
+        limits = { ...DEFAULTS, ...((opts && opts.limits) || {}) };
+        if (opts && opts.dbPath) dbPath = opts.dbPath;
+        if (opts && opts.dgOffline) dgOffline = opts.dgOffline;
+        // Limits are handed to the worker at spawn, so a live worker keeps the old ones.
+        dropWorker();
+    }
 
-function getLimits() {
-    return limits;
-}
+    function getLimits() {
+        return limits;
+    }
 
-function isBusy() {
-    return inFlight >= 1 && queue.length >= Math.max(0, Number(limits.maxQueue) || 0);
-}
+    function isBusy() {
+        return inFlight >= 1 && queue.length >= Math.max(0, Number(limits.maxQueue) || 0);
+    }
 
-function dropWorker() {
-    if (worker) { worker.terminate(); worker = null; }
-}
+    // limits.idleMs: an idle worker is ended, which hands its whole heap back to the system (a wide
+    // search leaves hundreds of MB in a worker otherwise). The next job spawns a fresh one (~0.2 s).
+    let idleTimer = null;
+    function scheduleIdleDrop() {
+        clearTimeout(idleTimer);
+        idleTimer = setTimeout(() => { if (inFlight === 0 && !queue.length) dropWorker(); }, limits.idleMs);
+        if (idleTimer.unref) idleTimer.unref();
+    }
 
-function spawn() {
-    if (!worker) {
-        const { Worker } = require('worker_threads');
-        worker = new Worker(path.join(__dirname, 'regex-worker.js'), {
-            workerData: { dbPath, dgOffline, limits },
+    function dropWorker() {
+        if (worker) { worker.terminate(); worker = null; }
+    }
+
+    function spawn() {
+        if (!worker) {
+            const { Worker } = require('worker_threads');
+            worker = new Worker(path.join(__dirname, 'regex-worker.js'), {
+                workerData: { dbPath, dgOffline, limits },
+            });
+            // Also between jobs: a worker that died while idle must not be reused (its answer would
+            // never come and the caller would wait out the whole deadline).
+            const w = worker;
+            w.once('exit', () => { if (worker === w) worker = null; });
+        }
+        return worker;
+    }
+
+    function runJob(kind, args) {
+        if (!dbPath) return Promise.resolve({ ok: false, unavailable: true, message: 'regex runner is not configured' });
+        if (inFlight === 0) return execute(kind, args);
+        if (isBusy()) return Promise.resolve({ ok: false, busy: true });
+        return new Promise(resolve => queue.push(() => execute(kind, args).then(resolve)));
+    }
+
+    function execute(kind, args) {
+
+        let w;
+        try {
+            w = spawn();
+        } catch (err) {
+            worker = null;
+            return Promise.resolve({ ok: false, unavailable: true, message: err.message });
+        }
+
+        const id = ++seq;
+        inFlight++;
+        return new Promise(resolve => {
+            let settled = false;
+            const finish = outcome => {
+                if (settled) return;
+                settled = true;
+                clearTimeout(timer);
+                w.off('message', onMessage);
+                w.off('exit', onExit);
+                w.off('error', onError);
+                inFlight--;
+                resolve(outcome);
+                const next = queue.shift();
+                if (next) next();
+                else if (limits.idleMs > 0) scheduleIdleDrop();
+            };
+            const onMessage = msg => {
+                if (!msg || msg.id !== id) return;
+                if (msg.ok) return finish({ ok: true, result: msg.result });
+                finish({ ok: false, badRequest: !!msg.badRequest, message: msg.message });
+            };
+            const onExit = () => { if (worker === w) worker = null; finish({ ok: false, unavailable: true, message: 'worker exited' }); };
+            const onError = err => { if (worker === w) worker = null; finish({ ok: false, unavailable: true, message: err.message }); };
+            const timer = setTimeout(() => {
+                if (worker === w) worker = null;
+                w.terminate();
+                finish({ ok: false, timedOut: true });
+            }, Math.max(200, Number(limits.timeoutMs) || DEFAULTS.timeoutMs));
+
+            w.on('message', onMessage);
+            w.on('exit', onExit);
+            w.on('error', onError);
+            w.postMessage({ id, kind, ...args });
         });
-        // Also between jobs: a worker that died while idle must not be reused (its answer would
-        // never come and the caller would wait out the whole deadline).
-        const w = worker;
-        w.once('exit', () => { if (worker === w) worker = null; });
-    }
-    return worker;
-}
-
-function runJob(kind, args) {
-    if (!dbPath) return Promise.resolve({ ok: false, unavailable: true, message: 'regex runner is not configured' });
-    if (inFlight === 0) return execute(kind, args);
-    if (isBusy()) return Promise.resolve({ ok: false, busy: true });
-    return new Promise(resolve => queue.push(() => execute(kind, args).then(resolve)));
-}
-
-function execute(kind, args) {
-
-    let w;
-    try {
-        w = spawn();
-    } catch (err) {
-        worker = null;
-        return Promise.resolve({ ok: false, unavailable: true, message: err.message });
     }
 
-    const id = ++seq;
-    inFlight++;
-    return new Promise(resolve => {
-        let settled = false;
-        const finish = outcome => {
-            if (settled) return;
-            settled = true;
-            clearTimeout(timer);
-            w.off('message', onMessage);
-            w.off('exit', onExit);
-            w.off('error', onError);
-            inFlight--;
-            resolve(outcome);
-            const next = queue.shift();
-            if (next) next();
-        };
-        const onMessage = msg => {
-            if (!msg || msg.id !== id) return;
-            if (msg.ok) return finish({ ok: true, result: msg.result });
-            finish({ ok: false, badRequest: !!msg.badRequest, message: msg.message });
-        };
-        const onExit = () => { if (worker === w) worker = null; finish({ ok: false, unavailable: true, message: 'worker exited' }); };
-        const onError = err => { if (worker === w) worker = null; finish({ ok: false, unavailable: true, message: err.message }); };
-        const timer = setTimeout(() => {
-            if (worker === w) worker = null;
-            w.terminate();
-            finish({ ok: false, timedOut: true });
-        }, Math.max(200, Number(limits.timeoutMs) || DEFAULTS.timeoutMs));
-
-        w.on('message', onMessage);
-        w.on('exit', onExit);
-        w.on('error', onError);
-        w.postMessage({ id, kind, ...args });
-    });
+    return { configure, getLimits, isBusy, runJob, shutdown: dropWorker, load: () => inFlight + queue.length };
 }
 
-module.exports = { configure, getLimits, isBusy, runJob, shutdown: dropWorker, DEFAULTS };
+module.exports = Object.assign(createRunner(), { create: createRunner, DEFAULTS });

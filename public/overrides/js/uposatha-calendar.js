@@ -523,6 +523,14 @@
     $('tab-list').setAttribute('aria-pressed', String(state.screen === 'list'));
     $('tab-cal').setAttribute('aria-pressed', String(state.screen === 'cal'));
   }
+  var zonesBuilt = false;
+  function buildZoneList(tz) {
+    if (zonesBuilt) return; zonesBuilt = true;
+    var offs = {}; zones.forEach(function (z) { try { var m = /GMT([+-]\d\d):(\d\d)/.exec(new Intl.DateTimeFormat('en', { timeZone: z, timeZoneName: 'longOffset' }).format(new Date())); offs[z] = m ? +m[1] * 60 + (m[1][0] === '-' ? -1 : 1) * +m[2] : 0; } catch (e) { offs[z] = 0; } });
+    function offLabel(z) { var o = offs[z], a = Math.abs(o); return 'UTC ' + (o === 0 ? '' : o < 0 ? '−' : '+') + Math.floor(a / 60) + (a % 60 ? ':' + ('0' + a % 60).slice(-2) : ''); }
+    $('tz').innerHTML = zones.slice().sort(function (x, y) { return offs[x] - offs[y] || (x < y ? -1 : 1); }).map(function (z) { return '<option value="' + esc(z) + '"' + (z === tz ? ' selected' : '') + '>' + offLabel(z) + ' · ' + esc(z.replace(/_/g, ' ')) + '</option>'; }).join('');
+    $('tz').value = tz;
+  }
   function paint() {
     paintedAt = Date.now();
     var now = new Date(), tz = state.tz, F = formats(), su = sutta();
@@ -544,7 +552,7 @@
     var tonight = su && !!(todayRow && todayRow.uposatha && now < evToday);
     // for the app's hero (app-refresh.js): the Uposatha that runs now and the next one to begin, by name, not parsed back from the list
     var curUp = isUposatha ? ((su && yRow && yRow.uposatha && now < evToday) ? yRow : todayRow) : null, nextUp = L.rows.filter(function (r) { return r.uposatha && r.at.getTime() > now.getTime(); })[0];
-    window.__upoHero = { cur: curUp ? nameOf(curUp) : '', next: nextUp ? { at: nextUp.at.getTime(), name: nameOf(nextUp), phase: phaseOf(nextUp) } : null };
+    window.__upoHero = { tz: tz, cur: curUp ? nameOf(curUp) : '', next: nextUp ? { at: nextUp.at.getTime(), name: nameOf(nextUp), phase: phaseOf(nextUp) } : null };
     // the moon of the Uposatha for the app's icon in the bar: the running one; after it ends, the same one until the end of that day (the moon is still full); then the next one.
     // The icons are plain, not the real phase: the 8th a half, the 14th a crescent, the 15th full (waxing) or new (waning).
     var prevUp = L.rows.filter(function (r) { return r.uposatha && r.at.getTime() <= now.getTime(); }).pop();
@@ -733,10 +741,12 @@
 
     // ----- the settings panel mirrors the state
     // the zones are IANA names (one country has several); label them with today's UTC offset and sort by it, so "+5" can be found at once
-    if (!$('tz').options.length) { // 418 zones: their offsets are worked out and the list is written once, not at every repaint
-      var offs = {}; zones.forEach(function (z) { try { var m = /GMT([+-]\d\d):(\d\d)/.exec(new Intl.DateTimeFormat('en', { timeZone: z, timeZoneName: 'longOffset' }).format(new Date())); offs[z] = m ? +m[1] * 60 + (m[1][0] === '-' ? -1 : 1) * +m[2] : 0; } catch (e) { offs[z] = 0; } });
-    function offLabel(z) { var o = offs[z], a = Math.abs(o); return 'UTC ' + (o === 0 ? '' : o < 0 ? '−' : '+') + Math.floor(a / 60) + (a % 60 ? ':' + ('0' + a % 60).slice(-2) : ''); }
-    $('tz').innerHTML = zones.slice().sort(function (x, y) { return offs[x] - offs[y] || (x < y ? -1 : 1); }).map(function (z) { return '<option value="' + esc(z) + '"' + (z === tz ? ' selected' : '') + '>' + offLabel(z) + ' · ' + esc(z.replace(/_/g, ' ')) + '</option>'; }).join('');
+    // 418 zones cost ~0.5 s on a phone (an Intl formatter each): written once, after the first screen is up, or at once when the list is opened
+    if (!$('tz').options.length) {
+      $('tz').innerHTML = '<option value="' + esc(tz) + '" selected>' + esc(tz.replace(/_/g, ' ')) + '</option>';
+      var tzLater = function () { buildZoneList($('tz').value); };
+      $('tz').addEventListener('pointerdown', tzLater, { once: true }); $('tz').addEventListener('focus', tzLater, { once: true });
+      (window.requestIdleCallback || function (f) { return setTimeout(f, 1500); })(tzLater);
     }
     $('tz').value = tz;
     Array.prototype.forEach.call($('hemiseg').children, function (b) { b.setAttribute('aria-pressed', String((b.getAttribute('data-hemi') === 'south') === state.south)); });
@@ -1293,7 +1303,7 @@
     var pa = $('paliauto'), clr = $('dg-clear-btn');
     function syncClear() { clr.hidden = !pa.value; }
     pa.addEventListener('input', syncClear); pa.addEventListener('search', syncClear); // a suggestion picked from the list changes the value from code: watched below too
-    setInterval(syncClear, 400);
+    setInterval(function () { if (!document.hidden) syncClear(); }, 400); // nothing to sync on a hidden page
     clr.onclick = function () { pa.value = ''; syncClear(); pa.focus(); };
     $('form').onsubmit = function (e) { e.preventDefault(); var q = $('paliauto').value.trim(); if (q) location.href = '/' + encodeURIComponent(q) + (lang === 'ru' ? '?lang=ru' : ''); };
     // ----- the app (Capacitor) or ?app=1: five tabs at the bottom, one section at a time
@@ -1319,14 +1329,16 @@
       if (brand) { brand.setAttribute('href', 'https://dhamma.gift/'); brand.setAttribute('target', '_blank'); brand.setAttribute('rel', 'noopener'); }
       function barTitle(k) { var w = document.querySelector('.tbar .wordmark b'); if (!w) return; if (k === 'home') { w.classList.add('pli-lang'); w.setAttribute('lang', 'pi'); w.innerHTML = '<i class="up-ariy">Ariy</i>uposatha'; } else { w.classList.remove('pli-lang'); w.removeAttribute('lang'); w.textContent = { list: t.navList, cal: t.navCal, parts: t.navParts, keys: t.navKeys }[k] || 'Uposatha'; } }
       window.__upoBarTitle = function () { barTitle(document.body.getAttribute('data-app-tab') || 'home'); };
-      function openTab(k) {
+      function openTab(k, fromUrl) {
         barTitle(k); // the app bar names the screen
         if (k === 'list') { state.screen = state.screen === 'dates' ? 'dates' : 'list'; store('dgUposathaView', state.screen); } // the list tab keeps the view chosen in it
         else if (k === 'cal') { state.screen = 'cal'; store('dgUposathaView', 'cal'); }
-        document.body.setAttribute('data-app-tab', k); store('dgUposathaTab', k);
+        // a tab asked for in the address (a widget tap, ?tab=parts) is shown, not remembered: the icon keeps opening the user's own tab
+        document.body.setAttribute('data-app-tab', k); if (!fromUrl) store('dgUposathaTab', k);
         if (k === 'home') setTimeout(fitSlides, 0); // the slideshow is measured when its tab shows (each measure lays the slides out: not on the other tabs)
         Array.prototype.forEach.call(tabs, function (b) { var v = String(b.getAttribute('data-tab') === k); if (b.getAttribute('aria-current') !== v) b.setAttribute('aria-current', v); }); // unchanged is left alone: the pill is already gliding
-        if (Date.now() - paintedAt > 30000) paint(); else syncScreen();
+        // paintedAt 0 = the first tab at load: the page paints once right after wire(), not twice
+        if (paintedAt && Date.now() - paintedAt > 30000) paint(); else syncScreen();
         window.scrollTo(0, 0);
       }
       Array.prototype.forEach.call(tabs, function (b) { b.onclick = function () { var k = b.getAttribute('data-tab'); haptic(); openTab(k); }; }); // the key suttas live in the summary
@@ -1412,7 +1424,7 @@
         }).catch(function () { /* stays "preview" */ });
       }
       if ($('up-privacy')) $('up-privacy').addEventListener('click', function () { this.href = 'https://dhamma.gift' + (lang === 'ru' ? '/ru' : '') + '/docs/policies'; }); // the language of the moment
-      var last = params.get('tab') || store('dgUposathaTab'); openTab(/^(home|list|cal|parts|keys)$/.test(last || '') ? last : 'home');
+      var urlTab = params.get('tab'), last = urlTab || store('dgUposathaTab'); openTab(/^(home|list|cal|parts|keys)$/.test(last || '') ? last : 'home', !!urlTab);
     })();
     onSeg('noonseg', function (v) { state.noon = v; store('dgUposathaNoon', v); paint(); });
     $('meal').onclick = function (e) { if (e.target.closest && e.target.closest('.noonlink')) { e.preventDefault(); openSettings('noon-block'); } };

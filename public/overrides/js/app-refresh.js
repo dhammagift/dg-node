@@ -93,7 +93,8 @@
     // the green line names the day the countdown runs to, not "it begins": "Until 8th day" / "До 8-го дня"
     var tName = n && n.name ? n.name.split(' · ')[0].split(' of the ')[0] : '', tNum = /(\d+)/.exec(tName);
     h.querySelector('.hc').textContent = tNum ? (ru ? 'До ' + tNum[1] + '-го дня' : 'Until ' + tName) : (ru ? 'До начала' : 'Until it begins');
-    function when(d) { return d.toLocaleString(ru ? 'ru-RU' : 'en-GB', { weekday: 'short', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }); }
+    // in the time zone chosen on the page, like the list under it (not the phone's own: Colombo chosen in Moscow read 15:30 for 18:00)
+    function when(d) { var o = { weekday: 'short', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }; if (H && H.tz) o.timeZone = H.tz; return d.toLocaleString(ru ? 'ru-RU' : 'en-GB', o); }
     // the exact moment of the phase of that same day (100, 50 or 0 % lit) when the details are on: the row's own line, brought up here
     var p = n && n.phase, hph = h.querySelector('.hph');
     hph.textContent = p ? p.label.charAt(0).toUpperCase() + p.label.slice(1) + ' ' + p.pct + '% · ' + when(p.at) : '';

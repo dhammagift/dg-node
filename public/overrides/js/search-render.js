@@ -552,9 +552,12 @@ window.DgSearchRender = (function () {
     // clean-URL /{suttaId} этого репозитория.
     // Only Reverse / Full Reverse still have their own reader pages; everything else is the SPA
     // reader with ?mode= (buildSuttaUrl). The base is still needed for findFdgTextUrl's /4nt exceptions.
+    // read per result row, thousands of times per render: one localStorage read a second is plenty
+    var legacyBase = null, legacyBaseAt = 0;
     function computeLegacyBaseUrl() {
-        if (localStorage.defaultReader === 'fr') return window.location.origin + "/frev/";
-        return window.location.origin + "/rev/";
+        if (legacyBase && Date.now() - legacyBaseAt < 1000) return legacyBase;
+        legacyBaseAt = Date.now();
+        return (legacyBase = window.location.origin + (localStorage.defaultReader === 'fr' ? "/frev/" : "/rev/"));
     }
     var SPA_MODE_FOR_READER = { mt: 'multi', ml: 'multi', d: 'devanagari', mem: 'memorize' };
 
@@ -589,7 +592,7 @@ window.DgSearchRender = (function () {
         // Bare "3.1" would collide across the sub-suttas merged into that one file, so
         // stripping it here (like the non-range case does) produced a URL whose segment never
         // matches any element id, silently breaking scroll+active-word for every range file.
-        var isRangeSlug = suttaId.includes('-') && (suttaId.includes('an') || suttaId.includes('sn') || suttaId.includes('dhp'));
+        var isRangeSlug = /\d-\d/.test(suttaId); // an1.1-10, dhp1-20, pli-tv-bu-vb-as1-7 (megareader.js, same test)
         var segmentHash = segmentId
             ? (isRangeSlug ? segmentId : (segmentId.includes(':') ? segmentId.split(':')[1] : segmentId))
             : null;
@@ -661,7 +664,13 @@ window.DgSearchRender = (function () {
 
     // A keyword with regex metacharacters is the power-user path — matched against the raw text,
     // exactly as the server matches it.
+    // one compiled matcher per keyword, not one per segment (a wide search renders tens of thousands)
+    var matcherFor = null, matcherCached = null;
     function highlightMatcher(highlightWord) {
+        if (highlightWord !== matcherFor) { matcherFor = highlightWord; matcherCached = buildHighlightMatcher(highlightWord); }
+        return matcherCached;
+    }
+    function buildHighlightMatcher(highlightWord) {
         var isRegex = HIGHLIGHT_METACHARS.test(highlightWord);
         // Search ignores punctuation between the keyword's letters (core/search-core.js
         // punctTolerantPattern): "evaṁ bhikkhave" highlights "evaṁ, bhikkhave" too.
@@ -696,6 +705,7 @@ window.DgSearchRender = (function () {
         if (!highlightWord || !text) return false;
         var matcher = highlightMatcher(highlightWord);
         if (!matcher) return false;
+        matcher.re.lastIndex = 0; // shared /g regex: test() moves lastIndex
         return matcher.re.test(matcher.isRegex ? text : foldForHighlight(text));
     }
 
