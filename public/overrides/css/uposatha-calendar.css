@@ -580,7 +580,7 @@ body[data-mode=lite] .ln.endl { display: block; }
 @media (prefers-reduced-motion: reduce) { .loc-refresh.spin svg { animation: none; opacity: .5; } }
 
 .dtab .m { width: 78px; }
-.dtab .m .mi { display: block; }
+.dtab .m .mi { display: block; margin: 0 auto; } /* dg-moon is 1em wide: centred in its cell as the emoji was */
 .dtab .m small { display: block; margin-top: 4px; font-size: 11px; line-height: 1.2; color: var(--dg-text-2); }
 
 /* the table by dates: a bigger moon, the day above it, the lunar day of the 30 under the beginning */

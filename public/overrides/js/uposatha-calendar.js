@@ -196,13 +196,14 @@
   // ---------- state ----------
   var detected = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
   var SOUTHERN_ZONE = /^(Australia|Antarctica)\/|^Pacific\/(Auckland|Chatham|Fiji|Tongatapu|Apia|Noumea|Tahiti|Port_Moresby)|^Africa\/(Johannesburg|Maseru|Mbabane|Windhoek|Harare|Lusaka|Maputo)|^America\/(Sao_Paulo|Argentina|Buenos_Aires|Santiago|Lima|La_Paz|Asuncion|Montevideo)/;
+  var TWI = { sun: null, civil: -6, nautical: -12, astro: -18 }; // read by state.twi below: it has to exist before `state` (a stored twilight choice threw a TypeError at load)
   var state = {
     tz: store('dgUposathaTz') || detected,
     south: null,
     ref: store('dgUposathaSutta') === '0' ? 6 : 18, // by the suttas (default): the evening of the date itself (sunset, or 18:00); the modern scheme: the morning (sunrise, or 06:00)
     lite: store('dgUposathaLite') !== '0', // the short view is the default
     screen: params.get('view') === 'all' ? 'cal' : (function () { var v = store('dgUposathaView'); return v === 'cal' || v === 'list' ? v : 'dates'; })(), // the first view is the table by dates
-    months: 3, calOff: 0, selected: null,
+    months: 3, calOff: 0, selected: (function () { var d = params.get('day'); return /^\d{4}-\d\d-\d\d$/.test(d || '') ? d : null; })(), // ?day=YYYY-MM-DD: the widget opens the calendar on that day,
     twi: (function () { var v = store('dgUposathaTwi'); return v && v in TWI ? v : 'sun'; })(),
     tests: (function () { var q = params.get('tests'); if (q === '1' || q === '0') store('dgUposathaTests', q); return store('dgUposathaTests') === '1'; })(), // the tests of the settings are hidden: ?tests=1 shows them, ?tests=0 hides, seven taps on the app version too
     fake: (function () { var v = store('dgUposathaFake'); return v === 'kala' || v === 'vikala' ? v : ''; })(),
@@ -230,7 +231,6 @@
   // ---------- the Moon and the Sun (the calculation lives in uposatha-core.js, shared with the calendar feed) ----------
   var C = window.UposathaCore;
   // Dawn and dusk by a chosen definition: the Sun's upper limb at the horizon (sunrise / sunset), or the Sun 6 / 12 / 18 degrees below it (civil, nautical, astronomical twilight)
-  var TWI = { sun: null, civil: -6, nautical: -12, astro: -18 };
   var localDay = C.localDay, zonedToUtc = C.zonedToUtc, sunEvent = C.sunEvent, tithiAt = C.tithiAt, dayNo = C.dayNo, ymdAdd = C.ymdAdd;
   function edge(kind, y, m, d, tz, obs) { // the dawn / dusk of the day by the chosen definition; the sunrise / sunset where the Sun does not reach that depth
     var alt = TWI[state.twi];
@@ -255,7 +255,13 @@
   // waning crescent); the lit side flips in the Southern Hemisphere.
   var MOON_N = ['\uD83C\uDF11', '\uD83C\uDF12', '\uD83C\uDF13', '\uD83C\uDF14', '\uD83C\uDF15', '\uD83C\uDF16', '\uD83C\uDF17', '\uD83C\uDF18'];
   var MOON_S = ['\uD83C\uDF11', '\uD83C\uDF18', '\uD83C\uDF17', '\uD83C\uDF16', '\uD83C\uDF15', '\uD83C\uDF14', '\uD83C\uDF13', '\uD83C\uDF12'];
-  function moon(i, cls) { return '<span class="' + cls + '" aria-hidden="true">' + (state.south ? MOON_S : MOON_N)[i] + '</span>'; }
+  // The moon is <dg-moon> (dg-moon.js: the NASA photo with a shadow for the phase); i is the eighth of the cycle, f the exact phase (0 new .. 0.5 full) when it is known.
+  // A tap on a big one plays one full cycle of phases and stops at the current one.
+  function moon(i, cls, f) { return '<dg-moon class="' + cls + '" phase="' + (f == null ? i / 8 : f.toFixed(4)) + '"' + (state.south ? ' south' : '') + ' glow aria-hidden="true"></dg-moon>'; }
+  document.addEventListener('click', function (e) {
+    var m = e.target.closest && e.target.closest('dg-moon.moon:not(.mi)');
+    if (m && m.animateTo && !m.__spin) { m.__spin = true; m.animateTo(parseFloat(m.getAttribute('phase')) || 0, { cycles: 1, duration: 2000 }).then(function () { m.__spin = false; }); }
+  });
   // The shape each Uposatha day is drawn with: the 8th a quarter, the 14th the last not-yet-full (or not-yet-new) shape, the 15th
   // the full moon in the waxing half and the new moon in the waning one.
   function dayPhaseI(waxing, n) { return waxing ? (n === 8 ? 2 : n === 14 ? 3 : 4) : (n === 8 ? 6 : n === 14 ? 7 : 0); }
@@ -551,7 +557,7 @@
     var dayBegan = A.SearchMoonPhase(((tithi - 1) * 12) % 360, new Date(now.getTime() - 2 * DAY), 3); // the lunar day in force began within the last ~26 hours
     var lastNew = A.SearchMoonPhase(0, new Date(now.getTime() - 30 * DAY), 40);
     live = { ends: dayEnds && dayEnds.date, born: lastNew && lastNew.date };
-    $('t-moon').innerHTML = moon(pIndex, 'moon');
+    $('t-moon').innerHTML = moon(pIndex, 'moon', angle / 360);
     $('t-date').textContent = cap(F.dateLong.format(now));
     var dot = '<span class="dot">·</span>';
     $('t-phase').innerHTML = '<span>' + esc(t.phases[pIndex]) + '</span>' + dot + '<span><span id="pct">' + percent + '</span>% ' + esc(t.illum) + '</span>' + '<br>' +
@@ -742,10 +748,54 @@
     $('more').parentNode.style.display = list.length ? '' : 'none';
     paintReminders(L, F);
     reportHeight();
+    document.dispatchEvent(new Event('upo:painted')); // the app's bridge hands the widget its data after a paint (window.__upoWidgetData)
   }
 
   // ---------- reminders ----------
   var timer = null, nativeSig = '';
+  // ---------- the data of the home-screen widget (native: Android AppWidget, iOS WidgetKit) ----------
+  // The widget calculates nothing: it lays out what this function says (the contract is in uposatha/WIDGET.md of dg-apps). The app calls it
+  // after a paint (uposatha-bridge.js -> DgWidget.put); worked out at most once per half hour and per set of settings.
+  var wdCache = null;
+  // What the shared builder (uposatha-widget-data.js) needs from the page.
+  function widgetEnv(now) { return { A: A, C: C, tz: state.tz, loc: state.loc, lang: lang, su: sutta(), lite: state.lite, showKala: !!state.meal.sum, south: !!state.south, noon: state.noon, twi: state.twi, now: now }; }
+  // The service worker works the widgets of the Windows 11 Widgets Board out by itself, and a worker has no localStorage: the settings it needs
+  // (the place, the time zone, the language, the counting) are mirrored into IndexedDB (db dg-uposatha, store kv, key widget) after each paint when
+  // they changed, and the worker is told to redraw the widgets.
+  var mirrorSig = '';
+  function mirrorWidgetSettings() {
+    if (embed || !window.indexedDB) return;
+    var e = widgetEnv(), rec = { tz: e.tz, loc: e.loc ? { lat: e.loc.lat, lon: e.loc.lon } : null, lang: e.lang, su: e.su, lite: e.lite, showKala: e.showKala, south: e.south, noon: e.noon, twi: e.twi };
+    var sig = JSON.stringify(rec);
+    if (sig === mirrorSig) return;
+    mirrorSig = sig; rec.at = Date.now();
+    try {
+      var rq = indexedDB.open('dg-uposatha', 1);
+      rq.onupgradeneeded = function () { rq.result.createObjectStore('kv'); };
+      rq.onsuccess = function () {
+        var db = rq.result, tx = db.transaction('kv', 'readwrite');
+        tx.objectStore('kv').put(rec, 'widget');
+        tx.oncomplete = function () {
+          db.close();
+          if ('serviceWorker' in navigator) navigator.serviceWorker.getRegistration('/').then(function (reg) { if (reg && reg.active) reg.active.postMessage({ type: 'upo-widgets-refresh' }); }).catch(function () { /* no worker: nothing to redraw */ });
+        };
+        tx.onerror = function () { db.close(); mirrorSig = ''; };
+      };
+      rq.onerror = function () { mirrorSig = ''; };
+    } catch (err) { mirrorSig = ''; /* no IndexedDB (private window): the widgets keep their last settings */ }
+  }
+  document.addEventListener('upo:painted', mirrorWidgetSettings);
+  window.__upoWidgetData = function () {
+    var WD = window.UposathaWidgetData; // the calculation itself is in uposatha-widget-data.js (shared with the service worker of the Windows widgets)
+    if (!WD) return null;
+    var now = new Date(), todayYmd = localDay(now, state.tz);
+    var key = [todayYmd, Math.floor(now.getTime() / 1800000), state.tz, sutta(), state.lite, state.meal.sum, lang, state.south, state.noon, state.twi, state.loc && state.loc.lat, state.loc && state.loc.lon].join('|');
+    if (wdCache && wdCache.key === key) return wdCache.data;
+    var data = WD.build(widgetEnv(now));
+    wdCache = { key: key, data: data };
+    return data;
+  };
+
   function wantDay(r) { return C.wantDay(r, sutta(), state.rem); }
   function twoUposathas(r, byYmd) { return C.twoUposathas(r, byYmd, sutta()); }
   function dueList(rows, byYmd) {
@@ -1357,7 +1407,7 @@
         }).catch(function () { /* stays "preview" */ });
       }
       if ($('up-privacy')) $('up-privacy').addEventListener('click', function () { this.href = 'https://dhamma.gift' + (lang === 'ru' ? '/ru' : '') + '/docs/policies'; }); // the language of the moment
-      var last = store('dgUposathaTab'); openTab(/^(home|list|cal|parts|keys)$/.test(last || '') ? last : 'home');
+      var last = params.get('tab') || store('dgUposathaTab'); openTab(/^(home|list|cal|parts|keys)$/.test(last || '') ? last : 'home');
     })();
     onSeg('noonseg', function (v) { state.noon = v; store('dgUposathaNoon', v); paint(); });
     $('meal').onclick = function (e) { if (e.target.closest && e.target.closest('.noonlink')) { e.preventDefault(); openSettings('noon-block'); } };
