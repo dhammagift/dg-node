@@ -954,12 +954,22 @@ function setTrnEngine(engine) {
   localStorage.setItem(TRN_ENGINE_KEY, engine === 'dg' ? 'dg' : 'google');
 }
 
-// DG (Piper) translation voices per language; a language without one is read by Google.
-const DG_TRN_VOICES = {
-  en: [{ id: 'alan', label: 'alan ♂ · UK' }, { id: 'norman', label: 'norman ♂ · US' }, { id: 'kathleen', label: 'kathleen ♀ · US (low)' }],
-  // first = default; dgru: the owner's timbre (Piper fine-tuned from ruslan on a Chatterbox clone of his voice)
-  ru: [{ id: 'dgru', label: 'o Dhamma.Gift ♂ · beta' }, { id: 'ruslan', label: 'ruslan ♂' }, { id: 'irina', label: 'irina ♀' }]
-};
+// DG voices come from the voice service, like Google's voice list (GET /voices: id, language, menu label, in menu
+// order; a language's first voice is its default). Nothing is listed here: voices are added, renamed or dropped on the
+// server only. The last list is kept in localStorage, so the menus are there at once; it is refreshed on every load.
+// A translation language without DG voices is read by Google.
+const DG_TRN_VOICES = {};   // lang -> [{id, label}]
+const DG_PALI_VOICES = [];  // [{id, label}]
+function setDgVoices(list) {
+  DG_PALI_VOICES.length = 0;
+  Object.keys(DG_TRN_VOICES).forEach(k => delete DG_TRN_VOICES[k]);
+  list.forEach(v => {
+    const item = { id: v.id, label: v.label };
+    if (v.lang === 'pi') DG_PALI_VOICES.push(item);
+    else (DG_TRN_VOICES[v.lang] = DG_TRN_VOICES[v.lang] || []).push(item);
+  });
+}
+try { setDgVoices(JSON.parse(localStorage.getItem('dg_voices') || '[]')); } catch (e) {}
 
 function dgTrnVoice(lang) {
   const list = DG_TRN_VOICES[lang];
@@ -982,12 +992,6 @@ function setPaliEngine(engine) {
   localStorage.setItem(NATIVE_PALI_KEY, engine === 'native');
 }
 
-// DG voices on offer for Pali. Male voices first, then female (owner: the order of the suttas' own lists -
-// bhikkhū, bhikkhuniyo; upāsakā, upāsikāyo).
-const DG_PALI_VOICES = [{ id: 'pratham', label: 'pratham ♂ · Piper' },
-                        { id: 'dg', label: 'o Dhamma.Gift ♂ · beta' },  // the owner's own fine-tuned voice
-                        { id: 'priyamvada', label: 'priyamvada ♀ · Piper' }];
-
 // For the Memo page's mp3 download: which DG voice and pace would read this text now (null when the
 // chosen engine for it is not DG), and where the service's /memo is.
 window.dgVoiceFor = function (isPali, lang) {
@@ -1002,7 +1006,7 @@ window.dgVoiceFor = function (isPali, lang) {
 
 function dgPaliVoice() {
   const saved = localStorage.getItem('tts_dg_voice_pi');
-  return DG_PALI_VOICES.some(v => v.id === saved) ? saved : DG_PALI_VOICES[0].id;
+  return DG_PALI_VOICES.some(v => v.id === saved) ? saved : DG_PALI_VOICES[0]?.id;  // none yet: the server's default
 }
 
 // Raw IAST for the self-hosted voice: drop variant readings in {…} and (…), like cleanTextForTTS does.
@@ -1020,10 +1024,27 @@ function stripForPaliVoice(text) {
 const DG_TTS_URLS = [window.DG_TTS_URL || 'https://api.dhamma.gift/api/tts/pali', 'https://api2.dhamma.gift/api/tts/pali',
                      '/api/tts/pali'];
 
+// The voice list (see setDgVoices), from the first server that answers. Playback and the voice menus wait for it
+// at most 3 s; meanwhile (or if no server answers) the list from the last visit is used.
+const dgVoicesLoaded = (async () => {
+  for (const url of DG_TTS_URLS) {
+    try {
+      const r = await fetch(url.replace(/\/pali$/, '/dg-voices'), { signal: AbortSignal.timeout(4000) });
+      const list = r.ok ? (await r.json()).voices : null;
+      if (!Array.isArray(list) || !list.length) continue;
+      setDgVoices(list);
+      try { localStorage.setItem('dg_voices', JSON.stringify(list)); } catch (e) {}
+      return true;
+    } catch (e) {}
+  }
+  return false;
+})();
+const dgVoicesReady = () => Promise.race([dgVoicesLoaded, new Promise(r => setTimeout(r, 3000))]);
+
 async function fetchPaliVoiceAudio(text, uiRate, voice) {
   // Pali: menu 0.8 = the voice's tuned pace; translation voices: 1.0 = their own pace
   voice = voice || dgPaliVoice();
-  const isPaliVoice = DG_PALI_VOICES.some(v => v.id === voice);
+  const isPaliVoice = !voice || DG_PALI_VOICES.some(v => v.id === voice);  // no voice: the server's Pali default
   const body = JSON.stringify({ text, rate: isPaliVoice ? uiRate / 0.8 : uiRate, voice });
   let lastError;
   for (const url of DG_TTS_URLS) {
@@ -1456,6 +1477,7 @@ function dgPrefetchAhead(index) {
 }
 
 async function playCurrentSegment() {
+ await dgVoicesReady();  // resolved after the first line: no delay then
  
  if (window.ttsDelayTimeout) clearTimeout(window.ttsDelayTimeout);
  
@@ -3012,7 +3034,7 @@ document.addEventListener('click', async e => {
   } else {
     const lang = detectTranslationLang() === 'ru' ? 'ru' : 'en', sel = document.getElementById('google-voice-select-trn');
     lines = TTS_DEMO[lang];
-    voice = DG_TRN_VOICES[lang].some(v => v.id === sel?.value) ? sel.value : dgTrnVoice(lang);
+    voice = (DG_TRN_VOICES[lang] || []).some(v => v.id === sel?.value) ? sel.value : dgTrnVoice(lang);
     rate = savedRate('trn');
   }
   // created inside the tap so iOS lets it play once the first clip arrives
@@ -3132,6 +3154,7 @@ async function refreshVoiceDropdowns(forceRefresh = false) {
 }
 
 async function fillVoiceDropdowns(forceRefresh = false) {
+    await dgVoicesReady();
     const container = document.getElementById('google-voice-settings-container');
     if (container) container.style.display = 'block';
 
