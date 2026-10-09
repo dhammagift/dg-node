@@ -438,7 +438,15 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
            removing it from hit-testing entirely closes off the whole class of bug instead of
            chasing the exact stale-height trigger. */
         pointer-events: none;
+        /* The header floats over the text like the voice player: the backdrop spans the whole stack,
+           so one shadow under it covers every piece. Dark: a shadow barely shows on near-black,
+           a faint light edge marks the layer instead. */
+        box-shadow: 0 4px 14px rgba(0,0,0,.18);
     }
+    body.dark #dg-header-backdrop { box-shadow: 0 6px 16px rgba(0,0,0,.8); border-bottom: 1px solid rgba(255,255,255,.08); }
+    /* the corner buttons float the same way */
+    #dg-langpill, #scrollToTopBtn { box-shadow: 0 4px 12px rgba(0,0,0,.25); }
+    body.dark #dg-langpill, body.dark #scrollToTopBtn { box-shadow: 0 4px 14px rgba(0,0,0,.8), 0 0 0 1px rgba(255,255,255,.08); }
     /* p.sc-link внутри #top-links-container — margin-top:0.3rem (rus-multi.css) на нём же,
        плюс <br> перед контейнером в разметке megareader.js — небольшой, но лишний воздух, раз
        контейнер теперь сам закреплён вплотную под #navigation. Убираем свою верхнюю часть
