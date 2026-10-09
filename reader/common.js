@@ -690,8 +690,10 @@ onReady(() => {
             return (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) ? -1 : 1;
         });
 
-        cachedTOCNodes = combinedNodes;
-        return { nodes: cachedTOCNodes };
+        // An empty result is NOT remembered: syncTOC can run before the text is in #sutta (a sutta opened from the history), and a cached
+        // [] (truthy) hid the contents button until the next suttaLoaded - the owner had to go back and forward to get it.
+        cachedTOCNodes = combinedNodes.length ? combinedNodes : null;
+        return { nodes: combinedNodes };
     }
 
     function syncTOC() {
