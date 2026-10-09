@@ -982,9 +982,11 @@ function setPaliEngine(engine) {
   localStorage.setItem(NATIVE_PALI_KEY, engine === 'native');
 }
 
-// DG voices on offer for Pali (one for now; the trained voices join this list).
+// DG voices on offer for Pali. Male voices first, then female (owner: the order of the suttas' own lists -
+// bhikkhū, bhikkhuniyo; upāsakā, upāsikāyo).
 const DG_PALI_VOICES = [{ id: 'pratham', label: 'pratham ♂ · Piper' },
-                        { id: 'dg', label: 'o Dhamma.Gift ♂ · beta' }];  // the owner's own fine-tuned voice
+                        { id: 'dg', label: 'o Dhamma.Gift ♂ · beta' },  // the owner's own fine-tuned voice
+                        { id: 'priyamvada', label: 'priyamvada ♀ · Piper' }];
 
 // For the Memo page's mp3 download: which DG voice and pace would read this text now (null when the
 // chosen engine for it is not DG), and where the service's /memo is.
