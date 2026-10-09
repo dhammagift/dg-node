@@ -38,7 +38,7 @@ h1, h2, h3 { font-family: var(--dg-font); font-weight: 600; letter-spacing: -.01
 button { font-family: inherit; }
 /* top bar */
 .tbar { position: sticky; top: 0; z-index: 40; background: var(--dg-page); border-bottom: 1px solid transparent; padding: 11px 20px 10px; transition: border-color .18s var(--dg-ease), box-shadow .18s var(--dg-ease); }
-body.scrolled .tbar { border-bottom-color: var(--dg-border); box-shadow: 0 4px 14px rgba(27,29,25,.18); } /* the same lift as the Dhamma.Gift header */
+body.scrolled .tbar { border-bottom-color: var(--dg-border); box-shadow: 0 4px 14px rgba(27,29,25,.07); }
 .tbar { transition: border-color .18s var(--dg-ease), box-shadow .18s var(--dg-ease), transform .25s var(--dg-ease); }
 .tbar.away { transform: translateY(-110%); }
 .tbar .in { max-width: 860px; margin: 0 auto; display: flex; align-items: center; gap: 10px; }
