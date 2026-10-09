@@ -1013,10 +1013,11 @@ function stripForPaliVoice(text) {
 // DG voice: Piper behind /api/tts/pali (dg-fastify.js): Pali with the pali-tts listening-test rules,
 // or a translation voice (voice id, e.g. 'ruslan').
 // Answers like Google ({audioContent}: base64 mp3). Speed 0.8 = the voice's tuned pace (the default 0.7 is a bit slower).
-// The browser calls the voice server directly, like Google's API (public, CORS): api.dhamma.gift
-// (the f2 backup server for now: the faster CPU). This site's own /api/tts/pali (same service on
-// the main server) is the spare if it doesn't answer.
-const DG_TTS_URLS = [window.DG_TTS_URL || 'https://api.dhamma.gift/api/tts/pali', '/api/tts/pali'];
+// The browser calls the voice servers directly, like Google's API (public, CORS), in this order:
+// api.dhamma.gift (f3), f2.dhamma.gift (the reserve, TTS only), then this site's own /api/tts/pali.
+// Then Google (see playCurrentSegment).
+const DG_TTS_URLS = [window.DG_TTS_URL || 'https://api.dhamma.gift/api/tts/pali', 'https://f2.dhamma.gift/api/tts/pali',
+                     '/api/tts/pali'];
 
 async function fetchPaliVoiceAudio(text, uiRate, voice) {
   // Pali: menu 0.8 = the voice's tuned pace; translation voices: 1.0 = their own pace
