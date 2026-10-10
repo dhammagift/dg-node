@@ -159,8 +159,24 @@ app.addHook('onRequest', (req, res, done) => {
 let restrictedAuth = null;
 try { restrictedAuth = require('./configs/local/restricted-auth.json'); }
 catch (e) { console.warn('configs/local/restricted-auth.json missing — /bw, /ai and /b are UNPROTECTED:', e.message); }
+// decoded, like the router sees it: "/%61i/" must not slip past the check below as "not /ai"
+function decodedPath(url) {
+    const raw = url.split('?')[0];
+    try { return decodeURIComponent(raw); } catch { return raw; }
+}
+// Static mounts must not hand out dotfiles (/4nt/.git/config, .vscode, .htaccess) or PHP source
+// (/assets/lbl-save.php, /assets/texts/sutta.php: PHP never runs here, the file would be read as
+// text). Only .php inside a folder: the top-level old addresses (/w.php?q=…, /s.php, /r.php,
+// /history.php) are not files, they reach the SPA or legacyReaderRedirect and keep working.
+// /ai and /b are proxied to Apache, which does run their PHP; /.well-known stays public.
 app.addHook('onRequest', (req, res, done) => {
-    const p = req.url.split('?')[0];
+    const p = decodedPath(req.url);
+    if (/\/\.(?!well-known(\/|$))/.test(p)) return res.code(404).send('Not found');
+    if (req.method === 'GET' && /^\/[^/]+\/.*\.php$/i.test(p.replace(/^\/ru(?=\/)/, '')) && !/^\/(ai|b)\//.test(p)) return res.code(404).send('Not found'); // /ru/w.php is a language prefix, not a folder
+    done();
+});
+app.addHook('onRequest', (req, res, done) => {
+    const p = decodedPath(req.url);
     if (!restrictedAuth || !/^\/(bw|ai|b)(\/|$)/.test(p)) return done();
     const [, b64] = (req.headers.authorization || '').split(' ');
     const [user, pass] = b64 ? Buffer.from(b64, 'base64').toString().split(':') : [];
@@ -740,9 +756,13 @@ async function convertScriptInSearchResult(result, scriptCode) {
 // doesn't need to know/send it. Owner: "для iast лишнюю лейтенси не добавляй" — the client
 // (paliLookup.js) only calls this when the word contains non-Latin characters at all; plain
 // IAST/ISO input never round-trips here.
+// a clicked word, so a short text; every call costs a Python batch in the one shared queue
+const translitRateLimited = makeRateLimiter(60, 60 * 1000);
 app.get('/api/transliterate', async (req, res) => {
     const text = (req.query.text || '').toString();
     if (!text) return res.send({ text: '', converted: false });
+    if (text.length > 200) return res.code(400).send({ error: 'text too long' });
+    if (translitRateLimited(req.ip)) return res.code(429).send({ error: 'Too many requests, try again shortly' });
     if (!akshReady()) return res.send({ text, converted: false });
     // ?from= — the script the page shows (paliLookup.js). Autodetect guesses from the word alone and a
     // short Lao Pali word (ນາປຣໍ) reads as modern Lao ("nāprṃ" instead of "nāparaṃ"). If the given
@@ -1310,6 +1330,8 @@ async function verifyLblToken(authHeader, allowedEmails) {
     return { ok: true, email };
 }
 
+const lblRateLimited = makeRateLimiter(30, 60 * 1000);
+const LBL_MAX_FILES = 2000, LBL_MAX_BYTES = 300 * 1024 * 1024;
 app.post('/assets/lbl-save.php', { bodyLimit: 2 * 1024 * 1024 }, async (req, res) => {
     res.header('cache-control', 'no-store'); // cache.md §5 — write endpoint
     // 2MB per route (the instance-wide 10MB stays for everything else): the largest real payload
@@ -1319,10 +1341,22 @@ app.post('/assets/lbl-save.php', { bodyLimit: 2 * 1024 * 1024 }, async (req, res
         console.warn('[lbl-save] refused:', auth.reason, auth.email ? 'as=' + auth.email : '', 'file=' + String(req.query.file || '').slice(0, 60));
         return res.code(auth.status).send(auth.reason);
     }
+    // per author: the editor saves on demand, ~12KB each; 30/min stops a runaway loop or a leaked token
+    if (lblRateLimited(auth.email)) return res.code(429).send('Too many saves, try again shortly');
     const filename = path.basename(req.query.file || `backup_${Date.now()}.json`);
+    // only translation JSON: the folder is served under /lbl/, so an .html here would run on the site
+    if (!/^[\w.+-]+\.json$/.test(filename)) return res.code(400).send('Only .json files');
     const saveDir = path.join(OFFLINE_MIRRORS_ROOT, 'lbl');
     try {
         fsSync.mkdirSync(saveDir, { recursive: true });
+        // a ceiling for the whole folder, so even a valid login in a loop cannot fill the disk
+        // (real use: a few dozen translation files, ~10 MB). Overwriting an existing file is fine.
+        const names = fsSync.readdirSync(saveDir);
+        const used = names.reduce((sum, n) => { try { return sum + fsSync.statSync(path.join(saveDir, n)).size; } catch { return sum; } }, 0);
+        if (!names.includes(filename) && (names.length >= LBL_MAX_FILES || used + Buffer.byteLength(req.body) > LBL_MAX_BYTES)) {
+            console.warn('[lbl-save] folder full:', names.length, 'files,', used, 'bytes; refused', filename, 'as', auth.email);
+            return res.code(507).send('The translations folder is full, ask the site owner');
+        }
         fsSync.writeFileSync(path.join(saveDir, filename), req.body);
         // One line per save — who wrote what, so a surprise in the folder can be traced.
         fsSync.promises.mkdir(path.join(__dirname, 'logs'), { recursive: true })
@@ -2445,8 +2479,8 @@ async function searchHandler(req, res) {
     const scope      = req.query.scope || 'default';
     const exact      = req.query.exact === 'true';
     const targetLangs = (req.query.langs || 'ru,en').split(',').map(l => l.trim());
-    const lb         = parseInt(req.query.lb) || 0;
-    const la         = parseInt(req.query.la) || 0;
+    const lb         = Math.min(Math.max(parseInt(req.query.lb) || 0, 0), 10); // context lines; unbounded = a memory DoS
+    const la         = Math.min(Math.max(parseInt(req.query.la) || 0, 0), 10);
 
     if (keyword.length < MIN_KEYWORD_LENGTH) {
         return res.send({
@@ -2504,8 +2538,8 @@ app.get('/search/enrich', async (req, res) => {
     const scope      = req.query.scope || 'default';
     const exact      = req.query.exact === 'true';
     const targetLangs = (req.query.langs || 'ru,en').split(',').map(l => l.trim());
-    const lb         = parseInt(req.query.lb) || 0;
-    const la         = parseInt(req.query.la) || 0;
+    const lb         = Math.min(Math.max(parseInt(req.query.lb) || 0, 0), 10); // context lines; unbounded = a memory DoS
+    const la         = Math.min(Math.max(parseInt(req.query.la) || 0, 0), 10);
     const requestedIds = idsParam.split(',').map(s => s.trim()).filter(Boolean);
 
     if (keyword.length < MIN_KEYWORD_LENGTH) {
@@ -3135,7 +3169,8 @@ app.get('/:slug', (req, res) => {
 app.setNotFoundHandler((req, res) => {
     if (req.url === '/ru' || req.url.startsWith('/ru/') || req.url.startsWith('/ru?')) {
         const [pathPart, queryPart] = req.url.split('?');
-        const rest = pathPart.slice(3) || '/';
+        // one leading slash: "/ru//evil.example" must not become a protocol-relative "//evil.example"
+        const rest = '/' + pathPart.slice(3).replace(/^[\/\\]+/, '');
         const params = new URLSearchParams(queryPart || '');
         params.set('lang', 'ru');
         return res.redirect(rest + '?' + params.toString());

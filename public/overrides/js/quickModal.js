@@ -521,10 +521,11 @@ function renderQuickLists(isRu, queryBase) {
         // pli-tv-bu-vb-pj1 — letters then a digit) or a memo note.
         const isSearchFav = !/^[a-z][a-z-]*\d/i.test(String(fav.slug)) && !/\/memo\//.test(fav.path || '');
         const bellBtn = isSearchFav && typeof window.subUpsert === 'function'
-          ? `<span class="action-btn fav-bell-btn${favSub ? ' on' : ''}" data-slug="${fav.slug}" title="${favSub ? QS_T('Вы подписаны — настроить', 'Subscribed — settings') : QS_T('Подписаться', 'Subscribe')}">${QS_ICON.bellFa}</span>` : '';
-        favHtml += `<li><span class="fav-star-icon">${QS_ICON.star}</span><a href="${url}">${fav.title || fav.slug}</a>
-        ${bellBtn}<span class="action-btn rename-fav-btn" data-slug="${fav.slug}" title="${window.isRu ? 'Переименовать' : 'Rename'}">✎</span>
-        <span class="action-btn remove-fav-btn" data-slug="${fav.slug}">×</span></li>`;
+          ? `<span class="action-btn fav-bell-btn${favSub ? ' on' : ''}" data-slug="${qsEsc(fav.slug)}" title="${favSub ? QS_T('Вы подписаны — настроить', 'Subscribed — settings') : QS_T('Подписаться', 'Subscribe')}">${QS_ICON.bellFa}</span>` : '';
+        // the query and title come from a URL someone could have sent: escape them (stored XSS otherwise)
+        favHtml += `<li><span class="fav-star-icon">${QS_ICON.star}</span><a href="${qsHref(url)}">${qsEsc(fav.title || fav.slug)}</a>
+        ${bellBtn}<span class="action-btn rename-fav-btn" data-slug="${qsEsc(fav.slug)}" title="${window.isRu ? 'Переименовать' : 'Rename'}">✎</span>
+        <span class="action-btn remove-fav-btn" data-slug="${qsEsc(fav.slug)}">×</span></li>`;
       });
       favHtml += '</ul>';
       favContainer.innerHTML = favHtml;
@@ -553,8 +554,8 @@ function renderQuickLists(isRu, queryBase) {
         
 // Добавили hidden-delete-hist и data-slug
 histHtml += `<li><span class="hist-icon"><img src="${window.DG_SITE_BASE}/assets/svg/clock-rotate-left.svg" width="14" height="14"></span>
-<a href="${h[1]}">${h[0]}</a><span class="item-date hidden-delete-hist" data-slug="${realSlug}">${dateStr}</span>
-<span class="action-btn toggle-fav-btn-hist" data-slug="${realSlug}" data-display="${h[0]}" data-url="${h[1]}">${isFav ? QS_ICON.star : QS_ICON.starO}</span></li>`;
+<a href="${qsHref(h[1])}">${qsEsc(h[0])}</a><span class="item-date hidden-delete-hist" data-slug="${qsEsc(realSlug)}">${dateStr}</span>
+<span class="action-btn toggle-fav-btn-hist" data-slug="${qsEsc(realSlug)}" data-display="${qsEsc(h[0])}" data-url="${qsEsc(h[1])}">${isFav ? QS_ICON.star : QS_ICON.starO}</span></li>`;
 
       });
       histHtml += '</ul>';
@@ -809,6 +810,8 @@ function qsNextUposatha(times) {
     return null;
   }).catch(() => null);
 }
+// an href from storage: escaped, and never a javascript: link
+function qsHref(v) { return /^\s*javascript:/i.test(String(v)) ? '#' : qsEsc(v); }
 function qsEsc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 function qsName(sub) {
   if (sub.type === 'search') return sub.query || '';

@@ -354,10 +354,12 @@ function findFdgTextUrl(slug, searchValue, baseUrl) {
       exceptions.some(ex => slug.includes(ex)) ||
       /^vb\d*$/.test(slug);
     const url = isExtSite ? `/4nt/?q=${slug}` : baseUrl;
-    let scUrl = `${baseUrl}?s=${searchValue ? searchValue : ""}&q=${slug}`;
-    if (scUrl.endsWith('#')) {
-        scUrl = scUrl.replace(/#$/, '');
-    }
+    // encoded: ?s= is the user's query (a quote in it used to close the href and add attributes);
+    // the slug may carry its #segment, which stays a real anchor
+    const hashAt = slug.indexOf('#');
+    const slugId = hashAt < 0 ? slug : slug.slice(0, hashAt);
+    const seg = hashAt < 0 ? '' : slug.slice(hashAt + 1);
+    let scUrl = `${baseUrl}?s=${encodeURIComponent(searchValue || "")}&q=${encodeURIComponent(slugId)}` + (seg ? '#' + encodeURI(seg) : '');
     return isExtSite ? url : scUrl;
 }
 

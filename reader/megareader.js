@@ -905,6 +905,16 @@ function buildCleanSuttaUrl(slug, params) {
     const qs = params.filter(Boolean).join('&');
     return `/${slug}${qs ? '?' + qs : ''}`;
 }
+// s/lang/mode/langs carried over to the next/previous text, URL-encoded: a raw ?s=bhikkh\w+ came
+// back as "bhikkh\w " (+ is a space in a query) and a " in it broke out of the arrow's href.
+function carriedReaderParams() {
+    const from = new URLSearchParams(document.location.search);
+    const out = new URLSearchParams();
+    ['s', 'mode', 'lang', 'langs'].forEach(k => {
+        if (from.has(k)) out.set(k, k === 's' ? from.get(k).replace(/ṃ/g, 'ṁ') : from.get(k));
+    });
+    return [out.toString()];
+}
 
 // ==========================================
 // SPA-НАВИГАЦИЯ (Перехват кликов для мгновенной загрузки)
@@ -912,18 +922,12 @@ function buildCleanSuttaUrl(slug, params) {
 window.navigateSutta = function(event, slug) {
     if (event) event.preventDefault(); // Отменяем полную перезагрузку страницы
 
-    let params = new URLSearchParams(document.location.search);
     // Сохраняем s/lang/mode/langs при переходе на след./пред. сутту — иначе выбранный язык/режим
     // (R+E, ?lang=en и т.п.) откатится к дефолту в адресной строке (сам READER_MODE в памяти
     // не меняется, но при перезагрузке/шаринге ссылки состояние потерялось бы). langs= (ручной
     // оверрайд конкретных языков контента, см. window.buildSutta) раньше сюда не попадал — при
     // переходе на след./пред. сутту он терялся, откатывая обратно на mode=/дефолт ru,en.
-    let extraParams = [
-        params.has("s") ? `s=${params.get("s")}` : "",
-        params.has("mode") ? `mode=${params.get("mode")}` : "",
-        params.has("lang") ? `lang=${params.get("lang")}` : "",
-        params.has("langs") ? `langs=${params.get("langs")}` : "",
-    ];
+    let extraParams = carriedReaderParams();
 
     // Меняем URL без перезагрузки — на чистый /{slug}, не ?q={slug} поверх текущего пути.
     history.pushState({ page: slug }, "", buildCleanSuttaUrl(slug, extraParams));
@@ -1139,16 +1143,10 @@ window.dgFetchNav = function (slug) {
 };
 
 window.renderNavigation = async function(slug, suttaTitle, navPromise) {
-    let params = new URLSearchParams(document.location.search);
     // Тот же набор параметров, что navigateSutta сохраняет при пуше в history — раньше здесь
     // была только s= (mode/lang терялись в статичном href, хотя JS-путь через onclick их уже
     // сохранял), заодно выровнено.
-    let navExtraParams = [
-        params.has("s") ? `s=${params.get("s").replace(/ṃ/g, "ṁ")}` : "",
-        params.has("mode") ? `mode=${params.get("mode")}` : "",
-        params.has("lang") ? `lang=${params.get("lang")}` : "",
-        params.has("langs") ? `langs=${params.get("langs")}` : "",
-    ];
+    let navExtraParams = carriedReaderParams();
 
     let cleanSlug = slug.replace(/pli-tv-|b[ui]-vb-/g, "");
     let cleanPaliName = (suttaTitle || "").replace(/[0-9.-]/g, '').trim();
@@ -1599,6 +1597,7 @@ window.buildSutta = async function(rawSlug, opts) {
         var fullUrlWithAnchor = window.dgSegmentUrl
             ? window.dgSegmentUrl(window.location.href, anchor)
             : window.location.href.split('#')[0] + '#' + anchor;
+        fullUrlWithAnchor = fullUrlWithAnchor.replace(/'/g, '%27'); // goes into onclick="copyToClipboard('…')"
 
         window.applyRemovePunct(paliData, segment);
         // Matches prod's devanagari.js (applyRemovePunct called on BOTH lines) — the ISO/Latin
@@ -1760,7 +1759,10 @@ window.buildSutta = async function(rawSlug, opts) {
     }
     scLink += "</p>";
 
-    const origUrl = window.location.href;
+    // Goes into single-quoted href='{dUrl}' (lang_*.json): no #hash, and a ' left in the path
+    // (/dn22:1.1'onmouseover=...) must not close the attribute.
+    const origUrl = (window.dgSegmentUrl ? window.dgSegmentUrl(window.location.href, '') : window.location.href.split('#')[0])
+        .replace(/'/g, '%27');
     let dUrl = origUrl.replace("/r/", "/d/");
     let thUrl = origUrl.replace("/r/", "/th/read/");
 
@@ -1777,7 +1779,7 @@ window.buildSutta = async function(rawSlug, opts) {
     // {query} в search/index.html, подставляются вручную (dhamma-i18n.js textNode-substitution
     // не годится — этот HTML со ссылками собирается в JS, а не лежит в статичной DOM-разметке).
     const warningLabel = t('reader.warningNote', "<strong>Заметка:</strong><a class='text-decoration-none cursor-pointer' target='' href='{dUrl}'>&nbsp;</a>Переводы, словари и комментарии сделаны не Благословенным.<a class='text-decoration-none cursor-pointer' target='' href='{thUrl}'>&nbsp;</a>Сверяйтесь с Пали в 4 основных никаях.")
-        .replace('{dUrl}', dUrl).replace('{thUrl}', thUrl);
+        .replace('{dUrl}', () => dUrl).replace('{thUrl}', () => thUrl); // functions: a "$'" in the URL is not a pattern
     const warning = `
         <div class="warning-container warning-box">
         <p class='warning'>
