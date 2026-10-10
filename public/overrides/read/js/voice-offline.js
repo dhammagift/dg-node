@@ -71,22 +71,26 @@ export async function list() {
 // Whether onnxruntime + the engine still have to come with the next voice
 export const needsShared = async () => !(await get('wasm'));
 
-export async function download(vid, onProgress = () => {}) {
+// onProgress(share 0..1, bytes done, bytes total); signal: an AbortSignal to cancel. Nothing is stored until all is in.
+export async function download(vid, onProgress = () => {}, signal) {
   await migrated;
   const o = await offer();
   const v = o.voices[vid];
   if (!v) throw new Error('voice ' + vid + ' is not offered offline');
   const shared = await needsShared();
   const total = v.bytes + (shared ? WASM_BYTES : 0);
+  const est = await navigator.storage?.estimate?.().catch(() => null);
+  if (est && est.quota - est.usage < total * 1.1) throw new Error('no space');
   let done = 0;
-  const tick = n => { done += n; onProgress(Math.min(done / total, 1)); };
+  const tick = n => { done += n; onProgress(Math.min(done / total, 1), done, total); };
   const [model, json, engine, wasm, ort] = await Promise.all([
-    fetchAny(vid + '.onnx').then(r => bytes(r, tick)),
-    fetchAny(vid + '.onnx.json').then(r => r.json()),
-    fetchAny('pali-tts.js').then(r => r.text()),
-    shared ? fetchAny(ORT + 'ort-wasm-simd-threaded.wasm').then(r => bytes(r, tick)) : null,
-    shared ? fetchAny(ORT + 'ort.wasm.bundle.min.mjs').then(r => r.text()) : null,
+    fetchAny(vid + '.onnx', { signal }).then(r => bytes(r, tick)),
+    fetchAny(vid + '.onnx.json', { signal }).then(r => r.json()),
+    fetchAny('pali-tts.js', { signal }).then(r => r.text()),
+    shared ? fetchAny(ORT + 'ort-wasm-simd-threaded.wasm', { signal }).then(r => bytes(r, tick)) : null,
+    shared ? fetchAny(ORT + 'ort.wasm.bundle.min.mjs', { signal }).then(r => r.text()) : null,
   ]);
+  if (signal?.aborted) throw new DOMException('cancelled', 'AbortError');
   await idb('readwrite', s => {
     s.put({ vid, label: v.label, tag: v.tag, json }, 'meta:' + vid);
     s.put(model, 'model:' + vid);

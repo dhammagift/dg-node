@@ -1065,15 +1065,15 @@ async function fetchPaliVoiceAudio(text, uiRate, voice) {
   if (local) return local();
   throw lastError;
 }
-const dgOffline = () => import('/read/js/voice-offline.js?v=2026-10-10d');
+const dgOffline = () => import('/read/js/voice-offline.js?v=2026-10-10e');
 const dgOffIds = () => (localStorage.getItem('dg_voice_offline') || '').split(',').filter(Boolean);
 if (dgOffIds().length && navigator.onLine) {  // newer rules for the downloaded voices, quietly
   setTimeout(() => dgOffline().then(m => m.refresh()).then(dgOfflineRender).catch(() => {}), 5000);
 }
 
 // Offline voices. Managed in the DG voice list itself (owner: a download icon next to each Pali voice, then a delete
-// one); a one-line offer under the player after the first line DG read ("×" hides it for good); a settings row that
-// names what is downloaded and opens that list. The full reset removes them too.
+// one); offered on a card above the player (dgOffCard); a settings row that names what is downloaded and opens that
+// list. The full reset removes them too.
 let dgOffKnown = null, dgOffAsk = null;  // the service's offline voices {id: {label, bytes, tag}}, fetched once
 let dgOffBusy = null;  // {vid, p} while a voice downloads
 function dgOffVoices() {
@@ -1101,24 +1101,98 @@ function dgOffIcon(vid) {
   return `<button type="button" class="tts-ib tts-offic" data-offvid="${vid}" title="${stale ? t.offUpd : t.offGet} · ${dgOffMb(v)} ${t.mb}">${DG_OFF_DOWN}</button>`;
 }
 
+// The card above the player (owner: a separate plate in the player's style, informative, with retry and a way to
+// the voice list). One card, one state at a time:
+//   offer   - after the first Pali line the DG voice read online, the voice is offered offline and not on the device
+//             [Download] [Later: this session] [No thanks: never; the voice list still has the icons]
+//   loading - progress bar, MB of MB, [Cancel] (from the card, the voice list icon or the settings row)
+//   done    - closes by itself
+//   error   - why (no network / no space / the service), [Retry] [DG voices]
+//   stale   - the service has a newer model of a downloaded voice [Update] [Later]
+//   nonet   - no network and the voice is not downloaded: the device's voice reads now, download when online [OK]
+let dgOffCardState = null;
+function dgOffName(vid) { return (dgOffKnown?.[vid]?.label || vid || '').split(' ')[0]; }
+
+function dgOffCard(kind, info = {}) {
+  let card = document.getElementById('tts-off-card');
+  const player = document.querySelector('#voice-player-container .voice-player');
+  clearTimeout(dgOffCard.timer);
+  if (!kind || !player || !player.getClientRects().length) {  // (a fixed player has no offsetParent)
+    card?.classList.remove('on');
+    dgOffCardState = null;
+    return;
+  }
+  if (!card) {
+    document.body.insertAdjacentHTML('beforeend', '<div id="tts-off-card" class="tts-card" role="status" aria-live="polite"></div>');
+    card = document.getElementById('tts-off-card');
+  }
+  dgOffCardState = { kind, ...info };
+  const t = ttsUiText(), name = dgOffName(info.vid), v = dgOffKnown?.[info.vid];
+  const btn = (attr, text) => `<button type="button" class="tts-chip main" ${attr}>${text}</button>`;
+  const x = (attr, title) => `<button type="button" class="tts-ib" ${attr} title="${title}">&times;</button>`;
+  let text, act = '', close = x('data-offcard="close"', t.close), pct = null;
+  if (kind === 'offer') {
+    text = t.offOffer;
+    act = btn(`data-offvid="${info.vid}"`, `${t.offGet} · ${dgOffMb(v)} ${t.mb}`);
+    close = x('data-offcard="later"', t.offLater);
+  } else if (kind === 'loading') {
+    pct = Math.round((info.p || 0) * 100);
+    text = `${t.offLoadT} · ${pct}%`;
+    close = x('data-offcard="cancel"', t.offCancel);
+  } else if (kind === 'done') {
+    text = t.offDoneT;
+  } else if (kind === 'error') {
+    text = `${info.why === 'space' ? t.offErr.space(dgOffMb(v)) : info.why === 'net' ? t.offErr.net : t.offErr.server} <a href="javascript:void(0)" data-offcard="voices">${t.offVoicesBtn}</a>`;
+    act = btn(`data-offvid="${info.vid}"`, t.offRetry);
+  } else if (kind === 'stale') {
+    text = t.offStaleT(name);
+    act = btn(`data-offvid="${info.vid}"`, `${t.offUpd} · ${dgOffMb(v)} ${t.mb}`);
+    close = x('data-offcard="later"', t.offLater);
+  } else if (kind === 'nonet') {
+    text = t.offNonetT;
+  }
+  card.className = 'tts-card on' + (kind === 'error' ? ' err' : '');
+  card.innerHTML = `${DG_OFF_DOWN}<span class="tx">${text}</span>${act}${close}` +
+    (pct !== null ? `<i class="bar" style="width:${pct}%"></i>` : '');
+  const p = player.getBoundingClientRect();
+  card.style.width = p.width + 'px';
+  placeTtsWin(card, abovePlayer);
+  card.style.maxHeight = '';
+  if (kind === 'done' || kind === 'nonet') dgOffCard.timer = setTimeout(() => dgOffCard(null), kind === 'done' ? 5000 : 8000);
+}
+
+// Right above the player, centred on it, never off screen
+function abovePlayer(w, h) {
+  const p = document.querySelector('#voice-player-container .voice-player').getBoundingClientRect();
+  return { left: Math.max(8, Math.min(window.innerWidth - 8 - w, p.left + p.width / 2 - w / 2)), top: Math.max(8, p.top - h - 6) };
+}
+
+// After a Pali line the DG voice read (playCurrentSegment): offer the voice, or its update, once
+let dgOffLines = 0;  // Pali lines the DG voice read on this page: the offer waits for the 3rd (owner: not at once)
 async function dgOfflineOffer() {
-  const box = document.getElementById('tts-offline-offer'), vid = dgPaliVoice();
-  if (!box || !box.hidden || dgOffIds().includes(vid) || localStorage.getItem('dg_voice_offline_no')) return;
-  let v;
-  try { v = (await dgOffVoices())[vid]; } catch (e) { return; }
-  if (!v) return;
-  const t = ttsUiText();
-  box.innerHTML = `<span class="lb">${t.offOffer}</span>
-    <button type="button" class="tts-chip" data-offvid="${vid}">${t.offGet} · ${dgOffMb(v)} ${t.mb}</button>
-    <button type="button" class="tts-ib" data-offno="1" title="${t.offNo}">&times;</button>`;
-  box.hidden = false;
+  const vid = dgPaliVoice();
+  if (++dgOffLines < 3 || dgOffCardState || dgOffBusy) return;
+  try { await dgOffVoices(); } catch (e) { return; }
+  if (!dgOffKnown[vid]) return;  // not offered offline (the own voice)
+  const later = Date.now() - (+localStorage.getItem('dg_voice_offline_later') || 0) < 30 * 864e5;  // "×": a month
+  if (dgOffIds().includes(vid)) {
+    const stale = (localStorage.getItem('dg_voice_offline_stale') || '').split(',').includes(vid);
+    if (stale && !later) dgOffCard('stale', { vid });
+  } else if (!later) dgOffCard('offer', { vid });
+}
+
+// The DG voice failed on a Pali line (playCurrentSegment): with no network and no voice on the device, say so once
+function dgOfflineNoNet() {
+  const vid = dgPaliVoice();
+  if (navigator.onLine || dgOffIds().includes(vid) || dgOffCardState || sessionStorage.getItem('dg_voice_offline_nonet')) return;
+  sessionStorage.setItem('dg_voice_offline_nonet', '1');
+  dgOffCard('nonet', { vid });
 }
 
 function dgOfflineRender() {
-  const t = ttsUiText(), box = document.getElementById('tts-offline-offer'), sub = document.getElementById('tts-off-sub');
-  if (box && !box.hidden && dgOffBusy) box.querySelector('.lb').textContent = `${t.offLoading} ${Math.round(dgOffBusy.p * 100)}%`;
+  const t = ttsUiText(), sub = document.getElementById('tts-off-sub');
   if (sub) {
-    const names = dgOffIds().map(id => (dgOffKnown?.[id]?.label || id).split(' ')[0]);
+    const names = dgOffIds().map(dgOffName);
     sub.textContent = dgOffBusy ? `${t.offLoading} ${Math.round(dgOffBusy.p * 100)}%` : names.length ? `${t.offHave}: ${names.join(', ')}` : t.offSub;
   }
   const win = document.getElementById('tts-voice-win');
@@ -1129,45 +1203,65 @@ function dgOfflineRender() {
   }
 }
 
+async function dgOfflineDownload(vid) {
+  if (dgOffBusy) return;
+  const ctrl = new AbortController();
+  dgOffBusy = { vid, p: 0, ctrl };
+  dgOffCard('loading', { vid });
+  dgOfflineRender();
+  let shown = 0;
+  try {
+    await dgOffVoices();
+    await (await dgOffline()).download(vid, (p, done, total) => {
+      dgOffBusy.p = p;
+      if (p - shown >= 0.01) {
+        shown = p;
+        if (dgOffCardState?.kind === 'loading') dgOffCard('loading', { vid, p, done, total });
+        dgOfflineRender();
+      }
+    }, ctrl.signal);
+    dgOffBusy = null;
+    dgOffCard('done', { vid });
+  } catch (err) {
+    dgOffBusy = null;
+    if (ctrl.signal.aborted) dgOffCard(null);
+    else {
+      console.warn('Offline voice download failed', err);
+      const why = err?.name === 'QuotaExceededError' || err?.message === 'no space' ? 'space'
+        : !navigator.onLine || err instanceof TypeError || err?.name === 'TimeoutError' ? 'net' : 'server';
+      dgOffCard('error', { vid, why });
+    }
+  }
+  dgOfflineRender();
+}
+
 document.addEventListener('click', async e => {
-  const b = e.target.closest('[data-offvid], [data-offdel], [data-offno], #tts-off-btn');
+  if (e.target.closest('.close-tts-btn')) { dgOffCard(null); return; }  // the player closes: the card goes too
+  const b = e.target.closest('[data-offvid], [data-offdel], [data-offno], [data-offcard], #tts-off-btn');
+  if (b?.dataset.offcard === 'voices') dgOffCard(null);
   if (!b) return;
-  const box = document.getElementById('tts-offline-offer'), t = ttsUiText();
   if (b.dataset.offno) {
     localStorage.setItem('dg_voice_offline_no', '1');
-    if (box) box.hidden = true;
-  } else if (b.id === 'tts-off-btn') {  // the DG Pali voice list, where the icons are
+    dgOffCard(null);
+  } else if (b.dataset.offcard === 'later') {
+    localStorage.setItem('dg_voice_offline_later', String(Date.now()));
+    dgOffCard(null);
+  } else if (b.dataset.offcard === 'cancel') {
+    dgOffBusy?.ctrl.abort();
+  } else if (b.dataset.offcard === 'close') {
+    dgOffCard(null);
+  } else if (b.id === 'tts-off-btn' || b.dataset.offcard === 'voices') {  // the DG Pali voice list, where the icons are
     document.querySelector('.tts-vrow[data-l="pi"] .tts-vbtn')?.click();
     await new Promise(r => setTimeout(r, 60));
     document.querySelector('#tts-voice-win [data-eng="dg"]')?.click();
   } else if (b.dataset.offdel) {
     await (await dgOffline()).remove(b.dataset.offdel);
     dgOfflineRender();
-  } else if (!dgOffBusy) {
-    const vid = b.dataset.offvid;
-    dgOffBusy = { vid, p: 0 };
-    if (box && !box.hidden) box.querySelectorAll('button').forEach(x => { x.hidden = true; });
-    dgOfflineRender();
-    let msg, shown = 0;
-    try {
-      await dgOffVoices();
-      await (await dgOffline()).download(vid, p => {
-        dgOffBusy.p = p;
-        if (p - shown >= 0.01) { shown = p; dgOfflineRender(); }
-      });
-      msg = t.offDone;
-    } catch (err) {
-      console.warn('Offline voice download failed', err);
-      msg = t.offFail;
-    }
-    dgOffBusy = null;
-    dgOfflineRender();
-    if (box && !box.hidden) {
-      box.querySelector('.lb').textContent = msg;
-      setTimeout(() => { box.hidden = true; }, 5000);
-    }
+  } else {
+    dgOfflineDownload(b.dataset.offvid);
   }
 });
+
 
 async function fetchGoogleAudio(text, lang, rate, apiKey) {
   let targetConfig = null;
@@ -1701,6 +1795,7 @@ async function playCurrentSegment() {
                   if (item.lang === 'pi-dev') dgOfflineOffer();
               } catch (e) {
                   console.warn("Pali voice failed, falling back to Google", e);
+                  if (item.lang === 'pi-dev') dgOfflineNoNet();
               }
           }
           if (!audioContent && tryGoogle) {
@@ -2544,7 +2639,6 @@ function getPlayerHtml() {
         <button type="button" class="tts-chip" id="tts-mode-chip" aria-expanded="false" title="${t.modeTitle}"><span id="tts-mode-label">${modeLabels[savedMode] || ''}</span><span class="dd">▾</span></button>
         <button type="button" id="tts-rate-btn" class="tts-chip tts-rate-select" aria-expanded="false">${formatRate(savedRate(savedMode === 'pi' ? 'pali' : 'trn'))}</button>
       </div>
-      <div id="tts-offline-offer" class="tts-row tts-off" hidden></div>
 
       <div id="tts-settings-panel" class="tts-pan">
           <div class="tts-grp" data-t="playback">${t.playback}</div>
@@ -2581,6 +2675,20 @@ function ttsUiText() {
     offSub: ru ? "Голос можно скачать в списке голосов DG" : "Download a voice in the DG voice list",
     offVoices: ru ? "Голоса" : "Voices",
     offOffer: ru ? "Слушать без интернета" : "Listen offline",
+    offLater: ru ? "Позже" : "Later",
+    offLoadT: ru ? "Скачивание голоса" : "Downloading the voice",
+    offCancel: ru ? "Отмена" : "Cancel",
+    offDoneT: ru ? "Голос скачан: читает и без сети" : "Voice downloaded: reads offline too",
+    offErr: {
+      net: ru ? "Не скачалось: нет сети." : "Not downloaded: no network.",
+      space: mb => ru ? `Нет места: нужно ${mb} МБ.` : `No space: ${mb} MB needed.`,
+      server: ru ? "Не скачалось: сервер недоступен." : "Not downloaded: server unavailable.",
+    },
+    offRetry: ru ? "Повторить" : "Retry",
+    offVoicesBtn: ru ? "Голоса" : "Voices",
+    offStaleT: () => ru ? "Есть обновление" : "Update available",
+    offNonetT: ru ? "Нет сети: читает голос устройства" : "No network: the device's voice reads",
+    close: ru ? "Закрыть" : "Close",
     offGet: ru ? "Скачать" : "Download",
     offDel: ru ? "Удалить" : "Remove",
     offUpd: ru ? "Обновить" : "Update",
@@ -2634,7 +2742,7 @@ function getOrBuildPlayer() {
         // The ?v= stamp matters: /read/css/voice.css is served immutable for a year, so without it a
         // CSS fix would never reach anyone who had already opened the player (issue #20's rule was
         // invisible in the browser because of exactly that). Bump the stamp with the next edit.
-        document.head.insertAdjacentHTML('beforeend', '<link id="voice-css-lazy" rel="stylesheet" href="/read/css/voice.css?v=2026-10-10off2">');
+        document.head.insertAdjacentHTML('beforeend', '<link id="voice-css-lazy" rel="stylesheet" href="/read/css/voice.css?v=2026-10-10strip">');
     }
 
     if (!playerContainer) {
@@ -2729,7 +2837,7 @@ async function handleTTSSettingChange(e) {
           
           keysToRemove.forEach(k => localStorage.removeItem(k));
           // the voices downloaded for offline (voice-offline.js) go too
-          ['dg_voice_offline', 'dg_voice_offline_no', 'dg_voice_offline_stale'].forEach(k => localStorage.removeItem(k));
+          ['dg_voice_offline', 'dg_voice_offline_no', 'dg_voice_offline_stale', 'dg_voice_offline_later'].forEach(k => localStorage.removeItem(k));
           await new Promise(r => {
             const q = indexedDB.deleteDatabase('dg-voice-offline');
             q.onsuccess = q.onerror = q.onblocked = r;
