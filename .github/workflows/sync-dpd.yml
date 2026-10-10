@@ -1,0 +1,52 @@
+name: Sync DPD dictionary from dictPlugin
+
+# The reader's standalone dictionary (/assets/js/standalone-dpd/*, served from public/overrides) is
+# built in dhammagift/dictPlugin. Its own job (sync-to-dg.yml) pushed the files into the legacy repo
+# dhammagift/dg, which dg-node no longer reads, with a token that has expired (fails since 2026-09-26).
+# So this repo pulls them itself: dictPlugin is public, no cross-repo token is needed. Same files, same
+# const/let -> var patch as that job (the reader reads the dictionaries as globals).
+
+on:
+  workflow_dispatch:
+  # dictPlugin can ping it right after a release: POST /repos/dhammagift/dg-node/dispatches
+  # {"event_type":"dpd-release"} with a token allowed to; until then the daily check catches it.
+  repository_dispatch:
+    types: [dpd-release]
+  schedule:
+    - cron: '30 2 * * *'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-dpd
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch the dictionary files
+        run: |
+          set -e
+          SRC=https://raw.githubusercontent.com/dhammagift/dictPlugin/main/assets/standalone-dpd
+          DST=public/overrides/js/standalone-dpd
+          mkdir -p "$DST/ru"
+          for f in dpd_deconstructor.js dpd_ebts.js dpd_i2h.js ru/dpd_ebts.js; do
+            curl -fsSL --retry 3 "$SRC/$f" -o "$DST/$f.new"
+            # a broken download must not replace a working dictionary
+            [ "$(stat -c%s "$DST/$f.new")" -gt 100000 ] || { echo "::error::$f looks truncated"; exit 1; }
+            sed -i -E 's/^([[:space:]]*(const|let|var)?[[:space:]]*)?(dpd_i2h|dpd_deconstructor|dpd_ebts)([[:space:]]*=)/var \3\4/' "$DST/$f.new"
+            mv "$DST/$f.new" "$DST/$f"
+          done
+
+      - name: Commit if changed
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add public/overrides/js/standalone-dpd
+          if git diff --cached --quiet; then echo "No changes"; exit 0; fi
+          git commit -m "DPD dictionary: new release from dictPlugin"
+          git push

@@ -63,7 +63,10 @@ S4 ключ Google TTS — «позже» (владелец).
 done P1 поиск в worker_threads (1 воркер первый ответ + 2 enrich, простаивающие гасятся через 20 с);
    клиент: чанк 100, 2 параллельно. «ana» больше не тормозит остальных; /api/text 30–75 мс под нагрузкой.
 done P2 DPD: первый раз — по клику по слову, потом предзагрузка из кэша (флаг dgDpdLoaded).
-   Нюанс владельца: новую версию словаря забирать из dictPlugin (там есть джоб, в старом репо работал) — не сделано.
+   done Новая версия словаря из dictPlugin: старый джоб dictPlugin (sync-to-dg.yml) пушил в dhammagift/dg, который
+   dg-node не читает, и падает с 2026-09-26 (протух TARGET_REPO_TOKEN). Теперь dg-node сам забирает файлы:
+   .github/workflows/sync-dpd.yml (раз в сутки, вручную, repository_dispatch dpd-release), та же замена const→var.
+   Сентябрьский релиз DPD подтянут в public/overrides/js/standalone-dpd. На сервер попадает обычным pull+restart.
 done P3 автоподсказка: словарь нормализуется один раз, лимит 100, ранний выход (1–2,3 с → ~0,17 с).
 done P4 выдача: matcher и base URL мемоизированы.
 done P5 SW: activate больше не качает precache второй раз; /search и /search/enrich не кэшируются; /api/text — последние 200.
