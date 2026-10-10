@@ -1045,20 +1045,95 @@ async function fetchPaliVoiceAudio(text, uiRate, voice) {
   // Pali: menu 0.8 = the voice's tuned pace; translation voices: 1.0 = their own pace
   voice = voice || dgPaliVoice();
   const isPaliVoice = !voice || DG_PALI_VOICES.some(v => v.id === voice);  // no voice: the server's Pali default
-  const body = JSON.stringify({ text, rate: isPaliVoice ? uiRate / 0.8 : uiRate, voice });
+  const rate = isPaliVoice ? uiRate / 0.8 : uiRate;
+  const body = JSON.stringify({ text, rate, voice });
+  // The voice downloaded to the device (voice-offline.js): used with no network, or when the servers fail / are slow
+  const offline = isPaliVoice && localStorage.getItem('dg_voice_offline');
+  const local = offline && (!voice || voice === offline) ? () => dgOffline().then(m => m.speak(text, rate)) : null;
+  if (local && !navigator.onLine) return local();
   let lastError;
   for (const url of DG_TTS_URLS) {
     try {
       const r = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body,
-                                   signal: AbortSignal.timeout(20000) });
+                                   signal: AbortSignal.timeout(local ? 5000 : 20000) });
       if (r.ok) return (await r.json()).audioContent;
       lastError = new Error(url + ' HTTP ' + r.status);
     } catch (e) {
       lastError = e;
     }
   }
+  if (local) return local();
   throw lastError;
 }
+const dgOffline = () => import('/read/js/voice-offline.js?v=2026-10-10');
+if (localStorage.getItem('dg_voice_offline') && navigator.onLine) {  // newer rules for the downloaded voice, quietly
+  setTimeout(() => dgOffline().then(m => m.refresh()).then(dgOfflineRender).catch(() => {}), 5000);
+}
+
+// Offline voice in the player: a one-line offer under it after the first line DG read (owner: "want to listen
+// offline? download"), "×" hides it for good; the settings panel keeps a row to download, update or remove it.
+let dgOfflineBusy = null;  // download progress 0..1 while downloading
+async function dgOfflineOffer() {
+  const box = document.getElementById('tts-offline-offer');
+  if (!box || !box.hidden || localStorage.getItem('dg_voice_offline') || localStorage.getItem('dg_voice_offline_no')) return;
+  let o;
+  try { o = await (await dgOffline()).offer(); } catch (e) { return; }
+  const v = o.voices[dgPaliVoice()];
+  if (!v) return;  // this voice is not offered offline (the own voice)
+  const t = ttsUiText();
+  box.innerHTML = `<span class="lb">${t.offOffer}</span>
+    <button type="button" class="tts-chip" data-off="get">${t.offGet} · ${dgOfflineMb(v)} ${t.mb}</button>
+    <button type="button" class="tts-ib" data-off="no" title="${t.offNo}">&times;</button>`;
+  box.hidden = false;
+}
+const dgOfflineMb = v => Math.round((v.bytes + 14239897) / 1048576);  // + onnxruntime's wasm
+
+async function dgOfflineRender() {
+  const sub = document.getElementById('tts-off-sub'), btn = document.getElementById('tts-off-btn');
+  const box = document.getElementById('tts-offline-offer');
+  const t = ttsUiText();
+  const pct = dgOfflineBusy !== null ? `${t.offLoading} ${Math.round(dgOfflineBusy * 100)}%` : '';
+  if (box && !box.hidden && pct) box.querySelector('.lb').textContent = pct;
+  if (!sub || !btn) return;
+  const m = localStorage.getItem('dg_voice_offline') ? await (await dgOffline()).meta().catch(() => null) : null;
+  btn.disabled = dgOfflineBusy !== null;
+  btn.dataset.off = m ? (m.stale ? 'get' : 'del') : 'get';
+  btn.textContent = m ? (m.stale ? t.offUpd : t.offDel) : t.offGet;
+  sub.textContent = pct || (m ? `${t.offHave}: ${m.vid}${m.stale ? ', ' + t.offStale : ''}` : t.offSub);
+}
+
+document.addEventListener('click', async e => {
+  const b = e.target.closest('[data-off]');
+  if (!b || !b.closest('#voice-player-container')) return;
+  const box = document.getElementById('tts-offline-offer');
+  const t = ttsUiText();
+  if (b.dataset.off === 'no') {
+    localStorage.setItem('dg_voice_offline_no', '1');
+    if (box) box.hidden = true;
+  } else if (b.dataset.off === 'del') {
+    await (await dgOffline()).remove();
+    dgOfflineRender();
+  } else if (dgOfflineBusy === null) {
+    dgOfflineBusy = 0;
+    if (box && !box.hidden) box.querySelectorAll('button').forEach(x => { x.hidden = true; });
+    dgOfflineRender();
+    let msg;
+    try {
+      const vid = (await (await dgOffline()).meta().catch(() => null))?.vid || dgPaliVoice();
+      await (await dgOffline()).download(vid, p => { dgOfflineBusy = p; dgOfflineRender(); });
+      msg = t.offDone;
+    } catch (err) {
+      console.warn('Offline voice download failed', err);
+      msg = t.offFail;
+    }
+    dgOfflineBusy = null;
+    dgOfflineRender();
+    if (box && !box.hidden) {
+      box.querySelector('.lb').textContent = msg;
+      setTimeout(() => { box.hidden = true; }, 5000);
+    }
+  }
+});
 
 async function fetchGoogleAudio(text, lang, rate, apiKey) {
   let targetConfig = null;
@@ -1589,6 +1664,7 @@ async function playCurrentSegment() {
               try {
                   audioContent = await dgAudio(dgVoiceRequest(item));
                   dgPrefetchAhead(targetIndex);
+                  if (item.lang === 'pi-dev') dgOfflineOffer();
               } catch (e) {
                   console.warn("Pali voice failed, falling back to Google", e);
               }
@@ -1604,7 +1680,8 @@ async function playCurrentSegment() {
           if (audioContent) {
               const audio = window.sharedGoogleAudio || new Audio();
               window.sharedGoogleAudio = audio;
-              audio.src = "data:audio/mp3;base64," + audioContent;
+              // a WAV (base64 'RIFF…') comes from the voice on the device (voice-offline.js)
+              audio.src = (audioContent.startsWith('UklGR') ? 'data:audio/wav;base64,' : 'data:audio/mp3;base64,') + audioContent;
               
               ttsState.googleAudio = audio;
               
@@ -2433,12 +2510,14 @@ function getPlayerHtml() {
         <button type="button" class="tts-chip" id="tts-mode-chip" aria-expanded="false" title="${t.modeTitle}"><span id="tts-mode-label">${modeLabels[savedMode] || ''}</span><span class="dd">▾</span></button>
         <button type="button" id="tts-rate-btn" class="tts-chip tts-rate-select" aria-expanded="false">${formatRate(savedRate(savedMode === 'pi' ? 'pali' : 'trn'))}</button>
       </div>
+      <div id="tts-offline-offer" class="tts-row tts-off" hidden></div>
 
       <div id="tts-settings-panel" class="tts-pan">
           <div class="tts-grp" data-t="playback">${t.playback}</div>
           <label class="tts-row"><span class="lb"><span data-t="scroll">${t.scroll}</span> <span class="tts-kbd">S</span><small data-t="scrollSub">${t.scrollSub}</small></span><span class="tts-sw"><input type="checkbox" id="tts-scroll-toggle" ${ttsState.autoScroll ? 'checked' : ''}><span></span></span></label>
           <label class="tts-row"><span class="lb"><span data-t="autoplay">${t.autoplay}</span><small data-t="autoplaySub">${t.autoplaySub}</small></span><span class="tts-sw"><input type="checkbox" id="tts-autoplay-toggle" ${localStorage.getItem('ttsMode') === 'true' ? 'checked' : ''}><span></span></span></label>
           <div class="tts-row tts-delay-row"><span class="lb" title="${t.delayTitle}" data-t="delay">${t.delay}</span><span class="tts-stp"><button type="button" data-stp="tts-segment-delay-input" data-d="-0.5" aria-label="−">−</button><span id="tts-segment-delay-input" class="stp-v" contenteditable="true" inputmode="decimal" spellcheck="false">${localStorage.getItem('dg_tts_segment_delay') || 0}</span><span class="u" data-t="sec">${t.sec}</span><button type="button" data-stp="tts-segment-delay-input" data-d="0.5" aria-label="+">+</button></span></div>
+          <div class="tts-row"><span class="lb"><span data-t="offline">${t.offline}</span><small id="tts-off-sub">${t.offSub}</small></span><button type="button" id="tts-off-btn" class="tts-chip" data-off="get">${t.offGet}</button></div>
           <div class="tts-links tts-links-row">
             <a href="javascript:void(0)" id="tts-advanced-toggle-btn" title="${t.engineSettingsTitle}">${gi('wrench-solid-full.svg')}${t.engineSettings}</a>
             <span id="audio-file-link-placeholder"></span>
@@ -2464,6 +2543,19 @@ function ttsUiText() {
   const ru = window.isRu;
   return {
     settings: ru ? "Настройки" : "Settings",
+    offline: ru ? "Без интернета" : "Offline",
+    offSub: ru ? "Скачать на устройство: читает и без сети" : "Download to this device: reads with no network",
+    offOffer: ru ? "Слушать без интернета" : "Listen offline",
+    offGet: ru ? "Скачать" : "Download",
+    offDel: ru ? "Удалить" : "Remove",
+    offUpd: ru ? "Обновить" : "Update",
+    offNo: ru ? "Не надо" : "No thanks",
+    offHave: ru ? "Скачан" : "Downloaded",
+    offStale: ru ? "есть новая версия" : "a newer version is out",
+    offLoading: ru ? "Скачивание…" : "Downloading…",
+    offDone: ru ? "Голос скачан: читает и без интернета" : "Voice downloaded: reads with no network",
+    offFail: ru ? "Не удалось скачать, попробуйте позже" : "Download failed, try again later",
+    mb: ru ? "МБ" : "MB",
     playback: ru ? "Воспроизведение" : "Playback",
     scroll: ru ? "Автоскролл" : "Scroll",
     scrollSub: ru ? "Текст едет за голосом" : "Text follows the voice",
@@ -2507,7 +2599,7 @@ function getOrBuildPlayer() {
         // The ?v= stamp matters: /read/css/voice.css is served immutable for a year, so without it a
         // CSS fix would never reach anyone who had already opened the player (issue #20's rule was
         // invisible in the browser because of exactly that). Bump the stamp with the next edit.
-        document.head.insertAdjacentHTML('beforeend', '<link id="voice-css-lazy" rel="stylesheet" href="/read/css/voice.css?v=2026-10-08prose">');
+        document.head.insertAdjacentHTML('beforeend', '<link id="voice-css-lazy" rel="stylesheet" href="/read/css/voice.css?v=2026-10-10off">');
     }
 
     if (!playerContainer) {
@@ -2524,6 +2616,7 @@ function getOrBuildPlayer() {
     const playerInner = playerContainer.querySelector('.voice-player');
     if (playerInner) {
         playerInner.innerHTML = getPlayerHtml();
+        dgOfflineRender();
 
         // Запускаем сборку интерфейса (Нативные + Google)
         setTimeout(() => refreshVoiceDropdowns(), 100);

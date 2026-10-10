@@ -216,6 +216,9 @@ body:has(#dgDlCard.show) .voice-player{bottom:calc(24px + var(--dg-dl-card-h, 12
 /* Quick chips: memo, mode, speed, A-B */
 /* chips at their own width (the mode chip no longer takes up the slack): the row, or the transport
    row above it, sets the player's width; panels below never widen it */
+.tts-row.tts-off{gap:4px;margin:-6px 10px 10px;padding:6px 4px 6px 12px;min-height:0;border-radius:10px;background:var(--dg-surface);border:1px solid var(--dg-border)}
+.tts-row.tts-off[hidden]{display:none}
+.tts-row.tts-off .lb{white-space:normal;font-size:13px;line-height:1.3}
 .tts-chips{display:grid;grid-template-columns:auto auto auto auto;justify-content:space-between;gap:4px;padding:6px 10px 14px}
 .tts-chip{height:32px;border:1px solid var(--dg-border-strong);background:var(--dg-surface);color:var(--dg-text);border-radius:999px;padding:0 7px;white-space:nowrap;flex-shrink:0;font:600 12px/1 Lato,system-ui,sans-serif;display:inline-flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;text-decoration:none;transition:background .15s,border-color .15s}
 .tts-chip:hover{background:var(--dg-surface-hover);color:var(--dg-text)}

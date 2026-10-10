@@ -35,7 +35,7 @@ var MOBILE_DATA_PREFIX = '/mobile-data/';
 // form need ignoreSearch — see matchCached().
 // Roots whose URLs legitimately carry a query (?v=<build> on assets, ?langs=ru,en on the TOC's
 // per-book trees) and where a cached bare path is the right answer for any query.
-var VERSIONED_ASSET_ROOTS = ['/assets/', '/spa/', '/nodejs/res/', '/reader/', '/settings/', '/api/toc/'];
+var VERSIONED_ASSET_ROOTS = ['/assets/', '/spa/', '/nodejs/res/', '/reader/', '/settings/', '/api/toc/', '/read/'];
 
 // Everything the shell needs to boot, and to run a search / open the reader, with no network.
 // Some entries are GENERATED and may legitimately be absent on a fresh checkout (/offline/*,
@@ -55,6 +55,13 @@ var PRECACHE_URLS = [
     '/offline/vendor/sqlite-wasm/index.js',
     '/offline/vendor/sqlite-wasm/sqlite3.wasm',
     '/offline/vendor/sqlite-wasm/sqlite3-opfs-async-proxy.js',
+
+    // The voice player: with the Pali voice downloaded to the device (voice-offline.js keeps the model in
+    // IndexedDB, not in a cache this file would delete), it reads with no network - so the player itself must open
+    // offline too, also right after a deploy put a fresh cache in place.
+    '/read/js/voice.js',
+    '/read/js/voice-offline.js',
+    '/read/css/voice.css',
 
     // Reader mode definitions — the reader cannot resolve a mode without this, online or off.
     '/reader/mode-table.json',
