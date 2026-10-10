@@ -1088,7 +1088,8 @@ function dgOffMb(v) {
   const ids = dgOffIds(), langs = ids.map(id => dgOffKnown?.[id]?.lang);
   let b = v.bytes + (ids.length ? 0 : 14239897);
   if ((v.lang === 'en' || v.lang === 'ru') && dgOffEspeak) {
-    b += (langs.some(l => l === 'en' || l === 'ru') ? 0 : dgOffEspeak.code + dgOffEspeak.core) + (langs.includes(v.lang) ? 0 : dgOffEspeak[v.lang]);
+    const wire = pack => dgOffEspeak.gz?.[pack] ?? dgOffEspeak[pack];  // the packs travel gzipped (ru 9 MB -> 5 MB)
+    b += (langs.some(l => l === 'en' || l === 'ru') ? 0 : dgOffEspeak.code + wire('core')) + (langs.includes(v.lang) ? 0 : wire(v.lang));
   }
   return Math.round(b / 1048576);
 }
