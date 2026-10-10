@@ -178,6 +178,11 @@ body.app main.page{view-transition-name:upo-page}
 ::view-transition-old(root),::view-transition-new(root){animation:none;mix-blend-mode:normal}
 ::view-transition-old(upo-page){animation:upo-vt-out 130ms cubic-bezier(.4,0,1,1) both}
 ::view-transition-new(upo-page){animation:upo-vt-in 280ms cubic-bezier(.05,.7,.1,1) both}
+/* the bottom bar is its own layer: the page snapshot is as tall as the screen and was drawn over the bar's pill, which blinked out for the length of the change; the bar stays live (its pill glides on its own) */
+body.app .appnav{view-transition-name:upo-nav}
+::view-transition-group(upo-nav){animation:none}
+::view-transition-old(upo-nav){display:none}
+::view-transition-new(upo-nav){animation:none}
 html{--upo-vt-dir:1}
 html[data-vt=back]{--upo-vt-dir:-1}
 @keyframes upo-vt-out{to{opacity:0;transform:translateX(calc(var(--upo-vt-dir) * -18px))}}

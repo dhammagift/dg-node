@@ -38,7 +38,8 @@ body.app #dg-drawer .dg-drawer-body { padding-bottom: calc(104px + env(safe-area
 body.app .up-appfoot { display: block; margin-top: 18px; }
 .up-appfoot .up-rate { display: flex; justify-content: space-between; align-items: center; }
 .up-appfoot .up-rate-em { font-size: 16px; font-weight: 400; letter-spacing: 2px; }
-.up-appfoot .up-ver { display: flex; justify-content: space-between; padding: 8px 4px 0; font-size: 12px; color: var(--dg-text-muted); }
+.up-appfoot .up-ver { flex-wrap: wrap; } /* the version is a row of the menu like the ones above it (.dg-drawer-row); the value is muted, the check button sits at the end */
+.up-appfoot .up-ver #up-ver { color: var(--dg-text-muted); }
 
 /* the moving pill is the feedback of the bar: the designer's ripple inside the icons is off here (it was drawn outside the shrunken icon box) */
 body.app .appnav .up-rip { display: none; }
