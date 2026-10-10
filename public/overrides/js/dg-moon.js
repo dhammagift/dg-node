@@ -23,7 +23,7 @@
   const norm = f => ((f % 1) + 1) % 1;
   const illum = f => (1 - Math.cos(2 * Math.PI * norm(f))) / 2;
   // The terminator as it is DRAWN (a loader that is honest and still readable): the true crescent of the day after a new moon is ~2 units thick and looks like the new moon; the thin part is raised to the power 0.6, the middle of the cycle hardly changes. Same in WidgetMoon.java / MoonView.swift.
-  const seen = a => 1 - Math.pow(1 - Math.min(1, Math.max(0, a)), 0.6);
+  const seen = a => { const u = 1 - Math.min(1, Math.max(0, a)); return 1 - (Math.pow(u, 0.6) + 0.07 * Math.exp(-u / 0.06) * (1 - Math.exp(-u / 0.0015))); }; // + a bump for the first 5 % so that the day after a new moon (and the 14th day) can be told from the new (full) one; not exact on purpose
 
   // ---------- геометрия ----------
   // Освещённая часть — для нативного виджета (SwiftUI Path / Android Canvas повторяют её один в один).
