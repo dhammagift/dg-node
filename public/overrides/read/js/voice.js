@@ -2974,7 +2974,8 @@ document.addEventListener('click', e => {
     return;
   }
   // a target that re-rendered itself away (voice picker levels) is no click outside
-  if (e.target.isConnected && !e.target.closest('.tts-win, #tts-mode-chip, .tts-vbtn')) closeTtsWins();
+  // (the offline strip's buttons open the voice list themselves)
+  if (e.target.isConnected && !e.target.closest('.tts-win, #tts-mode-chip, .tts-vbtn, #tts-off-card')) closeTtsWins();
 });
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && document.querySelector('.tts-win.on')) {
