@@ -5,7 +5,7 @@
 // so the page does not freeze. Same code in the browser, the PWA and the apps (Capacitor WebView).
 // voice.js imports this only once a voice is downloaded (localStorage dg_voice_offline = voice id) or on "download".
 const APIS = [...(self.DG_TTS_URL ? [self.DG_TTS_URL.replace(/\/pali$/, '/offline/')] : []),  // as voice.js's DG_TTS_URLS
-              'https://api.dhamma.gift/api/tts/offline/', 'https://api2.dhamma.gift/api/tts/offline/'];
+              'https://api.dhamma.gift/api/tts/offline/', 'https://api2.dhamma.gift/api/tts/offline/', '/api/tts/offline/'];
 const ORT = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.30.0/dist/';
 export const KEY = 'dg_voice_offline';
 
