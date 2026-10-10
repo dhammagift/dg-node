@@ -1184,12 +1184,14 @@ searchCore.init({ searchDb, DG_OFFLINE, limits: REGEX_LIMITS });
 regexRunner.configure({ dbPath: SEARCH_DB_PATH, dgOffline: DG_OFFLINE, limits: REGEX_LIMITS });
 // Ordinary searches run in worker threads too: node:sqlite is synchronous, and one wide query
 // ("ana": 3226 texts, 14 enrich chunks of ~4 s) used to hold the event loop, so everyone else's
-// "kacchapa" took 8 s instead of 0.01 s. One worker for the first answer (?fast=1 / full), two for
+// "kacchapa" took 8 s instead of 0.01 s. Two workers for the first answer (?fast=1 / full), two for
 // enrich chunks, so a long enrich never stands in front of someone's first page. A dead or
 // unconfigured worker falls back to the old in-process run (searchJob below).
 const plainLimits = { ...REGEX_LIMITS, timeoutMs: 60000, maxQueue: 50, idleMs: 20000, maxHeapMb: Number(process.env.DG_SEARCH_HEAP_MB) || 1024 };
-const searchPool = { first: regexRunner.create(), enrich: [regexRunner.create(), regexRunner.create()] };
-for (const r of [searchPool.first, ...searchPool.enrich]) r.configure({ dbPath: SEARCH_DB_PATH, dgOffline: DG_OFFLINE, limits: plainLimits });
+// Two for the first answer too: with one, a long query ("ana", full /search ~11 s) made the next person's
+// ?fast=1 wait behind it (8.5 s instead of 0.01 s).
+const searchPool = { first: [regexRunner.create(), regexRunner.create()], enrich: [regexRunner.create(), regexRunner.create()] };
+for (const r of [...searchPool.first, ...searchPool.enrich]) r.configure({ dbPath: SEARCH_DB_PATH, dgOffline: DG_OFFLINE, limits: plainLimits });
 // mmap is deliberately left off (SQLite's default). Mapping the file makes every page the query
 // touches count towards this process's RSS, which measured ~500MB higher for no useful speed —
 // the pages are in the OS page cache either way, and read() reaches them just as fast.
@@ -2496,9 +2498,7 @@ async function regexSearch(kind, keyword, params) {
 // asJson: nothing will be changed in the answer here (no ?script= conversion), so the worker sends its
 // finished JSON text and this process passes it on as is: { json, zero } instead of { result }.
 async function searchJob(kind, keyword, params, asJson) {
-    const runner = kind === 'enrich'
-        ? searchPool.enrich.reduce((a, b) => (b.load() < a.load() ? b : a))
-        : searchPool.first;
+    const runner = (kind === 'enrich' ? searchPool.enrich : searchPool.first).reduce((a, b) => (b.load() < a.load() ? b : a));
     const outcome = await runner.runJob(kind, { keyword, plain: true, asJson: !!asJson, ...params });
     if (outcome.ok) return outcome.json !== undefined
         ? (outcome.zero ? { result: JSON.parse(outcome.json) } : { json: outcome.json }) // zero results: suggestions are added below
