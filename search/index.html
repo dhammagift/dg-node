@@ -1546,17 +1546,12 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
   </footer>
 </div>
 
-<!-- jQuery/bootstrap.bundle — moved here from <head> (were plain blocking <script> tags there,
-     each pausing HTML parsing of the ENTIRE rest of the page — hero band, tiles, howto, footer,
-     literally everything below them — until fully downloaded and run). Neither is needed until
-     the very first script below that actually calls jQuery, so parsing/painting all the visible
-     home-page markup above no longer waits on them at all; they only block right here, at their
-     actual first use. defer wasn't an option: this and the scripts after it are plain inline
-     <script>s (defer has no effect on inline scripts) that call jQuery synchronously the moment
-     the parser reaches them, so jQuery has to already be a real blocking load positioned directly
-     before its first caller — just no longer at the very top of the page. -->
-<script src="/assets/js/jquery-3.7.0.min.js"></script>
-<script type="text/javascript" src="/assets/js/bootstrap.bundle.5.3.1.min.js"></script>
+<!-- jQuery/bootstrap.bundle — defer: they no longer hold up parsing of the rest of the page. The
+     inline scripts below are not deferred, so the only three places that call jQuery while the page
+     is still parsing (the autocompleteopen hook, the main $(document).ready block, the tooltip init)
+     wait for DOMContentLoaded — deferred scripts have all run by then. -->
+<script src="/assets/js/jquery-3.7.0.min.js" defer></script>
+<script type="text/javascript" src="/assets/js/bootstrap.bundle.5.3.1.min.js" defer></script>
 
 <script>
   // Нативный autofocus не срабатывает здесь (замерено раньше — element ещё не в DOM/не виден
@@ -1601,8 +1596,10 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
       input.addEventListener(ev, markInteracted);
     });
     // Делегируем на документ: виджет создаётся позже, когда jQuery UI догрузится.
-    jQuery(document).on('autocompleteopen', '#paliauto', function () {
-      if (!interacted) jQuery(this).autocomplete('close');
+    document.addEventListener('DOMContentLoaded', function () {
+      jQuery(document).on('autocompleteopen', '#paliauto', function () {
+        if (!interacted) jQuery(this).autocomplete('close');
+      });
     });
     window.dgSuppressAutocompleteUntilInteraction = function () { interacted = false; };
   })();
@@ -3259,7 +3256,9 @@ function tFrom(cfg, path, fallback) {
     return value === undefined ? fallback : value;
 }
 
-$(document).ready(function() {
+// $(fn) inside DOMContentLoaded (jQuery is deferred): jQuery still runs it after every other
+// DOMContentLoaded listener, as before.
+document.addEventListener('DOMContentLoaded', function () { $(function() {
     // Начальное состояние кнопок ru/en — до первого dhamma:languagechange/DHAMMA_I18N.ready
     // (см. updateLanguageButtons ниже), чтобы не мигать обеими "активными" при загрузке.
     updateLanguageButtons(window.siteLanguage);
@@ -3287,7 +3286,31 @@ $(document).ready(function() {
     // Кэш fast=1-ответов /search по полному URL запроса — назад/вперёд браузера на уже виденную
     // выдачу не должны заново ждать сеть (жалоба владельца: "каждый раз ждать результаты не
     // хорошо"). Ключ — сама строка запроса к /search, она уже учитывает scope/lb/la/langs/script.
+    // Bounded (LRU, a few entries): enrichment writes the quotes into the cached objects, so one wide
+    // query used to keep ~15 MB alive for the whole session. Answers over SEARCH_CACHE_MAX_ROWS rows
+    // are not kept at all.
     var searchResultCache = new Map();
+    var SEARCH_CACHE_SIZE = 6, SEARCH_CACHE_MAX_ROWS = 300;
+    function searchCacheGet(url) {
+        var json = searchResultCache.get(url);
+        if (json) { searchResultCache.delete(url); searchResultCache.set(url, json); }
+        return json;
+    }
+    function searchCachePut(url, json) {
+        if (Object.keys(json.data || {}).length > SEARCH_CACHE_MAX_ROWS) return;
+        searchResultCache.delete(url);
+        searchResultCache.set(url, json);
+        if (searchResultCache.size > SEARCH_CACHE_SIZE) searchResultCache.delete(searchResultCache.keys().next().value);
+    }
+    // One generation per search: every await in initSearchApp and every /search/enrich answer checks
+    // it, so a late answer of a previous search (or of the one the user navigated away from) is
+    // dropped instead of painting over the current one. Not aborted: the offline fetch shim
+    // (public/offline/app.js) reads any rejected fetch, AbortError included, as "no connection".
+    var searchGen = 0;
+    function dgCancelSearch() {
+        if (typeof window.dgClearAiSearch === 'function') window.dgClearAiSearch();
+        return ++searchGen;
+    }
     var currentTable = null;
     var enrichedIds = new Set();
     var pendingIds = new Set();
@@ -3572,9 +3595,11 @@ $(document).ready(function() {
     }
 
     function enrichChunk(chunkIds) {
+        var gen = searchGen;
         return fetch(buildUrl('/search/enrich', '&ids=' + chunkIds.map(encodeURIComponent).join(',')))
             .then(function (r) { return r.json(); })
             .then(function (json) {
+                if (gen !== searchGen) return; // a newer search owns lastSearchJson/pendingIds now
                 chunkIds.forEach(function (id) { pendingIds.delete(id); });
                 var visible = visiblePageIds();
                 var touchedVisible = false;
@@ -3609,6 +3634,7 @@ $(document).ready(function() {
                 }
             })
             .catch(function (error) {
+                if (gen !== searchGen) return; // a newer search owns pendingIds now
                 chunkIds.forEach(function (id) { pendingIds.delete(id); });
                 console.error('Ошибка при догрузке цитат:', error);
             });
@@ -3664,8 +3690,9 @@ $(document).ready(function() {
         var chunks = [];
         for (var i = 0; i < toFetch.length; i += ENRICH_CHUNK_SIZE) chunks.push(toFetch.slice(i, i + ENRICH_CHUNK_SIZE));
         var next = 0;
+        var gen = searchGen;
         function worker() {
-            if (next >= chunks.length) return Promise.resolve();
+            if (gen !== searchGen || next >= chunks.length) return Promise.resolve();
             var chunk = chunks[next++];
             chunk.forEach(function (id) { pendingIds.add(id); });
             return enrichChunk(chunk).then(worker);
@@ -3695,8 +3722,9 @@ $(document).ready(function() {
         if (enrichmentStarted) return;
         enrichmentStarted = true;
 
+        var gen = searchGen;
         backgroundLoadPromise = enrichIds(visiblePageIds())
-            .then(function () { return enrichOrderedIds(remainingIdsByPageDistance()); })
+            .then(function () { if (gen === searchGen) return enrichOrderedIds(remainingIdsByPageDistance()); })
             .catch(function (error) { console.error('Ошибка догрузки:', error); });
 
         // Таблица, отрисованная до этого момента, ещё не получила слушатель draw (см. коммент
@@ -4382,6 +4410,7 @@ $(document).ready(function() {
        buildSutta() было бы полдела — прокрутка к найденному месту и подсветка живут именно в
        initReader(). При первом открытии его вызывает сам файл при загрузке, дальше зовём мы. */
     function openReaderInPlace(slug) {
+        dgCancelSearch(); // a search still in flight must not flip the screen back to results
         dgSetBusy(false);
         // Coming from another screen: hide the (stale/empty) pane until buildSutta() has the new
         // text, so the enter animation plays once, on real content (.reader-pending, home.css).
@@ -4428,6 +4457,7 @@ $(document).ready(function() {
     }
 
     function openTocInPlace() {
+        dgCancelSearch(); // a search still in flight must not flip the screen back to results
         dgSetBusy(false);
         dgSetState('toc');
         var firstTime = !tocAssetsPromise;
@@ -4532,10 +4562,13 @@ $(document).ready(function() {
        (220ms), home-out (240ms), all in home.css, all off under prefers-reduced-motion. `to` is
        the screen we are going to: leaving is skipped when it is the same screen (a new query on
        the results page, a text link inside the reader is the exception — the reader replays its
-       enter on the new text). A second call while an exit is running just returns: the pending
-       one re-reads the (now newer) address. The search field is NOT part of any exit — it is
-       one DOM element in every state and travels by its own CSS transitions. */
+       enter on the new text). A second call while the exit animation runs replaces the pending
+       callback (the newest navigation wins); one after it ended — a body-level exit stays on while
+       the results fetch runs — goes straight through: it used to be dropped, losing a second Enter.
+       The search field is NOT part of any exit — it is one DOM element in every state and travels
+       by its own CSS transitions. */
     var DG_EXIT = { reader: ['reader-pane', 'reader-out', 240], toc: ['toc-pane', 'toc-out', 240], results: [null, 'results-out', 220], home: [null, 'home-out', 240] };
+    var dgLeavePending = null;
     function dgCurrentScreen() {
         for (var k in DG_EXIT) if (document.body.classList.contains('dg-state-' + k)) return k;
         return null;
@@ -4547,16 +4580,22 @@ $(document).ready(function() {
         if (!spec || same || (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)) { cb(); return; }
         var el = spec[0] ? document.getElementById(spec[0]) : document.body;
         if (!el) { cb(); return; }
-        if (el.classList.contains(spec[1])) return;
+        if (el.classList.contains(spec[1])) {
+            if (dgLeavePending) dgLeavePending = cb; else cb();
+            return;
+        }
         el.classList.add(spec[1]);
+        dgLeavePending = cb;
         setTimeout(function () {
+            var run = dgLeavePending;
+            dgLeavePending = null;
             // Pane-level exits (reader/toc) end here; the body-level ones (home-out /
             // results-out) stay until the screen really changes — the results fetch can take a
             // second, and dropping the class early brought the home page back in the meantime
             // (owner: "тайлы странно исчезают"). dgSetState()/dgSetBusy(false) drop them.
             if (spec[0]) el.classList.remove(spec[1]);
             if (from === 'reader') window.__dgReplayEnter = true;
-            cb();
+            run();
         }, spec[2]);
     }
     /* Which screen the current address leads to — mirrors routeFromUrlNow()/initSearchApp(). */
@@ -4595,6 +4634,7 @@ $(document).ready(function() {
         var quickModalMatch = path.match(/^4as(?:\/(\d))?$/);
         if (quickModalMatch) {
             var tabKey = QUICK_MODAL_TABS[(parseInt(quickModalMatch[1], 10) || 1) - 1] || QUICK_MODAL_TABS[0];
+            dgCancelSearch();
             dgSetBusy(false);
             dgSetState('home');
             // toggleQuickModal is defined in settings-bundle.js (defer script) — routeFromUrl()
@@ -4640,6 +4680,7 @@ $(document).ready(function() {
     });
 
     async function initSearchApp() {
+        const gen = dgCancelSearch();
         let urlParams = new URLSearchParams(window.location.search);
 
         keyword = urlParams.get('q');
@@ -4682,7 +4723,16 @@ $(document).ready(function() {
 
         // Нет запроса — это главная. Раньше здесь был просто return (пустая страница с одним
         // полем), теперь то же условие включает домашний экран.
-        if (!keyword) { dgSetBusy(false); dgSetState('home'); return; }
+        // Back to home from results/a text (not the first paint — someone may already be typing):
+        // the same empty field and tab title a fresh "/" has.
+        if (!keyword) {
+            if (/\bdg-state-(?!home\b)/.test(document.body.className)) {
+                document.title = 'Dhamma.gift';
+                $('#paliauto').val('');
+                if (window.DgHome && window.DgHome.syncInput) window.DgHome.syncInput();
+            }
+            dgSetBusy(false); dgSetState('home'); return;
+        }
 
         // Показываем в строке поиска, что сейчас ищем — можно сразу поправить и отправить снова.
         // (keyword уже декодирован — URLSearchParams.get делает это сам.)
@@ -4691,11 +4741,14 @@ $(document).ready(function() {
         if (window.DgHome && window.DgHome.syncInput) window.DgHome.syncInput();
 
         // Кэш быстрого ответа по адресу запроса: назад/вперёд браузера на уже виденный поиск не
-        // должны заново ждать сеть — та же выдача, тот же адрес, нечего перезапрашивать. Цитаты
-        // (/search/enrich) при восстановлении из кэша всё равно досчитываются заново — они не
-        // часть жалобы "жду результаты", это фон уже ПОСЛЕ того, как таблица видна.
+        // должны заново ждать сеть — та же выдача, тот же адрес, нечего перезапрашивать. Цитаты,
+        // уже догруженные в закэшированные строки (__enriched), не запрашиваются снова — только
+        // то, что не успело догрузиться.
         const searchUrl = buildUrl('/search', '&fast=1');
-        const cachedFastJson = searchResultCache.get(searchUrl);
+        const cachedFastJson = searchCacheGet(searchUrl);
+        if (cachedFastJson) Object.keys(cachedFastJson.data || {}).forEach(function (id) {
+            if (cachedFastJson.data[id].__enriched) enrichedIds.add(id);
+        });
 
         dgSetBusy(true);
         try {
@@ -4710,7 +4763,8 @@ $(document).ready(function() {
                 if (!fastResponse.ok) throw new Error("Ошибка сети при получении данных");
                 return fastResponse.json();
             })();
-            if (!cachedFastJson) searchResultCache.set(searchUrl, fastJson);
+            if (gen !== searchGen) return; // a newer search/screen took over while this one waited
+            if (!cachedFastJson) searchCachePut(searchUrl, fastJson);
 
             // 0 результатов + в запросе кириллица — возможно, ввели латинское слово, но
             // раскладка ОС была русской ("kacchapa" -> "лфссрфзф", буквы с тех же клавиш —
@@ -4728,9 +4782,10 @@ $(document).ready(function() {
                     try {
                         const retryResponse = await fetch(retryUrl);
                         const retryJson = retryResponse.ok ? await retryResponse.json() : null;
+                        if (gen !== searchGen) return;
                         if (retryJson && retryJson.metadata.totalFiles > 0) {
                             fastJson = retryJson;
-                            searchResultCache.set(retryUrl, retryJson);
+                            searchCachePut(retryUrl, retryJson);
                             highlightWord = layoutFixed;
                             history.replaceState({ dgSearch: true }, '', '/' + encodeURIComponent(layoutFixed) + location.search); // keep scope=/langs=/…
                             // Поле уже показывало исходный (кириллический) ввод — строка 2998,
@@ -4742,6 +4797,7 @@ $(document).ready(function() {
                             keyword = originalKeyword;
                         }
                     } catch (e) {
+                        if (gen !== searchGen) return;
                         keyword = originalKeyword;
                     }
                 }
@@ -4797,6 +4853,7 @@ $(document).ready(function() {
 
             if (reportMode === 'suttas') ensureEnrichmentStarted();
         } catch (error) {
+            if (gen !== searchGen) return; // a newer search/screen owns the page
             console.error('Ошибка при поиске:', error);
             // Ошибку показываем в #search-message и прячем таблицу — иначе человек видел бы
             // пустую выдачу без единого намёка на то, что запрос вообще не выполнился (например,
@@ -4819,7 +4876,7 @@ $(document).ready(function() {
             }
             dgSetState('results');
         } finally {
-            dgSetBusy(false);
+            if (gen === searchGen) dgSetBusy(false);
         }
     }
 
@@ -4868,20 +4925,11 @@ $(document).ready(function() {
         e.preventDefault();
         if (window.location.pathname === '/' && !window.location.search) return; // уже дома
         history.pushState({}, '', '/');
-        // Заголовок вкладки не сбрасывается сам — initSearchApp() при пустом keyword выходит
-        // раньше строчки, которая его меняет (она вообще только для выдачи). Тот же текст,
-        // что в <title> при чистой загрузке "/", иначе после поиска в вкладке так и остаётся
-        // "Kacchapa ... - Dhamma.gift" даже дома.
-        document.title = 'Dhamma.gift';
-        // Поле поиска — та же логика: свежая загрузка "/" даёт пустое поле, а SPA-переход иначе
-        // оставлял бы прошлый запрос висеть в поле над плитками главной.
-        var input = document.getElementById('paliauto');
-        if (input) { input.value = ''; if (window.DgHome && window.DgHome.syncInput) window.DgHome.syncInput(); }
-        routeFromUrl();
+        routeFromUrl(); // tab title and field are reset by initSearchApp()'s home branch
     });
 
     routeFromUrl();
-});
+}); });
 </script>
 <!-- ============ Боковое меню ============
      Выезжает СПРАВА — с той стороны, где стоит бургер, — вместо прежней выпадашки. Здесь
@@ -4996,8 +5044,8 @@ $(document).ready(function() {
              contributor to slower-than-prod loads) — deferred scripts execute in strict
              document order regardless of individual download speed, so this preserves the
              exact relative execution order these tags already had (three siblings here
-             already used defer; the trailing inline tooltip script below only needs jQuery,
-             loaded synchronously in <head>, unaffected either way). -->
+             already used defer; the trailing inline tooltip script below waits for
+             DOMContentLoaded, by which time the deferred jQuery has run). -->
         <script src="/assets/js/openFdg.js" defer></script>
 	  <script src="/assets/js/smoothScroll.js" defer></script>
     <!-- Ctrl/Cmd+Shift+F "find on page" replacement — owner: "поиск на всей странице... лучше
@@ -5040,9 +5088,9 @@ $(document).ready(function() {
 
 <script>
            //to enable bootstrap tooltip
-$(function () {
+document.addEventListener('DOMContentLoaded', function () { $(function () {
         $('[data-bs-toggle="tooltip"]').tooltip();
-    });
+    }); });
 </script>
 
 <script>

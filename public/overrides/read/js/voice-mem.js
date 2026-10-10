@@ -76,8 +76,10 @@ if (typeof window.isRu === 'undefined') {
         setupListeners();
     }
 
+    // voice.js getOrBuildPlayer() rewrites the player's markup on every call and then calls this (it used
+    // to be a 400 ms poll of the DOM that ran forever, player open or not); once here for a player built
+    // before this file loaded.
     function injectUI() {
-        setInterval(() => {
             const chips = document.querySelector('#voice-player-container .tts-chips');
             if (chips && !document.getElementById('ab-loop-toggle-btn')) {
                 
@@ -121,8 +123,8 @@ if (typeof window.isRu === 'undefined') {
                 updateUI();
                 updateABTimerDisplay();
             }
-        }, 400); 
     }
+    window.dgMemInjectUI = injectUI;
 
     function loadState() {}
     function saveState() {}

@@ -509,6 +509,8 @@ await app.register(fastifyCors, {
 // into one: that data is server-side cached in memory for the process lifetime anyway
 // (tocTreeCache/bookTitleCache/branchTitleCache have no TTL), so 600s never reflected real
 // volatility, just caution for scope outside the original ask. Owner: match search's 1h.
+const FRAME_ANCESTORS = "frame-ancestors 'self' https://dhamma.gift https://*.dhamma.gift https://web.telegram.org"
+    + ' https://localhost capacitor://localhost chrome-extension: moz-extension: safari-web-extension:';
 const CACHE_PREFIXES = [
     '/search', '/api/text/', '/api/nav/',
     '/api/toc', '/api/transliterate', '/openapi.json', '/openapi.en.json',
@@ -519,9 +521,20 @@ app.addHook('onSend', (req, reply, payload, done) => {
     if ((req.method === 'GET' || req.method === 'HEAD') && !reply.getHeader('cache-control')) {
         const url = req.url.split('?')[0];
         if (CACHE_PREFIXES.some(p => url.startsWith(p))) {
-            reply.header('cache-control', 'public, max-age=3600');
+            // An error (bad pattern, unknown text, a 5xx) must not stay in the browser for an hour: the
+            // reader's "Try again" would get the same cached failure back.
+            reply.header('cache-control', reply.statusCode < 400 ? 'public, max-age=3600' : 'no-store');
         }
     }
+    // Security headers. Framing: only our own pages may frame these (the memo/settings sheets and the
+    // quote popup are same-origin frames, *.dhamma.gift tools), plus Telegram Web, which shows the
+    // bot's Mini App (telegram_bot WebAppInfo -> dhamma.gift) in an iframe, the apps' own origins and
+    // the dictionary browser extension (dictPlugin: its side panel may frame https://dhamma.gift).
+    // The dictionary (/dict/) is left frameable by anyone (owner).
+    reply.header('x-content-type-options', 'nosniff');
+    reply.header('referrer-policy', 'strict-origin-when-cross-origin');
+    if (req.protocol === 'https') reply.header('strict-transport-security', 'max-age=31536000');
+    if (!/^\/dict([/?]|$)/.test(req.url)) reply.header('content-security-policy', FRAME_ANCESTORS);
     done(null, payload);
 });
 
@@ -1465,8 +1478,23 @@ app.post('/api/apps-status/refresh', async (req, res) => {
 // line per report in logs/app-errors.log (*.log is gitignored), capped so a crash loop on some
 // phone cannot fill the disk.
 const APP_LOG = path.join(__dirname, 'logs', 'app-errors.log');
+// The owner's review replies (kinds dg-review, dg-status, ...) come in here too and are read from this
+// file, so at the cap it is rotated to app-errors.log.1, never just stopped. Writes go one at a time:
+// two at once could both see a full file and rotate twice, throwing away the .1 just made.
 const APP_LOG_MAX_BYTES = 20 * 1024 * 1024;
+let appLogQueue = Promise.resolve();
+function appendAppLog(file, lines, maxBytes) {
+    appLogQueue = appLogQueue.then(async () => {
+        const size = await fsSync.promises.stat(file).then(s => s.size, () => 0);
+        if (size >= maxBytes) await fsSync.promises.rename(file, file + '.1');
+        await fsSync.promises.mkdir(path.dirname(file), { recursive: true });
+        await fsSync.promises.appendFile(file, lines);
+    }).catch(err => console.error('[app-log] write failed:', err.message));
+    return appLogQueue;
+}
+const appLogRateLimited = makeRateLimiter(120, 60 * 1000); // a person clicking reply buttons fast stays well under
 app.post('/api/app-log', { bodyLimit: 32 * 1024 }, (req, res) => {
+    if (appLogRateLimited(req.ip)) return res.header('cache-control', 'no-store').code(429).send();
     res.header('cache-control', 'no-store').code(204).send();
     let items;
     try { items = JSON.parse(req.body); } catch (e) { return; }
@@ -1475,10 +1503,7 @@ app.post('/api/app-log', { bodyLimit: 32 * 1024 }, (req, res) => {
     const lines = items.slice(0, 50)
         .map(it => JSON.stringify({ at, ...(it && typeof it === 'object' ? it : { msg: String(it) }) }).slice(0, 4000))
         .join('\n') + '\n';
-    fsSync.promises.stat(APP_LOG).then(s => s.size, () => 0)
-        .then(size => size < APP_LOG_MAX_BYTES && fsSync.promises.mkdir(path.dirname(APP_LOG), { recursive: true })
-            .then(() => fsSync.promises.appendFile(APP_LOG, lines)))
-        .catch(err => console.error('[app-log] write failed:', err.message));
+    appendAppLog(APP_LOG, lines, APP_LOG_MAX_BYTES);
 });
 
 // Google Text-to-Speech through the site, for the Android app: the trial key (configs/local/
@@ -1521,13 +1546,15 @@ try { ttsUsage = JSON.parse(fsSync.readFileSync(TTS_USAGE_FILE, 'utf8')); } catc
 function ttsCharsOverCap(chars) {
     const month = new Date().toISOString().slice(0, 7);
     if (ttsUsage.month !== month) ttsUsage = { month, chars: 0 };
-    if (ttsUsage.chars + chars > TTS_MONTHLY_CHARS) return true;
+    return ttsUsage.chars + chars > TTS_MONTHLY_CHARS;
+}
+// Charged only for what Google actually synthesized: a rejected or failed request costs nothing there.
+function ttsCharsCount(chars) {
     ttsUsage.chars += chars;
     fsSync.promises.mkdir(path.dirname(TTS_USAGE_FILE), { recursive: true })
         .then(() => fsSync.promises.writeFile(TTS_USAGE_FILE, JSON.stringify(ttsUsage))).catch(() => {});
-    return false;
 }
-async function googleTts(res, apiPath, init) {
+async function googleTts(res, apiPath, init, chars = 0) {
     try {
         const key = JSON.parse(await fsSync.promises.readFile(TTS_KEY_FILE, 'utf8')).key;
         if (!key) return res.code(503).send({ error: { message: 'TTS key is not configured' } });
@@ -1537,6 +1564,7 @@ async function googleTts(res, apiPath, init) {
             headers: { ...(init && init.headers), Referer: 'https://dhamma.gift/' },
             signal: AbortSignal.timeout(20000),
         });
+        if (r.ok && chars) ttsCharsCount(chars);
         return res.code(r.status).header('content-type', 'application/json').header('cache-control', 'no-store').send(await r.text());
     } catch (err) {
         console.error('[tts-proxy]', err.message);
@@ -1550,10 +1578,12 @@ app.get('/api/tts/voices', (req, res) => {
 app.post('/api/tts/synthesize', { bodyLimit: 64 * 1024 }, (req, res) => {
     if (ttsRateLimited(req.ip)) return res.code(429).send({ error: { message: 'Too many requests, try again shortly' } });
     const body = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
-    let chars = body.length; // unreadable body: charge its size
-    try { const input = JSON.parse(body).input || {}; chars = String(input.text || input.ssml || '').length || chars; } catch { /* keep body.length */ }
-    if (ttsCharsOverCap(chars)) return res.code(429).send({ error: { message: 'Monthly text-to-speech limit reached' } });
-    return googleTts(res, 'text:synthesize', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body });
+    let text = body; // unreadable body: judge and charge its size
+    try { const input = JSON.parse(body).input || {}; text = String(input.text || input.ssml || '') || body; } catch { /* keep body */ }
+    // Google refuses input over 5000 bytes anyway; answering here keeps junk from reaching it at all.
+    if (Buffer.byteLength(text) > 5000) return res.code(413).send({ error: { message: 'Text is longer than 5000 bytes' } });
+    if (ttsCharsOverCap(text.length)) return res.code(429).send({ error: { message: 'Monthly text-to-speech limit reached' } });
+    return googleTts(res, 'text:synthesize', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body }, text.length);
 });
 
 // Self-hosted Pali voice: Piper + IAST->IPA rules from the pali-tts listening tests
@@ -1565,7 +1595,8 @@ app.post('/api/tts/pali', { bodyLimit: 16 * 1024 }, async (req, res) => {
     if (ttsRateLimited(req.ip)) return res.code(429).send({ error: { message: 'Too many requests, try again shortly' } });
     const body = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
     try {
-        const r = await fetch(PALI_TTS_URL, { method: 'POST', body, signal: AbortSignal.timeout(60000) });
+        // tts_server.py limits per X-Forwarded-For: without it every listener shares this server's one bucket
+        const r = await fetch(PALI_TTS_URL, { method: 'POST', body, headers: { 'x-forwarded-for': req.ip }, signal: AbortSignal.timeout(60000) });
         return res.code(r.status).header('content-type', 'application/json').header('cache-control', 'no-store').send(await r.text());
     } catch (err) {
         console.error('[pali-tts]', err.message);
@@ -1578,7 +1609,7 @@ app.post('/api/tts/memo', { bodyLimit: 256 * 1024 }, async (req, res) => {
     if (ttsRateLimited(req.ip)) return res.code(429).send({ error: { message: 'Too many requests, try again shortly' } });
     const body = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
     try {
-        const r = await fetch(PALI_TTS_URL.replace(/\/synthesize$/, '/memo'), { method: 'POST', body, signal: AbortSignal.timeout(300000) });
+        const r = await fetch(PALI_TTS_URL.replace(/\/synthesize$/, '/memo'), { method: 'POST', body, headers: { 'x-forwarded-for': req.ip }, signal: AbortSignal.timeout(300000) });
         return res.code(r.status).header('content-type', r.headers.get('content-type') || 'application/octet-stream')
             .header('cache-control', 'no-store').send(Buffer.from(await r.arrayBuffer()));
     } catch (err) {
@@ -3115,6 +3146,13 @@ const findRangeContaining = searchCore.findRangeContaining; // core/search-core.
 
 app.get('/:slug/:word', (req, res) => {
     const { slug, word } = req.params;
+    // "/dn22/", "/dn22:2.2/?s=kacchapa", "/kacchapa/": a trailing slash, not a word. Drop it and keep the
+    // query as it is (an empty word used to overwrite ?s= and a keyword got 404). A folder name stays
+    // with the folder's own handling.
+    if (!word) {
+        if (mountedPrefixes.has(slug) || siteRootEntries.has(slug) || slug === 'settings') return res.callNotFound();
+        return res.redirect('/' + slug.split(':').map(encodeURIComponent).join(':') + queryString(req), 301);
+    }
     const base = slug.split(':')[0].toLowerCase();
     if (!skeletonDB[base] && !findRangeContaining(base)) return res.callNotFound();
     const params = new URLSearchParams(queryString(req).slice(1));

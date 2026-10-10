@@ -183,43 +183,28 @@ HOME/offline-data/dhammagift/
 колонку `th` без явной пометки "это на самом деле английский" будет вводить
 в заблуждение — нужна доработка рендера, не только сервера.
 
-**Режимы ридера** — `reader/mode-table.json`, единственный источник истины
-(и сервер, и клиент читают ЕГО, а не дублируют логику):
+**Режимы ридера** — `reader/mode-table.json` (читают и сервер, и клиент). Режим — только ТИП
+показа, язык он больше не кодирует (issue #6): язык — отдельно, `?lang=` (первый/основной) и
+`?langs=` (набор колонок).
 ```json
 {
-  "st":   { "columns": ["ru"],       "family": "ru", "label": "Ru" },
-  "mt":   { "columns": ["ru"],       "family": "ru", "label": "R+R", "multiFor": ["ru"] },
-  "ml":   { "columns": ["ru","en"],  "family": "ru", "label": "R+E" },
-  "read": { "columns": ["en"],       "family": "en", "label": "En" },
-  "ee":   { "columns": ["en"],       "family": "en", "label": "E+E", "multiFor": ["en"] }
+  "single":     { "label": "Single" },
+  "multi":      { "label": "Multi" },
+  "memorize":   { "mnemonic": true, "label": "Memorize" },
+  "devanagari": { "dualScript": true, "label": "Devanagari" }
 }
 ```
-Клиент шлёт только `?mode=<key>` в `/api/text/:suttaId` — сервер сам
-резолвит `columns`/`multiFor` и возвращает `columns` в ответе (клиент их
-больше не хранит и не решает сам). `?langs=`/`?multiFor=`/`?translators=`
-остаются рабочими напрямую (ручной доступ/`/api-docs`), но ридер ими не
-пользуется — `mode=` единственный путь.
-
-`multiFor` — сервер подбирает ВТОРОГО переводчика автоматически: первый как
-обычно по приоритету, второй — специально из `{lang}_other`, кто бы там ни
-оказался для конкретной сутты (не хардкод конкретного имени). Если второго
-нет — режим тихо схлопывается в одну колонку.
-
-**Панель переключения режимов** (`scLink` в `megareader.js`) — показывает
-все режимы той же языковой `family`, кроме текущего, плюс один переход на
-плейн-режим ДРУГОЙ семьи:
-
-| Текущий режим | Показывает ссылки на |
-|---|---|
-| ru (`st`) | R+R (`mt`), R+E (`ml`), En (`read`) |
-| en (`read`) | E+E (`ee`), Ru (`st`) |
-| r+r (`mt`) | Ru (`st`), R+E (`ml`), En (`read`) |
-| r+e (`ml`) | Ru (`st`), R+R (`mt`), En (`read`) |
-| e+e (`ee`) | En (`read`), Ru (`st`) |
-
-Порядок ключей в `mode-table.json` (`st, mt, ml, read, ee`) задаёт порядок
-ссылок в панели — при добавлении нового режима той же семьи вставлять его
-в нужную позицию в файле, а не в конец.
+- `single` — один перевод на языке `?lang=`; `multi` — несколько языков/переводчиков (набор из
+  окна переводов или `?langs=`/`?translators=`); `memorize` — первые буквы пали + полный пали;
+  `devanagari` — пали в выбранной письменности + латиница.
+- Клиент шлёт в `/api/text/:suttaId` `mode=` + `lang=`/`langs=`/`translators=`; `columns` берёт
+  из ответа сервера.
+- Переключение — в бургере (`paintReaderModes()`, `search/js/home.js`) → `switchReaderMode()`;
+  язык — `switchReadingLanguage()` (EN/RU), режим при этом не меняется. Выбранный режим
+  запоминается (`localStorage.dgReaderMode`) и открывает следующий текст, если в адресе нет `?mode=`.
+- Старые ключи из ссылок/закладок (`LEGACY_MODE_ALIASES`, `megareader.js`) переписываются в адресе:
+  `st`→single+ru, `read`→single+en, `mt`→multi+ru, `ee`→multi+en, `ml`→multi+`langs=ru,en`,
+  `multiTran`/`multiLang`→multi. Неизвестный ключ → `single`.
 
 ---
 

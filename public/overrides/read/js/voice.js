@@ -170,6 +170,7 @@ const ttsState = {
   langSettings: null,
   autoScroll: localStorage.getItem(SCROLL_STORAGE_KEY) !== 'false', 
   currentSlug: null,
+  gen: 0,  // bumped by every playCurrentSegment/stopPlayback: an answer that arrives after it is stale
   endIndex: undefined,
   startIndex: undefined, 
   isNavigating: false 
@@ -1647,8 +1648,9 @@ function shouldRequestWakeLockForItem(item) {
   const googleKey = (localStorage.getItem(GOOGLE_KEY_STORAGE) || window.TRIAL_KEY);
 
   // Если Google TTS недоступен, остаётся нативный голос — экран держим
-  if (!googleKey || googleKey.length <= 10) return true;
   if (!item) return true;
+  if (dgVoiceRequest(item)) return false;  // the DG voice reads it through an <audio>, no lock needed
+  if (!googleKey || googleKey.length <= 10) return true;
 
   const useNativePali = localStorage.getItem(NATIVE_PALI_KEY) === 'true';
   const useNativeTrn  = localStorage.getItem(NATIVE_TRN_KEY) === 'true';
@@ -1692,7 +1694,9 @@ function dgPrefetchAhead(index) {
 }
 
 async function playCurrentSegment() {
+ const gen = ++ttsState.gen;
  await dgVoicesReady();  // resolved after the first line: no delay then
+ if (gen !== ttsState.gen) return;  // a newer line, sutta or a stop came in meanwhile
  
  if (window.ttsDelayTimeout) clearTimeout(window.ttsDelayTimeout);
  
@@ -1711,7 +1715,9 @@ async function playCurrentSegment() {
 
   const item = ttsState.playlist[ttsState.currentIndex];
 
-  if (!wakeLock && !ttsState.paused && shouldRequestWakeLockForItem(item)) {
+  if (!shouldRequestWakeLockForItem(item)) {
+    releaseWakeLock();  // the click took one for iOS; DG/Google audio plays with the screen off
+  } else if (!wakeLock && !ttsState.paused) {
     requestWakeLock();
   }
 
@@ -1814,7 +1820,8 @@ async function playCurrentSegment() {
               audioContent = await fetchGoogleAudio(item.text, targetLang, audioRateGoogle, googleKey);
           }
           
-          if (targetIndex !== ttsState.currentIndex || !ttsState.speaking) {
+          // The index alone is not enough: another sutta started meanwhile is also at line 0 (V2).
+          if (gen !== ttsState.gen || targetIndex !== ttsState.currentIndex || !ttsState.speaking) {
               return; 
           }
 
@@ -1882,6 +1889,7 @@ async function playCurrentSegment() {
       } catch (e) {
           console.warn("Google TTS failed, falling back to browser", e);
       }
+      if (gen !== ttsState.gen) return;  // the failed answer was for a line nobody waits for any more
   }
 
   playBrowserTTS(item.text, targetLang, audioRateBrowser, isPali);
@@ -2044,6 +2052,21 @@ function playBrowserTTS(text, langKey, rate, isPali) {
 
 
 
+// The sutta on screen, so a new session is named after it and not after the one played before (V1:
+// after × on dn22, a line of mn1 started a session still called dn22). The reader: its own Voice link
+// (the reader's link row is rebuilt for every text). The search page: the old reader's markup stays in
+// the DOM there, so the line's own id ("sutta:segment", search-render.js renderSegment) names it,
+// then #dg-voice-slug (search/index.html's right-click "Listen").
+function pageVoiceSlug(activeWord) {
+  if (getSuttaContainer() !== document) {
+    const link = document.querySelector('a.voice-link[data-slug]:not(#dg-voice-slug)');
+    if (link && link.dataset.slug) return link.dataset.slug;
+  }
+  const id = activeWord && getElementId(activeWord);
+  if (id && id.includes(':')) return id.split(':')[0];
+  return document.getElementById('dg-voice-slug')?.dataset.slug || '';
+}
+
 async function handleSuttaClick(e) {
   const dynamicBtn = e.target.closest('.dynamic-tts-btn');
   const voiceLink = e.target.closest('.voice-link');
@@ -2088,31 +2111,7 @@ async function handleSuttaClick(e) {
           }
       }
       
-      let slug = ttsState.currentSlug;
-      if (!slug) {
-          // #dg-voice-slug (search/index.html's right-click "Listen") is created specifically
-          // for this flow — prefer it over a generic a.voice-link[data-slug] lookup, which would
-          // otherwise match a STALE reader-page voice-link left in the DOM from a sutta viewed
-          // earlier in the session (dg-node keeps #sutta's old markup around across state
-          // switches instead of clearing it, see getSuttaContainer() above) and mislabel
-          // ttsState.currentSlug with that unrelated sutta.
-          const mainPlayBtn = document.getElementById('dg-voice-slug') || document.querySelector('a.voice-link[data-slug]');
-          if (mainPlayBtn) slug = mainPlayBtn.dataset.slug;
-      }
-      // Search results page has no a.voice-link[data-slug] for a plain word click (only the
-      // right-click "Listen" menu manufactures one, a hidden #dg-voice-slug link, search/
-      // index.html) — so clicking the dynamic-tts-btn that a direct word click creates
-      // (settings.js activateSegmentForTTS) silently did nothing here (owner: "можно
-      // стартануть ттс через меню, но не через дин ттс кнопку"): slug stayed empty and this
-      // whole branch returned before ever calling startPlayback(). The active word's own id IS
-      // "sutta:segment" (search-render.js renderSegment) — same source prepareTextData already
-      // derives sutta ids from — so pull the slug from there instead of requiring a link.
-      if (!slug) {
-          const activeWordId = activeWord && getElementId(activeWord);
-          if (activeWordId && activeWordId.includes(':')) {
-              slug = activeWordId.split(':')[0];
-          }
-      }
+      let slug = pageVoiceSlug(activeWord) || ttsState.currentSlug;
       if (!slug && typeof isLegacyPage === 'function' && isLegacyPage()) {
            slug = window.location.pathname.split('/').pop() || 'legacy_page';
       }
@@ -2196,9 +2195,8 @@ async function handleSuttaClick(e) {
 
   if (playBtn && !e.target.classList.contains('voice-link')) {
     e.preventDefault();
-    const pageVoiceLink = document.querySelector('.voice-link[data-slug]');
-    const freshPageSlug = pageVoiceLink ? pageVoiceLink.dataset.slug : null;
     const activeWordElement = container.querySelector('.active-word');
+    const freshPageSlug = pageVoiceSlug(activeWordElement);
     const activeId = activeWordElement ? getElementId(activeWordElement) : null;
     const currentItem = ttsState.playlist[ttsState.currentIndex];
     const currentId = currentItem ? currentItem.id : null;
@@ -2324,6 +2322,8 @@ function stopPlayback() {
   ttsState.speaking = false;
   ttsState.paused = false;
   ttsState.isNavigating = false;
+  ttsState.currentSlug = null;  // the next Play names its sutta from the page, not from this session
+  ttsState.gen++;
   releaseWakeLock();
   
   const player = document.getElementById('voice-player-container');
@@ -2790,6 +2790,7 @@ function getOrBuildPlayer() {
         placeholder.style.display = "none";
     }
 
+    if (window.dgMemInjectUI) window.dgMemInjectUI();  // voice-mem.js: Memo and A-B chips into the new markup
     return playerContainer;
 }
 

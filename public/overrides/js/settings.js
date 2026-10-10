@@ -676,7 +676,6 @@ function checkStorage(key) {
 })();
 
 const MAX_HISTORY = 8400;
-let textinfoCache = null; // Кеш для данных сутт
 
 
 function processSearchQuery(query) {
@@ -685,58 +684,6 @@ function processSearchQuery(query) {
         .replace(/\s*www\.\S+/gi, '')
         .replace(/^"|"$/g, '')
         .trim();
-}
-
-async function tryEnhanceKey(key) {
-    const textinfo = await loadTextData();
-    const baseKey = key.split(/\s+/)[0];
-    // issue #5: a history entry deep-linked to a segment ("sn56.48:1.4", "dn1:1.22.2") kept the
-    // raw id+segment as its title forever — textinfo.js is keyed by bare sutta id only
-    // ("sn56.48"), so textinfo[baseKey] with the ":1.4" still attached always missed. Look up by
-    // the part before ':'. Owner follow-up: the segment is navigation plumbing (the actual href
-    // is stored separately as `value`, unaffected by this label) — show just "sn56.48 Title",
-    // not "sn56.48:1.4 Title", to the user. saveToHistory() below strips ':...' the same way when
-    // grouping, so this still replaces the raw un-enhanced entry instead of duplicating it.
-    const suttaId = baseKey.split(':')[0];
-    const suttaName = textinfo[suttaId]?.pi;
-    return suttaName ? `${suttaId} ${suttaName}` : key;
-}
-
-// One download of the sutta title map (/assets/js/textinfo.js, ~510 KB of plain JSON) shared by
-// everything on the page. It used to be fetched three times per page (the routing map below, plus an
-// import() that can never work on JSON and a raw-text fetch, both with Date.now() in the URL — so
-// never cacheable), on every text open.
-function fetchTextInfo() {
-    if (!window.__dgTextInfoPromise) {
-        window.__dgTextInfoPromise = fetch('/assets/js/textinfo.js')
-            .then(res => res.ok ? res.json() : null)
-            .catch(err => { console.error("Failed to load textinfo.js", err); return null; });
-    }
-    return window.__dgTextInfoPromise;
-}
-
-async function loadTextData() {
-    if (textinfoCache) return textinfoCache;
-    textinfoCache = await fetchTextInfo();
-    return textinfoCache || {};
-}
-
-function parseTextInfo(text) {
-    try {
-        // Вариант 1: Чистый JSON
-        return JSON.parse(text);
-    } catch {
-        try {
-            // Вариант 2: JS-объект с присваиванием
-            const match = text.match(/var\s+\w+\s*=\s*({[\s\S]+?});/);
-            if (match) return JSON.parse(match[1]);
-
-            // Вариант 3: Самовыполняющаяся функция
-            return (new Function(text + '; return textinfo || window.textinfo;'))();
-        } catch {
-            return null;
-        }
-    }
 }
 
 // === ЦЕНТРАЛИЗОВАННОЕ ФОРМАТИРОВАНИЕ КЛЮЧЕЙ ===
@@ -773,7 +720,18 @@ function formatSlug(str) {
 }
 
 
-async function addToSearchHistory() {
+// The open text's title for its history label. The reader has it from /api/text (online, or the app's
+// SQLite through the same fetch shim) — megareader.js renderNavigation() writes "<title> <slug>" into
+// document.title right before it calls addToSearchHistory(). The 510 KB textinfo.js title map is gone
+// (owner): no title here = the entry keeps its bare id.
+function readerHistoryTitle(suttaId) {
+    const slug = window.dgReaderSlug;
+    if (!slug || slug.toLowerCase() !== suttaId) return null;
+    const tail = ' ' + slug.replace(/pli-tv-|b[ui]-vb-/g, '');
+    return document.title.endsWith(tail) ? document.title.slice(0, -tail.length).trim() || null : null;
+}
+
+async function addToSearchHistory(title) {
     try {
         const url = new URL(window.location.href);
         // Раньше здесь смотрели ТОЛЬКО ?q= — легаси-формат ссылок. Собственная навигация сайта
@@ -798,18 +756,12 @@ async function addToSearchHistory() {
         // 1. Быстрое локальное сохранение (функция вернет ключ, возможно уже улучшенный из истории)
         const savedKey = await saveToHistory(key, url);
 
-        // 2. Попытка улучшить ключ через базу textinfo (асинхронно)
-        // Запускаем ТОЛЬКО если это сутта (есть цифры) и НЕТ пробела (т.е. названия еще нет)
+        // 2. Название текста — ТОЛЬКО если это сутта (есть цифры) и НЕТ пробела (т.е. названия еще нет).
+        // A segment link ("sn56.48:1.4") is labelled "sn56.48 Title": the segment is in the stored href.
         if (/\d/.test(savedKey) && !savedKey.includes(' ')) {
-            try {
-                const enhancedKey = await tryEnhanceKey(savedKey);
-                // Сохраняем повторно, только если база реально дала новое длинное имя
-                if (enhancedKey && enhancedKey !== savedKey) {
-                    await saveToHistory(enhancedKey, url);
-                }
-            } catch (e) {
-                console.debug("Не удалось добавить название:", e);
-            }
+            const suttaId = savedKey.split(':')[0];
+            title = title || readerHistoryTitle(suttaId);
+            if (title) await saveToHistory(`${suttaId} ${title.trim()}`, url);
         }
     } catch (e) {
         console.error("Ошибка сохранения истории:", e);
@@ -827,7 +779,7 @@ async function saveToHistory(key, url) {
     const isSutta = /\d/.test(firstWord);
     // issue #5: strip ':segment' before grouping — a raw un-enhanced entry ("sn56.48:1.4") and
     // its later-enhanced replacement ("sn56.48 Dutiyachiggaḷayugasutta", segment now dropped from
-    // the label by tryEnhanceKey) must land on the same rootKey so the enhanced one replaces the
+    // the label by addToSearchHistory) must land on the same rootKey so the enhanced one replaces the
     // raw one below instead of sitting next to it as a duplicate row.
     const rootKey = isSutta ? firstWord.split(':')[0] : key;
 
@@ -2248,23 +2200,6 @@ function saveExactScrollPosition() {
 // УМНЫЙ РОУТИНГ И ПАРСИНГ ЗАПРОСОВ (Dhamma.gift)
 // ==========================================
 
-let textInfoData = null;
-
-// 1. Асинхронная подгрузка карты диапазонов
-// The range map (~510 KB) is only read by the click handler below, so it is kept off the page's critical
-// path: fetched once the page has loaded and is idle, or earlier when the pointer reaches one of the
-// buttons that use it. Sharing fetchTextInfo() means the reader's history titles reuse the same download.
-function loadRoutingMap() { return fetchTextInfo().then(data => { textInfoData = data; }); }
-document.addEventListener('pointerover', e => {
-    if (!textInfoData && e.target.closest && e.target.closest('#MenuRead, #home-button a')) loadRoutingMap();
-}, { passive: true });
-function loadRoutingMapWhenIdle() {
-    // The SPA page (home, results, reader) has none of these controls — nothing to fetch there at all.
-    const run = () => { if (document.querySelector('#MenuRead, #home-button, #searchForm')) (window.requestIdleCallback || setTimeout)(loadRoutingMap, { timeout: 8000 }); };
-    if (document.readyState === 'complete') run(); else window.addEventListener('load', run, { once: true });
-}
-loadRoutingMapWhenIdle();
-
 // 2. Транслитерация
 function cyrillicToLatin(str) {
     const ru = {
@@ -2316,30 +2251,6 @@ function normalizeQuery(rawQuery) {
     return q;
 }
 
-// 4. Поиск диапазона
-function findRangeForKey(normalizedQ) {
-    if (!textInfoData) return null;
-    if (textInfoData[normalizedQ]) return { type: 'exact', key: normalizedQ }; 
-
-    const match = normalizedQ.match(/^([a-z]+)(\d+)\.(\d+)$/);
-    if (match) {
-        const prefix = match[1];
-        const major = match[2];
-        const minor = parseInt(match[3], 10);
-        const searchPrefix = `${prefix}${major}.`; 
-        
-        for (const key in textInfoData) {
-            if (key.startsWith(searchPrefix)) {
-                const r = key.match(/(\d+)-(\d+)$/);
-                if (r && minor >= parseInt(r[1]) && minor <= parseInt(r[2])) {
-                    return { type: 'range', key: key };
-                }
-            }
-        }
-    }
-    return null;
-}
-
 // 5. Единый слушатель кликов (MenuRead и home-button)
 document.addEventListener('click', function(e) {
     // Ищем клик по любой из целевых кнопок
@@ -2375,14 +2286,8 @@ document.addEventListener('click', function(e) {
              return;
         }
 
-        // Роутинг сутт с проверкой на диапазоны
-        if (/\d/.test(q) && !q.includes('-')) {
-            const result = findRangeForKey(q);
-            const anchor = (result && result.type === 'range') ? result.key : q;
-            window.location.href = baseUrl + '#' + anchor;
-        } else {
-             window.location.href = baseUrl + '#' + q;
-        }
+        // The text's own id as the anchor (the range lookup through textinfo.js is gone, owner).
+        window.location.href = baseUrl + '#' + q;
     }
 });
 
@@ -2408,17 +2313,6 @@ document.addEventListener('submit', function(e) {
             hiddenReader.value = savedReader;
         }
 
-        if (/\d/.test(q) && !q.includes('-')) {
-            const result = findRangeForKey(q);
-            if (result && result.type === 'range') {
-                e.preventDefault();
-                
-                let readerQuery = (savedReader && savedReader !== 'st') ? `&reader=${savedReader}` : '';
-                
-                // Делаем редирект с правильным параметром q, reader и якорем
-                window.location.href = '?q=' + result.key + readerQuery + '#' + q;
-            }
-        }
     }
 });
 

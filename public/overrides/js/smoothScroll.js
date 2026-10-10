@@ -140,11 +140,16 @@ const ScrollManager = {
             const tryFindText = () => {
                 const suttaArea = document.getElementById('sutta');
                 if (!suttaArea) return null;
+                // megareader.js has already marked the matches, with its guards against slow patterns:
+                // a pattern run again here hung the tab on /dn1?s=(.|.)*\d (review R4).
+                const marked = suttaArea.querySelector('b.match.finder');
+                if (marked) return marked;
 
                 try {
                     // Same rule as megareader.js's highlight: punctuation between the letters of a
                     // plain search word is ignored ("evaṁ bhikkhave" finds "evaṁ, bhikkhave").
                     const plain = !/[.*+?^${}()|[\]\\]/.test(searchText);
+                    if (!plain) return null; // a pattern is found only through megareader's marks above
                     // ...and blind to diacritics like the highlight (megareader.js foldForFind), so the
                     // node the highlight marked is the node found here.
                     const fold = plain && typeof foldForFind === 'function' ? foldForFind : (t => t);

@@ -78,12 +78,23 @@ if (!READER_MODE.modeKey) READER_MODE.modeKey = getSavedMode() || READER_MODE.mo
 // mode-table.json (владелец: "старые не нужны"), но ссылка с ними могла кому-то уйти — чтобы
 // она не открывалась пустым дефолтом, ключ здесь молча приводится к multi, а адрес переписывается
 // на новый (replaceState, без лишней записи в историю).
-const LEGACY_MODE_ALIASES = { multiTran: 'multi', multiLang: 'multi' };
-if (LEGACY_MODE_ALIASES[READER_MODE.modeKey]) {
-    READER_MODE.modeKey = LEGACY_MODE_ALIASES[READER_MODE.modeKey];
+// The pre-#6 per-language keys (st/read/mt/ml/ee, old links and bookmarks) carry their language
+// too: [mode, lang, langs]. An explicit ?lang= in the same address still wins over it.
+const LEGACY_MODE_ALIASES = {
+    multiTran: ['multi'], multiLang: ['multi'],
+    st: ['single', 'ru'], read: ['single', 'en'],
+    mt: ['multi', 'ru'], ee: ['multi', 'en'], ml: ['multi', 'ru', 'ru,en'],
+};
+const legacyAlias = Object.prototype.hasOwnProperty.call(LEGACY_MODE_ALIASES, READER_MODE.modeKey)
+    && LEGACY_MODE_ALIASES[READER_MODE.modeKey];
+if (legacyAlias) {
+    READER_MODE.modeKey = legacyAlias[0];
     if (modeFromUrl) {
         const legacyParams = new URLSearchParams(window.location.search);
         legacyParams.set('mode', READER_MODE.modeKey);
+        if (legacyAlias[1] && !legacyParams.has('lang')) legacyParams.set('lang', legacyAlias[1]);
+        if (legacyAlias[2] && !legacyParams.has('langs')) legacyParams.set('langs', legacyAlias[2]);
+        READER_MODE.lang = legacyParams.get('lang') || READER_MODE.lang;
         history.replaceState(history.state, '', window.location.pathname + '?' + legacyParams.toString() + window.location.hash);
     }
 }
@@ -540,29 +551,60 @@ function foldFindChar(ch) {
 }
 function foldForFind(text) { return text.replace(/[A-Z\u0080-\uFFFF]/g, foldFindChar); }
 
+// ?s= comes from the address, so it is anyone's regex. A repeated group that itself repeats or
+// alternates — (.|.)*, (a+)+, ((ab)*)+ — backtracks exponentially: one segment alone can hang the
+// tab, so such a pattern is matched literally. Escapes and [classes] are neutralised first, so
+// bhikkh\w+, dukkh.*, (?:a|b) and [aā]nanda still highlight as regexes.
+function isSlowRegex(src) {
+    const s = src.replace(/\\./g, 'x').replace(/\[[^\]]*\]/g, 'x');
+    const groups = []; // per open group: does its body repeat or alternate?
+    for (let i = 0; i < s.length; i++) {
+        const c = s[i];
+        if (c === '(') groups.push(false);
+        else if (c === ')') {
+            const risky = groups.pop();
+            if (risky && /[*+{]/.test(s[i + 1] || '')) return true;
+            if (risky && groups.length) groups[groups.length - 1] = true;
+        } else if (groups.length && /[*+{|]/.test(c)) groups[groups.length - 1] = true;
+    }
+    return false;
+}
+// Polynomial ones (.*.*\d: 9 s over dn1) pass the check above but cost per segment, so the regex
+// gets a time budget for the whole text; once spent, the rest is matched literally.
+const FINDER_REGEX_BUDGET_MS = 200;
+
 let finderCache = { finder: null, fn: null };
 function finderHighlighter(finder) {
     if (finderCache.finder === finder) return finderCache.fn;
     const wrap = match => `<b class='match finder'>${match}</b>`;
-    let fn;
-    if (/[.*+?^${}()|[\]\\]/.test(finder)) {
+    // A plain word is matched the way search matches it: punctuation between its letters in the
+    // text is ignored ("evaṁ bhikkhave" → "evaṁ, bhikkhave", core/search-core.js punctTolerantPattern).
+    // A broken ("sati(") or too slow regex is matched this way too, its characters taken literally.
+    const literal = new RegExp(Array.from(foldForFind(finder))
+        .map(ch => ch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('[,;:!"\'“”‘’«»]*'), 'gi');
+    const literalFn = text => {
+        const haystack = foldForFind(text);
+        let out = '', last = 0, hit;
+        literal.lastIndex = 0;
+        while ((hit = literal.exec(haystack)) !== null) {
+            if (hit[0].length === 0) { literal.lastIndex++; continue; }
+            out += text.slice(last, hit.index) + wrap(text.slice(hit.index, hit.index + hit[0].length));
+            last = hit.index + hit[0].length;
+        }
+        return last === 0 ? text : out + text.slice(last);
+    };
+    let fn = literalFn;
+    if (/[.*+?^${}()|[\]\\]/.test(finder) && !isSlowRegex(finder)) {
         // A regex keyword stays as typed, matched against the raw text (exactly as before).
-        const regex = new RegExp(finder, 'gi');
-        fn = text => text.replace(regex, wrap);
-    } else {
-        // A plain word is matched the way search matches it: punctuation between its letters in the
-        // text is ignored ("evaṁ bhikkhave" → "evaṁ, bhikkhave", core/search-core.js punctTolerantPattern).
-        const regex = new RegExp(Array.from(foldForFind(finder)).join('[,;:!"\'“”‘’«»]*'), 'gi');
-        fn = text => {
-            const haystack = foldForFind(text);
-            let out = '', last = 0, hit;
-            regex.lastIndex = 0;
-            while ((hit = regex.exec(haystack)) !== null) {
-                if (hit[0].length === 0) { regex.lastIndex++; continue; }
-                out += text.slice(last, hit.index) + wrap(text.slice(hit.index, hit.index + hit[0].length));
-                last = hit.index + hit[0].length;
-            }
-            return last === 0 ? text : out + text.slice(last);
+        let regex = null;
+        try { regex = new RegExp(finder, 'gi'); } catch (e) { /* invalid — literal */ }
+        let spent = 0;
+        if (regex) fn = text => {
+            if (spent > FINDER_REGEX_BUDGET_MS) return literalFn(text);
+            const t0 = performance.now();
+            const out = text.replace(regex, wrap);
+            spent += performance.now() - t0;
+            return out;
         };
     }
     finderCache = { finder, fn };
@@ -1176,6 +1218,7 @@ window.renderNavigation = async function(slug, suttaTitle, navPromise) {
     } catch (error) {
         nav = { prev: null, next: null };
     }
+    if (slug !== window._currentSlug) return; // another text was opened meanwhile — its own call paints the arrows
 
     const formatLink = (entry) => {
         let name = (entry.title || "").replace(/[0-9.-]/g, '').trim();
@@ -1258,7 +1301,15 @@ window.restoreReadingAnchor = restoreReadingAnchor;
 
 // opts.inPlace — re-render of the text already on screen (a setting changed in the settings side
 // panel, search/js/home.js): passed on with 'suttaLoaded' so smoothScroll.js leaves scroll alone.
+// Only the newest buildSutta() may render: on a slow network Next pressed twice used to let the
+// older answer land last (address /dn3, text and title dn2). Older requests are aborted too.
+let buildGen = 0;
+let buildAbort = null;
 window.buildSutta = async function(rawSlug, opts) {
+    const gen = ++buildGen;
+    const stale = () => gen !== buildGen;
+    if (buildAbort) buildAbort.abort();
+    const abort = buildAbort = (typeof AbortController === 'function') ? new AbortController() : null;
     const slug = window.normalizeSlugToDbKey(rawSlug);
     window._currentSlug = slug;
     // Started here, awaited at the end of this same render — see dgFetchNav above. Never awaited
@@ -1376,12 +1427,14 @@ window.buildSutta = async function(rawSlug, opts) {
         // Remembered for the next cold load: the <head> script in search/index.html preloads this
         // very URL before any reader code has run (the query only depends on the user's settings).
         try { localStorage.setItem('dgReaderApiQuery', apiUrl.slice(apiUrl.indexOf('?') + 1)); } catch (e) { /* private mode */ }
-        const response = await fetch(apiUrl);
+        const response = await fetch(apiUrl, abort ? { signal: abort.signal } : undefined);
+        if (stale()) return false;
         if (!response.ok) {
             if (response.status === 404) {
                 // an1.9, dhp5: no text of their own, they sit inside a range (an1.1-10). The server
                 // names it; open it there, the way a cold load of /an1.9 is redirected.
                 const body = await response.json().catch(() => ({}));
+                if (stale()) return false;
                 if (body.range && body.range !== slug && typeof window.initReader === 'function') {
                     const seg = decodeURIComponent(location.pathname.split('/').pop()).split(':').slice(1).join(':');
                     history.replaceState(history.state, '', '/' + body.range + ':' + slug + (seg ? ':' + seg : '') + location.search + location.hash);
@@ -1398,7 +1451,9 @@ window.buildSutta = async function(rawSlug, opts) {
         }
         suttaData = await response.json();
         if (window.siteTranslatorsReady) await window.siteTranslatorsReady;
+        if (stale()) return false;
     } catch (error) {
+        if (stale()) return false; // aborted by a newer load — not an error to show
         console.error('Text load failed:', error);
         // A 5xx or no network is not "no such text": keep the address (segment, ?s=) and offer a
         // retry. Only a 404 above turns into a search; this used to run a search for "dn22" too.
@@ -1433,6 +1488,7 @@ window.buildSutta = async function(rawSlug, opts) {
     READER_MODE.lang = suttaData.lang || columns[0] || READER_MODE.lang; // сервер резолвил язык явно, см. dg-light.js
     // t() (warning text below) reads this — must be ready before that, see the cache's comment.
     await ensureReaderLangConfig(READER_MODE.lang);
+    if (stale()) return false;
 
     const texttype = suttaData.category || "sutta";
     let params = new URLSearchParams(document.location.search);
@@ -1899,6 +1955,9 @@ window.buildSutta = async function(rawSlug, opts) {
 };
 
 window.addEventListener('popstate', (e) => {
+    // Inside the SPA (search/index.html, also the app) its own popstate → routeFromUrl() reopens
+    // the text via initReader(); building here too loaded and rendered every Back/Forward twice.
+    if (document.getElementById('reader-pane')) return;
     if (e.state && e.state.page) {
         window.buildSutta(e.state.page);
     } else {
@@ -1928,10 +1987,12 @@ async function initReader() {
         try { await window.DHAMMA_I18N_READY; } catch (error) {}
         const resolvedLang = (window.DHAMMA_I18N && window.DHAMMA_I18N.language)
             || localStorage.getItem('dhammaLanguage') || 'en';
-        READER_MODE.modeKey = 'single';
+        // The mode the user last picked (drawer / Alt+1..4) — not always 'single'.
+        READER_MODE.modeKey = getSavedMode() || 'single';
         READER_MODE.lang = resolvedLang;
     }
-    if (!READER_MODE.modeKey) READER_MODE.modeKey = 'single';
+    // Empty, or a key mode-table.json no longer has (?mode=foo, an old saved value): plain single.
+    if (!READER_MODE.modeKey || (window.MODE_TABLE && !window.MODE_TABLE[READER_MODE.modeKey])) READER_MODE.modeKey = 'single';
 
     // Читаем URL. Игнорируем путь, если используется параметр ?q=,
     // либо берём корректную часть пути, если у вас ЧПУ.

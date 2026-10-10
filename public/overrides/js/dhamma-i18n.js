@@ -224,6 +224,9 @@ window.DHAMMA_I18N = (() => {
   const observer = new MutationObserver(records => {
     if (!activeConfig) return;
     for (const record of records) {
+      // #sutta holds the text itself (Pali + translations from /api/text), never UI {{tokens}};
+      // re-walking a whole sutta on every open cost ~60 ms (dn16), several times that on weak phones.
+      if (record.target.closest?.("#sutta")) continue;
       for (const node of record.addedNodes) {
         applySubtree(node, activeConfig);
       }

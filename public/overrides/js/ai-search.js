@@ -436,9 +436,20 @@
         ]);
     }
 
+    // The run in flight: a newer run or clearAiExtras() (a new search) supersedes it, and its late
+    // answer must not hide the newer results (#pali d-none) or switch the screen. Not aborted: the
+    // offline fetch shim reads an aborted fetch as "no connection".
+    let aiRun = 0, aiShowTimer = null;
+    function cancelAiRun() {
+        aiRun++;
+        clearTimeout(aiShowTimer);
+    }
+
     async function dgRunAiSearch(query, scope) {
         const pane = document.getElementById('ai-pane');
         if (!pane || !query) return;
+        cancelAiRun();
+        const run = aiRun;
 
         // Owner: "переходи в ai режим когда это точно необходимо" — don't decide from word count;
         // switch to the AI loading screen only once the lookup has ACTUALLY been running long
@@ -454,7 +465,7 @@
         // up needed at all) matches the branch this query is actually likely to take.
         const mode = /\s/.test(query.trim()) ? 'full' : 'words';
         let showedAiScreen = false;
-        const showTimer = setTimeout(() => {
+        const showTimer = aiShowTimer = setTimeout(() => {
             showedAiScreen = true;
             pane.innerHTML = shell(query, mode);
             pane.querySelectorAll('[data-ai-back]').forEach(btn => btn.addEventListener('click', () => {
@@ -475,6 +486,7 @@
             const res = await fetch(`/api/ai-search?q=${encodeURIComponent(query)}&lang=${lang}&scope=${encodeURIComponent(effectiveScope)}`);
             data = await res.json();
         } catch (err) {
+            if (run !== aiRun) return;
             clearTimeout(showTimer);
             if (!showedAiScreen) return; // plain "not found" already on screen, nothing more to add
             sheen(pane, false);
@@ -488,6 +500,7 @@
                 [[lang === 'ru' ? 'Инпут' : 'Input', query], [lang === 'ru' ? 'Ошибка' : 'Error', 'network error: ' + ((err && err.message) || '—')]]);
             return;
         }
+        if (run !== aiRun) return;
         clearTimeout(showTimer);
         if (!data.ok) {
             if (!showedAiScreen) return;
@@ -614,6 +627,7 @@
     // above a totally unrelated, genuinely matched results table. Called from there whenever a
     // fresh search actually finds something, so stale AI-search leftovers never survive a real hit.
     function clearAiExtras() {
+        cancelAiRun();
         const noteEl = document.getElementById('ai-note');
         if (noteEl) { noteEl.classList.add('d-none'); noteEl.textContent = ''; }
         const wordsEl = document.getElementById('ai-words');
