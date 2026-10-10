@@ -313,7 +313,14 @@
     // The card's ×. The worker drops the partial download with it (see the abort op), so a later
     // visit has nothing to resume — which is the point when the download was started by mistake or
     // is running on mobile data.
+    // A platform that transfers the archive itself (the Android/iOS app: dgPlatform.prepareArchive) is told too: the worker
+    // is not the one downloading then, and without this the native transfer finished and the cancelled library was imported.
+    var cancels = 0;
     window.dgCancelOfflineDownload = function () {
+        cancels++;
+        if (platform.cancelArchive) {
+            try { Promise.resolve(platform.cancelArchive()).catch(function () { /* the worker's abort below still runs */ }); } catch (e) { /* same */ }
+        }
         return call('abort', {}).then(function () {
             local = false;
             // A cancelled download must not start again by itself on the next visit.
@@ -622,7 +629,11 @@
         }).then(function (ok) {
             if (!ok) throw new Error('offline-data-download-declined');
             try { localStorage.setItem(STARTED_KEY, '1'); } catch (e) { /* private mode */ }
-            return prepareArchive(kind);
+            var cancelsBefore = cancels;
+            return prepareArchive(kind).then(function () {
+                // The x while the platform was transferring: whatever it got (or the worker would fetch next) is not imported.
+                if (cancels !== cancelsBefore) throw Object.assign(new Error('download cancelled'), { cancelled: true });
+            });
         }).then(function () {
             // 'update' replaces a copy that is already there; 'open' adopts an existing one or
             // downloads when there is none. Both leave a working copy in place until the new file
