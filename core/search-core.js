@@ -1420,6 +1420,7 @@ async function runRegexJob(job) {
         throw new Error(`Unknown regex job kind: ${job.kind}`);
     }
     if (!job.plain && result && result.metadata) result.metadata.regex = regexScanInfo();
+    if (job.metaOnly && result) return { metadata: result.metadata }; // ?fast=1&metaOnly=1
     return result;
 }
 

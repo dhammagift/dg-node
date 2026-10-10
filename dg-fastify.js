@@ -2552,10 +2552,15 @@ async function searchHandler(req, res) {
         if (req.query.fast === '1') {
             // ?fast=1 не содержит текста сегментов вообще (только grep-счётчики) — конвертировать
             // тут нечего, полный текст приходит позже через /search/enrich.
-            const routed = isRegex ? await regexSearch('fast', keyword, jobParams) : await searchJob('fast', keyword, jobParams, true);
+            // &metaOnly=1: only the counts (the Dictionary's "N texts · M matches" line), a few hundred
+            // bytes instead of 1.35 MB of skeleton it never reads.
+            const metaOnly = req.query.metaOnly === '1';
+            const fastParams = metaOnly ? { ...jobParams, metaOnly } : jobParams;
+            const routed = isRegex ? await regexSearch('fast', keyword, fastParams) : await searchJob('fast', keyword, fastParams, true);
             if (routed && routed.status) return res.code(routed.status).send({ error: routed.error });
             if (routed && routed.json) return sendJsonText(res, routed.json);
             const result = routed ? routed.result : await buildFastResponse(keyword, scope, exact, targetLangs, lb, la);
+            if (metaOnly) return res.send({ metadata: result.metadata });
             return res.send(withSuggestions(result, keyword));
         }
         const routed = isRegex ? await regexSearch('full', keyword, jobParams) : await searchJob('full', keyword, jobParams, !resolveScriptKey(req.query.script));
@@ -3219,6 +3224,9 @@ app.setNotFoundHandler((req, res) => {
     // which reads the word from the path itself.
     const dictWord = req.url.split('?')[0].match(/^\/dict\/(ru\/)?[^/]+\/?$/);
     if (dictWord) {
+        // "/dict/dukkha/" would resolve the page's relative static/ paths under /dict/dukkha/ (404s)
+        const [dictPath, dictQuery] = req.url.split('?');
+        if (dictPath.endsWith('/')) return res.redirect(dictPath.replace(/\/+$/, '') + (dictQuery ? '?' + dictQuery : ''), 301);
         return sendFile(req, res, path.join(SITEROOT, 'dict', dictWord[1] ? 'ru' : '', 'index.html'));
     }
     sendVersionedHtml(req, res, path.join(__dirname, 'public', '404.html'), 404);
