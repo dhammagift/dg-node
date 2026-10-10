@@ -127,6 +127,7 @@
  --m-sh:color-mix(in oklab,var(--dg-navy,midnightblue) 70%,black);
  --m-rim:color-mix(in oklab,var(--dg-navy-ink,slategray) 22%,transparent);
  --m-glow:color-mix(in oklab,var(--dg-surface-hover,whitesmoke) 80%,var(--dg-match,sienna) 8%)}
+image.tex{filter:sepia(.55) saturate(1.9) brightness(1.22) hue-rotate(-6deg)} /* the photo is a grey disc: a warmer, brighter moon (owner's choice B, 2026-10-10) */
 :host([mono]) image{filter:grayscale(1) brightness(1.12) contrast(1.05)}
 :host([mono]){--m-sh:black;--m-rim:color-mix(in oklab,white 40%,transparent);--m-glow:white}
 svg{width:100%;height:100%;display:block;overflow:visible}
