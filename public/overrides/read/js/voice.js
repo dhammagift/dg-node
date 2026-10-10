@@ -2643,7 +2643,6 @@ function getPlayerHtml() {
       <div id="tts-settings-panel" class="tts-pan">
           <div class="tts-grp" data-t="playback">${t.playback}</div>
           <label class="tts-row"><span class="lb"><span data-t="scroll">${t.scroll}</span> <span class="tts-kbd">S</span><small data-t="scrollSub">${t.scrollSub}</small></span><span class="tts-sw"><input type="checkbox" id="tts-scroll-toggle" ${ttsState.autoScroll ? 'checked' : ''}><span></span></span></label>
-          <label class="tts-row"><span class="lb"><span data-t="autoplay">${t.autoplay}</span><small data-t="autoplaySub">${t.autoplaySub}</small></span><span class="tts-sw"><input type="checkbox" id="tts-autoplay-toggle" ${localStorage.getItem('ttsMode') === 'true' ? 'checked' : ''}><span></span></span></label>
           <div class="tts-row tts-delay-row"><span class="lb" title="${t.delayTitle}" data-t="delay">${t.delay}</span><span class="tts-stp"><button type="button" data-stp="tts-segment-delay-input" data-d="-0.5" aria-label="−">−</button><span id="tts-segment-delay-input" class="stp-v" contenteditable="true" inputmode="decimal" spellcheck="false">${localStorage.getItem('dg_tts_segment_delay') || 0}</span><span class="u" data-t="sec">${t.sec}</span><button type="button" data-stp="tts-segment-delay-input" data-d="0.5" aria-label="+">+</button></span></div>
           <div class="tts-row"><span class="lb"><span data-t="offline">${t.offline}</span><small id="tts-off-sub">${t.offSub}</small></span><button type="button" id="tts-off-btn" class="tts-chip">${t.offVoices}</button></div>
           <div class="tts-links tts-links-row">
@@ -2702,8 +2701,6 @@ function ttsUiText() {
     playback: ru ? "Воспроизведение" : "Playback",
     scroll: ru ? "Автоскролл" : "Scroll",
     scrollSub: ru ? "Текст едет за голосом" : "Text follows the voice",
-    autoplay: ru ? "Автостарт" : "Autoplay",
-    autoplaySub: ru ? "Читать сразу при открытии текста" : "Start reading when a text opens",
     delay: ru ? "Пауза м-у фразами" : "Delay",
     sec: ru ? "с" : "sec",
     delayTitle: ru ? "Пауза между фразами (секунды)" : "Pause between phrases (seconds)",
@@ -2937,18 +2934,6 @@ async function handleTTSSettingChange(e) {
 
   }
   
-    // 6. Autoplay (связка с ttsMode)
-  if (e.target.id === 'tts-autoplay-toggle') {
-     const isChecked = e.target.checked;
-
-     
-     if (isChecked) {
-         localStorage.setItem('ttsMode', 'true');
-     } else {
-         localStorage.removeItem('ttsMode');
-     }
-     return;
-  }
 }
 
 
@@ -3572,91 +3557,7 @@ if (window.speechSynthesis) window.speechSynthesis.onvoiceschanged = () => {
 };
 
 function initTTS() {
-  // --- Та самая часть с контекстным меню ---
-  document.addEventListener('contextmenu', function(e) {
-    if (!e.target.closest('a.voice-link')) return;
-    if (localStorage.getItem('ttsMode') === 'true') {
-        e.preventDefault();
-        e.stopImmediatePropagation();
-        const currentSearch = window.location.search; 
-        const ttsUrl = `${window.location.origin}/t2s.html${currentSearch}`;
-        setTimeout(() => window.open(ttsUrl, '_blank'), 500);
-    }
-  }, { passive: false });
-
   synth.getVoices();
-  
-  // --- AUTOPLAY LOGIC ---
-  const urlParams = new URLSearchParams(window.location.search);
-  
-  if (urlParams.has('autoplay') || localStorage.getItem('ttsMode') === 'true') {
-      setTimeout(() => {
-          let slug = null;
-          
-          // 1. Ищем ID сутты
-          const voiceLink = document.querySelector('.voice-link[data-slug]');
-          if (voiceLink) {
-              slug = voiceLink.dataset.slug;
-          } else if (typeof isLegacyPage === 'function' && isLegacyPage()) {
-              slug = window.location.pathname.split('/').pop() || 'legacy_page';
-          }
-
-          if (slug) {
-              console.log("🚀 Autoplay: Starting logic for", slug);
-              
-              const player = getOrBuildPlayer();
-              player.classList.add('active'); 
-              const internalPlayBtn = player.querySelector('.play-main-button');
-              if (internalPlayBtn) internalPlayBtn.dataset.slug = slug;
-
-              // 2. ОПРЕДЕЛЕНИЕ РЕЖИМА
-              let mode = urlParams.get('mode');
-              const validModes = ['pi', 'trn', 'pi-trn', 'trn-pi'];
-
-              if (!mode || !validModes.includes(mode)) {
-                  mode = localStorage.getItem(MODE_STORAGE_KEY) || 'trn';
-              } else {
-                  const modeSelect = document.getElementById('tts-mode-select');
-                  if (modeSelect) modeSelect.value = mode;
-                  localStorage.setItem(MODE_STORAGE_KEY, mode);
-              }
-
-              // 3. ЗАПУСК
-              startPlayback(document, mode, slug, 0);
-
-              // 4. СТРАХОВКА ОТ БЛОКИРОВКИ
-              const forceUnlock = (e) => {
-                  const isPlayerClick = e && e.target && e.target.closest && e.target.closest('.voice-player');
-                  
-                  if (ttsState.speaking && ttsState.paused && !isPlayerClick) {
-                      console.log("🔓 Audio Unlocked by Background Action!");
-                      ttsState.paused = false;
-                      setButtonIcon('pause');
-                      toggleSilence(true); 
-
-                      if (ttsState.googleAudio) {
-                          ttsState.googleAudio.play().catch(err => console.warn(err));
-                      } else {
-                          playCurrentSegment();
-                      }
-                  }
-
-                  ['click', 'touchstart', 'scroll', 'keydown'].forEach(evt => 
-                      document.removeEventListener(evt, forceUnlock)
-                  );
-              };
-
-              // Восстановил твои обработчики в исходном виде
-              ['click', 'touchstart', 'scroll', 'keydown'].forEach(evt => 
-                  document.addEventListener(evt, forceUnlock, { passive: true })
-              );
-
-              ['click', 'touchstart', 'scroll', 'keydown'].forEach(evt => 
-                  document.addEventListener(evt, forceUnlock, { once: true, passive: true })
-              );
-          }
-      }, 1000); 
-  }
 }
 
 // Запускаем немедленно, если DOM уже готов (при ленивой загрузке), 

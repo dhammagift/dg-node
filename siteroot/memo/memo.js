@@ -1201,19 +1201,6 @@ window.addEventListener('load', function() {
 
     if (typeof toggleLoopInputVisibility === 'function') toggleLoopInputVisibility();
 
-    if (urlParams.has('autoplay') || localStorage.getItem('ttsMode') === 'true') {
-        setTimeout(() => {
-            const text = document.getElementById("inputText").value.trim();
-            const delaySec = parseFloat(document.getElementById("ttsDelay").value) || 0;
-            const endSec = parseFloat(document.getElementById("ttsEndDelay").value) || 0;
-            
-            if (text !== "" || delaySec > 0 || endSec > 0) {
-                if (!window.isMemoPlaying && typeof startMemoTTS === 'function') {
-                    startMemoTTS();
-                }
-            }
-        }, 1000); 
-    }
 });
 
         function toggleLoopInputVisibility() {

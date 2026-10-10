@@ -282,7 +282,7 @@ window.addEventListener('suttaRenderedCentral', () => {
         const scriptVoice = document.createElement('script');
         // ?v= matters: /read/js is served immutable for a year, so an unstamped URL meant a fix in the
         // player (or in the CSS it lazily appends) stayed invisible in already-visited browsers.
-        scriptVoice.src = "/read/js/voice.js?v=2026-10-10strip2";
+        scriptVoice.src = "/read/js/voice.js?v=2026-10-10noauto";
         
         scriptVoice.onload = () => {
             // ---> ИСПРАВЛЕНИЕ: Блокируем загрузку A-B цикла для приложения Memo <---
@@ -362,14 +362,6 @@ window.addEventListener('suttaRenderedCentral', () => {
     };
 
     document.addEventListener('click', voiceClickHandler, true);
-
-    // Проверка автоплея (чтобы загрузить сразу без клика)
-    document.addEventListener('DOMContentLoaded', () => {
-        const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.has('autoplay') || localStorage.getItem('ttsMode') === 'true') {
-            window.loadVoiceScripts();
-        }
-    });
 })();
 
 // === ПЕРЕХВАТ КЛИКОВ ПО HISTORY.PHP ===
@@ -645,8 +637,6 @@ function checkStorage(key) {
 }
 
 // Вызов проверки для ttsEnabled
-//localStorage.setItem('ttsMode', 'true');
-//checkStorage('ttsMode');
 //checkStorage('removePunct');
 
 // 1. Обработка URL-параметров при загрузке
@@ -661,20 +651,9 @@ function checkStorage(key) {
 
       const allowedModes = ['pi', 'trn', 'pi-trn', 'trn-pi'];
 
-      // tts=true | 1 | yes | on
-      if (['', '1', 'true', 'yes', 'on'].includes(val)) {
-        localStorage.setItem('ttsMode', 'true');
-      }
-
       // tts=pi | trn | pi-trn | trn-pi
       if (allowedModes.includes(val)) {
-        localStorage.setItem('ttsMode', 'true');
         localStorage.setItem('tts_preferred_mode', val);
-      }
-
-      // tts=false | 0 | off
-      if (['false', '0', 'off'].includes(val)) {
-        localStorage.removeItem('ttsMode');
       }
     }
 
