@@ -827,10 +827,11 @@
   function partsDue(rows) {
     var now = Date.now(), obs = state.loc ? new A.Observer(state.loc.lat, state.loc.lon, 0) : null, tz = state.tz, days = [], out = [];
     function sun(kind, d) { var p = d.split('-').map(Number); return edge(kind, p[0], p[1], p[2], tz, obs) || zonedToUtc(p[0], p[1], p[2], kind === 'rise' ? 6 : 18, tz); }
-    if (state.parts.days === 'all') { var today = localDay(new Date(), tz); for (var i = 0; i < 4; i++) days.push(ymdAdd(today, i)); }
+    // A month ahead (dg-apps U2: the app need not be opened for the reminders to keep coming; NATIVE_MAX caps the total)
+    if (state.parts.days === 'all') { var today = localDay(new Date(), tz); for (var i = 0; i < 31; i++) days.push(ymdAdd(today, i)); }
     else rows.filter(function (r) { return r.uposatha && wantDay(r); }).forEach(function (r) { days.push(sutta() ? ymdAdd(r.ymd, 1) : r.ymd); });
     var todayYmd = localDay(new Date(), tz);
-    days.filter(function (ymd) { return ymd >= todayYmd; }).slice(0, 4).forEach(function (ymd) {
+    days.filter(function (ymd) { return ymd >= todayYmd; }).forEach(function (ymd) {
       [['night', sun('set', ymdAdd(ymd, -1)), sun('rise', ymd), t.nightParts, 3], ['day', sun('rise', ymd), sun('set', ymd), t.dayParts, 0]].forEach(function (g) {
         if (state.parts.which !== 'both' && state.parts.which !== g[0]) return;
         var third = (g[2] - g[1]) / 3;
@@ -842,10 +843,10 @@
     });
     return out;
   }
-  // Reminders before vikala: (midday - the lead) of the Uposatha days or of every day, for the next month
+  // Reminders before vikala: (midday - the lead) of the Uposatha days or of every day, for the next three months
   function mealDue(rows) {
     var now = Date.now(), lead = state.meal.lead * 60000, obs = state.loc ? new A.Observer(state.loc.lat, state.loc.lon, 0) : null, days = [], out = [];
-    if (state.meal.days === 'all') { var today = localDay(new Date(), state.tz); for (var i = 0; i < 30; i++) days.push(ymdAdd(today, i)); }
+    if (state.meal.days === 'all') { var today = localDay(new Date(), state.tz); for (var i = 0; i < 90; i++) days.push(ymdAdd(today, i)); }
     else rows.filter(function (r) { return r.uposatha && wantDay(r); }).forEach(function (r) { days.push(sutta() ? ymdAdd(r.ymd, 1) : r.ymd); }); // by the suttas the day of the Uposatha is the one after its evening
     days.forEach(function (ymd) {
       var noon = noonFor(ymd, obs);
@@ -883,9 +884,11 @@
   // change of a setting — set a reminder whose time had passed all over again, and it rang again. Same store, same keys, so
   // the browser path and the app cannot disagree.
   function shownKeys() { try { return JSON.parse(store('dgUposathaNotified') || '[]'); } catch (e) { return []; } }
-  // What the app keeps is not "heard" but "handed over", and it hands over the whole list at once (up to 60): a window of 40
-  // would drop keys that are still armed, and a dropped key would let the same reminder through twice.
-  var SHOWN_KEEP = 120;
+  // What the app keeps is not "heard" but "handed over", and it hands over the whole list at once (up to NATIVE_MAX): a window
+  // of 40 would drop keys that are still armed, and a dropped key would let the same reminder through twice. While a reminder
+  // is in the list at most NATIVE_MAX others enter it after it, hence twice that and a margin.
+  var NATIVE_MAX = 200;
+  var SHOWN_KEEP = 2 * NATIVE_MAX + 40;
   function markShown(keys) {
     if (!keys.length) return;
     try { var seen = shownKeys(); keys.forEach(function (k) { if (seen.indexOf(k) === -1) seen.push(k); }); store('dgUposathaNotified', JSON.stringify(seen.slice(-SHOWN_KEEP))); } catch (e) { /* no storage: a reminder may come again */ }
@@ -903,7 +906,9 @@
     if (src) { try { var p = new Audio(src).play(); if (p && p.catch) p.catch(function () { /* the browser did not allow the sound before a tap */ }); } catch (e) { /* a bonus */ } }
   }
   // In the Android / iOS app the reminders are local notifications scheduled on the device itself: they arrive with the app
-  // closed and nothing is kept on our side. (iOS holds 64 pending notifications, hence at most 60 here.)
+  // closed and nothing is kept on our side. Up to NATIVE_MAX (above) at once, ids NATIVE_ID_BASE.. (the tests use 7990+): Android
+  // sets them all (two alarms each on the alarm source, well under the 500 an app may hold); iOS holds only 64 pending, so the app
+  // keeps the whole list natively and sets the next ~60 itself, topping up as they fire (DgNotify in DgApp.swift).
   var NATIVE_ID_BASE = 7000;
   function nativePlugin() {
     var C = window.Capacitor;
@@ -944,7 +949,9 @@
   }
   function scheduleNative(LN, rows, byYmd, F) {
     var now = Date.now();
-    var list = reminderList(rows, byYmd).slice(0, 60);
+    // The Uposatha reminders (no kind) are all handed over; the meal and parts ones fill the rest, the soonest first.
+    var all = reminderList(rows, byYmd), upo = all.filter(function (i) { return !i.kind; });
+    var list = upo.concat(all.filter(function (i) { return i.kind; }).slice(0, Math.max(0, NATIVE_MAX - upo.length))).sort(function (a, b) { return a.when - b.when; });
     var sig = JSON.stringify([state.rem.sound, state.rem.ownChannel, state.meal.snd, state.meal.begSnd, state.parts.snd, list.map(function (i) { return [i.key, i.title, i.when > now + 10000 ? i.when : 0]; })]);
     if (sig !== nativeSig) { // only when something changed: paint() runs on every touch
       nativeSig = sig;
@@ -963,10 +970,11 @@
         var items = due.map(function (item, i) {
           var late = missed(item);
           return { id: NATIVE_ID_BASE + i, title: late ? t.missed : item.title, body: late ? missedBody(item, F) : itemBody(item, F), channelId: late ? ch[sounds.length] : ch[sounds.indexOf(soundOf(item))],
-            schedule: { at: new Date(Math.max(item.when, now + 3000)), allowWhileIdle: true }, extra: { url: '/uposatha-calendar' } };
+            schedule: { at: new Date(Math.max(item.when, now + 3000)), allowWhileIdle: true }, extra: { url: '/uposatha-calendar', upo: !item.kind } }; // upo: iOS sets these first of its ~60
         });
         return LN.getPending().then(function (p) {
-          var ours = ((p && p.notifications) || []).filter(function (n) { return n.id >= NATIVE_ID_BASE && n.id < NATIVE_ID_BASE + 100; }).map(function (n) { return { id: n.id }; });
+          // ours: the whole range below the tests' 7990, wider than NATIVE_MAX (the app shows its own notice and older ones in it too)
+          var ours = ((p && p.notifications) || []).filter(function (n) { return n.id >= NATIVE_ID_BASE && n.id < NATIVE_ID_BASE + 900; }).map(function (n) { return { id: n.id }; });
           return ours.length ? LN.cancel({ notifications: ours }) : null;
         }).then(function () { return items.length ? LN.schedule({ notifications: items }) : null; }).then(function (r) { markShown(due.map(function (i) { return i.key; })); return r; });
       }).catch(function () { nativeSig = ''; });
@@ -1686,7 +1694,13 @@
     if ('IntersectionObserver' in window) new IntersectionObserver(function (es, ob) { if (es[0].isIntersecting) { ob.disconnect(); if (!$('rd-frame').getAttribute('src')) readSutta(0, true); } }, { rootMargin: '300px' }).observe($('reader'));
     $('rd-sel').onchange = function (e) { readSutta(+e.target.value); };
     $('rd-close').onclick = function () { $('reader').hidden = true; markReader(); };
-    document.addEventListener('visibilitychange', function () { if (!document.hidden) paint(); });
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden) return;
+      // No zone chosen: the page follows the phone's, also when it changed while the app was in the background (a trip): the
+      // reminders are worked out again for it (dg-apps U6). A chosen zone (dgUposathaTz) stays.
+      if (!store('dgUposathaTz')) { var z = Intl.DateTimeFormat().resolvedOptions().timeZone; if (z && z !== state.tz) state.tz = z; }
+      paint();
+    });
     var wide = window.innerWidth >= 700;
     window.addEventListener('resize', function () { reportHeight(); var w = window.innerWidth >= 700; if (w !== wide) { wide = w; if (slides.length) renderCarousel(); } });
     window.addEventListener('message', function (e) { if (e.data && e.data.dgFrameHeightRequest) reportHeight(); });
