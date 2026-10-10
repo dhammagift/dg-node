@@ -173,18 +173,20 @@ html.up-in .tbar, html.up-in main.page, html.up-in .appnav { animation: up-fade 
 
 /* Смена вкладки через View Transition (app-refresh.js): уходит старое содержимое, приходит новое; панели и нижняя капсула остаются на месте.
    Содержимое страницы — отдельный слой (upo-page), всё остальное — корневой слой без анимации (капсула сама скользит). */
-body.app main.page{view-transition-name:upo-page}
-::view-transition-group(upo-page){animation:none}
-::view-transition-old(root),::view-transition-new(root){animation:none;mix-blend-mode:normal}
-::view-transition-old(upo-page){animation:upo-vt-out 130ms cubic-bezier(.4,0,1,1) both}
-::view-transition-new(upo-page){animation:upo-vt-in 280ms cubic-bezier(.05,.7,.1,1) both}
+/* ONLY while a tab is changing (html[data-vt] is set by app-refresh.js right before the transition and removed after it): the theme switch (theme-reveal.js) has
+   its own view transition of the whole page, and these names / animations must not touch it (the page slid and faded in the middle of a reveal). */
+html[data-vt] body.app main.page{view-transition-name:upo-page}
+html[data-vt]::view-transition-group(upo-page){animation:none}
+html[data-vt]::view-transition-old(root),html[data-vt]::view-transition-new(root){animation:none;mix-blend-mode:normal}
+html[data-vt]::view-transition-old(upo-page){animation:upo-vt-out 130ms cubic-bezier(.4,0,1,1) both}
+html[data-vt]::view-transition-new(upo-page){animation:upo-vt-in 280ms cubic-bezier(.05,.7,.1,1) both}
 /* the bottom bar is its own layer: the page snapshot is as tall as the screen and was drawn over the bar's pill, which blinked out for the length of the change; the bar stays live (its pill glides on its own) */
-body.app .appnav{view-transition-name:upo-nav}
-::view-transition-group(upo-nav){animation:none}
-::view-transition-old(upo-nav){display:none}
-::view-transition-new(upo-nav){animation:none}
+html[data-vt] body.app .appnav{view-transition-name:upo-nav}
+html[data-vt]::view-transition-group(upo-nav){animation:none}
+html[data-vt]::view-transition-old(upo-nav){display:none}
+html[data-vt]::view-transition-new(upo-nav){animation:none}
 html{--upo-vt-dir:1}
 html[data-vt=back]{--upo-vt-dir:-1}
 @keyframes upo-vt-out{to{opacity:0;transform:translateX(calc(var(--upo-vt-dir) * -18px))}}
 @keyframes upo-vt-in{from{opacity:0;transform:translateX(calc(var(--upo-vt-dir) * 26px)) scale(.992)}}
-@media (prefers-reduced-motion:reduce){::view-transition-group(*),::view-transition-old(*),::view-transition-new(*){animation:none!important}}
+@media (prefers-reduced-motion:reduce){html[data-vt]::view-transition-group(*),html[data-vt]::view-transition-old(*),html[data-vt]::view-transition-new(*){animation:none!important}}
