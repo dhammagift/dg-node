@@ -258,6 +258,11 @@
   // The moon is <dg-moon> (dg-moon.js: the NASA photo with a shadow for the phase); i is the eighth of the cycle, f the exact phase (0 new .. 0.5 full) when it is known.
   // A tap on a big one plays one full cycle of phases and stops at the current one.
   function moon(i, cls, f) { return '<dg-moon class="' + cls + '" phase="' + (f == null ? i / 8 : f.toFixed(4)) + '"' + (state.south ? ' south' : '') + ' glow aria-hidden="true"></dg-moon>'; }
+  // ?moon=1 (a tap on the Uposatha widget's first layer): once the moon is on the screen, the cycle of phases plays once
+  if (params.get('moon') === '1') window.addEventListener('load', function () {
+    function play() { var m = document.querySelector('#up-hero dg-moon') || document.querySelector('#t-moon dg-moon'); if (m && m.animateTo && !m.__spin) { m.__spin = true; m.animateTo(parseFloat(m.getAttribute('phase')) || 0, { cycles: 1, duration: 2000 }).then(function () { m.__spin = false; }); } }
+    setTimeout(play, 1000);
+  });
   document.addEventListener('click', function (e) {
     var m = e.target.closest && e.target.closest('dg-moon.moon:not(.mi)');
     if (m && m.animateTo && !m.__spin) { m.__spin = true; m.animateTo(parseFloat(m.getAttribute('phase')) || 0, { cycles: 1, duration: 2000 }).then(function () { m.__spin = false; }); }

@@ -54,7 +54,7 @@
     });
     var days = [];
     function third(a, b, names) { var w = (b - a) / 3; return names.map(function (n, k) { return [n, hm(new Date(a.getTime() + k * w)), hm(new Date(a.getTime() + (k + 1) * w))]; }); }
-    for (var i = 0; i < 14; i++) {
+    for (var i = -1; i < 13; i++) { // from yesterday: the night part that is still running before dawn belongs to yesterday's day (the widgets look it up there)
       var ymd = ymdAdd(todayYmd, i), p = ymd.split('-').map(Number), rise = sun('rise', ymd), set = sun('set', ymd), nextRise = sun('rise', ymdAdd(ymd, 1));
       days.push({ date: ymd, sunrise: ev(rise), noon: ev(noonFor(ymd)), sunset: ev(set), aruna: ev(aruna(p[0], p[1], p[2])),
         parts: third(rise, set, ['pubbanha', 'majjhanhika', 'sayanha']).concat(third(set, nextRise, ['pathama', 'majjhima', 'pacchima'])) });
