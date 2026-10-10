@@ -114,6 +114,7 @@ export async function download(vid, onProgress = () => {}, signal) {
     s.put(model, 'model:' + vid);
     s.put({ rules: o.rules, data: o.data, respell: o.respell }, 'rules');
     s.put(engine, 'engine');
+    s.put(o.engine, 'engine-tag');
     if (shared) { s.put(wasm, 'wasm'); s.put(ort, 'ort'); }
     if (esJs) { s.put(esJs, 'espeak-js'); s.put(o.espeak.tag, 'espeak-tag'); }
     extra.forEach((w, i) => s.put(esFiles[i], w[0]));
@@ -143,9 +144,13 @@ export async function remove(vid) {
 export async function refresh() {
   if (!ids().length) return;
   const o = await offer(), r = await get('rules');
-  if (!r || r.rules !== o.rules || JSON.stringify(r.respell) !== JSON.stringify(o.respell)) {
+  if (!r || r.rules !== o.rules || JSON.stringify(r.respell) !== JSON.stringify(o.respell) || (await get('engine-tag')) !== o.engine) {
     const engine = await fetchAny('pali-tts.js').then(x => x.text());
-    await idb('readwrite', s => { s.put({ rules: o.rules, data: o.data, respell: o.respell }, 'rules'); s.put(engine, 'engine'); });
+    await idb('readwrite', s => {
+      s.put({ rules: o.rules, data: o.data, respell: o.respell }, 'rules');
+      s.put(engine, 'engine');
+      s.put(o.engine, 'engine-tag');
+    });
     stopWorker();
   }
   // a newer espeak build: its code and the packs on the device come again (~1 MB, ru 9 MB)
