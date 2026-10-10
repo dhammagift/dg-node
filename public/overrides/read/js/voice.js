@@ -1065,7 +1065,7 @@ async function fetchPaliVoiceAudio(text, uiRate, voice) {
   if (local) return local();
   throw lastError;
 }
-const dgOffline = () => import('/read/js/voice-offline.js?v=2026-10-10enru3');
+const dgOffline = () => import('/read/js/voice-offline.js?v=2026-10-10own');
 const dgOffIds = () => (localStorage.getItem('dg_voice_offline') || '').split(',').filter(Boolean);
 if (dgOffIds().length && navigator.onLine) {  // newer rules for the downloaded voices, quietly
   setTimeout(() => dgOffline().then(m => m.refresh()).then(dgOfflineRender).catch(() => {}), 5000);
@@ -1108,7 +1108,8 @@ function dgOffIcon(vid) {
   if (dgOffIds().includes(vid) && !stale) {
     return `<button type="button" class="tts-ib tts-offic on" data-offdel="${vid}" title="${t.offHave} · ${t.offDel}"><i class="tts-gi" style="--u:url('/assets/svg/trash-can-regular-full.svg')"></i></button>`;
   }
-  return `<button type="button" class="tts-ib tts-offic" data-offvid="${vid}" title="${stale ? t.offUpd : t.offGet} · ${dgOffMb(v)} ${t.mb}">${DG_OFF_DOWN}</button>`;
+  // (the owner's own voices: CC BY-NC-SA 4.0)
+  return `<button type="button" class="tts-ib tts-offic" data-offvid="${vid}" title="${stale ? t.offUpd : t.offGet} · ${dgOffMb(v)} ${t.mb}${v.license ? ' · ' + v.license : ''}">${DG_OFF_DOWN}</button>`;
 }
 
 // The card above the player (owner: a separate plate in the player's style, informative, with retry and a way to
