@@ -1304,6 +1304,35 @@ async function getFullTextData(suttaId, targetLangs, explicitTranslators) {
 // route because the app needs the same answer and the walk depends on skeletonDB's key order,
 // which is this module's own state — reproducing it outside would be a second implementation of
 // the one thing that must not drift: what "the next sutta" means.
+// an1.9 / dhp5 have no text of their own: they sit inside a range (an1.1-10, dhp1-20). The range that
+// covers the id, or null: first with the chapter number ("an1.9" -> "an1.1-10"), then without it
+// ("dhp5" -> "dhp1-20"). Used by the /:slug redirect and the 404 of /api/text, here and offline.
+function findRangeContaining(id) {
+    const withChapter = id.match(/^([a-z-]+)(\d+)\.(\d+)$/);
+    const flat = id.match(/^([a-z-]+)(\d+)$/);
+    let book, chapter, num;
+    if (withChapter) {
+        book = withChapter[1]; chapter = withChapter[2]; num = parseInt(withChapter[3], 10);
+    } else if (flat) {
+        book = flat[1]; chapter = null; num = parseInt(flat[2], 10);
+    } else {
+        return null;
+    }
+    const rangeRe = chapter
+        ? new RegExp('^' + book + chapter + '\\.(\\d+)-(\\d+)$')
+        : new RegExp('^' + book + '(\\d+)-(\\d+)$');
+    for (const key of Object.keys(skeletonDB)) {
+        const m = key.match(rangeRe);
+        if (!m) continue;
+        if (num >= parseInt(m[1], 10) && num <= parseInt(m[2], 10)) return key;
+    }
+    return null;
+}
+
+// /dn22:2.2/kacchapa — a text with the word to find as the last path part, the same as
+// /dn22:2.2?s=kacchapa. Only for a real text (or one inside a range); any other two-part path
+// ("/ru/dn22", "/dict/dukkha") goes on to the not-found handler that owns it.
+
 // The database lists the books alphabetically (dn34 -> iti1, an -> dhp, nothing after ud8.10), so
 // they are put in canon order once; texts within a book keep the database order. A book not named
 // here (Vinaya, Abhidhamma) keeps its place after them.
@@ -1398,6 +1427,7 @@ module.exports = {
     init,
     setSkeleton,
     navFor,
+    findRangeContaining,
     DEFAULT_SCOPE_PREFIXES,
     INTERLINEAR_TRANSLATOR_KEYS,
     MODE_TABLE,

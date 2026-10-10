@@ -717,7 +717,10 @@ document.addEventListener('click', (event) => {
     if (event.target.closest('.mem-bubble')) return;
     window.removeBubbles();
 });
-document.addEventListener('scroll', () => window.removeBubbles(), true);
+// Scroll fires every frame: only do the work when a memorize bubble is actually open (a live
+// collection, its length is cached between DOM changes, unlike querySelectorAll over a long text).
+const memBubblesOpen = document.getElementsByClassName('mem-bubble');
+document.addEventListener('scroll', () => { if (memBubblesOpen.length) window.removeBubbles(); }, true);
 
 // Wide screens: the third-party links share the icon row (#reader-toolbar); narrow ones: their own
 // row (#top-links-container). The real <a> elements move, see the long note in buildSutta. Placed

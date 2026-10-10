@@ -34,7 +34,15 @@ searchCore.setSkeleton(skeleton);
 
 parentPort.on('message', async job => {
     try {
-        parentPort.postMessage({ id: job.id, ok: true, result: await searchCore.runRegexJob(job) });
+        const result = await searchCore.runRegexJob(job);
+        // job.asJson: the answer goes back as its finished JSON text. Posting the object made the HTTP
+        // process rebuild the whole graph (up to 10 MB per enrich chunk) only to serialize it again.
+        if (job.asJson) {
+            const m = result && result.metadata;
+            parentPort.postMessage({ id: job.id, ok: true, json: JSON.stringify(result), zero: !!(m && !m.tooShort && m.totalFiles === 0) });
+        } else {
+            parentPort.postMessage({ id: job.id, ok: true, result });
+        }
     } catch (err) {
         // A bad pattern is the caller's mistake, not a worker fault — the worker stays alive and
         // the parent turns this into the same 400 the main process would answer.

@@ -1134,7 +1134,8 @@ const OPS = {
         const explicitTranslators = translators ? translators.split(',').map(t => t.trim()) : null;
 
         const base = await core.getSuttaBaseData(suttaId);
-        if (!base) return { __status: 404, error: `Unknown sutta id: ${suttaId}` };
+        // the range that holds an1.9 / dhp5, as the site's /api/text says (the reader opens it there)
+        if (!base) return { __status: 404, error: `Unknown sutta id: ${suttaId}`, range: core.findRangeContaining(suttaId) || undefined };
         let data = await core.buildTextDataFromBase(base, suttaId, targetLangs, explicitTranslators);
         let effectiveLangs = targetLangs;
 

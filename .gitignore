@@ -99,3 +99,6 @@ configs/local/*.json
 settings/sitemap.xml
 # the previous database kept while a new one is swapped in (dg.db.prev, -shm, -wal)
 dg.db.prev*
+
+# the owner's review/status pages, password-protected at /reviews (dg-fastify.js restricted prefixes)
+siteroot/reviews/

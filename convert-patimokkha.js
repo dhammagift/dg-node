@@ -17,11 +17,32 @@ const PAGES = [
     { src: 'bipm.php', out: 'bi-pm.html' },
 ];
 
+// Range texts (as1-7, pc91-93) number their segments per rule, so the reader anchors them by the full
+// segment id (megareader.js, /\d-\d/ ids). The legacy links carry only the local number, the same for
+// every rule ("#1.1" for Adhikaraṇasamatha 1..6), so they are mapped here in the order they appear:
+// each rule to its own text. pc91-93 point at "1.13.0", which does not exist; the reader used to land
+// on the rule statement they share (pc93:1.13.1), and so do they now.
+const RANGE_ANCHORS = {
+    'pli-tv-bu-vb-as1-7': {
+        '2.2': ['pli-tv-bu-vb-as1:1.1'], // "satta adhikaraṇasamathā dhammā uddesaṁ āgacchanti"
+        '1.1': ['pli-tv-bu-vb-as1:2.2', 'pli-tv-bu-vb-as2:1.1', 'pli-tv-bu-vb-as3:1.1', 'pli-tv-bu-vb-as4:1.1', 'pli-tv-bu-vb-as5:1.1', 'pli-tv-bu-vb-as6:1.1'],
+    },
+    'pli-tv-bi-vb-pc91-93': { '1.13.0': ['pli-tv-bi-vb-pc93:1.13.1', 'pli-tv-bi-vb-pc93:1.13.1', 'pli-tv-bi-vb-pc93:1.13.1'] },
+};
+let rangeSeen = {}; // `${target}#${anchor}` -> how many met so far, per page
+
 function ruleIdToUrl(id, anchor) {
     const target = (id === 'bu-pm' || id === 'bi-pm')
         ? 'pli-tv-' + id
         : 'pli-tv-' + id.replace(/^(bu|bi)-/, '$1-vb-');
-    return '/' + target + (anchor ? '#' + anchor : '');
+    const list = RANGE_ANCHORS[target] && RANGE_ANCHORS[target][anchor];
+    if (list) {
+        const k = target + '#' + anchor, n = rangeSeen[k] = (rangeSeen[k] || 0) + 1;
+        if (n > list.length) throw new Error(`${k}: met ${n} times, RANGE_ANCHORS lists ${list.length}`);
+        anchor = list[n - 1];
+    }
+    // ?hide=id: the search field shows "pli-tv-bu-pm", not the anchor (reader/megareader.js)
+    return '/' + target + (anchor ? '?hide=id#' + anchor : '');
 }
 
 function convertBody(raw) {
@@ -55,6 +76,7 @@ function convertBody(raw) {
 const outDir = path.join(__dirname, 'reader');
 for (const page of PAGES) {
     const raw = fs.readFileSync(path.join(LEGACY_ROOT, 'assets', 'texts', page.src), 'utf8');
+    rangeSeen = {};
     const { body, convertedCount } = convertBody(raw);
     if (convertedCount === 0) throw new Error(`${page.src}: no links converted, check source format`);
     // Bare fragment (no page shell) — used by /toc's inline expand (public/spa/toc.js),

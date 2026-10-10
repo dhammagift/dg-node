@@ -177,7 +177,8 @@ app.addHook('onRequest', (req, res, done) => {
 });
 app.addHook('onRequest', (req, res, done) => {
     const p = decodedPath(req.url);
-    if (!restrictedAuth || !/^\/(bw|ai|b)(\/|$)/.test(p)) return done();
+    // /reviews: the owner's review and status pages (siteroot/reviews, not in git), same password
+    if (!restrictedAuth || !/^\/(bw|ai|b|reviews)(\/|$)/.test(p)) return done();
     const [, b64] = (req.headers.authorization || '').split(' ');
     const [user, pass] = b64 ? Buffer.from(b64, 'base64').toString().split(':') : [];
     if (user === restrictedAuth.user && pass === restrictedAuth.pass) return done();
@@ -1186,7 +1187,7 @@ regexRunner.configure({ dbPath: SEARCH_DB_PATH, dgOffline: DG_OFFLINE, limits: R
 // "kacchapa" took 8 s instead of 0.01 s. One worker for the first answer (?fast=1 / full), two for
 // enrich chunks, so a long enrich never stands in front of someone's first page. A dead or
 // unconfigured worker falls back to the old in-process run (searchJob below).
-const plainLimits = { ...REGEX_LIMITS, timeoutMs: 60000, maxQueue: 50, idleMs: 20000 };
+const plainLimits = { ...REGEX_LIMITS, timeoutMs: 60000, maxQueue: 50, idleMs: 20000, maxHeapMb: Number(process.env.DG_SEARCH_HEAP_MB) || 1024 };
 const searchPool = { first: regexRunner.create(), enrich: [regexRunner.create(), regexRunner.create()] };
 for (const r of [searchPool.first, ...searchPool.enrich]) r.configure({ dbPath: SEARCH_DB_PATH, dgOffline: DG_OFFLINE, limits: plainLimits });
 // mmap is deliberately left off (SQLite's default). Mapping the file makes every page the query
@@ -2492,16 +2493,24 @@ async function regexSearch(kind, keyword, params) {
 }
 
 // A non-regex job in the pool; null = run it in-process instead (worker unavailable or queue full).
-async function searchJob(kind, keyword, params) {
+// asJson: nothing will be changed in the answer here (no ?script= conversion), so the worker sends its
+// finished JSON text and this process passes it on as is: { json, zero } instead of { result }.
+async function searchJob(kind, keyword, params, asJson) {
     const runner = kind === 'enrich'
         ? searchPool.enrich.reduce((a, b) => (b.load() < a.load() ? b : a))
         : searchPool.first;
-    const outcome = await runner.runJob(kind, { keyword, plain: true, ...params });
-    if (outcome.ok) return { result: outcome.result };
+    const outcome = await runner.runJob(kind, { keyword, plain: true, asJson: !!asJson, ...params });
+    if (outcome.ok) return outcome.json !== undefined
+        ? (outcome.zero ? { result: JSON.parse(outcome.json) } : { json: outcome.json }) // zero results: suggestions are added below
+        : { result: outcome.result };
     if (outcome.timedOut) return { status: 503, error: 'Search did not finish in time — narrow the query or the scope.' };
     if (outcome.badRequest) { const err = new Error(outcome.message); err.badRequest = true; throw err; }
     if (outcome.unavailable) console.warn('[search] worker unavailable, running in-process:', outcome.message);
     return null;
+}
+
+function sendJsonText(res, text) {
+    return res.type('application/json; charset=utf-8').send(text);
 }
 
 async function searchHandler(req, res) {
@@ -2543,13 +2552,15 @@ async function searchHandler(req, res) {
         if (req.query.fast === '1') {
             // ?fast=1 не содержит текста сегментов вообще (только grep-счётчики) — конвертировать
             // тут нечего, полный текст приходит позже через /search/enrich.
-            const routed = isRegex ? await regexSearch('fast', keyword, jobParams) : await searchJob('fast', keyword, jobParams);
+            const routed = isRegex ? await regexSearch('fast', keyword, jobParams) : await searchJob('fast', keyword, jobParams, true);
             if (routed && routed.status) return res.code(routed.status).send({ error: routed.error });
+            if (routed && routed.json) return sendJsonText(res, routed.json);
             const result = routed ? routed.result : await buildFastResponse(keyword, scope, exact, targetLangs, lb, la);
             return res.send(withSuggestions(result, keyword));
         }
-        const routed = isRegex ? await regexSearch('full', keyword, jobParams) : await searchJob('full', keyword, jobParams);
+        const routed = isRegex ? await regexSearch('full', keyword, jobParams) : await searchJob('full', keyword, jobParams, !resolveScriptKey(req.query.script));
         if (routed && routed.status) return res.code(routed.status).send({ error: routed.error });
+        if (routed && routed.json) return sendJsonText(res, routed.json);
         const result = routed ? routed.result : await buildSearchResponse(keyword, scope, exact, targetLangs, lb, la);
         await convertScriptInSearchResult(result, req.query.script);
         return res.send(withSuggestions(result, keyword));
@@ -2595,8 +2606,9 @@ app.get('/search/enrich', async (req, res) => {
 
     try {
         const jobParams = { scope, exact, langs: targetLangs, lb, la, ids: requestedIds };
-        const routed = isRegex ? await regexSearch('enrich', keyword, jobParams) : await searchJob('enrich', keyword, jobParams);
+        const routed = isRegex ? await regexSearch('enrich', keyword, jobParams) : await searchJob('enrich', keyword, jobParams, !resolveScriptKey(req.query.script));
         if (routed && routed.status) return res.code(routed.status).send({ error: routed.error });
+        if (routed && routed.json) return sendJsonText(res, routed.json);
         const enrichResult = routed ? routed.result : await searchCore.enrichResponse(keyword, scope, exact, targetLangs, lb, la, requestedIds);
         await convertScriptInSearchResult(enrichResult, req.query.script);
         return res.send(enrichResult);
@@ -3094,31 +3106,8 @@ app.get('/toc/:code', (req, res) => {
 // который его накрывает: сначала с номером главы ("an1.9" -> "an1.1-10"), затем без неё
 // ("dhp5" -> "dhp1-20"). Легаси делал то же самое отдельным ranges.sh (см. комментарий в
 // dg-text-router.js).
-function findRangeContaining(id) {
-    const withChapter = id.match(/^([a-z-]+)(\d+)\.(\d+)$/);
-    const flat = id.match(/^([a-z-]+)(\d+)$/);
-    let book, chapter, num;
-    if (withChapter) {
-        book = withChapter[1]; chapter = withChapter[2]; num = parseInt(withChapter[3], 10);
-    } else if (flat) {
-        book = flat[1]; chapter = null; num = parseInt(flat[2], 10);
-    } else {
-        return null;
-    }
-    const rangeRe = chapter
-        ? new RegExp('^' + book + chapter + '\\.(\\d+)-(\\d+)$')
-        : new RegExp('^' + book + '(\\d+)-(\\d+)$');
-    for (const key of Object.keys(skeletonDB)) {
-        const m = key.match(rangeRe);
-        if (!m) continue;
-        if (num >= parseInt(m[1], 10) && num <= parseInt(m[2], 10)) return key;
-    }
-    return null;
-}
+const findRangeContaining = searchCore.findRangeContaining; // core/search-core.js: the offline worker answers the same
 
-// /dn22:2.2/kacchapa — a text with the word to find as the last path part, the same as
-// /dn22:2.2?s=kacchapa. Only for a real text (or one inside a range); any other two-part path
-// ("/ru/dn22", "/dict/dukkha") goes on to the not-found handler that owns it.
 app.get('/:slug/:word', (req, res) => {
     const { slug, word } = req.params;
     const base = slug.split(':')[0].toLowerCase();

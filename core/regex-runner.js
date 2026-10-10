@@ -70,8 +70,11 @@ function createRunner() {
     function spawn() {
         if (!worker) {
             const { Worker } = require('worker_threads');
+            // limits.maxHeapMb: a smaller heap makes the worker collect garbage sooner instead of growing;
+            // a job that needs more ends the worker ("unavailable"), and the caller runs it in-process
             worker = new Worker(path.join(__dirname, 'regex-worker.js'), {
                 workerData: { dbPath, dgOffline, limits },
+                ...(limits.maxHeapMb ? { resourceLimits: { maxOldGenerationSizeMb: limits.maxHeapMb } } : {}),
             });
             // Also between jobs: a worker that died while idle must not be reused (its answer would
             // never come and the caller would wait out the whole deadline).
@@ -117,7 +120,7 @@ function createRunner() {
             };
             const onMessage = msg => {
                 if (!msg || msg.id !== id) return;
-                if (msg.ok) return finish({ ok: true, result: msg.result });
+                if (msg.ok) return finish({ ok: true, result: msg.result, json: msg.json, zero: msg.zero });
                 finish({ ok: false, badRequest: !!msg.badRequest, message: msg.message });
             };
             const onExit = () => { if (worker === w) worker = null; finish({ ok: false, unavailable: true, message: 'worker exited' }); };

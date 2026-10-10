@@ -618,6 +618,7 @@ onReady(() => {
 (function () {
     var activeSlug = '';
     var cachedTOCNodes = null;
+    var lastLabelKey = '';
 
     function capitalize(str) {
         if (!str) return '';
@@ -719,6 +720,11 @@ onReady(() => {
         for (var i = headings.length - 1; i >= 0; i--) {
             if (headings[i].getBoundingClientRect().top <= eyeLevel) { activeIndex = i; break; }
         }
+        // Runs on scroll: the label is read (innerText makes the browser lay the page out) and written
+        // only when the heading under the eye changes, not on every scroll step.
+        var labelKey = currentSlug + '|' + activeIndex + '|' + (window.isRuPath ? 'ru' : '') + '|' + (tocPanel && tocPanel.classList.contains('active') ? 1 : 0);
+        if (labelKey === lastLabelKey && pillLabel.textContent) return;
+        lastLabelKey = labelKey;
 
         var langClass = window.isRuPath ? '.rus-lang' : '.eng-lang';
         var labelText = headings[activeIndex].innerText;
@@ -933,7 +939,7 @@ onReady(() => {
         }
     });
 
-    window.addEventListener('suttaLoaded', function () { activeSlug = ''; cachedTOCNodes = null; syncTOC(); });
-    window.addEventListener('suttaRenderedCentral', function () { activeSlug = ''; cachedTOCNodes = null; syncTOC(); });
+    window.addEventListener('suttaLoaded', function () { activeSlug = ''; cachedTOCNodes = null; lastLabelKey = ''; syncTOC(); });
+    window.addEventListener('suttaRenderedCentral', function () { activeSlug = ''; cachedTOCNodes = null; lastLabelKey = ''; syncTOC(); });
     window.addEventListener('scroll', throttle(syncTOC, 150), { passive: true });
 })();
