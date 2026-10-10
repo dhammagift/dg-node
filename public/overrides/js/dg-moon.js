@@ -22,12 +22,14 @@
   let uid = 0, TEX = null;
   const norm = f => ((f % 1) + 1) % 1;
   const illum = f => (1 - Math.cos(2 * Math.PI * norm(f))) / 2;
+  // The terminator as it is DRAWN (a loader that is honest and still readable): the true crescent of the day after a new moon is ~2 units thick and looks like the new moon; the thin part is raised to the power 0.6, the middle of the cycle hardly changes. Same in WidgetMoon.java / MoonView.swift.
+  const seen = a => 1 - Math.pow(1 - Math.min(1, Math.max(0, a)), 0.6);
 
   // ---------- геометрия ----------
   // Освещённая часть — для нативного виджета (SwiftUI Path / Android Canvas повторяют её один в один).
   function litPath(f) {
     f = norm(f);
-    const k = Math.cos(2 * Math.PI * f), rx = (Math.abs(k) * R).toFixed(3);
+    const k = Math.cos(2 * Math.PI * f), rx = (seen(Math.abs(k)) * R).toFixed(3);
     if (f < 0.002 || f > 0.998) return 'M0 0Z';
     if (Math.abs(f - 0.5) < 0.002) return `M${C} ${C - R}A${R} ${R} 0 1 1 ${C} ${C + R}A${R} ${R} 0 1 1 ${C} ${C - R}Z`;
     const gib = k < 0;
@@ -39,7 +41,7 @@
   // светлой каймы по краю тёмной стороны.
   function shadePath(f) {
     f = norm(f);
-    const k = Math.cos(2 * Math.PI * f), rx = (Math.abs(k) * R).toFixed(3), gib = k < 0, wax = f < 0.5, B = 62;
+    const k = Math.cos(2 * Math.PI * f), rx = (seen(Math.abs(k)) * R).toFixed(3), gib = k < 0, wax = f < 0.5, B = 62;
     const ts = wax ? (gib ? 0 : 1) : (gib ? 1 : 0), bs = wax ? 1 : 0;
     return `M${C} ${C - R}A${rx} ${R} 0 0 ${ts} ${C} ${C + R}L${C} ${C + B}A${B} ${B} 0 0 ${bs} ${C} ${C - B}Z`;
   }
