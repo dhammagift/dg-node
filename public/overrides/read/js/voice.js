@@ -1139,8 +1139,9 @@ function dgOffCard(kind, info = {}) {
     pct = Math.round((info.p || 0) * 100);
     text = `${t.offLoadT} · ${pct}%`;
     close = x('data-offcard="cancel"', t.offCancel);
-  } else if (kind === 'done') {
+  } else if (kind === 'done') {  // where the downloaded voices are managed: the DG Pali voice list
     text = t.offDoneT;
+    act = btn('data-offcard="voices"', `<i class="tts-gi" style="--u:url('/assets/svg/gear.svg')"></i> ${t.offSettings}`);
   } else if (kind === 'error') {
     text = `${info.why === 'space' ? t.offErr.space(dgOffMb(v)) : info.why === 'net' ? t.offErr.net : t.offErr.server} <a href="javascript:void(0)" data-offcard="voices">${t.offVoicesBtn}</a>`;
     act = btn(`data-offvid="${info.vid}"`, t.offRetry);
@@ -1158,7 +1159,7 @@ function dgOffCard(kind, info = {}) {
   card.style.width = p.width + 'px';
   placeTtsWin(card, abovePlayer);
   card.style.maxHeight = '';
-  if (kind === 'done' || kind === 'nonet') dgOffCard.timer = setTimeout(() => dgOffCard(null), kind === 'done' ? 5000 : 8000);
+  if (kind === 'done' || kind === 'nonet') dgOffCard.timer = setTimeout(() => dgOffCard(null), 8000);
 }
 
 // Right above the player, centred on it, never off screen
@@ -2677,7 +2678,8 @@ function ttsUiText() {
     offLater: ru ? "Позже" : "Later",
     offLoadT: ru ? "Скачивание голоса" : "Downloading the voice",
     offCancel: ru ? "Отмена" : "Cancel",
-    offDoneT: ru ? "Голос скачан: читает и без сети" : "Voice downloaded: reads offline too",
+    offDoneT: ru ? "Голос скачан" : "Voice downloaded",
+    offSettings: ru ? "Настройки" : "Settings",
     offErr: {
       net: ru ? "Не скачалось: нет сети." : "Not downloaded: no network.",
       space: mb => ru ? `Нет места: нужно ${mb} МБ.` : `No space: ${mb} MB needed.`,
@@ -2739,7 +2741,7 @@ function getOrBuildPlayer() {
         // The ?v= stamp matters: /read/css/voice.css is served immutable for a year, so without it a
         // CSS fix would never reach anyone who had already opened the player (issue #20's rule was
         // invisible in the browser because of exactly that). Bump the stamp with the next edit.
-        document.head.insertAdjacentHTML('beforeend', '<link id="voice-css-lazy" rel="stylesheet" href="/read/css/voice.css?v=2026-10-10strip">');
+        document.head.insertAdjacentHTML('beforeend', '<link id="voice-css-lazy" rel="stylesheet" href="/read/css/voice.css?v=2026-10-10offset">');
     }
 
     if (!playerContainer) {
