@@ -146,6 +146,17 @@
         if (!reduce && !busy) $$('button', nav).forEach(function (x) { x.setAttribute('aria-current', String(x === b)); }); // the pill leaves at the tap, not after the page has slid out
         // Tabs are peers of one another and are switched dozens of times a day: no slide of the whole page out and in (a big layer moved
         // twice, and the page waiting 150 ms for it); the pill glides at once, the new screen comes with a short fade of its top blocks.
+        // A browser that can make a view transition (Chromium WebView 111+, iOS 18+) changes the screen through it: the old content
+        // leaves, the new one comes in, both on the compositor, and nothing waits for it (the swap is made at once, only the picture is
+        // animated). The direction follows the order of the tabs. Without it, the short fade of the top blocks below.
+        var ORDER = ['home', 'list', 'cal', 'parts', 'keys'];
+        if (!reduce && typeof document.startViewTransition === 'function' && from) {
+          var root = document.documentElement, clear = function () { root.removeAttribute('data-vt'); };
+          root.setAttribute('data-vt', ORDER.indexOf(k) < ORDER.indexOf(from) ? 'back' : 'fwd');
+          var vt = document.startViewTransition(function () { orig.call(b); });
+          vt.finished.then(clear, clear);
+          return;
+        }
         orig.call(b); if (!reduce) enter(k, 1);
       };
     });

@@ -763,7 +763,7 @@
   // after a paint (uposatha-bridge.js -> DgWidget.put); worked out at most once per half hour and per set of settings.
   var wdCache = null;
   // What the shared builder (uposatha-widget-data.js) needs from the page.
-  function widgetEnv(now) { return { A: A, C: C, tz: state.tz, loc: state.loc, lang: lang, su: sutta(), lite: state.lite, showKala: !!state.meal.sum, south: !!state.south, noon: state.noon, twi: state.twi, now: now }; }
+  function widgetEnv(now) { return { A: A, C: C, tz: state.tz, loc: state.loc, lang: lang, su: sutta(), lite: state.lite, showKala: !!state.meal.sum, south: !!state.south, noon: state.noon, twi: state.twi, firstDay: firstDay(), now: now }; }
   // The service worker works the widgets of the Windows 11 Widgets Board out by itself, and a worker has no localStorage: the settings it needs
   // (the place, the time zone, the language, the counting) are mirrored into IndexedDB (db dg-uposatha, store kv, key widget) after each paint when
   // they changed, and the worker is told to redraw the widgets.
@@ -794,7 +794,7 @@
     var WD = window.UposathaWidgetData; // the calculation itself is in uposatha-widget-data.js (shared with the service worker of the Windows widgets)
     if (!WD) return null;
     var now = new Date(), todayYmd = localDay(now, state.tz);
-    var key = [todayYmd, Math.floor(now.getTime() / 1800000), state.tz, sutta(), state.lite, state.meal.sum, lang, state.south, state.noon, state.twi, state.loc && state.loc.lat, state.loc && state.loc.lon].join('|');
+    var key = [todayYmd, Math.floor(now.getTime() / 1800000), state.tz, sutta(), state.lite, state.meal.sum, lang, state.south, state.noon, state.twi, firstDay(), state.loc && state.loc.lat, state.loc && state.loc.lon].join('|');
     if (wdCache && wdCache.key === key) return wdCache.data;
     var data = WD.build(widgetEnv(now));
     wdCache = { key: key, data: data };

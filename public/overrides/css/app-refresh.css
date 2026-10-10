@@ -170,3 +170,16 @@ body:has(#up-splash) .appnav { visibility: hidden; } /* the bar does not show th
 html.up-in .tbar, html.up-in main.page, html.up-in .appnav { animation: up-fade .22s cubic-bezier(.23, 1, .32, 1) backwards; } /* not the scrim and the drawer: their opacity is their own */
 @keyframes up-fade { from { opacity: 0; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { html.up-in .tbar, html.up-in main.page, html.up-in .appnav { animation: none; } }
+
+/* Смена вкладки через View Transition (app-refresh.js): уходит старое содержимое, приходит новое; панели и нижняя капсула остаются на месте.
+   Содержимое страницы — отдельный слой (upo-page), всё остальное — корневой слой без анимации (капсула сама скользит). */
+body.app main.page{view-transition-name:upo-page}
+::view-transition-group(upo-page){animation:none}
+::view-transition-old(root),::view-transition-new(root){animation:none;mix-blend-mode:normal}
+::view-transition-old(upo-page){animation:upo-vt-out 130ms cubic-bezier(.4,0,1,1) both}
+::view-transition-new(upo-page){animation:upo-vt-in 280ms cubic-bezier(.05,.7,.1,1) both}
+html{--upo-vt-dir:1}
+html[data-vt=back]{--upo-vt-dir:-1}
+@keyframes upo-vt-out{to{opacity:0;transform:translateX(calc(var(--upo-vt-dir) * -18px))}}
+@keyframes upo-vt-in{from{opacity:0;transform:translateX(calc(var(--upo-vt-dir) * 26px)) scale(.992)}}
+@media (prefers-reduced-motion:reduce){::view-transition-group(*),::view-transition-old(*),::view-transition-new(*){animation:none!important}}

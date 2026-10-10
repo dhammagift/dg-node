@@ -168,7 +168,7 @@ svg{width:100%;height:100%;display:block;overflow:visible}
       const d = shadePath(this._f);
       this._sha.setAttribute('d', d); this._pen.setAttribute('d', d);
       const I = illum(this._f);
-      this._svg.style.filter = this.hasAttribute('glow') ? `drop-shadow(0 0 ${(.02 + .05 * I).toFixed(3)}em color-mix(in oklab,var(--m-glow) ${Math.round(I * 40)}%,transparent))` : '';
+      this._svg.style.filter = this.hasAttribute('glow') ? `drop-shadow(0 0 ${(.05 + .04 * I).toFixed(3)}em color-mix(in oklab,var(--m-glow) ${Math.round(30 + I * 30)}%,transparent))` : ''; // a halo under every moon (a new moon on a dark page is not lost), a little stronger as it fills
     }
     // Плавный проход вперёд по фазам: cycles полных кругов и остановка на target.
     animateTo(target, { cycles = 1, duration = 2000 } = {}) {

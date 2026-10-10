@@ -50,7 +50,7 @@
       var f = A.MoonPhase(zonedToUtc(r.y, r.m, r.d, 12, tz)) / 360;
       var q = Math.round(f * 4) % 4;
       var phaseName = ['new', 'firstQuarter', 'full', 'lastQuarter'][q];
-      return { start: ev(r.at), day: r.ymd, end: ev(endOf(r)), lunarDay: day, phaseName: phaseName, phase: +f.toFixed(4) };
+      return { start: ev(r.at), day: su ? ymdAdd(r.ymd, 1) : r.ymd, end: ev(endOf(r)), lunarDay: day, phaseName: phaseName, phase: +f.toFixed(4) }; // day: the Uposatha's own day (by the suttas it begins the evening before: the page's grid carries it on r.ymd and the date after)
     });
     var days = [];
     function third(a, b, names) { var w = (b - a) / 3; return names.map(function (n, k) { return [n, hm(new Date(a.getTime() + k * w)), hm(new Date(a.getTime() + (k + 1) * w))]; }); }
@@ -59,7 +59,7 @@
       days.push({ date: ymd, sunrise: ev(rise), noon: ev(noonFor(ymd)), sunset: ev(set), aruna: ev(aruna(p[0], p[1], p[2])),
         parts: third(rise, set, ['pubbanha', 'majjhanhika', 'sayanha']).concat(third(set, nextRise, ['pathama', 'majjhima', 'pacchima'])) });
     }
-    return { generatedAt: now.toISOString(), tz: tz, settings: { lang: env.lang, bySuttas: su, detail: !env.lite, showKala: !!env.showKala, placeSet: !!obs, south: !!env.south },
+    return { generatedAt: now.toISOString(), tz: tz, settings: { lang: env.lang, bySuttas: su, detail: !env.lite, showKala: !!env.showKala, placeSet: !!obs, south: !!env.south, weekStart: env.firstDay === 0 || env.firstDay === 1 ? env.firstDay : (env.lang === 'ru' ? 1 : 0) },
       today: { ymd: todayYmd, moon: +(A.MoonPhase(now) / 360).toFixed(4) }, uposathas: upos, days: days };
   }
 
