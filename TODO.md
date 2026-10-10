@@ -98,7 +98,12 @@ done W4 ?tab= из виджета не запоминается.
 done Патимоккха в оглавлении: ссылки с ?hide=id; «Адхикаранасаматха 1–6» ведут на свои правила (convert-patimokkha.js RANGE_ANCHORS).
 done Архив страниц ревью: test.dhamma.gift/reviews/ под паролем /bw (siteroot/reviews, не в git).
 done Для словаря: /search?…&fast=1&metaOnly=1 отдаёт только счётчики (223 Б вместо 1,35 МБ); /dict/слово/ → 301 без слэша.
-Второй проход ревью DG (2026-10-10): 31 находка (гонки поиска/ридера/голоса, XSS через #хэш и ?s=, кэш ошибок на час, блокирующие скрипты) — ждут ответа на reviews/2026-10-10-dict-status.html.
+done Второй проход ревью DG (2026-10-10, коммит 24852a2): U1–U7, U9, R1–R8, V1–V4, V6, V7, M1–M3, M5–M7 сделаны на тесте; textinfo.js больше не грузится.
+Не сделано по решению: U8 (запросов со слэшем нет), M4 (выигрыш в шуме), V5 (голос остаётся играть — как решил владелец).
+---
+Отмена устаревших запросов через AbortController в поиске выключена: офлайн-прослойка public/offline/app.js (и src/app.js приложения) считает AbortError обрывом сети. Нужна строка `if (e && e.name === 'AbortError') throw e;` в обработчике ошибки realFetch — тогда можно включить.
+offline-status.js остаётся синхронным: dg-apps build-page.js (SITE_OFFLINE_TAGS) ищет ровно этот тег.
+После push dg-node: убрать /assets/js/textinfo.js из dg-apps/build-assets.js:196 (и dg-app-full), сказать Sippa.
 
 ## ОТЛОЖЕНО — #mcp: MCP-сервер для AI-агентов (2026-09-05)
 
