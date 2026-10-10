@@ -173,7 +173,8 @@ async function handle(m) {
             at += size;
           }
         }
-        const es = await eng.loadEspeak((await import(m.init.espeak.js)).default, files, { wasmBinary: m.init.espeak.wasm });
+        const es = await eng.loadEspeak((await import(m.init.espeak.js)).default, files, {
+          wasmBinary: m.init.espeak.wasm, locateFile: f => f });  // (its own URL is a blob: no relative paths from it)
         tr = eng.makeTranslation(m.init.respell, pali, es);
       }
       sp = await eng.makeSpeaker(ort, pali, m.init.model, m.init.json, { translation: tr, lang: m.init.lang });
