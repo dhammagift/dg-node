@@ -1272,7 +1272,8 @@ async function firebaseJwks(force) {
 }
 
 // {ok:true, email} or {ok:false, status, reason} — reason is a short code the editor translates.
-async function verifyLblToken(authHeader) {
+// allowedEmails: the list to check against (default: the label editor's authors).
+async function verifyLblToken(authHeader, allowedEmails) {
     const m = /^Bearer\s+(.+)$/i.exec(String(authHeader || ''));
     const token = m && m[1].trim();
     if (!token) return { ok: false, status: 401, reason: 'no-token' };
@@ -1304,7 +1305,7 @@ async function verifyLblToken(authHeader) {
     if (!signatureOk) return { ok: false, status: 401, reason: 'signature' };
     const email = String(payload.email || '').toLowerCase();
     if (!email || payload.email_verified !== true) return { ok: false, status: 403, reason: 'unverified', email };
-    const authors = (readJsonFile(LBL_AUTHORS_FILE, {}).authors || []).map(a => String(a).toLowerCase());
+    const authors = (allowedEmails || readJsonFile(LBL_AUTHORS_FILE, {}).authors || []).map(a => String(a).toLowerCase());
     if (!authors.includes(email)) return { ok: false, status: 403, reason: 'not-author', email };
     return { ok: true, email };
 }
@@ -1332,6 +1333,71 @@ app.post('/assets/lbl-save.php', { bodyLimit: 2 * 1024 * 1024 }, async (req, res
     } catch (err) {
         res.code(500).send('Error writing file: ' + err.message);
     }
+});
+
+// --- /apps: the owner's private board of app versions -----------------------------------------
+// The page itself is a public shell (public/apps.html); the data is not. It comes from the newest
+// "store-status" artifact of dg-apps (.github/workflows/store-status.yml reads Play, App Store
+// Connect, GitHub and the extension stores with the keys kept in GitHub secrets) and is handed out
+// only to a Google login whose verified e-mail is in configs/local/apps-admins.json {"emails": []}.
+const APPS_ADMINS_FILE = path.join(__dirname, 'configs', 'local', 'apps-admins.json');
+const APPS_REPO = 'dhammagift/dg-apps';
+let appsStatusCache = { at: 0, artifactId: 0, data: null };
+
+function githubToken() {
+    try { return fsSync.readFileSync(process.env.DG_GITHUB_TOKEN_FILE || '/root/.secrets/github-token', 'utf8').trim(); }
+    catch { return ''; }
+}
+async function githubApi(pathAndQuery, init = {}) {
+    return fetch('https://api.github.com' + pathAndQuery, {
+        ...init,
+        headers: { Authorization: 'Bearer ' + githubToken(), Accept: 'application/vnd.github+json', 'User-Agent': 'dg-node', ...(init.headers || {}) },
+        signal: AbortSignal.timeout(20000),
+    });
+}
+async function appsAuth(req, res) {
+    const emails = readJsonFile(APPS_ADMINS_FILE, {}).emails || [];
+    const auth = await verifyLblToken(req.headers.authorization, emails);
+    if (!auth.ok) {
+        console.warn('[apps] refused:', auth.reason, auth.email ? 'as=' + auth.email : '');
+        res.code(auth.status).send({ error: auth.reason, email: auth.email || '' });
+    }
+    return auth.ok;
+}
+
+app.get('/apps', (req, res) => sendFile(req, res, path.join(__dirname, 'public', 'apps.html'), 'text/html; charset=utf-8'));
+
+app.get('/api/apps-status', async (req, res) => {
+    res.header('cache-control', 'no-store');
+    if (!(await appsAuth(req, res))) return;
+    try {
+        const list = await (await githubApi(`/repos/${APPS_REPO}/actions/artifacts?name=store-status&per_page=1`)).json();
+        const art = (list.artifacts || []).find(a => !a.expired);
+        if (!art) return res.code(404).send({ error: 'no-status-yet' });
+        if (appsStatusCache.artifactId !== art.id) {
+            const zip = await githubApi(`/repos/${APPS_REPO}/actions/artifacts/${art.id}/zip`);
+            if (!zip.ok) throw new Error('artifact ' + zip.status);
+            const tmp = path.join(require('os').tmpdir(), `store-status-${art.id}.zip`);
+            fsSync.writeFileSync(tmp, Buffer.from(await zip.arrayBuffer()));
+            const { stdout } = await execFile('unzip', ['-p', tmp, 'status.json'], { maxBuffer: 4 * 1024 * 1024 });
+            fsSync.unlink(tmp, () => {});
+            appsStatusCache = { at: Date.now(), artifactId: art.id, data: JSON.parse(stdout) };
+        }
+        const runs = await (await githubApi(`/repos/${APPS_REPO}/actions/workflows/store-status.yml/runs?per_page=1`)).json();
+        const run = (runs.workflow_runs || [])[0];
+        return res.send({ ...appsStatusCache.data, running: !!run && run.status !== 'completed' });
+    } catch (err) {
+        console.error('[apps] status:', err.message);
+        return res.code(502).send({ error: 'github', message: err.message });
+    }
+});
+
+app.post('/api/apps-status/refresh', async (req, res) => {
+    res.header('cache-control', 'no-store');
+    if (!(await appsAuth(req, res))) return;
+    const r = await githubApi(`/repos/${APPS_REPO}/actions/workflows/store-status.yml/dispatches`,
+        { method: 'POST', body: JSON.stringify({ ref: 'main' }), headers: { 'Content-Type': 'application/json' } });
+    return r.status === 204 ? res.send({ ok: true }) : res.code(502).send({ error: 'dispatch', status: r.status });
 });
 
 // /api/app-log — error reports from the Android app (dg-app-full src/platform.js): JS errors,
