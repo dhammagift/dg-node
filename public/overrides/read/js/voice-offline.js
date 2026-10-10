@@ -110,7 +110,7 @@ export async function download(vid, onProgress = () => {}, signal) {
   ]);
   if (signal?.aborted) throw new DOMException('cancelled', 'AbortError');
   await idb('readwrite', s => {
-    s.put({ vid, label: v.label, lang: v.lang || 'pi', tag: v.tag, json }, 'meta:' + vid);
+    s.put({ vid, label: v.label, lang: v.lang || 'pi', gain: v.gain || 1, tag: v.tag, json }, 'meta:' + vid);
     s.put(model, 'model:' + vid);
     s.put({ rules: o.rules, data: o.data, respell: o.respell }, 'rules');
     s.put(engine, 'engine');
@@ -162,6 +162,11 @@ export async function refresh() {
     });
     stopWorker();
   }
+  const gains = (await list()).filter(m => o.voices[m.vid] && (o.voices[m.vid].gain || 1) !== (m.gain || 1));
+  if (gains.length) {  // the service's loudness for a voice changed: no new download needed
+    await idb('readwrite', s => gains.forEach(m => s.put({ ...m, gain: o.voices[m.vid].gain || 1 }, 'meta:' + m.vid)));
+    stopWorker();
+  }
   const stale = (await list()).filter(m => o.voices[m.vid] && o.voices[m.vid].tag !== m.tag).map(m => m.vid);
   localStorage.setItem(STALE, stale.join(','));  // voice.js shows an update icon for these
 }
@@ -191,7 +196,7 @@ async function handle(m) {
           wasmBinary: m.init.espeak.wasm, locateFile: f => f });  // (its own URL is a blob: no relative paths from it)
         tr = eng.makeTranslation(m.init.respell, pali, es);
       }
-      sp = await eng.makeSpeaker(ort, pali, m.init.model, m.init.json, { translation: tr, lang: m.init.lang });
+      sp = await eng.makeSpeaker(ort, pali, m.init.model, m.init.json, { translation: tr, lang: m.init.lang, gain: m.init.gain });
       postMessage({ id: m.id });
     } else {
       const { pcm, sr } = await sp.speak(m.text, m.rate);
@@ -232,7 +237,7 @@ function startWorker(vid) {
       if (!js || !ew || packs.some(p => !p)) throw new Error('espeak for ' + vid + ' is not downloaded');
       espeak = { js: url(js, 'text/javascript'), wasm: await ew.arrayBuffer(), packs: await Promise.all(packs.map(p => p.arrayBuffer())) };
     }
-    await call({ init: { data: r.data, respell: r.respell, json: m.json, model: new Uint8Array(await model.arrayBuffer()), lang, espeak,
+    await call({ init: { data: r.data, respell: r.respell, json: m.json, model: new Uint8Array(await model.arrayBuffer()), lang, espeak, gain: m.gain || 1,
                          wasm: await wasm.arrayBuffer(), ort: url(ort, 'text/javascript'), engine: url(engine, 'text/javascript') } });
   })();
   const me = { vid, w, speak: (text, rate) => ready.then(() => call({ text, rate })) };

@@ -1065,7 +1065,7 @@ async function fetchPaliVoiceAudio(text, uiRate, voice) {
   if (local) return local();
   throw lastError;
 }
-const dgOffline = () => import('/read/js/voice-offline.js?v=2026-10-10own2');
+const dgOffline = () => import('/read/js/voice-offline.js?v=2026-10-10gain');
 const dgOffIds = () => (localStorage.getItem('dg_voice_offline') || '').split(',').filter(Boolean);
 if (dgOffIds().length && navigator.onLine) {  // newer rules for the downloaded voices, quietly
   setTimeout(() => dgOffline().then(m => m.refresh()).then(dgOfflineRender).catch(() => {}), 5000);
