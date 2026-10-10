@@ -1141,7 +1141,7 @@ function dgOffCard(kind, info = {}) {
     close = x('data-offcard="cancel"', t.offCancel);
   } else if (kind === 'done') {  // where the downloaded voices are managed: the DG Pali voice list
     text = t.offDoneT;
-    act = btn('data-offcard="voices"', `<i class="tts-gi" style="--u:url('/assets/svg/gear.svg')"></i> ${t.offSettings}`);
+    act = `<button type="button" class="tts-chip main ic" data-offcard="voices" title="${t.offSettings}" aria-label="${t.offSettings}"><i class="tts-gi" style="--u:url('/assets/svg/gear.svg')"></i></button>`;
   } else if (kind === 'error') {
     text = `${info.why === 'space' ? t.offErr.space(dgOffMb(v)) : info.why === 'net' ? t.offErr.net : t.offErr.server} <a href="javascript:void(0)" data-offcard="voices">${t.offVoicesBtn}</a>`;
     act = btn(`data-offvid="${info.vid}"`, t.offRetry);
@@ -2741,7 +2741,7 @@ function getOrBuildPlayer() {
         // The ?v= stamp matters: /read/css/voice.css is served immutable for a year, so without it a
         // CSS fix would never reach anyone who had already opened the player (issue #20's rule was
         // invisible in the browser because of exactly that). Bump the stamp with the next edit.
-        document.head.insertAdjacentHTML('beforeend', '<link id="voice-css-lazy" rel="stylesheet" href="/read/css/voice.css?v=2026-10-10offset">');
+        document.head.insertAdjacentHTML('beforeend', '<link id="voice-css-lazy" rel="stylesheet" href="/read/css/voice.css?v=2026-10-10offset2">');
     }
 
     if (!playerContainer) {

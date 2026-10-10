@@ -354,6 +354,7 @@ html.dg-app .voice-player{translate:0 calc(-1 * var(--dg-sab, 0px))}
 .tts-card .tx{flex:1;min-width:0}
 .tts-card .tx a{color:var(--dg-accent-ink);text-decoration:underline}
 .tts-card .tts-chip.main{height:28px;padding:0 10px;display:inline-flex;align-items:center;gap:5px;background:var(--dg-accent-bg);border-color:var(--dg-accent);color:var(--dg-accent-ink)}
+.tts-card .tts-chip.main.ic{padding:0 7px}
 .tts-card .tts-ib{width:28px;height:28px;flex-shrink:0;color:var(--dg-text-muted)}
 .tts-card .bar{position:absolute;left:0;bottom:0;height:3px;background:var(--dg-accent-ink);transition:width .2s}
 .tts-mrow{display:flex;align-items:center;gap:2px}
