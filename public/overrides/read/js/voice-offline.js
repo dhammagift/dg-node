@@ -227,7 +227,7 @@ function startWorker(vid) {
     if (!m || !model) throw new Error('voice ' + vid + ' is not downloaded');
     const lang = m.lang || 'pi';
     let espeak = null;
-    if (lang !== 'pi') {
+    if (lang === 'en' || lang === 'ru') {  // ('pi-own', the owner's Pali voice, reads like pratham: no espeak)
       const [js, ew, ...packs] = await Promise.all(['espeak-js', 'espeak-wasm', 'espeak:core', 'espeak:' + lang].map(get));
       if (!js || !ew || packs.some(p => !p)) throw new Error('espeak for ' + vid + ' is not downloaded');
       espeak = { js: url(js, 'text/javascript'), wasm: await ew.arrayBuffer(), packs: await Promise.all(packs.map(p => p.arrayBuffer())) };
