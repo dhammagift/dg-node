@@ -1048,7 +1048,7 @@ async function fetchPaliVoiceAudio(text, uiRate, voice) {
   const rate = isPaliVoice ? uiRate / 0.8 : uiRate;
   const body = JSON.stringify({ text, rate, voice });
   // The voice downloaded to the device (voice-offline.js): used with no network, or when the servers fail / are slow
-  const offIds = isPaliVoice ? dgOffIds() : [], vid = voice || offIds[0];
+  const offIds = dgOffIds(), vid = voice || offIds[0];
   const local = offIds.includes(vid) ? () => dgOffline().then(m => m.speak(text, rate, vid)) : null;
   if (local && !navigator.onLine) return local();
   let lastError;
@@ -1065,7 +1065,7 @@ async function fetchPaliVoiceAudio(text, uiRate, voice) {
   if (local) return local();
   throw lastError;
 }
-const dgOffline = () => import('/read/js/voice-offline.js?v=2026-10-10e');
+const dgOffline = () => import('/read/js/voice-offline.js?v=2026-10-10enru');
 const dgOffIds = () => (localStorage.getItem('dg_voice_offline') || '').split(',').filter(Boolean);
 if (dgOffIds().length && navigator.onLine) {  // newer rules for the downloaded voices, quietly
   setTimeout(() => dgOffline().then(m => m.refresh()).then(dgOfflineRender).catch(() => {}), 5000);
@@ -1074,18 +1074,27 @@ if (dgOffIds().length && navigator.onLine) {  // newer rules for the downloaded 
 // Offline voices. Managed in the DG voice list itself (owner: a download icon next to each Pali voice, then a delete
 // one); offered on a card above the player (dgOffCard); a settings row that names what is downloaded and opens that
 // list. The full reset removes them too.
-let dgOffKnown = null, dgOffAsk = null;  // the service's offline voices {id: {label, bytes, tag}}, fetched once
+let dgOffKnown = null, dgOffAsk = null;  // the service's offline voices {id: {label, lang, bytes, tag}}, fetched once
+let dgOffEspeak = null;  // sizes of espeak's code and packs {code, core, en, ru} (the en/ru voices)
 let dgOffBusy = null;  // {vid, p} while a voice downloads
 function dgOffVoices() {
-  dgOffAsk = dgOffAsk || dgOffline().then(m => m.list().then(() => m.offer())).then(o => (dgOffKnown = o.voices))
+  dgOffAsk = dgOffAsk || dgOffline().then(m => m.list().then(() => m.offer())).then(o => (dgOffEspeak = o.espeak, dgOffKnown = o.voices))
     .catch(e => { dgOffAsk = null; throw e; });
   return dgOffAsk;
 }
-// MB to download: the model, plus onnxruntime and the engine with the first voice
-const dgOffMb = v => Math.round((v.bytes + (dgOffIds().length ? 0 : 14239897)) / 1048576);
+// MB to download: the model, plus onnxruntime and the engine with the first voice, plus for en/ru espeak's code and
+// common data with the first of them and the language's dictionary with its first voice
+function dgOffMb(v) {
+  const ids = dgOffIds(), langs = ids.map(id => dgOffKnown?.[id]?.lang);
+  let b = v.bytes + (ids.length ? 0 : 14239897);
+  if ((v.lang === 'en' || v.lang === 'ru') && dgOffEspeak) {
+    b += (langs.some(l => l === 'en' || l === 'ru') ? 0 : dgOffEspeak.code + dgOffEspeak.core) + (langs.includes(v.lang) ? 0 : dgOffEspeak[v.lang]);
+  }
+  return Math.round(b / 1048576);
+}
 const DG_OFF_DOWN = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M12 3v12m0 0l-5-5m5 5l5-5M4 20h16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
-// The icon next to a Pali voice in the DG voice list (renderVoiceWin)
+// The icon next to a DG voice (Pali, en, ru) in the voice list (renderVoiceWin)
 function dgOffIcon(vid) {
   if (!dgOffKnown) {
     dgOffVoices().then(dgOfflineRender).catch(() => {});
@@ -1197,7 +1206,7 @@ function dgOfflineRender() {
     sub.textContent = dgOffBusy ? `${t.offLoading} ${Math.round(dgOffBusy.p * 100)}%` : names.length ? `${t.offHave}: ${names.join(', ')}` : t.offSub;
   }
   const win = document.getElementById('tts-voice-win');
-  if (win?.classList.contains('on') && ttsVoiceWin.lang === 'pi' && ttsVoiceWin.depth > 0) {
+  if (win?.classList.contains('on') && ttsVoiceWin.depth > 0) {
     const top = win.scrollTop;
     renderVoiceWin();
     win.scrollTop = top;
@@ -3158,7 +3167,7 @@ function renderVoiceWin() {
       (!list ? `<div class="tts-mi" aria-disabled="true"><span class="ck"></span><span class="ml">${t.noVoices}</span></div>` : '') +
       (list ? [...list.options].map(o => {
         const item = `<button type="button" class="tts-mi" data-opt="${o.value.replace(/"/g, '&quot;')}" ${list.disabled ? 'disabled' : ''}><span class="ck">${o.value === list.value ? (leaf ? '✓' : '•') : ''}</span><span class="ml">${o.textContent}</span>${leaf ? '' : '<span class="ar">›</span>'}</button>`;
-        const off = leaf && l === 'pi' && eng.value === 'dg' ? dgOffIcon(o.value) : '';  // download / delete for offline
+        const off = leaf && eng.value === 'dg' ? dgOffIcon(o.value) : '';  // download / delete for offline (Pali, en, ru)
         return off ? `<div class="tts-mrow">${item}${off}</div>` : item;
       }).join('') : '');
   }
