@@ -608,6 +608,14 @@ app.get('/manifest.json', (req, res) => {
     sendFile(req, res, path.join(__dirname, 'configs', 'manifest.json'), 'application/manifest+json');
 });
 
+// /app-site-manifest.json — the signed list of the site's files the apps may take without a new build (scripts/site-manifest.js
+// writes it after a deploy; dg-apps src/site-updater.js checks the signature). Missing = 404 = the apps take nothing.
+app.get('/app-site-manifest.json', (req, res) => {
+    res.header('cache-control', 'no-cache');
+    return sendFile(req, res, path.join(__dirname, 'app-site-manifest.json'), 'application/json')
+        .catch(() => res.code(404).type('text/plain').send('Not found'));
+});
+
 // /uposatha-calendar.webmanifest — the calendar's OWN manifest (a single-segment path, no slash),
 // so without an exact route it fell to the generic /:slug keyword-search catch-all below (any path
 // find-my-way can't match exactly is treated as a search term/sutta id) - Chrome then fetched the
