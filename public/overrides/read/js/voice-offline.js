@@ -115,7 +115,7 @@ export async function download(vid, onProgress = () => {}, signal) {
     s.put({ rules: o.rules, data: o.data, respell: o.respell }, 'rules');
     s.put(engine, 'engine');
     if (shared) { s.put(wasm, 'wasm'); s.put(ort, 'ort'); }
-    if (esJs) s.put(esJs, 'espeak-js');
+    if (esJs) { s.put(esJs, 'espeak-js'); s.put(o.espeak.tag, 'espeak-tag'); }
     extra.forEach((w, i) => s.put(esFiles[i], w[0]));
   });
   try { await navigator.storage?.persist?.(); } catch (e) {}  // ask the browser not to evict it
@@ -132,7 +132,7 @@ export async function remove(vid) {
     s.delete('meta:' + vid);
     s.delete('model:' + vid);
     for (const lang of ['en', 'ru']) if (!langs.includes(lang)) s.delete('espeak:' + lang);  // a language's dictionary
-    if (!langs.some(l => l === 'en' || l === 'ru')) ['espeak-js', 'espeak-wasm', 'espeak:core'].forEach(k => s.delete(k));
+    if (!langs.some(l => l === 'en' || l === 'ru')) ['espeak-js', 'espeak-wasm', 'espeak:core', 'espeak-tag'].forEach(k => s.delete(k));
   });
   setIds(left);
   stopWorker();
@@ -146,6 +146,20 @@ export async function refresh() {
   if (!r || r.rules !== o.rules || JSON.stringify(r.respell) !== JSON.stringify(o.respell)) {
     const engine = await fetchAny('pali-tts.js').then(x => x.text());
     await idb('readwrite', s => { s.put({ rules: o.rules, data: o.data, respell: o.respell }, 'rules'); s.put(engine, 'engine'); });
+    stopWorker();
+  }
+  // a newer espeak build: its code and the packs on the device come again (~1 MB, ru 9 MB)
+  const esTag = await get('espeak-tag');
+  if (esTag && esTag !== o.espeak?.tag) {
+    const packs = (await Promise.all(['core', 'en', 'ru'].map(async p => (await get('espeak:' + p)) && p))).filter(Boolean);
+    const [js, wasm, ...files] = await Promise.all([fetchAny('espeak.mjs').then(x => x.text()),
+      fetchAny('espeak.wasm').then(x => x.blob()), ...packs.map(p => fetchAny(`espeak-${p}.bin`).then(x => x.blob()))]);
+    await idb('readwrite', s => {
+      s.put(js, 'espeak-js');
+      s.put(wasm, 'espeak-wasm');
+      packs.forEach((p, i) => s.put(files[i], 'espeak:' + p));
+      s.put(o.espeak.tag, 'espeak-tag');
+    });
     stopWorker();
   }
   const stale = (await list()).filter(m => o.voices[m.vid] && o.voices[m.vid].tag !== m.tag).map(m => m.vid);
