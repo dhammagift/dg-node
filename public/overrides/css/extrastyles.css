@@ -1681,3 +1681,8 @@ body.dg-state-results .bubble-notification.show { transform: translate(-50%, 0);
   background-color: rgba(var(--bs-primary-rgb), 0.25);
   box-shadow: 0 0 0 1px rgba(var(--bs-secondary-rgb), 0.15);
 }
+
+/* TOC page: the floating TTS speaker has nothing to read here */
+body.dg-state-toc .dynamic-tts-btn{display:none!important}
+/* TOC page has no language button: the arrow keeps its default corner */
+body.dg-state-toc #scrollToTopBtn{right:20px!important}

@@ -153,6 +153,16 @@
     }
     function insertFragment(bodyEl, html) {
         bodyEl.innerHTML = html;
+        // Each rule line has two links: the title (-> Vibhanga analysis) and a bare "pm" (-> Pātimokkha).
+        // Swap them: the title opens the rule text, the second link is labelled "History"/"Story" and opens the analysis.
+        bodyEl.querySelectorAll('a[href*="-vb-"]').forEach(function (t) {
+            var pm = t.nextElementSibling;
+            if (!pm || pm.tagName !== 'A' || !/-pm[?#]/.test(pm.getAttribute('href'))) return;
+            var vb = t.getAttribute('href');
+            t.setAttribute('href', pm.getAttribute('href'));
+            pm.setAttribute('href', vb.replace(/#.*$/, '')); // no anchor: open the analysis from its start
+            pm.textContent = uiIsRu() ? 'История' : 'Story';
+        });
         bodyEl.querySelectorAll('.collapse').forEach(function (c) {
             if (!pmOpen[c.id]) return;
             c.classList.add('show'); // no animation: the page height must be final before the scroll is restored
