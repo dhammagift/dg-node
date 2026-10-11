@@ -57,9 +57,9 @@
  mealSet: 'Food (vikāla)', mealSumL: 'Show in the summary', mealRemL: 'Remind when the time for food ends', mealLead: 'In advance', mealLeads: [[0, 'when the time for food ends'], [15, '15 min before'], [30, '30 min before'], [45, '45 min before'], [60, '1 hour before'], [90, '1.5 hours before'], [120, '2 hours before']], mealDays: 'Days', mealDaysU: 'Uposatha days', mealDaysA: 'Every day', mealSnd: 'Sound of this reminder',
       twiFixed: 'Without a place the dawn is 06:00 and the dusk 18:00.', twiL: 'Dawn and dusk', twiNote: 'Twilight: the Sun 6, 12 or 18° below the horizon. Sets the borders of the day and the night.',
       locAutoL: 'Update my place automatically on opening', locAutoDay: 'Once a day', locAutoNote: 'Once a day, when the app opens, the place is found again, so the times follow you when you travel. It stays on this device.', twiO: { sun: 'Sunrise and sunset', civil: 'Civil (−6°)', nautical: 'Nautical (−12°)', astro: 'Astronomical (−18°)' },
-      tstL: 'Test a reminder', tstKinds: { upo: 'Uposatha day', beg: 'The time for food begins', end: 'The time for food ends', parts: 'All 6 parts of the night and day, one by one' }, tst0: 'now', tst1: 'in 1 min', tstBlocked: 'The browser blocks notifications for this site: click the lock in the address bar, set Notifications to Allow, and try again.', tstNow: 'Sent now.', tst2: 'in 2 min', tstGo: 'Schedule the test',
+      tstL: 'Test a reminder', tstKinds: { upo: 'Uposatha day', beg: 'The time for food begins', end: 'The time for food ends', parts: 'All 6 parts of the night and day, one by one' }, tst0: 'now', tst1: 'in 1 min', tstBlocked: 'The browser blocks notifications for this site: click the lock in the address bar, set Notifications to Allow, and try again.', tstNow: 'Sent now.', tst2: 'in 2 min', tstGo: 'Test',
       tstTitle: function (k) { return { upo: 'Uposatha (test)', beg: 'Time for food (test)', end: 'Vikāla soon (test)', parts: 'Parts (test)' }[k]; }, tstBody: 'A test reminder with the sound of this kind.', tstSet: function (at) { return 'It will come at ' + at + '.'; }, tstDenied: 'Notifications are not allowed.',
-      testsOn: 'Tests are shown in the menu', testsOff: 'Tests are hidden', testsG: 'Tests', testL: 'Test: show the state', testReal: 'as is', testTag: 'test',
+      testsOn: 'Test mode is on', testsOff: 'Test mode is off', testsG: 'Test reminders', testL: 'Test: show the state', testReal: 'as is', testTag: 'test',
       mealRemNow: 'Vikāla begins', mealRemZero: function (noon) { return 'Midday at ' + noon + ' — the time for food has ended.'; },
       mealBegL: 'Remind when the time for food begins', mealBegLeads: [[0, 'at dawn'], [-1, 'at sunrise'], [15, '15 min before'], [30, '30 min before'], [60, '1 hour before']],
       mealBegNow: 'Time for food', mealBegZero: function (dawn) { return 'Dawn at ' + dawn + ' — the time for food has begun.'; },
@@ -113,9 +113,9 @@
  mealSet: 'Еда (vikāla)', mealSumL: 'Показывать в сводке', mealRemL: 'Напоминать об окончании времени еды', mealLead: 'Заранее', mealLeads: [[0, 'когда время еды закончится'], [15, 'за 15 мин'], [30, 'за 30 мин'], [45, 'за 45 мин'], [60, 'за 1 час'], [90, 'за 1,5 часа'], [120, 'за 2 часа']], mealDays: 'Дни', mealDaysU: 'Дни упосатхи', mealDaysA: 'Каждый день', mealSnd: 'Звук этого напоминания',
       twiFixed: 'Без места рассвет 06:00, закат 18:00.', twiL: 'Рассвет и закат', twiNote: 'Сумерки: Солнце на 6, 12 или 18° под горизонтом. Задаёт границы дня и ночи.',
       locAutoL: 'Обновлять место автоматически при входе', locAutoDay: 'Раз в день', locAutoNote: 'Раз в сутки при открытии место определяется заново, и время пересчитывается, когда вы переезжаете. Место остаётся только на этом устройстве.', twiO: { sun: 'Восход и закат', civil: 'Гражданские (−6°)', nautical: 'Навигационные (−12°)', astro: 'Астрономические (−18°)' },
-      tstL: 'Проверить напоминание', tstKinds: { upo: 'День упосатхи', beg: 'Начало времени еды', end: 'Конец времени еды', parts: 'Все 6 частей ночи и дня по очереди' }, tst0: 'сейчас', tst1: 'через 1 мин', tstBlocked: 'Браузер блокирует уведомления для этого сайта: нажмите на замок в адресной строке, поставьте «Уведомления: Разрешить» и попробуйте снова.', tstNow: 'Отправлено сейчас.', tst2: 'через 2 мин', tstGo: 'Поставить проверку',
+      tstL: 'Проверить напоминание', tstKinds: { upo: 'День упосатхи', beg: 'Начало времени еды', end: 'Конец времени еды', parts: 'Все 6 частей ночи и дня по очереди' }, tst0: 'сейчас', tst1: 'через 1 мин', tstBlocked: 'Браузер блокирует уведомления для этого сайта: нажмите на замок в адресной строке, поставьте «Уведомления: Разрешить» и попробуйте снова.', tstNow: 'Отправлено сейчас.', tst2: 'через 2 мин', tstGo: 'Проверить',
       tstTitle: function (k) { return { upo: 'Упосатха (проверка)', beg: 'Время еды (проверка)', end: 'Скоро vikāla (проверка)', parts: 'Части (проверка)' }[k]; }, tstBody: 'Проверочное напоминание со звуком этого вида.', tstSet: function (at) { return 'Придёт в ' + at + '.'; }, tstDenied: 'Уведомления не разрешены.',
-      testsOn: 'Проверка показана в меню', testsOff: 'Проверка скрыта', testsG: 'Проверка', testL: 'Проверка: показать состояние', testReal: 'как есть', testTag: 'тест',
+      testsOn: 'Режим проверки включён', testsOff: 'Режим проверки выключен', testsG: 'Проверка напоминаний', testL: 'Проверка: показать состояние', testReal: 'как есть', testTag: 'тест',
       mealRemNow: 'Наступает vikāla', mealRemZero: function (noon) { return 'Полдень в ' + noon + ' — время еды закончилось.'; },
       mealBegL: 'Напоминать о начале времени еды', mealBegLeads: [[0, 'на заре'], [-1, 'на рассвете'], [15, 'за 15 мин'], [30, 'за 30 мин'], [60, 'за 1 час']],
       mealBegNow: 'Время еды', mealBegZero: function (dawn) { return 'Заря в ' + dawn + ' — время еды началось.'; },
@@ -1034,7 +1034,7 @@
     if (showSnd) { $('psnd').innerHTML = [['voice', t.partsVoice]].concat(soundKeys().map(function (k) { return [k, t.sounds[k]]; }), [['none', t.soundNone]], ownOpts()).map(function (o) { return '<option value="' + o[0] + '">' + esc(o[1]) + '</option>'; }).join(''); $('psnd').value = state.parts.snd; }
     $('parts-bell').setAttribute('aria-pressed', String(state.parts.rem));
     var mb = $('meal-bell'); if (mb) mb.setAttribute('aria-pressed', String(state.meal.rem || state.meal.beg));
-    setSeg('testseg', state.fake); $('g-tests').hidden = !state.tests;
+    setSeg('testseg', state.fake); $('tst-fake').hidden = !state.tests;
     reveal('rem-sound-row', showSnd); // the sound is a notification channel: only the app has them
     if (showSnd) {
       var opts = soundKeys().map(function (k) { return [k, t.sounds[k]]; }).concat([['none', t.soundNone]]);
@@ -1065,6 +1065,7 @@
     var host = /^(localhost|127\.)/.test(location.hostname) ? 'https://dhamma.gift' : location.origin;
     var q = ['lang=' + lang, 'tz=' + encodeURIComponent(state.tz), 'scheme=' + (sutta() ? 'sutta' : 'modern'), 'lead=' + state.rem.lead,
       'd8=' + (state.rem.d8 ? 1 : 0), 'd14=' + (state.rem.d14 ? 1 : 0), 'd15=' + (state.rem.d15 ? 1 : 0)];
+    if (state.rem.day) { q.push('day=' + String(state.rem.dayAt).replace(':', '')); if (!state.rem.on) q.push('adv=0'); } // the reminder on the Uposatha day; without the one ahead when that is off
     if (state.loc) q.push('lat=' + state.loc.lat, 'lon=' + state.loc.lon);
     var url = host + '/uposatha.ics?' + q.join('&');
     return scheme === 'webcal' ? url.replace(/^https?:/, 'webcal:') : url;

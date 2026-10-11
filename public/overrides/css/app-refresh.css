@@ -186,6 +186,12 @@ html[data-vt] body.app .appnav{view-transition-name:upo-nav}
 html[data-vt]::view-transition-group(upo-nav){animation:none}
 html[data-vt]::view-transition-old(upo-nav){display:none}
 html[data-vt]::view-transition-new(upo-nav){animation:none}
+/* the veil under the bar (body.app::after, uposatha-calendar.css) is a layer too, between the page and the bar: it belonged to the root picture, the page's
+   snapshot was drawn over it, and for the length of the change the text under the bar stood undimmed, then the veil snapped back (owner, 2026-10-11) */
+html[data-vt] body.app::after{view-transition-name:upo-veil}
+html[data-vt]::view-transition-group(upo-veil){animation:none}
+html[data-vt]::view-transition-old(upo-veil){display:none}
+html[data-vt]::view-transition-new(upo-veil){animation:none}
 html{--upo-vt-dir:1}
 html[data-vt=back]{--upo-vt-dir:-1}
 @keyframes upo-vt-out{to{opacity:0;transform:translateX(calc(var(--upo-vt-dir) * -18px))}}

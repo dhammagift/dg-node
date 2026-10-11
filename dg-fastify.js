@@ -1802,6 +1802,9 @@ app.get('/uposatha.ics', (req, reply) => {
         lang: q.lang === 'ru' ? 'ru' : 'en', tz, sutta: q.scheme !== 'modern', loc: lat !== null && lon !== null ? { lat: Math.round(lat * 100) / 100, lon: Math.round(lon * 100) / 100 } : null,
         rem: { lead: num(q.lead, 0, 72) === null ? 24 : num(q.lead, 0, 72), d8: q.d8 !== '0', d14: q.d14 !== '0', d15: q.d15 === '1' }, days: 400, feed: true,
     };
+    // day=HHMM: a second reminder on the Uposatha day itself at that time of the clock; adv=0 with it: without the one ahead
+    const dayAt = /^([01]\d|2[0-3])([0-5]\d)$/.exec(String(q.day || ''));
+    if (dayAt) { opts.rem.day = true; opts.rem.dayAt = dayAt[1] + ':' + dayAt[2]; opts.rem.on = q.adv !== '0'; }
     const key = JSON.stringify(opts) + new Date().toISOString().slice(0, 13); // a computed feed is reused for an hour
     let body = uposathaFeedCache.get(key);
     if (!body) {

@@ -14,12 +14,12 @@
     en: {
       halves: ['waxing half', 'waning half'], halvesOf: ['waxing half', 'waning half'], events: ['New moon', 'First quarter', 'Full moon', 'Last quarter'], uday: 'Uposatha day', and: ' & ',
       nth: function (n) { return EN_ORD[n] || n + 'th'; }, dayOf: function (nth, half) { return nth + ' day · ' + half; },
-      two: 'Two Uposatha days: the 14th and the 15th.', begins: 'Begins', tzName: 'Uposatha days',
+      two: 'Two Uposatha days: the 14th and the 15th.', today: 'Uposatha today', begins: 'Begins', tzName: 'Uposatha days',
     },
     ru: {
       halves: ['растущая половина', 'убывающая половина'], halvesOf: ['растущей половины', 'убывающей половины'], events: ['Новолуние', 'Первая четверть', 'Полнолуние', 'Последняя четверть'], uday: 'День упосатхи', and: ' и ',
       nth: function (n) { return n + '-й'; }, dayOf: function (nth, half) { return nth + ' день · ' + half; },
-      two: 'Две упосатхи: 14-й и 15-й дни.', begins: 'Начало', tzName: 'Дни упосатхи',
+      two: 'Две упосатхи: 14-й и 15-й дни.', today: 'Сегодня упосатха', begins: 'Начало', tzName: 'Дни упосатхи',
     },
   };
   function pad(n) { return ('0' + n).slice(-2); }
@@ -166,8 +166,10 @@
   }
   function icsEscape(x) { return String(x).replace(/\\/g, '\\\\').replace(/;/g, '\;').replace(/,/g, '\\,').replace(/\n/g, '\\n'); }
   function icsStamp(d) { return d.toISOString().replace(/[-:]/g, '').replace(/\.\d+/, ''); }
-  // A calendar file (also the body of the subscription feed): one event per Uposatha day from the moment it begins,
-  // an alarm `lead` hours ahead on the wanted days. o: { lang, tz, sutta, loc, rem, days (how far ahead), feed (bool) }
+  // A calendar file (also the body of the subscription feed): one event per Uposatha day from the moment it begins. On the wanted
+  // days it carries the same two reminders as the app: `lead` hours ahead (always, unless only the second one is on: rem.day with
+  // rem.on === false), and on the Uposatha day itself at rem.dayAt ("06:00") when rem.day - an alarm counted from the event's start,
+  // which is the evening before by the suttas. o: { lang, tz, sutta, loc, rem, days (how far ahead), feed (bool) }
   function buildIcs(o) {
     var t = NAMES[o.lang === 'ru' ? 'ru' : 'en'], now = new Date(), from = ymdAdd(localDay(now, o.tz), -1), to = ymdAdd(from, o.days);
     var data = dataset(from, to, { tz: o.tz, sutta: o.sutta, loc: o.loc });
@@ -178,7 +180,14 @@
       lines.push('BEGIN:VEVENT', 'UID:uposatha-' + r.ymd + (o.sutta ? '-s' : '-m') + '@dhamma.gift', 'DTSTAMP:' + icsStamp(now),
         'DTSTART:' + icsStamp(r.at), 'DTEND:' + icsStamp(new Date(r.at.getTime() + DAY)), 'SUMMARY:' + icsEscape(t.uday + ' — ' + name),
         'DESCRIPTION:' + icsEscape((two ? t.two + '\n' : '') + 'https://dhamma.gift/uposatha-calendar'));
-      if (wantDay(r, o.sutta, o.rem)) lines.push('BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:' + icsEscape(name), 'TRIGGER:' + (o.rem.lead ? '-PT' + o.rem.lead + 'H' : 'PT0S'), 'END:VALARM');
+      if (wantDay(r, o.sutta, o.rem)) {
+        if (!(o.rem.day && o.rem.on === false)) lines.push('BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:' + icsEscape(name), 'TRIGGER:' + (o.rem.lead ? '-PT' + o.rem.lead + 'H' : 'PT0S'), 'END:VALARM');
+        if (o.rem.day) {
+          var hm = /^(\d\d):(\d\d)$/.exec(o.rem.dayAt || '') || [0, 6, 0], p = (o.sutta ? ymdAdd(r.ymd, 1) : r.ymd).split('-').map(Number);
+          var mins = Math.round((zonedToUtc(p[0], p[1], p[2], +hm[1], o.tz).getTime() + hm[2] * 60000 - r.at.getTime()) / 60000);
+          lines.push('BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:' + icsEscape(t.today + ' — ' + name), 'TRIGGER:' + (mins < 0 ? '-' : '') + 'PT' + Math.abs(mins) + 'M', 'END:VALARM');
+        }
+      }
       lines.push('END:VEVENT');
     });
     lines.push('END:VCALENDAR');
