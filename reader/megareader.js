@@ -1923,6 +1923,11 @@ window.buildSutta = async function(rawSlug, opts) {
 
     window.renderNavigation(slug, suttaData.title, navPromise);
 
+    // Revealed BEFORE the events: listeners read the text, and reader/common.js's TOC pill reads
+    // headings by innerText, which is '' under .reader-pending's visibility:hidden — it hid the
+    // pill (no headings found) until the first scroll.
+    dgReaderReveal(window.__dgReplayEnter);
+    window.__dgReplayEnter = false;
     window.dispatchEvent(new CustomEvent('suttaLoaded', { detail: { inPlace: !!(opts && opts.inPlace) } }));
     // 'suttaRenderedCentral' — same moment, but only in the main reader window, never inside
     // the search-results citation-preview iframe (this same megareader.js runs in both). Several
@@ -1948,8 +1953,6 @@ window.buildSutta = async function(rawSlug, opts) {
 
     window.toggleThePali();
     if (typeof window.dgRenderLangPill === 'function') window.dgRenderLangPill();
-    dgReaderReveal(window.__dgReplayEnter);
-    window.__dgReplayEnter = false;
     if (typeof window.addToSearchHistory === 'function') window.addToSearchHistory();
     return true;
 };

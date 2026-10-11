@@ -1908,9 +1908,17 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     // задержка (сеть, рендер таблицы, смена языка интерфейса и т.п.).
     if (window.ResizeObserver) {
       var ro = new ResizeObserver(function () { applyPadding(); });
-      [band, document.getElementById('results-toolbar'), document.getElementById('reader-toolbar'), document.getElementById('navigation')]
-        .filter(Boolean)
-        .forEach(function (el) { ro.observe(el); });
+      // This script runs before #reader-pane is parsed, so its toolbar/#navigation are not there
+      // yet: an inline call right after the pane's markup observes them too and pins the stack
+      // before the first paint (else the rows painted at their CSS-only top, prev/next under the
+      // icons, until initSearchApp() ran). observe() of an already observed node is a no-op.
+      window.dgObserveStack = function () {
+        [band, document.getElementById('results-toolbar'), document.getElementById('reader-toolbar'), document.getElementById('navigation')]
+          .filter(Boolean)
+          .forEach(function (el) { ro.observe(el); });
+        applyPadding();
+      };
+      window.dgObserveStack();
 
       // #top-links-container is rebuilt on every sutta render (megareader.js replaces #sutta's
       // innerHTML), so the one-off observe() list above can never cover it — it would watch a node
@@ -3185,6 +3193,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
             <a href="https://ped.readingfaithfully.org" title="Pali English Dictionary" target="_blank"><img width="20px" alt="PED" src="/reader/images/favicon-ped-black.png"></a>
         </div>
     </div>
+<script>if (window.dgObserveStack) window.dgObserveStack();</script>
 
 <script type='text/javascript'>
 // .q-link click — appends the CURRENT sutta id to whichever of lbl.html/lbl-en.html
@@ -4411,11 +4420,16 @@ document.addEventListener('DOMContentLoaded', function () { $(function() {
        initReader(). При первом открытии его вызывает сам файл при загрузке, дальше зовём мы. */
     function openReaderInPlace(slug) {
         dgCancelSearch(); // a search still in flight must not flip the screen back to results
+        // Cold load of a text address: the boot script already put the body in the reader state
+        // (with dg-busy), so the check below alone skipped .reader-pending and, from here to the
+        // text, the reader skeleton was gone — empty prev/next row, footer icons under the toolbar.
+        var sutta = document.getElementById('sutta');
+        var cold = !(sutta && sutta.innerHTML.trim());
         dgSetBusy(false);
         // Coming from another screen: hide the (stale/empty) pane until buildSutta() has the new
         // text, so the enter animation plays once, on real content (.reader-pending, home.css).
         var pane = document.getElementById('reader-pane');
-        if (pane && !document.body.classList.contains('dg-state-reader')) pane.classList.add('reader-pending');
+        if (pane && (cold || !document.body.classList.contains('dg-state-reader'))) pane.classList.add('reader-pending');
         dgSetState('reader');
         var firstTime = !readerAssetsPromise;
         return ensureReaderAssets()

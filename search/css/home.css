@@ -909,7 +909,15 @@ body.dg-busy:not(.dg-state-reader) #reader-pane {
    Nothing here is a fixed pixel width that has to be retuned per screen: each placeholder inherits
    the box of the element it stands for, so wrapping at 390 and the single row at 1900 come out
    right for free, and there is not one media query in it. */
-body.dg-state-reader.dg-busy #sutta, #reader-pane.reader-pending #sutta { visibility: hidden; }
+body.dg-state-reader.dg-busy #sutta, #reader-pane.reader-pending #sutta:not(:has(> .dg-sutta-skeleton)) { visibility: hidden; }
+/* Everything below the text (bottom prev/next, footer icons, subscription line): with #sutta still
+   empty it sat right under the pinned rows, so a cold load showed the footer's icon grid for a
+   second (owner: "сначала неграмотно отрисовывается"). */
+body.dg-state-reader.dg-busy #reader-pane > :is(#dg-rsub-line, hr, #navigation-bottom, .links-area),
+#reader-pane.reader-pending > :is(#dg-rsub-line, hr, #navigation-bottom, .links-area) { visibility: hidden; }
+/* The bell is always shown in the reader once a text is open (home.js dgRenderReaderSubs) — keep its
+   slot while loading, or the icon row is one button short and the title pill wraps only later. */
+body.dg-state-reader.dg-busy #reader-toolbar .dg-rbell[hidden], #reader-pane.reader-pending #reader-toolbar .dg-rbell[hidden] { display: block !important; visibility: hidden; } /* !important: Bootstrap's [hidden] */
 
 /* Shared look. Applied to backgrounds rather than to a bar element, so a placeholder can BE the
    element it replaces instead of standing next to it — that is what went wrong before: the old
@@ -949,6 +957,14 @@ body.dg-state-reader.dg-busy .sc-ext-link, #reader-pane.reader-pending .sc-ext-l
 body.dg-state-reader.dg-busy #top-links-container, #reader-pane.reader-pending #top-links-container { visibility: hidden; }
 @media (max-width: 768px) {
   body.dg-state-reader.dg-busy #top-links-container, #reader-pane.reader-pending #top-links-container { display: block; min-height: 32px; }
+  /* Cold load: megareader.js has not created #top-links-container yet (it lives inside #sutta's
+     rendered HTML), so the links row is reserved here instead — the toolbar loses its bottom
+     padding as it does next to the real row (search/index.html), and prev/next is pushed down by
+     the row's height, 25.5px measured at 390/zoom 1.1 and at 375. */
+  body.dg-state-reader.dg-busy #reader-pane:not(:has(#top-links-container)) #reader-toolbar,
+  #reader-pane.reader-pending:not(:has(#top-links-container)) #reader-toolbar { padding-bottom: 0; }
+  body.dg-state-reader.dg-busy #reader-pane:not(:has(#top-links-container)) #navigation,
+  #reader-pane.reader-pending:not(:has(#top-links-container)) #navigation { padding-top: calc(8px + 25.5px) !important; min-height: calc(41px + 25.5px); }
 }
 /* The title pill: its own box already knows how wide it may be at each size (160px, 280px, 96px on
    phones), so the placeholder inherits all of that. min-width is in em, so it follows the same
@@ -958,6 +974,11 @@ body.dg-state-reader.dg-busy #smart-toc-btn, #reader-pane.reader-pending #smart-
 }
 body.dg-state-reader.dg-busy #smart-toc-btn *, #reader-pane.reader-pending #smart-toc-btn * {
     visibility: hidden;
+}
+/* Phones: the pill at its full width (max-width 100px, search/index.html) — a sutta title always fills
+   it, and at 7em the placeholder fit the icon row while the real pill wraps to its own line. */
+@media (max-width: 767.98px) {
+  body.dg-state-reader.dg-busy #smart-toc-btn, #reader-pane.reader-pending #smart-toc-btn { min-width: 100px; }
 }
 /* prev/next: two bars at the two ends, exactly where the two links sit. The row is laid out here
    only while loading — the real links are display:none below, so this governs nothing but the
@@ -969,7 +990,9 @@ body.dg-state-reader.dg-busy #navigation::before, #reader-pane.reader-pending #n
 body.dg-state-reader.dg-busy #navigation::after, #reader-pane.reader-pending #navigation::after {
     content: ''; display: block; flex: none; height: 13px; width: min(150px, 38%);
 }
-body.dg-state-reader #navigation { min-height: 34px; }
+/* 41px = the loaded row (8px + one 13px-font line + 11px + border, measured 40.5-40.9 on phone and
+   desktop), so the placeholder row is as tall as the real one and the text does not move. */
+body.dg-state-reader #navigation { min-height: 41px; }
 body.dg-state-reader.dg-busy #navigation a, #reader-pane.reader-pending #navigation a { display: none; }
 body.dg-busy #variants-hint { display: none !important; }
 
