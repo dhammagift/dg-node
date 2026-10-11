@@ -714,6 +714,9 @@ const scopeDirsCache = new Map();
 // a translation were never found at all. Here every source is searched in the same pass, so
 // those suttas now show up.
 async function buildMatchSkeleton(keyword, searchScope, exactMatch, targetLangs, lb = 0, la = 0, restrictToIds = null) {
+    // A bare web address (an iPhone "Share" of some site's page into Dhamma.Gift) is not a phrase of the canon:
+    // nothing is found, instead of the regex error its "." and "?" used to give.
+    if (/^\s*https?:\/\/\S+\s*$/i.test(String(keyword || ''))) return { searchResults: {}, empty: 'no-matches' };
     const isFullScan = !restrictToIds || restrictToIds.length === 0;
     const allowedPrefixes = isFullScan ? resolveAllowedPrefixes(searchScope) : ['all'];
     const restrict = isFullScan ? null : new Set(restrictToIds);
