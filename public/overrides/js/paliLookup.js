@@ -439,6 +439,7 @@ async function handleWordLookup(word, event) {
         popup.style.height = `${finalHeight}px`;
         popup.style.display = 'block';
         overlay.style.display = 'block';
+        keepPopupOnScreen(popup);
 
         iframe.onload = function() {
             try {
@@ -522,6 +523,7 @@ async function handleWordLookup(word, event) {
         applyPopupSizeForMode(popup);
         popup.style.display = 'block';
         overlay.style.display = 'block';
+        keepPopupOnScreen(popup);
     }
 }
 
@@ -730,6 +732,24 @@ function clearParams() {
     ];
     keys.forEach(key => localStorage.removeItem(key));
 }
+
+// A place saved on another screen size (a rotation, a wider window, another page zoom) could open the popup half off
+// the screen. Keep it whole inside the viewport, moved only as far as needed, so it lands at the edge it went past.
+function keepPopupOnScreen(popup) {
+    if (!popup || popup.style.display === 'none') return;
+    const z = pz(), m = 8, vw = window.innerWidth, vh = window.innerHeight;
+    let r = popup.getBoundingClientRect();
+    if (r.width > vw - 2 * m) { popup.style.width = `${(vw - 2 * m) / z}px`; r = popup.getBoundingClientRect(); }
+    if (r.height > vh - 2 * m) { popup.style.height = `${(vh - 2 * m) / z}px`; r = popup.getBoundingClientRect(); }
+    if (r.left >= m && r.top >= m && r.right <= vw - m && r.bottom <= vh - m) return;
+    const left = Math.min(Math.max(r.left, m), vw - m - r.width);
+    const top = Math.min(Math.max(r.top, m), vh - m - r.height);
+    popup.style.transform = 'none';
+    popup.style.right = '';
+    popup.style.left = `${left / z}px`;
+    popup.style.top = `${top / z}px`;
+}
+addEventListener('resize', () => { if (popupElements) keepPopupOnScreen(popupElements.popup); });
 
 function applyPopupSizeForMode(popup) {
     const isStandalone = (savedDict === "standalone" || savedDict === "standaloneru");
