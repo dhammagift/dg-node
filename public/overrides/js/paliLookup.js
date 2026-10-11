@@ -372,7 +372,7 @@ async function handleWordLookup(word, event) {
         // doesn't mean the word isn't in DPD at all, the FULL site (dict.dhamma.gift, same data
         // this popup's own resolveDictConfig() links to elsewhere) is far more likely to have it
         // than a generic web search.
-        const fullDictUrl = `https://dict.dhamma.gift/${window.isRu ? "ru/" : ""}?theme=${getEffectiveTheme()}&q=${encodeURIComponent(word)}`;
+        const fullDictUrl = `https://dict.dhamma.gift/${window.isRu ? "ru/" : ""}?silent&theme=${getEffectiveTheme()}&q=${encodeURIComponent(word)}`;
 
         translation = window.isRu ?
             `<div style="padding: 10px;">
