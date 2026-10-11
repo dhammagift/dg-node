@@ -222,7 +222,9 @@ function worker(settings, online) {
     assert.strictEqual(JSON.parse(payload.template).type, 'AdaptiveCard', 'the template is a string of an Adaptive Card');
     const data = JSON.parse(payload.data);
     assert.strictEqual(data.lang, 'en', 'the language is the one the page saved');
-    assert.ok(/^UPOSATHA/.test(data.u.title), 'the data was worked out in the worker');
+    // not the title: on an Uposatha day it is that day's name, and the static placeholder's own title is UPOSATHA
+    assert.strictEqual(data.u.mode, 'by the suttas', 'the data was worked out in the worker (the placeholder has no counting)');
+    assert.strictEqual(data.u.next.length, 3, 'the next three Uposatha days');
     check(JSON.parse(payload.template).body, data, data, 'worker.main', new Set());
 
     w.calls.updates.length = 0;
