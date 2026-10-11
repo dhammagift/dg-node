@@ -211,10 +211,10 @@ async function handle(m) {
 }
 onmessage = e => { queue = queue.then(() => handle(e.data)); };
 `;
-let worker = null;  // {vid, w, speak}: one voice loaded at a time
-function stopWorker() {
-  if (worker) worker.w.terminate();
-  worker = null;
+// One worker per voice, at most two: Pali and translation lines alternate, and a worker that starts over takes seconds
+const workers = new Map();  // vid -> {vid, w, speak}, oldest first
+function stopWorker(vid) {
+  for (const [id, me] of workers) if (!vid || id === vid) { me.w.terminate(); me.fail(new Error('voice ' + id + ' stopped')); workers.delete(id); }
 }
 
 function startWorker(vid) {
@@ -245,17 +245,19 @@ function startWorker(vid) {
     await call({ init: { data: r.data, respell: r.respell, json: m.json, model: new Uint8Array(await model.arrayBuffer()), lang, espeak, gain: m.gain || 1,
                          wasm: await wasm.arrayBuffer(), ort: url(ort, 'text/javascript'), engine: url(engine, 'text/javascript') } });
   })();
-  const me = { vid, w, speak: (text, rate) => ready.then(() => call({ text, rate })) };
-  ready.catch(() => { if (worker === me) worker = null; w.terminate(); });
+  const me = { vid, w, speak: (text, rate) => ready.then(() => call({ text, rate })),
+               fail: e => { for (const p of waiting.values()) p.reject(e); waiting.clear(); } };
+  ready.catch(() => { if (workers.get(vid) === me) workers.delete(vid); w.terminate(); });
   return me;
 }
 
 // base64 WAV (voice.js plays it like the service's base64 mp3). rate as sent to the service (1 = the tuned pace).
 export async function speak(text, rate, vid) {
   await migrated;
-  if (!worker || worker.vid !== vid) {
-    stopWorker();
-    worker = startWorker(vid);
+  let me = workers.get(vid);
+  if (!me) {
+    if (workers.size >= 2) stopWorker(workers.keys().next().value);
+    workers.set(vid, me = startWorker(vid));
   }
-  return worker.speak(text, rate);
+  return me.speak(text, rate);
 }
