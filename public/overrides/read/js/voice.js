@@ -1109,7 +1109,7 @@ function dgOffIcon(vid) {
     return `<button type="button" class="tts-ib tts-offic on" data-offdel="${vid}" title="${t.offHave} · ${t.offDel}"><i class="tts-gi" style="--u:url('/assets/svg/trash-can-regular-full.svg')"></i></button>`;
   }
   // (the owner's own voices: CC BY-NC-SA 4.0)
-  return `<button type="button" class="tts-ib tts-offic" data-offvid="${vid}" title="${stale ? t.offUpd : t.offGet} · ${dgOffMb(v)} ${t.mb}${v.license ? ' · ' + v.license : ''}">${DG_OFF_DOWN}</button>`;
+  return `<button type="button" class="tts-ib tts-offic" data-offvid="${vid}" title="${stale ? t.offUpd : t.offGet} · ${dgOffMb(v)} ${t.mb}${v.license ? ' · ' + v.license : ''}">${DG_OFF_DOWN}<small>${dgOffMb(v)} ${t.mb}</small></button>`;
 }
 
 // The card above the player (owner: a separate plate in the player's style, informative, with retry and a way to
@@ -2752,7 +2752,7 @@ function getOrBuildPlayer() {
         // The ?v= stamp matters: /read/css/voice.css is served immutable for a year, so without it a
         // CSS fix would never reach anyone who had already opened the player (issue #20's rule was
         // invisible in the browser because of exactly that). Bump the stamp with the next edit.
-        document.head.insertAdjacentHTML('beforeend', '<link id="voice-css-lazy" rel="stylesheet" href="/read/css/voice.css?v=2026-10-10offset2">');
+        document.head.insertAdjacentHTML('beforeend', '<link id="voice-css-lazy" rel="stylesheet" href="/read/css/voice.css?v=2026-10-11offmb">');
     }
 
     if (!playerContainer) {
