@@ -68,6 +68,13 @@ body.dark{
 *{box-sizing:border-box}
 html,body{margin:0}
 html{scroll-padding-top:16px}
+/* Settings must not move sideways on iOS (owner, 2026-10-11: "горизонтальный скролл ... болтается"; earlier
+   rounds fixed a focus zoom and the iframe zoom, the drift stayed). Three causes, one rule each, as the rest
+   of the site has them: iOS text autosizing (the site gets text-size-adjust:100% from bootstrap's reboot, this
+   page loads no bootstrap, so iOS inflated its text and a row could come out wider than the frame); a sideways
+   pan of the frame itself; and the rubber band that lets it swing even when nothing is wider. */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%;touch-action:pan-y;overscroll-behavior-x:none}
+body{overflow-x:clip;overscroll-behavior-x:none}
 body{font-family:var(--ui);color:var(--ink);background:var(--page-bg);font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
 .wrap{max-width:700px;margin:0 auto;padding:20px 16px 100px}
 /* Owner: one row — back, title, "saves instantly", close. The title never shrinks below its word; the
