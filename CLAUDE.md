@@ -330,10 +330,10 @@ curl -sS -X POST -H "Authorization: Bearer $TOKEN" \
   с `{"ref":"main","inputs":{"release":"none"}}` (для сайта с теста добавить
   `"online_origin":"https://test.dhamma.gift"`). Статус: `GET .../actions/runs?per_page=5`, APK —
   в артефактах прогона (`dg-app-full-apk-release-N`).
-- Выкладка в сторы — поле `release`, по одному приложению: `dg` (Dhamma.Gift → Play beta, открытое тестирование; словарь и Uposatha → alpha, закрытое),
+- Выкладка в сторы — поле `release`, по одному приложению: `dg` (Dhamma.Gift → Play alpha, закрытое тестирование, с 2026-10-08; словарь и Uposatha → тоже alpha),
   `dg-ios` (→ TestFlight), `dg-both` (оба, одним прогоном), `dict`/`dict-ios`, `uposatha`/`uposatha-ios`.
   Выкладка в сторы — только по явному «да» владельца. В production не продвигать — это делает владелец. Сборка ~15 мин (не час).
-- **Тег в `dg-apps` — это релиз**, а не просто сборка: Play (beta/alpha) + TestFlight, сжигает versionCode.
+- **Тег в `dg-apps` — это релиз одного приложения**, а не просто сборка: Play (alpha) + TestFlight, сжигает versionCode. `dg-v*` или `v*` — Dhamma.Gift, `dict-v*` — словарь, `upo-v*` — Uposatha; другие теги ничего не запускают.
   Для теста тег не ставить.
 - Ошибка `Resource not accessible by personal access token` = у токена нет `issues=write`.
 - Проверка права без создания мусора: `POST /issues` с `{"title":""}` → `422` (право есть), `403` (нет).
