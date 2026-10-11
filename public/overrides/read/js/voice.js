@@ -416,10 +416,10 @@ function overPlayer(w, h) {
   };
 }
 
-// Down on the player, covering it, its bottom on the player's bottom (the voice window: the text above stays in sight)
+// Centred on the player, covering it (the voice window: the text above and the language buttons below stay in sight)
 function onPlayer(w, h) {
   const { left } = overPlayer(w, h), p = document.querySelector('#voice-player-container .voice-player')?.getBoundingClientRect();
-  return { left, top: Math.max(8, Math.min(window.innerHeight - h - 8, p ? p.bottom - h : window.innerHeight)) };
+  return { left, top: Math.max(8, Math.min(window.innerHeight - h - 8, p ? p.top + p.height / 2 - h / 2 : window.innerHeight)) };
 }
 
 function showRatePopValue(v) {
@@ -2731,6 +2731,7 @@ function ttsUiText() {
     engineSettings: "Voice settings",
     engineSettingsTitle: ru ? "Голоса: движок и голос для пали и перевода" : "Voices: engine and voice for Pāḷi and translation",
     tryVoice: ru ? "Прослушать" : "Listen",
+    resetVoices: ru ? "Голоса по умолчанию (скачанные остаются)" : "Default voices (downloaded ones stay)",
     back: ru ? "Назад" : "Back",
     speed: ru ? "Скорость" : "Speed",
     speedSep: ru ? "отдельно для пали и для перевода" : "separate for Pāḷi and translation",
@@ -3174,7 +3175,8 @@ function renderVoiceWin() {
   let html;
   if (!l) {
     const gi = icon => `<i class="tts-gi" style="--u:url('/assets/svg/${icon}')"></i>`;
-    html = `<div class="tts-wh"><span class="t">${t.voice}<span class="vpath"></span></span>${x}</div>` + ['pi', 'trn'].map(k =>
+    const reset = `<button type="button" class="tts-ib tts-vreset" title="${t.resetVoices}">↺</button>`;
+    html = `<div class="tts-wh"><span class="t">${t.voice}<span class="vpath"></span></span>${reset}${x}</div>` + ['pi', 'trn'].map(k =>
       `<div class="tts-vrow" data-l="${k}"><span class="vk">${k === 'pi' ? t.pali : t.trn}</span><button type="button" class="tts-vbtn" title="${t.engine}"></button><button type="button" class="tts-ib tts-vtry" title="${t.tryVoice}">${gi('play.svg')}</button></div>`).join('');
   } else {
     const { eng } = ttsVoiceSel(l), kind = l === 'pi' ? t.pali : t.trn, back = `<button type="button" class="tts-ib" data-vback="1" title="${t.back}">‹</button>`;
@@ -3259,6 +3261,15 @@ document.addEventListener('click', async e => {
     return;
   }
   const b = e.target.closest('#tts-voice-win button');
+  // ↺ in the root: every voice choice back to the defaults; the Google key, paces and downloaded voices stay (owner 2026-10-11)
+  if (b?.classList.contains('tts-vreset')) {
+    if (!confirm(ttsUiText().resetVoices + '?')) return;
+    [PALI_VOICE_KEY, NATIVE_PALI_KEY, NATIVE_TRN_KEY, TRN_ENGINE_KEY, GOOGLE_PALI_SETTINGS_KEY, 'tts_google_trn_custom_voice',
+     GOOGLE_TRN_KEY_RU, GOOGLE_TRN_KEY_EN, GOOGLE_TRN_KEY_STUDY, 'tts_native_pali_custom_voice', 'tts_native_trn_custom_voice',
+     ...Object.keys(localStorage).filter(k => k.startsWith('tts_dg_voice_'))].forEach(k => localStorage.removeItem(k));
+    window.location.reload();
+    return;
+  }
   if (!b || !ttsVoiceWin.lang || !win?.classList.contains('on')) return;
   const l = ttsVoiceWin.lang, { eng } = ttsVoiceSel(l);
   if (b.classList.contains('close-tts-win')) return;  // handled by the shared window closer (restores)
