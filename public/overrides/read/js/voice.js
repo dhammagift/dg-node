@@ -383,6 +383,7 @@ function closeTtsWins() {
   document.querySelectorAll('.tts-win.on').forEach(w => w.classList.remove('on'));
   document.querySelectorAll('#tts-rate-btn, #tts-mode-chip').forEach(b => b.setAttribute('aria-expanded', 'false'));
   ttsVoiceWin.lang = null;
+  dgOffCardReplace();
 }
 
 // An ancestor may scale (page zoom / font-size setting) or transform (dark theme) the page, so
@@ -1123,6 +1124,10 @@ function dgOffIcon(vid) {
 //   stale   - the service has a newer model of a downloaded voice [Update] [Later]
 //   nonet   - no network and the voice is not downloaded: the device's voice reads now, download when online [OK]
 let dgOffCardState = null;
+// The window under the card opened, closed or changed height: the card moves with it
+function dgOffCardReplace() {
+  if (dgOffCardState && document.getElementById('tts-off-card')?.classList.contains('on')) dgOffCard(dgOffCardState.kind, dgOffCardState);
+}
 function dgOffName(vid) { return (dgOffKnown?.[vid]?.label || vid || '').split(' ')[0]; }
 
 function dgOffCard(kind, info = {}) {
@@ -1169,14 +1174,15 @@ function dgOffCard(kind, info = {}) {
     (pct !== null ? `<i class="bar" style="width:${pct}%"></i>` : '');
   const p = player.getBoundingClientRect();
   card.style.width = p.width + 'px';
+  card.style.width = p.width / (card.getBoundingClientRect().width / card.offsetWidth || 1) + 'px';  // (a scaled page: see placeTtsWin)
   placeTtsWin(card, abovePlayer);
   card.style.maxHeight = '';
   if (kind === 'done' || kind === 'nonet') dgOffCard.timer = setTimeout(() => dgOffCard(null), 8000);
 }
 
-// Right above the player, centred on it, never off screen
+// Right above the player (or the voice window over it), centred on it, never off screen
 function abovePlayer(w, h) {
-  const p = document.querySelector('#voice-player-container .voice-player').getBoundingClientRect();
+  const p = (document.querySelector('#tts-voice-win.on') || document.querySelector('#voice-player-container .voice-player')).getBoundingClientRect();
   return { left: Math.max(8, Math.min(window.innerWidth - 8 - w, p.left + p.width / 2 - w / 2)), top: Math.max(8, p.top - h - 6) };
 }
 
@@ -2525,12 +2531,12 @@ async function startPlayback(container, mode, slug, startIndex = 0) {
       // Issue #37: one single hint must cover both paths at once - Google voices online
       // (free key, optional) and the system-voice setup needed offline.
       // DG voice (our own Piper voices) reads by default and needs no key; Google and the device's
-      // voices are the alternatives in ⚙ → Voice settings.
+      // voices are the alternatives in ⚙ → Voices.
       // Owner: short, just the three kinds of voices (the "for offline" line is what Built-in says).
       const li = 'display:block;text-align:left;margin-top:4px';
       const message = window.isRu
-          ? `(⚙ → Voice settings):<span style="${li}">• <b>DG Voice</b> — бесплатные нейроголоса</span><span style="${li}">• <b>Google</b> — бесплатный лимит, нужен <a href="${searchUrlRu}" target="_blank" style="${linkStyle}">свой API-ключ</a></span><span style="${li}">• <b>Встроенные</b> — голоса вашего устройства, работают без интернета</span>`
-          : `(⚙ → Voice settings):<span style="${li}">• <b>DG Voice</b> — free neural voices</span><span style="${li}">• <b>Google</b> — free quota, needs <a href="${searchUrlEn}" target="_blank" style="${linkStyle}">your own API key</a></span><span style="${li}">• <b>Built-in</b> — your device's voices, work offline</span>`;
+          ? `(⚙ → Голоса):<span style="${li}">• <b>DG Voice</b> — бесплатные нейроголоса</span><span style="${li}">• <b>Google</b> — бесплатный лимит, нужен <a href="${searchUrlRu}" target="_blank" style="${linkStyle}">свой API-ключ</a></span><span style="${li}">• <b>Встроенные</b> — голоса вашего устройства, работают без интернета</span>`
+          : `(⚙ → Voices):<span style="${li}">• <b>DG Voice</b> — free neural voices</span><span style="${li}">• <b>Google</b> — free quota, needs <a href="${searchUrlEn}" target="_blank" style="${linkStyle}">your own API key</a></span><span style="${li}">• <b>Built-in</b> — your device's voices, work offline</span>`;
 
       showVoiceHint(window.isRu ? 'Попробуйте разные голоса' : 'Try different voices', message, PALI_ALERT_KEY);
   }
@@ -2656,9 +2662,9 @@ function getPlayerHtml() {
           <div class="tts-grp" data-t="playback">${t.playback}</div>
           <label class="tts-row"><span class="lb"><span data-t="scroll">${t.scroll}</span> <span class="tts-kbd">S</span><small data-t="scrollSub">${t.scrollSub}</small></span><span class="tts-sw"><input type="checkbox" id="tts-scroll-toggle" ${ttsState.autoScroll ? 'checked' : ''}><span></span></span></label>
           <div class="tts-row tts-delay-row"><span class="lb" title="${t.delayTitle}" data-t="delay">${t.delay}</span><span class="tts-stp"><button type="button" data-stp="tts-segment-delay-input" data-d="-0.5" aria-label="−">−</button><span id="tts-segment-delay-input" class="stp-v" contenteditable="true" inputmode="decimal" spellcheck="false">${localStorage.getItem('dg_tts_segment_delay') || 0}</span><span class="u" data-t="sec">${t.sec}</span><button type="button" data-stp="tts-segment-delay-input" data-d="0.5" aria-label="+">+</button></span></div>
+          <a href="javascript:void(0)" id="tts-advanced-toggle-btn" class="tts-row tts-voices-row" title="${t.engineSettingsTitle}"><span class="lb">${t.offVoices}</span><span id="tts-vsum"></span><span class="ar">›</span></a>
           <div class="tts-row"><span class="lb"><span data-t="offline">${t.offline}</span><small id="tts-off-sub">${t.offSub}</small></span><button type="button" id="tts-off-btn" class="tts-chip">${t.offVoices}</button></div>
           <div class="tts-links tts-links-row">
-            <a href="javascript:void(0)" id="tts-advanced-toggle-btn" title="${t.engineSettingsTitle}">${gi('wrench-solid-full.svg')}${t.engineSettings}</a>
             <span id="audio-file-link-placeholder"></span>
             <a href="${helpUrl}" target="_blank" class="tts-link tts-help-link" data-t="help">${t.help}</a>
           </div>
@@ -2752,7 +2758,7 @@ function getOrBuildPlayer() {
         // The ?v= stamp matters: /read/css/voice.css is served immutable for a year, so without it a
         // CSS fix would never reach anyone who had already opened the player (issue #20's rule was
         // invisible in the browser because of exactly that). Bump the stamp with the next edit.
-        document.head.insertAdjacentHTML('beforeend', '<link id="voice-css-lazy" rel="stylesheet" href="/read/css/voice.css?v=2026-10-11offmb">');
+        document.head.insertAdjacentHTML('beforeend', '<link id="voice-css-lazy" rel="stylesheet" href="/read/css/voice.css?v=2026-10-11vwin">');
     }
 
     if (!playerContainer) {
@@ -2805,8 +2811,8 @@ async function handleTTSSettingChange(e) {
 // --- Toggle Advanced Settings ---
   if (e.target.closest('#tts-advanced-toggle-btn')) {
       e.preventDefault();
-      paintVoiceButtons();
-      ttsMorph(() => showTtsPanel('tts-advanced-settings'));
+      closeTtsWins();
+      openVoiceWin(null);
       return;
   }
   if (e.target.closest('#tts-voice-back')) {
@@ -3123,11 +3129,13 @@ const TTS_ENGINE_TAG = { dg: 'DG', google: 'Google' };
 
 function paintVoiceButtons() {
   const t = ttsUiText();
-  document.querySelectorAll('#tts-advanced-settings .tts-vrow').forEach(row => {
+  const sum = [];
+  document.querySelectorAll('#tts-advanced-settings .tts-vrow, #tts-voice-win .tts-vrow').forEach(row => {
     const l = row.dataset.l, { eng } = ttsVoiceSel(l), lists = ttsShownLists(l), last = lists[lists.length - 1];
     if (!eng) return;
     const e = eng.value, name = last ? (last.options[last.selectedIndex]?.textContent || '') : '';
     const tag = TTS_ENGINE_TAG[e] || (window.isRu ? 'ОС' : 'OS');
+    if (row.closest('#tts-advanced-settings')) sum.push(name.split(/ [♂♀·]/)[0]);
     const btn = row.querySelector('.tts-vbtn');
     btn.innerHTML = `<span class="tts-vtag ${e}">${tag}</span><span class="tts-vnm">${name}</span><span class="tts-vch">›</span>`;
     btn.title = eng.options[eng.selectedIndex]?.textContent + ' · ' + name;
@@ -3137,6 +3145,8 @@ function paintVoiceButtons() {
       tryBtn.title = e === 'dg' ? t.tryVoice : (window.isRu ? 'Прослушать можно голоса DG' : 'Preview is for DG voices');
     }
   });
+  const vsum = document.getElementById('tts-vsum');
+  if (vsum) vsum.textContent = sum.join(' · ');
 }
 document.addEventListener('change', e => { if (e.target.closest('.tts-vsel')) setTimeout(paintVoiceButtons, 0); });
 
@@ -3152,31 +3162,69 @@ function ttsListsSettled(l) {
   });
 }
 
+// Levels: the root (lang null: Pali and translation rows, ▶, the Google key) › engine › (language) › voice.
+// The header is the path, each step a button back to it (owner 2026-10-11: one can see Pali or translation, and go up).
 function renderVoiceWin() {
   const win = document.getElementById('tts-voice-win'), l = ttsVoiceWin.lang, t = ttsUiText();
-  if (!win || !l) return;
-  const { eng } = ttsVoiceSel(l), x = '<button type="button" class="tts-ib close-tts-win" title="Esc">×</button>';
-  const kind = l === 'pi' ? t.pali : t.trn;
+  if (!win) return;
+  // the real Google key block lives in the hidden settings panel and visits the root while it is shown
+  const panel = document.getElementById('tts-advanced-settings');
+  const key = panel?.querySelector('.api-key-block') || win.querySelector('.api-key-block');
+  if (key && panel && key.parentNode !== panel) panel.appendChild(key);
+  const x = '<button type="button" class="tts-ib close-tts-win" title="Esc">×</button>';
+  const step = (label, to) => `<button type="button" class="cr" data-vto="${to}">${label}</button><span class="sep">›</span>`;
   let html;
-  if (ttsVoiceWin.depth === 0) {
-    const sub = { dg: t.dgE, google: t.gE, native: t.osE };
-    html = `<div class="tts-wh"><span class="t">${t.voice} <small>· ${kind}</small></span>${x}</div>` +
-      [...eng.options].map(o => `<button type="button" class="tts-mi" data-eng="${o.value}"><span class="ck">${o.value === eng.value ? '•' : ''}</span><span class="ml">${o.textContent}<span class="eg">${sub[o.value] || ''}</span></span><span class="ar">›</span></button>`).join('');
+  if (!l) {
+    const gi = icon => `<i class="tts-gi" style="--u:url('/assets/svg/${icon}')"></i>`;
+    html = `<div class="tts-wh"><span class="t">${t.voice}</span>${x}</div>` + ['pi', 'trn'].map(k =>
+      `<div class="tts-vrow" data-l="${k}"><span class="vk">${k === 'pi' ? t.pali : t.trn}</span><button type="button" class="tts-vbtn" title="${t.engine}"></button><button type="button" class="tts-ib tts-vtry" title="${t.tryVoice}">${gi('play.svg')}</button></div>`).join('');
   } else {
-    const lists = ttsShownLists(l), list = lists[ttsVoiceWin.depth - 1];
-    const crumb = eng.options[eng.selectedIndex]?.textContent + (ttsVoiceWin.depth > 1 ? ` <small>· ${lists[0].value}</small>` : '');
-    const leaf = ttsVoiceWin.depth === lists.length;
-    html = `<div class="tts-wh"><button type="button" class="tts-ib" data-vback="1" title="${t.back}">‹</button><span class="t">${crumb}</span>${x}</div>` +
+    const { eng } = ttsVoiceSel(l), kind = l === 'pi' ? t.pali : t.trn, back = `<button type="button" class="tts-ib" data-vback="1" title="${t.back}">‹</button>`;
+    if (ttsVoiceWin.depth === 0) {
+      const sub = { dg: t.dgE, google: t.gE, native: t.osE };
+      html = `<div class="tts-wh">${back}<span class="t">${step(t.voice, 'root')}${kind}</span>${x}</div>` +
+        [...eng.options].map(o => `<button type="button" class="tts-mi" data-eng="${o.value}"><span class="ck">${o.value === eng.value ? '•' : ''}</span><span class="ml">${o.textContent}<span class="eg">${sub[o.value] || ''}</span></span><span class="ar">›</span></button>`).join('');
+    } else {
+      const lists = ttsShownLists(l), list = lists[ttsVoiceWin.depth - 1], engName = eng.options[eng.selectedIndex]?.textContent;
+      const crumb = step(t.voice, 'root') + step(kind, 0) + (ttsVoiceWin.depth > 1 ? step(engName, 1) + lists[0].value : engName);
+      const leaf = ttsVoiceWin.depth === lists.length;
+      html = `<div class="tts-wh">${back}<span class="t">${crumb}</span>${x}</div>` +
       (!list ? `<div class="tts-mi" aria-disabled="true"><span class="ck"></span><span class="ml">${t.noVoices}</span></div>` : '') +
       (list ? [...list.options].map(o => {
         const item = `<button type="button" class="tts-mi" data-opt="${o.value.replace(/"/g, '&quot;')}" ${list.disabled ? 'disabled' : ''}><span class="ck">${o.value === list.value ? (leaf ? '✓' : '•') : ''}</span><span class="ml">${o.textContent}</span>${leaf ? '' : '<span class="ar">›</span>'}</button>`;
         const off = leaf && eng.value === 'dg' ? dgOffIcon(o.value) : '';  // download / delete for offline (Pali, en, ru)
         return off ? `<div class="tts-mrow">${item}${off}</div>` : item;
       }).join('') : '');
+    }
   }
   win.innerHTML = html;
+  if (!l) {
+    paintVoiceButtons();
+    const google = ['pi', 'trn'].some(k => ttsVoiceSel(k).eng?.value === 'google');
+    if (key && google) win.appendChild(key);  // the key matters only with a Google voice chosen
+  }
   win.scrollTop = 0;
   placeTtsWin(win, overPlayer);
+  dgOffCardReplace();
+}
+
+// Open the window at the root (lang null) or at one language's engines
+function openVoiceWin(l) {
+  if (!document.getElementById('tts-voice-win')) document.body.insertAdjacentHTML('beforeend', '<div id="tts-voice-win" class="tts-win" role="dialog"></div>');
+  Object.assign(ttsVoiceWin, { lang: null, depth: 0, picked: false, saved: null });
+  if (l) voiceWinLang(l);
+  renderVoiceWin();
+  document.getElementById('tts-voice-win').classList.add('on');
+}
+function voiceWinLang(l) {
+  const { eng, lists } = ttsVoiceSel(l);
+  Object.assign(ttsVoiceWin, { lang: l, depth: 0, picked: false, saved: { eng: eng.value, lists: lists.map(s => s?.value) } });
+}
+// Up to the root: what was browsed without choosing goes back
+async function voiceWinRoot() {
+  await restoreVoiceWin();
+  Object.assign(ttsVoiceWin, { lang: null, depth: 0, picked: false, saved: null });
+  renderVoiceWin();
 }
 
 // Back to what was selected when the picker opened (closed without choosing a voice)
@@ -3202,22 +3250,23 @@ document.addEventListener('click', async e => {
   const vbtn = e.target.closest('.tts-vbtn');
   const win = document.getElementById('tts-voice-win');
   if (vbtn) {
-    const l = vbtn.closest('.tts-vrow').dataset.l, same = ttsVoiceWin.lang === l && win?.classList.contains('on');
-    if (ttsVoiceWin.lang) await restoreVoiceWin();
-    closeTtsWins();
-    if (same) return;
-    if (!win) document.body.insertAdjacentHTML('beforeend', '<div id="tts-voice-win" class="tts-win" role="dialog"></div>');
-    const { eng, lists } = ttsVoiceSel(l);
-    Object.assign(ttsVoiceWin, { lang: l, depth: 0, picked: false, saved: { eng: eng.value, lists: lists.map(s => s?.value) } });
-    renderVoiceWin();
-    document.getElementById('tts-voice-win').classList.add('on');
+    const l = vbtn.closest('.tts-vrow').dataset.l;
+    if (vbtn.closest('#tts-voice-win')) {  // a row of the root: down into that language
+      voiceWinLang(l);
+      renderVoiceWin();
+    } else {  // from outside (the offline card, the settings row): the window opens at that language
+      closeTtsWins();
+      openVoiceWin(l);
+    }
     return;
   }
   const b = e.target.closest('#tts-voice-win button');
-  if (!b || !ttsVoiceWin.lang) return;
+  if (!b || !ttsVoiceWin.lang || !win?.classList.contains('on')) return;
   const l = ttsVoiceWin.lang, { eng } = ttsVoiceSel(l);
   if (b.classList.contains('close-tts-win')) return;  // handled by the shared window closer (restores)
-  if (b.dataset.vback) { ttsVoiceWin.depth--; renderVoiceWin(); return; }
+  const to = b.dataset.vto ?? (b.dataset.vback ? (ttsVoiceWin.depth ? ttsVoiceWin.depth - 1 : 'root') : null);
+  if (to === 'root') { await voiceWinRoot(); return; }
+  if (to != null) { ttsVoiceWin.depth = +to; renderVoiceWin(); return; }
   if (b.dataset.eng) {
     if (eng.value !== b.dataset.eng) {
       eng.value = b.dataset.eng;
@@ -3237,9 +3286,9 @@ document.addEventListener('click', async e => {
       list.dispatchEvent(new Event('change', { bubbles: true }));
       if (!leaf) await ttsListsSettled(l);
     }
-    if (leaf) {
-      paintVoiceButtons();
-      closeTtsWins();
+    if (leaf) {  // chosen: back to the root, where both voices show
+      Object.assign(ttsVoiceWin, { lang: null, depth: 0, saved: null });
+      renderVoiceWin();
     } else {
       ttsVoiceWin.depth++;
       renderVoiceWin();
