@@ -1,0 +1,72 @@
+{
+  "lang": "en",
+  "updated": "",
+  "u": {
+    "title": "UPOSATHA",
+    "moon": "🌑",
+    "to": "Open Uposatha to load the data",
+    "count": "—",
+    "d1": "",
+    "d2": "",
+    "kala": "",
+    "kalaColor": "Good",
+    "nextTitle": "",
+    "mode": "",
+    "place": "",
+    "next": [
+      {
+        "moon": "",
+        "text": ""
+      }
+    ]
+  },
+  "n": {
+    "title": "DAY & NIGHT",
+    "part": "",
+    "until": "Open Uposatha to load the data",
+    "kala": "",
+    "kalaColor": "Good",
+    "marks": "",
+    "bar": [
+      {
+        "w": 1,
+        "s": "emphasis"
+      }
+    ],
+    "list": [
+      {
+        "name": "",
+        "range": "",
+        "cur": "",
+        "w": ""
+      }
+    ]
+  },
+  "m": {
+    "title": "Uposatha",
+    "wd": [
+      ""
+    ],
+    "weeks": [
+      {
+        "cells": [
+          {
+            "t": " ",
+            "b": "Default",
+            "c": "Default",
+            "sub": false
+          }
+        ]
+      }
+    ],
+    "nextTitle": "",
+    "next": [
+      {
+        "moon": "",
+        "text": ""
+      }
+    ],
+    "lg1": "",
+    "lg2": ""
+  }
+}

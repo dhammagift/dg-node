@@ -1,0 +1,316 @@
+{
+  "type": "AdaptiveCard",
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "version": "1.5",
+  "selectAction": {
+    "type": "Action.Execute",
+    "verb": "open-month",
+    "title": "Month"
+  },
+  "body": [
+    {
+      "type": "Container",
+      "$when": "${$host.widgetSize == 'small'}",
+      "items": [
+        {
+          "type": "TextBlock",
+          "text": "${m.title}",
+          "wrap": true,
+          "size": "Small",
+          "weight": "Bolder",
+          "color": "Good"
+        },
+        {
+          "type": "ColumnSet",
+          "columns": [
+            {
+              "type": "Column",
+              "width": "auto",
+              "items": [
+                {
+                  "type": "TextBlock",
+                  "text": "${moon}",
+                  "wrap": true,
+                  "size": "Default"
+                }
+              ]
+            },
+            {
+              "type": "Column",
+              "width": "stretch",
+              "items": [
+                {
+                  "type": "TextBlock",
+                  "text": "${text}",
+                  "wrap": true,
+                  "size": "Small"
+                }
+              ]
+            }
+          ],
+          "$data": "${m.next}",
+          "spacing": "Small"
+        }
+      ]
+    },
+    {
+      "type": "Container",
+      "$when": "${$host.widgetSize == 'medium'}",
+      "items": [
+        {
+          "type": "ColumnSet",
+          "columns": [
+            {
+              "type": "Column",
+              "width": "4",
+              "items": [
+                {
+                  "type": "TextBlock",
+                  "text": "${m.title}",
+                  "wrap": true,
+                  "size": "Small",
+                  "weight": "Bolder",
+                  "color": "Good"
+                },
+                {
+                  "type": "TextBlock",
+                  "text": "${m.nextTitle}",
+                  "wrap": true,
+                  "size": "Small",
+                  "weight": "Bolder",
+                  "isSubtle": true,
+                  "spacing": "Medium",
+                  "$when": "${m.next != ''}"
+                },
+                {
+                  "type": "ColumnSet",
+                  "columns": [
+                    {
+                      "type": "Column",
+                      "width": "auto",
+                      "items": [
+                        {
+                          "type": "TextBlock",
+                          "text": "${moon}",
+                          "wrap": true,
+                          "size": "Default"
+                        }
+                      ],
+                      "verticalContentAlignment": "Center"
+                    },
+                    {
+                      "type": "Column",
+                      "width": "stretch",
+                      "items": [
+                        {
+                          "type": "TextBlock",
+                          "text": "${text}",
+                          "wrap": true,
+                          "size": "Small"
+                        }
+                      ],
+                      "verticalContentAlignment": "Center"
+                    }
+                  ],
+                  "$data": "${m.next}",
+                  "spacing": "None"
+                }
+              ]
+            },
+            {
+              "type": "Column",
+              "width": "5",
+              "items": [
+                {
+                  "type": "ColumnSet",
+                  "columns": [
+                    {
+                      "type": "Column",
+                      "width": "1",
+                      "items": [
+                        {
+                          "type": "TextBlock",
+                          "text": "${$data}",
+                          "size": "Small",
+                          "horizontalAlignment": "Center",
+                          "isSubtle": true
+                        }
+                      ],
+                      "$data": "${m.wd}",
+                      "spacing": "None"
+                    }
+                  ]
+                },
+                {
+                  "type": "ColumnSet",
+                  "columns": [
+                    {
+                      "type": "Column",
+                      "width": "1",
+                      "items": [
+                        {
+                          "type": "TextBlock",
+                          "text": "${t}",
+                          "size": "Small",
+                          "horizontalAlignment": "Center",
+                          "weight": "${b}",
+                          "color": "${c}",
+                          "isSubtle": "${sub}"
+                        }
+                      ],
+                      "$data": "${cells}",
+                      "spacing": "None"
+                    }
+                  ],
+                  "$data": "${m.weeks}",
+                  "spacing": "None"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "Container",
+      "$when": "${$host.widgetSize == 'large'}",
+      "items": [
+        {
+          "type": "TextBlock",
+          "text": "${m.title}",
+          "wrap": true,
+          "size": "Medium",
+          "weight": "Bolder",
+          "color": "Good"
+        },
+        {
+          "type": "ColumnSet",
+          "columns": [
+            {
+              "type": "Column",
+              "width": "1",
+              "items": [
+                {
+                  "type": "TextBlock",
+                  "text": "${$data}",
+                  "size": "Small",
+                  "horizontalAlignment": "Center",
+                  "isSubtle": true
+                }
+              ],
+              "$data": "${m.wd}",
+              "spacing": "None"
+            }
+          ]
+        },
+        {
+          "type": "ColumnSet",
+          "columns": [
+            {
+              "type": "Column",
+              "width": "1",
+              "items": [
+                {
+                  "type": "TextBlock",
+                  "text": "${t}",
+                  "size": "Default",
+                  "horizontalAlignment": "Center",
+                  "weight": "${b}",
+                  "color": "${c}",
+                  "isSubtle": "${sub}"
+                }
+              ],
+              "$data": "${cells}",
+              "spacing": "None"
+            }
+          ],
+          "$data": "${m.weeks}",
+          "spacing": "None"
+        },
+        {
+          "type": "ColumnSet",
+          "spacing": "Small",
+          "columns": [
+            {
+              "type": "Column",
+              "width": "stretch",
+              "items": [
+                {
+                  "type": "TextBlock",
+                  "text": "${m.lg1}",
+                  "size": "Small",
+                  "color": "Accent",
+                  "wrap": true
+                }
+              ]
+            },
+            {
+              "type": "Column",
+              "width": "stretch",
+              "items": [
+                {
+                  "type": "TextBlock",
+                  "text": "${m.lg2}",
+                  "size": "Small",
+                  "color": "Good",
+                  "wrap": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "TextBlock",
+          "text": "${m.nextTitle}",
+          "wrap": true,
+          "size": "Small",
+          "weight": "Bolder",
+          "isSubtle": true,
+          "spacing": "Medium",
+          "$when": "${m.next != ''}"
+        },
+        {
+          "type": "ColumnSet",
+          "columns": [
+            {
+              "type": "Column",
+              "width": "auto",
+              "items": [
+                {
+                  "type": "TextBlock",
+                  "text": "${moon}",
+                  "wrap": true,
+                  "size": "Default"
+                }
+              ],
+              "verticalContentAlignment": "Center"
+            },
+            {
+              "type": "Column",
+              "width": "stretch",
+              "items": [
+                {
+                  "type": "TextBlock",
+                  "text": "${text}",
+                  "wrap": true,
+                  "size": "Small"
+                }
+              ],
+              "verticalContentAlignment": "Center"
+            }
+          ],
+          "$data": "${m.next}",
+          "spacing": "None"
+        },
+        {
+          "type": "TextBlock",
+          "text": "${updated}",
+          "wrap": true,
+          "size": "Small",
+          "isSubtle": true,
+          "spacing": "Small"
+        }
+      ]
+    }
+  ]
+}

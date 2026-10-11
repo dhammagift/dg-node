@@ -1,0 +1,291 @@
+{
+  "type": "AdaptiveCard",
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "version": "1.5",
+  "selectAction": {
+    "type": "Action.Execute",
+    "verb": "open-main",
+    "title": "Uposatha"
+  },
+  "body": [
+    {
+      "type": "Container",
+      "$when": "${$host.widgetSize == 'small'}",
+      "items": [
+        {
+          "type": "ColumnSet",
+          "columns": [
+            {
+              "type": "Column",
+              "width": "stretch",
+              "items": [
+                {
+                  "type": "TextBlock",
+                  "text": "${u.title}",
+                  "wrap": true,
+                  "size": "Small",
+                  "spacing": "None",
+                  "weight": "Bolder",
+                  "color": "Good"
+                }
+              ]
+            },
+            {
+              "type": "Column",
+              "width": "auto",
+              "items": [
+                {
+                  "type": "TextBlock",
+                  "text": "${u.moon}",
+                  "wrap": true,
+                  "size": "Large"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "TextBlock",
+          "text": "${u.count}",
+          "wrap": true,
+          "size": "ExtraLarge",
+          "weight": "Bolder",
+          "spacing": "None"
+        },
+        {
+          "type": "TextBlock",
+          "text": "${u.kala}",
+          "wrap": true,
+          "size": "Small",
+          "color": "${u.kalaColor}",
+          "weight": "Bolder",
+          "$when": "${u.kala != ''}"
+        }
+      ]
+    },
+    {
+      "type": "Container",
+      "$when": "${$host.widgetSize == 'medium'}",
+      "items": [
+        {
+          "type": "ColumnSet",
+          "columns": [
+            {
+              "type": "Column",
+              "width": "auto",
+              "items": [
+                {
+                  "type": "TextBlock",
+                  "text": "${u.moon}",
+                  "wrap": true,
+                  "size": "ExtraLarge"
+                }
+              ],
+              "verticalContentAlignment": "Center"
+            },
+            {
+              "type": "Column",
+              "width": "stretch",
+              "items": [
+                {
+                  "type": "TextBlock",
+                  "text": "${u.title}",
+                  "wrap": true,
+                  "size": "Small",
+                  "weight": "Bolder",
+                  "color": "Good"
+                },
+                {
+                  "type": "TextBlock",
+                  "text": "${u.to}",
+                  "wrap": true,
+                  "size": "Small",
+                  "spacing": "None"
+                },
+                {
+                  "type": "TextBlock",
+                  "text": "${u.count}",
+                  "wrap": true,
+                  "size": "ExtraLarge",
+                  "weight": "Bolder",
+                  "spacing": "None"
+                },
+                {
+                  "type": "TextBlock",
+                  "text": "${u.d1}",
+                  "wrap": true,
+                  "size": "Small",
+                  "spacing": "None",
+                  "$when": "${u.d1 != ''}"
+                },
+                {
+                  "type": "TextBlock",
+                  "text": "${u.d2}",
+                  "wrap": true,
+                  "size": "Small",
+                  "spacing": "None",
+                  "$when": "${u.d2 != ''}"
+                },
+                {
+                  "type": "TextBlock",
+                  "text": "${u.kala}",
+                  "wrap": true,
+                  "size": "Small",
+                  "color": "${u.kalaColor}",
+                  "weight": "Bolder",
+                  "$when": "${u.kala != ''}"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "Container",
+      "$when": "${$host.widgetSize == 'large'}",
+      "items": [
+        {
+          "type": "ColumnSet",
+          "columns": [
+            {
+              "type": "Column",
+              "width": "auto",
+              "items": [
+                {
+                  "type": "TextBlock",
+                  "text": "${u.moon}",
+                  "wrap": true,
+                  "size": "ExtraLarge"
+                }
+              ],
+              "verticalContentAlignment": "Center"
+            },
+            {
+              "type": "Column",
+              "width": "stretch",
+              "items": [
+                {
+                  "type": "TextBlock",
+                  "text": "${u.title}",
+                  "wrap": true,
+                  "size": "Small",
+                  "weight": "Bolder",
+                  "color": "Good"
+                },
+                {
+                  "type": "TextBlock",
+                  "text": "${u.to}",
+                  "wrap": true,
+                  "size": "Default",
+                  "spacing": "None"
+                },
+                {
+                  "type": "TextBlock",
+                  "text": "${u.count}",
+                  "wrap": true,
+                  "size": "ExtraLarge",
+                  "weight": "Bolder",
+                  "spacing": "None"
+                },
+                {
+                  "type": "TextBlock",
+                  "text": "${u.d1}",
+                  "wrap": true,
+                  "size": "Small",
+                  "spacing": "None",
+                  "$when": "${u.d1 != ''}"
+                },
+                {
+                  "type": "TextBlock",
+                  "text": "${u.d2}",
+                  "wrap": true,
+                  "size": "Small",
+                  "spacing": "None",
+                  "$when": "${u.d2 != ''}"
+                },
+                {
+                  "type": "TextBlock",
+                  "text": "${u.kala}",
+                  "wrap": true,
+                  "size": "Small",
+                  "color": "${u.kalaColor}",
+                  "weight": "Bolder",
+                  "$when": "${u.kala != ''}"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "TextBlock",
+          "text": "${u.mode}",
+          "wrap": true,
+          "size": "Small",
+          "isSubtle": true,
+          "spacing": "Medium"
+        },
+        {
+          "type": "TextBlock",
+          "text": "${u.place}",
+          "wrap": true,
+          "size": "Small",
+          "isSubtle": true,
+          "spacing": "None",
+          "$when": "${u.place != ''}"
+        },
+        {
+          "type": "TextBlock",
+          "text": "${u.nextTitle}",
+          "wrap": true,
+          "size": "Small",
+          "weight": "Bolder",
+          "isSubtle": true,
+          "spacing": "Medium",
+          "$when": "${u.next != ''}"
+        },
+        {
+          "type": "ColumnSet",
+          "columns": [
+            {
+              "type": "Column",
+              "width": "auto",
+              "items": [
+                {
+                  "type": "TextBlock",
+                  "text": "${moon}",
+                  "wrap": true,
+                  "size": "Default"
+                }
+              ],
+              "verticalContentAlignment": "Center"
+            },
+            {
+              "type": "Column",
+              "width": "stretch",
+              "items": [
+                {
+                  "type": "TextBlock",
+                  "text": "${text}",
+                  "wrap": true,
+                  "size": "Small"
+                }
+              ],
+              "verticalContentAlignment": "Center"
+            }
+          ],
+          "$data": "${u.next}",
+          "spacing": "None"
+        },
+        {
+          "type": "TextBlock",
+          "text": "${updated}",
+          "wrap": true,
+          "size": "Small",
+          "isSubtle": true,
+          "spacing": "Small"
+        }
+      ]
+    }
+  ]
+}

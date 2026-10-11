@@ -18,6 +18,7 @@
     "disk-guard": "node scripts/disk-guard.js",
     "test-suggest": "node test/suggest-words.js",
     "test-uposatha": "node test/uposatha-core.js",
+    "test-uposatha-widget": "node test/uposatha-widget.js",
     "test-query-guard": "node test/query-guard.js"
   },
   "dependencies": {

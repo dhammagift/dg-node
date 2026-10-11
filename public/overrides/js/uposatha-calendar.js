@@ -46,7 +46,7 @@
       loc: 'Set a place or pick a city', locD: 'for the real sunrise and sunset; otherwise 18:00 and 06:00', myLoc: 'Use my location', city: 'or a city: Almaty…',
       locNone: 'Place not set: the fixed times are used.', locFinding: 'Locating…', locOk: 'Location', locForget: 'forget', locDenied: 'The location was not shared — the fixed times are used.',
       gCount: 'Counting', bySuttas: 'By the suttas', notBySuttas: 'NOT BY THE SUTTAS', bySuttasD: 'Off — the four moon-phase days',
-      detail: 'Details', detailD: 'Off — the short form',
+      detail: 'Details', detailD: 'Off — the short form', allMoons: 'Moon of every day in the calendar',
       gRem: 'Reminders', remind: 'Remind me', adv: 'In advance', leads: [[0, 'when it begins'], [1, '1 hour'], [3, '3 hours'], [12, '12 hours'], [24, '1 day'], [48, '2 days']], days: 'Days',
       remNote: 'Notifications appear while this app is open or running in the background on your device. For reminders that arrive when it is fully closed, add the days to your phone\'s calendar.',
       themeBtn: 'Theme', gGen: 'General settings', gDg: 'DG Settings', bellLbl: 'Remind', bellOn: 'Reminders are on', partsG: 'Parts of the night and day', partsRemL: 'Remind at the start of each part', partsWhichL: 'Which parts', pDayS: 'Day', pNightS: 'Night', pBothS: 'Both', partsSnd: 'Sound of this reminder', partsVoice: 'Spoken name (Pali)', partsBody: function (m, d) { return m + ': ' + d; }, mealG: 'Meals', mealH: 'Meals', mealSub: 'Monks, and those who keep the Uposatha, eat in one part of the day: from dawn until midday. After midday and until dawn is <i>vikāla</i>, “the wrong time”. ',
@@ -101,7 +101,7 @@
       loc: 'Задать место или выбрать город', locD: 'для настоящих восхода и заката; без него — 18:00 и 06:00', myLoc: 'Определить моё место', city: 'или город: Алматы…',
       locNone: 'Место не задано: используется фиксированное время.', locFinding: 'Определяю…', locOk: 'Место', locForget: 'забыть', locDenied: 'Место не передано — используется фиксированное время.',
       gCount: 'Счёт', bySuttas: 'По суттам', notBySuttas: 'НЕ ПО СУТТАМ', bySuttasD: 'Выкл — четыре дня лунных фаз',
-      detail: 'Подробно', detailD: 'Выкл — короткая форма',
+      detail: 'Подробно', detailD: 'Выкл — короткая форма', allMoons: 'Луна каждого дня в календаре',
       gRem: 'Напоминания', remind: 'Напоминать', adv: 'Заранее', leads: [[0, 'в момент начала'], [1, 'за 1 час'], [3, 'за 3 часа'], [12, 'за 12 часов'], [24, 'за сутки'], [48, 'за 2 суток']], days: 'Дни',
       remNote: 'Уведомления приходят, пока приложение открыто или работает в фоне на вашем устройстве. Чтобы напоминание пришло и при полностью закрытом приложении, добавьте дни в календарь телефона.',
       themeBtn: 'Тема', gGen: 'Общие настройки', gDg: 'Настройки DG', bellLbl: 'Напоминать', bellOn: 'Напоминания включены', partsG: 'Части ночи и дня', partsRemL: 'Напоминать о начале каждой части', partsWhichL: 'Какие части', pDayS: 'День', pNightS: 'Ночь', pBothS: 'Обе', partsSnd: 'Звук этого напоминания', partsVoice: 'Произнесённое название (пали)', partsBody: function (m, d) { return m + ': ' + d; }, mealG: 'Приём пищи', mealH: 'Приём пищи', mealSub: 'Монахи и те, кто соблюдает упосатху, едят в одну часть дня: от зари до полудня. После полудня и до зари — <i>vikāla</i>, «неподходящее время». ',
@@ -202,6 +202,7 @@
     south: null,
     ref: store('dgUposathaSutta') === '0' ? 6 : 18, // by the suttas (default): the evening of the date itself (sunset, or 18:00); the modern scheme: the morning (sunrise, or 06:00)
     lite: store('dgUposathaLite') !== '0', // the short view is the default
+    allMoons: store('dgUposathaAllMoons') === '1', // the calendar shows the moon of every day, not only of the Uposathas (off by default)
     screen: params.get('view') === 'all' ? 'cal' : (function () { var v = store('dgUposathaView'); return v === 'cal' || v === 'list' ? v : 'dates'; })(), // the first view is the table by dates
     months: 3, calOff: 0, selected: (function () { var d = params.get('day'); return /^\d{4}-\d\d-\d\d$/.test(d || '') ? d : null; })(), // ?day=YYYY-MM-DD: the widget opens the calendar on that day,
     twi: (function () { var v = store('dgUposathaTwi'); return v && v in TWI ? v : 'sun'; })(),
@@ -259,10 +260,8 @@
   // A tap on a big one plays one full cycle of phases and stops at the current one.
   function moon(i, cls, f) { return '<dg-moon class="' + cls + '" phase="' + (f == null ? i / 8 : f.toFixed(4)) + '"' + (state.south ? ' south' : '') + ' glow aria-hidden="true"></dg-moon>'; }
   // ?moon=1 (a tap on the Uposatha widget's first layer): once the moon is on the screen, the cycle of phases plays once
-  if (params.get('moon') === '1') window.addEventListener('load', function () {
-    function play() { var m = document.querySelector('#up-hero dg-moon') || document.querySelector('#t-moon dg-moon'); if (m && m.animateTo && !m.__spin) { m.__spin = true; m.animateTo(parseFloat(m.getAttribute('phase')) || 0, { cycles: 1, duration: 2000 }).then(function () { m.__spin = false; }); } }
-    setTimeout(play, 1000);
-  });
+  function playMoon() { var m = document.querySelector('#up-hero dg-moon') || document.querySelector('#t-moon dg-moon'); if (m && m.animateTo && !m.__spin) { m.__spin = true; m.animateTo(parseFloat(m.getAttribute('phase')) || 0, { cycles: 1, duration: 2000 }).then(function () { m.__spin = false; }); } }
+  if (params.get('moon') === '1') window.addEventListener('load', function () { setTimeout(playMoon, 1000); });
   document.addEventListener('click', function (e) {
     var m = e.target.closest && e.target.closest('dg-moon.moon:not(.mi)');
     if (m && m.animateTo && !m.__spin) { m.__spin = true; m.animateTo(parseFloat(m.getAttribute('phase')) || 0, { cycles: 1, duration: 2000 }).then(function () { m.__spin = false; }); }
@@ -610,7 +609,6 @@
       sunLine = (sr ? t.sunrise + ' ' + F.hm.format(sr) : '') + (sr && ss ? ' · ' : '') + (ss ? t.sunset + ' ' + F.hm.format(ss) : '');
     }
     $('t-sun').textContent = sunLine;
-    var off = new Intl.DateTimeFormat('en-US', { timeZone: tz, timeZoneName: 'shortOffset' }).formatToParts(now).filter(function (p) { return p.type === 'timeZoneName'; })[0];
     $('ctx-place').innerHTML = icon('pin') + esc(state.loc ? (state.loc.name || t.ctxPlace) : t.ctxNoPlace); // a city by its name, the geolocation 'by geo', no place 'manual' // neither the coordinates nor the time zone: the person knows both
     var mm = todayYmd.slice(0, 7), inMonth = L.rows.filter(function (r) { return r.uposatha && r.ymd.slice(0, 7) === mm; }); // how far this month's Uposathas have come
     $('ctx-mode').textContent = t.ofMode(inMonth.filter(function (r) { return r.ymd <= todayYmd; }).length, inMonth.length, su);
@@ -686,6 +684,7 @@
 
     // ----- the calendar: one ordinary month, weeks in rows
     $('cal-today').style.visibility = state.calOff === 0 && !state.selected ? 'hidden' : ''; // the way back is shown only when we have left the current month
+    if (state.calTo) { var ct = state.calTo.split('-'); state.calOff = (ct[0] - tp[0]) * 12 + (ct[1] - tp[1]); state.calTo = null; } // a day asked for by a widget: its month
     var cm = new Date(Date.UTC(tp[0], tp[1] - 1 + state.calOff, 1)), cy = cm.getUTCFullYear(), mo = cm.getUTCMonth();
     var lead = (new Date(Date.UTC(cy, mo, 1)).getUTCDay() - firstDay() + 7) % 7;
     var cells = Math.ceil((lead + new Date(Date.UTC(cy, mo + 1, 0)).getUTCDate()) / 7) * 7;
@@ -718,6 +717,7 @@
         u = (r2.phase === 0 || r2.phase === 2) ? '15' : '8'; lb = '<span class="lb">' + moon(rowI(r2), 'moon mi') + '<span>' + esc(phaseName(r2.phase)) + '</span></span>';
       }
       if (moonDay[k]) lb += '<span class="lb">' + (lb ? '' : moon([0, 2, 4, 6][moonDay[k].phase], 'moon mi')) + '<span>' + esc(phaseName(moonDay[k].phase) + ' ' + F.hm.format(moonDay[k].at)) + '</span></span>'; // one moon per day: the label above already has it
+      if (state.allMoons && !lb) lb = '<span class="lb">' + moon(0, 'moon mi', A.MoonPhase(new Date(d.getTime() + DAY / 2)) / 360) + '</span>'; // the moon of an ordinary day, as it is at midday
       g += '<button type="button" class="c' + (d.getUTCMonth() !== mo ? ' o' : '') + '"' + (u ? ' data-u="' + u + '"' : '') + (cont ? ' data-c="true"' : '') + (k === todayYmd ? ' data-today="true"' : '') + ' data-ymd="' + k + '">' +
         '<span class="n">' + d.getUTCDate() + '</span>' + lb + (r2 ? '<span class="ld">' + r2.tithi + '</span>' : '') + '</button>';
     }
@@ -752,7 +752,7 @@
     Array.prototype.forEach.call($('hemiseg').children, function (b) { b.setAttribute('aria-pressed', String((b.getAttribute('data-hemi') === 'south') === state.south)); });
     $('bysuttas-lb').textContent = su ? t.bySuttas : t.notBySuttas; $('bysuttas-lb').classList.toggle('troll', !su); // a small joke: the label turns burgundy when the suttas are switched off
     setSeg('weekseg', firstDay());
-    setSeg('sw-sut', su ? 1 : 0); setSeg('sw-det', state.lite ? 0 : 1);
+    setSeg('sw-sut', su ? 1 : 0); setSeg('sw-det', state.lite ? 0 : 1); setSeg('sw-moons', state.allMoons ? 1 : 0);
     $('city').value = state.loc && state.loc.name ? state.loc.name : '';
     $('locnote').innerHTML = state.loc ? esc(t.locOk + ': ' + (state.loc.name ? state.loc.name + ' · ' : '') + state.loc.lat + ', ' + state.loc.lon) + ' <button type="button" id="loc-refresh" class="loc-refresh" aria-label="' + esc(t.locRefresh) + '" title="' + esc(t.locRefresh) + '"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 4v5h-5"/></svg></button> · <a href="#" id="unloc">' + esc(t.locForget) + '</a>' : esc(state.locMsg || t.locNone);
     if ($('loc-refresh')) $('loc-refresh').onclick = function () { if (window.__upoDetect) window.__upoDetect(true); }; // the place stays until the new one comes: no forgetting and asking again
@@ -773,7 +773,7 @@
   // after a paint (uposatha-bridge.js -> DgWidget.put); worked out at most once per half hour and per set of settings.
   var wdCache = null;
   // What the shared builder (uposatha-widget-data.js) needs from the page.
-  function widgetEnv(now) { return { A: A, C: C, tz: state.tz, loc: state.loc, lang: lang, su: sutta(), lite: state.lite, showKala: !!state.meal.sum, south: !!state.south, noon: state.noon, twi: state.twi, firstDay: firstDay(), now: now }; }
+  function widgetEnv(now) { return { A: A, C: C, tz: state.tz, tzAuto: !store('dgUposathaTz'), loc: state.loc, lang: lang, su: sutta(), lite: state.lite, allMoons: state.allMoons, showKala: !!state.meal.sum, south: !!state.south, noon: state.noon, twi: state.twi, firstDay: firstDay(), now: now }; }
   // The service worker works the widgets of the Windows 11 Widgets Board out by itself, and a worker has no localStorage: the settings it needs
   // (the place, the time zone, the language, the counting) are mirrored into IndexedDB (db dg-uposatha, store kv, key widget) after each paint when
   // they changed, and the worker is told to redraw the widgets.
@@ -804,7 +804,7 @@
     var WD = window.UposathaWidgetData; // the calculation itself is in uposatha-widget-data.js (shared with the service worker of the Windows widgets)
     if (!WD) return null;
     var now = new Date(), todayYmd = localDay(now, state.tz);
-    var key = [todayYmd, Math.floor(now.getTime() / 1800000), state.tz, sutta(), state.lite, state.meal.sum, lang, state.south, state.noon, state.twi, firstDay(), state.loc && state.loc.lat, state.loc && state.loc.lon].join('|');
+    var key = [todayYmd, Math.floor(now.getTime() / 1800000), state.tz, sutta(), state.lite, state.allMoons, state.meal.sum, lang, state.south, state.noon, state.twi, firstDay(), state.loc && state.loc.lat, state.loc && state.loc.lon].join('|');
     if (wdCache && wdCache.key === key) return wdCache.data;
     var data = WD.build(widgetEnv(now));
     wdCache = { key: key, data: data };
@@ -1433,6 +1433,16 @@
       }
       if ($('up-privacy')) $('up-privacy').addEventListener('click', function () { this.href = 'https://dhamma.gift' + (lang === 'ru' ? '/ru' : '') + '/docs/policies'; }); // the language of the moment
       var urlTab = params.get('tab'), last = urlTab || store('dgUposathaTab'); openTab(/^(home|list|cal|parts|keys)$/.test(last || '') ? last : 'home', !!urlTab);
+      // The app asks the page that is already open for a route (a tap on a widget or a shortcut while the app runs): the same
+      // as ?tab=..&day=..&moon=1 at load, without loading the page again (which showed as open - blank - open).
+      state.calTo = state.selected; // ?day= at load: the calendar opens on that day's month too
+      window.__upoRoute = function (route) {
+        var q = new URLSearchParams(String(route).replace(/^[^?]*\?/, '')), tab = q.get('tab'), day = q.get('day');
+        if (/^\d{4}-\d\d-\d\d$/.test(day || '')) { state.selected = day; state.calTo = day; }
+        if (/^(home|list|cal|parts|keys)$/.test(tab || '')) openTab(tab, true);
+        paint();
+        if (q.get('moon') === '1') setTimeout(playMoon, 300);
+      };
     })();
     onSeg('noonseg', function (v) { state.noon = v; store('dgUposathaNoon', v); paint(); });
     $('meal').onclick = function (e) { if (e.target.closest && e.target.closest('.noonlink')) { e.preventDefault(); openSettings('noon-block'); } };
@@ -1483,6 +1493,7 @@
     onSeg('weekseg', function (v) { weekPref = v; store('dgUposathaWeek', v); paint(); });
     onSeg('sw-sut', function (v) { state.ref = v === '1' ? 18 : 6; store('dgUposathaSutta', v); paint(); });
     onSeg('sw-det', function (v) { state.lite = v === '0'; store('dgUposathaLite', state.lite ? '1' : '0'); paint(); });
+    onSeg('sw-moons', function (v) { state.allMoons = v === '1'; store('dgUposathaAllMoons', state.allMoons ? '1' : '0'); paint(); });
     function km(a, b, c, d) { var r = Math.PI / 180, x = Math.sin((c - a) * r / 2), y = Math.sin((d - b) * r / 2), h = x * x + Math.cos(a * r) * Math.cos(c * r) * y * y; return 12742 * Math.asin(Math.sqrt(h)); }
     function zoneNear(lat, lon, keep) { // the time zone by the place: the browser's own when it is close enough, else the nearest zone we know
       var k = ZONE_COORDS[keep]; if (k && km(lat, lon, k[0], k[1]) < 300) return keep;
@@ -1521,7 +1532,7 @@
     autoLocate();
     // The on/off settings as switches (owner: a switch reads as on/off; two buttons read like a choice, of a language or a
     // theme). The two-button group stays, hidden, as the state: setSeg/onSeg work as before, the switch mirrors it and presses it.
-    ['sw-sut', 'sw-det', 'locautoseg', 'sw-rem', 'sw-msum', 'sw-mbeg', 'sw-mrem', 'sw-prem'].forEach(function (id) {
+    ['sw-sut', 'sw-det', 'sw-moons', 'locautoseg', 'sw-rem', 'sw-msum', 'sw-mbeg', 'sw-mrem', 'sw-prem'].forEach(function (id) {
       var seg = $(id), label = seg && seg.previousElementSibling; if (!seg || !label) return;
       var row = document.createElement('label'); row.className = 'up-swrow'; row.id = id + '-row'; // openSettings() lights it up
       label.parentNode.insertBefore(row, label); row.appendChild(label);

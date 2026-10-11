@@ -47,10 +47,11 @@
     function ev(d) { return d ? { ms: d.getTime(), ymd: localDay(d, tz), hm: hm(d) } : null; }
 
     var todayYmd = localDay(now, tz);
-    // the Uposathas: from 2 days ago through ~11 weeks (the month grid and "next three" need them); the days with the sun: 14 from today
-    var L = C.dataset(ymdAdd(todayYmd, -2), ymdAdd(todayYmd, 75), { tz: tz, sutta: su, loc: env.loc });
+    // the Uposathas: from the 1st of this month (the calendar widget marks the whole month; at least 2 days back) through ~11 weeks; the days with the sun: 31 from yesterday (a widget on its own, the app not opened, lives a month)
+    var uFrom = ymdAdd(todayYmd.slice(0, 8) + '01', -1); if (uFrom > ymdAdd(todayYmd, -2)) uFrom = ymdAdd(todayYmd, -2);
+    var L = C.dataset(uFrom, ymdAdd(todayYmd, 75), { tz: tz, sutta: su, loc: env.loc });
     var rowByYmd = {}; L.rows.forEach(function (r) { rowByYmd[r.ymd] = r; });
-    var upos = L.rows.filter(function (r) { return r.uposatha && r.ymd >= ymdAdd(todayYmd, -2); }).map(function (r) {
+    var upos = L.rows.filter(function (r) { return r.uposatha && r.ymd >= uFrom; }).map(function (r) {
       var day = su ? dayNo(r.names[0]) : (r.phase === 0 || r.phase === 2 ? 15 : 8);
       var f = A.MoonPhase(zonedToUtc(r.y, r.m, r.d, 12, tz)) / 360;
       var q = Math.round(f * 4) % 4;
@@ -59,13 +60,20 @@
     });
     var days = [];
     function third(a, b, names) { var w = (b - a) / 3; return names.map(function (n, k) { return [n, hm(new Date(a.getTime() + k * w)), hm(new Date(a.getTime() + (k + 1) * w))]; }); }
-    for (var i = -1; i < 13; i++) { // from yesterday: the night part that is still running before dawn belongs to yesterday's day (the widgets look it up there)
+    for (var i = -1; i < 30; i++) { // from yesterday: the night part that is still running before dawn belongs to yesterday's day (the widgets look it up there)
       var ymd = ymdAdd(todayYmd, i), p = ymd.split('-').map(Number), rise = sun('rise', ymd), set = sun('set', ymd), nextRise = sun('rise', ymdAdd(ymd, 1));
       days.push({ date: ymd, sunrise: ev(rise), noon: ev(noonFor(ymd)), sunset: ev(set), aruna: ev(aruna(p[0], p[1], p[2])),
         parts: third(rise, set, ['pubbanha', 'majjhanhika', 'sayanha']).concat(third(set, nextRise, ['pathama', 'majjhima', 'pacchima'])) });
     }
-    return { generatedAt: now.toISOString(), tz: tz, settings: { lang: env.lang, bySuttas: su, detail: !env.lite, showKala: !!env.showKala, placeSet: !!obs, south: !!env.south, weekStart: env.firstDay === 0 || env.firstDay === 1 ? env.firstDay : (env.lang === 'ru' ? 1 : 0) },
-      today: { ymd: todayYmd, moon: +(A.MoonPhase(now) / 360).toFixed(4) }, uposathas: upos, days: days };
+    // the moon of every day (its phase at midday, 0..1) from the 1st of this month: the calendar widget draws it when asked to
+    var m1 = todayYmd.slice(0, 8) + '01', moons = [];
+    for (var md = m1; md <= ymdAdd(todayYmd, 75); md = ymdAdd(md, 1)) { var mp = md.split('-').map(Number); moons.push(+(A.MoonPhase(zonedToUtc(mp[0], mp[1], mp[2], 12, tz)) / 360).toFixed(3)); }
+    // the lit percent of the moon as the page shows it (A.Illumination: at a new moon the moon passes above or below the sun, so it is
+    // not the phase's cosine and not 0), every 3 hours for 30 days: a widget reads "now" between two points
+    var LSTEP = 10800000, l0 = Math.floor(now.getTime() / LSTEP) * LSTEP, lit = [];
+    for (var li = 0; li <= 240; li++) lit.push(+(A.Illumination('Moon', new Date(l0 + li * LSTEP)).phase_fraction * 100).toFixed(2));
+    return { generatedAt: now.toISOString(), tz: tz, settings: { lang: env.lang, bySuttas: su, detail: !env.lite, allMoons: !!env.allMoons, showKala: !!env.showKala, placeSet: !!obs, tzAuto: !!env.tzAuto, south: !!env.south, weekStart: env.firstDay === 0 || env.firstDay === 1 ? env.firstDay : (env.lang === 'ru' ? 1 : 0) },
+      today: { ymd: todayYmd, moon: +(A.MoonPhase(now) / 360).toFixed(4) }, uposathas: upos, days: days, moons: { from: m1, phase: moons, lit: { from: l0, step: LSTEP, pct: lit } } };
   }
 
   // ---------- the Adaptive Card side ----------
@@ -109,9 +117,9 @@
     function kalaOf() {
       var i = -1; days.forEach(function (d, k) { if (d.aruna.ms <= now) i = k; });
       var byClock = st.placeSet ? '' : ' (' + s.byClock + ')';
-      if (i >= 0 && now < days[i].noon.ms) return { k: 'kala', text: fill(s.kala, { time: days[i].noon.hm }) + byClock + ' · ' + fill(s.kalaLeft, { left: left(days[i].noon.ms - now) }) };
+      if (i >= 0 && now < days[i].noon.ms) return { k: 'kala', text: s['w.kala'] + s['w.untilMid'] + days[i].noon.hm + byClock + ' · ' + fill(s.kalaLeft, { left: left(days[i].noon.ms - now) }) };
       var next = i < 0 ? days[0] : days[i + 1];
-      return { k: 'vikala', text: fill(s.vikala, { time: next ? next.aruna.hm : '' }) };
+      return { k: 'vikala', text: s['w.vikala'] + s['w.untilMid'] + (next ? next.aruna.hm : '') };
     }
     var kala = kalaOf();
 
@@ -140,16 +148,18 @@
 
     // layer 1: Uposatha + kala
     var u = { title: '', moon: u0 ? moon(u0.phase) : moon(raw.today.moon), to: '', count: '', d1: '', d2: '', kala: '', kalaColor: kala.k === 'kala' ? 'Good' : 'Attention', nextTitle: s.next, mode: st.bySuttas ? s['mode.bySuttas'] : s['mode.notBySuttas'], place: st.placeSet ? '' : s['noPlace.assumed'], next: after };
+    // The same words as the native widgets (strings w.*): the day is the title ("15th day · coming"), then when, the counter, the moon as it is now, and with
+    // details what comes after (the end of this Uposatha, or the next one).
+    var mf = raw.today.moon + (now - Date.parse(raw.generatedAt)) / (29.530588853 * DAY); mf = ((mf % 1) + 1) % 1;
+    var ph = mf < 0.02 || mf > 0.98 ? 0 : mf < 0.23 ? 1 : mf < 0.27 ? 2 : mf < 0.48 ? 3 : mf < 0.52 ? 4 : mf < 0.73 ? 5 : mf < 0.77 ? 6 : 7;
+    u.moon = moon(mf);
     if (u0) {
-      u.title = (cur ? s['layer.uposathaNow'] : s['layer.uposatha']).toUpperCase() + ' · ' + dayLong(u0.day);
-      u.to = fill(cur ? s.toNow : s.to, { n: u0.lunarDay });
+      u.title = fill(s['w.dayN'], { n: u0.lunarDay }) + ' · ' + (cur ? s.now : s['w.coming']);
+      u.to = cur ? dayLong(u0.end.ymd) + ' · ' + fill(s['w.until'], { time: u0.end.hm }) : dayLong(u0.start.ymd) + ' · ' + fill(s['w.from'], { time: u0.start.hm });
       u.count = span(cur ? cur.end.ms - now : u0.start.ms - now);
-      var sd = dayShort(u0.start.ymd), ed = dayShort(u0.end.ymd);
-      if (st.detail) {
-        u.d1 = fill(s['detail.phase'], { phase: s['phase.' + u0.phaseName], n: u0.lunarDay });
-        u.d2 = cur ? fill(s['lite.until'], { endDay: ed, endTime: u0.end.hm }) : fill(s['detail.span'], { startDay: sd, startTime: u0.start.hm, endDay: ed, endTime: u0.end.hm });
-      } else u.d1 = cur ? fill(s['lite.until'], { endDay: ed, endTime: u0.end.hm }) : fill(s['lite.from'], { startDay: sd, startTime: u0.start.hm });
-    } else u.title = s['layer.uposatha'].toUpperCase();
+      u.d1 = s['w.ph' + ph] + ' · ' + Math.round((1 - Math.cos(2 * Math.PI * mf)) / 2 * 100) + '%';
+      if (st.detail) u.d2 = cur ? (ahead[0] ? fill(s['w.next'], { n: fill(s['w.ord'], { n: ahead[0].lunarDay }), day: dayLong(ahead[0].start.ymd) }) : '') : fill(s['w.ends'], { day: dayLong(u0.end.ymd), time: u0.end.hm });
+    } else u.title = s['layer.uposatha'];
     if (st.showKala) u.kala = kala.text;
 
     // layer 2: day and night
