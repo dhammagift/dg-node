@@ -5531,7 +5531,50 @@
     else init();
     // #dg-settings opens the settings sheet: dg-apps' ios-safari-probe.yml opens pages in the iOS Simulator's Safari, which cannot tap.
     window.addEventListener('load', function () {
-        if (location.hash === '#dg-settings') setTimeout(function () { window.DgHome.openSettingsSheet(); }, 800);
+        if (location.hash !== '#dg-settings') return;
+        setTimeout(function () { window.DgHome.openSettingsSheet(); }, 800);
+        // The numbers behind the iOS settings sheet running wider than the screen (owner, 2026-10-11): each document's
+        // viewport, zoom and box, and how much of a full-width line at the top of each frame is really on screen
+        // (IntersectionObserver against the top viewport, clipped by every frame on the way). Written out by the debug
+        // app's DgSelfTest plugin (selftest.json) and logged; the site only logs.
+        setTimeout(function () {
+            function doc(w) {
+                var d = w.document, r = d.documentElement, vv = w.visualViewport;
+                var meta = d.querySelector('meta[name="viewport"]');
+                return { innerWidth: w.innerWidth, clientWidth: r.clientWidth, scrollWidth: r.scrollWidth, zoom: r.style.zoom || '',
+                    cssZoom: getComputedStyle(r).zoom, vv: vv ? [vv.width, vv.scale, vv.offsetLeft] : null,
+                    viewport: meta ? meta.content : null, dpr: w.devicePixelRatio, screen: w.screen.width };
+            }
+            function seen(w) {
+                return new Promise(function (done) {
+                    var d = w.document, p = d.createElement('div');
+                    p.style.cssText = 'position:fixed;left:0;right:0;top:40px;height:2px;pointer-events:none';
+                    d.body.appendChild(p);
+                    var io = new w.IntersectionObserver(function (es) {
+                        var e = es[0]; io.disconnect(); p.remove();
+                        done({ line: Math.round(e.boundingClientRect.width), visible: Math.round(e.intersectionRect.width),
+                            left: Math.round(e.intersectionRect.left) });
+                    });
+                    io.observe(p);
+                });
+            }
+            var out = { ua: navigator.userAgent, page: doc(window) };
+            var f1 = document.querySelector('#dg-settings-sheet iframe');
+            var sheet = document.getElementById('dg-settings-sheet');
+            out.sheetRect = sheet && sheet.getBoundingClientRect();
+            out.frameRect = f1 && f1.getBoundingClientRect();
+            var w1 = f1 && f1.contentWindow, f2 = w1 && w1.document.getElementById('previewFrame'), w2 = f2 && f2.contentWindow;
+            out.settings = w1 ? doc(w1) : null;
+            out.previewRect = f2 && f2.getBoundingClientRect();
+            out.preview = w2 ? doc(w2) : null;
+            Promise.all([seen(window), w1 ? seen(w1) : null, w2 ? seen(w2) : null]).then(function (v) {
+                out.seen = { page: v[0], settings: v[1], preview: v[2] };
+                var json = JSON.stringify(out);
+                console.log('[dg-settings-probe] ' + json);
+                var T = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.DgSelfTest;
+                if (T && T.write) T.write({ json: json });
+            });
+        }, 4000);
     });
 })();
 
