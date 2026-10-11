@@ -3267,7 +3267,14 @@ document.addEventListener('click', async e => {
     [PALI_VOICE_KEY, NATIVE_PALI_KEY, NATIVE_TRN_KEY, TRN_ENGINE_KEY, GOOGLE_PALI_SETTINGS_KEY, 'tts_google_trn_custom_voice',
      GOOGLE_TRN_KEY_RU, GOOGLE_TRN_KEY_EN, GOOGLE_TRN_KEY_STUDY, 'tts_native_pali_custom_voice', 'tts_native_trn_custom_voice',
      ...Object.keys(localStorage).filter(k => k.startsWith('tts_dg_voice_'))].forEach(k => localStorage.removeItem(k));
-    window.location.reload();
+    // in place, no reload: the engines' change handler refills the lists (and restarts a playing line)
+    for (const k of ['pi', 'trn']) {
+      const { eng } = ttsVoiceSel(k);
+      eng.value = 'dg';
+      eng.dispatchEvent(new Event('change', { bubbles: true }));
+      await ttsListsSettled(k);
+    }
+    renderVoiceWin();
     return;
   }
   if (!b || !ttsVoiceWin.lang || !win?.classList.contains('on')) return;
