@@ -1209,11 +1209,6 @@ function dgOfflineNoNet() {
 }
 
 function dgOfflineRender() {
-  const t = ttsUiText(), sub = document.getElementById('tts-off-sub');
-  if (sub) {
-    const names = dgOffIds().map(dgOffName);
-    sub.textContent = dgOffBusy ? `${t.offLoading} ${Math.round(dgOffBusy.p * 100)}%` : names.length ? `${t.offHave}: ${names.join(', ')}` : t.offSub;
-  }
   const win = document.getElementById('tts-voice-win');
   if (win?.classList.contains('on') && ttsVoiceWin.depth > 0) {
     const top = win.scrollTop;
@@ -1256,7 +1251,7 @@ async function dgOfflineDownload(vid) {
 
 document.addEventListener('click', async e => {
   if (e.target.closest('.close-tts-btn')) { dgOffCard(null); return; }  // the player closes: the card goes too
-  const b = e.target.closest('[data-offvid], [data-offdel], [data-offno], [data-offcard], #tts-off-btn');
+  const b = e.target.closest('[data-offvid], [data-offdel], [data-offno], [data-offcard]');
   if (b?.dataset.offcard === 'voices') dgOffCard(null);
   if (!b) return;
   if (b.dataset.offno) {
@@ -1269,7 +1264,7 @@ document.addEventListener('click', async e => {
     dgOffBusy?.ctrl.abort();
   } else if (b.dataset.offcard === 'close') {
     dgOffCard(null);
-  } else if (b.id === 'tts-off-btn' || b.dataset.offcard === 'voices') {  // the DG Pali voice list, where the icons are
+  } else if (b.dataset.offcard === 'voices') {  // the DG Pali voice list, where the icons are
     document.querySelector('.tts-vrow[data-l="pi"] .tts-vbtn')?.click();
     await new Promise(r => setTimeout(r, 60));
     document.querySelector('#tts-voice-win [data-eng="dg"]')?.click();
@@ -2531,12 +2526,12 @@ async function startPlayback(container, mode, slug, startIndex = 0) {
       // Issue #37: one single hint must cover both paths at once - Google voices online
       // (free key, optional) and the system-voice setup needed offline.
       // DG voice (our own Piper voices) reads by default and needs no key; Google and the device's
-      // voices are the alternatives in ⚙ → Voices.
+      // voices are the alternatives in ⚙ → Voice settings.
       // Owner: short, just the three kinds of voices (the "for offline" line is what Built-in says).
       const li = 'display:block;text-align:left;margin-top:4px';
       const message = window.isRu
-          ? `(⚙ → Голоса):<span style="${li}">• <b>DG Voice</b> — бесплатные нейроголоса</span><span style="${li}">• <b>Google</b> — бесплатный лимит, нужен <a href="${searchUrlRu}" target="_blank" style="${linkStyle}">свой API-ключ</a></span><span style="${li}">• <b>Встроенные</b> — голоса вашего устройства, работают без интернета</span>`
-          : `(⚙ → Voices):<span style="${li}">• <b>DG Voice</b> — free neural voices</span><span style="${li}">• <b>Google</b> — free quota, needs <a href="${searchUrlEn}" target="_blank" style="${linkStyle}">your own API key</a></span><span style="${li}">• <b>Built-in</b> — your device's voices, work offline</span>`;
+          ? `(⚙ → Voice settings):<span style="${li}">• <b>DG Voice</b> — бесплатные нейроголоса</span><span style="${li}">• <b>Google</b> — бесплатный лимит, нужен <a href="${searchUrlRu}" target="_blank" style="${linkStyle}">свой API-ключ</a></span><span style="${li}">• <b>Встроенные</b> — голоса вашего устройства, работают без интернета</span>`
+          : `(⚙ → Voice settings):<span style="${li}">• <b>DG Voice</b> — free neural voices</span><span style="${li}">• <b>Google</b> — free quota, needs <a href="${searchUrlEn}" target="_blank" style="${linkStyle}">your own API key</a></span><span style="${li}">• <b>Built-in</b> — your device's voices, work offline</span>`;
 
       showVoiceHint(window.isRu ? 'Попробуйте разные голоса' : 'Try different voices', message, PALI_ALERT_KEY);
   }
@@ -2662,9 +2657,8 @@ function getPlayerHtml() {
           <div class="tts-grp" data-t="playback">${t.playback}</div>
           <label class="tts-row"><span class="lb"><span data-t="scroll">${t.scroll}</span> <span class="tts-kbd">S</span><small data-t="scrollSub">${t.scrollSub}</small></span><span class="tts-sw"><input type="checkbox" id="tts-scroll-toggle" ${ttsState.autoScroll ? 'checked' : ''}><span></span></span></label>
           <div class="tts-row tts-delay-row"><span class="lb" title="${t.delayTitle}" data-t="delay">${t.delay}</span><span class="tts-stp"><button type="button" data-stp="tts-segment-delay-input" data-d="-0.5" aria-label="−">−</button><span id="tts-segment-delay-input" class="stp-v" contenteditable="true" inputmode="decimal" spellcheck="false">${localStorage.getItem('dg_tts_segment_delay') || 0}</span><span class="u" data-t="sec">${t.sec}</span><button type="button" data-stp="tts-segment-delay-input" data-d="0.5" aria-label="+">+</button></span></div>
-          <a href="javascript:void(0)" id="tts-advanced-toggle-btn" class="tts-row tts-voices-row" title="${t.engineSettingsTitle}"><span class="lb">${t.offVoices}</span><span id="tts-vsum"></span><span class="ar">›</span></a>
-          <div class="tts-row"><span class="lb"><span data-t="offline">${t.offline}</span><small id="tts-off-sub">${t.offSub}</small></span><button type="button" id="tts-off-btn" class="tts-chip">${t.offVoices}</button></div>
           <div class="tts-links tts-links-row">
+            <a href="javascript:void(0)" id="tts-advanced-toggle-btn" title="${t.engineSettingsTitle}">${gi('wrench-solid-full.svg')}${t.engineSettings}</a>
             <span id="audio-file-link-placeholder"></span>
             <a href="${helpUrl}" target="_blank" class="tts-link tts-help-link" data-t="help">${t.help}</a>
           </div>
@@ -2688,9 +2682,6 @@ function ttsUiText() {
   const ru = window.isRu;
   return {
     settings: ru ? "Настройки" : "Settings",
-    offline: ru ? "Без интернета" : "Offline",
-    offSub: ru ? "Голос можно скачать в списке голосов DG" : "Download a voice in the DG voice list",
-    offVoices: ru ? "Голоса" : "Voices",
     offOffer: ru ? "Слушать без интернета" : "Listen offline",
     offLater: ru ? "Позже" : "Later",
     offLoadT: ru ? "Скачивание голоса" : "Downloading the voice",
@@ -2713,7 +2704,6 @@ function ttsUiText() {
     offNo: ru ? "Не надо" : "No thanks",
     offHave: ru ? "Скачано" : "Downloaded",
     offStale: ru ? "есть новая версия" : "a newer version is out",
-    offLoading: ru ? "Скачивание…" : "Downloading…",
     offDone: ru ? "Голос скачан: читает и без интернета" : "Voice downloaded: reads with no network",
     offFail: ru ? "Не удалось скачать, попробуйте позже" : "Download failed, try again later",
     mb: ru ? "МБ" : "MB",
@@ -2758,7 +2748,7 @@ function getOrBuildPlayer() {
         // The ?v= stamp matters: /read/css/voice.css is served immutable for a year, so without it a
         // CSS fix would never reach anyone who had already opened the player (issue #20's rule was
         // invisible in the browser because of exactly that). Bump the stamp with the next edit.
-        document.head.insertAdjacentHTML('beforeend', '<link id="voice-css-lazy" rel="stylesheet" href="/read/css/voice.css?v=2026-10-11vwin">');
+        document.head.insertAdjacentHTML('beforeend', '<link id="voice-css-lazy" rel="stylesheet" href="/read/css/voice.css?v=2026-10-11vwin2">');
     }
 
     if (!playerContainer) {
@@ -3129,13 +3119,11 @@ const TTS_ENGINE_TAG = { dg: 'DG', google: 'Google' };
 
 function paintVoiceButtons() {
   const t = ttsUiText();
-  const sum = [];
   document.querySelectorAll('#tts-advanced-settings .tts-vrow, #tts-voice-win .tts-vrow').forEach(row => {
     const l = row.dataset.l, { eng } = ttsVoiceSel(l), lists = ttsShownLists(l), last = lists[lists.length - 1];
     if (!eng) return;
     const e = eng.value, name = last ? (last.options[last.selectedIndex]?.textContent || '') : '';
     const tag = TTS_ENGINE_TAG[e] || (window.isRu ? 'ОС' : 'OS');
-    if (row.closest('#tts-advanced-settings')) sum.push(name.split(/ [♂♀·]/)[0]);
     const btn = row.querySelector('.tts-vbtn');
     btn.innerHTML = `<span class="tts-vtag ${e}">${tag}</span><span class="tts-vnm">${name}</span><span class="tts-vch">›</span>`;
     btn.title = eng.options[eng.selectedIndex]?.textContent + ' · ' + name;
@@ -3145,8 +3133,6 @@ function paintVoiceButtons() {
       tryBtn.title = e === 'dg' ? t.tryVoice : (window.isRu ? 'Прослушать можно голоса DG' : 'Preview is for DG voices');
     }
   });
-  const vsum = document.getElementById('tts-vsum');
-  if (vsum) vsum.textContent = sum.join(' · ');
 }
 document.addEventListener('change', e => { if (e.target.closest('.tts-vsel')) setTimeout(paintVoiceButtons, 0); });
 

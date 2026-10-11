@@ -140,7 +140,7 @@ body[data-theme="dark"] #sutta span[id]:has(.tts-active) {
 #voice-player-container .tts-top>a.tts-ib{color:var(--dg-text-muted)}
 #voice-player-container a.tts-chip{color:var(--dg-text)}
 #voice-player-container .tts-links a{color:var(--dg-text-muted)}
-#voice-player-container .tts-links a:hover{color:var(--dg-text)}
+#voice-player-container .tts-links a:hover,#voice-player-container .tts-links a#tts-advanced-toggle-btn{color:var(--dg-text)}
 /* Issue #20: the offline download card sits in the same bottom-centre spot; the player steps above it */
 body:has(#dgDlCard.show) .voice-player{bottom:calc(24px + var(--dg-dl-card-h, 120px) + 10px)}
 
@@ -288,10 +288,9 @@ label.tts-row{cursor:pointer}
 .tts-sub-h .tts-ib{width:34px;height:34px;font-size:20px}
 .tts-links{display:flex;gap:2px;justify-content:center;align-items:center;flex-wrap:nowrap;padding:10px 16px 4px;border-top:1px solid var(--dg-border);margin-top:8px}
 .tts-links a{font-size:12px;color:var(--dg-text-muted);white-space:nowrap;padding:4px 6px;border-radius:6px}
-#voice-player-container a.tts-voices-row{color:var(--dg-text);text-decoration:none;cursor:pointer}
-.tts-voices-row:hover{background:var(--dg-surface-hover)}
-#tts-vsum{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--dg-text-muted);font-size:13px}
-.tts-voices-row .ar{color:var(--dg-text-muted)}
+.tts-links a#tts-advanced-toggle-btn{display:inline-flex;align-items:center;gap:5px;color:var(--dg-text);font-weight:700;border:1px solid var(--dg-border-strong);border-radius:999px;padding:4px 10px;margin-right:auto}
+.tts-links a#tts-advanced-toggle-btn .tts-gi{width:11px;height:11px;color:var(--dg-accent-ink)}
+.tts-links a#tts-advanced-toggle-btn:hover{border-color:var(--dg-accent-ink)}
 .tts-links a:hover{color:var(--dg-text);background:var(--dg-surface-hover)}
 #audio-file-link-placeholder{display:none}
 /* A-B */
