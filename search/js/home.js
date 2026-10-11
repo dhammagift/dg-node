@@ -670,6 +670,7 @@
         // same body-scroll lock the side drawer already uses (home.css: body.dg-drawer-open) fixes it
         // here too. Wide screens keep scrolling on purpose (comment above), so this is narrow-only.
         if (!wide) document.body.classList.add('dg-drawer-open');
+        if (!wide) unzoomForSheet(true);
         showLater(sheet, backdrop, wide);
     }
 
@@ -698,6 +699,37 @@
         });
     }
 
+    /* On a phone the settings sheet covers the whole page, so the page's own zoom (110 % there, applyUiScale) is taken off
+       while it is open; the settings page applies the text size itself (settings/index.html applyUiScale), as it did
+       when the page's zoom reached it (it divided that back out), so it looks the same as before. With a zoomed
+       page around it, the iframe came out wider than the screen in the iOS app and slid sideways (owner, TestFlight,
+       2026-10-11): WebKit there does not size and draw a frame under a zoomed parent the way Chromium or Safari do, and
+       no measurement from inside the frame could tell which. With no zoom around it there is nothing to get wrong. The
+       page gets its zoom back as the sheet starts to close, still under it. */
+    var sheetReadingAnchor = null;
+    function unzoomForSheet(on) {
+        var r = document.documentElement, d = r.dataset;
+        var reader = document.body.classList.contains('dg-state-reader');
+        if (on) {
+            if (d.dgSheetZoom != null) return;
+            // The reading place survives the two zoom changes: kept here, put back once the zoom is back.
+            sheetReadingAnchor = reader && window.captureReadingAnchor ? window.captureReadingAnchor() : null;
+            d.dgSheetZoom = r.style.zoom || '';
+            d.dgSheetZoomVar = r.style.getPropertyValue('--dg-zoom');
+            r.style.zoom = '1';
+            r.style.setProperty('--dg-zoom', '1');
+        } else {
+            if (d.dgSheetZoom == null) return;
+            r.style.zoom = d.dgSheetZoom;
+            if (d.dgSheetZoomVar) r.style.setProperty('--dg-zoom', d.dgSheetZoomVar); else r.style.removeProperty('--dg-zoom');
+            delete d.dgSheetZoom;
+            delete d.dgSheetZoomVar;
+        }
+        window.dispatchEvent(new Event('resize'));
+        if (!on && sheetReadingAnchor && reader && window.restoreReadingAnchor) window.restoreReadingAnchor(sheetReadingAnchor);
+        if (!on) sheetReadingAnchor = null;
+    }
+
     function closeSettingsSheet(fromPopstate) {
         // The popstate caused by our own history.back() below: swallow it. Otherwise the shared
         // popstate listener (search/index.html) saw the sheet as already closed and ran
@@ -709,6 +741,7 @@
         }
         if (!settingsSheetOpen) return;
         settingsSheetOpen = false;
+        unzoomForSheet(false);
         document.body.classList.remove('dg-drawer-open'); // pairs with the narrow-screen lock in openSettingsSheet(); harmless if never added
         var sheet = document.getElementById('dg-settings-sheet');
         var backdrop = document.getElementById('dg-sheet-backdrop');
@@ -5244,6 +5277,8 @@
     function applyUiScale(scale) {
         var root = document.documentElement, z = scale / 100 * uiBase();
         if (!CAN_ZOOM) { root.style.fontSize = (z * 100) + '%'; return; }
+        // The settings sheet has the page's zoom off while it is open (unzoomForSheet): the new value waits for its close.
+        if (root.dataset.dgSheetZoom != null) { root.dataset.dgSheetZoom = z; root.dataset.dgSheetZoomVar = z; return; }
         root.style.fontSize = '';
         root.style.setProperty('--dg-zoom', z);
         root.style.zoom = z;
