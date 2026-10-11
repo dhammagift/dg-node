@@ -70,6 +70,7 @@
       sound: 'Sound', soundNone: 'Silent', soundOwn: 'My own sound…', soundOwnNamed: 'My own: %', soundOwnChange: 'Change my sound…', missed: 'Missed reminder', soundFail: 'The sound was not set.', sounds: { vikala: 'Vinaya: what is vikāla (Pali)', gong: 'Gong', gong3: 'Gong 2', gong4: 'Gong 3', gong5: 'Gong 4', gong2: 'Gong 5', bell: 'Bell', 'ahara-short': 'Before food: MN 53, short (Pali)', 'ahara-full': 'Before food: MN 53, full (Pali)' },
       remAppNote: 'Reminders are scheduled on this device and arrive even when the app is closed.',
       remNext: function (when, what) { return 'Next reminder: ' + when + ' — ' + what; }, remNone: 'No reminder is due in the coming weeks.',
+      remAdvL: 'Remind in advance', remDayL: 'Remind on the Uposatha day', remToday: 'Uposatha today', remNx: function (when) { return 'next: ' + when; },
       remDenied: 'Notifications are blocked for this site — allow them in the browser settings.', remUnsupported: 'This browser cannot show notifications.',
       remBody: function (when) { return 'begins ' + when; }, remTwo: function (when) { return 'Two Uposatha days: the 14th and the 15th. The first begins ' + when; },
       full: 'Full moon', newm: 'New moon', fullL: 'full moon', newL: 'new moon', illum: 'illuminated', ld: 'lunar day', of15: 'of 15', until: 'until', qn: ['1st', '2nd'],
@@ -125,6 +126,7 @@
       sound: 'Звук', soundNone: 'Без звука', soundOwn: 'Свой звук…', soundOwnNamed: 'Свой: %', soundOwnChange: 'Заменить мой звук…', missed: 'Пропущенное напоминание', soundFail: 'Звук не задан.', sounds: { vikala: 'Виная: что такое vikāla (пали)', gong: 'Гонг', gong3: 'Гонг 2', gong4: 'Гонг 3', gong5: 'Гонг 4', gong2: 'Гонг 5', bell: 'Колокол', 'ahara-short': 'Перед едой: МН 53, коротко (пали)', 'ahara-full': 'Перед едой: МН 53, полностью (пали)' },
       remAppNote: 'Напоминания ставятся на этом устройстве и приходят даже при закрытом приложении.',
       remNext: function (when, what) { return 'Ближайшее напоминание: ' + when + ' — ' + what; }, remNone: 'В ближайшие недели напоминаний нет.',
+      remAdvL: 'Напомнить заранее', remDayL: 'Напомнить в день упосатхи', remToday: 'Сегодня упосатха', remNx: function (when) { return 'ближайшее: ' + when; },
       remDenied: 'Уведомления для сайта запрещены — разрешите их в настройках браузера.', remUnsupported: 'Этот браузер не умеет показывать уведомления.',
       remBody: function (when) { return 'начинается ' + when; }, remTwo: function (when) { return 'Две упосатхи: 14-й и 15-й дни. Первая начинается ' + when; },
       full: 'Полнолуние', newm: 'Новолуние', fullL: 'полнолуние', newL: 'новолуние', illum: 'освещено', ld: 'лунный день', of15: 'из 15', until: 'до', qn: ['1-я', '2-я'],
@@ -214,7 +216,7 @@
     loc: (function () { try { return JSON.parse(store('dgUposathaLoc')); } catch (e) { return null; } })(),
     locAuto: store('dgUposathaLocAuto') === '1', // find the place again once a day; only when the reader turns it on (device-only, like the place)
     locMsg: '',
-    rem: (function () { var d = { on: false, lead: 24, d8: true, d14: true, d15: false, sound: 'gong', ownChannel: '', ownName: '' }; try { var v = JSON.parse(store('dgUposathaRemind')); if (v) for (var k in d) if (k in v) d[k] = v[k]; } catch (e) { /* defaults */ } return d; })(),
+    rem: (function () { var d = { on: false, lead: 24, day: false, dayAt: '06:00', d8: true, d14: true, d15: false, sound: 'gong', ownChannel: '', ownName: '' }; /* on + lead: ahead of the evening it begins; day + dayAt: on the Uposatha day itself, by the clock */ try { var v = JSON.parse(store('dgUposathaRemind')); if (v) for (var k in d) if (k in v) d[k] = v[k]; } catch (e) { /* defaults */ } return d; })(),
     remMsg: '',
   };
   var hemi = store('dgUposathaHemisphere');
@@ -539,7 +541,7 @@
     document.body.setAttribute('data-screen', state.screen);
     document.body.setAttribute('data-mode', state.lite ? 'lite' : 'detailed');
     document.body.setAttribute('data-loc', state.loc ? 'on' : 'off');
-    document.body.setAttribute('data-remind', state.rem.on ? 'on' : 'off');
+    document.body.setAttribute('data-remind', state.rem.on || state.rem.day ? 'on' : 'off');
 
     // ----- the list's data: from the last day of last month (today's yesterday) to the end of the shown months
     var lastOfMonth = new Date(Date.UTC(tp[0], tp[1] - 1 + state.months, 0)).toISOString().slice(0, 10);
@@ -701,6 +703,10 @@
     // and 15th on consecutive evenings read 14 / 14-15 / 15 across three dates instead of a third, unexplained day.
     var startBy = {}, dayBy = {};
     if (su) C.rows.forEach(function (r) { if (r.uposatha) { var ns = r.names.map(dayNo); startBy[r.ymd] = ns; dayBy[ymdAdd(r.ymd, 1)] = ns; } });
+    // Every date of an Uposatha - the evening it begins on and its day - is marked the same way, and neighbouring dates are joined
+    // into one capsule (two dates, or three for the 14th and the 15th): data-up on each, data-pl / data-pr where the date before / after
+    // is marked too. Owner, 2026-10-11: a solid date for the evening and a dim one for the day read as two kinds of days.
+    function marked(ymd) { var r = C.byYmd[ymd]; return su ? !!(startBy[ymd] || dayBy[ymd]) : !!(r && r.uposatha); }
     var g = '';
     for (var w2 = 0; w2 < 7; w2++) g += '<div class="wd">' + esc(t.wds[(firstDay() + w2) % 7]) + '</div>';
     for (var i = 0; i < cells; i++) {
@@ -718,14 +724,10 @@
       }
       if (moonDay[k]) lb += '<span class="lb">' + (lb ? '' : moon([0, 2, 4, 6][moonDay[k].phase], 'moon mi')) + '<span>' + esc(phaseName(moonDay[k].phase) + ' ' + F.hm.format(moonDay[k].at)) + '</span></span>'; // one moon per day: the label above already has it
       if (state.allMoons && !lb) lb = '<span class="lb">' + moon(0, 'moon mi', A.MoonPhase(new Date(d.getTime() + DAY / 2)) / 360) + '</span>'; // the moon of an ordinary day, as it is at midday
-      g += '<button type="button" class="c' + (d.getUTCMonth() !== mo ? ' o' : '') + '"' + (u ? ' data-u="' + u + '"' : '') + (cont ? ' data-c="true"' : '') + (k === todayYmd ? ' data-today="true"' : '') + ' data-ymd="' + k + '">' +
+      g += '<button type="button" class="c' + (d.getUTCMonth() !== mo ? ' o' : '') + '"' + (u ? ' data-u="' + u + '"' : '') + (cont ? ' data-c="true"' : '') + (marked(k) ? ' data-up=""' + (marked(ymdAdd(k, -1)) ? ' data-pl=""' : '') + (marked(ymdAdd(k, 1)) ? ' data-pr=""' : '') : '') + (k === todayYmd ? ' data-today="true"' : '') + ' data-ymd="' + k + '">' +
         '<span class="n">' + d.getUTCDate() + '</span>' + lb + (r2 ? '<span class="ld">' + r2.tithi + '</span>' : '') + '</button>';
     }
     setHtml('grid', g);
-    (function () { // the beginning and the day of an Uposatha side by side in one row are one green band; over a row break each is just a green date
-      var cs = document.querySelectorAll('#grid .c');
-      Array.prototype.forEach.call(cs, function (c, i) { var n = cs[i + 1]; if (c.hasAttribute('data-u') && n && n.hasAttribute('data-c') && i % 7 !== 6) { c.setAttribute('data-jr', ''); n.setAttribute('data-jl', ''); } });
-    })();
     $('legend').innerHTML = su ? '<span><i class="f"></i>' + esc(t.lgS15) + '</span><span><i class="r"></i>' + esc(t.lgS814) + '</span><span><i class="c"></i>' + esc(t.lgC) + '</span><span><i class="t"></i>' + esc(t.lgT) + '</span>'
       : '<span><i class="f"></i>' + esc(t.lgM15) + '</span><span><i class="r"></i>' + esc(t.lgM8) + '</span><span><i class="t"></i>' + esc(t.lgT) + '</span>';
     function showDetail(ymd) {
@@ -813,11 +815,22 @@
 
   function wantDay(r) { return C.wantDay(r, sutta(), state.rem); }
   function twoUposathas(r, byYmd) { return C.twoUposathas(r, byYmd, sutta()); }
+  // Two reminders of an Uposatha, each with its own switch: ahead of the moment it begins (state.rem.on, lead hours), and on the
+  // Uposatha day itself at a time of the clock (state.rem.day, dayAt "06:00"; by the suttas the day is the one after the evening it
+  // begins on). The second one is only set while it is still ahead: a morning that has passed is not caught up.
   function dueList(rows, byYmd) {
-    var now = Date.now(), lead = state.rem.lead * 3600000;
-    return rows.filter(function (r) { return r.uposatha && r.at.getTime() > now && wantDay(r); }).map(function (r) {
-      return { key: r.ymd + (sutta() ? 's' : 'm'), when: r.at.getTime() - lead, start: r.at, title: nameOf(r), two: twoUposathas(r, byYmd) };
+    var now = Date.now(), lead = state.rem.lead * 3600000, out = [];
+    var hm = /^(\d\d):(\d\d)$/.exec(state.rem.dayAt || '') || [0, 6, 0];
+    rows.forEach(function (r) {
+      if (!r.uposatha || !wantDay(r)) return;
+      var key = r.ymd + (sutta() ? 's' : 'm');
+      if (state.rem.on && r.at.getTime() > now) out.push({ key: key, when: r.at.getTime() - lead, start: r.at, title: nameOf(r), two: twoUposathas(r, byYmd) });
+      if (state.rem.day) {
+        var p = (sutta() ? ymdAdd(r.ymd, 1) : r.ymd).split('-').map(Number), when = zonedToUtc(p[0], p[1], p[2], +hm[1], state.tz).getTime() + hm[2] * 60000;
+        if (when > now) out.push({ key: key + 'd', when: when, start: r.at, day: true, title: t.remToday, body: nameOf(r) });
+      }
     });
+    return out;
   }
   function bell(id, on) { // the small remind switch in the corner of a card
     return '<button type="button" class="bellsw" id="' + id + '" aria-pressed="' + on + '" title="' + esc(t.bellLbl) + '">' + icon('bell') + '<span>' + esc(t.bellLbl) + '</span></button>';
@@ -859,6 +872,7 @@
   function itemBody(item, F) {
     if (item.kind === 'part') return item.body;
     if (item.kind === 'beg') return state.meal.begLead === -1 ? t.mealBegSun(F.hm.format(item.start)) : state.meal.begLead ? t.mealBegBody(F.hm.format(item.start), state.meal.begLead) : t.mealBegZero(F.hm.format(item.start));
+    if (item.day) return item.body; // 'Uposatha today': the day's name
     return item.meal ? (state.meal.lead ? t.mealRemBody(F.hm.format(item.start), state.meal.lead) : t.mealRemZero(F.hm.format(item.start))) : (item.two ? t.remTwo : t.remBody)(F.stamp.format(item.start));
   }
   // What a reminder that arrives late says: that the NOTIFICATION was missed, not the Uposatha (it is still ahead, or it would
@@ -943,7 +957,7 @@
   function reminderList(rows, byYmd) { // the Uposatha and the meal reminders together, oldest first; a repaint happens at every tap, this is not worked out each time
     var key = JSON.stringify([state.rem, state.meal, state.parts.rem, state.parts.which, state.parts.days, state.tz, state.loc, state.noon, state.twi, sutta(), rows.length, rows[0] && rows[0].ymd, localDay(new Date(), state.tz)]);
     if (remCache.key !== key || Date.now() - remCache.at > 300000) {
-      remCache = { key: key, at: Date.now(), list: (state.rem.on ? dueList(rows, byYmd) : []).concat((state.meal.rem || state.meal.beg) ? mealDue(rows) : []).concat(state.parts.rem ? partsDue(rows) : []).sort(function (a, b) { return a.when - b.when; }) };
+      remCache = { key: key, at: Date.now(), list: ((state.rem.on || state.rem.day) ? dueList(rows, byYmd) : []).concat((state.meal.rem || state.meal.beg) ? mealDue(rows) : []).concat(state.parts.rem ? partsDue(rows) : []).sort(function (a, b) { return a.when - b.when; }) };
     }
     return remCache.list;
   }
@@ -987,7 +1001,7 @@
     var LN = nativePlugin();
     if (LN) return scheduleNative(LN, rows, byYmd, F);
     clearTimeout(timer);
-    if (!(state.rem.on || state.meal.rem || state.meal.beg || state.parts.rem) || !('Notification' in window) || Notification.permission !== 'granted') return null;
+    if (!(state.rem.on || state.rem.day || state.meal.rem || state.meal.beg || state.parts.rem) || !('Notification' in window) || Notification.permission !== 'granted') return null;
     var now = Date.now(), list = reminderList(rows, byYmd), next = null;
     // A time that passed while the page was closed is caught up quietly ("Missed reminder"); a background tab's timer may wake
     // a minute or so late, and that is not missed.
@@ -999,8 +1013,10 @@
     var inApp = !!nativePlugin();
     var next = scheduleReminders(L.rows, L.byYmd, F);
     var permission = inApp ? 'granted' : 'Notification' in window ? Notification.permission : 'unsupported';
-    setSeg('sw-rem', state.rem.on ? 1 : 0);
+    setSeg('sw-rem', state.rem.on ? 1 : 0); reveal('rem-more', state.rem.on);
     $('rem-lead').value = String(state.rem.lead);
+    setSeg('sw-remday', state.rem.day ? 1 : 0); reveal('remday-more', state.rem.day);
+    if (document.activeElement !== $('rem-dayat')) $('rem-dayat').value = state.rem.dayAt;
     setSeg('sw-msum', state.meal.sum ? 1 : 0); setSeg('sw-mrem', state.meal.rem ? 1 : 0); setSeg('mrem-days', state.meal.days);
     reveal('mrem-more', state.meal.rem);
     $('mrem-lead').value = String(state.meal.lead);
@@ -1030,10 +1046,13 @@
     $('rd14').setAttribute('aria-pressed', String(state.rem.d14));
     $('rd15').setAttribute('aria-pressed', String(state.rem.d15));
     reveal('rem-days-row', sutta());
-    $('rem-msg').textContent = state.remMsg || (permission === 'denied' ? t.remDenied : permission === 'unsupported' ? t.remUnsupported : (state.rem.on ? (next ? t.remNext(F.remWhen.format(next.when), next.title) : t.remNone) : ''));
+    $('rem-msg').textContent = state.remMsg || (permission === 'denied' ? t.remDenied : permission === 'unsupported' ? t.remUnsupported : ''); // when the next one comes is said under each switch
     $('rem-note').textContent = inApp ? t.remAppNote : t.remNote;
     var due = reminderList(L.rows, L.byYmd).filter(function (i) { return i.when > Date.now(); }); // the proof that the reminders are set: when the next one comes
     function nx(pred, on) { if (!on) return ''; var i = due.filter(pred)[0]; return i ? t.remNext(F.remWhen.format(i.when), i.title) : t.remNone; }
+    function nxWhen(pred, on) { if (!on) return ''; var i = due.filter(pred)[0]; return i ? t.remNx(F.remWhen.format(i.when)) : t.remNone; }
+    $('rem-next').textContent = nxWhen(function (i) { return !i.kind && !i.meal && !i.day; }, state.rem.on);
+    $('remday-next').textContent = nxWhen(function (i) { return !!i.day; }, state.rem.day);
     $('mnext').textContent = nx(function (i) { return i.meal; }, state.meal.rem || state.meal.beg);
     $('pnext').textContent = nx(function (i) { return i.kind === 'part'; }, state.parts.rem);
     $('b-cal').style.display = $('d-cal').style.display = inApp ? 'none' : ''; // in the app the reminders are the device's own
@@ -1382,7 +1401,7 @@
         ask.querySelector('.pa-no').onclick = done;
         ask.querySelector('.pa-set').onclick = function () { done(); openSettings('sw-rem-row'); };
         window.__upoRemAsk = function () {
-          ask.hidden = state.rem.on || store('dgUposathaRemAsk') === '1' || !!(place && !place.hidden);
+          ask.hidden = state.rem.on || state.rem.day || store('dgUposathaRemAsk') === '1' || !!(place && !place.hidden);
           ask.querySelector('p').textContent = t.remQ; ask.querySelector('.pa-yes').textContent = t.remYes;
           ask.querySelector('.pa-no').textContent = t.remNo; ask.querySelector('.pa-set').textContent = t.remSet;
         };
@@ -1532,7 +1551,7 @@
     autoLocate();
     // The on/off settings as switches (owner: a switch reads as on/off; two buttons read like a choice, of a language or a
     // theme). The two-button group stays, hidden, as the state: setSeg/onSeg work as before, the switch mirrors it and presses it.
-    ['sw-sut', 'sw-det', 'sw-moons', 'locautoseg', 'sw-rem', 'sw-msum', 'sw-mbeg', 'sw-mrem', 'sw-prem'].forEach(function (id) {
+    ['sw-sut', 'sw-det', 'sw-moons', 'locautoseg', 'sw-rem', 'sw-remday', 'sw-msum', 'sw-mbeg', 'sw-mrem', 'sw-prem'].forEach(function (id) {
       var seg = $(id), label = seg && seg.previousElementSibling; if (!seg || !label) return;
       var row = document.createElement('label'); row.className = 'up-swrow'; row.id = id + '-row'; // openSettings() lights it up
       label.parentNode.insertBefore(row, label); row.appendChild(label);
@@ -1570,17 +1589,21 @@
     $('city').addEventListener('blur', function () { setTimeout(hideCities, 150); }); // after a tap on a suggestion has been handled
     $('citylist').addEventListener('pointerdown', function (e) { var li = e.target.closest && e.target.closest('li[data-z]'); if (li) { e.preventDefault(); chooseCity(li.getAttribute('data-z')); } });
     function saveRem() { store('dgUposathaRemind', JSON.stringify(state.rem)); }
-    onSeg('sw-rem', function (v) {
-      state.remMsg = '';
-      if (v === '0' || state.rem.on) { state.rem.on = false; saveRem(); paint(); return; }
-      var LN = nativePlugin();
-      if (LN) {
-        LN.requestPermissions().then(function (r) { state.rem.on = !!(r && r.display === 'granted'); if (!state.rem.on) state.remMsg = t.remDenied; saveRem(); paint(); }).catch(function () { state.remMsg = t.remUnsupported; paint(); });
-        return;
-      }
-      if (!('Notification' in window)) { state.remMsg = t.remUnsupported; paint(); return; }
-      Notification.requestPermission().then(function (perm) { state.rem.on = perm === 'granted'; if (perm !== 'granted') state.remMsg = t.remDenied; saveRem(); paint(); });
-    });
+    function remSwitch(id, k) { // the two switches of the Uposatha reminders (ahead: "on", on the day: "day") ask for the permission the same way
+      onSeg(id, function (v) {
+        state.remMsg = '';
+        if (v === '0' || state.rem[k]) { state.rem[k] = false; saveRem(); paint(); return; }
+        var LN = nativePlugin();
+        if (LN) {
+          LN.requestPermissions().then(function (r) { state.rem[k] = !!(r && r.display === 'granted'); if (!state.rem[k]) state.remMsg = t.remDenied; saveRem(); paint(); }).catch(function () { state.remMsg = t.remUnsupported; paint(); });
+          return;
+        }
+        if (!('Notification' in window)) { state.remMsg = t.remUnsupported; paint(); return; }
+        Notification.requestPermission().then(function (perm) { state.rem[k] = perm === 'granted'; if (perm !== 'granted') state.remMsg = t.remDenied; saveRem(); paint(); });
+      });
+    }
+    remSwitch('sw-rem', 'on'); remSwitch('sw-remday', 'day');
+    $('rem-dayat').onchange = function (e) { if (/^\d\d:\d\d$/.test(e.target.value)) { state.rem.dayAt = e.target.value; saveRem(); paint(); } };
     function saveMeal() { store('dgUposathaMeal', JSON.stringify(state.meal)); }
     $('twi').onchange = function (e) { state.twi = e.target.value; store('dgUposathaTwi', state.twi); paint(); };
     // The test of the parts: all six, 12 seconds apart, each with its own sound (the spoken name by default), through the same channels as the real ones

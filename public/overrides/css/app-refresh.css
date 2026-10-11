@@ -40,6 +40,7 @@ body.app .grid{border:0;background:transparent;gap:4px;border-radius:0;overflow:
 body.app .grid .wd{background:transparent;padding:4px 0 6px}
 body.app .grid .c{border-radius:14px;background:var(--up-surf);min-height:58px;padding:6px 6px;transition:background .2s var(--up-emph),transform .2s var(--up-emph)}
 body.app .grid .c:active{transform:scale(.94)}
+body.app .grid .c{--ugap:4px}body.app .grid .c:is([data-pl],[data-pr]){overflow:visible} /* the Uposatha capsule crosses the gap between two cells */
 body.app .grid .c.o{background:transparent;opacity:.5}
 body.app .grid .c[data-sel=true]{outline:0;box-shadow:inset 0 0 0 2px var(--dg-accent);background:var(--dg-accent-bg)}
 body.app .grid .c[data-sel=true] .n{animation:up-sel .42s var(--up-dec)}
