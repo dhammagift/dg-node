@@ -370,3 +370,9 @@ html.dg-app .voice-player{translate:0 calc(-1 * var(--dg-sab, 0px))}
 .tts-mi .ar{color:var(--dg-text-muted)}
 .tts-mi .eg{display:block;font-size:11px;color:var(--dg-text-muted);white-space:normal}
 .tts-mi .kb{font:11px monospace;color:var(--dg-text-muted)}
+
+/* Room under the page while the floating player is open, so the last lines can scroll above it */
+body:has(.voice-player.active){padding-bottom:200px}
+
+/* Autoplay never works (browsers and iOS block sound without a tap), so its row is hidden; the stored setting is left alone */
+.tts-row:has(#tts-autoplay-toggle){display:none}
