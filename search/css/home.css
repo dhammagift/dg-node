@@ -4686,6 +4686,9 @@ html.dg-app body::before {
 html.dg-app body.dg-state-home::before { background: var(--dg-navy); }
 html.dg-app body.dg-state-home #dg-hero-navbar { padding-top: var(--dg-sat); }
 html.dg-app #dg-drawer { padding-top: var(--dg-sat); padding-bottom: var(--dg-sab); }
+/* The settings sheet starts below the status bar too: edge to edge on iOS put its header row (back, title, close) under
+   the clock (run 589's simulator video). The strip above it is body::before, in the page's colour. */
+html.dg-app .dg-sheet.dg-settings-embed, html.dg-app .dg-sheet.dg-settings-embed.show { top: var(--dg-sat); height: auto; }
 /* Landscape: the page keeps clear of the camera cutout; full-bleed bands still run under it. */
 html.dg-app body { padding-left: var(--dg-sal); padding-right: var(--dg-sar); }
 /* Floating corner controls and bottom sheets sit above the gesture bar. translate, not bottom:
