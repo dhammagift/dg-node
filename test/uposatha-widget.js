@@ -81,6 +81,9 @@ const WIDGETS = path.join(ROOT, 'public/overrides/widgets');
 const placeholder = json(path.join(WIDGETS, 'uposatha-data.json'));
 assert.deepStrictEqual(shape(placeholder), shape(models[0]), 'the placeholder data has the shape of card()');
 const sw = read(path.join(ROOT, 'public/service-worker.js'));
+// The Windows 11 widget is not wired on the site for now (postponed, dg-apps#65: the worker and manifest parts were taken out
+// before a prod rollout; they are in commit 3ffb9bf). The builder and card() above are still checked; the rest needs the worker.
+if (!/var WIDGET_TABS = /.test(sw)) { console.log('skip the templates, the manifest and the worker: the Windows widget is not wired (dg-apps#65)'); console.log('uposatha widget: ok'); process.exit(0); }
 const verbs = Object.keys(eval('(' + /var WIDGET_TABS = (\{[^}]*\})/.exec(sw)[1] + ')'));
 assert.ok(verbs.length >= 3, 'the worker maps the verbs to tabs');
 
