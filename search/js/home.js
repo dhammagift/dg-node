@@ -5543,7 +5543,10 @@
                 var meta = d.querySelector('meta[name="viewport"]');
                 return { innerWidth: w.innerWidth, clientWidth: r.clientWidth, scrollWidth: r.scrollWidth, zoom: r.style.zoom || '',
                     cssZoom: getComputedStyle(r).zoom, vv: vv ? [vv.width, vv.scale, vv.offsetLeft] : null,
-                    viewport: meta ? meta.content : null, dpr: w.devicePixelRatio, screen: w.screen.width };
+                    viewport: meta ? meta.content : null, dpr: w.devicePixelRatio, screen: w.screen.width,
+                    wide: [].slice.call(d.querySelectorAll('body *')).filter(function (e) { return e.getBoundingClientRect().right > w.innerWidth + 1; })
+                        .slice(0, 6).map(function (e) { return (e.id ? '#' + e.id : e.tagName.toLowerCase() + '.' + [].slice.call(e.classList, 0, 2).join('.'))
+                            + ' r=' + Math.round(e.getBoundingClientRect().right); }) };
             }
             function seen(w) {
                 return new Promise(function (done) {

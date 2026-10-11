@@ -4689,6 +4689,11 @@ html.dg-app #dg-drawer { padding-top: var(--dg-sat); padding-bottom: var(--dg-sa
 /* The settings sheet starts below the status bar too: edge to edge on iOS put its header row (back, title, close) under
    the clock (run 589's simulator video). The strip above it is body::before, in the page's colour. */
 html.dg-app .dg-sheet.dg-settings-embed, html.dg-app .dg-sheet.dg-settings-embed.show { top: var(--dg-sat); height: auto; }
+/* Nothing of the page may reach past the screen's right edge in the app: on iOS a page wider than the screen widens the
+   layout viewport, and every fixed layer (the settings sheet, the player) then grows with it and slides sideways (the
+   owner's TestFlight screenshots). Bootstrap's .row reaches 10px past it on the results page. clip, not hidden: no scroll
+   container, sticky headers keep working. */
+html.dg-app, html.dg-app body { overflow-x: clip; }
 /* Landscape: the page keeps clear of the camera cutout; full-bleed bands still run under it. */
 html.dg-app body { padding-left: var(--dg-sal); padding-right: var(--dg-sar); }
 /* Floating corner controls and bottom sheets sit above the gesture bar. translate, not bottom:
