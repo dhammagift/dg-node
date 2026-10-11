@@ -416,6 +416,12 @@ function overPlayer(w, h) {
   };
 }
 
+// Down on the player, covering it, its bottom on the player's bottom (the voice window: the text above stays in sight)
+function onPlayer(w, h) {
+  const { left } = overPlayer(w, h), p = document.querySelector('#voice-player-container .voice-player')?.getBoundingClientRect();
+  return { left, top: Math.max(8, Math.min(window.innerHeight - h - 8, p ? p.bottom - h : window.innerHeight)) };
+}
+
 function showRatePopValue(v) {
   const title = document.getElementById('tts-rate-title');
   if (title) title.textContent = formatRate(v, 2);
@@ -3126,7 +3132,13 @@ function paintVoiceButtons() {
     const tag = TTS_ENGINE_TAG[e] || (window.isRu ? 'ОС' : 'OS');
     const btn = row.querySelector('.tts-vbtn');
     btn.innerHTML = `<span class="tts-vtag ${e}">${tag}</span><span class="tts-vnm">${name}</span><span class="tts-vch">›</span>`;
-    btn.title = eng.options[eng.selectedIndex]?.textContent + ' · ' + name;
+    const engName = eng.options[eng.selectedIndex]?.textContent;
+    btn.title = engName + ' · ' + name;
+    // the window's root: its header is the path of the voice the player's mode starts with (owner 2026-10-11, mockup B),
+    // e.g. Voice › Pali › Google Cloud › hi-IN; it changes with the mode, not line by line
+    const path = row.closest('#tts-voice-win')?.querySelector('.tts-wh .vpath');
+    if (path && l === (/^pi/.test(document.getElementById('tts-mode-select')?.value || 'trn') ? 'pi' : 'trn'))
+      path.textContent = [l === 'pi' ? t.pali : t.trn, engName, lists.length > 1 ? lists[0].value : ''].filter(Boolean).map(x => ' › ' + x).join('');
     const tryBtn = row.querySelector('.tts-vtry');
     if (tryBtn) {
       tryBtn.disabled = e !== 'dg';  // previews go through the DG voice service
@@ -3162,7 +3174,7 @@ function renderVoiceWin() {
   let html;
   if (!l) {
     const gi = icon => `<i class="tts-gi" style="--u:url('/assets/svg/${icon}')"></i>`;
-    html = `<div class="tts-wh"><span class="t">${t.voice}</span>${x}</div>` + ['pi', 'trn'].map(k =>
+    html = `<div class="tts-wh"><span class="t">${t.voice}<span class="vpath"></span></span>${x}</div>` + ['pi', 'trn'].map(k =>
       `<div class="tts-vrow" data-l="${k}"><span class="vk">${k === 'pi' ? t.pali : t.trn}</span><button type="button" class="tts-vbtn" title="${t.engine}"></button><button type="button" class="tts-ib tts-vtry" title="${t.tryVoice}">${gi('play.svg')}</button></div>`).join('');
   } else {
     const { eng } = ttsVoiceSel(l), kind = l === 'pi' ? t.pali : t.trn, back = `<button type="button" class="tts-ib" data-vback="1" title="${t.back}">‹</button>`;
@@ -3190,7 +3202,7 @@ function renderVoiceWin() {
     if (key && google) win.appendChild(key);  // the key matters only with a Google voice chosen
   }
   win.scrollTop = 0;
-  placeTtsWin(win, overPlayer);
+  placeTtsWin(win, onPlayer);
   dgOffCardReplace();
 }
 

@@ -328,6 +328,7 @@ html.dg-app .voice-player{translate:0 calc(-1 * var(--dg-sab, 0px))}
 .tts-wh .t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tts-wh .cr{background:none;border:0;padding:0;font:inherit;font-weight:400;color:var(--dg-accent-ink);cursor:pointer}
 .tts-wh .sep{color:var(--dg-text-muted);font-weight:400;margin:0 5px}
+.tts-wh .vpath{font-weight:400}
 .tts-wh .tts-ib{width:32px;height:32px}
 .tts-wh [data-vback]{font-size:20px}
 .tts-ib.close-tts-win{font-size:24px;line-height:1;font-weight:300;transition:transform .3s var(--dg-ease),background .15s,color .15s}
