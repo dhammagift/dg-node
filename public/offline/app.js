@@ -1098,6 +1098,8 @@
                     networkAnswered = true;
                     return r;
                 }, function (e) {
+                    // A request the page cancelled itself (AbortController: a newer search replaced it) is not a lost connection.
+                    if (e && e.name === 'AbortError') throw e;
                     var ru = (localStorage.getItem('dhammaLanguage') || localStorage.getItem('siteLanguage') || 'en') === 'ru';
                     var st = null;
                     try { st = JSON.parse(localStorage.getItem(STATE_KEY) || 'null'); } catch (err) { /* ignore */ }
