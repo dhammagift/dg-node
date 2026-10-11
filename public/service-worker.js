@@ -35,7 +35,7 @@ var MOBILE_DATA_PREFIX = '/mobile-data/';
 // form need ignoreSearch — see matchCached().
 // Roots whose URLs legitimately carry a query (?v=<build> on assets, ?langs=ru,en on the TOC's
 // per-book trees) and where a cached bare path is the right answer for any query.
-var VERSIONED_ASSET_ROOTS = ['/assets/', '/spa/', '/nodejs/res/', '/reader/', '/settings/', '/api/toc/', '/read/'];
+var VERSIONED_ASSET_ROOTS = ['/assets/', '/spa/', '/nodejs/res/', '/reader/', '/settings/', '/api/toc/', '/read/', '/memo/'];
 
 // Everything the shell needs to boot, and to run a search / open the reader, with no network.
 // Some entries are GENERATED and may legitimately be absent on a fresh checkout (/offline/*,
@@ -62,6 +62,9 @@ var PRECACHE_URLS = [
     '/read/js/voice.js',
     '/read/js/voice-offline.js',
     '/read/css/voice.css',
+    // Memo: its own page (not the SPA shell), read aloud by the same player, so it opens offline too
+    '/memo/', '/memo/memo.js', '/memo/memo.css', '/memo/presets.json', '/assets/js/settings.js', '/assets/js/autopali.js',
+    '/assets/js/nav-component.js', '/assets/css/styles.css', '/assets/svg/copy.svg', '/assets/svg/trash-can-regular-full.svg', '/assets/sounds/gong.mp3', '/assets/sounds/tick.mp3',
 
     // Reader mode definitions — the reader cannot resolve a mode without this, online or off.
     '/reader/mode-table.json',
