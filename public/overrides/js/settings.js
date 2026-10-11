@@ -536,6 +536,27 @@ document.addEventListener("click", function (e) {
     if (document.body.classList.contains('dg-state-toc')) return;
     // ==========================================
 
+    // A tap on a search-result row's own cells (title, words, counts, the expand arrow) — not on
+    // a link or button there — arms the play button on that result's first quote (owner: start
+    // listening without expanding a row and tapping a quote first). The quote is always in the
+    // row's Quote cell (td.none, hidden until expanded), so play reads exactly what a tap on that
+    // quote + play reads: this result's quotes, then the next results'. Before this, a tap on the
+    // title text armed the title itself, which has no segment id, and play did nothing.
+    // The translation line is picked unless the saved voice mode is Pali-only: voice.js switches
+    // the mode to match the tapped line, so this keeps the user's mode as it is.
+    const resultRow = e.target.closest('#results-tbody > tr:not(.child)');
+    const rowQuote = resultRow && !e.target.closest('a, button, input, select, textarea, label') && resultRow.querySelector('td.none .quote-segment');
+    if (rowQuote) {
+        const pali = rowQuote.querySelector('.pli-lang');
+        const target = localStorage.getItem('tts_preferred_mode') === 'pi' ? pali : (rowQuote.querySelector('span[class*="-lang"]:not(.pli-lang)') || pali);
+        if (target) {
+            if (target.classList.contains('active-word')) { window.removeAllHighlights(); return; }
+            window.activateSegmentForTTS(target);
+            if (!window.isVoiceScriptLoaded && typeof window.loadVoiceScripts === 'function') window.loadVoiceScripts(() => {}, true);
+            return;
+        }
+    }
+
     const clickedSegment = e.target.closest('[class*="-lang"]');
 
     if (clickedSegment) {
