@@ -5529,6 +5529,10 @@
 
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
     else init();
+    // #dg-settings opens the settings sheet: dg-apps' ios-safari-probe.yml opens pages in the iOS Simulator's Safari, which cannot tap.
+    window.addEventListener('load', function () {
+        if (location.hash === '#dg-settings') setTimeout(function () { window.DgHome.openSettingsSheet(); }, 800);
+    });
 })();
 
 /* The logo plays when it is clicked: the mark rises out of the book, like on the app's launch screen (home.css, .dg-logo-play).
