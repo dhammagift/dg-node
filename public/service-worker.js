@@ -390,6 +390,11 @@ self.addEventListener('fetch', function (event) {
     // itself and does not want a second copy.
     if (url.pathname.indexOf(MOBILE_DATA_PREFIX) === 0) return;
 
+    // /dict/ is the Dictionary, another site under this origin with its own worker (scope /dict/). Offline,
+    // without that worker, the navigate branch below answered /dict/... with Dhamma.Gift's shell, which
+    // then searched for the word "dict".
+    if (url.pathname === '/dict' || url.pathname.indexOf('/dict/') === 0) return;
+
     // Range requests are partial responses (the resumable database download). Caching one
     // would store a chunk as if it were the complete file and later serve that chunk as the
     // whole response.

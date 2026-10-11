@@ -561,19 +561,27 @@ body[data-mode=lite] .ln.endl { display: block; }
 .dtab tr[data-today=true] td.d { background: color-mix(in srgb, var(--dg-navy-ink) 22%, var(--dg-surface)); border-radius: 14px; box-shadow: inset 0 0 0 4px var(--dg-surface); }
 .legend, #legend { display: none !important; } /* the moon icons in the cells say it: no legend */
 
-/* the Uposatha in the calendar: every date of it (the evening it begins on, its day) is the same solid green date, and neighbouring
-   dates are one capsule: a band from the middle of one date to the middle of the next, over the gap between the cells. At the end of
-   a row the band runs to the edge and goes on from the edge of the next row. */
-.grid .c { --nx: 17.5px; --ny: 4px; --ugap: 1px; }
-@media (max-width: 640px) { .grid .c { --nx: 50%; --ny: 5px; } .grid .c .lb span:not(.mi) { display: none; } }
+/* The Uposatha in the calendar: every date of it (the evening it begins on, its day) is the same solid green date, and neighbouring
+   dates are one capsule. Done the way date-range pickers do it (react-day-picker's range_start / range_middle / range_end, MUI's
+   rangeIntervalDayHighlight): the highlight is a part of the date's OWN box, from its middle to the edge of the cell - here the two
+   pseudo-elements of the chip .n, so the band has the chip's top and height by construction (it used to be a second box positioned
+   in the cell by numbers of its own, and sat a few pixels off the circle). The cell clips it half a gap beyond its edge, where the
+   neighbour's half meets it; at the end of a row it stops at the edge and goes on from the edge of the next row. */
+.grid .c { --ugap: 1px; }
+@media (max-width: 640px) { .grid .c .lb span:not(.mi) { display: none; } }
 .grid .c .n { position: relative; z-index: 1; }
 .grid .c[data-up] .n { background: var(--dg-accent); color: #fff; font-weight: 600; box-shadow: none; outline: 0; }
-.grid .c[data-pr]::after { content: ""; position: absolute; z-index: 0; top: var(--ny); height: 27px; left: var(--nx); right: calc(var(--ugap) / -2); background: var(--dg-accent); }
-.grid .c[data-pl]::before { content: ""; position: absolute; z-index: 0; top: var(--ny); height: 27px; left: calc(var(--ugap) / -2); right: calc(100% - var(--nx)); background: var(--dg-accent); }
-.grid .c:nth-child(7n)[data-pr]::after { right: 0; }
-.grid .c:nth-child(7n+1)[data-pl]::before { left: 0; }
-/* today and the chosen day are plaques under the date; on a date of an Uposatha the capsule covers the plaque, so a ring of the same
-   colour is drawn over it */
+.grid .c[data-pr] .n::after, .grid .c[data-pl] .n::before { content: ""; position: absolute; z-index: -1; top: 0; bottom: 0; width: 100vw; background: var(--dg-accent); }
+.grid .c[data-pr] .n::after { left: 50%; }
+.grid .c[data-pl] .n::before { right: 50%; }
+.grid .c:is([data-pl], [data-pr]) { overflow: visible; clip-path: inset(0 calc(var(--ugap) / -2 - .5px)); }
+.grid .c:nth-child(7n):is([data-pl], [data-pr]) { clip-path: inset(0 0 0 calc(var(--ugap) / -2 - .5px)); }
+.grid .c:nth-child(7n+1):is([data-pl], [data-pr]) { clip-path: inset(0 calc(var(--ugap) / -2 - .5px) 0 0); }
+/* today and the chosen day are plaques under the date; on a date of an Uposatha the capsule would cover the plaque, so there the same
+   plaque lies OVER the capsule, translucent (the element .hl), with a ring of its colour */
+.grid .c .hl { display: none; position: absolute; inset: 0; z-index: 2; border-radius: inherit; pointer-events: none; }
+.grid .c[data-up][data-today=true] .hl { display: block; background: color-mix(in srgb, var(--dg-navy-ink) 42%, transparent); }
+.grid .c[data-up][data-sel=true] .hl { display: block; background: rgba(217, 164, 65, .5); }
 .grid .c[data-up][data-today=true], body.app .grid .c[data-up][data-today=true] { outline: 2px solid color-mix(in srgb, var(--dg-navy-ink) 75%, var(--dg-surface)); outline-offset: -2px; }
 .grid .c[data-up][data-sel=true], body.app .grid .c[data-up][data-sel=true] { outline: 2px solid #d9a441; outline-offset: -2px; }
 @media (max-width: 640px) { .grid .c .lb span.mi { display: inline; font-size: 13px; } .grid .c { min-height: 58px; } } /* the moon icon stays in a cell of a phone: it tells the phase */

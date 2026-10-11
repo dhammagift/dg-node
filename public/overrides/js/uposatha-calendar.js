@@ -725,7 +725,7 @@
       if (moonDay[k]) lb += '<span class="lb">' + (lb ? '' : moon([0, 2, 4, 6][moonDay[k].phase], 'moon mi')) + '<span>' + esc(phaseName(moonDay[k].phase) + ' ' + F.hm.format(moonDay[k].at)) + '</span></span>'; // one moon per day: the label above already has it
       if (state.allMoons && !lb) lb = '<span class="lb">' + moon(0, 'moon mi', A.MoonPhase(new Date(d.getTime() + DAY / 2)) / 360) + '</span>'; // the moon of an ordinary day, as it is at midday
       g += '<button type="button" class="c' + (d.getUTCMonth() !== mo ? ' o' : '') + '"' + (u ? ' data-u="' + u + '"' : '') + (cont ? ' data-c="true"' : '') + (marked(k) ? ' data-up=""' + (marked(ymdAdd(k, -1)) ? ' data-pl=""' : '') + (marked(ymdAdd(k, 1)) ? ' data-pr=""' : '') : '') + (k === todayYmd ? ' data-today="true"' : '') + ' data-ymd="' + k + '">' +
-        '<span class="n">' + d.getUTCDate() + '</span>' + lb + (r2 ? '<span class="ld">' + r2.tithi + '</span>' : '') + '</button>';
+        '<span class="n">' + d.getUTCDate() + '</span>' + lb + (r2 ? '<span class="ld">' + r2.tithi + '</span>' : '') + (marked(k) ? '<i class="hl"></i>' : '') + '</button>'; // hl: the plaque of today / of the chosen day, over the capsule
     }
     setHtml('grid', g);
     $('legend').innerHTML = su ? '<span><i class="f"></i>' + esc(t.lgS15) + '</span><span><i class="r"></i>' + esc(t.lgS814) + '</span><span><i class="c"></i>' + esc(t.lgC) + '</span><span><i class="t"></i>' + esc(t.lgT) + '</span>'

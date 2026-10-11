@@ -535,6 +535,9 @@ app.addHook('onSend', (req, reply, payload, done) => {
     reply.header('referrer-policy', 'strict-origin-when-cross-origin');
     if (req.protocol === 'https') reply.header('strict-transport-security', 'max-age=31536000');
     if (!/^\/dict([/?]|$)/.test(req.url)) reply.header('content-security-policy', FRAME_ANCESTORS);
+    // The Dictionary registers its worker /dict/static/sw.js for the scope /dict/ (above its own folder);
+    // without this header the registration failed here and dhamma.gift/dict/ never opened offline.
+    if (/^\/dict\/static\/sw\.js(\?|$)/.test(req.url)) reply.header('service-worker-allowed', '/dict/');
     done(null, payload);
 });
 
