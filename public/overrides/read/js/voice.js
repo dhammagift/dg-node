@@ -1689,14 +1689,41 @@ function dgAudio(req) {
     p = fetchPaliVoiceAudio(req.text, req.rate, req.voice);
     p.catch(() => dgAudioPending.delete(key));  // a failed fetch is retried next time, not cached
     dgAudioPending.set(key, p);
-    while (dgAudioPending.size > 8) dgAudioPending.delete(dgAudioPending.keys().next().value);
+    while (dgAudioPending.size > 24) dgAudioPending.delete(dgAudioPending.keys().next().value);
   }
   return p;
 }
+// A long line goes to the DG voice in pieces of up to DG_PIECE chars, cut after the run's last word that ends a
+// clause (. ? ! ; : , …), else between words: the first piece plays in ~2 s while the next ones are synthesised
+// (owner 2026-10-12: AN 11.18's 575-char line took 10-25 s before a sound).
+const DG_PIECE = 150;
+function dgPieces(text) {
+  if (text.length <= DG_PIECE) return [text];
+  const out = [];
+  let run = [];
+  for (const w of text.trim().split(/\s+/)) {
+    run.push(w);
+    if (run.length > 1 && run.join(' ').length > DG_PIECE) {
+      const end = run.slice(0, -1).findLastIndex(x => /[.?!;:,…]$/.test(x)), cut = end >= 0 ? end : run.length - 2;
+      out.push(run.slice(0, cut + 1).join(' '));
+      run = run.slice(cut + 1);
+    }
+  }
+  out.push(run.join(' '));
+  return out;
+}
+// A line's pieces as Promises of base64 audio: the first asked for now, the rest once it is in (it gets the server first)
+function dgLineAudio(req) {
+  const [head, ...tail] = dgPieces(req.text), first = dgAudio({ ...req, text: head });
+  const rest = tail.map(text => first.catch(() => {}).then(() => dgAudio({ ...req, text })));
+  rest.forEach(p => p.catch(() => {}));
+  return [first, ...rest];
+}
+const dgAudioSrc = c => (c.startsWith('UklGR') ? 'data:audio/wav;base64,' : 'data:audio/mp3;base64,') + c;  // WAV: the voice on the device
 function dgPrefetchAhead(index) {
   for (let k = 1; k <= 2; k++) {
     const req = dgVoiceRequest(ttsState.playlist[index + k]);
-    if (req) dgAudio(req).catch(() => {});
+    if (req) dgLineAudio(req).forEach(p => p.catch(() => {}));
   }
 }
 
@@ -1812,10 +1839,12 @@ async function playCurrentSegment() {
       try {
           const targetIndex = ttsState.currentIndex; 
 
-          let audioContent = null;
+          let audioContent = null, dgRest = [];  // dgRest: the line's next pieces (dgLineAudio)
           if (usePaliVoice) {
               try {
-                  audioContent = await dgAudio(dgVoiceRequest(item));
+                  const [first, ...rest] = dgLineAudio(dgVoiceRequest(item));
+                  audioContent = await first;
+                  dgRest = rest;
                   dgPrefetchAhead(targetIndex);
                   if (item.lang === 'pi-dev') dgOfflineOffer();
               } catch (e) {
@@ -1835,12 +1864,21 @@ async function playCurrentSegment() {
           if (audioContent) {
               const audio = window.sharedGoogleAudio || new Audio();
               window.sharedGoogleAudio = audio;
-              // a WAV (base64 'RIFF…') comes from the voice on the device (voice-offline.js)
-              audio.src = (audioContent.startsWith('UklGR') ? 'data:audio/wav;base64,' : 'data:audio/mp3;base64,') + audioContent;
+              audio.src = dgAudioSrc(audioContent);  // Google's mp3 too
               
               ttsState.googleAudio = audio;
               
-              audio.onended = () => {
+              audio.onended = async () => {
+                  // the line's next piece; one that failed ends the line here
+                  if (dgRest.length && ttsState.speaking && !ttsState.paused) {
+                      const next = await dgRest.shift().catch(() => (dgRest = [], null));
+                      if (gen !== ttsState.gen || targetIndex !== ttsState.currentIndex || !ttsState.speaking) return;
+                      if (next) {
+                          audio.src = dgAudioSrc(next);
+                          if (!ttsState.paused) audio.play().catch(() => {});
+                          return;
+                      }
+                  }
                   ttsState.googleAudio = null;
                   if (ttsState.speaking && !ttsState.paused) {
                       let delay = window.TTS_SEGMENT_DELAY || 0;
