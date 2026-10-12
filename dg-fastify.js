@@ -613,6 +613,20 @@ app.get('/manifest.json', (req, res) => {
 
 // /app-site-manifest.json — the signed list of the site's files the apps may take without a new build (scripts/site-manifest.js
 // writes it after a deploy; dg-apps src/site-updater.js checks the signature). Missing = 404 = the apps take nothing.
+// Rebuilt on every start, so a deploy (pull + restart) never leaves it describing the previous commit: without it the apps'
+// «App version → check» said «Could not check» after a deploy (owner, 2026-10-12). Only where configs/local/site-manifest.json
+// names this site's origin ({"origin": "https://dhamma.gift"}) and the signing key is on the machine; a child process, so the
+// server answers meanwhile, and a failure only leaves the previous list in place.
+function rebuildSiteManifest() {
+    let origin;
+    try { origin = JSON.parse(require('fs').readFileSync(path.join(__dirname, 'configs', 'local', 'site-manifest.json'), 'utf8')).origin; } catch (_) { return; }
+    if (!origin || !require('fs').existsSync('/root/.secrets/site-manifest-signing.pem')) return;
+    require('child_process').execFile(process.execPath, [path.join(__dirname, 'scripts', 'site-manifest.js'), '--origin', origin],
+        { cwd: __dirname, timeout: 300000 }, (err, out, errOut) => {
+            if (err) console.error('[site-manifest] not rebuilt: ' + String(errOut || err.message).trim().split('\n').pop());
+            else console.log('[site-manifest] ' + String(out).trim().split('\n').pop());
+        });
+}
 app.get('/app-site-manifest.json', (req, res) => {
     res.header('cache-control', 'no-cache');
     return sendFile(req, res, path.join(__dirname, 'app-site-manifest.json'), 'application/json')
@@ -1287,6 +1301,7 @@ async function initServer() {
         await buildTranslatorCatalogCache();
         await buildSitemapCache();
         await buildScriptBundle();
+        rebuildSiteManifest(); // after the bundles: the list hashes them
     } catch (err) {
         console.error('Startup error:', err);
     }
