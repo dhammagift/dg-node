@@ -567,6 +567,12 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
         opacity: 0.75;
     }
     .dg-reader-toolbar a:hover img { opacity: 1; }
+    /* Inline copies of the toolbar icons (home.js: the app's WebView mixed up <img> SVGs). */
+    .dg-ic-src { display: none !important; }
+    .dg-ic { display: inline-block; flex: none; line-height: 0; vertical-align: middle; width: 14px; height: 14px; }
+    .dg-ic svg { display: block; width: 100%; height: 100%; }
+    .dg-reader-toolbar .dg-ic { width: 19px; height: 19px; opacity: 0.75; }
+    .dg-reader-toolbar a:hover .dg-ic { opacity: 1; }
     /* TOC-пилюля (#smart-toc-btn) внутри тулбара — базовые правила (reader/css/uiextra.css)
        рассчитаны на самостоятельное плавающее позиционирование (#smart-toc-container, здесь не
        используется), нейтрализуем то, что не годится обычному flex-элементу ряда: border(0) —

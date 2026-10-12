@@ -5659,3 +5659,52 @@
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', landed);
     else landed();
 })();
+
+// Toolbar icons drawn as inline SVG, not <img>. In the Android app's WebView the reader toolbar's
+// <img> icons (eye, columns, multi-select, compass) were all painted as table-list.svg (the same
+// #989898 grey file) after a tap on the dictionary or variants toggle; only the tapped icon, whose
+// src changed, came back right (owner's screenshots, APK 533/601). Not reproducible in desktop
+// Chromium: the WebView's decoded-image cache hands one SVG image's picture to others. Inline SVG
+// is not an image, so there is nothing to mix up. The <img> stays in the DOM, hidden, and keeps
+// its src: every existing toggle (megareader.js, settings.js, paliLookup.js) still sets img.src,
+// and the inline copy follows it.
+(function () {
+    var SEL = '#reader-toolbar > a > img, #dg-toolbar-buttons .toggle-dict-btn > img, #dg-toolbar-buttons .toggle-multiselect-btn > img';
+    var cache = {};
+    function svgOf(src) {
+        if (!cache[src]) cache[src] = fetch(src).then(function (r) {
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            return r.text();
+        }).then(function (t) {
+            var i = t.indexOf('<svg');
+            if (i < 0) throw new Error('not an SVG');
+            return t.slice(i).replace(/<!--[\s\S]*?-->/g, '');
+        });
+        return cache[src];
+    }
+    function paint(img, box) {
+        var src = img.getAttribute('src');
+        svgOf(src).then(function (svg) {
+            if (img.getAttribute('src') !== src) return;   // a newer toggle won
+            box.innerHTML = svg;
+            img.classList.add('dg-ic-src');
+        }).catch(function (e) {
+            // the <img> stays as it was
+            img.classList.remove('dg-ic-src');
+            console.warn('[dg-icons] ' + src + ': ' + ((e && e.message) || e));
+        });
+    }
+    function inline(img) {
+        if (img.dataset.dgIc) return;
+        img.dataset.dgIc = '1';
+        var box = document.createElement('span');
+        box.className = 'dg-ic';
+        box.setAttribute('aria-hidden', 'true');
+        img.after(box);
+        paint(img, box);
+        new MutationObserver(function () { paint(img, box); }).observe(img, { attributes: true, attributeFilter: ['src'] });
+    }
+    function run() { document.querySelectorAll(SEL).forEach(inline); }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run);
+    else run();
+})();
