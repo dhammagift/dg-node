@@ -138,6 +138,50 @@
               ]
             }
           ]
+        },
+        {
+          "type": "TextBlock",
+          "text": "${u.nextTitle}",
+          "wrap": true,
+          "size": "Small",
+          "weight": "Bolder",
+          "isSubtle": true,
+          "spacing": "Medium",
+          "$when": "${u.next != ''}"
+        },
+        {
+          "type": "ColumnSet",
+          "columns": [
+            {
+              "type": "Column",
+              "width": "auto",
+              "items": [
+                {
+                  "type": "TextBlock",
+                  "text": "${moon}",
+                  "wrap": true,
+                  "size": "Default"
+                }
+              ],
+              "verticalContentAlignment": "Center"
+            },
+            {
+              "type": "Column",
+              "width": "stretch",
+              "items": [
+                {
+                  "type": "TextBlock",
+                  "text": "${text}",
+                  "wrap": true,
+                  "size": "Small"
+                }
+              ],
+              "verticalContentAlignment": "Center"
+            }
+          ],
+          "$data": "${u.next}",
+          "spacing": "None",
+          "$when": "${$index < 3}"
         }
       ]
     },

@@ -8,9 +8,111 @@
   "display": "standalone",
   "background_color": "#1b1b1d",
   "theme_color": "#1f8f6f",
-  "categories": ["education", "spirituality"],
+  "categories": [
+    "education",
+    "spirituality"
+  ],
   "icons": [
-    { "src": "/assets/img/uposatha-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "/assets/img/uposatha-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+    {
+      "src": "/assets/img/uposatha-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/img/uposatha-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "widgets": [
+    {
+      "name": "Uposatha + kala",
+      "short_name": "Uposatha",
+      "description": "How long to the next Uposatha day, its details, and whether it is kala or vikala now. Сколько до ближайшей упосатхи, подробности и kala/vikala сейчас.",
+      "tag": "uposatha-main",
+      "template": "uposatha-main-template",
+      "ms_ac_template": "/assets/widgets/uposatha-main.json",
+      "data": "/assets/widgets/uposatha-data.json",
+      "type": "application/json",
+      "screenshots": [
+        {
+          "src": "/assets/img/uposatha-widget-main.png",
+          "sizes": "300x304",
+          "type": "image/png",
+          "platform": "windows",
+          "label": "Uposatha and kala"
+        }
+      ],
+      "icons": [
+        {
+          "src": "/assets/img/uposatha-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ],
+      "auth": false,
+      "update": 3600,
+      "multiple": false
+    },
+    {
+      "name": "Day & night",
+      "short_name": "Uposatha",
+      "description": "The part of the day or night now, and the scale of the day with kala and vikala. Текущая стража и шкала суток с kala/vikala.",
+      "tag": "uposatha-day",
+      "template": "uposatha-day-template",
+      "ms_ac_template": "/assets/widgets/uposatha-day.json",
+      "data": "/assets/widgets/uposatha-data.json",
+      "type": "application/json",
+      "screenshots": [
+        {
+          "src": "/assets/img/uposatha-widget-day.png",
+          "sizes": "300x304",
+          "type": "image/png",
+          "platform": "windows",
+          "label": "Day and night"
+        }
+      ],
+      "icons": [
+        {
+          "src": "/assets/img/uposatha-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ],
+      "auth": false,
+      "update": 3600,
+      "multiple": false
+    },
+    {
+      "name": "Month",
+      "short_name": "Uposatha",
+      "description": "The month with the Uposatha days marked, and the next three. Месяц с отмеченными днями упосатхи и ближайшие три.",
+      "tag": "uposatha-month",
+      "template": "uposatha-month-template",
+      "ms_ac_template": "/assets/widgets/uposatha-month.json",
+      "data": "/assets/widgets/uposatha-data.json",
+      "type": "application/json",
+      "screenshots": [
+        {
+          "src": "/assets/img/uposatha-widget-month.png",
+          "sizes": "300x304",
+          "type": "image/png",
+          "platform": "windows",
+          "label": "Month"
+        }
+      ],
+      "icons": [
+        {
+          "src": "/assets/img/uposatha-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ],
+      "auth": false,
+      "update": 3600,
+      "multiple": false
+    }
   ]
 }

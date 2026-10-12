@@ -138,12 +138,12 @@
     }
     var cy = cycle(), part = cy.parts.filter(function (p) { return p.a <= now && now < p.b; })[0] || cy.parts[0];
 
-    // the next three Uposathas after the one in focus
+    // the next Uposathas after the one in focus (six: the large card has the room; the medium one shows the first three)
     function nextLine(u) {
       var ms = u.start.ms - now, when = u === cur ? s.now : ms < DAY ? x['in'] + ' ' + span(ms) : fill(s.inDays, { n: Math.max(1, ymdDiff(raw.today.ymd, u.day)) });
       return { moon: moon(u.phase), text: dayShort(u.day) + ' · ' + x.nthDay(u.lunarDay) + ' · ' + when };
     }
-    var after = ahead.filter(function (u) { return u !== u0; }).slice(0, 3).map(nextLine);
+    var after = ahead.filter(function (u) { return u !== u0; }).slice(0, 6).map(nextLine);
     var focus = u0 ? [nextLine(u0)].concat(after.slice(0, 2)) : [];
 
     // layer 1: Uposatha + kala

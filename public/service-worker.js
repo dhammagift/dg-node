@@ -30,6 +30,21 @@ var BUILD_ID_URL = '/offline/build-id.json';
 var SHELL_URL = '/';
 var MOBILE_DATA_PREFIX = '/mobile-data/';
 
+// Windows 11 widgets of the Uposatha PWA (uposatha-calendar.webmanifest "widgets"): the worker works the data out itself with the
+// astronomy library, the Uposatha core and the shared builder. Imports must be made here, at the top: a worker cannot import later.
+// Only the Uposatha page's own registration does it: the page registers this same file as /sw.js?upo=1 for the scope
+// /uposatha-calendar (uposatha-calendar.js). The site's worker (/sw.js, scope /) imports nothing and listens to no widget event, so
+// the rest of the site pays nothing for the widgets (some 150 KB of scripts).
+// A failed import (offline at the very first install) must not take the whole worker down: the widget code checks for the builder.
+var UPO_WIDGETS = /[?&]upo=1(&|$)/.test(self.location.search || '');
+if (UPO_WIDGETS) {
+    try {
+        importScripts('/assets/js/vendor/astronomy.browser.min.js', '/assets/js/uposatha-core.js', '/assets/js/uposatha-widget-data.js');
+    } catch (e) {
+        console.warn('[sw] widget scripts not loaded: ' + e.message);
+    }
+}
+
 // URL roots whose asset URLs the server stamps with a ?v=<hash> cache-buster (sendVersionedHtml
 // in dg-light.js). Precaching only knows the bare path, so offline lookups of the versioned
 // form need ignoreSearch — see matchCached().
@@ -189,6 +204,11 @@ var PRECACHE_URLS = [
     '/assets/fonts/lato-700.woff2',
     '/assets/fonts/brahmi-subset.woff2'
 ];
+// The widgets of the Uposatha PWA: the card templates and the texts (the data is worked out in the worker).
+if (UPO_WIDGETS) {
+    PRECACHE_URLS.push('/assets/widgets/uposatha-strings.json', '/assets/widgets/uposatha-main.json', '/assets/widgets/uposatha-day.json',
+        '/assets/widgets/uposatha-month.json', '/assets/widgets/uposatha-data.json');
+}
 
 // Memoized so install, activate and the fetch handler all agree on one name without racing
 // three separate /offline/build-id.json fetches in the same worker instance.
@@ -381,6 +401,15 @@ self.addEventListener('fetch', function (event) {
         return;
     }
 
+    // The data URL of the Uposatha widgets answers with the data worked out right now (the static file is the placeholder for a browser without this worker).
+    if (url.origin === self.location.origin && url.pathname === WIDGET_DATA_PATH && self.UposathaWidgetData) {
+        event.respondWith(
+            widgetModel().then(function (model) { return new Response(JSON.stringify(model), { headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } }); })
+                .catch(function () { return caches.match(request).then(function (c) { return c || fetch(request); }); }) // the precached placeholder
+        );
+        return;
+    }
+
     // Non-same-origin: never intercept. Third-party responses (the Aksharamukha converter
     // script) are not ours to cache, and an opaque one cached here would be an unusable blob.
     if (url.origin !== self.location.origin) return;
@@ -462,3 +491,124 @@ self.addEventListener('fetch', function (event) {
             })
     );
 });
+
+// ---------------------------------------------------------------------------------------
+// PWA widgets for the Windows 11 Widgets Board (Microsoft Edge "PWA-driven widgets").
+// The widgets are declared in /uposatha-calendar.webmanifest (member "widgets"); each has an Adaptive Card template
+// (/assets/widgets/uposatha-*.json) and the board gets the data from this worker: widgets.updateByTag(tag, {template, data}).
+// The data is the view-model of UposathaWidgetData.card() (ru/en strings picked by the language the page saved).
+// A worker has no localStorage: the page mirrors place / time zone / language / counting into IndexedDB
+// (db dg-uposatha, store kv, key widget) from uposatha-calendar.js.
+// ---------------------------------------------------------------------------------------
+var WIDGET_DATA_PATH = '/assets/widgets/uposatha-data.json';
+var WIDGET_STRINGS_URL = '/assets/widgets/uposatha-strings.json';
+var WIDGET_TAG_PREFIX = 'uposatha-';
+var WIDGET_TABS = { 'open-main': 'home', 'open-day': 'parts', 'open-month': 'cal' }; // verb of the card's tap -> tab of the page
+
+function widgetSettings() {
+    return new Promise(function (resolve) {
+        try {
+            var rq = indexedDB.open('dg-uposatha', 1);
+            rq.onupgradeneeded = function () { rq.result.createObjectStore('kv'); };
+            rq.onerror = function () { resolve(null); };
+            rq.onsuccess = function () {
+                var db = rq.result, get = db.transaction('kv', 'readonly').objectStore('kv').get('widget');
+                get.onsuccess = function () { db.close(); resolve(get.result || null); };
+                get.onerror = function () { db.close(); resolve(null); };
+            };
+        } catch (e) { resolve(null); }
+    });
+}
+
+// Network first, the cached copy when the network fails; what was fetched is kept (the same cache as the shell).
+function widgetFetch(url, asJson) {
+    return fetch(url).then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        var copy = r.clone();
+        getCacheName().then(function (n) { return caches.open(n); }).then(function (c) { return c.put(url, copy); }).catch(function () { /* best effort */ });
+        return asJson ? r.json() : r.text();
+    }).catch(function (e) {
+        return caches.match(url).then(function (c) { if (!c) throw e; return asJson ? c.json() : c.text(); });
+    });
+}
+
+// The view-model every template binds to, for the settings the page saved (a page never opened: the defaults of the worker's own locale).
+function widgetModel() {
+    var WD = self.UposathaWidgetData;
+    if (!WD || !self.Astronomy || !self.UposathaCore) return Promise.reject(new Error('widget scripts missing'));
+    return Promise.all([widgetSettings(), widgetFetch(WIDGET_STRINGS_URL, true)]).then(function (r) {
+        var c = r[0] || { lang: String(self.navigator && self.navigator.language || 'en').slice(0, 2) === 'ru' ? 'ru' : 'en', tz: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC', loc: null, su: true, lite: true, showKala: true, south: false, noon: 'sun', twi: 'sun' };
+        var raw = WD.build({ A: self.Astronomy, C: self.UposathaCore, tz: c.tz, loc: c.loc, lang: c.lang, su: c.su, lite: c.lite, showKala: c.showKala, south: c.south, noon: c.noon, twi: c.twi });
+        return WD.card(raw, r[1], Date.now());
+    });
+}
+
+// Draws one widget (all its instances): the template as text, the data as text. If the data cannot be worked out, the static placeholder.
+function renderWidget(widget, model) {
+    var def = widget.definition;
+    return widgetFetch(def.msAcTemplate, false).then(function (template) {
+        var data = model ? Promise.resolve(JSON.stringify(model)) : widgetFetch(def.data, false);
+        return data.then(function (d) { return self.widgets.updateByTag(def.tag, { template: template, data: d }); });
+    });
+}
+
+function updateWidgets(list) {
+    if (!self.widgets) return Promise.resolve();
+    return (list ? Promise.resolve(list) : self.widgets.matchAll({ installed: true })).then(function (widgets) {
+        widgets = widgets.filter(function (w) { return w.definition && String(w.definition.tag).indexOf(WIDGET_TAG_PREFIX) === 0; });
+        if (!widgets.length) return;
+        return widgetModel().catch(function (e) { console.warn('[sw] widget data: ' + e.message); return null; })
+            .then(function (model) { return Promise.all(widgets.map(function (w) { return renderWidget(w, model); })); });
+    }).catch(function (e) { console.warn('[sw] widgets not updated: ' + e.message); });
+}
+
+if (UPO_WIDGETS) {
+    self.addEventListener('widgetinstall', function (event) {
+        var w = event.widget;
+        event.waitUntil((w && w.definition && w.definition.update
+            ? self.registration.periodicSync.getTags().then(function (tags) {
+                // one periodic sync per widget tag, however many instances there are
+                return tags.indexOf(w.definition.tag) === -1 ? self.registration.periodicSync.register(w.definition.tag, { minInterval: w.definition.update * 1000 }) : null;
+            }).catch(function () { /* no periodic sync (permission or browser): the widget is drawn on install, resume and settings change */ })
+            : Promise.resolve()
+        ).then(function () { return updateWidgets([w]); }));
+    });
+
+    self.addEventListener('widgetuninstall', function (event) {
+        var w = event.widget;
+        // the last instance of the widget is gone: its periodic sync goes too
+        if (w && w.definition && w.definition.update && (!w.instances || w.instances.length <= 1)) {
+            event.waitUntil(self.registration.periodicSync.unregister(w.definition.tag).catch(function () { /* nothing registered */ }));
+        }
+    });
+
+    self.addEventListener('widgetresume', function (event) {
+        event.waitUntil(updateWidgets(event.widget ? [event.widget] : null));
+    });
+
+    self.addEventListener('periodicsync', function (event) {
+        if (String(event.tag).indexOf(WIDGET_TAG_PREFIX) !== 0 || !self.widgets) return;
+        event.waitUntil(self.widgets.getByTag(event.tag).then(function (w) { return w ? updateWidgets([w]) : null; }));
+    });
+
+    // A tap on a card is an Action.Execute with a verb (open-main / open-day / open-month): the page opens on that tab.
+    self.addEventListener('widgetclick', function (event) {
+        var tab = WIDGET_TABS[event.action];
+        if (!tab) return;
+        var url = '/uposatha-calendar?app=1&source=widget&tab=' + tab;
+        event.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (cs) {
+            var open = cs.filter(function (c) { return new URL(c.url).pathname === '/uposatha-calendar'; })[0];
+            return open && open.navigate ? open.navigate(url).then(function (c) { return c && c.focus(); }).catch(function () { return self.clients.openWindow(url); }) : self.clients.openWindow(url);
+        }));
+    });
+
+    // The page changed a setting the widgets show (its mirror in IndexedDB is already written): redraw now.
+    self.addEventListener('message', function (event) {
+        if (event.data && event.data.type === 'upo-widgets-refresh') event.waitUntil(updateWidgets());
+    });
+
+    // A new worker: widgets installed earlier would stay empty or stale until the next sync.
+    self.addEventListener('activate', function (event) {
+        event.waitUntil(updateWidgets());
+    });
+}

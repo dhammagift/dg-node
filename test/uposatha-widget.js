@@ -176,13 +176,13 @@ manifest.widgets.forEach((w) => {
 assert.ok(manifest.start_url && manifest.scope, 'the PWA has a start_url and a scope');
 
 // ---------- 5. the service worker, as a worker loads it ----------
-function worker(settings, online) {
+function worker(settings, online, plain) {
     const calls = { updates: [], sync: [], opened: [], unreg: [] }, handlers = {};
     const sandbox = {
         console: { log() {}, warn() {} }, Intl, Date, JSON, Promise, URL, Response: class { constructor(b, o) { this.body = b; this.o = o; } },
         setTimeout, clearTimeout, Math, Object, Array, String, Number, Error, RegExp, Set, Map, parseFloat, parseInt,
         navigator: { language: 'ru-RU' },
-        location: { origin: 'https://test.dhamma.gift' },
+        location: { origin: 'https://test.dhamma.gift', search: plain ? '' : '?upo=1' },   // the Uposatha page's own registration; plain: the site's
         indexedDB: { open() { // enough of IndexedDB for get('widget')
             const rq = {}; rq.result = { createObjectStore() {}, close() {}, transaction: () => ({ objectStore: () => ({ get() { const g = {}; setTimeout(() => { g.result = settings; g.onsuccess(); }); return g; } }) }) };
             setTimeout(() => rq.onsuccess()); return rq; } },
@@ -227,7 +227,7 @@ function worker(settings, online) {
     assert.strictEqual(data.lang, 'en', 'the language is the one the page saved');
     // not the title: on an Uposatha day it is that day's name, and the static placeholder's own title is UPOSATHA
     assert.strictEqual(data.u.mode, 'by the suttas', 'the data was worked out in the worker (the placeholder has no counting)');
-    assert.strictEqual(data.u.next.length, 3, 'the next three Uposatha days');
+    assert.strictEqual(data.u.next.length, 6, 'the next six Uposatha days (the medium card shows three of them)');
     check(JSON.parse(payload.template).body, data, data, 'worker.main', new Set());
 
     w.calls.updates.length = 0;
@@ -258,6 +258,11 @@ function worker(settings, online) {
     // offline with no cache and no data: nothing thrown, nothing drawn
     const w3 = worker(saved, false);
     await w3.fire('widgetinstall', { widget: w3.installed[0] });
+    // the site's own registration (/sw.js without ?upo=1) imports nothing and listens to no widget event
+    const w4 = worker(saved, true, true);
+    assert.ok(!w4.ctx.UposathaWidgetData && !w4.ctx.Astronomy, 'the site worker does not import the widget scripts');
+    assert.ok(!w4.handlers.widgetinstall && !w4.handlers.widgetclick, 'the site worker has no widget listeners');
+    assert.ok(w4.handlers.fetch && w4.handlers.install, 'the site worker is still the site worker');
     console.log('ok   service worker: install / resume / sync / uninstall / click / message, with the saved settings and without them');
     console.log('uposatha widget: ok');
 })().catch((e) => { console.error(e); process.exit(1); });

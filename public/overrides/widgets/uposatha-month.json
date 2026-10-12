@@ -58,116 +58,100 @@
       "$when": "${$host.widgetSize == 'medium'}",
       "items": [
         {
+          "type": "TextBlock",
+          "text": "${m.title}",
+          "wrap": true,
+          "size": "Default",
+          "weight": "Bolder",
+          "color": "Good"
+        },
+        {
           "type": "ColumnSet",
           "columns": [
             {
               "type": "Column",
-              "width": "4",
+              "width": "1",
               "items": [
                 {
                   "type": "TextBlock",
-                  "text": "${m.title}",
-                  "wrap": true,
+                  "text": "${$data}",
                   "size": "Small",
-                  "weight": "Bolder",
-                  "color": "Good"
-                },
+                  "horizontalAlignment": "Center",
+                  "isSubtle": true
+                }
+              ],
+              "$data": "${m.wd}",
+              "spacing": "None"
+            }
+          ]
+        },
+        {
+          "type": "ColumnSet",
+          "columns": [
+            {
+              "type": "Column",
+              "width": "1",
+              "items": [
                 {
                   "type": "TextBlock",
-                  "text": "${m.nextTitle}",
-                  "wrap": true,
-                  "size": "Small",
-                  "weight": "Bolder",
-                  "isSubtle": true,
-                  "spacing": "Medium",
-                  "$when": "${m.next != ''}"
-                },
-                {
-                  "type": "ColumnSet",
-                  "columns": [
-                    {
-                      "type": "Column",
-                      "width": "auto",
-                      "items": [
-                        {
-                          "type": "TextBlock",
-                          "text": "${moon}",
-                          "wrap": true,
-                          "size": "Default"
-                        }
-                      ],
-                      "verticalContentAlignment": "Center"
-                    },
-                    {
-                      "type": "Column",
-                      "width": "stretch",
-                      "items": [
-                        {
-                          "type": "TextBlock",
-                          "text": "${text}",
-                          "wrap": true,
-                          "size": "Small"
-                        }
-                      ],
-                      "verticalContentAlignment": "Center"
-                    }
-                  ],
-                  "$data": "${m.next}",
-                  "spacing": "None"
+                  "text": "${t}",
+                  "size": "Default",
+                  "horizontalAlignment": "Center",
+                  "weight": "${b}",
+                  "color": "${c}",
+                  "isSubtle": "${sub}"
                 }
-              ]
+              ],
+              "$data": "${cells}",
+              "spacing": "None"
+            }
+          ],
+          "$data": "${m.weeks}",
+          "spacing": "None"
+        },
+        {
+          "type": "TextBlock",
+          "text": "${m.nextTitle}",
+          "wrap": true,
+          "size": "Small",
+          "weight": "Bolder",
+          "isSubtle": true,
+          "spacing": "Medium",
+          "$when": "${m.next != ''}"
+        },
+        {
+          "type": "ColumnSet",
+          "columns": [
+            {
+              "type": "Column",
+              "width": "auto",
+              "items": [
+                {
+                  "type": "TextBlock",
+                  "text": "${moon}",
+                  "wrap": true,
+                  "size": "Default"
+                }
+              ],
+              "verticalContentAlignment": "Center"
             },
             {
               "type": "Column",
-              "width": "5",
+              "width": "stretch",
               "items": [
                 {
-                  "type": "ColumnSet",
-                  "columns": [
-                    {
-                      "type": "Column",
-                      "width": "1",
-                      "items": [
-                        {
-                          "type": "TextBlock",
-                          "text": "${$data}",
-                          "size": "Small",
-                          "horizontalAlignment": "Center",
-                          "isSubtle": true
-                        }
-                      ],
-                      "$data": "${m.wd}",
-                      "spacing": "None"
-                    }
-                  ]
-                },
-                {
-                  "type": "ColumnSet",
-                  "columns": [
-                    {
-                      "type": "Column",
-                      "width": "1",
-                      "items": [
-                        {
-                          "type": "TextBlock",
-                          "text": "${t}",
-                          "size": "Small",
-                          "horizontalAlignment": "Center",
-                          "weight": "${b}",
-                          "color": "${c}",
-                          "isSubtle": "${sub}"
-                        }
-                      ],
-                      "$data": "${cells}",
-                      "spacing": "None"
-                    }
-                  ],
-                  "$data": "${m.weeks}",
-                  "spacing": "None"
+                  "type": "TextBlock",
+                  "text": "${text}",
+                  "wrap": true,
+                  "size": "Small"
                 }
-              ]
+              ],
+              "verticalContentAlignment": "Center"
             }
-          ]
+          ],
+          "$data": "${m.next}",
+          "spacing": "None",
+          "$when": "${$index < 2}"
         }
       ]
     },

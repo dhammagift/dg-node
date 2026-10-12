@@ -70,32 +70,59 @@
           "$when": "${n.kala != ''}"
         },
         {
-          "type": "ColumnSet",
-          "columns": [
-            {
-              "type": "Column",
-              "width": "${w}",
-              "items": [
-                {
-                  "type": "TextBlock",
-                  "text": " ",
-                  "wrap": false,
-                  "size": "Small"
-                }
-              ],
-              "$data": "${n.bar}",
-              "style": "${s}",
-              "spacing": "None"
-            }
-          ],
-          "spacing": "Small"
-        },
-        {
           "type": "TextBlock",
           "text": "${n.marks}",
           "wrap": true,
           "size": "Small",
           "isSubtle": true,
+          "spacing": "Small"
+        },
+        {
+          "type": "ColumnSet",
+          "columns": [
+            {
+              "type": "Column",
+              "width": "stretch",
+              "items": [
+                {
+                  "type": "TextBlock",
+                  "text": "${name}",
+                  "wrap": true,
+                  "size": "Small",
+                  "weight": "${w}"
+                }
+              ],
+              "spacing": "None"
+            },
+            {
+              "type": "Column",
+              "width": "auto",
+              "items": [
+                {
+                  "type": "TextBlock",
+                  "text": "${range}",
+                  "wrap": false,
+                  "size": "Small",
+                  "weight": "${w}"
+                }
+              ]
+            },
+            {
+              "type": "Column",
+              "width": "auto",
+              "items": [
+                {
+                  "type": "TextBlock",
+                  "text": "${cur}",
+                  "wrap": false,
+                  "size": "Small",
+                  "color": "Good",
+                  "weight": "Bolder"
+                }
+              ]
+            }
+          ],
+          "$data": "${n.list}",
           "spacing": "Small"
         }
       ]
@@ -130,27 +157,6 @@
           "$when": "${n.kala != ''}"
         },
         {
-          "type": "ColumnSet",
-          "columns": [
-            {
-              "type": "Column",
-              "width": "${w}",
-              "items": [
-                {
-                  "type": "TextBlock",
-                  "text": " ",
-                  "wrap": false,
-                  "size": "Small"
-                }
-              ],
-              "$data": "${n.bar}",
-              "style": "${s}",
-              "spacing": "None"
-            }
-          ],
-          "spacing": "Small"
-        },
-        {
           "type": "TextBlock",
           "text": "${n.marks}",
           "wrap": true,
@@ -168,7 +174,7 @@
                 {
                   "type": "TextBlock",
                   "text": "${name}",
-                  "wrap": false,
+                  "wrap": true,
                   "size": "Small",
                   "weight": "${w}"
                 }

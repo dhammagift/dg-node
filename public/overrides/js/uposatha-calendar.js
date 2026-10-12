@@ -794,7 +794,7 @@
         tx.objectStore('kv').put(rec, 'widget');
         tx.oncomplete = function () {
           db.close();
-          if ('serviceWorker' in navigator) navigator.serviceWorker.getRegistration('/').then(function (reg) { if (reg && reg.active) reg.active.postMessage({ type: 'upo-widgets-refresh' }); }).catch(function () { /* no worker: nothing to redraw */ });
+          if ('serviceWorker' in navigator) navigator.serviceWorker.getRegistration('/uposatha-calendar').then(function (reg) { if (reg && reg.active) reg.active.postMessage({ type: 'upo-widgets-refresh' }); }).catch(function () { /* no worker: nothing to redraw */ });
         };
         tx.onerror = function () { db.close(); mirrorSig = ''; };
       };
@@ -1754,5 +1754,10 @@
 
   // Installable as an app of its own (its own manifest, start_url and scope). The site's service worker at /sw.js controls the
   // page; it is registered here too, so visiting the calendar first is enough to install it.
-  if (!embed && 'serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(function () { /* not fatal: the page works without it */ });
+  if (!embed && 'serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js').catch(function () { /* not fatal: the page works without it */ });
+    // The same worker once more, for this page's own scope, with the Windows 11 widgets switched on (?upo=1: service-worker.js imports
+    // the astronomy library and the Uposatha core only there). The longer scope wins, so this is the worker that controls the page.
+    navigator.serviceWorker.register('/sw.js?upo=1', { scope: '/uposatha-calendar' }).catch(function () { /* not fatal: no widgets */ });
+  }
 })();
