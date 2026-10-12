@@ -27,10 +27,11 @@ function sign(over = {}) {
 }
 const jwksServer = http.createServer((req, res) => { res.setHeader('content-type', 'application/json'); res.end(JSON.stringify({ keys: [jwk] })); });
 
-function get(token) {
+function get(token, p = '/api/apps-status') {
     return new Promise((resolve, reject) => {
-        http.get({ host: '127.0.0.1', port: APP_PORT, path: '/api/apps-status', headers: token ? { Authorization: 'Bearer ' + token } : {} }, (res) => {
-            let body = ''; res.on('data', (c) => (body += c)); res.on('end', () => resolve({ status: res.statusCode, body }));
+        http.get({ host: '127.0.0.1', port: APP_PORT, path: p, headers: token ? { Authorization: 'Bearer ' + token } : {} }, (res) => {
+            const chunks = []; res.on('data', (c) => chunks.push(c));
+            res.on('end', () => { const buf = Buffer.concat(chunks); resolve({ status: res.statusCode, body: buf.toString('latin1'), size: buf.length, type: res.headers['content-type'] || '' }); });
         }).on('error', reject);
     });
 }
@@ -64,6 +65,19 @@ const waitFor = async () => {
             if (ok && want === 200) ok = Array.isArray(JSON.parse(r.body).rows) && JSON.parse(r.body).rows.length > 0;
             console.log((ok ? 'ok   ' : 'FAIL ') + name + ': ' + r.status + (ok ? '' : ' ' + r.body.slice(0, 200)));
             if (!ok) failed++;
+        }
+        // "Скачать APK": the newest dictionary APK artifact of dg-apps comes back as an APK (a zip starting with PK), not to strangers.
+        const arts = await (await fetch('https://api.github.com/repos/dhammagift/dg-apps/actions/artifacts?per_page=100', {
+            headers: { Authorization: 'Bearer ' + fs.readFileSync('/root/.secrets/github-token', 'utf8').trim(), 'User-Agent': 'dg-node' } })).json();
+        const art = (arts.artifacts || []).find(a => /^dg-dict-apk-release-\d+$/.test(a.name) && !a.expired);
+        if (art) {
+            const r = await get(sign(), '/api/apps-apk/' + art.id);
+            const ok = r.status === 200 && /android\.package-archive/.test(r.type) && r.size > 500000 && r.body.startsWith('PK');
+            console.log((ok ? 'ok   ' : 'FAIL ') + 'apk ' + art.name + ': ' + r.status + ' ' + r.size + ' bytes');
+            if (!ok) failed++;
+            const s2 = await get(sign({ email: 'stranger@example.com' }), '/api/apps-apk/' + art.id);
+            console.log((s2.status === 403 ? 'ok   ' : 'FAIL ') + 'apk to a stranger: ' + s2.status);
+            if (s2.status !== 403) failed++;
         }
     } finally {
         server.kill(); jwksServer.close();

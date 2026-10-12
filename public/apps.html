@@ -188,7 +188,7 @@ function render(data) {
         step('В тесте', r.testing, r.status === 'ждёт прода' || r.status === 'на проверке' ? 'hot' : ''), el('span', 'arrow', '←'),
         step('Последняя у нас', r.ours, r.status === 'не отправлена' ? 'hot' : ''));
       const links = el('div', 'links');
-      [link(r.apk_url, 'Скачать APK', 'get'), link(r.testflight_url, 'TestFlight', 'get'), link(r.store_url, 'Магазин'),
+      [apkLink(r.apk_url), link(r.testflight_url, 'TestFlight', 'get'), link(r.store_url, 'Магазин'),
        link(r.console_url, 'Кабинет'), link(r.repo_url && r.repo_url + '/issues', 'GitHub issues'), link(r.repo_url, 'GitHub')]
         .forEach((a) => a && links.append(a));
       box.append(h, steps, el('p', 'act', r.action), links); card.append(box);
@@ -222,6 +222,27 @@ function showGate(msg) {
 async function api(path, init) {
   const token = await auth.currentUser.getIdToken();
   return fetch(path, { ...(init || {}), headers: { Authorization: 'Bearer ' + token }, cache: 'no-store' });
+}
+// "Скачать APK": a build artifact (github.com/.../actions/runs/N/artifacts/M) opens only for someone signed in to GitHub, so
+// the page fetches the APK through the site (/api/apps-apk/M, with this login) and saves it; a release APK is a plain link.
+function apkLink(url) {
+  const m = url && /\/actions\/runs\/\d+\/artifacts\/(\d+)/.exec(url);
+  if (!m) return link(url, 'Скачать APK', 'get');
+  const a = link(url, 'Скачать APK', 'get');
+  a.addEventListener('click', async (e) => {
+    e.preventDefault();
+    const label = a.textContent; a.textContent = 'Скачиваю…';
+    try {
+      const r = await api('/api/apps-apk/' + m[1]);
+      if (!r.ok) throw new Error(r.status);
+      const name = (/filename="([^"]+)"/.exec(r.headers.get('content-disposition') || '') || [])[1] || 'app.apk';
+      const href = URL.createObjectURL(await r.blob());
+      const save = document.createElement('a'); save.href = href; save.download = name; document.body.append(save); save.click(); save.remove();
+      setTimeout(() => URL.revokeObjectURL(href), 60000);
+      a.textContent = label;
+    } catch (err) { a.textContent = 'Не скачалось (' + err.message + ')'; setTimeout(() => (a.textContent = label), 4000); }
+  });
+  return a;
 }
 let lastGenerated = '';
 async function load() {

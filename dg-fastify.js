@@ -1490,6 +1490,37 @@ app.get('/api/apps-status', async (req, res) => {
     }
 });
 
+// An APK from a build artifact, for the page's "Скачать APK": GitHub hands artifacts only to someone signed in to GitHub (the
+// owner's phone got a 404), so the server fetches the zip with its token and gives back the APK inside it. Only artifacts of
+// dg-apps (the artifact is looked up in that repository), only to the same Google logins as the page.
+app.get('/api/apps-apk/:art', async (req, res) => {
+    res.header('cache-control', 'no-store');
+    if (!(await appsAuth(req, res))) return;
+    const id = String(req.params.art || '');
+    if (!/^\d{1,15}$/.test(id)) return res.code(400).send({ error: 'artifact id' });
+    const tmp = path.join(require('os').tmpdir(), `apps-apk-${id}-${Date.now()}.zip`);
+    try {
+        const meta = await githubApi(`/repos/${APPS_REPO}/actions/artifacts/${id}`);
+        if (!meta.ok) return res.code(404).send({ error: 'no such artifact' });
+        const art = await meta.json();
+        const zip = await githubApi(`/repos/${APPS_REPO}/actions/artifacts/${id}/zip`, { signal: AbortSignal.timeout(120000) });
+        if (!zip.ok) throw new Error('artifact ' + zip.status);
+        fsSync.writeFileSync(tmp, Buffer.from(await zip.arrayBuffer()));
+        const { stdout: listing } = await execFile('unzip', ['-Z1', tmp]);
+        const apk = listing.split('\n').map(s => s.trim()).find(n => /\.apk$/i.test(n));
+        if (!apk) return res.code(404).send({ error: 'no apk in the artifact' });
+        const { stdout } = await execFile('unzip', ['-p', tmp, apk], { encoding: 'buffer', maxBuffer: 200 * 1024 * 1024 });
+        res.header('content-type', 'application/vnd.android.package-archive');
+        res.header('content-disposition', `attachment; filename="${String(art.name || 'app').replace(/[^\w.-]/g, '_')}.apk"`);
+        return res.send(stdout);
+    } catch (err) {
+        console.error('[apps] apk:', err.message);
+        return res.code(502).send({ error: 'github', message: err.message });
+    } finally {
+        fsSync.unlink(tmp, () => {});
+    }
+});
+
 app.post('/api/apps-status/refresh', async (req, res) => {
     res.header('cache-control', 'no-store');
     if (!(await appsAuth(req, res))) return;
