@@ -39,7 +39,7 @@ var MOBILE_DATA_PREFIX = '/mobile-data/';
 var UPO_WIDGETS = /[?&]upo=1(&|$)/.test(self.location.search || '');
 if (UPO_WIDGETS) {
     try {
-        importScripts('/assets/js/vendor/astronomy.browser.min.js', '/assets/js/uposatha-core.js', '/assets/js/uposatha-widget-data.js');
+        importScripts('/assets/js/vendor/astronomy.browser.min.js', '/assets/js/uposatha-core.js', '/assets/js/uposatha-widget-data.js', '/assets/js/uposatha-widget-svg.js');
     } catch (e) {
         console.warn('[sw] widget scripts not loaded: ' + e.message);
     }
@@ -547,7 +547,12 @@ function widgetModel() {
 function renderWidget(widget, model) {
     var def = widget.definition;
     return widgetFetch(def.msAcTemplate, false).then(function (template) {
-        var data = model ? Promise.resolve(JSON.stringify(model)) : widgetFetch(def.data, false);
+        // The card is one picture of the widget in the app's own look (uposatha-widget-svg.js), for every size and theme the board may
+        // ask for: the template picks one by $host.widgetSize and $host.hostTheme. The texts stay in the data for the picture's altText.
+        var kind = String(def.tag).slice(WIDGET_TAG_PREFIX.length);
+        var data = model && self.UposathaWidgetSvg
+            ? Promise.resolve(JSON.stringify(Object.assign({}, model, { img: self.UposathaWidgetSvg.images(kind, model) })))
+            : widgetFetch(def.data, false);
         return data.then(function (d) { return self.widgets.updateByTag(def.tag, { template: template, data: d }); });
     });
 }

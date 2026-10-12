@@ -13,30 +13,18 @@
       "$when": "${$host.widgetSize == 'small'}",
       "items": [
         {
-          "type": "TextBlock",
-          "text": "${n.title}",
-          "wrap": true,
-          "size": "Small",
-          "weight": "Bolder",
-          "color": "Good"
+          "type": "Image",
+          "url": "${img.small_dark}",
+          "size": "Stretch",
+          "altText": "${n.until}",
+          "$when": "${$host.hostTheme == 'dark'}"
         },
         {
-          "type": "TextBlock",
-          "text": "${n.until}",
-          "wrap": true,
-          "size": "Default",
-          "weight": "Bolder",
-          "spacing": "Small"
-        },
-        {
-          "type": "TextBlock",
-          "text": "${n.kala}",
-          "wrap": true,
-          "size": "Small",
-          "color": "${n.kalaColor}",
-          "weight": "Bolder",
-          "$when": "${n.kala != ''}",
-          "spacing": "Small"
+          "type": "Image",
+          "url": "${img.small_light}",
+          "size": "Stretch",
+          "altText": "${n.until}",
+          "$when": "${$host.hostTheme != 'dark'}"
         }
       ]
     },
@@ -45,85 +33,18 @@
       "$when": "${$host.widgetSize == 'medium'}",
       "items": [
         {
-          "type": "TextBlock",
-          "text": "${n.title}",
-          "wrap": true,
-          "size": "Small",
-          "weight": "Bolder",
-          "color": "Good"
+          "type": "Image",
+          "url": "${img.medium_dark}",
+          "size": "Stretch",
+          "altText": "${n.until}",
+          "$when": "${$host.hostTheme == 'dark'}"
         },
         {
-          "type": "TextBlock",
-          "text": "${n.until}",
-          "wrap": true,
-          "size": "Medium",
-          "weight": "Bolder",
-          "spacing": "Small"
-        },
-        {
-          "type": "TextBlock",
-          "text": "${n.kala}",
-          "wrap": true,
-          "size": "Small",
-          "color": "${n.kalaColor}",
-          "weight": "Bolder",
-          "$when": "${n.kala != ''}"
-        },
-        {
-          "type": "TextBlock",
-          "text": "${n.marks}",
-          "wrap": true,
-          "size": "Small",
-          "isSubtle": true,
-          "spacing": "Small"
-        },
-        {
-          "type": "ColumnSet",
-          "columns": [
-            {
-              "type": "Column",
-              "width": "stretch",
-              "items": [
-                {
-                  "type": "TextBlock",
-                  "text": "${name}",
-                  "wrap": true,
-                  "size": "Small",
-                  "weight": "${w}"
-                }
-              ],
-              "spacing": "None"
-            },
-            {
-              "type": "Column",
-              "width": "auto",
-              "items": [
-                {
-                  "type": "TextBlock",
-                  "text": "${range}",
-                  "wrap": false,
-                  "size": "Small",
-                  "weight": "${w}"
-                }
-              ]
-            },
-            {
-              "type": "Column",
-              "width": "auto",
-              "items": [
-                {
-                  "type": "TextBlock",
-                  "text": "${cur}",
-                  "wrap": false,
-                  "size": "Small",
-                  "color": "Good",
-                  "weight": "Bolder"
-                }
-              ]
-            }
-          ],
-          "$data": "${n.list}",
-          "spacing": "Small"
+          "type": "Image",
+          "url": "${img.medium_light}",
+          "size": "Stretch",
+          "altText": "${n.until}",
+          "$when": "${$host.hostTheme != 'dark'}"
         }
       ]
     },
@@ -132,93 +53,18 @@
       "$when": "${$host.widgetSize == 'large'}",
       "items": [
         {
-          "type": "TextBlock",
-          "text": "${n.title}",
-          "wrap": true,
-          "size": "Small",
-          "weight": "Bolder",
-          "color": "Good"
+          "type": "Image",
+          "url": "${img.large_dark}",
+          "size": "Stretch",
+          "altText": "${n.until}",
+          "$when": "${$host.hostTheme == 'dark'}"
         },
         {
-          "type": "TextBlock",
-          "text": "${n.until}",
-          "wrap": true,
-          "size": "Medium",
-          "weight": "Bolder",
-          "spacing": "Small"
-        },
-        {
-          "type": "TextBlock",
-          "text": "${n.kala}",
-          "wrap": true,
-          "size": "Small",
-          "color": "${n.kalaColor}",
-          "weight": "Bolder",
-          "$when": "${n.kala != ''}"
-        },
-        {
-          "type": "TextBlock",
-          "text": "${n.marks}",
-          "wrap": true,
-          "size": "Small",
-          "isSubtle": true,
-          "spacing": "Small"
-        },
-        {
-          "type": "ColumnSet",
-          "columns": [
-            {
-              "type": "Column",
-              "width": "stretch",
-              "items": [
-                {
-                  "type": "TextBlock",
-                  "text": "${name}",
-                  "wrap": true,
-                  "size": "Small",
-                  "weight": "${w}"
-                }
-              ],
-              "spacing": "None"
-            },
-            {
-              "type": "Column",
-              "width": "auto",
-              "items": [
-                {
-                  "type": "TextBlock",
-                  "text": "${range}",
-                  "wrap": false,
-                  "size": "Small",
-                  "weight": "${w}"
-                }
-              ]
-            },
-            {
-              "type": "Column",
-              "width": "auto",
-              "items": [
-                {
-                  "type": "TextBlock",
-                  "text": "${cur}",
-                  "wrap": false,
-                  "size": "Small",
-                  "color": "Good",
-                  "weight": "Bolder"
-                }
-              ]
-            }
-          ],
-          "$data": "${n.list}",
-          "spacing": "Small"
-        },
-        {
-          "type": "TextBlock",
-          "text": "${updated}",
-          "wrap": true,
-          "size": "Small",
-          "isSubtle": true,
-          "spacing": "Small"
+          "type": "Image",
+          "url": "${img.large_light}",
+          "size": "Stretch",
+          "altText": "${n.until}",
+          "$when": "${$host.hostTheme != 'dark'}"
         }
       ]
     }

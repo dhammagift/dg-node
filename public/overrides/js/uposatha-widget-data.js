@@ -3,7 +3,7 @@
 //   - the service worker (service-worker.js, importScripts) builds the same data for the Windows 11 Widgets Board (PWA widgets);
 //   - test/uposatha-widget.js loads it in Node.
 // build(env) -> the contract of uposatha/widget/WIDGET.md in dg-apps (do NOT change its shape: the native apps depend on it).
-// card(raw, S, now) -> the same data worked into ready-made strings (ru/en) for the Adaptive Card templates in /assets/widgets/.
+// card(raw, S, now) -> the same data worked into ready-made strings (ru/en) and what uposatha-widget-svg.js draws the Windows widgets from.
 // Nothing here touches the DOM, localStorage or the network: the astronomy library, the core and the settings come in as arguments.
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) module.exports = factory();
@@ -117,9 +117,9 @@
     function kalaOf() {
       var i = -1; days.forEach(function (d, k) { if (d.aruna.ms <= now) i = k; });
       var byClock = st.placeSet ? '' : ' (' + s.byClock + ')';
-      if (i >= 0 && now < days[i].noon.ms) return { k: 'kala', text: s['w.kala'] + s['w.untilMid'] + days[i].noon.hm + byClock + ' · ' + fill(s.kalaLeft, { left: left(days[i].noon.ms - now) }) };
+      if (i >= 0 && now < days[i].noon.ms) return { k: 'kala', short: s['w.kala'] + s['w.untilMid'] + days[i].noon.hm, text: s['w.kala'] + s['w.untilMid'] + days[i].noon.hm + byClock + ' · ' + fill(s.kalaLeft, { left: left(days[i].noon.ms - now) }) };
       var next = i < 0 ? days[0] : days[i + 1];
-      return { k: 'vikala', text: s['w.vikala'] + s['w.untilMid'] + (next ? next.aruna.hm : '') };
+      return { k: 'vikala', short: s['w.vikala'] + s['w.untilMid'] + (next ? next.aruna.hm : ''), text: s['w.vikala'] + s['w.untilMid'] + (next ? next.aruna.hm : '') };
     }
     var kala = kalaOf();
 
@@ -141,18 +141,18 @@
     // the next Uposathas after the one in focus (six: the large card has the room; the medium one shows the first three)
     function nextLine(u) {
       var ms = u.start.ms - now, when = u === cur ? s.now : ms < DAY ? x['in'] + ' ' + span(ms) : fill(s.inDays, { n: Math.max(1, ymdDiff(raw.today.ymd, u.day)) });
-      return { moon: moon(u.phase), text: dayShort(u.day) + ' · ' + x.nthDay(u.lunarDay) + ' · ' + when };
+      return { moon: moon(u.phase), ph: u.phase, text: dayShort(u.day) + ' · ' + x.nthDay(u.lunarDay) + ' · ' + when };   // ph: for the drawn mini-moon (uposatha-widget-svg.js)
     }
     var after = ahead.filter(function (u) { return u !== u0; }).slice(0, 6).map(nextLine);
     var focus = u0 ? [nextLine(u0)].concat(after.slice(0, 2)) : [];
 
     // layer 1: Uposatha + kala
-    var u = { title: '', moon: u0 ? moon(u0.phase) : moon(raw.today.moon), to: '', count: '', d1: '', d2: '', kala: '', kalaColor: kala.k === 'kala' ? 'Good' : 'Attention', nextTitle: s.next, mode: st.bySuttas ? s['mode.bySuttas'] : s['mode.notBySuttas'], place: st.placeSet ? '' : s['noPlace.assumed'], next: after };
+    var u = { title: '', kalaShort: '', moon: u0 ? moon(u0.phase) : moon(raw.today.moon), to: '', count: '', d1: '', d2: '', kala: '', kalaColor: kala.k === 'kala' ? 'Good' : 'Attention', nextTitle: s.next, mode: st.bySuttas ? s['mode.bySuttas'] : s['mode.notBySuttas'], place: st.placeSet ? '' : s['noPlace.assumed'], next: after };
     // The same words as the native widgets (strings w.*): the day is the title ("15th day · coming"), then when, the counter, the moon as it is now, and with
     // details what comes after (the end of this Uposatha, or the next one).
     var mf = raw.today.moon + (now - Date.parse(raw.generatedAt)) / (29.530588853 * DAY); mf = ((mf % 1) + 1) % 1;
     var ph = mf < 0.02 || mf > 0.98 ? 0 : mf < 0.23 ? 1 : mf < 0.27 ? 2 : mf < 0.48 ? 3 : mf < 0.52 ? 4 : mf < 0.73 ? 5 : mf < 0.77 ? 6 : 7;
-    u.moon = moon(mf);
+    u.moon = moon(mf); u.ph = mf;
     if (u0) {
       u.title = fill(s['w.dayN'], { n: u0.lunarDay }) + ' · ' + (cur ? s.now : s['w.coming']);
       u.to = cur ? dayLong(u0.end.ymd) + ' · ' + fill(s['w.until'], { time: u0.end.hm }) : dayLong(u0.start.ymd) + ' · ' + fill(s['w.from'], { time: u0.start.hm });
@@ -160,34 +160,37 @@
       u.d1 = s['w.ph' + ph] + ' · ' + Math.round((1 - Math.cos(2 * Math.PI * mf)) / 2 * 100) + '%';
       if (st.detail) u.d2 = cur ? (ahead[0] ? fill(s['w.next'], { n: fill(s['w.ord'], { n: ahead[0].lunarDay }), day: dayLong(ahead[0].start.ymd) }) : '') : fill(s['w.ends'], { day: dayLong(u0.end.ymd), time: u0.end.hm });
     } else u.title = s['layer.uposatha'];
-    if (st.showKala) u.kala = kala.text;
+    if (st.showKala) { u.kala = kala.text; u.kalaShort = kala.short; }   // kalaShort: beside the drawn moon, where the long line does not fit
 
     // layer 2: day and night
     var pi = cy.parts.indexOf(part);
     var n = { title: s['layer.daynight'].toUpperCase(), part: s['part.' + part.key], until: s['part.' + part.key] + ' · ' + x.until + ' ' + hm(part.b),
+      frac: Math.max(0, Math.min(1, (now - cy.parts[0].a) / (cy.parts[5].b - cy.parts[0].a))),   // where now is on the scale from sunrise to the next sunrise
       kala: kala.text, kalaColor: kalaColorOf(kala), marks: s.sunrise + ' ' + hm(cy.rise) + ' · ' + s.noon + ' ' + hm(cy.noon) + ' · ' + s.sunset + ' ' + hm(cy.set),
       bar: cy.parts.map(function (p, k) { return { w: Math.max(1, Math.round((p.b - p.a) / 60000)), s: k === pi ? 'warning' : p.night ? 'accent' : 'good' }; }),
       list: cy.parts.map(function (p, k) { return { name: s['part.' + p.key], range: hm(p.a) + ' – ' + hm(p.b), cur: k === pi ? s.now : '', w: k === pi ? 'Bolder' : 'Default' }; }) };
     function kalaColorOf(k) { return k.k === 'kala' ? 'Good' : 'Attention'; }
 
-    // layer 3: the month of today, weeks from Monday
+    // layer 3: the month of today; the week starts as in the app (settings.weekStart: 0 Sunday, else Monday)
     var ym = raw.today.ymd.slice(0, 7), first = ym + '-01', dim = new Date(Date.UTC(+ym.slice(0, 4), +ym.slice(5, 7), 0)).getUTCDate();
-    var lead = (new Date(Date.parse(first)).getUTCDay() + 6) % 7; // Monday = 0
-    var mark = {}; // ymd -> 's' (the evening an Uposatha begins) | 'd' (its day)
+    var sunFirst = st.weekStart === 0, lead = (new Date(Date.parse(first)).getUTCDay() + (sunFirst ? 0 : 6)) % 7;
+    var mark = {}, markPh = {}; // ymd -> 's' (the evening an Uposatha begins) | 'd' (its day); and that Uposatha's moon
     upos.forEach(function (up) {
-      var y = up.start.ymd; mark[y] = 's';
-      for (var k = 1; k < 8 && y < up.end.ymd; k++) { y = new Date(Date.parse(y) + DAY).toISOString().slice(0, 10); mark[y] = 'd'; }
+      var y = up.start.ymd; mark[y] = 's'; markPh[y] = up.phase;
+      for (var k = 1; k < 8 && y < up.end.ymd; k++) { y = new Date(Date.parse(y) + DAY).toISOString().slice(0, 10); mark[y] = 'd'; markPh[y] = up.phase; }
     });
+    // a cell of the drawn calendar (uposatha-widget-svg.js): the day (0: no day), today, the mark, a day gone by, the moon of its Uposatha
+    var blank = { d: 0, today: false, mk: '', past: false, ph: 0 };
     var cells = [], weeks = [];
-    for (var k = 0; k < lead; k++) cells.push({ t: '\u00a0', b: 'Default', c: 'Default', sub: false });
+    for (var k = 0; k < lead; k++) cells.push(blank);
     for (var d = 1; d <= dim; d++) {
       var ymd = ym + '-' + (d < 10 ? '0' : '') + d, isToday = ymd === raw.today.ymd, mk = mark[ymd];
-      cells.push({ t: String(d), b: isToday || mk ? 'Bolder' : 'Default', c: mk === 's' ? 'Accent' : mk === 'd' ? 'Good' : isToday ? 'Attention' : 'Default', sub: ymd < raw.today.ymd && !mk });
+      cells.push({ d: d, today: isToday, mk: mk || '', past: ymd < raw.today.ymd, ph: markPh[ymd] || 0 });
     }
-    while (cells.length % 7) cells.push({ t: '\u00a0', b: 'Default', c: 'Default', sub: false });
+    while (cells.length % 7) cells.push(blank);
     for (var w = 0; w < cells.length; w += 7) weeks.push({ cells: cells.slice(w, w + 7) });
     var mo = cap(new Intl.DateTimeFormat(x.locale, { timeZone: 'UTC', month: 'long', year: 'numeric' }).format(Date.parse(first))).replace(/\s*г\.$/, '');
-    var m = { title: fill(s['layer.month'], { month: mo }), wd: s.weekdays.map(function (d) { return d.slice(0, 2); }), weeks: weeks, nextTitle: s.next, lg1: x.lg1, lg2: x.lg2, next: focus };
+    var m = { title: fill(s['layer.month'], { month: mo }), wd: (sunFirst ? [s.weekdays[6]].concat(s.weekdays.slice(0, 6)) : s.weekdays).map(function (d) { return d.slice(0, 2); }), weeks: weeks, nextTitle: s.next, lg1: x.lg1, lg2: x.lg2, next: focus };
 
     return { lang: lang, updated: x.upd + ' ' + hm(now), u: u, n: n, m: m };
   }

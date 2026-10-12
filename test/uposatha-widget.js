@@ -64,7 +64,8 @@ const models = [];
     assert.strictEqual(m.n.bar.length, 6, 'six parts in the scale');
     assert.strictEqual(m.n.list.filter((p) => p.cur).length, 1, 'exactly one current part');
     assert.ok(m.m.weeks.length >= 4 && m.m.weeks.every((w) => w.cells.length === 7), 'the month is whole weeks of 7');
-    assert.ok(m.m.weeks.some((w) => w.cells.some((c) => c.c === 'Accent')), 'the month marks an Uposatha evening');
+    assert.ok(m.m.weeks.some((w) => w.cells.some((c) => c.mk === 's')) && m.m.weeks.some((w) => w.cells.some((c) => c.mk === 'd')), 'the month marks an Uposatha evening and an Uposatha day');
+    assert.strictEqual(m.m.weeks.reduce((a, w) => a + w.cells.filter((c) => c.today).length, 0), 1, 'exactly one today in the month');
     models.push(m);
 })));
 console.log('ok   card(): ' + models.length + ' models (ru/en, short/long, 5 moments)');
@@ -79,7 +80,10 @@ console.log('ok   card(): ' + models.length + ' models (ru/en, short/long, 5 mom
 // ---------- 3. the templates bind to what exists ----------
 const WIDGETS = path.join(ROOT, 'public/overrides/widgets');
 const placeholder = json(path.join(WIDGETS, 'uposatha-data.json'));
-assert.deepStrictEqual(shape(placeholder), shape(models[0]), 'the placeholder data has the shape of card()');
+// the cards are pictures the worker draws from the model (uposatha-widget-svg.js): every model gets them here as the worker gives them
+const WS = require(path.join(ROOT, 'public/overrides/js/uposatha-widget-svg.js'));
+models.forEach((m) => { m.img = WS.images('main', m); });
+assert.deepStrictEqual(shape(placeholder), shape(models[0]), 'the placeholder data has the shape of card() with its pictures');
 const sw = read(path.join(ROOT, 'public/service-worker.js'));
 // The Windows 11 widget is not wired on the site for now (postponed, dg-apps#65: the worker and manifest parts were taken out
 // before a prod rollout; they are in commit 3ffb9bf). The builder and card() above are still checked; the rest needs the worker.
@@ -181,7 +185,7 @@ function worker(settings, online, plain) {
     const sandbox = {
         console: { log() {}, warn() {} }, Intl, Date, JSON, Promise, URL, Response: class { constructor(b, o) { this.body = b; this.o = o; } },
         setTimeout, clearTimeout, Math, Object, Array, String, Number, Error, RegExp, Set, Map, parseFloat, parseInt,
-        navigator: { language: 'ru-RU' },
+        navigator: { language: 'ru-RU' }, btoa: (x) => Buffer.from(x, 'binary').toString('base64'),
         location: { origin: 'https://test.dhamma.gift', search: plain ? '' : '?upo=1' },   // the Uposatha page's own registration; plain: the site's
         indexedDB: { open() { // enough of IndexedDB for get('widget')
             const rq = {}; rq.result = { createObjectStore() {}, close() {}, transaction: () => ({ objectStore: () => ({ get() { const g = {}; setTimeout(() => { g.result = settings; g.onsuccess(); }); return g; } }) }) };
@@ -224,6 +228,11 @@ function worker(settings, online, plain) {
     assert.strictEqual(tag, 'uposatha-main');
     assert.strictEqual(JSON.parse(payload.template).type, 'AdaptiveCard', 'the template is a string of an Adaptive Card');
     const data = JSON.parse(payload.data);
+    // the card is a picture: all six (three sizes, two themes) are in the data, each an SVG of the app's own look
+    assert.deepStrictEqual(Object.keys(data.img).sort(), ['large_dark', 'large_light', 'medium_dark', 'medium_light', 'small_dark', 'small_light']);
+    const pic = Buffer.from(data.img.medium_light.split(',')[1], 'base64').toString('utf8');
+    assert.ok(/^<svg /.test(pic) && pic.includes('#0F7C63') && pic.includes('<text'), 'a picture is an SVG in the widget palette, with its texts');
+    assert.ok(payload.data.length < 120000, 'the data with its pictures stays small: ' + payload.data.length);
     assert.strictEqual(data.lang, 'en', 'the language is the one the page saved');
     // not the title: on an Uposatha day it is that day's name, and the static placeholder's own title is UPOSATHA
     assert.strictEqual(data.u.mode, 'by the suttas', 'the data was worked out in the worker (the placeholder has no counting)');
