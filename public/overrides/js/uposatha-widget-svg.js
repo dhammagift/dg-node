@@ -37,8 +37,8 @@
     if (f >= 0.02 && f <= 0.98) {
       if (Math.abs(f - 0.5) < 0.02) out += '<circle cx="' + n2(cx) + '" cy="' + n2(cy) + '" r="' + r + '" fill="' + p.lit + '"/>';
       else {
-        // drawn, not true: the thin crescents are made thicker, so that the day after a new moon can be told from the new one (as dg-moon.js)
-        var k = Math.cos(2 * Math.PI * f), q = 1 - Math.min(1, Math.abs(k)), thick = Math.pow(q, 0.6) + 0.07 * Math.exp(-q / 0.06) * (1 - Math.exp(-q / 0.0015));
+        // the true crescent, a little thicker in the first 3 % of light so that the day after a new moon can be told from the new one (as dg-moon.js)
+        var k = Math.cos(2 * Math.PI * f), q = 1 - Math.min(1, Math.abs(k)), thick = q + 0.05 * (1 - Math.exp(-q / 0.01)) * Math.exp(-q / 0.15);
         var rx = n2(Math.max(0, 1 - thick) * r), limb = f < 0.5 ? 1 : -1, term = k < 0 ? -limb : limb;
         if (south) { limb = -limb; term = -term; }
         out += '<path d="M' + n2(cx) + ' ' + n2(cy - r) + 'A' + r + ' ' + r + ' 0 0 ' + (limb > 0 ? 1 : 0) + ' ' + n2(cx) + ' ' + n2(cy + r) +
