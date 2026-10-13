@@ -66,6 +66,8 @@ body.app.wide:not(.wide-app)[data-app-tab=keys] #keys>.keys-art{display:block;gr
 
 /* the site's footer belongs to the desktop web page, not to the app */
 body.app.wide:not(.wide-app) #dg-footer{display:flex!important;max-width:1132px;margin:40px auto 0;padding:20px 0 32px}
+/* a short tab leaves the footer at the window's bottom, not under the content: sticky with top:100vh rests at the end of the body (min-height = the window) */
+body.app.wide:not(.wide-app) #dg-footer{position:sticky;top:100vh}
 body.app.wide:not(.wide-app) .up-stores{display:flex;gap:10px;align-items:center}
 body.app.wide:not(.wide-app) .up-stores img{display:block;width:auto;height:40px}
 }
