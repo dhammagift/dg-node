@@ -299,7 +299,8 @@ function paintTabs() {
     b.addEventListener('click', () => { location.hash = sc.id; });
     tabs.append(b);
   }
-  document.getElementById('view-apps').hidden = screen !== 'apps';
+  // The store-status lines and their refresh button belong to the apps screen only.
+  ['view-apps', 'take', 'meta', 'errs', 'refresh'].forEach((id) => { document.getElementById(id).hidden = screen !== 'apps'; });
   document.getElementById('view-hub').hidden = screen === 'apps';
   if (screen !== 'apps') renderHub(screens.find((x) => x.id === screen));
 }
