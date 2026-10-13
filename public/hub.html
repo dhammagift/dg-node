@@ -93,6 +93,15 @@
   .ico.letter { border-radius: 6px; background: var(--line); color: var(--fg); font: 600 12px/1 var(--sans); }
   .ico.big.letter { font-size: 16px; border-radius: 9px; }
   .item-name { display: flex; align-items: center; gap: 8px; }
+  .common { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); gap: 14px; }
+  .common h3 { font-size: 13px; color: var(--muted); font-weight: 600; margin: 0 0 6px; }
+  .common ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+  .common a { color: var(--fg); text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+  .common a:hover { text-decoration: underline; }
+  .common .ico { width: 16px; height: 16px; font-size: 14px; }
+  .role { font-size: 12px; padding: 1px 9px; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap; }
+  .role.main { color: var(--ok); } .role.standby { color: var(--accent); } .role.stale { color: var(--warn); } .role.off { color: var(--muted); }
+  .node { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 14px; }
   .dot { font-size: 12px; white-space: nowrap; } .dot::before { content: "●"; margin-right: 4px; }
   .dot.up { color: var(--ok); } .dot.down { color: var(--bad); }
   .gate { min-height: 70vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; text-align: center; }
@@ -137,7 +146,14 @@
         </div></div>
       <div class="grid" id="grid"></div></section>
     </div>
-    <div id="view-hub" hidden><p class="meta" id="hub-meta"></p><div class="grid" id="hub-grid"></div></div>
+    <div id="view-hub" hidden>
+      <div class="sec-head"><p class="meta" id="hub-meta"></p>
+        <div class="seg" role="group" aria-label="Группировка" id="infra-seg" hidden>
+          <button type="button" data-infra-btn="servers">По серверам</button>
+          <button type="button" data-infra-btn="endpoints">По сервисам</button>
+        </div></div>
+      <div class="grid" id="hub-grid"></div></div>
+    <section id="common-sec" hidden><h2>Все ссылки</h2><div class="common" id="common"></div></section>
   </div>
 </div>
 
@@ -335,10 +351,78 @@ function ico(o, big) {
   if (icon) return el('span', cls, icon);
   return el('span', cls + ' letter', ((o.name || o.title || '?').trim()[0] || '?').toUpperCase());
 }
+function statusDot(st) {
+  return el('span', 'dot ' + (st.ok ? 'up' : 'down'),
+    st.ok ? `работает · ${st.ms} мс` : `не отвечает${st.code ? ' (' + st.code + ')' : st.error ? ' (' + st.error + ')' : ''}`);
+}
+// Servers screen ("infra" in hub.json): servers and endpoints, each endpoint saying on which servers it runs and in what
+// role (main / standby / stale copy / off), shown either per server or per endpoint (owner, 2026-10-13).
+const ROLE = { main: 'основной', standby: 'резерв', auto: 'резерв, переключается сам', stale: 'копия, отстаёт', off: 'не работает' };
+let infraView = 'servers';
+try { infraView = localStorage.getItem('hub-infra') || 'servers'; } catch (e) {}
+document.querySelectorAll('[data-infra-btn]').forEach((b) => b.addEventListener('click', () => {
+  infraView = b.dataset.infraBtn;
+  try { localStorage.setItem('hub-infra', infraView); } catch (e) {}
+  paintTabs();
+}));
+function roleChip(role) { return el('span', 'role ' + (role === 'auto' ? 'standby' : role), ROLE[role] || role); }
+function itemBox(it, extra) {
+  const box = el('div', 'item'); const h = el('div', 'item-head');
+  const nm = el('div', 'item-name'); const tx = el('div', null, (it.name || '') + ' ');
+  if (it.what) tx.append(el('span', null, '· ' + it.what));
+  nm.append(ico(it), tx); h.append(nm);
+  if (it.status) h.append(statusDot(it.status));
+  box.append(h);
+  if (extra) box.append(extra);
+  const facts = [['Где', it.where], ['Аккаунт', it.account], ['Вход / 2FA', it.login], ['Продление', it.renew], ['Заметка', it.note]].filter((f) => f[1]);
+  if (facts.length) { const dl = el('dl', 'facts'); facts.forEach(([k, v]) => dl.append(el('dt', null, k), el('dd', null, v))); box.append(dl); }
+  const links = el('div', 'links');
+  [link(it.url, 'Открыть'), ...(it.links || []).map((x) => link(x.url, x.title))].forEach((a) => a && links.append(a));
+  if (links.children.length) box.append(links);
+  return box;
+}
+function renderInfra(sc, grid) {
+  const { servers = [], endpoints = [] } = sc.infra;
+  const byId = Object.fromEntries(servers.map((x) => [x.id, x]));
+  document.querySelectorAll('[data-infra-btn]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.infraBtn === infraView)));
+  const card = (o) => {
+    const c = el('article', 'card'); const head = el('div', 'prod'); const names = el('div');
+    names.append(el('div', 'n', o.title || o.name)); const sub = o.note || o.what; if (sub) names.append(el('div', 'k', sub));
+    head.append(ico(o, true), names); c.append(head); return c;
+  };
+  if (infraView === 'endpoints') {
+    for (const ep of endpoints) {
+      const c = card(ep);
+      for (const n of ep.nodes || []) {
+        const srv = byId[n.server] || { title: n.server };
+        const row = el('div', 'node'); row.append(roleChip(n.role));
+        if (n.status) row.append(statusDot(n.status));
+        c.append(itemBox({ name: srv.title, what: srv.note, icon: srv.icon, color: srv.color, note: n.note }, row));
+      }
+      const links = el('div', 'links'); const a = link(ep.url, 'Открыть'); if (a) { links.append(a); c.append(links); }
+      grid.append(c);
+    }
+    return;
+  }
+  for (const srv of servers) {
+    const c = card(srv);
+    for (const ep of endpoints) {
+      for (const n of (ep.nodes || []).filter((x) => x.server === srv.id)) {
+        const row = el('div', 'node'); row.append(roleChip(n.role));
+        if (n.status) row.append(statusDot(n.status));
+        c.append(itemBox({ ...ep, status: null, note: n.note || ep.note }, row));
+      }
+    }
+    (srv.items || []).forEach((it) => c.append(itemBox(it)));
+    grid.append(c);
+  }
+}
 function renderHub(sc) {
   const meta = document.getElementById('hub-meta');
   meta.textContent = (sc.note ? sc.note + ' ' : '') + (hub.checked_at ? `Проверено: ${new Date(hub.checked_at).toLocaleString('ru-RU')}.` : '');
   const grid = document.getElementById('hub-grid'); grid.replaceChildren();
+  document.getElementById('infra-seg').hidden = !sc.infra;
+  if (sc.infra) return renderInfra(sc, grid);
   for (const g of sc.groups || []) {
     const card = el('article', 'card');
     const head = el('div', 'prod'); const names = el('div');
@@ -369,12 +453,30 @@ function renderHub(sc) {
     grid.append(card);
   }
 }
+// Footer: every link in hub.json on every screen, one column per screen (owner: the links at the bottom were handy).
+function paintFooter() {
+  const sec = document.getElementById('common-sec'), common = document.getElementById('common');
+  common.replaceChildren();
+  for (const sc of (hub && hub.screens) || []) {
+    const seen = new Set(), rows = [];
+    const add = (o, url, title) => { if (url && /^https:\/\//.test(url) && !seen.has(url)) { seen.add(url); rows.push([o, url, title]); } };
+    const each = (o) => { add(o, o.url, o.name || o.title); (o.links || []).forEach((x) => add(o, x.url, (o.name ? o.name + ' · ' : '') + x.title)); };
+    (sc.groups || []).forEach((g) => (g.items || []).forEach(each));
+    if (sc.infra) { (sc.infra.endpoints || []).forEach(each); (sc.infra.servers || []).forEach((x) => (x.items || []).forEach(each)); }
+    if (!rows.length) continue;
+    const col = el('div'); col.append(el('h3', null, (sc.icon ? sc.icon + ' ' : '') + sc.title)); const ul = el('ul');
+    rows.forEach(([o, url, title]) => { const a = link(url, ''); a.append(ico(o), document.createTextNode(title)); const li = el('li'); li.append(a); ul.append(li); });
+    col.append(ul); common.append(col);
+  }
+  sec.hidden = !common.children.length;
+}
 window.addEventListener('hashchange', () => { screen = location.hash.slice(1) || 'apps'; paintTabs(); });
 screen = location.hash.slice(1) || 'apps';
 async function loadHub() {
   const r = await api('/api/hub').catch(() => null);
   hub = r && r.ok ? await r.json() : null;
   paintTabs();
+  paintFooter();
 }
 
 let lastGenerated = '';

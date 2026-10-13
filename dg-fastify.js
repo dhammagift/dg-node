@@ -1513,8 +1513,15 @@ app.get('/api/hub', async (req, res) => {
     if (!(await appsAuth(req, res))) return;
     const hub = readJsonFile(HUB_FILE, null);
     if (!hub) return res.code(404).send({ error: 'no-hub' });
-    const items = (hub.screens || []).flatMap(sc => (sc.groups || []).flatMap(g => g.items || []));
-    await Promise.all(items.filter(it => /^https?:\/\//.test(it.check || '')).map(async it => { it.status = await hubCheck(it.check); }));
+    // Every object anywhere in the file with a "check" URL (an item, a server's endpoint) gets its "status".
+    const checked = [];
+    (function walk(o) {
+        if (Array.isArray(o)) return o.forEach(walk);
+        if (!o || typeof o !== 'object') return;
+        if (/^https?:\/\//.test(o.check || '')) checked.push(o);
+        Object.values(o).forEach(walk);
+    })(hub);
+    await Promise.all(checked.map(async o => { o.status = await hubCheck(o.check); }));
     return res.send({ ...hub, checked_at: new Date().toISOString() });
 });
 
