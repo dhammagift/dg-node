@@ -1508,6 +1508,36 @@ async function hubCheck(url) {
         return { code: 0, ok: false, ms: Date.now() - t0, error: String(e.cause?.code || e.name || e.message) };
     }
 }
+// Monitoring on odg, shown in the hub: Beszel (each server's CPU, memory, disk, load) and Gatus (service checks and the
+// servers' pm2/systemd heartbeats). Their logins are in configs/local/monitoring.json, read here only; cached 30 s.
+const MONITORING_FILE = path.join(__dirname, 'configs', 'local', 'monitoring.json');
+let monitoringCache = { at: 0, data: null };
+async function monitoringSummary() {
+    if (Date.now() - monitoringCache.at < 30000) return monitoringCache.data;
+    const m = readJsonFile(MONITORING_FILE, null);
+    if (!m) return null;
+    const out = { servers: {}, checks: [], links: { beszel: m.beszel?.url, gatus: m.gatus?.url } };
+    const json = async (url, init) => { const r = await fetch(url, { ...init, signal: AbortSignal.timeout(10000) }); if (!r.ok) throw new Error(url + ' ' + r.status); return r.json(); };
+    try {
+        const { token } = await json(m.beszel.url + '/api/collections/users/auth-with-password', { method: 'POST',
+            headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ identity: m.beszel.email, password: m.beszel.password }) });
+        const list = await json(m.beszel.url + '/api/collections/systems/records?perPage=100', { headers: { Authorization: token } });
+        for (const x of list.items || []) {
+            const i = x.info || {};
+            out.servers[x.name] = { status: x.status, cpu: i.cpu, mem: i.mp, disk: i.dp, load: i.la || null, uptime_h: i.u ? Math.round(i.u / 3600) : null };
+        }
+    } catch (e) { out.beszel_error = e.message; }
+    try {
+        const auth = 'Basic ' + Buffer.from(m.gatus.user + ':' + m.gatus.password).toString('base64');
+        for (const e of await json(m.gatus.url + '/api/v1/endpoints/statuses?pageSize=1', { headers: { Authorization: auth } })) {
+            const r = (e.results || []).slice(-1)[0] || {};
+            out.checks.push({ group: e.group, name: e.name, ok: !!r.success, ms: r.duration ? Math.round(r.duration / 1e6) : null, error: (r.errors || [])[0] || '' });
+        }
+    } catch (e) { out.gatus_error = e.message; }
+    monitoringCache = { at: Date.now(), data: out };
+    return out;
+}
+
 app.get('/api/hub', async (req, res) => {
     res.header('cache-control', 'no-store');
     if (!(await appsAuth(req, res))) return;
@@ -1521,8 +1551,8 @@ app.get('/api/hub', async (req, res) => {
         if (/^https?:\/\//.test(o.check || '')) checked.push(o);
         Object.values(o).forEach(walk);
     })(hub);
-    await Promise.all(checked.map(async o => { o.status = await hubCheck(o.check); }));
-    return res.send({ ...hub, checked_at: new Date().toISOString() });
+    const [monitoring] = await Promise.all([monitoringSummary().catch(() => null), ...checked.map(async o => { o.status = await hubCheck(o.check); })]);
+    return res.send({ ...hub, monitoring, checked_at: new Date().toISOString() });
 });
 
 app.get('/api/apps-status', async (req, res) => {

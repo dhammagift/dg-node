@@ -99,6 +99,15 @@
   .common a { color: var(--fg); text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
   .common a:hover { text-decoration: underline; }
   .common .ico { width: 16px; height: 16px; font-size: 14px; }
+  .metrics { display: flex; flex-wrap: wrap; gap: 6px; }
+  .metric { border: 1px solid var(--line); border-radius: 10px; padding: 4px 10px; display: flex; flex-direction: column; min-width: 4.5rem; }
+  .metric .l { font-size: 11px; color: var(--muted); } .metric .v { font-variant-numeric: tabular-nums; }
+  .metric.hot { border-color: var(--warn); } .metric.bad { border-color: var(--bad); }
+  .procs { display: flex; flex-wrap: wrap; gap: 6px; font-size: 13px; }
+  .procs span { border: 1px solid var(--line); border-radius: 999px; padding: 1px 9px; }
+  .procs span::before { content: "●"; margin-right: 4px; color: var(--ok); } .procs span.down::before { color: var(--bad); }
+  .grid:has(.map) { grid-template-columns: 1fr; }
+  .card.map { overflow-x: auto; } .card.map svg { max-width: 100%; height: auto; min-width: 760px; }
   .role { font-size: 12px; padding: 1px 9px; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap; }
   .role.main { color: var(--ok); } .role.standby { color: var(--accent); } .role.stale { color: var(--warn); } .role.off { color: var(--muted); }
   .node { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 14px; }
@@ -167,6 +176,7 @@ function setTheme(t) {
   document.documentElement.dataset.theme = t;
   document.querySelectorAll('[data-theme-btn]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.themeBtn === t)));
   try { localStorage.setItem('apps-theme', t); } catch (e) {}
+  if (typeof screen !== 'undefined' && screen === 'map' && hub) paintTabs();  // the map is drawn for one theme
 }
 let savedTheme = 'light';
 try { savedTheme = localStorage.getItem('apps-theme') || 'light'; } catch (e) {}
@@ -194,6 +204,8 @@ const ago = (iso) => {
 const VENDOR = { 'Google Play': 'Google', 'Chrome Web Store': 'Google', 'App Store': 'Apple', 'Microsoft Store': 'Microsoft',
   'Edge Add-ons': 'Microsoft', 'Firefox Add-ons': 'Mozilla' };
 const VENDOR_ORDER = ['Google', 'Apple', 'Microsoft', 'Mozilla', 'F-Droid', 'GitHub'];
+const VENDOR_ICON = { Google: { icon: 'si:google', color: '#4285F4' }, Apple: { icon: 'si:apple' }, Microsoft: { icon: 'ms' },
+  Mozilla: { icon: 'si:mozilla' }, 'F-Droid': { icon: 'si:fdroid', color: '#1976D2' }, GitHub: { icon: 'si:github' } };
 let view = 'apps', lastData = null;
 try { view = localStorage.getItem('apps-view') || 'apps'; } catch (e) {}
 document.querySelectorAll('[data-view-btn]').forEach((b) => b.addEventListener('click', () => {
@@ -239,7 +251,7 @@ function render(data) {
     const head = el('div', 'prod'); const names = el('div');
     if (byStore) {
       names.append(el('div', 'n', g), el('div', 'k', [...new Set(list.map((r) => r.store))].join(' · ')));
-      head.append(names);
+      head.append(ico({ name: g, ...(VENDOR_ICON[g] || {}) }, true), names);
     } else {
       names.append(el('div', 'n', g), el('div', 'k', ICON_BY_KEY(list[0].key) === 'ext' ? 'Расширение для браузера' : 'Приложение'));
       head.append(img(list[0].key, 56), names);
@@ -404,8 +416,28 @@ function renderInfra(sc, grid) {
     }
     return;
   }
+  const mon = hub.monitoring || {};
   for (const srv of servers) {
     const c = card(srv);
+    // Live numbers from Beszel and this server's process heartbeats from Gatus (both on odg), when they are there.
+    const m = (mon.servers || {})[srv.id];
+    if (m) {
+      const box = el('div', 'metrics');
+      const metric = (l, v, cls) => { const x = el('div', 'metric' + (cls ? ' ' + cls : '')); x.append(el('span', 'l', l), el('span', 'v', v)); box.append(x); };
+      metric('Состояние', m.status === 'up' ? 'в сети' : m.status, m.status === 'up' ? '' : 'bad');
+      if (m.cpu != null) metric('CPU', Math.round(m.cpu) + ' %', m.cpu > 85 ? 'hot' : '');
+      if (m.mem != null) metric('Память', Math.round(m.mem) + ' %', m.mem > 85 ? 'hot' : '');
+      if (m.disk != null) metric('Диск', Math.round(m.disk) + ' %', m.disk > 90 ? 'bad' : m.disk > 80 ? 'hot' : '');
+      if (m.load) metric('Нагрузка', m.load.map((x) => x.toFixed(2)).join(' '));
+      if (m.uptime_h != null) metric('Работает', m.uptime_h >= 48 ? Math.round(m.uptime_h / 24) + ' дн.' : m.uptime_h + ' ч');
+      c.append(box);
+    }
+    const procs = (mon.checks || []).filter((x) => x.group === srv.id + ' processes');
+    if (procs.length) {
+      const pb = el('div', 'procs');
+      procs.forEach((x) => { const sp = el('span', x.ok ? '' : 'down', x.name); sp.title = x.ok ? 'работает' : (x.error || 'не отвечает'); pb.append(sp); });
+      c.append(pb);
+    }
     for (const ep of endpoints) {
       for (const n of (ep.nodes || []).filter((x) => x.server === srv.id)) {
         const row = el('div', 'node'); row.append(roleChip(n.role));
@@ -417,12 +449,32 @@ function renderInfra(sc, grid) {
     grid.append(c);
   }
 }
+// The map screen: a Mermaid diagram kept in hub.json, drawn by the Mermaid library (loaded only when this screen opens).
+let mermaidReady = null;
+async function renderMap(sc, grid) {
+  const card = el('article', 'card map'); grid.append(card);
+  card.append(el('p', 'meta', 'Рисую карту…'));
+  try {
+    mermaidReady = mermaidReady || loadScript('https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.min.js');
+    await mermaidReady;
+    const dark = getComputedStyle(document.documentElement).colorScheme === 'dark';
+    mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'neutral', securityLevel: 'strict', flowchart: { htmlLabels: true } });
+    const { svg } = await mermaid.render('hubmap' + Date.now(), sc.mermaid);
+    card.innerHTML = svg;
+  } catch (e) { card.replaceChildren(el('p', 'errs', 'Карта не нарисовалась: ' + e.message)); }
+}
 function renderHub(sc) {
   const meta = document.getElementById('hub-meta');
   meta.textContent = (sc.note ? sc.note + ' ' : '') + (hub.checked_at ? `Проверено: ${new Date(hub.checked_at).toLocaleString('ru-RU')}.` : '');
+  const ml = (hub.monitoring || {}).links || {};
+  if (sc.infra && (ml.beszel || ml.gatus)) {
+    meta.append(' Графики: ');
+    [link(ml.beszel, 'Beszel (ресурсы)'), link(ml.gatus, 'Gatus (проверки)')].filter(Boolean).forEach((a, i) => { if (i) meta.append(' · '); meta.append(a); });
+  }
   const grid = document.getElementById('hub-grid'); grid.replaceChildren();
   document.getElementById('infra-seg').hidden = !sc.infra;
   if (sc.infra) return renderInfra(sc, grid);
+  if (sc.mermaid) return renderMap(sc, grid);
   for (const g of sc.groups || []) {
     const card = el('article', 'card');
     const head = el('div', 'prod'); const names = el('div');
