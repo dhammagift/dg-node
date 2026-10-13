@@ -57,6 +57,9 @@
   .plat-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
   .plat-name { font-weight: 600; }
   .plat-name span { font-weight: 400; color: var(--muted); }
+  .plat-name img { width: 20px; height: 20px; border-radius: 5px; vertical-align: -4px; margin-right: 6px; }
+  .sec-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+  .sec-head h2 { margin: 0; }
   .pill { font-size: 12px; padding: 2px 10px; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap; }
   .pill.ok { color: var(--ok); } .pill.warn { color: var(--warn); } .pill.wait { color: var(--muted); }
   .steps { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; gap: 6px; }
@@ -110,7 +113,13 @@
     </header>
     <ul class="errs" id="errs"></ul>
     <section><h2>Что можно сделать</h2><ul class="todo" id="todo"></ul></section>
-    <section><h2>Все приложения</h2><div class="grid" id="grid"></div></section>
+    <section>
+      <div class="sec-head"><h2 id="grid-title">Все приложения</h2>
+        <div class="seg" role="group" aria-label="Группировка">
+          <button type="button" data-view-btn="apps">По приложениям</button>
+          <button type="button" data-view-btn="stores">По магазинам</button>
+        </div></div>
+      <div class="grid" id="grid"></div></section>
     <section><h2>Общие ссылки</h2><div class="common" id="common"></div></section>
   </div>
 </div>
@@ -149,7 +158,20 @@ const ago = (iso) => {
   return m < 1 ? 'только что' : m < 60 ? m + ' мин назад' : Math.round(m / 60) + ' ч назад';
 };
 
+// Store view: which company's account each store belongs to.
+const VENDOR = { 'Google Play': 'Google', 'Chrome Web Store': 'Google', 'App Store': 'Apple', 'Microsoft Store': 'Microsoft',
+  'Edge Add-ons': 'Microsoft', 'Firefox Add-ons': 'Mozilla' };
+const VENDOR_ORDER = ['Google', 'Apple', 'Microsoft', 'Mozilla', 'F-Droid', 'GitHub'];
+let view = 'apps', lastData = null;
+try { view = localStorage.getItem('apps-view') || 'apps'; } catch (e) {}
+document.querySelectorAll('[data-view-btn]').forEach((b) => b.addEventListener('click', () => {
+  view = b.dataset.viewBtn;
+  try { localStorage.setItem('apps-view', view); } catch (e) {}
+  if (lastData) render(lastData);
+}));
+
 function render(data) {
+  lastData = data;
   const rows = data.rows || [];
   const n = (s) => rows.filter((r) => r.status === s).length;
   document.getElementById('take').textContent =
@@ -171,15 +193,31 @@ function render(data) {
   if (!todo.children.length) todo.append(el('li', null, 'Всё свежее, делать ничего не нужно.'));
 
   const grid = document.getElementById('grid'); grid.replaceChildren();
-  for (const p of [...new Set(rows.map((r) => r.product))]) {
-    const list = rows.filter((r) => r.product === p);
+  const byStore = view === 'stores';
+  document.getElementById('grid-title').textContent = byStore ? 'Все магазины' : 'Все приложения';
+  document.querySelectorAll('[data-view-btn]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.viewBtn === view)));
+  // By app: one card per product. By store: one card per company account, so Play + Chrome Web Store, App Store,
+  // Microsoft Store + Edge Add-ons each sit together, apps and extensions mixed.
+  const groupOf = byStore ? (r) => VENDOR[r.store] || r.store : (r) => r.product;
+  const groups = [...new Set(rows.map(groupOf))];
+  if (byStore) groups.sort((a, b) => VENDOR_ORDER.indexOf(a) - VENDOR_ORDER.indexOf(b));
+  for (const g of groups) {
+    const list = rows.filter((r) => groupOf(r) === g);
     const card = el('article', 'card');
     const head = el('div', 'prod'); const names = el('div');
-    names.append(el('div', 'n', p), el('div', 'k', ICON_BY_KEY(list[0].key) === 'ext' ? 'Расширение для браузера' : 'Приложение'));
-    head.append(img(list[0].key, 56), names); card.append(head);
+    if (byStore) {
+      names.append(el('div', 'n', g), el('div', 'k', [...new Set(list.map((r) => r.store))].join(' · ')));
+      head.append(names);
+    } else {
+      names.append(el('div', 'n', g), el('div', 'k', ICON_BY_KEY(list[0].key) === 'ext' ? 'Расширение для браузера' : 'Приложение'));
+      head.append(img(list[0].key, 56), names);
+    }
+    card.append(head);
     for (const r of list) {
       const box = el('div', 'plat'); const h = el('div', 'plat-head');
-      const nm = el('div', 'plat-name', r.platform + ' '); nm.append(el('span', null, '· ' + r.store));
+      const nm = el('div', 'plat-name');
+      if (byStore) nm.append(img(r.key, 20), document.createTextNode(r.product + ' '), el('span', null, '· ' + r.platform + ' · ' + r.store));
+      else nm.append(document.createTextNode(r.platform + ' '), el('span', null, '· ' + r.store));
       const [pc, pt] = PILL[r.status] || ['wait', r.status];
       h.append(nm, el('span', 'pill ' + pc, pt));
       const steps = el('div', 'steps');
@@ -211,8 +249,11 @@ async function boot() {
   const cfg = await (await fetch('/config/sync-config.json', { cache: 'no-store' })).json();
   await loadScript('https://www.gstatic.com/firebasejs/10.9.0/firebase-app-compat.js');
   await loadScript('https://www.gstatic.com/firebasejs/10.9.0/firebase-auth-compat.js');
-  if (!firebase.apps.length) firebase.initializeApp(cfg);
-  auth = firebase.auth();
+  // Its own Firebase app, so its login is kept apart from the site's: a sign-out on dhamma.gift (or the sync's "session
+  // ended" sign-out) shared the default app's login and threw the owner out of this page. Kept in the browser until "Выйти".
+  const fb = firebase.apps.find((a) => a.name === 'apps') || firebase.initializeApp(cfg, 'apps');
+  auth = fb.auth();
+  await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
   auth.onAuthStateChanged((u) => (u ? load() : showGate('Страница только для владельца. Войдите через Google.')));
 }
 function showGate(msg) {
