@@ -637,8 +637,26 @@ app.get('/app-site-manifest.json', (req, res) => {
 // so without an exact route it fell to the generic /:slug keyword-search catch-all below (any path
 // find-my-way can't match exactly is treated as a search term/sutta id) - Chrome then fetched the
 // search page's HTML instead of JSON and refused to offer installing the calendar as its own PWA.
+// The file has no shortcuts: they are the next Uposatha days (core/uposatha-shortcuts.js), written in here for the time zone,
+// language and scheme the page asks with (?tz=&lang=&su=0). Kept for the hour: the list changes with the day of that zone.
+const uposathaManifests = new Map();
 app.get('/uposatha-calendar.webmanifest', (req, res) => {
-    sendFile(req, res, path.join(__dirname, 'public', 'uposatha-calendar.webmanifest'), 'application/manifest+json');
+    const q = req.query || {};
+    let tz = String(q.tz || 'UTC');
+    try { new Intl.DateTimeFormat('en', { timeZone: tz }); } catch { tz = 'UTC'; }
+    const lang = q.lang === 'ru' ? 'ru' : 'en', sutta = q.su !== '0', hour = new Date().toISOString().slice(0, 13), key = [hour, tz, lang, sutta].join('|');
+    let hit = uposathaManifests.get(key);
+    if (!hit) {
+        if (uposathaManifests.size > 300 || ![...uposathaManifests.keys()].every((k) => k.startsWith(hour))) uposathaManifests.clear();
+        const m = JSON.parse(fsSync.readFileSync(path.join(__dirname, 'public', 'uposatha-calendar.webmanifest'), 'utf8'));
+        try { m.shortcuts = require('./core/uposatha-shortcuts.js').build(uposathaCore, { now: new Date(), tz, lang, sutta }); } catch (e) { console.error('[uposatha manifest] shortcuts failed:', e.message); }
+        const body = JSON.stringify(m);
+        hit = { body, etag: '"' + crypto.createHash('md5').update(body).digest('hex') + '"' };
+        uposathaManifests.set(key, hit);
+    }
+    res.header('etag', hit.etag);
+    if (req.headers['if-none-match'] === hit.etag) return res.code(304).send();
+    return res.type('application/manifest+json').send(hit.body);
 });
 
 // /open?url=... — in-scope redirector for manifest shortcuts that point at external, cross-origin

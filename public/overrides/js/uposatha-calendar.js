@@ -222,6 +222,9 @@
   var hemi = store('dgUposathaHemisphere');
   state.south = hemi ? hemi === 'south' : SOUTHERN_ZONE.test(state.tz);
   var sutta = function () { return state.ref === 18; };
+  // The manifest is asked for with the page's time zone, language and scheme: the server writes the next Uposatha days into its
+  // shortcuts for them (core/uposatha-shortcuts.js). The place is not sent. The app is the same one: its "id" is in the manifest.
+  (function () { var l = document.querySelector('link[rel="manifest"]'); if (l) l.href = '/uposatha-calendar.webmanifest?tz=' + encodeURIComponent(state.tz) + '&lang=' + lang + (sutta() ? '' : '&su=0'); })();
   var ZONE_COORDS = window.DG_ZONE_COORDS || {};
   var zones = typeof Intl.supportedValuesOf === 'function' ? Intl.supportedValuesOf('timeZone') : Object.keys(ZONE_COORDS);
   if (zones.indexOf(detected) === -1) zones = [detected].concat(zones);

@@ -147,6 +147,24 @@ const used = new Set();
 
 // ---------- 4. the manifest ----------
 const manifest = json(path.join(ROOT, 'public/uposatha-calendar.webmanifest'));
+{ // the shortcuts the server writes into the manifest it sends (core/uposatha-shortcuts.js): "Calendar" and the next three Uposatha days
+    const SC = require(path.join(ROOT, 'core/uposatha-shortcuts.js'));
+    assert.ok(!manifest.shortcuts, 'the file itself has no shortcuts: they are dated');
+    const at = new Date(Date.UTC(2026, 9, 13, 3)), ymd = (x) => /day=(\d{4}-\d\d-\d\d)/.exec(x.url)[1];
+    const bkk = SC.build(C, { now: at, tz: 'Asia/Bangkok', lang: 'ru', sutta: true }), utc = SC.build(C, { now: at, tz: 'UTC' });
+    assert.deepStrictEqual(bkk.map((x) => x.name), ['Календарь', '18 окт. · 8-й день', '24 окт. · 14-й день', '25 окт. · 15-й день'], 'Bangkok, 13 Oct 2026: the 8th, 14th and 15th');
+    assert.strictEqual(ymd(utc[1]), '2026-10-17', 'the same 8th day begins a date earlier in UTC: the zone decides the date');
+    assert.deepStrictEqual(bkk.slice(1).map((x) => /moon-(\d)/.exec(x.icons[0].src)[1]), ['2', '3', '4'], 'a quarter, the shape before full, full');
+    bkk.concat(utc).forEach((x) => {
+        assert.ok(x.url.startsWith(manifest.scope), x.name + ': inside the scope of the app');
+        assert.ok(fs.existsSync(path.join(ROOT, 'public/overrides', x.icons[0].src.replace(/^\/assets\//, ''))), x.icons[0].src + ' exists');
+    });
+    // the day that began yesterday evening is still in force today; the one before it is gone
+    assert.strictEqual(ymd(SC.build(C, { now: new Date(Date.UTC(2026, 9, 18, 3)), tz: 'UTC' })[1]), '2026-10-17', 'the day in force stays first');
+    assert.notStrictEqual(ymd(SC.build(C, { now: new Date(Date.UTC(2026, 9, 19, 3)), tz: 'UTC' })[1]), '2026-10-17', 'a day gone by is not listed');
+    assert.strictEqual(SC.build(C, { now: at, tz: 'UTC', sutta: false })[1].name, '18 Oct · First quarter', 'the modern scheme names the phase');
+    console.log('ok   manifest shortcuts: Calendar and the next three Uposatha days, by zone, language and scheme');
+}
 assert.ok(Array.isArray(manifest.widgets) && manifest.widgets.length >= 1, 'the manifest has widgets');
 const roots = [path.join(ROOT, 'public/overrides'), path.join(ROOT, 'siteroot/assets')]; // /assets is these two, in this order
 function fileOf(url) {
