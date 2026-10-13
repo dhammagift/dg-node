@@ -1,4 +1,4 @@
-// Self-check for the owner's /apps board (dg-fastify.js: /api/apps-status). Same approach as
+// Self-check for the owner's hub (dg-fastify.js: /api/apps-status, /api/hub). Same approach as
 // test/lbl-auth.cjs: the real server on its own port, Google's keys replaced by a local stub, tokens
 // signed here. A listed e-mail gets the store status rows; anyone else is refused.
 //
@@ -65,6 +65,18 @@ const waitFor = async () => {
             if (ok && want === 200) ok = Array.isArray(JSON.parse(r.body).rows) && JSON.parse(r.body).rows.length > 0;
             console.log((ok ? 'ok   ' : 'FAIL ') + name + ': ' + r.status + (ok ? '' : ' ' + r.body.slice(0, 200)));
             if (!ok) failed++;
+        }
+        // The hub's other screens (configs/local/hub.json): to the owner with each "check" answered, to nobody else.
+        if (fs.existsSync(path.join(ROOT, 'configs/local/hub.json'))) {
+            const h = await get(sign(), '/api/hub');
+            const body = h.status === 200 ? JSON.parse(h.body) : {};
+            const checked = (body.screens || []).flatMap(sc => sc.groups.flatMap(g => g.items)).filter(it => it.check);
+            const ok = h.status === 200 && checked.length > 0 && checked.every(it => it.status && typeof it.status.ok === 'boolean');
+            console.log((ok ? 'ok   ' : 'FAIL ') + 'hub: ' + h.status + ', ' + checked.filter(it => it.status?.ok).length + '/' + checked.length + ' up');
+            if (!ok) failed++;
+            const s2 = await get(sign({ email: 'stranger@example.com' }), '/api/hub');
+            console.log((s2.status === 403 ? 'ok   ' : 'FAIL ') + 'hub to a stranger: ' + s2.status);
+            if (s2.status !== 403) failed++;
         }
         // "Скачать APK": the newest dictionary APK artifact of dg-apps comes back as an APK (a zip starting with PK), not to strangers.
         const arts = await (await fetch('https://api.github.com/repos/dhammagift/dg-apps/actions/artifacts?per_page=100', {

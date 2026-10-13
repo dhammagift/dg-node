@@ -1485,12 +1485,38 @@ async function appsAuth(req, res) {
 // none), /apps and its API are a plain 404. Never for search engines either: the page carries noindex, and so does the header.
 const appsBoardOn = () => (readJsonFile(APPS_ADMINS_FILE, {}).emails || []).length > 0;
 app.addHook('onRequest', async (req, res) => {
-    if (!/^\/(apps\/?$|apps\?|api\/apps-)/.test(req.url)) return;
+    if (!/^\/((apps|hub)\/?($|\?)|api\/(apps-|hub))/.test(req.url)) return;
     res.header('x-robots-tag', 'noindex, nofollow');
     if (!appsBoardOn()) return res.code(404).send('Not found');
 });
 
-app.get('/apps', (req, res) => sendFile(req, res, path.join(__dirname, 'public', 'apps.html'), 'text/html; charset=utf-8'));
+// /apps grew into the hub (owner, 2026-10-13): the apps board is its first screen.
+app.get('/apps', (req, res) => res.redirect('/hub#apps'));
+app.get('/hub', (req, res) => sendFile(req, res, path.join(__dirname, 'public', 'hub.html'), 'text/html; charset=utf-8'));
+
+// The hub's other screens (servers, accounts, social, docs) are a list kept on the server only, configs/local/hub.json
+// (not in git: it says where everything is, though never a password). An item with "check" gets its answer here, so the
+// page shows which servers and sites are up.
+const HUB_FILE = path.join(__dirname, 'configs', 'local', 'hub.json');
+async function hubCheck(url) {
+    const t0 = Date.now();
+    try {
+        const r = await fetch(url, { method: 'GET', redirect: 'manual', signal: AbortSignal.timeout(8000), headers: { 'User-Agent': 'dg-hub-check' } });
+        r.body?.cancel().catch(() => {});
+        return { code: r.status, ok: r.status < 400, ms: Date.now() - t0 };
+    } catch (e) {
+        return { code: 0, ok: false, ms: Date.now() - t0, error: String(e.cause?.code || e.name || e.message) };
+    }
+}
+app.get('/api/hub', async (req, res) => {
+    res.header('cache-control', 'no-store');
+    if (!(await appsAuth(req, res))) return;
+    const hub = readJsonFile(HUB_FILE, null);
+    if (!hub) return res.code(404).send({ error: 'no-hub' });
+    const items = (hub.screens || []).flatMap(sc => (sc.groups || []).flatMap(g => g.items || []));
+    await Promise.all(items.filter(it => /^https?:\/\//.test(it.check || '')).map(async it => { it.status = await hubCheck(it.check); }));
+    return res.send({ ...hub, checked_at: new Date().toISOString() });
+});
 
 app.get('/api/apps-status', async (req, res) => {
     res.header('cache-control', 'no-store');
