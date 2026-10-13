@@ -182,7 +182,7 @@ const EN = {
   'нет': 'none', 'только что': 'just now', '{m} мин назад': '{m} min ago', '{h} ч назад': '{h} h ago',
   'Можно перевести в прод: {a}. Есть неотправленные сборки: {b}. Всё свежее: {c}.': 'Ready for production: {a}. Unsent builds: {b}. Up to date: {c}.',
   'Данные из магазинов: {d} ({ago}). ': 'Store data: {d} ({ago}). ', 'прогон': 'run', ' · идёт обновление…': ' · refreshing…', 'Не прочиталось: ': 'Could not read: ',
-  'Всё свежее, делать ничего не нужно.': 'Everything is up to date, nothing to do.', 'Расширение для браузера': 'Browser extension', 'Приложение': 'App',
+  'Словарь': 'Dictionary', 'Всё свежее, делать ничего не нужно.': 'Everything is up to date, nothing to do.', 'Расширение для браузера': 'Browser extension', 'Приложение': 'App',
   'У пользователей': 'With users', 'В тесте': 'In testing', 'Последняя у нас': 'Our latest', 'Магазин': 'Store', 'Кабинет': 'Console',
   'Скачать APK': 'Download APK', 'Скачиваю…': 'Downloading…', 'Не скачалось ({e})': 'Download failed ({e})',
   'работает · {ms} мс': 'up · {ms} ms', 'не отвечает': 'down', 'работает': 'up',
@@ -199,6 +199,7 @@ const EN = {
 let lang = 'ru';
 try { lang = localStorage.getItem('hub-lang') || (/^ru\b/i.test(navigator.language || '') ? 'ru' : 'en'); } catch (e) {}
 const t = (s, v) => String(lang === 'en' && EN[s] != null ? EN[s] : s).replace(/\{(\w+)\}/g, (_, k) => (v && v[k] != null ? v[k] : ''));
+const tr = (s) => t(s);  // a product name from the store status ("Словарь")
 const L = (v) => (v && typeof v === 'object' && !Array.isArray(v) && ('ru' in v || 'en' in v) ? (v[lang] || v.ru || v.en) : v);
 const dateStr = (iso) => new Date(iso).toLocaleString(lang === 'en' ? 'en-GB' : 'ru-RU');
 // Values that arrive in Russian inside the store status (dg-apps store_status.py) and have a fixed shape.
@@ -273,7 +274,7 @@ function render(data) {
   const todo = document.getElementById('todo'); todo.replaceChildren();
   rows.filter((r) => r.status !== 'свежая').forEach((r) => {
     const li = el('li'); const t = el('div');
-    t.append(el('b', null, `${r.product} · ${r.platform}: `), document.createTextNode((lang === 'en' && r.action_en) || r.action));
+    t.append(el('b', null, `${tr(r.product)} · ${r.platform}: `), document.createTextNode((lang === 'en' && r.action_en) || r.action));
     li.append(img(r.key, 28), t); todo.append(li);
   });
   if (!todo.children.length) todo.append(el('li', null, t('Всё свежее, делать ничего не нужно.')));
@@ -295,14 +296,14 @@ function render(data) {
       names.append(el('div', 'n', g), el('div', 'k', [...new Set(list.map((r) => r.store))].join(' · ')));
       head.append(ico({ name: g, ...(VENDOR_ICON[g] || {}) }, true), names);
     } else {
-      names.append(el('div', 'n', g), el('div', 'k', t(ICON_BY_KEY(list[0].key) === 'ext' ? 'Расширение для браузера' : 'Приложение')));
+      names.append(el('div', 'n', tr(g)), el('div', 'k', t(ICON_BY_KEY(list[0].key) === 'ext' ? 'Расширение для браузера' : 'Приложение')));
       head.append(img(list[0].key, 56), names);
     }
     card.append(head);
     for (const r of list) {
       const box = el('div', 'plat'); const h = el('div', 'plat-head');
       const nm = el('div', 'plat-name');
-      if (byStore) nm.append(img(r.key, 20), document.createTextNode(r.product + ' '), el('span', null, '· ' + r.platform + ' · ' + r.store));
+      if (byStore) nm.append(img(r.key, 20), document.createTextNode(tr(r.product) + ' '), el('span', null, '· ' + r.platform + ' · ' + r.store));
       else nm.append(document.createTextNode(r.platform + ' '), el('span', null, '· ' + r.store));
       const [pc, pt] = PILL[r.status] || ['wait', r.status];
       h.append(nm, el('span', 'pill ' + pc, t(pt)));
