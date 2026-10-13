@@ -70,7 +70,8 @@ const waitFor = async () => {
         if (fs.existsSync(path.join(ROOT, 'configs/local/hub.json'))) {
             const h = await get(sign(), '/api/hub');
             const body = h.status === 200 ? JSON.parse(h.body) : {};
-            const checked = (body.screens || []).flatMap(sc => sc.groups.flatMap(g => g.items)).filter(it => it.check);
+            const checked = [];
+            (function walk(o) { if (Array.isArray(o)) o.forEach(walk); else if (o && typeof o === 'object') { if (o.check) checked.push(o); Object.values(o).forEach(walk); } })(body.screens);
             const ok = h.status === 200 && checked.length > 0 && checked.every(it => it.status && typeof it.status.ok === 'boolean');
             console.log((ok ? 'ok   ' : 'FAIL ') + 'hub: ' + h.status + ', ' + checked.filter(it => it.status?.ok).length + '/' + checked.length + ' up');
             if (!ok) failed++;
