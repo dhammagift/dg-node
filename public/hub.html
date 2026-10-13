@@ -176,7 +176,7 @@ function setTheme(t) {
   document.documentElement.dataset.theme = t;
   document.querySelectorAll('[data-theme-btn]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.themeBtn === t)));
   try { localStorage.setItem('apps-theme', t); } catch (e) {}
-  if (typeof screen !== 'undefined' && screen === 'map' && hub) paintTabs();  // the map is drawn for one theme
+  if (window.redrawMap) window.redrawMap();  // the map is drawn for one theme
 }
 let savedTheme = 'light';
 try { savedTheme = localStorage.getItem('apps-theme') || 'light'; } catch (e) {}
@@ -522,6 +522,7 @@ function paintFooter() {
   }
   sec.hidden = !common.children.length;
 }
+window.redrawMap = () => { if (screen === 'map' && hub) paintTabs(); };
 window.addEventListener('hashchange', () => { screen = location.hash.slice(1) || 'apps'; paintTabs(); });
 screen = location.hash.slice(1) || 'apps';
 async function loadHub() {
