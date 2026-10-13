@@ -1481,6 +1481,15 @@ async function appsAuth(req, res) {
     return auth.ok;
 }
 
+// The board lives on the test site only (owner, 2026-10-13): where configs/local/apps-admins.json lists nobody (prod has
+// none), /apps and its API are a plain 404. Never for search engines either: the page carries noindex, and so does the header.
+const appsBoardOn = () => (readJsonFile(APPS_ADMINS_FILE, {}).emails || []).length > 0;
+app.addHook('onRequest', async (req, res) => {
+    if (!/^\/(apps\/?$|apps\?|api\/apps-)/.test(req.url)) return;
+    res.header('x-robots-tag', 'noindex, nofollow');
+    if (!appsBoardOn()) return res.code(404).send('Not found');
+});
+
 app.get('/apps', (req, res) => sendFile(req, res, path.join(__dirname, 'public', 'apps.html'), 'text/html; charset=utf-8'));
 
 app.get('/api/apps-status', async (req, res) => {
