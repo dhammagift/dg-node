@@ -24,6 +24,10 @@ html, body { margin: 0; padding: 0; }
    taller, the frame grew, the scrollbar went away, the text got shorter again — the preview jittered.
    A reserved gutter keeps the text width the same with or without the scrollbar, so it settles. */
 html { scrollbar-gutter: stable; }
+/* Android's WebView reserves no gutter (its platform scrollbars are overlay), yet the site's styled
+   ::-webkit-scrollbar (extrastyles.css, 8px) takes width there, so the loop came back on phones
+   (owner, 2026-10-14: DG app settings). A finger scrolls the frame without a bar: on touch screens it has none. */
+@media (pointer: coarse) { html, html[data-bs-theme] { scrollbar-width: none !important; } ::-webkit-scrollbar { display: none !important; } }
 body { padding: 4px 2px; }
 /* Скрытая копия кнопки словаря из панели ридера (reader-template.html: a.toggle-dict-btn > img).
    paliLookup.js читает её безусловно (`document.querySelector('.toggle-dict-btn img').src = …`)
