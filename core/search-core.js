@@ -806,8 +806,17 @@ function attachRootContext(searchResults, lb, la) {
 }
 
 // Sort suttas: category first (dhamma == the 4 nikayas — dn/mn/sn/an, see dblight.js — then
-// khudakka, vinaya, abhi, other), then legacy relevance/version rank `mr` (mtph in
-// textinfo.json) descending as a tiebreak (TODO.md поиск п.5's "версионная сортировка"), then id.
+// khudakka, vinaya, abhi, other), then `mr` descending, then id.
+//
+// `mr` is `mtph` from the legacy site's textinfo.json — the NUMBER OF METAPHORS in the text. The
+// "relevance/version rank" this comment used to claim was wrong, and it misled a reader once
+// already. It is a display order for the search table, where a human sees every row and chooses
+// with their eyes: it says nothing about relevance to the query, and the match count (`count`) is
+// computed but deliberately NOT part of the sort. mr = 0 for 6940 of 7605 suttas (91%), so those
+// sort after everything that has a count at all.
+//
+// Note for any caller that TRUNCATES the list instead of showing it whole: dukkha, scope=all
+// finds 1489 suttas and the first 40 are all dhamma — Vinaya and Abhidhamma never arrive.
 function sortSuttaResults(searchResults) {
     const categoryOrder = { dhamma: 1, khudakka: 2, vinaya: 3, abhi: 4, other: 5 };
     const sortedKeys = Object.keys(searchResults).sort((a, b) => {

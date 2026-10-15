@@ -33,9 +33,18 @@ const UNINDEXED_TRANSLATORS = new Set(['ai']);
 
 const OUT_PATH = path.join(__dirname, 'dg.db');
 
-// `mr` (legacy relevance rank) is the one piece of sutta metadata that is not in the corpus —
-// it comes from the legacy site's textinfo.json. Everything else below is derived from the
-// corpus itself, so this build does not depend on dg_db_light.json / dblight.js at all.
+// `mr` is the one piece of sutta metadata that is not in the corpus — it comes from the legacy
+// site's textinfo.json. It is NOT a relevance rank, whatever earlier comments said: the source
+// field is `mtph`, the NUMBER OF METAPHORS in the text. It is only a display-order key for the
+// search table (see sortSuttaResults), not a measure of relevance to a query.
+//
+// Coverage is thin: textinfo.json holds 4932 entries and `mtph` is filled for ~665 suttas, so
+// mr = 0 for 6940 of the 7605 suttas in dg.db (91%) — those always sort after anything with a
+// count. That is harmless while the reader sees the whole table, and misleading as soon as the
+// list is truncated (see the MCP `search` cap).
+//
+// Everything else below is derived from the corpus itself, so this build does not depend on
+// dg_db_light.json / dblight.js at all.
 const TEXTINFO_PATH = process.env.DG_TEXTINFO || (fs.existsSync('/data/data/com.termux/files/usr')
     ? '/data/data/com.termux/files/usr/share/apache2/default-site/htdocs/assets/js/textinfo.json'
     : (process.platform === 'win32'
