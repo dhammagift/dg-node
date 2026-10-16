@@ -129,7 +129,7 @@
  --m-sh:color-mix(in oklab,var(--dg-navy,midnightblue) 70%,black);
  --m-rim:color-mix(in oklab,var(--dg-navy-ink,slategray) 22%,transparent);
  --m-glow:color-mix(in oklab,var(--dg-surface-hover,whitesmoke) 80%,var(--dg-match,sienna) 8%)}
-image.tex{filter:sepia(.55) saturate(1.9) brightness(1.22) hue-rotate(-6deg)} /* the photo is a grey disc: a warmer, brighter moon (owner's choice B, 2026-10-10) */
+/* the photo is a grey disc: a warmer, brighter moon (owner's choice B, 2026-10-10): sepia(.55) saturate(1.9) brightness(1.22) hue-rotate(-6deg) as one SVG filter (#t), since WebKit ignores a CSS filter on an SVG child (dg-node#67) */
 :host([mono]) image{filter:grayscale(1) brightness(1.12) contrast(1.05)}
 :host([mono]){--m-sh:black;--m-rim:color-mix(in oklab,white 40%,transparent);--m-glow:white}
 svg{width:100%;height:100%;display:block;overflow:visible}
@@ -141,9 +141,10 @@ svg{width:100%;height:100%;display:block;overflow:visible}
 <radialGradient id="b${n}" cx="50%" cy="50%" r="50%"><stop offset=".5" stop-color="black" stop-opacity="0"/><stop offset=".86" stop-color="black" stop-opacity=".14"/><stop offset="1" stop-color="black" stop-opacity=".42"/></radialGradient>
 <filter id="p${n}" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="4.5"/></filter>
 <filter id="s${n}" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="1.3"/></filter>
+<filter id="t${n}" color-interpolation-filters="sRGB"><feColorMatrix type="matrix" values="1.2550 .3114 .0071 0 0 .1085 1.1219 .1055 0 0 .1214 -.1534 1.0617 0 0 0 0 0 1 0"/></filter>
 </defs>
 <g clip-path="url(#c${n})">
-<image class="tex" x="${C - R - .6}" y="${C - R - .6}" width="${2 * R + 1.2}" height="${2 * R + 1.2}" preserveAspectRatio="none"/>
+<image class="tex" filter="url(#t${n})" x="${C - R - .6}" y="${C - R - .6}" width="${2 * R + 1.2}" height="${2 * R + 1.2}" preserveAspectRatio="none"/>
 <circle cx="${C}" cy="${C}" r="${R}" fill="url(#b${n})"/>
 <path class="pen" style="fill:var(--m-sh)" opacity=".5" filter="url(#p${n})"/>
 <path class="sha" style="fill:var(--m-sh)" opacity=".8" filter="url(#s${n})"/>
