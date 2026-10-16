@@ -23,6 +23,14 @@
     {
       "name": "toc",
       "description": "Table of contents and text structure"
+    },
+    {
+      "name": "tts",
+      "description": "Text to speech (Voice API) — api.dhamma.gift"
+    },
+    {
+      "name": "mcp",
+      "description": "MCP server for AI agents"
     }
   ],
   "components": {
@@ -799,6 +807,316 @@
           },
           "404": {
             "description": "Invalid side"
+          }
+        }
+      }
+    },
+    "/api/tts/pali": {
+      "servers": [
+        {
+          "url": "https://api.dhamma.gift",
+          "description": "api.dhamma.gift"
+        }
+      ],
+      "post": {
+        "tags": [
+          "tts"
+        ],
+        "summary": "Read a phrase aloud (base64 MP3)",
+        "description": "Open text-to-speech service, no key, open CORS, 60 requests per minute per IP. The answer has the shape of Google Text-to-Speech.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "text"
+                ],
+                "properties": {
+                  "text": {
+                    "type": "string",
+                    "maxLength": 2000,
+                    "description": "Text: Pāḷi in IAST, or an English/Russian translation",
+                    "example": "Evaṁ me sutaṁ."
+                  },
+                  "voice": {
+                    "type": "string",
+                    "default": "pratham",
+                    "description": "Voice; the list is GET /api/tts/dg-voices",
+                    "example": "pratham"
+                  },
+                  "rate": {
+                    "type": "number",
+                    "minimum": 0.25,
+                    "maximum": 3,
+                    "default": 1,
+                    "description": "Speed; the site reads Pāḷi at 0.875",
+                    "example": 0.875
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "audioContent": {
+                      "type": "string",
+                      "description": "base64 MP3, mono, 22 kHz"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        }
+      }
+    },
+    "/api/tts/memo": {
+      "servers": [
+        {
+          "url": "https://api.dhamma.gift",
+          "description": "api.dhamma.gift"
+        }
+      ],
+      "post": {
+        "tags": [
+          "tts"
+        ],
+        "summary": "A whole text as one MP3 with pauses (Memo)",
+        "description": "Lines are read one after another with pauses of any length; up to 45 minutes. Counts as ten requests against the limit.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "segments"
+                ],
+                "properties": {
+                  "segments": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "maxItems": 200,
+                    "description": "Lines, up to 20 000 characters in all",
+                    "example": [
+                      "Evaṁ me sutaṁ.",
+                      "Ekaṁ samayaṁ bhagavā…"
+                    ]
+                  },
+                  "voice": {
+                    "type": "string",
+                    "default": "pratham"
+                  },
+                  "rate": {
+                    "type": "number",
+                    "default": 1
+                  },
+                  "delay": {
+                    "type": "number",
+                    "maximum": 300,
+                    "description": "Pause between lines, seconds",
+                    "example": 2
+                  },
+                  "end_delay": {
+                    "type": "number",
+                    "maximum": 600,
+                    "description": "Pause at the end, seconds",
+                    "example": 0
+                  },
+                  "sound": {
+                    "type": "string",
+                    "enum": [
+                      "",
+                      "gong.mp3",
+                      "tick.mp3"
+                    ],
+                    "description": "Sound at the end"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "MP3",
+            "content": {
+              "audio/mpeg": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tts/dg-voices": {
+      "servers": [
+        {
+          "url": "https://api.dhamma.gift",
+          "description": "api.dhamma.gift"
+        }
+      ],
+      "get": {
+        "tags": [
+          "tts"
+        ],
+        "summary": "The list of voices",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "voices": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "lang": {
+                            "type": "string"
+                          },
+                          "label": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tts/health": {
+      "servers": [
+        {
+          "url": "https://api.dhamma.gift",
+          "description": "api.dhamma.gift"
+        }
+      ],
+      "get": {
+        "tags": [
+          "tts"
+        ],
+        "summary": "Service is up; pronunciation rules version",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    },
+                    "loaded": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "rules": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/mcp": {
+      "servers": [
+        {
+          "url": "https://api.dhamma.gift",
+          "description": "api.dhamma.gift"
+        }
+      ],
+      "post": {
+        "tags": [
+          "mcp"
+        ],
+        "summary": "MCP server for AI agents (JSON-RPC, Streamable HTTP)",
+        "description": "Tools: search, get_text, compare_translations, list_structure. Pāḷi only by default; translations via langs or translators. In Claude: Settings → Connectors → https://api.dhamma.gift/mcp. Send Accept: application/json, text/event-stream.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "examples": {
+                "tools/list": {
+                  "value": {
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "method": "tools/list",
+                    "params": {}
+                  }
+                },
+                "get_text": {
+                  "value": {
+                    "jsonrpc": "2.0",
+                    "id": 2,
+                    "method": "tools/call",
+                    "params": {
+                      "name": "get_text",
+                      "arguments": {
+                        "suttaId": "sn56.11",
+                        "langs": [
+                          "ru"
+                        ]
+                      }
+                    }
+                  }
+                },
+                "search": {
+                  "value": {
+                    "jsonrpc": "2.0",
+                    "id": 3,
+                    "method": "tools/call",
+                    "params": {
+                      "name": "search",
+                      "arguments": {
+                        "query": "kata.*dukkh",
+                        "include_segments": true
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "JSON-RPC answer (text/event-stream: \"data: {...}\" lines)"
           }
         }
       }

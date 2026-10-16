@@ -491,10 +491,17 @@ app.addHook('onRoute', (routeOptions) => {
     }
 });
 await app.register(fastifyCompress);
+// GET for everything; /mcp also takes cross-origin POST with the MCP headers, so Swagger's "Try it out" (dhamma.gift/api-docs
+// calling api.dhamma.gift) and browser MCP clients work. Not POST site-wide: /api/ai-search costs an LLM call per request.
 await app.register(fastifyCors, {
-    origin: '*',
-    methods: ['GET', 'OPTIONS'],
-    allowedHeaders: ['Content-Type'],
+    delegator: (req, cb) => {
+        const mcp = (req.url || '').split('?')[0] === '/mcp';
+        cb(null, {
+            origin: '*',
+            methods: mcp ? ['POST', 'OPTIONS'] : ['GET', 'OPTIONS'],
+            allowedHeaders: mcp ? ['Content-Type', 'Accept', 'Mcp-Protocol-Version', 'Mcp-Session-Id'] : ['Content-Type'],
+        });
+    },
 });
 
 // Cache-Control tier (cache.md §4) — grouped here rather than per-handler, per cache.md's

@@ -23,6 +23,14 @@
     {
       "name": "toc",
       "description": "Оглавление и структура текстов"
+    },
+    {
+      "name": "tts",
+      "description": "Озвучка (Voice API) — api.dhamma.gift"
+    },
+    {
+      "name": "mcp",
+      "description": "MCP-сервер для ИИ-агентов"
     }
   ],
   "components": {
@@ -799,6 +807,316 @@
           },
           "404": {
             "description": "Некорректный side"
+          }
+        }
+      }
+    },
+    "/api/tts/pali": {
+      "servers": [
+        {
+          "url": "https://api.dhamma.gift",
+          "description": "api.dhamma.gift"
+        }
+      ],
+      "post": {
+        "tags": [
+          "tts"
+        ],
+        "summary": "Озвучить фразу (MP3 в base64)",
+        "description": "Открытый сервис озвучки без ключа, CORS открыт, 60 запросов в минуту с IP. Ответ в формате Google Text-to-Speech.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "text"
+                ],
+                "properties": {
+                  "text": {
+                    "type": "string",
+                    "maxLength": 2000,
+                    "description": "Текст: пали в IAST, перевод на английском или русском",
+                    "example": "Evaṁ me sutaṁ."
+                  },
+                  "voice": {
+                    "type": "string",
+                    "default": "pratham",
+                    "description": "Голос, список — GET /api/tts/dg-voices",
+                    "example": "pratham"
+                  },
+                  "rate": {
+                    "type": "number",
+                    "minimum": 0.25,
+                    "maximum": 3,
+                    "default": 1,
+                    "description": "Скорость; на сайте пали читается на 0.875",
+                    "example": 0.875
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "audioContent": {
+                      "type": "string",
+                      "description": "base64 MP3, mono, 22 kHz"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Превышен лимит запросов"
+          }
+        }
+      }
+    },
+    "/api/tts/memo": {
+      "servers": [
+        {
+          "url": "https://api.dhamma.gift",
+          "description": "api.dhamma.gift"
+        }
+      ],
+      "post": {
+        "tags": [
+          "tts"
+        ],
+        "summary": "Текст целиком одним MP3 с паузами (Memo)",
+        "description": "Строки читаются подряд с паузами любой длины; до 45 минут. Считается как 10 запросов в лимите.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "segments"
+                ],
+                "properties": {
+                  "segments": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "maxItems": 200,
+                    "description": "Строки, всего до 20 000 символов",
+                    "example": [
+                      "Evaṁ me sutaṁ.",
+                      "Ekaṁ samayaṁ bhagavā…"
+                    ]
+                  },
+                  "voice": {
+                    "type": "string",
+                    "default": "pratham"
+                  },
+                  "rate": {
+                    "type": "number",
+                    "default": 1
+                  },
+                  "delay": {
+                    "type": "number",
+                    "maximum": 300,
+                    "description": "Пауза между строками, секунды",
+                    "example": 2
+                  },
+                  "end_delay": {
+                    "type": "number",
+                    "maximum": 600,
+                    "description": "Пауза в конце, секунды",
+                    "example": 0
+                  },
+                  "sound": {
+                    "type": "string",
+                    "enum": [
+                      "",
+                      "gong.mp3",
+                      "tick.mp3"
+                    ],
+                    "description": "Звук в конце"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "MP3",
+            "content": {
+              "audio/mpeg": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tts/dg-voices": {
+      "servers": [
+        {
+          "url": "https://api.dhamma.gift",
+          "description": "api.dhamma.gift"
+        }
+      ],
+      "get": {
+        "tags": [
+          "tts"
+        ],
+        "summary": "Список голосов",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "voices": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "lang": {
+                            "type": "string"
+                          },
+                          "label": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tts/health": {
+      "servers": [
+        {
+          "url": "https://api.dhamma.gift",
+          "description": "api.dhamma.gift"
+        }
+      ],
+      "get": {
+        "tags": [
+          "tts"
+        ],
+        "summary": "Сервис жив, версия правил произношения",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    },
+                    "loaded": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "rules": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/mcp": {
+      "servers": [
+        {
+          "url": "https://api.dhamma.gift",
+          "description": "api.dhamma.gift"
+        }
+      ],
+      "post": {
+        "tags": [
+          "mcp"
+        ],
+        "summary": "MCP-сервер для ИИ-агентов (JSON-RPC, Streamable HTTP)",
+        "description": "Инструменты: search, get_text, compare_translations, list_structure. По умолчанию только пали; переводы — langs или translators. Подключение в Claude: Settings → Connectors → https://api.dhamma.gift/mcp. Нужен заголовок Accept: application/json, text/event-stream.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "examples": {
+                "tools/list": {
+                  "value": {
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "method": "tools/list",
+                    "params": {}
+                  }
+                },
+                "get_text": {
+                  "value": {
+                    "jsonrpc": "2.0",
+                    "id": 2,
+                    "method": "tools/call",
+                    "params": {
+                      "name": "get_text",
+                      "arguments": {
+                        "suttaId": "sn56.11",
+                        "langs": [
+                          "ru"
+                        ]
+                      }
+                    }
+                  }
+                },
+                "search": {
+                  "value": {
+                    "jsonrpc": "2.0",
+                    "id": 3,
+                    "method": "tools/call",
+                    "params": {
+                      "name": "search",
+                      "arguments": {
+                        "query": "kata.*dukkh",
+                        "include_segments": true
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "JSON-RPC ответ (text/event-stream: строки «data: {...}»)"
           }
         }
       }
