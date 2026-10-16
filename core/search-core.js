@@ -111,7 +111,7 @@ function regexPrefilterLiterals(pattern) {
 
     const out = [];
     for (const alt of alternatives) {
-        const stripped = alt.replace(/^\^/, '');
+        const stripped = alt.replace(/^(?:\^|\\b)+/, '');
         const first = literalRuns(stripped)[0];
         if (!first || first.length < min || !LITERAL_SAFE.test(first) || !stripped.startsWith(first)) return null;
         if (!out.includes(first)) out.push(first);
@@ -474,8 +474,9 @@ function regexKeywordRows(keyword) {
     const useFts = !!(literals && literals.length);
     const jsFilter = !!searchDb.jsRegexp;
     const stmt = searchDb.prepare(jsFilter ? (useFts ? SQL_SCAN_FTS_ROWS : SQL_SCAN_PLAIN_ROWS) : (useFts ? SQL_SCAN_FTS : SQL_SCAN_PLAIN));
-    const params = useFts ? (jsFilter ? [literals.map(ftsPhrase).join(' OR ')] : [literals.map(ftsPhrase).join(' OR '), keyword]) : (jsFilter ? [] : [keyword]);
-    const re = jsFilter ? new RegExp(keyword, 'i') : null;
+    const scanPattern = unicodeWordBoundary(keyword);
+    const params = useFts ? (jsFilter ? [literals.map(ftsPhrase).join(' OR ')] : [literals.map(ftsPhrase).join(' OR '), scanPattern]) : (jsFilter ? [] : [scanPattern]);
+    const re = jsFilter ? new RegExp(scanPattern, 'i') : null;
     let examined = 0;
     for (const row of stmt.iterate(...params)) {
         if (re) {
@@ -849,6 +850,31 @@ function sortSuttaResults(searchResults) {
 // чтобы больше не наступить на ту же ловушку визуально неотличимых символов.
 const WORD_BOUNDARY_CHARS = '\\s,.:;!?"\'\\u201C\\u201D\\u2018\\u2019\\u00AB\\u00BB()\\[\\]{}';
 
+// A user's \b, as grep users type it to search from the start of a word ("\bnand": nanda, not ānanda). JavaScript's
+// \b knows only ASCII letters, so ā, ṁ, ñ… count as boundaries and "\bnand" found ānando (dg-node#27). Rewritten to
+// "the char before, or the char after, is a word separator or the edge" — the same separators the Words column cuts
+// words at. Inside a [class] \b means backspace and is left alone.
+const UNICODE_WORD_BOUNDARY = `(?:(?<![^${WORD_BOUNDARY_CHARS}])|(?![^${WORD_BOUNDARY_CHARS}]))`;
+function unicodeWordBoundary(pattern) {
+    const p = String(pattern || '');
+    if (p.indexOf('\\b') === -1) return p;
+    let out = '';
+    let inClass = false;
+    for (let i = 0; i < p.length; i++) {
+        const ch = p[i];
+        if (ch === '\\') {
+            if (p[i + 1] === 'b' && !inClass) out += UNICODE_WORD_BOUNDARY;
+            else out += ch + (p[i + 1] || '');
+            i++;
+            continue;
+        }
+        if (ch === '[') inClass = true;
+        else if (ch === ']') inClass = false;
+        out += ch;
+    }
+    return out;
+}
+
 // One place deciding how a keyword is turned into matchers, because three call sites need the
 // identical rule and any drift between them shows up as the Words column changing under the
 // reader as the phased answer fills in. A regex keyword is matched against the raw text exactly
@@ -856,7 +882,7 @@ const WORD_BOUNDARY_CHARS = '\\s,.:;!?"\'\\u201C\\u201D\\u2018\\u2019\\u00AB\\u0
 // diacritics still finds the real form.
 function keywordMatchers(keyword) {
     const isRegexQuery = REGEX_METACHARS.test(keyword);
-    const pattern = isRegexQuery ? keyword : punctTolerantPattern(foldText(keyword));
+    const pattern = isRegexQuery ? unicodeWordBoundary(keyword) : punctTolerantPattern(foldText(keyword));
     return {
         prepare: isRegexQuery ? (text => text) : foldText,
         matchRegex: new RegExp(pattern, 'gi'),
