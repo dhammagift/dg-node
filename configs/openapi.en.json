@@ -878,6 +878,29 @@
           },
           "429": {
             "description": "Rate limit exceeded"
+          },
+          "400": {
+            "description": "Unknown voice, empty text or a bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -894,7 +917,7 @@
           "tts"
         ],
         "summary": "A whole text as one MP3 with pauses (Memo)",
-        "description": "Lines are read one after another with pauses of any length; up to 45 minutes. Counts as ten requests against the limit.",
+        "description": "Lines are read one after another with pauses of any length. Speech up to 30 minutes (pauses do not count), the whole recording with pauses up to 180 minutes; up to 200 lines and 20 000 characters. Counts as ten requests against the limit.",
         "requestBody": {
           "required": true,
           "content": {
@@ -927,13 +950,13 @@
                   },
                   "delay": {
                     "type": "number",
-                    "maximum": 300,
+                    "maximum": 3600,
                     "description": "Pause between lines, seconds",
                     "example": 2
                   },
                   "end_delay": {
                     "type": "number",
-                    "maximum": 600,
+                    "maximum": 3600,
                     "description": "Pause at the end, seconds",
                     "example": 0
                   },
@@ -962,6 +985,55 @@
                 }
               }
             }
+          },
+          "400": {
+            "description": "Unknown voice or empty text",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "A limit exceeded: pauses, lines/characters or recording length",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded"
           }
         }
       }
@@ -1008,7 +1080,8 @@
               }
             }
           }
-        }
+        },
+        "description": "In menu order; the first voice of a language is its default; lang: pi, en, ru."
       }
     },
     "/api/tts/health": {

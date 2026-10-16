@@ -878,6 +878,29 @@
           },
           "429": {
             "description": "Превышен лимит запросов"
+          },
+          "400": {
+            "description": "Неизвестный голос, пустой текст или неверный запрос",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -894,7 +917,7 @@
           "tts"
         ],
         "summary": "Текст целиком одним MP3 с паузами (Memo)",
-        "description": "Строки читаются подряд с паузами любой длины; до 45 минут. Считается как 10 запросов в лимите.",
+        "description": "Строки читаются подряд с паузами любой длины. Речь — до 30 минут (паузы не считаются), вся запись с паузами — до 180 минут; до 200 строк и 20 000 символов. Считается как 10 запросов в лимите.",
         "requestBody": {
           "required": true,
           "content": {
@@ -927,13 +950,13 @@
                   },
                   "delay": {
                     "type": "number",
-                    "maximum": 300,
+                    "maximum": 3600,
                     "description": "Пауза между строками, секунды",
                     "example": 2
                   },
                   "end_delay": {
                     "type": "number",
-                    "maximum": 600,
+                    "maximum": 3600,
                     "description": "Пауза в конце, секунды",
                     "example": 0
                   },
@@ -962,6 +985,55 @@
                 }
               }
             }
+          },
+          "400": {
+            "description": "Неизвестный голос или пустой текст",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Превышен лимит: паузы, число строк/символов или длина записи",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Превышен лимит запросов"
           }
         }
       }
@@ -1008,7 +1080,8 @@
               }
             }
           }
-        }
+        },
+        "description": "Порядок — как в меню; первый голос языка — голос по умолчанию; lang: pi, en, ru."
       }
     },
     "/api/tts/health": {
