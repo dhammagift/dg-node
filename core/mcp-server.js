@@ -253,6 +253,8 @@ function getServer() {
             limit: z.union([z.number().int().min(1), z.literal('all')]).optional().describe('How many suttas to list: a number, or "all" for every match. Default: 40, composed of 25 by occurrence count plus 15 for suttas named after the term and defining it. Strict — the cap means the cap. metadata.totalFiles always carries the true match count, so a truncated answer still tells you how much more there is. Suttas whose TITLE matches the query rank first within their collection.'),
         },
     }, async ({ query, scope, langs, translators, include_segments, include_translations, exact, limit }) => {
+        // Naming a translator is asking for his translation: without include_translations it was silently dropped.
+        if (translators && translators.length) include_translations = true;
         const scopeArg = scope || 'default';
         // Always search every language: a Russian word has to find the sutta, and the old default
         // of ["en"] returned ZERO for "черепаха" and "tortoise" (5). Only the OUTPUT is limited
@@ -408,8 +410,11 @@ function getServer() {
         // Empty array, not a fallback: buildTextDataFromBase treats [] as "no translations", which
         // is the pali-only answer this tool now defaults to. `translators` is passed through so a
         // named translator overrides the priority pick (the caller asked for it by name).
-        const data = await buildTextDataFromBase(base, id, (langs && langs.length) ? langs : [],
-            (translators && translators.length) ? translators : null);
+        // A named translator implies its language: translators:["en_thanissaro"] alone used to come back with no
+        // translations at all, because langs stayed [] (agents read that as "not in the corpus").
+        const named = (translators || []).map(t => String(t).trim()).filter(t => t.indexOf('_') > 0);
+        const useLangs = (langs && langs.length) ? langs : [...new Set(named.map(t => t.slice(0, t.indexOf('_'))))];
+        const data = await buildTextDataFromBase(base, id, useLangs, named.length ? named : null);
         let suppressed = 0;
         if (!namesSujato(translators)) {
             for (const sg of data.segments || []) if (stripSujato(sg.translations)) suppressed++;
