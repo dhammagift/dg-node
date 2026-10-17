@@ -485,6 +485,7 @@ body.dg-skin-minimal #form.dg-hero-form { flex: 1 1 auto; min-width: 0; }
    Поле ввода: знак сайта + поле + очистить + быстрые настройки + лупа, всё в одной рамке
    ============================================================================ */
 .dg-input-shell {
+    position: relative;
     display: flex;
     align-items: center;
     gap: 4px;
@@ -4703,3 +4704,25 @@ html.dg-app .dg-lpill, html.dg-app #scrollToTopBtn, html.dg-app #language-button
 html.dg-app .dynamic-tts-btn, html.dg-app .bubble-notification, html.dg-app .dg-rsubp.dg-rsubp-sheet {
     translate: calc(-1 * var(--dg-sar)) calc(-1 * var(--dg-sab));
 }
+
+/* «В строке» / «В тексте» on the search field's bottom edge (dg-node#26) — absolute, no layout shift */
+.dg-words-chip {
+    position: absolute;
+    right: 92px;
+    bottom: -9px;
+    z-index: 30;
+    padding: 0 9px;
+    border: 1px solid var(--dg-accent);
+    border-radius: 999px;
+    background: var(--dg-accent-bg);
+    color: var(--dg-accent-ink);
+    font: 600 11px/16px var(--dg-font);
+    cursor: pointer;
+}
+.dg-words-chip[hidden] { display: none; }
+/* The chip hangs over the field's bar into the toolbar bar below; both are fixed at z-index 850 (index.html's pinned stack)
+   and the toolbar, later in the DOM, painted over the chip's lower half. The field's bar is the top piece of that stack, so
+   one step up changes nothing else. */
+body.dg-state-results #dg-hero-band,
+body.dg-state-reader #dg-hero-band,
+body.dg-state-toc #dg-hero-band { z-index: 851; }

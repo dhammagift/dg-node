@@ -499,20 +499,41 @@ function regexKeywordRows(keyword) {
 //   regex keyword -> bounded scan (see regexKeywordRows), run in a worker by the routes.
 // Several words, all of them, at any distance (dg-node#26; the Quick settings' «Несколько слов» writes the operator into
 // the query, so a link keeps the mode and MCP and the offline app get it for free):
-//   "kacchap && samudd" — all the words in one line (segment: its Pali, variant or any translation);
+//   "kacchap && samudd" — all the words in one paragraph (by the text's own markup, the html table: a segment opening
+//                         <p>, a heading, a list item or a quote starts a new one; Pali, variant or any translation);
 //   "kacchap & samudd"  — all the words in one text (sutta).
 // Each word is matched on its own exactly as a one-word query would be (substring, exact, or its own regex).
 function parseMultiTerm(keyword) {
     const s = String(keyword || '');
-    const mode = /\s&&\s/.test(s) ? 'segment' : /\s&\s/.test(s) ? 'text' : null;
+    const mode = /\s&&\s/.test(s) ? 'para' : /\s&\s/.test(s) ? 'text' : null;
     if (!mode) return null;
-    const terms = s.split(mode === 'segment' ? /\s&&\s/ : /\s&\s/).map(t => t.trim()).filter(Boolean);
+    const terms = s.split(mode === 'para' ? /\s&&\s/ : /\s&\s/).map(t => t.trim()).filter(Boolean);
     return terms.length >= 2 ? { mode, terms } : null;
 }
 
+const PARAGRAPH_START = /<(?:p|h[1-6]|li|blockquote|dt|dd)[\s>]/;
+
 function multiTermRows(multi, exactMatch) {
-    const keyOf = multi.mode === 'segment' ? r => r.sutta_id + '|' + r.segment_id : r => r.sutta_id;
     const perTerm = multi.terms.map(t => sqlMatchRows(t, exactMatch));
+    let keyOf = r => r.sutta_id;
+    if (multi.mode === 'para') {
+        // paragraph numbers only for the texts that hold every word
+        let suttas = null;
+        for (const rows of perTerm) {
+            const ids = new Set(rows.map(r => r.sutta_id));
+            suttas = suttas ? new Set([...suttas].filter(id => ids.has(id))) : ids;
+        }
+        const paraOf = new Map();
+        const htmlRows = searchDb.prepare('SELECT segment_id, txt FROM html WHERE sutta_id = ? ORDER BY ord');
+        for (const id of suttas) {
+            let n = 0;
+            for (const h of htmlRows.all(id)) {
+                if (PARAGRAPH_START.test(h.txt)) n++;
+                paraOf.set(id + '|' + h.segment_id, n);
+            }
+        }
+        keyOf = r => r.sutta_id + '|' + (paraOf.has(r.sutta_id + '|' + r.segment_id) ? paraOf.get(r.sutta_id + '|' + r.segment_id) : 's' + r.segment_id);
+    }
     let kept = null;
     for (const rows of perTerm) {
         const keys = new Set(rows.map(keyOf));

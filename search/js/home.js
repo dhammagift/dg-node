@@ -2465,18 +2465,20 @@
         host.appendChild(scopePicker());
 
         // Several words (dg-node#26): the search form writes the choice into the query as an operator
-        // (index.html, #form submit) — "a && b" one line, "a & b" one text — so a link keeps it.
+        // (index.html, #form submit) — "a && b" one paragraph, "a & b" one text — so a link keeps it.
         host.appendChild(groupTitle(t('quick.words', 'Несколько слов')));
         host.appendChild(segmented([
             { value: 'phrase', label: t('quick.wordsPhrase', 'Подряд') },
-            { value: 'line', label: t('quick.wordsLine', 'В строке') },
-            { value: 'text', label: t('quick.wordsText', 'В тексте') }
+            { value: 'para', label: t('quick.wordsPara', 'В абзаце') },
+            { value: 'text', label: t('quick.wordsText', 'По всему тексту') }
         ], localStorage.getItem('dhammaSearchWords') || 'phrase', function (v) {
             localStorage.setItem('dhammaSearchWords', v);
+            window.dgShownQuery = null;
+            syncInputChrome();
             notifySaved();
         }));
         host.appendChild(note(t('quick.wordsNote',
-            'Все слова в одной строке или в одном тексте, на любом расстоянии друг от друга.')));
+            'Все слова в одном абзаце или в одном тексте, на любом расстоянии друг от друга.')));
 
         // Словарь — глобальная настройка (главная/поиск/ридер), поэтому не внутри блока выше.
         // Порядок по просьбе владельца: где искать -> словарь -> контекст.
@@ -4526,6 +4528,16 @@
         var clear = document.getElementById('dg-clear-btn');
         if (!input || !clear) return;
         clear.hidden = !input.value;
+        var chip = document.getElementById('dg-words-chip');
+        if (chip) {
+            var value = input.value.trim();
+            // the results page keeps its own mode for its own words (index.html dgShownQuery), else the saved setting
+            var shown = window.dgShownQuery && window.dgShownQuery.text === value ? window.dgShownQuery.mode : null;
+            var mode = shown || localStorage.getItem('dhammaSearchWords');
+            var on = (mode === 'para' || mode === 'text') && /\s/.test(value) && !/[&.*+?^${}()|[\]\\]/.test(value);
+            chip.hidden = !on;
+            if (on) chip.textContent = mode === 'para' ? t('quick.wordsPara', 'В абзаце') : t('quick.wordsText', 'По всему тексту');
+        }
     }
 
     /* Событие input браузер шлёт только на ввод С КЛАВИАТУРЫ. Когда поле заполняют из кода —
@@ -5442,6 +5454,10 @@
             });
         }
 
+        var wordsChip = document.getElementById('dg-words-chip');
+        if (wordsChip) wordsChip.addEventListener('click', function () { if (!isQuickOpen()) openQuick(); });
+        // the chip's label is translated: redraw it once the interface strings arrive or change
+        document.addEventListener('dhamma:languagechange', syncInputChrome);
         var quickBtn = document.getElementById('dg-quick-btn');
         if (quickBtn) {
             quickBtn.innerHTML = quickButtonHtml();

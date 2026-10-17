@@ -1369,6 +1369,9 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
          бургер-меню намеренно ВНЕ поля, правее. Кнопки — обычные элементы flex-строки, а не
          наложенные поверх инпута, как было раньше. -->
     <div class="dg-input-shell">
+      <!-- «Несколько слов» is not «подряд» and the field holds several words (dg-node#26): a small chip on the field's
+           bottom edge says how they are searched; absolute, so nothing moves. Tap → Quick settings. -->
+      <button type="button" id="dg-words-chip" class="dg-words-chip" hidden></button>
       <!-- Ракушка — она же «домой». Только в выдаче и в чтении: на главной знак и название стоят
            в шапке выше, и дублировать их внутри поля незачем. -->
       <a href="/" class="dg-shell-logo dg-go-home" title="Home" data-i18n-title="{{global.common.home}}">
@@ -3875,8 +3878,8 @@ document.addEventListener('DOMContentLoaded', function () { $(function() {
             // (one text), searched at any distance. A query that already has an operator or regex is left as typed.
             var wordsMode = localStorage.getItem('dhammaSearchWords');
             if (window.dgShownQuery && window.dgShownQuery.text === route.query.trim()) wordsMode = window.dgShownQuery.mode;
-            if ((wordsMode === 'line' || wordsMode === 'text') && /\s/.test(route.query.trim()) && !/[&.*+?^${}()|[\]\\]/.test(route.query)) {
-                route.query = route.query.trim().split(/\s+/).join(wordsMode === 'line' ? ' && ' : ' & ');
+            if ((wordsMode === 'para' || wordsMode === 'text') && /\s/.test(route.query.trim()) && !/[&.*+?^${}()|[\]\\]/.test(route.query)) {
+                route.query = route.query.trim().split(/\s+/).join(wordsMode === 'para' ? ' && ' : ' & ');
             }
             // Clean /{word} URL, not ?q=word — ?q= stays fully supported as an INPUT format
             // (initSearchApp still reads it first, old links keep working) but this is our own
@@ -4070,11 +4073,11 @@ document.addEventListener('DOMContentLoaded', function () { $(function() {
     // initSearchApp() после fast=1 (числа там уже полные и финальные — см. TODO.md, нюансы по
     // "новому багу 1"), и затем повторно на каждую живую смену языка (syncSiteLanguage) с теми
     // же данными, чтобы текст перегенерировался в новых строках dgT().
-    // «Несколько слов» (dg-node#26): the query carries the mode as an operator ("a && b" one line, "a & b" one text) so a
+    // «Несколько слов» (dg-node#26): the query carries the mode as an operator ("a && b" one paragraph, "a & b" one text) so a
     // link keeps it; the person sees the plain words and a small label instead (owner, 2026-10-17: hide the operator).
     function dgDisplayQuery(q) {
         q = String(q || '');
-        var mode = /\s&&\s/.test(q) ? 'line' : /\s&\s/.test(q) ? 'text' : null;
+        var mode = /\s&&\s/.test(q) ? 'para' : /\s&\s/.test(q) ? 'text' : null;
         return { text: mode ? q.split(/\s&&?\s/).join(' ') : q, mode: mode };
     }
 
@@ -4082,7 +4085,7 @@ document.addEventListener('DOMContentLoaded', function () { $(function() {
         let scope = buildScopeLabel(json.metadata.resolvedPrefixes);
 
         var dq = dgDisplayQuery(json.metadata.query || "");
-        let qStr = dq.text + (dq.mode ? ' (' + dgT(dq.mode === 'line' ? 'quick.wordsLine' : 'quick.wordsText', dq.mode === 'line' ? 'в строке' : 'в тексте').toLowerCase() + ')' : '');
+        let qStr = dq.text + (dq.mode ? ' (' + dgT(dq.mode === 'para' ? 'quick.wordsPara' : 'quick.wordsText', dq.mode === 'para' ? 'в абзаце' : 'по всему тексту').toLowerCase() + ')' : '');
 
         // Owner (2026-09-05): the header used to be one sentence — "Kacchapa 7 texts and 8
         // matches in 4 Nikayas + 6 KN books *". Now three visual parts: the keyword on its own

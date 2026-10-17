@@ -443,7 +443,8 @@ function bindAutocomplete(selector, allWords) {
         },
         focus: function() { return false; },
         select: function(event, ui) {
-            if (ui.item.url && /\d/.test(ui.item.value)) {
+            // a several-words entry ("dukkh samud (в строке)", dg-node#26) runs its stored search, operator and all
+            if (ui.item.url && (/\d/.test(ui.item.value) || /\s&&?\s/.test(safeDecode(ui.item.url)))) {
                 // Пункт ИСТОРИИ (ui.item.url только у них, см. historyObjList выше) — свой же
                 // внутренний путь (saveToHistory кладёт url.pathname текущей страницы), не
                 // внешняя ссылка. window.location.href был полной перезагрузкой — терял SPA
@@ -502,6 +503,10 @@ function bindAutocomplete(selector, allWords) {
         
         return $("<li>").append($div).appendTo(ul);
     };
+}
+
+function safeDecode(s) {
+    try { return decodeURIComponent(s); } catch (e) { return s; }
 }
 
 function setupMainInput() {
