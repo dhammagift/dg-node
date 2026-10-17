@@ -85,18 +85,27 @@ const trans = { ru: new Map(), en: new Map() };
 const rank = (lang, who) => { const i = (PRIO[lang] || []).indexOf(lang + '_' + who); return i >= 0 ? i : who === 'sujato' ? 99 : 50; };
 for (const r of db.prepare("SELECT segment_id, lang, translator, txt FROM texts WHERE kind = 'translation' AND lang IN ('ru', 'en')").iterate()) {
     if (!want.has(r.segment_id) || !r.txt.trim() || r.translator === 'ai') continue; // machine translation: none rather than that
-    const m = trans[r.lang], cur = m.get(r.segment_id);
-    if (!cur || rank(r.lang, r.translator) < rank(r.lang, cur[0])) m.set(r.segment_id, [r.translator, r.txt.trim()]);
+    const m = trans[r.lang];
+    (m.get(r.segment_id) || m.set(r.segment_id, new Map()).get(r.segment_id)).set(r.translator, r.txt.trim());
+}
+// one translator per definition, the best one that has any of its lines: translators merge several Pali lines into one
+// (Sujato's MN 42 has 16 lines for 122), so mixing translators line by line loses text and repeats it
+function trFor(segIds) {
+    const pick = {};
+    for (const l of ['ru', 'en']) {
+        const have = new Set(segIds.flatMap(id => [...(trans[l].get(id) || new Map()).keys()]));
+        pick[l] = [...have].sort((a, b) => rank(l, a) - rank(l, b))[0];
+    }
+    return seg => { const o = {}; for (const l of ['ru', 'en']) { const v = pick[l] && (trans[l].get(seg) || new Map()).get(pick[l]); if (v) o[l] = [pick[l], v]; } return o; };
 }
 // where the text's own markup starts a new paragraph, heading or verse block (the html table, as the reader renders it)
 const para = new Map();
 for (const r of db.prepare('SELECT segment_id, txt FROM html').iterate()) if (want.has(r.segment_id)) para.set(r.segment_id, /<(?:p|h[1-6]|li|blockquote|dt|dd)[\s>]/.test(r.txt) ? 1 : 0);
-const tr = seg => { const o = {}; for (const l of ['ru', 'en']) { const v = trans[l].get(seg); if (v) o[l] = v; } return o; };
 const titles = new Map(db.prepare("SELECT id, title FROM suttas").all().map(r => [r.id, (r.title || '').trim()]));
 const byKey = {};
-for (const d of defs) (byKey[d.key] || (byKey[d.key] = { phrase: d.phrase, defs: [] })).defs.push({ s: d.sutta, t: titles.get(d.sutta) || '',
+for (const d of defs) { const tr = trFor([d.q[0], ...d.a.map(s => s[0])]); (byKey[d.key] || (byKey[d.key] = { phrase: d.phrase, defs: [] })).defs.push({ s: d.sutta, t: titles.get(d.sutta) || '',
     // "Paṭhamaṁ." … "Dasamaṁ." count the suttas of a chapter: not part of the answer
-    q: [...d.q, tr(d.q[0]), para.get(d.q[0]) ?? 1], a: d.a.filter(s => !/^\W*(?:paṭhamaṁ|dutiyaṁ|tatiyaṁ|catutthaṁ|pañcamaṁ|chaṭṭhaṁ|sattamaṁ|aṭṭhamaṁ|navamaṁ|dasamaṁ)\.?\W*$/i.test(s[1])).map(s => [...s, tr(s[0]), para.get(s[0]) ?? 0]), ...(d.tpl ? { tpl: d.tpl } : {}) });
+    q: [...d.q, tr(d.q[0]), para.get(d.q[0]) ?? 1], a: d.a.filter(s => !/^\W*(?:paṭhamaṁ|dutiyaṁ|tatiyaṁ|catutthaṁ|pañcamaṁ|chaṭṭhaṁ|sattamaṁ|aṭṭhamaṁ|navamaṁ|dasamaṁ)\.?\W*$/i.test(s[1])).map(s => [...s, tr(s[0]), para.get(s[0]) ?? 0]), ...(d.tpl ? { tpl: d.tpl } : {}) }); }
 const tpl = fs.readFileSync(path.join(__dirname, 'page.html'), 'utf8');
 fs.mkdirSync(path.join(ROOT, 'siteroot/hatthipada'), { recursive: true });
 fs.writeFileSync(path.join(ROOT, 'siteroot/hatthipada/index.html'), tpl.replace('__DATA__', () => JSON.stringify(byKey)));
