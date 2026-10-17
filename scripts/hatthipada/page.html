@@ -1,7 +1,12 @@
 <!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow">
 <title>Hatthipada</title>
 <meta name="description" content="The four noble truths and, as deep as you go, how the suttas themselves define every word">
+<link href="/assets/css/bootstrap.5.3.1.min.css" rel="stylesheet">
 <link href="/assets/css/extrastyles.css" rel="stylesheet">
+<link href="/assets/css/paliLookup.css" rel="stylesheet">
+<link href="/reader/css/index.css" rel="stylesheet">
+<link href="/reader/css/rus-multi.css" rel="stylesheet">
+<link href="/reader/css/uiextra.css" rel="stylesheet">
 <script src="/assets/js/nav-component.js" defer></script>
 <script src="/assets/js/themeswitch.js" defer></script>
 <script src="/assets/js/settings.js" defer></script>
@@ -31,7 +36,9 @@ details.def[open] > summary .qprev { display:none; }
 .par { display:grid; grid-template-columns:minmax(0, 1fr); gap:4px 20px; margin:0 0 10px; }
 .with-tr .par { grid-template-columns:minmax(0, 1.1fr) minmax(0, 1fr); }
 @media (max-width: 899px) { .with-tr .par { grid-template-columns:minmax(0, 1fr); } }
-.no-pi .par .pi { display:none; } .no-pi .with-tr .par { grid-template-columns:minmax(0, 1fr); }
+#sutta.hp-root { max-width:none; margin:0; line-height:inherit; } /* the reader's #sutta is one 45rem column; here it holds the map too */
+.hp-root .def article { max-width:45rem; } .hp-root .def article p.hp-q { font-weight:600; }
+.no-pi .hp-root .pli-lang { display:none; }
 .par .pi { font-family:Literata, Georgia, serif; font-size:16px; line-height:1.65; margin:0; }
 .par .tl { font-size:14.5px; line-height:1.6; color:var(--ink-2); margin:0; }
 .par.q .pi, .par.q .tl { font-weight:600; color:var(--ink); }
@@ -85,14 +92,16 @@ footer.about { max-width:1100px; margin:0 auto; padding:8px 16px 40px; } footer.
 .link { fill:none; stroke-width:1.5px; stroke-opacity:.4; }
 </style></head><body>
 <header class="topbar">
-  <div class="navicons"><top-nav-icons type="read"></top-nav-icons></div>
+  <div class="navicons"><top-nav-icons type="read" show-dict></top-nav-icons></div>
   <h1>Hatthipada <small data-i="sub"></small></h1>
 </header>
 <!-- the same corner switch as the results and the reader (search/css/home.css .dg-lpill): Pāḷi, the translation, ⋮ = its language -->
 <div id="dg-langpill" class="dg-lpill" role="group"><button type="button" data-k="pli">Pāḷi</button><button type="button" data-k="2nd"></button><button type="button" class="dg-lpill-more" data-i-title="trLang"><span class="dg-dots" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span></button></div>
 <div class="crumbs" id="crumbs"></div>
+<div id="sutta" class="hp-root">
 <div id="mind"><div id="map"><div class="hint" data-i="hint"></div></div><div id="panel"></div></div>
 <div id="cols"></div>
+</div>
 <footer class="about"><p class="lede" data-i="lede"></p></footer>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
 <script>
@@ -107,12 +116,12 @@ const L = {
     lede: 'Как в MN 28: следы всех животных умещаются в след слона, так всё полезное умещается в четыре благородные истины. Здесь — только определения, которые дают сами сутты («Katamā ca, bhikkhave, X?» … «idaṁ vuccati X», формулы SN 56.11). <b>Синее</b> слово сутты где-то определяют — нажми, откроется его определение; любое другое слово тоже нажимается — откроется, где оно встречается. И так сколько угодно глубоко. Четыре никаи, пали; перевод — для справки.',
     hint: 'Нажми на узел — раскроется ветка, справа его определения. Колесо — масштаб, тяни — сдвиг.', defs: n => n + ' ' + (n % 10 === 1 && n % 100 !== 11 ? 'определение' : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? 'определения' : 'определений'),
     inSuttas: n => 'в ' + n + ' сутт' + (n % 10 === 1 && n % 100 !== 11 ? 'е' : 'ах'), also: 'То же:', loading: 'Загружаю…', failed: 'Не загрузилось',
-    notDefined: n => 'Формулой не определяется. Встречается в ' + n + ' суттах', first30: ', показаны первые 30', defsShort: 'опр.', rootMeta: 'SN 56.11 и разборы: MN 141, DN 22, AN 3.61, MN 28…', trLang: 'Язык перевода: рус / англ', trBy: 'перевод', trNone: 'в переводе это место сокращено', toc: 'Оглавление', theme: 'Тема (светлая / тёмная)', openAll: 'развернуть все', closeAll: 'свернуть все', tpl: r => 'В тексте сутты пропуск «…»; ответ — из ' + r + ', ближайшей полной сутты той же серии (там на месте этого слова другое).' },
+    notDefined: n => 'Формулой не определяется. Встречается в ' + n + ' суттах', first30: ', показаны первые 30', defsShort: 'опр.', rootMeta: 'SN 56.11 и разборы: MN 141, DN 22, AN 3.61, MN 28…', trLang: 'Язык перевода: рус / англ', dictOn: 'Словарь вкл.: слово показывается в словаре', dictOff: 'Словарь выкл.: слово открывает его глубину', trBy: 'перевод', trNone: 'в переводе это место сокращено', toc: 'Оглавление', theme: 'Тема (светлая / тёмная)', openAll: 'развернуть все', closeAll: 'свернуть все', tpl: r => 'В тексте сутты пропуск «…»; ответ — из ' + r + ', ближайшей полной сутты той же серии (там на месте этого слова другое).' },
   en: { sub: '— the elephant’s footprint: the four truths in depth', truths: '4 truths', trLabel: 'Translation',
     lede: 'As in MN 28: the footprints of all animals fit into the elephant’s, and everything skilful fits into the four noble truths. Only the definitions the suttas give themselves (“Katamā ca, bhikkhave, X?” … “idaṁ vuccati X”, the formulas of SN 56.11). A <b>blue</b> word is defined somewhere in the suttas — tap it to open its definition; any other word opens where it occurs. As deep as you go. Four nikāyas, Pāḷi; the translation is a reference.',
     hint: 'Click a node to open its branch and its definitions on the right. Wheel to zoom, drag to move.', defs: n => n + (n === 1 ? ' definition' : ' definitions'),
     inSuttas: n => 'in ' + n + (n === 1 ? ' sutta' : ' suttas'), also: 'Also in:', loading: 'Loading…', failed: 'Did not load',
-    notDefined: n => 'No definition formula. Occurs in ' + n + ' suttas', first30: ', the first 30 shown', defsShort: 'def.', rootMeta: 'SN 56.11 and the analyses: MN 141, DN 22, AN 3.61, MN 28…', trLang: 'Translation language: ru / en', trBy: 'translation:', trNone: 'the translations abbreviate this passage', toc: 'Contents', theme: 'Theme (light / dark)', openAll: 'open all', closeAll: 'close all', tpl: r => 'The sutta abbreviates with “…”; the answer is from ' + r + ', the nearest full sutta of the same series (with another word in its place).' },
+    notDefined: n => 'No definition formula. Occurs in ' + n + ' suttas', first30: ', the first 30 shown', defsShort: 'def.', rootMeta: 'SN 56.11 and the analyses: MN 141, DN 22, AN 3.61, MN 28…', trLang: 'Translation language: ru / en', dictOn: 'Dictionary on: a word opens in the dictionary', dictOff: 'Dictionary off: a word opens its depth', trBy: 'translation:', trNone: 'the translations abbreviate this passage', toc: 'Contents', theme: 'Theme (light / dark)', openAll: 'open all', closeAll: 'close all', tpl: r => 'The sutta abbreviates with “…”; the answer is from ' + r + ', the nearest full sutta of the same series (with another word in its place).' },
 }[UI];
 document.querySelectorAll('[data-i]').forEach(e => { e.innerHTML = L[e.dataset.i]; });
 document.addEventListener('click', e => {
@@ -131,15 +140,17 @@ try { const v = localStorage.getItem('hatthipadaTr'); if (v !== null) TR = v; if
 if (TR) TRLANG = TR;
 if (!PI && !TR) PI = true;
 // the definition's lines grouped into the text's own paragraphs; the question is its own block
+// the reader's own markup (megareader.js): <article><p><span id><span.pli-lang> <span.right-column><span.ru-lang>…, paragraphs
+// where the text's html table opens one, so the reader's stylesheets render it exactly as the reader does
 function paragraphs(segs, key) {
-  const TRon = TR && segs.some(s => s[2] && s[2][TR]);
   const blocks = [];
   segs.forEach((s, i) => { if (i <= 1 || s[3] || !blocks.length) blocks.push([]); blocks[blocks.length - 1].push(s); });
-  return blocks.map((b, i) => {
-    const pi = b.map(s => linkify(s[1], key)).join(' ');
-    const tl = TRon ? b.map(s => s[2] && s[2][TR] ? esc(s[2][TR][1]) : '').join(' ').trim() : '';
-    return `<div class="par${i === 0 ? ' q' : ''}"><p class="pi">${pi}</p>${TRon ? `<p class="tl">${tl}</p>` : ''}</div>`;
-  }).join('');
+  const seg = s => {
+    const t = TR && s[2] && s[2][TR];
+    return `<span data-seg="${esc(s[0])}"><span class="pli-lang inputscript-ISOPali quote" lang="pi">${linkify(s[1], key)}</span>` +
+      (t ? `<span class="right-column"><span class="${TR}-lang quote" lang="${TR}">${esc(t[1])}</span></span>` : '') + '</span>';
+  };
+  return '<article>' + blocks.map((b, i) => `<p${i === 0 ? ' class="hp-q"' : ''}>${b.map(seg).join('\n')}</p>`).join('') + '</article>';
 }
 const TR_NAME = { o: 'o', 'sv+edited+o': 'sv', sv: 'sv', thanissaro: 'Thanissaro', sujato: 'Sujato', brahmali: 'Brahmali' };
 const trHtml = seg => { const t = TR && seg[2] && seg[2][TR]; return t ? `<div class="tr">${esc(t[1])} <span class="trby">${esc(TR_NAME[t[0]] || t[0])}</span></div>` : ''; };
@@ -148,6 +159,7 @@ function paintTr() {
   pill.querySelector('[data-k="pli"]').setAttribute('aria-pressed', String(PI));
   const b = pill.querySelector('[data-k="2nd"]'); b.textContent = TRLANG === 'ru' ? 'Рус' : 'En'; b.setAttribute('aria-pressed', String(!!TR));
   document.body.classList.toggle('no-pi', !PI);
+  paintDict();
 }
 // terms that are not doctrine here: generic words, names and forms of address the question formula happens to catch
 const SKIP = new Set(['dhamm', 'adhamm', 'atth', 'anatth', 'sādh', 'asādh', 'ariy', 'anariy', 'ekadhamm', 'hot', 'seyy', 'sat', 'sāt', 'rādh',
@@ -263,9 +275,10 @@ function render() {
   const last = cols.lastElementChild; setTimeout(() => cols.scrollTo({ left: last.getBoundingClientRect().left - cols.getBoundingClientRect().left + cols.scrollLeft - 16, behavior: first ? 'auto' : 'smooth' }), 50); first = false;
   try { history.replaceState(null, '', '#' + stack.map(encodeURIComponent).join('/')); } catch (e) {}
 }
+function mobileWord(t) { const col = t.closest('.col'); if (!col) return; const depth = [...cols.children].indexOf(col); stack.length = depth; stack.push(t.dataset.k || '?' + t.dataset.w); render(); }
 document.addEventListener('click', e => {
-  const t = e.target.closest('.t[data-k], .truth[data-k], .w[data-w]'), c = e.target.closest('[data-depth]');
-  if (t && t.closest('.col')) { const col = t.closest('.col'); const depth = [...cols.children].indexOf(col); stack.length = depth; stack.push(t.dataset.k || '?' + t.dataset.w); render(); }
+  const t = e.target.closest('.truth[data-k]'), c = e.target.closest('[data-depth]');
+  if (t && t.closest('.col')) mobileWord(t);
   else if (c) { stack.length = +c.dataset.depth; render(); }
 });
 stack.push(...location.hash.slice(1).split('/').map(decodeURIComponent).filter(k => DATA[k] || (k[0] === '?' && k.length > 3)));
@@ -327,24 +340,46 @@ function initMap() {
   mapSvg.call(zoomer).call(zoomer.transform, d3.zoomIdentity.translate(40, box.clientHeight / 2));
   // panel clicks: a blue word opens that branch under the selected node; the truth buttons open their branch
   document.getElementById('panel').addEventListener('click', e => {
-    const w = e.target.closest('.w[data-w]');
-    if (w) { e.stopImmediatePropagation(); const p = document.getElementById('panel'); const back = p.firstElementChild; const sc = searchColumn(w.dataset.w);
+    const t = e.target.closest('.truth[data-k]'); if (!t) return;
+    e.stopImmediatePropagation(); deskWord(t);
+  }, true);
+}
+function deskWord(t) {
+    if (t.dataset.w) { const p = document.getElementById('panel'); const back = p.firstElementChild; const sc = searchColumn(t.dataset.w);
       const b = document.createElement('button'); b.className = 'truth'; b.style.marginBottom = '8px'; b.textContent = '← ' + (selected.key ? DATA[selected.key].phrase : L.truths);
       b.onclick = () => p.replaceChildren(back); sc.prepend(b); p.replaceChildren(sc); return; }
-    const t = e.target.closest('.t[data-k], .truth[data-k]'); if (!t) return;
-    e.stopImmediatePropagation();
     const k = t.dataset.k;
     const parent = selected === tree ? tree : selected;
     const list = parent === tree ? tree.children : kidsOf(parent, pathOf(parent));
     let child = list.find(c => c.key === k);
     if (!child) { child = { key: k, name: DATA[k].phrase, ti: parent.ti, open: false }; list.push(child); }
     parent.open = true; select(child);
-  }, true);
+}
+function openSharedPath() {
   // open the path of a shared link
   let node = tree;
   for (const k of stack) { if (k[0] === '?') break; node.open = true; const list = node === tree ? tree.children : kidsOf(node, pathOf(node)); let c = list.find(x => x.key === k); if (!c) { c = { key: k, name: DATA[k].phrase, ti: node.ti, open: false }; list.push(c); } node = c; }
   select(node);
 }
+// dictionary: off by default on this page (owner) — a word then opens its depth; on — the site's popup dictionary shows it
+let DICT = false; try { DICT = localStorage.getItem('hatthipadaDict') === '1'; } catch (e) {}
+function paintDict() { document.querySelectorAll('.toggle-dict-btn img').forEach(i => { i.src = DICT ? '/assets/svg/comment.svg' : '/assets/svg/comment-slash.svg'; }); }
+window.addEventListener('click', e => {
+  if (e.target.closest('.toggle-dict-btn')) {
+    e.stopImmediatePropagation(); e.preventDefault();
+    DICT = !DICT; try { localStorage.setItem('hatthipadaDict', DICT ? '1' : '0'); if (DICT) localStorage.setItem('dictionaryVisible', 'true'); } catch (er) {}
+    // paliLookup.js may already be loaded with the site's switch off: turn it on there too
+    if (DICT && typeof dictionaryVisible !== 'undefined' && !dictionaryVisible && typeof toggleDictionaryVisible === 'function') toggleDictionaryVisible();
+    else if (typeof window.showBubbleNotification === 'function') window.showBubbleNotification(DICT ? L.dictOn : L.dictOff);
+    paintDict(); return;
+  }
+  const pli = e.target.closest('.pli-lang'), w = e.target.closest('.t[data-k], .w[data-w]');
+  if (!pli || e.target.closest('a')) return;
+  if (DICT) return;                              // the dictionary takes the word
+  e.stopPropagation(); e.preventDefault();       // no popup while it is off
+  if (w) (wide.matches ? deskWord : mobileWord)(w);
+}, true);
+setTimeout(paintDict, 0); window.addEventListener('load', paintDict);
 paintTr();
 document.getElementById('dg-langpill').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
@@ -354,6 +389,6 @@ document.getElementById('dg-langpill').addEventListener('click', e => {
   try { localStorage.setItem('hatthipadaTr', TR); localStorage.setItem('hatthipadaPi', PI ? '1' : '0'); localStorage.setItem('hatthipadaTrLang', TRLANG); } catch (er) {} paintTr();
   if (wide.matches) { const p = document.getElementById('panel'); p.replaceChildren(selected.key ? column(selected.key) : rootColumn()); } else render();
 });
-if (wide.matches) initMap(); else render();
+if (wide.matches) { initMap(); openSharedPath(); } else render();
 wide.addEventListener('change', () => location.reload());
 </script></body></html>
