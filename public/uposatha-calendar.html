@@ -126,6 +126,18 @@
       <div class="dg-slides-head"><h2 class="dg-eyebrow dg-slides-title" data-t="slTitle"></h2><button type="button" class="dg-slides-all" id="sl-all-btn" data-t="showAll"></button></div>
       <div id="dg-carousel" class="carousel slide"></div>
     </div>
+    <!-- The site in a phone or tablet browser only (body.site, uposatha-calendar.js): the app's own store pages, as on the desktop
+         footer. Not in the app, an installed PWA or ?app=1. Owner, 2026-10-17 (dg-node#66): three badges, no OS detection; the
+         test tracks until the stores are public: TestFlight's public link, Play's testing page, Microsoft Store (public). -->
+    <div class="up-app-card" id="up-app-card">
+      <h2 class="dg-eyebrow" data-t="appTitle"></h2>
+      <p data-t="appText"></p>
+      <div class="up-app-badges">
+        <a href="https://testflight.apple.com/join/xeAQGgvH" target="_blank" rel="noopener" title="iPhone · TestFlight"><img src="/assets/img/buttons/appstore-cta.png" alt="iPhone (TestFlight)" width="135" height="40"></a>
+        <a href="https://play.google.com/apps/testing/gift.dhamma.uposatha" target="_blank" rel="noopener" title="Google Play"><img src="/assets/img/buttons/google-play-cta.png" alt="Google Play" width="135" height="40"></a>
+        <a href="https://apps.microsoft.com/detail/9NMD1L6H52ZN" target="_blank" rel="noopener" title="Microsoft Store"><img src="/assets/img/buttons/msstore-cta.png" alt="Microsoft Store" width="135" height="40"></a>
+      </div>
+    </div>
   </section>
 
   <div class="segrow lvseg" id="lv-seg"><button type="button" data-v="dates" data-t="tDates"></button><button type="button" data-v="list" data-t="tList"></button></div>

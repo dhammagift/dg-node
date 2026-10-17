@@ -200,3 +200,10 @@ html[data-vt=back]{--upo-vt-dir:-1}
 /* Dark theme: a pale halo and a thin rim, so a dark new moon does not melt into the card and look like a broken icon */
 [data-theme="dark"] body.app #up-hero .halo{background:radial-gradient(closest-side,rgba(175,205,255,.34),rgba(175,205,255,.12) 68%,transparent)}
 [data-theme="dark"] body.app #up-hero .mv .moon{filter:drop-shadow(0 0 1.5px rgba(190,215,255,.7)) drop-shadow(0 0 14px rgba(150,190,255,.3))}
+
+/* The app's store badges at the end of the summary: the site in a phone or tablet browser only (dg-node#66) */
+.up-app-card{display:none}
+body.site:not(.wide) #slides .up-app-card{display:block;background:var(--up-surf);border-radius:28px;padding:16px 16px 18px;margin-top:12px}
+body.site:not(.wide) .up-app-card p{margin:6px 0 12px}
+.up-app-badges{display:flex;flex-wrap:wrap;gap:10px}
+.up-app-badges img{display:block;width:auto;height:40px}
