@@ -1,0 +1,10 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "gift.dhamma/pali-canon",
+  "title": "Dhamma.Gift — Pāli Canon",
+  "description": "Search and read the Pāli Canon: Pāli root texts with Russian and English translations.",
+  "version": "1.0.0",
+  "websiteUrl": "https://dhamma.gift/docs/tech/mcp",
+  "repository": { "url": "https://github.com/dhammagift/dg-node", "source": "github" },
+  "remotes": [ { "type": "streamable-http", "url": "https://api.dhamma.gift/mcp" } ]
+}
