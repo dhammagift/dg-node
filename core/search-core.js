@@ -928,7 +928,7 @@ function keywordMatchers(keyword) {
     return {
         prepare: isRegexQuery ? (text => text) : foldText,
         matchRegex: new RegExp(pattern, 'gi'),
-        wordRegex: new RegExp(`[^${WORD_BOUNDARY_CHARS}]*${pattern}[^${WORD_BOUNDARY_CHARS}]*`, 'gi'),
+        wordRegex: new RegExp(`[^${WORD_BOUNDARY_CHARS}]*(?:${pattern})[^${WORD_BOUNDARY_CHARS}]*`, 'gi'),
     };
 }
 
