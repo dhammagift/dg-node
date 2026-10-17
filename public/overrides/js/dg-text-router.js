@@ -17,6 +17,12 @@
     'use strict';
 
     var VINAYA_CATS = ['pj', 'ss', 'ay', 'np', 'pc', 'pd', 'sk', 'as'];
+    // Books outside the four nikāyas: the other KN books, the Abhidhamma, and the Chinese / Sanskrit / Gāndhārī
+    // parallels the corpus carries (sa, ma, ea, sf, t, pdhp). Their ids are taken as they are, before any typo
+    // fix: "ma1" is the Madhyama Āgama, not "mn1"; "ds1.1" is the Dhammasaṅgaṇī, not "dn1.1".
+    var KN_EXTRA = ['ja', 'mil', 'tha-ap', 'thi-ap', 'vv', 'pv', 'cp', 'bv', 'ps', 'ne', 'cnd', 'mnd', 'kp', 'pe'];
+    var ABHI = ['ds', 'dt', 'kv', 'patthana', 'pp', 'vb', 'ya'];
+    var BOOK_ID = new RegExp('^(?:' + KN_EXTRA.concat(ABHI, ['sa', 'ma', 'ea', 'sf', 't', 'pdhp']).join('|') + ')\\d+(?:[.-]\\d+)*[a-z]?$');
 
     // Keyboard-layout fix (Cyrillic ЙЦУКЕН -> Latin QWERTY BY KEY POSITION, e.g. "ыт56" ->
     // "sn56") — copied from autopali.js's `ruToEn` map (same file/table the autocomplete box
@@ -57,6 +63,7 @@
         q = q.replace(/[а-яё]/g, function (ch) { return RU_LAYOUT_TO_LATIN[ch] || ch; });
         q = q.replace(/,/g, '.');
         q = q.replace(/\b(bu|bi)\s+(pj|ss|ay|np|pc|pd|sk|as|pm)\b/, '$1-$2');
+        q = q.replace(/^(bu|bi)-vb-/, '$1-').replace(/\/+$/, ''); // the old site's "bu-vb-pc91", a trailing "/"
         q = q.replace(/([a-z])\s+(\d)/g, '$1$2');
         // "sn 1 1" / "ыт 1  1" -> "sn1.1": пробел МЕЖДУ ЦИФРАМИ означает разделитель главы и
         // сутты, ровно как точка. Раньше склеивалась только пара "буква+цифра", а второе число
@@ -75,7 +82,9 @@
         // (PHP-оригинал так делал бы — "m3.70" через "." съело бы "3", а не букву — сюда этот
         // баг сознательно не переносил). Какую именно неверную букву ввели — не важно, всегда
         // перезаписываем на единственно верную для этого префикса (a/m/d/s -> an/mn/dn/sn).
-        q = q.replace(/\bs[a-z]?\.?(\d[\d.-]*)/, 'sn$1');
+        // Not after "-" either (like m/d/a below): "pli-tv-bu-vb-ss13", "bu-sk20" are Vinaya ids, and
+        // this rule turned them into the non-existent "...-sn13"/"...-sn20" (every Saṅghādisesa and Sekhiya rule).
+        q = q.replace(/(^|[^-])\bs[a-z]?\.?(\d[\d.-]*)/, '$1sn$2');
         q = q.replace(/(^|[^-])\bm[a-z]?\.?(\d[\d.-]*)/, '$1mn$2');
         q = q.replace(/(^|[^-])\bd[a-z]?\.?(\d[\d.-]*)/, '$1dn$2');
         q = q.replace(/(^|[^-])\ba[a-z]?\.?(\d[\d.-]*)/, '$1an$2');
@@ -107,6 +116,8 @@
 
     function classify(raw) {
         var original = String(raw == null ? '' : raw).trim();
+        var exact = original.toLowerCase().replace(/\/+$/, '');
+        if (BOOK_ID.test(exact)) return { type: 'text', id: exact };
         var q = normalize(raw);
         if (!q) return { type: 'search', query: '' };
 
@@ -183,7 +194,7 @@
         // mn/dn/dhp/iti + number (no vagga.sutta sub-numbering), or snp/sn/an/ud/thig/thag +
         // chapter.subnumber (with optional range) — all specific texts.
         if (/^(mn|dn|dhp|iti)\d{1,3}(-\d{1,3})?$/.test(q) ||
-            /^(snp|sn|an|ud|thig|thag)\d{1,3}[.:]\d{1,3}(-\d{1,3})?$/.test(q)) {
+            /^(snp|sn|an|ud|thig|thag)\d{1,3}[.:]\d{1,3}(-\d{1,4})?$/.test(q)) {
             return { type: 'text', id: q };
         }
 
@@ -193,8 +204,9 @@
         // server-side chapter-children lookup (see findChapterChildren in dg-light.js).
         // pm/bpm/bupm/bipm are the Pātimokkha itself (same ids as toc.js TOC_ALIASES), not the
         // Vibhaṅga — they used to open /toc/pli-tv-bu-vb-.
-        if (/^(pm|bpm|bupm)$/.test(q)) return { type: 'chapter', id: 'pli-tv-bu-pm' };
-        if (q === 'bipm') return { type: 'chapter', id: 'pli-tv-bi-pm' };
+        // The Pātimokkha is one text in the corpus (pli-tv-bu-pm): open it — as a "chapter" it ended in a search
+        if (/^(pm|bpm|bupm|bu-pm)$/.test(q)) return { type: 'text', id: 'pli-tv-bu-pm' };
+        if (q === 'bipm' || q === 'bi-pm') return { type: 'text', id: 'pli-tv-bi-pm' };
         if (q === 'bu') return { type: 'chapter', id: 'pli-tv-bu-vb-' };
         if (q === 'bi') return { type: 'chapter', id: 'pli-tv-bi-vb-' };
         var bareCat = q.match(new RegExp('^(bi-)?(' + VINAYA_CATS.join('|') + ')$'));
@@ -233,8 +245,6 @@
         // (или что угодно на "ja"/"ya"...) утекало сюда и превращалось в переход на раздел "ya"
         // вместо поиска. Добавлен "$" — совпадает только голый код (переход на раздел) ИЛИ код +
         // цифры без хвоста (конкретный текст), как и написано в комментарии выше.
-        var KN_EXTRA = ['ja', 'mil', 'tha-ap', 'thi-ap', 'vv', 'pv', 'cp', 'bv', 'ps', 'ne', 'cnd', 'mnd', 'kp', 'pe'];
-        var ABHI = ['ds', 'dt', 'kv', 'patthana', 'pp', 'vb', 'ya'];
         var otherBookRe = new RegExp('^(' + KN_EXTRA.concat(ABHI).join('|') + ')(\\d+)?$');
         var otherMatch = q.match(otherBookRe);
         if (otherMatch) {
