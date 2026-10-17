@@ -671,11 +671,15 @@ window.DgSearchRender = (function () {
         return matcherCached;
     }
     function buildHighlightMatcher(highlightWord) {
-        var isRegex = HIGHLIGHT_METACHARS.test(highlightWord);
+        // "a && b" / "a & b" (several words at any distance, dg-node#26): each word highlighted on its own
+        var parts = String(highlightWord).split(/\s&&?\s/).map(function (p) { return p.trim(); }).filter(Boolean);
+        var isRegex = parts.some(function (p) { return HIGHLIGHT_METACHARS.test(p); });
         // Search ignores punctuation between the keyword's letters (core/search-core.js
         // punctTolerantPattern): "evaṁ bhikkhave" highlights "evaṁ, bhikkhave" too.
-        var source = isRegex ? highlightWord
-            : Array.from(foldForHighlight(highlightWord)).map(escapeForRegExp).join('[,;:!"\'“”‘’«»]*');
+        var source = parts.map(function (p) {
+            return HIGHLIGHT_METACHARS.test(p) ? p
+                : Array.from(foldForHighlight(p)).map(escapeForRegExp).join('[,;:!"\'“”‘’«»]*');
+        }).join('|');
         try {
             return { isRegex: isRegex, re: new RegExp(source, 'gi') };
         } catch (e) {

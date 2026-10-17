@@ -497,7 +497,45 @@ function regexKeywordRows(keyword) {
 // output shape:
 //   plain keyword -> FTS5 MATCH (the fast case);
 //   regex keyword -> bounded scan (see regexKeywordRows), run in a worker by the routes.
+// Several words, all of them, at any distance (dg-node#26; the Quick settings' «Несколько слов» writes the operator into
+// the query, so a link keeps the mode and MCP and the offline app get it for free):
+//   "kacchap && samudd" — all the words in one line (segment: its Pali, variant or any translation);
+//   "kacchap & samudd"  — all the words in one text (sutta).
+// Each word is matched on its own exactly as a one-word query would be (substring, exact, or its own regex).
+function parseMultiTerm(keyword) {
+    const s = String(keyword || '');
+    const mode = /\s&&\s/.test(s) ? 'segment' : /\s&\s/.test(s) ? 'text' : null;
+    if (!mode) return null;
+    const terms = s.split(mode === 'segment' ? /\s&&\s/ : /\s&\s/).map(t => t.trim()).filter(Boolean);
+    return terms.length >= 2 ? { mode, terms } : null;
+}
+
+function multiTermRows(multi, exactMatch) {
+    const keyOf = multi.mode === 'segment' ? r => r.sutta_id + '|' + r.segment_id : r => r.sutta_id;
+    const perTerm = multi.terms.map(t => sqlMatchRows(t, exactMatch));
+    let kept = null;
+    for (const rows of perTerm) {
+        const keys = new Set(rows.map(keyOf));
+        kept = kept ? new Set([...kept].filter(k => keys.has(k))) : keys;
+    }
+    const seen = new Set();
+    const out = [];
+    for (const rows of perTerm) {
+        for (const r of rows) {
+            if (!kept.has(keyOf(r))) continue;
+            const id = `${r.sutta_id}|${r.segment_id}|${r.kind}|${r.lang}|${r.translator}`;
+            if (seen.has(id)) continue;
+            seen.add(id);
+            out.push(r);
+        }
+    }
+    // rows of different words interleave: put each text's segments back in reading order
+    return out.sort((a, b) => (a.sutta_id < b.sutta_id ? -1 : a.sutta_id > b.sutta_id ? 1 : 0) || (a.ord - b.ord));
+}
+
 function sqlKeywordRows(keyword) {
+    const multi = parseMultiTerm(keyword);
+    if (multi) return multiTermRows(multi, false);
     if (lastKeywordRows.keyword === keyword) return lastKeywordRows.rows;
     const rows = REGEX_METACHARS.test(keyword)
         ? regexKeywordRows(keyword)
@@ -507,6 +545,8 @@ function sqlKeywordRows(keyword) {
 }
 
 function sqlMatchRows(keyword, exactMatch) {
+    const multi = parseMultiTerm(keyword);
+    if (multi) return multiTermRows(multi, exactMatch);
     const rows = sqlKeywordRows(keyword);
     if (!exactMatch) return rows;
     if (lastExactRows.keyword === keyword) return lastExactRows.rows;
@@ -881,8 +921,10 @@ function unicodeWordBoundary(pattern) {
 // as grep -E was; anything else is matched against folded text, so a query typed without
 // diacritics still finds the real form.
 function keywordMatchers(keyword) {
-    const isRegexQuery = REGEX_METACHARS.test(keyword);
-    const pattern = isRegexQuery ? unicodeWordBoundary(keyword) : punctTolerantPattern(foldText(keyword));
+    const multi = parseMultiTerm(keyword);
+    const parts = multi ? multi.terms : [keyword];
+    const isRegexQuery = parts.some(t => REGEX_METACHARS.test(t));
+    const pattern = parts.map(t => (REGEX_METACHARS.test(t) ? unicodeWordBoundary(t) : punctTolerantPattern(foldText(t)))).join('|');
     return {
         prepare: isRegexQuery ? (text => text) : foldText,
         matchRegex: new RegExp(pattern, 'gi'),

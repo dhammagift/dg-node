@@ -3871,6 +3871,13 @@ document.addEventListener('DOMContentLoaded', function () { $(function() {
         var currentParams = new URLSearchParams();
         if (langsExplicit) currentParams.set('langs', langs);
         if (route.type === 'search') {
+            // «Несколько слов» in Quick settings (dg-node#26): several plain words become "a && b" (one line) or "a & b"
+            // (one text), searched at any distance. A query that already has an operator or regex is left as typed.
+            var wordsMode = localStorage.getItem('dhammaSearchWords');
+            if (window.dgShownQuery && window.dgShownQuery.text === route.query.trim()) wordsMode = window.dgShownQuery.mode;
+            if ((wordsMode === 'line' || wordsMode === 'text') && /\s/.test(route.query.trim()) && !/[&.*+?^${}()|[\]\\]/.test(route.query)) {
+                route.query = route.query.trim().split(/\s+/).join(wordsMode === 'line' ? ' && ' : ' & ');
+            }
             // Clean /{word} URL, not ?q=word — ?q= stays fully supported as an INPUT format
             // (initSearchApp still reads it first, old links keep working) but this is our own
             // navigation, so it generates the clean form (dg-light.js's /:slug now serves the
@@ -4063,10 +4070,19 @@ document.addEventListener('DOMContentLoaded', function () { $(function() {
     // initSearchApp() после fast=1 (числа там уже полные и финальные — см. TODO.md, нюансы по
     // "новому багу 1"), и затем повторно на каждую живую смену языка (syncSiteLanguage) с теми
     // же данными, чтобы текст перегенерировался в новых строках dgT().
+    // «Несколько слов» (dg-node#26): the query carries the mode as an operator ("a && b" one line, "a & b" one text) so a
+    // link keeps it; the person sees the plain words and a small label instead (owner, 2026-10-17: hide the operator).
+    function dgDisplayQuery(q) {
+        q = String(q || '');
+        var mode = /\s&&\s/.test(q) ? 'line' : /\s&\s/.test(q) ? 'text' : null;
+        return { text: mode ? q.split(/\s&&?\s/).join(' ') : q, mode: mode };
+    }
+
     function renderResultHeader(json) {
         let scope = buildScopeLabel(json.metadata.resolvedPrefixes);
 
-        let qStr = json.metadata.query || "";
+        var dq = dgDisplayQuery(json.metadata.query || "");
+        let qStr = dq.text + (dq.mode ? ' (' + dgT(dq.mode === 'line' ? 'quick.wordsLine' : 'quick.wordsText', dq.mode === 'line' ? 'в строке' : 'в тексте').toLowerCase() + ')' : '');
 
         // Owner (2026-09-05): the header used to be one sentence — "Kacchapa 7 texts and 8
         // matches in 4 Nikayas + 6 KN books *". Now three visual parts: the keyword on its own
@@ -4756,7 +4772,10 @@ document.addEventListener('DOMContentLoaded', function () { $(function() {
 
         // Показываем в строке поиска, что сейчас ищем — можно сразу поправить и отправить снова.
         // (keyword уже декодирован — URLSearchParams.get делает это сам.)
-        $('#paliauto').val(keyword);
+        var dqField = dgDisplayQuery(keyword);
+        $('#paliauto').val(dqField.text);
+        // the next submit of these same words keeps this page's mode, whatever the saved setting
+        window.dgShownQuery = dqField.mode ? dqField : null;
         // jQuery .val() не шлёт input — крестик «очистить» в поле надо обновить вручную.
         if (window.DgHome && window.DgHome.syncInput) window.DgHome.syncInput();
 

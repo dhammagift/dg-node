@@ -2469,6 +2469,20 @@
         host.appendChild(groupTitle(t('quick.dictMode', 'Словарь')));
         host.appendChild(dictModePicker());
 
+        // Several words (dg-node#26): the search form writes the choice into the query as an operator
+        // (index.html, #form submit) — "a && b" one line, "a & b" one text — so a link keeps it.
+        host.appendChild(groupTitle(t('quick.words', 'Несколько слов')));
+        host.appendChild(segmented([
+            { value: 'phrase', label: t('quick.wordsPhrase', 'Подряд') },
+            { value: 'line', label: t('quick.wordsLine', 'В строке') },
+            { value: 'text', label: t('quick.wordsText', 'В тексте') }
+        ], localStorage.getItem('dhammaSearchWords') || 'phrase', function (v) {
+            localStorage.setItem('dhammaSearchWords', v);
+            notifySaved();
+        }));
+        host.appendChild(note(t('quick.wordsNote',
+            'Все слова в одной строке или в одном тексте, на любом расстоянии друг от друга.')));
+
         if (state !== 'reader' && state !== 'toc') {
             host.appendChild(groupTitle(t('quick.context', 'Контекст в цитатах')));
             var ctx = String(localStorage.getItem('dhammaSearchContextBefore') || 0);
