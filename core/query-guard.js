@@ -62,7 +62,7 @@ function looksLikeId(q) {
     return MULTIPART_ID.test(s) && /\d/.test(s);
 }
 
-// Returns a short reason string ('tipitaka_id', 'url_path', 'junk_chars', 'no_letters',
+// Returns a short reason string ('tipitaka_id', 'url_path', 'junk_chars', 'no_letters', 'mojibake',
 // 'consonant_soup', 'empty') when the string is not a search query, or null when it is one.
 function nonQueryReason(rawQuery) {
     const q = String(rawQuery == null ? '' : rawQuery).trim();
@@ -73,6 +73,9 @@ function nonQueryReason(rawQuery) {
     if (URL_PATH.test(q)) return 'url_path';
     if (!ALLOWED_CHARS.test(q)) return 'junk_chars';
     if (!/\p{L}/u.test(q)) return 'no_letters';
+    // Latin and Chinese characters in one query: a URL decoded in the wrong encoding ("Y詺n kat",
+    // "pa 5 3iccasamupp詺d" — a diacritic turned into an ideograph). A Chinese query is all Chinese.
+    if (/[a-z]/i.test(q) && /\p{Script=Han}/u.test(q)) return 'mojibake';
     // A long token with no vowel is keyboard-mashing in a latin/cyrillic keyboard ("sdfghjkl").
     // Eight is well past any real consonant cluster in the languages searched here.
     const tokens = q.split(/\s+/);

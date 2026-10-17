@@ -18,6 +18,8 @@ for (const [query, reason] of [
     ['skt-mu-bu-pm-gbm2_pc52', 'tipitaka_id'],
     ['bu-vb-sk7', 'tipitaka_id'],
     ['thi16', 'tipitaka_id'],
+    ['Y詺n  kat', 'mojibake'], // латиница с иероглифами — битая кодировка адреса (прод-лог, октябрь 2026)
+    ['pa 5 3iccasamupp詺d', 'mojibake'],
     ['tha5', 'tipitaka_id'],
     ['an10.76', 'tipitaka_id'],
     ['dn22:2.2', 'tipitaka_id'],

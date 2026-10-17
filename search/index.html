@@ -4821,11 +4821,21 @@ document.addEventListener('DOMContentLoaded', function () { $(function() {
             // текстовым/номерным ссылкам, — здесь для обычного слова, отдельная функция
             // layoutFix, не полный normalize с его склейкой цифр). Если и там пусто — тихо
             // оставляем как было, не подменяем запрос человеку молча на всякую ерунду.
-            if (fastJson.metadata.totalFiles === 0 && window.DgTextRouter && /[а-яё]/i.test(keyword)) {
-                const layoutFixed = window.DgTextRouter.layoutFix(keyword);
-                if (layoutFixed && layoutFixed.toLowerCase() !== keyword.toLowerCase()) {
-                    const originalKeyword = keyword;
-                    keyword = layoutFixed;
+            // 0 results: try once more with what the person most likely meant, the first form that finds anything wins
+            //   - the keyboard layout fixed to Latin ("kacchapa" typed as "лфссрфзф" — owner caught it live);
+            //   - a sutta's name ("Саппуриса сутта", "Rāhula Sutta") as the Pali title is written, in one word:
+            //     "sappurisasutta" — the search finds titles that way, the name in Cyrillic or in two words it does not.
+            //     Several suttas of that name show as the list; a single one opens.
+            // Nothing found either way — the query stays as typed, never swapped for some guess.
+            let titleHit = false;
+            if (fastJson.metadata.totalFiles === 0 && window.DgTextRouter) {
+                const tries = [];
+                if (/[а-яё]/i.test(keyword)) tries.push(window.DgTextRouter.layoutFix(keyword));
+                tries.push(window.DgTextRouter.titleForm(keyword));
+                const originalKeyword = keyword;
+                for (const retry of tries) {
+                    if (!retry || retry.toLowerCase() === originalKeyword.toLowerCase()) continue;
+                    keyword = retry;
                     const retryUrl = buildUrl('/search', '&fast=1');
                     try {
                         const retryResponse = await fetch(retryUrl);
@@ -4834,21 +4844,24 @@ document.addEventListener('DOMContentLoaded', function () { $(function() {
                         if (retryJson && retryJson.metadata.totalFiles > 0) {
                             fastJson = retryJson;
                             searchCachePut(retryUrl, retryJson);
-                            highlightWord = layoutFixed;
-                            history.replaceState({ dgSearch: true }, '', '/' + encodeURIComponent(layoutFixed) + location.search); // keep scope=/langs=/…
-                            // Поле уже показывало исходный (кириллический) ввод — строка 2998,
-                            // до того как стало известно про раскладку. Обновляем на реально
-                            // найденное слово, иначе поле и результаты расходились бы.
-                            $('#paliauto').val(layoutFixed);
+                            highlightWord = retry;
+                            titleHit = retry === tries[tries.length - 1];
+                            history.replaceState({ dgSearch: true }, '', '/' + encodeURIComponent(retry) + location.search); // keep scope=/langs=/…
+                            // the field still shows what was typed: show what was actually found
+                            $('#paliauto').val(retry);
                             if (window.DgHome && window.DgHome.syncInput) window.DgHome.syncInput();
-                        } else {
-                            keyword = originalKeyword;
+                            break;
                         }
                     } catch (e) {
                         if (gen !== searchGen) return;
-                        keyword = originalKeyword;
                     }
+                    keyword = originalKeyword;
                 }
+            }
+            const onlyTitle = titleHit && Object.keys(fastJson.data || {});
+            if (onlyTitle && onlyTitle.length === 1 && typeof window.dgNavigateInternal === 'function') {
+                window.dgNavigateInternal('/' + onlyTitle[0]);
+                return;
             }
 
             lastHighlightWord = highlightWord;

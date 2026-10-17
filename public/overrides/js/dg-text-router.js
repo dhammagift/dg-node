@@ -60,6 +60,10 @@
     function normalize(raw) {
         var q = String(raw == null ? '' : raw).trim().toLowerCase();
         if (!q) return '';
+        // the book written in Cyrillic, "мн 61", "СН 11.20" (seen live), before the keyboard-layout fix reads it as typos
+        q = q.replace(/^(мн|дн|снп|сн|ан|уд|ити|дхп|тхаг|тхиг)\s*(?=\d)/, function (m, b) {
+            return { 'мн': 'mn', 'дн': 'dn', 'снп': 'snp', 'сн': 'sn', 'ан': 'an', 'уд': 'ud', 'ити': 'iti', 'дхп': 'dhp', 'тхаг': 'thag', 'тхиг': 'thig' }[b];
+        });
         q = q.replace(/[а-яё]/g, function (ch) { return RU_LAYOUT_TO_LATIN[ch] || ch; });
         q = q.replace(/,/g, '.');
         q = q.replace(/\b(bu|bi)\s+(pj|ss|ay|np|pc|pd|sk|as|pm)\b/, '$1-$2');
@@ -114,7 +118,22 @@
         return href || '/settings/';
     }
 
-    function classify(raw) {
+    // A sutta's name as its Pali title is written, in one word: "Саппуриса сутта" / "Rāhula Sutta" -> "sappurisasutta" /
+    // "rāhulasutta" (the search folds diacritics, so the Cyrillic "а" finds "ā"). null when it is not a name + "sutta".
+    var CYR_PALI = { 'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'e', 'ж': 'j', 'з': 'z', 'и': 'i', 'й': 'y',
+        'к': 'k', 'л': 'l', 'м': 'm', 'н': 'n', 'о': 'o', 'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u', 'ф': 'ph', 'х': 'h',
+        'ц': 'c', 'ч': 'c', 'ш': 's', 'щ': 's', 'ъ': '', 'ы': 'i', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya' };
+    function titleForm(raw) {
+        var m = String(raw == null ? '' : raw).trim().toLowerCase().match(/^(.+?)[\s-]*(?:сутта|сутты|сутра|sutta|sutra|sūtra)$/);
+        if (!m) return null;
+        var name = m[1].replace(/дж/g, 'j').replace(/[а-яё]/g, function (ch) { return CYR_PALI[ch]; }).replace(/[^a-zāīūṁṃṅñṭḍṇḷ]/g, '');
+        return name.length >= 3 ? name + 'sutta' : null;
+    }
+
+    // noFind: the head of "<text> <words>" is checked as a text only, not split again. Splitting it again made
+    // classify() exponential in the number of words: a pasted 25-word Pali line froze the page, and the server's
+    // /:slug route runs this too.
+    function classify(raw, noFind) {
         var original = String(raw == null ? '' : raw).trim();
         var exact = original.toLowerCase().replace(/\/+$/, '');
         if (BOOK_ID.test(exact)) return { type: 'text', id: exact };
@@ -256,11 +275,11 @@
         // Shortest head first, so "sn 56 11 dukkha" reads as sn56.11 + "dukkha". Split on the ORIGINAL
         // input: normalize() would run the layout fix over the words too.
         var gap = /\s+/g, gapMatch;
-        while ((gapMatch = gap.exec(original)) !== null) {
+        while (!noFind && (gapMatch = gap.exec(original)) !== null) {
             var head = original.slice(0, gapMatch.index);
             var find = original.slice(gapMatch.index + gapMatch[0].length).trim();
             if (!head || !find) continue;
-            var headRoute = classify(head);
+            var headRoute = classify(head, true);
             if (headRoute.type === 'text') { headRoute.find = find; return headRoute; }
         }
 
@@ -278,6 +297,7 @@
     global.DgTextRouter = {
         normalize: normalize,
         classify: classify,
+        titleForm: titleForm,
         layoutFix: layoutFix,
         // One source of truth for "where is the settings page in this build": the app build
         // rewrites /settings/ to /settings/index.html (Capacitor does not resolve directories),
