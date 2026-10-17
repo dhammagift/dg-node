@@ -1,12 +1,16 @@
 <!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow">
 <title>Hatthipada</title>
 <meta name="description" content="The four noble truths and, as deep as you go, how the suttas themselves define every word">
+<link href="/assets/css/extrastyles.css" rel="stylesheet">
+<script src="/assets/js/nav-component.js" defer></script>
+<script src="/assets/js/themeswitch.js" defer></script>
+<script src="/assets/js/settings.js" defer></script>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,400;7..72,600&display=swap" rel="stylesheet">
 <style>
 /* Drill-down columns: four truths → the suttas' own definition of each → any defined word inside it → its definition … */
 :root { --bg:#f6f7f9; --surface:#fff; --ink:#14171f; --ink-2:#4a5160; --ink-3:#737b8c; --line:#e1e4ea; --accent:#3446b8; --accent-soft:#e8ebfb; --hl:#fff3c4; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#12141a; --surface:#1b1e26; --ink:#eef0f5; --ink-2:#b4bac8; --ink-3:#8a91a2; --line:#2c303b; --accent:#8c9bff; --accent-soft:#252b4a; --hl:#4a3f12; color-scheme:dark; } }
-:root[data-theme="dark"] { --bg:#12141a; --surface:#1b1e26; --ink:#eef0f5; --ink-2:#b4bac8; --ink-3:#8a91a2; --line:#2c303b; --accent:#8c9bff; --accent-soft:#252b4a; --hl:#4a3f12; color-scheme:dark; }
+@media (prefers-color-scheme: dark) { :root:not([data-bs-theme="light"]) { --bg:#12141a; --surface:#1b1e26; --ink:#eef0f5; --ink-2:#b4bac8; --ink-3:#8a91a2; --line:#2c303b; --accent:#8c9bff; --accent-soft:#252b4a; --hl:#4a3f12; color-scheme:dark; } }
+:root[data-bs-theme="dark"] { --bg:#12141a; --surface:#1b1e26; --ink:#eef0f5; --ink-2:#b4bac8; --ink-3:#8a91a2; --line:#2c303b; --accent:#8c9bff; --accent-soft:#252b4a; --hl:#4a3f12; color-scheme:dark; }
 * { box-sizing:border-box; } body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.55 system-ui, sans-serif; }
 header { padding:16px 16px 6px; max-width:1400px; margin:0 auto; } h1 { margin:0; font-size:22px; } .lede { margin:4px 0 0; color:var(--ink-2); font-size:14px; max-width:90ch; }
 .crumbs { padding:6px 16px; max-width:1400px; margin:0 auto; font-size:13px; color:var(--ink-3); } .crumbs button { font:inherit; color:var(--accent); background:none; border:0; padding:0; cursor:pointer; }
@@ -27,12 +31,13 @@ details.def[open] > summary .qprev { display:none; }
 .par { display:grid; grid-template-columns:minmax(0, 1fr); gap:4px 20px; margin:0 0 10px; }
 .with-tr .par { grid-template-columns:minmax(0, 1.1fr) minmax(0, 1fr); }
 @media (max-width: 899px) { .with-tr .par { grid-template-columns:minmax(0, 1fr); } }
+.no-pi .par .pi { display:none; } .no-pi .with-tr .par { grid-template-columns:minmax(0, 1fr); }
 .par .pi { font-family:Literata, Georgia, serif; font-size:16px; line-height:1.65; margin:0; }
 .par .tl { font-size:14.5px; line-height:1.6; color:var(--ink-2); margin:0; }
 .par.q .pi, .par.q .tl { font-weight:600; color:var(--ink); }
 .src { font-size:12px; color:var(--ink-3); } .src a { color:var(--accent); text-decoration:none; } .src a:hover { text-decoration:underline; }
 .q { font-weight:600; } .seg { margin:2px 0; font-family:Literata, Georgia, serif; font-size:16px; line-height:1.6; }
-.src { margin-bottom:2px; } .src a.ref { font-weight:600; color:var(--accent); } .src .ttl { color:var(--ink-3); }
+.src { margin-bottom:2px; } .src a.sref { font-weight:600; color:var(--accent); } .src .ttl { color:var(--ink-3); }
 .t { color:var(--accent); cursor:pointer; } .t:hover { text-decoration:underline; text-underline-offset:3px; } .t.on, .w.on { background:var(--hl); color:var(--ink); border-radius:3px; }
 .w { cursor:pointer; } .w:hover { background:var(--accent-soft); border-radius:3px; }
 .also { font-size:12px; color:var(--ink-3); margin-top:4px; } .also a { color:var(--accent); }
@@ -40,15 +45,29 @@ details.def[open] > summary .qprev { display:none; }
 .truth.on { outline:2px solid var(--accent); } .truth b { display:block; font-size:15px; } .truth span { font-size:13px; color:var(--ink-2); }
 .none { color:var(--ink-3); font-size:13px; }
 header .top { display:flex; flex-wrap:wrap; gap:10px 16px; align-items:center; justify-content:space-between; } h1 small { font-size:15px; font-weight:400; color:var(--ink-2); }
+/* .dg-lpill — copied from search/css/home.css so this page matches the results and the reader */
+.dg-lpill { position: fixed; right: 20px; bottom: 30px; z-index: 100; display: flex; align-items: center; gap: 3px; padding: 2px; height: 38px; box-sizing: border-box;
+  background: rgb(221, 221, 221); border: 2px solid #5a5a5a; border-radius: 32px; color: rgb(4, 1, 19); opacity: 0.8; font-family: system-ui, sans-serif; transition: opacity 0.2s ease; }
+.dg-lpill:hover { opacity: 1; }
+.dg-lpill button { border: 0; background: none; color: inherit; font: inherit; font-size: 13px; line-height: 1; padding: 0 9px; height: 30px; border-radius: 30px; cursor: pointer; opacity: 0.6; transition: background-color .15s ease, opacity .15s ease; }
+.dg-lpill button[aria-pressed="true"] { opacity: 1; background: rgba(52, 52, 190, 0.55); color: #fff; font-weight: 600; }
+.dg-lpill button[aria-pressed="true"]:hover { background: #3434be; }
+.dg-lpill .dg-lpill-more { width: 26px; padding: 5px 0; display: grid; place-items: center; opacity: 0.7; }
+.dg-lpill .dg-dots { display: grid; grid-template-columns: repeat(3, 2.5px); grid-auto-rows: 2.5px; gap: 2.5px; }
+.dg-lpill .dg-dots i { display: block; width: 2.5px; height: 2.5px; border-radius: 50%; background: currentColor; }
+:root[data-bs-theme="dark"] .dg-lpill { background: #42426a; color: rgb(221, 221, 221); }
+:root[data-bs-theme="dark"] .dg-lpill button[aria-pressed="true"] { background: rgba(80, 80, 230, 0.6); }
+@media (max-width: 767.98px) { .dg-lpill { right: 12px; bottom: 30px; } .dg-lpill button { font-size: 12.5px; padding: 0 8px; } }
 .seg-tr { display:inline-flex; border:1px solid var(--line); border-radius:999px; overflow:hidden; background:var(--surface); }
 .seg-tr button { font:600 13px system-ui; border:0; background:none; color:var(--ink-2); padding:6px 12px; cursor:pointer; } .seg-tr button[aria-pressed="true"] { background:var(--accent); color:#fff; }
 .tr { font:14px/1.5 system-ui, sans-serif; color:var(--ink-2); margin:0 0 6px; } .trby { font-size:11px; color:var(--ink-3); }
 .topbar { display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; padding:10px 16px; max-width:1800px; margin:0 auto; }
 .topbar h1 { font-size:20px; margin:0 4px; } .topbar h1 small { font-size:14px; font-weight:400; color:var(--ink-2); } .topbar .grow { flex:1; }
+.topbar .navicons { display:flex; align-items:center; gap:4px; } .topbar .navicons a { padding:0 4px; }
 .topbar .ic { display:inline-flex; align-items:center; justify-content:center; width:36px; height:36px; border-radius:50%; border:0; background:none; cursor:pointer; }
 .topbar .ic:hover { background:var(--accent-soft); } .topbar .ic img { display:block; }
-:root[data-theme="dark"] .mono { filter:invert(.9); }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .mono { filter:invert(.9); } }
+:root[data-bs-theme="dark"] .mono { filter:invert(.9); }
+@media (prefers-color-scheme: dark) { :root:not([data-bs-theme="light"]) .mono { filter:invert(.9); } }
 @media (max-width: 600px) { .topbar h1 small { display:none; } }
 footer.about { max-width:1100px; margin:0 auto; padding:8px 16px 40px; } footer.about .lede { font-size:13px; color:var(--ink-3); }
 #mind { display:none; }
@@ -66,13 +85,11 @@ footer.about { max-width:1100px; margin:0 auto; padding:8px 16px 40px; } footer.
 .link { fill:none; stroke-width:1.5px; stroke-opacity:.4; }
 </style></head><body>
 <header class="topbar">
-  <a class="ic" href="/" title="Dhamma.Gift"><img src="/assets/img/dgsankhaonly.png" alt="Dhamma.Gift" width="26" height="26"></a>
-  <a class="ic" href="/toc" data-i-title="toc"><img class="mono" src="/assets/svg/table-list.svg" alt="" width="20" height="20"></a>
+  <div class="navicons"><top-nav-icons type="read"></top-nav-icons></div>
   <h1>Hatthipada <small data-i="sub"></small></h1>
-  <span class="grow"></span>
-  <div class="seg-tr" role="group" data-i-aria="trLabel"><button data-tr="">Pāḷi</button><button data-tr="ru">+ RU</button><button data-tr="en">+ EN</button></div>
-  <button class="ic" id="theme-btn" data-i-title="theme"><img class="mono" src="/assets/svg/circle-half-stroke.svg" alt="" width="20" height="20"></button>
 </header>
+<!-- the same corner switch as the results and the reader (search/css/home.css .dg-lpill): Pāḷi, the translation, ⋮ = its language -->
+<div id="dg-langpill" class="dg-lpill" role="group"><button type="button" data-k="pli">Pāḷi</button><button type="button" data-k="2nd"></button><button type="button" class="dg-lpill-more" data-i-title="trLang"><span class="dg-dots" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span></button></div>
 <div class="crumbs" id="crumbs"></div>
 <div id="mind"><div id="map"><div class="hint" data-i="hint"></div></div><div id="panel"></div></div>
 <div id="cols"></div>
@@ -90,12 +107,12 @@ const L = {
     lede: 'Как в MN 28: следы всех животных умещаются в след слона, так всё полезное умещается в четыре благородные истины. Здесь — только определения, которые дают сами сутты («Katamā ca, bhikkhave, X?» … «idaṁ vuccati X», формулы SN 56.11). <b>Синее</b> слово сутты где-то определяют — нажми, откроется его определение; любое другое слово тоже нажимается — откроется, где оно встречается. И так сколько угодно глубоко. Четыре никаи, пали; перевод — для справки.',
     hint: 'Нажми на узел — раскроется ветка, справа его определения. Колесо — масштаб, тяни — сдвиг.', defs: n => n + ' ' + (n % 10 === 1 && n % 100 !== 11 ? 'определение' : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? 'определения' : 'определений'),
     inSuttas: n => 'в ' + n + ' сутт' + (n % 10 === 1 && n % 100 !== 11 ? 'е' : 'ах'), also: 'То же:', loading: 'Загружаю…', failed: 'Не загрузилось',
-    notDefined: n => 'Формулой не определяется. Встречается в ' + n + ' суттах', first30: ', показаны первые 30', defsShort: 'опр.', rootMeta: 'SN 56.11 и разборы: MN 141, DN 22, AN 3.61, MN 28…', trBy: 'перевод', trNone: 'в переводе это место сокращено', toc: 'Оглавление', theme: 'Тема (светлая / тёмная)', openAll: 'развернуть все', closeAll: 'свернуть все', tpl: r => 'В тексте сутты пропуск «…»; ответ — из ' + r + ', ближайшей полной сутты той же серии (там на месте этого слова другое).' },
+    notDefined: n => 'Формулой не определяется. Встречается в ' + n + ' суттах', first30: ', показаны первые 30', defsShort: 'опр.', rootMeta: 'SN 56.11 и разборы: MN 141, DN 22, AN 3.61, MN 28…', trLang: 'Язык перевода: рус / англ', trBy: 'перевод', trNone: 'в переводе это место сокращено', toc: 'Оглавление', theme: 'Тема (светлая / тёмная)', openAll: 'развернуть все', closeAll: 'свернуть все', tpl: r => 'В тексте сутты пропуск «…»; ответ — из ' + r + ', ближайшей полной сутты той же серии (там на месте этого слова другое).' },
   en: { sub: '— the elephant’s footprint: the four truths in depth', truths: '4 truths', trLabel: 'Translation',
     lede: 'As in MN 28: the footprints of all animals fit into the elephant’s, and everything skilful fits into the four noble truths. Only the definitions the suttas give themselves (“Katamā ca, bhikkhave, X?” … “idaṁ vuccati X”, the formulas of SN 56.11). A <b>blue</b> word is defined somewhere in the suttas — tap it to open its definition; any other word opens where it occurs. As deep as you go. Four nikāyas, Pāḷi; the translation is a reference.',
     hint: 'Click a node to open its branch and its definitions on the right. Wheel to zoom, drag to move.', defs: n => n + (n === 1 ? ' definition' : ' definitions'),
     inSuttas: n => 'in ' + n + (n === 1 ? ' sutta' : ' suttas'), also: 'Also in:', loading: 'Loading…', failed: 'Did not load',
-    notDefined: n => 'No definition formula. Occurs in ' + n + ' suttas', first30: ', the first 30 shown', defsShort: 'def.', rootMeta: 'SN 56.11 and the analyses: MN 141, DN 22, AN 3.61, MN 28…', trBy: 'translation:', trNone: 'the translations abbreviate this passage', toc: 'Contents', theme: 'Theme (light / dark)', openAll: 'open all', closeAll: 'close all', tpl: r => 'The sutta abbreviates with “…”; the answer is from ' + r + ', the nearest full sutta of the same series (with another word in its place).' },
+    notDefined: n => 'No definition formula. Occurs in ' + n + ' suttas', first30: ', the first 30 shown', defsShort: 'def.', rootMeta: 'SN 56.11 and the analyses: MN 141, DN 22, AN 3.61, MN 28…', trLang: 'Translation language: ru / en', trBy: 'translation:', trNone: 'the translations abbreviate this passage', toc: 'Contents', theme: 'Theme (light / dark)', openAll: 'open all', closeAll: 'close all', tpl: r => 'The sutta abbreviates with “…”; the answer is from ' + r + ', the nearest full sutta of the same series (with another word in its place).' },
 }[UI];
 document.querySelectorAll('[data-i]').forEach(e => { e.innerHTML = L[e.dataset.i]; });
 document.addEventListener('click', e => {
@@ -105,19 +122,14 @@ document.addEventListener('click', e => {
   if (e.target.closest('summary a')) e.stopPropagation();
 }, true);
 document.querySelectorAll('[data-i-title]').forEach(e => e.title = L[e.dataset.iTitle]);
-// the site's theme (themeswitch.js keys): light / dark / auto; the button flips what is on screen and saves it for the whole site
-function applyTheme() { let t = 'auto'; try { t = localStorage.getItem('theme') || 'auto'; } catch (e) {}
-  if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; else delete document.documentElement.dataset.theme; }
-applyTheme();
-document.getElementById('theme-btn').addEventListener('click', () => {
-  const dark = document.documentElement.dataset.theme ? document.documentElement.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
-  const t = dark ? 'light' : 'dark';
-  try { localStorage.setItem('theme', t); localStorage.setItem('themeButtonAction', t + 'Manual'); if (t === 'dark') localStorage.setItem('darkSwitch', 'dark'); else localStorage.removeItem('darkSwitch'); } catch (e) {}
-  applyTheme(); if (typeof drawMap === 'function' && mapG) drawMap();
-});
+// the site's saved theme before themeswitch.js applies it on load: no light flash on a dark site
+try { const t = localStorage.getItem('theme'); if (t === 'dark' || t === 'light') document.documentElement.setAttribute('data-bs-theme', t); } catch (e) {}
 document.querySelectorAll('[data-i-aria]').forEach(e => e.setAttribute('aria-label', L[e.dataset.iAria]));
-// translation under the Pali: none, ru or en — remembered
-let TR = UI; try { const v = localStorage.getItem('hatthipadaTr'); if (v !== null) TR = v; } catch (e) {}
+// what is shown: the Pali (PI) and a translation (TR: '', 'ru', 'en') — remembered, like the site's own corner switch
+let TR = UI, PI = true, TRLANG = UI;
+try { const v = localStorage.getItem('hatthipadaTr'); if (v !== null) TR = v; if (localStorage.getItem('hatthipadaPi') === '0') PI = false; TRLANG = localStorage.getItem('hatthipadaTrLang') || UI; } catch (e) {}
+if (TR) TRLANG = TR;
+if (!PI && !TR) PI = true;
 // the definition's lines grouped into the text's own paragraphs; the question is its own block
 function paragraphs(segs, key) {
   const TRon = TR && segs.some(s => s[2] && s[2][TR]);
@@ -131,7 +143,12 @@ function paragraphs(segs, key) {
 }
 const TR_NAME = { o: 'o', 'sv+edited+o': 'sv', sv: 'sv', thanissaro: 'Thanissaro', sujato: 'Sujato', brahmali: 'Brahmali' };
 const trHtml = seg => { const t = TR && seg[2] && seg[2][TR]; return t ? `<div class="tr">${esc(t[1])} <span class="trby">${esc(TR_NAME[t[0]] || t[0])}</span></div>` : ''; };
-function paintTr() { document.querySelectorAll('[data-tr]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.tr === TR))); }
+function paintTr() {
+  const pill = document.getElementById('dg-langpill');
+  pill.querySelector('[data-k="pli"]').setAttribute('aria-pressed', String(PI));
+  const b = pill.querySelector('[data-k="2nd"]'); b.textContent = TRLANG === 'ru' ? 'Рус' : 'En'; b.setAttribute('aria-pressed', String(!!TR));
+  document.body.classList.toggle('no-pi', !PI);
+}
 // terms that are not doctrine here: generic words, names and forms of address the question formula happens to catch
 const SKIP = new Set(['dhamm', 'adhamm', 'atth', 'anatth', 'sādh', 'asādh', 'ariy', 'anariy', 'ekadhamm', 'hot', 'seyy', 'sat', 'sāt', 'rādh',
   'kevaṭṭ', 'dhanañjān', 'dev', 'bho', 'bho gotam', 'cānand', 'ānand', 'tv', 'gant', 'sot', 'brāhmaṇ', 'samaṇ', 'kalyāṇ', 'pāp', 'puggal', 'saddh', 'saddhamm']);
@@ -179,7 +196,7 @@ function linkify(text, self) {
   return out;
 }
 const refName = id => id.replace(/^([a-z]+)(\d)/, (m, b, d) => b.toUpperCase() + ' ' + d);
-const ref = (sutta, seg) => `<a class="ref" href="https://dhamma.gift/${esc(seg || sutta)}" target="_blank" rel="noopener">${esc(refName(sutta))}</a>`;
+const ref = (sutta, seg) => `<a class="sref" href="https://dhamma.gift/${esc(seg || sutta)}" target="_blank" rel="noopener">${esc(refName(sutta))}</a>`;
 // the defined terms a term's definitions lead to, most frequent first (the branches of the map)
 function termsOf(key) {
   const n = new Map(), first = new Map(); let i = 0;
@@ -329,8 +346,12 @@ function initMap() {
   select(node);
 }
 paintTr();
-document.querySelector('.seg-tr').addEventListener('click', e => {
-  const b = e.target.closest('[data-tr]'); if (!b) return; TR = b.dataset.tr; try { localStorage.setItem('hatthipadaTr', TR); } catch (er) {} paintTr();
+document.getElementById('dg-langpill').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.classList.contains('dg-lpill-more')) { TRLANG = TRLANG === 'ru' ? 'en' : 'ru'; TR = TRLANG; }
+  else if (b.dataset.k === 'pli') { PI = !PI; if (!PI && !TR) TR = TRLANG; }
+  else { TR = TR ? '' : TRLANG; if (!TR) PI = true; }
+  try { localStorage.setItem('hatthipadaTr', TR); localStorage.setItem('hatthipadaPi', PI ? '1' : '0'); localStorage.setItem('hatthipadaTrLang', TRLANG); } catch (er) {} paintTr();
   if (wide.matches) { const p = document.getElementById('panel'); p.replaceChildren(selected.key ? column(selected.key) : rootColumn()); } else render();
 });
 if (wide.matches) initMap(); else render();
