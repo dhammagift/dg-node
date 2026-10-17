@@ -2464,11 +2464,6 @@
         host.appendChild(groupTitle(t('quick.where', 'Где искать')));
         host.appendChild(scopePicker());
 
-        // Словарь — глобальная настройка (главная/поиск/ридер), поэтому не внутри блока выше.
-        // Порядок по просьбе владельца: где искать -> словарь -> контекст.
-        host.appendChild(groupTitle(t('quick.dictMode', 'Словарь')));
-        host.appendChild(dictModePicker());
-
         // Several words (dg-node#26): the search form writes the choice into the query as an operator
         // (index.html, #form submit) — "a && b" one line, "a & b" one text — so a link keeps it.
         host.appendChild(groupTitle(t('quick.words', 'Несколько слов')));
@@ -2482,6 +2477,11 @@
         }));
         host.appendChild(note(t('quick.wordsNote',
             'Все слова в одной строке или в одном тексте, на любом расстоянии друг от друга.')));
+
+        // Словарь — глобальная настройка (главная/поиск/ридер), поэтому не внутри блока выше.
+        // Порядок по просьбе владельца: где искать -> словарь -> контекст.
+        host.appendChild(groupTitle(t('quick.dictMode', 'Словарь')));
+        host.appendChild(dictModePicker());
 
         if (state !== 'reader' && state !== 'toc') {
             host.appendChild(groupTitle(t('quick.context', 'Контекст в цитатах')));
