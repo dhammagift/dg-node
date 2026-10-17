@@ -88,12 +88,15 @@ for (const r of db.prepare("SELECT segment_id, lang, translator, txt FROM texts 
     const m = trans[r.lang], cur = m.get(r.segment_id);
     if (!cur || rank(r.lang, r.translator) < rank(r.lang, cur[0])) m.set(r.segment_id, [r.translator, r.txt.trim()]);
 }
+// where the text's own markup starts a new paragraph, heading or verse block (the html table, as the reader renders it)
+const para = new Map();
+for (const r of db.prepare('SELECT segment_id, txt FROM html').iterate()) if (want.has(r.segment_id)) para.set(r.segment_id, /<(?:p|h[1-6]|li|blockquote|dt|dd)[\s>]/.test(r.txt) ? 1 : 0);
 const tr = seg => { const o = {}; for (const l of ['ru', 'en']) { const v = trans[l].get(seg); if (v) o[l] = v; } return o; };
 const titles = new Map(db.prepare("SELECT id, title FROM suttas").all().map(r => [r.id, (r.title || '').trim()]));
 const byKey = {};
 for (const d of defs) (byKey[d.key] || (byKey[d.key] = { phrase: d.phrase, defs: [] })).defs.push({ s: d.sutta, t: titles.get(d.sutta) || '',
     // "Paṭhamaṁ." … "Dasamaṁ." count the suttas of a chapter: not part of the answer
-    q: [...d.q, tr(d.q[0])], a: d.a.filter(s => !/^\W*(?:paṭhamaṁ|dutiyaṁ|tatiyaṁ|catutthaṁ|pañcamaṁ|chaṭṭhaṁ|sattamaṁ|aṭṭhamaṁ|navamaṁ|dasamaṁ)\.?\W*$/i.test(s[1])).map(s => [...s, tr(s[0])]), ...(d.tpl ? { tpl: d.tpl } : {}) });
+    q: [...d.q, tr(d.q[0]), para.get(d.q[0]) ?? 1], a: d.a.filter(s => !/^\W*(?:paṭhamaṁ|dutiyaṁ|tatiyaṁ|catutthaṁ|pañcamaṁ|chaṭṭhaṁ|sattamaṁ|aṭṭhamaṁ|navamaṁ|dasamaṁ)\.?\W*$/i.test(s[1])).map(s => [...s, tr(s[0]), para.get(s[0]) ?? 0]), ...(d.tpl ? { tpl: d.tpl } : {}) });
 const tpl = fs.readFileSync(path.join(__dirname, 'page.html'), 'utf8');
 fs.mkdirSync(path.join(ROOT, 'siteroot/hatthipada'), { recursive: true });
 fs.writeFileSync(path.join(ROOT, 'siteroot/hatthipada/index.html'), tpl.replace('__DATA__', () => JSON.stringify(byKey)));
