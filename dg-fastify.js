@@ -1297,7 +1297,8 @@ async function buildSitemapCache() {
     const base = 'https://dhamma.gift';
     const dbDate = (await fs.stat(SEARCH_DB_PATH)).mtime.toISOString().slice(0, 10);
     const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
-    const entries = [[base + '/', dbDate, '1.0'], [base + '/dict/', dbDate, '0.6']];
+    // not /dict/: its canonical is dict.dhamma.gift — a sitemap entry whose page points elsewhere is a contradiction
+    const entries = [[base + '/', dbDate, '1.0']];
     const seen = new Set();
     // the Russian page of every text that has a Russian translation (the second market, owner 2026-10-17);
     // other languages are reachable through each page's hreflang links
