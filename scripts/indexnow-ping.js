@@ -13,11 +13,14 @@ const BATCH = 10000; // the protocol's limit per request
 async function main() {
     let urls = process.argv.slice(2);
     if (!urls.length) {
-        const xml = await (await fetch(`https://${HOST}/sitemap.xml`)).text();
+        // the server writes the sitemap it serves to settings/sitemap.xml at start; read locally — F1 cannot reach
+        // its own public address (hairpin NAT: dhamma.gift from F1 resets)
+        const xml = fs.readFileSync(path.join(__dirname, '..', 'settings', 'sitemap.xml'), 'utf8');
         urls = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map(m => m[1].replace(/&amp;/g, '&'));
     }
     // the engines fetch the key from the live site: a key that is not deployed yet would fail every batch
-    const live = await (await fetch(`https://${HOST}/${KEY}.txt`)).text();
+    // (unreachable from the box itself is not "not live": only a wrong answer stops us)
+    const live = await fetch(`https://${HOST}/${KEY}.txt`).then(r => r.text(), e => { console.warn(`IndexNow: key check skipped (${e.cause ? e.cause.code : e.message})`); return KEY; });
     if (live.trim() !== KEY) throw new Error(`key file https://${HOST}/${KEY}.txt is not live yet`);
     for (let i = 0; i < urls.length; i += BATCH) {
         const urlList = urls.slice(i, i + BATCH);
