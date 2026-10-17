@@ -1,0 +1,46 @@
+// Definitions the suttas give themselves: "Katamā ca, bhikkhave, X?" … "ayaṁ vuccati … X", and sn56.11's
+// "Idaṁ kho pana, bhikkhave, X—" … Pali only, four nikāyas. Usage: node scripts/build-sutta-definitions.js dg.db > defs.json - the data inlined in siteroot/research/4nt-deep.html (const DATA)
+const { DatabaseSync } = require('node:sqlite');
+const db = new DatabaseSync(process.argv[2], { readOnly: true });
+const STOP = new Set(('ca cāvuso cāvusoti panāvuso panāvusoti sā so taṁ yā yo pana kho nu bhikkhave bhikkhavo āvuso bhante bhikkhu bhikkhunī gahapati brāhmaṇa mahārāja ānanda sāriputta ' +
+    'moggallāna visākhe vāseṭṭha bhaggava aggivessana gāmaṇi kumāra udāyi cunda kaccāna anuruddha upāli rāhula mahānāma ambaṭṭha sīha tissa').split(' '));
+const NUM = new Set(('eka ekaṁ dve dvīhi dvinnaṁ dvīsu tayo tīṇi tisso tīhi tiṇṇaṁ cattāro cattāri catasso catūhi catunnaṁ catūsu pañca pañcahi pañcannaṁ ' +
+    'cha chahi channaṁ satta sattahi sattannaṁ aṭṭha aṭṭhahi nava dasa dasahi ekādasahi ti honti hoti').split(' '));
+const words = s => s.toLowerCase().replace(/[“”‘’"'—–,.;:!?()]/g, ' ').split(/\s+/).filter(Boolean);
+const fold = w => { w = w.replace(/ṁ$/, '').replace(/([aāiīuū])n$/, '$1'); return w.length > 3 ? w.replace(/[aāiīuūoe]$/, '') : w; };
+const ok = new Set(db.prepare("SELECT id FROM suttas WHERE category = 'dhamma'").all().map(r => r.id));
+
+const bySutta = new Map();
+for (const r of db.prepare("SELECT sutta_id, segment_id, txt FROM texts WHERE kind = 'root' ORDER BY sutta_id, ord").iterate()) {
+    if (!ok.has(r.sutta_id)) continue;
+    (bySutta.get(r.sutta_id) || bySutta.set(r.sutta_id, []).get(r.sutta_id)).push([r.segment_id, r.txt]);
+}
+const isQ = t => /^\W*katam/i.test(t) && /\?[”’"]*\s*$/.test(t.trim());
+const isIdam = t => /^\W*idaṁ kho pana,? bhikkhave,? .+[—–-]\s*$/i.test(t.trim());
+const defs = [];
+for (const [sid, segs] of bySutta) {
+    for (let i = 0; i < segs.length; i++) {
+        const t = segs[i][1];
+        let phrase;
+        // the term is the first comma-separated part with real words: "Katamā ca sā, bhikkhave, taṇhā jālinī …, yāya …?"
+        if (isQ(t)) phrase = (t.replace(/^\W*\S+/, '').split(/[,;]/).map(p => words(p).filter(w => !STOP.has(w) && w !== 'ti')).find(p => p.length) || []);
+        else if (isIdam(t)) phrase = words(t).slice(3).filter(w => !STOP.has(w));
+        else continue;
+        if (!phrase.length || phrase.length > 7 || NUM.has(phrase[0]) || NUM.has(phrase[phrase.length - 1])) continue;
+        const ans = [];
+        for (let j = i + 1; j < segs.length && ans.length < 10; j++) {
+            if (isQ(segs[j][1]) || isIdam(segs[j][1])) break;
+            ans.push(segs[j]);
+            if (/vuccat/i.test(segs[j][1])) break;
+        }
+        if (!ans.length) continue;
+        defs.push({ key: phrase.map(fold).join(' '), phrase: phrase.join(' '), sutta: sid, q: segs[i], a: ans });
+    }
+}
+// a long phrase whose head word is defined on its own ("taṇhā jālinī saritā visaṭā visattikā", an4.199) also counts for it
+const singles = new Set(defs.filter(d => !d.key.includes(' ')).map(d => d.key));
+for (const d of defs.slice()) { const head = d.key.split(' ')[0]; if (d.key.split(' ').length >= 4 && singles.has(head)) defs.push({ ...d, key: head }); }
+const titles = new Map(db.prepare("SELECT id, title FROM suttas").all().map(r => [r.id, (r.title || '').trim()]));
+const byKey = {};
+for (const d of defs) (byKey[d.key] || (byKey[d.key] = { phrase: d.phrase, defs: [] })).defs.push({ s: d.sutta, t: titles.get(d.sutta) || '', q: d.q, a: d.a });
+console.log(JSON.stringify(byKey));
