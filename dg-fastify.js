@@ -202,6 +202,11 @@ app.addHook('onRequest', (req, res, done) => {
 // fallback) answers instead, so crawlers got a 200 HTML search page with zero Disallow rules
 // (confirmed live, 2026-09-28: dhamma.gift/robots.txt returned the SPA shell, not text/plain).
 app.get('/robots.txt', (req, reply) => sendFile(req, reply, path.join(__dirname, 'configs', 'robots.txt'), 'text/plain; charset=utf-8'));
+// IndexNow (Yandex, Bing, Seznam…): the key file proves the site is ours when scripts/indexnow-ping.js
+// announces new and changed pages. The key is public by design, not a secret.
+const INDEXNOW_KEY_PATH = path.join(__dirname, 'configs', 'indexnow-key.txt');
+const INDEXNOW_KEY = fsSync.readFileSync(INDEXNOW_KEY_PATH, 'utf8').trim();
+app.get('/' + INDEXNOW_KEY + '.txt', (req, reply) => sendFile(req, reply, INDEXNOW_KEY_PATH, 'text/plain; charset=utf-8'));
 // Same for /sitemap.xml (named in robots.txt). Built at startup by buildSitemapCache() from dg.db
 // and the docs builds; it no longer comes from the legacy site's hand-kept file.
 const SITEMAP_PATH = path.join(__dirname, 'settings', 'sitemap.xml');

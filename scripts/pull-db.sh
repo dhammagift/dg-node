@@ -90,6 +90,9 @@ if [ "$NEW" != "$CUR" ] || [ "$FORCE" = 1 ]; then
     # only the sites this box runs: a reserve may have dg-prod alone (f3), and pm2 restart fails on a missing name
     for p in dg-prod test; do pm2 describe "$p" >/dev/null 2>&1 && pm2 restart "$p" >/dev/null; done
     echo "sites: installed build $NEW (previous $CUR kept as dg.db.prev)"
+    # tell Yandex/Bing the texts changed; the restarted server rebuilds the sitemap first
+    # ponytail: announces every sitemap URL, not only the changed ones — a per-text diff of builds if the engines ever object
+    (sleep 60; node scripts/indexnow-ping.js) || echo "IndexNow ping failed (see above)" >&2
 fi
 
 if [ "$APP" = 1 ]; then
