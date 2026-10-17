@@ -1270,6 +1270,9 @@ async function buildSitemapCache() {
     const entries = [[base + '/', dbDate, '1.0'], [base + '/dict/', dbDate, '0.6']];
     const seen = new Set();
     for (const id of Object.keys(skeletonDB)) {
+        // Pali texts only: the Chinese, Sanskrit and Gāndhārī parallels (lzh/, san/, pra/) open by their id but are
+        // not what the site offers (owner: they must not be in the sitemap)
+        if (!/^pli\//.test(skeletonDB[id].dir_path || '')) continue;
         const classified = DgTextRouter.classify(id.toLowerCase());
         const isVinayaAlias = classified.type === 'text' && /^pli-tv-/.test(classified.id) && skeletonDB[classified.id];
         const finalId = classified.type === 'text' && !isVinayaAlias ? classified.id : id;
