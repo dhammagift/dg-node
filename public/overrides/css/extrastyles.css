@@ -1658,16 +1658,6 @@ body.dark .dict-loading-indicator,
     border-radius: 6px;
 }
 
-/* Results page: the in-flow bottom bar (Make List / List Diff / Sutta Diff) ends up exactly where
-   the bottom toast sits ("Multi-select On" covered Sutta Diff, the button used right after it).
-   Show toasts under the top search bar there instead. */
-/* …but not while Quick settings is open: its «Сохранено» then landed on the sheet's top, under the field (owner) */
-body.dg-state-results:not(:has(#dg-quick.show)) .bubble-notification {
-    bottom: auto;
-    top: calc(env(safe-area-inset-top, 0px) + 120px);
-    transform: translate(-50%, -20px);
-}
-body.dg-state-results:not(:has(#dg-quick.show)) .bubble-notification.show { transform: translate(-50%, 0); }
 
 /* Last clicked word / where playback resumes — the same Bootstrap-primary tint as reader/css/uiextra.css
    and lbl.css. Here so pages that do not link uiextra.css (memo) get it too, instead of their own colour
