@@ -1197,11 +1197,20 @@ window.renderNavigation = async function(slug, suttaTitle, navPromise) {
     let cleanPaliName = (suttaTitle || "").replace(/[0-9.-]/g, '').trim();
     let newTitle = cleanPaliName ? `${cleanPaliName} ${cleanSlug}`.trim() : cleanSlug;
 
-    document.title = newTitle;
-    let metaDesc = document.querySelector('meta[name="description"]');
-    if (metaDesc) metaDesc.content = newTitle;
-    let ogTitle = document.querySelector('meta[property="og:title"]');
-    if (ogTitle) ogTitle.content = newTitle;
+    // The server already named THIS page (dg-fastify textHead: title, description, canonical in the
+    // page's language) — keep it, Google indexes the rendered title. Another text or language opened
+    // in place (or the app, which has no server head) gets the client-made title as before.
+    const canon = document.querySelector('link[rel="canonical"]');
+    const canonUrl = canon ? new URL(canon.href) : null;
+    const serverNamed = canonUrl && canonUrl.pathname === location.pathname.split(':')[0] &&
+        (canonUrl.searchParams.get('lang') || 'en') === (new URLSearchParams(location.search).get('lang') || 'en');
+    if (!serverNamed) {
+        document.title = newTitle;
+        let metaDesc = document.querySelector('meta[name="description"]');
+        if (metaDesc) metaDesc.content = newTitle;
+        let ogTitle = document.querySelector('meta[property="og:title"]');
+        if (ogTitle) ogTitle.content = newTitle;
+    }
 
     const next = document.getElementById("next");
     const next2 = document.getElementById("next2");

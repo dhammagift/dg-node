@@ -1269,6 +1269,11 @@ async function buildSitemapCache() {
     const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
     const entries = [[base + '/', dbDate, '1.0'], [base + '/dict/', dbDate, '0.6']];
     const seen = new Set();
+    // the Russian page of every text that has a Russian translation (the second market, owner 2026-10-17);
+    // other languages are reachable through each page's hreflang links
+    const hasRu = new Set(searchDb.prepare(
+        "SELECT DISTINCT sutta_id FROM texts WHERE lang = 'ru' AND kind = 'translation' AND translator <> 'ai'"
+    ).all().map(r => r.sutta_id));
     for (const id of Object.keys(skeletonDB)) {
         // Pali texts only: the Chinese, Sanskrit and Gāndhārī parallels (lzh/, san/, pra/) open by their id but are
         // not what the site offers (owner: they must not be in the sitemap)
@@ -1279,6 +1284,7 @@ async function buildSitemapCache() {
         if (seen.has(finalId)) continue;
         seen.add(finalId);
         entries.push([base + '/' + encodeURIComponent(finalId), dbDate, '0.8']);
+        if (hasRu.has(id)) entries.push([base + '/' + encodeURIComponent(finalId) + '?lang=ru', dbDate, '0.8']);
     }
     // Docs: each build has its own sitemap.xml. /docs/* is served with a trailing-slash redirect,
     // /ru/docs/* without one, so list each page the way it answers 200.
@@ -3152,7 +3158,132 @@ app.get('/:slug/:word', (req, res) => {
     return res.redirect('/' + slug.split(':').map(encodeURIComponent).join(':') + '?' + params.toString(), 301);
 });
 
-app.get('/:slug', (req, res) => {
+// SEO: a text page used to be served as the bare SPA shell — <title>Dhamma.gift</title>, no text — so
+// Google took every sutta for one more copy of the home page ("Duplicate, Google chose /", GSC 2026-10).
+// The served HTML now carries THIS text's title, description, canonical, hreflang and breadcrumbs, in
+// the page's own language (owner: an English page is Pali + English, a Russian one Pali + Russian).
+// Only the response changes: search/index.html, which the apps build from, is untouched.
+const SITE = 'https://dhamma.gift';
+const RU_CODES = { dn: 'ДН', mn: 'МН', sn: 'СН', an: 'АН' };
+const htmlAttr = s => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+// "mn10" -> "MN 10", "sn56.11" -> "СН 56.11" on a Russian page, "dhp1-20" -> "Dhp 1-20"; Vinaya ids have no short code
+function textCode(id, lang) {
+    const m = /^([a-z]+)(\d.*)$/.exec(id);
+    if (!m) return '';
+    const p = m[1];
+    return ((lang === 'ru' && RU_CODES[p]) || (p.length <= 2 ? p.toUpperCase() : p[0].toUpperCase() + p.slice(1))) + ' ' + m[2];
+}
+// Pali (ISO) -> the Russian Buddhist spelling Russian readers search with ("бахия сутта", "метта сутта" in GSC).
+// Never shown as the title (owner: Pali is not written in Cyrillic) — only description, keywords, JSON-LD alternateName.
+const PALI_CYR = [['kh', 'кх'], ['gh', 'гх'], ['ch', 'чх'], ['jh', 'джх'], ['ṭh', 'тх'], ['ḍh', 'дх'], ['th', 'тх'], ['dh', 'дх'],
+    ['ph', 'пх'], ['bh', 'бх'], ['ya', 'я'], ['yā', 'я'], ['yu', 'ю'], ['yū', 'ю'], ['ye', 'е'], ['ñ', 'нь'], ['a', 'а'], ['ā', 'а'],
+    ['i', 'и'], ['ī', 'и'], ['u', 'у'], ['ū', 'у'], ['e', 'е'], ['o', 'о'], ['k', 'к'], ['g', 'г'], ['ṅ', 'н'], ['c', 'ч'], ['j', 'дж'],
+    ['ṭ', 'т'], ['ḍ', 'д'], ['ṇ', 'н'], ['t', 'т'], ['d', 'д'], ['n', 'н'], ['p', 'п'], ['b', 'б'], ['m', 'м'], ['ṁ', 'м'], ['ṃ', 'м'],
+    ['y', 'й'], ['r', 'р'], ['l', 'л'], ['ḷ', 'л'], ['v', 'в'], ['s', 'с'], ['h', 'х']];
+function paliToCyrillic(word) {
+    let out = '', w = word.toLowerCase();
+    for (let i = 0; i < w.length;) {
+        const hit = PALI_CYR.find(([lat]) => w.startsWith(lat, i));
+        if (!hit) { out += w[i++]; continue; }
+        // "e" opening a word or after a vowel is "э" (Ekāyano -> Экаяно)
+        out += hit[0] === 'e' && (i === 0 || /[aāiīuūeo]/.test(w[i - 1])) ? 'э' : hit[1];
+        i += hit[0].length;
+    }
+    return out;
+}
+const paliCyr = name => { const c = name.split(' ').map(paliToCyrillic).join(' '); return c.charAt(0).toUpperCase() + c.slice(1); };
+const paliAscii = name => name.normalize('NFD').replace(/[̀-ͯ]/g, '');
+const cleanTitle = s => (s || '').replace(/^\s*[\dIVXLC]+\.\s*/, '').replace(/[\s.]+$/, '').trim();
+const textHeadCache = new Map(); // `${id}|${lang}` -> head data
+async function textHead(dataId, urlId, reqLang) {
+    const roster = searchDb.prepare(
+        "SELECT DISTINCT lang FROM texts WHERE sutta_id = ? AND kind = 'translation' AND translator <> 'ai'"
+    ).all(dataId).map(r => r.lang);
+    const lang = reqLang && reqLang !== 'en' && roster.includes(reqLang) ? reqLang : 'en';
+    const key = urlId + '|' + lang;
+    if (textHeadCache.has(key)) return textHeadCache.get(key);
+    const base = await getSuttaBaseData(dataId);
+    if (!base) return null;
+    const { segments } = await buildTextDataFromBase(base, dataId, [lang], null);
+    const tr = seg => Object.values(seg.translations || {})[0] || '';
+    const headerEnd = segments.findIndex(s => /<\/header>/.test(s.html || ''));
+    const header = segments.slice(0, headerEnd + 1);
+    const titleSeg = header.find(s => /<h1/.test(s.html || '')) || header[header.length - 1] || segments[0];
+    // the Pali name exactly as the text writes it (owner: Pali is never rewritten for convenience);
+    // the split "Satipaṭṭhāna Sutta" people type goes only to keywords and alternateName
+    const pali = cleanTitle(titleSeg && titleSeg.root_text);
+    const split = pali.replace(/(.)(sutta|vagga)$/i, '$1 $2');
+    const local = cleanTitle(titleSeg && tr(titleSeg));
+    const code = textCode(urlId, lang);
+    const title = [pali + (code ? ` (${code})` : ''), local && local.toLowerCase() !== pali.toLowerCase() ? local : ''].filter(Boolean).join(' — ') + ' | Dhamma.Gift';
+    let description = '';
+    // the translation's own words; Pali only when this text has no translation in this language
+    const body = segments.slice(headerEnd + 1);
+    const hasTr = body.some(s => tr(s));
+    for (const s of body) {
+        description += (hasTr ? tr(s) : s.root_text || '') + ' ';
+        if (description.length > 200) break;
+    }
+    description = description.replace(/\s+/g, ' ').trim();
+    // Russian readers search the name in Cyrillic: it opens the Russian description
+    const cyr = paliCyr(split);
+    if (lang === 'ru') description = cyr + (code ? ', ' + code : '') + '. ' + description;
+    if (description.length > 160) description = description.slice(0, description.lastIndexOf(' ', 157)) + '…';
+    // Cyrillic only for the Russian page: nobody reading the English one types it
+    const names = [...new Set([split, paliAscii(split), paliAscii(pali), lang === 'ru' ? cyr : ''])].filter(n => n && n !== pali);
+    const url = id => SITE + '/' + encodeURIComponent(urlId) + (id === 'en' ? '' : '?lang=' + id);
+    const collection = cleanTitle((header[0] && (tr(header[0]) || header[0].root_text) || '').replace(/[\d.\s–-]+$/, ''));
+    const prefix = (/^([a-z]+)\d/.exec(urlId) || [])[1];
+    const crumbs = [{ name: 'Dhamma.Gift', item: SITE + '/' }];
+    if (prefix && TOC_CODES.has(prefix) && collection) crumbs.push({ name: collection, item: SITE + '/toc/' + prefix });
+    crumbs.push({ name: code || pali, item: url(lang) });
+    const head = {
+        lang, title, description, canonical: url(lang),
+        keywords: [pali, ...names, code, local].filter(Boolean).join(', '),
+        work: { '@context': 'https://schema.org', '@type': 'CreativeWork', name: pali, alternateName: [...names, local].filter(Boolean),
+            inLanguage: lang, url: url(lang), isPartOf: collection ? { '@type': 'CreativeWorkSeries', name: collection } : undefined },
+        alternates: [...new Set(['en', ...roster])].filter(l => l === 'en' || roster.includes(l)).map(l => [l, url(l)]),
+        breadcrumbs: { '@context': 'https://schema.org', '@type': 'BreadcrumbList',
+            itemListElement: crumbs.map((c, i) => ({ '@type': 'ListItem', position: i + 1, ...c })) },
+    };
+    if (textHeadCache.size > 20000) textHeadCache.clear(); // ponytail: wholesale clear, an LRU if hit rate ever matters
+    textHeadCache.set(key, head);
+    return head;
+}
+function withTextHead(html, h) {
+    const t = htmlAttr(h.title), d = htmlAttr(h.description), u = htmlAttr(h.canonical);
+    const links = `<link rel="canonical" href="${u}">\n` +
+        h.alternates.map(([l, href]) => `<link rel="alternate" hreflang="${l}" href="${htmlAttr(href)}">`).join('\n') +
+        `\n<link rel="alternate" hreflang="x-default" href="${htmlAttr(h.alternates[0][1])}">\n` +
+        `<meta name="keywords" content="${htmlAttr(h.keywords)}">\n` +
+        `<script type="application/ld+json">${JSON.stringify([h.breadcrumbs, h.work]).replace(/</g, '\\u003c')}</script>\n`;
+    return html
+        .replace('<html ', `<html lang="${h.lang}" `)
+        .replace(/<title>[^<]*<\/title>/, `<title>${t}</title>`)
+        .replace(/<meta name="description" content="[^"]*">/, `<meta name="description" content="${d}">`)
+        .replace(/(<meta (?:property|name)="(?:og|twitter):title" content=")[^"]*"/g, `$1${t}"`)
+        .replace(/(<meta (?:property|name)="(?:og|twitter):description" content=")[^"]*"/g, `$1${d}"`)
+        .replace(/(<meta property="og:url" content=")[^"]*"/, `$1${u}"`)
+        .replace('</head>', links + '</head>');
+}
+async function sendTextHtml(req, res, dataId, urlId) {
+    let h = null;
+    try { h = await textHead(dataId, urlId, req.query.lang); }
+    catch (e) { console.warn(`textHead ${dataId}: ${e.message}`); }
+    if (!h) return sendVersionedHtml(req, res, searchIndexPath);
+    let entry = versionedHtmlCache.get(searchIndexPath);
+    if (!entry || Date.now() - entry.at > VERSIONED_HTML_TTL) {
+        entry = buildVersionedHtml(searchIndexPath);
+        if (!entry) return res.code(404).send();
+        versionedHtmlCache.set(searchIndexPath, entry);
+    }
+    const etag = '"' + crypto.createHash('md5').update(entry.etag + h.canonical + h.title).digest('hex') + '"';
+    res.header('cache-control', 'public, max-age=0, must-revalidate').header('etag', etag);
+    if (req.headers['if-none-match'] === etag) return res.code(304).send();
+    return res.type('text/html; charset=utf-8').send(withTextHead(entry.rewritten, h));
+}
+
+app.get('/:slug', async (req, res) => {
     const rawSlug = req.params.slug;
     // A mounted directory asked for WITHOUT its trailing slash — "/4nt", "/dict", "/b" — is
     // not a search query. @fastify/static registers only "/4nt/*" for a prefix, so the bare
@@ -3189,7 +3320,7 @@ app.get('/:slug', (req, res) => {
         return res.redirect('/' + encodeURIComponent(classified.id) + anchorSuffix + queryString(req), 301);
     }
     if (isVinayaAlias && classified.id !== rawBase) {
-        return sendVersionedHtml(req, res, searchIndexPath);
+        return sendTextHtml(req, res, classified.id, rawBase);
     }
     const suttaId = rawBase;
     if (skeletonDB[suttaId]) {
@@ -3200,7 +3331,7 @@ app.get('/:slug', (req, res) => {
         // openReaderInPlace(), который лениво подгружает ТОТ ЖЕ megareader.js в #reader-pane.
         // reader-template.html пока не в unused/ — держим как референс для допереноса
         // недостающих ссылок/кнопок в SPA-ридер (см. TODO.md, reader-бэклог).
-        return sendVersionedHtml(req, res, searchIndexPath);
+        return sendTextHtml(req, res, suttaId, suttaId);
     }
     // Якорем идёт сам запрошенный id: внутри диапазона сегменты пронумерованы по вложенной
     // сутте ("an1.9:1.1"), и megareader.js для диапазонов кладёт в id элемента ПОЛНЫЙ segment id,
