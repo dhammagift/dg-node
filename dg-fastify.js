@@ -1298,7 +1298,12 @@ async function buildSitemapCache() {
     const dbDate = (await fs.stat(SEARCH_DB_PATH)).mtime.toISOString().slice(0, 10);
     const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
     // not /dict/: its canonical is dict.dhamma.gift — a sitemap entry whose page points elsewhere is a contradiction
-    const entries = [[base + '/', dbDate, '1.0']];
+    const entries = [[base + '/', dbDate, '1.0'], [base + '/?lang=ru', dbDate, '1.0']];
+    // the contents pages: each links every text of its book — the shortest crawl path to the suttas
+    for (const code of ['', ...TOC_CODES].filter(tocHasPali)) {
+        const loc = base + '/toc' + (code ? '/' + encodeURIComponent(code) : '');
+        entries.push([loc, dbDate, '0.7'], [loc + '?lang=ru', dbDate, '0.7']);
+    }
     const seen = new Set();
     // the Russian page of every text that has a Russian translation (the second market, owner 2026-10-17);
     // other languages are reachable through each page's hreflang links
@@ -3308,13 +3313,38 @@ function withTextHead(html, h) {
     return out.replace('</head>', links + '</head>');
 }
 // Home, search results and contents: the template's own head said "Search Results - Dhamma.gift" on all of them
-const BOOK_LABELS = {}; // "mn" -> { ru: "Маджхима Никая", en: "Majjhima Nikāya" }
-(function walk(n) {
-    if (Array.isArray(n)) return n.forEach(walk);
-    if (!n || typeof n !== 'object') return;
-    if (n.code && n.label) BOOK_LABELS[n.code] = n.label;
-    Object.values(n).forEach(walk);
-})(require('./configs/reader/toc-books.json'));
+// "mn" -> { ru: "Маджхима Никая", en: "Majjhima Nikāya" }: the labels the contents page itself shows (/api/toc —
+// toc-books.json plus the Abhidhamma books' own Pali names), built on first use
+let BOOK_LABELS = null;
+// a contents page worth indexing: its book has Pali texts. The TOC also lists Sarvāstivāda books the corpus
+// does not carry (dk, dy, jp, mvs, pk, pr, sab, vk — empty) and the Chinese Saṅgītiparyāya (sg, lzh/) (f3-ultra)
+const tocPaliCache = new Map();
+function tocHasPali(code) {
+    if (!code) return true;
+    if (!tocPaliCache.has(code)) {
+        const next = new RegExp('^' + code.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?:$|[\\d.-])');
+        tocPaliCache.set(code, Object.entries(skeletonDB).some(([id, t]) => /^pli\//.test(t.dir_path || '')
+            && (next.test(id) || (t.dir_path || '').split('/').includes(code))));
+    }
+    return tocPaliCache.get(code);
+}
+function bookLabel(code, lang) {
+    if (!BOOK_LABELS) {
+        BOOK_LABELS = {};
+        const walk = n => {
+            if (Array.isArray(n)) return n.forEach(walk);
+            if (!n || typeof n !== 'object') return;
+            if (n.code && n.label) BOOK_LABELS[n.code] = n.label;
+            Object.values(n).forEach(walk);
+        };
+        for (const [key, cat] of Object.entries(TOC_BOOKS)) {
+            if (key === '_comment') continue;
+            walk((cat.books || []).map(b => describeBook(b, 'default')).concat((cat.extraBooks || []).map(b => describeBook(b, 'extra'))));
+            walk((cat.groups || []).map(describeGroup));
+        }
+    }
+    return BOOK_LABELS[code] && BOOK_LABELS[code][lang];
+}
 const SITE_HEAD_TEXT = {
     en: {
         home: () => ['Dhamma.Gift — Pali Canon: search, read, listen',
@@ -3335,7 +3365,7 @@ function siteHead(kind, arg, reqLang) {
     const url = l => SITE + pathOf + (l === 'ru' ? '?lang=ru' : '');
     let what = arg;
     if (kind === 'toc') what = !arg ? (lang === 'ru' ? 'Палийский канон' : 'Pali Canon')
-        : (BOOK_LABELS[arg] && BOOK_LABELS[arg][lang]) || textCode(arg, lang) || arg.toUpperCase();
+        : bookLabel(arg, lang) || textCode(arg, lang) || arg.toUpperCase();
     if (kind === 'search') what = String(arg).slice(0, 80);
     const [title, description] = SITE_HEAD_TEXT[lang][kind](what);
     return {
@@ -3343,7 +3373,7 @@ function siteHead(kind, arg, reqLang) {
         // search results stay out of the index, their links are followed (GSC, 16 months: keyword-search pages had
         // 1% of impressions and no clicks; an unbounded space of thin pages, crawler junk included). The title and
         // description stay for a shared link's preview. Topics get real pages instead.
-        noindex: kind === 'search' ? 'noindex, follow' : false,
+        noindex: kind === 'search' || (kind === 'toc' && !tocHasPali(arg)) ? 'noindex, follow' : false,
     };
 }
 function sendSiteHtml(req, res, kind, arg) {
