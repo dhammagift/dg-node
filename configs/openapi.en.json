@@ -31,6 +31,10 @@
     {
       "name": "mcp",
       "description": "MCP server for AI agents"
+    },
+    {
+      "name": "uposatha",
+      "description": "Uposatha calendar"
     }
   ],
   "components": {
@@ -1190,6 +1194,237 @@
         "responses": {
           "200": {
             "description": "JSON-RPC answer (text/event-stream: \"data: {...}\" lines)"
+          }
+        }
+      }
+    },
+    "/uposatha.ics": {
+      "get": {
+        "tags": [
+          "uposatha"
+        ],
+        "summary": "Uposatha calendar subscription (iCalendar for Google/Apple)",
+        "description": "Stateless: everything the feed needs is in the query string. 400 days ahead, with reminders; recomputed hourly.",
+        "parameters": [
+          {
+            "name": "tz",
+            "in": "query",
+            "required": false,
+            "description": "IANA time zone",
+            "schema": {
+              "type": "string"
+            },
+            "example": "Europe/Moscow"
+          },
+          {
+            "name": "lang",
+            "in": "query",
+            "required": false,
+            "description": "Language of the events",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "en",
+                "ru"
+              ]
+            },
+            "example": "ru"
+          },
+          {
+            "name": "lat",
+            "in": "query",
+            "required": false,
+            "description": "Latitude (for dawn and moonrise)",
+            "schema": {
+              "type": "number"
+            },
+            "example": 55.75
+          },
+          {
+            "name": "lon",
+            "in": "query",
+            "required": false,
+            "description": "Longitude",
+            "schema": {
+              "type": "number"
+            },
+            "example": 37.62
+          },
+          {
+            "name": "scheme",
+            "in": "query",
+            "required": false,
+            "description": "sutta — by the suttas (default), modern — the modern calendar",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "sutta",
+                "modern"
+              ]
+            }
+          },
+          {
+            "name": "lead",
+            "in": "query",
+            "required": false,
+            "description": "Reminder lead in hours (0–72, default 24)",
+            "schema": {
+              "type": "integer"
+            },
+            "example": 24
+          },
+          {
+            "name": "d8",
+            "in": "query",
+            "required": false,
+            "description": "8th-day observances: 0 to leave out",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "0",
+                "1"
+              ]
+            }
+          },
+          {
+            "name": "d14",
+            "in": "query",
+            "required": false,
+            "description": "14th-day observances: 0 to leave out",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "0",
+                "1"
+              ]
+            }
+          },
+          {
+            "name": "d15",
+            "in": "query",
+            "required": false,
+            "description": "15th-day observances: 1 to include",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "0",
+                "1"
+              ]
+            }
+          },
+          {
+            "name": "day",
+            "in": "query",
+            "required": false,
+            "description": "A second reminder on the day itself, HHMM",
+            "schema": {
+              "type": "string"
+            },
+            "example": "0600"
+          },
+          {
+            "name": "adv",
+            "in": "query",
+            "required": false,
+            "description": "With day=: 0 drops the reminder ahead",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "0",
+                "1"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "iCalendar",
+            "content": {
+              "text/calendar": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad time zone"
+          }
+        }
+      }
+    },
+    "/api/ai-search": {
+      "get": {
+        "tags": [
+          "search"
+        ],
+        "summary": "AI search: a question in plain words → suttas",
+        "description": "When the exact search finds nothing: Pali words from the DPD dictionary, otherwise semantic search. Returns suttas and word suggestions. Slower than the plain search (seconds).",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "turtle"
+          },
+          {
+            "name": "lang",
+            "in": "query",
+            "required": false,
+            "description": "Language of word glosses (UI language)",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ru",
+                "en"
+              ]
+            },
+            "example": "ru"
+          },
+          {
+            "name": "scope",
+            "in": "query",
+            "required": false,
+            "description": "Scope, as in /search",
+            "schema": {
+              "type": "string"
+            },
+            "example": "default"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    },
+                    "query": {
+                      "type": "string"
+                    },
+                    "suttas": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      }
+                    },
+                    "wordSuggestions": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      }
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }

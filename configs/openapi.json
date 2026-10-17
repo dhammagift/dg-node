@@ -31,6 +31,10 @@
     {
       "name": "mcp",
       "description": "MCP-сервер для ИИ-агентов"
+    },
+    {
+      "name": "uposatha",
+      "description": "Календарь упосатх"
     }
   ],
   "components": {
@@ -1190,6 +1194,237 @@
         "responses": {
           "200": {
             "description": "JSON-RPC ответ (text/event-stream: строки «data: {...}»)"
+          }
+        }
+      }
+    },
+    "/uposatha.ics": {
+      "get": {
+        "tags": [
+          "uposatha"
+        ],
+        "summary": "Подписка на календарь упосатх (iCalendar для Google/Apple)",
+        "description": "Без хранения: всё, что нужно ленте, — в адресе. Дни на 400 дней вперёд, напоминания; лента пересчитывается раз в час.",
+        "parameters": [
+          {
+            "name": "tz",
+            "in": "query",
+            "required": false,
+            "description": "Часовой пояс IANA",
+            "schema": {
+              "type": "string"
+            },
+            "example": "Europe/Moscow"
+          },
+          {
+            "name": "lang",
+            "in": "query",
+            "required": false,
+            "description": "Язык событий",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "en",
+                "ru"
+              ]
+            },
+            "example": "ru"
+          },
+          {
+            "name": "lat",
+            "in": "query",
+            "required": false,
+            "description": "Широта (для рассвета и восхода луны)",
+            "schema": {
+              "type": "number"
+            },
+            "example": 55.75
+          },
+          {
+            "name": "lon",
+            "in": "query",
+            "required": false,
+            "description": "Долгота",
+            "schema": {
+              "type": "number"
+            },
+            "example": 37.62
+          },
+          {
+            "name": "scheme",
+            "in": "query",
+            "required": false,
+            "description": "sutta — по суттам (по умолчанию), modern — современный календарь",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "sutta",
+                "modern"
+              ]
+            }
+          },
+          {
+            "name": "lead",
+            "in": "query",
+            "required": false,
+            "description": "За сколько часов напоминать (0–72, по умолчанию 24)",
+            "schema": {
+              "type": "integer"
+            },
+            "example": 24
+          },
+          {
+            "name": "d8",
+            "in": "query",
+            "required": false,
+            "description": "Дни 8-й луны: 0 — не включать",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "0",
+                "1"
+              ]
+            }
+          },
+          {
+            "name": "d14",
+            "in": "query",
+            "required": false,
+            "description": "Дни 14-й луны: 0 — не включать",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "0",
+                "1"
+              ]
+            }
+          },
+          {
+            "name": "d15",
+            "in": "query",
+            "required": false,
+            "description": "Дни 15-й луны: 1 — включать",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "0",
+                "1"
+              ]
+            }
+          },
+          {
+            "name": "day",
+            "in": "query",
+            "required": false,
+            "description": "Второе напоминание в сам день, ЧЧММ",
+            "schema": {
+              "type": "string"
+            },
+            "example": "0600"
+          },
+          {
+            "name": "adv",
+            "in": "query",
+            "required": false,
+            "description": "С day=: 0 — без напоминания заранее",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "0",
+                "1"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "iCalendar",
+            "content": {
+              "text/calendar": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Неверный часовой пояс"
+          }
+        }
+      }
+    },
+    "/api/ai-search": {
+      "get": {
+        "tags": [
+          "search"
+        ],
+        "summary": "ИИ-поиск: вопрос своими словами → сутты",
+        "description": "Когда точный поиск ничего не нашёл: слова пали из словаря DPD, иначе смысловой поиск. Ответ — сутты и подсказки слов. Медленнее обычного поиска (секунды).",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "черепаха"
+          },
+          {
+            "name": "lang",
+            "in": "query",
+            "required": false,
+            "description": "Язык подсказок слов (язык интерфейса)",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ru",
+                "en"
+              ]
+            },
+            "example": "ru"
+          },
+          {
+            "name": "scope",
+            "in": "query",
+            "required": false,
+            "description": "Область, как у /search",
+            "schema": {
+              "type": "string"
+            },
+            "example": "default"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    },
+                    "query": {
+                      "type": "string"
+                    },
+                    "suttas": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      }
+                    },
+                    "wordSuggestions": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      }
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
