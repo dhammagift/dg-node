@@ -773,12 +773,12 @@ async function addToSearchHistory(title) {
         if (!qParam) return;
 
         let key = processSearchQuery(qParam);
-        // «Несколько слов» (dg-node#26): history shows the plain words and the mode, "dukkh samud (в абзаце)";
+        // «Несколько слов» (dg-node#26): history shows the plain words and the mode, "dukkh samud (абзац)" — short, it is a history row;
         // the stored address keeps the operator, so picking the entry runs the same search.
         const wordsMode = /\s&&\s/.test(key) ? 'para' : /\s&\s/.test(key) ? 'text' : null;
         if (wordsMode) {
             const ru = (document.documentElement.lang || '').startsWith('ru');
-            key = key.split(/\s&&?\s/).join(' ') + (wordsMode === 'para' ? (ru ? ' (в абзаце)' : ' (in one paragraph)') : (ru ? ' (по всему тексту)' : ' (whole text)'));
+            key = key.split(/\s&&?\s/).join(' ') + (wordsMode === 'para' ? (ru ? ' (абзац)' : ' (paragraph)') : (ru ? ' (весь текст)' : ' (all text)'));
         }
 
         // 1. Быстрое локальное сохранение (функция вернет ключ, возможно уже улучшенный из истории)
