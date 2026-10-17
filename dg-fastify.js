@@ -2040,7 +2040,8 @@ for (const name of offlineMirrors) {
 
 // Страница поиска — главная точка входа (легаси, для обратной совместимости)
 app.get('/', (req, res) => {
-    sendVersionedHtml(req, res, searchIndexPath);
+    // the old /?q=word form is a search page too (its canonical is the clean /word)
+    return req.query.q ? sendSiteHtml(req, res, 'search', String(req.query.q)) : sendSiteHtml(req, res, 'home');
 });
 
 
@@ -3153,7 +3154,7 @@ function findChapterChildren(prefix) {
 // что и голый /toc; какой узел раскрыть, клиент читает из СВОЕГО адреса (public/spa/toc.js,
 // targetFromPath) — сервер здесь только отдаёт шаблон, ничего про :code не знает.
 app.get('/toc/:code', (req, res) => {
-    sendVersionedHtml(req, res, searchIndexPath);
+    return sendSiteHtml(req, res, 'toc', req.params.code);
 });
 
 // Чистые URL: /dn22 → ридер, /dn22:12.1 → ридер с прокруткой к сегменту (разбор ":" — на клиенте),
@@ -3241,11 +3242,13 @@ async function textHead(dataId, urlId, reqLang) {
     const titleSeg = header.find(s => /<h1/.test(s.html || '')) || header[header.length - 1] || segments[0];
     // the Pali name exactly as the text writes it (owner: Pali is never rewritten for convenience);
     // the split "Satipaṭṭhāna Sutta" people type goes only to keywords and alternateName
-    const pali = cleanTitle(titleSeg && titleSeg.root_text);
+    // untitled ranges carry "~" for a name (an11.992-1151): the code stands in for it
+    const pali = cleanTitle(titleSeg && titleSeg.root_text).replace(/^[~\s]+$/, '');
     const split = pali.replace(/(.)(sutta|vagga)$/i, '$1 $2');
     const local = cleanTitle(titleSeg && tr(titleSeg));
     const code = textCode(urlId, lang);
-    const title = [pali + (code ? ` (${code})` : ''), local && local.toLowerCase() !== pali.toLowerCase() ? local : ''].filter(Boolean).join(' — ') + ' | Dhamma.Gift';
+    const name = pali ? pali + (code ? ` (${code})` : '') : code;
+    const title = [name, local && local.toLowerCase() !== pali.toLowerCase() ? local : ''].filter(Boolean).join(' — ') + ' | Dhamma.Gift';
     let description = '';
     // the translation's own words; Pali only when this text has no translation in this language
     const body = segments.slice(headerEnd + 1);
@@ -3256,8 +3259,8 @@ async function textHead(dataId, urlId, reqLang) {
     }
     description = description.replace(/\s+/g, ' ').trim();
     // Russian readers search the name in Cyrillic: it opens the Russian description
-    const cyr = paliCyr(split);
-    if (lang === 'ru') description = cyr + (code ? ', ' + code : '') + '. ' + description;
+    const cyr = pali ? paliCyr(split) : '';
+    if (lang === 'ru' && cyr) description = cyr + (code ? ', ' + code : '') + '. ' + description;
     if (description.length > 160) description = description.slice(0, description.lastIndexOf(' ', 157)) + '…';
     // Cyrillic only for the Russian page: nobody reading the English one types it
     const names = [...new Set([split, paliAscii(split), paliAscii(pali), lang === 'ru' ? cyr : ''])].filter(n => n && n !== pali);
@@ -3266,11 +3269,14 @@ async function textHead(dataId, urlId, reqLang) {
     const prefix = (/^([a-z]+)\d/.exec(urlId) || [])[1];
     const crumbs = [{ name: 'Dhamma.Gift', item: SITE + '/' }];
     if (prefix && TOC_CODES.has(prefix) && collection) crumbs.push({ name: collection, item: SITE + '/toc/' + prefix });
-    crumbs.push({ name: code || pali, item: url(lang) });
+    crumbs.push({ name: code || pali || local, item: url(lang) });
     const head = {
         lang, title, description, canonical: url(lang),
+        // Chinese, Sanskrit, Gāndhārī parallels (lzh/, san/, pra/) open by id but are not what the site offers
+        // (owner: in no sitemap or the like) — readable, not indexed
+        noindex: !/^pli\//.test((skeletonDB[dataId] || {}).dir_path || ''),
         keywords: [pali, ...names, code, local].filter(Boolean).join(', '),
-        work: { '@context': 'https://schema.org', '@type': 'CreativeWork', name: pali, alternateName: [...names, local].filter(Boolean),
+        work: { '@context': 'https://schema.org', '@type': 'CreativeWork', name: pali || code || local, alternateName: [...names, local].filter(Boolean),
             inLanguage: lang, url: url(lang), isPartOf: collection ? { '@type': 'CreativeWorkSeries', name: collection } : undefined },
         alternates: [...new Set(['en', ...roster])].filter(l => l === 'en' || roster.includes(l)).map(l => [l, url(l)]),
         breadcrumbs: { '@context': 'https://schema.org', '@type': 'BreadcrumbList',
@@ -3282,25 +3288,74 @@ async function textHead(dataId, urlId, reqLang) {
 }
 function withTextHead(html, h) {
     const t = htmlAttr(h.title), d = htmlAttr(h.description), u = htmlAttr(h.canonical);
-    const links = `<link rel="canonical" href="${u}">\n` +
+    const ld = [h.breadcrumbs, h.work].filter(Boolean);
+    const links = (h.noindex ? `<meta name="robots" content="${h.noindex === true ? 'noindex' : h.noindex}">\n` : '') +
+        `<link rel="canonical" href="${u}">\n` +
         h.alternates.map(([l, href]) => `<link rel="alternate" hreflang="${l}" href="${htmlAttr(href)}">`).join('\n') +
         `\n<link rel="alternate" hreflang="x-default" href="${htmlAttr(h.alternates[0][1])}">\n` +
-        `<meta name="keywords" content="${htmlAttr(h.keywords)}">\n` +
-        `<script type="application/ld+json">${JSON.stringify([h.breadcrumbs, h.work]).replace(/</g, '\\u003c')}</script>\n`;
-    return html
+        (h.keywords ? `<meta name="keywords" content="${htmlAttr(h.keywords)}">\n` : '') +
+        (ld.length ? `<script type="application/ld+json">${JSON.stringify(ld).replace(/</g, '\\u003c')}</script>\n` : '');
+    let out = html
         .replace('<html ', `<html lang="${h.lang}" `)
         .replace(/<title>[^<]*<\/title>/, `<title>${t}</title>`)
-        .replace(/<meta name="description" content="[^"]*">/, `<meta name="description" content="${d}">`)
+        .replace(/<meta name="description" content="[^"]*">/, `<meta name="description" content="${d}">`);
+    // the home page keeps the owner's own preview card ("Dhamma.Gift — Find the Truth")
+    if (!h.keepOg) out = out
         .replace(/(<meta (?:property|name)="(?:og|twitter):title" content=")[^"]*"/g, `$1${t}"`)
         .replace(/(<meta (?:property|name)="(?:og|twitter):description" content=")[^"]*"/g, `$1${d}"`)
-        .replace(/(<meta property="og:url" content=")[^"]*"/, `$1${u}"`)
-        .replace('</head>', links + '</head>');
+        .replace(/(<meta property="og:url" content=")[^"]*"/, `$1${u}"`);
+    return out.replace('</head>', links + '</head>');
+}
+// Home, search results and contents: the template's own head said "Search Results - Dhamma.gift" on all of them
+const BOOK_LABELS = {}; // "mn" -> { ru: "Маджхима Никая", en: "Majjhima Nikāya" }
+(function walk(n) {
+    if (Array.isArray(n)) return n.forEach(walk);
+    if (!n || typeof n !== 'object') return;
+    if (n.code && n.label) BOOK_LABELS[n.code] = n.label;
+    Object.values(n).forEach(walk);
+})(require('./configs/reader/toc-books.json'));
+const SITE_HEAD_TEXT = {
+    en: {
+        home: () => ['Dhamma.Gift — Pali Canon: search, read, listen',
+            'Search the Pali Canon — Sutta, Vinaya, Abhidhamma — in Pali and 25 languages, read the suttas with translations side by side, listen, memorize.'],
+        search: q => [`${q} — search in the Pali Canon | Dhamma.Gift`, `Suttas of the Pali Canon with “${q}”: the Pali text and translations, each match in its context.`],
+        toc: n => [`${n} — contents | Dhamma.Gift`, `${n}: every text in Pali with translations. Dhamma.Gift — search, reader, voice, memorization.`],
+    },
+    ru: {
+        home: () => ['Dhamma.Gift — Палийский канон: поиск, чтение, озвучка',
+            'Поиск по Палийскому канону — Сутта, Виная, Абхидхамма — на пали и 25 языках, сутты с переводами рядом, озвучка, заучивание.'],
+        search: q => [`${q} — поиск по Палийскому канону | Dhamma.Gift`, `Сутты Палийского канона, где есть «${q}»: пали и переводы, каждое вхождение в контексте.`],
+        toc: n => [`${n} — содержание | Dhamma.Gift`, `${n}: все тексты на пали с переводами. Dhamma.Gift — поиск, ридер, озвучка, заучивание.`],
+    },
+};
+function siteHead(kind, arg, reqLang) {
+    const lang = reqLang === 'ru' ? 'ru' : 'en';
+    const pathOf = kind === 'home' ? '/' : kind === 'toc' ? '/toc' + (arg ? '/' + encodeURIComponent(arg) : '') : '/' + encodeURIComponent(arg);
+    const url = l => SITE + pathOf + (l === 'ru' ? '?lang=ru' : '');
+    let what = arg;
+    if (kind === 'toc') what = !arg ? (lang === 'ru' ? 'Палийский канон' : 'Pali Canon')
+        : (BOOK_LABELS[arg] && BOOK_LABELS[arg][lang]) || textCode(arg, lang) || arg.toUpperCase();
+    if (kind === 'search') what = String(arg).slice(0, 80);
+    const [title, description] = SITE_HEAD_TEXT[lang][kind](what);
+    return {
+        lang, title, description, canonical: url(lang), keepOg: kind === 'home', alternates: [['en', url('en')], ['ru', url('ru')]],
+        // search results stay out of the index, their links are followed (GSC, 16 months: keyword-search pages had
+        // 1% of impressions and no clicks; an unbounded space of thin pages, crawler junk included). The title and
+        // description stay for a shared link's preview. Topics get real pages instead.
+        noindex: kind === 'search' ? 'noindex, follow' : false,
+    };
+}
+function sendSiteHtml(req, res, kind, arg) {
+    return sendHeadHtml(req, res, siteHead(kind, arg, req.query.lang));
 }
 async function sendTextHtml(req, res, dataId, urlId) {
     let h = null;
     try { h = await textHead(dataId, urlId, req.query.lang); }
     catch (e) { console.warn(`textHead ${dataId}: ${e.message}`); }
     if (!h) return sendVersionedHtml(req, res, searchIndexPath);
+    return sendHeadHtml(req, res, h);
+}
+function sendHeadHtml(req, res, h) {
     let entry = versionedHtmlCache.get(searchIndexPath);
     if (!entry || Date.now() - entry.at > VERSIONED_HTML_TTL) {
         entry = buildVersionedHtml(searchIndexPath);
@@ -3382,7 +3437,8 @@ app.get('/:slug', (req, res) => {
         const query = queryString(req); // сохраняем ?lang= и т.п.
         return res.redirect('/toc/' + encodeURIComponent(suttaId) + query);
     }
-    return sendVersionedHtml(req, res, searchIndexPath);
+    if (rawSlug === 'toc') return sendSiteHtml(req, res, 'toc', '');
+    return sendSiteHtml(req, res, 'search', rawSlug);
 });
 
 // Native 404 (public/404.html) — replaces legacy /assets/404.php (PHP includes for
