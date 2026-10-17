@@ -17,3 +17,7 @@ Disallow: /assets/br/
 Disallow: /assets/materials/
 Disallow: /assets/apk/
 Disallow: /assets/diff/
+
+# Yandex only (Google ignores it): these parameters show the same page in another view or highlight a word,
+# so Yandex keeps one URL per page. ?lang= is not here: it is a different page (another language).
+Clean-param: s&mode&langs&translators&script&scope&la&lb&report&fast /
