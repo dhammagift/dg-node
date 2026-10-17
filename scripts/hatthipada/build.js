@@ -1,9 +1,14 @@
-// Definitions the suttas give themselves: "Katamā ca, bhikkhave, X?" … "ayaṁ vuccati … X", and sn56.11's
-// "Idaṁ kho pana, bhikkhave, X—" … Pali only, four nikāyas. Usage: node scripts/build-sutta-definitions.js dg.db > defs.json - the data inlined in siteroot/research/4nt-deep.html (const DATA)
+// Hatthipada (/hatthipada): the four noble truths and, as deep as one goes, the definitions the suttas give themselves —
+// "Katamā ca, bhikkhave, X?" … "ayaṁ vuccati … X", "Kathañca, bhikkhave, X hoti?" … and sn56.11's "Idaṁ kho pana,
+// bhikkhave, X—" … Four nikāyas; Pali, with the project's preferred ru/en translation of each line.
+// Usage: node scripts/hatthipada/build.js [dg.db] → siteroot/hatthipada/index.html (from scripts/hatthipada/page.html)
 const { DatabaseSync } = require('node:sqlite');
-const db = new DatabaseSync(process.argv[2], { readOnly: true });
+const path = require('path'), fs = require('fs');
+const ROOT = path.join(__dirname, '..', '..');
+const db = new DatabaseSync(process.argv[2] || path.join(ROOT, 'dg.db'), { readOnly: true });
 const STOP = new Set(('ca cāvuso cāvusoti panāvuso panāvusoti sā so taṁ yā yo pana kho nu bhikkhave bhikkhavo āvuso bhante bhikkhu bhikkhunī gahapati brāhmaṇa mahārāja ānanda sāriputta ' +
-    'moggallāna visākhe vāseṭṭha bhaggava aggivessana gāmaṇi kumāra udāyi cunda kaccāna anuruddha upāli rāhula mahānāma ambaṭṭha sīha tissa').split(' '));
+    'moggallāna visākhe vāseṭṭha bhaggava aggivessana gāmaṇi kumāra udāyi cunda kaccāna anuruddha upāli rāhula mahānāma ambaṭṭha sīha tissa ' +
+    'hoti honti viharati hotīti bhāvitā bhāvito bahulīkatā bahulīkato kataṁ katā').split(' '));
 const NUM = new Set(('eka ekaṁ dve dvīhi dvinnaṁ dvīsu tayo tīṇi tisso tīhi tiṇṇaṁ cattāro cattāri catasso catūhi catunnaṁ catūsu pañca pañcahi pañcannaṁ ' +
     'cha chahi channaṁ satta sattahi sattannaṁ aṭṭha aṭṭhahi nava dasa dasahi ekādasahi ti honti hoti').split(' '));
 const words = s => s.toLowerCase().replace(/[“”‘’"'—–,.;:!?()]/g, ' ').split(/\s+/).filter(Boolean);
@@ -15,7 +20,7 @@ for (const r of db.prepare("SELECT sutta_id, segment_id, txt FROM texts WHERE ki
     if (!ok.has(r.sutta_id)) continue;
     (bySutta.get(r.sutta_id) || bySutta.set(r.sutta_id, []).get(r.sutta_id)).push([r.segment_id, r.txt]);
 }
-const isQ = t => /^\W*katam/i.test(t) && /\?[”’"]*\s*$/.test(t.trim());
+const isQ = t => /^\W*(?:katam|kathañc)/i.test(t) && /\?[”’"]*\s*$/.test(t.trim());
 const isIdam = t => /^\W*idaṁ kho pana,? bhikkhave,? .+[—–-]\s*$/i.test(t.trim());
 const defs = [];
 for (const [sid, segs] of bySutta) {
@@ -40,7 +45,23 @@ for (const [sid, segs] of bySutta) {
 // a long phrase whose head word is defined on its own ("taṇhā jālinī saritā visaṭā visattikā", an4.199) also counts for it
 const singles = new Set(defs.filter(d => !d.key.includes(' ')).map(d => d.key));
 for (const d of defs.slice()) { const head = d.key.split(' ')[0]; if (d.key.split(' ').length >= 4 && singles.has(head)) defs.push({ ...d, key: head }); }
+// the project's preferred translation of each line (configs/reader/translator-priority.json, then any other but Sujato,
+// then Sujato), per language
+const PRIO = JSON.parse(fs.readFileSync(path.join(ROOT, 'configs/reader/translator-priority.json'), 'utf8'));
+const want = new Set(defs.flatMap(d => [d.q[0], ...d.a.map(s => s[0])]));
+const trans = { ru: new Map(), en: new Map() };
+const rank = (lang, who) => { const i = (PRIO[lang] || []).indexOf(lang + '_' + who); return i >= 0 ? i : who === 'sujato' ? 99 : 50; };
+for (const r of db.prepare("SELECT segment_id, lang, translator, txt FROM texts WHERE kind = 'translation' AND lang IN ('ru', 'en')").iterate()) {
+    if (!want.has(r.segment_id) || !r.txt.trim()) continue;
+    const m = trans[r.lang], cur = m.get(r.segment_id);
+    if (!cur || rank(r.lang, r.translator) < rank(r.lang, cur[0])) m.set(r.segment_id, [r.translator, r.txt.trim()]);
+}
+const tr = seg => { const o = {}; for (const l of ['ru', 'en']) { const v = trans[l].get(seg); if (v) o[l] = v; } return o; };
 const titles = new Map(db.prepare("SELECT id, title FROM suttas").all().map(r => [r.id, (r.title || '').trim()]));
 const byKey = {};
-for (const d of defs) (byKey[d.key] || (byKey[d.key] = { phrase: d.phrase, defs: [] })).defs.push({ s: d.sutta, t: titles.get(d.sutta) || '', q: d.q, a: d.a });
-console.log(JSON.stringify(byKey));
+for (const d of defs) (byKey[d.key] || (byKey[d.key] = { phrase: d.phrase, defs: [] })).defs.push({ s: d.sutta, t: titles.get(d.sutta) || '',
+    q: [...d.q, tr(d.q[0])], a: d.a.map(s => [...s, tr(s[0])]) });
+const tpl = fs.readFileSync(path.join(__dirname, 'page.html'), 'utf8');
+fs.mkdirSync(path.join(ROOT, 'siteroot/hatthipada'), { recursive: true });
+fs.writeFileSync(path.join(ROOT, 'siteroot/hatthipada/index.html'), tpl.replace('__DATA__', () => JSON.stringify(byKey)));
+console.log(Object.keys(byKey).length + ' terms, ' + defs.length + ' definitions → siteroot/hatthipada/index.html');

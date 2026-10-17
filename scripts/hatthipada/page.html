@@ -1,0 +1,276 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow">
+<title>Hatthipada</title>
+<meta name="description" content="The four noble truths and, as deep as you go, how the suttas themselves define every word">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,400;7..72,600&display=swap" rel="stylesheet">
+<style>
+/* Drill-down columns: four truths → the suttas' own definition of each → any defined word inside it → its definition … */
+:root { --bg:#f6f7f9; --surface:#fff; --ink:#14171f; --ink-2:#4a5160; --ink-3:#737b8c; --line:#e1e4ea; --accent:#3446b8; --accent-soft:#e8ebfb; --hl:#fff3c4; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#12141a; --surface:#1b1e26; --ink:#eef0f5; --ink-2:#b4bac8; --ink-3:#8a91a2; --line:#2c303b; --accent:#8c9bff; --accent-soft:#252b4a; --hl:#4a3f12; color-scheme:dark; } }
+:root[data-theme="dark"] { --bg:#12141a; --surface:#1b1e26; --ink:#eef0f5; --ink-2:#b4bac8; --ink-3:#8a91a2; --line:#2c303b; --accent:#8c9bff; --accent-soft:#252b4a; --hl:#4a3f12; color-scheme:dark; }
+* { box-sizing:border-box; } body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.55 system-ui, sans-serif; }
+header { padding:16px 16px 6px; max-width:1400px; margin:0 auto; } h1 { margin:0; font-size:22px; } .lede { margin:4px 0 0; color:var(--ink-2); font-size:14px; max-width:90ch; }
+.crumbs { padding:6px 16px; max-width:1400px; margin:0 auto; font-size:13px; color:var(--ink-3); } .crumbs button { font:inherit; color:var(--accent); background:none; border:0; padding:0; cursor:pointer; }
+#cols { display:flex; gap:12px; overflow-x:auto; padding:6px 16px 40px; scroll-snap-type:x mandatory; align-items:flex-start; }
+.col { flex:0 0 min(440px, 92vw); scroll-snap-align:start; background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:12px 14px; max-height:calc(100vh - 150px); overflow-y:auto; }
+.col h2 { margin:0 0 2px; font-size:18px; } .col .meta { color:var(--ink-3); font-size:12px; margin-bottom:8px; }
+.def { border-top:1px solid var(--line); padding:8px 0; } .def:first-of-type { border-top:0; }
+.src { font-size:12px; color:var(--ink-3); } .src a { color:var(--accent); text-decoration:none; } .src a:hover { text-decoration:underline; }
+.q { font-weight:600; } .seg { margin:2px 0; font-family:Literata, Georgia, serif; font-size:16px; line-height:1.6; }
+.src { margin-bottom:2px; } .src a.ref { font-weight:600; color:var(--accent); } .src .ttl { color:var(--ink-3); }
+.t { color:var(--accent); cursor:pointer; border-bottom:1px dotted currentColor; } .t:hover { background:var(--accent-soft); } .t.on, .w.on { background:var(--hl); color:var(--ink); border-bottom-style:solid; }
+.w { cursor:pointer; border-bottom:1px dotted var(--line); } .w:hover { background:var(--accent-soft); }
+.also { font-size:12px; color:var(--ink-3); margin-top:4px; } .also a { color:var(--accent); }
+.truths { display:grid; gap:8px; } .truth { text-align:left; font:inherit; background:var(--accent-soft); color:var(--ink); border:1px solid var(--line); border-radius:10px; padding:10px 12px; cursor:pointer; }
+.truth.on { outline:2px solid var(--accent); } .truth b { display:block; font-size:15px; } .truth span { font-size:13px; color:var(--ink-2); }
+.none { color:var(--ink-3); font-size:13px; }
+header .top { display:flex; flex-wrap:wrap; gap:10px 16px; align-items:center; justify-content:space-between; } h1 small { font-size:15px; font-weight:400; color:var(--ink-2); }
+.seg-tr { display:inline-flex; border:1px solid var(--line); border-radius:999px; overflow:hidden; background:var(--surface); }
+.seg-tr button { font:600 13px system-ui; border:0; background:none; color:var(--ink-2); padding:6px 12px; cursor:pointer; } .seg-tr button[aria-pressed="true"] { background:var(--accent); color:#fff; }
+.tr { font:14px/1.5 system-ui, sans-serif; color:var(--ink-2); margin:0 0 6px; } .trby { font-size:11px; color:var(--ink-3); }
+@media (max-width: 899px) { .lede { display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; cursor:pointer; } .lede.open { display:block; } }
+#mind { display:none; }
+@media (min-width: 900px) {
+  #cols { display:none; }
+  #mind { display:grid; grid-template-columns:minmax(0, 1fr) min(520px, 40vw); gap:12px; padding:6px 16px 24px; max-width:1800px; margin:0 auto; }
+  #map { background:var(--surface); border:1px solid var(--line); border-radius:12px; height:calc(100vh - 170px); min-height:480px; overflow:hidden; position:relative; }
+  #map svg { width:100%; height:100%; display:block; cursor:grab; } #map svg:active { cursor:grabbing; }
+  #panel .col { flex:none; max-height:calc(100vh - 170px); }
+  .hint { position:absolute; left:12px; bottom:8px; font-size:12px; color:var(--ink-3); pointer-events:none; }
+}
+.node circle { stroke-width:2px; cursor:pointer; } .node text { font:14px Literata, Georgia, serif; fill:var(--ink); cursor:pointer; paint-order:stroke; stroke:var(--surface); stroke-width:4px; stroke-linejoin:round; }
+.node.sel text { font-weight:600; } .node.sel circle { stroke-width:3.5px; }
+.node .cnt { font:11px system-ui; fill:var(--ink-3); }
+.link { fill:none; stroke-width:1.5px; stroke-opacity:.4; }
+</style></head><body>
+<header><div class="top"><h1>Hatthipada <small data-i="sub"></small></h1>
+<div class="seg-tr" role="group" data-i-aria="trLabel"><button data-tr="">Pāḷi</button><button data-tr="ru">+ RU</button><button data-tr="en">+ EN</button></div></div>
+<p class="lede" data-i="lede"></p></header>
+<div class="crumbs" id="crumbs"></div>
+<div id="mind"><div id="map"><div class="hint" data-i="hint"></div></div><div id="panel"></div></div>
+<div id="cols"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script>
+const DATA = __DATA__;
+// interface language: ?lang=, else the site's saved language, else the browser's
+const UI = (() => { const q = new URLSearchParams(location.search).get('lang'); let l = q;
+  if (!l) try { l = localStorage.getItem('dhammaLanguage'); } catch (e) {}
+  return /^ru/.test(l || navigator.language || '') ? 'ru' : 'en'; })();
+document.documentElement.lang = UI;
+const L = {
+  ru: { sub: '— след слона: четыре истины вглубь', truths: '4 истины', trLabel: 'Перевод',
+    lede: 'Как в MN 28: следы всех животных умещаются в след слона, так всё полезное умещается в четыре благородные истины. Здесь — только определения, которые дают сами сутты («Katamā ca, bhikkhave, X?» … «idaṁ vuccati X», формулы SN 56.11). <b>Синее</b> слово сутты где-то определяют — нажми, откроется его определение; любое другое слово тоже нажимается — откроется, где оно встречается. И так сколько угодно глубоко. Четыре никаи, пали; перевод — для справки.',
+    hint: 'Нажми на узел — раскроется ветка, справа его определения. Колесо — масштаб, тяни — сдвиг.', defs: n => n + ' ' + (n % 10 === 1 && n % 100 !== 11 ? 'определение' : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? 'определения' : 'определений'),
+    inSuttas: n => 'в ' + n + ' сутт' + (n % 10 === 1 && n % 100 !== 11 ? 'е' : 'ах'), also: 'То же:', loading: 'Загружаю…', failed: 'Не загрузилось',
+    notDefined: n => 'Формулой не определяется. Встречается в ' + n + ' суттах', first30: ', показаны первые 30', defsShort: 'опр.', rootMeta: 'SN 56.11 и разборы: MN 141, DN 22, AN 3.61, MN 28…' },
+  en: { sub: '— the elephant’s footprint: the four truths in depth', truths: '4 truths', trLabel: 'Translation',
+    lede: 'As in MN 28: the footprints of all animals fit into the elephant’s, and everything skilful fits into the four noble truths. Only the definitions the suttas give themselves (“Katamā ca, bhikkhave, X?” … “idaṁ vuccati X”, the formulas of SN 56.11). A <b>blue</b> word is defined somewhere in the suttas — tap it to open its definition; any other word opens where it occurs. As deep as you go. Four nikāyas, Pāḷi; the translation is a reference.',
+    hint: 'Click a node to open its branch and its definitions on the right. Wheel to zoom, drag to move.', defs: n => n + (n === 1 ? ' definition' : ' definitions'),
+    inSuttas: n => 'in ' + n + (n === 1 ? ' sutta' : ' suttas'), also: 'Also in:', loading: 'Loading…', failed: 'Did not load',
+    notDefined: n => 'No definition formula. Occurs in ' + n + ' suttas', first30: ', the first 30 shown', defsShort: 'def.', rootMeta: 'SN 56.11 and the analyses: MN 141, DN 22, AN 3.61, MN 28…' },
+}[UI];
+document.querySelectorAll('[data-i]').forEach(e => { e.innerHTML = L[e.dataset.i]; });
+document.querySelector('.lede').addEventListener('click', e => e.currentTarget.classList.toggle('open'));
+document.querySelectorAll('[data-i-aria]').forEach(e => e.setAttribute('aria-label', L[e.dataset.iAria]));
+// translation under the Pali: none, ru or en — remembered
+let TR = UI; try { const v = localStorage.getItem('hatthipadaTr'); if (v !== null) TR = v; } catch (e) {}
+const TR_NAME = { o: 'o', 'sv+edited+o': 'sv', sv: 'sv', thanissaro: 'Thanissaro', sujato: 'Sujato', brahmali: 'Brahmali' };
+const trHtml = seg => { const t = TR && seg[2] && seg[2][TR]; return t ? `<div class="tr">${esc(t[1])} <span class="trby">${esc(TR_NAME[t[0]] || t[0])}</span></div>` : ''; };
+function paintTr() { document.querySelectorAll('[data-tr]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.tr === TR))); }
+// terms that are not doctrine here: generic words, names and forms of address the question formula happens to catch
+const SKIP = new Set(['dhamm', 'adhamm', 'atth', 'anatth', 'sādh', 'asādh', 'ariy', 'anariy', 'ekadhamm', 'hot', 'seyy', 'sat', 'sāt', 'rādh',
+  'kevaṭṭ', 'dhanañjān', 'dev', 'bho', 'bho gotam', 'cānand', 'ānand', 'tv', 'gant', 'sot', 'brāhmaṇ', 'samaṇ', 'kalyāṇ', 'pāp', 'puggal', 'saddh', 'saddhamm']);
+const SHORT_OK = new Set(['jāt', 'jar', 'sok']); // three-letter stems that are real terms
+const TRUTHS = [['dukkh ariyasacc', 'Dukkha'], ['dukkhasamuday ariyasacc', 'Samudaya'], ['dukkhanirodh ariyasacc', 'Nirodha'], ['dukkhanirodhagāmin paṭipad ariyasacc', 'Magga']];
+const fold = w => { w = w.toLowerCase().replace(/ṁ$/, '').replace(/([aāiīuū])n$/, '$1'); return w.length > 3 ? w.replace(/[aāiīuūoe]$/, '') : w; };
+const KEYS = Object.keys(DATA).filter(k => !SKIP.has(k) && (k.length >= 4 || SHORT_OK.has(k)));
+const SINGLE = KEYS.filter(k => !k.includes(' ')).sort((a, b) => b.length - a.length);
+const MULTI = new Set(KEYS.filter(k => k.includes(' ')));
+// a word leads to a defined term: the same word in another case ("jātipi" → jāt), or a compound that starts with it
+function keyOf(word) {
+  const f = fold(word), raw = word.toLowerCase();
+  // the word itself in any case, or a compound it starts (taṇhāpaccayā → taṇhā)
+  for (const k of SINGLE) if ((f.startsWith(k) && f.length - k.length <= 4) || (k.length >= 4 && raw.startsWith(k) && /[aāiīuūeo]/.test(raw[k.length] || ''))) return k;
+  // a word the suttas define only inside a bigger term: khandhānaṁ → pañcakkhandhā, āyatanānaṁ → saḷāyatana
+  const stem = f.replace(/(?:ānaṁ|āna|assa|ehi|esu|ena|āya|ato|āni|āy|ān)$/, '');
+  // only a number in front (pañca-, saḷ-): "sammāpaṭipadā" is not what "paṭipadā" means
+  if (stem.length >= 5 && !SKIP.has(stem)) { const tail = SINGLE.filter(k => k.endsWith(stem) && /^(?:pañca?|pañcupādāna?|saḷ|cha|catt|tis|satt|aṭṭh|dv)[kgcjṭḍtdpb]?$/.test(k.slice(0, -stem.length))).sort((a, b) => a.length - b.length)[0]; if (tail) return tail; }
+  return null;
+}
+const PSTOP = new Set('ayaṁ idaṁ evaṁ tesaṁ tesañca tamhi yaṁ yā yo yaṁ taṁ tassa tāya etaṁ ettha atha pana kho vuccati vuccatāvuso bhikkhave āvuso bhante hoti honti seyyathidaṁ sabbe sabbaṁ imesaṁ imassa iti api'.split(' '));
+const esc = s => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+function linkify(text, self) {
+  const parts = text.split(/([A-Za-zāīūṁṅñṭḍṇḷĀĪŪṀṄÑṬḌṆḶ]+)/);
+  let out = '';
+  for (let i = 0; i < parts.length; i++) {
+    const p = parts[i];
+    if (i % 2 === 0) { out += esc(p); continue; }
+    // multi-word terms first ("ariyo aṭṭhaṅgiko maggo")
+    let done = false;
+    for (let n = 4; n >= 2 && !done; n--) {
+      const ws = []; for (let j = 0; j < n; j++) ws.push(parts[i + 2 * j]);
+      if (ws.some(w => !w)) continue;
+      const k = ws.map(fold).join(' ');
+      if (MULTI.has(k) && k !== self) { const span = parts.slice(i, i + 2 * n - 1).join(''); out += `<span class="t" data-k="${esc(k)}">${esc(span)}</span>`; i += 2 * n - 2; done = true; }
+    }
+    if (done) continue;
+    const k = keyOf(p);
+    if (k && k !== self) out += `<span class="t" data-k="${esc(k)}">${esc(p)}</span>`;
+    else if (!k && p.length >= 4 && !PSTOP.has(p.toLowerCase())) out += `<span class="w" data-w="${esc(fold(p))}">${esc(p)}</span>`;
+    else out += esc(p);
+  }
+  return out;
+}
+const refName = id => id.replace(/^([a-z]+)(\d)/, (m, b, d) => b.toUpperCase() + ' ' + d);
+const ref = (sutta, seg) => `<a class="ref" href="https://dhamma.gift/${esc(seg || sutta)}" target="_blank" rel="noopener">${esc(refName(sutta))}</a>`;
+// the defined terms a term's definitions lead to, most frequent first (the branches of the map)
+function termsOf(key) {
+  const n = new Map(), first = new Map(); let i = 0;
+  const box = document.createElement('div');
+  for (const x of DATA[key].defs) {
+    box.innerHTML = linkify([x.q[1], ...x.a.map(s => s[1])].join(' '), key);
+    box.querySelectorAll('.t').forEach(t => { const k = t.dataset.k; n.set(k, (n.get(k) || 0) + 1); if (!first.has(k)) first.set(k, i++); });
+  }
+  return [...n.keys()].sort((a, b) => first.get(a) - first.get(b));
+}
+const stack = []; // keys of the open columns after the root
+function column(key) {
+  const d = DATA[key], el = document.createElement('section'); el.className = 'col'; el.dataset.k = key;
+  // the same definition repeated in several suttas is shown once, "also in …" below it
+  const groups = new Map();
+  for (const x of d.defs) { const sig = x.a.map(s => s[1]).join(' ').replace(/\W+/g, ' ').trim(); (groups.get(sig) || groups.set(sig, []).get(sig)).push(x); }
+  let h = `<h2>${esc(d.phrase)}</h2><div class="meta">${L.defs(d.defs.length)} ${L.inSuttas(new Set(d.defs.map(x => x.s)).size)}</div>`;
+  for (const g of groups.values()) {
+    const x = g[0];
+    h += `<div class="def"><div class="src">${ref(x.s, x.q[0])} <span class="ttl">${esc(x.t)}</span></div>`;
+    h += `<div class="seg q">${linkify(x.q[1], key)}</div>${trHtml(x.q)}`;
+    for (const s of x.a) h += `<div class="seg">${linkify(s[1], key)}</div>${trHtml(s)}`;
+    if (g.length > 1) { const seen = new Set(); h += `<div class="also">${L.also} ${g.slice(1).filter(y => !seen.has(y.s) && seen.add(y.s)).map(y => ref(y.s, y.q[0])).join(', ')}</div>`; }
+    h += '</div>';
+  }
+  el.innerHTML = h; return el;
+}
+// a word with no definition formula: where the suttas use it (the site's own search, fast mode), lines again clickable
+function searchColumn(stem) {
+  const el = document.createElement('section'); el.className = 'col'; el.dataset.k = '?' + stem;
+  el.innerHTML = `<h2>${esc(stem)}…</h2><div class="meta">${L.loading}</div>`;
+  fetch('/search?q=' + encodeURIComponent(stem) + '&fast=1').then(r => r.json()).then(j => {
+    const rows = Object.values(j.data || {});
+    let h = `<h2>${esc(stem)}…</h2><div class="meta">${L.notDefined(j.metadata.totalFiles)}${rows.length > 30 ? L.first30 : ''}</div>`;
+    for (const r of rows.slice(0, 30)) {
+      const segs = (r.segments || []).slice(0, 3);
+      h += `<div class="def"><div class="src">${ref(r.sutta_id, segs[0] && segs[0].segment)} <span class="ttl">${esc((r.titles && r.titles.root || '').trim())}</span></div>`;
+      for (const s of segs) h += `<div class="seg">${linkify(s.root_text, '')}</div>`;
+      h += '</div>';
+    }
+    el.innerHTML = h;
+  }).catch(() => { el.querySelector('.meta').textContent = L.failed; });
+  return el;
+}
+const label = k => k[0] === '?' ? k.slice(1) + '…' : DATA[k].phrase;
+function rootColumn() {
+  const el = document.createElement('section'); el.className = 'col';
+  el.innerHTML = '<h2>cattāri ariyasaccāni</h2><div class="meta">' + L.rootMeta + '</div><div class="truths">' +
+    TRUTHS.map(([k, name]) => `<button class="truth" data-k="${esc(k)}"><b>${name}</b><span>${esc(DATA[k].phrase)} · ${DATA[k].defs.length}</span></button>`).join('') + '</div>';
+  return el;
+}
+const cols = document.getElementById('cols');
+let first = true;
+function render() {
+  cols.replaceChildren(rootColumn(), ...stack.map(k => k[0] === '?' ? searchColumn(k.slice(1)) : column(k)));
+  // mark the word that opened each next column
+  stack.forEach((k, i) => { const host = cols.children[i]; host.querySelectorAll(k[0] === '?' ? `[data-w="${CSS.escape(k.slice(1))}"]` : `[data-k="${CSS.escape(k)}"]`).forEach(x => x.classList.add('on')); });
+  document.getElementById('crumbs').innerHTML = ['<button data-depth="0">' + L.truths + '</button>', ...stack.map((k, i) => `<button data-depth="${i + 1}">${esc(label(k))}</button>`)].join(' › ');
+  // the newest column into view (scroll-snap needs the target to be a snap point: its own left edge)
+  const last = cols.lastElementChild; setTimeout(() => cols.scrollTo({ left: last.getBoundingClientRect().left - cols.getBoundingClientRect().left + cols.scrollLeft - 16, behavior: first ? 'auto' : 'smooth' }), 50); first = false;
+  try { history.replaceState(null, '', '#' + stack.map(encodeURIComponent).join('/')); } catch (e) {}
+}
+document.addEventListener('click', e => {
+  const t = e.target.closest('[data-k], [data-w]'), c = e.target.closest('[data-depth]');
+  if (t && t.closest('.col')) { const col = t.closest('.col'); const depth = [...cols.children].indexOf(col); stack.length = depth; stack.push(t.dataset.k || '?' + t.dataset.w); render(); }
+  else if (c) { stack.length = +c.dataset.depth; render(); }
+});
+stack.push(...location.hash.slice(1).split('/').map(decodeURIComponent).filter(k => DATA[k] || (k[0] === '?' && k.length > 3)));
+
+/* ---------- desktop: mind map + reading panel ---------- */
+const wide = matchMedia('(min-width: 900px)');
+const TCOL = ['#c45a3c', '#b8862a', '#2f8f6b', '#3d6fb8'];
+const tree = { key: null, name: 'cattāri ariyasaccāni', open: true, children: TRUTHS.map(([k, n], i) => ({ key: k, name: n, ti: i, open: false })) };
+let selected = tree, mapSvg, mapG, linkG, nodeG, zoomer;
+function kidsOf(node, path) {
+  if (!node.kids) node.kids = termsOf(node.key).filter(k => !path.includes(k)).slice(0, 14).map(k => ({ key: k, name: DATA[k].phrase, ti: node.ti, open: false }));
+  return node.kids;
+}
+function pathOf(node) { const p = []; let n = node; while (n) { if (n.key) p.push(n.key); n = n.parent; } return p; }
+function visible(node, parent) {
+  node.parent = parent;
+  const out = { node, children: [] };
+  if (node.open) { const kids = node === tree ? node.children : kidsOf(node, pathOf(node)); out.children = kids.map(k => visible(k, node)); }
+  return out;
+}
+function drawMap(focusNode) {
+  const h = d3.hierarchy(visible(tree, null), d => d.children);
+  d3.tree().nodeSize([44, 250]).separation((a, b) => a.parent === b.parent ? 1 : 1.3)(h);
+  const color = d => d.data.node.ti == null ? 'var(--ink-3)' : TCOL[d.data.node.ti];
+  linkG.selectAll('path.link').data(h.links(), d => pathOf(d.target.data.node).join('/')).join('path').attr('class', 'link')
+    .attr('stroke', d => color(d.target)).attr('d', d3.linkHorizontal().source(d => ({ x: d.source.x, y: d.source.y + 8 })).x(d => d.y).y(d => d.x));
+  const g = nodeG.selectAll('g.node').data(h.descendants(), d => pathOf(d.data.node).join('/') || 'root').join(enter => {
+    const e = enter.append('g').attr('class', 'node');
+    e.append('circle').attr('r', 7); e.append('text').attr('dy', '0.32em'); e.append('text').attr('class', 'cnt').attr('dy', '1.7em');
+    return e;
+  });
+  g.attr('transform', d => `translate(${d.y},${d.x})`).classed('sel', d => d.data.node === selected)
+    .on('click', (e, d) => select(d.data.node, true));
+  g.select('circle').attr('stroke', color).attr('fill', d => {
+    const n = d.data.node; const hasKids = n === tree || (n.key && (n.kids ? n.kids.length : termsOf(n.key).length));
+    return hasKids && !n.open ? color(d) : 'var(--surface)';
+  });
+  g.select('text:not(.cnt)').attr('x', 12).text(d => d.data.node.name);
+  g.select('text.cnt').attr('x', 12).text(d => d.data.node.key ? DATA[d.data.node.key].defs.length + ' ' + L.defsShort + ' · ' + [...new Set(DATA[d.data.node.key].defs.map(x => refName(x.s)))].slice(0, 3).join(', ') : '');
+  if (focusNode) { // the chosen node at a third of the width, its branch opening to the right
+    const t = h.descendants().find(d => d.data.node === focusNode); const box = document.getElementById('map');
+    if (t) { const k = d3.zoomTransform(mapSvg.node()).k || 1; mapSvg.transition().duration(500).call(zoomer.transform, d3.zoomIdentity.translate(box.clientWidth * 0.32 - t.y * k, box.clientHeight / 2 - t.x * k).scale(k)); } }
+}
+function select(node, toggle) {
+  if (toggle && node === selected) node.open = !node.open; else node.open = true;
+  selected = node;
+  const p = document.getElementById('panel');
+  p.replaceChildren(node.key ? column(node.key) : rootColumn());
+  drawMap(node);
+  const keys = pathOf(node).reverse();
+  try { history.replaceState(null, '', '#' + keys.map(encodeURIComponent).join('/')); } catch (e) {}
+  document.getElementById('crumbs').innerHTML = [L.truths, ...keys.map(k => esc(DATA[k].phrase))].join(' › ');
+}
+function initMap() {
+  const box = document.getElementById('map');
+  mapSvg = d3.select(box).insert('svg', ':first-child');
+  mapG = mapSvg.append('g'); linkG = mapG.append('g'); nodeG = mapG.append('g'); // lines under the labels
+  zoomer = d3.zoom().scaleExtent([0.3, 2.5]).on('zoom', e => mapG.attr('transform', e.transform));
+  mapSvg.call(zoomer).call(zoomer.transform, d3.zoomIdentity.translate(40, box.clientHeight / 2));
+  // panel clicks: a blue word opens that branch under the selected node; the truth buttons open their branch
+  document.getElementById('panel').addEventListener('click', e => {
+    const w = e.target.closest('[data-w]');
+    if (w) { e.stopImmediatePropagation(); const p = document.getElementById('panel'); const back = p.firstElementChild; const sc = searchColumn(w.dataset.w);
+      const b = document.createElement('button'); b.className = 'truth'; b.style.marginBottom = '8px'; b.textContent = '← ' + (selected.key ? DATA[selected.key].phrase : L.truths);
+      b.onclick = () => p.replaceChildren(back); sc.prepend(b); p.replaceChildren(sc); return; }
+    const t = e.target.closest('[data-k]'); if (!t) return;
+    e.stopImmediatePropagation();
+    const k = t.dataset.k;
+    const parent = selected === tree ? tree : selected;
+    const list = parent === tree ? tree.children : kidsOf(parent, pathOf(parent));
+    let child = list.find(c => c.key === k);
+    if (!child) { child = { key: k, name: DATA[k].phrase, ti: parent.ti, open: false }; list.push(child); }
+    parent.open = true; select(child);
+  }, true);
+  // open the path of a shared link
+  let node = tree;
+  for (const k of stack) { if (k[0] === '?') break; node.open = true; const list = node === tree ? tree.children : kidsOf(node, pathOf(node)); let c = list.find(x => x.key === k); if (!c) { c = { key: k, name: DATA[k].phrase, ti: node.ti, open: false }; list.push(c); } node = c; }
+  select(node);
+}
+paintTr();
+document.querySelector('.seg-tr').addEventListener('click', e => {
+  const b = e.target.closest('[data-tr]'); if (!b) return; TR = b.dataset.tr; try { localStorage.setItem('hatthipadaTr', TR); } catch (er) {} paintTr();
+  if (wide.matches) { const p = document.getElementById('panel'); p.replaceChildren(selected.key ? column(selected.key) : rootColumn()); } else render();
+});
+if (wide.matches) initMap(); else render();
+wide.addEventListener('change', () => location.reload());
+</script></body></html>
