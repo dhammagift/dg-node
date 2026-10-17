@@ -364,14 +364,39 @@ function sendVersionedHtml(req, reply, absHtmlPath, statusCode = 200) {
     if (statusCode === 200 && req.headers['if-none-match'] === etag) {
         return reply.code(304).send();
     }
-    reply.code(statusCode).type('text/html; charset=utf-8').send(rewritten);
+    // returned: an async route (sendTextHtml) must hand back the reply, or @fastify/compress sends an empty body
+    return reply.code(statusCode).type('text/html; charset=utf-8').send(rewritten);
+}
+// Speed: about half of search/index.html as served was developer comments inside its inline <script>
+// and <style> blocks (owner: not needed on the site). The response goes without them; the file itself,
+// which the apps build from, keeps them. terser parses the JS, so a "//" inside a string or a regex is
+// safe; a block it cannot parse is served as it is. Keyed by content: rebuilt only when the page changes.
+const { minify_sync: terserSync } = require('terser');
+const strippedHtmlCache = new Map(); // md5 of the stamped page -> the page without comments
+function stripInlineComments(html) {
+    const key = crypto.createHash('md5').update(html).digest('hex');
+    if (strippedHtmlCache.has(key)) return strippedHtmlCache.get(key);
+    const out = html
+        .replace(/(<script(?![^>]*\bsrc=)([^>]*)>)([\s\S]*?)(<\/script>)/g, (m, open, attrs, code, close) => {
+            if (/\btype=["']?(?!text\/javascript|module)/i.test(attrs) || !code.trim()) return m;
+            try {
+                return open + terserSync(code, { compress: false, mangle: false, module: /module/.test(attrs), format: { comments: false } }).code + close;
+            } catch (e) {
+                console.warn(`stripInlineComments: a script kept as it is (${e.message})`);
+                return m;
+            }
+        })
+        .replace(/(<style[^>]*>)([\s\S]*?)(<\/style>)/g, (m, open, css, close) => open + css.replace(/\/\*[\s\S]*?\*\//g, '') + close);
+    if (strippedHtmlCache.size > 50) strippedHtmlCache.clear();
+    strippedHtmlCache.set(key, out);
+    return out;
 }
 function buildVersionedHtml(absHtmlPath) {
     let html;
     try { html = fsSync.readFileSync(absHtmlPath, 'utf8'); }
     catch { return null; }
     html = stripHtmlComments(html);
-    const rewritten = html.replace(
+    const rewritten = stripInlineComments(html.replace(
         // Also stamps the lazy loadScript('/reader/megareader.js') / ('/spa/toc.js') calls in
         // search/index.html, `s.src = '/spa/toc.js'` (ensureTocAssets) and `css.href = '/assets/...'`
         // (ensureSearchAssets' DataTables stylesheet) — a bare lazy path has no other way to carry a
@@ -386,7 +411,7 @@ function buildVersionedHtml(absHtmlPath) {
                 .find(Boolean);
             return v ? `${pre}${url}?v=${v}${post}` : m;
         }
-    );
+    ));
     const etag = '"' + crypto.createHash('md5').update(rewritten).digest('hex') + '"';
     return { at: Date.now(), rewritten, etag };
 }
@@ -3283,7 +3308,7 @@ async function sendTextHtml(req, res, dataId, urlId) {
     return res.type('text/html; charset=utf-8').send(withTextHead(entry.rewritten, h));
 }
 
-app.get('/:slug', async (req, res) => {
+app.get('/:slug', (req, res) => {
     const rawSlug = req.params.slug;
     // A mounted directory asked for WITHOUT its trailing slash — "/4nt", "/dict", "/b" — is
     // not a search query. @fastify/static registers only "/4nt/*" for a prefix, so the bare
