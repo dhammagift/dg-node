@@ -10,7 +10,7 @@ Disallow: /theravada.ru/
 Disallow: /theravada.rf/
 Disallow: /tipitaka.theravada.su/
 Disallow: /metta.lk/
-Disallow: /assets/js/
+# /assets/js/ must stay crawlable: the SPA (jQuery, reader) loads from there; blocked, Googlebot rendered every text as the bare shell, a duplicate of the home page
 Disallow: /assets/html/
 Disallow: /assets/lunar/
 Disallow: /assets/br/
