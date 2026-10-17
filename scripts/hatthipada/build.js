@@ -84,7 +84,7 @@ const want = new Set(defs.flatMap(d => [d.q[0], ...d.a.map(s => s[0])]));
 const trans = { ru: new Map(), en: new Map() };
 const rank = (lang, who) => { const i = (PRIO[lang] || []).indexOf(lang + '_' + who); return i >= 0 ? i : who === 'sujato' ? 99 : 50; };
 for (const r of db.prepare("SELECT segment_id, lang, translator, txt FROM texts WHERE kind = 'translation' AND lang IN ('ru', 'en')").iterate()) {
-    if (!want.has(r.segment_id) || !r.txt.trim()) continue;
+    if (!want.has(r.segment_id) || !r.txt.trim() || r.translator === 'ai') continue; // machine translation: none rather than that
     const m = trans[r.lang], cur = m.get(r.segment_id);
     if (!cur || rank(r.lang, r.translator) < rank(r.lang, cur[0])) m.set(r.segment_id, [r.translator, r.txt.trim()]);
 }
