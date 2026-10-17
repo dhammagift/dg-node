@@ -151,6 +151,10 @@ function buildQuickModalDOM() {
             <p><span class="quick-4as-n">${n + 1}</span>${b[0]}</p>
             <ul>${b[1].map(l => `<li><a href="${queryBase}${l[0]}" target="_blank">${l[0].replace(/^([a-z]+)/, m => m === 'snp' ? 'Snp ' : m === 'iti' ? 'Iti ' : m.toUpperCase() + ' ')}</a><span>${l[1]}</span></li>`).join('')}</ul>
           </div>`).join('')}
+          <a class="quick-4as-deep" href="/hatthipada/${window.isRu ? '?lang=ru' : '?lang=en'}" target="_blank">
+            <b>${window.isRu ? 'Вглубь: Hatthipada' : 'In depth: Hatthipada'}</b>
+            <span>${window.isRu ? 'Как сами сутты определяют каждое слово четырёх истин — от слова к слову' : 'How the suttas themselves define every word of the four truths, word by word'}</span>
+          </a>
         </div>
       </div>
 

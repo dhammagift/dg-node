@@ -5124,7 +5124,17 @@
         warn.innerHTML = '<svg viewBox="0 0 512 512" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM216 336h24V272H216c-13.3 0-24-10.7-24-24s10.7-24 24-24h48c13.3 0 24 10.7 24 24v88h8c13.3 0 24 10.7 24 24s-10.7 24-24 24H216c-13.3 0-24-10.7-24-24s10.7-24 24-24zm40-208a32 32 0 1 1 0 64 32 32 0 1 1 0-64z"/></svg>';
         var warnText = el('div');
         warnText.appendChild(el('strong', null, t('howto.warnTitle', 'Пожалуйста, обратите внимание!')));
-        warnText.appendChild(el('p', null, t('howto.warnBody', '')));
+        // the invitation to study the four truths yourself: sn56.11 opens, and Hatthipada takes every word of them in depth
+        var warnBody = el('p');
+        t('howto.warnBody', '').split(/(sn56\.11)/).forEach(function (part) {
+            if (part !== 'sn56.11') { warnBody.appendChild(document.createTextNode(part)); return; }
+            var a = el('a', null, part); a.href = '/sn56.11'; warnBody.appendChild(a);
+        });
+        warnText.appendChild(warnBody);
+        var deep = el('p');
+        deep.appendChild(document.createTextNode(t('howto.deepText', 'Каждое слово четырёх истин — как его определяют сами сутты, вглубь: ')));
+        var hp = el('a', null, 'Hatthipada'); hp.href = '/hatthipada/'; deep.appendChild(hp);
+        warnText.appendChild(deep);
         warn.appendChild(warnText);
         body.appendChild(warn);
 

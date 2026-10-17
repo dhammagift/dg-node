@@ -528,6 +528,18 @@
       "mega": true,
       "groups": [
         {
+          "name": "Dhamma by the suttas",
+          "column": 1,
+          "items": [
+            {
+              "label": "Hatthipada — the four truths in depth",
+              "desc": "How the suttas themselves define every word of the four truths, word by word, as deep as you go",
+              "href": "/hatthipada/",
+              "star": true
+            }
+          ]
+        },
+        {
           "name": "Grammar",
           "column": 2,
           "items": [
@@ -1395,6 +1407,18 @@
       "icon": "cap",
       "mega": true,
       "groups": [
+        {
+          "name": "Дхамма по суттам",
+          "column": 1,
+          "items": [
+            {
+              "label": "Hatthipada — четыре истины вглубь",
+              "desc": "Как сами сутты определяют каждое слово четырёх истин: от слова к слову, сколько угодно глубоко",
+              "href": "/hatthipada/",
+              "star": true
+            }
+          ]
+        },
         {
           "name": "Грамматика",
           "column": 2,

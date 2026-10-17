@@ -423,3 +423,8 @@ body.dark .quick-modal-container, body.dark-mode .quick-modal-container {
     --dg-tblue: #8f8fe8;
     --dg-link: #8f8fe8;
 }
+
+/* Under the list of suttas: the way into Hatthipada (the four truths in depth) — a secondary entrance, the main one is Learning on the home page */
+.quick-4as-deep { grid-column: 1 / -1; display: grid; gap: 2px; padding: 10px 14px; border: 1px dashed var(--dg-border, #d6d3cc); border-radius: 12px; text-decoration: none; color: inherit; }
+.quick-4as-deep b { color: var(--dg-link, #3434be); } .quick-4as-deep span { font-size: 0.85rem; color: var(--dg-text-muted, #6b6b6b); }
+.quick-4as-deep:hover { background: var(--dg-surface-hover, #f5f4f1); }
