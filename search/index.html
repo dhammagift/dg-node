@@ -2225,6 +2225,36 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     // Пали + переводы клетки (без suttaId/ссылки) — общий источник для "Копировать цитату"
     // (buildQuoteCitation ниже добавляет suttaId) и для "Запомнить" (memo хочет просто текст,
     // без метаданных цитирования, как и в ридере).
+    // Read the results aloud from one quote line — the quote menu's «Слушать» and Alt+R on the results page (settings.js).
+    window.dgPlayResultLine = function (ctxLine, link) {
+        if (typeof window.activateSegmentForTTS !== 'function') return;
+        // voice.js берёт слаг текста из ttsState.currentSlug, а если его нет — ищет на странице
+        // <a class="voice-link" data-slug="...">. В ридере такая ссылка есть в разметке, на
+        // странице поиска её нет, и обработчик молча выходил по `if (!slug) return` — кнопка
+        // "Слушать" не делала ничего. Кладём такую же скрытую ссылку со слагом той сутты, чью
+        // строку слушаем (слаг берём из data-slug самой ✦-ссылки, до двоеточия).
+        var slug = (link.getAttribute('data-slug') || '').split(':')[0];
+        var play = function () {
+          if (slug) {
+            var vl = document.getElementById('dg-voice-slug');
+            if (!vl) {
+              vl = document.createElement('a');
+              vl.id = 'dg-voice-slug';
+              vl.className = 'voice-link';
+              vl.href = 'javascript:void(0)';
+              vl.hidden = true;
+              document.body.appendChild(vl);
+            }
+            vl.dataset.slug = slug;
+          }
+          window.activateSegmentForTTS(ctxLine);
+          var btn = document.querySelector('.dynamic-tts-btn');
+          if (btn) btn.click();
+        };
+        if (window.isVoiceScriptLoaded) play();
+        else if (typeof window.loadVoiceScripts === 'function') window.loadVoiceScripts(play, true);
+    };
+
     function getQuoteTextParts(ctxLine) {
       var parentSpan = ctxLine.closest('span[id]');
       if (!parentSpan) return [ctxLine.textContent.replace(/✦/g, '').trim()];
@@ -2286,32 +2316,8 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
         // activateSegmentForTTS помечает строку активной и создаёт .dynamic-tts-btn, дальше
         // играет уже voice.js. На странице результатов озвучка по умолчанию не грузится (см.
         // loadVoiceScripts в settings.js) — здесь просим её явно, вторым аргументом.
-        if (!ctxLine || typeof window.activateSegmentForTTS !== 'function') return;
-        // voice.js берёт слаг текста из ttsState.currentSlug, а если его нет — ищет на странице
-        // <a class="voice-link" data-slug="...">. В ридере такая ссылка есть в разметке, на
-        // странице поиска её нет, и обработчик молча выходил по `if (!slug) return` — кнопка
-        // "Слушать" не делала ничего. Кладём такую же скрытую ссылку со слагом той сутты, чью
-        // строку слушаем (слаг берём из data-slug самой ✦-ссылки, до двоеточия).
-        var slug = (link.getAttribute('data-slug') || '').split(':')[0];
-        var play = function () {
-          if (slug) {
-            var vl = document.getElementById('dg-voice-slug');
-            if (!vl) {
-              vl = document.createElement('a');
-              vl.id = 'dg-voice-slug';
-              vl.className = 'voice-link';
-              vl.href = 'javascript:void(0)';
-              vl.hidden = true;
-              document.body.appendChild(vl);
-            }
-            vl.dataset.slug = slug;
-          }
-          window.activateSegmentForTTS(ctxLine);
-          var btn = document.querySelector('.dynamic-tts-btn');
-          if (btn) btn.click();
-        };
-        if (window.isVoiceScriptLoaded) play();
-        else if (typeof window.loadVoiceScripts === 'function') window.loadVoiceScripts(play, true);
+        if (!ctxLine) return;
+        window.dgPlayResultLine(ctxLine, link);
       } else if (act === 'quote' || act === 'link') {
         // Link directly under the id, no blank line — same layout as copyToClipboard.js (reader).
         var payload = act === 'quote' ? (buildQuoteCitation(ctxLine, link) + '\n' + url) : url;

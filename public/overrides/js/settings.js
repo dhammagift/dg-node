@@ -1410,6 +1410,15 @@ if (event.altKey && event.code === "KeyR") {
     // which intentionally skip when typing) — no input-focus exception here on purpose.
     event.preventDefault();
 
+    // Results page with nothing picked and nothing playing: read the results from the first quote, as its «Слушать» does
+    // (search/index.html dgPlayResultLine) — so a search can be listened to from the keyboard alone (owner).
+    const firstQuoteLink = document.querySelector('#results-tbody td.none a.fdgLink');
+    const playing = window.isVoiceScriptLoaded && typeof ttsState !== 'undefined' && ttsState.speaking;
+    if (firstQuoteLink && !playing && !document.querySelector('.dynamic-tts-btn') && typeof window.dgPlayResultLine === 'function') {
+        const line = firstQuoteLink.closest('[class*="-lang"], .variant');
+        if (line) { window.dgPlayResultLine(line, firstQuoteLink); return; }
+    }
+
     // Если скрипты еще не загружены — грузим и запускаем
     // Owner: the first Alt+R ignored a selected word and read from the start. The selection UI
     // (.active-word + the floating .dynamic-tts-btn) works before voice.js is loaded, so once it is
