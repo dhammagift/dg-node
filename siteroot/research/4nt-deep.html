@@ -46,7 +46,6 @@ function keyOf(word) {
 const PSTOP = new Set('ayaṁ idaṁ evaṁ tesaṁ tesañca tamhi yaṁ yā yo yaṁ taṁ tassa tāya etaṁ ettha atha pana kho vuccati vuccatāvuso bhikkhave āvuso bhante hoti honti seyyathidaṁ sabbe sabbaṁ imesaṁ imassa iti api'.split(' '));
 const esc = s => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 function linkify(text, self) {
-  const selfWords = new Set(String(self || '').split(' '));
   const parts = text.split(/([A-Za-zāīūṁṅñṭḍṇḷĀĪŪṀṄÑṬḌṆḶ]+)/);
   let out = '';
   for (let i = 0; i < parts.length; i++) {
@@ -62,7 +61,7 @@ function linkify(text, self) {
     }
     if (done) continue;
     const k = keyOf(p);
-    if (k && k !== self && !selfWords.has(k)) out += `<span class="t" data-k="${esc(k)}">${esc(p)}</span>`;
+    if (k && k !== self) out += `<span class="t" data-k="${esc(k)}">${esc(p)}</span>`;
     else if (!k && p.length >= 4 && !PSTOP.has(p.toLowerCase())) out += `<span class="w" data-w="${esc(fold(p))}">${esc(p)}</span>`;
     else out += esc(p);
   }
