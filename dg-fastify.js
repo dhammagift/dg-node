@@ -3508,11 +3508,14 @@ async function sendTextHtml(req, res, dataId, urlId) {
     if (q.mode || q.langs || q.translators || q.script || q.s) return sendHeadHtml(req, res, h);
     // links in the text name the site the reader is on (test or prod); any other host (a direct localhost call) the canonical one
     const pageUrl = new URL(req.url, /(^|\.)dhamma\.gift$/.test(req.hostname || '') ? 'https://' + req.hostname : SITE);
-    let body = textBodyCache.get(urlId + '|' + h.lang + '|' + pageUrl.href);
+    // the reader's column is the asked language even where the text has no such translation (Pali only),
+    // while the head falls back to English (h.lang)
+    const bodyLang = /^[a-z]{2,3}$/.test(q.lang || '') ? q.lang : h.lang;
+    let body = textBodyCache.get(urlId + '|' + bodyLang + '|' + pageUrl.href);
     if (!body) {
         try {
             const base = await getSuttaBaseData(dataId);
-            body = base && textBodyHtml((await buildTextDataFromBase(base, dataId, [h.lang], null)).segments, h.lang, urlId, pageUrl, dataId);
+            body = base && textBodyHtml((await buildTextDataFromBase(base, dataId, [bodyLang], null)).segments, bodyLang, urlId, pageUrl, dataId);
         } catch (e) { console.warn(`textBody ${dataId}: ${e.message}`); }
     }
     return sendHeadHtml(req, res, body ? { ...h, body } : h);
