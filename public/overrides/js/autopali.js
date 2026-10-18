@@ -142,10 +142,13 @@ window.initPaliAutocomplete = function(selector) {
     // click уже глушится проверкой isLoading ниже — из-за этого история показывалась только со
     // ВТОРОГО тапа. Запоминаем намерение до гейта и воспроизводим его после загрузки.
     let pendingEmptyOpen = false;
+    // The idle warm-up below loads everything without opening the menu; only a real focus/click/input replays.
+    let userAsked = false;
 
     const lazyLoadAndInit = async (e) => {
         if (isLoaded) return;
 
+        if (e.type !== 'warm') userAsked = true;
         if (e.type === 'click' && inputEl.value === '') pendingEmptyOpen = true;
 
         if (isLoading) return;
@@ -198,7 +201,9 @@ window.initPaliAutocomplete = function(selector) {
             });
 
             // Восстанавливаем действие пользователя, которое инициировало загрузку
-            if (pendingEmptyOpen && inputEl.value === '') {
+            if (!userAsked) {
+                // warmed up in idle time: nothing to replay
+            } else if (pendingEmptyOpen && inputEl.value === '') {
                 $(inputEl).autocomplete("search", "");
             } else if (inputEl.value !== "") {
                 $(inputEl).autocomplete("search", inputEl.value);
@@ -215,6 +220,31 @@ window.initPaliAutocomplete = function(selector) {
     inputEl.addEventListener("focus", lazyLoadAndInit);
     inputEl.addEventListener("input", lazyLoadAndInit);
     inputEl.addEventListener("click", lazyLoadAndInit);
+    // Warm up in idle time so the first tap finds history and suggestions ready - but only after the
+    // screen shows what was asked for (owner: the text and the results first, the box is secondary and
+    // never blocks): home/contents at once, search results once they are in, a text once the reader has
+    // rendered it - and only once the reader moves, touches, wheels or types anywhere (not 'scroll': the reader scrolls to an anchor by itself) on the page, so a
+    // page nobody touches (PageSpeed's lab run) never pays for it. jQuery UI + the 490 KB word list used
+    // to load on the native autofocus at parse time on phones, ahead of the reader's own requests.
+    // Not in citation-preview iframes.
+    let warmed = false, suttaShown = false, active = false;
+    const maybeWarm = () => {
+        const c = document.body.classList;
+        const shown = c.contains('dg-state-home') || c.contains('dg-state-toc') || c.contains('dg-state-results') ||
+            c.contains('dg-state-ai') || (c.contains('dg-state-reader') && suttaShown);
+        if (warmed || !active || !shown || document.readyState !== 'complete' || window.self !== window.top) return;
+        warmed = true;
+        (window.requestIdleCallback || setTimeout)(() => lazyLoadAndInit({ type: 'warm' }), { timeout: 4000 });
+    };
+    window.addEventListener('suttaLoaded', () => { suttaShown = true; maybeWarm(); });
+    window.addEventListener('dgStateChanged', maybeWarm);
+    window.addEventListener('load', maybeWarm);
+    const onActive = () => {
+        active = true;
+        ['pointermove', 'pointerdown', 'touchstart', 'keydown', 'wheel'].forEach((t) => window.removeEventListener(t, onActive, true));
+        maybeWarm();
+    };
+    ['pointermove', 'pointerdown', 'touchstart', 'keydown', 'wheel'].forEach((t) => window.addEventListener(t, onActive, { capture: true, passive: true }));
 };
 
 /* Нечёткий фолбэк выпадающего списка. Собственный матчер выше прощает только удвоение

@@ -1397,7 +1397,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
           <path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352a144 144 0 1 0 0-288 144 144 0 1 0 0 288z"/>
         </svg>
       </span>
-      <input class="form-control searchinput" id="paliauto" type="search" data-i18n-placeholder="{{search.placeholder}}" autocomplete="off" autofocus>
+      <input class="form-control searchinput" id="paliauto" type="search" data-i18n-placeholder="{{search.placeholder}}" autocomplete="off">
       <!--  placeholder="Kāyagat or sn56.11" Своё «очистить» вместо родного крестика type="search": родной рисуется только в
            webkit, не поддаётся оформлению и вставал бы вплотную к нашим кнопкам. Показывает и
            прячет его home.js по наличию текста. -->
@@ -1850,10 +1850,18 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
         probe.style.cssText = 'position:absolute;top:0;left:0;width:0;visibility:hidden;pointer-events:none;height:var(--dg-sat,0px)';
         document.body.appendChild(probe);
       }
-      var offset = 10 + probe.offsetHeight, Z = window.dgZoom();
-      cfg.stack.forEach(function (el) {
+      // All reads first, then all writes: a top/padding write followed by a height read forced a full
+      // layout of the page per stack row (~0.3 s on a throttled phone, PageSpeed). The heights do not
+      // depend on these writes (top of a pinned row, padding of the content below).
+      var Z = window.dgZoom();
+      var probeH = probe.offsetHeight;
+      var rowH = cfg.stack.map(function (el) { return el.getBoundingClientRect().height / Z; });
+      var extraH = cfg.extra ? cfg.extra.getBoundingClientRect().height / Z : 0;
+      var tailH = cfg.tail ? cfg.tail.getBoundingClientRect().height / Z : 0;
+      var offset = 10 + probeH;
+      cfg.stack.forEach(function (el, i) {
         el.style.top = Math.round(offset) + 'px';
-        offset += el.getBoundingClientRect().height / Z;
+        offset += rowH[i];
       });
       if (cfg.content) {
         // mt-4 (Bootstrap) суммировался бы с паддингом (реальный баг, замерено: 24px margin +
@@ -1872,11 +1880,11 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
       var tailOffset = 0;
       if (cfg.extra) {
         cfg.extra.style.top = Math.round(offset + tailOffset) + 'px';
-        tailOffset += cfg.extra.getBoundingClientRect().height / Z;
+        tailOffset += extraH;
       }
       if (cfg.tail) {
         cfg.tail.style.top = Math.round(offset + tailOffset) + 'px';
-        tailOffset += cfg.tail.getBoundingClientRect().height / Z;
+        tailOffset += tailH;
       }
       if (cfg.extraContent) {
         cfg.extraContent.style.paddingTop = Math.ceil(tailOffset) + 'px';
