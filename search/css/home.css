@@ -969,10 +969,13 @@ body.dg-state-reader.dg-busy #top-links-container, #reader-pane.reader-pending #
      rendered HTML), so the links row is reserved here instead — the toolbar loses its bottom
      padding as it does next to the real row (search/index.html), and prev/next is pushed down by
      the row's height, 25.5px measured at 390/zoom 1.1 and at 375. */
+  /* #reader-pane[data-ssr] (dg-fastify.js, a text page with the server's text): the row comes inside that text,
+     so prev/next holds no reservation for it - the :has() alone flipped only after the text was parsed, and the stack measured
+     the reserved prev/next height first (the text painted 25px low, then jumped up) */
   body.dg-state-reader.dg-busy #reader-pane:not(:has(#top-links-container)) #reader-toolbar,
   #reader-pane.reader-pending:not(:has(#top-links-container)) #reader-toolbar { padding-bottom: 0; }
-  body.dg-state-reader.dg-busy #reader-pane:not(:has(#top-links-container)) #navigation,
-  #reader-pane.reader-pending:not(:has(#top-links-container)) #navigation { padding-top: calc(8px + 25.5px) !important; min-height: calc(41px + 25.5px); }
+  body.dg-state-reader.dg-busy #reader-pane:not([data-ssr]):not(:has(#top-links-container)) #navigation,
+  #reader-pane.reader-pending:not([data-ssr]):not(:has(#top-links-container)) #navigation { padding-top: calc(8px + 25.5px) !important; min-height: calc(41px + 25.5px); }
 }
 /* The title pill: its own box already knows how wide it may be at each size (160px, 280px, 96px on
    phones), so the placeholder inherits all of that. min-width is in em, so it follows the same
