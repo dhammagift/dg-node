@@ -4865,7 +4865,7 @@ document.addEventListener('DOMContentLoaded', function () { $(function() {
                     fetch(searchUrl).then(function (r) {
                         if (!r.ok) throw new Error("Ошибка сети при получении данных");
                         return r.json();
-                    }).then(function (json) { enrichBeforeTable(json); return json; }),
+                    }).then(function (json) { if (gen === searchGen) enrichBeforeTable(json); return json; }),
                     ensureSearchAssets()
                 ]);
                 return json;
