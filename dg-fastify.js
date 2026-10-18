@@ -417,8 +417,66 @@ function buildVersionedHtml(absHtmlPath) {
             return v ? `${pre}${url}?v=${v}${post}` : m;
         }
     ));
-    const etag = '"' + crypto.createHash('md5').update(rewritten).digest('hex') + '"';
-    return { at: Date.now(), rewritten, etag };
+    const out = absHtmlPath === path.join(__dirname, 'search', 'index.html') ? bundleHeadCss(rewritten) : rewritten;
+    const etag = '"' + crypto.createHash('md5').update(out).digest('hex') + '"';
+    return { at: Date.now(), rewritten: out, etag };
+}
+
+// Speed (PageSpeed; prod is HTTP/1.1, every request counts): the page's render-blocking styles in <head> -
+// seven stylesheets and the page's own big <style> - are served as ONE file, in the same cascade order.
+// Only the served page changes: search/index.html itself, which the apps build from, keeps its links.
+// extrastyles.css's @import (quick-modal.css) is inlined in its place (an @import in the middle of a file
+// is ignored) and relative url()s are rebased to the bundle's folder. Anything it cannot resolve leaves
+// the page as it is.
+const CSS_BUNDLE_URL = '/assets/css/dg-all.css';
+const CSS_BUNDLE_PATH = path.join(__dirname, 'public', 'overrides', 'css', 'dg-all.css');
+function resolveAssetFile(url) {
+    const prefix = Object.keys(HTML_ASSET_URL_ROOTS).find(p => url.startsWith(p + '/'));
+    if (!prefix) return null;
+    const rel = url.slice(prefix.length + 1);
+    return HTML_ASSET_URL_ROOTS[prefix].map(root => path.join(root, rel)).find(f => fsSync.existsSync(f)) || null;
+}
+function readBundledCss(url, depth = 0) {
+    const file = resolveAssetFile(url);
+    if (!file || depth > 2) return null;
+    const dir = path.posix.dirname(url);
+    let css = fsSync.readFileSync(file, 'utf8').replace(/@charset\s+"[^"]*";/gi, '');
+    let failed = false;
+    css = css.replace(/@import\s+url\(\s*["']?([^"')?]+)(?:\?[^"')]*)?["']?\s*\)\s*;/g, (m, imp) => {
+        const inner = readBundledCss(imp.startsWith('/') ? imp : path.posix.join(dir, imp), depth + 1);
+        if (inner == null) failed = true;
+        return inner || '';
+    });
+    if (failed) return null;
+    return css.replace(/url\(\s*(["']?)(?!data:|https?:|\/|#)([^"')]+)\1\s*\)/g, (m, q, rel) => `url(${q}${path.posix.join(dir, rel)}${q})`);
+}
+const cssBundleCache = { key: '', html: '' };
+function bundleHeadCss(html) {
+    const headEnd = html.indexOf('</head>');
+    if (headEnd < 0) return html;
+    const head = html.slice(0, headEnd);
+    const re = /<link\b(?=[^>]*\brel="stylesheet")[^>]*\bhref="(\/[^"?]+)(?:\?[^"]*)?"[^>]*>|<style>([\s\S]*?)<\/style>/g;
+    const parts = [];
+    for (let m; (m = re.exec(head));) parts.push({ start: m.index, end: re.lastIndex, url: m[1], css: m[2] });
+    if (parts.length < 2) return html;
+    const key = crypto.createHash('md5').update(head).digest('hex');
+    if (cssBundleCache.key !== key) {
+        const chunks = [];
+        for (const part of parts) {
+            const css = part.url ? readBundledCss(part.url) : part.css;
+            if (css == null) { console.warn(`CSS bundle: ${part.url} not resolved, page served unbundled`); return html; }
+            chunks.push(`/* ---- ${part.url || 'search/index.html <style>'} ---- */\n${css}`);
+        }
+        const text = '@charset "UTF-8";\n' + chunks.join('\n');
+        let current = null;
+        try { current = fsSync.readFileSync(CSS_BUNDLE_PATH, 'utf8'); } catch { /* first build */ }
+        if (current !== text) fsSync.writeFileSync(CSS_BUNDLE_PATH, text);
+        cssBundleCache.key = key;
+        cssBundleCache.html = `<link rel="stylesheet" href="${CSS_BUNDLE_URL}?v=${getAssetVersion(CSS_BUNDLE_PATH)}">`;
+    }
+    let outHead = '', at = 0;
+    parts.forEach((part, i) => { outHead += head.slice(at, part.start) + (i === 0 ? cssBundleCache.html : ''); at = part.end; });
+    return outHead + head.slice(at) + html.slice(headEnd);
 }
 
 // §3: same dispatch as dg-light.js's staticCacheHeaders — @fastify/static's `setHeaders`
