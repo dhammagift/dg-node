@@ -65,6 +65,10 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
 <!DOCTYPE html>
 <html data-bs-theme="light" data-default-lang="en">
 <head>
+<meta charset="UTF-8">
+<!-- First in <head>: the early zoom script below reads matchMedia(max-width), and before this tag a phone
+     reports the 980px default - the page painted at 100% and jumped to 110% seconds later (layout shift). -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <!-- dg:app-scripts — the optional offline layer (docs/OFFLINE_PWA_PLAN.md, Stage 1). These three
      are loaded before ANY other script on the page on purpose: app.js replaces window.fetch, and
      it has to be in place before the first request is issued. platform.js must stay first — a
@@ -225,8 +229,6 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
 
 
 <link rel="icon" type="image/png" href="/assets/img/favico-noglass.png" />
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta charset="UTF-8">
 
 <!-- datatables.min.css больше НЕ грузится здесь блокирующе — см. ensureSearchAssets() ниже по
      файлу: таблица результатов не нужна главной странице вообще (initSearchApp возвращается
@@ -3158,6 +3160,10 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
             <div id="previous"></div>
             <div id="next"></div>
         </div>
+        <!-- Pin the stack before #sutta: on a text page the server's text comes inside it (dg-fastify.js
+             textBodyHtml), the HTML arrives in chunks, and the call after the pane came too late - the
+             first frames showed the text under the band, then it jumped down (layout shift). -->
+        <script>if (window.dgObserveStack) window.dgObserveStack();</script>
         <div id="sutta" class="sutta"></div>
         <div id="dg-rsub-line" class="dg-rsub-line" hidden></div>
         <!-- Bottom prev/next — portированный аналог #navigation выше, тот же паттерн, что и на
