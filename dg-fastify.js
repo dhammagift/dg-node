@@ -3476,6 +3476,12 @@ function textBodyHtml(segments, lang, urlId, pageUrl, dataId) {
     textBodyCache.set(key, out);
     return out;
 }
+// { en: "e.g. Kāyagat or sn56.11", ru: ..., th: ... } from configs/search/lang_*.json, as inline JS (withTextHead)
+const SEARCH_PLACEHOLDERS = JSON.stringify(Object.fromEntries(fsSync.readdirSync(path.join(__dirname, 'configs', 'search'))
+    .map(f => /^lang_(\w+)\.json$/.exec(f)).filter(Boolean).map(m => {
+        try { return [m[1], JSON.parse(fsSync.readFileSync(path.join(__dirname, 'configs', 'search', m[0]), 'utf8')).search.placeholder]; }
+        catch { return [m[1], null]; }
+    }).filter(e => e[1]))).replace(/</g, '\\u003c');
 function withTextHead(html, h) {
     const t = htmlAttr(h.title), d = htmlAttr(h.description), u = htmlAttr(h.canonical);
     const ld = [h.breadcrumbs, h.work].filter(Boolean);
@@ -3506,6 +3512,12 @@ function withTextHead(html, h) {
             .replace('<div id="sutta" class="sutta"></div>', () => `<div id="sutta" class="sutta" data-ssr="1">${h.body}</div>`);
         return withCritical(out.replace('</head>', links + css + '\n</head>'), 'reader');
     }
+    // contents / search results: the search box's hint text is the largest thing on the first screen (PageSpeed
+    // LCP: the input's placeholder), and dhamma-i18n.js fills it in only after its JSON. Set the same text inline,
+    // in the language dhamma-i18n.js will pick. Home keeps its own random hint (randPlaceholderOnMain).
+    if (h.critical !== 'home') out = out.replace(/(<input [^>]*id="paliauto"[^>]*>)/, (m) => m + `<script>(function(){var P=${SEARCH_PLACEHOLDERS},` +
+        `l=window.DHAMMA_LANG||new URLSearchParams(location.search).get('lang')||(/^\\/(ru|r|ml|mt)(\\/|$)/.test(location.pathname)?'ru':null);` +
+        `try{l=l||localStorage.getItem('dhammaLanguage')}catch(e){}document.getElementById('paliauto').placeholder=P[l]||P.en})()</script>`);
     out = withCritical(out.replace('</head>', links + '</head>'), h.critical);
     return h.critical === 'home' ? withHomeTiles(out, h.lang) : out;
 }
