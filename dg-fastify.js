@@ -3427,9 +3427,39 @@ function withTextHead(html, h) {
             .replace('<body>', '<body class="dg-state-reader">')
             .replace('<div id="reader-pane" class="mt-4">', '<div id="reader-pane" class="mt-4" data-ssr>') // home.css: no cold-load prev/next reservation
             .replace('<div id="sutta" class="sutta"></div>', () => `<div id="sutta" class="sutta" data-ssr="1">${h.body}</div>`);
-        return out.replace('</head>', links + css + '\n</head>');
+        return withReaderCritical(out.replace('</head>', links + css + '\n</head>'));
     }
     return out.replace('</head>', links + '</head>');
+}
+// Critical CSS of the server-rendered reader (scripts/critical-css.js, configs/critical/reader.css): inlined, and the
+// stylesheets it was cut from then load without blocking. Only while this page links exactly those stylesheets (their
+// ?v= hashes, listed on the file's first line): an edited stylesheet changes its ?v=, and the page keeps the plain
+// blocking links instead of a stale cut. Read at start; regenerate with `npm run critical -- --state reader`.
+const READER_CRITICAL = (() => {
+    try {
+        const t = fsSync.readFileSync(path.join(__dirname, 'configs', 'critical', 'reader.css'), 'utf8');
+        const m = /^\/\* dg-critical reader sources: (\[.*?\]) \*\/\n/.exec(t);
+        return m ? { css: t.slice(m[0].length).replace(/<\/style/gi, '<\\/style'), sources: JSON.parse(m[1]).sort().join(' ') } : null;
+    } catch { return null; }
+})();
+let readerCriticalStale = false;
+function withReaderCritical(html) {
+    if (!READER_CRITICAL) return html;
+    const end = html.indexOf('</head>');
+    let head = html.slice(0, end);
+    const hrefs = [...head.matchAll(/<link rel="stylesheet"[^>]*?href="([^"]+)"/g)].map(m => m[1]).sort().join(' ');
+    if (hrefs !== READER_CRITICAL.sources) {
+        if (!readerCriticalStale) console.warn(`critical CSS (reader) is stale: the page links ${hrefs}, the file was cut from ${READER_CRITICAL.sources} - blocking stylesheets until "npm run critical -- --state reader"`);
+        readerCriticalStale = true;
+        return html;
+    }
+    let first = true;
+    head = head.replace(/<link rel="stylesheet"([^>]*?)>/g, (tag, attrs) => {
+        const style = first ? `<style id="dg-critical">${READER_CRITICAL.css}</style>\n` : '';
+        first = false;
+        return `${style}<link rel="preload" as="style"${attrs} onload="this.onload=null;this.rel='stylesheet'"><noscript>${tag}</noscript>`;
+    });
+    return head + html.slice(end);
 }
 // Home, search results and contents: the template's own head said "Search Results - Dhamma.gift" on all of them
 // "mn" -> { ru: "Маджхима Никая", en: "Majjhima Nikāya" }: the labels the contents page itself shows (/api/toc —
