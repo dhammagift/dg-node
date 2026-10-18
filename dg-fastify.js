@@ -3582,7 +3582,7 @@ function withHomeTiles(html, lang) {
         `if(l!==${JSON.stringify(lang)}||s.getItem('dgTileOrder')||s.getItem('dgTilesHidden')||s.getItem('dgCustomTiles')||` +
         `s.getItem('dgTileOverrides')||s.getItem('dgTileDesc')==='off')document.getElementById('home-tiles').innerHTML=''}` +
         `catch(e){document.getElementById('home-tiles').innerHTML=''}})()</script>`;
-    return html.replace('<div class="dg-tiles" id="home-tiles"></div>', () => `<div class="dg-tiles" id="home-tiles">${grid}</div>${guard}`);
+    return html.replace('<div class="dg-tiles" id="home-tiles"></div>', () => `<div class="dg-tiles" id="home-tiles" data-ssr="1">${grid}</div>${guard}`);
 }
 // Home, search results and contents: the template's own head said "Search Results - Dhamma.gift" on all of them
 // "mn" -> { ru: "Маджхима Никая", en: "Majjhima Nikāya" }: the labels the contents page itself shows (/api/toc —

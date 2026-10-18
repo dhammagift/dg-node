@@ -3240,7 +3240,7 @@
         if (!host && menuData) renderDrawerTiles();
         if (!host || !menuData) return;
         var data = menuData[menuLang()];
-        host.innerHTML = '';
+        var built = []; // [element, key]: put in place below, or matched to the server's copy
 
         var hidden = hiddenTiles();
         tileOrder().forEach(function (key) {
@@ -3265,14 +3265,28 @@
             el.innerHTML = '<span class="dg-tile-ic">' + iconHtml(tile.icon) + '</span>' +
                 '<span class="dg-tile-label">' + esc(tile.label) + '</span>' +
                 (showDesc ? '<span class="dg-tile-desc">' + esc(tile.desc) + '</span>' : '');
+            built.push([el, key]);
+        });
+        // Клик, приходящий сразу за перетаскиванием, — не выбор плитки.
+        var wire = function (el, key) {
             el.addEventListener('click', function () {
-                // Клик, приходящий сразу за перетаскиванием, — не выбор плитки.
                 if (el.dataset.dragged === '1') { el.dataset.dragged = ''; return; }
                 runTile(key, el);
             });
-
-            host.appendChild(el);
-        });
+        };
+        // The server sent this very grid with the page (dg-fastify.js withHomeTiles, a first-time visitor's
+        // grid): keep its nodes and only wire them. Replacing them with equal ones painted the page's largest
+        // element a second time, after menu-links.json (PageSpeed LCP 0.28 -> 0.81 s). Anything else - a
+        // later re-render, a changed grid - builds it anew as always.
+        var norm = function (h) { return h.replace(/\s+/g, ' ').replace(/> </g, '><').trim(); };
+        var html = built.map(function (b) { return b[0].outerHTML; }).join('');
+        if (host.dataset.ssr === '1' && host.children.length === built.length && norm(host.innerHTML) === norm(html)) {
+            Array.prototype.forEach.call(host.children, function (el, i) { wire(el, built[i][1]); });
+        } else {
+            host.innerHTML = '';
+            built.forEach(function (b) { wire(b[0], b[1]); host.appendChild(b[0]); });
+        }
+        delete host.dataset.ssr;
 
         wireTileDrag(host);
         syncRestoreLink();
