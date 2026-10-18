@@ -962,6 +962,9 @@ body.dg-state-reader.dg-busy .sc-ext-link, #reader-pane.reader-pending .sc-ext-l
 body.dg-state-reader.dg-busy #top-links-container, #reader-pane.reader-pending #top-links-container { visibility: hidden; }
 @media (max-width: 768px) {
   body.dg-state-reader.dg-busy #top-links-container, #reader-pane.reader-pending #top-links-container { display: block; min-height: 32px; }
+  /* server text on screen, the reader not run yet: the busy state ends first, so the row's place is held
+     until the reader fills it (else the text jumped up by a row and back, owner's video) */
+  #sutta[data-ssr="1"] > #top-links-container { display: block; min-height: 25.5px; visibility: hidden; } /* the filled row, 390/zoom 1.1 */
   /* Cold load: megareader.js has not created #top-links-container yet (it lives inside #sutta's
      rendered HTML), so the links row is reserved here instead — the toolbar loses its bottom
      padding as it does next to the real row (search/index.html), and prev/next is pushed down by

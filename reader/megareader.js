@@ -506,6 +506,7 @@ function keepServerText(html) {
     const norm = s => s.replace(/\s+/g, ' ').replace(/> </g, '><').trim();
     const cur = suttaArea.cloneNode(true);
     cur.querySelector('#top-links-container')?.removeAttribute('style'); // the pinned row's offset, set on load
+    cur.querySelectorAll('script').forEach(s => s.remove()); // the server's one-line padding call
     // The warning depends on this browser (its × after 10 views, gone once closed): compared without it,
     // then only that box is swapped, so a returning reader keeps the server's text too.
     const warn = [...tpl.content.children].find(e => e.classList.contains('warning-container')); // :scope matches nothing in a fragment

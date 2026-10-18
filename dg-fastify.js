@@ -3390,7 +3390,9 @@ function textBodyHtml(segments, lang, urlId, pageUrl, dataId) {
     const byline = `<div id="trn" class="byline">\n    <p><span class="pli-lang" lang="pi">Pāḷi <a class="text-decoration-none text-reset" href="/assets/common/abbr.html?s=ms" title="Mahāsaṅgīti Pāḷi">MS</a></span>\n    <span class="right-column">${translatorKey ? `<span class="${lang}-lang" lang="${lang}"> ${label}${name}</span>` : ''}</span></p></div>`;
     const page = segUrl('').replace(/'/g, '%27');
     const warning = (READER_WARNING[lang === 'ru' ? 'ru' : 'en'] || '').replace('{dUrl}', () => page.replace('/r/', '/d/')).replace('{thUrl}', () => page.replace('/r/', '/th/read/'));
-    const out = '<div id="top-links-container" class="min-h-24"></div>' +
+    // the pinned rows' offsets before the text paints, again in the frame itself once styles settle (search/index.html
+    // applyPadding; skipped by the reader's compare)
+    const out = '<div id="top-links-container" class="min-h-24"></div><script>window.dgObserveTopLinks&&dgObserveTopLinks();window.dgObserveStack&&dgObserveStack();requestAnimationFrame(function(){window.dgApplyHeaderPadding&&dgApplyHeaderPadding()})</script>' +
         (warning ? `<div class="warning-container warning-box"><p class='warning'>${warning} </p></div>` : '') +
         byline + html + '<div id="bottom-links-container" class="min-h-24"></div>';
     if (textBodyCache.size > 300) textBodyCache.clear(); // ponytail: wholesale clear; bodies are big, keep the hot few
