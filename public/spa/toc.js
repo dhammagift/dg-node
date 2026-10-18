@@ -738,6 +738,16 @@
         });
         if (!entry.bodyEl) { scrollTo(entry.bookEl); return; } // single-page book — the row IS the link
         if (entry.singlePage) { entry.headerEl.click(); scrollTo(entry.bookEl); return; } // patimokkha
+        // The fetched tree is taller than the screen: inserted while the rows below the book were on screen, it
+        // pushed them all down at once (PageSpeed: CLS 0.23 on /toc/mn in about 1 of 3 runs). Those rows are
+        // hidden while the tree loads and come back two frames after it is in - by then far below the screen,
+        // so nothing visible moves. The book and everything above it stay as they were.
+        var pane = document.getElementById('toc-pane');
+        var below = entry.bodyEl.dataset.loaded || !pane ? [] : Array.prototype.filter.call(pane.querySelectorAll('.toc-category, .toc-book'), function (el) {
+            return !el.contains(entry.bookEl) && !entry.bookEl.contains(el) && (entry.bookEl.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING);
+        });
+        below.forEach(function (el) { el.style.visibility = 'hidden'; });
+        var show = function () { below.forEach(function (el) { el.style.visibility = ''; }); };
         entry.bodyEl.classList.remove('d-none');
         var loaded = entry.bodyEl.dataset.loaded
             ? Promise.resolve()
@@ -756,7 +766,8 @@
             // целиком (buildTreeChildren), expandAll лишь снимает d-none — лишних запросов нет.
             expandAll(node || entry.bodyEl);
             scrollTo(node || entry.bookEl);
-        });
+            requestAnimationFrame(function () { requestAnimationFrame(show); });
+        }).catch(show);
     }
 
     function renderTopLevel() {
