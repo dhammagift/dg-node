@@ -3756,6 +3756,18 @@ document.addEventListener('DOMContentLoaded', function () { $(function() {
     // enrichIds(visiblePageIds()) с этого события находил их уже "в полёте" и ничего не
     // приоритизировал. Теперь видимая страница гарантированно уходит первым чанком, а не
     // где придётся внутри фона.
+    // Speed (PageSpeed, search results: the LCP is a row's translated title): on a cold load the table
+    // scripts take seconds and the titles came only after them, from the visible page's enrich. A small
+    // result set (one chunk) is enriched as soon as the fast answer lands, while those scripts still load,
+    // so the table's first draw already has its titles. Only with no table on the page yet - a previous
+    // search's table would take the redraws. ensureEnrichmentStarted then finds these ids enriched or in flight.
+    function enrichBeforeTable(json) {
+        var ids = Object.keys((json && json.data) || {});
+        if (currentTable || reportMode !== 'suttas' || !ids.length || ids.length > ENRICH_CHUNK_SIZE) return;
+        lastSearchJson = json;
+        enrichIds(ids);
+    }
+
     function ensureEnrichmentStarted() {
         if (enrichmentStarted) return;
         enrichmentStarted = true;
@@ -4849,12 +4861,14 @@ document.addEventListener('DOMContentLoaded', function () { $(function() {
                 // DataTables/search-render.js грузятся ПАРАЛЛЕЛЬНО с самим запросом, а не до или
                 // после: на прямой загрузке страницы результатов (не SPA-переход) это не добавляет
                 // задержки — оба идут одновременно, ждём более медленное из двух.
-                const [fastResponse] = await Promise.all([
-                    fetch(searchUrl),
+                const [json] = await Promise.all([
+                    fetch(searchUrl).then(function (r) {
+                        if (!r.ok) throw new Error("Ошибка сети при получении данных");
+                        return r.json();
+                    }).then(function (json) { enrichBeforeTable(json); return json; }),
                     ensureSearchAssets()
                 ]);
-                if (!fastResponse.ok) throw new Error("Ошибка сети при получении данных");
-                return fastResponse.json();
+                return json;
             })();
             if (gen !== searchGen) return; // a newer search/screen took over while this one waited
             if (!cachedFastJson) searchCachePut(searchUrl, fastJson);
