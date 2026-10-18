@@ -417,7 +417,7 @@ function buildVersionedHtml(absHtmlPath) {
             return v ? `${pre}${url}?v=${v}${post}` : m;
         }
     ));
-    const out = absHtmlPath === path.join(__dirname, 'search', 'index.html') ? bundleHeadCss(rewritten) : rewritten;
+    const out = absHtmlPath === path.join(__dirname, 'search', 'index.html') ? deferOfflineScripts(bundleHeadCss(rewritten)) : rewritten;
     const etag = '"' + crypto.createHash('md5').update(out).digest('hex') + '"';
     return { at: Date.now(), rewritten: out, etag };
 }
@@ -449,6 +449,25 @@ function readBundledCss(url, depth = 0) {
     });
     if (failed) return null;
     return css.replace(/url\(\s*(["']?)(?!data:|https?:|\/|#)([^"')]+)\1\s*\)/g, (m, q, rel) => `url(${q}${path.posix.join(dir, rel)}${q})`);
+}
+// Speed (PageSpeed: ~1.8 s of render blocking): the three offline-layer scripts at the top of <head> run
+// first and synchronously only for a reader who has (or is getting) the offline library - the fetch shim
+// must be in place before the first request then. Everyone else - nearly every visitor, and every
+// crawler - gets them loaded in the background, in the same order, off the critical path: until a
+// library is open the shim forwards everything to the server anyway (public/offline/app.js, point 1).
+// The flags are the ones app.js itself writes. Served page only: the apps build from the file's tags.
+const OFFLINE_TAGS = /<script src="\/offline\/platform\.js"><\/script>\s*<script src="\/offline\/app\.js"><\/script>\s*<script src="\/offline\/offline-status\.js"><\/script>/;
+function deferOfflineScripts(html) {
+    if (!OFFLINE_TAGS.test(html)) return html;
+    const urls = ['platform', 'app', 'offline-status'].map(n => {
+        const v = getAssetVersion(path.join(__dirname, 'public', 'offline', n + '.js'));
+        return `/offline/${n}.js` + (v ? `?v=${v}` : '');
+    });
+    const loader = `<script>(function(){var u=${JSON.stringify(urls)},lib=false;` +
+        `try{var s=localStorage;lib=s.getItem('dg.offline.libraryExists')==='1'||s.getItem('dg.offline.downloadStarted')==='1'||` +
+        `!!s.getItem('dg.offline.wantData')||/"present":true/.test(s.getItem('dg.offline.state')||'')}catch(e){}` +
+        `u.forEach(function(x){if(lib){document.write('<script src="'+x+'"><\\/script>')}else{var e=document.createElement('script');e.src=x;e.async=false;document.head.appendChild(e)}})})()</script>`;
+    return html.replace(OFFLINE_TAGS, loader);
 }
 const cssBundleCache = { key: '', html: '' };
 function bundleHeadCss(html) {
