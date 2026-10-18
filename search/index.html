@@ -4630,7 +4630,10 @@ document.addEventListener('DOMContentLoaded', function () { $(function() {
         var from = dgCurrentScreen();
         var spec = from && DG_EXIT[from];
         var same = from === to && from !== 'reader';
-        if (!spec || same || (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)) { cb(); return; }
+        // cold load of a text: #sutta already shows the server's text (dg-fastify.js textBodyHtml) - fading it
+        // out and back in made it blink twice (owner); prod had nothing on screen to animate yet
+        var ssrShown = from === 'reader' && document.querySelector('#sutta[data-ssr="1"]');
+        if (!spec || same || ssrShown || (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)) { cb(); return; }
         var el = spec[0] ? document.getElementById(spec[0]) : document.body;
         if (!el) { cb(); return; }
         if (el.classList.contains(spec[1])) {

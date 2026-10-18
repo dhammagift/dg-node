@@ -506,7 +506,18 @@ function keepServerText(html) {
     const norm = s => s.replace(/\s+/g, ' ').replace(/> </g, '><').trim();
     const cur = suttaArea.cloneNode(true);
     cur.querySelector('#top-links-container')?.removeAttribute('style'); // the pinned row's offset, set on load
+    // The warning depends on this browser (its × after 10 views, gone once closed): compared without it,
+    // then only that box is swapped, so a returning reader keeps the server's text too.
+    const warn = [...tpl.content.children].find(e => e.classList.contains('warning-container')); // :scope matches nothing in a fragment
+    if (warn) warn.remove();
+    cur.querySelector(':scope > .warning-container')?.remove();
     window.dgServerTextKept = norm(tpl.innerHTML) === norm(cur.innerHTML);
+    if (window.dgServerTextKept) {
+        const live = suttaArea.querySelector(':scope > .warning-container');
+        if (live && warn) { if (norm(live.outerHTML) !== norm(warn.outerHTML)) live.replaceWith(warn); }
+        else if (live) live.remove();
+        else if (warn) suttaArea.querySelector(':scope > #top-links-container')?.after(warn);
+    }
     return window.dgServerTextKept;
 }
 
