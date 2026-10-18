@@ -3510,7 +3510,12 @@ app.setNotFoundHandler((req, res) => {
         // "/dict/dukkha/" would resolve the page's relative static/ paths under /dict/dukkha/ (404s)
         const [dictPath, dictQuery] = req.url.split('?');
         if (dictPath.endsWith('/')) return res.redirect(dictPath.replace(/\/+$/, '') + (dictQuery ? '?' + dictQuery : ''), 301);
-        return sendFile(req, res, path.join(SITEROOT, 'dict', dictWord[1] ? 'ru' : '', 'index.html'));
+        // a key term has its head pre-rendered (ddg-ui build-pages.js: w/<word>.html), as .htaccess serves it there
+        const dictDir = path.join(SITEROOT, 'dict', dictWord[1] ? 'ru' : '');
+        let word = dictPath.slice(dictPath.lastIndexOf('/') + 1);
+        try { word = decodeURIComponent(word); } catch { word = ''; }
+        const pre = word && !/[\\/.]/.test(word) ? path.join(dictDir, 'w', word + '.html') : '';
+        return sendFile(req, res, pre && fsSync.existsSync(pre) ? pre : path.join(dictDir, 'index.html'));
     }
     sendVersionedHtml(req, res, path.join(__dirname, 'public', '404.html'), 404);
 });
