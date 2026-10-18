@@ -3425,6 +3425,7 @@ function withTextHead(html, h) {
         }).join('\n');
         out = out
             .replace('<body>', '<body class="dg-state-reader">')
+            .replace('<div id="reader-pane" class="mt-4">', '<div id="reader-pane" class="mt-4" data-ssr>') // home.css: no cold-load prev/next reservation
             .replace('<div id="sutta" class="sutta"></div>', () => `<div id="sutta" class="sutta" data-ssr="1">${h.body}</div>`);
         return out.replace('</head>', links + css + '\n</head>');
     }
@@ -3505,7 +3506,8 @@ async function sendTextHtml(req, res, dataId, urlId) {
     // the text in the HTML only for the default view: another mode/script/translator set would be swapped at once
     const q = req.query;
     if (q.mode || q.langs || q.translators || q.script || q.s) return sendHeadHtml(req, res, h);
-    const pageUrl = new URL(req.url, 'https://' + req.hostname);
+    // links in the text name the site the reader is on (test or prod); any other host (a direct localhost call) the canonical one
+    const pageUrl = new URL(req.url, /(^|\.)dhamma\.gift$/.test(req.hostname || '') ? 'https://' + req.hostname : SITE);
     let body = textBodyCache.get(urlId + '|' + h.lang + '|' + pageUrl.href);
     if (!body) {
         try {
