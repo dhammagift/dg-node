@@ -101,17 +101,26 @@ async function main() {
             await cdp.send('DOM.enable');
             await cdp.send('CSS.enable');
             await cdp.send('CSS.startRuleUsageTracking');
-            await page.goto(o.base + url, { waitUntil: 'load' });
+            const resp = await page.goto(o.base + url, { waitUntil: 'load' });
+            // the sources are the stylesheets the served <head> links (plain or preload-as-style, ?v= included):
+            // what scripts add later (jquery-ui, datatables, the reader's CSS prefetched on home) loads then as now,
+            // and a header listing them never matched the head the server compares it with (f3-ultra)
+            const html = await resp.text();
+            const headLinked = new Set([...html.slice(0, html.indexOf('</head>')).matchAll(/<link\b[^>]*>/g)]
+                .map(m => m[0]).filter(t => /rel="stylesheet"|rel="preload"[^>]*as="style"|as="style"[^>]*rel="preload"/.test(t))
+                .map(t => (/href="([^"]+)"/.exec(t) || [])[1]).filter(Boolean)
+                .map(h => { const u = new URL(h, o.base); return u.pathname + u.search; }));
             // the reader keeps or swaps its text, then the page settles
             await page.waitForFunction(() => !document.querySelector('#sutta[data-ssr="1"]'), null, { timeout: 30000 }).catch(() => {});
             await page.waitForTimeout(2500);
             const { ruleUsage } = await cdp.send('CSS.stopRuleUsageTracking');
             const docOrder = await page.evaluate(() => [...document.styleSheets].map(s => s.href || (s.ownerNode && s.ownerNode.id === 'dg-critical' ? 'critical' : 'inline')));
-            for (const href of docOrder) if (href.startsWith('http')) linked.add(new URL(href).pathname + new URL(href).search);
+            for (const href of headLinked) linked.add(href);
             for (const [id, h] of headers) {
                 if (h.origin !== 'regular') continue;
                 const { text } = await cdp.send('CSS.getStyleSheetText', { styleSheetId: id }).catch(() => ({ text: '' }));
                 if (!text || text.startsWith('/* dg-critical')) continue;
+                if (h.isInline || !/^https?:/.test(h.sourceURL || "") || !headLinked.has(new URL(h.sourceURL).pathname + new URL(h.sourceURL).search)) continue; // not from the served head
                 const key = (h.isInline ? 'inline:' : '') + (h.sourceURL || '') + ':' + text.length;
                 if (!sheets.has(key)) sheets.set(key, { url: h.sourceURL, inline: h.isInline, text, used: new Set(), order: order++, pos: docOrder.indexOf(h.sourceURL) });
                 const s = sheets.get(key);

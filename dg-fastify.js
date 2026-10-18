@@ -3504,35 +3504,36 @@ function withTextHead(html, h) {
             .replace('<body>', '<body class="dg-state-reader">')
             .replace('<div id="reader-pane" class="mt-4">', '<div id="reader-pane" class="mt-4" data-ssr>') // home.css: no cold-load prev/next reservation
             .replace('<div id="sutta" class="sutta"></div>', () => `<div id="sutta" class="sutta" data-ssr="1">${h.body}</div>`);
-        return withReaderCritical(out.replace('</head>', links + css + '\n</head>'));
+        return withCritical(out.replace('</head>', links + css + '\n</head>'), 'reader');
     }
-    return out.replace('</head>', links + '</head>');
+    return withCritical(out.replace('</head>', links + '</head>'), h.critical);
 }
-// Critical CSS of the server-rendered reader (scripts/critical-css.js, configs/critical/reader.css): inlined, and the
-// stylesheets it was cut from then load without blocking. Only while this page links exactly those stylesheets (their
-// ?v= hashes, listed on the file's first line): an edited stylesheet changes its ?v=, and the page keeps the plain
-// blocking links instead of a stale cut. Read at start; regenerate with `npm run critical -- --state reader`.
-const READER_CRITICAL = (() => {
+// Critical CSS per screen (scripts/critical-css.js, configs/critical/<state>.css: the server-rendered reader, and
+// home / search results / contents): inlined, and the stylesheets it was cut from then load without blocking. Only
+// while this page links exactly those stylesheets (their ?v= hashes, listed on the file's first line): an edited
+// stylesheet changes its ?v=, and the page keeps the plain blocking links instead of a stale cut. Read at start;
+// regenerate with `npm run critical -- --state <state>`.
+const CRITICAL = Object.fromEntries(['reader', 'home', 'results', 'toc'].map(state => {
     try {
-        const t = fsSync.readFileSync(path.join(__dirname, 'configs', 'critical', 'reader.css'), 'utf8');
-        const m = /^\/\* dg-critical reader sources: (\[.*?\]) \*\/\n/.exec(t);
-        return m ? { css: t.slice(m[0].length).replace(/<\/style/gi, '<\\/style'), sources: JSON.parse(m[1]).sort().join(' ') } : null;
-    } catch { return null; }
-})();
-let readerCriticalStale = false;
-function withReaderCritical(html) {
-    if (!READER_CRITICAL) return html;
+        const t = fsSync.readFileSync(path.join(__dirname, 'configs', 'critical', state + '.css'), 'utf8');
+        const m = new RegExp(`^/\\* dg-critical ${state} sources: (\\[.*?\\]) \\*/\\n`).exec(t);
+        return [state, m ? { css: t.slice(m[0].length).replace(/<\/style/gi, '<\\/style'), sources: JSON.parse(m[1]).sort().join(' '), stale: false } : null];
+    } catch { return [state, null]; }
+}));
+function withCritical(html, state) {
+    const crit = CRITICAL[state];
+    if (!crit) return html;
     const end = html.indexOf('</head>');
     let head = html.slice(0, end);
     const hrefs = [...head.matchAll(/<link rel="stylesheet"[^>]*?href="([^"]+)"/g)].map(m => m[1]).sort().join(' ');
-    if (hrefs !== READER_CRITICAL.sources) {
-        if (!readerCriticalStale) console.warn(`critical CSS (reader) is stale: the page links ${hrefs}, the file was cut from ${READER_CRITICAL.sources} - blocking stylesheets until "npm run critical -- --state reader"`);
-        readerCriticalStale = true;
+    if (hrefs !== crit.sources) {
+        if (!crit.stale) console.warn(`critical CSS (${state}) is stale: the page links ${hrefs}, the file was cut from ${crit.sources} - blocking stylesheets until "npm run critical -- --state ${state}"`);
+        crit.stale = true;
         return html;
     }
     let first = true;
     head = head.replace(/<link rel="stylesheet"([^>]*?)>/g, (tag, attrs) => {
-        const style = first ? `<style id="dg-critical">${READER_CRITICAL.css}</style>\n` : '';
+        const style = first ? `<style id="dg-critical">${crit.css}</style>\n` : '';
         first = false;
         return `${style}<link rel="preload" as="style"${attrs} onload="this.onload=null;this.rel='stylesheet'"><noscript>${tag}</noscript>`;
     });
@@ -3600,6 +3601,7 @@ function siteHead(kind, arg, reqLang) {
         // 1% of impressions and no clicks; an unbounded space of thin pages, crawler junk included). The title and
         // description stay for a shared link's preview. Topics get real pages instead.
         noindex: kind === 'search' || (kind === 'toc' && !tocHasPali(arg)) ? 'noindex, follow' : false,
+        critical: kind === 'search' ? 'results' : kind, // configs/critical/<state>.css (withCritical)
     };
 }
 function sendSiteHtml(req, res, kind, arg) {
