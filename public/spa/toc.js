@@ -490,7 +490,10 @@
     function renderBookTree(bodyEl, code, langs, filter) {
         bodyEl.innerHTML = '';
         bodyEl.appendChild(el('div', 'toc-loading', uiIsRu() ? 'Загрузка…' : 'Loading…'));
-        return fetchBook(code, langs).then(function (bookData) {
+        // The rows name their translators (translatorLabel) in priority order (sortRest): a tree that came
+        // before translators.json showed raw keys ("en_thanissaro") until the next render.
+        return Promise.all([fetchBook(code, langs), ensureTranslatorNames(), ensureTranslatorPriority()]).then(function (r) {
+            var bookData = r[0];
             bodyEl.innerHTML = '';
             var ul = buildTreeChildren(bookData.tree, bookData, filter, langs, code, 0);
             if (ul) {

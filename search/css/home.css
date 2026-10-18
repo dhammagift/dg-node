@@ -4425,7 +4425,15 @@ body.results-out #dynamicHeader, body.results-out #results-toolbar, body.results
 /* Home: blocks fade in top-down (50ms step) sliding from above; the navy bar slides from under
    the top edge. Exit: the whole page moves up 40px (to where the search bar lives on the inner
    screens) and fades. The search field itself is excluded — it travels by its own transitions. */
-@keyframes dg-drop-in { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: none; } }
+/* Home's enter starts at opacity 0.01, not 0 (looks the same): Chrome does not count a paint at opacity 0 as
+   the page's largest paint, so the tiles (in the HTML since 38b7a12) were counted only once the fade got its
+   frames, after the page's scripts had run - PageSpeed LCP 1.2 s or 4.6 s by how the scripts' timing fell.
+   Not for the results rows: visible from their first frame they count in the layout shift (CLS 0.014 -> 0.06). */
+@keyframes dg-drop-in { from { opacity: 0.01; transform: translateY(-10px); } to { opacity: 1; transform: none; } }
+/* The same from opacity 0 for the blocks home.js fills later (slides, how-to): their content is not the
+   page's largest paint while it lands during the fade (as before the 0.01 above) - a random slide's text
+   outsized the tiles and became the LCP, seconds late. */
+@keyframes dg-drop-in-0 { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: none; } }
 @keyframes dg-navbar-in { from { transform: translateY(-100%); } to { transform: none; } }
 @keyframes dg-home-out { to { opacity: 0; transform: translateY(-40px); } }
 /* The field moves up with the page but stays visible: it carries the busy spinner while the
@@ -4437,8 +4445,9 @@ body.dg-state-home #dg-hero-heading { animation: dg-drop-in 300ms var(--dg-ease)
 body.dg-state-home .hero-row { animation: dg-drop-in 300ms var(--dg-ease) 100ms backwards; }
 body.dg-state-home #home-scope-summary { animation: dg-drop-in 300ms var(--dg-ease) 100ms backwards; }
 body.dg-state-home #dg-announce { animation: dg-drop-in 300ms var(--dg-ease) 150ms backwards; }
-body.dg-state-home #home-tiles, body.dg-state-home #home-slides { animation: dg-drop-in 300ms var(--dg-ease) 200ms backwards; }
-body.dg-state-home #home-howto { animation: dg-drop-in 300ms var(--dg-ease) 250ms backwards; }
+body.dg-state-home #home-tiles { animation: dg-drop-in 300ms var(--dg-ease) 200ms backwards; }
+body.dg-state-home #home-slides { animation: dg-drop-in-0 300ms var(--dg-ease) 200ms backwards; }
+body.dg-state-home #home-howto { animation: dg-drop-in-0 300ms var(--dg-ease) 250ms backwards; }
 body.home-out #dg-hero-navbar, body.home-out #dg-hero-heading, body.home-out #home-scope-summary, body.home-out #dg-announce,
 body.home-out #home-tiles, body.home-out #home-slides, body.home-out #home-howto { animation: dg-home-out 240ms var(--dg-ease) both; }
 
