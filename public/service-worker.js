@@ -161,6 +161,8 @@ var PRECACHE_URLS = [
     // Loaded lazily by the shell (loadScript) when a search runs or the reader opens — without
     // these the page boots offline but search and reader come up empty.
     '/assets/js/datatables/datatables.min.js',
+    '/assets/js/datatables-slim.js', // the cut the site's page loads instead (dg-fastify.js slimDataTables)
+    '/assets/css/dg-all.css', // the site's page links its head stylesheets as this one file (bundleHeadCss)
     '/assets/js/search-render.js',
     '/assets/js/natural.js',
     '/assets/js/strip-html.js',

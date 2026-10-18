@@ -4326,9 +4326,8 @@ document.addEventListener('DOMContentLoaded', function () { $(function() {
        лениво, тем же приёмом, что ensureReaderAssets() ниже для ридера. ~2МБ, нужны ТОЛЬКО когда
        реально выполняется поиск (initSearchApp вызывает это до renderCurrentReport, после
        раннего возврата на "!keyword" для главной). Порядок важен — natural.js/strip-html.js
-       регистрируют себя в $.fn.dataTable и должны идти после datatables.js; грузим строго
-       последовательно (each .then), а не все сразу, чтобы не полагаться на execution-order
-       динамически создаваемых <script> (по умолчанию не гарантирован, в отличие от defer). */
+       регистрируют себя в $.fn.dataTable и должны идти после datatables.js: a dynamic <script> with
+       async=false runs in the order it was added (see loadScript below). */
     var searchAssetsPromise = null;
     function ensureSearchAssets() {
         if (searchAssetsPromise) return searchAssetsPromise;
@@ -4338,17 +4337,26 @@ document.addEventListener('DOMContentLoaded', function () { $(function() {
         css.href = '/assets/js/datatables/datatables.min.css';
         document.head.appendChild(css);
 
+        // All four requested at once and run in the order added (async=false keeps a dynamic script's
+        // execution order): one after another, each waited a round trip for the one before (PageSpeed:
+        // three extra round trips before the results table).
         function loadScript(src) {
             return new Promise(function (resolve, reject) {
                 var s = document.createElement('script');
                 s.src = src;
+                s.async = false;
                 s.onload = resolve;
                 s.onerror = reject;
                 document.head.appendChild(s);
             });
         }
 
-        searchAssetsPromise = loadScript('/assets/js/datatables/datatables.min.js')
+        searchAssetsPromise = Promise.all([
+            loadScript('/assets/js/datatables/datatables.min.js'),
+            loadScript('/assets/js/search-render.js'),
+            loadScript('/assets/js/natural.js'),
+            loadScript('/assets/js/strip-html.js')
+        ])
             .then(function () {
                 // Регистрация плагинов DataTables — раньше жила в $(document).ready наверху
                 // файла и требовала DataTable синхронно на КАЖДОЙ странице; теперь ровно здесь,
@@ -4368,11 +4376,24 @@ document.addEventListener('DOMContentLoaded', function () { $(function() {
                     if (cat === 'abhi' || cat === 'abhidhamma') return 4;
                     return 5;
                 };
-            })
-            .then(function () { return loadScript('/assets/js/search-render.js'); })
-            .then(function () { return loadScript('/assets/js/natural.js'); })
-            .then(function () { return loadScript('/assets/js/strip-html.js'); });
+            });
         return searchAssetsPromise;
+    }
+
+    var readerCssAdded = false;
+    function ensureReaderCss() {
+        if (readerCssAdded) return;
+        readerCssAdded = true;
+        function addReaderCss(href) {
+            var link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.href = href;
+            link.className = 'dg-reader-css';
+            document.head.appendChild(link);
+        }
+        addReaderCss('/reader/css/index.css');
+        addReaderCss('/reader/css/rus-multi.css');
+        addReaderCss('/reader/css/uiextra.css');
     }
 
     var readerAssetsPromise = null;
@@ -4391,16 +4412,7 @@ document.addEventListener('DOMContentLoaded', function () { $(function() {
         // выигрывать внутри #reader-pane.
         // One call per file, not an array: sendVersionedHtml (dg-fastify.js) stamps ?v= only onto
         // addReaderCss('...') — a bare array entry kept a year-long immutable copy of uiextra.css.
-        function addReaderCss(href) {
-            var link = document.createElement('link');
-            link.rel = 'stylesheet';
-            link.href = href;
-            link.className = 'dg-reader-css';
-            document.head.appendChild(link);
-        }
-        addReaderCss('/reader/css/index.css');
-        addReaderCss('/reader/css/rus-multi.css');
-        addReaderCss('/reader/css/uiextra.css');
+        ensureReaderCss();
 
         // reader-template.html (отдельная старая страница, теперь референс) грузило вместе с
         // megareader.js ещё пачку скриптов — здесь их не было вообще, поэтому в SPA-ридере молчком
@@ -4454,8 +4466,24 @@ document.addEventListener('DOMContentLoaded', function () { $(function() {
         window.MEGAREADER_MANUAL_INIT = true;
         ensureReaderAssets();
     }
-    if (window.requestIdleCallback) requestIdleCallback(idlePrefetchReaderAssets, { timeout: 3000 });
-    else setTimeout(idlePrefetchReaderAssets, 1500);
+    // Speed (PageSpeed, search results): the scripts of the warm-up wait for the visitor's first move on a
+    // loaded page (pointer, touch, key, wheel). Started on idle they went out with the results still being
+    // drawn - the reader's seven scripts ahead of the table's translated titles (LCP). A tap on a result is a
+    // first move too: the click then waits for the same, already started, load. The stylesheets still come
+    // on idle: some of their rules are not scoped to the reader ([class*="-lang"] margins, uiextra.css) and
+    // set the results' and contents' rows as they have looked since - loaded on the first move, the rows
+    // would jump under the pointer.
+    if (window.requestIdleCallback) requestIdleCallback(ensureReaderCss, { timeout: 3000 });
+    else setTimeout(ensureReaderCss, 1500);
+    (function () {
+        var evs = ['pointermove', 'pointerdown', 'touchstart', 'keydown', 'wheel'];
+        function warm() {
+            if (document.readyState !== 'complete') return;
+            evs.forEach(function (e) { window.removeEventListener(e, warm, true); });
+            idlePrefetchReaderAssets();
+        }
+        evs.forEach(function (e) { window.addEventListener(e, warm, { capture: true, passive: true }); });
+    })();
 
     /* Открыть текст, не уходя со страницы. Адрес уже должен быть выставлен вызывающим (клик по
        ссылке в выдаче / сабмит / popstate) — дальше работает window.initReader() из

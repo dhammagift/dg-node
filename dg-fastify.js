@@ -417,7 +417,7 @@ function buildVersionedHtml(absHtmlPath) {
             return v ? `${pre}${url}?v=${v}${post}` : m;
         }
     ));
-    const out = absHtmlPath === path.join(__dirname, 'search', 'index.html') ? deferOfflineScripts(bundleHeadCss(rewritten)) : rewritten;
+    const out = absHtmlPath === path.join(__dirname, 'search', 'index.html') ? slimDataTables(deferOfflineScripts(bundleHeadCss(rewritten))) : rewritten;
     const etag = '"' + crypto.createHash('md5').update(out).digest('hex') + '"';
     return { at: Date.now(), rewritten: out, etag };
 }
@@ -468,6 +468,45 @@ function deferOfflineScripts(html) {
         `!!s.getItem('dg.offline.wantData')||/"present":true/.test(s.getItem('dg.offline.state')||'')}catch(e){}` +
         `u.forEach(function(x){if(lib){document.write('<script src="'+x+'"><\\/script>')}else{var e=document.createElement('script');e.src=x;e.async=false;document.head.appendChild(e)}})})()</script>`;
     return html.replace(OFFLINE_TAGS, loader);
+}
+// Speed (PageSpeed, search results: datatables.min.js is the page's biggest script, 393 ms of scripting):
+// the legacy DataTables download bundles 20 libraries, the results table uses 7 of them. The served page
+// loads a cut with only those (core, Bootstrap 5, Buttons with colvis/HTML5 export and its JSZip, ColReorder,
+// DateTime, Responsive, SearchBuilder - each with its Bootstrap 5 part), sliced from the same file at its
+// "/*!" banners, so it is always the version the legacy file is. A file it cannot slice as expected leaves
+// the page on the full bundle. Served page only: the apps build from search/index.html and keep the full one.
+const DT_FULL_URL = '/assets/js/datatables/datatables.min.js';
+const DT_SLIM_URL = '/assets/js/datatables-slim.js';
+const DT_SLIM_PATH = path.join(__dirname, 'public', 'overrides', 'js', 'datatables-slim.js');
+const DT_KEEP = [/^JSZip/, /^DataTables \d/, /^DataTables Bootstrap 5/, /^Buttons for DataTables/, /^Bootstrap integration for DataTables' Buttons/,
+    /^Column visibility buttons/, /^HTML5 export buttons/, /^ColReorder/, /^DateTime picker/, /^Responsive/,
+    /^Bootstrap 5 integration for DataTables' Responsive/, /^SearchBuilder/, /^Bootstrap 5 ui integration for DataTables' SearchBuilder/];
+const DT_DROP = /^(AutoFill|Bootstrap integration for DataTables' (AutoFill|StateRestore)|Print button|ColumnControl|Bootstrap 5 styling wrapper for ColumnControl|FixedColumns|FixedHeader|KeyTable|RowGroup|RowReorder|Scroller|SearchPanes|Bootstrap 5 integration for DataTables' SearchPanes|Select for DataTables|StateRestore)/;
+function buildSlimDataTables() {
+    const file = resolveAssetFile(DT_FULL_URL);
+    if (!file) return false;
+    const src = fsSync.readFileSync(file, 'utf8');
+    // sections start at a line opening a "/*!" banner; the text before the first one is the bundle's header comment
+    const starts = [...src.matchAll(/^\/\*!/gm)].map(m => m.index);
+    const sections = starts.map((s, i) => ({ text: src.slice(s, starts[i + 1] ?? src.length) }));
+    for (const s of sections) s.name = s.text.slice(3, 300).split('\n').map(l => l.replace(/^\s*\*?\s*/, '')).find(Boolean) || '';
+    let kept = 0;
+    for (const s of sections) {
+        const keep = DT_KEEP.some(re => re.test(s.name)), drop = DT_DROP.test(s.name);
+        if (keep === drop) { console.warn(`DataTables cut: unknown section "${s.name.slice(0, 50)}", page keeps the full bundle`); return false; }
+        s.keep = keep; kept += keep;
+    }
+    if (kept !== DT_KEEP.length + 1) { console.warn(`DataTables cut: ${kept} sections kept, expected ${DT_KEEP.length + 1}, page keeps the full bundle`); return false; }
+    const text = src.slice(0, starts[0]) + sections.filter(s => s.keep).map(s => s.text).join('');
+    let current = null;
+    try { current = fsSync.readFileSync(DT_SLIM_PATH, 'utf8'); } catch { /* first build */ }
+    if (current !== text) fsSync.writeFileSync(DT_SLIM_PATH, text);
+    return true;
+}
+const DT_SLIM_OK = (() => { try { return buildSlimDataTables(); } catch (e) { console.warn('DataTables cut failed:', e.message); return false; } })();
+function slimDataTables(html) {
+    if (!DT_SLIM_OK) return html;
+    return html.replace(/\/assets\/js\/datatables\/datatables\.min\.js(\?v=\w+)?/g, `${DT_SLIM_URL}?v=${getAssetVersion(DT_SLIM_PATH)}`);
 }
 const cssBundleCache = { key: '', html: '' };
 function bundleHeadCss(html) {

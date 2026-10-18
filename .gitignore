@@ -106,3 +106,4 @@ siteroot/reviews/
 # The signed list of the site's files for the apps (scripts/site-manifest.js, run after each deploy): per host, never committed.
 /app-site-manifest.json
 public/overrides/css/dg-all.css
+public/overrides/js/datatables-slim.js
