@@ -3253,7 +3253,11 @@ async function textHead(dataId, urlId, reqLang) {
     const split = pali.replace(/(.)(sutta|vagga)$/i, '$1 $2');
     const local = cleanTitle(titleSeg && tr(titleSeg));
     const code = textCode(urlId, lang);
-    const name = pali ? pali + (code ? ` (${code})` : '') : code;
+    // Owner 2026-10-18, an experiment: the title splits "-sutta" off the name ("Mahāsīhanāda Sutta") — named-sutta
+    // queries are typed spaced ("kesi sutta", "assalayana sutta", GSC 90 days) and a fused compound is not reliably split.
+    // Only the title; the name as the text writes it stays first in the description and in keywords.
+    const titlePali = pali.replace(/^(.*[^\s-])(suttanta|suttaṁ|sutta)$/i, (m, stem, s) => stem + (/^suttanta$/i.test(s) ? ' Suttanta' : ' Sutta'));
+    const name = pali ? titlePali + (code ? ` (${code})` : '') : code;
     const title = [name, local && local.toLowerCase() !== pali.toLowerCase() ? local : ''].filter(Boolean).join(' — ') + ' | Dhamma.Gift';
     let description = '';
     // the translation's own words; Pali only when this text has no translation in this language
@@ -3267,6 +3271,7 @@ async function textHead(dataId, urlId, reqLang) {
     // Russian readers search the name in Cyrillic: it opens the Russian description
     const cyr = pali ? paliCyr(split) : '';
     if (lang === 'ru' && cyr) description = cyr + (code ? ', ' + code : '') + '. ' + description;
+    else if (titlePali !== pali) description = pali + (code ? ', ' + code : '') + '. ' + description;
     if (description.length > 160) description = description.slice(0, description.lastIndexOf(' ', 157)) + '…';
     // Cyrillic only for the Russian page: nobody reading the English one types it
     const names = [...new Set([split, paliAscii(split), paliAscii(pali), lang === 'ru' ? cyr : ''])].filter(n => n && n !== pali);
