@@ -1814,6 +1814,56 @@ app.get('/assets/js/translators.json', (req, res) => {
     res.header('Cache-Control', CACHE_CONFIG_JSON);
     return sendFile(req, res, path.join(__dirname, 'configs', 'reader', 'translators.json'), 'application/json');
 });
+// Speed (PageSpeed: about 400 KB of the pages' scripts, gzipped, was developer comments and indentation):
+// our own scripts go out minified (core/min-js.js: no compress, no mangle - the same statements, only
+// without comments and whitespace) with a source map at url + ".map" (sources included: DevTools shows the
+// original file, and a logged file:1:column maps back with it). The files themselves, which the apps build
+// from, are untouched; scripts/site-manifest.js signs these served bytes. One build per file version
+// (warmed after start); a file terser cannot parse (an ES module) is served as it is.
+const minJs = require('./core/min-js');
+const minJsCache = new Map(); // abs -> { mtimeMs, code, map, etag } (code null: served as it is)
+function minifiedJs(abs) {
+    const mtimeMs = fsSync.statSync(abs).mtimeMs;
+    const c = minJsCache.get(abs);
+    if (c && c.mtimeMs === mtimeMs) return c;
+    let entry = { mtimeMs, code: null };
+    try {
+        const r = minJs.minifyJs(fsSync.readFileSync(abs, 'utf8'), path.basename(abs));
+        entry = { mtimeMs, code: r.code, map: r.map, etag: '"' + crypto.createHash('md5').update(r.code).digest('hex') + '"' };
+    } catch (e) {
+        console.warn(`minified JS: ${path.relative(__dirname, abs)} served as it is (${e.message})`);
+    }
+    minJsCache.set(abs, entry);
+    return entry;
+}
+const minJsFiles = [];
+for (const [prefix, rel] of Object.entries(minJs.MIN_JS_DIRS)) {
+    const dir = path.join(__dirname, rel);
+    let names = [];
+    try { names = fsSync.readdirSync(dir).filter(n => minJs.servedMinified(n, fsSync.statSync(path.join(dir, n)).size)); } catch { continue; }
+    for (const name of names) {
+        const abs = path.join(dir, name), url = `${prefix}/${name}`;
+        minJsFiles.push(abs);
+        app.get(url, (req, reply) => {
+            let c;
+            try { c = minifiedJs(abs); } catch { return reply.code(404).type('text/plain').send('Not found'); }
+            if (prefix === '/offline') reply.header('Cache-Control', CACHE_CONFIG_JSON); else staticCacheHeaders(reply, abs);
+            if (!c.code) return sendFile(req, reply, abs, 'application/javascript; charset=utf-8');
+            reply.header('etag', c.etag);
+            if (req.headers['if-none-match'] === c.etag) return reply.code(304).send();
+            return reply.type('application/javascript; charset=utf-8').send(c.code);
+        });
+        app.get(url + '.map', (req, reply) => {
+            let c;
+            try { c = minifiedJs(abs); } catch { c = {}; }
+            if (!c.map) return reply.code(404).type('text/plain').send('Not found');
+            reply.header('Cache-Control', CACHE_CONFIG_JSON);
+            return reply.type('application/json; charset=utf-8').send(c.map);
+        });
+    }
+}
+// built after start, one file per tick, so the first visitors do not wait for it
+setTimeout(function warm(i = 0) { if (i < minJsFiles.length) { try { minifiedJs(minJsFiles[i]); } catch { /* gone */ } setImmediate(warm, i + 1); } }, 3000);
 app.register(fastifyStatic, {
     root: [path.join(__dirname, 'public', 'overrides'), path.join(__dirname, 'siteroot', 'assets')],
     prefix: '/assets',

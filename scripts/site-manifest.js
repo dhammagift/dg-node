@@ -16,6 +16,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { execFileSync } = require('child_process');
+const { servedBytes } = require('../core/min-js');
 
 const REPO = path.join(__dirname, '..');
 const args = process.argv.slice(2);
@@ -60,7 +61,8 @@ for (const [prefix, dirs] of ROOTS) {
                 if (!TYPES.test(e.name) || st.size > MAX_BYTES || ROUTED.has(url) || url in hashes) continue;
                 // Pages served by dg-fastify rewrite their links (cache-busters), so only a static site's pages are listed.
                 if (e.name.endsWith('.html') && !opts('root').length) continue;
-                const sha = crypto.createHash('sha256').update(fs.readFileSync(a)).digest('hex');
+                // our own scripts as the site sends them, minified (core/min-js.js)
+                const sha = crypto.createHash('sha256').update(servedBytes(a)).digest('hex');
                 hashes[url] = sha;
                 // A directory's page is asked for by the directory (/ru/ for /ru/index.html).
                 if (e.name === 'index.html' && !((prefix + rel) in hashes)) hashes[prefix + rel] = sha;
