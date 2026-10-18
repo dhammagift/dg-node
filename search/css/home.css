@@ -910,7 +910,11 @@ body.dg-busy:not(.dg-state-reader) #reader-pane {
    Nothing here is a fixed pixel width that has to be retuned per screen: each placeholder inherits
    the box of the element it stands for, so wrapping at 390 and the single row at 1900 come out
    right for free, and there is not one media query in it. */
-body.dg-state-reader.dg-busy #sutta, #reader-pane.reader-pending #sutta:not(:has(> .dg-sutta-skeleton)) { visibility: hidden; }
+/* #sutta[data-ssr]: the text came with the page (dg-fastify.js textBodyHtml) - show it from the first frame */
+/* ...and its paragraphs off screen are not laid out until scrolled to: every script that reads layout during
+   boot (home-bundle, i18n) re-laid the whole sutta (Lighthouse: +2 s style & layout on a phone) */
+#sutta[data-ssr] p { content-visibility: auto; contain-intrinsic-size: auto 4em; }
+body.dg-state-reader.dg-busy #sutta:not([data-ssr]), #reader-pane.reader-pending #sutta:not(:has(> .dg-sutta-skeleton)) { visibility: hidden; }
 /* Everything below the text (bottom prev/next, footer icons, subscription line): with #sutta still
    empty it sat right under the pinned rows, so a cold load showed the footer's icon grid for a
    second (owner: "сначала неграмотно отрисовывается"). */

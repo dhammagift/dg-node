@@ -494,6 +494,22 @@ window.setupVariantVisibility = function() {
 // dataObjects: произвольный список параллельных {segmentId: text} объектов, которые нужно
 // слить в лок-степе с htmlData (paliData, varData, плюс по одному на каждую языковую колонку) —
 // N-арная замена старой версии, где было ровно paliData/transData/varData/engTransData.
+// Speed: a text page arrives with the text already in #sutta[data-ssr] (dg-fastify.js textBodyHtml, this
+// file's markup for the default view). When this render is the same markup, the server's nodes stay: no
+// second paint of the whole text, so the page's largest paint is the first one. Anything different (saved
+// mode, language, translators, closed warning...) is swapped in as before. Only the first render checks.
+function keepServerText(html) {
+    if (!suttaArea || suttaArea.dataset.ssr !== '1') return false;
+    suttaArea.dataset.ssr = 'done'; // stays: home.css shows #sutta[data-ssr] during the cold-load busy state
+    const tpl = document.createElement('template');
+    tpl.innerHTML = html;
+    const norm = s => s.replace(/\s+/g, ' ').replace(/> </g, '><').trim();
+    const cur = suttaArea.cloneNode(true);
+    cur.querySelector('#top-links-container')?.removeAttribute('style'); // the pinned row's offset, set on load
+    window.dgServerTextKept = norm(tpl.innerHTML) === norm(cur.innerHTML);
+    return window.dgServerTextKept;
+}
+
 window.mergeGathas = function(htmlData, dataObjects) {
     const originalSegments = Object.keys(htmlData);
     if (localStorage.getItem("mergeGathas") === "false") return originalSegments;
@@ -1882,7 +1898,7 @@ window.buildSutta = async function(rawSlug, opts) {
     const prevTop = document.querySelector('#reader-pane > #top-links-container');
     const prevTopY = prevTop ? prevTop.style.top : '';
     if (prevTop) prevTop.remove();
-    suttaArea.innerHTML =
+    const suttaHtml =
         `<div id="top-links-container" class="min-h-24"></div>` +
         (!isWarningClosed ? warning : '') +
         translatorByline + 
@@ -1890,6 +1906,7 @@ window.buildSutta = async function(rawSlug, opts) {
         // Owner (2026-09-06, production-v4 reader mock): the footer is sources → prev/next →
         // tools → legal, no second copy of the byline and the warning under the text.
         `<div id="bottom-links-container" class="min-h-24"></div>`;
+    if (!keepServerText(suttaHtml)) suttaArea.innerHTML = suttaHtml;
     
     const topContainer = document.getElementById('top-links-container');
     const bottomContainer = document.getElementById('bottom-links-container');

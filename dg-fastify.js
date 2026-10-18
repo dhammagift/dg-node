@@ -3297,6 +3297,106 @@ async function textHead(dataId, urlId, reqLang) {
     textHeadCache.set(key, head);
     return head;
 }
+// Speed + crawlers: the text itself in the served HTML, so the page shows the sutta before any script runs
+// (mobile LCP was 10-11 s: HTML -> scripts -> /api/text -> render) and engines that do not run JS see it.
+// It is megareader.js buildSutta()'s own markup for the default view, ported line for line (gathas merged,
+// copy links with the segment URL, warning, byline): the reader compares its render with this one and keeps
+// the server's nodes when they match (no second paint - the LCP stays the first one), else it swaps them in
+// as before. Any drift between the two only costs the speed-up, never the display.
+const SITE_TRANSLATORS = (() => {
+    try { return JSON.parse(fsSync.readFileSync(path.join(__dirname, 'configs', 'reader', 'translators.json') /* what /assets/js/translators.json serves the reader */, 'utf8')); }
+    catch { return {}; }
+})();
+const READER_WARNING = {};
+for (const l of ['ru', 'en']) {
+    try { READER_WARNING[l] = JSON.parse(fsSync.readFileSync(path.join(__dirname, 'configs', 'reader', `lang_${l}.json`), 'utf8')).reader.warningNote; }
+    catch { READER_WARNING[l] = ''; }
+}
+// megareader.js window.mergeGathas: a verse line and the next one (not opening a new <p>) become one segment
+function mergeGathasServer(htmlData, dataObjects) {
+    const keys = Object.keys(htmlData), out = [];
+    const toLower = (str) => !str ? '' : /^["“'‘]?(I\b|I'|O\b|О\b)/.test(str) ? str : str.charAt(0).toLowerCase() + str.slice(1);
+    for (let i = 0; i < keys.length; i++) {
+        const seg = keys[i], next = keys[i + 1];
+        dataObjects.forEach(o => { if (o[seg] === undefined) o[seg] = ''; });
+        if (htmlData[seg] && htmlData[seg].includes('verse-line') && next && htmlData[next] && htmlData[next].includes('verse-line')) {
+            const [nextOpen, nextClose] = htmlData[next].split(/{}/);
+            if (!nextOpen.includes('<p>')) {
+                dataObjects.forEach(o => { if (o[next]) o[seg] = (o[seg] || '').trim() + ' ' + toLower(o[next].trim()); });
+                htmlData[seg] = (htmlData[seg].split(/{}/)[0] || '') + '{}' + (nextClose || '');
+                out.push(seg); i++; continue;
+            }
+        }
+        out.push(seg);
+    }
+    return out;
+}
+const TRANSLATOR_PRIORITY = (() => {
+    try { return JSON.parse(fsSync.readFileSync(path.join(__dirname, 'configs', 'reader', 'translator-priority.json'), 'utf8')); }
+    catch { return {}; }
+})();
+const textBodyCache = new Map();
+function textBodyHtml(segments, lang, urlId, pageUrl, dataId) {
+    const key = urlId + '|' + lang + '|' + pageUrl.href;
+    if (textBodyCache.has(key)) return textBodyCache.get(key);
+    const trKey = (segments.find(s => Object.keys(s.translations || {}).length) || { translations: {} });
+    const translatorKey = Object.keys(trKey.translations)[0] || '';
+    const translatorId = translatorKey.slice(lang.length + 1);
+    const name = (SITE_TRANSLATORS[lang] && SITE_TRANSLATORS[lang][translatorId])
+        || (translatorId.charAt(0).toUpperCase() + translatorId.slice(1));
+    const label = lang === 'ru' ? 'Пер. ' : lang === 'en' ? 'Trn: ' : `${lang}: `;
+    // megareader.js readerShareUrl: a translator that is not the client-known default is named in the link
+    const pool = searchDb.prepare("SELECT DISTINCT lang, translator FROM texts WHERE sutta_id = ? AND kind = 'translation' AND translator <> 'ai'")
+        .all(dataId).map(r => `${r.lang}_${r.translator}`).filter(k => k.startsWith(lang + '_'));
+    let def = (TRANSLATOR_PRIORITY[lang] || []).find(k => pool.includes(k));
+    if (!def && lang === 'en') def = pool.find(k => k !== 'en_sujato');
+    if (!def && pool.length === 1) def = pool[0];
+    // copyToClipboard.js dgSegmentUrl: /mn10:1.2 with the page's query, no hash
+    const segUrl = (seg) => {
+        const u = new URL(pageUrl.href);
+        u.hash = '';
+        if (translatorKey && translatorKey !== def) { u.searchParams.set('translators', translatorKey); u.href = u.href.replace(/%2C/gi, ','); }
+        if (!seg) return u.href;
+        const p = u.pathname.replace(/\/+$/, ''), cut = p.lastIndexOf('/') + 1;
+        u.pathname = p.slice(0, cut) + p.slice(cut).split(':')[0] + ':' + String(seg).toLowerCase();
+        return u.href;
+    };
+    const htmlData = {}, pali = {}, variant = {}, trans = {};
+    for (const seg of segments) {
+        htmlData[seg.segment] = seg.html || '{}';
+        pali[seg.segment] = seg.root_text || undefined;
+        variant[seg.segment] = seg.variant || undefined;
+        trans[seg.segment] = (translatorKey && seg.translations && seg.translations[translatorKey]) || undefined;
+    }
+    const order = mergeGathasServer(htmlData, translatorKey ? [pali, variant, trans] : [pali, variant]);
+    const isRange = /\d-\d/.test(urlId);
+    let html = '';
+    for (const seg of order) {
+        const [open = '', close = ''] = htmlData[seg].split(/{}/);
+        const anchor = isRange ? seg : seg.slice(seg.indexOf(':') + 1);
+        const url = segUrl(anchor).replace(/'/g, '%27');
+        const start = `<a class="text-decoration-none copyLink copyLink-start" onclick="copyToClipboard('${url}')"></a>`;
+        const end = `<a class="text-decoration-none copyLink" onclick="copyToClipboard('${url}')"></a>`;
+        if (pali[seg] === undefined && trans[seg] === undefined) continue;
+        let inner = '';
+        if (pali[seg] !== undefined) {
+            inner += `<span class="pli-lang inputscript-ISOPali quote" lang="pi">${start}${pali[seg].trim()}${end}`;
+            if (variant[seg] !== undefined && variant[seg] !== '') inner += `<font class="variant"><br>${start}${variant[seg].trim()}${end}</font>`;
+            inner += '</span>';
+        }
+        if (translatorKey && trans[seg] !== undefined) inner += `<span class="right-column"><span class="${lang}-lang quote" lang="${lang}" data-translator="${translatorId}">${start}${trans[seg].trim()}${end}</span></span>`;
+        html += `${open}<span id="${anchor}">${inner}</span>${close}\n\n`;
+    }
+    const byline = `<div id="trn" class="byline">\n    <p><span class="pli-lang" lang="pi">Pāḷi <a class="text-decoration-none text-reset" href="/assets/common/abbr.html?s=ms" title="Mahāsaṅgīti Pāḷi">MS</a></span>\n    <span class="right-column">${translatorKey ? `<span class="${lang}-lang" lang="${lang}"> ${label}${name}</span>` : ''}</span></p></div>`;
+    const page = segUrl('').replace(/'/g, '%27');
+    const warning = (READER_WARNING[lang === 'ru' ? 'ru' : 'en'] || '').replace('{dUrl}', () => page.replace('/r/', '/d/')).replace('{thUrl}', () => page.replace('/r/', '/th/read/'));
+    const out = '<div id="top-links-container" class="min-h-24"></div>' +
+        (warning ? `<div class="warning-container warning-box"><p class='warning'>${warning} </p></div>` : '') +
+        byline + html + '<div id="bottom-links-container" class="min-h-24"></div>';
+    if (textBodyCache.size > 300) textBodyCache.clear(); // ponytail: wholesale clear; bodies are big, keep the hot few
+    textBodyCache.set(key, out);
+    return out;
+}
 function withTextHead(html, h) {
     const t = htmlAttr(h.title), d = htmlAttr(h.description), u = htmlAttr(h.canonical);
     const ld = [h.breadcrumbs, h.work].filter(Boolean);
@@ -3315,6 +3415,17 @@ function withTextHead(html, h) {
         .replace(/(<meta (?:property|name)="(?:og|twitter):title" content=")[^"]*"/g, `$1${t}"`)
         .replace(/(<meta (?:property|name)="(?:og|twitter):description" content=")[^"]*"/g, `$1${d}"`)
         .replace(/(<meta property="og:url" content=")[^"]*"/, `$1${u}"`);
+    if (h.body) {
+        // the reader's stylesheets up front (search/index.html adds them only when the reader script loads)
+        const css = ['index.css', 'rus-multi.css', 'uiextra.css'].map(f => {
+            const v = getAssetVersion(path.join(__dirname, 'reader', 'css', f));
+            return `<link rel="stylesheet" class="dg-reader-css" href="/reader/css/${f}${v ? '?v=' + v : ''}">`;
+        }).join('\n');
+        out = out
+            .replace('<body>', '<body class="dg-state-reader">')
+            .replace('<div id="sutta" class="sutta"></div>', () => `<div id="sutta" class="sutta" data-ssr="1">${h.body}</div>`);
+        return out.replace('</head>', links + css + '\n</head>');
+    }
     return out.replace('</head>', links + '</head>');
 }
 // Home, search results and contents: the template's own head said "Search Results - Dhamma.gift" on all of them
@@ -3389,7 +3500,18 @@ async function sendTextHtml(req, res, dataId, urlId) {
     try { h = await textHead(dataId, urlId, req.query.lang); }
     catch (e) { console.warn(`textHead ${dataId}: ${e.message}`); }
     if (!h) return sendVersionedHtml(req, res, searchIndexPath);
-    return sendHeadHtml(req, res, h);
+    // the text in the HTML only for the default view: another mode/script/translator set would be swapped at once
+    const q = req.query;
+    if (q.mode || q.langs || q.translators || q.script || q.s) return sendHeadHtml(req, res, h);
+    const pageUrl = new URL(req.url, 'https://' + req.hostname);
+    let body = textBodyCache.get(urlId + '|' + h.lang + '|' + pageUrl.href);
+    if (!body) {
+        try {
+            const base = await getSuttaBaseData(dataId);
+            body = base && textBodyHtml((await buildTextDataFromBase(base, dataId, [h.lang], null)).segments, h.lang, urlId, pageUrl, dataId);
+        } catch (e) { console.warn(`textBody ${dataId}: ${e.message}`); }
+    }
+    return sendHeadHtml(req, res, body ? { ...h, body } : h);
 }
 function sendHeadHtml(req, res, h) {
     let entry = versionedHtmlCache.get(searchIndexPath);
@@ -3398,7 +3520,7 @@ function sendHeadHtml(req, res, h) {
         if (!entry) return res.code(404).send();
         versionedHtmlCache.set(searchIndexPath, entry);
     }
-    const etag = '"' + crypto.createHash('md5').update(entry.etag + h.canonical + h.title).digest('hex') + '"';
+    const etag = '"' + crypto.createHash('md5').update(entry.etag + h.canonical + h.title + (h.body ? h.body.length : '')).digest('hex') + '"';
     res.header('cache-control', 'public, max-age=0, must-revalidate').header('etag', etag);
     if (req.headers['if-none-match'] === etag) return res.code(304).send();
     return res.type('text/html; charset=utf-8').send(withTextHead(entry.rewritten, h));
