@@ -3506,7 +3506,8 @@ function withTextHead(html, h) {
             .replace('<div id="sutta" class="sutta"></div>', () => `<div id="sutta" class="sutta" data-ssr="1">${h.body}</div>`);
         return withCritical(out.replace('</head>', links + css + '\n</head>'), 'reader');
     }
-    return withCritical(out.replace('</head>', links + '</head>'), h.critical);
+    out = withCritical(out.replace('</head>', links + '</head>'), h.critical);
+    return h.critical === 'home' ? withHomeTiles(out, h.lang) : out;
 }
 // Critical CSS per screen (scripts/critical-css.js, configs/critical/<state>.css: the server-rendered reader, and
 // home / search results / contents): inlined, and the stylesheets it was cut from then load without blocking. Only
@@ -3535,9 +3536,41 @@ function withCritical(html, state) {
     head = head.replace(/<link rel="stylesheet"([^>]*?)>/g, (tag, attrs) => {
         const style = first ? `<style id="dg-critical">${crit.css}</style>\n` : '';
         first = false;
-        return `${style}<link rel="preload" as="style"${attrs} onload="this.onload=null;this.rel='stylesheet'"><noscript>${tag}</noscript>`;
+        // the full stylesheets: the reader's text resizes once they apply, so they come at high priority (preload);
+        // home/results/contents are complete with the cut, so theirs load at low priority (media=print swap) and
+        // stay out of the first paint's competition for bandwidth (PSI home 86 -> 100, the reader 99 -> 86 the other way)
+        return state === 'reader'
+            ? `${style}<link rel="preload" as="style"${attrs} onload="this.onload=null;this.rel='stylesheet'"><noscript>${tag}</noscript>`
+            : `${style}<link rel="stylesheet"${attrs} media="print" onload="this.onload=null;this.media='all'"><noscript>${tag}</noscript>`;
     });
     return head + html.slice(end);
+}
+// Home: the tile grid comes with the HTML (configs/critical/home-tiles.<lang>.html, scripts/home-tiles-snapshot.js)
+// - it is the page's largest element, and home.js draws it only after home-bundle.js and menu-links.json (PageSpeed
+// LCP 5.6 s). home.js re-renders the same grid over it. A visitor whose grid is not the default one (own order,
+// hidden or own tiles, edited labels, descriptions off) or another language clears it before the first paint and
+// gets today's page. Used only while its source files are the ones it was cut from.
+const HOME_TILES = (() => {
+    let hash = null;
+    try { hash = require('./scripts/home-tiles-snapshot.js').sourcesHash(); } catch { return {}; }
+    return Object.fromEntries(['en', 'ru'].map(lang => {
+        try {
+            const t = fsSync.readFileSync(path.join(__dirname, 'configs', 'critical', `home-tiles.${lang}.html`), 'utf8');
+            const m = /^<!-- dg-home-tiles \w+ sources: (.*?) -->\n/.exec(t);
+            if (!m || m[1] !== hash) { console.warn(`home tiles snapshot (${lang}) is stale - not used until "npm run home-tiles"`); return [lang, null]; }
+            return [lang, t.slice(m[0].length).trim()];
+        } catch { return [lang, null]; }
+    }));
+})();
+function withHomeTiles(html, lang) {
+    const grid = HOME_TILES[lang];
+    if (!grid) return html;
+    const guard = `<script>(function(){try{var s=localStorage,q=/[?&]lang=([a-z]+)/.exec(location.search),` +
+        `l=q?q[1]:(s.getItem('dhammaLanguage')||s.getItem('siteLanguage')||'en');` +
+        `if(l!==${JSON.stringify(lang)}||s.getItem('dgTileOrder')||s.getItem('dgTilesHidden')||s.getItem('dgCustomTiles')||` +
+        `s.getItem('dgTileOverrides')||s.getItem('dgTileDesc')==='off')document.getElementById('home-tiles').innerHTML=''}` +
+        `catch(e){document.getElementById('home-tiles').innerHTML=''}})()</script>`;
+    return html.replace('<div class="dg-tiles" id="home-tiles"></div>', () => `<div class="dg-tiles" id="home-tiles">${grid}</div>${guard}`);
 }
 // Home, search results and contents: the template's own head said "Search Results - Dhamma.gift" on all of them
 // "mn" -> { ru: "Маджхима Никая", en: "Majjhima Nikāya" }: the labels the contents page itself shows (/api/toc —
