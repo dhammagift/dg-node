@@ -577,7 +577,7 @@
     $('t-moon').innerHTML = moon(pIndex, 'moon', angle / 360);
     $('t-date').textContent = cap(F.dateLong.format(now));
     var dot = '<span class="dot">·</span>';
-    $('t-phase').innerHTML = '<span>' + esc(t.phases[pIndex]) + '</span>' + dot + '<span><span id="pct">' + percent + '</span>% ' + esc(t.illum) + '</span>' + '<br>' +
+    $('t-phase').innerHTML = '<span>' + esc(t.phases[pIndex]) + '</span>' + dot + '<span><b style="font-weight:600;color:var(--dg-text)"><span id="pct">' + percent + '</span>%</b> ' + esc(t.illum) + '</span>' + '<br>' +
       '<span><b style="font-weight:600;color:var(--dg-text)">' + esc(t.ld) + ' ' + tithi + '</b>' + (state.lite ? dot + esc(tithi <= 15 ? t.wax : t.wan)
         : '<span class="dt">' + dot + '<span id="age"></span> (' + esc(t.nthHalf(t.nth(dayNo(tithi)), t.halvesOf[tithi <= 15 ? 0 : 1])) + ')</span>') + '</span>' +
       (dayEnds ? '<span class="dt">' + dot + '<span>' + (dayBegan ? esc(t.from) + ' ' + esc(F.stamp.format(dayBegan.date)) + ' ' : '') + esc(t.until) + ' ' + esc(F.stamp.format(dayEnds.date)) + '</span>' + dot + '<span>' + esc(t.left) + ' <span id="left"></span></span></span>' : '');
