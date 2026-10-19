@@ -353,7 +353,7 @@
    "en": "feeling"
   },
   {
-   "q": "taṇhāpaccayā",
+   "q": "taṇhā",
    "pali": "Taṇhā",
    "group": "paticcasamuppada",
    "ru": "цепляние",
@@ -797,6 +797,24 @@
    "pali": "Anāgāmī",
    "ru": "невозвращающийся",
    "group": "core"
+  },
+  {
+   "q": "kāmataṇh",
+   "pali": "Kāmataṇhā",
+   "ru": "желания-цепляние",
+   "group": "paticcasamuppada"
+  },
+  {
+   "q": "bhavataṇh",
+   "pali": "Bhavataṇhā",
+   "ru": "бытия-цепляние",
+   "group": "paticcasamuppada"
+  },
+  {
+   "q": "vibhavataṇh",
+   "pali": "Vibhavataṇhā",
+   "ru": "разлучения-цепляние",
+   "group": "paticcasamuppada"
   }
  ]
 }
