@@ -397,7 +397,7 @@ window.DgSearchRender = (function () {
                                 });
                             });
                         },
-                        action: function (e, dt, node, config) {
+                        action: function (e, dt, node, config, cb) {
                             var buttonContext = this;
 
                             var triggerPdfExport = function () {
@@ -410,8 +410,11 @@ window.DgSearchRender = (function () {
                                     }
                                 };
 
+                                // Forward DataTables' completion callback (5th arg): pdfHtml5.action
+                                // calls it after the download and throws "cb is not a function" without
+                                // it, which leaves the button stuck after the first export.
                                 var pdfConfig = $.extend(true, {}, $.fn.dataTable.ext.buttons.pdfHtml5, config);
-                                $.fn.dataTable.ext.buttons.pdfHtml5.action.call(buttonContext, e, dt, node, pdfConfig);
+                                $.fn.dataTable.ext.buttons.pdfHtml5.action.call(buttonContext, e, dt, node, pdfConfig, cb);
                             };
 
                             if (typeof pdfMake === 'undefined') {
