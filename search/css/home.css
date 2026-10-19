@@ -3694,7 +3694,10 @@ body.dark .ui-autocomplete .autocomplete-history-icon { filter: invert(1); opaci
 /* На главной подвал держит ту же колонку, что цитата над ним (#home-howto), а не всю ширину окна. */
 body.dg-state-home #dg-footer { max-width: 880px; margin: 34px auto 10px; padding-top: 20px; }
 /* Under a text: the reader's own column (reader/css: #sutta 45rem); results and contents keep none. */
-body.dg-state-reader #dg-footer { max-width: 45rem; margin: 40px auto 10px; }
+/* Under a text only the copyright line, centered, as the old reader's #copyrightnote (owner: compact, that is all
+   it needs) - the links and contact icons stay on home. */
+body.dg-state-reader #dg-footer { max-width: 45rem; margin: 32px auto 10px; justify-content: center; border-top: 0; padding-top: 0; }
+body.dg-state-reader #dg-footer-nav, body.dg-state-reader #dg-footer-contacts { display: none; }
 body:not(.dg-state-home):not(.dg-state-reader) #dg-footer { display: none; }
 /* Две строки слева (ссылки; копирайт) — в 720px-колонку одна строка вместе с иконками контактов
    справа не влезает. */
@@ -3720,7 +3723,8 @@ body.dg-skin-minimal .dg-footer-link:hover { color: var(--dg-accent-ink); text-d
 .dg-footer-contacts .dg-contact-btn svg { width: 15px; height: 15px; }
 @media (max-width: 600px) {
     #dg-footer { flex-direction: column; }
-    body.dg-state-results #dg-footer, body.dg-state-reader #dg-footer { padding-bottom: 96px; } /* clear of the corner pill and up button */
+    body.dg-state-results #dg-footer { padding-bottom: 96px; }
+    body.dg-state-reader #dg-footer { padding-bottom: 72px; } /* clear of the corner pill and up button */
 }
 .dg-terms-text {
     margin: 8px 0 4px;
