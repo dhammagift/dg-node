@@ -2259,6 +2259,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
               vl.id = 'dg-voice-slug';
               vl.className = 'voice-link';
               vl.href = 'javascript:void(0)';
+              vl.setAttribute('role', 'button');
               vl.hidden = true;
               document.body.appendChild(vl);
             }
@@ -2439,7 +2440,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
 <!-- Owner: hidden until AI search is mature enough to show even on test. Remove d-none to bring it back. -->
 <button id="btn-ai-mode" class="btn btn-light mb-1 d-none" type="button">{{toolbar.aiModeLabel}}</button>
 
-<button class="btn btn-light forshellscript mb-1" type="button"><a class="text-decoration-none " href="javascript:void(0)">{{toolbar.wordsToggleShow}}</a></button>
+<button class="btn btn-light forshellscript mb-1" type="button"><a class="text-decoration-none " href="javascript:void(0)" role="button">{{toolbar.wordsToggleShow}}</a></button>
 
 <button class="btn btn-light mb-1  toggle-dict-btn" type="button" title="{{toolbar.dictTitle}}" data-i18n-title="{{toolbar.dictTitle}}" aria-label="{{toolbar.dictTitle}}" data-i18n-aria-label="{{toolbar.dictTitle}}"><img class="" src="/assets/svg/comment.svg" alt=""></img></button>
 
@@ -2585,7 +2586,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
         <div class="modal-content">
             <div class="modal-header">
                 <h2 class="modal-title" id="settingsLabel">Настройки</h2>
-                <a type="button" onclick="toggleQuickModal()" aria-label="Open Cattāri Ariyasaccāni" title="Open Cattāri Ariyasaccāni (Alt+Y)" class="quickCAS common-size-icon4">
+                <a type="button" role="button" onclick="toggleQuickModal()" aria-label="Open Cattāri Ariyasaccāni" title="Open Cattāri Ariyasaccāni (Alt+Y)" class="quickCAS common-size-icon4">
   <svg class="svg-inline--fa fa-compass" aria-hidden="true" focusable="false" data-prefix="fas" data-icon="compass" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" data-fa-i2svg=""><path fill="currentColor" d="M288 256C288 273.7 273.7 288 256 288C238.3 288 224 273.7 224 256C224 238.3 238.3 224 256 224C273.7 224 288 238.3 288 256zM0 256C0 114.6 114.6 0 256 0C397.4 0 512 114.6 512 256C512 397.4 397.4 512 256 512C114.6 512 0 397.4 0 256zM325.1 306.7L380.6 162.4C388.1 142.1 369 123.9 349.6 131.4L205.3 186.9C196.8 190.1 190.1 196.8 186.9 205.3L131.4 349.6C123.9 369 142.1 388.1 162.4 380.6L306.7 325.1C315.2 321.9 321.9 315.2 325.1 306.7V306.7z"></path></svg>
 </a>
                 
@@ -2792,7 +2793,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
         <div class="modal-content">
             <div class="modal-header">
                 <h2 class="modal-title" id="SearchResultHelpLabel">Помощь</h2>
-                   <a type="button" onclick="toggleQuickModal()" aria-label="Открыть Cattāri Ariyasaccāni" title="Открыть Cattāri Ariyasaccāni (Alt+Y)" class="quickCAS common-size-icon4">
+                   <a type="button" role="button" onclick="toggleQuickModal()" aria-label="Открыть Cattāri Ariyasaccāni" title="Открыть Cattāri Ariyasaccāni (Alt+Y)" class="quickCAS common-size-icon4">
   <svg class="svg-inline--fa fa-compass" aria-hidden="true" focusable="false" data-prefix="fas" data-icon="compass" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" data-fa-i2svg=""><path fill="currentColor" d="M288 256C288 273.7 273.7 288 256 288C238.3 288 224 273.7 224 256C224 238.3 238.3 224 256 224C273.7 224 288 238.3 288 256zM0 256C0 114.6 114.6 0 256 0C397.4 0 512 114.6 512 256C512 397.4 397.4 512 256 512C114.6 512 0 397.4 0 256zM325.1 306.7L380.6 162.4C388.1 142.1 369 123.9 349.6 131.4L205.3 186.9C196.8 190.1 190.1 196.8 186.9 205.3L131.4 349.6C123.9 369 142.1 388.1 162.4 380.6L306.7 325.1C315.2 321.9 321.9 315.2 325.1 306.7V306.7z"></path></svg>
 </a>
 
@@ -3116,7 +3117,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
              тот класс тянет margin-top:-3px/margin-left:6px, подобранные под inline-flow
              #form-div реального прода — в чистом flex-ряду они просто криво съезжали. -->
         <div id="reader-toolbar" class="dg-reader-toolbar">
-            <a id="toggle-variants" href="javascript:void(0)" title="Show Variants">
+            <a id="toggle-variants" href="javascript:void(0)" role="button" title="Show Variants">
                 <img src="/assets/svg/eye.svg" alt="Variants">
             </a>
             <!-- 1/2-column toggle — was deliberately left out of this row before (legacy
@@ -3125,16 +3126,16 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
                  (dgToggleColumnMode/dgApplyColumnMode), which doesn't have that problem and
                  also drives the matching button in the search-results row (#dg-toolbar-buttons)
                  off the SAME localStorage.viewMode. -->
-            <a id="toggle-mode" class="toggle-mode-btn" href="javascript:void(0)" title="1/2 columns">
+            <a id="toggle-mode" class="toggle-mode-btn" href="javascript:void(0)" role="button" title="1/2 columns">
                 <img src="/assets/svg/align-right.svg" alt="1/2 columns">
             </a>
-            <a class="toggle-dict-btn" href="javascript:void(0)" title="Dictionary">
+            <a class="toggle-dict-btn" href="javascript:void(0)" role="button" title="Dictionary">
                 <img src="/assets/svg/comment.svg" alt="Dictionary">
             </a>
-            <a id="toggle-multiselect" class="toggle-multiselect-btn" href="javascript:void(0)" title="Multi-select">
+            <a id="toggle-multiselect" class="toggle-multiselect-btn" href="javascript:void(0)" role="button" title="Multi-select">
                 <img src="/assets/svg/select-slash.svg" alt="Multi-select">
             </a>
-            <a href="javascript:void(0)" title="Compass" onclick="if (typeof window.toggleQuickModal === 'function') window.toggleQuickModal();">
+            <a href="javascript:void(0)" role="button" title="Compass" onclick="if (typeof window.toggleQuickModal === 'function') window.toggleQuickModal();">
                 <img src="/assets/svg/compass.svg" alt="Compass">
             </a>
             <a href="/docs/read" target="_blank" title="Help" data-href-en="/docs/read" data-href-ru="/ru/docs/read">
@@ -3198,7 +3199,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
              routes.translationEditor из референса пропущен — вела на CAT-инструмент переводчиков
              (cat_server.js), точный публичный URL не выяснял, не хотел давать неверную ссылку. -->
         <div class="links-area text-center">
-            <a href="/" title="Search"><img width="22px" alt="Search" src="/assets/img/gray.png"></a>
+            <a href="/" title="Search"><img width="22" height="22" alt="Search" src="/assets/img/gray.png"></a>
             <!-- Read-by-chapters — owner: it belongs here (footer links row, right after
                  Search), not the top toolbar where it was first put back. Old PHP chapter
                  reader (r.php) is fine as the target for now, same data-href-en/data-href-ru +
@@ -3209,9 +3210,9 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
                     <path d="M487.2,69.7c0,12.9-10.5,23.4-23.4,23.4h-322c-12.9,0-23.4-10.5-23.4-23.4s10.5-23.4,23.4-23.4h322.1 C476.8,46.4,487.2,56.8,487.2,69.7z M463.9,162.3H141.8c-12.9,0-23.4,10.5-23.4,23.4s10.5,23.4,23.4,23.4h322.1 c12.9,0,23.4-10.5,23.4-23.4C487.2,172.8,476.8,162.3,463.9,162.3z M463.9,278.3H141.8c-12.9,0-23.4,10.5-23.4,23.4 s10.5,23.4,23.4,23.4h322.1c12.9,0,23.4-10.5,23.4-23.4C487.2,288.8,476.8,278.3,463.9,278.3z M463.9,394.3H141.8 c-12.9,0-23.4,10.5-23.4,23.4s10.5,23.4,23.4,23.4h322.1c12.9,0,23.4-10.5,23.4-23.4C487.2,404.8,476.8,394.3,463.9,394.3z M38.9,30.8C17.4,30.8,0,48.2,0,69.7s17.4,39,38.9,39s38.9-17.5,38.9-39S60.4,30.8,38.9,30.8z M38.9,146.8 C17.4,146.8,0,164.2,0,185.7s17.4,38.9,38.9,38.9s38.9-17.4,38.9-38.9S60.4,146.8,38.9,146.8z M38.9,262.8 C17.4,262.8,0,280.2,0,301.7s17.4,38.9,38.9,38.9s38.9-17.4,38.9-38.9S60.4,262.8,38.9,262.8z M38.9,378.7 C17.4,378.7,0,396.1,0,417.6s17.4,38.9,38.9,38.9s38.9-17.4,38.9-38.9C77.8,396.2,60.4,378.7,38.9,378.7z"/>
                 </svg>
             </a>
-            <a href="/assets/diff" title="Compare"><img width="20px" alt="Compare" src="/assets/img/read/favicon-black.png"></a>
+            <a href="/assets/diff" title="Compare"><img width="20" height="19" alt="Compare" src="/assets/img/read/favicon-black.png"></a>
             <a href="/4as" title="History"><img width="20px" alt="History" src="/assets/svg/clock-rotate-left.svg"></a>
-            <a id="pdf-btn" href="javascript:void(0);" title="Export PDF"><img width="20px" alt="PDF" src="/assets/svg/pdf.svg"></a>
+            <a id="pdf-btn" href="javascript:void(0);" role="button" title="Export PDF"><img width="20px" alt="PDF" src="/assets/svg/pdf.svg"></a>
             <a href="/memo/" class="memo-button" title="Memo" target="_blank"><img width="25px" alt="Memo" src="/assets/svg/memo.svg"></a>
             <!-- Edit-translation icon (reader-template.html's .q-link) was skipped when this footer
                  was first ported (see comment above the .links-area block) because the old CAT-tool
@@ -3222,11 +3223,11 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
                  appended on click (see .q-link handler below) since the current sutta id isn't known
                  at paint time and changes as the reader navigates without a repaint. -->
             <a href="/assets/lbl-en.html" data-href-en="/assets/lbl-en.html" data-href-ru="/assets/lbl.html" class="q-link" title="Edit Translation" target="_blank" rel="noreferrer"><img width="20px" alt="Edit Translation" src="/assets/svg/table-columns.svg"></a>
-            <a id="shareOnline" href="javascript:void(0)" onclick="copyToClipboard()" title="Copy Link"><img height="20px" alt="Copy" src="/assets/svg/copy.svg"></a>
+            <a id="shareOnline" href="javascript:void(0)" role="button" onclick="copyToClipboard()" title="Copy Link"><img height="20px" alt="Copy" src="/assets/svg/copy.svg"></a>
             <a href="https://DharmaMitra.org/" title="DharmaMitra" target="_blank"><img width="20px" alt="DharmaMitra" src="/assets/svg/dharmachakra.svg"></a>
-            <a href="https://s.dhamma.gift/sn/sn45/?cols=pali%2Cpali_royal_iast%2Cpali_myanmar_iast%2Cpali_bjt_iast#tr-sn45.8:1.1" title="s.4nt.org" target="_blank"><img width="24px" alt="4nt" src="/assets/img/logo4nt_plain.png"></a>
-            <a href="https://index.readingfaithfully.org" title="Sutta Name Search" target="_blank"><img width="20px" alt="Sutta Name Search" src="/reader/images/favicon-name-black.png"></a>
-            <a href="https://ped.readingfaithfully.org" title="Pali English Dictionary" target="_blank"><img width="20px" alt="PED" src="/reader/images/favicon-ped-black.png"></a>
+            <a href="https://s.dhamma.gift/sn/sn45/?cols=pali%2Cpali_royal_iast%2Cpali_myanmar_iast%2Cpali_bjt_iast#tr-sn45.8:1.1" title="s.4nt.org" target="_blank"><img width="24" height="24" alt="4nt" src="/assets/img/logo4nt_plain.png"></a>
+            <a href="https://index.readingfaithfully.org" title="Sutta Name Search" target="_blank"><img width="20" height="20" alt="Sutta Name Search" src="/reader/images/favicon-name-black.png"></a>
+            <a href="https://ped.readingfaithfully.org" title="Pali English Dictionary" target="_blank"><img width="20" height="20" alt="PED" src="/reader/images/favicon-ped-black.png"></a>
         </div>
     </div>
 <script>if (window.dgObserveStack) window.dgObserveStack();</script>
@@ -5101,7 +5102,7 @@ document.addEventListener('DOMContentLoaded', function () { $(function() {
          one (file-magnifying-glass/file-search is Pro-only, checked node_modules directly), so
          this stays the plain lens rather than a hand-drawn substitute breaking the icon system's
          "every drawer icon comes from ICONS/FontAwesome" convention. -->
-    <a class="dg-drawer-row dg-find-open" href="javascript:void(0)" data-dg-icon="magnifier">{{menu.findOnPage}}<span class="dg-drawer-hotkey">Alt+F</span></a>
+    <a class="dg-drawer-row dg-find-open" href="javascript:void(0)" role="button" data-dg-icon="magnifier">{{menu.findOnPage}}<span class="dg-drawer-hotkey">Alt+F</span></a>
     <!-- Мультитул вместо «Навигации» (owner, 2026-09-05): список плиток главной, чтобы мультитул
          был под рукой в любом месте сайта — в выдаче, в ридере, в TOC. Нативный <details>, свёрнут
          по умолчанию в выдаче/ридере/TOC; на главной openDrawer() (home.js) раскрывает его при
@@ -5162,12 +5163,12 @@ document.addEventListener('DOMContentLoaded', function () { $(function() {
     <!-- Своя кнопка на главную: подпись, адрес, значок. Форму рисует home.js в обычной шторке.
          Перенесено сюда из «Навигации» по просьбе владельца — это управление кнопками, то есть
          настройка, а не переход. -->
-    <a class="dg-drawer-row" href="javascript:void(0)" id="dg-add-tile" data-dg-icon="plus">{{menu.addTile}}</a>
+    <a class="dg-drawer-row" href="javascript:void(0)" role="button" id="dg-add-tile" data-dg-icon="plus">{{menu.addTile}}</a>
     <!-- Правка любой кнопки: сперва список, потом та же форма. Выбирать плитку на самой главной
          негде — крестик там уже занят удалением. -->
-    <a class="dg-drawer-row" href="javascript:void(0)" id="dg-edit-tiles" data-dg-icon="wrench">{{menu.editTiles}}</a>
+    <a class="dg-drawer-row" href="javascript:void(0)" role="button" id="dg-edit-tiles" data-dg-icon="wrench">{{menu.editTiles}}</a>
     <!-- Появляется, только если есть что возвращать: убрана кнопка ИЛИ переставлен порядок. -->
-    <a class="dg-drawer-row" href="javascript:void(0)" id="dg-restore-tiles" data-dg-icon="star" hidden>{{menu.restoreTiles}}</a>
+    <a class="dg-drawer-row" href="javascript:void(0)" role="button" id="dg-restore-tiles" data-dg-icon="star" hidden>{{menu.restoreTiles}}</a>
     <!-- Owner (2026-09-05): «Логин в самый низ блока настроек» — переехал сюда из «Навигации»,
          которую заменил мультитул. -->
     <a class="dg-drawer-row" href="/login" data-dg-icon="login">{{global.common.login}}</a>

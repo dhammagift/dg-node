@@ -3544,8 +3544,8 @@ function textBodyHtml(segments, lang, urlId, pageUrl, dataId) {
         const [open = '', close = ''] = htmlData[seg].split(/{}/);
         const anchor = isRange ? seg : seg.slice(seg.indexOf(':') + 1);
         const url = segUrl(anchor).replace(/'/g, '%27');
-        const start = `<a class="text-decoration-none copyLink copyLink-start" onclick="copyToClipboard('${url}')"></a>`;
-        const end = `<a class="text-decoration-none copyLink" onclick="copyToClipboard('${url}')"></a>`;
+        const start = `<a class="text-decoration-none copyLink copyLink-start" role="none" onclick="copyToClipboard('${url}')"></a>`;
+        const end = `<a class="text-decoration-none copyLink" role="none" onclick="copyToClipboard('${url}')"></a>`;
         if (pali[seg] === undefined && trans[seg] === undefined) continue;
         let inner = '';
         if (pali[seg] !== undefined) {

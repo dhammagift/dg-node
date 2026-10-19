@@ -802,6 +802,7 @@
         var a = document.createElement('a');
         a.className = chip ? 'dg-chip' : 'dg-sheet-row';
         a.href = item.href || 'javascript:void(0)';
+        if (a.getAttribute('href').indexOf('javascript:') === 0) a.setAttribute('role', 'button'); // a script link is a button (Lighthouse SEO: crawlable links)
         if (item.title) a.title = item.title;
         if (item.blank) { a.target = '_blank'; a.rel = 'noopener'; }
         /* desc — короткое «что это такое». Проставлено пока не всем пунктам, а первым в наборе:
@@ -3475,6 +3476,7 @@
 
         var cfg = document.createElement('a');
         cfg.href = 'javascript:void(0)';
+        cfg.setAttribute('role', 'button');
         cfg.className = 'dg-subp-cfg';
         cfg.textContent = t('menu.daily.configure', 'Настроить') + ' →';
         cfg.addEventListener('click', function () {
@@ -3850,6 +3852,7 @@
             meta.innerHTML = '<span>' + prog.read + ' ' + t('menu.daily.of', 'из') + ' ' + prog.total + '</span>';
             var cfg = document.createElement('a');
             cfg.href = 'javascript:void(0)';
+            cfg.setAttribute('role', 'button');
             cfg.textContent = t('menu.daily.configure', 'Настроить') + ' →';
             cfg.addEventListener('click', function () {
                 closeRsubp();
@@ -4067,6 +4070,7 @@
             var a = document.createElement('a');
             a.className = 'dg-drawer-row';
             a.href = tile.href || 'javascript:void(0)';
+            if (a.getAttribute('href').indexOf('javascript:') === 0) a.setAttribute('role', 'button'); // a script link is a button (Lighthouse SEO: crawlable links)
             // drawerLabel/drawerIcon (menu-links.json, optional): burger-only override, home tile
             // untouched — owner: "History" reads as covering just history, but the row (and the
             // quickModal it opens) is really Favorites+History+4NT together; wanted that spelled
@@ -4922,6 +4926,7 @@
 
         var terms = document.createElement('a');
         terms.href = 'javascript:void(0)';
+        terms.setAttribute('role', 'button');
         terms.className = 'dg-footer-link';
         terms.textContent = short ? t('footer.termsShort', 'Условия') : t('footer.terms', 'Условия использования');
         terms.addEventListener('click', openTerms);
@@ -5067,6 +5072,7 @@
             poweredBy.appendChild(document.createTextNode(t('footer.poweredby', 'Powered by DI')));
             var poweredTip = document.createElement('a');
             poweredTip.href = 'javascript:void(0)';
+            poweredTip.setAttribute('role', 'button');
             poweredTip.className = 'dg-footer-link';
             poweredTip.textContent = ' *';
             poweredTip.setAttribute('data-bs-toggle', 'tooltip');

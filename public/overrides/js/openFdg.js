@@ -79,6 +79,7 @@ function createFdgPopup() {
     const openNewWindowBtn = document.createElement('a');
     openNewWindowBtn.className = 'fdg-open-new-window-btn';
     openNewWindowBtn.target = '_blank';
+    openNewWindowBtn.setAttribute('role', 'link'); // its href comes when a page opens; without one, Lighthouse counted it as an uncrawlable link
     openNewWindowBtn.title = 'Открыть в новом окне';
     openNewWindowBtn.style.cssText = buttonStyle + 'right: 40px; background-color: rgba(45, 62, 80, 0.6); color: #fff;';
     openNewWindowBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="14" height="14" fill="currentColor"><path d="M432 320H400a16 16 0 0 0-16 16v96H64V128h96a16 16 0 0 0 16-16V80a16 16 0 0 0-16-16H48A48 48 0 0 0 0 112v352a48 48 0 0 0 48 48h352a48 48 0 0 0 48-48V336a16 16 0 0 0-16-16zm88-256V24a24 24 0 0 0-24-24H368c-21.4 0-32.1 25.9-17 41l35.7 35.7L150.3 307.7a24 24 0 0 0 0 34L174.6 366a24 24 0 0 0 34 0L445.7 128.9l35.7 35.7c15.1 15.1 41 4.5 41-17z"/></svg>`;

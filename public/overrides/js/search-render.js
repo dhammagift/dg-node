@@ -1032,7 +1032,7 @@ window.DgSearchRender = (function () {
                         // и т.п.) независимо от того, что подставлено в подпись — показываем "Ru" только
                         // когда интерфейс реально русский, иначе ссылка не имеет смысла для читателя.
                         var ruLinkHtml = window.siteLanguage === 'ru'
-                            ? '<a class=\'ruLink\' href=\'javascript:void(0)\' data-slug=\'' + data + '\' onclick="if(typeof openRu === \'function\') openRu(\'' + data + '\'); return false;">Ru</a>'
+                            ? '<a class=\'ruLink\' href=\'javascript:void(0)\' role=\'button\' data-slug=\'' + data + '\' onclick="if(typeof openRu === \'function\') openRu(\'' + data + '\'); return false;">Ru</a>'
                             : '';
                         // Owner: Pi/En go to 4nt (BJT/CST/Thai editions + translations side by
                         // side, every text present) instead of DPR (its location table has
@@ -1044,8 +1044,8 @@ window.DgSearchRender = (function () {
                         var links4nt = build4ntLinks(data);
                         if (links4nt) return links4nt + ' ' + ruLinkHtml;
                         // No 4nt mapping for this book (ja/mil/vb*, ...) — the old DPR/TBW pair.
-                        return '<a class=\'dprLink\' href=\'javascript:void(0)\' data-slug=\'' + data + '\' onclick="if(typeof openDpr === \'function\') openDpr(\'' + data + '\'); return false;">Pi</a> ' +
-                            '<a class=\'bwLink\' href=\'javascript:void(0)\' data-slug=\'' + data + '\' onclick="if(typeof openBw === \'function\') openBw(\'' + data + '\'); return false;">En</a> ' +
+                        return '<a class=\'dprLink\' href=\'javascript:void(0)\' role=\'button\' data-slug=\'' + data + '\' onclick="if(typeof openDpr === \'function\') openDpr(\'' + data + '\'); return false;">Pi</a> ' +
+                            '<a class=\'bwLink\' href=\'javascript:void(0)\' role=\'button\' data-slug=\'' + data + '\' onclick="if(typeof openBw === \'function\') openBw(\'' + data + '\'); return false;">En</a> ' +
                             ruLinkHtml;
                     }
                 },
