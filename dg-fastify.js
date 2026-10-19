@@ -175,6 +175,11 @@ app.addHook('onRequest', (req, res, done) => {
     if (req.method === 'GET' && /^\/[^/]+\/.*\.php$/i.test(p.replace(/^\/ru(?=\/)/, '')) && !/^\/(ai|b)\//.test(p)) return res.code(404).send('Not found'); // /ru/w.php is a language prefix, not a folder
     done();
 });
+// The legacy /rev and /frev readers stay for people who use them, but out of search: the new site won't have them (owner 2026-10-19)
+app.addHook('onRequest', (req, res, done) => {
+    if (/^\/(ru\/)?f?rev(\/|$)/.test(decodedPath(req.url))) res.header('X-Robots-Tag', 'noindex');
+    done();
+});
 app.addHook('onRequest', (req, res, done) => {
     const p = decodedPath(req.url);
     // /reviews: the owner's review and status pages (siteroot/reviews, not in git), same password
