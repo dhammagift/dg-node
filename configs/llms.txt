@@ -10,6 +10,10 @@ Dhamma.Gift (DG) searches every word form across the canon and opens any text by
 - [Mahāsatipaṭṭhāna Sutta, DN 22, segment 2.2](https://dhamma.gift/dn22:2.2): a link to one segment
 - [Dhammacakkappavattana Sutta, SN 56.11](https://dhamma.gift/sn56.11): ids follow SuttaCentral (dn, mn, sn, an, snp, dhp, ud, iti, thag, thig, pli-tv-…)
 
+## Compare translations
+
+- [MN 10 in Thanissaro Bhikkhu and Bhikkhu Sujato side by side](https://dhamma.gift/mn10?mode=multi&translators=en_thanissaro,en_sujato): any text in several translations at once, segment by segment with the Pali (`?mode=multi&translators=…`, or `&langs=ru,en` for languages)
+
 ## Browse
 
 - [Contents](https://dhamma.gift/toc): every collection and book
