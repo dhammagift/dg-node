@@ -1,6 +1,6 @@
 # Dhamma.Gift
 
-> Search and reader for the Pali Canon (Tipiṭaka): Sutta, Vinaya and Abhidhamma in the Pali root text (Mahāsaṅgīti edition, SuttaCentral Bilara data) with Russian, English and other translations, side by side, segment by segment.
+> Search and reader for the Pali Canon, Sutta and Vinaya, in the Pali root text (Mahāsaṅgīti edition, SuttaCentral Bilara data) with Russian, English and other translations, side by side, segment by segment.
 
 Dhamma.Gift (DG) searches every word form across the canon and opens any text by its SuttaCentral-style id. Pages are server-rendered HTML; the interface is in English and Russian (`?lang=ru`).
 

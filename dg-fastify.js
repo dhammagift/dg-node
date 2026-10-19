@@ -3798,13 +3798,13 @@ const SEO_TERM_TEXT = {
 const SITE_HEAD_TEXT = {
     en: {
         home: () => ['Dhamma.Gift — Pali Canon: search, read, listen',
-            'Search the Pali Canon — Sutta, Vinaya, Abhidhamma — in Pali and 25 languages: suttas with translations side by side, compare translators, listen, memorize.'],
+            'Search the Pali Canon — Sutta and Vinaya — in Pali and 25 languages: suttas with translations side by side, compare translators, listen, memorize.'],
         search: q => [`${q} — search in the Pali Canon | Dhamma.Gift`, `Suttas of the Pali Canon with “${q}”: the Pali text and translations, each match in its context.`],
         toc: n => [`${n} — contents | Dhamma.Gift`, `${n}: every text in Pali with translations. Dhamma.Gift — search, reader, voice, memorization.`],
     },
     ru: {
         home: () => ['Dhamma.Gift — Палийский канон: поиск, чтение, озвучка',
-            'Поиск по Палийскому канону — Сутта, Виная, Абхидхамма — на пали и 25 языках: сутты с переводами рядом, сравнение переводчиков, озвучка, заучивание.'],
+            'Поиск по Палийскому канону — Сутта и Виная — на пали и 25 языках: сутты с переводами рядом, сравнение переводчиков, озвучка, заучивание.'],
         search: q => [`${q} — поиск по Палийскому канону | Dhamma.Gift`, `Сутты Палийского канона, где есть «${q}»: пали и переводы, каждое вхождение в контексте.`],
         toc: n => [`${n} — содержание | Dhamma.Gift`, `${n}: все тексты на пали с переводами. Dhamma.Gift — поиск, ридер, озвучка, заучивание.`],
     },
