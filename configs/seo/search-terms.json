@@ -809,6 +809,83 @@
    "pali": "Vibhavataṇhā",
    "ru": "разлучения-цепляние",
    "group": "paticcasamuppada"
+  },
+  {
+   "q": "avijjāpaccayā",
+   "pali": "Avijjāpaccayā",
+   "ru": "неразличения-условием",
+   "en": "non-discernment as condition",
+   "group": "paticcasamuppada"
+  },
+  {
+   "q": "saṅkhārapaccayā",
+   "pali": "Saṅkhārapaccayā",
+   "ru": "составляющих-условием",
+   "en": "constituents as condition",
+   "group": "paticcasamuppada"
+  },
+  {
+   "q": "viññāṇapaccayā",
+   "pali": "Viññāṇapaccayā",
+   "ru": "распознавания-условием",
+   "en": "recognition as condition",
+   "group": "paticcasamuppada"
+  },
+  {
+   "q": "nāmarūpapaccayā",
+   "pali": "Nāmarūpapaccayā",
+   "ru": "имени-образа-условием",
+   "en": "name-image as condition",
+   "group": "paticcasamuppada"
+  },
+  {
+   "q": "saḷāyatanapaccayā",
+   "pali": "Saḷāyatanapaccayā",
+   "ru": "шести-областей-условием",
+   "en": "six domains as condition",
+   "group": "paticcasamuppada"
+  },
+  {
+   "q": "phassapaccayā",
+   "pali": "Phassapaccayā",
+   "ru": "касания-условием",
+   "en": "touch as condition",
+   "group": "paticcasamuppada"
+  },
+  {
+   "q": "vedanāpaccayā",
+   "pali": "Vedanāpaccayā",
+   "ru": "чувствования-условием",
+   "en": "feeling as condition",
+   "group": "paticcasamuppada"
+  },
+  {
+   "q": "taṇhāpaccayā",
+   "pali": "Taṇhāpaccayā",
+   "ru": "цепляния-условием",
+   "en": "clinging as condition",
+   "group": "paticcasamuppada"
+  },
+  {
+   "q": "upādānapaccayā",
+   "pali": "Upādānapaccayā",
+   "ru": "поддерживания-условием",
+   "en": "sustaining as condition",
+   "group": "paticcasamuppada"
+  },
+  {
+   "q": "bhavapaccayā",
+   "pali": "Bhavapaccayā",
+   "ru": "бхавы-условием",
+   "en": "bhava as condition",
+   "group": "paticcasamuppada"
+  },
+  {
+   "q": "jātipaccayā",
+   "pali": "Jātipaccayā",
+   "ru": "рождения-условием",
+   "en": "birth as condition",
+   "group": "paticcasamuppada"
   }
  ]
 }
