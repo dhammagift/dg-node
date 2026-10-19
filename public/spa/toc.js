@@ -769,6 +769,13 @@
             // целиком (buildTreeChildren), expandAll лишь снимает d-none — лишних запросов нет.
             expandAll(node || entry.bodyEl);
             scrollTo(node || entry.bookEl);
+            // Came from the reader (/toc/<suttaId>): flash the exact leaf so the eye finds it.
+            // Only a real leaf, not a whole book/vagga target, and the class self-removes after
+            // the CSS fade so a later rebuild (openAll etc.) never finds a stale highlight.
+            if (node && node.classList.contains('toc-leaf')) {
+                node.classList.add('toc-target');
+                setTimeout(function () { node.classList.remove('toc-target'); }, 2600);
+            }
             requestAnimationFrame(function () { requestAnimationFrame(show); });
         }).catch(show);
     }

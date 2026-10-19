@@ -1319,6 +1319,10 @@ body.dg-state-toc #toc-pane.toc-out .toc-aside { animation: dg-toc-out-right 240
    step of its own. */
 .toc-leaf { display: flex; align-items: baseline; gap: .5rem; flex-wrap: wrap; padding: .6rem 0 .6rem .5rem; border-bottom: 1px solid var(--dg-border); }
 .toc-leaf:last-child { border-bottom: none; }
+/* The leaf the reader came from (/toc/<id>): a brief tinted highlight so the eye lands on the
+   exact sutta, then fades (revealTarget adds .toc-target, strips it after the animation). */
+.toc-leaf.toc-target { background: var(--dg-accent-soft, rgba(26, 137, 23, .14)); border-radius: 6px; animation: dg-toc-target-fade 2.4s ease-out forwards; }
+@keyframes dg-toc-target-fade { 0%, 35% { background: var(--dg-accent-soft, rgba(26, 137, 23, .14)); } 100% { background: transparent; } }
 .toc-leaf-link,
 .toc-leaf-link:visited { text-decoration: underline; color: var(--dg-accent-ink, var(--dg-accent)); font-weight: 600; }
 /* One language's tag + its own translator marks wrap together as a single unit — without this,

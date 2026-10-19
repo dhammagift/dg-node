@@ -1349,6 +1349,12 @@ window.buildSutta = async function(rawSlug, opts) {
     const abort = buildAbort = (typeof AbortController === 'function') ? new AbortController() : null;
     const slug = window.normalizeSlugToDbKey(rawSlug);
     window._currentSlug = slug;
+    // Point the shell's Contents link (.dg-shell-toc, reader-only) at THIS sutta's node in the
+    // tree — /toc/<id> makes toc.js open the owning book/vagga and flash the leaf, instead of
+    // dumping the reader back at the collection root (owner: "должен был оказаться здесь с
+    // выделенной строчкой сутты откуда пришёл").
+    var shellToc = document.querySelector('.dg-shell-toc');
+    if (shellToc && slug) shellToc.setAttribute('href', '/toc/' + encodeURIComponent(slug));
     // Started here, awaited at the end of this same render — see dgFetchNav above. Never awaited
     // twice: navPromise is passed on, so one request per render.
     const navPromise = window.dgFetchNav(slug);
