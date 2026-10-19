@@ -2516,7 +2516,7 @@
                 { value: 'words', label: t('quick.viewWords', 'Слова') }
             ], words ? 'words' : 'suttas', function (v) {
                 if ((v === 'words') === words) return;
-                var link = document.querySelector('.forshellscript a');
+                var link = document.querySelector('.forshellscript');
                 if (link) link.click();
                 closeQuick();
             }));
@@ -4434,7 +4434,7 @@
 
         /* Разметка — ОДИН-В-ОДИН с боевой главной: index.php, блок #carouselWithCaptions внутри
            <div class="max-w-450 container-lg my-5">. Там это чистая бутстраповская карусель, без
-           единого своего правила в CSS: заголовок <h5>, описание <span>, перенос, ссылка «Читать»,
+           единого своего правила в CSS: заголовок <h3>, описание <span>, перенос, ссылка «Читать»,
            и две штатные боковые кнопки .carousel-control-prev/next со значками
            .carousel-control-*-icon. Своей рамки, своей подложки и своих стрелок в шапке у неё нет —
            именно от них наш вариант и выглядел хуже. Снизу справа — «показать все».
@@ -4446,7 +4446,7 @@
                 /* title/desc — HTML: в исходных данных есть разметка (например <span title="dn15">
                    с пояснением по наведению), и на боевой главной она выводится как есть. Файл
                    наш, из репозитория, пользовательского ввода здесь нет. */
-                '<h5>' + s.title + '</h5>' +
+                '<h3>' + s.title + '</h3>' +
                 '<span>' + s.desc + '</span>' +
                 '<br>' +
                 '<a href="' + esc(s.link) + '" class="text-start">' + read +

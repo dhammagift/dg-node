@@ -1035,11 +1035,6 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
         color: var(--dg-text-muted, var(--bs-secondary-color, #6c757d));
         box-shadow: none;
     }
-    /* .forshellscript ("Words"/"Слова") — ссылка внутри неё держит свой bootstrap-синий цвет
-       (обычная <a>), который перебивал приглушённый цвет кнопки. Наследуем явно. */
-    #results-toolbar .btn.forshellscript a {
-        color: inherit;
-    }
     #results-toolbar .btn:hover,
     #results-toolbar .btn:focus-visible,
     #results-toolbar .btn.active,
@@ -1257,7 +1252,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
 </script>
 
 
-<div class="container-fluid mt-2">
+<div class="container-fluid mt-2" role="main">
 
 <!-- .table-wrapper — тот же класс (max-width:1600px; margin:auto), что и #search-pane ниже
      (extrastyles.css), не новый повторяющий его правило — раньше эта шапка жила прямо в
@@ -1551,17 +1546,6 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     </div>
   </section>
 
-  <!-- Подвал — виден всегда, одной строкой: ссылки-открывашки шторки «О проекте» (Как искать ·
-       Приложения · Контакты), рядом копирайт с сокращёнными «Условия · Политика»; справа —
-       иконки контактов. «Powered by NI *» — внутри шторки, под контактами, как на проде.
-       Наполняет home.js (renderFooter/renderExtra). -->
-  <footer id="dg-footer">
-    <div class="dg-footer-main">
-      <p class="dg-footer-nav" id="dg-footer-nav"></p>
-      <p id="dg-copyright"></p>
-    </div>
-    <div class="dg-contacts dg-footer-contacts" id="dg-footer-contacts"></div>
-  </footer>
 </div>
 
 <!-- jQuery/bootstrap.bundle — defer: they no longer hold up parsing of the rest of the page. The
@@ -2440,7 +2424,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
 <!-- Owner: hidden until AI search is mature enough to show even on test. Remove d-none to bring it back. -->
 <button id="btn-ai-mode" class="btn btn-light mb-1 d-none" type="button">{{toolbar.aiModeLabel}}</button>
 
-<button class="btn btn-light forshellscript mb-1" type="button"><a class="text-decoration-none " href="javascript:void(0)" role="button">{{toolbar.wordsToggleShow}}</a></button>
+<button class="btn btn-light forshellscript mb-1" type="button"><span>{{toolbar.wordsToggleShow}}</span></button>
 
 <button class="btn btn-light mb-1  toggle-dict-btn" type="button" title="{{toolbar.dictTitle}}" data-i18n-title="{{toolbar.dictTitle}}" aria-label="{{toolbar.dictTitle}}" data-i18n-aria-label="{{toolbar.dictTitle}}"><img class="" src="/assets/svg/comment.svg" alt=""></img></button>
 
@@ -2498,8 +2482,8 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
      Ссылка на #SearchResultHelp заменена на новый Help/Docs-портал (guide/search) — модалка
      ниже (#SearchResultHelp) больше не открывается отсюда, оставлена в разметке до полного
      переноса контента, затем на удаление. -->
-    <a class="btn btn-light mb-1 form-check-inline mb-1 toggle-icon" alt="Help" data-i18n-alt="{{global.common.help}}" id="helpMessage" data-href-en="/docs/search-guide" data-href-ru="/ru/docs/search-guide" href="/docs/search-guide" target="_blank">
-        <img id="helpResult" class="table-home-icon" src="/assets/svg/question.svg"></img>
+    <a class="btn btn-light mb-1 form-check-inline mb-1 toggle-icon" aria-label="{{global.common.help}}" data-i18n-aria-label="{{global.common.help}}" id="helpMessage" data-href-en="/docs/search-guide" data-href-ru="/ru/docs/search-guide" href="/docs/search-guide" target="_blank">
+        <img id="helpResult" class="table-home-icon" src="/assets/svg/question.svg" alt=""></img>
         </a>
 
     </div>
@@ -3230,6 +3214,20 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
             <a href="https://ped.readingfaithfully.org" title="Pali English Dictionary" target="_blank"><img width="20" height="20" alt="PED" src="/reader/images/favicon-ped-black.png"></a>
         </div>
     </div>
+
+  <!-- Подвал — on home and under a text (owner: the reader had its footer with the copyright link,
+       the old reader's #copyrightnote); not on results/contents, hidden in the apps (home.css).
+       Out of #home-pane for that: collapsed off home, it clipped the footer everywhere else. Одной строкой: ссылки-открывашки шторки «О проекте» (Как искать ·
+       Приложения · Контакты), рядом копирайт с сокращёнными «Условия · Политика»; справа —
+       иконки контактов. «Powered by NI *» — внутри шторки, под контактами, как на проде.
+       Наполняет home.js (renderFooter/renderExtra). -->
+  <footer id="dg-footer">
+    <div class="dg-footer-main">
+      <p class="dg-footer-nav" id="dg-footer-nav"></p>
+      <p id="dg-copyright"></p>
+    </div>
+    <div class="dg-contacts dg-footer-contacts" id="dg-footer-contacts"></div>
+  </footer>
 <script>if (window.dgObserveStack) window.dgObserveStack();</script>
 
 <script type='text/javascript'>
@@ -3453,7 +3451,7 @@ document.addEventListener('DOMContentLoaded', function () { $(function() {
             table = window.DgSearchRender.buildWordDataTable('#pali-words', lastSearchJson.wordReport, lastHighlightWord, lastSearchJson.metadata.scope);
             $('#pali-words_wrapper').removeClass('d-none');
             window.DgSearchRender.buildVariantsReport('#variants', lastSearchJson.variantSegments, keyword);
-            $('.forshellscript a').text(dgT('toolbar.wordsToggleHide', 'Тексты'));
+            $('.forshellscript span').text(dgT('toolbar.wordsToggleHide', 'Тексты'));
         } else {
             $('#pali-words, #pali-words_wrapper').addClass('d-none');
             $('#pali, #pali_wrapper').removeClass('d-none');
@@ -3470,7 +3468,7 @@ document.addEventListener('DOMContentLoaded', function () { $(function() {
             // обычно совпадает с этой эвристикой). Сам запрос к /search языки поиска использовал
             // и раньше — расходились именно запрос и отрисовка.
             table = window.DgSearchRender.buildDataTable('#pali', rows, lastHighlightWord, langsRequested ? langs : '', langsExplicit);
-            $('.forshellscript a').text(dgT('toolbar.wordsToggleShow', 'Слова'));
+            $('.forshellscript span').text(dgT('toolbar.wordsToggleShow', 'Слова'));
             // Cold load: /search can resolve before the deferred home-bundle.js has run, so
             // dgRenderBell/dgRenderLangPill don't exist yet — defer scripts finish before
             // DOMContentLoaded, so retry then instead of silently skipping (issue #55).

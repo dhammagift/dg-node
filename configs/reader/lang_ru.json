@@ -277,6 +277,6 @@
     "homeAlt": "Home"
   },
   "reader": {
-    "warningNote": "<strong>Заметка:</strong><a class='text-decoration-none cursor-pointer' target='' href='{dUrl}'>&nbsp;</a>Переводы, словари и комментарии сделаны не Благословенным.<a class='text-decoration-none cursor-pointer' target='' href='{thUrl}'>&nbsp;</a>Сверяйтесь с Пали в 4 основных никаях."
+    "warningNote": "<strong>Заметка:</strong><a class='text-decoration-none cursor-pointer' target='' tabindex='-1' aria-hidden='true' href='{dUrl}'>&nbsp;</a>Переводы, словари и комментарии сделаны не Благословенным.<a class='text-decoration-none cursor-pointer' target='' tabindex='-1' aria-hidden='true' href='{thUrl}'>&nbsp;</a>Сверяйтесь с Пали в 4 основных никаях."
   }
 }

@@ -1900,7 +1900,7 @@ window.buildSutta = async function(rawSlug, opts) {
     // (reader.warningNote), не хардкод здесь — {dUrl}/{thUrl} те же токены-плейсхолдеры, что
     // {query} в search/index.html, подставляются вручную (dhamma-i18n.js textNode-substitution
     // не годится — этот HTML со ссылками собирается в JS, а не лежит в статичной DOM-разметке).
-    const warningLabel = t('reader.warningNote', "<strong>Заметка:</strong><a class='text-decoration-none cursor-pointer' target='' href='{dUrl}'>&nbsp;</a>Переводы, словари и комментарии сделаны не Благословенным.<a class='text-decoration-none cursor-pointer' target='' href='{thUrl}'>&nbsp;</a>Сверяйтесь с Пали в 4 основных никаях.")
+    const warningLabel = t('reader.warningNote', "<strong>Заметка:</strong><a class='text-decoration-none cursor-pointer' target='' tabindex='-1' aria-hidden='true' href='{dUrl}'>&nbsp;</a>Переводы, словари и комментарии сделаны не Благословенным.<a class='text-decoration-none cursor-pointer' target='' tabindex='-1' aria-hidden='true' href='{thUrl}'>&nbsp;</a>Сверяйтесь с Пали в 4 основных никаях.")
         .replace('{dUrl}', () => dUrl).replace('{thUrl}', () => thUrl); // functions: a "$'" in the URL is not a pattern
     const warning = `
         <div class="warning-container warning-box">

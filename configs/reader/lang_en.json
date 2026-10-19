@@ -277,6 +277,6 @@
     "homeAlt": "Home"
   },
   "reader": {
-    "warningNote": "<strong>Note:</strong><a class='text-decoration-none cursor-pointer' target='' href='{dUrl}'>&nbsp;</a>Translations, dictionaries and commentaries were not made by the Blessed One.<a class='text-decoration-none cursor-pointer' target='' href='{thUrl}'>&nbsp;</a>Cross-check with Pali in 4 main nikayas."
+    "warningNote": "<strong>Note:</strong><a class='text-decoration-none cursor-pointer' target='' tabindex='-1' aria-hidden='true' href='{dUrl}'>&nbsp;</a>Translations, dictionaries and commentaries were not made by the Blessed One.<a class='text-decoration-none cursor-pointer' target='' tabindex='-1' aria-hidden='true' href='{thUrl}'>&nbsp;</a>Cross-check with Pali in 4 main nikayas."
   }
 }

@@ -244,6 +244,11 @@ body.dg-state-home #home-pane {
     transform: none;
     pointer-events: auto;
 }
+/* Out of the accessibility tree too (screen readers, tab order): opacity alone kept the collapsed
+   home's slides and links "visible" on results and in the reader. Instant, like the collapse
+   itself - home-out plays while the body is still dg-state-home. Not #home-hint: it fades out. */
+#home-pane { visibility: hidden; }
+body.dg-state-home #home-pane { visibility: visible; }
 
 /* Отступ инпута от заголовка — раньше был большим (74px) специально, чтобы под собой
    зарезервировать место для #dg-announce (плашка лежала АБСОЛЮТНО над полем, см. её комментарий
@@ -728,6 +733,8 @@ body.dg-state-home #form #paliauto.searchinput { font-size: 17px; font-family: v
 body.dg-state-home #home-pane,
 body.dg-state-home #home-pane *,
 body.dg-state-home #dg-hero-band *,
+#dg-footer,
+#dg-footer *,
 body.dg-skin-minimal .dg-sheet,
 body.dg-skin-minimal .dg-sheet *,
 body.dg-skin-minimal .dg-drawer,
@@ -767,7 +774,7 @@ body.dg-skin-minimal .dg-drawer * { font-family: var(--dg-font); }
     body.dg-state-home #dg-carousel .carousel-control-prev { left: 4px; }
     body.dg-state-home #dg-carousel .carousel-control-next { right: 4px; }
     body.dg-state-home #dg-carousel .dg-slides-arw { width: 8px; height: 13px; }
-    body.dg-state-home #dg-carousel h5 { font-size: 15px; }
+    body.dg-state-home #dg-carousel h3 { font-size: 15px; }
     body.dg-state-home #dg-carousel span { font-size: 12.5px; }
     body.dg-state-home #dg-footer { margin: 24px auto 0; padding: 16px 0 30px; }
 }
@@ -3238,7 +3245,7 @@ body.dg-mega-compact.dg-state-home #home-pane { margin-top: 14px; }
    ============================================================================ */
 /* Production-v4 redesign (docs/Home-standalone.html) restyles the block: an eyebrow row
    ("ПОДБОРКИ" left, "Показать все" right) over a bordered 880px card with the arrows inside it
-   and pill dots under it. The Bootstrap carousel itself and the slide markup (h5/span/br/a) are
+   and pill dots under it. The Bootstrap carousel itself and the slide markup (h3/span/br/a) are
    untouched — only wrapped and restyled; owner: "не трогай ничего по слайд шоу". */
 #home-slides { margin-top: 16px; } /* + the grid's own 10px bottom padding = reference 26px */
 #home-slides[hidden] { display: none; }
@@ -3278,7 +3285,7 @@ body.dg-mega-compact.dg-state-home #home-pane { margin-top: 14px; }
 }
 /* Поля под боковые стрелки, чтобы длинный заголовок не заезжал под них. */
 #dg-carousel .carousel-item { padding: 0 48px; }
-#dg-carousel h5 {
+#dg-carousel h3 {
     margin: 0 0 6px;
     font-size: 17px;
     font-weight: 600;
@@ -3296,7 +3303,7 @@ body.dg-mega-compact.dg-state-home #home-pane { margin-top: 14px; }
     color: var(--dg-text-2);
     text-wrap: pretty;
 }
-#dg-carousel h5 { letter-spacing: -0.01em; }
+#dg-carousel h3 { letter-spacing: -0.01em; }
 /* Reference .track: one quick 0.32s slide on the site's own ease curve instead of Bootstrap's
    0.6s ease-in-out — Bootstrap just waits for transitionend, so overriding the transition on
    the items is enough. */
@@ -3686,6 +3693,9 @@ body.dark .ui-autocomplete .autocomplete-history-icon { filter: invert(1); opaci
 #dg-footer p { margin: 0; }
 /* На главной подвал держит ту же колонку, что цитата над ним (#home-howto), а не всю ширину окна. */
 body.dg-state-home #dg-footer { max-width: 880px; margin: 34px auto 10px; padding-top: 20px; }
+/* Under a text: the reader's own column (reader/css: #sutta 45rem); results and contents keep none. */
+body.dg-state-reader #dg-footer { max-width: 45rem; margin: 40px auto 10px; }
+body:not(.dg-state-home):not(.dg-state-reader) #dg-footer { display: none; }
 /* Две строки слева (ссылки; копирайт) — в 720px-колонку одна строка вместе с иконками контактов
    справа не влезает. */
 .dg-footer-main { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
@@ -3702,14 +3712,15 @@ body.dg-state-home #dg-footer { max-width: 880px; margin: 34px auto 10px; paddin
    и красило ссылки подвала/цитаты/шторки и иконки контактов в сине-фиолетовый (живой скрин). */
 body.dg-skin-minimal .dg-footer-nav a, body.dg-skin-minimal .dg-footer-nav a:visited { color: var(--dg-accent-ink); text-decoration: none; }
 body.dg-skin-minimal .dg-footer-nav a:hover { text-decoration: underline; }
-body.dg-skin-minimal .dg-footer-link, body.dg-skin-minimal .dg-footer-link:visited { color: var(--dg-text-2); text-decoration: none; }
+/* Underlined: same color as the text around it, so the line is what tells a link apart (WCAG link-in-text-block). */
+body.dg-skin-minimal .dg-footer-link, body.dg-skin-minimal .dg-footer-link:visited { color: var(--dg-text-2); text-decoration: underline; text-underline-offset: 2px; }
 body.dg-skin-minimal .dg-footer-link:hover { color: var(--dg-accent-ink); text-decoration: underline; }
 .dg-footer-contacts { flex: none; }
 .dg-footer-contacts .dg-contact-btn { width: 36px; height: 36px; }
 .dg-footer-contacts .dg-contact-btn svg { width: 15px; height: 15px; }
 @media (max-width: 600px) {
     #dg-footer { flex-direction: column; }
-    body.dg-state-results #dg-footer { padding-bottom: 96px; }
+    body.dg-state-results #dg-footer, body.dg-state-reader #dg-footer { padding-bottom: 96px; } /* clear of the corner pill and up button */
 }
 .dg-terms-text {
     margin: 8px 0 4px;
