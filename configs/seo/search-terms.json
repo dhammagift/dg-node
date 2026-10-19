@@ -718,7 +718,8 @@
    "q": "dukkh",
    "pali": "Dukkha",
    "ru": "боль",
-   "group": "core"
+   "group": "core",
+   "en": "pain"
   },
   {
    "q": "samuday",
@@ -886,6 +887,62 @@
    "ru": "рождения-условием",
    "en": "birth as condition",
    "group": "paticcasamuppada"
+  },
+  {
+   "q": "cattāri ariyasacc",
+   "pali": "Cattāri ariyasaccāni",
+   "ru": "Четыре Благородно-Истины",
+   "en": "Four Noble-Truths",
+   "group": "core"
+  },
+  {
+   "q": "dukkhaṁ ariyasacc",
+   "pali": "Dukkhaṁ ariyasaccaṁ",
+   "ru": "боль — благородно-истина",
+   "en": "pain — noble-truth",
+   "group": "core"
+  },
+  {
+   "q": "dukkhasamudayaṁ ariyasacc",
+   "pali": "Dukkhasamudayaṁ ariyasaccaṁ",
+   "ru": "боле-скапливание — благородно-истина",
+   "en": "pain-accumulation — noble-truth",
+   "group": "core"
+  },
+  {
+   "q": "dukkhanirodhaṁ ariyasacc",
+   "pali": "Dukkhanirodhaṁ ariyasaccaṁ",
+   "ru": "боле-устранение — благородно-истина",
+   "en": "pain-elimination — noble-truth",
+   "group": "core"
+  },
+  {
+   "q": "dukkhanirodhagāminī paṭipadā ariyasacc",
+   "pali": "Dukkhanirodhagāminī paṭipadā ariyasaccaṁ",
+   "ru": "к боле-устранению-ведущая практика — благородно-истина",
+   "en": "practice leading to pain-elimination — noble-truth",
+   "group": "core"
+  },
+  {
+   "q": "dukkhasamuday",
+   "pali": "Dukkhasamudaya",
+   "ru": "боле-скапливание",
+   "en": "pain-accumulation",
+   "group": "core"
+  },
+  {
+   "q": "dukkhanirodh",
+   "pali": "Dukkhanirodha",
+   "ru": "боле-устранение",
+   "en": "pain-elimination",
+   "group": "core"
+  },
+  {
+   "q": "dukkhanirodhagāmin",
+   "pali": "Dukkhanirodhagāminī paṭipadā",
+   "ru": "к боле-устранению-ведущая практика",
+   "en": "practice leading to pain-elimination",
+   "group": "core"
   }
  ]
 }
