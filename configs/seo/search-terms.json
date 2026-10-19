@@ -1,636 +1,525 @@
 {
  "_comment": [
   "Search results pages that search engines may index (owner 2026-10-19: the search is the site's strength - the key terms' results belong in Google).",
-  "q: the query as the page's path runs it (/<q>, default scope); its results page gets index,follow, its own title and description, and a sitemap entry (en, ru). Every other query stays noindex, follow.",
+  "q: the query as the page's path runs it (/<q>, default scope); its results page gets index,follow, its own title and description with the number of suttas, and a sitemap entry (en, ru). Every other query stays noindex, follow.",
+  "ru: the owner's glossary (Google Sheet \"Mapping Pali-Rus\", column C, the first rendering); none where the glossary has no entry. No English gloss: the English titles carry the Pali term alone until the owner picks the English renderings.",
   "index: false - the short stem catches other words (ogh -> mogha), held back until its query is settled."
  ],
  "terms": [
   {
    "q": "satipaṭṭhān",
    "pali": "Satipaṭṭhāna",
-   "en": "4 foundations of mindfulness",
-   "ru": "4 основы осознанности",
+   "ru": "установление памятования",
    "group": "bodhipakkhiya"
   },
   {
    "q": "kāyānupass",
    "pali": "Kāyānupassanā",
-   "en": "contemplation of the body",
-   "ru": "созерцание тела",
+   "ru": "тело-наблюдение",
    "group": "bodhipakkhiya"
   },
   {
    "q": "vedanānupass",
    "pali": "Vedanānupassanā",
-   "en": "contemplation of feelings",
-   "ru": "созерцание ощущений",
+   "ru": "чувство-наблюдение",
    "group": "bodhipakkhiya"
   },
   {
    "q": "cittānupass",
    "pali": "Cittānupassanā",
-   "en": "contemplation of the mind",
-   "ru": "созерцание ума",
+   "ru": "умо-наблюдение",
    "group": "bodhipakkhiya"
   },
   {
    "q": "dhammānupass",
    "pali": "Dhammānupassanā",
-   "en": "contemplation of dhammas",
-   "ru": "созерцание дхамм",
+   "ru": "явление-наблюдение",
    "group": "bodhipakkhiya"
   },
   {
    "q": "sammappadhān",
    "pali": "Sammappadhāna",
-   "en": "4 right efforts",
-   "ru": "4 правильных усилия",
    "group": "bodhipakkhiya"
   },
   {
    "q": "iddhipād",
    "pali": "Iddhipāda",
-   "en": "4 bases of power",
-   "ru": "4 основы сверхсил",
+   "ru": "[сверх]-способности-основа",
    "group": "bodhipakkhiya"
   },
   {
    "q": "chandasamādhi",
    "pali": "Chandasamādhi",
-   "en": "concentration by desire",
-   "ru": "сосредоточение через желание",
    "group": "bodhipakkhiya"
   },
   {
    "q": "vīriyasamādhi",
    "pali": "Vīriyasamādhi",
-   "en": "concentration by energy",
-   "ru": "сосредоточение через усердие",
    "group": "bodhipakkhiya"
   },
   {
    "q": "cittasamādhi",
    "pali": "Cittasamādhi",
-   "en": "concentration by mind",
-   "ru": "сосредоточение через ум",
    "group": "bodhipakkhiya"
   },
   {
    "q": "vīmaṁsāsamādhi",
    "pali": "Vīmaṁsāsamādhi",
-   "en": "concentration by investigation",
-   "ru": "сосредоточение через исследование",
    "group": "bodhipakkhiya"
   },
   {
    "q": "indriy",
    "pali": "Indriya",
-   "en": "5 faculties",
-   "ru": "5 способностей",
+   "ru": "способность",
    "group": "bodhipakkhiya",
    "index": false
   },
   {
    "q": "saddhindriy",
    "pali": "Saddhindriya",
-   "en": "faculty of faith",
-   "ru": "способность веры",
+   "ru": "веры-способность",
    "group": "bodhipakkhiya"
   },
   {
    "q": "vīriyindriy",
    "pali": "Vīriyindriya",
-   "en": "faculty of energy",
-   "ru": "способность усердия",
+   "ru": "решимости-способность",
    "group": "bodhipakkhiya"
   },
   {
    "q": "satindriy",
    "pali": "Satindriya",
-   "en": "faculty of mindfulness",
-   "ru": "способность осознанности",
+   "ru": "памятования-способность",
    "group": "bodhipakkhiya"
   },
   {
    "q": "samādhindriy",
    "pali": "Samādhindriya",
-   "en": "faculty of concentration",
-   "ru": "способность сосредоточения",
+   "ru": "самадхи-способность",
    "group": "bodhipakkhiya"
   },
   {
    "q": "paññindriy",
    "pali": "Paññindriya",
-   "en": "faculty of wisdom",
-   "ru": "способность мудрости",
+   "ru": "понимания-способность",
    "group": "bodhipakkhiya"
   },
   {
    "q": "balān",
    "pali": "Bala",
-   "en": "5 powers",
-   "ru": "5 сил",
+   "ru": "сила",
    "group": "bodhipakkhiya",
    "index": false
   },
   {
    "q": "saddhābal",
    "pali": "Saddhābala",
-   "en": "power of faith",
-   "ru": "сила веры",
+   "ru": "веры-сила",
    "group": "bodhipakkhiya"
   },
   {
    "q": "vīriyabal",
    "pali": "Vīriyabala",
-   "en": "power of energy",
-   "ru": "сила усердия",
+   "ru": "решимости-сила",
    "group": "bodhipakkhiya"
   },
   {
    "q": "satibal",
    "pali": "Satibala",
-   "en": "power of mindfulness",
-   "ru": "сила осознанности",
+   "ru": "памятования-сила",
    "group": "bodhipakkhiya"
   },
   {
    "q": "samādhibal",
    "pali": "Samādhibala",
-   "en": "power of concentration",
-   "ru": "сила сосредоточения",
+   "ru": "самадхи-сила",
    "group": "bodhipakkhiya"
   },
   {
    "q": "paññābal",
    "pali": "Paññābala",
-   "en": "power of wisdom",
-   "ru": "сила мудрости",
+   "ru": "понимания-сила",
    "group": "bodhipakkhiya"
   },
   {
    "q": "bojjhaṅg",
    "pali": "Bojjhaṅga",
-   "en": "7 factors of awakening",
-   "ru": "7 факторов пробуждения",
+   "ru": "аспект пробуждения",
    "group": "bodhipakkhiya"
   },
   {
    "q": "satisambojjhaṅg",
    "pali": "Satisambojjhaṅga",
-   "en": "mindfulness factor of awakening",
-   "ru": "осознанность как фактор пробуждения",
    "group": "bodhipakkhiya"
   },
   {
    "q": "dhammavicayasambojjhaṅg",
    "pali": "Dhammavicayasambojjhaṅga",
-   "en": "investigation factor",
-   "ru": "исследование дхамм",
    "group": "bodhipakkhiya"
   },
   {
    "q": "vīriyasambojjhaṅg",
    "pali": "Vīriyasambojjhaṅga",
-   "en": "energy factor",
-   "ru": "усердие",
    "group": "bodhipakkhiya"
   },
   {
    "q": "pītisambojjhaṅg",
    "pali": "Pītisambojjhaṅga",
-   "en": "rapture factor",
-   "ru": "восторг",
    "group": "bodhipakkhiya"
   },
   {
    "q": "passaddhisambojjhaṅg",
    "pali": "Passaddhisambojjhaṅga",
-   "en": "tranquillity factor",
-   "ru": "безмятежность",
    "group": "bodhipakkhiya"
   },
   {
    "q": "samādhisambojjhaṅg",
    "pali": "Samādhisambojjhaṅga",
-   "en": "concentration factor",
-   "ru": "сосредоточение",
    "group": "bodhipakkhiya"
   },
   {
    "q": "upekkhāsambojjhaṅg",
    "pali": "Upekkhāsambojjhaṅga",
-   "en": "equanimity factor",
-   "ru": "невозмутимость",
    "group": "bodhipakkhiya"
   },
   {
    "q": "aṭṭhaṅgik",
-   "pali": "Ariya aṭṭhaṅgika magga",
-   "en": "noble eightfold path",
-   "ru": "благородный восьмеричный путь",
+   "pali": "Ariyo aṭṭhaṅgiko maggo",
+   "ru": "Благородный Восьмеричный Путь",
    "group": "bodhipakkhiya"
   },
   {
    "q": "sammādiṭṭh",
    "pali": "Sammādiṭṭhi",
-   "en": "right view",
-   "ru": "правильные взгляды",
+   "ru": "правильный взгляд",
    "group": "bodhipakkhiya"
   },
   {
    "q": "sammāsaṅkapp",
    "pali": "Sammāsaṅkappa",
-   "en": "right intention",
-   "ru": "правильные устремления",
+   "ru": "правильное намерение-заготовка",
    "group": "bodhipakkhiya"
   },
   {
    "q": "sammāvāc",
    "pali": "Sammāvācā",
-   "en": "right speech",
-   "ru": "правильная речь",
+   "ru": "правильное высказывание-речь",
    "group": "bodhipakkhiya"
   },
   {
    "q": "sammākammant",
    "pali": "Sammākammanta",
-   "en": "right action",
-   "ru": "правильные поступки",
+   "ru": "правильный поступок",
    "group": "bodhipakkhiya"
   },
   {
    "q": "sammāājīv",
    "pali": "Sammāājīva",
-   "en": "right livelihood",
-   "ru": "правильный образ жизни",
+   "ru": "правильный быт",
    "group": "bodhipakkhiya"
   },
   {
    "q": "sammāvāyām",
    "pali": "Sammāvāyāma",
-   "en": "right effort",
-   "ru": "правильное усилие",
+   "ru": "правильное старание",
    "group": "bodhipakkhiya"
   },
   {
    "q": "sammāsati",
    "pali": "Sammāsati",
-   "en": "right mindfulness",
-   "ru": "правильная осознанность",
+   "ru": "правильное памятование",
    "group": "bodhipakkhiya"
   },
   {
    "q": "sammāsamādh",
    "pali": "Sammāsamādhi",
-   "en": "right concentration",
-   "ru": "правильное сосредоточение",
+   "ru": "правильное самадхи",
    "group": "bodhipakkhiya"
   },
   {
    "q": "bodhipakkh",
    "pali": "Bodhipakkhiyā dhammā",
-   "en": "37 wings to awakening",
-   "ru": "37 качеств, ведущих к пробуждению",
    "group": "bodhipakkhiya"
   },
   {
    "q": "paṭiccasamupp",
    "pali": "Paṭiccasamuppāda",
-   "en": "dependent origination",
-   "ru": "взаимозависимое возникновение",
+   "ru": "зависимое возникновение",
    "group": "paticcasamuppada"
   },
   {
    "q": "avijj",
    "pali": "Avijjā",
-   "en": "ignorance",
-   "ru": "невежество",
+   "ru": "неразличение",
    "group": "paticcasamuppada",
    "index": false
   },
   {
    "q": "saṅkhārapaccayā",
    "pali": "Saṅkhāra",
-   "en": "volitional formations",
-   "ru": "формирователи",
+   "ru": "составляющие",
    "group": "paticcasamuppada"
   },
   {
    "q": "viññāṇapaccayā",
    "pali": "Viññāṇa",
-   "en": "consciousness",
-   "ru": "сознание",
+   "ru": "распознавание",
    "group": "paticcasamuppada"
   },
   {
    "q": "nāmarūp",
    "pali": "Nāmarūpa",
-   "en": "name-and-form",
-   "ru": "имя-и-форма",
+   "ru": "имя-образ",
    "group": "paticcasamuppada"
   },
   {
    "q": "saḷāyatan",
    "pali": "Saḷāyatana",
-   "en": "six sense bases",
-   "ru": "шесть сфер чувств",
+   "ru": "шесть внутренне-внешних областей",
    "group": "paticcasamuppada"
   },
   {
    "q": "phassapaccayā",
    "pali": "Phassa",
-   "en": "contact",
-   "ru": "контакт",
+   "ru": "касание",
    "group": "paticcasamuppada"
   },
   {
    "q": "vedanāpaccayā",
    "pali": "Vedanā",
-   "en": "feeling",
-   "ru": "ощущение",
+   "ru": "чувствование",
    "group": "paticcasamuppada"
   },
   {
    "q": "taṇhāpaccayā",
    "pali": "Taṇhā",
-   "en": "craving",
-   "ru": "жажда",
+   "ru": "цепляние",
    "group": "paticcasamuppada"
   },
   {
    "q": "upādānapaccayā",
    "pali": "Upādāna",
-   "en": "clinging",
-   "ru": "цепляние",
+   "ru": "поддерживание",
    "group": "paticcasamuppada"
   },
   {
    "q": "bhavapaccayā",
    "pali": "Bhava",
-   "en": "becoming",
-   "ru": "существование",
+   "ru": "бхава",
    "group": "paticcasamuppada"
   },
   {
    "q": "jātipaccayā",
    "pali": "Jāti",
-   "en": "birth",
    "ru": "рождение",
    "group": "paticcasamuppada"
   },
   {
    "q": "jarāmaraṇ",
    "pali": "Jarāmaraṇa",
-   "en": "aging and death",
-   "ru": "старение и смерть",
    "group": "paticcasamuppada"
   },
   {
    "q": "āsav",
    "pali": "Āsava",
-   "en": "taints",
-   "ru": "пороки",
+   "ru": "истечение",
    "group": "kilesa",
    "index": false
   },
   {
    "q": "kāmāsav",
    "pali": "Kāmāsava",
-   "en": "taint of sensuality",
-   "ru": "порок чувственности",
    "group": "kilesa"
   },
   {
    "q": "bhavāsav",
    "pali": "Bhavāsava",
-   "en": "taint of becoming",
-   "ru": "порок существования",
    "group": "kilesa"
   },
   {
    "q": "avijjāsav",
    "pali": "Avijjāsava",
-   "en": "taint of ignorance",
-   "ru": "порок невежества",
    "group": "kilesa"
   },
   {
    "q": "ogh",
    "pali": "Ogha",
-   "en": "floods",
-   "ru": "потоки",
+   "ru": "затопление",
    "group": "kilesa",
    "index": false
   },
   {
    "q": "yog",
    "pali": "Yoga",
-   "en": "yokes",
-   "ru": "ярма",
+   "ru": "связь",
    "group": "kilesa",
    "index": false
   },
   {
    "q": "upādān",
    "pali": "Upādāna",
-   "en": "clinging (4 kinds)",
-   "ru": "цепляние (4 вида)",
+   "ru": "поддерживание",
    "group": "kilesa",
    "index": false
   },
   {
    "q": "kāmupādān",
    "pali": "Kāmupādāna",
-   "en": "clinging to sensuality",
-   "ru": "цепляние к чувственности",
    "group": "kilesa"
   },
   {
    "q": "diṭṭhupādān",
    "pali": "Diṭṭhupādāna",
-   "en": "clinging to views",
-   "ru": "цепляние к взглядам",
    "group": "kilesa"
   },
   {
    "q": "sīlabbatupādān",
    "pali": "Sīlabbatupādāna",
-   "en": "clinging to rules and rituals",
-   "ru": "цепляние к обрядам",
    "group": "kilesa"
   },
   {
    "q": "attavādupādān",
    "pali": "Attavādupādāna",
-   "en": "clinging to a doctrine of self",
-   "ru": "цепляние к учению о «я»",
    "group": "kilesa"
   },
   {
    "q": "ganth",
    "pali": "Gantha",
-   "en": "ties",
-   "ru": "узы",
+   "ru": "узел",
    "group": "kilesa",
    "index": false
   },
   {
    "q": "anusay",
    "pali": "Anusaya",
-   "en": "underlying tendencies",
-   "ru": "скрытые склонности",
+   "ru": "предрасположенность",
    "group": "kilesa",
    "index": false
   },
   {
    "q": "kāmaguṇ",
    "pali": "Kāmaguṇa",
-   "en": "5 strands of sensuality",
-   "ru": "5 струн чувственности",
+   "ru": "желания-множитель",
    "group": "kilesa"
   },
   {
    "q": "nīvaraṇ",
    "pali": "Nīvaraṇa",
-   "en": "5 hindrances",
-   "ru": "5 помех",
+   "ru": "преграда",
    "group": "kilesa"
   },
   {
    "q": "kāmacchand",
    "pali": "Kāmacchanda",
-   "en": "sensual desire",
-   "ru": "чувственное желание",
+   "ru": "желания-импульс",
    "group": "kilesa"
   },
   {
    "q": "byāpād",
    "pali": "Byāpāda",
-   "en": "ill will",
-   "ru": "недоброжелательность",
+   "ru": "враждебность",
    "group": "kilesa"
   },
   {
    "q": "thinamiddh",
    "pali": "Thinamiddha",
-   "en": "sloth and torpor",
-   "ru": "лень и апатия",
+   "ru": "апатия-сонливость",
    "group": "kilesa"
   },
   {
    "q": "uddhaccakukkucc",
    "pali": "Uddhaccakukkucca",
-   "en": "restlessness and remorse",
-   "ru": "беспокойство и сожаление",
+   "ru": "возбужденность-беспокойство",
    "group": "kilesa"
   },
   {
    "q": "vicikicch",
    "pali": "Vicikicchā",
-   "en": "doubt",
-   "ru": "сомнение",
+   "ru": "неясность",
    "group": "kilesa"
   },
   {
    "q": "saṁyojan",
    "pali": "Saṁyojana",
-   "en": "fetters",
-   "ru": "оковы",
+   "ru": "связанность",
    "group": "kilesa"
   },
   {
    "q": "orambhāgiy",
-   "pali": "Orambhāgiya saṁyojana",
-   "en": "5 lower fetters",
-   "ru": "5 нижних оков",
+   "pali": "Orambhāgiya",
+   "ru": "ближние",
    "group": "kilesa"
   },
   {
    "q": "uddhambhāgiy",
-   "pali": "Uddhambhāgiya saṁyojana",
-   "en": "5 higher fetters",
-   "ru": "5 высших оков",
+   "pali": "Uddhambhāgiya",
+   "ru": "восходящие",
    "group": "kilesa"
   },
   {
    "q": "upādānakkhandh",
-   "pali": "Upādānakkhandha",
-   "en": "aggregates of clinging",
-   "ru": "совокупности цепляния",
+   "pali": "Pañcupādānakkhandha",
+   "ru": "пять блоков поддерживания",
    "group": "kilesa"
   },
   {
    "q": "cetokhil",
    "pali": "Cetokhila",
-   "en": "barrenness of heart",
-   "ru": "пустоши ума",
    "group": "kilesa"
   },
   {
    "q": "esan",
    "pali": "Esanā",
-   "en": "searches",
-   "ru": "поиски",
+   "ru": "поиск",
    "group": "kilesa",
    "index": false
   },
   {
    "q": "vidh",
    "pali": "Vidhā",
-   "en": "discriminations",
-   "ru": "самомнение (вид)",
+   "ru": "вид",
    "group": "kilesa",
    "index": false
   },
   {
    "q": "dukkhat",
    "pali": "Dukkhatā",
-   "en": "kinds of suffering",
-   "ru": "виды страдания",
+   "ru": "болезненность",
    "group": "kilesa",
    "index": false
   },
   {
    "q": "akusalamūl",
    "pali": "Akusalamūla",
-   "en": "unwholesome roots",
-   "ru": "неблагие корни",
    "group": "kilesa"
   },
   {
    "q": "kilesa",
    "pali": "Kilesa",
-   "en": "defilements",
-   "ru": "загрязнения",
+   "ru": "загрязнение",
    "group": "kilesa",
    "index": false
   },
   {
    "q": "papañc",
    "pali": "Papañca",
-   "en": "proliferation",
    "ru": "разрастание",
    "group": "kilesa"
   },
   {
    "q": "vipallās",
    "pali": "Vipallāsa",
-   "en": "perversions",
-   "ru": "искажения",
    "group": "kilesa"
   },
   {
    "q": "ariyasacc",
    "pali": "Ariyasacca",
-   "en": "four noble truths",
-   "ru": "четыре благородные истины",
+   "ru": "благородно-истина",
    "group": "core"
   },
   {
    "q": "nibbān",
    "pali": "Nibbāna",
-   "en": "nibbāna",
    "ru": "ниббана",
    "group": "core",
    "index": false
@@ -638,7 +527,6 @@
   {
    "q": "jhān",
    "pali": "Jhāna",
-   "en": "jhāna",
    "ru": "джхана",
    "group": "core",
    "index": false
@@ -646,53 +534,45 @@
   {
    "q": "mett",
    "pali": "Mettā",
-   "en": "loving-kindness",
-   "ru": "доброжелательность",
+   "ru": "мирность",
    "group": "core",
    "index": false
   },
   {
    "q": "brahmavihār",
    "pali": "Brahmavihāra",
-   "en": "divine abidings",
-   "ru": "божественные обители",
+   "ru": "Пребывания Брахмы",
    "group": "core"
   },
   {
    "q": "anicc",
    "pali": "Anicca",
-   "en": "impermanence",
-   "ru": "непостоянство",
+   "ru": "ненадёжность",
    "group": "core",
    "index": false
   },
   {
    "q": "anatt",
    "pali": "Anattā",
-   "en": "not-self",
-   "ru": "безличность",
+   "ru": "без-личность",
    "group": "core",
    "index": false
   },
   {
    "q": "khandh",
    "pali": "Khandha",
-   "en": "aggregates",
-   "ru": "совокупности",
+   "ru": "блок",
    "group": "core",
    "index": false
   },
   {
    "q": "ānāpānassat",
    "pali": "Ānāpānassati",
-   "en": "mindfulness of breathing",
-   "ru": "осознанность дыхания",
    "group": "core"
   },
   {
    "q": "sīl",
    "pali": "Sīla",
-   "en": "virtue",
    "ru": "нравственность",
    "group": "core",
    "index": false
@@ -700,22 +580,19 @@
   {
    "q": "kamm",
    "pali": "Kamma",
-   "en": "kamma",
-   "ru": "камма",
+   "ru": "активность",
    "group": "core",
    "index": false
   },
   {
    "q": "sotāpann",
    "pali": "Sotāpanna",
-   "en": "stream-entry",
    "ru": "вступивший в поток",
    "group": "core"
   },
   {
    "q": "arahat",
    "pali": "Arahant",
-   "en": "arahant",
    "ru": "арахант",
    "group": "core"
   }
