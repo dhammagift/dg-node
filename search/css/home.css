@@ -3712,8 +3712,7 @@ body:not(.dg-state-home):not(.dg-state-reader) #dg-footer { display: none; }
    и красило ссылки подвала/цитаты/шторки и иконки контактов в сине-фиолетовый (живой скрин). */
 body.dg-skin-minimal .dg-footer-nav a, body.dg-skin-minimal .dg-footer-nav a:visited { color: var(--dg-accent-ink); text-decoration: none; }
 body.dg-skin-minimal .dg-footer-nav a:hover { text-decoration: underline; }
-/* Underlined: same color as the text around it, so the line is what tells a link apart (WCAG link-in-text-block). */
-body.dg-skin-minimal .dg-footer-link, body.dg-skin-minimal .dg-footer-link:visited { color: var(--dg-text-2); text-decoration: underline; text-underline-offset: 2px; }
+body.dg-skin-minimal .dg-footer-link, body.dg-skin-minimal .dg-footer-link:visited { color: var(--dg-text-2); text-decoration: none; }
 body.dg-skin-minimal .dg-footer-link:hover { color: var(--dg-accent-ink); text-decoration: underline; }
 .dg-footer-contacts { flex: none; }
 .dg-footer-contacts .dg-contact-btn { width: 36px; height: 36px; }
