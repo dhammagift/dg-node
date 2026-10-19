@@ -486,7 +486,7 @@ function getServer() {
 
 // What an agent should know before the first call: how to search, how to phrase answers, where
 // the links go, and why translations are opt-in.
-const INSTRUCTIONS = `Dhamma.gift: the Pali Canon (Sutta, Vinaya, Abhidhamma) with Pali root text and translations (25 languages, including Russian and English).
+const INSTRUCTIONS = `Dhamma.gift: the Pali Canon (Sutta and Vinaya) with Pali root text and translations (25 languages, including Russian and English).
 - search is a literal substring/keyword search (min 3 letters, diacritics ignored: "kacchap" finds mahakacchapa, "tanha" finds taṇhā). It does NOT understand meaning: for a topic ("turtle") try the Pali word(s) and translation words yourself (kacchapa, kummo; turtle, tortoise; черепаха) and merge the results. The answer is a CENSUS of every matching sutta, ordered so that suttas that DEFINE the term come first, then ones named after it, then by how often it occurs — read the top of the list first: a definition tells you what the term means, which a list of similarly-named suttas does not.
 - THE WAY TO FIND WHERE THE CANON DEFINES A TERM is to search the formula itself as a REGEX (the engine supports patterns). Three patterns cover the whole apparatus, and they are the sharpest tool here — sharper than reading a census:
     "kata.*<term>"  -> "Katamañca, bhikkhave, <term>? …"  the definition question. e.g. kata.*dukkha finds dn22:18.1 "Katamañca, bhikkhave, dukkhaṁ ariyasaccaṁ?"
