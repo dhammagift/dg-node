@@ -159,6 +159,7 @@
     "export": "ส่งออก",
     "exportTxt": "TXT",
     "exportPdf": "PDF",
+    "exportMd": "MD",
     "loading": "กำลังโหลด...",
     "read": "อ่าน",
     "makeList": "สร้างรายการ",

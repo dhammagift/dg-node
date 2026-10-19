@@ -3899,9 +3899,26 @@ function get4ntUrl(slug = null) {
 // поддерживает разные языки/режимы (r+r, r+e, e+e), поэтому здесь берём первый НЕ-палийский
 // [class*="-lang"] элемент внутри сегмента — какой бы язык ни был выбран в текущем режиме
 // ридера, а не хардкодим "русский" (тот же паттерн уже применялся для voice.js в этой сессии).
+// The footer export icon (#pdf-btn) now opens a small PDF/MD menu instead of exporting straight
+// to PDF (owner wanted a format choice). The PDF path below is unchanged - it just triggers from
+// the menu's #reader-export-pdf item now; the MD path is a separate handler further down.
+function dgCloseReaderExportMenu() {
+    var m = document.getElementById('reader-export-menu');
+    if (m) m.hidden = true;
+}
 document.addEventListener('click', function (e) {
-    var btn = e.target.closest('#pdf-btn');
+    var menu = document.getElementById('reader-export-menu');
+    if (!menu) return;
+    if (e.target.closest('#pdf-btn')) { e.preventDefault(); menu.hidden = !menu.hidden; return; }
+    // Any click that is not on the open menu itself closes it (an export item closes it too, in
+    // its own handler, before running).
+    if (!e.target.closest('#reader-export-menu')) menu.hidden = true;
+});
+
+document.addEventListener('click', function (e) {
+    var btn = e.target.closest('#reader-export-pdf');
     if (!btn) return;
+    dgCloseReaderExportMenu();
 
     function doExport() {
         var suttaArea = document.getElementById('sutta');
@@ -4043,4 +4060,85 @@ document.addEventListener('click', function (e) {
     } else {
         doExport();
     }
+});
+
+// Markdown export of the open sutta - same DOM walk as the PDF above (span[id] in document order,
+// Pali + the first non-Pali translation of the current reader mode), emitted as Markdown so it
+// pastes into notes/docs. No external library needed. Headings become ##/###/####, segments plain
+// paragraphs, a Pali variant a blockquote line.
+document.addEventListener('click', function (e) {
+    var btn = e.target.closest('#reader-export-md');
+    if (!btn) return;
+    dgCloseReaderExportMenu();
+
+    var suttaArea = document.getElementById('sutta');
+    if (!suttaArea) return;
+
+    function cleanText(el) {
+        if (!el) return '';
+        var clone = el.cloneNode(true);
+        clone.querySelectorAll('.copyLink, a.copyLink-start').forEach(function (a) { a.remove(); });
+        return clone.textContent.replace(/\s+/g, ' ').trim();
+    }
+
+    var title = document.title || 'Sutta';
+    var md = ['# ' + title, ''];
+
+    var links = [];
+    document.querySelectorAll('#top-links-container a, #reader-toolbar .sc-ext-link').forEach(function (a) {
+        var txt = (a.textContent || '').trim();
+        // Skip script-only buttons (e.g. Voice, href="javascript:void(0)") - a dead link in a
+        // Markdown file is just noise.
+        if (txt && !/^javascript:/i.test(a.getAttribute('href') || '')) links.push('[' + txt + '](' + a.href + ')');
+    });
+    if (links.length) { md.push(links.join(' · ')); md.push(''); }
+
+    var bylineEl = suttaArea.querySelector('#trn');
+    if (bylineEl) {
+        var byline = [cleanText(bylineEl.querySelector('.pli-lang')),
+                      cleanText(bylineEl.querySelector('[class*="-lang"]:not(.pli-lang)'))]
+                     .filter(Boolean).join(' — ');
+        if (byline) { md.push('*' + byline + '*'); md.push(''); }
+    }
+
+    suttaArea.querySelectorAll('span[id]').forEach(function (node) {
+        if (node.closest('#trn, #top-links-container, #bottom-links-container')) return;
+        var paliEl = node.querySelector('.pli-lang');
+        var transEl = node.querySelector('[class*="-lang"]:not(.pli-lang)');
+        if (!paliEl && !transEl) return;
+
+        var pali = '', variant = '';
+        if (paliEl) {
+            var paliClone = paliEl.cloneNode(true);
+            paliClone.querySelectorAll('.copyLink, a.copyLink-start').forEach(function (a) { a.remove(); });
+            var varEl = paliClone.querySelector('.variant');
+            if (varEl) { variant = varEl.textContent.replace(/\s+/g, ' ').trim(); varEl.remove(); }
+            pali = paliClone.textContent.replace(/\s+/g, ' ').trim();
+        }
+        var trans = cleanText(transEl);
+        if (!pali && !trans) return;
+
+        var headingEl = node.closest('h1, h2, h3');
+        if (headingEl) {
+            var hashes = headingEl.tagName === 'H1' ? '## ' : (headingEl.tagName === 'H2' ? '### ' : '#### ');
+            md.push(hashes + [pali, trans].filter(Boolean).join(' — '));
+            md.push('');
+        } else {
+            if (pali) md.push(pali);
+            if (variant) md.push('> ↕ ' + variant);
+            if (trans) md.push(trans);
+            md.push('');
+        }
+    });
+
+    var filename = title.replace(/[^a-zA-Z0-9_¡-￿\.,\-_ !\(\)]/g, '');
+    var blob = new Blob([md.join('\n')], { type: 'text/markdown;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = filename + '.md';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
 });

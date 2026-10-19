@@ -253,6 +253,50 @@ window.DgSearchRender = (function () {
                         }
                     },
                     {
+                        // Markdown: the same visible columns as TXT, but a GFM pipe table so the
+                        // export pastes straight into notes/docs/issues. exportData already strips
+                        // the cell HTML to text; here we only escape "|" and flatten newlines
+                        // (a literal newline would break the row), same cleanup idea as TXT above.
+                        text: t('buttons.exportMd', 'MD'),
+                        action: function (e, dt, node, config) {
+                            var data = dt.buttons.exportData({
+                                columns: function (idx) {
+                                    return dt.column(idx).visible();
+                                },
+                                modifier: { search: 'applied' }
+                            });
+
+                            var mdCell = function (cell) {
+                                return String(cell == null ? '' : cell)
+                                    .replace(/\r?\n|\r/g, ' ')
+                                    .replace(/\|/g, '\\|')
+                                    .trim();
+                            };
+
+                            var lines = [];
+                            var header = data.header.map(mdCell);
+                            lines.push('| ' + header.join(' | ') + ' |');
+                            lines.push('| ' + header.map(function () { return '---'; }).join(' | ') + ' |');
+                            data.body.forEach(function (row) {
+                                lines.push('| ' + row.map(mdCell).join(' | ') + ' |');
+                            });
+
+                            var filename = document.title !== '' ? document.title : 'Export';
+                            filename = filename.replace(/[^a-zA-Z0-9_¡-￿\.,\-_ !\(\)]/g, "");
+
+                            var blob = new Blob([lines.join('\n') + '\n'], { type: 'text/markdown;charset=utf-8' });
+                            var url = URL.createObjectURL(blob);
+
+                            var a = document.createElement('a');
+                            a.href = url;
+                            a.download = filename + '.md';
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                            URL.revokeObjectURL(url);
+                        }
+                    },
+                    {
                         text: t('buttons.exportPdf', 'PDF'),
                         title: '*',
                         filename: '*',

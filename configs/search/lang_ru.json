@@ -209,6 +209,7 @@
     "export": "Экспорт",
     "exportTxt": "TXT",
     "exportPdf": "PDF",
+    "exportMd": "MD",
     "loading": "Загрузка...",
     "read": "Читать",
     "makeList": "Составить список",

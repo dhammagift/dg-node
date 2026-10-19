@@ -1405,6 +1405,38 @@ smart TOC
 }
 .dark .toc-h4, .dark .toc-h5, .dark .toc-h6 { color: #aaa; }
 
+/* Footer export icon + its PDF/MD menu. The wrap keeps the menu anchored to the icon; the menu
+   pops ABOVE it because the footer sits near the bottom of the page. */
+.reader-export-wrap { position: relative; display: inline-flex; }
+#reader-export-menu {
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0,0,0,.15);
+    padding: 4px;
+    z-index: 1000;
+    min-width: 72px;
+}
+#reader-export-menu a {
+    display: block;
+    padding: 6px 14px;
+    border-radius: 6px;
+    color: #333;
+    text-decoration: none;
+    font-family: sans-serif;
+    font-size: 14px;
+    text-align: center;
+    cursor: pointer;
+}
+#reader-export-menu a:hover { background-color: rgba(0,0,0,0.06); }
+.dark #reader-export-menu { background: #333; border-color: #555; }
+.dark #reader-export-menu a { color: #e0e0e0; }
+.dark #reader-export-menu a:hover { background-color: rgba(255,255,255,0.1); }
+
 /* Адаптация для мобильных как у шестеренки */
 @media (max-height: 520px) {
     #smart-toc-container {

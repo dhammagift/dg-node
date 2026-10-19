@@ -209,6 +209,7 @@
     "export": "Export",
     "exportTxt": "TXT",
     "exportPdf": "PDF",
+    "exportMd": "MD",
     "loading": "Loading...",
     "read": "Read",
     "makeList": "Make List",
