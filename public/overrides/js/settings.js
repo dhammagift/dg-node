@@ -988,8 +988,6 @@ function updateDemoLinks() {
     mtDemo: spa('multi'),
     memDemo: spa('memorize'),
     dDemo: spa('devanagari'),
-    rvDemo: '/rev/' + legacyQs,
-    frDemo: '/frev/' + legacyQs,
   };
   Object.keys(linksMap).forEach(id => {
     const linkEl = document.getElementById(id);
@@ -1816,6 +1814,8 @@ readerRadios.forEach(function(radio) {
 // молча ломая обработчики кликов/сабмита на странице (это и выглядело как "ничего не работает,
 // перебрасывает на /" — не редирект, а упавший до навешивания обработчиков скрипт).
 var savedReader = localStorage.getItem("defaultReader");
+// Reverse / Full Reverse were the PHP site's readers, not DG's (owner 2026-10-19): a choice saved back then reads as Standard
+if (savedReader === 'rv' || savedReader === 'fr') localStorage.setItem("defaultReader", savedReader = 'st');
 if (savedReader) {
     var savedReaderRadio = document.querySelector('input[name="reader"][value="' + savedReader + '"]');
     if (savedReaderRadio) savedReaderRadio.checked = true;
@@ -1826,11 +1826,8 @@ const initialBaseUrl = getBaseUrl();
 const initialDefaultReader = localStorage.defaultReader;
 
 // Функция для получения текущего baseUrl. The SPA reader shows every mode on its own URL
-// (?mode=), so changing the default reader keeps the page where it is; only Reverse / Full Reverse
-// still live on their own pages.
+// (?mode=), so changing the default reader keeps the page where it is.
 function getBaseUrl() {
-    if (localStorage.defaultReader === 'rv') return window.location.origin + "/rev/";
-    if (localStorage.defaultReader === 'fr') return window.location.origin + "/frev/";
     return window.location.origin + window.location.pathname;
 }
 

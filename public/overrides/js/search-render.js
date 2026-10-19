@@ -593,19 +593,7 @@ window.DgSearchRender = (function () {
         };
     }
 
-    // Тот же выбор ридера (/r/, /read/, /ml/, /rv/, ...), что делает openFdg.js в своём
-    // DOMContentLoaded — язык/режим ридера пока идут через легаси-прод-ридер (наш /dn22
-    // ещё не покрывает все режимы), поэтому ссылки должны вести именно туда, не на чистый
-    // clean-URL /{suttaId} этого репозитория.
-    // Only Reverse / Full Reverse still have their own reader pages; everything else is the SPA
-    // reader with ?mode= (buildSuttaUrl). The base is still needed for findFdgTextUrl's /4nt exceptions.
-    // read per result row, thousands of times per render: one localStorage read a second is plenty
-    var legacyBase = null, legacyBaseAt = 0;
-    function computeLegacyBaseUrl() {
-        if (legacyBase && Date.now() - legacyBaseAt < 1000) return legacyBase;
-        legacyBaseAt = Date.now();
-        return (legacyBase = window.location.origin + (localStorage.defaultReader === 'fr' ? "/frev/" : "/rev/"));
-    }
+    // Every reader is the SPA reader with ?mode= (buildSuttaUrl); findFdgTextUrl is only asked about its /4nt exceptions.
     var SPA_MODE_FOR_READER = { mt: 'multi', ml: 'multi', d: 'devanagari', mem: 'memorize' };
 
     // "Pi En" pair of the Links column, both on 4nt. 4nt keeps the column set (which Pāḷi
@@ -627,11 +615,9 @@ window.DgSearchRender = (function () {
     }
 
     // Ссылка на сутту/сегмент — ведёт на чистый /{suttaId} route этого репозитория (ридер уже
-    // умеет: подсветку по s=, переход к сегменту по :segment/#segment, язык по lang=). Два
-    // случая, где всё ещё нужен легаси-путь через window.findFdgTextUrl/computeLegacyBaseUrl:
-    // (1) slug вообще не про ридер (bv/ja/mil/vb* и т.п., exceptions внутри findFdgTextUrl —
-    // ведут на /4nt/?q=...), (2) режим чтения, которого MODE_CONFIGS ридера ещё не покрывает
-    // (rv/d/mem/fr, Thai) — ридер не трогаем, поэтому для них оставляем как было.
+    // умеет: подсветку по s=, переход к сегменту по :segment/#segment, язык по lang=). Легаси-путь
+    // через window.findFdgTextUrl остаётся только для slug не про ридер (bv/ja/mil/vb* и т.п.,
+    // exceptions внутри findFdgTextUrl — ведут на /4nt/?q=...).
     function buildSuttaUrl(suttaId, segmentId, highlightWord) {
         // For a merged range file (e.g. sutta_id "an1.21-30"), megareader.js keeps the FULL
         // segment id ("an1.21:3.1") as the DOM anchor instead of stripping it to the local part
@@ -646,10 +632,8 @@ window.DgSearchRender = (function () {
         var slugForLegacy = segmentHash ? (suttaId + '#' + segmentHash) : suttaId;
 
         if (typeof window.findFdgTextUrl === 'function') {
-            var legacyResult = window.findFdgTextUrl(slugForLegacy, highlightWord || '', computeLegacyBaseUrl());
+            var legacyResult = window.findFdgTextUrl(slugForLegacy, highlightWord || '', '');
             if (legacyResult.indexOf('/4nt/?q=') === 0) return legacyResult;
-
-            if (['rv', 'fr'].indexOf(localStorage.defaultReader) !== -1) return legacyResult;
         }
 
         var lang = (localStorage.dhammaLanguage || localStorage.siteLanguage || 'en') === 'ru' ? 'ru' : 'en';

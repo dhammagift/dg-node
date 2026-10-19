@@ -317,11 +317,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     let searchValue = sParam && sParam.trim() !== "" ? sParam : keyword;
 
-    // Only Reverse / Full Reverse keep their own pages; every other default reader is the SPA
-    // reader with ?mode= (legacy /read/, /r/, /d/, /ml/, /memorize/ redirect there anyway).
+    // Every default reader is the SPA reader with ?mode= (legacy /read/, /r/, /d/, /ml/, /memorize/ redirect there anyway).
     const spaMode = { mt: 'multi', ml: 'multi', d: 'devanagari', mem: 'memorize' }[localStorage.defaultReader];
-    const legacyMode = localStorage.defaultReader === 'rv' || localStorage.defaultReader === 'fr';
-    const baseUrl = window.location.origin + (localStorage.defaultReader === 'fr' ? "/frev/" : "/rev/");
 
     // 4. Обработка ссылок: только установка стандартных href
     const fdgLinks = document.querySelectorAll('.fdgLink');
@@ -329,8 +326,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const slug = link.getAttribute('data-slug');
         const filter = link.getAttribute('data-filter');
         
-        let textUrl = findFdgTextUrl(slug, filter || searchValue, baseUrl);
-        if (textUrl && !legacyMode && textUrl.indexOf('/4nt/') !== 0) {
+        let textUrl = findFdgTextUrl(slug, filter || searchValue, '');
+        if (textUrl && textUrl.indexOf('/4nt/') !== 0) {
             const params = new URLSearchParams();
             if (filter || searchValue) params.set('s', filter || searchValue);
             if (spaMode) params.set('mode', spaMode);
@@ -387,17 +384,3 @@ document.addEventListener('click', function(event) {
     }
 }, true);
 
-
-if (localStorage.defaultReader === 'rv') {
-    var elements = document.querySelectorAll('.right-text-hide.reverse-order-hide');
-    elements.forEach(element => {
-        element.classList.remove('right-text-hide', 'reverse-order-hide');
-        element.classList.add('right-text', 'reverse-order');
-    });
-} else {
-    var elements = document.querySelectorAll('.right-text.reverse-order');
-    elements.forEach(element => {
-        element.classList.add('right-text-hide', 'reverse-order-hide');
-        element.classList.remove('right-text', 'reverse-order');
-    });
-}

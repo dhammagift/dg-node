@@ -111,18 +111,18 @@ const app = Fastify({
 // Legacy reader URLs -> the SPA reader. External sites still link to them (SuttaCentral:
 // "find.dhamma.gift/read/?q=MN1"), so they redirect rather than disappear. Only the pages
 // themselves: /read/js/voice.js and the other files under these prefixes are left alone.
-// /rev/ and /frev/ have no SPA equivalent yet and keep being served as they are. /ru/read/ is
+// /rev/, /frev/ and /rv (the PHP site's Reverse readers) are not part of DG (owner 2026-10-19): the plain reader. /ru/read/ is
 // turned into /read/?…&lang=ru by the not-found handler first and lands here on the next hop.
 const LEGACY_READERS = {
     '/read': {}, '/r': { lang: 'ru' }, '/d': { mode: 'devanagari' }, '/memorize': { mode: 'memorize' },
     '/ml': { mode: 'multi' }, '/mt': { mode: 'multi', lang: 'ru' }, '/multi': { mode: 'multi' },
     '/th': { lang: 'th' }, '/th/read': { lang: 'th' }, '/mlth': { mode: 'multi', lang: 'th' },
+    '/rev': {}, '/frev': {}, '/rv': {},
 };
 function legacyReaderRedirect(url) {
     const [pathPart, queryPart = ''] = url.split('?');
     const page = pathPart.replace(/\/(index\.(html|php))?$/, '') || '/';
     const params = new URLSearchParams(queryPart);
-    if (page === '/rv') return '/rev/' + (queryPart ? '?' + queryPart : '');
     if (page === '/history.php') return '/4as';
     if (page === '/read.php') return '/toc';
     if (page === '/cse.php') return '/cse' + (queryPart ? '?' + queryPart : ''); // the Google Custom Search page, now served here
@@ -173,11 +173,6 @@ app.addHook('onRequest', (req, res, done) => {
     const p = decodedPath(req.url);
     if (/\/\.(?!well-known(\/|$))/.test(p)) return res.code(404).send('Not found');
     if (req.method === 'GET' && /^\/[^/]+\/.*\.php$/i.test(p.replace(/^\/ru(?=\/)/, '')) && !/^\/(ai|b)\//.test(p)) return res.code(404).send('Not found'); // /ru/w.php is a language prefix, not a folder
-    done();
-});
-// The legacy /rev and /frev readers stay for people who use them, but out of search: the new site won't have them (owner 2026-10-19)
-app.addHook('onRequest', (req, res, done) => {
-    if (/^\/(ru\/)?f?rev(\/|$)/.test(decodedPath(req.url))) res.header('X-Robots-Tag', 'noindex');
     done();
 });
 app.addHook('onRequest', (req, res, done) => {

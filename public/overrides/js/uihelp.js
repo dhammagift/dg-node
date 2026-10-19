@@ -55,8 +55,7 @@ function initUiHelp() {
     // 2. Логика для читалки (/read, /r, /ml, /b, /d, /memorize)
     const isReadPage = path.includes('/read/') || path.includes('/r/') || 
                        path.includes('/ml/') || path.includes('/b/') || 
-                       path.includes('/d/') || path.includes('/memorize/') ||
-                       path.includes('/rev/') || path.includes('/frev/');
+                       path.includes('/d/') || path.includes('/memorize/');
                        
     if (isReadPage) {
         let visitRead = parseInt(localStorage.getItem("visitRead") || "0", 10) + 1;
@@ -114,8 +113,7 @@ function initUiHelp() {
         const searchParams = new URLSearchParams(window.location.search);
         
         if (path.includes('/read/') || path.includes('/r/') || path.includes('/ml/') || 
-            path.includes('/b/') || path.includes('/d/') || path.includes('/memorize/') || 
-            path.includes('/rev/') || path.includes('/frev/')) {
+            path.includes('/b/') || path.includes('/d/') || path.includes('/memorize/')) {
             hintKey = 'hintShown_read_mode';
             hintType = 'read';
         } else if (path.includes('/result/') || path.includes('/w.php') || searchParams.get('q')?.trim()) {
