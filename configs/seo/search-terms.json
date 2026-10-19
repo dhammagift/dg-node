@@ -3,7 +3,7 @@
   "Search results pages that search engines may index (owner 2026-10-19: the search is the site's strength - the key terms' results belong in Google).",
   "q: the query as the page's path runs it (/<q>, default scope); its results page gets index,follow, its own title and description with the number of suttas, and a sitemap entry (en, ru). Every other query stays noindex, follow.",
   "ru, en: the owner's glossary (Google Sheet \"Mapping Pali-Rus\", Лист1 columns C and D, the first rendering; the tab \"SEO-термины\" lists these terms with live lookups). A term without an entry goes without that gloss.",
-  "index: false - the short stem catches other words (ogh -> mogha), held back until its query is settled."
+  "index: false - the query catches other words (ogh -> mogha; diacritics fold, so jāti -> uppajjati, bhava -> bhavati), held back until its query is settled."
  ],
  "terms": [
   {
@@ -311,14 +311,14 @@
    "en": "non-discernment"
   },
   {
-   "q": "saṅkhārapaccayā",
+   "q": "saṅkhār",
    "pali": "Saṅkhāra",
    "group": "paticcasamuppada",
    "ru": "составляющие",
    "en": "constituents"
   },
   {
-   "q": "viññāṇapaccayā",
+   "q": "viññāṇ",
    "pali": "Viññāṇa",
    "group": "paticcasamuppada",
    "ru": "распознавание",
@@ -339,14 +339,14 @@
    "en": "six inner-outer domains"
   },
   {
-   "q": "phassapaccayā",
+   "q": "phass",
    "pali": "Phassa",
    "group": "paticcasamuppada",
    "ru": "касание",
    "en": "touch"
   },
   {
-   "q": "vedanāpaccayā",
+   "q": "vedan",
    "pali": "Vedanā",
    "group": "paticcasamuppada",
    "ru": "чувствование",
@@ -360,25 +360,20 @@
    "en": "clinging"
   },
   {
-   "q": "upādānapaccayā",
-   "pali": "Upādāna",
-   "group": "paticcasamuppada",
-   "ru": "поддерживание",
-   "en": "sustaining"
-  },
-  {
-   "q": "bhavapaccayā",
+   "q": "bhava",
    "pali": "Bhava",
    "group": "paticcasamuppada",
    "ru": "бхава",
-   "en": "bhava"
+   "en": "bhava",
+   "index": false
   },
   {
-   "q": "jātipaccayā",
+   "q": "jāti",
    "pali": "Jāti",
    "group": "paticcasamuppada",
    "ru": "рождение",
-   "en": "birth"
+   "en": "birth",
+   "index": false
   },
   {
    "q": "jarāmaraṇ",
@@ -436,7 +431,6 @@
    "q": "upādān",
    "pali": "Upādāna",
    "group": "kilesa",
-   "index": false,
    "ru": "поддерживание",
    "en": "sustaining"
   },
