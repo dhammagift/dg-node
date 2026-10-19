@@ -1423,6 +1423,11 @@ async function buildSitemapCache() {
         const loc = base + '/toc' + (code ? '/' + encodeURIComponent(code) : '');
         entries.push([loc, dbDate, '0.7'], [loc + '?lang=ru', dbDate, '0.7']);
     }
+    // the key terms' search results (SEO_TERMS), en and ru
+    for (const t of SEO_TERMS.values()) {
+        const loc = base + '/' + encodeURIComponent(t.q);
+        entries.push([loc, dbDate, '0.6'], [loc + '?lang=ru', dbDate, '0.6']);
+    }
     const seen = new Set();
     // the Russian page of every text that has a Russian translation (the second market, owner 2026-10-17);
     // other languages are reachable through each page's hreflang links
@@ -1489,6 +1494,7 @@ async function initServer() {
         await buildLangCountsCache();
         await buildTranslatorCatalogCache();
         await buildSitemapCache();
+        countSeoTerms(); // not awaited: the titles get their numbers a few seconds after start
         await buildScriptBundle();
         rebuildSiteManifest(); // after the bundles: the list hashes them
     } catch (err) {
@@ -3709,6 +3715,29 @@ function bookLabel(code, lang) {
     }
     return BOOK_LABELS[code] && BOOK_LABELS[code][lang];
 }
+// Search results pages search engines may index: the key terms (configs/seo/search-terms.json, owner 2026-10-19 - the
+// search is the site's strength, the key terms' results belong in Google). Keyed by the query as the path carries it;
+// every other query stays noindex. count: texts found in the default scope, filled after start for the title.
+const SEO_TERMS = new Map((() => {
+    try { return JSON.parse(fsSync.readFileSync(path.join(__dirname, 'configs', 'seo', 'search-terms.json'), 'utf8')).terms; }
+    catch (e) { console.warn('configs/seo/search-terms.json:', e.message); return []; }
+})().filter(t => t.index !== false).map(t => [t.q.normalize('NFC').toLowerCase(), t]));
+const seoTerm = q => SEO_TERMS.get(String(q).normalize('NFC').toLowerCase());
+async function countSeoTerms() {
+    for (const t of SEO_TERMS.values()) {
+        try {
+            const r = await searchJob('fast', t.q, { scope: 'default', exact: false, langs: ['ru', 'en'], lb: 0, la: 0, metaOnly: true }, false);
+            if (r && r.result && r.result.metadata) t.count = r.result.metadata.totalFiles;
+        } catch (e) { /* the title goes without the number */ }
+    }
+}
+const ruSuttas = n => n + ' ' + (n % 10 === 1 && n % 100 !== 11 ? 'сутта' : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? 'сутты' : 'сутт');
+const SEO_TERM_TEXT = {
+    en: t => [`${t.pali} (${t.en})${t.count ? ` — ${t.count} suttas` : ''} in the Pali Canon | Dhamma.Gift`,
+        `Where the suttas speak of ${t.pali} (${t.en}): ${t.count ? t.count + ' texts' : 'the texts'} of the four Nikāyas and the Khuddaka, each passage in Pali with translations side by side.`],
+    ru: t => [`${t.pali} (${t.ru})${t.count ? ` — ${ruSuttas(t.count)}` : ''} Палийского канона | Dhamma.Gift`,
+        `Где в суттах говорится о ${t.pali} (${t.ru}): ${t.count ? ruSuttas(t.count) : 'сутты'} четырёх никай и Кхуддаки, каждое место на пали с переводами рядом.`],
+};
 const SITE_HEAD_TEXT = {
     en: {
         home: () => ['Dhamma.Gift — Pali Canon: search, read, listen',
@@ -3725,19 +3754,21 @@ const SITE_HEAD_TEXT = {
 };
 function siteHead(kind, arg, reqLang) {
     const lang = reqLang === 'ru' ? 'ru' : 'en';
+    const term = kind === 'search' && seoTerm(arg);
+    if (term) arg = term.q; // one canonical spelling of the path
     const pathOf = kind === 'home' ? '/' : kind === 'toc' ? '/toc' + (arg ? '/' + encodeURIComponent(arg) : '') : '/' + encodeURIComponent(arg);
     const url = l => SITE + pathOf + (l === 'ru' ? '?lang=ru' : '');
     let what = arg;
     if (kind === 'toc') what = !arg ? (lang === 'ru' ? 'Палийский канон' : 'Pali Canon')
         : bookLabel(arg, lang) || textCode(arg, lang) || arg.toUpperCase();
     if (kind === 'search') what = String(arg).slice(0, 80);
-    const [title, description] = SITE_HEAD_TEXT[lang][kind](what);
+    const [title, description] = term ? SEO_TERM_TEXT[lang](term) : SITE_HEAD_TEXT[lang][kind](what);
     return {
         lang, title, description, canonical: url(lang), keepOg: kind === 'home', alternates: [['en', url('en')], ['ru', url('ru')]],
         // search results stay out of the index, their links are followed (GSC, 16 months: keyword-search pages had
         // 1% of impressions and no clicks; an unbounded space of thin pages, crawler junk included). The title and
-        // description stay for a shared link's preview. Topics get real pages instead.
-        noindex: kind === 'search' || (kind === 'toc' && !tocHasPali(arg)) ? 'noindex, follow' : false,
+        // description stay for a shared link's preview. The key terms' pages (SEO_TERMS) are the exception.
+        noindex: (kind === 'search' && !term) || (kind === 'toc' && !tocHasPali(arg)) ? 'noindex, follow' : false,
         critical: kind === 'search' ? 'results' : kind, // configs/critical/<state>.css (withCritical)
     };
 }
