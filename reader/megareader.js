@@ -1921,6 +1921,8 @@ window.buildSutta = async function(rawSlug, opts) {
         (!isWarningClosed ? warning : '') +
         translatorByline + 
         html + 
+        // the "Listen in MP3" line, ready-made by the server (dg-fastify.js audioLineHtml) - the same string its own text carries
+        (suttaData.audioHtml || '') +
         // Owner (2026-09-06, production-v4 reader mock): the footer is sources → prev/next →
         // tools → legal, no second copy of the byline and the warning under the text.
         `<div id="bottom-links-container" class="min-h-24"></div>`;

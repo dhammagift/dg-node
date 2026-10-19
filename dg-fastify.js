@@ -1108,6 +1108,36 @@ app.get('/api-docs/', (req, res) => {
     res.header('cache-control', 'public, max-age=0, must-revalidate');
     return res.type('text/html; charset=utf-8').send(SWAGGER_UI_HTML);
 });
+// Whole-sutta mp3s in the DG voices (SEO: "listen to the sutta"; made by a batch through the voice server, not in
+// the repo): <id>.<pli|ru|en>.mp3 with a <id>.<lang>.json beside it (translator, voice, duration in seconds). Served
+// with ranges for seeking; a text page names its files in its JSON-LD (textHead). Read at start: new files show after
+// a restart. ponytail: one folder per host, fill both prod hosts (or a shared store if it outgrows the disks).
+const AUDIO_DIR = process.env.DG_AUDIO_DIR || '/var/www/dg-audio';
+const SUTTA_AUDIO = new Map(); // sutta id -> [{ lang, file, duration, translator, voice }]
+try {
+    for (const name of fsSync.readdirSync(AUDIO_DIR).filter(n => /^[\w.-]+\.(pli|ru|en)\.json$/.test(n)).sort()) {
+        const meta = JSON.parse(fsSync.readFileSync(path.join(AUDIO_DIR, name), 'utf8'));
+        const file = name.replace(/\.json$/, '.mp3');
+        if (!meta.sutta || !fsSync.existsSync(path.join(AUDIO_DIR, file))) continue;
+        if (!SUTTA_AUDIO.has(meta.sutta)) SUTTA_AUDIO.set(meta.sutta, []);
+        SUTTA_AUDIO.get(meta.sutta).push({ lang: meta.lang, file, duration: meta.duration, translator: meta.translator, voice: meta.voice });
+    }
+    app.register(fastifyStatic, { root: AUDIO_DIR, prefix: '/audio/', index: false, decorateReply: false, maxAge: '7d' });
+    console.log(`Sutta audio: ${SUTTA_AUDIO.size} texts in ${AUDIO_DIR}`);
+} catch (e) { if (e.code !== 'ENOENT') console.warn('Sutta audio:', e.message); }
+// The line under the text, before the links row (owner: «как подпись „слушать в MP3“: пали · русский»): the Pali file
+// and the one in the page's language. The same string goes into the server's text (textBodyHtml) and, through
+// /api/text's audioHtml, into the reader's render, so the reader keeps the server's nodes. Right-aligned and italic like the
+// byline - a caption, apart from the text (owner: «как подпись справа»). Inline style: no CSS file.
+function audioLineHtml(id, lang) {
+    const files = SUTTA_AUDIO.get(id) || [];
+    const ru = lang === 'ru';
+    const names = ru ? { pli: 'пали', ru: 'русский', en: 'английский' } : { pli: 'Pali', ru: 'Russian', en: 'English' };
+    const links = ['pli', lang].map(l => files.find(a => a.lang === l)).filter(Boolean)
+        .map(a => `<a href="/audio/${a.file}" type="audio/mpeg">${names[a.lang]}</a>`);
+    return links.length ? `<p class="dg-audio-mp3" style="text-align:right;font-style:italic;font-size:.85em;opacity:.8;margin:2em 0 .5em">${ru ? 'Слушать в MP3' : 'Listen in MP3'}: ${links.join(' · ')}</p>` : '';
+}
+
 // index: false — the dist folder's own index.html would otherwise shadow the page above
 // (same static route, `/api-docs/` is an exact match and wins, but no reason to leave both).
 app.register(fastifyStatic, {
@@ -2347,6 +2377,7 @@ app.get('/api/text/:suttaId', async (req, res) => {
             }));
         }
 
+        data.audioHtml = audioLineHtml(suttaId, data.lang); // the line under the text (audioLineHtml), '' when none
         return res.send(data);
     } catch (error) {
         // A malformed regex keyword is the caller's mistake, not ours.
@@ -3447,7 +3478,14 @@ async function textHead(dataId, urlId, reqLang) {
     const cyr = pali ? paliCyr(split) : '';
     if (lang === 'ru' && cyr) description = cyr + (code ? ', ' + code : '') + '. ' + description;
     else if (titlePali !== pali) description = pali + (code ? ', ' + code : '') + '. ' + description;
-    if (description.length > 160) description = description.slice(0, description.lastIndexOf(' ', 157)) + '…';
+    // a text with its audio says so at the end of the description, which keeps its 160 characters
+    const audio = SUTTA_AUDIO.get(dataId) || [];
+    const AUDIO_LANG = { en: { pli: 'Pali', ru: 'Russian', en: 'English' }, ru: { pli: 'пали', ru: 'русский', en: 'английский' } };
+    const audioNames = audio.map(a => (AUDIO_LANG[lang] || AUDIO_LANG.en)[a.lang]).filter(Boolean);
+    const audioNote = !audioNames.length ? '' : lang === 'ru' ? ` Аудио: ${audioNames.join(', ')}.` : ` Audio: ${audioNames.join(', ')}.`;
+    const room = 160 - audioNote.length;
+    if (description.length > room) description = description.slice(0, description.lastIndexOf(' ', room - 3)) + '…';
+    description += audioNote;
     // Cyrillic only for the Russian page: nobody reading the English one types it
     const names = [...new Set([split, paliAscii(split), paliAscii(pali), lang === 'ru' ? cyr : ''])].filter(n => n && n !== pali);
     const url = id => SITE + '/' + encodeURIComponent(urlId) + (id === 'en' ? '' : '?lang=' + id);
@@ -3463,7 +3501,9 @@ async function textHead(dataId, urlId, reqLang) {
         noindex: !/^pli\//.test((skeletonDB[dataId] || {}).dir_path || ''),
         keywords: [pali, ...names, code, local].filter(Boolean).join(', '),
         work: { '@context': 'https://schema.org', '@type': 'CreativeWork', name: pali || code || local, alternateName: [...names, local].filter(Boolean),
-            inLanguage: lang, url: url(lang), isPartOf: collection ? { '@type': 'CreativeWorkSeries', name: collection } : undefined },
+            inLanguage: lang, url: url(lang), isPartOf: collection ? { '@type': 'CreativeWorkSeries', name: collection } : undefined,
+            audio: audio.length ? audio.map(a => ({ '@type': 'AudioObject', name: `${name} — ${AUDIO_LANG.en[a.lang]}`, inLanguage: a.lang === 'pli' ? 'pi' : a.lang,
+                contentUrl: SITE + '/audio/' + a.file, encodingFormat: 'audio/mpeg', duration: a.duration ? `PT${Math.floor(a.duration / 60)}M${a.duration % 60}S` : undefined })) : undefined },
         alternates: [...new Set(['en', ...roster])].filter(l => l === 'en' || roster.includes(l)).map(l => [l, url(l)]),
         breadcrumbs: { '@context': 'https://schema.org', '@type': 'BreadcrumbList',
             itemListElement: crumbs.map((c, i) => ({ '@type': 'ListItem', position: i + 1, ...c })) },
@@ -3569,7 +3609,7 @@ function textBodyHtml(segments, lang, urlId, pageUrl, dataId) {
     // applyPadding; skipped by the reader's compare)
     const out = '<div id="top-links-container" class="min-h-24"></div><script>window.dgObserveTopLinks&&dgObserveTopLinks();window.dgObserveStack&&dgObserveStack();requestAnimationFrame(function(){window.dgApplyHeaderPadding&&dgApplyHeaderPadding()})</script>' +
         (warning ? `<div class="warning-container warning-box"><p class='warning'>${warning} </p></div>` : '') +
-        byline + html + '<div id="bottom-links-container" class="min-h-24"></div>';
+        byline + html + audioLineHtml(dataId, lang) + '<div id="bottom-links-container" class="min-h-24"></div>';
     if (textBodyCache.size > 300) textBodyCache.clear(); // ponytail: wholesale clear; bodies are big, keep the hot few
     textBodyCache.set(key, out);
     return out;
