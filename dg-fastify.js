@@ -3736,7 +3736,7 @@ const SEO_TERM_TEXT = {
     en: t => [`${t.pali} (${t.en})${t.count ? ` — ${t.count} suttas` : ''} in the Pali Canon | Dhamma.Gift`,
         `Where the suttas speak of ${t.pali} (${t.en}): ${t.count ? t.count + ' texts' : 'the texts'} of the four Nikāyas and the Khuddaka, each passage in Pali with translations side by side.`],
     ru: t => [`${t.pali} (${t.ru})${t.count ? ` — ${ruSuttas(t.count)}` : ''} Палийского канона | Dhamma.Gift`,
-        `Где в суттах говорится о ${t.pali} (${t.ru}): ${t.count ? ruSuttas(t.count) : 'сутты'} четырёх никай и Кхуддаки, каждое место на пали с переводами рядом.`],
+        `${t.pali} (${t.ru}) в суттах: ${t.count ? ruSuttas(t.count) : 'сутты'} четырёх никай и Кхуддаки, каждое место на пали с переводами рядом.`],
 };
 const SITE_HEAD_TEXT = {
     en: {
