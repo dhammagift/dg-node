@@ -1125,7 +1125,8 @@ async function loadSuttaAudio() {
         if (stamp === suttaAudioStamp) return;
         const next = new Map();
         for (const f of files) {
-            if (!f.sutta || !/^[\w.+-]+\.(pli|ru|en)\.mp3$/.test(f.file || '')) continue;
+            // up to two folders, by Nikaya and book (owner 2026-10-19: an/an4/an4.200.ru.mp3, kn/dhp/dhp1-20.pli.mp3)
+            if (!f.sutta || !/^([a-z]+\d*\/){0,2}[\w.+-]+\.(pli|ru|en)\.mp3$/.test(f.file || '')) continue;
             if (!next.has(f.sutta)) next.set(f.sutta, []);
             next.get(f.sutta).push({ lang: f.lang, file: f.file, duration: f.duration, translator: f.translator, voice: f.voice });
         }
