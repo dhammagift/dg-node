@@ -1,0 +1,25 @@
+# Dhamma.Gift
+
+> Search and reader for the Pali Canon (Tipiṭaka): Sutta, Vinaya and Abhidhamma in the Pali root text (Mahāsaṅgīti edition, SuttaCentral Bilara data) with Russian, English and other translations, side by side, segment by segment.
+
+Dhamma.Gift (DG) searches every word form across the canon and opens any text by its SuttaCentral-style id. Pages are server-rendered HTML; the interface is in English and Russian (`?lang=ru`).
+
+## Read a text
+
+- [Satipaṭṭhāna Sutta, MN 10](https://dhamma.gift/mn10): a text by its id, Pali with a translation (`/mn10?lang=ru` for Russian)
+- [Mahāsatipaṭṭhāna Sutta, DN 22, segment 2.2](https://dhamma.gift/dn22:2.2): a link to one segment
+- [Dhammacakkappavattana Sutta, SN 56.11](https://dhamma.gift/sn56.11): ids follow SuttaCentral (dn, mn, sn, an, snp, dhp, ud, iti, thag, thig, pli-tv-…)
+
+## Browse
+
+- [Contents](https://dhamma.gift/toc): every collection and book
+- [Majjhima Nikāya contents](https://dhamma.gift/toc/mn): one book's texts with their titles and translators
+
+## Search
+
+- [Search for "kacchapa"](https://dhamma.gift/kacchapa): every text where a Pali word (or a translation word) occurs, with the matching lines; diacritics are optional
+
+## Optional
+
+- [Sitemap](https://dhamma.gift/sitemap.xml): all text pages
+- [Pali dictionary](https://dhamma.gift/dict/)
