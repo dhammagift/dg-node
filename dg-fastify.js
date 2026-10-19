@@ -1133,8 +1133,11 @@ function audioLineHtml(id, lang) {
     const files = SUTTA_AUDIO.get(id) || [];
     const ru = lang === 'ru';
     const names = ru ? { pli: 'пали', ru: 'русский', en: 'английский' } : { pli: 'Pali', ru: 'Russian', en: 'English' };
+    // a translation's file names its translator, as the byline does (owner: Pali needs no name; the end of the text
+    // had lost its translator credit, this line brings it back with the audio)
+    const who = a => String((SITE_TRANSLATORS[a.lang] || {})[a.translator] || a.translator || '').replace(/<[^>]+>/g, '');
     const links = ['pli', lang].map(l => files.find(a => a.lang === l)).filter(Boolean)
-        .map(a => `<a href="/audio/${a.file}" type="audio/mpeg">${names[a.lang]}</a>`);
+        .map(a => `<a href="/audio/${a.file}" type="audio/mpeg">${names[a.lang]}</a>` + (a.lang === 'pli' || !who(a) ? '' : ` (${ru ? 'пер.' : 'trans.'} ${who(a)})`));
     return links.length ? `<p class="dg-audio-mp3" style="text-align:right;font-style:italic;font-size:.85em;opacity:.8;margin:2em 0 .5em">${ru ? 'Слушать в MP3' : 'Listen in MP3'}: ${links.join(' · ')}</p>` : '';
 }
 
