@@ -3732,10 +3732,10 @@ async function countSeoTerms() {
     }
 }
 const ruSuttas = n => n + ' ' + (n % 10 === 1 && n % 100 !== 11 ? 'сутта' : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? 'сутты' : 'сутт');
-// The Pali term, the owner's Russian rendering when the glossary has one, and the number of suttas found
+// The Pali term, the owner's rendering when the glossary has one (ru, en), and the number of suttas found
 const SEO_TERM_TEXT = {
-    en: t => [`${t.pali}${t.count ? ` — ${t.count} suttas` : ''} in the Pali Canon | Dhamma.Gift`,
-        `Where the suttas speak of ${t.pali}: ${t.count ? t.count + ' texts' : 'the texts'} of the four Nikāyas and the Khuddaka, each passage in Pali with translations side by side.`],
+    en: t => [`${t.pali}${t.en ? ` (${t.en})` : ''}${t.count ? ` — ${t.count} suttas` : ''} in the Pali Canon | Dhamma.Gift`,
+        `Where the suttas speak of ${t.pali}${t.en ? ` (${t.en})` : ''}: ${t.count ? t.count + ' texts' : 'the texts'} of the four Nikāyas and the Khuddaka, each passage in Pali with translations side by side.`],
     ru: t => [`${t.pali}${t.ru ? ` (${t.ru})` : ''}${t.count ? ` — ${ruSuttas(t.count)}` : ''} Палийского канона | Dhamma.Gift`,
         `${t.pali}${t.ru ? ` (${t.ru})` : ''} в суттах: ${t.count ? ruSuttas(t.count) : 'сутты'} четырёх никай и Кхуддаки, каждое место на пали с переводами рядом.`],
 };
