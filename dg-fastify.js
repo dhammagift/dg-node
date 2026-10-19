@@ -142,7 +142,7 @@ function legacyReaderRedirect(url) {
     return '/?q=' + encodeURIComponent(q) + (rest ? '&' + rest : '');
 }
 app.addHook('onRequest', (req, res, done) => {
-    const to = req.method === 'GET' ? legacyReaderRedirect(req.url) : null;
+    const to = (req.method === 'GET' || req.method === 'HEAD') ? legacyReaderRedirect(req.url) : null;
     if (to) return res.redirect(to, 301);
     done();
 });
