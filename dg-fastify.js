@@ -3500,9 +3500,17 @@ async function textHead(dataId, urlId, reqLang) {
     const AUDIO_LANG = { en: { pli: 'Pali', ru: 'Russian', en: 'English' }, ru: { pli: 'пали', ru: 'русский', en: 'английский' } };
     const audioNames = audio.map(a => (AUDIO_LANG[lang] || AUDIO_LANG.en)[a.lang]).filter(Boolean);
     const audioNote = !audioNames.length ? '' : lang === 'ru' ? ` Аудио: ${audioNames.join(', ')}.` : ` Audio: ${audioNames.join(', ')}.`;
-    const room = 160 - audioNote.length;
+    // two or more translations in this language: the description says they can be compared side by side (owner 2026-10-20:
+    // «кто-то ищет MN 10 — видит „Сравнить переводы MN 10“»), no pages of their own - the reader's multi mode is the comparison
+    // the name alone ("SV", "Сыркин", "Thanissaro"): the byline's source, editor and title don't fit 160 characters; o first
+    const shortName = t => String((SITE_TRANSLATORS[lang] || {})[t] || t).replace(/<[^>]+>/g, '')
+        .replace(/,? ред\..*$| с (Пали|Англ).*$| theravada\.(ru|su)\b|,? в процессе$| \(.*\)$/gi, '').replace(/\b(Bhikkhu|Thera)\b/g, '').trim();
+    const trNames = [...new Set(searchDb.prepare("SELECT DISTINCT translator FROM texts WHERE sutta_id = ? AND kind = 'translation' AND lang = ? AND translator NOT IN ('ai', 'gemini')")
+        .all(dataId, lang).map(r => r.translator).sort((a, b) => (b === 'o') - (a === 'o')).map(shortName).filter(Boolean))];
+    const compareNote = trNames.length < 2 ? '' : lang === 'ru' ? ` Сравнить переводы: ${trNames.join(', ')}.` : ` Compare translations: ${trNames.join(', ')}.`;
+    const room = 160 - audioNote.length - compareNote.length;
     if (description.length > room) description = description.slice(0, description.lastIndexOf(' ', room - 3)) + '…';
-    description += audioNote;
+    description += compareNote + audioNote;
     // Cyrillic only for the Russian page: nobody reading the English one types it
     const names = [...new Set([split, paliAscii(split), paliAscii(pali), lang === 'ru' ? cyr : ''])].filter(n => n && n !== pali);
     const url = id => SITE + '/' + encodeURIComponent(urlId) + (id === 'en' ? '' : '?lang=' + id);
