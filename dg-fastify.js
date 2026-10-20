@@ -3783,10 +3783,23 @@ function bookLabel(code, lang) {
 // Search results pages search engines may index: the key terms (configs/seo/search-terms.json, owner 2026-10-19 - the
 // search is the site's strength, the key terms' results belong in Google). Keyed by the query as the path carries it;
 // every other query stays noindex. count: texts found in the default scope, filled after start for the title.
-const SEO_TERMS = new Map((() => {
-    try { return JSON.parse(fsSync.readFileSync(path.join(__dirname, 'configs', 'seo', 'search-terms.json'), 'utf8')).terms; }
-    catch (e) { console.warn('configs/seo/search-terms.json:', e.message); return []; }
-})().filter(t => t.index !== false).map(t => [t.q.normalize('NFC').toLowerCase(), t]));
+const SEO_TERMS_PATH = path.join(__dirname, 'configs', 'seo', 'search-terms.json');
+const SEO_TERMS = new Map();
+function loadSeoTerms() {
+    let terms;
+    try { terms = JSON.parse(fsSync.readFileSync(SEO_TERMS_PATH, 'utf8')).terms; }
+    catch (e) { console.warn('configs/seo/search-terms.json:', e.message); return false; } // a half-saved file keeps the old list
+    SEO_TERMS.clear();
+    for (const t of terms.filter(t => t.index !== false)) SEO_TERMS.set(t.q.normalize('NFC').toLowerCase(), t);
+    return true;
+}
+loadSeoTerms();
+// An edited list goes live without a restart: the pages, their counts and the sitemap follow it
+fsSync.watchFile(SEO_TERMS_PATH, { interval: 5000 }, () => {
+    if (!loadSeoTerms()) return;
+    console.log(`SEO terms reloaded: ${SEO_TERMS.size} indexed`);
+    buildSitemapCache().then(countSeoTerms).catch(e => console.warn('SEO terms reload:', e.message));
+});
 const seoTerm = q => SEO_TERMS.get(String(q).normalize('NFC').toLowerCase());
 async function countSeoTerms() {
     for (const t of SEO_TERMS.values()) {
