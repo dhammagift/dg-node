@@ -82,7 +82,6 @@ test/.disk-guard.log
 
 # Страница проверок приложения (публикуется от корня как /app-tests/)
 siteroot/app-tests/
-siteroot/ai-tests
 dg.db.local*
 mobile-data
 .env
