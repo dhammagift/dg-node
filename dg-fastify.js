@@ -1114,7 +1114,7 @@ app.get('/api-docs/', (req, res) => {
 // every 10 minutes, so new batches show without a restart and both hosts link the same files. A text page names its
 // files under the text (audioLineHtml) and in its JSON-LD (textHead).
 const AUDIO_BASE = process.env.DG_AUDIO_BASE || 'https://files.dhamma.gift/audio/';
-let SUTTA_AUDIO = new Map(); // sutta id -> [{ lang, file, duration, translator, voice }]
+let SUTTA_AUDIO = new Map(); // sutta id -> [{ lang, url, duration, translator, voice }]
 let suttaAudioStamp = '';
 async function loadSuttaAudio() {
     try {
@@ -1128,7 +1128,7 @@ async function loadSuttaAudio() {
             // up to two folders, by Nikaya and book (owner 2026-10-19: an/an4/an4.200.ru.mp3, kn/dhp/dhp1-20.pli.mp3)
             if (!f.sutta || !/^([a-z]+\d*\/){0,2}[\w.+-]+\.(pli|ru|en)\.mp3$/.test(f.file || '')) continue;
             if (!next.has(f.sutta)) next.set(f.sutta, []);
-            next.get(f.sutta).push({ lang: f.lang, file: f.file, duration: f.duration, translator: f.translator, voice: f.voice });
+            next.get(f.sutta).push({ lang: f.lang, url: AUDIO_BASE + f.file, duration: f.duration, translator: f.translator, voice: f.voice });
         }
         SUTTA_AUDIO = next;
         suttaAudioStamp = stamp;
@@ -1138,20 +1138,53 @@ async function loadSuttaAudio() {
 }
 setTimeout(loadSuttaAudio, 2000);
 setInterval(loadSuttaAudio, 10 * 60 * 1000).unref();
+// Vinaya mp3s (the two Vibhaṅgas, Pali and the Russian translations) stay on our own servers, not R2 (owner 2026-10-20):
+// a flat folder on each prod host, <id>.<lang>.mp3 with its <id>.<lang>.json beside it, served at /vinaya-audio/.
+// The folder is read at start and every 10 minutes like the R2 index. A host without it links no Vinaya audio.
+const VINAYA_AUDIO_DIR = process.env.DG_VINAYA_AUDIO_DIR || '/var/www/vinaya-audio';
+let VINAYA_AUDIO = new Map();
+let vinayaAudioStamp = '';
+function loadVinayaAudio() {
+    let names;
+    try { names = fsSync.readdirSync(VINAYA_AUDIO_DIR).filter(n => /^[\w.+-]+\.(pli|ru|en)\.json$/.test(n)).sort(); }
+    catch (e) { if (vinayaAudioStamp !== 'none') console.warn('Vinaya audio:', e.message); vinayaAudioStamp = 'none'; VINAYA_AUDIO = new Map(); return; }
+    const stamp = names.join('|');
+    if (stamp === vinayaAudioStamp) return;
+    const next = new Map();
+    for (const n of names) {
+        const mp3 = n.replace(/\.json$/, '.mp3');
+        if (!fsSync.existsSync(path.join(VINAYA_AUDIO_DIR, mp3))) continue;
+        let f; try { f = JSON.parse(fsSync.readFileSync(path.join(VINAYA_AUDIO_DIR, n), 'utf8')); } catch { continue; }
+        if (!f.sutta) continue;
+        if (!next.has(f.sutta)) next.set(f.sutta, []);
+        next.get(f.sutta).push({ lang: f.lang, url: SITE + '/vinaya-audio/' + mp3, duration: f.duration, translator: f.translator, voice: f.voice });
+    }
+    VINAYA_AUDIO = next; vinayaAudioStamp = stamp;
+    textHeadCache.clear(); textBodyCache.clear();
+    console.log(`Vinaya audio: ${next.size} texts (${VINAYA_AUDIO_DIR})`);
+}
+setTimeout(loadVinayaAudio, 2000);
+setInterval(loadVinayaAudio, 10 * 60 * 1000).unref();
+if (fsSync.existsSync(VINAYA_AUDIO_DIR)) app.register(fastifyStatic, {
+    root: VINAYA_AUDIO_DIR, prefix: '/vinaya-audio/', index: false, decorateReply: false,
+    allowedPath: p => /^\/[\w.+-]+\.mp3$/.test(p), // the mp3s only, not their json
+    maxAge: '7d',
+});
+const textAudio = id => SUTTA_AUDIO.get(id) || VINAYA_AUDIO.get(id) || [];
 
 // The line under the text, before the links row (owner: «как подпись „слушать в MP3“: пали · русский»): the Pali file
 // and the one in the page's language. The same string goes into the server's text (textBodyHtml) and, through
 // /api/text's audioHtml, into the reader's render, so the reader keeps the server's nodes. Right-aligned and italic like the
 // byline - a caption, apart from the text (owner: «как подпись справа»). Inline style: no CSS file.
 function audioLineHtml(id, lang) {
-    const files = SUTTA_AUDIO.get(id) || [];
+    const files = textAudio(id);
     const ru = lang === 'ru';
     const names = ru ? { pli: 'пали', ru: 'русский', en: 'английский' } : { pli: 'Pali', ru: 'Russian', en: 'English' };
     // a translation's file names its translator, as the byline does (owner: Pali needs no name; the end of the text
     // had lost its translator credit, this line brings it back with the audio)
     const who = a => String((SITE_TRANSLATORS[a.lang] || {})[a.translator] || a.translator || '').replace(/<[^>]+>/g, '');
     const links = ['pli', lang].map(l => files.find(a => a.lang === l)).filter(Boolean)
-        .map(a => `<a href="${AUDIO_BASE}${a.file}" type="audio/mpeg">${names[a.lang]}</a>` + (a.lang === 'pli' || !who(a) ? '' : ` (${ru ? 'пер.' : 'trans.'} ${who(a)})`));
+        .map(a => `<a href="${a.url}" type="audio/mpeg">${names[a.lang]}</a>` + (a.lang === 'pli' || !who(a) ? '' : ` (${ru ? 'пер.' : 'trans.'} ${who(a)})`));
     return links.length ? `<p class="dg-audio-mp3" style="text-align:right;font-style:italic;font-size:.85em;opacity:.8;margin:2em 0 .5em">${ru ? 'Слушать в MP3' : 'Listen in MP3'}: ${links.join(' · ')}</p>` : '';
 }
 
@@ -3496,7 +3529,7 @@ async function textHead(dataId, urlId, reqLang) {
     if (lang === 'ru' && cyr) description = cyr + (code ? ', ' + code : '') + '. ' + description;
     else if (titlePali !== pali) description = pali + (code ? ', ' + code : '') + '. ' + description;
     // a text with its audio says so at the end of the description, which keeps its 160 characters
-    const audio = SUTTA_AUDIO.get(dataId) || [];
+    const audio = textAudio(dataId);
     const AUDIO_LANG = { en: { pli: 'Pali', ru: 'Russian', en: 'English' }, ru: { pli: 'пали', ru: 'русский', en: 'английский' } };
     const audioNames = audio.map(a => (AUDIO_LANG[lang] || AUDIO_LANG.en)[a.lang]).filter(Boolean);
     const audioNote = !audioNames.length ? '' : lang === 'ru' ? ` Аудио: ${audioNames.join(', ')}.` : ` Audio: ${audioNames.join(', ')}.`;
@@ -3529,7 +3562,7 @@ async function textHead(dataId, urlId, reqLang) {
         work: { '@context': 'https://schema.org', '@type': 'CreativeWork', name: pali || code || local, alternateName: [...names, local].filter(Boolean),
             inLanguage: lang, url: url(lang), isPartOf: collection ? { '@type': 'CreativeWorkSeries', name: collection } : undefined,
             audio: audio.length ? audio.map(a => ({ '@type': 'AudioObject', name: `${name} — ${AUDIO_LANG.en[a.lang]}`, inLanguage: a.lang === 'pli' ? 'pi' : a.lang,
-                contentUrl: AUDIO_BASE + a.file, encodingFormat: 'audio/mpeg', duration: a.duration ? `PT${Math.floor(a.duration / 60)}M${a.duration % 60}S` : undefined })) : undefined },
+                contentUrl: a.url, encodingFormat: 'audio/mpeg', duration: a.duration ? `PT${Math.floor(a.duration / 60)}M${a.duration % 60}S` : undefined })) : undefined },
         alternates: [...new Set(['en', ...roster])].filter(l => l === 'en' || roster.includes(l)).map(l => [l, url(l)]),
         breadcrumbs: { '@context': 'https://schema.org', '@type': 'BreadcrumbList',
             itemListElement: crumbs.map((c, i) => ({ '@type': 'ListItem', position: i + 1, ...c })) },
