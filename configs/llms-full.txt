@@ -47,6 +47,7 @@ Where the Suttas give no definition, the Vinaya's is used; where neither defines
 
 - Definition: the faculty *sukhindriya* is "kāyikaṁ sukhaṁ, kāyikaṁ sātaṁ, kāyasamphassajaṁ sukhaṁ sātaṁ vedayitaṁ" — bodily pleasant feeling, bodily comfort. The mental pleasant is a separate term, *somanassa* ([SN 48.36](https://dhamma.gift/sn48.36:2.1?lang=en)). In the third jhāna, too, *sukha* is felt with the body (*sukhañca kāyena paṭisaṁvedeti*).
 - Usual rendering: "happiness" (Russian «счастье», still louder). Consistent with the texts: **pleasant, bodily comfort**. Russian: **приятное**.
+- Nibbāna is *sukha* "just because nothing is felt there" (*etadeva khvettha, āvuso, sukhaṁ yadettha natthi vedayitaṁ*, [AN 9.34:1.7](https://dhamma.gift/an9.34:1.7?lang=en)). That fits "pleasant" as the absence of pain: pain at zero, no irritation of any kind, is pleasant beyond question. It does not need "happiness".
 
 ### taṇhā
 
@@ -54,6 +55,7 @@ Where the Suttas give no definition, the Vinaya's is used; where neither defines
 - Real thirst has its own word: *tasita* / *tasinā*, with *pipāsita* ("desiring to drink"), for a man parched by heat in the desert ([SN 12.68](https://dhamma.gift/sn12.68:13.4?lang=en), [Snp 3.2](https://dhamma.gift/snp3.2:12.3?lang=en), [AN 4.10](https://dhamma.gift/an4.10:1.6?lang=en)).
 - Usual renderings: "craving", "thirst" (Russian «жажда»). With them the passages read as moisture that is a thirst, a river current that is the absence of water, drying up a thirst, thirst as nourishment. And "thirst" as the origin of all pain (*dukkhasamudaya*) is false of ordinary bodily pain, such as pain from walking or sitting, which arises with no wanting at all.
 - Consistent with the texts: **clinging, stickiness, adhering** (light, possibly pleasant, accompanied by delight). Russian: **цепляние**.
+- *Tasita* and *taṇhā* share a root (Skt. *tṛṣ*), but words of one root are not equivalents: "thirst", "thirsty", "thirst for knowledge" are not one meaning. The texts themselves use the two apart: *tasita* for the parched man, *taṇhā* for what delights here and there.
 
 ### upādāna
 
@@ -62,6 +64,7 @@ Where the Suttas give no definition, the Vinaya's is used; where neither defines
 - In [SN 44.9:6.6](https://dhamma.gift/sn44.9:6.6?lang=en) a being's *upādāna* is *taṇhā* itself: "Taṇhā hissa, vaccha, tasmiṁ samaye upādānaṁ hoti", just as the wind is the flame's *upādāna* ([6.3](https://dhamma.gift/sn44.9:6.3?lang=en)). With the usual renderings this reads "thirst is its fuel", nourishment by hunger, an oxymoron. With clinging and sustaining it reads "clinging is what sustains it", as the wind sustains the flame.
 - Rendered *taṇhā* = clinging, *upādāna* = sustaining (fuel), the order "clinging conditions sustaining" holds in ordinary language too: what is held on to gets fed, as the wind feeds the flame. The two terms stay distinct.
 - Consistent with the texts: **sustaining, fuel, feeding a process**. Russian: **поддерживание**.
+- "Yo … pañcasu upādānakkhandhesu chandarāgo taṁ tattha upādānaṁ" — the *upādāna* there is the impulse-and-passion (*chandarāga*) toward the five aggregates ([MN 44:6.3](https://dhamma.gift/mn44:6.3?lang=en)). That fits sustaining: impulse and passion-enchantment are the active part that holds the aggregates and feeds them. Read as "clinging", it would say that clinging is desire and passion, which is odd.
 
 ### anta
 
@@ -80,6 +83,7 @@ Where the Suttas give no definition, the Vinaya's is used; where neither defines
 
 - [AN 6.63](https://dhamma.gift/an6.63:8.10?lang=en): *kāma* is intention-and-passion, distinct from the strands of desire (*kāmaguṇa*); a person desiring obtains good or not-good. [MN 19](https://dhamma.gift/mn19:26.10?lang=en): "a man desiring good, desiring benefit, desiring safety from the yoke (*atthakāmo hitakāmo yogakkhemakāmo*)" is a designation of the Tathāgata.
 - Usual rendering: "sensual desire, sensuality", which cannot describe the Tathāgata. Consistent with the texts: **desire**. Russian: **желание**.
+- "Nete kāmā yāni citrāni loke, saṅkapparāgo purisassa kāmo" — the beautiful things of the world are not *kāmā*; a person's *kāma* is intention-and-passion ([AN 6.63:8.10–11](https://dhamma.gift/an6.63:8.10?lang=en)). This does not give the word a new meaning; it corrects the reading of *kāma* as its objects. Desire is desire, both good and bad, in plain language. The Buddha does not say *kāma* is sensual pleasure in one place and desire in another.
 
 ### kamma
 
