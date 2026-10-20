@@ -309,15 +309,15 @@ HOME/offline-data/dhammagift/
 
 ## GitHub API из этого сервера (DSH и Claude Code)
 
-- Токен: `/root/.secrets/github-token` (права 600). Fine-grained PAT `kv-server`, owner `dhammagift`,
-  право **Issues: Read and write**, истекает **10.12.2026** — после ротации перезаписать файл.
+- Токен: `GITHUB_TOKEN` в `/root/.secrets/tools.env` (права 600; там же остальные токены инструментов, ключи API — в `/root/.secrets/.env`). Fine-grained PAT `kv-server`, owner `dhammagift`,
+  право **Issues: Read and write**, истекает **10.12.2026** — после ротации заменить `GITHUB_TOKEN` в `tools.env` (на f3 и F1).
 - `gh` CLI не установлен (диск `/` бывал переполнен) — ходить через `curl`.
 - Право на создание issue есть в репозиториях: `dg-node`, `dg-twa`, `dg-app-full`, `notApp`, `otrn`,
   `dgift_bot`, `dg-docs`, `ddg-ui`, `dictPlugin`. В остальных — только чтение.
 - `git push/pull` идёт по SSH-ключу, токен для этого не нужен.
 
 ```bash
-TOKEN=$(tr -d '\n\r' < /root/.secrets/github-token)
+. /root/.secrets/tools.env; TOKEN=$GITHUB_TOKEN
 curl -sS -X POST -H "Authorization: Bearer $TOKEN" \
   -H "Accept: application/vnd.github+json" -H "User-Agent: agent" \
   -d "$(python3 -c 'import json;print(json.dumps({"title":"Заголовок","body":open("docs/PLAN.md").read()}))')" \
