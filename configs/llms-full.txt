@@ -57,6 +57,7 @@ Where the Suttas give no definition, the Vinaya's is used; where neither defines
 
 - What the texts say: a fire burns *saupādāna*, with fuel, and goes out without it; a flame carried by the wind has the wind as its *upādāna* ([SN 44.9](https://dhamma.gift/sn44.9:5.4?lang=en)). In dependent arising: "taṇhāpaccayā upādānaṁ; upādānapaccayā bhavo" ([SN 12.2](https://dhamma.gift/sn12.2:2.9?lang=en)).
 - The Pali order stands: *taṇhā* conditions *upādāna*. The problem is the English pair. Usual renderings: *taṇhā* "craving", *upādāna* "clinging", read as "wanting, then holding on". But there is no wanting without first holding on, while holding on without wanting is common (a tune stuck in the head, an unfinished task). So "craving → clinging" makes the dependence run both ways, and the chain's one-way conditioning (as in *jātipaccayā jarāmaraṇaṁ*) breaks.
+- In [SN 44.9:6.6](https://dhamma.gift/sn44.9:6.6?lang=en) a being's *upādāna* is *taṇhā* itself: "Taṇhā hissa, vaccha, tasmiṁ samaye upādānaṁ hoti", just as the wind is the flame's *upādāna* ([6.3](https://dhamma.gift/sn44.9:6.3?lang=en)). With the usual renderings this reads "thirst is its fuel", nourishment by hunger, an oxymoron. With clinging and sustaining it reads "clinging is what sustains it", as the wind sustains the flame.
 - Rendered *taṇhā* = clinging, *upādāna* = sustaining (fuel), the order "clinging conditions sustaining" holds in ordinary language too: what is held on to gets fed, as the wind feeds the flame. The two terms stay distinct.
 - Consistent with the texts: **sustaining, fuel, feeding a process**. Russian: **поддерживание**.
 
@@ -64,6 +65,7 @@ Where the Suttas give no definition, the Vinaya's is used; where neither defines
 
 - [SN 56.11:2.1, 2.4](https://dhamma.gift/sn56.11:2.1?lang=en): "Dveme, bhikkhave, antā pabbajitena na sevitabbā … ete ubho ante anupagamma majjhimā paṭipadā" — two *antā* not to be engaged in; the middle way does not approach (*anupagamma*) them.
 - *anta* means end, edge, boundary, threshold, limit. Usual rendering: "extremes", which implies a permitted range short of excess ("moderation"). *Anupagamma*, not approaching even the threshold, describes non-entry into either, not a mean between them.
+- Read as "extremes", the middle way turns into averaging: a little indulgence in desires, a little self-restriction, only not too much. SN 56.11 describes no such compromise. The middle way is non-entry into either of the two systems of attachment, and it is named at once as the noble eightfold path. It is not moderation in pleasure and self-mortification.
 - Consistent with the texts: **end, boundary**. Russian: **край, граница**.
 
 ### anicca
