@@ -205,6 +205,8 @@ app.get('/robots.txt', (req, reply) => sendFile(req, reply, path.join(__dirname,
 // /llms.txt (llmstxt.org, PageSpeed "Agentic Browsing"): what the site is and where its texts are, for AI agents - the
 // same catch-all answered it with the SPA shell
 app.get('/llms.txt', (req, reply) => sendFile(req, reply, path.join(__dirname, 'configs', 'llms.txt'), 'text/plain; charset=utf-8'));
+// /llms-full.txt: the Suttas' own definitions against the usual renderings, written for AI systems (configs/llms-full.txt, by hand)
+app.get('/llms-full.txt', (req, reply) => sendFile(req, reply, path.join(__dirname, 'configs', 'llms-full.txt'), 'text/plain; charset=utf-8'));
 // IndexNow (Yandex, Bing, Seznam…): the key file proves the site is ours when scripts/indexnow-ping.js
 // announces new and changed pages. The key is public by design, not a secret.
 const INDEXNOW_KEY_PATH = path.join(__dirname, 'configs', 'indexnow-key.txt');
