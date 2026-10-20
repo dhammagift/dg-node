@@ -4,7 +4,8 @@
   "q: the query as the page's path runs it (/<q>, default scope); its results page gets index,follow, its own title and description with the number of suttas, and a sitemap entry (en, ru). Every other query stays noindex, follow.",
   "ru, en: the owner's glossary (Google Sheet \"Mapping Pali-Rus\", Лист1 columns C and D, the first rendering; the tab \"SEO-термины\" lists these terms with live lookups). A term without an entry goes without that gloss.",
   "index: false - the query catches other words (ogh -> mogha; diacritics fold, so jāti -> uppajjati, bhava -> bhavati), held back until its query is settled.",
-  "A term with kinds (SN 45.161-180, owner 2026-10-20): the word at a word start plus its kinds as the canon lists them, as a regex; patterns are not diacritic-folded and run up to 128 characters. Bhava: its compounds and noun forms, not bhavaṁ (sir) or bhavati. Yoga: the four bonds only, not yogakkhema."
+  "A term with kinds (SN 45.161-180, owner 2026-10-20): the word at a word start plus its kinds as the canon lists them, as a regex; patterns are not diacritic-folded and run up to 128 characters. Bhava: its compounds and noun forms, not bhavaṁ (sir) or bhavati. Yoga: the four bonds only, not yogakkhema.",
+  "Part 2 (owner 2026-10-20: «только им падеж самое основное»): the nominative forms only, singular and plural, as whole words. Kilesa stays closed: kileso/kilesā is 3 suttas."
  ],
  "terms": [
   {
@@ -85,10 +86,10 @@
    "en": "investigation-samadhi"
   },
   {
-   "q": "indriy",
+   "q": "\\bindriyaṁ\\b|\\bindriyāni\\b",
    "pali": "Indriya",
    "group": "bodhipakkhiya",
-   "index": false,
+   "index": true,
    "ru": "способность",
    "en": "ability"
   },
@@ -128,10 +129,10 @@
    "en": "understanding-ability"
   },
   {
-   "q": "balān",
+   "q": "\\bbalaṁ\\b|\\bbalāni\\b",
    "pali": "Bala",
    "group": "bodhipakkhiya",
-   "index": false,
+   "index": true,
    "ru": "сила",
    "en": "power"
   },
@@ -304,10 +305,10 @@
    "en": "dependent arising"
   },
   {
-   "q": "avijj",
+   "q": "\\bavijjā\\b",
    "pali": "Avijjā",
    "group": "paticcasamuppada",
-   "index": false,
+   "index": true,
    "ru": "неразличение",
    "en": "non-discernment"
   },
@@ -368,12 +369,12 @@
    "en": "bhava"
   },
   {
-   "q": "jāti",
+   "q": "\\bjāti\\b",
    "pali": "Jāti",
    "group": "paticcasamuppada",
    "ru": "рождение",
    "en": "birth",
-   "index": false
+   "index": true
   },
   {
    "q": "jarāmaraṇ",
@@ -615,26 +616,26 @@
    "en": "noble-truth"
   },
   {
-   "q": "nibbān",
+   "q": "\\bnibbānaṁ\\b",
    "pali": "Nibbāna",
    "group": "core",
-   "index": false,
+   "index": true,
    "ru": "ниббана",
    "en": "nibbana"
   },
   {
-   "q": "jhān",
+   "q": "\\bjhānaṁ\\b|\\bjhānāni\\b",
    "pali": "Jhāna",
    "group": "core",
-   "index": false,
+   "index": true,
    "ru": "джхана",
    "en": "jhana"
   },
   {
-   "q": "mett",
+   "q": "\\bmettā\\b",
    "pali": "Mettā",
    "group": "core",
-   "index": false,
+   "index": true,
    "ru": "мирность",
    "en": "peacefulness"
   },
@@ -646,26 +647,26 @@
    "en": "Abidings of Brahma"
   },
   {
-   "q": "anicc",
+   "q": "\\baniccaṁ\\b|\\baniccā\\b|\\banicco\\b",
    "pali": "Anicca",
    "group": "core",
-   "index": false,
+   "index": true,
    "ru": "ненадёжность",
    "en": "unreliability"
   },
   {
-   "q": "anatt",
+   "q": "\\banattā\\b",
    "pali": "Anattā",
    "group": "core",
-   "index": false,
+   "index": true,
    "ru": "без-личность",
    "en": "non-personality"
   },
   {
-   "q": "khandh",
+   "q": "\\bkhandho\\b|\\bkhandhā\\b",
    "pali": "Khandha",
    "group": "core",
-   "index": false,
+   "index": true,
    "ru": "блок",
    "en": "block"
   },
@@ -677,18 +678,18 @@
    "en": "breath-remembrance"
   },
   {
-   "q": "sīl",
+   "q": "\\bsīlaṁ\\b|\\bsīlāni\\b",
    "pali": "Sīla",
    "group": "core",
-   "index": false,
+   "index": true,
    "ru": "нравственность",
    "en": "morality"
   },
   {
-   "q": "kamm",
+   "q": "\\bkammaṁ\\b|\\bkammāni\\b",
    "pali": "Kamma",
    "group": "core",
-   "index": false,
+   "index": true,
    "ru": "активность",
    "en": "activity"
   },
