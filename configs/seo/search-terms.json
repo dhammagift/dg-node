@@ -5,7 +5,7 @@
   "ru, en: the owner's glossary (Google Sheet \"Mapping Pali-Rus\", Лист1 columns C and D, the first rendering; the tab \"SEO-термины\" lists these terms with live lookups). A term without an entry goes without that gloss.",
   "index: false - the query catches other words (ogh -> mogha; diacritics fold, so jāti -> uppajjati, bhava -> bhavati), held back until its query is settled.",
   "A term with kinds (SN 45.161-180, owner 2026-10-20): the word at a word start plus its kinds as the canon lists them, as a regex; patterns are not diacritic-folded and run up to 128 characters. Bhava: its compounds and noun forms, not bhavaṁ (sir) or bhavati. Yoga: the four bonds only, not yogakkhema.",
-  "Part 2 (owner 2026-10-20: «только им падеж самое основное»): the nominative forms only, singular and plural, as whole words. Kilesa stays closed: kileso/kilesā is 3 suttas."
+  "Part 2 (owner 2026-10-20: «только им падеж самое основное»): the nominative forms only, singular and plural, as whole words. Kilesa (owner: «очень модное слово»): the nominative is 3 suttas, so every word with kiles - kilesa, upakkilesa, saṅkilesa - all of them the same defilement."
  ],
  "terms": [
   {
@@ -587,10 +587,10 @@
    "en": "unbeneficial-root"
   },
   {
-   "q": "kilesa",
+   "q": "kiles",
    "pali": "Kilesa",
    "group": "kilesa",
-   "index": false,
+   "index": true,
    "ru": "загрязнение",
    "en": "contamination"
   },
