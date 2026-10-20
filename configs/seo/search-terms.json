@@ -3,7 +3,8 @@
   "Search results pages that search engines may index (owner 2026-10-19: the search is the site's strength - the key terms' results belong in Google).",
   "q: the query as the page's path runs it (/<q>, default scope); its results page gets index,follow, its own title and description with the number of suttas, and a sitemap entry (en, ru). Every other query stays noindex, follow.",
   "ru, en: the owner's glossary (Google Sheet \"Mapping Pali-Rus\", Лист1 columns C and D, the first rendering; the tab \"SEO-термины\" lists these terms with live lookups). A term without an entry goes without that gloss.",
-  "index: false - the query catches other words (ogh -> mogha; diacritics fold, so jāti -> uppajjati, bhava -> bhavati), held back until its query is settled."
+  "index: false - the query catches other words (ogh -> mogha; diacritics fold, so jāti -> uppajjati, bhava -> bhavati), held back until its query is settled.",
+  "A term with kinds (SN 45.161-180, owner 2026-10-20): the word at a word start plus its kinds as the canon lists them, as a regex; patterns are not diacritic-folded and run up to 128 characters. Bhava: its compounds and noun forms, not bhavaṁ (sir) or bhavati. Yoga: the four bonds only, not yogakkhema."
  ],
  "terms": [
   {
@@ -360,12 +361,11 @@
    "en": "clinging"
   },
   {
-   "q": "bhava",
+   "q": "kāmabhav|rūpabhav|bhavataṇh|bhavapaccay|bhavanirodh|bhavāsav|bhavogh|bhavayog|bhavarāg|punabbhav|bhavanett|\\bbhav(o|ā|esu)\\b",
    "pali": "Bhava",
    "group": "paticcasamuppada",
    "ru": "бхава",
-   "en": "bhava",
-   "index": false
+   "en": "bhava"
   },
   {
    "q": "jāti",
@@ -383,10 +383,9 @@
    "en": "aging-dying"
   },
   {
-   "q": "āsav",
+   "q": "kāmāsav|bhavāsav|avijjāsav|\\bāsav",
    "pali": "Āsava",
    "group": "kilesa",
-   "index": false,
    "ru": "истечение",
    "en": "outflow"
   },
@@ -412,18 +411,16 @@
    "en": "non-discernment-outflow"
   },
   {
-   "q": "ogh",
+   "q": "kāmogh|bhavogh|diṭṭhogh|avijjogh|\\bogh",
    "pali": "Ogha",
    "group": "kilesa",
-   "index": false,
    "ru": "затопление",
    "en": "flooding"
   },
   {
-   "q": "yog",
+   "q": "kāmayog|bhavayog|diṭṭhiyog|avijjāyog|\\byogā\\b",
    "pali": "Yoga",
    "group": "kilesa",
-   "index": false,
    "ru": "связь",
    "en": "bond"
   },
@@ -463,18 +460,16 @@
    "en": "personality-assertion-sustaining"
   },
   {
-   "q": "ganth",
+   "q": "kāyaganth|\\bganth[aāoe]",
    "pali": "Gantha",
    "group": "kilesa",
-   "index": false,
    "ru": "узел",
    "en": "knot"
   },
   {
-   "q": "anusay",
+   "q": "rāgānusay|paṭighānusay|diṭṭhānusay|vicikicchānusay|mānānusay|avijjānusay|\\banusay",
    "pali": "Anusaya",
    "group": "kilesa",
-   "index": false,
    "ru": "предрасположенность",
    "en": "predisposition"
   },
@@ -563,26 +558,23 @@
    "en": "mind-futility"
   },
   {
-   "q": "esan",
+   "q": "kāmesan|bhavesan|brahmacariyesan|\\besan",
    "pali": "Esanā",
    "group": "kilesa",
-   "index": false,
    "ru": "поиск",
    "en": "search"
   },
   {
-   "q": "vidh",
+   "q": "\\bvidhā\\b|\\bvidhāsu|vidhāsutta|vidhāsamatikkant",
    "pali": "Vidhā",
    "group": "kilesa",
-   "index": false,
    "ru": "вид",
    "en": "kind"
   },
   {
-   "q": "dukkhat",
+   "q": "dukkhadukkhat|saṅkhāradukkhat|vipariṇāmadukkhat|\\bdukkhatā",
    "pali": "Dukkhatā",
    "group": "kilesa",
-   "index": false,
    "ru": "болезненность",
    "en": "painfulness"
   },

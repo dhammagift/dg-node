@@ -3503,7 +3503,8 @@ async function textHead(dataId, urlId, reqLang) {
     // two or more translations in this language: the description says they can be compared side by side (owner 2026-10-20:
     // «кто-то ищет MN 10 — видит „Сравнить переводы MN 10“»), no pages of their own - the reader's multi mode is the comparison
     // the name alone ("SV", "Сыркин", "Thanissaro"): the byline's source, editor and title don't fit 160 characters; o first
-    const shortName = t => String((SITE_TRANSLATORS[lang] || {})[t] || t).replace(/<[^>]+>/g, '')
+    // "o" is the project's own translation: it reads as the site's name (owner 2026-10-20), never another site's
+    const shortName = t => t === 'o' ? 'Dhamma.Gift' : String((SITE_TRANSLATORS[lang] || {})[t] || t).replace(/<[^>]+>/g, '')
         .replace(/,? ред\..*$| с (Пали|Англ).*$| theravada\.(ru|su)\b|,? в процессе$| \(.*\)$/gi, '').replace(/\b(Bhikkhu|Thera)\b/g, '').trim();
     const trNames = [...new Set(searchDb.prepare("SELECT DISTINCT translator FROM texts WHERE sutta_id = ? AND kind = 'translation' AND lang = ? AND translator NOT IN ('ai', 'gemini')")
         .all(dataId, lang).map(r => r.translator).sort((a, b) => (b === 'o') - (a === 'o')).map(shortName).filter(Boolean))];
