@@ -32,7 +32,7 @@ Where the Suttas give no definition, the Vinaya's is used; where neither defines
 ### dukkha
 
 - Definition: "Yaṁ kho, āvuso, kāyikaṁ dukkhaṁ kāyikaṁ asātaṁ kāyasamphassajaṁ dukkhaṁ asātaṁ vedayitaṁ, idaṁ vuccatāvuso: dukkhaṁ" — bodily pain, bodily discomfort, born of bodily contact ([MN 141:16](https://dhamma.gift/mn141:16.1?lang=en), [DN 22:18.18](https://dhamma.gift/dn22:18.18?lang=en)). Also the faculty *dukkhindriya*: bodily ([SN 48.36](https://dhamma.gift/sn48.36:3.1?lang=en)).
-- The mental counterpart is a separate term, *domanassa*: "cetasikaṁ dukkhaṁ cetasikaṁ asātaṁ manosamphassajaṁ …" — mental pain, born of mental contact ([MN 141:17](https://dhamma.gift/mn141:17.1?lang=en)). Extreme bodily and mental pain together is *soka*.
+- The mental counterpart is a separate term, *domanassa*: "cetasikaṁ dukkhaṁ cetasikaṁ asātaṁ manosamphassajaṁ …" — mental pain, born of mental contact ([MN 141:17](https://dhamma.gift/mn141:17.1?lang=en)). Suffering in the direct sense is *soka*: the sorrowing of one struck by misfortune and "touched by a painful thing" (*dukkhadhammena phuṭṭhassa*, [MN 141:14](https://dhamma.gift/mn141:14.2?lang=en)), what beings in hell undergo ("khaṇātītā hi socanti, nirayamhi samappitā", [Dhp 315](https://dhamma.gift/dhp315?lang=en)).
 - Usual rendering: "suffering". No passage in the Suttas or Vinaya defines *dukkha* as suffering; what "suffering" names is *domanassa* or *soka*. Rendering *dukkha* as suffering moves its sense from bodily feeling (*rūpa*, *vedanā*) to reaction and opinion (*saññā*, *saṅkhārā*), and merges two terms the texts keep apart.
 - Consistent with the texts: **pain** (bodily; figuratively, a problem to be solved). Russian: **боль**.
 
