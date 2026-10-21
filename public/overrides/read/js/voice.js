@@ -2574,8 +2574,8 @@ async function startPlayback(container, mode, slug, startIndex = 0) {
       // Owner: short, just the three kinds of voices (the "for offline" line is what Built-in says).
       const li = 'display:block;text-align:left;margin-top:4px';
       const message = window.isRu
-          ? `(⚙ → Voice settings):<span style="${li}">• <b>DG Voice</b> — бесплатные нейроголоса</span><span style="${li}">• <b>Google</b> — бесплатный лимит, нужен <a href="${searchUrlRu}" target="_blank" style="${linkStyle}">свой API-ключ</a></span><span style="${li}">• <b>Встроенные</b> — голоса вашего устройства, работают без интернета</span>`
-          : `(⚙ → Voice settings):<span style="${li}">• <b>DG Voice</b> — free neural voices</span><span style="${li}">• <b>Google</b> — free quota, needs <a href="${searchUrlEn}" target="_blank" style="${linkStyle}">your own API key</a></span><span style="${li}">• <b>Built-in</b> — your device's voices, work offline</span>`;
+          ? `(⚙ → Voice settings):<span style="${li}">• <b>DG Voice</b> — бесплатные нейроголоса, можно <a href="#" data-hint-dl style="${linkStyle}">скачать</a></span><span style="${li}">• <b>Google</b> — бесплатный лимит, нужен <a href="${searchUrlRu}" target="_blank" style="${linkStyle}">свой API-ключ</a></span><span style="${li}">• <b>Встроенные</b> — голоса вашего устройства, работают без интернета</span>`
+          : `(⚙ → Voice settings):<span style="${li}">• <b>DG Voice</b> — free neural voices, you can <a href="#" data-hint-dl style="${linkStyle}">download</a> them</span><span style="${li}">• <b>Google</b> — free quota, needs <a href="${searchUrlEn}" target="_blank" style="${linkStyle}">your own API key</a></span><span style="${li}">• <b>Built-in</b> — your device's voices, work offline</span>`;
 
       showVoiceHint(window.isRu ? 'Попробуйте разные голоса' : 'Try different voices', message, PALI_ALERT_KEY);
   }
@@ -2626,6 +2626,14 @@ function showVoiceHint(title, message, storageKey) {
   }
 
   const closeBtn = notification.querySelector('#closeVoiceHintBtn');
+  // "download": the translation voice's window, down at the DG voices list where each has its download icon (owner 2026-10-21)
+  notification.querySelector('[data-hint-dl]')?.addEventListener('click', e => {
+      e.preventDefault();
+      e.stopPropagation();  // else the same click reaches the "click outside closes the voice window" handler
+      closeBtn.click();
+      openVoiceWin('trn');
+      if (ttsVoiceSel('trn').eng?.value === 'dg') { ttsVoiceWin.depth = ttsShownLists('trn').length; renderVoiceWin(); }
+  });
   const onEsc = e => { if (e.key === 'Escape') closeBtn.click(); };
   document.addEventListener('keydown', onEsc);
   closeBtn.addEventListener('click', function() {
