@@ -1536,7 +1536,12 @@ async function buildSitemapCache() {
             for (const m of xml.matchAll(/<loc>([^<]+)<\/loc>/g)) {
                 let loc = m[1];
                 if (slash && !loc.endsWith('/') && !/\.[a-z0-9]+$/i.test(loc)) loc += '/';
-                entries.push([loc, dbDate, '0.5']);
+                // the page's own date (its built index.html), not the corpus date: lastmod is the one sitemap hint Google uses
+                const rel = loc.replace(/^https:\/\/dhamma\.gift\/(ru\/)?docs\/?/, '').replace(/\/$/, '');
+                const lastmod = await fs.stat(path.join(__dirname, 'dg-docs', dir, rel, 'index.html'))
+                    .then(st => st.mtime.toISOString().slice(0, 10), () => dbDate);
+                // the site's own contribution, above the texts (owner 2026-10-22): the Rationale and the Principles by the Suttas
+                entries.push([loc, lastmod, /\/docs\/(rationale|sutta)\/?$/.test(loc) ? '1.0' : '0.5']);
             }
         } catch (e) {
             console.warn(`Sitemap: no docs sitemap in dg-docs/${dir} (${e.code || e.message})`);
