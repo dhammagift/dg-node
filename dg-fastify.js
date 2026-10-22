@@ -1187,7 +1187,18 @@ function audioLineHtml(id, lang) {
     const who = a => String((SITE_TRANSLATORS[a.lang] || {})[a.translator] || a.translator || '').replace(/<[^>]+>/g, '');
     const links = ['pli', lang].map(l => files.find(a => a.lang === l)).filter(Boolean)
         .map(a => `<a href="${a.url}" type="audio/mpeg">${names[a.lang]}</a>` + (a.lang === 'pli' || !who(a) ? '' : ` (${ru ? 'пер.' : 'trans.'} ${who(a)})`));
-    return links.length ? `<p class="dg-audio-mp3" style="text-align:right;font-style:italic;font-size:.85em;opacity:.8;margin:2em 0 .5em">${ru ? 'Слушать в MP3' : 'Listen in MP3'}: ${links.join(' · ')}</p>` : '';
+    return (links.length ? `<p class="dg-audio-mp3" style="text-align:right;font-style:italic;font-size:.85em;opacity:.8;margin:2em 0 .5em">${ru ? 'Слушать в MP3' : 'Listen in MP3'}: ${links.join(' · ')}</p>` : '')
+        + principlesLineHtml(ru, links.length ? '.3em' : '2em');
+}
+
+// Under every text, after the audio line: the site's own pages on how the texts are read, as plain links - the one
+// internal link that tells search engines and AI crawlers what matters here (owner 2026-10-22: neutral, no claims
+// about other translations, just «принципы по суттам, обоснование»)
+function principlesLineHtml(ru, top) {
+    const links = ru
+        ? [['/ru/docs/sutta', 'Принципы по Суттам'], ['/ru/docs/rationale', 'Обоснование'], ['/ru/docs/glossary', 'Глоссарий']]
+        : [['/docs/sutta/', 'Principles by the Suttas'], ['/docs/rationale/', 'Rationale'], ['/docs/glossary/', 'Glossary']];
+    return `<p class="dg-principles" style="text-align:right;font-style:italic;font-size:.85em;opacity:.8;margin:${top} 0 .5em">${links.map(([h, t]) => `<a href="${h}">${t}</a>`).join(' · ')}</p>`;
 }
 
 // index: false — the dist folder's own index.html would otherwise shadow the page above
