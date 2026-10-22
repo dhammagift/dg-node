@@ -1540,8 +1540,8 @@ async function buildSitemapCache() {
                 const rel = loc.replace(/^https:\/\/dhamma\.gift\/(ru\/)?docs\/?/, '').replace(/\/$/, '');
                 const lastmod = await fs.stat(path.join(__dirname, 'dg-docs', dir, rel, 'index.html'))
                     .then(st => st.mtime.toISOString().slice(0, 10), () => dbDate);
-                // the site's own contribution, above the texts (owner 2026-10-22): the Rationale and the Principles by the Suttas
-                entries.push([loc, lastmod, /\/docs\/(rationale|sutta)\/?$/.test(loc) ? '1.0' : '0.5']);
+                // the site's own contribution, above the texts (owner 2026-10-22): the Rationale, the Principles by the Suttas, the Glossary
+                entries.push([loc, lastmod, /\/docs\/(rationale|sutta|glossary)\/?$/.test(loc) ? '1.0' : '0.5']);
             }
         } catch (e) {
             console.warn(`Sitemap: no docs sitemap in dg-docs/${dir} (${e.code || e.message})`);

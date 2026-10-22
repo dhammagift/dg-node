@@ -10,6 +10,7 @@ The Suttas define their own key terms ("Katamañca, bhikkhave, X? … idaṁ vuc
 
 - [Dhamma principles by the Suttas](https://dhamma.gift/docs/sutta/): the Buddha's criteria for checking a teaching and its translation (AN 4.180, MN 139, MN 103, AN 3.65, AN 2.24-25, SN 16.13…)
 - [Rationale](https://dhamma.gift/docs/rationale/): where the usual renderings of dukkha, sukha, taṇhā, upādāna, anta, kāma, kamma do not fit the Suttas' own definitions, passage by passage
+- [Glossary](https://dhamma.gift/docs/glossary/) ([Russian](https://dhamma.gift/ru/docs/glossary)): 402 terms with the project's renderings and, where the canon gives one, the Pali definition from the Suttas or the Vinaya, verbatim with links; also as CSV and Markdown
 - [Hatthipada](https://dhamma.gift/hatthipada/?lang=en): the four noble truths, every word opened by the Suttas' own definitions, as deep as you go
 - [The terms and the criteria, compact, for AI](https://dhamma.gift/llms-full.txt): each term with its definition in the Suttas, the usual rendering, and the passages where it does not fit
 - [Dataset (CC BY 4.0)](https://huggingface.co/datasets/dhammagift/dg-dataset): the project's Russian translation segment by segment with the Pali, and a glossary of where the Suttas define each term; also on [GitHub](https://github.com/dhammagift/dg-dataset) and [Zenodo](https://doi.org/10.5281/zenodo.23491473), DOI 10.5281/zenodo.23491473
