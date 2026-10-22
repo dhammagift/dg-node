@@ -1521,6 +1521,8 @@ async function buildSitemapCache() {
         const loc = base + '/' + encodeURIComponent(t.q);
         entries.push([loc, dbDate, '0.6'], [loc + '?lang=ru', dbDate, '0.6']);
     }
+    // Hatthipada: the four noble truths opened by the Suttas' own definitions (owner 2026-10-22: index it), beside the Principles
+    entries.push([base + '/hatthipada/', dbDate, '1.0'], [base + '/hatthipada/?lang=ru', dbDate, '1.0']);
     const seen = new Set();
     // the Russian page of every text that has a Russian translation (the second market, owner 2026-10-17);
     // other languages are reachable through each page's hreflang links
