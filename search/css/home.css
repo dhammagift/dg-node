@@ -3698,15 +3698,7 @@ body.dg-state-home #dg-footer { max-width: 880px; margin: 34px auto 10px; paddin
    it needs) - the links and contact icons stay on home. */
 body.dg-state-reader #dg-footer { max-width: 45rem; margin: 32px auto 10px; justify-content: center; border-top: 0; padding-top: 0; }
 body.dg-state-reader #dg-footer-nav, body.dg-state-reader #dg-footer-contacts { display: none; }
-/* Results and contents: the same compact footer as under a text (owner 2026-10-23), in their own column */
-body.dg-state-results #dg-footer, body.dg-state-toc #dg-footer { max-width: 880px; margin: 32px auto 10px; justify-content: center; border-top: 0; padding-top: 0; }
-body.dg-state-results #dg-footer-nav, body.dg-state-results #dg-footer-contacts,
-body.dg-state-toc #dg-footer-nav, body.dg-state-toc #dg-footer-contacts { display: none; }
-body:not(.dg-state-home):not(.dg-state-reader):not(.dg-state-results):not(.dg-state-toc) #dg-footer { display: none; }
-/* Under a text the line «Principles · Rationale · Glossary» is the text's own (dg-fastify.js), not repeated here */
-body.dg-state-reader #dg-footer-principles { display: none; }
-#dg-footer-principles { font-style: italic; }
-body:not(.dg-state-home) .dg-footer-main { align-items: center; text-align: center; }
+body:not(.dg-state-home):not(.dg-state-reader) #dg-footer { display: none; }
 /* Две строки слева (ссылки; копирайт) — в 720px-колонку одна строка вместе с иконками контактов
    справа не влезает. */
 .dg-footer-main { display: flex; flex-direction: column; gap: 6px; min-width: 0; }

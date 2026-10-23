@@ -3206,31 +3206,10 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
   <footer id="dg-footer">
     <div class="dg-footer-main">
       <p class="dg-footer-nav" id="dg-footer-nav"></p>
-      <p class="dg-footer-principles" id="dg-footer-principles"></p>
       <p id="dg-copyright"></p>
     </div>
     <div class="dg-contacts dg-footer-contacts" id="dg-footer-contacts"></div>
   </footer>
-<script>
-  // The site's own pages on how the texts are read, on every page (owner 2026-10-23), as the line under a text
-  // (dg-fastify.js principlesLineHtml). Here and not in home.js: the home tiles snapshot is keyed on home.js.
-  // The docs exist in Russian and English only.
-  (function () {
-    function paint() {
-      var host = document.getElementById('dg-footer-principles');
-      if (!host) return;
-      var l = new URLSearchParams(location.search).get('lang') || (window.DHAMMA_I18N && window.DHAMMA_I18N.language);
-      try { l = l || localStorage.getItem('dhammaLanguage'); } catch (e) {}
-      var ru = l === 'ru';
-      var links = ru
-        ? [['/ru/docs/sutta', 'Принципы по Суттам'], ['/ru/docs/rationale', 'Обоснование'], ['/ru/docs/glossary', 'Глоссарий']]
-        : [['/docs/sutta/', 'Principles by the Suttas'], ['/docs/rationale/', 'Rationale'], ['/docs/glossary/', 'Glossary']];
-      host.innerHTML = links.map(function (x) { return '<a class="dg-footer-link" href="' + x[0] + '">' + x[1] + '</a>'; }).join(' · ');
-    }
-    paint();
-    document.addEventListener('dhamma:languagechange', paint);
-  })();
-</script>
 <script>if (window.dgObserveStack) window.dgObserveStack();</script>
 
 <script type='text/javascript'>

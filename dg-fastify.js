@@ -3736,7 +3736,10 @@ function withTextHead(html, h) {
         `l=window.DHAMMA_LANG||new URLSearchParams(location.search).get('lang')||(/^\\/(ru|r|ml|mt)(\\/|$)/.test(location.pathname)?'ru':null);` +
         `try{l=l||localStorage.getItem('dhammaLanguage')}catch(e){}document.getElementById('paliauto').placeholder=P[l]||P.en})()</script>`);
     // search results as plain HTML (searchSsrHtml), hidden once scripts run
-    if (h.ssr) out = out.replace('<body>', () => '<body>' + h.ssr); // search results as plain HTML, for non-browsers only
+    // search results as plain HTML, for non-browsers only (sendSiteHtml); hidden all the same if scripts run, for a
+    // browser that slips through without Sec-Fetch-Mode (Safari up to 16.3): it costs real browsers nothing
+    if (h.ssr) out = out.replace('</head>', '<script>document.documentElement.classList.add(\'dg-js\')</script><style>.dg-js .dg-ssr-results{display:none}</style>\n</head>')
+        .replace('<body>', () => '<body>' + h.ssr);
     out = withCritical(out.replace('</head>', links + '</head>'), h.critical);
     return h.critical === 'home' ? withHomeTiles(out, h.lang) : out;
 }
@@ -3930,7 +3933,7 @@ async function sendSiteHtml(req, res, kind, arg) {
 // A browser opening a page sends Sec-Fetch-Mode: navigate (Chrome, Firefox, Edge, Safari 16.4+); a fetcher, crawler or
 // curl does not. A known bot gets the list even if it sends the header (some headless crawlers do). The list is the
 // same data the page's own table shows, so this is dynamic rendering, not cloaking.
-const BOT_UA = /bot\b|crawler|spider|slurp|googlebot|google-extended|google-notebooklm|googleother|bingbot|gptbot|chatgpt-user|oai-searchbot|perplexity|claudebot|claude-user|claude-searchbot|anthropic|ccbot|bytespider|amazonbot|applebot|duckassistbot|meta-externalagent|yandex|mistralai|cohere/i;
+const BOT_UA = /\bbot\b|[a-z]bot\/|crawler|spider|slurp|googlebot|google-extended|google-notebooklm|googleother|bingbot|gptbot|chatgpt-user|oai-searchbot|perplexity|claudebot|claude-user|claude-searchbot|anthropic|ccbot|bytespider|amazonbot|applebot|duckassistbot|meta-externalagent|yandex|mistralai|cohere/i;
 const isBrowserNavigation = req => req.headers['sec-fetch-mode'] === 'navigate' && !BOT_UA.test(req.headers['user-agent'] || '');
 
 // Search pages: the results as a plain list in the HTML, for whatever reads a page without running its scripts
