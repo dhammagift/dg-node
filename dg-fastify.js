@@ -3736,8 +3736,7 @@ function withTextHead(html, h) {
         `l=window.DHAMMA_LANG||new URLSearchParams(location.search).get('lang')||(/^\\/(ru|r|ml|mt)(\\/|$)/.test(location.pathname)?'ru':null);` +
         `try{l=l||localStorage.getItem('dhammaLanguage')}catch(e){}document.getElementById('paliauto').placeholder=P[l]||P.en})()</script>`);
     // search results as plain HTML (searchSsrHtml), hidden once scripts run
-    if (h.ssr) out = out.replace('</head>', '<script>document.documentElement.classList.add(\'dg-js\')</script><style>.dg-js .dg-ssr-results{display:none}</style>\n</head>')
-        .replace('<body>', () => '<body>' + h.ssr);
+    if (h.ssr) out = out.replace('<body>', () => '<body>' + h.ssr); // search results as plain HTML, for non-browsers only
     out = withCritical(out.replace('</head>', links + '</head>'), h.critical);
     return h.critical === 'home' ? withHomeTiles(out, h.lang) : out;
 }
@@ -3920,14 +3919,23 @@ function siteHead(kind, arg, reqLang) {
 }
 async function sendSiteHtml(req, res, kind, arg) {
     const h = siteHead(kind, arg, req.query.lang);
-    if (kind === 'search') h.ssr = await searchSsrHtml((seoTerm(arg) || {}).q || String(arg), h.lang);
+    if (kind === 'search') {
+        // the list goes to readers that are not a browser only; a person's page stays exactly as before, not a
+        // millisecond longer (owner: «удлинять и влиять как-то вообще на клиентские запросы … категорически нельзя»)
+        h.vary = 'Sec-Fetch-Mode, User-Agent';
+        if (!isBrowserNavigation(req)) h.ssr = await searchSsrHtml((seoTerm(arg) || {}).q || String(arg), h.lang);
+    }
     return sendHeadHtml(req, res, h);
 }
+// A browser opening a page sends Sec-Fetch-Mode: navigate (Chrome, Firefox, Edge, Safari 16.4+); a fetcher, crawler or
+// curl does not. A known bot gets the list even if it sends the header (some headless crawlers do). The list is the
+// same data the page's own table shows, so this is dynamic rendering, not cloaking.
+const BOT_UA = /bot\b|crawler|spider|slurp|googlebot|google-extended|google-notebooklm|googleother|bingbot|gptbot|chatgpt-user|oai-searchbot|perplexity|claudebot|claude-user|claude-searchbot|anthropic|ccbot|bytespider|amazonbot|applebot|duckassistbot|meta-externalagent|yandex|mistralai|cohere/i;
+const isBrowserNavigation = req => req.headers['sec-fetch-mode'] === 'navigate' && !BOT_UA.test(req.headers['user-agent'] || '');
 
 // Search pages: the results as a plain list in the HTML, for whatever reads a page without running its scripts
-// (NotebookLM, ChatGPT and Perplexity link fetches, AI crawlers) - without it they got the bare search shell. The
-// client draws its own table from /search, so the list is hidden as soon as scripts run (the dg-js class set in
-// <head>, before the body paints): people see the page as before, no jump (owner 2026-10-23).
+// (NotebookLM, ChatGPT and Perplexity link fetches, AI crawlers) - without it they got the bare search shell. Only
+// such readers get it (isBrowserNavigation): a browser's page is the same as before (owner 2026-10-23).
 const SSR_WAIT_MS = 3000;      // a key term (normally warm already)
 const SSR_WAIT_WORD_MS = 1000; // any other word
 const SSR_CACHE_BYTES = 50 * 1024 * 1024;
@@ -4055,6 +4063,7 @@ function sendHeadHtml(req, res, h) {
     }
     const etag = '"' + crypto.createHash('md5').update(entry.etag + h.canonical + h.title + (h.body ? h.body.length : '') + (h.ssr ? h.ssr.length : '')).digest('hex') + '"';
     res.header('cache-control', 'public, max-age=0, must-revalidate').header('etag', etag);
+    if (h.vary) res.header('vary', h.vary); // the search page differs for browsers and other readers (sendSiteHtml)
     if (req.headers['if-none-match'] === etag) return res.code(304).send();
     return res.type('text/html; charset=utf-8').send(withTextHead(entry.rewritten, h));
 }
