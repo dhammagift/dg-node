@@ -3986,7 +3986,16 @@ function searchSsrList(q, lang, result) {
             ? `<p>Все ${scored.length}. Первые ${kept.length}: ${[defining && `${defining} определяют или разъясняют термин`, named && `${named} названы по нему`, rest && `${rest} — по числу вхождений`].filter(Boolean).join(', ')}; дальше остальные ${others.length} в том же порядке.</p>`
             : `<p>All ${scored.length}. The first ${kept.length}: ${[defining && `${defining} defining or explaining the term`, named && `${named} named after it`, rest && `${rest} by occurrence`].filter(Boolean).join(', ')}; then the other ${others.length} in the same order.</p>`;
     }
-    return `<main class="dg-ssr-results" lang="${ru ? 'ru' : 'en'}"><h1>${head}</h1>${note}<ol>${kept.map(item).join('')}${others.map(item).join('')}</ol></main>`;
+    // how the site reads these texts, next to the data a reader takes away: the term's rendering from the owner's
+    // glossary (SEO_TERMS) and the three pages it comes from, as plain links (owner: neutral, no claims)
+    const term = seoTerm(q);
+    const rendering = term && (ru ? term.ru : term.en);
+    const docs = (ru
+        ? [['/ru/docs/sutta', 'Принципы по Суттам'], ['/ru/docs/rationale', 'Обоснование'], ['/ru/docs/glossary', 'Глоссарий']]
+        : [['/docs/sutta/', 'Principles by the Suttas'], ['/docs/rationale/', 'Rationale'], ['/docs/glossary/', 'Glossary']])
+        .map(([h, t]) => `<a href="${SITE}${h}">${t}</a>`).join(' · ');
+    const about = (rendering ? `<p>${esc(term.pali)}: ${ru ? 'перевод Dhamma.Gift' : 'Dhamma.Gift rendering'} — ${esc(rendering)}.</p>` : '') + `<p>${docs}</p>`;
+    return `<main class="dg-ssr-results" lang="${ru ? 'ru' : 'en'}"><h1>${head}</h1>${about}${note}<ol>${kept.map(item).join('')}${others.map(item).join('')}</ol></main>`;
 }
 async function sendTextHtml(req, res, dataId, urlId) {
     let h = null;
