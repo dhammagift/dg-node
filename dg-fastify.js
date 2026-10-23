@@ -48,7 +48,7 @@ const { normalizeQuery } = require('./core/ai-search.js');
 const { nonQueryReason } = require('./core/query-guard.js');
 const { searchHybrid } = require('./core/tipitaka-mcp-client.js');
 const { verifyCandidates, lookupWord } = require('./core/dpd-lookup.js');
-const { mcpHandler } = require('./core/mcp-server.js');
+const { mcpHandler, composeCensus, stripSujato } = require('./core/mcp-server.js');
 // Regex-keyword searches run in a worker thread with a hard deadline — see core/regex-runner.js
 // and core/regex-worker.js for why (one pattern used to block the whole HTTP process).
 const regexRunner = require('./core/regex-runner.js');
@@ -1594,7 +1594,7 @@ async function initServer() {
         await buildLangCountsCache();
         await buildTranslatorCatalogCache();
         await buildSitemapCache();
-        countSeoTerms(); // not awaited: the titles get their numbers a few seconds after start
+        countSeoTerms().then(warmSeoSsr); // not awaited: the titles get their numbers a few seconds after start, then the lists
         await buildScriptBundle();
         rebuildSiteManifest(); // after the bundles: the list hashes them
     } catch (err) {
@@ -3855,7 +3855,7 @@ loadSeoTerms();
 fsSync.watchFile(SEO_TERMS_PATH, { interval: 5000 }, () => {
     if (!loadSeoTerms()) return;
     console.log(`SEO terms reloaded: ${SEO_TERMS.size} indexed`);
-    buildSitemapCache().then(countSeoTerms).catch(e => console.warn('SEO terms reload:', e.message));
+    buildSitemapCache().then(countSeoTerms).then(() => { searchSsrCache.clear(); return warmSeoSsr(); }).catch(e => console.warn('SEO terms reload:', e.message));
 });
 const seoTerm = q => SEO_TERMS.get(String(q).normalize('NFC').toLowerCase());
 async function countSeoTerms() {
@@ -3863,6 +3863,16 @@ async function countSeoTerms() {
         try {
             const r = await searchJob('fast', t.q, { scope: 'default', exact: false, langs: ['ru', 'en'], lb: 0, la: 0, metaOnly: true }, false);
             if (r && r.result && r.result.metadata) t.count = r.result.metadata.totalFiles;
+// the key terms' pages get their plain-HTML list ready after start, one search at a time (searchSsrHtml)
+async function warmSeoSsr() {
+    for (const t of SEO_TERMS.values()) for (const lang of ['en', 'ru']) {
+        const key = t.q + '|' + lang;
+        if (searchSsrCache.has(key)) continue;
+        searchSsrHtml(t.q, lang);
+        await searchSsrPending.get(key);
+        await new Promise(ok => setTimeout(ok, 200)); // leave the search workers to people between the jobs
+    }
+}
         } catch (e) { /* the title goes without the number */ }
     }
 }
@@ -3918,8 +3928,7 @@ async function sendSiteHtml(req, res, kind, arg) {
 // (NotebookLM, ChatGPT and Perplexity link fetches, AI crawlers) - without it they got the bare search shell. The
 // client draws its own table from /search, so the list is hidden as soon as scripts run (the dg-js class set in
 // <head>, before the body paints): people see the page as before, no jump (owner 2026-10-23).
-const SSR_RESULTS_MAX = 100;
-const SSR_WAIT_MS = 1500;
+const SSR_WAIT_MS = 3000;
 const searchSsrCache = new Map(); // `${query}|${lang}` -> html
 const searchSsrPending = new Map(); // the same key -> its running job
 async function searchSsrHtml(q, lang) {
@@ -3949,22 +3958,34 @@ async function searchSsrHtml(q, lang) {
 function searchSsrList(q, lang, result) {
     const ru = lang === 'ru';
     const esc = s => String(s == null ? '' : s).replace(/<[^>]+>/g, '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').trim();
-    const rows = Object.values(result.data);
-    const total = (result.metadata && result.metadata.totalFiles) || rows.length;
-    const items = rows.slice(0, SSR_RESULTS_MAX).map(r => {
-        const seg = (r.segments || [])[0];
-        const id = String(seg ? seg.segment : r.sutta_id);
-        const href = /^[\w.:-]+$/.test(id) ? '/' + id + (ru ? '?lang=ru' : '') : '/' + encodeURIComponent(r.sutta_id);
+    // the MCP census (core/mcp-server.js): definitions first, then suttas named after the term, then by occurrence;
+    // past 40 composed, not cut - so a reader without scripts gets the same suttas an MCP agent does
+    const { scored, kept } = composeCensus(result.data, q);
+    const total = (result.metadata && result.metadata.totalFiles) || scored.length;
+    const items = kept.map(({ id: suttaId, s: r, segs, byTitle, defines }) => {
+        // the first matched line of the text itself, not its title line (a sutta named after the term matches there first)
+        const seg = segs.find(sg => !/:0\./.test(sg.segment) && String(sg.root_text || '').trim()) || segs[0];
+        const id = String(seg ? seg.segment : suttaId);
+        const href = /^[\w.:-]+$/.test(id) ? '/' + id + (ru ? '?lang=ru' : '') : '/' + encodeURIComponent(suttaId);
         const titles = r.titles || {};
-        const tr = Object.keys(titles).find(k => k !== 'root');
-        const segTr = seg && seg.translations && Object.values(seg.translations)[0];
-        return `<li><a href="${href}">${esc(r.sutta_id)}</a> ${esc(titles.root)}${tr ? ' — ' + esc(titles[tr]) : ''}` +
+        const tr = Object.keys(titles).find(k => k !== 'root' && k !== 'en_sujato');
+        const tl = seg && seg.translations ? { ...seg.translations } : {};
+        stripSujato(tl); // as in the MCP answer
+        const segTr = Object.values(tl)[0];
+        const mark = defines ? (ru ? ' (определение)' : ' (definition)') : byTitle ? (ru ? ' (названа по термину)' : ' (named after the term)') : '';
+        return `<li><a href="${href}">${esc(suttaId)}</a> ${esc(titles.root)}${tr ? ' — ' + esc(titles[tr]) : ''}${mark}` +
             (seg ? `<br><span lang="pi">${esc(seg.root_text)}</span>${segTr ? '<br>' + esc(segTr) : ''}` : '') + '</li>';
     });
     const head = ru ? `«${esc(q)}» в Палийском каноне: ${ruSuttas(total)}` : `“${esc(q)}” in the Pali Canon: ${total} suttas`;
-    const more = total > rows.length || rows.length > SSR_RESULTS_MAX
-        ? `<p>${ru ? `Показаны первые ${Math.min(rows.length, SSR_RESULTS_MAX)}.` : `The first ${Math.min(rows.length, SSR_RESULTS_MAX)} shown.`}</p>` : '';
-    return `<main class="dg-ssr-results" lang="${ru ? 'ru' : 'en'}"><h1>${head}</h1><ol>${items.join('')}</ol>${more}</main>`;
+    let note = '';
+    if (kept.length < total) {
+        const named = kept.filter(x => x.byTitle).length, defining = kept.filter(x => x.defines && !x.byTitle).length;
+        const rest = kept.length - named - defining;
+        note = ru
+            ? `<p>Показаны ${kept.length} из ${total}: ${[defining && `${defining} определяют или разъясняют термин`, named && `${named} названы по нему`, rest && `${rest} — по числу вхождений`].filter(Boolean).join(', ')}. Остальные ${total - kept.length} не перечислены; полный список — на этой странице в браузере.</p>`
+            : `<p>Showing ${kept.length} of ${total}: ${[defining && `${defining} defining or explaining the term`, named && `${named} named after it`, rest && `${rest} by occurrence`].filter(Boolean).join(', ')}. The other ${total - kept.length} are not listed; the full list is on this page in a browser.</p>`;
+    }
+    return `<main class="dg-ssr-results" lang="${ru ? 'ru' : 'en'}"><h1>${head}</h1>${note}<ol>${items.join('')}</ol></main>`;
 }
 async function sendTextHtml(req, res, dataId, urlId) {
     let h = null;

@@ -237,6 +237,94 @@ const NOTE = 'Pali only by default. Translations are opt-in: pass include_transl
     + 'translators — this corpus serves research against the Pali, and a translator\'s rendering is '
     + 'evidence being examined, not a neutral convenience.';
 
+// The census an agent gets: every matching sutta scored (defines the term, named after it, how often it occurs) and,
+// past the cap, COMPOSED rather than cut (below). Shared with the search pages' plain-HTML list (dg-fastify.js
+// searchSsrHtml), so a reader without scripts gets the same suttas an MCP agent does.
+function composeCensus(all, query, limit) {
+    const ids = Object.keys(all);
+    // A regex query needs different ordering signals: the literal text "kata.*dukkha" occurs in
+    // no segment, so counting occurrences of it returns 0 for every sutta and the whole ranking
+    // collapses to the legacy keys. For a pattern, the meaningful weight is how many segments
+    // matched, and title matching does not apply at all (the title never contains the pattern).
+    const isPattern = isRegexKeyword(query);
+    const scored = ids.map(id => {
+        const s = all[id];
+        const segs = s.segments || [];
+        return {
+            id, s, segs,
+            hits: isPattern ? segs.length : segs.reduce((n, sg) => n + countOccurrences(sg.root_text, query), 0),
+            byTitle: isPattern ? false : titleMatches((s.titles && s.titles.root ? s.titles.root : '').trim(), query),
+            defines: definesTerm(segs),
+        };
+    });
+    // Sort for an agent, most useful first. A sutta that DEFINES the term comes before one
+    // merely NAMED after it: an agent that reads only the top of the list should get the
+    // canon's own definition ("Katamā ca, bhikkhave, taṇhā? … ayaṃ vuccati taṇhā") rather than
+    // a dozen suttas that share the word. Then occurrence count, then the site's own keys.
+    scored.sort((a, b) =>
+        (CATEGORY_ORDER[a.s.category] || 99) - (CATEGORY_ORDER[b.s.category] || 99)
+        || (b.defines ? 1 : 0) - (a.defines ? 1 : 0)
+        || (b.byTitle ? 1 : 0) - (a.byTitle ? 1 : 0)
+        || b.hits - a.hits
+        || (b.s.mr || 0) - (a.s.mr || 0)
+        || a.id.localeCompare(b.id, undefined, { numeric: true, sensitivity: 'base' }));
+
+    // The census is COMPOSED, not just cut off. A plain top-25 by this order shows whichever
+    // kind of match happens to be most numerous, and for a common word that is the suttas
+    // NAMED after it — dukkha has 48 of those in the four nikayas alone, so a plain cut showed
+    // 40 named suttas and not one that DEFINES the term. So each kind gets a reserved share of
+    // the cap and the rest is filled by occurrence count:
+    //
+    //   40 rows = 25 by occurrence count + a 15-row block (10 named + 5 defining, or 15 named
+    //             when nothing in the corpus defines the term)
+    //
+    // A sutta that both names and defines the term is counted once, toward the NAMED share —
+    // the title is the stronger signal, and double-counting would silently shrink the rest.
+    // The cap itself stays strict: nothing is pushed in past it, and the category order above
+    // is still the first key, so later collections are not dragged in to fill a quota.
+    // limit is a number, the string "all", or omitted (40).
+    const cap = limit === 'all' ? Infinity : (typeof limit === 'number' ? limit : DEFAULT_LIMIT);
+    const hasDefinitions = scored.some(x => x.defines);
+    const titleQuota = hasDefinitions ? QUOTA_TITLED_WITH_DEFS : QUOTA_TITLED_ALONE;
+    const definitionQuota = hasDefinitions ? QUOTA_DEFINITIONS : 0;
+
+    let kept = scored;
+    let truncated;
+    if (scored.length > cap) {
+        const taken = new Set();
+        const picked = [];
+        const take = (x) => {
+            if (picked.length >= cap || taken.has(x.id)) return;
+            taken.add(x.id);
+            picked.push(x);
+        };
+        let budget = Math.min(titleQuota, cap);
+        for (const x of scored) { if (picked.length >= budget) break; if (x.byTitle) take(x); }
+        budget = Math.min(titleQuota + definitionQuota, cap);
+        for (const x of scored) { if (picked.length >= budget) break; if (x.defines) take(x); }
+        // The remaining 25 come from suttas that are NEITHER named after the term NOR defining
+        // it — otherwise the fill would just continue down the title-first order and the two
+        // quotas above would cap nothing (measured before this: 20 of 25 came out named, and a
+        // plain cut of 40 for "dukkha" showed 40 named suttas and not one definition).
+        for (const x of scored) { if (picked.length >= cap) break; if (!x.byTitle && !x.defines) take(x); }
+        for (const x of scored) { if (picked.length >= cap) break; take(x); }
+
+        kept = scored.filter(x => taken.has(x.id)); // keep the ranking order, not the pick order
+        // Counted mutually exclusively, so the three numbers add up to what was returned.
+        const named = kept.filter(x => x.byTitle).length;
+        const defining = kept.filter(x => x.defines && !x.byTitle).length;
+        const composed = [];
+        if (named) composed.push(`${named} named after the term`);
+        if (defining) composed.push(`${defining} defining or explaining it`);
+        if (kept.length - named - defining > 0) composed.push(`${kept.length - named - defining} by occurrence`);
+        truncated = `showing ${kept.length} of ${scored.length} suttas`
+            + (composed.length ? ` (${composed.join(', ')})` : '')
+            + ` — ${scored.length - kept.length} more matched and are not listed. `
+            + `totalFiles is the true count: pass a larger limit, or limit: "all", for more.`;
+    }
+    return { scored, kept, truncated };
+}
+
 function getServer() {
     const server = new McpServer({ name: 'dg-node', version: '1.2.0' }, { instructions: INSTRUCTIONS });
 
@@ -263,88 +351,7 @@ function getServer() {
         if (answer.error) return asText({ error: answer.error }, true);
         const r = answer.result || {};
         const all = r.data && typeof r.data === 'object' ? r.data : {};
-        const ids = Object.keys(all);
-
-        // A regex query needs different ordering signals: the literal text "kata.*dukkha" occurs in
-        // no segment, so counting occurrences of it returns 0 for every sutta and the whole ranking
-        // collapses to the legacy keys. For a pattern, the meaningful weight is how many segments
-        // matched, and title matching does not apply at all (the title never contains the pattern).
-        const isPattern = isRegexKeyword(query);
-        const scored = ids.map(id => {
-            const s = all[id];
-            const segs = s.segments || [];
-            return {
-                id, s, segs,
-                hits: isPattern ? segs.length : segs.reduce((n, sg) => n + countOccurrences(sg.root_text, query), 0),
-                byTitle: isPattern ? false : titleMatches((s.titles && s.titles.root ? s.titles.root : '').trim(), query),
-                defines: definesTerm(segs),
-            };
-        });
-        // Sort for an agent, most useful first. A sutta that DEFINES the term comes before one
-        // merely NAMED after it: an agent that reads only the top of the list should get the
-        // canon's own definition ("Katamā ca, bhikkhave, taṇhā? … ayaṃ vuccati taṇhā") rather than
-        // a dozen suttas that share the word. Then occurrence count, then the site's own keys.
-        scored.sort((a, b) =>
-            (CATEGORY_ORDER[a.s.category] || 99) - (CATEGORY_ORDER[b.s.category] || 99)
-            || (b.defines ? 1 : 0) - (a.defines ? 1 : 0)
-            || (b.byTitle ? 1 : 0) - (a.byTitle ? 1 : 0)
-            || b.hits - a.hits
-            || (b.s.mr || 0) - (a.s.mr || 0)
-            || a.id.localeCompare(b.id, undefined, { numeric: true, sensitivity: 'base' }));
-
-        // The census is COMPOSED, not just cut off. A plain top-25 by this order shows whichever
-        // kind of match happens to be most numerous, and for a common word that is the suttas
-        // NAMED after it — dukkha has 48 of those in the four nikayas alone, so a plain cut showed
-        // 40 named suttas and not one that DEFINES the term. So each kind gets a reserved share of
-        // the cap and the rest is filled by occurrence count:
-        //
-        //   40 rows = 25 by occurrence count + a 15-row block (10 named + 5 defining, or 15 named
-        //             when nothing in the corpus defines the term)
-        //
-        // A sutta that both names and defines the term is counted once, toward the NAMED share —
-        // the title is the stronger signal, and double-counting would silently shrink the rest.
-        // The cap itself stays strict: nothing is pushed in past it, and the category order above
-        // is still the first key, so later collections are not dragged in to fill a quota.
-        // limit is a number, the string "all", or omitted (40).
-        const cap = limit === 'all' ? Infinity : (typeof limit === 'number' ? limit : DEFAULT_LIMIT);
-        const hasDefinitions = scored.some(x => x.defines);
-        const titleQuota = hasDefinitions ? QUOTA_TITLED_WITH_DEFS : QUOTA_TITLED_ALONE;
-        const definitionQuota = hasDefinitions ? QUOTA_DEFINITIONS : 0;
-
-        let kept = scored;
-        let truncated;
-        if (scored.length > cap) {
-            const taken = new Set();
-            const picked = [];
-            const take = (x) => {
-                if (picked.length >= cap || taken.has(x.id)) return;
-                taken.add(x.id);
-                picked.push(x);
-            };
-            let budget = Math.min(titleQuota, cap);
-            for (const x of scored) { if (picked.length >= budget) break; if (x.byTitle) take(x); }
-            budget = Math.min(titleQuota + definitionQuota, cap);
-            for (const x of scored) { if (picked.length >= budget) break; if (x.defines) take(x); }
-            // The remaining 25 come from suttas that are NEITHER named after the term NOR defining
-            // it — otherwise the fill would just continue down the title-first order and the two
-            // quotas above would cap nothing (measured before this: 20 of 25 came out named, and a
-            // plain cut of 40 for "dukkha" showed 40 named suttas and not one definition).
-            for (const x of scored) { if (picked.length >= cap) break; if (!x.byTitle && !x.defines) take(x); }
-            for (const x of scored) { if (picked.length >= cap) break; take(x); }
-
-            kept = scored.filter(x => taken.has(x.id)); // keep the ranking order, not the pick order
-            // Counted mutually exclusively, so the three numbers add up to what was returned.
-            const named = kept.filter(x => x.byTitle).length;
-            const defining = kept.filter(x => x.defines && !x.byTitle).length;
-            const composed = [];
-            if (named) composed.push(`${named} named after the term`);
-            if (defining) composed.push(`${defining} defining or explaining it`);
-            if (kept.length - named - defining > 0) composed.push(`${kept.length - named - defining} by occurrence`);
-            truncated = `showing ${kept.length} of ${scored.length} suttas`
-                + (composed.length ? ` (${composed.join(', ')})` : '')
-                + ` — ${scored.length - kept.length} more matched and are not listed. `
-                + `totalFiles is the true count: pass a larger limit, or limit: "all", for more.`;
-        }
+        const { scored, kept, truncated } = composeCensus(all, query, limit);
 
         const metadata = {
             query,
@@ -522,4 +529,4 @@ async function mcpHandler(request, reply) {
     }
 }
 
-module.exports = { mcpHandler };
+module.exports = { mcpHandler, composeCensus, stripSujato };
