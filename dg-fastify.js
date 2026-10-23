@@ -175,6 +175,11 @@ app.addHook('onRequest', (req, res, done) => {
     if (req.method === 'GET' && /^\/[^/]+\/.*\.php$/i.test(p.replace(/^\/ru(?=\/)/, '')) && !/^\/(ai|b)\//.test(p)) return res.code(404).send('Not found'); // /ru/w.php is a language prefix, not a folder
     done();
 });
+// Removed by the owner (2026-10-21): the en.dhammadana.org mirror is gone from the site; 410 makes Google drop the old URLs.
+app.addHook('onRequest', (req, res, done) => {
+    if (/^\/en\.dhammadana\.org(\/|$)/i.test(decodedPath(req.url))) return res.code(410).type('text/plain').send('Gone');
+    done();
+});
 app.addHook('onRequest', (req, res, done) => {
     const p = decodedPath(req.url);
     // /reviews: the owner's review and status pages (siteroot/reviews, not in git), same password

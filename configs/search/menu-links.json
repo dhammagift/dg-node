@@ -287,11 +287,6 @@
                   "desc": "Translations by Micheal Olds + Glossolory",
                   "href": "https://buddhadust.net/dhamma-vinaya/bd/dhamma-vinaya.htm",
                   "blank": true
-                },
-                {
-                  "label": "Articles at Dhammadana.org",
-                  "href": "https://en.dhammadana.org/sangha/dhutanga.htm",
-                  "blank": true
                 }
               ]
             }
@@ -1083,11 +1078,6 @@
                 {
                   "label": "Переводы Майкла Олдса",
                   "href": "https://buddhadust.net/dhamma-vinaya/bd/dhamma-vinaya.htm",
-                  "blank": true
-                },
-                {
-                  "label": "Статьи на Dhammadana.org",
-                  "href": "https://en.dhammadana.org/sangha/dhutanga.htm",
                   "blank": true
                 }
               ]

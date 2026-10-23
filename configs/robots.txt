@@ -4,7 +4,7 @@ Sitemap: https://dhamma.gift/sitemap.xml
 User-agent: *
 Disallow: /suttacentral.net/
 Disallow: /accesstoinsight.org/
-Disallow: /en.dhammadana.org/
+# Disallow: /en.dhammadana.org/  - lifted 2026-10-23 with its 410 (the mirror is removed), so Google can read the 410 and drop the URLs; drop this line after ~2 months
 Disallow: /buddhadust.net/
 Disallow: /theravada.ru/
 Disallow: /theravada.rf/
