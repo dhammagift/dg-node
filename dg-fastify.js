@@ -1516,13 +1516,13 @@ async function buildSitemapCache() {
         const loc = base + '/toc' + (code ? '/' + encodeURIComponent(code) : '');
         entries.push([loc, dbDate, '0.7'], [loc + '?lang=ru', dbDate, '0.7']);
     }
+    // Hatthipada: the four noble truths opened by the Suttas' own definitions (owner 2026-10-22: index it), beside the Principles
+    entries.push([base + '/hatthipada/', dbDate, '1.0'], [base + '/hatthipada/?lang=ru', dbDate, '1.0']);
     // the key terms' search results (SEO_TERMS), en and ru
     for (const t of SEO_TERMS.values()) {
         const loc = base + '/' + encodeURIComponent(t.q);
         entries.push([loc, dbDate, '0.6'], [loc + '?lang=ru', dbDate, '0.6']);
     }
-    // Hatthipada: the four noble truths opened by the Suttas' own definitions (owner 2026-10-22: index it), beside the Principles
-    entries.push([base + '/hatthipada/', dbDate, '1.0'], [base + '/hatthipada/?lang=ru', dbDate, '1.0']);
     const seen = new Set();
     // the Russian page of every text that has a Russian translation (the second market, owner 2026-10-17);
     // other languages are reachable through each page's hreflang links
@@ -3735,14 +3735,14 @@ function withTextHead(html, h) {
     if (h.critical !== 'home') out = out.replace(/(<input [^>]*id="paliauto"[^>]*>)/, (m) => m + `<script>(function(){var P=${SEARCH_PLACEHOLDERS},` +
         `l=window.DHAMMA_LANG||new URLSearchParams(location.search).get('lang')||(/^\\/(ru|r|ml|mt)(\\/|$)/.test(location.pathname)?'ru':null);` +
         `try{l=l||localStorage.getItem('dhammaLanguage')}catch(e){}document.getElementById('paliauto').placeholder=P[l]||P.en})()</script>`);
+    // search results as plain HTML (searchSsrHtml), hidden once scripts run
+    if (h.ssr) out = out.replace('</head>', '<script>document.documentElement.classList.add(\'dg-js\')</script><style>.dg-js .dg-ssr-results{display:none}</style>\n</head>')
+        .replace('<body>', () => '<body>' + h.ssr);
     out = withCritical(out.replace('</head>', links + '</head>'), h.critical);
     return h.critical === 'home' ? withHomeTiles(out, h.lang) : out;
 }
 // Critical CSS per screen (scripts/critical-css.js, configs/critical/<state>.css: the server-rendered reader, and
 // home / search results / contents): inlined, and the stylesheets it was cut from then load without blocking. Only
-    // search results as plain HTML (searchSsrHtml), hidden once scripts run
-    if (h.ssr) out = out.replace('</head>', '<script>document.documentElement.classList.add(\'dg-js\')</script><style>.dg-js .dg-ssr-results{display:none}</style>\n</head>')
-        .replace('<body>', () => '<body>' + h.ssr);
 // while this page links exactly those stylesheets (their ?v= hashes, listed on the file's first line): an edited
 // stylesheet changes its ?v=, and the page keeps the plain blocking links instead of a stale cut. Read at start;
 // regenerate with `npm run critical -- --state <state>`.
@@ -3858,11 +3858,6 @@ fsSync.watchFile(SEO_TERMS_PATH, { interval: 5000 }, () => {
     buildSitemapCache().then(countSeoTerms).then(() => { searchSsrCache.clear(); return warmSeoSsr(); }).catch(e => console.warn('SEO terms reload:', e.message));
 });
 const seoTerm = q => SEO_TERMS.get(String(q).normalize('NFC').toLowerCase());
-async function countSeoTerms() {
-    for (const t of SEO_TERMS.values()) {
-        try {
-            const r = await searchJob('fast', t.q, { scope: 'default', exact: false, langs: ['ru', 'en'], lb: 0, la: 0, metaOnly: true }, false);
-            if (r && r.result && r.result.metadata) t.count = r.result.metadata.totalFiles;
 // the key terms' pages get their plain-HTML list ready after start, one search at a time (searchSsrHtml)
 async function warmSeoSsr() {
     for (const t of SEO_TERMS.values()) for (const lang of ['en', 'ru']) {
@@ -3873,6 +3868,11 @@ async function warmSeoSsr() {
         await new Promise(ok => setTimeout(ok, 200)); // leave the search workers to people between the jobs
     }
 }
+async function countSeoTerms() {
+    for (const t of SEO_TERMS.values()) {
+        try {
+            const r = await searchJob('fast', t.q, { scope: 'default', exact: false, langs: ['ru', 'en'], lb: 0, la: 0, metaOnly: true }, false);
+            if (r && r.result && r.result.metadata) t.count = r.result.metadata.totalFiles;
         } catch (e) { /* the title goes without the number */ }
     }
 }
@@ -3962,12 +3962,12 @@ function searchSsrList(q, lang, result) {
     // occurrence - then every other match in the same ranking. All of them, each with its matched line and the
     // translation the page shows: this is the search's data, not a preview, and a model reads the translation (owner)
     const { scored, kept } = composeCensus(result.data, q);
+    const keptIds = new Set(kept.map(x => x.id));
     const total = (result.metadata && result.metadata.totalFiles) || scored.length;
     const item = ({ id: suttaId, s: r, segs, byTitle, defines }) => {
         // the first matched line of the text itself, not its title line (a sutta named after the term matches there first)
         const seg = segs.find(sg => !/:0\./.test(sg.segment) && String(sg.root_text || '').trim()) || segs[0];
         const id = String(seg ? seg.segment : suttaId);
-    const keptIds = new Set(kept.map(x => x.id));
         const href = /^[\w.:-]+$/.test(id) ? '/' + id + (ru ? '?lang=ru' : '') : '/' + encodeURIComponent(suttaId);
         const titles = r.titles || {};
         const tr = Object.keys(titles).find(k => k !== 'root');
