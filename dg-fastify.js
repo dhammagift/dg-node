@@ -48,7 +48,7 @@ const { normalizeQuery } = require('./core/ai-search.js');
 const { nonQueryReason } = require('./core/query-guard.js');
 const { searchHybrid } = require('./core/tipitaka-mcp-client.js');
 const { verifyCandidates, lookupWord } = require('./core/dpd-lookup.js');
-const { mcpHandler, composeCensus, stripSujato } = require('./core/mcp-server.js');
+const { mcpHandler, composeCensus } = require('./core/mcp-server.js');
 // Regex-keyword searches run in a worker thread with a hard deadline — see core/regex-runner.js
 // and core/regex-worker.js for why (one pattern used to block the whole HTTP process).
 const regexRunner = require('./core/regex-runner.js');
@@ -3958,46 +3958,35 @@ async function searchSsrHtml(q, lang) {
 function searchSsrList(q, lang, result) {
     const ru = lang === 'ru';
     const esc = s => String(s == null ? '' : s).replace(/<[^>]+>/g, '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').trim();
-    // the MCP census (core/mcp-server.js): definitions first, then suttas named after the term, then by occurrence;
-    // past 40 composed, not cut - so a reader without scripts gets the same suttas an MCP agent does
+    // the MCP census order (core/mcp-server.js): its 40 first - definitions, suttas named after the term, by
+    // occurrence - then every other match in the same ranking. All of them, each with its matched line and the
+    // translation the page shows: this is the search's data, not a preview, and a model reads the translation (owner)
     const { scored, kept } = composeCensus(result.data, q);
     const total = (result.metadata && result.metadata.totalFiles) || scored.length;
-    const items = kept.map(({ id: suttaId, s: r, segs, byTitle, defines }) => {
+    const item = ({ id: suttaId, s: r, segs, byTitle, defines }) => {
         // the first matched line of the text itself, not its title line (a sutta named after the term matches there first)
         const seg = segs.find(sg => !/:0\./.test(sg.segment) && String(sg.root_text || '').trim()) || segs[0];
         const id = String(seg ? seg.segment : suttaId);
+    const keptIds = new Set(kept.map(x => x.id));
         const href = /^[\w.:-]+$/.test(id) ? '/' + id + (ru ? '?lang=ru' : '') : '/' + encodeURIComponent(suttaId);
         const titles = r.titles || {};
-        const tr = Object.keys(titles).find(k => k !== 'root' && k !== 'en_sujato');
-        const tl = seg && seg.translations ? { ...seg.translations } : {};
-        stripSujato(tl); // as in the MCP answer
-        // a translator's "segment" can be a whole paragraph (Thanissaro aligns by paragraph): the matched line's sense,
-        // not a page of text under it
-        const clip = t => { const x = String(t).replace(/<[^>]+>/g, '').trim(); return x.length > 240 ? x.slice(0, 240).replace(/\s+\S*$/, '') + ' …' : x; };
-        const segTr = Object.values(tl)[0] && clip(Object.values(tl)[0]);
+        const tr = Object.keys(titles).find(k => k !== 'root');
+        const segTr = seg && seg.translations && Object.values(seg.translations)[0];
         const mark = defines ? (ru ? ' (определение)' : ' (definition)') : byTitle ? (ru ? ' (названа по термину)' : ' (named after the term)') : '';
         return `<li><a href="${href}">${esc(suttaId)}</a> ${esc(titles.root)}${tr ? ' — ' + esc(titles[tr]) : ''}${mark}` +
             (seg ? `<br><span lang="pi">${esc(seg.root_text)}</span>${segTr ? '<br>' + esc(segTr) : ''}` : '') + '</li>';
-    });
+    };
+    const others = scored.filter(x => !keptIds.has(x.id));
     const head = ru ? `«${esc(q)}» в Палийском каноне: ${ruSuttas(total)}` : `“${esc(q)}” in the Pali Canon: ${total} suttas`;
     let note = '';
     if (others.length) {
         const named = kept.filter(x => x.byTitle).length, defining = kept.filter(x => x.defines && !x.byTitle).length;
         const rest = kept.length - named - defining;
         note = ru
-    // every other match after the 40, as a link and a title in the same ranking: the page cannot ask for "all" the
-    // way an MCP agent can, so it lists everything found (owner) - short, to keep the page light
-    const keptIds = new Set(kept.map(x => x.id));
-    const others = scored.filter(x => !keptIds.has(x.id)).map(({ id: suttaId, s: r }) => {
-        const titles = r.titles || {};
-        const tr = Object.keys(titles).find(k => k !== 'root' && k !== 'en_sujato');
-        return `<li><a href="/${/^[\w.-]+$/.test(suttaId) ? suttaId : encodeURIComponent(suttaId)}${ru ? '?lang=ru' : ''}">${esc(suttaId)}</a> ${esc(titles.root)}${tr ? ' — ' + esc(titles[tr]) : ''}</li>`;
-    });
-            ? `<p>Первые ${kept.length} — с цитатой: ${[defining && `${defining} определяют или разъясняют термин`, named && `${named} названы по нему`, rest && `${rest} — по числу вхождений`].filter(Boolean).join(', ')}. Остальные ${others.length} — списком ниже.</p>`
-            : `<p>The first ${kept.length} with the matched line: ${[defining && `${defining} defining or explaining the term`, named && `${named} named after it`, rest && `${rest} by occurrence`].filter(Boolean).join(', ')}. The other ${others.length} are listed below.</p>`;
+            ? `<p>Все ${scored.length}. Первые ${kept.length}: ${[defining && `${defining} определяют или разъясняют термин`, named && `${named} названы по нему`, rest && `${rest} — по числу вхождений`].filter(Boolean).join(', ')}; дальше остальные ${others.length} в том же порядке.</p>`
+            : `<p>All ${scored.length}. The first ${kept.length}: ${[defining && `${defining} defining or explaining the term`, named && `${named} named after it`, rest && `${rest} by occurrence`].filter(Boolean).join(', ')}; then the other ${others.length} in the same order.</p>`;
     }
-    const tail = others.length ? `<h2>${ru ? `Остальные ${others.length}` : `The other ${others.length}`}</h2><ol start="${kept.length + 1}">${others.join('')}</ol>` : '';
-    return `<main class="dg-ssr-results" lang="${ru ? 'ru' : 'en'}"><h1>${head}</h1>${note}<ol>${items.join('')}</ol>${tail}</main>`;
+    return `<main class="dg-ssr-results" lang="${ru ? 'ru' : 'en'}"><h1>${head}</h1>${note}<ol>${kept.map(item).join('')}${others.map(item).join('')}</ol></main>`;
 }
 async function sendTextHtml(req, res, dataId, urlId) {
     let h = null;
