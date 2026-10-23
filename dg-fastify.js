@@ -3981,14 +3981,23 @@ function searchSsrList(q, lang, result) {
     });
     const head = ru ? `«${esc(q)}» в Палийском каноне: ${ruSuttas(total)}` : `“${esc(q)}” in the Pali Canon: ${total} suttas`;
     let note = '';
-    if (kept.length < total) {
+    if (others.length) {
         const named = kept.filter(x => x.byTitle).length, defining = kept.filter(x => x.defines && !x.byTitle).length;
         const rest = kept.length - named - defining;
         note = ru
-            ? `<p>Показаны ${kept.length} из ${total}: ${[defining && `${defining} определяют или разъясняют термин`, named && `${named} названы по нему`, rest && `${rest} — по числу вхождений`].filter(Boolean).join(', ')}. Остальные ${total - kept.length} не перечислены; полный список — на этой странице в браузере.</p>`
-            : `<p>Showing ${kept.length} of ${total}: ${[defining && `${defining} defining or explaining the term`, named && `${named} named after it`, rest && `${rest} by occurrence`].filter(Boolean).join(', ')}. The other ${total - kept.length} are not listed; the full list is on this page in a browser.</p>`;
+    // every other match after the 40, as a link and a title in the same ranking: the page cannot ask for "all" the
+    // way an MCP agent can, so it lists everything found (owner) - short, to keep the page light
+    const keptIds = new Set(kept.map(x => x.id));
+    const others = scored.filter(x => !keptIds.has(x.id)).map(({ id: suttaId, s: r }) => {
+        const titles = r.titles || {};
+        const tr = Object.keys(titles).find(k => k !== 'root' && k !== 'en_sujato');
+        return `<li><a href="/${/^[\w.-]+$/.test(suttaId) ? suttaId : encodeURIComponent(suttaId)}${ru ? '?lang=ru' : ''}">${esc(suttaId)}</a> ${esc(titles.root)}${tr ? ' — ' + esc(titles[tr]) : ''}</li>`;
+    });
+            ? `<p>Первые ${kept.length} — с цитатой: ${[defining && `${defining} определяют или разъясняют термин`, named && `${named} названы по нему`, rest && `${rest} — по числу вхождений`].filter(Boolean).join(', ')}. Остальные ${others.length} — списком ниже.</p>`
+            : `<p>The first ${kept.length} with the matched line: ${[defining && `${defining} defining or explaining the term`, named && `${named} named after it`, rest && `${rest} by occurrence`].filter(Boolean).join(', ')}. The other ${others.length} are listed below.</p>`;
     }
-    return `<main class="dg-ssr-results" lang="${ru ? 'ru' : 'en'}"><h1>${head}</h1>${note}<ol>${items.join('')}</ol></main>`;
+    const tail = others.length ? `<h2>${ru ? `Остальные ${others.length}` : `The other ${others.length}`}</h2><ol start="${kept.length + 1}">${others.join('')}</ol>` : '';
+    return `<main class="dg-ssr-results" lang="${ru ? 'ru' : 'en'}"><h1>${head}</h1>${note}<ol>${items.join('')}</ol>${tail}</main>`;
 }
 async function sendTextHtml(req, res, dataId, urlId) {
     let h = null;
