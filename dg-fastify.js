@@ -3855,13 +3855,13 @@ loadSeoTerms();
 fsSync.watchFile(SEO_TERMS_PATH, { interval: 5000 }, () => {
     if (!loadSeoTerms()) return;
     console.log(`SEO terms reloaded: ${SEO_TERMS.size} indexed`);
-    buildSitemapCache().then(countSeoTerms).then(() => { searchSsrCache.clear(); return warmSeoSsr(); }).catch(e => console.warn('SEO terms reload:', e.message));
+    buildSitemapCache().then(countSeoTerms).then(() => { searchSsrCache.clear(); searchSsrBytes = 0; return warmSeoSsr(); }).catch(e => console.warn('SEO terms reload:', e.message));
 });
 const seoTerm = q => SEO_TERMS.get(String(q).normalize('NFC').toLowerCase());
 // the key terms' pages get their plain-HTML list ready after start, one search at a time (searchSsrHtml)
 async function warmSeoSsr() {
     for (const t of SEO_TERMS.values()) for (const lang of ['en', 'ru']) {
-        const key = t.q + '|' + lang;
+        const key = ssrKey(t.q, lang);
         if (searchSsrCache.has(key)) continue;
         searchSsrHtml(t.q, lang);
         await searchSsrPending.get(key);
@@ -3928,34 +3928,61 @@ async function sendSiteHtml(req, res, kind, arg) {
 // (NotebookLM, ChatGPT and Perplexity link fetches, AI crawlers) - without it they got the bare search shell. The
 // client draws its own table from /search, so the list is hidden as soon as scripts run (the dg-js class set in
 // <head>, before the body paints): people see the page as before, no jump (owner 2026-10-23).
-const SSR_WAIT_MS = 3000;
+const SSR_WAIT_MS = 3000;      // a key term (normally warm already)
+const SSR_WAIT_WORD_MS = 1000; // any other word
+const SSR_CACHE_BYTES = 50 * 1024 * 1024;
 const searchSsrCache = new Map(); // `${query}|${lang}` -> html
 const searchSsrPending = new Map(); // the same key -> its running job
+const ssrKey = (q, lang) => String(q).normalize('NFC').toLowerCase() + '|' + lang;
+let searchSsrBytes = 0;
+function searchSsrStore(key, html) {
+    if (searchSsrCache.has(key)) searchSsrBytes -= searchSsrCache.get(key).length;
+    searchSsrCache.set(key, html);
+    searchSsrBytes += html.length;
+    // capped by size, not count: one list is up to ~1 MB (sati); the least recently used go first
+    for (const [k, v] of searchSsrCache) {
+        if (searchSsrBytes <= SSR_CACHE_BYTES) break;
+        searchSsrCache.delete(k);
+        searchSsrBytes -= v.length;
+    }
+}
 async function searchSsrHtml(q, lang) {
-    const key = q + '|' + lang;
-    if (searchSsrCache.has(key)) return searchSsrCache.get(key);
+    const key = ssrKey(q, lang);
+    if (searchSsrCache.has(key)) {
+        const html = searchSsrCache.get(key);
+        searchSsrCache.delete(key); searchSsrCache.set(key, html); // LRU: a hit moves to the end
+        return html;
+    }
     const kw = stripSearchPunctuation(q).trim();
-    // plain words only: a regex or a one-letter query gets no list (the client still searches as before)
-    if (kw.length < 3 || /[\\^$*+?()[\]{}|]/.test(kw)) return '';
-    // the same full search the page itself runs (Pali, the matched line, its translation); a big term can take a
-    // while, so the page does not wait more than SSR_WAIT_MS - the job goes on and fills the cache for the next fetch
+    // a key term's q is the project's own config and may be a pattern (\bavijjā\b); a word from the URL gets a list
+    // only when it is a plain word of 3+ letters (the client still searches as before)
+    const term = seoTerm(q);
+    const isRegex = searchCore.isRegexKeyword(kw);
+    if (!term && (kw.length < 3 || isRegex || /[\\^$*+?()[\]{}|]/.test(kw))) return '';
+    // the same full search the page itself runs (Pali, the matched line, its translation). The key terms are ready
+    // from the start (warmSeoSsr); any other word waits at most SSR_WAIT_MS (its page is noindex, people land there
+    // too) - the job goes on and fills the cache for the next fetch
     let job = searchSsrPending.get(key);
     if (!job) {
-        job = searchJob('full', kw, { scope: 'default', exact: false, langs: [lang], lb: 0, la: 0 }, false)
+        const params = { scope: 'default', exact: false, langs: [lang], lb: 0, la: 0 };
+        job = (isRegex ? regexSearch('full', kw, params) : searchJob('full', kw, params, false))
             .then(r => {
                 if (!r || !r.result || !r.result.data) return ''; // worker busy or failed: not cached, the next request tries again
-                const html = searchSsrList(kw, lang, r.result);
-                if (searchSsrCache.size >= 500) searchSsrCache.delete(searchSsrCache.keys().next().value);
-                searchSsrCache.set(key, html);
+                // nothing found: no list (the page says so itself); cached as empty so a junk word is not searched again
+                const html = Object.keys(r.result.data).length ? searchSsrList(kw, lang, r.result, term) : '';
+                searchSsrStore(key, html);
                 return html;
             })
             .catch(e => { console.warn(`searchSsr ${kw}: ${e.message}`); return ''; })
             .finally(() => searchSsrPending.delete(key));
         searchSsrPending.set(key, job);
     }
-    return Promise.race([job, new Promise(ok => setTimeout(ok, SSR_WAIT_MS, ''))]);
+    let timer;
+    const html = await Promise.race([job, new Promise(ok => { timer = setTimeout(ok, term ? SSR_WAIT_MS : SSR_WAIT_WORD_MS, ''); })]);
+    clearTimeout(timer);
+    return html;
 }
-function searchSsrList(q, lang, result) {
+function searchSsrList(q, lang, result, term) {
     const ru = lang === 'ru';
     const esc = s => String(s == null ? '' : s).replace(/<[^>]+>/g, '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').trim();
     // the MCP census order (core/mcp-server.js): its 40 first - definitions, suttas named after the term, by
@@ -3977,7 +4004,8 @@ function searchSsrList(q, lang, result) {
             (seg ? `<br><span lang="pi">${esc(seg.root_text)}</span>${segTr ? '<br>' + esc(segTr) : ''}` : '') + '</li>';
     };
     const others = scored.filter(x => !keptIds.has(x.id));
-    const head = ru ? `«${esc(q)}» в Палийском каноне: ${ruSuttas(total)}` : `“${esc(q)}” in the Pali Canon: ${total} suttas`;
+    const shown = term ? term.pali : q; // a key term's q can be a pattern: the heading names the term
+    const head = ru ? `«${esc(shown)}» в Палийском каноне: ${ruSuttas(total)}` : `“${esc(shown)}” in the Pali Canon: ${total} suttas`;
     let note = '';
     if (others.length) {
         const named = kept.filter(x => x.byTitle).length, defining = kept.filter(x => x.defines && !x.byTitle).length;
@@ -3988,7 +4016,6 @@ function searchSsrList(q, lang, result) {
     }
     // how the site reads these texts, next to the data a reader takes away: the term's rendering from the owner's
     // glossary (SEO_TERMS) and the three pages it comes from, as plain links (owner: neutral, no claims)
-    const term = seoTerm(q);
     const rendering = term && (ru ? term.ru : term.en);
     const docs = (ru
         ? [['/ru/docs/sutta', 'Принципы по Суттам'], ['/ru/docs/rationale', 'Обоснование'], ['/ru/docs/glossary', 'Глоссарий']]
