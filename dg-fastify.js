@@ -3740,6 +3740,9 @@ function withTextHead(html, h) {
 }
 // Critical CSS per screen (scripts/critical-css.js, configs/critical/<state>.css: the server-rendered reader, and
 // home / search results / contents): inlined, and the stylesheets it was cut from then load without blocking. Only
+    // search results as plain HTML (searchSsrHtml), hidden once scripts run
+    if (h.ssr) out = out.replace('</head>', '<script>document.documentElement.classList.add(\'dg-js\')</script><style>.dg-js .dg-ssr-results{display:none}</style>\n</head>')
+        .replace('<body>', () => '<body>' + h.ssr);
 // while this page links exactly those stylesheets (their ?v= hashes, listed on the file's first line): an edited
 // stylesheet changes its ?v=, and the page keeps the plain blocking links instead of a stale cut. Read at start;
 // regenerate with `npm run critical -- --state <state>`.
@@ -3905,8 +3908,63 @@ function siteHead(kind, arg, reqLang) {
         critical: kind === 'search' ? 'results' : kind, // configs/critical/<state>.css (withCritical)
     };
 }
-function sendSiteHtml(req, res, kind, arg) {
-    return sendHeadHtml(req, res, siteHead(kind, arg, req.query.lang));
+async function sendSiteHtml(req, res, kind, arg) {
+    const h = siteHead(kind, arg, req.query.lang);
+    if (kind === 'search') h.ssr = await searchSsrHtml((seoTerm(arg) || {}).q || String(arg), h.lang);
+    return sendHeadHtml(req, res, h);
+}
+
+// Search pages: the results as a plain list in the HTML, for whatever reads a page without running its scripts
+// (NotebookLM, ChatGPT and Perplexity link fetches, AI crawlers) - without it they got the bare search shell. The
+// client draws its own table from /search, so the list is hidden as soon as scripts run (the dg-js class set in
+// <head>, before the body paints): people see the page as before, no jump (owner 2026-10-23).
+const SSR_RESULTS_MAX = 100;
+const SSR_WAIT_MS = 1500;
+const searchSsrCache = new Map(); // `${query}|${lang}` -> html
+const searchSsrPending = new Map(); // the same key -> its running job
+async function searchSsrHtml(q, lang) {
+    const key = q + '|' + lang;
+    if (searchSsrCache.has(key)) return searchSsrCache.get(key);
+    const kw = stripSearchPunctuation(q).trim();
+    // plain words only: a regex or a one-letter query gets no list (the client still searches as before)
+    if (kw.length < 3 || /[\\^$*+?()[\]{}|]/.test(kw)) return '';
+    // the same full search the page itself runs (Pali, the matched line, its translation); a big term can take a
+    // while, so the page does not wait more than SSR_WAIT_MS - the job goes on and fills the cache for the next fetch
+    let job = searchSsrPending.get(key);
+    if (!job) {
+        job = searchJob('full', kw, { scope: 'default', exact: false, langs: [lang], lb: 0, la: 0 }, false)
+            .then(r => {
+                if (!r || !r.result || !r.result.data) return ''; // worker busy or failed: not cached, the next request tries again
+                const html = searchSsrList(kw, lang, r.result);
+                if (searchSsrCache.size >= 500) searchSsrCache.delete(searchSsrCache.keys().next().value);
+                searchSsrCache.set(key, html);
+                return html;
+            })
+            .catch(e => { console.warn(`searchSsr ${kw}: ${e.message}`); return ''; })
+            .finally(() => searchSsrPending.delete(key));
+        searchSsrPending.set(key, job);
+    }
+    return Promise.race([job, new Promise(ok => setTimeout(ok, SSR_WAIT_MS, ''))]);
+}
+function searchSsrList(q, lang, result) {
+    const ru = lang === 'ru';
+    const esc = s => String(s == null ? '' : s).replace(/<[^>]+>/g, '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').trim();
+    const rows = Object.values(result.data);
+    const total = (result.metadata && result.metadata.totalFiles) || rows.length;
+    const items = rows.slice(0, SSR_RESULTS_MAX).map(r => {
+        const seg = (r.segments || [])[0];
+        const id = String(seg ? seg.segment : r.sutta_id);
+        const href = /^[\w.:-]+$/.test(id) ? '/' + id + (ru ? '?lang=ru' : '') : '/' + encodeURIComponent(r.sutta_id);
+        const titles = r.titles || {};
+        const tr = Object.keys(titles).find(k => k !== 'root');
+        const segTr = seg && seg.translations && Object.values(seg.translations)[0];
+        return `<li><a href="${href}">${esc(r.sutta_id)}</a> ${esc(titles.root)}${tr ? ' — ' + esc(titles[tr]) : ''}` +
+            (seg ? `<br><span lang="pi">${esc(seg.root_text)}</span>${segTr ? '<br>' + esc(segTr) : ''}` : '') + '</li>';
+    });
+    const head = ru ? `«${esc(q)}» в Палийском каноне: ${ruSuttas(total)}` : `“${esc(q)}” in the Pali Canon: ${total} suttas`;
+    const more = total > rows.length || rows.length > SSR_RESULTS_MAX
+        ? `<p>${ru ? `Показаны первые ${Math.min(rows.length, SSR_RESULTS_MAX)}.` : `The first ${Math.min(rows.length, SSR_RESULTS_MAX)} shown.`}</p>` : '';
+    return `<main class="dg-ssr-results" lang="${ru ? 'ru' : 'en'}"><h1>${head}</h1><ol>${items.join('')}</ol>${more}</main>`;
 }
 async function sendTextHtml(req, res, dataId, urlId) {
     let h = null;
@@ -3937,7 +3995,7 @@ function sendHeadHtml(req, res, h) {
         if (!entry) return res.code(404).send();
         versionedHtmlCache.set(searchIndexPath, entry);
     }
-    const etag = '"' + crypto.createHash('md5').update(entry.etag + h.canonical + h.title + (h.body ? h.body.length : '')).digest('hex') + '"';
+    const etag = '"' + crypto.createHash('md5').update(entry.etag + h.canonical + h.title + (h.body ? h.body.length : '') + (h.ssr ? h.ssr.length : '')).digest('hex') + '"';
     res.header('cache-control', 'public, max-age=0, must-revalidate').header('etag', etag);
     if (req.headers['if-none-match'] === etag) return res.code(304).send();
     return res.type('text/html; charset=utf-8').send(withTextHead(entry.rewritten, h));
