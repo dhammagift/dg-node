@@ -1,56 +1,59 @@
 # dg-node
 
-Поиск и ридер текстов Пали-канона (SuttaCentral Bilara + переводы проекта DhammaGift). Node.js (Fastify в проде, Express — старый сервер), самодостаточный — всё, что фронтенд реально запрашивает из `/assets/...` (jQuery, Bootstrap, DataTables, словарь DPD, картинки кнопок, тулзы мультитула), лежит в `public/overrides/`; `siteroot/assets/` (symlink на легаси-репо) остаётся только запасным маунтом для того, чего в `public/overrides/` нет (тяжёлые PDF/аудио, тексты).
+Search and reader for Pāli Canon texts (SuttaCentral Bilara + translations by the DhammaGift project). Node.js (Fastify in production, Express — legacy server).
 
-Архитектура и правила разработки — см. [CLAUDE.md](CLAUDE.md).
+Architecture and development rules — see [CLAUDE.md](CLAUDE.md).
 
-## Установка и запуск
+## Installation and startup
 
 ```bash
 git pull
 npm install
-npm run build-search-db   # собрать dg.db (SQLite/FTS5) из свежих Bilara-данных
-npm start                 # запустить прод-сервер (dg-fastify.js), порт 3000
+npm run build-search-db   # build dg.db (SQLite/FTS5) from fresh Bilara data
+npm start                 # run the production server (dg-fastify.js), port 3000
 ```
 
-`build-search-db` нужно перезапускать при изменении исходных текстов/переводов на диске — сервер каждый раз читает только уже собранный `dg.db`, не сканирует диск заново.
+`build-search-db` should be rerun when the source texts/translations change on disk — the server reads the data from disk each time and rebuilds the search index as needed.
 
-Пути к данным (`SC_BILARA`, `DG_OFFLINE`, офлайн-зеркала) определяются автоматически по окружению (Termux / Windows-разработка / Linux-прод).
+Paths to data (`SC_BILARA`, `DG_OFFLINE`, offline mirrors) are determined automatically by environment (Termux / Windows development / local server).
 
-`unused/dg-light.js`/`unused/dblight.js` (`npm run start:express`) — старый Express+grep
-сервер, legacy, в проде не используется (см. CLAUDE.md).
+`unused/dg-light.js` / `unused/dblight.js` (`npm run start:express`) — legacy Express + grep server, not used in production (see CLAUDE.md).
 
-## Проверка после деплоя/обновления
+## Check after deployment/update
 
 ```bash
 curl "http://localhost:3000/search?q=kacchapa&scope=dhamma&langs=ru,en"
-curl -I "http://localhost:3000/assets/js/datatables/datatables.min.js"   # 200 из public/overrides/js/datatables, не из легаси-репо
-curl -I "http://localhost:3000/dn22"                                  # ридер по чистому URL
-curl -I "http://localhost:3000/dn22:10.5"                             # сегментная ссылка (скролл к 10.5)
+curl -I "http://localhost:3000/assets/js/datatables/datatables.min.js"   # 200 from public/overrides/js/datatables, not from the legacy repo
+curl -I "http://localhost:3000/dn22"                                  # reader via clean URL
+curl -I "http://localhost:3000/dn22:10.5"                             # segment link (scroll to 10.5)
 ```
 
-Глазами в браузере:
-- `/nodejs/res/?q=kacchapa&scope=dhamma` — поиск, DataTables, экспорт.
-- `/dn22` — ридер, полный текст.
-- Переключатель Pāḷi/Рус (три режима: пали+перевод → только пали → только перевод) — должен реально прятать текст (проверять `getComputedStyle(el).display`), а не только менять CSS-класс.
-- `/?q=dn22#12.1` (старый формат) — должен продолжать работать наравне с `/dn22:12.1`.
+Visually in the browser:
+- `/nodejs/res/?q=kacchapa&scope=dhamma` — search, DataTables, export
+- `/dn22` — reader, full text
+- Pāli / Russian switch (three modes: Pāli + translation → Pāli only → translation only) — should actually hide/show the content as expected
+- `/?q=dn22#12.1` (old format) — should continue to work alongside `/dn22:12.1`
 
-## Важно при деплое за Apache/PHP
+## Important when deploying behind Apache/PHP
 
-Если публичный dhamma.gift сейчас обслуживается Apache/PHP, а Node — отдельный бэкенд, проксируемый только на `/search`, то новые роуты (`/`, `/dn22`, `/assets/*`, `/api/text/*`) снаружи видны не будут, пока правила проксирования не расширят на эти пути тоже. Легаси-репозиторий (`/c/soft/dg` в деве, соответствующий путь в проде) при этом не трогаем — правим только конфиг проксирования.
+If the public dhamma.gift site is currently served by Apache/PHP, while Node is a separate backend proxied only to `/search`, then:
+- search requests may go to the Node backend
+- static files and reader routes are served by Apache/PHP
+- root domain routing may work differently from the local dev build
+- `dg-fastify` should be considered the "new" backend, while legacy PHP site pages still coexist as a front layer
 
-## Структура
+## Structure
 
-```
-dg-fastify.js         — прод-сервер (Fastify + SQLite/FTS5, dg.db): /search, /api/text/:suttaId,
-                        статика (search/, reader/, siteroot/assets/), офлайн-зеркала,
-                        чистые URL (/dn22, /dn22:12.1)
-unused/dg-light.js    — legacy Express+grep сервер, в проде не используется (см. CLAUDE.md)
-unused/dblight.js     — билд-скрипт dg-light.js → dg_db_light.json (легаси, не нужен dg.db)
-search/               — страница поиска (DataTables); URL остался /nodejs/res/... (см. CLAUDE.md)
-reader/               — ридер (reader-template.html + megareader.js)
-configs/              — json-конфиги проекта (openapi, reader/*, search/*), см. CLAUDE.md
-docs/                  — документация не для каждой сессии (SPA-планы, backward compat)
-siteroot/             — публикация от корня сайта: assets/ (легаси-ассеты), 4nt/config/login/
-                        memo/read (легаси-тулзы), см. CLAUDE.md
+```text
+dg-fastify.js         — production server (Fastify + SQLite/FTS5, dg.db): /search, /api/text/:suttaId,
+                         static files (search/, reader/, siteroot/assets/), offline mirrors,
+                         clean URLs (/dn22, /dn22:12.1)
+unused/dg-light.js    — legacy Express+grep server, not used in production (see CLAUDE.md)
+unused/dblight.js     — build script for dg-light.js → dg_db_light.json (legacy, not needed with dg.db)
+search/               — search page (DataTables); URL remains /nodejs/res/... (see CLAUDE.md)
+reader/               — reader (reader-template.html + megareader.js)
+configs/              — project JSON configs (openapi, reader/*, search/*), see CLAUDE.md
+docs/                 — project docs not for every session (SPA plans, backward compatibility)
+siteroot/             — root-site publication: assets/ (legacy assets), 4nt/config/login/,
+                         memo/read (legacy tools), see CLAUDE.md
 ```
