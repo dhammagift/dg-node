@@ -1,10 +1,20 @@
 # dg-node
 
-Search and reader for Pāli Canon texts (SuttaCentral Bilara + translations by the DhammaGift project). Node.js (Fastify in production, Express — legacy server).
+Node.js backend for searching and reading Pāli Canon texts using SuttaCentral Bilara and DhammaGift translations.
 
-Architecture and development rules — see [CLAUDE.md](CLAUDE.md).
+This project powers the search index, reader endpoints, static assets, and compatibility layer for the legacy Dhamma.Gift stack. The production server runs on Fastify; the older Express-based implementation is kept only for legacy support.
 
-## Installation and startup
+Architecture and development rules: [CLAUDE.md](CLAUDE.md)
+
+## Features
+
+- Search across the Pāli Canon with SQLite/FTS5
+- Reader routes for clean URLs such as `/dn22` and `/dn22:12.1`
+- Segment-aware links and scroll targets
+- Support for offline mirror data and environment-based path resolution
+- Legacy compatibility with older PHP/Apache frontends
+
+## Quick start
 
 ```bash
 git pull
@@ -13,13 +23,13 @@ npm run build-search-db   # build dg.db (SQLite/FTS5) from fresh Bilara data
 npm start                 # run the production server (dg-fastify.js), port 3000
 ```
 
-`build-search-db` should be rerun when the source texts/translations change on disk — the server reads the data from disk each time and rebuilds the search index as needed.
+`build-search-db` should be rerun whenever source texts or translations change on disk. The server reads data directly from disk and rebuilds the search index as needed.
 
-Paths to data (`SC_BILARA`, `DG_OFFLINE`, offline mirrors) are determined automatically by environment (Termux / Windows development / local server).
+Data paths such as `SC_BILARA`, `DG_OFFLINE`, and offline mirrors are resolved automatically based on the runtime environment (Termux, Windows development, local server, etc.).
 
-`unused/dg-light.js` / `unused/dblight.js` (`npm run start:express`) — legacy Express + grep server, not used in production (see CLAUDE.md).
+`unused/dg-light.js` and `unused/dblight.js` (`npm run start:express`) are legacy Express + grep services and are not used in production. See [CLAUDE.md](CLAUDE.md) for details.
 
-## Check after deployment/update
+## Deployment checks
 
 ```bash
 curl "http://localhost:3000/search?q=kacchapa&scope=dhamma&langs=ru,en"
@@ -28,32 +38,38 @@ curl -I "http://localhost:3000/dn22"                                  # reader v
 curl -I "http://localhost:3000/dn22:10.5"                             # segment link (scroll to 10.5)
 ```
 
-Visually in the browser:
+Manual browser checks:
+
 - `/nodejs/res/?q=kacchapa&scope=dhamma` — search, DataTables, export
-- `/dn22` — reader, full text
-- Pāli / Russian switch (three modes: Pāli + translation → Pāli only → translation only) — should actually hide/show the content as expected
-- `/?q=dn22#12.1` (old format) — should continue to work alongside `/dn22:12.1`
+- `/dn22` — full-text reader
+- Pāli / Russian toggle (three modes: Pāli + translation → Pāli only → translation only) — should actually hide/show content correctly
+- `/?q=dn22#12.1` (legacy format) — should continue to work alongside `/dn22:12.1`
 
-## Important when deploying behind Apache/PHP
+## Deployment notes for Apache/PHP
 
-If the public dhamma.gift site is currently served by Apache/PHP, while Node is a separate backend proxied only to `/search`, then:
-- search requests may go to the Node backend
-- static files and reader routes are served by Apache/PHP
-- root domain routing may work differently from the local dev build
-- `dg-fastify` should be considered the "new" backend, while legacy PHP site pages still coexist as a front layer
+If the public Dhamma.Gift site is currently hosted by Apache/PHP while Node runs as a separate backend proxied only to `/search`, note the following:
 
-## Structure
+- search requests may route to the Node backend
+- static files and reader routes may still be served by Apache/PHP
+- root-domain routing can differ from the local development environment
+- `dg-fastify` is the modern backend, while legacy PHP pages remain in parallel for compatibility
+
+## Project structure
 
 ```text
 dg-fastify.js         — production server (Fastify + SQLite/FTS5, dg.db): /search, /api/text/:suttaId,
                          static files (search/, reader/, siteroot/assets/), offline mirrors,
                          clean URLs (/dn22, /dn22:12.1)
-unused/dg-light.js    — legacy Express+grep server, not used in production (see CLAUDE.md)
+unused/dg-light.js    — legacy Express + grep server, not used in production (see CLAUDE.md)
 unused/dblight.js     — build script for dg-light.js → dg_db_light.json (legacy, not needed with dg.db)
-search/               — search page (DataTables); URL remains /nodejs/res/... (see CLAUDE.md)
-reader/               — reader (reader-template.html + megareader.js)
+search/               — search page (DataTables); legacy URL remains /nodejs/res/... (see CLAUDE.md)
+reader/               — reader frontend (reader-template.html + megareader.js)
 configs/              — project JSON configs (openapi, reader/*, search/*), see CLAUDE.md
-docs/                 — project docs not for every session (SPA plans, backward compatibility)
+docs/                 — project documentation and compatibility notes (SPA plans, backward compatibility)
 siteroot/             — root-site publication: assets/ (legacy assets), 4nt/config/login/,
                          memo/read (legacy tools), see CLAUDE.md
 ```
+
+## License
+
+See the repository license and project-specific notes in the root of the project.
