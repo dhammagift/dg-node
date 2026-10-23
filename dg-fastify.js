@@ -3971,7 +3971,10 @@ function searchSsrList(q, lang, result) {
         const tr = Object.keys(titles).find(k => k !== 'root' && k !== 'en_sujato');
         const tl = seg && seg.translations ? { ...seg.translations } : {};
         stripSujato(tl); // as in the MCP answer
-        const segTr = Object.values(tl)[0];
+        // a translator's "segment" can be a whole paragraph (Thanissaro aligns by paragraph): the matched line's sense,
+        // not a page of text under it
+        const clip = t => { const x = String(t).replace(/<[^>]+>/g, '').trim(); return x.length > 240 ? x.slice(0, 240).replace(/\s+\S*$/, '') + ' …' : x; };
+        const segTr = Object.values(tl)[0] && clip(Object.values(tl)[0]);
         const mark = defines ? (ru ? ' (определение)' : ' (definition)') : byTitle ? (ru ? ' (названа по термину)' : ' (named after the term)') : '';
         return `<li><a href="${href}">${esc(suttaId)}</a> ${esc(titles.root)}${tr ? ' — ' + esc(titles[tr]) : ''}${mark}` +
             (seg ? `<br><span lang="pi">${esc(seg.root_text)}</span>${segTr ? '<br>' + esc(segTr) : ''}` : '') + '</li>';
