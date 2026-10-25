@@ -3745,8 +3745,40 @@ function withTextHead(html, h) {
     // browser that slips through without Sec-Fetch-Mode (Safari up to 16.3): it costs real browsers nothing
     if (h.ssr) out = out.replace('</head>', '<script>document.documentElement.classList.add(\'dg-js\')</script><style>.dg-js .dg-ssr-results{display:none}</style>\n</head>')
         .replace('<body>', () => '<body>' + h.ssr);
+    // a browser's page only: a crawler would send the searches for nothing (it gets the list above)
+    if (h.critical === 'results' && !h.bot) out = out.replace('</head>', () => '<script>(' + searchEarly + ')()</script>\n</head>');
     out = withCritical(out.replace('</head>', links + '</head>'), h.critical);
     return h.critical === 'home' ? withHomeTiles(out, h.lang) : out;
+}
+// A results page's cold load (PageSpeed mobile: the first result row is the LCP). searchEarly() runs in <head> and
+// sends the /search request initSearchApp() builds (buildUrl, '&fast=1', now with the titles) and, for a result that
+// fits one enrich chunk, the /search/enrich request enrichBeforeTable() sends next, instead of both waiting for
+// DOMContentLoaded after every deferred bundle. The page takes each only on an exact URL match (dgEarlySearch).
+function searchEarly() {
+    try {
+        var u = new URLSearchParams(location.search), s = localStorage;
+        // the keyword as initSearchApp reads it: ?q=, else the last path segment unless it is a page name
+        var last = location.pathname.split('/').filter(Boolean).pop() || '';
+        var k = u.get('q') || (/^(search|index\.html|result|nodejs)$/i.test(last) ? '' : decodeURIComponent(last));
+        if (!k) return;
+        var c = (s.getItem('selectedScript') || '').toLowerCase();
+        var qs = 'q=' + encodeURIComponent(k) + '&scope=' + (u.get('scope') || s.getItem('dhammaSearchScope') || 'default') +
+            '&lb=' + (u.get('lb') || s.getItem('dhammaSearchContextBefore') || 0) + '&la=' + (u.get('la') || s.getItem('dhammaSearchContextAfter') || 0) +
+            '&langs=' + encodeURIComponent(u.get('langs') || s.getItem('dhammaSearchLangs') || 'ru,en');
+        var sc = c && c !== 'isopali' ? '&script=' + encodeURIComponent(c) : '';
+        var url = '/search?' + qs + '&fast=1' + sc;
+        var E = window.dgEarlySearch = { url: url, res: fetch(url) };
+        // the enrich request initSearchApp sends next for a result that fits one chunk (enrichBeforeTable: every id,
+        // in JSON order); a larger one enriches the page the table shows, which only the table knows
+        // in JSON order); a larger one enriches the page the table shows, which only the table knows. A promise, so a
+        // page that asks before the answer is parsed waits for this decision instead of sending its own request
+        E.enrich = E.res.then(function (r) { return r.ok ? r.clone().json() : null; }).then(function (j) {
+            var all = j && j.data ? Object.keys(j.data) : [];
+            if (!all.length || all.length > 100 || u.get('report') === 'words') return null;
+            var eurl = '/search/enrich?' + qs + '&ids=' + all.map(encodeURIComponent).join(',') + sc;
+            return { url: eurl, res: fetch(eurl) };
+        }).catch(function () { return null; });
+    } catch (e) {}
 }
 // Critical CSS per screen (scripts/critical-css.js, configs/critical/<state>.css: the server-rendered reader, and
 // home / search results / contents): inlined, and the stylesheets it was cut from then load without blocking. Only
@@ -3931,7 +3963,8 @@ async function sendSiteHtml(req, res, kind, arg) {
         // the list goes to readers that are not a browser only; a person's page stays exactly as before, not a
         // millisecond longer (owner: «удлинять и влиять как-то вообще на клиентские запросы … категорически нельзя»)
         h.vary = 'Sec-Fetch-Mode, User-Agent';
-        if (!isBrowserNavigation(req)) h.ssr = await searchSsrHtml((seoTerm(arg) || {}).q || String(arg), h.lang);
+        h.bot = !isBrowserNavigation(req);
+        if (h.bot) h.ssr = await searchSsrHtml((seoTerm(arg) || {}).q || String(arg), h.lang);
     }
     return sendHeadHtml(req, res, h);
 }
@@ -4069,7 +4102,7 @@ function sendHeadHtml(req, res, h) {
         if (!entry) return res.code(404).send();
         versionedHtmlCache.set(searchIndexPath, entry);
     }
-    const etag = '"' + crypto.createHash('md5').update(entry.etag + h.canonical + h.title + (h.body ? h.body.length : '') + (h.ssr ? h.ssr.length : '')).digest('hex') + '"';
+    const etag = '"' + crypto.createHash('md5').update(entry.etag + h.canonical + h.title + (h.body ? h.body.length : '') + (h.ssr ? h.ssr.length : '') + (h.bot ? 'b' : '')).digest('hex') + '"';
     res.header('cache-control', 'public, max-age=0, must-revalidate').header('etag', etag);
     if (h.vary) res.header('vary', h.vary); // the search page differs for browsers and other readers (sendSiteHtml)
     if (req.headers['if-none-match'] === etag) return res.code(304).send();
@@ -4194,6 +4227,10 @@ app.setNotFoundHandler((req, res) => {
 
 app.listen({ port: PORT, host: '0.0.0.0' }, (err) => {
     if (err) { console.error(err); process.exit(1); }
+    // The titles index of the fast /search answer (two scans of dg.db, a few seconds, synchronous): built right after
+    // the start instead of inside the first search, which waited ~6 s for it.
+    // ponytail: still blocks the loop once per start; a table built with dg.db if restarts ever hurt
+    setTimeout(() => { const t = Date.now(); searchCore.suttaTitleIndex(); console.log(`titles index: ${Date.now() - t} ms`); }, 500);
     console.log(`\n=== Dhamma.gift Server (dg-fastify.js) ===\n`);
     console.log(`SPA (new): http://localhost:${PORT}/spa/`);
     // /search — JSON API, ?q= здесь ОБЯЗАТЕЛЕН (не легаси) — это не HTML-страница с чистым

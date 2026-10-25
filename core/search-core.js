@@ -1032,6 +1032,58 @@ async function findVariantSegments(keyword, exactMatch) {
 // Fast (zero file-read) response: skeleton sutta list + full word report, straight off phase-1's
 // grep. metadata.partial=true tells the client segments/translations are stubs pending
 // /search/enrich — wordReport, however, is already complete and final.
+// Every sutta's translator roster and its title in each translation, for ?fast=1: the titles used to come only with
+// /search/enrich, a second round trip before a result row could show its title (PageSpeed: the title is the LCP).
+// The same three lookups enrichSuttaBatch makes per result, once for the whole corpus (~45k rows, about 2 s), built
+// right after the start (dg-fastify.js listen); the database is read-only and replaced only with a restart.
+let titleIndex = null;
+function suttaTitleIndex() {
+    if (titleIndex) return titleIndex;
+    const roster = new Map(), titleSeg = new Map(), titles = new Map();
+    for (const row of searchDb.prepare("SELECT DISTINCT sutta_id, lang, translator, source FROM texts WHERE kind = 'translation' AND translator <> 'ai'").all()) {
+        let list = roster.get(row.sutta_id);
+        if (!list) roster.set(row.sutta_id, list = []);
+        list.push(row);
+    }
+    for (const row of searchDb.prepare("SELECT sutta_id, segment_id, ord FROM texts WHERE kind = 'root' AND (segment_id GLOB '*:0' OR segment_id GLOB '*:0.*')").all()) {
+        const prev = titleSeg.get(row.sutta_id);
+        if (!prev || row.ord > prev.ord) titleSeg.set(row.sutta_id, row);
+    }
+    // by segment id, as enrichSuttaBatch reads them: a few suttas share segment ids with another (dn84's are "dn16:…")
+    const bySegment = new Map();
+    for (const row of sqlRowsIn('segment_id, lang, translator, txt', 'texts', 'segment_id',
+        [...new Set([...titleSeg.values()].map(r => r.segment_id))], "AND kind = 'translation'")) {
+        let list = bySegment.get(row.segment_id);
+        if (!list) bySegment.set(row.segment_id, list = []);
+        list.push(row);
+    }
+    for (const [suttaId, seg] of titleSeg) if (bySegment.has(seg.segment_id)) titles.set(suttaId, bySegment.get(seg.segment_id));
+    return (titleIndex = { roster, titles });
+}
+// titles[lang_translator] exactly as enrichSuttaBatch fills them: the preferred translator per language, "(o)" marked
+function addTranslatedTitles(searchResults, wantedLangs) {
+    const { roster, titles } = suttaTitleIndex();
+    for (const [suttaId, res] of Object.entries(searchResults)) {
+        const rows = titles.get(suttaId);
+        if (!rows) continue;
+        let chosen;
+        const list = roster.get(suttaId);
+        if (list) {
+            const offer = {};
+            for (const row of list) {
+                if (wantedLangs && !wantedLangs.has(row.lang)) continue;
+                offer[`${row.lang}_${row.translator}`] = row.source === 'dgmain' ? path.join(DG_OFFLINE, row.lang, 'x.json') : '';
+            }
+            if (Object.keys(offer).length) chosen = new Set(Object.keys(filterPreferredTranslators(offer)));
+        }
+        for (const row of rows) {
+            if (wantedLangs && !wantedLangs.has(row.lang)) continue;
+            const key = `${row.lang}_${row.translator}`;
+            if (!chosen || chosen.has(key)) res.titles[key] = row.translator === 'o' ? `${row.txt} (o)` : row.txt;
+        }
+    }
+}
+
 async function buildFastResponse(keyword, searchScope, exactMatch, targetLangs, lb = 0, la = 0) {
     const { searchResults, empty } = await buildMatchSkeleton(keyword, searchScope, exactMatch, targetLangs, lb, la);
     const suttaIds = Object.keys(searchResults);
@@ -1051,6 +1103,7 @@ async function buildFastResponse(keyword, searchScope, exactMatch, targetLangs, 
         totalMatches += searchResults[id].count;
     }
     const variantSegments = await findVariantSegments(keyword, exactMatch);
+    addTranslatedTitles(searchResults, targetLangs.includes('all') ? null : new Set(targetLangs.map(l => l.split('_')[0])));
 
     const wordReport = buildWordReportFast(searchResults, keyword);
     const sortedData = sortSuttaResults(searchResults);
@@ -1527,6 +1580,7 @@ async function runRegexJob(job) {
 
 module.exports = {
     init,
+    suttaTitleIndex,
     setSkeleton,
     navFor,
     findRangeContaining,

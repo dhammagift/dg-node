@@ -69,6 +69,9 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
 <!-- First in <head>: the early zoom script below reads matchMedia(max-width), and before this tag a phone
      reports the 980px default - the page painted at 100% and jumped to 110% seconds later (layout shift). -->
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- dhamma.gift//sn56.11 (a doubled slash, owner 2026-10-25): Apache merges the slashes before Node sees them, so the
+     page came back for an address it does not expect and drew broken; go to the one address of the page instead. -->
+<script>if (location.pathname.indexOf('//') > -1) location.replace(location.pathname.replace(/\/{2,}/g, '/') + location.search + location.hash);</script>
 <!-- dg:app-scripts — the optional offline layer (docs/OFFLINE_PWA_PLAN.md, Stage 1). These three
      are loaded before ANY other script on the page on purpose: app.js replaces window.fetch, and
      it has to be in place before the first request is issued. platform.js must stay first — a
@@ -3408,7 +3411,9 @@ document.addEventListener('DOMContentLoaded', function () { $(function() {
         if (window.dgRenderLangPill) window.dgRenderLangPill();
     });
     function renderCurrentReport() {
-        if (!lastSearchJson) return;
+        // DgSearchRender: a reading-stack change on a cold load can come before the table's scripts (the search
+        // itself started with the HTML, searchEarly in dg-fastify.js); initSearchApp renders once they are in
+        if (!lastSearchJson || !window.DgSearchRender) return;
         var meta = lastSearchJson.metadata;
         // Нечего показывать (запрос слишком короткий, или 0 совпадений) — не рисуем пустую
         // таблицу/тулбар "Слова" вообще, только текст ошибки из renderResultHeader ниже.
@@ -3622,7 +3627,11 @@ document.addEventListener('DOMContentLoaded', function () { $(function() {
 
     function enrichChunk(chunkIds) {
         var gen = searchGen;
-        return fetch(buildUrl('/search/enrich', '&ids=' + chunkIds.map(encodeURIComponent).join(',')))
+        var url = buildUrl('/search/enrich', '&ids=' + chunkIds.map(encodeURIComponent).join(','));
+        // sent already with the HTML (searchEarly, dg-fastify.js), taken once; a promise of {url, res} or null
+        var early = window.dgEarlySearch && window.dgEarlySearch.enrich;
+        if (early) window.dgEarlySearch.enrich = null;
+        return Promise.resolve(early).then(function (e) { return e && e.url === url ? e.res : fetch(url); })
             .then(function (r) { return r.json(); })
             .then(function (json) {
                 if (gen !== searchGen) return; // a newer search owns lastSearchJson/pendingIds now
@@ -4361,7 +4370,26 @@ document.addEventListener('DOMContentLoaded', function () { $(function() {
                 // Регистрация плагинов DataTables — раньше жила в $(document).ready наверху
                 // файла и требовала DataTable синхронно на КАЖДОЙ странице; теперь ровно здесь,
                 // сразу после того как сама библиотека реально загружена.
-                DataTable.util.diacritics(function (d) { return d; });
+                // The table's Filter box spells loosely, both the rows and what is typed (owner 2026-10-25: one had to know
+                // exactly how a word is written): no diacritics or case (tanha = taṇhā, samvega = saṁvega, ё = е), no
+                // aspiration (kh = k) and no doubled letters (kacapa = kachapa = kacchapa, dama = dhamma). Digits stay doubled,
+                // so sn56.11 is not sn56.1. The filter only narrows the found rows, so a looser match costs little.
+                DataTable.util.diacritics(function (d) {
+                    return typeof d !== 'string' ? d : d.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+                        .replace(/([kgcjtdpb])h/g, '$1').replace(/(\p{L})\1+/gu, '$1');
+                });
+                // The rows' side: DataTables folds a cell only through its column type's formatter, and the columns' type is
+                // not known yet when the filter data is built (it held raw HTML, so "lang" matched every row by a class name).
+                // Every table's cells are stripped of tags and folded here, once per row, when the filter data is made.
+                $(document).on('preInit.dt', function (e, settings) {
+                    settings.aoColumns.forEach(function (col) {
+                        var get = col.fnGetData;
+                        col.fnGetData = function (row, type, meta) {
+                            var v = get(row, type, meta);
+                            return type === 'filter' && typeof v === 'string' ? DataTable.util.diacritics(DataTable.util.stripHtml(v)) : v;
+                        };
+                    });
+                });
                 // Bootstrap's dropdown keys handler (keydown on any .dropdown-menu, delegated on document in the capture
                 // phase) takes the Buttons collections (Export, Visibility: a .dropdown-menu with no data-bs-toggle
                 // button) for its own menus and throws "reading 'parentNode'" on Escape and arrow keys. They stop on
@@ -4856,8 +4884,11 @@ document.addEventListener('DOMContentLoaded', function () { $(function() {
                 // DataTables/search-render.js грузятся ПАРАЛЛЕЛЬНО с самим запросом, а не до или
                 // после: на прямой загрузке страницы результатов (не SPA-переход) это не добавляет
                 // задержки — оба идут одновременно, ждём более медленное из двух.
+                // the server may have started this very request with the HTML (searchEarly, dg-fastify.js)
+                const early = window.dgEarlySearch, earlyRes = early && early.url === searchUrl && early.res;
+                if (early) early.res = null;
                 const [json] = await Promise.all([
-                    fetch(searchUrl).then(function (r) {
+                    (earlyRes || fetch(searchUrl)).then(function (r) {
                         if (!r.ok) throw new Error("Ошибка сети при получении данных");
                         return r.json();
                     }).then(function (json) { if (gen === searchGen) enrichBeforeTable(json); return json; }),

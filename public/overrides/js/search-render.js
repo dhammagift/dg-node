@@ -505,6 +505,9 @@ window.DgSearchRender = (function () {
 
         return {
             dom: tableDom,
+            // A row's <tr> is built when its page is first shown, not all at once: dukkha drew 1010 rows to show 10,
+            // over a second of a phone's main thread (PageSpeed TBT). Sorting, the Filter box and export read the data.
+            deferRender: true,
             buttons: buildButtons(),
             // "Search:" -> "Фильтр:" — на этой странице DataTables-фильтр не должен путаться
             // с будущим SPA-поиском (hero-форма в search/index.html, пока скрыта).

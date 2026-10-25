@@ -110,6 +110,16 @@ function isDir(p) {
     }
 }
 
+// SC's variant line and ours for one segment: ours adds only the readings ("word → reading (sources)", joined by " | ")
+// SC does not have, compared without ṁ/ṃ and spacing differences.
+function mergeReadings(sc, ours) {
+    if (!sc) return ours;
+    const norm = t => t.normalize('NFC').replace(/ṃ/g, 'ṁ').replace(/\s+/g, ' ').trim();
+    const have = new Set(sc.split(' | ').map(norm));
+    const add = ours.split(' | ').map(t => t.trim()).filter(t => t && !have.has(norm(t)));
+    return add.length ? sc.trimEnd() + ' | ' + add.join(' | ') + ' ' : sc;
+}
+
 function readSegments(file) {
     try {
         const parsed = JSON.parse(fs.readFileSync(file, 'utf8'));
@@ -305,10 +315,7 @@ function build() {
                 if (!add) { n += ingest(file, kind, null, null); return; }
                 ours.delete(rel);
                 const merged = Object.assign({}, readSegments(file));
-                for (const [seg, txt] of Object.entries(add)) {
-                    const sc = merged[seg];
-                    merged[seg] = !sc ? txt : sc.includes(txt.trim()) ? sc : sc.trimEnd() + ' | ' + txt;
-                }
+                for (const [seg, txt] of Object.entries(add)) merged[seg] = mergeReadings(merged[seg], txt);
                 n += ingest(file, kind, null, null, null, merged);
             });
             for (const [rel, segs] of ours) n += ingest(path.join(DG_VARIANT, rel), kind, null, null, null, segs);
