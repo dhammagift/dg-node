@@ -4949,7 +4949,7 @@
        перенесены как есть из config/translate.php ($ctaButtons) и index.php (#contacts);
        картинки кнопок берём оттуда же — /assets/img/buttons/*.png лежат на месте. */
     var CTA_BUTTONS = [
-        { img: 'appstore-cta.png', href: 'https://apps.apple.com/app/id6813706217', title: 'Download on the App Store' },
+        { img: 'appstore-cta.png', href: 'https://apps.apple.com/app/dhamma-gift/id6813706217', title: 'Download on the App Store' },
         { img: 'google-play-cta.png', href: 'https://play.google.com/store/apps/details?id=gift.dhamma.twa', title: 'Download from Google Play' },
         { img: 'telegram-cta.png', href: 'https://t.me/dgift_bot', title: 'Open DGift_bot' },
         { img: 'pwa-cta.png', href: null, id: 'installPWA', title: 'Install Dhamma.gift as progressive web app' },
