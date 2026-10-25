@@ -23,7 +23,7 @@ const DATA_ROOT = process.env.DG_DATA_ROOT || path.join(__dirname, 'siteroot', '
 const SC_BILARA = path.join(DATA_ROOT, 'suttacentral.net', 'sc-data', 'sc_bilara_data');
 const SC_TRANS = path.join(SC_BILARA, 'translation');
 const DG_OFFLINE = path.join(DATA_ROOT, 'dhammagift');
-const DG_LANGS = ['ru', 'ru_other', 'en', 'en_other', 'ai'];
+const DG_LANGS = ['ru', 'ru_other', 'en', 'en_other', 'ai', 'th'];
 
 // Owner: AI translations are hidden content — stored so the reader can still show them, but
 // never fed to the FTS index, so search cannot surface them. Keyed by TRANSLATOR, not language:
@@ -265,10 +265,10 @@ function build() {
     // A single file becomes a run of rows sharing (sutta_id, kind, translator); `ord` is the
     // segment's position in it, which is what reproduces grep's -B/-A context without needing
     // line numbers.
-    function ingest(file, kind, lang, translator, source) {
+    function ingest(file, kind, lang, translator, source, given) {
         const suttaId = suttaIdFromFile(path.basename(file));
         if (!suttaId || !meta.has(suttaId)) return 0;
-        const segments = readSegments(file);
+        const segments = given || readSegments(file);
         if (!segments) return 0;
         const countWords = kind === 'root' && vocabScope.has(suttaId);
         let ord = 0;
@@ -290,7 +290,29 @@ function build() {
         let t = Date.now();
         let n = 0;
         db.exec('BEGIN');
-        walkJson(path.join(SC_BILARA, dir), file => { n += ingest(file, kind, null, null); });
+        if (kind === 'root') walkJson(path.join(SC_BILARA, dir), file => { n += ingest(file, kind, null, null); });
+        else {
+            // The project's own variant readings (dhammagift/variant/pli/ms, the old site's assets/texts/variant: Siam
+            // readings SC lacks) go in with SC's, file by file at the same path. A segment both have keeps both readings,
+            // joined by " | " as SC joins its own; a reading SC already has is not repeated. (variant/pli/bjt, my, th next
+            // to it are whole editions, not readings, and are not read here.)
+            const ours = new Map();
+            const DG_VARIANT = path.join(DG_OFFLINE, 'variant', 'pli', 'ms');
+            if (isDir(DG_VARIANT)) walkJson(DG_VARIANT, file => ours.set(path.relative(DG_VARIANT, file), readSegments(file)));
+            const root = path.join(SC_BILARA, dir, 'pli', 'ms');
+            walkJson(path.join(SC_BILARA, dir), file => {
+                const rel = path.relative(root, file), add = ours.get(rel);
+                if (!add) { n += ingest(file, kind, null, null); return; }
+                ours.delete(rel);
+                const merged = Object.assign({}, readSegments(file));
+                for (const [seg, txt] of Object.entries(add)) {
+                    const sc = merged[seg];
+                    merged[seg] = !sc ? txt : sc.includes(txt.trim()) ? sc : sc.trimEnd() + ' | ' + txt;
+                }
+                n += ingest(file, kind, null, null, null, merged);
+            });
+            for (const [rel, segs] of ours) n += ingest(path.join(DG_VARIANT, rel), kind, null, null, null, segs);
+        }
         db.exec('COMMIT');
         rows += n;
         console.log(`${kind}: ${n} segments (${Date.now() - t}ms)`);
