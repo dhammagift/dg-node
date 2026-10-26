@@ -1125,8 +1125,7 @@ const OPS = {
     // behaviour flags (dualScript/mnemonic); and a language with no translation at all falls back
     // to English, which changes the columns it reports. issue #6: ?multiFor= убран и здесь —
     // несколько переводчиков одного языка теперь приходят только по явному ?translators=.
-    async text({ suttaId, mode, langs, lang, translators }) {
-        const modeConfig = mode ? core.MODE_TABLE[mode] : null;
+    async text({ suttaId, langs, lang, translators }) {
         const targetLangs = langs ? langs.split(',').map(l => l.trim())
             : lang ? [lang]
             // Same as dg-fastify.js: a bare ?translators= names its languages in the keys.
@@ -1140,7 +1139,8 @@ const OPS = {
         let effectiveLangs = targetLangs;
 
         const hasAnyTranslation = data.segments.some(seg => Object.keys(seg.translations).length > 0);
-        if (!modeConfig && !hasAnyTranslation && !targetLangs.includes('en') && !explicitTranslators) {
+        // With a ?mode= too, as dg-fastify.js since 8309381: the reader asks with one, and most of the Vinaya has no ru.
+        if (!hasAnyTranslation && !targetLangs.includes('en') && !explicitTranslators) {
             const fallbackData = await core.buildTextDataFromBase(base, suttaId, ['en'], null);
             const fallbackHasTranslation = fallbackData &&
                 fallbackData.segments.some(seg => Object.keys(seg.translations).length > 0);

@@ -78,6 +78,8 @@ const CASES = [
     ['text-dn22-memorize', '/api/text/dn22?mode=memorize&lang=ru'],
     ['text-dn22-devanagari', '/api/text/dn22?mode=devanagari&lang=ru'],
     ['text-explicit-translators', '/api/text/dn22?translators=ru_o,ru_khantibalo'],
+    // No ru translation (most of the Vinaya): the reader's ?mode= request gets the English, as from the site.
+    ['text-vinaya-no-ru', '/api/text/pli-tv-bu-vb-sk63?mode=single&lang=ru'],
     ['text-unknown', '/api/text/nosuchsutta'],
     ['nav-dn22', '/api/nav/dn22'],
     ['nav-sn56.11', '/api/nav/sn56.11'],
