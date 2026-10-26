@@ -1125,9 +1125,11 @@ const OPS = {
     // behaviour flags (dualScript/mnemonic); and a language with no translation at all falls back
     // to English, which changes the columns it reports. issue #6: ?multiFor= убран и здесь —
     // несколько переводчиков одного языка теперь приходят только по явному ?translators=.
-    async text({ suttaId, langs, lang, translators }) {
+    async text({ suttaId, mode, langs, lang, translators }) {
         const targetLangs = langs ? langs.split(',').map(l => l.trim())
             : lang ? [lang]
+            // Same as dg-fastify.js: a real ?mode= with no lang is one language, not "ru,en".
+            : mode && core.MODE_TABLE[mode] ? ['ru']
             // Same as dg-fastify.js: a bare ?translators= names its languages in the keys.
             : core.translatorLangsFallback(translators) || ['ru', 'en'];
         const explicitTranslators = translators ? translators.split(',').map(t => t.trim()) : null;

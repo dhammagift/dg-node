@@ -80,6 +80,8 @@ const CASES = [
     ['text-explicit-translators', '/api/text/dn22?translators=ru_o,ru_khantibalo'],
     // No ru translation (most of the Vinaya): the reader's ?mode= request gets the English, as from the site.
     ['text-vinaya-no-ru', '/api/text/pli-tv-bu-vb-sk63?mode=single&lang=ru'],
+    // A ?mode= with no lang is one language (a cold /dn1?mode=single), as from the site.
+    ['text-mode-no-lang', '/api/text/dn1?mode=single'],
     ['text-unknown', '/api/text/nosuchsutta'],
     ['nav-dn22', '/api/nav/dn22'],
     ['nav-sn56.11', '/api/nav/sn56.11'],
