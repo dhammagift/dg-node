@@ -761,7 +761,10 @@ try {
 // checks silently). Registered early so nothing else can shadow it.
 // /favicon.ico: browsers and search engines ask for it at the root whatever the page links; it fell through to the SPA
 // shell (an HTML page with status 200). The same icon the pages link (favico-noglass.png), as an ICO.
-app.get('/favicon.ico', (req, res) => sendFile(req, res, path.join(__dirname, 'public', 'favicon.ico'), 'image/x-icon'));
+app.get('/favicon.ico', (req, res) => {
+    res.header('cache-control', 'public, max-age=604800'); // a week: no ?v= hash on this fixed address
+    sendFile(req, res, path.join(__dirname, 'public', 'favicon.ico'), 'image/x-icon');
+});
 app.get('/sw.js', (req, res) => {
     res.header('cache-control', 'no-cache'); // cache.md §4 — stale service worker must always revalidate
     sendFile(req, res, path.join(__dirname, 'public', 'service-worker.js'), 'application/javascript');
