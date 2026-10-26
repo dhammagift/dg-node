@@ -759,6 +759,9 @@ try {
 // 'pwa-fdg-v1' cache too. Without an explicit route here /sw.js falls through to the generic
 // /:slug catch-all below and gets served as SPA HTML (wrong content-type, breaks SW update
 // checks silently). Registered early so nothing else can shadow it.
+// /favicon.ico: browsers and search engines ask for it at the root whatever the page links; it fell through to the SPA
+// shell (an HTML page with status 200). The same icon the pages link (favico-noglass.png), as an ICO.
+app.get('/favicon.ico', (req, res) => sendFile(req, res, path.join(__dirname, 'public', 'favicon.ico'), 'image/x-icon'));
 app.get('/sw.js', (req, res) => {
     res.header('cache-control', 'no-cache'); // cache.md §4 — stale service worker must always revalidate
     sendFile(req, res, path.join(__dirname, 'public', 'service-worker.js'), 'application/javascript');
@@ -3708,7 +3711,7 @@ const SEARCH_PLACEHOLDERS = JSON.stringify(Object.fromEntries(fsSync.readdirSync
     }).filter(e => e[1]))).replace(/</g, '\\u003c');
 function withTextHead(html, h) {
     const t = htmlAttr(h.title), d = htmlAttr(h.description), u = htmlAttr(h.canonical);
-    const ld = [h.breadcrumbs, h.work].filter(Boolean);
+    const ld = [h.breadcrumbs, h.work, ...(h.ld || [])].filter(Boolean);
     const links = (h.noindex ? `<meta name="robots" content="${h.noindex === true ? 'noindex' : h.noindex}">\n` : '') +
         `<link rel="canonical" href="${u}">\n` +
         h.alternates.map(([l, href]) => `<link rel="alternate" hreflang="${l}" href="${htmlAttr(href)}">`).join('\n') +
@@ -3899,6 +3902,45 @@ fsSync.watchFile(SEO_TERMS_PATH, { interval: 5000 }, () => {
     buildSitemapCache().then(countSeoTerms).then(() => { searchSsrCache.clear(); searchSsrBytes = 0; return warmSeoSsr(); }).catch(e => console.warn('SEO terms reload:', e.message));
 });
 const seoTerm = q => SEO_TERMS.get(String(q).normalize('NFC').toLowerCase());
+// schema.org for the home page: the site's name and icon in Google's results, and who publishes it
+const SITE_LD = [
+    { '@context': 'https://schema.org', '@type': 'WebSite', '@id': SITE + '/#website', name: 'Dhamma.Gift', alternateName: ['DG', 'Dhamma Gift'],
+        url: SITE + '/', inLanguage: ['en', 'ru'], publisher: { '@id': SITE + '/#organization' } },
+    { '@context': 'https://schema.org', '@type': 'Organization', '@id': SITE + '/#organization', name: 'Dhamma.Gift', url: SITE + '/',
+        logo: SITE + '/assets/img/favico-noglass.png', sameAs: ['https://github.com/dhammagift', 'https://huggingface.co/dhammagift'] },
+];
+// A key term's page as a schema.org DefinedTerm: the owner's renderings and, where the canon defines the term, the
+// definition and its line. Those come from the glossary page's own DefinedTermSet (dg-docs GlossaryTable.jsx), read
+// from the built page and again whenever the docs are redeployed (its mtime): one source, the owner's sheet.
+const glossaryLdCache = {};
+const foldPali = s => String(s || '').normalize('NFD').replace(/\p{M}+/gu, '').toLowerCase();
+function glossaryDefined(lang) {
+    const file = path.join(__dirname, 'dg-docs', lang === 'ru' ? 'build-ru' : 'build', 'glossary', 'index.html');
+    let mtime = 0;
+    try { mtime = fsSync.statSync(file).mtimeMs; } catch { return null; }
+    const c = glossaryLdCache[lang];
+    if (c && c.mtime === mtime) return c.terms;
+    const terms = new Map();
+    try {
+        for (const [, json] of fsSync.readFileSync(file, 'utf8').matchAll(/<script[^>]*ld\+json[^>]*>(.*?)<\/script>/gs)) {
+            const set = JSON.parse(json);
+            if (set['@type'] === 'DefinedTermSet') for (const t of set.hasDefinedTerm || []) terms.set(foldPali(t.name), t);
+        }
+    } catch (e) { console.warn(`glossary JSON-LD (${lang}): ${e.message}`); }
+    glossaryLdCache[lang] = { mtime, terms };
+    return terms;
+}
+function termLd(term, lang, url) {
+    const g = glossaryDefined(lang)?.get(foldPali(term.pali));
+    return {
+        '@context': 'https://schema.org', '@type': 'DefinedTerm', name: term.pali, url,
+        alternateName: [term.ru, term.en].filter(Boolean),
+        ...(g && g.description && { description: g.description }),
+        ...(g && g.subjectOf && { subjectOf: g.subjectOf }),
+        inDefinedTermSet: SITE + (lang === 'ru' ? '/ru' : '') + '/docs/glossary/',
+        ...(g && { sameAs: g['@id'] }),
+    };
+}
 // the key terms' pages get their plain-HTML list ready after start, one search at a time (searchSsrHtml)
 async function warmSeoSsr() {
     for (const t of SEO_TERMS.values()) for (const lang of ['en', 'ru']) {
@@ -3952,6 +3994,7 @@ function siteHead(kind, arg, reqLang) {
     const [title, description] = term ? SEO_TERM_TEXT[lang](term) : SITE_HEAD_TEXT[lang][kind](what);
     return {
         lang, title, description, canonical: url(lang), keepOg: kind === 'home', alternates: [['en', url('en')], ['ru', url('ru')]],
+        ld: kind === 'home' ? SITE_LD : term ? [termLd(term, lang, url(lang))] : null,
         // search results stay out of the index, their links are followed (GSC, 16 months: keyword-search pages had
         // 1% of impressions and no clicks; an unbounded space of thin pages, crawler junk included). The title and
         // description stay for a shared link's preview. The key terms' pages (SEO_TERMS) are the exception.
