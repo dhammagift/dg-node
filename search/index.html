@@ -5265,6 +5265,9 @@ document.addEventListener('DOMContentLoaded', function () { $(function() {
 <!-- randPlaceholder.js + home.js concatenated at server startup (see settings-bundle.js comment
      above) — same reasoning, both dg-node-owned, order preserved. -->
 <script src="/assets/js/home-bundle.js" defer></script>
+<!-- Pinch = Text size, a demo on test only (owner 2026-10-26): ?pinch=1 turns it on for the tab, ?pinch=0 off -->
+<script>try { var pm = /[?&]pinch=([01])/.exec(location.search); if (pm) sessionStorage.setItem('dgPinchDemo', pm[1]);
+  if (sessionStorage.getItem('dgPinchDemo') === '1') { var ps = document.createElement('script'); ps.src = '/assets/js/pinch-size-demo.js'; document.head.appendChild(ps); } } catch (e) {}</script>
 
 <script>
            //to enable bootstrap tooltip
