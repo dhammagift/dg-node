@@ -3378,7 +3378,8 @@ document.addEventListener('DOMContentLoaded', function () { $(function() {
 
     function applyFilterValue(table) {
         if (filterValue) {
-            table.search(filterValue).draw();
+            $(table.table().container()).find('div.dt-search input').val(filterValue);
+            table.search(window.dgLooseSearch(filterValue)).draw();
             var currentUrl = new URL(window.location.href);
             currentUrl.searchParams.delete('f');
             history.replaceState({}, '', currentUrl);
@@ -4372,14 +4373,26 @@ document.addEventListener('DOMContentLoaded', function () { $(function() {
                 // Регистрация плагинов DataTables — раньше жила в $(document).ready наверху
                 // файла и требовала DataTable синхронно на КАЖДОЙ странице; теперь ровно здесь,
                 // сразу после того как сама библиотека реально загружена.
-                // The table's Filter box spells loosely, both the rows and what is typed (owner 2026-10-25: one had to know
-                // exactly how a word is written): no diacritics or case (tanha = taṇhā, samvega = saṁvega, ё = е), no
-                // aspiration (kh = k) and no doubled letters (kacapa = kachapa = kacchapa, dama = dhamma). Digits stay doubled,
-                // so sn56.11 is not sn56.1. The filter only narrows the found rows, so a looser match costs little.
-                DataTable.util.diacritics(function (d) {
-                    return typeof d !== 'string' ? d : d.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
-                        .replace(/([kgcjtdpb])h/g, '$1').replace(/(\p{L})\1+/gu, '$1');
-                });
+                // The table's Filter box spells loosely (owner 2026-10-25: one had to know exactly how a word is written): no
+                // diacritics or case on either side (tanha = taṇhā, samvega = saṁvega, ё = е), and in what is typed a Latin
+                // consonant typed once also stands for its double (typed double, it stays double: will is not wild) and kgcjtdpb for
+                // their aspirate (kacapa = kachapa = kacchapa, dama =
+                // dhamma). Only that way round, and vowels and digits as typed: folding both sides the same way made "moon" a
+                // "mon" that every "monk" contains (owner 2026-10-26), and sn56.1 would find sn56.11.
+                function dgFold(d) {
+                    return typeof d !== 'string' ? d : d.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+                }
+                function dgLooseWord(w) {
+                    return new RegExp(dgFold(w).replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/([bcdfghj-np-tv-z])\1*(?!\1)/g, function (m, c, i, str) {
+                        return c + (m.length > 1 ? c : '') + '+' + (/[kgcjtdpb]/.test(c) && str.charAt(i + m.length) !== 'h' ? 'h?' : '');
+                    }));
+                }
+                function dgLooseSearch(text) {
+                    var words = String(text || '').trim().split(/\s+/).filter(Boolean).map(dgLooseWord);
+                    return words.length ? function (row) { return words.every(function (re) { return re.test(row); }); } : '';
+                }
+                window.dgLooseSearch = dgLooseSearch;
+                DataTable.util.diacritics(dgFold);
                 // The rows' side: DataTables folds a cell only through its column type's formatter, and the columns' type is
                 // not known yet when the filter data is built (it held raw HTML, so "lang" matched every row by a class name).
                 // Every table's cells are stripped of tags and folded here, once per row, when the filter data is made.
@@ -4388,9 +4401,20 @@ document.addEventListener('DOMContentLoaded', function () { $(function() {
                         var get = col.fnGetData;
                         col.fnGetData = function (row, type, meta) {
                             var v = get(row, type, meta);
-                            return type === 'filter' && typeof v === 'string' ? DataTable.util.diacritics(DataTable.util.stripHtml(v)) : v;
+                            return type === 'filter' && typeof v === 'string' ? dgFold(DataTable.util.stripHtml(v)) : v;
                         };
                     });
+                });
+                // The box hands DataTables a match function instead of its text, so DataTables' own handlers come off it: its
+                // input handler would search the text again, and its search.dt one empties a box whose search is a function.
+                $(document).on('init.dt', function (e, settings) {
+                    var api = new DataTable.Api(settings);
+                    $(api.table().node()).off('search.dt.DT');
+                    $(settings.nTableWrapper).find('div.dt-search input').off('.DT')
+                        .on('input.dg paste.dg cut.dg search.dg', DataTable.util.debounce(function () {
+                            api.search(dgLooseSearch(this.value)).draw();
+                        }, 200))
+                        .on('keypress.dg', function (ev) { if (ev.keyCode === 13) return false; });
                 });
                 // Bootstrap's dropdown keys handler (keydown on any .dropdown-menu, delegated on document in the capture
                 // phase) takes the Buttons collections (Export, Visibility: a .dropdown-menu with no data-bs-toggle

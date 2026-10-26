@@ -110,13 +110,12 @@
   /* Нормализация с картой индексов: norm[i] соответствует исходному символу map[i].
      Без карты нельзя вернуться к позиции в реальном тексте и подсветить её. */
   DGPageFind.prototype._norm = function (str) {
-    var o = this.options, out = [], map = [], last = '', i, piece, c, k;
+    var out = [], map = [], i, piece, c, k;
     for (i = 0; i < str.length; i++) {
       piece = this._piece(str[i]);
       for (k = 0; k < piece.length; k++) {
         c = piece[k];
-        if (o.ignoreDoubles && c === last && LETTER.test(c)) continue;
-        out.push(c); map.push(i); last = c;
+        out.push(c); map.push(i);
       }
     }
     return { out: out.join(''), map: map };
@@ -190,18 +189,27 @@
     this.matches = [];
     this.total = 0;
     var q = (this.query || '').trim();
+    var self = this;
     var nq = this._norm(q).out;
     if (!nq) { this.active = -1; this.onUpdate(this); return; }
+    // Doubles are ignored one way only: a letter typed once also finds it doubled (с finds сс, kacapa finds
+    // kacchapa), one typed twice wants it doubled. Folding both sides made "moon" a "mon" that every "monk"
+    // contains (owner 2026-10-26).
+    var re = new RegExp(nq.match(/(.)\1*/gsu).map(function (run) {
+      var c = run.charAt(0).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      return self.options.ignoreDoubles && /\p{L}/u.test(run) ? c + (run.length > 1 ? c : '') + '+' : run.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }).join(''), 'gu');
 
-    var self = this;
     this.containers.forEach(function (cont) {
       if (!cont.el) return;
       var idx = self._index(cont), col = idx.col, norm = idx.norm;
       var hidden = !!(cont.hidden && cont.hidden());
-      var from = 0, at;
-      while ((at = norm.out.indexOf(nq, from)) !== -1) {
-        from = at + 1;
-        var s = norm.map[at], e = norm.map[at + nq.length - 1] + 1;
+      var at, hit;
+      re.lastIndex = 0;
+      while ((hit = re.exec(norm.out))) {
+        at = hit.index;
+        re.lastIndex = at + (hit[0].length || 1);
+        var s = norm.map[at], e = norm.map[at + hit[0].length - 1] + 1;
         if (self.options.wholeWord) {
           var b = col.text[s - 1], a = col.text[e];
           if ((b && LETTER.test(b)) || (a && LETTER.test(a))) continue;

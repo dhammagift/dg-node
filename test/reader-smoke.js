@@ -26,8 +26,9 @@ async function check(page, [path, toggle, lang]) {
     await page.goto(BASE + '/', { waitUntil: 'domcontentloaded' });
     await page.evaluate(t => { localStorage.setItem('paliToggle', t); localStorage.removeItem('tts_preferred_mode'); }, toggle);
     await page.goto(BASE + path, { waitUntil: 'domcontentloaded' });
-    await page.waitForSelector('#sutta article .quote', { state: 'attached', timeout: 20000 });
-    await page.waitForTimeout(800);
+    // the reader's own render, not the server's first paint of the same text
+    await page.waitForFunction(() => window.dgReaderSlug && document.querySelector('#sutta article .quote'), null, { timeout: 20000 });
+    await page.waitForTimeout(500);
     return page.evaluate(({ toggle, lang }) => {
         const errs = [];
         const states = [...document.body.classList].filter(c => /^dg-state-/.test(c));
@@ -77,6 +78,32 @@ async function checkVoice(page) {
     return errs;
 }
 
+// Loose spelling finds the Pali word, but never a different word: moon is not monk (owner 2026-10-26).
+async function checkLoose(page) {
+    const errs = [];
+    await page.goto(BASE + '/sn16.3?lang=en', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#sutta article .quote', { state: 'attached', timeout: 20000 });
+    await page.waitForFunction(() => window.DGPageFind, null, { timeout: 15000 });
+    const find = await page.evaluate(() => {
+        const f = new DGPageFind({ root: document.getElementById('sutta') });
+        return ['moon', 'bhikhave'].map(q => { f.setQuery(q); return f.matches.map(m => m.hit.toLowerCase()); });
+    });
+    if (find[0].some(h => h !== 'moon')) errs.push('find on page "moon" hit: ' + [...new Set(find[0])].join(', '));
+    if (!find[1].length) errs.push('find on page "bhikhave" found no bhikkhave');
+    await page.goto(BASE + '/candima?lang=en', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('div.dt-search input', { state: 'visible', timeout: 30000 });
+    await page.waitForTimeout(1500);
+    const rows = async q => {
+        await page.fill('div.dt-search input', q);
+        await page.waitForTimeout(700);
+        return page.evaluate(() => { const api = new DataTable.Api('#pali'), s = api.settings()[0];
+            return api.rows({ search: 'applied' }).indexes().toArray().map(i => s.aoData[i]._sFilterRow); });
+    };
+    const moon = await rows('moon');
+    if (!moon.length || moon.some(r => !/moon/.test(r))) errs.push(`Filter "moon": ${moon.filter(r => !/moon/.test(r)).length} of ${moon.length} rows without moon`);
+    return errs;
+}
+
 (async () => {
     const browser = await chromium.launch();
     let failed = 0;
@@ -95,6 +122,7 @@ async function checkVoice(page) {
     for (const viewport of [{ width: 412, height: 900 }, { width: 1280, height: 800 }])
         for (const c of CASES) await run(`${viewport.width}px ${c[0]} pali=${c[1]}`, viewport, page => check(page, c));
     await run('voice: speaker → Voice / Alt+R', { width: 1280, height: 800 }, checkVoice);
+    await run('loose spelling: find on page and the Filter box', { width: 1280, height: 800 }, checkLoose);
     await browser.close();
     console.log(failed ? `\n${failed} failed (${BASE})` : `\nall passed (${BASE})`);
     process.exit(failed ? 1 : 0);
