@@ -705,10 +705,35 @@ async function storagePlanFor(dbBytes, copyBytes) {
     const free = est.quota - (est.usage || 0);
     const headroom = 32 * 1048576;
     const resumeNeeds = Math.ceil(dbBytes + (copyBytes || dbBytes) * 1.1) + headroom;
-    if (free >= resumeNeeds) return { mode: 'resume', freeBytes: free, neededBytes: resumeNeeds };
+    if (free >= resumeNeeds) {
+        if (await roomIsReal(resumeNeeds)) return { mode: 'resume', freeBytes: free, neededBytes: resumeNeeds };
+        throw new Error(`not enough storage for the offline library: this browser reports ` +
+            `${Math.round(free / 1048576)}MB free but cannot hold ${Math.round(resumeNeeds / 1048576)}MB ` +
+            `(a private window keeps site data in memory)`);
+    }
     throw new Error(`not enough storage for the offline library: about ` +
         `${Math.round(resumeNeeds / 1048576)}MB of free space is needed, this browser allows ` +
         `${Math.round(free / 1048576)}MB more — free up space and try again`);
+}
+
+// estimate() can lie: a Chrome incognito window reports gigabytes but its in-memory OPFS holds ~600MB,
+// and writes past that come back short — the pool ignores that and the library ends up SQLITE_CORRUPT.
+// Growing an empty file to the needed size is instant where the room is real (sparse on disk) and
+// silently stays at 0 where it is not, so the reader is told before anything is downloaded.
+async function roomIsReal(bytes) {
+    const probe = 'room-probe.tmp';
+    let root, h;
+    try {
+        root = await navigator.storage.getDirectory();
+        h = await (await root.getFileHandle(probe, { create: true })).createSyncAccessHandle();
+        h.truncate(bytes);
+        return h.getSize() >= bytes;
+    } catch (e) {
+        return true; // the probe itself failed — not evidence of no room, the download decides
+    } finally {
+        try { if (h) { h.truncate(0); h.close(); } } catch (_) {}
+        try { if (root) await root.removeEntry(probe); } catch (_) {}
+    }
 }
 
 // What can be checked WITHOUT reading the whole file: the table we are about to depend on exists and
