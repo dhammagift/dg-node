@@ -1296,6 +1296,8 @@ $('#ctxBefore').onchange = e=> localStorage.setItem('dhammaSearchContextBefore',
 $('#ctxAfter').onchange = e=> localStorage.setItem('dhammaSearchContextAfter', e.target.value);
 
 /* Общее */
+// The apps have no Thai interface (owner 2026-10-26): Thai texts yes, the menus stay ru/en.
+if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) $('#uiLang option[value="th"]').remove();
 $('#uiLang').value = isRu ? 'ru' : 'en';
 $('#uiLang').onchange = e=>{
   // Если языки чтения/поиска ещё не настраивались вручную (нет своих ключей в localStorage) —

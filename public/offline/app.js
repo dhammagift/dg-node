@@ -928,9 +928,11 @@
             }
         }
 
+        // ?lang= (the reader's one language) and ?translators= (th_siamrath) too: a Thai text asked with ?lang=th got the
+        // slice's English fallback in the app.
         function langNeedsOnline(qs) {
-            var langs = (qs.get('langs') || '').split(',').map(function (s) { return s.trim(); })
-                .filter(Boolean);
+            var langs = [qs.get('langs'), qs.get('lang'), qs.get('translators')].join(',').split(',')
+                .map(function (s) { return s.trim().split('_')[0]; }).filter(Boolean);
             return langs.some(function (l) { return OFFLINE_LANGS.indexOf(l) === -1; });
         }
 
@@ -1015,20 +1017,24 @@
 
         // A script pali-script.js does not cover: the worker answers __needsServer and the request
         // goes to the network, where it went before the offline layer could convert anything.
-        // The library has no audio index: the line with the text's mp3s (dg-fastify.js audioLineHtml) comes from the
-        // server when it answers in time, else the worker's Principles line stays. Remembered per text and language.
-        var audioLines = {};
-        function withAudioLine(r, id) {
+        // What the ru+en library cannot know (dg-fastify.js /api/text-online): the line with the text's mp3s and the
+        // languages and translators of the whole corpus, so the popover offers Thai. From the server when it answers in
+        // time, else the worker's Principles line and slice lists stay. Remembered per text and language.
+        var onlineParts = {};
+        function withOnlineParts(r, id) {
             if (!r || r.__status || r.__needsServer || navigator.onLine === false) return r;
             var key = encodeURIComponent(id) + '?lang=' + encodeURIComponent(r.lang || '');
-            var line = audioLines[key] || (audioLines[key] = Promise.race([
-                realFetch(withOnlineBase('/api/text-audio/' + key)).then(function (a) { return a.ok ? a.json() : null; }),
+            var parts = onlineParts[key] || (onlineParts[key] = Promise.race([
+                realFetch(withOnlineBase('/api/text-online/' + key)).then(function (a) { return a.ok ? a.json() : null; }),
                 new Promise(function (ok) { setTimeout(ok, 2500); }),
             ]).then(function (a) {
-                if (!a || typeof a.audioHtml !== 'string') { delete audioLines[key]; return null; }
-                return a.audioHtml;
-            }, function () { delete audioLines[key]; return null; }));
-            return line.then(function (html) { if (html !== null) r.audioHtml = html; return r; });
+                if (!a || typeof a.audioHtml !== 'string') { delete onlineParts[key]; return null; }
+                return a;
+            }, function () { delete onlineParts[key]; return null; }));
+            return parts.then(function (a) {
+                if (a) ['availableLangs', 'availableTranslators', 'audioHtml'].forEach(function (k) { if (a[k]) r[k] = a[k]; });
+                return r;
+            });
         }
 
         function localOrServer(result, input, init) {
@@ -1180,7 +1186,7 @@
                         langs: qs.get('langs'),
                         lang: qs.get('lang'),
                         translators: qs.get('translators'),
-                    }).then(function (r) { return withAudioLine(r, textId); }).then(function (r) { return localOrServer(r, input, init); });
+                    }).then(function (r) { return withOnlineParts(r, textId); }).then(function (r) { return localOrServer(r, input, init); });
                 });
             }
 

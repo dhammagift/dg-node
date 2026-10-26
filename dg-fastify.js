@@ -1178,11 +1178,19 @@ if (fsSync.existsSync(VINAYA_AUDIO_DIR)) app.register(fastifyStatic, {
     maxAge: '7d',
 });
 const textAudio = id => SUTTA_AUDIO.get(id) || VINAYA_AUDIO.get(id) || [];
-// The same line on its own, for the apps: they answer /api/text from their own SQLite, which has no audio index, and
-// ask this when online (public/offline/app.js); offline they show the Principles line only.
-app.get('/api/text-audio/:suttaId', async (req, res) => {
-    res.header('cache-control', 'public, max-age=600');
-    return { audioHtml: audioLineHtml(req.params.suttaId.toLowerCase(), req.query.lang || null) };
+// /api/text's availableLangs / availableTranslators (see there)
+function textRoster(suttaId) {
+    const roster = searchDb.prepare(
+        "SELECT DISTINCT lang, translator FROM texts WHERE sutta_id = ? AND kind = 'translation' AND translator <> 'ai'"
+    ).all(suttaId);
+    return { availableLangs: [...new Set(roster.map(r => r.lang))], availableTranslators: roster.map(r => `${r.lang}_${r.translator}`) };
+}
+// The parts of /api/text the apps' own SQLite cannot give (it is a ru+en slice with no audio index): the audio line and
+// the text's languages and translators in the whole corpus (a Thai text, the popover's "нет перевода"). The apps ask
+// this when online (public/offline/app.js); offline they keep the slice's lists and the Principles line only.
+app.get('/api/text-online/:suttaId', async (req, res) => {
+    const suttaId = req.params.suttaId.toLowerCase();
+    return { audioHtml: audioLineHtml(suttaId, req.query.lang || null), ...textRoster(suttaId) };
 });
 
 // The line under the text, before the links row (owner: «как подпись „слушать в MP3“: пали · русский»): the Pali file
@@ -2421,11 +2429,7 @@ app.get('/api/text/:suttaId', async (req, res) => {
         // One indexed read of the same table the root text came from; `translator <> 'ai'` for
         // the reason spelled out in translatorsForSutta() — and it is what keeps a language whose
         // ONLY translation is the AI draft (9 such (sutta, lang) pairs) out of availableLangs.
-        const roster = searchDb.prepare(
-            "SELECT DISTINCT lang, translator FROM texts WHERE sutta_id = ? AND kind = 'translation' AND translator <> 'ai'"
-        ).all(suttaId);
-        data.availableLangs = [...new Set(roster.map(r => r.lang))];
-        data.availableTranslators = roster.map(r => `${r.lang}_${r.translator}`);
+        Object.assign(data, textRoster(suttaId));
 
         // Конвертация системы письма пали (?script=Devanagari/Thai/... — любой ключ
         // Aksharamukha.Scripts, см. akshConvert/resolveScriptKey выше). Только root_text/variant —
