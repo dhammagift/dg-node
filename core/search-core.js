@@ -1578,7 +1578,18 @@ async function runRegexJob(job) {
     return result;
 }
 
+// Under every text, after the audio line: the site's own pages on how the texts are read, as plain links - the one
+// internal link that tells search engines and AI crawlers what matters here (owner 2026-10-22: neutral, no claims
+// about other translations, just «принципы по суттам, обоснование»). Here so the apps' offline /api/text has it too.
+function principlesLineHtml(ru, top) {
+    const links = ru
+        ? [['/ru/docs/sutta', 'Принципы по Суттам'], ['/ru/docs/rationale', 'Обоснование'], ['/ru/docs/glossary', 'Глоссарий']]
+        : [['/docs/sutta/', 'Principles by the Suttas'], ['/docs/rationale/', 'Rationale'], ['/docs/glossary/', 'Glossary']];
+    return `<p class="dg-principles" style="text-align:right;font-style:italic;font-size:.85em;opacity:.8;margin:${top} 0 .5em">${links.map(([h, t]) => `<a href="${h}">${t}</a>`).join(' · ')}</p>`;
+}
+
 module.exports = {
+    principlesLineHtml,
     init,
     suttaTitleIndex,
     setSkeleton,

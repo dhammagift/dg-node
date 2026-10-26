@@ -1164,6 +1164,8 @@ const OPS = {
         );
         data.availableLangs = [...new Set(roster.map(r => r.lang))];
         data.availableTranslators = roster.map(r => `${r.lang}_${r.translator}`);
+        // dg-fastify.js's audioLineHtml without the audio (no index here): app.js swaps in the site's line when online.
+        data.audioHtml = core.principlesLineHtml(data.lang === 'ru', '2em');
         return data;
     },
 

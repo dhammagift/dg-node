@@ -1015,6 +1015,22 @@
 
         // A script pali-script.js does not cover: the worker answers __needsServer and the request
         // goes to the network, where it went before the offline layer could convert anything.
+        // The library has no audio index: the line with the text's mp3s (dg-fastify.js audioLineHtml) comes from the
+        // server when it answers in time, else the worker's Principles line stays. Remembered per text and language.
+        var audioLines = {};
+        function withAudioLine(r, id) {
+            if (!r || r.__status || r.__needsServer || navigator.onLine === false) return r;
+            var key = encodeURIComponent(id) + '?lang=' + encodeURIComponent(r.lang || '');
+            var line = audioLines[key] || (audioLines[key] = Promise.race([
+                realFetch(withOnlineBase('/api/text-audio/' + key)).then(function (a) { return a.ok ? a.json() : null; }),
+                new Promise(function (ok) { setTimeout(ok, 2500); }),
+            ]).then(function (a) {
+                if (!a || typeof a.audioHtml !== 'string') { delete audioLines[key]; return null; }
+                return a.audioHtml;
+            }, function () { delete audioLines[key]; return null; }));
+            return line.then(function (html) { if (html !== null) r.audioHtml = html; return r; });
+        }
+
         function localOrServer(result, input, init) {
             return result && result.__needsServer ? toServer(input, init, result.__needsServer) : respond(result);
         }
@@ -1155,15 +1171,16 @@
 
             if (p.indexOf('/api/text/') === 0) {
                 if (langNeedsOnline(qs)) return toServer(input, init, 'lang');
+                var textId = decodeURIComponent(p.slice('/api/text/'.length)).toLowerCase();
                 return withLoadingEvent(function () {
                     return call('text', {
                         script: scriptRequested(qs),
-                        suttaId: decodeURIComponent(p.slice('/api/text/'.length)).toLowerCase(),
+                        suttaId: textId,
                         mode: qs.get('mode'),
                         langs: qs.get('langs'),
                         lang: qs.get('lang'),
                         translators: qs.get('translators'),
-                    }).then(function (r) { return localOrServer(r, input, init); });
+                    }).then(function (r) { return withAudioLine(r, textId); }).then(function (r) { return localOrServer(r, input, init); });
                 });
             }
 
