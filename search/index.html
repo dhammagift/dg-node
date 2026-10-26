@@ -114,7 +114,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     // the app start from the old 110% as their 100%.
     try {
       var s = parseInt(localStorage.getItem('uiScale'), 10);
-      s = (s >= 70 && s <= 150) ? s : 100;
+      s = (s >= 70 && s <= 200) ? s : 100;
       var z = s / 100 * ((document.documentElement.classList.contains('dg-app') || matchMedia('(max-width: 767.98px)').matches) ? 1.1 : 1);
       if (z !== 1 && window.CSS && CSS.supports && CSS.supports('zoom', '1.5')) {
         document.documentElement.style.zoom = z;

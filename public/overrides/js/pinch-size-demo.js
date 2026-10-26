@@ -1,5 +1,5 @@
 // Demo, test only (owner 2026-10-26: "try it apart, on the site, not in the app"): a two-finger pinch steps the site's own
-// Text size (uiScale, 70-150 % by 10, home.js dgStepUiScale) instead of the browser's zoom, so the text reflows to the
+// Text size (uiScale, 70-200 % by 10, home.js dgStepUiScale) instead of the browser's zoom, so the text reflows to the
 // screen like Apple Books, with a short "130 %" label. The reading place is kept. Loaded by search/index.html only after
 // ?pinch=1 (kept for the tab; ?pinch=0 turns it off).
 (function () {
@@ -8,7 +8,7 @@
     var label = null, hideTimer = null;
 
     function dist(t) { return Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY); }
-    function scale() { var v = parseInt(localStorage.getItem('uiScale'), 10); return v >= 70 && v <= 150 ? v : 100; }
+    function scale() { var v = parseInt(localStorage.getItem('uiScale'), 10); return v >= 70 && v <= 200 ? v : 100; }
     function show(text) {
         if (!label) {
             label = document.createElement('div');
