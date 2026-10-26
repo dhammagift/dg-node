@@ -1930,6 +1930,17 @@ window.buildSutta = async function(rawSlug, opts) {
         // tools → legal, no second copy of the byline and the warning under the text.
         `<div id="bottom-links-container" class="min-h-24"></div>`;
     if (!keepServerText(suttaHtml)) suttaArea.innerHTML = suttaHtml;
+    // DG app: the text came from its ru+en library at once; the mp3 line and the text's languages in the whole corpus
+    // come after it (public/offline/app.js dgTextOnline) and take the library's Principles line's place.
+    const libLine = window.dgTextOnline && !/dg-audio-mp3/.test(suttaData.audioHtml || '') && suttaArea.querySelector(':scope > .dg-principles');
+    if (libLine) window.dgTextOnline(String(suttaData.sutta_id || '').toLowerCase(), suttaData.lang).then(a => {
+        if (!a || !libLine.isConnected || a.audioHtml === suttaData.audioHtml) return; // another text on screen by now, or already in it
+        if (a.availableLangs) READER_MODE.availableLangs = a.availableLangs;
+        if (a.availableTranslators) READER_MODE.availableTranslators = a.availableTranslators;
+        const old = suttaArea.querySelector(':scope > .dg-audio-mp3');
+        libLine.insertAdjacentHTML('beforebegin', a.audioHtml);
+        libLine.remove(); if (old) old.remove();
+    });
     
     const topContainer = document.getElementById('top-links-container');
     const bottomContainer = document.getElementById('bottom-links-container');

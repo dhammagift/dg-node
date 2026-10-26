@@ -1018,24 +1018,27 @@
         // A script pali-script.js does not cover: the worker answers __needsServer and the request
         // goes to the network, where it went before the offline layer could convert anything.
         // What the ru+en library cannot know (dg-fastify.js /api/text-online): the line with the text's mp3s and the
-        // languages and translators of the whole corpus, so the popover offers Thai. From the server when it answers in
-        // time, else the worker's Principles line and slice lists stay. Remembered per text and language. "In time" is
-        // 400 ms (the route answers in ~50): the text never waits longer for them (owner 2026-10-26: the mp3 line is for SEO);
-        // a late answer is still kept for the text's next open.
-        var onlineParts = {};
-        function withOnlineParts(r, id) {
-            if (!r || r.__status || r.__needsServer || navigator.onLine === false) return r;
-            var key = encodeURIComponent(id) + '?lang=' + encodeURIComponent(r.lang || '');
-            var parts = onlineParts[key] || (onlineParts[key] = realFetch(withOnlineBase('/api/text-online/' + key))
+        // languages and translators of the whole corpus, so the popover offers Thai. The text never waits for them
+        // (owner 2026-10-26): it opens from the library at once, the reader asks window.dgTextOnline after drawing it
+        // and adds them when they come (megareader.js). Once fetched they are part of the text's answer, per text and language.
+        var onlineParts = {}, onlineDone = {};
+        function onlineKey(id, lang) { return encodeURIComponent(id) + '?lang=' + encodeURIComponent(lang || ''); }
+        window.dgTextOnline = function (id, lang) {
+            var key = onlineKey(id, lang);
+            if (onlineDone[key]) return Promise.resolve(onlineDone[key]);
+            if (!local || navigator.onLine === false) return Promise.resolve(null); // the site's own answer has them
+            return onlineParts[key] || (onlineParts[key] = realFetch(withOnlineBase('/api/text-online/' + key))
                 .then(function (a) { return a.ok ? a.json() : null; })
                 .then(function (a) {
-                    if (!a || typeof a.audioHtml !== 'string') { delete onlineParts[key]; return null; }
-                    return a;
+                    delete onlineParts[key];
+                    if (!a || typeof a.audioHtml !== 'string') return null;
+                    return (onlineDone[key] = a);
                 }, function () { delete onlineParts[key]; return null; }));
-            return Promise.race([parts, new Promise(function (ok) { setTimeout(ok, 400); })]).then(function (a) {
-                if (a) ['availableLangs', 'availableTranslators', 'audioHtml'].forEach(function (k) { if (a[k]) r[k] = a[k]; });
-                return r;
-            });
+        };
+        function withOnlineParts(r, id) {
+            var a = r && !r.__status && !r.__needsServer && onlineDone[onlineKey(id, r.lang)];
+            if (a) ['availableLangs', 'availableTranslators', 'audioHtml'].forEach(function (k) { if (a[k]) r[k] = a[k]; });
+            return r;
         }
 
         function localOrServer(result, input, init) {

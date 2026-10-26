@@ -283,9 +283,12 @@ function withoutRoster(body) {
     if (!body || !Array.isArray(body.segments)) return body;
     const copy = Object.assign({}, body);
     for (const f of ROSTER_FIELDS) delete copy[f];
+    // the library's own line is the Principles one; the mp3 line comes from the server after the text (app.js dgTextOnline)
+    delete copy.audioHtml;
     return copy;
 }
 function subsetProblem(localBody, serverBody) {
+    if (localBody && Array.isArray(localBody.segments) && !/class="dg-principles"/.test(localBody.audioHtml || '')) return 'no Principles line in audioHtml';
     for (const f of ROSTER_FIELDS) {
         const l = localBody && Array.isArray(localBody[f]) ? localBody[f] : null;
         const sr = serverBody && Array.isArray(serverBody[f]) ? serverBody[f] : null;
