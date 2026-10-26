@@ -1931,9 +1931,11 @@ window.buildSutta = async function(rawSlug, opts) {
         `<div id="bottom-links-container" class="min-h-24"></div>`;
     if (!keepServerText(suttaHtml)) suttaArea.innerHTML = suttaHtml;
     // DG app: the text came from its ru+en library at once; the mp3 line and the text's languages in the whole corpus
-    // come after it (public/offline/app.js dgTextOnline) and take the library's Principles line's place.
+    // come after it (public/offline/app.js dgTextOnline) and take the library's Principles line's place. Asked once the
+    // page is drawn and the browser is idle, so the request never competes with the text's own loading (owner 2026-10-26).
     const libLine = window.dgTextOnline && !/dg-audio-mp3/.test(suttaData.audioHtml || '') && suttaArea.querySelector(':scope > .dg-principles');
-    if (libLine) window.dgTextOnline(String(suttaData.sutta_id || '').toLowerCase(), suttaData.lang).then(a => {
+    if (libLine) new Promise(ok => window.requestIdleCallback ? requestIdleCallback(ok, { timeout: 3000 }) : setTimeout(ok, 500))
+        .then(() => libLine.isConnected ? window.dgTextOnline(String(suttaData.sutta_id || '').toLowerCase(), suttaData.lang) : null).then(a => {
         if (!a || !libLine.isConnected || a.audioHtml === suttaData.audioHtml) return; // another text on screen by now, or already in it
         if (a.availableLangs) READER_MODE.availableLangs = a.availableLangs;
         if (a.availableTranslators) READER_MODE.availableTranslators = a.availableTranslators;
