@@ -2400,7 +2400,9 @@ app.get('/api/text/:suttaId', async (req, res) => {
         // для этого ручного пути, ?mode= (обычное ru/en-чтение через mode-table.json) не трогаем,
         // чтобы не менять поведение для существующих читателей без явного langs=.
         const hasAnyTranslation = data.segments.some(seg => Object.keys(seg.translations).length > 0);
-        if (!modeConfig && !hasAnyTranslation && !targetLangs.includes('en') && !explicitTranslators) {
+        // Owner 2026-10-26: the reader too ("если нет русского показывай англ") - most of the Vinaya
+        // has no ru, and the page used to show the Pali alone (or nothing with the Pali hidden).
+        if (!hasAnyTranslation && !targetLangs.includes('en') && !explicitTranslators) {
             const fallbackData = await buildTextDataFromBase(base, suttaId, ['en'], null);
             const fallbackHasTranslation = fallbackData &&
                 fallbackData.segments.some(seg => Object.keys(seg.translations).length > 0);

@@ -56,6 +56,14 @@ let wakeLock = null;
 const SCROLL_STORAGE_KEY = 'dg_tts_auto_scroll'; 
 const SEGMENT_DELAY_KEY = 'dg_tts_segment_delay';
 const MODE_STORAGE_KEY = 'tts_preferred_mode';
+// Once: a saved 'pi' may come from a Pali line tap (it used to save the mode), so Voice / Alt+R
+// went on starting in Pali. Drop it; a real choice in the mode list is saved again from now on.
+try {
+  if (!localStorage.getItem('tts_mode_tap_fix')) {
+    if (localStorage.getItem(MODE_STORAGE_KEY) === 'pi') localStorage.removeItem(MODE_STORAGE_KEY);
+    localStorage.setItem('tts_mode_tap_fix', '1');
+  }
+} catch (e) {}
 const NATIVE_PALI_KEY  = 'tts_native_pali_enabled'; 
 const NATIVE_TRN_KEY = 'tts_native_trn_enabled'; 
 
@@ -2150,7 +2158,8 @@ async function handleSuttaClick(e) {
           }
 
           if (['pi', 'trn', 'pi-trn', 'trn-pi'].includes(playbackMode)) {
-              localStorage.setItem(MODE_STORAGE_KEY, playbackMode);
+              // Owner: a tap on a Pali line (the title's speaker) plays Pali, but must not make
+              // Voice / Alt+R start in Pali from then on: only the mode list and Alt+digit save it.
               const modeSelect = document.getElementById('tts-mode-select');
               if (modeSelect) modeSelect.value = playbackMode;
           }
@@ -2193,9 +2202,8 @@ async function handleSuttaClick(e) {
     }
     player.classList.add('active');
     if (!ttsState.speaking) {
-      const mode = player.querySelector('#tts-mode-select')?.value 
-                   || localStorage.getItem(MODE_STORAGE_KEY) 
-                   || 'trn';
+      // The saved mode, not the list: the list also shows what a line tap last played.
+      const mode = localStorage.getItem(MODE_STORAGE_KEY) || 'trn';
       startPlayback(container, mode, targetSlug, 0);
     }
     return;
@@ -2265,7 +2273,8 @@ async function handleSuttaClick(e) {
       }
 
       if (['pi', 'trn', 'pi-trn', 'trn-pi'].includes(playbackMode)) {
-          localStorage.setItem(MODE_STORAGE_KEY, playbackMode);
+          // Owner: a tap on a Pali line (the title's speaker) plays Pali, but must not make
+          // Voice / Alt+R start in Pali from then on: only the mode list and Alt+digit save it.
           const modeSelect = document.getElementById('tts-mode-select');
           if (modeSelect) modeSelect.value = playbackMode;
       }

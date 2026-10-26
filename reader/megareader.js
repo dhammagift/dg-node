@@ -353,6 +353,9 @@ window.showPaliAndTranslation = function() {
 
 window.showEnglish = function() {
     const target = langToggleTarget();
+    // A text with no translation (most of the Vinaya in ru) would go blank: keep the Pali shown,
+    // the stored preference stays for the next text that has one.
+    if (target && !target.querySelector('.quote:not(.pli-lang)')) return window.showPaliAndTranslation();
     if (target) {
         target.classList.add("hide-pali");
         target.classList.remove("hide-english", "hide-russian", "column-view");

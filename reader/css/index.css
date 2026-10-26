@@ -455,3 +455,6 @@ a:hover {
   padding-left: 2em;
   margin-left: -2em;
 }
+/* #sutta.hide-pali p (margin: 0 ...) outranks the rule above and drops only the pull-back, leaving the
+   text 2em to the right in translation-only mode. */
+#sutta.hide-pali article p { margin-left: -2em; }

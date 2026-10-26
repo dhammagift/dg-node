@@ -2403,7 +2403,9 @@
         // this also guards a stored value left over from before that mode existed — pli always
         // reads as on here regardless of what's in localStorage.
         if (dgPaliLockedReaderMode()) return { pli: true, trn: mode !== 'pli' };
-        return { pli: mode !== '2nd', trn: mode !== 'pli' };
+        // showEnglish() keeps the Pali when the text has no translation: show the pill as it is.
+        var sutta = document.getElementById('sutta');
+        return { pli: mode !== '2nd' || !(sutta && sutta.classList.contains('hide-pali')), trn: mode !== 'pli' };
     }
     function dgSyncLangPill() {
         var host = document.getElementById('dg-langpill');

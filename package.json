@@ -21,6 +21,7 @@
     "test-uposatha": "node test/uposatha-core.js",
     "test-uposatha-widget": "node test/uposatha-widget.js",
     "test-query-guard": "node test/query-guard.js",
+    "test-reader-smoke": "node test/reader-smoke.js",
     "home-tiles": "node scripts/home-tiles-snapshot.js"
   },
   "dependencies": {

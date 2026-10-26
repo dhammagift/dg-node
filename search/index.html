@@ -1244,7 +1244,9 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     // Reader guess: "/dn1", "/sn12.2", "/thig12.1", "/an1.1-10" — letters then a digit; a search
     // keyword practically never looks like that. Keeps the reader's toolbar/nav rows (skeleton
     // rows, home.css) in place from the first frame; initSearchApp() corrects a wrong guess.
-    else b.classList.add('dg-busy', /^\/toc(\/|$)/.test(path) ? 'dg-state-toc' : (/^\/[a-z-]{1,12}\d/i.test(path) && !hasQuery ? 'dg-state-reader' : 'dg-state-results'));
+    // The server already marks a text it knows (<body class="dg-state-reader">): don't add a second
+    // state on top (/pli-tv-bu-vb-sk63 is past the guess's 12 letters and got results as well).
+    else b.classList.add('dg-busy', /\bdg-state-/.test(b.className) ? 'dg-busy' : /^\/toc(\/|$)/.test(path) ? 'dg-state-toc' : (/^\/[a-z-]{1,12}\d/i.test(path) && !hasQuery ? 'dg-state-reader' : 'dg-state-results'));
     // Снимаем после первой отрисовки. Таймер — не подстраховка "на всякий случай", а рабочая
     // ветка: в фоновой вкладке requestAnimationFrame не вызывается вообще, и без него класс
     // залипал бы навсегда, отключив все переходы на странице (проверено).
