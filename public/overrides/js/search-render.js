@@ -902,21 +902,10 @@ window.DgSearchRender = (function () {
 
         var options = $.extend({}, commonOptions(), {
             data: dataArray,
-            searchBuilder: {
-                preDefined: {
-                    criteria: [
-                        // SearchBuilder matches a preDefined criterion to a column by its
-                        // TITLE text (or by origData, the column's `data` key). This was the
-                        // hardcoded English 'Quote' — matched only while the UI was English;
-                        // on the Russian UI the column is "Цитата", nothing matched, and the
-                        // builder opened with an empty Data/Condition/Value row instead of the
-                        // prefilled "Quote doesn't contain ExcludeMe" (owner: works in EN, not
-                        // in RU). Localized title + origData covers both, whatever the language.
-                        { condition: '!contains', data: headerTitles[8], origData: 'segments', value: ['ExcludeMe'] }
-                    ],
-                    logic: 'AND'
-                }
-            },
+            // The Filter+ panel's prefilled "Quote doesn't contain ExcludeMe" row is added when the panel is
+            // opened (window.dgFilterPreset, below), not at init: as a live criterion it ran over every row on
+            // each keystroke in the Filter box, ~80 ms of its ~120 on 1800 rows, to remove nothing.
+            searchBuilder: {},
             columns: [
                 // 0: Sutta
                 {
@@ -1091,6 +1080,14 @@ window.DgSearchRender = (function () {
                     data: 'segments',
                     className: 'none',
                     render: function (data, type, row) {
+                        // The Filter box reads plain text: building the quote HTML for every row (deferRender leaves
+                        // __quoteCache cold) made its first search ~1 s on 1800 rows (owner: the filter got slow).
+                        if (type === 'filter') {
+                            if (row.__enriched === false || !data) return '';
+                            return data.map(function (seg) {
+                                return [seg.root_text, seg.variant].concat(Object.values(seg.translations || {})).join(' ');
+                            }).join(' ');
+                        }
                         // TODO.md поиск п.5: phase-1 (?fast=1) rows have placeholder segments —
                         // quotes/context arrive via a follow-up /search/enrich call, at which
                         // point search/index.html re-renders with row.__enriched set to true.
@@ -1280,6 +1277,10 @@ window.DgSearchRender = (function () {
                 { targets: [4, 5, 6, 7], className: 'text-nowrap' },
                 { type: 'category', targets: 7, visible: false },
                 { type: "html", targets: [0, 2, 3, 8] },
+                // The types DataTables detects for the rest anyway: named, it skips detecting them again over
+                // every row after each enrich batch (a third of the Filter box's first search).
+                { type: 'num', targets: [1, 4, 5] },
+                { type: 'html-utf8', targets: 6 },
                 { targets: [4], orderData: [4, 5], orderSequence: ['desc', 'asc'] },
                 { targets: [5], orderData: [5, 4], orderSequence: ['desc', 'asc'] }
             ],
@@ -1306,6 +1307,19 @@ window.DgSearchRender = (function () {
        существующий узел, а не создаём новый — обработчик клика и aria-pressed на нём переживают
        перенос как есть. Класс контейнера — ".dt-search" (DataTables 2.x), не легаси
        ".dataTables_filter" из документации/старых версий — проверено в живой разметке. */
+    // SearchBuilder matches a criterion to a column by its TITLE text (or by origData, the column's `data`
+    // key). This was the hardcoded English 'Quote' — matched only while the UI was English; on the Russian
+    // UI the column is "Цитата", nothing matched, and the builder opened with an empty Data/Condition/Value
+    // row instead of the prefilled "Quote doesn't contain ExcludeMe" (owner: works in EN, not in RU).
+    // Localized title + origData covers both, whatever the language.
+    window.dgFilterPreset = function (api) {
+        if (api.table().node().id !== 'pali' || (api.searchBuilder.getDetails().criteria || []).length) return;
+        api.searchBuilder.rebuild({
+            criteria: [{ condition: '!contains', data: suttaTableHeaderTitles()[8], origData: 'segments', value: ['ExcludeMe'] }],
+            logic: 'AND'
+        });
+    };
+
     function attachFilterPlusButton($table) {
         var btn = document.getElementById('btn-filter-builder');
         var filterWrap = $table.closest('.dt-container').find('.dt-search').get(0);

@@ -1644,6 +1644,8 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
       pane.classList.add('dg-filter-open');
       var panel = visiblePanel();
       if (!panel) return;
+      var table = panel.closest('.dt-container') && panel.closest('.dt-container').querySelector('table.dataTable');
+      if (table && window.dgFilterPreset) { window.dgFilterPreset(new DataTable.Api(table)); panel = visiblePanel(); }
       if (window.dgFold) window.dgFold(panel, true);
       panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
       // scrollIntoView is async (smooth) — focusing right after the scroll settles avoids the
@@ -4413,7 +4415,13 @@ document.addEventListener('DOMContentLoaded', function () { $(function() {
                     $(settings.nTableWrapper).find('div.dt-search input').off('.DT')
                         .on('input.dg paste.dg cut.dg search.dg', DataTable.util.debounce(function () {
                             api.search(dgLooseSearch(this.value)).draw();
-                        }, 200))
+                        }, 100))
+                        // The rows' filter text is built on the first search after the rows come or change (~0.5 s
+                        // on 1800 rows, every cell rendered as HTML and stripped): build it when the box is
+                        // entered, not on the first letter typed (owner: the filter got slow).
+                        .on('focus.dg', function () {
+                            if (settings.aoData.some(function (d) { return d && !d._aFilterData; })) api.draw(false);
+                        })
                         .on('keypress.dg', function (ev) { if (ev.keyCode === 13) return false; });
                 });
                 // Bootstrap's dropdown keys handler (keydown on any .dropdown-menu, delegated on document in the capture
