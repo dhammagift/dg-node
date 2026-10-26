@@ -3911,6 +3911,15 @@ const SITE_LD = [
         url: SITE + '/', inLanguage: ['en', 'ru'], publisher: { '@id': SITE + '/#organization' } },
     { '@context': 'https://schema.org', '@type': 'Organization', '@id': SITE + '/#organization', name: 'Dhamma.Gift', url: SITE + '/',
         logo: SITE + '/assets/img/favico-noglass.png', sameAs: ['https://github.com/dhammagift', 'https://huggingface.co/dhammagift'] },
+    // What the site is for search engines and AI readers: a tool, not only pages. No offers: the owner doesn't want
+    // "free" stated (every Dhamma site is).
+    { '@context': 'https://schema.org', '@type': 'WebApplication', '@id': SITE + '/#app', name: 'Dhamma.Gift', url: SITE + '/',
+        applicationCategory: 'ReferenceApplication', operatingSystem: 'Web, Android, iOS', inLanguage: ['en', 'ru'],
+        description: 'Search the Pali Canon (Sutta and Vinaya) in Pali and 25 languages, read suttas with translations side by side, listen and memorize.',
+        featureList: ['Search of the Sutta and Vinaya in Pali and translations', 'Reader with Pali and translations side by side',
+            'Translator comparison', 'Voice (text to speech)', 'Memorization mode', 'Pali dictionary', 'Offline Android and iOS apps'],
+        installUrl: ['https://play.google.com/store/apps/details?id=gift.dhamma.twa', 'https://apps.apple.com/app/dhamma-gift/id6813706217'],
+        publisher: { '@id': SITE + '/#organization' } },
 ];
 // A key term's page as a schema.org DefinedTerm: the owner's renderings and, where the canon defines the term, the
 // definition and its line. Those come from the glossary page's own DefinedTermSet (dg-docs GlossaryTable.jsx), read
