@@ -980,7 +980,7 @@ function inheritedZoom(){
 // The parent re-zooms after a change made here (its 'storage' event) — this frame then sees a resize.
 addEventListener('resize', () => applyUiScale(parseInt(localStorage.getItem('uiScale')) || 100));
 function setScale(v){
-  scale = Math.min(200, Math.max(70, v));
+  scale = Math.min(250, Math.max(70, v));
   applyUiScale(scale);
   localStorage.setItem('uiScale', scale);
   $('#sizeVal').textContent = scale + '%';

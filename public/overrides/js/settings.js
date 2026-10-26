@@ -2196,8 +2196,8 @@ function saveExactScrollPosition() {
     function changeScale(delta) {
         const newScale = currentScale + delta;
 
-        // Ограничение от 70% до 200%
-        if (newScale >= 70 && newScale <= 200) {
+        // Ограничение от 70% до 250%
+        if (newScale >= 70 && newScale <= 250) {
             currentScale = newScale;
 
             // 1. Применяем размер
