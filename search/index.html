@@ -119,6 +119,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
       if (z !== 1 && window.CSS && CSS.supports && CSS.supports('zoom', '1.5')) {
         document.documentElement.style.zoom = z;
         document.documentElement.style.setProperty('--dg-zoom', z);
+        document.documentElement.style.setProperty('--dg-head-zoom', Math.min(1, innerWidth / 250 / z)); // home.js headZoom
       }
     } catch (e) {}
   })();

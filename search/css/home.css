@@ -325,7 +325,9 @@ body.dg-state-home #dg-hero-navbar {
     max-width: 700px;
     margin: 0 auto;
     padding: 0 var(--dg-gutter, 12px);
+    zoom: var(--dg-head-zoom, 1); /* the header stops growing where its buttons would cover the menu (home.js headZoom) */
 }
+#reader-toolbar > *, #results-toolbar > *, #top-links-container > *, #navigation > * { zoom: var(--dg-head-zoom, 1); } /* the fixed rows under it, the same */
 /* --dg-gutter сжимается до 3px на телефоне ради ПЛОТНОЙ таблицы выдачи (#search-pane, см.
    index.html) — там это осознанный выбор, каждый пиксель ширины строки на счету. Поле ввода на
    главной — не таблица, и 3px от края экрана читались как «упирается в край» (жалоба владельца).

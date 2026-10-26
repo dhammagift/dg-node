@@ -5340,8 +5340,17 @@
         root.style.fontSize = '';
         root.style.setProperty('--dg-zoom', z);
         root.style.zoom = z;
+        headZoom();
         reMeasure();
     }
+    // Text sizes up to 250 % on a phone overflowed the header: the search button covered the menu, and with it the way back
+    // to a smaller size. The header's row keeps at least 250 CSS px (what 150 % on a 412px phone left it); the text below
+    // grows on. The same rule runs early in index.html <head>.
+    function headZoom() {
+        var z = parseFloat(document.documentElement.style.getPropertyValue('--dg-zoom')) || 1;
+        document.documentElement.style.setProperty('--dg-head-zoom', Math.min(1, window.innerWidth / 250 / z));
+    }
+    window.addEventListener('resize', headZoom);
     BIG_BASE.addEventListener('change', function () { applyUiScale(currentFontScale()); });
     // Size changed in the settings sheet (an iframe, same tab) — apply it to this page right away.
     window.addEventListener('storage', function (e) { if (e.key === FONT_SCALE_KEY) renderFontSizeControl(); });
