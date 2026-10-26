@@ -1019,19 +1019,20 @@
         // goes to the network, where it went before the offline layer could convert anything.
         // What the ru+en library cannot know (dg-fastify.js /api/text-online): the line with the text's mp3s and the
         // languages and translators of the whole corpus, so the popover offers Thai. From the server when it answers in
-        // time, else the worker's Principles line and slice lists stay. Remembered per text and language.
+        // time, else the worker's Principles line and slice lists stay. Remembered per text and language. "In time" is
+        // 400 ms (the route answers in ~50): the text never waits longer for them (owner 2026-10-26: the mp3 line is for SEO);
+        // a late answer is still kept for the text's next open.
         var onlineParts = {};
         function withOnlineParts(r, id) {
             if (!r || r.__status || r.__needsServer || navigator.onLine === false) return r;
             var key = encodeURIComponent(id) + '?lang=' + encodeURIComponent(r.lang || '');
-            var parts = onlineParts[key] || (onlineParts[key] = Promise.race([
-                realFetch(withOnlineBase('/api/text-online/' + key)).then(function (a) { return a.ok ? a.json() : null; }),
-                new Promise(function (ok) { setTimeout(ok, 2500); }),
-            ]).then(function (a) {
-                if (!a || typeof a.audioHtml !== 'string') { delete onlineParts[key]; return null; }
-                return a;
-            }, function () { delete onlineParts[key]; return null; }));
-            return parts.then(function (a) {
+            var parts = onlineParts[key] || (onlineParts[key] = realFetch(withOnlineBase('/api/text-online/' + key))
+                .then(function (a) { return a.ok ? a.json() : null; })
+                .then(function (a) {
+                    if (!a || typeof a.audioHtml !== 'string') { delete onlineParts[key]; return null; }
+                    return a;
+                }, function () { delete onlineParts[key]; return null; }));
+            return Promise.race([parts, new Promise(function (ok) { setTimeout(ok, 400); })]).then(function (a) {
                 if (a) ['availableLangs', 'availableTranslators', 'audioHtml'].forEach(function (k) { if (a[k]) r[k] = a[k]; });
                 return r;
             });
