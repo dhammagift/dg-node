@@ -38,3 +38,4 @@ The Suttas define their own key terms ("Katamañca, bhikkhave, X? … idaṁ vuc
 
 - [Sitemap](https://dhamma.gift/sitemap.xml): all text pages
 - [Pali dictionary](https://dhamma.gift/dict/)
+- [Apps](https://dhamma.gift/apps): Dhamma.Gift, Uposatha calendar and Dictionary for Android and iOS
