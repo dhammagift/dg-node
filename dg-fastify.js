@@ -176,8 +176,13 @@ app.addHook('onRequest', (req, res, done) => {
     done();
 });
 // Removed by the owner (2026-10-21): the en.dhammadana.org mirror is gone from the site; 410 makes Google drop the old URLs.
+// The other sites' mirrors (owner 2026-10-27: search engines show the official sites, not our copies) are 410 for search
+// engines only: the menu, multiTool and reader still link people to them. suttacentral.net is the reader's data, not here.
+const isBot = req => /bot|crawl|spider|slurp|yandex|bingpreview|duckduck|facebookexternalhit/i.test(req.headers['user-agent'] || '');
+const MIRRORS = /^\/(dhammatalks\.org|dhamma\.ru|accesstoinsight\.org|buddhadust\.net|theravada\.ru|theravada\.rf|tipitaka\.theravada\.su|metta\.lk|legacy\.suttacentral\.net)(\/|$)/i;
 app.addHook('onRequest', (req, res, done) => {
-    if (/^\/en\.dhammadana\.org(\/|$)/i.test(decodedPath(req.url))) return res.code(410).type('text/plain').send('Gone');
+    const p = decodedPath(req.url);
+    if (/^\/en\.dhammadana\.org(\/|$)/i.test(p) || (MIRRORS.test(p) && isBot(req))) return res.code(410).type('text/plain').send('Gone');
     done();
 });
 app.addHook('onRequest', (req, res, done) => {
@@ -189,7 +194,7 @@ app.addHook('onRequest', (req, res, done) => {
     if (user === restrictedAuth.user && pass === restrictedAuth.pass) return done();
     // Search engines get 410 Gone, not 401: with 401 (and, earlier, a robots.txt Disallow they could not read past) the
     // old /bw, /ai and /b pages stayed in the index. People (and the owner's login) still get the password prompt.
-    if (/bot|crawl|spider|slurp|yandex|bingpreview|duckduck|facebookexternalhit/i.test(req.headers['user-agent'] || '')) return res.code(410).send('Gone');
+    if (isBot(req)) return res.code(410).send('Gone');
     // Realm text is shown by some browsers in the login box; the body is shown when the visitor presses Cancel.
     res.header('WWW-Authenticate', 'Basic realm="Access restricted by rights holders"')
         .code(401).type('text/html; charset=utf-8')
