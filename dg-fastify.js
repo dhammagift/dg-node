@@ -118,6 +118,8 @@ const LEGACY_READERS = {
     '/ml': { mode: 'multi' }, '/mt': { mode: 'multi', lang: 'ru' }, '/multi': { mode: 'multi' },
     '/th': { lang: 'th' }, '/th/read': { lang: 'th' }, '/mlth': { mode: 'multi', lang: 'th' },
     '/rev': {}, '/frev': {}, '/rv': {},
+    // the old site's home pages and its TTS reader (Google still lists them; without this they were a search for "tts.php")
+    '/en': {}, '/ru': { lang: 'ru' }, '/tts.php': {},
 };
 function legacyReaderRedirect(url) {
     const [pathPart, queryPart = ''] = url.split('?');
@@ -125,6 +127,8 @@ function legacyReaderRedirect(url) {
     const params = new URLSearchParams(queryPart);
     if (page === '/history.php') return '/4as';
     if (page === '/read.php') return '/toc';
+    if (page === '/r.php') return '/toc?lang=ru';
+    if (page === '/old.php' || page === '/t2s.html') return '/';
     if (page === '/cse.php') return '/cse' + (queryPart ? '?' + queryPart : ''); // the Google Custom Search page, now served here
     if (page === '/pm.php' || page === '/bipm.php') return '/toc/vinaya'; // the standalone pages are gone, the TOC shows the Patimokkha
     const target = LEGACY_READERS[page];
