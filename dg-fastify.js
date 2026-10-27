@@ -178,7 +178,8 @@ app.addHook('onRequest', (req, res, done) => {
 // Removed by the owner (2026-10-21): the en.dhammadana.org mirror is gone from the site; 410 makes Google drop the old URLs.
 // The other sites' mirrors (owner 2026-10-27: search engines show the official sites, not our copies) are 410 for search
 // engines only: the menu, multiTool and reader still link people to them. suttacentral.net is the reader's data, not here.
-const isBot = req => /bot|crawl|spider|slurp|yandex|bingpreview|duckduck|facebookexternalhit/i.test(req.headers['user-agent'] || '');
+const BOT_UA = /\bbot\b|[a-z]bot\/|crawler|spider|slurp|googlebot|google-extended|google-notebooklm|googleother|bingbot|gptbot|chatgpt-user|oai-searchbot|perplexity|claudebot|claude-user|claude-searchbot|anthropic|ccbot|bytespider|amazonbot|applebot|duckassistbot|meta-externalagent|yandex|mistralai|cohere|bingpreview|duckduckgo|facebookexternalhit/i;
+const isBot = req => BOT_UA.test(req.headers['user-agent'] || ''); // a bare /bot/ caught phones (CUBOT)
 const MIRRORS = /^\/(dhammatalks\.org|dhamma\.ru|accesstoinsight\.org|buddhadust\.net|theravada\.ru|theravada\.rf|tipitaka\.theravada\.su|metta\.lk|legacy\.suttacentral\.net)(\/|$)/i;
 app.addHook('onRequest', (req, res, done) => {
     const p = decodedPath(req.url);
@@ -4037,7 +4038,6 @@ async function sendSiteHtml(req, res, kind, arg) {
 // A browser opening a page sends Sec-Fetch-Mode: navigate (Chrome, Firefox, Edge, Safari 16.4+); a fetcher, crawler or
 // curl does not. A known bot gets the list even if it sends the header (some headless crawlers do). The list is the
 // same data the page's own table shows, so this is dynamic rendering, not cloaking.
-const BOT_UA = /\bbot\b|[a-z]bot\/|crawler|spider|slurp|googlebot|google-extended|google-notebooklm|googleother|bingbot|gptbot|chatgpt-user|oai-searchbot|perplexity|claudebot|claude-user|claude-searchbot|anthropic|ccbot|bytespider|amazonbot|applebot|duckassistbot|meta-externalagent|yandex|mistralai|cohere/i;
 const isBrowserNavigation = req => req.headers['sec-fetch-mode'] === 'navigate' && !BOT_UA.test(req.headers['user-agent'] || '');
 
 // Search pages: the results as a plain list in the HTML, for whatever reads a page without running its scripts
