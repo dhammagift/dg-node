@@ -184,7 +184,7 @@ app.addHook('onRequest', (req, res, done) => {
 // engines only: the menu, multiTool and reader still link people to them. suttacentral.net is the reader's data, not here.
 const BOT_UA = /\bbot\b|[a-z]bot\/|crawler|spider|slurp|googlebot|google-extended|google-notebooklm|googleother|bingbot|gptbot|chatgpt-user|oai-searchbot|perplexity|claudebot|claude-user|claude-searchbot|anthropic|ccbot|bytespider|amazonbot|applebot|duckassistbot|meta-externalagent|yandex|mistralai|cohere|bingpreview|duckduckgo|facebookexternalhit/i;
 const isBot = req => BOT_UA.test(req.headers['user-agent'] || ''); // a bare /bot/ caught phones (CUBOT)
-const MIRRORS = /^\/(dhammatalks\.org|dhamma\.ru|accesstoinsight\.org|buddhadust\.net|theravada\.ru|theravada\.rf|tipitaka\.theravada\.su|metta\.lk|legacy\.suttacentral\.net|lp)(\/|$)|^\/assets\/materials\/.*\.(pdf|xlsx)$/i; // lp: a copy of palistudies.blogspot.com; materials: other authors' Pali textbooks
+const MIRRORS = /^\/(assets\/)?(dhammatalks\.org|dhamma\.ru|accesstoinsight\.org|buddhadust\.net|theravada\.ru|theravada\.rf|tipitaka\.theravada\.su|metta\.lk|legacy\.suttacentral\.net|lp)(\/|$)|^\/assets\/materials\/.*\.(pdf|xlsx)$/i; // lp: a copy of palistudies.blogspot.com; materials: other authors' Pali textbooks
 app.addHook('onRequest', (req, res, done) => {
     const p = decodedPath(req.url);
     if (/^\/en\.dhammadana\.org(\/|$)/i.test(p) || (MIRRORS.test(p) && isBot(req))) return res.code(410).type('text/plain').send('Gone');
@@ -711,6 +711,10 @@ app.addHook('onSend', (req, reply, payload, done) => {
     // The Dictionary registers its worker /dict/static/sw.js for the scope /dict/ (above its own folder);
     // without this header the registration failed here and dhamma.gift/dict/ never opened offline.
     if (/^\/dict\/static\/sw\.js(\?|$)/.test(req.url)) reply.header('service-worker-allowed', '/dict/');
+    // Pages under /assets (the old site's tools, saved search results, help copies) stay usable but leave
+    // search: everything they had is in the docs and the home page now (owner 2026-10-27). HTML only, so
+    // scripts, styles and images are untouched.
+    if (/^\/([a-z]{2}\/)?assets\//.test(req.url) && /^text\/html/.test(reply.getHeader('content-type') || '')) reply.header('x-robots-tag', 'noindex');
     done(null, payload);
 });
 
