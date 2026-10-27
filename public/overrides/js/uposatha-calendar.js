@@ -989,12 +989,13 @@
           return { id: NATIVE_ID_BASE + i, title: late ? t.missed : item.title, body: late ? missedBody(item, F) : itemBody(item, F), channelId: late ? ch[sounds.length] : ch[sounds.indexOf(soundOf(item))],
             schedule: { at: new Date(Math.max(item.when, now + 3000)), allowWhileIdle: true }, extra: { url: '/uposatha-calendar', upo: !item.kind } }; // upo: iOS sets these first of its ~60
         });
-        // Scheduled even when empty (the reminders turned off): the app's bridge then clears the sound alarms that getPending does not show.
+        // Empty too (the reminders turned off) where the Uposatha app's bridge says it takes plans (dgPlans): it then clears the sound
+        // alarms that getPending does not show. Elsewhere (the DG app's plain plugin) an empty schedule would ask for the permission.
         return LN.getPending().then(function (p) {
           // ours: the whole range below the tests' 7990, wider than NATIVE_MAX (the app shows its own notice and older ones in it too)
           var ours = ((p && p.notifications) || []).filter(function (n) { return n.id >= NATIVE_ID_BASE && n.id < NATIVE_ID_BASE + 900; }).map(function (n) { return { id: n.id }; });
           return ours.length ? LN.cancel({ notifications: ours }) : null;
-        }).then(function () { return LN.schedule({ notifications: items }); }).then(function (r) { markShown(due.map(function (i) { return i.key; })); return r; });
+        }).then(function () { return items.length || LN.dgPlans ? LN.schedule({ notifications: items }) : null; }).then(function (r) { markShown(due.map(function (i) { return i.key; })); return r; });
       }).catch(function () { nativeSig = ''; });
     }
     return list.filter(function (i) { return i.when > now; })[0] || null;
