@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script>
+(function () { try { var q = new URLSearchParams(location.search).get('theme'), t = q || localStorage.theme || 'auto', d = t === 'dark' || (t === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches);
+  document.documentElement.setAttribute('data-theme', d ? 'dark' : 'light'); } catch (e) { /* the light page */ } })();
+</script>
+<title data-t="title">Dhamma.Gift apps</title>
+<meta name="description" data-t="metaDesc" content="Dhamma.Gift apps: search and read the Suttas and Vinaya, the Uposatha calendar as in the suttas, and the Pali dictionary.">
+<link rel="canonical" href="https://dhamma.gift/apps">
+<link rel="alternate" hreflang="en" href="https://dhamma.gift/apps">
+<link rel="alternate" hreflang="ru" href="https://dhamma.gift/apps?lang=ru">
+<link rel="alternate" hreflang="x-default" href="https://dhamma.gift/apps">
+<link rel="icon" href="/assets/img/favico-noglass.png">
+<script type="application/json" id="apps-ru">{
+  "title": "Приложения Dhamma.Gift", "lead": "Все наши приложения — по Дхамме.",
+  "metaDesc": "Приложения Dhamma.Gift: поиск и чтение Сутт и Винаи, календарь упосатхи по суттам и словарь пали.",
+  "dgWhat": "Поиск и чтение", "dgDesc": "Сутты и Виная на пали и в переводах: поиск, ридер с переводами рядом, голос, запоминание и медитация, офлайн.",
+  "upoWhat": "Календарь", "upoDesc": "Дни упосатхи, как в суттах: 8-й, 14-й и 15-й день, фазы луны, напоминания.",
+  "dictWhat": "Словарь пали", "dictDesc": "Словари пали и санскрита на одной странице. Выделите слово в любом приложении — и сразу перевод.",
+  "play": "Открыть в Google Play", "ios": "Открыть в App Store", "all": "Все приложения разработчика:"
+}</script>
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "ItemList", "name": "Dhamma.Gift apps", "itemListElement": [
+  {"@type": "ListItem", "position": 1, "item": {"@type": "MobileApplication", "name": "Dhamma.Gift", "operatingSystem": "Android, iOS", "applicationCategory": "ReferenceApplication",
+    "installUrl": ["https://play.google.com/store/apps/details?id=gift.dhamma.twa", "https://apps.apple.com/app/dhamma-gift/id6813706217"], "publisher": {"@id": "https://dhamma.gift/#organization"}}},
+  {"@type": "ListItem", "position": 2, "item": {"@type": "MobileApplication", "name": "Uposatha by the Suttas", "operatingSystem": "Android, iOS", "applicationCategory": "LifestyleApplication",
+    "installUrl": ["https://play.google.com/store/apps/details?id=gift.dhamma.uposatha", "https://apps.apple.com/app/uposatha-by-the-suttas/id6816601259"], "publisher": {"@id": "https://dhamma.gift/#organization"}}},
+  {"@type": "ListItem", "position": 3, "item": {"@type": "MobileApplication", "name": "Dict.Dhamma.Gift", "operatingSystem": "Android, iOS", "applicationCategory": "EducationalApplication",
+    "installUrl": ["https://play.google.com/store/apps/details?id=gift.dhamma.pali", "https://apps.apple.com/app/dict-dhamma-gift/id6816639947"], "publisher": {"@id": "https://dhamma.gift/#organization"}}}
+]}</script>
+<style>
+:root { --bg:#f6f7f8; --card:#fff; --ink:#1b2836; --muted:#5b6876; --line:#e3e7eb; --accent:#09967a; color-scheme:light; }
+:root[data-theme="dark"] { --bg:#121a23; --card:#1b2836; --ink:#e8edf2; --muted:#9aa8b6; --line:#2c3c4f; --accent:#3ccfa8; color-scheme:dark; }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+main { max-width:1080px; margin:0 auto; padding:20px 16px 40px; }
+.home { color:var(--accent); text-decoration:none; font-size:15px; }
+h1 { font-size:26px; margin:10px 0 4px; }
+.lead { color:var(--muted); margin:0 0 24px; }
+.grid { display:grid; gap:18px; grid-template-columns:repeat(auto-fill, minmax(300px, 1fr)); }
+.app { background:var(--card); border:1px solid var(--line); border-radius:18px; overflow:hidden; display:flex; flex-direction:column; }
+.app > a.cover { display:block; aspect-ratio:1024/500; background:#000; }
+.app > a.cover img { width:100%; height:100%; object-fit:cover; display:block; }
+.meta { display:flex; gap:14px; align-items:center; padding:16px 16px 6px; }
+.meta img { width:64px; height:64px; border-radius:16px; flex:none; box-shadow:0 1px 3px rgba(0,0,0,.25); }
+.meta h2 { font-size:18px; margin:0; }
+.meta .what { color:var(--muted); font-size:14px; }
+.desc { padding:4px 16px 0; margin:0; font-size:15px; flex:1; }
+.stores { display:flex; gap:10px; padding:14px 16px 18px; }
+.stores a { flex:1; display:flex; align-items:center; justify-content:center; gap:8px; padding:10px 12px; white-space:nowrap;
+  border-radius:12px; background:var(--ink); color:var(--bg); text-decoration:none; font-weight:600; font-size:15px; }
+.stores a[hidden] { display:none; }
+.stores svg { width:18px; height:18px; fill:currentColor; }
+.all { margin-top:26px; color:var(--muted); font-size:14px; text-align:center; }
+.all a { color:var(--accent); }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M3.6 1.8 13.5 12l-9.9 10.2c-.4-.2-.6-.6-.6-1.1V2.9c0-.5.2-.9.6-1.1Zm11.3 8.8 2.6-2.6 3.3 1.9c1 .6 1 2 0 2.6l-3.3 1.9-2.6-2.6L13.5 12l1.4-1.4ZM5 1.2l11 6.3-2.4 2.4L5 1.2Zm0 21.6 8.6-8.7 2.4 2.4-11 6.3Z"/></symbol>
+  <symbol id="i-apple" viewBox="0 0 24 24"><path d="M16.4 12.6c0-2.6 2.1-3.8 2.2-3.9-1.2-1.8-3.1-2-3.7-2-1.6-.2-3.1.9-3.9.9-.8 0-2-.9-3.4-.9-1.7 0-3.3 1-4.2 2.6-1.8 3.1-.5 7.7 1.3 10.2.9 1.2 1.9 2.6 3.2 2.6 1.3-.1 1.8-.8 3.3-.8s2 .8 3.4.8c1.4 0 2.3-1.3 3.1-2.5 1-1.4 1.4-2.8 1.4-2.9 0 0-2.7-1-2.7-4.1ZM13.9 4.9c.7-.8 1.2-2 1-3.2-1 .1-2.2.7-3 1.5-.6.7-1.2 1.9-1 3.1 1.1.1 2.3-.6 3-1.4Z"/></symbol>
+</svg>
+<main>
+  <a class="home" href="/">← Dhamma.Gift</a>
+  <h1 data-t="title">Dhamma.Gift apps</h1>
+  <p class="lead" data-t="lead">All our apps are about the Dhamma.</p>
+
+  <!-- ?app=dg|uposatha|dict puts that app first, the others keep this order -->
+  <div class="grid" id="apps">
+    <section class="app" id="dg">
+      <a class="cover" href="https://play.google.com/store/apps/details?id=gift.dhamma.twa"><img src="/assets/img/apps/dg-feature.webp" alt="" width="1024" height="500"></a>
+      <div class="meta"><img src="/assets/img/apps/dg-icon.webp" alt=""><div><h2>Dhamma.Gift</h2><div class="what" data-t="dgWhat">Search &amp; read</div></div></div>
+      <p class="desc" data-t="dgDesc">The Suttas and Vinaya in Pali and translations: search, a reader with translations side by side, voice, memorize &amp; meditate, offline.</p>
+      <div class="stores">
+        <a class="play" href="https://play.google.com/store/apps/details?id=gift.dhamma.twa"><svg><use href="#i-play"/></svg><span data-t="play">Open in Google Play</span></a>
+        <a class="ios" hidden href="https://apps.apple.com/app/dhamma-gift/id6813706217"><svg><use href="#i-apple"/></svg><span data-t="ios">Open in the App Store</span></a>
+      </div>
+    </section>
+
+    <section class="app" id="uposatha">
+      <a class="cover" href="https://play.google.com/store/apps/details?id=gift.dhamma.uposatha"><img src="/assets/img/apps/upo-feature.webp" alt="" width="1024" height="500"></a>
+      <div class="meta"><img src="/assets/img/apps/upo-icon.webp" alt=""><div><h2>Uposatha</h2><div class="what" data-t="upoWhat">Calendar</div></div></div>
+      <p class="desc" data-t="upoDesc">Uposatha days as in the suttas: the 8th, 14th and 15th, moon phases, reminders.</p>
+      <div class="stores">
+        <a class="play" href="https://play.google.com/store/apps/details?id=gift.dhamma.uposatha"><svg><use href="#i-play"/></svg><span data-t="play">Open in Google Play</span></a>
+        <a class="ios" hidden href="https://apps.apple.com/app/uposatha-by-the-suttas/id6816601259"><svg><use href="#i-apple"/></svg><span data-t="ios">Open in the App Store</span></a>
+      </div>
+    </section>
+
+    <section class="app" id="dict">
+      <a class="cover" href="https://play.google.com/store/apps/details?id=gift.dhamma.pali"><img src="/assets/img/apps/dict-feature.webp" alt="" width="1024" height="500"></a>
+      <div class="meta"><img src="/assets/img/apps/dict-icon.webp" alt=""><div><h2>Dict.Dhamma.Gift</h2><div class="what" data-t="dictWhat">Pali dictionary</div></div></div>
+      <p class="desc" data-t="dictDesc">Pali and Sanskrit dictionaries on one page. Select a word in any app to see it translated.</p>
+      <div class="stores">
+        <a class="play" href="https://play.google.com/store/apps/details?id=gift.dhamma.pali"><svg><use href="#i-play"/></svg><span data-t="play">Open in Google Play</span></a>
+        <a class="ios" hidden href="https://apps.apple.com/app/dict-dhamma-gift/id6816639947"><svg><use href="#i-apple"/></svg><span data-t="ios">Open in the App Store</span></a>
+      </div>
+    </section>
+  </div>
+
+  <p class="all"><span data-t="all">All apps by the developer:</span> <a href="https://play.google.com/store/apps/developer?id=Dhamma.Gift">Google Play</a> · <a href="https://apps.apple.com/developer/pavel-katorgin/id6813706219">App Store</a></p>
+</main>
+<script>
+(function () {
+    var q = new URLSearchParams(location.search);
+    var RU = JSON.parse(document.getElementById('apps-ru').textContent);
+    var lang = q.get('lang');
+    try { lang = lang || localStorage.getItem('dhammaLanguage') || localStorage.getItem('siteLanguage'); } catch (e) { /* no storage */ }
+    lang = lang || (navigator.language || '').slice(0, 2);
+    // ?lang=ru comes from the server already in Russian; this is for a Russian reader on plain /apps
+    if (lang === 'ru' && document.documentElement.lang !== 'ru') {
+        document.documentElement.lang = 'ru';
+        document.querySelectorAll('[data-t]').forEach(function (el) { el.textContent = RU[el.dataset.t]; });
+    }
+
+    // The app the link came for goes first; the rest keep the page's order.
+    var first = document.getElementById((q.get('app') || location.hash.slice(1)).toLowerCase());
+    if (first && first.parentNode.id === 'apps') first.parentNode.prepend(first);
+
+    // iPhone and iPad (iPadOS says Macintosh, but has touch): the App Store instead of Google Play
+    var ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+    if (ios) document.querySelectorAll('.app').forEach(function (card) {
+        var apple = card.querySelector('a.ios');
+        card.querySelector('a.play').hidden = true;
+        apple.hidden = false;
+        card.querySelector('a.cover').href = apple.href;
+    });
+})();
+</script>
+</body>
+</html>

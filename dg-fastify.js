@@ -1551,6 +1551,8 @@ async function buildSitemapCache() {
     }
     // Hatthipada: the four noble truths opened by the Suttas' own definitions (owner 2026-10-22: index it), beside the Principles
     entries.push([base + '/hatthipada/', dbDate, '1.0'], [base + '/hatthipada/?lang=ru', dbDate, '1.0']);
+    // all our apps on one page (owner 2026-10-27), en and ru
+    entries.push([base + '/apps', dbDate, '0.6'], [base + '/apps?lang=ru', dbDate, '0.6']);
     // the key terms' search results (SEO_TERMS), en and ru
     for (const t of SEO_TERMS.values()) {
         const loc = base + '/' + encodeURIComponent(t.q);
@@ -2117,6 +2119,34 @@ app.get('/config/sync-config.json', (req, res) => sendFile(req, res, path.join(_
 // The Uposatha calendar as a page of its own (also embedded in the docs); the hyphenated path cannot be
 // mistaken for a Pali search word the way /uposatha could.
 app.get('/uposatha-calendar', (req, res) => sendVersionedHtml(req, res, path.join(__dirname, 'public', 'uposatha-calendar.html')));
+// All our apps on one page (owner 2026-10-27); ?app=dg|uposatha|dict puts that one first. Store links point here.
+// ?lang=ru is a page of its own for search engines (f3-seo): the server puts in the Russian from the page's own
+// #apps-ru JSON, so the indexed Russian page is Russian without running the script.
+const APPS_HTML = path.join(__dirname, 'public', 'apps.html');
+const appsRuCache = { etag: null, html: null };
+app.get('/apps', (req, res) => {
+    if (req.query.lang !== 'ru') return sendVersionedHtml(req, res, APPS_HTML);
+    let entry = versionedHtmlCache.get(APPS_HTML);
+    if (!entry || Date.now() - entry.at > VERSIONED_HTML_TTL) {
+        entry = buildVersionedHtml(APPS_HTML);
+        if (!entry) return res.code(404).send();
+        versionedHtmlCache.set(APPS_HTML, entry);
+    }
+    if (appsRuCache.etag !== entry.etag) {
+        const html = entry.rewritten;
+        const ru = JSON.parse(html.match(/<script type="application\/json" id="apps-ru">([\s\S]*?)<\/script>/)[1]);
+        appsRuCache.html = html
+            .replace('<html lang="en">', '<html lang="ru">')
+            .replace('<link rel="canonical" href="https://dhamma.gift/apps">', '<link rel="canonical" href="https://dhamma.gift/apps?lang=ru">')
+            .replace(/(<meta name="description" data-t="metaDesc" content=")[^"]*/, (m, open) => open + ru.metaDesc.replace(/"/g, '&quot;'))
+            .replace(/(data-t="(\w+)">)[^<]*/g, (m, open, key) => ru[key] ? open + ru[key].replace(/&/g, '&amp;').replace(/</g, '&lt;') : m);
+        appsRuCache.etag = entry.etag;
+    }
+    const etag = entry.etag.replace(/"$/, '-ru"');
+    res.header('cache-control', 'public, max-age=0, must-revalidate').header('etag', etag);
+    if (req.headers['if-none-match'] === etag) return res.code(304).send();
+    return res.type('text/html; charset=utf-8').send(appsRuCache.html);
+});
 // Subscription feed for Google / Apple calendars. Stateless: everything the feed needs is in the query string, nothing is stored.
 const uposathaCore = require('./public/overrides/js/uposatha-core.js');
 const uposathaFeedCache = new Map();
@@ -3928,7 +3958,8 @@ const SITE_LD = [
     { '@context': 'https://schema.org', '@type': 'WebSite', '@id': SITE + '/#website', name: 'Dhamma.Gift', alternateName: ['DG', 'Dhamma Gift'],
         url: SITE + '/', inLanguage: ['en', 'ru'], publisher: { '@id': SITE + '/#organization' } },
     { '@context': 'https://schema.org', '@type': 'Organization', '@id': SITE + '/#organization', name: 'Dhamma.Gift', url: SITE + '/',
-        logo: SITE + '/assets/img/favico-noglass.png', sameAs: ['https://github.com/dhammagift', 'https://huggingface.co/dhammagift'] },
+        logo: SITE + '/assets/img/favico-noglass.png', sameAs: ['https://github.com/dhammagift', 'https://huggingface.co/dhammagift',
+            'https://play.google.com/store/apps/developer?id=Dhamma.Gift', 'https://apps.apple.com/developer/pavel-katorgin/id6813706219'] },
     // What the site is for search engines and AI readers: a tool, not only pages. No offers: the owner doesn't want
     // "free" stated (every Dhamma site is).
     { '@context': 'https://schema.org', '@type': 'WebApplication', '@id': SITE + '/#app', name: 'Dhamma.Gift', url: SITE + '/',
