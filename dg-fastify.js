@@ -1190,10 +1190,11 @@ if (fsSync.existsSync(VINAYA_AUDIO_DIR)) app.register(fastifyStatic, {
 });
 const textAudio = id => SUTTA_AUDIO.get(id) || VINAYA_AUDIO.get(id) || [];
 // /api/text's availableLangs / availableTranslators (see there)
+let textRosterStmt;
 function textRoster(suttaId) {
-    const roster = searchDb.prepare(
-        "SELECT DISTINCT lang, translator FROM texts WHERE sutta_id = ? AND kind = 'translation' AND translator <> 'ai'"
-    ).all(suttaId);
+    textRosterStmt = textRosterStmt || searchDb.prepare(
+        "SELECT DISTINCT lang, translator FROM texts WHERE sutta_id = ? AND kind = 'translation' AND translator <> 'ai'");
+    const roster = textRosterStmt.all(suttaId);
     return { availableLangs: [...new Set(roster.map(r => r.lang))], availableTranslators: roster.map(r => `${r.lang}_${r.translator}`) };
 }
 // The parts of /api/text the apps' own SQLite cannot give (it is a ru+en slice with no audio index): the audio line and
@@ -1201,6 +1202,8 @@ function textRoster(suttaId) {
 // this when online (public/offline/app.js); offline they keep the slice's lists and the Principles line only.
 app.get('/api/text-online/:suttaId', async (req, res) => {
     const suttaId = req.params.suttaId.toLowerCase();
+    if (!skeletonDB[suttaId]) return res.code(404).send({ error: 'unknown text' });
+    res.header('Cache-Control', 'public, max-age=3600');
     return { audioHtml: audioLineHtml(suttaId, req.query.lang || null), ...textRoster(suttaId) };
 });
 
@@ -1516,7 +1519,8 @@ const plainLimits = { ...REGEX_LIMITS, timeoutMs: 60000, maxQueue: 50, idleMs: 2
 // Two for the first answer too: with one, a long query ("ana", full /search ~11 s) made the next person's
 // ?fast=1 wait behind it (8.5 s instead of 0.01 s).
 const searchPool = { first: [regexRunner.create(), regexRunner.create()], enrich: [regexRunner.create(), regexRunner.create()] };
-for (const r of [...searchPool.first, ...searchPool.enrich]) r.configure({ dbPath: SEARCH_DB_PATH, dgOffline: DG_OFFLINE, limits: plainLimits });
+for (const r of searchPool.first) r.configure({ dbPath: SEARCH_DB_PATH, dgOffline: DG_OFFLINE, limits: { ...plainLimits, warm: true } });
+for (const r of searchPool.enrich) r.configure({ dbPath: SEARCH_DB_PATH, dgOffline: DG_OFFLINE, limits: plainLimits });
 // mmap is deliberately left off (SQLite's default). Mapping the file makes every page the query
 // touches count towards this process's RSS, which measured ~500MB higher for no useful speed —
 // the pages are in the OS page cache either way, and read() reaches them just as fast.
@@ -4046,15 +4050,18 @@ const searchSsrCache = new Map(); // `${query}|${lang}` -> html
 const searchSsrPending = new Map(); // the same key -> its running job
 const ssrKey = (q, lang) => String(q).normalize('NFC').toLowerCase() + '|' + lang;
 let searchSsrBytes = 0;
+// an entry costs its key too, plus a little for the Map: a no-result word is cached as '' and must still count,
+// or a loop of random ?q= grows the cache forever
+const ssrEntryBytes = (k, html) => k.length + html.length + 64;
 function searchSsrStore(key, html) {
-    if (searchSsrCache.has(key)) searchSsrBytes -= searchSsrCache.get(key).length;
+    if (searchSsrCache.has(key)) searchSsrBytes -= ssrEntryBytes(key, searchSsrCache.get(key));
     searchSsrCache.set(key, html);
-    searchSsrBytes += html.length;
+    searchSsrBytes += ssrEntryBytes(key, html);
     // capped by size, not count: one list is up to ~1 MB (sati); the least recently used go first
     for (const [k, v] of searchSsrCache) {
         if (searchSsrBytes <= SSR_CACHE_BYTES) break;
         searchSsrCache.delete(k);
-        searchSsrBytes -= v.length;
+        searchSsrBytes -= ssrEntryBytes(k, v);
     }
 }
 async function searchSsrHtml(q, lang) {
@@ -4069,11 +4076,15 @@ async function searchSsrHtml(q, lang) {
     // only when it is a plain word of 3+ letters (the client still searches as before)
     const term = seoTerm(q);
     const isRegex = searchCore.isRegexKeyword(kw);
-    if (!term && (kw.length < 3 || isRegex || /[\\^$*+?()[\]{}|]/.test(kw))) return '';
+    if (!term && (kw.length < 3 || kw.length > 100 || isRegex || /[\\^$*+?()[\]{}|]/.test(kw))) return '';
     // the same full search the page itself runs (Pali, the matched line, its translation). The key terms are ready
     // from the start (warmSeoSsr); any other word waits at most SSR_WAIT_MS (its page is noindex, people land there
     // too) - the job goes on and fills the cache for the next fetch
     let job = searchSsrPending.get(key);
+    // Any other word is a bot's fetch on the workers people's own searches use: one such job at a time, and only
+    // while a worker is free - else 4 bot fetches made a person's ?fast=1 wait 4.9 s instead of 0.7 s. Skipped, the
+    // bot gets the page without the list, nothing is cached and its next fetch tries again.
+    if (!job && !term && (searchSsrPending.size || searchPool.first.every(r => r.load()))) return '';
     if (!job) {
         const params = { scope: 'default', exact: false, langs: [lang], lb: 0, la: 0 };
         job = (isRegex ? regexSearch('full', kw, params) : searchJob('full', kw, params, false))

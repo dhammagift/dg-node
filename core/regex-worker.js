@@ -31,6 +31,8 @@ for (const row of db.prepare('SELECT id, category, dir_path, title, mr FROM sutt
 
 searchCore.init({ searchDb: db, DG_OFFLINE: workerData.dgOffline, limits: workerData.limits });
 searchCore.setSkeleton(skeleton);
+// The ?fast=1 workers: the title index every first answer reads, built before the first job, not inside it
+if (workerData.limits && workerData.limits.warm) searchCore.suttaTitleIndex();
 
 parentPort.on('message', async job => {
     try {

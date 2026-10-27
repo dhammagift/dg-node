@@ -1312,8 +1312,12 @@ window.DgSearchRender = (function () {
     // UI the column is "Цитата", nothing matched, and the builder opened with an empty Data/Condition/Value
     // row instead of the prefilled "Quote doesn't contain ExcludeMe" (owner: works in EN, not in RU).
     // Localized title + origData covers both, whatever the language.
+    // Once per table: a row the reader deleted must not come back the next time Filter+ opens.
     window.dgFilterPreset = function (api) {
-        if (api.table().node().id !== 'pali' || (api.searchBuilder.getDetails().criteria || []).length) return;
+        var st = api.settings()[0];
+        if (api.table().node().id !== 'pali' || st._dgPreset) return;
+        st._dgPreset = true;
+        if ((api.searchBuilder.getDetails().criteria || []).length) return;
         api.searchBuilder.rebuild({
             criteria: [{ condition: '!contains', data: suttaTableHeaderTitles()[8], origData: 'segments', value: ['ExcludeMe'] }],
             logic: 'AND'

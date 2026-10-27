@@ -3147,6 +3147,10 @@ document.addEventListener('click', e => {
     if (sel && sel.value !== item.dataset.m) {
       sel.value = item.dataset.m;
       sel.dispatchEvent(new Event('change', { bubbles: true }));
+    } else if (sel) {
+      // already shown: a line tap sets the select without saving (Pali after a Pali line), so a deliberate
+      // pick of the same mode must still be saved
+      localStorage.setItem(MODE_STORAGE_KEY, item.dataset.m);
     }
     closeTtsWins();
     return;

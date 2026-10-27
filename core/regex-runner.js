@@ -44,6 +44,7 @@ function createRunner() {
         if (opts && opts.dgOffline) dgOffline = opts.dgOffline;
         // Limits are handed to the worker at spawn, so a live worker keeps the old ones.
         dropWorker();
+        if (limits.warm && dbPath) try { spawn(); } catch (e) { worker = null; }
     }
 
     function getLimits() {
@@ -59,7 +60,13 @@ function createRunner() {
     let idleTimer = null;
     function scheduleIdleDrop() {
         clearTimeout(idleTimer);
-        idleTimer = setTimeout(() => { if (inFlight === 0 && !queue.length) dropWorker(); }, limits.idleMs);
+        // limits.warm: a fresh worker is started at once in its place, so the next search does not pay the spawn
+        // and the worker's own warm-up (the title index, ~1 s) - the heap still goes back, a fresh one is small
+        idleTimer = setTimeout(() => {
+            if (inFlight || queue.length) return;
+            dropWorker();
+            if (limits.warm) try { spawn(); } catch (e) { worker = null; }
+        }, limits.idleMs);
         if (idleTimer.unref) idleTimer.unref();
     }
 

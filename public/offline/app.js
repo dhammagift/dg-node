@@ -930,9 +930,12 @@
 
         // ?lang= (the reader's one language) and ?translators= (th_siamrath) too: a Thai text asked with ?lang=th got the
         // slice's English fallback in the app.
+        // The reader sends every saved pick in ?translators= whatever the language asked, so a pick counts only for
+        // a language the request shows: a saved th_siamrath must not send every ?lang=en text online.
         function langNeedsOnline(qs) {
-            var langs = [qs.get('langs'), qs.get('lang'), qs.get('translators')].join(',').split(',')
-                .map(function (s) { return s.trim().split('_')[0]; }).filter(Boolean);
+            var split = function (v) { return String(v || '').split(',').map(function (s) { return s.trim().split('_')[0]; }).filter(Boolean); };
+            var langs = split([qs.get('langs'), qs.get('lang')].join(','));
+            if (!langs.length) langs = split(qs.get('translators'));
             return langs.some(function (l) { return OFFLINE_LANGS.indexOf(l) === -1; });
         }
 
