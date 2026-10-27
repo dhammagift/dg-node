@@ -184,7 +184,7 @@ app.addHook('onRequest', (req, res, done) => {
 // engines only: the menu, multiTool and reader still link people to them. suttacentral.net is the reader's data, not here.
 const BOT_UA = /\bbot\b|[a-z]bot\/|crawler|spider|slurp|googlebot|google-extended|google-notebooklm|googleother|bingbot|gptbot|chatgpt-user|oai-searchbot|perplexity|claudebot|claude-user|claude-searchbot|anthropic|ccbot|bytespider|amazonbot|applebot|duckassistbot|meta-externalagent|yandex|mistralai|cohere|bingpreview|duckduckgo|facebookexternalhit/i;
 const isBot = req => BOT_UA.test(req.headers['user-agent'] || ''); // a bare /bot/ caught phones (CUBOT)
-const MIRRORS = /^\/(dhammatalks\.org|dhamma\.ru|accesstoinsight\.org|buddhadust\.net|theravada\.ru|theravada\.rf|tipitaka\.theravada\.su|metta\.lk|legacy\.suttacentral\.net|lp)(\/|$)/i; // lp: a copy of palistudies.blogspot.com
+const MIRRORS = /^\/(dhammatalks\.org|dhamma\.ru|accesstoinsight\.org|buddhadust\.net|theravada\.ru|theravada\.rf|tipitaka\.theravada\.su|metta\.lk|legacy\.suttacentral\.net|lp)(\/|$)|^\/assets\/materials\/.*\.(pdf|xlsx)$/i; // lp: a copy of palistudies.blogspot.com; materials: other authors' Pali textbooks
 app.addHook('onRequest', (req, res, done) => {
     const p = decodedPath(req.url);
     if (/^\/en\.dhammadana\.org(\/|$)/i.test(p) || (MIRRORS.test(p) && isBot(req))) return res.code(410).type('text/plain').send('Gone');

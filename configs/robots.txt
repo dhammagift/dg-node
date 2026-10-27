@@ -4,12 +4,11 @@ Sitemap: https://dhamma.gift/sitemap.xml
 User-agent: *
 Disallow: /suttacentral.net/
 # Other sites' mirrors (en.dhammadana.org, accesstoinsight.org, buddhadust.net, theravada.ru/.rf, tipitaka.theravada.su, metta.lk, dhammatalks.org, dhamma.ru)
-# are not disallowed: search engines get 410 there, and must be able to read it to drop the URLs (2026-10-23 / 2026-10-27)
+# and /assets/materials/*.pdf (other authors' textbooks) are not disallowed: search engines get 410 there, and must be able to read it to drop the URLs (2026-10-23 / 2026-10-27)
 # /assets/js/ must stay crawlable: the SPA (jQuery, reader) loads from there; blocked, Googlebot rendered every text as the bare shell, a duplicate of the home page
 Disallow: /assets/html/
 Disallow: /assets/lunar/
 Disallow: /assets/br/
-Disallow: /assets/materials/
 Disallow: /assets/apk/
 Disallow: /assets/diff/
 
