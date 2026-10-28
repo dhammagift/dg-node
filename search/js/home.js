@@ -958,8 +958,11 @@
             // страницу в доках, не на общую bootstrap-модалку выдачи (#SearchResultHelp, для
             // неё уже есть свой Help-путь в тулбаре/дровере — см. dgDrawerHelpHref() в index.html,
             // у него для главной страницы отдельная цель — Key Features).
+            // Opened from the burger on another screen it is that screen's help (owner, dg-node#70:
+            // the reader's in the reader, the search guide in results), as Alt+H already is.
             var ru = menuLang() === 'ru';
-            window.open((ru ? '/ru/docs/' : '/docs/') + 'multitool', '_blank');
+            var ctx = !document.body.classList.contains('dg-state-home') && typeof window.dgDrawerHelpHref === 'function';
+            window.open(ctx ? window.dgDrawerHelpHref() : (ru ? '/ru/docs/' : '/docs/') + 'multitool', '_blank');
             return;
         }
         if (tile.href) {
@@ -3194,6 +3197,13 @@
         // browsers); desktop browsers that lack it fall back to copying the current URL, same
         // idea as copyToClipboard.js's "Copy Link" elsewhere on the page (kept independent here —
         // that one is scoped to a specific quote's citation link, this is just "this page").
+        // dg-node#70: the header's "?" — the help for the current screen (same target as Alt+H).
+        var helpTop = document.getElementById('dg-drawer-help-top');
+        if (helpTop) helpTop.addEventListener('click', function () {
+            closeDrawer();
+            window.open(typeof window.dgDrawerHelpHref === 'function' ? window.dgDrawerHelpHref()
+                : (menuLang() === 'ru' ? '/ru/docs/' : '/docs/') + 'key-features', '_blank');
+        });
         var shareBtn = document.querySelector('#dg-drawer .dg-drawer-share');
         if (shareBtn) {
             shareBtn.addEventListener('click', function () {

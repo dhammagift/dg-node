@@ -386,6 +386,7 @@
     var eff = mode === 'auto' ? (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : mode;
     document.documentElement.setAttribute('data-theme', eff);
     document.documentElement.setAttribute('data-bs-theme', eff); // the shared scripts (quick window, settings.js) read these
+    document.documentElement.style.removeProperty('background'); document.documentElement.style.removeProperty('color-scheme'); // the pre-paint dark fill (uposatha-calendar.html) must not outlive a switch to light (dg-node#53)
     document.body.classList.toggle('dark', eff === 'dark');
   }
   // the site's segmented control (.dg-segmented): the pressed button is the value

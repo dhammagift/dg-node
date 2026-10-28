@@ -425,6 +425,9 @@ self.addEventListener('fetch', function (event) {
     // without that worker, the navigate branch below answered /dict/... with Dhamma.Gift's shell, which
     // then searched for the word "dict".
     if (url.pathname === '/dict' || url.pathname.indexOf('/dict/') === 0) return;
+    // /docs/ and /ru/docs/ (the Help site) have no offline copy: the shell answered them offline and searched for
+    // the page's slug ("multitool", dg-node#70). The browser's own offline page is the honest answer.
+    if (/^\/(ru\/)?docs(\/|$)/.test(url.pathname)) return;
 
     // Range requests are partial responses (the resumable database download). Caching one
     // would store a chunk as if it were the complete file and later serve that chunk as the
