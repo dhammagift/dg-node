@@ -79,6 +79,27 @@ const OPAQUE_DIR = '.opaque';
 const SCHEMA_VERSION = 1;
 
 function dbNameFor(buildId) { return `${DB_PREFIX}${buildId}.db`; }
+
+// Selectable packs (owner 2026-10-29): instead of one database, the main pack (root-ms: the Pali root, suttas, html,
+// vocab) plus the packs the reader picked (translations, other root editions). Each is a ready file with its own fts,
+// opened as main + ATTACH, so nothing is indexed on the device; removing a pack is unlinking its file. Stored as
+// /dg-mobile.pack.<id>.<build>.db: the scratch files then share SCRATCH_PREFIX with the whole-db ones.
+const PACK_PREFIX = '/dg-mobile.pack.';
+const PACKS_MANIFEST = 'packs-manifest.json';
+function packNameFor(id, build) { return `${PACK_PREFIX}${id}.${build}.db`; }
+// { id: [{ name, build }] } — two builds of one pack when an update stopped between importing and unlinking.
+function storedPacks(pool) {
+    const out = {};
+    for (const name of pool.getFileNames()) {
+        if (!name.startsWith(PACK_PREFIX) || !name.endsWith('.db')) continue;
+        const rest = name.slice(PACK_PREFIX.length, -'.db'.length), dot = rest.lastIndexOf('.');
+        const id = rest.slice(0, dot);
+        (out[id] = out[id] || []).push({ name, build: rest.slice(dot + 1) });
+    }
+    return out;
+}
+// The schemas the open library reads: ['main'] for one database, ['main', '<pack id>', ...] for packs.
+let schemas = ['main'];
 function cancelledError() { return Object.assign(new Error('download cancelled'), { cancelled: true }); }
 function nameToBuild(name) { return name.slice(DB_PREFIX.length, -'.db'.length); }
 
@@ -95,24 +116,42 @@ let activeAbort = null;
 // has several possible causes and no DevTools to look at, so the failure message carries these.
 let lastTransferStats = null;
 
+// While several packs download, each transfer's progress is turned into the whole job's (applyPacks).
+let progressView = null;
 function post(msg) {
-    self.postMessage(msg);
+    self.postMessage(progressView && msg.type === 'progress' ? progressView(msg) : msg);
+}
+
+// A query on the search index runs once per pack and the rows are joined: every pack has its own fts over its own
+// texts, and rowids repeat across packs (rid is made unique for the iOS paging below). Every other query reads the
+// TEMP VIEW `texts` openPacks() lays over all packs, so the core runs unchanged.
+const RID_STRIDE = 2 ** 40;
+function packedQuery(sql, params, from) {
+    if (from.length < 2 || !/\bfts\b/.test(sql)) return [sql, params];
+    const holes = (sql.match(/\?/g) || []).length;
+    const branch = (s, i) => sql
+        .replace(/\bFROM fts\b/g, `FROM "${s}".fts`)
+        .replace(/\b(FROM|JOIN) texts\b/g, `$1 "${s}".texts`)
+        .replace(/\browid AS rid\b/g, `(rowid + ${i * RID_STRIDE}) AS rid`);
+    return [from.map(branch).join('\nUNION ALL\n'), from.flatMap(() => params.slice(0, holes))];
 }
 
 // dg-node's core was written against node:sqlite's prepare().all()/.get(). sqlite-wasm's oo1 API
 // is equivalent but spelled differently, so this is the whole adapter. Kept deliberately thin: if
 // it ever needs to reshape a result, the core has stopped being portable and that is worth
 // noticing rather than smoothing over.
-function nodeSqliteShim(oo1db) {
+function nodeSqliteShim(oo1db, from = ['main']) {
     return {
         jsRegexp: !!oo1db.jsRegexp,
-        prepare(sql) {
+        prepare(rawSql) {
+            const fit = params => packedQuery(rawSql, params, from);
             return {
-                all: (...params) => oo1db.selectObjects(sql, params),
-                get: (...params) => oo1db.selectObject(sql, params),
+                all: (...params) => oo1db.selectObjects(...fit(params)),
+                get: (...params) => oo1db.selectObject(...fit(params)),
                 // node:sqlite's stmt.iterate(): the regex scan (core regexKeywordRows) walks its rows one by one and stops at a
                 // deadline. Its absence made every regex search fail with the generic "check your query".
-                iterate: function* (...params) {
+                iterate: function* (...rawParams) {
+                    const [sql, params] = fit(rawParams);
                     if (typeof oo1db.prepare === 'function') {                    // sqlite-wasm: step the statement
                         const st = oo1db.prepare(sql);
                         try {
@@ -263,10 +302,11 @@ async function partialBytesAny() {
 // file). Anything left over from a different build is deleted when a download starts, so the
 // scratch directory cannot grow by 170MB every time the corpus is rebuilt.
 async function cleanScratchExcept(keepName) {
+    const keep = [].concat(keepName);   // packs keep one partial copy each
     try {
         const root = await opfsRoot();
         for await (const name of root.keys()) {
-            if (name === keepName) continue;
+            if (keep.includes(name)) continue;
             if (name.startsWith(SCRATCH_PREFIX) && name.endsWith(SCRATCH_SUFFIX)) {
                 try { await root.removeEntry(name); } catch (e) { /* ignore */ }
             }
@@ -618,7 +658,7 @@ function getPool() {
 // opening them in turn until one proves sound.
 function storedDatabases(pool) {
     return pool.getFileNames()
-        .filter(n => n === LEGACY_DB_NAME || (n.startsWith(DB_PREFIX) && n.endsWith('.db')))
+        .filter(n => n === LEGACY_DB_NAME || (n.startsWith(DB_PREFIX) && n.endsWith('.db') && !n.startsWith(PACK_PREFIX)))
         .sort((a, b) => (a === LEGACY_DB_NAME ? 1 : 0) - (b === LEGACY_DB_NAME ? 1 : 0));
 }
 
@@ -658,9 +698,10 @@ function inspect(pool, name) {
     }
 }
 
-function adopt(candidate) {
+function adopt(candidate, from = ['main']) {
     db = candidate.handle;
-    core.init({ searchDb: nodeSqliteShim(db), DG_OFFLINE: '/offline-data/dhammagift' });
+    schemas = from;
+    core.init({ searchDb: nodeSqliteShim(db, from), DG_OFFLINE: '/offline-data/dhammagift' });
 
     // The same in-memory sutta index initServer() builds on the server, from the same query.
     const skeleton = {};
@@ -877,6 +918,146 @@ async function fetchCurrent(pool, distBase, args) {
     return runAttempt();
 }
 
+// --- packs ---------------------------------------------------------------------------------------
+
+// What a stored pack is: readable, carrying the build its name claims and the schema this worker reads. `main` is the
+// pack with the suttas table — known from the file itself, so the library opens without the manifest (offline).
+function inspectPack(pool, name, build, expectedBytes) {
+    let handle = null;
+    try {
+        handle = new pool.OpfsSAHPoolDb(name);
+        const meta = {};
+        for (const row of handle.selectObjects('SELECT key, value FROM meta')) meta[row.key] = row.value;
+        if (meta.schema_version && Number(meta.schema_version) !== SCHEMA_VERSION) return { ok: false, reason: `schema ${meta.schema_version} != ${SCHEMA_VERSION}` };
+        if (meta.build_id !== build) return { ok: false, reason: 'incomplete download' };
+        handle.selectObject('SELECT count(*) c FROM texts');
+        if (expectedBytes) {
+            const pages = handle.selectObject('PRAGMA page_count'), size = handle.selectObject('PRAGMA page_size');
+            const bytes = (pages && pages.page_count || 0) * (size && size.page_size || 0);
+            if (bytes && bytes < expectedBytes) return { ok: false, reason: `only ${bytes} of ${expectedBytes} bytes` };
+        }
+        let main = false;
+        try { main = !!handle.selectObject('SELECT count(*) c FROM suttas').c; } catch (e) { /* a pack without suttas */ }
+        return { ok: true, meta, main };
+    } catch (e) {
+        return { ok: false, reason: e.message };
+    } finally {
+        if (handle) { try { handle.close(); } catch (_) {} }
+    }
+}
+
+// Main, then every other pack ATTACHed under its id, and the TEMP VIEW `texts` over all of them (see packedQuery).
+// temp_store=memory: the view's temp schema must not take a pool slot.
+function openPacks(pool, packs) {
+    const handle = new pool.OpfsSAHPoolDb(packs[0].name);
+    try {
+        handle.exec('PRAGMA temp_store = memory');
+        for (const p of packs.slice(1)) handle.exec(`ATTACH 'file:${p.name}?vfs=${POOL_NAME}' AS "${p.id}"`);
+        const from = ['main', ...packs.slice(1).map(p => p.id)];
+        if (from.length > 1) handle.exec(`CREATE TEMP VIEW texts AS ${from.map(s => `SELECT * FROM "${s}".texts`).join(' UNION ALL ')}`);
+        const meta = {};
+        for (const row of handle.selectObjects('SELECT key, value FROM main.meta')) meta[row.key] = row.value;
+        if (db) { try { db.close(); } catch (_) {} }
+        const suttas = adopt({ handle, meta }, from);
+        return { suttas, build_id: meta.build_id, built_at: meta.built_at || null, packs: packs.map(p => p.id), present: true };
+    } catch (e) {
+        try { handle.close(); } catch (_) {}
+        throw e;
+    }
+}
+
+// The packs on this device that open: for each id the newest sound build (by built_at). null without a main pack.
+function packsOnDisk(pool) {
+    const chosen = [];
+    for (const [id, files] of Object.entries(storedPacks(pool))) {
+        let best = null;
+        for (const f of files) {
+            const c = inspectPack(pool, f.name, f.build);
+            if (!c.ok) {
+                console.log(`[dg-offline] pack ${f.name} was not adopted (${c.reason})`);
+                if (/incomplete download|schema \d+ !=/i.test(c.reason || '')) { try { pool.unlink(f.name); } catch (_) {} }
+                continue;
+            }
+            if (!best || String(c.meta.built_at || '') > String(best.meta.built_at || '')) best = { id, name: f.name, main: c.main, meta: c.meta };
+        }
+        if (best) chosen.push(best);
+    }
+    const main = chosen.find(p => p.main);
+    return main ? [main, ...chosen.filter(p => p !== main)] : null;
+}
+
+// Brings the stored packs to `want` (ids; the main and required packs always) at the manifest's builds: downloads what
+// is missing or out of date, one pack at a time, while the open library keeps answering; then swaps — closes, unlinks
+// what is no longer wanted (and a whole-db copy from before packs), reopens. A failure leaves the old library as it was.
+async function applyPacks(pool, packsBase, want) {
+    cancelRequested = false;
+    const manifest = await fetchManifest(packsBase, PACKS_MANIFEST);
+    if (!manifest || !Array.isArray(manifest.packs)) throw new Error('the offline packs are not published here');
+    if (manifest.db_schema_version && Number(manifest.db_schema_version) !== SCHEMA_VERSION) {
+        throw new Error(`published packs are schema ${manifest.db_schema_version}, this app reads ${SCHEMA_VERSION} — update the app`);
+    }
+    const main = manifest.packs.find(p => p.main);
+    if (!main) throw new Error('the packs manifest names no main pack');
+    const wanted = [main, ...manifest.packs.filter(p => p !== main && (p.required || (want ? want.includes(p.id) : p.default)))];
+    const stored = storedPacks(pool);
+    const missing = wanted.filter(p => !(stored[p.id] || []).some(f => f.build === p.build_id));
+    const scratchOf = p => scratchNameFor(packNameFor(p.id, p.build_id), true);
+    await cleanScratchExcept(missing.map(scratchOf));
+    await storagePlanFor(missing.reduce((a, p) => a + (p.bytes || 0), 0), Math.max(0, ...missing.map(p => p.bytes_gz || 0)));
+    await pool.reserveMinimumCapacity(Object.values(stored).flat().length + missing.length + 4);
+
+    const total = missing.reduce((a, p) => a + (p.bytes_gz || p.bytes || 0), 0);
+    let done = 0;
+    for (const [i, p] of missing.entries()) {
+        const target = packNameFor(p.id, p.build_id), scratchName = scratchOf(p), share = p.bytes_gz || p.bytes || 0;
+        const step = { pack: p.id, index: i + 1, count: missing.length };
+        post(Object.assign({ type: 'downloading' }, step));
+        progressView = msg => Object.assign({}, msg, step, msg.total > 0 && total > 0
+            ? { loaded: Math.round(done + share * Math.min(1, msg.loaded / msg.total)), total, done: false } : {});
+        try {
+            await downloadInto(pool, new URL(p.url || p.file, `${packsBase}/`).href, target, p.bytes_gz, p.bytes, true, scratchName, true);
+        } catch (e) {
+            if (e && e.cancelled) { try { pool.unlink(target); } catch (_) {} await dropScratchAfterCancel(scratchName); }
+            throw e;
+        } finally {
+            progressView = null;
+        }
+        const c = inspectPack(pool, target, p.build_id, p.bytes);
+        if (!c.ok) {
+            try { pool.unlink(target); } catch (_) {}
+            throw Object.assign(new Error(`downloaded pack ${p.id} unusable: ${c.reason}${storageHint(null)}`), { corrupt: true });
+        }
+        await dropScratchAfterCancel(scratchName);
+        done += share;
+    }
+
+    if (db) { try { db.close(); } catch (_) {} db = null; }
+    const keep = new Set(wanted.map(p => packNameFor(p.id, p.build_id)));
+    for (const files of Object.values(storedPacks(pool))) for (const f of files) if (!keep.has(f.name)) { try { pool.unlink(f.name); } catch (_) {} }
+    for (const name of storedDatabases(pool)) { try { pool.unlink(name); } catch (_) {} }
+    const result = openPacks(pool, wanted.map(p => ({ id: p.id, name: packNameFor(p.id, p.build_id) })));
+    post({ type: 'progress', loaded: 1, total: 1, phase: 'download', done: true });
+    return Object.assign(result, { downloaded: missing.length > 0 });
+}
+
+// "Is anything new?" for packs: the open ones whose build the manifest has moved on from, and their download size.
+async function checkPacks(packsBase) {
+    const manifest = await fetchManifest(packsBase, PACKS_MANIFEST);
+    if (!manifest || !Array.isArray(manifest.packs)) return { unknown: true };
+    const open = new Set(schemas.slice(1));
+    const installed = Object.entries(storedPacks(await getPool()));
+    const changed = manifest.packs.filter(p => (p.main || open.has(p.id)) &&
+        !installed.some(([id, files]) => id === p.id && files.some(f => f.build === p.build_id)));
+    return {
+        current: changed.length === 0,
+        packs: changed.map(p => p.id),
+        bytes: changed.reduce((a, p) => a + (p.bytes_gz || p.bytes || 0), 0),
+        built_at: manifest.built_at,
+        build_id: manifest.build_id || changed.map(p => p.build_id).join(','),   // what the "seen" note is keyed on
+        schema_supported: !manifest.db_schema_version || Number(manifest.db_schema_version) === SCHEMA_VERSION,
+    };
+}
+
 // The manifest is small and its absence is not an error: a device that is offline, or pointed at
 // a server that publishes none, must still open the copy it already has.
 function withTimeout(promise, ms) {
@@ -889,7 +1070,7 @@ function withTimeout(promise, ms) {
     });
 }
 
-async function fetchManifest(distBase) {
+async function fetchManifest(distBase, file = 'db-manifest.json') {
     // Same silent-hang risk as the database itself (see readWithTimeout above), and for the same
     // reason not left to AbortController alone — it runs before the reader ever sees a progress
     // bar ('status' calls it just to decide whether to ask about a download at all), so a hang
@@ -899,7 +1080,7 @@ async function fetchManifest(distBase) {
     const controller = new AbortController();
     try {
         const response = await withTimeout(
-            fetch(`${distBase}/db-manifest.json`, { cache: 'no-store', signal: controller.signal }),
+            fetch(`${distBase}/${file}`, { cache: 'no-store', signal: controller.signal }),
             MANIFEST_TIMEOUT_MS);
         if (!response.ok) return null;
         return await withTimeout(response.json(), MANIFEST_TIMEOUT_MS);
@@ -928,6 +1109,9 @@ async function anyStoredFiles() {
 // there, say so instead of turning a page load into a 170MB transfer (see point 1 of the header).
 async function open(distBase, allowDownload, args) {
     const pool = await getPool();
+
+    const packs = packsOnDisk(pool);
+    if (packs) return Object.assign(openPacks(pool, packs), { downloaded: false });
 
     for (const name of storedDatabases(pool)) {
         const candidate = inspect(pool, name);
@@ -966,6 +1150,10 @@ async function open(distBase, allowDownload, args) {
         return { suttas, build_id: candidate.meta.build_id, built_at: candidate.meta.built_at || null, downloaded: false, present: true };
     }
     if (!allowDownload) return { suttas: 0, build_id: null, downloaded: false, present: false };
+    // A whole database stored from before packs stays in use (above) until the reader applies a selection ('update').
+    // Nothing stored and no selection yet: the published default packs, or the whole database where none are published.
+    const packsBase = args.packsBase || distBase;
+    if (args.packs || await fetchManifest(packsBase, PACKS_MANIFEST)) return applyPacks(pool, packsBase, args.packs || null);
     return fetchCurrent(pool, distBase, args);
 }
 
@@ -1247,7 +1435,7 @@ self.onmessage = async (event) => {
             // only thing that tells the page there is something to continue.
             const partialBytes = await partialBytesAny();
             const pool = await getPool();
-            const present = storedDatabases(pool).length > 0;
+            const present = storedDatabases(pool).length > 0 || Object.keys(storedPacks(pool)).length > 0;
             // The manifest is fetched before the reader is asked about a download, so that the
             // question can name the real size instead of a number compiled in months ago. Callers
             // that never ask that question (the site: its button is the consent) pass
@@ -1275,6 +1463,7 @@ self.onmessage = async (event) => {
     if (op === 'check') {
         try {
             if (!db) throw new Error('database not opened');
+            if (schemas.length > 1 || args.packs) { post({ id, ok: true, result: await checkPacks(args.packsBase || args.distBase) }); return; }
             const local = db.selectObject("SELECT value FROM meta WHERE key = 'build_id'");
             const manifest = await fetchManifest(args.distBase);
             post({ id, ok: true, result: manifest ? {
@@ -1297,7 +1486,8 @@ self.onmessage = async (event) => {
                 return;
             }
             const pool = await getPool();
-            post({ id, ok: true, result: await fetchCurrent(pool, args.distBase) });
+            // Packs: the open library keeps answering until applyPacks swaps it, in one synchronous step.
+            post({ id, ok: true, result: await (args && args.packs ? applyPacks(pool, args.packsBase || args.distBase, args.packs) : fetchCurrent(pool, args.distBase)) });
         } catch (e) { post({ id, ok: false, error: e.message }); }
         return;
     }
@@ -1352,6 +1542,8 @@ self.onmessage = async (event) => {
             for (const name of storedDatabases(pool)) {
                 try { pool.unlink(name); deleted++; } catch (_) {}
             }
+            for (const files of Object.values(storedPacks(pool))) for (const f of files) { try { pool.unlink(f.name); deleted++; } catch (_) {} }
+            schemas = ['main'];
             await cleanScratchExcept(null);
             post({ id, ok: true, result: { deleted } });
         } catch (e) { post({ id, ok: false, error: e.message }); }

@@ -160,7 +160,7 @@
         // Filled in a moment later (and never allowed to fail the row): the sizes come from the
         // published manifest, not from the reader's storage.
         withManifestSize(function (bytes, bytesGz) {
-            if (bytes) { showDownloaded(bytes, bytesGz); }
+            if (bytes && !packsRow) { showDownloaded(bytes, bytesGz); }   // the packs row says its own sizes
         });
         btnEl.textContent = isRu ? 'Перескачать' : 'Re-download';
         // Freeing the space has to be possible from here: without this the only way to get ~500MB back
@@ -178,6 +178,157 @@
         try { next = JSON.parse(event.newValue || 'null'); } catch (e) { /* ignore */ }
         if (!(next && next.present) && deleteEl && deleteEl.style.display !== 'none') location.reload();
     });
+
+    // Selectable packs (owner 2026-10-29, mockup /assets/offline-packs-mockup.html): where the server publishes
+    // packs-manifest.json, the row's button opens a dialog to pick root editions and translations. The choice goes to
+    // localStorage (dg.offline.packs, read by app.js) and the download itself runs on the main page as before.
+    var PACKS_KEY = 'dg.offline.packs';
+    var packsRow = false;
+    var packsBase = window.DG_PACKS_BASE || (window.dgPlatform && window.dgPlatform.distBase) || window.DG_DIST_BASE || '/mobile-data';
+    if (secure) {
+        fetch(String(packsBase).replace(/\/$/, '') + '/packs-manifest.json', { cache: 'no-store' })
+            .then(function (r) { return r.ok ? r.json() : null; })
+            .then(function (m) { if (m && Array.isArray(m.packs) && m.packs.some(function (p) { return p.main; })) setUpPacks(m); })
+            .catch(function () { /* offline or not published: the row stays as above */ });
+    }
+
+    function setUpPacks(manifest) {
+        packsRow = true;
+        var L = isRu
+            ? { h: 'Что скачать', sub: 'Офлайн-библиотека: выберите корни и переводы. Остальное откроется онлайн. Размер — место на устройстве; скачивается сжатый архив, он примерно втрое меньше.', roots: 'Корневые тексты (пали)', tr: 'Переводы', total: 'На устройстве', get: 'Скачать', getHint: 'сжатый архив', upd: 'Применить', refresh: 'Обновить', cancel: 'Отмена', mb: 'МБ', have: 'скачано', del: 'будет удалено', isNew: 'будет скачано', changed: 'есть обновление', free: 'Освободится', rm: 'Удалить', delAll: 'Удалить всё', nothing: 'Нет изменений', required: 'обязательно', core: 'основа библиотеки: оглавление, поиск, подсказки', choose: 'Выбрать…', change: 'Изменить…', old: 'вся база (прежний формат)', texts: ' текстов', more: function (n) { return 'Ещё ' + n + ' ' + (n % 10 === 1 && n % 100 !== 11 ? 'язык' : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? 'языка' : 'языков'); }, row: function (names, size) { return 'Скачано: ' + names.join(', ') + ' · ' + size + ' МБ.'; } }
+            : { h: 'What to download', sub: 'Offline library: pick root texts and translations. Everything else opens online. Size is space on the device; the download is a compressed archive, about a third of that.', roots: 'Root texts (Pali)', tr: 'Translations', total: 'On device', get: 'Download', getHint: 'compressed archive', upd: 'Apply', refresh: 'Update', cancel: 'Cancel', mb: 'MB', have: 'downloaded', del: 'will be removed', isNew: 'will be downloaded', changed: 'update available', free: 'Frees', rm: 'Remove', delAll: 'Remove all', nothing: 'No changes', required: 'required', core: 'library core: contents, search, suggestions', choose: 'Choose…', change: 'Change…', old: 'whole database (earlier format)', texts: ' texts', more: function (n) { return n + ' more languages'; }, row: function (names, size) { return 'Downloaded: ' + names.join(', ') + ' · ' + size + ' MB.'; } };
+        var EDITIONS = { ms: 'Mahāsaṅgīti', th: isRu ? 'Сиам Рат (Таиланд)' : 'Siam Rath (Thailand)', bjt: isRu ? 'BJT (Шри-Ланка)' : 'BJT (Sri Lanka)', vri: isRu ? 'VRI (Мьянма)' : 'VRI (Myanmar)' };
+        var packs = manifest.packs;
+        var main = packs.filter(function (p) { return p.main; })[0];
+        var isRoot = function (p) { return p.kind === 'root'; };
+        var langOf = function (p) { return p.lang || (/^tr-([a-z]{2,3})$/.exec(p.id) || [])[1] || null; };
+        function nativeName(lang) {
+            try { var n = new Intl.DisplayNames([lang], { type: 'language' }).of(lang); return n.charAt(0).toUpperCase() + n.slice(1); }
+            catch (e) { return lang; }
+        }
+        function name(p) {
+            if (p.title) return p.title[isRu ? 'ru' : 'en'] || p.title.en || p.id;
+            if (isRoot(p)) return EDITIONS[p.edition || p.id.replace(/^root-/, '')] || p.id;
+            if (p.langs && p.langs.length > 1) return L.more(p.langs.length);
+            var lang = langOf(p);
+            return lang ? nativeName(lang) : (p.id === 'tr-small' ? (isRu ? 'Другие языки' : 'Other languages') : p.id);
+        }
+        function desc(p) {
+            var bits = [];
+            if (p === main) bits.push(L.core);
+            if (p.langs && p.langs.length > 1) bits.push(p.langs.map(nativeName).join(' · '));
+            if (p.texts) bits.push(p.texts.toLocaleString(isRu ? 'ru' : 'en') + L.texts);
+            return bits.join(' · ');
+        }
+        var mbOf = function (b) { return Math.max(1, Math.round((b || 0) / 1048576)); };
+
+        // What the device holds: the packs the main page last opened. An older whole database counts as "nothing
+        // picked yet" (its row names it), and the first apply replaces it with packs.
+        var installed = (state && state.present && Array.isArray(state.packs)) ? state.packs : [];
+        var oldWhole = !!(state && state.present && !Array.isArray(state.packs));
+        var outdated = (state && state.update && Array.isArray(state.update.packs)) ? state.update.packs : [];
+        var saved = null;
+        try { saved = JSON.parse(localStorage.getItem(PACKS_KEY) || 'null'); } catch (e) { /* none */ }
+        var on = {};
+        function resetSelection() {
+            on = {};
+            packs.forEach(function (p) {
+                on[p.id] = p === main || p.required || (installed.length ? installed.indexOf(p.id) !== -1
+                    : Array.isArray(saved) ? saved.indexOf(p.id) !== -1 : !!p.default);
+            });
+        }
+        resetSelection();
+        var has = function (p) { return installed.indexOf(p.id) !== -1; };
+        var sum = function (fn) { return packs.reduce(function (a, p) { return a + (fn(p) || 0); }, 0); };
+        function plan() {
+            return {
+                add: packs.filter(function (p) { return on[p.id] && (!has(p) || outdated.indexOf(p.id) !== -1); }),
+                del: packs.filter(function (p) { return !on[p.id] && has(p); }),
+            };
+        }
+
+        if (!document.getElementById('pkStyle')) {
+            var st = document.createElement('style');
+            st.id = 'pkStyle';
+            st.textContent = '.pk-sec{margin:0;padding:10px 18px 6px;font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-3)}'
+                + '.pk-name{flex:1;min-width:0}.pk-name b{display:block;font-weight:400}.pk-size{white-space:nowrap;margin:0!important;text-align:right}'
+                + '.pk-tag-have{color:var(--accent)}.pk-tag-del{color:#c0392b}.pk-tag-new{font-style:italic}'
+                + '.pk-delall{background:none;border:0;padding:0;font:inherit;font-size:13px;color:#c0392b;cursor:pointer;text-decoration:underline}'
+                + '#pkDlg li.pk-del b{text-decoration:line-through;opacity:.7}#pkGo{min-width:132px;justify-content:center}#pkGo[disabled]{opacity:.5;cursor:default}'
+                + '@media (max-width:480px){#pkDlg .dlg-foot{flex-wrap:wrap}#pkTotal{flex:1 0 100%;margin-bottom:6px!important}}';
+            document.head.appendChild(st);
+        }
+        var dlg = document.createElement('dialog');
+        dlg.id = 'pkDlg';
+        document.body.appendChild(dlg);
+        var esc = function (t) { return String(t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+
+        function item(p) {
+            var tag = '';
+            if (has(p)) tag = !on[p.id] ? '<span class="pk-tag-del">' + L.del + '</span>' : outdated.indexOf(p.id) !== -1 ? '<span class="pk-tag-new">' + L.changed + '</span>' : '<span class="pk-tag-have">✓ ' + L.have + '</span>';
+            else if (on[p.id] && (installed.length || oldWhole)) tag = '<span class="pk-tag-new">' + L.isNew + '</span>';
+            var d = [esc(desc(p)), p === main || p.required ? L.required : '', tag].filter(Boolean).join(' · ');
+            return '<li' + (has(p) && !on[p.id] ? ' class="pk-del"' : '') + '><label><input type="checkbox" data-id="' + esc(p.id) + '"'
+                + (on[p.id] ? ' checked' : '') + (p === main || p.required ? ' disabled' : '') + '>'
+                + '<span class="pk-name"><b>' + esc(name(p)) + '</b>' + (d ? '<span class="row-desc" style="margin:0">' + d + '</span>' : '') + '</span>'
+                + '<span class="row-desc pk-size">' + mbOf(p.bytes) + ' ' + L.mb
+                + (has(p) && outdated.indexOf(p.id) === -1 ? '' : '<br><small style="opacity:.75">↓ ' + mbOf(p.bytes_gz || p.bytes) + ' ' + L.mb + '</small>')
+                + '</span></label></li>';
+        }
+        function totalHtml(pl) {
+            var out = L.total + ': <b>' + sum(function (p) { return on[p.id] && mbOf(p.bytes); }) + ' ' + L.mb + '</b>';
+            if (pl.add.length) out += '<br>' + L.get + ': <b>≈ ' + pl.add.reduce(function (a, p) { return a + mbOf(p.bytes_gz || p.bytes); }, 0) + ' ' + L.mb + '</b> <span style="opacity:.75">(' + L.getHint + ')</span>';
+            if (pl.del.length) out += '<br><span class="pk-tag-del">' + L.free + ': <b>' + pl.del.reduce(function (a, p) { return a + mbOf(p.bytes); }, 0) + ' ' + L.mb + '</b></span>';
+            return out;
+        }
+        function render() {
+            var pl = plan(), changes = pl.add.length || pl.del.length || oldWhole;
+            var size = sum(function (p) { return has(p) && mbOf(p.bytes); });
+            var list = function (f) { return '<ul class="dlg-list">' + packs.filter(f).map(item).join('') + '</ul>'; };
+            dlg.innerHTML = '<div class="dlg-head"><h3>' + (installed.length ? (isRu ? 'Офлайн-библиотека' : 'Offline library') : L.h) + '</h3>'
+                + '<p class="row-desc" style="margin:0">' + L.sub + '</p>'
+                + (installed.length ? '<p style="margin:8px 0 0"><button type="button" class="pk-delall" id="pkDelAll">' + L.delAll + ' (' + size + ' ' + L.mb + ')</button></p>' : '') + '</div>'
+                + '<div class="dlg-body"><p class="pk-sec">' + L.roots + '</p>' + list(isRoot)
+                + '<p class="pk-sec">' + L.tr + '</p>' + list(function (p) { return !isRoot(p); }) + '</div>'
+                + '<div class="dlg-foot" style="align-items:center"><span class="row-desc" id="pkTotal" style="margin:0 auto 0 0">' + totalHtml(pl) + '</span>'
+                + '<button class="btn" type="button" id="pkCancel">' + L.cancel + '</button><button type="button" id="pkGo"></button></div>';
+            var go = document.getElementById('pkGo');
+            go.disabled = !changes;
+            go.className = 'btn ' + (pl.del.length && !pl.add.length ? 'btn-danger' : 'btn-primary');
+            // The button names what will happen.
+            go.textContent = !changes ? L.nothing
+                : pl.add.length && pl.add.every(has) && !pl.del.length ? L.refresh
+                : pl.add.length && pl.del.length ? L.upd : pl.add.length || oldWhole ? L.get : L.rm;
+            dlg.querySelectorAll('input[data-id]').forEach(function (cb) {
+                cb.onchange = function () {
+                    on[cb.getAttribute('data-id')] = cb.checked;
+                    var top = dlg.querySelector('.dlg-body').scrollTop;
+                    render();
+                    dlg.querySelector('.dlg-body').scrollTop = top;
+                };
+            });
+            document.getElementById('pkCancel').onclick = function () { resetSelection(); dlg.close(); };
+            go.onclick = function () {
+                var choice = packs.filter(function (p) { return on[p.id] && p !== main; }).map(function (p) { return p.id; });
+                try { localStorage.setItem(PACKS_KEY, JSON.stringify(choice)); } catch (e) { /* private mode: defaults */ }
+                dlg.close();
+                goHomeWith(state && state.present ? WANT_UPDATE_KEY : WANT_DATA_KEY);
+            };
+            var da = document.getElementById('pkDelAll');
+            if (da) da.onclick = function () { dlg.close(); if (deleteEl) deleteEl.click(); };
+        }
+
+        // The row: what is on the device, and one button that opens the dialog.
+        var names = packs.filter(has).map(name);
+        if (names.length) {
+            descEl.textContent = L.row(names, sum(function (p) { return has(p) && mbOf(p.bytes); })) + (outdated.length ? ' ' + (isRu ? 'Есть обновление.' : 'An update is available.') : '');
+        } else if (oldWhole) {
+            descEl.textContent = (isRu ? 'Скачано: ' : 'Downloaded: ') + L.old + '.';
+        }
+        btnEl.textContent = names.length || oldWhole ? L.change : L.choose;
+        btnEl.disabled = false;
+        btnEl.onclick = function () { resetSelection(); render(); dlg.showModal(); };
+    }
 
     // Delete asks the SPA (this page runs in the settings sheet's iframe, where the offline layer —
     // and its worker — live) to drop the library; the worker's own delete op unlinks the OPFS files.

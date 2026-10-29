@@ -49,9 +49,21 @@
     // The iOS app only (dg-app-full's platform.js): SQL runs natively on a shared dg.db, and the
     // worker takes its native branch when this rides along with an op.
     var NATIVE_SQL = platform.nativeSql || null;
+    // Selectable packs: the reader's choice (pack ids besides the main one), written by the settings dialog
+    // (offline-library-settings.js). Absent until the reader chooses: the worker then takes the published defaults,
+    // or the whole database where no packs are published.
+    var PACKS_KEY = 'dg.offline.packs';
+    var PACKS_BASE = window.DG_PACKS_BASE || null;
+    function packsChoice() {
+        try { var v = JSON.parse(localStorage.getItem(PACKS_KEY) || 'null'); return Array.isArray(v) ? v : null; }
+        catch (e) { return null; }
+    }
     function workerOpts(extra) {
         var opts = { distBase: DIST_BASE };
         if (NATIVE_SQL) opts.nativeSql = NATIVE_SQL;
+        var packs = packsChoice();
+        if (packs) opts.packs = packs;
+        if (PACKS_BASE) opts.packsBase = PACKS_BASE;
         return Object.assign(opts, extra || {});
     }
 
@@ -390,7 +402,7 @@
             if (msg.type === 'progress') {
                 if (msg.retrying) log('stalled, retrying (attempt ' + msg.retrying + ')');
                 var detail = {
-                    name: 'dg-mobile.db', step: 1, totalSteps: 1,
+                    name: msg.pack || 'dg-mobile.db', step: msg.index || 1, totalSteps: msg.count || 1,
                     loaded: msg.loaded, total: msg.total, phase: msg.phase || 'download',
                     done: !!msg.done,
                     reason: msg.retrying ? 'stalled, retrying (attempt ' + msg.retrying + ')' : null,
@@ -514,6 +526,7 @@
         cacheDictionary();
         rememberState({ present: true, build_id: (opened && opened.build_id) || null,
                         built_at: (opened && opened.built_at) || null, update: null,
+                        packs: (opened && opened.packs) || null,
                         local: true, reason: 'local' });
     }
 
@@ -712,7 +725,7 @@
     // "Is there anything new?" — asked once per load, AFTER a working database is open, and it
     // only reports: replacing 170MB stays the reader's decision (docs/OFFLINE_PWA_PLAN.md).
     function checkForUpdate() {
-        return call('check', { distBase: DIST_BASE }).then(function (status) {
+        return call('check', workerOpts()).then(function (status) {
             if (!status || status.unknown || status.current) return status;
             if (!status.schema_supported) {
                 // Newer database than this build of the page understands — downloading it would
@@ -721,7 +734,7 @@
                 return status;
             }
             window.dispatchEvent(new CustomEvent('dg:update-available', { detail: status }));
-            rememberState({ update: { build_id: status.build_id, bytes: status.bytes, built_at: status.built_at } });
+            rememberState({ update: { build_id: status.build_id, bytes: status.bytes, built_at: status.built_at, packs: status.packs || null } });
             return status;
         }).catch(function () { return null; });
     }
