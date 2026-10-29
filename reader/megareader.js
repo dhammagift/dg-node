@@ -876,7 +876,7 @@ window.generateThirdPartyLinks = function(slug, slugReady, texttype, translator)
         let bjtItem = bjtLinksData.find(item => item[0] === slug.split('&')[0].toLowerCase());
         if (bjtItem && bjtItem[1]) bjtUrl = "https://open.tipitaka.lk/latn/" + bjtItem[1];
     }
-    if (bjtUrl) scLink += ` <a target="_blank" class="sc-ext-link" title="Buddha Jayanthi" href="${bjtUrl}">BJT</a>`;
+    if (bjtUrl) scLink += ` <a target="_blank" class="sc-ext-link" title="Buddha Jayanti Tipiṭaka at tipitaka.lk" href="${bjtUrl}">Tpt.lk</a>`;
 
     scLink += ` <a target="_blank" class="sc-ext-link" title='SuttaCentral.net' href="https://suttacentral.net/${slug}">SC</a>`;
 
