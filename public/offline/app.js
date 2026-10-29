@@ -139,9 +139,10 @@
             return t('Библиотека занята другой вкладкой. Закройте её и повторите', 'The library is busy in another tab. Close it and try again');
         }
         // A private (incognito) window keeps site data in memory: the storage probe fails there (db-worker.js roomIsReal),
-        // or the quota is far below what any normal profile gets (a share of the disk, many GB). Said plainly (owner).
+        // or the quota is tiny (under ~300 MB, Chrome's private-window ceiling). A larger quota that is still too small is
+        // a phone short of space (Chrome gives a share of the free disk), said as such below. Said plainly (owner).
         var quota = /quota (\d+)MB/.exec(msg);
-        if (/private window/.test(msg) || (quota && Number(quota[1]) < 2048)) {
+        if (/private window/.test(msg) || (quota && Number(quota[1]) < 300)) {
             return t('В режиме инкогнито офлайн-библиотека не работает — откройте обычное окно',
                      'The offline library does not work in a private (incognito) window — open a normal window');
         }
