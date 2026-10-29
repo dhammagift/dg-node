@@ -3412,8 +3412,8 @@ function describeGroup(group) {
     return entry;
 }
 
-app.get('/api/toc', (req, res) => {
-    const categories = Object.entries(TOC_BOOKS).filter(([key]) => key !== '_comment').map(([category, catData]) => {
+function tocCategories() {
+    return Object.entries(TOC_BOOKS).filter(([key]) => key !== '_comment').map(([category, catData]) => {
         const books = (catData.books || []).map(b => describeBook(b, 'default'))
             .concat((catData.extraBooks || []).map(b => describeBook(b, 'extra')))
             .filter(book => book.count > 0 || book.singlePage);
@@ -3422,8 +3422,37 @@ app.get('/api/toc', (req, res) => {
         if (catData.extraScopeCodes) entry.extraScopeCodes = catData.extraScopeCodes;
         return entry;
     }).filter(cat => cat.books.length > 0 || cat.groups.length > 0);
-    res.send({ categories });
-});
+}
+app.get('/api/toc', (req, res) => res.send({ categories: tocCategories() }));
+
+// The contents as plain HTML with real links, for non-browsers only (sendSiteHtml), like the search list: the page
+// itself builds its tree from /api/toc with buttons, so a crawler saw the home page's shell and a few labels, and
+// Google folded /toc into / as a duplicate (GSC 2026-10-29). /toc lists the books, /toc/<book> every text of the
+// book. Sutta and Vinaya only (owner: no Abhidhamma in the site's texts); a chapter (/toc/sn25) gets nothing extra.
+function tocSsrHtml(code, lang) {
+    const ru = lang === 'ru', q = ru ? '?lang=ru' : '';
+    const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').trim();
+    const label = l => esc((l && (l[lang] || l.en)) || '');
+    if (!code) {
+        const book = b => `<li><a href="${b.singlePage ? '/' + encodeURIComponent(b.singlePage) : '/toc/' + encodeURIComponent(b.code)}${q}">${label(b.label)}</a>${b.count ? ` (${b.count})` : ''}</li>`;
+        const cats = tocCategories().filter(c => c.category !== 'abhi').map(c => `<h2>${label(c.label)}</h2><ul>${c.books.map(book).join('')}` +
+            c.groups.map(g => `<li>${label(g.label)}<ul>${g.books.map(book).join('')}</ul></li>`).join('') + '</ul>').join('');
+        return `<main class="dg-ssr-results" lang="${lang}"><h1>${ru ? 'Палийский канон — содержание' : 'Pali Canon — contents'}</h1>${cats}</main>`;
+    }
+    const abhi = TOC_BOOKS.abhi || {};
+    if (!TOC_CODES.has(code) || [...(abhi.books || []), ...(abhi.extraBooks || [])].some(b => b.code === code)) return '';
+    const tree = loadBookTree(code);
+    if (!tree) return '';
+    const kids = [].concat(tree[Object.keys(tree)[0]]);
+    // the branch titles as /api/toc/book picks them
+    const firstLeaves = kids.filter(c => typeof c !== 'string').map(c => findFirstLeafId(c[Object.keys(c)[0]])).filter(Boolean);
+    const titleIdx = firstLeaves.length ? pickBranchTitleIndex(firstLeaves) : 2;
+    const node = n => n.type === 'leaf'
+        ? `<li><a href="/${encodeURIComponent(n.id)}${q}">${esc(n.id)}</a> ${esc(n.title)}</li>`
+        : `<li>${esc(n.title)}<ul>${(n.children || []).map(node).join('')}</ul></li>`;
+    const list = kids.map(c => annotateTree(c, code, titleIdx, true));
+    return `<main class="dg-ssr-results" lang="${lang}"><h1>${esc(bookLabel(code, lang) || code)}</h1><p><a href="/toc${q}">${ru ? 'Палийский канон — содержание' : 'Pali Canon — contents'}</a></p><ul>${list.map(node).join('')}</ul></main>`;
+}
 
 // One book's whole tree (small file — see TOC_TREE_ROOT comment above) plus, when ?langs= is
 // given, which translators exist for each of its leaves (raw/unfiltered — buildFullTranslationIndex,
@@ -4071,6 +4100,11 @@ async function sendSiteHtml(req, res, kind, arg) {
         h.vary = 'Sec-Fetch-Mode, User-Agent';
         h.bot = !isBrowserNavigation(req);
         if (h.bot) h.ssr = await searchSsrHtml((seoTerm(arg) || {}).q || String(arg), h.lang);
+    }
+    if (kind === 'toc') {
+        h.vary = 'Sec-Fetch-Mode, User-Agent';
+        h.bot = !isBrowserNavigation(req);
+        if (h.bot) h.ssr = tocSsrHtml(arg, h.lang);
     }
     return sendHeadHtml(req, res, h);
 }
