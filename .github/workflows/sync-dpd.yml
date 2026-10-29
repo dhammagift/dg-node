@@ -13,7 +13,7 @@ on:
   repository_dispatch:
     types: [dpd-release]
   schedule:
-    - cron: '30 2 * * *'
+    - cron: '30 21 * * *'
 
 permissions:
   contents: write
