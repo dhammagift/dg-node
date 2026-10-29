@@ -154,45 +154,119 @@ def gsc_report(parts):
     return perf, inspected
 
 
-def pct(a, b):
-    return f'{a}' if not b else f'{a} ({(a - b) * 100 / b:+.0f}%)'
+ISSUE_TEXT = {  # what each finding means, in plain words (the owner reads it, and so does an English-only helper)
+    'status': "don't open (error {code})",
+    'fetch-error': 'the server did not answer',
+    'noindex': 'are closed to search engines, yet listed in the sitemap',
+    'canonical-elsewhere': 'name another URL as the main one, so Google will not take them',
+    'canonical-count-0': 'have no main URL (canonical)',
+    'canonical-count-2': 'have two main URLs (canonical)',
+    'no-title': 'have no title',
+    'no-description': 'have no search description',
+    'duplicate-title': 'share their title with another page',
+    'hreflang-not-in-sitemap': 'link to their translations, which are missing from the sitemap, so Google does not find them',
+}
+STATE_TEXT = {
+    'Discovered - currently not indexed': 'found but not crawled yet',
+    'Crawled - currently not indexed': 'crawled but not indexed',
+    'URL is unknown to Google': 'unknown to Google',
+    'Page with redirect': 'redirects',
+    'Alternate page with proper canonical tag': 'duplicates',
+    'Duplicate, Google chose different canonical than user': 'duplicates',
+    'Duplicate without user-selected canonical': 'duplicates',
+}
+GROUP_TEXT = {'docs': 'docs', 'texts-en': 'texts, English', 'texts-ru': 'texts, Russian', 'texts-other': 'texts, other languages'}
+MONTHS = 'Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec'.split()
+
+
+def num(n):
+    return (f'{n / 1000:.1f}'.replace('.0', '') + 'k') if n >= 1000 else str(n)
+
+
+def s_(n, word):
+    return f'{num(n)} {word}{"" if n == 1 else "s"}'
+
+
+def render(run, prev):
+    """Telegram text: the verdict first, then plain words. Details stay in the files."""
+    kinds, perf, inspected = run['issues'], run['perf'], run['inspected']
+    st, en = date.fromisoformat(run['period'][0]), date.fromisoformat(run['period'][1])
+    period = f'{MONTHS[st.month - 1]} {st.day}–{en.day}' if st.month == en.month else f'{MONTHS[st.month - 1]} {st.day} – {MONTHS[en.month - 1]} {en.day}'
+    findings, broken = [], 0
+    for k, n in sorted(kinds.items(), key=lambda x: -x[1]):
+        base, code = k.split('-', 1) if k.startswith('status-') else (k, '')
+        broken += n if base in ('status', 'fetch-error') else 0
+        findings.append(f'• {s_(n, "page")} ' + ISSUE_TEXT.get(base, k).format(code=code))
+    drops = [g for g, r in inspected.items() if prev.get('indexed', {}).get(g, 0) - r['pct'] >= 10]
+    w, p = perf['week'], perf['prev']
+    halved = p['clicks'] >= 20 and w['clicks'] < p['clicks'] / 2
+    # red only for what needs a hand now: pages that stopped opening in bulk, an index or traffic collapse
+    if broken >= max(20, run['urls'] // 100) or drops or halved:
+        head = '🔴 Urgent: ' + '; '.join(filter(None, [
+            f"{s_(broken, 'page')} don't open" if broken >= 20 else '',
+            ('index dropped: ' + ', '.join(GROUP_TEXT.get(g, g) for g in drops)) if drops else '',
+            'clicks from Google halved' if halved else '']))
+    elif findings:
+        head = f'🟡 {s_(len(findings), "issue")} to fix on the site, nothing urgent'
+    else:
+        head = '🟢 All good'
+    out = [head, f'SEO dhamma.gift · {period}', '',
+           f'From Google this week: {s_(w["clicks"], "click")} (week before: {num(p["clicks"])}), '
+           f'{s_(w["impressions"], "impression")} in search (before: {num(p["impressions"])})', '', 'Indexed by Google:']
+    for g, r in inspected.items():
+        was = prev.get('indexed', {}).get(g)
+        trend = '' if was is None or was == r['pct'] else f', was {was}%'
+        sample = '' if g == 'docs' else ' sampled'
+        out.append(f'• {GROUP_TEXT.get(g, g)}: {r["pct"]}% ({r["ok"]} of {r["n"]}{sample}{trend})')
+    why = Counter()
+    for g, r in inspected.items():
+        for cs, n in r['states'].items():
+            if cs != 'Submitted and indexed':
+                why[STATE_TEXT.get(cs, cs)] += n
+    if why:
+        out.append('The rest: ' + ', '.join(f'{t} {n}' for t, n in why.most_common()))
+    out += ['', f'Site check ({num(run["urls"])} URLs in the sitemap):'] + (findings[:8] or ['• no errors'])
+    out += ['', f'Details: {STATE_DIR}/report-{run["date"]}.txt']
+    return '\n'.join(out)
+
+
+def details(run, res):
+    lines = [f'SEO dhamma.gift {run["date"]}, all findings with examples', '']
+    for k, n in sorted(run['issues'].items(), key=lambda x: -x[1]):
+        ex = [u.replace(SITE, '') for u, r in res.items() if k in r['issues']][:10]
+        lines.append(f'{k}: {n}\n    ' + '\n    '.join(ex))
+    for g, r in run['inspected'].items():
+        lines.append(f'\nGSC {g}: {r["ok"]}/{r["n"]}')
+        for cs, n in r['states'].items():
+            lines.append(f'    {cs}: {n}, e.g. {r["examples"][cs].replace(SITE, "")}')
+    return '\n'.join(lines)
 
 
 def main():
     os.makedirs(STATE_DIR, exist_ok=True)
     state_file = os.path.join(STATE_DIR, 'state.json')
     prev = json.load(open(state_file)) if os.path.exists(state_file) else {}
+    if '--render' in sys.argv:            # re-render the last run's message, no checks
+        run = json.load(open(os.path.join(STATE_DIR, 'last-run.json')))
+        return print(render(run, json.load(open(os.path.join(STATE_DIR, 'prev-state.json'))) if os.path.exists(os.path.join(STATE_DIR, 'prev-state.json')) else {}))
     parts, res = site_audit()
-    kinds = Counter(i for r in res.values() for i in r['issues'])
     perf, inspected = gsc_report(parts)
-    today = str(date.today())
-    lines = [f'SEO dhamma.gift, неделя до {today}']
-    lines.append('Sitemap: ' + ', '.join(f'{n} {len(us)}' for n, us in parts.items()) + f' = {len(res)} адресов')
-    bad = sum(1 for r in res.values() if r['issues'])
-    lines.append(f'Проверка страниц: {"всё чисто" if not bad else f"{bad} с проблемами"}')
-    for k, n in kinds.most_common(8):
-        ex = next(u for u, r in res.items() if k in r['issues'])
-        lines.append(f'  {k}: {n} (напр. {ex.replace(SITE, "")})')
-    w, p = perf['week'], perf['prev']
-    lines.append(f'Google, 7 дней: клики {pct(w["clicks"], p["clicks"])}, показы {pct(w["impressions"], p["impressions"])}, страниц с показами {pct(w["pages"], p["pages"])}')
-    lines.append('В индексе Google (проверка URL):')
-    for g, r in inspected.items():
-        ok = r['states'].get('Submitted and indexed', 0)
-        was = prev.get('indexed', {}).get(g)
-        trend = '' if was is None else f', неделю назад {was}%'
-        lines.append(f'  {g}: {ok}/{r["n"]} = {ok * 100 // max(r["n"], 1)}%{trend}')
-        for cs, n in sorted(r['states'].items(), key=lambda x: -x[1]):
-            if cs != 'Submitted and indexed':
-                lines.append(f'     {cs}: {n} (напр. {r["examples"][cs].replace(SITE, "")})')
-    report = '\n'.join(lines)
-    print(report)
-    open(os.path.join(STATE_DIR, f'report-{today}.txt'), 'w').write(report + '\n')
+    for r in inspected.values():
+        r['ok'] = r['states'].get('Submitted and indexed', 0)
+        r['pct'] = r['ok'] * 100 // max(r['n'], 1)
+    today = date.today()
+    run = {'date': str(today), 'period': [str(today - timedelta(9)), str(today - timedelta(3))], 'urls': len(res),
+           'issues': dict(Counter(i for r in res.values() for i in r['issues'])), 'perf': perf, 'inspected': inspected}
+    msg = render(run, prev)
+    print(msg)
+    open(os.path.join(STATE_DIR, f'report-{today}.txt'), 'w').write(msg + '\n\n' + details(run, res) + '\n')
     json.dump(res, open(os.path.join(STATE_DIR, f'audit-{today}.json'), 'w'), ensure_ascii=False)
-    json.dump({'date': today, 'perf': perf, 'issues': dict(kinds),
-               'indexed': {g: r['states'].get('Submitted and indexed', 0) * 100 // max(r['n'], 1) for g, r in inspected.items()}},
-              open(state_file, 'w'))
+    json.dump(run, open(os.path.join(STATE_DIR, 'last-run.json'), 'w'), ensure_ascii=False)
+    if prev:
+        json.dump(prev, open(os.path.join(STATE_DIR, 'prev-state.json'), 'w'))
+    json.dump({'date': str(today), 'indexed': {g: r['pct'] for g, r in inspected.items()}}, open(state_file, 'w'))
     if '--no-send' not in sys.argv:
-        send(report)
+        send(msg)
 
 
 def send(text):
@@ -207,7 +281,7 @@ if __name__ == '__main__':
     try:
         main()
     except Exception as e:
-        msg = f'SEO dhamma.gift: еженедельная проверка упала: {type(e).__name__}: {e}'
+        msg = f'🔴 SEO dhamma.gift: the weekly check itself failed: {type(e).__name__}: {e}'
         print(msg, file=sys.stderr)
         if '--no-send' not in sys.argv:
             send(msg)
