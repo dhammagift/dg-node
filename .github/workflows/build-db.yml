@@ -2,7 +2,8 @@ name: Build search database
 
 # Builds dg.db — the SQLite/FTS5 corpus behind /search, the reader and the offline app — on GitHub's
 # runner and publishes it as the rolling `db-latest` release: dg.db.gz, db-manifest.json (build_id,
-# sha256) and sutta_words.txt. The server does not build: the build needs more free memory than the
+# sha256) and sutta_words.txt for the sites; app-dg.db.gz, app-db-manifest.json, the packs (pack-<id>.db.gz)
+# and packs-manifest.json for the offline library (no AI rows, see build-search-db.js --publish). The server does not build: the build needs more free memory than the
 # box has (killed three times on 2026-09-14). scripts/pull-db.sh downloads, verifies and swaps it in.
 #
 # Inputs are three public repos, only the parts the build reads: SuttaCentral's sc_bilara_data, the
@@ -106,7 +107,25 @@ jobs:
       - name: Package
         id: pkg
         run: |
-          node build-search-db.js --publish --no-build --out=dist
+          # The offline library: whole copy and packs, without the rows that stay on the server.
+          node build-search-db.js --publish --no-build --packs --out=dist/app
+          # The sites' own database as built, AI rows included: what scripts/pull-db.sh installs as dg.db.
+          gzip -6 -n -c dg.db > dist/dg.db.gz
+          node -e '
+            const { DatabaseSync } = require("node:sqlite"), crypto = require("crypto"), fs = require("fs");
+            const db = new DatabaseSync("file:dg.db?mode=ro", { readOnly: true });
+            const meta = Object.fromEntries(db.prepare("SELECT key, value FROM meta").all().map(r => [r.key, r.value]));
+            const sha256 = crypto.createHash("sha256").update(fs.readFileSync("dg.db")).digest("hex");
+            fs.writeFileSync("dist/db-manifest.json", JSON.stringify({ schema_version: Number(meta.schema_version || 1),
+              build_id: meta.build_id, built_at: meta.built_at, file_gz: "dg.db.gz", bytes_gz: fs.statSync("dist/dg.db.gz").size,
+              bytes: fs.statSync("dg.db").size, sha256 }, null, 2) + "\n");'
+          # A release is flat: the app files get a prefix, packs a stable name (pull-db.sh puts each back
+          # under the versioned name its manifest gives).
+          cp dist/app/dg.db.gz dist/app-dg.db.gz
+          cp dist/app/db-manifest.json dist/app-db-manifest.json
+          cp dist/app/packs-manifest.json dist/packs-manifest.json
+          for f in dist/app/packs/*.db.gz; do b="$(basename "$f")"; cp "$f" "dist/pack-${b%%.*}.db.gz"; done
+          rm -rf dist/app
           cp public/overrides/texts/sutta_words.txt dist/
           echo "build_id=$(node -p "require('./dist/db-manifest.json').build_id")" >> "$GITHUB_OUTPUT"
           ls -la dist
@@ -125,5 +144,9 @@ jobs:
             dist/dg.db.gz
             dist/db-manifest.json
             dist/sutta_words.txt
+            dist/app-dg.db.gz
+            dist/app-db-manifest.json
+            dist/packs-manifest.json
+            dist/pack-*.db.gz
           make_latest: false
           token: ${{ secrets.GITHUB_TOKEN }}

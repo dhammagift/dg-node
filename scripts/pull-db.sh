@@ -3,28 +3,31 @@
 # download, verify, swap into the prod checkout, restart. The build itself does not run on the
 # server — it needs more free memory than the box has.
 #
-# Usage: scripts/pull-db.sh [--app] [--force]
+# Usage: scripts/pull-db.sh [--app [--packs]] [--force]
 #   (no flag)  the sites' database only — dg.db, used by /search and the reader
-#   --app      also the offline archive the app/PWA downloads (siteroot/mobile-data). A new archive
+#   --app      also the offline library the app/PWA downloads (siteroot/mobile-data), without AI rows. A new archive
 #              means every offline user is told to download ~200 MB again, so this goes out rarely —
 #              owner: every 2 weeks to a month, not on each translation change.
+#   --packs    with --app: also the packs the release carries (packs-manifest.json last). Off until the owner
+#              releases packs on prod (2026-10-29: "Бд частями в прод не выводим пока").
 #   --force    install even if this build_id is already installed
 #
 # dg-node-test's dg.db is a symlink to prod's, so both sites get the new database. The previous one
 # stays next to it as dg.db.prev — to roll back, swap the two files back and restart.
 set -euo pipefail
 
-APP=0; FORCE=0
+APP=0; FORCE=0; WANT_PACKS=0
 for a in "$@"; do
     case "$a" in
         --app) APP=1 ;;
         --force) FORCE=1 ;;
+        --packs) WANT_PACKS=1 ;;
         *) echo "unknown option $a" >&2; exit 2 ;;
     esac
 done
 
 PROD="${DG_PROD_DIR:-/var/www/dg-node-prod}"
-URL="https://github.com/dhammagift/dg-node/releases/download/db-latest"
+URL="${DG_DB_URL:-https://github.com/dhammagift/dg-node/releases/download/db-latest}"
 cd "$PROD"
 
 # Same filesystem as dg.db, so the final mv is an atomic rename, not a 600 MB copy.
@@ -38,9 +41,13 @@ db_build() { python3 -c 'import sqlite3,sys; print(sqlite3.connect("file:"+sys.a
 NEW="$(field "$TMP/db-manifest.json" build_id)"
 CUR="$(db_build dg.db)"
 APP_BUILD="$(field siteroot/mobile-data/db-manifest.json build_id 2>/dev/null || echo none)"
+# Releases since packs carry the offline copy apart (app-*); an older one only has dg.db.gz for both.
+APP_SPLIT=0
+if [ "$APP" = 1 ] && curl -fsSL -o "$TMP/app-db-manifest.json" "$URL/app-db-manifest.json" 2>/dev/null; then APP_SPLIT=1; fi
+APP_NEW="$NEW"; [ "$APP_SPLIT" = 1 ] && APP_NEW="$(field "$TMP/app-db-manifest.json" build_id)"
 APP_DAYS="$(( ( $(date +%s) - $(stat -c %Y siteroot/mobile-data/db-manifest.json 2>/dev/null || date +%s) ) / 86400 ))"
 echo "app archive: build $APP_BUILD, published $APP_DAYS day(s) ago"
-if [ "$NEW" = "$CUR" ] && [ "$FORCE" = 0 ] && { [ "$APP" = 0 ] || [ "$APP_BUILD" = "$NEW" ]; }; then
+if [ "$NEW" = "$CUR" ] && [ "$FORCE" = 0 ] && { [ "$APP" = 0 ] || [ "$APP_BUILD" = "$APP_NEW" ]; }; then
     echo "already on build $CUR"
     exit 0
 fi
@@ -60,8 +67,9 @@ if [ -d "$OFFLINE_DATA/.git" ]; then
 fi
 
 FREE_MB="$(df -Pm "$PROD" | awk 'NR==2 {print $4}')"
-if [ "$FREE_MB" -lt 1500 ]; then
-    echo "need ~1.5 GB free on $(df -P "$PROD" | awk 'NR==2 {print $6}'), have ${FREE_MB} MB" >&2
+NEED_MB=1500; [ "$APP_SPLIT" = 1 ] && NEED_MB=2100   # + the offline copy and the packs, ~250 MB gz each
+if [ "$FREE_MB" -lt "$NEED_MB" ]; then
+    echo "need ~$((NEED_MB / 100))00 MB free on $(df -P "$PROD" | awk 'NR==2 {print $6}'), have ${FREE_MB} MB" >&2
     exit 1
 fi
 
@@ -95,8 +103,51 @@ if [ "$NEW" != "$CUR" ] || [ "$FORCE" = 1 ]; then
     (sleep 60; node scripts/indexnow-ping.js) || echo "IndexNow ping failed (see above)" >&2
 fi
 
-if [ "$APP" = 1 ]; then
-    # The offline archive the app/PWA downloads: archive first, manifest last (it announces the build).
+if [ "$APP" = 1 ] && [ "$APP_SPLIT" = 1 ]; then
+    # The offline library: files first, manifests last (they announce the build), packs-manifest.json very last
+    # (it switches readers to packs). Packs keep the versioned names their manifest gives, so a URL never serves
+    # two contents; one the new manifest drops goes a day after it left (build-search-db.js publishPacks, same rule).
+    MD=siteroot/mobile-data
+    mkdir -p "$MD/packs"
+    curl -fsSL -o "$TMP/app-dg.db.gz" "$URL/app-dg.db.gz"
+    if [ "$(gunzip -c "$TMP/app-dg.db.gz" | sha256sum | cut -d' ' -f1)" != "$(field "$TMP/app-db-manifest.json" sha256)" ]; then
+        echo "app: sha256 mismatch — offline library not published" >&2
+        exit 1
+    fi
+    PACKS=0
+    if [ "$WANT_PACKS" = 1 ] && curl -fsSL -o "$TMP/packs-manifest.json" "$URL/packs-manifest.json" 2>/dev/null; then
+        PACKS=1
+        python3 -c 'import json,os,sys
+for p in json.load(open(sys.argv[1]))["packs"]: print(p["id"], os.path.basename(p["url"]), p["sha256_gz"])' "$TMP/packs-manifest.json" |
+        while read -r id name sha; do
+            [ -f "$MD/packs/$name" ] && continue
+            curl -fsSL -o "$TMP/$name" "$URL/pack-$id.db.gz"
+            if [ "$(sha256sum "$TMP/$name" | cut -d' ' -f1)" != "$sha" ]; then
+                echo "app: pack $id sha256 mismatch (release mid-upload?) — not published" >&2
+                exit 1
+            fi
+            mv -f "$TMP/$name" "$MD/packs/$name"
+        done
+    fi
+    mv -f "$TMP/app-dg.db.gz" "$MD/dg.db.gz.tmp" && mv -f "$MD/dg.db.gz.tmp" "$MD/dg.db.gz"
+    mv -f "$TMP/app-db-manifest.json" "$MD/db-manifest.json.tmp" && mv -f "$MD/db-manifest.json.tmp" "$MD/db-manifest.json"
+    if [ "$PACKS" = 1 ]; then
+        BEFORE="$(python3 -c 'import json,os,sys
+print(" ".join(os.path.basename(p["url"]) for p in json.load(open(sys.argv[1]))["packs"]))' "$MD/packs-manifest.json" 2>/dev/null || true)"
+        KEEP="$(python3 -c 'import json,os,sys
+print(" ".join(os.path.basename(p["url"]) for p in json.load(open(sys.argv[1]))["packs"]))' "$TMP/packs-manifest.json")"
+        mv -f "$TMP/packs-manifest.json" "$MD/packs-manifest.json.tmp" && mv -f "$MD/packs-manifest.json.tmp" "$MD/packs-manifest.json"
+        for f in "$MD"/packs/*; do
+            [ -f "$f" ] || continue
+            b="$(basename "$f")"
+            case " $KEEP " in *" $b "*) continue ;; esac
+            case " $BEFORE " in *" $b "*) touch "$f"; continue ;; esac
+            find "$f" -mmin +1440 -delete
+        done
+    fi
+    echo "app: published offline build $APP_NEW$([ "$PACKS" = 1 ] && echo ' with packs') — offline users will be offered the new download"
+elif [ "$APP" = 1 ]; then
+    # A release from before the split: its dg.db.gz serves both. Archive first, manifest last (it announces the build).
     mkdir -p siteroot/mobile-data
     mv "$TMP/dg.db.gz" siteroot/mobile-data/dg.db.gz.tmp && mv -f siteroot/mobile-data/dg.db.gz.tmp siteroot/mobile-data/dg.db.gz
     mv "$TMP/db-manifest.json" siteroot/mobile-data/db-manifest.json.tmp && mv -f siteroot/mobile-data/db-manifest.json.tmp siteroot/mobile-data/db-manifest.json
