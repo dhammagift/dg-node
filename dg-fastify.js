@@ -3789,7 +3789,37 @@ const SEARCH_PLACEHOLDERS = JSON.stringify(Object.fromEntries(fsSync.readdirSync
         try { return [m[1], JSON.parse(fsSync.readFileSync(path.join(__dirname, 'configs', 'search', m[0]), 'utf8')).search.placeholder]; }
         catch { return [m[1], null]; }
     }).filter(e => e[1]))).replace(/</g, '\\u003c');
+// The page shell's Russian text nodes ("Найдите Истину", "Искать"...) with their English, from the same keys of the
+// interface's own lang_ru/lang_en files. An English page put them in only after its scripts ran, so a reader that
+// does not run them (Yandex, AI fetchers) got an English page in Russian (f3-seo 2026-10-29). Text that has no key
+// (the old #settings and #SearchResultHelp modals, hidden) stays as it is.
+let SHELL_EN = null;
+const shellEnCache = { src: null, out: null }; // the shell changes with a deploy only: translate it once
+function shellEnglish(html) {
+    if (shellEnCache.src === html) return shellEnCache.out;
+    if (!SHELL_EN) {
+        const flat = (o, p = '', acc = {}) => {
+            for (const [k, v] of Object.entries(o || {})) typeof v === 'object' ? flat(v, p + k + '.', acc) : (acc[p + k] = String(v));
+            return acc;
+        };
+        const read = f => { try { return flat(JSON.parse(fsSync.readFileSync(path.join(__dirname, f), 'utf8'))); } catch { return {}; } };
+        SHELL_EN = new Map();
+        for (const dir of ['configs/search', 'configs/reader', 'public/overrides/i18n']) {
+            const pre = dir.endsWith('i18n') ? 'lang_global_' : 'lang_';
+            const ru = read(`${dir}/${pre}ru.json`), en = read(`${dir}/${pre}en.json`);
+            for (const [k, v] of Object.entries(ru)) {
+                const s = v.trim();
+                if (en[k] && /[а-яё]/i.test(s) && !/[<>{}]/.test(s + en[k]) && !SHELL_EN.has(s)) SHELL_EN.set(s, en[k].trim());
+            }
+        }
+    }
+    // text between tags only, never inside <script>/<style> (odd parts of the split)
+    shellEnCache.src = html;
+    return shellEnCache.out = html.split(/(<(script|style)\b[\s\S]*?<\/\2>)/i).map((part, i) => i % 3 === 2 ? '' : i % 3 ? part
+        : part.replace(/>(\s*)([^<>]*[а-яё][^<>]*?)(\s*)</gi, (m, a, s, b) => SHELL_EN.has(s) ? `>${a}${htmlAttr(SHELL_EN.get(s))}${b}<` : m)).join('');
+}
 function withTextHead(html, h) {
+    if (h.lang === 'en') html = shellEnglish(html);
     const t = htmlAttr(h.title), d = htmlAttr(h.description), u = htmlAttr(h.canonical);
     const ld = [h.breadcrumbs, h.work, ...(h.ld || [])].filter(Boolean);
     const links = (h.noindex ? `<meta name="robots" content="${h.noindex === true ? 'noindex' : h.noindex}">\n` : '') +
