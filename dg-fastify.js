@@ -1583,7 +1583,10 @@ async function buildSitemapCache() {
     // not /dict/: its canonical is dict.dhamma.gift — a sitemap entry whose page points elsewhere is a contradiction
     add('pages', base + '/', 'home'); add('pages', base + '/?lang=ru', 'home');
     // the contents pages: each links every text of its book — the shortest crawl path to the suttas
-    for (const code of ['', ...TOC_CODES].filter(tocHasPali)) {
+    // Sutta and Vinaya only (owner 2026-10-19: «только сутта и виная», the other books stay reachable, never promoted):
+    // the Abhidhamma books and their texts are left out of the sitemap
+    const abhiDirs = new Set(Object.values(skeletonDB).map(m => (/^pli\/ms\/abhidhamma\/([^/]+)/.exec(m.dir_path || '') || [])[1]).filter(Boolean));
+    for (const code of ['', ...TOC_CODES].filter(tocHasPali).filter(c => !abhiDirs.has(c))) {
         const loc = base + '/toc' + (code ? '/' + encodeURIComponent(code) : '');
         add('pages', loc, 'toc'); add('pages', loc + '?lang=ru', 'toc');
     }
@@ -1611,7 +1614,7 @@ async function buildSitemapCache() {
     for (const id of Object.keys(skeletonDB)) {
         // Pali texts only: the Chinese, Sanskrit and Gāndhārī parallels (lzh/, san/, pra/) open by their id but are
         // not what the site offers (owner: they must not be in the sitemap)
-        if (!/^pli\//.test(skeletonDB[id].dir_path || '')) continue;
+        if (!/^pli\//.test(skeletonDB[id].dir_path || '') || /^pli\/ms\/abhidhamma\//.test(skeletonDB[id].dir_path)) continue;
         const classified = DgTextRouter.classify(id.toLowerCase());
         const isVinayaAlias = classified.type === 'text' && /^pli-tv-/.test(classified.id) && skeletonDB[classified.id];
         const finalId = classified.type === 'text' && !isVinayaAlias ? classified.id : id;
