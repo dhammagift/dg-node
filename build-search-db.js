@@ -407,6 +407,8 @@ function build() {
     ).run(...UNINDEXED_TRANSLATORS);
     console.log(`fts index (${Date.now() - t}ms)`);
 
+    writeEditions(db, meta);
+
     db.exec('PRAGMA journal_mode = WAL');
     const vocabWords = writeVocab(db, vocabDf);
     writeSuttaWords(vocabDf, vocabWords);
@@ -696,6 +698,43 @@ function writeSuttaWords(df, expected) {
     fs.mkdirSync(path.dirname(OUT_WORDS), { recursive: true });
     fs.writeFileSync(OUT_WORDS, out);
     console.log(`sutta_words: ${words.length} форм, ${(Buffer.byteLength(out) / 1048576).toFixed(1)} МБ (${Date.now() - t}ms)`);
+}
+
+/* The other editions of the Pali root text (owner 2026-10-29: the four canons must be in the db before the reader
+   and search get them): offline-data's root/pli/<ed>, cut into SC's segments. Kept in a table of their own, not in
+   `texts`: every query the site, MCP and the offline copies run reads `texts`/`fts` and takes its root rows as SC's,
+   so /search, the reader and /ai answer exactly as before until the UI asks for an edition. No fts: search stays on
+   SC's root and the variants, which carry the editions' readings (owner via f3-seo, 2026-10-29: «ищем в мс +
+   варианты»), so the reader only needs the text by sutta. An empty
+   string means the edition has no such line and is not stored. Not in the offline copies or packs yet (writeOfflineDb
+   copies only texts and the base tables). */
+const EDITIONS = ['bjt', 'my', 'th', 'mso', 'pts'];
+
+function writeEditions(db, meta) {
+    const t = Date.now();
+    db.exec(`
+        CREATE TABLE editions (sutta_id TEXT, segment_id TEXT, ord INTEGER, edition TEXT, txt TEXT);
+    `);
+    const ins = db.prepare('INSERT INTO editions VALUES (?,?,?,?,?)');
+    const counts = {};
+    db.exec('BEGIN');
+    for (const ed of EDITIONS) {
+        counts[ed] = 0;
+        walkJson(path.join(DG_OFFLINE, 'root', 'pli', ed), (file, name) => {
+            const suttaId = suttaIdFromFile(name);
+            const segments = meta.has(suttaId) && readSegments(file);
+            if (!segments) return;
+            let ord = 0;
+            for (const [segmentId, txt] of Object.entries(segments)) {
+                if (typeof txt !== 'string' || !txt) continue;
+                ins.run(suttaId, segmentId, ord++, ed, txt);
+            }
+            counts[ed] += ord;
+        });
+    }
+    db.exec('COMMIT');
+    db.exec('CREATE INDEX idx_editions_lookup ON editions(sutta_id, edition, ord)');
+    console.log(`editions: ${EDITIONS.map(e => `${e} ${counts[e]}`).join(', ')} (${Date.now() - t}ms)`);
 }
 
 /* meta — часть базы, а не отдельная сборка. Офлайн-клиент (public/offline/db-worker.js) после
