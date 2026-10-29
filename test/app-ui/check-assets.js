@@ -47,6 +47,10 @@ const ALLOWED = [
     /^\/assets\/materials\/(cases|conjugations|pali_cases_ru)\.html$/,
     /^\/assets\/grammar\/numerals(_declension)?\.html$/,
     /^\/assets\/common\/modalsSC\.html$/,
+    // Packs probe: plain Chromium on http://localhost:PORT has no Capacitor, so the page takes itself
+    // for the site and asks for the packs manifest - 404 on purpose while packs are not published
+    // (owner 2026-10-29). Site or app origin alike.
+    /\/mobile-data\/packs-manifest\.json$/,
 ];
 
 (async () => {
