@@ -75,6 +75,11 @@ jobs:
       - name: Lay out the corpus the way the build expects it
         run: ln -s "$GITHUB_WORKSPACE/_src/offline-data/dhammagift" _data/dhammagift
 
+      # Our corrections of SC's Pali until SC fixes them upstream (owner 2026-10-29). apply.py skips a
+      # segment SC has since changed and lists it; that is a note to drop the fix, not a reason to fail.
+      - name: SC Pali fixes (offline-data root/build/sc-fixes)
+        run: python3 -I _src/offline-data/dhammagift/root/build/sc-fixes/apply.py "$GITHUB_WORKSPACE/_data/suttacentral.net/sc-data/sc_bilara_data/root/pli/ms" || true
+
       - uses: actions/setup-node@v5
         with:
           node-version: 24
