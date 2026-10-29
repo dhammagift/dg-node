@@ -2066,6 +2066,9 @@ async function initReader() {
 
     // Если есть параметр ?q=, используем его, иначе пытаемся распарсить путь
     let query = searchParam || window.location.pathname.split('/').filter(Boolean).pop();
+    // The path segment stays percent-encoded: a shared "mn102:12.6" arrives as /mn102%3A12.6 (search/index.html
+    // normalizeShareTargetQuery) and read as is found no text, so the search ran for "mn102%3a12.6" (owner, 2026-10-29).
+    if (query && !searchParam) { try { query = decodeURIComponent(query); } catch (e) { /* a malformed escape: as it is */ } }
 
     // Старый формат: /?q=dn22#12.1 (segmentId — из хэша).
     // Новый чистый URL: /dn22:12.1 (segmentId — после ":" в самом слаге пути).
