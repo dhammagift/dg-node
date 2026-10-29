@@ -754,7 +754,7 @@ async function storagePlanFor(dbBytes, copyBytes) {
     }
     throw new Error(`not enough storage for the offline library: about ` +
         `${Math.round(resumeNeeds / 1048576)}MB of free space is needed, this browser allows ` +
-        `${Math.round(free / 1048576)}MB more — free up space and try again`);
+        `${Math.round(free / 1048576)}MB more (quota ${Math.round(est.quota / 1048576)}MB) — free up space and try again`);
 }
 
 // estimate() can lie: a Chrome incognito window reports gigabytes but its in-memory OPFS holds ~600MB,
@@ -1153,7 +1153,7 @@ async function open(distBase, allowDownload, args) {
     // A whole database stored from before packs stays in use (above) until the reader applies a selection ('update').
     // Nothing stored and no selection yet: the published default packs, or the whole database where none are published.
     const packsBase = args.packsBase || distBase;
-    if (args.packs || await fetchManifest(packsBase, PACKS_MANIFEST)) return applyPacks(pool, packsBase, args.packs || null);
+    if (args.packs || (args.packsOn && await fetchManifest(packsBase, PACKS_MANIFEST))) return applyPacks(pool, packsBase, args.packs || null);
     return fetchCurrent(pool, distBase, args);
 }
 

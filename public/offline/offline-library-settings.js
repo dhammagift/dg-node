@@ -185,7 +185,10 @@
     var PACKS_KEY = 'dg.offline.packs';
     var packsRow = false;
     var packsBase = window.DG_PACKS_BASE || (window.dgPlatform && window.dgPlatform.distBase) || window.DG_DIST_BASE || '/mobile-data';
-    if (secure) {
+    // On the site, off in the apps for now — the same switch as app.js (PACKS_ON). The settings sheet is a frame of the
+    // app's page, which may be where window.Capacitor lives.
+    var inApp = /^(https?|capacitor):\/\/localhost$/.test(location.origin) && !!(window.Capacitor || (window.parent && window.parent.Capacitor));
+    if (secure && (window.DG_OFFLINE_PACKS === true || window.DG_PACKS_BASE || !inApp)) {
         fetch(String(packsBase).replace(/\/$/, '') + '/packs-manifest.json', { cache: 'no-store' })
             .then(function (r) { return r.ok ? r.json() : null; })
             .then(function (m) { if (m && Array.isArray(m.packs) && m.packs.some(function (p) { return p.main; })) setUpPacks(m); })

@@ -52,8 +52,13 @@
     // Selectable packs: the reader's choice (pack ids besides the main one), written by the settings dialog
     // (offline-library-settings.js). Absent until the reader chooses: the worker then takes the published defaults,
     // or the whole database where no packs are published.
+    // On the site; off in the apps until the owner releases packs there (2026-10-29: the site first, the apps' native
+    // download later, not in the next store builds). window.DG_OFFLINE_PACKS = true or a test's DG_PACKS_BASE turns them
+    // on anywhere. Nothing changes until mobile-data publishes packs-manifest.json; packs on a device open either way.
+    var IN_APP = /^(https?|capacitor):\/\/localhost$/.test(location.origin) && !!window.Capacitor;
     var PACKS_KEY = 'dg.offline.packs';
     var PACKS_BASE = window.DG_PACKS_BASE || null;
+    var PACKS_ON = window.DG_OFFLINE_PACKS === true || !!PACKS_BASE || !IN_APP;
     function packsChoice() {
         try { var v = JSON.parse(localStorage.getItem(PACKS_KEY) || 'null'); return Array.isArray(v) ? v : null; }
         catch (e) { return null; }
@@ -61,9 +66,12 @@
     function workerOpts(extra) {
         var opts = { distBase: DIST_BASE };
         if (NATIVE_SQL) opts.nativeSql = NATIVE_SQL;
-        var packs = packsChoice();
-        if (packs) opts.packs = packs;
-        if (PACKS_BASE) opts.packsBase = PACKS_BASE;
+        if (PACKS_ON) {
+            opts.packsOn = true;
+            var packs = packsChoice();
+            if (packs) opts.packs = packs;
+            if (PACKS_BASE) opts.packsBase = PACKS_BASE;
+        }
         return Object.assign(opts, extra || {});
     }
 
@@ -129,6 +137,13 @@
         if (/cancelled/.test(msg)) return t('Загрузка отменена', 'Download cancelled');
         if (/busy|Access Handle|createSyncAccessHandle|NoModificationAllowed/i.test(msg)) {
             return t('Библиотека занята другой вкладкой. Закройте её и повторите', 'The library is busy in another tab. Close it and try again');
+        }
+        // A private (incognito) window keeps site data in memory: the storage probe fails there (db-worker.js roomIsReal),
+        // or the quota is far below what any normal profile gets (a share of the disk, many GB). Said plainly (owner).
+        var quota = /quota (\d+)MB/.exec(msg);
+        if (/private window/.test(msg) || (quota && Number(quota[1]) < 2048)) {
+            return t('В режиме инкогнито офлайн-библиотека не работает — откройте обычное окно',
+                     'The offline library does not work in a private (incognito) window — open a normal window');
         }
         var space = /about (\d+)MB[\s\S]*allows (-?\d+)MB/.exec(msg);
         if (space) {
