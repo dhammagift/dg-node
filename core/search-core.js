@@ -921,6 +921,25 @@ const WORD_BOUNDARY_CHARS = '\\s,.:;!?"\'\\u201C\\u201D\\u2018\\u2019\\u00AB\\u0
 // "the char before, or the char after, is a word separator or the edge" — the same separators the Words column cuts
 // words at. Inside a [class] \b means backspace and is left alone.
 const UNICODE_WORD_BOUNDARY = `(?:(?<![^${WORD_BOUNDARY_CHARS}])|(?![^${WORD_BOUNDARY_CHARS}]))`;
+// For the Words column only: a regex keyword's * and + made lazy, so "kacch.*a" takes the word
+// it is in ("kacchapa"), not everything up to the last "a" in the segment - with our variant
+// readings joined by " | " that was screens of text shown as one "word" (Sippa, 2026-10-29).
+// Which segments match is decided by matchRegex, untouched.
+function lazyQuantifiers(pattern) {
+    const p = String(pattern || '');
+    let out = '';
+    let inClass = false;
+    for (let i = 0; i < p.length; i++) {
+        const ch = p[i];
+        if (ch === '\\') { out += ch + (p[i + 1] || ''); i++; continue; }
+        out += ch;
+        if (inClass) { if (ch === ']') inClass = false; continue; }
+        if (ch === '[') inClass = true;
+        else if ((ch === '*' || ch === '+') && p[i + 1] !== '?' && p[i + 1] !== '+') out += '?';
+    }
+    return out;
+}
+
 function unicodeWordBoundary(pattern) {
     const p = String(pattern || '');
     if (p.indexOf('\\b') === -1) return p;
@@ -951,10 +970,11 @@ function keywordMatchers(keyword) {
     const parts = multi ? multi.terms : [keyword];
     const isRegexQuery = parts.some(t => REGEX_METACHARS.test(t));
     const pattern = parts.map(t => (REGEX_METACHARS.test(t) ? unicodeWordBoundary(t) : punctTolerantPattern(foldText(t)))).join('|');
+    const wordPattern = parts.map(t => (REGEX_METACHARS.test(t) ? lazyQuantifiers(unicodeWordBoundary(t)) : punctTolerantPattern(foldText(t)))).join('|');
     return {
         prepare: isRegexQuery ? (text => text) : foldText,
         matchRegex: new RegExp(pattern, 'gi'),
-        wordRegex: new RegExp(`[^${WORD_BOUNDARY_CHARS}]*(?:${pattern})[^${WORD_BOUNDARY_CHARS}]*`, 'gi'),
+        wordRegex: new RegExp(`[^${WORD_BOUNDARY_CHARS}]*(?:${wordPattern})[^${WORD_BOUNDARY_CHARS}]*`, 'gi'),
     };
 }
 
@@ -962,12 +982,19 @@ function keywordMatchers(keyword) {
 // offsets come from the folded copy, which foldText keeps the same length for exactly this.
 function forEachWordForm(text, m, onWord) {
     if (!text) return;
-    const haystack = m.prepare(text);
-    m.wordRegex.lastIndex = 0;
-    let hit;
-    while ((hit = m.wordRegex.exec(haystack)) !== null) {
-        if (hit[0].length === 0) { m.wordRegex.lastIndex++; continue; }
-        onWord(text.slice(hit.index, hit.index + hit[0].length).toLowerCase());
+    // Never across " | ": a segment's variant readings of different words are joined with it, and a
+    // regex keyword like dukkh.*samud took kilobytes between two of them as one "form".
+    for (const piece of text.split(' | ')) {
+        const haystack = m.prepare(piece);
+        m.wordRegex.lastIndex = 0;
+        let hit;
+        while ((hit = m.wordRegex.exec(haystack)) !== null) {
+            if (hit[0].length === 0) { m.wordRegex.lastIndex++; continue; }
+            // ponytail: a span this long is a passage, not a form (dukkh.*samud across the four truths
+            // written out in mn10's variant: 4 KB); skipped in Words, the segment still matches.
+            if (hit[0].length > 200) continue;
+            onWord(piece.slice(hit.index, hit.index + hit[0].length).toLowerCase());
+        }
     }
 }
 
