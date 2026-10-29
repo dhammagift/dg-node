@@ -60,6 +60,11 @@
     function normalize(raw) {
         var q = String(raw == null ? '' : raw).trim().toLowerCase();
         if (!q) return '';
+        // the Cyrillic book typed with Latin look-alike letters or a mix of both: "CH 22.104" (Latin C, H; seen live), "Сh 1.1"
+        q = q.replace(/^[a-zа-яё]{2,4}(?=\s*\d)/, function (w) {
+            var cyr = w.replace(/[achmtxy]/g, function (ch) { return { a: 'а', c: 'с', h: 'н', m: 'м', t: 'т', x: 'х', y: 'у' }[ch]; });
+            return /^(мн|дн|снп|сн|ан|уд|ити|дхп|тхаг|тхиг)$/.test(cyr) ? cyr : w;
+        });
         // the book written in Cyrillic, "мн 61", "СН 11.20" (seen live), before the keyboard-layout fix reads it as typos
         q = q.replace(/^(мн|дн|снп|сн|ан|уд|ити|дхп|тхаг|тхиг)\s*(?=\d)/, function (m, b) {
             return { 'мн': 'mn', 'дн': 'dn', 'снп': 'snp', 'сн': 'sn', 'ан': 'an', 'уд': 'ud', 'ити': 'iti', 'дхп': 'dhp', 'тхаг': 'thag', 'тхиг': 'thig' }[b];

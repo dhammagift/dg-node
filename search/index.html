@@ -4827,7 +4827,16 @@ document.addEventListener('DOMContentLoaded', function () { $(function() {
             return;
         }
         var id = textIdFromPath(window.location.pathname);
-        if (id) { openReaderInPlace(id); return; }
+        if (id) {
+            // The site's server answers a loose id with a redirect to the right one ("/СН 22.104" -> /sn22.104,
+            // dg-fastify.js); the app has no server, and the reader reads the address, so the same rewrite is done here.
+            // Vinaya short aliases stay in the address, as on the server.
+            var slug = decodeURIComponent(window.location.pathname.replace(/^\/+|\/+$/g, '')), cut = slug.indexOf(':');
+            if (id !== (cut === -1 ? slug : slug.slice(0, cut)).toLowerCase() && !/^pli-tv-/.test(id)) {
+                history.replaceState(history.state, '', '/' + encodeURIComponent(id) + (cut === -1 ? '' : slug.slice(cut)) + window.location.search + window.location.hash);
+            }
+            openReaderInPlace(id); return;
+        }
         runSearchFromUrl();
     }
 
