@@ -253,7 +253,7 @@
       },
       "VariantSegment": {
         "type": "object",
-        "description": "A segment where the keyword occurs in the variant (non-root) reading — text is taken from the variant file as-is, including SuttaCentral's editorial notation (\"→\", \"(mr)\", \"(?)\").",
+        "description": "A segment where the keyword occurs in the variant (non-root) reading — text is taken from the variant file as-is, including the variant readings' editorial notation (\"→\", \"(mr)\", \"(?)\").",
         "properties": {
           "sutta_id": {
             "type": "string"

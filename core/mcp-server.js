@@ -404,7 +404,7 @@ function getServer() {
     server.registerTool('get_text', {
         description: 'Fetch a sutta by id (e.g. "dn22", "mn1", "sn56.11") — the Pali root text of every segment. Pali only by default; pass langs for translations, translators to name a translator (e.g. ["en_sujato"]). Same data as dhamma.gift/api/text.',
         inputSchema: {
-            suttaId: z.string().describe('SuttaCentral-style id, e.g. dn22, mn1, sn56.11.'),
+            suttaId: z.string().describe('Sutta id, e.g. dn22, mn1, sn56.11.'),
             langs: z.array(z.string()).optional().describe('Translation languages to include, e.g. ["ru","en"]. Default: none (Pali only).'),
             translators: z.array(z.string()).optional().describe('Explicit translator keys, e.g. ["en_sujato"] to include Sujato.'),
         },
@@ -505,7 +505,7 @@ const INSTRUCTIONS = `Dhamma.gift: the Pali Canon (Sutta and Vinaya) with Pali r
 - Reading the census: "matches" is how many TIMES the query occurs in that sutta's Pali root text (the number the ordering uses, so the order can be checked against it — it is not the count of matched segments); "metaphors" is how many metaphors the old site counted in the text. A short sutta carrying several metaphors is a descriptive, figurative one — judge that yourself from the id and title. "metaphors" is 0 for 91% of the corpus, so 0 means "never counted", not "none".
 - Sujato (en_sujato) is never included unless you name him in translators. Everything else follows the project's translator priority.
 - get_text reads a sutta (Pali only unless you pass langs); include_segments in search gives the matched Pali lines; compare_translations shows one segment in all translations; list_structure tells which texts exist.
-- Sutta ids are SuttaCentral-style: dn22, mn1, sn56.11, an4.41, snp1.1, dhp1-20. Read the census, then pull the text for the suttas you actually need — do not try to read the whole canon in one call.`;
+- Sutta ids: dn22, mn1, sn56.11, an4.41, snp1.1, dhp1-20. Read the census, then pull the text for the suttas you actually need — do not try to read the whole canon in one call.`;
 
 // Mounted as app.post('/mcp', mcpHandler) in dg-fastify.js — takes Fastify's (request, reply),
 // hands the raw Node req/res to the transport the same way the SDK's own Express examples do.

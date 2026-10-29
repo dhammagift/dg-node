@@ -1,8 +1,8 @@
 # Dhamma.Gift
 
-> Search and reader for the Pali Canon, Sutta and Vinaya, in the Pali root text (Mahāsaṅgīti edition, SuttaCentral Bilara data) with Russian, English and other translations, side by side, segment by segment.
+> Search and reader for the Pali Canon, Sutta and Vinaya, in the Pali root text (Mahāsaṅgīti edition) with Russian, English and other translations, side by side, segment by segment.
 
-Dhamma.Gift (DG) searches every word form across the canon and opens any text by its SuttaCentral-style id. Pages are server-rendered HTML; the interface is in English and Russian (`?lang=ru`).
+Dhamma.Gift (DG) searches every word form across the canon and opens any text by its id (dn22, mn10, sn56.11). Pages are server-rendered HTML; the interface is in English and Russian (`?lang=ru`).
 
 ## Reading the Suttas by the Suttas
 
@@ -19,7 +19,7 @@ The Suttas define their own key terms ("Katamañca, bhikkhave, X? … idaṁ vuc
 
 - [Satipaṭṭhāna Sutta, MN 10](https://dhamma.gift/mn10): a text by its id, Pali with a translation (`/mn10?lang=ru` for Russian)
 - [Mahāsatipaṭṭhāna Sutta, DN 22, segment 2.2](https://dhamma.gift/dn22:2.2): a link to one segment
-- [Dhammacakkappavattana Sutta, SN 56.11](https://dhamma.gift/sn56.11): ids follow SuttaCentral (dn, mn, sn, an, snp, dhp, ud, iti, thag, thig, pli-tv-…)
+- [Dhammacakkappavattana Sutta, SN 56.11](https://dhamma.gift/sn56.11): text ids (dn, mn, sn, an, snp, dhp, ud, iti, thag, thig, pli-tv-…)
 
 ## Compare translations
 
