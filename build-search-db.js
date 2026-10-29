@@ -449,52 +449,184 @@ function publishArchive(buildId) {
     fs.mkdirSync(outDir, { recursive: true });
     const outGz = path.join(outDir, 'dg.db.gz');
     const t = Date.now();
+    const tmpDir = path.join(outDir, `.offline-tmp-${process.pid}`);
+    fs.mkdirSync(tmpDir, { recursive: true });
+    try {
+        /* What the apps download is no longer byte-for-byte the server's dg.db: the rows of
+           OFFLINE_EXCLUDED_TRANSLATORS stay on the server (owner via Pablo, 2026-10-29: "AI убрать
+           из всего офлайн"). The copy is rebuilt from dg.db (same schema, same rowids, its own fts)
+           rather than DELETE + VACUUM, because VACUUM may renumber the rowids that the external-content
+           fts points at. Its build_id is the copy's own content hash, written into its meta as before. */
+        const full = writeOfflineDb(path.join(tmpDir, 'dg.db'), 'all', '1', [], true);
+        console.log(`offline copy of build ${buildId}: ${full.buildId}, ${full.segments} rows`);
+        const gz = gzipAtomic(full.file, outGz);
 
-    const h = crypto.createHash('sha256');
-    const fd = fs.openSync(OUT_PATH, 'r');
+        // Только file_gz, без file: клиент предпочитает несжатый файл, когда объявлены оба (его можно
+        // докачать после обрыва). Здесь выбран вес — 216 МБ против 595, ценой рестарта при обрыве.
+        writeAtomic(path.join(outDir, 'db-manifest.json'), {
+            schema_version: 1,
+            build_id: full.buildId,
+            langs: 'all',
+            fts: 'trigram',
+            source: path.basename(OUT_PATH),
+            built_at: new Date().toISOString(),
+            file_gz: path.basename(outGz),
+            bytes_gz: gz.bytes,
+            bytes: full.bytes,
+            sha256: full.sha256,
+        });
+        console.log(`published: ${(gz.bytes / 1048576).toFixed(1)} МБ из ${(full.bytes / 1048576).toFixed(1)} ` +
+                    `(${(full.bytes / gz.bytes).toFixed(1)}x, ${((Date.now() - t) / 1000).toFixed(0)}с) → ${outDir}`);
+
+        if (process.argv.includes('--packs')) publishPacks(outDir, tmpDir, buildId, full.segments);
+    } finally {
+        fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+}
+
+/* Rows that never leave the server: the reader shows them online (/ai), the offline copies and
+   packs do not carry them at all, neither in texts nor in fts (owner via Pablo, 2026-10-29). */
+const OFFLINE_EXCLUDED_TRANSLATORS = ['ai', 'bw'];
+// Languages with a pack of their own; every other translation language goes into tr-small
+// (sr included: owner, 2026-10-29).
+const PACK_OWN_LANGS = ['en', 'de', 'ru', 'th'];
+const BASE_TABLES = ['suttas', 'html', 'vocab'];
+
+/* One offline database cut from dg.db: texts WHERE `where` (minus the excluded translators), the
+   same table/index/fts definitions as dg.db (read from its sqlite_master, not restated here, so a
+   pack can never drift from the server schema), the same rowids, and an fts filled the way build()
+   fills it — folded text, never 'rebuild', no UNINDEXED_TRANSLATORS. `withBase` adds suttas/html/
+   vocab: the main pack, which the client opens first. */
+function writeOfflineDb(file, packId, where, params, withBase) {
+    fs.rmSync(file, { force: true });
+    const src = new DatabaseSync(`file:${OUT_PATH}?mode=ro`, { readOnly: true });
+    const schema = src.prepare('SELECT type, name, tbl_name, sql FROM sqlite_master WHERE sql IS NOT NULL').all();
+    const parent = src.prepare("SELECT value FROM meta WHERE key = 'build_id'").get()?.value || null;
+    src.close();
+    const tables = new Set(['texts', 'fts', 'meta', ...(withBase ? BASE_TABLES : [])]);
+    const mine = schema.filter(s => tables.has(s.tbl_name) && !/^fts_/.test(s.name));
+
+    const db = new DatabaseSync(file);
+    db.function('fts_fold', { deterministic: true },
+        s => stripSearchPunctuation(s || '').replace(/ё/g, 'е').replace(/Ё/g, 'Е'));
+    for (const s of mine) if (s.type === 'table') db.exec(s.sql);
+    db.prepare('ATTACH ? AS s').run(OUT_PATH);
+    const ex = OFFLINE_EXCLUDED_TRANSLATORS.map(() => '?').join(',');
+    db.exec('BEGIN');
+    db.prepare(
+        `INSERT INTO texts (rowid, sutta_id, segment_id, ord, kind, lang, translator, source, txt)
+         SELECT rowid, sutta_id, segment_id, ord, kind, lang, translator, source, txt FROM s.texts
+         WHERE (${where}) AND (translator IS NULL OR translator NOT IN (${ex})) ORDER BY rowid`
+    ).run(...params, ...OFFLINE_EXCLUDED_TRANSLATORS);
+    if (withBase) for (const t of BASE_TABLES) db.exec(`INSERT INTO ${t} SELECT * FROM s.${t}`);
+    db.exec('COMMIT');
+    db.exec('DETACH s');
+    const un = [...UNINDEXED_TRANSLATORS];
+    db.prepare(
+        `INSERT INTO fts(rowid, txt) SELECT rowid, fts_fold(txt) FROM texts
+         WHERE translator IS NULL OR translator NOT IN (${un.map(() => '?').join(',')})`
+    ).run(...un);
+    for (const s of mine) if (s.type === 'index') db.exec(s.sql);
+    db.exec('ANALYZE');
+    const segments = db.prepare('SELECT count(*) c FROM texts').get().c;
+    const texts = db.prepare('SELECT count(DISTINCT sutta_id) c FROM texts').get().c;
+    db.close();
+
+    // build_id = content hash before meta goes in (as writeMeta does): the same rows give the same
+    // id, so a client re-downloads a pack only when its content changed.
+    const buildId = sha256File(file, `v1|${packId}|`).slice(0, 16);
+    const m = new DatabaseSync(file);
+    const ins = m.prepare('INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)');
+    for (const [k, v] of [['schema_version', '1'], ['build_id', buildId], ['pack_id', packId],
+        ['langs', packId === 'all' ? 'all' : packId], ['fts', 'trigram'], ['source', path.basename(OUT_PATH)],
+        ['parent_build_id', parent || ''], ['built_at', new Date().toISOString()]]) ins.run(k, v);
+    m.close();
+    return { file, buildId, parent, segments, texts, bytes: fs.statSync(file).size, sha256: sha256File(file) };
+}
+
+function sha256File(file, prefix = '') {
+    const h = crypto.createHash('sha256').update(prefix);
+    const fd = fs.openSync(file, 'r');
     const buf = Buffer.allocUnsafe(1 << 20);
     let n;
     while ((n = fs.readSync(fd, buf, 0, buf.length, null)) > 0) h.update(buf.subarray(0, n));
     fs.closeSync(fd);
+    return h.digest('hex');
+}
 
-    /* Во временный файл, потом rename. Прямая запись обрезала бы живой архив в первую же
-       миллисекунду, а gzip наполняет его минуты — всё это время посетители качали бы огрызок,
-       причём манифест ещё обещал бы старый sha256, так что проверка падала бы у них уже после
-       200 МБ. rename в пределах одной ФС атомарен: читатель видит либо старый архив целиком,
-       либо новый целиком. Манифест пишется последним. */
+/* Во временный файл, потом rename. Прямая запись обрезала бы живой архив в первую же
+   миллисекунду, а gzip наполняет его минуты — всё это время посетители качали бы огрызок,
+   причём манифест ещё обещал бы старый sha256, так что проверка падала бы у них уже после
+   200 МБ. rename в пределах одной ФС атомарен: читатель видит либо старый архив целиком,
+   либо новый целиком. Манифест пишется последним. -n: no name/time in the header, so the same
+   db gives the same archive bytes (sha256_gz). */
+function gzipAtomic(src, outGz) {
     const tmpGz = `${outGz}.tmp-${process.pid}`;
-    let bytesGz;
     try {
         const out = fs.openSync(tmpGz, 'w');
         try {
-            execFileSync('gzip', ['-6', '-c', OUT_PATH], { stdio: ['ignore', out, 'inherit'] });
+            execFileSync('gzip', ['-6', '-n', '-c', src], { stdio: ['ignore', out, 'inherit'] });
         } finally {
             fs.closeSync(out);
         }
-        bytesGz = fs.statSync(tmpGz).size;
+        const res = { bytes: fs.statSync(tmpGz).size, sha256: sha256File(tmpGz) };
         fs.renameSync(tmpGz, outGz);
+        return res;
     } catch (e) {
         fs.rmSync(tmpGz, { force: true }); // не оставляем половину архива занимать место
         throw e;
     }
+}
 
-    // Только file_gz, без file: клиент предпочитает несжатый файл, когда объявлены оба (его можно
-    // докачать после обрыва). Здесь выбран вес — 216 МБ против 595, ценой рестарта при обрыве.
-    const bytes = fs.statSync(OUT_PATH).size;
-    fs.writeFileSync(path.join(outDir, 'db-manifest.json'), JSON.stringify({
-        schema_version: 1,
-        build_id: buildId,
-        langs: 'all',
-        fts: 'trigram',
-        source: path.basename(OUT_PATH),
-        built_at: new Date().toISOString(),
-        file_gz: path.basename(outGz),
-        bytes_gz: bytesGz,
-        bytes,
-        sha256: h.digest('hex'),
-    }, null, 2) + '\n');
-    console.log(`published: ${(bytesGz / 1048576).toFixed(1)} МБ из ${(bytes / 1048576).toFixed(1)} ` +
-                `(${(bytes / bytesGz).toFixed(1)}x, ${((Date.now() - t) / 1000).toFixed(0)}с) → ${outDir}`);
+function writeAtomic(file, obj) {
+    fs.writeFileSync(`${file}.tmp-${process.pid}`, JSON.stringify(obj, null, 2) + '\n');
+    fs.renameSync(`${file}.tmp-${process.pid}`, file);
+}
+
+/* --packs: the offline library as packs the person picks in Settings (owner 2026-10-29, agreed with
+   the app client in public/offline/db-worker.js): root-ms is the main db and carries the base
+   tables, each other pack is opened with ATTACH. Every pack is read-only and comes with its fts
+   ready, nothing is indexed on the device. packs-manifest.json is what switches the client from
+   the single dg.db.gz to packs, so it is written last and only when this flag is given. */
+function publishPacks(outDir, tmpDir, buildId, fullSegments) {
+    const t = Date.now();
+    const src = new DatabaseSync(`file:${OUT_PATH}?mode=ro`, { readOnly: true });
+    const ex = OFFLINE_EXCLUDED_TRANSLATORS.map(() => '?').join(',');
+    const langs = src.prepare(
+        `SELECT lang, count(*) n FROM texts WHERE kind = 'translation'
+         AND (translator IS NULL OR translator NOT IN (${ex})) GROUP BY lang ORDER BY n DESC, lang`
+    ).all(...OFFLINE_EXCLUDED_TRANSLATORS).map(r => r.lang);
+    src.close();
+    const own = PACK_OWN_LANGS.filter(l => langs.includes(l));
+    const small = langs.filter(l => !own.includes(l));
+    const defs = [
+        { id: 'root-ms', kind: 'root', lang: 'pli', edition: 'ms', main: true, required: true, default: true,
+          has_vocab: true, where: "kind IN ('root', 'variant')", params: [], base: true },
+        ...own.map(l => ({ id: `tr-${l}`, kind: 'translation', lang: l,
+          where: "kind = 'translation' AND lang = ?", params: [l] })),
+        { id: 'tr-small', kind: 'translation', langs: small,
+          title: { ru: `Ещё ${small.length} языков`, en: `${small.length} more languages` },
+          where: `kind = 'translation' AND lang IN (${small.map(() => '?').join(',')})`, params: small },
+    ];
+    const packDir = path.join(outDir, 'packs');
+    fs.mkdirSync(packDir, { recursive: true });
+    const packs = [];
+    for (const d of defs) {
+        const r = writeOfflineDb(path.join(tmpDir, `${d.id}.db`), d.id, d.where, d.params, !!d.base);
+        const gz = gzipAtomic(r.file, path.join(packDir, `${d.id}.db.gz`));
+        fs.rmSync(r.file, { force: true });
+        const { where, params, base, ...pub } = d;
+        packs.push({ ...pub, texts: r.texts, segments: r.segments, fts: 'trigram', bytes: r.bytes,
+            bytes_gz: gz.bytes, sha256: r.sha256, sha256_gz: gz.sha256, url: `packs/${d.id}.db.gz`, build_id: r.buildId });
+        console.log(`pack ${d.id}: ${r.segments} rows, ${(r.bytes / 1048576).toFixed(0)} MB, gz ${(gz.bytes / 1048576).toFixed(0)} MB`);
+    }
+    // Every row of the offline copy is in exactly one pack: a row left out would silently vanish offline.
+    const sum = packs.reduce((a, p) => a + p.segments, 0);
+    if (sum !== fullSegments) throw new Error(`packs hold ${sum} rows, the offline copy ${fullSegments}`);
+    writeAtomic(path.join(outDir, 'packs-manifest.json'), {
+        schema: 1, db_schema_version: 1, build_id: buildId, built_at: new Date().toISOString(), packs,
+    });
+    console.log(`packs: ${packs.length} → ${packDir} (${((Date.now() - t) / 1000).toFixed(0)}s)`);
 }
 
 /* sutta_words.txt — список для автоподсказок в самом поле поиска (autopali.js). Пишется здесь,
