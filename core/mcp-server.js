@@ -61,6 +61,25 @@ function db() {
 }
 const asText = (obj, isError) => ({ content: [{ type: 'text', text: JSON.stringify(obj) }], isError: !!isError });
 
+// The other Pali editions in dg.db's `editions` table (build-search-db.js), names and licenses as in the docs' Terms.
+const EDITIONS = {
+    bjt: { name: 'Buddha Jayanti Tipiṭaka (Sri Lanka)', source: 'tipitaka.lk', license: 'CC BY-ND 4.0, attribution tipitaka.lk; not corrected by us' },
+    my: { name: 'Chaṭṭha Saṅgāyana Tipiṭaka (Myanmar)', source: 'Vipassana Research Institute, tipitaka.org', license: 'free for non-commercial use, attribution VRI' },
+    th: { name: 'Syāmaraṭṭha Tipiṭaka (Siam Rath, 1927)', source: 'E-Tipitaka (Sutee Sudprasert)', license: 'no license stated by the source' },
+    mso: { name: 'Mahāsaṅgīti Tipiṭaka as printed (World Tipiṭaka Edition, 2005)', source: 'tipitaka2500.github.io, Dhamma Society', license: 'CC0' },
+    pts: { name: 'Pali Text Society editions', source: 'GRETIL, input by the Dhammakaya Foundation', license: 'CC BY-SA 4.0, © Pali Text Society and Dhammakaya Foundation' },
+};
+// edition -> Map(segment_id -> text) for one sutta; empty maps where the db has no such edition (or no table yet)
+function editionRows(suttaId, eds) {
+    const out = {};
+    for (const ed of eds) out[ed] = new Map();
+    try {
+        const q = db().prepare('SELECT segment_id, edition, txt FROM editions WHERE sutta_id = ? AND edition = ? ORDER BY ord');
+        for (const ed of eds) for (const r of q.all(suttaId, ed)) out[ed].set(r.segment_id, r.txt);
+    } catch { /* a dg.db built before the editions table */ }
+    return out;
+}
+
 // ---------------------------------------------------------------------------
 // Matching helpers for the agent-facing order. The search itself folds diacritics
 // (`tokenize='trigram remove_diacritics 1'` in dg.db) plus ё-folding on the Russian side, so a
@@ -326,7 +345,7 @@ function composeCensus(all, query, limit) {
 }
 
 function getServer() {
-    const server = new McpServer({ name: 'dg-node', version: '1.2.0' }, { instructions: INSTRUCTIONS });
+    const server = new McpServer({ name: 'dg-node', version: '1.3.0' }, { instructions: INSTRUCTIONS });
 
     server.registerTool('search', {
         description: 'Search the Pali Canon on dhamma.gift by keyword/substring or REGEX (min 3 letters, no semantic search). Patterns like "kata.*dukkha", "vucc.*dukkha", "katha.*dukkha" find the canon\'s own definitions and expositions of a term. Returns a CENSUS of every matching sutta — id, title, match count, metaphor count, reader link — Pali only, ordered so that suttas that DEFINE the term come first, then ones NAMED after it, then by how often it occurs. Set include_segments for the matched Pali lines, include_translations (+ langs) for translations. 40 suttas by default (25 by occurrence count, plus 15 for suttas named after the term and ones defining it); metadata.totalFiles reports the true count, and limit takes a number or "all".',
@@ -402,13 +421,14 @@ function getServer() {
     });
 
     server.registerTool('get_text', {
-        description: 'Fetch a sutta by id (e.g. "dn22", "mn1", "sn56.11") — the Pali root text of every segment. Pali only by default; pass langs for translations, translators to name a translator (e.g. ["en_sujato"]). Same data as dhamma.gift/api/text.',
+        description: 'Fetch a sutta by id (e.g. "dn22", "mn1", "sn56.11") — the Pali text (Mahāsaṅgīti) of every segment. Pali only by default; pass langs for translations, translators to name a translator (e.g. ["en_sujato"]), editions for the whole text of other Pali editions line by line (DN, MN, SN, AN). Same data as dhamma.gift/api/text.',
         inputSchema: {
+            editions: z.array(z.enum([...Object.keys(EDITIONS), 'all'])).optional().describe('Other Pali editions to add, each segment beside the Mahāsaṅgīti: bjt (Buddha Jayanti, Sri Lanka), my (Chaṭṭha Saṅgāyana, Myanmar), th (Siam Rath, Thailand), mso (Mahāsaṅgīti as printed, 2005), pts (Pali Text Society), or ["all"]. DN, MN, SN and AN only.'),
             suttaId: z.string().describe('Sutta id, e.g. dn22, mn1, sn56.11.'),
             langs: z.array(z.string()).optional().describe('Translation languages to include, e.g. ["ru","en"]. Default: none (Pali only).'),
             translators: z.array(z.string()).optional().describe('Explicit translator keys, e.g. ["en_sujato"] to include Sujato.'),
         },
-    }, async ({ suttaId, langs, translators }) => {
+    }, async ({ suttaId, langs, translators, editions }) => {
         const id = suttaId.toLowerCase();
         const base = await getSuttaBaseData(id);
         if (!base) {
@@ -428,6 +448,22 @@ function getServer() {
         }
         for (const sg of data.segments || []) if (sg.segment) sg.link = READER + sg.segment;
         data.link = READER + id;
+        // Whole other editions, cut into the same segments (owner 2026-10-30: compare complete texts, not only the
+        // variants). A segment an edition lacks is left out of its map; "editions_missing" counts them.
+        const eds = (editions || []).includes('all') ? Object.keys(EDITIONS) : [...new Set(editions || [])];
+        if (eds.length) {
+            const byEd = editionRows(id, eds);
+            const missing = {};
+            for (const sg of data.segments || []) {
+                const row = {};
+                for (const ed of eds) {
+                    const t = byEd[ed] && byEd[ed].get(sg.segment);
+                    if (t) row[ed] = t; else if (byEd[ed] && byEd[ed].size) missing[ed] = (missing[ed] || 0) + 1;
+                }
+                if (Object.keys(row).length) sg.editions = row;
+            }
+            data.editions = eds.map(ed => ({ id: ed, ...EDITIONS[ed], segments: byEd[ed] ? byEd[ed].size : 0, missing_segments: missing[ed] || 0 }));
+        }
         if (suppressed) {
             data.suppressed = { en_sujato: `${suppressed} segments — pass translators:["en_sujato"] to include it` };
             data.note = NOTE;
@@ -456,6 +492,11 @@ function getServer() {
             suppressed = before - rows.length;
         }
         const out = { segment: seg, link: READER + seg, texts: rows.map(r => ({ kind: r.kind, lang: r.lang, translator: r.translator, text: r.txt })) };
+        // the other Pali editions' wording of this line, after the Mahāsaṅgīti root and its variants
+        const sid = seg.split(':')[0];
+        const eds = editionRows(sid, Object.keys(EDITIONS));
+        const edTexts = Object.keys(EDITIONS).filter(ed => eds[ed] && eds[ed].get(seg)).map(ed => ({ kind: 'edition', edition: ed, name: EDITIONS[ed].name, license: EDITIONS[ed].license, text: eds[ed].get(seg) }));
+        if (edTexts.length) out.texts.splice(out.texts.findIndex(t => t.kind === 'translation') === -1 ? out.texts.length : out.texts.findIndex(t => t.kind === 'translation'), 0, ...edTexts);
         if (suppressed) out.suppressed = { en_sujato: `${suppressed} text(s) — pass translators:["en_sujato"] to include it` };
         return asText(out);
     });
@@ -484,7 +525,8 @@ function getServer() {
             translation_languages: Object.keys(byLang).length,
             translations: byLang,
             note: 'Pali root text covers everything; translation coverage differs per translator. '
-                + 'Also here, and nowhere else: the cross-edition variant apparatus (Burmese, Thai, Sri Lankan, PTS readings) is in dg.db — use compare_translations on a segment to see the text, and note that variants are not yet a separate tool.',
+                + 'Also here, and nowhere else: other Pali editions as whole texts on the same segments (DN, MN, SN, AN): ' + Object.entries(EDITIONS).map(([k, e]) => `${k} = ${e.name}`).join('; ')
+                + '. get_text with editions:[...] returns them line by line; compare_translations shows every edition of one line. The variant readings of all editions are in each segment\'s variant field.',
         });
     });
 
@@ -505,6 +547,7 @@ const INSTRUCTIONS = `Dhamma.gift: the Pali Canon (Sutta and Vinaya) with Pali r
 - Reading the census: "matches" is how many TIMES the query occurs in that sutta's Pali root text (the number the ordering uses, so the order can be checked against it — it is not the count of matched segments); "metaphors" is how many metaphors the old site counted in the text. A short sutta carrying several metaphors is a descriptive, figurative one — judge that yourself from the id and title. "metaphors" is 0 for 91% of the corpus, so 0 means "never counted", not "none".
 - Sujato (en_sujato) is never included unless you name him in translators. Everything else follows the project's translator priority.
 - get_text reads a sutta (Pali only unless you pass langs); include_segments in search gives the matched Pali lines; compare_translations shows one segment in all translations; list_structure tells which texts exist.
+- Only here: the other Pali editions as WHOLE texts on the same segments, for DN, MN, SN and AN — Buddha Jayanti (Sri Lanka, bjt), Chaṭṭha Saṅgāyana (Myanmar, my), Siam Rath (Thailand, th), the printed Mahāsaṅgīti of 2005 (mso) and the PTS editions (pts). get_text with editions ["all"] or a list gives each segment in every edition beside the Mahāsaṅgīti, so complete texts can be compared, not only the variant readings; compare_translations shows every edition of one line. Name the edition when you quote it; each keeps its own license (returned with the text).
 - Sutta ids: dn22, mn1, sn56.11, an4.41, snp1.1, dhp1-20. Read the census, then pull the text for the suttas you actually need — do not try to read the whole canon in one call.`;
 
 // Mounted as app.post('/mcp', mcpHandler) in dg-fastify.js — takes Fastify's (request, reply),
