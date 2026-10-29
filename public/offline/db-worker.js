@@ -1058,11 +1058,14 @@ async function applyPacks(pool, packsBase, want) {
     // A delete (or cancel) that came in while this was awaiting: opening the removed names would create empty files.
     if (cancelRequested) throw cancelledError();
     // The new set opens first; only then the old files go. If it does not open, whatever is on disk is opened again.
+    const wasOpen = new Set(openPackNames);
     if (db) { try { db.close(); } catch (_) {} db = null; }
     let result;
     try {
         result = openPacks(pool, wanted.map(p => ({ id: p.id, name: packNameFor(p.id, p.build_id) })));
     } catch (e) {
+        // The new files go first: packsOnDisk prefers the newest build and would pick the set that just failed.
+        for (const p of wanted) { const n = packNameFor(p.id, p.build_id); if (!wasOpen.has(n)) { try { pool.unlink(n); } catch (_) {} } }
         try { await open(packsBase, false, {}); } catch (e2) { ready = null; console.log(`[dg-offline] reopening the old library failed: ${e2.message}`); }
         throw e;
     }
@@ -1525,9 +1528,11 @@ self.onmessage = async (event) => {
                 return;
             }
             const pool = await getPool();
-            // Packs: the open library keeps answering until applyPacks swaps it, in one synchronous step.
+            // Packs: the open library keeps answering until applyPacks swaps it, in one synchronous step. No selection
+            // saved (default packs, or a private window): the packs on disk are the selection — never the defaults,
+            // which would add packs the reader did not pick (Cakkhu).
             post({ id, ok: true, result: await (await packsMode(args)
-                ? applyPacks(pool, args.packsBase || args.distBase, args.packs || schemas.slice(1))
+                ? applyPacks(pool, args.packsBase || args.distBase, args.packs || Object.keys(storedPacks(pool)))
                 : fetchCurrent(pool, args.distBase)) });
         } catch (e) { post({ id, ok: false, error: e.message }); }
         return;
