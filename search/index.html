@@ -4702,10 +4702,21 @@ document.addEventListener('DOMContentLoaded', function () { $(function() {
         // literal quote character never appears in the canon, so left unstripped this always
         // returns zero (or, depending on backend quirks, a huge irrelevant) results instead of
         // the word itself. Strip one matching wrapping pair, straight or curly.
-        q = q.replace(/^(["'“‘])([\s\S]*)(["'”’])$/, function (m, open, inner, close) {
-            var pairs = { '"': '"', "'": "'", '“': '”', '‘': '’' };
-            return pairs[open] === close ? inner : m;
+        q = q.replace(/^(["'“‘«„])([\s\S]*)(["'”’»“])$/, function (m, open, inner, close) {
+            var pairs = { '"': '"', "'": "'", '“': '”', '‘': '’', '«': '»', '„': '“' };
+            return pairs[open] === close ? inner.trim() : m;
         });
+        // A link to the site itself shared on its own (nothing else in the text): open where it points.
+        var own = /^https?:\/\/(?:www\.)?(?:test\.)?dhamma\.gift(\/[^\s]*)$/i.exec(q);
+        if (own) {
+            params.delete('q');
+            var u = new URL(own[1], location.origin), keep = params.toString();
+            history.replaceState(history.state, '', u.pathname + (u.search || (keep ? '?' + keep : '')) + u.hash);
+            return;
+        }
+        // "MN 102", "SN 56.11:1.1": a text id written with a space, as books and other sites print it.
+        var spaced = /^([a-z]+(?:-[a-z]+)*)\s+(\d[\w.\-:]*)$/i.exec(q);
+        if (spaced && window.DgTextRouter && window.DgTextRouter.classify((spaced[1] + spaced[2]).split(':')[0]).type === 'text') q = spaced[1] + spaced[2];
         params.delete('q');
         var rest = params.toString();
         var cleanPath = '/' + encodeURIComponent(q) + (rest ? '?' + rest : '') + window.location.hash;
