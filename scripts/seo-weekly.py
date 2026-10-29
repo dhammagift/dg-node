@@ -166,6 +166,9 @@ ISSUE_TEXT = {  # what each finding means, in plain words (the owner reads it, a
     'duplicate-title': 'share their title with another page',
     'hreflang-not-in-sitemap': 'link to their translations, which are missing from the sitemap, so Google does not find them',
 }
+# per finding: 🔴 the page is broken, 🟠 it keeps pages out of Google, 🟡 it weakens them in results
+SEVERITY = {'status': '🔴', 'fetch-error': '🔴', 'noindex': '🟠', 'canonical-elsewhere': '🟠', 'canonical-count-0': '🟠',
+            'canonical-count-2': '🟠', 'hreflang-not-in-sitemap': '🟠', 'no-title': '🟡', 'no-description': '🟡', 'duplicate-title': '🟡'}
 STATE_TEXT = {
     'Discovered - currently not indexed': 'found but not crawled yet',
     'Crawled - currently not indexed': 'crawled but not indexed',
@@ -192,24 +195,24 @@ def render(run, prev):
     kinds, perf, inspected = run['issues'], run['perf'], run['inspected']
     st, en = date.fromisoformat(run['period'][0]), date.fromisoformat(run['period'][1])
     period = f'{MONTHS[st.month - 1]} {st.day}–{en.day}' if st.month == en.month else f'{MONTHS[st.month - 1]} {st.day} – {MONTHS[en.month - 1]} {en.day}'
-    findings, broken = [], 0
-    for k, n in sorted(kinds.items(), key=lambda x: -x[1]):
+    findings = []
+    rank = {'🔴': 0, '🟠': 1, '🟡': 2}
+    base_of = lambda k: 'status' if k.startswith('status-') else k
+    for k, n in sorted(kinds.items(), key=lambda x: (rank[SEVERITY.get(base_of(x[0]), '🟡')], -x[1])):
         base, code = k.split('-', 1) if k.startswith('status-') else (k, '')
-        broken += n if base in ('status', 'fetch-error') else 0
-        findings.append(f'• {s_(n, "page")} ' + ISSUE_TEXT.get(base, k).format(code=code))
+        findings.append((SEVERITY.get(base, '🟡'), f'• {s_(n, "page")} ' + ISSUE_TEXT.get(base, k).format(code=code)))
     drops = [g for g, r in inspected.items() if prev.get('indexed', {}).get(g, 0) - r['pct'] >= 10]
     w, p = perf['week'], perf['prev']
     halved = p['clicks'] >= 20 and w['clicks'] < p['clicks'] / 2
-    # red only for what needs a hand now: pages that stopped opening in bulk, an index or traffic collapse
-    if broken >= max(20, run['urls'] // 100) or drops or halved:
-        head = '🔴 Urgent: ' + '; '.join(filter(None, [
-            f"{s_(broken, 'page')} don't open" if broken >= 20 else '',
-            ('index dropped: ' + ', '.join(GROUP_TEXT.get(g, g) for g in drops)) if drops else '',
-            'clicks from Google halved' if halved else '']))
-    elif findings:
-        head = f'🟡 {s_(len(findings), "issue")} to fix on the site, nothing urgent'
-    else:
+    # the headline: the worst severity present, then how many of each; an index or traffic collapse is critical too
+    count = Counter(m for m, _ in findings)
+    alarms = [('index dropped: ' + ', '.join(GROUP_TEXT.get(g, g) for g in drops)) if drops else '', 'clicks from Google halved' if halved else '']
+    alarms = [a for a in alarms if a]
+    if not findings and not alarms:
         head = '🟢 All good'
+    else:
+        worst = '🔴' if alarms or count['🔴'] else '🟠' if count['🟠'] else '🟡'
+        head = worst + ' ' + ' · '.join(filter(None, alarms + [f'{count[m]} {name}' for m, name in (('🔴', 'critical'), ('🟠', 'medium'), ('🟡', 'minor')) if count[m]]))
     out = [head, f'SEO dhamma.gift · {period}', '',
            f'From Google this week: {s_(w["clicks"], "click")} (week before: {num(p["clicks"])}), '
            f'{s_(w["impressions"], "impression")} in search (before: {num(p["impressions"])})', '', 'Indexed by Google:']
@@ -225,7 +228,13 @@ def render(run, prev):
                 why[STATE_TEXT.get(cs, cs)] += n
     if why:
         out.append('The rest: ' + ', '.join(f'{t} {n}' for t, n in why.most_common()))
-    out += ['', f'Site check ({num(run["urls"])} URLs in the sitemap):'] + (findings[:8] or ['• no errors'])
+    out += ['', f'Site check ({num(run["urls"])} URLs in the sitemap):']
+    for mark, title in (('🔴', 'Critical: pages broken'), ('🟠', 'Medium: keeps pages out of Google'), ('🟡', 'Minor: weakens pages in results')):
+        group = [t for m, t in findings if m == mark]
+        if group:
+            out += [f'{mark} {title}'] + group
+    if not findings:
+        out.append('🟢 no errors')
     out += ['', f'Details: {STATE_DIR}/report-{run["date"]}.txt']
     return '\n'.join(out)
 
