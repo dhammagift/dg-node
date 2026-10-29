@@ -105,6 +105,9 @@ const {
 // escape the limit, because the leftmost entry is taken on faith.
 const app = Fastify({
     bodyLimit: 10 * 1024 * 1024,
+    // A clean-path search is one path parameter (/:slug); the default 100 characters answered 414 to the longer key-term
+    // regexes in the sitemap (kāmabhav|rūpabhav|… is ~240 encoded), and to people's long queries.
+    maxParamLength: 2000,
     trustProxy: REGEX_LIMITS.rateLimit ? REGEX_LIMITS.rateLimit.trustProxy || false : false,
 });
 
@@ -145,6 +148,16 @@ function legacyReaderRedirect(url) {
     }
     return '/?q=' + encodeURIComponent(q) + (rest ? '&' + rest : '');
 }
+// One host for search engines (SEO audit 2026-10-30): the old names Apache still aliases to this vhost (www., f., find.)
+// served the whole site with 200 beside dhamma.gift; they move to it, path and query kept. Any other *.dhamma.gift
+// that reaches this process (f1., a server's own name, api.) stays usable but leaves search (onSend below).
+const ALIAS_HOSTS = new Set(['www.dhamma.gift', 'f.dhamma.gift', 'www.f.dhamma.gift', 'find.dhamma.gift', 'www.find.dhamma.gift']);
+const INDEXED_HOSTS = new Set(['dhamma.gift', 'test.dhamma.gift', 'dict.dhamma.gift']); // test: Apache adds its own noindex
+const hostOf = req => String(req.headers.host || '').toLowerCase().replace(/:\d+$/, '');
+app.addHook('onRequest', (req, res, done) => {
+    if (ALIAS_HOSTS.has(hostOf(req))) return res.redirect('https://dhamma.gift' + req.url, 301);
+    done();
+});
 app.addHook('onRequest', (req, res, done) => {
     const to = (req.method === 'GET' || req.method === 'HEAD') ? legacyReaderRedirect(req.url) : null;
     if (to) return res.redirect(to, 301);
@@ -231,6 +244,9 @@ app.get('/' + INDEXNOW_KEY + '.txt', (req, reply) => sendFile(req, reply, INDEXN
 // and the docs builds; it no longer comes from the legacy site's hand-kept file.
 const SITEMAP_PATH = path.join(__dirname, 'settings', 'sitemap.xml');
 app.get('/sitemap.xml', (req, reply) => sendFile(req, reply, SITEMAP_PATH, 'application/xml; charset=utf-8'));
+app.get('/sitemaps/:name', (req, reply) => /^[a-z-]+\.xml$/.test(req.params.name)
+    ? sendFile(req, reply, path.join(__dirname, 'settings', 'sitemaps', req.params.name), 'application/xml; charset=utf-8')
+    : reply.callNotFound());
 
 // /ai and /b are legacy reader pages whose JS pulls its actual sutta text through PHP endpoints
 // (read/js/common.js: `/read/php/translator-lookup.php?...`), and PHP is not executed by this
@@ -715,6 +731,8 @@ app.addHook('onSend', (req, reply, payload, done) => {
     // search: everything they had is in the docs and the home page now (owner 2026-10-27). HTML only, so
     // scripts, styles and images are untouched.
     if (/^\/([a-z]{2}\/)?assets\//.test(req.url) && /^text\/html/.test(reply.getHeader('content-type') || '')) reply.header('x-robots-tag', 'noindex');
+    // f1.dhamma.gift and the like: full copies of the site under another name (Googlebot fetched ~5,700 pages a week from f1)
+    if (/\.dhamma\.gift$/.test(hostOf(req)) && !INDEXED_HOSTS.has(hostOf(req))) reply.header('x-robots-tag', 'noindex');
     done(null, payload);
 });
 
@@ -1130,9 +1148,11 @@ for (const route of ['/.well-known/apple-app-site-association', '/apple-app-site
     });
 }
 
-app.get('/api-docs', (req, res) => res.redirect('/api-docs/'));
+app.get('/api-docs', (req, res) => res.redirect('/api-docs/', 301));
 app.get('/api-docs/', (req, res) => {
     res.header('cache-control', 'public, max-age=0, must-revalidate');
+    // a tool, not a document: the API is described for search in the docs (/docs/tech/), not by this JS page
+    res.header('x-robots-tag', 'noindex');
     return res.type('text/html; charset=utf-8').send(SWAGGER_UI_HTML);
 });
 // Whole-sutta mp3s in the DG voices (SEO: "listen to the sutta"), made by a batch through the voice server and kept in
@@ -1535,35 +1555,59 @@ for (const r of searchPool.enrich) r.configure({ dbPath: SEARCH_DB_PATH, dgOffli
 // the pages are in the OS page cache either way, and read() reaches them just as fast.
 searchDb.exec('PRAGMA cache_size = -16000'); // 16MB page cache, per connection
 
-// sitemap.xml for search engines: the home page, every text page in its final address (the one
-// the reader serves without a redirect, same normalization as the /:slug route), and every docs
-// page of both docs builds. Rebuilt on each start, like the other caches here, so it follows dg.db.
+// sitemap.xml for search engines: an index of sitemaps/*.xml (SEO audit 2026-10-30, one file per part so Search
+// Console shows indexing per part): pages.xml (home, contents, Hatthipada, apps, key terms, docs), texts-en.xml,
+// texts-ru.xml and texts-other.xml — every text in every language its page offers in hreflang (de, sr, th…: 13k pages
+// were linked only from hreflang). Text addresses are final ones (the reader serves them without a redirect, same
+// normalization as the /:slug route). lastmod is the day the page's content last changed, kept in
+// settings/sitemap-state.json: with the build date on every URL Google ignores lastmod altogether.
+// Rebuilt on each start, like the other caches here, so it follows dg.db.
+const SITEMAP_DIR = path.join(__dirname, 'settings', 'sitemaps');
+const SITEMAP_STATE_PATH = path.join(__dirname, 'settings', 'sitemap-state.json');
 async function buildSitemapCache() {
     const base = 'https://dhamma.gift';
-    const dbDate = (await fs.stat(SEARCH_DB_PATH)).mtime.toISOString().slice(0, 10);
+    const today = new Date().toISOString().slice(0, 10);
     const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+    let state = {};
+    try { state = JSON.parse(await fs.readFile(SITEMAP_STATE_PATH, 'utf8')); } catch { /* first build: every page dated today */ }
+    const nextState = {};
+    // sig: what the page's content is made of; the date moves only when it changes
+    const dated = (loc, sig, fixed) => {
+        const old = state[loc];
+        const date = fixed || (old && old[0] === sig ? old[1] : today);
+        nextState[loc] = [sig, date];
+        return date;
+    };
+    const parts = { pages: [], 'texts-en': [], 'texts-ru': [], 'texts-other': [] };
+    const add = (part, loc, sig, fixed) => parts[part].push([loc, dated(loc, sig, fixed)]);
     // not /dict/: its canonical is dict.dhamma.gift — a sitemap entry whose page points elsewhere is a contradiction
-    const entries = [[base + '/', dbDate, '1.0'], [base + '/?lang=ru', dbDate, '1.0']];
+    add('pages', base + '/', 'home'); add('pages', base + '/?lang=ru', 'home');
     // the contents pages: each links every text of its book — the shortest crawl path to the suttas
     for (const code of ['', ...TOC_CODES].filter(tocHasPali)) {
         const loc = base + '/toc' + (code ? '/' + encodeURIComponent(code) : '');
-        entries.push([loc, dbDate, '0.7'], [loc + '?lang=ru', dbDate, '0.7']);
+        add('pages', loc, 'toc'); add('pages', loc + '?lang=ru', 'toc');
     }
     // Hatthipada: the four noble truths opened by the Suttas' own definitions (owner 2026-10-22: index it), beside the Principles
-    entries.push([base + '/hatthipada/', dbDate, '1.0'], [base + '/hatthipada/?lang=ru', dbDate, '1.0']);
+    const hp = (await fs.stat(path.join(SITEROOT, 'hatthipada', 'index.html')).catch(() => null));
+    const hpDate = hp ? hp.mtime.toISOString().slice(0, 10) : null;
+    add('pages', base + '/hatthipada/', 'hp', hpDate); add('pages', base + '/hatthipada/?lang=ru', 'hp', hpDate);
     // all our apps on one page (owner 2026-10-27), en and ru
-    entries.push([base + '/apps', dbDate, '0.6'], [base + '/apps?lang=ru', dbDate, '0.6']);
+    add('pages', base + '/apps', 'apps'); add('pages', base + '/apps?lang=ru', 'apps');
     // the key terms' search results (SEO_TERMS), en and ru
     for (const t of SEO_TERMS.values()) {
         const loc = base + '/' + encodeURIComponent(t.q);
-        entries.push([loc, dbDate, '0.6'], [loc + '?lang=ru', dbDate, '0.6']);
+        add('pages', loc, 'term'); add('pages', loc + '?lang=ru', 'term');
+    }
+    // per text and language: rows and characters, one grouped scan (~2 s); a text page shows the root and its language
+    const sig = new Map();
+    for (const r of searchDb.prepare(
+        "SELECT sutta_id, kind, lang, count(*) n, sum(length(txt)) c FROM texts WHERE translator IS NULL OR translator <> 'ai' GROUP BY 1, 2, 3"
+    ).iterate()) {
+        const m = sig.get(r.sutta_id) || sig.set(r.sutta_id, { root: '', tr: {} }).get(r.sutta_id);
+        if (r.kind === 'translation') m.tr[r.lang] = `${r.n}:${r.c}`;
+        else m.root += `${r.kind}${r.n}:${r.c};`;
     }
     const seen = new Set();
-    // the Russian page of every text that has a Russian translation (the second market, owner 2026-10-17);
-    // other languages are reachable through each page's hreflang links
-    const hasRu = new Set(searchDb.prepare(
-        "SELECT DISTINCT sutta_id FROM texts WHERE lang = 'ru' AND kind = 'translation' AND translator <> 'ai'"
-    ).all().map(r => r.sutta_id));
     for (const id of Object.keys(skeletonDB)) {
         // Pali texts only: the Chinese, Sanskrit and Gāndhārī parallels (lzh/, san/, pra/) open by their id but are
         // not what the site offers (owner: they must not be in the sitemap)
@@ -1573,36 +1617,48 @@ async function buildSitemapCache() {
         const finalId = classified.type === 'text' && !isVinayaAlias ? classified.id : id;
         if (seen.has(finalId)) continue;
         seen.add(finalId);
-        entries.push([base + '/' + encodeURIComponent(finalId), dbDate, '0.8']);
-        if (hasRu.has(id)) entries.push([base + '/' + encodeURIComponent(finalId) + '?lang=ru', dbDate, '0.8']);
+        const m = sig.get(id) || { root: '', tr: {} };
+        const loc = base + '/' + encodeURIComponent(finalId);
+        // the same set as the page's own hreflang (textHead: en plus every language with a translation)
+        add('texts-en', loc, m.root + (m.tr.en || ''));
+        for (const lang of Object.keys(m.tr).sort()) {
+            if (lang === 'en') continue;
+            add(lang === 'ru' ? 'texts-ru' : 'texts-other', loc + '?lang=' + encodeURIComponent(lang), m.root + m.tr[lang]);
+        }
     }
-    // Docs: each build has its own sitemap.xml. /docs/* is served with a trailing-slash redirect,
-    // /ru/docs/* without one, so list each page the way it answers 200.
-    for (const [dir, slash] of [['build', true], ['build-ru', false]]) {
+    // Docs: each build has its own sitemap.xml, trailing-slash URLs since dg-docs 51d6acc (the form both mounts answer 200)
+    for (const [dir, slash] of [['build', true], ['build-ru', true]]) {
         try {
             const xml = await fs.readFile(path.join(__dirname, 'dg-docs', dir, 'sitemap.xml'), 'utf8');
             for (const m of xml.matchAll(/<loc>([^<]+)<\/loc>/g)) {
                 let loc = m[1];
                 if (slash && !loc.endsWith('/') && !/\.[a-z0-9]+$/i.test(loc)) loc += '/';
-                // the page's own date (its built index.html), not the corpus date: lastmod is the one sitemap hint Google uses
+                // the page's own date (its built index.html): the docs checkout rewrites only the files a build changed
                 const rel = loc.replace(/^https:\/\/dhamma\.gift\/(ru\/)?docs\/?/, '').replace(/\/$/, '');
                 const lastmod = await fs.stat(path.join(__dirname, 'dg-docs', dir, rel, 'index.html'))
-                    .then(st => st.mtime.toISOString().slice(0, 10), () => dbDate);
-                // the site's own contribution, above the texts (owner 2026-10-22): the Rationale, the Principles by the Suttas, the Glossary
-                entries.push([loc, lastmod, /\/docs\/(rationale|sutta|glossary)\/?$/.test(loc) ? '1.0' : '0.5']);
+                    .then(st => st.mtime.toISOString().slice(0, 10), () => null);
+                add('pages', loc, 'doc', lastmod);
             }
         } catch (e) {
             console.warn(`Sitemap: no docs sitemap in dg-docs/${dir} (${e.code || e.message})`);
         }
     }
-    const xml = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
-        entries.map(([loc, lastmod, prio]) => `  <url><loc>${esc(loc)}</loc><lastmod>${lastmod}</lastmod><priority>${prio}</priority></url>`).join('\n') +
-        '\n</urlset>\n';
     try {
-        await fs.writeFile(SITEMAP_PATH, xml, 'utf8');
-        console.log(`Sitemap built: ${entries.length} URLs -> settings/sitemap.xml`);
+        await fs.mkdir(SITEMAP_DIR, { recursive: true });
+        const index = [];
+        for (const [name, entries] of Object.entries(parts)) {
+            const xml = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
+                entries.map(([loc, lastmod]) => `  <url><loc>${esc(loc)}</loc><lastmod>${lastmod}</lastmod></url>`).join('\n') + '\n</urlset>\n';
+            await fs.writeFile(path.join(SITEMAP_DIR, name + '.xml'), xml, 'utf8');
+            index.push(`  <sitemap><loc>${base}/sitemaps/${name}.xml</loc><lastmod>${entries.reduce((a, e) => e[1] > a ? e[1] : a, '')}</lastmod></sitemap>`);
+        }
+        await fs.writeFile(SITEMAP_PATH, '<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
+            index.join('\n') + '\n</sitemapindex>\n', 'utf8');
+        await fs.writeFile(SITEMAP_STATE_PATH, JSON.stringify(nextState), 'utf8');
+        console.log('Sitemap built: ' + Object.entries(parts).map(([n, e]) => `${n} ${e.length}`).join(', ') +
+            `; changed today: ${Object.values(nextState).filter(v => v[1] === today).length}`);
     } catch (e) {
-        console.warn('Sitemap: could not write file:', e.message);
+        console.warn('Sitemap: could not write files:', e.message);
     }
 }
 
@@ -2237,6 +2293,37 @@ const mountedPrefixes = new Set(['assets', 'read', 'memorize', 'devanagari', 'mo
 // through to the 404 handler and looks like a missing FILE rather than a missing MOUNT. That cost
 // real debugging time; one line at startup makes it obvious. Note the list is built ONCE: a new
 // entry in siteroot/, or an existing one repointed at something that now exists, needs a restart.
+// Hatthipada as two pages for search, en and ru (SEO audit 2026-10-30): the static file carries one English title
+// and description and no canonical, so /hatthipada/?lang=ru was the English page again under another URL. The page
+// itself picks its language from ?lang= (its UI const); the head is set here to match.
+const HATTHIPADA_HEAD = {
+    en: ['Hatthipada — the four noble truths in depth, by the Suttas’ own definitions | Dhamma.Gift',
+        'The four noble truths and, as deep as you go, how the suttas themselves define every word'],
+    ru: ['Хаттхипада — четыре истины вглубь, по определениям самих сутт | Dhamma.Gift',
+        'Четыре благородные истины и, насколько глубоко ни пойти, как сами сутты определяют каждое слово'],
+};
+app.get('/hatthipada/', (req, reply) => {
+    const lang = req.query.lang === 'ru' ? 'ru' : 'en';
+    const abs = path.join(SITEROOT, 'hatthipada', 'index.html');
+    let entry = versionedHtmlCache.get(abs);
+    if (!entry || Date.now() - entry.at > VERSIONED_HTML_TTL) {
+        entry = buildVersionedHtml(abs);
+        if (!entry) return reply.callNotFound();
+        versionedHtmlCache.set(abs, entry);
+    }
+    const [title, desc] = HATTHIPADA_HEAD[lang];
+    const url = l => SITE + '/hatthipada/' + (l === 'ru' ? '?lang=ru' : '');
+    const head = `<title>${htmlAttr(title)}</title>\n<meta name="description" content="${htmlAttr(desc)}">\n` +
+        `<link rel="canonical" href="${url(lang)}">\n<link rel="alternate" hreflang="en" href="${url('en')}">\n` +
+        `<link rel="alternate" hreflang="ru" href="${url('ru')}">\n<link rel="alternate" hreflang="x-default" href="${url('en')}">`;
+    const html = entry.rewritten
+        .replace(/<html lang="[^"]*"/, `<html lang="${lang}"`)
+        .replace(/<title>[^<]*<\/title>\s*<meta name="description" content="[^"]*">/, head);
+    const etag = entry.etag.replace(/"$/, '-' + lang + '"');
+    reply.header('cache-control', 'public, max-age=0, must-revalidate').header('etag', etag);
+    if (req.headers['if-none-match'] === etag) return reply.code(304).send();
+    return reply.type('text/html; charset=utf-8').send(html);
+});
 const skippedPrefixes = [];
 for (const name of siteRootEntries) {
     if (mountedPrefixes.has(name)) continue;
@@ -3559,7 +3646,12 @@ const htmlAttr = s => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').r
 // "mn10" -> "MN 10", "sn56.11" -> "СН 56.11" on a Russian page, "dhp1-20" -> "Dhp 1-20"; Vinaya ids have no short code
 function textCode(id, lang) {
     const m = /^([a-z]+)(\d.*)$/.exec(id);
-    if (!m) return '';
+    // Vinaya rules and the Apadāna had no code, so rules with one name shared a title ("Pallatthikasikkhāpada — Clasping
+    // the knees" on bu-vb-sk26 and sk65, SEO audit 2026-10-30): pli-tv-bu-vb-sk26 -> "Bu Sk 26", tha-ap1 -> "Tha Ap 1"
+    if (!m) {
+        const v = /^([a-z]+(?:-[a-z]+)*)(\d.*)?$/.exec(id.replace(/^pli-tv-/, '').replace(/-vb-/, '-'));
+        return v ? v[1].split('-').map(t => t[0].toUpperCase() + t.slice(1)).join(' ') + (v[2] ? ' ' + v[2] : '') : '';
+    }
     const p = m[1];
     return ((lang === 'ru' && RU_CODES[p]) || (p.length <= 2 ? p.toUpperCase() : p[0].toUpperCase() + p.slice(1))) + ' ' + m[2];
 }
@@ -3611,7 +3703,12 @@ async function textHead(dataId, urlId, reqLang) {
     // Only the title; the name as the text writes it stays first in the description and in keywords.
     const titlePali = pali.replace(/^(.*[^\s-])(suttanta|suttaṁ|sutta)$/i, (m, stem, s) => stem + (/^suttanta$/i.test(s) ? ' Suttanta' : ' Sutta'));
     const name = pali ? titlePali + (code ? ` (${code})` : '') : code;
-    const title = [name, local && local.toLowerCase() !== pali.toLowerCase() ? local : ''].filter(Boolean).join(' — ') + ' | Dhamma.Gift';
+    // the other languages' pages name their language: a German title is often the English word ("Blind", AN 3.29), and the
+    // two pages then had one title (SEO audit 2026-10-30)
+    let endonym = '';
+    if (lang !== 'en' && lang !== 'ru') try { endonym = new Intl.DisplayNames([lang], { type: 'language' }).of(lang); } catch { /* unknown code */ }
+    const title = [name, local && local.toLowerCase() !== pali.toLowerCase() ? local : ''].filter(Boolean).join(' — ') +
+        (endonym && endonym !== lang ? ' · ' + endonym : '') + ' | Dhamma.Gift';
     let description = '';
     // the translation's own words; Pali only when this text has no translation in this language
     const body = segments.slice(headerEnd + 1);
@@ -3624,7 +3721,9 @@ async function textHead(dataId, urlId, reqLang) {
     // Russian readers search the name in Cyrillic: it opens the Russian description
     const cyr = pali ? paliCyr(split) : '';
     if (lang === 'ru' && cyr) description = cyr + (code ? ', ' + code : '') + '. ' + description;
-    else if (titlePali !== pali) description = pali + (code ? ', ' + code : '') + '. ' + description;
+    // the name and code always open it: 290 pages shared a description, most of them the opening formula ("At one time
+    // the Buddha was staying at Sāvatthī…", SEO audit 2026-10-30)
+    else if (pali || code) description = [pali, code].filter(Boolean).join(', ') + '. ' + description;
     // a text with its audio says so at the end of the description, which keeps its 160 characters
     const audio = textAudio(dataId);
     const AUDIO_LANG = { en: { pli: 'Pali', ru: 'Russian', en: 'English' }, ru: { pli: 'пали', ru: 'русский', en: 'английский' } };
@@ -4290,7 +4389,8 @@ app.get('/:slug', (req, res) => {
     // still a folder name, not a keyword — an honest 404 beats "0 texts found for mobile-data".
     if (siteRootEntries.has(rawSlug)) return res.callNotFound();
     const colonIdx = rawSlug.indexOf(':');
-    const rawBase = (colonIdx === -1 ? rawSlug : rawSlug.slice(0, colonIdx)).toLowerCase();
+    const caseBase = colonIdx === -1 ? rawSlug : rawSlug.slice(0, colonIdx);
+    const rawBase = caseBase.toLowerCase();
     const anchorSuffix = colonIdx === -1 ? '' : rawSlug.slice(colonIdx);
     // Owner (live bug): sharing "AN 10.72" from a phone's OS share sheet produced a link with a
     // literal space ("/an%2010.72") instead of "an10.72" — the raw slug never matched skeletonDB,
@@ -4305,7 +4405,8 @@ app.get('/:slug', (req, res) => {
     // "pli-tv-bi…". The client resolves the alias with this same classify(), so the reader opens
     // the same text either way; only the redirect is skipped.
     const isVinayaAlias = classified.type === 'text' && /^pli-tv-/.test(classified.id) && skeletonDB[classified.id];
-    if (classified.type === 'text' && classified.id !== rawBase && !isVinayaAlias) {
+    // caseBase, not rawBase: "/MN76" answered 200 beside "/mn76" (a second form for search engines to hold)
+    if (classified.type === 'text' && classified.id !== caseBase && !isVinayaAlias) {
         return res.redirect('/' + encodeURIComponent(classified.id) + anchorSuffix + queryString(req), 301);
     }
     if (isVinayaAlias && classified.id !== rawBase) {
@@ -4329,7 +4430,7 @@ app.get('/:slug', (req, res) => {
     if (range) {
         const query = queryString(req); // сохраняем ?s=, ?lang= и т.п.
         // the line anchor too: /an1.9:1.1 -> /an1.1-10:an1.9:1.1 (the reader reads range:id:segment)
-        return res.redirect('/' + encodeURIComponent(range) + ':' + encodeURIComponent(suttaId) + anchorSuffix + query);
+        return res.redirect('/' + encodeURIComponent(range) + ':' + encodeURIComponent(suttaId) + anchorSuffix + query, 301);
     }
     // "Оглавленческий" id ("mn", "sn25", "pli-tv-bu-vb-") — не текст, а узел оглавления. Раньше
     // здесь отдавалась самодельная HTML-заглушка со списком детей; теперь есть настоящий TOC —
@@ -4368,7 +4469,7 @@ app.setNotFoundHandler((req, res) => {
         const rest = '/' + pathPart.slice(3).replace(/^[\/\\]+/, '');
         const params = new URLSearchParams(queryPart || '');
         params.set('lang', 'ru');
-        return res.redirect(rest + '?' + params.toString());
+        return res.redirect(rest + '?' + params.toString(), 301); // a permanent alias: 302 kept both forms in search
     }
     // Dictionary clean-path words (/dict/dukkha, /dict/ru/dukkha), same as dict.dhamma.gift/dukkha
     // behind Apache's .htaccess: no such file under siteroot/dict -> serve the dictionary page,

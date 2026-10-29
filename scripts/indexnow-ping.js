@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Announces dhamma.gift pages to IndexNow (api.indexnow.org shares them with Yandex, Bing, Seznam…).
-// Usage: node scripts/indexnow-ping.js            every URL of the live sitemap
+// Usage: node scripts/indexnow-ping.js            the sitemap's URLs whose content changed today (their lastmod)
+//        node scripts/indexnow-ping.js --all      every URL of the sitemap
 //        node scripts/indexnow-ping.js URL...     only these
 // Run on prod after content changes (scripts/pull-db.sh does it after installing a new build).
 const fs = require('fs');
@@ -11,12 +12,20 @@ const KEY = fs.readFileSync(path.join(__dirname, '..', 'configs', 'indexnow-key.
 const BATCH = 10000; // the protocol's limit per request
 
 async function main() {
-    let urls = process.argv.slice(2);
+    const all = process.argv.includes('--all');
+    let urls = process.argv.slice(2).filter(a => a !== '--all');
     if (!urls.length) {
-        // the server writes the sitemap it serves to settings/sitemap.xml at start; read locally — F1 cannot reach
-        // its own public address (hairpin NAT: dhamma.gift from F1 resets)
-        const xml = fs.readFileSync(path.join(__dirname, '..', 'settings', 'sitemap.xml'), 'utf8');
-        urls = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map(m => m[1].replace(/&amp;/g, '&'));
+        // the server writes the sitemaps it serves to settings/sitemaps/*.xml at start; read locally — F1 cannot reach
+        // its own public address (hairpin NAT: dhamma.gift from F1 resets). Only pages changed today unless --all:
+        // engines are asked to recrawl what changed, not the whole site on every database install.
+        const dir = path.join(__dirname, '..', 'settings', 'sitemaps');
+        const today = new Date().toISOString().slice(0, 10);
+        for (const f of fs.readdirSync(dir).filter(f => f.endsWith('.xml'))) {
+            for (const m of fs.readFileSync(path.join(dir, f), 'utf8').matchAll(/<loc>([^<]+)<\/loc><lastmod>([^<]+)<\/lastmod>/g)) {
+                if (all || m[2] === today) urls.push(m[1].replace(/&amp;/g, '&'));
+            }
+        }
+        if (!urls.length) return console.log('IndexNow: nothing changed today');
     }
     // the engines fetch the key from the live site: a key that is not deployed yet would fail every batch
     // (unreachable from the box itself is not "not live": only a wrong answer stops us)
