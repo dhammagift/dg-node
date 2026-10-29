@@ -52,6 +52,9 @@
   --ui:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
 }
 body.dark{
+  /* Native controls (an unticked checkbox, scrollbars) drawn dark too: they stayed white boxes in the dark theme (owner,
+     the offline packs dialog). */
+  color-scheme:dark;
   /* Neutral greys of the site's dark theme (search/css/home.css): blocks are the home tiles'
      --dg-surface/--dg-border, text is --dg-text/--dg-text-2 — no blue tint of their own. */
   --ink:#DDDDDD; --ink-2:#A8A8A8; --ink-3:#8A8A8A;

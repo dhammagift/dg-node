@@ -205,22 +205,30 @@
         var main = packs.filter(function (p) { return p.main; })[0];
         var isRoot = function (p) { return p.kind === 'root'; };
         var langOf = function (p) { return p.lang || (/^tr-([a-z]{2,3})$/.exec(p.id) || [])[1] || null; };
+        // Fixed self-names, as in the mockup: a browser's own data may lack some (Pablo's phone showed "Gsw", headless
+        // Chromium "Lao", "Georgian"). Intl only for a language not listed here.
+        var LANG_NAMES = { en: 'English', de: 'Deutsch', ru: 'Русский', th: 'ไทย', sr: 'Српски', fr: 'Français', lt: 'Lietuvių',
+            it: 'Italiano', pt: 'Português', tr: 'Türkçe', pl: 'Polski', jpn: '日本語', ja: '日本語', es: 'Español', et: 'Eesti',
+            vi: 'Tiếng Việt', ka: 'ქართული', id: 'Bahasa Indonesia', gu: 'ગુજરાતી', hi: 'हिन्दी', ta: 'தமிழ்', my: 'မြန်မာ', lo: 'ລາວ',
+            gsw: 'Schwiizertüütsch', cs: 'Čeština', fi: 'Suomi' };
         function nativeName(lang) {
+            if (LANG_NAMES[lang]) return LANG_NAMES[lang];
             try { var n = new Intl.DisplayNames([lang], { type: 'language' }).of(lang); return n.charAt(0).toUpperCase() + n.slice(1); }
             catch (e) { return lang; }
         }
         function name(p) {
+            if (p.langs && p.langs.length > 1) return L.more(p.langs.length);   // counted here: the plural is ours to get right
             if (p.title) return p.title[isRu ? 'ru' : 'en'] || p.title.en || p.id;
             if (isRoot(p)) return EDITIONS[p.edition || p.id.replace(/^root-/, '')] || p.id;
-            if (p.langs && p.langs.length > 1) return L.more(p.langs.length);
             var lang = langOf(p);
             return lang ? nativeName(lang) : (p.id === 'tr-small' ? (isRu ? 'Другие языки' : 'Other languages') : p.id);
         }
+        // HTML: each language name kept on one line ("Tiếng / Việt" broke in the middle).
         function desc(p) {
             var bits = [];
-            if (p === main) bits.push(L.core);
-            if (p.langs && p.langs.length > 1) bits.push(p.langs.map(nativeName).join(' · '));
-            if (p.texts) bits.push(p.texts.toLocaleString(isRu ? 'ru' : 'en') + L.texts);
+            if (p === main) bits.push(esc(L.core));
+            if (p.langs && p.langs.length > 1) bits.push(p.langs.map(function (l) { return '<span style="white-space:nowrap">' + esc(nativeName(l)) + '</span>'; }).join(' · '));
+            if (p.texts) bits.push(esc(p.texts.toLocaleString(isRu ? 'ru' : 'en') + L.texts));
             return bits.join(' · ');
         }
         var mbOf = function (b) { return Math.max(1, Math.round((b || 0) / 1048576)); };
@@ -270,7 +278,7 @@
             var tag = '';
             if (has(p)) tag = !on[p.id] ? '<span class="pk-tag-del">' + L.del + '</span>' : outdated.indexOf(p.id) !== -1 ? '<span class="pk-tag-new">' + L.changed + '</span>' : '<span class="pk-tag-have">✓ ' + L.have + '</span>';
             else if (on[p.id] && (installed.length || oldWhole)) tag = '<span class="pk-tag-new">' + L.isNew + '</span>';
-            var d = [esc(desc(p)), p === main || p.required ? L.required : '', tag].filter(Boolean).join(' · ');
+            var d = [desc(p), p === main || p.required ? L.required : '', tag].filter(Boolean).join(' · ');
             return '<li' + (has(p) && !on[p.id] ? ' class="pk-del"' : '') + '><label><input type="checkbox" data-id="' + esc(p.id) + '"'
                 + (on[p.id] ? ' checked' : '') + (p === main || p.required ? ' disabled' : '') + '>'
                 + '<span class="pk-name"><b>' + esc(name(p)) + '</b>' + (d ? '<span class="row-desc" style="margin:0">' + d + '</span>' : '') + '</span>'
