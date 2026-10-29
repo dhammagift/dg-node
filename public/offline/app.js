@@ -329,8 +329,24 @@
         if (!el) return;
         event.preventDefault();
         var asked = el.getAttribute('data-dg-offline-download');
-        requestDownload(asked === 'update' ? 'update' : 'open');
+        if (asked === 'update') { requestDownload('update'); return; }
+        // Packs published: the link opens the picker in Settings (offline-library-settings.js opens its dialog on this
+        // flag) instead of downloading the default packs unasked.
+        packsPublished().then(function (yes) {
+            if (!yes) { requestDownload('open'); return; }
+            try { localStorage.setItem(OPEN_PACKS_KEY, '1'); } catch (e) { /* private mode: the row is still there */ }
+            if (window.DgHome && typeof window.DgHome.openSettingsSheet === 'function') window.DgHome.openSettingsSheet();
+            else location.href = (window.DgTextRouter && window.DgTextRouter.settingsUrl) ? window.DgTextRouter.settingsUrl() : '/settings/';
+        });
     });
+    var OPEN_PACKS_KEY = 'dg.offline.openPacks';
+    function packsPublished() {
+        if (!PACKS_ON) return Promise.resolve(false);
+        return fetch((PACKS_BASE || DIST_BASE) + '/packs-manifest.json', { cache: 'no-store' })
+            .then(function (r) { return r.ok ? r.json() : null; })
+            .then(function (m) { return !!(m && Array.isArray(m.packs)); })
+            .catch(function () { return false; });
+    }
 
     // The same thing for code that would rather call it directly (the settings page cannot — it is a
     // separate realm — but anything on this page can).

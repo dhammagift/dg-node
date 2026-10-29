@@ -331,6 +331,10 @@
         btnEl.textContent = names.length || oldWhole ? L.change : L.choose;
         btnEl.disabled = false;
         btnEl.onclick = function () { resetSelection(); render(); dlg.showModal(); };
+        // Opened from the page's "Download the offline library" link (app.js): straight to the dialog.
+        var openNow = false;
+        try { openNow = localStorage.getItem('dg.offline.openPacks') === '1'; localStorage.removeItem('dg.offline.openPacks'); } catch (e) { /* none */ }
+        if (openNow) { document.getElementById('dgOfflineLibRow').scrollIntoView({ block: 'center' }); btnEl.click(); }
     }
 
     // Delete asks the SPA (this page runs in the settings sheet's iframe, where the offline layer —
