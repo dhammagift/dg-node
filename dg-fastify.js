@@ -2034,25 +2034,14 @@ app.register(async (read) => {
     });
     read.setNotFoundHandler((req, res) => proxyToOld(req, res));
 }, { prefix: '/read' });
-// /spa — static assets PLUS a client-routing fallback (any /spa/* path the static plugin can't
-// find a file for serves index.html instead — router.js parses the real route client-side). In
-// Express this was two separate app.use()/app.get() registrations on the same prefix, relying on
-// static's next()-on-miss fallthrough; Fastify has no such fallthrough between two routes
-// registered on the identical pattern (FST_ERR_DUPLICATED_ROUTE), so the SPA fallback has to be
-// this encapsulated context's OWN not-found handler instead — the actual mechanism Fastify offers
-// for "prefix-scoped 404" (see also /spa/app below, moved in here for the same reason).
-const spaIndexPath = path.join(__dirname, 'public', 'spa', 'index.html');
-app.register(async (spa) => {
-    spa.register(fastifyStatic, {
-        root: path.join(__dirname, 'public', 'spa'),
-        prefix: '/',
-        setHeaders: staticCacheHeaders,
-        decorateReply: false,
-    });
-    // SPA главная точка входа — служит spa/index.html для всех маршрутов
-    spa.get('/app', (req, res) => sendVersionedHtml(req, res, spaIndexPath));
-    spa.setNotFoundHandler((req, res) => sendVersionedHtml(req, res, spaIndexPath));
-}, { prefix: '/spa' });
+// /spa — only toc.js (the contents page loads it). The 2024 SPA prototype served here for every
+// /spa/* path had no links and no visits; removed (owner 2026-10-29).
+app.register(fastifyStatic, {
+    root: path.join(__dirname, 'public', 'spa'),
+    prefix: '/spa/',
+    setHeaders: staticCacheHeaders,
+    decorateReply: false,
+});
 // /settings — мастер-настройки (единая страница, вызывается по шестерёнке; отдельно от
 // быстрых настроек в quickModal и смарт-панели ридера, см. TODO.md). Explicit route
 // (cache.md §2) so its JS/CSS links get versioned.
@@ -2379,8 +2368,6 @@ for (const name of offlineMirrors) {
 // catch the leftover (no static file, no other route matched) is the not-found handler, not a
 // regular middleware; see the redirect-based rewrite there, right below the final 404 fallback,
 // for /ru, /ru/dn22, etc.
-
-// /spa/app and /spa/* (SPA fallback) are registered together with the /spa static mount above.
 
 // Страница поиска — главная точка входа (легаси, для обратной совместимости)
 app.get('/', (req, res) => {
