@@ -454,7 +454,7 @@ function publishArchive(buildId) {
     try {
         /* What the apps download is no longer byte-for-byte the server's dg.db: the rows of
            OFFLINE_EXCLUDED_TRANSLATORS stay on the server (owner via Pablo, 2026-10-29: "AI убрать
-           из всего офлайн"). The copy is rebuilt from dg.db (same schema, same rowids, its own fts)
+           из всего офлайн"). The copy is rebuilt from dg.db (same schema, rowids and fts of its own)
            rather than DELETE + VACUUM, because VACUUM may renumber the rowids that the external-content
            fts points at. Its build_id is the copy's own content hash, written into its meta as before. */
         const full = writeOfflineDb(path.join(tmpDir, 'dg.db'), 'all', '1', [], true);
@@ -478,7 +478,11 @@ function publishArchive(buildId) {
         console.log(`published: ${(gz.bytes / 1048576).toFixed(1)} МБ из ${(full.bytes / 1048576).toFixed(1)} ` +
                     `(${(full.bytes / gz.bytes).toFixed(1)}x, ${((Date.now() - t) / 1000).toFixed(0)}с) → ${outDir}`);
 
-        if (process.argv.includes('--packs')) publishPacks(outDir, tmpDir, buildId, full.segments);
+        // Once packs are published here they are rebuilt with every publish: left alone, the manifest would keep
+        // readers on packs cut from an older dg.db.
+        if (process.argv.includes('--packs') || fs.existsSync(path.join(outDir, 'packs-manifest.json'))) {
+            publishPacks(outDir, tmpDir, buildId, full.segments);
+        }
     } finally {
         fs.rmSync(tmpDir, { recursive: true, force: true });
     }
@@ -494,7 +498,9 @@ const BASE_TABLES = ['suttas', 'html', 'vocab'];
 
 /* One offline database cut from dg.db: texts WHERE `where` (minus the excluded translators), the
    same table/index/fts definitions as dg.db (read from its sqlite_master, not restated here, so a
-   pack can never drift from the server schema), the same rowids, and an fts filled the way build()
+   pack can never drift from the server schema), rowids of its own (1..n in dg.db's order: dg.db's
+   rowids interleave languages, so any corpus change would shift them in every pack and change every
+   pack's build_id), and an fts filled the way build()
    fills it — folded text, never 'rebuild', no UNINDEXED_TRANSLATORS. `withBase` adds suttas/html/
    vocab: the main pack, which the client opens first. */
 function writeOfflineDb(file, packId, where, params, withBase) {
@@ -510,12 +516,12 @@ function writeOfflineDb(file, packId, where, params, withBase) {
     db.function('fts_fold', { deterministic: true },
         s => stripSearchPunctuation(s || '').replace(/ё/g, 'е').replace(/Ё/g, 'Е'));
     for (const s of mine) if (s.type === 'table') db.exec(s.sql);
-    db.prepare('ATTACH ? AS s').run(OUT_PATH);
+    db.prepare('ATTACH ? AS s').run(`file:${OUT_PATH}?mode=ro`);
     const ex = OFFLINE_EXCLUDED_TRANSLATORS.map(() => '?').join(',');
     db.exec('BEGIN');
     db.prepare(
-        `INSERT INTO texts (rowid, sutta_id, segment_id, ord, kind, lang, translator, source, txt)
-         SELECT rowid, sutta_id, segment_id, ord, kind, lang, translator, source, txt FROM s.texts
+        `INSERT INTO texts (sutta_id, segment_id, ord, kind, lang, translator, source, txt)
+         SELECT sutta_id, segment_id, ord, kind, lang, translator, source, txt FROM s.texts
          WHERE (${where}) AND (translator IS NULL OR translator NOT IN (${ex})) ORDER BY rowid`
     ).run(...params, ...OFFLINE_EXCLUDED_TRANSLATORS);
     if (withBase) for (const t of BASE_TABLES) db.exec(`INSERT INTO ${t} SELECT * FROM s.${t}`);
@@ -605,7 +611,6 @@ function publishPacks(outDir, tmpDir, buildId, fullSegments) {
         ...own.map(l => ({ id: `tr-${l}`, kind: 'translation', lang: l,
           where: "kind = 'translation' AND lang = ?", params: [l] })),
         { id: 'tr-small', kind: 'translation', langs: small,
-          title: { ru: `Ещё ${small.length} языков`, en: `${small.length} more languages` },
           where: `kind = 'translation' AND lang IN (${small.map(() => '?').join(',')})`, params: small },
     ];
     const packDir = path.join(outDir, 'packs');
@@ -613,19 +618,34 @@ function publishPacks(outDir, tmpDir, buildId, fullSegments) {
     const packs = [];
     for (const d of defs) {
         const r = writeOfflineDb(path.join(tmpDir, `${d.id}.db`), d.id, d.where, d.params, !!d.base);
-        const gz = gzipAtomic(r.file, path.join(packDir, `${d.id}.db.gz`));
+        // Named by build: one URL never serves two contents, so a cached old file (mobile-data is
+        // cached for hours) or a Range resume cannot mix builds.
+        const name = `${d.id}.${r.buildId}.db.gz`;
+        const gz = gzipAtomic(r.file, path.join(packDir, name));
         fs.rmSync(r.file, { force: true });
         const { where, params, base, ...pub } = d;
         packs.push({ ...pub, texts: r.texts, segments: r.segments, fts: 'trigram', bytes: r.bytes,
-            bytes_gz: gz.bytes, sha256: r.sha256, sha256_gz: gz.sha256, url: `packs/${d.id}.db.gz`, build_id: r.buildId });
+            bytes_gz: gz.bytes, sha256: r.sha256, sha256_gz: gz.sha256, url: `packs/${name}`, build_id: r.buildId });
         console.log(`pack ${d.id}: ${r.segments} rows, ${(r.bytes / 1048576).toFixed(0)} MB, gz ${(gz.bytes / 1048576).toFixed(0)} MB`);
     }
     // Every row of the offline copy is in exactly one pack: a row left out would silently vanish offline.
     const sum = packs.reduce((a, p) => a + p.segments, 0);
     if (sum !== fullSegments) throw new Error(`packs hold ${sum} rows, the offline copy ${fullSegments}`);
-    writeAtomic(path.join(outDir, 'packs-manifest.json'), {
+    const manifestFile = path.join(outDir, 'packs-manifest.json');
+    let before = [];
+    try { before = JSON.parse(fs.readFileSync(manifestFile, 'utf8')).packs.map(p => path.basename(p.url)); } catch { /* first publish */ }
+    writeAtomic(manifestFile, {
         schema: 1, db_schema_version: 1, build_id: buildId, built_at: new Date().toISOString(), packs,
     });
+    // Files the manifest no longer names go a day after they left it: a reader who fetched the previous
+    // manifest may still be downloading them. Leaving is stamped as the file's mtime.
+    const keep = new Set(packs.map(p => path.basename(p.url)));
+    for (const f of fs.readdirSync(packDir)) {
+        const file = path.join(packDir, f);
+        if (keep.has(f)) continue;
+        if (before.includes(f)) fs.utimesSync(file, new Date(), new Date());
+        else if (Date.now() - fs.statSync(file).mtimeMs > 86400e3) fs.rmSync(file, { force: true });
+    }
     console.log(`packs: ${packs.length} → ${packDir} (${((Date.now() - t) / 1000).toFixed(0)}s)`);
 }
 
