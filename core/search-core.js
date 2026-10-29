@@ -301,14 +301,19 @@ function buildWordReport(searchResults) {
             if (!combinedText.trim()) continue;
 
             for (const word of suttaRes.unique_words) {
-                const matches = combinedText.match(new RegExp(escapeRegExp(word), 'gi'));
-                if (!matches) continue;
+                // Counted as a plain substring, not a RegExp built from the word: a regex keyword with
+                // .* can take a whole segment with its variant readings as one "word" (63 KB for
+                // kacch.*a), and V8 refuses a pattern that size ("Regular expression too large").
+                const hay = combinedText.toLowerCase(), needle = word.toLowerCase();
+                let count = 0;
+                for (let at = hay.indexOf(needle); needle && at !== -1; at = hay.indexOf(needle, at + needle.length)) count++;
+                if (!count) continue;
 
                 if (!words[word]) {
                     words[word] = { textIds: new Set(), matchCount: 0, links: new Map() };
                 }
                 words[word].textIds.add(suttaId);
-                words[word].matchCount += matches.length;
+                words[word].matchCount += count;
                 if (!words[word].links.has(suttaId)) {
                     words[word].links.set(suttaId, seg.segment);
                 }
