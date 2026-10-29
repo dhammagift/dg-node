@@ -100,6 +100,7 @@ function storedPacks(pool) {
 }
 // The schemas the open library reads: ['main'] for one database, ['main', '<pack id>', ...] for packs.
 let schemas = ['main'];
+let openPackNames = new Set();   // the pack files `db` has open (set by openPacks)
 function cancelledError() { return Object.assign(new Error('download cancelled'), { cancelled: true }); }
 function nameToBuild(name) { return name.slice(DB_PREFIX.length, -'.db'.length); }
 
@@ -127,7 +128,8 @@ function post(msg) {
 // TEMP VIEW `texts` openPacks() lays over all packs, so the core runs unchanged.
 const RID_STRIDE = 2 ** 40;
 function packedQuery(sql, params, from) {
-    if (from.length < 2 || !/\bfts\b/.test(sql)) return [sql, params];
+    // `rowid AS rid` too: the TEMP VIEW has no real rowid (the plain regex scan reads it for paging).
+    if (from.length < 2 || !/\bfts\b|\browid AS rid\b/.test(sql)) return [sql, params];
     const holes = (sql.match(/\?/g) || []).length;
     const branch = (s, i) => sql
         .replace(/\bFROM fts\b/g, `FROM "${s}".fts`)
@@ -701,6 +703,7 @@ function inspect(pool, name) {
 function adopt(candidate, from = ['main']) {
     db = candidate.handle;
     schemas = from;
+    openPackNames = new Set();
     core.init({ searchDb: nodeSqliteShim(db, from), DG_OFFLINE: '/offline-data/dhammagift' });
 
     // The same in-memory sutta index initServer() builds on the server, from the same query.
@@ -930,14 +933,14 @@ function inspectPack(pool, name, build, expectedBytes) {
         for (const row of handle.selectObjects('SELECT key, value FROM meta')) meta[row.key] = row.value;
         if (meta.schema_version && Number(meta.schema_version) !== SCHEMA_VERSION) return { ok: false, reason: `schema ${meta.schema_version} != ${SCHEMA_VERSION}` };
         if (meta.build_id !== build) return { ok: false, reason: 'incomplete download' };
-        handle.selectObject('SELECT count(*) c FROM texts');
+        handle.selectObject('SELECT 1 FROM texts LIMIT 1');   // not count(*): that walks the whole table on every load
         if (expectedBytes) {
             const pages = handle.selectObject('PRAGMA page_count'), size = handle.selectObject('PRAGMA page_size');
             const bytes = (pages && pages.page_count || 0) * (size && size.page_size || 0);
             if (bytes && bytes < expectedBytes) return { ok: false, reason: `only ${bytes} of ${expectedBytes} bytes` };
         }
         let main = false;
-        try { main = !!handle.selectObject('SELECT count(*) c FROM suttas').c; } catch (e) { /* a pack without suttas */ }
+        try { main = !!handle.selectObject('SELECT 1 AS c FROM suttas LIMIT 1'); } catch (e) { /* a pack without suttas */ }
         return { ok: true, meta, main };
     } catch (e) {
         return { ok: false, reason: e.message };
@@ -959,6 +962,7 @@ function openPacks(pool, packs) {
         for (const row of handle.selectObjects('SELECT key, value FROM main.meta')) meta[row.key] = row.value;
         if (db) { try { db.close(); } catch (_) {} }
         const suttas = adopt({ handle, meta }, from);
+        openPackNames = new Set(packs.map(p => p.name));
         return { suttas, build_id: meta.build_id, built_at: meta.built_at || null, packs: packs.map(p => p.id), present: true };
     } catch (e) {
         try { handle.close(); } catch (_) {}
@@ -966,16 +970,25 @@ function openPacks(pool, packs) {
     }
 }
 
+// A pack whose archive is still beside it was being unpacked when the tab or app died: importDb writes into the final
+// name, and a truncated copy keeps a valid header, so no cheap query sees it. applyPacks drops the archive only after
+// the unpacked file passed inspectPack.
+async function unfinishedPack(name) { return (await partialBytes(scratchNameFor(name, true))) > 0; }
+// Another tab holding the file is not a broken pack; anything else that fails to read is.
+const BUSY = /busy|locked|access handle|NoModificationAllowed|InvalidState/i;
+
 // The packs on this device that open: for each id the newest sound build (by built_at). null without a main pack.
-function packsOnDisk(pool) {
+// An unfinished or unreadable pack file is removed (its archive stays, so the next download only unpacks it again).
+async function packsOnDisk(pool) {
     const chosen = [];
     for (const [id, files] of Object.entries(storedPacks(pool))) {
         let best = null;
         for (const f of files) {
-            const c = inspectPack(pool, f.name, f.build);
+            const c = (await unfinishedPack(f.name)) ? { ok: false, reason: 'unpacking was interrupted' } : inspectPack(pool, f.name, f.build);
             if (!c.ok) {
-                console.log(`[dg-offline] pack ${f.name} was not adopted (${c.reason})`);
-                if (/incomplete download|schema \d+ !=/i.test(c.reason || '')) { try { pool.unlink(f.name); } catch (_) {} }
+                const drop = !BUSY.test(c.reason || '');
+                console.log(`[dg-offline] pack ${f.name} was not adopted (${c.reason})${drop ? ' — deleting it' : ''}`);
+                if (drop) { try { pool.unlink(f.name); } catch (_) {} }
                 continue;
             }
             if (!best || String(c.meta.built_at || '') > String(best.meta.built_at || '')) best = { id, name: f.name, main: c.main, meta: c.meta };
@@ -1000,7 +1013,18 @@ async function applyPacks(pool, packsBase, want) {
     if (!main) throw new Error('the packs manifest names no main pack');
     const wanted = [main, ...manifest.packs.filter(p => p !== main && (p.required || (want ? want.includes(p.id) : p.default)))];
     const stored = storedPacks(pool);
-    const missing = wanted.filter(p => !(stored[p.id] || []).some(f => f.build === p.build_id));
+    // Present = a file of that build that is open now, or that is finished and reads (see packsOnDisk); a broken one goes.
+    const sound = async (p, f) => {
+        if (openPackNames.has(f.name)) return true;
+        const c = (await unfinishedPack(f.name)) ? { ok: false, reason: 'unpacking was interrupted' } : inspectPack(pool, f.name, f.build, p.bytes);
+        if (!c.ok && !BUSY.test(c.reason || '')) { try { pool.unlink(f.name); } catch (_) {} }
+        return c.ok;
+    };
+    const missing = [];
+    for (const p of wanted) {
+        const f = (stored[p.id] || []).find(x => x.build === p.build_id);
+        if (!f || !(await sound(p, f))) missing.push(p);
+    }
     const scratchOf = p => scratchNameFor(packNameFor(p.id, p.build_id), true);
     await cleanScratchExcept(missing.map(scratchOf));
     await storagePlanFor(missing.reduce((a, p) => a + (p.bytes || 0), 0), Math.max(0, ...missing.map(p => p.bytes_gz || 0)));
@@ -1031,13 +1055,28 @@ async function applyPacks(pool, packsBase, want) {
         done += share;
     }
 
+    // A delete (or cancel) that came in while this was awaiting: opening the removed names would create empty files.
+    if (cancelRequested) throw cancelledError();
+    // The new set opens first; only then the old files go. If it does not open, whatever is on disk is opened again.
     if (db) { try { db.close(); } catch (_) {} db = null; }
+    let result;
+    try {
+        result = openPacks(pool, wanted.map(p => ({ id: p.id, name: packNameFor(p.id, p.build_id) })));
+    } catch (e) {
+        try { await open(packsBase, false, {}); } catch (e2) { ready = null; console.log(`[dg-offline] reopening the old library failed: ${e2.message}`); }
+        throw e;
+    }
     const keep = new Set(wanted.map(p => packNameFor(p.id, p.build_id)));
     for (const files of Object.values(storedPacks(pool))) for (const f of files) if (!keep.has(f.name)) { try { pool.unlink(f.name); } catch (_) {} }
     for (const name of storedDatabases(pool)) { try { pool.unlink(name); } catch (_) {} }
-    const result = openPacks(pool, wanted.map(p => ({ id: p.id, name: packNameFor(p.id, p.build_id) })));
     post({ type: 'progress', loaded: 1, total: 1, phase: 'download', done: true });
     return Object.assign(result, { downloaded: missing.length > 0 });
+}
+
+// Packs, not the whole database: a selection was passed, or packs are what this device holds — a reader on the default
+// packs who never opened the picker has no selection saved, and was offered (and given) the whole dg.db.gz beside them.
+async function packsMode(args) {
+    return !!(args && args.packs) || Object.keys(storedPacks(await getPool())).length > 0;
 }
 
 // "Is anything new?" for packs: the open ones whose build the manifest has moved on from, and their download size.
@@ -1110,7 +1149,7 @@ async function anyStoredFiles() {
 async function open(distBase, allowDownload, args) {
     const pool = await getPool();
 
-    const packs = packsOnDisk(pool);
+    const packs = await packsOnDisk(pool);
     if (packs) return Object.assign(openPacks(pool, packs), { downloaded: false });
 
     for (const name of storedDatabases(pool)) {
@@ -1463,7 +1502,7 @@ self.onmessage = async (event) => {
     if (op === 'check') {
         try {
             if (!db) throw new Error('database not opened');
-            if (schemas.length > 1 || args.packs) { post({ id, ok: true, result: await checkPacks(args.packsBase || args.distBase) }); return; }
+            if (await packsMode(args)) { post({ id, ok: true, result: await checkPacks(args.packsBase || args.distBase) }); return; }
             const local = db.selectObject("SELECT value FROM meta WHERE key = 'build_id'");
             const manifest = await fetchManifest(args.distBase);
             post({ id, ok: true, result: manifest ? {
@@ -1487,7 +1526,9 @@ self.onmessage = async (event) => {
             }
             const pool = await getPool();
             // Packs: the open library keeps answering until applyPacks swaps it, in one synchronous step.
-            post({ id, ok: true, result: await (args && args.packs ? applyPacks(pool, args.packsBase || args.distBase, args.packs) : fetchCurrent(pool, args.distBase)) });
+            post({ id, ok: true, result: await (await packsMode(args)
+                ? applyPacks(pool, args.packsBase || args.distBase, args.packs || schemas.slice(1))
+                : fetchCurrent(pool, args.distBase)) });
         } catch (e) { post({ id, ok: false, error: e.message }); }
         return;
     }
@@ -1535,8 +1576,12 @@ self.onmessage = async (event) => {
             // The native file first; the OPFS pool is then swept too, for a copy an earlier build
             // may have left.
             if (args && args.nativeSql) nativeRequest(args.nativeSql, 'delete');
+            // A download in flight stops first: applyPacks would otherwise open the names removed below.
+            cancelRequested = true;
+            try { if (activeAbort) activeAbort.abort(); } catch (_) {}
             const pool = await getPool();
             if (db) { try { db.close(); } catch (_) {} db = null; }
+            openPackNames = new Set();
             ready = null;
             let deleted = 0;
             for (const name of storedDatabases(pool)) {
