@@ -26,7 +26,7 @@
     "ogUrl": "/",
     "readHome": "/toc",
     "searchHome": "/",
-    "chapterReader": "/r.php",
+    "chapterReader": "/toc",
     "dictionaryHelp": "/docs/dictionary",
     "contacts": "/#contacts",
     "abbreviationsSuttaCentral": "https://suttacentral.net/abbreviations?lang=en",

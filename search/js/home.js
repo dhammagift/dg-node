@@ -5538,7 +5538,10 @@
         renderFooter();
         renderExtra();
         renderHowTo();
-        revealAnchorSection(); // прямой заход с хешем в адресе (/#contacts и т.п.)
+        // прямой заход с хешем в адресе (/#contacts и т.п.): шторка «О проекте» строится из строк
+        // интерфейса — ждём их, иначе на английской странице она вся на русских запасных строках
+        if (window.DHAMMA_I18N && window.DHAMMA_I18N.ready) window.DHAMMA_I18N.ready.then(revealAnchorSection, revealAnchorSection);
+        else revealAnchorSection();
         renderLangSwitch();
         renderThemeSwitch();
         renderFontSizeControl();
