@@ -79,12 +79,16 @@ function editionRows(suttaId, eds) {
     } catch { /* a dg.db built before the editions table */ }
     return out;
 }
-// Compared as words, folded so that only real readings differ: case, punctuation, quotes, verse and paragraph marks
-// (PTS "||"), digits and the two spellings of niggahīta (ṁ / ṃ) do not count. Diacritics other than that do (ā ≠ a).
-// Hyphens join (ariya-saccaṁ = ariyasaccaṁ); a word-final m is niggahīta (PTS input writes "samayam"); the Thai
-// script writes niggahīta before h as ñ (Siam Rath "anatthasañhito" = anatthasaṁhito, 186 such "sañhit-").
-const foldWords = t => String(t || '').normalize('NFC').toLowerCase().replace(/[ṃŋ]/g, 'ṁ').replace(/-/g, '').replace(/ñh/g, 'ṁh')
-    .replace(/[^\p{L}\s]+/gu, ' ').split(/\s+/).filter(Boolean).map(w => w.replace(/m$/, 'ṁ'));
+// Compared as words. Folded silently only what is the same letter or no letter at all: case, punctuation, and ṁ = ṃ
+// (one letter in two transliterations). Spelling conventions stay visible but are classed as "spelling" (spelling())
+// - owner 2026-10-30: «сañhita и saṁhita… совсем разные буквы… надо хоть как минимум подсвечивать».
+// Apostrophes and quotes go without a space: "ariyasaccan’ti" (Mahāsaṅgīti) and "ariyasacca’nti" (VRI) are one word.
+const foldWords = t => String(t || '').normalize('NFC').toLowerCase().replace(/[ṃŋ]/g, 'ṁ').replace(/[’'‘`“”"]/g, '')
+    .replace(/[^\p{L}\s-]+/gu, ' ').replace(/(^|\s)-+|-+(?=\s|$)/g, ' ').split(/\s+/).filter(Boolean);
+// the same words but for a spelling convention: a compound written apart or hyphenated (katamañca / katamañ ca,
+// ariya-saccaṁ), a word-final m for niggahīta (PTS "samayam"), the Thai script's ñ for niggahīta before h (sañhito)
+const spellingKey = s => s.split(' ').map(w => w.replace(/m$/, 'ṁ')).join('').replace(/-/g, '').replace(/ñh/g, 'ṁh');
+const spelling = d => spellingKey(d.ms) === spellingKey(d.ed);
 // word-level difference of an edition's line against the Mahāsaṅgīti's: [{ms, ed}] runs (LCS over a few dozen words)
 function wordDiff(a, b) {
     const n = a.length, m = b.length, L = Array.from({ length: n + 1 }, () => new Uint16Array(m + 1));
@@ -97,8 +101,7 @@ function wordDiff(a, b) {
         else ms.push(a[i++]);
     }
     flush();
-    // a compound written apart is spacing, not a reading (katamañca / katamañ ca)
-    return out.filter(d => d.ms.replace(/ /g, '') !== d.ed.replace(/ /g, ''));
+    return out.map(d => ({ ...d, kind: spelling(d) ? 'spelling' : 'reading' }));
 }
 // "sn56.11", "sn56.11:5.2", "sn56.11:5.1-5.4" -> { sutta, from, to } (segment parts after the colon)
 function parseEditionTarget(id) {
@@ -517,9 +520,9 @@ function getServer() {
         if (!eds.some(ed => byEd[ed].size)) return asText({ error: `No other edition has ${t.sutta}: the editions cover DN, MN, SN and AN.` }, true);
         const part = sid => sid.slice(sid.indexOf(':') + 1);
         const inRange = r => !t.from || (segCmp(part(r.segment_id), t.from) >= 0 && segCmp(part(r.segment_id), t.to) <= 0);
-        const summary = Object.fromEntries(eds.map(ed => [ed, { id: ed, ...EDITIONS[ed], lines_present: 0, lines_missing: 0, lines_differing: 0 }]));
+        const summary = Object.fromEntries(eds.map(ed => [ed, { id: ed, ...EDITIONS[ed], lines_present: 0, lines_missing: 0, lines_differing_reading: 0, lines_differing_spelling: 0 }]));
         const lines = [];
-        let compared = 0, differing = 0;
+        let compared = 0, differing = 0, differingReading = 0;
         for (const r of rows.filter(inRange)) {
             compared++;
             const msWords = foldWords(r.txt);
@@ -529,7 +532,7 @@ function getServer() {
             // a line no edition has at all is the Mahāsaṅgīti's own (a heading the others print differently)
             if (eds.every(ed => !byEd[ed].get(r.segment_id))) continue;
             const line = { line: r.segment_id, ms: r.txt.trim(), editions: {} };
-            let differs = false;
+            let differs = false, reading = false;
             for (const ed of eds) {
                 const txt = byEd[ed].get(r.segment_id);
                 if (!byEd[ed].size) continue;                     // this edition lacks the whole sutta
@@ -539,17 +542,18 @@ function getServer() {
                     const i = rows.indexOf(r), want = msWords.join(' ');
                     const near = [rows[i - 1], rows[i + 1]].find(n => n && byEd[ed].get(n.segment_id) && foldWords(byEd[ed].get(n.segment_id)).join(' ').includes(want));
                     line.editions[ed] = near ? `missing: joined into ${near.segment_id}` : 'missing';
-                    differs = true;
+                    differs = true; reading = true;
                     continue;
                 }
                 summary[ed].lines_present++;
                 const d = wordDiff(msWords, foldWords(txt));
                 if (!d.length) { line.editions[ed] = 'same'; continue; }
-                summary[ed].lines_differing++;
-                line.editions[ed] = { text: txt.trim(), differs: d };
-                differs = true;
+                const real = d.some(x => x.kind === 'reading');
+                summary[ed][real ? 'lines_differing_reading' : 'lines_differing_spelling']++;
+                line.editions[ed] = { text: txt.trim(), kind: real ? 'reading' : 'spelling', differs: d };
+                differs = true; reading = reading || real;
             }
-            if (differs) differing++;
+            if (differs) { differing++; if (reading) differingReading++; line.kind = reading ? 'reading' : 'spelling'; }
             if (differs || all) { line.link = READER + r.segment_id; lines.push(line); }
         }
         const max = limit || 60;
@@ -560,8 +564,8 @@ function getServer() {
             id: id.trim().toLowerCase(), link: READER + (t.from ? t.sutta + ':' + t.from : t.sutta),
             base: { id: 'ms', name: 'Mahāsaṅgīti Tipiṭaka (the site\'s Pali text)', license: 'CC0' },
             summary: Object.values(summary).filter(x => x.lines_present || x.lines_missing),
-            lines_compared: compared, lines_shown: page.length, lines_with_differences: differing,
-            note: 'Differences are word-level against the Mahāsaṅgīti, ignoring case, punctuation, hyphens, compounds written apart and ṁ/ṃ/final m. The title lines (…:0.x) are left out unless all:true. "missing": the edition has no such line (it may join or split lines differently). Quote an edition by its name; each keeps its own license.',
+            lines_compared: compared, lines_shown: page.length, lines_with_differences: differing, lines_with_reading_differences: differingReading,
+            note: 'Differences are word-level against the Mahāsaṅgīti. Not counted: case, punctuation, and ṁ = ṃ (one letter in two transliterations). Every other difference is shown, classed: "reading" (other words or letters) or "spelling" (a spelling convention: a compound written apart or hyphenated, word-final m for ṁ, Thai ñh for ṁh). The title lines (…:0.x) are left out unless all:true. "missing": the edition has no such line ("joined into" names the line that holds it). Quote an edition by its name; each keeps its own license.',
             lines: page,
         };
         if (start + max < lines.length) out.next_from = lines[start + max].line;
@@ -633,7 +637,7 @@ function getServer() {
 // What an agent should know before the first call: how to search, how to phrase answers, where
 // the links go, and why translations are opt-in.
 const INSTRUCTIONS = `Dhamma.gift: the Pali Canon (Sutta and Vinaya) with Pali root text and translations (25 languages, including Russian and English).
-- Core feature, found nowhere else: the canon's own EDITIONS compared line by line — compare_editions sets the Mahāsaṅgīti beside Buddha Jayanti (Sri Lanka), Chaṭṭha Saṅgāyana (Myanmar), Siam Rath (Thailand), the printed Mahāsaṅgīti of 2005 and the PTS editions (DN, MN, SN, AN), and shows exactly which words differ. When the wording of the Pali matters (a definition, a disputed reading, a quote), check it across the editions before relying on one. Translations are renderings of these texts, not evidence of what the Pali says.
+- Core feature, found nowhere else: the canon's own EDITIONS compared line by line — compare_editions sets the Mahāsaṅgīti beside Buddha Jayanti (Sri Lanka), Chaṭṭha Saṅgāyana (Myanmar), Siam Rath (Thailand), the printed Mahāsaṅgīti of 2005 and the PTS editions (DN, MN, SN, AN), and shows exactly which words differ, each difference classed as a reading or a spelling convention. When the wording of the Pali matters (a definition, a disputed reading, a quote), check it across the editions before relying on one. Translations are renderings of these texts, not evidence of what the Pali says.
 - search is a literal substring/keyword search (min 3 letters, diacritics ignored: "kacchap" finds mahakacchapa, "tanha" finds taṇhā). It does NOT understand meaning: for a topic ("turtle") try the Pali word(s) and translation words yourself (kacchapa, kummo; turtle, tortoise; черепаха) and merge the results. The answer is a CENSUS of every matching sutta, ordered so that suttas that DEFINE the term come first, then ones named after it, then by how often it occurs — read the top of the list first: a definition tells you what the term means, which a list of similarly-named suttas does not.
 - THE WAY TO FIND WHERE THE CANON DEFINES A TERM is to search the formula itself as a REGEX (the engine supports patterns). Three patterns cover the whole apparatus, and they are the sharpest tool here — sharper than reading a census:
     "kata.*<term>"  -> "Katamañca, bhikkhave, <term>? …"  the definition question. e.g. kata.*dukkha finds dn22:18.1 "Katamañca, bhikkhave, dukkhaṁ ariyasaccaṁ?"
