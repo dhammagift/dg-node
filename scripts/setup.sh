@@ -3,8 +3,8 @@
 # legacy assets repo, wires them into siteroot/ exactly the way dg-light.js expects
 # (same recipe as .github/workflows/build-mobile.yml's "Create symlink structure"
 # step, just without sudo/system paths — everything lives under $DATA_DIR instead),
-# then installs npm deps and builds both databases the servers need: the skeleton
-# dg_db_light.json (Express) and the SQLite/FTS5 corpus dg.db (Fastify, production).
+# then installs npm deps, checks out the docs portal and builds the database the server needs:
+# the SQLite/FTS5 corpus dg.db (dg-fastify.js).
 #
 # Safe to re-run: existing clones/symlinks are left alone unless --force is passed.
 #
@@ -82,11 +82,11 @@ done
 log "npm install (dg-node)"
 (cd "$REPO_ROOT" && npm install)
 
-log "npm install (dg-docs)"
-(cd "$REPO_ROOT/dg-docs" && npm install)
-
-log "building search skeleton (dg_db_light.json) — used by dg-light.js"
-(cd "$REPO_ROOT" && npm run build-db)
+# /docs is served from a checkout of dg-docs' prebuilt "dist" branch (git-ignored here; the
+# Docusaurus source lives in the dg-docs repo itself, nothing to install). Prod refreshes it
+# from cron; a test host may follow "dist-preview" instead.
+log "docs portal (dg-docs, dist branch)"
+[ -d "$REPO_ROOT/dg-docs/.git" ] || git clone -q --depth 1 -b dist https://github.com/dhammagift/dg-docs.git "$REPO_ROOT/dg-docs"
 
 # The one the production server actually reads. Takes ~85s and lands ~600MB in dg.db;
 # dg-fastify.js refuses to start without it.
