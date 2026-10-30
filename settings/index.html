@@ -591,12 +591,13 @@ kbd{font:inherit;font-size:12.5px;background:var(--line);border:1px solid var(--
     <h2 id="t-g-root">Коренной текст пали</h2>
     <div class="rows">
       <div class="row">
-        <div><p class="row-title" id="edLbl">Издание</p><p class="row-desc" id="t-edDesc">Сейчас поиск всегда идёт по Mahāsaṅgīti — остальные готовятся только для ридера.</p></div>
+        <div><p class="row-title" id="edLbl">Издание</p><p class="row-desc" id="t-edDesc">В результатах — текст Mahāsaṅgīti, а разночтения — по всем изданиям. Выбор издания в ридере — скоро.</p></div>
         <div class="row-control"><div class="seg" role="group" aria-labelledby="edLbl">
           <button type="button" aria-pressed="true">MS</button>
           <button type="button" disabled title="Готовится">BJT<span class="badge">скоро</span></button>
           <button type="button" disabled title="Готовится">VRI<span class="badge">скоро</span></button>
           <button type="button" disabled title="Готовится">SIAM<span class="badge">скоро</span></button>
+          <button type="button" disabled title="Готовится">PTS<span class="badge">скоро</span></button>
         </div></div>
       </div>
     </div>
@@ -1465,7 +1466,7 @@ const STR = {
     autoLookup:'Мульти-селект', autoLookupDesc:'Искать выделенный текст автоматически. То же самое, что кнопка мультивыбора в ридере.',
     delay:'Задержка',
     gRoot:'Коренной текст пали', edLbl:'Издание',
-    edDesc:'Сейчас поиск всегда идёт по Mahāsaṅgīti — остальные готовятся только для ридера.', badgeSoon:'скоро',
+    edDesc:'В результатах — текст Mahāsaṅgīti, а разночтения — по всем изданиям. Выбор издания в ридере — скоро.', badgeSoon:'скоро',
     gVoice:'Озвучка', voiceKey:'Ключ Google Cloud API',
     voiceKeyDesc:'Нужен для более качественной озвучки. Хранится только на этом устройстве.',
     voiceKeyShow:'Показать', voiceKeyHide:'Скрыть',
@@ -1504,7 +1505,7 @@ const STR = {
     autoLookup:'Multi-select', autoLookupDesc:'Auto-look-up selected text. Same as the multi-select button in the reader.',
     delay:'Delay',
     gRoot:'Pali root text', edLbl:'Edition',
-    edDesc:'Search currently always uses Mahāsaṅgīti — the others are being prepared for the reader only.', badgeSoon:'soon',
+    edDesc:'Results show the Mahāsaṅgīti text, with variant readings from all editions. Choosing the edition in the reader — soon.', badgeSoon:'soon',
     gVoice:'Voice / TTS', voiceKey:'Google Cloud API key',
     voiceKeyDesc:'Needed for higher-quality voices. Stored only on this device.',
     voiceKeyShow:'Show', voiceKeyHide:'Hide',
