@@ -4465,7 +4465,31 @@ app.get('/:slug', (req, res) => {
 // round-trip, same final page. Fine for the bookmark-restoration use case this exists for
 // (/ru, /ru/dn22, ...); a real static file under /ru/* is still served directly above, never
 // reaching this handler at all.
+// A segment file the Translation Editor (lbl.html / lbl-en.html) asks for by its old path —
+// /suttacentral.net/sc-data/sc_bilara_data/... or /assets/texts/{ru,en,en_other,ai}/... — and that this
+// host does not have on disk (f3 has neither tree; F1 serves the real file above and never gets here):
+// answered from dg.db in the same {segment_id: text} shape. The root is the Pali text with our fixes.
+const SEGMENT_FILE = /^\/(?:suttacentral\.net\/sc-data\/sc_bilara_data|assets\/texts\/(?:ru|en|en_other|ai))\/.*\/([^/_]+)_(?:(root)-pli-ms|translation-([a-z]{2,3})-([^/]+))\.json$/;
+function segmentFileFromDb(url) {
+    let p;
+    try { p = decodeURIComponent(url.split('?')[0]); } catch { return null; }
+    const m = p.match(SEGMENT_FILE);
+    if (!m) return null;
+    const [, suttaId, root, lang, translator] = m;
+    const rows = root
+        ? searchDb.prepare("SELECT segment_id, txt FROM texts WHERE sutta_id = ? AND kind = 'root' ORDER BY ord").all(suttaId)
+        : searchDb.prepare("SELECT segment_id, txt FROM texts WHERE sutta_id = ? AND kind = 'translation' AND lang = ? AND translator = ? ORDER BY ord").all(suttaId, lang, translator);
+    if (!rows.length) return null;
+    const out = {};
+    for (const r of rows) out[r.segment_id] = r.txt;
+    return out;
+}
+
 app.setNotFoundHandler((req, res) => {
+    if (req.method === 'GET' || req.method === 'HEAD') {
+        const seg = segmentFileFromDb(req.url);
+        if (seg) return res.header('X-Robots-Tag', 'noindex').header('Cache-Control', 'no-cache').type('application/json; charset=utf-8').send(seg);
+    }
     if (req.url === '/ru' || req.url.startsWith('/ru/') || req.url.startsWith('/ru?')) {
         const [pathPart, queryPart] = req.url.split('?');
         // one leading slash: "/ru//evil.example" must not become a protocol-relative "//evil.example"
