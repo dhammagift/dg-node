@@ -98,6 +98,7 @@
                         <input class="form-check-input" title="Заменить +edited+o в название файла на o" type="checkbox" id="customTranslatorName">
                         <label class="form-check-label" for="customTranslatorName">пер. o</label>
                     </div>
+                    <a href="#" id="lblSignInLink" class="ms-2 align-self-center" onclick="lblSignInForAi(); return false;" title="Вход через Google: ИИ-переводы и сохранение — для переводчиков">🔒 Войти</a>
                 </div>
 
             </div>
@@ -128,11 +129,26 @@
 </div>
 
 <script>
-        window.onload = function() {
+
+// ?q=<id>&tr=<translator> (the docs' live demo): the existing translation is put line by line, aligned to the
+// Pali segments, into the translation box before the text loads, so the table opens with both columns filled.
+async function prefillTranslation(id, tr, lang) {
+    const base = lang === 'ru' ? '/assets/texts/ru/x/' : `/suttacentral.net/sc-data/sc_bilara_data/translation/${lang}/${tr}/x/`;
+    try {
+        const [pli, tra] = await Promise.all([
+            fetch(`/suttacentral.net/sc-data/sc_bilara_data/root/pli/ms/x/${id}_root-pli-ms.json`).then(r => r.ok ? r.json() : {}),
+            fetch(`${base}${id}_translation-${lang}-${tr}.json`).then(r => r.ok ? r.json() : {})
+        ]);
+        if (!Object.keys(tra).length) return;
+        document.getElementById('translationInput').value = Object.keys(pli).map(k => (tra[k] || '').trim()).join('\n');
+    } catch (e) { /* the editor still opens with the Pali alone */ }
+}
+        window.onload = async function() {
             const urlParams = new URLSearchParams(window.location.search);
             const qParam = urlParams.get('q');
             if (qParam) {
                 document.getElementById('indexInput').value = qParam;
+                if (urlParams.get('tr')) await prefillTranslation(qParam.trim().toLowerCase(), urlParams.get('tr'), 'ru');
                 loadText();
                 loadAndCheckRanges();
             }
@@ -2392,8 +2408,36 @@ Rewrite translations to match reference style/word-order/terms. Keep any abbrevi
             if (auth.currentUser) return auth.currentUser.getIdToken(true);
             return auth.signInWithPopup(new firebase.auth.GoogleAuthProvider())
                 .then(function (cred) { return cred.user.getIdToken(); });
-        }).then(function (t) { token = t; return t; });
+        }).then(function (t) { token = t; try { localStorage.setItem('lblSignedIn', '1'); } catch (e) {} return t; });
     }
+
+    // The AI translations (ai, gemini) are for signed-in translators only, like saving: once someone has signed in
+    // here (Firebase remembers it across visits), the editor's requests for them carry the Google token.
+    var AI_URL = /_translation-ru-(ai|gemini)\.json|\/assets\/texts\/ai\//;
+    function signedInBefore() { try { return localStorage.getItem('lblSignedIn') === '1'; } catch (e) { return false; } }
+    function currentToken() {
+        if (token) return Promise.resolve(token);
+        return ensureFirebase().then(function () {
+            return new Promise(function (resolve) {
+                var off = auth.onAuthStateChanged(function (u) { off(); resolve(u ? u.getIdToken() : null); });
+            });
+        }).then(function (t) { if (t) token = t; return t; });
+    }
+    var origFetch = window.fetch.bind(window);
+    window.fetch = function (url, opts) {
+        if (typeof url !== 'string' || !AI_URL.test(url) || !signedInBefore()) return origFetch(url, opts);
+        return currentToken().catch(function () { return null; }).then(function (t) {
+            if (t) opts = Object.assign({}, opts, { headers: Object.assign({}, opts && opts.headers, { Authorization: 'Bearer ' + t }) });
+            return origFetch(url, opts);
+        });
+    };
+    window.lblSignInForAi = function () {
+        signIn().then(function () { location.reload(); }).catch(function () {});
+    };
+    document.addEventListener('DOMContentLoaded', function () {
+        var link = document.getElementById('lblSignInLink');
+        if (link && signedInBefore()) { link.textContent = '✓ Вход'; link.title = 'Вы вошли: ИИ-переводы и сохранение доступны'; }
+    });
 
     // Called by the save path. A live token is used as is (refreshed quietly for next time); with
     // none, the popup opens now and this save waits for it.

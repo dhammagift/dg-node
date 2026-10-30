@@ -4470,19 +4470,23 @@ app.get('/:slug', (req, res) => {
 // host does not have on disk (f3 has neither tree; F1 serves the real file above and never gets here):
 // answered from dg.db in the same {segment_id: text} shape. The root is the Pali text with our fixes.
 const SEGMENT_FILE = /^\/(?:suttacentral\.net\/sc-data\/sc_bilara_data|assets\/texts\/(?:ru|en|en_other|ai))\/.*\/([^/_]+)_(?:(root)-pli-ms|translation-([a-z]{2,3})-([^/]+))\.json$/;
-// The AI translation stays hidden (owner: no AI for users anywhere): only with the /ai password.
+// The AI translations (ai, gemini) stay hidden from users (owner: no AI for users anywhere): the editor gets them only
+// for a signed-in translator, the same Google sign-in and author list as saving (verifyLblToken), or with the /ai password.
 function hasRestrictedAuth(req) {
     const [, b64] = (req.headers.authorization || '').split(' ');
     const [user, pass] = b64 ? Buffer.from(b64, 'base64').toString().split(':') : [];
     return !!restrictedAuth && user === restrictedAuth.user && pass === restrictedAuth.pass;
 }
-function segmentFileFromDb(req) {
+async function mayReadAi(req) {
+    return hasRestrictedAuth(req) || (await verifyLblToken(req.headers.authorization)).ok;
+}
+async function segmentFileFromDb(req) {
     let p;
     try { p = decodeURIComponent(req.url.split('?')[0]); } catch { return null; }
     const m = p.match(SEGMENT_FILE);
     if (!m) return null;
     const [, suttaId, root, lang, translator] = m;
-    if ((translator === 'ai' || translator === 'gemini' || p.startsWith('/assets/texts/ai/')) && !hasRestrictedAuth(req)) return null;
+    if ((translator === 'ai' || translator === 'gemini' || p.startsWith('/assets/texts/ai/')) && !(await mayReadAi(req))) return null;
     const rows = root
         ? searchDb.prepare("SELECT segment_id, txt FROM texts WHERE sutta_id = ? AND kind = 'root' ORDER BY ord").all(suttaId)
         : searchDb.prepare("SELECT segment_id, txt FROM texts WHERE sutta_id = ? AND kind = 'translation' AND lang = ? AND translator = ? ORDER BY ord").all(suttaId, lang, translator);
@@ -4492,9 +4496,9 @@ function segmentFileFromDb(req) {
     return out;
 }
 
-app.setNotFoundHandler((req, res) => {
+app.setNotFoundHandler(async (req, res) => {
     if (req.method === 'GET' || req.method === 'HEAD') {
-        const seg = segmentFileFromDb(req);
+        const seg = await segmentFileFromDb(req);
         if (seg) return res.header('X-Robots-Tag', 'noindex').header('Cache-Control', 'no-cache').type('application/json; charset=utf-8').send(seg);
     }
     if (req.url === '/ru' || req.url.startsWith('/ru/') || req.url.startsWith('/ru?')) {
@@ -4518,9 +4522,11 @@ app.setNotFoundHandler((req, res) => {
         let word = dictPath.slice(dictPath.lastIndexOf('/') + 1);
         try { word = decodeURIComponent(word); } catch { word = ''; }
         const pre = word && !/[\\/.]/.test(word) ? path.join(dictDir, 'w', word + '.html') : '';
-        return sendFile(req, res, pre && fsSync.existsSync(pre) ? pre : path.join(dictDir, 'index.html'));
+        sendFile(req, res, pre && fsSync.existsSync(pre) ? pre : path.join(dictDir, 'index.html'));
+        return res; // async handler: the reply is sent by sendFile
     }
     sendVersionedHtml(req, res, path.join(__dirname, 'public', '404.html'), 404);
+    return res;
 });
 
 app.listen({ port: PORT, host: '0.0.0.0' }, (err) => {

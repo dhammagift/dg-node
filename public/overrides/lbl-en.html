@@ -122,11 +122,26 @@
 </div>
 
 <script>
-        window.onload = function() {
+
+// ?q=<id>&tr=<translator> (the docs' live demo): the existing translation is put line by line, aligned to the
+// Pali segments, into the translation box before the text loads, so the table opens with both columns filled.
+async function prefillTranslation(id, tr, lang) {
+    const base = lang === 'ru' ? '/assets/texts/ru/x/' : `/suttacentral.net/sc-data/sc_bilara_data/translation/${lang}/${tr}/x/`;
+    try {
+        const [pli, tra] = await Promise.all([
+            fetch(`/suttacentral.net/sc-data/sc_bilara_data/root/pli/ms/x/${id}_root-pli-ms.json`).then(r => r.ok ? r.json() : {}),
+            fetch(`${base}${id}_translation-${lang}-${tr}.json`).then(r => r.ok ? r.json() : {})
+        ]);
+        if (!Object.keys(tra).length) return;
+        document.getElementById('translationInput').value = Object.keys(pli).map(k => (tra[k] || '').trim()).join('\n');
+    } catch (e) { /* the editor still opens with the Pali alone */ }
+}
+        window.onload = async function() {
             const urlParams = new URLSearchParams(window.location.search);
             const qParam = urlParams.get('q');
             if (qParam) {
                 document.getElementById('indexInput').value = qParam;
+                if (urlParams.get('tr')) await prefillTranslation(qParam.trim().toLowerCase(), urlParams.get('tr'), 'en');
 				loadText();
 				window.history.replaceState(null, '', window.location.origin + window.location.pathname);
             }
