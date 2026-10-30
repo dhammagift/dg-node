@@ -4482,7 +4482,7 @@ function segmentFileFromDb(req) {
     const m = p.match(SEGMENT_FILE);
     if (!m) return null;
     const [, suttaId, root, lang, translator] = m;
-    if ((translator === 'ai' || p.startsWith('/assets/texts/ai/')) && !hasRestrictedAuth(req)) return null;
+    if ((translator === 'ai' || translator === 'gemini' || p.startsWith('/assets/texts/ai/')) && !hasRestrictedAuth(req)) return null;
     const rows = root
         ? searchDb.prepare("SELECT segment_id, txt FROM texts WHERE sutta_id = ? AND kind = 'root' ORDER BY ord").all(suttaId)
         : searchDb.prepare("SELECT segment_id, txt FROM texts WHERE sutta_id = ? AND kind = 'translation' AND lang = ? AND translator = ? ORDER BY ord").all(suttaId, lang, translator);
