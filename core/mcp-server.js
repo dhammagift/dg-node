@@ -81,8 +81,9 @@ function editionRows(suttaId, eds) {
 }
 // Compared as words, folded so that only real readings differ: case, punctuation, quotes, verse and paragraph marks
 // (PTS "||"), digits and the two spellings of niggahīta (ṁ / ṃ) do not count. Diacritics other than that do (ā ≠ a).
-// Hyphens join (ariya-saccaṁ = ariyasaccaṁ); a word-final m is niggahīta (PTS input writes "samayam").
-const foldWords = t => String(t || '').normalize('NFC').toLowerCase().replace(/[ṃŋ]/g, 'ṁ').replace(/-/g, '')
+// Hyphens join (ariya-saccaṁ = ariyasaccaṁ); a word-final m is niggahīta (PTS input writes "samayam"); the Thai
+// script writes niggahīta before h as ñ (Siam Rath "anatthasañhito" = anatthasaṁhito, 186 such "sañhit-").
+const foldWords = t => String(t || '').normalize('NFC').toLowerCase().replace(/[ṃŋ]/g, 'ṁ').replace(/-/g, '').replace(/ñh/g, 'ṁh')
     .replace(/[^\p{L}\s]+/gu, ' ').split(/\s+/).filter(Boolean).map(w => w.replace(/m$/, 'ṁ'));
 // word-level difference of an edition's line against the Mahāsaṅgīti's: [{ms, ed}] runs (LCS over a few dozen words)
 function wordDiff(a, b) {
@@ -532,7 +533,15 @@ function getServer() {
             for (const ed of eds) {
                 const txt = byEd[ed].get(r.segment_id);
                 if (!byEd[ed].size) continue;                     // this edition lacks the whole sutta
-                if (!txt) { summary[ed].lines_missing++; line.editions[ed] = 'missing'; differs = true; continue; }
+                if (!txt) {
+                    summary[ed].lines_missing++;
+                    // the edition may have joined this line into the one before or after it
+                    const i = rows.indexOf(r), want = msWords.join(' ');
+                    const near = [rows[i - 1], rows[i + 1]].find(n => n && byEd[ed].get(n.segment_id) && foldWords(byEd[ed].get(n.segment_id)).join(' ').includes(want));
+                    line.editions[ed] = near ? `missing: joined into ${near.segment_id}` : 'missing';
+                    differs = true;
+                    continue;
+                }
                 summary[ed].lines_present++;
                 const d = wordDiff(msWords, foldWords(txt));
                 if (!d.length) { line.editions[ed] = 'same'; continue; }
