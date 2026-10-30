@@ -2421,7 +2421,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
 
 <img src="/assets/svg/circle-half-stroke.svg" onclick="switchIcon(this)" class="changesvg table-theme-icon gray-icon"></img>
 </button>
-<button id="btn-show-all-children" class="btn btn-light mb-1" type="button" title="{{toolbar.expandCollapseLabel}}" aria-label="{{toolbar.expandCollapseLabel}}"><svg class="dg-btn-ic" viewBox="0 0 50 24" width="38" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m7 20 5-5 5 5M7 4l5 5 5-5"/><path d="M28 5l-6 14" opacity=".45"/><path d="m33 15 5 5 5-5M33 9l5-5 5 5"/></svg><span class="dg-btn-label">{{toolbar.expandCollapseLabel}}</span></button>
+<button id="btn-show-all-children" class="btn btn-light mb-1" type="button" title="Saṁvaṭṭo / Vivaṭṭo" aria-label="Saṁvaṭṭo / Vivaṭṭo" data-i18n-title="{{toolbar.expandCollapseLabel}}" data-i18n-aria-label="{{toolbar.expandCollapseLabel}}"><svg class="dg-btn-ic" viewBox="0 0 50 24" width="38" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m7 20 5-5 5 5M7 4l5 5 5-5"/><path d="M28 5l-6 14" opacity=".45"/><path d="m33 15 5 5 5-5M33 9l5-5 5 5"/></svg><span class="dg-btn-label">{{toolbar.expandCollapseLabel}}</span></button>
 
 <!-- Manual AI-search trigger (docs/AI_SEARCH_BRIEF.md, docs/AI_MODE_DESIGN.md) — the automatic
      fallback only fires on 0 exact results; this lets someone re-run the CURRENT query through
@@ -2507,7 +2507,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
          #subp — попап под ним, свой позиционный контекст. .dg-bell-arc — дуги «звона», видны
          только у подписанных (ТЗ §3). Рендерит/наполняет home.js (dgRenderBell()). -->
     <span class="dg-bell-wrap">
-        <button id="subbtn" type="button" class="dg-bell" aria-label="{{menu.daily.subscribe}}" title="{{menu.daily.subscribe}}" data-on="false">
+        <button id="subbtn" type="button" class="dg-bell" aria-label="Subscribe" title="Subscribe" data-i18n-aria-label="{{menu.daily.subscribe}}" data-i18n-title="{{menu.daily.subscribe}}" data-on="false">
             <!-- Glyph copied verbatim from the reference mockup (docs/D-refresh.html .bring). -->
             <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="overflow: visible">
                 <g class="dg-bell-body">
