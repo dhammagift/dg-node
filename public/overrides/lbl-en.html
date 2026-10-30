@@ -31,7 +31,6 @@
         <div class="align-items-center align-items-center toggle-switch input-group-append">
             <div id="" class="input-group">
                 <div style="display: inline-flex; margin-top: -30px;">
-                    <a href="#" id="lblAuthIcon" class="me-2 text-muted" onclick="lblToggleSignIn(); return false;" title="Sign in with Google (saving is for translators)" style="display: flex; align-items: center;"><i class="fa-solid fa-right-to-bracket"></i></a>
                     <top-nav-icons type="read" show-dict></top-nav-icons>
                 </div>
                 <a href="#" onclick="openHelpModal();" title="Instructions" class="ms-2 text-muted" target=""><i class="fa-solid fa-question"></i></a>
@@ -44,7 +43,8 @@
                   <i class="fa-solid fa-code-compare"></i>
                   </a>
    
-                <a href="/assets/lbl.html" title="Russian " class=" ms-2 me-2 text-muted text-decoration-none">ru</a>  
+                <a href="/assets/lbl.html" title="Russian " class=" ms-2 text-muted text-decoration-none">ru</a>  
+                <a href="#" id="lblAuthIcon" class="ms-2 me-2 text-muted" onclick="lblToggleSignIn(); return false;" title="Sign in with Google (saving is for translators)"><i class="fa-solid fa-right-to-bracket"></i></a>
                 
                 <div class="input-group-append ms-1 me-3 mb-2">
                     <div class=" ms-1">
@@ -2033,7 +2033,7 @@ document.addEventListener("DOMContentLoaded", function() {
     }
     function signedInBefore() { try { return localStorage.getItem('lblSignedIn') === '1'; } catch (e) { return false; } }
 
-    // The sign-in icon at the start of the top row: a door while signed out, a person once signed in (click = sign out).
+    // The sign-in icon at the end of the top row, grey like the others: a door while signed out, a person once signed in (click = sign out).
     window.lblToggleSignIn = function () {
         if (signedInBefore()) {
             if (!confirm('Sign out of Google in the editor?')) return;
@@ -2050,7 +2050,6 @@ document.addEventListener("DOMContentLoaded", function() {
         var icon = document.getElementById('lblAuthIcon');
         if (!icon || !signedInBefore()) return;
         icon.innerHTML = '<i class="fa-solid fa-user"></i>';
-        icon.classList.remove('text-muted'); icon.classList.add('text-success');
         icon.title = 'Signed in — click to sign out';
     });
 

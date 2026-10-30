@@ -33,7 +33,6 @@
                 
                 <!-- Переносим margin-top на общий контейнер, чтобы выравнивание внутри было идеальным -->
                 <div class="d-flex align-items-center mb-2 me-3" style="margin-top: -5px;">
-                    <a href="#" id="lblAuthIcon" class="me-2 text-muted" onclick="lblToggleSignIn(); return false;" title="Войти через Google (ИИ-переводы, сохранение — для переводчиков)" style="display: flex; align-items: center;"><i class="fa-solid fa-right-to-bracket"></i></a>
                     <top-nav-icons type="read" show-dict></top-nav-icons>
                     
                     <a id="ttsLink" href="javascript:void(0)" class="ms-2 text-muted text-decoration-none voice-link tts-ignore" title="Text-to-Speech Mode" style="display: flex; align-items: center;">
@@ -47,6 +46,7 @@
                     <a href="/assets/lbl-en.html" title="English" class="ms-2 text-muted text-decoration-none" style="display: flex; align-items: center;">en</a>  
                     
                     <a href="https://ruscorpora.ru/" target="_blank" title="Russian texual corpus" class="ms-2 text-muted text-decoration-none" style="display: flex; align-items: center;">crp</a>  
+                    <a href="#" id="lblAuthIcon" class="ms-2 text-muted" onclick="lblToggleSignIn(); return false;" title="Войти через Google (ИИ-переводы, сохранение — для переводчиков)" style="display: flex; align-items: center;"><i class="fa-solid fa-right-to-bracket"></i></a>
                 </div>
 
                 <div class="input-group-append ms-1 me-3 mb-2">
@@ -2431,7 +2431,7 @@ Rewrite translations to match reference style/word-order/terms. Keep any abbrevi
             return origFetch(url, opts);
         });
     };
-    // The sign-in icon at the start of the top row: a door while signed out, a person once signed in (click = sign out).
+    // The sign-in icon at the end of the top row, grey like the others: a door while signed out, a person once signed in (click = sign out).
     window.lblToggleSignIn = function () {
         if (signedInBefore()) {
             if (!confirm('Выйти из аккаунта Google в редакторе?')) return;
@@ -2448,7 +2448,6 @@ Rewrite translations to match reference style/word-order/terms. Keep any abbrevi
         var icon = document.getElementById('lblAuthIcon');
         if (!icon || !signedInBefore()) return;
         icon.innerHTML = '<i class="fa-solid fa-user"></i>';
-        icon.classList.remove('text-muted'); icon.classList.add('text-success');
         icon.title = 'Вы вошли — нажмите, чтобы выйти';
     });
 

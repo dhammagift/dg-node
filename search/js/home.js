@@ -66,6 +66,7 @@
         sun: ['fas', 'sun'],
         star: ['fas', 'star'],
         login: ['fas', 'right-to-bracket'],
+        user: ['fas', 'user'], // the login row once signed in (owner 2026-10-30: a door before, a person after)
         /* Именно bolt-lightning, а не bolt: у первой верхний конец срезан ровно, и в круглом
            отверстии шестерёнки она сидит как прорезь. У обычной fa-bolt оба конца острые, и
            внутри диска она читается угловатой кляксой. */
@@ -4618,7 +4619,10 @@
     function paintDrawerIcons() {
         Array.prototype.forEach.call(document.querySelectorAll('[data-dg-icon]'), function (el) {
             if (el.querySelector('.dg-row-ic')) return;
-            el.insertAdjacentHTML('afterbegin', faSvg(el.dataset.dgIcon, 'dg-row-ic'));
+            var name = el.dataset.dgIcon;
+            // signed in (Google, Apple or a sync phrase — settings.js sets this flag, sign-out removes it): a person, not the door
+            if (name === 'login') { try { if (localStorage.getItem('dg_cloud_session') === 'true') name = 'user'; } catch (e) {} }
+            el.insertAdjacentHTML('afterbegin', faSvg(name, 'dg-row-ic'));
         });
     }
 
