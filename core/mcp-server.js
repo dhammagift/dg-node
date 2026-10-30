@@ -79,6 +79,32 @@ function editionRows(suttaId, eds) {
     } catch { /* a dg.db built before the editions table */ }
     return out;
 }
+// Compared as words, folded so that only real readings differ: case, punctuation, quotes, verse and paragraph marks
+// (PTS "||"), digits and the two spellings of niggahīta (ṁ / ṃ) do not count. Diacritics other than that do (ā ≠ a).
+// Hyphens join (ariya-saccaṁ = ariyasaccaṁ); a word-final m is niggahīta (PTS input writes "samayam").
+const foldWords = t => String(t || '').normalize('NFC').toLowerCase().replace(/[ṃŋ]/g, 'ṁ').replace(/-/g, '')
+    .replace(/[^\p{L}\s]+/gu, ' ').split(/\s+/).filter(Boolean).map(w => w.replace(/m$/, 'ṁ'));
+// word-level difference of an edition's line against the Mahāsaṅgīti's: [{ms, ed}] runs (LCS over a few dozen words)
+function wordDiff(a, b) {
+    const n = a.length, m = b.length, L = Array.from({ length: n + 1 }, () => new Uint16Array(m + 1));
+    for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--) L[i][j] = a[i] === b[j] ? L[i + 1][j + 1] + 1 : Math.max(L[i + 1][j], L[i][j + 1]);
+    const out = []; let i = 0, j = 0, ms = [], ed = [];
+    const flush = () => { if (ms.length || ed.length) out.push({ ms: ms.join(' '), ed: ed.join(' ') }); ms = []; ed = []; };
+    while (i < n || j < m) {
+        if (i < n && j < m && a[i] === b[j]) { flush(); i++; j++; }
+        else if (j < m && (i === n || L[i][j + 1] >= L[i + 1][j])) ed.push(b[j++]);
+        else ms.push(a[i++]);
+    }
+    flush();
+    // a compound written apart is spacing, not a reading (katamañca / katamañ ca)
+    return out.filter(d => d.ms.replace(/ /g, '') !== d.ed.replace(/ /g, ''));
+}
+// "sn56.11", "sn56.11:5.2", "sn56.11:5.1-5.4" -> { sutta, from, to } (segment parts after the colon)
+function parseEditionTarget(id) {
+    const m = /^([^:\s]+)(?::([\d.]+)(?:-([\d.]+))?)?$/.exec(String(id || '').trim().toLowerCase());
+    return m ? { sutta: m[1], from: m[2] || null, to: m[3] || m[2] || null } : null;
+}
+const segCmp = (x, y) => { const a = x.split('.').map(Number), b = y.split('.').map(Number); for (let i = 0; i < Math.max(a.length, b.length); i++) { const d = (a[i] || 0) - (b[i] || 0); if (d) return d; } return 0; };
 
 // ---------------------------------------------------------------------------
 // Matching helpers for the agent-facing order. The search itself folds diacritics
@@ -471,6 +497,68 @@ function getServer() {
         return { content: [{ type: 'text', text: JSON.stringify(data) }] };
     });
 
+    server.registerTool('compare_editions', {
+        description: 'Compare the Pali Canon\'s editions line by line: the Mahāsaṅgīti beside Buddha Jayanti (Sri Lanka), Chaṭṭha Saṅgāyana (Myanmar), Siam Rath (Thailand), the printed Mahāsaṅgīti of 2005 and the PTS editions (DN, MN, SN, AN). Give a sutta ("sn56.11"), a line ("dn22:18.1") or a range ("sn56.11:5.1-5.4"). The answer starts with a summary per edition (name, license, lines present, missing, differing), then the lines where some edition reads differently, each with the differing words. Case, punctuation and ṁ/ṃ are not counted as differences.',
+        inputSchema: {
+            id: z.string().describe('A sutta (sn56.11), a line (dn22:18.1) or a range of lines (sn56.11:5.1-5.4).'),
+            editions: z.array(z.enum(Object.keys(EDITIONS))).optional().describe('Editions to compare with the Mahāsaṅgīti. Default: all of bjt, my, th, mso, pts.'),
+            all: z.boolean().optional().describe('Every line, not only the lines where an edition differs. Default false.'),
+            limit: z.number().int().min(1).max(500).optional().describe('Lines per answer (default 60); the answer gives next_from to continue.'),
+            from: z.string().optional().describe('Continue from this line (the next_from of a previous answer).'),
+        },
+    }, async ({ id, editions, all, limit, from }) => {
+        const t = parseEditionTarget(id);
+        if (!t) return asText({ error: `Not a sutta, line or range: ${id}` }, true);
+        const eds = editions && editions.length ? [...new Set(editions)] : Object.keys(EDITIONS);
+        const rows = db().prepare("SELECT segment_id, txt FROM texts WHERE sutta_id = ? AND kind = 'root' ORDER BY ord").all(t.sutta);
+        if (!rows.length) return asText({ error: `Unknown sutta id: ${t.sutta}` }, true);
+        const byEd = editionRows(t.sutta, eds);
+        if (!eds.some(ed => byEd[ed].size)) return asText({ error: `No other edition has ${t.sutta}: the editions cover DN, MN, SN and AN.` }, true);
+        const part = sid => sid.slice(sid.indexOf(':') + 1);
+        const inRange = r => !t.from || (segCmp(part(r.segment_id), t.from) >= 0 && segCmp(part(r.segment_id), t.to) <= 0);
+        const summary = Object.fromEntries(eds.map(ed => [ed, { id: ed, ...EDITIONS[ed], lines_present: 0, lines_missing: 0, lines_differing: 0 }]));
+        const lines = [];
+        let compared = 0, differing = 0;
+        for (const r of rows.filter(inRange)) {
+            compared++;
+            const msWords = foldWords(r.txt);
+            if (!msWords.length) continue;                       // an empty root line (a numbering-only segment)
+            // the title block (…:0.x: collection, chapter, sutta name) is each edition's own heading style, not text
+            if (!all && /:0\./.test(r.segment_id)) continue;
+            // a line no edition has at all is the Mahāsaṅgīti's own (a heading the others print differently)
+            if (eds.every(ed => !byEd[ed].get(r.segment_id))) continue;
+            const line = { line: r.segment_id, ms: r.txt.trim(), editions: {} };
+            let differs = false;
+            for (const ed of eds) {
+                const txt = byEd[ed].get(r.segment_id);
+                if (!byEd[ed].size) continue;                     // this edition lacks the whole sutta
+                if (!txt) { summary[ed].lines_missing++; line.editions[ed] = 'missing'; differs = true; continue; }
+                summary[ed].lines_present++;
+                const d = wordDiff(msWords, foldWords(txt));
+                if (!d.length) { line.editions[ed] = 'same'; continue; }
+                summary[ed].lines_differing++;
+                line.editions[ed] = { text: txt.trim(), differs: d };
+                differs = true;
+            }
+            if (differs) differing++;
+            if (differs || all) { line.link = READER + r.segment_id; lines.push(line); }
+        }
+        const max = limit || 60;
+        let start = 0;
+        if (from) { const k = lines.findIndex(l => l.line === from.trim().toLowerCase()); start = k === -1 ? 0 : k; }
+        const page = lines.slice(start, start + max);
+        const out = {
+            id: id.trim().toLowerCase(), link: READER + (t.from ? t.sutta + ':' + t.from : t.sutta),
+            base: { id: 'ms', name: 'Mahāsaṅgīti Tipiṭaka (the site\'s Pali text)', license: 'CC0' },
+            summary: Object.values(summary).filter(x => x.lines_present || x.lines_missing),
+            lines_compared: compared, lines_shown: page.length, lines_with_differences: differing,
+            note: 'Differences are word-level against the Mahāsaṅgīti, ignoring case, punctuation, hyphens, compounds written apart and ṁ/ṃ/final m. The title lines (…:0.x) are left out unless all:true. "missing": the edition has no such line (it may join or split lines differently). Quote an edition by its name; each keeps its own license.',
+            lines: page,
+        };
+        if (start + max < lines.length) out.next_from = lines[start + max].line;
+        return asText(out);
+    });
+
     server.registerTool('compare_translations', {
         description: 'One segment of the canon in the Pali root and every available translation side by side. Use a segment id from search/get_text, e.g. "mn129:21.3". Sujato (en_sujato) is excluded unless named in translators.',
         inputSchema: {
@@ -536,6 +624,7 @@ function getServer() {
 // What an agent should know before the first call: how to search, how to phrase answers, where
 // the links go, and why translations are opt-in.
 const INSTRUCTIONS = `Dhamma.gift: the Pali Canon (Sutta and Vinaya) with Pali root text and translations (25 languages, including Russian and English).
+- Core feature, found nowhere else: the canon's own EDITIONS compared line by line — compare_editions sets the Mahāsaṅgīti beside Buddha Jayanti (Sri Lanka), Chaṭṭha Saṅgāyana (Myanmar), Siam Rath (Thailand), the printed Mahāsaṅgīti of 2005 and the PTS editions (DN, MN, SN, AN), and shows exactly which words differ. When the wording of the Pali matters (a definition, a disputed reading, a quote), check it across the editions before relying on one. Translations are renderings of these texts, not evidence of what the Pali says.
 - search is a literal substring/keyword search (min 3 letters, diacritics ignored: "kacchap" finds mahakacchapa, "tanha" finds taṇhā). It does NOT understand meaning: for a topic ("turtle") try the Pali word(s) and translation words yourself (kacchapa, kummo; turtle, tortoise; черепаха) and merge the results. The answer is a CENSUS of every matching sutta, ordered so that suttas that DEFINE the term come first, then ones named after it, then by how often it occurs — read the top of the list first: a definition tells you what the term means, which a list of similarly-named suttas does not.
 - THE WAY TO FIND WHERE THE CANON DEFINES A TERM is to search the formula itself as a REGEX (the engine supports patterns). Three patterns cover the whole apparatus, and they are the sharpest tool here — sharper than reading a census:
     "kata.*<term>"  -> "Katamañca, bhikkhave, <term>? …"  the definition question. e.g. kata.*dukkha finds dn22:18.1 "Katamañca, bhikkhave, dukkhaṁ ariyasaccaṁ?"
@@ -547,7 +636,7 @@ const INSTRUCTIONS = `Dhamma.gift: the Pali Canon (Sutta and Vinaya) with Pali r
 - Reading the census: "matches" is how many TIMES the query occurs in that sutta's Pali root text (the number the ordering uses, so the order can be checked against it — it is not the count of matched segments); "metaphors" is how many metaphors the old site counted in the text. A short sutta carrying several metaphors is a descriptive, figurative one — judge that yourself from the id and title. "metaphors" is 0 for 91% of the corpus, so 0 means "never counted", not "none".
 - Sujato (en_sujato) is never included unless you name him in translators. Everything else follows the project's translator priority.
 - get_text reads a sutta (Pali only unless you pass langs); include_segments in search gives the matched Pali lines; compare_translations shows one segment in all translations; list_structure tells which texts exist.
-- Only here: the other Pali editions as WHOLE texts on the same segments, for DN, MN, SN and AN — Buddha Jayanti (Sri Lanka, bjt), Chaṭṭha Saṅgāyana (Myanmar, my), Siam Rath (Thailand, th), the printed Mahāsaṅgīti of 2005 (mso) and the PTS editions (pts). get_text with editions ["all"] or a list gives each segment in every edition beside the Mahāsaṅgīti, so complete texts can be compared, not only the variant readings; compare_translations shows every edition of one line. Name the edition when you quote it; each keeps its own license (returned with the text).
+- Editions: compare_editions answers with a summary per edition first (lines present, missing, differing), then only the lines that differ, word by word (all:true for every line); get_text with editions ["all"] gives a whole sutta in every edition; compare_translations also lists every edition of one line. Codes: bjt, my, th, mso, pts. Name the edition when you quote it; each keeps its own license (returned with the text).
 - Sutta ids: dn22, mn1, sn56.11, an4.41, snp1.1, dhp1-20. Read the census, then pull the text for the suttas you actually need — do not try to read the whole canon in one call.`;
 
 // Mounted as app.post('/mcp', mcpHandler) in dg-fastify.js — takes Fastify's (request, reply),
