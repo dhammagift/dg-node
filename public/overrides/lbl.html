@@ -33,6 +33,7 @@
                 
                 <!-- Переносим margin-top на общий контейнер, чтобы выравнивание внутри было идеальным -->
                 <div class="d-flex align-items-center mb-2 me-3" style="margin-top: -5px;">
+                    <a href="#" id="lblAuthIcon" class="me-2 text-muted" onclick="lblToggleSignIn(); return false;" title="Войти через Google (ИИ-переводы, сохранение — для переводчиков)" style="display: flex; align-items: center;"><i class="fa-solid fa-right-to-bracket"></i></a>
                     <top-nav-icons type="read" show-dict></top-nav-icons>
                     
                     <a id="ttsLink" href="javascript:void(0)" class="ms-2 text-muted text-decoration-none voice-link tts-ignore" title="Text-to-Speech Mode" style="display: flex; align-items: center;">
@@ -98,7 +99,6 @@
                         <input class="form-check-input" title="Заменить +edited+o в название файла на o" type="checkbox" id="customTranslatorName">
                         <label class="form-check-label" for="customTranslatorName">пер. o</label>
                     </div>
-                    <a href="#" id="lblSignInLink" class="ms-2 align-self-center" onclick="lblSignInForAi(); return false;" title="Вход через Google: ИИ-переводы и сохранение — для переводчиков">🔒 Войти</a>
                 </div>
 
             </div>
@@ -2431,12 +2431,25 @@ Rewrite translations to match reference style/word-order/terms. Keep any abbrevi
             return origFetch(url, opts);
         });
     };
-    window.lblSignInForAi = function () {
+    // The sign-in icon at the start of the top row: a door while signed out, a person once signed in (click = sign out).
+    window.lblToggleSignIn = function () {
+        if (signedInBefore()) {
+            if (!confirm('Выйти из аккаунта Google в редакторе?')) return;
+            ensureFirebase().then(function () { return auth.signOut(); }).catch(function () {}).then(function () {
+                token = null;
+                try { localStorage.removeItem('lblSignedIn'); } catch (e) {}
+                location.reload();
+            });
+            return;
+        }
         signIn().then(function () { location.reload(); }).catch(function () {});
     };
     document.addEventListener('DOMContentLoaded', function () {
-        var link = document.getElementById('lblSignInLink');
-        if (link && signedInBefore()) { link.textContent = '✓ Вход'; link.title = 'Вы вошли: ИИ-переводы и сохранение доступны'; }
+        var icon = document.getElementById('lblAuthIcon');
+        if (!icon || !signedInBefore()) return;
+        icon.innerHTML = '<i class="fa-solid fa-user"></i>';
+        icon.classList.remove('text-muted'); icon.classList.add('text-success');
+        icon.title = 'Вы вошли — нажмите, чтобы выйти';
     });
 
     // Called by the save path. A live token is used as is (refreshed quietly for next time); with

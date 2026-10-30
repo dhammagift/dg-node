@@ -31,6 +31,7 @@
         <div class="align-items-center align-items-center toggle-switch input-group-append">
             <div id="" class="input-group">
                 <div style="display: inline-flex; margin-top: -30px;">
+                    <a href="#" id="lblAuthIcon" class="me-2 text-muted" onclick="lblToggleSignIn(); return false;" title="Sign in with Google (saving is for translators)" style="display: flex; align-items: center;"><i class="fa-solid fa-right-to-bracket"></i></a>
                     <top-nav-icons type="read" show-dict></top-nav-icons>
                 </div>
                 <a href="#" onclick="openHelpModal();" title="Instructions" class="ms-2 text-muted" target=""><i class="fa-solid fa-question"></i></a>
@@ -2028,8 +2029,30 @@ document.addEventListener("DOMContentLoaded", function() {
             if (auth.currentUser) return auth.currentUser.getIdToken(true);
             return auth.signInWithPopup(new firebase.auth.GoogleAuthProvider())
                 .then(function (cred) { return cred.user.getIdToken(); });
-        }).then(function (t) { token = t; return t; });
+        }).then(function (t) { token = t; try { localStorage.setItem('lblSignedIn', '1'); } catch (e) {} return t; });
     }
+    function signedInBefore() { try { return localStorage.getItem('lblSignedIn') === '1'; } catch (e) { return false; } }
+
+    // The sign-in icon at the start of the top row: a door while signed out, a person once signed in (click = sign out).
+    window.lblToggleSignIn = function () {
+        if (signedInBefore()) {
+            if (!confirm('Sign out of Google in the editor?')) return;
+            ensureFirebase().then(function () { return auth.signOut(); }).catch(function () {}).then(function () {
+                token = null;
+                try { localStorage.removeItem('lblSignedIn'); } catch (e) {}
+                location.reload();
+            });
+            return;
+        }
+        signIn().then(function () { location.reload(); }).catch(function () {});
+    };
+    document.addEventListener('DOMContentLoaded', function () {
+        var icon = document.getElementById('lblAuthIcon');
+        if (!icon || !signedInBefore()) return;
+        icon.innerHTML = '<i class="fa-solid fa-user"></i>';
+        icon.classList.remove('text-muted'); icon.classList.add('text-success');
+        icon.title = 'Signed in — click to sign out';
+    });
 
     // Called by the save path. A live token is used as is (refreshed quietly for next time); with
     // none, the popup opens now and this save waits for it.

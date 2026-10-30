@@ -4486,6 +4486,8 @@ async function segmentFileFromDb(req) {
     const m = p.match(SEGMENT_FILE);
     if (!m) return null;
     const [, suttaId, root, lang, translator] = m;
+    // the AI draft lives in its own folder: answered there only, so the editor does not list it twice (ru/ and ai/)
+    if (translator === 'ai' && !p.startsWith('/assets/texts/ai/')) return null;
     if ((translator === 'ai' || translator === 'gemini' || p.startsWith('/assets/texts/ai/')) && !(await mayReadAi(req))) return null;
     const rows = root
         ? searchDb.prepare("SELECT segment_id, txt FROM texts WHERE sutta_id = ? AND kind = 'root' ORDER BY ord").all(suttaId)
