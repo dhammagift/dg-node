@@ -795,40 +795,76 @@ document.addEventListener('click', (event) => {
 const memBubblesOpen = document.getElementsByClassName('mem-bubble');
 document.addEventListener('scroll', () => { if (memBubblesOpen.length) window.removeBubbles(); }, true);
 
-// Wide screens: the third-party links share the icon row (#reader-toolbar); narrow ones: their own
-// row (#top-links-container). The real <a> elements move, see the long note in buildSutta. Placed
-// on every render AND whenever the width crosses the breakpoint: rotating a phone after the text
-// had opened left the links on a row of their own under a desktop-wide icon row (owner, landscape
-// screenshot: "если есть место — использовать его"). Rebuilt from the last render's markup each
-// time, so neither direction can leave a stale or doubled set behind.
+// The reader header, decided by measuring at every width, not by a breakpoint (owner 2026-10-30: «там вообще всё
+// должно было бы вместиться в одну строку» — at 600 px everything fits one row, yet the 768 px rule split it):
+//   1. one row: the third-party links in the icon row (#reader-toolbar) beside the icons and the contents pill,
+//      kept if nothing wraps or overflows and the pill is not squeezed below its own width (or its cap);
+//   2. otherwise the links get their own row (#top-links-container, their <p class="sc-link">) and the pill stays
+//      with the icons if it fits there whole;
+//   3. otherwise the pill goes to the END of the links row at its own width, centred with them, in a row that
+//      never wraps (a stretched pill was rejected; "11. A…" alone in a row was the bug). If even then it would be
+//      cut below 110 px (Russian mn10, 7 links), step 2's layout stays.
+// The real <a> elements move, see the long note in buildSutta. Re-run on every render, on resize (a phone turned)
+// and when the pill's label changes on scroll (reader/common.js syncTOC). Rebuilt from the last render's markup
+// each time, so no stale or doubled set is left behind.
 let dgLastScLink = '';
-function dgPlaceReaderLinks() {
+function dgResetReaderHeader(top, bar) {
+    const toc = document.getElementById('smart-toc-btn');
+    const box = bar.querySelector('.dg-row2-box');
+    if (box) { if (toc) bar.appendChild(toc); box.remove(); }
+    Array.from(bar.querySelectorAll('.sc-ext-link')).forEach(function (stale) { stale.remove(); });
+    bar.classList.remove('dg-row2');
+    top.innerHTML = dgLastScLink;
+    top.style.display = '';
+}
+function dgFitReaderHeader() {
     const top = document.getElementById('top-links-container');
     const bar = document.getElementById('reader-toolbar');
     const first = document.getElementById('toggle-variants');
-    if (!top || !bar || !first) return;
-    Array.from(bar.querySelectorAll('.sc-ext-link')).forEach(function (stale) { stale.remove(); });
-    top.innerHTML = dgLastScLink;
-    if (dgWideReader.matches) {
-        Array.from(top.querySelectorAll('a')).forEach(function (link) { bar.insertBefore(link, first); });
-        top.style.display = 'none';
-        // Only if the one row really holds them all (a phone on its side is just past the breakpoint,
-        // Russian has a seventh link): otherwise back to their own row, never clipped at the edge.
-        if (bar.scrollWidth > bar.clientWidth + 1) {
-            Array.from(bar.querySelectorAll('.sc-ext-link')).forEach(function (stale) { stale.remove(); });
-            top.innerHTML = dgLastScLink;
-            top.style.display = '';
-        }
-    } else {
-        top.style.display = '';
-    }
+    if (!top || !bar || !first || !dgLastScLink) return;
+    dgResetReaderHeader(top, bar);
+    const toc = document.getElementById('smart-toc-btn');
+    const label = document.getElementById('smart-toc-current');
+    const tocShown = toc && toc.parentNode === bar && !toc.classList.contains('hidden-toc') && toc.offsetParent !== null;
+    const cap = tocShown ? parseFloat(getComputedStyle(toc).maxWidth) || Infinity : Infinity;
+    const cut = () => !!label && label.scrollWidth > label.clientWidth + 1;
+    const sameRow = el => Math.abs(el.getBoundingClientRect().top - first.getBoundingClientRect().top) < 10;
+    const pillWhole = () => !tocShown || (sameRow(toc) && !(cut() && toc.getBoundingClientRect().width < cap - 1));
+    const done = () => { if (typeof window.dgApplyHeaderPadding === 'function') window.dgApplyHeaderPadding(); };
+    // 1. one row
+    const links = Array.from(top.querySelectorAll('a'));
+    links.forEach(function (link) { bar.insertBefore(link, first); });
+    top.style.display = 'none';
+    if (links.every(sameRow) && bar.scrollWidth <= bar.clientWidth + 1 && pillWhole()) return done();
+    // 2. links on their own row, the pill with the icons
+    dgResetReaderHeader(top, bar);
+    if (pillWhole() || !links.length) return done();
+    // 3. the pill after the links
+    const box = document.createElement('div');
+    box.className = 'dg-row2-box';
+    Array.from(top.querySelectorAll('a')).forEach(function (link) { box.appendChild(link); });
+    box.appendChild(toc);
+    bar.appendChild(box);
+    bar.classList.add('dg-row2');
+    top.style.display = 'none';
+    if (cut() && toc.getBoundingClientRect().width < 110) dgResetReaderHeader(top, bar);
+    done();
 }
-const dgWideReader = window.matchMedia('(min-width: 768px)');   // the CSS breakpoint of the one-row toolbar
-dgWideReader.addEventListener('change', function () {
-    if (!dgLastScLink) return;
-    dgPlaceReaderLinks();
-    if (typeof window.dgApplyHeaderPadding === 'function') window.dgApplyHeaderPadding();
-});
+function dgPlaceReaderLinks() {
+    const top = document.getElementById('top-links-container');
+    const bar = document.getElementById('reader-toolbar');
+    if (!top || !bar) return;
+    dgResetReaderHeader(top, bar);
+    // measured once the header is laid out and the pill has its title (both come after this call on a render)
+    requestAnimationFrame(function () { dgFitReaderHeader(); });
+    setTimeout(dgFitReaderHeader, 400);
+}
+let dgFitTimer = 0;
+window.dgRefitReaderHeader = function () {
+    clearTimeout(dgFitTimer);
+    dgFitTimer = setTimeout(dgFitReaderHeader, 50);
+};
+window.addEventListener('resize', window.dgRefitReaderHeader);
 
 window.generateThirdPartyLinks = function(slug, slugReady, texttype, translator) {
     let scLink = "";

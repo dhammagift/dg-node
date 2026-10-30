@@ -738,11 +738,18 @@ onReady(() => {
             pillLabel.textContent = capitalize(labelText);
         } else if (headings[activeIndex].classList.contains('endsutta') || headings[activeIndex].classList.contains('uddana-intro')) {
             var tSpan2 = headings[activeIndex].querySelector(langClass) || headings[activeIndex].querySelector('.eng-lang') || headings[activeIndex].querySelector('.pli-lang');
-            labelText = tSpan2 ? tSpan2.textContent.replace(/[()\[\]"“”«»'‘’]/g, '').trim() : labelText.replace(/[()\[\]"“”«»'‘’]/g, '').trim();
+            // the text without its variant readings: textContent took the <font class="variant"> too, and the pill read
+            // "Paṭhamaṁ.paṭhamaṁ ye → yepi sya-all" (an1.140-149)
+            var own = tSpan2 ? tSpan2.cloneNode(true) : null;
+            if (own) Array.prototype.forEach.call(own.querySelectorAll('.variant'), function (v) { v.remove(); });
+            labelText = own ? own.textContent.replace(/[()\[\]"“”«»'‘’]/g, '').trim() : labelText.replace(/[()\[\]"“”«»'‘’]/g, '').trim();
             pillLabel.textContent = capitalize(labelText);
         } else {
             pillLabel.textContent = capitalize(labelText.split('\n')[0].trim());
         }
+
+        // a new label may now fit the reader header's icon row on a phone, or no longer (megareader.js)
+        if (typeof window.dgRefitReaderHeader === 'function') window.dgRefitReaderHeader();
 
         if (tocPanel && tocPanel.classList.contains('active')) {
             var tocItems = tocPanel.querySelectorAll('.toc-item');
