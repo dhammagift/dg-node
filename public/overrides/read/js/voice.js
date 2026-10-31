@@ -2114,6 +2114,9 @@ function pageVoiceSlug(activeWord) {
   if (getSuttaContainer() !== document) {
     const link = document.querySelector('a.voice-link[data-slug]:not(#dg-voice-slug)');
     if (link && link.dataset.slug) return link.dataset.slug;
+    // The reader's header Voice link is gone (its role went to the translation title's speaker);
+    // megareader.js sets this on every render, the same "category/slug" string the link carried.
+    if (window.dgVoiceSlug) return window.dgVoiceSlug;
   }
   const id = activeWord && getElementId(activeWord);
   if (id && id.includes(':')) return id.split(':')[0];

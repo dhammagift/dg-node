@@ -898,7 +898,9 @@ window.dgRefitReaderHeader = function () {
 window.addEventListener('resize', window.dgRefitReaderHeader);
 
 window.generateThirdPartyLinks = function(slug, slugReady, texttype, translator) {
-    const voiceLink = `<a data-slug="${texttype}/${slugReady}" href="javascript:void(0)" role="button" title="Text-to-Speech (Alt+R)" class="voice-link sc-ext-link dg-header-link">${window.isRuPath ? 'Голос' : 'Voice'}</a>`;
+    // No "Voice"/«Голос» link here any more (owner 2026-10-31): the speaker on the translation's
+    // own title line (reader/common.js addIconsTo01) is the way to start listening, one per
+    // translation, and the header keeps the space.
     let externalLinks = '';
 
     if (typeof get4ntUrl === 'function') {
@@ -960,7 +962,7 @@ window.generateThirdPartyLinks = function(slug, slugReady, texttype, translator)
     }
 
     const label = window.isRuPath ? 'Внеш. ссылки' : 'External links';
-    return voiceLink + ` <span class="dg-external-links dg-header-link"><button type="button" class="dg-external-links-toggle" aria-expanded="false"><span>${label}</span><span class="dg-external-links-chevron" aria-hidden="true"></span></button><span class="dg-external-links-menu" hidden>${externalLinks}</span></span>`;
+    return `<span class="dg-external-links dg-header-link"><button type="button" class="dg-external-links-toggle" aria-expanded="false"><span>${label}</span><span class="dg-external-links-chevron" aria-hidden="true"></span></button><span class="dg-external-links-menu" hidden>${externalLinks}</span></span>`;
 };
 
 // ==========================================
@@ -1887,6 +1889,9 @@ window.buildSutta = async function(rawSlug, opts) {
     <span class="right-column">${bylineTranslators}</span></p></div>`;
 
     let cleanSlugReady = slug;
+    // The text's own slug for TTS: it used to live on the header's Voice link; with that gone,
+    // voice.js's pageVoiceSlug() reads it from here (the session name and the /api/text fetch).
+    window.dgVoiceSlug = `${texttype}/${cleanSlugReady}`;
 
     // Mode-switch links (Ru/En/R+R/E+E/Mem/Dev/R+E) moved to the burger drawer's reading-modes
     // list (search/js/home.js paintReaderModes()) — no longer duplicated here.

@@ -80,7 +80,7 @@ function addIconsTo01() {
     const langSpans = segment01.querySelectorAll('[class*="-lang"]');
 
     langSpans.forEach((span, index) => {
-        // Если это первый доступный язык (любой), он главный. Остальные скрыты по умолчанию.
+        // Первый язык (пали) главный. В переводе дублирующая ссылка «поделиться» скрыта как раньше.
         const hideClass = index === 0 ? '' : 'trn-title-icon';
 
         // 1. Убираем стартовые якоря, они здесь не нужны
@@ -106,9 +106,15 @@ function addIconsTo01() {
             }
         }
 
-        // 3. Добавляем SVG Play в начало
+        // 3. Добавляем SVG Play в начало — на КАЖДОЙ строке заголовка (владелец, 2026-10-31:
+        // динамик вместо ссылки «Голос»/«Voice» в шапке). Пали играет пали, каждый перевод —
+        // себя; больше переводов — больше динамиков, шапка свободнее. Первый перевод — то, что
+        // запускает Alt+R (settings.js: .voice-start-btn), поэтому класс только у него.
         const playBtn = document.createElement('span');
-        playBtn.className = hideClass ? `title-play-btn ${hideClass}` : 'title-play-btn';
+        playBtn.className = 'title-play-btn' + (index > 0 ? ' trn-play-btn' : '') + (index === 1 ? ' voice-start-btn' : '');
+        playBtn.title = index === 0
+            ? (window.isRuPath ? 'Слушать пали' : 'Listen in Pāḷi')
+            : (window.isRuPath ? 'Слушать перевод' : 'Listen to the translation');
         playBtn.innerHTML = '<img src="/assets/svg/volume-solid-full.svg" class="title-svg-icon" alt="" aria-hidden="true">';
 
         playBtn.addEventListener('click', (e) => {

@@ -54,22 +54,26 @@ async function check(page, [path, toggle, lang]) {
     }, { toggle, lang });
 }
 
-// Voice / Alt+R start in the translation even after the title's Pali speaker was tapped.
+// The title speakers start their own language (Pali its own, the translation its own) after the
+// header's Voice link was replaced by the speaker on the translation's title line (owner 2026-10-31),
+// and Alt+R still starts in the translation afterwards.
 async function checkVoice(page) {
     await page.goto(BASE + '/', { waitUntil: 'domcontentloaded' });
     await page.evaluate(() => { localStorage.setItem('paliToggle', 'pli-2nd'); localStorage.removeItem('tts_preferred_mode'); });
     await page.goto(BASE + '/sn56.11?lang=ru', { waitUntil: 'domcontentloaded' });
     await page.waitForSelector('.pli-lang .title-play-btn', { timeout: 20000 });
+    await page.waitForSelector('.voice-start-btn', { state: 'visible', timeout: 20000 });
     const mode = () => page.evaluate(() => typeof ttsState !== 'undefined' && ttsState.speaking ? ttsState.langSettings : null);
     const stop = () => page.evaluate(() => document.querySelector('.close-tts-btn')?.click());
     const errs = [];
+    if (await page.evaluate(() => !!document.querySelector('.voice-link'))) errs.push('the header still carries a Voice link');
     await page.click('.pli-lang .title-play-btn');
     await page.waitForFunction(() => typeof ttsState !== 'undefined' && ttsState.speaking, null, { timeout: 15000 });
     if (await mode() !== 'pi') errs.push(`title speaker played ${await mode()}, not pi`);
     await stop();
-    await page.click('.voice-link');
+    await page.click('.voice-start-btn');
     await page.waitForTimeout(1500);
-    if (await mode() !== 'trn') errs.push(`Voice after the speaker played ${await mode()}, not trn`);
+    if (await mode() !== 'trn') errs.push(`translation speaker after the Pali one played ${await mode()}, not trn`);
     await stop();
     await page.keyboard.press('Alt+KeyR');
     await page.waitForTimeout(1500);
@@ -89,15 +93,14 @@ async function checkExternalLinks(page) {
     await page.goto(BASE + '/sn56.11?lang=ru', { waitUntil: 'domcontentloaded' });
     await page.waitForSelector('#reader-toolbar .dg-external-links-toggle', { state: 'visible', timeout: 10000 });
     const early = await page.evaluate(() => {
-        const voice = document.querySelector('#reader-toolbar .voice-link');
         const toggle = document.querySelector('#reader-toolbar .dg-external-links-toggle');
         return {
-            voice: !!voice && voice.offsetParent !== null,
+            voice: !!document.querySelector('#reader-toolbar .voice-link'),
             toggle: !!toggle && toggle.offsetParent !== null,
             label: toggle?.innerText.trim(),
         };
     });
-    if (!early.voice) errs.push('Voice is not visible while the text is loading');
+    if (early.voice) errs.push('the Voice link is back in the static toolbar');
     if (!early.toggle) errs.push('external-links shell is not visible while the text is loading');
     if (early.label !== 'Внеш. ссылки') errs.push('wrong immediate Russian label: ' + early.label);
     const earlyToggle = page.locator('#reader-toolbar .dg-external-links-toggle');
@@ -110,16 +113,16 @@ async function checkExternalLinks(page) {
     await page.waitForTimeout(600);
     const header = await page.evaluate(() => {
         const root = document.querySelector('#reader-toolbar > .dg-external-links, #top-links-container .dg-external-links, #reader-toolbar .dg-row2-box > .dg-external-links');
-        const voice = document.querySelector('#reader-toolbar > .voice-link, #top-links-container .voice-link, #reader-toolbar .dg-row2-box > .voice-link');
+        const speakers = document.querySelectorAll('#sutta [id="0.1"] .title-play-btn');
         return {
             root: !!root,
-            voice: !!voice && !!voice.dataset.slug,
+            speakers: speakers.length,
             nested: !!root && root.querySelectorAll('.dg-external-links-menu a').length > 1,
             label: root?.querySelector('.dg-external-links-toggle')?.textContent.trim(),
         };
     });
     if (!header.root) errs.push('dropdown was not kept as one header item');
-    if (!header.voice) errs.push('rendered Voice has no text slug');
+    if (header.speakers < 2) errs.push('the title line has no speaker for the translation');
     if (!header.nested) errs.push('external links were not populated inside the dropdown');
     if (header.label !== 'Внеш. ссылки') errs.push('wrong Russian dropdown label: ' + header.label);
     const toggle = page.locator('#reader-pane .dg-external-links-toggle').first();
