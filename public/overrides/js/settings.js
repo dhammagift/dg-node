@@ -2656,8 +2656,11 @@ window.initFirebase = async function() {
         // Apache proxies /__/auth/ to firebaseapp.com. test.dhamma.gift has its own handler; every
         // other *.dhamma.gift (www, f, find) is the same site as dhamma.gift for Safari, so it uses
         // that one. The app (capacitor://) and localhost keep the config's own authDomain.
+        // Not on Android: there the installed DG app owns dhamma.gift links (App Links), so the handler page opened
+        // in the app as a search for "handler" (owner 2026-10-30). Chrome on Android does not partition the
+        // firebaseapp.com handler the way Safari does, so the config's own authDomain works there.
         const host = location.hostname;
-        if (location.protocol === 'https:' && /(^|\.)dhamma\.gift$/.test(host)) {
+        if (location.protocol === 'https:' && /(^|\.)dhamma\.gift$/.test(host) && !/Android/i.test(navigator.userAgent)) {
             firebaseConfig.authDomain = /(^|\.)test\.dhamma\.gift$/.test(host) ? 'test.dhamma.gift' : 'dhamma.gift';
         }
         firebase.initializeApp(firebaseConfig);
