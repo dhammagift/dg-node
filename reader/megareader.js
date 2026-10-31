@@ -359,6 +359,13 @@ function placeColsHead() {
     const head = s.querySelector(':scope > .dg-cols-head');
     const zoom = head && head.offsetHeight ? head.getBoundingClientRect().height / head.offsetHeight : 1;
     s.style.setProperty('--dg-cols-top', (bottom / (zoom || 1)).toFixed(1) + 'px');
+    // glued from the start: the page's own top padding left a strip between the site header and the names that
+    // closed on the first scroll (owner 2026-10-31); pull the names up by it, once, while the page is at its top
+    if (head && !head.dataset.glued && window.scrollY < 2 && bottom > 0) {
+        const gap = head.getBoundingClientRect().top - bottom;
+        if (gap > 0) head.style.marginTop = (-gap / (zoom || 1)).toFixed(1) + 'px';
+        head.dataset.glued = '1';
+    }
 }
 let colsRaf = 0, colsUntil = 0;
 function followHeader() {
@@ -1889,7 +1896,7 @@ window.buildSutta = async function(rawSlug, opts) {
     const useGrid = (gridCols >= 3 || (edMulti && gridCols >= 2)) && !isMemModeRender && !isDevModeRender;
     const colOf = {};   // translation key -> its grid column
     orderedEntries.forEach(({ entry }, k) => { colOf[entry.key] = (edMulti ? shownEds.length : 1) + k + 1; });
-    let editionsHead = '';
+    let editionsHead = '', colsHead = '';
     if (useGrid) {
         // A tap on a column's name switches what the column shows (home.js, the column menu): another edition, or
         // another translator (owner 2026-10-31: «переключить по заголовку… и переводчиков»).
@@ -1903,7 +1910,7 @@ window.buildSutta = async function(rawSlug, opts) {
         // − first, + in the corner: the hand goes to the corner by itself, and there it only adds (owner 2026-10-31)
         const pm = `<span class="dg-col-pm"><button type="button" data-col-del title="${uiRu ? 'Убрать эту колонку' : 'Remove this column'}">−</button>` +
             `<button type="button" data-col-add title="${uiRu ? 'Добавить колонку' : 'Add a column'}">+</button></span>`;
-        editionsHead = `<div class="dg-cols-head"><div class="dg-cols-head-in">${cells.map(([k, n], i) =>
+        colsHead = `<div class="dg-cols-head"><div class="dg-cols-head-in">${cells.map(([k, n], i) =>
             `<span class="dg-col-cell" data-col-cell="${k}"><button type="button" data-col="${k}">${n}</button>${i === cells.length - 1 ? pm : ''}</span>`).join('')}</div></div>`;
     }
     if (absentEds.length && absentEds.some(e => e !== 'ms')) {
@@ -2188,6 +2195,9 @@ window.buildSutta = async function(rawSlug, opts) {
     if (prevTop) prevTop.remove();
     const suttaHtml =
         `<div id="top-links-container" class="min-h-24"></div>` +
+        // the columns' names first, glued to the site header from the start (owner 2026-10-31: no strip between them
+        // that shrinks on the first scroll)
+        colsHead +
         (!isWarningClosed ? warning : '') +
         translatorByline + 
         editionsHead +

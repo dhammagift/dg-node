@@ -480,7 +480,10 @@
     border-bottom: 1px solid var(--dg-border, rgba(127, 127, 127, .25));
     margin-bottom: .6rem;
   }
+  /* the header names every column: the byline above it ("Pāḷi MS · BJT · SR", the translators) would say it twice */
+  #sutta.column-view.dg-grid > #trn { display: none; }
   #sutta.column-view.dg-grid .dg-cols-head-in {
+    align-items: center;   /* the last cell's − + buttons are taller: the names stay on one line */
     font: 700 .72rem/1.35 var(--dg-font, Lato, system-ui, sans-serif);
     letter-spacing: .03em;
     color: var(--dg-text-muted, #808086);
