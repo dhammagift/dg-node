@@ -147,21 +147,6 @@ function addIconsTo01() {
         const firstEdLine = Array.from(span.querySelectorAll(':scope > .dg-ed-line')).find(l => !l.classList.contains('is-empty') && l.textContent.trim());
         if (firstEdLine) firstEdLine.insertBefore(playBtn, firstEdLine.firstChild);
         else span.insertBefore(playBtn, span.firstChild);
-        // ...and every other edition gets a speaker of its own here, plated with its name (owner 2026-10-31: «нажали пали 2 -
-        // пали 2»): the reading then goes down that edition (megareader.js dgLastEdLine, voice.js). Its title line is empty
-        // in most editions, so the line holds only the plate and the speaker.
-        if (index === 0 && firstEdLine) Array.from(span.querySelectorAll(':scope > .dg-ed-line')).filter(l => l !== firstEdLine).forEach(l => {
-            const ed = (window.DG_EDITIONS || []).find(x => x.id === l.dataset.ed);
-            if (!ed) return;
-            const b = playBtn.cloneNode(true);   // no listeners in a clone
-            b.title = (window.isRuPath ? 'Слушать ' : 'Listen: ') + ed[window.isRuPath ? 'ru' : 'en'];
-            b.addEventListener('click', (e) => { e.stopPropagation(); window.dgLastEdLine = l; play(); });
-            l.classList.remove('is-empty');
-            l.classList.add('dg-tag', 'dg-ed-speaker');
-            l.dataset.tag = ed.tag;
-            if (!l.textContent.trim()) l.textContent = '';
-            l.insertBefore(b, l.firstChild);
-        });
     });
 }
 

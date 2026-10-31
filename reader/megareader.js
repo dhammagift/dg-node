@@ -310,10 +310,15 @@ function setEditions(list) {
 window.getEditions = getEditions;
 window.setEditions = setEditions;
 // The edition line last tapped (voice.js: the reading goes down that edition; the tap itself marks the whole Pali span)
-document.addEventListener('click', e => {
-    const l = e.target.closest && e.target.closest('.dg-ed-line');
-    if (l) window.dgLastEdLine = l;
-    else if (e.target.closest && e.target.closest('.pli-lang')) window.dgLastEdLine = null;
+// A click in the segment's context menu (its "Audio") keeps it: the menu was opened from that edition's own ✦ marker.
+// On window, capturing: the ✦ marker's own handler stops the click before a listener on document would see it.
+window.addEventListener('click', e => {
+    if (!e.target.closest) return;
+    const l = e.target.closest('.dg-ed-line');
+    if (l) { window.dgLastEdLine = l; return; }
+    if (e.target.closest('#segment-context-menu')) return;
+    const pli = e.target.closest('.pli-lang');
+    if (pli && !pli.querySelector('.dg-ed-line')) window.dgLastEdLine = null;   // a single Pali text: no edition to remember
 }, true);
 // The DG app with its offline library: is this edition's pack (ed-<id>, Sippa's build) on the device? null = no offline
 // library here (the site): nothing to mark. The window marks the others "online" (offline they cannot be shown).
@@ -2009,18 +2014,19 @@ window.buildSutta = async function(rawSlug, opts) {
     const edDiff = true;   // marks always drawn with several editions, shown by #sutta.dg-diff-on (dgSetEditionsDiff)
     function editionLines(segment, msText, linkStart = '', linkEnd = '') {
         const heading = /^0\./.test(segment.slice(segment.indexOf(':') + 1));
-        if (!edSingle && !edMulti) return platesOn && !heading ? `<span class="dg-ed-line dg-tag" data-ed="ms" data-tag="MS">${msText}</span>` : msText;
+        // plates on headings too once plates are on: the translations' title lines carry theirs (owner 2026-10-31)
+        if (!edSingle && !edMulti) return platesOn ? `<span class="dg-ed-line dg-tag" data-ed="ms" data-tag="MS">${msText}</span>` : msText;
         if (edSingle) {
             const t = (edMaps[shownEds[0]] || {})[segment];
-            if (t !== undefined) return heading ? t.trim() : `<span class="dg-ed-line dg-tag" data-ed="${shownEds[0]}" data-tag="${edInfo(shownEds[0]).tag}">${t.trim()}</span>`;
-            return heading ? msText : `<span class="dg-ed-fill dg-tag" data-tag="MS" title="${uiRu ? 'Этой строки нет в издании, она из Mahāsaṅgīti' : 'Not in this edition: the Mahāsaṅgīti line'}">${msText}</span>`;
+            if (t !== undefined) return `<span class="dg-ed-line dg-tag" data-ed="${shownEds[0]}" data-tag="${edInfo(shownEds[0]).tag}">${t.trim()}</span>`;
+            return `<span class="dg-ed-fill dg-tag" data-tag="MS" title="${uiRu ? 'Этой строки нет в издании, она из Mahāsaṅgīti' : 'Not in this edition: the Mahāsaṅgīti line'}">${msText}</span>`;
         }
         let texts = shownEds.map(e => e === 'ms' ? msText : (edMaps[e] || {})[segment]);
         if (edDiff && !heading) texts = markEditionDiffs(texts);
         return shownEds.map((e, k) => {
             const t = texts[k];
-            const tag = heading ? '' : ` data-tag="${edInfo(e).tag}"`;
-            const cls = heading ? 'dg-ed-line' : 'dg-ed-line dg-tag';   // the plate: .dg-tag::before from data-tag (home.css), as the translators'
+            const tag = ` data-tag="${edInfo(e).tag}"`;
+            const cls = 'dg-ed-line dg-tag';   // the plate: .dg-tag::before from data-tag (home.css), as the translators'; a heading's too
             if (t === undefined) return `<span class="${cls} is-gap${heading ? ' is-empty' : ''}" data-ed="${e}" style="--c:${k + 1}"${tag}>${heading ? '' : '—'}</span>`;
             return `<span class="${cls}" data-ed="${e}" style="--c:${k + 1}"${tag}>${linkStart}${typeof t === 'string' ? t.trim() : t}${linkEnd}</span>`;
         }).join('');
