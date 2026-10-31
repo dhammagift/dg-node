@@ -1048,7 +1048,7 @@ async function applyPacks(pool, packsBase, want) {
         progressView = msg => Object.assign({}, msg, step, msg.total > 0 && total > 0
             ? { loaded: Math.round(done + share * Math.min(1, msg.loaded / msg.total)), total, done: false } : {});
         try {
-            await downloadInto(pool, new URL(p.url || p.file, `${packsBase}/`).href, target, p.bytes_gz, p.bytes, true, scratchName, true);
+            await downloadInto(pool, new URL(p.url || p.file, new URL(`${packsBase}/`, self.location.href)).href, target, p.bytes_gz, p.bytes, true, scratchName, true);
         } catch (e) {
             if (e && e.cancelled) { try { pool.unlink(target); } catch (_) {} await dropScratchAfterCancel(scratchName); }
             throw e;
