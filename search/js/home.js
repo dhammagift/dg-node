@@ -1833,7 +1833,9 @@
         trnLabel: { ru: 'Переводы', en: 'Translations' },
         edMissing:{ ru: 'нет текста', en: 'no text' },
         edMain:   { ru: 'основное: читается и озвучивается', en: 'main: read and voiced' },
-        edDiff:   { ru: 'Подсветить отличия', en: 'Highlight differences' }
+        edDiff:   { ru: 'Подсветить отличия', en: 'Highlight differences' },
+        edOnlineTag: { ru: 'онлайн', en: 'online' },
+        edOnline: { ru: 'Это издание не скачано на устройство: показывается только при интернете', en: 'Not downloaded to this device: shown only when online' }
     };
     function tsStr(k) { return TRANS_STR[k][menuLang() === 'ru' ? 'ru' : 'en']; }
     var tsSort = 'manual';
@@ -2043,23 +2045,25 @@
         host.querySelector('.dg-ts-sec-trn').hidden = !eds;
         host.querySelector('.dg-ts-sec-trn').textContent = tsStr('trnLabel');
         if (eds) {
-            var edAvail = (window.READER_MODE && window.READER_MODE.availableEditions) || ['ms'];
+            var edAvail = window.READER_MODE ? window.READER_MODE.availableEditions : ['ms'];   // null: not known (the app offline)
             var edOrder = eds.concat(window.DG_EDITIONS.map(function (x) { return x.id; }).filter(function (id) { return eds.indexOf(id) === -1; }));
             paliHost.innerHTML = '<div class="dg-ts-sec">' + esc(tsStr('edLabel')) + '</div><div class="dg-ts-rows dg-ts-edrows">' +
                 edOrder.map(function (id) {
                     var ed = window.DG_EDITIONS.find(function (x) { return x.id === id; });
-                    var i = eds.indexOf(id), on = i !== -1, missing = edAvail.indexOf(id) === -1;
+                    var i = eds.indexOf(id), on = i !== -1, missing = !!edAvail && edAvail.indexOf(id) === -1;
+                    var onlineOnly = !missing && window.dgEditionOnDevice && window.dgEditionOnDevice(id) === false;   // the app: pack not downloaded
                     return '<div class="dg-ts-row' + (on ? ' is-on' : '') + (missing ? ' is-missing' : '') + '" data-ts-key="ed:' + id + '">' +
                         '<span class="dg-ts-hnd" data-ts-drag><i></i><i></i><i></i><i></i><i></i><i></i></span>' +
                         '<span class="dg-ts-ord">' + (on ? i + 1 : '') + '</span>' +
                         '<button type="button" class="dg-ts-tick" role="checkbox" aria-checked="' + on + '"></button>' +
                         '<span class="dg-ts-name">' + esc(ed[menuLang() === 'ru' ? 'ru' : 'en']) + '</span>' +
-                        '<span class="dg-ts-tag">' + esc(missing ? tsStr('edMissing') : ed.tag) + '</span>' +
+                        '<span class="dg-ts-tag' + (onlineOnly ? ' is-local' : '') + '"' + (onlineOnly ? ' title="' + esc(tsStr('edOnline')) + '"' : '') + '>' +
+                        esc(missing ? tsStr('edMissing') : onlineOnly ? ed.tag + ' · ' + tsStr('edOnlineTag') : ed.tag) + '</span>' +
                         '<button type="button" class="dg-ts-star' + (i === 0 ? ' is-main' : '') + '" title="' + esc(tsStr('edMain')) + '">' + (i === 0 ? '★' : '☆') + '</button>' +
                         '</div>';
                 }).join('') + '</div>';
             // greyed with fewer than two editions on screen: nothing to compare
-            var canDiff = eds.filter(function (x) { return edAvail.indexOf(x) !== -1; }).length > 1;
+            var canDiff = eds.filter(function (x) { return !edAvail || edAvail.indexOf(x) !== -1; }).length > 1;
             paliHost.insertAdjacentHTML('beforeend', '<div class="dg-ts-diff' + (canDiff ? '' : ' is-off') + '"' + (canDiff ? ' data-ts-diff' : '') +
                 '><button type="button" class="dg-ts-tick" role="checkbox"' + (canDiff ? '' : ' disabled') + ' aria-checked="' +
                 (canDiff && window.dgEditionsDiff()) + '"></button><span>' + esc(tsStr('edDiff')) + '</span></div>');
@@ -2395,9 +2399,9 @@
         if (open) return;
         var key = cell.dataset.col, ru = menuLang() === 'ru', items;
         if (key.indexOf('ed:') === 0) {
-            var avail = (window.READER_MODE && window.READER_MODE.availableEditions) || ['ms'];
-            items = (window.DG_EDITIONS || []).filter(function (x) { return avail.indexOf(x.id) !== -1; })
-                .map(function (x) { return ['ed:' + x.id, x[ru ? 'ru' : 'en'], x.tag]; });
+            var avail = window.READER_MODE ? window.READER_MODE.availableEditions : ['ms'];
+            items = (window.DG_EDITIONS || []).filter(function (x) { return !avail || avail.indexOf(x.id) !== -1; })
+                .map(function (x) { return ['ed:' + x.id, x[ru ? 'ru' : 'en'], x.tag + (window.dgEditionOnDevice && window.dgEditionOnDevice(x.id) === false ? ' · ' + tsStr('edOnlineTag') : '')]; });
         } else {
             items = tsAvailable().slice().sort(tsByRank).map(function (k) { return ['tr:' + k, trnName(k), LANG_LABEL[tsLangOf(k)] || tsLangOf(k)]; });
         }
@@ -2813,11 +2817,12 @@
                 var edRow = document.createElement('div');
                 edRow.className = 'dg-ts-chips dg-qs-eds';
                 var paintEds = function () {
-                    var on = window.getEditions(), avail = (window.READER_MODE && window.READER_MODE.availableEditions) || ['ms'];
+                    var on = window.getEditions(), avail = window.READER_MODE ? window.READER_MODE.availableEditions : ['ms'];
                     edRow.innerHTML = window.DG_EDITIONS.map(function (ed) {
-                        var missing = avail.indexOf(ed.id) === -1;
-                        return '<button type="button" class="dg-ts-chip' + (missing ? ' is-missing' : '') + '" data-ed="' + ed.id + '"' +
-                            ' title="' + esc(ed[menuLang() === 'ru' ? 'ru' : 'en']) + '" aria-pressed="' + (on.indexOf(ed.id) !== -1) + '">' + esc(ed.tag) + '</button>';
+                        var missing = !!avail && avail.indexOf(ed.id) === -1;
+                        var onlineOnly = !missing && window.dgEditionOnDevice && window.dgEditionOnDevice(ed.id) === false;   // the app: not downloaded
+                        return '<button type="button" class="dg-ts-chip' + (missing ? ' is-missing' : '') + (onlineOnly ? ' is-local' : '') + '" data-ed="' + ed.id + '"' +
+                            ' title="' + esc(ed[menuLang() === 'ru' ? 'ru' : 'en'] + (onlineOnly ? ' — ' + tsStr('edOnline') : '')) + '" aria-pressed="' + (on.indexOf(ed.id) !== -1) + '">' + esc(ed.tag) + (onlineOnly ? ' •' : '') + '</button>';
                     }).join('');
                 };
                 paintEds();

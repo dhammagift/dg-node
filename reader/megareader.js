@@ -282,6 +282,15 @@ function setEditions(list) {
 }
 window.getEditions = getEditions;
 window.setEditions = setEditions;
+// The DG app with its offline library: is this edition's pack (ed-<id>, Sippa's build) on the device? null = no offline
+// library here (the site): nothing to mark. The window marks the others "online" (offline they cannot be shown).
+window.dgEditionOnDevice = function (id) {
+    if (id === 'ms') return true;
+    try {
+        const packs = (JSON.parse(localStorage.getItem('dg.offline.state') || 'null') || {}).packs;
+        return Array.isArray(packs) ? packs.indexOf('ed-' + id) !== -1 : null;
+    } catch (e) { return null; }
+};
 // A redraw in place is not a scroll: restoring the reading place moved the page and the auto-hiding site header slid
 // in (owner 2026-10-31: switching a column's edition brought the whole header back). The header keeps the state it
 // had when the redraw began; `p` is the redraw's promise.
@@ -1687,7 +1696,10 @@ window.buildSutta = async function(rawSlug, opts) {
     READER_MODE.columns = columns; // кэш последнего известного состояния — для switchReaderMode
     READER_MODE.availableLangs = Array.isArray(suttaData.availableLangs) ? suttaData.availableLangs : null; // languages THIS text has a translation in (dg-fastify.js) — the popover marks the rest "нет перевода"
     READER_MODE.availableTranslators = Array.isArray(suttaData.availableTranslators) ? suttaData.availableTranslators : null; // every translator THIS text has, per language — the popover lists them (AI excluded server-side)
-    READER_MODE.availableEditions = ['ms'].concat(Array.isArray(suttaData.availableEditions) ? suttaData.availableEditions : []); // the Pali editions THIS text is in (the Translations window marks the rest)
+    // the Pali editions THIS text is in (the Translations window marks the rest); null = not known (the DG app offline:
+    // its library holds only the packs it downloaded, the corpus list comes with /api/text-online when online)
+    READER_MODE.availableEditions = Array.isArray(suttaData.availableEditions) ? ['ms'].concat(suttaData.availableEditions)
+        : Array.isArray(suttaData.downloadedEditions) ? null : ['ms'];
     // Owner: "показывать доп кнопку [языковой пилюли] во всех режимах... раз языки уже
     // активированы" — home.js's dgRenderLangPill reads LANG_ORDER_KEY to decide whether to show
     // its "more languages" dots button outside multi too (single/results/etc, where only ONE
@@ -2221,6 +2233,7 @@ window.buildSutta = async function(rawSlug, opts) {
         if (!a || !libLine.isConnected || a.audioHtml === suttaData.audioHtml) return; // another text on screen by now, or already in it
         if (a.availableLangs) READER_MODE.availableLangs = a.availableLangs;
         if (a.availableTranslators) READER_MODE.availableTranslators = a.availableTranslators;
+        if (Array.isArray(a.availableEditions)) READER_MODE.availableEditions = ['ms'].concat(a.availableEditions);
         const old = suttaArea.querySelector(':scope > .dg-audio-mp3');
         libLine.insertAdjacentHTML('beforebegin', a.audioHtml);
         libLine.remove(); if (old) old.remove();
