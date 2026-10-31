@@ -303,11 +303,9 @@ window.dgEditionsDiff = () => { try { return localStorage.getItem('dgEditionsDif
 (function () {
     const st = document.createElement('style');
     st.id = 'dg-ed-diff-style';
-    st.textContent = 'mark.dg-ed-diff{background:transparent;color:inherit;border-radius:3px;padding:0 1px;box-shadow:inset 0 0 0 transparent;' +
-        'transition:background-color .45s ease,box-shadow .45s ease}' +
-        // strong enough to be seen at a glance on a phone (owner: «на скринах нет подсветки» at 18%)
-        '#sutta.dg-diff-on mark.dg-ed-diff{background:color-mix(in srgb,var(--dg-tblue,#3434be) 34%,transparent);' +
-        'box-shadow:inset 0 -2px 0 var(--dg-tblue,#3434be)}' +
+    st.textContent = 'mark.dg-ed-diff{background:transparent;color:inherit;border-radius:3px;padding:0 1px;transition:background-color .45s ease}' +
+        // the first look, the owner's pick after trying the blue (2026-10-31: «какая она была… желтая или коричневая», no underline)
+        '#sutta.dg-diff-on mark.dg-ed-diff{background:color-mix(in srgb,#e3a008 30%,transparent)}' +
         '@media (prefers-reduced-motion:reduce){mark.dg-ed-diff{transition:none}}';
     document.head.appendChild(st);
 })();
